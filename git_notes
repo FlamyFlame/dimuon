@@ -1,0 +1,11 @@
+1. on gitlab, create a project with no README file -- this creates an empty remote repository, and allows us to very easily import our own, local git repository (without any comflict or need to merge/pull)
+2. go to a new directory, with the files to back up (delete .git directory by rm -rf .git, if it exists)
+3. use the following commands
+
+git config --global user.name "Yuhan Guo"
+git config --global user.email "yuhan.guo@cern.ch"
+git init
+git remote add origin THE_SSH_ADDRESS_OF_THE_REMOTE_REPOSITORY
+git add .
+git commit -m "Initial commit"
+git push -u origin master
