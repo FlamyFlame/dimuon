@@ -137,7 +137,8 @@ void plot_raw_killres_comparison(){
 			}else{
 				c[icanv]->SaveAs(("plots/nobinning/raw_killres_comparison/" + kinNames[ikin] + png_title_2D[icanv]).c_str());
 			}
-	  		// c[icanv]->Close();
+	  		c[icanv]->Close();
+	  		delete c[icanv];
 	  	}
 	}
 }

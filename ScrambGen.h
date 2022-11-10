@@ -30,6 +30,9 @@ private:
    int nScramb[ParamsSet::nCtrBins][ParamsSet::nSigns] = {{6417170, 7166880}, {2041080, 2584180}, {431020, 693860}, {61550, 151490}, {7120, 488690}};
 
    ParamsSet pms;
+   static const unsigned int ctr_step = 5;
+   static const unsigned int nctr_intvls = 20;
+
 
    TFile* inFile = nullptr;
    TFile* outFile = nullptr;
@@ -112,7 +115,7 @@ ScrambSampleGen::ScrambSampleGen(){
 
 void ScrambSampleGen::InitInput(){
 
-   inFile = new TFile("single_muon_trees.root","read");
+   inFile = new TFile("single_muon_trees_coarse_ctr_bins.root","read");
 
    for (int jctr = 0; jctr < ParamsSet::nCtrBins; jctr++){
       // TTree* tempTree = (TTree*) inFile->Get(Form("muon_tree%d",jctr+1));
@@ -133,7 +136,7 @@ void ScrambSampleGen::InitInput(){
 }
 
 void ScrambSampleGen::InitOutput(){
-   outFile = new TFile("scrambled_muon_pairs.root","recreate");
+   outFile = new TFile("scrambled_muon_pairs_coarse_ctr_bins.root","recreate");
 
    for (unsigned int idr = 0; idr < ParamsSet::ndRselcs; idr++){
       for (unsigned int jctr = 0; jctr < ParamsSet::nCtrBins; jctr++){

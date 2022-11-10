@@ -6,10 +6,12 @@ class ParamsSet{
 public:
    	static const unsigned int ndRselcs=3;
    	static const unsigned int ndphiselcs=3;
-   	static const unsigned int nCtrBins=5;
+   	static const unsigned int nCtrBins=5; // number of coarse bins; each can be studied by itself
    	static const unsigned int nPtBins=5;
    	static const unsigned int nSigns=2;
    	static const unsigned int nGapCuts=2; //0: no gap cut; 1: having gap cut
+  	static const unsigned int CtrStep = 5;
+  	static const unsigned int nCtrIntvls = 20; // number of small intervals; the intervals not to be studied by themselves, but to allow easy combinations
 
 	int scaleFactorCtrs[nCtrBins] = {1,1,2,3,3};
 
@@ -38,6 +40,8 @@ public:
    	std::vector<float> minv_bins[nSigns][ndRselcs];
 
    	std::vector<std::array<float,2>> minv_cuts;
+
+   	float minv_upper = 60;
 
   	double PI;
 

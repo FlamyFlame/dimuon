@@ -15,7 +15,6 @@
 #include "TH2D.h"
 
 class MuonNTupleFirstPass{
-  // ONLY ALLOW MODE 3 and 4 NOW!!!
   // Read through the N-tuple, apply appropriate cuts
   // Then fill in histograms and/or output trees
   // mode = 1: raw histograms
@@ -29,11 +28,11 @@ class MuonNTupleFirstPass{
 private:
   // --------------------- general settings ---------------------------
 
+  int mode = 4;
   ParamsSet pms;
-  
   // const ParamsSet pms;
-  // int scaleFactorCtrs[ParamsSet::nCtrIntvls] = {1,1,3,5,5};
-  // int scaleFactorPts[ParamsSet::nPtBins] = {1,1,1,1,1};
+  // int scaleFactorCtrs[ParamsSet::nCtrBins] = {1,1,3,5,5};
+  int scaleFactorPts[ParamsSet::nPtBins] = {1,1,1,1,1};
 
     // --------------------- input files & trees & data for setting branches---------------------------
 
@@ -75,29 +74,32 @@ private:
 
    void Init();
    void InitOutput();
+   void InitHists();
    void ProcessData();
    bool PassCuts();
    bool IsResonance();
    bool IsPhotoProduction();
    void FillSingleMuonTree();
    void FillMuonPairTree();
+   void WriteOutput();
+
 
   // --------------------- output file, histograms & trees ---------------------------
 
    TFile *m_outfile = nullptr;
 
    TTree* muonOutTree;
-   TTree* muonOutTreeBinned[ParamsSet::nCtrIntvls];
+   TTree* muonOutTreeBinned[ParamsSet::nCtrBins];
    TTree* muonPairOutTree[ParamsSet::nSigns];
-   TTree* muonPairOutTreeBinned[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns];
+   TTree* muonPairOutTreeBinned[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns];
 
 
 public :
-   int mode = 3;
    MuonNTupleFirstPass();
    ~MuonNTupleFirstPass(){}
    void Run();
 };
+
 
 MuonNTupleFirstPass::MuonNTupleFirstPass(){
     if(mode != 3 && mode != 4){
@@ -170,28 +172,26 @@ void MuonNTupleFirstPass::Init(){
 }
 
 
-
-
 void MuonNTupleFirstPass::InitOutput(){
 
   if (mode == 3){
-    m_outfile=new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/single_muon_trees_small_ctr_intvls.root","recreate");
+    m_outfile=new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/single_muon_trees_coarse_ctr_bins_TEMP.root","recreate");
     muonOutTree = new TTree("muon_tree","all single muons");
     muonOutTree->Branch("MuonObj",&tempmuon);
 
-    for (int jctr = 0; jctr < ParamsSet::nCtrIntvls; jctr++){
+    for (int jctr = 0; jctr < ParamsSet::nCtrBins; jctr++){
       muonOutTreeBinned[jctr] = new TTree(Form("muon_tree_ctr%d",jctr+1),Form("all muons, centrality bin %d",jctr+1));
       muonOutTreeBinned[jctr]->Branch("MuonObj",&tempmuon);
     }
   }
   else{ // mode == 4
-    m_outfile=new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/muon_pairs_small_ctr_intvls.root","recreate");
+    m_outfile=new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/muon_pairs_coarse_ctr_bins_TEMP.root","recreate");
 
     for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
       muonPairOutTree[ksign] = new TTree(Form("muon_pair_tree_sign%u",ksign+1),Form("all muon pairs, sign%u",ksign+1));
       muonPairOutTree[ksign]->Branch("MuonPairObj",&mpair);
       for (unsigned int idr = 0; idr < ParamsSet::ndRselcs; idr++){
-        for (unsigned int jctr = 0; jctr < ParamsSet::nCtrIntvls; jctr++){
+        for (unsigned int jctr = 0; jctr < ParamsSet::nCtrBins; jctr++){
           muonPairOutTreeBinned[idr][jctr][ksign] = new TTree(Form("muon_pair_tree_dr%u_ctr%u_sign%u",idr+1,jctr+1,ksign+1),Form("all muon pairs, dr%u, ctr%u, sign%u",idr+1,jctr+1,ksign+1));
           muonPairOutTreeBinned[idr][jctr][ksign]->Branch("MuonPairObj",&mpair);
         }

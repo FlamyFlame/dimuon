@@ -1,7 +1,7 @@
 // Assumes that we exclude resonances
 
-#ifndef __MuonPairPlottingNoRebinning_h__
-#define __MuonPairPlottingNoRebinning_h__
+#ifndef __MuonPairPlotting_h__
+#define __MuonPairPlotting_h__
 
 #include <TROOT.h>
 // #include <TChain.h>
@@ -16,7 +16,7 @@
 #include "TH1D.h"
 #include "TH2D.h"
 
-class MuonPairPlottingNoRebinning{
+class MuonPairPlotting{
   	//updates histograms - centrality binned
     //if need histograms with all centrality bins added together
     //can add at the histograms level
@@ -35,6 +35,7 @@ private:
   	TFile *outFile = nullptr;
 
     TH1D* h_FCal_Et[ParamsSet::ndRselcs];
+    // TH1D* h_deltaP_overP[ParamsSet::ndRselcs];
     TH1D* h_pair_dP_overP[ParamsSet::ndRselcs][ParamsSet::nSigns];
     TH1D* h_Dphi[ParamsSet::ndRselcs][ParamsSet::nSigns];
     TH1D* h_DR[ParamsSet::ndRselcs][ParamsSet::nSigns];
@@ -119,13 +120,13 @@ public:
     int mode = 2;
     bool isScram = false;
 
-  	MuonPairPlottingNoRebinning(){}
-  	~MuonPairPlottingNoRebinning(){}
+  	MuonPairPlotting(){}
+  	~MuonPairPlotting(){}
   	void Run();
 
 };
 
-void MuonPairPlottingNoRebinning::InitInput(){
+void MuonPairPlotting::InitInput(){
 
     if (isScram){
         inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/scrambled_muon_pairs.root","read");
@@ -164,7 +165,7 @@ void MuonPairPlottingNoRebinning::InitInput(){
     }
 }
 
-void MuonPairPlottingNoRebinning::InitHists(){
+void MuonPairPlotting::InitHists(){
 
    	if (mode == 1){
         
@@ -204,19 +205,19 @@ void MuonPairPlottingNoRebinning::InitHists(){
      	for (unsigned int jctr = 0; jctr < ParamsSet::nCtrBins; jctr++){
             for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
    	            for (unsigned int idr = 0; idr < ParamsSet::ndRselcs; idr++){
-                    // h_ctrbin_Dphi_failgapcut[idr][jctr][ksign] = new TH1D(Form("h_Dphi_dr%d_ctr%d_sign%d_failgapcut",idr+1,jctr+1,ksign+1),";#Delta#phi;1/N_{evt} dN/d#Delta#phi", 128,-pms.PI,pms.PI);
-                    // h_ctrbin_pair_eta_Dphi_failgapcut[idr][jctr][ksign] = new TH2D(Form("h_pair_eta_Dphi_dr%d_ctr%d_sign%d_failgapcut",idr+1,jctr+1,ksign+1),";#Delta#phi;#eta_{pair}", 128,-pms.PI,pms.PI,20,-1.1 * pms.eta_gap_cut,1.1 * pms.eta_gap_cut);
+                    // h_ctrbin_Dphi_failgapcut[idr][jctr][ksign] = new TH1D(Form("h_Dphi_dr%d_ctr%d_sign%d_failgapcut",idr+1,jctr+1,ksign+1),";#Delta#phi;1/N_{evt} dN/d#Delta#phi", static_cast<int>(128/pms.scaleFactorCtrs[jctr]),-pms.PI,pms.PI);
+                    // h_ctrbin_pair_eta_Dphi_failgapcut[idr][jctr][ksign] = new TH2D(Form("h_pair_eta_Dphi_dr%d_ctr%d_sign%d_failgapcut",idr+1,jctr+1,ksign+1),";#Delta#phi;#eta_{pair}", static_cast<int>(128/pms.scaleFactorCtrs[jctr]),-pms.PI,pms.PI,20,-1.1 * pms.eta_gap_cut,1.1 * pms.eta_gap_cut);
 
                     for (unsigned int lgapcut = 0; lgapcut < ParamsSet::nGapCuts; lgapcut++){
-                        h_ctrbin_pair_dP_overP[idr][jctr][ksign][lgapcut] = new TH1D(Form("h_pair_dP_overP_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";(#Delta p / p)_{pair};1/N_{evt} dN/d(#Delta p / p)_{pair}" ,pms.deltaP_overP_nbins,0,pms.deltaP_overP_max);
-                        h_ctrbin_DR[idr][jctr][ksign][lgapcut] = new TH1D(Form("h_DR_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";#Delta R;1/N_{evt} dN/d#Delta R", pms.deltaR_nbins[idr],0,pms.deltaR_thrsh[idr]);
-                        h_ctrbin_Dphi[idr][jctr][ksign][lgapcut] = new TH1D(Form("h_Dphi_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";#Delta#phi;1/N_{evt} dN/d#Delta#phi", 128,-pms.PI,pms.PI);
-                        h_ctrbin_pair_y[idr][jctr][ksign][lgapcut] = new TH1D(Form("h_pair_y_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";y_{pair};1/N_{evt} dN/dy_{pair}" ,90,-3,3);
-                        h_ctrbin_eta_avg_Dphi[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_eta_avg_Dphi_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";#Delta#phi;#bar{#eta}", 128,-pms.PI,pms.PI,100,-2.4,2.4);
-                        h_ctrbin_Deta_Dphi[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_Deta_Dphi_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";#Delta#phi;#Delta#eta", 128,-pms.PI,pms.PI,200,-4.8,4.8);
-                        h_ctrbin_eta1_eta2[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_eta1_eta2_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";#eta_{sublead};#eta_{lead}",100,-2.4,2.4, 100,-2.4,2.4);
-                        h_ctrbin_eta_avg_Deta[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_eta_avg_Deta_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";#Delta#eta;#bar{#eta}",200,-4.8,4.8, 100,-2.4,2.4);
-                        h_ctrbin_eta_avg_pair_eta[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_eta_avg_pair_eta_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";#eta_{pair};#bar{#eta}",100,-2.4,2.4, 100,-2.4,2.4);
+                        h_ctrbin_pair_dP_overP[idr][jctr][ksign][lgapcut] = new TH1D(Form("h_pair_dP_overP_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";(#Delta p / p)_{pair};1/N_{evt} dN/d(#Delta p / p)_{pair}" ,static_cast<int>(pms.deltaP_overP_nbins/pms.scaleFactorCtrs[jctr]),0,pms.deltaP_overP_max);
+                        h_ctrbin_DR[idr][jctr][ksign][lgapcut] = new TH1D(Form("h_DR_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";#Delta R;1/N_{evt} dN/d#Delta R", static_cast<int>(pms.deltaR_nbins[idr]/pms.scaleFactorCtrs[jctr]),0,pms.deltaR_thrsh[idr]);
+                        h_ctrbin_Dphi[idr][jctr][ksign][lgapcut] = new TH1D(Form("h_Dphi_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";#Delta#phi;1/N_{evt} dN/d#Delta#phi", static_cast<int>(128/pms.scaleFactorCtrs[jctr]),-pms.PI,pms.PI);
+                        h_ctrbin_pair_y[idr][jctr][ksign][lgapcut] = new TH1D(Form("h_pair_y_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";y_{pair};1/N_{evt} dN/dy_{pair}" ,static_cast<int>(90/pms.scaleFactorCtrs[jctr]),-3,3);
+                        h_ctrbin_eta_avg_Dphi[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_eta_avg_Dphi_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";#Delta#phi;#bar{#eta}", static_cast<int>(128/pms.scaleFactorCtrs[jctr]),-pms.PI,pms.PI,static_cast<int>(100/pms.scaleFactorCtrs[jctr]),-2.4,2.4);
+                        h_ctrbin_Deta_Dphi[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_Deta_Dphi_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";#Delta#phi;#Delta#eta", static_cast<int>(128/pms.scaleFactorCtrs[jctr]),-pms.PI,pms.PI,static_cast<int>(200/pms.scaleFactorCtrs[jctr]),-4.8,4.8);
+                        h_ctrbin_eta1_eta2[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_eta1_eta2_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";#eta_{sublead};#eta_{lead}",static_cast<int>(100/pms.scaleFactorCtrs[jctr]),-2.4,2.4, static_cast<int>(100/pms.scaleFactorCtrs[jctr]),-2.4,2.4);
+                        h_ctrbin_eta_avg_Deta[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_eta_avg_Deta_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";#Delta#eta;#bar{#eta}",static_cast<int>(200/pms.scaleFactorCtrs[jctr]),-4.8,4.8, static_cast<int>(100/pms.scaleFactorCtrs[jctr]),-2.4,2.4);
+                        h_ctrbin_eta_avg_pair_eta[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_eta_avg_pair_eta_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";#eta_{pair};#bar{#eta}",static_cast<int>(100/pms.scaleFactorCtrs[jctr]),-2.4,2.4, static_cast<int>(100/pms.scaleFactorCtrs[jctr]),-2.4,2.4);
                         h_ctrbin_pt1_pt2[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_pt1_pt2_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";p_{T}^{sublead} [GeV];p_{T}^{lead} [GeV]",pms.npt_bins,pms.pTBins,pms.npt_bins,pms.pTBins);
                         h_ctrbin_ptlead_pair_pt[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_ptlead_pair_pt_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][idr],pms.npt_bins,pms.pTBins);
                         
@@ -229,7 +230,7 @@ void MuonPairPlottingNoRebinning::InitHists(){
 
                 for (unsigned int idphi= 0; idphi < ParamsSet::ndphiselcs; idphi++){
                     for (unsigned int lgapcut = 0; lgapcut < ParamsSet::nGapCuts; lgapcut++){
-                        h_ctrbin_eta1_eta2_dphicut[idphi][jctr][ksign][lgapcut] = new TH2D(Form("h_eta1_eta2_dphi%d_ctr%d_sign%d_gapcut%d",idphi+1,jctr+1,ksign+1,lgapcut+1),";#eta_{sublead};#eta_{lead}",100,-2.4,2.4, 100,-2.4,2.4);
+                        h_ctrbin_eta1_eta2_dphicut[idphi][jctr][ksign][lgapcut] = new TH2D(Form("h_eta1_eta2_dphi%d_ctr%d_sign%d_gapcut%d",idphi+1,jctr+1,ksign+1,lgapcut+1),";#eta_{sublead};#eta_{lead}",static_cast<int>(100/pms.scaleFactorCtrs[jctr]),-2.4,2.4, static_cast<int>(100/pms.scaleFactorCtrs[jctr]),-2.4,2.4);
                     }
                 }
             }

@@ -1,12 +1,12 @@
-#ifndef __MuonPPNTupleFirstPass_C__
-#define __MuonPPNTupleFirstPass_C__
+#ifndef __MuonNTupleFirstPassPP_C__
+#define __MuonNTupleFirstPassPP_C__
 
-#include "MuonPPNTupleFirstPass.h"
+#include "MuonNTupleFirstPassPP.h"
 #include "Riostream.h"
 #include "TLorentzVector.h"
 #include "time.h"
 
-bool MuonPPNTupleFirstPass::PassCuts(){
+bool MuonNTupleFirstPassPP::PassCuts(){
   //Apply ALL CUTS but for resonances
 
   bool pass = true;
@@ -23,11 +23,39 @@ bool MuonPPNTupleFirstPass::PassCuts(){
   return pass;
 }
 
-void MuonPPNTupleFirstPass::FillSingleMuonTree(){
+bool MuonNTupleFirstPassPP::IsResonance(){
+  // assuming we have already filled up the muon pair mpair
+  if (!(mpair->same_sign)){ // opposite sign
+    if (mpair->minv > pms.minv_upper) return true; // upper cut at 80 GeV
+
+    bool isresonance = false;
+    
+    for (array<float,2> ires : pms.minv_cuts){
+      if (mpair->minv > ires[0] && mpair->minv < ires[1]){
+        isresonance = true;
+        break;
+      }
+    }
+      
+    if (isresonance) return true;
+  }
+
+  return false; // same sign
+}
+
+bool MuonNTupleFirstPassPP::IsPhotoProduction(){
+  // A := |Delta PT| / (sum pT) < 0.05 && alpha := (pi-Dphi)/pi < 0.01
+  float A = (mpair->m1.pt - mpair->m2.pt) / (mpair->m1.pt + mpair->m2.pt);
+  assert (A >= 0);
+  float alpha = (pms.PI - fabs(mpair->dphi)) / pms.PI;
+  return (!(mpair->same_sign) && A < 0.05 && alpha < 0.01);
+}
+
+void MuonNTupleFirstPassPP::FillSingleMuonTree(){
   muonOutTree->Fill();
 }
 
-void MuonPPNTupleFirstPass::FillMuonPairTree(){
+void MuonNTupleFirstPassPP::FillMuonPairTree(){
   int nsign = (mpair->same_sign)? 0:1;
   // muonPairOutTree[nsign]->Fill();
   for (unsigned int idr = 0; idr < pms.ndRselcs; idr++){
@@ -38,7 +66,7 @@ void MuonPPNTupleFirstPass::FillMuonPairTree(){
 }
 
 
-void MuonPPNTupleFirstPass::ProcessData(){
+void MuonNTupleFirstPassPP::ProcessData(){
 
   // Long64_t nentries = 100000;
   Long64_t nentries = fChain->GetEntries();//number of events
@@ -105,14 +133,11 @@ void MuonPPNTupleFirstPass::ProcessData(){
       mpair->Update();
 
       // resonance cut
-      if (!(mpair->same_sign)){
-        bool isresonance = false;
-        for (array<float,2> ires : pms.minv_cuts){
-          if (mpair->minv > ires[0] && mpair->minv < ires[1]) isresonance = true;
-        }
-        if (isresonance) continue;
-      }
+      if (IsResonance()) continue;
 
+      // photo-production cut
+      if (IsPhotoProduction()) continue;
+      
       //------------------------------------------------------------
 
       if(mode == 3){ // single muon information; no dR selection
@@ -135,7 +160,7 @@ void MuonPPNTupleFirstPass::ProcessData(){
 }
 
 
-void MuonPPNTupleFirstPass::Run(){
+void MuonNTupleFirstPassPP::Run(){
   clock_t start, end;
   double cpu_time_used;
   start = clock();
@@ -144,6 +169,12 @@ void MuonPPNTupleFirstPass::Run(){
   InitInput();
   InitOutput();
   ProcessData();
+  // for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
+  //   std::cout << "sign" << ksign << ", #entries: " << muonPairOutTree[ksign]->GetEntries() << std::endl;
+  //   for (unsigned int idr = 0; idr < ParamsSet::ndRselcs; idr++){
+  //     std::cout << "sign" << ksign << ", dr" << idr << ", #entries: " << muonPairOutTreeBinned[idr][ksign]->GetEntries() << std::endl;
+  //   }
+  // }
   m_outfile->Write();
 
   end = clock();

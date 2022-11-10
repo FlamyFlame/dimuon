@@ -4,7 +4,7 @@
 void MuonPairPlotting::ProcessData(){
 	
   	for (int idr = 0; idr < ParamsSet::ndRselcs; idr++){
-        for (int jctr = 0; jctr < ParamsSet::nCtrIntvls; jctr++){
+        for (int jctr = 0; jctr < ParamsSet::nCtrBins; jctr++){
             for (int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
                 
     	        Long64_t nentries = inTree[idr][jctr][ksign]->GetEntries(); //#muon pairs
@@ -126,7 +126,7 @@ void MuonPairPlotting::WriteOutput(){
         gDirectory->cd("ctr-binned");
         gDirectory->Delete("h_*");
     
-        for (unsigned int jctr = 0; jctr < ParamsSet::nCtrIntvls; jctr++){
+        for (unsigned int jctr = 0; jctr < ParamsSet::nCtrBins; jctr++){
             for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
                 for (unsigned int idr = 0; idr < ParamsSet::ndRselcs; idr++){
                     // h_ctrbin_pair_eta_Dphi_failgapcut[idr][jctr][ksign]->Write();

@@ -29,6 +29,8 @@ private:
     // bool isScram = false;
 
   	ParamsSet pms;
+    std::vector<std::vector<int>> ctrIntvls = {{0,1},{2,3},{4,5,6,7},{8,9,10,11},{12,13,14,15},{16,17,18,19}};
+    int nCtrBins = ctrIntvls.size();
 
   	// --------------------- output file & histograms ---------------------------
 
@@ -54,57 +56,57 @@ private:
     TH2D* h_ptlead_pair_pt[ParamsSet::ndRselcs][ParamsSet::nSigns];
     TH2D* h_minv_pair_pt[ParamsSet::ndRselcs][ParamsSet::nSigns];
 
-    TH1D* h_ctrbin_pair_dP_overP[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH1D* h_ctrbin_Dphi[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH1D* h_ctrbin_DR[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    // TH1D* h_ctrbin_Minv[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    // TH1D* h_ctrbin_pt_lead[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    // TH1D* h_ctrbin_eta_avg[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    // TH1D* h_ctrbin_pair_pt[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    // TH1D* h_ctrbin_pair_eta[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH1D* h_ctrbin_pair_y[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_ctrbin_eta_avg_Dphi[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_ctrbin_Deta_Dphi[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_ctrbin_eta1_eta2[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_ctrbin_eta_avg_Deta[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_ctrbin_eta_avg_pair_eta[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_ctrbin_pt1_pt2[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_ctrbin_ptlead_pair_pt[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_ctrbin_minv_pair_pt[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH1D* h_ctrbin_pair_dP_overP[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH1D* h_ctrbin_Dphi[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH1D* h_ctrbin_DR[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    // TH1D* h_ctrbin_Minv[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    // TH1D* h_ctrbin_pt_lead[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    // TH1D* h_ctrbin_eta_avg[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    // TH1D* h_ctrbin_pair_pt[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    // TH1D* h_ctrbin_pair_eta[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH1D* h_ctrbin_pair_y[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_ctrbin_eta_avg_Dphi[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_ctrbin_Deta_Dphi[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_ctrbin_eta1_eta2[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_ctrbin_eta_avg_Deta[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_ctrbin_eta_avg_pair_eta[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_ctrbin_pt1_pt2[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_ctrbin_ptlead_pair_pt[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_ctrbin_minv_pair_pt[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns][ParamsSet::nGapCuts];
 
-    TH2D* h_ctrbin_eta1_eta2_dphicut[ParamsSet::ndphiselcs][ParamsSet::nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_ctrbin_eta1_eta2_dphicut[ParamsSet::ndphiselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns][ParamsSet::nGapCuts];
 
 
-    // TH1D* h_ctrbin_Dphi_failgapcut[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns];
-    // TH2D* h_ctrbin_pair_eta_Dphi_failgapcut[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns];
+    // TH1D* h_ctrbin_Dphi_failgapcut[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns];
+    // TH2D* h_ctrbin_pair_eta_Dphi_failgapcut[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns];
 
 
 
     // --------------------- input files & trees & data for setting branches---------------------------
 
    	TFile *inFile;
-    // TTree *inTree_ctrbin[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns];
+    // TTree *inTree_ctrbin[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns];
     // TTree *inTree[ParamsSet::nSigns];
-    TTree *inTree[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns];
+    TTree *inTree[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns];
 
-  	float pair_dPoverP[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns];
-  	float pt_lead[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns];
-  	float pair_pt[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns];
-  	float pair_eta[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns];
-  	float pair_y[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns];
-  	float dpt[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns];
-  	float deta[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns];
-  	float etaavg[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns];
-  	float phiavg[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns];
-  	float dphi[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns];
-  	float dr[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns];
-  	float minv[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns];
-  	float m1pt[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns];
-  	float m2pt[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns];
-  	float m1eta[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns];
-  	float m2eta[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns];
-  	float m1phi[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns];
-  	float m2phi[ParamsSet::ndRselcs][ParamsSet::nCtrBins][ParamsSet::nSigns];
+  	float pair_dPoverP[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns];
+  	float pt_lead[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns];
+  	float pair_pt[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns];
+  	float pair_eta[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns];
+  	float pair_y[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns];
+  	float dpt[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns];
+  	float deta[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns];
+  	float etaavg[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns];
+  	float phiavg[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns];
+  	float dphi[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns];
+  	float dr[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns];
+  	float minv[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns];
+  	float m1pt[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns];
+  	float m2pt[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns];
+  	float m1eta[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns];
+  	float m2eta[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns];
+  	float m1phi[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns];
+  	float m2phi[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns];
 
     // --------------------- class methods ---------------------------
 
@@ -135,7 +137,7 @@ void MuonPairPlotting::InitInput(){
     }
 
     for (int idr = 0; idr < ParamsSet::ndRselcs; idr++){
-       	for (int jctr = 0; jctr < ParamsSet::nCtrBins; jctr++){
+       	for (int jctr = 0; jctr < ParamsSet::nCtrIntvls; jctr++){
             for (int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
                 if (isScram){
                     inTree[idr][jctr][ksign] = (TTree*) inFile->Get(Form("scramb_muon_pair_tree_dr%d_ctr%d_sign%d",idr+1,jctr+1,ksign+1));  
@@ -187,9 +189,9 @@ void MuonPairPlotting::InitHists(){
                 // h_pair_eta[idr][ksign] = new TH1D(Form("h_pair_eta_dr%u_sign%u",idr+1,ksign+1),";#eta_{pair};1/N_{evt} dN/d#eta_{pair}" ,100,-2.4,2.4);
                 h_pair_y[idr][ksign] = new TH1D(Form("h_pair_y_dr%u_sign%u",idr+1,ksign+1),";y_{pair};1/N_{evt} dN/dy_{pair}" ,90,-3,3);
                 h_eta_avg_Dphi[idr][ksign] = new TH2D(Form("h_eta_avg_Dphi_dr%u_sign%u",idr+1,ksign+1),";#Delta#phi;#bar{#eta}",128,-pms.PI,pms.PI,100,-2.4,2.4);
-                h_Deta_Dphi[idr][ksign] = new TH2D(Form("h_Deta_Dphi_dr%u_sign%u",idr+1,ksign+1),";#Delta#phi;#Delta#eta",128,-pms.PI,pms.PI,100,-2.4,2.4);
+                h_Deta_Dphi[idr][ksign] = new TH2D(Form("h_Deta_Dphi_dr%u_sign%u",idr+1,ksign+1),";#Delta#phi;#Delta#eta",128,-pms.PI,pms.PI,200,-4.8,4.8);
                 h_eta1_eta2[idr][ksign] = new TH2D(Form("h_eta1_eta2_dr%u_sign%u",idr+1,ksign+1),";#eta_{sublead};#eta_{lead}",100,-2.4,2.4, 100,-2.4,2.4);
-                h_eta_avg_Deta[idr][ksign] = new TH2D(Form("h_eta_avg_Deta_dr%u_sign%u",idr+1,ksign+1),";#Delta#eta;#bar{#eta}",100,-2.4,2.4, 100,-2.4,2.4);
+                h_eta_avg_Deta[idr][ksign] = new TH2D(Form("h_eta_avg_Deta_dr%u_sign%u",idr+1,ksign+1),";#Delta#eta;#bar{#eta}",200,-4.8,4.8, 100,-2.4,2.4);
                 h_eta_avg_pair_eta[idr][ksign] = new TH2D(Form("h_eta_avg_pair_eta_dr%u_sign%u",idr+1,ksign+1),";#eta_{pair};#bar{#eta}",100,-2.4,2.4, 100,-2.4,2.4);
                 h_pt1_pt2[idr][ksign] = new TH2D(Form("h_pt1_pt2_dr%u_sign%u",idr+1,ksign+1),";p_{T}^{sublead} [GeV];p_{T}^{lead} [GeV]",pms.npt_bins,pms.pTBins,pms.npt_bins,pms.pTBins);
                 h_ptlead_pair_pt[idr][ksign] = new TH2D(Form("h_ptlead_pair_pt_dr%u_sign%u",idr+1,ksign+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][idr],pms.npt_bins,pms.pTBins);
@@ -202,7 +204,7 @@ void MuonPairPlotting::InitHists(){
         }
     }
     else if (mode == 2){
-     	for (unsigned int jctr = 0; jctr < ParamsSet::nCtrBins; jctr++){
+     	for (unsigned int jctr = 0; jctr < ParamsSet::nCtrIntvls; jctr++){
             for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
    	            for (unsigned int idr = 0; idr < ParamsSet::ndRselcs; idr++){
                     // h_ctrbin_Dphi_failgapcut[idr][jctr][ksign] = new TH1D(Form("h_Dphi_dr%d_ctr%d_sign%d_failgapcut",idr+1,jctr+1,ksign+1),";#Delta#phi;1/N_{evt} dN/d#Delta#phi", static_cast<int>(128/pms.scaleFactorCtrs[jctr]),-pms.PI,pms.PI);
@@ -214,9 +216,9 @@ void MuonPairPlotting::InitHists(){
                         h_ctrbin_Dphi[idr][jctr][ksign][lgapcut] = new TH1D(Form("h_Dphi_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";#Delta#phi;1/N_{evt} dN/d#Delta#phi", static_cast<int>(128/pms.scaleFactorCtrs[jctr]),-pms.PI,pms.PI);
                         h_ctrbin_pair_y[idr][jctr][ksign][lgapcut] = new TH1D(Form("h_pair_y_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";y_{pair};1/N_{evt} dN/dy_{pair}" ,static_cast<int>(90/pms.scaleFactorCtrs[jctr]),-3,3);
                         h_ctrbin_eta_avg_Dphi[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_eta_avg_Dphi_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";#Delta#phi;#bar{#eta}", static_cast<int>(128/pms.scaleFactorCtrs[jctr]),-pms.PI,pms.PI,static_cast<int>(100/pms.scaleFactorCtrs[jctr]),-2.4,2.4);
-                        h_ctrbin_Deta_Dphi[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_Deta_Dphi_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";#Delta#phi;#Delta#eta", static_cast<int>(128/pms.scaleFactorCtrs[jctr]),-pms.PI,pms.PI,static_cast<int>(100/pms.scaleFactorCtrs[jctr]),-2.4,2.4);
+                        h_ctrbin_Deta_Dphi[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_Deta_Dphi_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";#Delta#phi;#Delta#eta", static_cast<int>(128/pms.scaleFactorCtrs[jctr]),-pms.PI,pms.PI,static_cast<int>(200/pms.scaleFactorCtrs[jctr]),-4.8,4.8);
                         h_ctrbin_eta1_eta2[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_eta1_eta2_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";#eta_{sublead};#eta_{lead}",static_cast<int>(100/pms.scaleFactorCtrs[jctr]),-2.4,2.4, static_cast<int>(100/pms.scaleFactorCtrs[jctr]),-2.4,2.4);
-                        h_ctrbin_eta_avg_Deta[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_eta_avg_Deta_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";#Delta#eta;#bar{#eta}",static_cast<int>(100/pms.scaleFactorCtrs[jctr]),-2.4,2.4, static_cast<int>(100/pms.scaleFactorCtrs[jctr]),-2.4,2.4);
+                        h_ctrbin_eta_avg_Deta[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_eta_avg_Deta_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";#Delta#eta;#bar{#eta}",static_cast<int>(200/pms.scaleFactorCtrs[jctr]),-4.8,4.8, static_cast<int>(100/pms.scaleFactorCtrs[jctr]),-2.4,2.4);
                         h_ctrbin_eta_avg_pair_eta[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_eta_avg_pair_eta_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";#eta_{pair};#bar{#eta}",static_cast<int>(100/pms.scaleFactorCtrs[jctr]),-2.4,2.4, static_cast<int>(100/pms.scaleFactorCtrs[jctr]),-2.4,2.4);
                         h_ctrbin_pt1_pt2[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_pt1_pt2_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";p_{T}^{sublead} [GeV];p_{T}^{lead} [GeV]",pms.npt_bins,pms.pTBins,pms.npt_bins,pms.pTBins);
                         h_ctrbin_ptlead_pair_pt[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_ptlead_pair_pt_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][idr],pms.npt_bins,pms.pTBins);

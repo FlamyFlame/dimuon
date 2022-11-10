@@ -65,6 +65,8 @@ void ScrambSampleGenPP::GenerateRandPair(int num_muon, bool opsign_only){
 }
 
 bool ScrambSampleGenPP::CheckResonance(){ //assumes opposite sign; check if minv falls into any resonance range
+    if (mpair->minv > pms.minv_upper) continue; // upper cut at 80 GeV
+	
 	bool isresonance = false;
 	for (array<float,2> ires : pms.minv_cuts){
 	   if (mpair->minv > ires[0] && mpair->minv < ires[1]) isresonance = true;

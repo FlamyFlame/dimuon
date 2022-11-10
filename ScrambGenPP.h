@@ -19,6 +19,9 @@ private:
    int nScramb[ParamsSet::nSigns] = {8213832,21092256};
 
    ParamsSet pms;
+   static const unsigned int ctr_step = 5;
+   static const unsigned int nctr_intvls = 20;
+
 
    TFile* inFile = nullptr;
    TFile* outFile = nullptr;
