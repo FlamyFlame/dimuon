@@ -26,7 +26,7 @@ bool MuonNTupleFirstPassPP::PassCuts(){
 bool MuonNTupleFirstPassPP::IsResonance(){
   // assuming we have already filled up the muon pair mpair
   if (!(mpair->same_sign)){ // opposite sign
-    if (mpair->minv > pms.minv_upper) return true; // upper cut at 80 GeV
+    if (mpair->minv > pms.minv_upper) return true; // upper cut at 60 GeV
 
     bool isresonance = false;
     
