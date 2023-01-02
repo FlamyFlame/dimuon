@@ -5,6 +5,8 @@
 #include <iostream>
 #include <string.h>
 #include "TLorentzVector.h"
+#include <math.h> 
+#include <assert.h> 
 
 
 // #include <fstream>
@@ -14,10 +16,11 @@ class MuonPair{
 public:
 	Muon m1;
 	Muon m2;
+  float weight;
   float pair_dPoverP; 
   float pt_lead;
   float pair_pt;
-  float pair_eta;
+  // float pair_eta;
   float pair_y;
   float dpt;
   float deta;
@@ -26,6 +29,8 @@ public:
   float dphi;
   float dr;
   float minv;
+  float asym; // asymmetry := (pT_lead - pT_sublead) / (pT_lead + pT_sublead)
+  float acop; // acoplanarity := (pi - |Dphi|) / pi
   bool same_sign;
   int avg_centrality;
 
@@ -35,11 +40,8 @@ public:
   void InitPair(float pt1,float pt2,float eta1,float eta2,float phi1,float phi2,float dPoverP1,float dPoverP2);
 	void Sort();
   void Update();
-  // void Update();
-	void PrintMuonPt();
-	void PrintMuonEta();
-  void PrintMuonPhi();
-  void PrintPairValues();
+  // void Update(float mupair_asym, float mupair_acop, float mupair_pt, float mupair_y, float mupair_eta, float mupair_m, float weight=1.);
+  void UpdateShort();
 };
 
 MuonPair::MuonPair(float pt1=0,float pt2=0,float eta1=5,float eta2=5,float phi1=5,float phi2=5,float dPoverP1=5,float dPoverP2=5){
@@ -99,12 +101,13 @@ void MuonPair::Sort(){
 
 void MuonPair::Update(){
   Sort();
+  double PI=acos(-1.0);
 
   pt_lead = m1.pt;
   pair_dPoverP = sqrt(m1.dP_overP*m1.dP_overP + m2.dP_overP*m2.dP_overP);
   dpt = m1.pt - m2.pt;
   dphi = m1.phi-m2.phi;
-  dphi=atan2(sin(dphi),cos(dphi));//fold dphi to [-pi,pi]
+  dphi = atan2(sin(dphi),cos(dphi));//fold dphi to [-pi,pi]
   deta = m1.eta-m2.eta;
   dr   = sqrt(dphi*dphi + deta*deta);
   etaavg = (m1.eta + m2.eta)/2;
@@ -116,26 +119,33 @@ void MuonPair::Update(){
   M3=M1+M2;
   minv     = M3.M();
   pair_pt  = M3.Pt();
-  pair_eta = M3.Eta();
+  // pair_eta = M3.Eta();
   pair_y   = M3.Rapidity();
+
+  asym = (m1.pt - m2.pt) / (m1.pt + m2.pt);
+  acop = (PI - fabs(dphi)) / PI;
+  assert (asym >= 0 && acop >= 0);
+
   same_sign = (m1.charge == m2.charge);
   avg_centrality = (m1.ev_centrality + m2.ev_centrality)/2;
 }
 
-void MuonPair::PrintMuonPt(){ //for sanity check
-	std::cout << "Muon1 Pt: " << m1.pt << ", " << "Muon2 Pt: "<< m2.pt << std::endl;
-}
+void MuonPair::UpdateShort(){
+  Sort();
+  double PI=acos(-1.0);
 
-void MuonPair::PrintMuonEta(){ //for sanity check
-	std::cout << "Muon1 eta: " << m1.eta << ", " << "Muon2 eta: "<< m2.eta << std::endl;
-}
+  pt_lead = m1.pt;
+  pair_dPoverP = sqrt(m1.dP_overP*m1.dP_overP + m2.dP_overP*m2.dP_overP);
+  dpt = m1.pt - m2.pt;
+  dphi = m1.phi - m2.phi;
+  dphi = atan2(sin(dphi),cos(dphi));//fold dphi to [-pi,pi]
+  deta = m1.eta - m2.eta;
+  dr   = sqrt(dphi*dphi + deta*deta);
+  etaavg = (m1.eta + m2.eta)/2;
+  phiavg = (m1.phi + m2.phi)/2;
 
-void MuonPair::PrintMuonPhi(){ //for sanity check
-  std::cout << "Muon1 phi: " << m1.phi << ", " << "Muon2 phi: "<< m2.phi << std::endl;
-}
-
-void MuonPair::PrintPairValues(){
-  std::cout << "pt_lead: " << pt_lead << ", " << "pair_pt: " << pair_pt << ", " << "pair_eta: " << pair_eta << ", " << "pair_y: " << pair_y << ", " << "dpt: " << dpt << ", " << "deta: " << deta << ", " << "etaavg: " << etaavg << ", " << "phiavg: " << phiavg << ", " << "dphi: " << dphi << ", " << "dR: " << dr << ", " << "minv: " << minv << std::endl;
+  same_sign = (m1.charge == m2.charge);
+  avg_centrality = (m1.ev_centrality + m2.ev_centrality)/2;
 }
 
 #endif

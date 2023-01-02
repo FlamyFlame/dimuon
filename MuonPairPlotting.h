@@ -122,7 +122,7 @@ private:
    	void InitHists();
    	void ProcessData();
     void WriteOutput();
-    bool PassSingleMuonGapCut(float meta, float mpt);
+    bool PassSingleMuonGapCut(float meta, float mpt, int mcharge);
    	void FillUnbinnedHistograms(int ndr, int nctr_intvl, int nsign);
    	void FillCtrBinnedHistograms(int ndr, int nctr_bin, int nctr_intvl, int nsign);
    	void FillPtBinnedHistograms(int ndr, int nctr_intvl, int nsign);

@@ -35,6 +35,20 @@ void MuonPairPlotting::ProcessData(){
     assert(cur_ctr_intvl == 16);
 }
 
+
+bool MuonPairPlotting::PassSingleMuonGapCut(float meta, float mpt, int mcharge){
+    // parameters: eta and pT of the same muon
+    if (fabs(meta) < pms.eta_gap_cut1) return false;
+    if (mpt < 6){
+        for (array<float,2> charge_eta_gap_cut : pms.charge_eta_gap_cuts){
+            if (mcharge * meta > charge_eta_gap_cut[0] && mcharge * meta < charge_eta_gap_cut[1]) return false;
+        }
+    }
+    // if (mpt < 6 && fabs(meta) > pms.eta_gap_cut2[0] && fabs(meta) < pms.eta_gap_cut2[1]) return false;
+    return true;
+}
+
+
 void MuonPairPlotting::FillUnbinnedHistograms(int ndr, int nctr_intvl, int nsign){
     h_pair_dP_overP[ndr][nsign]->Fill(pair_dPoverP[ndr][nctr_intvl][nsign]);
     // h_Minv[ndr][nsign]   ->Fill(minv[ndr][nctr_intvl][nsign]);
@@ -56,18 +70,6 @@ void MuonPairPlotting::FillUnbinnedHistograms(int ndr, int nctr_intvl, int nsign
     h_minv_pair_pt[ndr][nsign]->Fill(pair_pt[ndr][nctr_intvl][nsign],minv[ndr][nctr_intvl][nsign]);
 }
 
-
-bool MuonPairPlotting::PassSingleMuonGapCut(float meta, float mpt, int mcharge){
-    // parameters: eta and pT of the same muon
-    if (fabs(meta) < pms.eta_gap_cut1) return false;
-    if (mpt < 6){
-        for (array<float,2> charge_eta_gap_cut : pms.charge_eta_gap_cuts){
-            if (mcharge * meta > charge_eta_gap_cut[0] && mcharge * meta < charge_eta_gap_cut[1]) return false;
-        }
-    }
-    // if (mpt < 6 && fabs(meta) > pms.eta_gap_cut2[0] && fabs(meta) < pms.eta_gap_cut2[1]) return false;
-    return true;
-}
 
 void MuonPairPlotting::FillCtrBinnedHistograms(int ndr, int nctr_bin, int nctr_intvl, int nsign){
     // ngapcut = 0: all; = 1: only those that pass

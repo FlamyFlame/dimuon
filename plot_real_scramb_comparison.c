@@ -30,9 +30,9 @@ std::vector<bool> logy1Ds = {false,false,false};
 std::vector<std::string> hist2DNames = {"h_eta_avg_Dphi", "h_eta1_eta2", "h_eta_avg_Deta", "h_pt1_pt2","h_ptlead_pair_pt", "h_minv_pair_pt"};
 std::vector<bool> projxs = {true, true, true, true, true, false};
 std::vector<bool> projys = {false, true, true, true, true, true};
-std::vector<bool> logxs = {false, false, false, true, true, true};
-std::vector<bool> logys = {false, false, false, true, true, true};
-std::vector<bool> logzs = {false, false, false, true, true, true};
+std::vector<bool> logxs = {false, false, false, true, true, false};
+std::vector<bool> logys = {false, false, false, true, true, false};
+std::vector<bool> logzs = {false, false, false, true, true, false};
 std::vector<std::string> hxNames = {"h_Dphi", "h_eta2", "h_Deta", "h_pt2", "h_pair_pt", ""};
 std::vector<std::string> hyNames = {"", "h_eta1", "h_eta_avg", "h_pt1", "h_ptlead", "h_minv"};
 

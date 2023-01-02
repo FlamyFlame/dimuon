@@ -8,7 +8,7 @@
 #include "TH2.h"
 #include <assert.h>
 
-void plot_single_dphi(unsigned int ctr, unsigned int sign, unsigned int gapcut=1){
+void plot_single_dphi(unsigned int ctr, unsigned int sign, unsigned int gapcut=1, bool plot_deta=false){
 	assert (ctr > 0 && ctr <= 6);
 	assert (sign == 1 || sign == 2);
 	assert (gapcut == 1 || gapcut == 2);
@@ -24,13 +24,12 @@ void plot_single_dphi(unsigned int ctr, unsigned int sign, unsigned int gapcut=1
 	}
 
 	TH1D* h = nullptr;
-	if (sign == 1){
-		// h = (TH1D*) h2d->ProjectionX();
-		h = (TH1D*) h2d->ProjectionX("",81,120);
+	if (plot_deta){
+		h = (TH1D*) h2d->ProjectionY();
 	}else{
-		// h = (TH1D*) h2d->ProjectionX();
 		h = (TH1D*) h2d->ProjectionX("",81,120);
 	}
+
 	// h_c1_s1_g1->SetLineColor(kRed);
 	// h_c1_s1_g2->SetLineColor(kGreen);
 	h->Draw();

@@ -5,8 +5,9 @@
 
 void ScrambSampleGen::ReadData(){
 	
+	int cur_ctr_intvl = 0;
 	//for (int i = 0; i < ParamsSet::ndRselcs; i++){
-	for (int jctr = 0; jctr < ParamsSet::nCtrBins; jctr++){
+	for (int jctr = 0; jctr < nCtrBins; jctr++){
 		muon_pt[jctr] =  new std::vector<float>();
 		muon_eta[jctr] =  new std::vector<float>();
 		muon_phi[jctr] =  new std::vector<float>();
@@ -19,49 +20,31 @@ void ScrambSampleGen::ReadData(){
 		ev_centrality[jctr] =  new std::vector<int>();
 		ev_FCal_Et[jctr] =  new std::vector<float>();
 
-		Long64_t nentries = inTree[jctr]->GetEntries();//number of events
-		// Long64_t nentries = 10000;
-  		for (Long64_t kentry=0; kentry<nentries; kentry++) {//loop over the events
-			int num_bytes = inTree[jctr]->GetEntry(kentry);//read in an event
-    		if(num_bytes==0){
-    	  		std::cout<<"Error:: Read in event has size of zero bytes,  quitting"<<std::endl;
-    	  		throw std::exception();
-    		}
-    		muon_pt[jctr]->push_back(pt[jctr]);
-    		muon_eta[jctr]->push_back(eta[jctr]);
-    		muon_phi[jctr]->push_back(phi[jctr]);
-    		muon_dP_overP[jctr]->push_back(dP_overP[jctr]);
-    		muon_d0[jctr]->push_back(d0[jctr]);
-    		muon_z0[jctr]->push_back(z0[jctr]);
-    		muon_charge[jctr]->push_back(charge[jctr]);
-    		muon_quality[jctr]->push_back(quality[jctr]);
-    		ev_num[jctr]->push_back(event_num[jctr]);
-    		ev_centrality[jctr]->push_back(centrality[jctr]);
-		   ev_FCal_Et[jctr]->push_back(FCal_Et[jctr]);
-   	}
-   }
+		for (unsigned int jj = 0; jj < ctrBins[jctr].size(); jj++){
+        	Long64_t nentries = inTree[cur_ctr_intvl]->GetEntries(); //#muon pairs
+			// Long64_t nentries = 10000;
+	  		for (Long64_t kentry=0; kentry<nentries; kentry++) {//loop over the events
+				int num_bytes = inTree[cur_ctr_intvl]->GetEntry(kentry);//read in an event
+	    		if(num_bytes==0){
+	    	  		std::cout<<"Error:: Read in event has size of zero bytes,  quitting"<<std::endl;
+	    	  		throw std::exception();
+	    		}
+	    		muon_pt[jctr]->push_back(pt[cur_ctr_intvl]);
+	    		muon_eta[jctr]->push_back(eta[cur_ctr_intvl]);
+	    		muon_phi[jctr]->push_back(phi[cur_ctr_intvl]);
+	    		muon_dP_overP[jctr]->push_back(dP_overP[cur_ctr_intvl]);
+	    		muon_d0[jctr]->push_back(d0[cur_ctr_intvl]);
+	    		muon_z0[jctr]->push_back(z0[cur_ctr_intvl]);
+	    		muon_charge[jctr]->push_back(charge[cur_ctr_intvl]);
+	    		muon_quality[jctr]->push_back(quality[cur_ctr_intvl]);
+	    		ev_num[jctr]->push_back(event_num[cur_ctr_intvl]);
+	    		ev_centrality[jctr]->push_back(centrality[cur_ctr_intvl]);
+			   ev_FCal_Et[jctr]->push_back(FCal_Et[cur_ctr_intvl]);
+	   		}
+	   		cur_ctr_intvl++;
+	   	}
+    }
 }
-
-
-// void ScrambSampleGen::FillHistograms(unsigned int ndr, unsigned int nctr, unsigned int nsign){
-//   assert(ndr < ParamsSet::ndRselcs && nctr < ParamsSet::nCtrBins && nsign < ParamsSet::nSigns);
-//   h_pair_dP_overP[ndr][nctr][nsign]->Fill(mpair->pair_dPoverP);
-//   h_Minv[ndr][nctr][nsign]   ->Fill(mpair->minv);
-//   h_Dphi[ndr][nctr][nsign]   ->Fill(mpair->dphi);
-//   h_Deta[ndr][nctr][nsign]   ->Fill(mpair->deta);
-//   h_DR[ndr][nctr][nsign]     ->Fill(mpair->dr);
-//   h_pt_lead[ndr][nctr][nsign] ->Fill(mpair->m1.pt);
-//   h_eta_avg[ndr][nctr][nsign] ->Fill(mpair->etaavg);
-//   h_pair_pt[ndr][nctr][nsign]->Fill(mpair->pair_pt);
-//   h_pair_eta[ndr][nctr][nsign]->Fill(mpair->pair_eta);
-//   h_pair_y[ndr][nctr][nsign]->Fill(mpair->pair_y);
-//   h_eta_phi[ndr][nctr][nsign]->Fill(mpair->phiavg,mpair->etaavg);
-//   h_eta1_eta2[ndr][nctr][nsign]->Fill(mpair->m2.eta,mpair->m1.eta);
-//   h_pt1_pt2[ndr][nctr][nsign]->Fill(mpair->m2.pt,mpair->m1.pt);
-//   h_eta_avg_Deta[ndr][nctr][nsign]->Fill(mpair->deta,mpair->etaavg);        
-//   h_eta_avg_pair_eta[ndr][nctr][nsign]->Fill(mpair->pair_eta,mpair->etaavg);
-//   h_ptlead_pair_pt[ndr][nctr][nsign]->Fill(mpair->pair_pt,mpair->m1.pt);
-// }
 
 
 void ScrambSampleGen::GenerateRandPair(int num_muon, int nctr, bool opsign_only){
@@ -98,7 +81,7 @@ void ScrambSampleGen::GenerateRandPair(int num_muon, int nctr, bool opsign_only)
 	mpair->m2.ev_FCal_Et = ev_FCal_Et[nctr]->at(nsecond);
 }
 
-bool ScrambSampleGen::CheckResonance(){ //assumes opposite sign; check if minv falls into any resonance range
+bool ScrambSampleGen::IsResonance(){ //assumes opposite sign; check if minv falls into any resonance range
     if (mpair->minv > pms.minv_upper) continue; // upper cut at 80 GeV
 	
 	bool isresonance = false;
@@ -108,6 +91,8 @@ bool ScrambSampleGen::CheckResonance(){ //assumes opposite sign; check if minv f
 
 	return isresonance;
 }
+
+bool ScrambSampleGen::IsPhotoProduction(){ 
 
 void ScrambSampleGen::ImplementOneScramPair(int num_muon, int nctr, bool opsign_only = false){
 
@@ -119,9 +104,9 @@ void ScrambSampleGen::ImplementOneScramPair(int num_muon, int nctr, bool opsign_
 
 		if (opsign_only){
 			assert (!(mpair->same_sign));
-			isresonance = CheckResonance();
+			isresonance = IsResonance();
 		}
-		else if (!(mpair->same_sign)) isresonance = CheckResonance();
+		else if (!(mpair->same_sign)) isresonance = IsResonance();
 
 	}while (isresonance);
 
@@ -154,7 +139,7 @@ void ScrambSampleGen::Run(){
 	std::cout << "Finished initialization and reading the input trees. Starting to generate scrambled pairs." << std::endl;
 	start = clock();
 
-	for (int jctr = 0; jctr < ParamsSet::nCtrBins; jctr++){
+	for (int jctr = 0; jctr < nCtrBins; jctr++){
 		int nmuon = muon_pt[jctr]->size(); //#muons in the centrality bin
 		n_ss_scr_pairs = 0; // restart the count for the current centrality bin
 		n_op_scr_pairs = 0;
@@ -189,7 +174,7 @@ void ScrambSampleGen::Run(){
 	outFile->Write();
 
 	// for (unsigned int idr = 0; idr < ParamsSet::ndRselcs; idr++){
- //      for (unsigned int jctr = 0; jctr < ParamsSet::nCtrBins; jctr++){
+ //      for (unsigned int jctr = 0; jctr < nCtrBins; jctr++){
  //         for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
  //            outTree[idr][jctr][ksign]->Write();
  //         }

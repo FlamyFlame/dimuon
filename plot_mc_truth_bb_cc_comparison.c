@@ -14,8 +14,6 @@
 
 // can consider putting the global variables in a class or struct
 
-
-
 const int ndRcuts = 3;
 const int ndphicuts = 3;
 const int nSigns = 2; //3*2 canvas
@@ -46,7 +44,7 @@ std::string gapcuts[nGapCuts] = {"_gapcut1", "_gapcut2"};
 std::string dRTitles[ndRcuts] = {"#Delta R < 0.8","#Delta R < 1.2", "no #Delta R cut"};
 std::string dphiTitles[ndphicuts] = {"#Delta #phi < 1","#Delta #phi > #pi - 1", "no #Delta #phi cut"};
 std::string signTitles[nSigns] = {"same sign", "opposite sign"};
-std::string grpTitles[nGroups] = {"real muon pairs", "scrambled pairs"};
+std::string grpTitles[nGroups] = {"MC truth bb", "MC truth cc"};
 std::string gapCutTitles[nGroups] = {"no gap cut", "with gap cut"};
 
 std::string png_title_1D[nGapCuts];
@@ -59,8 +57,8 @@ std::string subplot_dphi_titles[ndRcuts][nSigns];
 TFile* f[nGroups];
 
 void initialize(){
-	f[0] = TFile::Open("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_real_pairs_pp.root"); //real pairs
-	f[1] = TFile::Open("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_scrambled_pairs_pp.root"); //scrambled pairs
+	f[0] = TFile::Open("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/histograms_mc_truth_bb.root"); 
+	f[1] = TFile::Open("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/histograms_mc_truth_cc.root"); 
 
 	for (unsigned int ksign = 0; ksign < nSigns; ksign++){
 		for (unsigned int jdr = 0; jdr < ndRcuts; jdr++){  	
@@ -72,12 +70,12 @@ void initialize(){
 
 	}
 
-	png_title_1D[0] = "_real_scr_no_gap_cut_pp.png";
-	png_title_1D[1] = "_real_scr_with_gap_cut_pp.png";
-	png_title_2D[0][0] = "_real_no_gap_cut_pp.png";
-	png_title_2D[0][1] = "_real_with_gap_cut_pp.png";
-	png_title_2D[1][0] = "_scr_no_gap_cut_pp.png";
-	png_title_2D[1][1] = "_scr_with_gap_cut_pp.png";
+	png_title_1D[0] = "_mc_truth_no_gap_cut.png";
+	png_title_1D[1] = "_mc_truth_with_gap_cut.png";
+	png_title_2D[0][0] = "_mc_truth_bb_no_gap_cut.png";
+	png_title_2D[0][1] = "_mc_truth_bb_with_gap_cut.png";
+	png_title_2D[1][0] = "_mc_truth_cc_no_gap_cut.png";
+	png_title_2D[1][1] = "_mc_truth_cc_with_gap_cut.png";
 }
 
 void hist_helper(TH1* h, std::string title, bool scale, std::string ytitle=""){
@@ -160,7 +158,7 @@ void plot1D(Hist1D& h, const int nCuts, std::string cuts[], std::string cutTitle
 			}
 		}
 
-		c->SaveAs(("plots/real_scramb_comparison_pp/" + h.name + h.name_specifier + png_title_1D[mgapcut]).c_str());
+		c->SaveAs(("plots/mc_truth/" + h.name + h.name_specifier + png_title_1D[mgapcut]).c_str());
 	  	c->Close();
 	  	delete c;
 
@@ -227,7 +225,7 @@ void plot1D(TH1D (*h)[nGapCuts][nSigns][nGroups], Hist1D& h_struct, const int nC
 				}
 			}
 
-			c->SaveAs(("plots/real_scramb_comparison_pp/" + h_struct.name + h_struct.name_specifier + png_title_1D[mgapcut]).c_str());
+			c->SaveAs(("plots/mc_truth/" + h_struct.name + h_struct.name_specifier + png_title_1D[mgapcut]).c_str());
 	  		c->Close();
 	  		delete c;
 
@@ -299,7 +297,7 @@ void Process2D(Hist2D h, const int nCuts, std::string cuts[], std::string cutTit
 					vh.push_back(h2);
 				}
 			}
-			c[mgapcut][lgrp]->SaveAs(("plots/real_scramb_comparison_pp/" + h.name + h.name_specifier + png_title_2D[lgrp][mgapcut]).c_str());
+			c[mgapcut][lgrp]->SaveAs(("plots/mc_truth/" + h.name + h.name_specifier + png_title_2D[lgrp][mgapcut]).c_str());
   			c[mgapcut][lgrp]->Close();
   			delete c[mgapcut][lgrp];
 
@@ -327,7 +325,7 @@ void Process2D(Hist2D h, const int nCuts, std::string cuts[], std::string cutTit
 	delete[] hy;
 }
 
-void plot_real_scramb_comparison_pp(){
+void plot_mc_truth_bb_cc_comparison(){
 
 	clock_t start, end;
     double cpu_time_used;
@@ -336,18 +334,15 @@ void plot_real_scramb_comparison_pp(){
 	initialize();
 
 
-	for (unsigned int i2d = 0; i2d < n2Ds; i2d++){
-		Hist2D h2d = {hist2DNames[i2d], projxs[i2d], projys[i2d], hxNames[i2d], hyNames[i2d], logxs[i2d], logys[i2d], logzs[i2d]};
-		Process2D(h2d, ndRcuts, dRs, dRTitles);
-	}
-
-	// for (unsigned int i1d = 0; i1d < n1Ds; i1d++){
-	// 	Hist1D h1d = {hist1DNames[i1d], logx1Ds[i1d], logy1Ds[i1d]};
-	// 	plot1D(h1d, ndRcuts, dRs, dRTitles);
+	// for (unsigned int i2d = 0; i2d < n2Ds; i2d++){
+	// 	Hist2D h2d = {hist2DNames[i2d], projxs[i2d], projys[i2d], hxNames[i2d], hyNames[i2d], logxs[i2d], logys[i2d], logzs[i2d]};
+	// 	Process2D(h2d, ndRcuts, dRs, dRTitles);
 	// }
 
-	// Hist2D h2d_minvnolog = {"h_minv_pair_pt",false,true,"h_pair_pt","h_minv",true,false,false};
-	// Process2D(h2d_minvnolog,ndRcuts, dRs, dRTitles,"_MINVNOLOG_");
+	for (unsigned int i1d = 0; i1d < n1Ds; i1d++){
+		Hist1D h1d = {hist1DNames[i1d], logx1Ds[i1d], logy1Ds[i1d]};
+		plot1D(h1d, ndRcuts, dRs, dRTitles);
+	}
 
 	// Hist2D h2d_phi = {"h_eta1_eta2", true, true, "h_eta1", "h_eta2", false, false, false};
 	// Process2D(h2d_phi, ndphicuts, dphis, dphiTitles, "_DPHI_");

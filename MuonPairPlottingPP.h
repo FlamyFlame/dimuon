@@ -42,13 +42,12 @@ private:
     // TH1D* h_pt_lead[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     // TH1D* h_eta_avg[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     // TH1D* h_pair_pt[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    // TH1D* h_pair_eta[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH1D* h_pair_y[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH2D* h_eta_avg_Dphi[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH2D* h_Deta_Dphi[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH2D* h_eta1_eta2[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH2D* h_eta_avg_Deta[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_eta_avg_pair_eta[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    // TH2D* h_eta_avg_pair_eta[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH2D* h_pt1_pt2[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH2D* h_ptlead_pair_pt[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH2D* h_minv_pair_pt[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
@@ -62,10 +61,11 @@ private:
     // TTree *inTree[ParamsSet::nSigns];
     TTree *inTree[ParamsSet::ndRselcs][ParamsSet::nSigns];
 
+    float weight[ParamsSet::ndRselcs][ParamsSet::nSigns];
   	float pair_dPoverP[ParamsSet::ndRselcs][ParamsSet::nSigns];
   	float pt_lead[ParamsSet::ndRselcs][ParamsSet::nSigns];
   	float pair_pt[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float pair_eta[ParamsSet::ndRselcs][ParamsSet::nSigns];
+  	// float pair_eta[ParamsSet::ndRselcs][ParamsSet::nSigns];
   	float pair_y[ParamsSet::ndRselcs][ParamsSet::nSigns];
   	float dpt[ParamsSet::ndRselcs][ParamsSet::nSigns];
   	float deta[ParamsSet::ndRselcs][ParamsSet::nSigns];
@@ -80,19 +80,27 @@ private:
   	float m2eta[ParamsSet::ndRselcs][ParamsSet::nSigns];
   	float m1phi[ParamsSet::ndRselcs][ParamsSet::nSigns];
   	float m2phi[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    int m1charge[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    int m2charge[ParamsSet::ndRselcs][ParamsSet::nSigns];
+
 
     // --------------------- class methods ---------------------------
 
    	void InitInput();
    	void InitHists();
    	void ProcessData();
+    void InitOutput();
     void WriteOutput();
+    bool PassSingleMuonGapCut(float meta, float mpt, int mcharge);
    	void FillHistograms(int ndr, int nsign);
    	void FillPtBinnedHistograms(int ndr, int npt, int nsign);
 
 public:
     int mode = 1;
-    bool isScram = true;
+    bool isScram = false;
+    bool isMCTruthBB = false;
+    bool isMCTruthCC = true;
+    // assert(isScram & isMCTruthBB & isMCTruthCC == 1 || isScram & isMCTruthBB & isMCTruthCC == 1); // at most one can be true (if all false: real data)
   	MuonPairPlottingPP();
   	~MuonPairPlottingPP(){}
   	void Run();
@@ -100,16 +108,20 @@ public:
 };
 
 MuonPairPlottingPP::MuonPairPlottingPP(){
-    if (mode != 1 && mode != 3){
-        std::cout<<"Error:: Mode has to be 1 (no binning) or 3 (binning by pT),  quitting"<<std::endl;
-        throw std::exception();
-    }
+    // if (mode != 1 && mode != 3){
+    //     std::cout<<"Error:: Mode has to be 1 (no binning) or 3 (binning by pT),  quitting"<<std::endl;
+    //     throw std::exception();
+    // }
 }
 
 void MuonPairPlottingPP::InitInput(){
 
     if (isScram){
         inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/scrambled_muon_pairs_pp.root","read");
+    }else if(isMCTruthBB){
+        inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/muon_pairs_mc_truth_bb.root","read");
+    }else if(isMCTruthCC){
+        inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/muon_pairs_mc_truth_cc.root","read");
     }else{
    	    inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/muon_pairs_pp.root","read");
     }
@@ -121,10 +133,11 @@ void MuonPairPlottingPP::InitInput(){
             }else{
         	    inTree[idr][ksign] = (TTree*) inFile->Get(Form("muon_pair_tree_dr%d_sign%d",idr+1,ksign+1));  
             }
+            inTree[idr][ksign]->SetBranchAddress("weight"          , &weight[idr][ksign]);
         	inTree[idr][ksign]->SetBranchAddress("pair_dPoverP"           , &pair_dPoverP[idr][ksign]);
         	inTree[idr][ksign]->SetBranchAddress("pt_lead"          , &pt_lead[idr][ksign]);
         	inTree[idr][ksign]->SetBranchAddress("pair_pt"          , &pair_pt[idr][ksign]);
-        	inTree[idr][ksign]->SetBranchAddress("pair_eta"     , &pair_eta[idr][ksign]);
+        	// inTree[idr][ksign]->SetBranchAddress("pair_eta"     , &pair_eta[idr][ksign]);
         	inTree[idr][ksign]->SetBranchAddress("pair_y"           , &pair_y[idr][ksign]);
         	inTree[idr][ksign]->SetBranchAddress("dpt"           , &dpt[idr][ksign]);
         	inTree[idr][ksign]->SetBranchAddress("deta"       , &deta[idr][ksign]);
@@ -139,6 +152,9 @@ void MuonPairPlottingPP::InitInput(){
         	inTree[idr][ksign]->SetBranchAddress("m2.eta"       , &m2eta[idr][ksign]);
         	inTree[idr][ksign]->SetBranchAddress("m1.phi"     	, &m1phi[idr][ksign]);
         	inTree[idr][ksign]->SetBranchAddress("m2.phi"     	, &m2phi[idr][ksign]);
+            inTree[idr][ksign]->SetBranchAddress("m1.charge"           , &m1charge[idr][ksign]);
+            inTree[idr][ksign]->SetBranchAddress("m2.charge"           , &m2charge[idr][ksign]);
+
         }
     }
 }
@@ -157,14 +173,13 @@ void MuonPairPlottingPP::InitHists(){
                     h_Deta_Dphi[idr][ksign][lgapcut] = new TH2D(Form("h_Deta_Dphi_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta#phi;#Delta#eta", 128,-pms.PI,pms.PI,200,-4.8,4.8);
                     h_eta1_eta2[idr][ksign][lgapcut] = new TH2D(Form("h_eta1_eta2_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#eta_{sublead};#eta_{lead}",100,-2.4,2.4, 100,-2.4,2.4);
                     h_eta_avg_Deta[idr][ksign][lgapcut] = new TH2D(Form("h_eta_avg_Deta_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta#eta;#bar{#eta}",200,-4.8,4.8,100,-2.4,2.4);
-                    h_eta_avg_pair_eta[idr][ksign][lgapcut] = new TH2D(Form("h_eta_avg_pair_eta_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#eta_{pair};#bar{#eta}",100,-2.4,2.4, 100,-2.4,2.4);
+                    // h_eta_avg_pair_eta[idr][ksign][lgapcut] = new TH2D(Form("h_eta_avg_pair_eta_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#eta_{pair};#bar{#eta}",100,-2.4,2.4, 100,-2.4,2.4);
                     h_pt1_pt2[idr][ksign][lgapcut] = new TH2D(Form("h_pt1_pt2_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";p_{T}^{sublead} [GeV];p_{T}^{lead} [GeV]",pms.npt_bins,pms.pTBins,pms.npt_bins,pms.pTBins);
                     h_ptlead_pair_pt[idr][ksign][lgapcut] = new TH2D(Form("h_ptlead_pair_pt_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][idr],pms.npt_bins,pms.pTBins);
-                    
-                    double minv_arr[pms.minv_nbins[idr]+1];
-                    std::copy(pms.minv_bins[ksign][idr].begin(),pms.minv_bins[ksign][idr].end(),minv_arr);
-                    // h_minv_pair_pt[idr][ksign] = new TH2D(Form("h_minv_pair_pt_dr%u_sign%u",idr+1,ksign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][idr],pms.minv_nbins[idr],minv_arr);
-                    h_minv_pair_pt[idr][ksign][lgapcut] = new TH2D(Form("h_minv_pair_pt_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][idr],pms.minv_nbins[idr],minv_arr);
+                    h_minv_pair_pt[idr][ksign][lgapcut] = new TH2D(Form("h_minv_pair_pt_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][idr],pms.minv_nbins[idr],0,pms.minv_max[idr]);
+                    // double minv_arr[pms.minv_nbins[idr]+1];
+                    // std::copy(pms.minv_bins[ksign][idr].begin(),pms.minv_bins[ksign][idr].end(),minv_arr);
+                    // h_minv_pair_pt[idr][ksign][lgapcut] = new TH2D(Form("h_minv_pair_pt_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][idr],pms.minv_nbins[idr],minv_arr);
                 }
 
                 for (unsigned int idphi= 0; idphi < ParamsSet::ndphiselcs; idphi++){
@@ -175,6 +190,21 @@ void MuonPairPlottingPP::InitHists(){
     }
 }
 
+
+void MuonPairPlottingPP::InitOutput(){
+    // if (isScram){
+    //     // outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_scrambled_pairs_pp.root","update");
+    //     outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_scrambled_pairs_pp.root","recreate");
+    // }else if(isMCTruthBB){
+    //     outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/histograms_mc_truth_bb.root","recreate");
+    // }else if(isMCTruthCC){
+    //     outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/histograms_mc_truth_cc.root","recreate");
+    // }else{
+    //     // outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_real_pairs_pp.root","update");
+    //     outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_real_pairs_pp.root","recreate");
+    // }
+
+}
 
 
 

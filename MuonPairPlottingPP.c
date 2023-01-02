@@ -26,54 +26,69 @@ void MuonPairPlottingPP::ProcessData(){
 }
 
 
+bool MuonPairPlottingPP::PassSingleMuonGapCut(float meta, float mpt, int mcharge){
+    // parameters: eta and pT of the same muon
+    if (fabs(meta) < pms.eta_gap_cut1) return false;
+    if (mpt < 6){
+        for (array<float,2> charge_eta_gap_cut : pms.charge_eta_gap_cuts){
+            if (mcharge * meta > charge_eta_gap_cut[0] && mcharge * meta < charge_eta_gap_cut[1]) return false;
+        }
+    }
+    // if (mpt < 6 && fabs(meta) > pms.eta_gap_cut2[0] && fabs(meta) < pms.eta_gap_cut2[1]) return false;
+    return true;
+}
+
+
 void MuonPairPlottingPP::FillHistograms(int ndr, int nsign){
 
     // ngapcut = 0: all; = 1: only those that pass
 
-    bool pass_gapcut = fabs(m1eta[ndr][nsign]) > pms.eta_gap_cut && fabs(m2eta[ndr][nsign]) > pms.eta_gap_cut;
+    //  bool pass_gapcut = fabs(m1eta[ndr][nsign]) > pms.eta_gap_cut && fabs(m2eta[ndr][nsign]) > pms.eta_gap_cut;
+    bool pass_gapcut = PassSingleMuonGapCut(m1eta[ndr][nsign], m1pt[ndr][nsign], m1charge[ndr][nsign]) && PassSingleMuonGapCut(m2eta[ndr][nsign], m2pt[ndr][nsign], m2charge[ndr][nsign]);
+
     if (pass_gapcut){
-        h_pair_dP_overP[ndr][nsign][1]->Fill(pair_dPoverP[ndr][nsign]);
-        h_pair_y[ndr][nsign][1]->Fill(pair_y[ndr][nsign]);
-        h_DR[ndr][nsign][1]->Fill(dr[ndr][nsign]);
-        h_eta_avg_Dphi[ndr][nsign][1]->Fill(dphi[ndr][nsign],etaavg[ndr][nsign]);
-        h_eta1_eta2[ndr][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign]);
-        h_pt1_pt2[ndr][nsign][1]->Fill(m2pt[ndr][nsign],m1pt[ndr][nsign]);
-        h_eta_avg_Deta[ndr][nsign][1]->Fill(deta[ndr][nsign],etaavg[ndr][nsign]);
-        h_ptlead_pair_pt[ndr][nsign][1]->Fill(pair_pt[ndr][nsign],m1pt[ndr][nsign]);
-        h_minv_pair_pt[ndr][nsign][1]->Fill(pair_pt[ndr][nsign],minv[ndr][nsign]);
-        h_Deta_Dphi[ndr][nsign][1]->Fill(dphi[ndr][nsign],deta[ndr][nsign]);
-        h_eta_avg_pair_eta[ndr][nsign][1]->Fill(pair_eta[ndr][nsign],etaavg[ndr][nsign]);
+        h_pair_dP_overP[ndr][nsign][1]->Fill(pair_dPoverP[ndr][nsign],weight[ndr][nsign]);
+        h_pair_y[ndr][nsign][1]->Fill(pair_y[ndr][nsign],weight[ndr][nsign]);
+        h_DR[ndr][nsign][1]->Fill(dr[ndr][nsign],weight[ndr][nsign]);
+        h_eta_avg_Dphi[ndr][nsign][1]->Fill(dphi[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
+        h_eta1_eta2[ndr][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
+        h_pt1_pt2[ndr][nsign][1]->Fill(m2pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
+        h_eta_avg_Deta[ndr][nsign][1]->Fill(deta[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
+        h_ptlead_pair_pt[ndr][nsign][1]->Fill(pair_pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
+        h_minv_pair_pt[ndr][nsign][1]->Fill(pair_pt[ndr][nsign],minv[ndr][nsign],weight[ndr][nsign]);
+        h_Deta_Dphi[ndr][nsign][1]->Fill(dphi[ndr][nsign],deta[ndr][nsign],weight[ndr][nsign]);
+        // h_eta_avg_pair_eta[ndr][nsign][1]->Fill(pair_eta[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
 
 
         if (ndr == 2){ //no delta R cut
-            h_eta1_eta2_dphicut[2][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign]);
+            h_eta1_eta2_dphicut[2][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
             if (dphi[ndr][nsign] < 1){
-                h_eta1_eta2_dphicut[0][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign]);
+                h_eta1_eta2_dphicut[0][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
             }else if(dphi[ndr][nsign] > pms.PI-1){
-                h_eta1_eta2_dphicut[1][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign]);
+                h_eta1_eta2_dphicut[1][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
             }
         }
     }
 
     //fill [0] for everyone
-    h_pair_dP_overP[ndr][nsign][0]->Fill(pair_dPoverP[ndr][nsign]);
-    h_pair_y[ndr][nsign][0]->Fill(pair_y[ndr][nsign]);
-    h_DR[ndr][nsign][0]->Fill(dr[ndr][nsign]);
-    h_eta_avg_Dphi[ndr][nsign][0]->Fill(dphi[ndr][nsign],etaavg[ndr][nsign]);
-    h_Deta_Dphi[ndr][nsign][0]->Fill(dphi[ndr][nsign],deta[ndr][nsign]);
-    h_eta1_eta2[ndr][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign]);
-    h_pt1_pt2[ndr][nsign][0]->Fill(m2pt[ndr][nsign],m1pt[ndr][nsign]);
-    h_eta_avg_Deta[ndr][nsign][0]->Fill(deta[ndr][nsign],etaavg[ndr][nsign]);
-    h_eta_avg_pair_eta[ndr][nsign][0]->Fill(pair_eta[ndr][nsign],etaavg[ndr][nsign]);
-    h_ptlead_pair_pt[ndr][nsign][0]->Fill(pair_pt[ndr][nsign],m1pt[ndr][nsign]);
-    h_minv_pair_pt[ndr][nsign][0]->Fill(pair_pt[ndr][nsign],minv[ndr][nsign]);
+    h_pair_dP_overP[ndr][nsign][0]->Fill(pair_dPoverP[ndr][nsign],weight[ndr][nsign]);
+    h_pair_y[ndr][nsign][0]->Fill(pair_y[ndr][nsign],weight[ndr][nsign]);
+    h_DR[ndr][nsign][0]->Fill(dr[ndr][nsign],weight[ndr][nsign]);
+    h_eta_avg_Dphi[ndr][nsign][0]->Fill(dphi[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
+    h_Deta_Dphi[ndr][nsign][0]->Fill(dphi[ndr][nsign],deta[ndr][nsign],weight[ndr][nsign]);
+    h_eta1_eta2[ndr][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
+    h_pt1_pt2[ndr][nsign][0]->Fill(m2pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
+    h_eta_avg_Deta[ndr][nsign][0]->Fill(deta[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
+    // h_eta_avg_pair_eta[ndr][nsign][0]->Fill(pair_eta[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
+    h_ptlead_pair_pt[ndr][nsign][0]->Fill(pair_pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
+    h_minv_pair_pt[ndr][nsign][0]->Fill(pair_pt[ndr][nsign],minv[ndr][nsign],weight[ndr][nsign]);
 
     if (ndr == 2){ //no delta R cut
-        h_eta1_eta2_dphicut[2][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign]);
+        h_eta1_eta2_dphicut[2][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
         if (dphi[ndr][nsign] < 1){
-            h_eta1_eta2_dphicut[0][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign]);
+            h_eta1_eta2_dphicut[0][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
         }else if(dphi[ndr][nsign] > pms.PI-1){
-            h_eta1_eta2_dphicut[1][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign]);
+            h_eta1_eta2_dphicut[1][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
         }
     }
 }
@@ -85,6 +100,10 @@ void MuonPairPlottingPP::WriteOutput(){
     if (isScram){
         // outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_scrambled_pairs_pp.root","update");
         outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_scrambled_pairs_pp.root","recreate");
+    }else if(isMCTruthBB){
+        outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/histograms_mc_truth_bb.root","recreate");
+    }else if(isMCTruthCC){
+        outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/histograms_mc_truth_cc.root","recreate");
     }else{
         // outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_real_pairs_pp.root","update");
         outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_real_pairs_pp.root","recreate");
@@ -99,7 +118,7 @@ void MuonPairPlottingPP::WriteOutput(){
         for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
             for (unsigned int lgapcut = 0; lgapcut < ParamsSet::nGapCuts; lgapcut++){
                 for (unsigned int idr = 0; idr < ParamsSet::ndRselcs; idr++){
-                    std::cout << "dR " << idr << ", sign " << ksign << "gapcut " << lgapcut << ", #entries " << h_pair_y[idr][ksign][lgapcut]->GetEntries() << std::endl;
+                    // std::cout << "dR " << idr << ", sign " << ksign << "gapcut " << lgapcut << ", #entries " << h_pair_y[idr][ksign][lgapcut]->GetEntries() << std::endl;
                     h_pair_dP_overP[idr][ksign][lgapcut]->Write();
                     h_pair_y[idr][ksign][lgapcut]->Write();
                     h_DR[idr][ksign][lgapcut]->Write();
@@ -107,7 +126,7 @@ void MuonPairPlottingPP::WriteOutput(){
                     h_Deta_Dphi[idr][ksign][lgapcut]->Write();
                     h_eta1_eta2[idr][ksign][lgapcut]->Write();
                     h_eta_avg_Deta[idr][ksign][lgapcut]->Write();
-                    h_eta_avg_pair_eta[idr][ksign][lgapcut]->Write();
+                    // h_eta_avg_pair_eta[idr][ksign][lgapcut]->Write();
                     h_pt1_pt2[idr][ksign][lgapcut]->Write();
                     h_ptlead_pair_pt[idr][ksign][lgapcut]->Write();
                     h_minv_pair_pt[idr][ksign][lgapcut]->Write();
@@ -126,6 +145,11 @@ void MuonPairPlottingPP::Run(){
     clock_t start, end;
     double cpu_time_used;
     start = clock();
+
+    if (isScram) std::cout << "Data being processed: Scrambled" << std::endl;
+    if (isMCTruthBB) std::cout << "Data being processed: MC Truth bb" << std::endl;
+    if (isMCTruthCC) std::cout << "Data being processed: MC Truth cc" << std::endl;
+    if (!isScram && !isMCTruthBB && !isMCTruthCC) std::cout << "Data being processed: Real" << std::endl;
 
   	InitInput();
   	InitHists();

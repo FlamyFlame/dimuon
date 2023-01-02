@@ -9,25 +9,25 @@
 bool MuonNTupleFirstPass::PassCuts(){
   //Apply ALL CUTS but for resonances
 
-  bool pass = true;
+  
   //require some quality cuts on the muons
-  if((mpair->m1.quality&mpair->m2.quality&1  )==0) pass = false;//compair->m2ined muon
-  if((mpair->m1.quality&mpair->m2.quality&8  )==0) pass = false;//Medium muon
-  if((mpair->m1.quality&mpair->m2.quality&32 )==0) pass = false;//IDCuts
-  if((mpair->m1.quality&mpair->m2.quality&256)==0) pass = false;//MuonCuts
+  if((mpair->m1.quality&mpair->m2.quality&1  )==0) return false;//compair->m2ined muon
+  if((mpair->m1.quality&mpair->m2.quality&8  )==0) return false;//Medium muon
+  if((mpair->m1.quality&mpair->m2.quality&32 )==0) return false;//IDCuts
+  if((mpair->m1.quality&mpair->m2.quality&256)==0) return false;//MuonCuts
 
   //cut on z0pair - order doesn't mpair->m1tter
   // double z0sinTheta1 = mpair->m1.z0*sin(2.0*atan(exp(-mpair->m1.eta)));
   // double z0sinTheta2 = mpair->m2.z0*sin(2.0*atan(exp(-mpair->m2.eta)));
   // float  z0_combined =sqrt(z0sinTheta1*z0sinTheta1 + z0sinTheta2*z0sinTheta2);
-  // if(z0_combined>1.0) pass = false;
+  // if(z0_combined>1.0) return false;
 
-  if (fabs(mpair->m1.eta) > 2.4 || fabs(mpair->m2.eta) > 2.4) pass = false;
-  if (mpair->m1.pt < 4 || mpair->m2.pt < 4) pass = false;
-  // if( deltaP_overP_cut && (fabs(mpair->m1.dP_overP) > pms.deltaP_overP_thrsh || fabs(mpair->m2.dP_overP) > pms.deltaP_overP_thrsh) ) pass = false;
-  if( fabs(mpair->m1.dP_overP) > pms.deltaP_overP_thrsh || fabs(mpair->m2.dP_overP) > pms.deltaP_overP_thrsh ) pass = false;
+  if (fabs(mpair->m1.eta) > 2.4 || fabs(mpair->m2.eta) > 2.4) return false;
+  if (mpair->m1.pt < 4 || mpair->m2.pt < 4) return false;
+  // if( deltaP_overP_cut && (fabs(mpair->m1.dP_overP) > pms.deltaP_overP_thrsh || fabs(mpair->m2.dP_overP) > pms.deltaP_overP_thrsh) ) return false;
+  if( fabs(mpair->m1.dP_overP) > pms.deltaP_overP_thrsh || fabs(mpair->m2.dP_overP) > pms.deltaP_overP_thrsh ) return false;
  
-  return pass;
+  return true;
 }
 
 bool MuonNTupleFirstPass::IsResonance(){
@@ -51,11 +51,7 @@ bool MuonNTupleFirstPass::IsResonance(){
 }
 
 bool MuonNTupleFirstPass::IsPhotoProduction(){
-  // A := |Delta PT| / (sum pT) < 0.05 && alpha := (pi-Dphi)/pi < 0.01
-  float A = (mpair->m1.pt - mpair->m2.pt) / (mpair->m1.pt + mpair->m2.pt);
-  assert (A >= 0);
-  float alpha = (pms.PI - fabs(mpair->dphi)) / pms.PI;
-  return (!(mpair->same_sign) && A < 0.05 && alpha < 0.01);
+  return (!(mpair->same_sign) && mpair->asym < 0.05 && mpair->acop < 0.01);
 }
 
 void MuonNTupleFirstPass::FillSingleMuonTree(){

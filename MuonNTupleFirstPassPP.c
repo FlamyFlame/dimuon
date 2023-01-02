@@ -9,18 +9,18 @@
 bool MuonNTupleFirstPassPP::PassCuts(){
   //Apply ALL CUTS but for resonances
 
-  bool pass = true;
+  
   //require some quality cuts on the muons
-  if((mpair->m1.quality&mpair->m2.quality&1  )==0) pass = false;//compair->m2ined muon
-  if((mpair->m1.quality&mpair->m2.quality&8  )==0) pass = false;//Medium muon
-  if((mpair->m1.quality&mpair->m2.quality&32 )==0) pass = false;//IDCuts
-  //if((mpair->m1.quality&mpair->m2.quality&256)==0) pass = false;//MuonCuts
+  if((mpair->m1.quality&mpair->m2.quality&1  )==0) return false;//compair->m2ined muon
+  if((mpair->m1.quality&mpair->m2.quality&8  )==0) return false;//Medium muon
+  if((mpair->m1.quality&mpair->m2.quality&32 )==0) return false;//IDCuts
+  //if((mpair->m1.quality&mpair->m2.quality&256)==0) return false;//MuonCuts
 
-  if (fabs(mpair->m1.eta) > 2.4 || fabs(mpair->m2.eta) > 2.4) pass = false;
-  if (mpair->m1.pt < 4 || mpair->m2.pt < 4) pass = false;
-  if( fabs(mpair->m1.dP_overP) > pms.deltaP_overP_thrsh || fabs(mpair->m2.dP_overP) > pms.deltaP_overP_thrsh ) pass = false;
+  if (fabs(mpair->m1.eta) > 2.4 || fabs(mpair->m2.eta) > 2.4) return false;
+  if (mpair->m1.pt < 4 || mpair->m2.pt < 4) return false;
+  if( fabs(mpair->m1.dP_overP) > pms.deltaP_overP_thrsh || fabs(mpair->m2.dP_overP) > pms.deltaP_overP_thrsh ) return false;
  
-  return pass;
+  return true;
 }
 
 bool MuonNTupleFirstPassPP::IsResonance(){
@@ -45,10 +45,10 @@ bool MuonNTupleFirstPassPP::IsResonance(){
 
 bool MuonNTupleFirstPassPP::IsPhotoProduction(){
   // A := |Delta PT| / (sum pT) < 0.05 && alpha := (pi-Dphi)/pi < 0.01
-  float A = (mpair->m1.pt - mpair->m2.pt) / (mpair->m1.pt + mpair->m2.pt);
-  assert (A >= 0);
-  float alpha = (pms.PI - fabs(mpair->dphi)) / pms.PI;
-  return (!(mpair->same_sign) && A < 0.05 && alpha < 0.01);
+  // float A = (mpair->m1.pt - mpair->m2.pt) / (mpair->m1.pt + mpair->m2.pt);
+  // assert (A >= 0);
+  // float alpha = (pms.PI - fabs(mpair->dphi)) / pms.PI;
+  return (!(mpair->same_sign) && mpair->asym < 0.05 && mpair->acop < 0.01);
 }
 
 void MuonNTupleFirstPassPP::FillSingleMuonTree(){
