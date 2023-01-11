@@ -1,37 +1,13 @@
-// Assumes that we exclude resonances
+#ifndef __MuonPairPlottingMC_h__
+#define __MuonPairPlottingMC_h__
 
-#ifndef __MuonPairPlottingPP_h__
-#define __MuonPairPlottingPP_h__
+#include "MuonPairPlottingPP.h"
 
-#include <TROOT.h>
-// #include <TChain.h>
-#include <TTree.h>
-#include <TFile.h>
-#include <string.h>
-#include  <stdlib.h>
-#include <fstream>
-#include "ParamsSet.h"
-#include "MuonPair.h"
-#include "vector"
-#include "TH1D.h"
-#include "TH2D.h"
-
-class MuonPairPlottingPP{
-  	//updates histograms - centrality binned
-    //if need histograms with all centrality bins added together
-    //can add at the histograms level
-
-
+class MuonPairPlottingMC : public MuonPairPlottingPP{
 private:
-  	// --------------------- general settings ---------------------------
-
-    // int mode = 1;
-    // bool isScram = true;
-    // bool isScram = false;
-
   	ParamsSet pms;
 
-  	// --------------------- output file & histograms ---------------------------
+  	// --------------------- NEW output file & histograms ---------------------------
 
   	TFile *outFile = nullptr;
 
@@ -54,45 +30,43 @@ private:
 
     TH2D* h_eta1_eta2_dphicut[ParamsSet::ndphiselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
 
-    // --------------------- input files & trees & data for setting branches---------------------------
+    // --------------------- NEW data variables for setting branches---------------------------
 
-   	TFile *inFile;
-    // TTree *inTree_ctrbin[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    // TTree *inTree[ParamsSet::nSigns];
-    TTree *inTree[ParamsSet::ndRselcs][ParamsSet::nSigns];
+   	// TFile *inFile;
+    // TTree *inTree[ParamsSet::ndRselcs][ParamsSet::nSigns];
 
-    float weight[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float pair_dPoverP[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float pt_lead[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float pair_pt[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	// float pair_eta[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float pair_y[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float dpt[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float deta[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float etaavg[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float phiavg[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float dphi[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float dr[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float minv[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float m1pt[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float m2pt[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float m1eta[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float m2eta[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float m1phi[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float m2phi[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    int m1charge[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    int m2charge[ParamsSet::ndRselcs][ParamsSet::nSigns];
+   //  float weight[ParamsSet::ndRselcs][ParamsSet::nSigns];
+  	// float pair_dPoverP[ParamsSet::ndRselcs][ParamsSet::nSigns];
+  	// float pt_lead[ParamsSet::ndRselcs][ParamsSet::nSigns];
+  	// float pair_pt[ParamsSet::ndRselcs][ParamsSet::nSigns];
+  	// float pair_y[ParamsSet::ndRselcs][ParamsSet::nSigns];
+  	// float dpt[ParamsSet::ndRselcs][ParamsSet::nSigns];
+  	// float deta[ParamsSet::ndRselcs][ParamsSet::nSigns];
+  	// float etaavg[ParamsSet::ndRselcs][ParamsSet::nSigns];
+  	// float phiavg[ParamsSet::ndRselcs][ParamsSet::nSigns];
+  	// float dphi[ParamsSet::ndRselcs][ParamsSet::nSigns];
+  	// float dr[ParamsSet::ndRselcs][ParamsSet::nSigns];
+  	// float minv[ParamsSet::ndRselcs][ParamsSet::nSigns];
+  	// float m1pt[ParamsSet::ndRselcs][ParamsSet::nSigns];
+  	// float m2pt[ParamsSet::ndRselcs][ParamsSet::nSigns];
+  	// float m1eta[ParamsSet::ndRselcs][ParamsSet::nSigns];
+  	// float m2eta[ParamsSet::ndRselcs][ParamsSet::nSigns];
+  	// float m1phi[ParamsSet::ndRselcs][ParamsSet::nSigns];
+  	// float m2phi[ParamsSet::ndRselcs][ParamsSet::nSigns];
+   //  int m1charge[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    // int m2charge[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    int m1_parent_group[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    int m2_parent_group[ParamsSet::ndRselcs][ParamsSet::nSigns];
 
 
-    // --------------------- class methods ---------------------------
+    // --------------------- NEW/OVERRIDEN class methods ---------------------------
 
    	void InitInput();
    	void InitHists();
    	void ProcessData();
-    // void InitOutput();
-    void WriteOutput();
+    // void WriteOutput();
     bool PassSingleMuonGapCut(float meta, float mpt, int mcharge);
-   	void FillHistograms(int ndr, int nsign);
+   	void FillParentGroupedHistograms(int ndr, int nsign);
    	void FillPtBinnedHistograms(int ndr, int npt, int nsign);
 
 public:
@@ -101,20 +75,20 @@ public:
     bool isMCTruthBB = false;
     bool isMCTruthCC = true;
     // assert(isScram & isMCTruthBB & isMCTruthCC == 1 || isScram & isMCTruthBB & isMCTruthCC == 1); // at most one can be true (if all false: real data)
-  	MuonPairPlottingPP();
-  	~MuonPairPlottingPP(){}
+  	MuonPairPlottingMC();
+  	~MuonPairPlottingMC(){}
   	void Run();
 
 };
 
-MuonPairPlottingPP::MuonPairPlottingPP(){
+MuonPairPlottingMC::MuonPairPlottingMC(){
     // if (mode != 1 && mode != 3){
     //     std::cout<<"Error:: Mode has to be 1 (no binning) or 3 (binning by pT),  quitting"<<std::endl;
     //     throw std::exception();
     // }
 }
 
-void MuonPairPlottingPP::InitInput(){
+void MuonPairPlottingMC::InitInput(){
 
     if (isScram){
         inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/scrambled_muon_pairs_pp.root","read");
@@ -159,7 +133,7 @@ void MuonPairPlottingPP::InitInput(){
     }
 }
 
-void MuonPairPlottingPP::InitHists(){
+void MuonPairPlottingMC::InitHists(){
 
    	if (mode == 1){
         for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
@@ -189,9 +163,6 @@ void MuonPairPlottingPP::InitHists(){
         }
     }
 }
-
-
-void M
 
 
 

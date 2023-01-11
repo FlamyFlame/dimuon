@@ -89,7 +89,8 @@ void MCNTupleFirstPass::FillSingleMuonTree(){
 
 int MCNTupleFirstPass::ParentGrouping(int parent_id, bool c_tag){
 
-  
+  assert(parent_id > 0);
+
   if ((parent_id >= 500 && parent_id < 600) || (parent_id >= 5000 && parent_id < 6000)){
     if (! c_tag) return 1; // direct b
     else         return 2; // b -> c
@@ -105,6 +106,7 @@ int MCNTupleFirstPass::ParentGrouping(int parent_id, bool c_tag){
 
 void MCNTupleFirstPass::UpdateCurParents(bool isFirstTime, bool isMuon1, std::vector<int>& cur_prt_bars, std::vector<int>& cur_prt_ids){
   
+  int prev_first_prt_id = cur_prt_ids[0];
   cur_prt_ids.clear();
 
   std::vector<int>::iterator itbar = std::find(truth_barcode->begin(),truth_barcode->end(),cur_prt_bars[0]);
@@ -120,37 +122,60 @@ void MCNTupleFirstPass::UpdateCurParents(bool isFirstTime, bool isMuon1, std::ve
       std::cout << "Error:: Barcode of the current parent not found among all truth particles, quitting" << std::endl;
       throw std::exception();
     }
-    cur_prt_ids.push_back(abs(truth_id->at(itbar - truth_barcode->begin())) % 10000);
+    // cur_prt_ids.push_back(abs(truth_id->at(itbar - truth_barcode->begin())) % 10000);
+    cur_prt_ids.push_back(truth_id->at(itbar - truth_barcode->begin()) % 10000);
+  }
+
+  // record if there is oscillation
+  if (cur_prt_ids[0] == (-1) * prev_first_prt_id){
+    if (isMuon1) mpair->m1_osc = true;
+    else         mpair->m2_osc = true;
   }
 
   // print out if there are more than one parents
-  if (cur_prt_bars.size() > 1){
-    for (int parent_id : parent_ids) m_unspecified_parent_file << parent_id << " ";
+  bool prev_id_c_hadron = ((abs(prev_first_prt_id) >= 400 && abs(prev_first_prt_id) < 500) || (abs(prev_first_prt_id) >= 4000 && abs(prev_first_prt_id) < 5000));
+  if (cur_prt_bars.size() > 1 && !prev_id_c_hadron){
+    m_unspecified_parent_file << prev_first_prt_id << " <- ";
+    for (int parent_id : cur_prt_ids) m_unspecified_parent_file << parent_id << " ";
     m_unspecified_parent_file << std::endl;
   }
 
   //c-tag
-  if ((parent_ids[0] >= 400 && parent_ids[0] < 500) || (parent_ids[0] >= 4000 && parent_ids[0] < 5000)){ // c-hadrons
+  if ((abs(cur_prt_ids[0]) >= 400 && abs(cur_prt_ids[0]) < 500) || (abs(cur_prt_ids[0]) >= 4000 && abs(cur_prt_ids[0]) < 5000)){ // c-hadrons
     if (isMuon1) mpair->m1_c_tag = true;
     else         mpair->m2_c_tag = true;
   }
 
   // store the first parent id if isFirstTime
   if (isFirstTime){
-    if (isMuon1){
-      mpair->m1_parent_barcode = parent_bars[0];
-      mpair->m1_parent_id = parent_ids[0];
-    }
-    else{
-      mpair->m2_parent_barcode = parent_bars[0];
-      mpair->m2_parent_id = parent_ids[0];
-    }
+    if (isMuon1)
+      mpair->m1_parent_id = cur_prt_ids[0];
+    else
+      mpair->m2_parent_id = cur_prt_ids[0];
 
     h_numParents->Fill(cur_prt_bars.size() - 0.5);
   }
 }
 
-int MCNTupleFirstPass::FillSingleMuonParents(bool isMuon1){
+
+int MCNTupleFirstPass::CheckIfContainHeavyQuarks(std::vector<int>& cur_prt_ids, int quark_type){
+  if (quark_type != 4 && quark_type != 5){
+    std::cout << "Error:: the parameter quark_type must take value of 4 (c) or 5 (b), quitting" << std::endl;
+    throw std::exception();
+  }
+
+  if (cur_prt_ids.size() == 0) return 2; // case II
+
+  std::vector<int>::iterator it_q = std::find(cur_prt_ids.begin(),cur_prt_ids.end(),quark_type);
+  std::vector<int>::iterator it_qbar = std::find(cur_prt_ids.begin(),cur_prt_ids.end(), (-1) * quark_type);
+  if (it_q == cur_prt_ids.end() && it_qbar == cur_prt_ids.end()){ // not find either
+    return 1; // case I: non-zero parents of the heavy quarks
+  }
+
+  return -1;
+}
+
+void MCNTupleFirstPass::FindSingleMuonParents(bool isMuon1){
   std::vector<int> parent_bars;
   std::vector<int> parent_ids;
 
@@ -159,24 +184,162 @@ int MCNTupleFirstPass::FillSingleMuonParents(bool isMuon1){
   parent_ids.push_back(13);
   UpdateCurParents(true,isMuon1,parent_bars,parent_ids);
 
-  while(parent_ids[0] == 13 || parent_ids[0] == 15 || (parent_ids[0] >= 400 && parent_ids[0] < 500) || (parent_ids[0] >= 4000 && parent_ids[0] < 5000)){
+  while(abs(parent_ids[0]) == 13 || abs(parent_ids[0]) == 15 || (abs(parent_ids[0]) >= 400 && abs(parent_ids[0]) < 500) || (abs(parent_ids[0]) >= 4000 && abs(parent_ids[0]) < 5000)){
     UpdateCurParents(false,isMuon1,parent_bars,parent_ids);
   }
-  if (isMuon1) mpair->m1_earliest_parent_id = parent_ids[0];
-  else         mpair->m2_earliest_parent_id = parent_ids[0];
+
+  if (isMuon1){
+    mpair->m1_earliest_parent_id = parent_ids[0];
+    cur_m1_earliest_parent_barcode = parent_bars[0];
+  } 
+  else{
+    mpair->m2_earliest_parent_id = parent_ids[0];
+    cur_m2_earliest_parent_barcode = parent_bars[0];
+  }        
+
+  if (mc_mode == "mc_truth_bb"){
+    while((abs(parent_ids[0]) >= 500 && abs(parent_ids[0]) < 600) || (abs(parent_ids[0]) >= 5000 && abs(parent_ids[0]) < 6000)){
+      UpdateCurParents(false,isMuon1,parent_bars,parent_ids);
+    }
+  }
+
+  int quark = (mc_mode == "mc_truth_bb")? 5:4;
+  int mcase;
+  // trace up as long as any HF quark is found (all particles in the same string should share the same parents anyway)
+  // CONSIDER WRITING A PARAGRAPH TO EXPLICITLY CHECK THAT
+  do{
+    UpdateCurParents(false,isMuon1,parent_bars,parent_ids); // need to update at least one step up anyway
+    mcase = CheckIfContainHeavyQuarks(parent_ids, quark);
+  }while (mcase < 0);
+
+  // Remark: this does not always give us the correct result
+  // But for the events we care about (which we record and plot)
+  // (where both muons come from b or c for b-bbar or c-cbar sample, respectively)
+  // this gives the correct result
+  // the others (say if a muon comes from s/light hadron, 
+  // or if a muon in the c-cbar sample comes from b initially)
+  // won't give us any error: CheckIfContainHeavyQuarks will just return 1 for not finding any HF quark
+  // so the m*_ancestor_is_incoming, cur_m*_ancestor_ids, cur_m*_ancestor_bars are not informative
+  // but we won't use them anyway
+
+  if (isMuon1){
+    m1_ancestor_is_incoming = (mcase == 2); // if Case II: then is incoming
+    cur_m1_ancestor_ids = parent_ids;
+    cur_m1_ancestor_bars = parent_bars;
+  }
+  else{
+    m2_ancestor_is_incoming = (mcase == 2);
+    cur_m2_ancestor_ids = parent_ids;
+    cur_m2_ancestor_bars = parent_bars;
+  }
 }
 
+
 void MCNTupleFirstPass::FillMuonPairParents(){
+  bool not_near = !(mpair->dphi < pms.PI / 2.);
   mpair->m1_c_tag = false;
   mpair->m2_c_tag = false;
+  mpair->m1_osc = false;
+  mpair->m2_osc = false;
 
-  FillSingleMuonParents(true);
-  FillSingleMuonParents(false);
+  FindSingleMuonParents(true);
+  FindSingleMuonParents(false);
   
   // parent groups: {direct b, c from b, c not from b, strange & light hadrons, photons};
-  mpair->m1_parent_group = ParentGrouping(mpair->m1_earliest_parent_id, bool mpair->m1_c_tag);
-  mpair->m2_parent_group = ParentGrouping(mpair->m2_earliest_parent_id, bool mpair->m2_c_tag);
+  mpair->m1_parent_group = ParentGrouping(abs(mpair->m1_earliest_parent_id), mpair->m1_c_tag);
+  mpair->m2_parent_group = ParentGrouping(abs(mpair->m2_earliest_parent_id), mpair->m2_c_tag);
 
+  if (mpair->m1_parent_group < 0) m_unspecified_parent_file << "*** " << mpair->m1_earliest_parent_id << " ***" << std::endl;
+  if (mpair->m2_parent_group < 0) m_unspecified_parent_file << "*** " << mpair->m2_earliest_parent_id << " ***" << std::endl;
+
+  h_MuonPairParentGroups[!mpair->same_sign][not_near]->Fill(mpair->m1_parent_group - 0.5, mpair->m2_parent_group - 0.5);
+  h_MuonPairParentGroups_weighted[!mpair->same_sign][not_near]->Fill(mpair->m1_parent_group - 0.5, mpair->m2_parent_group - 0.5, mpair->weight);
+
+
+  // the case of opposite sign muon pair, where one muon is directly from b, the other is from b to c
+  // check if both are initially from the same b
+  bool bb_op_sign_one_b_one_btoc = (mc_mode == "mc_truth_bb" && !mpair->same_sign) && ((mpair->m1_parent_group == 1 && mpair->m2_parent_group == 2) || (mpair->m1_parent_group == 2 && mpair->m2_parent_group == 1));
+  
+  if (bb_op_sign_one_b_one_btoc){
+    if (cur_m1_earliest_parent_barcode == cur_m2_earliest_parent_barcode){
+      // case I: from same b
+      h_bb_op_one_b_one_btoc[not_near]->Fill(0.5);
+      h_weighted_bb_op_one_b_one_btoc[not_near]->Fill(0.5,mpair->weight);
+    }else if (mpair->m1_c_tag || mpair->m2_c_tag){
+      // case II: involve oscillation
+      h_bb_op_one_b_one_btoc[not_near]->Fill(1.5);
+      h_weighted_bb_op_one_b_one_btoc[not_near]->Fill(1.5,mpair->weight);
+    }else{
+      // case III: others
+      h_bb_op_one_b_one_btoc[not_near]->Fill(2.5);
+      h_weighted_bb_op_one_b_one_btoc[not_near]->Fill(2.5,mpair->weight);
+
+      m_unspecified_parent_file << "bb op one b one b-to-c:" << endl;
+      m_unspecified_parent_file << "Leading muon b from: ";
+      for (int pid : cur_m1_ancestor_ids) m_unspecified_parent_file << pid << " ";
+      m_unspecified_parent_file << std::endl << "Subleading muon b from: ";
+      for (int pid : cur_m2_ancestor_ids) m_unspecified_parent_file << pid << " ";
+      m_unspecified_parent_file << std::endl << "************" << std::endl;
+    }
+  }
+
+  bool bb_op_sign_one_b_one_btoc_from_same_b = bb_op_sign_one_b_one_btoc && (cur_m1_earliest_parent_barcode == cur_m2_earliest_parent_barcode);
+  // case of b-bbar sample & both muons are from b initially
+  if (mc_mode == "mc_truth_bb" && (mpair->m1_parent_group == 1 || mpair->m1_parent_group == 2) && (mpair->m2_parent_group == 1 || mpair->m2_parent_group == 2) && (!bb_op_sign_one_b_one_btoc_from_same_b)){
+    // first check if same parents 
+    bool same_prts = (!m1_ancestor_is_incoming && !m2_ancestor_is_incoming && cur_m1_ancestor_bars == cur_m2_ancestor_bars);
+    h_bb_both_from_b_same_prts[not_near]->Fill(!same_prts + 0.5); // 0.5 for same parents; 1.5 for different parents
+    h_bb_both_from_b_ancestor[not_near]->Fill(m1_ancestor_is_incoming + 0.5, m2_ancestor_is_incoming + 0.5);
+    // print out the parents for near/away side
+    if (same_prts){
+      m_b_parent_file[not_near] << "Both b's have the same ancestors: " << std::endl;
+      m_b_parent_file[not_near] << mpair->m1_earliest_parent_id << ", " << mpair->m2_earliest_parent_id << " <------ ";
+      for (int pid : cur_m1_ancestor_ids) m_b_parent_file[not_near] << pid << " ";
+      m_b_parent_file[not_near] << std::endl << "************" << std::endl;
+    }
+    else{
+      if (m1_ancestor_is_incoming) m_b_parent_file[not_near] << "Leading muon ancestor is incoming." << std::endl;
+      else{
+        m_b_parent_file[not_near] << "Leading muon b ancestor: " << mpair->m1_earliest_parent_id << " <------ ";
+        for (int pid : cur_m1_ancestor_ids) m_b_parent_file[not_near] << pid << " ";
+        m_b_parent_file[not_near] << std::endl;
+      }
+      if (m2_ancestor_is_incoming) m_b_parent_file[not_near] << "Subleading muon ancestor is incoming." << std::endl;
+      else{
+        m_b_parent_file[not_near] << "Subleading muon b ancestor: " << mpair->m2_earliest_parent_id << " <------ ";
+        for (int pid : cur_m2_ancestor_ids) m_b_parent_file[not_near] << pid << " ";
+        m_b_parent_file[not_near] << std::endl << "************" << std::endl;
+      }
+    }
+  }
+
+
+  // case of c-cbar same-sign muon pairs both from c (directly)
+  if (mc_mode == "mc_truth_cc" && mpair->m1_parent_group == 3 && mpair->m2_parent_group == 3){
+    bool same_prts = (!m1_ancestor_is_incoming && !m2_ancestor_is_incoming && cur_m1_ancestor_bars == cur_m2_ancestor_bars);
+    h_cc_ss_both_from_c_same_prts[not_near]->Fill(!same_prts + 0.5); // 0.5 for same parents; 1.5 for different parents
+    h_cc_both_from_c_ancestor[!mpair->same_sign][not_near]->Fill(m1_ancestor_is_incoming + 0.5, m2_ancestor_is_incoming + 0.5);
+
+    if (same_prts){
+      m_c_parent_file[!mpair->same_sign][not_near] << "Both c's have the same ancestors: " << std::endl;
+      for (int pid : cur_m1_ancestor_ids) m_c_parent_file[!mpair->same_sign][not_near] << pid << " ";
+      m_c_parent_file[!mpair->same_sign][not_near] << std::endl << "************" << std::endl;
+    }
+    else{
+      if (m1_ancestor_is_incoming) m_c_parent_file[!mpair->same_sign][not_near] << "Leading muon ancestor is incoming." << std::endl;
+      else{
+        m_c_parent_file[!mpair->same_sign][not_near] << "Leading muon b ancestor: " << mpair->m1_earliest_parent_id << " <------ ";
+        for (int pid : cur_m1_ancestor_ids) m_c_parent_file[!mpair->same_sign][not_near] << pid << " ";
+        m_c_parent_file[!mpair->same_sign][not_near] << std::endl;
+      }
+      if (m2_ancestor_is_incoming) m_c_parent_file[!mpair->same_sign][not_near] << "Subleading muon ancestor is incoming." << std::endl;
+      else{
+        m_c_parent_file[!mpair->same_sign][not_near] << "Subleading muon b ancestor: " << mpair->m2_earliest_parent_id << " <------ ";
+        for (int pid : cur_m2_ancestor_ids) m_c_parent_file[!mpair->same_sign][not_near] << pid << " ";
+        m_c_parent_file[!mpair->same_sign][not_near] << std::endl << "************" << std::endl;
+      }
+    }
+  }
 }
 
 void MCNTupleFirstPass::FillMuonPairTree(){
@@ -195,7 +358,7 @@ void MCNTupleFirstPass::ProcessData(){
   mpair = new MuonPairMC();
   // Long64_t nentries = 100000;
   Long64_t nentries = fChain->GetEntries();//number of events
-  for (Long64_t jentry=0; jentry<nentries;jentry++) {//loop over the events
+  for (Long64_t jentry=0; jentry<nentries; jentry++) {//loop over the events
   // for (Long64_t jentry=0; jentry<5;jentry++) {//loop over the events
 
     if(jentry%100000==0) cout<<"Processing "<<jentry<<" event out of "<<nentries<<" events"<<std::endl;
@@ -213,8 +376,8 @@ void MCNTupleFirstPass::ProcessData(){
     // std::vector<int> muon_index_list = {};
     // std::vector<int>::iterator it;
 
-    int NPairs=muon_pair_muon1_pt->size();//number of muon pairs in the event
-    h_numMuonPairsRaw->Fill(NPairs - 0.5);
+    int NPairs = muon_pair_muon1_pt->size();//number of muon pairs in the event
+    // h_numMuonPairsRaw->Fill(NPairs - 0.5);
     int NPairsAfter = 0;
 
     for(int i=0;i<NPairs;i++){//loop over all muon-pairs in the event
@@ -240,7 +403,7 @@ void MCNTupleFirstPass::ProcessData(){
 
       mpair->weight     = fabs(EventWeights->at(0)) * filter_effcy / nentries;
       mpair->minv       = truth_mupair_m->at(i)/1000.;
-      mpair->pair_pt    = truth_mupair_pt->at(i)/1000;
+      mpair->pair_pt    = truth_mupair_pt->at(i)/1000.;
       mpair->pair_y     = truth_mupair_y->at(i);
       mpair->asym       = truth_mupair_asym->at(i);
       mpair->acop       = truth_mupair_acop->at(i);
@@ -281,25 +444,9 @@ void MCNTupleFirstPass::ProcessData(){
 
       NPairsAfter++;
       FillMuonPairTree(); // mode = 2 for MC truth
-
-      // if(mode == 1){ // single muon information; no dR selection
-      //   it = std::find(muon_index_list.begin(),muon_index_list.end(),mpair->m1.ind);
-      //   if(it == muon_index_list.end()){ //muon1 index NOT found
-      //     muon_index_list.push_back(mpair->m1.ind);
-      //     tempmuon = &(mpair->m1);
-      //     FillSingleMuonTree();
-      //   }
-      //   it = std::find(muon_index_list.begin(),muon_index_list.end(),mpair->m2.ind);
-      //   if(it == muon_index_list.end()){ //muon1 index NOT found
-      //     muon_index_list.push_back(mpair->m2.ind);
-      //     tempmuon = &(mpair->m2);
-      //     FillSingleMuonTree();
-      //   }
-      // }
-      // else FillMuonPairTree(); // mode = 2
     }
 
-    h_numMuonPairsAfter->Fill(NPairsAfter - 0.5);
+    h_numMuonPairs->Fill(NPairsAfter - 0.5);
   }//loop over events
 
   delete mpair;
@@ -324,12 +471,15 @@ void MCNTupleFirstPass::Run(){
   InitOutput();
   ProcessData();
   m_unspecified_parent_file.close();
-  // for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
-  //   std::cout << "sign" << ksign << ", #entries: " << muonPairOutTree[ksign]->GetEntries() << std::endl;
-  //   for (unsigned int idr = 0; idr < ParamsSet::ndRselcs; idr++){
-  //     std::cout << "sign" << ksign << ", dr" << idr << ", #entries: " << muonPairOutTreeBinned[idr][ksign]->GetEntries() << std::endl;
-  //   }
-  // }
+  if (mc_mode == "mc_truth_bb"){    
+    m_b_parent_file[0].close();
+    m_b_parent_file[1].close();
+  }else{
+    for (int isign = 0; isign < ParamsSet::nSigns; isign++){
+      m_c_parent_file[isign][0].close();
+      m_c_parent_file[isign][1].close();
+    }
+  }
 
   // for loop over ibin: h->GetXaxis()->SetAxisLabel(ibin,label[ibin]);
   for (int ibin = 0; ibin < numCuts; ibin++){
@@ -338,9 +488,39 @@ void MCNTupleFirstPass::Run(){
   }
 
   for (int ibin = 0; ibin < nParentGroups; ibin++){
-    h_1parentGroups->GetXaxis()->SetBinLabel(ibin+1,parentGroupLabels[ibin].c_str());
-    h_2parentGroups->GetXaxis()->SetBinLabel(ibin+1,parentGroupLabels[ibin].c_str());
-    h_2parentGroups->GetYaxis()->SetBinLabel(ibin+1,parentGroupLabels[ibin].c_str());
+    for (int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
+      for (int lphi = 0; lphi < 2; lphi++){
+        h_MuonPairParentGroups[ksign][lphi]->GetXaxis()->SetBinLabel(ibin+1,parentGroupLabels[ibin].c_str());
+        h_MuonPairParentGroups[ksign][lphi]->GetYaxis()->SetBinLabel(ibin+1,parentGroupLabels[ibin].c_str());
+      }
+    }
+  }
+
+  if (mc_mode == "mc_truth_bb"){
+    for (int ibin = 0; ibin < 3; ibin++){
+      for (int lphi = 0; lphi < 2; lphi++){
+        h_bb_op_one_b_one_btoc[lphi]->GetXaxis()->SetBinLabel(ibin+1,bb_op_one_b_one_btoc_labels[ibin].c_str());
+        h_weighted_bb_op_one_b_one_btoc[lphi]->GetXaxis()->SetBinLabel(ibin+1,bb_op_one_b_one_btoc_labels[ibin].c_str());
+      }
+    }
+    for (int ibin = 0; ibin < 2; ibin++){
+      for (int lphi = 0; lphi < 2; lphi++){
+        h_bb_both_from_b_same_prts[lphi]->GetXaxis()->SetBinLabel(ibin+1,samePrtsLabels[ibin].c_str());
+        h_bb_both_from_b_ancestor[lphi]->GetXaxis()->SetBinLabel(ibin+1,bb_both_from_b_ancestor_labels[ibin].c_str());
+        h_bb_both_from_b_ancestor[lphi]->GetYaxis()->SetBinLabel(ibin+1,bb_both_from_b_ancestor_labels[ibin].c_str());
+      }
+    }
+  }
+  else{
+    for (int ibin = 0; ibin < 2; ibin++){
+      for (int lphi = 0; lphi < 2; lphi++){
+        h_cc_ss_both_from_c_same_prts[lphi]->GetXaxis()->SetBinLabel(ibin+1,samePrtsLabels[ibin].c_str());
+        for (int isign = 0; isign < ParamsSet::nSigns; isign++){
+          h_cc_both_from_c_ancestor[isign][lphi]->GetXaxis()->SetBinLabel(ibin+1,cc_both_from_c_ancestor_labels[ibin].c_str());
+          h_cc_both_from_c_ancestor[isign][lphi]->GetYaxis()->SetBinLabel(ibin+1,cc_both_from_c_ancestor_labels[ibin].c_str());
+        }
+      }
+    }
   }
 
   h_cutAcceptance[0]->Scale(1./h_cutAcceptance[0]->GetBinContent(1));
