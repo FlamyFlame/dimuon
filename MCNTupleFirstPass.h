@@ -94,10 +94,19 @@ private:
     // std::vector<int> cur_m1_beyond_earliest_parent_ids;
     // std::vector<int> cur_m2_beyond_earliest_parent_ids;
     
+    std::vector<std::vector<int>> m1_history_before_hadrons;
+    std::vector<std::vector<int>> m2_history_before_hadrons;
+
     std::vector<int> cur_m1_ancestor_ids;
     std::vector<int> cur_m2_ancestor_ids;
     std::vector<int> cur_m1_ancestor_bars;
     std::vector<int> cur_m2_ancestor_bars;
+
+    std::vector<int> m1_multi_hf_quark_ids;
+    std::vector<int> m2_multi_hf_quark_ids;
+    
+    std::vector<int> m1_multi_hadronic_parents_ids;
+    std::vector<int> m2_multi_hadronic_parents_ids;
   
 // --------------------- output file, histograms & trees ---------------------------
   
@@ -120,8 +129,8 @@ private:
     TH1D* h_bb_op_one_b_one_btoc[2];
     TH1D* h_weighted_bb_op_one_b_one_btoc[2];
 
-    TH1D* h_cc_ss_both_from_c_same_prts[2];
-    TH1D* h_cc_ss_both_from_c[2];
+    TH1D* h_cc_both_from_c_same_prts[2];
+    TH1D* h_cc_both_from_c[2];
     // TH1D* h_weighted_cc_ss_both_from_c[2];
 
     TH1D* h_bb_both_from_b_same_prts[2];
@@ -147,8 +156,8 @@ private:
     bool IsResonance();
     bool IsPhotoProduction();
     int  ParentGrouping(int parent_id, bool c_tag);
-    void UpdateCurParents(bool isFirstTime, bool isMuon1, std::vector<int>& cur_prt_bars, std::vector<int>& cur_prt_ids);
-    int  CheckIfContainHeavyQuarks(std::vector<int>& cur_prt_ids, int quark_type);
+    void UpdateCurParents(bool isFirstTime, bool isMuon1, std::vector<int>& cur_prt_bars, std::vector<int>& cur_prt_ids, int hf_quark_index = -1);
+    int  FindHeavyQuarks(std::vector<int>& cur_prt_ids, int quark_type);
     void FindSingleMuonParents(bool isMuon1);
     void FillMuonPairParents();
     void FillSingleMuonTree();
@@ -245,14 +254,15 @@ void MCNTupleFirstPass::InitInput(){
 void MCNTupleFirstPass::InitOutput(){
 
     std::string sign_labels[ParamsSet::nSigns] = {"same_sign", "op_sign"};
-    m_unspecified_parent_file.open(mcdir + "unspecified_parents.txt");
     if (mc_mode == "mc_truth_bb"){
+        m_unspecified_parent_file.open(mcdir + "unspecified_parents_bb.txt");
         m_b_parent_file[0].open(mcdir + "b_parents_near.txt");
         m_b_parent_file[1].open(mcdir + "b_parents_away.txt");
     }else{
+        m_unspecified_parent_file.open(mcdir + "unspecified_parents_cc.txt");
         for (int isign = 0; isign < ParamsSet::nSigns; isign++){
             m_c_parent_file[isign][0].open(Form("%sc_parents_%s_near.txt", mcdir.c_str(), sign_labels[isign].c_str()));
-            m_c_parent_file[isign][1].open(Form("%sc_parents_%s_near.txt", mcdir.c_str(), sign_labels[isign].c_str()));
+            m_c_parent_file[isign][1].open(Form("%sc_parents_%s_away.txt", mcdir.c_str(), sign_labels[isign].c_str()));
         }
     }
 
@@ -299,8 +309,8 @@ void MCNTupleFirstPass::InitOutput(){
         h_bb_both_from_b_ancestor[0] = new TH2D("h_bb_both_from_b_ancestor_near","h_bb_both_from_b_ancestor_near",2,0,2,2,0,2);
         h_bb_both_from_b_ancestor[1] = new TH2D("h_bb_both_from_b_ancestor_away","h_bb_both_from_b_ancestor_away",2,0,2,2,0,2);
     }else if (mc_mode == "mc_truth_cc"){
-        h_cc_ss_both_from_c_same_prts[0] = new TH1D("h_cc_ss_both_from_c_same_prts_near","h_cc_ss_both_from_c_same_prts_near",2,0,2);
-        h_cc_ss_both_from_c_same_prts[1] = new TH1D("h_cc_ss_both_from_c_same_prts_away","h_cc_ss_both_from_c_same_prts_away",2,0,2);
+        h_cc_both_from_c_same_prts[0] = new TH1D("h_cc_both_from_c_same_prts_near","h_cc_both_from_c_same_prts_near",2,0,2);
+        h_cc_both_from_c_same_prts[1] = new TH1D("h_cc_both_from_c_same_prts_away","h_cc_both_from_c_same_prts_away",2,0,2);
         // h_cc_ss_both_from_c[0] = new TH1D("h_cc_ss_both_from_c_near","h_cc_ss_both_from_c_near",3,0,3);
         // h_cc_ss_both_from_c[1] = new TH1D("h_cc_ss_both_from_c_away","h_cc_ss_both_from_c_away",3,0,3);
         // h_weighted_cc_ss_both_from_c[0] = new TH1D("h_weighted_cc_ss_both_from_c_near","h_weighted_cc_ss_both_from_c_near",3,0,3);
