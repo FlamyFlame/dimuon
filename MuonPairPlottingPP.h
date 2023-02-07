@@ -38,21 +38,29 @@ private:
     TH1D* h_pair_dP_overP[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH1D* h_Dphi[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH1D* h_DR[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    // TH1D* h_Minv[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    // TH1D* h_pt_lead[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    // TH1D* h_eta_avg[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    // TH1D* h_pair_pt[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH1D* h_pair_y[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH2D* h_eta_avg_Dphi[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH2D* h_Deta_Dphi[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH2D* h_eta1_eta2[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH2D* h_eta_avg_Deta[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    // TH2D* h_eta_avg_pair_eta[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH2D* h_pt1_pt2[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH2D* h_ptlead_pair_pt[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH2D* h_minv_pair_pt[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
 
+    TH1D* h_unweighted_pair_dP_overP[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH1D* h_unweighted_Dphi[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH1D* h_unweighted_DR[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH1D* h_unweighted_pair_y[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_unweighted_eta_avg_Dphi[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_unweighted_Deta_Dphi[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_unweighted_eta1_eta2[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_unweighted_eta_avg_Deta[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_unweighted_pt1_pt2[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_unweighted_ptlead_pair_pt[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_unweighted_minv_pair_pt[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
+
     TH2D* h_eta1_eta2_dphicut[ParamsSet::ndphiselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_unweighted_eta1_eta2_dphicut[ParamsSet::ndphiselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
 
     // --------------------- input files & trees & data for setting branches---------------------------
 
@@ -187,11 +195,24 @@ void MuonPairPlottingPP::InitHists(){
                     h_pt1_pt2[idr][ksign][lgapcut] = new TH2D(Form("h_pt1_pt2_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";p_{T}^{sublead} [GeV];p_{T}^{lead} [GeV]",static_cast<int>(pms.npt_bins/2.),pms.pTBins,static_cast<int>(pms.npt_bins/2.),pms.pTBins);
                     h_ptlead_pair_pt[idr][ksign][lgapcut] = new TH2D(Form("h_ptlead_pair_pt_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",static_cast<int>(pms.npairPT_bins/2.),pms.pairPTBins[ksign][idr],static_cast<int>(pms.npt_bins/2),pms.pTBins);
                     h_minv_pair_pt[idr][ksign][lgapcut] = new TH2D(Form("h_minv_pair_pt_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",static_cast<int>(pms.npairPT_bins/2.),pms.pairPTBins[ksign][idr],static_cast<int>(pms.minv_nbins[idr]/2),0,pms.minv_max[idr]);
+                    
+                    h_unweighted_pair_dP_overP[idr][ksign][lgapcut] = new TH1D(Form("h_unweighted_pair_dP_overP_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";(#Delta p / p)_{pair};1/N_{evt} dN/d(#Delta p / p)_{pair}" ,pms.deltaP_overP_nbins,0,pms.deltaP_overP_max);
+                    h_unweighted_DR[idr][ksign][lgapcut] = new TH1D(Form("h_unweighted_DR_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta R;1/N_{evt} dN/d#Delta R", static_cast<int>(pms.deltaR_nbins[idr]/2.),0,pms.deltaR_thrsh[idr]);
+                    h_unweighted_Dphi[idr][ksign][lgapcut] = new TH1D(Form("h_unweighted_Dphi_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta#phi;1/N_{evt} dN/d#Delta#phi", 64,-pms.PI,pms.PI);
+                    h_unweighted_pair_y[idr][ksign][lgapcut] = new TH1D(Form("h_unweighted_pair_y_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";y_{pair};1/N_{evt} dN/dy_{pair}" ,45,-3,3);
+                    h_unweighted_eta_avg_Dphi[idr][ksign][lgapcut] = new TH2D(Form("h_unweighted_eta_avg_Dphi_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta#phi;#bar{#eta}", 64,-pms.PI,pms.PI,50,-2.4,2.4);
+                    h_unweighted_Deta_Dphi[idr][ksign][lgapcut] = new TH2D(Form("h_unweighted_Deta_Dphi_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta#phi;#Delta#eta", 64,-pms.PI,pms.PI,100,-4.8,4.8);
+                    h_unweighted_eta1_eta2[idr][ksign][lgapcut] = new TH2D(Form("h_unweighted_eta1_eta2_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#eta_{sublead};#eta_{lead}",50,-2.4,2.4, 50,-2.4,2.4);
+                    h_unweighted_eta_avg_Deta[idr][ksign][lgapcut] = new TH2D(Form("h_unweighted_eta_avg_Deta_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta#eta;#bar{#eta}",50,-4.8,4.8,50,-2.4,2.4);
+                    h_unweighted_pt1_pt2[idr][ksign][lgapcut] = new TH2D(Form("h_unweighted_pt1_pt2_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";p_{T}^{sublead} [GeV];p_{T}^{lead} [GeV]",static_cast<int>(pms.npt_bins/2.),pms.pTBins,static_cast<int>(pms.npt_bins/2.),pms.pTBins);
+                    h_unweighted_ptlead_pair_pt[idr][ksign][lgapcut] = new TH2D(Form("h_unweighted_ptlead_pair_pt_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",static_cast<int>(pms.npairPT_bins/2.),pms.pairPTBins[ksign][idr],static_cast<int>(pms.npt_bins/2),pms.pTBins);
+                    h_unweighted_minv_pair_pt[idr][ksign][lgapcut] = new TH2D(Form("h_unweighted_minv_pair_pt_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",static_cast<int>(pms.npairPT_bins/2.),pms.pairPTBins[ksign][idr],static_cast<int>(pms.minv_nbins[idr]/2),0,pms.minv_max[idr]);
                 }
 
                 for (unsigned int idphi= 0; idphi < ParamsSet::ndphiselcs; idphi++){
                     // h_eta1_eta2_dphicut[idphi][ksign][lgapcut] = new TH2D(Form("h_eta1_eta2_dphi%d_sign%d_gapcut%d",idphi+1,ksign+1,lgapcut+1),";#eta_{sublead};#eta_{lead}",100,-2.4,2.4, 100,-2.4,2.4);
                     h_eta1_eta2_dphicut[idphi][ksign][lgapcut] = new TH2D(Form("h_eta1_eta2_dphi%d_sign%d_gapcut%d",idphi+1,ksign+1,lgapcut+1),";#eta_{sublead};#eta_{lead}",50,-2.4,2.4, 50,-2.4,2.4);
+                    h_unweighted_eta1_eta2_dphicut[idphi][ksign][lgapcut] = new TH2D(Form("h_unweighted_eta1_eta2_dphi%d_sign%d_gapcut%d",idphi+1,ksign+1,lgapcut+1),";#eta_{sublead};#eta_{lead}",50,-2.4,2.4, 50,-2.4,2.4);
                 }
             }
         }

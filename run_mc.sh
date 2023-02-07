@@ -11,20 +11,3 @@ root -b -l << EOF
 	.q;
 EOF
 
-# root -b -l << EOF
-# 	.L MuonPairPlottingPP.c
-	
-# 	MuonPairPlottingPP cc
-# 	cc.isScram = false
-# 	cc.isMCTruthBB = false
-# 	cc.isMCTruthCC = true
-# 	cc.Run()
-
-# 	MuonPairPlottingPP bb;
-# 	bb.isScram = false
-# 	bb.isMCTruthBB = true
-# 	bb.isMCTruthCC = false
-# 	bb.Run();
-# 	.q;
-# EOF
-

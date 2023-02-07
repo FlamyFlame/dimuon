@@ -77,7 +77,7 @@ ParamsSet::ParamsSet(){
   	}
 
 	for(int i = 0; i <= npt_bins; i++){
-    	pTBins[i] = ptmax * pow(10.0, ((float)(i-npt_bins))*ptlogpow);
+    	pTBins[i] = ptmax * pow(10.0, (static_cast<float>(i-npt_bins))*ptlogpow);
   	}
 
 	pairPTlogpow[0][0] = 0.0198;
@@ -92,7 +92,7 @@ ParamsSet::ParamsSet(){
   	for (int isign = 0; isign < nSigns; isign++){
   		for (int idr = 0; idr < ndRselcs; idr++){
   			for(int ipt = 0; ipt <= npairPT_bins; ipt++){
-    			pairPTBins[isign][idr][ipt] = pairPTmax * pow(10.0, ((float)(ipt - npairPT_bins)) * pairPTlogpow[isign][idr]);
+    			pairPTBins[isign][idr][ipt] = pairPTmax * pow(10.0, (static_cast<float>(ipt - npairPT_bins)) * pairPTlogpow[isign][idr]);
   			}
   		}
   	}

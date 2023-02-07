@@ -21,7 +21,7 @@ const int nDphi = 2;
 std::string mcmodes[nMCmodes] = {"bb","cc"};
 std::string mc_path = "/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/";
 std::string fnames[nMCmodes] = {"muon_pairs_mc_truth_bb.root", "muon_pairs_mc_truth_cc.root"};
-std::vector<std::vector<std::string>> hist_names;
+std::vector<std::vector<std::vector<std::string>>> hist_names = {};
 
 std::string labels[nMCmodes][nSigns][nDphi] = {
   {{"bb, same sign, #Dphi < #pi/2","bb, same sign, #Dphi #geq #pi/2"}, {"bb, opposite sign, #Dphi < #pi/2","bb, opposite sign, #Dphi #geq #pi/2"}}, 
@@ -45,13 +45,23 @@ void hist_helper(TH1* h, std::string title){
   // h->GetXaxis()->SetTitleOffset(1);
 }
 
-void plot_one_mode(int mode){
+
+void plot_one_mode(int mode){ // mode = 1: unweighted; mode = 2: weighted
 
   TH2D* h;
   TFile* f[nMCmodes];
 
-  if (mode == 1) hist_names = {{"h_MuonPairParentGroups_sign1_near","h_MuonPairParentGroups_sign1_away"},{"h_MuonPairParentGroups_sign2_near","h_MuonPairParentGroups_sign2_away"}};
-  else           hist_names = {{"h_MuonPairParentGroups_weighted_sign1_near","h_MuonPairParentGroups_weighted_sign1_away"},{"h_MuonPairParentGroups_weighted_sign2_near","h_MuonPairParentGroups_weighted_sign2_away"}};
+  if (mode == 1){
+    for (auto h : hist_names)
+    hist_names.clear();
+    hist_names.push_back({{"h_bb_both_from_b_same_prts_sign1_near","h_bb_both_from_b_same_prts_sign1_away"},{"h_bb_both_from_b_same_prts_sign2_near","h_bb_both_from_b_same_prts_sign2_away"}});
+    hist_names.push_back({{"h_cc_both_from_c_same_prts_sign1_near","h_cc_both_from_c_same_prts_sign1_away"},{"h_cc_both_from_c_same_prts_sign2_near","h_cc_both_from_c_same_prts_sign2_away"}});
+  }
+  else{
+    hist_names.clear();
+    hist_names.push_back({{"h_weighted_bb_both_from_b_same_prts_sign1_near","h_weighted_bb_both_from_b_same_prts_sign1_away"},{"h_weighted_bb_both_from_b_same_prts_sign2_near","h_weighted_bb_both_from_b_same_prts_sign2_away"}});
+    hist_names.push_back({{"h_weighted_cc_both_from_c_same_prts_sign1_near","h_weighted_cc_both_from_c_same_prts_sign1_away"},{"h_weighted_cc_both_from_c_same_prts_sign2_near","h_weighted_cc_both_from_c_same_prts_sign2_away"}});
+  }
 
   for (int imc = 0; imc < nMCmodes; imc++){
 
@@ -63,7 +73,7 @@ void plot_one_mode(int mode){
       for (int lphi = 0; lphi < nDphi; lphi++){
 
         c->cd(ksign * nSigns + lphi + 1);
-        h = (TH2D*) f[imc]->Get(hist_names[ksign][lphi].c_str());
+        h = (TH2D*) f[imc]->Get(hist_names[imc][ksign][lphi].c_str());
         hist_helper(h,labels[imc][ksign][lphi] + " (" + std::to_string(static_cast<int>(h->GetEntries())) + ")");
         gPad->SetLeftMargin(0.16);
         gPad->SetRightMargin(0.16);
@@ -77,19 +87,20 @@ void plot_one_mode(int mode){
         // l->SetMargin(0.02);
         // l->SetTextColor(1);
         // l->AddEntry(h, labels[imc][ksign][lphi].c_str(),"lp");
-        h->Draw("colz");
+        h->Draw();
         // l->Draw(); 
       }
     }
 
-    if (mode == 1) c->SaveAs(Form("plots/mc_truth/prt_grouping/muon_pair_parent_groups_%s.png",mcmodes[imc].c_str()));
-    else           c->SaveAs(Form("plots/mc_truth/prt_grouping/muon_pair_parent_groups_%s_weighted.png",mcmodes[imc].c_str()));
+    if (mode == 1) c->SaveAs(Form("plots/mc_truth/prt_grouping/muon_pair_same_prts_%s.png",mcmodes[imc].c_str()));
+    else           c->SaveAs(Form("plots/mc_truth/prt_grouping/muon_pair_same_prts_%s_weighted.png",mcmodes[imc].c_str()));
     c->Close();
     delete c;
   }
+
 }
 
-void mc_muon_pair_parent_groups(){
+void mc_muon_pair_same_prts(){
   plot_one_mode(1);
   plot_one_mode(2);
 }

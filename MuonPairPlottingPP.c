@@ -57,15 +57,28 @@ void MuonPairPlottingPP::FillHistograms(int ndr, int nsign){
         h_ptlead_pair_pt[ndr][nsign][1]->Fill(pair_pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
         h_minv_pair_pt[ndr][nsign][1]->Fill(pair_pt[ndr][nsign],minv[ndr][nsign],weight[ndr][nsign]);
         h_Deta_Dphi[ndr][nsign][1]->Fill(dphi[ndr][nsign],deta[ndr][nsign],weight[ndr][nsign]);
-        // h_eta_avg_pair_eta[ndr][nsign][1]->Fill(pair_eta[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
+        
+        h_unweighted_pair_dP_overP[ndr][nsign][1]->Fill(pair_dPoverP[ndr][nsign]);
+        h_unweighted_pair_y[ndr][nsign][1]->Fill(pair_y[ndr][nsign]);
+        h_unweighted_DR[ndr][nsign][1]->Fill(dr[ndr][nsign]);
+        h_unweighted_eta_avg_Dphi[ndr][nsign][1]->Fill(dphi[ndr][nsign],etaavg[ndr][nsign]);
+        h_unweighted_eta1_eta2[ndr][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign]);
+        h_unweighted_pt1_pt2[ndr][nsign][1]->Fill(m2pt[ndr][nsign],m1pt[ndr][nsign]);
+        h_unweighted_eta_avg_Deta[ndr][nsign][1]->Fill(deta[ndr][nsign],etaavg[ndr][nsign]);
+        h_unweighted_ptlead_pair_pt[ndr][nsign][1]->Fill(pair_pt[ndr][nsign],m1pt[ndr][nsign]);
+        h_unweighted_minv_pair_pt[ndr][nsign][1]->Fill(pair_pt[ndr][nsign],minv[ndr][nsign]);
+        h_unweighted_Deta_Dphi[ndr][nsign][1]->Fill(dphi[ndr][nsign],deta[ndr][nsign]);
 
 
         if (ndr == 2){ //no delta R cut
             h_eta1_eta2_dphicut[2][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
+            h_unweighted_eta1_eta2_dphicut[2][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign]);
             if (dphi[ndr][nsign] < 1){
                 h_eta1_eta2_dphicut[0][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
+                h_unweighted_eta1_eta2_dphicut[0][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign]);
             }else if(dphi[ndr][nsign] > pms.PI-1){
                 h_eta1_eta2_dphicut[1][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
+                h_unweighted_eta1_eta2_dphicut[1][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign]);
             }
         }
     }
@@ -79,16 +92,29 @@ void MuonPairPlottingPP::FillHistograms(int ndr, int nsign){
     h_eta1_eta2[ndr][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
     h_pt1_pt2[ndr][nsign][0]->Fill(m2pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
     h_eta_avg_Deta[ndr][nsign][0]->Fill(deta[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
-    // h_eta_avg_pair_eta[ndr][nsign][0]->Fill(pair_eta[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
     h_ptlead_pair_pt[ndr][nsign][0]->Fill(pair_pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
     h_minv_pair_pt[ndr][nsign][0]->Fill(pair_pt[ndr][nsign],minv[ndr][nsign],weight[ndr][nsign]);
 
+    h_unweighted_pair_dP_overP[ndr][nsign][0]->Fill(pair_dPoverP[ndr][nsign]);
+    h_unweighted_pair_y[ndr][nsign][0]->Fill(pair_y[ndr][nsign]);
+    h_unweighted_DR[ndr][nsign][0]->Fill(dr[ndr][nsign]);
+    h_unweighted_eta_avg_Dphi[ndr][nsign][0]->Fill(dphi[ndr][nsign],etaavg[ndr][nsign]);
+    h_unweighted_Deta_Dphi[ndr][nsign][0]->Fill(dphi[ndr][nsign],deta[ndr][nsign]);
+    h_unweighted_eta1_eta2[ndr][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign]);
+    h_unweighted_pt1_pt2[ndr][nsign][0]->Fill(m2pt[ndr][nsign],m1pt[ndr][nsign]);
+    h_unweighted_eta_avg_Deta[ndr][nsign][0]->Fill(deta[ndr][nsign],etaavg[ndr][nsign]);
+    h_unweighted_ptlead_pair_pt[ndr][nsign][0]->Fill(pair_pt[ndr][nsign],m1pt[ndr][nsign]);
+    h_unweighted_minv_pair_pt[ndr][nsign][0]->Fill(pair_pt[ndr][nsign],minv[ndr][nsign]);
+
     if (ndr == 2){ //no delta R cut
         h_eta1_eta2_dphicut[2][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
+        h_unweighted_eta1_eta2_dphicut[2][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign]);
         if (dphi[ndr][nsign] < 1){
             h_eta1_eta2_dphicut[0][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
+            h_unweighted_eta1_eta2_dphicut[0][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign]);
         }else if(dphi[ndr][nsign] > pms.PI-1){
             h_eta1_eta2_dphicut[1][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
+            h_unweighted_eta1_eta2_dphicut[1][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign]);
         }
     }
 }
@@ -126,13 +152,24 @@ void MuonPairPlottingPP::WriteOutput(){
                     h_Deta_Dphi[idr][ksign][lgapcut]->Write();
                     h_eta1_eta2[idr][ksign][lgapcut]->Write();
                     h_eta_avg_Deta[idr][ksign][lgapcut]->Write();
-                    // h_eta_avg_pair_eta[idr][ksign][lgapcut]->Write();
                     h_pt1_pt2[idr][ksign][lgapcut]->Write();
                     h_ptlead_pair_pt[idr][ksign][lgapcut]->Write();
                     h_minv_pair_pt[idr][ksign][lgapcut]->Write();
+
+                    h_unweighted_pair_dP_overP[idr][ksign][lgapcut]->Write();
+                    h_unweighted_pair_y[idr][ksign][lgapcut]->Write();
+                    h_unweighted_DR[idr][ksign][lgapcut]->Write();
+                    h_unweighted_eta_avg_Dphi[idr][ksign][lgapcut]->Write();
+                    h_unweighted_Deta_Dphi[idr][ksign][lgapcut]->Write();
+                    h_unweighted_eta1_eta2[idr][ksign][lgapcut]->Write();
+                    h_unweighted_eta_avg_Deta[idr][ksign][lgapcut]->Write();
+                    h_unweighted_pt1_pt2[idr][ksign][lgapcut]->Write();
+                    h_unweighted_ptlead_pair_pt[idr][ksign][lgapcut]->Write();
+                    h_unweighted_minv_pair_pt[idr][ksign][lgapcut]->Write();
                 }
                 for (unsigned int idphi= 0; idphi < ParamsSet::ndphiselcs; idphi++){
                     h_eta1_eta2_dphicut[idphi][ksign][lgapcut]->Write();
+                    h_unweighted_eta1_eta2_dphicut[idphi][ksign][lgapcut]->Write();
                 }
             }
         }

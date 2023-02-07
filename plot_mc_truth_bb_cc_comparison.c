@@ -20,21 +20,21 @@ const int nSigns = 2; //3*2 canvas
 const int nGroups = 2; //real, scrambled pairs
 const int nGapCuts = 2; //with, without gap cut
 
-// std::vector<std::string> hist1DNames = {"h_pair_dP_overP", "h_pair_y","h_DR"};
+// std::vector<std::string> hist1DNames = {"pair_dP_overP", "pair_y","DR"};
 // std::vector<bool> logx1Ds = {false,false,false};
 // std::vector<bool> logy1Ds = {false,false,false};
-std::vector<std::string> hist1DNames = {"h_pair_dP_overP","h_DR"};
+std::vector<std::string> hist1DNames = {"pair_dP_overP","DR"};
 std::vector<bool> logx1Ds = {false,false};
 std::vector<bool> logy1Ds = {false,false};
 
-std::vector<std::string> hist2DNames = {"h_eta_avg_Dphi", "h_eta1_eta2", "h_eta_avg_Deta", "h_pt1_pt2","h_ptlead_pair_pt", "h_minv_pair_pt"};
+std::vector<std::string> hist2DNames = {"eta_avg_Dphi", "eta1_eta2", "eta_avg_Deta", "pt1_pt2","ptlead_pair_pt", "minv_pair_pt"};
 std::vector<bool> projxs = {true, true, true, true, true, false};
 std::vector<bool> projys = {false, true, true, true, true, true};
 std::vector<bool> logxs = {false, false, false, true, true, false};
 std::vector<bool> logys = {false, false, false, true, true, false};
 std::vector<bool> logzs = {false, false, false, true, true, false};
-std::vector<std::string> hxNames = {"h_Dphi", "h_eta2", "h_Deta", "h_pt2", "h_pair_pt", ""};
-std::vector<std::string> hyNames = {"", "h_eta1", "h_eta_avg", "h_pt1", "h_ptlead", "h_minv"};
+std::vector<std::string> hxNames = {"Dphi", "eta2", "Deta", "pt2", "pair_pt", ""};
+std::vector<std::string> hyNames = {"", "eta1", "eta_avg", "pt1", "ptlead", "minv"};
 
 const int n2Ds = hist2DNames.size();
 const int n1Ds = hist1DNames.size();
@@ -146,7 +146,7 @@ void plot1D(Hist1D& h, const int nCuts, std::string cuts[], std::string cutTitle
 					h1[igrp]->SetMarkerStyle(20);
 					h1[igrp]->SetMarkerSize(0.5);
 				}
-	    		l->AddEntry("pp","");
+	    		// l->AddEntry("pp","");
 		    	l->AddEntry("",gapCutTitles[mgapcut].c_str(),"");
 						
 				h1[0]->SetMarkerColor(kRed);
@@ -214,7 +214,7 @@ void plot1D(TH1D (*h)[nGapCuts][nSigns][nGroups], Hist1D& h_struct, const int nC
 						h1[igrp]->SetMarkerStyle(20);
 						h1[igrp]->SetMarkerSize(0.5);
 					}
-	    			l->AddEntry("","pp","");
+	    			// l->AddEntry("","pp","");
 		    		l->AddEntry("",gapCutTitles[mgapcut].c_str(),"");
 							
 					h1[0]->SetMarkerColor(kRed);
@@ -243,8 +243,6 @@ void plot1D(TH1D (*h)[nGapCuts][nSigns][nGroups], Hist1D& h_struct, const int nC
 void Process2D(Hist2D h, const int nCuts, std::string cuts[], std::string cutTitles[], std::string name_specf=""){
 	
 	h.name_specifier = name_specf;
-	// TH1D (*hx)[nGapCuts][nCuts][nSigns][nGroups] = new TH1D[nGapCuts][nCuts][nSigns][nGroups];
-	// TH1D (*hy)[nGapCuts][nCuts][nSigns][nGroups] = new TH1D[nGapCuts][nCuts][nSigns][nGroups];
 	TH1D (*hx)[nGapCuts][nSigns][nGroups] = new TH1D[nCuts][nGapCuts][nSigns][nGroups];
 	TH1D (*hy)[nGapCuts][nSigns][nGroups] = new TH1D[nCuts][nGapCuts][nSigns][nGroups];
 
@@ -276,7 +274,7 @@ void Process2D(Hist2D h, const int nCuts, std::string cuts[], std::string cutTit
 	    			l->SetTextFont(43);
 	    			l->SetMargin(0.02);
 	    			l->SetTextColor(1);
-	    			l->AddEntry("","pp","");
+	    			// l->AddEntry("","pp","");
 		    		l->AddEntry("",gapCutTitles[mgapcut].c_str(),"");
 		    		l->AddEntry("",grpTitles[lgrp].c_str(),"");
 					l->Draw();
@@ -328,6 +326,31 @@ void Process2D(Hist2D h, const int nCuts, std::string cuts[], std::string cutTit
 	delete[] hy;
 }
 
+void plot_one_mode(bool weighted){
+
+	std::string hname_prefix = (weighted)? "h_" : "h_unweighted_";
+
+	for (unsigned int i2d = 0; i2d < n2Ds; i2d++){
+		std::string h2dname = hname_prefix + hist2DNames[i2d];
+		std::string hxname = hname_prefix + hxNames[i2d];
+		std::string hyname = hname_prefix + hyNames[i2d];
+		Hist2D h2d = {h2dname, projxs[i2d], projys[i2d], hxname, hyname, logxs[i2d], logys[i2d], logzs[i2d]};
+		Process2D(h2d, ndRcuts, dRs, dRTitles);
+	}
+
+	for (unsigned int i1d = 0; i1d < n1Ds; i1d++){
+		std::string h1dname = hname_prefix + hist1DNames[i1d];
+		Hist1D h1d = {h1dname, logx1Ds[i1d], logy1Ds[i1d]};
+		plot1D(h1d, ndRcuts, dRs, dRTitles);
+	}
+
+	// std::string hname = hname_prefix + "eta1_eta2";
+	// std::string hxname = hname_prefix + "eta1";
+	// std::string hyname = hname_prefix + "eta2";
+	// Hist2D h2d_phi = {hname true, true, hxname, hyname, false, false, false};
+	// Process2D(h2d_phi, ndphicuts, dphis, dphiTitles, "_DPHI_");
+}
+
 void plot_mc_truth_bb_cc_comparison(){
 
 	clock_t start, end;
@@ -336,19 +359,8 @@ void plot_mc_truth_bb_cc_comparison(){
 
 	initialize();
 
-
-	// for (unsigned int i2d = 0; i2d < n2Ds; i2d++){
-	// 	Hist2D h2d = {hist2DNames[i2d], projxs[i2d], projys[i2d], hxNames[i2d], hyNames[i2d], logxs[i2d], logys[i2d], logzs[i2d]};
-	// 	Process2D(h2d, ndRcuts, dRs, dRTitles);
-	// }
-
-	for (unsigned int i1d = 0; i1d < n1Ds; i1d++){
-		Hist1D h1d = {hist1DNames[i1d], logx1Ds[i1d], logy1Ds[i1d]};
-		plot1D(h1d, ndRcuts, dRs, dRTitles);
-	}
-
-	// Hist2D h2d_phi = {"h_eta1_eta2", true, true, "h_eta1", "h_eta2", false, false, false};
-	// Process2D(h2d_phi, ndphicuts, dphis, dphiTitles, "_DPHI_");
+	plot_one_mode(true);
+	// plot_one_mode(false);
 
 	delete f[0];
   	delete f[1];

@@ -7,11 +7,15 @@
 #include "time.h"
 #include<bits/stdc++.h>
 #include <stdio.h>
+#include <algorithm>
 
 void SimpleOutput::ProcessData(){
 
   Long64_t nentries = fChain->GetEntries();//number of events
-  for (Long64_t jentry=0; jentry<3;jentry++) {//loop over the events
+  for (Long64_t jentry=0; jentry<nentries;jentry++) {//loop over the events
+    if (std::find(events_of_interest.begin(),events_of_interest.end(),jentry) == events_of_interest.end())
+      continue;
+    // std::cout << jentry << std::endl;
     int num_bytes = fChain->GetEntry(jentry);//read in an event
     if(num_bytes==0){
       std::cout<<"Error:: Read in event has size of zero bytes,  quitting"<<std::endl;
@@ -53,6 +57,9 @@ void SimpleOutput::Run(){
   // std::cout << "Mode = " << mode << ". Output file is " << m_outfile << std::endl;
   InitInput();
   std::string fname = (mc_mode == "mc_truth_bb")? "truth_print_bb.txt" : "truth_print_cc.txt";
+  events_of_interest = (mc_mode == "mc_truth_bb")? bb_events_of_interest : cc_events_of_interest;
+  
+  // std::cout << events_of_interest.size() << " " << events_of_interest[0] << " " << events_of_interest[-1] << std::endl;
   outfile = fopen ((mcdir + fname).c_str(),"w");
   fprintf(outfile,"#ev\tbarcode\tid\tpt\t\teta\t\tparents\t\tchildren\n");
 

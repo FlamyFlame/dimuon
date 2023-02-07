@@ -41,6 +41,17 @@ private:
     std::vector<std::vector<int>>* truth_parents = nullptr;
     std::vector<std::vector<int>>* truth_children = nullptr;
       
+
+
+// --------------------- events of interest ---------------------------
+
+    // bb: 3 from HF-diquark, 1 from 1103, 1 from 203?
+    std::vector<int> bb_events_of_interest = {2853, 4414, 33844, 72637, 96789};
+    // cc: 4 from [21 21], 3 from [3], 2 from [21 2]
+    // std::vector<int> cc_events_of_interest = {164, 3198, 9872, 15617, 23391, 32701, 48796, 24135, 49037};
+    std::vector<int> cc_events_of_interest = {25279, 27004, 36467, 40757, 14995};
+    std::vector<int> events_of_interest;
+
 // --------------------- output file, histograms & trees ---------------------------
   
     // ofstream outfile;
@@ -53,7 +64,7 @@ private:
 
 public :
     bool isTruth = true;
-    std::string mc_mode = "mc_truth_bb";
+    std::string mc_mode;
     // std::string mc_mode = "mc_truth_cc";
     SimpleOutput();
     ~SimpleOutput(){}
