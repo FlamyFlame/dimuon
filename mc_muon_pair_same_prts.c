@@ -54,13 +54,13 @@ void plot_one_mode(int mode){ // mode = 1: unweighted; mode = 2: weighted
   if (mode == 1){
     for (auto h : hist_names)
     hist_names.clear();
-    hist_names.push_back({{"h_bb_both_from_b_same_prts_sign1_near","h_bb_both_from_b_same_prts_sign1_away"},{"h_bb_both_from_b_same_prts_sign2_near","h_bb_both_from_b_same_prts_sign2_away"}});
-    hist_names.push_back({{"h_cc_both_from_c_same_prts_sign1_near","h_cc_both_from_c_same_prts_sign1_away"},{"h_cc_both_from_c_same_prts_sign2_near","h_cc_both_from_c_same_prts_sign2_away"}});
+    hist_names.push_back({{"h_unweighted_bb_both_from_b_same_prts_sign1_near","h_unweighted_bb_both_from_b_same_prts_sign1_away"},{"h_unweighted_bb_both_from_b_same_prts_sign2_near","h_unweighted_bb_both_from_b_same_prts_sign2_away"}});
+    hist_names.push_back({{"h_unweighted_cc_both_from_c_same_prts_sign1_near","h_unweighted_cc_both_from_c_same_prts_sign1_away"},{"h_unweighted_cc_both_from_c_same_prts_sign2_near","h_unweighted_cc_both_from_c_same_prts_sign2_away"}});
   }
   else{
     hist_names.clear();
-    hist_names.push_back({{"h_weighted_bb_both_from_b_same_prts_sign1_near","h_weighted_bb_both_from_b_same_prts_sign1_away"},{"h_weighted_bb_both_from_b_same_prts_sign2_near","h_weighted_bb_both_from_b_same_prts_sign2_away"}});
-    hist_names.push_back({{"h_weighted_cc_both_from_c_same_prts_sign1_near","h_weighted_cc_both_from_c_same_prts_sign1_away"},{"h_weighted_cc_both_from_c_same_prts_sign2_near","h_weighted_cc_both_from_c_same_prts_sign2_away"}});
+    hist_names.push_back({{"h_bb_both_from_b_same_prts_sign1_near","h_bb_both_from_b_same_prts_sign1_away"},{"h_bb_both_from_b_same_prts_sign2_near","h_bb_both_from_b_same_prts_sign2_away"}});
+    hist_names.push_back({{"h_cc_both_from_c_same_prts_sign1_near","h_cc_both_from_c_same_prts_sign1_away"},{"h_cc_both_from_c_same_prts_sign2_near","h_cc_both_from_c_same_prts_sign2_away"}});
   }
 
   for (int imc = 0; imc < nMCmodes; imc++){

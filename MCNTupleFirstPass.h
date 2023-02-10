@@ -44,6 +44,7 @@ private:
     std::vector<int>* truth_barcode = nullptr;
     std::vector<int>* truth_qual = nullptr;
     std::vector<std::vector<int>>* truth_parents = nullptr;
+    std::vector<std::vector<int>>* truth_children = nullptr;
     // std::vector<std::vector<int>>* truth_muon_parent_ids = nullptr;
     // std::vector<std::vector<int>>* truth_muon_parent_bars = nullptr;
     std::vector<float>   *EventWeights           =nullptr;
@@ -75,7 +76,7 @@ private:
     int cur_m1_earliest_parent_barcode;
     int cur_m2_earliest_parent_barcode;
 
-    // bool same_parents;
+    // bool same_ancestors;
     bool m1_ancestor_is_incoming;
     bool m2_ancestor_is_incoming;
 
@@ -113,47 +114,57 @@ private:
     ofstream m_b_parent_file[ParamsSet::nSigns][2];
     ofstream m_c_parent_file[ParamsSet::nSigns][2];
     ofstream m_cc_ss_small_dphi_file;
+    ofstream m_bb_ss_near_file;
 
     TTree* muonOutTree;
     TTree* muonPairOutTree[ParamsSet::nSigns];
     TTree* muonPairOutTreeBinned[ParamsSet::ndRselcs][ParamsSet::nSigns];
 
     TH1D* h_cutAcceptance[ParamsSet::nSigns];
-    TH1D* h_numParents;
+    // TH1D* h_numParents;
     TH1D* h_numMuonPairs;
-    TH2D* h_MuonPairParentGroups[ParamsSet::nSigns][2];
-    TH2D* h_MuonPairParentGroups_weighted[ParamsSet::nSigns][2];
+    TH2D* h_unweighted_parent_groups[ParamsSet::nSigns][2];
+    TH2D* h_parent_groups[ParamsSet::nSigns][2];
 
     static const int npTbins = 3;
     TH1D* h_crossx;
     TH1D* h_crossx_pt_binned[npTbins];
 
+    TH1D* h_unweighted_bb_op_one_b_one_btoc[2];
     TH1D* h_bb_op_one_b_one_btoc[2];
-    TH1D* h_weighted_bb_op_one_b_one_btoc[2];
 
-    TH1D* h_bb_both_from_b_same_prts[ParamsSet::nSigns][2];
-    TH1D* h_cc_both_from_c_same_prts[ParamsSet::nSigns][2];
-    TH1D* h_weighted_bb_both_from_b_same_prts[ParamsSet::nSigns][2];
-    TH1D* h_weighted_cc_both_from_c_same_prts[ParamsSet::nSigns][2];
+    TH1D* h_unweighted_bb_both_from_b_same_ancestors[ParamsSet::nSigns][2];
+    TH1D* h_unweighted_cc_both_from_c_same_ancestors[ParamsSet::nSigns][2];
+    TH1D* h_bb_both_from_b_same_ancestors[ParamsSet::nSigns][2];
+    TH1D* h_cc_both_from_c_same_ancestors[ParamsSet::nSigns][2];
 
+    TH1D* h_unweighted_bb_both_from_b_ancestor_sp[ParamsSet::nSigns][2];
+    TH2D* h_unweighted_bb_both_from_b_ancestor_dp[ParamsSet::nSigns][2];
     TH1D* h_bb_both_from_b_ancestor_sp[ParamsSet::nSigns][2];
     TH2D* h_bb_both_from_b_ancestor_dp[ParamsSet::nSigns][2];
-    TH1D* h_weighted_bb_both_from_b_ancestor_sp[ParamsSet::nSigns][2];
-    TH2D* h_weighted_bb_both_from_b_ancestor_dp[ParamsSet::nSigns][2];
 
+    TH1D* h_unweighted_cc_both_from_c_ancestor_sp[ParamsSet::nSigns][2];
+    TH2D* h_unweighted_cc_both_from_c_ancestor_dp[ParamsSet::nSigns][2];
     TH1D* h_cc_both_from_c_ancestor_sp[ParamsSet::nSigns][2];
     TH2D* h_cc_both_from_c_ancestor_dp[ParamsSet::nSigns][2];
-    TH1D* h_weighted_cc_both_from_c_ancestor_sp[ParamsSet::nSigns][2];
-    TH2D* h_weighted_cc_both_from_c_ancestor_dp[ParamsSet::nSigns][2];
 
-    TH2D* h_weighted_cc_ss_small_dphi_prt_gps;
-    TH1D* h_weighted_cc_ss_small_dphi_same_prts;
-    TH1D* h_weighted_cc_ss_small_dphi_sp;
-    TH2D* h_weighted_cc_ss_small_dphi_dp;
-    TH2D* h_weighted_cc_ss_plateau_prt_gps;
-    TH1D* h_weighted_cc_ss_plateau_same_prts;
-    TH1D* h_weighted_cc_ss_plateau_sp;
-    TH2D* h_weighted_cc_ss_plateau_dp;
+    TH1D* h_dphi_bb_op_near_both_from_b;
+    TH1D* h_dphi_bb_op_near_one_b_one_btoc;
+    TH1D* h_dphi_bb_ss_near;
+    TH1D* h_dphi_bb_op_near;
+    TH1D* h_dphi_bb_op_near_from_same_b;
+
+    TH1D* h_bb_ss_near_involv_osc;
+    TH1D* h_bb_ss_near_num_hard_scatt_out;
+
+    TH2D* h_cc_ss_small_dphi_prt_gps;
+    TH1D* h_cc_ss_small_dphi_same_ancestors;
+    TH1D* h_cc_ss_small_dphi_sp;
+    TH2D* h_cc_ss_small_dphi_dp;
+    TH2D* h_cc_ss_plateau_prt_gps;
+    TH1D* h_cc_ss_plateau_same_ancestors;
+    TH1D* h_cc_ss_plateau_sp;
+    TH2D* h_cc_ss_plateau_dp;
 
     const int nParentGroups = 5;
     std::vector<std::string> parentGroupLabels = {"direct b","b to c","direct c","s/light","photon"};
@@ -165,9 +176,11 @@ private:
     std::string cutLabels[numCuts] = {"no cut", "muon pT", "muon eta", "resonance", "photoproduction"};
 
     std::vector<std::string> samePrtsLabels = {"Same Parents", "Different Parents"};
-    std::vector<std::string> bb_op_one_b_one_btoc_labels = {"Same b", "Involve osc(s)", "Others"};
-    std::vector<std::string> bb_both_from_b_ancestor_labels = {"Not incoming", "Incoming"};
-    std::vector<std::string> cc_both_from_c_ancestor_labels = {"Not incoming", "Incoming"};
+    std::vector<std::string> bb_op_one_b_one_btoc_labels = {"Same b", "Involve osc(s)", "From different ancestors", "Others"};
+
+    // std::vector<std::string> osc_labels = {"0 osc, one b one b-to-c", "0 osc, others", "1 osc, one b one b-to-c", "1 osc, regular", "2 oscs, one b one b-to-c", "2 oscs, others"};
+    std::vector<std::string> osc_labels = {"0 osc, one c-tag", "0 osc, others", "1 osc, one c-tag", "1 osc, regular", "2 oscs, one c-tag", "2 oscs, others"};
+    std::vector<std::string> num_hard_scatt_out_labels = {"2","3","more"};
 
 // --------------------- class methods ---------------------------
   
@@ -178,10 +191,12 @@ private:
     bool IsResonance();
     bool IsPhotoProduction();
     int  ParentGrouping(int parent_id, bool c_tag);
-    int  UpdateCurParents(bool isFirstTime, bool isMuon1, std::vector<int>& cur_prt_bars, std::vector<int>& cur_prt_ids, int hf_quark_index = -1);
+    int  UpdateCurParents(bool isMuon1, std::vector<int>& cur_prt_bars, std::vector<int>& cur_prt_ids, bool record_history = true, int hf_quark_index = -1);
     int  FindHeavyQuarks(std::vector<int>& cur_prt_ids, int quark_type, bool isMuon1, int hadron_child_id = 0);
     void FindSingleMuonParents(bool isMuon1);
     int  AncestorGrouping(std::vector<int>& ancestor_ids, bool sameprts = true);
+    void HardScatteringAnalysis(std::vector<int>& ancestor_bars, std::vector<int>& ancestor_ids, bool sameprts = true);
+    void PrintHistory(std::ofstream& f, bool same_ancestors, bool state_same_ancestors = false);
     void FillMuonPairParents();
     void FillSingleMuonTree();
     void FillMuonPairTree();
@@ -190,7 +205,7 @@ private:
 public :
     int mode = 2;
     std::string mc_mode = "mc_truth_cc";
-    bool print_prt_history = false;
+    bool print_prt_history = true;
     MCNTupleFirstPass();
     ~MCNTupleFirstPass(){}
     void Run();
@@ -221,6 +236,7 @@ void MCNTupleFirstPass::InitInput(){
     fChain->SetBranchAddress("truth_barcode"              , &truth_barcode);
     fChain->SetBranchAddress("truth_qual"                 , &truth_qual);
     fChain->SetBranchAddress("truth_parents"              , &truth_parents);
+    fChain->SetBranchAddress("truth_children"              , &truth_children);
     fChain->SetBranchAddress("EventWeights"               , &EventWeights);
 
     fChain->SetBranchAddress("truth_mupair_pt1"           , &muon_pair_muon1_pt);
@@ -250,6 +266,7 @@ void MCNTupleFirstPass::InitInput(){
     fChain->SetBranchStatus("truth_barcode"              ,1);
     fChain->SetBranchStatus("truth_qual"             ,1);
     fChain->SetBranchStatus("truth_parents"             ,1);
+    fChain->SetBranchStatus("truth_children"             ,1);
     fChain->SetBranchStatus("EventWeights"             ,1);
 
     fChain->SetBranchStatus("truth_mupair_pt1"           ,1);
@@ -278,24 +295,29 @@ void MCNTupleFirstPass::InitOutput(){
     if (mc_mode == "mc_truth_cc"){
         m_cc_ss_small_dphi_file.open(Form("%scc_ss_small_dphi.txt", mcdir.c_str()));
         m_cc_ss_small_dphi_file << "Event#\tm1-grp\tm2-grp" << std::endl;
+    }else{
+        m_bb_ss_near_file.open(Form("%sbb_ss_near.txt", mcdir.c_str()));
     }
 
+
     std::string sign_labels[ParamsSet::nSigns] = {"same_sign", "op_sign"};
-    if (print_prt_history){
-        if (mc_mode == "mc_truth_bb"){
-            m_unspecified_parent_file.open(mcdir + "unspecified_parents_bb.txt");
+    if (mc_mode == "mc_truth_bb"){
+        m_unspecified_parent_file.open(mcdir + "unspecified_parents_bb.txt");
+        if (print_prt_history){
             for (int isign = 0; isign < ParamsSet::nSigns; isign++){
                 m_b_parent_file[isign][0].open(Form("%sb_parents_%s_near.txt", mcdir.c_str(), sign_labels[isign].c_str()));
                 m_b_parent_file[isign][1].open(Form("%sb_parents_%s_away.txt", mcdir.c_str(), sign_labels[isign].c_str()));
             }
-        }else{
-            m_unspecified_parent_file.open(mcdir + "unspecified_parents_cc.txt");
+        }
+    }else{
+        m_unspecified_parent_file.open(mcdir + "unspecified_parents_cc.txt");
+        if (print_prt_history){
             for (int isign = 0; isign < ParamsSet::nSigns; isign++){
                 m_c_parent_file[isign][0].open(Form("%sc_parents_%s_near.txt", mcdir.c_str(), sign_labels[isign].c_str()));
                 m_c_parent_file[isign][1].open(Form("%sc_parents_%s_away.txt", mcdir.c_str(), sign_labels[isign].c_str()));
             }
-        } 
-    }
+        }
+    } 
 
     if (mode == 1){
         m_outfile=new TFile(Form("%ssingle_muon_trees_%s.root", mcdir.c_str(), mc_mode.c_str()),"recreate");
@@ -315,7 +337,7 @@ void MCNTupleFirstPass::InitOutput(){
         }
     }
 
-    h_numParents = new TH1D("h_numParents","h_numParents",3,0,3);
+    // h_numParents = new TH1D("h_numParents","h_numParents",3,0,3);
     h_numMuonPairs = new TH1D("h_numMuonPairs","h_numMuonPairs",6,0,6);
 
     static const int nweight_bins = 40;
@@ -340,67 +362,78 @@ void MCNTupleFirstPass::InitOutput(){
     if (mc_mode == "mc_truth_bb"){
         h_crossx = new TH1D("h_crossx","h_crossx",nweight_bins,weight_bins_bb);
         for (int ipt = 0; ipt < npTbins; ipt++){
-            h_crossx_pt_binned[ipt] = new TH1D(Form("h_weight_pt%d",ipt+1),Form("h_weight_pt%d",ipt+1),nweight_bins,weight_bins_bb);
+            h_crossx_pt_binned[ipt] = new TH1D(Form("h_crossx_pt%d",ipt+1),Form("h_crossx_pt%d",ipt+1),nweight_bins,weight_bins_bb);
         }
     }else{
         h_crossx = new TH1D("h_crossx","h_crossx",nweight_bins,weight_bins_cc);
         for (int ipt = 0; ipt < npTbins; ipt++){
-            h_crossx_pt_binned[ipt] = new TH1D(Form("h_weight_pt%d",ipt+1),Form("h_weight_pt%d",ipt+1),nweight_bins,weight_bins_cc);
+            h_crossx_pt_binned[ipt] = new TH1D(Form("h_crossx_pt%d",ipt+1),Form("h_crossx_pt%d",ipt+1),nweight_bins,weight_bins_cc);
         }
     }
 
     for (int isign = 0; isign < ParamsSet::nSigns; isign++){
         h_cutAcceptance[isign] = new TH1D(Form("h_cutAcceptance_sign%d",isign+1),Form("h_cutAcceptance_sign%d",isign+1),numCuts,0,numCuts);
-        h_MuonPairParentGroups[isign][0] = new TH2D(Form("h_MuonPairParentGroups_sign%d_near",isign+1),Form("h_MuonPairParentGroups_sign%d_near",isign+1),nParentGroups,0,nParentGroups,nParentGroups,0,nParentGroups);
-        h_MuonPairParentGroups[isign][1] = new TH2D(Form("h_MuonPairParentGroups_sign%d_away",isign+1),Form("h_MuonPairParentGroups_sign%d_away",isign+1),nParentGroups,0,nParentGroups,nParentGroups,0,nParentGroups);
-        h_MuonPairParentGroups_weighted[isign][0] = new TH2D(Form("h_MuonPairParentGroups_weighted_sign%d_near",isign+1),Form("h_MuonPairParentGroups_weighted_sign%d_near",isign+1),nParentGroups,0,nParentGroups,nParentGroups,0,nParentGroups);
-        h_MuonPairParentGroups_weighted[isign][1] = new TH2D(Form("h_MuonPairParentGroups_weighted_sign%d_away",isign+1),Form("h_MuonPairParentGroups_weighted_sign%d_away",isign+1),nParentGroups,0,nParentGroups,nParentGroups,0,nParentGroups);
+        h_unweighted_parent_groups[isign][0] = new TH2D(Form("h_unweighted_parent_groups_sign%d_near",isign+1),Form("h_unweighted_parent_groups_sign%d_near",isign+1),nParentGroups,0,nParentGroups,nParentGroups,0,nParentGroups);
+        h_unweighted_parent_groups[isign][1] = new TH2D(Form("h_unweighted_parent_groups_sign%d_away",isign+1),Form("h_unweighted_parent_groups_sign%d_away",isign+1),nParentGroups,0,nParentGroups,nParentGroups,0,nParentGroups);
+        h_parent_groups[isign][0] = new TH2D(Form("h_parent_groups_sign%d_near",isign+1),Form("h_parent_groups_sign%d_near",isign+1),nParentGroups,0,nParentGroups,nParentGroups,0,nParentGroups);
+        h_parent_groups[isign][1] = new TH2D(Form("h_parent_groups_sign%d_away",isign+1),Form("h_parent_groups_sign%d_away",isign+1),nParentGroups,0,nParentGroups,nParentGroups,0,nParentGroups);
     }
 
     if (mc_mode == "mc_truth_bb"){
-        h_bb_op_one_b_one_btoc[0] = new TH1D("h_bb_op_one_b_one_btoc_near","h_bb_op_one_b_one_btoc_near",3,0,3);
-        h_bb_op_one_b_one_btoc[1] = new TH1D("h_bb_op_one_b_one_btoc_away","h_bb_op_one_b_one_btoc_away",3,0,3);
-        h_weighted_bb_op_one_b_one_btoc[0] = new TH1D("h_weighted_bb_op_one_b_one_btoc_near","h_weighted_bb_op_one_b_one_btoc_near",3,0,3);
-        h_weighted_bb_op_one_b_one_btoc[1] = new TH1D("h_weighted_bb_op_one_b_one_btoc_away","h_weighted_bb_op_one_b_one_btoc_away",3,0,3);
+
+        h_unweighted_bb_op_one_b_one_btoc[0] = new TH1D("h_unweighted_bb_op_one_b_one_btoc_near","h_unweighted_bb_op_one_b_one_btoc_near",3,0,3);
+        h_unweighted_bb_op_one_b_one_btoc[1] = new TH1D("h_unweighted_bb_op_one_b_one_btoc_away","h_unweighted_bb_op_one_b_one_btoc_away",3,0,3);
+        h_bb_op_one_b_one_btoc[0] = new TH1D("h_bb_op_one_b_one_btoc_near","h_bb_op_one_b_one_btoc_near",4,0,4);
+        h_bb_op_one_b_one_btoc[1] = new TH1D("h_bb_op_one_b_one_btoc_away","h_bb_op_one_b_one_btoc_away",4,0,4);
     
+        h_bb_ss_near_involv_osc = new TH1D("h_bb_ss_near_involv_osc","h_bb_ss_near_involv_osc",6,0,6);
+        h_bb_ss_near_num_hard_scatt_out = new TH1D("h_bb_ss_near_num_hard_scatt_out","h_bb_ss_near_num_hard_scatt_out",3,2,5);
+
+        h_dphi_bb_ss_near = new TH1D("h_dphi_bb_ss_near",";#Delta#phi;d#sigma/d#Delta#phi", 32,-pms.PI/2.,pms.PI/2.);
+        h_dphi_bb_op_near = new TH1D("h_dphi_bb_op_near",";#Delta#phi;d#sigma/d#Delta#phi", 32,-pms.PI/2.,pms.PI/2.);
+        h_dphi_bb_op_near_from_same_b = new TH1D("h_dphi_bb_op_near_from_same_b",";#Delta#phi;d#sigma/d#Delta#phi", 32,-pms.PI/2.,pms.PI/2.);
+        
+        h_dphi_bb_op_near_both_from_b = new TH1D("h_dphi_bb_op_near_both_from_b",";#Delta#phi;d#sigma/d#Delta#phi", 32,-pms.PI/2.,pms.PI/2.);
+        h_dphi_bb_op_near_one_b_one_btoc = new TH1D("h_dphi_bb_op_near_one_b_one_btoc",";#Delta#phi;d#sigma/d#Delta#phi", 32,-pms.PI/2.,pms.PI/2.);
+
         for (int isign = 0; isign < ParamsSet::nSigns; isign++){
-            h_bb_both_from_b_same_prts[isign][0] = new TH1D(Form("h_bb_both_from_b_same_prts_sign%d_near",isign+1),Form("h_bb_both_from_b_same_prts_sign%d_near",isign+1),2,0,2);
-            h_bb_both_from_b_same_prts[isign][1] = new TH1D(Form("h_bb_both_from_b_same_prts_sign%d_away",isign+1),Form("h_bb_both_from_b_same_prts_sign%d_away",isign+1),2,0,2);
-            h_weighted_bb_both_from_b_same_prts[isign][0] = new TH1D(Form("h_weighted_bb_both_from_b_same_prts_sign%d_near",isign+1),Form("h_weighted_bb_both_from_b_same_prts_sign%d_near",isign+1),2,0,2);
-            h_weighted_bb_both_from_b_same_prts[isign][1] = new TH1D(Form("h_weighted_bb_both_from_b_same_prts_sign%d_away",isign+1),Form("h_weighted_bb_both_from_b_same_prts_sign%d_away",isign+1),2,0,2);
+            h_unweighted_bb_both_from_b_same_ancestors[isign][0] = new TH1D(Form("h_unweighted_bb_both_from_b_same_ancestors_sign%d_near",isign+1),Form("h_unweighted_bb_both_from_b_same_ancestors_sign%d_near",isign+1),2,0,2);
+            h_unweighted_bb_both_from_b_same_ancestors[isign][1] = new TH1D(Form("h_unweighted_bb_both_from_b_same_ancestors_sign%d_away",isign+1),Form("h_unweighted_bb_both_from_b_same_ancestors_sign%d_away",isign+1),2,0,2);
+            h_bb_both_from_b_same_ancestors[isign][0] = new TH1D(Form("h_bb_both_from_b_same_ancestors_sign%d_near",isign+1),Form("h_bb_both_from_b_same_ancestors_sign%d_near",isign+1),2,0,2);
+            h_bb_both_from_b_same_ancestors[isign][1] = new TH1D(Form("h_bb_both_from_b_same_ancestors_sign%d_away",isign+1),Form("h_bb_both_from_b_same_ancestors_sign%d_away",isign+1),2,0,2);
+            h_unweighted_bb_both_from_b_ancestor_sp[isign][0] = new TH1D(Form("h_unweighted_bb_both_from_b_ancestor_sp_sign%d_near",isign+1),Form("h_unweighted_bb_both_from_b_ancestor_sp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups);
+            h_unweighted_bb_both_from_b_ancestor_sp[isign][1] = new TH1D(Form("h_unweighted_bb_both_from_b_ancestor_sp_sign%d_away",isign+1),Form("h_unweighted_bb_both_from_b_ancestor_sp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups);
+            h_unweighted_bb_both_from_b_ancestor_dp[isign][0] = new TH2D(Form("h_unweighted_bb_both_from_b_ancestor_dp_sign%d_near",isign+1),Form("h_unweighted_bb_both_from_b_ancestor_dp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
+            h_unweighted_bb_both_from_b_ancestor_dp[isign][1] = new TH2D(Form("h_unweighted_bb_both_from_b_ancestor_dp_sign%d_away",isign+1),Form("h_unweighted_bb_both_from_b_ancestor_dp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
             h_bb_both_from_b_ancestor_sp[isign][0] = new TH1D(Form("h_bb_both_from_b_ancestor_sp_sign%d_near",isign+1),Form("h_bb_both_from_b_ancestor_sp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups);
             h_bb_both_from_b_ancestor_sp[isign][1] = new TH1D(Form("h_bb_both_from_b_ancestor_sp_sign%d_away",isign+1),Form("h_bb_both_from_b_ancestor_sp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups);
             h_bb_both_from_b_ancestor_dp[isign][0] = new TH2D(Form("h_bb_both_from_b_ancestor_dp_sign%d_near",isign+1),Form("h_bb_both_from_b_ancestor_dp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
             h_bb_both_from_b_ancestor_dp[isign][1] = new TH2D(Form("h_bb_both_from_b_ancestor_dp_sign%d_away",isign+1),Form("h_bb_both_from_b_ancestor_dp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
-            h_weighted_bb_both_from_b_ancestor_sp[isign][0] = new TH1D(Form("h_weighted_bb_both_from_b_ancestor_sp_sign%d_near",isign+1),Form("h_weighted_bb_both_from_b_ancestor_sp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups);
-            h_weighted_bb_both_from_b_ancestor_sp[isign][1] = new TH1D(Form("h_weighted_bb_both_from_b_ancestor_sp_sign%d_away",isign+1),Form("h_weighted_bb_both_from_b_ancestor_sp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups);
-            h_weighted_bb_both_from_b_ancestor_dp[isign][0] = new TH2D(Form("h_weighted_bb_both_from_b_ancestor_dp_sign%d_near",isign+1),Form("h_weighted_bb_both_from_b_ancestor_dp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
-            h_weighted_bb_both_from_b_ancestor_dp[isign][1] = new TH2D(Form("h_weighted_bb_both_from_b_ancestor_dp_sign%d_away",isign+1),Form("h_weighted_bb_both_from_b_ancestor_dp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
         }
     }else if (mc_mode == "mc_truth_cc"){
-        h_weighted_cc_ss_small_dphi_prt_gps = new TH2D("h_weighted_cc_ss_small_dphi_prt_gps","h_weighted_cc_ss_small_dphi_prt_gps",nParentGroups,0,nParentGroups,nParentGroups,0,nParentGroups);
-        h_weighted_cc_ss_small_dphi_same_prts = new TH1D("h_weighted_cc_ss_small_dphi_same_prts","h_weighted_cc_ss_small_dphi_same_prts",2,0,2);
-        h_weighted_cc_ss_small_dphi_sp = new TH1D("h_weighted_cc_ss_small_dphi_sp","h_weighted_cc_ss_small_dphi_sp",nAncestorGroups,0,nAncestorGroups);
-        h_weighted_cc_ss_small_dphi_dp = new TH2D("h_weighted_cc_ss_small_dphi_dp","h_weighted_cc_ss_small_dphi_dp",nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
-        h_weighted_cc_ss_plateau_prt_gps = new TH2D("h_weighted_cc_ss_plateau_prt_gps","h_weighted_cc_ss_plateau_prt_gps",nParentGroups,0,nParentGroups,nParentGroups,0,nParentGroups);
-        h_weighted_cc_ss_plateau_same_prts = new TH1D("h_weighted_cc_ss_plateau_same_prts","h_weighted_cc_ss_plateau_same_prts",2,0,2);
-        h_weighted_cc_ss_plateau_sp = new TH1D("h_weighted_cc_ss_plateau_sp","h_weighted_cc_ss_plateau_sp",nAncestorGroups,0,nAncestorGroups);
-        h_weighted_cc_ss_plateau_dp = new TH2D("h_weighted_cc_ss_plateau_dp","h_weighted_cc_ss_plateau_dp",nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
+        h_cc_ss_small_dphi_prt_gps = new TH2D("h_cc_ss_small_dphi_prt_gps","h_cc_ss_small_dphi_prt_gps",nParentGroups,0,nParentGroups,nParentGroups,0,nParentGroups);
+        h_cc_ss_small_dphi_same_ancestors = new TH1D("h_cc_ss_small_dphi_same_ancestors","h_cc_ss_small_dphi_same_ancestors",2,0,2);
+        h_cc_ss_small_dphi_sp = new TH1D("h_cc_ss_small_dphi_sp","h_cc_ss_small_dphi_sp",nAncestorGroups,0,nAncestorGroups);
+        h_cc_ss_small_dphi_dp = new TH2D("h_cc_ss_small_dphi_dp","h_cc_ss_small_dphi_dp",nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
+        h_cc_ss_plateau_prt_gps = new TH2D("h_cc_ss_plateau_prt_gps","h_cc_ss_plateau_prt_gps",nParentGroups,0,nParentGroups,nParentGroups,0,nParentGroups);
+        h_cc_ss_plateau_same_ancestors = new TH1D("h_cc_ss_plateau_same_ancestors","h_cc_ss_plateau_same_ancestors",2,0,2);
+        h_cc_ss_plateau_sp = new TH1D("h_cc_ss_plateau_sp","h_cc_ss_plateau_sp",nAncestorGroups,0,nAncestorGroups);
+        h_cc_ss_plateau_dp = new TH2D("h_cc_ss_plateau_dp","h_cc_ss_plateau_dp",nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
 
 
         for (int isign = 0; isign < ParamsSet::nSigns; isign++){
-            h_cc_both_from_c_same_prts[isign][0] = new TH1D(Form("h_cc_both_from_c_same_prts_sign%d_near",isign+1),Form("h_cc_both_from_c_same_prts_sign%d_near",isign+1),2,0,2);
-            h_cc_both_from_c_same_prts[isign][1] = new TH1D(Form("h_cc_both_from_c_same_prts_sign%d_away",isign+1),Form("h_cc_both_from_c_same_prts_sign%d_away",isign+1),2,0,2);
-            h_weighted_cc_both_from_c_same_prts[isign][0] = new TH1D(Form("h_weighted_cc_both_from_c_same_prts_sign%d_near",isign+1),Form("h_weighted_cc_both_from_c_same_prts_sign%d_near",isign+1),2,0,2);
-            h_weighted_cc_both_from_c_same_prts[isign][1] = new TH1D(Form("h_weighted_cc_both_from_c_same_prts_sign%d_away",isign+1),Form("h_weighted_cc_both_from_c_same_prts_sign%d_away",isign+1),2,0,2);
+            h_unweighted_cc_both_from_c_same_ancestors[isign][0] = new TH1D(Form("h_unweighted_cc_both_from_c_same_ancestors_sign%d_near",isign+1),Form("h_unweighted_cc_both_from_c_same_ancestors_sign%d_near",isign+1),2,0,2);
+            h_unweighted_cc_both_from_c_same_ancestors[isign][1] = new TH1D(Form("h_unweighted_cc_both_from_c_same_ancestors_sign%d_away",isign+1),Form("h_unweighted_cc_both_from_c_same_ancestors_sign%d_away",isign+1),2,0,2);
+            h_cc_both_from_c_same_ancestors[isign][0] = new TH1D(Form("h_cc_both_from_c_same_ancestors_sign%d_near",isign+1),Form("h_cc_both_from_c_same_ancestors_sign%d_near",isign+1),2,0,2);
+            h_cc_both_from_c_same_ancestors[isign][1] = new TH1D(Form("h_cc_both_from_c_same_ancestors_sign%d_away",isign+1),Form("h_cc_both_from_c_same_ancestors_sign%d_away",isign+1),2,0,2);
+            h_unweighted_cc_both_from_c_ancestor_sp[isign][0] = new TH1D(Form("h_unweighted_cc_both_from_c_ancestor_sp_sign%d_near",isign+1),Form("h_unweighted_cc_both_from_c_ancestor_sp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups);
+            h_unweighted_cc_both_from_c_ancestor_sp[isign][1] = new TH1D(Form("h_unweighted_cc_both_from_c_ancestor_sp_sign%d_away",isign+1),Form("h_unweighted_cc_both_from_c_ancestor_sp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups);
+            h_unweighted_cc_both_from_c_ancestor_dp[isign][0] = new TH2D(Form("h_unweighted_cc_both_from_c_ancestor_dp_sign%d_near",isign+1),Form("h_unweighted_cc_both_from_c_ancestor_dp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
+            h_unweighted_cc_both_from_c_ancestor_dp[isign][1] = new TH2D(Form("h_unweighted_cc_both_from_c_ancestor_dp_sign%d_away",isign+1),Form("h_unweighted_cc_both_from_c_ancestor_dp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
             h_cc_both_from_c_ancestor_sp[isign][0] = new TH1D(Form("h_cc_both_from_c_ancestor_sp_sign%d_near",isign+1),Form("h_cc_both_from_c_ancestor_sp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups);
             h_cc_both_from_c_ancestor_sp[isign][1] = new TH1D(Form("h_cc_both_from_c_ancestor_sp_sign%d_away",isign+1),Form("h_cc_both_from_c_ancestor_sp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups);
             h_cc_both_from_c_ancestor_dp[isign][0] = new TH2D(Form("h_cc_both_from_c_ancestor_dp_sign%d_near",isign+1),Form("h_cc_both_from_c_ancestor_dp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
             h_cc_both_from_c_ancestor_dp[isign][1] = new TH2D(Form("h_cc_both_from_c_ancestor_dp_sign%d_away",isign+1),Form("h_cc_both_from_c_ancestor_dp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
-            h_weighted_cc_both_from_c_ancestor_sp[isign][0] = new TH1D(Form("h_weighted_cc_both_from_c_ancestor_sp_sign%d_near",isign+1),Form("h_weighted_cc_both_from_c_ancestor_sp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups);
-            h_weighted_cc_both_from_c_ancestor_sp[isign][1] = new TH1D(Form("h_weighted_cc_both_from_c_ancestor_sp_sign%d_away",isign+1),Form("h_weighted_cc_both_from_c_ancestor_sp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups);
-            h_weighted_cc_both_from_c_ancestor_dp[isign][0] = new TH2D(Form("h_weighted_cc_both_from_c_ancestor_dp_sign%d_near",isign+1),Form("h_weighted_cc_both_from_c_ancestor_dp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
-            h_weighted_cc_both_from_c_ancestor_dp[isign][1] = new TH2D(Form("h_weighted_cc_both_from_c_ancestor_dp_sign%d_away",isign+1),Form("h_weighted_cc_both_from_c_ancestor_dp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
         }
     }
 }

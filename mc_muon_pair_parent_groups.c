@@ -50,8 +50,8 @@ void plot_one_mode(int mode){
   TH2D* h;
   TFile* f[nMCmodes];
 
-  if (mode == 1) hist_names = {{"h_MuonPairParentGroups_sign1_near","h_MuonPairParentGroups_sign1_away"},{"h_MuonPairParentGroups_sign2_near","h_MuonPairParentGroups_sign2_away"}};
-  else           hist_names = {{"h_MuonPairParentGroups_weighted_sign1_near","h_MuonPairParentGroups_weighted_sign1_away"},{"h_MuonPairParentGroups_weighted_sign2_near","h_MuonPairParentGroups_weighted_sign2_away"}};
+  if (mode == 1) hist_names = {{"h_parent_groups_sign1_near","h_parent_groups_sign1_away"},{"h_parent_groups_sign2_near","h_parent_groups_sign2_away"}};
+  else           hist_names = {{"h_parent_groups_weighted_sign1_near","h_parent_groups_weighted_sign1_away"},{"h_parent_groups_weighted_sign2_near","h_parent_groups_weighted_sign2_away"}};
 
   for (int imc = 0; imc < nMCmodes; imc++){
 

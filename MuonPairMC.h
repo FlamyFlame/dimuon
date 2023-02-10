@@ -9,8 +9,8 @@ class MuonPairMC : public MuonPair{
 // define child class for the case of MC muon pairs
 // with the additional attributes of parent information & helper functions to work with them
 public:
-  int m1_parent_id;
-  int m2_parent_id;
+  // int m1_parent_id;
+  // int m2_parent_id;
 
   bool m1_c_tag;
   bool m2_c_tag;
@@ -28,6 +28,7 @@ public:
   int m1_parent_group;
   int m2_parent_group;
 
+  bool from_same_b; // only useful for the b-bbar sample, opposite sign
 
   MuonPairMC();
   ~MuonPairMC(){}

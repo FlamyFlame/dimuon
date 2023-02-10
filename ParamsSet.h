@@ -116,6 +116,7 @@ ParamsSet::ParamsSet(){
    	minv_cuts.push_back({2.9,3.3});
    	minv_cuts.push_back({3.59,3.74});
    	minv_cuts.push_back({9,9.8});
+   	// minv_cuts.push_back({9,10.4});
    	charge_eta_gap_cuts.push_back({0.56,0.67});
    	charge_eta_gap_cuts.push_back({1.064,1.29});
    	charge_eta_gap_cuts.push_back({-1.29,-1.12});
