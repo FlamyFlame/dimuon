@@ -23,12 +23,12 @@ class MuonNTupleFirstPassPP{
 
 
 private:
-    // --------------------- general settings ---------------------------
+// --------------------- general settings ---------------------------
 
     int mode = 4;
     ParamsSet pms;
     
-      // --------------------- input files & trees & data for setting branches---------------------------
+// --------------------- input files & trees & data for setting branches---------------------------
   
     TChain          *fChain;   //!pointer to the analyzed TTree or TChain
   
@@ -55,12 +55,14 @@ private:
     Bool_t               b_HLT_2mu4;
     std::vector<bool>    *dimuon_b_HLT_2mu4    =nullptr;
   
-    // --------------------- temporary muon and muonpair objects ---------------------------
+// --------------------- temporary muon and muonpair objects ---------------------------
   
     Muon* tempmuon = nullptr;
     MuonPair* mpair = nullptr;
+    std::vector<int> resonance_tagged_muon_index_list {};
+
   
-    // --------------------- class methods ---------------------------
+// --------------------- class methods ---------------------------
   
     void InitInput();
     void InitOutput();
@@ -72,16 +74,18 @@ private:
     void FillMuonPairTree();
   
   
-    // --------------------- output file, histograms & trees ---------------------------
+// --------------------- output file, histograms & trees ---------------------------
   
     TFile *m_outfile = nullptr;
     
     TTree* muonOutTree;
-    TTree* muonPairOutTree[ParamsSet::nSigns];
+    // TTree* muonPairOutTree[ParamsSet::nSigns];
     TTree* muonPairOutTreeBinned[ParamsSet::ndRselcs][ParamsSet::nSigns];
-
+    // TH1D* h_dphi_failing_photoprod;
+    // TH2D* h_asym_acop_failing_photoprod;
 
 public :
+    bool isTight;
     MuonNTupleFirstPassPP();
     ~MuonNTupleFirstPassPP(){}
     void Run();
@@ -89,6 +93,7 @@ public :
 
 
 MuonNTupleFirstPassPP::MuonNTupleFirstPassPP(){
+    isTight = false;
     if(mode != 3 && mode != 4){
         std::cout<<"Error:: Mode has to equal 3 or 4; code is used for outputting muon / muon-pair trees only."<<std::endl;
         throw std::exception();
@@ -152,23 +157,27 @@ void MuonNTupleFirstPassPP::InitInput(){
 
 void MuonNTupleFirstPassPP::InitOutput(){
 
+    std::string tight_postfix = (isTight)? "_tight" : "";
     if (mode == 3){
-        m_outfile=new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/single_muon_trees_pp.root","recreate");
+        m_outfile=new TFile(("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/single_muon_trees_pp" + tight_postfix + ".root").c_str(),"recreate");
         muonOutTree = new TTree("muon_tree","all single muons");
         muonOutTree->Branch("MuonObj",&tempmuon);
     }
     else{ //output muon pair trees
-        m_outfile=new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/muon_pairs_pp.root","recreate");
+        m_outfile=new TFile(("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/muon_pairs_pp" + tight_postfix + ".root").c_str(),"recreate");
 
         for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
-            muonPairOutTree[ksign] = new TTree(Form("muon_pair_tree_sign%u",ksign+1),Form("all muon pairs, sign%u",ksign+1));
-            muonPairOutTree[ksign]->Branch("MuonPairObj",&mpair);
+            // muonPairOutTree[ksign] = new TTree(Form("muon_pair_tree_sign%u",ksign+1),Form("all muon pairs, sign%u",ksign+1));
+            // muonPairOutTree[ksign]->Branch("MuonPairObj",&mpair);
             for (unsigned int idr = 0; idr < ParamsSet::ndRselcs; idr++){
                 muonPairOutTreeBinned[idr][ksign] = new TTree(Form("muon_pair_tree_dr%u_sign%u",idr+1,ksign+1),Form("all muon pairs, dr%u, sign%u",idr+1,ksign+1));
                 muonPairOutTreeBinned[idr][ksign]->Branch("MuonPairObj",&mpair);
             }
         }
     }
+
+    // h_dphi_failing_photoprod = new TH1D("h_dphi_failing_photoprod",";#Delta#phi;1/N_{evt} dN/d#Delta#phi", 128, -pms.PI, pms.PI);
+    // h_asym_acop_failing_photoprod = new TH2D("h_asym_acop_failing_photoprod", ";#frac{#pi-|#Delta#phi|}{#pi};#frac{p_{T}^{lead} - p_{T}^{sublead}}{p_{T}^{lead} + p_{T}^{sublead}}",20,0,0.01,20,0,0.05);
 }
 
 #endif

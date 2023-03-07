@@ -1,7 +1,7 @@
 // Assumes that we exclude resonances
 
-#ifndef __MuonPairPlottingPP_h__
-#define __MuonPairPlottingPP_h__
+#ifndef __MuonPairPlottingOLDPP_h__
+#define __MuonPairPlottingOLDPP_h__
 
 #include <TROOT.h>
 // #include <TChain.h>
@@ -16,7 +16,7 @@
 #include "TH1D.h"
 #include "TH2D.h"
 
-class MuonPairPlottingPP{
+class MuonPairPlottingOLDPP{
   	//updates histograms - centrality binned
     //if need histograms with all centrality bins added together
     //can add at the histograms level
@@ -110,13 +110,13 @@ public:
     bool isMCTruthBB;
     bool isMCTruthCC;
     // assert(isScram & isMCTruthBB & isMCTruthCC == 1 || isScram & isMCTruthBB & isMCTruthCC == 1); // at most one can be true (if all false: real data)
-  	MuonPairPlottingPP();
-  	~MuonPairPlottingPP(){}
+  	MuonPairPlottingOLDPP();
+  	~MuonPairPlottingOLDPP(){}
   	void Run();
 
 };
 
-MuonPairPlottingPP::MuonPairPlottingPP(){
+MuonPairPlottingOLDPP::MuonPairPlottingOLDPP(){
     // if (mode != 1 && mode != 3){
     //     std::cout<<"Error:: Mode has to be 1 (no binning) or 3 (binning by pT),  quitting"<<std::endl;
     //     throw std::exception();
@@ -127,7 +127,7 @@ MuonPairPlottingPP::MuonPairPlottingPP(){
     isMCTruthCC = false;
 }
 
-void MuonPairPlottingPP::InitInput(){
+void MuonPairPlottingOLDPP::InitInput(){
 
     if (isScram){
         inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/scrambled_muon_pairs_pp.root","read");
@@ -177,7 +177,7 @@ void MuonPairPlottingPP::InitInput(){
     }
 }
 
-void MuonPairPlottingPP::InitHists(){
+void MuonPairPlottingOLDPP::InitHists(){
     int nDphi_bins = (isMCTruthBB || isMCTruthCC)? 64 : 128;
     int neta_bins = (isMCTruthBB || isMCTruthCC)? 50 : 100;
     int nDeta_bins = (isMCTruthBB || isMCTruthCC)? 100 : 200;

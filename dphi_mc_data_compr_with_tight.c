@@ -15,15 +15,16 @@
 
 // const int ndRs = 3;
 const int nGapCuts = 2;
-const int nDtTypes = 3;
+const int nDtTypes = 4;
 const int nSigns = 2;
 
 double pi = acos(-1.0);
-int nbins[nDtTypes] = {64,64,128};
+int nbins[nDtTypes] = {64,64,128,128};
+// int nbins[nDtTypes] = {64,64,64,64};
 // float plateau_list[nGapCuts][nDtTypes][nSigns] = {{{7.295, 11.441}, {0.033, 0.067}, {3587.4, 7614.5}},{{0.,0.},{0.,0.},{0.,0.}}};
-float plateau_list[nDtTypes][nSigns] = {{7.295, 11.441}, {0.033, 0.067}, {3587.4, 7614.5}};
-float norm_factor[nDtTypes] = {1., 1., 1/256.8}; // normalizing to differential crossx; unit is pb
-Color_t colors[nDtTypes] = {kRed, kRed, kBlack};
+float plateau_list[nDtTypes][nSigns] = {{7.295, 11.441}, {0.033, 0.067}, {3587.4, 7614.5},{3154.12, 5867.67}};
+float norm_factor[nDtTypes] = {1., 1., 1/256.8, 1/256.8}; // normalizing to differential crossx; unit is pb
+Color_t colors[nDtTypes] = {kRed, kRed, kBlack, kViolet};
 
 // std::string dRs[ndRcuts] = {"_dr1","_dr2","_dr3"};
 // std::string dRTitles[ndRcuts] = {"#Delta R < 0.8","#Delta R < 1.2", "no #Delta R cut"};
@@ -35,10 +36,10 @@ std::string gapcuts[nGapCuts] = {"_gapcut1", "_gapcut2"};
 std::string gapcutTitles[nGapCuts] = {"no gap cut", "with gap cut"};
 
 TFile* f[nDtTypes];
-std::string dt_paths[nDtTypes] = {"/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/","/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/","/usatlas/u/yuhanguo/usatlasdata/dimuon_data/"};
-std::string fnames[nDtTypes] = {"histograms_mc_truth_bb.root","histograms_mc_truth_cc.root","histograms_real_pairs_pp.root"};
+std::string dt_paths[nDtTypes] = {"/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/","/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/","/usatlas/u/yuhanguo/usatlasdata/dimuon_data/","/usatlas/u/yuhanguo/usatlasdata/dimuon_data/"};
+std::string fnames[nDtTypes] = {"histograms_mc_truth_bb.root","histograms_mc_truth_cc.root","histograms_real_pairs_pp.root","histograms_real_pairs_pp_tight.root"};
 // std::string dtTitles[nDtTypes] = {"MC truth bb", "MC truth cc", "pp data"};
-std::string dtTitles[nDtTypes] = {"MC truth", "", "pp data"};
+std::string dtTitles[nDtTypes] = {"MC truth", "", "pp medium", "pp tight"};
 
 TCanvas* c;
 // TH1D* h[nDtTypes][nSigns][nGapCuts];
@@ -82,7 +83,6 @@ void hist_helper(TH1* h, float norm, std::string ytitle=""){
   h->GetXaxis()->SetTitleOffset(1);
   h->SetMarkerStyle(20);
   h->SetMarkerSize(0.9);
-
   // h->GetYaxis()->SetTitleOffset(h->GetYaxis()->GetTitleOffset()*0.8);
     // h->GetXaxis()->SetTitleOffset(h->GetXaxis()->GetTitleOffset()*0.8);
   // h->GetXaxis()->SetTitleSize(h->GetXaxis()->GetTitleSize()*1.8);
@@ -92,7 +92,7 @@ void hist_helper(TH1* h, float norm, std::string ytitle=""){
     // h->GetZaxis()->SetLabelSize(h->GetZaxis()->GetLabelSize()*1.35);
 }
 
-void dphi_mc_data_compr_one_mode(bool substract_plateau, float scaling_factor = 1.){
+void dphi_mc_data_compr_with_tight_one_mode(bool substract_plateau, float scaling_factor = 1.){
 
   initialize();
 
@@ -107,7 +107,7 @@ void dphi_mc_data_compr_one_mode(bool substract_plateau, float scaling_factor = 
     gPad->SetLeftMargin(0.16);
     gPad->SetBottomMargin(0.135);
 
-    TLegend* l = new TLegend(0.24,0.6,0.5,0.89);
+    TLegend* l = new TLegend(0.24,0.65,0.6,0.89);
     l->SetBorderSize(0);
     l->SetFillStyle(0);
     l->SetTextFont(42);
@@ -133,42 +133,30 @@ void dphi_mc_data_compr_one_mode(bool substract_plateau, float scaling_factor = 
 
       h[jdt][ksign]->SetMarkerColor(colors[jdt]);
       h[jdt][ksign]->SetLineColor(colors[jdt]);
+
     }
 
     h[0][ksign]->Add(h[1][ksign]);
-    // h[0][ksign]->Rebin(2); // must first rebin then call hist_helper: the Scale(1,"width") depends on the # of bins
+    h[0][ksign]->Rebin(2); // must first rebin then call hist_helper: the Scale(1,"width") depends on the # of bins
 
-    hist_helper(h[0][ksign], norm_factor[0] * scaling_factor, "#frac{d#sigma}{d #Delta #phi} [pb]");
-    if (scaling_factor != 1.){
-      l->AddEntry(h[0][ksign],Form("%s * %.1f", dtTitles[0].c_str(), scaling_factor),"lp");
-    }else{
-      l->AddEntry(h[0][ksign],dtTitles[0].c_str(),"lp");
-    }
+    hist_helper(h[0][ksign], norm_factor[0], "#frac{d#sigma}{d #Delta #phi} [pb]");
+    l->AddEntry(h[0][ksign],dtTitles[0].c_str(),"lp");
 
     hist_helper(h[2][ksign], norm_factor[2], "#frac{d#sigma}{d #Delta #phi} [pb]");
     l->AddEntry(h[2][ksign],dtTitles[2].c_str(),"lp");
+
+    hist_helper(h[3][ksign], norm_factor[3], "#frac{d#sigma}{d #Delta #phi} [pb]");
+    l->AddEntry(h[3][ksign],dtTitles[3].c_str(),"lp");
 
     // std::cout << h[0][ksign]->Integral("width") << std::endl;
 
     // std::cout << h[0][ksign]->Integral("width") << ", " << h[2][ksign]->Integral("width") * 256.8 << std::endl;
                 
-    // first plot whichever with largest normalized peak at Delta phi ~ pi
-    // since this sets the maximum y value
-
-    // float ylim_arr[nDtTypes];
-    // for (int jdt = 0; jdt < nDtTypes; jdt++){
-      // ylim_arr[jdt] = 1.1 * h[jdt][ksign]->GetMaximum();
-    //   // std::cout << "ctr-group "<< jdt << ", max y value: " << ylim_arr[jdt] << std::endl;
-    //   std::cout << "ctr-group "<< jdt << ", total integral (normalized): " << h[jdt][ksign]->Integral("width") << std::endl;
-    // }
-    // float ylim = *std::max_element(ylim_arr, ylim_arr + nDtTypes);
-    // int ymax_ind = std::max_element(ylim_arr, ylim_arr + nDtTypes) - ylim_arr;
-    // std::cout << "y-max = " << ylim << std::endl;
-
     float ylim = 1.1 * ((h[0][ksign]->GetMaximum() > h[2][ksign]->GetMaximum())? h[0][ksign]->GetMaximum() : h[2][ksign]->GetMaximum());
     h[0][ksign]->GetYaxis()->SetRangeUser(0,ylim);
     h[0][ksign]->Draw("E");
     h[2][ksign]->Draw("E,same");
+    h[3][ksign]->Draw("E,same");
     // h[ymax_ind][ksign]->Draw("E");
     // for (int jdt = 0; jdt < nDtTypes; jdt++){
     //   if (jdt != ymax_ind) h[jdt][ksign]->Draw("E,same");
@@ -181,19 +169,19 @@ void dphi_mc_data_compr_one_mode(bool substract_plateau, float scaling_factor = 
   // if (!substract_plateau) std::cout << "**********" << std::endl;
 
   // c->SaveAs(Form("plots/mc_data_compr/dphi_mc_data_compr_gapcut%d.png",lgap+1));
-  if (substract_plateau) c->SaveAs("plots/mc_data_compr/dphi_mc_data_compr_substract_plateau.png");
-  else if (scaling_factor != 1.) c->SaveAs(Form("plots/mc_data_compr/dphi_SCALED_%.1f_mc_data_compr.png",scaling_factor));
-  else                   c->SaveAs("plots/mc_data_compr/dphi_mc_data_compr.png");
+  if (substract_plateau) c->SaveAs("plots/mc_data_compr/dphi_mc_pp_tight_compr_substract_plateau.png");
+  else if (scaling_factor != 1.) c->SaveAs("plots/mc_data_compr/dphi_SCALED_mc_pp_tight_compr.png");
+  else                   c->SaveAs("plots/mc_data_compr/dphi_mc_pp_tight_compr.png");
   c->Close();
   delete c;
 
 }
 
 
-void dphi_mc_data_compr(){
-  // dphi_mc_data_compr_one_mode(true);
-  // dphi_mc_data_compr_one_mode(false);
-  dphi_mc_data_compr_one_mode(false, 5.7);
+void dphi_mc_data_compr_with_tight(){
+  dphi_mc_data_compr_with_tight_one_mode(true);
+  dphi_mc_data_compr_with_tight_one_mode(false);
+  // dphi_mc_data_compr_with_tight_one_mode(false, 5.);
 }
 
 

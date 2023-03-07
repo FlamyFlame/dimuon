@@ -1,13 +1,15 @@
 root -b -l << EOF
 	.L MCNTupleFirstPass.c
 
-	MCNTupleFirstPass cc
-	cc.mc_mode="mc_truth_cc"
-	cc.Run()
+	MCNTupleFirstPass* cc = new MCNTupleFirstPass();
+	cc->mc_mode = "mc_truth_cc"
+	cc->Run()
+	delete cc
 
-	MCNTupleFirstPass bb;
-	bb.mc_mode="mc_truth_bb"
-	bb.Run();
+	MCNTupleFirstPass* bb = new MCNTupleFirstPass();
+	bb->mc_mode = "mc_truth_bb"
+	bb->Run();
+	delete bb
 	.q;
 EOF
 

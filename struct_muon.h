@@ -17,17 +17,4 @@ struct Muon{
    	float ev_FCal_Et;
 };
 
-struct TruthMuon{
-	float pt;
-   	float eta;
-   	float phi;
-   	// float dP_overP;
-   	int charge;
-   	int barcode; //MC
-   	std::vector<int> parent_ids;
-   	std::vector<int> parent_barcodes;
-   	std::vector<std::vector<int>> grandparent_ids;
-   	std::vector<std::vector<int>> grandparent_barcodes;
-};
-
 #endif

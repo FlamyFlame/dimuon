@@ -20,7 +20,7 @@ const int ndRs = 3;
 const int ndphicuts = 3;
 const int nSigns = 2; //3*2 canvas
 const int nGroups = 2; //real, scrambled pairs
-const int nCtrBins = 5;
+const int nCtrBins = 6;
 const int nGapCuts = 2; //with, without gap cut
 
 std::vector<std::string> hist1DNames = {"h_pair_dP_overP", "h_pair_y","h_DR"};
@@ -41,7 +41,7 @@ const int n1Ds = hist1DNames.size();
 
 std::string dRs[ndRs] = {"_dr1","_dr2","_dr3"};
 std::string dphis[ndphicuts] = {"_dphi1","_dphi2","_dphi3"};
-std::string ctrs[nCtrBins] = {"_ctr1","_ctr2","_ctr3","_ctr4","_ctr5"};
+std::string ctrs[nCtrBins] = {"_ctr1","_ctr2","_ctr3","_ctr4","_ctr5","_ctr6"};
 std::string signs[nSigns] = {"_sign1", "_sign2"};
 std::string gapcuts[nGapCuts] = {"_gapcut1", "_gapcut2"};
 
@@ -61,8 +61,8 @@ std::string subplot_dphi_titles[ndRs][nSigns];
 TFile* f[nGroups];
 
 void initialize(){
-	f[0] = TFile::Open("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_real_pairs.root"); //real pairs
-	f[1] = TFile::Open("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_scrambled_pairs.root"); //scrambled pairs
+	f[0] = TFile::Open("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_real_pairs_5_10_20_30_50_80.root"); //real pairs
+	f[1] = TFile::Open("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_scrambled_pairs_5_10_20_30_50_80.root"); //scrambled pairs
 
 	for (unsigned int ksign = 0; ksign < nSigns; ksign++){
 		for (unsigned int jdr = 0; jdr < ndRs; jdr++){  	
@@ -108,13 +108,8 @@ void hist_helper(TH1* h, std::string title, bool scale, std::string ytitle=""){
     h->GetXaxis()->SetTitleFont(43);
     h->GetXaxis()->SetTitleSize(32);
     h->GetXaxis()->SetTitleOffset(1);
-	// h->GetYaxis()->SetTitleOffset(h->GetYaxis()->GetTitleOffset()*0.8);
-    // h->GetXaxis()->SetTitleOffset(h->GetXaxis()->GetTitleOffset()*0.8);
-	// h->GetXaxis()->SetTitleSize(h->GetXaxis()->GetTitleSize()*1.8);
-   	// h->GetXaxis()->SetLabelSize(h->GetXaxis()->GetLabelSize()*1.35);
-    // h->GetYaxis()->SetTitleSize(h->GetYaxis()->GetTitleSize()*1.8);
-    // h->GetYaxis()->SetLabelSize(h->GetYaxis()->GetLabelSize()*1.35);
-    // h->GetZaxis()->SetLabelSize(h->GetZaxis()->GetLabelSize()*1.35);
+    h->SetMarkerStyle(20);
+	h->SetMarkerSize(0.7);
 }
 
 void plot1D(Hist1D& h, const int nCuts, std::string cuts[], std::string cutTitles[], std::string name_specf=""){

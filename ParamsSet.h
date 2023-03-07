@@ -58,6 +58,16 @@ public:
   	float pairPTmax = 40;
   	double pairPTBins[nSigns][ndRselcs][npairPT_bins+1];
 
+  	static const int n_hq_pt_bins = 40;
+  	float hq_ptlogpow = 0.034;
+  	float hq_ptmax = 110;
+  	double hq_pTBins[n_hq_pt_bins+1];
+
+  	static const int n_hq_minv_bins = 40;
+  	float hq_minvlogpow = 0.049;
+  	float hq_minvmax = 220;
+  	double hq_minvBins[n_hq_minv_bins+1];
+  	
   	ParamsSet();
   	~ParamsSet(){}
 };
@@ -78,6 +88,14 @@ ParamsSet::ParamsSet(){
 
 	for(int i = 0; i <= npt_bins; i++){
     	pTBins[i] = ptmax * pow(10.0, (static_cast<float>(i-npt_bins))*ptlogpow);
+  	}
+
+	for(int i = 0; i <= n_hq_pt_bins; i++){
+    	hq_pTBins[i] = hq_ptmax * pow(10.0, (static_cast<float>(i-n_hq_pt_bins)) * hq_ptlogpow);
+  	}
+
+	for(int i = 0; i <= n_hq_minv_bins; i++){
+    	hq_minvBins[i] = hq_minvmax * pow(10.0, (static_cast<float>(i-n_hq_minv_bins)) * hq_minvlogpow);
   	}
 
 	pairPTlogpow[0][0] = 0.0198;
@@ -115,8 +133,8 @@ ParamsSet::ParamsSet(){
   	minv_cuts.push_back({0,1.06});
    	minv_cuts.push_back({2.9,3.3});
    	minv_cuts.push_back({3.59,3.74});
-   	minv_cuts.push_back({9,9.8});
-   	// minv_cuts.push_back({9,10.4});
+   	// minv_cuts.push_back({9.08,9.8});
+   	minv_cuts.push_back({9.08,10.5}); // previously 9 - 9.8
    	charge_eta_gap_cuts.push_back({0.56,0.67});
    	charge_eta_gap_cuts.push_back({1.064,1.29});
    	charge_eta_gap_cuts.push_back({-1.29,-1.12});

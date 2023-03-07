@@ -12,7 +12,11 @@ bool MuonNTupleFirstPassPP::PassCuts(){
   
   //require some quality cuts on the muons
   if((mpair->m1.quality&mpair->m2.quality&1  )==0) return false;//compair->m2ined muon
+  if (isTight){
+    if ((mpair->m1.quality&mpair->m2.quality&16  )==0) return false;//Tight muon
+  }else{
   if((mpair->m1.quality&mpair->m2.quality&8  )==0) return false;//Medium muon
+  }
   if((mpair->m1.quality&mpair->m2.quality&32 )==0) return false;//IDCuts
   //if((mpair->m1.quality&mpair->m2.quality&256)==0) return false;//MuonCuts
 
@@ -26,21 +30,22 @@ bool MuonNTupleFirstPassPP::PassCuts(){
 bool MuonNTupleFirstPassPP::IsResonance(){
   // assuming we have already filled up the muon pair mpair
   if (!(mpair->same_sign)){ // opposite sign
-    if (mpair->minv > pms.minv_upper) return true; // upper cut at 60 GeV
-
-    bool isresonance = false;
+    if (mpair->minv > pms.minv_upper){ // upper cut at 60 GeV
+      resonance_tagged_muon_index_list.push_back(mpair->m1.ind);
+      resonance_tagged_muon_index_list.push_back(mpair->m2.ind);
+      return true;
+    }
     
     for (array<float,2> ires : pms.minv_cuts){
       if (mpair->minv > ires[0] && mpair->minv < ires[1]){
-        isresonance = true;
-        break;
+        resonance_tagged_muon_index_list.push_back(mpair->m1.ind);
+        resonance_tagged_muon_index_list.push_back(mpair->m2.ind);
+        return true;
       }
     }
-      
-    if (isresonance) return true;
   }
 
-  return false; // same sign
+  return false; // same sign or opposite sign & not resonance
 }
 
 bool MuonNTupleFirstPassPP::IsPhotoProduction(){
@@ -71,6 +76,7 @@ void MuonNTupleFirstPassPP::ProcessData(){
   // Long64_t nentries = 100000;
   Long64_t nentries = fChain->GetEntries();//number of events
   for (Long64_t jentry=0; jentry<nentries;jentry++) {//loop over the events
+  // for (Long64_t jentry=0; jentry<100000;jentry++) {//loop over the events
 
     if(jentry%100000==0) cout<<"Processing "<<jentry<<" event out of "<<nentries<<" events"<<std::endl;
 
@@ -84,7 +90,7 @@ void MuonNTupleFirstPassPP::ProcessData(){
     //trigger requirement for event
     if(!b_HLT_2mu4) continue;
 
-
+    resonance_tagged_muon_index_list.clear(); // MUST CLEAR for each event!!
     std::vector<int> muon_index_list = {};
     std::vector<int>::iterator it;
 
@@ -96,6 +102,21 @@ void MuonNTupleFirstPassPP::ProcessData(){
 
       mpair->m1.ind     = muon_pair_muon1_index->at(i);
       mpair->m2.ind     = muon_pair_muon2_index->at(i);
+
+      // // if m1 or m2 is resonance tagged, do not record the pair
+      // std::string ss_str = (muon_pair_muon1_pt ->at(i) * muon_pair_muon2_pt ->at(i) > 0)? ", same" : ", opp";
+      // it = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m1.ind);
+      // if(it != resonance_tagged_muon_index_list.end()) {
+      //   // cout << jentry << ", " << std::to_string(i) << "-th pair, " << mpair->m1.ind << ss_str << endl;
+      //   continue;
+      // }
+
+      // it = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m2.ind);
+      // if(it != resonance_tagged_muon_index_list.end()) {
+      //   // cout << jentry << ", " << std::to_string(i) << "-th pair, " << mpair->m2.ind << ss_str << endl;
+      //   continue;
+      // }
+
       mpair->m1.pt    = fabs(muon_pair_muon1_pt->at(i))/1000.0;//pt of the first muon in the pair
       mpair->m2.pt    = fabs(muon_pair_muon2_pt->at(i))/1000.0;//pt of the second muon in the pair
       mpair->m1.eta   = muon_pair_muon1_eta->at(i);
@@ -136,7 +157,11 @@ void MuonNTupleFirstPassPP::ProcessData(){
       if (IsResonance()) continue;
 
       // photo-production cut
-      if (IsPhotoProduction()) continue;
+      if (IsPhotoProduction()){
+        // h_dphi_failing_photoprod->Fill(mpair->dphi);
+        // h_asym_acop_failing_photoprod->Fill(mpair->acop,mpair->asym);
+        continue;
+      }
       
       //------------------------------------------------------------
 

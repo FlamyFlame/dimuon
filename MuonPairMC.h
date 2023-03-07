@@ -9,19 +9,22 @@ class MuonPairMC : public MuonPair{
 // define child class for the case of MC muon pairs
 // with the additional attributes of parent information & helper functions to work with them
 public:
-  // int m1_parent_id;
-  // int m2_parent_id;
+  // float weight;
+  float crossx;
+  
+  // bool m1_c_tag;
+  // bool m2_c_tag;
+  // bool m1_osc;
+  // bool m2_osc;
+  // int m1_earliest_parent_id;
+  // int m2_earliest_parent_id;
 
-  bool m1_c_tag;
-  bool m2_c_tag;
-  // bool m1_b_tag;
-  // bool m2_b_tag;
-  bool m1_osc;
-  bool m2_osc;
-  // std::vector<int> m1_earliest_parent_ids;
-  // std::vector<int> m2_earliest_parent_ids;
-  int m1_earliest_parent_id;
-  int m2_earliest_parent_id;
+  // float m1_closest_hadron_prt_pt;
+  // float m2_closest_hadron_prt_pt;
+  // float m1_furthest_hadron_prt_pt;
+  // float m2_furthest_hadron_prt_pt;
+  // float m1_hq_ancestor_pt;
+  // float m2_hq_ancestor_pt;
 
   // parent groups: {direct b, c from b, c not from b, strange & light hadrons, photons};
   // if others: print out

@@ -10,7 +10,7 @@ bool MuonNTupleFirstPass::PassCuts(){
   //Apply ALL CUTS but for resonances
 
   //require some quality cuts on the muons
-  if((mpair->m1.quality&mpair->m2.quality&1  )==0) return false;//compair->m2ined muon
+  if((mpair->m1.quality&mpair->m2.quality&1  )==0) return false;//combined muon
   if((mpair->m1.quality&mpair->m2.quality&8  )==0) return false;//Medium muon
   if((mpair->m1.quality&mpair->m2.quality&32 )==0) return false;//IDCuts
   if((mpair->m1.quality&mpair->m2.quality&256)==0) return false;//MuonCuts
@@ -32,18 +32,19 @@ bool MuonNTupleFirstPass::PassCuts(){
 bool MuonNTupleFirstPass::IsResonance(){
   // assuming we have already filled up the muon pair mpair
   if (!(mpair->same_sign)){ // opposite sign
-    if (mpair->minv > pms.minv_upper) return true; // upper cut at 80 GeV
-
-    bool isresonance = false;
+    if (mpair->minv > pms.minv_upper){ // upper cut at 60 GeV
+      resonance_tagged_muon_index_list.push_back(mpair->m1.ind);
+      resonance_tagged_muon_index_list.push_back(mpair->m2.ind);
+      return true;
+    }
     
     for (array<float,2> ires : pms.minv_cuts){
       if (mpair->minv > ires[0] && mpair->minv < ires[1]){
-        isresonance = true;
-        break;
+        resonance_tagged_muon_index_list.push_back(mpair->m1.ind);
+        resonance_tagged_muon_index_list.push_back(mpair->m2.ind);
+        return true;
       }
     }
-      
-    if (isresonance) return true;
   }
 
   return false; // same sign
@@ -100,8 +101,10 @@ void MuonNTupleFirstPass::ProcessData(){
     if(!b_HLT_mu4_mu4noL1) continue;
 
 
+    resonance_tagged_muon_index_list.clear(); // MUST CLEAR for each event!!
     std::vector<int> muon_index_list = {};
     std::vector<int>::iterator it;
+    // std::vector<int>::iterator itres;
 
     int NPairs=muon_pair_muon1_pt->size();//number of muon pairs in the event
 
@@ -109,6 +112,14 @@ void MuonNTupleFirstPass::ProcessData(){
 
       mpair->m1.ind     = muon_pair_muon1_index->at(i);
       mpair->m2.ind     = muon_pair_muon2_index->at(i);
+
+      // if m1 or m2 is resonance tagged, do not record the pair
+      it = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m1.ind);
+      if(it != resonance_tagged_muon_index_list.end()) continue;
+
+      it = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m2.ind);
+      if(it != resonance_tagged_muon_index_list.end()) continue;
+
       mpair->m1.pt    = fabs(muon_pair_muon1_pt->at(i))/1000.0;//pt of the first muon in the pair
       mpair->m2.pt    = fabs(muon_pair_muon2_pt->at(i))/1000.0;//pt of the second muon in the pair
       mpair->m1.eta   = muon_pair_muon1_eta->at(i);

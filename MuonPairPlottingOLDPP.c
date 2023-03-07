@@ -1,7 +1,7 @@
-#include "MuonPairPlottingPP.h"
+#include "MuonPairPlottingOLDPP.h"
 #include "time.h"
 
-void MuonPairPlottingPP::ProcessData(){
+void MuonPairPlottingOLDPP::ProcessData(){
 	
   	for (int idr = 0; idr < ParamsSet::ndRselcs; idr++){
         for (int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
@@ -26,7 +26,7 @@ void MuonPairPlottingPP::ProcessData(){
 }
 
 
-bool MuonPairPlottingPP::PassSingleMuonGapCut(float meta, float mpt, int mcharge){
+bool MuonPairPlottingOLDPP::PassSingleMuonGapCut(float meta, float mpt, int mcharge){
     // parameters: eta and pT of the same muon
     if (fabs(meta) < pms.eta_gap_cut1) return false;
     if (mpt < 6){
@@ -39,7 +39,7 @@ bool MuonPairPlottingPP::PassSingleMuonGapCut(float meta, float mpt, int mcharge
 }
 
 
-void MuonPairPlottingPP::FillHistograms(int ndr, int nsign){
+void MuonPairPlottingOLDPP::FillHistograms(int ndr, int nsign){
 
     // ngapcut = 0: all; = 1: only those that pass
 
@@ -122,10 +122,10 @@ void MuonPairPlottingPP::FillHistograms(int ndr, int nsign){
     }
 }
 
-void MuonPairPlottingPP::FillPtBinnedHistograms(int ndr, int npt, int nsign){}
+void MuonPairPlottingOLDPP::FillPtBinnedHistograms(int ndr, int npt, int nsign){}
 
 
-void MuonPairPlottingPP::WriteOutput(){
+void MuonPairPlottingOLDPP::WriteOutput(){
     if (isScram){
         // outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_scrambled_pairs_pp.root","update");
         outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_scrambled_pairs_pp.root","recreate");
@@ -189,7 +189,7 @@ void MuonPairPlottingPP::WriteOutput(){
     }
 }
 
-void MuonPairPlottingPP::Run(){
+void MuonPairPlottingOLDPP::Run(){
     clock_t start, end;
     double cpu_time_used;
     start = clock();

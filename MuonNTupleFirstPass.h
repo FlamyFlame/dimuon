@@ -71,6 +71,8 @@ private:
 
    Muon* tempmuon = nullptr;
    MuonPair* mpair = nullptr;
+   std::vector<int> resonance_tagged_muon_index_list {};
+
 
     // --------------------- class methods ---------------------------
 
@@ -94,7 +96,7 @@ private:
 
 
 public :
-   int mode = 3;
+   int mode = 4;
    MuonNTupleFirstPass();
    ~MuonNTupleFirstPass(){}
    void Run();

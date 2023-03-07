@@ -5,9 +5,9 @@ root -b -l << EOF
 	cc.mc_mode="mc_truth_cc"
 	cc.Run()
 
-	// SimpleOutput bb;
-	// bb.mc_mode="mc_truth_bb"
-	// bb.Run();
+	SimpleOutput bb;
+	bb.mc_mode="mc_truth_bb"
+	bb.Run();
 	.q;
 EOF
 

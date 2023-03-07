@@ -122,9 +122,9 @@ void plot_one_scaling_mode(bool scale_to_unity){
 		            }
 					// hx[lmc] = h2[lmc]->ProjectionX(Form("hx%d",lmc+1));
 					hx[mgapcut][jweight][ksign][lmc] = *(h2[lmc]->ProjectionX(Form("hx%d%d%d%d",mgapcut,jweight,ksign,lmc)));
+					hx[mgapcut][jweight][ksign][lmc].Rebin(2);
 					if (jweight == 1 && lmc == 1 && !scale_to_unity) hist_helper(hx[mgapcut][jweight][ksign][lmc], weightTitles[jweight] + ", " + signTitles[ksign], scale_to_unity, true);
 					else 											 hist_helper(hx[mgapcut][jweight][ksign][lmc], weightTitles[jweight] + ", " + signTitles[ksign], scale_to_unity);
-					hx[mgapcut][jweight][ksign][lmc].Rebin(2);
 				}
 
 

@@ -33,12 +33,13 @@ void SimpleOutput::ProcessData(){
       std::vector<int> pchildren = truth_children->at(i);
       float ppt = truth_pt->at(i)/1000.;
       float peta = truth_eta->at(i);
+      float pphi = truth_phi->at(i);
       // float weight = EventWeights;
 
       // outfile << ev_num << "\t" << pbarcode << "\t" << pid << "\t" << ppt << "\t" << peta << "\t" << "{{";
       // for (auto iparent : pparents) outfile << iparent << " ";
       // outfile << "}}" << std::endl;
-      fprintf(outfile, "%4d%6d%6d%12.2e%12.3f  {{",ev_num,pbarcode,pid,ppt,peta);
+      fprintf(outfile, "%4d%6d%6d%12.2e%12.2f%12.2f  {{",ev_num,pbarcode,pid,ppt,peta,pphi);
       // fprintf(outfile, "%4d%4d%6d%8.3f%8.2f  {{",ev_num,pbarcode,pid,ppt,peta);
       for (auto iparent : pparents) fprintf(outfile,"%d ",iparent);
       fprintf(outfile, "}}\t{{");

@@ -51,12 +51,14 @@ void find_plateau_avg_single_hist(std::string path, std::string fname, std::stri
 
 
 void find_plateau_avg(){
-	find_plateau_avg_single_hist("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/","histograms_mc_truth_bb.root","h_Deta_Dphi_dr3_sign1_gapcut1",16,21,45,50);
-	find_plateau_avg_single_hist("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/","histograms_mc_truth_bb.root","h_Deta_Dphi_dr3_sign2_gapcut1",15,20,45,49);
-	find_plateau_avg_single_hist("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/","histograms_mc_truth_cc.root","h_Deta_Dphi_dr3_sign1_gapcut1",16,21,45,50);
-	find_plateau_avg_single_hist("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/","histograms_mc_truth_cc.root","h_Deta_Dphi_dr3_sign2_gapcut1",16,17,44,44);
-	find_plateau_avg_single_hist("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/","histograms_real_pairs_pp.root","h_eta_avg_Dphi_dr3_sign1_gapcut1",42,42,87,90);
-	find_plateau_avg_single_hist("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/","histograms_real_pairs_pp.root","h_eta_avg_Dphi_dr3_sign2_gapcut1",37,45,88,92);
+	// find_plateau_avg_single_hist("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/","histograms_mc_truth_bb.root","h_Deta_Dphi_dr3_sign1_gapcut1",16,21,45,50);
+	// find_plateau_avg_single_hist("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/","histograms_mc_truth_bb.root","h_Deta_Dphi_dr3_sign2_gapcut1",15,20,45,49);
+	// find_plateau_avg_single_hist("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/","histograms_mc_truth_cc.root","h_Deta_Dphi_dr3_sign1_gapcut1",16,21,45,50);
+	// find_plateau_avg_single_hist("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/","histograms_mc_truth_cc.root","h_Deta_Dphi_dr3_sign2_gapcut1",16,17,44,44);
+	// find_plateau_avg_single_hist("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/","histograms_real_pairs_pp.root","h_eta_avg_Dphi_dr3_sign1_gapcut1",42,42,87,90);
+	// find_plateau_avg_single_hist("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/","histograms_real_pairs_pp.root","h_eta_avg_Dphi_dr3_sign2_gapcut1",37,45,88,92);
+	find_plateau_avg_single_hist("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/","histograms_real_pairs_pp_tight.root","h_eta_avg_Dphi_dr3_sign1_gapcut1",37,45,85,91);
+	find_plateau_avg_single_hist("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/","histograms_real_pairs_pp_tight.root","h_eta_avg_Dphi_dr3_sign2_gapcut1",36,39,89,93);
 	std::cout << std::endl;
 	// find_plateau_avg_single_hist("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/","histograms_real_pairs_pp.root","h_eta_avg_Dphi_dr3_sign1_gapcut2",40,45,87,90);
 	// find_plateau_avg_single_hist("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/","histograms_real_pairs_pp.root","h_eta_avg_Dphi_dr3_sign2_gapcut2",37,45,88,92);

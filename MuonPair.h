@@ -45,7 +45,8 @@ public:
 };
 
 MuonPair::MuonPair(float pt1=0,float pt2=0,float eta1=5,float eta2=5,float phi1=5,float phi2=5,float dPoverP1=5,float dPoverP2=5){
-	InitPair(pt1,pt2,eta1,eta2,phi1,phi2,dPoverP1,dPoverP2);
+	weight = 1.;
+  InitPair(pt1,pt2,eta1,eta2,phi1,phi2,dPoverP1,dPoverP2);
   Update();
 }
 
