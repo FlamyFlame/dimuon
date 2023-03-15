@@ -37,7 +37,7 @@ std::string gapcutTitles[nGapCuts] = {"no gap cut", "with gap cut"};
 
 TFile* f[nDtTypes];
 std::string dt_paths[nDtTypes] = {"/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/","/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/","/usatlas/u/yuhanguo/usatlasdata/dimuon_data/","/usatlas/u/yuhanguo/usatlasdata/dimuon_data/"};
-std::string fnames[nDtTypes] = {"histograms_mc_truth_bb.root","histograms_mc_truth_cc.root","histograms_real_pairs_pp.root","histograms_real_pairs_pp_tight.root"};
+std::string fnames[nDtTypes] = {"histograms_mc_truth_bb_old.root","histograms_mc_truth_cc_old.root","histograms_real_pairs_pp_old.root","histograms_real_pairs_pp_tight_old.root"};
 // std::string dtTitles[nDtTypes] = {"MC truth bb", "MC truth cc", "pp data"};
 std::string dtTitles[nDtTypes] = {"MC truth", "", "pp medium", "pp tight"};
 
@@ -92,12 +92,15 @@ void hist_helper(TH1* h, float norm, std::string ytitle=""){
     // h->GetZaxis()->SetLabelSize(h->GetZaxis()->GetLabelSize()*1.35);
 }
 
-void dphi_mc_data_compr_with_tight_one_mode(bool substract_plateau, float scaling_factor = 1.){
+void dphi_mc_data_compr_with_tight_one_mode(bool substract_plateau, bool ratio, float scaling_factor = 1.){
 
   initialize();
 
-  // for (int lgap = 0; lgap < nGapCuts; lgap++){
-    // TCanvas* c = new TCanvas(Form("c%d",lgap),Form("c%d",lgap),2900,1000);
+  if (substract_plateau && ratio){
+    std::cout << "Cannot both substract plateau and take ratio." << std::endl;
+    throw std::exception();
+  }
+
   
   TCanvas* c = new TCanvas("c","c",2900,1000);
   c->Divide(nSigns,1);
@@ -137,26 +140,40 @@ void dphi_mc_data_compr_with_tight_one_mode(bool substract_plateau, float scalin
     }
 
     h[0][ksign]->Add(h[1][ksign]);
-    h[0][ksign]->Rebin(2); // must first rebin then call hist_helper: the Scale(1,"width") depends on the # of bins
+    if (ratio){
+      h[2][ksign]->Rebin(2);
+      h[3][ksign]->Rebin(2);
+    }else{
+      h[0][ksign]->Rebin(2); // must first rebin then call hist_helper: the Scale(1,"width") depends on the # of bins
+    }
 
-    hist_helper(h[0][ksign], norm_factor[0], "#frac{d#sigma}{d #Delta #phi} [pb]");
+    std::string y_title = (ratio)? "ratio" : "#frac{d#sigma}{d #Delta #phi} [pb]";
+    hist_helper(h[0][ksign], norm_factor[0], y_title);
     l->AddEntry(h[0][ksign],dtTitles[0].c_str(),"lp");
 
-    hist_helper(h[2][ksign], norm_factor[2], "#frac{d#sigma}{d #Delta #phi} [pb]");
+    hist_helper(h[2][ksign], norm_factor[2], y_title);
     l->AddEntry(h[2][ksign],dtTitles[2].c_str(),"lp");
 
-    hist_helper(h[3][ksign], norm_factor[3], "#frac{d#sigma}{d #Delta #phi} [pb]");
+    hist_helper(h[3][ksign], norm_factor[3], y_title);
     l->AddEntry(h[3][ksign],dtTitles[3].c_str(),"lp");
 
     // std::cout << h[0][ksign]->Integral("width") << std::endl;
 
     // std::cout << h[0][ksign]->Integral("width") << ", " << h[2][ksign]->Integral("width") * 256.8 << std::endl;
-                
-    float ylim = 1.1 * ((h[0][ksign]->GetMaximum() > h[2][ksign]->GetMaximum())? h[0][ksign]->GetMaximum() : h[2][ksign]->GetMaximum());
-    h[0][ksign]->GetYaxis()->SetRangeUser(0,ylim);
-    h[0][ksign]->Draw("E");
-    h[2][ksign]->Draw("E,same");
+        
+
+    if (ratio){
+      h[0][ksign]->Divide(h[2][ksign]);
+      h[3][ksign]->Divide(h[2][ksign]);
+      h[2][ksign]->Divide(h[2][ksign]);
+    }else{
+      float ylim = 1.1 * ((h[0][ksign]->GetMaximum() > h[2][ksign]->GetMaximum())? h[0][ksign]->GetMaximum() : h[2][ksign]->GetMaximum());
+      h[2][ksign]->GetYaxis()->SetRangeUser(0,ylim);
+    }
+
+    h[2][ksign]->Draw("E");
     h[3][ksign]->Draw("E,same");
+    h[0][ksign]->Draw("E,same");
     // h[ymax_ind][ksign]->Draw("E");
     // for (int jdt = 0; jdt < nDtTypes; jdt++){
     //   if (jdt != ymax_ind) h[jdt][ksign]->Draw("E,same");
@@ -166,12 +183,16 @@ void dphi_mc_data_compr_with_tight_one_mode(bool substract_plateau, float scalin
     if (substract_plateau)    l->AddEntry("","subtracting plateau","");
     l->Draw();
   }
-  // if (!substract_plateau) std::cout << "**********" << std::endl;
 
-  // c->SaveAs(Form("plots/mc_data_compr/dphi_mc_data_compr_gapcut%d.png",lgap+1));
   if (substract_plateau) c->SaveAs("plots/mc_data_compr/dphi_mc_pp_tight_compr_substract_plateau.png");
-  else if (scaling_factor != 1.) c->SaveAs("plots/mc_data_compr/dphi_SCALED_mc_pp_tight_compr.png");
-  else                   c->SaveAs("plots/mc_data_compr/dphi_mc_pp_tight_compr.png");
+  else if (scaling_factor != 1.){
+    if (ratio)  c->SaveAs(Form("plots/mc_data_compr/dphi_SCALED_%.1f_mc_pp_tight_compr_ratio.png",scaling_factor));
+    else        c->SaveAs(Form("plots/mc_data_compr/dphi_SCALED_%.1f_mc_pp_tight_compr.png",scaling_factor));
+  }
+  else{
+    if (ratio)  c->SaveAs("plots/mc_data_compr/dphi_mc_pp_tight_compr_ratio.png");
+    else        c->SaveAs("plots/mc_data_compr/dphi_mc_pp_tight_compr.png");
+  }                   
   c->Close();
   delete c;
 
@@ -179,9 +200,11 @@ void dphi_mc_data_compr_with_tight_one_mode(bool substract_plateau, float scalin
 
 
 void dphi_mc_data_compr_with_tight(){
-  dphi_mc_data_compr_with_tight_one_mode(true);
-  dphi_mc_data_compr_with_tight_one_mode(false);
-  // dphi_mc_data_compr_with_tight_one_mode(false, 5.);
+  // dphi_mc_data_compr_with_tight_one_mode(true, false);
+  dphi_mc_data_compr_with_tight_one_mode(false, true);
+  dphi_mc_data_compr_with_tight_one_mode(false, false);
+  // dphi_mc_data_compr_with_tight_one_mode(false, true, 5.);
+  // dphi_mc_data_compr_with_tight_one_mode(false, false, 5.);
 }
 
 

@@ -45,78 +45,87 @@ void MuonPairPlottingPP::FillHistograms(int ndr, int nsign){
 
     //  bool pass_gapcut = fabs(m1eta[ndr][nsign]) > pms.eta_gap_cut && fabs(m2eta[ndr][nsign]) > pms.eta_gap_cut;
     bool pass_gapcut = PassSingleMuonGapCut(m1eta[ndr][nsign], m1pt[ndr][nsign], m1charge[ndr][nsign]) && PassSingleMuonGapCut(m2eta[ndr][nsign], m2pt[ndr][nsign], m2charge[ndr][nsign]);
+    bool away_side = (abs(dphi[ndr][nsign]) >= pms.PI / 2.);
 
     if (pass_gapcut){
-        h_pair_dP_overP[ndr][nsign][1]->Fill(pair_dPoverP[ndr][nsign],weight[ndr][nsign]);
-        h_pair_y[ndr][nsign][1]->Fill(pair_y[ndr][nsign],weight[ndr][nsign]);
-        h_DR[ndr][nsign][1]->Fill(dr[ndr][nsign],weight[ndr][nsign]);
-        h_Dphi[ndr][nsign][1]->Fill(dphi[ndr][nsign],weight[ndr][nsign]);
-        h_eta_avg_Dphi[ndr][nsign][1]->Fill(dphi[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
-        h_eta1_eta2[ndr][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
-        h_pt1_pt2[ndr][nsign][1]->Fill(m2pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
-        h_eta_avg_Deta[ndr][nsign][1]->Fill(deta[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
-        h_ptlead_pair_pt[ndr][nsign][1]->Fill(pair_pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
-        h_minv_pair_pt[ndr][nsign][1]->Fill(pair_pt[ndr][nsign],minv[ndr][nsign],weight[ndr][nsign]);
-        h_Deta_Dphi[ndr][nsign][1]->Fill(dphi[ndr][nsign],deta[ndr][nsign],weight[ndr][nsign]);
-            
-        if (isMCTruthBB || isMCTruthCC){
-            // h_unweighted_pair_dP_overP[ndr][nsign][1]->Fill(pair_dPoverP[ndr][nsign]);
-            // h_unweighted_pair_y[ndr][nsign][1]->Fill(pair_y[ndr][nsign]);
-            // h_unweighted_DR[ndr][nsign][1]->Fill(dr[ndr][nsign]);
-            // h_unweighted_Dphi[ndr][nsign][1]->Fill(dphi[ndr][nsign]);
-            // h_unweighted_eta_avg_Dphi[ndr][nsign][1]->Fill(dphi[ndr][nsign],etaavg[ndr][nsign]);
-            // h_unweighted_eta1_eta2[ndr][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign]);
-            // h_unweighted_pt1_pt2[ndr][nsign][1]->Fill(m2pt[ndr][nsign],m1pt[ndr][nsign]);
-            // h_unweighted_eta_avg_Deta[ndr][nsign][1]->Fill(deta[ndr][nsign],etaavg[ndr][nsign]);
-            // h_unweighted_ptlead_pair_pt[ndr][nsign][1]->Fill(pair_pt[ndr][nsign],m1pt[ndr][nsign]);
-            // h_unweighted_minv_pair_pt[ndr][nsign][1]->Fill(pair_pt[ndr][nsign],minv[ndr][nsign]);
-            h_unweighted_Deta_Dphi[ndr][nsign][1]->Fill(dphi[ndr][nsign],deta[ndr][nsign]);
+        if (saveDRbinned){
+            h_pair_dP_overP_dr_binned[ndr][nsign][1]->Fill(pair_dPoverP[ndr][nsign],weight[ndr][nsign]);
+            h_pair_y_dr_binned[ndr][nsign][1]->Fill(pair_y[ndr][nsign],weight[ndr][nsign]);
+            h_DR_dr_binned[ndr][nsign][1]->Fill(dr[ndr][nsign],weight[ndr][nsign]);
+            h_Dphi_dr_binned[ndr][nsign][1]->Fill(dphi[ndr][nsign],weight[ndr][nsign]);
+            h_eta_avg_Dphi_dr_binned[ndr][nsign][1]->Fill(dphi[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
+            h_eta1_eta2_dr_binned[ndr][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
+            h_pt1_pt2_dr_binned[ndr][nsign][1]->Fill(m2pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
+            h_eta_avg_Deta_dr_binned[ndr][nsign][1]->Fill(deta[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
+            h_ptlead_pair_pt_dr_binned[ndr][nsign][1]->Fill(pair_pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
+            h_minv_pair_pt_dr_binned[ndr][nsign][1]->Fill(pair_pt[ndr][nsign],minv[ndr][nsign],weight[ndr][nsign]);
+            h_Deta_Dphi_dr_binned[ndr][nsign][1]->Fill(dphi[ndr][nsign],deta[ndr][nsign],weight[ndr][nsign]);
+                
+            if (isMCTruthBB || isMCTruthCC){
+                h_unweighted_Deta_Dphi_dr_binned[ndr][nsign][1]->Fill(dphi[ndr][nsign],deta[ndr][nsign]);
+            }
         }
         
         if (ndr == 2){ //no delta R cut
+
+            h_pair_dP_overP[away_side][nsign][1]->Fill(pair_dPoverP[ndr][nsign],weight[ndr][nsign]);
+            h_pair_y[away_side][nsign][1]->Fill(pair_y[ndr][nsign],weight[ndr][nsign]);
+            h_DR[away_side][nsign][1]->Fill(dr[ndr][nsign],weight[ndr][nsign]);
+            h_Dphi[away_side][nsign][1]->Fill(dphi[ndr][nsign],weight[ndr][nsign]);
+            h_eta_avg_Dphi[away_side][nsign][1]->Fill(dphi[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
+            h_eta1_eta2[away_side][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
+            h_pt1_pt2[away_side][nsign][1]->Fill(m2pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
+            h_eta_avg_Deta[away_side][nsign][1]->Fill(deta[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
+            h_ptlead_pair_pt[away_side][nsign][1]->Fill(pair_pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
+            h_minv_pair_pt[away_side][nsign][1]->Fill(pair_pt[ndr][nsign],minv[ndr][nsign],weight[ndr][nsign]);
+            h_Deta_Dphi[away_side][nsign][1]->Fill(dphi[ndr][nsign],deta[ndr][nsign],weight[ndr][nsign]);
+
             h_eta1_eta2_dphicut[2][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
-            if (dphi[ndr][nsign] < 1){
+            if (abs(dphi[ndr][nsign]) < 1){
                 h_eta1_eta2_dphicut[0][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
-            }else if(dphi[ndr][nsign] > pms.PI-1){
+            }else if(abs(dphi[ndr][nsign]) > pms.PI-1){
                 h_eta1_eta2_dphicut[1][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
             }
         }
     }
 
     //fill [0] for everyone
+    if (saveDRbinned){
+        h_pair_dP_overP_dr_binned[ndr][nsign][0]->Fill(pair_dPoverP[ndr][nsign],weight[ndr][nsign]);
+        h_pair_y_dr_binned[ndr][nsign][0]->Fill(pair_y[ndr][nsign],weight[ndr][nsign]);
+        h_DR_dr_binned[ndr][nsign][0]->Fill(dr[ndr][nsign],weight[ndr][nsign]);
+        h_Dphi_dr_binned[ndr][nsign][0]->Fill(dphi[ndr][nsign],weight[ndr][nsign]);
+        h_eta_avg_Dphi_dr_binned[ndr][nsign][0]->Fill(dphi[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
+        h_Deta_Dphi_dr_binned[ndr][nsign][0]->Fill(dphi[ndr][nsign],deta[ndr][nsign],weight[ndr][nsign]);
+        h_eta1_eta2_dr_binned[ndr][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
+        h_pt1_pt2_dr_binned[ndr][nsign][0]->Fill(m2pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
+        h_eta_avg_Deta_dr_binned[ndr][nsign][0]->Fill(deta[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
+        h_ptlead_pair_pt_dr_binned[ndr][nsign][0]->Fill(pair_pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
+        h_minv_pair_pt_dr_binned[ndr][nsign][0]->Fill(pair_pt[ndr][nsign],minv[ndr][nsign],weight[ndr][nsign]);
 
-    h_pair_dP_overP[ndr][nsign][0]->Fill(pair_dPoverP[ndr][nsign],weight[ndr][nsign]);
-    h_pair_y[ndr][nsign][0]->Fill(pair_y[ndr][nsign],weight[ndr][nsign]);
-    h_DR[ndr][nsign][0]->Fill(dr[ndr][nsign],weight[ndr][nsign]);
-    h_Dphi[ndr][nsign][0]->Fill(dphi[ndr][nsign],weight[ndr][nsign]);
-    h_eta_avg_Dphi[ndr][nsign][0]->Fill(dphi[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
-    h_Deta_Dphi[ndr][nsign][0]->Fill(dphi[ndr][nsign],deta[ndr][nsign],weight[ndr][nsign]);
-    h_eta1_eta2[ndr][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
-    h_pt1_pt2[ndr][nsign][0]->Fill(m2pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
-    h_eta_avg_Deta[ndr][nsign][0]->Fill(deta[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
-    h_ptlead_pair_pt[ndr][nsign][0]->Fill(pair_pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
-    h_minv_pair_pt[ndr][nsign][0]->Fill(pair_pt[ndr][nsign],minv[ndr][nsign],weight[ndr][nsign]);
-
-    if (isMCTruthBB || isMCTruthCC){
-        // h_unweighted_pair_dP_overP[ndr][nsign][0]->Fill(pair_dPoverP[ndr][nsign]);
-        // h_unweighted_pair_y[ndr][nsign][0]->Fill(pair_y[ndr][nsign]);
-        // h_unweighted_DR[ndr][nsign][0]->Fill(dr[ndr][nsign]);
-        // h_unweighted_Dphi[ndr][nsign][0]->Fill(dphi[ndr][nsign]);
-        // h_unweighted_eta_avg_Dphi[ndr][nsign][0]->Fill(dphi[ndr][nsign],etaavg[ndr][nsign]);
-        h_unweighted_Deta_Dphi[ndr][nsign][0]->Fill(dphi[ndr][nsign],deta[ndr][nsign]);
-        // h_unweighted_eta1_eta2[ndr][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign]);
-        // h_unweighted_pt1_pt2[ndr][nsign][0]->Fill(m2pt[ndr][nsign],m1pt[ndr][nsign]);
-        // h_unweighted_eta_avg_Deta[ndr][nsign][0]->Fill(deta[ndr][nsign],etaavg[ndr][nsign]);
-        // h_unweighted_ptlead_pair_pt[ndr][nsign][0]->Fill(pair_pt[ndr][nsign],m1pt[ndr][nsign]);
-        // h_unweighted_minv_pair_pt[ndr][nsign][0]->Fill(pair_pt[ndr][nsign],minv[ndr][nsign]);
+        if (isMCTruthBB || isMCTruthCC){
+            h_unweighted_Deta_Dphi_dr_binned[ndr][nsign][0]->Fill(dphi[ndr][nsign],deta[ndr][nsign]);
+        }     
     }
 
 
     if (ndr == 2){ //no delta R cut
+        h_pair_dP_overP[away_side][nsign][0]->Fill(pair_dPoverP[ndr][nsign],weight[ndr][nsign]);
+        h_pair_y[away_side][nsign][0]->Fill(pair_y[ndr][nsign],weight[ndr][nsign]);
+        h_DR[away_side][nsign][0]->Fill(dr[ndr][nsign],weight[ndr][nsign]);
+        h_Dphi[away_side][nsign][0]->Fill(dphi[ndr][nsign],weight[ndr][nsign]);
+        h_eta_avg_Dphi[away_side][nsign][0]->Fill(dphi[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
+        h_Deta_Dphi[away_side][nsign][0]->Fill(dphi[ndr][nsign],deta[ndr][nsign],weight[ndr][nsign]);
+        h_eta1_eta2[away_side][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
+        h_pt1_pt2[away_side][nsign][0]->Fill(m2pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
+        h_eta_avg_Deta[away_side][nsign][0]->Fill(deta[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
+        h_ptlead_pair_pt[away_side][nsign][0]->Fill(pair_pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
+        h_minv_pair_pt[away_side][nsign][0]->Fill(pair_pt[ndr][nsign],minv[ndr][nsign],weight[ndr][nsign]);
+
         h_eta1_eta2_dphicut[2][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
-        if (dphi[ndr][nsign] < 1){
+        if (abs(dphi[ndr][nsign]) < 1){
             h_eta1_eta2_dphicut[0][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
-        }else if(dphi[ndr][nsign] > pms.PI-1){
+        }else if(abs(dphi[ndr][nsign]) > pms.PI-1){
             h_eta1_eta2_dphicut[1][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
         }
     }
@@ -150,35 +159,42 @@ void MuonPairPlottingPP::WriteOutput(){
     
         for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
             for (unsigned int lgapcut = 0; lgapcut < ParamsSet::nGapCuts; lgapcut++){
-                for (unsigned int idr = 0; idr < ParamsSet::ndRselcs; idr++){
-                    // std::cout << "dR " << idr << ", sign " << ksign << "gapcut " << lgapcut << ", #entries " << h_pair_y[idr][ksign][lgapcut]->GetEntries() << std::endl;
-                    h_pair_dP_overP[idr][ksign][lgapcut]->Write();
-                    h_pair_y[idr][ksign][lgapcut]->Write();
-                    h_DR[idr][ksign][lgapcut]->Write();
-                    h_Dphi[idr][ksign][lgapcut]->Write();
-                    h_eta_avg_Dphi[idr][ksign][lgapcut]->Write();
-                    h_Deta_Dphi[idr][ksign][lgapcut]->Write();
-                    h_eta1_eta2[idr][ksign][lgapcut]->Write();
-                    h_eta_avg_Deta[idr][ksign][lgapcut]->Write();
-                    h_pt1_pt2[idr][ksign][lgapcut]->Write();
-                    h_ptlead_pair_pt[idr][ksign][lgapcut]->Write();
-                    h_minv_pair_pt[idr][ksign][lgapcut]->Write();
+                if (saveDRbinned){
+                    for (unsigned int idr = 0; idr < ParamsSet::ndRselcs; idr++){
+                        // std::cout << "dR " << idr << ", sign " << ksign << "gapcut " << lgapcut << ", #entries " << h_pair_y[idr][ksign][lgapcut]->GetEntries() << std::endl;
+                        h_pair_dP_overP_dr_binned[idr][ksign][lgapcut]->Write();
+                        h_pair_y_dr_binned[idr][ksign][lgapcut]->Write();
+                        h_DR_dr_binned[idr][ksign][lgapcut]->Write();
+                        h_Dphi_dr_binned[idr][ksign][lgapcut]->Write();
+                        h_eta_avg_Dphi_dr_binned[idr][ksign][lgapcut]->Write();
+                        h_Deta_Dphi_dr_binned[idr][ksign][lgapcut]->Write();
+                        h_eta1_eta2_dr_binned[idr][ksign][lgapcut]->Write();
+                        h_eta_avg_Deta_dr_binned[idr][ksign][lgapcut]->Write();
+                        h_pt1_pt2_dr_binned[idr][ksign][lgapcut]->Write();
+                        h_ptlead_pair_pt_dr_binned[idr][ksign][lgapcut]->Write();
+                        h_minv_pair_pt_dr_binned[idr][ksign][lgapcut]->Write();
 
 
-                    if (isMCTruthBB || isMCTruthCC){
-                        // h_unweighted_pair_dP_overP[idr][ksign][lgapcut]->Write();
-                        // h_unweighted_pair_y[idr][ksign][lgapcut]->Write();
-                        // h_unweighted_DR[idr][ksign][lgapcut]->Write();
-                        // h_unweighted_Dphi[idr][ksign][lgapcut]->Write();
-                        // h_unweighted_eta_avg_Dphi[idr][ksign][lgapcut]->Write();
-                        h_unweighted_Deta_Dphi[idr][ksign][lgapcut]->Write();
-                        // h_unweighted_eta1_eta2[idr][ksign][lgapcut]->Write();
-                        // h_unweighted_eta_avg_Deta[idr][ksign][lgapcut]->Write();
-                        // h_unweighted_pt1_pt2[idr][ksign][lgapcut]->Write();
-                        // h_unweighted_ptlead_pair_pt[idr][ksign][lgapcut]->Write();
-                        // h_unweighted_minv_pair_pt[idr][ksign][lgapcut]->Write();
+                        if (isMCTruthBB || isMCTruthCC){
+                            h_unweighted_Deta_Dphi_dr_binned[idr][ksign][lgapcut]->Write();
+                        }
                     }
                 }
+
+                for (unsigned int jdphi = 0; jdphi < 2; jdphi++){
+                    h_pair_dP_overP[jdphi][ksign][lgapcut]->Write();
+                    h_pair_y[jdphi][ksign][lgapcut]->Write();
+                    h_DR[jdphi][ksign][lgapcut]->Write();
+                    h_Dphi[jdphi][ksign][lgapcut]->Write();
+                    h_eta_avg_Dphi[jdphi][ksign][lgapcut]->Write();
+                    h_Deta_Dphi[jdphi][ksign][lgapcut]->Write();
+                    h_eta1_eta2[jdphi][ksign][lgapcut]->Write();
+                    h_eta_avg_Deta[jdphi][ksign][lgapcut]->Write();
+                    h_pt1_pt2[jdphi][ksign][lgapcut]->Write();
+                    h_ptlead_pair_pt[jdphi][ksign][lgapcut]->Write();
+                    h_minv_pair_pt[jdphi][ksign][lgapcut]->Write();
+                }
+
                 for (unsigned int idphi= 0; idphi < ParamsSet::ndphiselcs; idphi++){
                     h_eta1_eta2_dphicut[idphi][ksign][lgapcut]->Write();
                 }

@@ -156,7 +156,9 @@ private:
     TH1D* h_QQ_DR[ParamsSet::nSigns][2][4];
     TH1D* h_QQ_Dphi[ParamsSet::nSigns][2][4];
     TH1D* h_QQ_minv[ParamsSet::nSigns][2][4];
-    TH1D* h_QQ_ptlead_pair_pt_ratio[ParamsSet::nSigns][2][4];
+    TH1D* h_QQ_pair_pt_ptlead_ratio[ParamsSet::nSigns][2][4];
+    TH1D* h_QQ_asym[ParamsSet::nSigns][2][4];
+    TH1D* h_QQ_minv_s_cm_ratio[ParamsSet::nSigns][2][4];
 
     TH2D* h_QQ_ptlead_pair_pt[ParamsSet::nSigns][2][4];
     TH2D* h_QQ_pt1_pt2[ParamsSet::nSigns][2][4];
@@ -437,7 +439,10 @@ void MCNTupleFirstPass::InitOutput(){
                 h_QQ_DR[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_DR_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#Delta R;d#sigma/d#Delta R", 50,0,5.75);
                 h_QQ_Dphi[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_Dphi_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#Delta#phi;d#sigma/d#Delta#phi", 32,-pms.PI,pms.PI);
                 h_QQ_minv[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_minv_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";m_{QQ} [GeV]; d#sigma/dm_{QQ}",pms.n_hq_minv_bins,pms.hq_minvBins);
-                h_QQ_ptlead_pair_pt_ratio[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_ptlead_pair_pt_ratio_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#frac{p_{T}^{lead}}{p_{T}^{pair}};d#sigma/d#frac{p_{T}^{lead}}{p_{T}^{pair}}", 25,0,1);
+                h_QQ_pair_pt_ptlead_ratio[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_pair_pt_ptlead_ratio_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", 25,0,2.);
+                h_QQ_asym[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_asym_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", 25,0,1);
+                // if (kgrp != 2) // do not initialize for single gluon case
+                h_QQ_minv_s_cm_ratio[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_minv_s_cm_ratio_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#frac{m_{QQ}}{#hat{s}};d#sigma/d#frac{m_{QQ}}{#hat{s}}", 25,0,1);
                 
                 // h_QQ_ptlead_pair_pt[isign][jdphi] = new TH2D(Form("h_QQ_ptlead_pair_pt_sign%d%s",isign+1, dphis[jdphi].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.npairPT_bins,pms.pairPTBins[isign][2],pms.n_hq_pt_bins,pms.hq_pTBins);
                 h_QQ_ptlead_pair_pt[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_ptlead_pair_pt_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.n_hq_pt_bins,pms.hq_pTBins,pms.n_hq_pt_bins,pms.hq_pTBins);

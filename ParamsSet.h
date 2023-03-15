@@ -55,7 +55,7 @@ public:
 	
   	static const int npairPT_bins = 40;
   	float pairPTlogpow[nSigns][ndRselcs];
-  	float pairPTmax = 40;
+  	float pairPTmax = 50;
   	double pairPTBins[nSigns][ndRselcs][npairPT_bins+1];
 
   	static const int n_hq_pt_bins = 40;
@@ -101,9 +101,10 @@ ParamsSet::ParamsSet(){
 	pairPTlogpow[0][0] = 0.0198;
 	pairPTlogpow[0][1] = 0.0198;
 	pairPTlogpow[0][2] = 0.052;
+	pairPTlogpow[0][2] = 0.078;
 	pairPTlogpow[1][0] = 0.0198;
 	pairPTlogpow[1][1] = 0.0198;
-	pairPTlogpow[1][2] = 0.082;
+	pairPTlogpow[1][2] = 0.068;
 
 
 	// ={{0.0198,0.0198,0.052},{0.0198,0.0198,0.082}};

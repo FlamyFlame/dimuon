@@ -78,8 +78,8 @@ void plot_one_scaling_mode(bool scale_to_unity){
 	TH1D (*hx)[nWeights][nSigns][nMCs] = new TH1D[nGapCuts][nWeights][nSigns][nMCs];
 
 	TFile* f[nMCs];
-	f[0] = TFile::Open("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/histograms_mc_truth_bb.root"); 
-	f[1] = TFile::Open("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/histograms_mc_truth_cc.root"); 
+	f[0] = TFile::Open("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/histograms_mc_truth_bb_old.root"); 
+	f[1] = TFile::Open("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/histograms_mc_truth_cc_old.root"); 
 
 
 	// for (unsigned int mgapcut = 0; mgapcut < nGapCuts; mgapcut++){

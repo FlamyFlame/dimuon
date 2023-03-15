@@ -92,7 +92,7 @@ void plot_hard_scatt_single_kinematic(std::string kin, bool projx_2d, bool projy
         gPad->SetBottomMargin(0.135);
         gPad->SetLogx(logx);
 
-        TLegend* l = new TLegend(0.55,0.74,0.87,0.87);
+        TLegend* l = new TLegend(0.79,0.7,0.89,0.9);
         l->SetBorderSize(0);
         l->SetFillStyle(0);
         l->SetTextFont(43);
@@ -153,7 +153,7 @@ void plot_hard_scatt_single_kinematic(std::string kin, bool projx_2d, bool projy
     }
 
     if (add){
-      c->SaveAs(Form("plots/mc_truth/hard_scatt/hard_scatt_%s%s_accumulative.png", kin1d.c_str(), mcmodes[imc].c_str()));
+      c->SaveAs(Form("plots/mc_truth/accumulative/hard_scatt/hard_scatt_%s%s_accumulative.png", kin1d.c_str(), mcmodes[imc].c_str()));
     }else if (norm_unity){
       c->SaveAs(Form("plots/mc_truth/hard_scatt/hard_scatt_%s%s_unity.png", kin1d.c_str(), mcmodes[imc].c_str()));
     }else{
@@ -168,22 +168,29 @@ void plot_hard_scatt_single_kinematic(std::string kin, bool projx_2d, bool projy
 
 
 void plot_hard_scatt(){
-  plot_hard_scatt_single_kinematic("DR", false, false, false, false, "DR");
-  // plot_hard_scatt_single_kinematic("DR", false, false, true, false, "DR"); // accumulative
-  plot_hard_scatt_single_kinematic("DR", false, false, false, true, "DR"); // norm to unity
-  plot_hard_scatt_single_kinematic("Dphi", false, false, false, false, "Dphi");
-  // plot_hard_scatt_single_kinematic("Dphi", false, false, true, false, "Dphi"); // accumulative
-  plot_hard_scatt_single_kinematic("Dphi", false, false, false, true, "Dphi"); // norm to unity
-  plot_hard_scatt_single_kinematic("minv", false, false, false, false, "minv");
-  // plot_hard_scatt_single_kinematic("minv", false, false, true, false, "minv"); // accumulative
-  plot_hard_scatt_single_kinematic("minv", false, false, false, true, "minv"); // norm to unity
+  // plot_hard_scatt_single_kinematic("DR", false, false, false, false, "DR");
+  // // plot_hard_scatt_single_kinematic("DR", false, false, true, false, "DR"); // accumulative
+  // plot_hard_scatt_single_kinematic("DR", false, false, false, true, "DR"); // norm to unity
+  // plot_hard_scatt_single_kinematic("Dphi", false, false, false, false, "Dphi");
+  // // plot_hard_scatt_single_kinematic("Dphi", false, false, true, false, "Dphi"); // accumulative
+  // plot_hard_scatt_single_kinematic("Dphi", false, false, false, true, "Dphi"); // norm to unity
+  plot_hard_scatt_single_kinematic("minv", false, false, false, false, "minv", true);
+  // plot_hard_scatt_single_kinematic("minv", false, false, true, false, "minv", true); // accumulative
+  plot_hard_scatt_single_kinematic("minv", false, false, false, true, "minv", true); // norm to unity
+  //  plot_hard_scatt_single_kinematic("pair_pt_ptlead_ratio", false, false, false, false, "pair_pt_ptlead_ratio");
+  //plot_hard_scatt_single_kinematic("pair_pt_ptlead_ratio", false, false, false, true, "pair_pt_ptlead_ratio"); // norm to unity
+  //plot_hard_scatt_single_kinematic("asym", false, false, false, false, "asym");
+  //plot_hard_scatt_single_kinematic("asym", false, false, false, true, "asym"); // norm to unity
+  //plot_hard_scatt_single_kinematic("minv_s_cm_ratio", false, false, false, false, "minv_s_cm_ratio");
+  //plot_hard_scatt_single_kinematic("minv_s_cm_ratio", false, false, false, true, "minv_s_cm_ratio"); // norm to unity
 
-  plot_hard_scatt_single_kinematic("ptlead_pair_pt", true, false, false, false, "pair_pt",true);
-  plot_hard_scatt_single_kinematic("ptlead_pair_pt", true, false, false, true, "pair_pt",true); // norm to unity
-  plot_hard_scatt_single_kinematic("ptlead_pair_pt", false, true, false, false, "ptlead",true);
-  plot_hard_scatt_single_kinematic("ptlead_pair_pt", false, true, false, true, "ptlead",true); // norm to unity
-  plot_hard_scatt_single_kinematic("Deta_Dphi", false, true, false, false, "Deta");
-  plot_hard_scatt_single_kinematic("Deta_Dphi", false, true, false, true, "Deta"); // norm to unity
+
+  // plot_hard_scatt_single_kinematic("ptlead_pair_pt", true, false, false, false, "pair_pt",true);
+  // plot_hard_scatt_single_kinematic("ptlead_pair_pt", true, false, false, true, "pair_pt",true); // norm to unity
+  // plot_hard_scatt_single_kinematic("ptlead_pair_pt", false, true, false, false, "ptlead",true);
+  // plot_hard_scatt_single_kinematic("ptlead_pair_pt", false, true, false, true, "ptlead",true); // norm to unity
+  // plot_hard_scatt_single_kinematic("Deta_Dphi", false, true, false, false, "Deta");
+  // plot_hard_scatt_single_kinematic("Deta_Dphi", false, true, false, true, "Deta"); // norm to unity
 }
 
 

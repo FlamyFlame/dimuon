@@ -75,9 +75,9 @@ void MuonPairPlottingOLDPP::FillHistograms(int ndr, int nsign){
         
         if (ndr == 2){ //no delta R cut
             h_eta1_eta2_dphicut[2][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
-            if (dphi[ndr][nsign] < 1){
+            if (abs(dphi[ndr][nsign]) < 1){
                 h_eta1_eta2_dphicut[0][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
-            }else if(dphi[ndr][nsign] > pms.PI-1){
+            }else if(abs(dphi[ndr][nsign]) > pms.PI-1){
                 h_eta1_eta2_dphicut[1][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
             }
         }
@@ -114,9 +114,9 @@ void MuonPairPlottingOLDPP::FillHistograms(int ndr, int nsign){
 
     if (ndr == 2){ //no delta R cut
         h_eta1_eta2_dphicut[2][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
-        if (dphi[ndr][nsign] < 1){
+        if (abs(dphi[ndr][nsign]) < 1){
             h_eta1_eta2_dphicut[0][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
-        }else if(dphi[ndr][nsign] > pms.PI-1){
+        }else if(abs(dphi[ndr][nsign]) > pms.PI-1){
             h_eta1_eta2_dphicut[1][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
         }
     }
@@ -127,19 +127,19 @@ void MuonPairPlottingOLDPP::FillPtBinnedHistograms(int ndr, int npt, int nsign){
 
 void MuonPairPlottingOLDPP::WriteOutput(){
     if (isScram){
-        // outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_scrambled_pairs_pp.root","update");
-        outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_scrambled_pairs_pp.root","recreate");
+        // outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_scrambled_pairs_pp_old.root","update");
+        outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_scrambled_pairs_pp_old.root","recreate");
     }else if (isTight){
-        outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_real_pairs_pp_tight.root","recreate");
+        outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_real_pairs_pp_tight_old.root","recreate");
     }else if(isMCTruthBB){
-        outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/histograms_mc_truth_bb.root","recreate");
+        outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/histograms_mc_truth_bb_old.root","recreate");
     }else if(isMCTruthCC){
-        outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/histograms_mc_truth_cc.root","recreate");
+        outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/histograms_mc_truth_cc_old.root","recreate");
     }else{
-        // outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_real_pairs_pp_no_resn_cut.root","recreate");
-        // outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_real_pairs_pp_no_resn_no_photo.root","recreate");
-        outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_real_pairs_pp.root","recreate");
-        // outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_real_pairs_pp_1s_only.root","recreate");
+        // outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_real_pairs_pp_no_resn_cut_old.root","recreate");
+        // outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_real_pairs_pp_no_resn_no_photo_old.root","recreate");
+        outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_real_pairs_pp_old.root","recreate");
+        // outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_real_pairs_pp_1s_only_old.root","recreate");
     }
 
 

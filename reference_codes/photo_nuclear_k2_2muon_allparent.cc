@@ -133,7 +133,7 @@ int main(int argc, char **argv)
   // Use the nucleus distribution we defined
   // Following line removes photon virtuality test. Required for custom PDF. Small error since Q2 is small
   pythia.readString("Photon:sampleQ2 = off"); 
-  Nucleus2gamma* photonFlux = new Nucleus2gamma(13); // Why 13?
+  Nucleus2gamma* photonFlux = new Nucleus2gamma(13);
   pythia.setPhotonFluxPtr(photonFlux, 0);
 
   // Apply the above constraints
@@ -329,48 +329,48 @@ int main(int argc, char **argv)
         if(p.status() > 0) // If it's a final state particle
         {
           int aid=p.idAbs();
-	  // If the particle is not an electron/muon/tau neutrino (12/14/16) or a muon (13)
-	  // Also cut extremely forward particles from the jets
+	        // If the particle is not an electron/muon/tau neutrino (12/14/16) or a muon (13)
+	        // Also cut extremely forward particles from the jets
           //if(aid!=12 && aid!=13 && aid!=14 && aid!=16 && (std::abs(p.eta()) < 4.9))  
-	  if(aid!=12 && aid!=13 && aid!=14 && aid!=16)
-	    fjInputs.push_back( fastjet::PseudoJet( p.px(), p.py(), p.pz(), p.e() ) ); // Add to jet clustering
-	  else if(aid==13 && abs(p.eta()) < 2.7 && p.pT() > 4){ // Muon that satisfies |eta| < 7.2 & pT > 4 GeV -> experimental constraints & get rid of fake beam remnant
-	    b_muon_pt->push_back(p.pT());
-	    b_muon_eta->push_back(p.eta());
-	    b_muon_phi->push_back(p.phi());
-	    b_muon_m->push_back(p.m());
+      	  if(aid!=12 && aid!=13 && aid!=14 && aid!=16)
+      	    fjInputs.push_back( fastjet::PseudoJet( p.px(), p.py(), p.pz(), p.e() ) ); // Add to jet clustering
+      	  else if(aid==13 && abs(p.eta()) < 2.7 && p.pT() > 4){ // Muon that satisfies |eta| < 7.2 & pT > 4 GeV -> experimental constraints & get rid of fake beam remnant
+      	    b_muon_pt->push_back(p.pT());
+      	    b_muon_eta->push_back(p.eta());
+      	    b_muon_phi->push_back(p.phi());
+      	    b_muon_m->push_back(p.m());
             b_muon_mother1_id->push_back(event[p.mother1()].id() % 10000);
             //b_muon_mother2_id->push_back(event[p.mother2()].id() % 10000);
-	    ind = p.mother1(); // initiaze the index to be that of the muon's immediate parent
-	    cid = abs(event[ind].id()) % 10000;
+      	    ind = p.mother1(); // initiaze the index to be that of the muon's immediate parent
+      	    cid = abs(event[ind].id()) % 10000;
 
-	    if (cid == 15){ // if immed parent is tau, trace back one step and record its immed parent instead
-	      ind = event[ind].mother1();
-	      cid = abs(event[ind].id()) % 10000;
-	    }
+      	    if (cid == 15){ // if immed parent is tau, trace back one step and record its immed parent instead
+      	      ind = event[ind].mother1();
+      	      cid = abs(event[ind].id()) % 10000;
+      	    }
 
-	    while (cid == 13){ // if immed parent is muon (bremstralung), trace back until no longer is muon
-	      ind = event[ind].mother1();
-	      cid = abs(event[ind].id()) % 10000;
-	    }
-	    
-	    curr_event_mother1_list.clear(); // clear the vector that records the c/c hadron parental history of the muon
+      	    while (cid == 13){ // if immed parent is muon (bremstralung), trace back until no longer is muon
+      	      ind = event[ind].mother1();
+      	      cid = abs(event[ind].id()) % 10000;
+      	    }
+      	    
+      	    curr_event_mother1_list.clear(); // clear the vector that records the c/c hadron parental history of the muon
 
-	    while ((cid >= 400 && cid < 500) || (cid >= 4000 && cid < 5000)){ // if the current parent is a c/c hadron, then trace one step back
-	      curr_event_mother1_list.push_back(event[ind].id() % 10000); //note : youngest parent appears first in the c/c hadron mother list
-	      ind = event[ind].mother1(); // update ind to be index of the parent particle of the current particle
-	      cid = abs(event[ind].id()) % 10000; // |current id| % 10,000
-	      }
-	    // result: trace back until the parent particle is not a c hadron
-	    // so far: the list contains ONLY ancestors that are c hadrons
+      	    while ((cid >= 400 && cid < 500) || (cid >= 4000 && cid < 5000)){ // if the current parent is a c/c hadron, then trace one step back
+      	      curr_event_mother1_list.push_back(event[ind].id() % 10000); //note : youngest parent appears first in the c/c hadron mother list
+      	      ind = event[ind].mother1(); // update ind to be index of the parent particle of the current particle
+      	      cid = abs(event[ind].id()) % 10000; // |current id| % 10,000
+      	    }
+      	    // result: trace back until the parent particle is not a c hadron
+      	    // so far: the list contains ONLY ancestors that are c hadrons
 
-	    curr_event_mother1_list.push_back(event[ind].id()); // record the youngest ancestor that is NOT a c hadron
-	    // Note: if muons's immediate parent is not a c hadron, only the immediate parent is recorded
-	    b_muon_earliest_mother_id->push_back(curr_event_mother1_list.at(curr_event_mother1_list.size()-1)); // the youngest ancestor of the muon that is not a c hadron
-	    //b_muon_mother1_list->push_back(curr_event_mother1_list);
-	    b_muonCount += 1;
-	  }
-	}
+      	    curr_event_mother1_list.push_back(event[ind].id()); // record the youngest ancestor that is NOT a c hadron
+      	    // Note: if muons's immediate parent is not a c hadron, only the immediate parent is recorded
+      	    b_muon_earliest_mother_id->push_back(curr_event_mother1_list.at(curr_event_mother1_list.size()-1)); // the youngest ancestor of the muon that is not a c hadron
+      	    //b_muon_mother1_list->push_back(curr_event_mother1_list);
+      	    b_muonCount += 1;
+      	  }
+      	}
       }
     }
 

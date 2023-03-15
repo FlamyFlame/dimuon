@@ -431,6 +431,7 @@ void MCNTupleFirstPass::HardScatteringAnalysis(std::vector<int>& ancestor_bars, 
   std::vector<float> hard_out_qq_pts = {};
   std::vector<float> hard_out_qq_etas = {};
   std::vector<float> hard_out_qq_phis = {};
+  std::vector<TLorentzVector> hard_out_lorentz_vecs = {};
 
   for (int child_bar : hard_out_bars){
     itbar = std::find(truth_barcode->begin(),truth_barcode->end(),child_bar);
@@ -439,15 +440,38 @@ void MCNTupleFirstPass::HardScatteringAnalysis(std::vector<int>& ancestor_bars, 
       throw std::exception();
     }
 
-    int cur_id = truth_id->at(itbar - truth_barcode->begin()) % 10000;
+    int cur_ind = itbar - truth_barcode->begin();
+    int cur_id = truth_id->at(cur_ind) % 10000;
+    float cur_pt = abs(truth_pt->at(cur_ind))/1000.0;
+    float cur_eta = truth_eta->at(cur_ind);
+    float cur_phi = truth_phi->at(cur_ind);
+
+    float cur_m;
+    if (abs(cur_id) == quark) cur_m = mq;
+    else if(abs(cur_id) == 4) cur_m = 1.27; // for bb sample, c is considered "light"
+    else if(abs(cur_id) == 3) cur_m = 0.09;
+    else                      cur_m = 0; // ignore the mass of 
+
+    TLorentzVector M;
+    M.SetPtEtaPhiM(cur_pt,cur_eta,cur_phi,cur_m);
+    hard_out_lorentz_vecs.push_back(M);
+
     hard_out_ids.push_back(cur_id);
     
     if (abs(cur_id) == quark){
-      hard_out_qq_pts.push_back(abs(truth_pt->at(itbar - truth_barcode->begin()))/1000.0);
-      hard_out_qq_etas.push_back(truth_eta->at(itbar - truth_barcode->begin()));
-      hard_out_qq_phis.push_back(truth_phi->at(itbar - truth_barcode->begin()));
+      hard_out_qq_pts.push_back(cur_pt);
+      hard_out_qq_etas.push_back(cur_eta);
+      hard_out_qq_phis.push_back(cur_phi);
     }
   }
+
+  assert(hard_out_lorentz_vecs.size() != 0);
+  TLorentzVector Mtotal = hard_out_lorentz_vecs[0];
+  for (auto ii = hard_out_lorentz_vecs.begin()+1; ii < hard_out_lorentz_vecs.end(); ii++){
+    Mtotal += *ii;
+  }
+
+  float s_cm = Mtotal.M();
 
   int isign = (sign_dphi_mode >= 2);
   int idphi = sign_dphi_mode % 2;
@@ -478,7 +502,10 @@ void MCNTupleFirstPass::HardScatteringAnalysis(std::vector<int>& ancestor_bars, 
   h_QQ_Dphi[isign][idphi][ancestor_grp]->Fill(qqpair->dphi, qqpair->weight);
   h_QQ_DR[isign][idphi][ancestor_grp]->Fill(qqpair->dr, qqpair->weight);
   h_QQ_minv[isign][idphi][ancestor_grp]->Fill(qqpair->minv, qqpair->weight);
-  h_QQ_ptlead_pair_pt_ratio[isign][idphi][ancestor_grp]->Fill(qqpair->pt_lead / qqpair->pair_pt, qqpair->weight);
+  h_QQ_pair_pt_ptlead_ratio[isign][idphi][ancestor_grp]->Fill(qqpair->pair_pt / qqpair->pt_lead, qqpair->weight);
+  h_QQ_asym[isign][idphi][ancestor_grp]->Fill(qqpair->asym, qqpair->weight);
+  if (ancestor_grp != 2) // not fill for single gluon case --> treat separately later
+    h_QQ_minv_s_cm_ratio[isign][idphi][ancestor_grp]->Fill(qqpair->minv / s_cm, qqpair->weight);
 
   h_QQ_ptlead_pair_pt[isign][idphi][ancestor_grp]->Fill(qqpair->pair_pt, qqpair->pt_lead, qqpair->weight);
   h_QQ_pt1_pt2[isign][idphi][ancestor_grp]->Fill(qqpair->q2.pt, qqpair->pt_lead, qqpair->weight);
@@ -486,6 +513,41 @@ void MCNTupleFirstPass::HardScatteringAnalysis(std::vector<int>& ancestor_bars, 
   h_QQ_eta1_eta2[isign][idphi][ancestor_grp]->Fill(qqpair->q2.eta, qqpair->q1.eta, qqpair->weight);
   h_QQ_minv_pair_pt[isign][idphi][ancestor_grp]->Fill(qqpair->pair_pt, qqpair->minv, qqpair->weight);
   h_QQ_minv_Dphi[isign][idphi][ancestor_grp]->Fill(qqpair->dphi, qqpair->minv, qqpair->weight);
+
+  if (ancestor_grp == 2){
+    assert (truth_eta->at(2) == 1000. && truth_eta->at(3) == 1000. && abs(truth_eta)->at(4) < 20);
+    int num_hard_out = truth_children->at(2).size();
+
+    std::vector<TLorentzVector> hard_out_lorentz_vecs = {};
+
+    for (int cur_ind = 4; cur_ind < 4 + num_hard_out; cur_ind++){
+
+      float cur_id = truth_id->at(cur_ind);
+      float cur_pt = abs(truth_pt->at(cur_ind))/1000.0;
+      float cur_eta = truth_eta->at(cur_ind);
+      float cur_phi = truth_phi->at(cur_ind);
+
+      float cur_m;
+      if (abs(cur_id) == quark) cur_m = mq;
+      else if(abs(cur_id) == 4) cur_m = 1.27; // for bb sample, c is considered "light"
+      else if(abs(cur_id) == 3) cur_m = 0.09;
+      else                      cur_m = 0; // ignore the mass of 
+
+      TLorentzVector M;
+      M.SetPtEtaPhiM(cur_pt,cur_eta,cur_phi,cur_m);
+      hard_out_lorentz_vecs.push_back(M);      
+    }
+
+    assert(hard_out_lorentz_vecs.size() != 0);
+    TLorentzVector Mtotal = hard_out_lorentz_vecs[0];
+    for (auto ii = hard_out_lorentz_vecs.begin()+1; ii < hard_out_lorentz_vecs.end(); ii++){
+      Mtotal += *ii;
+    }
+
+    float s_cm = Mtotal.M();
+
+    h_QQ_minv_s_cm_ratio[isign][idphi][ancestor_grp]->Fill(qqpair->minv / s_cm, qqpair->weight);
+  }
 }
 
 
