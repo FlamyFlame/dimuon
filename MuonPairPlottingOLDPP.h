@@ -69,7 +69,7 @@ private:
     // TTree *inTree[ParamsSet::nSigns];
     TTree *inTree[ParamsSet::ndRselcs][ParamsSet::nSigns];
 
-    float weight[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    double weight[ParamsSet::ndRselcs][ParamsSet::nSigns];
   	float pair_dPoverP[ParamsSet::ndRselcs][ParamsSet::nSigns];
   	float pt_lead[ParamsSet::ndRselcs][ParamsSet::nSigns];
   	float pair_pt[ParamsSet::ndRselcs][ParamsSet::nSigns];

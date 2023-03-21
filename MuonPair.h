@@ -1,7 +1,7 @@
 #ifndef MuonPair_h
 #define MuonPair_h
 
-#include "struct_muon.h"
+#include "/usatlas/u/yuhanguo/workarea/dimuon_codes/struct_muon.h"
 #include <iostream>
 #include <string.h>
 #include "TLorentzVector.h"
@@ -16,7 +16,7 @@ class MuonPair{
 public:
 	Muon m1;
 	Muon m2;
-  float weight;
+  double weight;
   float pair_dPoverP; 
   float pt_lead;
   float pair_pt;

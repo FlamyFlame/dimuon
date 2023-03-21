@@ -43,6 +43,10 @@ void MuonPairPlottingPP::FillHistograms(int ndr, int nsign){
 
     // ngapcut = 0: all; = 1: only those that pass
 
+    if (ndr == 0 && nsign == 0){
+        cout << dphi[ndr][nsign] << " " << asym[ndr][nsign] << " " << weight[ndr][nsign] << endl;
+    }
+
     //  bool pass_gapcut = fabs(m1eta[ndr][nsign]) > pms.eta_gap_cut && fabs(m2eta[ndr][nsign]) > pms.eta_gap_cut;
     bool pass_gapcut = PassSingleMuonGapCut(m1eta[ndr][nsign], m1pt[ndr][nsign], m1charge[ndr][nsign]) && PassSingleMuonGapCut(m2eta[ndr][nsign], m2pt[ndr][nsign], m2charge[ndr][nsign]);
     bool away_side = (abs(dphi[ndr][nsign]) >= pms.PI / 2.);
@@ -53,6 +57,9 @@ void MuonPairPlottingPP::FillHistograms(int ndr, int nsign){
             h_pair_y_dr_binned[ndr][nsign][1]->Fill(pair_y[ndr][nsign],weight[ndr][nsign]);
             h_DR_dr_binned[ndr][nsign][1]->Fill(dr[ndr][nsign],weight[ndr][nsign]);
             h_Dphi_dr_binned[ndr][nsign][1]->Fill(dphi[ndr][nsign],weight[ndr][nsign]);
+            h_pt_asym_dr_binned[ndr][nsign][1]->Fill(asym[ndr][nsign],weight[ndr][nsign]);
+            h_pair_pt_ptlead_ratio_dr_binned[ndr][nsign][1]->Fill(pair_pt[ndr][nsign]/pt_lead[ndr][nsign],weight[ndr][nsign]);
+
             h_eta_avg_Dphi_dr_binned[ndr][nsign][1]->Fill(dphi[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
             h_eta1_eta2_dr_binned[ndr][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
             h_pt1_pt2_dr_binned[ndr][nsign][1]->Fill(m2pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
@@ -67,11 +74,13 @@ void MuonPairPlottingPP::FillHistograms(int ndr, int nsign){
         }
         
         if (ndr == 2){ //no delta R cut
-
             h_pair_dP_overP[away_side][nsign][1]->Fill(pair_dPoverP[ndr][nsign],weight[ndr][nsign]);
             h_pair_y[away_side][nsign][1]->Fill(pair_y[ndr][nsign],weight[ndr][nsign]);
             h_DR[away_side][nsign][1]->Fill(dr[ndr][nsign],weight[ndr][nsign]);
             h_Dphi[away_side][nsign][1]->Fill(dphi[ndr][nsign],weight[ndr][nsign]);
+            h_pt_asym[away_side][nsign][1]->Fill(asym[ndr][nsign],weight[ndr][nsign]);
+            h_pair_pt_ptlead_ratio[away_side][nsign][1]->Fill(pair_pt[ndr][nsign]/pt_lead[ndr][nsign],weight[ndr][nsign]);
+
             h_eta_avg_Dphi[away_side][nsign][1]->Fill(dphi[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
             h_eta1_eta2[away_side][nsign][1]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
             h_pt1_pt2[away_side][nsign][1]->Fill(m2pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
@@ -95,6 +104,9 @@ void MuonPairPlottingPP::FillHistograms(int ndr, int nsign){
         h_pair_y_dr_binned[ndr][nsign][0]->Fill(pair_y[ndr][nsign],weight[ndr][nsign]);
         h_DR_dr_binned[ndr][nsign][0]->Fill(dr[ndr][nsign],weight[ndr][nsign]);
         h_Dphi_dr_binned[ndr][nsign][0]->Fill(dphi[ndr][nsign],weight[ndr][nsign]);
+        h_pt_asym_dr_binned[ndr][nsign][0]->Fill(asym[ndr][nsign],weight[ndr][nsign]);
+        h_pair_pt_ptlead_ratio_dr_binned[ndr][nsign][0]->Fill(pair_pt[ndr][nsign]/pt_lead[ndr][nsign],weight[ndr][nsign]);
+
         h_eta_avg_Dphi_dr_binned[ndr][nsign][0]->Fill(dphi[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
         h_Deta_Dphi_dr_binned[ndr][nsign][0]->Fill(dphi[ndr][nsign],deta[ndr][nsign],weight[ndr][nsign]);
         h_eta1_eta2_dr_binned[ndr][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
@@ -114,6 +126,9 @@ void MuonPairPlottingPP::FillHistograms(int ndr, int nsign){
         h_pair_y[away_side][nsign][0]->Fill(pair_y[ndr][nsign],weight[ndr][nsign]);
         h_DR[away_side][nsign][0]->Fill(dr[ndr][nsign],weight[ndr][nsign]);
         h_Dphi[away_side][nsign][0]->Fill(dphi[ndr][nsign],weight[ndr][nsign]);
+        h_pt_asym[away_side][nsign][0]->Fill(asym[ndr][nsign],weight[ndr][nsign]);
+        h_pair_pt_ptlead_ratio[away_side][nsign][0]->Fill(pair_pt[ndr][nsign]/pt_lead[ndr][nsign],weight[ndr][nsign]);
+
         h_eta_avg_Dphi[away_side][nsign][0]->Fill(dphi[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
         h_Deta_Dphi[away_side][nsign][0]->Fill(dphi[ndr][nsign],deta[ndr][nsign],weight[ndr][nsign]);
         h_eta1_eta2[away_side][nsign][0]->Fill(m2eta[ndr][nsign],m1eta[ndr][nsign],weight[ndr][nsign]);
@@ -166,6 +181,9 @@ void MuonPairPlottingPP::WriteOutput(){
                         h_pair_y_dr_binned[idr][ksign][lgapcut]->Write();
                         h_DR_dr_binned[idr][ksign][lgapcut]->Write();
                         h_Dphi_dr_binned[idr][ksign][lgapcut]->Write();
+                        h_pt_asym_dr_binned[idr][ksign][lgapcut]->Write();
+                        h_pair_pt_ptlead_ratio_dr_binned[idr][ksign][lgapcut]->Write();
+
                         h_eta_avg_Dphi_dr_binned[idr][ksign][lgapcut]->Write();
                         h_Deta_Dphi_dr_binned[idr][ksign][lgapcut]->Write();
                         h_eta1_eta2_dr_binned[idr][ksign][lgapcut]->Write();
@@ -186,6 +204,9 @@ void MuonPairPlottingPP::WriteOutput(){
                     h_pair_y[jdphi][ksign][lgapcut]->Write();
                     h_DR[jdphi][ksign][lgapcut]->Write();
                     h_Dphi[jdphi][ksign][lgapcut]->Write();
+                    h_pt_asym[jdphi][ksign][lgapcut]->Write();
+                    h_pair_pt_ptlead_ratio[jdphi][ksign][lgapcut]->Write();
+
                     h_eta_avg_Dphi[jdphi][ksign][lgapcut]->Write();
                     h_Deta_Dphi[jdphi][ksign][lgapcut]->Write();
                     h_eta1_eta2[jdphi][ksign][lgapcut]->Write();

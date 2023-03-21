@@ -174,15 +174,20 @@ void plot_hard_scatt(){
   // plot_hard_scatt_single_kinematic("Dphi", false, false, false, false, "Dphi");
   // // plot_hard_scatt_single_kinematic("Dphi", false, false, true, false, "Dphi"); // accumulative
   // plot_hard_scatt_single_kinematic("Dphi", false, false, false, true, "Dphi"); // norm to unity
-  plot_hard_scatt_single_kinematic("minv", false, false, false, false, "minv", true);
-  // plot_hard_scatt_single_kinematic("minv", false, false, true, false, "minv", true); // accumulative
-  plot_hard_scatt_single_kinematic("minv", false, false, false, true, "minv", true); // norm to unity
+  // plot_hard_scatt_single_kinematic("minv", false, false, false, false, "minv", true);
+  // // plot_hard_scatt_single_kinematic("minv", false, false, true, false, "minv", true); // accumulative
+  // plot_hard_scatt_single_kinematic("minv", false, false, false, true, "minv", true); // norm to unity
+  
+
   //  plot_hard_scatt_single_kinematic("pair_pt_ptlead_ratio", false, false, false, false, "pair_pt_ptlead_ratio");
   //plot_hard_scatt_single_kinematic("pair_pt_ptlead_ratio", false, false, false, true, "pair_pt_ptlead_ratio"); // norm to unity
   //plot_hard_scatt_single_kinematic("asym", false, false, false, false, "asym");
   //plot_hard_scatt_single_kinematic("asym", false, false, false, true, "asym"); // norm to unity
   //plot_hard_scatt_single_kinematic("minv_s_cm_ratio", false, false, false, false, "minv_s_cm_ratio");
   //plot_hard_scatt_single_kinematic("minv_s_cm_ratio", false, false, false, true, "minv_s_cm_ratio"); // norm to unity
+
+  plot_hard_scatt_single_kinematic("pt_avg", false, false, false, false, "pt_avg", true);
+  plot_hard_scatt_single_kinematic("pt_avg", false, false, false, true, "pt_avg", true); // norm to unity
 
 
   // plot_hard_scatt_single_kinematic("ptlead_pair_pt", true, false, false, false, "pair_pt",true);

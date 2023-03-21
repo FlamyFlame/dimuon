@@ -503,6 +503,7 @@ void MCNTupleFirstPass::HardScatteringAnalysis(std::vector<int>& ancestor_bars, 
   h_QQ_DR[isign][idphi][ancestor_grp]->Fill(qqpair->dr, qqpair->weight);
   h_QQ_minv[isign][idphi][ancestor_grp]->Fill(qqpair->minv, qqpair->weight);
   h_QQ_pair_pt_ptlead_ratio[isign][idphi][ancestor_grp]->Fill(qqpair->pair_pt / qqpair->pt_lead, qqpair->weight);
+  h_QQ_pt_avg[isign][idphi][ancestor_grp]->Fill((qqpair->q1.pt + qqpair->q2.pt) / 2, qqpair->weight);
   h_QQ_asym[isign][idphi][ancestor_grp]->Fill(qqpair->asym, qqpair->weight);
   if (ancestor_grp != 2) // not fill for single gluon case --> treat separately later
     h_QQ_minv_s_cm_ratio[isign][idphi][ancestor_grp]->Fill(qqpair->minv / s_cm, qqpair->weight);
@@ -895,8 +896,8 @@ void MCNTupleFirstPass::ProcessData(){
     for(int i=0;i<NPairs;i++){//loop over all muon-pairs in the event
 
       // // use ind to record barcode instead
-      mpair->m1.ind     = static_cast<int>(muon_pair_muon1_bar->at(i));
-      mpair->m2.ind     = static_cast<int>(muon_pair_muon2_bar->at(i));
+      mpair->m1.ind     = muon_pair_muon1_bar->at(i);
+      mpair->m2.ind     = muon_pair_muon2_bar->at(i);
 
       // if charge unequal gives 1 (opposite sign); otherwise gives 0 (same sign)
       h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill(nocut + 0.5, mpair->weight);
@@ -915,8 +916,10 @@ void MCNTupleFirstPass::ProcessData(){
       mpair->m2.eta   = muon_pair_muon2_eta->at(i);
       mpair->m1.phi   = muon_pair_muon1_phi->at(i);
       mpair->m2.phi   = muon_pair_muon2_phi->at(i);
-      mpair->m1.charge  = static_cast<int>(muon_pair_muon1_ch->at(i));//sign of pt stores charge
-      mpair->m2.charge  = static_cast<int>(muon_pair_muon2_ch->at(i));//sign of pt stores charge
+      // mpair->m1.charge  = static_cast<int>(muon_pair_muon1_ch->at(i));//sign of pt stores charge
+      // mpair->m2.charge  = static_cast<int>(muon_pair_muon2_ch->at(i));//sign of pt stores charge
+      mpair->m1.charge  = muon_pair_muon1_ch->at(i);//sign of pt stores charge
+      mpair->m2.charge  = muon_pair_muon2_ch->at(i);//sign of pt stores charge
       // mpair->m1.quality = muon_pair_muon1_quality->at(i);
       // mpair->m2.quality = muon_pair_muon2_quality->at(i);
       // mpair->m1.dP_overP = muon_deltaP_overP->at(mpair->m1.ind);
@@ -924,7 +927,7 @@ void MCNTupleFirstPass::ProcessData(){
       mpair->m1.ev_num = jentry;
       mpair->m2.ev_num = jentry;
 
-      mpair->weight     = EventWeights->at(0) * filter_effcy / nentries;
+      mpair->weight     = static_cast<double>(EventWeights->at(0) * filter_effcy / nentries);
       mpair->crossx     = EventWeights->at(0);
       mpair->minv       = truth_mupair_m->at(i)/1000.;
       mpair->pair_pt    = truth_mupair_pt->at(i)/1000.;

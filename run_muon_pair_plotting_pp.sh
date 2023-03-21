@@ -8,9 +8,9 @@ root -b -l << EOF
 	// pp2.isScram = true;
 	// pp2.Run();
 
-	// MuonPairPlottingPP pp3;
-	// pp3.isTight = true;
-	// pp3.Run();
+	MuonPairPlottingPP pp3;
+	pp3.isTight = true;
+	pp3.Run();
 
 	.q;
 EOF

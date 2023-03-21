@@ -40,6 +40,9 @@ private:
     TH1D* h_Dphi_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH1D* h_DR_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH1D* h_pair_y_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH1D* h_pt_asym_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH1D* h_pair_pt_ptlead_ratio_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
+
     TH2D* h_eta_avg_Dphi_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH2D* h_Deta_Dphi_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH2D* h_eta1_eta2_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
@@ -56,6 +59,9 @@ private:
     TH1D* h_Dphi[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH1D* h_DR[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH1D* h_pair_y[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH1D* h_pt_asym[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH1D* h_pair_pt_ptlead_ratio[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+
     TH2D* h_eta_avg_Dphi[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH2D* h_Deta_Dphi[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH2D* h_eta1_eta2[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
@@ -75,12 +81,13 @@ private:
     // TTree *inTree[ParamsSet::nSigns];
     TTree *inTree[ParamsSet::ndRselcs][ParamsSet::nSigns];
 
-    float weight[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    double weight[ParamsSet::ndRselcs][ParamsSet::nSigns];
   	float pair_dPoverP[ParamsSet::ndRselcs][ParamsSet::nSigns];
   	float pt_lead[ParamsSet::ndRselcs][ParamsSet::nSigns];
   	float pair_pt[ParamsSet::ndRselcs][ParamsSet::nSigns];
   	// float pair_eta[ParamsSet::ndRselcs][ParamsSet::nSigns];
   	float pair_y[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    float asym[ParamsSet::ndRselcs][ParamsSet::nSigns];
   	float dpt[ParamsSet::ndRselcs][ParamsSet::nSigns];
   	float deta[ParamsSet::ndRselcs][ParamsSet::nSigns];
   	float etaavg[ParamsSet::ndRselcs][ParamsSet::nSigns];
@@ -168,6 +175,7 @@ void MuonPairPlottingPP::InitInput(){
         	inTree[idr][ksign]->SetBranchAddress("pair_pt"          , &pair_pt[idr][ksign]);
         	// inTree[idr][ksign]->SetBranchAddress("pair_eta"     , &pair_eta[idr][ksign]);
         	inTree[idr][ksign]->SetBranchAddress("pair_y"           , &pair_y[idr][ksign]);
+            inTree[idr][ksign]->SetBranchAddress("asym"             , &asym[idr][ksign]);
         	inTree[idr][ksign]->SetBranchAddress("dpt"           , &dpt[idr][ksign]);
         	inTree[idr][ksign]->SetBranchAddress("deta"       , &deta[idr][ksign]);
         	inTree[idr][ksign]->SetBranchAddress("etaavg"      , &etaavg[idr][ksign]);
@@ -183,6 +191,29 @@ void MuonPairPlottingPP::InitInput(){
         	inTree[idr][ksign]->SetBranchAddress("m2.phi"     	, &m2phi[idr][ksign]);
             inTree[idr][ksign]->SetBranchAddress("m1.charge"           , &m1charge[idr][ksign]);
             inTree[idr][ksign]->SetBranchAddress("m2.charge"           , &m2charge[idr][ksign]);
+
+            inTree[idr][ksign]->SetBranchStatus("*"                  ,0);//switch off all branches, then enable just the ones that we need
+            inTree[idr][ksign]->SetBranchStatus("pair_dPoverP"           ,1);
+            inTree[idr][ksign]->SetBranchStatus("pt_lead"           ,1);
+            inTree[idr][ksign]->SetBranchStatus("pair_pt"           ,1);
+            inTree[idr][ksign]->SetBranchStatus("pair_y"           ,1);
+            inTree[idr][ksign]->SetBranchStatus("asym"           ,1);
+            inTree[idr][ksign]->SetBranchStatus("dpt"           ,1);
+            inTree[idr][ksign]->SetBranchStatus("deta"           ,1);
+            inTree[idr][ksign]->SetBranchStatus("etaavg"           ,1);
+            inTree[idr][ksign]->SetBranchStatus("phiavg"           ,1);
+            inTree[idr][ksign]->SetBranchStatus("dphi"           ,1);
+            inTree[idr][ksign]->SetBranchStatus("dr"           ,1);
+            inTree[idr][ksign]->SetBranchStatus("minv"           ,1);
+            inTree[idr][ksign]->SetBranchStatus("m1.pt"           ,1);
+            inTree[idr][ksign]->SetBranchStatus("m2.pt"           ,1);
+            inTree[idr][ksign]->SetBranchStatus("m1.eta"           ,1);
+            inTree[idr][ksign]->SetBranchStatus("m2.eta"           ,1);
+            inTree[idr][ksign]->SetBranchStatus("m1.phi"           ,1);
+            inTree[idr][ksign]->SetBranchStatus("m2.phi"           ,1);
+            inTree[idr][ksign]->SetBranchStatus("m1.charge"           ,1);
+            inTree[idr][ksign]->SetBranchStatus("m2.charge"           ,1);
+
         }
     }
 }
@@ -217,6 +248,9 @@ void MuonPairPlottingPP::InitHists(){
                         h_DR_dr_binned[idr][ksign][lgapcut] = new TH1D(Form("h_DR_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta R;1/N_{evt} dN/d#Delta R", static_cast<int>(pms.deltaR_nbins[idr]/2.),0,pms.deltaR_thrsh[idr]);
                         h_Dphi_dr_binned[idr][ksign][lgapcut] = new TH1D(Form("h_Dphi_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta#phi;1/N_{evt} dN/d#Delta#phi", nDphi_bins,-pms.PI,pms.PI);
                         h_pair_y_dr_binned[idr][ksign][lgapcut] = new TH1D(Form("h_pair_y_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";y_{pair};1/N_{evt} dN/dy_{pair}" ,npair_y_bins,-3,3);
+                        h_pt_asym_dr_binned[idr][ksign][lgapcut] = new TH1D(Form("h_pt_asym_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", 100,0,1.);
+                        h_pair_pt_ptlead_ratio_dr_binned[idr][ksign][lgapcut] = new TH1D(Form("h_pair_pt_ptlead_ratio_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", 100,0,2.);
+
                         h_eta_avg_Dphi_dr_binned[idr][ksign][lgapcut] = new TH2D(Form("h_eta_avg_Dphi_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta#phi;#bar{#eta}", nDphi_bins,-pms.PI,pms.PI,neta_bins,-2.4,2.4);
                         h_Deta_Dphi_dr_binned[idr][ksign][lgapcut] = new TH2D(Form("h_Deta_Dphi_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
                         h_eta1_eta2_dr_binned[idr][ksign][lgapcut] = new TH2D(Form("h_eta1_eta2_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#eta_{sublead};#eta_{lead}",neta_bins,-2.4,2.4, neta_bins,-2.4,2.4);
@@ -237,6 +271,9 @@ void MuonPairPlottingPP::InitHists(){
                     h_DR[jdphi][ksign][lgapcut] = new TH1D(Form("h_DR_%s_sign%d_gapcut%d",dphi_regions[jdphi].c_str(),ksign+1,lgapcut+1),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_bins,0,pms.deltaR_thrsh[2]);
                     h_Dphi[jdphi][ksign][lgapcut] = new TH1D(Form("h_Dphi_%s_sign%d_gapcut%d",dphi_regions[jdphi].c_str(),ksign+1,lgapcut+1),";#Delta#phi;1/N_{evt} dN/d#Delta#phi", nDphi_bins,-pms.PI,pms.PI);
                     h_pair_y[jdphi][ksign][lgapcut] = new TH1D(Form("h_pair_y_%s_sign%d_gapcut%d",dphi_regions[jdphi].c_str(),ksign+1,lgapcut+1),";y_{pair};1/N_{evt} dN/dy_{pair}" ,npair_y_bins,-3,3);
+                    h_pt_asym[jdphi][ksign][lgapcut] = new TH1D(Form("h_pt_asym_%s_sign%d_gapcut%d",dphi_regions[jdphi].c_str(),ksign+1,lgapcut+1),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", 100,0,1.);
+                    h_pair_pt_ptlead_ratio[jdphi][ksign][lgapcut] = new TH1D(Form("h_pair_pt_ptlead_ratio_%s_sign%d_gapcut%d",dphi_regions[jdphi].c_str(),ksign+1,lgapcut+1),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", 100,0,2.);
+
                     h_eta_avg_Dphi[jdphi][ksign][lgapcut] = new TH2D(Form("h_eta_avg_Dphi_%s_sign%d_gapcut%d",dphi_regions[jdphi].c_str(),ksign+1,lgapcut+1),";#Delta#phi;#bar{#eta}", nDphi_bins,-pms.PI,pms.PI,neta_bins,-2.4,2.4);
                     h_Deta_Dphi[jdphi][ksign][lgapcut] = new TH2D(Form("h_Deta_Dphi_%s_sign%d_gapcut%d",dphi_regions[jdphi].c_str(),ksign+1,lgapcut+1),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
                     h_eta1_eta2[jdphi][ksign][lgapcut] = new TH2D(Form("h_eta1_eta2_%s_sign%d_gapcut%d",dphi_regions[jdphi].c_str(),ksign+1,lgapcut+1),";#eta_{sublead};#eta_{lead}",neta_bins,-2.4,2.4, neta_bins,-2.4,2.4);

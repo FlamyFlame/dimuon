@@ -60,7 +60,10 @@ void MuonPairPlotting::FillUnbinnedHistograms(int ndr, int nctr_intvl, int nsign
     // h_pair_pt[ndr][nsign]->Fill(pair_pt[ndr][nctr_intvl][nsign]);
     // h_pair_eta[ndr][nsign]->Fill(pair_eta[ndr][nctr_intvl][nsign]);
     h_pair_y[ndr][nsign]->Fill(pair_y[ndr][nctr_intvl][nsign]);
+    h_pt_asym[ndr][nsign]->Fill(asym[ndr][nctr_intvl][nsign]);
+    h_pair_pt_ptlead_ratio[ndr][nsign]->Fill(pair_pt[ndr][nctr_intvl][nsign]/m1pt[ndr][nctr_intvl][nsign]);
 
+    h_Deta_Dphi[ndr][nsign]->Fill(phiavg[ndr][nctr_intvl][nsign],etaavg[ndr][nctr_intvl][nsign]);
     h_eta_avg_Dphi[ndr][nsign]->Fill(phiavg[ndr][nctr_intvl][nsign],etaavg[ndr][nctr_intvl][nsign]);
     h_eta1_eta2[ndr][nsign]->Fill(m2eta[ndr][nctr_intvl][nsign],m1eta[ndr][nctr_intvl][nsign]);
     h_pt1_pt2[ndr][nsign]->Fill(m2pt[ndr][nctr_intvl][nsign],m1pt[ndr][nctr_intvl][nsign]);
@@ -80,6 +83,9 @@ void MuonPairPlotting::FillCtrBinnedHistograms(int ndr, int nctr_bin, int nctr_i
         h_ctrbin_pair_dP_overP[ndr][nctr_bin][nsign][1]->Fill(pair_dPoverP[ndr][nctr_intvl][nsign]);
         h_ctrbin_pair_y[ndr][nctr_bin][nsign][1]->Fill(pair_y[ndr][nctr_intvl][nsign]);
         h_ctrbin_DR[ndr][nctr_bin][nsign][1]->Fill(dr[ndr][nctr_intvl][nsign]);
+        h_ctrbin_pt_asym[ndr][nctr_bin][nsign][1]->Fill(asym[ndr][nctr_intvl][nsign]);
+        h_ctrbin_pair_pt_ptlead_ratio[ndr][nctr_bin][nsign][1]->Fill(pair_pt[ndr][nctr_intvl][nsign]/m1pt[ndr][nctr_intvl][nsign]);
+
         h_ctrbin_eta_avg_Dphi[ndr][nctr_bin][nsign][1]->Fill(dphi[ndr][nctr_intvl][nsign],etaavg[ndr][nctr_intvl][nsign]);
         h_ctrbin_Deta_Dphi[ndr][nctr_bin][nsign][1]->Fill(dphi[ndr][nctr_intvl][nsign],deta[ndr][nctr_intvl][nsign]);
         h_ctrbin_eta1_eta2[ndr][nctr_bin][nsign][1]->Fill(m2eta[ndr][nctr_intvl][nsign],m1eta[ndr][nctr_intvl][nsign]);
@@ -106,6 +112,9 @@ void MuonPairPlotting::FillCtrBinnedHistograms(int ndr, int nctr_bin, int nctr_i
     h_ctrbin_pair_dP_overP[ndr][nctr_bin][nsign][0]->Fill(pair_dPoverP[ndr][nctr_intvl][nsign]);
     h_ctrbin_pair_y[ndr][nctr_bin][nsign][0]->Fill(pair_y[ndr][nctr_intvl][nsign]);
     h_ctrbin_DR[ndr][nctr_bin][nsign][0]->Fill(dr[ndr][nctr_intvl][nsign]);
+    h_ctrbin_pt_asym[ndr][nctr_bin][nsign][0]->Fill(asym[ndr][nctr_intvl][nsign]);
+    h_ctrbin_pair_pt_ptlead_ratio[ndr][nctr_bin][nsign][0]->Fill(pair_pt[ndr][nctr_intvl][nsign]/m1pt[ndr][nctr_intvl][nsign]);
+
     h_ctrbin_Deta_Dphi[ndr][nctr_bin][nsign][0]->Fill(dphi[ndr][nctr_intvl][nsign],deta[ndr][nctr_intvl][nsign]);
     h_ctrbin_eta_avg_Dphi[ndr][nctr_bin][nsign][0]->Fill(dphi[ndr][nctr_intvl][nsign],etaavg[ndr][nctr_intvl][nsign]);
     h_ctrbin_eta1_eta2[ndr][nctr_bin][nsign][0]->Fill(m2eta[ndr][nctr_intvl][nsign],m1eta[ndr][nctr_intvl][nsign]);
@@ -154,6 +163,8 @@ void MuonPairPlotting::WriteOutput(){
                         h_ctrbin_pair_dP_overP[idr][jctr][ksign][lgapcut]->Write();
                         h_ctrbin_pair_y[idr][jctr][ksign][lgapcut]->Write();
                         h_ctrbin_DR[idr][jctr][ksign][lgapcut]->Write();
+                        h_ctrbin_pt_asym[idr][jctr][ksign][lgapcut]->Write();
+                        h_ctrbin_pair_pt_ptlead_ratio[idr][jctr][ksign][lgapcut]->Write();
                         h_ctrbin_Deta_Dphi[idr][jctr][ksign][lgapcut]->Write();
                         h_ctrbin_eta_avg_Dphi[idr][jctr][ksign][lgapcut]->Write();
                         h_ctrbin_eta1_eta2[idr][jctr][ksign][lgapcut]->Write();
@@ -180,6 +191,8 @@ void MuonPairPlotting::WriteOutput(){
             for (unsigned int ksign = 0; ksign < pms.nSigns; ksign++){
                 h_pair_dP_overP[idr][ksign]->Write();
                 h_DR[idr][ksign]->Write();
+                h_pt_asym[idr][ksign]->Write();
+                h_pair_pt_ptlead_ratio[idr][ksign]->Write();
                 h_pair_y[idr][ksign]->Write();
                 h_eta_avg_Dphi[idr][ksign]->Write();
                 h_Deta_Dphi[idr][ksign]->Write();

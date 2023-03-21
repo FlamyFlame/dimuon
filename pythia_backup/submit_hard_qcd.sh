@@ -3,20 +3,14 @@ if [ ${#1} -eq 0 ]
 then
   echo "Must provide a non-empty string as argument!"
   echo "Suggestion: DATE_hardqcd_run# to avoid overwriting previous results"
-  echo "e.g, 0314_hardqcd_run2"
+  echo "e.g, 0315_hardqcd_run2"
   exit
 fi
 
-# job_name="0314_hardqcd_run2" # the default name
-# if [ ${#1} -ne 0 ] # overwrite job name if given a nonempty argument
-# then
-#   job_name=${1}
-# fi
-
 job_name=${1}
 job_types=("pp" "pn" "np" "nn") # important: NO SPACE around "="
-njobs=(40 60 60 90) # array of number of jobs
-# njobs=(4 6 6 9) # array of number of jobs
+# njobs=(40 60 60 90) # array of number of jobs
+njobs=(4 6 6 9) # array of number of jobs
 
 mkdir -p jobs_${job_name}
 cd jobs_${job_name}
@@ -47,8 +41,9 @@ echo "Error           = \$(Initialdir)/log/c_job.sub.err" >>$file  # Output loca
 echo "Log             = \$(Initialdir)/log/c_job.sub.log" >>$file  # Output location for condor's exec info
 
 # Now, we will loop over all the jobs to set up the folder for its execution and add it to the condor job file
-for k in $(seq 0 3); do # kinematic range
-# for k in $(seq 2 3); do # kinematic range
+# for k in $(seq 0 1); do # kinematic range
+# for k in $(seq 2 4); do # kinematic range
+for k in $(seq 0 4); do # kinematic range
 
   mkdir -p $outputpath/k${k}
 
