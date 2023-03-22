@@ -38,14 +38,14 @@ bool MCNTupleFirstPass::PassCuts(){
   // passed muon eta cut
   // if (mpair->same_sign) h_cutAcceptance[0]->Fill(pass_muon_eta + 0.5);
   // else h_cutAcceptance[1]->Fill(pass_muon_eta + 0.5);
-  h_cutAcceptance[!mpair->same_sign]->Fill(pass_muon_eta + 0.5, mpair->weight); // if same sign: fill the h_cutAcceptance[0] histogram; if opposite sign, fill the h_cutAcceptance[1] histogram
+  h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill(pass_muon_eta + 0.5, mpair->weight); // if same sign: fill the h_cutAcceptance[0] histogram; if opposite sign, fill the h_cutAcceptance[1] histogram
 
   if (mpair->m1.pt < 4 || mpair->m2.pt < 4) return false;
   
   // passed muon pt cut
   // if (mpair->same_sign) h_cutAcceptance[0]->Fill(pass_muon_pt + 0.5);
   // else h_cutAcceptance[1]->Fill(pass_muon_pt + 0.5);
-  h_cutAcceptance[!mpair->same_sign]->Fill(pass_muon_pt + 0.5, mpair->weight);
+  h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill(pass_muon_pt + 0.5, mpair->weight);
 
   // if( fabs(mpair->m1.dP_overP) > pms.deltaP_overP_thrsh || fabs(mpair->m2.dP_overP) > pms.deltaP_overP_thrsh ) pass = false;
  
@@ -898,6 +898,8 @@ void MCNTupleFirstPass::ProcessData(){
       // // use ind to record barcode instead
       mpair->m1.ind     = muon_pair_muon1_bar->at(i);
       mpair->m2.ind     = muon_pair_muon2_bar->at(i);
+      mpair->m1.charge  = muon_pair_muon1_ch->at(i);//sign of pt stores charge
+      mpair->m2.charge  = muon_pair_muon2_ch->at(i);//sign of pt stores charge
 
       // if charge unequal gives 1 (opposite sign); otherwise gives 0 (same sign)
       h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill(nocut + 0.5, mpair->weight);
@@ -908,7 +910,7 @@ void MCNTupleFirstPass::ProcessData(){
       itres = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m2.ind);
       if(itres != resonance_tagged_muon_index_list.end()) continue;
 
-      h_cutAcceptance[!mpair->same_sign]->Fill(pass_no_prev_resonance_tag + 0.5, mpair->weight);
+      h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill(pass_no_prev_resonance_tag + 0.5, mpair->weight);
 
       mpair->m1.pt    = fabs(muon_pair_muon1_pt->at(i))/1000.0;//pt of the first muon in the pair
       mpair->m2.pt    = fabs(muon_pair_muon2_pt->at(i))/1000.0;//pt of the second muon in the pair
@@ -916,10 +918,6 @@ void MCNTupleFirstPass::ProcessData(){
       mpair->m2.eta   = muon_pair_muon2_eta->at(i);
       mpair->m1.phi   = muon_pair_muon1_phi->at(i);
       mpair->m2.phi   = muon_pair_muon2_phi->at(i);
-      // mpair->m1.charge  = static_cast<int>(muon_pair_muon1_ch->at(i));//sign of pt stores charge
-      // mpair->m2.charge  = static_cast<int>(muon_pair_muon2_ch->at(i));//sign of pt stores charge
-      mpair->m1.charge  = muon_pair_muon1_ch->at(i);//sign of pt stores charge
-      mpair->m2.charge  = muon_pair_muon2_ch->at(i);//sign of pt stores charge
       // mpair->m1.quality = muon_pair_muon1_quality->at(i);
       // mpair->m2.quality = muon_pair_muon2_quality->at(i);
       // mpair->m1.dP_overP = muon_deltaP_overP->at(mpair->m1.ind);
@@ -951,7 +949,7 @@ void MCNTupleFirstPass::ProcessData(){
       //1) sort pt, eta, phi by pt
       //2) update the muon-pair values
       // mpair->Update();
-      mpair->UpdateShort();
+      mpair->UpdateShort(); // only afterwards can we use mpair->same_sign
 
       // resonance cut
       if (IsResonance()) continue;

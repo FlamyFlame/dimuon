@@ -43,9 +43,9 @@ void MuonPairPlottingPP::FillHistograms(int ndr, int nsign){
 
     // ngapcut = 0: all; = 1: only those that pass
 
-    if (ndr == 0 && nsign == 0){
-        cout << dphi[ndr][nsign] << " " << asym[ndr][nsign] << " " << weight[ndr][nsign] << endl;
-    }
+    // if (ndr == 0 && nsign == 0){
+    //     cout << dphi[ndr][nsign] << " " << asym[ndr][nsign] << " " << weight[ndr][nsign] << endl;
+    // }
 
     //  bool pass_gapcut = fabs(m1eta[ndr][nsign]) > pms.eta_gap_cut && fabs(m2eta[ndr][nsign]) > pms.eta_gap_cut;
     bool pass_gapcut = PassSingleMuonGapCut(m1eta[ndr][nsign], m1pt[ndr][nsign], m1charge[ndr][nsign]) && PassSingleMuonGapCut(m2eta[ndr][nsign], m2pt[ndr][nsign], m2charge[ndr][nsign]);
@@ -171,6 +171,20 @@ void MuonPairPlottingPP::WriteOutput(){
         // outFile->Write();
         // outFile->cd();
         // gDirectory->Delete("h_*");
+
+        // cout << h_pair_dP_overP[0][0][0]->GetBinContent(1) << " " << h_pair_dP_overP[0][0][0]->GetBinContent(20) << endl;
+        // cout << h_pair_y[0][0][0]->GetBinContent(1) << " " << h_pair_y[0][0][0]->GetBinContent(20) << endl;
+        // cout << h_DR[0][0][0]->GetBinContent(1) << " " << h_DR[0][0][0]->GetBinContent(20) << endl;
+        // cout << h_Dphi[0][0][0]->GetBinContent(1) << " " << h_Dphi[0][0][0]->GetBinContent(20) << endl;
+        // cout << h_pt_asym[0][0][0]->GetBinContent(1) << " " << h_pt_asym[0][0][0]->GetBinContent(20) << endl;
+        // cout << h_pair_pt_ptlead_ratio[0][0][0]->GetBinContent(1,1) << " " << h_pair_pt_ptlead_ratio[0][0][0]->GetBinContent(1,20) << endl;
+        // cout << h_eta_avg_Dphi[0][0][0]->GetBinContent(1,1) << " " << h_eta_avg_Dphi[0][0][0]->GetBinContent(1,20) << endl;
+        // cout << h_Deta_Dphi[0][0][0]->GetBinContent(1,1) << " " << h_Deta_Dphi[0][0][0]->GetBinContent(1,20) << endl;
+        // cout << h_eta1_eta2[0][0][0]->GetBinContent(1,1) << " " << h_eta1_eta2[0][0][0]->GetBinContent(1,20) << endl;
+        // cout << h_eta_avg_Deta[0][0][0]->GetBinContent(1,1) << " " << h_eta_avg_Deta[0][0][0]->GetBinContent(1,20) << endl;
+        // cout << h_pt1_pt2[0][0][0]->GetBinContent(1,1) << " " << h_pt1_pt2[0][0][0]->GetBinContent(1,20) << endl;
+        // cout << h_ptlead_pair_pt[0][0][0]->GetBinContent(1,1) << " " << h_ptlead_pair_pt[0][0][0]->GetBinContent(1,20) << endl;
+        // cout << h_minv_pair_pt[0][0][0]->GetBinContent(1,1) << " " << h_minv_pair_pt[0][0][0]->GetBinContent(1,20) << endl;
     
         for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
             for (unsigned int lgapcut = 0; lgapcut < ParamsSet::nGapCuts; lgapcut++){

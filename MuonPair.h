@@ -125,7 +125,10 @@ void MuonPair::Update(){
 
   asym = (m1.pt - m2.pt) / (m1.pt + m2.pt);
   acop = (PI - fabs(dphi)) / PI;
-  assert (asym >= 0 && acop >= 0);
+  if (asym < 0 || acop < 0){
+    std::cout<<"Error:: Both asymmetry & acoplanarity need to be positive, quitting"<<std::endl;
+    throw std::exception();
+  }
 
   same_sign = (m1.charge == m2.charge);
   avg_centrality = (m1.ev_centrality + m2.ev_centrality)/2;

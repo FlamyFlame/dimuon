@@ -170,7 +170,7 @@ void MuonPairPlottingPP::InitInput(){
         	    inTree[idr][ksign] = (TTree*) inFile->Get(Form("muon_pair_tree_dr%d_sign%d",idr+1,ksign+1));  
             }
             inTree[idr][ksign]->SetBranchAddress("weight"          , &weight[idr][ksign]);
-        	inTree[idr][ksign]->SetBranchAddress("pair_dPoverP"           , &pair_dPoverP[idr][ksign]);
+        	inTree[idr][ksign]->SetBranchAddress("pair_dPoverP"    , &pair_dPoverP[idr][ksign]);
         	inTree[idr][ksign]->SetBranchAddress("pt_lead"          , &pt_lead[idr][ksign]);
         	inTree[idr][ksign]->SetBranchAddress("pair_pt"          , &pair_pt[idr][ksign]);
         	// inTree[idr][ksign]->SetBranchAddress("pair_eta"     , &pair_eta[idr][ksign]);
@@ -193,6 +193,7 @@ void MuonPairPlottingPP::InitInput(){
             inTree[idr][ksign]->SetBranchAddress("m2.charge"           , &m2charge[idr][ksign]);
 
             inTree[idr][ksign]->SetBranchStatus("*"                  ,0);//switch off all branches, then enable just the ones that we need
+            inTree[idr][ksign]->SetBranchStatus("weight"           ,1);
             inTree[idr][ksign]->SetBranchStatus("pair_dPoverP"           ,1);
             inTree[idr][ksign]->SetBranchStatus("pt_lead"           ,1);
             inTree[idr][ksign]->SetBranchStatus("pair_pt"           ,1);
@@ -224,6 +225,8 @@ void MuonPairPlottingPP::InitHists(){
     int neta_bins = (isMCTruthBB || isMCTruthCC)? 50 : 100;
     int nDeta_bins = (isMCTruthBB || isMCTruthCC)? 100 : 200;
     int npair_y_bins = (isMCTruthBB || isMCTruthCC)? 45 : 90;
+    int npt_asym_bins = (isMCTruthBB || isMCTruthCC)? 50 : 100;
+    int npair_pt_ptlead_ratio_bins = (isMCTruthBB || isMCTruthCC)? 50 : 100;
     
     static const int nminv_bins = 40;
     float minv_logpow[ParamsSet::nSigns];
@@ -248,8 +251,8 @@ void MuonPairPlottingPP::InitHists(){
                         h_DR_dr_binned[idr][ksign][lgapcut] = new TH1D(Form("h_DR_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta R;1/N_{evt} dN/d#Delta R", static_cast<int>(pms.deltaR_nbins[idr]/2.),0,pms.deltaR_thrsh[idr]);
                         h_Dphi_dr_binned[idr][ksign][lgapcut] = new TH1D(Form("h_Dphi_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta#phi;1/N_{evt} dN/d#Delta#phi", nDphi_bins,-pms.PI,pms.PI);
                         h_pair_y_dr_binned[idr][ksign][lgapcut] = new TH1D(Form("h_pair_y_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";y_{pair};1/N_{evt} dN/dy_{pair}" ,npair_y_bins,-3,3);
-                        h_pt_asym_dr_binned[idr][ksign][lgapcut] = new TH1D(Form("h_pt_asym_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", 100,0,1.);
-                        h_pair_pt_ptlead_ratio_dr_binned[idr][ksign][lgapcut] = new TH1D(Form("h_pair_pt_ptlead_ratio_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", 100,0,2.);
+                        h_pt_asym_dr_binned[idr][ksign][lgapcut] = new TH1D(Form("h_pt_asym_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", npt_asym_bins,0,1.);
+                        h_pair_pt_ptlead_ratio_dr_binned[idr][ksign][lgapcut] = new TH1D(Form("h_pair_pt_ptlead_ratio_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", npair_pt_ptlead_ratio_bins,0,2.);
 
                         h_eta_avg_Dphi_dr_binned[idr][ksign][lgapcut] = new TH2D(Form("h_eta_avg_Dphi_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta#phi;#bar{#eta}", nDphi_bins,-pms.PI,pms.PI,neta_bins,-2.4,2.4);
                         h_Deta_Dphi_dr_binned[idr][ksign][lgapcut] = new TH2D(Form("h_Deta_Dphi_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
@@ -271,8 +274,8 @@ void MuonPairPlottingPP::InitHists(){
                     h_DR[jdphi][ksign][lgapcut] = new TH1D(Form("h_DR_%s_sign%d_gapcut%d",dphi_regions[jdphi].c_str(),ksign+1,lgapcut+1),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_bins,0,pms.deltaR_thrsh[2]);
                     h_Dphi[jdphi][ksign][lgapcut] = new TH1D(Form("h_Dphi_%s_sign%d_gapcut%d",dphi_regions[jdphi].c_str(),ksign+1,lgapcut+1),";#Delta#phi;1/N_{evt} dN/d#Delta#phi", nDphi_bins,-pms.PI,pms.PI);
                     h_pair_y[jdphi][ksign][lgapcut] = new TH1D(Form("h_pair_y_%s_sign%d_gapcut%d",dphi_regions[jdphi].c_str(),ksign+1,lgapcut+1),";y_{pair};1/N_{evt} dN/dy_{pair}" ,npair_y_bins,-3,3);
-                    h_pt_asym[jdphi][ksign][lgapcut] = new TH1D(Form("h_pt_asym_%s_sign%d_gapcut%d",dphi_regions[jdphi].c_str(),ksign+1,lgapcut+1),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", 100,0,1.);
-                    h_pair_pt_ptlead_ratio[jdphi][ksign][lgapcut] = new TH1D(Form("h_pair_pt_ptlead_ratio_%s_sign%d_gapcut%d",dphi_regions[jdphi].c_str(),ksign+1,lgapcut+1),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", 100,0,2.);
+                    h_pt_asym[jdphi][ksign][lgapcut] = new TH1D(Form("h_pt_asym_%s_sign%d_gapcut%d",dphi_regions[jdphi].c_str(),ksign+1,lgapcut+1),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", npt_asym_bins,0,1.);
+                    h_pair_pt_ptlead_ratio[jdphi][ksign][lgapcut] = new TH1D(Form("h_pair_pt_ptlead_ratio_%s_sign%d_gapcut%d",dphi_regions[jdphi].c_str(),ksign+1,lgapcut+1),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", npair_pt_ptlead_ratio_bins,0,2.);
 
                     h_eta_avg_Dphi[jdphi][ksign][lgapcut] = new TH2D(Form("h_eta_avg_Dphi_%s_sign%d_gapcut%d",dphi_regions[jdphi].c_str(),ksign+1,lgapcut+1),";#Delta#phi;#bar{#eta}", nDphi_bins,-pms.PI,pms.PI,neta_bins,-2.4,2.4);
                     h_Deta_Dphi[jdphi][ksign][lgapcut] = new TH2D(Form("h_Deta_Dphi_%s_sign%d_gapcut%d",dphi_regions[jdphi].c_str(),ksign+1,lgapcut+1),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);

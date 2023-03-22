@@ -74,7 +74,7 @@ void hist_helper(TH1* h, float norm, bool norm_unity, std::string ytitle=""){
   h->SetMarkerSize(0.9);
 }
 
-void plot_mc_data_compr_single_kinematic(std::string kin, bool projx_2d, bool projy_2d, bool norm_unity, std::string kin1d, std::string kin_title, bool logx=false){
+void plot_powheg_data_compr_noDPHI_div_single_kinematic(std::string kin, bool projx_2d, bool projy_2d, bool norm_unity, std::string kin1d, std::string kin_title, bool logx=false){
 
   initialize();
 
@@ -146,9 +146,9 @@ void plot_mc_data_compr_single_kinematic(std::string kin, bool projx_2d, bool pr
   }
 
   if (norm_unity){
-    c->SaveAs(Form("plots/mc_data_compr/noDPHI_div/%s_mc_data_compr_unity_noDPHI_div.png", kin1d.c_str()));
+    c->SaveAs(Form("plots/mc_data_compr/noDPHI_div/%s_powheg_data_compr_unity_noDPHI_div.png", kin1d.c_str()));
   }else{
-    c->SaveAs(Form("plots/mc_data_compr/noDPHI_div/%s_mc_data_compr_noDPHI_div.png", kin1d.c_str()));
+    c->SaveAs(Form("plots/mc_data_compr/noDPHI_div/%s_powheg_data_compr_noDPHI_div.png", kin1d.c_str()));
   }
 
 
@@ -158,21 +158,21 @@ void plot_mc_data_compr_single_kinematic(std::string kin, bool projx_2d, bool pr
 }
 
 
-void plot_mc_data_compr(){
+void plot_powheg_data_compr_noDPHI_div(){
   // kin, projx_2d, projy_2d, norm_unity, kin1d, logx=false
-  // plot_mc_data_compr_single_kinematic("DR", false, false, false, "DR", "#Delta R");
-  // plot_mc_data_compr_single_kinematic("DR", false, false, true, "DR", "#Delta R"); // norm to unity
-  // plot_mc_data_compr_single_kinematic("Dphi", false, false, false, "Dphi", "#Delta #phi");
-  // plot_mc_data_compr_single_kinematic("Dphi", false, false, true, "Dphi", "#Delta #phi"); // norm to unity
+  // plot_powheg_data_compr_noDPHI_div_single_kinematic("DR", false, false, false, "DR", "#Delta R");
+  // plot_powheg_data_compr_noDPHI_div_single_kinematic("DR", false, false, true, "DR", "#Delta R"); // norm to unity
+  // plot_powheg_data_compr_noDPHI_div_single_kinematic("Dphi", false, false, false, "Dphi", "#Delta #phi");
+  // plot_powheg_data_compr_noDPHI_div_single_kinematic("Dphi", false, false, true, "Dphi", "#Delta #phi"); // norm to unity
 
-  // plot_mc_data_compr_single_kinematic("ptlead_pair_pt", true, false, false, "pair_pt", "p_T^{pair}", true);
-  // plot_mc_data_compr_single_kinematic("ptlead_pair_pt", true, false, true, "pair_pt", "p_T^{pair}", true); // norm to unity
-  // plot_mc_data_compr_single_kinematic("ptlead_pair_pt", false, true, false, "ptlead", "p_T^{lead}", true);
-  // plot_mc_data_compr_single_kinematic("ptlead_pair_pt", false, true, true, "ptlead", "p_T^{lead}", true); // norm to unity
-  plot_mc_data_compr_single_kinematic("minv_pair_pt", false, true, false, "minv","m_{#mu#mu}",true);
-  plot_mc_data_compr_single_kinematic("minv_pair_pt", false, true, true, "minv","m_{#mu#mu}",true); // norm to unity
-  // plot_mc_data_compr_single_kinematic("Deta_Dphi", false, true, false, "Deta", "#Delta #eta");
-  // plot_mc_data_compr_single_kinematic("Deta_Dphi", false, true, true, "Deta", "#Delta #eta"); // norm to unity
+  // plot_powheg_data_compr_noDPHI_div_single_kinematic("ptlead_pair_pt", true, false, false, "pair_pt", "p_T^{pair}", true);
+  // plot_powheg_data_compr_noDPHI_div_single_kinematic("ptlead_pair_pt", true, false, true, "pair_pt", "p_T^{pair}", true); // norm to unity
+  // plot_powheg_data_compr_noDPHI_div_single_kinematic("ptlead_pair_pt", false, true, false, "ptlead", "p_T^{lead}", true);
+  // plot_powheg_data_compr_noDPHI_div_single_kinematic("ptlead_pair_pt", false, true, true, "ptlead", "p_T^{lead}", true); // norm to unity
+  plot_powheg_data_compr_noDPHI_div_single_kinematic("minv_pair_pt", false, true, false, "minv","m_{#mu#mu}",true);
+  plot_powheg_data_compr_noDPHI_div_single_kinematic("minv_pair_pt", false, true, true, "minv","m_{#mu#mu}",true); // norm to unity
+  // plot_powheg_data_compr_noDPHI_div_single_kinematic("Deta_Dphi", false, true, false, "Deta", "#Delta #eta");
+  // plot_powheg_data_compr_noDPHI_div_single_kinematic("Deta_Dphi", false, true, true, "Deta", "#Delta #eta"); // norm to unity
 
 }
 
