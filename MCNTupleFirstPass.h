@@ -11,6 +11,8 @@
 #include "MuonPairMC.h"
 #include "TruthQQPair.h"
 #include "ParamsSet.h"
+#include "/usatlas/u/yuhanguo/workarea/pythia/struct_particle.h"
+
 #include "vector"
 #include "TH1D.h"
 #include "TH2D.h"
@@ -47,11 +49,13 @@ private:
     std::vector<float>* truth_pt = nullptr;
     std::vector<float>* truth_eta = nullptr;
     std::vector<float>* truth_phi = nullptr;
+    std::vector<float>* truth_m = nullptr;
     std::vector<std::vector<int>>* truth_parents = nullptr;
     std::vector<std::vector<int>>* truth_children = nullptr;
     // std::vector<std::vector<int>>* truth_muon_parent_ids = nullptr;
     // std::vector<std::vector<int>>* truth_muon_parent_bars = nullptr;
     std::vector<float>   *EventWeights           =nullptr;
+    std::vector<float>   *Q           =nullptr;
 
     std::vector<float>   *muon_pair_muon1_pt           =nullptr;
     std::vector<float>   *muon_pair_muon1_eta       =nullptr;
@@ -102,6 +106,9 @@ private:
     std::vector<std::vector<int>>* single_gluon_history;
     std::vector<std::vector<int>>* m1_history;
     std::vector<std::vector<int>>* m2_history;
+    std::vector<std::vector<Particle>>* m1_history_particle;
+    std::vector<std::vector<Particle>>* m2_history_particle;
+
 
     std::vector<int> cur_m1_ancestor_ids;
     std::vector<int> cur_m2_ancestor_ids;
@@ -215,15 +222,14 @@ private:
     TH1D* h_pt_hadr_hq_ratio[ParamsSet::nSigns][2];
     TH1D* h_dphi_muon_closest_hadr[ParamsSet::nSigns][2];
 
-    const int nParentGroups = 5;
-    std::vector<std::string> parentGroupLabels = {"direct b","b to c","direct c","s/light","photon"};
-    
+    std::vector<std::string> parentGroupLabels = {"direct b","b to c","direct c","s/light","single photon", "Drell-Yan"};
+    int nParentGroups = parentGroupLabels.size();    
     
     std::vector<std::string> ancestor_labels = {"gg", "gq", "single g", "q qbar"};
     
     // static const int numCuts = 5;
     static const int numCuts = 6;
-    std::string cutLabels[numCuts] = {"no cut", "prev resonance tag", "muon pT", "muon eta", "resonance", "photoproduction"};
+    std::string cutLabels[numCuts] = {"no cut", "prev resonance tag", "muon eta", "muon pT", "resonance", "photoproduction"};
 
     std::vector<std::string> samePrtsLabels = {"Same Parents", "Different Parents"};
     std::vector<std::string> bb_op_one_b_one_btoc_labels = {"Same b", "Involve osc(s)", "From different ancestors", "Others"};
@@ -241,17 +247,18 @@ private:
     bool PassCuts();
     bool IsResonance();
     bool IsPhotoProduction();
-    int  ParentGrouping(int parent_id, bool c_tag);
+    int  ParentGrouping(std::vector<int>& parent_ids, bool c_tag);
     void GetPtEtaPhiFromBarcode(int barcode, std::vector<float>* pt_eta_phi);
     int  UpdateCurParents(bool isMuon1, std::vector<int>& cur_prt_bars, std::vector<int>& cur_prt_ids, int hf_quark_index = -1);
     int  FindHeavyQuarks(std::vector<int>& cur_prt_ids, int quark_type, bool isMuon1, int hadron_child_id = 0);
-    void FindSingleMuonParents(bool isMuon1);
+    void SingleMuonAncestorTracing(bool isMuon1);
     int  AncestorGrouping(std::vector<int>& ancestor_ids, bool sameprts = true);
     void HardScatteringAnalysis(std::vector<int>& ancestor_bars, std::vector<int>& ancestor_ids, int sign_dphi_mode, int ancestor_grp);
     void PrintHistory(std::ofstream* f, bool same_ancestors, bool state_same_ancestors = false);
     void SameSignSameAncestorsAnalysis(bool near_side, bool one_b_one_btoc, bool print_history = false);
     void KinematicCorrPlots(int isign, int jdphi);
-    void FillMuonPairParents();
+    void MuonPairTagsReinit();
+    void MuonPairAncestorTracing();
     void FillMuonPairTree();
     void Finalize();
   
@@ -293,9 +300,11 @@ void MCNTupleFirstPass::InitInput(){
     fChain->SetBranchAddress("truth_pt"                 , &truth_pt);
     fChain->SetBranchAddress("truth_eta"                 , &truth_eta);
     fChain->SetBranchAddress("truth_phi"                 , &truth_phi);
+    fChain->SetBranchAddress("truth_m"                 , &truth_m);
     fChain->SetBranchAddress("truth_parents"              , &truth_parents);
     fChain->SetBranchAddress("truth_children"              , &truth_children);
     fChain->SetBranchAddress("EventWeights"               , &EventWeights);
+    fChain->SetBranchAddress("Q"               , &Q);
 
     fChain->SetBranchAddress("truth_mupair_pt1"           , &muon_pair_muon1_pt);
     fChain->SetBranchAddress("truth_mupair_eta1"          , &muon_pair_muon1_eta);
@@ -326,9 +335,11 @@ void MCNTupleFirstPass::InitInput(){
     fChain->SetBranchStatus("truth_pt"             ,1);
     fChain->SetBranchStatus("truth_eta"             ,1);
     fChain->SetBranchStatus("truth_phi"             ,1);
+    fChain->SetBranchStatus("truth_m"             ,1);
     fChain->SetBranchStatus("truth_parents"             ,1);
     fChain->SetBranchStatus("truth_children"             ,1);
     fChain->SetBranchStatus("EventWeights"             ,1);
+    fChain->SetBranchStatus("Q"             ,1);
 
     fChain->SetBranchStatus("truth_mupair_pt1"           ,1);
     fChain->SetBranchStatus("truth_mupair_eta1"              ,1);
@@ -402,7 +413,8 @@ void MCNTupleFirstPass::InitOutput(){
         }
     } 
 
-    m_outfile=new TFile(Form("%smuon_pairs_%s.root", mcdir.c_str(), mc_mode.c_str()),"recreate");
+    // m_outfile=new TFile(Form("%smuon_pairs_%s.root", mcdir.c_str(), mc_mode.c_str()),"recreate");
+    m_outfile=new TFile(Form("%smuon_pairs_NEW_%s.root", mcdir.c_str(), mc_mode.c_str()),"recreate");
     for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
         muonPairOutTree[ksign] = new TTree(Form("muon_pair_tree_sign%u",ksign+1),Form("all muon pairs, sign%u",ksign+1));
         muonPairOutTree[ksign]->Branch("MuonPairObj",&mpair);

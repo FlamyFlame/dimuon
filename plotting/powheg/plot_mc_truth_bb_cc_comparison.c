@@ -161,7 +161,7 @@ void plot1D(Hist1D& h, const int nCuts, std::string cuts[], std::string cutTitle
 			}
 		}
 
-		c->SaveAs(("plots/mc_truth/no_prt_grouping/" + h.name + h.name_specifier + png_title_1D[mgapcut]).c_str());
+		c->SaveAs(("plots/powheg/no_prt_grouping/" + h.name + h.name_specifier + png_title_1D[mgapcut]).c_str());
 	  	c->Close();
 	  	delete c;
 
@@ -228,7 +228,7 @@ void plot1D(TH1D (*h)[nGapCuts][nSigns][nGroups], Hist1D& h_struct, const int nC
 				}
 			}
 
-			c->SaveAs(("plots/mc_truth/no_prt_grouping/" + h_struct.name + h_struct.name_specifier + png_title_1D[mgapcut]).c_str());
+			c->SaveAs(("plots/powheg/no_prt_grouping/" + h_struct.name + h_struct.name_specifier + png_title_1D[mgapcut]).c_str());
 	  		c->Close();
 	  		delete c;
 
@@ -298,7 +298,7 @@ void Process2D(Hist2D h, const int nCuts, std::string cuts[], std::string cutTit
 					vh.push_back(h2);
 				}
 			}
-			c[mgapcut][lgrp]->SaveAs(("plots/mc_truth/no_prt_grouping/" + h.name + h.name_specifier + png_title_2D[lgrp][mgapcut]).c_str());
+			c[mgapcut][lgrp]->SaveAs(("plots/powheg/no_prt_grouping/" + h.name + h.name_specifier + png_title_2D[lgrp][mgapcut]).c_str());
   			c[mgapcut][lgrp]->Close();
   			delete c[mgapcut][lgrp];
 

@@ -24,7 +24,7 @@ TH2D* h2d;
 TFile* f[nMCmodes];
 
 std::string mc_path = "/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/";
-std::string fnames[nMCmodes] = {"muon_pairs_mc_truth_bb.root", "muon_pairs_mc_truth_cc.root"};
+std::string fnames[nMCmodes] = {"histograms_mc_truth_bb.root", "histograms_mc_truth_cc.root"};
 std::vector<std::string> mcmodes = {"_bb","_cc"};
 std::vector<std::string> signs = {"_sign1", "_sign2"};
 std::vector<std::string> dphis = {"_near", "_away"};

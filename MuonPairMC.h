@@ -33,6 +33,18 @@ public:
 
   bool from_same_b; // only useful for the b-bbar sample, opposite sign
 
+  bool  from_same_ancestors;
+  // bool  both_from_b;
+  // bool  one_from_b_one_from_c;
+  // bool  both_from_c;
+
+  int   m1_ancestor_category;
+  int   m2_ancestor_category;
+
+  double Q;
+  double mHard_relevant; // mHat for the relevant hard scattering
+
+
   MuonPairMC();
   ~MuonPairMC(){}
 };

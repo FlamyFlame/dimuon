@@ -24,6 +24,15 @@ enum cuts_MC{
   pass_photoprod
 };
 
+enum parent_groups{
+  direct_b,
+  b_to_c,
+  direct_c,
+  s_light,
+  single_photon,
+  prt_drell_yan
+};
+
 bool MCNTupleFirstPass::PassCuts(){
   //Apply ALL CUTS but for resonances
 
@@ -93,18 +102,39 @@ bool MCNTupleFirstPass::IsPhotoProduction(){
 
 int MCNTupleFirstPass::ParentGrouping(int parent_id, bool c_tag){
 
-  assert(parent_id > 0);
+int PythiaTreeParser::ParentGrouping(std::vector<int>& parent_ids, bool c_tag){
+
+  if (parent_ids.size() == 2 && abs(parent_ids[0]) <= 5 && parent_ids[1] == (-1) * parent_ids[0]){
+    std::cout << "For study purpose - Drell-Yan:" << std::endl;
+    PrintHistory(&std::cout, false, true);
+    return prt_drell_yan;
+  } 
+  else if (parent_ids.size() >= 2){
+    // not necessarily problematic or error-prone
+    // print out the ids and see.
+    // In the worst case, a HF hadron gets misidentified as s/light hadron and we lose that event
+    // (will return -1 in this case)
+    // but these events should be relatively rare
+    std::cout << "more than one (hadonic) parents in the parent-id vector. The process is not Drell-Yan." << std::endl;
+    for (auto id : parent_ids) std::cout << id << " ";
+    std::cout << std::endl;
+  }
+
+  int parent_id = abs(parent_ids[0]);
 
   if ((parent_id >= 500 && parent_id < 600) || (parent_id >= 5000 && parent_id < 6000)){
-    if (! c_tag) return 1; // direct b
-    else         return 2; // b -> c
+    if (! c_tag) return direct_b; // direct b
+    else         return b_to_c // b -> c
   }
-  if (c_tag) return 3; // c not from b
+  if (c_tag) return direct_c; // c not from b
   if ((parent_id >= 100 && parent_id < 400) || (parent_id >= 1000 && parent_id < 4000)) // light and s-hadrons
-    return 4; // light and s-flavored hadrons
+    return s_light; // light and s-flavored hadrons
   if (parent_id == 22) // photons
-    return 5;
+    return single_photon;
 
+  std::cout << "Not in the given set of parent groups. Parent ids: " << std::endl;
+  for (auto id : parent_ids) std::cout << id << " ";
+  std::cout << std::endl;
   return -1; // others
 }
 
@@ -225,7 +255,7 @@ int MCNTupleFirstPass::FindHeavyQuarks(std::vector<int>& cur_prt_ids, int quark_
   std::vector<int>::iterator it_qbar = std::find(cur_prt_ids.begin(),cur_prt_ids.end(), (-1) * quark_type);
   if (it_q != cur_prt_ids.end()){ // found q
     if (it_qbar != cur_prt_ids.end()){ // found qbar
-      int sign_correction = (quark_type == 4)? +1 : -1; // b quark to hadron changes sign
+      int sign_correction = (abs(hadron_child_id) >= 500 && abs(hadron_child_id) < 600)? -1 : +1; // b quark to B meson changes sign; c to D meson or b/c(bar) to hadron does not change sign
       if (hadron_child_id * sign_correction > 0)
         return it_q - cur_prt_ids.begin();
       if (hadron_child_id * sign_correction < 0)
@@ -247,7 +277,7 @@ int MCNTupleFirstPass::FindHeavyQuarks(std::vector<int>& cur_prt_ids, int quark_
   return -1;
 }
 
-void MCNTupleFirstPass::FindSingleMuonParents(bool isMuon1){
+void MCNTupleFirstPass::SingleMuonAncestorTracing(bool isMuon1){
   std::vector<int> parent_bars;
   std::vector<int> parent_ids;
   int first_hadron_id = 0;
@@ -404,10 +434,9 @@ int MCNTupleFirstPass::AncestorGrouping(std::vector<int>& ancestor_ids, bool sam
 
   // others
   *m_unspecified_parent_file << "Event#: " << mpair->m1.ev_num << std::endl;
-  if (sameprts)
-    *m_unspecified_parent_file << "Same parents. Ancestor not in any group." << std::endl;
-  else
-    *m_unspecified_parent_file << "Different parents. One ancestor not in any group." << std::endl;
+  // if (sameprts)
+  *m_unspecified_parent_file << "Ancestor not in any group." << std::endl;
+  // else
   for (auto v : ancestor_ids) *m_unspecified_parent_file << v << " ";
   *m_unspecified_parent_file << std::endl << std::endl;
   return -1;
@@ -642,8 +671,7 @@ void MCNTupleFirstPass::SameSignSameAncestorsAnalysis(bool near_side, bool one_b
   }  
 }
 
-
-void MCNTupleFirstPass::FillMuonPairParents(){
+void MCNTupleFirstPass::MuonPairTagsReinit(){
   bool not_near = !(abs(mpair->dphi) < pms.PI / 2.);
   m1_c_tag = false;
   m2_c_tag = false;
@@ -654,6 +682,14 @@ void MCNTupleFirstPass::FillMuonPairParents(){
   m1_from_Upsilon = false;
   m2_from_Upsilon = false;
 
+  mpair->from_same_b = false;
+  // mpair->from_same_ancestors = false;
+  mpair->both_from_b = false;
+  mpair->one_from_b_one_from_c = false;
+  mpair->both_from_c = false;
+  mpair->m1_ancestor_category = -10;
+  mpair->m2_ancestor_category = -10;
+
   for (std::vector<int> v : *m1_history) v.clear();
   for (std::vector<int> v : *m2_history) v.clear();
   m1_history->clear();
@@ -662,11 +698,15 @@ void MCNTupleFirstPass::FillMuonPairParents(){
   m1_multi_hf_quark_ids.clear();
   m2_multi_hf_quark_ids.clear();
 
-  // m1_multi_hadronic_parents_ids.clear();
-  // m2_multi_hadronic_parents_ids.clear();
+}
 
-  FindSingleMuonParents(true);
-  FindSingleMuonParents(false);
+
+void MCNTupleFirstPass::MuonPairAncestorTracing(){
+
+  MuonPairTagsReinit();
+  
+  SingleMuonAncestorTracing(true);
+  SingleMuonAncestorTracing(false);
   
   // parent groups: {direct b, c from b, c not from b, strange & light hadrons, photons};
   mpair->m1_parent_group = ParentGrouping(abs(m1_earliest_parent_id), m1_c_tag);
@@ -713,7 +753,25 @@ void MCNTupleFirstPass::FillMuonPairParents(){
   bool small_dphi = (abs(mpair->dphi) < 0.4);
 
   bool bb_op_sign_one_b_one_btoc_from_same_b = bb_op_sign_one_b_one_btoc && (cur_m1_earliest_parent_barcode == cur_m2_earliest_parent_barcode);
-  mpair->from_same_b = bb_op_sign_one_b_one_btoc_from_same_b;
+  // mpair->from_same_b = bb_op_sign_one_b_one_btoc_from_same_b;
+
+  if (cur_m1_earliest_parent_barcode == cur_m2_earliest_parent_barcode){
+    int prt_id = abs(truth_id->at(cur_m1_earliest_parent_barcode));
+    // necessary to make sure the "hadronic parent" is actually a b-flavored hadron
+    // since it's possible that the first not-c-hadron parent vectors is quark level
+    // and contains both 4 and -4, where the 4's barcode is recorded as cur_m1_earliest_parent_barcode
+    if ((prt_id >= 500 && prt_id < 600) || (prt_id >= 5000 && prt_id < 6000)){
+      mpair->from_same_b = true;
+
+      if (mpair->same_sign){ // the same b should not a same-sign muon pair
+        std::cout << "The same b-flavored hadron give a SAME-SIGN muon pair. How does this happen?" << std::endl;
+        std::cout << "muon 1 hardonic parent barcode: " << cur_m1_earliest_parent_barcode << std::endl;
+        std::cout << "muon 2 hardonic parent barcode: " << cur_m2_earliest_parent_barcode << std::endl;
+        PrintHistory(&std::cout, false, true);
+      }
+    }
+  }
+
 
 
   if (mc_mode == "mc_truth_bb"){
@@ -960,7 +1018,7 @@ void MCNTupleFirstPass::ProcessData(){
       //------------------------------------------------------------
 
       // fill in muon parents (now that we have finished applying all the cuts)
-      FillMuonPairParents();
+      MuonPairAncestorTracing();
 
       // if (m1_ancestor_is_incoming){
       //   std::cout << "Event #: " << mpair->m1.ev_num << std::endl;

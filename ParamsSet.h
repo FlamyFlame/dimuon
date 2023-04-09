@@ -100,7 +100,7 @@ ParamsSet::ParamsSet(){
 
 	pairPTlogpow[0][0] = 0.0198;
 	pairPTlogpow[0][1] = 0.0198;
-	pairPTlogpow[0][2] = 0.052;
+	// pairPTlogpow[0][2] = 0.052;
 	pairPTlogpow[0][2] = 0.078;
 	pairPTlogpow[1][0] = 0.0198;
 	pairPTlogpow[1][1] = 0.0198;
