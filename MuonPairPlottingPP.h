@@ -73,13 +73,13 @@ private:
 
     static const int nAncestorGroups = 4;
 
-    TH1D* h_DR_ancestor_binned[ParamsSet::nSigns][nAncestorGroups];
-    TH1D* h_pt_asym_ancestor_binned[ParamsSet::nSigns][nAncestorGroups];
-    // TH1D* h_psrapidity_ordered_pt_asym_ancestor_binned[ParamsSet::nSigns][nAncestorGroups];
-    TH1D* h_pair_pt_ptlead_ratio_ancestor_binned[ParamsSet::nSigns][nAncestorGroups];
-    TH2D* h_ptlead_pair_pt_ancestor_binned[ParamsSet::nSigns][nAncestorGroups];
-    TH2D* h_Deta_Dphi_ancestor_binned[ParamsSet::nSigns][nAncestorGroups];
-    TH2D* h_minv_pair_pt_ancestor_binned[ParamsSet::nSigns][nAncestorGroups];
+    TH1D* h_DR_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 1];
+    TH1D* h_pt_asym_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 1];
+    // TH1D* h_psrapidity_ordered_pt_asym_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 1];
+    TH1D* h_pair_pt_ptlead_ratio_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 1];
+    TH2D* h_ptlead_pair_pt_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 1];
+    TH2D* h_Deta_Dphi_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 1];
+    TH2D* h_minv_pair_pt_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 1];
 
     // TH2D* h_unweighted_eta1_eta2_dphicut[ParamsSet::ndphiselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
 
@@ -92,6 +92,7 @@ private:
 
     double weight[ParamsSet::ndRselcs][ParamsSet::nSigns];
     double Q[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    double from_same_b[ParamsSet::ndRselcs][ParamsSet::nSigns];
     double from_same_ancestors[ParamsSet::ndRselcs][ParamsSet::nSigns];
     double m1_ancestor_category[ParamsSet::ndRselcs][ParamsSet::nSigns];
     double m2_ancestor_category[ParamsSet::ndRselcs][ParamsSet::nSigns];
@@ -184,6 +185,7 @@ void MuonPairPlottingPP::InitInput(){
             }
             inTree[idr][ksign]->SetBranchAddress("weight"          , &weight[idr][ksign]);
             inTree[idr][ksign]->SetBranchAddress("Q"          , &Q[idr][ksign]);
+            inTree[idr][ksign]->SetBranchAddress("from_same_b"          , &from_same_b[idr][ksign]);
             inTree[idr][ksign]->SetBranchAddress("from_same_ancestors"          , &from_same_ancestors[idr][ksign]);
             inTree[idr][ksign]->SetBranchAddress("m1_ancestor_category"          , &m1_ancestor_category[idr][ksign]);
             inTree[idr][ksign]->SetBranchAddress("m2_ancestor_category"          , &m2_ancestor_category[idr][ksign]);
@@ -212,6 +214,7 @@ void MuonPairPlottingPP::InitInput(){
             inTree[idr][ksign]->SetBranchStatus("*"                  ,0);//switch off all branches, then enable just the ones that we need
             inTree[idr][ksign]->SetBranchStatus("weight"           ,1);
             inTree[idr][ksign]->SetBranchStatus("Q"           ,1);
+            inTree[idr][ksign]->SetBranchStatus("from_same_b"           ,1);
             inTree[idr][ksign]->SetBranchStatus("from_same_ancestors"           ,1);
             inTree[idr][ksign]->SetBranchStatus("m1_ancestor_category"           ,1);
             inTree[idr][ksign]->SetBranchStatus("m2_ancestor_category"           ,1);
@@ -265,19 +268,19 @@ void MuonPairPlottingPP::InitHists(){
         }
     }
 
-    std::string ancestor_grps[nAncestorGroups] = {"_gg", "_qg","_single_g","_qq"};
+    std::string ancestor_grps[nAncestorGroups + 1] = {"_from_same_b", "_gg", "_qg","_single_g","_qq"};
 
    	if (mode == 1){
         for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
 
-            for (int kgrp = 0; kgrp < nAncestorGroups; kgrp++){
-                h_DR_ancestor_binned = new TH1D(Form("h_DR_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_bins,0,pms.deltaR_thrsh[2]);
-                h_pt_asym_ancestor_binned = new TH1D(Form("h_pt_asym_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", npt_asym_bins,0,1.);
+            for (int kgrp = 0; kgrp < nAncestorGroups + 1; kgrp++){
+                h_DR_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_DR_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_bins,0,pms.deltaR_thrsh[2]);
+                h_pt_asym_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_pt_asym_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", npt_asym_bins,0,1.);
                 // h_psrapidity_ordered_pt_asym_ancestor_binned
-                h_pair_pt_ptlead_ratio_ancestor_binned = new TH1D(Form("h_pair_pt_ptlead_ratio_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", npair_pt_ptlead_ratio_bins,0,2.);
-                h_ptlead_pair_pt_ancestor_binned = new TH2D(Form("h_ptlead_pair_pt_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",npair_pT_bins_linear,0,30,npT_lead_bins_linear,0,30);
-                h_Deta_Dphi_ancestor_binned = new TH2D(Form("h_Deta_Dphi_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
-                h_minv_pair_pt_ancestor_binned = new TH2D(Form("h_minv_pair_pt_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
+                h_pair_pt_ptlead_ratio_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_pair_pt_ptlead_ratio_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", npair_pt_ptlead_ratio_bins,0,2.);
+                h_ptlead_pair_pt_ancestor_binned[ksign][kgrp] = new TH2D(Form("h_ptlead_pair_pt_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",npair_pT_bins_linear,0,30,npT_lead_bins_linear,0,30);
+                h_Deta_Dphi_ancestor_binned[ksign][kgrp] = new TH2D(Form("h_Deta_Dphi_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
+                h_minv_pair_pt_ancestor_binned[ksign][kgrp] = new TH2D(Form("h_minv_pair_pt_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
             }
 
             for (unsigned int jdphi = 0; jdphi < 2; jdphi++){

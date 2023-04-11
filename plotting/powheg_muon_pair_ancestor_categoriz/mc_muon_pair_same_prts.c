@@ -59,8 +59,8 @@ void plot_one_mode(int mode){ // mode = 1: unweighted; mode = 2: weighted
   }
   else{
     hist_names.clear();
-    hist_names.push_back({{"h_bb_both_from_b_same_prts_sign1_near","h_bb_both_from_b_same_prts_sign1_away"},{"h_bb_both_from_b_same_prts_sign2_near","h_bb_both_from_b_same_prts_sign2_away"}});
-    hist_names.push_back({{"h_cc_both_from_c_same_prts_sign1_near","h_cc_both_from_c_same_prts_sign1_away"},{"h_cc_both_from_c_same_prts_sign2_near","h_cc_both_from_c_same_prts_sign2_away"}});
+    hist_names.push_back({{"h_QQ_both_from_Q_same_prts_sign1_near","h_QQ_both_from_Q_same_prts_sign1_away"},{"h_QQ_both_from_Q_same_prts_sign2_near","h_QQ_both_from_Q_same_prts_sign2_away"}});
+    hist_names.push_back({{"h_QQ_both_from_Q_same_prts_sign1_near","h_QQ_both_from_Q_same_prts_sign1_away"},{"h_QQ_both_from_Q_same_prts_sign2_near","h_QQ_both_from_Q_same_prts_sign2_away"}});
   }
 
   for (int imc = 0; imc < nMCmodes; imc++){
@@ -92,8 +92,8 @@ void plot_one_mode(int mode){ // mode = 1: unweighted; mode = 2: weighted
       }
     }
 
-    if (mode == 1) c->SaveAs(Form("plots/mc_truth/prt_grouping/muon_pair_same_prts_%s.png",mcmodes[imc].c_str()));
-    else           c->SaveAs(Form("plots/mc_truth/prt_grouping/muon_pair_same_prts_%s_weighted.png",mcmodes[imc].c_str()));
+    if (mode == 1) c->SaveAs(Form("plots/powheg/prt_grouping/muon_pair_same_prts_%s.png",mcmodes[imc].c_str()));
+    else           c->SaveAs(Form("plots/powheg/prt_grouping/muon_pair_same_prts_%s_weighted.png",mcmodes[imc].c_str()));
     c->Close();
     delete c;
   }
@@ -101,7 +101,7 @@ void plot_one_mode(int mode){ // mode = 1: unweighted; mode = 2: weighted
 }
 
 void mc_muon_pair_same_prts(){
-  plot_one_mode(1);
+  // plot_one_mode(1);
   plot_one_mode(2);
 }
 

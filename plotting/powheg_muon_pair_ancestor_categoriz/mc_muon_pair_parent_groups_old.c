@@ -71,7 +71,7 @@ void mc_muon_pair_parent_groups(){
         
     }
   }
-  c->SaveAs("plots/mc_truth/prt_grouping/muon_pair_parent_groups.png");
+  c->SaveAs("plots/powheg/prt_grouping/muon_pair_parent_groups.png");
   c->Close();
   delete c;
 

@@ -90,7 +90,7 @@ void plot_one_mode(int mode){
 }
 
 void mc_muon_pair_parent_groups(){
-  plot_one_mode(1);
+  // plot_one_mode(1);
   plot_one_mode(2);
 }
 

@@ -47,7 +47,7 @@ private:
 // --------------------- events of interest ---------------------------
 
     // bb: 3 from HF-diquark, 3 from incoming
-    std::vector<int> bb_events_of_interest = {2853, 4414, 33844, 36579, 58175, 97055};
+    std::vector<int> bb_events_of_interest = {10978, 43131, 84861};
     // std::vector<int> bb_events_of_interest = {637, 665, 1407, 1859, 2563, 3063, 3930, 5790, 9253};
     // cc: 4 from [21 21], 3 from [3], 2 from [21 2]
     // std::vector<int> cc_events_of_interest = {164, 3198, 9872, 15617, 23391, 32701, 48796, 24135, 49037};

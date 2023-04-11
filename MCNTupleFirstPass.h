@@ -34,14 +34,16 @@ private:
 
     ParamsSet pms;
 
-    std::string mcdir = "/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/";
+    std::string mcdir;
 
 // --------------------- input files & trees & data for setting branches---------------------------
   
     TChain          *fChain;   //!pointer to the analyzed TTree or TChain
   
     // Declaration of leaf types
-    UInt_t          RunNumber;
+    // UInt_t          RunNumber;
+    float                 Q;
+    std::vector<float>   *EventWeights           =nullptr;
 
     std::vector<int>* truth_id = nullptr;
     std::vector<int>* truth_barcode = nullptr;
@@ -54,8 +56,6 @@ private:
     std::vector<std::vector<int>>* truth_children = nullptr;
     // std::vector<std::vector<int>>* truth_muon_parent_ids = nullptr;
     // std::vector<std::vector<int>>* truth_muon_parent_bars = nullptr;
-    std::vector<float>   *EventWeights           =nullptr;
-    std::vector<float>   *Q           =nullptr;
 
     std::vector<float>   *muon_pair_muon1_pt           =nullptr;
     std::vector<float>   *muon_pair_muon1_eta       =nullptr;
@@ -78,6 +78,9 @@ private:
     
 // --------------------- temporary variables (muon, muonpair objects, vectors, etc.) ---------------------------
   
+    Long64_t nentries;
+    std::string sub_dir;
+
     Muon* tempmuon = nullptr;
     MuonPairMC* mpair = nullptr;
     TruthQQPair* qqpair = nullptr;
@@ -96,12 +99,16 @@ private:
     bool m1_from_Upsilon;
     bool m2_from_Upsilon;
 
-    // int cur_m1_beyond_earliest_parent_barcode;
-    // int cur_m2_beyond_earliest_parent_barcode;
-    // std::vector<int> cur_m1_beyond_earliest_parent_ids;
-    // std::vector<int> cur_m2_beyond_earliest_parent_ids;
+    float crossx_2_to_2 = 0.;
+    float crossx_2_to_3 = 0.;
+    float crossx_relevant_hard_isnt_hardest = 0.;
 
     int nmuonpairs;
+
+    double skipped_event_crossx = 0;
+    bool skip_event = false;
+    // boolean to tag whether 
+    bool pre_return = false;
     
     std::vector<std::vector<int>>* single_gluon_history;
     std::vector<std::vector<int>>* m1_history;
@@ -132,9 +139,6 @@ private:
     std::vector<float>* m1_hq_ancestor_pt_eta_phi;
     std::vector<float>* m2_hq_ancestor_pt_eta_phi;
 
-
-    // std::vector<int> m1_multi_hadronic_parents_ids;
-    // std::vector<int> m2_multi_hadronic_parents_ids;
   
 // --------------------- output file, histograms & trees ---------------------------
   
@@ -142,12 +146,12 @@ private:
     std::ofstream* m_unspecified_parent_file = nullptr;
     std::ofstream* m_b_parent_file[ParamsSet::nSigns][2];
     std::ofstream* m_c_parent_file[ParamsSet::nSigns][2];
-    std::ofstream* m_single_muon = nullptr;
     std::ofstream* m_cc_ss_small_dphi_file = nullptr;
     std::ofstream* m_bb_ss_near_file = nullptr;
     std::ofstream* m_bb_ss_away_file = nullptr;
     std::ofstream* m_bb_op_near_one_b_one_btoc_others_file = nullptr;
 
+    TTree* meta_tree;
     TTree* muonPairOutTree[ParamsSet::nSigns];
     static const int nAncestorGroups = 4;
     TTree* QQPairOutTree[ParamsSet::nSigns][2][nAncestorGroups];
@@ -156,7 +160,6 @@ private:
     TH1D* h_cutAcceptance[ParamsSet::nSigns];
     // TH1D* h_numParents;
     TH1D* h_numMuonPairs;
-    TH2D* h_unweighted_parent_groups[ParamsSet::nSigns][2];
     TH2D* h_ptlead_pair_pt[ParamsSet::nSigns][2];
     TH2D* h_parent_groups[ParamsSet::nSigns][2];
 
@@ -166,7 +169,7 @@ private:
     TH1D* h_QQ_pair_pt_ptlead_ratio[ParamsSet::nSigns][2][4];
     TH1D* h_QQ_pt_avg[ParamsSet::nSigns][2][4];
     TH1D* h_QQ_asym[ParamsSet::nSigns][2][4];
-    TH1D* h_QQ_minv_s_cm_ratio[ParamsSet::nSigns][2][4];
+    TH1D* h_QQ_minv_mHard_ratio[ParamsSet::nSigns][2][4];
 
     TH2D* h_QQ_ptlead_pair_pt[ParamsSet::nSigns][2][4];
     TH2D* h_QQ_pt1_pt2[ParamsSet::nSigns][2][4];
@@ -179,42 +182,11 @@ private:
     TH1D* h_crossx;
     TH1D* h_crossx_pt_binned[npTbins];
 
-    TH1D* h_unweighted_bb_op_one_b_one_btoc[2];
-    TH1D* h_bb_op_one_b_one_btoc[2];
+    // TH1D* h_bb_op_one_b_one_btoc[2];
 
-    TH1D* h_unweighted_bb_both_from_b_same_ancestors[ParamsSet::nSigns][2];
-    TH1D* h_unweighted_cc_both_from_c_same_ancestors[ParamsSet::nSigns][2];
-    TH1D* h_bb_both_from_b_same_ancestors[ParamsSet::nSigns][2];
-    TH1D* h_cc_both_from_c_same_ancestors[ParamsSet::nSigns][2];
-
-    TH1D* h_unweighted_bb_both_from_b_ancestor_sp[ParamsSet::nSigns][2];
-    TH2D* h_unweighted_bb_both_from_b_ancestor_dp[ParamsSet::nSigns][2];
-    TH1D* h_bb_both_from_b_ancestor_sp[ParamsSet::nSigns][2];
-    TH2D* h_bb_both_from_b_ancestor_dp[ParamsSet::nSigns][2];
-
-    // TH1D* h_n_to_2_ancestors[ParamsSet::nSigns][2];
-
-    TH1D* h_unweighted_cc_both_from_c_ancestor_sp[ParamsSet::nSigns][2];
-    TH2D* h_unweighted_cc_both_from_c_ancestor_dp[ParamsSet::nSigns][2];
-    TH1D* h_cc_both_from_c_ancestor_sp[ParamsSet::nSigns][2];
-    TH2D* h_cc_both_from_c_ancestor_dp[ParamsSet::nSigns][2];
-
-    TH1D* h_dphi_bb_op_near_both_from_b;
-    TH1D* h_dphi_bb_op_near_one_b_one_btoc;
-    TH1D* h_dphi_bb_ss_near;
-    TH1D* h_dphi_bb_op_near;
-    TH1D* h_dphi_bb_op_near_from_same_b;
-    TH1D* h_bb_ss_near_involv_osc;
-    TH1D* h_bb_ss_away_involv_osc;
-
-    TH2D* h_cc_ss_small_dphi_prt_gps;
-    TH1D* h_cc_ss_small_dphi_same_ancestors;
-    TH1D* h_cc_ss_small_dphi_sp;
-    TH2D* h_cc_ss_small_dphi_dp;
-    TH2D* h_cc_ss_plateau_prt_gps;
-    TH1D* h_cc_ss_plateau_same_ancestors;
-    TH1D* h_cc_ss_plateau_sp;
-    TH2D* h_cc_ss_plateau_dp;
+    TH1D* h_QQ_both_from_Q_same_ancestors[ParamsSet::nSigns][2];
+    TH1D* h_QQ_both_from_Q_ancestor_sp[ParamsSet::nSigns][2];
+    TH2D* h_QQ_both_from_Q_ancestor_dp[ParamsSet::nSigns][2];
 
     TH1D* h_num_hard_scatt_out[ParamsSet::nSigns][2];
     TH1D* h_pt_muon_pt_closest_hadr_ratio[ParamsSet::nSigns][2];
@@ -247,52 +219,63 @@ private:
     bool PassCuts();
     bool IsResonance();
     bool IsPhotoProduction();
-    int  ParentGrouping(std::vector<int>& parent_ids, bool c_tag);
+    int  ParentGrouping(std::vector<int>& parent_ids, bool c_tag, bool prev_is_lepton);
     void GetPtEtaPhiFromBarcode(int barcode, std::vector<float>* pt_eta_phi);
     int  UpdateCurParents(bool isMuon1, std::vector<int>& cur_prt_bars, std::vector<int>& cur_prt_ids, int hf_quark_index = -1);
     int  FindHeavyQuarks(std::vector<int>& cur_prt_ids, int quark_type, bool isMuon1, int hadron_child_id = 0);
     void SingleMuonAncestorTracing(bool isMuon1);
-    int  AncestorGrouping(std::vector<int>& ancestor_ids, bool sameprts = true);
+    int  AncestorGrouping(std::vector<int>& ancestor_ids);
     void HardScatteringAnalysis(std::vector<int>& ancestor_bars, std::vector<int>& ancestor_ids, int sign_dphi_mode, int ancestor_grp);
-    void PrintHistory(std::ofstream* f, bool same_ancestors, bool state_same_ancestors = false);
-    void SameSignSameAncestorsAnalysis(bool near_side, bool one_b_one_btoc, bool print_history = false);
+    void PrintHistory(std::ostream* f, bool print_single, bool muon1_sameancestor);
+    // void SameSignSameAncestorsAnalysis(bool near_side, bool one_b_one_btoc, bool print_history = false);
     void KinematicCorrPlots(int isign, int jdphi);
     void MuonPairTagsReinit();
+    void CheckIfFromSameB();
     void MuonPairAncestorTracing();
     void FillMuonPairTree();
+    void HistAdjust();
     void Finalize();
   
 
 public :
     // int mode = 2;
+    bool is_full_sample = true;
+    int full_sample_batch_num;
     std::string mc_mode = "mc_truth_cc";
     bool print_prt_history = false;
     bool print_specific_prt_history = false;
-    MCNTupleFirstPass();
+    MCNTupleFirstPass(){}
     ~MCNTupleFirstPass(){}
     void Run();
     float filter_effcy;
 };
 
 
-MCNTupleFirstPass::MCNTupleFirstPass(){
-    // if(mode != 1 && mode != 2){
-    //     std::cout<<"Error:: Mode has to equal 1 or 2; code is used for outputting muon / muon-pair trees only."<<std::endl;
-    //     throw std::exception();
-    // }
-    // if(mode != 2){
-    //     std::cout << "Error:: Mode has to equal 2; MC truth code is used for outputting muon-pair trees only." << std::endl;
-    //     throw std::exception();
-    // }
-}
-
 //initialize the TChain
 void MCNTupleFirstPass::InitInput(){
 
+    mcdir = (is_full_sample)? "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/" : "/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/";
     fChain = new TChain("HeavyIonD3PD","HeavyIonD3PD");
     fChain->SetMakeClass(1);
-    fChain->Add(Form("%s%s.root", mcdir.c_str(), mc_mode.c_str()));
+    if (is_full_sample){
+        sub_dir = (mc_mode == "mc_truth_bb")? "bb_full_sample/" : "cc_full_sample/";
+        for (int ifile = 5 * (full_sample_batch_num - 1); ifile < 5 * full_sample_batch_num; ifile++){
+            char filename[100];
+            std::sprintf(filename, "%s%s%s_%02d.root", mcdir.c_str(), sub_dir.c_str(), mc_mode.c_str(), ifile+1);
+            std::cout << filename << std::endl;
+            std::ifstream in_file(filename);
+            
+            if (!in_file.good()){
+                std::cout << "Warning: File " << filename << " not found. Skip.\n";
+                continue; // skip this file
+            }
+            fChain->Add(filename);
+        }
+    }else{
+        fChain->Add(Form("%s%s.root", mcdir.c_str(), mc_mode.c_str()));
+    }
     
+    cout << "nentries: " << fChain->GetEntries() << endl;
     // MC muons have no quality, d0 or z0 recorded
     fChain->SetBranchAddress("truth_id"                   , &truth_id);
     fChain->SetBranchAddress("truth_barcode"              , &truth_barcode);
@@ -365,6 +348,8 @@ void MCNTupleFirstPass::InitTempVariables(){
     single_gluon_history = new std::vector<std::vector<int>>();
     m1_history = new std::vector<std::vector<int>>();
     m2_history = new std::vector<std::vector<int>>();
+    m1_history_particle = new std::vector<std::vector<Particle>>();
+    m2_history_particle = new std::vector<std::vector<Particle>>();
     m1_closest_hadron_prt_pt_eta_phi = new std::vector<float>();
     m2_closest_hadron_prt_pt_eta_phi = new std::vector<float>();
     m1_furthest_hadron_prt_pt_eta_phi = new std::vector<float>();
@@ -373,9 +358,9 @@ void MCNTupleFirstPass::InitTempVariables(){
     m2_hq_ancestor_pt_eta_phi = new std::vector<float>();
 }
 
+
 void MCNTupleFirstPass::InitOutput(){
 
-    m_single_muon = new std::ofstream(Form("%ssingle_gluon.txt", mcdir.c_str()));
     if (print_specific_prt_history){
         if (mc_mode == "mc_truth_cc"){
 
@@ -414,7 +399,16 @@ void MCNTupleFirstPass::InitOutput(){
     } 
 
     // m_outfile=new TFile(Form("%smuon_pairs_%s.root", mcdir.c_str(), mc_mode.c_str()),"recreate");
-    m_outfile=new TFile(Form("%smuon_pairs_NEW_%s.root", mcdir.c_str(), mc_mode.c_str()),"recreate");
+    if (is_full_sample){
+        std::string sub_dir = (mc_mode == "mc_truth_bb")? "bb_full_sample/" : "cc_full_sample/";
+        m_outfile=new TFile(Form("%s%smuon_pairs_%s_%d-%d.root", mcdir.c_str(), sub_dir.c_str(), mc_mode.c_str(), 5 * full_sample_batch_num - 4, 5 * full_sample_batch_num),"recreate");
+    }else{
+        m_outfile=new TFile(Form("%smuon_pairs_%s.root", mcdir.c_str(), mc_mode.c_str()),"recreate");
+    }
+    
+    meta_tree = new TTree("meta_tree","meta_tree");
+    meta_tree->Branch("nentries_before_cuts", &nentries, "nentries_before_cuts/L");
+
     for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
         muonPairOutTree[ksign] = new TTree(Form("muon_pair_tree_sign%u",ksign+1),Form("all muon pairs, sign%u",ksign+1));
         muonPairOutTree[ksign]->Branch("MuonPairObj",&mpair);
@@ -439,7 +433,6 @@ void MCNTupleFirstPass::InitOutput(){
     for (int isign = 0; isign < ParamsSet::nSigns; isign++){
         h_cutAcceptance[isign] = new TH1D(Form("h_cutAcceptance_sign%d",isign+1),Form("h_cutAcceptance_sign%d",isign+1),numCuts,0,numCuts);
         for (int jdphi = 0; jdphi < 2; jdphi++){
-            h_unweighted_parent_groups[isign][jdphi] = new TH2D(Form("h_unweighted_parent_groups_sign%d%s",isign+1, dphis[jdphi].c_str()),Form("h_unweighted_parent_groups_sign%d%s",isign+1, dphis[jdphi].c_str()),nParentGroups,0,nParentGroups,nParentGroups,0,nParentGroups);
             h_parent_groups[isign][jdphi] = new TH2D(Form("h_parent_groups_sign%d%s",isign+1, dphis[jdphi].c_str()),Form("h_parent_groups_sign%d%s",isign+1, dphis[jdphi].c_str()),nParentGroups,0,nParentGroups,nParentGroups,0,nParentGroups);
             h_ptlead_pair_pt[isign][jdphi] = new TH2D(Form("h_ptlead_pair_pt_sign%d%s",isign+1, dphis[jdphi].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.npairPT_bins,pms.pairPTBins[isign][2],pms.npt_bins,pms.pTBins);
             h_num_hard_scatt_out[isign][jdphi] = new TH1D(Form("h_num_hard_scatt_out_sign%d%s",isign+1, dphis[jdphi].c_str()),Form("h_num_hard_scatt_out_sign%d%s",isign+1, dphis[jdphi].c_str()),3,2,5);
@@ -455,8 +448,7 @@ void MCNTupleFirstPass::InitOutput(){
                 h_QQ_pair_pt_ptlead_ratio[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_pair_pt_ptlead_ratio_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", 25,0,2.);
                 h_QQ_pt_avg[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_pt_avg_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";p_{T}^{avg};d#sigma/dp_{T}^{avg}", pms.n_hq_pt_bins,pms.hq_pTBins);
                 h_QQ_asym[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_asym_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", 25,0,1);
-                // if (kgrp != 2) // do not initialize for single gluon case
-                h_QQ_minv_s_cm_ratio[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_minv_s_cm_ratio_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#frac{m_{QQ}}{#hat{s}};d#sigma/d#frac{m_{QQ}}{#hat{s}}", 25,0,1);
+                h_QQ_minv_mHard_ratio[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_minv_mHard_ratio_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#frac{m_{QQ}}{#hat{s}};d#sigma/d#frac{m_{QQ}}{#hat{s}}", 25,0,1);
                 
                 // h_QQ_ptlead_pair_pt[isign][jdphi] = new TH2D(Form("h_QQ_ptlead_pair_pt_sign%d%s",isign+1, dphis[jdphi].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.npairPT_bins,pms.pairPTBins[isign][2],pms.n_hq_pt_bins,pms.hq_pTBins);
                 h_QQ_ptlead_pair_pt[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_ptlead_pair_pt_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.n_hq_pt_bins,pms.hq_pTBins,pms.n_hq_pt_bins,pms.hq_pTBins);
@@ -511,71 +503,21 @@ void MCNTupleFirstPass::InitOutput(){
         }
     }
 
-    if (mc_mode == "mc_truth_bb"){
-
-        h_unweighted_bb_op_one_b_one_btoc[0] = new TH1D("h_unweighted_bb_op_one_b_one_btoc_near","h_unweighted_bb_op_one_b_one_btoc_near",3,0,3);
-        h_unweighted_bb_op_one_b_one_btoc[1] = new TH1D("h_unweighted_bb_op_one_b_one_btoc_away","h_unweighted_bb_op_one_b_one_btoc_away",3,0,3);
-        h_bb_op_one_b_one_btoc[0] = new TH1D("h_bb_op_one_b_one_btoc_near","h_bb_op_one_b_one_btoc_near",4,0,4);
-        h_bb_op_one_b_one_btoc[1] = new TH1D("h_bb_op_one_b_one_btoc_away","h_bb_op_one_b_one_btoc_away",4,0,4);
-    
-        h_bb_ss_near_involv_osc = new TH1D("h_bb_ss_near_involv_osc","h_bb_ss_near_involv_osc",6,0,6);
-        h_bb_ss_away_involv_osc = new TH1D("h_bb_ss_away_involv_osc","h_bb_ss_away_involv_osc",6,0,6);
-
-        h_dphi_bb_ss_near = new TH1D("h_dphi_bb_ss_near",";#Delta#phi;d#sigma/d#Delta#phi", 32,-pms.PI/2.,pms.PI/2.);
-        h_dphi_bb_op_near = new TH1D("h_dphi_bb_op_near",";#Delta#phi;d#sigma/d#Delta#phi", 32,-pms.PI/2.,pms.PI/2.);
-        h_dphi_bb_op_near_from_same_b = new TH1D("h_dphi_bb_op_near_from_same_b",";#Delta#phi;d#sigma/d#Delta#phi", 32,-pms.PI/2.,pms.PI/2.);
-        
-        h_dphi_bb_op_near_both_from_b = new TH1D("h_dphi_bb_op_near_both_from_b",";#Delta#phi;d#sigma/d#Delta#phi", 32,-pms.PI/2.,pms.PI/2.);
-        h_dphi_bb_op_near_one_b_one_btoc = new TH1D("h_dphi_bb_op_near_one_b_one_btoc",";#Delta#phi;d#sigma/d#Delta#phi", 32,-pms.PI/2.,pms.PI/2.);
-
-        for (int isign = 0; isign < ParamsSet::nSigns; isign++){
-            h_unweighted_bb_both_from_b_same_ancestors[isign][0] = new TH1D(Form("h_unweighted_bb_both_from_b_same_ancestors_sign%d_near",isign+1),Form("h_unweighted_bb_both_from_b_same_ancestors_sign%d_near",isign+1),2,0,2);
-            h_unweighted_bb_both_from_b_same_ancestors[isign][1] = new TH1D(Form("h_unweighted_bb_both_from_b_same_ancestors_sign%d_away",isign+1),Form("h_unweighted_bb_both_from_b_same_ancestors_sign%d_away",isign+1),2,0,2);
-            h_bb_both_from_b_same_ancestors[isign][0] = new TH1D(Form("h_bb_both_from_b_same_ancestors_sign%d_near",isign+1),Form("h_bb_both_from_b_same_ancestors_sign%d_near",isign+1),2,0,2);
-            h_bb_both_from_b_same_ancestors[isign][1] = new TH1D(Form("h_bb_both_from_b_same_ancestors_sign%d_away",isign+1),Form("h_bb_both_from_b_same_ancestors_sign%d_away",isign+1),2,0,2);
-            h_unweighted_bb_both_from_b_ancestor_sp[isign][0] = new TH1D(Form("h_unweighted_bb_both_from_b_ancestor_sp_sign%d_near",isign+1),Form("h_unweighted_bb_both_from_b_ancestor_sp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups);
-            h_unweighted_bb_both_from_b_ancestor_sp[isign][1] = new TH1D(Form("h_unweighted_bb_both_from_b_ancestor_sp_sign%d_away",isign+1),Form("h_unweighted_bb_both_from_b_ancestor_sp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups);
-            h_unweighted_bb_both_from_b_ancestor_dp[isign][0] = new TH2D(Form("h_unweighted_bb_both_from_b_ancestor_dp_sign%d_near",isign+1),Form("h_unweighted_bb_both_from_b_ancestor_dp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
-            h_unweighted_bb_both_from_b_ancestor_dp[isign][1] = new TH2D(Form("h_unweighted_bb_both_from_b_ancestor_dp_sign%d_away",isign+1),Form("h_unweighted_bb_both_from_b_ancestor_dp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
-            h_bb_both_from_b_ancestor_sp[isign][0] = new TH1D(Form("h_bb_both_from_b_ancestor_sp_sign%d_near",isign+1),Form("h_bb_both_from_b_ancestor_sp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups);
-            h_bb_both_from_b_ancestor_sp[isign][1] = new TH1D(Form("h_bb_both_from_b_ancestor_sp_sign%d_away",isign+1),Form("h_bb_both_from_b_ancestor_sp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups);
-            h_bb_both_from_b_ancestor_dp[isign][0] = new TH2D(Form("h_bb_both_from_b_ancestor_dp_sign%d_near",isign+1),Form("h_bb_both_from_b_ancestor_dp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
-            h_bb_both_from_b_ancestor_dp[isign][1] = new TH2D(Form("h_bb_both_from_b_ancestor_dp_sign%d_away",isign+1),Form("h_bb_both_from_b_ancestor_dp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
-        
-            // h_n_to_2_ancestors[isign][0] = new TH1D(Form("h_n_to_2_ancestors_sign%d_near",isign+1),Form("h_n_to_2_ancestors_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups);
-            // h_n_to_2_ancestors[isign][1] = new TH1D(Form("h_n_to_2_ancestors_sign%d_away",isign+1),Form("h_n_to_2_ancestors_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups);
-        }
-    }else if (mc_mode == "mc_truth_cc"){
-        h_cc_ss_small_dphi_prt_gps = new TH2D("h_cc_ss_small_dphi_prt_gps","h_cc_ss_small_dphi_prt_gps",nParentGroups,0,nParentGroups,nParentGroups,0,nParentGroups);
-        h_cc_ss_small_dphi_same_ancestors = new TH1D("h_cc_ss_small_dphi_same_ancestors","h_cc_ss_small_dphi_same_ancestors",2,0,2);
-        h_cc_ss_small_dphi_sp = new TH1D("h_cc_ss_small_dphi_sp","h_cc_ss_small_dphi_sp",nAncestorGroups,0,nAncestorGroups);
-        h_cc_ss_small_dphi_dp = new TH2D("h_cc_ss_small_dphi_dp","h_cc_ss_small_dphi_dp",nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
-        h_cc_ss_plateau_prt_gps = new TH2D("h_cc_ss_plateau_prt_gps","h_cc_ss_plateau_prt_gps",nParentGroups,0,nParentGroups,nParentGroups,0,nParentGroups);
-        h_cc_ss_plateau_same_ancestors = new TH1D("h_cc_ss_plateau_same_ancestors","h_cc_ss_plateau_same_ancestors",2,0,2);
-        h_cc_ss_plateau_sp = new TH1D("h_cc_ss_plateau_sp","h_cc_ss_plateau_sp",nAncestorGroups,0,nAncestorGroups);
-        h_cc_ss_plateau_dp = new TH2D("h_cc_ss_plateau_dp","h_cc_ss_plateau_dp",nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
-
-
-        for (int isign = 0; isign < ParamsSet::nSigns; isign++){
-            h_unweighted_cc_both_from_c_same_ancestors[isign][0] = new TH1D(Form("h_unweighted_cc_both_from_c_same_ancestors_sign%d_near",isign+1),Form("h_unweighted_cc_both_from_c_same_ancestors_sign%d_near",isign+1),2,0,2);
-            h_unweighted_cc_both_from_c_same_ancestors[isign][1] = new TH1D(Form("h_unweighted_cc_both_from_c_same_ancestors_sign%d_away",isign+1),Form("h_unweighted_cc_both_from_c_same_ancestors_sign%d_away",isign+1),2,0,2);
-            h_cc_both_from_c_same_ancestors[isign][0] = new TH1D(Form("h_cc_both_from_c_same_ancestors_sign%d_near",isign+1),Form("h_cc_both_from_c_same_ancestors_sign%d_near",isign+1),2,0,2);
-            h_cc_both_from_c_same_ancestors[isign][1] = new TH1D(Form("h_cc_both_from_c_same_ancestors_sign%d_away",isign+1),Form("h_cc_both_from_c_same_ancestors_sign%d_away",isign+1),2,0,2);
-            h_unweighted_cc_both_from_c_ancestor_sp[isign][0] = new TH1D(Form("h_unweighted_cc_both_from_c_ancestor_sp_sign%d_near",isign+1),Form("h_unweighted_cc_both_from_c_ancestor_sp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups);
-            h_unweighted_cc_both_from_c_ancestor_sp[isign][1] = new TH1D(Form("h_unweighted_cc_both_from_c_ancestor_sp_sign%d_away",isign+1),Form("h_unweighted_cc_both_from_c_ancestor_sp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups);
-            h_unweighted_cc_both_from_c_ancestor_dp[isign][0] = new TH2D(Form("h_unweighted_cc_both_from_c_ancestor_dp_sign%d_near",isign+1),Form("h_unweighted_cc_both_from_c_ancestor_dp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
-            h_unweighted_cc_both_from_c_ancestor_dp[isign][1] = new TH2D(Form("h_unweighted_cc_both_from_c_ancestor_dp_sign%d_away",isign+1),Form("h_unweighted_cc_both_from_c_ancestor_dp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
-            h_cc_both_from_c_ancestor_sp[isign][0] = new TH1D(Form("h_cc_both_from_c_ancestor_sp_sign%d_near",isign+1),Form("h_cc_both_from_c_ancestor_sp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups);
-            h_cc_both_from_c_ancestor_sp[isign][1] = new TH1D(Form("h_cc_both_from_c_ancestor_sp_sign%d_away",isign+1),Form("h_cc_both_from_c_ancestor_sp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups);
-            h_cc_both_from_c_ancestor_dp[isign][0] = new TH2D(Form("h_cc_both_from_c_ancestor_dp_sign%d_near",isign+1),Form("h_cc_both_from_c_ancestor_dp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
-            h_cc_both_from_c_ancestor_dp[isign][1] = new TH2D(Form("h_cc_both_from_c_ancestor_dp_sign%d_away",isign+1),Form("h_cc_both_from_c_ancestor_dp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
-        }
+    for (int isign = 0; isign < ParamsSet::nSigns; isign++){
+        h_QQ_both_from_Q_same_ancestors[isign][0] = new TH1D(Form("h_QQ_both_from_Q_same_ancestors_sign%d_near",isign+1),Form("h_QQ_both_from_Q_same_ancestors_sign%d_near",isign+1),2,0,2);
+        h_QQ_both_from_Q_same_ancestors[isign][1] = new TH1D(Form("h_QQ_both_from_Q_same_ancestors_sign%d_away",isign+1),Form("h_QQ_both_from_Q_same_ancestors_sign%d_away",isign+1),2,0,2);
+        h_QQ_both_from_Q_ancestor_sp[isign][0] = new TH1D(Form("h_QQ_both_from_Q_ancestor_sp_sign%d_near",isign+1),Form("h_QQ_both_from_Q_ancestor_sp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups);
+        h_QQ_both_from_Q_ancestor_sp[isign][1] = new TH1D(Form("h_QQ_both_from_Q_ancestor_sp_sign%d_away",isign+1),Form("h_QQ_both_from_Q_ancestor_sp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups);
+        h_QQ_both_from_Q_ancestor_dp[isign][0] = new TH2D(Form("h_QQ_both_from_Q_ancestor_dp_sign%d_near",isign+1),Form("h_QQ_both_from_Q_ancestor_dp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
+        h_QQ_both_from_Q_ancestor_dp[isign][1] = new TH2D(Form("h_QQ_both_from_Q_ancestor_dp_sign%d_away",isign+1),Form("h_QQ_both_from_Q_ancestor_dp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
     }
 }
 
 void MCNTupleFirstPass::Finalize(){
     delete m1_history;
     delete m2_history;
+    delete m1_history_particle;
+    delete m2_history_particle;
     delete m1_closest_hadron_prt_pt_eta_phi;
     delete m2_closest_hadron_prt_pt_eta_phi;
     delete m1_furthest_hadron_prt_pt_eta_phi;
@@ -585,8 +527,6 @@ void MCNTupleFirstPass::Finalize(){
 
     m_unspecified_parent_file->close();
     delete m_unspecified_parent_file;
-    m_single_muon->close();
-    delete m_single_muon;
 
     if (print_prt_history){
         if (mc_mode == "mc_truth_bb"){
@@ -622,7 +562,6 @@ void MCNTupleFirstPass::Finalize(){
 
     for (int jdphi = 0; jdphi < 2; jdphi++){
         for (int isign = 0; isign < ParamsSet::nSigns; isign++){
-            delete h_unweighted_parent_groups[isign][jdphi];
             delete h_ptlead_pair_pt[isign][jdphi];
             delete h_parent_groups[isign][jdphi];
             // delete h_n_to_2_ancestors[isign][jdphi];
@@ -643,46 +582,11 @@ void MCNTupleFirstPass::Finalize(){
         }
     }
 
-    if (mc_mode == "mc_truth_bb"){
-        delete h_dphi_bb_op_near_both_from_b;
-        delete h_dphi_bb_op_near_one_b_one_btoc;
-        delete h_dphi_bb_ss_near;
-        delete h_dphi_bb_op_near;
-        delete h_dphi_bb_op_near_from_same_b;
-        delete h_bb_ss_near_involv_osc;
-        delete h_bb_ss_away_involv_osc;
-
-        for (int jdphi = 0; jdphi < 2; jdphi++){
-            delete h_unweighted_bb_op_one_b_one_btoc[jdphi];
-            delete h_bb_op_one_b_one_btoc[jdphi];
-            for (int isign = 0; isign < ParamsSet::nSigns; isign++){
-                delete h_unweighted_bb_both_from_b_same_ancestors[isign][jdphi];
-                delete h_bb_both_from_b_same_ancestors[isign][jdphi];
-                delete h_unweighted_bb_both_from_b_ancestor_sp[isign][jdphi];
-                delete h_unweighted_bb_both_from_b_ancestor_dp[isign][jdphi];
-                delete h_bb_both_from_b_ancestor_sp[isign][jdphi];
-                delete h_bb_both_from_b_ancestor_dp[isign][jdphi];
-            }
-        }
-    }else if (mc_mode == "mc_truth_cc"){
-        delete h_cc_ss_small_dphi_prt_gps;
-        delete h_cc_ss_small_dphi_same_ancestors;
-        delete h_cc_ss_small_dphi_sp;
-        delete h_cc_ss_small_dphi_dp;
-        delete h_cc_ss_plateau_prt_gps;
-        delete h_cc_ss_plateau_same_ancestors;
-        delete h_cc_ss_plateau_sp;
-        delete h_cc_ss_plateau_dp;
-
-        for (int jdphi = 0; jdphi < 2; jdphi++){
-            for (int isign = 0; isign < ParamsSet::nSigns; isign++){
-                delete h_unweighted_cc_both_from_c_same_ancestors[isign][jdphi];
-                delete h_cc_both_from_c_same_ancestors[isign][jdphi];
-                delete h_unweighted_cc_both_from_c_ancestor_sp[isign][jdphi];
-                delete h_unweighted_cc_both_from_c_ancestor_dp[isign][jdphi];
-                delete h_cc_both_from_c_ancestor_sp[isign][jdphi];
-                delete h_cc_both_from_c_ancestor_dp[isign][jdphi];
-            }
+    for (int jdphi = 0; jdphi < 2; jdphi++){
+        for (int isign = 0; isign < ParamsSet::nSigns; isign++){
+            delete h_QQ_both_from_Q_same_ancestors[isign][jdphi];
+            delete h_QQ_both_from_Q_ancestor_sp[isign][jdphi];
+            delete h_QQ_both_from_Q_ancestor_dp[isign][jdphi];
         }
     }
 }

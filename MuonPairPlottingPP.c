@@ -122,6 +122,29 @@ void MuonPairPlottingPP::FillHistograms(int ndr, int nsign){
 
 
     if (ndr == 2){ //no delta R cut
+        if ((isMCTruthBB && both_from_b[ndr][nsign]) || (isMCTruthCC && both_from_c[ndr][nsign])){
+            if (from_same_b[ndr][nsign]){
+                h_DR_ancestor_binned[nsign][0]->Fill(dr[ndr][nsign], weight[ndr][nsign]);
+                h_pt_asym_ancestor_binned[nsign][0]->Fill(asym[ndr][nsign], weight[ndr][nsign]);
+                h_pair_pt_ptlead_ratio_ancestor_binned[nsign][0]->Fill(pair_pt[ndr][nsign]/pt_lead[ndr][nsign], weight[ndr][nsign]);
+                h_ptlead_pair_pt_ancestor_binned[nsign][0]->Fill(pair_pt[ndr][nsign], pt_lead[ndr][nsign], weight[ndr][nsign]);
+                h_Deta_Dphi_ancestor_binned[nsign][0]->Fill(dphi[ndr][nsign], deta[ndr][nsign], weight[ndr][nsign]);
+                h_minv_pair_pt_ancestor_binned[nsign][0]->Fill(pair_pt[ndr][nsign], minv[ndr][nsign], weight[ndr][nsign]);
+            }else if (from_same_ancestors[ndr][nsign]){ // from the same ancestors and not the same b
+                for (int kgrp = 0; kgrp < nAncestorGroups; kgrp++){
+                    if (m1_ancestor_category[ndr][nsign] == kgrp){
+                        h_DR_ancestor_binned[nsign][kgrp+1]->Fill(dr[ndr][nsign], weight[ndr][nsign]);
+                        h_pt_asym_ancestor_binned[nsign][kgrp+1]->Fill(asym[ndr][nsign], weight[ndr][nsign]);
+                        h_pair_pt_ptlead_ratio_ancestor_binned[nsign][kgrp+1]->Fill(pair_pt[ndr][nsign]/pt_lead[ndr][nsign], weight[ndr][nsign]);
+                        h_ptlead_pair_pt_ancestor_binned[nsign][kgrp+1]->Fill(pair_pt[ndr][nsign], pt_lead[ndr][nsign], weight[ndr][nsign]);
+                        h_Deta_Dphi_ancestor_binned[nsign][kgrp+1]->Fill(dphi[ndr][nsign], deta[ndr][nsign], weight[ndr][nsign]);
+                        h_minv_pair_pt_ancestor_binned[nsign][kgrp+1]->Fill(pair_pt[ndr][nsign], minv[ndr][nsign], weight[ndr][nsign]);
+                    }
+                    break;
+                }
+            }
+        }
+
         h_pair_dP_overP[away_side][nsign][0]->Fill(pair_dPoverP[ndr][nsign],weight[ndr][nsign]);
         h_pair_y[away_side][nsign][0]->Fill(pair_y[ndr][nsign],weight[ndr][nsign]);
         h_DR[away_side][nsign][0]->Fill(dr[ndr][nsign],weight[ndr][nsign]);
