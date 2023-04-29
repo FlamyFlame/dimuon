@@ -15,14 +15,14 @@ bool MuonNTupleFirstPassPP::PassCuts(){
   if (isTight){
     if ((mpair->m1.quality&mpair->m2.quality&16  )==0) return false;//Tight muon
   }else{
-  if((mpair->m1.quality&mpair->m2.quality&8  )==0) return false;//Medium muon
+    if ((mpair->m1.quality&mpair->m2.quality&8  )==0) return false;//Medium muon
   }
   if((mpair->m1.quality&mpair->m2.quality&32 )==0) return false;//IDCuts
   //if((mpair->m1.quality&mpair->m2.quality&256)==0) return false;//MuonCuts
 
   if (fabs(mpair->m1.eta) > 2.4 || fabs(mpair->m2.eta) > 2.4) return false;
   if (mpair->m1.pt < 4 || mpair->m2.pt < 4) return false;
-  if( fabs(mpair->m1.dP_overP) > pms.deltaP_overP_thrsh || fabs(mpair->m2.dP_overP) > pms.deltaP_overP_thrsh ) return false;
+  if (fabs(mpair->m1.dP_overP) > pms.deltaP_overP_thrsh || fabs(mpair->m2.dP_overP) > pms.deltaP_overP_thrsh) return false;
  
   return true;
 }
@@ -76,7 +76,7 @@ void MuonNTupleFirstPassPP::ProcessData(){
   // Long64_t nentries = 100000;
   Long64_t nentries = fChain->GetEntries();//number of events
   for (Long64_t jentry=0; jentry<nentries;jentry++) {//loop over the events
-  // for (Long64_t jentry=0; jentry<100000;jentry++) {//loop over the events
+  // for (Long64_t jentry=0; jentry<1000;jentry++) {//loop over the events
 
     if(jentry%100000==0) cout<<"Processing "<<jentry<<" event out of "<<nentries<<" events"<<std::endl;
 
@@ -98,7 +98,7 @@ void MuonNTupleFirstPassPP::ProcessData(){
 
     for(int i=0;i<NPairs;i++){//loop over all muon-pairs in the event
 
-      mpair = new MuonPair();
+      mpair = new MuonPairData();
 
       mpair->m1.ind     = muon_pair_muon1_index->at(i);
       mpair->m2.ind     = muon_pair_muon2_index->at(i);
@@ -123,6 +123,14 @@ void MuonNTupleFirstPassPP::ProcessData(){
       mpair->m2.eta   = muon_pair_muon2_eta->at(i);
       mpair->m1.phi   = muon_pair_muon1_phi->at(i);
       mpair->m2.phi   = muon_pair_muon2_phi->at(i);
+
+      mpair->m1_trk_pt    = fabs(muon_pair_muon1_trk_pt->at(i))/1000.0;//pt of the first muon in the pair
+      mpair->m2_trk_pt    = fabs(muon_pair_muon2_trk_pt->at(i))/1000.0;//pt of the second muon in the pair
+      mpair->m1_trk_eta   = muon_pair_muon1_trk_eta->at(i);
+      mpair->m2_trk_eta   = muon_pair_muon2_trk_eta->at(i);
+      mpair->m1_trk_phi   = muon_pair_muon1_trk_phi->at(i);
+      mpair->m2_trk_phi   = muon_pair_muon2_trk_phi->at(i);
+
       mpair->m1.d0    = muon_pair_muon1_d0 ->at(i);
       mpair->m2.d0    = muon_pair_muon2_d0 ->at(i);
       mpair->m1.z0    = muon_pair_muon1_z0 ->at(i);
@@ -135,6 +143,7 @@ void MuonNTupleFirstPassPP::ProcessData(){
       mpair->m2.dP_overP = muon_deltaP_overP->at(mpair->m2.ind);
       mpair->m1.ev_num = jentry;
       mpair->m2.ev_num = jentry;
+
 
 
       //------------------------------------------------------------
@@ -151,6 +160,7 @@ void MuonNTupleFirstPassPP::ProcessData(){
       //Two things at this step: 
       //1) sort pt, eta, phi by pt
       //2) update the muon-pair values
+      // std::cout << mpair->m1.ev_num << std::endl;
       mpair->Update();
 
       // resonance cut

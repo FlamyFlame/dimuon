@@ -28,8 +28,10 @@ class MCNTupleFirstPass{
 private:
 // --------------------- general settings ---------------------------
 
-    float filter_effcy_bb = 0.0003774031;
-    float filter_effcy_cc = 0.000005964574;
+    double crossx_cut;
+    double filter_effcy;
+    double filter_effcy_bb = 0.0003774031;
+    double filter_effcy_cc = 0.000005964574;
     // static const int nMCmodes = 2;
 
     ParamsSet pms;
@@ -244,10 +246,11 @@ public :
     std::string mc_mode = "mc_truth_cc";
     bool print_prt_history = false;
     bool print_specific_prt_history = false;
-    MCNTupleFirstPass(){}
+    MCNTupleFirstPass(){
+        crossx_cut = 5 * pow(10,8);
+    }
     ~MCNTupleFirstPass(){}
     void Run();
-    float filter_effcy;
 };
 
 

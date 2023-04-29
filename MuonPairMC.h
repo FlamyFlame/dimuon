@@ -12,19 +12,6 @@ public:
   // float weight;
   float crossx;
   
-  // bool m1_c_tag;
-  // bool m2_c_tag;
-  // bool m1_osc;
-  // bool m2_osc;
-  // int m1_earliest_parent_id;
-  // int m2_earliest_parent_id;
-
-  // float m1_closest_hadron_prt_pt;
-  // float m2_closest_hadron_prt_pt;
-  // float m1_furthest_hadron_prt_pt;
-  // float m2_furthest_hadron_prt_pt;
-  // float m1_hq_ancestor_pt;
-  // float m2_hq_ancestor_pt;
 
   // parent groups: {direct b, c from b, c not from b, strange & light hadrons, photons};
   // if others: print out

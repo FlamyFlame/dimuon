@@ -28,37 +28,45 @@ private:
     // int mode = 1;
 
   	ParamsSet pms;
+
+    double crossx_cut;
+    double filter_effcy;
+    double filter_effcy_bb = 0.0003774031;
+    double filter_effcy_cc = 0.000005964574;
+
     static const int nBatches = 6;
     std::string mcdir = "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/";
-    std:: string sub_dir;
-    std:: string mc_mode;
+    std::string sub_dir;
+    std::string mc_mode;
 
     // int dr_bin_start;
 
 // --------------------- output file & histograms ---------------------------
 
   	TFile *outFile = nullptr;
-
     int nevents_before_cuts_total = 0;
-
-    TH1D* h_pair_dP_overP_dr_binned[nBatches][ParamsSet::nSigns];
-    TH1D* h_Dphi_dr_binned[nBatches][ParamsSet::nSigns];
-    TH1D* h_DR_dr_binned[nBatches][ParamsSet::nSigns];
-    TH1D* h_pair_y_dr_binned[nBatches][ParamsSet::nSigns];
-    TH1D* h_pt_asym_dr_binned[nBatches][ParamsSet::nSigns];
-    TH1D* h_pair_pt_ptlead_ratio_dr_binned[nBatches][ParamsSet::nSigns];
-
-    TH2D* h_eta_avg_Dphi_dr_binned[nBatches][ParamsSet::nSigns];
-    TH2D* h_Deta_Dphi_dr_binned[nBatches][ParamsSet::nSigns];
-    TH2D* h_eta1_eta2_dr_binned[nBatches][ParamsSet::nSigns];
-    TH2D* h_eta_avg_Deta_dr_binned[nBatches][ParamsSet::nSigns];
-    TH2D* h_pt1_pt2_dr_binned[nBatches][ParamsSet::nSigns];
-    TH2D* h_ptlead_pair_pt_dr_binned[nBatches][ParamsSet::nSigns];
-    TH2D* h_minv_pair_pt_dr_binned[nBatches][ParamsSet::nSigns];
-
-    TH2D* h_unweighted_Deta_Dphi_dr_binned[nBatches][ParamsSet::nSigns];
-    
     std::string dphi_regions[2] = {"near", "away"};
+
+    // TH1D* h_pair_dP_overP_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    // TH1D* h_Dphi_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    // TH1D* h_DR_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    // TH1D* h_pair_y_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    // TH1D* h_pt_asym_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    // TH1D* h_pair_pt_ptlead_ratio_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns];
+
+    // TH2D* h_eta_avg_Dphi_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    // TH2D* h_Deta_Dphi_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    // TH2D* h_eta1_eta2_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    // TH2D* h_eta_avg_Deta_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    // TH2D* h_pt1_pt2_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    // TH2D* h_ptlead_pair_pt_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    // TH2D* h_minv_pair_pt_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns];
+
+    // TH2D* h_unweighted_Deta_Dphi_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    
+    TH1D* h_mQQ[2][ParamsSet::nSigns];
+    TH1D* h_mQQ_Q_ratio[2][ParamsSet::nSigns];
+    TH1D* h_mQQ_mHard_ratio[2][ParamsSet::nSigns];
 
     TH1D* h_pair_dP_overP[2][ParamsSet::nSigns];
     TH1D* h_Dphi[2][ParamsSet::nSigns];
@@ -72,11 +80,17 @@ private:
     TH2D* h_eta_avg_Deta[2][ParamsSet::nSigns];
     TH2D* h_pt1_pt2[2][ParamsSet::nSigns];
     TH2D* h_ptlead_pair_pt[2][ParamsSet::nSigns];
+    TH2D* h_ptlead_pair_pt_zoomin[2][ParamsSet::nSigns];
     TH2D* h_ptlead_pair_pt_log[2][ParamsSet::nSigns];
     TH2D* h_minv_pair_pt[2][ParamsSet::nSigns];
+    TH2D* h_minv_pair_pt_zoomin[2][ParamsSet::nSigns];
     TH2D* h_minv_pair_pt_log[2][ParamsSet::nSigns];
 
     static const int nAncestorGroups = 4;
+
+    TH1D* h_mQQ_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
+    TH1D* h_mQQ_Q_ratio_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
+    TH1D* h_mQQ_mHard_ratio_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
 
     TH1D* h_DR_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
     TH1D* h_pt_asym_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
@@ -99,6 +113,8 @@ private:
     Long64_t nevents_before_cuts[nBatches];
     double weight[nBatches][ParamsSet::nSigns];
     float Q[nBatches][ParamsSet::nSigns];
+    float mQQ[nBatches][ParamsSet::nSigns];
+    float mHard_relevant[nBatches][ParamsSet::nSigns];
     bool from_same_b[nBatches][ParamsSet::nSigns];
     bool from_same_ancestors[nBatches][ParamsSet::nSigns];
     int m1_ancestor_category[nBatches][ParamsSet::nSigns];
@@ -144,13 +160,13 @@ public:
     bool isMCTruthBB;
     bool isMCTruthCC;
     // bool saveDRbinned;
-  	MuonPairPlottingPowheg();
+  	MuonPairPlottingPowheg(){
+        crossx_cut = 5 * pow(10,8);
+    }
   	~MuonPairPlottingPowheg(){}
   	void Run();
 
 };
-
-MuonPairPlottingPowheg::MuonPairPlottingPowheg(){}
 
 void MuonPairPlottingPowheg::InitInput(){
 
@@ -181,6 +197,8 @@ void MuonPairPlottingPowheg::InitInput(){
             inTree[ibatch][ksign]  = (TTree*) inFile[ibatch]->Get(Form("muon_pair_tree_dr3_sign%d",ksign+1));  
             inTree[ibatch][ksign] ->SetBranchAddress("weight"          , &weight[ibatch][ksign]);
             inTree[ibatch][ksign] ->SetBranchAddress("Q"          , &Q[ibatch][ksign]);
+            inTree[ibatch][ksign] ->SetBranchAddress("mQQ"          , &mQQ[ibatch][ksign]);
+            inTree[ibatch][ksign] ->SetBranchAddress("mHard_relevant"          , &mHard_relevant[ibatch][ksign]);
             inTree[ibatch][ksign] ->SetBranchAddress("from_same_b"          , &from_same_b[ibatch][ksign]);
             inTree[ibatch][ksign] ->SetBranchAddress("from_same_ancestors"          , &from_same_ancestors[ibatch][ksign]);
             inTree[ibatch][ksign] ->SetBranchAddress("m1_ancestor_category"          , &m1_ancestor_category[ibatch][ksign]);
@@ -210,6 +228,8 @@ void MuonPairPlottingPowheg::InitInput(){
             inTree[ibatch][ksign] ->SetBranchStatus("*"                  ,0);//switch off all branches, then enable just the ones that we need
             inTree[ibatch][ksign] ->SetBranchStatus("weight"           ,1);
             inTree[ibatch][ksign] ->SetBranchStatus("Q"           ,1);
+            inTree[ibatch][ksign] ->SetBranchStatus("mQQ"           ,1);
+            inTree[ibatch][ksign] ->SetBranchStatus("mHard_relevant"           ,1);
             inTree[ibatch][ksign] ->SetBranchStatus("from_same_b"           ,1);
             inTree[ibatch][ksign] ->SetBranchStatus("from_same_ancestors"           ,1);
             inTree[ibatch][ksign] ->SetBranchStatus("m1_ancestor_category"           ,1);
@@ -277,6 +297,19 @@ void MuonPairPlottingPowheg::InitHists(){
                 h_ptlead_pair_pt_ancestor_binned[ksign][kgrp] = new TH2D(Form("h_ptlead_pair_pt_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",npair_pT_bins_linear,0,30,npT_lead_bins_linear,0,30);
                 h_Deta_Dphi_ancestor_binned[ksign][kgrp] = new TH2D(Form("h_Deta_Dphi_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
                 h_minv_pair_pt_ancestor_binned[ksign][kgrp] = new TH2D(Form("h_minv_pair_pt_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
+                h_mQQ_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_mQQ_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";m_{Q#Bar{Q}}", 200, 0, 200.);
+                h_mQQ_Q_ratio_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_mQQ_Q_ratio_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";#frac{m_{Q#Bar{Q}}}{Q};d#sigma/d#frac{m_{Q#Bar{Q}}}{Q}", 100,0,5.);
+                h_mQQ_mHard_ratio_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_mQQ_mHard_ratio_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";#frac{m_{Q#Bar{Q}}}{#sqrt{#hat{s}};d#sigma/d#frac{m_{Q#Bar{Q}}}{#sqrt{#hat{s}}", 50,0,1.);
+                
+                h_DR_ancestor_binned[ksign][kgrp]->Sumw2();
+                h_pt_asym_ancestor_binned[ksign][kgrp]->Sumw2();
+                h_pair_pt_ptlead_ratio_ancestor_binned[ksign][kgrp]->Sumw2();
+                h_ptlead_pair_pt_ancestor_binned[ksign][kgrp]->Sumw2();
+                h_Deta_Dphi_ancestor_binned[ksign][kgrp]->Sumw2();
+                h_minv_pair_pt_ancestor_binned[ksign][kgrp]->Sumw2();
+                h_mQQ_ancestor_binned[ksign][kgrp]->Sumw2();
+                h_mQQ_Q_ratio_ancestor_binned[ksign][kgrp]->Sumw2();
+                h_mQQ_mHard_ratio_ancestor_binned[ksign][kgrp]->Sumw2();
             }
 
             for (unsigned int jdphi = 0; jdphi < 2; jdphi++){
@@ -286,6 +319,9 @@ void MuonPairPlottingPowheg::InitHists(){
                 h_pair_y[jdphi][ksign] = new TH1D(Form("h_pair_y_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";y_{pair};1/N_{evt} dN/dy_{pair}" ,npair_y_bins,-3,3);
                 h_pt_asym[jdphi][ksign] = new TH1D(Form("h_pt_asym_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", npt_asym_bins,0,1.);
                 h_pair_pt_ptlead_ratio[jdphi][ksign] = new TH1D(Form("h_pair_pt_ptlead_ratio_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", npair_pt_ptlead_ratio_bins,0,2.);
+                h_mQQ[jdphi][ksign] = new TH1D(Form("h_mQQ_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";m_{Q#Bar{Q}}", 200, 0, 200.);
+                h_mQQ_Q_ratio[jdphi][ksign] = new TH1D(Form("h_mQQ_Q_ratio_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";#frac{m_{Q#Bar{Q}}}{Q};d#sigma/d#frac{m_{Q#Bar{Q}}}{Q}", 100,0,5.);
+                h_mQQ_mHard_ratio[jdphi][ksign] = new TH1D(Form("h_mQQ_mHard_ratio_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";#frac{m_{Q#Bar{Q}}}{#sqrt{#hat{s}};d#sigma/d#frac{m_{Q#Bar{Q}}}{#sqrt{#hat{s}}", 50,0,1.);
 
                 h_eta_avg_Dphi[jdphi][ksign] = new TH2D(Form("h_eta_avg_Dphi_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";#Delta#phi;#bar{#eta}", nDphi_bins,-pms.PI,pms.PI,neta_bins,-2.4,2.4);
                 h_Deta_Dphi[jdphi][ksign] = new TH2D(Form("h_Deta_Dphi_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
@@ -293,9 +329,33 @@ void MuonPairPlottingPowheg::InitHists(){
                 h_eta_avg_Deta[jdphi][ksign] = new TH2D(Form("h_eta_avg_Deta_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";#Delta#eta;#bar{#eta}",nDeta_bins,-4.8,4.8,neta_bins,-2.4,2.4);
                 h_pt1_pt2[jdphi][ksign] = new TH2D(Form("h_pt1_pt2_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";p_{T}^{sublead} [GeV];p_{T}^{lead} [GeV]",pms.npt_bins,pms.pTBins,pms.npt_bins,pms.pTBins);
                 h_ptlead_pair_pt[jdphi][ksign] = new TH2D(Form("h_ptlead_pair_pt_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",npair_pT_bins_linear,0,30,npT_lead_bins_linear,0,30);
+                h_ptlead_pair_pt_zoomin[jdphi][ksign] = new TH2D(Form("h_ptlead_pair_pt_zoomin_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",npair_pT_bins_linear,0,20,npT_lead_bins_linear,0,15);
                 h_ptlead_pair_pt_log[jdphi][ksign] = new TH2D(Form("h_ptlead_pair_pt_log_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][2],pms.npt_bins,pms.pTBins);
                 h_minv_pair_pt[jdphi][ksign] = new TH2D(Form("h_minv_pair_pt_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
+                h_minv_pair_pt_zoomin[jdphi][ksign] = new TH2D(Form("h_minv_pair_pt_zoomin_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,20,nminv_bins_linear,0,15);
                 h_minv_pair_pt_log[jdphi][ksign] = new TH2D(Form("h_minv_pair_pt_log_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][2],nminv_bins_log,minv_bins_log[ksign]);
+                
+                h_pair_dP_overP[jdphi][ksign]->Sumw2();
+                h_DR[jdphi][ksign]->Sumw2();
+                h_Dphi[jdphi][ksign]->Sumw2();
+                h_pair_y[jdphi][ksign]->Sumw2();
+                h_pt_asym[jdphi][ksign]->Sumw2();
+                h_pair_pt_ptlead_ratio[jdphi][ksign]->Sumw2();
+                h_mQQ[jdphi][ksign]->Sumw2();
+                h_mQQ_Q_ratio[jdphi][ksign]->Sumw2();
+                h_mQQ_mHard_ratio[jdphi][ksign]->Sumw2();
+
+                h_eta_avg_Dphi[jdphi][ksign]->Sumw2();
+                h_Deta_Dphi[jdphi][ksign]->Sumw2();
+                h_eta1_eta2[jdphi][ksign]->Sumw2();
+                h_eta_avg_Deta[jdphi][ksign]->Sumw2();
+                h_pt1_pt2[jdphi][ksign]->Sumw2();
+                h_ptlead_pair_pt[jdphi][ksign]->Sumw2();
+                h_ptlead_pair_pt_zoomin[jdphi][ksign]->Sumw2();
+                h_ptlead_pair_pt_log[jdphi][ksign]->Sumw2();
+                h_minv_pair_pt[jdphi][ksign]->Sumw2();
+                h_minv_pair_pt_zoomin[jdphi][ksign]->Sumw2();
+                h_minv_pair_pt_log[jdphi][ksign]->Sumw2();
             }
 
             for (unsigned int lgapcut = 0; lgapcut < ParamsSet::nGapCuts; lgapcut++){

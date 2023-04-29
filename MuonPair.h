@@ -38,16 +38,20 @@ public:
 	~MuonPair(){}
   // void InitPair();
   void InitPair(float pt1,float pt2,float eta1,float eta2,float phi1,float phi2,float dPoverP1,float dPoverP2);
-	void Sort();
-  void Update();
-  // void Update(float mupair_asym, float mupair_acop, float mupair_pt, float mupair_y, float mupair_eta, float mupair_m, float weight=1.);
-  void UpdateShort();
+	virtual void Sort();
+  virtual void PairValueCalc();
+  virtual void Update();
+  virtual void UpdateShort();
+  // void Sort();
+  // void PairValueCalc();
+  // void Update();
+  // void UpdateShort();
 };
 
 MuonPair::MuonPair(float pt1=0,float pt2=0,float eta1=5,float eta2=5,float phi1=5,float phi2=5,float dPoverP1=5,float dPoverP2=5){
 	weight = 1.;
   InitPair(pt1,pt2,eta1,eta2,phi1,phi2,dPoverP1,dPoverP2);
-  Update();
+  // Update();
 }
 
 void MuonPair::InitPair(float pt1,float pt2,float eta1,float eta2,float phi1,float phi2,float dPoverP1,float dPoverP2){
@@ -63,7 +67,7 @@ void MuonPair::InitPair(float pt1,float pt2,float eta1,float eta2,float phi1,flo
 }
 
 void MuonPair::Sort(){
-  ///sort pt, eta, phi by pt
+  ///Sort pt, eta, phi by pt
 
   float temppt, tempeta, tempphi, tempd0, tempz0, tempdP_overP;
   int tempind, tempcharge, tempquality;
@@ -98,10 +102,10 @@ void MuonPair::Sort(){
     m2.quality = tempquality;
     m2.dP_overP = tempdP_overP;
   }
+  // std::cout << m1.ev_num << ", parent class Sorting method called" << std::endl;
 }
 
-void MuonPair::Update(){
-  Sort();
+void MuonPair::PairValueCalc(){
   double PI=acos(-1.0);
 
   pt_lead = m1.pt;
@@ -132,6 +136,12 @@ void MuonPair::Update(){
 
   same_sign = (m1.charge == m2.charge);
   avg_centrality = (m1.ev_centrality + m2.ev_centrality)/2;
+}
+
+void MuonPair::Update(){
+  Sort();
+  PairValueCalc();
+  // std::cout << m1.ev_num << ", parent class Update method called" << std::endl;
 }
 
 void MuonPair::UpdateShort(){

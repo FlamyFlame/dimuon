@@ -1035,6 +1035,7 @@ void MCNTupleFirstPass::ProcessData(){
       // Trigger match for muon pair
       // if(dimuon_b_HLT_2mu4->at(i)==false) continue;
 
+      if (abs(mpair->weight) > crossx_cut * filter_effcy) continue;
       if (!PassCuts())continue;
     
       //------------------------------------------------------------
@@ -1159,6 +1160,7 @@ void MCNTupleFirstPass::Run(){
   else{
       filter_effcy = -1000;
       std::cout << "MC mode has to be 'mc_truth_bb' or 'mc_truth_cc.' Else program will terminate." << std::endl;
+      throw std::exception();
   }
   std::cout << "The MC mode is " << mc_mode << ". Filter efficiency is " << filter_effcy << std::endl;
 

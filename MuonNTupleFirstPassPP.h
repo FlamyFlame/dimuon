@@ -8,7 +8,7 @@
 #include <string.h>
 #include <fstream>
 // #include <cmath>  
-#include "MuonPair.h"
+#include "MuonPairData.h"
 #include "ParamsSet.h"
 #include "vector"
 #include "TH1D.h"
@@ -40,6 +40,9 @@ private:
     std::vector<float>   *muon_pair_muon1_pt          =nullptr;
     std::vector<float>   *muon_pair_muon1_eta         =nullptr;
     std::vector<float>   *muon_pair_muon1_phi         =nullptr;
+    std::vector<float>   *muon_pair_muon1_trk_pt          =nullptr;
+    std::vector<float>   *muon_pair_muon1_trk_eta         =nullptr;
+    std::vector<float>   *muon_pair_muon1_trk_phi         =nullptr;
     std::vector<int>     *muon_pair_muon1_quality     =nullptr;
     std::vector<float>   *muon_pair_muon1_d0          =nullptr;
     std::vector<float>   *muon_pair_muon1_z0          =nullptr;
@@ -48,6 +51,9 @@ private:
     std::vector<float>   *muon_pair_muon2_pt          =nullptr;
     std::vector<float>   *muon_pair_muon2_eta         =nullptr;
     std::vector<float>   *muon_pair_muon2_phi         =nullptr;
+    std::vector<float>   *muon_pair_muon2_trk_pt          =nullptr;
+    std::vector<float>   *muon_pair_muon2_trk_eta         =nullptr;
+    std::vector<float>   *muon_pair_muon2_trk_phi         =nullptr;
     std::vector<int>     *muon_pair_muon2_quality     =nullptr;
     std::vector<float>   *muon_pair_muon2_d0          =nullptr;
     std::vector<float>   *muon_pair_muon2_z0          =nullptr;
@@ -58,7 +64,7 @@ private:
 // --------------------- temporary muon and muonpair objects ---------------------------
   
     Muon* tempmuon = nullptr;
-    MuonPair* mpair = nullptr;
+    MuonPairData* mpair = nullptr;
     std::vector<int> resonance_tagged_muon_index_list {};
 
   
@@ -117,6 +123,9 @@ void MuonNTupleFirstPassPP::InitInput(){
     fChain->SetBranchAddress("muon_pair_muon1_quality"     , &muon_pair_muon1_quality);
     fChain->SetBranchAddress("muon_pair_muon1_d0"          , &muon_pair_muon1_d0);
     fChain->SetBranchAddress("muon_pair_muon1_z0"          , &muon_pair_muon1_z0);
+    fChain->SetBranchAddress("muon_pair_muon1_trk_pt"      , &muon_pair_muon1_trk_pt);
+    fChain->SetBranchAddress("muon_pair_muon1_trk_eta"     , &muon_pair_muon1_trk_eta);
+    fChain->SetBranchAddress("muon_pair_muon1_trk_phi"     , &muon_pair_muon1_trk_phi);
   
     fChain->SetBranchAddress("muon_pair_muon2_index"       , &muon_pair_muon2_index);
     fChain->SetBranchAddress("muon_pair_muon2_pt"          , &muon_pair_muon2_pt);
@@ -125,6 +134,10 @@ void MuonNTupleFirstPassPP::InitInput(){
     fChain->SetBranchAddress("muon_pair_muon2_quality"     , &muon_pair_muon2_quality);
     fChain->SetBranchAddress("muon_pair_muon2_d0"          , &muon_pair_muon2_d0);
     fChain->SetBranchAddress("muon_pair_muon2_z0"          , &muon_pair_muon2_z0);
+    fChain->SetBranchAddress("muon_pair_muon2_trk_pt"      , &muon_pair_muon2_trk_pt);
+    fChain->SetBranchAddress("muon_pair_muon2_trk_eta"     , &muon_pair_muon2_trk_eta);
+    fChain->SetBranchAddress("muon_pair_muon2_trk_phi"     , &muon_pair_muon2_trk_phi);
+
     fChain->SetBranchAddress("b_HLT_2mu4"                  , &b_HLT_2mu4);
     fChain->SetBranchAddress("dimuon_b_HLT_2mu4"           , &dimuon_b_HLT_2mu4);
 
@@ -138,6 +151,9 @@ void MuonNTupleFirstPassPP::InitInput(){
     fChain->SetBranchStatus("muon_pair_muon1_pt"              ,1);
     fChain->SetBranchStatus("muon_pair_muon1_eta"             ,1);
     fChain->SetBranchStatus("muon_pair_muon1_phi"             ,1);
+    fChain->SetBranchStatus("muon_pair_muon1_trk_pt"              ,1);
+    fChain->SetBranchStatus("muon_pair_muon1_trk_eta"             ,1);
+    fChain->SetBranchStatus("muon_pair_muon1_trk_phi"             ,1);
     fChain->SetBranchStatus("muon_pair_muon1_quality"         ,1);
     fChain->SetBranchStatus("muon_pair_muon1_d0"              ,1);
     fChain->SetBranchStatus("muon_pair_muon1_z0"              ,1);
@@ -146,6 +162,9 @@ void MuonNTupleFirstPassPP::InitInput(){
     fChain->SetBranchStatus("muon_pair_muon2_pt"              ,1);
     fChain->SetBranchStatus("muon_pair_muon2_eta"             ,1);
     fChain->SetBranchStatus("muon_pair_muon2_phi"             ,1);
+    fChain->SetBranchStatus("muon_pair_muon2_trk_pt"              ,1);
+    fChain->SetBranchStatus("muon_pair_muon2_trk_eta"             ,1);
+    fChain->SetBranchStatus("muon_pair_muon2_trk_phi"             ,1);
     fChain->SetBranchStatus("muon_pair_muon2_quality"         ,1);
     fChain->SetBranchStatus("muon_pair_muon2_d0"              ,1);
     fChain->SetBranchStatus("muon_pair_muon2_z0"              ,1);

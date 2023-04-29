@@ -53,6 +53,7 @@ bool MuonPairPlottingPowheg::PassSingleMuonGapCut(float meta, float mpt, int mch
 
 void MuonPairPlottingPowheg::FillHistograms(int nbatch, int nsign){
 
+    if (abs(weight[nbatch][nsign]) > crossx_cut * filter_effcy) return; // return without filling in the histograms
     double ev_weight = weight[nbatch][nsign] / nevents_before_cuts_total;
     // ngapcut = 0: all; = 1: only those that pass
 
@@ -105,6 +106,9 @@ void MuonPairPlottingPowheg::FillHistograms(int nbatch, int nsign){
                 h_ptlead_pair_pt_ancestor_binned[nsign][kgrp]->Fill(pair_pt[nbatch][nsign], pt_lead[nbatch][nsign], ev_weight);
                 h_Deta_Dphi_ancestor_binned[nsign][kgrp]->Fill(dphi[nbatch][nsign], deta[nbatch][nsign], ev_weight);
                 h_minv_pair_pt_ancestor_binned[nsign][kgrp]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight);
+                h_mQQ_ancestor_binned[nsign][kgrp]->Fill(mQQ[nbatch][nsign],ev_weight);
+                h_mQQ_Q_ratio_ancestor_binned[nsign][kgrp]->Fill(mQQ[nbatch][nsign] / Q[nbatch][nsign], ev_weight);
+                h_mQQ_mHard_ratio_ancestor_binned[nsign][kgrp]->Fill(mQQ[nbatch][nsign] / mHard_relevant[nbatch][nsign], ev_weight);
                 is_filled = true;
                 break;
             }
@@ -127,6 +131,11 @@ void MuonPairPlottingPowheg::FillHistograms(int nbatch, int nsign){
     h_Dphi[ndphi][nsign]->Fill(dphi[nbatch][nsign],ev_weight);
     h_pt_asym[ndphi][nsign]->Fill(asym[nbatch][nsign],ev_weight);
     h_pair_pt_ptlead_ratio[ndphi][nsign]->Fill(pair_pt[nbatch][nsign]/pt_lead[nbatch][nsign],ev_weight);
+    if (mQQ[nbatch][nsign] != -10 && mHard_relevant[nbatch][nsign] != -10){
+        h_mQQ[ndphi][nsign]->Fill(mQQ[nbatch][nsign],ev_weight);
+        h_mQQ_Q_ratio[ndphi][nsign]->Fill(mQQ[nbatch][nsign] / Q[nbatch][nsign], ev_weight);
+        h_mQQ_mHard_ratio[ndphi][nsign]->Fill(mQQ[nbatch][nsign] / mHard_relevant[nbatch][nsign], ev_weight);
+    }
 
     h_eta_avg_Dphi[ndphi][nsign]->Fill(dphi[nbatch][nsign],etaavg[nbatch][nsign],ev_weight);
     h_Deta_Dphi[ndphi][nsign]->Fill(dphi[nbatch][nsign],deta[nbatch][nsign],ev_weight);
@@ -134,7 +143,11 @@ void MuonPairPlottingPowheg::FillHistograms(int nbatch, int nsign){
     h_pt1_pt2[ndphi][nsign]->Fill(m2pt[nbatch][nsign],m1pt[nbatch][nsign],ev_weight);
     h_eta_avg_Deta[ndphi][nsign]->Fill(deta[nbatch][nsign],etaavg[nbatch][nsign],ev_weight);
     h_ptlead_pair_pt[ndphi][nsign]->Fill(pair_pt[nbatch][nsign],m1pt[nbatch][nsign],ev_weight);
+    h_ptlead_pair_pt_zoomin[ndphi][nsign]->Fill(pair_pt[nbatch][nsign],m1pt[nbatch][nsign],ev_weight);
+    h_ptlead_pair_pt_log[ndphi][nsign]->Fill(pair_pt[nbatch][nsign],m1pt[nbatch][nsign],ev_weight);
     h_minv_pair_pt[ndphi][nsign]->Fill(pair_pt[nbatch][nsign],minv[nbatch][nsign],ev_weight);
+    h_minv_pair_pt_zoomin[ndphi][nsign]->Fill(pair_pt[nbatch][nsign],minv[nbatch][nsign],ev_weight);
+    h_minv_pair_pt_log[ndphi][nsign]->Fill(pair_pt[nbatch][nsign],minv[nbatch][nsign],ev_weight);
 
     // h_eta1_eta2_dphicut[2][nsign]->Fill(m2eta[nbatch][nsign],m1eta[nbatch][nsign],ev_weight);
     // if (abs(dphi[nbatch][nsign]) < 1){
@@ -167,6 +180,9 @@ void MuonPairPlottingPowheg::WriteOutput(){
                 h_ptlead_pair_pt_ancestor_binned[ksign][kgrp]->Write();
                 h_Deta_Dphi_ancestor_binned[ksign][kgrp]->Write();
                 h_minv_pair_pt_ancestor_binned[ksign][kgrp]->Write();
+                h_mQQ_ancestor_binned[ksign][kgrp]->Write();
+                h_mQQ_Q_ratio_ancestor_binned[ksign][kgrp]->Write();
+                h_mQQ_mHard_ratio_ancestor_binned[ksign][kgrp]->Write();
             }
 
             for (unsigned int jdphi = 0; jdphi < 2; jdphi++){
@@ -176,6 +192,9 @@ void MuonPairPlottingPowheg::WriteOutput(){
                 h_Dphi[jdphi][ksign]->Write();
                 h_pt_asym[jdphi][ksign]->Write();
                 h_pair_pt_ptlead_ratio[jdphi][ksign]->Write();
+                h_mQQ[jdphi][ksign]->Write();
+                h_mQQ_Q_ratio[jdphi][ksign]->Write();
+                h_mQQ_mHard_ratio[jdphi][ksign]->Write();
 
                 h_eta_avg_Dphi[jdphi][ksign]->Write();
                 h_Deta_Dphi[jdphi][ksign]->Write();
@@ -183,7 +202,11 @@ void MuonPairPlottingPowheg::WriteOutput(){
                 h_eta_avg_Deta[jdphi][ksign]->Write();
                 h_pt1_pt2[jdphi][ksign]->Write();
                 h_ptlead_pair_pt[jdphi][ksign]->Write();
+                h_ptlead_pair_pt_zoomin[jdphi][ksign]->Write();
+                h_ptlead_pair_pt_log[jdphi][ksign]->Write();
                 h_minv_pair_pt[jdphi][ksign]->Write();
+                h_minv_pair_pt_zoomin[jdphi][ksign]->Write();
+                h_minv_pair_pt_log[jdphi][ksign]->Write();
             }
 
             // for (unsigned int idphi= 0; idphi < ParamsSet::ndphiselcs; idphi++){
@@ -207,6 +230,8 @@ void MuonPairPlottingPowheg::Run(){
     }
     if (isMCTruthBB) std::cout << "Data being processed: MC Truth bb" << std::endl;
     else std::cout << "Data being processed: MC Truth cc" << std::endl;
+
+    filter_effcy = (isMCTruthBB)? filter_effcy_bb : filter_effcy_cc;
 
     sub_dir = (isMCTruthBB)? "bb_full_sample/" : "cc_full_sample/";
     mc_mode = (isMCTruthBB)? "mc_truth_bb" : "mc_truth_cc";

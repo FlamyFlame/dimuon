@@ -6,3 +6,7 @@ for n in $(ls *_mc_data_compr*); do newn=$(echo $n | sed 's/_mc_data_compr/_powh
 for n in $(ls *_powheg_pythia_data_compr*); do newn=$(echo $n | sed 's/_powheg_pythia_data_compr/_mc_data_compr/g'); mv $n $newn; done
 for n in $(ls mc_muon_pair*); do newn=$(echo $n | sed 's/mc/pythia/g'); mv $n $newn; done
 for n in $(ls hard_scatt*); do newn=$(echo $n | sed 's/hard_scatt/hard_scatt_near_away/g'); mv $n $newn; done
+
+for n in $(ls *png); do mv $n "pythia_"$n; done
+for n in $(ls *png); do newn=${n%.png}; mv $n $newn"_near_away.png"; done
+for n in $(ls *unity*png); do newn=${n%_unity_near_away.png}; mv $n $newn"_near_away_unit.png"; done
