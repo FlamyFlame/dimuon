@@ -1,12 +1,12 @@
 root -b -l << EOF
 	.L MuonPairPlotting.c
-	MuonPairPlotting pp1
-	pp1.isScram = false;
-	pp1.Run()
+	MuonPairPlotting pbpb1
+	pbpb1.isScram = false;
+	pbpb1.Run()
 
-	// MuonPairPlotting pp2;
-	// pp2.isScram = true;
-	// pp2.Run();
+	// MuonPairPlotting pbpb2;
+	// pbpb2.isScram = true;
+	// pbpb2.Run();
 	.q;
 EOF
 

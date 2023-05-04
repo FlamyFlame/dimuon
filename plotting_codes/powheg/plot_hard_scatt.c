@@ -112,7 +112,7 @@ void plot_hard_scatt_single_kinematic(std::string kin, bool projx_2d, bool projy
       l->SetBorderSize(0);
       l->SetFillStyle(0);
       l->SetTextFont(43);
-      l->SetMargin(0.02);
+      l->SetMargin(0.2);
       l->SetTextColor(1);
       // l->AddEntry("",Form("%d",imc * nMCmodes + ksign + 1),"");
       // l->Draw();

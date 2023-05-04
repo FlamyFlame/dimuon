@@ -31,7 +31,7 @@ void plot_crossx_bb_cc(){
     l->SetTextSize(l->GetTextSize()*2.4);
     // l->SetMarkerSize(l->GetMarkerSize()*3);
     // l->SetMarkerStyle(20);
-    l->SetMargin(0.02);
+    l->SetMargin(0.2);
     l->SetTextColor(1);
 
   	TFile* f[2];

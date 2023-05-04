@@ -123,7 +123,7 @@ void plot_origin_categorized_kinematic_single(std::string kin, bool projx_2d, bo
       l->SetBorderSize(0);
       l->SetFillStyle(0);
       l->SetTextFont(43);
-      l->SetMargin(0.02);
+      l->SetMargin(0.2);
       l->SetTextColor(1);
       // l->AddEntry("",Form("%d",imc * nMCmodes + ksign + 1),"");
       // l->Draw();
@@ -244,7 +244,7 @@ void plot_origin_categorized_kinematic_single_sum_bb_cc(std::string kin, bool pr
     l->SetBorderSize(0);
     l->SetFillStyle(0);
     l->SetTextFont(43);
-    l->SetMargin(0.02);
+    l->SetMargin(0.2);
     l->SetTextColor(1);
     // l->AddEntry("",Form("%d",imc * nMCmodes + ksign + 1),"");
     // l->Draw();

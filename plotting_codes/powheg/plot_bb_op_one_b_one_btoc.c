@@ -28,7 +28,7 @@ void plot_bb_op_one_b_one_btoc(){
     // l->SetFillStyle(0);
     // l->SetTextFont(42);
     // l->SetTextSize(l->GetTextSize()*3);
-    // l->SetMargin(0.02);
+    // l->SetMargin(0.2);
     // l->SetTextColor(1);
 
   	TFile* f = TFile::Open("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/muon_pairs_mc_truth_bb.root");

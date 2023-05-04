@@ -141,7 +141,7 @@ void plot1D(Hist1D& h, const int nCuts, std::string cuts[], std::string cutTitle
 	    			l->SetBorderSize(0);
 	    			l->SetFillStyle(0);
 	    			l->SetTextFont(42);
-	    			l->SetMargin(0.02);
+	    			l->SetMargin(0.2);
 	    			l->SetTextColor(1);
 
 					std::string histName = "ctr-binned/" + h.name + cuts[jcut] + ctrs[ictr] + signs[ksign] + gapcuts[mgapcut];
@@ -214,7 +214,7 @@ void plot1D(TH1D (*h)[nCtrBins][nGapCuts][nSigns][nGroups], Hist1D& h_struct, co
 	    			l->SetBorderSize(0);
 	    			l->SetFillStyle(0);
 	    			l->SetTextFont(42);
-	    			l->SetMargin(0.02);
+	    			l->SetMargin(0.2);
 	    			l->SetTextColor(1);
 
 	    			// the gap cut situation already handled
@@ -289,7 +289,7 @@ void Process2D(Hist2D h, const int nCuts, std::string cuts[], std::string cutTit
 	    				l->SetBorderSize(0);
 	    				l->SetFillStyle(0);
 	    				l->SetTextFont(43);
-	    				l->SetMargin(0.02);
+	    				l->SetMargin(0.2);
 	    				l->SetTextColor(1);
 	    				l->AddEntry("",("Centrality bin " + ctrs[ictr]).c_str(),"");
 		    			l->AddEntry("",gapCutTitles[mgapcut].c_str(),"");

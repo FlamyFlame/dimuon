@@ -64,7 +64,6 @@ private:
     TH2D* h_ptlead_pair_pt[ParamsSet::ndRselcs][ParamsSet::nSigns];
     TH2D* h_minv_pair_pt[ParamsSet::ndRselcs][ParamsSet::nSigns];
 
-
     TH1D* h_ctrbin_pair_dP_overP[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH1D* h_ctrbin_Dphi[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH1D* h_ctrbin_DR[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
@@ -84,6 +83,9 @@ private:
     TH2D* h_ctrbin_pt1_pt2[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH2D* h_ctrbin_ptlead_pair_pt[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH2D* h_ctrbin_minv_pair_pt[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_ctrbin_minv_pair_pt_zoomin[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_ctrbin_minv_pair_pt_log[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
+
     TH2D* h_ctrbin_eta1_eta2_dphicut[ParamsSet::ndphiselcs][nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
 
 
@@ -223,6 +225,30 @@ void MuonPairPlotting::InitInput(){
 
 void MuonPairPlotting::InitHists(){
 
+    // int nDR_bins = 200;
+    // int nDphi_bins = 128;
+    // int neta_bins = 100;
+    // int nDeta_bins =  200;
+    // int npair_y_bins = 90;
+    // int npt_asym_bins = 100;
+    // int npair_pt_ptlead_ratio_bins = 100;
+    int nminv_bins_linear = 100;
+    int npair_pT_bins_linear = 100;
+    int npT_lead_bins_linear = 100;
+
+    static const int nminv_bins_log = 40;
+    float minv_logpow[ParamsSet::nSigns];
+    minv_logpow[0] = 0.062;
+    minv_logpow[1] = 0.045;
+    float minv_max = 60;
+    double minv_bins_log[ParamsSet::nSigns][nminv_bins_log+1];
+
+    for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
+        for(int iminv = 0; iminv <= nminv_bins_log; iminv++){
+            minv_bins_log[ksign][iminv] = minv_max * pow(10.0, (static_cast<float>(iminv - nminv_bins_log)) * minv_logpow[ksign]);
+        }
+    }
+
    	if (mode == 1){
         
     	for (unsigned int idr = 0; idr < ParamsSet::ndRselcs; idr++){
@@ -281,8 +307,10 @@ void MuonPairPlotting::InitHists(){
                         h_ctrbin_eta_avg_pair_eta[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_eta_avg_pair_eta_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";#eta_{pair};#bar{#eta}",static_cast<int>(100/scaleFactorCtrs[jctr]),-2.4,2.4, static_cast<int>(100/scaleFactorCtrs[jctr]),-2.4,2.4);
                         h_ctrbin_pt1_pt2[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_pt1_pt2_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";p_{T}^{sublead} [GeV];p_{T}^{lead} [GeV]",pms.npt_bins,pms.pTBins,pms.npt_bins,pms.pTBins);
                         h_ctrbin_ptlead_pair_pt[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_ptlead_pair_pt_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][idr],pms.npt_bins,pms.pTBins);
-                        h_ctrbin_minv_pair_pt[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_minv_pair_pt_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][idr],pms.minv_nbins[idr],0,pms.minv_max[idr]);
-                        
+                        h_ctrbin_minv_pair_pt[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_minv_pair_pt_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
+                        h_ctrbin_minv_pair_pt_zoomin[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_minv_pair_pt_zoomin_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,20,nminv_bins_linear,5,15);
+                        h_ctrbin_minv_pair_pt_log[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_minv_pair_pt_log_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][idr],pms.minv_nbins[idr],0,pms.minv_max[idr]);
+
                         // double minv_arr[pms.minv_nbins[idr]+1];
                         // std::copy(pms.minv_bins[ksign][idr].begin(),pms.minv_bins[ksign][idr].end(),minv_arr);
                         // h_ctrbin_minv_pair_pt[idr][jctr][ksign][lgapcut] = new TH2D(Form("h_minv_pair_pt_dr%d_ctr%d_sign%d_gapcut%d",idr+1,jctr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][idr],pms.minv_nbins[idr],minv_arr);

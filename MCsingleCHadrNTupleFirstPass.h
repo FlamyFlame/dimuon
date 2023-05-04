@@ -1,5 +1,5 @@
-#ifndef __MCNTupleFirstPass_h__
-#define __MCNTupleFirstPass_h__
+#ifndef __MCsingleCHadrNTupleFirstPass_h__
+#define __MCsingleCHadrNTupleFirstPass_h__
 
 #include <TROOT.h>
 #include <TChain.h>
@@ -17,7 +17,7 @@
 #include "TH1D.h"
 #include "TH2D.h"
 
-class MCNTupleFirstPass{
+class MCsingleCHadrNTupleFirstPass{
     // Read through the N-tuple, apply appropriate cuts
     // Then fill in histograms and/or output trees
     // mode = 1: output single-muon information into a TTree
@@ -196,8 +196,7 @@ private:
     TH1D* h_pt_hadr_hq_ratio[ParamsSet::nSigns][2];
     TH1D* h_dphi_muon_closest_hadr[ParamsSet::nSigns][2];
 
-    // std::vector<std::string> parentGroupLabels = {"direct b","b to c","direct c","s/light","single photon", "Drell-Yan"};
-    std::vector<std::string> parentGroupLabels = {"direct b","b to c","direct c","s/light","single photon"};
+    std::vector<std::string> parentGroupLabels = {"direct b","b to c","direct c","s/light","single photon", "Drell-Yan"};
     int nParentGroups = parentGroupLabels.size();    
     
     std::vector<std::string> ancestor_labels = {"gg", "gq", "single g", "q qbar"};
@@ -247,16 +246,16 @@ public :
     std::string mc_mode = "mc_truth_cc";
     bool print_prt_history = false;
     bool print_specific_prt_history = false;
-    MCNTupleFirstPass(){
+    MCsingleCHadrNTupleFirstPass(){
         crossx_cut = 5 * pow(10,8);
     }
-    ~MCNTupleFirstPass(){}
+    ~MCsingleCHadrNTupleFirstPass(){}
     void Run();
 };
 
 
 //initialize the TChain
-void MCNTupleFirstPass::InitInput(){
+void MCsingleCHadrNTupleFirstPass::InitInput(){
 
     mcdir = (is_full_sample)? "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/" : "/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/";
     fChain = new TChain("HeavyIonD3PD","HeavyIonD3PD");
@@ -348,7 +347,7 @@ void MCNTupleFirstPass::InitInput(){
     fChain->SetBranchStatus("truth_mupair_m"              ,1);   
 }
 
-void MCNTupleFirstPass::InitTempVariables(){
+void MCsingleCHadrNTupleFirstPass::InitTempVariables(){
     single_gluon_history = new std::vector<std::vector<int>>();
     m1_history = new std::vector<std::vector<int>>();
     m2_history = new std::vector<std::vector<int>>();
@@ -363,7 +362,7 @@ void MCNTupleFirstPass::InitTempVariables(){
 }
 
 
-void MCNTupleFirstPass::InitOutput(){
+void MCsingleCHadrNTupleFirstPass::InitOutput(){
 
     if (print_specific_prt_history){
         if (mc_mode == "mc_truth_cc"){
@@ -517,7 +516,7 @@ void MCNTupleFirstPass::InitOutput(){
     }
 }
 
-void MCNTupleFirstPass::Finalize(){
+void MCsingleCHadrNTupleFirstPass::Finalize(){
     delete m1_history;
     delete m2_history;
     delete m1_history_particle;

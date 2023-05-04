@@ -86,6 +86,7 @@ private:
     TH2D* h_minv_pair_pt_zoomin[2][ParamsSet::nSigns];
     TH2D* h_minv_pair_pt_log[2][ParamsSet::nSigns];
 
+    static const int nFlavors = 4; // single b, bb, cc, others
     static const int nAncestorGroups = 4;
 
     TH1D* h_mQQ_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
@@ -99,6 +100,19 @@ private:
     TH2D* h_ptlead_pair_pt_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
     TH2D* h_Deta_Dphi_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
     TH2D* h_minv_pair_pt_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
+
+    TH1D* h_DR_flavor_binned[ParamsSet::nSigns][nFlavors];
+    TH1D* h_pt_asym_flavor_binned[ParamsSet::nSigns][nFlavors];
+    // TH1D* h_psrapidity_ordered_pt_asym_flavor_binned[ParamsSet::nSigns][nFlavors];
+    TH1D* h_pair_pt_ptlead_ratio_flavor_binned[ParamsSet::nSigns][nFlavors];
+    TH2D* h_ptlead_pair_pt_flavor_binned[ParamsSet::nSigns][nFlavors];
+    TH2D* h_Deta_Dphi_flavor_binned[ParamsSet::nSigns][nFlavors];
+    TH2D* h_minv_pair_pt_flavor_binned[ParamsSet::nSigns][nFlavors];
+
+    // TH1D* h_mQQ_flavor_binned[ParamsSet::nSigns][nFlavors];
+    // TH1D* h_mQQ_Q_ratio_flavor_binned[ParamsSet::nSigns][nFlavors];
+    // TH1D* h_mQQ_mHard_ratio_flavor_binned[ParamsSet::nSigns][nFlavors];
+
 
     // TH2D* h_unweighted_eta1_eta2_dphicut[ParamsSet::ndphiselcs][ParamsSet::nSigns];
 
@@ -116,6 +130,8 @@ private:
     float mQQ[nBatches][ParamsSet::nSigns];
     float mHard_relevant[nBatches][ParamsSet::nSigns];
     bool from_same_b[nBatches][ParamsSet::nSigns];
+    bool both_from_b[nBatches][ParamsSet::nSigns];
+    bool both_from_c[nBatches][ParamsSet::nSigns];
     bool from_same_ancestors[nBatches][ParamsSet::nSigns];
     int m1_ancestor_category[nBatches][ParamsSet::nSigns];
     int m2_ancestor_category[nBatches][ParamsSet::nSigns];
@@ -200,6 +216,8 @@ void MuonPairPlottingPowheg::InitInput(){
             inTree[ibatch][ksign] ->SetBranchAddress("mQQ"          , &mQQ[ibatch][ksign]);
             inTree[ibatch][ksign] ->SetBranchAddress("mHard_relevant"          , &mHard_relevant[ibatch][ksign]);
             inTree[ibatch][ksign] ->SetBranchAddress("from_same_b"          , &from_same_b[ibatch][ksign]);
+            inTree[ibatch][ksign] ->SetBranchAddress("both_from_b"          , &both_from_b[ibatch][ksign]);
+            inTree[ibatch][ksign] ->SetBranchAddress("both_from_c"          , &both_from_c[ibatch][ksign]);
             inTree[ibatch][ksign] ->SetBranchAddress("from_same_ancestors"          , &from_same_ancestors[ibatch][ksign]);
             inTree[ibatch][ksign] ->SetBranchAddress("m1_ancestor_category"          , &m1_ancestor_category[ibatch][ksign]);
             inTree[ibatch][ksign] ->SetBranchAddress("m2_ancestor_category"          , &m2_ancestor_category[ibatch][ksign]);
@@ -231,6 +249,8 @@ void MuonPairPlottingPowheg::InitInput(){
             inTree[ibatch][ksign] ->SetBranchStatus("mQQ"           ,1);
             inTree[ibatch][ksign] ->SetBranchStatus("mHard_relevant"           ,1);
             inTree[ibatch][ksign] ->SetBranchStatus("from_same_b"           ,1);
+            inTree[ibatch][ksign] ->SetBranchStatus("both_from_b"           ,1);
+            inTree[ibatch][ksign] ->SetBranchStatus("both_from_c"           ,1);
             inTree[ibatch][ksign] ->SetBranchStatus("from_same_ancestors"           ,1);
             inTree[ibatch][ksign] ->SetBranchStatus("m1_ancestor_category"           ,1);
             inTree[ibatch][ksign] ->SetBranchStatus("m2_ancestor_category"           ,1);
@@ -285,6 +305,7 @@ void MuonPairPlottingPowheg::InitHists(){
     }
 
     std::string ancestor_grps[nAncestorGroups + 2] = {"_gg", "_qg","_single_g","_qq", "_from_same_b", "_others"};
+    std::string flavor_grps[nFlavors] = {"_single_b", "_bb", "_cc", "_other_flavors"};
 
    	if (mode == 1){
         for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
@@ -297,9 +318,10 @@ void MuonPairPlottingPowheg::InitHists(){
                 h_ptlead_pair_pt_ancestor_binned[ksign][kgrp] = new TH2D(Form("h_ptlead_pair_pt_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",npair_pT_bins_linear,0,30,npT_lead_bins_linear,0,30);
                 h_Deta_Dphi_ancestor_binned[ksign][kgrp] = new TH2D(Form("h_Deta_Dphi_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
                 h_minv_pair_pt_ancestor_binned[ksign][kgrp] = new TH2D(Form("h_minv_pair_pt_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
-                h_mQQ_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_mQQ_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";m_{Q#Bar{Q}}", 200, 0, 200.);
-                h_mQQ_Q_ratio_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_mQQ_Q_ratio_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";#frac{m_{Q#Bar{Q}}}{Q};d#sigma/d#frac{m_{Q#Bar{Q}}}{Q}", 100,0,5.);
-                h_mQQ_mHard_ratio_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_mQQ_mHard_ratio_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";#frac{m_{Q#Bar{Q}}}{#sqrt{#hat{s}};d#sigma/d#frac{m_{Q#Bar{Q}}}{#sqrt{#hat{s}}", 50,0,1.);
+                                
+                h_mQQ_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_mQQ_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";m_{QQ}", 200, 0, 200.);
+                h_mQQ_Q_ratio_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_mQQ_Q_ratio_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";#frac{m_{QQ}}{Q};d#sigma/d#frac{m_{QQ}}{Q}", 100,0,5.);
+                h_mQQ_mHard_ratio_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_mQQ_mHard_ratio_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";#frac{m_{QQ}}{#sqrt{#hat{s}}};d#sigma/d#frac{m_{QQ}}{#sqrt{#hat{s}}}", 50,0,1.);
                 
                 h_DR_ancestor_binned[ksign][kgrp]->Sumw2();
                 h_pt_asym_ancestor_binned[ksign][kgrp]->Sumw2();
@@ -310,6 +332,30 @@ void MuonPairPlottingPowheg::InitHists(){
                 h_mQQ_ancestor_binned[ksign][kgrp]->Sumw2();
                 h_mQQ_Q_ratio_ancestor_binned[ksign][kgrp]->Sumw2();
                 h_mQQ_mHard_ratio_ancestor_binned[ksign][kgrp]->Sumw2();
+            }
+
+            for (int kflav = 0; kflav < nFlavors; kflav++){
+                h_DR_flavor_binned[ksign][kflav] = new TH1D(Form("h_DR_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_bins,0,pms.deltaR_thrsh[2]);
+                h_pt_asym_flavor_binned[ksign][kflav] = new TH1D(Form("h_pt_asym_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", npt_asym_bins,0,1.);
+                // h_psrapidity_ordered_pt_asym_flavor_binned
+                h_pair_pt_ptlead_ratio_flavor_binned[ksign][kflav] = new TH1D(Form("h_pair_pt_ptlead_ratio_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", npair_pt_ptlead_ratio_bins,0,2.);
+                h_ptlead_pair_pt_flavor_binned[ksign][kflav] = new TH2D(Form("h_ptlead_pair_pt_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",npair_pT_bins_linear,0,30,npT_lead_bins_linear,0,30);
+                h_Deta_Dphi_flavor_binned[ksign][kflav] = new TH2D(Form("h_Deta_Dphi_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
+                h_minv_pair_pt_flavor_binned[ksign][kflav] = new TH2D(Form("h_minv_pair_pt_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
+                                
+                // h_mQQ_flavor_binned[ksign][kflav] = new TH1D(Form("h_mQQ_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";m_{QQ}", 200, 0, 200.);
+                // h_mQQ_Q_ratio_flavor_binned[ksign][kflav] = new TH1D(Form("h_mQQ_Q_ratio_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";#frac{m_{QQ}}{Q};d#sigma/d#frac{m_{QQ}}{Q}", 100,0,5.);
+                // h_mQQ_mHard_ratio_flavor_binned[ksign][kflav] = new TH1D(Form("h_mQQ_mHard_ratio_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";#frac{m_{QQ}}{#sqrt{#hat{s}}};d#sigma/d#frac{m_{QQ}}{#sqrt{#hat{s}}}", 50,0,1.);
+                
+                h_DR_flavor_binned[ksign][kflav]->Sumw2();
+                h_pt_asym_flavor_binned[ksign][kflav]->Sumw2();
+                h_pair_pt_ptlead_ratio_flavor_binned[ksign][kflav]->Sumw2();
+                h_ptlead_pair_pt_flavor_binned[ksign][kflav]->Sumw2();
+                h_Deta_Dphi_flavor_binned[ksign][kflav]->Sumw2();
+                h_minv_pair_pt_flavor_binned[ksign][kflav]->Sumw2();
+                // h_mQQ_flavor_binned[ksign][kflav]->Sumw2();
+                // h_mQQ_Q_ratio_flavor_binned[ksign][kflav]->Sumw2();
+                // h_mQQ_mHard_ratio_flavor_binned[ksign][kflav]->Sumw2();
             }
 
             for (unsigned int jdphi = 0; jdphi < 2; jdphi++){

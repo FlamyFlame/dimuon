@@ -133,7 +133,7 @@ void plot1D(Hist1D& h, const int nCuts, std::string cuts[], std::string cutTitle
 	   			l->SetBorderSize(0);
 	   			l->SetFillStyle(0);
 	   			l->SetTextFont(42);
-	   			l->SetMargin(0.02);
+	   			l->SetMargin(0.2);
 	   			l->SetTextColor(1);
 
 				std::string histName = h.name + cuts[jcut]+ signs[ksign] + gapcuts[mgapcut];
@@ -202,7 +202,7 @@ void plot1D(TH1D (*h)[nGapCuts][nSigns][nGroups], Hist1D& h_struct, const int nC
 	    			l->SetBorderSize(0);
 	    			l->SetFillStyle(0);
 	    			l->SetTextFont(42);
-	    			l->SetMargin(0.02);
+	    			l->SetMargin(0.2);
 	    			l->SetTextColor(1);
 
 	    			// the gap cut situation already handled
@@ -272,7 +272,7 @@ void Process2D(Hist2D h, const int nCuts, std::string cuts[], std::string cutTit
 	    			l->SetBorderSize(0);
 	    			l->SetFillStyle(0);
 	    			l->SetTextFont(43);
-	    			l->SetMargin(0.02);
+	    			l->SetMargin(0.2);
 	    			l->SetTextColor(1);
 	    			// l->AddEntry("","pp","");
 		    		l->AddEntry("",gapCutTitles[mgapcut].c_str(),"");

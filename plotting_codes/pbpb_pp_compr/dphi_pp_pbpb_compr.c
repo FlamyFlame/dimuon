@@ -20,6 +20,10 @@ const int nLines = 4;
 const int nSigns = 2;
 
 double pi = acos(-1.0);
+int nbins[nCtrBins] = {128,128,128,128,128,128,128};
+int plateau_list[nGapCuts][nCtrBins * nSigns] = 
+{{1649, 1614, 1313, 1312, 1811, 1825, 975, 1004, 668, 733, 104, 139, 3587, 7615}, 
+ {1268, 1247, 1006, 1010, 1394, 1413, 755, 777, 517, 570, 81, 108, 3415, 7200}};
 
 float norm_factor[nCtrBins] = {0.05128, 0.06536, 0.04630, 0.07602, 0.08503, 0.30441, 1/256.8};
   // normalizing to differential yield / TAA / N_coll for PbPb (in each centrality bin)
@@ -56,38 +60,39 @@ TH1D* h[nLines][nSigns][nGapCuts];
 std::string hist_names[nCtrBins][nSigns][nGapCuts];
 
 
-void initialize(std::string kin){
+void initialize(){
   for (int jctr = 0; jctr < nCtrBins; jctr++){
     f[jctr] = TFile::Open((dt_path+fnames[jctr]).c_str());
-    // for (int ksign = 0; ksign < nSigns; ksign++){
-    //   for (int lgapcut = 0; lgapcut < nGapCuts; lgapcut++){
-    //     hist_names[jctr][ksign][lgapcut] = ctr_dirs[jctr] + "h_" + kin + "_dr3" + ctrs[jctr] + signs[ksign] + gapcuts[lgapcut];
-    //   }
-    // }
+    for (int ksign = 0; ksign < nSigns; ksign++){
+      for (int lgapcut = 0; lgapcut < nGapCuts; lgapcut++){
+        hist_names[jctr][ksign][lgapcut] = ctr_dirs[jctr] + "h_eta_avg_Dphi_dr3" + ctrs[jctr] + signs[ksign] + gapcuts[lgapcut];
+      }
+    }
   }
 }
 
 void hist_helper(TH1* h, float norm, std::string ytitle=""){
 
   h->SetStats(0);
-  h->Scale(norm,"width");
+  h->Rebin(2);
+  h->Scale(norm / 1000.,"width"); // change unit from pb to nb
   if (ytitle.length() != 0){
     h->GetYaxis()->SetTitle(ytitle.c_str());
   }
   h->SetMarkerStyle(20);
   h->SetMarkerSize(4);
-  h->SetLineWidth(2);
+  h->SetLineWidth(4);
   h->GetYaxis()->SetLabelFont(43);
-  h->GetYaxis()->SetLabelSize(32);
+  h->GetYaxis()->SetLabelSize(38);
   h->GetYaxis()->SetLabelOffset(0.01);
   h->GetYaxis()->SetTitleFont(43);
-  h->GetYaxis()->SetTitleSize(32);
-  h->GetYaxis()->SetTitleOffset(2);
+  h->GetYaxis()->SetTitleSize(40);
+  h->GetYaxis()->SetTitleOffset(1.5);
   h->GetXaxis()->SetLabelFont(43);
-  h->GetXaxis()->SetLabelSize(32);
-  h->GetXaxis()->SetLabelOffset(0.02);
+  h->GetXaxis()->SetLabelSize(38);
+  h->GetXaxis()->SetLabelOffset(0.01);
   h->GetXaxis()->SetTitleFont(43);  
-  h->GetXaxis()->SetTitleSize(32);
+  h->GetXaxis()->SetTitleSize(40);
   h->GetXaxis()->SetTitleOffset(1);
   // h->GetYaxis()->SetTitleOffset(h->GetYaxis()->GetTitleOffset()*0.8);
     // h->GetXaxis()->SetTitleOffset(h->GetXaxis()->GetTitleOffset()*0.8);
@@ -98,56 +103,43 @@ void hist_helper(TH1* h, float norm, std::string ytitle=""){
     // h->GetZaxis()->SetLabelSize(h->GetZaxis()->GetLabelSize()*1.35);
 }
 
-void plot_pp_pbpb_compr_single_kin(std::string kin, bool projx_2d, bool projy_2d, std::string kin1d, std::string kin_title, bool logx=false){
+void dphi_pp_pbpb_compr(){
 
-  initialize(kin);
+  initialize();
   TH2D* h2d;
 
-  if (projx_2d && projy_2d){
-    std::cout << "For single kinematic plotting, can only project either X or Y variable." << std::endl;
-    throw std::exception();
-  }
-
-
   for (int lgap = 0; lgap < nGapCuts; lgap++){
-    TCanvas* c = new TCanvas(Form("c%d",lgap),Form("c%d",lgap),2900,2000);
+    TCanvas* c = new TCanvas(Form("c%d",lgap),Form("c%d",lgap),2500,2000);
     c->Divide(nSigns,2);
 
     for (unsigned int ksign = 0; ksign < nSigns; ksign++){
       ////////////////////////////////////////// pp //////////////////////////////////////////
-      std::string hist_name_pp = ctr_dirs[nCtrBins - 1] + "h_" + kin + "_dr3" + ctrs[nCtrBins-1] + signs[ksign] + gapcuts[lgap];
-      // h2d = (TH2D*) f[nCtrBins-1]->Get(hist_names[nCtrBins - 1][ksign][lgap].c_str());
-      h2d = (TH2D*) f[nCtrBins-1]->Get(hist_name_pp.c_str());
-      // cout << ctrs[nCtrBins-1] << hist_name_pp << endl;
-      // h[nLines-1][ksign][lgap] = (TH1D*) h2d->ProjectionY();
-      if (projx_2d){
-        h2d = (TH2D*) f[nCtrBins-1]->Get(hist_name_pp.c_str());
-        h[nLines-1][ksign][lgap] = (TH1D*) h2d->ProjectionX(("h_" + kin1d + "_pp" + signs[ksign] + gapcuts[lgap]).c_str());
-      }
-      else if (projy_2d){
-        h2d = (TH2D*) f[nCtrBins-1]->Get(hist_name_pp.c_str());
-        h[nLines-1][ksign][lgap] = (TH1D*) h2d->ProjectionY(("h_" + kin1d + "_pp" + signs[ksign] + gapcuts[lgap]).c_str());
-      }else{ // 1D
-        h[nLines-1][ksign][lgap] = (TH1D*) f[nCtrBins-1]->Get(hist_name_pp.c_str());
-        // std::cout << kin1d << ", " << subpl_titles[imc][ksign] << ", " << origin_catg_labels[mgrp] << ", dphi " << ldphi << ", integral: " << h[imc][ksign][mgrp]->Integral() << std::endl;
+      h2d = (TH2D*) f[nCtrBins-1]->Get(hist_names[nCtrBins - 1][ksign][lgap].c_str());
+      // h[nLines-1][ksign][lgap] = (TH1D*) h2d->ProjectionX("",81,120);
+      h[nLines-1][ksign][lgap] = (TH1D*) h2d->ProjectionX();
+
+      for (int i = 1; i <= nbins[nCtrBins-1]; i++){ //important: bin number goes from 1 to 128, not 0 to 127
+        int ni = h[nLines-1][ksign][lgap]->GetBinContent(i);
+        if (ni > plateau_list[lgap][(nCtrBins-1) * nSigns + ksign]){ // no buffer region
+          ni = plateau_list[lgap][(nCtrBins-1) * nSigns + ksign];
+        }
+        h[nLines-1][ksign][lgap]->AddBinContent(i,-ni);
       }
 
-      h[nLines-1][ksign][lgap]->Scale(1./1000.);
-      hist_helper(h[nLines-1][ksign][lgap], norm_factor[nCtrBins-1], "#frac{1}{T_{AA}} #frac{1}{N_{coll}} #frac{dN}{d " + kin_title + "} [nb]");
+      hist_helper(h[nLines-1][ksign][lgap], norm_factor[nCtrBins-1], "#frac{1}{T_{AA}} #frac{1}{N_{coll}} #frac{dN}{d #Delta #phi} [nb]");
 
 
       for (unsigned int subpl = 0; subpl < 2; subpl++){
         c->cd(ksign * 2 + subpl + 1);
-        gPad->SetLeftMargin(0.16);
+        gPad->SetLeftMargin(0.17);
         gPad->SetBottomMargin(0.135);
 
         // TLegend* l = new TLegend(0.18,0.64,0.53,0.87);
-        TLegend* l = new TLegend(0.6,0.67,0.9,0.9);
+        TLegend* l = new TLegend(0.58,0.64,0.88,0.87);
         l->SetBorderSize(0);
         l->SetFillStyle(0);
         l->SetTextFont(42);
-        l->SetTextSize(l->GetTextSize()*3.5);
-        l->SetMargin(0.2);
+        l->SetMargin(0.15);
         l->SetTextColor(1);
 
         int ctrfirst, ctrlast;
@@ -159,30 +151,23 @@ void plot_pp_pbpb_compr_single_kin(std::string kin, bool projx_2d, bool projy_2d
           ctrlast = 5;
         }
         for (unsigned int jctr = ctrfirst; jctr <= ctrlast; jctr++){
-          // h2d = (TH2D*) f[jctr]->Get(hist_names[jctr][ksign][lgap].c_str());
-          // h[jctr-ctrfirst][ksign][lgap] = (TH1D*) h2d->ProjectionY(); // Dphi distribution with no |Deta| restriction
-          
-          std::string hist_name = ctr_dirs[jctr] + "h_" + kin + "_dr3" + ctrs[jctr] + signs[ksign] + gapcuts[lgap];
-
-          if (projx_2d){
-            h2d = (TH2D*) f[jctr]->Get(hist_name.c_str());
-            h[jctr-ctrfirst][ksign][lgap] = (TH1D*) h2d->ProjectionX(("h_" + kin1d + ctrs[jctr] + signs[ksign] + gapcuts[lgap]).c_str());
-          }
-          else if (projy_2d){
-            h2d = (TH2D*) f[jctr]->Get(hist_name.c_str());
-            h[jctr-ctrfirst][ksign][lgap] = (TH1D*) h2d->ProjectionY(("h_" + kin1d + ctrs[jctr] + signs[ksign] + gapcuts[lgap]).c_str());
-          }else{ // 1D
-            h[jctr-ctrfirst][ksign][lgap] = (TH1D*) f[jctr]->Get(hist_name.c_str());
-            // std::cout << kin1d << ", " << subpl_titles[imc][ksign] << ", " << origin_catg_labels[mgrp] << ", dphi " << ldphi << ", integral: " << h[imc][ksign][mgrp]->Integral() << std::endl;
-          }
-
-          // h[jctr-ctrfirst][ksign][lgap] = (TH1D*) h2d->ProjectionY("",81,120); // Dphi distribution for |Deta| < 0.96
+          h2d = (TH2D*) f[jctr]->Get(hist_names[jctr][ksign][lgap].c_str());
+          h[jctr-ctrfirst][ksign][lgap] = (TH1D*) h2d->ProjectionX(); // Dphi distribution with no |Deta| restriction
+          // h[jctr-ctrfirst][ksign][lgap] = (TH1D*) h2d->ProjectionX("",81,120); // Dphi distribution for |Deta| < 0.96
         
+          for (int i = 1; i <= nbins[jctr]; i++){ //important: bin number goes from 1 to 128, not 0 to 127
+            int ni = h[jctr-ctrfirst][ksign][lgap]->GetBinContent(i);
+            // if (ni > plateau_list[lgap][jctr * nSigns + ksign] * 1.01){ // 1% buffer region
+            if (ni > plateau_list[lgap][jctr * nSigns + ksign]){ // no buffer region
+              ni = plateau_list[lgap][jctr * nSigns + ksign];
+            }
+            h[jctr-ctrfirst][ksign][lgap]->AddBinContent(i,-ni);
+          }
+
           // if (jctr == 2)
           //   std::cout << "Bin counts in Dphi ~ pi and Dphi ~ 0: " << h[2][0][lgap]->GetBinContent(128) << ", " << h[2][0][lgap]->GetBinContent(64) << std::endl;
 
-          h[jctr-ctrfirst][ksign][lgap]->Scale(1./1000.);
-          hist_helper(h[jctr-ctrfirst][ksign][lgap], norm_factor[jctr], "#frac{1}{T_{AA}} #frac{1}{N_{coll}} #frac{dN}{d " + kin_title + "} [nb]");
+          hist_helper(h[jctr-ctrfirst][ksign][lgap], norm_factor[jctr], "#frac{1}{T_{AA}} #frac{1}{N_{coll}} #frac{dN}{d #Delta #phi} [nb]");
           l->AddEntry(h[jctr-ctrfirst][ksign][lgap], ctrTitles[jctr].c_str(),"lp");
           h[jctr-ctrfirst][ksign][lgap]->SetMarkerStyle(20);
           h[jctr-ctrfirst][ksign][lgap]->SetMarkerSize(0.6);
@@ -213,23 +198,33 @@ void plot_pp_pbpb_compr_single_kin(std::string kin, bool projx_2d, bool projy_2d
           h[iline][ksign][lgap]->Draw("E,same");
         }
 
-        l->AddEntry("",(gapcutTitles[lgap] + ", " + signTitles[ksign]).c_str(),"");
+        // float ylim_arr[nCtrBins];
+        // for (int iline = 0; iline < nLines; iline++){
+        //   ylim_arr[iline] = 1.1 * std::max(h[iline][ksign][lgap]->GetBinContent(128), h[iline][ksign][lgap]->GetBinContent(1));
+        //   // std::cout << "ctr-group "<< iline << ", max y value: " << ylim_arr[iline] << std::endl;
+        //   std::cout << "gapcut" << lgap+1 << ", sign" << ksign+1 << "subplot" << subpl+1 << ", line" << iline+1 << ", total integral: " << h[iline][ksign][lgap]->Integral("width") << std::endl;
+        // }
+        // // float ylim = *std::max_element(ylim_arr, ylim_arr + nLines);
+        // int ymax_ind = std::max_element(ylim_arr, ylim_arr + nLines) - ylim_arr;
+        // // std::cout << "y-max = " << ylim << std::endl;
+
+        // // h[2][ksign]->GetYaxis()->SetRange(0,ylim);
+        // h[ymax_ind][ksign][lgap]->Draw("E");
+        // for (int iline = 0; iline < nLines; iline++){
+        //   if (iline != ymax_ind) h[iline][ksign][lgap]->Draw("E,same");
+        // }
+
+        // l->AddEntry("",(gapcutTitles[lgap] + ", " + signTitles[ksign]).c_str(),"");
+        l->AddEntry("",(signTitles[ksign]).c_str(),"");
         l->Draw();
         // vl.push_back(l);
       }
     }
 
-    c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/pbpb_pp_compr/%s_pp_pbpb_compr_gapcut%d.png", kin1d.c_str(), lgap+1));
+    c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/pbpb_pp_compr/dphi_pp_pbpb_compr_gapcut%d.png",lgap+1));
     c->Close();
     delete c;
   }
-}
-
-void plot_pp_pbpb_compr(){
-  plot_pp_pbpb_compr_single_kin("minv_pair_pt", false, true, "minv", "m_{#mu#mu}");
-  // plot_pp_pbpb_compr_single_kin("Deta_Dphi", true, false, "DDDphi", "#Delta #phi");
-  // plot_origin_categorized_kinematic_single("Deta_Dphi", false, true, false, false, "Deta", "#Delta #eta");
-
 
 }
 

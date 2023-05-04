@@ -21,7 +21,7 @@ const int nSigns = 2;
 double pi = acos(-1.0);
 int nbins[nCtrBins] = {128,128,128};
 int plateau_list[nGapCuts][nCtrBins][nSigns] = {{{4774,4776},{29,47},{3659,7680}},{{4458,4470},{27,44},{3446,7264}}};
-float norm_factor[nCtrBins] = {1./18.8, 1./0.42, 1/256.8};
+float norm_factor[nCtrBins] = {0.02193, 0.79365, 1/256.8};
   // normalizing to differential yield / TAA / N_coll for PbPb (in each centrality bin)
   // normalizing to differential crossx for pp
   // unit is pb
@@ -68,6 +68,8 @@ void hist_helper(TH1* h, float norm, std::string ytitle=""){
   if (ytitle.length() != 0){
     h->GetYaxis()->SetTitle(ytitle.c_str());
   }
+  h->SetMarkerStyle(20);
+  h->SetMarkerSize(0.6);
   h->GetYaxis()->SetLabelFont(43);
   h->GetYaxis()->SetLabelSize(32);
   h->GetYaxis()->SetLabelOffset(0.036);
@@ -107,7 +109,7 @@ void dphi_pp_pbpb_compr(){
       l->SetFillStyle(0);
       l->SetTextFont(42);
       l->SetTextSize(l->GetTextSize()*3);
-      l->SetMargin(0.02);
+      l->SetMargin(0.2);
       l->SetTextColor(1);
 
       for (unsigned int jctr = 0; jctr < nCtrBins; jctr++){
@@ -127,8 +129,6 @@ void dphi_pp_pbpb_compr(){
 
         hist_helper(h[jctr][ksign][lgap], norm_factor[jctr], "#frac{1}{T_{AA}} #frac{1}{N_{coll}} #frac{dN}{d #Delta #phi} [pb]");
         l->AddEntry(h[jctr][ksign][lgap],ctrTitles[jctr].c_str(),"lp");
-        h[jctr][ksign][lgap]->SetMarkerStyle(20);
-        h[jctr][ksign][lgap]->SetMarkerSize(0.6);
       }
                 
       h[0][ksign][lgap]->SetMarkerColor(kRed);
@@ -138,27 +138,23 @@ void dphi_pp_pbpb_compr(){
       // first plot whichever with largest normalized peak at Delta phi ~ pi
       // since this sets the maximum y value
 
-      float ylim_arr[nCtrBins];
-      for (int ictr = 0; ictr < nCtrBins; ictr++){
-        ylim_arr[ictr] = 1.1 * std::max(h[ictr][ksign][lgap]->GetBinContent(128), h[ictr][ksign][lgap]->GetBinContent(1));
-        // std::cout << "ctr-group "<< ictr << ", max y value: " << ylim_arr[ictr] << std::endl;
-        std::cout << "ctr-group "<< ictr << ", total integral (normalized): " << h[ictr][ksign][lgap]->Integral("width") << std::endl;
+      float ymax = h[0][ksign][lgap]->GetMaximum();
+      for (int ictr = 1; ictr < nCtrBins; ictr++){
+        ymax = (ymax > h[ictr][ksign][lgap]->GetMaximum())? ymax : h[ictr][ksign][lgap]->GetMaximum();
+        std::cout << "gapcut" << lgap+1 << ", sign" << ksign+1 << "subplot" << subpl+1 << ", line" << ictr+1 << ", total integral: " << h[ictr][ksign][lgap]->Integral("width") << std::endl;
       }
-      // float ylim = *std::max_element(ylim_arr, ylim_arr + nCtrBins);
-      int ymax_ind = std::max_element(ylim_arr, ylim_arr + nCtrBins) - ylim_arr;
-      // std::cout << "y-max = " << ylim << std::endl;
+      h[0][ksign][lgap]->GetYaxis()->SetRangeUser(0., ymax * 1.1);
 
-      // h[2][ksign]->GetYaxis()->SetRange(0,ylim);
-      h[ymax_ind][ksign][lgap]->Draw("E");
-      for (int ictr = 0; ictr < nCtrBins; ictr++){
-        if (ictr != ymax_ind) h[ictr][ksign][lgap]->Draw("E,same");
+      h[0][ksign][lgap]->Draw("E");
+      for (int ictr = 1; ictr < nCtrBins; ictr++){
+        h[ictr][ksign][lgap]->Draw("E,same");
       }
 
       l->AddEntry("",(gapcutTitles[lgap]+", " + signTitles[ksign]).c_str(),"");
       l->Draw();
     }
 
-    c->SaveAs(Form("plots/pbpb_pp_compr/dphi_pp_pbpb_compr_gapcut%d.png",lgap+1));
+    c->SaveAs(Form("plots/pbpb_pp_compr/dphi_pp_pbpb_compr_gapcut%d_3lines.png",lgap+1));
     c->Close();
     delete c;
   }

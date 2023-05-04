@@ -74,7 +74,7 @@ void hist_helper(TH1* h, std::string title, bool norm_unity){
 void thstack_helper(THStack* h, std::string kin_name, std::string title){
   h->SetTitle(title.c_str());
   h->GetXaxis()->SetTitle(kin_name.c_str());
-  h->GetYaxis()->SetTitle(("d#sigma/d" + kin_name).c_str());
+  h->GetYaxis()->SetTitle(("d#sigma/d" + kin_name + " [nb]").c_str());
 
   h->GetYaxis()->SetLabelFont(43);
   h->GetYaxis()->SetLabelSize(23);
@@ -124,7 +124,7 @@ void plot_origin_categorized_kinematic_single(std::string kin, bool projx_2d, bo
       l->SetBorderSize(0);
       l->SetFillStyle(0);
       l->SetTextFont(43);
-      l->SetMargin(0.02);
+      l->SetMargin(0.2);
       l->SetTextColor(1);
       // l->AddEntry("",Form("%d",imc * nMCmodes + ksign + 1),"");
       // l->Draw();
@@ -201,11 +201,11 @@ void plot_origin_categorized_kinematic_single(std::string kin, bool projx_2d, bo
   }
 
   if (staggered){
-    c->SaveAs(Form("plots/powheg/origin_categoried/sum_bb_cc/powheg_%s_staggered.png", kin1d.c_str()));
+    c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/powheg/origin_categoried/sum_bb_cc/powheg_%s_staggered.png", kin1d.c_str()));
   }else if (norm_unity){
-    c->SaveAs(Form("plots/powheg/origin_categoried/sum_bb_cc/powheg_%s_unity.png", kin1d.c_str()));
+    c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/powheg/origin_categoried/sum_bb_cc/powheg_%s_unity.png", kin1d.c_str()));
   }else{
-    c->SaveAs(Form("plots/powheg/origin_categoried/sum_bb_cc/powheg_%s.png", kin1d.c_str()));
+    c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/powheg/origin_categoried/sum_bb_cc/powheg_%s.png", kin1d.c_str()));
   }
   c->Close();
   delete c;
@@ -245,7 +245,7 @@ void plot_origin_categorized_kinematic_single_sum_bb_cc(std::string kin, bool pr
     l->SetBorderSize(0);
     l->SetFillStyle(0);
     l->SetTextFont(43);
-    l->SetMargin(0.02);
+    l->SetMargin(0.2);
     l->SetTextColor(1);
     // l->AddEntry("",Form("%d",imc * nMCmodes + ksign + 1),"");
     // l->Draw();
@@ -320,11 +320,11 @@ void plot_origin_categorized_kinematic_single_sum_bb_cc(std::string kin, bool pr
   }
 
   if (staggered){
-    c->SaveAs(Form("plots/powheg/origin_categoried/bb_cc_sepr/powheg_%s_staggered_sum_bb_cc.png", kin1d.c_str()));
+    c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/powheg/origin_categoried/bb_cc_sepr/powheg_%s_staggered_sum_bb_cc.png", kin1d.c_str()));
   }else if (norm_unity){
-    c->SaveAs(Form("plots/powheg/origin_categoried/bb_cc_sepr/powheg_%s_unity_sum_bb_cc.png", kin1d.c_str()));
+    c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/powheg/origin_categoried/bb_cc_sepr/powheg_%s_unity_sum_bb_cc.png", kin1d.c_str()));
   }else{
-    c->SaveAs(Form("plots/powheg/origin_categoried/bb_cc_sepr/powheg_%s_sum_bb_cc.png", kin1d.c_str()));
+    c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/powheg/origin_categoried/bb_cc_sepr/powheg_%s_sum_bb_cc.png", kin1d.c_str()));
   }
   c->Close();
   delete c;
@@ -332,68 +332,81 @@ void plot_origin_categorized_kinematic_single_sum_bb_cc(std::string kin, bool pr
 
 
 void plot_origin_categorized_kinematics_powheg(){
-  plot_origin_categorized_kinematic_single("DR", false, false, false, false, "DR", "#Delta R");
-  plot_origin_categorized_kinematic_single("DR", false, false, true, false, "DR", "#Delta R"); // accumulative
-  plot_origin_categorized_kinematic_single("DR", false, false, false, true, "DR", "#Delta R"); // norm to unity
-  plot_origin_categorized_kinematic_single_sum_bb_cc("DR", false, false, false, false, "DR", "#Delta R");
-  plot_origin_categorized_kinematic_single_sum_bb_cc("DR", false, false, true, false, "DR", "#Delta R"); // accumulative
-  plot_origin_categorized_kinematic_single_sum_bb_cc("DR", false, false, false, true, "DR", "#Delta R");
+  // plot_origin_categorized_kinematic_single("DR", false, false, false, false, "DR", "#Delta R");
+  // plot_origin_categorized_kinematic_single("DR", false, false, true, false, "DR", "#Delta R"); // accumulative
+  // plot_origin_categorized_kinematic_single("DR", false, false, false, true, "DR", "#Delta R"); // norm to unity
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("DR", false, false, false, false, "DR", "#Delta R");
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("DR", false, false, true, false, "DR", "#Delta R"); // accumulative
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("DR", false, false, false, true, "DR", "#Delta R");
 
-  plot_origin_categorized_kinematic_single("pt_asym", false, false, false, false, "pt_asym","A");
-  plot_origin_categorized_kinematic_single("pt_asym", false, false, true, false, "pt_asym","A"); // accumulative
-  plot_origin_categorized_kinematic_single("pt_asym", false, false, false, true, "pt_asym","A"); // norm to unity
-  plot_origin_categorized_kinematic_single_sum_bb_cc("pt_asym", false, false, false, false, "pt_asym","A");
-  plot_origin_categorized_kinematic_single_sum_bb_cc("pt_asym", false, false, true, false, "pt_asym","A"); // accumulative
-  plot_origin_categorized_kinematic_single_sum_bb_cc("pt_asym", false, false, false, true, "pt_asym","A");
+  // plot_origin_categorized_kinematic_single("pt_asym", false, false, false, false, "pt_asym","A");
+  // plot_origin_categorized_kinematic_single("pt_asym", false, false, true, false, "pt_asym","A"); // accumulative
+  // plot_origin_categorized_kinematic_single("pt_asym", false, false, false, true, "pt_asym","A"); // norm to unity
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("pt_asym", false, false, false, false, "pt_asym","A");
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("pt_asym", false, false, true, false, "pt_asym","A"); // accumulative
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("pt_asym", false, false, false, true, "pt_asym","A");
     
-  plot_origin_categorized_kinematic_single("pair_pt_ptlead_ratio", false, false, false, false, "pair_pt_ptlead_ratio", "p_{T}^{pair}/p_{T}^{lead}");
-  plot_origin_categorized_kinematic_single("pair_pt_ptlead_ratio", false, false, true, false, "pair_pt_ptlead_ratio", "p_{T}^{pair}/p_{T}^{lead}");
-  plot_origin_categorized_kinematic_single("pair_pt_ptlead_ratio", false, false, false, true, "pair_pt_ptlead_ratio", "p_{T}^{pair}/p_{T}^{lead}"); // norm to unity
-  plot_origin_categorized_kinematic_single_sum_bb_cc("pair_pt_ptlead_ratio", false, false, false, false, "pair_pt_ptlead_ratio", "p_{T}^{pair}/p_{T}^{lead}");
-  plot_origin_categorized_kinematic_single_sum_bb_cc("pair_pt_ptlead_ratio", false, false, true, false, "pair_pt_ptlead_ratio", "p_{T}^{pair}/p_{T}^{lead}");
-  plot_origin_categorized_kinematic_single_sum_bb_cc("pair_pt_ptlead_ratio", false, false, false, true, "pair_pt_ptlead_ratio", "p_{T}^{pair}/p_{T}^{lead}");
+  // plot_origin_categorized_kinematic_single("pair_pt_ptlead_ratio", false, false, false, false, "pair_pt_ptlead_ratio", "p_{T}^{pair}/p_{T}^{lead}");
+  // plot_origin_categorized_kinematic_single("pair_pt_ptlead_ratio", false, false, true, false, "pair_pt_ptlead_ratio", "p_{T}^{pair}/p_{T}^{lead}");
+  // plot_origin_categorized_kinematic_single("pair_pt_ptlead_ratio", false, false, false, true, "pair_pt_ptlead_ratio", "p_{T}^{pair}/p_{T}^{lead}"); // norm to unity
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("pair_pt_ptlead_ratio", false, false, false, false, "pair_pt_ptlead_ratio", "p_{T}^{pair}/p_{T}^{lead}");
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("pair_pt_ptlead_ratio", false, false, true, false, "pair_pt_ptlead_ratio", "p_{T}^{pair}/p_{T}^{lead}");
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("pair_pt_ptlead_ratio", false, false, false, true, "pair_pt_ptlead_ratio", "p_{T}^{pair}/p_{T}^{lead}");
   
-  // plot_origin_categorized_kinematic_single("mQQ_Q_ratio", false, false, false, false, "mQQ_Q_ratio");
-  // plot_origin_categorized_kinematic_single("mQQ_Q_ratio", false, false, true, false, "mQQ_Q_ratio");
-  // plot_origin_categorized_kinematic_single("mQQ_Q_ratio", false, false, false, true, "mQQ_Q_ratio"); // norm to unity
+  // plot_origin_categorized_kinematic_single("mQQ", false, false, false, false, "mQQ","m_{QQ}");
+  // plot_origin_categorized_kinematic_single("mQQ", false, false, true, false, "mQQ","m_{QQ}");
+  // plot_origin_categorized_kinematic_single("mQQ", false, false, false, true, "mQQ","m_{QQ}"); // norm to unity
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("mQQ", false, false, false, false, "mQQ","m_{QQ}");
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("mQQ", false, false, true, false, "mQQ","m_{QQ}");
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("mQQ", false, false, false, true, "mQQ","m_{QQ}"); // norm to unity
   
-  // plot_origin_categorized_kinematic_single("mQQ_mHard_relevant_ratio", false, false, false, false, "mQQ_mHard_relevant_ratio");
-  // plot_origin_categorized_kinematic_single("mQQ_mHard_relevant_ratio", false, false, true, false, "mQQ_mHard_relevant_ratio");
-  // plot_origin_categorized_kinematic_single("mQQ_mHard_relevant_ratio", false, false, false, true, "mQQ_mHard_relevant_ratio"); // norm to unity
+  // plot_origin_categorized_kinematic_single("mQQ_Q_ratio", false, false, false, false, "mQQ_Q_ratio", "m_{QQ} / Q");
+  // plot_origin_categorized_kinematic_single("mQQ_Q_ratio", false, false, true, false, "mQQ_Q_ratio", "m_{QQ} / Q");
+  // plot_origin_categorized_kinematic_single("mQQ_Q_ratio", false, false, false, true, "mQQ_Q_ratio", "m_{QQ} / Q"); // norm to unity
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("mQQ_Q_ratio", false, false, false, false, "mQQ_Q_ratio", "m_{QQ} / Q");
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("mQQ_Q_ratio", false, false, true, false, "mQQ_Q_ratio", "m_{QQ} / Q");
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("mQQ_Q_ratio", false, false, false, true, "mQQ_Q_ratio", "m_{QQ} / Q"); // norm to unity
+  
+  plot_origin_categorized_kinematic_single("mQQ_mHard_ratio", false, false, false, false, "mQQ_mHard_ratio","m_{QQ} / #sqrt{#hat{s}}");
+  plot_origin_categorized_kinematic_single("mQQ_mHard_ratio", false, false, true, false, "mQQ_mHard_ratio","m_{QQ} / #sqrt{#hat{s}}");
+  plot_origin_categorized_kinematic_single("mQQ_mHard_ratio", false, false, false, true, "mQQ_mHard_ratio","m_{QQ} / #sqrt{#hat{s}}"); // norm to unity
+  plot_origin_categorized_kinematic_single_sum_bb_cc("mQQ_mHard_ratio", false, false, false, false, "mQQ_mHard_ratio","m_{QQ} / #sqrt{#hat{s}}");
+  plot_origin_categorized_kinematic_single_sum_bb_cc("mQQ_mHard_ratio", false, false, true, false, "mQQ_mHard_ratio","m_{QQ} / #sqrt{#hat{s}}");
+  plot_origin_categorized_kinematic_single_sum_bb_cc("mQQ_mHard_ratio", false, false, false, true, "mQQ_mHard_ratio","m_{QQ} / #sqrt{#hat{s}}"); // norm to unity
 
-  plot_origin_categorized_kinematic_single("ptlead_pair_pt", true, false, false, false, "pair_pt", "p_{T}^{pair}");
-  plot_origin_categorized_kinematic_single("ptlead_pair_pt", true, false, true, false, "pair_pt", "p_{T}^{pair}");
-  plot_origin_categorized_kinematic_single("ptlead_pair_pt", true, false, false, true, "pair_pt", "p_{T}^{pair}"); // norm to unity
-  plot_origin_categorized_kinematic_single_sum_bb_cc("ptlead_pair_pt", true, false, false, false, "pair_pt", "p_{T}^{pair}");
-  plot_origin_categorized_kinematic_single_sum_bb_cc("ptlead_pair_pt", true, false, true, false, "pair_pt", "p_{T}^{pair}");
-  plot_origin_categorized_kinematic_single_sum_bb_cc("ptlead_pair_pt", true, false, false, true, "pair_pt", "p_{T}^{pair}");
+  // plot_origin_categorized_kinematic_single("ptlead_pair_pt", true, false, false, false, "pair_pt", "p_{T}^{pair}");
+  // plot_origin_categorized_kinematic_single("ptlead_pair_pt", true, false, true, false, "pair_pt", "p_{T}^{pair}");
+  // plot_origin_categorized_kinematic_single("ptlead_pair_pt", true, false, false, true, "pair_pt", "p_{T}^{pair}"); // norm to unity
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("ptlead_pair_pt", true, false, false, false, "pair_pt", "p_{T}^{pair}");
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("ptlead_pair_pt", true, false, true, false, "pair_pt", "p_{T}^{pair}");
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("ptlead_pair_pt", true, false, false, true, "pair_pt", "p_{T}^{pair}");
 
-  plot_origin_categorized_kinematic_single("ptlead_pair_pt", false, true, false, false, "ptlead", "p_{T}^{lead}");
-  plot_origin_categorized_kinematic_single("ptlead_pair_pt", false, true, true, false, "ptlead", "p_{T}^{lead}");
-  plot_origin_categorized_kinematic_single("ptlead_pair_pt", false, true, false, true, "ptlead", "p_{T}^{lead}"); // norm to unity
-  plot_origin_categorized_kinematic_single_sum_bb_cc("ptlead_pair_pt", false, true, false, false, "ptlead", "p_{T}^{lead}");
-  plot_origin_categorized_kinematic_single_sum_bb_cc("ptlead_pair_pt", false, true, true, false, "ptlead", "p_{T}^{lead}");
-  plot_origin_categorized_kinematic_single_sum_bb_cc("ptlead_pair_pt", false, true, false, true, "ptlead", "p_{T}^{lead}");
+  // plot_origin_categorized_kinematic_single("ptlead_pair_pt", false, true, false, false, "ptlead", "p_{T}^{lead}");
+  // plot_origin_categorized_kinematic_single("ptlead_pair_pt", false, true, true, false, "ptlead", "p_{T}^{lead}");
+  // plot_origin_categorized_kinematic_single("ptlead_pair_pt", false, true, false, true, "ptlead", "p_{T}^{lead}"); // norm to unity
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("ptlead_pair_pt", false, true, false, false, "ptlead", "p_{T}^{lead}");
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("ptlead_pair_pt", false, true, true, false, "ptlead", "p_{T}^{lead}");
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("ptlead_pair_pt", false, true, false, true, "ptlead", "p_{T}^{lead}");
   
-  plot_origin_categorized_kinematic_single ("minv_pair_pt", false, true, false, false, "minv", "m_{#mu#mu}");
-  plot_origin_categorized_kinematic_single("minv_pair_pt", false, true, true, false, "minv", "m_{#mu#mu}");
-  plot_origin_categorized_kinematic_single("minv_pair_pt", false, true, false, true, "minv", "m_{#mu#mu}"); // norm to unity
-  plot_origin_categorized_kinematic_single_sum_bb_cc ("minv_pair_pt", false, true, false, false, "minv", "m_{#mu#mu}");
-  plot_origin_categorized_kinematic_single_sum_bb_cc("minv_pair_pt", false, true, true, false, "minv", "m_{#mu#mu}");
-  plot_origin_categorized_kinematic_single_sum_bb_cc ("minv_pair_pt", false, true, false, true, "minv", "m_{#mu#mu}");
+  // plot_origin_categorized_kinematic_single ("minv_pair_pt", false, true, false, false, "minv", "m_{#mu#mu}");
+  // plot_origin_categorized_kinematic_single("minv_pair_pt", false, true, true, false, "minv", "m_{#mu#mu}");
+  // plot_origin_categorized_kinematic_single("minv_pair_pt", false, true, false, true, "minv", "m_{#mu#mu}"); // norm to unity
+  // plot_origin_categorized_kinematic_single_sum_bb_cc ("minv_pair_pt", false, true, false, false, "minv", "m_{#mu#mu}");
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("minv_pair_pt", false, true, true, false, "minv", "m_{#mu#mu}");
+  // plot_origin_categorized_kinematic_single_sum_bb_cc ("minv_pair_pt", false, true, false, true, "minv", "m_{#mu#mu}");
   
-  plot_origin_categorized_kinematic_single("Deta_Dphi", true, false, false, false, "Dphi", "#Delta #phi");
-  plot_origin_categorized_kinematic_single("Deta_Dphi", true, false, true, false, "Dphi", "#Delta #phi");
-  plot_origin_categorized_kinematic_single("Deta_Dphi", true, false, false, true, "Dphi", "#Delta #phi"); // norm to unity
-  plot_origin_categorized_kinematic_single_sum_bb_cc("Deta_Dphi", true, false, false, false, "Dphi", "#Delta #phi");
-  plot_origin_categorized_kinematic_single_sum_bb_cc("Deta_Dphi", true, false, true, false, "Dphi", "#Delta #phi");
-  plot_origin_categorized_kinematic_single_sum_bb_cc("Deta_Dphi", true, false, false, true, "Dphi", "#Delta #phi");
+  // plot_origin_categorized_kinematic_single("Deta_Dphi", true, false, false, false, "Dphi", "#Delta #phi");
+  // plot_origin_categorized_kinematic_single("Deta_Dphi", true, false, true, false, "Dphi", "#Delta #phi");
+  // plot_origin_categorized_kinematic_single("Deta_Dphi", true, false, false, true, "Dphi", "#Delta #phi"); // norm to unity
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("Deta_Dphi", true, false, false, false, "Dphi", "#Delta #phi");
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("Deta_Dphi", true, false, true, false, "Dphi", "#Delta #phi");
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("Deta_Dphi", true, false, false, true, "Dphi", "#Delta #phi");
   
-  plot_origin_categorized_kinematic_single("Deta_Dphi", false, true, false, false, "Deta", "#Delta #eta");
-  plot_origin_categorized_kinematic_single("Deta_Dphi", false, true, true, false, "Deta", "#Delta #eta");
-  plot_origin_categorized_kinematic_single("Deta_Dphi", false, true, false, true, "Deta", "#Delta #eta"); // norm to unity
-  plot_origin_categorized_kinematic_single_sum_bb_cc("Deta_Dphi", false, true, false, false, "Deta", "#Delta #eta");
-  plot_origin_categorized_kinematic_single_sum_bb_cc("Deta_Dphi", false, true, true, false, "Deta", "#Delta #eta");
-  plot_origin_categorized_kinematic_single_sum_bb_cc("Deta_Dphi", false, true, false, true, "Deta", "#Delta #eta");
+  // plot_origin_categorized_kinematic_single("Deta_Dphi", false, true, false, false, "Deta", "#Delta #eta");
+  // plot_origin_categorized_kinematic_single("Deta_Dphi", false, true, true, false, "Deta", "#Delta #eta");
+  // plot_origin_categorized_kinematic_single("Deta_Dphi", false, true, false, true, "Deta", "#Delta #eta"); // norm to unity
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("Deta_Dphi", false, true, false, false, "Deta", "#Delta #eta");
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("Deta_Dphi", false, true, true, false, "Deta", "#Delta #eta");
+  // plot_origin_categorized_kinematic_single_sum_bb_cc("Deta_Dphi", false, true, false, true, "Deta", "#Delta #eta");
 }
 

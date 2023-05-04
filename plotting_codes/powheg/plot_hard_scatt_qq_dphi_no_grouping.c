@@ -75,7 +75,7 @@ void plot_hard_scatt_qq_dphi_separate(){ // mode = 1: unweighted; mode = 2: weig
         // l->SetFillStyle(0);
         // l->SetTextFont(38);
         // l->SetTextSize(l->GetTextSize()*3);
-        // l->SetMargin(0.02);
+        // l->SetMargin(0.2);
         // l->SetTextColor(1);
         // l->AddEntry(h, labels[imc][ksign][lphi].c_str(),"lp");
         h->Draw();
@@ -112,7 +112,7 @@ void plot_hard_scatt_qq_dphi_no_grouping(){ // mode = 1: unweighted; mode = 2: w
       l->SetFillStyle(0);
       l->SetTextFont(38);
       l->SetTextSize(l->GetTextSize()*3);
-      l->SetMargin(0.02);
+      l->SetMargin(0.2);
       l->SetTextColor(1);
 
       for (int lphi = 0; lphi < nDphi; lphi++){

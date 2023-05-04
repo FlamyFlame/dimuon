@@ -100,7 +100,7 @@ void plot_powheg_data_compr_noDPHI_div_single_kinematic(std::string kin, bool pr
     l->SetFillStyle(0);
     l->SetTextFont(42);
     // l->SetTextSize(32);
-    l->SetMargin(0.02);
+    l->SetMargin(0.2);
     l->SetTextColor(1);
 
     for (unsigned int jdt = 0; jdt < nDtTypes; jdt++){

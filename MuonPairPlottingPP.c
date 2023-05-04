@@ -65,7 +65,9 @@ void MuonPairPlottingPP::FillHistograms(int ndr, int nsign){
             h_pt1_pt2_dr_binned[ndr][nsign][1]->Fill(m2pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
             h_eta_avg_Deta_dr_binned[ndr][nsign][1]->Fill(deta[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
             h_ptlead_pair_pt_dr_binned[ndr][nsign][1]->Fill(pair_pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
-            // h_minv_pair_pt_dr_binned[ndr][nsign][1]->Fill(pair_pt[ndr][nsign],minv[ndr][nsign],weight[ndr][nsign]);
+            h_minv_pair_pt_dr_binned[ndr][nsign][1]->Fill(pair_pt[ndr][nsign],minv[ndr][nsign],weight[ndr][nsign]);
+            h_minv_pair_pt_zoomin_dr_binned[ndr][nsign][1]->Fill(pair_pt[ndr][nsign],minv[ndr][nsign],weight[ndr][nsign]);
+            h_minv_pair_pt_log_dr_binned[ndr][nsign][1]->Fill(pair_pt[ndr][nsign],minv[ndr][nsign],weight[ndr][nsign]);
             h_Deta_Dphi_dr_binned[ndr][nsign][1]->Fill(dphi[ndr][nsign],deta[ndr][nsign],weight[ndr][nsign]);
                 
             // if (isMCTruthBB || isMCTruthCC){
@@ -117,7 +119,9 @@ void MuonPairPlottingPP::FillHistograms(int ndr, int nsign){
         h_pt1_pt2_dr_binned[ndr][nsign][0]->Fill(m2pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
         h_eta_avg_Deta_dr_binned[ndr][nsign][0]->Fill(deta[ndr][nsign],etaavg[ndr][nsign],weight[ndr][nsign]);
         h_ptlead_pair_pt_dr_binned[ndr][nsign][0]->Fill(pair_pt[ndr][nsign],m1pt[ndr][nsign],weight[ndr][nsign]);
-        // h_minv_pair_pt_dr_binned[ndr][nsign][0]->Fill(pair_pt[ndr][nsign],minv[ndr][nsign],weight[ndr][nsign]);
+        h_minv_pair_pt_dr_binned[ndr][nsign][0]->Fill(pair_pt[ndr][nsign],minv[ndr][nsign],weight[ndr][nsign]);
+        h_minv_pair_pt_zoomin_dr_binned[ndr][nsign][0]->Fill(pair_pt[ndr][nsign],minv[ndr][nsign],weight[ndr][nsign]);
+        h_minv_pair_pt_log_dr_binned[ndr][nsign][0]->Fill(pair_pt[ndr][nsign],minv[ndr][nsign],weight[ndr][nsign]);
 
         // if (isMCTruthBB || isMCTruthCC){
         //     h_unweighted_Deta_Dphi_dr_binned[ndr][nsign][0]->Fill(dphi[ndr][nsign],deta[ndr][nsign]);
@@ -213,7 +217,9 @@ void MuonPairPlottingPP::WriteOutput(){
                         h_eta_avg_Deta_dr_binned[idr][ksign][lgapcut]->Write();
                         h_pt1_pt2_dr_binned[idr][ksign][lgapcut]->Write();
                         h_ptlead_pair_pt_dr_binned[idr][ksign][lgapcut]->Write();
-                        // h_minv_pair_pt_dr_binned[idr][ksign][lgapcut]->Write();
+                        h_minv_pair_pt_dr_binned[idr][ksign][lgapcut]->Write();
+                        h_minv_pair_pt_zoomin_dr_binned[idr][ksign][lgapcut]->Write();
+                        h_minv_pair_pt_log_dr_binned[idr][ksign][lgapcut]->Write();
 
 
                         // if (isMCTruthBB || isMCTruthCC){

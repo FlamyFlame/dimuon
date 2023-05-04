@@ -14,7 +14,7 @@
 // #include "time.h"
 // #include "struct_hist.h"
 
-std::vector<std::vector<std::string>> hist_names = {{"h_QQ_both_from_Q_ancestor_dp_sign1_near","h_QQ_both_from_Q_ancestor_dp_sign1_away"},{"h_QQ_both_from_Q_ancestor_dp_sign2_near","h_QQ_both_from_Q_ancestor_dp_sign2_away"}};
+std::vector<std::vector<std::string>> hist_names = {{"h_QQ_both_from_Q_same_ancestors_sign1_near","h_QQ_both_from_Q_same_ancestors_sign1_away"},{"h_QQ_both_from_Q_same_ancestors_sign2_near","h_QQ_both_from_Q_same_ancestors_sign2_away"}};
 
 std::string labels[nMCmodes][nSigns][nDphi] = {
   {{"bb, same sign, #Delta #phi < #pi/2","bb, same sign, #Delta #phi #geq #pi/2"}, {"bb, opposite sign, #Delta #phi < #pi/2","bb, opposite sign, #Delta #phi #geq #pi/2"}}, 
@@ -24,6 +24,7 @@ std::string labels[nMCmodes][nSigns][nDphi] = {
 // void hist_helper(TH1* h, std::string title){
 //   h->SetStats(0);
 //   h->SetTitle(title.c_str());
+//   h->SetLineWidth(2);
 //   h->GetYaxis()->SetLabelFont(43);
 //   h->GetYaxis()->SetLabelSize(38);
 //   h->GetYaxis()->SetLabelOffset(0.01);
@@ -38,7 +39,8 @@ std::string labels[nMCmodes][nSigns][nDphi] = {
 //   // h->GetXaxis()->SetTitleOffset(1);
 // }
 
-void mc_muon_pair_dp_ancestor_groups(){
+
+void mc_muon_pair_same_ancestors(){
 
   TH2D* h;
   TFile* f[nMCmodes][nBatches];
@@ -76,12 +78,12 @@ void mc_muon_pair_dp_ancestor_groups(){
         // l->SetMargin(0.2);
         // l->SetTextColor(1);
         // l->AddEntry(h, labels[imc][ksign][lphi].c_str(),"lp");
-        h->Draw("colz");
+        h->Draw();
         // l->Draw(); 
       }
     }
 
-    c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/powheg/prt_grouping/muon_pair_dp_ancestor_groups%s.png",mcmodes[imc].c_str()));
+    c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/powheg/prt_grouping/muon_pair_same_ancestors%s.png",mcmodes[imc].c_str()));
     c->Close();
     delete c;
   }

@@ -105,7 +105,7 @@ void plot_one_scaling_mode(bool scale_to_unity){
 		    	l->SetBorderSize(0);
 		    	l->SetFillStyle(0);
 		    	l->SetTextFont(43);
-		    	l->SetMargin(0.02);
+		    	l->SetMargin(0.2);
 		    	l->SetTextColor(1);
 
 

@@ -21,7 +21,8 @@ const int nSigns = 2;
 double pi = acos(-1.0);
 int nbins[nCtrBins] = {128,128,128};
 int plateau_list[nGapCuts][nCtrBins][nSigns] = {{{4774,4776},{29,47},{3659,7680}},{{4458,4470},{27,44},{3446,7264}}};
-float norm_factor[nCtrBins] = {1./18.8, 1./0.42, 1/256.8};
+// float norm_factor[nCtrBins] = {1./18.8, 1./0.42, 1/256.8};   
+float norm_factor[nCtrBins] = {0.02193, 0.79365, 1/256.8};
   // normalizing to differential yield / TAA / N_coll for PbPb (in each centrality bin)
   // normalizing to differential crossx for pp
   // unit is pb
@@ -68,6 +69,8 @@ void hist_helper(TH1* h, float norm, std::string ytitle=""){
   if (ytitle.length() != 0){
     h->GetYaxis()->SetTitle(ytitle.c_str());
   }
+  h->SetMarkerStyle(20);
+  h->SetMarkerSize(0.6);
   h->GetYaxis()->SetLabelFont(43);
   h->GetYaxis()->SetLabelSize(32);
   h->GetYaxis()->SetLabelOffset(0.036);
@@ -107,7 +110,7 @@ void dphi_pp_pbpb_compr_no_subtraction(){
       l->SetFillStyle(0);
       l->SetTextFont(42);
       l->SetTextSize(l->GetTextSize()*3);
-      l->SetMargin(0.02);
+      l->SetMargin(0.2);
       l->SetTextColor(1);
 
       for (unsigned int jctr = 0; jctr < nCtrBins; jctr++){
@@ -116,8 +119,6 @@ void dphi_pp_pbpb_compr_no_subtraction(){
 
         hist_helper(h[jctr][ksign][lgap], norm_factor[jctr], "#frac{1}{T_{AA}} #frac{1}{N_{coll}} #frac{dN}{d #Delta #phi} [pb]");
         l->AddEntry(h[jctr][ksign][lgap],ctrTitles[jctr].c_str(),"lp");
-        h[jctr][ksign][lgap]->SetMarkerStyle(20);
-        h[jctr][ksign][lgap]->SetMarkerSize(0.6);
       }
                 
       h[0][ksign][lgap]->SetMarkerColor(kRed);
@@ -149,7 +150,7 @@ void dphi_pp_pbpb_compr_no_subtraction(){
       l->Draw();
     }
 
-    c->SaveAs(Form("plots/pbpb_pp_compr/dphi_pp_pbpb_compr_gapcut%d_no_subtraction.png",lgap+1));
+    c->SaveAs(Form("plots/pbpb_pp_compr/dphi_pp_pbpb_compr_gapcut%d_3lines_no_subtraction.png",lgap+1));
     c->Close();
     delete c;
   }

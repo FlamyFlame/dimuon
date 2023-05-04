@@ -97,25 +97,57 @@ void MuonPairPlottingPowheg::FillHistograms(int nbatch, int nsign){
         h_Deta_Dphi_ancestor_binned[nsign][nAncestorGroups]->Fill(dphi[nbatch][nsign], deta[nbatch][nsign], ev_weight);
         h_minv_pair_pt_ancestor_binned[nsign][nAncestorGroups]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight);
         is_filled = true;
-    }else if (from_same_ancestors[nbatch][nsign]){ // from the same ancestors and not the same b
-        for (int kgrp = 0; kgrp < nAncestorGroups; kgrp++){
-            if (m1_ancestor_category[nbatch][nsign] == kgrp){
-                h_DR_ancestor_binned[nsign][kgrp]->Fill(dr[nbatch][nsign], ev_weight);
-                h_pt_asym_ancestor_binned[nsign][kgrp]->Fill(asym[nbatch][nsign], ev_weight);
-                h_pair_pt_ptlead_ratio_ancestor_binned[nsign][kgrp]->Fill(pair_pt[nbatch][nsign]/pt_lead[nbatch][nsign], ev_weight);
-                h_ptlead_pair_pt_ancestor_binned[nsign][kgrp]->Fill(pair_pt[nbatch][nsign], pt_lead[nbatch][nsign], ev_weight);
-                h_Deta_Dphi_ancestor_binned[nsign][kgrp]->Fill(dphi[nbatch][nsign], deta[nbatch][nsign], ev_weight);
-                h_minv_pair_pt_ancestor_binned[nsign][kgrp]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight);
-                h_mQQ_ancestor_binned[nsign][kgrp]->Fill(mQQ[nbatch][nsign],ev_weight);
-                h_mQQ_Q_ratio_ancestor_binned[nsign][kgrp]->Fill(mQQ[nbatch][nsign] / Q[nbatch][nsign], ev_weight);
-                h_mQQ_mHard_ratio_ancestor_binned[nsign][kgrp]->Fill(mQQ[nbatch][nsign] / mHard_relevant[nbatch][nsign], ev_weight);
-                is_filled = true;
-                break;
+
+        h_DR_flavor_binned[nsign][0]->Fill(dr[nbatch][nsign], ev_weight);
+        h_pt_asym_flavor_binned[nsign][0]->Fill(asym[nbatch][nsign], ev_weight);
+        h_pair_pt_ptlead_ratio_flavor_binned[nsign][0]->Fill(pair_pt[nbatch][nsign]/pt_lead[nbatch][nsign], ev_weight);
+        h_ptlead_pair_pt_flavor_binned[nsign][0]->Fill(pair_pt[nbatch][nsign], pt_lead[nbatch][nsign], ev_weight);
+        h_Deta_Dphi_flavor_binned[nsign][0]->Fill(dphi[nbatch][nsign], deta[nbatch][nsign], ev_weight);
+        h_minv_pair_pt_flavor_binned[nsign][0]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight);
+    }else{
+
+        if (both_from_b[nbatch][nsign]){
+            h_DR_flavor_binned[nsign][1]->Fill(dr[nbatch][nsign], ev_weight);
+            h_pt_asym_flavor_binned[nsign][1]->Fill(asym[nbatch][nsign], ev_weight);
+            h_pair_pt_ptlead_ratio_flavor_binned[nsign][1]->Fill(pair_pt[nbatch][nsign]/pt_lead[nbatch][nsign], ev_weight);
+            h_ptlead_pair_pt_flavor_binned[nsign][1]->Fill(pair_pt[nbatch][nsign], pt_lead[nbatch][nsign], ev_weight);
+            h_Deta_Dphi_flavor_binned[nsign][1]->Fill(dphi[nbatch][nsign], deta[nbatch][nsign], ev_weight);
+            h_minv_pair_pt_flavor_binned[nsign][1]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight);
+        }else if (both_from_c[nbatch][nsign]){
+            h_DR_flavor_binned[nsign][2]->Fill(dr[nbatch][nsign], ev_weight);
+            h_pt_asym_flavor_binned[nsign][2]->Fill(asym[nbatch][nsign], ev_weight);
+            h_pair_pt_ptlead_ratio_flavor_binned[nsign][2]->Fill(pair_pt[nbatch][nsign]/pt_lead[nbatch][nsign], ev_weight);
+            h_ptlead_pair_pt_flavor_binned[nsign][2]->Fill(pair_pt[nbatch][nsign], pt_lead[nbatch][nsign], ev_weight);
+            h_Deta_Dphi_flavor_binned[nsign][2]->Fill(dphi[nbatch][nsign], deta[nbatch][nsign], ev_weight);
+            h_minv_pair_pt_flavor_binned[nsign][2]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight);
+        }else{
+            h_DR_flavor_binned[nsign][3]->Fill(dr[nbatch][nsign], ev_weight);
+            h_pt_asym_flavor_binned[nsign][3]->Fill(asym[nbatch][nsign], ev_weight);
+            h_pair_pt_ptlead_ratio_flavor_binned[nsign][3]->Fill(pair_pt[nbatch][nsign]/pt_lead[nbatch][nsign], ev_weight);
+            h_ptlead_pair_pt_flavor_binned[nsign][3]->Fill(pair_pt[nbatch][nsign], pt_lead[nbatch][nsign], ev_weight);
+            h_Deta_Dphi_flavor_binned[nsign][3]->Fill(dphi[nbatch][nsign], deta[nbatch][nsign], ev_weight);
+            h_minv_pair_pt_flavor_binned[nsign][3]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight);
+        }
+
+        if (from_same_ancestors[nbatch][nsign]){ // from the same ancestors and not the same b
+            for (int kgrp = 0; kgrp < nAncestorGroups; kgrp++){
+                if (m1_ancestor_category[nbatch][nsign] == kgrp){
+                    h_DR_ancestor_binned[nsign][kgrp]->Fill(dr[nbatch][nsign], ev_weight);
+                    h_pt_asym_ancestor_binned[nsign][kgrp]->Fill(asym[nbatch][nsign], ev_weight);
+                    h_pair_pt_ptlead_ratio_ancestor_binned[nsign][kgrp]->Fill(pair_pt[nbatch][nsign]/pt_lead[nbatch][nsign], ev_weight);
+                    h_ptlead_pair_pt_ancestor_binned[nsign][kgrp]->Fill(pair_pt[nbatch][nsign], pt_lead[nbatch][nsign], ev_weight);
+                    h_Deta_Dphi_ancestor_binned[nsign][kgrp]->Fill(dphi[nbatch][nsign], deta[nbatch][nsign], ev_weight);
+                    h_minv_pair_pt_ancestor_binned[nsign][kgrp]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight);
+                    h_mQQ_ancestor_binned[nsign][kgrp]->Fill(mQQ[nbatch][nsign],ev_weight);
+                    h_mQQ_Q_ratio_ancestor_binned[nsign][kgrp]->Fill(mQQ[nbatch][nsign] / Q[nbatch][nsign], ev_weight);
+                    h_mQQ_mHard_ratio_ancestor_binned[nsign][kgrp]->Fill(mQQ[nbatch][nsign] / mHard_relevant[nbatch][nsign], ev_weight);
+                    is_filled = true;
+                    break;
+                }
             }
         }
     }
-    // }
-
+    
     if (!is_filled){
         h_DR_ancestor_binned[nsign][nAncestorGroups+1]->Fill(dr[nbatch][nsign], ev_weight);
         h_pt_asym_ancestor_binned[nsign][nAncestorGroups+1]->Fill(asym[nbatch][nsign], ev_weight);
@@ -183,6 +215,17 @@ void MuonPairPlottingPowheg::WriteOutput(){
                 h_mQQ_ancestor_binned[ksign][kgrp]->Write();
                 h_mQQ_Q_ratio_ancestor_binned[ksign][kgrp]->Write();
                 h_mQQ_mHard_ratio_ancestor_binned[ksign][kgrp]->Write();
+            }
+            for (int kflav = 0; kflav < nFlavors; kflav++){
+                h_DR_flavor_binned[ksign][kflav]->Write();
+                h_pt_asym_flavor_binned[ksign][kflav]->Write();
+                h_pair_pt_ptlead_ratio_flavor_binned[ksign][kflav]->Write();
+                h_ptlead_pair_pt_flavor_binned[ksign][kflav]->Write();
+                h_Deta_Dphi_flavor_binned[ksign][kflav]->Write();
+                h_minv_pair_pt_flavor_binned[ksign][kflav]->Write();
+                // h_mQQ_flavor_binned[ksign][kflav]->Write();
+                // h_mQQ_Q_ratio_flavor_binned[ksign][kflav]->Write();
+                // h_mQQ_mHard_ratio_flavor_binned[ksign][kflav]->Write();
             }
 
             for (unsigned int jdphi = 0; jdphi < 2; jdphi++){

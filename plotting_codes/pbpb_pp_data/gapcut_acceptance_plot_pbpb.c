@@ -117,7 +117,7 @@ void gapcut_acceptance_plot_pbpb(){
 		    		l->SetBorderSize(0);
 		    		l->SetFillStyle(0);
 		    		l->SetTextFont(42);
-		    		l->SetMargin(0.02);
+		    		l->SetMargin(0.2);
 		    		l->SetTextColor(1);
 		    		vl.push_back(l);
 

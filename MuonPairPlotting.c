@@ -93,6 +93,8 @@ void MuonPairPlotting::FillCtrBinnedHistograms(int ndr, int nctr_bin, int nctr_i
         h_ctrbin_eta_avg_Deta[ndr][nctr_bin][nsign][1]->Fill(deta[ndr][nctr_intvl][nsign],etaavg[ndr][nctr_intvl][nsign]);
         h_ctrbin_ptlead_pair_pt[ndr][nctr_bin][nsign][1]->Fill(pair_pt[ndr][nctr_intvl][nsign],m1pt[ndr][nctr_intvl][nsign]);
         h_ctrbin_minv_pair_pt[ndr][nctr_bin][nsign][1]->Fill(pair_pt[ndr][nctr_intvl][nsign],minv[ndr][nctr_intvl][nsign]);
+        h_ctrbin_minv_pair_pt_zoomin[ndr][nctr_bin][nsign][1]->Fill(pair_pt[ndr][nctr_intvl][nsign],minv[ndr][nctr_intvl][nsign]);
+        h_ctrbin_minv_pair_pt_log[ndr][nctr_bin][nsign][1]->Fill(pair_pt[ndr][nctr_intvl][nsign],minv[ndr][nctr_intvl][nsign]);
         h_ctrbin_eta_avg_pair_eta[ndr][nctr_bin][nsign][1]->Fill(pair_eta[ndr][nctr_intvl][nsign],etaavg[ndr][nctr_intvl][nsign]);
 
         if (ndr == 2){ //no delta R cut

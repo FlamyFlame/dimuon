@@ -72,7 +72,7 @@ void dphi_photo_cut_one_mode(bool ratio){
   l->SetFillStyle(0);
   l->SetTextFont(42);
   l->SetTextSize(l->GetTextSize()*3);
-  l->SetMargin(0.02);
+  l->SetMargin(0.2);
   l->SetTextColor(1);
 
   for (unsigned int jdt = 0; jdt < nDtTypes; jdt++){

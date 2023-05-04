@@ -108,7 +108,7 @@ void plot_powheg_data_compr_single_kinematic(std::string kin, bool projx_2d, boo
       l->SetFillStyle(0);
       l->SetTextFont(42);
       // l->SetTextSize(20);
-      l->SetMargin(0.02);
+      l->SetMargin(0.2);
       l->SetTextColor(1);
 
       for (unsigned int idt = 0; idt < nDtTypes; idt++){

@@ -83,7 +83,7 @@ void plot_mc_truth_pt_ratios_one_norm_mode(bool norm_unity){ // normalized to un
       l->SetBorderSize(0);
       l->SetFillStyle(0);
       l->SetTextFont(43);
-      l->SetMargin(0.02);
+      l->SetMargin(0.2);
       l->SetTextColor(1);
 
       for (unsigned int ksign = 0; ksign < nSigns; ksign++){
