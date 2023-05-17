@@ -10,3 +10,5 @@ for n in $(ls hard_scatt*); do newn=$(echo $n | sed 's/hard_scatt/hard_scatt_nea
 for n in $(ls *png); do mv $n "pythia_"$n; done
 for n in $(ls *png); do newn=${n%.png}; mv $n $newn"_near_away.png"; done
 for n in $(ls *unity*png); do newn=${n%_unity_near_away.png}; mv $n $newn"_near_away_unit.png"; done
+
+for file in $(ls log*); do tar -xzf $file --wildcards '*log.generate*'; done

@@ -8,6 +8,8 @@
 #include "TH2.h"
 #include "TCanvas.h"
 #include<algorithm>
+#include "/usatlas/u/yuhanguo/plotstyle/AtlasStyle.C"
+#include "/usatlas/u/yuhanguo/plotstyle/AtlasUtils.C"
 // #include "string"
 // #include "time.h"
 // #include "struct_hist.h"
@@ -74,32 +76,26 @@ void hist_helper(TH1* h, float norm, std::string ytitle=""){
   if (ytitle.length() != 0){
     h->GetYaxis()->SetTitle(ytitle.c_str());
   }
-  h->SetMarkerStyle(20);
-  h->SetMarkerSize(4);
-  h->SetLineWidth(2);
-  h->GetYaxis()->SetLabelFont(43);
-  h->GetYaxis()->SetLabelSize(32);
-  h->GetYaxis()->SetLabelOffset(0.01);
-  h->GetYaxis()->SetTitleFont(43);
-  h->GetYaxis()->SetTitleSize(32);
-  h->GetYaxis()->SetTitleOffset(2);
-  h->GetXaxis()->SetLabelFont(43);
-  h->GetXaxis()->SetLabelSize(32);
-  h->GetXaxis()->SetLabelOffset(0.02);
-  h->GetXaxis()->SetTitleFont(43);  
-  h->GetXaxis()->SetTitleSize(32);
-  h->GetXaxis()->SetTitleOffset(1);
-  // h->GetYaxis()->SetTitleOffset(h->GetYaxis()->GetTitleOffset()*0.8);
-    // h->GetXaxis()->SetTitleOffset(h->GetXaxis()->GetTitleOffset()*0.8);
-  // h->GetXaxis()->SetTitleSize(h->GetXaxis()->GetTitleSize()*1.8);
-    // h->GetXaxis()->SetLabelSize(h->GetXaxis()->GetLabelSize()*1.35);
-    // h->GetYaxis()->SetTitleSize(h->GetYaxis()->GetTitleSize()*1.8);
-    // h->GetYaxis()->SetLabelSize(h->GetYaxis()->GetLabelSize()*1.35);
-    // h->GetZaxis()->SetLabelSize(h->GetZaxis()->GetLabelSize()*1.35);
+  // h->SetMarkerStyle(20);
+  // h->SetMarkerSize(4);
+  // h->SetLineWidth(2);
+  // h->GetYaxis()->SetLabelFont(43);
+  // h->GetYaxis()->SetLabelSize(32);
+  // h->GetYaxis()->SetLabelOffset(0.01);
+  // h->GetYaxis()->SetTitleFont(43);
+  // h->GetYaxis()->SetTitleSize(32);
+  // h->GetYaxis()->SetTitleOffset(2);
+  // h->GetXaxis()->SetLabelFont(43);
+  // h->GetXaxis()->SetLabelSize(32);
+  // h->GetXaxis()->SetLabelOffset(0.02);
+  // h->GetXaxis()->SetTitleFont(43);  
+  // h->GetXaxis()->SetTitleSize(32);
+  // h->GetXaxis()->SetTitleOffset(1);
 }
 
-void plot_pp_pbpb_compr_single_kin(std::string kin, bool projx_2d, bool projy_2d, std::string kin1d, std::string kin_title, bool near_side_only = false, bool logx=false){
+void plot_pp_pbpb_compr_single_kin(std::string kin, bool projx_2d, bool projy_2d, std::string kin1d, std::string kin_title, bool logx=false){
 
+  SetAtlasStyle();
   initialize(kin);
   TH2D* h2d;
 
@@ -133,13 +129,13 @@ void plot_pp_pbpb_compr_single_kin(std::string kin, bool projx_2d, bool projy_2d
       }
 
       h[nLines-1][ksign][lgap]->Scale(1./1000.);
-      hist_helper(h[nLines-1][ksign][lgap], norm_factor[nCtrBins-1], "#frac{1}{T_{AA}} #frac{1}{N_{coll}} #frac{dN}{d " + kin_title + "} [nb]");
+      // hist_helper(h[nLines-1][ksign][lgap], norm_factor[nCtrBins-1], "#frac{1}{T_{AA}} #frac{1}{N_{coll}} #frac{dN}{d " + kin_title + "} [nb]");
 
 
       for (unsigned int subpl = 0; subpl < 2; subpl++){
         c->cd(ksign * 2 + subpl + 1);
-        gPad->SetLeftMargin(0.16);
-        gPad->SetBottomMargin(0.135);
+        // gPad->SetLeftMargin(0.16);
+        // gPad->SetBottomMargin(0.135);
 
         // TLegend* l = new TLegend(0.18,0.64,0.53,0.87);
         TLegend* l = new TLegend(0.6,0.67,0.9,0.9);
@@ -219,7 +215,7 @@ void plot_pp_pbpb_compr_single_kin(std::string kin, bool projx_2d, bool projy_2d
       }
     }
 
-    c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/pbpb_pp_compr/%s_pp_pbpb_compr_gapcut%d.png", kin1d.c_str(), lgap+1));
+    c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/pbpb_pp_compr/%s_pp_pbpb_compr_gapcut%d_atlasstyle.png", kin1d.c_str(), lgap+1));
     c->Close();
     delete c;
   }

@@ -31,8 +31,8 @@ private:
 
     double crossx_cut;
     double filter_effcy;
-    double filter_effcy_bb = 0.0003774031;
-    double filter_effcy_cc = 0.000005964574;
+    double filter_effcy_bb = 0.003;
+    double filter_effcy_cc = 0.001108;
 
     static const int nBatches = 6;
     std::string mcdir = "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/";

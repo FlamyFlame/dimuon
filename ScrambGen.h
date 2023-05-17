@@ -26,15 +26,24 @@ private:
    //TChain          *fChain[ParamsSet::ndRselcs];
 
 
-   // int nScramb[nCtrBins];
-   int nScramb[nCtrBins][ParamsSet::nSigns] = {{6417170, 7166880}, {2041080, 2584180}, {431020, 693860}, {61550, 151490}, {7120, 488690}};
+   // int nScramb[nCtrBins][ParamsSet::nSigns] = {{6417170, 7166880}, {2041080, 2584180}, {431020, 693860}, {61550, 151490}, {7120, 488690}};
+   // std::vector<std::vector<int>> nScramb_ss = {{216222}, {176461}, {138893, 105992}, {77987, 56988}, {40304, 27617, 18393, 11999}, {7655, 4810, 2835, 1729, 973, 571}};
+   // std::vector<std::vector<int>> nScramb_op = {{218774}, {181482}, {146571, 115040}, {87534, 65863}, {48612, 35240, 24965, 17274}, {11861, 8168, 5298, 3421, 2127, 1412}};
 
    ParamsSet pms;
-   // static const unsigned int ctr_step = 5;
-   static const unsigned int nctr_intvls = 20;
-   static const int nCtrBins = 6;
+   static const unsigned int ctr_step = 5;
+   // static const unsigned int nctr_intvls = 20;
+   static const unsigned int nctr_intvls = 17;
+   // static const int nCtrBins = 6;
    // 0-5, 5-10, 10-20, 20-30, 30-50, 50-80
-   std::vector<std::vector<int>> ctrBins = {{0},{1},{2,3},{4,5},{6,7,8,9},{10,11,12,13,14,15}}; // centrality bins as collections of centrality intervals
+   // std::vector<std::vector<int>> ctrBins = {{0},{1},{2,3},{4,5},{6,7,8,9},{10,11,12,13,14,15}}; // centrality bins as collections of centrality intervals
+
+
+   // std::vector<std::vector<int>> nScramb = {{216222, 176461, 138893, 105992, 77987, 56988, 40304, 27617, 18393, 11999, 7655, 4810, 2835, 1729, 973, 571},
+                                            // {218774, 181482, 146571, 115040, 87534, 65863, 48612, 35240, 24965, 17274, 11861, 8168, 5298, 3421, 2127, 1412}};
+
+   std::vector<int> nScrambOp = {5541520, 4502430, 3606750, 2843530, 2201830, 1670710, 1239200, 896364, 631257, 432928, 290431, 192818, 129140, 88450, 59801, 32245};
+   std::vector<int> nScrambSpillOp = {5541520, 4502430, 3606750, 2843530, 2201830, 1670710, 1239200, 896364, 631257, 432928, 290431, 192818, 129140, 88450, 59801, 32245};
 
    TFile* inFile = nullptr;
    TFile* outFile = nullptr;

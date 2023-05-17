@@ -19,8 +19,8 @@ class SimpleOutput{
 private:
 // --------------------- general settings ---------------------------
 
-    float filter_effcy_bb = 0.0003774031;
-    float filter_effcy_cc = 0.000005964574;
+    float filter_effcy_bb = 0.003;
+    float filter_effcy_cc = 0.001108;
 
     // ParamsSet pms;
 

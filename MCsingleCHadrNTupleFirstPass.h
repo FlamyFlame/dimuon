@@ -30,8 +30,8 @@ private:
 
     double crossx_cut;
     double filter_effcy;
-    double filter_effcy_bb = 0.0003774031;
-    double filter_effcy_cc = 0.000005964574;
+    double filter_effcy_bb = 0.003;
+    double filter_effcy_cc = 0.001108;
     // static const int nMCmodes = 2;
 
     ParamsSet pms;
@@ -464,8 +464,6 @@ void MCsingleCHadrNTupleFirstPass::InitOutput(){
         }
     }
 
-    // float filter_effcy_bb = 0.0003774031;
-    // float filter_effcy_cc = 0.000005964574;
     // static const int nweight_bins = 40;
     // float weight_logpow_bb = 0.0711;
     // float weight_logpow_cc = 0.1254;

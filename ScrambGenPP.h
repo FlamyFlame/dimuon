@@ -19,8 +19,6 @@ private:
    int nScramb[ParamsSet::nSigns] = {8213832,21092256};
 
    ParamsSet pms;
-   static const unsigned int ctr_step = 5;
-   static const unsigned int nctr_intvls = 20;
 
 
    TFile* inFile = nullptr;
@@ -85,7 +83,7 @@ void ScrambSampleGenPP::InitInput(){
    inTree->SetBranchAddress("z0"           , &z0);
    inTree->SetBranchAddress("charge"       , &charge);
    inTree->SetBranchAddress("quality"      , &quality);
-   inTree->SetBranchAddress("ev_num"            , &event_num);
+   inTree->SetBranchAddress("ev_num"       , &event_num);
 }
 
 void ScrambSampleGenPP::InitOutput(){
