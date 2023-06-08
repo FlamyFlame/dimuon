@@ -25,7 +25,7 @@ class MuonNTupleFirstPassPP{
 private:
 // --------------------- general settings ---------------------------
 
-    int mode = 4;
+    int mode = 3;
     ParamsSet pms;
     
 // --------------------- input files & trees & data for setting branches---------------------------

@@ -30,8 +30,11 @@ private:
     // bool isScram = false;
 
   	ParamsSet pms;
+
     static const int nCtrIntvls = 16; // number of size-5% small centrality intervals
     static const int nCtrBins = 6;
+    static const int ndphis = 2;
+
     // 0-5, 5-10, 10-20, 20-30, 30-50, 50-80
     std::vector<std::vector<int>> ctrBins = {{0},{1},{2,3},{4,5},{6,7,8,9},{10,11,12,13,14,15}}; // centrality bins as collections of centrality intervals
     int scaleFactorCtrs[nCtrBins] = {1,1,1,1,1,1}; // no rebinning
@@ -44,25 +47,25 @@ private:
 
     TH1D* h_FCal_Et[ParamsSet::ndRselcs];
     // TH1D* h_deltaP_overP[ParamsSet::ndRselcs];
-    TH1D* h_pair_dP_overP[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    TH1D* h_Dphi[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    TH1D* h_DR[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    TH1D* h_pt_asym[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    TH1D* h_pair_pt_ptlead_ratio[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    // TH1D* h_Minv[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    // TH1D* h_pt_lead[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    // TH1D* h_eta_avg[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    // TH1D* h_pair_pt[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    // TH1D* h_pair_eta[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    TH1D* h_pair_y[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    TH2D* h_eta_avg_Dphi[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    TH2D* h_Deta_Dphi[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    TH2D* h_eta1_eta2[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    TH2D* h_eta_avg_Deta[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    TH2D* h_eta_avg_pair_eta[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    TH2D* h_pt1_pt2[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    TH2D* h_ptlead_pair_pt[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    TH2D* h_minv_pair_pt[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    TH1D* h_pair_dP_overP[ParamsSet::ndRselcs][ndphis][ParamsSet::nSigns];
+    TH1D* h_Dphi[ParamsSet::ndRselcs][ndphis][ParamsSet::nSigns];
+    TH1D* h_DR[ParamsSet::ndRselcs][ndphis][ParamsSet::nSigns];
+    TH1D* h_pt_asym[ParamsSet::ndRselcs][ndphis][ParamsSet::nSigns];
+    TH1D* h_pair_pt_ptlead_ratio[ParamsSet::ndRselcs][ndphis][ParamsSet::nSigns];
+    // TH1D* h_Minv[ParamsSet::ndRselcs][ndphis][ParamsSet::nSigns];
+    // TH1D* h_pt_lead[ParamsSet::ndRselcs][ndphis][ParamsSet::nSigns];
+    // TH1D* h_eta_avg[ParamsSet::ndRselcs][ndphis][ParamsSet::nSigns];
+    // TH1D* h_pair_pt[ParamsSet::ndRselcs][ndphis][ParamsSet::nSigns];
+    // TH1D* h_pair_eta[ParamsSet::ndRselcs][ndphis][ParamsSet::nSigns];
+    TH1D* h_pair_y[ParamsSet::ndRselcs][ndphis][ParamsSet::nSigns];
+    TH2D* h_eta_avg_Dphi[ParamsSet::ndRselcs][ndphis][ParamsSet::nSigns];
+    TH2D* h_Deta_Dphi[ParamsSet::ndRselcs][ndphis][ParamsSet::nSigns];
+    TH2D* h_eta1_eta2[ParamsSet::ndRselcs][ndphis][ParamsSet::nSigns];
+    TH2D* h_eta_avg_Deta[ParamsSet::ndRselcs][ndphis][ParamsSet::nSigns];
+    TH2D* h_eta_avg_pair_eta[ParamsSet::ndRselcs][ndphis][ParamsSet::nSigns];
+    TH2D* h_pt1_pt2[ParamsSet::ndRselcs][ndphis][ParamsSet::nSigns];
+    TH2D* h_ptlead_pair_pt[ParamsSet::ndRselcs][ndphis][ParamsSet::nSigns];
+    TH2D* h_minv_pair_pt[ParamsSet::ndRselcs][ndphis][ParamsSet::nSigns];
 
     TH1D* h_ctrbin_pair_dP_overP[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH1D* h_ctrbin_Dphi[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns][ParamsSet::nGapCuts];
@@ -148,12 +151,7 @@ public:
 };
 
 
-MuonPairPlotting::MuonPairPlotting(){
-    if (isScram){
-        std::cout << "Cannot do scrambled right now. Haven't adjusted the codes for the new centrality bins." << std::endl;
-        throw std::exception();
-    }
-}
+MuonPairPlotting::MuonPairPlotting(){}
 
 
 void MuonPairPlotting::InitInput(){
@@ -225,6 +223,8 @@ void MuonPairPlotting::InitInput(){
 
 void MuonPairPlotting::InitHists(){
 
+    std::string dphis[ndphis] = {"_near", "_away"};
+
     // int nDR_bins = 200;
     // int nDphi_bins = 128;
     // int neta_bins = 100;
@@ -255,35 +255,37 @@ void MuonPairPlotting::InitHists(){
     	    h_FCal_Et[idr]=new TH1D(Form("h_FCal_Et_dr%u",idr+1),";FCal #it{E}_{T} [TeV];1/N_{evt} dN/dFCal #it{E}_{T}",550,-0.5,5.0);
     	    // h_deltaP_overP[idr] =new TH1D(Form("h_deltaP_overP_dr%u",idr+1),";(p_{ID}-p_{MS}-#Delta p_{calo}) / p_{ID};1/N_{evt} dN/d" ,deltaP_overP_nbins*2,-deltaP_overP_thrsh,deltaP_overP_thrsh);
     	
-    	    for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
+    	    for (unsigned int jdphi = 0; jdphi < ndphis; jdphi++){
+                for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
 
-            /////////// --------------------- to be updated (copy) -----------------------------
-          	
-                h_pair_dP_overP[idr][ksign] = new TH1D(Form("h_pair_dP_overP_dr%u_sign%u",idr+1,ksign+1),";(#Delta p / p)_{pair};1/N_{evt} dN/d" ,pms.deltaP_overP_nbins,0,pms.deltaP_overP_max);
-                h_Dphi[idr][ksign] = new TH1D(Form("h_Dphi_dr%u_sign%u",idr+1,ksign+1),";#Delta#phi;1/N_{evt} dN/d#Delta#phi" ,128,-pms.PI ,pms.PI );
-                h_DR[idr][ksign] = new TH1D(Form("h_DR_dr%u_sign%u",idr+1,ksign+1),";#Delta R;1/N_{evt} dN/d#Delta R", pms.deltaR_nbins[idr],0,pms.deltaR_thrsh[idr]);
-                h_pt_asym[idr][ksign] = new TH1D(Form("h_pt_asym_dr%u_sign%u",idr+1,ksign+1),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", 100,0,1.);
-                h_pair_pt_ptlead_ratio[idr][ksign] = new TH1D(Form("h_pair_pt_ptlead_ratio_dr%u_sign%u",idr+1,ksign+1),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", 100,0,2.);
-                // h_Minv[idr][ksign] = new TH1D(Form("h_Minv_dr%u_sign%u",idr+1,ksign+1),";m_{#mu#mu} [GeV];1/N_{evt} dN/dm_{#mu#mu}", pms.minv_nbins[idr],0   ,pms.minv_max[idr]);
-                // h_pt_lead[idr][ksign] = new TH1D(Form("h_pt_lead_dr%u_sign%u",idr+1,ksign+1),";p_{T}^{lead} [GeV];1/N_{evt} dN/dp_{T}^{lead}" ,pms.npt_bins,pms.pTBins );
-                // h_eta_avg[idr][ksign] = new TH1D(Form("h_eta_avg_dr%u_sign%u",idr+1,ksign+1),";#bar{#eta};1/N_{evt} dN/d#bar{#eta}",100,-2.4,2.4);
-                // h_pair_pt[idr][ksign] = new TH1D(Form("h_pair_pt_dr%u_sign%u",idr+1,ksign+1),";p_{T}^{pair} [GeV];1/N_{evt} dN/dp_{T}^{pair}" ,pms.npairPT_bins,pms.pairPTBins[ksign][idr] );
-                // h_pair_eta[idr][ksign] = new TH1D(Form("h_pair_eta_dr%u_sign%u",idr+1,ksign+1),";#eta_{pair};1/N_{evt} dN/d#eta_{pair}" ,100,-2.4,2.4);
-                h_pair_y[idr][ksign] = new TH1D(Form("h_pair_y_dr%u_sign%u",idr+1,ksign+1),";y_{pair};1/N_{evt} dN/dy_{pair}" ,90,-3,3);
-                h_eta_avg_Dphi[idr][ksign] = new TH2D(Form("h_eta_avg_Dphi_dr%u_sign%u",idr+1,ksign+1),";#Delta#phi;#bar{#eta}",128,-pms.PI,pms.PI,100,-2.4,2.4);
-                h_Deta_Dphi[idr][ksign] = new TH2D(Form("h_Deta_Dphi_dr%u_sign%u",idr+1,ksign+1),";#Delta#phi;#Delta#eta",128,-pms.PI,pms.PI,200,-4.8,4.8);
-                h_eta1_eta2[idr][ksign] = new TH2D(Form("h_eta1_eta2_dr%u_sign%u",idr+1,ksign+1),";#eta_{sublead};#eta_{lead}",100,-2.4,2.4, 100,-2.4,2.4);
-                h_eta_avg_Deta[idr][ksign] = new TH2D(Form("h_eta_avg_Deta_dr%u_sign%u",idr+1,ksign+1),";#Delta#eta;#bar{#eta}",200,-4.8,4.8, 100,-2.4,2.4);
-                h_eta_avg_pair_eta[idr][ksign] = new TH2D(Form("h_eta_avg_pair_eta_dr%u_sign%u",idr+1,ksign+1),";#eta_{pair};#bar{#eta}",100,-2.4,2.4, 100,-2.4,2.4);
-                h_pt1_pt2[idr][ksign] = new TH2D(Form("h_pt1_pt2_dr%u_sign%u",idr+1,ksign+1),";p_{T}^{sublead} [GeV];p_{T}^{lead} [GeV]",pms.npt_bins,pms.pTBins,pms.npt_bins,pms.pTBins);
-                h_ptlead_pair_pt[idr][ksign] = new TH2D(Form("h_ptlead_pair_pt_dr%u_sign%u",idr+1,ksign+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][idr],pms.npt_bins,pms.pTBins);
-                h_minv_pair_pt[idr][ksign] = new TH2D(Form("h_minv_pair_pt_dr%u_sign%u",idr+1,ksign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][idr],pms.minv_nbins[idr],0,pms.minv_max[idr]);
+                /////////// --------------------- to be updated (copy) -----------------------------
+              	
+                    h_pair_dP_overP[idr][jdphi][ksign] = new TH1D(Form("h_pair_dP_overP_dr%u_%s_sign%u",idr+1,dphis[jdphi],ksign+1),";(#Delta p / p)_{pair};1/N_{evt} dN/d" ,pms.deltaP_overP_nbins,0,pms.deltaP_overP_max);
+                    h_Dphi[idr][jdphi][ksign] = new TH1D(Form("h_Dphi_dr%u_%s_sign%u",idr+1,dphis[jdphi],ksign+1),";#Delta#phi;1/N_{evt} dN/d#Delta#phi" ,128,-pms.PI ,pms.PI );
+                    h_DR[idr][jdphi][ksign] = new TH1D(Form("h_DR_dr%u_%s_sign%u",idr+1,dphis[jdphi],ksign+1),";#Delta R;1/N_{evt} dN/d#Delta R", pms.deltaR_nbins[idr],0,pms.deltaR_thrsh[idr]);
+                    h_pt_asym[idr][jdphi][ksign] = new TH1D(Form("h_pt_asym_dr%u_%s_sign%u",idr+1,dphis[jdphi],ksign+1),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", 100,0,1.);
+                    h_pair_pt_ptlead_ratio[idr][jdphi][ksign] = new TH1D(Form("h_pair_pt_ptlead_ratio_dr%u_%s_sign%u",idr+1,dphis[jdphi],ksign+1),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", 100,0,2.);
+                    // h_Minv[idr][jdphi][ksign] = new TH1D(Form("h_Minv_dr%u_%s_sign%u",idr+1,dphis[jdphi],ksign+1),";m_{#mu#mu} [GeV];1/N_{evt} dN/dm_{#mu#mu}", pms.minv_nbins[idr],0   ,pms.minv_max[idr]);
+                    // h_pt_lead[idr][jdphi][ksign] = new TH1D(Form("h_pt_lead_dr%u_%s_sign%u",idr+1,dphis[jdphi],ksign+1),";p_{T}^{lead} [GeV];1/N_{evt} dN/dp_{T}^{lead}" ,pms.npt_bins,pms.pTBins );
+                    // h_eta_avg[idr][jdphi][ksign] = new TH1D(Form("h_eta_avg_dr%u_%s_sign%u",idr+1,dphis[jdphi],ksign+1),";#bar{#eta};1/N_{evt} dN/d#bar{#eta}",100,-2.4,2.4);
+                    // h_pair_pt[idr][jdphi][ksign] = new TH1D(Form("h_pair_pt_dr%u_%s_sign%u",idr+1,dphis[jdphi],ksign+1),";p_{T}^{pair} [GeV];1/N_{evt} dN/dp_{T}^{pair}" ,pms.npairPT_bins,pms.pairPTBins[ksign][idr] );
+                    // h_pair_eta[idr][jdphi][ksign] = new TH1D(Form("h_pair_eta_dr%u_%s_sign%u",idr+1,dphis[jdphi],ksign+1),";#eta_{pair};1/N_{evt} dN/d#eta_{pair}" ,100,-2.4,2.4);
+                    h_pair_y[idr][jdphi][ksign] = new TH1D(Form("h_pair_y_dr%u_%s_sign%u",idr+1,dphis[jdphi],ksign+1),";y_{pair};1/N_{evt} dN/dy_{pair}" ,90,-3,3);
+                    h_eta_avg_Dphi[idr][jdphi][ksign] = new TH2D(Form("h_eta_avg_Dphi_dr%u_%s_sign%u",idr+1,dphis[jdphi],ksign+1),";#Delta#phi;#bar{#eta}",128,-pms.PI,pms.PI,100,-2.4,2.4);
+                    h_Deta_Dphi[idr][jdphi][ksign] = new TH2D(Form("h_Deta_Dphi_dr%u_%s_sign%u",idr+1,dphis[jdphi],ksign+1),";#Delta#phi;#Delta#eta",128,-pms.PI,pms.PI,200,-4.8,4.8);
+                    h_eta1_eta2[idr][jdphi][ksign] = new TH2D(Form("h_eta1_eta2_dr%u_%s_sign%u",idr+1,dphis[jdphi],ksign+1),";#eta_{sublead};#eta_{lead}",100,-2.4,2.4, 100,-2.4,2.4);
+                    h_eta_avg_Deta[idr][jdphi][ksign] = new TH2D(Form("h_eta_avg_Deta_dr%u_%s_sign%u",idr+1,dphis[jdphi],ksign+1),";#Delta#eta;#bar{#eta}",200,-4.8,4.8, 100,-2.4,2.4);
+                    h_eta_avg_pair_eta[idr][jdphi][ksign] = new TH2D(Form("h_eta_avg_pair_eta_dr%u_%s_sign%u",idr+1,dphis[jdphi],ksign+1),";#eta_{pair};#bar{#eta}",100,-2.4,2.4, 100,-2.4,2.4);
+                    h_pt1_pt2[idr][jdphi][ksign] = new TH2D(Form("h_pt1_pt2_dr%u_%s_sign%u",idr+1,dphis[jdphi],ksign+1),";p_{T}^{sublead} [GeV];p_{T}^{lead} [GeV]",pms.npt_bins,pms.pTBins,pms.npt_bins,pms.pTBins);
+                    h_ptlead_pair_pt[idr][jdphi][ksign] = new TH2D(Form("h_ptlead_pair_pt_dr%u_%s_sign%u",idr+1,dphis[jdphi],ksign+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][idr],pms.npt_bins,pms.pTBins);
+                    h_minv_pair_pt[idr][jdphi][ksign] = new TH2D(Form("h_minv_pair_pt_dr%u_%s_sign%u",idr+1,dphis[jdphi],ksign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][idr],pms.minv_nbins[idr],0,pms.minv_max[idr]);
 
-                // int nminvbins = pms.minv_bins[isign][idr].size(); // size of a vector
-                // double minv_arr[pms.minv_nbins[idr]+1];
-                // std::copy(pms.minv_bins[ksign][idr].begin(),pms.minv_bins[ksign][idr].end(),minv_arr);
-                // h_minv_pair_pt[idr][ksign] = new TH2D(Form("h_minv_pair_pt_dr%u_sign%u",idr+1,ksign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][idr],pms.minv_nbins[idr],minv_arr);
-    	  	}
+                    // int nminvbins = pms.minv_bins[isign][idr].size(); // size of a vector
+                    // double minv_arr[pms.minv_nbins[idr]+1];
+                    // std::copy(pms.minv_bins[ksign][idr].begin(),pms.minv_bins[ksign][idr].end(),minv_arr);
+                    // h_minv_pair_pt[idr][jdphi][ksign] = new TH2D(Form("h_minv_pair_pt_dr%u__sign%u",idr+1,ksign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][idr],pms.minv_nbins[idr],minv_arr);
+        	  	}
+            }
         }
     }
     else if (mode == 2){

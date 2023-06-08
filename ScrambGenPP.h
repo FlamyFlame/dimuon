@@ -59,7 +59,8 @@ private:
    void InitOutput();
    void ReadData();
    void GenerateRandPair(int num_muon, bool opsign_only);
-   bool CheckResonance();
+   bool ResonanceCut();
+   bool PhotoProductionCut();
    void ImplementOneScramPair(int num_muon, bool opsign_only = false);
 
 public:
@@ -73,7 +74,7 @@ ScrambSampleGenPP::ScrambSampleGenPP(){
 
 void ScrambSampleGenPP::InitInput(){
 
-   inFile = new TFile("single_muon_trees_pp.root","read");
+   inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/single_muon_trees_pp.root","read");
    inTree = (TTree*) inFile->Get("muon_tree");
    inTree->SetBranchAddress("pt"           , &pt);
    inTree->SetBranchAddress("eta"          , &eta);
@@ -87,7 +88,7 @@ void ScrambSampleGenPP::InitInput(){
 }
 
 void ScrambSampleGenPP::InitOutput(){
-   outFile = new TFile("scrambled_muon_pairs_pp.root","recreate");
+   outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/scrambled_muon_pairs_pp.root","recreate");
 
    for (unsigned int idr = 0; idr < ParamsSet::ndRselcs; idr++){
       for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){

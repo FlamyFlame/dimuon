@@ -96,7 +96,7 @@ private:
 
 
 public :
-   int mode = 4;
+   int mode = 3;
    MuonNTupleFirstPass();
    ~MuonNTupleFirstPass(){}
    void Run();

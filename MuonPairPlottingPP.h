@@ -175,60 +175,58 @@ void MuonPairPlottingPP::InitInput(){
         // inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/muon_pairs_pp_1s_only.root","read");
     }
 
-    for (int idr = 0; idr < ParamsSet::ndRselcs; idr++){
-        for (int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
-            if (isScram){
-                inTree[idr][ksign] = (TTree*) inFile->Get(Form("scramb_muon_pair_tree_dr%d_sign%d",idr+1,ksign+1));  
-            }else{
-        	    inTree[idr][ksign] = (TTree*) inFile->Get(Form("muon_pair_tree_dr%d_sign%d",idr+1,ksign+1));  
-            }
-            inTree[idr][ksign]->SetBranchAddress("weight"          , &weight[idr][ksign]);
-        	inTree[idr][ksign]->SetBranchAddress("pair_dPoverP"    , &pair_dPoverP[idr][ksign]);
-        	inTree[idr][ksign]->SetBranchAddress("pt_lead"          , &pt_lead[idr][ksign]);
-        	inTree[idr][ksign]->SetBranchAddress("pair_pt"          , &pair_pt[idr][ksign]);
-        	// inTree[idr][ksign]->SetBranchAddress("pair_eta"     , &pair_eta[idr][ksign]);
-        	inTree[idr][ksign]->SetBranchAddress("pair_y"           , &pair_y[idr][ksign]);
-            inTree[idr][ksign]->SetBranchAddress("asym"             , &asym[idr][ksign]);
-        	inTree[idr][ksign]->SetBranchAddress("dpt"           , &dpt[idr][ksign]);
-        	inTree[idr][ksign]->SetBranchAddress("deta"       , &deta[idr][ksign]);
-        	inTree[idr][ksign]->SetBranchAddress("etaavg"      , &etaavg[idr][ksign]);
-        	inTree[idr][ksign]->SetBranchAddress("phiavg"            , &phiavg[idr][ksign]);
-        	inTree[idr][ksign]->SetBranchAddress("dphi"     , &dphi[idr][ksign]);
-        	inTree[idr][ksign]->SetBranchAddress("dr"        , &dr[idr][ksign]);
-        	inTree[idr][ksign]->SetBranchAddress("minv"        , &minv[idr][ksign]);
-        	inTree[idr][ksign]->SetBranchAddress("m1.pt"           , &m1pt[idr][ksign]);
-        	inTree[idr][ksign]->SetBranchAddress("m2.pt"           , &m2pt[idr][ksign]);
-        	inTree[idr][ksign]->SetBranchAddress("m1.eta"       , &m1eta[idr][ksign]);
-        	inTree[idr][ksign]->SetBranchAddress("m2.eta"       , &m2eta[idr][ksign]);
-        	inTree[idr][ksign]->SetBranchAddress("m1.phi"     	, &m1phi[idr][ksign]);
-        	inTree[idr][ksign]->SetBranchAddress("m2.phi"     	, &m2phi[idr][ksign]);
-            inTree[idr][ksign]->SetBranchAddress("m1.charge"           , &m1charge[idr][ksign]);
-            inTree[idr][ksign]->SetBranchAddress("m2.charge"           , &m2charge[idr][ksign]);
-
-            inTree[idr][ksign]->SetBranchStatus("*"                  ,0);//switch off all branches, then enable just the ones that we need
-            inTree[idr][ksign]->SetBranchStatus("weight"           ,1);
-            inTree[idr][ksign]->SetBranchStatus("pair_dPoverP"           ,1);
-            inTree[idr][ksign]->SetBranchStatus("pt_lead"           ,1);
-            inTree[idr][ksign]->SetBranchStatus("pair_pt"           ,1);
-            inTree[idr][ksign]->SetBranchStatus("pair_y"           ,1);
-            inTree[idr][ksign]->SetBranchStatus("asym"           ,1);
-            inTree[idr][ksign]->SetBranchStatus("dpt"           ,1);
-            inTree[idr][ksign]->SetBranchStatus("deta"           ,1);
-            inTree[idr][ksign]->SetBranchStatus("etaavg"           ,1);
-            inTree[idr][ksign]->SetBranchStatus("phiavg"           ,1);
-            inTree[idr][ksign]->SetBranchStatus("dphi"           ,1);
-            inTree[idr][ksign]->SetBranchStatus("dr"           ,1);
-            inTree[idr][ksign]->SetBranchStatus("minv"           ,1);
-            inTree[idr][ksign]->SetBranchStatus("m1.pt"           ,1);
-            inTree[idr][ksign]->SetBranchStatus("m2.pt"           ,1);
-            inTree[idr][ksign]->SetBranchStatus("m1.eta"           ,1);
-            inTree[idr][ksign]->SetBranchStatus("m2.eta"           ,1);
-            inTree[idr][ksign]->SetBranchStatus("m1.phi"           ,1);
-            inTree[idr][ksign]->SetBranchStatus("m2.phi"           ,1);
-            inTree[idr][ksign]->SetBranchStatus("m1.charge"           ,1);
-            inTree[idr][ksign]->SetBranchStatus("m2.charge"           ,1);
-
+    for (int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
+        if (isScram){
+            inTree[ksign] = (TTree*) inFile->Get(Form("scramb_muon_pair_tree_sign%d",ksign+1));  
+        }else{
+    	    inTree[ksign] = (TTree*) inFile->Get(Form("muon_pair_tree_sign%d",ksign+1));  
         }
+        inTree[ksign]->SetBranchAddress("weight"          , &weight[ksign]);
+    	inTree[ksign]->SetBranchAddress("pair_dPoverP"    , &pair_dPoverP[ksign]);
+    	inTree[ksign]->SetBranchAddress("pt_lead"          , &pt_lead[ksign]);
+    	inTree[ksign]->SetBranchAddress("pair_pt"          , &pair_pt[ksign]);
+    	// inTree[ksign]->SetBranchAddress("pair_eta"     , &pair_eta[ksign]);
+    	inTree[ksign]->SetBranchAddress("pair_y"           , &pair_y[ksign]);
+        inTree[ksign]->SetBranchAddress("asym"             , &asym[ksign]);
+    	inTree[ksign]->SetBranchAddress("dpt"           , &dpt[ksign]);
+    	inTree[ksign]->SetBranchAddress("deta"       , &deta[ksign]);
+    	inTree[ksign]->SetBranchAddress("etaavg"      , &etaavg[ksign]);
+    	inTree[ksign]->SetBranchAddress("phiavg"            , &phiavg[ksign]);
+    	inTree[ksign]->SetBranchAddress("dphi"     , &dphi[ksign]);
+    	inTree[ksign]->SetBranchAddress("dr"        , &dr[ksign]);
+    	inTree[ksign]->SetBranchAddress("minv"        , &minv[ksign]);
+    	inTree[ksign]->SetBranchAddress("m1.pt"           , &m1pt[ksign]);
+    	inTree[ksign]->SetBranchAddress("m2.pt"           , &m2pt[ksign]);
+    	inTree[ksign]->SetBranchAddress("m1.eta"       , &m1eta[ksign]);
+    	inTree[ksign]->SetBranchAddress("m2.eta"       , &m2eta[ksign]);
+    	inTree[ksign]->SetBranchAddress("m1.phi"     	, &m1phi[ksign]);
+    	inTree[ksign]->SetBranchAddress("m2.phi"     	, &m2phi[ksign]);
+        inTree[ksign]->SetBranchAddress("m1.charge"           , &m1charge[ksign]);
+        inTree[ksign]->SetBranchAddress("m2.charge"           , &m2charge[ksign]);
+
+        inTree[ksign]->SetBranchStatus("*"                  ,0);//switch off all branches, then enable just the ones that we need
+        inTree[ksign]->SetBranchStatus("weight"           ,1);
+        inTree[ksign]->SetBranchStatus("pair_dPoverP"           ,1);
+        inTree[ksign]->SetBranchStatus("pt_lead"           ,1);
+        inTree[ksign]->SetBranchStatus("pair_pt"           ,1);
+        inTree[ksign]->SetBranchStatus("pair_y"           ,1);
+        inTree[ksign]->SetBranchStatus("asym"           ,1);
+        inTree[ksign]->SetBranchStatus("dpt"           ,1);
+        inTree[ksign]->SetBranchStatus("deta"           ,1);
+        inTree[ksign]->SetBranchStatus("etaavg"           ,1);
+        inTree[ksign]->SetBranchStatus("phiavg"           ,1);
+        inTree[ksign]->SetBranchStatus("dphi"           ,1);
+        inTree[ksign]->SetBranchStatus("dr"           ,1);
+        inTree[ksign]->SetBranchStatus("minv"           ,1);
+        inTree[ksign]->SetBranchStatus("m1.pt"           ,1);
+        inTree[ksign]->SetBranchStatus("m2.pt"           ,1);
+        inTree[ksign]->SetBranchStatus("m1.eta"           ,1);
+        inTree[ksign]->SetBranchStatus("m2.eta"           ,1);
+        inTree[ksign]->SetBranchStatus("m1.phi"           ,1);
+        inTree[ksign]->SetBranchStatus("m2.phi"           ,1);
+        inTree[ksign]->SetBranchStatus("m1.charge"           ,1);
+        inTree[ksign]->SetBranchStatus("m2.charge"           ,1);
+
     }
 }
 

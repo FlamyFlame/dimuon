@@ -1,7 +1,7 @@
-#ifndef __MCNTupleFirstPass_C__
-#define __MCNTupleFirstPass_C__
+#ifndef __SingleCHadrMCNTupleFirstPass_C__
+#define __SingleCHadrMCNTupleFirstPass_C__
 
-#include "MCNTupleFirstPass.h"
+#include "SingleCHadrMCNTupleFirstPass.h"
 #include "Riostream.h"
 #include "TLorentzVector.h"
 #include "time.h"
@@ -41,7 +41,7 @@ enum ancestor_categories{
   incoming
 };
 
-bool MCNTupleFirstPass::PassCuts(){
+bool SingleCHadrMCNTupleFirstPass::PassCuts(){
   //Apply ALL CUTS but for resonances
 
   // NO quality cuts on the MC truth muons
@@ -69,7 +69,7 @@ bool MCNTupleFirstPass::PassCuts(){
   return true;
 }
 
-bool MCNTupleFirstPass::IsResonance(){
+bool SingleCHadrMCNTupleFirstPass::IsResonance(){
   // assuming we have already filled up the muon pair mpair
   if (mpair->same_sign) h_cutAcceptance[0]->Fill(pass_resonance + 0.5, mpair->weight);
   else{ // opposite sign
@@ -93,7 +93,7 @@ bool MCNTupleFirstPass::IsResonance(){
   return false;
 }
 
-bool MCNTupleFirstPass::IsPhotoProduction(){
+bool SingleCHadrMCNTupleFirstPass::IsPhotoProduction(){
   // A := |Delta PT| / (sum pT) < 0.05 && alpha := (pi-Dphi)/pi < 0.01
   // float A = (mpair->m1.pt - mpair->m2.pt) / (mpair->m1.pt + mpair->m2.pt);
   // assert (A >= 0);
@@ -109,7 +109,7 @@ bool MCNTupleFirstPass::IsPhotoProduction(){
 }
 
 
-int MCNTupleFirstPass::ParentGrouping(std::vector<int>& parent_ids, bool c_tag, bool prev_is_lepton){
+int SingleCHadrMCNTupleFirstPass::ParentGrouping(std::vector<int>& parent_ids, bool c_tag, bool prev_is_lepton){
 
   if (parent_ids.size() == 2 && abs(parent_ids[0]) <= 5 && parent_ids[1] == (-1) * parent_ids[0] && prev_is_lepton){
     // std::cout << "For study purpose - Drell-Yan:" << std::endl;
@@ -147,7 +147,7 @@ int MCNTupleFirstPass::ParentGrouping(std::vector<int>& parent_ids, bool c_tag, 
 }
 
 
-void MCNTupleFirstPass::GetPtEtaPhiFromBarcode(int barcode, std::vector<float>* pt_eta_phi){
+void SingleCHadrMCNTupleFirstPass::GetPtEtaPhiFromBarcode(int barcode, std::vector<float>* pt_eta_phi){
   std::vector<int>::iterator itbar = std::find(truth_barcode->begin(), truth_barcode->end(), barcode);
 
   if (itbar == truth_barcode->end()){ // found the barcode of muon1 among all truth particles
@@ -161,7 +161,7 @@ void MCNTupleFirstPass::GetPtEtaPhiFromBarcode(int barcode, std::vector<float>* 
   pt_eta_phi->push_back(truth_phi->at(itbar - truth_barcode->begin()));
 }
 
-int MCNTupleFirstPass::UpdateCurParents(bool isMuon1, std::vector<int>& cur_prt_bars, std::vector<int>& cur_prt_ids, int hf_quark_index = -1){
+int SingleCHadrMCNTupleFirstPass::UpdateCurParents(bool isMuon1, std::vector<int>& cur_prt_bars, std::vector<int>& cur_prt_ids, int hf_quark_index = -1){
   // if (mpair->m1.ev_num == 1 && !isMuon1){
   //   PrintHistory(&std::cout, true, isMuon1);
   // }
@@ -277,7 +277,7 @@ int MCNTupleFirstPass::UpdateCurParents(bool isMuon1, std::vector<int>& cur_prt_
   return 0;
 }
 
-int MCNTupleFirstPass::FindHeavyQuarks(std::vector<int>& cur_prt_ids, int quark_type, bool isMuon1, int hadron_child_id = 0){
+int SingleCHadrMCNTupleFirstPass::FindHeavyQuarks(std::vector<int>& cur_prt_ids, int quark_type, bool isMuon1, int hadron_child_id = 0){
   if (quark_type != 4 && quark_type != 5){
     std::cout << "Error:: the parameter quark_type must take value of 4 (c) or 5 (b), quitting" << std::endl;
     throw std::exception();
@@ -317,7 +317,7 @@ int MCNTupleFirstPass::FindHeavyQuarks(std::vector<int>& cur_prt_ids, int quark_
   return -1;
 }
 
-void MCNTupleFirstPass::SingleMuonAncestorTracing(bool isMuon1){
+void SingleCHadrMCNTupleFirstPass::SingleMuonAncestorTracing(bool isMuon1){
   // cout << "starting on m1/m2 ancestor tracing" << endl;
 
   std::vector<int> parent_bars;
@@ -489,7 +489,7 @@ void MCNTupleFirstPass::SingleMuonAncestorTracing(bool isMuon1){
   // }
 }
 
-int MCNTupleFirstPass::AncestorGrouping(std::vector<int>& ancestor_ids){
+int SingleCHadrMCNTupleFirstPass::AncestorGrouping(std::vector<int>& ancestor_ids){
   // incoming
   if (ancestor_ids.size() == 1 && ancestor_ids[0] == 2212)
     return incoming;
@@ -530,7 +530,7 @@ int MCNTupleFirstPass::AncestorGrouping(std::vector<int>& ancestor_ids){
   return -1;
 }
 
-void MCNTupleFirstPass::HardScatteringAnalysis(std::vector<int>& ancestor_bars, std::vector<int>& ancestor_ids, int sign_dphi_mode, int ancestor_grp){
+void SingleCHadrMCNTupleFirstPass::HardScatteringAnalysis(std::vector<int>& ancestor_bars, std::vector<int>& ancestor_ids, int sign_dphi_mode, int ancestor_grp){
   // find the outgoing particles from the hard scattering
   // record the number, and kinematics, of the hard-scattering outproducts
   // the latter in the different muon-pair-sign/dphi regions
@@ -665,7 +665,7 @@ void MCNTupleFirstPass::HardScatteringAnalysis(std::vector<int>& ancestor_bars, 
 }
 
 
-void MCNTupleFirstPass::PrintHistory(std::ostream* f, bool print_single, bool muon1_sameancestor){
+void SingleCHadrMCNTupleFirstPass::PrintHistory(std::ostream* f, bool print_single, bool muon1_sameancestor){
   // print_single: if True then print single muon history; else then print both muons' history
   // muon1_sameancestor: meaning depends on print_single
   // if (print_single): True = muon1, False = muon2
@@ -733,7 +733,7 @@ void MCNTupleFirstPass::PrintHistory(std::ostream* f, bool print_single, bool mu
 
 
 
-// void MCNTupleFirstPass::SameSignSameAncestorsAnalysis(bool near_side, bool one_b_one_btoc, bool print_history = false){
+// void SingleCHadrMCNTupleFirstPass::SameSignSameAncestorsAnalysis(bool near_side, bool one_b_one_btoc, bool print_history = false){
 //   // assume same sign & same ancestors
 
 //   TH1D* h_bb_ss_involv_osc = (near_side)? h_bb_ss_near_involv_osc : h_bb_ss_away_involv_osc;
@@ -776,7 +776,7 @@ void MCNTupleFirstPass::PrintHistory(std::ostream* f, bool print_single, bool mu
 //   }  
 // }
 
-void MCNTupleFirstPass::MuonPairTagsReinit(){
+void SingleCHadrMCNTupleFirstPass::MuonPairTagsReinit(){
   m1_c_tag = false;
   m2_c_tag = false;
   m1_osc = false;
@@ -814,7 +814,7 @@ void MCNTupleFirstPass::MuonPairTagsReinit(){
 }
 
 
-void MCNTupleFirstPass::CheckIfFromSameB(){
+void SingleCHadrMCNTupleFirstPass::CheckIfFromSameB(){
   // check if from same b
   // not necessarily [op sign + one from direct b, one from b to c]
   // can also be from some 1-to-n hadronic weak decay (so perhaps both are b to c)
@@ -844,7 +844,7 @@ void MCNTupleFirstPass::CheckIfFromSameB(){
 }
 
 
-void MCNTupleFirstPass::MuonPairAncestorTracing(){
+void SingleCHadrMCNTupleFirstPass::MuonPairAncestorTracing(){
 
   MuonPairTagsReinit();
   
@@ -853,7 +853,7 @@ void MCNTupleFirstPass::MuonPairAncestorTracing(){
   
   bool not_near = !(abs(mpair->dphi) < pms.PI / 2.);
 
-  h_parent_groups[!mpair->same_sign][not_near]->Fill(mpair->m1_parent_group + 0.5, mpair->m2_parent_group + 0.5, mpair->weight);
+  h_parent_groups[!mpair->same_sign][not_near]->Fill(mpair->m1_parent_group - 0.5, mpair->m2_parent_group - 0.5, mpair->weight);
 
   if (skip_event){ // if skip event: return without recording any ancestor-categorizing tags, since these would be inaccurate
     skipped_event_crossx += mpair->weight;
@@ -926,7 +926,7 @@ void MCNTupleFirstPass::MuonPairAncestorTracing(){
 }
 
 
-void MCNTupleFirstPass::KinematicCorrPlots(int isign, int idphi){
+void SingleCHadrMCNTupleFirstPass::KinematicCorrPlots(int isign, int idphi){
   h_pt_muon_pt_closest_hadr_ratio[isign][idphi]->Fill(mpair->m1.pt / (*m1_closest_hadron_prt_pt_eta_phi)[0],mpair->weight);
   h_pt_muon_pt_closest_hadr_ratio[isign][idphi]->Fill(mpair->m2.pt / (*m2_closest_hadron_prt_pt_eta_phi)[0],mpair->weight);
   h_pt_closest_hadr_pt_furthest_hadr_ratio[isign][idphi]->Fill((*m1_closest_hadron_prt_pt_eta_phi)[0] / (*m1_furthest_hadron_prt_pt_eta_phi)[0], mpair->weight);
@@ -942,7 +942,7 @@ void MCNTupleFirstPass::KinematicCorrPlots(int isign, int idphi){
 }
 
 
-void MCNTupleFirstPass::FillMuonPairTree(){
+void SingleCHadrMCNTupleFirstPass::FillMuonPairTree(){
   int nsign = (mpair->same_sign)? 0:1;
   muonPairOutTree[nsign]->Fill();
   for (unsigned int idr = 0; idr < pms.ndRselcs; idr++){
@@ -953,7 +953,7 @@ void MCNTupleFirstPass::FillMuonPairTree(){
 }
 
 
-void MCNTupleFirstPass::ProcessData(){
+void SingleCHadrMCNTupleFirstPass::ProcessData(){
 
   mpair = new MuonPairMC();
   int quark = (mc_mode == "mc_truth_bb")? 5:4;
@@ -1050,7 +1050,7 @@ void MCNTupleFirstPass::ProcessData(){
       if (IsResonance()) continue;
 
       // photo-production cut
-      // if (IsPhotoProduction()) continue;
+      if (IsPhotoProduction()) continue;
       
       //------------------------------------------------------------
 
@@ -1107,7 +1107,7 @@ void MCNTupleFirstPass::ProcessData(){
 }
 
 
-void MCNTupleFirstPass::HistAdjust(){
+void SingleCHadrMCNTupleFirstPass::HistAdjust(){
   // for loop over ibin: h->GetXaxis()->SetAxisLabel(ibin,label[ibin]);
   for (int ibin = 0; ibin < numCuts; ibin++){
     h_cutAcceptance[0]->GetXaxis()->SetBinLabel(ibin+1,cutLabels[ibin].c_str());
@@ -1150,7 +1150,7 @@ void MCNTupleFirstPass::HistAdjust(){
 }
 
 
-void MCNTupleFirstPass::Run(){
+void SingleCHadrMCNTupleFirstPass::Run(){
   clock_t start, end;
   double cpu_time_used;
   start = clock();

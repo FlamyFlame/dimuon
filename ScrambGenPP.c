@@ -42,7 +42,6 @@ void ScrambSampleGenPP::GenerateRandPair(int num_muon, bool opsign_only){
 		nsecond = rand()%num_muon;
 	}while((ev_num->at(nsecond) == ev_num->at(nfirst)) || (opsign_only && muon_charge->at(nsecond) == muon_charge->at(nfirst)));
 
-	mpair = new MuonPair();
 	mpair->m1.pt = muon_pt->at(nfirst);
 	mpair->m1.eta = muon_eta->at(nfirst);
 	mpair->m1.phi = muon_phi->at(nfirst);
@@ -64,32 +63,42 @@ void ScrambSampleGenPP::GenerateRandPair(int num_muon, bool opsign_only){
 	mpair->m2.ev_num = ev_num->at(nsecond);
 }
 
-bool ScrambSampleGenPP::CheckResonance(){ //assumes opposite sign; check if minv falls into any resonance range
-    if (mpair->minv > pms.minv_upper) continue; // upper cut at 80 GeV
+bool ScrambSampleGenPP::ResonanceCut(){ //assumes opposite sign; check if minv falls into any resonance range
+
+	// IMPORTANT: here we are assuming we have already filled up the muon pair (mpair)
+	if (mpair->same_sign) return false;
 	
-	bool isresonance = false;
+	if (mpair->minv > pms.minv_upper){ // upper cut at 60 GeV
+		return true;
+	}
+	
 	for (array<float,2> ires : pms.minv_cuts){
-	   if (mpair->minv > ires[0] && mpair->minv < ires[1]) isresonance = true;
+		if (mpair->minv > ires[0] && mpair->minv < ires[1]){
+			return true;
+		}
 	}
 
-	return isresonance;
+	return false;
+
+}
+
+bool ScrambSampleGenPP::PhotoProductionCut(){ 
+	return (!(mpair->same_sign) && mpair->asym < 0.05 && mpair->acop < 0.01);
 }
 
 void ScrambSampleGenPP::ImplementOneScramPair(int num_muon, bool opsign_only = false){
 
-	bool isresonance = false;
+	bool resonance_cut = false;
+	bool photoprod_cut = false;
 
 	do{
 		GenerateRandPair(num_muon, opsign_only);
 		mpair->Update();
 
-		if (opsign_only){
-			assert (!(mpair->same_sign));
-			isresonance = CheckResonance();
-		}
-		else if (!(mpair->same_sign)) isresonance = CheckResonance();
+		resonance_cut = ResonanceCut();
+		photoprod_cut = PhotoProductionCut();
 
-	}while (isresonance); // generate a new pair until we get a non-resonance pair
+	}while (resonance_cut || photoprod_cut);
 
 	if (mpair->same_sign) 	n_ss_scr_pairs++;
 	else 					n_op_scr_pairs++;
@@ -119,9 +128,11 @@ void ScrambSampleGenPP::Run(){
 	n_ss_scr_pairs = 0;
 	n_op_scr_pairs = 0;
 
+	mpair = new MuonPair();
+
 	do{
 		ImplementOneScramPair(nmuon);
-		if (n_op_scr_pairs + n_ss_scr_pairs % 1000000 == 0){
+		if (n_op_scr_pairs + n_ss_scr_pairs % 100000 == 0){
 			std::cout << "Generating the " << n_op_scr_pairs + n_ss_scr_pairs << "-th scrambled pair" << std::endl;
 		}
 	}while (n_ss_scr_pairs < nScramb[0]);
@@ -144,6 +155,8 @@ void ScrambSampleGenPP::Run(){
    	delete ev_num;
 
 	outFile->Write();
+
+	delete mpair;
 
 	end = clock();
 	cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;

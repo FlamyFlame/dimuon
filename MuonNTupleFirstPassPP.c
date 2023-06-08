@@ -167,11 +167,7 @@ void MuonNTupleFirstPassPP::ProcessData(){
       if (IsResonance()) continue;
 
       // photo-production cut
-      if (IsPhotoProduction()){
-        // h_dphi_failing_photoprod->Fill(mpair->dphi);
-        // h_asym_acop_failing_photoprod->Fill(mpair->acop,mpair->asym);
-        continue;
-      }
+      // if (IsPhotoProduction()) continue;
       
       //------------------------------------------------------------
 

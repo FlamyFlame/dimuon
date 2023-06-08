@@ -6,6 +6,8 @@ class ParamsSet{
 public:
    	static const unsigned int ndRselcs=3;
    	static const unsigned int ndphiselcs=3;
+   	static const unsigned int ndphiRegions=3;
+   	static const unsigned int ndetaRegions=2;
    	static const unsigned int nCtrBins=5; // number of coarse bins; each can be studied by itself
    	static const unsigned int nPtBins=5;
    	static const unsigned int nSigns=2;

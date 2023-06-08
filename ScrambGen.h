@@ -1,7 +1,6 @@
 #ifndef ScrambSampleGen_h
 #define ScrambSampleGen_h
 // #define nSigns 2
-// #define nScramb 10000000 //Scramb sample size for each centrality bin
 // #define nScramb 50000 //Scramb sample size for each centrality bin
 
 //#include "struct_muon.h" 
@@ -20,61 +19,71 @@
 
 class ScrambSampleGen{
 private:
-	//static const unsigned int ParamsSet::ndRselcs = 3;
-   // static const unsigned int nCtrBins = 5;
-
-   //TChain          *fChain[ParamsSet::ndRselcs];
-
-
-   // int nScramb[nCtrBins][ParamsSet::nSigns] = {{6417170, 7166880}, {2041080, 2584180}, {431020, 693860}, {61550, 151490}, {7120, 488690}};
-   // std::vector<std::vector<int>> nScramb_ss = {{216222}, {176461}, {138893, 105992}, {77987, 56988}, {40304, 27617, 18393, 11999}, {7655, 4810, 2835, 1729, 973, 571}};
-   // std::vector<std::vector<int>> nScramb_op = {{218774}, {181482}, {146571, 115040}, {87534, 65863}, {48612, 35240, 24965, 17274}, {11861, 8168, 5298, 3421, 2127, 1412}};
 
    ParamsSet pms;
-   static const unsigned int ctr_step = 5;
-   // static const unsigned int nctr_intvls = 20;
-   static const unsigned int nctr_intvls = 17;
-   // static const int nCtrBins = 6;
+   static constexpr float ctr_step = 5.;
+   static const unsigned int nctr_intvls = 16;
+   int nmodes = 3;
    // 0-5, 5-10, 10-20, 20-30, 30-50, 50-80
    // std::vector<std::vector<int>> ctrBins = {{0},{1},{2,3},{4,5},{6,7,8,9},{10,11,12,13,14,15}}; // centrality bins as collections of centrality intervals
 
 
-   // std::vector<std::vector<int>> nScramb = {{216222, 176461, 138893, 105992, 77987, 56988, 40304, 27617, 18393, 11999, 7655, 4810, 2835, 1729, 973, 571},
-                                            // {218774, 181482, 146571, 115040, 87534, 65863, 48612, 35240, 24965, 17274, 11861, 8168, 5298, 3421, 2127, 1412}};
+   // std::vector<int> nScramb_op = {2216608, 1800972, 1442700, 1137412, 880732, 668284, 495680, 358545, 252502, 173171, 116172, 77127, 51656, 35380, 23920, 12898};
+   // std::vector<int> nScrambLeftSpill_op = {483028, 388815, 308215, 240132, 183470, 137135, 100033, 71068, 49146, 33172, 22052, 14690, 9991, 6862, 4206};
+   // std::vector<int> nScrambRightSpill_op = {517644, 418652, 333638, 261503, 201156, 151500, 111442, 79887, 55739, 37904, 25287, 16794, 11329, 7798, 5107};
+   // std::vector<int> nScramb_ss= {2175940, 1740376, 1368424, 1054992, 794980, 583300, 414856, 284559, 187316, 118032, 71615, 42972, 27012, 18640, 12764, 4292};
+   // std::vector<int> nScrambLeftSpill_ss= {469336, 371204, 288128, 218833, 162044, 116490, 80896, 53990, 34498, 21147, 12664, 7776, 5210, 3692, 1950};
+   // std::vector<int> nScrambRightSpill_ss= {505608, 402180, 314227, 240479, 179663, 130505, 91732, 62072, 40250, 24994, 15030, 9085, 5887, 4161, 2635};
+   
+   // // the 3 lines are: within one centrality bin, "left spill" and "right spill"
+   std::vector<std::vector<int>> nScramb_op = 
+      {{2216608, 1800972, 1442700, 1137412, 880732, 668284, 495680, 358545, 252502, 173171, 116172, 77127, 51656, 35380, 23920, 12898},
+       {0, 483028, 388815, 308215, 240132, 183470, 137135, 100033, 71068, 49146, 33172, 22052, 14690, 9991, 6862, 4206},
+       {517644, 418652, 333638, 261503, 201156, 151500, 111442, 79887, 55739, 37904, 25287, 16794, 11329, 7798, 5107, 0}};
+   std::vector<std::vector<int>> nScramb_ss= 
+      {{2175940, 1740376, 1368424, 1054992, 794980, 583300, 414856, 284559, 187316, 118032, 71615, 42972, 27012, 18640, 12764, 4292},
+       {0, 469336, 371204, 288128, 218833, 162044, 116490, 80896, 53990, 34498, 21147, 12664, 7776, 5210, 3692, 1950},
+       {505608, 402180, 314227, 240479, 179663, 130505, 91732, 62072, 40250, 24994, 15030, 9085, 5887, 4161, 2635, 0}};
 
-   std::vector<int> nScrambOp = {5541520, 4502430, 3606750, 2843530, 2201830, 1670710, 1239200, 896364, 631257, 432928, 290431, 192818, 129140, 88450, 59801, 32245};
-   std::vector<int> nScrambSpillOp = {5541520, 4502430, 3606750, 2843530, 2201830, 1670710, 1239200, 896364, 631257, 432928, 290431, 192818, 129140, 88450, 59801, 32245};
+   // std::vector<std::vector<int>> nScramb_op = 
+   //    {{20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20},
+   //     {15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15},
+   //     {15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15}};
+   // std::vector<std::vector<int>> nScramb_ss= 
+   //    {{15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15},
+   //     {10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10},
+   //     {10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10}};
 
    TFile* inFile = nullptr;
    TFile* outFile = nullptr;
-   TTree *inTree[nCtrBins];
-   TTree *outTree[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns];
+   TTree *inTree[nctr_intvls];
+   TTree *outTree[ParamsSet::ndRselcs][nctr_intvls][ParamsSet::nSigns];
 
    //these variables are for setting branch address (per entry) for the input trees
-   float pt[nCtrBins];
-   float eta[nCtrBins];
-   float phi[nCtrBins];
-   float dP_overP[nCtrBins];
-   float d0[nCtrBins];
-   float z0[nCtrBins];
-   int charge[nCtrBins];
-   int quality[nCtrBins];
-   int event_num[nCtrBins];
-   int centrality[nCtrBins];
-   float FCal_Et[nCtrBins];
+   float pt[nctr_intvls];
+   float eta[nctr_intvls];
+   float phi[nctr_intvls];
+   float dP_overP[nctr_intvls];
+   float d0[nctr_intvls];
+   float z0[nctr_intvls];
+   int charge[nctr_intvls];
+   int quality[nctr_intvls];
+   int event_num[nctr_intvls];
+   int centrality[nctr_intvls];
+   float FCal_Et[nctr_intvls];
 
    //these vectors are for storing data from the input trees
-   std::vector<float>   *muon_pt[nCtrBins];
-   std::vector<float>   *muon_eta[nCtrBins];
-   std::vector<float>   *muon_phi[nCtrBins];
-   std::vector<float>   *muon_dP_overP[nCtrBins];
-   std::vector<float>   *muon_d0[nCtrBins];
-   std::vector<float>   *muon_z0[nCtrBins];
-   std::vector<int>     *muon_charge[nCtrBins];
-   std::vector<int>     *muon_quality[nCtrBins];
-   std::vector<int>     *ev_num[nCtrBins];
-   std::vector<int>     *ev_centrality[nCtrBins];
-   std::vector<float>   *ev_FCal_Et[nCtrBins];
+   std::vector<float>   *muon_pt[nctr_intvls];
+   std::vector<float>   *muon_eta[nctr_intvls];
+   std::vector<float>   *muon_phi[nctr_intvls];
+   std::vector<float>   *muon_dP_overP[nctr_intvls];
+   std::vector<float>   *muon_d0[nctr_intvls];
+   std::vector<float>   *muon_z0[nctr_intvls];
+   std::vector<int>     *muon_charge[nctr_intvls];
+   std::vector<int>     *muon_quality[nctr_intvls];
+   std::vector<int>     *ev_num[nctr_intvls];
+   std::vector<int>     *ev_centrality[nctr_intvls];
+   std::vector<float>   *ev_FCal_Et[nctr_intvls];
 
    //these Muon instances & variables are for setting branch address (per entry) for the input trees
    // MuonPair *mpair = nullptr;
@@ -88,34 +97,16 @@ private:
    void InitInput();
    void InitOutput();
    // void InitHists();
-   void ReadData();
-   void GenerateRandPair(int num_muon, int nctr, bool opsign_only);
-   bool IsResonance();
-   bool IsPhotoProduction();
+   void InitTempVariables();
+   void GenerateRandPair(int nctr, int mode, bool opsign_only);
+   bool ResonanceCut();
+   bool PhotoProductionCut();
    // void FillHistograms(unsigned int ndr, unsigned int nctr, unsigned int nsign);
-   void ImplementOneScramPair(int num_muon, int nctr, bool opsign_only = false);
+   void ImplementOneScramPair(int nctr, int mode, bool opsign_only = false);
 
-
-   // TH1D* h_pair_dP_overP[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns] = {nullptr};
-   // TH1D* h_Dphi[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns] = {nullptr};
-   // TH1D* h_Deta[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns] = {nullptr};
-   // TH1D* h_DR[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns] = {nullptr};
-   // TH1D* h_Minv[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns] = {nullptr};
-   // TH1D* h_pt_lead[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns] = {nullptr};
-   // TH1D* h_eta_lead[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns] = {nullptr};
-   // TH1D* h_eta_sublead[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns] = {nullptr};
-   // TH1D* h_eta_avg[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns] = {nullptr};
-   // TH1D* h_pair_pt[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns] = {nullptr};
-   // TH1D* h_pair_eta[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns] = {nullptr};
-   // TH1D* h_pair_y[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns] = {nullptr};
-   // TH2D* h_eta_phi[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns] = {nullptr};
-   // TH2D* h_eta1_eta2[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns] = {nullptr};
-   // TH2D* h_eta_avg_Deta[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns] = {nullptr};
-   // TH2D* h_eta_avg_pair_eta[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns] = {nullptr};
-   // TH2D* h_pt1_pt2[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns] = {nullptr};
-   // TH2D* h_ptlead_pair_pt[ParamsSet::ndRselcs][nCtrBins][ParamsSet::nSigns] = {nullptr};
 
 public:
+   bool keep_spill = true;
    ScrambSampleGen();
    //void Loop();
    ~ScrambSampleGen(){}
@@ -123,13 +114,21 @@ public:
 };
 
 ScrambSampleGen::ScrambSampleGen(){
+   if (nScramb_op[0].size() != nctr_intvls || nScramb_op[1].size() != nctr_intvls || nScramb_op[2].size() != nctr_intvls || nScramb_ss[0].size() != nctr_intvls || nScramb_ss[1].size() != nctr_intvls || nScramb_ss[2].size() != nctr_intvls){
+      std::cout << "The numbers of elements in the scrambled-pair-count vectors do not match number of centrality bins." << std::endl;
+      throw std::exception();
+   }
+   if (nScramb_op[1][0] != 0 || nScramb_op[2][nctr_intvls-1] != 0 || nScramb_ss[1][0] != 0 || nScramb_ss[2][nctr_intvls-1] != 0){
+      std::cout << "The first element in the left-spill mode and last element in the right-spill mode in nScramb must be zero." << std::endl;
+      throw std::exception();
+   } 
 }
 
 void ScrambSampleGen::InitInput(){
 
-   inFile = new TFile("single_muon_trees_coarse_ctr_bins.root","read");
+   inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/single_muon_trees_small_ctr_intvls.root","read");
 
-   for (int jctr = 0; jctr < nCtrBins; jctr++){
+   for (int jctr = 0; jctr < nctr_intvls; jctr++){
       // TTree* tempTree = (TTree*) inFile->Get(Form("muon_tree%d",jctr+1));
       // inTree[jctr] = tempTree->CloneTree();
       inTree[jctr] = (TTree*) inFile->Get(Form("muon_tree_ctr%d",jctr+1));
@@ -141,17 +140,22 @@ void ScrambSampleGen::InitInput(){
       inTree[jctr]->SetBranchAddress("z0"           , &z0[jctr]);
       inTree[jctr]->SetBranchAddress("charge"       , &charge[jctr]);
       inTree[jctr]->SetBranchAddress("quality"      , &quality[jctr]);
-      inTree[jctr]->SetBranchAddress("ev_num"            , &event_num[jctr]);
+      inTree[jctr]->SetBranchAddress("ev_num"            , &event_num[jctr]); // change the names of these values for reading so that they don't coincide with the vector names
       inTree[jctr]->SetBranchAddress("ev_centrality"     , &centrality[jctr]);
       inTree[jctr]->SetBranchAddress("ev_FCal_Et"        , &FCal_Et[jctr]);
    }
 }
 
 void ScrambSampleGen::InitOutput(){
-   outFile = new TFile("scrambled_muon_pairs_coarse_ctr_bins.root","recreate");
+   if (keep_spill){
+      outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/scrambled_muon_pairs_small_ctr_intvls.root","recreate");
+   }else{
+      outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/scrambled_muon_pairs_small_ctr_intvls_nospill.root","recreate");   
+   }
+   
 
    for (unsigned int idr = 0; idr < ParamsSet::ndRselcs; idr++){
-      for (unsigned int jctr = 0; jctr < nCtrBins; jctr++){
+      for (unsigned int jctr = 0; jctr < nctr_intvls; jctr++){
          for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
             outTree[idr][jctr][ksign] = new TTree(Form("scramb_muon_pair_tree_dr%u_ctr%u_sign%u",idr+1,jctr+1,ksign+1),Form("scramb_muon_pair_tree_dr%u_ctr%u_sign%u",idr+1,jctr+1,ksign+1));
             outTree[idr][jctr][ksign]->Branch("MuonPairObj",&mpair);
@@ -160,37 +164,21 @@ void ScrambSampleGen::InitOutput(){
    }
 }
 
-//initialize the histograms
-// void ScrambSampleGen::InitHists(){
+void ScrambSampleGen::InitTempVariables(){
+   for (int jctr = 0; jctr < nctr_intvls; jctr++){
+      muon_pt[jctr] =  new std::vector<float>();
+      muon_eta[jctr] =  new std::vector<float>();
+      muon_phi[jctr] =  new std::vector<float>();
+      muon_dP_overP[jctr] =  new std::vector<float>();
+      muon_d0[jctr] =  new std::vector<float>();
+      muon_z0[jctr] =  new std::vector<float>();
+      muon_charge[jctr] =  new std::vector<int>();
+      muon_quality[jctr] =  new std::vector<int>();
+      ev_num[jctr] =  new std::vector<int>();
+      ev_centrality[jctr] =  new std::vector<int>();
+      ev_FCal_Et[jctr] =  new std::vector<float>();
+    }
+}
+
    
-//    for (unsigned int idr = 0; idr < ParamsSet::ndRselcs; idr++){
-//       for (unsigned int jctr = 0; jctr < nCtrBins; jctr++){
-//          for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
-//             // h_FCal_Et[idr]=new TH1D(Form("h_FCal_Et%d",idr),";FCal #it{E}_{T} [TeV];1/N_{evt} dN/dFCal #it{E}_{T}",550,-0.5,5.0);
-//             // h_deltaP_overP[idr][jctr] =new TH1D(Form("h_deltaP_overP%d_ctr%d",idr,jctr),";(p_{ID}-p_{MS}-#Delta p_{calo}) / p_{ID};1/N_{evt} dN/d" ,pms.deltaP_overP_nbins*2,-pms.deltaP_overP_thrsh,pms.deltaP_overP_thrsh);
-//             h_pair_dP_overP[idr][jctr][ksign] = new TH1D(Form("h_pair_dP_overP_dr%d_ctr%d_sign%d",idr+1,jctr+1,ksign+1),";(p_{ID}-p_{MS}-#Delta p_{calo}) / p_{ID};1/N_{evt} dN/d" ,pms.deltaP_overP_nbins,0,pms.deltaP_overP_max);
-//             h_Dphi[idr][jctr][ksign] = new TH1D(Form("h_Dphi_dr%d_ctr%d_sign%d",idr+1,jctr+1,ksign+1),";#Delta#phi;1/N_{evt} dN/d#Delta#phi" ,128 ,-pms.PI ,pms.PI );
-//             h_Deta[idr][jctr][ksign] = new TH1D(Form("h_Deta_dr%d_ctr%d_sign%d",idr+1,jctr+1,ksign+1),";#Delta#eta;1/N_{evt} dN/d#Delta#eta" ,100,-2.4,2.4);
-//             h_DR[idr][jctr][ksign] = new TH1D(Form("h_DR_dr%d_ctr%d_sign%d",idr+1,jctr+1,ksign+1),";#Delta R;1/N_{evt} dN/d#Delta R", pms.deltaR_nbins[idr], 0, pms.deltaR_thrsh[idr]);
-//             h_Minv[idr][jctr][ksign] = new TH1D(Form("h_Minv_dr%d_ctr%d_sign%d",idr+1,jctr+1,ksign+1),";m_{#mu#mu} [GeV];1/N_{evt} dN/dm_{#mu#mu}" ,300,0   ,15 );
-//             h_Minv[idr][jctr][ksign] = new TH1D(Form("h_Minv_dr%d_ctr%d_sign%d",idr+1,jctr+1,ksign+1),";m_{#mu#mu} [GeV];1/N_{evt} dN/dm_{#mu#mu}" ,pms.minv_nbins[idr],0   ,pms.minv_max[idr] );
-//             h_pt_lead[idr][jctr][ksign] = new TH1D(Form("h_pt_lead_dr%d_ctr%d_sign%d",idr+1,jctr+1,ksign+1),";p_{T}^{lead} [GeV];1/N_{evt} dN/dp_{T}^{lead}" ,pms.npt_bins, pms.pTBins );
-//             h_eta_lead[idr][jctr][ksign] = new TH1D(Form("h_pt_lead_dr%d_ctr%d_sign%d",idr+1,jctr+1,ksign+1),";p_{T}^{lead} [GeV];1/N_{evt} dN/dp_{T}^{lead}" ,pms.npt_bins, pms.pTBins );
-//             h_eta_sublead[idr][jctr][ksign] = new TH1D(Form("h_pt_lead_dr%d_ctr%d_sign%d",idr+1,jctr+1,ksign+1),";p_{T}^{lead} [GeV];1/N_{evt} dN/dp_{T}^{lead}" ,pms.npt_bins, pms.pTBins );
-//             h_eta_avg[idr][jctr][ksign] = new TH1D(Form("h_eta_avg_dr%d_ctr%d_sign%d",idr+1,jctr+1,ksign+1),";#bar{#eta};1/N_{evt} dN/d#bar{#eta}",100,-2.4,2.4);
-//             h_pair_pt[idr][jctr][ksign] = new TH1D(Form("h_pair_pt_dr%d_ctr%d_sign%d",idr+1,jctr+1,ksign+1),";p_{T}^{pair} [GeV];1/N_{evt} dN/dp_{T}^{pair}" ,pms.npairPT_bins, pms.pairPTBins );
-//             h_pair_eta[idr][jctr][ksign] = new TH1D(Form("h_pair_eta_dr%d_ctr%d_sign%d",idr+1,jctr+1,ksign+1),";#eta_{pair};1/N_{evt} dN/d#eta_{pair}" ,100,-2.4,2.4);
-//             h_pair_y[idr][jctr][ksign] = new TH1D(Form("h_pair_y_dr%d_ctr%d_sign%d",idr+1,jctr+1,ksign+1),";y_{pair};1/N_{evt} dN/dy_{pair}" ,90,-3,3);
-//             h_eta_phi[idr][jctr][ksign] = new TH2D(Form("h_eta_phi_dr%d_ctr%d_sign%d",idr+1,jctr+1,ksign+1),";#Delta#phi;#bar{#eta}", 128,-pms.PI,pms.PI,100,-2.4,2.4);
-//             h_eta1_eta2[idr][jctr][ksign] = new TH2D(Form("h_eta1_eta2_dr%d_ctr%d_sign%d",idr+1,jctr+1,ksign+1),";#eta_{sublead};#eta_{lead}",100,-2.4,2.4, 100,-2.4,2.4);
-//             h_eta_avg_Deta[idr][jctr][ksign] = new TH2D(Form("h_eta_avg_Deta_dr%d_ctr%d_sign%d",idr+1,jctr+1,ksign+1),";#Delta#eta;#bar{#eta}",100,-2.4,2.4, 100,-2.4,2.4);
-//             h_eta_avg_pair_eta[idr][jctr][ksign] = new TH2D(Form("h_eta_avg_pair_eta_dr%d_ctr%d_sign%d",idr+1,jctr+1,ksign+1),";#eta_{pair};#bar{#eta}",100,-2.4,2.4, 100,-2.4,2.4);
-//             h_pt1_pt2[idr][jctr][ksign] = new TH2D(Form("h_pt1_pt2_dr%d_ctr%d_sign%d",idr+1,jctr+1,ksign+1),";p_{T}^{sublead} [GeV];p_{T}^{lead} [GeV]",pms.npt_bins, pms.pTBins, pms.npt_bins, pms.pTBins);
-//             h_ptlead_pair_pt[idr][jctr][ksign] = new TH2D(Form("h_ptlead_pair_pt_dr%d_ctr%d_sign%d",idr+1,jctr+1,ksign+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.npairPT_bins, pms.pairPTBins, pms.npt_bins, pms.pTBins);
-//          }
-//       }
-//    }
-// }
-
 #endif
-

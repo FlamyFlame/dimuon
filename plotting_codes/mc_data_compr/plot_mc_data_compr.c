@@ -207,17 +207,17 @@ void plot_mc_data_compr(){
   plot_mc_data_compr_single_kinematic("DR", false, false, true, "DR", "#Delta R"); // norm to unity
   plot_mc_data_compr_single_kinematic("Dphi", false, false, false, "Dphi", "#Delta #phi");
   plot_mc_data_compr_single_kinematic("Dphi", false, false, true, "Dphi", "#Delta #phi"); // norm to unity
-  // plot_mc_data_compr_single_kinematic("pt_asym", false, false, false, "pt_asym", "A");
-  // plot_mc_data_compr_single_kinematic("pt_asym", false, false, true, "pt_asym", "A"); // norm to unity
-  // plot_mc_data_compr_single_kinematic("pair_pt_ptlead_ratio", false, false, false, "pair_pt_ptlead_ratio", "#frac{p_{T}^{pair}}{p_{T}^{lead}}");
-  // plot_mc_data_compr_single_kinematic("pair_pt_ptlead_ratio", false, false, true, "pair_pt_ptlead_ratio", "#frac{p_{T}^{pair}}{p_{T}^{lead}}"); // norm to unity
+  plot_mc_data_compr_single_kinematic("pt_asym", false, false, false, "pt_asym", "A");
+  plot_mc_data_compr_single_kinematic("pt_asym", false, false, true, "pt_asym", "A"); // norm to unity
+  plot_mc_data_compr_single_kinematic("pair_pt_ptlead_ratio", false, false, false, "pair_pt_ptlead_ratio", "#frac{p_{T}^{pair}}{p_{T}^{lead}}");
+  plot_mc_data_compr_single_kinematic("pair_pt_ptlead_ratio", false, false, true, "pair_pt_ptlead_ratio", "#frac{p_{T}^{pair}}{p_{T}^{lead}}"); // norm to unity
 
-  // plot_mc_data_compr_single_kinematic("ptlead_pair_pt", true, false, false, "pair_pt", "p_{T}^{pair}");
-  // plot_mc_data_compr_single_kinematic("ptlead_pair_pt", true, false, true, "pair_pt", "p_{T}^{pair}"); // norm to unity
-  // plot_mc_data_compr_single_kinematic("ptlead_pair_pt", false, true, false, "ptlead", "p_{T}^{lead}");
-  // plot_mc_data_compr_single_kinematic("ptlead_pair_pt", false, true, true, "ptlead", "p_{T}^{lead}"); // norm to unity
-  // plot_mc_data_compr_single_kinematic("minv_pair_pt", false, true, false, "minv","m_{#mu#mu}");
-  // plot_mc_data_compr_single_kinematic("minv_pair_pt", false, true, true, "minv","m_{#mu#mu}"); // norm to unity
+  plot_mc_data_compr_single_kinematic("ptlead_pair_pt", true, false, false, "pair_pt", "p_{T}^{pair}");
+  plot_mc_data_compr_single_kinematic("ptlead_pair_pt", true, false, true, "pair_pt", "p_{T}^{pair}"); // norm to unity
+  plot_mc_data_compr_single_kinematic("ptlead_pair_pt", false, true, false, "ptlead", "p_{T}^{lead}");
+  plot_mc_data_compr_single_kinematic("ptlead_pair_pt", false, true, true, "ptlead", "p_{T}^{lead}"); // norm to unity
+  plot_mc_data_compr_single_kinematic("minv_pair_pt", false, true, false, "minv","m_{#mu#mu}");
+  plot_mc_data_compr_single_kinematic("minv_pair_pt", false, true, true, "minv","m_{#mu#mu}"); // norm to unity
   // plot_mc_data_compr_single_kinematic("minv_pair_pt_zoomin", false, true, false, "minv_zoomin","m_{#mu#mu}");
   // plot_mc_data_compr_single_kinematic("minv_pair_pt_zoomin", false, true, true, "minv_zoomin","m_{#mu#mu}"); // norm to unity
   plot_mc_data_compr_single_kinematic("Deta_Dphi", false, true, false, "Deta", "#Delta #eta");
