@@ -1,0 +1,266 @@
+<?xml version="1.0"?>
+<!DOCTYPE LumiRangeCollection SYSTEM "http://atlas-runquery.cern.ch/LumiRangeCollection.dtd">
+<!--This document is created by GoodRunsListWriter.-->
+<LumiRangeCollection>
+  <NamedLumiRange>
+    <Name>PHYS_HeavyIonP_All_Good</Name>
+    <Version>20</Version>
+    <Metadata Name="ARQEquivalentQuery">find run data23_hi.periodL9 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodL10 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodL11 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodL12 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodL13 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodL14 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodL15 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodL16 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodL17 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodL18 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodL19 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodM1 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodM2 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodM3 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodM4 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodM5 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodM6 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodM7 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodM8 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodM9 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodM10 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodM11 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodM12 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodM13 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodM14 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodM15 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodM16 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodM17 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g | find run data23_hi.periodM18 and dq PHYS_HeavyIonP_All_Good DEFECTS#DetStatus-v113-pro31-08 g</Metadata>
+    <Metadata Name="Query">Period: data23_hi.L9; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.L10; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.L11; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.L12; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.L13; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.L14; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.L15; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.L16; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.L17; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.L18; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.L19; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.M1; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.M2; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.M3; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.M4; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.M5; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.M6; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.M7; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.M8; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.M9; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.M10; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.M11; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.M12; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.M13; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.M14; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.M15; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.M16; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.M17; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None | Period: data23_hi.M18; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v113-pro31-08; Ignoring None</Metadata>
+    <Metadata Name="RunList">462201,462205,462240,462244,462441,462533,462542,462549,462576,462576,462580,462588,462617,462667,462677,462705,462717,462759,462763,462767,462777,462809,462814,462964,462969,462995,463004,463017,463021,463040,463046,463120,463124,463155,463185,463189,463216,463222,463255,463263,463308,463315,463364,463380</Metadata>
+    <LumiBlockCollection>
+      <Run>462201</Run>
+      <LBRange Start="477" End="497"/>
+      <LBRange Start="559" End="578"/>
+      <LBRange Start="580" End="855"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>462205</Run>
+      <LBRange Start="233" End="754"/>
+      <LBRange Start="756" End="867"/>
+      <LBRange Start="869" End="1173"/>
+      <LBRange Start="1175" End="1195"/>
+      <LBRange Start="1233" End="1245"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>462240</Run>
+      <LBRange Start="401" End="413"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>462244</Run>
+      <LBRange Start="311" End="311"/>
+      <LBRange Start="375" End="496"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>462441</Run>
+      <LBRange Start="422" End="514"/>
+      <LBRange Start="516" End="759"/>
+      <LBRange Start="761" End="910"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>462533</Run>
+      <LBRange Start="507" End="531"/>
+      <LBRange Start="533" End="602"/>
+      <LBRange Start="604" End="913"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>462542</Run>
+      <LBRange Start="237" End="297"/>
+      <LBRange Start="299" End="361"/>
+      <LBRange Start="363" End="420"/>
+      <LBRange Start="422" End="432"/>
+      <LBRange Start="434" End="665"/>
+      <LBRange Start="703" End="711"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>462549</Run>
+      <LBRange Start="287" End="328"/>
+      <LBRange Start="330" End="536"/>
+      <LBRange Start="538" End="934"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>462576</Run>
+      <LBRange Start="345" End="639"/>
+      <LBRange Start="677" End="681"/>
+      <LBRange Start="683" End="696"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>462580</Run>
+      <LBRange Start="268" End="300"/>
+      <LBRange Start="302" End="398"/>
+      <LBRange Start="400" End="422"/>
+      <LBRange Start="424" End="527"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>462588</Run>
+      <LBRange Start="243" End="346"/>
+      <LBRange Start="348" End="542"/>
+      <LBRange Start="544" End="688"/>
+      <LBRange Start="726" End="736"/>
+      <LBRange Start="738" End="741"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>462617</Run>
+      <LBRange Start="298" End="312"/>
+      <LBRange Start="350" End="390"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>462667</Run>
+      <LBRange Start="303" End="322"/>
+      <LBRange Start="384" End="428"/>
+      <LBRange Start="430" End="464"/>
+      <LBRange Start="466" End="495"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>462677</Run>
+      <LBRange Start="818" End="969"/>
+      <LBRange Start="971" End="975"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>462705</Run>
+      <LBRange Start="273" End="304"/>
+      <LBRange Start="306" End="344"/>
+      <LBRange Start="346" End="354"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>462717</Run>
+      <LBRange Start="876" End="1026"/>
+      <LBRange Start="1028" End="1172"/>
+      <LBRange Start="1174" End="1193"/>
+      <LBRange Start="1195" End="1281"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>462759</Run>
+      <LBRange Start="304" End="353"/>
+      <LBRange Start="355" End="380"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>462763</Run>
+      <LBRange Start="239" End="275"/>
+      <LBRange Start="277" End="364"/>
+      <LBRange Start="367" End="691"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>462767</Run>
+      <LBRange Start="229" End="301"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>462777</Run>
+      <LBRange Start="213" End="638"/>
+      <LBRange Start="676" End="689"/>
+      <LBRange Start="692" End="702"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>462809</Run>
+      <LBRange Start="317" End="327"/>
+      <LBRange Start="389" End="579"/>
+      <LBRange Start="581" End="774"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>462814</Run>
+      <LBRange Start="542" End="797"/>
+      <LBRange Start="835" End="844"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>462964</Run>
+      <LBRange Start="282" End="332"/>
+      <LBRange Start="334" End="358"/>
+      <LBRange Start="360" End="368"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>462969</Run>
+      <LBRange Start="94" End="126"/>
+      <LBRange Start="128" End="249"/>
+      <LBRange Start="251" End="500"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>462995</Run>
+      <LBRange Start="142" End="303"/>
+      <LBRange Start="306" End="491"/>
+      <LBRange Start="493" End="563"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>463004</Run>
+      <LBRange Start="153" End="225"/>
+      <LBRange Start="227" End="245"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>463017</Run>
+      <LBRange Start="170" End="263"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>463021</Run>
+      <LBRange Start="141" End="416"/>
+      <LBRange Start="418" End="594"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>463040</Run>
+      <LBRange Start="315" End="805"/>
+      <LBRange Start="867" End="878"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>463046</Run>
+      <LBRange Start="153" End="328"/>
+      <LBRange Start="331" End="459"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>463120</Run>
+      <LBRange Start="175" End="227"/>
+      <LBRange Start="230" End="637"/>
+      <LBRange Start="675" End="686"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>463124</Run>
+      <LBRange Start="195" End="249"/>
+      <LBRange Start="251" End="393"/>
+      <LBRange Start="395" End="759"/>
+      <LBRange Start="761" End="788"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>463155</Run>
+      <LBRange Start="425" End="437"/>
+      <LBRange Start="439" End="446"/>
+      <LBRange Start="508" End="584"/>
+      <LBRange Start="586" End="633"/>
+      <LBRange Start="635" End="823"/>
+      <LBRange Start="825" End="891"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>463185</Run>
+      <LBRange Start="426" End="456"/>
+      <LBRange Start="458" End="514"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>463189</Run>
+      <LBRange Start="153" End="304"/>
+      <LBRange Start="306" End="306"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>463216</Run>
+      <LBRange Start="436" End="543"/>
+      <LBRange Start="546" End="628"/>
+      <LBRange Start="630" End="850"/>
+      <LBRange Start="852" End="858"/>
+      <LBRange Start="921" End="935"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>463222</Run>
+      <LBRange Start="159" End="242"/>
+      <LBRange Start="245" End="683"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>463255</Run>
+      <LBRange Start="502" End="547"/>
+      <LBRange Start="549" End="603"/>
+      <LBRange Start="665" End="750"/>
+      <LBRange Start="752" End="1047"/>
+      <LBRange Start="1109" End="1116"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>463263</Run>
+      <LBRange Start="119" End="633"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>463308</Run>
+      <LBRange Start="233" End="544"/>
+      <LBRange Start="546" End="706"/>
+      <LBRange Start="708" End="709"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>463315</Run>
+      <LBRange Start="272" End="334"/>
+      <LBRange Start="336" End="674"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>463364</Run>
+      <LBRange Start="258" End="757"/>
+      <LBRange Start="760" End="972"/>
+    </LumiBlockCollection>
+    <LumiBlockCollection>
+      <Run>463380</Run>
+      <LBRange Start="339" End="590"/>
+      <LBRange Start="592" End="819"/>
+    </LumiBlockCollection>
+  </NamedLumiRange>
+</LumiRangeCollection>
+
