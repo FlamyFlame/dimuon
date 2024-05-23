@@ -127,9 +127,10 @@ if not hasattr(ToolSvc, "MyMuonSelectionTool"):
     if(is_HION):
       ToolSvc.MyMuonSelectionTool.TrtCutOff=True
 
-    ToolSvc.MyMuonSelectionTool.IsRun3Geo=False
-    if(is_Run3):
-      ToolSvc.MyMuonSelectionTool.IsRun3Geo=True
+    if is_Rel22:
+      ToolSvc.MyMuonSelectionTool.IsRun3Geo=False
+      if(is_Run3):
+        ToolSvc.MyMuonSelectionTool.IsRun3Geo=True
     print(ToolSvc.MyMuonSelectionTool)
 ##------------------------------------------------------------
 
