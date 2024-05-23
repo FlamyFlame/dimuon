@@ -1,11 +1,11 @@
-#ifndef MuonPairMC_h
-#define MuonPairMC_h
+#ifndef MuonPairPowheg_h
+#define MuonPairPowheg_h
 
 #include "/usatlas/u/yuhanguo/workarea/dimuon_codes/MuonPair.h"
 #include "vector"
 #include <iostream>
 
-class MuonPairMC : public MuonPair{ 
+class MuonPairPowheg : public MuonPair{ 
 // define child class for the case of MC muon pairs
 // with the additional attributes of parent information & helper functions to work with them
 public:
@@ -33,13 +33,20 @@ public:
   float mHard_relevant; // mHat for the relevant hard scattering
   // float s_cm; // mHat for the relevant hard scattering
 
+  std::vector<float> m1_last_b_hadron_prt_pt_eta_phi_m;
+  std::vector<float> m2_last_b_hadron_prt_pt_eta_phi_m;
+  std::vector<float> m1_last_hf_hadron_prt_pt_eta_phi_m;
+  std::vector<float> m2_last_hf_hadron_prt_pt_eta_phi_m;
+  std::vector<float> m1_first_hq_ancestor_pt_eta_phi_m;
+  std::vector<float> m2_first_hq_ancestor_pt_eta_phi_m;
 
-  MuonPairMC();
-  ~MuonPairMC(){}
+
+  MuonPairPowheg();
+  ~MuonPairPowheg(){}
 };
 
-MuonPairMC::MuonPairMC(){
-	// std::cout << "Constructor for MuonPairMC is called.";
+MuonPairPowheg::MuonPairPowheg(){
+	// std::cout << "Constructor for MuonPairPowheg is called.";
 }
 
 

@@ -8,12 +8,12 @@
 #include <string.h>
 #include <fstream>
 // #include <cmath>  
-#include "MuonPairMC.h"
+#include "MuonPairPowheg.h"
 #include "TruthQQPair.h"
 #include "ParamsSet.h"
 #include "/usatlas/u/yuhanguo/workarea/pythia/struct_particle.h"
 
-#include "vector"
+// #include "vector"
 #include "TH1D.h"
 #include "TH2D.h"
 
@@ -84,7 +84,7 @@ private:
     std::string sub_dir;
 
     Muon* tempmuon = nullptr;
-    MuonPairMC* mpair = nullptr;
+    MuonPairPowheg* mpair = nullptr;
     TruthQQPair* qqpair = nullptr;
     std::vector<int> resonance_tagged_muon_index_list {};
 
@@ -134,12 +134,14 @@ private:
     int m1_earliest_parent_id;
     int m2_earliest_parent_id;
 
-    std::vector<float>* m1_closest_hadron_prt_pt_eta_phi;
-    std::vector<float>* m2_closest_hadron_prt_pt_eta_phi;
-    std::vector<float>* m1_furthest_hadron_prt_pt_eta_phi;
-    std::vector<float>* m2_furthest_hadron_prt_pt_eta_phi;
-    std::vector<float>* m1_hq_ancestor_pt_eta_phi;
-    std::vector<float>* m2_hq_ancestor_pt_eta_phi;
+    // std::vector<float>* m1_last_b_hadron_prt_pt_eta_phi_m;
+    // std::vector<float>* m2_last_b_hadron_prt_pt_eta_phi_m;
+    // std::vector<float>* m1_last_hf_hadron_prt_pt_eta_phi_m;
+    // std::vector<float>* m2_last_hf_hadron_prt_pt_eta_phi_m;
+    std::vector<float>* m1_first_hf_hadron_prt_pt_eta_phi_m;
+    std::vector<float>* m2_first_hf_hadron_prt_pt_eta_phi_m;
+    // std::vector<float>* m1_hq_ancestor_pt_eta_phi_m;
+    // std::vector<float>* m2_hq_ancestor_pt_eta_phi_m;
 
   
 // --------------------- output file, histograms & trees ---------------------------
@@ -223,7 +225,7 @@ private:
     bool IsResonance();
     bool IsPhotoProduction();
     int  ParentGrouping(std::vector<int>& parent_ids, bool c_tag, bool prev_is_lepton);
-    void GetPtEtaPhiFromBarcode(int barcode, std::vector<float>* pt_eta_phi);
+    void GetPtEtaPhiMFromBarcode(int barcode, std::vector<float>* pt_eta_phi_m);
     int  UpdateCurParents(bool isMuon1, std::vector<int>& cur_prt_bars, std::vector<int>& cur_prt_ids, int hf_quark_index = -1);
     int  FindHeavyQuarks(std::vector<int>& cur_prt_ids, int quark_type, bool isMuon1, int hadron_child_id = 0);
     void SingleMuonAncestorTracing(bool isMuon1);
@@ -354,12 +356,14 @@ void MCNTupleFirstPass::InitTempVariables(){
     m2_history = new std::vector<std::vector<int>>();
     m1_history_particle = new std::vector<std::vector<Particle>>();
     m2_history_particle = new std::vector<std::vector<Particle>>();
-    m1_closest_hadron_prt_pt_eta_phi = new std::vector<float>();
-    m2_closest_hadron_prt_pt_eta_phi = new std::vector<float>();
-    m1_furthest_hadron_prt_pt_eta_phi = new std::vector<float>();
-    m2_furthest_hadron_prt_pt_eta_phi = new std::vector<float>();
-    m1_hq_ancestor_pt_eta_phi = new std::vector<float>();
-    m2_hq_ancestor_pt_eta_phi = new std::vector<float>();
+    // m1_last_hf_hadron_prt_pt_eta_phi_m = new std::vector<float>();
+    // m2_last_hf_hadron_prt_pt_eta_phi_m = new std::vector<float>();
+    // m1_last_b_hadron_prt_pt_eta_phi_m = new std::vector<float>();
+    // m2_last_b_hadron_prt_pt_eta_phi_m = new std::vector<float>();
+    m1_first_hf_hadron_prt_pt_eta_phi_m = new std::vector<float>();
+    m2_first_hf_hadron_prt_pt_eta_phi_m = new std::vector<float>();
+    // m1_hq_ancestor_pt_eta_phi_m = new std::vector<float>();
+    // m2_hq_ancestor_pt_eta_phi_m = new std::vector<float>();
 }
 
 
@@ -520,12 +524,14 @@ void MCNTupleFirstPass::Finalize(){
     delete m2_history;
     delete m1_history_particle;
     delete m2_history_particle;
-    delete m1_closest_hadron_prt_pt_eta_phi;
-    delete m2_closest_hadron_prt_pt_eta_phi;
-    delete m1_furthest_hadron_prt_pt_eta_phi;
-    delete m2_furthest_hadron_prt_pt_eta_phi;
-    delete m1_hq_ancestor_pt_eta_phi;
-    delete m2_hq_ancestor_pt_eta_phi;
+    // delete m1_last_b_hadron_prt_pt_eta_phi_m;
+    // delete m2_last_b_hadron_prt_pt_eta_phi_m;
+    // delete m1_last_hf_hadron_prt_pt_eta_phi_m;
+    // delete m2_last_hf_hadron_prt_pt_eta_phi_m;
+    delete m1_first_hf_hadron_prt_pt_eta_phi_m;
+    delete m2_first_hf_hadron_prt_pt_eta_phi_m;
+    // delete m1_hq_ancestor_pt_eta_phi_m;
+    // delete m2_hq_ancestor_pt_eta_phi_m;
 
     m_unspecified_parent_file->close();
     delete m_unspecified_parent_file;

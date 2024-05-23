@@ -25,7 +25,7 @@ class MuonNTupleFirstPassPP{
 private:
 // --------------------- general settings ---------------------------
 
-    int mode = 3;
+    int mode = 4;
     ParamsSet pms;
     
 // --------------------- input files & trees & data for setting branches---------------------------
@@ -85,10 +85,7 @@ private:
     TFile *m_outfile = nullptr;
     
     TTree* muonOutTree;
-    // TTree* muonPairOutTree[ParamsSet::nSigns];
-    TTree* muonPairOutTreeBinned[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    // TH1D* h_dphi_failing_photoprod;
-    // TH2D* h_asym_acop_failing_photoprod;
+    TTree* muonPairOutTree[ParamsSet::nSigns];
 
 public :
     bool isTight;
@@ -186,12 +183,8 @@ void MuonNTupleFirstPassPP::InitOutput(){
         m_outfile=new TFile(("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/muon_pairs_pp" + tight_postfix + ".root").c_str(),"recreate");
 
         for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
-            // muonPairOutTree[ksign] = new TTree(Form("muon_pair_tree_sign%u",ksign+1),Form("all muon pairs, sign%u",ksign+1));
-            // muonPairOutTree[ksign]->Branch("MuonPairObj",&mpair);
-            for (unsigned int idr = 0; idr < ParamsSet::ndRselcs; idr++){
-                muonPairOutTreeBinned[idr][ksign] = new TTree(Form("muon_pair_tree_dr%u_sign%u",idr+1,ksign+1),Form("all muon pairs, dr%u, sign%u",idr+1,ksign+1));
-                muonPairOutTreeBinned[idr][ksign]->Branch("MuonPairObj",&mpair);
-            }
+            muonPairOutTree[ksign] = new TTree(Form("muon_pair_tree_sign%u",ksign+1),Form("all muon pairs, sign%u",ksign+1));
+            muonPairOutTree[ksign]->Branch("MuonPairObj",&mpair);
         }
     }
 

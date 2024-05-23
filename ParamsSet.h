@@ -1,33 +1,86 @@
-#include <vector>
 #ifndef ParamsSet_h
 #define ParamsSet_h
 
+#include <iostream>
+#include <map>
+#include <vector>
+#include <string>
+#include <utility> 
+#include <functional>
+
+struct AxisInfo{ // a simplified version of axis information - for constructing TH1DModel
+   int        	nbins		= 1;         ///<  Number of bins
+   double     	min			= 0.;          ///<  Low edge of first bin
+   double     	max			= 1.;          ///<  Upper edge of last bin
+   const double*     bin_edges		= nullptr;         ///<  Bin edges array in X
+};
+
 class ParamsSet{
 public:
+	static const unsigned int nCtrBins=6; // number of coarse bins; each can be studied by itself
+   	static const unsigned int nPtBins=10;
+   	static const unsigned int nPythiaKinRanges=5;
+   	static const unsigned int nSigns=2;
+
    	static const unsigned int ndRselcs=3;
    	static const unsigned int ndphiselcs=3;
    	static const unsigned int ndphiRegions=3;
    	static const unsigned int ndetaRegions=2;
-   	static const unsigned int nCtrBins=5; // number of coarse bins; each can be studied by itself
-   	static const unsigned int nPtBins=5;
-   	static const unsigned int nSigns=2;
+
+   	static const unsigned int nPhotoProdCuts=2; //0: no gap cut; 1: having gap cut
    	static const unsigned int nGapCuts=2; //0: no gap cut; 1: having gap cut
   	static const unsigned int CtrStep = 5;
   	static const unsigned int nCtrIntvls = 20; // number of small intervals; the intervals not to be studied by themselves, but to allow easy combinations
 
-	int scaleFactorCtrs[nCtrBins] = {1,1,2,3,3};
+	static std::vector<std::function<bool(float)>> dphi_cut_funcs;
+	static std::vector<std::function<bool(float)>> deta_cut_funcs;
+
+
+  	// float pTbins[nPtBins] = {4.,5.,6.,7.,8.,9.,10.,12.,15.,20.};
+	// int scaleFactorCtrs[nCtrBins] = {1,1,2,3,3};
+	// std::vector<float> ctrbins = {0, 5, 10, 20, 30, 50, 80};
+	static std::vector<float> pTbins;
+	static std::vector<double> pTHatbins_pythia;
+    static std::vector<int> ctrbins;
+
+    std::vector<std::string> pt_bin_labels;
+    std::vector<std::string> pt_bin_exprs;
+    std::vector<std::string> pt_titles = {"#bar{p}_T 4-5 GeV", "#bar{p}_T 5-6 GeV", "#bar{p}_T 6-7 GeV", "#bar{p}_T 7-8 GeV", "#bar{p}_T 8-9 GeV", "#bar{p}_T 9-10 GeV", "#bar{p}_T 10-12 GeV", "#bar{p}_T 12-15 GeV", "#bar{p}_T 15-20 GeV", "#bar{p}_T > 20 GeV"};
+    
+    std::vector<std::string> ctr_bin_labels;
+    std::vector<std::string> ctr_bin_exprs;
+	std::vector<std::string> ctr_titles = {"Centrality 0-5", "Centrality 5-10", "Centrality 10-20", "Centrality 20-30", "Centrality 30-50", "Centrality 50-80"};
+	std::vector<std::string> ctrNpp_titles = {"Centrality 0-5", "Centrality 5-10", "Centrality 10-20", "Centrality 20-30", "Centrality 30-50", "Centrality 50-80", "pp"};
+
+
+	std::string signs[nSigns] = {"ss","op"};
+	std::vector<std::string> sign_labels = {"_ss","_op"};
+	std::vector<std::string> sign_titles = {"same sign", "opposite sign"};
+
+	std::vector<std::string> deta_cut_labels = {"_deta_lt0_8", "_deta_gt0_8"};
+	std::vector<std::string> deta_titles = {"#Delta #eta < 0.8","#Delta #eta #geq 0.8"};
+
+	std::vector<std::string> dphi_cut_labels = {"_near", "_away", "_dphi_lt0_6"};
+	std::vector<std::string> dphi_titles = {"#Delta #phi < #pi/2","#Delta #phi #geq #pi/2", "#Delta #phi < 0.6"};
+
+	std::vector<std::string> gapcut_labels = {"_nogapcut", "_wgapcut"};
+	std::vector<std::string> gapcut_titles = {"no gap cut", "with gap cut"};
+
+	std::vector<std::string> photocut_labels = {"_nophotocut", "_wphotocut"};
+	std::vector<std::string> photocut_titles = {"no photoproduction cut", "with photoproduction cut"};
+
 
    	float deltaP_overP_thrsh;
    	float deltaP_overP_max;
    	float deltaP_overP_step;
    	int deltaP_overP_nbins;
    	
-   	float deltaR_thrsh[ndRselcs] = {0.8,1.2,5.75};
+   	static float deltaR_thrsh[ndRselcs];
    	float 	deltaR_step = 0.01;
    	int deltaR_nbins[ndRselcs];
 
    	// float eta_gap_cut1 = 0.1;
-   	float eta_gap_cut1 = 0.135;
+   	static constexpr float eta_gap_cut1 = 0.135;
    	// float eta_gap_cut2[2] = {1.05,1.29};
 
 	// // no log
@@ -44,11 +97,16 @@ public:
    	// std::vector<float> minv_bins[nSigns][ndRselcs];
 
    	std::vector<std::array<float,2>> minv_cuts;
-   	std::vector<std::array<float,2>> charge_eta_gap_cuts;
+   	static std::vector<std::array<float,2>> charge_eta_gap_cuts;
 
    	float minv_upper = 60;
 
-  	double PI;
+  	static double PI;
+
+  	static AxisInfo ptlead_axis;
+	static AxisInfo dr_axis;
+	static AxisInfo dphi_axis;
+
 
   	static const int npt_bins = 50;
   	float ptlogpow = 0.02194;
@@ -72,7 +130,80 @@ public:
   	
   	ParamsSet();
   	~ParamsSet(){}
+  	template <typename T>
+  	std::string write_single_bin_expr (std::string kinvar, T a, T b);
+  	template <typename T>
+	std::string write_single_bin_label (std::string kinvar, T a, T b);
+	template <typename T>
+	void write_cut_label_strs (std::string kinvar_expr, std::string kinvar_label, const std::vector<T> & var_bin_bdrys, std::vector<std::string> & var_bin_exprs, std::vector<std::string> & var_bin_labels, bool open_ended);
 };
+
+double ParamsSet::PI = acos(-1.0);
+
+float ParamsSet::deltaR_thrsh[ndRselcs] = {0.8,1.2,5.75};
+
+std::vector<std::array<float,2>> ParamsSet::charge_eta_gap_cuts = {{0.56,0.67}, {1.064,1.29}, {-1.29,-1.12}};
+std::vector<float> ParamsSet::pTbins = {4.,5.,6.,7.,8.,9.,10.,12.,15.,20.};
+std::vector<int> ParamsSet::ctrbins = {0, 5, 10, 20, 30, 50, 80};
+// std::vector<double> ParamsSet::pTHatbins_pythia = {5, 10, 25, 60, 120, 3200};
+std::vector<double> ParamsSet::pTHatbins_pythia = {4.5, 10, 25, 60, 120, 3200}; // lower to 4.5 since a few events have pTHat < 5GeV (leakage)
+
+AxisInfo ParamsSet::ptlead_axis = {100, 0, 30., nullptr};
+AxisInfo ParamsSet::dr_axis = {100, 0, ParamsSet::deltaR_thrsh[2], nullptr};
+AxisInfo ParamsSet::dphi_axis = {32, -ParamsSet::PI/2., ParamsSet::PI * 3. / 2., nullptr};
+
+std::vector<std::function<bool(float)>> ParamsSet::dphi_cut_funcs {[](float x){return abs(x) < 1.5708;}, [](float x){return abs(x) >= 1.5708;}, [](float x){return abs(x) < 0.6;}};
+std::vector<std::function<bool(float)>> ParamsSet::deta_cut_funcs {[](float x){return abs(x) < 0.8;}, [](float x){return abs(x) >= 0.8;}};
+const unsigned int ParamsSet::nCtrBins; // number of coarse bins; each can be studied by itself
+const unsigned int ParamsSet::nPtBins;
+const unsigned int ParamsSet::nPythiaKinRanges;
+const unsigned int ParamsSet::nSigns;
+const unsigned int ParamsSet::ndRselcs;
+const unsigned int ParamsSet::ndphiselcs;
+const unsigned int ParamsSet::ndphiRegions;
+const unsigned int ParamsSet::ndetaRegions;
+const unsigned int ParamsSet::nPhotoProdCuts; //0: no gap cut; 1: having gap cut
+const unsigned int ParamsSet::nGapCuts; //0: no gap cut; 1: having gap cut
+const unsigned int ParamsSet::CtrStep;
+const unsigned int ParamsSet::nCtrIntvls; // number of small intervals; the intervals not to be studied by themselves, but to allow easy combinations
+
+// bool ParamsSet::PassSingleMuonGapCut(float meta, float mpt, int mcharge){
+//     // parameters: eta and pT of the same muon
+//     if (fabs(meta) < pms.eta_gap_cut1) return false;
+//     if (mpt < 6){
+//         for (array<float,2> charge_eta_gap_cut : pms.charge_eta_gap_cuts){
+//             if (mcharge * meta > charge_eta_gap_cut[0] && mcharge * meta < charge_eta_gap_cut[1]) return false;
+//         }
+//     }
+//     // if (mpt < 6 && fabs(meta) > pms.eta_gap_cut2[0] && fabs(meta) < pms.eta_gap_cut2[1]) return false;
+//     return true;
+// }
+
+
+template <typename T>
+std::string ParamsSet::write_single_bin_expr (std::string kinvar, T a, T b){
+    return kinvar + " >= " + std::to_string(a) + " && " + kinvar + " < " + std::to_string(b);
+}
+
+template <typename T>
+std::string ParamsSet::write_single_bin_label (std::string kinvar, T a, T b){
+    return "_" + kinvar + std::to_string(static_cast<int>(a)) + "to" + std::to_string(static_cast<int>(b));
+}
+
+template <typename T>
+void ParamsSet::write_cut_label_strs (std::string kinvar_expr, std::string kinvar_label, const std::vector<T> & var_bin_bdrys, std::vector<std::string> & var_bin_exprs, std::vector<std::string> & var_bin_labels, bool open_ended){
+    var_bin_exprs.clear();
+    var_bin_labels.clear();
+    for (typename std::vector<T>::const_iterator it = var_bin_bdrys.begin() + 1; it < var_bin_bdrys.end(); it++){
+        var_bin_exprs.push_back(write_single_bin_expr(kinvar_expr, *(it-1), *it));
+        var_bin_labels.push_back(write_single_bin_label(kinvar_label, *(it-1), *it));
+    }
+
+    if (open_ended){
+        var_bin_exprs.push_back(kinvar_expr + " >= " + std::to_string(var_bin_bdrys[var_bin_bdrys.size()-1]));
+        var_bin_labels.push_back("_" + kinvar_label + "_above" + std::to_string(static_cast<int>(var_bin_bdrys[var_bin_bdrys.size()-1])));
+    }
+}
 
 ParamsSet::ParamsSet(){
 	deltaP_overP_thrsh = 0.12;
@@ -80,10 +211,13 @@ ParamsSet::ParamsSet(){
  	deltaP_overP_step = 0.002;
  	deltaP_overP_nbins = static_cast<int>(deltaP_overP_max/deltaP_overP_step);
 
-	// deltaR_thrsh[ndRselcs] = {0.8,1.2,5.75};
-	// deltaR_step = 0.01;
 
-	PI=acos(-1.0);
+// ------------------------------------ pt & ctr labels & expressions ------------------------------------
+	    
+    // write_cut_label_strs("(m1.pt + m2.pt) / 2.", "ptavg", pTbins, pt_bin_exprs, pt_bin_labels, true);
+    write_cut_label_strs("pt_avg", "ptavg", pTbins, pt_bin_exprs, pt_bin_labels, true);
+    write_cut_label_strs("avg_centrality", "ctr", ctrbins, ctr_bin_exprs, ctr_bin_labels, false);
+
   	for (unsigned int idr = 0; idr < ndRselcs; idr++){
     	deltaR_nbins[idr] = static_cast<int>(deltaR_thrsh[idr]/deltaR_step);
   	}
@@ -118,30 +252,11 @@ ParamsSet::ParamsSet(){
   		}
   	}
 
-	// minv_logpow[0][0] = 0.0672;
-	// minv_logpow[0][1] = 0.0465;
-	// minv_logpow[0][2] = 0.01342;
-	// minv_logpow[1][0] = 0.039;
-	// minv_logpow[1][1] = 0.0288;
-	// minv_logpow[1][2] = 0.0099;
-
- //  	for (int isign = 0; isign < nSigns; isign++){
- //  		for (int idr = 0; idr < ndRselcs; idr++){
- //  			for(int ibin = 0; ibin <= minv_nbins[idr]; ibin++){
- //  				minv_bins[isign][idr].push_back(minv_max[idr] * pow(10.0, ((float)(ibin - minv_nbins[idr])) * minv_logpow[isign][idr]));
-	// 		}
-	// 	}
-	// }
-
   	minv_cuts.push_back({0,1.06});
    	minv_cuts.push_back({2.9,3.3});
    	minv_cuts.push_back({3.59,3.74});
    	// minv_cuts.push_back({9.08,9.8});
    	minv_cuts.push_back({9.08,10.5}); // previously 9 - 9.8
-   	charge_eta_gap_cuts.push_back({0.56,0.67});
-   	charge_eta_gap_cuts.push_back({1.064,1.29});
-   	charge_eta_gap_cuts.push_back({-1.29,-1.12});
-
 }
 
 #endif

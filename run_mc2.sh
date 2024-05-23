@@ -1,3 +1,4 @@
+#!/bin/bash
 root -b -l << EOF
 	.L MCNTupleFirstPass.c
 

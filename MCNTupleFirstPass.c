@@ -147,7 +147,7 @@ int MCNTupleFirstPass::ParentGrouping(std::vector<int>& parent_ids, bool c_tag, 
 }
 
 
-void MCNTupleFirstPass::GetPtEtaPhiFromBarcode(int barcode, std::vector<float>* pt_eta_phi){
+void MCNTupleFirstPass::GetPtEtaPhiMFromBarcode(int barcode, std::vector<float>* pt_eta_phi_m){
   std::vector<int>::iterator itbar = std::find(truth_barcode->begin(), truth_barcode->end(), barcode);
 
   if (itbar == truth_barcode->end()){ // found the barcode of muon1 among all truth particles
@@ -155,10 +155,10 @@ void MCNTupleFirstPass::GetPtEtaPhiFromBarcode(int barcode, std::vector<float>* 
     throw std::exception();
   }
   
-  pt_eta_phi->clear();
-  pt_eta_phi->push_back(abs(truth_pt->at(itbar - truth_barcode->begin()))/1000.);
-  pt_eta_phi->push_back(truth_eta->at(itbar - truth_barcode->begin()));
-  pt_eta_phi->push_back(truth_phi->at(itbar - truth_barcode->begin()));
+  pt_eta_phi_m->clear();
+  pt_eta_phi_m->push_back(abs(truth_pt->at(itbar - truth_barcode->begin()))/1000.);
+  pt_eta_phi_m->push_back(truth_eta->at(itbar - truth_barcode->begin()));
+  pt_eta_phi_m->push_back(truth_phi->at(itbar - truth_barcode->begin()));
 }
 
 int MCNTupleFirstPass::UpdateCurParents(bool isMuon1, std::vector<int>& cur_prt_bars, std::vector<int>& cur_prt_ids, int hf_quark_index = -1){
@@ -262,16 +262,24 @@ int MCNTupleFirstPass::UpdateCurParents(bool isMuon1, std::vector<int>& cur_prt_
   // from muon to hadron stage
   if (abs(prev_first_prt_id) == 13 || abs(prev_first_prt_id) == 15){
     if ((abs(cur_prt_ids[0]) >= 400 && abs(cur_prt_ids[0]) < 600) || (abs(cur_prt_ids[0]) >= 4000 && abs(cur_prt_ids[0]) < 6000)){ // c-hadrons
-      if (isMuon1)  GetPtEtaPhiFromBarcode(cur_prt_bars[0], m1_closest_hadron_prt_pt_eta_phi);
-      else          GetPtEtaPhiFromBarcode(cur_prt_bars[0], m2_closest_hadron_prt_pt_eta_phi);
+      if (isMuon1)  GetPtEtaPhiMFromBarcode(cur_prt_bars[0], &mpair->m1_last_hf_hadron_prt_pt_eta_phi_m);
+      else          GetPtEtaPhiMFromBarcode(cur_prt_bars[0], &mpair->m2_last_hf_hadron_prt_pt_eta_phi_m);
     }
+  }
+
+  // last b-flavored hadron
+  bool prev_is_b_hadron = ((abs(prev_first_prt_id) >= 500 && abs(prev_first_prt_id) < 600) || (abs(prev_first_prt_id) >= 5000 && abs(prev_first_prt_id) < 6000));
+  bool current_is_b_hadron = ((abs(cur_prt_ids[0]) >= 500 && abs(cur_prt_ids[0]) < 600) || (abs(cur_prt_ids[0]) >= 5000 && abs(cur_prt_ids[0]) < 6000));
+  if ((!prev_is_b_hadron) && current_is_b_hadron){ // the last b hadron
+    if (isMuon1)  GetPtEtaPhiMFromBarcode(cur_prt_bars[0], &mpair->m1_last_b_hadron_prt_pt_eta_phi_m);
+    else          GetPtEtaPhiMFromBarcode(cur_prt_bars[0], &mpair->m2_last_b_hadron_prt_pt_eta_phi_m);
   }
 
   // from hadron to quark/gluon stage
   bool prev_is_hf_hadron = ((abs(prev_first_prt_id) >= 400 && abs(prev_first_prt_id) < 600) || (abs(prev_first_prt_id) >= 4000 && abs(prev_first_prt_id) < 6000));
   if (prev_is_hf_hadron && ((abs(cur_prt_ids[0]) < 4000 && abs(cur_prt_ids[0]) % 100 <= 5) || cur_prt_ids[0] == 21)){ // including light diquarks
-    if (isMuon1)  GetPtEtaPhiFromBarcode(prev_first_prt_bar, m1_furthest_hadron_prt_pt_eta_phi);
-    else          GetPtEtaPhiFromBarcode(prev_first_prt_bar, m2_furthest_hadron_prt_pt_eta_phi);
+    if (isMuon1)  GetPtEtaPhiMFromBarcode(prev_first_prt_bar, m1_first_hf_hadron_prt_pt_eta_phi_m);
+    else          GetPtEtaPhiMFromBarcode(prev_first_prt_bar, m2_first_hf_hadron_prt_pt_eta_phi_m);
     return prev_first_prt_id;
   }
   return 0;
@@ -460,16 +468,16 @@ void MCNTupleFirstPass::SingleMuonAncestorTracing(bool isMuon1){
     m1_ancestor_is_incoming = (quark_index == -2); // if Case II: then is incoming
     cur_m1_ancestor_ids = parent_ids;
     cur_m1_ancestor_bars = parent_bars;
-    GetPtEtaPhiFromBarcode(prev_hq_bar, m1_hq_ancestor_pt_eta_phi);
+    GetPtEtaPhiMFromBarcode(prev_hq_bar, &mpair->m1_first_hq_ancestor_pt_eta_phi_m);
   }
   else{
     m2_ancestor_is_incoming = (quark_index == -2);
     cur_m2_ancestor_ids = parent_ids;
     cur_m2_ancestor_bars = parent_bars;
-    GetPtEtaPhiFromBarcode(prev_hq_bar, m2_hq_ancestor_pt_eta_phi);
+    GetPtEtaPhiMFromBarcode(prev_hq_bar, &mpair->m2_first_hq_ancestor_pt_eta_phi_m);
   }
 
-  // cout << "finished pt_eta_phi_recording" << endl;
+  // cout << "finished pt_eta_phi_m_recording" << endl;
 
   // if (quark_index == -2){ // the current muon is incoming
   //   *m_unspecified_parent_file << "Event#: " << mpair->m1.ev_num << std::endl;
@@ -811,6 +819,9 @@ void MCNTupleFirstPass::MuonPairTagsReinit(){
   m1_multi_hf_quark_ids.clear();
   m2_multi_hf_quark_ids.clear();
 
+  m1_first_hf_hadron_prt_pt_eta_phi_m->clear();
+  m2_first_hf_hadron_prt_pt_eta_phi_m->clear();
+
 }
 
 
@@ -927,16 +938,16 @@ void MCNTupleFirstPass::MuonPairAncestorTracing(){
 
 
 void MCNTupleFirstPass::KinematicCorrPlots(int isign, int idphi){
-  h_pt_muon_pt_closest_hadr_ratio[isign][idphi]->Fill(mpair->m1.pt / (*m1_closest_hadron_prt_pt_eta_phi)[0],mpair->weight);
-  h_pt_muon_pt_closest_hadr_ratio[isign][idphi]->Fill(mpair->m2.pt / (*m2_closest_hadron_prt_pt_eta_phi)[0],mpair->weight);
-  h_pt_closest_hadr_pt_furthest_hadr_ratio[isign][idphi]->Fill((*m1_closest_hadron_prt_pt_eta_phi)[0] / (*m1_furthest_hadron_prt_pt_eta_phi)[0], mpair->weight);
-  h_pt_closest_hadr_pt_furthest_hadr_ratio[isign][idphi]->Fill((*m2_closest_hadron_prt_pt_eta_phi)[0] / (*m2_furthest_hadron_prt_pt_eta_phi)[0], mpair->weight);
-  h_pt_hadr_hq_ratio[isign][idphi]->Fill((*m1_closest_hadron_prt_pt_eta_phi)[0] / (*m1_hq_ancestor_pt_eta_phi)[0], mpair->weight);
-  h_pt_hadr_hq_ratio[isign][idphi]->Fill((*m2_closest_hadron_prt_pt_eta_phi)[0] / (*m2_hq_ancestor_pt_eta_phi)[0], mpair->weight);
-  float muon_hadr_dphi = mpair->m1.phi - (*m1_closest_hadron_prt_pt_eta_phi)[2];
+  h_pt_muon_pt_closest_hadr_ratio[isign][idphi]->Fill(mpair->m1.pt / (mpair->m1_last_hf_hadron_prt_pt_eta_phi_m)[0],mpair->weight);
+  h_pt_muon_pt_closest_hadr_ratio[isign][idphi]->Fill(mpair->m2.pt / (mpair->m2_last_hf_hadron_prt_pt_eta_phi_m)[0],mpair->weight);
+  h_pt_closest_hadr_pt_furthest_hadr_ratio[isign][idphi]->Fill((mpair->m1_last_hf_hadron_prt_pt_eta_phi_m)[0] / (*m1_first_hf_hadron_prt_pt_eta_phi_m)[0], mpair->weight);
+  h_pt_closest_hadr_pt_furthest_hadr_ratio[isign][idphi]->Fill((mpair->m2_last_hf_hadron_prt_pt_eta_phi_m)[0] / (*m2_first_hf_hadron_prt_pt_eta_phi_m)[0], mpair->weight);
+  h_pt_hadr_hq_ratio[isign][idphi]->Fill((mpair->m1_last_hf_hadron_prt_pt_eta_phi_m)[0] / (mpair->m1_first_hq_ancestor_pt_eta_phi_m)[0], mpair->weight);
+  h_pt_hadr_hq_ratio[isign][idphi]->Fill((mpair->m2_last_hf_hadron_prt_pt_eta_phi_m)[0] / (mpair->m2_first_hq_ancestor_pt_eta_phi_m)[0], mpair->weight);
+  float muon_hadr_dphi = mpair->m1.phi - (mpair->m1_last_hf_hadron_prt_pt_eta_phi_m)[2];
   muon_hadr_dphi = atan2(sin(muon_hadr_dphi),cos(muon_hadr_dphi));//fold muon_hadr_dphi to [-pi,pi]
   h_dphi_muon_closest_hadr[isign][idphi]->Fill(abs(muon_hadr_dphi), mpair->weight);
-  muon_hadr_dphi = mpair->m2.phi - (*m2_closest_hadron_prt_pt_eta_phi)[2];
+  muon_hadr_dphi = mpair->m2.phi - (mpair->m2_last_hf_hadron_prt_pt_eta_phi_m)[2];
   muon_hadr_dphi = atan2(sin(muon_hadr_dphi),cos(muon_hadr_dphi));//fold muon_hadr_dphi to [-pi,pi]
   h_dphi_muon_closest_hadr[isign][idphi]->Fill(abs(muon_hadr_dphi), mpair->weight);
 }
@@ -955,7 +966,7 @@ void MCNTupleFirstPass::FillMuonPairTree(){
 
 void MCNTupleFirstPass::ProcessData(){
 
-  mpair = new MuonPairMC();
+  mpair = new MuonPairPowheg();
   int quark = (mc_mode == "mc_truth_bb")? 5:4;
   qqpair = new TruthQQPair(quark);
   // Long64_t nentries = 100000;

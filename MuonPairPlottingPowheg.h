@@ -308,7 +308,16 @@ void MuonPairPlottingPowheg::InitHists(){
     std::string flavor_grps[nFlavors] = {"_single_b", "_bb", "_cc", "_other_flavors"};
 
    	if (mode == 1){
-        for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
+        // for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
+
+        for (unsigned int ipt = 0; ipt < ParamsSet::nPtBins; ipt++){
+        for (unsigned int ictr = 0; ictr < ParamsSet::nCtrBins; ictr++){
+        for (unsigned int isign = 0; isign < ParamsSet::nSigns; isign++){
+        for (unsigned int idphi = 0; idphi < ParamsSet::ndphiRegions; idphi++){
+        for (unsigned int ideta = 0; ideta < ParamsSet::ndetaRegions; ideta++){
+        for (unsigned int igap = 0; igap < ParamsSet::nGapCuts; igap++){
+        for (unsigned int iphoto = 0; iphoto < ParamsSet::nPhotoProdCuts; iphoto++){
+
 
             for (int kgrp = 0; kgrp < nAncestorGroups + 2; kgrp++){
                 h_DR_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_DR_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_bins,0,pms.deltaR_thrsh[2]);
@@ -402,39 +411,6 @@ void MuonPairPlottingPowheg::InitHists(){
                 h_minv_pair_pt[jdphi][ksign]->Sumw2();
                 h_minv_pair_pt_zoomin[jdphi][ksign]->Sumw2();
                 h_minv_pair_pt_log[jdphi][ksign]->Sumw2();
-            }
-
-            for (unsigned int lgapcut = 0; lgapcut < ParamsSet::nGapCuts; lgapcut++){
-
-                // if (saveDRbinned){
-       	        //     for (unsigned int idr = 0; idr < ParamsSet::ndRselcs; idr++){
-                //         h_pair_dP_overP_dr_binned[ibatch][ksign][lgapcut] = new TH1D(Form("h_pair_dP_overP_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";(#Delta p / p)_{pair};1/N_{evt} dN/d(#Delta p / p)_{pair}" ,pms.deltaP_overP_nbins,0,pms.deltaP_overP_max);
-                //         h_DR_dr_binned[ibatch][ksign][lgapcut] = new TH1D(Form("h_DR_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta R;1/N_{evt} dN/d#Delta R", static_cast<int>(pms.deltaR_nbins[idr]/2.),0,pms.deltaR_thrsh[idr]);
-                //         h_Dphi_dr_binned[ibatch][ksign][lgapcut] = new TH1D(Form("h_Dphi_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta#phi;1/N_{evt} dN/d#Delta#phi", nDphi_bins,-pms.PI,pms.PI);
-                //         h_pair_y_dr_binned[ibatch][ksign][lgapcut] = new TH1D(Form("h_pair_y_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";y_{pair};1/N_{evt} dN/dy_{pair}" ,npair_y_bins,-3,3);
-                //         h_pt_asym_dr_binned[ibatch][ksign][lgapcut] = new TH1D(Form("h_pt_asym_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", npt_asym_bins,0,1.);
-                //         h_pair_pt_ptlead_ratio_dr_binned[ibatch][ksign][lgapcut] = new TH1D(Form("h_pair_pt_ptlead_ratio_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", npair_pt_ptlead_ratio_bins,0,2.);
-
-                //         h_eta_avg_Dphi_dr_binned[ibatch][ksign][lgapcut] = new TH2D(Form("h_eta_avg_Dphi_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta#phi;#bar{#eta}", nDphi_bins,-pms.PI,pms.PI,neta_bins,-2.4,2.4);
-                //         h_Deta_Dphi_dr_binned[ibatch][ksign][lgapcut] = new TH2D(Form("h_Deta_Dphi_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
-                //         h_eta1_eta2_dr_binned[ibatch][ksign][lgapcut] = new TH2D(Form("h_eta1_eta2_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#eta_{sublead};#eta_{lead}",neta_bins,-2.4,2.4, neta_bins,-2.4,2.4);
-                //         h_eta_avg_Deta_dr_binned[ibatch][ksign][lgapcut] = new TH2D(Form("h_eta_avg_Deta_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta#eta;#bar{#eta}",nDeta_bins,-4.8,4.8,neta_bins,-2.4,2.4);
-                //         h_pt1_pt2_dr_binned[ibatch][ksign][lgapcut] = new TH2D(Form("h_pt1_pt2_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";p_{T}^{sublead} [GeV];p_{T}^{lead} [GeV]",pms.npt_bins,pms.pTBins,pms.npt_bins,pms.pTBins);
-                //         h_ptlead_pair_pt_dr_binned[ibatch][ksign][lgapcut] = new TH2D(Form("h_ptlead_pair_pt_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][idr],pms.npt_bins,pms.pTBins);
-                //         // h_minv_pair_pt_dr_binned[ibatch][ksign][lgapcut] = new TH2D(Form("h_minv_pair_pt_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][idr],pms.minv_nbins[idr],0,pms.minv_max[idr]);
-                //         h_minv_pair_pt_dr_binned[ibatch][ksign][lgapcut] = new TH2D(Form("h_minv_pair_pt_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][idr],nminv_bins,minv_bins[ksign]);
-                        
-                //         if (isMCTruthBB || isMCTruthCC){
-                //             h_unweighted_Deta_Dphi_dr_binned[ibatch][ksign][lgapcut] = new TH2D(Form("h_unweighted_Deta_Dphi_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
-                //         }
-                //     }
-                // }
-
-                // for (unsigned int idphi= 0; idphi < ParamsSet::ndphiselcs; idphi++){
-                //     // h_eta1_eta2_dphicut[idphi][ksign][lgapcut] = new TH2D(Form("h_eta1_eta2_dphi%d_sign%d_gapcut%d",idphi+1,ksign+1,lgapcut+1),";#eta_{sublead};#eta_{lead}",100,-2.4,2.4, 100,-2.4,2.4);
-                //     h_eta1_eta2_dphicut[idphi][ksign][lgapcut] = new TH2D(Form("h_eta1_eta2_dphi%d_sign%d_gapcut%d",idphi+1,ksign+1,lgapcut+1),";#eta_{sublead};#eta_{lead}",50,-2.4,2.4, 50,-2.4,2.4);
-                //     // if (isMCTruthBB || isMCTruthCC) h_unweighted_eta1_eta2_dphicut[idphi][ksign][lgapcut] = new TH2D(Form("h_unweighted_eta1_eta2_dphi%d_sign%d_gapcut%d",idphi+1,ksign+1,lgapcut+1),";#eta_{sublead};#eta_{lead}",50,-2.4,2.4, 50,-2.4,2.4);
-                // }
             }
         }
     }

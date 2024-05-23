@@ -36,86 +36,70 @@ private:
 
   	TFile *outFile = nullptr;
 
-    TH1D* h_pair_dP_overP_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH1D* h_Dphi_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH1D* h_DR_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH1D* h_pair_y_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH1D* h_pt_asym_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH1D* h_pair_pt_ptlead_ratio_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
 
-    TH2D* h_eta_avg_Dphi_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_Deta_Dphi_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_eta1_eta2_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_eta_avg_Deta_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_pt1_pt2_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_ptlead_pair_pt_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_minv_pair_pt_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_minv_pair_pt_zoomin_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_minv_pair_pt_log_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
 
-    // TH2D* h_unweighted_Deta_Dphi_dr_binned[ParamsSet::ndRselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
     
-    std::string dphi_regions[2] = {"near", "away"};
+    // std::string dphi_regions[2] = {"near", "away"};
 
-    TH1D* h_pair_dP_overP[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH1D* h_Dphi[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH1D* h_DR[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH1D* h_pair_y[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH1D* h_pt_asym[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH1D* h_pair_pt_ptlead_ratio[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_eta_avg_Dphi[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_Deta_Dphi[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_eta1_eta2[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_eta_avg_Deta[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_pt1_pt2[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_ptlead_pair_pt[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_ptlead_pair_pt_zoomin[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_ptlead_pair_pt_log[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_minv_pair_pt[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_minv_pair_pt_zoomin[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
-    TH2D* h_minv_pair_pt_log[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH1D* h_pair_dP_overP[ParamsSet::nPtBins][ParamsSet::nSigns][ParamsSet::ndphiRegions][ParamsSet::ndetaRegions][ParamsSet::nPhotoProdCuts][ParamsSet::nGapCuts];
+    TH1D* h_Dphi[ParamsSet::nPtBins][ParamsSet::nSigns][ParamsSet::ndphiRegions][ParamsSet::ndetaRegions][ParamsSet::nPhotoProdCuts][ParamsSet::nGapCuts];
+    TH1D* h_DR[ParamsSet::nPtBins][ParamsSet::nSigns][ParamsSet::ndphiRegions][ParamsSet::ndetaRegions][ParamsSet::nPhotoProdCuts][ParamsSet::nGapCuts];
+    TH1D* h_pair_y[ParamsSet::nPtBins][ParamsSet::nSigns][ParamsSet::ndphiRegions][ParamsSet::ndetaRegions][ParamsSet::nPhotoProdCuts][ParamsSet::nGapCuts];
+    TH1D* h_pt_asym[ParamsSet::nPtBins][ParamsSet::nSigns][ParamsSet::ndphiRegions][ParamsSet::ndetaRegions][ParamsSet::nPhotoProdCuts][ParamsSet::nGapCuts];
+    TH1D* h_pair_pt_ptlead_ratio[ParamsSet::nPtBins][ParamsSet::nSigns][ParamsSet::ndphiRegions][ParamsSet::ndetaRegions][ParamsSet::nPhotoProdCuts][ParamsSet::nGapCuts];
+    TH2D* h_eta_avg_Dphi[ParamsSet::nPtBins][ParamsSet::nSigns][ParamsSet::ndphiRegions][ParamsSet::ndetaRegions][ParamsSet::nPhotoProdCuts][ParamsSet::nGapCuts];
+    TH2D* h_Deta_Dphi[ParamsSet::nPtBins][ParamsSet::nSigns][ParamsSet::ndphiRegions][ParamsSet::ndetaRegions][ParamsSet::nPhotoProdCuts][ParamsSet::nGapCuts];
+    TH2D* h_eta1_eta2[ParamsSet::nPtBins][ParamsSet::nSigns][ParamsSet::ndphiRegions][ParamsSet::ndetaRegions][ParamsSet::nPhotoProdCuts][ParamsSet::nGapCuts];
+    TH2D* h_eta_avg_Deta[ParamsSet::nPtBins][ParamsSet::nSigns][ParamsSet::ndphiRegions][ParamsSet::ndetaRegions][ParamsSet::nPhotoProdCuts][ParamsSet::nGapCuts];
+    TH2D* h_pt1_pt2[ParamsSet::nPtBins][ParamsSet::nSigns][ParamsSet::ndphiRegions][ParamsSet::ndetaRegions][ParamsSet::nPhotoProdCuts][ParamsSet::nGapCuts];
+    TH2D* h_ptlead_pair_pt[ParamsSet::nPtBins][ParamsSet::nSigns][ParamsSet::ndphiRegions][ParamsSet::ndetaRegions][ParamsSet::nPhotoProdCuts][ParamsSet::nGapCuts];
+    TH2D* h_ptlead_pair_pt_zoomin[ParamsSet::nPtBins][ParamsSet::nSigns][ParamsSet::ndphiRegions][ParamsSet::ndetaRegions][ParamsSet::nPhotoProdCuts][ParamsSet::nGapCuts];
+    TH2D* h_ptlead_pair_pt_log[ParamsSet::nPtBins][ParamsSet::nSigns][ParamsSet::ndphiRegions][ParamsSet::ndetaRegions][ParamsSet::nPhotoProdCuts][ParamsSet::nGapCuts];
+    TH2D* h_minv_pair_pt[ParamsSet::nPtBins][ParamsSet::nSigns][ParamsSet::ndphiRegions][ParamsSet::ndetaRegions][ParamsSet::nPhotoProdCuts][ParamsSet::nGapCuts];
+    TH2D* h_minv_pair_pt_zoomin[ParamsSet::nPtBins][ParamsSet::nSigns][ParamsSet::ndphiRegions][ParamsSet::ndetaRegions][ParamsSet::nPhotoProdCuts][ParamsSet::nGapCuts];
+    TH2D* h_minv_pair_pt_log[ParamsSet::nPtBins][ParamsSet::nSigns][ParamsSet::ndphiRegions][ParamsSet::ndetaRegions][ParamsSet::nPhotoProdCuts][ParamsSet::nGapCuts];
 
     static const int nAncestorGroups = 4;
 
-    TH1D* h_DR_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 1];
-    TH1D* h_pt_asym_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 1];
-    // TH1D* h_psrapidity_ordered_pt_asym_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 1];
-    TH1D* h_pair_pt_ptlead_ratio_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 1];
-    TH2D* h_ptlead_pair_pt_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 1];
-    TH2D* h_Deta_Dphi_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 1];
-    TH2D* h_minv_pair_pt_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 1];
+    // TH1D* h_DR_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 1];
+    // TH1D* h_pt_asym_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 1];
+    // // TH1D* h_psrapidity_ordered_pt_asym_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 1];
+    // TH1D* h_pair_pt_ptlead_ratio_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 1];
+    // TH2D* h_ptlead_pair_pt_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 1];
+    // TH2D* h_Deta_Dphi_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 1];
+    // TH2D* h_minv_pair_pt_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 1];
 
     // TH2D* h_unweighted_eta1_eta2_dphicut[ParamsSet::ndphiselcs][ParamsSet::nSigns][ParamsSet::nGapCuts];
 
     // --------------------- input files & trees & data for setting branches---------------------------
 
    	TFile *inFile;
-    // TTree *inTree_ctrbin[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    // TTree *inTree_ctrbin[ParamsSet::nSigns];
     // TTree *inTree[ParamsSet::nSigns];
-    TTree *inTree[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    TTree *inTree[ParamsSet::nSigns];
 
-    double weight[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float pair_dPoverP[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float pt_lead[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float pair_pt[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	// float pair_eta[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float pair_y[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    float asym[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float dpt[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float deta[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float etaavg[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float phiavg[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float dphi[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float dr[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float minv[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float m1pt[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float m2pt[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float m1eta[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float m2eta[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float m1phi[ParamsSet::ndRselcs][ParamsSet::nSigns];
-  	float m2phi[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    int m1charge[ParamsSet::ndRselcs][ParamsSet::nSigns];
-    int m2charge[ParamsSet::ndRselcs][ParamsSet::nSigns];
+    double weight[ParamsSet::nSigns];
+  	float pair_dPoverP[ParamsSet::nSigns];
+  	float pt_lead[ParamsSet::nSigns];
+  	float pair_pt[ParamsSet::nSigns];
+  	// float pair_eta[ParamsSet::nSigns];
+  	float pair_y[ParamsSet::nSigns];
+    float asym[ParamsSet::nSigns];
+  	float dpt[ParamsSet::nSigns];
+  	float deta[ParamsSet::nSigns];
+  	float etaavg[ParamsSet::nSigns];
+  	float phiavg[ParamsSet::nSigns];
+  	float dphi[ParamsSet::nSigns];
+  	float dr[ParamsSet::nSigns];
+  	float minv[ParamsSet::nSigns];
+  	float m1pt[ParamsSet::nSigns];
+  	float m2pt[ParamsSet::nSigns];
+  	float m1eta[ParamsSet::nSigns];
+  	float m2eta[ParamsSet::nSigns];
+  	float m1phi[ParamsSet::nSigns];
+  	float m2phi[ParamsSet::nSigns];
+    int m1charge[ParamsSet::nSigns];
+    int m2charge[ParamsSet::nSigns];
 
 
     // --------------------- class methods ---------------------------
@@ -126,8 +110,7 @@ private:
     // void InitOutput();
     void WriteOutput();
     bool PassSingleMuonGapCut(float meta, float mpt, int mcharge);
-   	void FillHistograms(int ndr, int nsign);
-   	void FillPtBinnedHistograms(int ndr, int npt, int nsign);
+   	void FillHistograms(int nsign);
 
 public:
     int mode = 1;
@@ -268,19 +251,15 @@ void MuonPairPlottingPP::InitHists(){
     std::string ancestor_grps[nAncestorGroups + 1] = {"_from_same_b", "_gg", "_qg","_single_g","_qq"};
 
    	if (mode == 1){
-        for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
-
-            for (int kgrp = 0; kgrp < nAncestorGroups + 1; kgrp++){
-                h_DR_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_DR_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_bins,0,pms.deltaR_thrsh[2]);
-                h_pt_asym_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_pt_asym_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", npt_asym_bins,0,1.);
-                // h_psrapidity_ordered_pt_asym_ancestor_binned
-                h_pair_pt_ptlead_ratio_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_pair_pt_ptlead_ratio_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", npair_pt_ptlead_ratio_bins,0,2.);
-                h_ptlead_pair_pt_ancestor_binned[ksign][kgrp] = new TH2D(Form("h_ptlead_pair_pt_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",npair_pT_bins_linear,0,30,npT_lead_bins_linear,0,30);
-                h_Deta_Dphi_ancestor_binned[ksign][kgrp] = new TH2D(Form("h_Deta_Dphi_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
-                h_minv_pair_pt_ancestor_binned[ksign][kgrp] = new TH2D(Form("h_minv_pair_pt_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
-            }
-
+        // for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
                 
+        for (unsigned int ipt = 0; ipt < ParamsSet::nPtBins; ipt++){
+        for (unsigned int ictr = 0; ictr < ParamsSet::nCtrBins; ictr++){
+        for (unsigned int isign = 0; isign < ParamsSet::nSigns; isign++){
+        for (unsigned int idphi = 0; idphi < ParamsSet::ndphiRegions; idphi++){
+        for (unsigned int ideta = 0; ideta < ParamsSet::ndetaRegions; ideta++){
+        for (unsigned int igap = 0; igap < ParamsSet::nGapCuts; igap++){
+        for (unsigned int iphoto = 0; iphoto < ParamsSet::nPhotoProdCuts; iphoto++){
 
             for (unsigned int lgapcut = 0; lgapcut < ParamsSet::nGapCuts; lgapcut++){
 
@@ -304,36 +283,6 @@ void MuonPairPlottingPP::InitHists(){
                     h_minv_pair_pt_zoomin[jdphi][ksign][lgapcut] = new TH2D(Form("h_minv_pair_pt_zoomin_%s_sign%d_gapcut%d",dphi_regions[jdphi].c_str(),ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,20,nminv_bins_linear,5,15);
                     h_minv_pair_pt_log[jdphi][ksign][lgapcut] = new TH2D(Form("h_minv_pair_pt_log_%s_sign%d_gapcut%d",dphi_regions[jdphi].c_str(),ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][2],nminv_bins_log,minv_bins_log[ksign]);
                 }
-
-                if (saveDRbinned){
-       	            for (unsigned int idr = 0; idr < ParamsSet::ndRselcs; idr++){
-                        h_pair_dP_overP_dr_binned[idr][ksign][lgapcut] = new TH1D(Form("h_pair_dP_overP_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";(#Delta p / p)_{pair};1/N_{evt} dN/d(#Delta p / p)_{pair}" ,pms.deltaP_overP_nbins,0,pms.deltaP_overP_max);
-                        h_DR_dr_binned[idr][ksign][lgapcut] = new TH1D(Form("h_DR_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta R;1/N_{evt} dN/d#Delta R", static_cast<int>(pms.deltaR_nbins[idr]/2.),0,pms.deltaR_thrsh[idr]);
-                        h_Dphi_dr_binned[idr][ksign][lgapcut] = new TH1D(Form("h_Dphi_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta#phi;1/N_{evt} dN/d#Delta#phi", nDphi_bins,-pms.PI,pms.PI);
-                        h_pair_y_dr_binned[idr][ksign][lgapcut] = new TH1D(Form("h_pair_y_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";y_{pair};1/N_{evt} dN/dy_{pair}" ,npair_y_bins,-3,3);
-                        h_pt_asym_dr_binned[idr][ksign][lgapcut] = new TH1D(Form("h_pt_asym_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", npt_asym_bins,0,1.);
-                        h_pair_pt_ptlead_ratio_dr_binned[idr][ksign][lgapcut] = new TH1D(Form("h_pair_pt_ptlead_ratio_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", npair_pt_ptlead_ratio_bins,0,2.);
-
-                        h_eta_avg_Dphi_dr_binned[idr][ksign][lgapcut] = new TH2D(Form("h_eta_avg_Dphi_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta#phi;#bar{#eta}", nDphi_bins,-pms.PI,pms.PI,neta_bins,-2.4,2.4);
-                        h_Deta_Dphi_dr_binned[idr][ksign][lgapcut] = new TH2D(Form("h_Deta_Dphi_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
-                        h_eta1_eta2_dr_binned[idr][ksign][lgapcut] = new TH2D(Form("h_eta1_eta2_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#eta_{sublead};#eta_{lead}",neta_bins,-2.4,2.4, neta_bins,-2.4,2.4);
-                        h_eta_avg_Deta_dr_binned[idr][ksign][lgapcut] = new TH2D(Form("h_eta_avg_Deta_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta#eta;#bar{#eta}",nDeta_bins,-4.8,4.8,neta_bins,-2.4,2.4);
-                        h_pt1_pt2_dr_binned[idr][ksign][lgapcut] = new TH2D(Form("h_pt1_pt2_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";p_{T}^{sublead} [GeV];p_{T}^{lead} [GeV]",pms.npt_bins,pms.pTBins,pms.npt_bins,pms.pTBins);
-                        h_ptlead_pair_pt_dr_binned[idr][ksign][lgapcut] = new TH2D(Form("h_ptlead_pair_pt_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][idr],pms.npt_bins,pms.pTBins);
-                        h_minv_pair_pt_dr_binned[idr][ksign][lgapcut] = new TH2D(Form("h_minv_pair_pt_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
-                        h_minv_pair_pt_zoomin_dr_binned[idr][ksign][lgapcut] = new TH2D(Form("h_minv_pair_pt_zoomin_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,20,nminv_bins_linear,5,15);
-                        h_minv_pair_pt_log_dr_binned[idr][ksign][lgapcut] = new TH2D(Form("h_minv_pair_pt_log_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][2],nminv_bins_log,minv_bins_log[ksign]);
-
-                        // h_minv_pair_pt_dr_binned[idr][ksign][lgapcut] = new TH2D(Form("h_minv_pair_pt_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][idr],pms.minv_nbins[idr],0,pms.minv_max[idr]);
-                        // h_minv_pair_pt_dr_binned[idr][ksign][lgapcut] = new TH2D(Form("h_minv_pair_pt_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][idr],nminv_bins,minv_bins[ksign]);
-                        
-                        // if (isMCTruthBB || isMCTruthCC){
-                        //     h_unweighted_Deta_Dphi_dr_binned[idr][ksign][lgapcut] = new TH2D(Form("h_unweighted_Deta_Dphi_dr%d_sign%d_gapcut%d",idr+1,ksign+1,lgapcut+1),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
-                        // }
-                    }
-                }
-
-
 
                 // for (unsigned int idphi= 0; idphi < ParamsSet::ndphiselcs; idphi++){
                 //     // h_eta1_eta2_dphicut[idphi][ksign][lgapcut] = new TH2D(Form("h_eta1_eta2_dphi%d_sign%d_gapcut%d",idphi+1,ksign+1,lgapcut+1),";#eta_{sublead};#eta_{lead}",100,-2.4,2.4, 100,-2.4,2.4);

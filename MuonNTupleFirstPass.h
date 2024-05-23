@@ -92,11 +92,11 @@ private:
    TTree* muonOutTree;
    TTree* muonOutTreeBinned[ParamsSet::nCtrIntvls];
    TTree* muonPairOutTree[ParamsSet::nSigns];
-   TTree* muonPairOutTreeBinned[ParamsSet::ndRselcs][ParamsSet::nCtrIntvls][ParamsSet::nSigns];
+   TTree* muonPairOutTreeBinned[ParamsSet::nCtrIntvls][ParamsSet::nSigns];
 
 
 public :
-   int mode = 3;
+   int mode = 4;
    MuonNTupleFirstPass();
    ~MuonNTupleFirstPass(){}
    void Run();
@@ -193,11 +193,9 @@ void MuonNTupleFirstPass::InitOutput(){
     for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
       muonPairOutTree[ksign] = new TTree(Form("muon_pair_tree_sign%u",ksign+1),Form("all muon pairs, sign%u",ksign+1));
       muonPairOutTree[ksign]->Branch("MuonPairObj",&mpair);
-      for (unsigned int idr = 0; idr < ParamsSet::ndRselcs; idr++){
-        for (unsigned int jctr = 0; jctr < ParamsSet::nCtrIntvls; jctr++){
-          muonPairOutTreeBinned[idr][jctr][ksign] = new TTree(Form("muon_pair_tree_dr%u_ctr%u_sign%u",idr+1,jctr+1,ksign+1),Form("all muon pairs, dr%u, ctr%u, sign%u",idr+1,jctr+1,ksign+1));
-          muonPairOutTreeBinned[idr][jctr][ksign]->Branch("MuonPairObj",&mpair);
-        }
+      for (unsigned int jctr = 0; jctr < ParamsSet::nCtrIntvls; jctr++){
+        muonPairOutTreeBinned[jctr][ksign] = new TTree(Form("muon_pair_tree_ctr%u_sign%u",jctr+1,ksign+1),Form("all muon pairs, ctr%u, sign%u",jctr+1,ksign+1));
+        muonPairOutTreeBinned[jctr][ksign]->Branch("MuonPairObj",&mpair);
       }
     }
   }

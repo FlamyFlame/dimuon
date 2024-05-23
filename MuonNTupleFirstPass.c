@@ -70,15 +70,11 @@ void MuonNTupleFirstPass::FillSingleMuonTree(){
 void MuonNTupleFirstPass::FillMuonPairTree(){
   int nsign = (mpair->same_sign)? 0:1;
     muonPairOutTree[nsign]->Fill();
-  for (unsigned int idr = 0; idr < pms.ndRselcs; idr++){
-    if (mpair->dr < pms.deltaR_thrsh[idr]){
-      for (unsigned int jctr = 0; jctr < pms.nCtrIntvls; jctr++){
-        if (mpair->avg_centrality >= pms.CtrStep * jctr && mpair->avg_centrality < pms.CtrStep *(jctr+1)){
-          muonPairOutTreeBinned[idr][jctr][nsign]->Fill();
-        }
+    for (unsigned int jctr = 0; jctr < pms.nCtrIntvls; jctr++){
+      if (mpair->avg_centrality >= pms.CtrStep * jctr && mpair->avg_centrality < pms.CtrStep *(jctr+1)){
+        muonPairOutTreeBinned[jctr][nsign]->Fill();
       }
     }
-  }
 }
 
 void MuonNTupleFirstPass::ProcessData(){
@@ -200,16 +196,16 @@ void MuonNTupleFirstPass::Run(){
   InitOutput();
   ProcessData();
 
-  if (mode == 4){
-    for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
-      std::cout << "sign: " << ksign << ", #total entries: " << muonPairOutTree[ksign]->GetEntries() << std::endl;
-      for (unsigned int idr = 0; idr < ParamsSet::ndRselcs; idr++){
-        for (unsigned int jctr = 0; jctr < ParamsSet::nCtrIntvls; jctr++){
-          std::cout << "dR: " << idr << ", ctr: " << jctr << ", sign: " << ksign << ", #entries: " << muonPairOutTreeBinned[idr][jctr][ksign]->GetEntries() << std::endl;
-        }
-      }
-    }
-  }
+  // if (mode == 4){
+  //   for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
+  //     std::cout << "sign: " << ksign << ", #total entries: " << muonPairOutTree[ksign]->GetEntries() << std::endl;
+  //     // for (unsigned int idr = 0; idr < ParamsSet::ndRselcs; idr++){
+  //     //   for (unsigned int jctr = 0; jctr < ParamsSet::nCtrIntvls; jctr++){
+  //     //     std::cout << "dR: " << idr << ", ctr: " << jctr << ", sign: " << ksign << ", #entries: " << muonPairOutTreeBinned[idr][jctr][ksign]->GetEntries() << std::endl;
+  //     //   }
+  //     // }
+  //   }
+  // }
 
   m_outfile->Write();
 

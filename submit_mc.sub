@@ -1,0 +1,30 @@
+Universe   = vanilla
+Executable = run_mc1.sh
+Log        = /usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/run_mc_condor_logs/run_mc1.log
+Output     = /usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/run_mc_condor_logs/run_mc1.out
+Error      = /usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/run_mc_condor_logs/run_mc1.error
+Queue
+
+Executable = run_mc2.sh
+Log        = /usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/run_mc_condor_logs/run_mc2.log
+Output     = /usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/run_mc_condor_logs/run_mc2.out
+Error      = /usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/run_mc_condor_logs/run_mc2.error
+Queue
+
+Executable = run_mc3.sh
+Log        = /usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/run_mc_condor_logs/run_mc3.log
+Output     = /usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/run_mc_condor_logs/run_mc3.out
+Error      = /usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/run_mc_condor_logs/run_mc3.error
+Queue
+
+Executable = run_mc4.sh
+Log        = /usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/run_mc_condor_logs/run_mc4.log
+Output     = /usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/run_mc_condor_logs/run_mc4.out
+Error      = /usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/run_mc_condor_logs/run_mc4.error
+Queue
+
+Executable = run_mc56.sh
+Log        = /usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/run_mc_condor_logs/run_mc56.log
+Output     = /usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/run_mc_condor_logs/run_mc56.out
+Error      = /usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/run_mc_condor_logs/run_mc56.error
+Queue

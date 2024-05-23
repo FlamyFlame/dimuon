@@ -62,12 +62,7 @@ void MuonNTupleFirstPassPP::FillSingleMuonTree(){
 
 void MuonNTupleFirstPassPP::FillMuonPairTree(){
   int nsign = (mpair->same_sign)? 0:1;
-  // muonPairOutTree[nsign]->Fill();
-  for (unsigned int idr = 0; idr < pms.ndRselcs; idr++){
-    if (mpair->dr < pms.deltaR_thrsh[idr]){
-      muonPairOutTreeBinned[idr][nsign]->Fill();
-    }
-  }
+  muonPairOutTree[nsign]->Fill();
 }
 
 
@@ -200,12 +195,6 @@ void MuonNTupleFirstPassPP::Run(){
   InitInput();
   InitOutput();
   ProcessData();
-  // for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
-  //   std::cout << "sign" << ksign << ", #entries: " << muonPairOutTree[ksign]->GetEntries() << std::endl;
-  //   for (unsigned int idr = 0; idr < ParamsSet::ndRselcs; idr++){
-  //     std::cout << "sign" << ksign << ", dr" << idr << ", #entries: " << muonPairOutTreeBinned[idr][ksign]->GetEntries() << std::endl;
-  //   }
-  // }
   m_outfile->Write();
 
   end = clock();

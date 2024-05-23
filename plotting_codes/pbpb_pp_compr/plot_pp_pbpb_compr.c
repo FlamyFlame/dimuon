@@ -89,13 +89,6 @@ void hist_helper(TH1* h, float norm, std::string ytitle=""){
   h->GetXaxis()->SetTitleFont(43);  
   h->GetXaxis()->SetTitleSize(32);
   h->GetXaxis()->SetTitleOffset(1);
-  // h->GetYaxis()->SetTitleOffset(h->GetYaxis()->GetTitleOffset()*0.8);
-    // h->GetXaxis()->SetTitleOffset(h->GetXaxis()->GetTitleOffset()*0.8);
-  // h->GetXaxis()->SetTitleSize(h->GetXaxis()->GetTitleSize()*1.8);
-    // h->GetXaxis()->SetLabelSize(h->GetXaxis()->GetLabelSize()*1.35);
-    // h->GetYaxis()->SetTitleSize(h->GetYaxis()->GetTitleSize()*1.8);
-    // h->GetYaxis()->SetLabelSize(h->GetYaxis()->GetLabelSize()*1.35);
-    // h->GetZaxis()->SetLabelSize(h->GetZaxis()->GetLabelSize()*1.35);
 }
 
 void plot_pp_pbpb_compr_single_kin(std::string kin, bool projx_2d, bool projy_2d, std::string kin1d, std::string kin_title, bool near_side_only = false, bool logx=false){
