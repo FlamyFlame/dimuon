@@ -1,24 +1,3 @@
-/*
- * =====================================================================================
- *
- *       Filename:  AthenaVersion.h
- *
- *    Description:  Athena version #defs
- *
- *        Version:  1.0
- *        Created:  04/27/19 09:12:14
- *       Revision:  none
- *       Compiler:  gcc
- *
- *         Author:  Soumya Mohapatra (), 
- *   Organization:  
- *
- * =====================================================================================
- */
-
-
-
-
 //------------------------------------------------------------------------
 //Only one line should be uncommented
 
