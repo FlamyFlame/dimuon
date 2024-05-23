@@ -743,6 +743,7 @@ StatusCode TrigRates::ProcessEventInfo(){
 
 
 void TrigRates::InitZdc(TTree *l_OutTree){
+  #if defined(__ATHENA_24p2__)
   l_OutTree->Branch("zdc_ZdcAmp"       , &t_ZdcAmp      , "zdc_ZdcAmp[2]/F");
   l_OutTree->Branch("zdc_ZdcAmpErr"    , &t_ZdcAmpErr   , "zdc_ZdcAmpErr[2]/F");
   l_OutTree->Branch("zdc_ZdcEnergy"    , &t_ZdcEnergy   , "zdc_ZdcEnergy[2]/F");
@@ -770,9 +771,11 @@ void TrigRates::InitZdc(TTree *l_OutTree){
     l_OutTree->Branch("zdc_cosDeltaReactionPlaneAngle",&t_cosDeltaReactionPlaneAngle,"zdc_cosDeltaReactionPlaneAngle/F");
     l_OutTree->Branch("zdc_centroidStatus"            ,&t_centroidStatus            ,"zdc_centroidStatus[2]/i");
   }
+  #endif
 }
 
 StatusCode TrigRates::ProcessZdc(){
+  #if defined(__ATHENA_24p2__)
   t_ZdcModuleMask =0;
 
   //m_ZDCAnalysisTool->reprocessZdc(); // Run the re-processing of the ZDC to get this information.
@@ -836,6 +839,10 @@ StatusCode TrigRates::ProcessZdc(){
 
 
   return StatusCode::SUCCESS;
+  #else
+  ATH_MSG_ERROR("Zdc analysis is not implemented for this release");
+  return StatusCode::FAILURE;
+  #endif
 }
 
 
@@ -2201,6 +2208,7 @@ StatusCode TrigRates::ProcessTruthVertex(){
 
 
 void TrigRates::InitMcEvents(TTree *l_OutTree){
+  #if defined(__ATHENA_24p2__)
   l_OutTree->Branch("mc_pt"    , &m_mc_pt    );
   l_OutTree->Branch("mc_px"    , &m_mc_px    );
   l_OutTree->Branch("mc_py"    , &m_mc_py    );
@@ -2208,9 +2216,11 @@ void TrigRates::InitMcEvents(TTree *l_OutTree){
   l_OutTree->Branch("mc_eta"   , &m_mc_eta   );
   l_OutTree->Branch("mc_phi"   , &m_mc_phi   );
   l_OutTree->Branch("mc_pdgid" , &m_mc_pdgid );
+  #endif
 }
 
 StatusCode TrigRates::ProcessMcEvents(){
+  #if defined(__ATHENA_24p2__)
   m_mc_pt   .clear();
   m_mc_px   .clear();
   m_mc_py   .clear();
@@ -2251,4 +2261,8 @@ StatusCode TrigRates::ProcessMcEvents(){
     }
   }
   return StatusCode::SUCCESS;
+  #else
+  ATH_MSG_ERROR("McEventCollection is not implemented for this release");
+  return StatusCode::FAILURE;
+  #endif
 }
