@@ -1,27 +1,17 @@
-
+#setting up release 21.2
+cp CmakeFile/CMakeLists_Rel21.2.txt source/HFtrigValidation/CMakeLists.txt
+rm -rf build
+mkdir build
 cd build
-rm -rf .* *
-acmSetup --sourcedir=../source AtlasProduction,21.0.20.1
-acm clean
-acm compile
-
-cd build
-rm -rf .* *
-acmSetup --sourcedir=../source AthAnalysis,21.2.110
-acm clean
+acmSetup --sourcedir=../source AthAnalysis,21.2,latest
 acm compile
 
 
+
+#setting up release 24.2
+cp CmakeFile/CMakeLists_Rel24.2.txt source/HFtrigValidation/CMakeLists.txt
+rm -rf build
+mkdir build
 cd build
-rm -rf .* *
-acmSetup --sourcedir=../source AtlasDerivation,21.0.19.8
-acm compile
-
-
-cd build
-rm -rf .* *
-acmSetup --sourcedir=../source Athena,21.0.89
-acm compile
-
-
 acmSetup AthAnalysis,24.2.40
+acm compile
