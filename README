@@ -1,0 +1,14 @@
+Directory for dimuon-related code
+
+[Analysis] contains all pieces of code for AFTER-ntuple analysis, including
+	- ROOT file of event-based TTrees --> ROOT file of muon-pair-based TTrees
+	- histogram making: muon-pair-based TTrees --> ROOT file containing all histograms
+	- plotting: ROOT file of histograms --> PDF/PNG files with campus division, plotting style, etc., executed
+
+
+[SkimCode] athena-based packages for skimming data in the format of AOD files and produce ntuples, including specifically
+	- source directory --> source code of the packages themselves
+	- CMakeFiles
+	- scripts for python configuration files + grid-submitting bash scripts
+	- XMLs: including GRLs for different data periods
+	- datasetnames

@@ -1,3 +1,6 @@
+# For Run2 data that was processed in release 21, we need to use release 21 to skim the data
+# Once logged into lxplus, do "ssh lxplus7", then "setupATLAS"
+
 #setting up release 21.2
 cp CmakeFile/CMakeLists_Rel21.2.txt source/HFtrigValidation/CMakeLists.txt
 #edit the file source/HFtrigValidation/HFtrigValidation/AthenaVersion.h

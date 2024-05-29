@@ -1,9 +1,12 @@
 
 #data with muons
-do_pp2017 = False
+do_pp2015 = False
+# do_pp2015 = True
+do_pp2017 = True
+# do_pp2017 = False
 do_hi2018 = False
 do_hi2015 = False
-do_hi2023 = True
+do_hi2023 = False
 
 #overlay
 do_pp_MC       =False
@@ -74,7 +77,15 @@ elif do_hi2023:
   ZDC_Configuration=""
 elif do_pp2017:
   GRL              =["data17_5TeV.periodAllYear_DetStatus-v98-pro21-16_Unknown_PHYS_StandardGRL_All_Good_25ns_ignore_GLOBAL_LOWMU.xml"]
-  InputFile        ="/afs/cern.ch/user/s/soumya/workarea/DATA/JobTestData/data17_5TeV.periodM.physics_Main.PhysCont.AOD.pro23_v02/*"
+  InputFile        ="/eos/user/y/yuhang/data/pp_17/data17_5TeV/*"
+  Muon_triggers    =["HLT_mu4", "HLT_mu6", "HLT_mu8", "HLT_mu10"]
+  DiMuon_triggers  =["HLT_2mu4"]
+elif do_pp2015:
+  GRL              =["data15_5TeV.periodAllYear_DetStatus-v75-repro20-01_DQDefects-00-02-02_PHYS_HeavyIonP_All_Good.xml",
+                     "data15_5TeV.periodVdM_DetStatus-v75-repro20-01_DQDefects-00-02-02_PHYS_HeavyIonP_All_Good.xml"]
+  # InputFile        ="/eos/user/y/yuhang/data/pp_15/data15_5TeV/*"
+  InputFile        ="/eos/user/y/yuhang/data/pp_15/data15_5TeV_r9582/*"
+  Muon_triggers    =["HLT_mu4", "HLT_mu6", "HLT_mu8", "HLT_mu10"]
   DiMuon_triggers  =["HLT_2mu4"]
 elif do_ppMC13TeV:
   dataSource       ='geant4'
@@ -153,16 +164,36 @@ else:
   
   ToolSvc.MyMuonCalibrationAndSmearingTool.Year                 ="Data18"
   ToolSvc.MyMuonCalibrationAndSmearingTool.StatComb             =False
+  # SagittaRelease is gives the directory in which the correction factors for this release + dataset are stored
+  # Regarding sagittaBiasDataAll_03_02_19:
+    # R21 corrections: full run 2 with uniform treatment of 2015+2016, 2017, 2018 data.
+    # Hence, should not need to change the Data18 substring SagittaRelease
+    # it includes MC phase-space correction, 30x30 bins for good stat, iterations set 4, for minimal RMS
   ToolSvc.MyMuonCalibrationAndSmearingTool.SagittaRelease       ="sagittaBiasDataAll_03_02_19_Data18"
+  # MuonCalibrationAndSmearingTool in Athena 21.2 and AthAnalysis 21.2 has the property sagittaMapsInputType
+  # which has value NOMINAL (0) and SINGLE (1)
+  # default value is SINGLE
+  # this specifies number of root files (iterations) containing correction factors, which is SagittaRelease-dependent
+  # SINGLE means only one root file (one iteration of correction), which is true only for a few specific releases
+  # We use the default release sagittaBiasDataAll_03_02_19, which requires NOMINAL input type
+  # see: https://acode-browser1.usatlas.bnl.gov/lxr/source/athena/PhysicsAnalysis/MuonID/MuonIDAnalysis/MuonMomentumCorrections/MuonMomentumCorrections/MuonCalibrationAndSmearingTool.h?v=21.2
+  # When is_Rel22 is false (Athena 21), we use AthAnalysis 21.2: hence we always need to set the sagittaMapsInputType value to be NOMINAL (0)
+  ToolSvc.MyMuonCalibrationAndSmearingTool.sagittaMapsInputType = 0 # MCAST::SagittaInputHistType::NOMINAL
   ToolSvc.MyMuonCalibrationAndSmearingTool.SagittaCorr          =True
   ToolSvc.MyMuonCalibrationAndSmearingTool.doSagittaMCDistortion=False
-  ToolSvc.MyMuonCalibrationAndSmearingTool.Release              ="Recs2019_05_30"
+  ToolSvc.MyMuonCalibrationAndSmearingTool.Release              ="Recs2020_03_03"
   ToolSvc.MyMuonCalibrationAndSmearingTool.SagittaCorrPhaseSpace=True
   
   if   do_hi2015:
     ToolSvc.MyMuonCalibrationAndSmearingTool.Year               ="Data16"
   elif do_hi2018:
     pass
+  elif do_pp2017:
+    ToolSvc.MyMuonCalibrationAndSmearingTool.Year               ="Data17"
+    ToolSvc.MyMuonCalibrationAndSmearingTool.SagittaRelease     ="sagittaBiasDataAll_03_02_19_Data17"
+  elif do_pp2015:
+    ToolSvc.MyMuonCalibrationAndSmearingTool.Year               ="Data16"
+    ToolSvc.MyMuonCalibrationAndSmearingTool.SagittaRelease     ="sagittaBiasDataAll_03_02_19_Data17" # sagittaBiasDataAll_03_02_19_Data15 NOT FOUND
   elif do_pp_MC:
     ToolSvc.MyMuonCalibrationAndSmearingTool.SagittaCorr        =False
   else:
@@ -263,7 +294,7 @@ if (is_Rel22==False):
 #------------------------------------------------------------
 
 TrigRatesAlg.IsZdcCalib              =False                     #disables storing of all other objects except EventInfo
-TrigRatesAlg.StoreZdc                =1+2                       #bitflag
+TrigRatesAlg.StoreZdc                =0                       #bitflag
 TrigRatesAlg.ZdcAuxSuffix            =ZdcAuxSuffix              #Suffix for container when Reprozessing ZDC
 
 TrigRatesAlg.IsEvgen                 =False                     #True only for truth-only input (i.e. reco is missing)
@@ -283,7 +314,7 @@ TrigRatesAlg.StoreL1TE               =True                      #ON only for che
 TrigRatesAlg.StoreMuonTruth          =False                     #True only for MC
 TrigRatesAlg.StoreSingleMuon         =True                      #Typically ON
 TrigRatesAlg.StoreAcoplanarMuon      =True                      #OFF for pp Ridge analysis
-TrigRatesAlg.HIEventShapeContainerKey="HIEventShape"            #"HIEventShape" or "CaloSums";="" to turn OFF, for exmple in pp
+TrigRatesAlg.HIEventShapeContainerKey=""            #"HIEventShape" or "CaloSums";="" to turn OFF, for exmple in pp
 TrigRatesAlg.METContainerKey         =""                        #"MET_Calo";="" to turn OFF
 TrigRatesAlg.TrackJetContainerKeys   =[
                                        #"AntiKt2PV0TrackJets", 
