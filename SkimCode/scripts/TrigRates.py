@@ -1,12 +1,12 @@
 
 #data with muons
 do_pp2015 = False
-# do_pp2015 = True
-do_pp2017 = True
-# do_pp2017 = False
+do_pp2017 = False
+do_pp2024 = True
 do_hi2018 = False
 do_hi2015 = False
 do_hi2023 = False
+do_hi2024 = False
 
 #overlay
 do_pp_MC       =False
@@ -18,7 +18,8 @@ do_pp_MC       =False
 is_HION=False
 if(do_hi2018     or 
    do_hi2015     or 
-   do_hi2023
+   do_hi2023     or
+   do_hi2024
    ):
   is_HION=True
 #------------------------------------------------------------
@@ -27,7 +28,7 @@ if(do_hi2018     or
 #------------------------------------------------------------
 #for Run3 data
 is_Run3=False
-if (do_hi2023):
+if (do_hi2023 or do_hi2024 or do_pp2024):
   is_Run3=True
 #------------------------------------------------------------
 
@@ -35,7 +36,7 @@ if (do_hi2023):
 #------------------------------------------------------------
 #for Analysis in Releases>=22
 is_Rel22=False
-if (do_hi2023):
+if (do_hi2023 or do_hi2024 or do_pp2024):
   is_Rel22=True
 #------------------------------------------------------------
 
@@ -74,6 +75,33 @@ elif do_hi2023:
                      "HLT_mu6_L1MU3V_VTE50",
                      "HLT_mu8_L1MU5VF_VTE50"]
   DiMuon_triggers  =["HLT_2mu4_L12MU3V","HLT_mu4_mu4noL1_L1MU3V"]
+  ZDC_Configuration=""
+elif do_hi2024:
+  GRL              =["data24_hi_GRL_unofficial.xml"]
+  InputFile        ="/eos/atlas/atlastier0/rucio/data24_hi/physics_HardProbes/00489961/"\
+                    "data24_hi.00489961.physics_HardProbes.merge.AOD.f1550_m2267/"\
+                    "data24_hi.00489961.physics_HardProbes.merge.AOD.f1550_m2267._lb0390._0001.1"
+  Muon_triggers    =["HLT_mu4_L1MU3V"  ,
+                     "HLT_mu6_L1MU3V"  ,
+                     "HLT_mu6_L1MU5VF" ,
+                     "HLT_mu8_L1MU5VF",
+                     "HLT_mu10_L1MU8F",
+                     "HLT_mu10_L1MU5VF"]
+  DiMuon_triggers  =["HLT_2mu4_L12MU3V","HLT_mu4_mu4noL1_L1MU3V"]
+  ZDC_Configuration=""
+elif do_pp2024:
+  GRL              =["data24_5p36TeV_GRL_unofficial.xml"]
+  InputFile        ="/eos/atlas/atlastier0/rucio/data24_5p36TeV/physics_Main/00488474/"\
+                    "data24_5p36TeV.00488474.physics_Main.merge.AOD.f1529_m2259/"\
+                    "data24_5p36TeV.00488474.physics_Main.merge.AOD.f1529_m2259._lb1102._0011.1"
+  Muon_triggers    =["HLT_mu4_L1MU3V"  ,
+                     "HLT_mu6_L1MU3V"  ,
+                     "HLT_mu8_L1MU5VF" ,
+                     "HLT_mu10_L1MU8F",
+                     "HLT_mu12_L1MU8F",
+                     "HLT_mu15_L1MU8F",
+                     "HLT_mu15_L1MU14FCH"]
+  DiMuon_triggers  =["HLT_2mu3_L12MU3V","HLT_2mu4_L12MU3V","HLT_mu4_mu6_L12MU3V","HLT_mu4_mu4noL1_L1MU3V"]
   ZDC_Configuration=""
 elif do_pp2017:
   GRL              =["data17_5TeV.periodAllYear_DetStatus-v98-pro21-16_Unknown_PHYS_StandardGRL_All_Good_25ns_ignore_GLOBAL_LOWMU.xml"]
@@ -328,7 +356,7 @@ TrigRatesAlg.StoreTruth              =0                         #True only for M
 TrigRatesAlg.TruthMinPT              =300                       #cut in MeV above which to store truth particles (only stable and primary particles stored)
 TrigRatesAlg.ApplyMuonCalibrations   =True                      #True for Data and MC (see link above where the tool is initialized)
 TrigRatesAlg.IsRun3                  =is_Run3                   #True only for Run-3 Data 
-if (do_hi2023):
+if (do_hi2023 or do_hi2024 or do_pp2024):
   TrigRatesAlg.HLTMuonsKey           ="HLT_MuonsCB_RoI"
 else:
   TrigRatesAlg.HLTMuonsKey           =""
