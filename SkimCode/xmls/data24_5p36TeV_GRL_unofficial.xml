@@ -1,0 +1,66 @@
+<LumiRangeCollection>
+    <NamedLumiRange>
+        <Name>GRL</Name>
+        <Metadata Name="RunList">488589,488584,488573,488534,488474,488456,488437,488427,488393,488378,488288,488268,488239,488210</Metadata>
+        <LumiBlockCollection>
+        <Run>488589</Run>
+            <LBRange Start="69" End="466"/>
+        </LumiBlockCollection>
+        <LumiBlockCollection>
+        <Run>488584</Run>
+            <LBRange Start="49" End="1071"/>
+        </LumiBlockCollection>	
+	<LumiBlockCollection>
+        <Run>488573</Run>
+            <LBRange Start="87" End="1614"/>
+        </LumiBlockCollection>
+        <LumiBlockCollection>
+        <Run>488534</Run>
+            <LBRange Start="116" End="1054"/>
+        </LumiBlockCollection>
+        <LumiBlockCollection>
+        <Run>488474</Run>
+            <LBRange Start="309" End="1429"/>
+        </LumiBlockCollection>
+        <LumiBlockCollection>
+        <Run>488456</Run>
+            <LBRange Start="61" End="1179"/>
+        </LumiBlockCollection>
+	<LumiBlockCollection>
+	<Run>488437</Run>
+	    <LBRange Start="109" End="190"/>
+	    <LBRange Start="673" End="675"/>
+	    <LBRange Start="737" End="881"/>
+	</LumiBlockCollection>
+	<LumiBlockCollection>
+	<Run>488427</Run>
+	    <LBRange Start="3" End="130"/>
+	</LumiBlockCollection>
+	<LumiBlockCollection>
+	   <Run>488393</Run>
+	   <LBRange Start="127" End="442"/>
+	</LumiBlockCollection>
+	<LumiBlockCollection>
+	   <Run>488378</Run>
+	   <LBRange Start="331" End="453"/>
+	</LumiBlockCollection>
+	<LumiBlockCollection>
+	   <Run>488288</Run>
+	   <LBRange Start="37" End="63"/>
+	   <LBRange Start="712" End="944"/>
+	</LumiBlockCollection>
+	<LumiBlockCollection>
+	   <Run>488268</Run>
+           <LBRange Start="68" End="499"/>
+        </LumiBlockCollection>
+        <LumiBlockCollection>
+           <Run>488239</Run>
+           <LBRange Start="77" End="87"/>
+	   <LBRange Start="149" End="282"/>
+        </LumiBlockCollection>
+        <LumiBlockCollection>
+            <Run>488210</Run>
+            <LBRange Start="127" End="292"/>
+        </LumiBlockCollection>
+    </NamedLumiRange>
+</LumiRangeCollection>
