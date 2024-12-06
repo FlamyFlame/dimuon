@@ -34,10 +34,14 @@ if (do_hi2023 or do_hi2024 or do_pp2024):
 
 
 #------------------------------------------------------------
-#for Analysis in Releases>=22
-is_Rel22=False
+#for Analysis in Releases>=22 and (athena) Releases>=24
+is_Rel22orAbove=False
+is_Rel24orAbove=False
 if (do_hi2023 or do_hi2024 or do_pp2024):
-  is_Rel22=True
+  is_Rel22orAbove=True
+if (do_hi2024 or do_pp2024):
+  is_Rel24orAbove=True
+
 #------------------------------------------------------------
 
 
@@ -166,7 +170,7 @@ if not hasattr(ToolSvc, "MyMuonSelectionTool"):
     if(is_HION):
       ToolSvc.MyMuonSelectionTool.TrtCutOff=True
 
-    if is_Rel22:
+    if is_Rel22orAbove:
       ToolSvc.MyMuonSelectionTool.IsRun3Geo=False
       if(is_Run3):
         ToolSvc.MyMuonSelectionTool.IsRun3Geo=True
@@ -174,7 +178,7 @@ if not hasattr(ToolSvc, "MyMuonSelectionTool"):
 ##------------------------------------------------------------
 
 ##------------------------------------------------------------
-if is_Rel22:
+if is_Rel22orAbove:
   #https://gitlab.cern.ch/atlas/athena/-/blob/release/24.2.9/PhysicsAnalysis/MuonID/MuonIDAnalysis/MuonMomentumCorrections/MuonMomentumCorrections/MuonCalibTool.h
   #https://twiki.cern.ch/twiki/bin/view/AtlasProtected/MCPAnalysisGuidelinesR22#CP_MuonCalibTool_tool
   ToolSvc += CfgMgr.CP__MuonCalibTool("MyMuonCalibrationAndSmearingTool")
@@ -205,7 +209,7 @@ else:
   # SINGLE means only one root file (one iteration of correction), which is true only for a few specific releases
   # We use the default release sagittaBiasDataAll_03_02_19, which requires NOMINAL input type
   # see: https://acode-browser1.usatlas.bnl.gov/lxr/source/athena/PhysicsAnalysis/MuonID/MuonIDAnalysis/MuonMomentumCorrections/MuonMomentumCorrections/MuonCalibrationAndSmearingTool.h?v=21.2
-  # When is_Rel22 is false (Athena 21), we use AthAnalysis 21.2: hence we always need to set the sagittaMapsInputType value to be NOMINAL (0)
+  # When is_Rel22orAbove is false (Athena 21), we use AthAnalysis 21.2: hence we always need to set the sagittaMapsInputType value to be NOMINAL (0)
   ToolSvc.MyMuonCalibrationAndSmearingTool.sagittaMapsInputType = 0 # MCAST::SagittaInputHistType::NOMINAL
   ToolSvc.MyMuonCalibrationAndSmearingTool.SagittaCorr          =True
   ToolSvc.MyMuonCalibrationAndSmearingTool.doSagittaMCDistortion=False
@@ -234,9 +238,13 @@ print(ToolSvc.MyMuonCalibrationAndSmearingTool)
 ##------------------------------------------------------------
 #https://gitlab.cern.ch/atlas/athena/blob/21.2/PhysicsAnalysis/MuonID/MuonIDAnalysis/MuonEfficiencyCorrections/Root/MuonEfficiencyScaleFactors.cxx
 #https://twiki.cern.ch/twiki/bin/view/Atlas/MuonEfficiencyScaleFactorsToolUsage
-from MuonEfficiencyCorrections.CommonToolSetup import *
-scale_medium = GetMuonEfficiencyTool("Medium",Release="190312_Winter_r21")
-scale_tight  = GetMuonEfficiencyTool("Tight" ,Release="190312_Winter_r21")
+if not is_Rel24orAbove:
+  from MuonEfficiencyCorrections.CommonToolSetup import *
+  scale_medium = GetMuonEfficiencyTool("Medium",Release="190312_Winter_r21")
+  scale_tight  = GetMuonEfficiencyTool("Tight" ,Release="190312_Winter_r21")
+else:
+  scale_medium = None
+  scale_tight = None
 ##------------------------------------------------------------
 
 ##------------------------------------------------------------
@@ -263,7 +271,7 @@ ToolSvc += MyGRLTool
 ZdcAnalysisTool=None
 ZdcAuxSuffix="" #currently not reprocessing ZDC
 HIPileupTool=None
-if (is_Rel22==False):
+if (is_Rel22orAbove==False):
   ##------------------------------------------------------------
   #The ZDCTool
   #https://twiki.cern.ch/twiki/bin/viewauth/Atlas/ZdcAnalysisTool
@@ -297,7 +305,8 @@ if (is_Rel22==False):
 
 
 
-MessageSvc.defaultLimit = 1000
+if not is_Rel24orAbove:
+  MessageSvc.defaultLimit = 1000
 
 #the main algorithm sequence
 algSeq = CfgMgr.AthSequencer("AthAlgSeq")
@@ -314,9 +323,10 @@ TrigRatesAlg.MuonSelectionTool           =ToolSvc.MyMuonSelectionTool
 TrigRatesAlg.TriggerMatchTool            =ToolSvc.MyTriggerMatchTool
 TrigRatesAlg.GRLTool                     =ToolSvc.MyGRLTool
 TrigRatesAlg.muonCorrectionTool          =ToolSvc.MyMuonCalibrationAndSmearingTool
+TrigRatesAlg.use_effi_SF_tool            = (not is_Rel24orAbove)
 TrigRatesAlg.effi_SF_tool_medium         =scale_medium
 TrigRatesAlg.effi_SF_tool_tight          =scale_tight
-if (is_Rel22==False):
+if (is_Rel22orAbove==False):
   TrigRatesAlg.ZDCAnalysisTool             =ZdcAnalysisTool
   TrigRatesAlg.HIPileupTool                =HIPileupTool
 #------------------------------------------------------------
