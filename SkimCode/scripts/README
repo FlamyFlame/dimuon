@@ -1,1 +1,0 @@
-We'll want to edit these two files for different datasets, so instead of soft link from the run directories, it's better to copy the files to each run directory and edit them there.
