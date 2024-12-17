@@ -1,0 +1,54 @@
+1. Directory structure
+
+This directory contains code for skimming datasets (AOD --> Ntuple), with the following subdirectoies & files:
+
+- setup_21.sh / setup_24.sh / setup_25.sh: set up of the base AthAnalysis release
+	- See https://twiki.cern.ch/twiki/bin/viewauth/AtlasProtected/AnalysisRelease for the available releases
+
+- source_21 / source_24 / source_25: source code; the relevant files are
+	- HFtrigValidation/HFtrigValidation/TrigRates.h
+	- HFtrigValidation/srd/TrigRates.cxx
+
+- build_21 / build_24 / build_25: build directories for the corresponding source directories
+	- in case of changes in source code: do
+		- source setup_RELEASE.sh
+		- cd build_RELEASE
+		- cmake ../source_RELEASE
+		- make -j 8
+	- in case of a problem: delete + recreate the build directory
+
+- run_...: run directory for each dataset, specified by year + collision type
+
+- scripts: directory containing all relevant scripts for running a job
+	- TrigRates.py: python configuration file for the skimming jobs
+		- contains different settings for the different years & collision types, including different muon triggers, GRL's, data files to run over, muon-SF-correction settings, etc.
+		- the data file used is only for local testing (need to verify that file exists for local testing): will be overwritten by inDs or inDsTxt in the grid-submission file
+		- should be copied to each run directory; should ONLY change the booleans on top (e.g, do_pp2015)
+	- grid_sub.sh: grid-submission file
+		- use "pathena --help" to see full list of options
+		- pathena reference: https://panda-wms.readthedocs.io/en/latest/client/pathena.html
+		- should be copied to each run directory + changed accordingly
+	- helper files for if the datasets are ONLY on tape, not on disk (relevant for data23_hi HardProbe data)
+		- print_ds_size.sh: print a list of datasets with size (in TB/GB/MB) for given year + collision type + stream of interest
+			- should be copied to run_23hi & other relevant run directories
+		- add_replication_rule_data23.sh: list of replication-rule-addition commends to add data23_hi HardProbe datasets to scratch-disk-based RSE's
+			- should be copied to run_23hi & other relevant run directories
+			- see the file commentaries for detailed instructions
+		- see useful_rucio_commands.txt for a list of helpful rucio commands in this scenario
+
+- xmls: GRL files
+
+- datasetnames: txt files containing list of datasets for each year + collision type pair
+
+################################################################################################################################################################################################################
+
+2. Workflow
+(1) Source setup_RELEASE.sh
+(2) Copy over TrigRates.py & grid_sub.sh to run directory; make changes accordingly
+(3) Copy over GRL from xmls & dataset-list file from datasetnames to relevant run directory
+(4) Use rucio to check if datasets are available on disk
+	- if not, copy over print_ds_size.sh & add_replication_rule_data23.sh to run directory, form a dataset-batching-and-staging strategy & start replicating the datasets
+(5) Test locally:
+	(i) make sure data file in TrigRates.py is available
+	(ii) do "pathena TrigRates.py --evtMax=100": check that file finishes + output root file looks same
+(6) Run one or more grid jobs
