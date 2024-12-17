@@ -1,0 +1,8 @@
+- “rucio list-file-replicas DID_NAME” gives the RSE and file REPLICA
+- “rucio list-rse-attributes” gives the attributes of the RSE
+	- istape: True --> tape-based 
+	- istape: False --> disk-based
+- “rucio list-rules DID_NAME” and “rucio list-rules-history DID_NAME” gives the replication rules of the dataset/file and the history (rule insertion and deletion) of its replication rules, respectively
+- “rucio list-account-usage USERNAME” gives space used + quota available, both in total and at available RSE sites
+- “rucio add-rule DATASET_NAME 1 RSE_NAME” adds the dataset (or file) to the RSE
+- “rucio list-rules DATASET_NAME” also gives the status of dataset replication: OK – finished; replicating – in progress
