@@ -69,9 +69,7 @@ elif do_hi2015:
   ZDC_Configuration="PbPb2015" 
 elif do_hi2023:
   GRL              =["data23_hi.periodAllYear_DetStatus-v113-pro31-08_MERGED_PHYS_HeavyIonP_All_Good.xml"]
-  InputFile        ="/eos/atlas/atlastier0/rucio/data23_hi/physics_HardProbes/00462763/"\
-                    "data23_hi.00462763.physics_HardProbes.merge.AOD.f1406_m2212/"\
-                    "data23_hi.00462763.physics_HardProbes.merge.AOD.f1406_m2212._lb0428._0002.1"
+  InputFile        ="/eos/user/y/yuhang/data/data23_hi_testfile_AOD/data23_hi.00462240.physics_HardProbes.merge.AOD.f1399_m2209._lb0409._0002.1"
   Muon_triggers    =["HLT_mu4_L1MU3V"  ,
                      "HLT_mu6_L1MU3V"  ,
                      "HLT_mu6_L1MU5VF" ,
