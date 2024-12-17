@@ -1,3 +1,13 @@
+# Commands to add replication rules for the data23_hi datsets in the physics_HardProbe stream
+# Divided the datasets into 4 batches of < 200TB size each
+# Divided each batch into 3-4 sub-batches of < 50TB size each
+# Considerations: "rucio list-account-usage USERNAME" shows I have 200TB quota in total, and up to 50TB on each scratch-disk based RSE
+# Choice of RSE is based on "freespace" (in unit of TB) outputted by "rucio list-rse-attributes RSE_NAME"
+# Required process for each batch: 
+# 		(1) staging (add replication rules)
+# 		(2) data skimming (must be done quickly before file removal from scratch-disk cleaning)
+# 		(3) delete replication rules to free space
+
 rucio add-rule data23_hi:data23_hi.00462549.physics_HardProbes.merge.AOD.f1399_m2209 1 CERN-PROD_SCRATCHDISK 
 rucio add-rule data23_hi:data23_hi.00462809.physics_HardProbes.merge.AOD.f1406_m2212 1 CERN-PROD_SCRATCHDISK 
 rucio add-rule data23_hi:data23_hi.00462759.physics_HardProbes.merge.AOD.f1406_m2212 1 CERN-PROD_SCRATCHDISK 
