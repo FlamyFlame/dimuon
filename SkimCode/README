@@ -50,5 +50,5 @@ This directory contains code for skimming datasets (AOD --> Ntuple), with the fo
 	- if not, copy over print_ds_size.sh & add_replication_rule_data23.sh to run directory, form a dataset-batching-and-staging strategy & start replicating the datasets
 (5) Test locally:
 	(i) make sure data file in TrigRates.py is available
-	(ii) do "pathena TrigRates.py --evtMax=100": check that file finishes + output root file looks same
-(6) Run one or more grid jobs
+	(ii) do "athena TrigRates.py --evtMax=100": check that file finishes + output root file looks same
+(6) Do "localSetupPandaClient" & submit one or more grid jobs
