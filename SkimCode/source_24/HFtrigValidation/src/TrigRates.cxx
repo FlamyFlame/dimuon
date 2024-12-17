@@ -108,6 +108,7 @@ TrigRates::TrigRates(const std::string& name, ISvcLocator* pSvcLocator)
   #endif
   declareProperty("GRLTool"               , m_grlTool                       );
   declareProperty("muonCorrectionTool"    , m_muonCalibrationAndSmearingTool);
+  declareProperty("use_effi_SF_tool"      , m_use_effi_SF_tool           );
   declareProperty("effi_SF_tool_medium"   , m_effi_SF_tool_medium           );
   declareProperty("effi_SF_tool_tight"    , m_effi_SF_tool_tight            );
   #ifndef __ATHENA_24p2__
@@ -165,10 +166,12 @@ StatusCode TrigRates::initialize(){
        CHECK( m_muonCalibrationAndSmearingTool.retrieve());
        CHECK( m_muonCalibrationAndSmearingTool->initialize());
      }
-     CHECK(m_effi_SF_tool_medium .retrieve  ());
-     CHECK(m_effi_SF_tool_tight  .retrieve  ());
-     CHECK(m_effi_SF_tool_medium->initialize());
-     CHECK(m_effi_SF_tool_tight ->initialize());
+     if (m_use_effi_SF_tool){
+       CHECK(m_effi_SF_tool_medium .retrieve  ());
+       CHECK(m_effi_SF_tool_tight  .retrieve  ());
+       CHECK(m_effi_SF_tool_medium->initialize());
+       CHECK(m_effi_SF_tool_tight ->initialize());      
+     }
    }
    CHECK(m_trkSelTool_HITight.retrieve() );
    CHECK(m_trkSelTool_HILoose.retrieve() );
@@ -1154,12 +1157,12 @@ StatusCode TrigRates::ProcessMuons(){
      CP::CorrectionCode cr1=CP::CorrectionCode::ErrorCode::Ok,
                         cr2=CP::CorrectionCode::ErrorCode::Ok,
                         cr3=CP::CorrectionCode::ErrorCode::Ok;
-     if(my_quality<=xAOD::Muon::Medium){
+     if(my_quality<=xAOD::Muon::Medium && m_use_effi_SF_tool){
        cr1=m_effi_SF_tool_medium->getEfficiencyScaleFactor(*Muon,eff_SF_medium       );
        cr2=m_effi_SF_tool_medium->getDataEfficiency       (*Muon,eff_corr_medium_data);
        cr3=m_effi_SF_tool_medium->getMCEfficiency         (*Muon,eff_corr_medium_mc  );
      }
-     if(my_quality<=xAOD::Muon::Tight){
+     if(my_quality<=xAOD::Muon::Tight && m_use_effi_SF_tool){
        cr1=m_effi_SF_tool_tight ->getEfficiencyScaleFactor(*Muon,eff_SF_tight        );
        cr2=m_effi_SF_tool_tight ->getDataEfficiency       (*Muon,eff_corr_tight_data );
        cr3=m_effi_SF_tool_tight ->getMCEfficiency         (*Muon,eff_corr_tight_mc   );

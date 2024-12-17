@@ -398,6 +398,8 @@ private:
    ToolHandle<CP::IMuonCalibrationAndSmearingTool> m_muonCalibrationAndSmearingTool;
    ToolHandle<CP::IMuonEfficiencyScaleFactors    > m_effi_SF_tool_medium;
    ToolHandle<CP::IMuonEfficiencyScaleFactors    > m_effi_SF_tool_tight ;
+   bool m_use_effi_SF_tool = true;
+   
    #if defined(__ATHENA_24p2__)
      asg::AnaToolHandle<Trig::TrigDecisionTool>  m_trigTool;
      ToolHandle<Trig::IMatchingTool>             m_matchTool;
@@ -409,7 +411,7 @@ private:
    #endif
    bool m_ApplyMuonCalibrations=false;
    bool m_isRun3=true;
- 
+
    #ifndef __ATHENA_24p2__
    ToolHandle<ZDC::IZdcAnalysisTool> m_ZDCAnalysisTool;
    ToolHandle<HI::IHIPileupTool    > m_HIPileupTool;
