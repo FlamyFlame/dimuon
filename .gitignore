@@ -23,7 +23,7 @@
 ##############
 *.root
 *.dat
-*.txt
+# *.txt
 *.pdf
 *.png
 *.aux
