@@ -1,0 +1,6 @@
+data15_5TeV:data15_5TeV.00286282.physics_Main.recon.AOD.r11819_tid20663269_00
+data15_5TeV:data15_5TeV.00286361.physics_Main.recon.AOD.r9582_tid11412864_00
+data15_5TeV:data15_5TeV.00286364.physics_Main.recon.AOD.r9582_tid11409999_00
+data15_5TeV:data15_5TeV.00286367.physics_Main.recon.AOD.r9582_tid11412866_00
+data15_5TeV:data15_5TeV.00286411.physics_Main.recon.AOD.r9582_tid11412868_00
+data15_5TeV:data15_5TeV.00286474.physics_Main.recon.AOD.r11819_tid20663264_00
