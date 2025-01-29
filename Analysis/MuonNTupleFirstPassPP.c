@@ -83,7 +83,8 @@ void MuonNTupleFirstPassPP::ProcessData(){
  
 
     //trigger requirement for event
-    if(!b_HLT_2mu4) continue;
+    bool trigger_req = (isRun3)? b_HLT_2mu4 || b_HLT_mu4_mu4noL1 : b_HLT_2mu4;
+    if(!trigger_req) continue;
 
     resonance_tagged_muon_index_list.clear(); // MUST CLEAR for each event!!
     std::vector<int> muon_index_list = {};
@@ -98,19 +99,12 @@ void MuonNTupleFirstPassPP::ProcessData(){
       mpair->m1.ind     = muon_pair_muon1_index->at(i);
       mpair->m2.ind     = muon_pair_muon2_index->at(i);
 
-      // // if m1 or m2 is resonance tagged, do not record the pair
-      // std::string ss_str = (muon_pair_muon1_pt ->at(i) * muon_pair_muon2_pt ->at(i) > 0)? ", same" : ", opp";
-      // it = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m1.ind);
-      // if(it != resonance_tagged_muon_index_list.end()) {
-      //   // cout << jentry << ", " << std::to_string(i) << "-th pair, " << mpair->m1.ind << ss_str << endl;
-      //   continue;
-      // }
+      // if m1 or m2 is resonance tagged, do not record the pair
+      it = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m1.ind);
+      if(it != resonance_tagged_muon_index_list.end()) continue;
 
-      // it = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m2.ind);
-      // if(it != resonance_tagged_muon_index_list.end()) {
-      //   // cout << jentry << ", " << std::to_string(i) << "-th pair, " << mpair->m2.ind << ss_str << endl;
-      //   continue;
-      // }
+      it = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m2.ind);
+      if(it != resonance_tagged_muon_index_list.end()) continue;
 
       mpair->m1.pt    = fabs(muon_pair_muon1_pt->at(i))/1000.0;//pt of the first muon in the pair
       mpair->m2.pt    = fabs(muon_pair_muon2_pt->at(i))/1000.0;//pt of the second muon in the pair
@@ -146,7 +140,9 @@ void MuonNTupleFirstPassPP::ProcessData(){
       //Apply cuts
 
       //Trigger match for muon pair
-      if(dimuon_b_HLT_2mu4->at(i)==false) continue;
+      bool trig_match_req = (isRun3)? dimuon_b_HLT_2mu4->at(i) || dimuon_b_HLT_mu4_mu4noL1->at(i) : b_HLT_2mu4;
+
+      if(!trig_match_req) continue;
 
       if (!PassCuts())continue;
     

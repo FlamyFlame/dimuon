@@ -138,10 +138,7 @@ void MuonPairPlottingOLDPP::InitInput(){
     }else if(isMCTruthCC){
         inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/muon_pairs_mc_truth_cc.root","read");
     }else{
-   	    // inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/muon_pairs_pp_no_resn_cut.root","read");
-        // inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/muon_pairs_pp_no_resn_no_photo.root","read");
         inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/muon_pairs_pp.root","read");
-        // inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/muon_pairs_pp_1s_only.root","read");
     }
 
     for (int idr = 0; idr < ParamsSet::ndRselcs; idr++){

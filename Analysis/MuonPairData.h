@@ -1,7 +1,7 @@
 #ifndef MuonPairData_h
 #define MuonPairData_h
 
-#include "/usatlas/u/yuhanguo/workarea/dimuon_codes/MuonPair.h"
+#include "MuonPair.h"
 #include "vector"
 #include <iostream>
 

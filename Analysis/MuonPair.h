@@ -1,7 +1,7 @@
 #ifndef MuonPair_h
 #define MuonPair_h
 
-#include "/usatlas/u/yuhanguo/workarea/dimuon_codes/struct_muon.h"
+#include "struct_muon.h"
 #include <iostream>
 #include <string.h>
 #include "TLorentzVector.h"

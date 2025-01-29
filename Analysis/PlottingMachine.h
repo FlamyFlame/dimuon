@@ -44,7 +44,7 @@ public:
 	// ----------------------------------- input required ---------------------------------------------------------------------------
 	// ------------------------------------------------------------------------------------------------------------------------------
 	std::string observable = "";
-	std::string plot_output_path = "plots/"; // e.g, "/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/mc_data_compr/"
+	std::string plot_output_path = "plots/"; // e.g, "plots/mc_data_compr/"
 	std::vector<std::string> 		categories_to_turn_on = {};
 	std::vector<std::string> 		input_dataset_typenames = {};
 	std::vector<float> 				input_dataset_scales = {};

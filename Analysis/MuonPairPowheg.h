@@ -1,7 +1,7 @@
 #ifndef MuonPairPowheg_h
 #define MuonPairPowheg_h
 
-#include "/usatlas/u/yuhanguo/workarea/dimuon_codes/MuonPair.h"
+#include "MuonPair.h"
 #include "vector"
 #include <iostream>
 

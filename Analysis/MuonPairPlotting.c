@@ -18,7 +18,7 @@ void MuonPairPlotting::ProcessData(){
                     	std::cout<<"Error:: Read in event has size of zero bytes,  quitting"<<std::endl;
                     	throw std::exception();
                     }
-                    FillHistograms(idr, jctr, cur_ctr_intvl, ksign);
+                    FillHistograms(jctr, cur_ctr_intvl, ksign);
                 }
             }
             cur_ctr_intvl++;
@@ -41,65 +41,68 @@ bool MuonPairPlotting::PassSingleMuonGapCut(float meta, float mpt, int mcharge){
 }
 
 
-void MuonPairPlotting::FillHistograms(int ndr, int nctr_bin, int nctr_intvl, int nsign){
+void MuonPairPlotting::FillHistograms(int nctr_bin, int nctr_intvl, int nsign){
+    // 
+
     // ngapcut = 0: all; = 1: only those that pass
 
     //if pass eta gap cut
-    bool pass_gapcut = PassSingleMuonGapCut(m1eta[ndr][nctr_intvl][nsign], m1pt[ndr][nctr_intvl][nsign], m1charge[ndr][nctr_intvl][nsign]) && PassSingleMuonGapCut(m2eta[ndr][nctr_intvl][nsign], m2pt[ndr][nctr_intvl][nsign], m2charge[ndr][nctr_intvl][nsign]);
+    bool pass_gapcut = PassSingleMuonGapCut(m1eta[nctr_intvl][nsign], m1pt[nctr_intvl][nsign], m1charge[nctr_intvl][nsign]) && PassSingleMuonGapCut(m2eta[nctr_intvl][nsign], m2pt[nctr_intvl][nsign], m2charge[nctr_intvl][nsign]);
     if (pass_gapcut){
-        h_pair_dP_overP[ndr][nctr_bin][nsign][1]->Fill(pair_dPoverP[ndr][nctr_intvl][nsign]);
-        h_pair_y[ndr][nctr_bin][nsign][1]->Fill(pair_y[ndr][nctr_intvl][nsign]);
-        h_DR[ndr][nctr_bin][nsign][1]->Fill(dr[ndr][nctr_intvl][nsign]);
-        h_pt_asym[ndr][nctr_bin][nsign][1]->Fill(asym[ndr][nctr_intvl][nsign]);
-        h_pair_pt_ptlead_ratio[ndr][nctr_bin][nsign][1]->Fill(pair_pt[ndr][nctr_intvl][nsign]/m1pt[ndr][nctr_intvl][nsign]);
-        h_eta_avg_Dphi[ndr][nctr_bin][nsign][1]->Fill(dphi[ndr][nctr_intvl][nsign],etaavg[ndr][nctr_intvl][nsign]);
-        h_Deta_Dphi[ndr][nctr_bin][nsign][1]->Fill(dphi[ndr][nctr_intvl][nsign],deta[ndr][nctr_intvl][nsign]);
-        h_eta1_eta2[ndr][nctr_bin][nsign][1]->Fill(m2eta[ndr][nctr_intvl][nsign],m1eta[ndr][nctr_intvl][nsign]);
-        h_pt1_pt2[ndr][nctr_bin][nsign][1]->Fill(m2pt[ndr][nctr_intvl][nsign],m1pt[ndr][nctr_intvl][nsign]);
-        h_eta_avg_Deta[ndr][nctr_bin][nsign][1]->Fill(deta[ndr][nctr_intvl][nsign],etaavg[ndr][nctr_intvl][nsign]);
-        h_ptlead_pair_pt[ndr][nctr_bin][nsign][1]->Fill(pair_pt[ndr][nctr_intvl][nsign],m1pt[ndr][nctr_intvl][nsign]);
-        h_minv_pair_pt[ndr][nctr_bin][nsign][1]->Fill(pair_pt[ndr][nctr_intvl][nsign],minv[ndr][nctr_intvl][nsign]);
-        h_minv_pair_pt_zoomin[ndr][nctr_bin][nsign][1]->Fill(pair_pt[ndr][nctr_intvl][nsign],minv[ndr][nctr_intvl][nsign]);
-        h_minv_pair_pt_log[ndr][nctr_bin][nsign][1]->Fill(pair_pt[ndr][nctr_intvl][nsign],minv[ndr][nctr_intvl][nsign]);
-        h_eta_avg_pair_eta[ndr][nctr_bin][nsign][1]->Fill(pair_eta[ndr][nctr_intvl][nsign],etaavg[ndr][nctr_intvl][nsign]);
+        h_pair_dP_overP[nctr_bin][nsign][1]->Fill(pair_dPoverP[nctr_intvl][nsign]);
+        h_pair_y[nctr_bin][nsign][1]->Fill(pair_y[nctr_intvl][nsign]);
+        h_DR[nctr_bin][nsign][1]->Fill(dr[nctr_intvl][nsign]);
+        h_pt_asym[nctr_bin][nsign][1]->Fill(asym[nctr_intvl][nsign]);
+        h_pair_pt_ptlead_ratio[nctr_bin][nsign][1]->Fill(pair_pt[nctr_intvl][nsign]/m1pt[nctr_intvl][nsign]);
+        h_eta_avg_Dphi[nctr_bin][nsign][1]->Fill(dphi[nctr_intvl][nsign],etaavg[nctr_intvl][nsign]);
+        h_Deta_Dphi[nctr_bin][nsign][1]->Fill(dphi[nctr_intvl][nsign],deta[nctr_intvl][nsign]);
+        h_eta1_eta2[nctr_bin][nsign][1]->Fill(m2eta[nctr_intvl][nsign],m1eta[nctr_intvl][nsign]);
+        h_pt1_pt2[nctr_bin][nsign][1]->Fill(m2pt[nctr_intvl][nsign],m1pt[nctr_intvl][nsign]);
+        h_eta_avg_Deta[nctr_bin][nsign][1]->Fill(deta[nctr_intvl][nsign],etaavg[nctr_intvl][nsign]);
+        h_ptlead_pair_pt[nctr_bin][nsign][1]->Fill(pair_pt[nctr_intvl][nsign],m1pt[nctr_intvl][nsign]);
+        h_minv_pair_pt[nctr_bin][nsign][1]->Fill(pair_pt[nctr_intvl][nsign],minv[nctr_intvl][nsign]);
+        h_minv_pair_pt_zoomin[nctr_bin][nsign][1]->Fill(pair_pt[nctr_intvl][nsign],minv[nctr_intvl][nsign]);
+        h_minv_pair_pt_log[nctr_bin][nsign][1]->Fill(pair_pt[nctr_intvl][nsign],minv[nctr_intvl][nsign]);
+        h_eta_avg_pair_eta[nctr_bin][nsign][1]->Fill(pair_eta[nctr_intvl][nsign],etaavg[nctr_intvl][nsign]);
 
-        if (ndr == 2){ //no delta R cut
-            h_eta1_eta2_dphicut[2][nctr_bin][nsign][1]->Fill(m2eta[ndr][nctr_intvl][nsign],m1eta[ndr][nctr_intvl][nsign]);
-            if (dphi[ndr][nctr_intvl][nsign] < 1){
-                h_eta1_eta2_dphicut[0][nctr_bin][nsign][1]->Fill(m2eta[ndr][nctr_intvl][nsign],m1eta[ndr][nctr_intvl][nsign]);
-            }else if(dphi[ndr][nctr_intvl][nsign] > pms.PI-1){
-                h_eta1_eta2_dphicut[1][nctr_bin][nsign][1]->Fill(m2eta[ndr][nctr_intvl][nsign],m1eta[ndr][nctr_intvl][nsign]);
-            }
-        }
-    }else{
-        // h_pair_eta_Dphi_failgapcut[ndr][nctr_bin][nsign]->Fill(dphi[ndr][nctr_intvl][nsign],pair_eta[ndr][nctr_intvl][nsign]);
-        // h_Dphi_failgapcut[ndr][nctr_bin][nsign]->Fill(dphi[ndr][nctr_intvl][nsign]);
+        // if (ndr == 2){ //no delta R cut
+        //     h_eta1_eta2_dphicut[2][nctr_bin][nsign][1]->Fill(m2eta[nctr_intvl][nsign],m1eta[nctr_intvl][nsign]);
+        //     if (dphi[nctr_intvl][nsign] < 1){
+        //         h_eta1_eta2_dphicut[0][nctr_bin][nsign][1]->Fill(m2eta[nctr_intvl][nsign],m1eta[nctr_intvl][nsign]);
+        //     }else if(dphi[nctr_intvl][nsign] > pms.PI-1){
+        //         h_eta1_eta2_dphicut[1][nctr_bin][nsign][1]->Fill(m2eta[nctr_intvl][nsign],m1eta[nctr_intvl][nsign]);
+        //     }
+        // }
     }
+    // else{
+        // h_pair_eta_Dphi_failgapcut[nctr_bin][nsign]->Fill(dphi[nctr_intvl][nsign],pair_eta[nctr_intvl][nsign]);
+        // h_Dphi_failgapcut[nctr_bin][nsign]->Fill(dphi[nctr_intvl][nsign]);
+    // }
 
     //fill [1] for everyone
-    h_pair_dP_overP[ndr][nctr_bin][nsign][0]->Fill(pair_dPoverP[ndr][nctr_intvl][nsign]);
-    h_pair_y[ndr][nctr_bin][nsign][0]->Fill(pair_y[ndr][nctr_intvl][nsign]);
-    h_DR[ndr][nctr_bin][nsign][0]->Fill(dr[ndr][nctr_intvl][nsign]);
-    h_pt_asym[ndr][nctr_bin][nsign][0]->Fill(asym[ndr][nctr_intvl][nsign]);
-    h_pair_pt_ptlead_ratio[ndr][nctr_bin][nsign][0]->Fill(pair_pt[ndr][nctr_intvl][nsign]/m1pt[ndr][nctr_intvl][nsign]);
+    h_pair_dP_overP[nctr_bin][nsign][0]->Fill(pair_dPoverP[nctr_intvl][nsign]);
+    h_pair_y[nctr_bin][nsign][0]->Fill(pair_y[nctr_intvl][nsign]);
+    h_DR[nctr_bin][nsign][0]->Fill(dr[nctr_intvl][nsign]);
+    h_pt_asym[nctr_bin][nsign][0]->Fill(asym[nctr_intvl][nsign]);
+    h_pair_pt_ptlead_ratio[nctr_bin][nsign][0]->Fill(pair_pt[nctr_intvl][nsign]/m1pt[nctr_intvl][nsign]);
 
-    h_Deta_Dphi[ndr][nctr_bin][nsign][0]->Fill(dphi[ndr][nctr_intvl][nsign],deta[ndr][nctr_intvl][nsign]);
-    h_eta_avg_Dphi[ndr][nctr_bin][nsign][0]->Fill(dphi[ndr][nctr_intvl][nsign],etaavg[ndr][nctr_intvl][nsign]);
-    h_eta1_eta2[ndr][nctr_bin][nsign][0]->Fill(m2eta[ndr][nctr_intvl][nsign],m1eta[ndr][nctr_intvl][nsign]);
-    h_pt1_pt2[ndr][nctr_bin][nsign][0]->Fill(m2pt[ndr][nctr_intvl][nsign],m1pt[ndr][nctr_intvl][nsign]);
-    h_eta_avg_Deta[ndr][nctr_bin][nsign][0]->Fill(deta[ndr][nctr_intvl][nsign],etaavg[ndr][nctr_intvl][nsign]);
-    h_eta_avg_pair_eta[ndr][nctr_bin][nsign][0]->Fill(pair_eta[ndr][nctr_intvl][nsign],etaavg[ndr][nctr_intvl][nsign]);
-    h_ptlead_pair_pt[ndr][nctr_bin][nsign][0]->Fill(pair_pt[ndr][nctr_intvl][nsign],m1pt[ndr][nctr_intvl][nsign]);
-    h_minv_pair_pt[ndr][nctr_bin][nsign][0]->Fill(pair_pt[ndr][nctr_intvl][nsign],minv[ndr][nctr_intvl][nsign]);
+    h_Deta_Dphi[nctr_bin][nsign][0]->Fill(dphi[nctr_intvl][nsign],deta[nctr_intvl][nsign]);
+    h_eta_avg_Dphi[nctr_bin][nsign][0]->Fill(dphi[nctr_intvl][nsign],etaavg[nctr_intvl][nsign]);
+    h_eta1_eta2[nctr_bin][nsign][0]->Fill(m2eta[nctr_intvl][nsign],m1eta[nctr_intvl][nsign]);
+    h_pt1_pt2[nctr_bin][nsign][0]->Fill(m2pt[nctr_intvl][nsign],m1pt[nctr_intvl][nsign]);
+    h_eta_avg_Deta[nctr_bin][nsign][0]->Fill(deta[nctr_intvl][nsign],etaavg[nctr_intvl][nsign]);
+    h_eta_avg_pair_eta[nctr_bin][nsign][0]->Fill(pair_eta[nctr_intvl][nsign],etaavg[nctr_intvl][nsign]);
+    h_ptlead_pair_pt[nctr_bin][nsign][0]->Fill(pair_pt[nctr_intvl][nsign],m1pt[nctr_intvl][nsign]);
+    h_minv_pair_pt[nctr_bin][nsign][0]->Fill(pair_pt[nctr_intvl][nsign],minv[nctr_intvl][nsign]);
 
-    if (ndr == 2){ //no delta R cut
-        h_eta1_eta2_dphicut[2][nctr_bin][nsign][0]->Fill(m2eta[ndr][nctr_intvl][nsign],m1eta[ndr][nctr_intvl][nsign]);
-        if (dphi[ndr][nctr_intvl][nsign] < 1){
-            h_eta1_eta2_dphicut[0][nctr_bin][nsign][0]->Fill(m2eta[ndr][nctr_intvl][nsign],m1eta[ndr][nctr_intvl][nsign]);
-        }else if(dphi[ndr][nctr_intvl][nsign] > pms.PI-1){
-            h_eta1_eta2_dphicut[1][nctr_bin][nsign][0]->Fill(m2eta[ndr][nctr_intvl][nsign],m1eta[ndr][nctr_intvl][nsign]);
-        }
-    }
+    // if (ndr == 2){ //no delta R cut
+    //     h_eta1_eta2_dphicut[2][nctr_bin][nsign][0]->Fill(m2eta[nctr_intvl][nsign],m1eta[nctr_intvl][nsign]);
+    //     if (dphi[nctr_intvl][nsign] < 1){
+    //         h_eta1_eta2_dphicut[0][nctr_bin][nsign][0]->Fill(m2eta[nctr_intvl][nsign],m1eta[nctr_intvl][nsign]);
+    //     }else if(dphi[nctr_intvl][nsign] > pms.PI-1){
+    //         h_eta1_eta2_dphicut[1][nctr_bin][nsign][0]->Fill(m2eta[nctr_intvl][nsign],m1eta[nctr_intvl][nsign]);
+    //     }
+    // }
 }
 
 
