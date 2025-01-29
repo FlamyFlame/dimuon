@@ -27,6 +27,7 @@ public:
    	static const unsigned int ndphiRegions=3;
    	static const unsigned int ndetaRegions=2;
 
+   	static const unsigned int nEffCorr=2; // 0: no efficiency correction; 1: having effiency correction
    	static const unsigned int nPhotoProdCuts=2; //0: no gap cut; 1: having gap cut
    	static const unsigned int nGapCuts=2; //0: no gap cut; 1: having gap cut
   	static const unsigned int CtrStep = 5;
