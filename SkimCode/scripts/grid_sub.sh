@@ -14,6 +14,15 @@ pathena TrigRates.py \
 #         --excludeFile=clean.sh \
 #         --excludeFile=vim_backup
 
+
+#2023 PbPb data
+pathena TrigRates.py \
+        --inDS data23_hi.periodAllYear2.physics_HardProbes.PhysCont.AOD.repro35_v01 \
+        --outDS user.yuhang.TrigRates.dimuon.PbPb2023data.Dec2024.v1. \
+        --excludeFile=myfile.root \
+        --excludeFile=clean.sh \
+        --excludeFile=vim_backup
+
 #2017 pp data
 # pathena TrigRates.py \
 #         --inDS data17_5TeV.periodM.physics_Main.PhysCont.AOD.pro23_v02 \
