@@ -193,8 +193,8 @@ void MuonPairPlottingPowheg::FillPtBinnedHistograms(int nbatch, int npt, int nsi
 
 
 void MuonPairPlottingPowheg::WriteOutput(){
-    sub_dir = (isMCTruthBB)? "bb_full_sample/" : "cc_full_sample/";
-    outFile = new TFile(Form("%s%shistograms_%s_combined.root", mcdir.c_str(), sub_dir.c_str(), mc_mode.c_str()),"recreate");
+    // sub_dir = (isMCTruthBB)? "bb_full_sample/" : "cc_full_sample/";
+    // outFile = new TFile(Form("%s%shistograms_%s_combined.root", mcdir.c_str(), sub_dir.c_str(), mc_mode.c_str()),"recreate");
 
     if (mode == 1){
         // outFile->Write();
@@ -280,6 +280,7 @@ void MuonPairPlottingPowheg::Run(){
     mc_mode = (isMCTruthBB)? "mc_truth_bb" : "mc_truth_cc";
 
   	InitInput();
+    InitOutput();
   	InitHists();
   	ProcessData();
   	WriteOutput();
