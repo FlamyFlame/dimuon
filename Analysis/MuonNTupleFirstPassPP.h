@@ -116,30 +116,23 @@ void MuonNTupleFirstPassPP::InitInput(){
         fChain->Add("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/New_All_DataPP2017_5TeV_Dec2021.root");
     }else{ //run3
         // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part1.root");
+
+        fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_1.root");
+        fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_2.root");
+        fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_3.root");
+        fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_4.root");
+        fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_5.root");
+        fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_6.root");
+
         // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_1.root");
         // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_2.root");
+        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_4.root");
+        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_5.root");
+        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_6.root");
+        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_8.root");
+
         // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_3.root");
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_4.root");
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_5.root");
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_6.root");
         // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_7.root");
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_8.root");
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_1.root");
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_2.root");
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_3.root");
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_4.root");
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_5.root");
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_6.root");
-
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_1.root");
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_2.root");
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_4.root");
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_5.root");
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_6.root");
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_8.root");
-
-        fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_3.root");
-        fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_7.root");
     }
   
     fChain->SetBranchAddress("RunNumber"                   , &RunNumber);
@@ -238,9 +231,9 @@ void MuonNTupleFirstPassPP::InitOutput(){
             m_outfile=new TFile(("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/muon_pairs_pp" + tight_postfix + ".root").c_str(),"recreate");
         }else{
             // m_outfile=new TFile(("/eos/user/y/yuhang/data/pp_24/muon_pairs_pp_2024_part1" + tight_postfix + ".root").c_str(),"recreate");
-            // m_outfile=new TFile(("/eos/user/y/yuhang/data/pp_24/muon_pairs_pp_2024_part2" + tight_postfix + ".root").c_str(),"recreate");
+            m_outfile=new TFile(("/eos/user/y/yuhang/data/pp_24/muon_pairs_pp_2024_part3" + tight_postfix + ".root").c_str(),"recreate");
             // m_outfile=new TFile(("/eos/user/y/yuhang/data/pp_24/muon_pairs_pp_2024_part2-1" + tight_postfix + ".root").c_str(),"recreate");
-            m_outfile=new TFile(("/eos/user/y/yuhang/data/pp_24/muon_pairs_pp_2024_part2-2" + tight_postfix + ".root").c_str(),"recreate");
+            // m_outfile=new TFile(("/eos/user/y/yuhang/data/pp_24/muon_pairs_pp_2024_part2-2" + tight_postfix + ".root").c_str(),"recreate");
         }
 
         for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
