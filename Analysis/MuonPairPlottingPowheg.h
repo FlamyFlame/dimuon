@@ -161,9 +161,9 @@ private:
 // --------------------- class methods ---------------------------
 
    	void InitInput();
+    void InitOutput();
    	void InitHists();
    	void ProcessData();
-    // void InitOutput();
     void WriteOutput();
     bool PassSingleMuonGapCut(float meta, float mpt, int mcharge);
    	void FillHistograms(int ndr, int nsign);
@@ -209,74 +209,79 @@ void MuonPairPlottingPowheg::InitInput(){
     for (int ibatch = 0; ibatch < nBatches; ibatch++){
         meta_tree[ibatch] = (TTree*) inFile[ibatch]->Get("meta_tree");  
         meta_tree[ibatch] ->SetBranchAddress("nentries_before_cuts"          , &nevents_before_cuts[ibatch]);
-        for (int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
-            inTree[ibatch][ksign]  = (TTree*) inFile[ibatch]->Get(Form("muon_pair_tree_dr3_sign%d",ksign+1));  
-            inTree[ibatch][ksign] ->SetBranchAddress("weight"          , &weight[ibatch][ksign]);
-            inTree[ibatch][ksign] ->SetBranchAddress("Q"          , &Q[ibatch][ksign]);
-            inTree[ibatch][ksign] ->SetBranchAddress("mQQ"          , &mQQ[ibatch][ksign]);
-            inTree[ibatch][ksign] ->SetBranchAddress("mHard_relevant"          , &mHard_relevant[ibatch][ksign]);
-            inTree[ibatch][ksign] ->SetBranchAddress("from_same_b"          , &from_same_b[ibatch][ksign]);
-            inTree[ibatch][ksign] ->SetBranchAddress("both_from_b"          , &both_from_b[ibatch][ksign]);
-            inTree[ibatch][ksign] ->SetBranchAddress("both_from_c"          , &both_from_c[ibatch][ksign]);
-            inTree[ibatch][ksign] ->SetBranchAddress("from_same_ancestors"          , &from_same_ancestors[ibatch][ksign]);
-            inTree[ibatch][ksign] ->SetBranchAddress("m1_ancestor_category"          , &m1_ancestor_category[ibatch][ksign]);
-            inTree[ibatch][ksign] ->SetBranchAddress("m2_ancestor_category"          , &m2_ancestor_category[ibatch][ksign]);
-        	inTree[ibatch][ksign] ->SetBranchAddress("pair_dPoverP"    , &pair_dPoverP[ibatch][ksign]);
-        	inTree[ibatch][ksign] ->SetBranchAddress("pt_lead"          , &pt_lead[ibatch][ksign]);
-        	inTree[ibatch][ksign] ->SetBranchAddress("pair_pt"          , &pair_pt[ibatch][ksign]);
-        	// inTree[ibatch][ksign] ->SetBranchAddress("pair_eta"     , &pair_eta[ibatch][ksign]);
-        	inTree[ibatch][ksign] ->SetBranchAddress("pair_y"           , &pair_y[ibatch][ksign]);
-            inTree[ibatch][ksign] ->SetBranchAddress("asym"             , &asym[ibatch][ksign]);
-        	inTree[ibatch][ksign] ->SetBranchAddress("dpt"           , &dpt[ibatch][ksign]);
-        	inTree[ibatch][ksign] ->SetBranchAddress("deta"       , &deta[ibatch][ksign]);
-        	inTree[ibatch][ksign] ->SetBranchAddress("etaavg"      , &etaavg[ibatch][ksign]);
-        	inTree[ibatch][ksign] ->SetBranchAddress("phiavg"            , &phiavg[ibatch][ksign]);
-        	inTree[ibatch][ksign] ->SetBranchAddress("dphi"     , &dphi[ibatch][ksign]);
-        	inTree[ibatch][ksign] ->SetBranchAddress("dr"        , &dr[ibatch][ksign]);
-        	inTree[ibatch][ksign] ->SetBranchAddress("minv"        , &minv[ibatch][ksign]);
-        	inTree[ibatch][ksign] ->SetBranchAddress("m1.pt"           , &m1pt[ibatch][ksign]);
-        	inTree[ibatch][ksign] ->SetBranchAddress("m2.pt"           , &m2pt[ibatch][ksign]);
-        	inTree[ibatch][ksign] ->SetBranchAddress("m1.eta"       , &m1eta[ibatch][ksign]);
-        	inTree[ibatch][ksign] ->SetBranchAddress("m2.eta"       , &m2eta[ibatch][ksign]);
-        	inTree[ibatch][ksign] ->SetBranchAddress("m1.phi"     	, &m1phi[ibatch][ksign]);
-        	inTree[ibatch][ksign] ->SetBranchAddress("m2.phi"     	, &m2phi[ibatch][ksign]);
-            inTree[ibatch][ksign] ->SetBranchAddress("m1.charge"           , &m1charge[ibatch][ksign]);
-            inTree[ibatch][ksign] ->SetBranchAddress("m2.charge"           , &m2charge[ibatch][ksign]);
+        for (int isign = 0; isign < ParamsSet::nSigns; isign++){
+            inTree[ibatch][isign]  = (TTree*) inFile[ibatch]->Get(Form("muon_pair_tree_dr3_sign%d",isign+1));  
+            inTree[ibatch][isign] ->SetBranchAddress("weight"          , &weight[ibatch][isign]);
+            inTree[ibatch][isign] ->SetBranchAddress("Q"          , &Q[ibatch][isign]);
+            inTree[ibatch][isign] ->SetBranchAddress("mQQ"          , &mQQ[ibatch][isign]);
+            inTree[ibatch][isign] ->SetBranchAddress("mHard_relevant"          , &mHard_relevant[ibatch][isign]);
+            inTree[ibatch][isign] ->SetBranchAddress("from_same_b"          , &from_same_b[ibatch][isign]);
+            inTree[ibatch][isign] ->SetBranchAddress("both_from_b"          , &both_from_b[ibatch][isign]);
+            inTree[ibatch][isign] ->SetBranchAddress("both_from_c"          , &both_from_c[ibatch][isign]);
+            inTree[ibatch][isign] ->SetBranchAddress("from_same_ancestors"          , &from_same_ancestors[ibatch][isign]);
+            inTree[ibatch][isign] ->SetBranchAddress("m1_ancestor_category"          , &m1_ancestor_category[ibatch][isign]);
+            inTree[ibatch][isign] ->SetBranchAddress("m2_ancestor_category"          , &m2_ancestor_category[ibatch][isign]);
+        	inTree[ibatch][isign] ->SetBranchAddress("pair_dPoverP"    , &pair_dPoverP[ibatch][isign]);
+        	inTree[ibatch][isign] ->SetBranchAddress("pt_lead"          , &pt_lead[ibatch][isign]);
+        	inTree[ibatch][isign] ->SetBranchAddress("pair_pt"          , &pair_pt[ibatch][isign]);
+        	// inTree[ibatch][isign] ->SetBranchAddress("pair_eta"     , &pair_eta[ibatch][isign]);
+        	inTree[ibatch][isign] ->SetBranchAddress("pair_y"           , &pair_y[ibatch][isign]);
+            inTree[ibatch][isign] ->SetBranchAddress("asym"             , &asym[ibatch][isign]);
+        	inTree[ibatch][isign] ->SetBranchAddress("dpt"           , &dpt[ibatch][isign]);
+        	inTree[ibatch][isign] ->SetBranchAddress("deta"       , &deta[ibatch][isign]);
+        	inTree[ibatch][isign] ->SetBranchAddress("etaavg"      , &etaavg[ibatch][isign]);
+        	inTree[ibatch][isign] ->SetBranchAddress("phiavg"            , &phiavg[ibatch][isign]);
+        	inTree[ibatch][isign] ->SetBranchAddress("dphi"     , &dphi[ibatch][isign]);
+        	inTree[ibatch][isign] ->SetBranchAddress("dr"        , &dr[ibatch][isign]);
+        	inTree[ibatch][isign] ->SetBranchAddress("minv"        , &minv[ibatch][isign]);
+        	inTree[ibatch][isign] ->SetBranchAddress("m1.pt"           , &m1pt[ibatch][isign]);
+        	inTree[ibatch][isign] ->SetBranchAddress("m2.pt"           , &m2pt[ibatch][isign]);
+        	inTree[ibatch][isign] ->SetBranchAddress("m1.eta"       , &m1eta[ibatch][isign]);
+        	inTree[ibatch][isign] ->SetBranchAddress("m2.eta"       , &m2eta[ibatch][isign]);
+        	inTree[ibatch][isign] ->SetBranchAddress("m1.phi"     	, &m1phi[ibatch][isign]);
+        	inTree[ibatch][isign] ->SetBranchAddress("m2.phi"     	, &m2phi[ibatch][isign]);
+            inTree[ibatch][isign] ->SetBranchAddress("m1.charge"           , &m1charge[ibatch][isign]);
+            inTree[ibatch][isign] ->SetBranchAddress("m2.charge"           , &m2charge[ibatch][isign]);
 
-            inTree[ibatch][ksign] ->SetBranchStatus("*"                  ,0);//switch off all branches, then enable just the ones that we need
-            inTree[ibatch][ksign] ->SetBranchStatus("weight"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("Q"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("mQQ"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("mHard_relevant"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("from_same_b"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("both_from_b"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("both_from_c"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("from_same_ancestors"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("m1_ancestor_category"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("m2_ancestor_category"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("pair_dPoverP"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("pt_lead"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("pair_pt"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("pair_y"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("asym"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("dpt"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("deta"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("etaavg"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("phiavg"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("dphi"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("dr"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("minv"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("m1.pt"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("m2.pt"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("m1.eta"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("m2.eta"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("m1.phi"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("m2.phi"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("m1.charge"           ,1);
-            inTree[ibatch][ksign] ->SetBranchStatus("m2.charge"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("*"                  ,0);//switch off all branches, then enable just the ones that we need
+            inTree[ibatch][isign] ->SetBranchStatus("weight"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("Q"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("mQQ"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("mHard_relevant"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("from_same_b"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("both_from_b"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("both_from_c"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("from_same_ancestors"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("m1_ancestor_category"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("m2_ancestor_category"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("pair_dPoverP"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("pt_lead"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("pair_pt"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("pair_y"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("asym"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("dpt"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("deta"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("etaavg"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("phiavg"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("dphi"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("dr"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("minv"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("m1.pt"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("m2.pt"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("m1.eta"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("m2.eta"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("m1.phi"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("m2.phi"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("m1.charge"           ,1);
+            inTree[ibatch][isign] ->SetBranchStatus("m2.charge"           ,1);
 
         }
     }
+}
+
+void MuonPairPlottingPowheg::InitOutput(){
+    // sub_dir = (isMCTruthBB)? "bb_full_sample/" : "cc_full_sample/";
+    outFile = new TFile(Form("%s%shistograms_%s_combined.root", mcdir.c_str(), sub_dir.c_str(), mc_mode.c_str()),"recreate");
 }
 
 void MuonPairPlottingPowheg::InitHists(){
@@ -298,9 +303,9 @@ void MuonPairPlottingPowheg::InitHists(){
     float minv_max = 60;
     double minv_bins_log[ParamsSet::nSigns][nminv_bins_log+1];
 
-    for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
+    for (unsigned int isign = 0; isign < ParamsSet::nSigns; isign++){
         for(int iminv = 0; iminv <= nminv_bins_log; iminv++){
-            minv_bins_log[ksign][iminv] = minv_max * pow(10.0, (static_cast<float>(iminv - nminv_bins_log)) * minv_logpow[ksign]);
+            minv_bins_log[isign][iminv] = minv_max * pow(10.0, (static_cast<float>(iminv - nminv_bins_log)) * minv_logpow[isign]);
         }
     }
 
@@ -308,109 +313,99 @@ void MuonPairPlottingPowheg::InitHists(){
     std::string flavor_grps[nFlavors] = {"_single_b", "_bb", "_cc", "_other_flavors"};
 
    	if (mode == 1){
-        // for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
-
-        for (unsigned int ipt = 0; ipt < ParamsSet::nPtBins; ipt++){
-        for (unsigned int ictr = 0; ictr < ParamsSet::nCtrBins; ictr++){
         for (unsigned int isign = 0; isign < ParamsSet::nSigns; isign++){
-        for (unsigned int idphi = 0; idphi < ParamsSet::ndphiRegions; idphi++){
-        for (unsigned int ideta = 0; ideta < ParamsSet::ndetaRegions; ideta++){
-        for (unsigned int igap = 0; igap < ParamsSet::nGapCuts; igap++){
-        for (unsigned int iphoto = 0; iphoto < ParamsSet::nPhotoProdCuts; iphoto++){
-
-
-            for (int kgrp = 0; kgrp < nAncestorGroups + 2; kgrp++){
-                h_DR_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_DR_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_bins,0,pms.deltaR_thrsh[2]);
-                h_pt_asym_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_pt_asym_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", npt_asym_bins,0,1.);
+            for (int igrp = 0; igrp < nAncestorGroups + 2; igrp++){
+                h_DR_ancestor_binned[isign][igrp] = new TH1D(Form("h_DR_sign%d%s",isign+1,ancestor_grps[igrp].c_str()),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_bins,0,pms.deltaR_thrsh[2]);
+                h_pt_asym_ancestor_binned[isign][igrp] = new TH1D(Form("h_pt_asym_sign%d%s",isign+1,ancestor_grps[igrp].c_str()),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", npt_asym_bins,0,1.);
                 // h_psrapidity_ordered_pt_asym_ancestor_binned
-                h_pair_pt_ptlead_ratio_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_pair_pt_ptlead_ratio_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", npair_pt_ptlead_ratio_bins,0,2.);
-                h_ptlead_pair_pt_ancestor_binned[ksign][kgrp] = new TH2D(Form("h_ptlead_pair_pt_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",npair_pT_bins_linear,0,30,npT_lead_bins_linear,0,30);
-                h_Deta_Dphi_ancestor_binned[ksign][kgrp] = new TH2D(Form("h_Deta_Dphi_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
-                h_minv_pair_pt_ancestor_binned[ksign][kgrp] = new TH2D(Form("h_minv_pair_pt_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
+                h_pair_pt_ptlead_ratio_ancestor_binned[isign][igrp] = new TH1D(Form("h_pair_pt_ptlead_ratio_sign%d%s",isign+1,ancestor_grps[igrp].c_str()),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", npair_pt_ptlead_ratio_bins,0,2.);
+                h_ptlead_pair_pt_ancestor_binned[isign][igrp] = new TH2D(Form("h_ptlead_pair_pt_sign%d%s",isign+1,ancestor_grps[igrp].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",npair_pT_bins_linear,0,30,npT_lead_bins_linear,0,30);
+                h_Deta_Dphi_ancestor_binned[isign][igrp] = new TH2D(Form("h_Deta_Dphi_sign%d%s",isign+1,ancestor_grps[igrp].c_str()),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
+                h_minv_pair_pt_ancestor_binned[isign][igrp] = new TH2D(Form("h_minv_pair_pt_sign%d%s",isign+1,ancestor_grps[igrp].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
                                 
-                h_mQQ_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_mQQ_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";m_{QQ}", 200, 0, 200.);
-                h_mQQ_Q_ratio_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_mQQ_Q_ratio_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";#frac{m_{QQ}}{Q};d#sigma/d#frac{m_{QQ}}{Q}", 100,0,5.);
-                h_mQQ_mHard_ratio_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_mQQ_mHard_ratio_sign%d%s",ksign+1,ancestor_grps[kgrp].c_str()),";#frac{m_{QQ}}{#sqrt{#hat{s}}};d#sigma/d#frac{m_{QQ}}{#sqrt{#hat{s}}}", 50,0,1.);
+                h_mQQ_ancestor_binned[isign][igrp] = new TH1D(Form("h_mQQ_sign%d%s",isign+1,ancestor_grps[igrp].c_str()),";m_{QQ}", 200, 0, 200.);
+                h_mQQ_Q_ratio_ancestor_binned[isign][igrp] = new TH1D(Form("h_mQQ_Q_ratio_sign%d%s",isign+1,ancestor_grps[igrp].c_str()),";#frac{m_{QQ}}{Q};d#sigma/d#frac{m_{QQ}}{Q}", 100,0,5.);
+                h_mQQ_mHard_ratio_ancestor_binned[isign][igrp] = new TH1D(Form("h_mQQ_mHard_ratio_sign%d%s",isign+1,ancestor_grps[igrp].c_str()),";#frac{m_{QQ}}{#sqrt{#hat{s}}};d#sigma/d#frac{m_{QQ}}{#sqrt{#hat{s}}}", 50,0,1.);
                 
-                h_DR_ancestor_binned[ksign][kgrp]->Sumw2();
-                h_pt_asym_ancestor_binned[ksign][kgrp]->Sumw2();
-                h_pair_pt_ptlead_ratio_ancestor_binned[ksign][kgrp]->Sumw2();
-                h_ptlead_pair_pt_ancestor_binned[ksign][kgrp]->Sumw2();
-                h_Deta_Dphi_ancestor_binned[ksign][kgrp]->Sumw2();
-                h_minv_pair_pt_ancestor_binned[ksign][kgrp]->Sumw2();
-                h_mQQ_ancestor_binned[ksign][kgrp]->Sumw2();
-                h_mQQ_Q_ratio_ancestor_binned[ksign][kgrp]->Sumw2();
-                h_mQQ_mHard_ratio_ancestor_binned[ksign][kgrp]->Sumw2();
+                h_DR_ancestor_binned[isign][igrp]->Sumw2();
+                h_pt_asym_ancestor_binned[isign][igrp]->Sumw2();
+                h_pair_pt_ptlead_ratio_ancestor_binned[isign][igrp]->Sumw2();
+                h_ptlead_pair_pt_ancestor_binned[isign][igrp]->Sumw2();
+                h_Deta_Dphi_ancestor_binned[isign][igrp]->Sumw2();
+                h_minv_pair_pt_ancestor_binned[isign][igrp]->Sumw2();
+                h_mQQ_ancestor_binned[isign][igrp]->Sumw2();
+                h_mQQ_Q_ratio_ancestor_binned[isign][igrp]->Sumw2();
+                h_mQQ_mHard_ratio_ancestor_binned[isign][igrp]->Sumw2();
             }
 
             for (int kflav = 0; kflav < nFlavors; kflav++){
-                h_DR_flavor_binned[ksign][kflav] = new TH1D(Form("h_DR_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_bins,0,pms.deltaR_thrsh[2]);
-                h_pt_asym_flavor_binned[ksign][kflav] = new TH1D(Form("h_pt_asym_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", npt_asym_bins,0,1.);
+                h_DR_flavor_binned[isign][kflav] = new TH1D(Form("h_DR_sign%d%s",isign+1,flavor_grps[kflav].c_str()),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_bins,0,pms.deltaR_thrsh[2]);
+                h_pt_asym_flavor_binned[isign][kflav] = new TH1D(Form("h_pt_asym_sign%d%s",isign+1,flavor_grps[kflav].c_str()),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", npt_asym_bins,0,1.);
                 // h_psrapidity_ordered_pt_asym_flavor_binned
-                h_pair_pt_ptlead_ratio_flavor_binned[ksign][kflav] = new TH1D(Form("h_pair_pt_ptlead_ratio_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", npair_pt_ptlead_ratio_bins,0,2.);
-                h_ptlead_pair_pt_flavor_binned[ksign][kflav] = new TH2D(Form("h_ptlead_pair_pt_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",npair_pT_bins_linear,0,30,npT_lead_bins_linear,0,30);
-                h_Deta_Dphi_flavor_binned[ksign][kflav] = new TH2D(Form("h_Deta_Dphi_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
-                h_minv_pair_pt_flavor_binned[ksign][kflav] = new TH2D(Form("h_minv_pair_pt_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
+                h_pair_pt_ptlead_ratio_flavor_binned[isign][kflav] = new TH1D(Form("h_pair_pt_ptlead_ratio_sign%d%s",isign+1,flavor_grps[kflav].c_str()),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", npair_pt_ptlead_ratio_bins,0,2.);
+                h_ptlead_pair_pt_flavor_binned[isign][kflav] = new TH2D(Form("h_ptlead_pair_pt_sign%d%s",isign+1,flavor_grps[kflav].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",npair_pT_bins_linear,0,30,npT_lead_bins_linear,0,30);
+                h_Deta_Dphi_flavor_binned[isign][kflav] = new TH2D(Form("h_Deta_Dphi_sign%d%s",isign+1,flavor_grps[kflav].c_str()),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
+                h_minv_pair_pt_flavor_binned[isign][kflav] = new TH2D(Form("h_minv_pair_pt_sign%d%s",isign+1,flavor_grps[kflav].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
                                 
-                // h_mQQ_flavor_binned[ksign][kflav] = new TH1D(Form("h_mQQ_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";m_{QQ}", 200, 0, 200.);
-                // h_mQQ_Q_ratio_flavor_binned[ksign][kflav] = new TH1D(Form("h_mQQ_Q_ratio_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";#frac{m_{QQ}}{Q};d#sigma/d#frac{m_{QQ}}{Q}", 100,0,5.);
-                // h_mQQ_mHard_ratio_flavor_binned[ksign][kflav] = new TH1D(Form("h_mQQ_mHard_ratio_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";#frac{m_{QQ}}{#sqrt{#hat{s}}};d#sigma/d#frac{m_{QQ}}{#sqrt{#hat{s}}}", 50,0,1.);
+                // h_mQQ_flavor_binned[isign][kflav] = new TH1D(Form("h_mQQ_sign%d%s",isign+1,flavor_grps[kflav].c_str()),";m_{QQ}", 200, 0, 200.);
+                // h_mQQ_Q_ratio_flavor_binned[isign][kflav] = new TH1D(Form("h_mQQ_Q_ratio_sign%d%s",isign+1,flavor_grps[kflav].c_str()),";#frac{m_{QQ}}{Q};d#sigma/d#frac{m_{QQ}}{Q}", 100,0,5.);
+                // h_mQQ_mHard_ratio_flavor_binned[isign][kflav] = new TH1D(Form("h_mQQ_mHard_ratio_sign%d%s",isign+1,flavor_grps[kflav].c_str()),";#frac{m_{QQ}}{#sqrt{#hat{s}}};d#sigma/d#frac{m_{QQ}}{#sqrt{#hat{s}}}", 50,0,1.);
                 
-                h_DR_flavor_binned[ksign][kflav]->Sumw2();
-                h_pt_asym_flavor_binned[ksign][kflav]->Sumw2();
-                h_pair_pt_ptlead_ratio_flavor_binned[ksign][kflav]->Sumw2();
-                h_ptlead_pair_pt_flavor_binned[ksign][kflav]->Sumw2();
-                h_Deta_Dphi_flavor_binned[ksign][kflav]->Sumw2();
-                h_minv_pair_pt_flavor_binned[ksign][kflav]->Sumw2();
-                // h_mQQ_flavor_binned[ksign][kflav]->Sumw2();
-                // h_mQQ_Q_ratio_flavor_binned[ksign][kflav]->Sumw2();
-                // h_mQQ_mHard_ratio_flavor_binned[ksign][kflav]->Sumw2();
+                h_DR_flavor_binned[isign][kflav]->Sumw2();
+                h_pt_asym_flavor_binned[isign][kflav]->Sumw2();
+                h_pair_pt_ptlead_ratio_flavor_binned[isign][kflav]->Sumw2();
+                h_ptlead_pair_pt_flavor_binned[isign][kflav]->Sumw2();
+                h_Deta_Dphi_flavor_binned[isign][kflav]->Sumw2();
+                h_minv_pair_pt_flavor_binned[isign][kflav]->Sumw2();
+                // h_mQQ_flavor_binned[isign][kflav]->Sumw2();
+                // h_mQQ_Q_ratio_flavor_binned[isign][kflav]->Sumw2();
+                // h_mQQ_mHard_ratio_flavor_binned[isign][kflav]->Sumw2();
             }
 
             for (unsigned int jdphi = 0; jdphi < 2; jdphi++){
-                h_pair_dP_overP[jdphi][ksign] = new TH1D(Form("h_pair_dP_overP_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";(#Delta p / p)_{pair};1/N_{evt} dN/d(#Delta p / p)_{pair}" ,pms.deltaP_overP_nbins,0,pms.deltaP_overP_max);
-                h_DR[jdphi][ksign] = new TH1D(Form("h_DR_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_bins,0,pms.deltaR_thrsh[2]);
-                h_Dphi[jdphi][ksign] = new TH1D(Form("h_Dphi_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";#Delta#phi;1/N_{evt} dN/d#Delta#phi", nDphi_bins,-pms.PI,pms.PI);
-                h_pair_y[jdphi][ksign] = new TH1D(Form("h_pair_y_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";y_{pair};1/N_{evt} dN/dy_{pair}" ,npair_y_bins,-3,3);
-                h_pt_asym[jdphi][ksign] = new TH1D(Form("h_pt_asym_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", npt_asym_bins,0,1.);
-                h_pair_pt_ptlead_ratio[jdphi][ksign] = new TH1D(Form("h_pair_pt_ptlead_ratio_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", npair_pt_ptlead_ratio_bins,0,2.);
-                h_mQQ[jdphi][ksign] = new TH1D(Form("h_mQQ_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";m_{Q#Bar{Q}}", 200, 0, 200.);
-                h_mQQ_Q_ratio[jdphi][ksign] = new TH1D(Form("h_mQQ_Q_ratio_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";#frac{m_{Q#Bar{Q}}}{Q};d#sigma/d#frac{m_{Q#Bar{Q}}}{Q}", 100,0,5.);
-                h_mQQ_mHard_ratio[jdphi][ksign] = new TH1D(Form("h_mQQ_mHard_ratio_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";#frac{m_{Q#Bar{Q}}}{#sqrt{#hat{s}};d#sigma/d#frac{m_{Q#Bar{Q}}}{#sqrt{#hat{s}}", 50,0,1.);
+                h_pair_dP_overP[jdphi][isign] = new TH1D(Form("h_pair_dP_overP_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";(#Delta p / p)_{pair};1/N_{evt} dN/d(#Delta p / p)_{pair}" ,pms.deltaP_overP_nbins,0,pms.deltaP_overP_max);
+                h_DR[jdphi][isign] = new TH1D(Form("h_DR_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_bins,0,pms.deltaR_thrsh[2]);
+                h_Dphi[jdphi][isign] = new TH1D(Form("h_Dphi_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";#Delta#phi;1/N_{evt} dN/d#Delta#phi", nDphi_bins,-pms.PI,pms.PI);
+                h_pair_y[jdphi][isign] = new TH1D(Form("h_pair_y_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";y_{pair};1/N_{evt} dN/dy_{pair}" ,npair_y_bins,-3,3);
+                h_pt_asym[jdphi][isign] = new TH1D(Form("h_pt_asym_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", npt_asym_bins,0,1.);
+                h_pair_pt_ptlead_ratio[jdphi][isign] = new TH1D(Form("h_pair_pt_ptlead_ratio_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", npair_pt_ptlead_ratio_bins,0,2.);
+                h_mQQ[jdphi][isign] = new TH1D(Form("h_mQQ_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";m_{Q#Bar{Q}}", 200, 0, 200.);
+                h_mQQ_Q_ratio[jdphi][isign] = new TH1D(Form("h_mQQ_Q_ratio_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";#frac{m_{Q#Bar{Q}}}{Q};d#sigma/d#frac{m_{Q#Bar{Q}}}{Q}", 100,0,5.);
+                h_mQQ_mHard_ratio[jdphi][isign] = new TH1D(Form("h_mQQ_mHard_ratio_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";#frac{m_{Q#Bar{Q}}}{#sqrt{#hat{s}};d#sigma/d#frac{m_{Q#Bar{Q}}}{#sqrt{#hat{s}}", 50,0,1.);
 
-                h_eta_avg_Dphi[jdphi][ksign] = new TH2D(Form("h_eta_avg_Dphi_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";#Delta#phi;#bar{#eta}", nDphi_bins,-pms.PI,pms.PI,neta_bins,-2.4,2.4);
-                h_Deta_Dphi[jdphi][ksign] = new TH2D(Form("h_Deta_Dphi_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
-                h_eta1_eta2[jdphi][ksign] = new TH2D(Form("h_eta1_eta2_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";#eta_{sublead};#eta_{lead}",neta_bins,-2.4,2.4, neta_bins,-2.4,2.4);
-                h_eta_avg_Deta[jdphi][ksign] = new TH2D(Form("h_eta_avg_Deta_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";#Delta#eta;#bar{#eta}",nDeta_bins,-4.8,4.8,neta_bins,-2.4,2.4);
-                h_pt1_pt2[jdphi][ksign] = new TH2D(Form("h_pt1_pt2_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";p_{T}^{sublead} [GeV];p_{T}^{lead} [GeV]",pms.npt_bins,pms.pTBins,pms.npt_bins,pms.pTBins);
-                h_ptlead_pair_pt[jdphi][ksign] = new TH2D(Form("h_ptlead_pair_pt_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",npair_pT_bins_linear,0,30,npT_lead_bins_linear,0,30);
-                h_ptlead_pair_pt_zoomin[jdphi][ksign] = new TH2D(Form("h_ptlead_pair_pt_zoomin_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",npair_pT_bins_linear,0,20,npT_lead_bins_linear,0,15);
-                h_ptlead_pair_pt_log[jdphi][ksign] = new TH2D(Form("h_ptlead_pair_pt_log_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][2],pms.npt_bins,pms.pTBins);
-                h_minv_pair_pt[jdphi][ksign] = new TH2D(Form("h_minv_pair_pt_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
-                h_minv_pair_pt_zoomin[jdphi][ksign] = new TH2D(Form("h_minv_pair_pt_zoomin_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,20,nminv_bins_linear,0,15);
-                h_minv_pair_pt_log[jdphi][ksign] = new TH2D(Form("h_minv_pair_pt_log_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][2],nminv_bins_log,minv_bins_log[ksign]);
+                h_eta_avg_Dphi[jdphi][isign] = new TH2D(Form("h_eta_avg_Dphi_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";#Delta#phi;#bar{#eta}", nDphi_bins,-pms.PI,pms.PI,neta_bins,-2.4,2.4);
+                h_Deta_Dphi[jdphi][isign] = new TH2D(Form("h_Deta_Dphi_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
+                h_eta1_eta2[jdphi][isign] = new TH2D(Form("h_eta1_eta2_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";#eta_{sublead};#eta_{lead}",neta_bins,-2.4,2.4, neta_bins,-2.4,2.4);
+                h_eta_avg_Deta[jdphi][isign] = new TH2D(Form("h_eta_avg_Deta_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";#Delta#eta;#bar{#eta}",nDeta_bins,-4.8,4.8,neta_bins,-2.4,2.4);
+                h_pt1_pt2[jdphi][isign] = new TH2D(Form("h_pt1_pt2_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";p_{T}^{sublead} [GeV];p_{T}^{lead} [GeV]",pms.npt_bins,pms.pTBins,pms.npt_bins,pms.pTBins);
+                h_ptlead_pair_pt[jdphi][isign] = new TH2D(Form("h_ptlead_pair_pt_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",npair_pT_bins_linear,0,30,npT_lead_bins_linear,0,30);
+                h_ptlead_pair_pt_zoomin[jdphi][isign] = new TH2D(Form("h_ptlead_pair_pt_zoomin_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",npair_pT_bins_linear,0,20,npT_lead_bins_linear,0,15);
+                h_ptlead_pair_pt_log[jdphi][isign] = new TH2D(Form("h_ptlead_pair_pt_log_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.npairPT_bins,pms.pairPTBins[isign][2],pms.npt_bins,pms.pTBins);
+                h_minv_pair_pt[jdphi][isign] = new TH2D(Form("h_minv_pair_pt_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
+                h_minv_pair_pt_zoomin[jdphi][isign] = new TH2D(Form("h_minv_pair_pt_zoomin_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,20,nminv_bins_linear,0,4);
+                h_minv_pair_pt_log[jdphi][isign] = new TH2D(Form("h_minv_pair_pt_log_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[isign][2],nminv_bins_log,minv_bins_log[isign]);
                 
-                h_pair_dP_overP[jdphi][ksign]->Sumw2();
-                h_DR[jdphi][ksign]->Sumw2();
-                h_Dphi[jdphi][ksign]->Sumw2();
-                h_pair_y[jdphi][ksign]->Sumw2();
-                h_pt_asym[jdphi][ksign]->Sumw2();
-                h_pair_pt_ptlead_ratio[jdphi][ksign]->Sumw2();
-                h_mQQ[jdphi][ksign]->Sumw2();
-                h_mQQ_Q_ratio[jdphi][ksign]->Sumw2();
-                h_mQQ_mHard_ratio[jdphi][ksign]->Sumw2();
+                h_pair_dP_overP[jdphi][isign]->Sumw2();
+                h_DR[jdphi][isign]->Sumw2();
+                h_Dphi[jdphi][isign]->Sumw2();
+                h_pair_y[jdphi][isign]->Sumw2();
+                h_pt_asym[jdphi][isign]->Sumw2();
+                h_pair_pt_ptlead_ratio[jdphi][isign]->Sumw2();
+                h_mQQ[jdphi][isign]->Sumw2();
+                h_mQQ_Q_ratio[jdphi][isign]->Sumw2();
+                h_mQQ_mHard_ratio[jdphi][isign]->Sumw2();
 
-                h_eta_avg_Dphi[jdphi][ksign]->Sumw2();
-                h_Deta_Dphi[jdphi][ksign]->Sumw2();
-                h_eta1_eta2[jdphi][ksign]->Sumw2();
-                h_eta_avg_Deta[jdphi][ksign]->Sumw2();
-                h_pt1_pt2[jdphi][ksign]->Sumw2();
-                h_ptlead_pair_pt[jdphi][ksign]->Sumw2();
-                h_ptlead_pair_pt_zoomin[jdphi][ksign]->Sumw2();
-                h_ptlead_pair_pt_log[jdphi][ksign]->Sumw2();
-                h_minv_pair_pt[jdphi][ksign]->Sumw2();
-                h_minv_pair_pt_zoomin[jdphi][ksign]->Sumw2();
-                h_minv_pair_pt_log[jdphi][ksign]->Sumw2();
+                h_eta_avg_Dphi[jdphi][isign]->Sumw2();
+                h_Deta_Dphi[jdphi][isign]->Sumw2();
+                h_eta1_eta2[jdphi][isign]->Sumw2();
+                h_eta_avg_Deta[jdphi][isign]->Sumw2();
+                h_pt1_pt2[jdphi][isign]->Sumw2();
+                h_ptlead_pair_pt[jdphi][isign]->Sumw2();
+                h_ptlead_pair_pt_zoomin[jdphi][isign]->Sumw2();
+                h_ptlead_pair_pt_log[jdphi][isign]->Sumw2();
+                h_minv_pair_pt[jdphi][isign]->Sumw2();
+                h_minv_pair_pt_zoomin[jdphi][isign]->Sumw2();
+                h_minv_pair_pt_log[jdphi][isign]->Sumw2();
             }
         }
     }
