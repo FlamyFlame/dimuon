@@ -176,9 +176,7 @@ void MuonPairPlottingPP::InitInput(){
         inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/muon_pairs_pp_tight.root","read");
     }else{
         if (isRun3){
-            // inFile = new TFile("/eos/user/y/yuhang/data/pp_24/muon_pairs_pp_2024_part1.root","read");            
-            inFile = new TFile("/eos/user/y/yuhang/data/pp_24/muon_pairs_pp_2024_part2.root","read");            
-            // inFile = new TFile("/eos/user/y/yuhang/data/pp_24/muon_pairs_pp_2024_part3.root","read");            
+            inFile = new TFile("/eos/user/y/yuhang/data/pp_24/muon_pairs_pp_2024.root","read");            
         }else{
             inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/muon_pairs_pp.root","read");            
         }
@@ -250,9 +248,7 @@ void MuonPairPlottingPP::InitOutput(){
         outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_real_pairs_pp_tight.root","recreate");
     }else{
         if (isRun3){
-            // outFile = new TFile("/eos/user/y/yuhang/data/pp_24/histograms_real_pairs_pp_2024_part1.root","recreate");
-            outFile = new TFile("/eos/user/y/yuhang/data/pp_24/histograms_real_pairs_pp_2024_part2.root","recreate");
-            // outFile = new TFile("/eos/user/y/yuhang/data/pp_24/histograms_real_pairs_pp_2024_part3.root","recreate");
+            outFile = new TFile("/eos/user/y/yuhang/data/pp_24/histograms_real_pairs_pp_2024.root","recreate");
         }else{
             outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_real_pairs_pp.root","recreate");
         }
