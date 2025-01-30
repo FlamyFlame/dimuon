@@ -83,7 +83,8 @@ void MuonNTupleFirstPassPP::ProcessData(){
  
 
     //trigger requirement for event
-    bool trigger_req = (isRun3)? b_HLT_2mu4 || b_HLT_mu4_mu4noL1 : b_HLT_2mu4;
+    // bool trigger_req = (isRun3)? b_HLT_2mu4 || b_HLT_mu4_mu4noL1 : b_HLT_2mu4;
+    bool trigger_req = b_HLT_2mu4;
     if(!trigger_req) continue;
 
     resonance_tagged_muon_index_list.clear(); // MUST CLEAR for each event!!
@@ -140,7 +141,8 @@ void MuonNTupleFirstPassPP::ProcessData(){
       //Apply cuts
 
       //Trigger match for muon pair
-      bool trig_match_req = (isRun3)? dimuon_b_HLT_2mu4->at(i) || dimuon_b_HLT_mu4_mu4noL1->at(i) : b_HLT_2mu4;
+      // bool trig_match_req = (isRun3)? dimuon_b_HLT_2mu4->at(i) || dimuon_b_HLT_mu4_mu4noL1->at(i) : dimuon_b_HLT_2mu4->at(i);
+      bool trig_match_req = dimuon_b_HLT_2mu4->at(i);
 
       if(!trig_match_req) continue;
 
