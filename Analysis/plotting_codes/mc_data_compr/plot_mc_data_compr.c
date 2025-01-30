@@ -13,13 +13,15 @@
 // #include "struct_hist.h"
 
 
-const int nDtTypes = 4;
+const int nDtTypes = 5;
 const int nSigns = 2;
 const int nDphis = 2;
 
 double pi = acos(-1.0);
-float norm_factor[nDtTypes] = {1., 1., 1., 1/256.8}; // normalizing to differential crossx; unit is pb
-Color_t colors[nDtTypes] = {kRed, kRed, kBlue, kBlack};
+// NEED TO CHANGE TO 2024 LUMINOSITY
+float norm_factor[nDtTypes] = {1., 1., 1., 1/256.8, 1./410.815}; // normalizing to differential crossx; unit is pb
+Color_t colors[nDtTypes] = {kRed, kRed, kBlue, kBlack, kGreen+2};
+// Style_t styles[nDtTypes] = {kSolid , kSolid, kSolid, kSolid, kDashed};
 
 std::string signs[nSigns] = {"_sign1", "_sign2"};
 std::string signTitles[nSigns] = {"same sign", "opposite sign"};
@@ -27,12 +29,13 @@ std::string signTitles[nSigns] = {"same sign", "opposite sign"};
 std::string dphis[nDphis] = {"_near", "_away"};
 std::string dphiTitles[nDphis] = {"#Delta #phi < #pi/2","#Delta #phi #geq #pi/2"};
 
-TFile* f[nDtTypes];    
+TFile* f[nDtTypes];
+bool is_data[nDtTypes] = {false, false, false, true, true}; //for data files, the histogram names need to have _gapcut1/2 suffix
 std::string mcdir = "";
-std::string dt_paths[nDtTypes] = {"/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/bb_full_sample/","/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/cc_full_sample/","/usatlas/u/yuhanguo/usatlasdata/pythia/","/usatlas/u/yuhanguo/usatlasdata/dimuon_data/"};
-std::string fnames[nDtTypes] = {"histograms_mc_truth_bb_combined.root","histograms_mc_truth_cc_combined.root","histograms_pythia_combined.root","histograms_real_pairs_pp.root"};
+std::string dt_paths[nDtTypes] = {"/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/bb_full_sample/","/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/cc_full_sample/","/usatlas/u/yuhanguo/usatlasdata/pythia/","/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/","/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"};
+std::string fnames[nDtTypes] = {"histograms_mc_truth_bb_combined.root","histograms_mc_truth_cc_combined.root","histograms_pythia_combined.root","histograms_real_pairs_pp_2017.root","histograms_real_pairs_pp_2024.root"};
 // std::string dtTitles[nDtTypes] = {"MC truth bb", "MC truth cc", "pp data"};
-std::string dtTitles[nDtTypes] = {"POWHEG", "", "Pythia", "pp data"};
+std::string dtTitles[nDtTypes] = {"POWHEG", "", "Pythia", "pp data 2017", "pp data 2024"};
 
 TCanvas* c;
 // TH1D* h[nDtTypes][nSigns][nGapCuts];
@@ -124,10 +127,8 @@ void plot_mc_data_compr_single_kinematic(std::string kin, bool projx_2d, bool pr
     for (unsigned int jdphi = 0; jdphi < 2; jdphi++){
 
       for (unsigned int idt = 0; idt < nDtTypes; idt++){
-        std::string hist_gapcut_postfix = (idt == 3)? "_gapcut1" : "";
+        std::string hist_gapcut_postfix = (is_data[idt])? "_gapcut1" : "";
         std::string hist_name = "h_" + kin + dphis[jdphi] + signs[ksign] + hist_gapcut_postfix;
-        // cout << (idt == 2) << endl;
-        // cout << hist_gapcut_postfix << endl;
         
         if (projx_2d){
           TH2D* h2d = (TH2D*) f[idt]->Get(hist_name.c_str());
@@ -145,8 +146,10 @@ void plot_mc_data_compr_single_kinematic(std::string kin, bool projx_2d, bool pr
           }
         }else{ // 1D
           h[idt][ksign][jdphi] = (TH1D*) f[idt]->Get(hist_name.c_str());
-          // cout << hist_name << endl;
-          // cout << h[idt][ksign][jdphi]->Integral() << endl;
+        }
+        if (!h[idt][ksign][jdphi]){
+          std::cerr << "Hist name: " << hist_name << "; file: " << dt_paths[idt] + fnames[idt] << std::endl;
+          throw std::runtime_error("Histogram does not exist (pointer is nullptr)!");
         }
 
         h[idt][ksign][jdphi]->SetMarkerColor(colors[idt]);
@@ -169,19 +172,32 @@ void plot_mc_data_compr_single_kinematic(std::string kin, bool projx_2d, bool pr
     h[2][ksign][0]->Scale(pow(10,6));
     if (pythia_scale != 1.) h[2][ksign][0]->Scale(pythia_scale);
 
-    hist_helper(h[2][ksign][0], norm_factor[2], norm_unity, signTitles[ksign].c_str(), Form("#frac{d#sigma}{d %s} [pb]", kin_title.c_str()));
-    l->AddEntry(h[2][ksign][0], dtTitles[2].c_str(), "lp");
+    for (unsigned int idt = 2; idt < nDtTypes; idt++){
+      hist_helper(h[idt][ksign][0], norm_factor[idt], norm_unity, signTitles[ksign].c_str(), Form("#frac{d#sigma}{d %s} [pb]", kin_title.c_str()));
+      l->AddEntry(h[idt][ksign][0], dtTitles[idt].c_str(), "lp");
+    }
 
-    hist_helper(h[3][ksign][0], norm_factor[3], norm_unity, signTitles[ksign].c_str(), Form("#frac{d#sigma}{d %s} [pb]", kin_title.c_str()));
-    l->AddEntry(h[3][ksign][0], dtTitles[3].c_str(), "lp");
+    // hist_helper(h[2][ksign][0], norm_factor[2], norm_unity, signTitles[ksign].c_str(), Form("#frac{d#sigma}{d %s} [pb]", kin_title.c_str()));
+    // l->AddEntry(h[2][ksign][0], dtTitles[2].c_str(), "lp");
+
+    // hist_helper(h[3][ksign][0], norm_factor[3], norm_unity, signTitles[ksign].c_str(), Form("#frac{d#sigma}{d %s} [pb]", kin_title.c_str()));
+    // l->AddEntry(h[3][ksign][0], dtTitles[3].c_str(), "lp");
+
+    // hist_helper(h[4][ksign][0], norm_factor[4], norm_unity, signTitles[ksign].c_str(), Form("#frac{d#sigma}{d %s} [pb]", kin_title.c_str()));
+    // l->AddEntry(h[4][ksign][0], dtTitles[4].c_str(), "lp");
 
     float ylim = (h[0][ksign][0]->GetMaximum() > h[2][ksign][0]->GetMaximum())? h[0][ksign][0]->GetMaximum() : h[2][ksign][0]->GetMaximum();
     ylim = (ylim > h[3][ksign][0]->GetMaximum())? ylim : h[3][ksign][0]->GetMaximum();
+    ylim = (ylim > h[4][ksign][0]->GetMaximum())? ylim : h[4][ksign][0]->GetMaximum();
     ylim *= 1.1;
     h[0][ksign][0]->GetYaxis()->SetRangeUser(0,ylim);
     h[0][ksign][0]->Draw("E");
-    h[2][ksign][0]->Draw("E,same");
-    h[3][ksign][0]->Draw("E,same");
+    for (unsigned int idt = 2; idt < nDtTypes; idt++){
+      h[idt][ksign][0]->Draw("E,same");
+    }
+    // h[2][ksign][0]->Draw("E,same");
+    // h[3][ksign][0]->Draw("E,same");
+    // h[4][ksign][0]->Draw("E,same");
 
       // if (!norm_unity) std::cout << h[0][ksign][jdphi]->Integral("width") << " " << h[2][ksign][jdphi]->Integral("width") << " " << h[3][ksign][jdphi]->Integral("width") << std::endl;
 
@@ -218,8 +234,8 @@ void plot_mc_data_compr(){
   plot_mc_data_compr_single_kinematic("ptlead_pair_pt", false, true, true, "ptlead", "p_{T}^{lead}"); // norm to unity
   plot_mc_data_compr_single_kinematic("minv_pair_pt", false, true, false, "minv","m_{#mu#mu}");
   plot_mc_data_compr_single_kinematic("minv_pair_pt", false, true, true, "minv","m_{#mu#mu}"); // norm to unity
-  // plot_mc_data_compr_single_kinematic("minv_pair_pt_zoomin", false, true, false, "minv_zoomin","m_{#mu#mu}");
-  // plot_mc_data_compr_single_kinematic("minv_pair_pt_zoomin", false, true, true, "minv_zoomin","m_{#mu#mu}"); // norm to unity
+  plot_mc_data_compr_single_kinematic("minv_pair_pt_zoomin", false, true, false, "minv_zoomin","m_{#mu#mu}");
+  plot_mc_data_compr_single_kinematic("minv_pair_pt_zoomin", false, true, true, "minv_zoomin","m_{#mu#mu}"); // norm to unity
   plot_mc_data_compr_single_kinematic("Deta_Dphi", false, true, false, "Deta", "#Delta #eta");
   plot_mc_data_compr_single_kinematic("Deta_Dphi", false, true, true, "Deta", "#Delta #eta"); // norm to unity
 
