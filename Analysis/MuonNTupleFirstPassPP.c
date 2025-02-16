@@ -83,8 +83,7 @@ void MuonNTupleFirstPassPP::ProcessData(){
  
 
     //trigger requirement for event
-    // bool trigger_req = (isRun3)? b_HLT_2mu4 || b_HLT_mu4_mu4noL1 : b_HLT_2mu4;
-    bool trigger_req = b_HLT_2mu4;
+    bool trigger_req = (isRun3 && run3_use_mu4_mu4_noL1)? b_HLT_mu4_mu4noL1 : b_HLT_2mu4;
     if(!trigger_req) continue;
 
     resonance_tagged_muon_index_list.clear(); // MUST CLEAR for each event!!
@@ -141,8 +140,32 @@ void MuonNTupleFirstPassPP::ProcessData(){
       //Apply cuts
 
       //Trigger match for muon pair
-      // bool trig_match_req = (isRun3)? dimuon_b_HLT_2mu4->at(i) || dimuon_b_HLT_mu4_mu4noL1->at(i) : dimuon_b_HLT_2mu4->at(i);
-      bool trig_match_req = dimuon_b_HLT_2mu4->at(i);
+      bool trig_match_req = false;
+      try{
+        if (isRun3 && run3_use_mu4_mu4_noL1){
+          if (!dimuon_b_HLT_mu4_mu4noL1){
+            throw std::runtime_error("The pointer dimuon_b_HLT_mu4_mu4noL1 (to vector of bool) is a null pointer!");
+          }
+          trig_match_req = dimuon_b_HLT_mu4_mu4noL1->at(i);
+        }else{
+          if (!dimuon_b_HLT_2mu4){
+            throw std::runtime_error("The pointer dimuon_b_HLT_2mu4 (to vector of bool) is a null pointer!");
+          }
+          trig_match_req = dimuon_b_HLT_2mu4->at(i);
+        }
+      }catch (const std::out_of_range& e){
+        std::cerr << "out-of-range error occured: " << e.what() << endl;
+        std::cout << "By default, event will not be saved." << endl;
+        trig_match_req = false;
+      }catch (const std::runtime_error& e){
+        std::cerr << "Run time error occured: " << e.what() << endl;
+        std::cout << "By default, event will not be saved." << endl;
+        trig_match_req = false;
+      }catch(...){
+        std::cerr << "Some other unknown error occured at the trigger matching stage" << endl;
+        std::cout << "By default, event will not be saved." << endl;
+        trig_match_req = false;
+      }
 
       if(!trig_match_req) continue;
 

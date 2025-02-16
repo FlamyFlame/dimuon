@@ -92,6 +92,9 @@ private:
 public :
     bool isTight;
     bool isRun3;
+    int run3_file_batch;
+    bool run3_use_mu4_mu4_noL1;
+
     MuonNTupleFirstPassPP();
     ~MuonNTupleFirstPassPP(){}
     void Run();
@@ -101,6 +104,9 @@ public :
 MuonNTupleFirstPassPP::MuonNTupleFirstPassPP(){
     isTight = false;
     isRun3 = true;
+    run3_file_batch = 0;
+    run3_use_mu4_mu4_noL1 = true;
+
     if(mode != 3 && mode != 4){
         std::cout<<"Error:: Mode has to equal 3 or 4; code is used for outputting muon / muon-pair trees only."<<std::endl;
         throw std::exception();
@@ -115,24 +121,33 @@ void MuonNTupleFirstPassPP::InitInput(){
     if (!isRun3){ //run2
         fChain->Add("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/New_All_DataPP2017_5TeV_Dec2021.root");
     }else{ //run3
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part1.root");
-
-        fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_1.root");
-        fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_2.root");
-        fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_3.root");
-        fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_4.root");
-        fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_5.root");
-        fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_6.root");
-
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_1.root");
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_2.root");
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_4.root");
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_5.root");
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_6.root");
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_8.root");
-
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_3.root");
-        // fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_7.root");
+        switch (run3_file_batch){
+        case 1:
+            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part1.root");
+            break;
+        case 2:
+            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_1.root");
+            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_2.root");
+            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_3.root");
+            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_4.root");
+            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_5.root");
+            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_6.root");
+            break;
+        case 3:
+            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_1.root");
+            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_2.root");
+            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_4.root");
+            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_5.root");
+            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_6.root");
+            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_8.root");
+            break;
+        case 4:
+            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_3.root");
+            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_7.root");
+            break;
+        default:
+            throw std::runtime_error("Run3 file batch invalid/unspecified: have to be between 1 and 4. No result gets run.");
+        }
     }
   
     fChain->SetBranchAddress("RunNumber"                   , &RunNumber);
@@ -230,10 +245,24 @@ void MuonNTupleFirstPassPP::InitOutput(){
         if (!isRun3){
             m_outfile=new TFile(("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/muon_pairs_pp" + tight_postfix + ".root").c_str(),"recreate");
         }else{
-            // m_outfile=new TFile(("/eos/user/y/yuhang/data/pp_24/muon_pairs_pp_2024_part1" + tight_postfix + ".root").c_str(),"recreate");
-            m_outfile=new TFile(("/eos/user/y/yuhang/data/pp_24/muon_pairs_pp_2024_part3" + tight_postfix + ".root").c_str(),"recreate");
-            // m_outfile=new TFile(("/eos/user/y/yuhang/data/pp_24/muon_pairs_pp_2024_part2-1" + tight_postfix + ".root").c_str(),"recreate");
-            // m_outfile=new TFile(("/eos/user/y/yuhang/data/pp_24/muon_pairs_pp_2024_part2-2" + tight_postfix + ".root").c_str(),"recreate");
+            std::string run3_trig_postfix = (run3_use_mu4_mu4_noL1)? "_mu4_mu4noL1" : "_2mu4";
+
+            switch (run3_file_batch){
+            case 1:
+                m_outfile=new TFile(("/eos/user/y/yuhang/data/pp_24/muon_pairs_pp_2024_part1" + run3_trig_postfix + tight_postfix + ".root").c_str(),"recreate");
+                break;
+            case 2:
+                m_outfile=new TFile(("/eos/user/y/yuhang/data/pp_24/muon_pairs_pp_2024_part3" + run3_trig_postfix + tight_postfix + ".root").c_str(),"recreate");
+                break;
+            case 3:
+                m_outfile=new TFile(("/eos/user/y/yuhang/data/pp_24/muon_pairs_pp_2024_part2-1" + run3_trig_postfix + tight_postfix + ".root").c_str(),"recreate");
+                break;
+            case 4:
+                m_outfile=new TFile(("/eos/user/y/yuhang/data/pp_24/muon_pairs_pp_2024_part2-2" + run3_trig_postfix + tight_postfix + ".root").c_str(),"recreate");
+                break;
+            default:
+                break;
+            }
         }
 
         for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
