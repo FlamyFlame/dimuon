@@ -8,10 +8,6 @@
 #include "TH2.h"
 #include "TCanvas.h"
 #include<algorithm>
-// #include "string"
-// #include "time.h"
-// #include "struct_hist.h"
-
 
 const int nDtTypes = 5;
 const int nSigns = 2;
@@ -34,11 +30,9 @@ bool is_data[nDtTypes] = {false, false, false, true, true}; //for data files, th
 std::string mcdir = "";
 std::string dt_paths[nDtTypes] = {"/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/bb_full_sample/","/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/cc_full_sample/","/usatlas/u/yuhanguo/usatlasdata/pythia/","/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/","/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"};
 std::string fnames[nDtTypes] = {"histograms_mc_truth_bb_combined.root","histograms_mc_truth_cc_combined.root","histograms_pythia_combined.root","histograms_real_pairs_pp_2017.root","histograms_real_pairs_pp_2024.root"};
-// std::string dtTitles[nDtTypes] = {"MC truth bb", "MC truth cc", "pp data"};
 std::string dtTitles[nDtTypes] = {"POWHEG", "", "Pythia", "pp data 2017", "pp data 2024"};
 
 TCanvas* c;
-// TH1D* h[nDtTypes][nSigns][nGapCuts];
 TH1D* h[nDtTypes][nSigns][nDphis];
 
 
@@ -66,16 +60,16 @@ void hist_helper(TH1* h, float norm, bool norm_unity, std::string title, std::st
   // h->SetTitle(title.c_str());
   // h->SetTitleSize(35);
   h->GetYaxis()->SetLabelFont(43);
-  h->GetYaxis()->SetLabelSize(32);
+  h->GetYaxis()->SetLabelSize(28);
   h->GetYaxis()->SetLabelOffset(0.01);
   h->GetYaxis()->SetTitleFont(43);
-  h->GetYaxis()->SetTitleSize(32);
+  h->GetYaxis()->SetTitleSize(28);
   h->GetYaxis()->SetTitleOffset(2.1);
   h->GetXaxis()->SetLabelFont(43);
-  h->GetXaxis()->SetLabelSize(32);
+  h->GetXaxis()->SetLabelSize(28);
   h->GetXaxis()->SetLabelOffset(0.01);
   h->GetXaxis()->SetTitleFont(43);  
-  h->GetXaxis()->SetTitleSize(32);
+  h->GetXaxis()->SetTitleSize(28);
   h->GetXaxis()->SetTitleOffset(1);
   h->SetMarkerStyle(20);
   h->SetMarkerSize(0.9);
@@ -124,7 +118,7 @@ void plot_mc_data_compr_single_kinematic(std::string kin, bool projx_2d, bool pr
     l->SetMargin(0.2);
     l->SetTextColor(1);
 
-    for (unsigned int jdphi = 0; jdphi < 2; jdphi++){
+    for (unsigned int jdphi = 0; jdphi < nSigns; jdphi++){
 
       for (unsigned int idt = 0; idt < nDtTypes; idt++){
         std::string hist_gapcut_postfix = (is_data[idt])? "_gapcut1" : "";
@@ -166,7 +160,6 @@ void plot_mc_data_compr_single_kinematic(std::string kin, bool projx_2d, bool pr
     if (powheg_scale != 1.) h[0][ksign][0]->Scale(powheg_scale);
 
     hist_helper(h[0][ksign][0], norm_factor[0], norm_unity, signTitles[ksign].c_str(), Form("#frac{d#sigma}{d %s} [pb]", kin_title.c_str()));
-    // if (norm_unity) cout << h[0][ksign][0]->Integral() << endl;
     l->AddEntry(h[0][ksign][0], dtTitles[0].c_str(), "lp");
 
     h[2][ksign][0]->Scale(pow(10,6));
@@ -177,15 +170,6 @@ void plot_mc_data_compr_single_kinematic(std::string kin, bool projx_2d, bool pr
       l->AddEntry(h[idt][ksign][0], dtTitles[idt].c_str(), "lp");
     }
 
-    // hist_helper(h[2][ksign][0], norm_factor[2], norm_unity, signTitles[ksign].c_str(), Form("#frac{d#sigma}{d %s} [pb]", kin_title.c_str()));
-    // l->AddEntry(h[2][ksign][0], dtTitles[2].c_str(), "lp");
-
-    // hist_helper(h[3][ksign][0], norm_factor[3], norm_unity, signTitles[ksign].c_str(), Form("#frac{d#sigma}{d %s} [pb]", kin_title.c_str()));
-    // l->AddEntry(h[3][ksign][0], dtTitles[3].c_str(), "lp");
-
-    // hist_helper(h[4][ksign][0], norm_factor[4], norm_unity, signTitles[ksign].c_str(), Form("#frac{d#sigma}{d %s} [pb]", kin_title.c_str()));
-    // l->AddEntry(h[4][ksign][0], dtTitles[4].c_str(), "lp");
-
     float ylim = (h[0][ksign][0]->GetMaximum() > h[2][ksign][0]->GetMaximum())? h[0][ksign][0]->GetMaximum() : h[2][ksign][0]->GetMaximum();
     ylim = (ylim > h[3][ksign][0]->GetMaximum())? ylim : h[3][ksign][0]->GetMaximum();
     ylim = (ylim > h[4][ksign][0]->GetMaximum())? ylim : h[4][ksign][0]->GetMaximum();
@@ -195,11 +179,6 @@ void plot_mc_data_compr_single_kinematic(std::string kin, bool projx_2d, bool pr
     for (unsigned int idt = 2; idt < nDtTypes; idt++){
       h[idt][ksign][0]->Draw("E,same");
     }
-    // h[2][ksign][0]->Draw("E,same");
-    // h[3][ksign][0]->Draw("E,same");
-    // h[4][ksign][0]->Draw("E,same");
-
-      // if (!norm_unity) std::cout << h[0][ksign][jdphi]->Integral("width") << " " << h[2][ksign][jdphi]->Integral("width") << " " << h[3][ksign][jdphi]->Integral("width") << std::endl;
 
     l->AddEntry("",(signTitles[ksign]).c_str(),"");
     l->Draw();
@@ -215,6 +194,13 @@ void plot_mc_data_compr_single_kinematic(std::string kin, bool projx_2d, bool pr
   c->Close();
   delete c;
 
+  for (unsigned int ksign = 0; ksign < nSigns; ksign++){
+    for (unsigned int jdphi = 0; jdphi < nSigns; jdphi++){
+      for (unsigned int idt = 0; idt < nDtTypes; idt++){
+        delete h[idt][ksign][jdphi];
+      }
+    }
+  }
 }
 
 void plot_mc_data_compr(){
