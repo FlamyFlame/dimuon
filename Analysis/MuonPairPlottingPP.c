@@ -156,6 +156,8 @@ void MuonPairPlottingPP::Run(){
     else if (isTight) std::cout << "Data being processed: Tight" << std::endl;
     else std::cout << "Data being processed: Real" << std::endl;
 
+    run3_trig_suffix = isMu4mu4noL1? "_mu4_mu4noL1" : "_2mu4";
+
   	InitInput();
     InitOutput();
   	InitHists();

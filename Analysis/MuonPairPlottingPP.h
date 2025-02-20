@@ -34,7 +34,7 @@ private:
   	// --------------------- output file & histograms ---------------------------
 
   	TFile *outFile = nullptr;
-
+    std::string run3_trig_suffix;
     
     std::string dphi_regions[2] = {"near", "away"};
 
@@ -150,6 +150,7 @@ public:
     bool isScram;
     bool isTight;
     bool isRun3;
+    bool isMu4mu4noL1;
   	MuonPairPlottingPP();
   	~MuonPairPlottingPP(){}
   	void Run();
@@ -165,6 +166,7 @@ MuonPairPlottingPP::MuonPairPlottingPP(){
     isTight = false;
     
     isRun3 = true;
+    isMu4mu4noL1 = true;
 }
 
 void MuonPairPlottingPP::InitInput(){
@@ -176,10 +178,15 @@ void MuonPairPlottingPP::InitInput(){
         inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/muon_pairs_pp_tight.root","read");
     }else{
         if (isRun3){
-            inFile = new TFile("/eos/user/y/yuhang/data/pp_24/muon_pairs_pp_2024.root","read");            
+            inFile = new TFile(Form("/eos/user/y/yuhang/data/pp_24/muon_pairs_pp_2024%s.root", run3_trig_suffix),"read");            
         }else{
             inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/muon_pairs_pp2017.root","read");            
         }
+    }
+
+    if (!inFile || inFile->IsZombie()) {
+        std::cerr << "Error opening input file!" << std::endl;
+        throw std::exception();
     }
 
     for (int isign = 0; isign < ParamsSet::nSigns; isign++){
@@ -242,13 +249,12 @@ void MuonPairPlottingPP::InitOutput(){
     // this is needed since the histograms, once defined, belong to the last file before them
     // need to create the output files after creating TFile objects for the input file and between defining TH1D, TH2D objects for the histograms
     if (isScram){
-        // outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_scrambled_pairs_pp.root","update");
         outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_scrambled_pairs_pp.root","recreate");
     }else if (isTight){
         outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_real_pairs_pp_tight.root","recreate");
     }else{
         if (isRun3){
-            outFile = new TFile("/eos/user/y/yuhang/data/pp_24/histograms_real_pairs_pp_2024.root","recreate");
+            outFile = new TFile(Form("/eos/user/y/yuhang/data/pp_24/histograms_real_pairs_pp_2024%s.root",run3_trig_suffix),"recreate");
         }else{
             outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/histograms_real_pairs_pp_2017.root","recreate");
         }
