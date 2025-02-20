@@ -178,7 +178,7 @@ void MuonPairPlottingPP::InitInput(){
         inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/muon_pairs_pp_tight.root","read");
     }else{
         if (isRun3){
-            inFile = new TFile(Form("/eos/user/y/yuhang/data/pp_24/muon_pairs_pp_2024%s.root", run3_trig_suffix),"read");            
+            inFile = new TFile(Form("/eos/user/y/yuhang/data/pp_24/muon_pairs_pp_2024%s.root", run3_trig_suffix.c_str()),"read");            
         }else{
             inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/muon_pairs_pp2017.root","read");            
         }
@@ -254,7 +254,7 @@ void MuonPairPlottingPP::InitOutput(){
         outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_real_pairs_pp_tight.root","recreate");
     }else{
         if (isRun3){
-            outFile = new TFile(Form("/eos/user/y/yuhang/data/pp_24/histograms_real_pairs_pp_2024%s.root",run3_trig_suffix),"recreate");
+            outFile = new TFile(Form("/eos/user/y/yuhang/data/pp_24/histograms_real_pairs_pp_2024%s.root",run3_trig_suffix.c_str()),"recreate");
         }else{
             outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/histograms_real_pairs_pp_2017.root","recreate");
         }
