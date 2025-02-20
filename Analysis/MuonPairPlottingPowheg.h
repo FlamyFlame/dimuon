@@ -285,7 +285,7 @@ void MuonPairPlottingPowheg::InitOutput(){
 }
 
 void MuonPairPlottingPowheg::InitHists(){
-    int nDR_bins = (isMCTruthBB || isMCTruthCC)? 80 : 200;
+    int nDR_bins = (isMCTruthBB || isMCTruthCC)? 100 : 200;
     int nDphi_bins = (isMCTruthBB || isMCTruthCC)? 64 : 128;
     int neta_bins = (isMCTruthBB || isMCTruthCC)? 50 : 100;
     int nDeta_bins = (isMCTruthBB || isMCTruthCC)? 100 : 200;
