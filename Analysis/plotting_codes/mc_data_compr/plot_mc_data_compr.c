@@ -9,221 +9,573 @@
 #include "TCanvas.h"
 #include<algorithm>
 
-const int nDtTypes = 5;
-const int nSigns = 2;
-const int nDphis = 2;
+class PlotMCDataComprSingleKinematics{
+private:
+    // private class variables
+    static const int s_nDtTypes = 6;
+    static const int s_nSigns = 2;
+    static const int s_nDphis = 2;
 
-double pi = acos(-1.0);
-// NEED TO CHANGE TO 2024 LUMINOSITY
-float norm_factor[nDtTypes] = {1., 1., 1., 1/256.8, 1./410.815}; // normalizing to differential crossx; unit is pb
-Color_t colors[nDtTypes] = {kRed, kRed, kBlue, kBlack, kGreen+2};
-// Style_t styles[nDtTypes] = {kSolid , kSolid, kSolid, kSolid, kDashed};
+    static const int ind_Dt_pp17 = 3; // the data-type index for pp2017 data - used as a reference for ratio plot
+    static constexpr float s_NULL = -1000.;
 
-std::string signs[nSigns] = {"_sign1", "_sign2"};
-std::string signTitles[nSigns] = {"same sign", "opposite sign"};
+    double pi = acos(-1.0);
+    // NEED TO CHANGE TO 2024 LUMINOSITY
+    float norm_factor[s_nDtTypes] = {1., 1., 1., 1/256.8, 1./410.815, 1/113.999}; // normalizing to differential crossx; unit is pb
+    Color_t colors[s_nDtTypes] = {kRed, kRed, kBlue, kBlack, kGreen+2, kMagenta};
+    // Style_t styles[s_nDtTypes] = {kSolid , kSolid, kSolid, kSolid, kDashed, kDashed};
 
-std::string dphis[nDphis] = {"_near", "_away"};
-std::string dphiTitles[nDphis] = {"#Delta #phi < #pi/2","#Delta #phi #geq #pi/2"};
+    std::string signs[s_nSigns] = {"_sign1", "_sign2"};
+    std::string signTitles[s_nSigns] = {"same sign", "opposite sign"};
 
-TFile* f[nDtTypes];
-bool is_data[nDtTypes] = {false, false, false, true, true}; //for data files, the histogram names need to have _gapcut1/2 suffix
-std::string mcdir = "";
-std::string dt_paths[nDtTypes] = {"/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/bb_full_sample/","/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/cc_full_sample/","/usatlas/u/yuhanguo/usatlasdata/pythia/","/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/","/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"};
-std::string fnames[nDtTypes] = {"histograms_mc_truth_bb_combined.root","histograms_mc_truth_cc_combined.root","histograms_pythia_combined.root","histograms_real_pairs_pp_2017.root","histograms_real_pairs_pp_2024.root"};
-std::string dtTitles[nDtTypes] = {"POWHEG", "", "Pythia", "pp data 2017", "pp data 2024"};
+    std::string dphis[s_nDphis] = {"_near", "_away"};
+    std::string dphiTitles[s_nDphis] = {"#Delta #phi < #pi/2","#Delta #phi #geq #pi/2"};
 
-TCanvas* c;
-TH1D* h[nDtTypes][nSigns][nDphis];
+    TFile* f[s_nDtTypes];
+    bool is_data[s_nDtTypes] = {false, false, false, true, true, true}; //for data files, the histogram names need to have _gapcut1/2 suffix
+    std::string mcdir = "";
+    std::string dt_paths[s_nDtTypes] = {"/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/bb_full_sample/","/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/cc_full_sample/","/usatlas/u/yuhanguo/usatlasdata/pythia/","/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/","/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/","/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"};
+    std::string fnames[s_nDtTypes] = {"histograms_mc_truth_bb_combined.root","histograms_mc_truth_cc_combined.root","histograms_pythia_combined.root","histograms_real_pairs_pp_2017.root","histograms_real_pairs_pp_2024_2mu4.root","histograms_real_pairs_pp_2024_mu4_mu4noL1.root"};
+    std::string dtTitles[s_nDtTypes] = {"POWHEG", "", "Pythia", "pp data 2017", "pp data 2024 2mu4", "pp data 2024 mu4mu4noL1"};
 
+    std::array<float,4> legend_position_s_NULL = {s_NULL, s_NULL, s_NULL, s_NULL};
 
-void initialize(){
-  for (int idt = 0; idt < nDtTypes; idt++){
-    f[idt] = TFile::Open((dt_paths[idt] + fnames[idt]).c_str());
-  }
+    TCanvas* c;
+    TH1D* h[s_nDtTypes][s_nSigns][s_nDphis];
+
+    // private class methods
+    void initialize();
+    void set_legend_position();
+    void hist_helper(TH1* h, float norm, bool norm_unity, std::string title, std::string ytitle="");
+    void apply_jacobian_correction(TH1* h);
+
+public:
+
+    // public class variables
+    std::string kin;
+    std::string kin1d = "";
+    std::string kin_title;
+
+    bool projx_2d = false;
+    bool projy_2d = false;
+
+    bool norm_unity = false;
+    bool logx=false;
+    bool jacobian_correct = false;
+    float powheg_scale = 1.;
+    float pythia_scale = 1.;
+
+    bool near_away_sepr = false; // plot and save near region (dPhi < pi/2) and away region (dPhi >= pi/2) in separate png files
+
+    bool ratio_plot_mode = false;
+    bool ratio_plot_draw_errorbar = true;
+
+    std::array<float,4> legend_position_same_sign = {s_NULL, s_NULL, s_NULL, s_NULL}; // xmin, xmax, ymin, ymax
+    std::array<float,4> legend_position_opp_sign = {s_NULL, s_NULL, s_NULL, s_NULL}; // xmin, xmax, ymin, ymax
+
+    // public class methods
+    // constructor for "normal" 1D histogram
+    PlotMCDataComprSingleKinematics(std::string kin_input, std::string kin_title_input){
+                kin = kin_input;
+                kin_title = kin_title_input;
+    }
+
+    // convenient constructor for 1D histogram requiring normalization to unity
+    PlotMCDataComprSingleKinematics(std::string kin_input, bool norm_unity_input, std::string kin_title_input): norm_unity (norm_unity_input){
+                kin = kin_input;
+                kin_title = kin_title_input;
+    }
+
+    // constructor for 2D histogram projecting onto an 1D histogram (only projx OR projy can be set true)
+    PlotMCDataComprSingleKinematics(std::string kin_input, bool projx_2d_input, bool projy_2d_input, std::string kin1d_input, std::string kin_title_input): 
+                projx_2d (projx_2d_input), projy_2d (projy_2d_input){
+                kin = kin_input;
+                kin1d = kin1d_input;
+                kin_title = kin_title_input;
+    }
+
+    // convenient constructor for 2D histogram projecting onto an 1D histogram requiring normalization to unity (only projx OR projy can be set true)
+    PlotMCDataComprSingleKinematics(std::string kin_input, bool projx_2d_input, bool projy_2d_input, bool norm_unity_input, std::string kin1d_input, std::string kin_title_input): 
+                projx_2d (projx_2d_input), projy_2d (projy_2d_input), norm_unity (norm_unity_input){
+                kin = kin_input;
+                kin1d = kin1d_input;
+                kin_title = kin_title_input;
+    }
+    ~PlotMCDataComprSingleKinematics(){}
+
+    void Run();
+};
+
+// ------------------------------------------------------------------------------------------------------------------------------------------------------
+
+void PlotMCDataComprSingleKinematics::initialize(){
+    for (int idt = 0; idt < s_nDtTypes; idt++){
+        f[idt] = TFile::Open((dt_paths[idt] + fnames[idt]).c_str());
+    }
+    set_legend_position();
 }
 
-void hist_helper(TH1* h, float norm, bool norm_unity, std::string title, std::string ytitle=""){
+void PlotMCDataComprSingleKinematics::set_legend_position(){
+    if (legend_position_same_sign[0] < -999.){ // no user input --> set default values
+        legend_position_same_sign = {0.5,0.6,0.95,0.89};
+    }
+    if (legend_position_opp_sign[0] < -999.){ // no user input --> set default values
+        legend_position_opp_sign = {0.5,0.6,0.93,0.89};
+    }
+}
+
+void PlotMCDataComprSingleKinematics::hist_helper(TH1* h, float norm, bool norm_unity, std::string title, std::string ytitle=""){
 
   h->SetStats(0);
 
-  if (norm_unity){
-    h->Scale(1.,"width");
-    h->Scale(1./h->Integral("width"));
-    h->GetYaxis()->SetTitle("pdf");
-  }else{
-    h->Scale(norm,"width");
-    if (ytitle.length() != 0){
-      h->GetYaxis()->SetTitle(ytitle.c_str());
+    if (norm_unity){
+        h->Scale(1.,"width");
+        h->Scale(1./h->Integral("width"));
+        h->GetYaxis()->SetTitle("pdf");
+    }else{
+        h->Scale(norm,"width");
+        if (ytitle.length() != 0){
+            h->GetYaxis()->SetTitle(ytitle.c_str());
+        }
     }
-  }
 
-  // h->SetTitle(title.c_str());
-  // h->SetTitleSize(35);
-  h->GetYaxis()->SetLabelFont(43);
-  h->GetYaxis()->SetLabelSize(28);
-  h->GetYaxis()->SetLabelOffset(0.01);
-  h->GetYaxis()->SetTitleFont(43);
-  h->GetYaxis()->SetTitleSize(28);
-  h->GetYaxis()->SetTitleOffset(2.1);
-  h->GetXaxis()->SetLabelFont(43);
-  h->GetXaxis()->SetLabelSize(28);
-  h->GetXaxis()->SetLabelOffset(0.01);
-  h->GetXaxis()->SetTitleFont(43);  
-  h->GetXaxis()->SetTitleSize(28);
-  h->GetXaxis()->SetTitleOffset(1);
-  h->SetMarkerStyle(20);
-  h->SetMarkerSize(0.9);
+    // h->SetTitle(title.c_str());
+    // h->SetTitleSize(35);
+    h->GetYaxis()->SetLabelFont(43);
+    h->GetYaxis()->SetLabelSize(28);
+    h->GetYaxis()->SetLabelOffset(0.01);
+    h->GetYaxis()->SetTitleFont(43);
+    h->GetYaxis()->SetTitleSize(28);
+    h->GetYaxis()->SetTitleOffset(2.1);
+    h->GetXaxis()->SetLabelFont(43);
+    h->GetXaxis()->SetLabelSize(28);
+    h->GetXaxis()->SetLabelOffset(0.01);
+    h->GetXaxis()->SetTitleFont(43);  
+    h->GetXaxis()->SetTitleSize(28);
+    h->GetXaxis()->SetTitleOffset(1);
+    h->SetMarkerStyle(20);
+    h->SetMarkerSize(0.9);
 }
 
-void plot_mc_data_compr_single_kinematic(std::string kin, bool projx_2d, bool projy_2d, bool norm_unity, std::string kin1d, std::string kin_title, bool logx=false, float powheg_scale = 1., float pythia_scale = 1.){
+void PlotMCDataComprSingleKinematics::apply_jacobian_correction(TH1* h){
+    if (h->GetDimension() != 1){
+        std::cout << "WARNING: Jacobian correction is currently only available for 1D histograms! Return without jacobian correction!" << std::endl;
+        return;
+    }
+    for (int bin = 1; bin <= h->GetNbinsX(); bin++){
+        if (h->GetBinCenter(bin) <= 0.){
+            std::cout << "WARNING: for Histogram required Jacobian correction on, ";
+            std::cout << "bin center for the " << bin << "-th bin has non-positive value of " << h->GetBinCenter(bin) << std::endl;
+            std::cout << "Return at the " << bin << "-th bin" << std::endl;
+            std::cout << "Returning histogram can be distorted" << std::endl;
+            return;
+        }
+        h->SetBinContent(bin, h->GetBinContent(bin) * 1. / h->GetBinCenter(bin));
+    }
+}
 
-  initialize();
+// void plot_mc_data_compr_single_kinematic(std::string kin, bool projx_2d, bool projy_2d, bool norm_unity, std::string kin1d, std::string kin_title, bool logx=false, bool jacobian_correct=false, float powheg_scale = 1., float pythia_scale = 1.){
+void PlotMCDataComprSingleKinematics::Run(){
 
-  if (projx_2d && projy_2d){
-    std::cout << "For single kinematic plotting, can only project either X or Y variable." << std::endl;
-    throw std::exception();
-  }
+    initialize();
 
-  if (norm_unity && (powheg_scale != 1. || pythia_scale != 1.)){
-    std::cout << "Cannot both normalize to unity and scale powheg/pythia distributions." << std::endl;
-    throw std::exception();
-  }
+    if (kin1d == "") kin1d = kin;
 
-  if (powheg_scale <= 0 || pythia_scale <= 0){
-    std::cout << "Powheg & pythia scales must both be positive." << std::endl;
-    throw std::exception();
-  }
-  
-  TCanvas* c = new TCanvas("c","c",1200,500);
-  c->Divide(nSigns,1);
+    if (projx_2d && projy_2d){
+        std::cout << "For single kinematic plotting, can only project either X or Y variable." << std::endl;
+        throw std::exception();
+    }
 
-  for (unsigned int ksign = 0; ksign < nSigns; ksign++){
-    c->cd(ksign + 1);
+    if (norm_unity && (powheg_scale != 1. || pythia_scale != 1.)){
+        std::cout << "Cannot both normalize to unity and scale powheg/pythia distributions." << std::endl;
+        throw std::exception();
+    }
 
-    gPad->SetLeftMargin(0.23);
-    gPad->SetBottomMargin(0.135);
-    // gPad->SetTopMargin(0.18);
-    gPad->SetLogx(logx);
+    if (powheg_scale <= 0 || pythia_scale <= 0){
+        std::cout << "Powheg & pythia scales must both be positive." << std::endl;
+        throw std::exception();
+    }
+    
+    TCanvas* c = new TCanvas("c","c",1200,500);
+    c->Divide(s_nSigns,1);
+
+    for (unsigned int ksign = 0; ksign < s_nSigns; ksign++){
+        c->cd(ksign + 1);
+
+        gPad->SetLeftMargin(0.23);
+        gPad->SetBottomMargin(0.135);
+        // gPad->SetTopMargin(0.18);
+        gPad->SetLogx(logx);
 
 
-    // TLegend* l = new TLegend(0.24,0.6,0.5,0.89);
-    TLegend* l;
-    if (ksign == 0) l = new TLegend(0.73,0.66,0.89,0.89);
-    else            l = new TLegend(0.7,0.66,0.91,0.89);
+        // TLegend* l = new TLegend(0.24,0.6,0.5,0.89);
+        TLegend* l;
 
-    l->SetBorderSize(0);
-    l->SetFillStyle(0);
-    l->SetTextFont(42);
-    // l->SetTextSize(20);
-    l->SetMargin(0.2);
-    l->SetTextColor(1);
+        if (ksign == 0) l = new TLegend(legend_position_same_sign[0], legend_position_same_sign[1], legend_position_same_sign[2], legend_position_same_sign[3]);
+        else            l = new TLegend(legend_position_opp_sign[0], legend_position_opp_sign[1], legend_position_opp_sign[2], legend_position_opp_sign[3]);
 
-    for (unsigned int jdphi = 0; jdphi < nSigns; jdphi++){
+        l->SetBorderSize(0);
+        l->SetFillStyle(0);
+        l->SetTextFont(42);
+        // l->SetTextSize(20);
+        l->SetMargin(0.2);
+        l->SetTextColor(1);
 
-      for (unsigned int idt = 0; idt < nDtTypes; idt++){
-        std::string hist_gapcut_postfix = (is_data[idt])? "_gapcut1" : "";
-        std::string hist_name = "h_" + kin + dphis[jdphi] + signs[ksign] + hist_gapcut_postfix;
+        for (unsigned int jdphi = 0; jdphi < s_nSigns; jdphi++){
+            for (unsigned int idt = 0; idt < s_nDtTypes; idt++){
+                std::string hist_gapcut_postfix = (is_data[idt])? "_gapcut1" : "";
+                std::string hist_name = "h_" + kin + dphis[jdphi] + signs[ksign] + hist_gapcut_postfix;
+                
+                if (projx_2d){
+                    TH2D* h2d = (TH2D*) f[idt]->Get(hist_name.c_str());
+                    if (norm_unity){
+                        h[idt][ksign][jdphi] = (TH1D*) h2d->ProjectionX(Form("hx_unity_%d%d%d",idt+1,ksign+1,jdphi+1));
+                    }else{
+                        h[idt][ksign][jdphi] = (TH1D*) h2d->ProjectionX(Form("hx_%d%d%d",idt+1,ksign+1,jdphi+1));
+                    }
+                }else if (projy_2d){
+                    TH2D* h2d = (TH2D*) f[idt]->Get(hist_name.c_str());
+                    if (norm_unity){
+                        h[idt][ksign][jdphi] = (TH1D*) h2d->ProjectionY(Form("hy_unity_%d%d%d",idt+1,ksign+1,jdphi+1));
+                    }else{
+                        h[idt][ksign][jdphi] = (TH1D*) h2d->ProjectionY(Form("hy_%d%d%d",idt+1,ksign+1,jdphi+1));
+                    }
+                }else{ // 1D
+                    h[idt][ksign][jdphi] = (TH1D*) f[idt]->Get(hist_name.c_str());
+                }
+                if (!h[idt][ksign][jdphi]){
+                    std::cerr << "Hist name: " << hist_name << "; file: " << dt_paths[idt] + fnames[idt] << std::endl;
+                    throw std::runtime_error("Histogram does not exist (pointer is s_NULLptr)!");
+                }
+
+                if (jacobian_correct) apply_jacobian_correction(h[idt][ksign][jdphi]);
+
+                h[idt][ksign][jdphi]->SetMarkerColor(colors[idt]);
+                h[idt][ksign][jdphi]->SetLineColor(colors[idt]);
+            }
+
+            h[0][ksign][jdphi]->Add(h[1][ksign][jdphi]); // powheg - add cc to bb for all sign & dphi regions
+        }
+
+        for (unsigned int idt = 0; idt < s_nDtTypes; idt++){
+            h[idt][ksign][0]->Add(h[idt][ksign][1]); // add up the two dphi regions for all data types
+        }
+
+        if (powheg_scale != 1.) h[0][ksign][0]->Scale(powheg_scale);
+
+        std::string ytitle = ratio_plot_mode? Form("#frac{d#sigma}{d %s} / #frac{d#sigma_{pp2017}}{d %s}", kin_title.c_str(), kin_title.c_str()) : Form("#frac{d#sigma}{d %s} [pb]", kin_title.c_str());
+        hist_helper(h[0][ksign][0], norm_factor[0], norm_unity, signTitles[ksign].c_str(), ytitle);
+        l->AddEntry(h[0][ksign][0], dtTitles[0].c_str(), "lp");
+
+        h[2][ksign][0]->Scale(pow(10,6));
+        if (pythia_scale != 1.) h[2][ksign][0]->Scale(pythia_scale);
+
+        for (unsigned int idt = 2; idt < s_nDtTypes; idt++){
+            hist_helper(h[idt][ksign][0], norm_factor[idt], norm_unity, signTitles[ksign].c_str(), ytitle);
+            l->AddEntry(h[idt][ksign][0], dtTitles[idt].c_str(), "lp");
+        }
+
+        if (ratio_plot_mode){
+            try{
+                // set correct ratio-plot bin content for all but the reference histogram
+                for (unsigned int idt = 0; idt < s_nDtTypes; idt++){
+                    if (idt == ind_Dt_pp17) continue; // this is required for the datasets following the reference histogram to have correct bin content for the ratio plot
+
+                    // find ratio of #bins(reference histogram) to #bins(current histogram) - currently only allow ratio to be 1 or 2
+
+                    int nbins_refr_to_current_ratio;
+                    if (h[idt][ksign][0]->GetNbinsX() == h[ind_Dt_pp17][ksign][0]->GetNbinsX()){
+                        nbins_refr_to_current_ratio = 1;
+                    } else if (h[ind_Dt_pp17][ksign][0]->GetNbinsX() == h[idt][ksign][0]->GetNbinsX() * 2){
+                        nbins_refr_to_current_ratio = 2;
+                    }else{
+                        std::cerr << "Required to perform ratio plot for kinematic " << kin1d << " but histogram has different #bins from the reference histogram!" << std::endl;
+                        std::cerr << "Current dt index: " << idt << "; #bins for kinematic " << kin1d << " in current dt is: " << h[idt][ksign][0]->GetNbinsX() << std::endl;
+                        std::cerr << "#bins for kinematic " << kin1d << "in pp2017 (reference) data is: " << h[ind_Dt_pp17][ksign][0]->GetNbinsX() << std::endl;
+                        throw std::runtime_error("Required to perform ratio plot but histogram has different #bins from the reference histogram!");
+                    }
+
+                    for (int bin = 1; bin <= h[idt][ksign][0]->GetNbinsX(); bin++){ // loop over the bins
+                        double bin_content_current = h[idt][ksign][0]->GetBinContent(bin);
+                        double bin_err_current = h[idt][ksign][0]->GetBinError(bin);
+
+                        double bin_content_refr = (nbins_refr_to_current_ratio == 1)? h[ind_Dt_pp17][ksign][0]->GetBinContent(bin) : h[ind_Dt_pp17][ksign][0]->GetBinContent(2*bin-1) + h[ind_Dt_pp17][ksign][0]->GetBinContent(2*bin);
+                        double bin_err_refr = (nbins_refr_to_current_ratio == 1)? h[ind_Dt_pp17][ksign][0]->GetBinError(bin) : h[ind_Dt_pp17][ksign][0]->GetBinError(2*bin-1) + h[ind_Dt_pp17][ksign][0]->GetBinContent(2*bin);
+
+                        if (bin_content_refr == 0){ // for current bin, #events in reference histogram is zero
+                            h[idt][ksign][0]->SetBinContent(bin, s_NULL); // ratio is invalid - set to be s_NULL
+                            h[idt][ksign][0]->SetBinError(bin, 0); // error of ratio is invalid - set to be zero (to avoid plot distortion)
+                            continue; // skip to next bin
+                        }
+
+                        // set bin content
+                        double ratio = bin_content_current * 1. / bin_content_refr;
+                        h[idt][ksign][0]->SetBinContent(bin, ratio);
+
+                        // set bin error
+                        if (bin_content_current == 0){
+                            h[idt][ksign][0]->SetBinError(bin, 0);
+                        }else{ // both the current histogram & the reference histogram have nonzero bin content --> propogate error
+                            if (ratio_plot_draw_errorbar){
+                                double error_ratio = ratio * sqrt( pow(bin_err_current / bin_content_current, 2) + pow(bin_err_refr / bin_content_refr, 2) );
+                                h[idt][ksign][0]->SetBinError(bin, error_ratio);                                
+                            }else{
+                                h[idt][ksign][0]->SetBinError(bin, 0);
+                            }
+                        }
+                    }
+                }
+
+                // set correct ratio-plot bin content for the reference histogram
+                for (int bin = 1; bin <= h[ind_Dt_pp17][ksign][0]->GetNbinsX(); bin++){
+                    h[ind_Dt_pp17][ksign][0]->SetBinContent(bin, 1.);
+                    double bin_content_pp17 = h[ind_Dt_pp17][ksign][0]->GetBinContent(bin);
+                    double bin_err_pp17 = h[ind_Dt_pp17][ksign][0]->GetBinError(bin);
+                    double relative_err_pp17 = (bin_content_pp17 == 0)? 0 : bin_err_pp17 * 1. / bin_content_pp17;
+                    // h[ind_Dt_pp17][ksign][0]->SetBinError(bin, sqrt(2) * relative_err_pp17); 
+                    h[ind_Dt_pp17][ksign][0]->SetBinError(bin, 0.); // ratio-plot error bar for pp17 looks suspicious --> set error to be zero for now
+                }
+            }catch (const std::runtime_error& err){
+                // std::cout << "WARNING: Runtime error caught when attempting ratio plot for the kinematic " << kin1d << ": " << err.what() << std::endl;
+                std::cout << "WARNING: Runtime error caught when attempting ratio plot for the kinematic " << kin1d << std::endl;
+                std::cout << "Return without drawing ratio plot!" << std::endl;
+                return;
+            }
+        }
+
+        float ylim = (h[0][ksign][0]->GetMaximum() > h[2][ksign][0]->GetMaximum())? h[0][ksign][0]->GetMaximum() : h[2][ksign][0]->GetMaximum();
+        ylim = (ylim > h[3][ksign][0]->GetMaximum())? ylim : h[3][ksign][0]->GetMaximum();
+        ylim = (ylim > h[4][ksign][0]->GetMaximum())? ylim : h[4][ksign][0]->GetMaximum();
+        ylim *= 1.1;
         
-        if (projx_2d){
-          TH2D* h2d = (TH2D*) f[idt]->Get(hist_name.c_str());
-          if (norm_unity){
-            h[idt][ksign][jdphi] = (TH1D*) h2d->ProjectionX(Form("hx_unity_%d%d%d",idt+1,ksign+1,jdphi+1));
-          }else{
-            h[idt][ksign][jdphi] = (TH1D*) h2d->ProjectionX(Form("hx_%d%d%d",idt+1,ksign+1,jdphi+1));
-          }
-        }else if (projy_2d){
-          TH2D* h2d = (TH2D*) f[idt]->Get(hist_name.c_str());
-          if (norm_unity){
-            h[idt][ksign][jdphi] = (TH1D*) h2d->ProjectionY(Form("hy_unity_%d%d%d",idt+1,ksign+1,jdphi+1));
-          }else{
-            h[idt][ksign][jdphi] = (TH1D*) h2d->ProjectionY(Form("hy_%d%d%d",idt+1,ksign+1,jdphi+1));
-          }
-        }else{ // 1D
-          h[idt][ksign][jdphi] = (TH1D*) f[idt]->Get(hist_name.c_str());
-        }
-        if (!h[idt][ksign][jdphi]){
-          std::cerr << "Hist name: " << hist_name << "; file: " << dt_paths[idt] + fnames[idt] << std::endl;
-          throw std::runtime_error("Histogram does not exist (pointer is nullptr)!");
+        if (ratio_plot_mode)    h[0][ksign][0]->GetYaxis()->SetRangeUser(-0.1,ylim);
+        else                    h[0][ksign][0]->GetYaxis()->SetRangeUser(0,ylim);
+
+        h[0][ksign][0]->Draw("E");
+
+        for (unsigned int idt = 2; idt < s_nDtTypes; idt++){
+            h[idt][ksign][0]->Draw("E,same");
         }
 
-        h[idt][ksign][jdphi]->SetMarkerColor(colors[idt]);
-        h[idt][ksign][jdphi]->SetLineColor(colors[idt]);
-      }
-
-      h[0][ksign][jdphi]->Add(h[1][ksign][jdphi]); // powheg - add cc to bb for all sign & dphi regions
+        l->AddEntry("",(signTitles[ksign]).c_str(),"");
+        if (ratio_plot_mode){
+            if (ratio_plot_draw_errorbar)   l->AddEntry("","Ratio plot","");
+            else                            l->AddEntry("","Ratio plot; error bar not drawn","");
+        }
+        l->Draw();
     }
 
-    for (unsigned int idt = 0; idt < nDtTypes; idt++){
-      h[idt][ksign][0]->Add(h[idt][ksign][1]); // add up the two dphi regions for all data types
+    std::string unity_suffix = norm_unity? "_unity" : "";
+    std::string jacobian_suffix = jacobian_correct? "_jacobian_corrected" : "";
+    std::string ratio_suffix = ratio_plot_mode? "_ratio_to_pp17" : "";
+    std::string ratio_errorbar_suffix = ratio_plot_draw_errorbar? "" : "_noerrorbar";
+
+    if (powheg_scale != 1. || pythia_scale != 1.){ // can't coexist with normalizing-to-unity requirement
+        c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/mc_data_compr/%s_mc_data_compr%s%s%s_powheg_%.2f_pythia_%.2f.png", kin1d.c_str(), ratio_suffix.c_str(), ratio_errorbar_suffix.c_str(), jacobian_suffix.c_str(), powheg_scale, pythia_scale));
+    }else{
+        c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/mc_data_compr/%s_mc_data_compr%s%s%s%s.png", kin1d.c_str(), ratio_suffix.c_str(), ratio_errorbar_suffix.c_str(), jacobian_suffix.c_str(), unity_suffix.c_str()));
     }
 
-    if (powheg_scale != 1.) h[0][ksign][0]->Scale(powheg_scale);
+    c->Close();
+    delete c;
 
-    hist_helper(h[0][ksign][0], norm_factor[0], norm_unity, signTitles[ksign].c_str(), Form("#frac{d#sigma}{d %s} [pb]", kin_title.c_str()));
-    l->AddEntry(h[0][ksign][0], dtTitles[0].c_str(), "lp");
-
-    h[2][ksign][0]->Scale(pow(10,6));
-    if (pythia_scale != 1.) h[2][ksign][0]->Scale(pythia_scale);
-
-    for (unsigned int idt = 2; idt < nDtTypes; idt++){
-      hist_helper(h[idt][ksign][0], norm_factor[idt], norm_unity, signTitles[ksign].c_str(), Form("#frac{d#sigma}{d %s} [pb]", kin_title.c_str()));
-      l->AddEntry(h[idt][ksign][0], dtTitles[idt].c_str(), "lp");
+    for (unsigned int ksign = 0; ksign < s_nSigns; ksign++){
+        for (unsigned int jdphi = 0; jdphi < s_nSigns; jdphi++){
+            for (unsigned int idt = 0; idt < s_nDtTypes; idt++){
+                delete h[idt][ksign][jdphi];
+            }
+        }
     }
+}
 
-    float ylim = (h[0][ksign][0]->GetMaximum() > h[2][ksign][0]->GetMaximum())? h[0][ksign][0]->GetMaximum() : h[2][ksign][0]->GetMaximum();
-    ylim = (ylim > h[3][ksign][0]->GetMaximum())? ylim : h[3][ksign][0]->GetMaximum();
-    ylim = (ylim > h[4][ksign][0]->GetMaximum())? ylim : h[4][ksign][0]->GetMaximum();
-    ylim *= 1.1;
-    h[0][ksign][0]->GetYaxis()->SetRangeUser(0,ylim);
-    h[0][ksign][0]->Draw("E");
-    for (unsigned int idt = 2; idt < nDtTypes; idt++){
-      h[idt][ksign][0]->Draw("E,same");
-    }
 
-    l->AddEntry("",(signTitles[ksign]).c_str(),"");
-    l->Draw();
-  }
-  if (norm_unity){
-    c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/mc_data_compr/%s_mc_data_compr_unity.png", kin1d.c_str()));
-  }else if (powheg_scale != 1. || pythia_scale != 1.){
-    c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/mc_data_compr/%s_mc_data_compr_powheg_%.2f_pythia_%.2f.png", kin1d.c_str(), powheg_scale, pythia_scale));
-  }else{
-    c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/mc_data_compr/%s_mc_data_compr.png", kin1d.c_str()));
-  }
+void plot_mc_data_compr_1D(){
+    // ----------------- 1D histogram plotting with #events / luminosity-based normalization -----------------
+    PlotMCDataComprSingleKinematics p_DR("DR", "#Delta R");
+    p_DR.legend_position_same_sign = {0.62,0.6,0.95,0.89};
+    p_DR.Run();
 
-  c->Close();
-  delete c;
+    PlotMCDataComprSingleKinematics p_DR_jacobian_corr("DR", "#Delta R");
+    p_DR_jacobian_corr.jacobian_correct = true;
+    p_DR_jacobian_corr.Run();
 
-  for (unsigned int ksign = 0; ksign < nSigns; ksign++){
-    for (unsigned int jdphi = 0; jdphi < nSigns; jdphi++){
-      for (unsigned int idt = 0; idt < nDtTypes; idt++){
-        delete h[idt][ksign][jdphi];
-      }
-    }
-  }
+    PlotMCDataComprSingleKinematics p_Dphi("Dphi", "#Delta #phi");
+    p_Dphi.Run();
+
+    PlotMCDataComprSingleKinematics p_pt_asym("pt_asym", "A");
+    p_pt_asym.Run();
+
+    PlotMCDataComprSingleKinematics p_pair_pt_ptlead_ratio("pair_pt_ptlead_ratio", "#frac{p_{T}^{pair}}{p_{T}^{lead}}");
+    p_pair_pt_ptlead_ratio.Run();
+}
+
+void plot_mc_data_compr_1D_ratio(){
+    // ----------------- 1D histogram plotting with #events / luminosity-based normalization -----------------
+    PlotMCDataComprSingleKinematics p_DR_ratio("DR", "#Delta R");
+    p_DR_ratio.ratio_plot_mode = true;
+    p_DR_ratio.Run();
+
+    PlotMCDataComprSingleKinematics p_DR_jacobian_corr_ratio("DR", "#Delta R");
+    p_DR_jacobian_corr_ratio.ratio_plot_mode = true;
+    p_DR_jacobian_corr_ratio.jacobian_correct = true;
+    p_DR_jacobian_corr_ratio.Run();
+
+    PlotMCDataComprSingleKinematics p_Dphi_ratio("Dphi", "#Delta #phi");
+    p_Dphi_ratio.ratio_plot_mode = true;
+    p_Dphi_ratio.Run();
+
+    PlotMCDataComprSingleKinematics p_pt_asym_ratio("pt_asym", "A");
+    p_pt_asym_ratio.ratio_plot_mode = true;
+    p_pt_asym_ratio.Run();
+
+    PlotMCDataComprSingleKinematics p_pair_pt_ptlead_ratio_ratio("pair_pt_ptlead_ratio", "#frac{p_{T}^{pair}}{p_{T}^{lead}}");
+    p_pair_pt_ptlead_ratio_ratio.ratio_plot_mode = true;
+    p_pair_pt_ptlead_ratio_ratio.Run();
+}
+
+void plot_mc_data_compr_1D_ratio_noerrorbar(){
+    // ----------------- 1D histogram plotting with #events / luminosity-based normalization -----------------
+    PlotMCDataComprSingleKinematics p_DR_ratio("DR", "#Delta R");
+    p_DR_ratio.ratio_plot_mode = true;
+    p_DR_ratio.ratio_plot_draw_errorbar = false;
+    p_DR_ratio.Run();
+
+    PlotMCDataComprSingleKinematics p_DR_jacobian_corr_ratio("DR", "#Delta R");
+    p_DR_jacobian_corr_ratio.ratio_plot_mode = true;
+    p_DR_jacobian_corr_ratio.jacobian_correct = true;
+    p_DR_jacobian_corr_ratio.ratio_plot_draw_errorbar = false;
+    p_DR_jacobian_corr_ratio.Run();
+
+    PlotMCDataComprSingleKinematics p_Dphi_ratio("Dphi", "#Delta #phi");
+    p_Dphi_ratio.ratio_plot_mode = true;
+    p_Dphi_ratio.ratio_plot_draw_errorbar = false;
+    p_Dphi_ratio.Run();
+
+    PlotMCDataComprSingleKinematics p_pt_asym_ratio("pt_asym", "A");
+    p_pt_asym_ratio.ratio_plot_mode = true;
+    p_pt_asym_ratio.ratio_plot_draw_errorbar = false;
+    p_pt_asym_ratio.Run();
+
+    PlotMCDataComprSingleKinematics p_pair_pt_ptlead_ratio_ratio("pair_pt_ptlead_ratio", "#frac{p_{T}^{pair}}{p_{T}^{lead}}");
+    p_pair_pt_ptlead_ratio_ratio.ratio_plot_mode = true;
+    p_pair_pt_ptlead_ratio_ratio.ratio_plot_draw_errorbar = false;
+    p_pair_pt_ptlead_ratio_ratio.Run();
+}
+
+void plot_mc_data_compr_2D_proj(){
+    // ----------------- 2D histograms projecting onto 1D -----------------
+    PlotMCDataComprSingleKinematics p_ptlead_pair_pt_x("ptlead_pair_pt", true, false, false, "pair_pt", "p_{T}^{pair}");
+    p_ptlead_pair_pt_x.Run();
+
+    PlotMCDataComprSingleKinematics p_ptlead_pair_pt_y("ptlead_pair_pt", false, true, false, "ptlead", "p_{T}^{lead}");
+    p_ptlead_pair_pt_y.Run();
+
+    PlotMCDataComprSingleKinematics p_minv_pair_pt_y("minv_pair_pt", false, true, false, "minv","m_{#mu#mu}");
+    p_minv_pair_pt_y.Run();
+
+    PlotMCDataComprSingleKinematics p_minv_pair_pt_zoomin_y("minv_pair_pt_zoomin", false, true, false, "minv_zoomin","m_{#mu#mu}");
+    p_minv_pair_pt_zoomin_y.Run();
+
+    PlotMCDataComprSingleKinematics p_Deta_Dphi_y("Deta_Dphi", false, true, false, "Deta", "#Delta #eta");
+    p_Deta_Dphi_y.legend_position_same_sign = {0.62,0.6,0.95,0.89};
+    p_Deta_Dphi_y.legend_position_opp_sign = {0.6,0.6,0.93,0.89};
+    p_Deta_Dphi_y.Run();
+}
+
+void plot_mc_data_compr_2D_proj_ratio(){
+    // ----------------- 2D histograms projecting onto 1D -----------------
+    PlotMCDataComprSingleKinematics p_ptlead_pair_pt_x_ratio("ptlead_pair_pt", true, false, false, "pair_pt", "p_{T}^{pair}");
+    p_ptlead_pair_pt_x_ratio.ratio_plot_mode = true;
+    p_ptlead_pair_pt_x_ratio.Run();
+
+    PlotMCDataComprSingleKinematics p_ptlead_pair_pt_y_ratio("ptlead_pair_pt", false, true, false, "ptlead", "p_{T}^{lead}");
+    p_ptlead_pair_pt_y_ratio.ratio_plot_mode = true;
+    p_ptlead_pair_pt_y_ratio.Run();
+
+    PlotMCDataComprSingleKinematics p_minv_pair_pt_y_ratio("minv_pair_pt", false, true, false, "minv","m_{#mu#mu}");
+    p_minv_pair_pt_y_ratio.ratio_plot_mode = true;
+    p_minv_pair_pt_y_ratio.Run();
+
+    PlotMCDataComprSingleKinematics p_minv_pair_pt_zoomin_y_ratio("minv_pair_pt_zoomin", false, true, false, "minv_zoomin","m_{#mu#mu}");
+    p_minv_pair_pt_zoomin_y_ratio.ratio_plot_mode = true;
+    p_minv_pair_pt_zoomin_y_ratio.Run();
+
+    PlotMCDataComprSingleKinematics p_Deta_Dphi_y_ratio("Deta_Dphi", false, true, false, "Deta", "#Delta #eta");
+    p_Deta_Dphi_y_ratio.ratio_plot_mode = true;
+    p_Deta_Dphi_y_ratio.Run();
+}
+
+void plot_mc_data_compr_2D_proj_ratio_noerrorbar(){
+    // ----------------- 2D histograms projecting onto 1D -----------------
+    PlotMCDataComprSingleKinematics p_ptlead_pair_pt_x_ratio("ptlead_pair_pt", true, false, false, "pair_pt", "p_{T}^{pair}");
+    p_ptlead_pair_pt_x_ratio.ratio_plot_mode = true;
+    p_ptlead_pair_pt_x_ratio.ratio_plot_draw_errorbar = false;
+    p_ptlead_pair_pt_x_ratio.Run();
+
+    PlotMCDataComprSingleKinematics p_ptlead_pair_pt_y_ratio("ptlead_pair_pt", false, true, false, "ptlead", "p_{T}^{lead}");
+    p_ptlead_pair_pt_y_ratio.ratio_plot_mode = true;
+    p_ptlead_pair_pt_y_ratio.ratio_plot_draw_errorbar = false;
+    p_ptlead_pair_pt_y_ratio.Run();
+
+    PlotMCDataComprSingleKinematics p_minv_pair_pt_y_ratio("minv_pair_pt", false, true, false, "minv","m_{#mu#mu}");
+    p_minv_pair_pt_y_ratio.ratio_plot_mode = true;
+    p_minv_pair_pt_y_ratio.ratio_plot_draw_errorbar = false;
+    p_minv_pair_pt_y_ratio.Run();
+
+    PlotMCDataComprSingleKinematics p_minv_pair_pt_zoomin_y_ratio("minv_pair_pt_zoomin", false, true, false, "minv_zoomin","m_{#mu#mu}");
+    p_minv_pair_pt_zoomin_y_ratio.ratio_plot_mode = true;
+    p_minv_pair_pt_zoomin_y_ratio.ratio_plot_draw_errorbar = false;
+    p_minv_pair_pt_zoomin_y_ratio.Run();
+
+    PlotMCDataComprSingleKinematics p_Deta_Dphi_y_ratio("Deta_Dphi", false, true, false, "Deta", "#Delta #eta");
+    p_Deta_Dphi_y_ratio.ratio_plot_mode = true;
+    p_Deta_Dphi_y_ratio.ratio_plot_draw_errorbar = false;
+    p_Deta_Dphi_y_ratio.Run();
+}
+
+void plot_mc_data_compr_1D_normalize_to_unity(){
+    // ----------------- 1D histogram plotting normalized to unity -----------------
+    PlotMCDataComprSingleKinematics p_DR_unity("DR", true, "#Delta R");
+    p_DR_unity.Run();
+
+    PlotMCDataComprSingleKinematics p_Dphi_unity("Dphi", true, "#Delta #phi");
+    p_Dphi_unity.Run();
+
+    PlotMCDataComprSingleKinematics p_pt_asym_unity("pt_asym", true, "A");
+    p_pt_asym_unity.Run();
+
+    PlotMCDataComprSingleKinematics p_pair_pt_ptlead_ratio_unity("pair_pt_ptlead_ratio", true, "#frac{p_{T}^{pair}}{p_{T}^{lead}}");
+    p_pair_pt_ptlead_ratio_unity.Run();
+}
+
+void plot_mc_data_compr_2D_proj_normalize_to_unity(){
+    // ----------------- 2D histograms projecting onto 1D normalized to unity -----------------
+
+    PlotMCDataComprSingleKinematics p_ptlead_pair_pt_norm_x("ptlead_pair_pt", true, false, true, "pair_pt", "p_{T}^{pair}");
+    p_ptlead_pair_pt_norm_x.Run();
+
+    PlotMCDataComprSingleKinematics p_ptlead_pair_pt_norm_y("ptlead_pair_pt", false, true, true, "ptlead", "p_{T}^{lead}");
+    p_ptlead_pair_pt_norm_y.Run();
+
+    PlotMCDataComprSingleKinematics p_minv_pair_pt_norm_y("minv_pair_pt", false, true, true, "minv","m_{#mu#mu}");
+    p_minv_pair_pt_norm_y.Run();
+
+    PlotMCDataComprSingleKinematics p_minv_pair_pt_zoomin_norm_y("minv_pair_pt_zoomin", false, true, true, "minv_zoomin","m_{#mu#mu}");
+    p_minv_pair_pt_zoomin_norm_y.Run();
+
+    PlotMCDataComprSingleKinematics p_Deta_Dphi_norm_y("Deta_Dphi", false, true, true, "Deta", "#Delta #eta");
+    p_Deta_Dphi_norm_y.Run();
 }
 
 void plot_mc_data_compr(){
-  // // kin, projx_2d, projy_2d, norm_unity, kin1d, logx=false
-  plot_mc_data_compr_single_kinematic("DR", false, false, false, "DR", "#Delta R");
-  plot_mc_data_compr_single_kinematic("DR", false, false, true, "DR", "#Delta R"); // norm to unity
-  plot_mc_data_compr_single_kinematic("Dphi", false, false, false, "Dphi", "#Delta #phi");
-  plot_mc_data_compr_single_kinematic("Dphi", false, false, true, "Dphi", "#Delta #phi"); // norm to unity
-  plot_mc_data_compr_single_kinematic("pt_asym", false, false, false, "pt_asym", "A");
-  plot_mc_data_compr_single_kinematic("pt_asym", false, false, true, "pt_asym", "A"); // norm to unity
-  plot_mc_data_compr_single_kinematic("pair_pt_ptlead_ratio", false, false, false, "pair_pt_ptlead_ratio", "#frac{p_{T}^{pair}}{p_{T}^{lead}}");
-  plot_mc_data_compr_single_kinematic("pair_pt_ptlead_ratio", false, false, true, "pair_pt_ptlead_ratio", "#frac{p_{T}^{pair}}{p_{T}^{lead}}"); // norm to unity
-
-  plot_mc_data_compr_single_kinematic("ptlead_pair_pt", true, false, false, "pair_pt", "p_{T}^{pair}");
-  plot_mc_data_compr_single_kinematic("ptlead_pair_pt", true, false, true, "pair_pt", "p_{T}^{pair}"); // norm to unity
-  plot_mc_data_compr_single_kinematic("ptlead_pair_pt", false, true, false, "ptlead", "p_{T}^{lead}");
-  plot_mc_data_compr_single_kinematic("ptlead_pair_pt", false, true, true, "ptlead", "p_{T}^{lead}"); // norm to unity
-  plot_mc_data_compr_single_kinematic("minv_pair_pt", false, true, false, "minv","m_{#mu#mu}");
-  plot_mc_data_compr_single_kinematic("minv_pair_pt", false, true, true, "minv","m_{#mu#mu}"); // norm to unity
-  plot_mc_data_compr_single_kinematic("minv_pair_pt_zoomin", false, true, false, "minv_zoomin","m_{#mu#mu}");
-  plot_mc_data_compr_single_kinematic("minv_pair_pt_zoomin", false, true, true, "minv_zoomin","m_{#mu#mu}"); // norm to unity
-  plot_mc_data_compr_single_kinematic("Deta_Dphi", false, true, false, "Deta", "#Delta #eta");
-  plot_mc_data_compr_single_kinematic("Deta_Dphi", false, true, true, "Deta", "#Delta #eta"); // norm to unity
+    plot_mc_data_compr_1D();
+    plot_mc_data_compr_2D_proj();
+    plot_mc_data_compr_1D_ratio();
+    plot_mc_data_compr_2D_proj_ratio();
+    plot_mc_data_compr_1D_ratio_noerrorbar();
+    plot_mc_data_compr_2D_proj_ratio_noerrorbar();
+    // plot_mc_data_compr_1D_normalize_to_unity();
+    // plot_mc_data_compr_2D_proj_normalize_to_unity();
 
 }
 
