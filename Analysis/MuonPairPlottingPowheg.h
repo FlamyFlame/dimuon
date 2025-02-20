@@ -200,7 +200,7 @@ void MuonPairPlottingPowheg::InitInput(){
             continue; // skip this file
         }
         inFile[ibatch] = new TFile(infilename,"read");
-        if (!inFile[ibatch]){
+        if (!inFile[ibatch] || inFile[ibatch]->IsZombie()) {
             std::cout << "the root file at " << infilename << " does not give a valid TFile" << std::endl;
             throw std::exception();
         }

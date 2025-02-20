@@ -134,6 +134,11 @@ void MuonPairPlotting::InitInput(){
    	    inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/muon_pairs.root","read");
     }
 
+    if (!inFile || inFile->IsZombie()) {
+        std::cerr << "Error opening input file!" << std::endl;
+        throw std::exception();
+    }
+
     for (int idr = 0; idr < ParamsSet::ndRselcs; idr++){
        	for (int jctr = 0; jctr < ParamsSet::nCtrBins; jctr++){
             for (int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
