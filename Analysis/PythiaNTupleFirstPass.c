@@ -2200,14 +2200,16 @@ void PythiaNTupleFirstPass::ProcessData(){
           continue;
         }
 
-        std::vector<int>::iterator itres_m1;
-        std::vector<int>::iterator itres_m2;
+        if (turn_data_cuts_on){ // turn data cuts on: including (currently only have) minv-based resonance cuts
+          std::vector<int>::iterator itres_m1;
+          std::vector<int>::iterator itres_m2;
 
-        itres_m1 = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m1.ind);
-        if(itres_m1 != resonance_tagged_muon_index_list.end())  continue;
+          itres_m1 = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m1.ind);
+          if(itres_m1 != resonance_tagged_muon_index_list.end())  continue;
 
-        itres_m2 = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m2.ind);
-        if(itres_m2 != resonance_tagged_muon_index_list.end())  continue;
+          itres_m2 = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m2.ind);
+          if(itres_m2 != resonance_tagged_muon_index_list.end())  continue;          
+        }
 
         h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill(pass_resonance + 0.5, mpair->weight);
         
