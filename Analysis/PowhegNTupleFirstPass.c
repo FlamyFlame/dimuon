@@ -1,47 +1,406 @@
-#ifndef __MCNTupleFirstPass_C__
-#define __MCNTupleFirstPass_C__
+#ifndef __PowhegNTupleFirstPass_C__
+#define __PowhegNTupleFirstPass_C__
 
-#include "MCNTupleFirstPass.h"
+#include "PowhegNTupleFirstPass.h"
 #include "Riostream.h"
 #include "TLorentzVector.h"
 #include "time.h"
 #include "TLorentzVector.h"
 #include <math.h> 
-// #include<bits/stdc++.h>
 #include <assert.h>
 
-// Benefits of using enum: like labeling equations 
-// and referring to them using the labels rather than numbers
-// we do not need to remember which number corresponds to which cut
-// also, if we add new cuts, we don't need to change the part of the code
-// corresponding to the existing cuts
-enum cuts_MC{
-  nocut, 
-  pass_no_prev_resonance_tag,
-  pass_muon_eta, 
-  pass_muon_pt, 
-  pass_resonance, 
-  pass_photoprod
-};
+//initialize the TChain
+void PowhegNTupleFirstPass::InitInput(){
 
-enum parent_groups{
-  direct_b,
-  b_to_c,
-  direct_c,
-  s_light,
-  single_photon,
-  prt_drell_yan
-};
+    mcdir = (is_full_sample)? "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/" : "/usatlas/u/yuhanguo/usatlasdata/athena/runMCV2/";
+    fChain = new TChain("HeavyIonD3PD","HeavyIonD3PD");
+    fChain->SetMakeClass(1);
+    if (is_full_sample){
+        sub_dir = (mc_mode == "mc_truth_bb")? "bb_full_sample/" : "cc_full_sample/";
+        for (int ifile = 5 * (full_sample_batch_num - 1); ifile < 5 * full_sample_batch_num; ifile++){
+            char filename[100];
+            std::sprintf(filename, "%s%s%s_%02d.root", mcdir.c_str(), sub_dir.c_str(), mc_mode.c_str(), ifile+1);
+            std::cout << filename << std::endl;
+            std::ifstream in_file(filename);
+            
+            if (!in_file.good()){
+                std::cout << "Warning: File " << filename << " not found. Skip.\n";
+                continue; // skip this file
+            }
+            fChain->Add(filename);
+        }
+    }else{
+        fChain->Add(Form("%s%s.root", mcdir.c_str(), mc_mode.c_str()));
+    }
+    
+    cout << "nentries: " << fChain->GetEntries() << endl;
+    // MC muons have no quality, d0 or z0 recorded
+    fChain->SetBranchAddress("truth_id"                   , &truth_id);
+    fChain->SetBranchAddress("truth_barcode"              , &truth_barcode);
+    fChain->SetBranchAddress("truth_qual"                 , &truth_qual);
+    fChain->SetBranchAddress("truth_pt"                 , &truth_pt);
+    fChain->SetBranchAddress("truth_eta"                 , &truth_eta);
+    fChain->SetBranchAddress("truth_phi"                 , &truth_phi);
+    fChain->SetBranchAddress("truth_m"                 , &truth_m);
+    fChain->SetBranchAddress("truth_parents"              , &truth_parents);
+    fChain->SetBranchAddress("truth_children"              , &truth_children);
+    fChain->SetBranchAddress("EventWeights"               , &EventWeights);
+    fChain->SetBranchAddress("Q"               , &Q);
 
-enum ancestor_categories{
-  gg,
-  gq,
-  single_gluon,
-  qqbar,
-  incoming
-};
+    fChain->SetBranchAddress("truth_mupair_pt1"           , &muon_pair_muon1_pt);
+    fChain->SetBranchAddress("truth_mupair_eta1"          , &muon_pair_muon1_eta);
+    fChain->SetBranchAddress("truth_mupair_phi1"          , &muon_pair_muon1_phi);
+    fChain->SetBranchAddress("truth_mupair_ch1"           , &muon_pair_muon1_ch);
+    fChain->SetBranchAddress("truth_mupair_bar1"          , &muon_pair_muon1_bar);
 
-bool MCNTupleFirstPass::PassCuts(){
+    fChain->SetBranchAddress("truth_mupair_pt2"           , &muon_pair_muon2_pt);
+    fChain->SetBranchAddress("truth_mupair_eta2"          , &muon_pair_muon2_eta);
+    fChain->SetBranchAddress("truth_mupair_phi2"          , &muon_pair_muon2_phi);
+    fChain->SetBranchAddress("truth_mupair_ch2"           , &muon_pair_muon2_ch);
+    fChain->SetBranchAddress("truth_mupair_bar2"          , &muon_pair_muon2_bar);
+
+    fChain->SetBranchAddress("truth_mupair_asym"          , &truth_mupair_asym);
+    fChain->SetBranchAddress("truth_mupair_acop"          , &truth_mupair_acop);
+    fChain->SetBranchAddress("truth_mupair_pt"            , &truth_mupair_pt);
+    fChain->SetBranchAddress("truth_mupair_y"             , &truth_mupair_y);
+    // fChain->SetBranchAddress("truth_mupair_phi"           , &truth_mupair_phi);
+    fChain->SetBranchAddress("truth_mupair_m"             , &truth_mupair_m);
+
+
+    //SetBranch Status
+    fChain->SetBranchStatus("*"                               ,0);//switch off all branches, then enable just the ones that we need
+  
+    fChain->SetBranchStatus("truth_id"           ,1);
+    fChain->SetBranchStatus("truth_barcode"              ,1);
+    fChain->SetBranchStatus("truth_qual"             ,1);
+    fChain->SetBranchStatus("truth_pt"             ,1);
+    fChain->SetBranchStatus("truth_eta"             ,1);
+    fChain->SetBranchStatus("truth_phi"             ,1);
+    fChain->SetBranchStatus("truth_m"             ,1);
+    fChain->SetBranchStatus("truth_parents"             ,1);
+    fChain->SetBranchStatus("truth_children"             ,1);
+    fChain->SetBranchStatus("EventWeights"             ,1);
+    fChain->SetBranchStatus("Q"             ,1);
+
+    fChain->SetBranchStatus("truth_mupair_pt1"           ,1);
+    fChain->SetBranchStatus("truth_mupair_eta1"              ,1);
+    fChain->SetBranchStatus("truth_mupair_phi1"             ,1);
+    fChain->SetBranchStatus("truth_mupair_ch1"             ,1);
+    fChain->SetBranchStatus("truth_mupair_bar1"             ,1);
+
+    fChain->SetBranchStatus("truth_mupair_pt2"             ,1);
+    fChain->SetBranchStatus("truth_mupair_eta2"         ,1);
+    fChain->SetBranchStatus("truth_mupair_phi2"              ,1);
+    fChain->SetBranchStatus("truth_mupair_ch2"              ,1);
+    fChain->SetBranchStatus("truth_mupair_bar2"              ,1);
+
+    fChain->SetBranchStatus("truth_mupair_asym"              ,1);
+    fChain->SetBranchStatus("truth_mupair_acop"           ,1);
+    fChain->SetBranchStatus("truth_mupair_pt"             ,1);
+    fChain->SetBranchStatus("truth_mupair_y"             ,1);
+    // fChain->SetBranchStatus("truth_mupair_phi"         ,1);
+    fChain->SetBranchStatus("truth_mupair_m"              ,1);   
+}
+
+void PowhegNTupleFirstPass::InitTempVariables(){
+    single_gluon_history = new std::vector<std::vector<int>>();
+    m1_history = new std::vector<std::vector<int>>();
+    m2_history = new std::vector<std::vector<int>>();
+    m1_history_particle = new std::vector<std::vector<Particle>>();
+    m2_history_particle = new std::vector<std::vector<Particle>>();
+    // m1_last_hf_hadron_prt_pt_eta_phi_m = new std::vector<float>();
+    // m2_last_hf_hadron_prt_pt_eta_phi_m = new std::vector<float>();
+    // m1_last_b_hadron_prt_pt_eta_phi_m = new std::vector<float>();
+    // m2_last_b_hadron_prt_pt_eta_phi_m = new std::vector<float>();
+    m1_first_hf_hadron_prt_pt_eta_phi_m = new std::vector<float>();
+    m2_first_hf_hadron_prt_pt_eta_phi_m = new std::vector<float>();
+    // m1_hq_ancestor_pt_eta_phi_m = new std::vector<float>();
+    // m2_hq_ancestor_pt_eta_phi_m = new std::vector<float>();
+}
+
+void PowhegNTupleFirstPass::InitOutput(){
+
+    // ---------------------------------------------------------------------------------------------------------------------------
+
+    std::string sign_labels[ParamsSet::nSigns] = {"same_sign", "op_sign"};
+    std::string signs[ParamsSet::nSigns] = {"_ss", "_op"};
+    std::string dphis[2] = {"_near", "_away"};
+    std::string ancestor_grps[nAncestorGroups] = {"_gg", "_qg","_single_g","_qq"};
+
+    // ---------------------------------------------------------------------------------------------------------------------------
+
+    if (print_specific_prt_history){
+        if (mc_mode == "mc_truth_cc"){
+
+            m_cc_ss_small_dphi_file = new std::ofstream(Form("%scc_ss_small_dphi.txt", mcdir.c_str()));
+            *m_cc_ss_small_dphi_file << "Event#\tm1-grp\tm2-grp" << std::endl;
+        }else{
+            m_bb_ss_near_file = new std::ofstream(Form("%sbb_ss_near.txt", mcdir.c_str()));
+            m_bb_ss_away_file = new std::ofstream(Form("%sbb_ss_away.txt", mcdir.c_str()));
+            m_bb_op_near_one_b_one_btoc_others_file = new std::ofstream(Form("%sbb_op_near_one_b_one_btoc_others.txt", mcdir.c_str()));
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------------------
+
+    if (mc_mode == "mc_truth_bb"){
+        m_unspecified_parent_file = new std::ofstream(mcdir + "unspecified_parents_bb.txt");
+        if (print_prt_history){
+            for (int isign = 0; isign < ParamsSet::nSigns; isign++){
+                for (int jdphi = 0; jdphi < 2; jdphi++){
+                    m_b_parent_file[isign][jdphi] = new std::ofstream(Form("%sb_parents_%s%s.txt", mcdir.c_str(), sign_labels[isign].c_str(), dphis[jdphi].c_str()));
+                }
+            }
+        }
+    }else{
+        m_unspecified_parent_file = new std::ofstream(mcdir + "unspecified_parents_cc.txt");
+        if (print_prt_history){
+            for (int isign = 0; isign < ParamsSet::nSigns; isign++){
+                for (int jdphi = 0; jdphi < 2; jdphi++){
+                    m_c_parent_file[isign][jdphi] = new std::ofstream(Form("%sc_parents_%s%s.txt", mcdir.c_str(), sign_labels[isign].c_str(), dphis[jdphi].c_str()));
+                }
+            }
+        }
+    } 
+
+    // ---------------------------------------------------------------------------------------------------------------------------
+    // --------------------------------------------- output file for tree writing ------------------------------------------------
+
+    // m_outfile=new TFile(Form("%smuon_pairs_%s.root", mcdir.c_str(), mc_mode.c_str()),"recreate");
+    if (is_full_sample){
+        std::string sub_dir = (mc_mode == "mc_truth_bb")? "bb_full_sample/" : "cc_full_sample/";
+        m_outfile=new TFile(Form("%s%smuon_pairs_%s_%d-%d.root", mcdir.c_str(), sub_dir.c_str(), mc_mode.c_str(), 5 * full_sample_batch_num - 4, 5 * full_sample_batch_num),"recreate");
+    }else{
+        m_outfile=new TFile(Form("%smuon_pairs_%s.root", mcdir.c_str(), mc_mode.c_str()),"recreate");
+    }
+    
+    meta_tree = new TTree("meta_tree","meta_tree");
+    meta_tree->Branch("nentries_before_cuts", &nentries, "nentries_before_cuts/L");
+
+
+    for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
+        muonPairOutTree[ksign] = new TTree(Form("muon_pair_tree_sign%u",ksign+1),Form("all muon pairs, sign%u",ksign+1));
+        muonPairOutTree[ksign]->Branch("MuonPairObj",&mpair_raw_ptr);
+        for (unsigned int idr = 0; idr < ParamsSet::ndRselcs; idr++){
+            muonPairOutTreeBinned[idr][ksign] = new TTree(Form("muon_pair_tree_dr%u_sign%u",idr+1,ksign+1),Form("all muon pairs, dr%u, sign%u",idr+1,ksign+1));
+            muonPairOutTreeBinned[idr][ksign]->Branch("MuonPairObj",&mpair_raw_ptr);
+        }
+    }
+
+    for (unsigned int isign = 0; isign < ParamsSet::nSigns; isign++){
+        for (int jdphi = 0; jdphi < 2; jdphi++){
+            for (int kgrp = 0; kgrp < nAncestorGroups; kgrp++){
+                QQPairOutTree[isign][jdphi][kgrp] = new TTree(Form("QQ_pair_tree%s%s%s",signs[isign].c_str(),dphis[jdphi].c_str(),ancestor_grps[kgrp].c_str()),Form("QQ pairs, muon %s%s%s",signs[isign].c_str(),dphis[jdphi].c_str(),ancestor_grps[kgrp].c_str()));
+                QQPairOutTree[isign][jdphi][kgrp]->Branch("QQPairObj",&qqpair);
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------------------
+    // --------------------------------------------- output file for hist writing ------------------------------------------------
+
+    if (is_full_sample){
+        std::string sub_dir = (mc_mode == "mc_truth_bb")? "bb_full_sample/" : "cc_full_sample/";
+        m_outHistFile=new TFile(Form("%s%shists_powheg_ntuple_processing_%s_%d-%d.root", mcdir.c_str(), sub_dir.c_str(), mc_mode.c_str(), 5 * full_sample_batch_num - 4, 5 * full_sample_batch_num),"recreate");
+    }else{
+        m_outHistFile=new TFile(Form("%shists_powheg_ntuple_processing_%s.root", mcdir.c_str(), mc_mode.c_str()),"recreate");
+    }
+
+    // h_numParents = new TH1D("h_numParents","h_numParents",3,0,3);
+    h_numMuonPairs = new TH1D("h_numMuonPairs","h_numMuonPairs",6,0,6);
+
+    MuonNTupleFirstPassBaseClass::InitOutput();
+    
+    for (int isign = 0; isign < ParamsSet::nSigns; isign++){
+        for (int jdphi = 0; jdphi < 2; jdphi++){
+            h_parent_groups[isign][jdphi] = new TH2D(Form("h_parent_groups_sign%d%s",isign+1, dphis[jdphi].c_str()),Form("h_parent_groups_sign%d%s",isign+1, dphis[jdphi].c_str()),nParentGroups,0,nParentGroups,nParentGroups,0,nParentGroups);
+            h_ptlead_pair_pt[isign][jdphi] = new TH2D(Form("h_ptlead_pair_pt_sign%d%s",isign+1, dphis[jdphi].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.npairPT_bins,pms.pairPTBins[isign][2],pms.npt_bins,pms.pTBins);
+            h_num_hard_scatt_out[isign][jdphi] = new TH1D(Form("h_num_hard_scatt_out_sign%d%s",isign+1, dphis[jdphi].c_str()),Form("h_num_hard_scatt_out_sign%d%s",isign+1, dphis[jdphi].c_str()),3,2,5);
+            h_pt_muon_pt_closest_hadr_ratio[isign][jdphi] = new TH1D(Form("h_pt_muon_pt_closest_hadr_ratio_sign%d%s",isign+1, dphis[jdphi].c_str()),Form("h_pt_muon_pt_closest_hadr_ratio_sign%d%s",isign+1, dphis[jdphi].c_str()),40,0,1.);
+            h_pt_closest_hadr_pt_furthest_hadr_ratio[isign][jdphi] = new TH1D(Form("h_pt_closest_hadr_pt_furthest_hadr_ratio_sign%d%s",isign+1, dphis[jdphi].c_str()),Form("h_pt_closest_hadr_pt_furthest_hadr_ratio_sign%d%s",isign+1, dphis[jdphi].c_str()),40,0,1.);
+            h_pt_hadr_hq_ratio[isign][jdphi] = new TH1D(Form("h_pt_hadr_hq_ratio_sign%d%s",isign+1, dphis[jdphi].c_str()),Form("h_pt_hadr_hq_ratio_sign%d%s",isign+1, dphis[jdphi].c_str()),40,0,1.);
+            h_dphi_muon_closest_hadr[isign][jdphi] = new TH1D(Form("h_dphi_muon_closest_hadr_sign%d%s",isign+1, dphis[jdphi].c_str()),Form("h_dphi_muon_closest_hadr_sign%d%s",isign+1, dphis[jdphi].c_str()),32,-pms.PI,pms.PI);
+
+            for (int kgrp = 0; kgrp < nAncestorGroups; kgrp++){
+                h_QQ_DR[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_DR_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#Delta R;d#sigma/d#Delta R", 50,0,5.75);
+                h_QQ_Dphi[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_Dphi_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#Delta#phi;d#sigma/d#Delta#phi", 32,-pms.PI,pms.PI);
+                h_QQ_minv[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_minv_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";m_{QQ} [GeV]; d#sigma/dm_{QQ}",pms.n_hq_minv_bins,pms.hq_minvBins);
+                h_QQ_pair_pt_ptlead_ratio[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_pair_pt_ptlead_ratio_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", 25,0,2.);
+                h_QQ_pt_avg[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_pt_avg_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";p_{T}^{avg};d#sigma/dp_{T}^{avg}", pms.n_hq_pt_bins,pms.hq_pTBins);
+                h_QQ_asym[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_asym_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", 25,0,1);
+                h_QQ_minv_mHard_ratio[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_minv_mHard_ratio_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#frac{m_{QQ}}{#hat{s}};d#sigma/d#frac{m_{QQ}}{#hat{s}}", 25,0,1);
+                
+                // h_QQ_ptlead_pair_pt[isign][jdphi] = new TH2D(Form("h_QQ_ptlead_pair_pt_sign%d%s",isign+1, dphis[jdphi].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.npairPT_bins,pms.pairPTBins[isign][2],pms.n_hq_pt_bins,pms.hq_pTBins);
+                h_QQ_ptlead_pair_pt[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_ptlead_pair_pt_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.n_hq_pt_bins,pms.hq_pTBins,pms.n_hq_pt_bins,pms.hq_pTBins);
+                h_QQ_pt1_pt2[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_pt1_pt2_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";p_{T}^{sublead} [GeV];p_{T}^{lead} [GeV]",pms.n_hq_pt_bins,pms.hq_pTBins,pms.n_hq_pt_bins,pms.hq_pTBins);
+                h_QQ_Deta_Dphi[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_Deta_Dphi_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#Delta#phi;#Delta#eta", 32,-pms.PI,pms.PI,40,-4.8,4.8);
+                h_QQ_eta1_eta2[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_eta1_eta2_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#eta_{sublead};#eta_{lead}",40,-2.4,2.4, 40,-2.4,2.4);
+                h_QQ_minv_pair_pt[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_minv_pair_pt_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";p_{T}^{pair} [GeV];m_{QQ} [GeV]",pms.n_hq_pt_bins,pms.hq_pTBins,pms.n_hq_minv_bins,pms.hq_minvBins);
+                h_QQ_minv_Dphi[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_minv_Dphi_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#Delta#phi;m_{QQ} [GeV]",pms.npt_bins,pms.pTBins,pms.n_hq_minv_bins,pms.hq_minvBins);
+            }
+        }
+    }
+
+    // static const int nweight_bins = 40;
+    // float weight_logpow_bb = 0.0711;
+    // float weight_logpow_cc = 0.1254;
+    // float weight_max_bb = 5.74;
+    // float weight_max_cc = 1.26;
+    // double weight_bins_bb[nweight_bins+1];
+    // double weight_bins_cc[nweight_bins+1];
+
+    // for(int iweight = 0; iweight <= nweight_bins; iweight++){
+    //     weight_bins_bb[iweight] = weight_max_bb * pow(10.0, ((float)(iweight - nweight_bins))*weight_logpow_bb);
+    //     weight_bins_cc[iweight] = weight_max_cc * pow(10.0, ((float)(iweight - nweight_bins))*weight_logpow_cc);
+    // }
+
+    static const int ncrossx_bins = 40;
+    float crossx_logpow_bb = 0.0711;
+    float crossx_logpow_cc = 0.1288;
+    float crossx_max_bb = 1.52 *pow(10,9);
+    float crossx_max_cc = 2.9 * pow(10,10);
+    double crossx_bins_bb[ncrossx_bins+1];
+    double crossx_bins_cc[ncrossx_bins+1];
+
+    for(int icrossx = 0; icrossx <= ncrossx_bins; icrossx++){
+        crossx_bins_bb[icrossx] = crossx_max_bb * pow(10.0, ((float)(icrossx - ncrossx_bins))*crossx_logpow_bb);
+        crossx_bins_cc[icrossx] = crossx_max_cc * pow(10.0, ((float)(icrossx - ncrossx_bins))*crossx_logpow_cc);
+    }
+
+
+    if (mc_mode == "mc_truth_bb"){
+        h_crossx = new TH1D("h_crossx","h_crossx",ncrossx_bins,crossx_bins_bb);
+        for (int ipt = 0; ipt < npTbins; ipt++){
+            // h_crossx_pt_binned[ipt] = new TH1D(Form("h_crossx_pt%d",ipt+1),Form("h_crossx_pt%d",ipt+1),ncrossx_bins,crossx_bins_bb);
+            h_crossx_pt_binned[ipt] = new TH1D(Form("h_crossx_pt%d",ipt+1),Form("h_crossx_pt%d",ipt+1),ncrossx_bins,crossx_bins_cc);
+        }
+    }else{
+        h_crossx = new TH1D("h_crossx","h_crossx",ncrossx_bins,crossx_bins_cc);
+        for (int ipt = 0; ipt < npTbins; ipt++){
+            h_crossx_pt_binned[ipt] = new TH1D(Form("h_crossx_pt%d",ipt+1),Form("h_crossx_pt%d",ipt+1),ncrossx_bins,crossx_bins_cc);
+        }
+    }
+
+    for (int isign = 0; isign < ParamsSet::nSigns; isign++){
+        h_QQ_both_from_Q_same_ancestors[isign][0] = new TH1D(Form("h_QQ_both_from_Q_same_ancestors_sign%d_near",isign+1),Form("h_QQ_both_from_Q_same_ancestors_sign%d_near",isign+1),2,0,2);
+        h_QQ_both_from_Q_same_ancestors[isign][1] = new TH1D(Form("h_QQ_both_from_Q_same_ancestors_sign%d_away",isign+1),Form("h_QQ_both_from_Q_same_ancestors_sign%d_away",isign+1),2,0,2);
+        h_QQ_both_from_Q_ancestor_sp[isign][0] = new TH1D(Form("h_QQ_both_from_Q_ancestor_sp_sign%d_near",isign+1),Form("h_QQ_both_from_Q_ancestor_sp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups);
+        h_QQ_both_from_Q_ancestor_sp[isign][1] = new TH1D(Form("h_QQ_both_from_Q_ancestor_sp_sign%d_away",isign+1),Form("h_QQ_both_from_Q_ancestor_sp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups);
+        h_QQ_both_from_Q_ancestor_dp[isign][0] = new TH2D(Form("h_QQ_both_from_Q_ancestor_dp_sign%d_near",isign+1),Form("h_QQ_both_from_Q_ancestor_dp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
+        h_QQ_both_from_Q_ancestor_dp[isign][1] = new TH2D(Form("h_QQ_both_from_Q_ancestor_dp_sign%d_away",isign+1),Form("h_QQ_both_from_Q_ancestor_dp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
+    }
+}
+
+void PowhegNTupleFirstPass::Finalize(){
+    delete m1_history;
+    delete m2_history;
+    delete m1_history_particle;
+    delete m2_history_particle;
+    // delete m1_last_b_hadron_prt_pt_eta_phi_m;
+    // delete m2_last_b_hadron_prt_pt_eta_phi_m;
+    // delete m1_last_hf_hadron_prt_pt_eta_phi_m;
+    // delete m2_last_hf_hadron_prt_pt_eta_phi_m;
+    delete m1_first_hf_hadron_prt_pt_eta_phi_m;
+    delete m2_first_hf_hadron_prt_pt_eta_phi_m;
+    // delete m1_hq_ancestor_pt_eta_phi_m;
+    // delete m2_hq_ancestor_pt_eta_phi_m;
+
+    m_unspecified_parent_file->close();
+    delete m_unspecified_parent_file;
+
+    if (print_prt_history){
+        if (mc_mode == "mc_truth_bb"){
+            for (int isign = 0; isign < ParamsSet::nSigns; isign++){
+                m_b_parent_file[isign][0]->close();
+                m_b_parent_file[isign][1]->close();
+                delete m_b_parent_file[isign][0];
+                delete m_b_parent_file[isign][1];
+            } 
+        }else{
+            for (int isign = 0; isign < ParamsSet::nSigns; isign++){
+                m_c_parent_file[isign][0]->close();
+                m_c_parent_file[isign][1]->close();
+                delete m_c_parent_file[isign][0];
+                delete m_c_parent_file[isign][1];
+            }
+        }
+    }
+
+    if (print_specific_prt_history){
+        if (mc_mode == "mc_truth_bb"){
+            m_bb_ss_near_file->close();
+            m_bb_ss_away_file->close();
+            m_bb_op_near_one_b_one_btoc_others_file->close();
+            delete m_bb_ss_near_file;
+            delete m_bb_ss_away_file;
+            delete m_bb_op_near_one_b_one_btoc_others_file;
+        }else{
+            m_cc_ss_small_dphi_file->close();
+            delete m_cc_ss_small_dphi_file;
+        }
+    }
+
+    for (int jdphi = 0; jdphi < 2; jdphi++){
+        for (int isign = 0; isign < ParamsSet::nSigns; isign++){
+            delete h_ptlead_pair_pt[isign][jdphi];
+            delete h_parent_groups[isign][jdphi];
+            // delete h_n_to_2_ancestors[isign][jdphi];
+
+            for (int kgrp = 0; kgrp < nAncestorGroups; kgrp++){
+
+                delete h_QQ_DR[isign][jdphi][kgrp];
+                delete h_QQ_Dphi[isign][jdphi][kgrp];
+                delete h_QQ_minv[isign][jdphi][kgrp];
+
+                delete h_QQ_ptlead_pair_pt[isign][jdphi][kgrp];
+                delete h_QQ_pt1_pt2[isign][jdphi][kgrp];
+                delete h_QQ_Deta_Dphi[isign][jdphi][kgrp];
+                delete h_QQ_eta1_eta2[isign][jdphi][kgrp];
+                delete h_QQ_minv_pair_pt[isign][jdphi][kgrp];
+                delete h_QQ_minv_Dphi[isign][jdphi][kgrp];
+            }
+        }
+    }
+
+    for (int jdphi = 0; jdphi < 2; jdphi++){
+        for (int isign = 0; isign < ParamsSet::nSigns; isign++){
+            delete h_QQ_both_from_Q_same_ancestors[isign][jdphi];
+            delete h_QQ_both_from_Q_ancestor_sp[isign][jdphi];
+            delete h_QQ_both_from_Q_ancestor_dp[isign][jdphi];
+        }
+    }
+}
+
+void PowhegNTupleFirstPass::FillMuonPair(int pair_ind, std::shared_ptr<MuonPairPowheg>& mpair){
+  // // use ind to record barcode instead
+  mpair->m1.ind     = muon_pair_muon1_bar->at(pair_ind);
+  mpair->m2.ind     = muon_pair_muon2_bar->at(pair_ind);
+  mpair->m1.charge  = muon_pair_muon1_ch->at(pair_ind);//sign of pt stores charge
+  mpair->m2.charge  = muon_pair_muon2_ch->at(pair_ind);//sign of pt stores charge
+
+  // if charge unequal gives 1 (opposite sign); otherwise gives 0 (same sign)
+  h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill(nocut + 0.5, mpair->weight);
+
+  mpair->m1.pt    = fabs(muon_pair_muon1_pt->at(pair_ind))/1000.0;//pt of the first muon in the pair
+  mpair->m2.pt    = fabs(muon_pair_muon2_pt->at(pair_ind))/1000.0;//pt of the second muon in the pair
+  mpair->m1.eta   = muon_pair_muon1_eta->at(pair_ind);
+  mpair->m2.eta   = muon_pair_muon2_eta->at(pair_ind);
+  mpair->m1.phi   = muon_pair_muon1_phi->at(pair_ind);
+  mpair->m2.phi   = muon_pair_muon2_phi->at(pair_ind);
+
+  mpair->Q          = Q;
+  // mpair->weight     = static_cast<double>(EventWeights->at(0) * filter_effcy / nentries);
+  mpair->weight     = static_cast<double>(EventWeights->at(0) * filter_effcy);
+  mpair->crossx     = EventWeights->at(0);
+  mpair->minv       = truth_mupair_m->at(pair_ind)/1000.;
+  mpair->pair_pt    = truth_mupair_pt->at(pair_ind)/1000.;
+  mpair->pair_y     = truth_mupair_y->at(pair_ind);
+  mpair->asym       = abs(truth_mupair_asym->at(pair_ind));
+  mpair->acop       = abs(truth_mupair_acop->at(pair_ind));
+  assert (mpair->asym >= 0 && mpair->acop >= 0);
+}
+
+bool PowhegNTupleFirstPass::PassCuts(const std::shared_ptr<MuonPair>& mpair){
   //Apply ALL CUTS but for resonances
 
   // NO quality cuts on the MC truth muons
@@ -69,47 +428,8 @@ bool MCNTupleFirstPass::PassCuts(){
   return true;
 }
 
-bool MCNTupleFirstPass::IsResonance(){
-  // assuming we have already filled up the muon pair mpair
-  if (mpair->same_sign) h_cutAcceptance[0]->Fill(pass_resonance + 0.5, mpair->weight);
-  else{ // opposite sign
-    if (mpair->minv > pms.minv_upper){
-      resonance_tagged_muon_index_list.push_back(mpair->m1.ind);
-      resonance_tagged_muon_index_list.push_back(mpair->m2.ind);
-      return true;
-    }
-    
-    for (array<float,2> ires : pms.minv_cuts){
-      if (mpair->minv > ires[0] && mpair->minv < ires[1]){
-        resonance_tagged_muon_index_list.push_back(mpair->m1.ind);
-        resonance_tagged_muon_index_list.push_back(mpair->m2.ind);
-        return true;
-      }
-    }
-    
-    h_cutAcceptance[1]->Fill(pass_resonance + 0.5, mpair->weight);
-  }
-  
-  return false;
-}
 
-bool MCNTupleFirstPass::IsPhotoProduction(){
-  // A := |Delta PT| / (sum pT) < 0.05 && alpha := (pi-Dphi)/pi < 0.01
-  // float A = (mpair->m1.pt - mpair->m2.pt) / (mpair->m1.pt + mpair->m2.pt);
-  // assert (A >= 0);
-  // float alpha = (pms.PI - fabs(mpair->dphi)) / pms.PI;
-  // return (!(mpair->same_sign) && A < 0.05 && alpha < 0.01);
-  // return (!(mpair->same_sign) && mpair->asym < 0.05 && mpair->acop < 0.01);
-  
-  if (mpair->same_sign) h_cutAcceptance[0]->Fill(pass_photoprod + 0.5, mpair->weight);
-  else if (mpair->asym < 0.05 && mpair->acop < 0.01) return true; // is photoproduction 
-  else h_cutAcceptance[1]->Fill(pass_photoprod + 0.5, mpair->weight);
-
-  return false;
-}
-
-
-int MCNTupleFirstPass::ParentGrouping(std::vector<int>& parent_ids, bool c_tag, bool prev_is_lepton){
+int PowhegNTupleFirstPass::ParentGrouping(std::vector<int>& parent_ids, bool c_tag, bool prev_is_lepton){
 
   if (parent_ids.size() == 2 && abs(parent_ids[0]) <= 5 && parent_ids[1] == (-1) * parent_ids[0] && prev_is_lepton){
     // std::cout << "For study purpose - Drell-Yan:" << std::endl;
@@ -147,7 +467,7 @@ int MCNTupleFirstPass::ParentGrouping(std::vector<int>& parent_ids, bool c_tag, 
 }
 
 
-void MCNTupleFirstPass::GetPtEtaPhiMFromBarcode(int barcode, std::vector<float>* pt_eta_phi_m){
+void PowhegNTupleFirstPass::GetPtEtaPhiMFromBarcode(int barcode, std::vector<float>* pt_eta_phi_m){
   std::vector<int>::iterator itbar = std::find(truth_barcode->begin(), truth_barcode->end(), barcode);
 
   if (itbar == truth_barcode->end()){ // found the barcode of muon1 among all truth particles
@@ -161,7 +481,7 @@ void MCNTupleFirstPass::GetPtEtaPhiMFromBarcode(int barcode, std::vector<float>*
   pt_eta_phi_m->push_back(truth_phi->at(itbar - truth_barcode->begin()));
 }
 
-int MCNTupleFirstPass::UpdateCurParents(bool isMuon1, std::vector<int>& cur_prt_bars, std::vector<int>& cur_prt_ids, int hf_quark_index = -1){
+int PowhegNTupleFirstPass::UpdateCurParents(bool isMuon1, std::vector<int>& cur_prt_bars, std::vector<int>& cur_prt_ids, int hf_quark_index = -1){
   // if (mpair->m1.ev_num == 1 && !isMuon1){
   //   PrintHistory(&std::cout, true, isMuon1);
   // }
@@ -285,7 +605,7 @@ int MCNTupleFirstPass::UpdateCurParents(bool isMuon1, std::vector<int>& cur_prt_
   return 0;
 }
 
-int MCNTupleFirstPass::FindHeavyQuarks(std::vector<int>& cur_prt_ids, int quark_type, bool isMuon1, int hadron_child_id = 0){
+int PowhegNTupleFirstPass::FindHeavyQuarks(std::vector<int>& cur_prt_ids, int quark_type, bool isMuon1, int hadron_child_id = 0){
   if (quark_type != 4 && quark_type != 5){
     std::cout << "Error:: the parameter quark_type must take value of 4 (c) or 5 (b), quitting" << std::endl;
     throw std::exception();
@@ -325,7 +645,7 @@ int MCNTupleFirstPass::FindHeavyQuarks(std::vector<int>& cur_prt_ids, int quark_
   return -1;
 }
 
-void MCNTupleFirstPass::SingleMuonAncestorTracing(bool isMuon1){
+void PowhegNTupleFirstPass::SingleMuonAncestorTracing(bool isMuon1){
   // cout << "starting on m1/m2 ancestor tracing" << endl;
 
   std::vector<int> parent_bars;
@@ -497,7 +817,7 @@ void MCNTupleFirstPass::SingleMuonAncestorTracing(bool isMuon1){
   // }
 }
 
-int MCNTupleFirstPass::AncestorGrouping(std::vector<int>& ancestor_ids){
+int PowhegNTupleFirstPass::AncestorGrouping(std::vector<int>& ancestor_ids){
   // incoming
   if (ancestor_ids.size() == 1 && ancestor_ids[0] == 2212)
     return incoming;
@@ -538,7 +858,7 @@ int MCNTupleFirstPass::AncestorGrouping(std::vector<int>& ancestor_ids){
   return -1;
 }
 
-void MCNTupleFirstPass::HardScatteringAnalysis(std::vector<int>& ancestor_bars, std::vector<int>& ancestor_ids, int sign_dphi_mode, int ancestor_grp){
+void PowhegNTupleFirstPass::HardScatteringAnalysis(std::vector<int>& ancestor_bars, std::vector<int>& ancestor_ids, int sign_dphi_mode, int ancestor_grp){
   // find the outgoing particles from the hard scattering
   // record the number, and kinematics, of the hard-scattering outproducts
   // the latter in the different muon-pair-sign/dphi regions
@@ -673,7 +993,7 @@ void MCNTupleFirstPass::HardScatteringAnalysis(std::vector<int>& ancestor_bars, 
 }
 
 
-void MCNTupleFirstPass::PrintHistory(std::ostream* f, bool print_single, bool muon1_sameancestor){
+void PowhegNTupleFirstPass::PrintHistory(std::ostream* f, bool print_single, bool muon1_sameancestor){
   // print_single: if True then print single muon history; else then print both muons' history
   // muon1_sameancestor: meaning depends on print_single
   // if (print_single): True = muon1, False = muon2
@@ -741,7 +1061,7 @@ void MCNTupleFirstPass::PrintHistory(std::ostream* f, bool print_single, bool mu
 
 
 
-// void MCNTupleFirstPass::SameSignSameAncestorsAnalysis(bool near_side, bool one_b_one_btoc, bool print_history = false){
+// void PowhegNTupleFirstPass::SameSignSameAncestorsAnalysis(bool near_side, bool one_b_one_btoc, bool print_history = false){
 //   // assume same sign & same ancestors
 
 //   TH1D* h_bb_ss_involv_osc = (near_side)? h_bb_ss_near_involv_osc : h_bb_ss_away_involv_osc;
@@ -784,7 +1104,7 @@ void MCNTupleFirstPass::PrintHistory(std::ostream* f, bool print_single, bool mu
 //   }  
 // }
 
-void MCNTupleFirstPass::MuonPairTagsReinit(){
+void PowhegNTupleFirstPass::MuonPairTagsReinit(){
   m1_c_tag = false;
   m2_c_tag = false;
   m1_osc = false;
@@ -825,7 +1145,7 @@ void MCNTupleFirstPass::MuonPairTagsReinit(){
 }
 
 
-void MCNTupleFirstPass::CheckIfFromSameB(){
+void PowhegNTupleFirstPass::CheckIfFromSameB(){
   // check if from same b
   // not necessarily [op sign + one from direct b, one from b to c]
   // can also be from some 1-to-n hadronic weak decay (so perhaps both are b to c)
@@ -855,7 +1175,7 @@ void MCNTupleFirstPass::CheckIfFromSameB(){
 }
 
 
-void MCNTupleFirstPass::MuonPairAncestorTracing(){
+void PowhegNTupleFirstPass::MuonPairAncestorTracing(){
 
   MuonPairTagsReinit();
   
@@ -937,7 +1257,7 @@ void MCNTupleFirstPass::MuonPairAncestorTracing(){
 }
 
 
-void MCNTupleFirstPass::KinematicCorrPlots(int isign, int idphi){
+void PowhegNTupleFirstPass::KinematicCorrPlots(int isign, int idphi){
   h_pt_muon_pt_closest_hadr_ratio[isign][idphi]->Fill(mpair->m1.pt / (mpair->m1_last_hf_hadron_prt_pt_eta_phi_m)[0],mpair->weight);
   h_pt_muon_pt_closest_hadr_ratio[isign][idphi]->Fill(mpair->m2.pt / (mpair->m2_last_hf_hadron_prt_pt_eta_phi_m)[0],mpair->weight);
   h_pt_closest_hadr_pt_furthest_hadr_ratio[isign][idphi]->Fill((mpair->m1_last_hf_hadron_prt_pt_eta_phi_m)[0] / (*m1_first_hf_hadron_prt_pt_eta_phi_m)[0], mpair->weight);
@@ -953,7 +1273,18 @@ void MCNTupleFirstPass::KinematicCorrPlots(int isign, int idphi){
 }
 
 
-void MCNTupleFirstPass::FillMuonPairTree(){
+void PowhegNTupleFirstPass::FillMuonPairTree(){
+
+  // NECESSARY step: ALWAYS update the raw pointer with the current content of the shared pointer BEFORE FILLING OUTPUT TREES
+  try{
+    if (!mpair) throw std::runtime_error();
+    mpair_raw_ptr = mpair.get();
+  }catch(const std::runtime_error& e){
+    std::cout << "Runtime error caught in function FillMuonPairTree: " << e.what() << std::endl;
+    std::cout << "Return without filling the muon pair in the output trees!" << std::endl;
+    return;
+  }
+
   int nsign = (mpair->same_sign)? 0:1;
   muonPairOutTree[nsign]->Fill();
   for (unsigned int idr = 0; idr < pms.ndRselcs; idr++){
@@ -964,9 +1295,8 @@ void MCNTupleFirstPass::FillMuonPairTree(){
 }
 
 
-void MCNTupleFirstPass::ProcessData(){
+void PowhegNTupleFirstPass::ProcessData(){
 
-  mpair = new MuonPairPowheg();
   int quark = (mc_mode == "mc_truth_bb")? 5:4;
   qqpair = new TruthQQPair(quark);
   // Long64_t nentries = 100000;
@@ -984,70 +1314,33 @@ void MCNTupleFirstPass::ProcessData(){
       throw std::exception();
     }
  
+    muon_pair_list_cur_event_pre_resonance_cut.clear();
+    resonance_tagged_muon_index_list.clear(); // MUST CLEAR for each event!!
 
     //trigger requirement for event
     // if(!b_HLT_2mu4) continue;
-
-    // std::vector<int> muon_index_list = {};
-    std::vector<int>::iterator itres;
-    resonance_tagged_muon_index_list.clear(); // MUST CLEAR for each event!!
 
     int NPairs = muon_pair_muon1_pt->size();//number of muon pairs in the event
     // h_numMuonPairsRaw->Fill(NPairs - 0.5);
     int NPairsAfter = 0;
 
-    for(int i=0;i<NPairs;i++){//loop over all muon-pairs in the event
+    for(int pair_ind = 0; pair_ind < NPairs; pair_ind++){//first loop over all muon-pairs in the event
 
-      // // use ind to record barcode instead
-      mpair->m1.ind     = muon_pair_muon1_bar->at(i);
-      mpair->m2.ind     = muon_pair_muon2_bar->at(i);
-      mpair->m1.charge  = muon_pair_muon1_ch->at(i);//sign of pt stores charge
-      mpair->m2.charge  = muon_pair_muon2_ch->at(i);//sign of pt stores charge
+      mpair = std::make_shared<MuonPairPowheg>(MuonPairPowheg());
 
-      // if charge unequal gives 1 (opposite sign); otherwise gives 0 (same sign)
-      h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill(nocut + 0.5, mpair->weight);
-
-      itres = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m1.ind);
-      if(itres != resonance_tagged_muon_index_list.end()) continue;
-
-      itres = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m2.ind);
-      if(itres != resonance_tagged_muon_index_list.end()) continue;
-
-      h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill(pass_no_prev_resonance_tag + 0.5, mpair->weight);
-
-      mpair->m1.pt    = fabs(muon_pair_muon1_pt->at(i))/1000.0;//pt of the first muon in the pair
-      mpair->m2.pt    = fabs(muon_pair_muon2_pt->at(i))/1000.0;//pt of the second muon in the pair
-      mpair->m1.eta   = muon_pair_muon1_eta->at(i);
-      mpair->m2.eta   = muon_pair_muon2_eta->at(i);
-      mpair->m1.phi   = muon_pair_muon1_phi->at(i);
-      mpair->m2.phi   = muon_pair_muon2_phi->at(i);
-      // mpair->m1.quality = muon_pair_muon1_quality->at(i);
-      // mpair->m2.quality = muon_pair_muon2_quality->at(i);
-      // mpair->m1.dP_overP = muon_deltaP_overP->at(mpair->m1.ind);
-      // mpair->m2.dP_overP = muon_deltaP_overP->at(mpair->m2.ind);
+      FillMuonPair(pair_ind, mpair);
       mpair->m1.ev_num = jentry;
       mpair->m2.ev_num = jentry;
-
-      mpair->Q          = Q;
-      // mpair->weight     = static_cast<double>(EventWeights->at(0) * filter_effcy / nentries);
-      mpair->weight     = static_cast<double>(EventWeights->at(0) * filter_effcy);
-      mpair->crossx     = EventWeights->at(0);
-      mpair->minv       = truth_mupair_m->at(i)/1000.;
-      mpair->pair_pt    = truth_mupair_pt->at(i)/1000.;
-      mpair->pair_y     = truth_mupair_y->at(i);
-      mpair->asym       = abs(truth_mupair_asym->at(i));
-      mpair->acop       = abs(truth_mupair_acop->at(i));
-      assert (mpair->asym >= 0 && mpair->acop >= 0);
 
       // ------------------------------------------------------------
 
       // Apply cuts
 
       // Trigger match for muon pair
-      // if(dimuon_b_HLT_2mu4->at(i)==false) continue;
+      // if(dimuon_b_HLT_2mu4->at(pair_ind)==false) continue;
 
       if (abs(mpair->weight) > crossx_cut * filter_effcy) continue;
-      if (!PassCuts())continue;
+      if (!PassCuts(mpair))continue;
     
       //------------------------------------------------------------
 
@@ -1057,11 +1350,36 @@ void MCNTupleFirstPass::ProcessData(){
       // mpair->Update();
       mpair->UpdateShort(); // only afterwards can we use mpair->same_sign
 
-      // resonance cut
-      if (IsResonance()) continue;
+      // resonance tag
+      ResonanceTagging(mpair);
 
-      // photo-production cut
+      // photo-production cut - DO NOT APPLY FOR MC
       // if (IsPhotoProduction()) continue;
+      
+      muon_pair_list_cur_event_pre_resonance_cut.push_back(std::move(mpair));
+      
+    } // finish first loop over all muon pairs
+
+    for(int pair_ind = 0; pair_ind < muon_pair_list_cur_event_pre_resonance_cut.size(); pair_ind++){//second loop over all muon-pairs in the event
+      // discard the pair if either muon is resonance-tagged
+
+      mpair = std::move(muon_pair_list_cur_event_pre_resonance_cut.at(pair_ind));
+
+      if (!mpair){
+        std::cerr << "mpair at second muon-pair loop NOT found! Return without resonance-tag checking or pair analysis." << std::endl;
+        continue;
+      }
+
+      std::vector<int>::iterator itres_m1;
+      std::vector<int>::iterator itres_m2;
+
+      itres_m1 = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m1.ind);
+      if(itres_m1 != resonance_tagged_muon_index_list.end())  continue;
+
+      itres_m2 = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m2.ind);
+      if(itres_m2 != resonance_tagged_muon_index_list.end())  continue;
+
+      h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill(pass_resonance + 0.5, mpair->weight);
       
       //------------------------------------------------------------
 
@@ -1103,9 +1421,10 @@ void MCNTupleFirstPass::ProcessData(){
       int isign = !(mpair->same_sign);
       int jdphi = (abs(mpair->dphi) >= pms.PI / 2.);
       h_ptlead_pair_pt[isign][jdphi]->Fill(mpair->pair_pt, mpair->pt_lead, mpair->weight);
-    }
+    } // finish second loop over muon pairs
 
     h_numMuonPairs->Fill(NPairsAfter - 0.5, mpair->weight);
+    muon_pair_list_cur_event_pre_resonance_cut.clear();
   }//loop over events
 
   std::cout << "The total integral of events where the hardest scattering is 2-to-2 is: " << crossx_2_to_2 << std::endl;
@@ -1113,17 +1432,12 @@ void MCNTupleFirstPass::ProcessData(){
   std::cout << "Total percentage in crossx of events where the relevant hard scattering for a same-ancestor muon pair is not the hardest scattering is: " << crossx_relevant_hard_isnt_hardest / (crossx_2_to_2 + crossx_2_to_3) << std::endl;
   std::cout << "Total percentage in crossx of skipped HF events (not filled in HF-muon-pair-ancestor-category trees): " << skipped_event_crossx / (crossx_2_to_2 + crossx_2_to_3) << std::endl;
 
-  delete mpair;
   delete qqpair;
 }
 
 
-void MCNTupleFirstPass::HistAdjust(){
-  // for loop over ibin: h->GetXaxis()->SetAxisLabel(ibin,label[ibin]);
-  for (int ibin = 0; ibin < numCuts; ibin++){
-    h_cutAcceptance[0]->GetXaxis()->SetBinLabel(ibin+1,cutLabels[ibin].c_str());
-    h_cutAcceptance[1]->GetXaxis()->SetBinLabel(ibin+1,cutLabels[ibin].c_str());
-  }
+void PowhegNTupleFirstPass::HistAdjust(){
+  MuonNTupleFirstPassBaseClass::HistAdjust();
 
   for (int ibin = 0; ibin < 3; ibin++){
     for (int isign = 0; isign < ParamsSet::nSigns; isign++){
@@ -1155,13 +1469,10 @@ void MCNTupleFirstPass::HistAdjust(){
       }
     }
   }
-
-  h_cutAcceptance[0]->Scale(1./h_cutAcceptance[0]->GetBinContent(1));
-  h_cutAcceptance[1]->Scale(1./h_cutAcceptance[1]->GetBinContent(1));
 }
 
 
-void MCNTupleFirstPass::Run(){
+void PowhegNTupleFirstPass::Run(){
   clock_t start, end;
   double cpu_time_used;
   start = clock();
@@ -1183,6 +1494,7 @@ void MCNTupleFirstPass::Run(){
   HistAdjust();
  
   m_outfile->Write();
+  m_outHistFile->Write();
   Finalize();
 
   end = clock();
