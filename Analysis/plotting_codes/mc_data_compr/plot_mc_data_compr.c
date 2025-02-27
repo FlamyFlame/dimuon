@@ -415,11 +415,6 @@ void plot_mc_data_compr_1D_ratio(){
     p_DR_ratio.ratio_plot_mode = true;
     p_DR_ratio.Run();
 
-    PlotMCDataComprSingleKinematics p_DR_jacobian_corr_ratio("DR", "#Delta R");
-    p_DR_jacobian_corr_ratio.ratio_plot_mode = true;
-    p_DR_jacobian_corr_ratio.jacobian_correct = true;
-    p_DR_jacobian_corr_ratio.Run();
-
     PlotMCDataComprSingleKinematics p_Dphi_ratio("Dphi", "#Delta #phi");
     p_Dphi_ratio.ratio_plot_mode = true;
     p_Dphi_ratio.Run();
@@ -461,6 +456,22 @@ void plot_mc_data_compr_1D_ratio_noerrorbar(){
     p_pair_pt_ptlead_ratio_ratio.ratio_plot_draw_errorbar = false;
     p_pair_pt_ptlead_ratio_ratio.Run();
 }
+
+void plot_mc_data_compr_DR_zoomin(){
+    PlotMCDataComprSingleKinematics p_DR_zoomin("DR_zoomin", "#Delta R");
+    // p_DR_zoomin.legend_position_same_sign = {0.62,0.6,0.95,0.89};
+    p_DR_zoomin.Run();
+
+    PlotMCDataComprSingleKinematics p_DR_zoomin_ratio("DR_zoomin", "#Delta R");
+    p_DR_zoomin_ratio.ratio_plot_mode = true;
+    p_DR_zoomin_ratio.Run();
+
+    PlotMCDataComprSingleKinematics p_DR_zoomin_jacobian_corr("DR_zoomin", "#Delta R");
+    p_DR_zoomin_jacobian_corr.jacobian_correct = true;
+    p_DR_zoomin_jacobian_corr.Run();
+
+}
+
 
 void plot_mc_data_compr_2D_proj(){
     // ----------------- 2D histograms projecting onto 1D -----------------
@@ -568,12 +579,13 @@ void plot_mc_data_compr_2D_proj_normalize_to_unity(){
 }
 
 void plot_mc_data_compr(){
-    plot_mc_data_compr_1D();
-    plot_mc_data_compr_2D_proj();
-    plot_mc_data_compr_1D_ratio();
-    plot_mc_data_compr_2D_proj_ratio();
-    plot_mc_data_compr_1D_ratio_noerrorbar();
-    plot_mc_data_compr_2D_proj_ratio_noerrorbar();
+    // plot_mc_data_compr_1D();
+    // plot_mc_data_compr_2D_proj();
+    // plot_mc_data_compr_1D_ratio();
+    // plot_mc_data_compr_2D_proj_ratio();
+    // plot_mc_data_compr_1D_ratio_noerrorbar();
+    // plot_mc_data_compr_2D_proj_ratio_noerrorbar();
+    plot_mc_data_compr_DR_zoomin();
     // plot_mc_data_compr_1D_normalize_to_unity();
     // plot_mc_data_compr_2D_proj_normalize_to_unity();
 
