@@ -333,8 +333,8 @@ void MuonPairPlottingPowheg::InitHists(){
             for (int igrp = 0; igrp < nAncestorGroups + 2; igrp++){
                 h_DR_ancestor_binned[isign][igrp] = new TH1D(Form("h_DR_sign%d%s",isign+1,ancestor_grps[igrp].c_str()),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_bins,0,pms.deltaR_thrsh[2]);
                 h_DR_zoomin_ancestor_binned[isign][igrp] = new TH1D(Form("h_DR_zoomin_sign%d%s",isign+1,ancestor_grps[igrp].c_str()),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_zoomin_bins,0,pms.deltaR_thrsh_zoomin);
-                h_DR_jacobian_corrected_ancestor_binned[isign][igrp] = new TH1D(Form("h_DR_sign%d%s",isign+1,ancestor_grps[igrp].c_str()),";#Delta R;#frac{1}{N_{evt}} #frac{1}{#Delta R} #frac{dN}{d#Delta R}", nDR_bins,0,pms.deltaR_thrsh[2]);
-                h_DR_zoomin_jacobian_corrected_ancestor_binned[isign][igrp] = new TH1D(Form("h_DR_zoomin_sign%d%s",isign+1,ancestor_grps[igrp].c_str()),";#Delta R;#frac{1}{N_{evt}} #frac{1}{#Delta R} #frac{dN}{d#Delta R}", nDR_zoomin_bins,0,pms.deltaR_thrsh_zoomin);
+                h_DR_jacobian_corrected_ancestor_binned[isign][igrp] = new TH1D(Form("h_DR_jacobian_corrected_sign%d%s",isign+1,ancestor_grps[igrp].c_str()),";#Delta R;#frac{1}{N_{evt}} #frac{1}{#Delta R} #frac{dN}{d#Delta R}", nDR_bins,0,pms.deltaR_thrsh[2]);
+                h_DR_zoomin_jacobian_corrected_ancestor_binned[isign][igrp] = new TH1D(Form("h_DR_zoomin_jacobian_corrected_sign%d%s",isign+1,ancestor_grps[igrp].c_str()),";#Delta R;#frac{1}{N_{evt}} #frac{1}{#Delta R} #frac{dN}{d#Delta R}", nDR_zoomin_bins,0,pms.deltaR_thrsh_zoomin);
                 h_pt_asym_ancestor_binned[isign][igrp] = new TH1D(Form("h_pt_asym_sign%d%s",isign+1,ancestor_grps[igrp].c_str()),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", npt_asym_bins,0,1.);
                 // h_psrapidity_ordered_pt_asym_ancestor_binned
                 h_pair_pt_ptlead_ratio_ancestor_binned[isign][igrp] = new TH1D(Form("h_pair_pt_ptlead_ratio_sign%d%s",isign+1,ancestor_grps[igrp].c_str()),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", npair_pt_ptlead_ratio_bins,0,2.);
@@ -366,16 +366,11 @@ void MuonPairPlottingPowheg::InitHists(){
                 h_mQQ_mHard_ratio_ancestor_binned[isign][igrp]->Sumw2();
             }
 
-                // h_DR[jdphi][isign] = new TH1D(Form("h_DR_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_bins,0,pms.deltaR_thrsh[2]);
-                // h_DR_zoomin[jdphi][isign] = new TH1D(Form("h_DR_zoomin_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_zoomin_bins,0,pms.deltaR_thrsh_zoomin);
-                // h_DR_jacobian_corrected[jdphi][isign] = new TH1D(Form("h_DR_jacobian_corrected_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";#Delta R;#frac{1}{N_{evt}} #frac{1}{#Delta R} #frac{dN}{d#Delta R}", nDR_bins,0,pms.deltaR_thrsh[2]);
-                // h_DR_zoomin_jacobian_corrected[jdphi][isign] = new TH1D(Form("h_DR_zoomin_jacobian_corrected_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_zoomin_bins,0,pms.deltaR_thrsh_zoomin);
-
             for (int kflav = 0; kflav < nFlavors; kflav++){
                 h_DR_flavor_binned[isign][kflav] = new TH1D(Form("h_DR_sign%d%s",isign+1,flavor_grps[kflav].c_str()),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_bins,0,pms.deltaR_thrsh[2]);
                 h_DR_zoomin_flavor_binned[isign][kflav] = new TH1D(Form("h_DR_zoomin_sign%d%s",isign+1,flavor_grps[kflav].c_str()),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_zoomin_bins,0,pms.deltaR_thrsh_zoomin);
-                h_DR_jacobian_corrected_flavor_binned[isign][kflav] = new TH1D(Form("h_DR_sign%d%s",isign+1,flavor_grps[kflav].c_str()),";#Delta R;#frac{1}{N_{evt}} #frac{1}{#Delta R} #frac{dN}{d#Delta R}", nDR_bins,0,pms.deltaR_thrsh[2]);
-                h_DR_zoomin_jacobian_corrected_flavor_binned[isign][kflav] = new TH1D(Form("h_DR_zoomin_sign%d%s",isign+1,flavor_grps[kflav].c_str()),";#Delta R;#frac{1}{N_{evt}} #frac{1}{#Delta R} #frac{dN}{d#Delta R}", nDR_zoomin_bins,0,pms.deltaR_thrsh_zoomin);
+                h_DR_jacobian_corrected_flavor_binned[isign][kflav] = new TH1D(Form("h_DR_jacobian_corrected_sign%d%s",isign+1,flavor_grps[kflav].c_str()),";#Delta R;#frac{1}{N_{evt}} #frac{1}{#Delta R} #frac{dN}{d#Delta R}", nDR_bins,0,pms.deltaR_thrsh[2]);
+                h_DR_zoomin_jacobian_corrected_flavor_binned[isign][kflav] = new TH1D(Form("h_DR_zoomin_jacobian_corrected_sign%d%s",isign+1,flavor_grps[kflav].c_str()),";#Delta R;#frac{1}{N_{evt}} #frac{1}{#Delta R} #frac{dN}{d#Delta R}", nDR_zoomin_bins,0,pms.deltaR_thrsh_zoomin);
                 h_pt_asym_flavor_binned[isign][kflav] = new TH1D(Form("h_pt_asym_sign%d%s",isign+1,flavor_grps[kflav].c_str()),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", npt_asym_bins,0,1.);
                 // h_psrapidity_ordered_pt_asym_flavor_binned
                 h_pair_pt_ptlead_ratio_flavor_binned[isign][kflav] = new TH1D(Form("h_pair_pt_ptlead_ratio_sign%d%s",isign+1,flavor_grps[kflav].c_str()),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", npair_pt_ptlead_ratio_bins,0,2.);
