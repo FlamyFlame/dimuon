@@ -52,42 +52,6 @@ void PythiaNTupleFirstPass::SetInputFilesFromBatch(){
     nfiles_factor = {{80,20,0,0,0},{80,20,0,0,0},{80,40,4,1,1},{80,40,4,1,1},{80,40,4,1,1}};
     break;
 
-  // case 3:    
-  //   new_run = true;
-  //   outfile_name = "muon_pairs_pythia_after0322_batch1";
-  //   outhistfile_name = "hists_pythia_ntuple_processing_after0322_batch1";
-  //   job_dirs = {"0322_k0_k1/", "0323_k0_k1/", "0325_all_k/"};
-  //   kn_in_job = {{true,true,false,false,false},{true,true,false,false,false},{true, true, true, true, true}};
-  //   nfiles_factor = {{80,20,0,0,0},{80,20,0,0,0},{80,40,4,1,1}};
-  //   break;
-
-  // case 4:
-  //   new_run = true;
-  //   outfile_name = "muon_pairs_pythia_after0322_batch2";
-  //   outhistfile_name = "hists_pythia_ntuple_processing_after0322_batch2";
-  //   job_dirs = {"0401_all_k/"};
-  //   kn_in_job = {{true, true, true, true, true}};
-  //   nfiles_factor = {{80,40,4,1,1}};
-  //   break;
-
-  // case 5:
-  //   new_run = true;
-  //   outfile_name = "muon_pairs_pythia_0429";
-  //   outhistfile_name = "hists_pythia_ntuple_processing_0429";
-  //   job_dirs = {"0429_all_k/"};
-  //   kn_in_job = {{true, true, true, true, true}};
-  //   nfiles_factor = {{80,40,4,1,1}};
-  //   break;
-
-  // case 6:
-  //   new_run = true;
-  //   outfile_name = "muon_pairs_pythia_0429";
-  //   outhistfile_name = "hists_ntuple_processing_pythia_0429";
-  //   job_dirs = {"0429_all_k/"};
-  //   kn_in_job = {{true, true, true, true, true}};
-  //   nfiles_factor = {{80,40,4,1,1}};
-  //   break;
-
   default:
     std::cerr << "ERROR: The integer batch number must be specified and set between 1 and 2!" << std::endl;
     throw std::exception();
