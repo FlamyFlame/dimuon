@@ -49,30 +49,6 @@ void MuonPairPlottingPythia::FillHistograms(int nfile, int nkin, int nsign){
     // bool pass_gapcut = PassSingleMuonGapCut(m1eta[nfile][nkin][nsign], m1pt[nfile][nkin][nsign], m1charge[nfile][nkin][nsign]) && PassSingleMuonGapCut(m2eta[nfile][nkin][nsign], m2pt[nfile][nkin][nsign], m2charge[nfile][nkin][nsign]);
     bool away_side = (abs(dphi[nfile][nkin][nsign]) >= pms.PI / 2.);
 
-    // if (pass_gapcut){
-    //     h_pair_dP_overP[away_side][nsign][1]->Fill(pair_dPoverP[nfile][nkin][nsign],ev_weight);
-    //     h_pair_y[away_side][nsign][1]->Fill(pair_y[nfile][nkin][nsign],ev_weight);
-    //     h_DR[away_side][nsign][1]->Fill(dr[nfile][nkin][nsign],ev_weight);
-    //     h_Dphi[away_side][nsign][1]->Fill(dphi[nfile][nkin][nsign],ev_weight);
-    //     h_pt_asym[away_side][nsign][1]->Fill(asym[nfile][nkin][nsign],ev_weight);
-        
-    //     h_pair_pt_ptlead_ratio[away_side][nsign][1]->Fill(pair_pt[nfile][nkin][nsign]/pt_lead[nfile][nkin][nsign],ev_weight);
-    //     h_eta_avg_Dphi[away_side][nsign][1]->Fill(dphi[nfile][nkin][nsign],etaavg[nfile][nkin][nsign],ev_weight);
-    //     h_eta1_eta2[away_side][nsign][1]->Fill(m2eta[nfile][nkin][nsign],m1eta[nfile][nkin][nsign],ev_weight);
-    //     h_pt1_pt2[away_side][nsign][1]->Fill(m2pt[nfile][nkin][nsign],m1pt[nfile][nkin][nsign],ev_weight);
-    //     h_eta_avg_Deta[away_side][nsign][1]->Fill(deta[nfile][nkin][nsign],etaavg[nfile][nkin][nsign],ev_weight);
-    //     h_ptlead_pair_pt[away_side][nsign][1]->Fill(pair_pt[nfile][nkin][nsign],m1pt[nfile][nkin][nsign],ev_weight);
-    //     h_minv_pair_pt[away_side][nsign][1]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
-    //     h_Deta_Dphi[away_side][nsign][1]->Fill(dphi[nfile][nkin][nsign],deta[nfile][nkin][nsign],ev_weight);
-        
-    //     h_eta1_eta2_dphicut[2][nsign][1]->Fill(m2eta[nfile][nkin][nsign],m1eta[nfile][nkin][nsign],ev_weight);
-    //     if (abs(dphi[nfile][nkin][nsign]) < 1){
-    //         h_eta1_eta2_dphicut[0][nsign][1]->Fill(m2eta[nfile][nkin][nsign],m1eta[nfile][nkin][nsign],ev_weight);
-    //     }else if(abs(dphi[nfile][nkin][nsign]) > pms.PI-1){
-    //         h_eta1_eta2_dphicut[1][nsign][1]->Fill(m2eta[nfile][nkin][nsign],m1eta[nfile][nkin][nsign],ev_weight);
-    //     }
-    // }
-
     float pT_large_eta = (abs(m1eta[nfile][nkin][nsign]) > abs(m2eta[nfile][nkin][nsign]))? m1pt[nfile][nkin][nsign] : m2pt[nfile][nkin][nsign];
     float pT_small_eta = (abs(m1eta[nfile][nkin][nsign]) > abs(m2eta[nfile][nkin][nsign]))? m2pt[nfile][nkin][nsign] : m1pt[nfile][nkin][nsign];
     float psrapidity_ordered_pt_asym = (pT_large_eta - pT_small_eta)/(pT_large_eta + pT_small_eta); // expect to be peaked towards negative value if there is asymmetry
@@ -80,24 +56,34 @@ void MuonPairPlottingPythia::FillHistograms(int nfile, int nkin, int nsign){
     bool is_filled = false;
     if (from_same_b[nfile][nkin][nsign]){
         h_DR_ancestor_binned[nsign][nAncestorGroups]->Fill(dr[nfile][nkin][nsign],ev_weight);
+        h_DR_zoomin_ancestor_binned[nsign][nAncestorGroups]->Fill(dr[nfile][nkin][nsign],ev_weight);
+        h_DR_jacobian_corrected_ancestor_binned[nsign][nAncestorGroups]->Fill(dr[nfile][nkin][nsign],ev_weight * 1. / dr[nfile][nkin][nsign]);
+        h_DR_zoomin_jacobian_corrected_ancestor_binned[nsign][nAncestorGroups]->Fill(dr[nfile][nkin][nsign],ev_weight * 1. / dr[nfile][nkin][nsign]);
         h_pt_asym_ancestor_binned[nsign][nAncestorGroups]->Fill(asym[nfile][nkin][nsign],ev_weight);
         h_psrapidity_ordered_pt_asym_ancestor_binned[nsign][nAncestorGroups]->Fill(psrapidity_ordered_pt_asym,ev_weight); 
         h_pair_pt_ptlead_ratio_ancestor_binned[nsign][nAncestorGroups]->Fill(pair_pt[nfile][nkin][nsign]/pt_lead[nfile][nkin][nsign],ev_weight);
         h_Deta_Dphi_ancestor_binned[nsign][nAncestorGroups]->Fill(dphi[nfile][nkin][nsign],deta[nfile][nkin][nsign],ev_weight);
         h_minv_pair_pt_ancestor_binned[nsign][nAncestorGroups]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
         h_minv_pair_pt_zoomin_ancestor_binned[nsign][nAncestorGroups]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
+        h_minv_pair_pt_jacobian_corrected_ancestor_binned[nsign][nAncestorGroups]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight * 1. / minv[nfile][nkin][nsign]);
+        h_minv_pair_pt_zoomin_jacobian_corrected_ancestor_binned[nsign][nAncestorGroups]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight * 1. / minv[nfile][nkin][nsign]);
         h_minv_pair_pt_log_ancestor_binned[nsign][nAncestorGroups]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
         h_ptlead_pair_pt_ancestor_binned[nsign][nAncestorGroups]->Fill(pair_pt[nfile][nkin][nsign],pt_lead[nfile][nkin][nsign],ev_weight); 
         h_ptlead_pair_pt_zoomin_ancestor_binned[nsign][nAncestorGroups]->Fill(pair_pt[nfile][nkin][nsign],pt_lead[nfile][nkin][nsign],ev_weight); 
         h_ptlead_pair_pt_log_ancestor_binned[nsign][nAncestorGroups]->Fill(pair_pt[nfile][nkin][nsign],pt_lead[nfile][nkin][nsign],ev_weight); 
         
         h_DR_flavor_binned[nsign][0]->Fill(dr[nfile][nkin][nsign],ev_weight);
+        h_DR_zoomin_flavor_binned[nsign][0]->Fill(dr[nfile][nkin][nsign],ev_weight);
+        h_DR_jacobian_corrected_flavor_binned[nsign][0]->Fill(dr[nfile][nkin][nsign],ev_weight * 1. / dr[nfile][nkin][nsign]);
+        h_DR_zoomin_jacobian_corrected_flavor_binned[nsign][0]->Fill(dr[nfile][nkin][nsign],ev_weight * 1. / dr[nfile][nkin][nsign]);
         h_pt_asym_flavor_binned[nsign][0]->Fill(asym[nfile][nkin][nsign],ev_weight);
         h_psrapidity_ordered_pt_asym_flavor_binned[nsign][0]->Fill(psrapidity_ordered_pt_asym,ev_weight); 
         h_pair_pt_ptlead_ratio_flavor_binned[nsign][0]->Fill(pair_pt[nfile][nkin][nsign]/pt_lead[nfile][nkin][nsign],ev_weight);
         h_Deta_Dphi_flavor_binned[nsign][0]->Fill(dphi[nfile][nkin][nsign],deta[nfile][nkin][nsign],ev_weight);
         h_minv_pair_pt_flavor_binned[nsign][0]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
         h_minv_pair_pt_zoomin_flavor_binned[nsign][0]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
+        h_minv_pair_pt_jacobian_corrected_flavor_binned[nsign][0]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight * 1. / minv[nfile][nkin][nsign]);
+        h_minv_pair_pt_zoomin_jacobian_corrected_flavor_binned[nsign][0]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight * 1. / minv[nfile][nkin][nsign]);
         h_minv_pair_pt_log_flavor_binned[nsign][0]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
         h_ptlead_pair_pt_flavor_binned[nsign][0]->Fill(pair_pt[nfile][nkin][nsign],pt_lead[nfile][nkin][nsign],ev_weight); 
         h_ptlead_pair_pt_zoomin_flavor_binned[nsign][0]->Fill(pair_pt[nfile][nkin][nsign],pt_lead[nfile][nkin][nsign],ev_weight); 
@@ -106,57 +92,48 @@ void MuonPairPlottingPythia::FillHistograms(int nfile, int nkin, int nsign){
         is_filled = true;
     }else{
 
+        int flavor_ind = -1;
         if (both_from_b[nfile][nkin][nsign]){
-            h_DR_flavor_binned[nsign][1]->Fill(dr[nfile][nkin][nsign],ev_weight);
-            h_pt_asym_flavor_binned[nsign][1]->Fill(asym[nfile][nkin][nsign],ev_weight);
-            h_psrapidity_ordered_pt_asym_flavor_binned[nsign][1]->Fill(psrapidity_ordered_pt_asym,ev_weight); 
-            h_pair_pt_ptlead_ratio_flavor_binned[nsign][1]->Fill(pair_pt[nfile][nkin][nsign]/pt_lead[nfile][nkin][nsign],ev_weight);
-            h_Deta_Dphi_flavor_binned[nsign][1]->Fill(dphi[nfile][nkin][nsign],deta[nfile][nkin][nsign],ev_weight);
-            h_minv_pair_pt_flavor_binned[nsign][1]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
-            h_minv_pair_pt_zoomin_flavor_binned[nsign][1]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
-            h_minv_pair_pt_log_flavor_binned[nsign][1]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
-            h_ptlead_pair_pt_flavor_binned[nsign][1]->Fill(pair_pt[nfile][nkin][nsign],pt_lead[nfile][nkin][nsign],ev_weight); 
-            h_ptlead_pair_pt_zoomin_flavor_binned[nsign][1]->Fill(pair_pt[nfile][nkin][nsign],pt_lead[nfile][nkin][nsign],ev_weight); 
-            h_ptlead_pair_pt_log_flavor_binned[nsign][1]->Fill(pair_pt[nfile][nkin][nsign],pt_lead[nfile][nkin][nsign],ev_weight); 
-
+            flavor_ind = 1;
         }else if (both_from_c[nfile][nkin][nsign]){
-            h_DR_flavor_binned[nsign][2]->Fill(dr[nfile][nkin][nsign],ev_weight);
-            h_pt_asym_flavor_binned[nsign][2]->Fill(asym[nfile][nkin][nsign],ev_weight);
-            h_psrapidity_ordered_pt_asym_flavor_binned[nsign][2]->Fill(psrapidity_ordered_pt_asym,ev_weight); 
-            h_pair_pt_ptlead_ratio_flavor_binned[nsign][2]->Fill(pair_pt[nfile][nkin][nsign]/pt_lead[nfile][nkin][nsign],ev_weight);
-            h_Deta_Dphi_flavor_binned[nsign][2]->Fill(dphi[nfile][nkin][nsign],deta[nfile][nkin][nsign],ev_weight);
-            h_minv_pair_pt_flavor_binned[nsign][2]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
-            h_minv_pair_pt_zoomin_flavor_binned[nsign][2]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
-            h_minv_pair_pt_log_flavor_binned[nsign][2]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
-            h_ptlead_pair_pt_flavor_binned[nsign][2]->Fill(pair_pt[nfile][nkin][nsign],pt_lead[nfile][nkin][nsign],ev_weight); 
-            h_ptlead_pair_pt_zoomin_flavor_binned[nsign][2]->Fill(pair_pt[nfile][nkin][nsign],pt_lead[nfile][nkin][nsign],ev_weight); 
-            h_ptlead_pair_pt_log_flavor_binned[nsign][2]->Fill(pair_pt[nfile][nkin][nsign],pt_lead[nfile][nkin][nsign],ev_weight); 
-
+            flavor_ind = 2;
         }else{
-            h_DR_flavor_binned[nsign][3]->Fill(dr[nfile][nkin][nsign],ev_weight);
-            h_pt_asym_flavor_binned[nsign][3]->Fill(asym[nfile][nkin][nsign],ev_weight);
-            h_psrapidity_ordered_pt_asym_flavor_binned[nsign][3]->Fill(psrapidity_ordered_pt_asym,ev_weight); 
-            h_pair_pt_ptlead_ratio_flavor_binned[nsign][3]->Fill(pair_pt[nfile][nkin][nsign]/pt_lead[nfile][nkin][nsign],ev_weight);
-            h_Deta_Dphi_flavor_binned[nsign][3]->Fill(dphi[nfile][nkin][nsign],deta[nfile][nkin][nsign],ev_weight);
-            h_minv_pair_pt_flavor_binned[nsign][3]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
-            h_minv_pair_pt_zoomin_flavor_binned[nsign][3]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
-            h_minv_pair_pt_log_flavor_binned[nsign][3]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
-            h_ptlead_pair_pt_flavor_binned[nsign][3]->Fill(pair_pt[nfile][nkin][nsign],pt_lead[nfile][nkin][nsign],ev_weight); 
-            h_ptlead_pair_pt_zoomin_flavor_binned[nsign][3]->Fill(pair_pt[nfile][nkin][nsign],pt_lead[nfile][nkin][nsign],ev_weight); 
-            h_ptlead_pair_pt_log_flavor_binned[nsign][3]->Fill(pair_pt[nfile][nkin][nsign],pt_lead[nfile][nkin][nsign],ev_weight); 
-
+            flavor_ind = 3;
         }
 
+        if (flavor_ind > 0){
+            h_DR_flavor_binned[nsign][flavor_ind]->Fill(dr[nfile][nkin][nsign],ev_weight);
+            h_DR_zoomin_flavor_binned[nsign][flavor_ind]->Fill(dr[nfile][nkin][nsign],ev_weight);
+            h_DR_jacobian_corrected_flavor_binned[nsign][flavor_ind]->Fill(dr[nfile][nkin][nsign],ev_weight * 1. / dr[nfile][nkin][nsign]);
+            h_DR_zoomin_jacobian_corrected_flavor_binned[nsign][flavor_ind]->Fill(dr[nfile][nkin][nsign],ev_weight * 1. / dr[nfile][nkin][nsign]);
+            h_pt_asym_flavor_binned[nsign][flavor_ind]->Fill(asym[nfile][nkin][nsign],ev_weight);
+            h_psrapidity_ordered_pt_asym_flavor_binned[nsign][flavor_ind]->Fill(psrapidity_ordered_pt_asym,ev_weight); 
+            h_pair_pt_ptlead_ratio_flavor_binned[nsign][flavor_ind]->Fill(pair_pt[nfile][nkin][nsign]/pt_lead[nfile][nkin][nsign],ev_weight);
+            h_Deta_Dphi_flavor_binned[nsign][flavor_ind]->Fill(dphi[nfile][nkin][nsign],deta[nfile][nkin][nsign],ev_weight);
+            h_minv_pair_pt_flavor_binned[nsign][flavor_ind]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
+            h_minv_pair_pt_zoomin_flavor_binned[nsign][flavor_ind]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
+            h_minv_pair_pt_jacobian_corrected_flavor_binned[nsign][flavor_ind]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight * 1. / minv[nfile][nkin][nsign]);
+            h_minv_pair_pt_zoomin_jacobian_corrected_flavor_binned[nsign][flavor_ind]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight * 1. / minv[nfile][nkin][nsign]);
+            h_minv_pair_pt_log_flavor_binned[nsign][flavor_ind]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
+            h_ptlead_pair_pt_flavor_binned[nsign][flavor_ind]->Fill(pair_pt[nfile][nkin][nsign],pt_lead[nfile][nkin][nsign],ev_weight); 
+            h_ptlead_pair_pt_zoomin_flavor_binned[nsign][flavor_ind]->Fill(pair_pt[nfile][nkin][nsign],pt_lead[nfile][nkin][nsign],ev_weight); 
+            h_ptlead_pair_pt_log_flavor_binned[nsign][flavor_ind]->Fill(pair_pt[nfile][nkin][nsign],pt_lead[nfile][nkin][nsign],ev_weight);             
+        }
 
         for (int igrp = 0; igrp < nAncestorGroups; igrp++){
             if (muon_pair_origin_category[nfile][nkin][nsign] == ancestor_grps[igrp]){
                 h_DR_ancestor_binned[nsign][igrp]->Fill(dr[nfile][nkin][nsign],ev_weight);
+                h_DR_zoomin_ancestor_binned[nsign][igrp]->Fill(dr[nfile][nkin][nsign],ev_weight);
+                h_DR_jacobian_corrected_ancestor_binned[nsign][igrp]->Fill(dr[nfile][nkin][nsign],ev_weight * 1. / dr[nfile][nkin][nsign]);
+                h_DR_zoomin_jacobian_corrected_ancestor_binned[nsign][igrp]->Fill(dr[nfile][nkin][nsign],ev_weight * 1. / dr[nfile][nkin][nsign]);
                 h_pt_asym_ancestor_binned[nsign][igrp]->Fill(asym[nfile][nkin][nsign],ev_weight);
                 h_psrapidity_ordered_pt_asym_ancestor_binned[nsign][igrp]->Fill(psrapidity_ordered_pt_asym,ev_weight); 
                 h_pair_pt_ptlead_ratio_ancestor_binned[nsign][igrp]->Fill(pair_pt[nfile][nkin][nsign]/pt_lead[nfile][nkin][nsign],ev_weight);
                 h_Deta_Dphi_ancestor_binned[nsign][igrp]->Fill(dphi[nfile][nkin][nsign],deta[nfile][nkin][nsign],ev_weight);
                 h_minv_pair_pt_ancestor_binned[nsign][igrp]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
                 h_minv_pair_pt_zoomin_ancestor_binned[nsign][igrp]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
+                h_minv_pair_pt_jacobian_corrected_ancestor_binned[nsign][igrp]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight * 1. / minv[nfile][nkin][nsign]);
+                h_minv_pair_pt_zoomin_jacobian_corrected_ancestor_binned[nsign][igrp]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight * 1. / minv[nfile][nkin][nsign]);
                 h_minv_pair_pt_log_ancestor_binned[nsign][igrp]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
                 h_ptlead_pair_pt_ancestor_binned[nsign][igrp]->Fill(pair_pt[nfile][nkin][nsign],pt_lead[nfile][nkin][nsign],ev_weight); 
                 h_ptlead_pair_pt_zoomin_ancestor_binned[nsign][igrp]->Fill(pair_pt[nfile][nkin][nsign],pt_lead[nfile][nkin][nsign],ev_weight); 
@@ -176,12 +153,17 @@ void MuonPairPlottingPythia::FillHistograms(int nfile, int nkin, int nsign){
 
     if (!is_filled){
         h_DR_ancestor_binned[nsign][nAncestorGroups+1]->Fill(dr[nfile][nkin][nsign],ev_weight);
+        h_DR_zoomin_ancestor_binned[nsign][nAncestorGroups+1]->Fill(dr[nfile][nkin][nsign],ev_weight);
+        h_DR_jacobian_corrected_ancestor_binned[nsign][nAncestorGroups+1]->Fill(dr[nfile][nkin][nsign],ev_weight * 1. / dr[nfile][nkin][nsign]);
+        h_DR_zoomin_jacobian_corrected_ancestor_binned[nsign][nAncestorGroups+1]->Fill(dr[nfile][nkin][nsign],ev_weight * 1. / dr[nfile][nkin][nsign]);
         h_pt_asym_ancestor_binned[nsign][nAncestorGroups+1]->Fill(asym[nfile][nkin][nsign],ev_weight);
         h_psrapidity_ordered_pt_asym_ancestor_binned[nsign][nAncestorGroups+1]->Fill(psrapidity_ordered_pt_asym,ev_weight); 
         h_pair_pt_ptlead_ratio_ancestor_binned[nsign][nAncestorGroups+1]->Fill(pair_pt[nfile][nkin][nsign]/pt_lead[nfile][nkin][nsign],ev_weight);
         h_Deta_Dphi_ancestor_binned[nsign][nAncestorGroups+1]->Fill(dphi[nfile][nkin][nsign],deta[nfile][nkin][nsign],ev_weight);
         h_minv_pair_pt_ancestor_binned[nsign][nAncestorGroups+1]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
         h_minv_pair_pt_zoomin_ancestor_binned[nsign][nAncestorGroups+1]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
+        h_minv_pair_pt_jacobian_corrected_ancestor_binned[nsign][nAncestorGroups+1]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight * 1. / minv[nfile][nkin][nsign]);
+        h_minv_pair_pt_zoomin_jacobian_corrected_ancestor_binned[nsign][nAncestorGroups+1]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight * 1. / minv[nfile][nkin][nsign]);
         h_minv_pair_pt_log_ancestor_binned[nsign][nAncestorGroups+1]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
         h_ptlead_pair_pt_ancestor_binned[nsign][nAncestorGroups+1]->Fill(pair_pt[nfile][nkin][nsign],pt_lead[nfile][nkin][nsign],ev_weight); 
         h_ptlead_pair_pt_zoomin_ancestor_binned[nsign][nAncestorGroups+1]->Fill(pair_pt[nfile][nkin][nsign],pt_lead[nfile][nkin][nsign],ev_weight); 
@@ -193,6 +175,8 @@ void MuonPairPlottingPythia::FillHistograms(int nfile, int nkin, int nsign){
     h_pair_y[away_side][nsign]->Fill(pair_y[nfile][nkin][nsign],ev_weight);
     h_DR[away_side][nsign]->Fill(dr[nfile][nkin][nsign],ev_weight);
     h_DR_zoomin[away_side][nsign]->Fill(dr[nfile][nkin][nsign],ev_weight);
+    h_DR_jacobian_corrected[away_side][nsign]->Fill(dr[nfile][nkin][nsign],ev_weight * 1. / dr[nfile][nkin][nsign]);
+    h_DR_zoomin_jacobian_corrected[away_side][nsign]->Fill(dr[nfile][nkin][nsign],ev_weight * 1. / dr[nfile][nkin][nsign]);
     h_Dphi[away_side][nsign]->Fill(dphi[nfile][nkin][nsign],ev_weight);
     h_pt_asym[away_side][nsign]->Fill(asym[nfile][nkin][nsign],ev_weight);
     h_pair_pt_ptlead_ratio[away_side][nsign]->Fill(pair_pt[nfile][nkin][nsign]/pt_lead[nfile][nkin][nsign],ev_weight);
@@ -206,6 +190,8 @@ void MuonPairPlottingPythia::FillHistograms(int nfile, int nkin, int nsign){
     h_ptlead_pair_pt_log[away_side][nsign]->Fill(pair_pt[nfile][nkin][nsign],m1pt[nfile][nkin][nsign],ev_weight);
     h_minv_pair_pt[away_side][nsign]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
     h_minv_pair_pt_zoomin[away_side][nsign]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
+    h_minv_pair_pt_jacobian_corrected[away_side][nsign]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight * 1. / minv[nfile][nkin][nsign]);
+    h_minv_pair_pt_zoomin_jacobian_corrected[away_side][nsign]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight * 1. / minv[nfile][nkin][nsign]);
     h_minv_pair_pt_log[away_side][nsign]->Fill(pair_pt[nfile][nkin][nsign],minv[nfile][nkin][nsign],ev_weight);
 
     h_kinbin_pair_dP_overP[nkin][away_side][nsign]->Fill(pair_dPoverP[nfile][nkin][nsign],ev_weight);
@@ -244,12 +230,17 @@ void MuonPairPlottingPythia::WriteOutput(){
         for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
             for (int jgrp = 0; jgrp < nAncestorGroups + 2; jgrp++){
                 h_DR_ancestor_binned[ksign][jgrp]->Write();
+                h_DR_zoomin_ancestor_binned[ksign][jgrp]->Write();
+                h_DR_jacobian_corrected_ancestor_binned[ksign][jgrp]->Write();
+                h_DR_zoomin_jacobian_corrected_ancestor_binned[ksign][jgrp]->Write();
                 h_pt_asym_ancestor_binned[ksign][jgrp]->Write();
                 h_psrapidity_ordered_pt_asym_ancestor_binned[ksign][jgrp]->Write();
                 h_pair_pt_ptlead_ratio_ancestor_binned[ksign][jgrp]->Write();
                 h_Deta_Dphi_ancestor_binned[ksign][jgrp]->Write();
                 h_minv_pair_pt_ancestor_binned[ksign][jgrp]->Write();
                 h_minv_pair_pt_zoomin_ancestor_binned[ksign][jgrp]->Write();
+                h_minv_pair_pt_jacobian_corrected_ancestor_binned[ksign][jgrp]->Write();
+                h_minv_pair_pt_zoomin_jacobian_corrected_ancestor_binned[ksign][jgrp]->Write();
                 h_minv_pair_pt_log_ancestor_binned[ksign][jgrp]->Write();
                 h_ptlead_pair_pt_ancestor_binned[ksign][jgrp]->Write();
                 h_ptlead_pair_pt_zoomin_ancestor_binned[ksign][jgrp]->Write();
@@ -261,12 +252,17 @@ void MuonPairPlottingPythia::WriteOutput(){
 
             for (int jflav = 0; jflav < nFlavors; jflav++){
                 h_DR_flavor_binned[ksign][jflav]->Write();
+                h_DR_zoomin_flavor_binned[ksign][jflav]->Write();
+                h_DR_jacobian_corrected_flavor_binned[ksign][jflav]->Write();
+                h_DR_zoomin_jacobian_corrected_flavor_binned[ksign][jflav]->Write();
                 h_pt_asym_flavor_binned[ksign][jflav]->Write();
                 h_psrapidity_ordered_pt_asym_flavor_binned[ksign][jflav]->Write();
                 h_pair_pt_ptlead_ratio_flavor_binned[ksign][jflav]->Write();
                 h_Deta_Dphi_flavor_binned[ksign][jflav]->Write();
                 h_minv_pair_pt_flavor_binned[ksign][jflav]->Write();
                 h_minv_pair_pt_zoomin_flavor_binned[ksign][jflav]->Write();
+                h_minv_pair_pt_jacobian_corrected_flavor_binned[ksign][jflav]->Write();
+                h_minv_pair_pt_zoomin_jacobian_corrected_flavor_binned[ksign][jflav]->Write();
                 h_minv_pair_pt_log_flavor_binned[ksign][jflav]->Write();
                 h_ptlead_pair_pt_flavor_binned[ksign][jflav]->Write();
                 h_ptlead_pair_pt_zoomin_flavor_binned[ksign][jflav]->Write();
@@ -281,6 +277,8 @@ void MuonPairPlottingPythia::WriteOutput(){
                 h_pair_y[jdphi][ksign]->Write();
                 h_DR[jdphi][ksign]->Write();
                 h_DR_zoomin[jdphi][ksign]->Write();
+                h_DR_jacobian_corrected[jdphi][ksign]->Write();
+                h_DR_zoomin_jacobian_corrected[jdphi][ksign]->Write();
                 h_Dphi[jdphi][ksign]->Write();
                 h_pt_asym[jdphi][ksign]->Write();
                 h_pair_pt_ptlead_ratio[jdphi][ksign]->Write();
@@ -294,6 +292,8 @@ void MuonPairPlottingPythia::WriteOutput(){
                 h_ptlead_pair_pt_log[jdphi][ksign]->Write();
                 h_minv_pair_pt[jdphi][ksign]->Write();
                 h_minv_pair_pt_zoomin[jdphi][ksign]->Write();
+                h_minv_pair_pt_jacobian_corrected[jdphi][ksign]->Write();
+                h_minv_pair_pt_zoomin_jacobian_corrected[jdphi][ksign]->Write();
                 h_minv_pair_pt_log[jdphi][ksign]->Write();
 
                 for (int ikin = 0; ikin < nKinRanges; ikin++){

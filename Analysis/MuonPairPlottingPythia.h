@@ -10,9 +10,9 @@
 #include <string.h>
 #include  <stdlib.h>
 #include <fstream>
-#include "/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/ParamsSet.h"
-// #include "/usatlas/u/yuhanguo/workarea/pythia/MuonPairPythia.h"
-#include "/usatlas/u/yuhanguo/workarea/pythia/muon_pair_enums.h"
+#include "ParamsSet.h"
+// #include "MuonPairPythia.h"
+#include "muon_pair_enums_MC.h"
 
 #include "vector"
 #include "TH1D.h"
@@ -32,7 +32,8 @@ private:
     // bool isScram = false;
 
   	ParamsSet pms;
-    static const int nFiles = 3;
+    // static const int nFiles = 3;
+    static const int nFiles = 2;
     static const int nKinRanges = 5;
     static const int nDphis = 2;
     // static const int nFlavors = ; // both from b, both from c, one b one c
@@ -49,6 +50,8 @@ private:
     TH1D* h_Dphi[nDphis][ParamsSet::nSigns];
     TH1D* h_DR[nDphis][ParamsSet::nSigns];
     TH1D* h_DR_zoomin[nDphis][ParamsSet::nSigns];
+    TH1D* h_DR_jacobian_corrected[nDphis][ParamsSet::nSigns];
+    TH1D* h_DR_zoomin_jacobian_corrected[nDphis][ParamsSet::nSigns];
     TH1D* h_pair_y[nDphis][ParamsSet::nSigns];
     TH1D* h_pt_asym[nDphis][ParamsSet::nSigns];
     TH1D* h_psrapidity_ordered_pt_asym[nDphis][ParamsSet::nSigns];
@@ -63,6 +66,8 @@ private:
     TH2D* h_ptlead_pair_pt_log[nDphis][ParamsSet::nSigns];
     TH2D* h_minv_pair_pt[nDphis][ParamsSet::nSigns];
     TH2D* h_minv_pair_pt_zoomin[nDphis][ParamsSet::nSigns];
+    TH2D* h_minv_pair_pt_jacobian_corrected[nDphis][ParamsSet::nSigns];
+    TH2D* h_minv_pair_pt_zoomin_jacobian_corrected[nDphis][ParamsSet::nSigns];
     TH2D* h_minv_pair_pt_log[nDphis][ParamsSet::nSigns];
 
     TH2D* h_eta1_eta2_dphicut[ParamsSet::ndphiselcs][ParamsSet::nSigns];
@@ -75,6 +80,9 @@ private:
     std::string flavor_grps[nFlavors] = {"_single_b", "_bb", "_cc", "_other_flavors"};
 
     TH1D* h_DR_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
+    TH1D* h_DR_zoomin_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
+    TH1D* h_DR_jacobian_corrected_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
+    TH1D* h_DR_zoomin_jacobian_corrected_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
     TH1D* h_psrapidity_ordered_pt_asym_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
     TH1D* h_pt_asym_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
     TH1D* h_pair_pt_ptlead_ratio_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
@@ -86,12 +94,17 @@ private:
     TH2D* h_Deta_Dphi_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
     TH2D* h_minv_pair_pt_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
     TH2D* h_minv_pair_pt_zoomin_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
+    TH2D* h_minv_pair_pt_jacobian_corrected_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
+    TH2D* h_minv_pair_pt_zoomin_jacobian_corrected_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
     TH2D* h_minv_pair_pt_log_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
     TH2D* h_ptlead_pair_pt_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
     TH2D* h_ptlead_pair_pt_zoomin_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
     TH2D* h_ptlead_pair_pt_log_ancestor_binned[ParamsSet::nSigns][nAncestorGroups + 2];
 
     TH1D* h_DR_flavor_binned[ParamsSet::nSigns][nFlavors];
+    TH1D* h_DR_zoomin_flavor_binned[ParamsSet::nSigns][nFlavors];
+    TH1D* h_DR_jacobian_corrected_flavor_binned[ParamsSet::nSigns][nFlavors];
+    TH1D* h_DR_zoomin_jacobian_corrected_flavor_binned[ParamsSet::nSigns][nFlavors];
     TH1D* h_psrapidity_ordered_pt_asym_flavor_binned[ParamsSet::nSigns][nFlavors];
     TH1D* h_pt_asym_flavor_binned[ParamsSet::nSigns][nFlavors];
     TH1D* h_pair_pt_ptlead_ratio_flavor_binned[ParamsSet::nSigns][nFlavors];
@@ -99,6 +112,8 @@ private:
     TH2D* h_Deta_Dphi_flavor_binned[ParamsSet::nSigns][nFlavors];
     TH2D* h_minv_pair_pt_flavor_binned[ParamsSet::nSigns][nFlavors];
     TH2D* h_minv_pair_pt_zoomin_flavor_binned[ParamsSet::nSigns][nFlavors];
+    TH2D* h_minv_pair_pt_jacobian_corrected_flavor_binned[ParamsSet::nSigns][nFlavors];
+    TH2D* h_minv_pair_pt_zoomin_jacobian_corrected_flavor_binned[ParamsSet::nSigns][nFlavors];
     TH2D* h_minv_pair_pt_log_flavor_binned[ParamsSet::nSigns][nFlavors];
     TH2D* h_ptlead_pair_pt_flavor_binned[ParamsSet::nSigns][nFlavors];
     TH2D* h_ptlead_pair_pt_zoomin_flavor_binned[ParamsSet::nSigns][nFlavors];
@@ -124,12 +139,16 @@ private:
 // --------------------- input files & trees & data for setting branches---------------------------
 
    	TFile* inFile[nFiles];
-    std::vector<std::string> file_names = {"/usatlas/u/yuhanguo/usatlasdata/pythia/muon_pairs_pythia_allto0318.root", "/usatlas/u/yuhanguo/usatlasdata/pythia/muon_pairs_pythia_after0322.root", "/usatlas/u/yuhanguo/usatlasdata/pythia/muon_pairs_pythia_0429.root"};
+    // NEED TO CHECK IF NEW AFTER0322 CONTAINS 0429 + IF THE nevents_before_cuts ARE CORRECT
+    // std::vector<std::string> file_names = {"/usatlas/u/yuhanguo/usatlasdata/pythia/muon_pairs_pythia_allto0318.root", "/usatlas/u/yuhanguo/usatlasdata/pythia/muon_pairs_pythia_after0322.root", "/usatlas/u/yuhanguo/usatlasdata/pythia/muon_pairs_pythia_0429.root"};
+    std::vector<std::string> file_names = {"/usatlas/u/yuhanguo/usatlasdata/pythia/muon_pairs_pythia_allto0318_with_data_resonance_cuts.root", "/usatlas/u/yuhanguo/usatlasdata/pythia/muon_pairs_pythia_after0322_with_data_resonance_cuts.root"};
     
     // we need to multiply the previous weight for each of the five different kinematic ranges (k_i)
     // in each of the two files (file A, B) by the corresponding reweight factor
     // N^i_A / (N^i_A + N^i_B) or N^i_B / (N^i_A + N^i_B), respectively
-    std::vector<std::vector<int>> nevents_before_cuts = {{20000, 50000, 1000000, 1000000, 1000000}, {79990, 300000, 1000000, 1000000, 1000000}, {19920, 100000, 500000, 500000, 500000}};
+    // std::vector<std::vector<int>> nevents_before_cuts = {{20000, 50000, 1000000, 1000000, 1000000}, {79990, 300000, 1000000, 1000000, 1000000}, {19920, 100000, 500000, 500000, 500000}};
+    std::vector<std::vector<int>> nevents_before_cuts = {{20000, 50000, 1000000, 1000000, 1000000}, {99910, 400000, 1500000, 1500000, 1500000}};
+
 
     std::vector<int> nevents_before_cuts_combined {};
 
@@ -340,13 +359,18 @@ void MuonPairPlottingPythia::InitHists(){
 
             for (int kflav = 0; kflav < nFlavors; kflav++){
                 h_DR_flavor_binned[ksign][kflav] = new TH1D(Form("h_DR_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_bins,0,pms.deltaR_thrsh[2]);
+                h_DR_zoomin_flavor_binned[ksign][kflav] = new TH1D(Form("h_DR_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_zoomin_bins,0,pms.deltaR_thrsh_zoomin);
+                h_DR_jacobian_corrected_flavor_binned[ksign][kflav] = new TH1D(Form("h_DR_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";#Delta R;#frac{1}{N_{evt}} #frac{1}{#Delta R} #frac{dN}{d#Delta R}", nDR_bins,0,pms.deltaR_thrsh[2]);
+                h_DR_zoomin_jacobian_corrected_flavor_binned[ksign][kflav] = new TH1D(Form("h_DR_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";#Delta R;#frac{1}{N_{evt}} #frac{1}{#Delta R} #frac{dN}{d#Delta R}", nDR_zoomin_bins,0,pms.deltaR_thrsh_zoomin);
                 h_pt_asym_flavor_binned[ksign][kflav] = new TH1D(Form("h_pt_asym_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", npt_asym_bins,0,1.);
                 h_psrapidity_ordered_pt_asym_flavor_binned[ksign][kflav] = new TH1D(Form("h_psrapidity_ordered_pt_asym_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";A' = (pT_{large |#eta|} - pT_{small |#eta|})/(pT_{large |#eta|} + pT_{small |#eta|});d#sigma/dA'", npt_asym_bins*2,-1.,1.);
                 h_pair_pt_ptlead_ratio_flavor_binned[ksign][kflav] = new TH1D(Form("h_pair_pt_ptlead_ratio_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", npair_pt_ptlead_ratio_bins,0,2.);
                 
                 h_Deta_Dphi_flavor_binned[ksign][kflav] = new TH2D(Form("h_Deta_Dphi_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
                 h_minv_pair_pt_flavor_binned[ksign][kflav] = new TH2D(Form("h_minv_pair_pt_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
-                h_minv_pair_pt_zoomin_flavor_binned[ksign][kflav] = new TH2D(Form("h_minv_pair_pt_zoomin_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,20,nminv_bins_linear,0,15);
+                h_minv_pair_pt_zoomin_flavor_binned[ksign][kflav] = new TH2D(Form("h_minv_pair_pt_zoomin_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,20,nminv_bins_linear,0,4);
+                h_minv_pair_pt_jacobian_corrected_flavor_binned[ksign][kflav] = new TH2D(Form("h_minv_pair_pt_jacobian_corrected_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
+                h_minv_pair_pt_zoomin_jacobian_corrected_flavor_binned[ksign][kflav] = new TH2D(Form("h_minv_pair_pt_zoomin_jacobian_corrected_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,20,nminv_bins_linear,0,4);
                 h_minv_pair_pt_log_flavor_binned[ksign][kflav] = new TH2D(Form("h_minv_pair_pt_log_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[0][2],nminv_bins_log,minv_bins_log[0]);
                 h_ptlead_pair_pt_flavor_binned[ksign][kflav] = new TH2D(Form("h_ptlead_pair_pt_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",npair_pT_bins_linear,0,30,npT_lead_bins_linear,0,30);
                 h_ptlead_pair_pt_zoomin_flavor_binned[ksign][kflav] = new TH2D(Form("h_ptlead_pair_pt_zoomin_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",npair_pT_bins_linear,0,20,npT_lead_bins_linear,0,15);
@@ -357,12 +381,17 @@ void MuonPairPlottingPythia::InitHists(){
                 // h_Qsplit_mHat_ratio_flavor_binned[ksign][kflav] = new TH1D(Form("h_Qsplit_mHat_ratio_sign%d%s",ksign+1,flavor_grps[kflav].c_str()),";#frac{Q_{split}}{#sqrt{#hat{s}}};d#sigma/d#frac{Q_{split}}{#sqrt{#hat{s}}}", 140,-0.7,0.7);
                 
                 h_DR_flavor_binned[ksign][kflav]->Sumw2();
+                h_DR_zoomin_flavor_binned[ksign][kflav]->Sumw2();
+                h_DR_jacobian_corrected_flavor_binned[ksign][kflav]->Sumw2();
+                h_DR_zoomin_jacobian_corrected_flavor_binned[ksign][kflav]->Sumw2();
                 h_pt_asym_flavor_binned[ksign][kflav]->Sumw2();
                 h_psrapidity_ordered_pt_asym_flavor_binned[ksign][kflav]->Sumw2();
                 h_pair_pt_ptlead_ratio_flavor_binned[ksign][kflav]->Sumw2();
                 h_Deta_Dphi_flavor_binned[ksign][kflav]->Sumw2();
                 h_minv_pair_pt_flavor_binned[ksign][kflav]->Sumw2();
                 h_minv_pair_pt_zoomin_flavor_binned[ksign][kflav]->Sumw2();
+                h_minv_pair_pt_jacobian_corrected_flavor_binned[ksign][kflav]->Sumw2();
+                h_minv_pair_pt_zoomin_jacobian_corrected_flavor_binned[ksign][kflav]->Sumw2();
                 h_minv_pair_pt_log_flavor_binned[ksign][kflav]->Sumw2();
                 h_ptlead_pair_pt_flavor_binned[ksign][kflav]->Sumw2();
                 h_ptlead_pair_pt_zoomin_flavor_binned[ksign][kflav]->Sumw2();
@@ -375,13 +404,18 @@ void MuonPairPlottingPythia::InitHists(){
 
             for (int kgrp = 0; kgrp < nAncestorGroups + 2; kgrp++){
                 h_DR_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_DR_sign%d%s",ksign+1,ancestor_grp_labels[kgrp].c_str()),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_bins,0,pms.deltaR_thrsh[2]);
+                h_DR_zoomin_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_DR_zoomin_sign%d%s",ksign+1,ancestor_grp_labels[kgrp].c_str()),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_zoomin_bins,0,pms.deltaR_thrsh_zoomin);
+                h_DR_jacobian_corrected_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_DR_sign%d%s",ksign+1,ancestor_grp_labels[kgrp].c_str()),";#Delta R;#frac{1}{N_{evt}} #frac{1}{#Delta R} #frac{dN}{d#Delta R}", nDR_bins,0,pms.deltaR_thrsh[2]);
+                h_DR_zoomin_jacobian_corrected_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_DR_zoomin_sign%d%s",ksign+1,ancestor_grp_labels[kgrp].c_str()),";#Delta R;#frac{1}{N_{evt}} #frac{1}{#Delta R} #frac{dN}{d#Delta R}", nDR_zoomin_bins,0,pms.deltaR_thrsh_zoomin);
                 h_pt_asym_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_pt_asym_sign%d%s",ksign+1,ancestor_grp_labels[kgrp].c_str()),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", npt_asym_bins,0,1.);
                 h_psrapidity_ordered_pt_asym_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_psrapidity_ordered_pt_asym_sign%d%s",ksign+1,ancestor_grp_labels[kgrp].c_str()),";A' = (pT_{large |#eta|} - pT_{small |#eta|})/(pT_{large |#eta|} + pT_{small |#eta|});d#sigma/dA'", npt_asym_bins*2,-1.,1.);
                 h_pair_pt_ptlead_ratio_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_pair_pt_ptlead_ratio_sign%d%s",ksign+1,ancestor_grp_labels[kgrp].c_str()),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", npair_pt_ptlead_ratio_bins,0,2.);
                 
                 h_Deta_Dphi_ancestor_binned[ksign][kgrp] = new TH2D(Form("h_Deta_Dphi_sign%d%s",ksign+1,ancestor_grp_labels[kgrp].c_str()),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
                 h_minv_pair_pt_ancestor_binned[ksign][kgrp] = new TH2D(Form("h_minv_pair_pt_sign%d%s",ksign+1,ancestor_grp_labels[kgrp].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
-                h_minv_pair_pt_zoomin_ancestor_binned[ksign][kgrp] = new TH2D(Form("h_minv_pair_pt_zoomin_sign%d%s",ksign+1,ancestor_grp_labels[kgrp].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,20,nminv_bins_linear,0,15);
+                h_minv_pair_pt_zoomin_ancestor_binned[ksign][kgrp] = new TH2D(Form("h_minv_pair_pt_zoomin_sign%d%s",ksign+1,ancestor_grp_labels[kgrp].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,20,nminv_bins_linear,0,4);
+                h_minv_pair_pt_jacobian_corrected_ancestor_binned[ksign][kgrp] = new TH2D(Form("h_minv_pair_pt_jacobian_corrected_sign%d%s",ksign+1,ancestor_grp_labels[kgrp].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
+                h_minv_pair_pt_zoomin_jacobian_corrected_ancestor_binned[ksign][kgrp] = new TH2D(Form("h_minv_pair_pt_zoomin_jacobian_corrected_sign%d%s",ksign+1,ancestor_grp_labels[kgrp].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,20,nminv_bins_linear,0,4);
                 h_minv_pair_pt_log_ancestor_binned[ksign][kgrp] = new TH2D(Form("h_minv_pair_pt_log_sign%d%s",ksign+1,ancestor_grp_labels[kgrp].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[0][2],nminv_bins_log,minv_bins_log[0]);
                 h_ptlead_pair_pt_ancestor_binned[ksign][kgrp] = new TH2D(Form("h_ptlead_pair_pt_sign%d%s",ksign+1,ancestor_grp_labels[kgrp].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",npair_pT_bins_linear,0,30,npT_lead_bins_linear,0,30);
                 h_ptlead_pair_pt_zoomin_ancestor_binned[ksign][kgrp] = new TH2D(Form("h_ptlead_pair_pt_zoomin_sign%d%s",ksign+1,ancestor_grp_labels[kgrp].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",npair_pT_bins_linear,0,20,npT_lead_bins_linear,0,15);
@@ -392,12 +426,17 @@ void MuonPairPlottingPythia::InitHists(){
                 h_Qsplit_mHat_ratio_ancestor_binned[ksign][kgrp] = new TH1D(Form("h_Qsplit_mHat_ratio_sign%d%s",ksign+1,ancestor_grp_labels[kgrp].c_str()),";#frac{Q_{split}}{#sqrt{#hat{s}}};d#sigma/d#frac{Q_{split}}{#sqrt{#hat{s}}}", 140,-0.7,0.7);
                 
                 h_DR_ancestor_binned[ksign][kgrp]->Sumw2();
+                h_DR_zoomin_ancestor_binned[ksign][kgrp]->Sumw2();
+                h_DR_jacobian_corrected_ancestor_binned[ksign][kgrp]->Sumw2();
+                h_DR_zoomin_jacobian_corrected_ancestor_binned[ksign][kgrp]->Sumw2();
                 h_pt_asym_ancestor_binned[ksign][kgrp]->Sumw2();
                 h_psrapidity_ordered_pt_asym_ancestor_binned[ksign][kgrp]->Sumw2();
                 h_pair_pt_ptlead_ratio_ancestor_binned[ksign][kgrp]->Sumw2();
                 h_Deta_Dphi_ancestor_binned[ksign][kgrp]->Sumw2();
                 h_minv_pair_pt_ancestor_binned[ksign][kgrp]->Sumw2();
                 h_minv_pair_pt_zoomin_ancestor_binned[ksign][kgrp]->Sumw2();
+                h_minv_pair_pt_jacobian_corrected_ancestor_binned[ksign][kgrp]->Sumw2();
+                h_minv_pair_pt_zoomin_jacobian_corrected_ancestor_binned[ksign][kgrp]->Sumw2();
                 h_minv_pair_pt_log_ancestor_binned[ksign][kgrp]->Sumw2();
                 h_ptlead_pair_pt_ancestor_binned[ksign][kgrp]->Sumw2();
                 h_ptlead_pair_pt_zoomin_ancestor_binned[ksign][kgrp]->Sumw2();
@@ -422,6 +461,8 @@ void MuonPairPlottingPythia::InitHists(){
                 h_pair_dP_overP[jdphi][ksign] = new TH1D(Form("h_pair_dP_overP_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";(#Delta p / p)_{pair};1/N_{evt} dN/d(#Delta p / p)_{pair}" ,pms.deltaP_overP_nbins,0,pms.deltaP_overP_max);
                 h_DR[jdphi][ksign] = new TH1D(Form("h_DR_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_bins,0,pms.deltaR_thrsh[2]);
                 h_DR_zoomin[jdphi][ksign] = new TH1D(Form("h_DR_zoomin_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_zoomin_bins,0,pms.deltaR_thrsh_zoomin);
+                h_DR_jacobian_corrected[jdphi][ksign] = new TH1D(Form("h_DR_jacobian_corrected_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";#Delta R;#frac{1}{N_{evt}} #frac{1}{#Delta R} #frac{dN}{d#Delta R}", nDR_bins,0,pms.deltaR_thrsh[2]);
+                h_DR_zoomin_jacobian_corrected[jdphi][ksign] = new TH1D(Form("h_DR_zoomin_jacobian_corrected_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";#Delta R;#frac{1}{N_{evt}} #frac{1}{#Delta R} #frac{dN}{d#Delta R}", nDR_zoomin_bins,0,pms.deltaR_thrsh_zoomin);
                 h_Dphi[jdphi][ksign] = new TH1D(Form("h_Dphi_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";#Delta#phi;1/N_{evt} dN/d#Delta#phi", nDphi_bins,-pms.PI,pms.PI);
                 h_pair_y[jdphi][ksign] = new TH1D(Form("h_pair_y_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";y_{pair};1/N_{evt} dN/dy_{pair}" ,npair_y_bins,-3,3);
                 h_pt_asym[jdphi][ksign] = new TH1D(Form("h_pt_asym_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", npt_asym_bins,0,1.);
@@ -440,12 +481,16 @@ void MuonPairPlottingPythia::InitHists(){
                 h_ptlead_pair_pt_log[jdphi][ksign] = new TH2D(Form("h_ptlead_pair_pt_log_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][2],pms.npt_bins,pms.pTBins);
                 h_minv_pair_pt[jdphi][ksign] = new TH2D(Form("h_minv_pair_pt_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
                 h_minv_pair_pt_zoomin[jdphi][ksign] = new TH2D(Form("h_minv_pair_pt_zoomin_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,20,nminv_bins_linear,0,4);
+                h_minv_pair_pt_jacobian_corrected[jdphi][ksign] = new TH2D(Form("h_minv_pair_pt_jacobian_corrected_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
+                h_minv_pair_pt_zoomin_jacobian_corrected[jdphi][ksign] = new TH2D(Form("h_minv_pair_pt_zoomin_jacobian_corrected_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,20,nminv_bins_linear,0,4);
                 h_minv_pair_pt_log[jdphi][ksign] = new TH2D(Form("h_minv_pair_pt_log_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][2],nminv_bins_log,minv_bins_log[ksign]);
 
 
                 h_pair_dP_overP[jdphi][ksign]->Sumw2();
                 h_DR[jdphi][ksign]->Sumw2();
                 h_DR_zoomin[jdphi][ksign]->Sumw2();
+                h_DR_jacobian_corrected[jdphi][ksign]->Sumw2();
+                h_DR_zoomin_jacobian_corrected[jdphi][ksign]->Sumw2();
                 h_Dphi[jdphi][ksign]->Sumw2();
                 h_pair_y[jdphi][ksign]->Sumw2();
                 h_pt_asym[jdphi][ksign]->Sumw2();
@@ -460,6 +505,8 @@ void MuonPairPlottingPythia::InitHists(){
                 h_ptlead_pair_pt_log[jdphi][ksign]->Sumw2();
                 h_minv_pair_pt[jdphi][ksign]->Sumw2();
                 h_minv_pair_pt_zoomin[jdphi][ksign]->Sumw2();
+                h_minv_pair_pt_jacobian_corrected[jdphi][ksign]->Sumw2();
+                h_minv_pair_pt_zoomin_jacobian_corrected[jdphi][ksign]->Sumw2();
                 h_minv_pair_pt_log[jdphi][ksign]->Sumw2();
 
                 for (unsigned int ikin = 0; ikin < nKinRanges; ikin++){
