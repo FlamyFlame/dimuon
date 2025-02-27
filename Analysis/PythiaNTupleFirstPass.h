@@ -191,6 +191,7 @@ private:
   
     std::ofstream* m_unspecified_parent_file = nullptr;
     std::ofstream* m_FE_file = nullptr;
+    std::ofstream* m_very_bad_warning_file = nullptr;
     std::ofstream* m_hard_scattering_warning_file = nullptr;
     std::ofstream* m_others_category_file = nullptr;
     std::ofstream* m_b_parent_file[ParamsSet::nSigns][2];
@@ -341,7 +342,7 @@ public :
     bool print_FE = false;
     bool print_specific_prt_history = false;
 
-    bool turn_data_cuts_on = false; // turn on data cuts for resonances
+    bool turn_data_resonance_cuts_on = false; // turn on data cuts for resonances
     int batch_num = 0; // between 1-6: process the privately-generated pythia sample in batch
 
     PythiaNTupleFirstPass(){
