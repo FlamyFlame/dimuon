@@ -1334,6 +1334,14 @@ void PythiaNTupleFirstPass::PrintHistory(std::ostream* f, bool print_single, boo
   // if (print_single): True = muon1, False = muon2
   // if (!print_single): True = same partonic ancestors, False = different partonic ancestors
   // if True then print single muon history; else then print both muons' history
+  try{
+    if (!f) throw std::runtime_error("PrintHistory: the std::ostream pointer is nullptr!");
+  }catch(const std::runtime_error& e){
+    std::cout << "Runtime error caught in function PrintHistory: " << e.what() << std::endl;
+    std::cout << "Return without printing history!" << std::endl;
+    return; // return so that code doesn't crash
+  }
+
   *f << "Event #: " << mpair->m1.ev_num << std::endl;
 
   if (print_single){
@@ -1881,7 +1889,9 @@ void PythiaNTupleFirstPass::HFMuonPairAnalysis(){
       // mpair->vout2 = vm2out2;
     }else{
       mpair->muon_pair_origin_category = others;
-      PrintHistory(m_others_category_file, true, mpair->from_same_ancestors);
+      if (print_others_history && m_others_category_file){
+        PrintHistory(m_others_category_file, false, mpair->from_same_ancestors, true); // print both muons history + print hard-scattering category
+      }
     }
 
     if (((m1_ancestor_is_incoming && !m1_from_hard_scatt_before_gs) || (m2_ancestor_is_incoming && !m2_from_hard_scatt_before_gs)) && (mpair->muon_pair_origin_category != others)){

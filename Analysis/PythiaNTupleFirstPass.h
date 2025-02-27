@@ -336,7 +336,7 @@ private:
 public :
 
     bool print_prt_history = false;
-    bool print_others_history = false;
+    bool print_others_history = true;
     bool print_unspecified_parent = false;
     bool print_FE = false;
     bool print_specific_prt_history = false;
