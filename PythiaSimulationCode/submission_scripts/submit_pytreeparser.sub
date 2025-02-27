@@ -1,0 +1,7 @@
+Universe   = vanilla
+Executable = run_pytreeparser.sh
+Log        = /usatlas/u/yuhanguo/usatlasdata/pythia/run_pytreeparser_condor_logs/run_pytreeparser.log
+Output     = /usatlas/u/yuhanguo/usatlasdata/pythia/run_pytreeparser_condor_logs/run_pytreeparser.out
+Error      = /usatlas/u/yuhanguo/usatlasdata/pythia/run_pytreeparser_condor_logs/run_pytreeparser.error
+Queue
+
