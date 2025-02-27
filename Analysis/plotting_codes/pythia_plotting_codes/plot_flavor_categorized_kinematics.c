@@ -207,51 +207,75 @@ void plot_flavor_categorized_kinematic_single(std::string kin, bool projx_2d, bo
 void plot_flavor_categorized_kinematics(){
   plot_flavor_categorized_kinematic_single("DR", false, false, false, false, "DR", "#Delta R");
   plot_flavor_categorized_kinematic_single("DR", false, false, true, false, "DR", "#Delta R"); // accumulative
-  plot_flavor_categorized_kinematic_single("DR", false, false, false, true, "DR", "#Delta R"); // norm to unity
+  // // plot_flavor_categorized_kinematic_single("DR", false, false, false, true, "DR", "#Delta R"); // norm to unity
+
+  plot_flavor_categorized_kinematic_single("DR_zoomin", false, false, false, false, "DR_zoomin", "#Delta R");
+  plot_flavor_categorized_kinematic_single("DR_zoomin", false, false, true, false, "DR_zoomin", "#Delta R"); // accumulative
+  // // plot_flavor_categorized_kinematic_single("DR_zoomin", false, false, false, true, "DR_zoomin", "#Delta R"); // norm to unity
+
+  plot_flavor_categorized_kinematic_single("DR_jacobian_corrected", false, false, false, false, "DR_jacobian_corrected", "#Delta R");
+  plot_flavor_categorized_kinematic_single("DR_jacobian_corrected", false, false, true, false, "DR_jacobian_corrected", "#Delta R"); // accumulative
+  // // plot_flavor_categorized_kinematic_single("DR_jacobian_corrected", false, false, false, true, "DR_jacobian_corrected", "#Delta R"); // norm to unity
+
+  plot_flavor_categorized_kinematic_single("DR_zoomin_jacobian_corrected", false, false, false, false, "DR_zoomin_jacobian_corrected", "#Delta R");
+  plot_flavor_categorized_kinematic_single("DR_zoomin_jacobian_corrected", false, false, true, false, "DR_zoomin_jacobian_corrected", "#Delta R"); // accumulative
+  // // plot_flavor_categorized_kinematic_single("DR_zoomin_jacobian_corrected", false, false, false, true, "DR_zoomin_jacobian_corrected", "#Delta R"); // norm to unity
 
   plot_flavor_categorized_kinematic_single("pt_asym", false, false, false, false, "pt_asym", "A");
   plot_flavor_categorized_kinematic_single("pt_asym", false, false, true, false, "pt_asym", "A"); // accumulative
-  plot_flavor_categorized_kinematic_single("pt_asym", false, false, false, true, "pt_asym", "A"); // norm to unity
+  // plot_flavor_categorized_kinematic_single("pt_asym", false, false, false, true, "pt_asym", "A"); // norm to unity
   
   plot_flavor_categorized_kinematic_single("psrapidity_ordered_pt_asym", false, false, false, false, "psrapidity_ordered_pt_asym", "#Tilde{A}");
   plot_flavor_categorized_kinematic_single("psrapidity_ordered_pt_asym", false, false, true, false, "psrapidity_ordered_pt_asym", "#Tilde{A}"); // accumulative
-  plot_flavor_categorized_kinematic_single("psrapidity_ordered_pt_asym", false, false, false, true, "psrapidity_ordered_pt_asym", "#Tilde{A}"); // norm to unity
+  // plot_flavor_categorized_kinematic_single("psrapidity_ordered_pt_asym", false, false, false, true, "psrapidity_ordered_pt_asym", "#Tilde{A}"); // norm to unity
   
   plot_flavor_categorized_kinematic_single("pair_pt_ptlead_ratio", false, false, false, false, "pair_pt_ptlead_ratio", "p_{T}^{pair} / p_{T}^{lead}");
   plot_flavor_categorized_kinematic_single("pair_pt_ptlead_ratio", false, false, true, false, "pair_pt_ptlead_ratio", "p_{T}^{pair} / p_{T}^{lead}");
-  plot_flavor_categorized_kinematic_single("pair_pt_ptlead_ratio", false, false, false, true, "pair_pt_ptlead_ratio", "p_{T}^{pair} / p_{T}^{lead}"); // norm to unity
+  // plot_flavor_categorized_kinematic_single("pair_pt_ptlead_ratio", false, false, false, true, "pair_pt_ptlead_ratio", "p_{T}^{pair} / p_{T}^{lead}"); // norm to unity
   
   // // plot_flavor_categorized_kinematic_single("Qsplit", false, false, false, false, "Qsplit", "Q_{split}");
   // // plot_flavor_categorized_kinematic_single("Qsplit", false, false, true, false, "Qsplit", "Q_{split}");
-  // // plot_flavor_categorized_kinematic_single("Qsplit", false, false, false, true, "Qsplit", "Q_{split}"); // norm to unity
+  // // // plot_flavor_categorized_kinematic_single("Qsplit", false, false, false, true, "Qsplit", "Q_{split}"); // norm to unity
   
   // // plot_flavor_categorized_kinematic_single("Qsplit_pTHat_ratio", false, false, false, false, "Qsplit_pTHat_ratio", "Q_{split} / #hat{p}_T");
   // // plot_flavor_categorized_kinematic_single("Qsplit_pTHat_ratio", false, false, true, false, "Qsplit_pTHat_ratio", "Q_{split} / #hat{p}_T");
-  // // plot_flavor_categorized_kinematic_single("Qsplit_pTHat_ratio", false, false, false, true, "Qsplit_pTHat_ratio", "Q_{split} / #hat{p}_T"); // norm to unity
+  // // // plot_flavor_categorized_kinematic_single("Qsplit_pTHat_ratio", false, false, false, true, "Qsplit_pTHat_ratio", "Q_{split} / #hat{p}_T"); // norm to unity
   
   // // plot_flavor_categorized_kinematic_single("Qsplit_mHat_ratio", false, false, false, false, "Qsplit_mHat_ratio", "Q_{split} / #sqrt{#hat{s}}");
   // // plot_flavor_categorized_kinematic_single("Qsplit_mHat_ratio", false, false, true, false, "Qsplit_mHat_ratio", "Q_{split} / #sqrt{#hat{s}}");
-  // // plot_flavor_categorized_kinematic_single("Qsplit_mHat_ratio", false, false, false, true, "Qsplit_mHat_ratio", "Q_{split} / #sqrt{#hat{s}}"); // norm to unity
+  // // // plot_flavor_categorized_kinematic_single("Qsplit_mHat_ratio", false, false, false, true, "Qsplit_mHat_ratio", "Q_{split} / #sqrt{#hat{s}}"); // norm to unity
 
   plot_flavor_categorized_kinematic_single("ptlead_pair_pt", true, false, false, false, "pair_pt", "p_{T}^{pair}");
   plot_flavor_categorized_kinematic_single("ptlead_pair_pt", true, false, true, false, "pair_pt", "p_{T}^{pair}");
-  plot_flavor_categorized_kinematic_single("ptlead_pair_pt", true, false, false, true, "pair_pt", "p_{T}^{pair}"); // norm to unity
+  // plot_flavor_categorized_kinematic_single("ptlead_pair_pt", true, false, false, true, "pair_pt", "p_{T}^{pair}"); // norm to unity
 
   plot_flavor_categorized_kinematic_single("ptlead_pair_pt", false, true, false, false, "ptlead", "p_{T}^{lead}");
   plot_flavor_categorized_kinematic_single("ptlead_pair_pt", false, true, true, false, "ptlead", "p_{T}^{lead}");
-  plot_flavor_categorized_kinematic_single("ptlead_pair_pt", false, true, false, true, "ptlead", "p_{T}^{lead}"); // norm to unity
+  // plot_flavor_categorized_kinematic_single("ptlead_pair_pt", false, true, false, true, "ptlead", "p_{T}^{lead}"); // norm to unity
   
   plot_flavor_categorized_kinematic_single("minv_pair_pt", false, true, false, false, "minv", "m_{#mu#mu}");
   plot_flavor_categorized_kinematic_single("minv_pair_pt", false, true, true, false, "minv", "m_{#mu#mu}");
-  plot_flavor_categorized_kinematic_single("minv_pair_pt", false, true, false, true, "minv", "m_{#mu#mu}"); // norm to unity
+  // plot_flavor_categorized_kinematic_single("minv_pair_pt", false, true, false, true, "minv", "m_{#mu#mu}"); // norm to unity
+
+  plot_flavor_categorized_kinematic_single("minv_pair_pt_zoomin", false, true, false, false, "minv_zoomin", "m_{#mu#mu}");
+  plot_flavor_categorized_kinematic_single("minv_pair_pt_zoomin", false, true, true, false, "minv_zoomin", "m_{#mu#mu}");
+  // plot_flavor_categorized_kinematic_single("minv_pair_pt_zoomin", false, true, false, true, "minv_zoomin", "m_{#mu#mu}"); // norm to unity
+
+  plot_flavor_categorized_kinematic_single("minv_pair_pt_jacobian_corrected", false, true, false, false, "minv_jacobian_corrected", "m_{#mu#mu}");
+  plot_flavor_categorized_kinematic_single("minv_pair_pt_jacobian_corrected", false, true, true, false, "minv_jacobian_corrected", "m_{#mu#mu}");
+  // plot_flavor_categorized_kinematic_single("minv_pair_pt_jacobian_corrected", false, true, false, true, "minv_jacobian_corrected", "m_{#mu#mu}"); // norm to unity
+
+  plot_flavor_categorized_kinematic_single("minv_pair_pt_zoomin_jacobian_corrected", false, true, false, false, "minv_zoomin_jacobian_corrected", "m_{#mu#mu}");
+  plot_flavor_categorized_kinematic_single("minv_pair_pt_zoomin_jacobian_corrected", false, true, true, false, "minv_zoomin_jacobian_corrected", "m_{#mu#mu}");
+  // plot_flavor_categorized_kinematic_single("minv_pair_pt_zoomin_jacobian_corrected", false, true, false, true, "minv_zoomin_jacobian_corrected", "m_{#mu#mu}"); // norm to unity
   
   plot_flavor_categorized_kinematic_single("Deta_Dphi", true, false, false, false, "Dphi", "#Delta #phi");
   plot_flavor_categorized_kinematic_single("Deta_Dphi", true, false, true, false, "Dphi", "#Delta #phi");
-  plot_flavor_categorized_kinematic_single("Deta_Dphi", true, false, false, true, "Dphi", "#Delta #phi"); // norm to unity
+  // plot_flavor_categorized_kinematic_single("Deta_Dphi", true, false, false, true, "Dphi", "#Delta #phi"); // norm to unity
   
   plot_flavor_categorized_kinematic_single("Deta_Dphi", false, true, false, false, "Deta", "#Delta #eta");
   plot_flavor_categorized_kinematic_single("Deta_Dphi", false, true, true, false, "Deta", "#Delta #eta");
-  plot_flavor_categorized_kinematic_single("Deta_Dphi", false, true, false, true, "Deta", "#Delta #eta"); // norm to unity
+  // plot_flavor_categorized_kinematic_single("Deta_Dphi", false, true, false, true, "Deta", "#Delta #eta"); // norm to unity
 }
 
 
