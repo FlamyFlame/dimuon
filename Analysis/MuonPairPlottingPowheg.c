@@ -160,6 +160,7 @@ void MuonPairPlottingPowheg::FillHistograms(int nbatch, int nsign){
     h_pair_dP_overP[ndphi][nsign]->Fill(pair_dPoverP[nbatch][nsign],ev_weight);
     h_pair_y[ndphi][nsign]->Fill(pair_y[nbatch][nsign],ev_weight);
     h_DR[ndphi][nsign]->Fill(dr[nbatch][nsign],ev_weight);
+    h_DR_zoomin[ndphi][nsign]->Fill(dr[nbatch][nsign],ev_weight);
     h_Dphi[ndphi][nsign]->Fill(dphi[nbatch][nsign],ev_weight);
     h_pt_asym[ndphi][nsign]->Fill(asym[nbatch][nsign],ev_weight);
     h_pair_pt_ptlead_ratio[ndphi][nsign]->Fill(pair_pt[nbatch][nsign]/pt_lead[nbatch][nsign],ev_weight);
@@ -232,6 +233,7 @@ void MuonPairPlottingPowheg::WriteOutput(){
                 h_pair_dP_overP[jdphi][ksign]->Write();
                 h_pair_y[jdphi][ksign]->Write();
                 h_DR[jdphi][ksign]->Write();
+                h_DR_zoomin[jdphi][ksign]->Write();
                 h_Dphi[jdphi][ksign]->Write();
                 h_pt_asym[jdphi][ksign]->Write();
                 h_pair_pt_ptlead_ratio[jdphi][ksign]->Write();

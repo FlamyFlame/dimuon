@@ -71,6 +71,7 @@ private:
     TH1D* h_pair_dP_overP[2][ParamsSet::nSigns];
     TH1D* h_Dphi[2][ParamsSet::nSigns];
     TH1D* h_DR[2][ParamsSet::nSigns];
+    TH1D* h_DR_zoomin[2][ParamsSet::nSigns];
     TH1D* h_pair_y[2][ParamsSet::nSigns];
     TH1D* h_pt_asym[2][ParamsSet::nSigns];
     TH1D* h_pair_pt_ptlead_ratio[2][ParamsSet::nSigns];
@@ -286,6 +287,7 @@ void MuonPairPlottingPowheg::InitOutput(){
 
 void MuonPairPlottingPowheg::InitHists(){
     int nDR_bins = (isMCTruthBB || isMCTruthCC)? 100 : 200;
+    int nDR_zoomin_bins = 100;
     int nDphi_bins = (isMCTruthBB || isMCTruthCC)? 64 : 128;
     int neta_bins = (isMCTruthBB || isMCTruthCC)? 50 : 100;
     int nDeta_bins = (isMCTruthBB || isMCTruthCC)? 100 : 200;
@@ -365,6 +367,7 @@ void MuonPairPlottingPowheg::InitHists(){
             for (unsigned int jdphi = 0; jdphi < 2; jdphi++){
                 h_pair_dP_overP[jdphi][isign] = new TH1D(Form("h_pair_dP_overP_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";(#Delta p / p)_{pair};1/N_{evt} dN/d(#Delta p / p)_{pair}" ,pms.deltaP_overP_nbins,0,pms.deltaP_overP_max);
                 h_DR[jdphi][isign] = new TH1D(Form("h_DR_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_bins,0,pms.deltaR_thrsh[2]);
+                h_DR_zoomin[jdphi][isign] = new TH1D(Form("h_DR_zoomin_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_zoomin_bins,0,pms.deltaR_thrsh_zoomin);
                 h_Dphi[jdphi][isign] = new TH1D(Form("h_Dphi_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";#Delta#phi;1/N_{evt} dN/d#Delta#phi", nDphi_bins,-pms.PI,pms.PI);
                 h_pair_y[jdphi][isign] = new TH1D(Form("h_pair_y_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";y_{pair};1/N_{evt} dN/dy_{pair}" ,npair_y_bins,-3,3);
                 h_pt_asym[jdphi][isign] = new TH1D(Form("h_pt_asym_%s_sign%d",dphi_regions[jdphi].c_str(),isign+1),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", npt_asym_bins,0,1.);
@@ -387,6 +390,7 @@ void MuonPairPlottingPowheg::InitHists(){
                 
                 h_pair_dP_overP[jdphi][isign]->Sumw2();
                 h_DR[jdphi][isign]->Sumw2();
+                h_DR_zoomin[jdphi][isign]->Sumw2();
                 h_Dphi[jdphi][isign]->Sumw2();
                 h_pair_y[jdphi][isign]->Sumw2();
                 h_pt_asym[jdphi][isign]->Sumw2();

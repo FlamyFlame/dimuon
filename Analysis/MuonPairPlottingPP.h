@@ -77,6 +77,7 @@ private:
     TH1D* h_pair_dP_overP[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH1D* h_Dphi[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH1D* h_DR[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH1D* h_DR_zoomin[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH1D* h_pair_y[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH1D* h_pt_asym[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH1D* h_pair_pt_ptlead_ratio[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
@@ -178,7 +179,7 @@ void MuonPairPlottingPP::InitInput(){
         inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/muon_pairs_pp_tight.root","read");
     }else{
         if (isRun3){
-            inFile = new TFile(Form("/eos/user/y/yuhang/data/pp_24/muon_pairs_pp_2024%s.root", run3_trig_suffix.c_str()),"read");            
+            inFile = new TFile(Form("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024%s.root", run3_trig_suffix.c_str()),"read");            
         }else{
             inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/muon_pairs_pp2017.root","read");            
         }
@@ -254,7 +255,7 @@ void MuonPairPlottingPP::InitOutput(){
         outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_real_pairs_pp_tight.root","recreate");
     }else{
         if (isRun3){
-            outFile = new TFile(Form("/eos/user/y/yuhang/data/pp_24/histograms_real_pairs_pp_2024%s.root",run3_trig_suffix.c_str()),"recreate");
+            outFile = new TFile(Form("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/histograms_real_pairs_pp_2024%s.root",run3_trig_suffix.c_str()),"recreate");
         }else{
             outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/histograms_real_pairs_pp_2017.root","recreate");
         }
@@ -263,6 +264,7 @@ void MuonPairPlottingPP::InitOutput(){
 
 void MuonPairPlottingPP::InitHists(){
     int nDR_bins = 200;
+    int nDR_zoomin_bins = 100;
     int nDphi_bins = 128;
     int neta_bins = 100;
     int nDeta_bins =  200;
@@ -304,6 +306,7 @@ void MuonPairPlottingPP::InitHists(){
                 for (unsigned int igap = 0; igap < ParamsSet::nGapCuts; igap++){
                     h_pair_dP_overP[idphi][isign][igap] = new TH1D(Form("h_pair_dP_overP_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";(#Delta p / p)_{pair};1/N_{evt} dN/d(#Delta p / p)_{pair}" ,pms.deltaP_overP_nbins,0,pms.deltaP_overP_max);
                     h_DR[idphi][isign][igap] = new TH1D(Form("h_DR_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_bins,0,pms.deltaR_thrsh[2]);
+                    h_DR_zoomin[idphi][isign][igap] = new TH1D(Form("h_DR_zoomin_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_zoomin_bins,0,pms.deltaR_thrsh_zoomin);
                     h_Dphi[idphi][isign][igap] = new TH1D(Form("h_Dphi_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";#Delta#phi;1/N_{evt} dN/d#Delta#phi", nDphi_bins,-pms.PI,pms.PI);
                     h_pair_y[idphi][isign][igap] = new TH1D(Form("h_pair_y_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";y_{pair};1/N_{evt} dN/dy_{pair}" ,npair_y_bins,-3,3);
                     h_pt_asym[idphi][isign][igap] = new TH1D(Form("h_pt_asym_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", npt_asym_bins,0,1.);

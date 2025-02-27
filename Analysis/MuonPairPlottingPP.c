@@ -49,6 +49,7 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
         h_pair_dP_overP[away_side][nsign][1]->Fill(pair_dPoverP[nsign],weight[nsign]);
         h_pair_y[away_side][nsign][1]->Fill(pair_y[nsign],weight[nsign]);
         h_DR[away_side][nsign][1]->Fill(dr[nsign],weight[nsign]);
+        h_DR_zoomin[away_side][nsign][1]->Fill(dr[nsign],weight[nsign]);
         h_Dphi[away_side][nsign][1]->Fill(dphi[nsign],weight[nsign]);
         h_pt_asym[away_side][nsign][1]->Fill(asym[nsign],weight[nsign]);
         h_pair_pt_ptlead_ratio[away_side][nsign][1]->Fill(pair_pt[nsign]/pt_lead[nsign],weight[nsign]);
@@ -76,6 +77,7 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
     h_pair_dP_overP[away_side][nsign][0]->Fill(pair_dPoverP[nsign],weight[nsign]);
     h_pair_y[away_side][nsign][0]->Fill(pair_y[nsign],weight[nsign]);
     h_DR[away_side][nsign][0]->Fill(dr[nsign],weight[nsign]);
+    h_DR_zoomin[away_side][nsign][0]->Fill(dr[nsign],weight[nsign]);
     h_Dphi[away_side][nsign][0]->Fill(dphi[nsign],weight[nsign]);
     h_pt_asym[away_side][nsign][0]->Fill(asym[nsign],weight[nsign]);
     h_pair_pt_ptlead_ratio[away_side][nsign][0]->Fill(pair_pt[nsign]/pt_lead[nsign],weight[nsign]);
