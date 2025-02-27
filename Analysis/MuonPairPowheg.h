@@ -50,7 +50,4 @@ MuonPairPowheg::MuonPairPowheg(){
 }
 
 
-
-
 #endif
-

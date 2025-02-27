@@ -18,8 +18,8 @@ public:
 
   MuonPairData(){}
   ~MuonPairData(){}
-  void Sort();
-  void Update();
+  void Sort() override;
+  void Update() override;
 };
 
 void MuonPairData::Sort(){
@@ -79,4 +79,3 @@ void MuonPairData::Update(){
 }
 
 #endif
-
