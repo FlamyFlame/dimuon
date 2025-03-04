@@ -20,7 +20,7 @@ public:
   float pair_dPoverP; 
   float pt_lead;
   float pair_pt;
-  // float pair_eta;
+  float pair_eta;
   float pair_y;
   float dpt;
   float deta;
@@ -124,7 +124,7 @@ void MuonPair::PairValueCalc(){
   M3=M1+M2;
   minv     = M3.M();
   pair_pt  = M3.Pt();
-  // pair_eta = M3.Eta();
+  pair_eta = M3.Eta();
   pair_y   = M3.Rapidity();
 
   asym = (m1.pt - m2.pt) / (m1.pt + m2.pt);
