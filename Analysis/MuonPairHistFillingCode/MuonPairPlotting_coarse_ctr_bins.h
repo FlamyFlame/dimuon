@@ -1,7 +1,7 @@
 // Assumes that we exclude resonances
 
-#ifndef __MuonPairPlotting_h__
-#define __MuonPairPlotting_h__
+#ifndef __MuonPairPlottingPbPb_h__
+#define __MuonPairPlottingPbPb_h__
 
 #include <TROOT.h>
 // #include <TChain.h>
@@ -10,13 +10,13 @@
 #include <string.h>
 #include  <stdlib.h>
 #include <fstream>
-#include "ParamsSet.h"
-#include "MuonPair.h"
+#include "../MuonObjectsParamsAndHelpers/ParamsSet.h"
+#include "../MuonObjectsParamsAndHelpers/MuonPair.h"
 #include "vector"
 #include "TH1D.h"
 #include "TH2D.h"
 
-class MuonPairPlotting{
+class MuonPairPlottingPbPb{
   	//updates histograms - centrality binned
     //if need histograms with all centrality bins added together
     //can add at the histograms level
@@ -120,13 +120,13 @@ public:
     int mode = 2;
     bool isScram = false;
 
-  	MuonPairPlotting(){}
-  	~MuonPairPlotting(){}
+  	MuonPairPlottingPbPb(){}
+  	~MuonPairPlottingPbPb(){}
   	void Run();
 
 };
 
-void MuonPairPlotting::InitInput(){
+void MuonPairPlottingPbPb::InitInput(){
 
     if (isScram){
         inFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/scrambled_muon_pairs.root","read");
@@ -170,7 +170,7 @@ void MuonPairPlotting::InitInput(){
     }
 }
 
-void MuonPairPlotting::InitHists(){
+void MuonPairPlottingPbPb::InitHists(){
 
    	if (mode == 1){
         

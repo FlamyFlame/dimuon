@@ -10,8 +10,8 @@
 #include <string.h>
 #include  <stdlib.h>
 #include <fstream>
-#include "ParamsSet.h"
-#include "MuonPair.h"
+#include "../MuonObjectsParamsAndHelpers/ParamsSet.h"
+#include "../MuonObjectsParamsAndHelpers/MuonPair.h"
 #include "vector"
 #include "TH1D.h"
 #include "TH2D.h"
@@ -31,12 +31,22 @@ private:
 
   	ParamsSet pms;
 
+// --------------------- histogram settings needed for multiple class methods ---------------------------
+    int npair_eta_bins_coarse = 24;
+    int npair_pT_bins_coarse = 30;
+    float pair_eta_min = -2.4;
+    float pair_eta_max = 2.4;
+    float pair_pt_min = 0;
+    float pair_pt_max = 30;
+
   	// --------------------- output file & histograms ---------------------------
 
   	TFile *outFile = nullptr;
     std::string run3_trig_suffix;
     
     std::string dphi_regions[2] = {"near", "away"};
+
+    TH2D* h_crossx_dR_cut_vs_pair_pt_pair_eta;
 
     TH1D* h_pair_dP_overP[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH1D* h_Dphi[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
@@ -84,7 +94,7 @@ private:
   	float pair_dPoverP[ParamsSet::nSigns];
   	float pt_lead[ParamsSet::nSigns];
   	float pair_pt[ParamsSet::nSigns];
-  	// float pair_eta[ParamsSet::nSigns];
+  	float pair_eta[ParamsSet::nSigns];
   	float pair_y[ParamsSet::nSigns];
     float asym[ParamsSet::nSigns];
   	float dpt[ParamsSet::nSigns];
@@ -259,6 +269,9 @@ void MuonPairPlottingPP::InitHists(){
     }
 
     std::string ancestor_grps[nAncestorGroups + 1] = {"_from_same_b", "_gg", "_qg","_single_g","_qq"};
+
+    h_crossx_dR_cut_vs_pair_pt_pair_eta = new TH2D("h_crossx_dR_cut_vs_pair_pt_pair_eta",";#eta^{pair};p_{T}^{pair} [GeV];#sigma^{truth}",npair_eta_bins_coarse,pair_eta_min,pair_eta_max,npair_pT_bins_coarse,pair_pt_min,pair_pt_max);
+    h_crossx_dR_cut_vs_pair_pt_pair_eta->Sumw2();
 
    	if (mode == 1){
         // for (unsigned int isign = 0; isign < ParamsSet::nSigns; isign++){

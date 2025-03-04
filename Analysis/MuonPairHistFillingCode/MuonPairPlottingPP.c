@@ -44,8 +44,23 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
     //  bool pass_gapcut = fabs(m1eta[nsign]) > pms.eta_gap_cut && fabs(m2eta[nsign]) > pms.eta_gap_cut;
     bool pass_gapcut = PassSingleMuonGapCut(m1eta[nsign], m1pt[nsign], m1charge[nsign]) && PassSingleMuonGapCut(m2eta[nsign], m2pt[nsign], m2charge[nsign]);
     bool away_side = (abs(dphi[nsign]) >= pms.PI / 2.);
+    if (nsign == 1 && dr[nsign] < 0.65){
+        TLorentzVector M1, M2, M3;
+        M1.SetPtEtaPhiM(m1pt[nsign],m1eta[nsign],m1phi[nsign], 0.105658);
+        M2.SetPtEtaPhiM(m2pt[nsign],m2eta[nsign],m2phi[nsign], 0.105658);
+        M3=M1+M2;
+        float pair_eta = M3.Eta();
+
+        h_crossx_dR_cut_vs_pair_pt_pair_eta->Fill(pair_eta,pair_pt[nsign],weight[nsign]);
+    }
 
     if (pass_gapcut){
+
+
+        // -------------------- TEMPORARY!!! NEED TO WRITE PAIR ETA IN NTUPLE-PROCESSING CODE!!! --------------------
+
+
+
         h_pair_dP_overP[away_side][nsign][1]->Fill(pair_dPoverP[nsign],weight[nsign]);
         h_pair_y[away_side][nsign][1]->Fill(pair_y[nsign],weight[nsign]);
         h_DR[away_side][nsign][1]->Fill(dr[nsign],weight[nsign]);

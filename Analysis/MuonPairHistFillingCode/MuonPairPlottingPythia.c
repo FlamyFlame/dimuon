@@ -1,5 +1,6 @@
 #include "MuonPairPlottingPythia.h"
 #include "time.h"
+#include "TLorentzVector.h"
 
 void MuonPairPlottingPythia::ProcessData(){
     for (int ifile = 0; ifile < nFiles; ifile++){
@@ -55,6 +56,20 @@ void MuonPairPlottingPythia::FillHistograms(int nfile, int nkin, int nsign){
 
     bool is_filled = false;
     if (from_same_b[nfile][nkin][nsign]){
+
+
+        // -------------------- TEMPORARY!!! NEED TO WRITE PAIR ETA IN NTUPLE-PROCESSING CODE!!! --------------------
+        TLorentzVector M1, M2, M3;
+        M1.SetPtEtaPhiM(m1pt[nfile][nkin][nsign],m1eta[nfile][nkin][nsign],m1phi[nfile][nkin][nsign], 0.105658);
+        M2.SetPtEtaPhiM(m2pt[nfile][nkin][nsign],m2eta[nfile][nkin][nsign],m2phi[nfile][nkin][nsign], 0.105658);
+        M3=M1+M2;
+        float pair_eta = M3.Eta();
+
+        h_crossx_truth_from_single_b_vs_pair_pt_pair_eta->Fill(pair_eta,pair_pt[nfile][nkin][nsign],ev_weight);
+
+        // ------------------------------------------------------------------------------------------------------------------------
+
+
         h_DR_ancestor_binned[nsign][nAncestorGroups]->Fill(dr[nfile][nkin][nsign],ev_weight);
         h_DR_zoomin_ancestor_binned[nsign][nAncestorGroups]->Fill(dr[nfile][nkin][nsign],ev_weight);
         h_DR_jacobian_corrected_ancestor_binned[nsign][nAncestorGroups]->Fill(dr[nfile][nkin][nsign],ev_weight * 1. / dr[nfile][nkin][nsign]);
@@ -221,6 +236,8 @@ void MuonPairPlottingPythia::FillPtBinnedHistograms(int nkin, int npt, int nsign
 void MuonPairPlottingPythia::WriteOutput(){
     // outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/pythia/histograms_pythia_combined.root","recreate");
 
+    h_crossx_truth_from_single_b_vs_pair_pt_pair_eta->Write();
+    
     if (mode == 1){
         // outFile->Write();
         // outFile->cd();

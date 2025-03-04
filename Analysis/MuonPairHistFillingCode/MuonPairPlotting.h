@@ -11,8 +11,8 @@
 #include  <stdlib.h>
 #include <assert.h>
 #include <fstream>
-#include "ParamsSet.h"
-#include "MuonPair.h"
+#include "../MuonObjectsParamsAndHelpers/ParamsSet.h"
+#include "../MuonObjectsParamsAndHelpers/MuonPair.h"
 #include "vector"
 #include "TH1D.h"
 #include "TH2D.h"

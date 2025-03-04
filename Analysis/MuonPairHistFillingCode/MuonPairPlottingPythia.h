@@ -10,9 +10,8 @@
 #include <string.h>
 #include  <stdlib.h>
 #include <fstream>
-#include "ParamsSet.h"
-// #include "MuonPairPythia.h"
-#include "muon_pair_enums_MC.h"
+#include "../MuonObjectsParamsAndHelpers/ParamsSet.h"
+#include "../MuonObjectsParamsAndHelpers/muon_pair_enums_MC.h"
 
 #include "vector"
 #include "TH1D.h"
@@ -40,11 +39,21 @@ private:
     std::vector<float> kinRanges = {5., 10., 25., 60., 120., 3200.};
 
 
+// --------------------- histogram settings needed for multiple class methods ---------------------------
+    int npair_eta_bins_coarse = 24;
+    int npair_pT_bins_coarse = 30;
+    float pair_eta_min = -2.4;
+    float pair_eta_max = 2.4;
+    float pair_pt_min = 0;
+    float pair_pt_max = 30;
+
 // --------------------- output file & histograms ---------------------------
 
   	TFile *outFile = nullptr;
     
     std::string dphi_regions[nDphis] = {"near", "away"};
+
+    TH2D* h_crossx_truth_from_single_b_vs_pair_pt_pair_eta;
 
     TH1D* h_pair_dP_overP[nDphis][ParamsSet::nSigns];
     TH1D* h_Dphi[nDphis][ParamsSet::nSigns];
@@ -197,6 +206,7 @@ private:
     void WriteOutput();
     bool PassSingleMuonGapCut(float meta, float mpt, int mcharge);
    	void FillHistograms(int nfile, int nkin, int nsign);
+    // void FillCrossxHistogramsTruthSingleB(int nfile, int nkin, int nsign);    
    	void FillPtBinnedHistograms(int nkin, int npt, int nsign);
 
 public:
@@ -333,6 +343,7 @@ void MuonPairPlottingPythia::InitHists(){
     int npair_pT_bins_linear = 50;
     int npT_lead_bins_linear = 50;
 
+
     
     static const int nminv_bins_log = 40;
     float minv_logpow[ParamsSet::nSigns];
@@ -354,6 +365,12 @@ void MuonPairPlottingPythia::InitHists(){
     // h_ptlead_pair_pt[jflavor][ksign] = new TH2D(Form("h_ptlead_pair_pt_%s_sign%d",flavor_labels[jflavor].c_str(),ksign+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][2],pms.npt_bins,pms.pTBins);
     // h_minv_pair_pt[jflavor][ksign] = new TH2D(Form("h_minv_pair_pt_%s_sign%d",flavor_labels[jflavor].c_str(),ksign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][2],nminv_bins,minv_bins[ksign]);
       
+
+    // ------------------------------------------ cross sections ------------------------------------------
+    h_crossx_truth_from_single_b_vs_pair_pt_pair_eta = new TH2D("h_crossx_truth_from_single_b_vs_pair_pt_pair_eta",";#eta^{pair};p_{T}^{pair} [GeV];#sigma^{truth}",npair_eta_bins_coarse,pair_eta_min,pair_eta_max,npair_pT_bins_coarse,pair_pt_min,pair_pt_max);
+    h_crossx_truth_from_single_b_vs_pair_pt_pair_eta->Sumw2();
+
+    // ------------------------------------------ kinematic distributions ------------------------------------------
     if (mode == 1){
         for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
 
@@ -484,7 +501,6 @@ void MuonPairPlottingPythia::InitHists(){
                 h_minv_pair_pt_jacobian_corrected[jdphi][ksign] = new TH2D(Form("h_minv_pair_pt_jacobian_corrected_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
                 h_minv_pair_pt_zoomin_jacobian_corrected[jdphi][ksign] = new TH2D(Form("h_minv_pair_pt_zoomin_jacobian_corrected_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,20,nminv_bins_linear,0,4);
                 h_minv_pair_pt_log[jdphi][ksign] = new TH2D(Form("h_minv_pair_pt_log_%s_sign%d",dphi_regions[jdphi].c_str(),ksign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[ksign][2],nminv_bins_log,minv_bins_log[ksign]);
-
 
                 h_pair_dP_overP[jdphi][ksign]->Sumw2();
                 h_DR[jdphi][ksign]->Sumw2();

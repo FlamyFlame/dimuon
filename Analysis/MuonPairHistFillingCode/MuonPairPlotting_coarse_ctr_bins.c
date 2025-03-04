@@ -1,7 +1,7 @@
-#include "MuonPairPlotting.h"
+#include "MuonPairPlottingPbPb.h"
 #include "time.h"
 
-void MuonPairPlotting::ProcessData(){
+void MuonPairPlottingPbPb::ProcessData(){
 	
   	for (int idr = 0; idr < ParamsSet::ndRselcs; idr++){
         for (int jctr = 0; jctr < ParamsSet::nCtrBins; jctr++){
@@ -30,7 +30,7 @@ void MuonPairPlotting::ProcessData(){
     }
 }
 
-void MuonPairPlotting::FillUnbinnedHistograms(int ndr, int nctr, int nsign){
+void MuonPairPlottingPbPb::FillUnbinnedHistograms(int ndr, int nctr, int nsign){
     h_pair_dP_overP[ndr][nsign]->Fill(pair_dPoverP[ndr][nctr][nsign]);
     // h_Minv[ndr][nsign]   ->Fill(minv[ndr][nctr][nsign]);
     // h_Dphi[ndr][nsign]   ->Fill(dphi[ndr][nctr][nsign]);
@@ -52,7 +52,7 @@ void MuonPairPlotting::FillUnbinnedHistograms(int ndr, int nctr, int nsign){
 }
 
 
-void MuonPairPlotting::FillCtrBinnedHistograms(int ndr, int nctr, int nsign){
+void MuonPairPlottingPbPb::FillCtrBinnedHistograms(int ndr, int nctr, int nsign){
     // ngapcut = 0: all; = 1: only those that pass
 
     //if pass eta gap cut
@@ -106,10 +106,10 @@ void MuonPairPlotting::FillCtrBinnedHistograms(int ndr, int nctr, int nsign){
     }
 }
 
-void MuonPairPlotting::FillPtBinnedHistograms(int ndr, int nctr, int nsign){}
+void MuonPairPlottingPbPb::FillPtBinnedHistograms(int ndr, int nctr, int nsign){}
 
 
-void MuonPairPlotting::WriteOutput(){
+void MuonPairPlottingPbPb::WriteOutput(){
     if (isScram){
         outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/histograms_scrambled_pairs.root","update");
     }else{
@@ -179,7 +179,7 @@ void MuonPairPlotting::WriteOutput(){
     }
 }
 
-void MuonPairPlotting::Run(){
+void MuonPairPlottingPbPb::Run(){
     clock_t start, end;
     double cpu_time_used;
     start = clock();
