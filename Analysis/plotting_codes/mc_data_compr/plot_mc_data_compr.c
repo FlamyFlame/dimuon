@@ -1,60 +1,14 @@
-#include <TROOT.h>
-// #include <TChain.h>
-#include <TFile.h>
-#include <string.h>
-#include  <stdlib.h>
-#include "vector"
-#include "TH1.h"
-#include "TH2.h"
-#include "TCanvas.h"
-#include<algorithm>
+#include "PlotMCDataComprBaseClass.c"
 
-class PlotMCDataComprSingleKinematics{
-private:
-    // private class variables
-    static const int s_nDtTypes = 6;
-    static const int s_nSigns = 2;
-    static const int s_nDphis = 2;
 
-    static const int ind_Dt_pp17 = 3; // the data-type index for pp2017 data - used as a reference for ratio plot
-    static constexpr float s_NULL = -1000.;
-
-    double pi = acos(-1.0);
-    // NEED TO CHANGE TO 2024 LUMINOSITY
-    float norm_factor[s_nDtTypes] = {1., 1., 1., 1/256.8, 1./410.815, 1/113.999}; // normalizing to differential crossx; unit is pb
-    Color_t colors[s_nDtTypes] = {kRed, kRed, kBlue, kBlack, kGreen+2, kMagenta};
-    // Style_t styles[s_nDtTypes] = {kSolid , kSolid, kSolid, kSolid, kDashed, kDashed};
-
-    std::string signs[s_nSigns] = {"_sign1", "_sign2"};
-    std::string signTitles[s_nSigns] = {"same sign", "opposite sign"};
-
-    std::string dphis[s_nDphis] = {"_near", "_away"};
-    std::string dphiTitles[s_nDphis] = {"#Delta #phi < #pi/2","#Delta #phi #geq #pi/2"};
-
-    TFile* f[s_nDtTypes];
-    bool is_data[s_nDtTypes] = {false, false, false, true, true, true}; //for data files, the histogram names need to have _gapcut1/2 suffix
-    std::string mcdir = "";
-    std::string dt_paths[s_nDtTypes] = {"/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/bb_full_sample/","/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/cc_full_sample/","/usatlas/u/yuhanguo/usatlasdata/pythia/","/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/","/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/","/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"};
-    std::string fnames[s_nDtTypes] = {"histograms_mc_truth_bb_combined.root","histograms_mc_truth_cc_combined.root","histograms_pythia_combined.root","histograms_real_pairs_pp_2017.root","histograms_real_pairs_pp_2024_2mu4.root","histograms_real_pairs_pp_2024_mu4_mu4noL1.root"};
-    std::string dtTitles[s_nDtTypes] = {"POWHEG", "", "Pythia", "pp data 2017", "pp data 2024 2mu4", "pp data 2024 mu4mu4noL1"};
-
-    std::array<float,4> legend_position_s_NULL = {s_NULL, s_NULL, s_NULL, s_NULL};
-
+class PlotMCDataComprSingleKinematics : public PlotMCDataComprBaseClass{
+protected:
     TCanvas* c;
     TH1D* h[s_nDtTypes][s_nSigns][s_nDphis];
 
-    // private class methods
-    void initialize();
-    void set_legend_position();
-    void hist_helper(TH1* h, float norm, bool norm_unity, std::string title, std::string ytitle="");
-    void apply_jacobian_correction(TH1* h);
-
 public:
 
-    // public class variables
-    std::string kin;
-    std::string kin1d = "";
-    std::string kin_title;
+    // ------------------- public class variables -------------------
 
     bool projx_2d = false;
     bool projy_2d = false;
@@ -64,16 +18,13 @@ public:
     bool jacobian_correct = false;
     float powheg_scale = 1.;
     float pythia_scale = 1.;
-
     bool near_away_sepr = false; // plot and save near region (dPhi < pi/2) and away region (dPhi >= pi/2) in separate png files
 
     bool ratio_plot_mode = false;
     bool ratio_plot_draw_errorbar = true;
 
-    std::array<float,4> legend_position_same_sign = {s_NULL, s_NULL, s_NULL, s_NULL}; // xmin, xmax, ymin, ymax
-    std::array<float,4> legend_position_opp_sign = {s_NULL, s_NULL, s_NULL, s_NULL}; // xmin, xmax, ymin, ymax
+    // ------------------- public class methods -------------------
 
-    // public class methods
     // constructor for "normal" 1D histogram
     PlotMCDataComprSingleKinematics(std::string kin_input, std::string kin_title_input){
                 kin = kin_input;
@@ -103,76 +54,11 @@ public:
     }
     ~PlotMCDataComprSingleKinematics(){}
 
-    void Run();
+    void Run() override;
 };
 
 // ------------------------------------------------------------------------------------------------------------------------------------------------------
 
-void PlotMCDataComprSingleKinematics::initialize(){
-    for (int idt = 0; idt < s_nDtTypes; idt++){
-        f[idt] = TFile::Open((dt_paths[idt] + fnames[idt]).c_str());
-    }
-    set_legend_position();
-}
-
-void PlotMCDataComprSingleKinematics::set_legend_position(){
-    if (legend_position_same_sign[0] < -999.){ // no user input --> set default values
-        legend_position_same_sign = {0.5,0.6,0.95,0.89};
-    }
-    if (legend_position_opp_sign[0] < -999.){ // no user input --> set default values
-        legend_position_opp_sign = {0.5,0.6,0.93,0.89};
-    }
-}
-
-void PlotMCDataComprSingleKinematics::hist_helper(TH1* h, float norm, bool norm_unity, std::string title, std::string ytitle=""){
-
-  h->SetStats(0);
-
-    if (norm_unity){
-        h->Scale(1.,"width");
-        h->Scale(1./h->Integral("width"));
-        h->GetYaxis()->SetTitle("pdf");
-    }else{
-        h->Scale(norm,"width");
-        if (ytitle.length() != 0){
-            h->GetYaxis()->SetTitle(ytitle.c_str());
-        }
-    }
-
-    // h->SetTitle(title.c_str());
-    // h->SetTitleSize(35);
-    h->GetYaxis()->SetLabelFont(43);
-    h->GetYaxis()->SetLabelSize(28);
-    h->GetYaxis()->SetLabelOffset(0.01);
-    h->GetYaxis()->SetTitleFont(43);
-    h->GetYaxis()->SetTitleSize(28);
-    h->GetYaxis()->SetTitleOffset(2.1);
-    h->GetXaxis()->SetLabelFont(43);
-    h->GetXaxis()->SetLabelSize(28);
-    h->GetXaxis()->SetLabelOffset(0.01);
-    h->GetXaxis()->SetTitleFont(43);  
-    h->GetXaxis()->SetTitleSize(28);
-    h->GetXaxis()->SetTitleOffset(1);
-    h->SetMarkerStyle(20);
-    h->SetMarkerSize(0.9);
-}
-
-void PlotMCDataComprSingleKinematics::apply_jacobian_correction(TH1* h){
-    if (h->GetDimension() != 1){
-        std::cout << "WARNING: Jacobian correction is currently only available for 1D histograms! Return without jacobian correction!" << std::endl;
-        return;
-    }
-    for (int bin = 1; bin <= h->GetNbinsX(); bin++){
-        if (h->GetBinCenter(bin) <= 0.){
-            std::cout << "WARNING: for Histogram required Jacobian correction on, ";
-            std::cout << "bin center for the " << bin << "-th bin has non-positive value of " << h->GetBinCenter(bin) << std::endl;
-            std::cout << "Return at the " << bin << "-th bin" << std::endl;
-            std::cout << "Returning histogram can be distorted" << std::endl;
-            return;
-        }
-        h->SetBinContent(bin, h->GetBinContent(bin) * 1. / h->GetBinCenter(bin));
-    }
-}
 
 // void plot_mc_data_compr_single_kinematic(std::string kin, bool projx_2d, bool projy_2d, bool norm_unity, std::string kin1d, std::string kin_title, bool logx=false, bool jacobian_correct=false, float powheg_scale = 1., float pythia_scale = 1.){
 void PlotMCDataComprSingleKinematics::Run(){
@@ -248,13 +134,11 @@ void PlotMCDataComprSingleKinematics::Run(){
                     throw std::runtime_error("Histogram does not exist (pointer is s_NULLptr)!");
                 }
 
-                if (jacobian_correct) apply_jacobian_correction(h[idt][ksign][jdphi]);
-
                 h[idt][ksign][jdphi]->SetMarkerColor(colors[idt]);
                 h[idt][ksign][jdphi]->SetLineColor(colors[idt]);
             }
 
-            h[0][ksign][jdphi]->Add(h[1][ksign][jdphi]); // powheg - add cc to bb for all sign & dphi regions
+            h[DataType::powheg_bb][ksign][jdphi]->Add(h[DataType::powheg_cc][ksign][jdphi]); // powheg - add cc to bb for all sign & dphi regions
         }
 
         for (unsigned int idt = 0; idt < s_nDtTypes; idt++){
@@ -279,19 +163,19 @@ void PlotMCDataComprSingleKinematics::Run(){
             try{
                 // set correct ratio-plot bin content for all but the reference histogram
                 for (unsigned int idt = 0; idt < s_nDtTypes; idt++){
-                    if (idt == ind_Dt_pp17) continue; // this is required for the datasets following the reference histogram to have correct bin content for the ratio plot
+                    if (idt == DataType::pp_2017) continue; // this is required for the datasets following the reference histogram to have correct bin content for the ratio plot
 
                     // find ratio of #bins(reference histogram) to #bins(current histogram) - currently only allow ratio to be 1 or 2
 
                     int nbins_refr_to_current_ratio;
-                    if (h[idt][ksign][0]->GetNbinsX() == h[ind_Dt_pp17][ksign][0]->GetNbinsX()){
+                    if (h[idt][ksign][0]->GetNbinsX() == h[DataType::pp_2017][ksign][0]->GetNbinsX()){
                         nbins_refr_to_current_ratio = 1;
-                    } else if (h[ind_Dt_pp17][ksign][0]->GetNbinsX() == h[idt][ksign][0]->GetNbinsX() * 2){
+                    } else if (h[DataType::pp_2017][ksign][0]->GetNbinsX() == h[idt][ksign][0]->GetNbinsX() * 2){
                         nbins_refr_to_current_ratio = 2;
                     }else{
                         std::cerr << "Required to perform ratio plot for kinematic " << kin1d << " but histogram has different #bins from the reference histogram!" << std::endl;
                         std::cerr << "Current dt index: " << idt << "; #bins for kinematic " << kin1d << " in current dt is: " << h[idt][ksign][0]->GetNbinsX() << std::endl;
-                        std::cerr << "#bins for kinematic " << kin1d << "in pp2017 (reference) data is: " << h[ind_Dt_pp17][ksign][0]->GetNbinsX() << std::endl;
+                        std::cerr << "#bins for kinematic " << kin1d << "in pp2017 (reference) data is: " << h[DataType::pp_2017][ksign][0]->GetNbinsX() << std::endl;
                         throw std::runtime_error("Required to perform ratio plot but histogram has different #bins from the reference histogram!");
                     }
 
@@ -299,8 +183,8 @@ void PlotMCDataComprSingleKinematics::Run(){
                         double bin_content_current = h[idt][ksign][0]->GetBinContent(bin);
                         double bin_err_current = h[idt][ksign][0]->GetBinError(bin);
 
-                        double bin_content_refr = (nbins_refr_to_current_ratio == 1)? h[ind_Dt_pp17][ksign][0]->GetBinContent(bin) : h[ind_Dt_pp17][ksign][0]->GetBinContent(2*bin-1) + h[ind_Dt_pp17][ksign][0]->GetBinContent(2*bin);
-                        double bin_err_refr = (nbins_refr_to_current_ratio == 1)? h[ind_Dt_pp17][ksign][0]->GetBinError(bin) : h[ind_Dt_pp17][ksign][0]->GetBinError(2*bin-1) + h[ind_Dt_pp17][ksign][0]->GetBinContent(2*bin);
+                        double bin_content_refr = (nbins_refr_to_current_ratio == 1)? h[DataType::pp_2017][ksign][0]->GetBinContent(bin) : h[DataType::pp_2017][ksign][0]->GetBinContent(2*bin-1) + h[DataType::pp_2017][ksign][0]->GetBinContent(2*bin);
+                        double bin_err_refr = (nbins_refr_to_current_ratio == 1)? h[DataType::pp_2017][ksign][0]->GetBinError(bin) : h[DataType::pp_2017][ksign][0]->GetBinError(2*bin-1) + h[DataType::pp_2017][ksign][0]->GetBinContent(2*bin);
 
                         if (bin_content_refr == 0){ // for current bin, #events in reference histogram is zero
                             h[idt][ksign][0]->SetBinContent(bin, s_NULL); // ratio is invalid - set to be s_NULL
@@ -327,13 +211,13 @@ void PlotMCDataComprSingleKinematics::Run(){
                 }
 
                 // set correct ratio-plot bin content for the reference histogram
-                for (int bin = 1; bin <= h[ind_Dt_pp17][ksign][0]->GetNbinsX(); bin++){
-                    h[ind_Dt_pp17][ksign][0]->SetBinContent(bin, 1.);
-                    double bin_content_pp17 = h[ind_Dt_pp17][ksign][0]->GetBinContent(bin);
-                    double bin_err_pp17 = h[ind_Dt_pp17][ksign][0]->GetBinError(bin);
+                for (int bin = 1; bin <= h[DataType::pp_2017][ksign][0]->GetNbinsX(); bin++){
+                    h[DataType::pp_2017][ksign][0]->SetBinContent(bin, 1.);
+                    double bin_content_pp17 = h[DataType::pp_2017][ksign][0]->GetBinContent(bin);
+                    double bin_err_pp17 = h[DataType::pp_2017][ksign][0]->GetBinError(bin);
                     double relative_err_pp17 = (bin_content_pp17 == 0)? 0 : bin_err_pp17 * 1. / bin_content_pp17;
-                    // h[ind_Dt_pp17][ksign][0]->SetBinError(bin, sqrt(2) * relative_err_pp17); 
-                    h[ind_Dt_pp17][ksign][0]->SetBinError(bin, 0.); // ratio-plot error bar for pp17 looks suspicious --> set error to be zero for now
+                    // h[DataType::pp_2017][ksign][0]->SetBinError(bin, sqrt(2) * relative_err_pp17); 
+                    h[DataType::pp_2017][ksign][0]->SetBinError(bin, 0.); // ratio-plot error bar for pp17 looks suspicious --> set error to be zero for now
                 }
             }catch (const std::runtime_error& err){
                 // std::cout << "WARNING: Runtime error caught when attempting ratio plot for the kinematic " << kin1d << ": " << err.what() << std::endl;
@@ -366,14 +250,13 @@ void PlotMCDataComprSingleKinematics::Run(){
     }
 
     std::string unity_suffix = norm_unity? "_unity" : "";
-    std::string jacobian_suffix = jacobian_correct? "_jacobian_corrected" : "";
     std::string ratio_suffix = ratio_plot_mode? "_ratio_to_pp17" : "";
     std::string ratio_errorbar_suffix = ratio_plot_draw_errorbar? "" : "_noerrorbar";
 
     if (powheg_scale != 1. || pythia_scale != 1.){ // can't coexist with normalizing-to-unity requirement
-        c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/mc_data_compr/%s_mc_data_compr%s%s%s_powheg_%.2f_pythia_%.2f.png", kin1d.c_str(), ratio_suffix.c_str(), ratio_errorbar_suffix.c_str(), jacobian_suffix.c_str(), powheg_scale, pythia_scale));
+        c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/mc_data_compr/%s_mc_data_compr%s%s%_powheg_%.2f_pythia_%.2f.png", kin1d.c_str(), ratio_suffix.c_str(), ratio_errorbar_suffix.c_str(), powheg_scale, pythia_scale));
     }else{
-        c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/mc_data_compr/%s_mc_data_compr%s%s%s%s.png", kin1d.c_str(), ratio_suffix.c_str(), ratio_errorbar_suffix.c_str(), jacobian_suffix.c_str(), unity_suffix.c_str()));
+        c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/mc_data_compr/%s_mc_data_compr%s%s%%s.png", kin1d.c_str(), ratio_suffix.c_str(), ratio_errorbar_suffix.c_str(), unity_suffix.c_str()));
     }
 
     c->Close();
