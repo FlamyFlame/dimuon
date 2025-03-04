@@ -1,9 +1,9 @@
 #ifndef __PbPbDataNTupleFirstPass_h__
 #define __PbPbDataNTupleFirstPass_h__
 
-#include "MuonPairData.h"
+#include "../MuonObjectsParamsAndHelpers/MuonPairData.h"
+#include "../MuonObjectsParamsAndHelpers/muon_pair_enums_data.h"
 #include "MuonNTupleFirstPassBaseClass.c"
-#include "muon_pair_enums_data.h"
 
 class PbPbDataNTupleFirstPass : public MuonNTupleFirstPassBaseClass{
     // ONLY ALLOW MODE 3 and 4 NOW!!!

@@ -5,11 +5,11 @@
 #include <string.h>
 #include <fstream>
 #include <cmath>  
-#include "MuonPair.h"
-#include "ParamsSet.h"
 #include "vector"
 #include "TH1D.h"
 #include "TH2D.h"
+#include "../MuonObjectsParamsAndHelpers/MuonPair.h"
+#include "../MuonObjectsParamsAndHelpers/ParamsSet.h"
 
 
 #ifndef __MuonNTupleFirstPassBaseClass_h__

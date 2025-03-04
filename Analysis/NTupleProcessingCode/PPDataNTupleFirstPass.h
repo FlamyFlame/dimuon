@@ -1,9 +1,9 @@
 #ifndef __PPDataNTupleFirstPass_h__
 #define __PPDataNTupleFirstPass_h__
 
-#include "MuonPairData.h"
+#include "../MuonObjectsParamsAndHelpers/MuonPairData.h"
+#include "../MuonObjectsParamsAndHelpers/muon_pair_enums_data.h"
 #include "MuonNTupleFirstPassBaseClass.c"
-#include "muon_pair_enums_data.h"
 
 class PPDataNTupleFirstPass : public MuonNTupleFirstPassBaseClass{
     // Read through the N-tuple, apply appropriate cuts

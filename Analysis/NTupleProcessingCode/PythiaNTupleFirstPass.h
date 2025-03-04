@@ -1,11 +1,11 @@
 #ifndef __PythiaNTupleFirstPass_h__
 #define __PythiaNTupleFirstPass_h__
 
-#include "MuonPairPythia.h"
-#include "TruthQQPair.h"
+#include "../MuonObjectsParamsAndHelpers/MuonPairPythia.h"
+#include "../MuonObjectsParamsAndHelpers/TruthQQPair.h"
+#include "../MuonObjectsParamsAndHelpers/muon_pair_enums_MC.h"
+#include "../MuonObjectsParamsAndHelpers/struct_particle.h"
 #include "MuonNTupleFirstPassBaseClass.c"
-#include "muon_pair_enums_MC.h"
-#include "struct_particle.h"
 #include "time.h"
 
 class PythiaNTupleFirstPass : public MuonNTupleFirstPassBaseClass{

@@ -1,11 +1,11 @@
 #ifndef __PowhegNTupleFirstPass_h__
 #define __PowhegNTupleFirstPass_h__
 
-#include "MuonPairPowheg.h"
-#include "TruthQQPair.h"
+#include "../MuonObjectsParamsAndHelpers/MuonPairPowheg.h"
+#include "../MuonObjectsParamsAndHelpers/TruthQQPair.h"
+#include "../MuonObjectsParamsAndHelpers/muon_pair_enums_MC.h"
+#include "../MuonObjectsParamsAndHelpers/struct_particle.h"
 #include "MuonNTupleFirstPassBaseClass.c"
-#include "muon_pair_enums_MC.h"
-#include "struct_particle.h"
 
 
 class PowhegNTupleFirstPass : public MuonNTupleFirstPassBaseClass{
