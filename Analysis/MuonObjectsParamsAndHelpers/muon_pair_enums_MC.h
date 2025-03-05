@@ -14,7 +14,8 @@ std::vector<std::string> cutLabels_MC = {"no cut", "muon eta", "muon pT", "reson
 const int numCuts_MC = cutLabels_MC.size();
 
 enum parent_groups{ // parent groups for a single muon; used for pythia + powheg
-  direct_b,
+  resonance_decay,
+  direct_b, // excluding J/Psi
   b_to_c,
   direct_c,
   s_light,
@@ -23,7 +24,7 @@ enum parent_groups{ // parent groups for a single muon; used for pythia + powheg
 };
 
 enum hard_scatter_categories{
-  gg_gg, 
+  gg_gg,
   qqbar_gg,
   gq_gq,
   flavor_creat, // 0 to 2
@@ -34,7 +35,7 @@ enum hard_scatter_categories{
   hard_scatt_drell_yan // never to be filled for HF muon pairs
 };
 
-enum muon_pair_origin_categories{ // will only be applied to [both from b] or [both fromc c] cases
+enum muon_pair_both_from_open_b_or_c_origin_categories{ // will only be applied to [both from b] or [both fromc c] cases
   fc,
   same_gs_phs_fsr, // including photon splitting
   same_gs_isr_zero_hard_scatt, // both semi-hard pT
