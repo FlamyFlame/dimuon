@@ -3,6 +3,33 @@
 #include "TLorentzVector.h"
 #include "time.h"
 
+PPDataNTupleFirstPass::PPDataNTupleFirstPass(){
+  numCuts = numCuts_data;
+  cutLabels = cutLabels_data;
+
+  isTight = false;
+  isRun3 = true;
+  run3_file_batch = 0;
+  run3_use_mu4_mu4_noL1 = true;
+  
+  std::cout << "PP Data Ntuple processing script:" << std::endl;
+  std::cout << "The following public variable(s) **MUST** be set:" << std::endl;
+  std::cout << "run3_file_batch: int that decides which run3-file batch to process, only has effect when isRun3 is true" << std::endl;
+  std::cout << "                 value = 1,2,3,4 (DEFAULT 0 --> MUST BE SET)" << std::endl;
+  std::cout << std::endl;
+
+  std::cout << "The following public variable(s) should be checked:" << std::endl;
+  std::cout << "isTight: boolean, default false - if true: require tight WP; false; require medium WP" << std::endl;
+  std::cout << "isRun3: boolean, default true - if true: run run3 data; false: run run2 data" << std::endl;
+  std::cout << "run3_use_mu4_mu4_noL1: boolean, default true, only has effect when isRun3 is true" << std::endl;
+  std::cout << "                       if true: requires mu4_mu4_noL1 trigger; false: requires 2mu4 trigger" << std::endl;
+  std::cout << std::endl;
+
+  std::cout << "if isRun3, output files will be written to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024" << std::endl;
+  std::cout << "else,      output files will be written to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2" << std::endl;
+  std::cout << "" << std::endl;
+}
+
 //initialize the TChain
 void PPDataNTupleFirstPass::InitInput(){
 
@@ -146,8 +173,8 @@ void PPDataNTupleFirstPass::InitOutput(){
     std::string run3_batch_suffix = "";
     if (isRun3) run3_batch_suffix = run3_batch_suffix_map[run3_file_batch];
 
-    std::string output_file_path = output_dir + mode_to_file_name_map[mode] + run_suffix + run3_batch_suffix + run3_trig_suffix + tight_suffix + ".root";
-    std::string output_hist_file_path = output_dir + "hists_cut_acceptance" + run_suffix + run3_batch_suffix + run3_trig_suffix + tight_suffix + ".root";
+    output_file_path = output_dir + mode_to_file_name_map[mode] + run_suffix + run3_batch_suffix + run3_trig_suffix + tight_suffix + ".root";
+    output_hist_file_path = output_dir + "hists_cut_acceptance" + run_suffix + run3_batch_suffix + run3_trig_suffix + tight_suffix + ".root";
 
     // ------------------------------------------------------------------------------
 
@@ -405,6 +432,8 @@ void PPDataNTupleFirstPass::Run(){
 
   m_outfile->Write();
   m_outHistFile->Write();
+  std::cout << "Output muon-pair trees have been written to: " << output_file_path << std::endl;
+  std::cout << "Output histograms have been written to: " << output_hist_file_path << std::endl;
 
   end = clock();
   cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;

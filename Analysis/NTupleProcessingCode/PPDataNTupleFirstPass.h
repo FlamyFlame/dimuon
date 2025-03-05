@@ -78,8 +78,6 @@ private:
   
 // --------------------- output file, histograms & trees ---------------------------
   
-    TFile *m_outfile = nullptr;
-    
     TTree* muonOutTree;
     TTree* muonPairOutTree[ParamsSet::nSigns];
 
@@ -94,16 +92,6 @@ public :
     void Run() override;
 };
 
-
-PPDataNTupleFirstPass::PPDataNTupleFirstPass(){
-    numCuts = numCuts_data;
-    cutLabels = cutLabels_data;
-
-    isTight = false;
-    isRun3 = true;
-    run3_file_batch = 0;
-    run3_use_mu4_mu4_noL1 = true;
-}
 
 #endif
 

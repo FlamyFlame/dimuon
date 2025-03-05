@@ -79,8 +79,6 @@ private:
 
     // --------------------- output file, histograms & trees ---------------------------
 
-    TFile *m_outfile = nullptr;
-
     TTree* muonOutTree;
     TTree* muonOutTreeBinned[ParamsSet::nCtrIntvls];
     TTree* muonPairOutTree[ParamsSet::nSigns];
@@ -89,9 +87,16 @@ private:
 
 public :
     int mode = 4;
+    bool isRun3;
     PbPbDataNTupleFirstPass(){
         numCuts = numCuts_data;
         cutLabels = cutLabels_data;
+        std::cout << "PbPb Data Ntuple processing script:" << std::endl;
+        std::cout << "The following public variable(s) should be checked:" << std::endl;
+        std::cout << "mode: integer that sets the mode (default 4)" << std::endl;
+        std::cout << "isRun3: if true, use run3 data; false: use run2 data" << std::endl;
+        std::cout << "if isRun3, output files will be written to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2023" << std::endl;
+        std::cout << "else,      output files will be written to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2" << std::endl;
     }
     ~PbPbDataNTupleFirstPass(){}
     void Run() override;

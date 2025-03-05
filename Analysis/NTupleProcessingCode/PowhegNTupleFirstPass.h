@@ -140,7 +140,6 @@ private:
   
 // --------------------- output file, histograms & trees ---------------------------
   
-    TFile *m_outfile = nullptr;
     std::ofstream* m_unspecified_parent_file = nullptr;
     std::ofstream* m_b_parent_file[ParamsSet::nSigns][2];
     std::ofstream* m_c_parent_file[ParamsSet::nSigns][2];
@@ -243,6 +242,11 @@ public :
         numCuts = numCuts_MC;
         cutLabels = cutLabels_MC;
         crossx_cut = 5 * pow(10,8);
+        std::cout << "Powheg Ntuple processing script:" << std::endl;
+        std::cout << "The following public variable(s) MUST(????? UNSURE???) be checked:" << std::endl;
+        std::cout << "mc_mode: string that takes value mc_truth_cc or mc_truth_bb" << std::endl;
+        std::cout << "is_full_sample" << std::endl;
+        std::cout << "full_sample_batch_num" << std::endl;
     }
     ~PowhegNTupleFirstPass(){}
     void Run() override;
