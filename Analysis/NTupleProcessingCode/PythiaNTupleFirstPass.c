@@ -8,6 +8,39 @@
 
 // #include<bits/stdc++.h>
 
+PythiaNTupleFirstPass::PythiaNTupleFirstPass(){
+  numCuts = numCuts_MC;
+  cutLabels = cutLabels_MC;
+
+  std::cout << "Pythia Ntuple processing script:" << std::endl;
+  std::cout << std::endl;
+
+  std::cout << "The following public variable(s) **MUST** be set:" << std::endl;
+  std::cout << "batch_num: Integer with value 1 or 2" << std::endl;
+  std::cout << "batch_num = 1: runs pythia samples run on or before 03/18/2023 (1st batch)" << std::endl;
+  std::cout << "batch_num = 2: runs pythia samples run on or after 03/22/2023 (2nd batch)" << std::endl;
+  std::cout << std::endl;
+
+  std::cout << "The following public variable(s) should be checked:" << std::endl;
+  std::cout << "turn_data_resonance_cuts_on:  boolean to turn on/off minv-based resonance cuts (same as in data)" << std::endl;
+  std::cout << "                              default false" << std::endl;
+  std::cout << std::endl;
+
+  // std::cout << "The following public variable(s) can be (optionally) set:" << std::endl;
+  // std::cout << "print_prt_history：           print parent history for muon pairs from open HF's" << std::endl;
+  // std::cout << "                              default false" << std::endl;
+  // std::cout << "print_others_history：        print parent history for muon pairs with origin tag \"others\"" << std::endl;
+  // std::cout << "                              default false" << std::endl;
+  // std::cout << "print_unspecified_parent：    print history in the middle of origin tracing for various places the parents are \"unspecified\"" << std::endl;
+  // std::cout << "                              default false" << std::endl;
+  // std::cout << "print_FE：                    print history for pairs from flavor excitation" << std::endl;
+  // std::cout << "                              default false" << std::endl;
+  // std::cout << std::endl;
+
+  std::cout << "Output files will be written to /usatlas/u/yuhanguo/usatlasdata/pythia" << std::endl;
+  std::cout << "Including a root file for muon pairs, a root file for histograms, and output txt files" << std::endl;
+}
+
 void PythiaNTupleFirstPass::InputSanityCheck(){
   if (job_dirs.size() != kn_in_job.size() || job_dirs.size() != nfiles_factor.size()){
     std::cout << "The vectors job_dirs, kn_in_job and nfiles_factor must have the same length!" << std::endl;
@@ -28,7 +61,7 @@ void PythiaNTupleFirstPass::InputSanityCheck(){
   }
 }
 
-void PythiaNTupleFirstPass::SetInputFilesFromBatch(){
+void PythiaNTupleFirstPass::SetInputOutputFilesFromBatch(){
   switch(batch_num){
   case 1:
     new_run = false;
@@ -55,6 +88,17 @@ void PythiaNTupleFirstPass::SetInputFilesFromBatch(){
     throw std::exception();
   }
 }
+
+void PythiaNTupleFirstPass::ResonanceNameMap(){
+  // reference: https://pdg.lbl.gov/2020/reviews/rpp2020-rev-monte-carlo-numbering.pdf
+  resonance_ids = {113, 223, 333, 443, 553}; // we do %10000 in tracing --> do not list higher resonances
+  resonance_id_to_name_and_crossx_map[113] = {"rho0", 0.};
+  resonance_id_to_name_and_crossx_map[223] = {"omega", 0.};
+  resonance_id_to_name_and_crossx_map[333] = {"phi", 0.};
+  resonance_id_to_name_and_crossx_map[443] = {"J/psi", 0.};
+  resonance_id_to_name_and_crossx_map[553] = {"Upsilon", 0.};
+}
+
 
 //initialize the TChain
 void PythiaNTupleFirstPass::InitInput(){
@@ -257,17 +301,9 @@ void PythiaNTupleFirstPass::InitOutput(){
 
     // ---------------------------------------------------------------------------------------------------------------------------
 
-    // m_single_muon = new std::ofstream(Form("%ssingle_gluon.txt", py_dir.c_str()));
-    // if (print_specific_prt_history){
-        // m_cc_ss_small_dphi_file = new std::ofstream(Form("%scc_ss_small_dphi.txt", py_dir.c_str()));
-        // *m_cc_ss_small_dphi_file << "Event#\tm1-grp\tm2-grp" << std::endl;
-        // m_bb_ss_near_file = new std::ofstream(Form("%sbb_ss_near.txt", py_dir.c_str()));
-        // m_bb_ss_away_file = new std::ofstream(Form("%sbb_ss_away.txt", py_dir.c_str()));
-        // m_bb_op_near_one_b_one_btoc_others_file = new std::ofstream(Form("%sbb_op_near_one_b_one_btoc_others.txt", py_dir.c_str()));
-    // }
-
     m_very_bad_warning_file = new std::ofstream(py_dir + "very_bad_warnings_pythia" + batch_suffix + ".txt");
     m_hard_scattering_warning_file = new std::ofstream(py_dir + "hard_scattering_warnings_pythia" + batch_suffix + ".txt");
+    m_crossx_summary_file = new std::ofstream(py_dir + "crossx_summary_pythia" + batch_suffix + ".txt");
 
     if (print_unspecified_parent){
       m_unspecified_parent_file = new std::ofstream(py_dir + "unspecified_parents_pythia" + batch_suffix + ".txt");
@@ -300,7 +336,10 @@ void PythiaNTupleFirstPass::InitOutput(){
     // --------------------------------------------- output file for tree writing ------------------------------------------------
 
     std::string apply_data_cuts_suffix = turn_data_resonance_cuts_on? "_with_data_resonance_cuts" : "_no_data_resonance_cuts";
-    m_outfile=new TFile(Form("%s%s%s.root", py_dir.c_str(), outfile_name.c_str(), apply_data_cuts_suffix.c_str()), "recreate");
+    output_file_path = py_dir + outfile_name + apply_data_cuts_suffix + ".root";
+    output_hist_file_path = py_dir + outhistfile_name + apply_data_cuts_suffix + ".root";
+    
+    m_outfile=new TFile(output_file_path.c_str(), "recreate");
     
     meta_tree = new TTree("meta_tree","meta_tree");
     meta_tree->Branch("nentries_k0_before_cuts",nentries_k0);
@@ -330,7 +369,7 @@ void PythiaNTupleFirstPass::InitOutput(){
     //     }
     // }
 
-    m_outHistFile=new TFile(Form("%s%s%s.root", py_dir.c_str(), outhistfile_name.c_str(), apply_data_cuts_suffix.c_str()), "recreate");
+    m_outHistFile=new TFile(output_hist_file_path.c_str(), "recreate");
 
     h_numMuonPairs = new TH1D("h_numMuonPairs","h_numMuonPairs",6,0,6);
 
@@ -406,79 +445,6 @@ void PythiaNTupleFirstPass::InitOutput(){
             // }
         }
     }
-
-
-    // static const int ncrossx_bins = 40;
-    // float crossx_logpow_bb = 0.0711;
-    // float crossx_logpow_cc = 0.1288;
-    // float crossx_max_bb = 1.52 *pow(10,9);
-    // float crossx_max_cc = 2.9 * pow(10,10);
-    // double crossx_bins_bb[ncrossx_bins+1];
-    // double crossx_bins_cc[ncrossx_bins+1];
-
-    // for(int icrossx = 0; icrossx <= ncrossx_bins; icrossx++){
-    //     crossx_bins_bb[icrossx] = crossx_max_bb * pow(10.0, ((float)(icrossx - ncrossx_bins))*crossx_logpow_bb);
-    //     crossx_bins_cc[icrossx] = crossx_max_cc * pow(10.0, ((float)(icrossx - ncrossx_bins))*crossx_logpow_cc);
-    // }
-
-
-    // if (mc_mode == "mc_truth_bb"){
-    //     h_crossx = new TH1D("h_crossx","h_crossx",ncrossx_bins,crossx_bins_bb);
-    //     for (int ipt = 0; ipt < npTbins; ipt++){
-    //         // h_crossx_pt_binned[ipt] = new TH1D(Form("h_crossx_pt%d",ipt+1),Form("h_crossx_pt%d",ipt+1),ncrossx_bins,crossx_bins_bb);
-    //         h_crossx_pt_binned[ipt] = new TH1D(Form("h_crossx_pt%d",ipt+1),Form("h_crossx_pt%d",ipt+1),ncrossx_bins,crossx_bins_cc);
-    //     }
-    // }else{
-    //     h_crossx = new TH1D("h_crossx","h_crossx",ncrossx_bins,crossx_bins_cc);
-    //     for (int ipt = 0; ipt < npTbins; ipt++){
-    //         h_crossx_pt_binned[ipt] = new TH1D(Form("h_crossx_pt%d",ipt+1),Form("h_crossx_pt%d",ipt+1),ncrossx_bins,crossx_bins_cc);
-    //     }
-    // }
-
-    // h_unweighted_bb_op_one_b_one_btoc[0] = new TH1D("h_unweighted_bb_op_one_b_one_btoc_near","h_unweighted_bb_op_one_b_one_btoc_near",3,0,3);
-    // h_unweighted_bb_op_one_b_one_btoc[1] = new TH1D("h_unweighted_bb_op_one_b_one_btoc_away","h_unweighted_bb_op_one_b_one_btoc_away",3,0,3);
-    // h_op_one_b_one_btoc[0] = new TH1D("h_op_one_b_one_btoc_near","h_op_one_b_one_btoc_near",4,0,4);
-    // h_op_one_b_one_btoc[1] = new TH1D("h_op_one_b_one_btoc_away","h_op_one_b_one_btoc_away",4,0,4);
-
-    // h_bb_ss_near_involv_osc = new TH1D("h_bb_ss_near_involv_osc","h_bb_ss_near_involv_osc",6,0,6);
-    // h_bb_ss_away_involv_osc = new TH1D("h_bb_ss_away_involv_osc","h_bb_ss_away_involv_osc",6,0,6);
-
-    // h_dphi_bb_ss_near = new TH1D("h_dphi_bb_ss_near",";#Delta#phi;d#sigma/d#Delta#phi", 32,-pms.PI/2.,pms.PI/2.);
-    // h_dphi_bb_op_near = new TH1D("h_dphi_bb_op_near",";#Delta#phi;d#sigma/d#Delta#phi", 32,-pms.PI/2.,pms.PI/2.);
-    // h_dphi_bb_op_near_from_same_b = new TH1D("h_dphi_bb_op_near_from_same_b",";#Delta#phi;d#sigma/d#Delta#phi", 32,-pms.PI/2.,pms.PI/2.);
-    
-    // h_dphi_bb_op_near_both_from_b = new TH1D("h_dphi_bb_op_near_both_from_b",";#Delta#phi;d#sigma/d#Delta#phi", 32,-pms.PI/2.,pms.PI/2.);
-    // h_dphi_bb_op_near_one_b_one_btoc = new TH1D("h_dphi_bb_op_near_one_b_one_btoc",";#Delta#phi;d#sigma/d#Delta#phi", 32,-pms.PI/2.,pms.PI/2.);
-
-    // for (int isign = 0; isign < ParamsSet::nSigns; isign++){
-        // h_both_from_b_same_ancestors[isign][0] = new TH1D(Form("h_both_from_b_same_ancestors_sign%d_near",isign+1),Form("h_both_from_b_same_ancestors_sign%d_near",isign+1),2,0,2);
-        // h_both_from_b_same_ancestors[isign][1] = new TH1D(Form("h_both_from_b_same_ancestors_sign%d_away",isign+1),Form("h_both_from_b_same_ancestors_sign%d_away",isign+1),2,0,2);
-        // h_both_from_b_ancestor_sp[isign][0] = new TH1D(Form("h_both_from_b_ancestor_sp_sign%d_near",isign+1),Form("h_both_from_b_ancestor_sp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups);
-        // h_both_from_b_ancestor_sp[isign][1] = new TH1D(Form("h_both_from_b_ancestor_sp_sign%d_away",isign+1),Form("h_both_from_b_ancestor_sp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups);
-        // h_both_from_b_ancestor_dp[isign][0] = new TH2D(Form("h_both_from_b_ancestor_dp_sign%d_near",isign+1),Form("h_both_from_b_ancestor_dp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
-        // h_both_from_b_ancestor_dp[isign][1] = new TH2D(Form("h_both_from_b_ancestor_dp_sign%d_away",isign+1),Form("h_both_from_b_ancestor_dp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
-        // h_both_from_b_same_ancestors[isign][0]->Sumw2();
-        // h_both_from_b_same_ancestors[isign][1]->Sumw2();
-        // h_both_from_b_ancestor_sp[isign][0]->Sumw2();
-        // h_both_from_b_ancestor_sp[isign][1]->Sumw2();
-        // h_both_from_b_ancestor_dp[isign][0]->Sumw2();
-        // h_both_from_b_ancestor_dp[isign][1]->Sumw2();
-    // }
-
-    // for (int isign = 0; isign < ParamsSet::nSigns; isign++){
-    //     h_both_from_c_same_ancestors[isign][0] = new TH1D(Form("h_both_from_c_same_ancestors_sign%d_near",isign+1),Form("h_cc_both_from_c_same_ancestors_sign%d_near",isign+1),2,0,2);
-    //     h_both_from_c_same_ancestors[isign][1] = new TH1D(Form("h_both_from_c_same_ancestors_sign%d_away",isign+1),Form("h_cc_both_from_c_same_ancestors_sign%d_away",isign+1),2,0,2);
-    //     h_both_from_c_ancestor_sp[isign][0] = new TH1D(Form("h_both_from_c_ancestor_sp_sign%d_near",isign+1),Form("h_cc_both_from_c_ancestor_sp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups);
-    //     h_both_from_c_ancestor_sp[isign][1] = new TH1D(Form("h_both_from_c_ancestor_sp_sign%d_away",isign+1),Form("h_cc_both_from_c_ancestor_sp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups);
-    //     h_both_from_c_ancestor_dp[isign][0] = new TH2D(Form("h_both_from_c_ancestor_dp_sign%d_near",isign+1),Form("h_cc_both_from_c_ancestor_dp_sign%d_near",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
-    //     h_both_from_c_ancestor_dp[isign][1] = new TH2D(Form("h_both_from_c_ancestor_dp_sign%d_away",isign+1),Form("h_cc_both_from_c_ancestor_dp_sign%d_away",isign+1),nAncestorGroups,0,nAncestorGroups,nAncestorGroups,0,nAncestorGroups);
-    //     h_both_from_c_same_ancestors[isign][0]->Sumw2();
-    //     h_both_from_c_same_ancestors[isign][1]->Sumw2();
-    //     h_both_from_c_ancestor_sp[isign][0]->Sumw2();
-    //     h_both_from_c_ancestor_sp[isign][1]->Sumw2();
-    //     h_both_from_c_ancestor_dp[isign][0]->Sumw2();
-    //     h_both_from_c_ancestor_dp[isign][1]->Sumw2();
-    // }
 }
 
 
@@ -488,12 +454,11 @@ void PythiaNTupleFirstPass::Finalize(){
     delete m1_history_particle;
     delete m2_history_particle;
 
-    // delete m1_last_hf_hadron_prt_pt_eta_phi_m;
-    // delete m2_last_hf_hadron_prt_pt_eta_phi_m;
     delete m1_first_hf_hadron_prt_pt_eta_phi_m;
     delete m2_first_hf_hadron_prt_pt_eta_phi_m;
-    // delete m1_hq_ancestor_pt_eta_phi_m;
-    // delete m2_hq_ancestor_pt_eta_phi_m;
+
+    m_crossx_summary_file->close();
+    delete m_crossx_summary_file;
 
     m_very_bad_warning_file->close();
     delete m_very_bad_warning_file;
@@ -613,28 +578,24 @@ bool PythiaNTupleFirstPass::PassCuts(const std::shared_ptr<MuonPair>& mpair){
 int PythiaNTupleFirstPass::ParentGrouping(std::vector<int>& parent_ids, bool c_tag, bool prev_is_lepton){
 
   if (parent_ids.size() == 2 && abs(parent_ids[0]) <= 5 && parent_ids[1] == (-1) * parent_ids[0] && prev_is_lepton){
-    // std::cout << "For study purpose - Drell-Yan:" << std::endl;
-    // PrintHistory(&std::cout, false, true);
     return prt_drell_yan;
   } 
-  // else if (parent_ids.size() >= 2){
-  //   // not necessarily problematic or error-prone
-  //   // print out the ids and see.
-  //   // In the worst case, a HF hadron gets misidentified as s/light hadron and we lose that event
-  //   // (will return -1 in this case)
-  //   // but these events should be relatively rare
-  //   std::cout << "more than one (hadonic) parents in the parent-id vector. The process is not Drell-Yan." << std::endl;
-  //   for (auto id : parent_ids) std::cout << id << " ";
-  //   std::cout << std::endl;
-  // }
 
-  int parent_id = abs(parent_ids[0]);
+  int parent_id = abs(parent_ids[0]) % 10000;
+
+  auto it_truth_resonance = std::find(resonance_ids.begin(), resonance_ids.end(), parent_id);
+
+  if (it_truth_resonance != resonance_ids.end()) { // current muon comes from resonance
+    return resonance_decay;
+  }
 
   if ((parent_id >= 500 && parent_id < 600) || (parent_id >= 5000 && parent_id < 6000)){
     if (! c_tag) return direct_b; // direct b
     else         return b_to_c; // b -> c
   }
+
   if (c_tag) return direct_c; // c not from b
+  
   if ((parent_id >= 100 && parent_id < 400) || (parent_id >= 1000 && parent_id < 4000)) // light and s-hadrons
     return s_light; // light and s-flavored hadrons
 
@@ -648,13 +609,6 @@ int PythiaNTupleFirstPass::ParentGrouping(std::vector<int>& parent_ids, bool c_t
 }
 
 void PythiaNTupleFirstPass::GetPtEtaPhiMFromBarcode(int barcode, std::vector<float>* pt_eta_phi_m){
-  // std::vector<int>::iterator itbar = std::find(truth_barcode->begin(), truth_barcode->end(), barcode);
-
-  // if (itbar == truth_barcode->end()){ // found the barcode of muon1 among all truth particles
-  //   std::cout << "Error:: Barcode of the current parent not found among all truth particles, quitting" << std::endl;
-  //   throw std::exception();
-  // }
-  
   pt_eta_phi_m->clear();
   pt_eta_phi_m->push_back(truth_pt->at(barcode));
   pt_eta_phi_m->push_back(truth_eta->at(barcode));
@@ -663,13 +617,11 @@ void PythiaNTupleFirstPass::GetPtEtaPhiMFromBarcode(int barcode, std::vector<flo
 
 std::pair<int,int> PythiaNTupleFirstPass::UpdateCurParents(bool isMuon1, std::vector<int>& cur_prt_bars, std::vector<int>& cur_prt_ids, bool before_gs, bool& prev_out_hard_scatt, int hf_quark_index = -1000000){
   
-  // if (mpair->m1.ev_num == 20){
-  //   cout << "current updating step - first barcode" << cur_prt_bars[0] << ", id" << cur_prt_ids[0] << endl;
-  //   PrintHistory(&std::cout, true, isMuon1);
-  // }
+  // function that traces one step back and updates the current parent barcodes + ids
+  // it returns a pair of integer that is {previous first parent barcode, previous first parent id} if the previous first parent was a HF hadron
+  // and returns {0,0} otherwise
+  // besides tracing, it also handles many specific cases, such as resonance tagging and c tagging, as well as hadron to quark transition
 
-  // // print out if there are more than one hadron-level parents
-  // check before updating so that the earliest hadron-level parents don't get printed out
   bool cur_is_quark_gluon = (abs(cur_prt_ids[0]) <= 5 || cur_prt_ids[0] == 21);
   if (cur_prt_bars.size() > 1 && !(cur_is_quark_gluon)){
   // if (cur_prt_bars.size() > 1 && hf_quark_index < 0){
@@ -687,14 +639,6 @@ std::pair<int,int> PythiaNTupleFirstPass::UpdateCurParents(bool isMuon1, std::ve
   cur_prt_bars.clear();
   cur_prt_ids.clear();
 
-  // std::vector<int>::iterator itbar;
-  // if (hf_quark_index > 0)
-  //   itbar = std::find(truth_barcode->begin(),truth_barcode->end(),cur_prt_bars[hf_quark_index]);
-  // else
-  //   itbar = std::find(truth_barcode->begin(),truth_barcode->end(),cur_prt_bars[0]);
-  // if (itbar == truth_barcode->end()){ // found the barcode of muon1 among all truth particles
-  //   std::cout << "Error:: Barcode of the current parent not found among all truth particles, quitting" << std::endl;
-  // }
   int index = (hf_quark_index >= 0)? hf_quark_index : 0;
   int mother1 = truth_mother1->at(cur_prt_bars[index]);
   int mother2 = truth_mother2->at(cur_prt_bars[index]);
@@ -781,27 +725,11 @@ std::pair<int,int> PythiaNTupleFirstPass::UpdateCurParents(bool isMuon1, std::ve
     // std::cout << "Event# " << mpair->m1.ev_num << ", current barcode: " << cur_prt_bars[0] << std::endl;
 
     if (isMuon1){
-      // std::cout << "muon1 in1-direct print: " << truth_pt->at(cur_prt_bars[0]+2) << " " << truth_eta->at(cur_prt_bars[0]+2) << " " << truth_phi->at(cur_prt_bars[0]+2) << " " << truth_m->at(cur_prt_bars[0]+2) << std::endl;
-      // std::cout << "muon1 in2-direct print: " << truth_pt->at(cur_prt_bars[1]+2) << " " << truth_eta->at(cur_prt_bars[1]+2) << " " << truth_phi->at(cur_prt_bars[1]+2) << " " << truth_m->at(cur_prt_bars[1]+2) << std::endl;      
       vm1out1.SetPtEtaPhiM(truth_pt->at(cur_prt_bars[0]+2), truth_eta->at(cur_prt_bars[0]+2), truth_phi->at(cur_prt_bars[0]+2), truth_m->at(cur_prt_bars[0]+2));
       vm1out2.SetPtEtaPhiM(truth_pt->at(cur_prt_bars[1]+2), truth_eta->at(cur_prt_bars[1]+2), truth_phi->at(cur_prt_bars[1]+2), truth_m->at(cur_prt_bars[1]+2));
-      // cout << "fine 12" << endl;
-     
-      // if (mpair->m1.ev_num < 1000){
-      //   std::cout << "Event# " << mpair->m1.ev_num << "muon1 in1: " << vm1out1.E() << " " << vm1out1.Px() << " " << vm1out1.Py() << " " << vm1out1.Pz() << " " << vm1out1.Eta() << std::endl;
-      //   std::cout << "Event# " << mpair->m1.ev_num << "muon1 in2: " << vm1out2.E() << " " << vm1out2.Px() << " " << vm1out2.Py() << " " << vm1out2.Pz() << " " << vm1out2.Eta() << std::endl;
-      //   std::cout << "Event# " << mpair->m1.ev_num << "muon1 in1-direct print: " << truth_pt->at(cur_prt_bars[0]) << " " << truth_eta->at(cur_prt_bars[0]) << " " << truth_phi->at(cur_prt_bars[0]) << " " << truth_m->at(cur_prt_bars[0]) << std::endl;
-      //   std::cout << "Event# " << mpair->m1.ev_num << "muon1 in2-direct print: " << truth_pt->at(cur_prt_bars[1]) << " " << truth_eta->at(cur_prt_bars[1]) << " " << truth_phi->at(cur_prt_bars[1]) << " " << truth_m->at(cur_prt_bars[1]) << std::endl;
-      // }
     }else{
-      // vm2out1.SetPtEtaPhiM(cur_prt_profiles[0].pt, cur_prt_profiles[0].eta, cur_prt_profiles[0].phi, truth_m->at(cur_prt_bars[0]));
-      // vm2out2.SetPtEtaPhiM(cur_prt_profiles[1].pt, cur_prt_profiles[1].eta, cur_prt_profiles[1].phi, truth_m->at(cur_prt_bars[1]));
       vm2out1.SetPtEtaPhiM(truth_pt->at(cur_prt_bars[0]+2), truth_eta->at(cur_prt_bars[0]+2), truth_phi->at(cur_prt_bars[0]+2), truth_m->at(cur_prt_bars[0]+2));
       vm2out2.SetPtEtaPhiM(truth_pt->at(cur_prt_bars[1]+2), truth_eta->at(cur_prt_bars[1]+2), truth_phi->at(cur_prt_bars[1]+2), truth_m->at(cur_prt_bars[1]+2));
-      // if (mpair->m1.ev_num < 1000){
-      //   std::cout << "Event# " << mpair->m1.ev_num << "muon2 in1: " << vm2out1.E() << " " << vm2out1.Px() << " " << vm2out1.Py() << " " << vm2out1.Pz() << std::endl;
-      //   std::cout << "Event# " << mpair->m1.ev_num << "muon2 in1: " << vm2out2.E() << " " << vm2out2.Px() << " " << vm2out2.Py() << " " << vm2out2.Pz() << std::endl;
-      // }
     }
 
     if (isMuon1){
@@ -811,9 +739,6 @@ std::pair<int,int> PythiaNTupleFirstPass::UpdateCurParents(bool isMuon1, std::ve
       mpair->m1_hard_scatt_category = catgr;
       TLorentzVector vhard = vm1out1 + vm1out2;
 
-      // if (mpair->m1.ev_num < 100){
-      //   std::cout << "Event# " << mpair->m1.ev_num << "vhard: " << vhard.E() << " " << vhard.Px() << " " << vhard.Py() << " " << vhard.Pz() << " " << vhard.M() << std::endl;
-      // }
       m1_hard_scatt_Q = vhard.M();
     }  
     else{
@@ -822,9 +747,6 @@ std::pair<int,int> PythiaNTupleFirstPass::UpdateCurParents(bool isMuon1, std::ve
       m2_hard_scatt_in_bar1 = cur_prt_bars[0];
       mpair->m2_hard_scatt_category = catgr;
       TLorentzVector vhard = vm2out1 + vm2out2;
-      // if (mpair->m1.ev_num < 1000){
-      //   std::cout << "Event# " << mpair->m1.ev_num << "vhard: " << vhard.E() << " " << vhard.Px() << " " << vhard.Py() << " " << vhard.Pz() << " " << vhard.M() << std::endl;
-      // }
       m2_hard_scatt_Q = vhard.M();
     }
 
@@ -850,16 +772,19 @@ std::pair<int,int> PythiaNTupleFirstPass::UpdateCurParents(bool isMuon1, std::ve
     else         m2_osc = true;
   }
 
-  if (cur_prt_ids[0] == 441 || cur_prt_ids[0] == 443 || cur_prt_ids[0] == 445){
-    if (isMuon1) m1_from_J_psi = true;
-    else         m2_from_J_psi = true;
-  }
+  auto it_truth_resonance = std::find(resonance_ids.begin(), resonance_ids.end(), abs(cur_prt_ids[0]) % 10000);
 
-  if (cur_prt_ids[0] == 551 || cur_prt_ids[0] == 553 || cur_prt_ids[0] == 555){
-    if (isMuon1) m1_from_Upsilon = true;
-    else         m2_from_Upsilon = true;
+  if (it_truth_resonance != resonance_ids.end()) { // current muon comes from resonance
+    if (isMuon1){
+      m1_resonance_barcode = cur_prt_bars[0];
+      mpair->m1_parent_group = resonance_decay; 
+    }
+    else{
+      m2_resonance_barcode = cur_prt_bars[0];
+      mpair->m2_parent_group = resonance_decay; 
+    }
+    return std::pair<int,int>(0,0);
   }
-
 
   //c-tag
   if ((abs(cur_prt_ids[0]) >= 400 && abs(cur_prt_ids[0]) < 500) || (abs(cur_prt_ids[0]) >= 4000 && abs(cur_prt_ids[0]) < 5000)){ // c-hadrons
@@ -1040,16 +965,24 @@ void PythiaNTupleFirstPass::SingleMuonAncestorTracing(bool isMuon1){
     m2_history_particle->push_back(cur_muon_profile);
   }
 
-  while(abs(parent_ids[0]) == 13 || abs(parent_ids[0]) == 15 || (abs(parent_ids[0]) >= 400 && abs(parent_ids[0]) < 500) || (abs(parent_ids[0]) >= 4000 && abs(parent_ids[0]) < 5000)){
+  // leptons, virtual photons (mass nonzero), c-flavored hadrons
+  while(abs(parent_ids[0]) == 13 || abs(parent_ids[0]) == 15 || (abs(parent_ids[0]) == 22 && abs(truth_m->at(parent_bars[0])) > 1e-6) || (abs(parent_ids[0]) >= 400 && abs(parent_ids[0]) < 500) || (abs(parent_ids[0]) >= 4000 && abs(parent_ids[0]) < 5000)){
     if (abs(parent_ids[0]) == 15){
       if (isMuon1)  m1_from_tau = true;
       else          m2_from_tau = true;
     }
     prev_first_prt_id = parent_ids[0];
     first_hadron_bar_id = UpdateCurParents(isMuon1, parent_bars, parent_ids, true, prev_step_status_m23_m33);
+
+    // if muon comes from resonance (J/Psi in this case): return --> avoid J/Psi from B causing muon to be tagged as b-to-c
+    if ((isMuon1 && mpair->m1_parent_group == resonance_decay) || (!isMuon1 && mpair->m2_parent_group == resonance_decay)) return;
+
     first_hadron_barcode = first_hadron_bar_id.first;
     first_hadron_id = first_hadron_bar_id.second;
   }
+
+  // we have encounted the first hadronic parent here: if the muon is from a resonance decay, the resonance tag has been turned on, and we return without performing the rest
+  if ((isMuon1 && mpair->m1_parent_group == resonance_decay) || (!isMuon1 && mpair->m2_parent_group == resonance_decay)) return;
 
   bool prev_is_lepton = (abs(prev_first_prt_id) == 13 || abs(prev_first_prt_id) == 15);
 
@@ -1102,76 +1035,36 @@ void PythiaNTupleFirstPass::SingleMuonAncestorTracing(bool isMuon1){
     else         m2_eldest_bhadron_barcode = first_hadron_barcode; // != -10 only if the current (single) muon is from a b hadron (either direct b or b to c to muon)
   }
 
-  // cout << "hadronic tracing stage fine" << endl;
-
-  // std::cout << mpair->m1.ev_num << "\t" << first_hadron_id << ",\t";
-
   int quark = (cur_parent_group == direct_c)? 4:5;
   
-  // if (mpair->m1.ev_num ==58 || mpair->m1.ev_num == 117 || mpair->m1.ev_num == 203 || mpair->m1.ev_num == 293 || mpair->m1.ev_num == 478 || mpair->m1.ev_num == 484 ||  mpair->m1.ev_num ==601){
-  //   std::cout << "the current muon's parent group is: " << cur_parent_group << std::endl;
-  //   bool c_tag = (isMuon1)? m1_c_tag : m2_c_tag;
-  //   std::cout << "the current muon's c-tag: " << c_tag << std::endl;
-  //   std::cout << "the heavy quark is: " << quark << std::endl;
-  // }
-
-  // if (mpair->m1.ev_num < 80) std::cout << first_hadron_id << std::endl;
-  //////// NOT SURE!!!!!!!!!!!!!! what if the partons before string fragmentation have two c's or b's?
   int quark_index = FindHeavyQuarks(parent_ids, parent_bars, quark, isMuon1, parent_bars[0], first_hadron_id);
 
-  // for (int pid : parent_ids) cout << pid << " ";
-  // std::cout << "(" << quark_index << "),\t";
-
-  if ((isMuon1 && m1_from_J_psi) || (!isMuon1 && m2_from_J_psi)){
-    while(parent_ids.size() == 1 && (abs(parent_ids[0]) == 3 || abs(parent_ids[0]) == 1003 || abs(parent_ids[0]) == 2003)){ // 9940003
-      UpdateCurParents(isMuon1, parent_bars, parent_ids, true, prev_step_status_m23_m33);
-    }
-  }
-
-  if ((isMuon1 && m1_from_Upsilon) || (!isMuon1 && m2_from_Upsilon)){
-    while(parent_ids.size() == 1 && (abs(parent_ids[0]) == 1103 || abs(parent_ids[0]) == 203)){ // 9940003
-      UpdateCurParents(isMuon1, parent_bars, parent_ids, true, prev_step_status_m23_m33);
-    }
-  }
-
   int prev_hq_bar = -1;
-  // std::cout << "prev hq barcode: " << prev_hq_bar << std::endl;
   while(quark_index >= 0){
     prev_hq_bar = parent_bars[quark_index];
-    // std::cout << "prev hq barcode: " << prev_hq_bar << std::endl;
     UpdateCurParents(isMuon1, parent_bars, parent_ids, true, prev_step_status_m23_m33, quark_index);
     quark_index = FindHeavyQuarks(parent_ids, parent_bars, quark, isMuon1, prev_hq_bar);
-    // if (mpair->m1.ev_num == 23955 || mpair->m1.ev_num == 37044){
-    //   std::cout << "current heavy quark index is " << quark_index;
-    //   std::cout << ", current first id & barcode are " << parent_ids[0] << ", " << parent_bars[0] << std::endl;
-    // }
   }
 
-  // std::cout << "final [prev hq barcode]: " << prev_hq_bar << std::endl;
   if (prev_hq_bar < 0){
-    if (!((isMuon1 && m1_from_J_psi) || (!isMuon1 && m2_from_J_psi) || (isMuon1 && m1_from_Upsilon) || (!isMuon1 && m2_from_Upsilon))){
-      std::cout << "Previous HQ barcode is -1: heavy quark never found." << std::endl;
-      std::cout << "In this case the ANCESTOR TRACING IS NOT TRUST-WORTHY!!" << std::endl;
-      std::cout << "In fact, the parton ancestor information should be left unfilled." << std::endl;
-      PrintHistory(&std::cout, true, isMuon1);
-      skip_event = true;
-    }
+    std::cout << "Previous HQ barcode is -1: heavy quark never found." << std::endl;
+    std::cout << "In this case the ANCESTOR TRACING IS NOT TRUST-WORTHY!!" << std::endl;
+    std::cout << "In fact, the parton ancestor information should be left unfilled." << std::endl;
+    PrintHistory(&std::cout, true, isMuon1);
+    skip_event = true;
     return;
   }
 
   if (isMuon1){
-    // m1_ancestor_is_incoming = (quark_index == -2); // if Case II: then is incoming
     m1_parton_ancestor_ids = parent_ids;
     m1_parton_ancestor_bars = parent_bars;
     GetPtEtaPhiMFromBarcode(prev_hq_bar, &mpair->m1_first_hq_ancestor_pt_eta_phi_m);
   }
   else{
-    // m2_ancestor_is_incoming = (quark_index == -2);
     m2_parton_ancestor_ids = parent_ids;
     m2_parton_ancestor_bars = parent_bars;
     GetPtEtaPhiMFromBarcode(prev_hq_bar, &mpair->m2_first_hq_ancestor_pt_eta_phi_m);
   }
-
 }
 
 
@@ -1414,10 +1307,6 @@ void PythiaNTupleFirstPass::MuonPairTagsReinit(){
   m2_c_tag = false;
   m1_osc = false;
   m2_osc = false;
-  m1_from_J_psi = false;
-  m2_from_J_psi = false;
-  m1_from_Upsilon = false;
-  m2_from_Upsilon = false;
   m1_from_tau = false;
   m2_from_tau = false;
 
@@ -1438,6 +1327,9 @@ void PythiaNTupleFirstPass::MuonPairTagsReinit(){
   m2_eldest_bhadron_barcode = -10;
   m1_hard_scatt_Q = -10.;
   m2_hard_scatt_Q = -10.;
+
+  m1_resonance_barcode = -10;
+  m2_resonance_barcode = -10;
 
   mpair->m1_parent_group = -10;
   mpair->m2_parent_group = -10;
@@ -1498,25 +1390,19 @@ void PythiaNTupleFirstPass::MuonPairTagsReinit(){
 void PythiaNTupleFirstPass::FillCategoryHistograms(TH1D* horig, TH2D* hhard_vs_orig){
 
   horig->Fill(mpair->muon_pair_origin_category, mpair->weight);
-  // cout <<endl << "fill 1d" << endl;
   if (m1_hard_scatt_in_bar1 > 0){
-    // cout << "hi1" << endl;
     if (m2_hard_scatt_in_bar1 < 0 || m1_hard_scatt_in_bar1 == m2_hard_scatt_in_bar1){ // only one hard or the same hard scattering
       hhard_vs_orig->Fill(mpair->muon_pair_origin_category, mpair->m1_hard_scatt_category, mpair->weight);
     }
-    // cout << "hi2" << endl;
 
   }else if (m2_hard_scatt_in_bar1 > 0){ // need else here: otherwise the [same hard scattering case would get filled twice]
-    // cout << "hi3" << endl;
     
     if (m1_hard_scatt_in_bar1 > 0){
       std::cout << "two cases should be exclusive!!!" << std::endl;
       PrintHistory(m_very_bad_warning_file, false, mpair->from_same_ancestors);
     }
-    // cout << "hi4" << endl;
 
     hhard_vs_orig->Fill(mpair->muon_pair_origin_category, mpair->m2_hard_scatt_category, mpair->weight);
-    // cout << "hi5" << endl;
   
   }
 }
@@ -1545,6 +1431,7 @@ void PythiaNTupleFirstPass::HFMuonPairAnalysis(){
     return;
   }
 
+
   // HQ-flavor categories & whether from the same (first non-HQ partonic
   bool both_from_b = ((mpair->m1_parent_group == direct_b || mpair->m1_parent_group == b_to_c) && (mpair->m2_parent_group == direct_b || mpair->m2_parent_group == b_to_c));
   bool both_from_c = (mpair->m1_parent_group == direct_c && mpair->m2_parent_group == direct_c);
@@ -1554,6 +1441,7 @@ void PythiaNTupleFirstPass::HFMuonPairAnalysis(){
   mpair->both_from_b = both_from_b;
   mpair->both_from_c = both_from_c;
   mpair->from_same_ancestors = same_partonic_ancestors;
+
 
   bool near_side = (abs(mpair->dphi) < pms.PI / 2.);
   bool small_dphi = (abs(mpair->dphi) < 0.4);
@@ -1584,6 +1472,7 @@ void PythiaNTupleFirstPass::HFMuonPairAnalysis(){
       }
 
     }else{ // single parton ancestor --> from gluon splitting
+
       // if (m1_parton_ancestor_ids[0] == 22){
       //   std::cout << "For study purpose only - the two HF muons are from the same photon." << std::endl;
       //   std::cout << "The photon splitting should be photon-to-QQbar." << std::endl;
@@ -1610,6 +1499,29 @@ void PythiaNTupleFirstPass::HFMuonPairAnalysis(){
           *m_very_bad_warning_file << "HF muons from the same gluon splitting, yet neither both from b nor both from c." << std::endl;
           PrintHistory(m_very_bad_warning_file, false, true);
         }
+
+  //       if (m1_history_particle && m2_history_particle){
+
+  //       }else{
+  //         std::cout << "WARNING: Either m1_history_particle or m2_history_particle is nullptr!" << std::endl;
+  //       }
+
+
+  // // Ensure m1_history_particle is not empty before accessing
+  // if (m1_history_particle && !m1_history_particle->empty()) {
+  //   size_t history_size = m1_history_particle->size();
+  //   if (history_size >= 2) {
+  //     if ((*m1_history_particle)[history_size - 2].size() > 0) {
+  //       int barQ1 = (*m1_history_particle)[history_size - 2][0].barcode;
+  //       if (barQ1 < 0 || barQ1 >= truth_id->size()) {
+  //         cout << "Error: Invalid access to truth_id vector for barQ1." << endl;
+  //       }
+  //     }
+  //   }
+  // }
+
+
+
         if ((*m1_history_particle)[m1_history_particle->size() - 2].size() > 2 || (*m2_history_particle)[m2_history_particle->size() - 2].size() > 2){
           if (turn_data_resonance_cuts_on){ // if no resonance cuts, pairs from resonances can show up here
             *m_very_bad_warning_file << "The second to last stage in the history of an HF muon (up to the gluon splitting stage) should have at most two particles." << std::endl;
@@ -1762,8 +1674,6 @@ void PythiaNTupleFirstPass::HFMuonPairAnalysis(){
             vQ2 = vg - vQ1;
             mpair->Qsplit = vQ2.M();
             mpair->mHard_relevant = m2_hard_scatt_Q;
-            // mpair->vout1 = vm2out1;
-            // mpair->vout2 = vm2out2;
           }
 
           h_Qsplit_gs_ISR_one_hard_scatt[!mpair->same_sign][not_near]->Fill(abs(mpair->Qsplit), mpair->weight);
@@ -1773,56 +1683,57 @@ void PythiaNTupleFirstPass::HFMuonPairAnalysis(){
       }
     }
   }else{ // different ancestors
-    if (m1_from_hard_scatt_before_gs && m1_hard_scatt_in_bar1 == m2_hard_scatt_in_bar1 && mpair->m1_hard_scatt_category != hq_scatt){
+    if (m1_from_hard_scatt_before_gs && m1_hard_scatt_in_bar1 == m2_hard_scatt_in_bar1 && mpair->m1_hard_scatt_category != hq_scatt){      
       std::cout << "Not same partonic ancestors. Same hard scattering, and it's not Q Q' scattering." << std::endl;
       // PrintHistory(&std::cout, false, same_partonic_ancestors);
     }
-    if (!m1_from_hard_scatt_before_gs){ // m1 not yet experiened hard scattering
-      if (m1_parton_ancestor_bars.size() != 1 || (m1_parton_ancestor_ids[0] != 21 && m1_parton_ancestor_ids[0] != 22 && !m1_ancestor_is_incoming)){
-        std::cout << "Muon hasn't gone through a hard scattering; yet is neither from gluon/photon splitting or from PDF." << std::endl;
-        PrintHistory(m_very_bad_warning_file, true, true); // single, m1
-      }else if (m1_ancestor_is_incoming){
-        // std::cout << "For study purpose - Muon1 is from PDF and have not gone through hard scattering." << std::endl;
-        // PrintHistory(&std::cout, true, true); // single, m1
-        // mpair->muon_pair_origin_category = others;
-      }else{ // determine if [GS from FSR] or [GS from ISR & no hard scattering]
-        GluonHistoryTracking(m1_parton_ancestor_bars[0], true);
-      }
+    if (!m1_from_hard_scatt_before_gs){ // m1 not yet experiened hard scattering      
+      if (!m1_parton_ancestor_bars.empty()){
+        if (m1_parton_ancestor_bars.size() != 1 || (m1_parton_ancestor_ids[0] != 21 && m1_parton_ancestor_ids[0] != 22 && !m1_ancestor_is_incoming)){
+          std::cout << "Muon hasn't gone through a hard scattering; yet is neither from gluon/photon splitting or from PDF." << std::endl;
+          PrintHistory(m_very_bad_warning_file, true, true); // single, m1
+        }else if (m1_ancestor_is_incoming){
+          // std::cout << "For study purpose - Muon1 is from PDF and have not gone through hard scattering." << std::endl;
+          // PrintHistory(&std::cout, true, true); // single, m1
+          // mpair->muon_pair_origin_category = others;
+        }else{ // determine if [GS from FSR] or [GS from ISR & no hard scattering]
+          GluonHistoryTracking(m1_parton_ancestor_bars[0], true);
+        }
+      }        
     }
 
-    if (!m2_from_hard_scatt_before_gs){ // m2 not yet experiened hard scattering
-      if (m2_parton_ancestor_bars.size() != 1 || (m2_parton_ancestor_ids[0] != 21 && m2_parton_ancestor_ids[0] != 22 && !m2_ancestor_is_incoming)){
-        std::cout << "Muon hasn't gone through a hard scattering; yet is neither from gluon/photon splitting or from PDF." << std::endl;
-        PrintHistory(m_very_bad_warning_file, true, false); // single, m2
-      }else if (m2_ancestor_is_incoming){
-        // std::cout << "For study purpose - Muon2 is from PDF and have not gone through hard scattering." << std::endl;
-        // PrintHistory(&std::cout, true, false); // single, m1
-        // mpair->muon_pair_origin_category = others;
-      }else{
-        GluonHistoryTracking(m2_parton_ancestor_bars[0], false);
+    if (!m2_from_hard_scatt_before_gs){ // m2 not yet experiened hard scattering      
+      if (!m2_parton_ancestor_bars.empty()){
+        if (m2_parton_ancestor_bars.size() != 1 || (m2_parton_ancestor_ids[0] != 21 && m2_parton_ancestor_ids[0] != 22 && !m2_ancestor_is_incoming)){
+          std::cout << "Muon hasn't gone through a hard scattering; yet is neither from gluon/photon splitting or from PDF." << std::endl;
+          PrintHistory(m_very_bad_warning_file, true, false); // single, m2
+        }else if (m2_ancestor_is_incoming){
+          // std::cout << "For study purpose - Muon2 is from PDF and have not gone through hard scattering." << std::endl;
+          // PrintHistory(&std::cout, true, false); // single, m1
+          // mpair->muon_pair_origin_category = others;
+        }else{
+          GluonHistoryTracking(m2_parton_ancestor_bars[0], false);
+        }
       }
     }
 
     // now that we've updated the hard scattering information. Let's see if they are from the same hard scattering
-    if (m1_hard_scatt_in_bar1 == m2_hard_scatt_in_bar1 && m1_hard_scatt_in_bar1 > 0){
+    if (m1_hard_scatt_in_bar1 == m2_hard_scatt_in_bar1 && m1_hard_scatt_in_bar1 > 0){      
       mpair->muon_pair_origin_category = diff_gs_same_hard_scatt;
       mpair->mHard_relevant = m1_hard_scatt_Q;
-      // mpair->vout1 = vm2out1;
-      // mpair->vout2 = vm2out2;
-    }else{
+    }else{      
       mpair->muon_pair_origin_category = others;
       if (print_others_history && m_others_category_file){
         PrintHistory(m_others_category_file, false, mpair->from_same_ancestors, true); // print both muons history + print hard-scattering category
       }
     }
 
-    if (((m1_ancestor_is_incoming && !m1_from_hard_scatt_before_gs) || (m2_ancestor_is_incoming && !m2_from_hard_scatt_before_gs)) && (mpair->muon_pair_origin_category != others)){
+    if (((m1_ancestor_is_incoming && !m1_from_hard_scatt_before_gs) || (m2_ancestor_is_incoming && !m2_from_hard_scatt_before_gs)) && (mpair->muon_pair_origin_category != others)){      
       std::cout << "Different ancestors - at least one satisfies: (1) is incoming (2) never experienced hard scattering." << std::endl;
       std::cout << "The muons should not be correlated - pair origin category should be [others]." << std::endl;
       PrintHistory(&std::cout, false, false);
     }
   }
-
 
 /////////////////////// ***************************************************************************************
   // h_muon_pair_origin_categr[!mpair->same_sign][not_near]->Fill(mpair->muon_pair_origin_category, mpair->weight);
@@ -1889,6 +1800,10 @@ void PythiaNTupleFirstPass::MuonPairAncestorTracing(){
   SingleMuonAncestorTracing(true);
   SingleMuonAncestorTracing(false);
   
+  if (m1_parent_group == resonance_decay && m2_parent_group == resonance_decay){
+    mpair->from_same_resonance = (m1_resonance_barcode == m2_resonance_barcode);
+  }
+
   mpair->m1_from_pdf = m1_ancestor_is_incoming;
   mpair->m2_from_pdf = m2_ancestor_is_incoming;
 
@@ -1896,6 +1811,7 @@ void PythiaNTupleFirstPass::MuonPairAncestorTracing(){
 
   // if (mpair->m1_parent_group < 0) *m_unspecified_parent_file << "*** Ungrouped parent: Event#" << mpair->m1.ev_num << ", parent id: " << m1_earliest_parent_id << " ***" << std::endl << std::endl;
   // if (mpair->m2_parent_group < 0) *m_unspecified_parent_file << "*** Ungrouped parent: Event#" << mpair->m1.ev_num << ", parent id: " << m2_earliest_parent_id << " ***" << std::endl << std::endl;
+  
   if (mpair->m1_parent_group < 0){
     std::cout << "parents not in any group: " << std::endl;
     PrintHistory(&std::cout, true, true);
@@ -1912,10 +1828,10 @@ void PythiaNTupleFirstPass::MuonPairAncestorTracing(){
     return; // return without filling in the ancestor-category histograms
   }
 
+
   if ((mpair->m1_parent_group == direct_b || mpair->m1_parent_group == b_to_c || mpair->m1_parent_group == direct_c) && (mpair->m2_parent_group == direct_b || mpair->m2_parent_group == b_to_c || mpair->m2_parent_group == direct_c)){
     HFMuonPairAnalysis();
   }
-
 }
 
 // void PythiaNTupleFirstPass::KinematicCorrPlots(int isign, int idphi){
@@ -1993,41 +1909,112 @@ void PythiaNTupleFirstPass::HistAdjust(){
 }
 
 
+void PythiaNTupleFirstPass::CrossxClear(){
+  pair_counter = 0;
+  total_crossx = 0.;
+  from_same_b_total_crossx = 0.;
+  either_from_tau_total_crossx = 0.;
+  both_incoming_total_crossx = 0.;
+  both_incoming_FE_QQ_from_same_b_total_crossx = 0.;
+  FE_total_crossx = 0.;
+  from_same_gluon_spitting_total_crossx = 0.;
+  hard_QQ_scatt_total_crossx = 0.;
+  FE_from_same_b_total_crossx = 0.;
+  FE_from_same_GS_total_crossx = 0.;
+  FE_from_diff_ancestors_total_crossx = 0.;
+  FE_from_same_ancestors_not_same_b_or_gs_total_crossx = 0.;
+}
+
+void PythiaNTupleFirstPass::PerPairCrossxUpdate(){
+  total_crossx += mpair->weight;
+
+  bool parton1_heavy_quark = (abs(truth_id->at(3)) == 4 || abs(truth_id->at(3)) == 5);
+  bool parton2_heavy_quark = (abs(truth_id->at(4)) == 4 || abs(truth_id->at(4)) == 5);
+  bool parton1_g_lightq = (abs(truth_id->at(3)) == 1 || abs(truth_id->at(3)) == 2 || abs(truth_id->at(3)) == 3 || abs(truth_id->at(3)) == 21);
+  bool parton2_g_lightq = (abs(truth_id->at(4)) == 1 || abs(truth_id->at(4)) == 2 || abs(truth_id->at(4)) == 3 || abs(truth_id->at(4)) == 21);
+  bool flavor_excitation = ((parton1_heavy_quark && parton2_g_lightq) || (parton2_heavy_quark && parton1_g_lightq));
+  bool hard_QQ_scatt = (parton1_heavy_quark && parton2_heavy_quark);
+  bool both_incoming = (m1_ancestor_is_incoming && m2_ancestor_is_incoming);
+
+  if (m1_from_tau || m2_from_tau){
+    either_from_tau_total_crossx += mpair->weight;
+  }
+
+  if (hard_QQ_scatt){
+    hard_QQ_scatt_total_crossx += mpair->weight;
+  }
+
+  if (flavor_excitation){
+    FE_total_crossx += mpair->weight;
+    if (mpair->from_same_b){ // not specify where the b is from, since effects from the origin of the b is kind of washed out by the sequential decay
+      FE_from_same_b_total_crossx += mpair->weight;
+    }else if (from_same_gluon_splitting){
+      FE_from_same_GS_total_crossx += mpair->weight;
+    }else if (!mpair->from_same_ancestors){
+      FE_from_diff_ancestors_total_crossx += mpair->weight;
+    }else{ // same ancestors, not from same b, and not from the same gluon splitting
+      FE_from_same_ancestors_not_same_b_or_gs_total_crossx += mpair->weight;
+      if (print_FE && m_FE_file){
+        *m_FE_file << "Event #: " << mpair->m1.ev_num << ". Hard scattering is FE, but muon pairs are from same ancestors and not same b or gluon splitting." << std::endl;
+        *m_FE_file << truth_id->at(3) << " " << truth_id->at(4) << " " << truth_id->at(5) << " " << truth_id->at(6) << " " << mpair->from_same_ancestors << std::endl;
+        PrintHistory(m_FE_file, false, mpair->from_same_ancestors);              
+      }
+    }
+  }
+
+  if (mpair->from_same_b){
+    from_same_b_total_crossx += mpair->weight;
+  }
+
+  if (from_same_gluon_splitting){
+    from_same_gluon_spitting_total_crossx += mpair->weight;
+  }
+
+  if (both_incoming) {
+    both_incoming_total_crossx += mpair->weight;
+
+    if ((flavor_excitation && mpair->from_same_b) || hard_QQ_scatt){
+      both_incoming_FE_QQ_from_same_b_total_crossx += mpair->weight;
+    }
+    else{
+      // std::cout << "Event #: " << mpair->m1.ev_num << ". Both muons are from quarks that are incoming partons, and not FE + from the same b." << std::endl;
+      // // std::cout << truth_id->at(3) << " " << truth_id->at(4) << " " << truth_id->at(5) << " " << truth_id->at(6) << " " << mpair->from_same_b << std::endl;
+
+      // PrintHistory(&std::cout, false, mpair->from_same_ancestors);
+    }
+  }
+}
+
+void PythiaNTupleFirstPass::WriteCrossxSummary(){
+  *m_crossx_summary_file << "#muon pairs: " << pair_counter << std::endl;
+  *m_crossx_summary_file << "Total crossx: " << total_crossx << std::endl;
+  *m_crossx_summary_file << "Total crossx of skipped HF events (not filled in HF-muon-pair-ancestor-category trees): " << skipped_event_crossx << std::endl;
+  *m_crossx_summary_file << "Total crossx [from resonance]: " << from_resonance_total_crossx << std::endl;
+  *m_crossx_summary_file << "Total crossx [from same b]: " << from_same_b_total_crossx << std::endl;
+  *m_crossx_summary_file << "Total crossx [BOTH INCOMING]: " << both_incoming_total_crossx << std::endl;
+  *m_crossx_summary_file << "Total crossx [both incoming] - from FE & same b: " << both_incoming_FE_QQ_from_same_b_total_crossx << std::endl;
+  *m_crossx_summary_file << "Total crossx [same GS] (gluon splitting): " << from_same_gluon_spitting_total_crossx << std::endl;
+
+  *m_crossx_summary_file << "Total crossx [QQ']: " << hard_QQ_scatt_total_crossx << std::endl;
+  *m_crossx_summary_file << "Total crossx [FE] (hard scattering is flavor excitation): " << FE_total_crossx << std::endl;
+  *m_crossx_summary_file << "Out of such:" << std::endl;
+  *m_crossx_summary_file << "Total crossx [FE - from same b] (b any origin): " << FE_from_same_b_total_crossx << std::endl;
+  *m_crossx_summary_file << "Total crossx [FE - from same GS]: " << FE_from_same_GS_total_crossx << std::endl;
+  *m_crossx_summary_file << "Total crossx [FE - from different ancestores]: " << FE_from_diff_ancestors_total_crossx << std::endl;
+  *m_crossx_summary_file << "Total crossx [FE - others]: " << FE_from_same_ancestors_not_same_b_or_gs_total_crossx << std::endl;
+  *m_crossx_summary_file << "Total crossx [either is from tau]: " << either_from_tau_total_crossx << std::endl;
+  
+  *m_crossx_summary_file << "For pairs from resonance decay:" << std::endl;
+  for (const auto& resonance : resonance_id_to_name_and_crossx_map){
+    *m_crossx_summary_file << "crossx [" << resonance.second.first << " decay]: " << resonance.second.second << std::endl;
+  }
+}
+
 void PythiaNTupleFirstPass::ProcessData(){
 
   // qqpair = new TruthQQPair(quark);
-  // Long64_t nentries = 100000;
-  // Long64_t nentries = evChain->GetEntries();//number of events
-  // if (nentries != nevents_accum[nKinRanges - 1]){
-  //   // std::cout << "Total number of entries doesn't equal to last entry of accumulative count!" << std::endl;
-  //   // throw std::exception();
-  // }
-  // std::cout << "Start processsing. Total number of entries: " << nentries << std::endl;
 
-  int     pair_counter = 0;
-  double  total_intgr = 0.;
-  // int     from_same_b_counter = 0;
-  double  from_same_b_total_intgr = 0.;
-  // int     either_from_tau_counter = 0;
-  double  either_from_tau_total_intgr = 0.;
-  // int     both_incoming_counter = 0;
-  double  both_incoming_total_intgr = 0.;
-  // int     both_incoming_FE_QQ_from_same_b_counter = 0;
-  double  both_incoming_FE_QQ_from_same_b_total_intgr = 0.;
-  // int     FE_counter = 0;
-  double  FE_total_intgr = 0.;
-  // int     from_same_gluon_spitting_counter = 0;
-  double  from_same_gluon_spitting_total_intgr = 0.;
-  // int     hard_QQ_scatt_counter = 0;
-  double  hard_QQ_scatt_total_intgr = 0.;
-  // int     FE_from_same_b_counter = 0;
-  double  FE_from_same_b_total_intgr = 0.;
-  // int     FE_from_same_GS_counter = 0;
-  double  FE_from_same_GS_total_intgr = 0.;
-  // int     FE_from_diff_ancestors_counter = 0;
-  double  FE_from_diff_ancestors_total_intgr = 0.;
-  // int     FE_from_same_ancestors_not_same_b_or_gs_counter = 0;
-  double  FE_from_same_ancestors_not_same_b_or_gs_total_intgr = 0.;
+  CrossxClear();
 
   for (int ikin = 0; ikin < nKinRanges; ikin++){
   // for (int ikin = 3; ikin <= 3; ikin++){
@@ -2038,8 +2025,6 @@ void PythiaNTupleFirstPass::ProcessData(){
   
     for (Long64_t jevent = nevent_start; jevent < nevents_accum[ikin]; jevent++) {//loop over the events
     // for (Long64_t jevent = nevent_start; jevent < nevent_start + 10; jevent++) {//loop over the events // debug mode
-
-      // if(jevent%10000==0) std::cout<<"Processing "<<jevent<<" event out of "<<nentries<<" events in k" << ikin <<std::endl;
 
       // cout << "event" << jevent << "***********" << endl;
 
@@ -2142,123 +2127,20 @@ void PythiaNTupleFirstPass::ProcessData(){
         MuonPairAncestorTracing();
         FillMuonPairTreePythia(ikin); // fill all-muon-pair tree & kinematic-range-binned trees
 
-        // cout << "find parents fine" << endl;
 
-        bool parton1_heavy_quark = (abs(truth_id->at(3)) == 4 || abs(truth_id->at(3)) == 5);
-        bool parton2_heavy_quark = (abs(truth_id->at(4)) == 4 || abs(truth_id->at(4)) == 5);
-        bool parton1_g_lightq = (abs(truth_id->at(3)) == 1 || abs(truth_id->at(3)) == 2 || abs(truth_id->at(3)) == 3 || abs(truth_id->at(3)) == 21);
-        bool parton2_g_lightq = (abs(truth_id->at(4)) == 1 || abs(truth_id->at(4)) == 2 || abs(truth_id->at(4)) == 3 || abs(truth_id->at(4)) == 21);
-        bool flavor_excitation = ((parton1_heavy_quark && parton2_g_lightq) || (parton2_heavy_quark && parton1_g_lightq));
-        bool hard_QQ_scatt = (parton1_heavy_quark && parton2_heavy_quark);
-        bool both_incoming = (m1_ancestor_is_incoming && m2_ancestor_is_incoming);
+        PerPairCrossxUpdate();
 
-        if (m1_from_tau || m2_from_tau){
-          either_from_tau_total_intgr += mpair->weight;
-        }
 
-        if (hard_QQ_scatt){
-          // hard_QQ_scatt_counter++;
-          hard_QQ_scatt_total_intgr += mpair->weight;
-        }
-
-        if (flavor_excitation){
-          // FE_counter++;
-          FE_total_intgr += mpair->weight;
-          if (mpair->from_same_b){ // not specify where the b is from, since effects from the origin of the b is kind of washed out by the sequential decay
-            // if (jevent < 8000){
-              // cout << "Event #: " << mpair->m1.ev_num << ". FE + from same b" << endl;
-              // cout << truth_id->at(3) << " " << truth_id->at(4) << " " << truth_id->at(5) << " " << truth_id->at(6);
-              // cout << "; incoming? " << m1_ancestor_is_incoming << " " << m2_ancestor_is_incoming;
-              // cout << "; ancestor groups " << mpair->m1_ancestor_group << " " << mpair->m2_ancestor_group << endl; 
-              // PrintHistory(&std::cout, false, mpair->from_same_ancestors);
-            // }
-            // FE_from_same_b_counter++;
-            FE_from_same_b_total_intgr += mpair->weight;
-          }else if (from_same_gluon_splitting){
-            // FE_from_same_GS_counter++;
-            FE_from_same_GS_total_intgr += mpair->weight;
-          }else if (!mpair->from_same_ancestors){
-            // FE_from_diff_ancestors_counter++;
-            FE_from_diff_ancestors_total_intgr += mpair->weight;
-          }else{ // same ancestors, not from same b, and not from the same gluon splitting
-            // FE_from_same_ancestors_not_same_b_or_gs_counter++;
-            FE_from_same_ancestors_not_same_b_or_gs_total_intgr += mpair->weight;
-            if (print_FE && m_FE_file){
-              *m_FE_file << "Event #: " << mpair->m1.ev_num << ". Hard scattering is FE, but muon pairs are from same ancestors and not same b or gluon splitting." << std::endl;
-              *m_FE_file << truth_id->at(3) << " " << truth_id->at(4) << " " << truth_id->at(5) << " " << truth_id->at(6) << " " << mpair->from_same_ancestors << std::endl;
-              PrintHistory(m_FE_file, false, mpair->from_same_ancestors);              
-            }
-          }
-        }
-
-        if (mpair->from_same_b){
-          // from_same_b_counter++;
-          from_same_b_total_intgr += mpair->weight;
-        }
-
-        if (from_same_gluon_splitting){
-          // from_same_gluon_spitting_counter++;
-          from_same_gluon_spitting_total_intgr += mpair->weight;
-        }
-
-        if (both_incoming) {
-          // std::cout << "Event #: " << mpair->m1.ev_num << ". Both muons are from quarks that are incoming partons." << std::endl;
-          // std::cout << truth_id->at(3) << " " << truth_id->at(4) << " " << truth_id->at(5) << " " << truth_id->at(6) << " " << mpair->from_same_b << std::endl;
-          // both_incoming_counter++;
-          both_incoming_total_intgr += mpair->weight;
-
-          if ((flavor_excitation && mpair->from_same_b) || hard_QQ_scatt){
-            // both_incoming_FE_QQ_from_same_b_counter++;
-            both_incoming_FE_QQ_from_same_b_total_intgr += mpair->weight;
-          }
-          else{
-            // std::cout << "Event #: " << mpair->m1.ev_num << ". Both muons are from quarks that are incoming partons, and not FE + from the same b." << std::endl;
-            // // std::cout << truth_id->at(3) << " " << truth_id->at(4) << " " << truth_id->at(5) << " " << truth_id->at(6) << " " << mpair->from_same_b << std::endl;
-
-            // PrintHistory(&std::cout, false, mpair->from_same_ancestors);
-          }
-        }
-
-        //------------------------------------------------------------
-
-        NPairsAfter++;
-        pair_counter++;
-        total_intgr += mpair->weight;
-        
+        NPairsAfter++;        
         h_numMuonPairs->Fill(NPairsAfter - 0.5, mpair->weight);
+
 
       } // finish second loop over all muon pair candidates in the current event
     } // loop over events in the current kinematic range
   } // loop over all kinematic ranges
   
   // delete qqpair;
-
-  std::cout << "#muon pairs: " << pair_counter << std::endl;
-  std::cout << "Total crossx: " << total_intgr << std::endl;
-  std::cout << "Total crossx of skipped HF events (not filled in HF-muon-pair-ancestor-category trees): " << skipped_event_crossx << std::endl;
-  // std::cout << "#muon pairs [from same b]: " << from_same_b_counter << std::endl;
-  std::cout << "Total crossx [from same b]: " << from_same_b_total_intgr << std::endl;
-  // std::cout << "#muon pairs [BOTH INCOMING]: " << both_incoming_counter << std::endl;
-  std::cout << "Total crossx [BOTH INCOMING]: " << both_incoming_total_intgr << std::endl;
-  // std::cout << "#muon pairs [both incoming] - from FE & same b: " << both_incoming_FE_QQ_from_same_b_counter << std::endl;
-  std::cout << "Total crossx [both incoming] - from FE & same b: " << both_incoming_FE_QQ_from_same_b_total_intgr << std::endl;
-  // std::cout << "#muon pairs [same GS] (gluon splitting): " << from_same_gluon_spitting_counter << std::endl;
-  std::cout << "Total crossx [same GS] (gluon splitting): " << from_same_gluon_spitting_total_intgr << std::endl;
-
-  // std::cout << "#muon pairs [QQ']: " << hard_QQ_scatt_counter << std::endl;
-  std::cout << "Total crossx [QQ']: " << hard_QQ_scatt_total_intgr << std::endl;
-  // std::cout << "#muon pairs [FE] (hard scattering is flavor excitation): " << FE_counter << std::endl;
-  std::cout << "Total crossx [FE] (hard scattering is flavor excitation): " << FE_total_intgr << std::endl;
-  std::cout << "Out of such:" << std::endl;
-  // std::cout << "#muon pairs [FE - from same b] (b any origin): " << FE_from_same_b_counter << std::endl;
-  std::cout << "Total crossx [FE - from same b] (b any origin): " << FE_from_same_b_total_intgr << std::endl;
-  // std::cout << "#muon pairs [FE - from same GS]: " << FE_from_same_GS_counter << std::endl;
-  std::cout << "Total crossx [FE - from same GS]: " << FE_from_same_GS_total_intgr << std::endl;
-  // std::cout << "#muon pairs [FE - from different ancestores]: " << FE_from_diff_ancestors_counter << std::endl;
-  std::cout << "Total crossx [FE - from different ancestores]: " << FE_from_diff_ancestors_total_intgr << std::endl;
-  // std::cout << "#muon pairs [FE - others]: " << FE_from_same_ancestors_not_same_b_or_gs_counter << std::endl;
-  std::cout << "Total crossx [FE - others]: " << FE_from_same_ancestors_not_same_b_or_gs_total_intgr << std::endl;
-  std::cout << "Total crossx [either is from tau]: " << either_from_tau_total_intgr << std::endl;
+  WriteCrossxSummary();
 }
 
 
@@ -2267,7 +2149,9 @@ void PythiaNTupleFirstPass::Run(){
   double cpu_time_used;
   start = clock();
   
-  SetInputFilesFromBatch(); // must be called before InitInput and InputOutput
+  ResonanceNameMap();
+
+  SetInputOutputFilesFromBatch(); // must be called before InitInput and InputOutput
 
   InputSanityCheck();
   InitInput();
@@ -2290,9 +2174,10 @@ void PythiaNTupleFirstPass::Run(){
 
   m_outfile->Write();
   m_outHistFile->Write();
+  std::cout << "Output muon-pair trees have been written to: " << output_file_path << std::endl;
+  std::cout << "Output histograms have been written to: " << output_hist_file_path << std::endl;
+
   Finalize();
 }
 
 #endif
-
-

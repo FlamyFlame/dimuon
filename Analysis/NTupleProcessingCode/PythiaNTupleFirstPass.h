@@ -44,7 +44,27 @@ private:
     std::vector<std::vector<bool>> kn_in_job;
     std::vector<std::vector<int>> nfiles_factor;
 
-// --------------------- input files & trees & data for setting branches---------------------------
+// --------------------- resonance tagging & tracking ---------------------------
+
+    std::vector<int> resonance_ids;
+    std::map<int, std::pair<std::string,double>> resonance_id_to_name_and_crossx_map;
+
+// --------------------- crossx tracking ---------------------------
+    int     pair_counter = 0;
+    double  total_crossx = 0.;
+    double  from_resonance_total_crossx = 0.;
+    double  from_same_b_total_crossx = 0.;
+    double  either_from_tau_total_crossx = 0.;
+    double  both_incoming_total_crossx = 0.;
+    double  both_incoming_FE_QQ_from_same_b_total_crossx = 0.;
+    double  FE_total_crossx = 0.;
+    double  from_same_gluon_spitting_total_crossx = 0.;
+    double  hard_QQ_scatt_total_crossx = 0.;
+    double  FE_from_same_b_total_crossx = 0.;
+    double  FE_from_same_GS_total_crossx = 0.;
+    double  FE_from_diff_ancestors_total_crossx = 0.;
+    double  FE_from_same_ancestors_not_same_b_or_gs_total_crossx = 0.;
+// --------------------- input files & trees & data for setting branches ---------------------------
 
     // std::vector <TChain*> evChain;	// each element: pointer to a collection of the ttrees named PyTree (recording event-level info)
     // std::vector <TChain*> metaChain;	// each element: pointer to a collection of the ttrees named meta_tree (recording job-level info)
@@ -116,14 +136,11 @@ private:
     bool m1_ancestor_is_incoming = false;
     bool m2_ancestor_is_incoming = false;
 
-    bool m1_from_J_psi;
-    bool m2_from_J_psi;
-
-    bool m1_from_Upsilon;
-    bool m2_from_Upsilon;
-
     bool m1_from_tau;
     bool m2_from_tau;
+
+    int m1_resonance_barcode; // check if from same resonance
+    int m2_resonance_barcode; // check if from same resonance
 
     int nmuonpairs;
 
@@ -189,6 +206,7 @@ private:
 
 // --------------------- output file, histograms & trees ---------------------------
   
+    std::ofstream* m_crossx_summary_file = nullptr;
     std::ofstream* m_unspecified_parent_file = nullptr;
     std::ofstream* m_FE_file = nullptr;
     std::ofstream* m_very_bad_warning_file = nullptr;
@@ -313,8 +331,9 @@ private:
     void HistAdjust() override;
 
     void FillMuonPair(int pair_ind, std::shared_ptr<MuonPairPythia>& mpair);
-    void SetInputFilesFromBatch();
+    void SetInputOutputFilesFromBatch();
     void InputSanityCheck();
+    void ResonanceNameMap();
     int ParentGrouping(std::vector<int>& parent_ids, bool c_tag, bool prev_is_lepton);
     void GetPtEtaPhiMFromBarcode(int barcode, std::vector<float>* pt_eta_phi_m);
     std::pair<int,int>  UpdateCurParents(bool isMuon1, std::vector<int>& cur_prt_bars, std::vector<int>& cur_prt_ids, bool before_gs, bool& prev_out_hard_scatt, int hf_quark_index = -1000000);    
@@ -332,6 +351,9 @@ private:
     void FillCategoryHistograms(TH1D* horig, TH2D* hhard_vs_orig);
     void HFMuonPairAnalysis();
     void MuonPairAncestorTracing();
+    void CrossxClear();
+    void PerPairCrossxUpdate();
+    void WriteCrossxSummary();
     void Finalize();
 
 public :
@@ -340,15 +362,11 @@ public :
     bool print_others_history = true;
     bool print_unspecified_parent = false;
     bool print_FE = false;
-    bool print_specific_prt_history = false;
 
-    bool turn_data_resonance_cuts_on = false; // turn on data cuts for resonances
+    bool turn_data_resonance_cuts_on = false; // turn on minv-based data cuts for resonances: by default false
     int batch_num = 0; // between 1-6: process the privately-generated pythia sample in batch
 
-    PythiaNTupleFirstPass(){
-        numCuts = numCuts_MC;
-        cutLabels = cutLabels_MC;
-    }
+    PythiaNTupleFirstPass();
     ~PythiaNTupleFirstPass(){}
     void Run() override;
     // float filter_effcy;
