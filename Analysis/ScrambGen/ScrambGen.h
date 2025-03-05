@@ -3,7 +3,7 @@
 // #define nSigns 2
 // #define nScramb 50000 //Scramb sample size for each centrality bin
 
-//#include "struct_muon.h" 
+//#include "Muon.h" 
 #include "MuonPair.h"
 #include "ParamsSet.h"
 #include <TROOT.h>

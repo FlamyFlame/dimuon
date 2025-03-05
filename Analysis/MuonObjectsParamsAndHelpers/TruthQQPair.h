@@ -2,7 +2,7 @@
 #ifndef TruthQQPair_h
 #define TruthQQPair_h
 
-#include "struct_muon.h"
+#include "Muon.h"
 #include <iostream>
 #include <string.h>
 #include "TLorentzVector.h"

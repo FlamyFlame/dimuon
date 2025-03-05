@@ -1,7 +1,7 @@
 #ifndef MuonPair_h
 #define MuonPair_h
 
-#include "struct_muon.h"
+#include "Muon.h"
 #include <iostream>
 #include <string.h>
 #include "TLorentzVector.h"

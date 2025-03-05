@@ -1,7 +1,7 @@
 #ifndef MuonPairPythia_h
 #define MuonPairPythia_h
 
-#include "/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/MuonPair.h"
+#include "MuonPair.h"
 #include "vector"
 #include <iostream>
 
