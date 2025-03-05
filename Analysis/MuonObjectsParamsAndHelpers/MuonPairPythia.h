@@ -28,6 +28,7 @@ public:
   bool  both_from_b;
   bool  one_from_b_one_from_c;
   bool  both_from_c;
+  bool  from_same_resonance;
 
   int   m1_hard_scatt_category;
   int   m2_hard_scatt_category;
