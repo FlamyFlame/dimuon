@@ -35,6 +35,9 @@ protected:
     TTree* muonOutTree;
     TTree* muonPairOutTree[ParamsSet::nSigns];
 
+    std::string output_file_path;
+    std::string output_hist_file_path;
+
     int numCuts = 0;
 	std::vector<std::string> cutLabels = {};
 	TH1D* h_cutAcceptance[ParamsSet::nSigns];
