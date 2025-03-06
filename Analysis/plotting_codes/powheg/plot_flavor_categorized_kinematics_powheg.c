@@ -203,11 +203,11 @@ void plot_flavor_categorized_kinematic_single(std::string kin, bool projx_2d, bo
   }
 
   if (staggered){
-    c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/powheg/flavor_categoried/sum_bb_cc/powheg_%s_flavor_staggered.png", kin1d.c_str()));
+    c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/plots/powheg/flavor_categoried/sum_bb_cc/powheg_%s_flavor_staggered.png", kin1d.c_str()));
   }else if (norm_unity){
-    c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/powheg/flavor_categoried/sum_bb_cc/powheg_%s_flavor_unity.png", kin1d.c_str()));
+    c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/plots/powheg/flavor_categoried/sum_bb_cc/powheg_%s_flavor_unity.png", kin1d.c_str()));
   }else{
-    c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/powheg/flavor_categoried/sum_bb_cc/powheg_%s_flavor.png", kin1d.c_str()));
+    c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/plots/powheg/flavor_categoried/sum_bb_cc/powheg_%s_flavor.png", kin1d.c_str()));
   }
   c->Close();
   delete c;
@@ -322,11 +322,11 @@ void plot_flavor_categorized_kinematic_single_sum_bb_cc(std::string kin, bool pr
   }
 
   if (staggered){
-    c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/powheg/flavor_categoried/sum_bb_cc/powheg_%s_flavor_staggered_sum_bb_cc.png", kin1d.c_str()));
+    c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/plots/powheg/flavor_categoried/sum_bb_cc/powheg_%s_flavor_staggered_sum_bb_cc.png", kin1d.c_str()));
   }else if (norm_unity){
-    c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/powheg/flavor_categoried/sum_bb_cc/powheg_%s_flavor_unity_sum_bb_cc.png", kin1d.c_str()));
+    c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/plots/powheg/flavor_categoried/sum_bb_cc/powheg_%s_flavor_unity_sum_bb_cc.png", kin1d.c_str()));
   }else{
-    c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/powheg/flavor_categoried/sum_bb_cc/powheg_%s_flavor_sum_bb_cc.png", kin1d.c_str()));
+    c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/plots/powheg/flavor_categoried/sum_bb_cc/powheg_%s_flavor_sum_bb_cc.png", kin1d.c_str()));
   }
   c->Close();
   delete c;

@@ -202,7 +202,7 @@ void dphi_pp_pbpb_compr_no_subtraction(){
       }
     }
 
-    c->SaveAs(Form("/usatlas/u/yuhanguo/workarea/dimuon_codes/plots/pbpb_pp_compr/dphi_pp_pbpb_compr_gapcut%d_no_subtraction.png",lgap+1));
+    c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/plots/pbpb_pp_compr/dphi_pp_pbpb_compr_gapcut%d_no_subtraction.png",lgap+1));
     c->Close();
     delete c;
   }
