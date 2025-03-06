@@ -81,7 +81,7 @@ void mc_muon_pair_dp_ancestor_groups(){
       }
     }
 
-    c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/plots/powheg/prt_grouping/muon_pair_dp_ancestor_groups%s.png",mcmodes[imc].c_str()));
+    c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/powheg/prt_grouping/muon_pair_dp_ancestor_groups%s.png",mcmodes[imc].c_str()));
     c->Close();
     delete c;
   }
