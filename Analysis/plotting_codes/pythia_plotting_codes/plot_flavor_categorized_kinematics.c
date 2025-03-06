@@ -8,6 +8,8 @@
 #include "TH2.h"
 #include "TCanvas.h"
 #include<algorithm>
+#include "../helper_functions.c"
+#include "../../MuonObjectsParamsAndHelpers/ParamsSet.h"
 // #include "string"
 // #include <vector>
 // #include "time.h"
@@ -17,25 +19,32 @@
 const int nMCmodes = 2;
 const int nSigns = 2;
 // const int nDphi = 2;
-const int nflavorCategories = 4;
+const int nflavorCategories = 5;
 // const int nflavorCategories = 3;
 
 // TH1D* h[nSigns][nDphi][nflavorCategories];
 TH2D* h2d;
 TFile* f;
 
+bool with_data_resonance_cuts = false;
+std::string with_data_resonance_cuts_dir = with_data_resonance_cuts? "with_data_resonance_cuts/" : "no_data_resonance_cuts/";
+std::string with_data_resonance_cuts_suffix = with_data_resonance_cuts? "_with_data_resonance_cuts" : "_no_data_resonance_cuts";
+
 std::string pythia_path = "/usatlas/u/yuhanguo/usatlasdata/pythia/";
-std::string fname = "histograms_pythia_combined.root";
+std::string fname;
 std::vector<std::string> signs = {"_sign1", "_sign2"};
-std::vector<std::string> flavor_categories = {"_cc", "_other_flavors", "_bb", "_single_b"};
-// std::vector<std::string> flavor_categories = {"_cc", "_bb", "_single_b"};
-std::vector<std::string> flavor_catg_labels = {"cc", "other flavors", "bb", "single b"};
+std::vector<std::string> flavor_categories = {"_cc", "_other_flavors", "_bb", "_single_b", "_resonance"};
+std::vector<std::string> flavor_catg_labels = {"cc", "other flavors", "bb", "single b", "resonances"};
 // std::vector<std::string> flavor_catg_labels = {"cc", "bb", "single b"};
-std::vector<Color_t> line_colors = {kRed, kGray, kBlue, kOrange};
-std::vector<Color_t> fill_colors = {kRed, kGray, kBlue, kYellow};
+std::vector<Color_t> line_colors = {kRed, kGray, kBlue, kOrange, kCyan+1};
+std::vector<Color_t> fill_colors = {kRed, kGray, kBlue, kYellow, kCyan+1};
 
 // std::string subpl_titles[nSigns] = {{"bb, same sign", "bb, opposite sign"}, {"cc, same sign", "cc, opposite sign"}};
 std::string subpl_titles[nSigns] = {"pythia, same sign", "pythia, opposite sign"};
+
+void initialize(){
+  fname = "histograms_pythia_combined" + with_data_resonance_cuts_suffix + ".root";
+}
 
 void hist_helper(TH1* h, std::string title, bool norm_unity){
   h->SetStats(0);
@@ -82,7 +91,9 @@ void thstack_helper(THStack* h, std::string kin_name, std::string title){
   h->GetXaxis()->SetTitleOffset(1);
 }
 
-void plot_flavor_categorized_kinematic_single(std::string kin, bool projx_2d, bool projy_2d, bool staggered, bool norm_unity, std::string kin1d, std::string kin_title, bool logx=false){
+void plot_flavor_categorized_kinematic_single(std::string kin, bool projx_2d, bool projy_2d, bool staggered, bool norm_unity, std::string kin1d, std::string kin_title, std::vector<std::array<float,2>> cuts = {}, bool logx=false){
+
+  initialize();
 
   TH1D* h[nSigns][nflavorCategories];
   THStack *hs[nSigns];
@@ -101,6 +112,10 @@ void plot_flavor_categorized_kinematic_single(std::string kin, bool projx_2d, bo
 
   f = TFile::Open((pythia_path + fname).c_str());
 
+  if (!f){
+    std::cout << "File with the name " << pythia_path << fname << "does not exist or cannot be opened";
+    throw std::exception();
+  }
   for (unsigned int ksign = 0; ksign < nSigns; ksign++){
 
     c->cd(ksign + 1);
@@ -148,6 +163,9 @@ void plot_flavor_categorized_kinematic_single(std::string kin, bool projx_2d, bo
         throw std::exception();
       }
 
+      // if the argument cuts is not empty, do not draw the bins overlapping with the cuts
+      if (!cuts.empty()) ApplyCutsTo1DHistogram(h[ksign][mgrp], cuts);
+
       if (staggered){
         hist_helper(h[ksign][mgrp], subpl_titles[ksign] + ", accumulative", norm_unity);
       }else if(norm_unity){
@@ -192,11 +210,11 @@ void plot_flavor_categorized_kinematic_single(std::string kin, bool projx_2d, bo
   }
 
   if (staggered){
-    c->SaveAs(Form("%splots/flavor_categoried/pythia_%s_flavor_staggered.png", pythia_path.c_str(), kin1d.c_str()));
+    c->SaveAs(Form("%splots/flavor_categoried/%spythia_%s_flavor_staggered%s.png", pythia_path.c_str(), with_data_resonance_cuts_dir.c_str(), kin1d.c_str(), with_data_resonance_cuts_suffix.c_str()));
   }else if (norm_unity){
-    c->SaveAs(Form("%splots/flavor_categoried/pythia_%s_flavor_unity.png", pythia_path.c_str(), kin1d.c_str()));
+    c->SaveAs(Form("%splots/flavor_categoried/%spythia_%s_flavor_unity%s.png", pythia_path.c_str(), with_data_resonance_cuts_dir.c_str(), kin1d.c_str(), with_data_resonance_cuts_suffix.c_str()));
   }else{
-    c->SaveAs(Form("%splots/flavor_categoried/pythia_%s_flavor.png", pythia_path.c_str(), kin1d.c_str()));
+    c->SaveAs(Form("%splots/flavor_categoried/%spythia_%s_flavor%s.png", pythia_path.c_str(), with_data_resonance_cuts_dir.c_str(), kin1d.c_str(), with_data_resonance_cuts_suffix.c_str()));
   }
   c->Close();
   delete c;
@@ -205,6 +223,8 @@ void plot_flavor_categorized_kinematic_single(std::string kin, bool projx_2d, bo
 
 
 void plot_flavor_categorized_kinematics(){
+  ParamsSet pms;
+
   plot_flavor_categorized_kinematic_single("DR", false, false, false, false, "DR", "#Delta R");
   plot_flavor_categorized_kinematic_single("DR", false, false, true, false, "DR", "#Delta R"); // accumulative
   // // plot_flavor_categorized_kinematic_single("DR", false, false, false, true, "DR", "#Delta R"); // norm to unity
@@ -253,21 +273,24 @@ void plot_flavor_categorized_kinematics(){
   plot_flavor_categorized_kinematic_single("ptlead_pair_pt", false, true, true, false, "ptlead", "p_{T}^{lead}");
   // plot_flavor_categorized_kinematic_single("ptlead_pair_pt", false, true, false, true, "ptlead", "p_{T}^{lead}"); // norm to unity
   
-  plot_flavor_categorized_kinematic_single("minv_pair_pt", false, true, false, false, "minv", "m_{#mu#mu}");
-  plot_flavor_categorized_kinematic_single("minv_pair_pt", false, true, true, false, "minv", "m_{#mu#mu}");
-  // plot_flavor_categorized_kinematic_single("minv_pair_pt", false, true, false, true, "minv", "m_{#mu#mu}"); // norm to unity
+  std::vector<std::array<float,2>> minv_cuts;
+  if (with_data_resonance_cuts) minv_cuts = pms.minv_cuts;
 
-  plot_flavor_categorized_kinematic_single("minv_pair_pt_zoomin", false, true, false, false, "minv_zoomin", "m_{#mu#mu}");
-  plot_flavor_categorized_kinematic_single("minv_pair_pt_zoomin", false, true, true, false, "minv_zoomin", "m_{#mu#mu}");
-  // plot_flavor_categorized_kinematic_single("minv_pair_pt_zoomin", false, true, false, true, "minv_zoomin", "m_{#mu#mu}"); // norm to unity
+  plot_flavor_categorized_kinematic_single("minv_pair_pt", false, true, false, false, "minv", "m_{#mu#mu}", minv_cuts);
+  plot_flavor_categorized_kinematic_single("minv_pair_pt", false, true, true, false, "minv", "m_{#mu#mu}", minv_cuts);
+  // plot_flavor_categorized_kinematic_single("minv_pair_pt", false, true, false, true, "minv", "m_{#mu#mu}", minv_cuts); // norm to unity
 
-  plot_flavor_categorized_kinematic_single("minv_pair_pt_jacobian_corrected", false, true, false, false, "minv_jacobian_corrected", "m_{#mu#mu}");
-  plot_flavor_categorized_kinematic_single("minv_pair_pt_jacobian_corrected", false, true, true, false, "minv_jacobian_corrected", "m_{#mu#mu}");
-  // plot_flavor_categorized_kinematic_single("minv_pair_pt_jacobian_corrected", false, true, false, true, "minv_jacobian_corrected", "m_{#mu#mu}"); // norm to unity
+  plot_flavor_categorized_kinematic_single("minv_pair_pt_zoomin", false, true, false, false, "minv_zoomin", "m_{#mu#mu}", minv_cuts);
+  plot_flavor_categorized_kinematic_single("minv_pair_pt_zoomin", false, true, true, false, "minv_zoomin", "m_{#mu#mu}", minv_cuts);
+  // plot_flavor_categorized_kinematic_single("minv_pair_pt_zoomin", false, true, false, true, "minv_zoomin", "m_{#mu#mu}", minv_cuts); // norm to unity
 
-  plot_flavor_categorized_kinematic_single("minv_pair_pt_zoomin_jacobian_corrected", false, true, false, false, "minv_zoomin_jacobian_corrected", "m_{#mu#mu}");
-  plot_flavor_categorized_kinematic_single("minv_pair_pt_zoomin_jacobian_corrected", false, true, true, false, "minv_zoomin_jacobian_corrected", "m_{#mu#mu}");
-  // plot_flavor_categorized_kinematic_single("minv_pair_pt_zoomin_jacobian_corrected", false, true, false, true, "minv_zoomin_jacobian_corrected", "m_{#mu#mu}"); // norm to unity
+  plot_flavor_categorized_kinematic_single("minv_pair_pt_jacobian_corrected", false, true, false, false, "minv_jacobian_corrected", "m_{#mu#mu}", minv_cuts);
+  plot_flavor_categorized_kinematic_single("minv_pair_pt_jacobian_corrected", false, true, true, false, "minv_jacobian_corrected", "m_{#mu#mu}", minv_cuts);
+  // plot_flavor_categorized_kinematic_single("minv_pair_pt_jacobian_corrected", false, true, false, true, "minv_jacobian_corrected", "m_{#mu#mu}", minv_cuts); // norm to unity
+
+  plot_flavor_categorized_kinematic_single("minv_pair_pt_zoomin_jacobian_corrected", false, true, false, false, "minv_zoomin_jacobian_corrected", "m_{#mu#mu}", minv_cuts);
+  plot_flavor_categorized_kinematic_single("minv_pair_pt_zoomin_jacobian_corrected", false, true, true, false, "minv_zoomin_jacobian_corrected", "m_{#mu#mu}", minv_cuts);
+  // plot_flavor_categorized_kinematic_single("minv_pair_pt_zoomin_jacobian_corrected", false, true, false, true, "minv_zoomin_jacobian_corrected", "m_{#mu#mu}", minv_cuts); // norm to unity
   
   plot_flavor_categorized_kinematic_single("Deta_Dphi", true, false, false, false, "Dphi", "#Delta #phi");
   plot_flavor_categorized_kinematic_single("Deta_Dphi", true, false, true, false, "Dphi", "#Delta #phi");

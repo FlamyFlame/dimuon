@@ -8,8 +8,9 @@
 #include "TH2.h"
 #include "TCanvas.h"
 #include<algorithm>
-// #include "string"
-// #include <vector>
+#include "string"
+#include "../helper_functions.c"
+#include "../../MuonObjectsParamsAndHelpers/ParamsSet.h"
 // #include "time.h"
 // #include "struct_hist.h"
 
@@ -17,7 +18,11 @@
 const int nMCmodes = 2;
 const int nSigns = 2;
 // const int nDphi = 2;
-const int nOriginCategories = 7;
+const int nOriginCategories = 8;
+
+bool with_data_resonance_cuts = false;
+std::string with_data_resonance_cuts_dir = with_data_resonance_cuts? "with_data_resonance_cuts/" : "no_data_resonance_cuts/";
+std::string with_data_resonance_cuts_suffix = with_data_resonance_cuts? "_with_data_resonance_cuts" : "_no_data_resonance_cuts";
 
 // TH1D* h[nSigns][nDphi][nOriginCategories];
 TH2D* h2d;
@@ -26,13 +31,17 @@ TFile* f;
 std::string pythia_path = "/usatlas/u/yuhanguo/usatlasdata/pythia/";
 std::string fname = "histograms_pythia_combined.root";
 std::vector<std::string> signs = {"_sign1", "_sign2"};
-std::vector<std::string> origin_categories =  {"_GS_ISR_no_HS", "_diff_GS_same_HS", "_others", "_gs_ISR_one_hard_scatt", "_FC", "_gs_FSR", "_from_same_b"};
-std::vector<std::string> origin_catg_labels = {"GS in ISR no HS", "diff GS same HS", "others", "flavor excitation (FE)", "flavor creation (FC)", "GS in FSR", "from same b"};
-std::vector<Color_t> line_colors = {kOrange, kGray, kViolet, kBlue, kRed, kGreen + 2, kBlack};
-std::vector<Color_t> fill_colors = {kOrange, kGray, kViolet, kBlue, kRed, kGreen, kYellow};
+std::vector<std::string> origin_categories =  {"_GS_ISR_no_HS", "_diff_GS_same_HS", "_others", "_gs_ISR_one_hard_scatt", "_FC", "_gs_FSR", "_from_same_b", "_from_same_resonance"};
+std::vector<std::string> origin_catg_labels = {"GS in ISR no HS", "diff GS same HS", "others", "flavor excitation (FE)", "flavor creation (FC)", "GS in FSR", "single b", "resonances"};
+std::vector<Color_t> line_colors = {kOrange, kGray, kViolet, kBlue, kRed, kGreen + 2, kBlack, kCyan+1};
+std::vector<Color_t> fill_colors = {kOrange, kGray, kViolet, kBlue, kRed, kGreen, kYellow, kCyan+1};
 
 // std::string subpl_titles[nSigns] = {{"bb, same sign", "bb, opposite sign"}, {"cc, same sign", "cc, opposite sign"}};
 std::string subpl_titles[nSigns] = {"pythia, same sign", "pythia, opposite sign"};
+
+void initialize(){
+  fname = "histograms_pythia_combined" + with_data_resonance_cuts_suffix + ".root";
+}
 
 void hist_helper(TH1* h, std::string title, bool norm_unity){
   h->SetStats(0);
@@ -79,7 +88,9 @@ void thstack_helper(THStack* h, std::string kin_name, std::string title){
   h->GetXaxis()->SetTitleOffset(1);
 }
 
-void plot_origin_categorized_kinematic_single(std::string kin, bool projx_2d, bool projy_2d, bool staggered, bool norm_unity, std::string kin1d, std::string kin_title, bool logx=false){
+void plot_origin_categorized_kinematic_single(std::string kin, bool projx_2d, bool projy_2d, bool staggered, bool norm_unity, std::string kin1d, std::string kin_title, std::vector<std::array<float,2>> cuts = {}, bool logx=false){
+
+  initialize();
 
   TH1D* h[nSigns][nOriginCategories];
   THStack *hs[nSigns];
@@ -97,6 +108,11 @@ void plot_origin_categorized_kinematic_single(std::string kin, bool projx_2d, bo
   c->Divide(2,1);
 
   f = TFile::Open((pythia_path + fname).c_str());
+
+  if (!f){
+    std::cout << "File with the name " << pythia_path << fname << "does not exist or cannot be opened";
+    throw std::exception();
+  }
 
   for (unsigned int ksign = 0; ksign < nSigns; ksign++){
 
@@ -156,10 +172,8 @@ void plot_origin_categorized_kinematic_single(std::string kin, bool projx_2d, bo
         }
       }
 
-      // if (!h[ksign][mgrp]){
-      //   std::cout << "file h_" << kin << origin_categories[mgrp] << signs[ksign] << "does not exist." << std::endl;
-      //   throw std::exception();
-      // }
+      // if the argument cuts is not empty, do not draw the bins overlapping with the cuts
+      if (!cuts.empty()) ApplyCutsTo1DHistogram(h[ksign][mgrp], cuts);
 
       if (staggered){
         hist_helper(h[ksign][mgrp], subpl_titles[ksign] + ", accumulative", norm_unity);
@@ -183,15 +197,30 @@ void plot_origin_categorized_kinematic_single(std::string kin, bool projx_2d, bo
       }
     }
 
+    if (!h[ksign][0]){
+      std::cout << "histogram h_" << kin << signs[ksign] << origin_categories[0] << " does not exist; return without plotting or saving png file" << std::endl;
+      c->Close();
+      delete c;
+      return;
+    }
+
     float ymax = h[ksign][0]->GetMaximum();
     if (!staggered){
       for (int i = 1; i < nOriginCategories; i++){
+        if (!h[ksign][i]){
+          std::cout << "histogram h_" << kin << signs[ksign] << origin_categories[i] << " does not exist; continue" << std::endl;
+          continue;
+        }
         ymax = (ymax > h[ksign][i]->GetMaximum())? ymax : h[ksign][i]->GetMaximum();
       }
       h[ksign][0]->GetYaxis()->SetRangeUser(0., ymax * 1.1);
 
       h[ksign][0]->Draw("E");
       for (int i = 1; i < nOriginCategories; i++){
+        if (!h[ksign][i]){
+          std::cout << "histogram h_" << kin << signs[ksign] << origin_categories[i] << " does not exist; continue" << std::endl;
+          continue;
+        }
         h[ksign][i]->Draw("E,same");
       }
     }else{
@@ -201,15 +230,15 @@ void plot_origin_categorized_kinematic_single(std::string kin, bool projx_2d, bo
       // hs[ksign]->GetYaxis()->SetTitle(("d#sigma/d" + kin1d).c_str());
       // hs[ksign]->SetTitle(subpl_titles[ksign].c_str());          
     }
-      l->Draw();
+    l->Draw();
   }
 
   if (staggered){
-    c->SaveAs(Form("%splots/origin_categoried/pythia_%s_staggered.png", pythia_path.c_str(), kin1d.c_str()));
+    c->SaveAs(Form("%splots/origin_categoried/%spythia_%s_staggered%s.png", pythia_path.c_str(), with_data_resonance_cuts_dir.c_str(), kin1d.c_str(), with_data_resonance_cuts_suffix.c_str()));
   }else if (norm_unity){
-    c->SaveAs(Form("%splots/origin_categoried/pythia_%s_unity.png", pythia_path.c_str(), kin1d.c_str()));
+    c->SaveAs(Form("%splots/origin_categoried/%spythia_%s_unity%s.png", pythia_path.c_str(), with_data_resonance_cuts_dir.c_str(), kin1d.c_str(), with_data_resonance_cuts_suffix.c_str()));
   }else{
-    c->SaveAs(Form("%splots/origin_categoried/pythia_%s.png", pythia_path.c_str(), kin1d.c_str()));
+    c->SaveAs(Form("%splots/origin_categoried/%spythia_%s%s.png", pythia_path.c_str(), with_data_resonance_cuts_dir.c_str(), kin1d.c_str(), with_data_resonance_cuts_suffix.c_str()));
   }
   c->Close();
   delete c;
@@ -218,6 +247,8 @@ void plot_origin_categorized_kinematic_single(std::string kin, bool projx_2d, bo
 
 
 void plot_origin_categorized_kinematics(){
+  ParamsSet pms;
+
   plot_origin_categorized_kinematic_single("DR", false, false, false, false, "DR", "#Delta R");
   plot_origin_categorized_kinematic_single("DR", false, false, true, false, "DR", "#Delta R"); // accumulative
   // // plot_origin_categorized_kinematic_single("DR", false, false, false, true, "DR", "#Delta R"); // norm to unity
@@ -266,21 +297,24 @@ void plot_origin_categorized_kinematics(){
   plot_origin_categorized_kinematic_single("ptlead_pair_pt", false, true, true, false, "ptlead", "p_{T}^{lead}");
   // plot_origin_categorized_kinematic_single("ptlead_pair_pt", false, true, false, true, "ptlead", "p_{T}^{lead}"); // norm to unity
   
-  plot_origin_categorized_kinematic_single("minv_pair_pt", false, true, false, false, "minv", "m_{#mu#mu}");
-  plot_origin_categorized_kinematic_single("minv_pair_pt", false, true, true, false, "minv", "m_{#mu#mu}");
-  // plot_origin_categorized_kinematic_single("minv_pair_pt", false, true, false, true, "minv", "m_{#mu#mu}"); // norm to unity
+  std::vector<std::array<float,2>> minv_cuts;
+  if (with_data_resonance_cuts) minv_cuts = pms.minv_cuts;
 
-  plot_origin_categorized_kinematic_single("minv_pair_pt_zoomin", false, true, false, false, "minv_zoomin", "m_{#mu#mu}");
-  plot_origin_categorized_kinematic_single("minv_pair_pt_zoomin", false, true, true, false, "minv_zoomin", "m_{#mu#mu}");
-  // plot_origin_categorized_kinematic_single("minv_pair_pt_zoomin", false, true, false, true, "minv_zoomin", "m_{#mu#mu}"); // norm to unity
+  plot_origin_categorized_kinematic_single("minv_pair_pt", false, true, false, false, "minv", "m_{#mu#mu}", minv_cuts);
+  plot_origin_categorized_kinematic_single("minv_pair_pt", false, true, true, false, "minv", "m_{#mu#mu}", minv_cuts);
+  // plot_origin_categorized_kinematic_single("minv_pair_pt", false, true, false, true, "minv", "m_{#mu#mu}", minv_cuts); // norm to unity
 
-  plot_origin_categorized_kinematic_single("minv_pair_pt_jacobian_corrected", false, true, false, false, "minv_jacobian_corrected", "m_{#mu#mu}");
-  plot_origin_categorized_kinematic_single("minv_pair_pt_jacobian_corrected", false, true, true, false, "minv_jacobian_corrected", "m_{#mu#mu}");
-  // plot_origin_categorized_kinematic_single("minv_pair_pt_jacobian_corrected", false, true, false, true, "minv_jacobian_corrected", "m_{#mu#mu}"); // norm to unity
+  plot_origin_categorized_kinematic_single("minv_pair_pt_zoomin", false, true, false, false, "minv_zoomin", "m_{#mu#mu}", minv_cuts);
+  plot_origin_categorized_kinematic_single("minv_pair_pt_zoomin", false, true, true, false, "minv_zoomin", "m_{#mu#mu}", minv_cuts);
+  // plot_origin_categorized_kinematic_single("minv_pair_pt_zoomin", false, true, false, true, "minv_zoomin", "m_{#mu#mu}", minv_cuts); // norm to unity
 
-  plot_origin_categorized_kinematic_single("minv_pair_pt_zoomin_jacobian_corrected", false, true, false, false, "minv_zoomin_jacobian_corrected", "m_{#mu#mu}");
-  plot_origin_categorized_kinematic_single("minv_pair_pt_zoomin_jacobian_corrected", false, true, true, false, "minv_zoomin_jacobian_corrected", "m_{#mu#mu}");
-  // plot_origin_categorized_kinematic_single("minv_pair_pt_zoomin_jacobian_corrected", false, true, false, true, "minv_zoomin_jacobian_corrected", "m_{#mu#mu}"); // norm to unity
+  plot_origin_categorized_kinematic_single("minv_pair_pt_jacobian_corrected", false, true, false, false, "minv_jacobian_corrected", "m_{#mu#mu}", minv_cuts);
+  plot_origin_categorized_kinematic_single("minv_pair_pt_jacobian_corrected", false, true, true, false, "minv_jacobian_corrected", "m_{#mu#mu}", minv_cuts);
+  // plot_origin_categorized_kinematic_single("minv_pair_pt_jacobian_corrected", false, true, false, true, "minv_jacobian_corrected", "m_{#mu#mu}", minv_cuts); // norm to unity
+
+  plot_origin_categorized_kinematic_single("minv_pair_pt_zoomin_jacobian_corrected", false, true, false, false, "minv_zoomin_jacobian_corrected", "m_{#mu#mu}", minv_cuts);
+  plot_origin_categorized_kinematic_single("minv_pair_pt_zoomin_jacobian_corrected", false, true, true, false, "minv_zoomin_jacobian_corrected", "m_{#mu#mu}", minv_cuts);
+  // plot_origin_categorized_kinematic_single("minv_pair_pt_zoomin_jacobian_corrected", false, true, false, true, "minv_zoomin_jacobian_corrected", "m_{#mu#mu}", minv_cuts); // norm to unity
   
   plot_origin_categorized_kinematic_single("Deta_Dphi", true, false, false, false, "Dphi", "#Delta #phi");
   plot_origin_categorized_kinematic_single("Deta_Dphi", true, false, true, false, "Dphi", "#Delta #phi");
