@@ -1800,7 +1800,7 @@ void PythiaNTupleFirstPass::MuonPairAncestorTracing(){
   SingleMuonAncestorTracing(true);
   SingleMuonAncestorTracing(false);
   
-  if (m1_parent_group == resonance_decay && m2_parent_group == resonance_decay){
+  if (mpair->m1_parent_group == resonance_decay && mpair->m2_parent_group == resonance_decay){
     mpair->from_same_resonance = (m1_resonance_barcode == m2_resonance_barcode);
   }
 
