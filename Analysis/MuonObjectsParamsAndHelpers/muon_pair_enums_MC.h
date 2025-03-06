@@ -35,6 +35,14 @@ enum hard_scatter_categories{
   hard_scatt_drell_yan // never to be filled for HF muon pairs
 };
 
+enum pair_flavor_index{
+  from_resonance,
+  from_single_b,
+  bb,
+  cc,
+  other_flavor
+};
+
 enum muon_pair_both_from_open_b_or_c_origin_categories{ // will only be applied to [both from b] or [both fromc c] cases
   fc,
   same_gs_phs_fsr, // including photon splitting
