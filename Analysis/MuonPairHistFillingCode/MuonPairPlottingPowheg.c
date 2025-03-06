@@ -100,8 +100,8 @@ void MuonPairPlottingPowheg::FillHistograms(int nbatch, int nsign){
         h_Deta_Dphi_ancestor_binned[nsign][nAncestorGroups]->Fill(dphi[nbatch][nsign], deta[nbatch][nsign], ev_weight);
         h_minv_pair_pt_ancestor_binned[nsign][nAncestorGroups]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight);
         h_minv_pair_pt_zoomin_ancestor_binned[nsign][nAncestorGroups]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight);
-        h_minv_pair_pt_jacobian_corrected_ancestor_binned[nsign][nAncestorGroups]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight * 1. / minv[nbatch][nsign]);
-        h_minv_pair_pt_zoomin_jacobian_corrected_ancestor_binned[nsign][nAncestorGroups]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight * 1. / minv[nbatch][nsign]);
+        h_minv_pair_pt_jacobian_corrected_ancestor_binned[nsign][nAncestorGroups]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight * 1. / dr[nbatch][nsign]);
+        h_minv_pair_pt_zoomin_jacobian_corrected_ancestor_binned[nsign][nAncestorGroups]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight * 1. / dr[nbatch][nsign]);
         is_filled = true;
 
         h_DR_flavor_binned[nsign][0]->Fill(dr[nbatch][nsign], ev_weight);
@@ -114,8 +114,8 @@ void MuonPairPlottingPowheg::FillHistograms(int nbatch, int nsign){
         h_Deta_Dphi_flavor_binned[nsign][0]->Fill(dphi[nbatch][nsign], deta[nbatch][nsign], ev_weight);
         h_minv_pair_pt_flavor_binned[nsign][0]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight);
         h_minv_pair_pt_zoomin_flavor_binned[nsign][0]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight);
-        h_minv_pair_pt_jacobian_corrected_flavor_binned[nsign][0]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight * 1. / minv[nbatch][nsign]);
-        h_minv_pair_pt_zoomin_jacobian_corrected_flavor_binned[nsign][0]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight * 1. / minv[nbatch][nsign]);
+        h_minv_pair_pt_jacobian_corrected_flavor_binned[nsign][0]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight * 1. / dr[nbatch][nsign]);
+        h_minv_pair_pt_zoomin_jacobian_corrected_flavor_binned[nsign][0]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight * 1. / dr[nbatch][nsign]);
     }else{
         int flavor_ind = -1;
         if (both_from_b[nbatch][nsign]){
@@ -137,8 +137,8 @@ void MuonPairPlottingPowheg::FillHistograms(int nbatch, int nsign){
             h_Deta_Dphi_flavor_binned[nsign][flavor_ind]->Fill(dphi[nbatch][nsign], deta[nbatch][nsign], ev_weight);
             h_minv_pair_pt_flavor_binned[nsign][flavor_ind]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight);            
             h_minv_pair_pt_zoomin_flavor_binned[nsign][flavor_ind]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight);            
-            h_minv_pair_pt_jacobian_corrected_flavor_binned[nsign][flavor_ind]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight * 1. / minv[nbatch][nsign]);
-            h_minv_pair_pt_zoomin_jacobian_corrected_flavor_binned[nsign][flavor_ind]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight * 1. / minv[nbatch][nsign]);
+            h_minv_pair_pt_jacobian_corrected_flavor_binned[nsign][flavor_ind]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight * 1. / dr[nbatch][nsign]);
+            h_minv_pair_pt_zoomin_jacobian_corrected_flavor_binned[nsign][flavor_ind]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight * 1. / dr[nbatch][nsign]);
         }
 
         if (from_same_ancestors[nbatch][nsign]){ // from the same ancestors and not the same b
@@ -154,8 +154,8 @@ void MuonPairPlottingPowheg::FillHistograms(int nbatch, int nsign){
                     h_Deta_Dphi_ancestor_binned[nsign][kgrp]->Fill(dphi[nbatch][nsign], deta[nbatch][nsign], ev_weight);
                     h_minv_pair_pt_ancestor_binned[nsign][kgrp]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight);
                     h_minv_pair_pt_zoomin_ancestor_binned[nsign][kgrp]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight);
-                    h_minv_pair_pt_jacobian_corrected_ancestor_binned[nsign][kgrp]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight * 1. / minv[nbatch][nsign]);
-                    h_minv_pair_pt_zoomin_jacobian_corrected_ancestor_binned[nsign][kgrp]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight * 1. / minv[nbatch][nsign]);
+                    h_minv_pair_pt_jacobian_corrected_ancestor_binned[nsign][kgrp]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight * 1. / dr[nbatch][nsign]);
+                    h_minv_pair_pt_zoomin_jacobian_corrected_ancestor_binned[nsign][kgrp]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight * 1. / dr[nbatch][nsign]);
                     h_mQQ_ancestor_binned[nsign][kgrp]->Fill(mQQ[nbatch][nsign],ev_weight);
                     h_mQQ_Q_ratio_ancestor_binned[nsign][kgrp]->Fill(mQQ[nbatch][nsign] / Q[nbatch][nsign], ev_weight);
                     h_mQQ_mHard_ratio_ancestor_binned[nsign][kgrp]->Fill(mQQ[nbatch][nsign] / mHard_relevant[nbatch][nsign], ev_weight);
@@ -177,8 +177,8 @@ void MuonPairPlottingPowheg::FillHistograms(int nbatch, int nsign){
         h_Deta_Dphi_ancestor_binned[nsign][nAncestorGroups+1]->Fill(dphi[nbatch][nsign], deta[nbatch][nsign], ev_weight);
         h_minv_pair_pt_ancestor_binned[nsign][nAncestorGroups+1]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight);
         h_minv_pair_pt_zoomin_ancestor_binned[nsign][nAncestorGroups+1]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight);
-        h_minv_pair_pt_jacobian_corrected_ancestor_binned[nsign][nAncestorGroups+1]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight * 1. / minv[nbatch][nsign]);
-        h_minv_pair_pt_zoomin_jacobian_corrected_ancestor_binned[nsign][nAncestorGroups+1]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight * 1. / minv[nbatch][nsign]);
+        h_minv_pair_pt_jacobian_corrected_ancestor_binned[nsign][nAncestorGroups+1]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight * 1. / dr[nbatch][nsign]);
+        h_minv_pair_pt_zoomin_jacobian_corrected_ancestor_binned[nsign][nAncestorGroups+1]->Fill(pair_pt[nbatch][nsign], minv[nbatch][nsign], ev_weight * 1. / dr[nbatch][nsign]);
     }
 
     h_pair_dP_overP[ndphi][nsign]->Fill(pair_dPoverP[nbatch][nsign],ev_weight);
@@ -206,8 +206,8 @@ void MuonPairPlottingPowheg::FillHistograms(int nbatch, int nsign){
     h_ptlead_pair_pt_log[ndphi][nsign]->Fill(pair_pt[nbatch][nsign],m1pt[nbatch][nsign],ev_weight);
     h_minv_pair_pt[ndphi][nsign]->Fill(pair_pt[nbatch][nsign],minv[nbatch][nsign],ev_weight);
     h_minv_pair_pt_zoomin[ndphi][nsign]->Fill(pair_pt[nbatch][nsign],minv[nbatch][nsign],ev_weight);
-    h_minv_pair_pt_jacobian_corrected[ndphi][nsign]->Fill(pair_pt[nbatch][nsign],minv[nbatch][nsign],ev_weight * 1. / minv[nbatch][nsign]);
-    h_minv_pair_pt_zoomin_jacobian_corrected[ndphi][nsign]->Fill(pair_pt[nbatch][nsign],minv[nbatch][nsign],ev_weight * 1. / minv[nbatch][nsign]);
+    h_minv_pair_pt_jacobian_corrected[ndphi][nsign]->Fill(pair_pt[nbatch][nsign],minv[nbatch][nsign],ev_weight * 1. / dr[nbatch][nsign]);
+    h_minv_pair_pt_zoomin_jacobian_corrected[ndphi][nsign]->Fill(pair_pt[nbatch][nsign],minv[nbatch][nsign],ev_weight * 1. / dr[nbatch][nsign]);
     h_minv_pair_pt_log[ndphi][nsign]->Fill(pair_pt[nbatch][nsign],minv[nbatch][nsign],ev_weight);
 
     // h_eta1_eta2_dphicut[2][nsign]->Fill(m2eta[nbatch][nsign],m1eta[nbatch][nsign],ev_weight);
