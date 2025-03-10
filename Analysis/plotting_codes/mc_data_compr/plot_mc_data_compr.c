@@ -254,9 +254,9 @@ void PlotMCDataComprSingleKinematics::Run(){
     std::string ratio_errorbar_suffix = ratio_plot_draw_errorbar? "" : "_noerrorbar";
 
     if (powheg_scale != 1. || pythia_scale != 1.){ // can't coexist with normalizing-to-unity requirement
-        c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/plots/mc_data_compr/%s_mc_data_compr%s%s%_powheg_%.2f_pythia_%.2f.png", kin1d.c_str(), ratio_suffix.c_str(), ratio_errorbar_suffix.c_str(), powheg_scale, pythia_scale));
+        c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/%s_mc_data_compr%s%s%_powheg_%.2f_pythia_%.2f.png", kin1d.c_str(), ratio_suffix.c_str(), ratio_errorbar_suffix.c_str(), powheg_scale, pythia_scale));
     }else{
-        c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/plots/mc_data_compr/%s_mc_data_compr%s%s%%s.png", kin1d.c_str(), ratio_suffix.c_str(), ratio_errorbar_suffix.c_str(), unity_suffix.c_str()));
+        c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/%s_mc_data_compr%s%s%%s.png", kin1d.c_str(), ratio_suffix.c_str(), ratio_errorbar_suffix.c_str(), unity_suffix.c_str()));
     }
 
     c->Close();

@@ -109,7 +109,7 @@ void PlotMCDataSingle2DHistogram::Run(){
                 }
             }
         
-            c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/plots/mc_data_compr/hist_2D/%s.png", kin.c_str()));
+            c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/hist_2D/%s.png", kin.c_str()));
             c->Close();
             delete c;
         }
@@ -179,8 +179,8 @@ void PlotMCDataSingle2DHistogram::Run(){
                 }
 
                 std::string proj_filename;
-                if (kiny != "" && kinx != "")   proj_filename = "/usatlas/u/yuhanguo/usatlasdata/plots/mc_data_compr/hist_2D_interval_projections/" + kiny + dt_suffix[idt] + "_" + kinx + "_intvls" + ".png";
-                else              proj_filename = "/usatlas/u/yuhanguo/usatlasdata/plots/mc_data_compr/hist_2D_interval_projections/" + kin + "_projY_" + dt_suffix[idt] + "_intvls" + ".png";
+                if (kiny != "" && kinx != "")   proj_filename = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/hist_2D_interval_projections/" + kiny + dt_suffix[idt] + "_" + kinx + "_intvls" + ".png";
+                else              proj_filename = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/hist_2D_interval_projections/" + kin + "_projY_" + dt_suffix[idt] + "_intvls" + ".png";
 
                 projCanvas->SaveAs(proj_filename.c_str());
         
@@ -222,8 +222,8 @@ void PlotMCDataSingle2DHistogram::Run(){
         
                     // Save the projections
                     std::string proj_filename;
-                    if (kiny != "" && kinx != "")   proj_filename = "/usatlas/u/yuhanguo/usatlasdata/plots/mc_data_compr/hist_2D_interval_projections/" + kiny + dt_suffix[idt] + "_" + kinx + "_intvl" + std::to_string(intvl) + ".png";
-                    else              proj_filename = "/usatlas/u/yuhanguo/usatlasdata/plots/mc_data_compr/hist_2D_interval_projections/" + kin + "_projY_" + dt_suffix[idt] + "_intvl" + std::to_string(binX1) + "-" + std::to_string(binX2) + ".png";
+                    if (kiny != "" && kinx != "")   proj_filename = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/hist_2D_interval_projections/" + kiny + dt_suffix[idt] + "_" + kinx + "_intvl" + std::to_string(intvl) + ".png";
+                    else              proj_filename = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/hist_2D_interval_projections/" + kin + "_projY_" + dt_suffix[idt] + "_intvl" + std::to_string(binX1) + "-" + std::to_string(binX2) + ".png";
                     projCanvas->SaveAs(proj_filename.c_str());
         
                     // Clean up

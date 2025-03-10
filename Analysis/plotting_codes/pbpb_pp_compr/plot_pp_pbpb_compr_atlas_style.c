@@ -215,7 +215,7 @@ void plot_pp_pbpb_compr_single_kin(std::string kin, bool projx_2d, bool projy_2d
       }
     }
 
-    c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/plots/pbpb_pp_compr/%s_pp_pbpb_compr_gapcut%d_atlasstyle.png", kin1d.c_str(), lgap+1));
+    c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/pbpb_pp_compr/%s_pp_pbpb_compr_gapcut%d_atlasstyle.png", kin1d.c_str(), lgap+1));
     c->Close();
     delete c;
   }

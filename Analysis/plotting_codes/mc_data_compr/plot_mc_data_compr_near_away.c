@@ -200,11 +200,11 @@ void plot_mc_data_compr_single_kinematic(std::string kin, bool projx_2d, bool pr
     }
   }
   if (norm_unity){
-    c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/plots/mc_data_compr/%s_mc_data_compr_near_away_unity.png", kin1d.c_str()));
+    c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/%s_mc_data_compr_near_away_unity.png", kin1d.c_str()));
   }else if (powheg_scale != 1. || pythia_scale != 1.){
-    c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/plots/mc_data_compr/%s_mc_data_compr_near_away_powheg_%.2f_pythia_%.2f.png", kin1d.c_str(), powheg_scale, pythia_scale));
+    c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/%s_mc_data_compr_near_away_powheg_%.2f_pythia_%.2f.png", kin1d.c_str(), powheg_scale, pythia_scale));
   }else{
-    c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/plots/mc_data_compr/%s_mc_data_compr_near_away.png", kin1d.c_str()));
+    c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/%s_mc_data_compr_near_away.png", kin1d.c_str()));
   }
 
   c->Close();
