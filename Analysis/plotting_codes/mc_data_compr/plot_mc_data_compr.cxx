@@ -6,6 +6,9 @@ protected:
     TCanvas* c;
     TH1D* h[s_nDtTypes][s_nSigns][s_nDphis];
 
+    // pair of {vector of cuts, opposite-sign-only boolean}
+    std::pair<std::vector<std::array<float,2>>, bool> cuts = {};
+
 public:
 
     // ------------------- public class variables -------------------
@@ -29,12 +32,20 @@ public:
     PlotMCDataComprSingleKinematics(std::string kin_input, std::string kin_title_input){
                 kin = kin_input;
                 kin_title = kin_title_input;
+                pythia_with_data_resonance_cuts = true;
+                std::cout << "For 1D MC-data compasiron histograms, by default use pythia sample processed WITH data-like minv cuts" << std::endl;
+                std::cout << "Set manually `pythia_with_data_resonance_cuts = false;` after calling constructor + before calling Run()" << std::endl;
+                std::cout << "if need to change this setting." << std::endl;
     }
 
     // convenient constructor for 1D histogram requiring normalization to unity
     PlotMCDataComprSingleKinematics(std::string kin_input, bool norm_unity_input, std::string kin_title_input): norm_unity (norm_unity_input){
                 kin = kin_input;
                 kin_title = kin_title_input;
+                pythia_with_data_resonance_cuts = true;
+                std::cout << "For 1D MC-data compasiron histograms, by default use pythia sample processed WITH data-like minv cuts" << std::endl;
+                std::cout << "Set manually `pythia_with_data_resonance_cuts = false;` after calling constructor + before calling Run()" << std::endl;
+                std::cout << "if need to change this setting." << std::endl;
     }
 
     // constructor for 2D histogram projecting onto an 1D histogram (only projx OR projy can be set true)
@@ -43,6 +54,10 @@ public:
                 kin = kin_input;
                 kin1d = kin1d_input;
                 kin_title = kin_title_input;
+                pythia_with_data_resonance_cuts = true;
+                std::cout << "For 1D MC-data compasiron histograms, by default use pythia sample processed WITH data-like minv cuts" << std::endl;
+                std::cout << "Set manually `pythia_with_data_resonance_cuts = false;` after calling constructor + before calling Run()" << std::endl;
+                std::cout << "if need to change this setting." << std::endl;
     }
 
     // convenient constructor for 2D histogram projecting onto an 1D histogram requiring normalization to unity (only projx OR projy can be set true)
@@ -51,6 +66,10 @@ public:
                 kin = kin_input;
                 kin1d = kin1d_input;
                 kin_title = kin_title_input;
+                pythia_with_data_resonance_cuts = true;
+                std::cout << "For 1D MC-data compasiron histograms, by default use pythia sample processed WITH data-like minv cuts" << std::endl;
+                std::cout << "Set manually `pythia_with_data_resonance_cuts = false;` after calling constructor + before calling Run()" << std::endl;
+                std::cout << "if need to change this setting." << std::endl;
     }
     ~PlotMCDataComprSingleKinematics(){}
 
@@ -134,12 +153,16 @@ void PlotMCDataComprSingleKinematics::Run(){
                     throw std::runtime_error("Histogram does not exist (pointer is s_NULLptr)!");
                 }
 
+                if (!cuts.empty()) ApplyCutsTo1DHistogram(h[idt][ksign][jdphi], cuts.first);
+
                 h[idt][ksign][jdphi]->SetMarkerColor(colors[idt]);
                 h[idt][ksign][jdphi]->SetLineColor(colors[idt]);
             }
 
             h[DataType::powheg_bb][ksign][jdphi]->Add(h[DataType::powheg_cc][ksign][jdphi]); // powheg - add cc to bb for all sign & dphi regions
         }
+
+
 
         for (unsigned int idt = 0; idt < s_nDtTypes; idt++){
             h[idt][ksign][0]->Add(h[idt][ksign][1]); // add up the two dphi regions for all data types
@@ -271,8 +294,28 @@ void PlotMCDataComprSingleKinematics::Run(){
     }
 }
 
+// ------------------------------------------------------------------------------------------------------------------------------------------------------
 
-void plot_mc_data_compr_1D(){
+class PlotMCDataComprClass{
+protected:
+    ParamsSet pms;
+public: // all plotting functions public so that a child class can choose which ones to run
+    PlotMCDataComprClass(){}
+    ~PlotMCDataComprClass(){}
+
+    void plot_mc_data_compr_1D();
+    void plot_mc_data_compr_1D_ratio();
+    void plot_mc_data_compr_1D_ratio_noerrorbar();
+    void plot_mc_data_compr_DR_zoomin();
+    void plot_mc_data_compr_2D_proj();
+    void plot_mc_data_compr_2D_proj_ratio();
+    void plot_mc_data_compr_2D_proj_ratio_noerrorbar();
+    void plot_mc_data_compr_1D_normalize_to_unity();
+    void plot_mc_data_compr_2D_proj_normalize_to_unity();
+};
+
+
+void PlotMCDataComprClass::plot_mc_data_compr_1D(){
     // ----------------- 1D histogram plotting with #events / luminosity-based normalization -----------------
     PlotMCDataComprSingleKinematics p_DR("DR", "#Delta R");
     p_DR.legend_position_same_sign = {0.62,0.6,0.95,0.89};
@@ -292,7 +335,7 @@ void plot_mc_data_compr_1D(){
     p_pair_pt_ptlead_ratio.Run();
 }
 
-void plot_mc_data_compr_1D_ratio(){
+void PlotMCDataComprClass::plot_mc_data_compr_1D_ratio(){
     // ----------------- 1D histogram plotting with #events / luminosity-based normalization -----------------
     PlotMCDataComprSingleKinematics p_DR_ratio("DR", "#Delta R");
     p_DR_ratio.ratio_plot_mode = true;
@@ -311,7 +354,7 @@ void plot_mc_data_compr_1D_ratio(){
     p_pair_pt_ptlead_ratio_ratio.Run();
 }
 
-void plot_mc_data_compr_1D_ratio_noerrorbar(){
+void PlotMCDataComprClass::plot_mc_data_compr_1D_ratio_noerrorbar(){
     // ----------------- 1D histogram plotting with #events / luminosity-based normalization -----------------
     PlotMCDataComprSingleKinematics p_DR_ratio("DR", "#Delta R");
     p_DR_ratio.ratio_plot_mode = true;
@@ -340,7 +383,7 @@ void plot_mc_data_compr_1D_ratio_noerrorbar(){
     p_pair_pt_ptlead_ratio_ratio.Run();
 }
 
-void plot_mc_data_compr_DR_zoomin(){
+void PlotMCDataComprClass::plot_mc_data_compr_DR_zoomin(){
     PlotMCDataComprSingleKinematics p_DR_zoomin("DR_zoomin", "#Delta R");
     // p_DR_zoomin.legend_position_same_sign = {0.62,0.6,0.95,0.89};
     p_DR_zoomin.Run();
@@ -356,7 +399,7 @@ void plot_mc_data_compr_DR_zoomin(){
 }
 
 
-void plot_mc_data_compr_2D_proj(){
+void PlotMCDataComprClass::plot_mc_data_compr_2D_proj(){
     // ----------------- 2D histograms projecting onto 1D -----------------
     PlotMCDataComprSingleKinematics p_ptlead_pair_pt_x("ptlead_pair_pt", true, false, false, "pair_pt", "p_{T}^{pair}");
     p_ptlead_pair_pt_x.Run();
@@ -365,9 +408,11 @@ void plot_mc_data_compr_2D_proj(){
     p_ptlead_pair_pt_y.Run();
 
     PlotMCDataComprSingleKinematics p_minv_pair_pt_y("minv_pair_pt", false, true, false, "minv","m_{#mu#mu}");
+    p_minv_pair_pt_y.cutsy = {pms.minv_cuts, true};
     p_minv_pair_pt_y.Run();
 
     PlotMCDataComprSingleKinematics p_minv_pair_pt_zoomin_y("minv_pair_pt_zoomin", false, true, false, "minv_zoomin","m_{#mu#mu}");
+    p_minv_pair_pt_zoomin_y.cutsy = {pms.minv_cuts, true};
     p_minv_pair_pt_zoomin_y.Run();
 
     PlotMCDataComprSingleKinematics p_Deta_Dphi_y("Deta_Dphi", false, true, false, "Deta", "#Delta #eta");
@@ -376,7 +421,7 @@ void plot_mc_data_compr_2D_proj(){
     p_Deta_Dphi_y.Run();
 }
 
-void plot_mc_data_compr_2D_proj_ratio(){
+void PlotMCDataComprClass::plot_mc_data_compr_2D_proj_ratio(){
     // ----------------- 2D histograms projecting onto 1D -----------------
     PlotMCDataComprSingleKinematics p_ptlead_pair_pt_x_ratio("ptlead_pair_pt", true, false, false, "pair_pt", "p_{T}^{pair}");
     p_ptlead_pair_pt_x_ratio.ratio_plot_mode = true;
@@ -387,10 +432,12 @@ void plot_mc_data_compr_2D_proj_ratio(){
     p_ptlead_pair_pt_y_ratio.Run();
 
     PlotMCDataComprSingleKinematics p_minv_pair_pt_y_ratio("minv_pair_pt", false, true, false, "minv","m_{#mu#mu}");
+    p_minv_pair_pt_y_ratio.cutsy = {pms.minv_cuts, true};
     p_minv_pair_pt_y_ratio.ratio_plot_mode = true;
     p_minv_pair_pt_y_ratio.Run();
 
     PlotMCDataComprSingleKinematics p_minv_pair_pt_zoomin_y_ratio("minv_pair_pt_zoomin", false, true, false, "minv_zoomin","m_{#mu#mu}");
+    p_minv_pair_pt_zoomin_y_ratio.cutsy = {pms.minv_cuts, true};
     p_minv_pair_pt_zoomin_y_ratio.ratio_plot_mode = true;
     p_minv_pair_pt_zoomin_y_ratio.Run();
 
@@ -399,7 +446,7 @@ void plot_mc_data_compr_2D_proj_ratio(){
     p_Deta_Dphi_y_ratio.Run();
 }
 
-void plot_mc_data_compr_2D_proj_ratio_noerrorbar(){
+void PlotMCDataComprClass::plot_mc_data_compr_2D_proj_ratio_noerrorbar(){
     // ----------------- 2D histograms projecting onto 1D -----------------
     PlotMCDataComprSingleKinematics p_ptlead_pair_pt_x_ratio("ptlead_pair_pt", true, false, false, "pair_pt", "p_{T}^{pair}");
     p_ptlead_pair_pt_x_ratio.ratio_plot_mode = true;
@@ -412,11 +459,13 @@ void plot_mc_data_compr_2D_proj_ratio_noerrorbar(){
     p_ptlead_pair_pt_y_ratio.Run();
 
     PlotMCDataComprSingleKinematics p_minv_pair_pt_y_ratio("minv_pair_pt", false, true, false, "minv","m_{#mu#mu}");
+    p_minv_pair_pt_y_ratio.cutsy = {pms.minv_cuts, true};
     p_minv_pair_pt_y_ratio.ratio_plot_mode = true;
     p_minv_pair_pt_y_ratio.ratio_plot_draw_errorbar = false;
     p_minv_pair_pt_y_ratio.Run();
 
     PlotMCDataComprSingleKinematics p_minv_pair_pt_zoomin_y_ratio("minv_pair_pt_zoomin", false, true, false, "minv_zoomin","m_{#mu#mu}");
+    p_minv_pair_pt_zoomin_y_ratio.cutsy = {pms.minv_cuts, true};
     p_minv_pair_pt_zoomin_y_ratio.ratio_plot_mode = true;
     p_minv_pair_pt_zoomin_y_ratio.ratio_plot_draw_errorbar = false;
     p_minv_pair_pt_zoomin_y_ratio.Run();
@@ -427,7 +476,7 @@ void plot_mc_data_compr_2D_proj_ratio_noerrorbar(){
     p_Deta_Dphi_y_ratio.Run();
 }
 
-void plot_mc_data_compr_1D_normalize_to_unity(){
+void PlotMCDataComprClass::plot_mc_data_compr_1D_normalize_to_unity(){
     // ----------------- 1D histogram plotting normalized to unity -----------------
     PlotMCDataComprSingleKinematics p_DR_unity("DR", true, "#Delta R");
     p_DR_unity.Run();
@@ -442,7 +491,7 @@ void plot_mc_data_compr_1D_normalize_to_unity(){
     p_pair_pt_ptlead_ratio_unity.Run();
 }
 
-void plot_mc_data_compr_2D_proj_normalize_to_unity(){
+void PlotMCDataComprClass::plot_mc_data_compr_2D_proj_normalize_to_unity(){
     // ----------------- 2D histograms projecting onto 1D normalized to unity -----------------
 
     PlotMCDataComprSingleKinematics p_ptlead_pair_pt_norm_x("ptlead_pair_pt", true, false, true, "pair_pt", "p_{T}^{pair}");
@@ -452,25 +501,31 @@ void plot_mc_data_compr_2D_proj_normalize_to_unity(){
     p_ptlead_pair_pt_norm_y.Run();
 
     PlotMCDataComprSingleKinematics p_minv_pair_pt_norm_y("minv_pair_pt", false, true, true, "minv","m_{#mu#mu}");
+    p_minv_pair_pt_norm_y.cutsy = {pms.minv_cuts, true};
     p_minv_pair_pt_norm_y.Run();
 
     PlotMCDataComprSingleKinematics p_minv_pair_pt_zoomin_norm_y("minv_pair_pt_zoomin", false, true, true, "minv_zoomin","m_{#mu#mu}");
+    p_minv_pair_pt_zoomin_norm_y.cutsy = {pms.minv_cuts, true};
     p_minv_pair_pt_zoomin_norm_y.Run();
 
     PlotMCDataComprSingleKinematics p_Deta_Dphi_norm_y("Deta_Dphi", false, true, true, "Deta", "#Delta #eta");
     p_Deta_Dphi_norm_y.Run();
 }
 
+
+
+
 void plot_mc_data_compr(){
-    // plot_mc_data_compr_1D();
-    // plot_mc_data_compr_2D_proj();
-    // plot_mc_data_compr_1D_ratio();
-    // plot_mc_data_compr_2D_proj_ratio();
-    // plot_mc_data_compr_1D_ratio_noerrorbar();
-    // plot_mc_data_compr_2D_proj_ratio_noerrorbar();
-    plot_mc_data_compr_DR_zoomin();
-    // plot_mc_data_compr_1D_normalize_to_unity();
-    // plot_mc_data_compr_2D_proj_normalize_to_unity();
+    PlotMCDataComprClass myobj;
+    // myobj.plot_mc_data_compr_1D();
+    // myobj.plot_mc_data_compr_2D_proj();
+    // myobj.plot_mc_data_compr_1D_ratio();
+    // myobj.plot_mc_data_compr_2D_proj_ratio();
+    // myobj.plot_mc_data_compr_1D_ratio_noerrorbar();
+    // myobj.plot_mc_data_compr_2D_proj_ratio_noerrorbar();
+    myobj.plot_mc_data_compr_DR_zoomin();
+    // myobj.plot_mc_data_compr_1D_normalize_to_unity();
+    // myobj.plot_mc_data_compr_2D_proj_normalize_to_unity();
 
 }
 
