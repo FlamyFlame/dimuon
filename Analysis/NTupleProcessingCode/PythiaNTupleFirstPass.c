@@ -1800,9 +1800,9 @@ void PythiaNTupleFirstPass::MuonPairAncestorTracing(){
   SingleMuonAncestorTracing(true);
   SingleMuonAncestorTracing(false);
   
-  if (mpair->m1_parent_group == resonance_decay && mpair->m2_parent_group == resonance_decay){
-    mpair->from_same_resonance = (m1_resonance_barcode == m2_resonance_barcode);
-  }
+  mpair->from_same_resonance = (mpair->m1_parent_group == resonance_decay && mpair->m2_parent_group == resonance_decay && m1_resonance_barcode == m2_resonance_barcode){
+
+  mpair->resonance_contaminated = (!mpair->from_same_resonance && (mpair->m1_parent_group == resonance_decay || mpair->m2_parent_group == resonance_decay));
 
   mpair->m1_from_pdf = m1_ancestor_is_incoming;
   mpair->m2_from_pdf = m2_ancestor_is_incoming;

@@ -19,8 +19,7 @@
 const int nMCmodes = 2;
 const int nSigns = 2;
 // const int nDphi = 2;
-const int nflavorCategories = 5;
-// const int nflavorCategories = 3;
+const int nflavorCategories = 6;
 
 // TH1D* h[nSigns][nDphi][nflavorCategories];
 TH2D* h2d;
@@ -33,11 +32,11 @@ std::string with_data_resonance_cuts_suffix = with_data_resonance_cuts? "_with_d
 std::string pythia_path = "/usatlas/u/yuhanguo/usatlasdata/pythia/";
 std::string fname;
 std::vector<std::string> signs = {"_sign1", "_sign2"};
-std::vector<std::string> flavor_categories = {"_cc", "_other_flavors", "_bb", "_single_b", "_resonance"};
-std::vector<std::string> flavor_catg_labels = {"cc", "other flavors", "bb", "single b", "resonances"};
+std::vector<std::string> flavor_categories = {"_cc", "_other_flavors", "_bb", "_single_b", "_resonance", "_resonance_contaminated"};
+std::vector<std::string> flavor_catg_labels = {"cc", "other flavors", "bb", "single b", "resonances", "resonance contaminated"};
 // std::vector<std::string> flavor_catg_labels = {"cc", "bb", "single b"};
-std::vector<Color_t> line_colors = {kRed, kGray, kBlue, kOrange, kCyan+1};
-std::vector<Color_t> fill_colors = {kRed, kGray, kBlue, kYellow, kCyan+1};
+std::vector<Color_t> line_colors = {kRed, kGray, kBlue, kOrange, kCyan+1, kPink-4};
+std::vector<Color_t> fill_colors = {kRed, kGray, kBlue, kYellow, kCyan+1, kPink-4};
 
 // std::string subpl_titles[nSigns] = {{"bb, same sign", "bb, opposite sign"}, {"cc, same sign", "cc, opposite sign"}};
 std::string subpl_titles[nSigns] = {"pythia, same sign", "pythia, opposite sign"};

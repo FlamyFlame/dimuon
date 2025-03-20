@@ -177,8 +177,6 @@ private:
     bool from_same_b[nFiles][nKinRanges][ParamsSet::nSigns];
     bool both_from_b[nFiles][nKinRanges][ParamsSet::nSigns];
     bool both_from_c[nFiles][nKinRanges][ParamsSet::nSigns];
-    bool data_resonance_or_reso_contam_tagged_old[nFiles][nKinRanges][ParamsSet::nSigns];
-    bool data_resonance_or_reso_contam_tagged_new[nFiles][nKinRanges][ParamsSet::nSigns];
     int muon_pair_origin_category[nFiles][nKinRanges][ParamsSet::nSigns];
 
     float pair_dPoverP[nFiles][nKinRanges][ParamsSet::nSigns];

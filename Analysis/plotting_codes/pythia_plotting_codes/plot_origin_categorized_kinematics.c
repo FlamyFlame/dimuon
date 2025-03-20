@@ -31,10 +31,10 @@ TFile* f;
 std::string pythia_path = "/usatlas/u/yuhanguo/usatlasdata/pythia/";
 std::string fname = "histograms_pythia_combined.root";
 std::vector<std::string> signs = {"_sign1", "_sign2"};
-std::vector<std::string> origin_categories =  {"_GS_ISR_no_HS", "_diff_GS_same_HS", "_others", "_gs_ISR_one_hard_scatt", "_FC", "_gs_FSR", "_from_same_b", "_from_same_resonance"};
-std::vector<std::string> origin_catg_labels = {"GS in ISR no HS", "diff GS same HS", "others", "flavor excitation (FE)", "flavor creation (FC)", "GS in FSR", "single b", "resonances"};
-std::vector<Color_t> line_colors = {kOrange, kGray, kViolet, kBlue, kRed, kGreen + 2, kBlack, kCyan+1};
-std::vector<Color_t> fill_colors = {kOrange, kGray, kViolet, kBlue, kRed, kGreen, kYellow, kCyan+1};
+std::vector<std::string> origin_categories =  {"_GS_ISR_no_HS", "_diff_GS_same_HS", "_others", "_gs_ISR_one_hard_scatt", "_FC", "_gs_FSR", "_single_b", "_resonance", "_resonance_contaminated"};
+std::vector<std::string> origin_catg_labels = {"GS in ISR no HS", "diff GS same HS", "others", "flavor excitation (FE)", "flavor creation (FC)", "GS in FSR", "single b", "resonances", "_resonance_contaminated"};
+std::vector<Color_t> line_colors = {kOrange, kGray, kViolet+1, kBlue, kRed, kGreen + 2, kBlack, kCyan+1, kPink-4};
+std::vector<Color_t> fill_colors = {kOrange, kGray, kViolet+1, kBlue, kRed, kGreen, kYellow, kCyan+1, kPink-4};
 
 // std::string subpl_titles[nSigns] = {{"bb, same sign", "bb, opposite sign"}, {"cc, same sign", "cc, opposite sign"}};
 std::string subpl_titles[nSigns] = {"pythia, same sign", "pythia, opposite sign"};
@@ -306,15 +306,15 @@ void plot_origin_categorized_kinematics(){
 
   plot_origin_categorized_kinematic_single("minv_pair_pt_zoomin", false, true, false, false, "minv_zoomin", "m_{#mu#mu}", minv_cuts);
   plot_origin_categorized_kinematic_single("minv_pair_pt_zoomin", false, true, true, false, "minv_zoomin", "m_{#mu#mu}", minv_cuts);
-  // plot_origin_categorized_kinematic_single("minv_pair_pt_zoomin", false, true, false, true, "minv_zoomin", "m_{#mu#mu}", minv_cuts); // norm to unity
+  plot_origin_categorized_kinematic_single("minv_pair_pt_zoomin", false, true, false, true, "minv_zoomin", "m_{#mu#mu}", minv_cuts); // norm to unity
 
   plot_origin_categorized_kinematic_single("minv_pair_pt_jacobian_corrected", false, true, false, false, "minv_jacobian_corrected", "m_{#mu#mu}", minv_cuts);
   plot_origin_categorized_kinematic_single("minv_pair_pt_jacobian_corrected", false, true, true, false, "minv_jacobian_corrected", "m_{#mu#mu}", minv_cuts);
-  // plot_origin_categorized_kinematic_single("minv_pair_pt_jacobian_corrected", false, true, false, true, "minv_jacobian_corrected", "m_{#mu#mu}", minv_cuts); // norm to unity
+  plot_origin_categorized_kinematic_single("minv_pair_pt_jacobian_corrected", false, true, false, true, "minv_jacobian_corrected", "m_{#mu#mu}", minv_cuts); // norm to unity
 
   plot_origin_categorized_kinematic_single("minv_pair_pt_zoomin_jacobian_corrected", false, true, false, false, "minv_zoomin_jacobian_corrected", "m_{#mu#mu}", minv_cuts);
   plot_origin_categorized_kinematic_single("minv_pair_pt_zoomin_jacobian_corrected", false, true, true, false, "minv_zoomin_jacobian_corrected", "m_{#mu#mu}", minv_cuts);
-  // plot_origin_categorized_kinematic_single("minv_pair_pt_zoomin_jacobian_corrected", false, true, false, true, "minv_zoomin_jacobian_corrected", "m_{#mu#mu}", minv_cuts); // norm to unity
+  plot_origin_categorized_kinematic_single("minv_pair_pt_zoomin_jacobian_corrected", false, true, false, true, "minv_zoomin_jacobian_corrected", "m_{#mu#mu}", minv_cuts); // norm to unity
   
   plot_origin_categorized_kinematic_single("Deta_Dphi", true, false, false, false, "Dphi", "#Delta #phi");
   plot_origin_categorized_kinematic_single("Deta_Dphi", true, false, true, false, "Dphi", "#Delta #phi");
