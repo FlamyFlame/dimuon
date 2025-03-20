@@ -35,7 +35,7 @@ private:
     static const int nFiles = 2;
     static const int nKinRanges = 5;
     static const int nDphis = 2;
-    // static const int nFlavors = ; // both from b, both from c, one b one c
+    // static const int pair_flavor_index::nFlavors = ; // both from b, both from c, one b one c
     std::vector<float> kinRanges = {5., 10., 25., 60., 120., 3200.};
 
     std::string with_data_resonance_cuts_suffix;
@@ -78,18 +78,18 @@ private:
     TH2D* h_minv_pair_pt[nDphis][ParamsSet::nSigns];
     TH2D* h_minv_pair_pt_zoomin[nDphis][ParamsSet::nSigns];
     TH2D* h_minv_pair_pt_jacobian_corrected[nDphis][ParamsSet::nSigns];
+    TH2D* h_pair_pt_jacobian_corrected[nDphis][ParamsSet::nSigns];
     TH2D* h_minv_pair_pt_zoomin_jacobian_corrected[nDphis][ParamsSet::nSigns];
     TH2D* h_minv_pair_pt_log[nDphis][ParamsSet::nSigns];
 
     TH2D* h_eta1_eta2_dphicut[ParamsSet::ndphiselcs][ParamsSet::nSigns];
 
     static constexpr int nAncestorGroups = 5;
-    static constexpr int nAncestorGroupsTotal = nAncestorGroups+3;
+    static constexpr int nAncestorGroupsTotal = nAncestorGroups+1;
 
-    std::string ancestor_grp_labels[nAncestorGroupsTotal] = {"_GS_ISR_no_HS", "_gs_ISR_one_hard_scatt", "_diff_GS_same_HS", "_FC", "_gs_FSR", "_from_same_b", "_from_same_resonance", "_others"};
+    std::string ancestor_grp_labels[nAncestorGroupsTotal] = {"_GS_ISR_no_HS", "_gs_ISR_one_hard_scatt", "_diff_GS_same_HS", "_FC", "_gs_FSR", "_others"};
     int ancestor_grps[nAncestorGroups] = {same_gs_isr_zero_hard_scatt, same_gs_isr_one_hard_scatt, diff_gs_same_hard_scatt, fc, same_gs_phs_fsr};
 
-    static const int nFlavors = 6;
     std::map<int,std::string> flavor_grp_map;
 
     TH1D* h_DR_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
@@ -114,23 +114,23 @@ private:
     TH2D* h_ptlead_pair_pt_zoomin_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
     TH2D* h_ptlead_pair_pt_log_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
 
-    TH1D* h_DR_flavor_binned[ParamsSet::nSigns][nFlavors];
-    TH1D* h_DR_zoomin_flavor_binned[ParamsSet::nSigns][nFlavors];
-    TH1D* h_DR_jacobian_corrected_flavor_binned[ParamsSet::nSigns][nFlavors];
-    TH1D* h_DR_zoomin_jacobian_corrected_flavor_binned[ParamsSet::nSigns][nFlavors];
-    TH1D* h_psrapidity_ordered_pt_asym_flavor_binned[ParamsSet::nSigns][nFlavors];
-    TH1D* h_pt_asym_flavor_binned[ParamsSet::nSigns][nFlavors];
-    TH1D* h_pair_pt_ptlead_ratio_flavor_binned[ParamsSet::nSigns][nFlavors];
+    TH1D* h_DR_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
+    TH1D* h_DR_zoomin_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
+    TH1D* h_DR_jacobian_corrected_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
+    TH1D* h_DR_zoomin_jacobian_corrected_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
+    TH1D* h_psrapidity_ordered_pt_asym_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
+    TH1D* h_pt_asym_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
+    TH1D* h_pair_pt_ptlead_ratio_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
     
-    TH2D* h_Deta_Dphi_flavor_binned[ParamsSet::nSigns][nFlavors];
-    TH2D* h_minv_pair_pt_flavor_binned[ParamsSet::nSigns][nFlavors];
-    TH2D* h_minv_pair_pt_zoomin_flavor_binned[ParamsSet::nSigns][nFlavors];
-    TH2D* h_minv_pair_pt_jacobian_corrected_flavor_binned[ParamsSet::nSigns][nFlavors];
-    TH2D* h_minv_pair_pt_zoomin_jacobian_corrected_flavor_binned[ParamsSet::nSigns][nFlavors];
-    TH2D* h_minv_pair_pt_log_flavor_binned[ParamsSet::nSigns][nFlavors];
-    TH2D* h_ptlead_pair_pt_flavor_binned[ParamsSet::nSigns][nFlavors];
-    TH2D* h_ptlead_pair_pt_zoomin_flavor_binned[ParamsSet::nSigns][nFlavors];
-    TH2D* h_ptlead_pair_pt_log_flavor_binned[ParamsSet::nSigns][nFlavors];
+    TH2D* h_Deta_Dphi_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
+    TH2D* h_minv_pair_pt_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
+    TH2D* h_minv_pair_pt_zoomin_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
+    TH2D* h_minv_pair_pt_jacobian_corrected_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
+    TH2D* h_minv_pair_pt_zoomin_jacobian_corrected_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
+    TH2D* h_minv_pair_pt_log_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
+    TH2D* h_ptlead_pair_pt_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
+    TH2D* h_ptlead_pair_pt_zoomin_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
+    TH2D* h_ptlead_pair_pt_log_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
 
 
     TH1D* h_kinbin_pair_dP_overP[nKinRanges][nDphis][ParamsSet::nSigns];
@@ -173,9 +173,12 @@ private:
     double mHard_relevant[nFiles][nKinRanges][ParamsSet::nSigns];
 
     bool from_same_resonance[nFiles][nKinRanges][ParamsSet::nSigns];
+    bool resonance_contaminated[nFiles][nKinRanges][ParamsSet::nSigns];
     bool from_same_b[nFiles][nKinRanges][ParamsSet::nSigns];
     bool both_from_b[nFiles][nKinRanges][ParamsSet::nSigns];
     bool both_from_c[nFiles][nKinRanges][ParamsSet::nSigns];
+    bool data_resonance_or_reso_contam_tagged_old[nFiles][nKinRanges][ParamsSet::nSigns];
+    bool data_resonance_or_reso_contam_tagged_new[nFiles][nKinRanges][ParamsSet::nSigns];
     int muon_pair_origin_category[nFiles][nKinRanges][ParamsSet::nSigns];
 
     float pair_dPoverP[nFiles][nKinRanges][ParamsSet::nSigns];
@@ -215,6 +218,7 @@ private:
 public:
     int mode = 1;
     bool with_data_resonance_cuts = false;
+    bool plot_kin_binned_histograms = false; // if true, plot kinematic-range-binned histograms (default false)
     // std::string file_suffix = "_allto0318";
     // std::string file_suffix = "_after0322";
   	MuonPairPlottingPythia();
