@@ -29,6 +29,7 @@ protected:
 // --------------------- temporary muon and muonpair objects ---------------------------
     Muon* tempmuon = nullptr;
 	std::vector<int> resonance_tagged_muon_index_list {};
+	std::vector<int> resonance_tagged_muon_index_list_old {};
 // --------------------- output file, histograms & trees ---------------------------
     TFile *m_outfile = nullptr;
     TFile *m_outHistFile = nullptr;
@@ -52,6 +53,7 @@ protected:
 
 	virtual bool PassCuts(std::shared_ptr<MuonPair> const& mpair) = 0;
 	virtual void ResonanceTagging(std::shared_ptr<MuonPair> const& mpair);
+	virtual void ResonanceTaggingOld(std::shared_ptr<MuonPair> const& mpair);
 	virtual bool IsPhotoProduction(std::shared_ptr<MuonPair> const& mpair);
 	
 	virtual void FillSingleMuonTree(){}

@@ -29,6 +29,28 @@ void MuonNTupleFirstPassBaseClass::ResonanceTagging(std::shared_ptr<MuonPair> co
     return; // not resonance
 }
 
+void MuonNTupleFirstPassBaseClass::ResonanceTaggingOld(std::shared_ptr<MuonPair> const& mpair){
+    // function that checks if a muon pair comes from the resonance
+  
+    if (!(mpair->same_sign)){ // opposite sign
+        if (mpair->minv > pms.minv_upper){ // if minv is too large - treat as a "resonance" and tag both
+            resonance_tagged_muon_index_list_old.push_back(mpair->m1.ind);
+            resonance_tagged_muon_index_list_old.push_back(mpair->m2.ind);
+            return;
+        }
+
+        for (array<float,2> ires : pms.minv_cuts_old){
+            if (mpair->minv > ires[0] && mpair->minv < ires[1]){ // if minv fits within a resonance-cut range: tag both as from resonance
+                resonance_tagged_muon_index_list_old.push_back(mpair->m1.ind);
+                resonance_tagged_muon_index_list_old.push_back(mpair->m2.ind);
+                return;
+            }
+        }
+    }
+    
+    return; // not resonance
+}
+
 
 bool MuonNTupleFirstPassBaseClass::IsPhotoProduction(const std::shared_ptr<MuonPair>& mpair){
   return (!(mpair->same_sign) && mpair->asym < 0.05 && mpair->acop < 0.01);
