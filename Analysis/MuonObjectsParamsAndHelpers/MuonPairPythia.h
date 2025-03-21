@@ -31,6 +31,9 @@ public:
   bool  from_same_resonance;
   bool  resonance_contaminated;
 
+  bool data_resonance_or_reso_contam_tagged_old; // pairs tagged as either from resonances or contaminated by resonances using old data resonance cuts
+  bool data_resonance_or_reso_contam_tagged_new; // pairs tagged as either from resonances or contaminated by resonances using new data resonance cuts
+
   int   m1_hard_scatt_category;
   int   m2_hard_scatt_category;
   int   muon_pair_origin_category;

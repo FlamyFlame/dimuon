@@ -210,6 +210,7 @@ private:
     std::ofstream* m_unspecified_parent_file = nullptr;
     std::ofstream* m_FE_file = nullptr;
     std::ofstream* m_very_bad_warning_file = nullptr;
+    std::ofstream* m_very_low_minv_resonance_file = nullptr;
     std::ofstream* m_hard_scattering_warning_file = nullptr;
     std::ofstream* m_others_category_file = nullptr;
     std::ofstream* m_b_parent_file[ParamsSet::nSigns][2];
@@ -361,6 +362,8 @@ public :
     bool print_prt_history = false;
     bool print_others_history = true;
     bool print_unspecified_parent = false;
+    bool print_bad_warnings = false;
+    bool print_very_low_minv = false;
     bool print_FE = false;
 
     bool turn_data_resonance_cuts_on = false; // turn on minv-based data cuts for resonances: by default false

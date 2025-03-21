@@ -16,14 +16,14 @@ PythiaNTupleFirstPass::PythiaNTupleFirstPass(){
   std::cout << std::endl;
 
   std::cout << "The following public variable(s) **MUST** be set:" << std::endl;
-  std::cout << "batch_num: Integer with value 1 or 2" << std::endl;
-  std::cout << "batch_num = 1: runs pythia samples run on or before 03/18/2023 (1st batch)" << std::endl;
-  std::cout << "batch_num = 2: runs pythia samples run on or after 03/22/2023 (2nd batch)" << std::endl;
+  std::cout << "--> batch_num: Integer with value 1 or 2" << std::endl;
+  std::cout << "  * batch_num = 1: runs pythia samples run on or before 03/18/2023 (1st batch)" << std::endl;
+  std::cout << "  * batch_num = 2: runs pythia samples run on or after 03/22/2023 (2nd batch)" << std::endl;
   std::cout << std::endl;
 
   std::cout << "The following public variable(s) should be checked:" << std::endl;
-  std::cout << "turn_data_resonance_cuts_on:  boolean to turn on/off minv-based resonance cuts (same as in data)" << std::endl;
-  std::cout << "                              default false" << std::endl;
+  std::cout << "--> turn_data_resonance_cuts_on:  boolean to turn on/off minv-based resonance cuts (same as in data)" << std::endl;
+  std::cout << "                                  default false" << std::endl;
   std::cout << std::endl;
 
   // std::cout << "The following public variable(s) can be (optionally) set:" << std::endl;
@@ -35,10 +35,14 @@ PythiaNTupleFirstPass::PythiaNTupleFirstPass(){
   // std::cout << "                              default false" << std::endl;
   // std::cout << "print_FE：                    print history for pairs from flavor excitation" << std::endl;
   // std::cout << "                              default false" << std::endl;
+  // std::cout << "print_bad_warnings:           print bad warnings" << std::endl;
+  // std::cout << "                              default false" << std::endl;
+  // std::cout << "print_very_low_minv:          print history for pairs from resonances with very low invariant mass (<0.35GeV)" << std::endl;
+  // std::cout << "                              default false" << std::endl;
   // std::cout << std::endl;
 
   std::cout << "Output files will be written to /usatlas/u/yuhanguo/usatlasdata/pythia" << std::endl;
-  std::cout << "Including a root file for muon pairs, a root file for histograms, and output txt files" << std::endl;
+  std::cout << "    Including a root file for muon pairs, a root file for histograms, and output txt files" << std::endl;
 }
 
 void PythiaNTupleFirstPass::InputSanityCheck(){
@@ -301,9 +305,15 @@ void PythiaNTupleFirstPass::InitOutput(){
 
     // ---------------------------------------------------------------------------------------------------------------------------
 
-    m_very_bad_warning_file = new std::ofstream(py_dir + "very_bad_warnings_pythia" + batch_suffix + ".txt");
-    m_hard_scattering_warning_file = new std::ofstream(py_dir + "hard_scattering_warnings_pythia" + batch_suffix + ".txt");
+    if (print_bad_warnings){
+      m_very_bad_warning_file = new std::ofstream(py_dir + "very_bad_warnings_pythia" + batch_suffix + ".txt");
+      m_hard_scattering_warning_file = new std::ofstream(py_dir + "hard_scattering_warnings_pythia" + batch_suffix + ".txt");      
+    }
     m_crossx_summary_file = new std::ofstream(py_dir + "crossx_summary_pythia" + batch_suffix + ".txt");
+
+    if (print_very_low_minv){
+      m_very_low_minv_resonance_file = new std::ofstream(py_dir + "very_low_minv_resonances_pythia" + batch_suffix + ".txt");
+    }
 
     if (print_unspecified_parent){
       m_unspecified_parent_file = new std::ofstream(py_dir + "unspecified_parents_pythia" + batch_suffix + ".txt");
@@ -460,11 +470,18 @@ void PythiaNTupleFirstPass::Finalize(){
     m_crossx_summary_file->close();
     delete m_crossx_summary_file;
 
-    m_very_bad_warning_file->close();
-    delete m_very_bad_warning_file;
+    if (print_bad_warnings){
+      m_very_bad_warning_file->close();
+      delete m_very_bad_warning_file;
 
-    m_hard_scattering_warning_file->close();
-    delete m_hard_scattering_warning_file;
+      m_hard_scattering_warning_file->close();
+      delete m_hard_scattering_warning_file;      
+    }
+
+    if (print_very_low_minv){
+      m_very_low_minv_resonance_file->close();
+      delete m_very_low_minv_resonance_file;      
+    }
 
     if (print_unspecified_parent && m_unspecified_parent_file){
         m_unspecified_parent_file->close();
@@ -674,10 +691,10 @@ std::pair<int,int> PythiaNTupleFirstPass::UpdateCurParents(bool isMuon1, std::ve
     cur_prt_ids.push_back(truth_id->at(mother2) % 10000);
   }
 
-  if (cur_prt_bars.size() == 0 || cur_prt_ids.size() == 0){
-    *m_very_bad_warning_file << "Error:: current parent barcodes & ids have zero length, quitting" << std::endl;
-    *m_very_bad_warning_file << "Event: " << mpair->m1.ev_num << ", previous first parent barcode: " << prev_first_prt_bar << std::endl;
-    *m_very_bad_warning_file << "Mother1: " << mother1 << ", Mother2: " << mother2 << std::endl;
+  if (cur_prt_bars.size() == 0 || cur_prt_ids.size() == 0 && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
+    // *m_very_bad_warning_file << "Error:: current parent barcodes & ids have zero length, quitting" << std::endl;
+    // *m_very_bad_warning_file << "Event: " << mpair->m1.ev_num << ", previous first parent barcode: " << prev_first_prt_bar << std::endl;
+    // *m_very_bad_warning_file << "Mother1: " << mother1 << ", Mother2: " << mother2 << std::endl;
   }
 
   // fill in vector of the profiles of the current parents
@@ -703,9 +720,9 @@ std::pair<int,int> PythiaNTupleFirstPass::UpdateCurParents(bool isMuon1, std::ve
   }
 
   if (prev_out_hard_scatt){
-    if (cur_prt_bars.size() != 2 || (truth_status->at(cur_prt_bars[0]) != -21 && truth_status->at(cur_prt_bars[0]) != -31)){
+    if (cur_prt_bars.size() != 2 || (truth_status->at(cur_prt_bars[0]) != -21 && truth_status->at(cur_prt_bars[0]) != -31) && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
       std::cout << "The current parents should be the incoming particles of a hard scattering." << std::endl;
-      PrintHistory(m_very_bad_warning_file, true, isMuon1);
+      // PrintHistory(m_very_bad_warning_file, true, isMuon1);
     }
 
     int catgr = HardAnalysisCategr(cur_prt_bars[0], cur_prt_bars[1]);
@@ -717,9 +734,9 @@ std::pair<int,int> PythiaNTupleFirstPass::UpdateCurParents(bool isMuon1, std::ve
     }
 
 
-    if ((truth_status->at(cur_prt_bars[0]+2) != -23 && truth_status->at(cur_prt_bars[0]+2) != -33) || (truth_status->at(cur_prt_bars[1]+2) != -23 && truth_status->at(cur_prt_bars[1]+2) != -33)){
+    if ((truth_status->at(cur_prt_bars[0]+2) != -23 && truth_status->at(cur_prt_bars[0]+2) != -33) || (truth_status->at(cur_prt_bars[1]+2) != -23 && truth_status->at(cur_prt_bars[1]+2) != -33) && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
       std::cout << "Outgoing particles of a HS don't have barcode as 2 + incoming particles' barcodes" << std::endl;
-      PrintHistory(m_very_bad_warning_file, true, isMuon1);
+      // PrintHistory(m_very_bad_warning_file, true, isMuon1);
     }
 
     // std::cout << "Event# " << mpair->m1.ev_num << ", current barcode: " << cur_prt_bars[0] << std::endl;
@@ -754,14 +771,14 @@ std::pair<int,int> PythiaNTupleFirstPass::UpdateCurParents(bool isMuon1, std::ve
   }
 
   if (truth_status->at(cur_prt_bars[0]) == -23 || truth_status->at(cur_prt_bars[0]) == -33){
-    if ((isMuon1 && m1_hard_scatt_in_bar1 > 0) || (!isMuon1 && m2_hard_scatt_in_bar1 > 0)){
+    if ((isMuon1 && m1_hard_scatt_in_bar1 > 0) || (!isMuon1 && m2_hard_scatt_in_bar1 > 0) && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
       std::cout << "There should be at most one hard scattering in a muon's history chain." << std::endl;
-      PrintHistory(m_very_bad_warning_file, true, isMuon1);
+      // PrintHistory(m_very_bad_warning_file, true, isMuon1);
     }
 
-    if (cur_prt_bars.size() != 1){
+    if (cur_prt_bars.size() != 1 && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
       std::cout << "There should only be one [outgoing particle from a hard scattering] as part of a parent history chain." << std::endl;
-      PrintHistory(m_very_bad_warning_file, true, isMuon1);
+      // PrintHistory(m_very_bad_warning_file, true, isMuon1);
     }
     prev_out_hard_scatt = true;
   }
@@ -821,15 +838,15 @@ std::pair<int,int> PythiaNTupleFirstPass::UpdateCurParents(bool isMuon1, std::ve
 
 
 int PythiaNTupleFirstPass::FindHeavyQuarks(std::vector<int>& cur_prt_ids, std::vector<int>& cur_prt_bars, int quark_type, bool isMuon1, int prev_hq_bar, int hadron_child_id = 0){
-  if (quark_type != 4 && quark_type != 5){
-    *m_very_bad_warning_file << "Error:: the parameter quark_type must take value of 4 (c) or 5 (b), quitting" << std::endl;
-    *m_very_bad_warning_file << "Event #: " << mpair->m1.ev_num << std::endl;
+  if (quark_type != 4 && quark_type != 5 && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
+    // *m_very_bad_warning_file << "Error:: the parameter quark_type must take value of 4 (c) or 5 (b), quitting" << std::endl;
+    // *m_very_bad_warning_file << "Event #: " << mpair->m1.ev_num << std::endl;
   }
   int status = truth_status->at(cur_prt_bars[0]);
 
-  if (cur_prt_ids.size() == 0){
-    *m_very_bad_warning_file << "Error:: parent list is empty, quitting" << std::endl;
-    *m_very_bad_warning_file << "Event #: " << mpair->m1.ev_num << std::endl;
+  if (cur_prt_ids.size() == 0 && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
+    // *m_very_bad_warning_file << "Error:: parent list is empty, quitting" << std::endl;
+    // *m_very_bad_warning_file << "Event #: " << mpair->m1.ev_num << std::endl;
   }
 
   if (cur_prt_ids.size() == 1 && (cur_prt_ids[0] == 2212 || cur_prt_ids[0] == 2112) ){
@@ -863,10 +880,10 @@ int PythiaNTupleFirstPass::FindHeavyQuarks(std::vector<int>& cur_prt_ids, std::v
           PrintHistory(&std::cout, true, isMuon1);
         }
       }else{ // not the immediate parent of a hadron (hadron_child_id == 0)
-        std::cout << "The current parent vector has both Q and Qbar, and is not input to hard scattering, yet is not the immediate parent of a hadron." << std::endl;
-        PrintHistory(m_very_bad_warning_file, true, isMuon1);
-        // if (isMuon1) m1_multi_hf_quark_ids = cur_prt_ids;
-        // else         m2_multi_hf_quark_ids = cur_prt_ids;
+        if (print_bad_warnings){
+          std::cout << "The current parent vector has both Q and Qbar, and is not input to hard scattering, yet is not the immediate parent of a hadron." << std::endl;
+          // PrintHistory(m_very_bad_warning_file, true, isMuon1);          
+        }
       }
       // std::cout << "To explicitly check for the case of q and qbar in the same parent vector: " << std::endl;
       // PrintHistory(&std::cout, true, isMuon1);
@@ -1083,8 +1100,8 @@ int PythiaNTupleFirstPass::HardAnalysisCategr(int in_bar1, int in_bar2){
   int status2 = abs(truth_status->at(in_bar2));
   int id1 = abs(truth_id->at(in_bar1));
   int id2 = abs(truth_id->at(in_bar2));
-  if (in_bar2 != in_bar1 + 1 || (status1 != 21 && status1 != 31) || (status2 != 21 && status2 != 31)){
-    *m_hard_scattering_warning_file << "Input paramters must be valid barcodes of incoming particles of a hard scattering!" << std::endl;
+  if (in_bar2 != in_bar1 + 1 || (status1 != 21 && status1 != 31) || (status2 != 21 && status2 != 31) && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
+    // *m_hard_scattering_warning_file << "Input paramters must be valid barcodes of incoming particles of a hard scattering!" << std::endl;
   }
 
   bool in1_heavy_quark = (id1 == 4 || id1 == 5);
@@ -1104,29 +1121,29 @@ int PythiaNTupleFirstPass::HardAnalysisCategr(int in_bar1, int in_bar2){
   
   bool final_QQbar = ((out_id1 == 4 || out_id1 == 5) && (truth_id->at(out_bar2) == - truth_id->at(out_bar1)));
   if (final_QQbar){ // we've ruled out Q -Q --> Q -Q, so final state being -+Q +-Q indicates flavor creation
-    if (!((id1 <= 5 || id1 == 21) && id2 == id1)){
-      *m_hard_scattering_warning_file << "Hard scattering has final state " << truth_id->at(out_bar1) << " " << truth_id->at(out_bar2);
-      *m_hard_scattering_warning_file << ", but initial state is " << truth_id->at(in_bar1) << " " << truth_id->at(in_bar2) << std::endl;
+    if (!((id1 <= 5 || id1 == 21) && id2 == id1) && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
+      // *m_hard_scattering_warning_file << "Hard scattering has final state " << truth_id->at(out_bar1) << " " << truth_id->at(out_bar2);
+      // *m_hard_scattering_warning_file << ", but initial state is " << truth_id->at(in_bar1) << " " << truth_id->at(in_bar2) << std::endl;
     }
     return flavor_creat;
   }
 
   if (id1 == 21 && id2 == 21){ // at this stage ruled out FC: this has to be  gg --> gg (since gg --> q qbar makes no sense)
     if (truth_id->at(out_bar1) == 21) return gg_gg;
-    if(out_id1 > 3){
-      *m_hard_scattering_warning_file << "Hard scattering should be gg --> qqbar, but it is";
-      *m_hard_scattering_warning_file << truth_id->at(in_bar1) << " " << truth_id->at(in_bar2) << " " << truth_id->at(out_bar1) << " " << truth_id->at(out_bar2) << std::endl;
-      *m_hard_scattering_warning_file << "Muon pair minv: " << mpair->minv << std::endl;
-      *m_hard_scattering_warning_file << "History: " << std::endl;
-      PrintHistory(m_hard_scattering_warning_file, true, mpair->from_same_ancestors);
+    if(out_id1 > 3 && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
+      // *m_hard_scattering_warning_file << "Hard scattering should be gg --> qqbar, but it is";
+      // *m_hard_scattering_warning_file << truth_id->at(in_bar1) << " " << truth_id->at(in_bar2) << " " << truth_id->at(out_bar1) << " " << truth_id->at(out_bar2) << std::endl;
+      // *m_hard_scattering_warning_file << "Muon pair minv: " << mpair->minv << std::endl;
+      // *m_hard_scattering_warning_file << "History: " << std::endl;
+      // PrintHistory(m_hard_scattering_warning_file, true, mpair->from_same_ancestors);
     }
     return gg_qqbar;
   }
   if (out_id1 == 21 && out_id2 == 21){
     if (id1 <= 3) return qqbar_gg;
-    if (id1 != 4 && id2 != 5){
-      *m_hard_scattering_warning_file << "Hard scattering should be QQbar --> gg, but it is";
-      *m_hard_scattering_warning_file << truth_id->at(in_bar1) << " " << truth_id->at(in_bar2) << " " << truth_id->at(out_bar1) << " " << truth_id->at(out_bar2) << std::endl;
+    if (id1 != 4 && id2 != 5 && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
+      // *m_hard_scattering_warning_file << "Hard scattering should be QQbar --> gg, but it is";
+      // *m_hard_scattering_warning_file << truth_id->at(in_bar1) << " " << truth_id->at(in_bar2) << " " << truth_id->at(out_bar1) << " " << truth_id->at(out_bar2) << std::endl;
     }
     // return QQbar_gg;
   }
@@ -1134,17 +1151,17 @@ int PythiaNTupleFirstPass::HardAnalysisCategr(int in_bar1, int in_bar2){
   if ((id1 == 21 && id2 <=3) || (id2 == 21 && id1 <=3)) return gq_gq;
 
   if ((out_id1 == 13 || out_id1 == 15) && (out_id2 == 13 || out_id2 == 15)){
-    if (id1 != id2){
-      *m_hard_scattering_warning_file << "Hard scattering should be Drell-Yan, but the incoming particles are unexpected." << std::endl;
+    if (id1 != id2 && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
+      // *m_hard_scattering_warning_file << "Hard scattering should be Drell-Yan, but the incoming particles are unexpected." << std::endl;
     }
     return hard_scatt_drell_yan;
   }
   // at this stage, only light-quark scattering is left
   // qq' --> qq' should NOT appear in the parental chain of a single muon
   // but it's worth doing a double/sanity check
-  if (id1 > 3 || id2 > 3 || out_id1 > 3 || out_id2 > 3){
-    *m_hard_scattering_warning_file << "Hard scattering should be qq' --> qq', but it is";
-    *m_hard_scattering_warning_file << truth_id->at(in_bar1) << " " << truth_id->at(in_bar2) << " " << truth_id->at(out_bar1) << " " << truth_id->at(out_bar2) << std::endl;
+  if ((id1 > 3 || id2 > 3 || out_id1 > 3 || out_id2 > 3) && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
+    // *m_hard_scattering_warning_file << "Hard scattering should be qq' --> qq', but it is";
+    // *m_hard_scattering_warning_file << truth_id->at(in_bar1) << " " << truth_id->at(in_bar2) << " " << truth_id->at(out_bar1) << " " << truth_id->at(out_bar2) << std::endl;
   }
   return qqprime_qqprime;
 
@@ -1397,9 +1414,9 @@ void PythiaNTupleFirstPass::FillCategoryHistograms(TH1D* horig, TH2D* hhard_vs_o
 
   }else if (m2_hard_scatt_in_bar1 > 0){ // need else here: otherwise the [same hard scattering case would get filled twice]
     
-    if (m1_hard_scatt_in_bar1 > 0){
+    if (m1_hard_scatt_in_bar1 > 0 && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
       std::cout << "two cases should be exclusive!!!" << std::endl;
-      PrintHistory(m_very_bad_warning_file, false, mpair->from_same_ancestors);
+      // PrintHistory(m_very_bad_warning_file, false, mpair->from_same_ancestors);
     }
 
     hhard_vs_orig->Fill(mpair->muon_pair_origin_category, mpair->m2_hard_scatt_category, mpair->weight);
@@ -1453,11 +1470,11 @@ void PythiaNTupleFirstPass::HFMuonPairAnalysis(){
   // cout << " is same ancestors? " << same_partonic_ancestors << endl;
   if (same_partonic_ancestors){
     if (m1_parton_ancestor_bars.size() > 1){ // from flavor creation (for an LO generator)
-      if (mpair->m1_hard_scatt_category != flavor_creat){ // this ensures muon1 has undergone through a hard scattering, and it is a flavor creation
-        *m_very_bad_warning_file << "HF muon pair - More than one partonic ancestors, but hard scattering is not flavor creation." << std::endl;
-        *m_very_bad_warning_file << "The current parents' barcodes: " << m1_parton_ancestor_bars[0] << " " << m1_parton_ancestor_bars[1] << endl;
-        *m_very_bad_warning_file << "The current parents' ids: " << m1_parton_ancestor_ids[0] << " " << m1_parton_ancestor_ids[1] << endl;
-        PrintHistory(m_very_bad_warning_file, false, same_partonic_ancestors);
+      if (mpair->m1_hard_scatt_category != flavor_creat && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){ // this ensures muon1 has undergone through a hard scattering, and it is a flavor creation
+        // *m_very_bad_warning_file << "HF muon pair - More than one partonic ancestors, but hard scattering is not flavor creation." << std::endl;
+        // *m_very_bad_warning_file << "The current parents' barcodes: " << m1_parton_ancestor_bars[0] << " " << m1_parton_ancestor_bars[1] << endl;
+        // *m_very_bad_warning_file << "The current parents' ids: " << m1_parton_ancestor_ids[0] << " " << m1_parton_ancestor_ids[1] << endl;
+        // PrintHistory(m_very_bad_warning_file, false, same_partonic_ancestors);
       }
       mpair->muon_pair_origin_category = fc;
       mpair->mHard_relevant = m1_hard_scatt_Q;
@@ -1479,9 +1496,9 @@ void PythiaNTupleFirstPass::HFMuonPairAnalysis(){
       //   std::cout << " Doing an explicit check by printing out the history." << std::endl;
       //   PrintHistory(&std::cout, false, true);
       // }
-      if (m1_parton_ancestor_ids[0] != 21 && m1_parton_ancestor_ids[0] != 22 && !m1_ancestor_is_incoming){
-        *m_very_bad_warning_file << "A single parton-level parent that is neither a gluon nor a photon nor incoming." << std::endl;
-        PrintHistory(m_very_bad_warning_file, false, same_partonic_ancestors);
+      if (m1_parton_ancestor_ids[0] != 21 && m1_parton_ancestor_ids[0] != 22 && !m1_ancestor_is_incoming && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
+        // *m_very_bad_warning_file << "A single parton-level parent that is neither a gluon nor a photon nor incoming." << std::endl;
+        // PrintHistory(m_very_bad_warning_file, false, same_partonic_ancestors);
       }
 
       from_same_gluon_splitting = true;
@@ -1495,9 +1512,9 @@ void PythiaNTupleFirstPass::HFMuonPairAnalysis(){
       // and the relevant HQ's are each the second last element
 
       if (!m1_ancestor_is_incoming){ // excluding the cases where both HQ's are from the PDF
-        if (!both_from_b && !both_from_c){
-          *m_very_bad_warning_file << "HF muons from the same gluon splitting, yet neither both from b nor both from c." << std::endl;
-          PrintHistory(m_very_bad_warning_file, false, true);
+        if (!both_from_b && !both_from_c && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
+          // *m_very_bad_warning_file << "HF muons from the same gluon splitting, yet neither both from b nor both from c." << std::endl;
+          // PrintHistory(m_very_bad_warning_file, false, true);
         }
 
   //       if (m1_history_particle && m2_history_particle){
@@ -1522,11 +1539,11 @@ void PythiaNTupleFirstPass::HFMuonPairAnalysis(){
 
 
 
-        if ((*m1_history_particle)[m1_history_particle->size() - 2].size() > 2 || (*m2_history_particle)[m2_history_particle->size() - 2].size() > 2){
+        if ((*m1_history_particle)[m1_history_particle->size() - 2].size() > 2 || (*m2_history_particle)[m2_history_particle->size() - 2].size() > 2 && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
           if (turn_data_resonance_cuts_on){ // if no resonance cuts, pairs from resonances can show up here
-            *m_very_bad_warning_file << "The second to last stage in the history of an HF muon (up to the gluon splitting stage) should have at most two particles." << std::endl;
+            // *m_very_bad_warning_file << "The second to last stage in the history of an HF muon (up to the gluon splitting stage) should have at most two particles." << std::endl;
           }
-          PrintHistory(m_very_bad_warning_file, false, true);
+          // PrintHistory(m_very_bad_warning_file, false, true);
         }
 
         int quark_type = (both_from_b)? 5 : 4;
@@ -1540,52 +1557,52 @@ void PythiaNTupleFirstPass::HFMuonPairAnalysis(){
         if ((*m1_history_particle)[m1_history_particle->size() - 2].size() == 1){
           barQ1 = (*m1_history_particle)[m1_history_particle->size() - 2][0].barcode;
           if (abs((*m1_history_particle)[m1_history_particle->size() - 2][0].id) != quark_type){
-            if (turn_data_resonance_cuts_on){  // if no resonance cuts, pairs from resonances can show up here
-              *m_very_bad_warning_file << "The second to last stage in the history of an HF muon (up to the gluon splitting stage) has only ONE element" << std::endl;
-              *m_very_bad_warning_file << "but that element is NOT a HQ" << std::endl;
-              PrintHistory(m_very_bad_warning_file, false, true);              
+            if (turn_data_resonance_cuts_on && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){  // if no resonance cuts, pairs from resonances can show up here
+              // *m_very_bad_warning_file << "The second to last stage in the history of an HF muon (up to the gluon splitting stage) has only ONE element" << std::endl;
+              // *m_very_bad_warning_file << "but that element is NOT a HQ" << std::endl;
+              // PrintHistory(m_very_bad_warning_file, false, true);              
             }
           }
         }else{ // the second to last stage is the incoming particles to the hard scattering (contains two elements)
           // this should handle all annoyingly error-prone cases, where the incoming-to-hard-scattering particles can be
           // Q + X, Q + Q, or Q + Qbar (X not a HQ of the same flavor)
-          if ((*m1_history_particle)[m1_history_particle->size() - 3].size() != 1 || (abs((*m1_history_particle)[m1_history_particle->size() - 3][0].id) != quark_type)){
-            *m_very_bad_warning_file << "The third to last stage in the history of an HF muon (up to the gluon splitting stage) should only have one element, and it should be the HQ of interest" << std::endl;
-            PrintHistory(m_very_bad_warning_file, false, true);
+          if ((*m1_history_particle)[m1_history_particle->size() - 3].size() != 1 || (abs((*m1_history_particle)[m1_history_particle->size() - 3][0].id) != quark_type) && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
+            // *m_very_bad_warning_file << "The third to last stage in the history of an HF muon (up to the gluon splitting stage) should only have one element, and it should be the HQ of interest" << std::endl;
+            // PrintHistory(m_very_bad_warning_file, false, true);
           }
           barQ1 = (*m1_history_particle)[m1_history_particle->size() - 3][0].barcode - 2;
-          if ((*m1_history_particle)[m1_history_particle->size() - 2][0].barcode != barQ1 && (*m1_history_particle)[m1_history_particle->size() - 2][1].barcode != barQ1){
-            *m_very_bad_warning_file << "The previous HQ barcode (" << (*m1_history_particle)[m1_history_particle->size() - 3][0].barcode  << ") - 2 method doesn't work." << std::endl;
-            PrintHistory(m_very_bad_warning_file, false, true);
+          if ((*m1_history_particle)[m1_history_particle->size() - 2][0].barcode != barQ1 && (*m1_history_particle)[m1_history_particle->size() - 2][1].barcode != barQ1 && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
+            // *m_very_bad_warning_file << "The previous HQ barcode (" << (*m1_history_particle)[m1_history_particle->size() - 3][0].barcode  << ") - 2 method doesn't work." << std::endl;
+            // PrintHistory(m_very_bad_warning_file, false, true);
           }
         }
 
         if ((*m2_history_particle)[m2_history_particle->size() - 2].size() == 1){
           barQ2 = (*m2_history_particle)[m2_history_particle->size() - 2][0].barcode;
-          if (abs((*m2_history_particle)[m2_history_particle->size() - 2][0].id) != quark_type){
-            *m_very_bad_warning_file << "The second to last stage in the history of an HF muon (up to the gluon splitting stage) has only ONE element" << std::endl;
-            *m_very_bad_warning_file << "but that element is NOT a HQ" << std::endl;
-            PrintHistory(m_very_bad_warning_file, false, true);
+          if (abs((*m2_history_particle)[m2_history_particle->size() - 2][0].id) != quark_type && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
+            // *m_very_bad_warning_file << "The second to last stage in the history of an HF muon (up to the gluon splitting stage) has only ONE element" << std::endl;
+            // *m_very_bad_warning_file << "but that element is NOT a HQ" << std::endl;
+            // PrintHistory(m_very_bad_warning_file, false, true);
           }
         }else{ // the second to last stage is the incoming particles to the hard scattering (contains two elements)
           // this should handle all annoyingly error-prone cases, where the incoming-to-hard-scattering particles can be
           // Q + X, Q + Q, or Q + Qbar (X not a HQ of the same flavor)
-          if ((*m2_history_particle)[m2_history_particle->size() - 3].size() != 1 || (abs((*m2_history_particle)[m2_history_particle->size() - 3][0].id) != quark_type)){
-            *m_very_bad_warning_file << "The third to last stage in the history of an HF muon (up to the gluon splitting stage) should only have one element, and it should be the HQ of interest" << std::endl;
-            PrintHistory(m_very_bad_warning_file, false, true);
+          if ((*m2_history_particle)[m2_history_particle->size() - 3].size() != 1 || (abs((*m2_history_particle)[m2_history_particle->size() - 3][0].id) != quark_type) && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
+            // *m_very_bad_warning_file << "The third to last stage in the history of an HF muon (up to the gluon splitting stage) should only have one element, and it should be the HQ of interest" << std::endl;
+            // PrintHistory(m_very_bad_warning_file, false, true);
           }
           barQ2 = (*m2_history_particle)[m2_history_particle->size() - 3][0].barcode - 2;
-          if ((*m2_history_particle)[m2_history_particle->size() - 2][0].barcode != barQ2 && (*m2_history_particle)[m2_history_particle->size() - 2][1].barcode != barQ2){
-            *m_very_bad_warning_file << "The previous HQ barcode (" << (*m2_history_particle)[m2_history_particle->size() - 3][0].barcode  << ") - 2 method doesn't work." << std::endl;
-            PrintHistory(m_very_bad_warning_file, false, true);
+          if ((*m2_history_particle)[m2_history_particle->size() - 2][0].barcode != barQ2 && (*m2_history_particle)[m2_history_particle->size() - 2][1].barcode != barQ2 && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
+            // *m_very_bad_warning_file << "The previous HQ barcode (" << (*m2_history_particle)[m2_history_particle->size() - 3][0].barcode  << ") - 2 method doesn't work." << std::endl;
+            // PrintHistory(m_very_bad_warning_file, false, true);
           }
         }
 
         if (truth_id->at(barQ1) != -1 * truth_id->at(barQ2)){ // from the same Q but via some complicated mechanism (perhaps at the hadronization step); kinematics likely to be similar to [from same b]
-          if (turn_data_resonance_cuts_on){  // if no resonance cuts, pairs from resonances can show up here
-            *m_very_bad_warning_file << "HF muons from the same gluon splitting. Should have quark type +/-" << quark_type;
-            *m_very_bad_warning_file << "But actually the id's of the particles are: " << truth_id->at(barQ1) << ", " << truth_id->at(barQ2) << std::endl;
-            PrintHistory(m_very_bad_warning_file, false, true); // print out to make sure it's physical not a bug in our code            
+          if (turn_data_resonance_cuts_on && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){  // if no resonance cuts, pairs from resonances can show up here
+            // *m_very_bad_warning_file << "HF muons from the same gluon splitting. Should have quark type +/-" << quark_type;
+            // *m_very_bad_warning_file << "But actually the id's of the particles are: " << truth_id->at(barQ1) << ", " << truth_id->at(barQ2) << std::endl;
+            // PrintHistory(m_very_bad_warning_file, false, true); // print out to make sure it's physical not a bug in our code            
           }
         }
 
@@ -1645,9 +1662,9 @@ void PythiaNTupleFirstPass::HFMuonPairAnalysis(){
           vg = vQ1 + vQ2;
           mpair->Qsplit = vg.M();
 
-          if (m1_hard_scatt_Q < 0){
+          if (m1_hard_scatt_Q < 0 && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
             std::cout << "GS from FSR, but Q of hard scattering is unfilled or negative, with value " << m1_hard_scatt_Q << std::endl;
-            PrintHistory(m_very_bad_warning_file, false, true);
+            // PrintHistory(m_very_bad_warning_file, false, true);
           }
 
           mpair->mHard_relevant = m1_hard_scatt_Q;
@@ -1689,9 +1706,9 @@ void PythiaNTupleFirstPass::HFMuonPairAnalysis(){
     }
     if (!m1_from_hard_scatt_before_gs){ // m1 not yet experiened hard scattering      
       if (!m1_parton_ancestor_bars.empty()){
-        if (m1_parton_ancestor_bars.size() != 1 || (m1_parton_ancestor_ids[0] != 21 && m1_parton_ancestor_ids[0] != 22 && !m1_ancestor_is_incoming)){
+        if (m1_parton_ancestor_bars.size() != 1 || (m1_parton_ancestor_ids[0] != 21 && m1_parton_ancestor_ids[0] != 22 && !m1_ancestor_is_incoming) && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
           std::cout << "Muon hasn't gone through a hard scattering; yet is neither from gluon/photon splitting or from PDF." << std::endl;
-          PrintHistory(m_very_bad_warning_file, true, true); // single, m1
+          // PrintHistory(m_very_bad_warning_file, true, true); // single, m1
         }else if (m1_ancestor_is_incoming){
           // std::cout << "For study purpose - Muon1 is from PDF and have not gone through hard scattering." << std::endl;
           // PrintHistory(&std::cout, true, true); // single, m1
@@ -1704,9 +1721,9 @@ void PythiaNTupleFirstPass::HFMuonPairAnalysis(){
 
     if (!m2_from_hard_scatt_before_gs){ // m2 not yet experiened hard scattering      
       if (!m2_parton_ancestor_bars.empty()){
-        if (m2_parton_ancestor_bars.size() != 1 || (m2_parton_ancestor_ids[0] != 21 && m2_parton_ancestor_ids[0] != 22 && !m2_ancestor_is_incoming)){
+        if (m2_parton_ancestor_bars.size() != 1 || (m2_parton_ancestor_ids[0] != 21 && m2_parton_ancestor_ids[0] != 22 && !m2_ancestor_is_incoming) && print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file){
           std::cout << "Muon hasn't gone through a hard scattering; yet is neither from gluon/photon splitting or from PDF." << std::endl;
-          PrintHistory(m_very_bad_warning_file, true, false); // single, m2
+          // PrintHistory(m_very_bad_warning_file, true, false); // single, m2
         }else if (m2_ancestor_is_incoming){
           // std::cout << "For study purpose - Muon2 is from PDF and have not gone through hard scattering." << std::endl;
           // PrintHistory(&std::cout, true, false); // single, m1
@@ -1800,7 +1817,12 @@ void PythiaNTupleFirstPass::MuonPairAncestorTracing(){
   SingleMuonAncestorTracing(true);
   SingleMuonAncestorTracing(false);
   
-  mpair->from_same_resonance = (mpair->m1_parent_group == resonance_decay && mpair->m2_parent_group == resonance_decay && m1_resonance_barcode == m2_resonance_barcode){
+  mpair->from_same_resonance = (mpair->m1_parent_group == resonance_decay && mpair->m2_parent_group == resonance_decay && m1_resonance_barcode == m2_resonance_barcode);
+
+  if (mpair->from_same_resonance && mpair->minv < 0.35 && print_very_low_minv && m_very_low_minv_resonance_file){
+    // *m_very_low_minv_resonance_file << "Pair from same resonance but minv = " << mpair->minv << std::endl;
+    PrintHistory(m_very_low_minv_resonance_file, false, true);
+  }
 
   mpair->resonance_contaminated = (!mpair->from_same_resonance && (mpair->m1_parent_group == resonance_decay || mpair->m2_parent_group == resonance_decay));
 
@@ -2056,6 +2078,7 @@ void PythiaNTupleFirstPass::ProcessData(){
 
       muon_pair_list_cur_event_pre_resonance_cut.clear();
       resonance_tagged_muon_index_list.clear(); // MUST CLEAR for each event!!
+      resonance_tagged_muon_index_list_old.clear(); // MUST CLEAR for each event!!
 
       int NPairs = muon_pair_muon1_pt->size();//number of muon pairs in the event
       int NPairsAfter = 0;
@@ -2085,11 +2108,11 @@ void PythiaNTupleFirstPass::ProcessData(){
         //Two things at this step: 
         //1) sort pt, eta, phi by pt
         //2) update the muon-pair values
-        // mpair->Update();
         mpair->Update();
           
         // resonance tag
         ResonanceTagging(mpair);
+        ResonanceTaggingOld(mpair);
 
         // photo-production cut - do NOT apply for MC
         // if (IsPhotoProduction()) continue;
@@ -2107,16 +2130,31 @@ void PythiaNTupleFirstPass::ProcessData(){
           continue;
         }
 
-        if (turn_data_resonance_cuts_on){ // turn data cuts on: including (currently only have) minv-based resonance cuts
-          std::vector<int>::iterator itres_m1;
-          std::vector<int>::iterator itres_m2;
+        mpair->data_resonance_or_reso_contam_tagged_new = false;
+        
+        // examine data resonance cuts (old + new)
+        std::vector<int>::iterator itres_m1;
+        std::vector<int>::iterator itres_m2;
 
-          itres_m1 = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m1.ind);
-          if(itres_m1 != resonance_tagged_muon_index_list.end())  continue;
-
-          itres_m2 = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m2.ind);
-          if(itres_m2 != resonance_tagged_muon_index_list.end())  continue;          
+        // check for new data-resonance cut
+        // if turn data cuts on: throw away pairs tagged as "from resonance" / "contaminated by resonances" under new data-resonance cuts
+        // else: tag the pairs + keep them
+        itres_m1 = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m1.ind);
+        itres_m2 = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m2.ind);
+        
+        if(itres_m1 != resonance_tagged_muon_index_list.end() || itres_m2 != resonance_tagged_muon_index_list.end()){ // pair is resonance-tagged
+          if (turn_data_resonance_cuts_on){
+            continue; // throw away the pair
+          }else{
+            mpair->data_resonance_or_reso_contam_tagged_new = true;
+          }
         }
+
+        // check for old data-resonance cut - no pair elimination, just tag
+        itres_m1 = std::find(resonance_tagged_muon_index_list_old.begin(),resonance_tagged_muon_index_list_old.end(),mpair->m1.ind);
+        itres_m2 = std::find(resonance_tagged_muon_index_list_old.begin(),resonance_tagged_muon_index_list_old.end(),mpair->m2.ind);
+
+        mpair->data_resonance_or_reso_contam_tagged_old = (itres_m1 != resonance_tagged_muon_index_list_old.end() || itres_m2 != resonance_tagged_muon_index_list_old.end());
 
         h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill(pass_resonance + 0.5, mpair->weight);
         
