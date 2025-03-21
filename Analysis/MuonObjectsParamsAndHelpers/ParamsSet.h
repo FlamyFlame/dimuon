@@ -99,6 +99,7 @@ public:
    	// std::vector<float> minv_bins[nSigns][ndRselcs];
 
    	std::vector<std::array<float,2>> minv_cuts;
+   	std::vector<std::array<float,2>> minv_cuts_old;
    	static std::vector<std::array<float,2>> charge_eta_gap_cuts;
 
    	float minv_upper = 60;
@@ -255,9 +256,18 @@ ParamsSet::ParamsSet(){
   		}
   	}
 
-  	minv_cuts.push_back({0,1.06});
+  	// old set of minv cut
+  	minv_cuts_old.push_back({0,1.06});
+   	minv_cuts_old.push_back({2.9,3.3});
+   	minv_cuts_old.push_back({3.55,3.8});
+   	// minv_cuts_old.push_back({9.08,9.8});
+   	minv_cuts_old.push_back({9.08,10.5}); // previously 9 - 9.8
+
+   	// new set of minv cut
+  	minv_cuts.push_back({0.72,0.85});
+  	minv_cuts.push_back({0.94,1.06});
    	minv_cuts.push_back({2.9,3.3});
-   	minv_cuts.push_back({3.59,3.74});
+   	minv_cuts.push_back({3.55,3.8});
    	// minv_cuts.push_back({9.08,9.8});
    	minv_cuts.push_back({9.08,10.5}); // previously 9 - 9.8
 }
