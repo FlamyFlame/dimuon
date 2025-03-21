@@ -57,16 +57,44 @@ private:
 
     TH2D* h_crossx_truth_from_single_b_vs_pair_pt_pair_eta;
 
+    TH1D* h_minv_sub_GeV_signal_no_res_cut;
+    TH1D* h_minv_sub_GeV_signal_old_res_cut;
+    TH1D* h_minv_sub_GeV_signal_new_res_cut;
+    TH1D* h_minv_sub_GeV_jacobian_corrected_signal_no_res_cut;
+    TH1D* h_minv_sub_GeV_jacobian_corrected_signal_old_res_cut;
+    TH1D* h_minv_sub_GeV_jacobian_corrected_signal_new_res_cut;
+    TH1D* h_minv_sub_GeV_resonance_and_res_contam_bkg_no_res_cut;
+    TH1D* h_minv_sub_GeV_resonance_and_res_contam_bkg_old_res_cut;
+    TH1D* h_minv_sub_GeV_resonance_and_res_contam_bkg_new_res_cut;
+    TH1D* h_minv_sub_GeV_jacobian_corrected_resonance_and_res_contam_bkg_no_res_cut;
+    TH1D* h_minv_sub_GeV_jacobian_corrected_resonance_and_res_contam_bkg_old_res_cut;
+    TH1D* h_minv_sub_GeV_jacobian_corrected_resonance_and_res_contam_bkg_new_res_cut;
+    TH1D* h_minv_single_b_region_signal_no_res_cut;
+    TH1D* h_minv_single_b_region_signal_old_res_cut;
+    TH1D* h_minv_single_b_region_signal_new_res_cut;
+    TH1D* h_minv_single_b_region_jacobian_corrected_signal_no_res_cut;
+    TH1D* h_minv_single_b_region_jacobian_corrected_signal_old_res_cut;
+    TH1D* h_minv_single_b_region_jacobian_corrected_signal_new_res_cut;
+    TH1D* h_minv_single_b_region_resonance_and_res_contam_bkg_no_res_cut;
+    TH1D* h_minv_single_b_region_resonance_and_res_contam_bkg_old_res_cut;
+    TH1D* h_minv_single_b_region_resonance_and_res_contam_bkg_new_res_cut;
+    TH1D* h_minv_single_b_region_jacobian_corrected_resonance_and_res_contam_bkg_no_res_cut;
+    TH1D* h_minv_single_b_region_jacobian_corrected_resonance_and_res_contam_bkg_old_res_cut;
+    TH1D* h_minv_single_b_region_jacobian_corrected_resonance_and_res_contam_bkg_new_res_cut;
+
     TH1D* h_pair_dP_overP[nDphis][ParamsSet::nSigns];
     TH1D* h_Dphi[nDphis][ParamsSet::nSigns];
     TH1D* h_DR[nDphis][ParamsSet::nSigns];
     TH1D* h_DR_zoomin[nDphis][ParamsSet::nSigns];
+    TH1D* h_Deta_zoomin[nDphis][ParamsSet::nSigns];
+    TH1D* h_Dphi_zoomin[nDphis][ParamsSet::nSigns];
     TH1D* h_DR_jacobian_corrected[nDphis][ParamsSet::nSigns];
     TH1D* h_DR_zoomin_jacobian_corrected[nDphis][ParamsSet::nSigns];
     TH1D* h_pair_y[nDphis][ParamsSet::nSigns];
     TH1D* h_pt_asym[nDphis][ParamsSet::nSigns];
     TH1D* h_psrapidity_ordered_pt_asym[nDphis][ParamsSet::nSigns];
     TH1D* h_pair_pt_ptlead_ratio[nDphis][ParamsSet::nSigns];
+    TH1D* h_pair_pt_jacobian_corrected[nDphis][ParamsSet::nSigns];
     TH2D* h_eta_avg_Dphi[nDphis][ParamsSet::nSigns];
     TH2D* h_Deta_Dphi[nDphis][ParamsSet::nSigns];
     TH2D* h_eta1_eta2[nDphis][ParamsSet::nSigns];
@@ -78,7 +106,6 @@ private:
     TH2D* h_minv_pair_pt[nDphis][ParamsSet::nSigns];
     TH2D* h_minv_pair_pt_zoomin[nDphis][ParamsSet::nSigns];
     TH2D* h_minv_pair_pt_jacobian_corrected[nDphis][ParamsSet::nSigns];
-    TH2D* h_pair_pt_jacobian_corrected[nDphis][ParamsSet::nSigns];
     TH2D* h_minv_pair_pt_zoomin_jacobian_corrected[nDphis][ParamsSet::nSigns];
     TH2D* h_minv_pair_pt_log[nDphis][ParamsSet::nSigns];
 
@@ -94,12 +121,15 @@ private:
 
     TH1D* h_DR_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
     TH1D* h_DR_zoomin_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
+    TH1D* h_Deta_zoomin_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
+    TH1D* h_Dphi_zoomin_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
     TH1D* h_DR_jacobian_corrected_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
     TH1D* h_DR_zoomin_jacobian_corrected_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
     TH1D* h_psrapidity_ordered_pt_asym_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
     TH1D* h_pt_asym_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
     TH1D* h_pair_pt_ptlead_ratio_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
-    
+    TH1D* h_pair_pt_jacobian_corrected_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
+
     TH1D* h_Qsplit_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
     TH1D* h_Qsplit_pTHat_ratio_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
     TH1D* h_Qsplit_mHat_ratio_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
@@ -116,11 +146,14 @@ private:
 
     TH1D* h_DR_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
     TH1D* h_DR_zoomin_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
+    TH1D* h_Deta_zoomin_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
+    TH1D* h_Dphi_zoomin_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
     TH1D* h_DR_jacobian_corrected_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
     TH1D* h_DR_zoomin_jacobian_corrected_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
     TH1D* h_psrapidity_ordered_pt_asym_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
     TH1D* h_pt_asym_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
     TH1D* h_pair_pt_ptlead_ratio_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
+    TH1D* h_pair_pt_jacobian_corrected_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
     
     TH2D* h_Deta_Dphi_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
     TH2D* h_minv_pair_pt_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
@@ -177,12 +210,14 @@ private:
     bool from_same_b[nFiles][nKinRanges][ParamsSet::nSigns];
     bool both_from_b[nFiles][nKinRanges][ParamsSet::nSigns];
     bool both_from_c[nFiles][nKinRanges][ParamsSet::nSigns];
+    bool data_resonance_or_reso_contam_tagged_old[nFiles][nKinRanges][ParamsSet::nSigns];
+    bool data_resonance_or_reso_contam_tagged_new[nFiles][nKinRanges][ParamsSet::nSigns];
     int muon_pair_origin_category[nFiles][nKinRanges][ParamsSet::nSigns];
 
     float pair_dPoverP[nFiles][nKinRanges][ParamsSet::nSigns];
     float pt_lead[nFiles][nKinRanges][ParamsSet::nSigns];
     float pair_pt[nFiles][nKinRanges][ParamsSet::nSigns];
-    // float pair_eta[nFiles][nKinRanges][ParamsSet::nSigns];
+    float pair_eta[nFiles][nKinRanges][ParamsSet::nSigns];
     float pair_y[nFiles][nKinRanges][ParamsSet::nSigns];
     float asym[nFiles][nKinRanges][ParamsSet::nSigns];
     float dpt[nFiles][nKinRanges][ParamsSet::nSigns];
