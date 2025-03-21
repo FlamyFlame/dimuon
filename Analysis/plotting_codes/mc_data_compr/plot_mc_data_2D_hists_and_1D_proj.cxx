@@ -21,11 +21,16 @@ public:
     std::string kiny="";
     std::string kinx="";
     std::string kiny_title=""; // used for interval projection
+    std::string optional_suffix="";
     bool intvls_same_canvas = true;
     bool transpose=false;
     bool logx=false;
     bool logy=false;
     bool debug_mode = false;
+
+    // pair of {vector of cuts, opposite-sign-only boolean}
+    std::pair<std::vector<std::array<float,2>>, bool> cutsx = {{},true};
+    std::pair<std::vector<std::array<float,2>>, bool> cutsy = {{},true};
 
     // ------------------- public class methods -------------------
     PlotMCDataSingle2DHistogram(){}
@@ -56,7 +61,7 @@ void PlotMCDataSingle2DHistogram::Run(){
 
     initialize();
   
-    // for each data type
+      // for each data type
     for (unsigned int idt = 0; idt < s_nDtTypes ; idt++){
 
         if (!turn_on_plotting_vec[idt]) continue; // if do NOT turn on plotting for the data type for a given observable: skip to next data type
@@ -77,6 +82,11 @@ void PlotMCDataSingle2DHistogram::Run(){
                     std::cerr << "Hist name: " << hist_name << "; file: " << dt_paths[idt] + fnames[idt] << std::endl;
                     throw std::runtime_error("Histogram does not exist (pointer is nullptr)!");
                 }
+
+                // if cuts x/y not empty, if either NOT opposite-sign-only or current pair is opposite-sign
+                if (!cutsx.first.empty() && (!cutsx.second || ksign == Sign::opposite_sign)) ApplyXAxisCutsTo2DHistogram(h2d_list[idt][ksign][jdphi], cutsx.first);
+                if (!cutsy.first.empty() && (!cutsy.second || ksign == Sign::opposite_sign)) ApplyYAxisCutsTo2DHistogram(h2d_list[idt][ksign][jdphi], cutsy.first);
+
             }
         
             h2d_list[idt][ksign][0]->Add(h2d_list[idt][ksign][1]); // add up the two dphi regions for all data types
@@ -84,7 +94,7 @@ void PlotMCDataSingle2DHistogram::Run(){
             if (idt == DataType::powheg_cc){
                 h2d_list[idt][ksign][0]->Add(h2d_list[DataType::powheg_bb][ksign][0]); // powheg - add cc to bb for all sign & dphi regions
             }else if (idt == DataType::pythia){
-                h2d_list[idt][ksign][0]->Scale(pow(10,6));
+                h2d_list[idt][ksign][0]->Scale(pow(10,6)); // scale once - do not reapply this unit-converting scaling at the projection level
             }
         }
 
@@ -108,8 +118,12 @@ void PlotMCDataSingle2DHistogram::Run(){
                     h2d_list[idt][ksign][0]->Draw("colz");
                 }
             }
-        
-            c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/hist_2D/%s.png", kin.c_str()));
+            std::string output_file_path = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/hist_2D/" + kin;
+            if (idt == DataType::pythia) output_file_path += pythia_with_data_resonance_cuts_suffix;
+            output_file_path += optional_suffix;
+            output_file_path += ".png";
+
+            c->SaveAs(output_file_path.c_str());
             c->Close();
             delete c;
         }
@@ -170,7 +184,11 @@ void PlotMCDataSingle2DHistogram::Run(){
                     ylim *= 1.1;
                     projY[idt][ksign][0]->GetYaxis()->SetRangeUser(0,ylim);
 
+
                     for (size_t intvl = 0; intvl < proj_intervals.size(); ++intvl) { // different lines (proj_intervals)
+                        // somehow while the 2D bin content setting works, projection undos it for the projected histogram
+                        if (!cutsy.first.empty() && (!cutsy.second || ksign == Sign::opposite_sign)) ApplyCutsTo1DHistogram(projY[idt][ksign][intvl], cutsy.first);
+                        
                         std::string draw_opt = (intvl == 0)? "" : "same";
                         projY[idt][ksign][intvl]->Draw(draw_opt.c_str());
                     }
@@ -178,11 +196,14 @@ void PlotMCDataSingle2DHistogram::Run(){
                     l->Draw();
                 }
 
-                std::string proj_filename;
-                if (kiny != "" && kinx != "")   proj_filename = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/hist_2D_interval_projections/" + kiny + dt_suffix[idt] + "_" + kinx + "_intvls" + ".png";
-                else              proj_filename = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/hist_2D_interval_projections/" + kin + "_projY_" + dt_suffix[idt] + "_intvls" + ".png";
+                std::string output_file_path;
+                if (kiny != "" && kinx != "")   output_file_path = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/hist_2D_interval_projections/" + kiny + dt_suffix[idt] + "_" + kinx + "_intvls";
+                else              output_file_path = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/hist_2D_interval_projections/" + kin + "_projY_" + dt_suffix[idt] + "_intvls";
 
-                projCanvas->SaveAs(proj_filename.c_str());
+                if (idt == DataType::pythia) output_file_path += pythia_with_data_resonance_cuts_suffix;
+                output_file_path += ".png";
+
+                projCanvas->SaveAs(output_file_path.c_str());
         
                 // Clean up
                 projCanvas->Close();
@@ -221,10 +242,14 @@ void PlotMCDataSingle2DHistogram::Run(){
                     }
         
                     // Save the projections
-                    std::string proj_filename;
-                    if (kiny != "" && kinx != "")   proj_filename = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/hist_2D_interval_projections/" + kiny + dt_suffix[idt] + "_" + kinx + "_intvl" + std::to_string(intvl) + ".png";
-                    else              proj_filename = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/hist_2D_interval_projections/" + kin + "_projY_" + dt_suffix[idt] + "_intvl" + std::to_string(binX1) + "-" + std::to_string(binX2) + ".png";
-                    projCanvas->SaveAs(proj_filename.c_str());
+                    std::string output_file_path;
+                    if (kiny != "" && kinx != "")   output_file_path = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/hist_2D_interval_projections/" + kiny + dt_suffix[idt] + "_" + kinx + "_intvl" + std::to_string(intvl);
+                    else              output_file_path = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/hist_2D_interval_projections/" + kin + "_projY_" + dt_suffix[idt] + "_intvl" + std::to_string(binX1) + "-" + std::to_string(binX2);
+                    
+                    if (idt == DataType::pythia) output_file_path += pythia_with_data_resonance_cuts_suffix;
+                    output_file_path += ".png";
+
+                    projCanvas->SaveAs(output_file_path.c_str());
         
                     // Clean up
                     projCanvas->Close();
@@ -237,40 +262,107 @@ void PlotMCDataSingle2DHistogram::Run(){
     }
 }
 
-void plot_mc_data_2D_hists_and_1D_proj(){
-    std::vector<std::string> pair_pt_intvls_labels = {"p_{T}^{pair}: 0-4GeV", "p_{T}^{pair}: 4-8GeV", "p_{T}^{pair}: 8-12GeV", "p_{T}^{pair}: 12-16GeV", "p_{T}^{pair}: 16-20GeV"};
-    std::vector<Color_t> pair_pt_intvl_colors = {kMagenta, kRed, kBlue, kBlack, kGreen+2};
+
+class PlotMCData2DHistsAnd1DProjClass{
+protected:
+    ParamsSet pms;
+
+    std::vector<std::string> pair_pt_intvls_labels = {"p_{T}^{pair}: 4-8GeV", "p_{T}^{pair}: 8-12GeV", "p_{T}^{pair}: 12-16GeV", "p_{T}^{pair}: 16-20GeV"};
+    std::vector<Color_t> pair_pt_intvl_colors = {kGreen+2, kRed, kBlack, kBlue};
     std::vector<std::string> pair_pt_intvls_labels_no_4_to_8GeV = {"p_{T}^{pair}: 8-12GeV", "p_{T}^{pair}: 12-16GeV", "p_{T}^{pair}: 16-20GeV"};
-    std::vector<Color_t> pair_pt_intvl_colors_no_4_to_8GeV = {kBlue, kBlack, kGreen+2};
+    std::vector<Color_t> pair_pt_intvl_colors_no_4_to_8GeV = {kRed, kBlack, kBlue};
+
+public: // all plotting functions public so that a child class can choose which ones to run
+    bool turn_4_to_8GeV_on = false;
+    PlotMCData2DHistsAnd1DProjClass(){}
+    ~PlotMCData2DHistsAnd1DProjClass(){}
+    void plot_minv_distr_pairpt_intvls_data();
+    void plot_minv_distr_pairpt_intvls_MC();
+};
+
+void PlotMCData2DHistsAnd1DProjClass::plot_minv_distr_pairpt_intvls_data(){
     // ------------------------- data -------------------------
 
     std::vector<std::pair<int, int>> pair_pt_intvls_data = {};
-    // pair_pt_intvls_data.push_back(std::make_pair(1,20));
-    // pair_pt_intvls_data.push_back(std::make_pair(21,40));
+    if (turn_4_to_8GeV_on) pair_pt_intvls_data.push_back(std::make_pair(21,40));
     pair_pt_intvls_data.push_back(std::make_pair(41,60));
     pair_pt_intvls_data.push_back(std::make_pair(61,80));
     pair_pt_intvls_data.push_back(std::make_pair(81,100));
 
     std::vector<bool> minv_proj_turn_on_vec_data {false,false,false,true,true};
     PlotMCDataSingle2DHistogram minv_distr_pairpt_intvls_data("minv_pair_pt_zoomin", minv_proj_turn_on_vec_data, pair_pt_intvls_data, "minv", "pair_pt", "m_{#mu#mu}");
-    minv_distr_pairpt_intvls_data.proj_intvl_labels = pair_pt_intvls_labels_no_4_to_8GeV;
-    minv_distr_pairpt_intvls_data.proj_intvl_colors = pair_pt_intvl_colors_no_4_to_8GeV;
-    minv_distr_pairpt_intvls_data.debug_mode = true;
+    if (turn_4_to_8GeV_on){
+        minv_distr_pairpt_intvls_data.proj_intvl_labels = pair_pt_intvls_labels;
+        minv_distr_pairpt_intvls_data.proj_intvl_colors = pair_pt_intvl_colors;
+        minv_distr_pairpt_intvls_data.optional_suffix = "_with_4_to_8GeV";
+    } else{
+        minv_distr_pairpt_intvls_data.proj_intvl_labels = pair_pt_intvls_labels_no_4_to_8GeV;
+        minv_distr_pairpt_intvls_data.proj_intvl_colors = pair_pt_intvl_colors_no_4_to_8GeV;
+    }
+
+    minv_distr_pairpt_intvls_data.cutsy = {pms.minv_cuts, true}; // require minv cuts + apply for opposite-sign only
+
+    if (turn_4_to_8GeV_on) {
+        minv_distr_pairpt_intvls_data.legend_position_same_sign = {0.2,0.65,0.5,0.9};
+        minv_distr_pairpt_intvls_data.legend_position_opp_sign = {0.2,0.65,0.5,0.9};        
+    }else{
+        minv_distr_pairpt_intvls_data.legend_position_same_sign = {0.6,0.2,0.93,0.45};
+        minv_distr_pairpt_intvls_data.legend_position_opp_sign = {0.2,0.2,0.5,0.45};        
+    }
+
     minv_distr_pairpt_intvls_data.Run();
+}
 
+void PlotMCData2DHistsAnd1DProjClass::plot_minv_distr_pairpt_intvls_MC(){
     // ------------------------- MC -------------------------
-
     std::vector<std::pair<int, int>> pair_pt_intvls_mc = {};
-    // pair_pt_intvls_mc.push_back(std::make_pair(1,10))
-    // pair_pt_intvls_mc.push_back(std::make_pair(11,20));
+    if (turn_4_to_8GeV_on) pair_pt_intvls_mc.push_back(std::make_pair(11,20));
     pair_pt_intvls_mc.push_back(std::make_pair(21,30));
     pair_pt_intvls_mc.push_back(std::make_pair(31,40));
     pair_pt_intvls_mc.push_back(std::make_pair(41,50));
     std::vector<bool> minv_proj_turn_on_vec_mc {true,true,true,false,false};
 
     PlotMCDataSingle2DHistogram minv_distr_pairpt_intvls_mc("minv_pair_pt_zoomin", minv_proj_turn_on_vec_mc, pair_pt_intvls_mc, "minv", "pair_pt", "m_{#mu#mu}");
-    minv_distr_pairpt_intvls_mc.proj_intvl_labels = pair_pt_intvls_labels_no_4_to_8GeV;
-    minv_distr_pairpt_intvls_mc.proj_intvl_colors = pair_pt_intvl_colors_no_4_to_8GeV;
-    minv_distr_pairpt_intvls_mc.debug_mode = true;
+    if (turn_4_to_8GeV_on){
+        minv_distr_pairpt_intvls_mc.proj_intvl_labels = pair_pt_intvls_labels;
+        minv_distr_pairpt_intvls_mc.proj_intvl_colors = pair_pt_intvl_colors;
+        minv_distr_pairpt_intvls_mc.optional_suffix = "_with_4_to_8GeV";
+    } else{
+        minv_distr_pairpt_intvls_mc.proj_intvl_labels = pair_pt_intvls_labels_no_4_to_8GeV;
+        minv_distr_pairpt_intvls_mc.proj_intvl_colors = pair_pt_intvl_colors_no_4_to_8GeV;
+    }
+    
+    minv_distr_pairpt_intvls_mc.cutsy = {pms.minv_cuts, true}; // require minv cuts + apply for opposite-sign only
+
+    if (turn_4_to_8GeV_on) {
+        minv_distr_pairpt_intvls_mc.legend_position_same_sign = {0.2,0.65,0.5,0.9};
+        minv_distr_pairpt_intvls_mc.legend_position_opp_sign = {0.2,0.65,0.5,0.9};        
+    }else{
+        minv_distr_pairpt_intvls_mc.legend_position_same_sign = {0.6,0.2,0.93,0.45};
+        minv_distr_pairpt_intvls_mc.legend_position_opp_sign = {0.2,0.2,0.5,0.45};        
+    }
+
+    minv_distr_pairpt_intvls_mc.pythia_with_data_resonance_cuts = true;
+
     minv_distr_pairpt_intvls_mc.Run();
+
+    // // pythia only projection, without data minv cuts - BUT THIS HAS RESONANCES IN IT
+    // PlotMCDataSingle2DHistogram minv_distr_pairpt_intvls_pythia_without_data_resonance_cuts("minv_pair_pt_zoomin", {false,false,true,false,false}, pair_pt_intvls_mc, "minv", "pair_pt", "m_{#mu#mu}");
+    // minv_distr_pairpt_intvls_pythia_without_data_resonance_cuts.proj_intvl_labels = pair_pt_intvls_labels_no_4_to_8GeV;
+    // minv_distr_pairpt_intvls_pythia_without_data_resonance_cuts.proj_intvl_colors = pair_pt_intvl_colors_no_4_to_8GeV;
+
+    // minv_distr_pairpt_intvls_pythia_without_data_resonance_cuts.legend_position_same_sign = {0.6,0.2,0.93,0.45};
+    // minv_distr_pairpt_intvls_pythia_without_data_resonance_cuts.legend_position_opp_sign = {0.2,0.2,0.5,0.45};
+
+    // minv_distr_pairpt_intvls_pythia_without_data_resonance_cuts.Run();
+
+}
+
+
+void plot_mc_data_2D_hists_and_1D_proj(){
+
+    PlotMCData2DHistsAnd1DProjClass myobj;
+    myobj.plot_minv_distr_pairpt_intvls_data();
+    myobj.plot_minv_distr_pairpt_intvls_MC();
+
 }
