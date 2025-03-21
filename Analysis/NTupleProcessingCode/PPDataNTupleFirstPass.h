@@ -86,7 +86,7 @@ public :
     bool isRun3;
     int run3_file_batch;
     bool run3_use_mu4_mu4_noL1;
-
+    int resonance_cut_mode = 2;
     PPDataNTupleFirstPass();
     ~PPDataNTupleFirstPass(){}
     void Run() override;

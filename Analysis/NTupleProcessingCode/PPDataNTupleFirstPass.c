@@ -14,15 +14,20 @@ PPDataNTupleFirstPass::PPDataNTupleFirstPass(){
   
   std::cout << "PP Data Ntuple processing script:" << std::endl;
   std::cout << "The following public variable(s) **MUST** be set:" << std::endl;
-  std::cout << "run3_file_batch: int that decides which run3-file batch to process, only has effect when isRun3 is true" << std::endl;
-  std::cout << "                 value = 1,2,3,4 (DEFAULT 0 --> MUST BE SET)" << std::endl;
+  std::cout << "--> run3_file_batch: int that decides which run3-file batch to process, only has effect when isRun3 is true" << std::endl;
+  std::cout << "                     value = 1,2,3,4 (DEFAULT 0 --> MUST BE SET)" << std::endl;
   std::cout << std::endl;
 
   std::cout << "The following public variable(s) should be checked:" << std::endl;
-  std::cout << "isTight: boolean, default false - if true: require tight WP; false; require medium WP" << std::endl;
-  std::cout << "isRun3: boolean, default true - if true: run run3 data; false: run run2 data" << std::endl;
-  std::cout << "run3_use_mu4_mu4_noL1: boolean, default true, only has effect when isRun3 is true" << std::endl;
-  std::cout << "                       if true: requires mu4_mu4_noL1 trigger; false: requires 2mu4 trigger" << std::endl;
+  std::cout << "--> resonance_cut_mode: integer that determines which set of resonant cuts to apply" << std::endl;
+  std::cout << "        * resonance_cut_mode = 0: NO resonance cut" << std::endl;
+  std::cout << "        * resonance_cut_mode = 1: old resonance cut" << std::endl;
+  std::cout << "        * resonance_cut_mode = 1: new resonance cut (default)" << std::endl;
+  std::cout << "        If resonance_cut_mode value is outside {0,1,2}: assume default option" << std::endl;
+  std::cout << "--> isTight: boolean, default false - if true: require tight WP; false; require medium WP" << std::endl;
+  std::cout << "--> isRun3: boolean, default true - if true: run run3 data; false: run run2 data" << std::endl;
+  std::cout << "--> run3_use_mu4_mu4_noL1: boolean, default true, only has effect when isRun3 is true" << std::endl;
+  std::cout << "                           if true: requires mu4_mu4_noL1 trigger; false: requires 2mu4 trigger" << std::endl;
   std::cout << std::endl;
 
   std::cout << "if isRun3, output files will be written to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024" << std::endl;
@@ -40,27 +45,27 @@ void PPDataNTupleFirstPass::InitInput(){
     }else{ //run3
         switch (run3_file_batch){
         case 1:
-            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part1.root");
+            fChain->Add("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/data_pp24_part1.root");
             break;
         case 2:
-            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_1.root");
-            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_2.root");
-            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_3.root");
-            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_4.root");
-            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_5.root");
-            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part3/data_pp24_part3_6.root");
+            fChain->Add("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/data_pp24_part3/data_pp24_part3_1.root");
+            fChain->Add("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/data_pp24_part3/data_pp24_part3_2.root");
+            fChain->Add("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/data_pp24_part3/data_pp24_part3_3.root");
+            fChain->Add("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/data_pp24_part3/data_pp24_part3_4.root");
+            fChain->Add("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/data_pp24_part3/data_pp24_part3_5.root");
+            fChain->Add("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/data_pp24_part3/data_pp24_part3_6.root");
             break;
         case 3:
-            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_1.root");
-            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_2.root");
-            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_4.root");
-            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_5.root");
-            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_6.root");
-            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_8.root");
+            fChain->Add("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/data_pp24_part2/data_pp24_part2_1.root");
+            fChain->Add("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/data_pp24_part2/data_pp24_part2_2.root");
+            fChain->Add("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/data_pp24_part2/data_pp24_part2_4.root");
+            fChain->Add("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/data_pp24_part2/data_pp24_part2_5.root");
+            fChain->Add("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/data_pp24_part2/data_pp24_part2_6.root");
+            fChain->Add("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/data_pp24_part2/data_pp24_part2_8.root");
             break;
         case 4:
-            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_3.root");
-            fChain->Add("/eos/user/y/yuhang/data/pp_24/data_pp24_part2/data_pp24_part2_7.root");
+            fChain->Add("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/data_pp24_part2/data_pp24_part2_3.root");
+            fChain->Add("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/data_pp24_part2/data_pp24_part2_7.root");
             break;
         default:
             throw std::runtime_error("Run3 file batch invalid/unspecified: have to be between 1 and 4. No result gets run.");
@@ -173,8 +178,24 @@ void PPDataNTupleFirstPass::InitOutput(){
     std::string run3_batch_suffix = "";
     if (isRun3) run3_batch_suffix = run3_batch_suffix_map[run3_file_batch];
 
-    output_file_path = output_dir + mode_to_file_name_map[mode] + run_suffix + run3_batch_suffix + run3_trig_suffix + tight_suffix + ".root";
-    output_hist_file_path = output_dir + "hists_cut_acceptance" + run_suffix + run3_batch_suffix + run3_trig_suffix + tight_suffix + ".root";
+    std::string resonance_cut_suffix = "";
+    switch (resonance_cut_mode){
+    case 0:
+      resonance_cut_suffix = "_no_res_cut";
+      break;
+    case 1:
+      resonance_cut_suffix = "_old_res_cut";
+      break;
+    case 2:
+      resonance_cut_suffix = "_new_res_cut";
+      break;
+    default:
+      std::cout << "Public variable resonance_cut_mode is set to a value outside {0,1,2}: INVALID. Apply new resonance cuts by default." << std::endl;
+      resonance_cut_suffix = "_new_res_cut";
+    }
+
+    output_file_path = output_dir + mode_to_file_name_map[mode] + run_suffix + run3_batch_suffix + run3_trig_suffix + tight_suffix + resonance_cut_suffix + ".root";
+    output_hist_file_path = output_dir + "hists_cut_acceptance" + run_suffix + run3_batch_suffix + run3_trig_suffix + tight_suffix + resonance_cut_suffix + ".root";
 
     // ------------------------------------------------------------------------------
 
@@ -296,7 +317,7 @@ void PPDataNTupleFirstPass::FillMuonPairTree(){
 
   // NECESSARY step: ALWAYS update the raw pointer with the current content of the shared pointer BEFORE FILLING OUTPUT TREES
   try{
-    if (!mpair) throw std::runtime_error();
+    if (!mpair) throw std::runtime_error("FillMuonPairTree: Muon Pair doesn't exist!");
     mpair_raw_ptr = mpair.get();
   }catch(const std::runtime_error& e){
     std::cout << "Runtime error caught in function FillMuonPairTree: " << e.what() << std::endl;
@@ -326,6 +347,7 @@ void PPDataNTupleFirstPass::ProcessData(){
 
     muon_pair_list_cur_event_pre_resonance_cut.clear();
     resonance_tagged_muon_index_list.clear(); // MUST CLEAR for each event!!
+    resonance_tagged_muon_index_list_old.clear(); // MUST CLEAR for each event!!
 
     //trigger requirement for event
     bool trigger_req = (isRun3 && run3_use_mu4_mu4_noL1)? b_HLT_mu4_mu4noL1 : b_HLT_2mu4;
@@ -362,6 +384,7 @@ void PPDataNTupleFirstPass::ProcessData(){
 
       // resonance tag
       ResonanceTagging(mpair);
+      ResonanceTaggingOld(mpair);
 
       // photo-production cut - do NOT apply for pp
       // if (IsPhotoProduction()) continue;
@@ -382,12 +405,20 @@ void PPDataNTupleFirstPass::ProcessData(){
       std::vector<int>::iterator itres_m1;
       std::vector<int>::iterator itres_m2;
 
-      itres_m1 = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m1.ind);
-      if(itres_m1 != resonance_tagged_muon_index_list.end())  continue;
+      // apply resonance cuts if resonance_cut_mode != 0
+      if (resonance_cut_mode == 1){ // apply old cut
+        itres_m1 = std::find(resonance_tagged_muon_index_list_old.begin(),resonance_tagged_muon_index_list_old.end(),mpair->m1.ind);
+        if(itres_m1 != resonance_tagged_muon_index_list_old.end())  continue;
 
-      itres_m2 = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m2.ind);
-      if(itres_m2 != resonance_tagged_muon_index_list.end())  continue;
+        itres_m2 = std::find(resonance_tagged_muon_index_list_old.begin(),resonance_tagged_muon_index_list_old.end(),mpair->m2.ind);
+        if(itres_m2 != resonance_tagged_muon_index_list_old.end())  continue;
+      } else if (resonance_cut_mode == 2){ // apply new cut
+        itres_m1 = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m1.ind);
+        if(itres_m1 != resonance_tagged_muon_index_list.end())  continue;
 
+        itres_m2 = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m2.ind);
+        if(itres_m2 != resonance_tagged_muon_index_list.end())  continue;
+      }
 
       h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill(pass_resonance + 0.5, mpair->weight);
 
