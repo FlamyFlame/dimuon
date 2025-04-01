@@ -1,3 +1,74 @@
+void hist_helper(TH1* h, float norm, bool norm_unity, std::string title, std::string ytitle=""){
+
+  h->SetStats(0);
+
+    if (norm_unity){
+        h->Scale(1.,"width");
+        try{
+            if (h->Integral("width") == 0) throw std::runtime_error("Histogram interval is ZERO! Cannot normalize to unity!");
+            h->Scale(1./h->Integral("width"));
+        }catch (const std::runtime_error& e){
+            std::cout << "runtime_error caught: " << e.what() << std::endl;
+            std::cout << "Proceed without normalizing to unity!" << std::endl; 
+        }
+        h->GetYaxis()->SetTitle("pdf");
+    }else{
+        h->Scale(norm,"width");
+        if (ytitle.length() != 0){
+            h->GetYaxis()->SetTitle(ytitle.c_str());
+        }
+    }
+
+    // h->SetTitle(title.c_str());
+    // h->SetTitleSize(35);
+    h->GetYaxis()->SetLabelFont(43);
+    h->GetYaxis()->SetLabelSize(28);
+    h->GetYaxis()->SetLabelOffset(0.01);
+    h->GetYaxis()->SetTitleFont(43);
+    h->GetYaxis()->SetTitleSize(28);
+    h->GetYaxis()->SetTitleOffset(2.1);
+    h->GetXaxis()->SetLabelFont(43);
+    h->GetXaxis()->SetLabelSize(28);
+    h->GetXaxis()->SetLabelOffset(0.01);
+    h->GetXaxis()->SetTitleFont(43);  
+    h->GetXaxis()->SetTitleSize(28);
+    h->GetXaxis()->SetTitleOffset(1);
+    h->SetMarkerStyle(20);
+    h->SetMarkerSize(0.9);
+}
+
+void thstack_helper(THStack* h, std::string kin_name, std::string title){
+  h->SetTitle(title.c_str());
+  h->GetXaxis()->SetTitle(kin_name.c_str());
+  
+  // we manually set the y-title titles since unlike histogram drawing
+  // where the first histogram drawn sets the properties for the subcanvases (e.g, axis properties)
+  // THStack does not "inherit y-axis titles" from the individual histograms in the stack
+  std::string ytitle = "";
+  const std::string prefix = "FULL: ";
+  if (kin_name.rfind(prefix, 0) == 0) {  // starts with "FULL: "
+      ytitle = kin_name.substr(prefix.length());
+  } else {
+      ytitle = "d#sigma/d" + kin_name + " [nb]";
+  }
+
+  h->GetYaxis()->SetTitle(ytitle.c_str());
+
+  h->GetYaxis()->SetLabelFont(43);
+  h->GetYaxis()->SetLabelSize(23);
+  h->GetYaxis()->SetLabelOffset(0.01);
+  h->GetYaxis()->SetTitleFont(43);
+  h->GetYaxis()->SetTitleSize(25);
+  h->GetYaxis()->SetTitleOffset(2);
+
+  h->GetXaxis()->SetLabelFont(43);
+  h->GetXaxis()->SetLabelSize(23);
+  h->GetXaxis()->SetLabelOffset(0.01);
+  h->GetXaxis()->SetTitleFont(43);  
+  h->GetXaxis()->SetTitleSize(25);
+  h->GetXaxis()->SetTitleOffset(1);
+}
+
 void ApplyCutsTo1DHistogram(TH1* h, const std::vector<std::pair<double, double>>& cuts) {
     if (!h){
         std::cout << "WARNING: Attempting to apply cut to 1D histogram, but histogram pointer is nullptr!" << std::endl;

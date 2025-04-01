@@ -48,7 +48,6 @@ protected:
     // private class methods
     virtual void initialize();
     virtual void set_legend_position();
-    virtual void hist_helper(TH1* h, float norm, bool norm_unity, std::string title, std::string ytitle="");
 
 public:
 
