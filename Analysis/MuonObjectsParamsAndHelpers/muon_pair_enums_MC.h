@@ -13,7 +13,7 @@ enum cuts_MC{
 std::vector<std::string> cutLabels_MC = {"no cut", "muon eta", "muon pT", "resonance"};
 const int numCuts_MC = cutLabels_MC.size();
 
-enum parent_groups{ // parent groups for a single muon; used for pythia + powheg
+enum single_muon_parent_group{ // parent groups for a single muon; used for pythia + powheg
   resonance_decay,
   direct_b, // excluding J/Psi
   b_to_c,
@@ -36,27 +36,28 @@ enum hard_scatter_categories{
 };
 
 enum pair_flavor_index{
-  from_resonance,
-  resonance_contaminated,
-  from_single_b,
-  bb,
-  cc,
-  other_flavor,
-  nFlavors
+  from_resonance = 0,
+  resonance_contaminated = 1,
+  from_single_b = 2,
+  bb = 3,
+  cc = 4,
+  one_b_one_c = 5,
+  photon_to_dimuon_splitting = 6, // photon to dimuon splitting, NOT photon to QQbar splitting + semi-leptonic decays
+  drell_yan = 7,
+  other_flavor = 8, // should just be combinatoric pairs
+  nFlavors = 9
 };
 
-enum muon_pair_both_from_open_b_or_c_origin_categories{ // will only be applied to [both from b] or [both fromc c] cases
-  fc,
-  same_gs_phs_fsr, // including photon splitting
-  same_gs_isr_zero_hard_scatt, // both semi-hard pT
-  same_gs_isr_one_hard_scatt, // one FE, one semi-hard pT
-  same_gs_isr_both_hard_scatt, // different hard scatt, should be uncorrelated
-  diff_gs_same_hard_scatt,
-  // diff_gs_same_hard_scatt_XX_to_gg, // both from FSR gs
-  // diff_gs_same_hard_scatt_FE, // one from FSR gs, the other from ISR gs / is incoming
-  // diff_gs_same_hard_scatt_QQprime, // both are either from ISR gs or incoming
-  others, // should be uncorrelated - plot Dphi & print out to check
-  drell_yan // is a muon pair origin category, but never filled for HF muon pairs
+enum muon_pair_both_from_open_HF_origin_catgr{ // will only be applied to [both from b] or [both fromc c] cases
+  fc = 0,
+  same_gs_fsr = 1, // including photon splitting
+  same_phs_fsr = 2, // including photon splitting
+  same_gs_isr_zero_hard_scatt = 3, // both semi-hard pT
+  same_gs_isr_one_hard_scatt = 4, // one FE, one semi-hard pT
+  diff_gs_same_hard_scatt = 5,
+  others = 6, // should just be combinatorid + be uncorrelated - plot Dphi & print out to check
+  nOrigins = 7, // put this in front of non-HF --> do NOT fill hists for non-HF
+  not_both_from_open_and_different_HF_hadrons = 8 // pairs from single-b / resonances / resonance-contamined also goes here
 };
 
 enum powheg_ancestor_categories{
