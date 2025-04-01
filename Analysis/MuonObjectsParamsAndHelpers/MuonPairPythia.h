@@ -19,27 +19,25 @@ public:
   int   m2_parent_group;
 
   bool  from_same_b;
-  bool  from_drell_yan;
-  bool  from_photo2dimuon;
 
-  // int hard_scatt_type;
+  bool  from_same_ancestors; // same ancestors at the (latest non-HQ) partonic level
 
-  bool  from_same_ancestors;
-  bool  both_from_b;
-  bool  one_from_b_one_from_c;
-  bool  both_from_c;
   bool  from_same_resonance;
   bool  resonance_contaminated;
 
-  bool data_resonance_or_reso_contam_tagged_old; // pairs tagged as either from resonances or contaminated by resonances using old data resonance cuts
-  bool data_resonance_or_reso_contam_tagged_new; // pairs tagged as either from resonances or contaminated by resonances using new data resonance cuts
+  bool  data_resonance_or_reso_contam_tagged_old; // pairs tagged as either from resonances or contaminated by resonances using old data resonance cuts
+  bool  data_resonance_or_reso_contam_tagged_new; // pairs tagged as either from resonances or contaminated by resonances using new data resonance cuts
 
   int   m1_hard_scatt_category;
   int   m2_hard_scatt_category;
+  
+  int   muon_pair_flavor_category;
   int   muon_pair_origin_category;
 
-  bool m1_from_pdf;
-  bool m2_from_pdf;
+  bool  pair_origin_analysis_skipped;
+
+  bool  m1_from_pdf;
+  bool  m2_from_pdf;
 
   double QHard;
   double pTHat;
