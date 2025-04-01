@@ -144,7 +144,7 @@ public:
 double ParamsSet::PI = acos(-1.0);
 
 float ParamsSet::deltaR_thrsh[ndRselcs] = {0.8,1.2,5.75};
-float ParamsSet::deltaR_thrsh_zoomin = 1.0;
+float ParamsSet::deltaR_thrsh_zoomin = 0.8;
 
 std::vector<std::array<float,2>> ParamsSet::charge_eta_gap_cuts = {{0.56,0.67}, {1.064,1.29}, {-1.29,-1.12}};
 std::vector<float> ParamsSet::pTbins = {4.,5.,6.,7.,8.,9.,10.,12.,15.,20.};
