@@ -11,7 +11,7 @@
 #include  <stdlib.h>
 #include <fstream>
 #include "../MuonObjectsParamsAndHelpers/ParamsSet.h"
-#include "../MuonObjectsParamsAndHelpers/muon_pair_enums_MC.h"
+#include "../MuonObjectsParamsAndHelpers/muon_pair_enums_MC_utils.h"
 
 #include "vector"
 #include "TH1D.h"
@@ -111,38 +111,33 @@ private:
 
     TH2D* h_eta1_eta2_dphicut[ParamsSet::ndphiselcs][ParamsSet::nSigns];
 
-    static constexpr int nAncestorGroups = 5;
-    static constexpr int nAncestorGroupsTotal = nAncestorGroups+1;
-
-    std::string ancestor_grp_labels[nAncestorGroupsTotal] = {"_GS_ISR_no_HS", "_gs_ISR_one_hard_scatt", "_diff_GS_same_HS", "_FC", "_gs_FSR", "_others"};
-    int ancestor_grps[nAncestorGroups] = {same_gs_isr_zero_hard_scatt, same_gs_isr_one_hard_scatt, diff_gs_same_hard_scatt, fc, same_gs_phs_fsr};
-
+    std::map<int,std::string> origin_grp_map;
     std::map<int,std::string> flavor_grp_map;
 
-    TH1D* h_DR_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
-    TH1D* h_DR_zoomin_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
-    TH1D* h_Deta_zoomin_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
-    TH1D* h_Dphi_zoomin_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
-    TH1D* h_DR_jacobian_corrected_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
-    TH1D* h_DR_zoomin_jacobian_corrected_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
-    TH1D* h_psrapidity_ordered_pt_asym_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
-    TH1D* h_pt_asym_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
-    TH1D* h_pair_pt_ptlead_ratio_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
-    TH1D* h_pair_pt_jacobian_corrected_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
+    TH1D* h_DR_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
+    TH1D* h_DR_zoomin_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
+    TH1D* h_Deta_zoomin_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
+    TH1D* h_Dphi_zoomin_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
+    TH1D* h_DR_jacobian_corrected_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
+    TH1D* h_DR_zoomin_jacobian_corrected_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
+    TH1D* h_psrapidity_ordered_pt_asym_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
+    TH1D* h_pt_asym_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
+    TH1D* h_pair_pt_ptlead_ratio_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
+    TH1D* h_pair_pt_jacobian_corrected_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
 
-    TH1D* h_Qsplit_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
-    TH1D* h_Qsplit_pTHat_ratio_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
-    TH1D* h_Qsplit_mHat_ratio_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
+    TH1D* h_Qsplit_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
+    TH1D* h_Qsplit_pTHat_ratio_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
+    TH1D* h_Qsplit_mHat_ratio_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
     
-    TH2D* h_Deta_Dphi_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
-    TH2D* h_minv_pair_pt_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
-    TH2D* h_minv_pair_pt_zoomin_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
-    TH2D* h_minv_pair_pt_jacobian_corrected_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
-    TH2D* h_minv_pair_pt_zoomin_jacobian_corrected_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
-    TH2D* h_minv_pair_pt_log_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
-    TH2D* h_ptlead_pair_pt_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
-    TH2D* h_ptlead_pair_pt_zoomin_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
-    TH2D* h_ptlead_pair_pt_log_ancestor_binned[ParamsSet::nSigns][nAncestorGroupsTotal];
+    TH2D* h_Deta_Dphi_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
+    TH2D* h_minv_pair_pt_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
+    TH2D* h_minv_pair_pt_zoomin_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
+    TH2D* h_minv_pair_pt_jacobian_corrected_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
+    TH2D* h_minv_pair_pt_zoomin_jacobian_corrected_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
+    TH2D* h_minv_pair_pt_log_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
+    TH2D* h_ptlead_pair_pt_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
+    TH2D* h_ptlead_pair_pt_zoomin_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
+    TH2D* h_ptlead_pair_pt_log_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
 
     TH1D* h_DR_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
     TH1D* h_DR_zoomin_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
@@ -205,6 +200,9 @@ private:
     double Qsplit[nFiles][nKinRanges][ParamsSet::nSigns];
     double mHard_relevant[nFiles][nKinRanges][ParamsSet::nSigns];
 
+    int muon_pair_flavor_category[nFiles][nKinRanges][ParamsSet::nSigns];
+    int muon_pair_origin_category[nFiles][nKinRanges][ParamsSet::nSigns];
+
     bool from_same_resonance[nFiles][nKinRanges][ParamsSet::nSigns];
     bool resonance_contaminated[nFiles][nKinRanges][ParamsSet::nSigns];
     bool from_same_b[nFiles][nKinRanges][ParamsSet::nSigns];
@@ -212,7 +210,6 @@ private:
     bool both_from_c[nFiles][nKinRanges][ParamsSet::nSigns];
     bool data_resonance_or_reso_contam_tagged_old[nFiles][nKinRanges][ParamsSet::nSigns];
     bool data_resonance_or_reso_contam_tagged_new[nFiles][nKinRanges][ParamsSet::nSigns];
-    int muon_pair_origin_category[nFiles][nKinRanges][ParamsSet::nSigns];
 
     float pair_dPoverP[nFiles][nKinRanges][ParamsSet::nSigns];
     float pt_lead[nFiles][nKinRanges][ParamsSet::nSigns];
