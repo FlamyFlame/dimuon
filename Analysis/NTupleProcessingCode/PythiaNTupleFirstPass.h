@@ -17,6 +17,8 @@ private:
 
     ParamsSet pms;
 
+    float low_minv_threshold = 0.6; // minv threshold where very low minv backgrounds start to take over single-b signal events
+
     static const int nBeamTypes = 4;
 	static const int nKinRanges = 5;
 
@@ -169,7 +171,7 @@ private:
     bool m1_osc;
     bool m2_osc;
 
-    bool from_same_gluon_splitting;
+    bool from_same_gluon_photon_splitting_or_both_HQ_incoming;
 
     double skipped_event_crossx = 0;
     bool skip_event; // this should only be used rarely
@@ -212,7 +214,8 @@ private:
     std::ofstream* m_very_bad_warning_file = nullptr;
     std::ofstream* m_very_low_minv_resonance_file = nullptr;
     std::ofstream* m_hard_scattering_warning_file = nullptr;
-    std::ofstream* m_others_category_file = nullptr;
+    std::ofstream* m_HF_pair_origin_others_category_file = nullptr;
+    std::ofstream* m_other_flavor_category_file = nullptr;
     std::ofstream* m_b_parent_file[ParamsSet::nSigns][2];
     std::ofstream* m_c_parent_file[ParamsSet::nSigns][2];
 
@@ -360,10 +363,11 @@ private:
 public :
 
     bool print_prt_history = false;
-    bool print_others_history = true;
+    bool print_HF_pair_origin_others_history = false;
+    bool print_other_flavor_history = false;
     bool print_unspecified_parent = false;
     bool print_bad_warnings = false;
-    bool print_very_low_minv = false;
+    bool print_low_minv_resonances = false;
     bool print_FE = false;
 
     bool turn_data_resonance_cuts_on = false; // turn on minv-based data cuts for resonances: by default false
