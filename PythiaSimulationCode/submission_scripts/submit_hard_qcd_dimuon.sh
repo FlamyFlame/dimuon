@@ -1,3 +1,12 @@
+#!/bin/bash
+# program idea: runs pythia simulation jobs with the job-name as input argument
+# specifies code + output-file directories and job types (the nucleon-nucleon combinations: pp, pn, np, nn)
+# compiles the latest .cc code, makes log + output-file directories for each job
+# calculate #jobs for each (job type, kinematic range) combination 
+# makes (kinematic range, job type)-specific logfile + outputfile sub-directories in the output area
+# then for each job, copies over the executable, writes condor-submission script + bash script (sets up environment + runs the executable) , and condor_submit the condor script
+
+
 # program requires a non-empty string as its first (and only) argument
 if [ ${#1} -eq 0 ]
 then
@@ -16,7 +25,9 @@ PNJOBS=6
 NPJOBS=6
 NNJOBS=9
 
-codedir=/usatlas/u/yuhanguo/workarea/pythia/SimulationCode
+subm_script_dir=$(pwd) # current directory where the submission scripts are
+
+codedir=/usatlas/u/yuhanguo/workarea/dimuon_codes/PythiaSimulationCode
 code=RunHardQCD_dimuon # The executable you want to run copies of
 
 outputpath=/usatlas/u/yuhanguo/usatlasdata/pythia/${job_name} # Where all the results will end up
@@ -59,9 +70,9 @@ for k in $(seq 0 4); do # kinematic range
 
   njobs=($[ PPJOBS * factor ] $[ PNJOBS * factor ] $[ NPJOBS * factor ] $[ NNJOBS * factor ])
 
-  for i in ${!njobs[@]}; do # loop over the indices of the njobs (and job_types) array
-    njob=${njobs[i]} # the i-th element in the array njobs - number of jobs to generate
-    job_type=${job_types[i]} # the i-th element in the array job_types - the current job type
+  for itype in ${!njobs[@]}; do # loop over the indices of the njobs (and job_types) array
+    njob=${njobs[itype]} # the itype-th element in the array njobs - number of jobs to generate
+    job_type=${job_types[itype]} # the itype-th element in the array job_types - the current job type
   
 
     mkdir -p $outputpath/k${k}/${job_type}
@@ -71,7 +82,7 @@ for k in $(seq 0 4); do # kinematic range
     #   echo "generating "${njob}" jobs in each kinematic range for job type "${job_type} # for sanity check
     # fi
 
-    for job in $(seq 1 $njob); do # the i-th job for a given beam setup (job type) and given kinematic range
+    for job in $(seq 1 $njob); do # the itype-th job for a given beam setup (job type) and given kinematic range
       rm -rf ${job_type}_k${k}_jobs_${job_name}/job$job         # If the job folder already existed, delete it
       mkdir ${job_type}_k${k}_jobs_${job_name}/job$job          # Make a new job folder
       cp $codedir/$code ${job_type}_k${k}_jobs_${job_name}/job$job  # Copy the code executable into that folder
@@ -79,13 +90,12 @@ for k in $(seq 0 4); do # kinematic range
 
       dir=$(pwd)/${job_type}_k${k}_jobs_${job_name}/job$job     # The directory that the job executes in
       echo "Initialdir      = $dir" >>$file       # Set the different folders for job executions
-      echo "Arguments       = \"${job} ${k} ${i} \"" >>$file  # Set the different arguments (random seeds)
+      echo "Arguments       = \"${job} ${k} ${itype} \"" >>$file  # Set the different arguments (random seeds)
       echo "queue" >>$file                        # The job is good to go and condor will queue it
 
       # Now for the fun job of using a bash script to write a bash script
       echo "#!/bin/bash">>${job_type}_k${k}_jobs_${job_name}/job$job/run.sh          # Set up the bash file which will run your code
-      # echo "source /usatlas/u/yuhanguo/workarea/dimuon_codes/pythia/PythiaEnvSetup.sh">>${job_type}_k${k}_jobs_${job_name}/job$job/run.sh          # Source your setup file to make sure all requisite libraries are available
-      echo "source /usatlas/u/yuhanguo/workarea/pythia/setup.sh">>${job_type}_k${k}_jobs_${job_name}/job$job/run.sh          # Source your setup file to make sure all requisite libraries are available
+      echo "source $codedir/PythiaEnvSetup.sh">>${job_type}_k${k}_jobs_${job_name}/job$job/run.sh          # Source your setup file to make sure all requisite libraries are available
       echo "./$code \${1} \${2} \${3}">>${job_type}_k${k}_jobs_${job_name}/job$job/run.sh        # Execute the code with the argument condor provides
 
       echo "mv $output $outputpath/k${k}/${job_type}/pytree_\${1}.root">>${job_type}_k${k}_jobs_${job_name}/job$job/run.sh # Move the output tree to the right spot
@@ -97,4 +107,4 @@ done
 
 condor_submit $file  # All done! Let condor work its magic.
 
-cd /usatlas/u/yuhanguo/workarea/pythia/
+cd $subm_script_dir
