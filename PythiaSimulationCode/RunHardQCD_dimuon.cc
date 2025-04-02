@@ -58,6 +58,8 @@ int main(int argc, char **argv)
   else if (kinematicRange == 2) nEvent = 5000;
   else nEvent = 20000;
 
+  double muon_min_pT_required = 3.7;
+
   // int nEvent = 200;
    // The total number of events we will end up keeping
   int nTried =nEvent; // To be modified -- the total number of events generated without cuts
@@ -350,7 +352,7 @@ int main(int argc, char **argv)
       if(p.status() > 0){
       	int aid=p.idAbs();
       	if (aid==13){
-      	  if (std::abs(p.pT())>3.5){
+      	  if (std::abs(p.pT())> muon_min_pT_required){
       	    if (std::abs(p.eta())<2.5){
       	      b_nmuons++;
               b_muon_inds->push_back(ip);
