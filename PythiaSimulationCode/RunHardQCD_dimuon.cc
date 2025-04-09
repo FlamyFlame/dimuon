@@ -459,6 +459,8 @@ int main(int argc, char **argv)
   printf("In total (ignoring initialization), took %.2f seconds to generate %d 2-muon events.\n", total_time_used, nEvent); // for sanity check - output every single event number with the time expense of the current event
   printf("Total number of trials for %d 2-muon events is: %d\n", nEvent, nTried); // for sanity check - output every single event number with the time expense of the current event
   printf("The efficiency is: %f\n", efficiency);
+  printf("DEBUG:: The value of sigmaGen() (unit: mb) is: %f\n", info.sigmaGen());
+  printf("DEBUG:: The value of weightSum() is: %f\n", info.weightSum());
 
   // Branch the tree, at first mostly with parameters of the simulation.
   meta_tree->Branch("nEvent",&nEvent);
@@ -486,13 +488,23 @@ int main(int argc, char **argv)
     double s1=info.sigmaGen(jproc);
     sigma->push_back(s1);
   }
+
   // Get EVENT WEIGHT in unit of microbran
-  // Important: info.weightSum() == nTried
-  // info.sigmaGen() by itself is the total cross section 
-  // in unit of minibarn (total = obtained by summing over all contributing processes)
-  // the correct event weight (for histograms) is
-  // crossx * efficiency / n_passing = crossx / n_tried
-  // which is what we are outputting
+  // This EVENT WEIGHT is sample average of crossx (dimuon events) in the current kinematic range - explained below:
+      // pythia does not record "crossx" of each single event (single events all have unit weight)
+      // instead, it samples events following a probability distribution, meaning for any subregion A in total phase space
+      // crossx(A) / crossx(total, hard QCD) = nEvents(A) / nEvents(total, hard QCD)
+      // This equation means we can find the average crossx of events passing ANY filter (i.e, occupying any subregion of phase space)
+      // using only the crossx + nEvents for ALL hard QCD events (unfiltered)
+      // here, subregion A is the region in hard QCD phase space where the event has [at least two output muons with pT > 3.7GeV && |eta| < 2.5]
+      // info.sigmaGen() gives the total crossx sum of ALL hardQCD:All events accepted by pythia
+      // info.weightSum() gives the total #events of hardQCD:All events accepted by pythia
+      // hence, eventWeight := crossx(total, hardQCD) / nEvents (total, hardQCD) = crossx(events passing dimuon filter) / nEvents (events passing dimuon filter)
+      // --> eventWeight is the average crossx of events passing dimuon filter in the current kinematic range
+      // explained from a frequetist PoV, when we require N events passing dimuon cut per job (e.g, 10 for k0, 20k for k4)
+      // for each job in kinematic range kn, we are making an estimate of the truth observable: crossx of dimuon events with pT eta cuts in current kinematic range
+      // using a sample of size N: our estimate for this truth crossx is the sample average: crossx(events passing) / nEvents (events passing)
+      // which is the eventWeight
   eventWeight=info.sigmaGen()*1e3 / info.weightSum(); // crossx / ntried (unit: microbarn)
   meta_tree->Fill(); // Write meta data
 

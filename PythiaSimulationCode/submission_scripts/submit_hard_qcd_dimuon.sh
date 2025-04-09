@@ -60,9 +60,7 @@ for k in $(seq 0 4); do # kinematic range
 
   mkdir -p $outputpath/k${k}
 
-  # if [ $k -eq 0 ]; then factor=20
   if [ $k -eq 0 ]; then factor=80
-  # elif [ $k -eq 1 ]; then factor=10
   elif [ $k -eq 1 ]; then factor=40
   elif [ $k -eq 2 ]; then factor=4
   else factor=1
