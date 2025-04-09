@@ -264,6 +264,7 @@ ParamsSet::ParamsSet(){
    	minv_cuts_old.push_back({9.08,10.5}); // previously 9 - 9.8
 
    	// new set of minv cut
+  	minv_cuts.push_back({0.,0.6});
   	minv_cuts.push_back({0.72,0.85});
   	minv_cuts.push_back({0.94,1.06});
    	minv_cuts.push_back({2.9,3.3});
