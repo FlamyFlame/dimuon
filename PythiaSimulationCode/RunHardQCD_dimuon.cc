@@ -458,7 +458,7 @@ int main(int argc, char **argv)
   printf("In the kinematic range: pTHatMin = %.0f, pTHatMax = %.0f\n", pTHatMin, pTHatMax);
   printf("In total (ignoring initialization), took %.2f seconds to generate %d 2-muon events.\n", total_time_used, nEvent); // for sanity check - output every single event number with the time expense of the current event
   printf("Total number of trials for %d 2-muon events is: %d\n", nEvent, nTried); // for sanity check - output every single event number with the time expense of the current event
-  printf("The efficiency is: %f\n", efficiency);
+  printf("The efficiency is: %g\n", efficiency); // %g ensures values smaller than 1e-6 gets printed correctly
   printf("DEBUG:: The value of sigmaGen() (unit: mb) is: %f\n", info.sigmaGen());
   printf("DEBUG:: The value of weightSum() is: %f\n", info.weightSum());
 
