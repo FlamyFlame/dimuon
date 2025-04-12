@@ -31,12 +31,7 @@ private:
     // bool isScram = false;
 
   	ParamsSet pms;
-    // static const int nFiles = 3;
-    static const int nFiles = 2;
-    static const int nKinRanges = 5;
     static const int nDphis = 2;
-    // static const int pair_flavor_index::nFlavors = ; // both from b, both from c, one b one c
-    std::vector<float> kinRanges = {5., 10., 25., 60., 120., 3200.};
 
     std::string with_data_resonance_cuts_suffix;
 
@@ -161,77 +156,50 @@ private:
     TH2D* h_ptlead_pair_pt_log_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
 
 
-    TH1D* h_kinbin_pair_dP_overP[nKinRanges][nDphis][ParamsSet::nSigns];
-    TH1D* h_kinbin_Dphi[nKinRanges][nDphis][ParamsSet::nSigns];
-    TH1D* h_kinbin_DR[nKinRanges][nDphis][ParamsSet::nSigns];
-    TH1D* h_kinbin_pair_y[nKinRanges][nDphis][ParamsSet::nSigns];
-    TH1D* h_kinbin_pt_asym[nKinRanges][nDphis][ParamsSet::nSigns];
-    TH1D* h_kinbin_pair_pt_ptlead_ratio[nKinRanges][nDphis][ParamsSet::nSigns];
-    TH2D* h_kinbin_eta_avg_Dphi[nKinRanges][nDphis][ParamsSet::nSigns];
-    TH2D* h_kinbin_Deta_Dphi[nKinRanges][nDphis][ParamsSet::nSigns];
-    TH2D* h_kinbin_eta1_eta2[nKinRanges][nDphis][ParamsSet::nSigns];
-    TH2D* h_kinbin_eta_avg_Deta[nKinRanges][nDphis][ParamsSet::nSigns];
-    TH2D* h_kinbin_pt1_pt2[nKinRanges][nDphis][ParamsSet::nSigns];
-    TH2D* h_kinbin_ptlead_pair_pt[nKinRanges][nDphis][ParamsSet::nSigns];
-    TH2D* h_kinbin_minv_pair_pt[nKinRanges][nDphis][ParamsSet::nSigns];
-    TH2D* h_kinbin_minv_pair_pt_log[nKinRanges][nDphis][ParamsSet::nSigns];
-
-
 // --------------------- input files & trees & data for setting branches---------------------------
 
-   	TFile* inFile[nFiles];
-    // NEED TO CHECK IF NEW AFTER0322 CONTAINS 0429 + IF THE nevents_before_cuts ARE CORRECT
-    std::vector<std::string> file_names = {"/usatlas/u/yuhanguo/usatlasdata/pythia/muon_pairs_pythia_allto0318", "/usatlas/u/yuhanguo/usatlasdata/pythia/muon_pairs_pythia_after0322"};
+   	TFile* inFile;
+    std::string file_name = "/usatlas/u/yuhanguo/usatlasdata/pythia/muon_pairs_pythia_combined";
     
-    // we need to multiply the previous weight for each of the five different kinematic ranges (k_i)
-    // in each of the two files (file A, B) by the corresponding reweight factor
-    // N^i_A / (N^i_A + N^i_B) or N^i_B / (N^i_A + N^i_B), respectively
-    std::vector<std::vector<int>> nevents_before_cuts = {{20000, 50000, 1000000, 1000000, 1000000}, {99910, 400000, 1500000, 1500000, 1500000}};
+    TTree *inTree[ParamsSet::nSigns];
 
+    double weight[ParamsSet::nSigns];
+    double pTHat[ParamsSet::nSigns];
+    double Qsplit[ParamsSet::nSigns];
+    double mHard_relevant[ParamsSet::nSigns];
 
-    std::vector<int> nevents_before_cuts_combined {};
+    int muon_pair_flavor_category[ParamsSet::nSigns];
+    int muon_pair_origin_category[ParamsSet::nSigns];
 
-    // TTree *inTree_ctrbin[nKinRanges][ParamsSet::nSigns];
-    // TTree *inTree[ParamsSet::nSigns];
-    TTree *inTree[nFiles][nKinRanges][ParamsSet::nSigns];
+    bool from_same_resonance[ParamsSet::nSigns];
+    bool resonance_contaminated[ParamsSet::nSigns];
+    bool from_same_b[ParamsSet::nSigns];
+    bool both_from_b[ParamsSet::nSigns];
+    bool both_from_c[ParamsSet::nSigns];
+    bool data_resonance_or_reso_contam_tagged_old[ParamsSet::nSigns];
+    bool data_resonance_or_reso_contam_tagged_new[ParamsSet::nSigns];
 
-    double weight[nFiles][nKinRanges][ParamsSet::nSigns];
-    double pTHat[nFiles][nKinRanges][ParamsSet::nSigns];
-    double Qsplit[nFiles][nKinRanges][ParamsSet::nSigns];
-    double mHard_relevant[nFiles][nKinRanges][ParamsSet::nSigns];
-
-    int muon_pair_flavor_category[nFiles][nKinRanges][ParamsSet::nSigns];
-    int muon_pair_origin_category[nFiles][nKinRanges][ParamsSet::nSigns];
-
-    bool from_same_resonance[nFiles][nKinRanges][ParamsSet::nSigns];
-    bool resonance_contaminated[nFiles][nKinRanges][ParamsSet::nSigns];
-    bool from_same_b[nFiles][nKinRanges][ParamsSet::nSigns];
-    bool both_from_b[nFiles][nKinRanges][ParamsSet::nSigns];
-    bool both_from_c[nFiles][nKinRanges][ParamsSet::nSigns];
-    bool data_resonance_or_reso_contam_tagged_old[nFiles][nKinRanges][ParamsSet::nSigns];
-    bool data_resonance_or_reso_contam_tagged_new[nFiles][nKinRanges][ParamsSet::nSigns];
-
-    float pair_dPoverP[nFiles][nKinRanges][ParamsSet::nSigns];
-    float pt_lead[nFiles][nKinRanges][ParamsSet::nSigns];
-    float pair_pt[nFiles][nKinRanges][ParamsSet::nSigns];
-    float pair_eta[nFiles][nKinRanges][ParamsSet::nSigns];
-    float pair_y[nFiles][nKinRanges][ParamsSet::nSigns];
-    float asym[nFiles][nKinRanges][ParamsSet::nSigns];
-    float dpt[nFiles][nKinRanges][ParamsSet::nSigns];
-    float deta[nFiles][nKinRanges][ParamsSet::nSigns];
-    float etaavg[nFiles][nKinRanges][ParamsSet::nSigns];
-    float phiavg[nFiles][nKinRanges][ParamsSet::nSigns];
-    float dphi[nFiles][nKinRanges][ParamsSet::nSigns];
-    float dr[nFiles][nKinRanges][ParamsSet::nSigns];
-    float minv[nFiles][nKinRanges][ParamsSet::nSigns];
-    float m1pt[nFiles][nKinRanges][ParamsSet::nSigns];
-    float m2pt[nFiles][nKinRanges][ParamsSet::nSigns];
-    float m1eta[nFiles][nKinRanges][ParamsSet::nSigns];
-    float m2eta[nFiles][nKinRanges][ParamsSet::nSigns];
-    float m1phi[nFiles][nKinRanges][ParamsSet::nSigns];
-    float m2phi[nFiles][nKinRanges][ParamsSet::nSigns];
-    // int m1charge[nFiles][nKinRanges][ParamsSet::nSigns];
-    // int m2charge[nFiles][nKinRanges][ParamsSet::nSigns];
+    float pair_dPoverP[ParamsSet::nSigns];
+    float pt_lead[ParamsSet::nSigns];
+    float pair_pt[ParamsSet::nSigns];
+    float pair_eta[ParamsSet::nSigns];
+    float pair_y[ParamsSet::nSigns];
+    float asym[ParamsSet::nSigns];
+    float dpt[ParamsSet::nSigns];
+    float deta[ParamsSet::nSigns];
+    float etaavg[ParamsSet::nSigns];
+    float phiavg[ParamsSet::nSigns];
+    float dphi[ParamsSet::nSigns];
+    float dr[ParamsSet::nSigns];
+    float minv[ParamsSet::nSigns];
+    float m1pt[ParamsSet::nSigns];
+    float m2pt[ParamsSet::nSigns];
+    float m1eta[ParamsSet::nSigns];
+    float m2eta[ParamsSet::nSigns];
+    float m1phi[ParamsSet::nSigns];
+    float m2phi[ParamsSet::nSigns];
+    // int m1charge[ParamsSet::nSigns];
+    // int m2charge[ParamsSet::nSigns];
 
 // --------------------- class methods ---------------------------
 
@@ -241,14 +209,13 @@ private:
    	void ProcessData();
     void WriteOutput();
     bool PassSingleMuonGapCut(float meta, float mpt, int mcharge);
-   	void FillHistograms(int nfile, int nkin, int nsign);
-    // void FillCrossxHistogramsTruthSingleB(int nfile, int nkin, int nsign);    
-   	void FillPtBinnedHistograms(int nkin, int npt, int nsign);
+   	void FillHistograms(int nsign);
+    // void FillCrossxHistogramsTruthSingleB(int nsign);    
+   	void FillPtBinnedHistograms(int npt, int nsign);
 
 public:
     int mode = 1;
     bool with_data_resonance_cuts = false;
-    bool plot_kin_binned_histograms = false; // if true, plot kinematic-range-binned histograms (default false)
     // std::string file_suffix = "_allto0318";
     // std::string file_suffix = "_after0322";
   	MuonPairPlottingPythia();
