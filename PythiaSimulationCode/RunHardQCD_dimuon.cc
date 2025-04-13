@@ -489,22 +489,24 @@ int main(int argc, char **argv)
     sigma->push_back(s1);
   }
 
-  // Get EVENT WEIGHT in unit of microbran
-  // This EVENT WEIGHT is sample average of crossx (dimuon events) in the current kinematic range - explained below:
-      // pythia does not record "crossx" of each single event (single events all have unit weight)
-      // instead, it samples events following a probability distribution, meaning for any subregion A in total phase space
-      // crossx(A) / crossx(total, hard QCD) = nEvents(A) / nEvents(total, hard QCD)
-      // This equation means we can find the average crossx of events passing ANY filter (i.e, occupying any subregion of phase space)
-      // using only the crossx + nEvents for ALL hard QCD events (unfiltered)
-      // here, subregion A is the region in hard QCD phase space where the event has [at least two output muons with pT > 3.7GeV && |eta| < 2.5]
-      // info.sigmaGen() gives the total crossx sum of ALL hardQCD:All events accepted by pythia
-      // info.weightSum() gives the total #events of hardQCD:All events accepted by pythia
-      // hence, eventWeight := crossx(total, hardQCD) / nEvents (total, hardQCD) = crossx(events passing dimuon filter) / nEvents (events passing dimuon filter)
-      // --> eventWeight is the average crossx of events passing dimuon filter in the current kinematic range
-      // explained from a frequetist PoV, when we require N events passing dimuon cut per job (e.g, 10 for k0, 20k for k4)
-      // for each job in kinematic range kn, we are making an estimate of the truth observable: crossx of dimuon events with pT eta cuts in current kinematic range
-      // using a sample of size N: our estimate for this truth crossx is the sample average: crossx(events passing) / nEvents (events passing)
-      // which is the eventWeight
+  // Get event weight = [sample average of crossx after filter] / N_{events after filter} in unit of microbarn
+  // If plotting any observable using an output file, with each event weighted by this eventWeight
+  // the final histogram will be normalized to (the sample estimate of) crossx of dimuon events (with pT > 3.7GeV && |eta| < 2.5 cuts)
+  // in the required pTHat range
+
+      // Detailed explanations:
+      // info.sigmaGen() gives the sample-averaged crossx before filter
+      // info.weightSum() gives the total #events before filter
+
+      // Since pythia applies unit weight to each event
+      // for any subregion A in the hardQCD:All phase space
+      // truth crossx(A) / truth crossx(total, hard QCD) = nEvents(A) / nEvents(total, hard QCD)
+      // here, subregion A is the region determined by the dimuon filter, and we estimate truth crossx using the sample average, giving
+      // avg-crossx(after filter) / avg-crossx(before filter) = N_{events after filter} / N_{events before filter}
+      // rearranging terms gives
+      // info.sigmaGen() / info.weightSum() = avg-crossx(before filter) / N_{events before filter}
+      //                                    = avg-crossx( after filter) / N_{events  after filter}
+
   eventWeight=info.sigmaGen()*1e3 / info.weightSum(); // crossx / ntried (unit: microbarn)
   meta_tree->Fill(); // Write meta data
 
