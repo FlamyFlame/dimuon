@@ -37,6 +37,11 @@ private:
     std::string py_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia/";
 
     std::vector<float> kinRanges = {5., 10., 25., 60., 120., 3200.};
+
+    // WARNING: when using 1/njobs_all_files_combined[kin_i] rather than 1/njobs[kin_i]
+    // MUST use combined muon-pairs root file, NOT the individual ones 
+    // (the individual ones will have incorrect weights causing kinematic-range stitching to fail)
+    Long64_t njobs_all_files_combined[nKinRanges] = {11991, 4500, 500, 125, 125};
     
     bool new_run;
     std::string batch_suffix = "";
@@ -174,7 +179,7 @@ private:
     bool from_same_gluon_photon_splitting_or_both_HQ_incoming;
 
     double skipped_event_crossx = 0;
-    bool skip_event; // this should only be used rarely
+    bool skip_event_origin_analysis; // this should only be used rarely
                      // for now, this is used for the "old" runs where the truth_daughters are not recorded
                      // so that if two heavy quarks appear in the same string
                      // we "throw away" the event (still store it as an entry in the muon-pair TTree)
@@ -219,7 +224,7 @@ private:
     std::ofstream* m_b_parent_file[ParamsSet::nSigns][2];
     std::ofstream* m_c_parent_file[ParamsSet::nSigns][2];
 
-    TTree* meta_tree;
+    TTree* meta_tree_out;
     TTree* muonPairOutTree[ParamsSet::nSigns];
     TTree* muonPairOutTreeKinRange[nKinRanges][ParamsSet::nSigns];
 

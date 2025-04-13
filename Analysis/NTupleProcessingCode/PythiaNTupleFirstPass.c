@@ -152,7 +152,7 @@ void PythiaNTupleFirstPass::InitInput(){
                             nevents[ikin] -= nevents_per_file[ikin];
                             continue; // skip this file
                         }
-              evChain->Add((job_path + "pytree_" + std::to_string(lfile) + ".root?#PyTree").c_str());
+                        evChain->Add((job_path + "pytree_" + std::to_string(lfile) + ".root?#PyTree").c_str());
                         metaChain->Add((job_path + "pytree_" + std::to_string(lfile) + ".root?#meta_tree").c_str());
                         // evChain->Add((job_path + "pytree_" + std::to_string(lfile) + ".root?#PyTree").c_str(), 0);
                         // metaChain->Add((job_path + "pytree_" + std::to_string(lfile) + ".root?#meta_tree").c_str(), 0);
@@ -173,6 +173,11 @@ void PythiaNTupleFirstPass::InitInput(){
         nentries_k3 = nevents[3];
         nentries_k4 = nevents[4];
 
+        std::cout << "#events in kin-range k0: " << nevents[0] << std::endl;
+        std::cout << "#events in kin-range k1: " << nevents[1] << std::endl;
+        std::cout << "#events in kin-range k2: " << nevents[2] << std::endl;
+        std::cout << "#events in kin-range k3: " << nevents[3] << std::endl;
+        std::cout << "#events in kin-range k4: " << nevents[4] << std::endl;
         // std::cout << "Before performming GetEntries() for the two TChains." << std::endl;
         // start = clock();
 
@@ -310,44 +315,46 @@ void PythiaNTupleFirstPass::InitOutput(){
 
     // ---------------------------------------------------------------------------------------------------------------------------
 
+    std::string py_dir_output_diagnostic_files = py_dir + "ancestor_tracing_output_diagnostic_files/";
+
     if (print_bad_warnings){
-      m_very_bad_warning_file = new std::ofstream(py_dir + "very_bad_warnings_pythia" + batch_suffix + ".txt");
+      m_very_bad_warning_file = new std::ofstream(py_dir_output_diagnostic_files + "very_bad_warnings_pythia" + batch_suffix + ".txt");
       *m_very_bad_warning_file << "Test writing into warning files [begining]" << std::endl;
-      m_hard_scattering_warning_file = new std::ofstream(py_dir + "hard_scattering_warnings_pythia" + batch_suffix + ".txt");      
+      m_hard_scattering_warning_file = new std::ofstream(py_dir_output_diagnostic_files + "hard_scattering_warnings_pythia" + batch_suffix + ".txt");      
     }
-    m_crossx_summary_file = new std::ofstream(py_dir + "crossx_summary_pythia" + batch_suffix + ".txt");
+    m_crossx_summary_file = new std::ofstream(py_dir_output_diagnostic_files + "crossx_summary_pythia" + batch_suffix + ".txt");
 
     if (print_low_minv_resonances){
-      m_very_low_minv_resonance_file = new std::ofstream(py_dir + "very_low_minv_resonances_pythia" + batch_suffix + ".txt");
+      m_very_low_minv_resonance_file = new std::ofstream(py_dir_output_diagnostic_files + "very_low_minv_resonances_pythia" + batch_suffix + ".txt");
     }
 
     if (print_unspecified_parent){
-      m_unspecified_parent_file = new std::ofstream(py_dir + "unspecified_parents_pythia" + batch_suffix + ".txt");
+      m_unspecified_parent_file = new std::ofstream(py_dir_output_diagnostic_files + "unspecified_parents_pythia" + batch_suffix + ".txt");
     }
 
     if (print_FE){
-      m_FE_file = new std::ofstream(py_dir + "FE_pythia" + batch_suffix + ".txt");
+      m_FE_file = new std::ofstream(py_dir_output_diagnostic_files + "FE_pythia" + batch_suffix + ".txt");
     }
     
     if (print_HF_pair_origin_others_history){ // debug mode for pairs in the "others" category
-      m_HF_pair_origin_others_category_file = new std::ofstream(py_dir + "HF_pair_origin_others_category" + batch_suffix + ".txt");
+      m_HF_pair_origin_others_category_file = new std::ofstream(py_dir_output_diagnostic_files + "HF_pair_origin_others_category" + batch_suffix + ".txt");
     }
 
     if (print_other_flavor_history){ // debug mode for pairs in the "others" category
-      m_other_flavor_category_file = new std::ofstream(py_dir + "other_flavor_category" + batch_suffix + ".txt");
+      m_other_flavor_category_file = new std::ofstream(py_dir_output_diagnostic_files + "other_flavor_category" + batch_suffix + ".txt");
     }
 
     if (print_prt_history){
         for (int isign = 0; isign < ParamsSet::nSigns; isign++){
             for (int jdphi = 0; jdphi < 2; jdphi++){
-                m_b_parent_file[isign][jdphi] = new std::ofstream(Form("%sb_parents_%s%s%s.txt", py_dir.c_str(), sign_labels[isign].c_str(), dphis[jdphi].c_str(), batch_suffix.c_str()));
+                m_b_parent_file[isign][jdphi] = new std::ofstream(Form("%sb_parents_%s%s%s.txt", py_dir_output_diagnostic_files.c_str(), sign_labels[isign].c_str(), dphis[jdphi].c_str(), batch_suffix.c_str()));
             }
         }
     }
     if (print_prt_history){
         for (int isign = 0; isign < ParamsSet::nSigns; isign++){
             for (int jdphi = 0; jdphi < 2; jdphi++){
-                m_c_parent_file[isign][jdphi] = new std::ofstream(Form("%sc_parents_%s%s%s.txt", py_dir.c_str(), sign_labels[isign].c_str(), dphis[jdphi].c_str(), batch_suffix.c_str()));
+                m_c_parent_file[isign][jdphi] = new std::ofstream(Form("%sc_parents_%s%s%s.txt", py_dir_output_diagnostic_files.c_str(), sign_labels[isign].c_str(), dphis[jdphi].c_str(), batch_suffix.c_str()));
             }
         }
     }
@@ -361,12 +368,12 @@ void PythiaNTupleFirstPass::InitOutput(){
     
     m_outfile=new TFile(output_file_path.c_str(), "recreate");
     
-    meta_tree = new TTree("meta_tree","meta_tree");
-    meta_tree->Branch("nentries_k0_before_cuts",nentries_k0);
-    meta_tree->Branch("nentries_k1_before_cuts",nentries_k1);
-    meta_tree->Branch("nentries_k2_before_cuts",nentries_k2);
-    meta_tree->Branch("nentries_k3_before_cuts",nentries_k3);
-    meta_tree->Branch("nentries_k4_before_cuts",nentries_k4);
+    meta_tree_out = new TTree("meta_tree_out","meta_tree_out");
+    meta_tree_out->Branch("nentries_k0_with_3.7GeV_cuts", &nentries_k0, "nentries_k0_with_3.7GeV_cuts/i");
+    meta_tree_out->Branch("nentries_k1_with_3.7GeV_cuts", &nentries_k1, "nentries_k1_with_3.7GeV_cuts/i");
+    meta_tree_out->Branch("nentries_k2_with_3.7GeV_cuts", &nentries_k2, "nentries_k2_with_3.7GeV_cuts/i");
+    meta_tree_out->Branch("nentries_k3_with_3.7GeV_cuts", &nentries_k3, "nentries_k3_with_3.7GeV_cuts/i");
+    meta_tree_out->Branch("nentries_k4_with_3.7GeV_cuts", &nentries_k4, "nentries_k4_with_3.7GeV_cuts/i");
 
     for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
         muonPairOutTree[ksign] = new TTree(Form("muon_pair_tree_sign%u",ksign+1),Form("all muon pairs, sign%u",ksign+1));
@@ -2078,7 +2085,10 @@ void PythiaNTupleFirstPass::ProcessData(){
         mpair->m1.ev_num = jevent;
         mpair->m2.ev_num = jevent;
 
-        mpair->weight     = ev_weight / njobs[ikin];
+        // mpair->weight     = ev_weight / njobs[ikin]; // old version: individual muon-pairs output files can be used by themselves
+                                                        // but combining them for histogram filling requires reweighting
+        mpair->weight     = ev_weight / njobs_all_files_combined[ikin]; // new version: MUST use combined muon-pairs output file
+                                                                        // the individual files will have wrong weights
         mpair->crossx     = mpair->weight * nevents[ikin] / efficiency;
 
         // ------------------------------------------------------------
@@ -2186,7 +2196,7 @@ void PythiaNTupleFirstPass::Run(){
   InitTempVariables();
   InitOutput();
   
-  meta_tree->Fill();
+  meta_tree_out->Fill();
 
   start = clock();
   ProcessData();

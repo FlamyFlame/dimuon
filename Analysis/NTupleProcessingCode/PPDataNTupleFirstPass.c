@@ -21,8 +21,8 @@ PPDataNTupleFirstPass::PPDataNTupleFirstPass(){
   std::cout << "The following public variable(s) should be checked:" << std::endl;
   std::cout << "--> resonance_cut_mode: integer that determines which set of resonant cuts to apply" << std::endl;
   std::cout << "        * resonance_cut_mode = 0: NO resonance cut" << std::endl;
-  std::cout << "        * resonance_cut_mode = 1: old resonance cut" << std::endl;
-  std::cout << "        * resonance_cut_mode = 1: new resonance cut (default)" << std::endl;
+  std::cout << "        * resonance_cut_mode = 1: old resonance cut (default)" << std::endl;
+  std::cout << "        * resonance_cut_mode = 2: new resonance cut" << std::endl;
   std::cout << "        If resonance_cut_mode value is outside {0,1,2}: assume default option" << std::endl;
   std::cout << "--> isTight: boolean, default false - if true: require tight WP; false; require medium WP" << std::endl;
   std::cout << "--> isRun3: boolean, default true - if true: run run3 data; false: run run2 data" << std::endl;

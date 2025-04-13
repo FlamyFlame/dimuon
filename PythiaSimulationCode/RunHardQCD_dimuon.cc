@@ -458,7 +458,9 @@ int main(int argc, char **argv)
   printf("In the kinematic range: pTHatMin = %.0f, pTHatMax = %.0f\n", pTHatMin, pTHatMax);
   printf("In total (ignoring initialization), took %.2f seconds to generate %d 2-muon events.\n", total_time_used, nEvent); // for sanity check - output every single event number with the time expense of the current event
   printf("Total number of trials for %d 2-muon events is: %d\n", nEvent, nTried); // for sanity check - output every single event number with the time expense of the current event
-  printf("The efficiency is: %f\n", efficiency);
+  printf("The efficiency is: %g\n", efficiency); // %g ensures values smaller than 1e-6 gets printed correctly
+  printf("DEBUG:: The value of sigmaGen() (unit: mb) is: %f\n", info.sigmaGen());
+  printf("DEBUG:: The value of weightSum() is: %f\n", info.weightSum());
 
   // Branch the tree, at first mostly with parameters of the simulation.
   meta_tree->Branch("nEvent",&nEvent);
@@ -486,13 +488,25 @@ int main(int argc, char **argv)
     double s1=info.sigmaGen(jproc);
     sigma->push_back(s1);
   }
-  // Get EVENT WEIGHT in unit of microbran
-  // Important: info.weightSum() == nTried
-  // info.sigmaGen() by itself is the total cross section 
-  // in unit of minibarn (total = obtained by summing over all contributing processes)
-  // the correct event weight (for histograms) is
-  // crossx * efficiency / n_passing = crossx / n_tried
-  // which is what we are outputting
+
+  // Get event weight = [sample average of crossx after filter] / N_{events after filter} in unit of microbarn
+  // If plotting any observable using an output file, with each event weighted by this eventWeight
+  // the final histogram will be normalized to (the sample estimate of) crossx of dimuon events (with pT > 3.7GeV && |eta| < 2.5 cuts)
+  // in the required pTHat range
+
+      // Detailed explanations:
+      // info.sigmaGen() gives the sample-averaged crossx before filter
+      // info.weightSum() gives the total #events before filter
+
+      // Since pythia applies unit weight to each event
+      // for any subregion A in the hardQCD:All phase space
+      // truth crossx(A) / truth crossx(total, hard QCD) = nEvents(A) / nEvents(total, hard QCD)
+      // here, subregion A is the region determined by the dimuon filter, and we estimate truth crossx using the sample average, giving
+      // avg-crossx(after filter) / avg-crossx(before filter) = N_{events after filter} / N_{events before filter}
+      // rearranging terms gives
+      // info.sigmaGen() / info.weightSum() = avg-crossx(before filter) / N_{events before filter}
+      //                                    = avg-crossx( after filter) / N_{events  after filter}
+
   eventWeight=info.sigmaGen()*1e3 / info.weightSum(); // crossx / ntried (unit: microbarn)
   meta_tree->Fill(); // Write meta data
 
