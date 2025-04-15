@@ -53,6 +53,8 @@ TrigRates::TrigRates(const std::string& name, ISvcLocator* pSvcLocator)
   declareProperty("IsEvgen"               ,  m_is_evgen                    =false         );//true/false
   declareProperty("UseGRL"                ,  m_use_GRL                     =false         );//true/false
   declareProperty("MaxZvtx"               ,  m_MaxZvtx                     =250           );
+  
+  declareProperty("RunYear"               ,  m_year                        =0          );
 
   declareProperty("StoreAllEvents"        ,  m_StoreAllEvents              =true          );//true,false
   declareProperty("UseTrigger"            ,  m_use_trigger                 =true          );//true,false
@@ -215,7 +217,7 @@ StatusCode TrigRates::initialize(){
   
      Module* evtshape_module;
      if(m_HIEventShapeContainer_key != ""){
-       evtshape_module=new EventShape(evtStore(),m_HIEventShapeContainer_key);
+       evtshape_module=new EventShape(evtStore(),m_HIEventShapeContainer_key, m_year);
        evtshape_module->Init(m_OutTree,1); 
        m_modules.push_back(evtshape_module);
      }

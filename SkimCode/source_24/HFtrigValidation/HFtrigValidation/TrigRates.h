@@ -104,6 +104,7 @@ private:
    Int_t   m_numtrk_HITight_pt500;
    Float_t m_FCalET,m_FCalETP,m_FCalETN;
 
+   UInt_t m_year; // needed for PbPb centrality
 
    bool        m_store_Vtx           = true; //=true then store vertex info           
    std::string m_vtx_container_key;
