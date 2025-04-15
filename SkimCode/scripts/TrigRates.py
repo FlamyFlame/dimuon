@@ -56,18 +56,21 @@ DiMuon_triggers =[]
 ZDC_Configuration="PbPb2018" 
 
 if do_hi2018:
+  RunYear          =2018 # only set RunYear for PbPb (needed for centrality)
   GRL              =["data18_hi.periodAllYear_DetStatus-v106-pro22-14_Unknown_PHYS_HeavyIonP_All_Good.xml"]
   InputFile        ="/afs/cern.ch/user/s/soumya/workarea/DATA/JobTestData/data18_hi/data18_hi.00366142.physics_HardProbes.merge.AOD.f1027_m2037._lb0570._0003.1"
   MinBias_triggers =[]
   DiMuon_triggers  =["HLT_2mu3","HLT_2mu4","HLT_2mu6","HLT_2mu8","HLT_mu4_mu4noL1"]
   ZDC_Configuration="PbPb2018" 
 elif do_hi2015:
+  RunYear          =2015 # only set RunYear for PbPb (needed for centrality)
   GRL              =["data15_hi.periodAllYear_DetStatus-v75-repro20-01_DQDefects-00-02-02_PHYS_HeavyIonP_All_Good.xml"]
   InputFile        ="/afs/cern.ch/user/s/soumya/workarea/DATA/JobTestData/data15_hi/AOD.16615737._000065.pool.root.1"
   MinBias_triggers =[]
   DiMuon_triggers  =["HLT_2mu3","HLT_2mu4","HLT_2mu6","HLT_2mu8","HLT_mu4_mu4noL1"]
   ZDC_Configuration="PbPb2015" 
 elif do_hi2023:
+  RunYear          =2023 # only set RunYear for PbPb (needed for centrality)
   GRL              =["data23_hi.periodAllYear_DetStatus-v113-pro31-08_MERGED_PHYS_HeavyIonP_All_Good.xml"]
   InputFile        ="/eos/user/y/yuhang/data/data23_hi_testfile_AOD/data23_hi.00462240.physics_HardProbes.merge.AOD.f1399_m2209._lb0409._0002.1"
   Muon_triggers    =["HLT_mu4_L1MU3V"  ,
@@ -79,7 +82,8 @@ elif do_hi2023:
   DiMuon_triggers  =["HLT_2mu4_L12MU3V","HLT_mu4_mu4noL1_L1MU3V"]
   ZDC_Configuration=""
 elif do_hi2024:
-  GRL              =["data24_hi_GRL_unofficial.xml"]
+  RunYear          =2024 # only set RunYear for PbPb (needed for centrality)
+  GRL              =["physics_HI2024_50ns.xml"]
   InputFile        ="/eos/atlas/atlastier0/rucio/data24_hi/physics_HardProbes/00489961/"\
                     "data24_hi.00489961.physics_HardProbes.merge.AOD.f1550_m2267/"\
                     "data24_hi.00489961.physics_HardProbes.merge.AOD.f1550_m2267._lb0390._0001.1"
@@ -92,7 +96,7 @@ elif do_hi2024:
   DiMuon_triggers  =["HLT_2mu4_L12MU3V","HLT_mu4_mu4noL1_L1MU3V"]
   ZDC_Configuration=""
 elif do_pp2024:
-  GRL              =["data24_5p36TeV_GRL_unofficial.xml"]
+  GRL              =["physics_2024ppRef_25ns.xml"]
   InputFile        ="/eos/atlas/atlastier0/rucio/data24_5p36TeV/physics_Main/00488474/"\
                     "data24_5p36TeV.00488474.physics_Main.merge.AOD.f1529_m2259/"\
                     "data24_5p36TeV.00488474.physics_Main.merge.AOD.f1529_m2259._lb1102._0011.1"
