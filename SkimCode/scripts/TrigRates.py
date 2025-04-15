@@ -337,6 +337,7 @@ TrigRatesAlg.IsZdcCalib              =False                     #disables storin
 TrigRatesAlg.StoreZdc                =0                       #bitflag
 TrigRatesAlg.ZdcAuxSuffix            =ZdcAuxSuffix              #Suffix for container when Reprozessing ZDC
 
+TrigRatesAlg.RunYear                 =RunYear
 TrigRatesAlg.IsEvgen                 =False                     #True only for truth-only input (i.e. reco is missing)
 TrigRatesAlg.UseGRL                  =True                      #Automatically ignored for MC
 TrigRatesAlg.StoreAllEvents          =False                     #Typically true only for MC & CalibStream, ignores Trigger requirement if set to "True"
