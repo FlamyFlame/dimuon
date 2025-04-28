@@ -1,7 +1,7 @@
 ##  mc.Py8EG_A14NNPDF23LO_HardQCD_DiMuon_5p02TeV_pTHat15_45.py
 ## ------------------------------------------------------------------
-##  Pythia 8 Hard‑QCD → all, √s = 5.02 TeV, 15 < p̂T < 45 GeV,
-##  require ≥2 muons with pT > 3.7 GeV (no charge requirement).
+##  Pythia8 Hard‑QCD → all, √s = 5.02TeV, pTHatMin<p̂T<pTHatMax,
+##  require ≥2 muons with pT >3.7GeV (no charge requirement).
 ## ------------------------------------------------------------------
 
 # ---------------------------------------------------------------
@@ -46,7 +46,7 @@ if hasattr(runArgs, 'pTHatMax'):
 # ---------------------------------------------------------------
 #   Beam energy and PDF for 5.02TeV Pb–Pb (nCTEQ15 optional)
 # ---------------------------------------------------------------
-print('IDA!!!', idA)
+print('IDA!!!', idA) # make sure the run arguments are correctly passed
 print('IDB!!!', idB)
 
 genSeq.Pythia8.Commands += [
@@ -83,7 +83,7 @@ if hasattr(testSeq, 'TestHepMC'):
 
 
 # ---------------------------------------------------------------
-#   Dimuon truth filter (≥2 muons with pT > 3.7 GeV)
+#   Dimuon truth filter (≥2 muons with pT > 3.7GeV)
 # ---------------------------------------------------------------
 
 # muon filter
