@@ -1981,9 +1981,9 @@ StatusCode TrigRates::ProcessTruth(){
       return StatusCode::FAILURE;
    }
    m_EventWeights.clear();
-   //for(float weight:l_EventInfo->mcEventWeights()){
-   //  m_EventWeights.push_back(weight);
-   //}
+   for(float weight:l_EventInfo->mcEventWeights()){
+    m_EventWeights.push_back(weight);
+   }
    //-------------------------------
 
    const xAOD::TruthParticleContainer *l_TruthParticleContainer;
@@ -2073,8 +2073,8 @@ StatusCode TrigRates::ProcessTruth(){
      m_truth_muon_status  .clear();
      for(unsigned int index1=0;index1<m_truth_pt.size();index1++){
        int id1_=fabs(m_truth_id[index1]);
-       //if(id1_!=13 || m_truth_status[index1]!=true) continue;
-       if((id1_!=13 && id1_!=15 && id1_!=11 && id1_!=211) || m_truth_status[index1]!=true) continue;
+       if(id1_!=13 || m_truth_status[index1]!=true) continue;
+       // if((id1_!=13 && id1_!=15 && id1_!=11 && id1_!=211) || m_truth_status[index1]!=true) continue;
        m_truth_muon_pt      .push_back(m_truth_pt     [index1]);
        m_truth_muon_eta     .push_back(m_truth_eta    [index1]);
        m_truth_muon_phi     .push_back(m_truth_phi    [index1]);
@@ -2114,8 +2114,8 @@ StatusCode TrigRates::ProcessTruth(){
      m_pass=0;
      for(unsigned int index1=0;index1<m_truth_pt.size();index1++){
        int id1_=fabs(m_truth_id[index1]);
-       //if(id1_!=13 || m_truth_status[index1]!=true) continue;
-       if((id1_!=13 && id1_!=15 && id1_!=11 && id1_!=211) || m_truth_status[index1]!=true) continue;
+       if(id1_!=13 || m_truth_status[index1]!=true) continue;
+       // if((id1_!=13 && id1_!=15 && id1_!=11 && id1_!=211) || m_truth_status[index1]!=true) continue;
        float pt1    =m_truth_pt     [index1];
        float eta1   =m_truth_eta    [index1];
        float phi1   =m_truth_phi    [index1];
