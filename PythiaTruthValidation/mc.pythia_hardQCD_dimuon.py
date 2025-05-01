@@ -23,13 +23,13 @@ include("Pythia8_i/Pythia8_A14_NNPDF23LO_EvtGen_Common.py")
 #   Retrieve & set parameters from run arguments
 # ---------------------------------------------------------------
 
-idA = 2212
-if hasattr(runArgs, 'idA'):
-    idA = runArgs.idA
+beam1 = "PROTON"
+if hasattr(runArgs, 'beam1'):
+    beam1 = runArgs.beam1
 
-idB = 2212
-if hasattr(runArgs, 'idB'):
-    idB = runArgs.idB
+beam2 = "PROTON"
+if hasattr(runArgs, 'beam2'):
+    beam2 = runArgs.beam2
 
 ecmEnergy = 5020.
 if hasattr(runArgs, 'ecmEnergy'):
@@ -46,18 +46,16 @@ if hasattr(runArgs, 'pTHatMax'):
 # ---------------------------------------------------------------
 #   Beam energy and PDF for 5.02TeV Pb–Pb (nCTEQ15 optional)
 # ---------------------------------------------------------------
-print('IDA!!!', idA) # make sure the run arguments are correctly passed
-print('IDB!!!', idB)
+genSeq.Pythia8.Beam1 = beam1
+genSeq.Pythia8.Beam2 = beam2
 
 genSeq.Pythia8.Commands += [
-  f'Beams:idA = {idA}',
-  f'Beams:idB = {idB}',
   f'Beams:eCM = {ecmEnergy:.1f}',           # √s NN
 ]
 
 genSeq.Pythia8.Commands += [
     # Nominal PDF (already in your config)
-    'PDF:pSet = LHAPDF6:nCTEQ15npFullNuc_208_82/0001',
+    'PDF:pSet = LHAPDF6:nNNPDF30_nlo_as_0118_A208_Z82/0001',
     # Enable LHAPDF and reweighting
     'Variations:doVariations = on',  # Enable weight variations
 ]
