@@ -67,7 +67,7 @@ void SingleBAnalysisPP::RunAnalysis(){
     h_pT_200->Write();
     h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts->SetTitle("");
     h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts->SetStats(0);
-    // h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts->Scale(crossx_factor, "width");
+    h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts->Scale(crossx_factor);
     h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts->Write();
     out.Close();
 }
@@ -78,7 +78,7 @@ void SingleBAnalysisPP::RunAnalysis(){
 void simplified_single_b_analysis_pp(){
     //Run PP analyses
 
-    double crossx_factor_pp_run2 = 1/256.8;
+    double crossx_factor_pp_run2 = 1/256.8; // 256.793
     double crossx_factor_pp_24_2mu4 = 1/410.815;
     double crossx_factor_pp_24_mu4mu4noL1 = 1/113.999;
 

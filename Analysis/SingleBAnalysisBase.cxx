@@ -26,7 +26,11 @@ protected:
 
     // Define binning
     std::vector<double> pT_bins_80;
+    std::vector<double> pT_bins_120;
+    std::vector<double> pT_bins_150;
     std::vector<double> pT_bins_200;
+    std::vector<double> pT_bins_300;
+    std::vector<double> pT_bins_500;
     constexpr static int n_eta_bins = 10;
     std::vector<double> eta_bins;
     constexpr static double eta_min = -2.5, eta_max = 2.5;
@@ -38,6 +42,7 @@ public:
     SingleBAnalysisBase(){    }
     ~SingleBAnalysisBase(){}
 
+    void BinningPrinting();
     virtual void RunAnalysis() = 0;
 };
 
@@ -57,8 +62,12 @@ void SingleBAnalysisBase::fillLogBinningArray(std::vector<double>& bins, int nBi
 
 void SingleBAnalysisBase::Initialize(){
     // // Create logarithmic pair-pT bin edges
-    fillLogBinningArray(pT_bins_80, 12, 8.0, 80.0);  // 10 log bins from 8 to 200 GeV
+    fillLogBinningArray(pT_bins_80,  12, 8.0, 80.0);  // 10 log bins from 8 to 200 GeV
+    fillLogBinningArray(pT_bins_120, 14, 8.0, 120.0);  // 10 log bins from 8 to 120 GeV
+    fillLogBinningArray(pT_bins_150, 30, 8.0, 150.0);  // 10 log bins from 8 to 150 GeV
     fillLogBinningArray(pT_bins_200, 18, 8.0, 200.0);  // 10 log bins from 8 to 200 GeV
+    fillLogBinningArray(pT_bins_300, 30, 8.0, 300.0);  // 10 log bins from 8 to 200 GeV
+    fillLogBinningArray(pT_bins_500, 30, 8.0, 500.0);  // 10 log bins from 8 to 200 GeV
 
     // Create eta bin edges
     eta_bins.clear();
@@ -66,3 +75,47 @@ void SingleBAnalysisBase::Initialize(){
         eta_bins.push_back(eta_min + (eta_max - eta_min) * i / n_eta_bins);
     }
 }
+
+
+
+void SingleBAnalysisBase::BinningPrinting(){
+    std::cout << "Print out bins for pair pT 8-80 GeV" << std::endl;
+    for (auto bin : pT_bins_80){
+        std::cout << bin << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Print out bins for pair pT 8-120 GeV" << std::endl;
+    for (auto bin : pT_bins_120){
+        std::cout << bin << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Print out bins for pair pT 8-150 GeV" << std::endl;
+    for (auto bin : pT_bins_150){
+        std::cout << bin << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Print out bins for pair pT 8-200 GeV" << std::endl;
+    for (auto bin : pT_bins_200){
+        std::cout << bin << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Print out bins for pair pT 8-300 GeV" << std::endl;
+    for (auto bin : pT_bins_300){
+        std::cout << bin << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Print out bins for pair pT 8-500 GeV" << std::endl;
+    for (auto bin : pT_bins_500){
+        std::cout << bin << ", ";
+    }
+    std::cout << std::endl;
+
+
+}
+
+
