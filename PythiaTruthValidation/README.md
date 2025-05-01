@@ -6,10 +6,10 @@
 * Run Gen_tf.py using current directory + preExec for setting commands; output EVNT file
 
 ```
-Gen_tf.py --firstEvent=1 --maxEvents=1000 --randomSeed=1235 \
+Gen_tf.py --firstEvent=1 --maxEvents=10 --randomSeed=1235 \
           --jobConfig=$PWD \
           --outputEVNTFile=Pythia.EVNT.pool.root \
-          --preExec "runArgs.idA=2112; runArgs.idB=2112; runArgs.ecmEnergy=5360.; runArgs.pTHatMin=60; runArgs.pTHatMax=120"
+          --preExec "runArgs.beam1=\"PROTON\"; runArgs.beam2=\"NEUTRON\"; runArgs.ecmEnergy=5020.; runArgs.pTHatMin=60; runArgs.pTHatMax=120"
 ```
 
 * Check python output messages; especially, check the configuration is as expected + that the run arguments are correctly set
