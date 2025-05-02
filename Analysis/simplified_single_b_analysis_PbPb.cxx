@@ -273,26 +273,35 @@ void simplified_single_b_analysis_PbPb(){
     };
 
     std::vector<double> crossx_factors_pbpb_2023_ctr_binned = {
-        1./(7.8 * 1000. * 26.1428 * 1.3896 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 0-5%
-        1./(7.8 * 1000. * 20.3241 * 1.3896 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 5-10%
-        1./(7.8 * 1000. * 14.0502 * 1.3896 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 10-20%
-        1./(7.8 * 1000. * 8.5074 * 1.3896 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 20-30%
-        1./(7.8 * 1000. * 3.7733 * 1.3896 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 30-50%
-        1./(7.8 * 1000. * 0.6716 * 1.3896 / 1000.) // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 50-80%
+        1./(0.05 * 7.8 * 1000. * 26.1428 * 1.3896 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 0-5%
+        1./(0.05 * 7.8 * 1000. * 20.3241 * 1.3896 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 5-10%
+        1./(0.1 * 7.8 * 1000. * 14.0502 * 1.3896 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 10-20%
+        1./(0.1 * 7.8 * 1000. * 8.5074 * 1.3896 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 20-30%
+        1./(0.2 * 7.8 * 1000. * 3.7733 * 1.3896 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 30-50%
+        1./(0.3 * 7.8 * 1000. * 0.6716 * 1.3896 / 1000.) // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 50-80%
+    };
+
+    std::vector<double> crossx_factors_pbpb_2024_ctr_binned = {
+        1./(0.05 * 7.8 * 1000. * 26.1428 * 1.5411 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 0-5%
+        1./(0.05 * 7.8 * 1000. * 20.3241 * 1.5411 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 5-10%
+        1./(0.1 * 7.8 * 1000. * 14.0502 * 1.5411 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 10-20%
+        1./(0.1 * 7.8 * 1000. * 8.5074 * 1.5411 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 20-30%
+        1./(0.2 * 7.8 * 1000. * 3.7733 * 1.5411 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 30-50%
+        1./(0.3 * 7.8 * 1000. * 0.6716 * 1.5411 / 1000.) // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 50-80%
     };
 
 
-    SingleBAnalysisPbPb pbpb_run2 ("pbpb_run2/muon_pairs_small_ctr_intvls_pbpb_run2.root", "pbpb_run2/pbpb_run2_single_b_ana_hists");
-    pbpb_run2.crossx_factors_ctr_binned = crossx_factors_pbpb_run2_ctr_binned;
+    // SingleBAnalysisPbPb pbpb_run2 ("pbpb_run2/muon_pairs_pbpb_run2.root", "pbpb_run2/pbpb_run2_single_b_ana_hists");
+    // pbpb_run2.crossx_factors_ctr_binned = crossx_factors_pbpb_run2_ctr_binned;
     // pbpb_run2.BinningPrinting();
-    pbpb_run2.RunAnalysis();
+    // pbpb_run2.RunAnalysis();
 
-    // SingleBAnalysisPbPb pbpb_2023 ("pbpb_2023/muon_pairs_small_ctr_intvls_pbpb_2023.root", "pbpb_2023/pbpb_2023_single_b_ana_hists");
-    // // pbpb_2023.crossx_factors_ctr_binned = crossx_factors_pbpb_run2_ctr_binned;
+    // SingleBAnalysisPbPb pbpb_2023 ("pbpb_2023/muon_pairs_pbpb_2023.root", "pbpb_2023/pbpb_2023_single_b_ana_hists");
+    // pbpb_2023.crossx_factors_ctr_binned = crossx_factors_pbpb_2023_ctr_binned;
     // pbpb_2023.RunAnalysis();
 
-    // SingleBAnalysisPbPb pbpb_2024 ("pbpb_2024/muon_pairs_small_ctr_intvls_pbpb_2024.root", "pbpb_2024/pbpb_2024_single_b_ana_hists");
-    // // pbpb_2024.crossx_factors_ctr_binned = crossx_factors_pbpb_run2_ctr_binned;
-    // pbpb_2024.RunAnalysis();
+    SingleBAnalysisPbPb pbpb_2024 ("pbpb_2024/muon_pairs_pbpb_2024.root", "pbpb_2024/pbpb_2024_single_b_ana_hists");
+    pbpb_2024.crossx_factors_ctr_binned = crossx_factors_pbpb_2024_ctr_binned;
+    pbpb_2024.RunAnalysis();
 }
 
