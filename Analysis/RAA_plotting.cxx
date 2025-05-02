@@ -1,7 +1,11 @@
 class RAAPlotting{
 private:
-	std::string pp_file = "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/pp_run2/pp_run2_single_b_ana_hists.root";
-	std::string pbpb_file = "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/pbpb_run2/pbpb_run2_single_b_ana_hists.root";
+
+	std::string pp_infile;
+	std::string pbpb_infile;
+	std::string base_dir = "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/";
+	std::string out_dir;
+	std::string run_year_trigger_suffix;
 
 	// x: pair pt; y: pair eta; z: centrality
     std::string h3d_name_ss = "h3d_ss_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt";
@@ -39,15 +43,19 @@ private:
 	std::string ytitle;
 
 	int mode;
-	int run_year;
+	int run_year_trigger_mode;
 	int nBinsThresh = 5;
 	int nSubplots = 1;
 
+	void InputOutputPrepare();
 	void ModePrepare();
 	void HistRetrieve();
 	void HistProject();
 public:
-	RAAPlotting(int mode_in, int run_year_in): mode(mode_in), run_year(run_year_in){}
+	bool use_same_y_axis_range_23_24 = false;
+	vector<vector<double>> ymax_pt_mode_23_24_common = {{0.92, 1.2}, {2.4, 3}}; // top dim: trigger; 2nd dim: ctr-based subplot
+
+	RAAPlotting(int mode_in, int run_year_trigger_mode_in): mode(mode_in), run_year_trigger_mode(run_year_trigger_mode_in){}
 	~RAAPlotting();
 	void RunPlotting();
 	void PrintInstructions();
@@ -59,6 +67,45 @@ RAAPlotting::~RAAPlotting(){
 	infile_pbpb->Close();
 	delete infile_pbpb;
 }
+
+void RAAPlotting::InputOutputPrepare(){
+	switch(run_year_trigger_mode){
+	case 1: // Run2 PbPb + pp data
+		pp_infile = base_dir + "pp_run2/pp_run2_single_b_ana_hists.root";
+		pbpb_infile = base_dir + "pbpb_run2/pbpb_run2_single_b_ana_hists.root";
+		run_year_trigger_suffix = "_pbpbrun2_pp17_2mu4";
+		out_dir = base_dir + "pbpb_run2/plots/";
+		break;
+	case 2: // 2023 PbPb, 2024 pp mu4mu4noL1
+		pp_infile = base_dir + "pp_2024/pp_2024_single_b_ana_hists_mu4_mu4noL1.root";
+		pbpb_infile = base_dir + "pbpb_2023/pbpb_2023_single_b_ana_hists.root";
+		run_year_trigger_suffix = "_pbpb23_pp24_mu4mu4noL1";
+		out_dir = base_dir + "pbpb_2023/plots/";
+		break;
+	case 3: // 2023 PbPb, 2024 pp 2mu4
+		pp_infile = base_dir + "pp_2024/pp_2024_single_b_ana_hists_2mu4.root";
+		pbpb_infile = base_dir + "pbpb_2023/pbpb_2023_single_b_ana_hists.root";
+		run_year_trigger_suffix = "_pbpb23_pp24_2mu4";
+		out_dir = base_dir + "pbpb_2023/plots/";
+		break;
+	case 4: // 2024 PbPb, 2024 pp mu4mu4noL1
+		pp_infile = base_dir + "pp_2024/pp_2024_single_b_ana_hists_mu4_mu4noL1.root";
+		pbpb_infile = base_dir + "pbpb_2024/pbpb_2024_single_b_ana_hists.root";
+		run_year_trigger_suffix = "_pbpb24_pp24_mu4mu4noL1";
+		out_dir = base_dir + "pbpb_2024/plots/";
+		break;
+	case 5: // 2024 PbPb, 2024 pp 2mu4
+		pp_infile = base_dir + "pp_2024/pp_2024_single_b_ana_hists_2mu4.root";
+		pbpb_infile = base_dir + "pbpb_2024/pbpb_2024_single_b_ana_hists.root";
+		run_year_trigger_suffix = "_pbpb24_pp24_2mu4";
+		out_dir = base_dir + "pbpb_2024/plots/";
+		break;
+	default:
+		std::cout << "Run year + trigger mode must be in range 1-5! Either not set or out of range!" << std::endl;
+		throw std::exception();
+	}
+}
+
 
 void RAAPlotting::ModePrepare(){
 	if (mode == 1 || mode == 2){ // var1 (rebinned) = centrality
@@ -91,14 +138,14 @@ void RAAPlotting::ModePrepare(){
 
 void RAAPlotting::HistRetrieve(){
 
-    infile_pp = TFile::Open(pp_file.c_str());
+    infile_pp = TFile::Open(pp_infile.c_str());
     if (!infile_pp || infile_pp->IsZombie()) {
-        std::cerr << "Error opening file: " << pp_file << std::endl;
+        std::cerr << "Error opening file: " << pp_infile << std::endl;
         throw std::exception();
     }
-    infile_pbpb = TFile::Open(pbpb_file.c_str());
+    infile_pbpb = TFile::Open(pbpb_infile.c_str());
     if (!infile_pbpb || infile_pbpb->IsZombie()) {
-        std::cerr << "Error opening file: " << pbpb_file << std::endl;
+        std::cerr << "Error opening file: " << pbpb_infile << std::endl;
         throw std::exception();
     }
 
@@ -176,6 +223,7 @@ void RAAPlotting::PrintInstructions(){
 
 
 void RAAPlotting::RunPlotting(){
+	InputOutputPrepare();
 	ModePrepare();
 	HistRetrieve();
 	HistProject();
@@ -238,13 +286,18 @@ void RAAPlotting::RunPlotting(){
 			h_RAA_list.push_back(h_RAA_cur_bin);
 			l->AddEntry(h_RAA_cur_bin, line_var_labels.at(iline).c_str(), "lp");
 		}
-		l->AddEntry("","PbPb 2015+2018 data","");
-		l->AddEntry("","PbPb 2017 data","");
+		l->AddEntry("","PbPb 2023 data","");
+		l->AddEntry("","pp 2024 data, mu4mu4noL1","");
 		l->AddEntry("","m_{#mu#mu} #in (1.08, 2.9) GeV, p_{T}^{pair} > 8 GeV","");
 		l->AddEntry("","opposite sign","");
 	    
-	    // h_RAA_list.at((subplot-1) * line_var_rebins.size() / nSubplots)->GetYaxis()->SetRangeUser(0,ylim);
-	    h_RAA_list.at((subplot-1) * line_var_rebins.size() / nSubplots)->GetYaxis()->SetRangeUser(0,ylim * 1.1);
+
+		double ymax = ylim * 1.1;
+		if (mode == 1 && use_same_y_axis_range_23_24 && run_year_trigger_mode > 1){ // pt mode; use same range for 23 + 24; running 23/24 plotting
+			ymax = ymax_pt_mode_23_24_common.at(run_year_trigger_mode % 2).at(subplot-1);
+		}
+	    h_RAA_list.at((subplot-1) * line_var_rebins.size() / nSubplots)->GetYaxis()->SetRangeUser(0,ymax);
+	    
 	    for (int iline = (subplot-1) * line_var_rebins.size() / nSubplots; iline < subplot * line_var_rebins.size() / nSubplots; iline++){
 	    	TH1D* h_RAA_cur_bin = h_RAA_list.at(iline);
 	    	std::string draw_options = (iline == 0)? "" : "same";
@@ -253,19 +306,39 @@ void RAAPlotting::RunPlotting(){
 		l->Draw("same");
 	}
 
-	std::string outfile_path = "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/pbpb_run2/plots/raa_" + obs_suffix + ".png";
+	std::string use_same_y_axis_range_23_24_suffix = (mode == 1 && use_same_y_axis_range_23_24 && run_year_trigger_mode > 1)? "_same_23_24_ymax" : "";
+	std::string outfile_path = out_dir + "raa_" + obs_suffix + run_year_trigger_suffix + use_same_y_axis_range_23_24_suffix + ".png";
 	c_raa->SaveAs(outfile_path.c_str());
 	c_raa->Close();
 	delete c_raa;
 }
 
+
+void RAA_plotting_single_run_year_trigger_mode(int run_year_trigger_mode, bool use_same_y_axis_range_23_24_arg = false){
+	// std::vector raa_plotting_list;
+	for (int mode = 1; mode <= 3; mode++){
+		auto raa_plotting_local = RAAPlotting(mode, run_year_trigger_mode);
+		raa_plotting_local.use_same_y_axis_range_23_24 = use_same_y_axis_range_23_24_arg;
+		raa_plotting_local.RunPlotting();
+	} 
+}
+
 void RAA_plotting(){
-	RAAPlotting raa_plot_vs_pair_pT_given_ctr_bins(1, 2015);
-	raa_plot_vs_pair_pT_given_ctr_bins.RunPlotting();
+	// -------------------- Run2 --------------------
+	// RAA_plotting_single_run_year_trigger_mode(1);
+	
+	// -------------------- 2023 PbPb, 2024 pp mu4mu4noL1 --------------------
+	RAA_plotting_single_run_year_trigger_mode(2,true);
 
-	RAAPlotting raa_plot_vs_pair_eta_given_ctr_bins(2, 2015);
-	raa_plot_vs_pair_eta_given_ctr_bins.RunPlotting();
+	// -------------------- 2023 PbPb, 2024 pp 2mu4 --------------------
+	RAA_plotting_single_run_year_trigger_mode(3,true);
 
-	RAAPlotting raa_plot_vs_ctr_given_pair_pT_bins(3, 2015);
-	raa_plot_vs_ctr_given_pair_pT_bins.RunPlotting();
+	// -------------------- 2024 PbPb, 2024 pp mu4mu4noL1 --------------------
+	RAA_plotting_single_run_year_trigger_mode(4,true);
+
+	// -------------------- 2024 PbPb, 2024 pp 2mu4 --------------------
+	RAA_plotting_single_run_year_trigger_mode(5,true);
+
+
+
 }
