@@ -1203,7 +1203,7 @@ StatusCode TrigRates::ProcessMuons(){
        z0          =idTrk->z0()+idTrk->vz() - z_vtx;
 
        muon_trk_p  =idTrk->p4().P();
-       muon_trk_pt =idTrk->pt ();
+       muon_trk_pt =idTrk->pt () * idTrk->charge ();
        muon_trk_eta=idTrk->eta();
        muon_trk_phi=idTrk->phi();
        if(m_store_tracks>=Track::StoreBasic){
