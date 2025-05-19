@@ -9,7 +9,7 @@ evgenConfig.generators    = ['Pythia8']
 evgenConfig.contact       = ['Yuhan Guo']
 evgenConfig.process       = 'HardQCD -> all'
 
-evgenConfig.nEventsPerJob = 100
+evgenConfig.nEventsPerJob = 10000
 
 # ---------------------------------------------------------------
 #   Base fragments (A14 tune + EvtGen hooks kept minimal)
@@ -29,8 +29,8 @@ genSeq.Pythia8.Commands += [
 # ---------------------------------------------------------------
 #   Hard‑process definition & phase‑space slice
 # ---------------------------------------------------------------
-pTHatMin = 60.
-pTHatMax = 120.
+pTHatMin = 70.
+pTHatMax = 125.
 
 genSeq.Pythia8.Commands += [
   'HardQCD:all = on',

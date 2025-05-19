@@ -29,8 +29,8 @@ genSeq.Pythia8.Commands += [
 # ---------------------------------------------------------------
 #   Hard‑process definition & phase‑space slice
 # ---------------------------------------------------------------
-pTHatMin = 25.
-pTHatMax = 60.
+pTHatMin = 5.
+pTHatMax = 8.
 
 genSeq.Pythia8.Commands += [
   'HardQCD:all = on',
@@ -49,6 +49,6 @@ genSeq.Pythia8.Commands += [
 include('GeneratorFilters/xAODMultiMuonFilter_Common.py')
 filtSeq.xAODMultiMuonFilter.Ptcut = 3700.
 filtSeq.xAODMultiMuonFilter.Etacut = 2.5
-filtSeq.xAODMultiMuonFilter.NMuons = 2
+filtSeq.xAODMultiMuonFilter.NMuons = 1
 
 

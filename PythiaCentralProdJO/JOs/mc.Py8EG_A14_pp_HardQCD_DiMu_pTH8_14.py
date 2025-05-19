@@ -9,15 +9,15 @@ evgenConfig.generators    = ['Pythia8']
 evgenConfig.contact       = ['Yuhan Guo']
 evgenConfig.process       = 'HardQCD -> all'
 
-evgenConfig.nEventsPerJob = 10
+evgenConfig.nEventsPerJob = 500
 
 # ---------------------------------------------------------------
 #   Base fragments (A14 tune + EvtGen hooks kept minimal)
 # ---------------------------------------------------------------
 include("Pythia8_i/Pythia8_A14_NNPDF23LO_EvtGen_Common.py")
 
-genSeq.Pythia8.Beam1 = "NEUTRON"
-genSeq.Pythia8.Beam2 = "NEUTRON"
+genSeq.Pythia8.Beam1 = "PROTON"
+genSeq.Pythia8.Beam2 = "PROTON"
 
 genSeq.Pythia8.Commands += [
     # Nominal PDF (already in your config)
@@ -29,8 +29,8 @@ genSeq.Pythia8.Commands += [
 # ---------------------------------------------------------------
 #   Hard‑process definition & phase‑space slice
 # ---------------------------------------------------------------
-pTHatMin = 5.
-pTHatMax = 7.
+pTHatMin = 8.
+pTHatMax = 14.
 
 genSeq.Pythia8.Commands += [
   'HardQCD:all = on',
@@ -49,6 +49,6 @@ genSeq.Pythia8.Commands += [
 include('GeneratorFilters/xAODMultiMuonFilter_Common.py')
 filtSeq.xAODMultiMuonFilter.Ptcut = 3700.
 filtSeq.xAODMultiMuonFilter.Etacut = 2.5
-filtSeq.xAODMultiMuonFilter.NMuons = 1
+filtSeq.xAODMultiMuonFilter.NMuons = 2
 
 

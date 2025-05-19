@@ -9,11 +9,10 @@ beam1=(PROTON PROTON NEUTRON NEUTRON)  # Beam1 values to write
 beam2=(PROTON NEUTRON PROTON NEUTRON)  # Beam2 values to write
 
 # -------- pTHat windows & per‑job stat --------------------------------------
-labels=(5_7 7_10 10_25 25_60 60_120 120_3200)
-pmin=(5. 7. 10. 25. 60. 120.)
-pmax=(7. 10. 25. 60. 120. 3200.)
-# nevt=(20 500 500 5000 10000 10000)
-nevt=(10 2 2 20 100 200)
+labels=(5_8 8_14 14_24 24_40 40_70 70_125 125_300)
+pmin=(5. 8. 14. 24. 40. 70. 125.)
+pmax=(8. 14. 24. 40. 70. 125. 300.)
+nevt=(20 500 500 2000 5000 10000 10000)
 
 # -------- main loop ---------------------------------------------------------
 for i in "${!isospins[@]}"; do
