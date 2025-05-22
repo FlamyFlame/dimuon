@@ -5,10 +5,10 @@
 #include "../MuonObjectsParamsAndHelpers/TruthQQPair.h"
 #include "../MuonObjectsParamsAndHelpers/muon_pair_enums_MC.h"
 #include "../MuonObjectsParamsAndHelpers/struct_particle.h"
-#include "MuonNTupleFirstPassBaseClass.c"
+#include "DimuonAnalysisBaseClass.c"
 
 
-class PowhegNTupleFirstPass : public MuonNTupleFirstPassBaseClass{
+class PowhegNTupleFirstPass : public DimuonAnalysisBaseClass{
     // Read through the N-tuple, apply appropriate cuts
     // Then fill in histograms and/or output trees
     // mode = 1: output single-muon information into a TTree
@@ -34,7 +34,6 @@ private:
     TChain          *fChain;   //!pointer to the analyzed TTree or TChain
   
     // Declaration of leaf types
-    // UInt_t          RunNumber;
     float                 Q;
     std::vector<float>   *EventWeights           =nullptr;
 
@@ -214,7 +213,7 @@ private:
     void HistAdjust() override;
 
     void FillMuonPairTree();
-    void FillMuonPair(int pair_ind, std::shared_ptr<MuonPairPowheg>& mpair);
+    void FillMuonPair(int pair_ind, std::shared_ptr<MuonPairPowheg> const& mpair);
     int  ParentGrouping(std::vector<int>& parent_ids, bool c_tag, bool prev_is_lepton);
     void GetPtEtaPhiMFromBarcode(int barcode, std::vector<float>* pt_eta_phi_m);
     int  UpdateCurParents(bool isMuon1, std::vector<int>& cur_prt_bars, std::vector<int>& cur_prt_ids, int hf_quark_index = -1);
@@ -239,8 +238,8 @@ public :
     bool print_prt_history = false;
     bool print_specific_prt_history = false;
     PowhegNTupleFirstPass(){
-        numCuts = numCuts_MC;
         cutLabels = cutLabels_MC;
+        numCuts = cutLabels_MC.size();
         crossx_cut = 5 * pow(10,8);
         std::cout << "Powheg Ntuple processing script:" << std::endl;
         std::cout << "The following public variable(s) MUST(????? UNSURE???) be checked:" << std::endl;

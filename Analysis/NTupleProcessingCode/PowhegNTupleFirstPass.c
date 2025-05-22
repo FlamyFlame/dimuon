@@ -208,7 +208,7 @@ void PowhegNTupleFirstPass::InitOutput(){
     // h_numParents = new TH1D("h_numParents","h_numParents",3,0,3);
     h_numMuonPairs = new TH1D("h_numMuonPairs","h_numMuonPairs",6,0,6);
 
-    MuonNTupleFirstPassBaseClass::InitOutput();
+    DimuonAnalysisBaseClass::InitOutput();
     
     for (int isign = 0; isign < ParamsSet::nSigns; isign++){
         for (int jdphi = 0; jdphi < 2; jdphi++){
@@ -370,7 +370,7 @@ void PowhegNTupleFirstPass::Finalize(){
     }
 }
 
-void PowhegNTupleFirstPass::FillMuonPair(int pair_ind, std::shared_ptr<MuonPairPowheg>& mpair){
+void PowhegNTupleFirstPass::FillMuonPair(int pair_ind, std::shared_ptr<MuonPairPowheg> const& mpair){
   // // use ind to record barcode instead
   mpair->m1.ind     = muon_pair_muon1_bar->at(pair_ind);
   mpair->m2.ind     = muon_pair_muon2_bar->at(pair_ind);
@@ -1436,7 +1436,7 @@ void PowhegNTupleFirstPass::ProcessData(){
 
 
 void PowhegNTupleFirstPass::HistAdjust(){
-  MuonNTupleFirstPassBaseClass::HistAdjust();
+  DimuonAnalysisBaseClass::HistAdjust();
 
   for (int ibin = 0; ibin < 3; ibin++){
     for (int isign = 0; isign < ParamsSet::nSigns; isign++){
