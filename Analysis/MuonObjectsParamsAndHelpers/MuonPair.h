@@ -25,9 +25,10 @@ public:
   float pair_y;
   float dpt;
   float deta;
+  float dphi;
+  float ptavg;
   float etaavg;
   float phiavg;
-  float dphi;
   float dr;
   float minv;
   float asym; // asymmetry := (pT_lead - pT_sublead) / (pT_lead + pT_sublead)
@@ -116,6 +117,7 @@ void MuonPair::PairValueCalc(){
   dphi = atan2(sin(dphi),cos(dphi));//fold dphi to [-pi,pi]
   deta = m1.eta-m2.eta;
   dr   = sqrt(dphi*dphi + deta*deta);
+  ptavg = (m1.pt + m2.pt)/2;
   etaavg = (m1.eta + m2.eta)/2;
   phiavg = (m1.phi + m2.phi)/2;
 
@@ -157,6 +159,7 @@ void MuonPair::UpdateShort(){
   dphi = atan2(sin(dphi),cos(dphi));//fold dphi to [-pi,pi]
   deta = m1.eta - m2.eta;
   dr   = sqrt(dphi*dphi + deta*deta);
+  ptavg = (m1.pt + m2.pt)/2;
   etaavg = (m1.eta + m2.eta)/2;
   phiavg = (m1.phi + m2.phi)/2;
 
