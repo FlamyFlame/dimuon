@@ -12,11 +12,11 @@
 #include "../MuonObjectsParamsAndHelpers/ParamsSet.h"
 
 
-#ifndef __MuonNTupleFirstPassBaseClass_h__
-#define __MuonNTupleFirstPassBaseClass_h__
+#ifndef __DimuonAnalysisBaseClass_h__
+#define __DimuonAnalysisBaseClass_h__
 
 
-class MuonNTupleFirstPassBaseClass{
+class DimuonAnalysisBaseClass{
 
 
 protected:
@@ -28,8 +28,8 @@ protected:
     TChain          *fChain;   //!pointer to the analyzed TTree or TChain
 // --------------------- temporary muon and muonpair objects ---------------------------
     Muon* tempmuon = nullptr;
+	std::vector<int> resonance_tagged_muon_index_list_v2 {};
 	std::vector<int> resonance_tagged_muon_index_list {};
-	std::vector<int> resonance_tagged_muon_index_list_old {};
 // --------------------- output file, histograms & trees ---------------------------
     TFile *m_outfile = nullptr;
     TFile *m_outHistFile = nullptr;
@@ -52,17 +52,18 @@ protected:
 	virtual void ProcessData(){}
 
 	virtual bool PassCuts(std::shared_ptr<MuonPair> const& mpair) = 0;
+    // virtual void FillMuonPair(int pair_ind, std::shared_ptr<MuonPair> const& mpair){}
 	virtual void ResonanceTagging(std::shared_ptr<MuonPair> const& mpair);
-	virtual void ResonanceTaggingOld(std::shared_ptr<MuonPair> const& mpair);
+	virtual void ResonanceTaggingV2(std::shared_ptr<MuonPair> const& mpair);
 	virtual bool IsPhotoProduction(std::shared_ptr<MuonPair> const& mpair);
 	
-	virtual void FillSingleMuonTree(){}
 	virtual void HistAdjust();
 
 public:
+    bool debug_mode = false;
+
 // --------------------- public class methods ---------------------------
-	MuonNTupleFirstPassBaseClass(){}
-	~MuonNTupleFirstPassBaseClass(){}
+	~DimuonAnalysisBaseClass(){}
 	virtual void Run(){}
 };
 

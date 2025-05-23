@@ -9,8 +9,8 @@
 // #include<bits/stdc++.h>
 
 PythiaNTupleFirstPass::PythiaNTupleFirstPass(){
-  numCuts = numCuts_MC;
   cutLabels = cutLabels_MC;
+  numCuts = cutLabels_MC.size();
 
   std::cout << "Pythia Ntuple processing script:" << std::endl;
   std::cout << std::endl;
@@ -400,7 +400,7 @@ void PythiaNTupleFirstPass::InitOutput(){
 
     h_numMuonPairs = new TH1D("h_numMuonPairs","h_numMuonPairs",6,0,6);
 
-    MuonNTupleFirstPassBaseClass::InitOutput();
+    DimuonAnalysisBaseClass::InitOutput();
 
     for (int isign = 0; isign < ParamsSet::nSigns; isign++){
         for (int jdphi = 0; jdphi < 2; jdphi++){
@@ -574,7 +574,7 @@ void PythiaNTupleFirstPass::Finalize(){
     }
 }
 
-void PythiaNTupleFirstPass::FillMuonPair(int pair_ind, std::shared_ptr<MuonPairPythia>& mpair){
+void PythiaNTupleFirstPass::FillMuonPair(int pair_ind, std::shared_ptr<MuonPairPythia> const& mpair){
   // // use ind to record barcode instead
   mpair->m1.ind     = muon_pair_muon1_bar->at(pair_ind);
   mpair->m2.ind     = muon_pair_muon2_bar->at(pair_ind);
@@ -1893,7 +1893,7 @@ void PythiaNTupleFirstPass::FillMuonPairTreePythia(int nkin){
 
 
 void PythiaNTupleFirstPass::HistAdjust(){
-  MuonNTupleFirstPassBaseClass::HistAdjust();
+  DimuonAnalysisBaseClass::HistAdjust();
 
   // for (int ibin = 0; ibin < 3; ibin++){
   //   for (int isign = 0; isign < ParamsSet::nSigns; isign++){
@@ -2070,8 +2070,8 @@ void PythiaNTupleFirstPass::ProcessData(){
       }
 
       muon_pair_list_cur_event_pre_resonance_cut.clear();
+      resonance_tagged_muon_index_list_v2.clear(); // MUST CLEAR for each event!!
       resonance_tagged_muon_index_list.clear(); // MUST CLEAR for each event!!
-      resonance_tagged_muon_index_list_old.clear(); // MUST CLEAR for each event!!
 
       int NPairs = muon_pair_muon1_pt->size();//number of muon pairs in the event
       int NPairsAfter = 0;
@@ -2108,7 +2108,7 @@ void PythiaNTupleFirstPass::ProcessData(){
           
         // resonance tag
         ResonanceTagging(mpair);
-        ResonanceTaggingOld(mpair);
+        ResonanceTaggingV2(mpair);
 
         // photo-production cut - do NOT apply for MC
         // if (IsPhotoProduction()) continue;
@@ -2126,7 +2126,7 @@ void PythiaNTupleFirstPass::ProcessData(){
           continue;
         }
 
-        mpair->data_resonance_or_reso_contam_tagged_new = false;
+        mpair->data_resonance_or_reso_contam_tagged_old = false;
         
         // examine data resonance cuts (old + new)
         std::vector<int>::iterator itres_m1;
@@ -2142,15 +2142,15 @@ void PythiaNTupleFirstPass::ProcessData(){
           if (turn_data_resonance_cuts_on){
             continue; // throw away the pair
           }else{
-            mpair->data_resonance_or_reso_contam_tagged_new = true;
+            mpair->data_resonance_or_reso_contam_tagged_old = true;
           }
         }
 
-        // check for old data-resonance cut - no pair elimination, just tag
-        itres_m1 = std::find(resonance_tagged_muon_index_list_old.begin(),resonance_tagged_muon_index_list_old.end(),mpair->m1.ind);
-        itres_m2 = std::find(resonance_tagged_muon_index_list_old.begin(),resonance_tagged_muon_index_list_old.end(),mpair->m2.ind);
+        // check for data-resonance cut v2 - no pair elimination, just tag
+        itres_m1 = std::find(resonance_tagged_muon_index_list_v2.begin(),resonance_tagged_muon_index_list_v2.end(),mpair->m1.ind);
+        itres_m2 = std::find(resonance_tagged_muon_index_list_v2.begin(),resonance_tagged_muon_index_list_v2.end(),mpair->m2.ind);
 
-        mpair->data_resonance_or_reso_contam_tagged_old = (itres_m1 != resonance_tagged_muon_index_list_old.end() || itres_m2 != resonance_tagged_muon_index_list_old.end());
+        mpair->data_resonance_or_reso_contam_tagged_new = (itres_m1 != resonance_tagged_muon_index_list_v2.end() || itres_m2 != resonance_tagged_muon_index_list_v2.end());
 
         h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill(pass_resonance + 0.5, mpair->weight);
         

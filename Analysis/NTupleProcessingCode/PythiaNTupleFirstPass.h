@@ -5,10 +5,10 @@
 #include "../MuonObjectsParamsAndHelpers/TruthQQPair.h"
 #include "../MuonObjectsParamsAndHelpers/muon_pair_enums_MC.h"
 #include "../MuonObjectsParamsAndHelpers/struct_particle.h"
-#include "MuonNTupleFirstPassBaseClass.c"
+#include "DimuonAnalysisBaseClass.c"
 #include "time.h"
 
-class PythiaNTupleFirstPass : public MuonNTupleFirstPassBaseClass{
+class PythiaNTupleFirstPass : public DimuonAnalysisBaseClass{
 
 
 private:
@@ -339,7 +339,7 @@ private:
     void FillMuonPairTreePythia(int nkin);
     void HistAdjust() override;
 
-    void FillMuonPair(int pair_ind, std::shared_ptr<MuonPairPythia>& mpair);
+    void FillMuonPair(int pair_ind, std::shared_ptr<MuonPairPythia> const& mpair);
     void SetInputOutputFilesFromBatch();
     void InputSanityCheck();
     void ResonanceNameMap();

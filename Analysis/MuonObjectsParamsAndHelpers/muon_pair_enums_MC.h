@@ -11,7 +11,6 @@ enum cuts_MC{
 };
 
 std::vector<std::string> cutLabels_MC = {"no cut", "muon eta", "muon pT", "resonance"};
-const int numCuts_MC = cutLabels_MC.size();
 
 enum single_muon_parent_group{ // parent groups for a single muon; used for pythia + powheg
   resonance_decay,

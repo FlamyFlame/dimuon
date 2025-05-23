@@ -71,11 +71,14 @@ public:
 	std::vector<std::string> photocut_titles = {"no photoproduction cut", "with photoproduction cut"};
 
 
-   	float deltaP_overP_thrsh;
+   	float deltaP_overP_thrsh; // single-muon dP/P cut
    	float deltaP_overP_max;
    	float deltaP_overP_step;
    	int deltaP_overP_nbins;
    	
+   	float d0cut; // single-muon |d0| cut (unit: mm)
+   	float z0cut; // single-muon |z0 sin(theta)| cut (unit: mm)
+
    	static float deltaR_thrsh[ndRselcs];
    	static float deltaR_thrsh_zoomin;
    	float 	deltaR_step = 0.01;
@@ -99,7 +102,7 @@ public:
    	// std::vector<float> minv_bins[nSigns][ndRselcs];
 
    	std::vector<std::array<float,2>> minv_cuts;
-   	std::vector<std::array<float,2>> minv_cuts_old;
+   	std::vector<std::array<float,2>> minv_cuts_v2;
    	static std::vector<std::array<float,2>> charge_eta_gap_cuts;
 
    	float minv_upper = 60;
@@ -215,6 +218,8 @@ ParamsSet::ParamsSet(){
  	deltaP_overP_step = 0.002;
  	deltaP_overP_nbins = static_cast<int>(deltaP_overP_max/deltaP_overP_step);
 
+	d0cut = 2; // 2mm
+	z0cut = 2; // 2mm
 
 // ------------------------------------ pt & ctr labels & expressions ------------------------------------
 	    
@@ -257,20 +262,20 @@ ParamsSet::ParamsSet(){
   	}
 
   	// old set of minv cut
-  	minv_cuts_old.push_back({0,1.06});
-   	minv_cuts_old.push_back({2.9,3.3});
-   	minv_cuts_old.push_back({3.55,3.8});
-   	// minv_cuts_old.push_back({9.08,9.8});
-   	minv_cuts_old.push_back({9.08,10.5}); // previously 9 - 9.8
-
-   	// new set of minv cut
-  	minv_cuts.push_back({0.,0.6});
-  	minv_cuts.push_back({0.72,0.85});
-  	minv_cuts.push_back({0.94,1.06});
+  	minv_cuts.push_back({0,1.06});
    	minv_cuts.push_back({2.9,3.3});
    	minv_cuts.push_back({3.55,3.8});
    	// minv_cuts.push_back({9.08,9.8});
    	minv_cuts.push_back({9.08,10.5}); // previously 9 - 9.8
+
+   	// new set of minv cut
+  	minv_cuts_v2.push_back({0.,0.6});
+  	minv_cuts_v2.push_back({0.72,0.85});
+  	minv_cuts_v2.push_back({0.94,1.06});
+   	minv_cuts_v2.push_back({2.9,3.3});
+   	minv_cuts_v2.push_back({3.55,3.8});
+   	// minv_cuts_v2.push_back({9.08,9.8});
+   	minv_cuts_v2.push_back({9.08,10.5}); // previously 9 - 9.8
 }
 
 #endif

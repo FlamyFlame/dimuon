@@ -9,12 +9,24 @@ class MuonPairData : public MuonPair{
 // define child class for the case of MC muon pairs
 // with the additional attributes of parent information & helper functions to work with them
 public:
-  float m1_trk_pt;
-  float m1_trk_eta;
-  float m1_trk_phi;
-  float m2_trk_pt;
-  float m2_trk_eta;
-  float m2_trk_phi;
+  UInt_t  run_number;
+  UInt_t  lb;
+  UInt_t  bcid;
+
+  bool    passTight;
+  bool    passmu4mu4noL1;
+  bool    pass2mu4;
+  bool    mu1PassSingle;
+  bool    mu2PassSingle;
+
+  float   m1_trk_pt;
+  float   m1_trk_eta;
+  float   m1_trk_phi;
+  float   m1_trk_charge;
+  float   m2_trk_pt;
+  float   m2_trk_eta;
+  float   m2_trk_phi;
+  float   m2_trk_charge;
 
   MuonPairData(){}
   ~MuonPairData(){}
