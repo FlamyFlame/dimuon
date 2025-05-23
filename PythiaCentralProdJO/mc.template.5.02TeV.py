@@ -9,15 +9,19 @@ evgenConfig.generators    = ['Pythia8']
 evgenConfig.contact       = ['Yuhan Guo']
 evgenConfig.process       = 'HardQCD -> all'
 
-evgenConfig.nEventsPerJob = 2000
+evgenConfig.nEventsPerJob = 10000
 
 # ---------------------------------------------------------------
 #   Base fragments (A14 tune + EvtGen hooks kept minimal)
 # ---------------------------------------------------------------
 include("Pythia8_i/Pythia8_A14_NNPDF23LO_EvtGen_Common.py")
 
-genSeq.Pythia8.Beam1 = "NEUTRON"
-genSeq.Pythia8.Beam2 = "NEUTRON"
+genSeq.Pythia8.Beam1 = "PROTON"
+genSeq.Pythia8.Beam2 = "PROTON"
+
+genSeq.Pythia8.Commands += [
+    'Beams:eCM = 5020.',           # √s NN
+]
 
 genSeq.Pythia8.Commands += [
     # Nominal PDF (already in your config)
@@ -29,8 +33,8 @@ genSeq.Pythia8.Commands += [
 # ---------------------------------------------------------------
 #   Hard‑process definition & phase‑space slice
 # ---------------------------------------------------------------
-pTHatMin = 70.
-pTHatMax = 125.
+pTHatMin = 60.
+pTHatMax = 120.
 
 genSeq.Pythia8.Commands += [
   'HardQCD:all = on',
@@ -40,6 +44,14 @@ genSeq.Pythia8.Commands += [
   'Init:showChangedSettings = on',
   'Next:numberCount = 0',
 ]
+
+# ---------------------------------------------------------------
+# Configure TestHepMC to expect the correct E_{CM} energy
+# ---------------------------------------------------------------
+
+if hasattr(testSeq, 'TestHepMC'):
+    testSeq.TestHepMC.CmEnergy = 5020000.  # Beam COM energy in MeV
+
 
 # ---------------------------------------------------------------
 #   Dimuon truth filter (≥2 muons with pT > 3.7GeV)
