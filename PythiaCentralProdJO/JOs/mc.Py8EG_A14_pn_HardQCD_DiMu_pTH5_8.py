@@ -9,7 +9,7 @@ evgenConfig.generators    = ['Pythia8']
 evgenConfig.contact       = ['Yuhan Guo']
 evgenConfig.process       = 'HardQCD -> all'
 
-evgenConfig.nEventsPerJob = 20
+evgenConfig.nEventsPerJob = 1
 
 # ---------------------------------------------------------------
 #   Base fragments (A14 tune + EvtGen hooks kept minimal)
@@ -49,6 +49,6 @@ genSeq.Pythia8.Commands += [
 include('GeneratorFilters/xAODMultiMuonFilter_Common.py')
 filtSeq.xAODMultiMuonFilter.Ptcut = 3700.
 filtSeq.xAODMultiMuonFilter.Etacut = 2.5
-filtSeq.xAODMultiMuonFilter.NMuons = 1
+filtSeq.xAODMultiMuonFilter.NMuons = 2
 
 

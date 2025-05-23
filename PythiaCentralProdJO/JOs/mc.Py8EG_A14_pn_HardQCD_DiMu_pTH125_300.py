@@ -9,7 +9,7 @@ evgenConfig.generators    = ['Pythia8']
 evgenConfig.contact       = ['Yuhan Guo']
 evgenConfig.process       = 'HardQCD -> all'
 
-evgenConfig.nEventsPerJob = 10000
+evgenConfig.nEventsPerJob = 2000
 
 # ---------------------------------------------------------------
 #   Base fragments (A14 tune + EvtGen hooks kept minimal)

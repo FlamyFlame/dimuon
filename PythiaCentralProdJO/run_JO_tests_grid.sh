@@ -9,8 +9,10 @@ set -euo pipefail
 joDir="JOs"   # directory where the 24 JO files live
 
 # ---- definitions -----------------------------------------------------------
-pthLabels=(5_8 8_14 14_24 24_40 40_70 70_125 125_300)
-jobCounts=(10 5 5 1 1 1 1) # jobs per slice
+# pthLabels=(5_8 8_14 14_24 24_40 40_70 70_125 125_300)
+# jobCounts=(10 5 5 1 1 1 1) # jobs per slice
+pthLabels=(5_8 8_14)
+jobCounts=(2 2) # jobs per slice
 isospins=(pp pn np nn)
 
 # ---- create + submit -------------------------------------------------------
@@ -54,7 +56,7 @@ EOF
       # ---------- run grid job -----------------------------------------------------
       prun --exec "./run_JO_test.sh" \
            --useAthenaPackage \
-           --outDS user.yuhang.PyJO.dimuon.May25.${iso}.pTHat${pTag}GeV.job${jobIdx}.v1 \
+           --outDS user.yuhang.PyJO.dimuon.May25.${iso}.pTHat${pTag}GeV.job${jobIdx}.v4 \
            --outputs Pythia.${seed}.EVNT.pool.root,output.txt,eventLoopHeartBeat.txt
 
       cd ../..
