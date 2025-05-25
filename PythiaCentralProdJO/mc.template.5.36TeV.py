@@ -24,10 +24,7 @@ genSeq.Pythia8.Commands += [
 ]
 
 genSeq.Pythia8.Commands += [
-    # Nominal PDF (already in your config)
     'PDF:pSet = LHAPDF6:nNNPDF30_nlo_as_0118_A208_Z82/0001',
-    # Enable LHAPDF and reweighting
-    'Variations:doVariations = on',  # Enable weight variations
 ]
 
 # ---------------------------------------------------------------
@@ -50,8 +47,7 @@ genSeq.Pythia8.Commands += [
 # ---------------------------------------------------------------
 
 if hasattr(testSeq, 'TestHepMC'):
-    testSeq.TestHepMC.CmEnergy = 5360000.  # Beam COM energy in MeV
-
+    testSeq.remove(testSeq.TestHepMC)
 
 # ---------------------------------------------------------------
 #   Dimuon truth filter (≥2 muons with pT > 3.7GeV)

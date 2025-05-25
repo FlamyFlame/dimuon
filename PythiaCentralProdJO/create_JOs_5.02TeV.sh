@@ -26,7 +26,7 @@ for i in "${!isospins[@]}"; do
     max=${pmax[$j]}
     nev=${nevt[$j]}
 
-    out="JOs_5.02TeV/mc.Py8EG_A14_5.02_${iso}_hQCD_DiMu_pTH${tag}.py"
+    out="JOs_5.02TeV/mc.Py8EG_A14_5020_${iso}_hQCD_DiMu_pTH${tag}.py"
 
     sed -e "s/genSeq.Pythia8.Beam1 = \"[A-Z]*\"/genSeq.Pythia8.Beam1 = \"${b1}\"/" \
         -e "s/genSeq.Pythia8.Beam2 = \"[A-Z]*\"/genSeq.Pythia8.Beam2 = \"${b2}\"/" \
