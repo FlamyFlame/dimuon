@@ -45,6 +45,7 @@ start_time=\$(date +%s)
 
 Gen_tf.py --randomSeed=${seed} \\
           --jobConfig=\$PWD \\
+          --ecmEnergy=5360. \\
           --outputEVNTFile="Pythia.${seed}.EVNT.pool.root" > output.txt
 
 end_time=\$(date +%s)

@@ -18,10 +18,7 @@ include("Pythia8_i/Pythia8_A14_NNPDF23LO_EvtGen_Common.py")
 
 genSeq.Pythia8.Beam1 = "NEUTRON"
 genSeq.Pythia8.Beam2 = "NEUTRON"
-
-genSeq.Pythia8.Commands += [
-    'Beams:eCM = 5360.',           # √s NN
-]
+runArgs.ecmEnergy = 5360. # direct setting of genSeq.Pythia8.CollisionEnergy gets overwritten by runArgs.ecmEnergy in EvgenJobTransforms/Generate_ecmenergies.py
 
 genSeq.Pythia8.Commands += [
     'PDF:pSet = LHAPDF6:nNNPDF30_nlo_as_0118_A208_Z82/0001',
