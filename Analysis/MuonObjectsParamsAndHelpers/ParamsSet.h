@@ -40,6 +40,9 @@ public:
   	// float pTbins[nPtBins] = {4.,5.,6.,7.,8.,9.,10.,12.,15.,20.};
 	// int scaleFactorCtrs[nCtrBins] = {1,1,2,3,3};
 	// std::vector<float> ctrbins = {0, 5, 10, 20, 30, 50, 80};
+    std::vector<double> pT_bins_40;
+    std::vector<double> pT_bins_80;
+	
 	static std::vector<float> pTbins;
 	static std::vector<double> pTHatbins_pythia;
     static std::vector<int> ctrbins;
@@ -121,7 +124,7 @@ public:
 	
   	static const int npairPT_bins = 40;
   	float pairPTlogpow[nSigns][ndRselcs];
-  	float pairPTmax = 50;
+  	float pairPTmax = 80;
   	double pairPTBins[nSigns][ndRselcs][npairPT_bins+1];
 
   	static const int n_hq_pt_bins = 40;
@@ -136,6 +139,7 @@ public:
   	
   	ParamsSet();
   	~ParamsSet(){}
+  	void fillLogBinningArray(std::vector<double>& bins, int nBins, double low, double high);
   	template <typename T>
   	std::string write_single_bin_expr (std::string kinvar, T a, T b);
   	template <typename T>
@@ -143,6 +147,19 @@ public:
 	template <typename T>
 	void write_cut_label_strs (std::string kinvar_expr, std::string kinvar_label, const std::vector<T> & var_bin_bdrys, std::vector<std::string> & var_bin_exprs, std::vector<std::string> & var_bin_labels, bool open_ended);
 };
+
+void ParamsSet::fillLogBinningArray(std::vector<double>& bins, int nBins, double low, double high) {
+    bins.clear();
+
+    double logLow = std::log10(low);
+    double logHigh = std::log10(high);
+    double logStep = (logHigh - logLow) / nBins;
+
+    for (int i = 0; i <= nBins; ++i) {
+        bins.push_back(std::pow(10, logLow + i * logStep));
+    }
+}
+
 
 double ParamsSet::PI = acos(-1.0);
 
@@ -260,6 +277,10 @@ ParamsSet::ParamsSet(){
   			}
   		}
   	}
+
+    fillLogBinningArray(pT_bins_40,  18, 4.0, 40.0);  // 10 log bins from 8 to 200 GeV
+    fillLogBinningArray(pT_bins_80,  12, 8.0, 80.0);  // 10 log bins from 8 to 200 GeV
+
 
   	// old set of minv cut
   	minv_cuts.push_back({0,1.06});
