@@ -59,6 +59,8 @@ elapsed=\$((end_time - start_time))
 echo "Job completed in \$elapsed seconds"
 
 mv Pythia.\${seed}.EVNT.pool.root ${outDir}/
+mv eventLoopHeartBeat.txt ${outDir}/
+mv log.generate ${outDir}/
 
 EOF
     chmod +x "${workDir}/run_JO_test_${cfg}.sh"

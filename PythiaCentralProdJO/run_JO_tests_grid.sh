@@ -6,11 +6,14 @@ set -euo pipefail
 # setupATLAS
 # asetup AthGeneration,23.6.47 # set up athena package locally
 
-joDir="JOs"   # directory where the 24 JO files live
+joDir="JOs_5.36TeV"   # directory where the 24 JO files live
 
 # ---- definitions -----------------------------------------------------------
 pthLabels=(5_8 8_14 14_24 24_40 40_70 70_125 125_300)
-jobCounts=(10 5 5 1 1 1 1) # jobs per slice
+# jobCounts=(10 5 5 1 1 1 1) # jobs per slice
+jobCounts=(1 1 1 1 1 1 1) # jobs per slice
+# pthLabels=(5_8)
+# jobCounts=(10)
 isospins=(pp pn np nn)
 
 # ---- create + submit -------------------------------------------------------
@@ -23,7 +26,7 @@ for pIdx in "${!pthLabels[@]}"; do
     cfg="${iso}_${pTag}"                 # e.g. pp_25_60
     workDir="JO_test_${cfg}" # name for both condor-script & log-file directories in /afs, and for JO & output-EVNT-file directories in /eos
 
-    joFile="mc.Py8EG_A14_${iso}_HardQCD_DiMu_pTH${pTag}.py"
+    joFile="mc.Py8EG_A14_5360_${iso}_hQCD_DiMu_pTH${pTag}.py"
 
     for jobIdx in $(seq 1 "$nJobs"); do
       seed=$(( (${pIdx}+1)*10000 + ${iIdx}*1000 + jobIdx ))
@@ -42,6 +45,7 @@ start_time=\$(date +%s)
 
 Gen_tf.py --randomSeed=${seed} \\
           --jobConfig=\$PWD \\
+          --ecmEnergy=5360. \\
           --outputEVNTFile="Pythia.${seed}.EVNT.pool.root" > output.txt
 
 end_time=\$(date +%s)
@@ -54,7 +58,7 @@ EOF
       # ---------- run grid job -----------------------------------------------------
       prun --exec "./run_JO_test.sh" \
            --useAthenaPackage \
-           --outDS user.yuhang.PyJO.dimuon.May25.${iso}.pTHat${pTag}GeV.job${jobIdx}.v1 \
+           --outDS user.yuhang.PyJO.dimuon.May25.${iso}.pTHat${pTag}GeV.job${jobIdx}.v8 \
            --outputs Pythia.${seed}.EVNT.pool.root,output.txt,eventLoopHeartBeat.txt
 
       cd ../..
