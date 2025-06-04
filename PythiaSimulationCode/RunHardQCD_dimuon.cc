@@ -12,6 +12,12 @@
 #include <assert.h>
 #include "time.h"
 
+enum class FilterMode{
+  no_filter = 0,
+  single_muon,
+  dimuon,
+  NFilterModes
+};
 
 //#include "fastjet/PseudoJet.hh"
 //#include "fastjet/ClusterSequence.hh"
@@ -45,6 +51,8 @@ class Nucleus2gamma: public Pythia8::PDF
 int main(int argc, char **argv) 
 {
 
+  FilterMode filter_mode = FilterMode::dimuon;
+
   if (argc != 4) {
     std::cerr << "Usage: " << argv[0] << " <integer> <integer> <integer>" << std::endl;
       return 1;
@@ -53,10 +61,12 @@ int main(int argc, char **argv)
   int kinematicRange = atoi(argv[2]); // Configure following variables depending on the intended kinematic range (in terms of jet pT intervals). 0: low, 1: medium, 2: high, 3: very high  
 
   int nEvent = -1;
-  if (kinematicRange == 0) nEvent = 10;
-  else if (kinematicRange == 1) nEvent = 100;
-  else if (kinematicRange == 2) nEvent = 5000;
-  else nEvent = 20000;
+  if (kinematicRange == 0 || kinematicRange == 1 || kinematicRange == 2 || kinematicRange == 3) nEvent = 10; // 5-8, 8-14, 14-24, 24-40
+
+  // if (kinematicRange == 0 || kinematicRange == 2) nEvent = 50; // 5-8, 14-24
+  // else if (kinematicRange == 1 || kinematicRange == 3) nEvent = 200; // 8-14, 24-40
+  else if (kinematicRange == 4) nEvent = 500; // 40-70
+  else nEvent = 2000; // 70-125, 125-300
 
   double muon_min_pT_required = 3.7;
 
@@ -64,7 +74,7 @@ int main(int argc, char **argv)
    // The total number of events we will end up keeping
   int nTried =nEvent; // To be modified -- the total number of events generated without cuts
 
-  assert(kinematicRange >= 0 && kinematicRange <= 4);
+  assert(kinematicRange >= 0 && kinematicRange <= 6);
 
   // define pTHat ranges to apply Phase Space Cuts on the hard process
   // pTHatMin, pTHatMax cuts are to be applied in the rest frame of the hard subprocess
@@ -75,30 +85,40 @@ int main(int argc, char **argv)
   // and be careful about overall weighting/normalization when combining the events
 
   double pTHatMin, pTHatMax; // Defining the parameters which need to change with pT cut interval
-  if(kinematicRange == 0) // Mid pT hard scattering
+  if(kinematicRange == 0) // Lowest pT hard scattering
   {
     pTHatMin=5.0;
-    pTHatMax=10.0;
+    pTHatMax=8.0;
   }
-  else if(kinematicRange == 1) // Mid pT hard scattering
+  else if(kinematicRange == 1) // Low pT hard scattering
   {
-    pTHatMin=10.0;
-    pTHatMax=25.0;
+    pTHatMin=8.0;
+    pTHatMax=14.0;
   }
-  else if(kinematicRange == 2) // High pT hard scattering
+  else if(kinematicRange == 2) // Mid pT hard scattering
   {
-    pTHatMin=25.0;
-    pTHatMax=60.0;
+    pTHatMin=14.0;
+    pTHatMax=24.0;
   }
-  else if(kinematicRange == 3) // Very high pT hard scattering
+  else if(kinematicRange == 3) // High pT hard scattering
   {
-    pTHatMin=60.0;
-    pTHatMax=120.0;
+    pTHatMin=24.0;
+    pTHatMax=40.0;
+  }
+  else if(kinematicRange == 4) // High pT hard scattering
+  {
+    pTHatMin=40.0;
+    pTHatMax=70.0;
+  }
+  else if(kinematicRange == 5) // Very high pT hard scattering
+  {
+    pTHatMin=70.0;
+    pTHatMax=125.0;
   }
   else // Very very high pT hard scattering
   {
-    pTHatMin=120.0;
-    pTHatMax=3200.0;
+    pTHatMin=125.0;
+    pTHatMax=300.0;
   }
 
   // minimum jet pT
@@ -169,7 +189,8 @@ int main(int argc, char **argv)
     pythia.readString("Beams:idA = 2112");
     pythia.readString("Beams:idB = 2112");
   }
-  pythia.readString("PDF:pSet = LHAPDF6:nCTEQ15npFullNuc_208_82/0001"); // Set PDFs
+  // pythia.readString("PDF:pSet = LHAPDF6:nCTEQ15npFullNuc_208_82/0001"); // Set PDFs
+  pythia.readString("PDF:pSet = LHAPDF6:nNNPDF30_nlo_as_0118_A208_Z82/0001"); // Set PDFs
   // Enable photon flux sampling from a PDF. Currently set to muon EPA but will be re-pointed to custom nuclear
   //pythia.readString("PDF:lepton2gamma = on");
 
@@ -227,6 +248,13 @@ int main(int argc, char **argv)
 
   std::vector<int>* b_muon_inds=new std::vector<int>(); // muon indices - for easier pairings
 
+  std::vector<double>* b_muon_pt=new std::vector<double>();
+  std::vector<double>* b_muon_eta=new std::vector<double>();
+  std::vector<double>* b_muon_phi=new std::vector<double>();
+  std::vector<int>* b_muon_ch=new std::vector<int>();
+  std::vector<int>* b_muon_id=new std::vector<int>();
+  std::vector<int>* b_muon_bar=new std::vector<int>();
+
   std::vector<double>* b_muon1_pt=new std::vector<double>();
   std::vector<double>* b_muon1_eta=new std::vector<double>();
   std::vector<double>* b_muon1_phi=new std::vector<double>();
@@ -267,6 +295,13 @@ int main(int argc, char **argv)
   T->Branch("truth_eta",&b_eta);
   T->Branch("truth_phi",&b_phi);
   T->Branch("truth_m",&b_m);
+
+  T->Branch("truth_muon_pt",&b_muon_pt);
+  T->Branch("truth_muon_eta",&b_muon_eta);
+  T->Branch("truth_muon_phi",&b_muon_phi);
+  T->Branch("truth_muon_ch",&b_muon_ch);
+  T->Branch("truth_muon_id",&b_muon_id);
+  T->Branch("truth_muon_bar",&b_muon_bar);
 
   T->Branch("truth_mupair_pt1",&b_muon1_pt);
   T->Branch("truth_mupair_eta1",&b_muon1_eta);
@@ -312,6 +347,14 @@ int main(int argc, char **argv)
     b_m->clear();
 
     b_muon_inds->clear();
+
+    b_muon_pt->clear();
+    b_muon_eta->clear();
+    b_muon_phi->clear();
+    b_muon_ch->clear();
+    b_muon_id->clear();
+    b_muon_bar->clear();
+
     b_muon1_pt->clear();
     b_muon1_eta->clear();
     b_muon1_phi->clear();
@@ -363,7 +406,13 @@ int main(int argc, char **argv)
       }
     }
 
-    if (b_nmuons >= 2){
+    int nmuons_required = static_cast<int>(filter_mode);
+    if (nmuons_required < 0 || nmuons_required >= static_cast<int>(FilterMode::NFilterModes)){
+      std::cerr << "#muons required must be between 0 and 2!" << std::endl;
+      throw std::exception();
+    }
+
+    if (b_nmuons >= nmuons_required){
       iEvent++;
 
       //std::cout << "recording event" << std::endl;
@@ -391,12 +440,14 @@ int main(int argc, char **argv)
     	  iEvent--;
     	  continue;
     	}
-      if (kinematicRange == 0 && iEvent != 0){
-        end = clock();
-        time_used_cur_event = ((float) (end - start)) / CLOCKS_PER_SEC / 60.;
-        start = clock();
-        printf("Event%d took %.2f minutes to generate.\n", iEvent, time_used_cur_event);
-      }else if (iEvent != 0){
+      // if (kinematicRange == 0 && iEvent != 0){
+      //   end = clock();
+      //   time_used_cur_event = ((float) (end - start)) / CLOCKS_PER_SEC / 60.;
+      //   start = clock();
+      //   printf("Event%d took %.2f minutes to generate.\n", iEvent, time_used_cur_event);
+      // }else if (iEvent != 0){
+      
+      if (iEvent != 0){
 
         if(iEvent <= 10){
         printf("Event%d\n", iEvent);
@@ -404,9 +455,9 @@ int main(int argc, char **argv)
         }
 
         int nstep = -1;
-        if (kinematicRange == 1)      nstep = 10;
-        else if (kinematicRange == 2) nstep = 200;
-        else                          nstep = 2000;
+        if (kinematicRange == 0 || kinematicRange == 1 || kinematicRange == 2 || kinematicRange == 3)      nstep = 10;
+        else if (kinematicRange == 4) nstep = 100;
+        else                          nstep = 200;
 
         if (iEvent % nstep == 0){
           end = clock();
@@ -414,6 +465,16 @@ int main(int argc, char **argv)
           start = clock();
           printf("Event%d-%d took %.2f seconds to generate.\n", iEvent-nstep, iEvent, time_used_cur_event);
         }
+      }
+      
+      // single muon attributes
+      for (int imu = 0; imu < b_nmuons; imu++){
+        b_muon_pt->push_back(b_pt->at(b_muon_inds->at(imu)));
+        b_muon_eta->push_back(b_eta->at(b_muon_inds->at(imu)));
+        b_muon_phi->push_back(b_phi->at(b_muon_inds->at(imu)));
+        b_muon_ch->push_back((b_id->at(b_muon_inds->at(imu)) > 0)? -1 : 1); // +1 for mu+; -1 for mu-
+        b_muon_id->push_back(b_id->at(b_muon_inds->at(imu)));
+        b_muon_bar->push_back(b_muon_inds->at(imu));
       }
       
       // muon pairing
