@@ -18,6 +18,7 @@ public:
   bool    pass2mu4;
   bool    mu1PassSingle;
   bool    mu2PassSingle;
+  bool    passSeparated; // separated enough for 2mu4 & mu4_mu4noL1 trigger efficiencies to be factorizable into single-muon parts; for now dR > 0.8
 
   float   m1_trk_pt;
   float   m1_trk_eta;

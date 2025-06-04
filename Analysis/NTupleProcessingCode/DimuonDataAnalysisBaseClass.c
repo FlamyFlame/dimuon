@@ -1,6 +1,53 @@
 #include "DimuonDataAnalysisBaseClass.h"
 
 void DimuonDataAnalysisBaseClass::PrintInstructions(){
+	std::string datatype = isPbPb? "PbPb" : "PP";
+	std::cout << datatype << " Data Ntuple processing script:" << std::endl;
+    std::cout << "The following public variable(s) **MUST** be set:" << std::endl;
+    std::cout << "--> file_batch: [INT] Decides which run3-file batch to process, only has effect when isRun3 is true" << std::endl;
+    std::cout << "--> 					PbPb: file batch: 1-6 for 2023 data, 1-9 for 2024 data, 1-7 for 2015/2018 data" << std::endl;
+    std::cout << "--> 					PP:   file batch: 1-4 for 2024 data, 1-3 for 2017 data" << std::endl;
+    if (isPbPb) std::cout << "--> run_year (only for PbPb): [INT] (20)23 or (20)24; MUST be set for PbPb if isRun3 is true" << std::endl;
+    std::cout << std::endl;
+
+    std::cout << "The following public variable(s) **MUST** be checked:" << std::endl;
+    std::cout << "--> isRun3: [BOOL] if true (DEFAULT), use run3 data" << std::endl;
+    std::cout << "                   if false: use run2 data" << std::endl;
+    std::cout << "--> trigger_mode: INT, value = 0,1,2,3" << std::endl;
+    std::cout << "                       value = 0 (set true if isMinBias): require MinBias trigger: tag if either muon files single-muon trigger" << std::endl;
+    std::cout << "                       value = 1 (DEFAULT): require single-muon trigger: tag which muon files trigger & if pair passes mu4_mu4_noL1 & 2mu4" << std::endl;
+    std::cout << "                       value = 2: require mu4_mu4_noL1" << std::endl;
+    std::cout << "                       value = 3: require 2mu4" << std::endl;
+    std::cout << std::endl;
+
+    std::cout << "The following public variable(s) should be checked:" << std::endl;
+    std::cout << "--> isMinBias: [BOOL] if true, use MinBias data + trigger mode set to 0" << std::endl;
+    std::cout << "--> output_single_muon_tree: [BOOL] if true, output single-muon tree" << std::endl;
+    std::cout << "                                    if false (DEFAULT), output muon-pair tree" << std::endl;
+    if (isPbPb) std::cout << "--> turn_on_ctr_binned_tree_writing (only for PbPb): [BOOL] if true, output centrality-binned muon-pair trees (DEFAULT FALSE)" << std::endl;
+    std::cout << "--> resonance_cut_mode: integer that determines which set of resonant cuts to apply" << std::endl;
+    std::cout << "        * resonance_cut_mode = 0: NO resonance cut" << std::endl;
+    std::cout << "        * resonance_cut_mode = 1: old resonance cut (default)" << std::endl;
+    std::cout << "        * resonance_cut_mode = 2: new resonance cut" << std::endl;
+    std::cout << "        If resonance_cut_mode value is outside {0,1,2}: assume default option" << std::endl;
+    std::cout << "--> requireTight: boolean, default false - if true: require tight WP; false; require medium WP" << std::endl;
+    std::cout << "--> force_nominal: boolean, default false - if true: force nominal cuts (force the boolean trigger_effcy_calc to be false)" << std::endl;
+
+    std::cout << std::endl;
+
+    if (isPbPb){
+	    std::cout << "if run_year == 23, output files will be written to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2023" << std::endl;
+	    std::cout << "if run_year == 24, output files will be written to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2024" << std::endl;
+	    std::cout << "else,      output files will be written to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2" << std::endl;
+    }else{
+	    std::cout << "if isRun3, output files will be written to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024" << std::endl;
+	    std::cout << "else,      output files will be written to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2" << std::endl;
+    }
+}
+
+void DimuonDataAnalysisBaseClass::ParamCheck(){
+    if (isMinBias) trigger_mode = 0; // if use MB data, do not require any muon trigger
+    trigger_effcy_calc = (!force_nominal && (trigger_mode == 0 || trigger_mode == 1)); // if NOT force nominal AND either do not require muon trigger or only require single-muon trigger
 }
 
 void DimuonDataAnalysisBaseClass::InitInput(){
@@ -9,6 +56,45 @@ void DimuonDataAnalysisBaseClass::InitInput(){
 		std::cerr << "FATAL:: TChain for analysis is nullptr! Throwing exception." << std::endl;
     	throw std::exception();
 	}
+
+    if (isMinBias){
+        InitInputBranchesSingleMuon();
+    }else{
+        InitInputBranchesDimuon();
+    }
+
+}
+
+void DimuonDataAnalysisBaseClass::InitInputBranchesSingleMuon(){
+    fChain->SetBranchAddress("muon_pt"              , &muon_pt);
+    fChain->SetBranchAddress("muon_eta"             , &muon_eta);
+    fChain->SetBranchAddress("muon_phi"             , &muon_phi);
+    fChain->SetBranchAddress("muon_quality"         , &muon_quality);
+    fChain->SetBranchAddress("muon_deltaP_overP"          , &muon_deltaP_overP);
+    fChain->SetBranchAddress("muon_d0"              , &muon_d0);
+    fChain->SetBranchAddress("muon_z0"              , &muon_z0);
+
+    std::string mu4_trigger_name = (isRun3)? "HLT_mu4_L1MU3V" : "HLT_mu4";
+    std::string mu4_trigger_branch = "b_" + mu4_trigger_name;
+    std::string mu4_trigger_match_branch = "muon_b_" + mu4_trigger_name;
+
+    fChain->SetBranchAddress(mu4_trigger_branch.c_str()                       , &b_HLT_mu4);
+    fChain->SetBranchAddress(mu4_trigger_match_branch.c_str()                 , &muon_b_HLT_mu4);
+
+    fChain->SetBranchStatus("*"                     ,0);//switch off all branches, then enable just the ones that we need
+    fChain->SetBranchStatus("muon_pt"               ,1);
+    fChain->SetBranchStatus("muon_eta"              ,1);
+    fChain->SetBranchStatus("muon_phi"              ,1);
+    fChain->SetBranchStatus("muon_quality"          ,1);
+    fChain->SetBranchStatus("muon_deltaP_overP"     ,1);
+    fChain->SetBranchStatus("muon_d0"               ,1);
+    fChain->SetBranchStatus("muon_z0"               ,1);
+
+    fChain->SetBranchStatus(mu4_trigger_branch.c_str()                          ,1);
+    fChain->SetBranchStatus(mu4_trigger_match_branch.c_str()                    ,1);
+}
+
+void DimuonDataAnalysisBaseClass::InitInputBranchesDimuon(){
 
     fChain->SetBranchAddress("RunNumber"                   , &RunNumber);
     fChain->SetBranchAddress("lbn"                         , &lbn);
@@ -55,7 +141,7 @@ void DimuonDataAnalysisBaseClass::InitInput(){
     fChain->SetBranchAddress(mu4_trigger_match_branch.c_str()                 , &muon_b_HLT_mu4);
     fChain->SetBranchAddress(twomu4_trigger_match_branch.c_str()              , &dimuon_b_HLT_2mu4);        
     
-    if (isRun3){ // run3: also have mu4_mu4_noL1 trigger
+    if (isRun3 || isPbPb){
         fChain->SetBranchAddress(mu4_mu4noL1_trigger_branch.c_str()           , &b_HLT_mu4_mu4noL1);
         fChain->SetBranchAddress(mu4_mu4noL1_trigger_match_branch.c_str()     , &dimuon_b_HLT_mu4_mu4noL1);
     }
@@ -92,7 +178,7 @@ void DimuonDataAnalysisBaseClass::InitInput(){
     fChain->SetBranchStatus(mu4_trigger_match_branch.c_str()                    ,1);
     fChain->SetBranchStatus(twomu4_trigger_match_branch.c_str()                 ,1);
 
-    if (isRun3){
+    if (isRun3 || isPbPb){
         fChain->SetBranchStatus(mu4_mu4noL1_trigger_branch.c_str()              ,1);
         fChain->SetBranchStatus(mu4_mu4noL1_trigger_match_branch.c_str()        ,1);
     }
@@ -102,6 +188,9 @@ void DimuonDataAnalysisBaseClass::TrigModeToSuffixMap(){
     trig_suffix = "";
 
     switch(trigger_mode){
+    case 0:
+        trig_suffix = "_min_bias";
+        break;
     case 1:
         trig_suffix = "_single_mu4";
         break;
@@ -112,12 +201,74 @@ void DimuonDataAnalysisBaseClass::TrigModeToSuffixMap(){
         trig_suffix = "_2mu4";
         break;        
     default:
-    	std::cerr << "Trigger mode INVALID: must be 1 / 2 / 3!" << std::endl;
+    	std::cerr << "Trigger mode INVALID: must be 0 / 1 / 2 / 3!" << std::endl;
     	throw std::exception();
     }
 }
 
+
+void DimuonDataAnalysisBaseClass::InitOutput() {
+    // Common suffix setup
+    std::string tight_suffix = (requireTight) ? "_tight" : "";
+    TrigModeToSuffixMap(); // Sets trig_suffix based on trigger_mode
+
+    // Determine resonance cut suffix
+    std::string resonance_cut_suffix;
+    if (!isPbPb) { // PP resonance cuts
+        switch (resonance_cut_mode) {
+            case 0: resonance_cut_suffix = "_no_res_cut"; break;
+            case 1: resonance_cut_suffix = ""; break;
+            case 2: resonance_cut_suffix = "_res_cut_v2"; break;
+            default: 
+				resonance_cut_mode = 1;
+            	resonance_cut_suffix = "";
+            	break;
+        }
+    }
+
+    // Construct output paths
+    std::string file_name_base = output_single_muon_tree ? "single_muon_trees" : "muon_pairs";
+    std::string run_suffix;
+
+    if (!isPbPb) { // PP
+        run_suffix = isRun3 ? "_pp_2024" : "_pp_2017";
+    } else { // PbPb
+        run_suffix = "_pbpb_20" + std::to_string(run_year);
+    }
+    
+	std::string file_batch_suffix = "_part" + std::to_string(file_batch);
+    std::string outfile_ending = run_suffix + file_batch_suffix + trig_suffix + tight_suffix + resonance_cut_suffix + ".root";
+    output_file_path = in_out_file_dir + file_name_base + outfile_ending;
+    output_hist_file_path = in_out_file_dir + "hists_cut_acceptance" + outfile_ending;
+
+    // Histograms file
+    m_outHistFile = new TFile(output_hist_file_path.c_str(), "recreate");
+    DimuonAnalysisBaseClass::InitOutput(); // Base histogram setup
+
+    // Create muon/muon-pair output file
+    m_outfile = new TFile(output_file_path.c_str(), "recreate");
+    
+    // Create main trees
+    if (output_single_muon_tree) {
+        muonOutTree = new TTree("muon_tree", "All single muons");
+        muonOutTree->Branch("MuonObj", &tempmuon);
+    } else {
+        for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++) {
+            muonPairOutTree[ksign] = new TTree(Form("muon_pair_tree_sign%u", ksign+1), Form("All muon pairs, sign%u", ksign+1));
+            muonPairOutTree[ksign]->Branch("MuonPairObj", &mpair_raw_ptr);
+        }
+    }
+
+}
 bool DimuonDataAnalysisBaseClass::EventTrigFilter(){
+
+    if (trigger_mode == 0) return true; // MB data: no muon trigger requirement
+
+    if (trigger_mode == 2 && !isPbPb && !isRun3){ // pp Run2: no mu4_mu4noL1 trigger
+        std::cerr << "PP Run2 data: no mu4_mu4_noL1 trigger!" << std::endl;
+        throw std::exception();
+    }
+
     switch(trigger_mode){
     case 1:
 		return b_HLT_mu4;
@@ -135,6 +286,8 @@ bool DimuonDataAnalysisBaseClass::TrigMatch(int pair_ind, int m1_ind, int m2_ind
 
 	try{
 		switch (trigger_mode){
+        case 0:
+            return true;
 		case 1:
 			if (!b_HLT_mu4) return false;
 			
@@ -275,8 +428,6 @@ void DimuonDataAnalysisBaseClass::FillMuonPairTree(){
   try{
     if (!mpair) throw std::runtime_error("FillMuonPairTree: Muon Pair doesn't exist!");
     mpair_raw_ptr = mpair.get();
-    cout << "mpair pt_lead: " << mpair->pt_lead << std::endl;
-    cout << "mpair_raw_ptr pt_lead: " << mpair_raw_ptr->pt_lead << std::endl;
   }catch(const std::runtime_error& e){
     std::cout << "Runtime error caught in function FillMuonPairTree: " << e.what() << std::endl;
     std::cout << "Return without filling the muon pair in the output trees!" << std::endl;
@@ -291,11 +442,10 @@ void DimuonDataAnalysisBaseClass::FillMuonPairTree(){
 void DimuonDataAnalysisBaseClass::ProcessData(){
 
 	Long64_t nentries = fChain->GetEntries();//number of events
-	// for (Long64_t jentry=0; jentry<nentries;jentry++) {//loop over the events
-	for (Long64_t jentry=0; jentry<10000;jentry++) {//loop over the events
+	for (Long64_t jentry=0; jentry<nentries;jentry++) {//loop over the events
+	// for (Long64_t jentry=0; jentry<10000;jentry++) {//loop over the events
 
-		if(jentry%100==0) cout<<"Processing "<<jentry<<" event out of "<<nentries<<" events"<<std::endl;
-		// if(jentry%100000==0) cout<<"Processing "<<jentry<<" event out of "<<nentries<<" events"<<std::endl;
+		if(jentry%100000==0) cout<<"Processing "<<jentry<<" event out of "<<nentries<<" events"<<std::endl;
 
 		int num_bytes = fChain->GetEntry(jentry);//read in an event
 		if(num_bytes==0){
@@ -313,107 +463,143 @@ void DimuonDataAnalysisBaseClass::ProcessData(){
 		std::vector<int> muon_index_list = {};
 		std::vector<int>::iterator it;
 
-		int NPairs=muon_pair_muon1_pt->size();//number of muon pairs in the event
+        if (isMinBias){ // MinBias data --> perform offline-single-muon analysis
 
-		for(int pair_ind=0;pair_ind<NPairs;pair_ind++){//first loop over all muon-pairs in the event
+        }else{ // HardProbe data --> perform offline-dimuon analysis
+    		int NPairs=muon_pair_muon1_pt->size();//number of muon pairs in the event
 
-			mpair = MakeMuonPair();
+    		for(int pair_ind=0;pair_ind<NPairs;pair_ind++){//first loop over all muon-pairs in the event
 
-			FillMuonPair(pair_ind, mpair);
-			mpair->m1.ev_num = jentry;
-			mpair->m2.ev_num = jentry;
+    			mpair = MakeMuonPair();
 
-			//------------------------------------------------------------
+    			FillMuonPair(pair_ind, mpair);
+    			mpair->m1.ev_num = jentry;
+    			mpair->m2.ev_num = jentry;
 
-			h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill(static_cast<int>(CutsCommon::nocut) + 0.5, mpair->weight);
+    			//------------------------------------------------------------
 
-			//Trigger match for muon pair
-			if(!TrigMatch(pair_ind, mpair->m1.ind, mpair->m2.ind)) continue;
-			h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill(static_cast<int>(CutsCommon::pass_trigger_match) + 0.5, mpair->weight);
+    			h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill(static_cast<int>(CutsCommon::nocut) + 0.5, mpair->weight);
 
-			if (!PassCuts(mpair))continue;
-			
-			mpair->passTight = (mpair->m1.quality&mpair->m2.quality&16); //tag tight muon pairs
-		
-			//------------------------------------------------------------
+    			//Trigger match for muon pair
+    			if(!TrigMatch(pair_ind, mpair->m1.ind, mpair->m2.ind)) continue;
+    			h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill(static_cast<int>(CutsCommon::pass_trigger_match) + 0.5, mpair->weight);
 
-			//Two things at this step: 
-			//1) sort pt, eta, phi by pt
-			//2) update the muon-pair values
-			mpair->Update();
-			mpair->passmu4mu4noL1 = dimuon_b_HLT_mu4_mu4noL1->at(pair_ind);
-			mpair->pass2mu4 = dimuon_b_HLT_2mu4->at(pair_ind);
-			mpair->mu1PassSingle = muon_b_HLT_mu4->at(mpair->m1.ind);
-			mpair->mu2PassSingle = muon_b_HLT_mu4->at(mpair->m2.ind);
+    			if (!PassCuts(mpair))continue;
+    			
+    			mpair->passTight = (mpair->m1.quality&mpair->m2.quality&16); //tag tight muon pairs
+    		
+    			//------------------------------------------------------------
 
-			// resonance tag
-			ResonanceTagging(mpair);
-            ResonanceTaggingV2(mpair);
+    			//Two things at this step: 
+    			//1) sort pt, eta, phi by pt
+    			//2) update the muon-pair values
+    			mpair->Update();
+    			mpair->passmu4mu4noL1 = (!isPbPb && !isRun3)? false : dimuon_b_HLT_mu4_mu4noL1->at(pair_ind); // pp run2: no mu4_mu4noL1 trigger
+    			mpair->pass2mu4 = dimuon_b_HLT_2mu4->at(pair_ind);
+    			mpair->mu1PassSingle = muon_b_HLT_mu4->at(mpair->m1.ind);
+    			mpair->mu2PassSingle = muon_b_HLT_mu4->at(mpair->m2.ind);
 
-			// photo-production cut
-			if (isPbPb){
-			  	if (IsPhotoProduction(mpair)) continue;
-			  	h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill(static_cast<int>(CutsPbPb::pass_photoprod) + 0.5, mpair->weight);      	
-			}
+                mpair->passSeparated = (mpair->dr > 0.8);
 
-			muon_pair_list_cur_event_pre_resonance_cut.push_back(std::move(mpair));
+    			// resonance tag
+    			ResonanceTagging(mpair);
+                ResonanceTaggingV2(mpair);
 
-		} // finish first loop over all muon pairs
+    			// photo-production cut
+    			if (isPbPb){
+    			  	if (!trigger_effcy_calc && IsPhotoProduction(mpair)) continue;
+    			  	h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill(static_cast<int>(CutsPbPb::pass_photoprod) + 0.5, mpair->weight);      	
+    			}
 
-		for(int pair_ind = 0; pair_ind < muon_pair_list_cur_event_pre_resonance_cut.size(); pair_ind++){//second loop over all muon-pairs in the event
-			// discard the pair if either muon is resonance-tagged
+    			muon_pair_list_cur_event_pre_resonance_cut.push_back(std::move(mpair));
 
-			mpair = std::move(muon_pair_list_cur_event_pre_resonance_cut.at(pair_ind));
+    		} // finish first loop over all muon pairs
 
-			if (!mpair){
-			  	std::cerr << "mpair at second muon-pair loop NOT found! Return without resonance-tag checking or pair analysis." << std::endl;
-			  	continue;
-			}
+    		for(int pair_ind = 0; pair_ind < muon_pair_list_cur_event_pre_resonance_cut.size(); pair_ind++){//second loop over all muon-pairs in the event
+    			// discard the pair if either muon is resonance-tagged
 
-			std::vector<int>::iterator itres_m1;
-			std::vector<int>::iterator itres_m2;
+    			mpair = std::move(muon_pair_list_cur_event_pre_resonance_cut.at(pair_ind));
 
-            // apply resonance cuts if resonance_cut_mode != 0
-            if (resonance_cut_mode == 1){ // apply old cuts
-                itres_m1 = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m1.ind);
-                if(itres_m1 != resonance_tagged_muon_index_list.end())  continue;
+    			if (!mpair){
+    			  	std::cerr << "mpair at second muon-pair loop NOT found! Return without resonance-tag checking or pair analysis." << std::endl;
+    			  	continue;
+    			}
 
-                itres_m2 = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m2.ind);
-                if(itres_m2 != resonance_tagged_muon_index_list.end())  continue;
-            } else if (resonance_cut_mode == 2){ // apply new cuts
-                itres_m1 = std::find(resonance_tagged_muon_index_list_v2.begin(),resonance_tagged_muon_index_list_v2.end(),mpair->m1.ind);
-                if(itres_m1 != resonance_tagged_muon_index_list_v2.end())  continue;
+    			std::vector<int>::iterator itres_m1;
+    			std::vector<int>::iterator itres_m2;
 
-                itres_m2 = std::find(resonance_tagged_muon_index_list_v2.begin(),resonance_tagged_muon_index_list_v2.end(),mpair->m2.ind);
-                if(itres_m2 != resonance_tagged_muon_index_list_v2.end())  continue;
-            }
+                // apply resonance cuts if resonance_cut_mode != 0
+                if (!trigger_effcy_calc){
+                    if (resonance_cut_mode == 1){ // apply old cuts
+                        itres_m1 = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m1.ind);
+                        if(itres_m1 != resonance_tagged_muon_index_list.end())  continue;
 
-			int pass_resonance_ind = isPbPb? static_cast<int>(CutsPbPb::pass_resonance) : static_cast<int>(CutsPP::pass_resonance);
-			h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill( + 0.5, mpair->weight);
+                        itres_m2 = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m2.ind);
+                        if(itres_m2 != resonance_tagged_muon_index_list.end())  continue;
+                    } else if (resonance_cut_mode == 2){ // apply new cuts
+                        itres_m1 = std::find(resonance_tagged_muon_index_list_v2.begin(),resonance_tagged_muon_index_list_v2.end(),mpair->m1.ind);
+                        if(itres_m1 != resonance_tagged_muon_index_list_v2.end())  continue;
 
-			//------------------------------------------------------------
-			// perform additional pair-level analysis if needed
-			PerformAdditionalPairAnalysis();
+                        itres_m2 = std::find(resonance_tagged_muon_index_list_v2.begin(),resonance_tagged_muon_index_list_v2.end(),mpair->m2.ind);
+                        if(itres_m2 != resonance_tagged_muon_index_list_v2.end())  continue;
+                    }                    
+                }
 
-			if(output_single_muon_tree){
-			  it = std::find(muon_index_list.begin(),muon_index_list.end(),mpair->m1.ind);
-			  if(it == muon_index_list.end()){ //muon1 index NOT found
-			    	muon_index_list.push_back(mpair->m1.ind);
-			    	tempmuon = &(mpair->m1);
-			    	FillSingleMuonTree();
-			  }
-			  it = std::find(muon_index_list.begin(),muon_index_list.end(),mpair->m2.ind);
-			  if(it == muon_index_list.end()){ //muon1 index NOT found
-			    	muon_index_list.push_back(mpair->m2.ind);
-			    	tempmuon = &(mpair->m2);
-			    	FillSingleMuonTree();
-			  }
-			}
-			else{ // fill muon pair trees
-			 	FillMuonPairTree();
-			}
-		}
+    			int pass_resonance_ind = isPbPb? static_cast<int>(CutsPbPb::pass_resonance) : static_cast<int>(CutsPP::pass_resonance);
+    			h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill( + 0.5, mpair->weight);
 
-		mpair.reset(); // make sure the reference to the last muon pair gets reset
+    			//------------------------------------------------------------
+    			// perform additional pair-level analysis if needed
+    			PerformAdditionalPairAnalysis();
+
+    			if(output_single_muon_tree){
+    			  it = std::find(muon_index_list.begin(),muon_index_list.end(),mpair->m1.ind);
+    			  if(it == muon_index_list.end()){ //muon1 index NOT found
+    			    	muon_index_list.push_back(mpair->m1.ind);
+    			    	tempmuon = &(mpair->m1);
+    			    	FillSingleMuonTree();
+    			  }
+    			  it = std::find(muon_index_list.begin(),muon_index_list.end(),mpair->m2.ind);
+    			  if(it == muon_index_list.end()){ //muon1 index NOT found
+    			    	muon_index_list.push_back(mpair->m2.ind);
+    			    	tempmuon = &(mpair->m2);
+    			    	FillSingleMuonTree();
+    			  }
+    			}
+    			else{ // fill muon pair trees
+    			 	FillMuonPairTree();
+    			}
+    		}
+
+    		mpair.reset(); // make sure the reference to the last muon pair gets reset
+        }
 	}//loop over events
+}
+
+
+void DimuonDataAnalysisBaseClass::Run(){
+
+    clock_t start, end;
+    double cpu_time_used;
+    start = clock();
+
+    run_year = run_year % 2000; // e.g, 2023 --> 23
+
+    ParamCheck();
+    InitInput();
+    InitOutput();
+    ProcessData();
+    HistAdjust();
+
+    m_outfile->Write();
+    m_outHistFile->Write();
+    m_outfile->Close();
+    m_outHistFile->Close();
+    std::cout << "Output muon-pair trees have been written to: " << output_file_path << std::endl;
+    std::cout << "Output histograms have been written to: " << output_hist_file_path << std::endl;
+
+    end = clock();
+    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+    std::cout << "CPU time used (in seconds) is " << cpu_time_used << std::endl;
+
 }

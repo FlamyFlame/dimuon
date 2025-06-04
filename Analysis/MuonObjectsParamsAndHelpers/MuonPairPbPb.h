@@ -91,17 +91,17 @@ int MuonPairPbPb::GetCentralityPbPb2024(float FCal_Et){
 }
 
 void MuonPairPbPb::UpdateCentrality(){
-  switch (year){
-  case 2015:
+  switch (year % 2000){
+  case 15:
     avg_centrality = GetCentralityPbPb2015(FCal_Et);
     break;
-  case 2018: // use 2015 centralities
+  case 18: // use 2015 centralities
     avg_centrality = GetCentralityPbPb2015(FCal_Et);
     break;
-  case 2023:
+  case 23:
     avg_centrality = GetCentralityPbPb2023(FCal_Et);
     break;
-  case 2024:
+  case 24:
     avg_centrality = GetCentralityPbPb2024(FCal_Et);
     break;
   default:

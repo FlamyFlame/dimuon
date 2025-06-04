@@ -9,9 +9,6 @@ class PbPbDataNTupleFirstPass : public DimuonDataAnalysisBaseClass{
 private:
     // --------------------- general settings ---------------------------
 
-    std::string run_suffix;
-    std::string file_batch_suffix;
-    std::string in_out_file_dir;
     // const ParamsSet pms;
     // int scaleFactorCtrs[ParamsSet::nCtrIntvls] = {1,1,3,5,5};
     // int scaleFactorPts[ParamsSet::nPtBins] = {1,1,1,1,1};
@@ -30,7 +27,7 @@ private:
         return std::make_shared<MuonPairData>();
     }
 
-    void ParamCheck();
+    void ParamCheck() override;
     void InitInput() override;
     void TChainFill() override;
     void InitOutput() override;
@@ -47,8 +44,6 @@ private:
 
 
 public :
-    bool apply_resonance_cuts = true;
-    int run_year = 0;
     bool turn_on_ctr_binned_tree_writing = false;
     
     PbPbDataNTupleFirstPass();

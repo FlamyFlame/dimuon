@@ -14,10 +14,7 @@ private:
       
 // --------------------- class methods ---------------------------
   
-    // void InitInput() override;
-    void TChainFill() override;
-    void InitOutput() override;
-    
+    void TChainFill() override;    
 
 public :
     PPDataNTupleFirstPass();

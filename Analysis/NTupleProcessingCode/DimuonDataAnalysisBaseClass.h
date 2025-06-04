@@ -11,6 +11,9 @@ protected:
 // --------------------- general settings ---------------------------
     std::string trig_suffix = "";
     ParamsSet pms;
+    std::string in_out_file_dir;
+
+    bool trigger_effcy_calc; // if true, not care about physics origin, e.g, skip photoproduction + resonance cuts to gain more statistics
 
 // --------------------- input files & trees & data for setting branches---------------------------
 
@@ -31,6 +34,13 @@ protected:
     std::vector<bool>    *dimuon_b_HLT_mu4_mu4noL1    =nullptr;
 
     std::vector<float>   *muon_deltaP_overP           =nullptr;
+
+    std::vector<float>   *muon_pt          =nullptr; // only used for mu4 trigger-efficiency study
+    std::vector<float>   *muon_eta         =nullptr; // only used for mu4 trigger-efficiency study
+    std::vector<float>   *muon_phi         =nullptr; // only used for mu4 trigger-efficiency study
+    std::vector<int>     *muon_quality     =nullptr; // only used for mu4 trigger-efficiency study
+    std::vector<float>   *muon_d0          =nullptr; // only used for mu4 trigger-efficiency study
+    std::vector<float>   *muon_z0          =nullptr; // only used for mu4 trigger-efficiency study
   
     std::vector<int>     *muon_pair_muon1_index       =nullptr;
     std::vector<float>   *muon_pair_muon1_pt          =nullptr;
@@ -79,6 +89,9 @@ protected:
     virtual void PrintInstructions();
 
     virtual void InitInput() override;
+    virtual void InitInputBranchesDimuon(); // set branches for muon-pair variables
+    virtual void InitInputBranchesSingleMuon(); // set branches for single-muon variables (for MB-data mu4-trigger-efficiency study)
+    virtual void InitOutput() override;
     virtual void TChainFill() = 0; // purely virtual method
 
     virtual PairPtr MakeMuonPair() const {
@@ -92,21 +105,29 @@ protected:
     virtual void FillSingleMuonTree();
     virtual void FillMuonPairTree();
 
+    virtual void ParamCheck();
+
     virtual void PerformAdditionalPairAnalysis(){}
     void ProcessData() override;
+    void Run() override;
+
 public:
     bool isRun3 = true;
+    int run_year; // used (only) by PbPb
     int trigger_mode = 1; // default to single-muon trigger
-    int file_batch = -1; // only apply to run3
+    int file_batch = -1;
 
+    bool isMinBias = false; // whether use MinBias data for single-muon trigger efficiency
     bool output_single_muon_tree = false;
 
-    bool requireTight;
-    int resonance_cut_mode = 1;
+    bool requireTight = false;
+    int resonance_cut_mode = 1; // original resonance cut (cutting off full region below 1.06GeV)
 
     bool isPbPb; // true for PbPb, false for pp
 
     bool turn_on_track_charge = false; // turn on if track charge is stored
+
+    bool force_nominal = false; // nominal = (NOT trigger effcy calculation) --> only need to turn on for PbPb 24 data: use single muon trigger for nominal analysis, not for trigger efficiency calculations
 
 // --------------------- public class methods ---------------------------
 	~DimuonDataAnalysisBaseClass(){}
