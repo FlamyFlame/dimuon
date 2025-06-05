@@ -2,10 +2,6 @@
 #include "time.h"
 
 MuonPairPlottingPP::MuonPairPlottingPP(){
-    // if (mode != 1 && mode != 3){
-    //     std::cout<<"Error:: Mode has to be 1 (no binning) or 3 (binning by pT),  quitting"<<std::endl;
-    //     throw std::exception();
-    // }
     isScram = false;
     isTight = false;
     
@@ -65,6 +61,7 @@ void MuonPairPlottingPP::InitInput(){
         inTree[isign]->SetBranchAddress("pass2mu4"           , &pass2mu4[isign]);
         inTree[isign]->SetBranchAddress("mu1PassSingle"           , &mu1PassSingle[isign]);
         inTree[isign]->SetBranchAddress("mu2PassSingle"           , &mu2PassSingle[isign]);
+        inTree[isign]->SetBranchAddress("passSeparated"           , &passSeparated[isign]);
 
         inTree[isign]->SetBranchStatus("*"                  ,0);//switch off all branches, then enable just the ones that we need
         inTree[isign]->SetBranchStatus("weight"           ,1);
@@ -92,7 +89,7 @@ void MuonPairPlottingPP::InitInput(){
         inTree[isign]->SetBranchStatus("pass2mu4"           ,1);
         inTree[isign]->SetBranchStatus("mu1PassSingle"           ,1);
         inTree[isign]->SetBranchStatus("mu2PassSingle"           ,1);
-
+        inTree[isign]->SetBranchStatus("passSeparated"           ,1);
     }
 }
 
@@ -108,7 +105,7 @@ void MuonPairPlottingPP::InitOutput(){
         if (isRun3){
             outFile = new TFile(Form("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/histograms_real_pairs_pp_2024%s.root",trig_suffix.c_str()),"recreate");
         }else{
-            outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/histograms_real_pairs_pp_2017.root","recreate");
+            outFile = new TFile(Form("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/histograms_real_pairs_pp_2017%s.root",trig_suffix.c_str()),"recreate");
         }
     }
 }
@@ -154,157 +151,259 @@ void MuonPairPlottingPP::InitHists(){
     h_crossx_dR_cut_vs_pair_pt_pair_eta = new TH2D("h_crossx_dR_cut_vs_pair_pt_pair_eta",";#eta^{pair};p_{T}^{pair} [GeV];#sigma^{truth}",npair_eta_bins_coarse,pair_eta_min,pair_eta_max,npair_pT_bins_coarse,pair_pt_min,pair_pt_max);
     h_crossx_dR_cut_vs_pair_pt_pair_eta->Sumw2();
 
-    if (mode == 1){
-        // for (unsigned int isign = 0; isign < ParamsSet::nSigns; isign++){
-                
-        // for (unsigned int ipt = 0; ipt < ParamsSet::nPtBins; ipt++){
-        // for (unsigned int ictr = 0; ictr < ParamsSet::nCtrBins; ictr++){
-        // for (unsigned int idphi = 0; idphi < ParamsSet::ndphiRegions; idphi++){
-        // for (unsigned int ideta = 0; ideta < ParamsSet::ndetaRegions; ideta++){
-        // for (unsigned int igap = 0; igap < ParamsSet::nGapCuts; igap++){
-        // for (unsigned int iphoto = 0; iphoto < ParamsSet::nPhotoProdCuts; iphoto++){
-        for (unsigned int isign = 0; isign < ParamsSet::nSigns; isign++){
-            h_Deta_mu4[isign] = new TH1D(Form("h_Deta_mu4_sign%d",isign+1),";#Delta#eta;",nDeta_bins_trig_effcy,-4.8,4.8);
-            h_Deta_zoomin_mu4[isign] = new TH1D(Form("h_Deta_zoomin_mu4_sign%d",isign+1),";#Delta#eta;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
-            h_Dphi_mu4[isign] = new TH1D(Form("h_Dphi_mu4_sign%d",isign+1),";#Delta#phi;",nDphi_bins_trig_effcy,-pms.PI,pms.PI);
-            h_Dphi_zoomin_mu4[isign] = new TH1D(Form("h_Dphi_zoomin_mu4_sign%d",isign+1),";#Delta#phi;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
-            h_DR_mu4[isign] = new TH1D(Form("h_DR_mu4_sign%d",isign+1),";#DeltaR;",nDR_bins_trig_effcy,0,pms.deltaR_thrsh[2]);
-            h_DR_zoomin_mu4[isign] = new TH1D(Form("h_DR_zoomin_mu4_sign%d",isign+1),";#DeltaR;",nDR_deta_dphi_zoomin_bins_trig_effcy,0,0.8);
-            h_minv_zoomin_mu4[isign] = new TH1D(Form("h_minv_zoomin_mu4_sign%d",isign+1),";m_{#mu#mu} [GeV];",nminv_bins_trig_effcy,0,3.);
-            h_pair_pt_log_mu4[isign] = new TH1D(Form("h_pair_pt_log_mu4_sign%d",isign+1),";p_{T}^{pair} [GeV];",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data());
-            h_pt2nd_mu4[isign] = new TH1D(Form("h_pt2nd_mu4_sign%d",isign+1),";p_{T,2nd} [GeV];",int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+    // ------------------- trigger efficiency histograms with single-b signal selection -------------------
 
-            h_pt2nd_vs_q_eta_2nd_mu4[isign] = new TH2D(Form("h_pt2nd_vs_q_eta_2nd_mu4_sign%d",isign+1),";q*#eta;p_{T} [GeV]",neta_bins_trig_effcy,-2.4,2.4, int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
-            h_pair_eta_vs_pair_pT_mu4[isign] = new TH2D(Form("h_pair_eta_vs_pair_pT_mu4_sign%d",isign+1),";p_{T}^{pair} [GeV];#eta^{pair}",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),neta_bins_trig_effcy,-2.4,2.4);
-            h_Deta_Dphi_mu4[isign] = new TH2D(Form("h_Deta_Dphi_mu4_sign%d",isign+1),";#Delta#phi;#Delta#eta", nDphi_bins_trig_effcy,-pms.PI,pms.PI,nDeta_bins_trig_effcy,-4.8,4.8);
-            h_eta1_eta2_mu4[isign] = new TH2D(Form("h_eta1_eta2_mu4_sign%d",isign+1),";#eta_{sublead};#eta_{lead}",neta_bins_trig_effcy,-2.4,2.4, neta_bins_trig_effcy,-2.4,2.4);
-            h_eta_avg_Deta_mu4[isign] = new TH2D(Form("h_eta_avg_Deta_mu4_sign%d",isign+1),";#bar{#eta};#Delta#eta", neta_bins_trig_effcy,-2.4,2.4,nDeta_bins_trig_effcy,-4.8,4.8);
-            h_eta_avg_Dphi_mu4[isign] = new TH2D(Form("h_eta_avg_Dphi_mu4_sign%d",isign+1),";#Delta#phi;#bar{#eta}", nDphi_bins_trig_effcy,-pms.PI,pms.PI,neta_bins_trig_effcy,-2.4,2.4);
-            h_minv_pair_pt_log_mu4[isign] = new TH2D(Form("h_minv_pair_pt_log_mu4_sign%d",isign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),nminv_bins_log,minv_bins_log[isign]);
-            // h_minv_pair_pt_log_mu4[isign] = new TH2D(Form("h_minv_pair_pt_log_mu4_sign%d",isign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[isign][2],nminv_bins_log,minv_bins_log[isign]);
+    h_Deta_mu4_w_single_b_sig_sel = new TH1D("h_Deta_mu4_w_single_b_sig_sel",";#Delta#eta;",nDeta_bins_trig_effcy,-4.8,4.8);
+    h_Deta_zoomin_mu4_w_single_b_sig_sel = new TH1D("h_Deta_zoomin_mu4_w_single_b_sig_sel",";#Delta#eta;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+    h_Dphi_mu4_w_single_b_sig_sel = new TH1D("h_Dphi_mu4_w_single_b_sig_sel",";#Delta#phi;",nDphi_bins_trig_effcy,-pms.PI,pms.PI);
+    h_Dphi_zoomin_mu4_w_single_b_sig_sel = new TH1D("h_Dphi_zoomin_mu4_w_single_b_sig_sel",";#Delta#phi;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+    h_DR_mu4_w_single_b_sig_sel = new TH1D("h_DR_mu4_w_single_b_sig_sel",";#DeltaR;",nDR_bins_trig_effcy,0,pms.deltaR_thrsh[2]);
+    h_DR_zoomin_mu4_w_single_b_sig_sel = new TH1D("h_DR_zoomin_mu4_w_single_b_sig_sel",";#DeltaR;",nDR_deta_dphi_zoomin_bins_trig_effcy,0,0.8);
+    h_minv_zoomin_mu4_w_single_b_sig_sel = new TH1D("h_minv_zoomin_mu4_w_single_b_sig_sel",";m_{#mu#mu} [GeV];",nminv_bins_trig_effcy,0,3.);
+    h_pair_pt_log_mu4_w_single_b_sig_sel = new TH1D("h_pair_pt_log_mu4_w_single_b_sig_sel",";p_{T}^{pair} [GeV];",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data());
+    h_pt2nd_mu4_w_single_b_sig_sel = new TH1D("h_pt2nd_mu4_w_single_b_sig_sel",";p_{T,2nd} [GeV];",int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+    h_pt2nd_vs_q_eta_2nd_mu4_w_single_b_sig_sel = new TH2D("h_pt2nd_vs_q_eta_2nd_mu4_w_single_b_sig_sel",";q*#eta;p_{T} [GeV]",neta_bins_trig_effcy,-2.4,2.4, int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+    h_pair_eta_vs_pair_pT_mu4_w_single_b_sig_sel = new TH2D("h_pair_eta_vs_pair_pT_mu4_w_single_b_sig_sel",";p_{T}^{pair} [GeV];#eta^{pair}",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),neta_bins_trig_effcy,-2.4,2.4);
+    h_Deta_Dphi_mu4_w_single_b_sig_sel = new TH2D("h_Deta_Dphi_mu4_w_single_b_sig_sel",";#Delta#phi;#Delta#eta", nDphi_bins_trig_effcy,-pms.PI,pms.PI,nDeta_bins_trig_effcy,-4.8,4.8);
+    h_eta1_eta2_mu4_w_single_b_sig_sel = new TH2D("h_eta1_eta2_mu4_w_single_b_sig_sel",";#eta_{sublead};#eta_{lead}",neta_bins_trig_effcy,-2.4,2.4, neta_bins_trig_effcy,-2.4,2.4);
+    h_eta_avg_Deta_mu4_w_single_b_sig_sel = new TH2D("h_eta_avg_Deta_mu4_w_single_b_sig_sel",";#bar{#eta};#Delta#eta", neta_bins_trig_effcy,-2.4,2.4,nDeta_bins_trig_effcy,-4.8,4.8);
+    h_eta_avg_Dphi_mu4_w_single_b_sig_sel = new TH2D("h_eta_avg_Dphi_mu4_w_single_b_sig_sel",";#Delta#phi;#bar{#eta}", nDphi_bins_trig_effcy,-pms.PI,pms.PI,neta_bins_trig_effcy,-2.4,2.4);
+    h_minv_pair_pt_log_mu4_w_single_b_sig_sel = new TH2D("h_minv_pair_pt_log_mu4_w_single_b_sig_sel",";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),nminv_bins_log,minv_bins_log[1]);
+        
+    h_Deta_mu4_mu4noL1_w_single_b_sig_sel = new TH1D("h_Deta_mu4_mu4noL1_w_single_b_sig_sel",";#Delta#eta;",nDeta_bins_trig_effcy,-4.8,4.8);
+    h_Deta_zoomin_mu4_mu4noL1_w_single_b_sig_sel = new TH1D("h_Deta_zoomin_mu4_mu4noL1_w_single_b_sig_sel",";#Delta#eta;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+    h_Dphi_mu4_mu4noL1_w_single_b_sig_sel = new TH1D("h_Dphi_mu4_mu4noL1_w_single_b_sig_sel",";#Delta#phi;",nDphi_bins_trig_effcy,-pms.PI,pms.PI);
+    h_Dphi_zoomin_mu4_mu4noL1_w_single_b_sig_sel = new TH1D("h_Dphi_zoomin_mu4_mu4noL1_w_single_b_sig_sel",";#Delta#phi;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+    h_DR_mu4_mu4noL1_w_single_b_sig_sel = new TH1D("h_DR_mu4_mu4noL1_w_single_b_sig_sel",";#DeltaR;",nDR_bins_trig_effcy,0,pms.deltaR_thrsh[2]);
+    h_DR_zoomin_mu4_mu4noL1_w_single_b_sig_sel = new TH1D("h_DR_zoomin_mu4_mu4noL1_w_single_b_sig_sel",";#DeltaR;",nDR_deta_dphi_zoomin_bins_trig_effcy,0,0.8);
+    h_minv_zoomin_mu4_mu4noL1_w_single_b_sig_sel = new TH1D("h_minv_zoomin_mu4_mu4noL1_w_single_b_sig_sel",";m_{#mu#mu} [GeV];",nminv_bins_trig_effcy,0,3.);
+    h_pair_pt_log_mu4_mu4noL1_w_single_b_sig_sel = new TH1D("h_pair_pt_log_mu4_mu4noL1_w_single_b_sig_sel",";p_{T}^{pair} [GeV];",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data());
+    h_pt2nd_mu4_mu4noL1_w_single_b_sig_sel = new TH1D("h_pt2nd_mu4_mu4noL1_w_single_b_sig_sel",";p_{T,2nd} [GeV];",int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+    h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_w_single_b_sig_sel = new TH2D("h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_w_single_b_sig_sel",";q*#eta;p_{T} [GeV]",neta_bins_trig_effcy,-2.4,2.4, int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+    h_pair_eta_vs_pair_pT_mu4_mu4noL1_w_single_b_sig_sel = new TH2D("h_pair_eta_vs_pair_pT_mu4_mu4noL1_w_single_b_sig_sel",";p_{T}^{pair} [GeV];#eta^{pair}",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),neta_bins_trig_effcy,-2.4,2.4);
+    h_Deta_Dphi_mu4_mu4noL1_w_single_b_sig_sel = new TH2D("h_Deta_Dphi_mu4_mu4noL1_w_single_b_sig_sel",";#Delta#phi;#Delta#eta", nDphi_bins_trig_effcy,-pms.PI,pms.PI,nDeta_bins_trig_effcy,-4.8,4.8);
+    h_eta1_eta2_mu4_mu4noL1_w_single_b_sig_sel = new TH2D("h_eta1_eta2_mu4_mu4noL1_w_single_b_sig_sel",";#eta_{sublead};#eta_{lead}",neta_bins_trig_effcy,-2.4,2.4, neta_bins_trig_effcy,-2.4,2.4);
+    h_eta_avg_Deta_mu4_mu4noL1_w_single_b_sig_sel = new TH2D("h_eta_avg_Deta_mu4_mu4noL1_w_single_b_sig_sel",";#bar{#eta};#Delta#eta", neta_bins_trig_effcy,-2.4,2.4,nDeta_bins_trig_effcy,-4.8,4.8);
+    h_eta_avg_Dphi_mu4_mu4noL1_w_single_b_sig_sel = new TH2D("h_eta_avg_Dphi_mu4_mu4noL1_w_single_b_sig_sel",";#Delta#phi;#bar{#eta}", nDphi_bins_trig_effcy,-pms.PI,pms.PI,neta_bins_trig_effcy,-2.4,2.4);
+    h_minv_pair_pt_log_mu4_mu4noL1_w_single_b_sig_sel = new TH2D("h_minv_pair_pt_log_mu4_mu4noL1_w_single_b_sig_sel",";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),nminv_bins_log,minv_bins_log[1]);
 
-            h_Deta_mu4_w_sig_sel[isign] = new TH1D(Form("h_Deta_mu4_w_sig_sel_sign%d",isign+1),";#Delta#eta;",nDeta_bins_trig_effcy,-4.8,4.8);
-            h_Deta_zoomin_mu4_w_sig_sel[isign] = new TH1D(Form("h_Deta_zoomin_mu4_w_sig_sel_sign%d",isign+1),";#Delta#eta;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
-            h_Dphi_mu4_w_sig_sel[isign] = new TH1D(Form("h_Dphi_mu4_w_sig_sel_sign%d",isign+1),";#Delta#phi;",nDphi_bins_trig_effcy,-pms.PI,pms.PI);
-            h_Dphi_zoomin_mu4_w_sig_sel[isign] = new TH1D(Form("h_Dphi_zoomin_mu4_w_sig_sel_sign%d",isign+1),";#Delta#phi;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
-            h_DR_mu4_w_sig_sel[isign] = new TH1D(Form("h_DR_mu4_w_sig_sel_sign%d",isign+1),";#DeltaR;",nDR_bins_trig_effcy,0,pms.deltaR_thrsh[2]);
-            h_DR_zoomin_mu4_w_sig_sel[isign] = new TH1D(Form("h_DR_zoomin_mu4_w_sig_sel_sign%d",isign+1),";#DeltaR;",nDR_deta_dphi_zoomin_bins_trig_effcy,0,0.8);
-            h_minv_zoomin_mu4_w_sig_sel[isign] = new TH1D(Form("h_minv_zoomin_mu4_w_sig_sel_sign%d",isign+1),";m_{#mu#mu} [GeV];",nminv_bins_trig_effcy,0,3.);
-            h_pair_pt_log_mu4_w_sig_sel[isign] = new TH1D(Form("h_pair_pt_log_mu4_w_sig_sel_sign%d",isign+1),";p_{T}^{pair} [GeV];",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data());
-            h_pt2nd_mu4_w_sig_sel[isign] = new TH1D(Form("h_pt2nd_mu4_w_sig_sel_sign%d",isign+1),";p_{T,2nd} [GeV];",int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+    h_Deta_mu4_mu4noL1_excl_w_single_b_sig_sel = new TH1D("h_Deta_mu4_mu4noL1_excl_w_single_b_sig_sel",";#Delta#eta;",nDeta_bins_trig_effcy,-4.8,4.8);
+    h_Deta_zoomin_mu4_mu4noL1_excl_w_single_b_sig_sel = new TH1D("h_Deta_zoomin_mu4_mu4noL1_excl_w_single_b_sig_sel",";#Delta#eta;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+    h_Dphi_mu4_mu4noL1_excl_w_single_b_sig_sel = new TH1D("h_Dphi_mu4_mu4noL1_excl_w_single_b_sig_sel",";#Delta#phi;",nDphi_bins_trig_effcy,-pms.PI,pms.PI);
+    h_Dphi_zoomin_mu4_mu4noL1_excl_w_single_b_sig_sel = new TH1D("h_Dphi_zoomin_mu4_mu4noL1_excl_w_single_b_sig_sel",";#Delta#phi;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+    h_DR_mu4_mu4noL1_excl_w_single_b_sig_sel = new TH1D("h_DR_mu4_mu4noL1_excl_w_single_b_sig_sel",";#DeltaR;",nDR_bins_trig_effcy,0,pms.deltaR_thrsh[2]);
+    h_DR_zoomin_mu4_mu4noL1_excl_w_single_b_sig_sel = new TH1D("h_DR_zoomin_mu4_mu4noL1_excl_w_single_b_sig_sel",";#DeltaR;",nDR_deta_dphi_zoomin_bins_trig_effcy,0,0.8);
+    h_minv_zoomin_mu4_mu4noL1_excl_w_single_b_sig_sel = new TH1D("h_minv_zoomin_mu4_mu4noL1_excl_w_single_b_sig_sel",";m_{#mu#mu} [GeV];",nminv_bins_trig_effcy,0,3.);
+    h_pair_pt_log_mu4_mu4noL1_excl_w_single_b_sig_sel = new TH1D("h_pair_pt_log_mu4_mu4noL1_excl_w_single_b_sig_sel",";p_{T}^{pair} [GeV];",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data());
+    h_pt2nd_mu4_mu4noL1_excl_w_single_b_sig_sel = new TH1D("h_pt2nd_mu4_mu4noL1_excl_w_single_b_sig_sel",";p_{T,2nd} [GeV];",int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+    h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl_w_single_b_sig_sel = new TH2D("h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl_w_single_b_sig_sel",";q*#eta;p_{T} [GeV]",neta_bins_trig_effcy,-2.4,2.4, int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+    h_pair_eta_vs_pair_pT_mu4_mu4noL1_excl_w_single_b_sig_sel = new TH2D("h_pair_eta_vs_pair_pT_mu4_mu4noL1_excl_w_single_b_sig_sel",";p_{T}^{pair} [GeV];#eta^{pair}",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),neta_bins_trig_effcy,-2.4,2.4);
+    h_Deta_Dphi_mu4_mu4noL1_excl_w_single_b_sig_sel = new TH2D("h_Deta_Dphi_mu4_mu4noL1_excl_w_single_b_sig_sel",";#Delta#phi;#Delta#eta", nDphi_bins_trig_effcy,-pms.PI,pms.PI,nDeta_bins_trig_effcy,-4.8,4.8);
+    h_eta1_eta2_mu4_mu4noL1_excl_w_single_b_sig_sel = new TH2D("h_eta1_eta2_mu4_mu4noL1_excl_w_single_b_sig_sel",";#eta_{sublead};#eta_{lead}",neta_bins_trig_effcy,-2.4,2.4, neta_bins_trig_effcy,-2.4,2.4);
+    h_eta_avg_Deta_mu4_mu4noL1_excl_w_single_b_sig_sel = new TH2D("h_eta_avg_Deta_mu4_mu4noL1_excl_w_single_b_sig_sel",";#bar{#eta};#Delta#eta", neta_bins_trig_effcy,-2.4,2.4,nDeta_bins_trig_effcy,-4.8,4.8);
+    h_eta_avg_Dphi_mu4_mu4noL1_excl_w_single_b_sig_sel = new TH2D("h_eta_avg_Dphi_mu4_mu4noL1_excl_w_single_b_sig_sel",";#Delta#phi;#bar{#eta}", nDphi_bins_trig_effcy,-pms.PI,pms.PI,neta_bins_trig_effcy,-2.4,2.4);
+    h_minv_pair_pt_log_mu4_mu4noL1_excl_w_single_b_sig_sel = new TH2D("h_minv_pair_pt_log_mu4_mu4noL1_excl_w_single_b_sig_sel",";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),nminv_bins_log,minv_bins_log[1]);
 
-            h_pt2nd_vs_q_eta_2nd_mu4_w_sig_sel[isign] = new TH2D(Form("h_pt2nd_vs_q_eta_2nd_mu4_w_sig_sel_sign%d",isign+1),";q*#eta;p_{T} [GeV]",neta_bins_trig_effcy,-2.4,2.4, int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
-            h_pair_eta_vs_pair_pT_mu4_w_sig_sel[isign] = new TH2D(Form("h_pair_eta_vs_pair_pT_mu4_w_sig_sel_sign%d",isign+1),";p_{T}^{pair} [GeV];#eta^{pair}",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),neta_bins_trig_effcy,-2.4,2.4);
-            h_Deta_Dphi_mu4_w_sig_sel[isign] = new TH2D(Form("h_Deta_Dphi_mu4_w_sig_sel_sign%d",isign+1),";#Delta#phi;#Delta#eta", nDphi_bins_trig_effcy,-pms.PI,pms.PI,nDeta_bins_trig_effcy,-4.8,4.8);
-            h_eta1_eta2_mu4_w_sig_sel[isign] = new TH2D(Form("h_eta1_eta2_mu4_w_sig_sel_sign%d",isign+1),";#eta_{sublead};#eta_{lead}",neta_bins_trig_effcy,-2.4,2.4, neta_bins_trig_effcy,-2.4,2.4);
-            h_eta_avg_Deta_mu4_w_sig_sel[isign] = new TH2D(Form("h_eta_avg_Deta_mu4_w_sig_sel_sign%d",isign+1),";#bar{#eta};#Delta#eta", neta_bins_trig_effcy,-2.4,2.4,nDeta_bins_trig_effcy,-4.8,4.8);
-            h_eta_avg_Dphi_mu4_w_sig_sel[isign] = new TH2D(Form("h_eta_avg_Dphi_mu4_w_sig_sel_sign%d",isign+1),";#Delta#phi;#bar{#eta}", nDphi_bins_trig_effcy,-pms.PI,pms.PI,neta_bins_trig_effcy,-2.4,2.4);
-            h_minv_pair_pt_log_mu4_w_sig_sel[isign] = new TH2D(Form("h_minv_pair_pt_log_mu4_w_sig_sel_sign%d",isign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),nminv_bins_log,minv_bins_log[isign]);
-            // h_minv_pair_pt_log_mu4_w_sig_sel[isign] = new TH2D(Form("h_minv_pair_pt_log_mu4_w_sig_sel_sign%d",isign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[isign][2],nminv_bins_log,minv_bins_log[isign]);
+    h_Deta_2mu4_w_single_b_sig_sel = new TH1D("h_Deta_2mu4_w_single_b_sig_sel",";#Delta#eta;",nDeta_bins_trig_effcy,-4.8,4.8);
+    h_Deta_zoomin_2mu4_w_single_b_sig_sel = new TH1D("h_Deta_zoomin_2mu4_w_single_b_sig_sel",";#Delta#eta;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+    h_Dphi_2mu4_w_single_b_sig_sel = new TH1D("h_Dphi_2mu4_w_single_b_sig_sel",";#Delta#phi;",nDphi_bins_trig_effcy,-pms.PI,pms.PI);
+    h_Dphi_zoomin_2mu4_w_single_b_sig_sel = new TH1D("h_Dphi_zoomin_2mu4_w_single_b_sig_sel",";#Delta#phi;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+    h_DR_2mu4_w_single_b_sig_sel = new TH1D("h_DR_2mu4_w_single_b_sig_sel",";#DeltaR;",nDR_bins_trig_effcy,0,pms.deltaR_thrsh[2]);
+    h_DR_zoomin_2mu4_w_single_b_sig_sel = new TH1D("h_DR_zoomin_2mu4_w_single_b_sig_sel",";#DeltaR;",nDR_deta_dphi_zoomin_bins_trig_effcy,0,0.8);
+    h_minv_zoomin_2mu4_w_single_b_sig_sel = new TH1D("h_minv_zoomin_2mu4_w_single_b_sig_sel",";m_{#mu#mu} [GeV];",nminv_bins_trig_effcy,0,3.);
+    h_pair_pt_log_2mu4_w_single_b_sig_sel = new TH1D("h_pair_pt_log_2mu4_w_single_b_sig_sel",";p_{T}^{pair} [GeV];",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data());
+    h_pt2nd_2mu4_w_single_b_sig_sel = new TH1D("h_pt2nd_2mu4_w_single_b_sig_sel",";p_{T,2nd} [GeV];",int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+    h_pt2nd_vs_q_eta_2nd_2mu4_w_single_b_sig_sel = new TH2D("h_pt2nd_vs_q_eta_2nd_2mu4_w_single_b_sig_sel",";q*#eta;p_{T} [GeV]",neta_bins_trig_effcy,-2.4,2.4, int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+    h_pair_eta_vs_pair_pT_2mu4_w_single_b_sig_sel = new TH2D("h_pair_eta_vs_pair_pT_2mu4_w_single_b_sig_sel",";p_{T}^{pair} [GeV];#eta^{pair}",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),neta_bins_trig_effcy,-2.4,2.4);
+    h_Deta_Dphi_2mu4_w_single_b_sig_sel = new TH2D("h_Deta_Dphi_2mu4_w_single_b_sig_sel",";#Delta#phi;#Delta#eta", nDphi_bins_trig_effcy,-pms.PI,pms.PI,nDeta_bins_trig_effcy,-4.8,4.8);
+    h_eta1_eta2_2mu4_w_single_b_sig_sel = new TH2D("h_eta1_eta2_2mu4_w_single_b_sig_sel",";#eta_{sublead};#eta_{lead}",neta_bins_trig_effcy,-2.4,2.4, neta_bins_trig_effcy,-2.4,2.4);
+    h_eta_avg_Deta_2mu4_w_single_b_sig_sel = new TH2D("h_eta_avg_Deta_2mu4_w_single_b_sig_sel",";#bar{#eta};#Delta#eta", neta_bins_trig_effcy,-2.4,2.4,nDeta_bins_trig_effcy,-4.8,4.8);
+    h_eta_avg_Dphi_2mu4_w_single_b_sig_sel = new TH2D("h_eta_avg_Dphi_2mu4_w_single_b_sig_sel",";#Delta#phi;#bar{#eta}", nDphi_bins_trig_effcy,-pms.PI,pms.PI,neta_bins_trig_effcy,-2.4,2.4);
+    h_minv_pair_pt_log_2mu4_w_single_b_sig_sel = new TH2D("h_minv_pair_pt_log_2mu4_w_single_b_sig_sel",";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),nminv_bins_log,minv_bins_log[1]);
+        
+    for (unsigned int isign = 0; isign < ParamsSet::nSigns; isign++){
+        
+        // ------------------- trigger efficiency histograms full range (without signal selection) -------------------
+        
+        // pair kinematics requiring only single mu4 trigger
+        h_Deta_mu4[isign] = new TH1D(Form("h_Deta_mu4_sign%d",isign+1),";#Delta#eta;",nDeta_bins_trig_effcy,-4.8,4.8);
+        h_Deta_zoomin_mu4[isign] = new TH1D(Form("h_Deta_zoomin_mu4_sign%d",isign+1),";#Delta#eta;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+        h_Dphi_mu4[isign] = new TH1D(Form("h_Dphi_mu4_sign%d",isign+1),";#Delta#phi;",nDphi_bins_trig_effcy,-pms.PI,pms.PI);
+        h_Dphi_zoomin_mu4[isign] = new TH1D(Form("h_Dphi_zoomin_mu4_sign%d",isign+1),";#Delta#phi;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+        h_DR_mu4[isign] = new TH1D(Form("h_DR_mu4_sign%d",isign+1),";#DeltaR;",nDR_bins_trig_effcy,0,pms.deltaR_thrsh[2]);
+        h_DR_zoomin_mu4[isign] = new TH1D(Form("h_DR_zoomin_mu4_sign%d",isign+1),";#DeltaR;",nDR_deta_dphi_zoomin_bins_trig_effcy,0,0.8);
+        h_minv_zoomin_mu4[isign] = new TH1D(Form("h_minv_zoomin_mu4_sign%d",isign+1),";m_{#mu#mu} [GeV];",nminv_bins_trig_effcy,0,3.);
+        h_pair_pt_log_mu4[isign] = new TH1D(Form("h_pair_pt_log_mu4_sign%d",isign+1),";p_{T}^{pair} [GeV];",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data());
+        h_pt2nd_mu4[isign] = new TH1D(Form("h_pt2nd_mu4_sign%d",isign+1),";p_{T,2nd} [GeV];",int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
 
-            h_Deta_mu4_mu4noL1_given_mu4[isign] = new TH1D(Form("h_Deta_mu4_mu4noL1_given_mu4_sign%d",isign+1),";#Delta#eta;",nDeta_bins_trig_effcy,-4.8,4.8);
-            h_Deta_zoomin_mu4_mu4noL1_given_mu4[isign] = new TH1D(Form("h_Deta_zoomin_mu4_mu4noL1_given_mu4_sign%d",isign+1),";#Delta#eta;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
-            h_Dphi_mu4_mu4noL1_given_mu4[isign] = new TH1D(Form("h_Dphi_mu4_mu4noL1_given_mu4_sign%d",isign+1),";#Delta#phi;",nDphi_bins_trig_effcy,-pms.PI,pms.PI);
-            h_Dphi_zoomin_mu4_mu4noL1_given_mu4[isign] = new TH1D(Form("h_Dphi_zoomin_mu4_mu4noL1_given_mu4_sign%d",isign+1),";#Delta#phi;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
-            h_DR_mu4_mu4noL1_given_mu4[isign] = new TH1D(Form("h_DR_mu4_mu4noL1_given_mu4_sign%d",isign+1),";#DeltaR;",nDR_bins_trig_effcy,0,pms.deltaR_thrsh[2]);
-            h_DR_zoomin_mu4_mu4noL1_given_mu4[isign] = new TH1D(Form("h_DR_zoomin_mu4_mu4noL1_given_mu4_sign%d",isign+1),";#DeltaR;",nDR_deta_dphi_zoomin_bins_trig_effcy,0,0.8);
-            h_minv_zoomin_mu4_mu4noL1_given_mu4[isign] = new TH1D(Form("h_minv_zoomin_mu4_mu4noL1_given_mu4_sign%d",isign+1),";m_{#mu#mu} [GeV];",nminv_bins_trig_effcy,0,3.);
-            h_pair_pt_log_mu4_mu4noL1_given_mu4[isign] = new TH1D(Form("h_pair_pt_log_mu4_mu4noL1_given_mu4_sign%d",isign+1),";p_{T}^{pair} [GeV];",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data());
-            h_pt2nd_mu4_mu4noL1_given_mu4[isign] = new TH1D(Form("h_pt2nd_mu4_mu4noL1_given_mu4_sign%d",isign+1),";p_{T,2nd} [GeV];",int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+        h_pt2nd_vs_q_eta_2nd_mu4[isign] = new TH2D(Form("h_pt2nd_vs_q_eta_2nd_mu4_sign%d",isign+1),";q*#eta;p_{T} [GeV]",neta_bins_trig_effcy,-2.4,2.4, int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+        h_pair_eta_vs_pair_pT_mu4[isign] = new TH2D(Form("h_pair_eta_vs_pair_pT_mu4_sign%d",isign+1),";p_{T}^{pair} [GeV];#eta^{pair}",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),neta_bins_trig_effcy,-2.4,2.4);
+        h_Deta_Dphi_mu4[isign] = new TH2D(Form("h_Deta_Dphi_mu4_sign%d",isign+1),";#Delta#phi;#Delta#eta", nDphi_bins_trig_effcy,-pms.PI,pms.PI,nDeta_bins_trig_effcy,-4.8,4.8);
+        h_eta1_eta2_mu4[isign] = new TH2D(Form("h_eta1_eta2_mu4_sign%d",isign+1),";#eta_{sublead};#eta_{lead}",neta_bins_trig_effcy,-2.4,2.4, neta_bins_trig_effcy,-2.4,2.4);
+        h_eta_avg_Deta_mu4[isign] = new TH2D(Form("h_eta_avg_Deta_mu4_sign%d",isign+1),";#bar{#eta};#Delta#eta", neta_bins_trig_effcy,-2.4,2.4,nDeta_bins_trig_effcy,-4.8,4.8);
+        h_eta_avg_Dphi_mu4[isign] = new TH2D(Form("h_eta_avg_Dphi_mu4_sign%d",isign+1),";#Delta#phi;#bar{#eta}", nDphi_bins_trig_effcy,-pms.PI,pms.PI,neta_bins_trig_effcy,-2.4,2.4);
+        h_minv_pair_pt_log_mu4[isign] = new TH2D(Form("h_minv_pair_pt_log_mu4_sign%d",isign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),nminv_bins_log,minv_bins_log[isign]);
 
-            h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_given_mu4[isign] = new TH2D(Form("h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_given_mu4_sign%d",isign+1),";q*#eta;p_{T} [GeV]",neta_bins_trig_effcy,-2.4,2.4, int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
-            h_pair_eta_vs_pair_pT_mu4_mu4noL1_given_mu4[isign] = new TH2D(Form("h_pair_eta_vs_pair_pT_mu4_mu4noL1_given_mu4_sign%d",isign+1),";p_{T}^{pair} [GeV];#eta^{pair}",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),neta_bins_trig_effcy,-2.4,2.4);
-            h_Deta_Dphi_mu4_mu4noL1_given_mu4[isign] = new TH2D(Form("h_Deta_Dphi_mu4_mu4noL1_given_mu4_sign%d",isign+1),";#Delta#phi;#Delta#eta", nDphi_bins_trig_effcy,-pms.PI,pms.PI,nDeta_bins_trig_effcy,-4.8,4.8);
-            h_eta1_eta2_mu4_mu4noL1_given_mu4[isign] = new TH2D(Form("h_eta1_eta2_mu4_mu4noL1_given_mu4_sign%d",isign+1),";#eta_{sublead};#eta_{lead}",neta_bins_trig_effcy,-2.4,2.4, neta_bins_trig_effcy,-2.4,2.4);
-            h_eta_avg_Deta_mu4_mu4noL1_given_mu4[isign] = new TH2D(Form("h_eta_avg_Deta_mu4_mu4noL1_given_mu4_sign%d",isign+1),";#bar{#eta};#Delta#eta", neta_bins_trig_effcy,-2.4,2.4,nDeta_bins_trig_effcy,-4.8,4.8);
-            h_eta_avg_Dphi_mu4_mu4noL1_given_mu4[isign] = new TH2D(Form("h_eta_avg_Dphi_mu4_mu4noL1_given_mu4_sign%d",isign+1),";#Delta#phi;#bar{#eta}", nDphi_bins_trig_effcy,-pms.PI,pms.PI,neta_bins_trig_effcy,-2.4,2.4);
-            h_minv_pair_pt_log_mu4_mu4noL1_given_mu4[isign] = new TH2D(Form("h_minv_pair_pt_log_mu4_mu4noL1_given_mu4_sign%d",isign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),nminv_bins_log,minv_bins_log[isign]);
-            // h_minv_pair_pt_log_mu4_mu4noL1_given_mu4[isign] = new TH2D(Form("h_minv_pair_pt_log_mu4_mu4noL1_given_mu4_sign%d",isign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[isign][2],nminv_bins_log,minv_bins_log[isign]);
+        // pair kinematics requiring mu4_mu4noL1 trigger
+        h_Deta_mu4_mu4noL1[isign] = new TH1D(Form("h_Deta_mu4_mu4noL1_sign%d",isign+1),";#Delta#eta;",nDeta_bins_trig_effcy,-4.8,4.8);
+        h_Deta_zoomin_mu4_mu4noL1[isign] = new TH1D(Form("h_Deta_zoomin_mu4_mu4noL1_sign%d",isign+1),";#Delta#eta;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+        h_Dphi_mu4_mu4noL1[isign] = new TH1D(Form("h_Dphi_mu4_mu4noL1_sign%d",isign+1),";#Delta#phi;",nDphi_bins_trig_effcy,-pms.PI,pms.PI);
+        h_Dphi_zoomin_mu4_mu4noL1[isign] = new TH1D(Form("h_Dphi_zoomin_mu4_mu4noL1_sign%d",isign+1),";#Delta#phi;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+        h_DR_mu4_mu4noL1[isign] = new TH1D(Form("h_DR_mu4_mu4noL1_sign%d",isign+1),";#DeltaR;",nDR_bins_trig_effcy,0,pms.deltaR_thrsh[2]);
+        h_DR_zoomin_mu4_mu4noL1[isign] = new TH1D(Form("h_DR_zoomin_mu4_mu4noL1_sign%d",isign+1),";#DeltaR;",nDR_deta_dphi_zoomin_bins_trig_effcy,0,0.8);
+        h_minv_zoomin_mu4_mu4noL1[isign] = new TH1D(Form("h_minv_zoomin_mu4_mu4noL1_sign%d",isign+1),";m_{#mu#mu} [GeV];",nminv_bins_trig_effcy,0,3.);
+        h_pair_pt_log_mu4_mu4noL1[isign] = new TH1D(Form("h_pair_pt_log_mu4_mu4noL1_sign%d",isign+1),";p_{T}^{pair} [GeV];",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data());
+        h_pt2nd_mu4_mu4noL1[isign] = new TH1D(Form("h_pt2nd_mu4_mu4noL1_sign%d",isign+1),";p_{T,2nd} [GeV];",int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
 
-            h_Deta_2mu4_given_mu4[isign] = new TH1D(Form("h_Deta_2mu4_given_mu4_sign%d",isign+1),";#Delta#eta;",nDeta_bins_trig_effcy,-4.8,4.8);
-            h_Deta_zoomin_2mu4_given_mu4[isign] = new TH1D(Form("h_Deta_zoomin_2mu4_given_mu4_sign%d",isign+1),";#Delta#eta;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
-            h_Dphi_2mu4_given_mu4[isign] = new TH1D(Form("h_Dphi_2mu4_given_mu4_sign%d",isign+1),";#Delta#phi;",nDphi_bins_trig_effcy,-pms.PI,pms.PI);
-            h_Dphi_zoomin_2mu4_given_mu4[isign] = new TH1D(Form("h_Dphi_zoomin_2mu4_given_mu4_sign%d",isign+1),";#Delta#phi;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
-            h_DR_2mu4_given_mu4[isign] = new TH1D(Form("h_DR_2mu4_given_mu4_sign%d",isign+1),";#DeltaR;",nDR_bins_trig_effcy,0,pms.deltaR_thrsh[2]);
-            h_DR_zoomin_2mu4_given_mu4[isign] = new TH1D(Form("h_DR_zoomin_2mu4_given_mu4_sign%d",isign+1),";#DeltaR;",nDR_deta_dphi_zoomin_bins_trig_effcy,0,0.8);
-            h_minv_zoomin_2mu4_given_mu4[isign] = new TH1D(Form("h_minv_zoomin_2mu4_given_mu4_sign%d",isign+1),";m_{#mu#mu} [GeV];",nminv_bins_trig_effcy,0,3.);
-            h_pair_pt_log_2mu4_given_mu4[isign] = new TH1D(Form("h_pair_pt_log_2mu4_given_mu4_sign%d",isign+1),";p_{T}^{pair} [GeV];",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data());
-            h_pt2nd_2mu4_given_mu4[isign] = new TH1D(Form("h_pt2nd_2mu4_given_mu4_sign%d",isign+1),";p_{T,2nd} [GeV];",int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+        h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1[isign] = new TH2D(Form("h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sign%d",isign+1),";q*#eta;p_{T} [GeV]",neta_bins_trig_effcy,-2.4,2.4, int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+        h_pair_eta_vs_pair_pT_mu4_mu4noL1[isign] = new TH2D(Form("h_pair_eta_vs_pair_pT_mu4_mu4noL1_sign%d",isign+1),";p_{T}^{pair} [GeV];#eta^{pair}",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),neta_bins_trig_effcy,-2.4,2.4);
+        h_Deta_Dphi_mu4_mu4noL1[isign] = new TH2D(Form("h_Deta_Dphi_mu4_mu4noL1_sign%d",isign+1),";#Delta#phi;#Delta#eta", nDphi_bins_trig_effcy,-pms.PI,pms.PI,nDeta_bins_trig_effcy,-4.8,4.8);
+        h_eta1_eta2_mu4_mu4noL1[isign] = new TH2D(Form("h_eta1_eta2_mu4_mu4noL1_sign%d",isign+1),";#eta_{sublead};#eta_{lead}",neta_bins_trig_effcy,-2.4,2.4, neta_bins_trig_effcy,-2.4,2.4);
+        h_eta_avg_Deta_mu4_mu4noL1[isign] = new TH2D(Form("h_eta_avg_Deta_mu4_mu4noL1_sign%d",isign+1),";#bar{#eta};#Delta#eta", neta_bins_trig_effcy,-2.4,2.4,nDeta_bins_trig_effcy,-4.8,4.8);
+        h_eta_avg_Dphi_mu4_mu4noL1[isign] = new TH2D(Form("h_eta_avg_Dphi_mu4_mu4noL1_sign%d",isign+1),";#Delta#phi;#bar{#eta}", nDphi_bins_trig_effcy,-pms.PI,pms.PI,neta_bins_trig_effcy,-2.4,2.4);
+        h_minv_pair_pt_log_mu4_mu4noL1[isign] = new TH2D(Form("h_minv_pair_pt_log_mu4_mu4noL1_sign%d",isign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),nminv_bins_log,minv_bins_log[isign]);
 
-            h_pt2nd_vs_q_eta_2nd_2mu4_given_mu4[isign] = new TH2D(Form("h_pt2nd_vs_q_eta_2nd_2mu4_given_mu4_sign%d",isign+1),";q*#eta;p_{T} [GeV]",neta_bins_trig_effcy,-2.4,2.4, int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
-            h_pair_eta_vs_pair_pT_2mu4_given_mu4[isign] = new TH2D(Form("h_pair_eta_vs_pair_pT_2mu4_given_mu4_sign%d",isign+1),";p_{T}^{pair} [GeV];#eta^{pair}",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),neta_bins_trig_effcy,-2.4,2.4);
-            h_Deta_Dphi_2mu4_given_mu4[isign] = new TH2D(Form("h_Deta_Dphi_2mu4_given_mu4_sign%d",isign+1),";#Delta#phi;#Delta#eta", nDphi_bins_trig_effcy,-pms.PI,pms.PI,nDeta_bins_trig_effcy,-4.8,4.8);
-            h_eta1_eta2_2mu4_given_mu4[isign] = new TH2D(Form("h_eta1_eta2_2mu4_given_mu4_sign%d",isign+1),";#eta_{sublead};#eta_{lead}",neta_bins_trig_effcy,-2.4,2.4, neta_bins_trig_effcy,-2.4,2.4);
-            h_eta_avg_Deta_2mu4_given_mu4[isign] = new TH2D(Form("h_eta_avg_Deta_2mu4_given_mu4_sign%d",isign+1),";#bar{#eta};#Delta#eta", neta_bins_trig_effcy,-2.4,2.4,nDeta_bins_trig_effcy,-4.8,4.8);
-            h_eta_avg_Dphi_2mu4_given_mu4[isign] = new TH2D(Form("h_eta_avg_Dphi_2mu4_given_mu4_sign%d",isign+1),";#Delta#phi;#bar{#eta}", nDphi_bins_trig_effcy,-pms.PI,pms.PI,neta_bins_trig_effcy,-2.4,2.4);
-            h_minv_pair_pt_log_2mu4_given_mu4[isign] = new TH2D(Form("h_minv_pair_pt_log_2mu4_given_mu4_sign%d",isign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),nminv_bins_log,minv_bins_log[isign]);
-            // h_minv_pair_pt_log_2mu4_given_mu4[isign] = new TH2D(Form("h_minv_pair_pt_log_2mu4_given_mu4_sign%d",isign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[isign][2],nminv_bins_log,minv_bins_log[isign]);
+        h_Deta_mu4_mu4noL1_excl[isign] = new TH1D(Form("h_Deta_mu4_mu4noL1_excl_sign%d",isign+1),";#Delta#eta;",nDeta_bins_trig_effcy,-4.8,4.8);
+        h_Deta_zoomin_mu4_mu4noL1_excl[isign] = new TH1D(Form("h_Deta_zoomin_mu4_mu4noL1_excl_sign%d",isign+1),";#Delta#eta;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+        h_Dphi_mu4_mu4noL1_excl[isign] = new TH1D(Form("h_Dphi_mu4_mu4noL1_excl_sign%d",isign+1),";#Delta#phi;",nDphi_bins_trig_effcy,-pms.PI,pms.PI);
+        h_Dphi_zoomin_mu4_mu4noL1_excl[isign] = new TH1D(Form("h_Dphi_zoomin_mu4_mu4noL1_excl_sign%d",isign+1),";#Delta#phi;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+        h_DR_mu4_mu4noL1_excl[isign] = new TH1D(Form("h_DR_mu4_mu4noL1_excl_sign%d",isign+1),";#DeltaR;",nDR_bins_trig_effcy,0,pms.deltaR_thrsh[2]);
+        h_DR_zoomin_mu4_mu4noL1_excl[isign] = new TH1D(Form("h_DR_zoomin_mu4_mu4noL1_excl_sign%d",isign+1),";#DeltaR;",nDR_deta_dphi_zoomin_bins_trig_effcy,0,0.8);
+        h_minv_zoomin_mu4_mu4noL1_excl[isign] = new TH1D(Form("h_minv_zoomin_mu4_mu4noL1_excl_sign%d",isign+1),";m_{#mu#mu} [GeV];",nminv_bins_trig_effcy,0,3.);
+        h_pair_pt_log_mu4_mu4noL1_excl[isign] = new TH1D(Form("h_pair_pt_log_mu4_mu4noL1_excl_sign%d",isign+1),";p_{T}^{pair} [GeV];",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data());
+        h_pt2nd_mu4_mu4noL1_excl[isign] = new TH1D(Form("h_pt2nd_mu4_mu4noL1_excl_sign%d",isign+1),";p_{T,2nd} [GeV];",int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
 
-            h_Deta_mu4_mu4noL1_given_mu4_w_sig_sel[isign] = new TH1D(Form("h_Deta_mu4_mu4noL1_given_mu4_w_sig_sel_sign%d",isign+1),";#Delta#eta;",nDeta_bins_trig_effcy,-4.8,4.8);
-            h_Deta_zoomin_mu4_mu4noL1_given_mu4_w_sig_sel[isign] = new TH1D(Form("h_Deta_zoomin_mu4_mu4noL1_given_mu4_w_sig_sel_sign%d",isign+1),";#Delta#eta;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
-            h_Dphi_mu4_mu4noL1_given_mu4_w_sig_sel[isign] = new TH1D(Form("h_Dphi_mu4_mu4noL1_given_mu4_w_sig_sel_sign%d",isign+1),";#Delta#phi;",nDphi_bins_trig_effcy,-pms.PI,pms.PI);
-            h_Dphi_zoomin_mu4_mu4noL1_given_mu4_w_sig_sel[isign] = new TH1D(Form("h_Dphi_zoomin_mu4_mu4noL1_given_mu4_w_sig_sel_sign%d",isign+1),";#Delta#phi;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
-            h_DR_mu4_mu4noL1_given_mu4_w_sig_sel[isign] = new TH1D(Form("h_DR_mu4_mu4noL1_given_mu4_w_sig_sel_sign%d",isign+1),";#DeltaR;",nDR_bins_trig_effcy,0,pms.deltaR_thrsh[2]);
-            h_DR_zoomin_mu4_mu4noL1_given_mu4_w_sig_sel[isign] = new TH1D(Form("h_DR_zoomin_mu4_mu4noL1_given_mu4_w_sig_sel_sign%d",isign+1),";#DeltaR;",nDR_deta_dphi_zoomin_bins_trig_effcy,0,0.8);
-            h_minv_zoomin_mu4_mu4noL1_given_mu4_w_sig_sel[isign] = new TH1D(Form("h_minv_zoomin_mu4_mu4noL1_given_mu4_w_sig_sel_sign%d",isign+1),";m_{#mu#mu} [GeV];",nminv_bins_trig_effcy,0,3.);
-            h_pair_pt_log_mu4_mu4noL1_given_mu4_w_sig_sel[isign] = new TH1D(Form("h_pair_pt_log_mu4_mu4noL1_given_mu4_w_sig_sel_sign%d",isign+1),";p_{T}^{pair} [GeV];",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data());
-            h_pt2nd_mu4_mu4noL1_given_mu4_w_sig_sel[isign] = new TH1D(Form("h_pt2nd_mu4_mu4noL1_given_mu4_w_sig_sel_sign%d",isign+1),";p_{T,2nd} [GeV];",int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+        h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl[isign] = new TH2D(Form("h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl_sign%d",isign+1),";q*#eta;p_{T} [GeV]",neta_bins_trig_effcy,-2.4,2.4, int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+        h_pair_eta_vs_pair_pT_mu4_mu4noL1_excl[isign] = new TH2D(Form("h_pair_eta_vs_pair_pT_mu4_mu4noL1_excl_sign%d",isign+1),";p_{T}^{pair} [GeV];#eta^{pair}",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),neta_bins_trig_effcy,-2.4,2.4);
+        h_Deta_Dphi_mu4_mu4noL1_excl[isign] = new TH2D(Form("h_Deta_Dphi_mu4_mu4noL1_excl_sign%d",isign+1),";#Delta#phi;#Delta#eta", nDphi_bins_trig_effcy,-pms.PI,pms.PI,nDeta_bins_trig_effcy,-4.8,4.8);
+        h_eta1_eta2_mu4_mu4noL1_excl[isign] = new TH2D(Form("h_eta1_eta2_mu4_mu4noL1_excl_sign%d",isign+1),";#eta_{sublead};#eta_{lead}",neta_bins_trig_effcy,-2.4,2.4, neta_bins_trig_effcy,-2.4,2.4);
+        h_eta_avg_Deta_mu4_mu4noL1_excl[isign] = new TH2D(Form("h_eta_avg_Deta_mu4_mu4noL1_excl_sign%d",isign+1),";#bar{#eta};#Delta#eta", neta_bins_trig_effcy,-2.4,2.4,nDeta_bins_trig_effcy,-4.8,4.8);
+        h_eta_avg_Dphi_mu4_mu4noL1_excl[isign] = new TH2D(Form("h_eta_avg_Dphi_mu4_mu4noL1_excl_sign%d",isign+1),";#Delta#phi;#bar{#eta}", nDphi_bins_trig_effcy,-pms.PI,pms.PI,neta_bins_trig_effcy,-2.4,2.4);
+        h_minv_pair_pt_log_mu4_mu4noL1_excl[isign] = new TH2D(Form("h_minv_pair_pt_log_mu4_mu4noL1_excl_sign%d",isign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),nminv_bins_log,minv_bins_log[isign]);
 
-            h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_given_mu4_w_sig_sel[isign] = new TH2D(Form("h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_given_mu4_w_sig_sel_sign%d",isign+1),";q*#eta;p_{T} [GeV]",neta_bins_trig_effcy,-2.4,2.4, int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
-            h_pair_eta_vs_pair_pT_mu4_mu4noL1_given_mu4_w_sig_sel[isign] = new TH2D(Form("h_pair_eta_vs_pair_pT_mu4_mu4noL1_given_mu4_w_sig_sel_sign%d",isign+1),";p_{T}^{pair} [GeV];#eta^{pair}",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),neta_bins_trig_effcy,-2.4,2.4);
-            h_Deta_Dphi_mu4_mu4noL1_given_mu4_w_sig_sel[isign] = new TH2D(Form("h_Deta_Dphi_mu4_mu4noL1_given_mu4_w_sig_sel_sign%d",isign+1),";#Delta#phi;#Delta#eta", nDphi_bins_trig_effcy,-pms.PI,pms.PI,nDeta_bins_trig_effcy,-4.8,4.8);
-            h_eta1_eta2_mu4_mu4noL1_given_mu4_w_sig_sel[isign] = new TH2D(Form("h_eta1_eta2_mu4_mu4noL1_given_mu4_w_sig_sel_sign%d",isign+1),";#eta_{sublead};#eta_{lead}",neta_bins_trig_effcy,-2.4,2.4, neta_bins_trig_effcy,-2.4,2.4);
-            h_eta_avg_Deta_mu4_mu4noL1_given_mu4_w_sig_sel[isign] = new TH2D(Form("h_eta_avg_Deta_mu4_mu4noL1_given_mu4_w_sig_sel_sign%d",isign+1),";#bar{#eta};#Delta#eta", neta_bins_trig_effcy,-2.4,2.4,nDeta_bins_trig_effcy,-4.8,4.8);
-            h_eta_avg_Dphi_mu4_mu4noL1_given_mu4_w_sig_sel[isign] = new TH2D(Form("h_eta_avg_Dphi_mu4_mu4noL1_given_mu4_w_sig_sel_sign%d",isign+1),";#Delta#phi;#bar{#eta}", nDphi_bins_trig_effcy,-pms.PI,pms.PI,neta_bins_trig_effcy,-2.4,2.4);
-            h_minv_pair_pt_log_mu4_mu4noL1_given_mu4_w_sig_sel[isign] = new TH2D(Form("h_minv_pair_pt_log_mu4_mu4noL1_given_mu4_w_sig_sel_sign%d",isign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),nminv_bins_log,minv_bins_log[isign]);
-            // h_minv_pair_pt_log_mu4_mu4noL1_given_mu4_w_sig_sel[isign] = new TH2D(Form("h_minv_pair_pt_log_mu4_mu4noL1_given_mu4_w_sig_sel_sign%d",isign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[isign][2],nminv_bins_log,minv_bins_log[isign]);
+        // pair kinematics requiring 2mu4 trigger
+        h_Deta_2mu4[isign] = new TH1D(Form("h_Deta_2mu4_sign%d",isign+1),";#Delta#eta;",nDeta_bins_trig_effcy,-4.8,4.8);
+        h_Deta_zoomin_2mu4[isign] = new TH1D(Form("h_Deta_zoomin_2mu4_sign%d",isign+1),";#Delta#eta;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+        h_Dphi_2mu4[isign] = new TH1D(Form("h_Dphi_2mu4_sign%d",isign+1),";#Delta#phi;",nDphi_bins_trig_effcy,-pms.PI,pms.PI);
+        h_Dphi_zoomin_2mu4[isign] = new TH1D(Form("h_Dphi_zoomin_2mu4_sign%d",isign+1),";#Delta#phi;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+        h_DR_2mu4[isign] = new TH1D(Form("h_DR_2mu4_sign%d",isign+1),";#DeltaR;",nDR_bins_trig_effcy,0,pms.deltaR_thrsh[2]);
+        h_DR_zoomin_2mu4[isign] = new TH1D(Form("h_DR_zoomin_2mu4_sign%d",isign+1),";#DeltaR;",nDR_deta_dphi_zoomin_bins_trig_effcy,0,0.8);
+        h_minv_zoomin_2mu4[isign] = new TH1D(Form("h_minv_zoomin_2mu4_sign%d",isign+1),";m_{#mu#mu} [GeV];",nminv_bins_trig_effcy,0,3.);
+        h_pair_pt_log_2mu4[isign] = new TH1D(Form("h_pair_pt_log_2mu4_sign%d",isign+1),";p_{T}^{pair} [GeV];",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data());
+        h_pt2nd_2mu4[isign] = new TH1D(Form("h_pt2nd_2mu4_sign%d",isign+1),";p_{T,2nd} [GeV];",int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
 
-            h_Deta_2mu4_given_mu4_w_sig_sel[isign] = new TH1D(Form("h_Deta_2mu4_given_mu4_w_sig_sel_sign%d",isign+1),";#Delta#eta;",nDeta_bins_trig_effcy,-4.8,4.8);
-            h_Deta_zoomin_2mu4_given_mu4_w_sig_sel[isign] = new TH1D(Form("h_Deta_zoomin_2mu4_given_mu4_w_sig_sel_sign%d",isign+1),";#Delta#eta;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
-            h_Dphi_2mu4_given_mu4_w_sig_sel[isign] = new TH1D(Form("h_Dphi_2mu4_given_mu4_w_sig_sel_sign%d",isign+1),";#Delta#phi;",nDphi_bins_trig_effcy,-pms.PI,pms.PI);
-            h_Dphi_zoomin_2mu4_given_mu4_w_sig_sel[isign] = new TH1D(Form("h_Dphi_zoomin_2mu4_given_mu4_w_sig_sel_sign%d",isign+1),";#Delta#phi;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
-            h_DR_2mu4_given_mu4_w_sig_sel[isign] = new TH1D(Form("h_DR_2mu4_given_mu4_w_sig_sel_sign%d",isign+1),";#DeltaR;",nDR_bins_trig_effcy,0,pms.deltaR_thrsh[2]);
-            h_DR_zoomin_2mu4_given_mu4_w_sig_sel[isign] = new TH1D(Form("h_DR_zoomin_2mu4_given_mu4_w_sig_sel_sign%d",isign+1),";#DeltaR;",nDR_deta_dphi_zoomin_bins_trig_effcy,0,0.8);
-            h_minv_zoomin_2mu4_given_mu4_w_sig_sel[isign] = new TH1D(Form("h_minv_zoomin_2mu4_given_mu4_w_sig_sel_sign%d",isign+1),";m_{#mu#mu} [GeV];",nminv_bins_trig_effcy,0,3.);
-            h_pair_pt_log_2mu4_given_mu4_w_sig_sel[isign] = new TH1D(Form("h_pair_pt_log_2mu4_given_mu4_w_sig_sel_sign%d",isign+1),";p_{T}^{pair} [GeV];",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data());
-            h_pt2nd_2mu4_given_mu4_w_sig_sel[isign] = new TH1D(Form("h_pt2nd_2mu4_given_mu4_w_sig_sel_sign%d",isign+1),";p_{T,2nd} [GeV];",int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+        h_pt2nd_vs_q_eta_2nd_2mu4[isign] = new TH2D(Form("h_pt2nd_vs_q_eta_2nd_2mu4_sign%d",isign+1),";q*#eta;p_{T} [GeV]",neta_bins_trig_effcy,-2.4,2.4, int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+        h_pair_eta_vs_pair_pT_2mu4[isign] = new TH2D(Form("h_pair_eta_vs_pair_pT_2mu4_sign%d",isign+1),";p_{T}^{pair} [GeV];#eta^{pair}",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),neta_bins_trig_effcy,-2.4,2.4);
+        h_Deta_Dphi_2mu4[isign] = new TH2D(Form("h_Deta_Dphi_2mu4_sign%d",isign+1),";#Delta#phi;#Delta#eta", nDphi_bins_trig_effcy,-pms.PI,pms.PI,nDeta_bins_trig_effcy,-4.8,4.8);
+        h_eta1_eta2_2mu4[isign] = new TH2D(Form("h_eta1_eta2_2mu4_sign%d",isign+1),";#eta_{sublead};#eta_{lead}",neta_bins_trig_effcy,-2.4,2.4, neta_bins_trig_effcy,-2.4,2.4);
+        h_eta_avg_Deta_2mu4[isign] = new TH2D(Form("h_eta_avg_Deta_2mu4_sign%d",isign+1),";#bar{#eta};#Delta#eta", neta_bins_trig_effcy,-2.4,2.4,nDeta_bins_trig_effcy,-4.8,4.8);
+        h_eta_avg_Dphi_2mu4[isign] = new TH2D(Form("h_eta_avg_Dphi_2mu4_sign%d",isign+1),";#Delta#phi;#bar{#eta}", nDphi_bins_trig_effcy,-pms.PI,pms.PI,neta_bins_trig_effcy,-2.4,2.4);
+        h_minv_pair_pt_log_2mu4[isign] = new TH2D(Form("h_minv_pair_pt_log_2mu4_sign%d",isign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),nminv_bins_log,minv_bins_log[isign]);
 
-            h_pt2nd_vs_q_eta_2nd_2mu4_given_mu4_w_sig_sel[isign] = new TH2D(Form("h_pt2nd_vs_q_eta_2nd_2mu4_given_mu4_w_sig_sel_sign%d",isign+1),";q*#eta;p_{T} [GeV]",neta_bins_trig_effcy,-2.4,2.4, int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
-            h_pair_eta_vs_pair_pT_2mu4_given_mu4_w_sig_sel[isign] = new TH2D(Form("h_pair_eta_vs_pair_pT_2mu4_given_mu4_w_sig_sel_sign%d",isign+1),";p_{T}^{pair} [GeV];#eta^{pair}",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),neta_bins_trig_effcy,-2.4,2.4);
-            h_Deta_Dphi_2mu4_given_mu4_w_sig_sel[isign] = new TH2D(Form("h_Deta_Dphi_2mu4_given_mu4_w_sig_sel_sign%d",isign+1),";#Delta#phi;#Delta#eta", nDphi_bins_trig_effcy,-pms.PI,pms.PI,nDeta_bins_trig_effcy,-4.8,4.8);
-            h_eta1_eta2_2mu4_given_mu4_w_sig_sel[isign] = new TH2D(Form("h_eta1_eta2_2mu4_given_mu4_w_sig_sel_sign%d",isign+1),";#eta_{sublead};#eta_{lead}",neta_bins_trig_effcy,-2.4,2.4, neta_bins_trig_effcy,-2.4,2.4);
-            h_eta_avg_Deta_2mu4_given_mu4_w_sig_sel[isign] = new TH2D(Form("h_eta_avg_Deta_2mu4_given_mu4_w_sig_sel_sign%d",isign+1),";#bar{#eta};#Delta#eta", neta_bins_trig_effcy,-2.4,2.4,nDeta_bins_trig_effcy,-4.8,4.8);
-            h_eta_avg_Dphi_2mu4_given_mu4_w_sig_sel[isign] = new TH2D(Form("h_eta_avg_Dphi_2mu4_given_mu4_w_sig_sel_sign%d",isign+1),";#Delta#phi;#bar{#eta}", nDphi_bins_trig_effcy,-pms.PI,pms.PI,neta_bins_trig_effcy,-2.4,2.4);
-            h_minv_pair_pt_log_2mu4_given_mu4_w_sig_sel[isign] = new TH2D(Form("h_minv_pair_pt_log_2mu4_given_mu4_w_sig_sel_sign%d",isign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),nminv_bins_log,minv_bins_log[isign]);
-            // h_minv_pair_pt_log_2mu4_given_mu4_w_sig_sel[isign] = new TH2D(Form("h_minv_pair_pt_log_2mu4_given_mu4_w_sig_sel_sign%d",isign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[isign][2],nminv_bins_log,minv_bins_log[isign]);
 
-            if (output_non_trig_effcy_hists){
-                for (unsigned int idphi = 0; idphi < 2; idphi++){
-                    for (unsigned int igap = 0; igap < ParamsSet::nGapCuts; igap++){
-                        h_pair_dP_overP[idphi][isign][igap] = new TH1D(Form("h_pair_dP_overP_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";(#Delta p / p)_{pair};1/N_{evt} dN/d(#Delta p / p)_{pair}" ,pms.deltaP_overP_nbins,0,pms.deltaP_overP_max);
-                        h_DR[idphi][isign][igap] = new TH1D(Form("h_DR_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_bins,0,pms.deltaR_thrsh[2]);
-                        h_DR_zoomin[idphi][isign][igap] = new TH1D(Form("h_DR_zoomin_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_zoomin_bins,0,pms.deltaR_thrsh_zoomin);
-                        h_DR_jacobian_corrected[idphi][isign][igap] = new TH1D(Form("h_DR_jacobian_corrected_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";#Delta R;#frac{1}{N_{evt}} #frac{1}{#Delta R} #frac{dN}{d#Delta R}", nDR_bins,0,pms.deltaR_thrsh[2]);
-                        h_DR_zoomin_jacobian_corrected[idphi][isign][igap] = new TH1D(Form("h_DR_zoomin_jacobian_corrected_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";#Delta R;#frac{1}{N_{evt}} #frac{1}{#Delta R} #frac{dN}{d#Delta R}", nDR_zoomin_bins,0,pms.deltaR_thrsh_zoomin);
-                        h_Dphi[idphi][isign][igap] = new TH1D(Form("h_Dphi_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";#Delta#phi;1/N_{evt} dN/d#Delta#phi", nDphi_bins,-pms.PI,pms.PI);
-                        h_pair_y[idphi][isign][igap] = new TH1D(Form("h_pair_y_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";y_{pair};1/N_{evt} dN/dy_{pair}" ,npair_y_bins,-3,3);
-                        h_pt_asym[idphi][isign][igap] = new TH1D(Form("h_pt_asym_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", npt_asym_bins,0,1.);
-                        h_pair_pt_ptlead_ratio[idphi][isign][igap] = new TH1D(Form("h_pair_pt_ptlead_ratio_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", npair_pt_ptlead_ratio_bins,0,2.);
+        // ----------------- separated (dR > 0.8) -----------------
 
-                        h_eta_avg_Dphi[idphi][isign][igap] = new TH2D(Form("h_eta_avg_Dphi_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";#Delta#phi;#bar{#eta}", nDphi_bins,-pms.PI,pms.PI,neta_bins,-2.4,2.4);
-                        h_Deta_Dphi[idphi][isign][igap] = new TH2D(Form("h_Deta_Dphi_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
-                        h_eta1_eta2[idphi][isign][igap] = new TH2D(Form("h_eta1_eta2_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";#eta_{sublead};#eta_{lead}",neta_bins,-2.4,2.4, neta_bins,-2.4,2.4);
-                        h_eta_avg_Deta[idphi][isign][igap] = new TH2D(Form("h_eta_avg_Deta_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";#Delta#eta;#bar{#eta}",nDeta_bins,-4.8,4.8,neta_bins,-2.4,2.4);
-                        h_pt1_pt2[idphi][isign][igap] = new TH2D(Form("h_pt1_pt2_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";p_{T}^{sublead} [GeV];p_{T}^{lead} [GeV]",pms.npt_bins,pms.pTBins,pms.npt_bins,pms.pTBins);
-                        h_ptlead_pair_pt[idphi][isign][igap] = new TH2D(Form("h_ptlead_pair_pt_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",npair_pT_bins_linear,0,30,npT_lead_bins_linear,0,30);
-                        h_ptlead_pair_pt_zoomin[idphi][isign][igap] = new TH2D(Form("h_ptlead_pair_pt_zoomin_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",npair_pT_bins_linear,0,20,npT_lead_bins_linear,0,15);
-                        h_ptlead_pair_pt_log[idphi][isign][igap] = new TH2D(Form("h_ptlead_pair_pt_log_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.npairPT_bins,pms.pairPTBins[isign][2],pms.npt_bins,pms.pTBins);
-                        h_minv_pair_pt[idphi][isign][igap] = new TH2D(Form("h_minv_pair_pt_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
-                        h_minv_pair_pt_zoomin[idphi][isign][igap] = new TH2D(Form("h_minv_pair_pt_zoomin_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,20,nminv_bins_linear,0,4);
-                        h_minv_pair_pt_jacobian_corrected[idphi][isign][igap] = new TH2D(Form("h_minv_pair_pt_jacobian_corrected_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
-                        h_minv_pair_pt_zoomin_jacobian_corrected[idphi][isign][igap] = new TH2D(Form("h_minv_pair_pt_zoomin_jacobian_corrected_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,20,nminv_bins_linear,0,4);
-                        h_minv_pair_pt_log[idphi][isign][igap] = new TH2D(Form("h_minv_pair_pt_log_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[isign][2],nminv_bins_log,minv_bins_log[isign]);
-                    }
+        // pair kinematics requiring only single mu4 trigger
+        h_Deta_mu4_sepr[isign] = new TH1D(Form("h_Deta_mu4_sepr_sign%d",isign+1),";#Delta#eta;",nDeta_bins_trig_effcy,-4.8,4.8);
+        h_Deta_zoomin_mu4_sepr[isign] = new TH1D(Form("h_Deta_zoomin_mu4_sepr_sign%d",isign+1),";#Delta#eta;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+        h_Dphi_mu4_sepr[isign] = new TH1D(Form("h_Dphi_mu4_sepr_sign%d",isign+1),";#Delta#phi;",nDphi_bins_trig_effcy,-pms.PI,pms.PI);
+        h_Dphi_zoomin_mu4_sepr[isign] = new TH1D(Form("h_Dphi_zoomin_mu4_sepr_sign%d",isign+1),";#Delta#phi;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+        h_DR_mu4_sepr[isign] = new TH1D(Form("h_DR_mu4_sepr_sign%d",isign+1),";#DeltaR;",nDR_bins_trig_effcy,0,pms.deltaR_thrsh[2]);
+        h_DR_zoomin_mu4_sepr[isign] = new TH1D(Form("h_DR_zoomin_mu4_sepr_sign%d",isign+1),";#DeltaR;",nDR_deta_dphi_zoomin_bins_trig_effcy,0,0.8);
+        h_minv_zoomin_mu4_sepr[isign] = new TH1D(Form("h_minv_zoomin_mu4_sepr_sign%d",isign+1),";m_{#mu#mu} [GeV];",nminv_bins_trig_effcy,0,3.);
+        h_pair_pt_log_mu4_sepr[isign] = new TH1D(Form("h_pair_pt_log_mu4_sepr_sign%d",isign+1),";p_{T}^{pair} [GeV];",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data());
+        h_pt2nd_mu4_sepr[isign] = new TH1D(Form("h_pt2nd_mu4_sepr_sign%d",isign+1),";p_{T,2nd} [GeV];",int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+
+        h_pt2nd_vs_q_eta_2nd_mu4_sepr[isign] = new TH2D(Form("h_pt2nd_vs_q_eta_2nd_mu4_sepr_sign%d",isign+1),";q*#eta;p_{T} [GeV]",neta_bins_trig_effcy,-2.4,2.4, int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+        h_pair_eta_vs_pair_pT_mu4_sepr[isign] = new TH2D(Form("h_pair_eta_vs_pair_pT_mu4_sepr_sign%d",isign+1),";p_{T}^{pair} [GeV];#eta^{pair}",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),neta_bins_trig_effcy,-2.4,2.4);
+        h_Deta_Dphi_mu4_sepr[isign] = new TH2D(Form("h_Deta_Dphi_mu4_sepr_sign%d",isign+1),";#Delta#phi;#Delta#eta", nDphi_bins_trig_effcy,-pms.PI,pms.PI,nDeta_bins_trig_effcy,-4.8,4.8);
+        h_eta1_eta2_mu4_sepr[isign] = new TH2D(Form("h_eta1_eta2_mu4_sepr_sign%d",isign+1),";#eta_{sublead};#eta_{lead}",neta_bins_trig_effcy,-2.4,2.4, neta_bins_trig_effcy,-2.4,2.4);
+        h_eta_avg_Deta_mu4_sepr[isign] = new TH2D(Form("h_eta_avg_Deta_mu4_sepr_sign%d",isign+1),";#bar{#eta};#Delta#eta", neta_bins_trig_effcy,-2.4,2.4,nDeta_bins_trig_effcy,-4.8,4.8);
+        h_eta_avg_Dphi_mu4_sepr[isign] = new TH2D(Form("h_eta_avg_Dphi_mu4_sepr_sign%d",isign+1),";#Delta#phi;#bar{#eta}", nDphi_bins_trig_effcy,-pms.PI,pms.PI,neta_bins_trig_effcy,-2.4,2.4);
+        h_minv_pair_pt_log_mu4_sepr[isign] = new TH2D(Form("h_minv_pair_pt_log_mu4_sepr_sign%d",isign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),nminv_bins_log,minv_bins_log[isign]);
+
+        // pair kinematics requiring mu4_mu4noL1 trigger
+        h_Deta_mu4_mu4noL1_sepr[isign] = new TH1D(Form("h_Deta_mu4_mu4noL1_sepr_sign%d",isign+1),";#Delta#eta;",nDeta_bins_trig_effcy,-4.8,4.8);
+        h_Deta_zoomin_mu4_mu4noL1_sepr[isign] = new TH1D(Form("h_Deta_zoomin_mu4_mu4noL1_sepr_sign%d",isign+1),";#Delta#eta;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+        h_Dphi_mu4_mu4noL1_sepr[isign] = new TH1D(Form("h_Dphi_mu4_mu4noL1_sepr_sign%d",isign+1),";#Delta#phi;",nDphi_bins_trig_effcy,-pms.PI,pms.PI);
+        h_Dphi_zoomin_mu4_mu4noL1_sepr[isign] = new TH1D(Form("h_Dphi_zoomin_mu4_mu4noL1_sepr_sign%d",isign+1),";#Delta#phi;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+        h_DR_mu4_mu4noL1_sepr[isign] = new TH1D(Form("h_DR_mu4_mu4noL1_sepr_sign%d",isign+1),";#DeltaR;",nDR_bins_trig_effcy,0,pms.deltaR_thrsh[2]);
+        h_DR_zoomin_mu4_mu4noL1_sepr[isign] = new TH1D(Form("h_DR_zoomin_mu4_mu4noL1_sepr_sign%d",isign+1),";#DeltaR;",nDR_deta_dphi_zoomin_bins_trig_effcy,0,0.8);
+        h_minv_zoomin_mu4_mu4noL1_sepr[isign] = new TH1D(Form("h_minv_zoomin_mu4_mu4noL1_sepr_sign%d",isign+1),";m_{#mu#mu} [GeV];",nminv_bins_trig_effcy,0,3.);
+        h_pair_pt_log_mu4_mu4noL1_sepr[isign] = new TH1D(Form("h_pair_pt_log_mu4_mu4noL1_sepr_sign%d",isign+1),";p_{T}^{pair} [GeV];",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data());
+        h_pt2nd_mu4_mu4noL1_sepr[isign] = new TH1D(Form("h_pt2nd_mu4_mu4noL1_sepr_sign%d",isign+1),";p_{T,2nd} [GeV];",int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+
+        h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr[isign] = new TH2D(Form("h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr_sign%d",isign+1),";q*#eta;p_{T} [GeV]",neta_bins_trig_effcy,-2.4,2.4, int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+        h_pair_eta_vs_pair_pT_mu4_mu4noL1_sepr[isign] = new TH2D(Form("h_pair_eta_vs_pair_pT_mu4_mu4noL1_sepr_sign%d",isign+1),";p_{T}^{pair} [GeV];#eta^{pair}",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),neta_bins_trig_effcy,-2.4,2.4);
+        h_Deta_Dphi_mu4_mu4noL1_sepr[isign] = new TH2D(Form("h_Deta_Dphi_mu4_mu4noL1_sepr_sign%d",isign+1),";#Delta#phi;#Delta#eta", nDphi_bins_trig_effcy,-pms.PI,pms.PI,nDeta_bins_trig_effcy,-4.8,4.8);
+        h_eta1_eta2_mu4_mu4noL1_sepr[isign] = new TH2D(Form("h_eta1_eta2_mu4_mu4noL1_sepr_sign%d",isign+1),";#eta_{sublead};#eta_{lead}",neta_bins_trig_effcy,-2.4,2.4, neta_bins_trig_effcy,-2.4,2.4);
+        h_eta_avg_Deta_mu4_mu4noL1_sepr[isign] = new TH2D(Form("h_eta_avg_Deta_mu4_mu4noL1_sepr_sign%d",isign+1),";#bar{#eta};#Delta#eta", neta_bins_trig_effcy,-2.4,2.4,nDeta_bins_trig_effcy,-4.8,4.8);
+        h_eta_avg_Dphi_mu4_mu4noL1_sepr[isign] = new TH2D(Form("h_eta_avg_Dphi_mu4_mu4noL1_sepr_sign%d",isign+1),";#Delta#phi;#bar{#eta}", nDphi_bins_trig_effcy,-pms.PI,pms.PI,neta_bins_trig_effcy,-2.4,2.4);
+        h_minv_pair_pt_log_mu4_mu4noL1_sepr[isign] = new TH2D(Form("h_minv_pair_pt_log_mu4_mu4noL1_sepr_sign%d",isign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),nminv_bins_log,minv_bins_log[isign]);
+
+        h_Deta_mu4_mu4noL1_excl_sepr[isign] = new TH1D(Form("h_Deta_mu4_mu4noL1_excl_sepr_sign%d",isign+1),";#Delta#eta;",nDeta_bins_trig_effcy,-4.8,4.8);
+        h_Deta_zoomin_mu4_mu4noL1_excl_sepr[isign] = new TH1D(Form("h_Deta_zoomin_mu4_mu4noL1_excl_sepr_sign%d",isign+1),";#Delta#eta;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+        h_Dphi_mu4_mu4noL1_excl_sepr[isign] = new TH1D(Form("h_Dphi_mu4_mu4noL1_excl_sepr_sign%d",isign+1),";#Delta#phi;",nDphi_bins_trig_effcy,-pms.PI,pms.PI);
+        h_Dphi_zoomin_mu4_mu4noL1_excl_sepr[isign] = new TH1D(Form("h_Dphi_zoomin_mu4_mu4noL1_excl_sepr_sign%d",isign+1),";#Delta#phi;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+        h_DR_mu4_mu4noL1_excl_sepr[isign] = new TH1D(Form("h_DR_mu4_mu4noL1_excl_sepr_sign%d",isign+1),";#DeltaR;",nDR_bins_trig_effcy,0,pms.deltaR_thrsh[2]);
+        h_DR_zoomin_mu4_mu4noL1_excl_sepr[isign] = new TH1D(Form("h_DR_zoomin_mu4_mu4noL1_excl_sepr_sign%d",isign+1),";#DeltaR;",nDR_deta_dphi_zoomin_bins_trig_effcy,0,0.8);
+        h_minv_zoomin_mu4_mu4noL1_excl_sepr[isign] = new TH1D(Form("h_minv_zoomin_mu4_mu4noL1_excl_sepr_sign%d",isign+1),";m_{#mu#mu} [GeV];",nminv_bins_trig_effcy,0,3.);
+        h_pair_pt_log_mu4_mu4noL1_excl_sepr[isign] = new TH1D(Form("h_pair_pt_log_mu4_mu4noL1_excl_sepr_sign%d",isign+1),";p_{T}^{pair} [GeV];",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data());
+        h_pt2nd_mu4_mu4noL1_excl_sepr[isign] = new TH1D(Form("h_pt2nd_mu4_mu4noL1_excl_sepr_sign%d",isign+1),";p_{T,2nd} [GeV];",int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+
+        h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl_sepr[isign] = new TH2D(Form("h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl_sepr_sign%d",isign+1),";q*#eta;p_{T} [GeV]",neta_bins_trig_effcy,-2.4,2.4, int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+        h_pair_eta_vs_pair_pT_mu4_mu4noL1_excl_sepr[isign] = new TH2D(Form("h_pair_eta_vs_pair_pT_mu4_mu4noL1_excl_sepr_sign%d",isign+1),";p_{T}^{pair} [GeV];#eta^{pair}",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),neta_bins_trig_effcy,-2.4,2.4);
+        h_Deta_Dphi_mu4_mu4noL1_excl_sepr[isign] = new TH2D(Form("h_Deta_Dphi_mu4_mu4noL1_excl_sepr_sign%d",isign+1),";#Delta#phi;#Delta#eta", nDphi_bins_trig_effcy,-pms.PI,pms.PI,nDeta_bins_trig_effcy,-4.8,4.8);
+        h_eta1_eta2_mu4_mu4noL1_excl_sepr[isign] = new TH2D(Form("h_eta1_eta2_mu4_mu4noL1_excl_sepr_sign%d",isign+1),";#eta_{sublead};#eta_{lead}",neta_bins_trig_effcy,-2.4,2.4, neta_bins_trig_effcy,-2.4,2.4);
+        h_eta_avg_Deta_mu4_mu4noL1_excl_sepr[isign] = new TH2D(Form("h_eta_avg_Deta_mu4_mu4noL1_excl_sepr_sign%d",isign+1),";#bar{#eta};#Delta#eta", neta_bins_trig_effcy,-2.4,2.4,nDeta_bins_trig_effcy,-4.8,4.8);
+        h_eta_avg_Dphi_mu4_mu4noL1_excl_sepr[isign] = new TH2D(Form("h_eta_avg_Dphi_mu4_mu4noL1_excl_sepr_sign%d",isign+1),";#Delta#phi;#bar{#eta}", nDphi_bins_trig_effcy,-pms.PI,pms.PI,neta_bins_trig_effcy,-2.4,2.4);
+        h_minv_pair_pt_log_mu4_mu4noL1_excl_sepr[isign] = new TH2D(Form("h_minv_pair_pt_log_mu4_mu4noL1_excl_sepr_sign%d",isign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),nminv_bins_log,minv_bins_log[isign]);
+
+        // pair kinematics requiring 2mu4 trigger
+        h_Deta_2mu4_sepr[isign] = new TH1D(Form("h_Deta_2mu4_sepr_sign%d",isign+1),";#Delta#eta;",nDeta_bins_trig_effcy,-4.8,4.8);
+        h_Deta_zoomin_2mu4_sepr[isign] = new TH1D(Form("h_Deta_zoomin_2mu4_sepr_sign%d",isign+1),";#Delta#eta;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+        h_Dphi_2mu4_sepr[isign] = new TH1D(Form("h_Dphi_2mu4_sepr_sign%d",isign+1),";#Delta#phi;",nDphi_bins_trig_effcy,-pms.PI,pms.PI);
+        h_Dphi_zoomin_2mu4_sepr[isign] = new TH1D(Form("h_Dphi_zoomin_2mu4_sepr_sign%d",isign+1),";#Delta#phi;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+        h_DR_2mu4_sepr[isign] = new TH1D(Form("h_DR_2mu4_sepr_sign%d",isign+1),";#DeltaR;",nDR_bins_trig_effcy,0,pms.deltaR_thrsh[2]);
+        h_DR_zoomin_2mu4_sepr[isign] = new TH1D(Form("h_DR_zoomin_2mu4_sepr_sign%d",isign+1),";#DeltaR;",nDR_deta_dphi_zoomin_bins_trig_effcy,0,0.8);
+        h_minv_zoomin_2mu4_sepr[isign] = new TH1D(Form("h_minv_zoomin_2mu4_sepr_sign%d",isign+1),";m_{#mu#mu} [GeV];",nminv_bins_trig_effcy,0,3.);
+        h_pair_pt_log_2mu4_sepr[isign] = new TH1D(Form("h_pair_pt_log_2mu4_sepr_sign%d",isign+1),";p_{T}^{pair} [GeV];",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data());
+        h_pt2nd_2mu4_sepr[isign] = new TH1D(Form("h_pt2nd_2mu4_sepr_sign%d",isign+1),";p_{T,2nd} [GeV];",int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+
+        h_pt2nd_vs_q_eta_2nd_2mu4_sepr[isign] = new TH2D(Form("h_pt2nd_vs_q_eta_2nd_2mu4_sepr_sign%d",isign+1),";q*#eta;p_{T} [GeV]",neta_bins_trig_effcy,-2.4,2.4, int(pms.pT_bins_40.size() - 1), pms.pT_bins_40.data());
+        h_pair_eta_vs_pair_pT_2mu4_sepr[isign] = new TH2D(Form("h_pair_eta_vs_pair_pT_2mu4_sepr_sign%d",isign+1),";p_{T}^{pair} [GeV];#eta^{pair}",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),neta_bins_trig_effcy,-2.4,2.4);
+        h_Deta_Dphi_2mu4_sepr[isign] = new TH2D(Form("h_Deta_Dphi_2mu4_sepr_sign%d",isign+1),";#Delta#phi;#Delta#eta", nDphi_bins_trig_effcy,-pms.PI,pms.PI,nDeta_bins_trig_effcy,-4.8,4.8);
+        h_eta1_eta2_2mu4_sepr[isign] = new TH2D(Form("h_eta1_eta2_2mu4_sepr_sign%d",isign+1),";#eta_{sublead};#eta_{lead}",neta_bins_trig_effcy,-2.4,2.4, neta_bins_trig_effcy,-2.4,2.4);
+        h_eta_avg_Deta_2mu4_sepr[isign] = new TH2D(Form("h_eta_avg_Deta_2mu4_sepr_sign%d",isign+1),";#bar{#eta};#Delta#eta", neta_bins_trig_effcy,-2.4,2.4,nDeta_bins_trig_effcy,-4.8,4.8);
+        h_eta_avg_Dphi_2mu4_sepr[isign] = new TH2D(Form("h_eta_avg_Dphi_2mu4_sepr_sign%d",isign+1),";#Delta#phi;#bar{#eta}", nDphi_bins_trig_effcy,-pms.PI,pms.PI,neta_bins_trig_effcy,-2.4,2.4);
+        h_minv_pair_pt_log_2mu4_sepr[isign] = new TH2D(Form("h_minv_pair_pt_log_2mu4_sepr_sign%d",isign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),nminv_bins_log,minv_bins_log[isign]);
+        
+        if (output_non_trig_effcy_hists){
+            for (unsigned int idphi = 0; idphi < 2; idphi++){
+                for (unsigned int igap = 0; igap < ParamsSet::nGapCuts; igap++){
+                    h_pair_dP_overP[idphi][isign][igap] = new TH1D(Form("h_pair_dP_overP_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";(#Delta p / p)_{pair};1/N_{evt} dN/d(#Delta p / p)_{pair}" ,pms.deltaP_overP_nbins,0,pms.deltaP_overP_max);
+                    h_DR[idphi][isign][igap] = new TH1D(Form("h_DR_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_bins,0,pms.deltaR_thrsh[2]);
+                    h_DR_zoomin[idphi][isign][igap] = new TH1D(Form("h_DR_zoomin_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";#Delta R;1/N_{evt} dN/d#Delta R", nDR_zoomin_bins,0,pms.deltaR_thrsh_zoomin);
+                    h_DR_jacobian_corrected[idphi][isign][igap] = new TH1D(Form("h_DR_jacobian_corrected_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";#Delta R;#frac{1}{N_{evt}} #frac{1}{#Delta R} #frac{dN}{d#Delta R}", nDR_bins,0,pms.deltaR_thrsh[2]);
+                    h_DR_zoomin_jacobian_corrected[idphi][isign][igap] = new TH1D(Form("h_DR_zoomin_jacobian_corrected_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";#Delta R;#frac{1}{N_{evt}} #frac{1}{#Delta R} #frac{dN}{d#Delta R}", nDR_zoomin_bins,0,pms.deltaR_thrsh_zoomin);
+                    h_Dphi[idphi][isign][igap] = new TH1D(Form("h_Dphi_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";#Delta#phi;1/N_{evt} dN/d#Delta#phi", nDphi_bins,-pms.PI,pms.PI);
+                    h_pair_y[idphi][isign][igap] = new TH1D(Form("h_pair_y_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";y_{pair};1/N_{evt} dN/dy_{pair}" ,npair_y_bins,-3,3);
+                    h_pt_asym[idphi][isign][igap] = new TH1D(Form("h_pt_asym_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", npt_asym_bins,0,1.);
+                    h_pair_pt_ptlead_ratio[idphi][isign][igap] = new TH1D(Form("h_pair_pt_ptlead_ratio_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", npair_pt_ptlead_ratio_bins,0,2.);
+
+                    h_eta_avg_Dphi[idphi][isign][igap] = new TH2D(Form("h_eta_avg_Dphi_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";#Delta#phi;#bar{#eta}", nDphi_bins,-pms.PI,pms.PI,neta_bins,-2.4,2.4);
+                    h_Deta_Dphi[idphi][isign][igap] = new TH2D(Form("h_Deta_Dphi_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
+                    h_eta1_eta2[idphi][isign][igap] = new TH2D(Form("h_eta1_eta2_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";#eta_{sublead};#eta_{lead}",neta_bins,-2.4,2.4, neta_bins,-2.4,2.4);
+                    h_eta_avg_Deta[idphi][isign][igap] = new TH2D(Form("h_eta_avg_Deta_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";#Delta#eta;#bar{#eta}",nDeta_bins,-4.8,4.8,neta_bins,-2.4,2.4);
+                    h_pt1_pt2[idphi][isign][igap] = new TH2D(Form("h_pt1_pt2_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";p_{T}^{sublead} [GeV];p_{T}^{lead} [GeV]",pms.npt_bins,pms.pTBins,pms.npt_bins,pms.pTBins);
+                    h_ptlead_pair_pt[idphi][isign][igap] = new TH2D(Form("h_ptlead_pair_pt_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",npair_pT_bins_linear,0,30,npT_lead_bins_linear,0,30);
+                    h_ptlead_pair_pt_zoomin[idphi][isign][igap] = new TH2D(Form("h_ptlead_pair_pt_zoomin_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",npair_pT_bins_linear,0,20,npT_lead_bins_linear,0,15);
+                    h_ptlead_pair_pt_log[idphi][isign][igap] = new TH2D(Form("h_ptlead_pair_pt_log_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.npairPT_bins,pms.pairPTBins[isign][2],pms.npt_bins,pms.pTBins);
+                    h_minv_pair_pt[idphi][isign][igap] = new TH2D(Form("h_minv_pair_pt_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
+                    h_minv_pair_pt_zoomin[idphi][isign][igap] = new TH2D(Form("h_minv_pair_pt_zoomin_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,20,nminv_bins_linear,0,4);
+                    h_minv_pair_pt_jacobian_corrected[idphi][isign][igap] = new TH2D(Form("h_minv_pair_pt_jacobian_corrected_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
+                    h_minv_pair_pt_zoomin_jacobian_corrected[idphi][isign][igap] = new TH2D(Form("h_minv_pair_pt_zoomin_jacobian_corrected_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,20,nminv_bins_linear,0,4);
+                    h_minv_pair_pt_log[idphi][isign][igap] = new TH2D(Form("h_minv_pair_pt_log_%s_sign%d_gapcut%d",dphi_regions[idphi].c_str(),isign+1,igap+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",pms.npairPT_bins,pms.pairPTBins[isign][2],nminv_bins_log,minv_bins_log[isign]);
                 }
             }
         }
@@ -324,11 +423,8 @@ void MuonPairPlottingPP::ProcessData(){
             	std::cout<<"Error:: Read in event has size of zero bytes,  quitting"<<std::endl;
             	throw std::exception();
             }
-            if(mode == 1){
-            	FillHistograms(isign);
-            }else{ // mode has to be 1 or 3
-            	// FillPtBinnedHistograms(idr, jpt, isign);
-            }
+            
+            FillHistograms(isign);
         }
     }
 }
@@ -350,6 +446,7 @@ bool MuonPairPlottingPP::PassSingleMuonGapCut(float meta, float mpt, int mcharge
 void MuonPairPlottingPP::FillHistograms(int nsign){
 
     bool pass_single_b_signal_selection = (nsign == 1 && minv[nsign] > 1.08 && minv[nsign] < 2.9 && pair_pt[nsign] > 8);
+
     // ngapcut = 0: all; = 1: only those that pass
 
     //  bool pass_gapcut = fabs(m1eta[nsign]) > pms.eta_gap_cut && fabs(m2eta[nsign]) > pms.eta_gap_cut;
@@ -361,7 +458,6 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
 
     if (output_non_trig_effcy_hists){
         if (pass_gapcut){
-
 
             h_pair_dP_overP[away_side][nsign][1]->Fill(pair_dPoverP[nsign],weight[nsign]);
             h_pair_y[away_side][nsign][1]->Fill(pair_y[nsign],weight[nsign]);
@@ -444,133 +540,288 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
     h_pair_pt_log_mu4[nsign]->Fill(pair_pt[nsign],weight[nsign]);
     h_minv_pair_pt_log_mu4[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
 
-    if (pass_single_b_signal_selection){
-        h_Deta_mu4_w_sig_sel[nsign]->Fill(deta[nsign],weight[nsign]);
-        h_Deta_zoomin_mu4_w_sig_sel[nsign]->Fill(deta[nsign],weight[nsign]);
-        h_Dphi_mu4_w_sig_sel[nsign]->Fill(dphi[nsign],weight[nsign]);
-        h_Dphi_zoomin_mu4_w_sig_sel[nsign]->Fill(dphi[nsign],weight[nsign]);
-        h_DR_mu4_w_sig_sel[nsign]->Fill(dr[nsign],weight[nsign]);
-        h_DR_zoomin_mu4_w_sig_sel[nsign]->Fill(dr[nsign],weight[nsign]);
+    if (passSeparated[nsign]){
+        h_Deta_mu4_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
+        h_Deta_zoomin_mu4_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
+        h_Dphi_mu4_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
+        h_Dphi_zoomin_mu4_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
+        h_DR_mu4_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
+        h_DR_zoomin_mu4_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
         if (mu1PassSingle[nsign]){
-            h_pt2nd_mu4_w_sig_sel[nsign]->Fill(m2pt[nsign],weight[nsign]);
-            h_pt2nd_vs_q_eta_2nd_mu4_w_sig_sel[nsign]->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
+            h_pt2nd_mu4_sepr[nsign]->Fill(m2pt[nsign],weight[nsign]);
+            h_pt2nd_vs_q_eta_2nd_mu4_sepr[nsign]->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
         }
         if (mu2PassSingle[nsign]){
-            h_pt2nd_mu4_w_sig_sel[nsign]->Fill(m1pt[nsign],weight[nsign]);
-            h_pt2nd_vs_q_eta_2nd_mu4_w_sig_sel[nsign]->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
+            h_pt2nd_mu4_sepr[nsign]->Fill(m1pt[nsign],weight[nsign]);
+            h_pt2nd_vs_q_eta_2nd_mu4_sepr[nsign]->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
         }
 
-        h_pair_eta_vs_pair_pT_mu4_w_sig_sel[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
-        h_Deta_Dphi_mu4_w_sig_sel[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
-        h_eta1_eta2_mu4_w_sig_sel[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
-        h_eta_avg_Deta_mu4_w_sig_sel[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
-        h_eta_avg_Dphi_mu4_w_sig_sel[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
-        h_minv_zoomin_mu4_w_sig_sel[nsign]->Fill(minv[nsign],weight[nsign]);
-        h_pair_pt_log_mu4_w_sig_sel[nsign]->Fill(pair_pt[nsign],weight[nsign]);
-        h_minv_pair_pt_log_mu4_w_sig_sel[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
+        h_pair_eta_vs_pair_pT_mu4_sepr[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
+        h_Deta_Dphi_mu4_sepr[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
+        h_eta1_eta2_mu4_sepr[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
+        h_eta_avg_Deta_mu4_sepr[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
+        h_eta_avg_Dphi_mu4_sepr[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
+        h_minv_zoomin_mu4_sepr[nsign]->Fill(minv[nsign],weight[nsign]);
+        h_pair_pt_log_mu4_sepr[nsign]->Fill(pair_pt[nsign],weight[nsign]);
+        h_minv_pair_pt_log_mu4_sepr[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
+    }
+
+    if (pass_single_b_signal_selection){
+        h_Deta_mu4_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign]);
+        h_Deta_zoomin_mu4_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign]);
+        h_Dphi_mu4_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
+        h_Dphi_zoomin_mu4_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
+        h_DR_mu4_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
+        h_DR_zoomin_mu4_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
+        if (mu1PassSingle[nsign]){
+            h_pt2nd_mu4_w_single_b_sig_sel->Fill(m2pt[nsign],weight[nsign]);
+            h_pt2nd_vs_q_eta_2nd_mu4_w_single_b_sig_sel->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
+        }
+        if (mu2PassSingle[nsign]){
+            h_pt2nd_mu4_w_single_b_sig_sel->Fill(m1pt[nsign],weight[nsign]);
+            h_pt2nd_vs_q_eta_2nd_mu4_w_single_b_sig_sel->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
+        }
+
+        h_pair_eta_vs_pair_pT_mu4_w_single_b_sig_sel->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
+        h_Deta_Dphi_mu4_w_single_b_sig_sel->Fill(dphi[nsign],deta[nsign],weight[nsign]);
+        h_eta1_eta2_mu4_w_single_b_sig_sel->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
+        h_eta_avg_Deta_mu4_w_single_b_sig_sel->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
+        h_eta_avg_Dphi_mu4_w_single_b_sig_sel->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
+        h_minv_zoomin_mu4_w_single_b_sig_sel->Fill(minv[nsign],weight[nsign]);
+        h_pair_pt_log_mu4_w_single_b_sig_sel->Fill(pair_pt[nsign],weight[nsign]);
+        h_minv_pair_pt_log_mu4_w_single_b_sig_sel->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
     }
 
     if (passmu4mu4noL1[nsign]){
-        h_Deta_mu4_mu4noL1_given_mu4[nsign]->Fill(deta[nsign],weight[nsign]);
-        h_Deta_zoomin_mu4_mu4noL1_given_mu4[nsign]->Fill(deta[nsign],weight[nsign]);
-        h_Dphi_mu4_mu4noL1_given_mu4[nsign]->Fill(dphi[nsign],weight[nsign]);
-        h_Dphi_zoomin_mu4_mu4noL1_given_mu4[nsign]->Fill(dphi[nsign],weight[nsign]);
-        h_DR_mu4_mu4noL1_given_mu4[nsign]->Fill(dr[nsign],weight[nsign]);
-        h_DR_zoomin_mu4_mu4noL1_given_mu4[nsign]->Fill(dr[nsign],weight[nsign]);
+        h_Deta_mu4_mu4noL1[nsign]->Fill(deta[nsign],weight[nsign]);
+        h_Deta_zoomin_mu4_mu4noL1[nsign]->Fill(deta[nsign],weight[nsign]);
+        h_Dphi_mu4_mu4noL1[nsign]->Fill(dphi[nsign],weight[nsign]);
+        h_Dphi_zoomin_mu4_mu4noL1[nsign]->Fill(dphi[nsign],weight[nsign]);
+        h_DR_mu4_mu4noL1[nsign]->Fill(dr[nsign],weight[nsign]);
+        h_DR_zoomin_mu4_mu4noL1[nsign]->Fill(dr[nsign],weight[nsign]);
         if (mu1PassSingle[nsign]){
-            h_pt2nd_mu4_mu4noL1_given_mu4[nsign]->Fill(m2pt[nsign],weight[nsign]);
-            h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_given_mu4[nsign]->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
+            h_pt2nd_mu4_mu4noL1[nsign]->Fill(m2pt[nsign],weight[nsign]);
+            h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1[nsign]->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
         }
         if (mu2PassSingle[nsign]){
-            h_pt2nd_mu4_mu4noL1_given_mu4[nsign]->Fill(m1pt[nsign],weight[nsign]);
-            h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_given_mu4[nsign]->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
+            h_pt2nd_mu4_mu4noL1[nsign]->Fill(m1pt[nsign],weight[nsign]);
+            h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1[nsign]->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
         }
 
-        h_pair_eta_vs_pair_pT_mu4_mu4noL1_given_mu4[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
-        h_Deta_Dphi_mu4_mu4noL1_given_mu4[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
-        h_eta1_eta2_mu4_mu4noL1_given_mu4[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
-        h_eta_avg_Deta_mu4_mu4noL1_given_mu4[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
-        h_eta_avg_Dphi_mu4_mu4noL1_given_mu4[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
-        h_minv_zoomin_mu4_mu4noL1_given_mu4[nsign]->Fill(minv[nsign],weight[nsign]);
-        h_pair_pt_log_mu4_mu4noL1_given_mu4[nsign]->Fill(pair_pt[nsign],weight[nsign]);
-        h_minv_pair_pt_log_mu4_mu4noL1_given_mu4[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
+        h_pair_eta_vs_pair_pT_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
+        h_Deta_Dphi_mu4_mu4noL1[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
+        h_eta1_eta2_mu4_mu4noL1[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
+        h_eta_avg_Deta_mu4_mu4noL1[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
+        h_eta_avg_Dphi_mu4_mu4noL1[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
+        h_minv_zoomin_mu4_mu4noL1[nsign]->Fill(minv[nsign],weight[nsign]);
+        h_pair_pt_log_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign],weight[nsign]);
+        h_minv_pair_pt_log_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
 
-        if (pass_single_b_signal_selection){
-            h_Deta_mu4_mu4noL1_given_mu4_w_sig_sel[nsign]->Fill(deta[nsign],weight[nsign]);
-            h_Deta_zoomin_mu4_mu4noL1_given_mu4_w_sig_sel[nsign]->Fill(deta[nsign],weight[nsign]);
-            h_Dphi_mu4_mu4noL1_given_mu4_w_sig_sel[nsign]->Fill(dphi[nsign],weight[nsign]);
-            h_Dphi_zoomin_mu4_mu4noL1_given_mu4_w_sig_sel[nsign]->Fill(dphi[nsign],weight[nsign]);
-            h_DR_mu4_mu4noL1_given_mu4_w_sig_sel[nsign]->Fill(dr[nsign],weight[nsign]);
-            h_DR_zoomin_mu4_mu4noL1_given_mu4_w_sig_sel[nsign]->Fill(dr[nsign],weight[nsign]);
+        if ((!mu1PassSingle[nsign] || !mu2PassSingle[nsign])){ // exclusive: only one muon passes mu4
+            h_Deta_mu4_mu4noL1_excl[nsign]->Fill(deta[nsign],weight[nsign]);
+            h_Deta_zoomin_mu4_mu4noL1_excl[nsign]->Fill(deta[nsign],weight[nsign]);
+            h_Dphi_mu4_mu4noL1_excl[nsign]->Fill(dphi[nsign],weight[nsign]);
+            h_Dphi_zoomin_mu4_mu4noL1_excl[nsign]->Fill(dphi[nsign],weight[nsign]);
+            h_DR_mu4_mu4noL1_excl[nsign]->Fill(dr[nsign],weight[nsign]);
+            h_DR_zoomin_mu4_mu4noL1_excl[nsign]->Fill(dr[nsign],weight[nsign]);
             if (mu1PassSingle[nsign]){
-                h_pt2nd_mu4_mu4noL1_given_mu4_w_sig_sel[nsign]->Fill(m2pt[nsign],weight[nsign]);
-                h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_given_mu4_w_sig_sel[nsign]->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
+                h_pt2nd_mu4_mu4noL1_excl[nsign]->Fill(m2pt[nsign],weight[nsign]);
+                h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl[nsign]->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
             }
             if (mu2PassSingle[nsign]){
-                h_pt2nd_mu4_mu4noL1_given_mu4_w_sig_sel[nsign]->Fill(m1pt[nsign],weight[nsign]);
-                h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_given_mu4_w_sig_sel[nsign]->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
+                h_pt2nd_mu4_mu4noL1_excl[nsign]->Fill(m1pt[nsign],weight[nsign]);
+                h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl[nsign]->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
             }
 
-            h_pair_eta_vs_pair_pT_mu4_mu4noL1_given_mu4_w_sig_sel[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
-            h_Deta_Dphi_mu4_mu4noL1_given_mu4_w_sig_sel[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
-            h_eta1_eta2_mu4_mu4noL1_given_mu4_w_sig_sel[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
-            h_eta_avg_Deta_mu4_mu4noL1_given_mu4_w_sig_sel[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
-            h_eta_avg_Dphi_mu4_mu4noL1_given_mu4_w_sig_sel[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
-            h_minv_zoomin_mu4_mu4noL1_given_mu4_w_sig_sel[nsign]->Fill(minv[nsign],weight[nsign]);
-            h_pair_pt_log_mu4_mu4noL1_given_mu4_w_sig_sel[nsign]->Fill(pair_pt[nsign],weight[nsign]);
-            h_minv_pair_pt_log_mu4_mu4noL1_given_mu4_w_sig_sel[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
+            h_pair_eta_vs_pair_pT_mu4_mu4noL1_excl[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
+            h_Deta_Dphi_mu4_mu4noL1_excl[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
+            h_eta1_eta2_mu4_mu4noL1_excl[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
+            h_eta_avg_Deta_mu4_mu4noL1_excl[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
+            h_eta_avg_Dphi_mu4_mu4noL1_excl[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
+            h_minv_zoomin_mu4_mu4noL1_excl[nsign]->Fill(minv[nsign],weight[nsign]);
+            h_pair_pt_log_mu4_mu4noL1_excl[nsign]->Fill(pair_pt[nsign],weight[nsign]);
+            h_minv_pair_pt_log_mu4_mu4noL1_excl[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
+        }
 
+        if (passSeparated[nsign]){
+            h_Deta_mu4_mu4noL1_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
+            h_Deta_zoomin_mu4_mu4noL1_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
+            h_Dphi_mu4_mu4noL1_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
+            h_Dphi_zoomin_mu4_mu4noL1_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
+            h_DR_mu4_mu4noL1_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
+            h_DR_zoomin_mu4_mu4noL1_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
+            if (mu1PassSingle[nsign]){
+                h_pt2nd_mu4_mu4noL1_sepr[nsign]->Fill(m2pt[nsign],weight[nsign]);
+                h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr[nsign]->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
+            }
+            if (mu2PassSingle[nsign]){
+                h_pt2nd_mu4_mu4noL1_sepr[nsign]->Fill(m1pt[nsign],weight[nsign]);
+                h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr[nsign]->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
+            }
+
+            h_pair_eta_vs_pair_pT_mu4_mu4noL1_sepr[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
+            h_Deta_Dphi_mu4_mu4noL1_sepr[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
+            h_eta1_eta2_mu4_mu4noL1_sepr[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
+            h_eta_avg_Deta_mu4_mu4noL1_sepr[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
+            h_eta_avg_Dphi_mu4_mu4noL1_sepr[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
+            h_minv_zoomin_mu4_mu4noL1_sepr[nsign]->Fill(minv[nsign],weight[nsign]);
+            h_pair_pt_log_mu4_mu4noL1_sepr[nsign]->Fill(pair_pt[nsign],weight[nsign]);
+            h_minv_pair_pt_log_mu4_mu4noL1_sepr[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
+
+            if ((!mu1PassSingle[nsign] || !mu2PassSingle[nsign])){ // exclusive: only one muon passes mu4
+                h_Deta_mu4_mu4noL1_excl_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
+                h_Deta_zoomin_mu4_mu4noL1_excl_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
+                h_Dphi_mu4_mu4noL1_excl_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
+                h_Dphi_zoomin_mu4_mu4noL1_excl_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
+                h_DR_mu4_mu4noL1_excl_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
+                h_DR_zoomin_mu4_mu4noL1_excl_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
+                if (mu1PassSingle[nsign]){
+                    h_pt2nd_mu4_mu4noL1_excl_sepr[nsign]->Fill(m2pt[nsign],weight[nsign]);
+                    h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl_sepr[nsign]->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
+                }
+                if (mu2PassSingle[nsign]){
+                    h_pt2nd_mu4_mu4noL1_excl_sepr[nsign]->Fill(m1pt[nsign],weight[nsign]);
+                    h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl_sepr[nsign]->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
+                }
+
+                h_pair_eta_vs_pair_pT_mu4_mu4noL1_excl_sepr[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
+                h_Deta_Dphi_mu4_mu4noL1_excl_sepr[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
+                h_eta1_eta2_mu4_mu4noL1_excl_sepr[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
+                h_eta_avg_Deta_mu4_mu4noL1_excl_sepr[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
+                h_eta_avg_Dphi_mu4_mu4noL1_excl_sepr[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
+                h_minv_zoomin_mu4_mu4noL1_excl_sepr[nsign]->Fill(minv[nsign],weight[nsign]);
+                h_pair_pt_log_mu4_mu4noL1_excl_sepr[nsign]->Fill(pair_pt[nsign],weight[nsign]);
+                h_minv_pair_pt_log_mu4_mu4noL1_excl_sepr[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
+            }
+        }
+
+        if (pass_single_b_signal_selection){
+            h_Deta_mu4_mu4noL1_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign]);
+            h_Deta_zoomin_mu4_mu4noL1_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign]);
+            h_Dphi_mu4_mu4noL1_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
+            h_Dphi_zoomin_mu4_mu4noL1_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
+            h_DR_mu4_mu4noL1_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
+            h_DR_zoomin_mu4_mu4noL1_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
+            if (mu1PassSingle[nsign]){
+                h_pt2nd_mu4_mu4noL1_w_single_b_sig_sel->Fill(m2pt[nsign],weight[nsign]);
+                h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_w_single_b_sig_sel->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
+            }
+            if (mu2PassSingle[nsign]){
+                h_pt2nd_mu4_mu4noL1_w_single_b_sig_sel->Fill(m1pt[nsign],weight[nsign]);
+                h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_w_single_b_sig_sel->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
+            }
+
+            h_pair_eta_vs_pair_pT_mu4_mu4noL1_w_single_b_sig_sel->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
+            h_Deta_Dphi_mu4_mu4noL1_w_single_b_sig_sel->Fill(dphi[nsign],deta[nsign],weight[nsign]);
+            h_eta1_eta2_mu4_mu4noL1_w_single_b_sig_sel->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
+            h_eta_avg_Deta_mu4_mu4noL1_w_single_b_sig_sel->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
+            h_eta_avg_Dphi_mu4_mu4noL1_w_single_b_sig_sel->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
+            h_minv_zoomin_mu4_mu4noL1_w_single_b_sig_sel->Fill(minv[nsign],weight[nsign]);
+            h_pair_pt_log_mu4_mu4noL1_w_single_b_sig_sel->Fill(pair_pt[nsign],weight[nsign]);
+            h_minv_pair_pt_log_mu4_mu4noL1_w_single_b_sig_sel->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
+
+            if ((!mu1PassSingle[nsign] || !mu2PassSingle[nsign])){ // exclusive: only one muon passes mu4
+                h_Deta_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign]);
+                h_Deta_zoomin_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign]);
+                h_Dphi_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
+                h_Dphi_zoomin_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
+                h_DR_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
+                h_DR_zoomin_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
+                if (mu1PassSingle[nsign]){
+                    h_pt2nd_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(m2pt[nsign],weight[nsign]);
+                    h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
+                }
+                if (mu2PassSingle[nsign]){
+                    h_pt2nd_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(m1pt[nsign],weight[nsign]);
+                    h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
+                }
+
+                h_pair_eta_vs_pair_pT_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
+                h_Deta_Dphi_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(dphi[nsign],deta[nsign],weight[nsign]);
+                h_eta1_eta2_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
+                h_eta_avg_Deta_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
+                h_eta_avg_Dphi_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
+                h_minv_zoomin_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(minv[nsign],weight[nsign]);
+                h_pair_pt_log_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(pair_pt[nsign],weight[nsign]);
+                h_minv_pair_pt_log_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
+            }
         }
     }
     if (pass2mu4[nsign]){
-        h_Deta_2mu4_given_mu4[nsign]->Fill(deta[nsign],weight[nsign]);
-        h_Deta_zoomin_2mu4_given_mu4[nsign]->Fill(deta[nsign],weight[nsign]);
-        h_Dphi_2mu4_given_mu4[nsign]->Fill(dphi[nsign],weight[nsign]);
-        h_Dphi_zoomin_2mu4_given_mu4[nsign]->Fill(dphi[nsign],weight[nsign]);
-        h_DR_2mu4_given_mu4[nsign]->Fill(dr[nsign],weight[nsign]);
-        h_DR_zoomin_2mu4_given_mu4[nsign]->Fill(dr[nsign],weight[nsign]);
+        h_Deta_2mu4[nsign]->Fill(deta[nsign],weight[nsign]);
+        h_Deta_zoomin_2mu4[nsign]->Fill(deta[nsign],weight[nsign]);
+        h_Dphi_2mu4[nsign]->Fill(dphi[nsign],weight[nsign]);
+        h_Dphi_zoomin_2mu4[nsign]->Fill(dphi[nsign],weight[nsign]);
+        h_DR_2mu4[nsign]->Fill(dr[nsign],weight[nsign]);
+        h_DR_zoomin_2mu4[nsign]->Fill(dr[nsign],weight[nsign]);
         if (mu1PassSingle[nsign]){
-            h_pt2nd_2mu4_given_mu4[nsign]->Fill(m2pt[nsign],weight[nsign]);
-            h_pt2nd_vs_q_eta_2nd_2mu4_given_mu4[nsign]->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
+            h_pt2nd_2mu4[nsign]->Fill(m2pt[nsign],weight[nsign]);
+            h_pt2nd_vs_q_eta_2nd_2mu4[nsign]->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
         }
         if (mu2PassSingle[nsign]){
-            h_pt2nd_2mu4_given_mu4[nsign]->Fill(m1pt[nsign],weight[nsign]);
-            h_pt2nd_vs_q_eta_2nd_2mu4_given_mu4[nsign]->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
+            h_pt2nd_2mu4[nsign]->Fill(m1pt[nsign],weight[nsign]);
+            h_pt2nd_vs_q_eta_2nd_2mu4[nsign]->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
         }
 
-        h_pair_eta_vs_pair_pT_2mu4_given_mu4[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
-        h_Deta_Dphi_2mu4_given_mu4[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
-        h_eta1_eta2_2mu4_given_mu4[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
-        h_eta_avg_Deta_2mu4_given_mu4[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
-        h_eta_avg_Dphi_2mu4_given_mu4[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
-        h_minv_zoomin_2mu4_given_mu4[nsign]->Fill(minv[nsign],weight[nsign]);
-        h_pair_pt_log_2mu4_given_mu4[nsign]->Fill(pair_pt[nsign],weight[nsign]);
-        h_minv_pair_pt_log_2mu4_given_mu4[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
+        h_pair_eta_vs_pair_pT_2mu4[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
+        h_Deta_Dphi_2mu4[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
+        h_eta1_eta2_2mu4[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
+        h_eta_avg_Deta_2mu4[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
+        h_eta_avg_Dphi_2mu4[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
+        h_minv_zoomin_2mu4[nsign]->Fill(minv[nsign],weight[nsign]);
+        h_pair_pt_log_2mu4[nsign]->Fill(pair_pt[nsign],weight[nsign]);
+        h_minv_pair_pt_log_2mu4[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
 
-        if (pass_single_b_signal_selection){
-            h_Deta_2mu4_given_mu4_w_sig_sel[nsign]->Fill(deta[nsign],weight[nsign]);
-            h_Deta_zoomin_2mu4_given_mu4_w_sig_sel[nsign]->Fill(deta[nsign],weight[nsign]);
-            h_Dphi_2mu4_given_mu4_w_sig_sel[nsign]->Fill(dphi[nsign],weight[nsign]);
-            h_Dphi_zoomin_2mu4_given_mu4_w_sig_sel[nsign]->Fill(dphi[nsign],weight[nsign]);
-            h_DR_2mu4_given_mu4_w_sig_sel[nsign]->Fill(dr[nsign],weight[nsign]);
-            h_DR_zoomin_2mu4_given_mu4_w_sig_sel[nsign]->Fill(dr[nsign],weight[nsign]);
+        if (passSeparated[nsign]){
+            h_Deta_2mu4_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
+            h_Deta_zoomin_2mu4_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
+            h_Dphi_2mu4_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
+            h_Dphi_zoomin_2mu4_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
+            h_DR_2mu4_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
+            h_DR_zoomin_2mu4_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
             if (mu1PassSingle[nsign]){
-                h_pt2nd_2mu4_given_mu4_w_sig_sel[nsign]->Fill(m2pt[nsign],weight[nsign]);
-                h_pt2nd_vs_q_eta_2nd_2mu4_given_mu4_w_sig_sel[nsign]->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
+                h_pt2nd_2mu4_sepr[nsign]->Fill(m2pt[nsign],weight[nsign]);
+                h_pt2nd_vs_q_eta_2nd_2mu4_sepr[nsign]->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
             }
             if (mu2PassSingle[nsign]){
-                h_pt2nd_2mu4_given_mu4_w_sig_sel[nsign]->Fill(m1pt[nsign],weight[nsign]);
-                h_pt2nd_vs_q_eta_2nd_2mu4_given_mu4_w_sig_sel[nsign]->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
+                h_pt2nd_2mu4_sepr[nsign]->Fill(m1pt[nsign],weight[nsign]);
+                h_pt2nd_vs_q_eta_2nd_2mu4_sepr[nsign]->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
+            }
+    
+            h_pair_eta_vs_pair_pT_2mu4_sepr[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
+            h_Deta_Dphi_2mu4_sepr[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
+            h_eta1_eta2_2mu4_sepr[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
+            h_eta_avg_Deta_2mu4_sepr[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
+            h_eta_avg_Dphi_2mu4_sepr[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
+            h_minv_zoomin_2mu4_sepr[nsign]->Fill(minv[nsign],weight[nsign]);
+            h_pair_pt_log_2mu4_sepr[nsign]->Fill(pair_pt[nsign],weight[nsign]);
+            h_minv_pair_pt_log_2mu4_sepr[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
+        }
+
+        if (pass_single_b_signal_selection){
+            h_Deta_2mu4_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign]);
+            h_Deta_zoomin_2mu4_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign]);
+            h_Dphi_2mu4_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
+            h_Dphi_zoomin_2mu4_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
+            h_DR_2mu4_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
+            h_DR_zoomin_2mu4_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
+            if (mu1PassSingle[nsign]){
+                h_pt2nd_2mu4_w_single_b_sig_sel->Fill(m2pt[nsign],weight[nsign]);
+                h_pt2nd_vs_q_eta_2nd_2mu4_w_single_b_sig_sel->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
+            }
+            if (mu2PassSingle[nsign]){
+                h_pt2nd_2mu4_w_single_b_sig_sel->Fill(m1pt[nsign],weight[nsign]);
+                h_pt2nd_vs_q_eta_2nd_2mu4_w_single_b_sig_sel->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
             }
 
-            h_pair_eta_vs_pair_pT_2mu4_given_mu4_w_sig_sel[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
-            h_Deta_Dphi_2mu4_given_mu4_w_sig_sel[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
-            h_eta1_eta2_2mu4_given_mu4_w_sig_sel[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
-            h_eta_avg_Deta_2mu4_given_mu4_w_sig_sel[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
-            h_eta_avg_Dphi_2mu4_given_mu4_w_sig_sel[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
-            h_minv_zoomin_2mu4_given_mu4_w_sig_sel[nsign]->Fill(minv[nsign],weight[nsign]);
-            h_pair_pt_log_2mu4_given_mu4_w_sig_sel[nsign]->Fill(pair_pt[nsign],weight[nsign]);
-            h_minv_pair_pt_log_2mu4_given_mu4_w_sig_sel[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
+            h_pair_eta_vs_pair_pT_2mu4_w_single_b_sig_sel->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
+            h_Deta_Dphi_2mu4_w_single_b_sig_sel->Fill(dphi[nsign],deta[nsign],weight[nsign]);
+            h_eta1_eta2_2mu4_w_single_b_sig_sel->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
+            h_eta_avg_Deta_2mu4_w_single_b_sig_sel->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
+            h_eta_avg_Dphi_2mu4_w_single_b_sig_sel->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
+            h_minv_zoomin_2mu4_w_single_b_sig_sel->Fill(minv[nsign],weight[nsign]);
+            h_pair_pt_log_2mu4_w_single_b_sig_sel->Fill(pair_pt[nsign],weight[nsign]);
+            h_minv_pair_pt_log_2mu4_w_single_b_sig_sel->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
         }
     }
 
@@ -595,87 +846,82 @@ void MuonPairPlottingPP::CalculateSingleTrigEffcyRatio(TH1* h1, TH1* h2, TH1* h3
 
 
 void MuonPairPlottingPP::CalculateTrigEffcyRatio(){
-    for (int isign = 0; isign < ParamsSet::nSigns; isign++){
-        h_Deta_mu4_mu4noL1_given_mu4[isign]->Divide(h_Deta_mu4[isign]);
-        h_Deta_zoomin_mu4_mu4noL1_given_mu4[isign]->Divide(h_Deta_zoomin_mu4[isign]);
-        h_Dphi_mu4_mu4noL1_given_mu4[isign]->Divide(h_Dphi_mu4[isign]);
-        h_Dphi_zoomin_mu4_mu4noL1_given_mu4[isign]->Divide(h_Dphi_zoomin_mu4[isign]);
-        h_DR_mu4_mu4noL1_given_mu4[isign]->Divide(h_DR_mu4[isign]);
-        h_DR_zoomin_mu4_mu4noL1_given_mu4[isign]->Divide(h_DR_zoomin_mu4[isign]);
-        h_pt2nd_mu4_mu4noL1_given_mu4[isign]->Divide(h_pt2nd_mu4[isign]);
-        h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_given_mu4[isign]->Divide(h_pt2nd_vs_q_eta_2nd_mu4[isign]);
-        h_pair_eta_vs_pair_pT_mu4_mu4noL1_given_mu4[isign]->Divide(h_pair_eta_vs_pair_pT_mu4[isign]);
-        h_Deta_Dphi_mu4_mu4noL1_given_mu4[isign]->Divide(h_Deta_Dphi_mu4[isign]);
-        h_eta1_eta2_mu4_mu4noL1_given_mu4[isign]->Divide(h_eta1_eta2_mu4[isign]);
-        h_eta_avg_Deta_mu4_mu4noL1_given_mu4[isign]->Divide(h_eta_avg_Deta_mu4[isign]);
-        h_eta_avg_Dphi_mu4_mu4noL1_given_mu4[isign]->Divide(h_eta_avg_Dphi_mu4[isign]);
-        h_minv_zoomin_mu4_mu4noL1_given_mu4[isign]->Divide(h_minv_zoomin_mu4[isign]);
-        h_pair_pt_log_mu4_mu4noL1_given_mu4[isign]->Divide(h_pair_pt_log_mu4[isign]);
-        h_minv_pair_pt_log_mu4_mu4noL1_given_mu4[isign]->Divide(h_minv_pair_pt_log_mu4[isign]);
+    // for (int isign = 0; isign < ParamsSet::nSigns; isign++){
+    //     h_Deta_mu4_mu4noL1[isign]->Divide(h_Deta_mu4[isign]);
+    //     h_Deta_zoomin_mu4_mu4noL1[isign]->Divide(h_Deta_zoomin_mu4[isign]);
+    //     h_Dphi_mu4_mu4noL1[isign]->Divide(h_Dphi_mu4[isign]);
+    //     h_Dphi_zoomin_mu4_mu4noL1[isign]->Divide(h_Dphi_zoomin_mu4[isign]);
+    //     h_DR_mu4_mu4noL1[isign]->Divide(h_DR_mu4[isign]);
+    //     h_DR_zoomin_mu4_mu4noL1[isign]->Divide(h_DR_zoomin_mu4[isign]);
+    //     h_pt2nd_mu4_mu4noL1[isign]->Divide(h_pt2nd_mu4[isign]);
+    //     h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1[isign]->Divide(h_pt2nd_vs_q_eta_2nd_mu4[isign]);
+    //     h_pair_eta_vs_pair_pT_mu4_mu4noL1[isign]->Divide(h_pair_eta_vs_pair_pT_mu4[isign]);
+    //     h_Deta_Dphi_mu4_mu4noL1[isign]->Divide(h_Deta_Dphi_mu4[isign]);
+    //     h_eta1_eta2_mu4_mu4noL1[isign]->Divide(h_eta1_eta2_mu4[isign]);
+    //     h_eta_avg_Deta_mu4_mu4noL1[isign]->Divide(h_eta_avg_Deta_mu4[isign]);
+    //     h_eta_avg_Dphi_mu4_mu4noL1[isign]->Divide(h_eta_avg_Dphi_mu4[isign]);
+    //     h_minv_zoomin_mu4_mu4noL1[isign]->Divide(h_minv_zoomin_mu4[isign]);
+    //     h_pair_pt_log_mu4_mu4noL1[isign]->Divide(h_pair_pt_log_mu4[isign]);
+    //     h_minv_pair_pt_log_mu4_mu4noL1[isign]->Divide(h_minv_pair_pt_log_mu4[isign]);
 
-        h_Deta_2mu4_given_mu4[isign]->Divide(h_Deta_mu4[isign]);
-        h_Deta_zoomin_2mu4_given_mu4[isign]->Divide(h_Deta_zoomin_mu4[isign]);
-        h_Dphi_2mu4_given_mu4[isign]->Divide(h_Dphi_mu4[isign]);
-        h_Dphi_zoomin_2mu4_given_mu4[isign]->Divide(h_Dphi_zoomin_mu4[isign]);
-        h_DR_2mu4_given_mu4[isign]->Divide(h_DR_mu4[isign]);
-        h_DR_zoomin_2mu4_given_mu4[isign]->Divide(h_DR_zoomin_mu4[isign]);
-        h_pt2nd_2mu4_given_mu4[isign]->Divide(h_pt2nd_mu4[isign]);
-        h_pt2nd_vs_q_eta_2nd_2mu4_given_mu4[isign]->Divide(h_pt2nd_vs_q_eta_2nd_mu4[isign]);
-        h_pair_eta_vs_pair_pT_2mu4_given_mu4[isign]->Divide(h_pair_eta_vs_pair_pT_mu4[isign]);
-        h_Deta_Dphi_2mu4_given_mu4[isign]->Divide(h_Deta_Dphi_mu4[isign]);
-        h_eta1_eta2_2mu4_given_mu4[isign]->Divide(h_eta1_eta2_mu4[isign]);
-        h_eta_avg_Deta_2mu4_given_mu4[isign]->Divide(h_eta_avg_Deta_mu4[isign]);
-        h_eta_avg_Dphi_2mu4_given_mu4[isign]->Divide(h_eta_avg_Dphi_mu4[isign]);
-        h_minv_zoomin_2mu4_given_mu4[isign]->Divide(h_minv_zoomin_mu4[isign]);
-        h_pair_pt_log_2mu4_given_mu4[isign]->Divide(h_pair_pt_log_mu4[isign]);
-        h_minv_pair_pt_log_2mu4_given_mu4[isign]->Divide(h_minv_pair_pt_log_mu4[isign]);
+    //     h_Deta_2mu4[isign]->Divide(h_Deta_mu4[isign]);
+    //     h_Deta_zoomin_2mu4[isign]->Divide(h_Deta_zoomin_mu4[isign]);
+    //     h_Dphi_2mu4[isign]->Divide(h_Dphi_mu4[isign]);
+    //     h_Dphi_zoomin_2mu4[isign]->Divide(h_Dphi_zoomin_mu4[isign]);
+    //     h_DR_2mu4[isign]->Divide(h_DR_mu4[isign]);
+    //     h_DR_zoomin_2mu4[isign]->Divide(h_DR_zoomin_mu4[isign]);
+    //     h_pt2nd_2mu4[isign]->Divide(h_pt2nd_mu4[isign]);
+    //     h_pt2nd_vs_q_eta_2nd_2mu4[isign]->Divide(h_pt2nd_vs_q_eta_2nd_mu4[isign]);
+    //     h_pair_eta_vs_pair_pT_2mu4[isign]->Divide(h_pair_eta_vs_pair_pT_mu4[isign]);
+    //     h_Deta_Dphi_2mu4[isign]->Divide(h_Deta_Dphi_mu4[isign]);
+    //     h_eta1_eta2_2mu4[isign]->Divide(h_eta1_eta2_mu4[isign]);
+    //     h_eta_avg_Deta_2mu4[isign]->Divide(h_eta_avg_Deta_mu4[isign]);
+    //     h_eta_avg_Dphi_2mu4[isign]->Divide(h_eta_avg_Dphi_mu4[isign]);
+    //     h_minv_zoomin_2mu4[isign]->Divide(h_minv_zoomin_mu4[isign]);
+    //     h_pair_pt_log_2mu4[isign]->Divide(h_pair_pt_log_mu4[isign]);
+    //     h_minv_pair_pt_log_2mu4[isign]->Divide(h_minv_pair_pt_log_mu4[isign]);
 
-        h_Deta_mu4_mu4noL1_given_mu4_w_sig_sel[isign]->Divide(h_Deta_mu4_w_sig_sel[isign]);
-        h_Deta_zoomin_mu4_mu4noL1_given_mu4_w_sig_sel[isign]->Divide(h_Deta_zoomin_mu4_w_sig_sel[isign]);
-        h_Dphi_mu4_mu4noL1_given_mu4_w_sig_sel[isign]->Divide(h_Dphi_mu4_w_sig_sel[isign]);
-        h_Dphi_zoomin_mu4_mu4noL1_given_mu4_w_sig_sel[isign]->Divide(h_Dphi_zoomin_mu4_w_sig_sel[isign]);
-        h_DR_mu4_mu4noL1_given_mu4_w_sig_sel[isign]->Divide(h_DR_mu4_w_sig_sel[isign]);
-        h_DR_zoomin_mu4_mu4noL1_given_mu4_w_sig_sel[isign]->Divide(h_DR_zoomin_mu4_w_sig_sel[isign]);
-        h_pt2nd_mu4_mu4noL1_given_mu4_w_sig_sel[isign]->Divide(h_pt2nd_mu4_w_sig_sel[isign]);
-        h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_given_mu4_w_sig_sel[isign]->Divide(h_pt2nd_vs_q_eta_2nd_mu4_w_sig_sel[isign]);
-        h_pair_eta_vs_pair_pT_mu4_mu4noL1_given_mu4_w_sig_sel[isign]->Divide(h_pair_eta_vs_pair_pT_mu4_w_sig_sel[isign]);
-        h_Deta_Dphi_mu4_mu4noL1_given_mu4_w_sig_sel[isign]->Divide(h_Deta_Dphi_mu4_w_sig_sel[isign]);
-        h_eta1_eta2_mu4_mu4noL1_given_mu4_w_sig_sel[isign]->Divide(h_eta1_eta2_mu4_w_sig_sel[isign]);
-        h_eta_avg_Deta_mu4_mu4noL1_given_mu4_w_sig_sel[isign]->Divide(h_eta_avg_Deta_mu4_w_sig_sel[isign]);
-        h_eta_avg_Dphi_mu4_mu4noL1_given_mu4_w_sig_sel[isign]->Divide(h_eta_avg_Dphi_mu4_w_sig_sel[isign]);
-        h_minv_zoomin_mu4_mu4noL1_given_mu4_w_sig_sel[isign]->Divide(h_minv_zoomin_mu4_w_sig_sel[isign]);
-        h_pair_pt_log_mu4_mu4noL1_given_mu4_w_sig_sel[isign]->Divide(h_pair_pt_log_mu4_w_sig_sel[isign]);
-        h_minv_pair_pt_log_mu4_mu4noL1_given_mu4_w_sig_sel[isign]->Divide(h_minv_pair_pt_log_mu4_w_sig_sel[isign]);
+    //     h_Deta_mu4_mu4noL1_w_single_b_sig_sel[isign]->Divide(h_Deta_mu4_w_single_b_sig_sel[isign]);
+    //     h_Deta_zoomin_mu4_mu4noL1_w_single_b_sig_sel[isign]->Divide(h_Deta_zoomin_mu4_w_single_b_sig_sel[isign]);
+    //     h_Dphi_mu4_mu4noL1_w_single_b_sig_sel[isign]->Divide(h_Dphi_mu4_w_single_b_sig_sel[isign]);
+    //     h_Dphi_zoomin_mu4_mu4noL1_w_single_b_sig_sel[isign]->Divide(h_Dphi_zoomin_mu4_w_single_b_sig_sel[isign]);
+    //     h_DR_mu4_mu4noL1_w_single_b_sig_sel[isign]->Divide(h_DR_mu4_w_single_b_sig_sel[isign]);
+    //     h_DR_zoomin_mu4_mu4noL1_w_single_b_sig_sel[isign]->Divide(h_DR_zoomin_mu4_w_single_b_sig_sel[isign]);
+    //     h_pt2nd_mu4_mu4noL1_w_single_b_sig_sel[isign]->Divide(h_pt2nd_mu4_w_single_b_sig_sel[isign]);
+    //     h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_w_single_b_sig_sel[isign]->Divide(h_pt2nd_vs_q_eta_2nd_mu4_w_single_b_sig_sel[isign]);
+    //     h_pair_eta_vs_pair_pT_mu4_mu4noL1_w_single_b_sig_sel[isign]->Divide(h_pair_eta_vs_pair_pT_mu4_w_single_b_sig_sel[isign]);
+    //     h_Deta_Dphi_mu4_mu4noL1_w_single_b_sig_sel[isign]->Divide(h_Deta_Dphi_mu4_w_single_b_sig_sel[isign]);
+    //     h_eta1_eta2_mu4_mu4noL1_w_single_b_sig_sel[isign]->Divide(h_eta1_eta2_mu4_w_single_b_sig_sel[isign]);
+    //     h_eta_avg_Deta_mu4_mu4noL1_w_single_b_sig_sel[isign]->Divide(h_eta_avg_Deta_mu4_w_single_b_sig_sel[isign]);
+    //     h_eta_avg_Dphi_mu4_mu4noL1_w_single_b_sig_sel[isign]->Divide(h_eta_avg_Dphi_mu4_w_single_b_sig_sel[isign]);
+    //     h_minv_zoomin_mu4_mu4noL1_w_single_b_sig_sel[isign]->Divide(h_minv_zoomin_mu4_w_single_b_sig_sel[isign]);
+    //     h_pair_pt_log_mu4_mu4noL1_w_single_b_sig_sel[isign]->Divide(h_pair_pt_log_mu4_w_single_b_sig_sel[isign]);
+    //     h_minv_pair_pt_log_mu4_mu4noL1_w_single_b_sig_sel[isign]->Divide(h_minv_pair_pt_log_mu4_w_single_b_sig_sel[isign]);
 
-        h_Deta_2mu4_given_mu4_w_sig_sel[isign]->Divide(h_Deta_mu4_w_sig_sel[isign]);
-        h_Deta_zoomin_2mu4_given_mu4_w_sig_sel[isign]->Divide(h_Deta_zoomin_mu4_w_sig_sel[isign]);
-        h_Dphi_2mu4_given_mu4_w_sig_sel[isign]->Divide(h_Dphi_mu4_w_sig_sel[isign]);
-        h_Dphi_zoomin_2mu4_given_mu4_w_sig_sel[isign]->Divide(h_Dphi_zoomin_mu4_w_sig_sel[isign]);
-        h_DR_2mu4_given_mu4_w_sig_sel[isign]->Divide(h_DR_mu4_w_sig_sel[isign]);
-        h_DR_zoomin_2mu4_given_mu4_w_sig_sel[isign]->Divide(h_DR_zoomin_mu4_w_sig_sel[isign]);
-        h_pt2nd_2mu4_given_mu4_w_sig_sel[isign]->Divide(h_pt2nd_mu4_w_sig_sel[isign]);
-        h_pt2nd_vs_q_eta_2nd_2mu4_given_mu4_w_sig_sel[isign]->Divide(h_pt2nd_vs_q_eta_2nd_mu4_w_sig_sel[isign]);
-        h_pair_eta_vs_pair_pT_2mu4_given_mu4_w_sig_sel[isign]->Divide(h_pair_eta_vs_pair_pT_mu4_w_sig_sel[isign]);
-        h_Deta_Dphi_2mu4_given_mu4_w_sig_sel[isign]->Divide(h_Deta_Dphi_mu4_w_sig_sel[isign]);
-        h_eta1_eta2_2mu4_given_mu4_w_sig_sel[isign]->Divide(h_eta1_eta2_mu4_w_sig_sel[isign]);
-        h_eta_avg_Deta_2mu4_given_mu4_w_sig_sel[isign]->Divide(h_eta_avg_Deta_mu4_w_sig_sel[isign]);
-        h_eta_avg_Dphi_2mu4_given_mu4_w_sig_sel[isign]->Divide(h_eta_avg_Dphi_mu4_w_sig_sel[isign]);
-        h_minv_zoomin_2mu4_given_mu4_w_sig_sel[isign]->Divide(h_minv_zoomin_mu4_w_sig_sel[isign]);
-        h_pair_pt_log_2mu4_given_mu4_w_sig_sel[isign]->Divide(h_pair_pt_log_mu4_w_sig_sel[isign]);
-        h_minv_pair_pt_log_2mu4_given_mu4_w_sig_sel[isign]->Divide(h_minv_pair_pt_log_mu4_w_sig_sel[isign]);
-    }
+    //     h_Deta_2mu4_w_single_b_sig_sel[isign]->Divide(h_Deta_mu4_w_single_b_sig_sel[isign]);
+    //     h_Deta_zoomin_2mu4_w_single_b_sig_sel[isign]->Divide(h_Deta_zoomin_mu4_w_single_b_sig_sel[isign]);
+    //     h_Dphi_2mu4_w_single_b_sig_sel[isign]->Divide(h_Dphi_mu4_w_single_b_sig_sel[isign]);
+    //     h_Dphi_zoomin_2mu4_w_single_b_sig_sel[isign]->Divide(h_Dphi_zoomin_mu4_w_single_b_sig_sel[isign]);
+    //     h_DR_2mu4_w_single_b_sig_sel[isign]->Divide(h_DR_mu4_w_single_b_sig_sel[isign]);
+    //     h_DR_zoomin_2mu4_w_single_b_sig_sel[isign]->Divide(h_DR_zoomin_mu4_w_single_b_sig_sel[isign]);
+    //     h_pt2nd_2mu4_w_single_b_sig_sel[isign]->Divide(h_pt2nd_mu4_w_single_b_sig_sel[isign]);
+    //     h_pt2nd_vs_q_eta_2nd_2mu4_w_single_b_sig_sel[isign]->Divide(h_pt2nd_vs_q_eta_2nd_mu4_w_single_b_sig_sel[isign]);
+    //     h_pair_eta_vs_pair_pT_2mu4_w_single_b_sig_sel[isign]->Divide(h_pair_eta_vs_pair_pT_mu4_w_single_b_sig_sel[isign]);
+    //     h_Deta_Dphi_2mu4_w_single_b_sig_sel[isign]->Divide(h_Deta_Dphi_mu4_w_single_b_sig_sel[isign]);
+    //     h_eta1_eta2_2mu4_w_single_b_sig_sel[isign]->Divide(h_eta1_eta2_mu4_w_single_b_sig_sel[isign]);
+    //     h_eta_avg_Deta_2mu4_w_single_b_sig_sel[isign]->Divide(h_eta_avg_Deta_mu4_w_single_b_sig_sel[isign]);
+    //     h_eta_avg_Dphi_2mu4_w_single_b_sig_sel[isign]->Divide(h_eta_avg_Dphi_mu4_w_single_b_sig_sel[isign]);
+    //     h_minv_zoomin_2mu4_w_single_b_sig_sel[isign]->Divide(h_minv_zoomin_mu4_w_single_b_sig_sel[isign]);
+    //     h_pair_pt_log_2mu4_w_single_b_sig_sel[isign]->Divide(h_pair_pt_log_mu4_w_single_b_sig_sel[isign]);
+    //     h_minv_pair_pt_log_2mu4_w_single_b_sig_sel[isign]->Divide(h_minv_pair_pt_log_mu4_w_single_b_sig_sel[isign]);
+    // }
 }
 
 void MuonPairPlottingPP::WriteOutput(){
 
-    if (mode == 1){
-        outFile->cd();
-        outFile->Write();
-        outFile->Close();
-
-    }else{ // mode = 3
-
-    }
+    outFile->cd();
+    outFile->Write();
+    outFile->Close();
 }
 
 void MuonPairPlottingPP::Run(){
@@ -716,11 +962,11 @@ void MuonPairPlottingPP::Run(){
     InitOutput();
   	InitHists();
   	ProcessData();
-    CalculateTrigEffcyRatio();
+    // CalculateTrigEffcyRatio();
   	WriteOutput();
 
     end = clock();
     cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;;
-    std::cout << "CPU time used for running mode " << mode << " is " << cpu_time_used << " seconds" << std::endl;
+    std::cout << "CPU time used is " << cpu_time_used << " seconds" << std::endl;
 
 }
