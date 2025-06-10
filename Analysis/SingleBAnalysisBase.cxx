@@ -25,6 +25,7 @@ protected:
     std::string signal_cuts = "minv > 1.08 && minv < 2.9 && pair_pt > 8";
 
     // Define binning
+    std::vector<double> pT_bins_40;
     std::vector<double> pT_bins_80;
     std::vector<double> pT_bins_120;
     std::vector<double> pT_bins_150;
@@ -62,6 +63,7 @@ void SingleBAnalysisBase::fillLogBinningArray(std::vector<double>& bins, int nBi
 
 void SingleBAnalysisBase::Initialize(){
     // // Create logarithmic pair-pT bin edges
+    fillLogBinningArray(pT_bins_40,  18, 4.0, 40.0);  // 10 log bins from 8 to 200 GeV
     fillLogBinningArray(pT_bins_80,  12, 8.0, 80.0);  // 10 log bins from 8 to 200 GeV
     fillLogBinningArray(pT_bins_120, 14, 8.0, 120.0);  // 10 log bins from 8 to 120 GeV
     fillLogBinningArray(pT_bins_150, 30, 8.0, 150.0);  // 10 log bins from 8 to 150 GeV
@@ -79,6 +81,12 @@ void SingleBAnalysisBase::Initialize(){
 
 
 void SingleBAnalysisBase::BinningPrinting(){
+    std::cout << "Print out bins for single-muon pT 4-40 GeV" << std::endl;
+    for (auto bin : pT_bins_40){
+        std::cout << bin << ", ";
+    }
+    std::cout << std::endl;
+
     std::cout << "Print out bins for pair pT 8-80 GeV" << std::endl;
     for (auto bin : pT_bins_80){
         std::cout << bin << ", ";
