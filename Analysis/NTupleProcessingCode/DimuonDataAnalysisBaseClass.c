@@ -204,6 +204,8 @@ void DimuonDataAnalysisBaseClass::TrigModeToSuffixMap(){
     	std::cerr << "Trigger mode INVALID: must be 0 / 1 / 2 / 3!" << std::endl;
     	throw std::exception();
     }
+    
+    if (trigger_effcy_calc && !filter_out_photo_resn_for_trig_effcy) trig_suffix += "_no_photo_resn_cuts"; // if not filter out photoprod/resn pairs for trigger efficiency study
 }
 
 
@@ -500,6 +502,7 @@ void DimuonDataAnalysisBaseClass::ProcessData(){
     			mpair->mu2PassSingle = muon_b_HLT_mu4->at(mpair->m2.ind);
 
                 mpair->passSeparated = (mpair->dr > 0.8);
+                mpair->passSeparatedDeta = (abs(mpair->deta) > 0.8);
 
     			// resonance tag
     			ResonanceTagging(mpair);
@@ -507,7 +510,7 @@ void DimuonDataAnalysisBaseClass::ProcessData(){
 
     			// photo-production cut
     			if (isPbPb){
-    			  	if (!trigger_effcy_calc && IsPhotoProduction(mpair)) continue;
+    			  	if (!(trigger_effcy_calc && !filter_out_photo_resn_for_trig_effcy) && IsPhotoProduction(mpair)) continue;
     			  	h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill(static_cast<int>(CutsPbPb::pass_photoprod) + 0.5, mpair->weight);      	
     			}
 
@@ -529,7 +532,7 @@ void DimuonDataAnalysisBaseClass::ProcessData(){
     			std::vector<int>::iterator itres_m2;
 
                 // apply resonance cuts if resonance_cut_mode != 0
-                if (!trigger_effcy_calc){
+                if (!(trigger_effcy_calc && !filter_out_photo_resn_for_trig_effcy)){ // perform resn cuts
                     if (resonance_cut_mode == 1){ // apply old cuts
                         itres_m1 = std::find(resonance_tagged_muon_index_list.begin(),resonance_tagged_muon_index_list.end(),mpair->m1.ind);
                         if(itres_m1 != resonance_tagged_muon_index_list.end())  continue;

@@ -121,7 +121,7 @@ public:
     bool output_single_muon_tree = false;
 
     bool requireTight = false;
-    int resonance_cut_mode = 1; // original resonance cut (cutting off full region below 1.06GeV)
+    int resonance_cut_mode = 1; // only applies to nominal (not-trigger-efficiency) analysis
 
     bool isPbPb; // true for PbPb, false for pp
 
@@ -129,6 +129,7 @@ public:
 
     bool force_nominal = false; // nominal = (NOT trigger effcy calculation) --> only need to turn on for PbPb 24 data: use single muon trigger for nominal analysis, not for trigger efficiency calculations
 
+    bool filter_out_photo_resn_for_trig_effcy = true; // if true: filter out pairs from photoproduction or resonance decay for trigger efficiency study as well
 // --------------------- public class methods ---------------------------
 	~DimuonDataAnalysisBaseClass(){}
 };

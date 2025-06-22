@@ -277,6 +277,92 @@ private:
     TH1D* h_pair_pt_log_2mu4_w_single_b_sig_sel;
     TH2D* h_minv_pair_pt_log_2mu4_w_single_b_sig_sel;
 
+    TH2D* h_DR_zoomin_vs_pair_pT_mu4_w_single_b_sig_sel;
+
+    // ------------------- trigger efficiency vs pair pT or pT1st histograms (full range) -------------------
+        
+    // pair kinematics requiring only single mu4 trigger
+    TH2D* h_Deta_vs_pT_1st_mu4[ParamsSet::nSigns];
+    TH2D* h_Deta_zoomin_vs_pT_1st_mu4[ParamsSet::nSigns];
+    TH2D* h_Dphi_vs_pT_1st_mu4[ParamsSet::nSigns];
+    TH2D* h_Dphi_zoomin_vs_pT_1st_mu4[ParamsSet::nSigns];
+    TH2D* h_DR_vs_pT_1st_mu4[ParamsSet::nSigns];
+    TH2D* h_DR_zoomin_vs_pT_1st_mu4[ParamsSet::nSigns];
+    TH2D* h_minv_zoomin_vs_pT_1st_mu4[ParamsSet::nSigns];
+    TH2D* h_pair_pt_log_vs_pT_1st_mu4[ParamsSet::nSigns];
+    TH2D* h_pt2nd_vs_pT_1st_mu4[ParamsSet::nSigns];
+
+    TH2D* h_Deta_vs_pair_pT_mu4[ParamsSet::nSigns];
+    TH2D* h_Deta_zoomin_vs_pair_pT_mu4[ParamsSet::nSigns];
+    TH2D* h_Dphi_vs_pair_pT_mu4[ParamsSet::nSigns];
+    TH2D* h_Dphi_zoomin_vs_pair_pT_mu4[ParamsSet::nSigns];
+    TH2D* h_DR_vs_pair_pT_mu4[ParamsSet::nSigns];
+    TH2D* h_DR_zoomin_vs_pair_pT_mu4[ParamsSet::nSigns];
+    TH2D* h_minv_zoomin_vs_pair_pT_mu4[ParamsSet::nSigns];
+    TH2D* h_pair_pt_log_vs_pair_pT_mu4[ParamsSet::nSigns];
+    TH2D* h_pt2nd_vs_pair_pT_mu4[ParamsSet::nSigns];
+
+    // pair kinematics requiring mu4_mu4noL1 trigger
+    TH2D* h_Deta_vs_pT_1st_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_Deta_zoomin_vs_pT_1st_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_Dphi_vs_pT_1st_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_Dphi_zoomin_vs_pT_1st_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_DR_vs_pT_1st_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_DR_zoomin_vs_pT_1st_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_minv_zoomin_vs_pT_1st_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_pair_pt_log_vs_pT_1st_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_pt2nd_vs_pT_1st_mu4_mu4noL1[ParamsSet::nSigns];
+
+    TH2D* h_Deta_vs_pair_pT_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_Deta_zoomin_vs_pair_pT_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_Dphi_vs_pair_pT_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_Dphi_zoomin_vs_pair_pT_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_DR_vs_pair_pT_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_DR_zoomin_vs_pair_pT_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_minv_zoomin_vs_pair_pT_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_pair_pt_log_vs_pair_pT_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_pt2nd_vs_pair_pT_mu4_mu4noL1[ParamsSet::nSigns];
+
+    TH2D* h_Deta_vs_pT_1st_mu4_mu4noL1_excl[ParamsSet::nSigns];
+    TH2D* h_Deta_zoomin_vs_pT_1st_mu4_mu4noL1_excl[ParamsSet::nSigns];
+    TH2D* h_Dphi_vs_pT_1st_mu4_mu4noL1_excl[ParamsSet::nSigns];
+    TH2D* h_Dphi_zoomin_vs_pT_1st_mu4_mu4noL1_excl[ParamsSet::nSigns];
+    TH2D* h_DR_vs_pT_1st_mu4_mu4noL1_excl[ParamsSet::nSigns];
+    TH2D* h_DR_zoomin_vs_pT_1st_mu4_mu4noL1_excl[ParamsSet::nSigns];
+    TH2D* h_minv_zoomin_vs_pT_1st_mu4_mu4noL1_excl[ParamsSet::nSigns];
+    TH2D* h_pair_pt_log_vs_pT_1st_mu4_mu4noL1_excl[ParamsSet::nSigns];
+    TH2D* h_pt2nd_vs_pT_1st_mu4_mu4noL1_excl[ParamsSet::nSigns];
+
+    TH2D* h_Deta_vs_pair_pT_mu4_mu4noL1_excl[ParamsSet::nSigns];
+    TH2D* h_Deta_zoomin_vs_pair_pT_mu4_mu4noL1_excl[ParamsSet::nSigns];
+    TH2D* h_Dphi_vs_pair_pT_mu4_mu4noL1_excl[ParamsSet::nSigns];
+    TH2D* h_Dphi_zoomin_vs_pair_pT_mu4_mu4noL1_excl[ParamsSet::nSigns];
+    TH2D* h_DR_vs_pair_pT_mu4_mu4noL1_excl[ParamsSet::nSigns];
+    TH2D* h_DR_zoomin_vs_pair_pT_mu4_mu4noL1_excl[ParamsSet::nSigns];
+    TH2D* h_minv_zoomin_vs_pair_pT_mu4_mu4noL1_excl[ParamsSet::nSigns];
+    TH2D* h_pair_pt_log_vs_pair_pT_mu4_mu4noL1_excl[ParamsSet::nSigns];
+    TH2D* h_pt2nd_vs_pair_pT_mu4_mu4noL1_excl[ParamsSet::nSigns];
+
+    // pair kinematics requiring 2mu4 trigger
+    TH2D* h_Deta_vs_pT_1st_2mu4[ParamsSet::nSigns];
+    TH2D* h_Deta_zoomin_vs_pT_1st_2mu4[ParamsSet::nSigns];
+    TH2D* h_Dphi_vs_pT_1st_2mu4[ParamsSet::nSigns];
+    TH2D* h_Dphi_zoomin_vs_pT_1st_2mu4[ParamsSet::nSigns];
+    TH2D* h_DR_vs_pT_1st_2mu4[ParamsSet::nSigns];
+    TH2D* h_DR_zoomin_vs_pT_1st_2mu4[ParamsSet::nSigns];
+    TH2D* h_minv_zoomin_vs_pT_1st_2mu4[ParamsSet::nSigns];
+    TH2D* h_pair_pt_log_vs_pT_1st_2mu4[ParamsSet::nSigns];
+    TH2D* h_pt2nd_vs_pT_1st_2mu4[ParamsSet::nSigns];
+
+    TH2D* h_Deta_vs_pair_pT_2mu4[ParamsSet::nSigns];
+    TH2D* h_Deta_zoomin_vs_pair_pT_2mu4[ParamsSet::nSigns];
+    TH2D* h_Dphi_vs_pair_pT_2mu4[ParamsSet::nSigns];
+    TH2D* h_Dphi_zoomin_vs_pair_pT_2mu4[ParamsSet::nSigns];
+    TH2D* h_DR_vs_pair_pT_2mu4[ParamsSet::nSigns];
+    TH2D* h_DR_zoomin_vs_pair_pT_2mu4[ParamsSet::nSigns];
+    TH2D* h_minv_zoomin_vs_pair_pT_2mu4[ParamsSet::nSigns];
+    TH2D* h_pair_pt_log_vs_pair_pT_2mu4[ParamsSet::nSigns];
+    TH2D* h_pt2nd_vs_pair_pT_2mu4[ParamsSet::nSigns];
 
     // --------------------- input files & trees & data for setting branches---------------------------
 
@@ -312,6 +398,7 @@ private:
     bool mu1PassSingle[ParamsSet::nSigns];
     bool mu2PassSingle[ParamsSet::nSigns];
     bool passSeparated[ParamsSet::nSigns];
+    bool passSeparatedDeta[ParamsSet::nSigns];
 
 
     // --------------------- class methods ---------------------------
@@ -335,6 +422,7 @@ public:
     int trigger_mode = 1;
     // bool require_exclusive_mu4_for_mu4_mu4noL1 = false; // if true, require that only one muon fire mu4, to ensure unambiguous knowledge of which muon fires mu4noL1
     bool doTrigEffcy = true;
+    bool filter_out_photo_resn_for_trig_effcy = true;
   	MuonPairPlottingPP();
   	~MuonPairPlottingPP(){}
   	void Run();

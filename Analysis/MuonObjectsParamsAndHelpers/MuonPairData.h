@@ -19,6 +19,7 @@ public:
   bool    mu1PassSingle;
   bool    mu2PassSingle;
   bool    passSeparated; // separated enough for 2mu4 & mu4_mu4noL1 trigger efficiencies to be factorizable into single-muon parts; for now dR > 0.8
+  bool    passSeparatedDeta; // separated enough for 2mu4 & mu4_mu4noL1 trigger efficiencies to be factorizable into single-muon parts; for now deta > 0.8
 
   float   m1_trk_pt;
   float   m1_trk_eta;
@@ -55,6 +56,7 @@ void MuonPairData::Sort(){
     temp_trkpt = m1_trk_pt;
     temp_trketa = m1_trk_eta;
     temp_trkphi = m1_trk_phi;
+    temp_trkcharge = m1_trk_charge;
   
     m1.pt = m2.pt;
     m1.eta = m2.eta;
@@ -68,6 +70,7 @@ void MuonPairData::Sort(){
     m1_trk_pt = m2_trk_pt;
     m1_trk_eta = m2_trk_eta;
     m1_trk_phi = m2_trk_phi;
+    m1_trk_charge = m2_trk_charge;
   
     m2.pt = temppt;
     m2.eta = tempeta;
@@ -81,6 +84,7 @@ void MuonPairData::Sort(){
     m1_trk_pt = temp_trkpt;
     m1_trk_eta = temp_trketa;
     m1_trk_phi = temp_trkphi;
+    m1_trk_charge = temp_trkcharge;
   }
   // std::cout << m1.ev_num << ", child class sorting method called" << std::endl;
 }

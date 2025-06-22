@@ -250,9 +250,11 @@ void PlotMCDataComprSingleKinematics::Run(){
             }
         }
 
-        float ylim = (h[0][ksign][0]->GetMaximum() > h[2][ksign][0]->GetMaximum())? h[0][ksign][0]->GetMaximum() : h[2][ksign][0]->GetMaximum();
-        ylim = (ylim > h[3][ksign][0]->GetMaximum())? ylim : h[3][ksign][0]->GetMaximum();
-        ylim = (ylim > h[4][ksign][0]->GetMaximum())? ylim : h[4][ksign][0]->GetMaximum();
+        float ylim = h[0][ksign][0]->GetMaximum();
+
+        for (int idt = 2; idt < s_nDtTypes; idt++){ // skip powheg cc (added to bb)
+            if (h[idt][ksign][0]->GetMaximum() > ylim) ylim = h[idt][ksign][0]->GetMaximum();
+        }
         ylim *= 1.1;
         
         if (ratio_plot_mode)    h[0][ksign][0]->GetYaxis()->SetRangeUser(-0.1,ylim);
@@ -517,7 +519,7 @@ void PlotMCDataComprClass::plot_mc_data_compr_2D_proj_normalize_to_unity(){
 
 void plot_mc_data_compr(){
     PlotMCDataComprClass myobj;
-    // myobj.plot_mc_data_compr_1D();
+    myobj.plot_mc_data_compr_1D();
     // myobj.plot_mc_data_compr_2D_proj();
     // myobj.plot_mc_data_compr_1D_ratio();
     // myobj.plot_mc_data_compr_2D_proj_ratio();
