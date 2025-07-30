@@ -304,6 +304,38 @@ void MuonPairPlottingPP::InitHists(){
         h_eta_avg_Dphi_2mu4[isign] = new TH2D(Form("h_eta_avg_Dphi_2mu4_sign%d",isign+1),";#Delta#phi;#bar{#eta}", nDphi_bins_trig_effcy,-pms.PI,pms.PI,neta_bins_trig_effcy,-2.4,2.4);
         h_minv_pair_pt_log_2mu4[isign] = new TH2D(Form("h_minv_pair_pt_log_2mu4_sign%d",isign+1),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data(),nminv_bins_log,minv_bins_log[isign]);
 
+        // ------------------- trigger efficiency histograms in regions with good single-muon acceptance (without signal selection) -------------------
+        
+        // pair kinematics requiring only single mu4 trigger
+        h_Deta_mu4_good_accept[isign] = new TH1D(Form("h_Deta_mu4_good_accept_sign%d",isign+1),";#Delta#eta;",nDeta_bins_trig_effcy,-4.8,4.8);
+        h_Deta_zoomin_mu4_good_accept[isign] = new TH1D(Form("h_Deta_zoomin_mu4_good_accept_sign%d",isign+1),";#Delta#eta;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+        h_Dphi_mu4_good_accept[isign] = new TH1D(Form("h_Dphi_mu4_good_accept_sign%d",isign+1),";#Delta#phi;",nDphi_bins_trig_effcy,-pms.PI,pms.PI);
+        h_Dphi_zoomin_mu4_good_accept[isign] = new TH1D(Form("h_Dphi_zoomin_mu4_good_accept_sign%d",isign+1),";#Delta#phi;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+        h_DR_mu4_good_accept[isign] = new TH1D(Form("h_DR_mu4_good_accept_sign%d",isign+1),";#DeltaR;",nDR_bins_trig_effcy,0,pms.deltaR_thrsh[2]);
+        h_DR_zoomin_mu4_good_accept[isign] = new TH1D(Form("h_DR_zoomin_mu4_good_accept_sign%d",isign+1),";#DeltaR;",nDR_deta_dphi_zoomin_bins_trig_effcy,0,0.8);
+        h_minv_zoomin_mu4_good_accept[isign] = new TH1D(Form("h_minv_zoomin_mu4_good_accept_sign%d",isign+1),";m_{#mu#mu} [GeV];",nminv_bins_trig_effcy,0,3.);
+        h_pair_pt_log_mu4_good_accept[isign] = new TH1D(Form("h_pair_pt_log_mu4_good_accept_sign%d",isign+1),";p_{T}^{pair} [GeV];",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data());
+
+        // pair kinematics requiring mu4_mu4noL1 trigger
+        h_Deta_mu4_mu4noL1_good_accept[isign] = new TH1D(Form("h_Deta_mu4_mu4noL1_good_accept_sign%d",isign+1),";#Delta#eta;",nDeta_bins_trig_effcy,-4.8,4.8);
+        h_Deta_zoomin_mu4_mu4noL1_good_accept[isign] = new TH1D(Form("h_Deta_zoomin_mu4_mu4noL1_good_accept_sign%d",isign+1),";#Delta#eta;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+        h_Dphi_mu4_mu4noL1_good_accept[isign] = new TH1D(Form("h_Dphi_mu4_mu4noL1_good_accept_sign%d",isign+1),";#Delta#phi;",nDphi_bins_trig_effcy,-pms.PI,pms.PI);
+        h_Dphi_zoomin_mu4_mu4noL1_good_accept[isign] = new TH1D(Form("h_Dphi_zoomin_mu4_mu4noL1_good_accept_sign%d",isign+1),";#Delta#phi;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+        h_DR_mu4_mu4noL1_good_accept[isign] = new TH1D(Form("h_DR_mu4_mu4noL1_good_accept_sign%d",isign+1),";#DeltaR;",nDR_bins_trig_effcy,0,pms.deltaR_thrsh[2]);
+        h_DR_zoomin_mu4_mu4noL1_good_accept[isign] = new TH1D(Form("h_DR_zoomin_mu4_mu4noL1_good_accept_sign%d",isign+1),";#DeltaR;",nDR_deta_dphi_zoomin_bins_trig_effcy,0,0.8);
+        h_minv_zoomin_mu4_mu4noL1_good_accept[isign] = new TH1D(Form("h_minv_zoomin_mu4_mu4noL1_good_accept_sign%d",isign+1),";m_{#mu#mu} [GeV];",nminv_bins_trig_effcy,0,3.);
+        h_pair_pt_log_mu4_mu4noL1_good_accept[isign] = new TH1D(Form("h_pair_pt_log_mu4_mu4noL1_good_accept_sign%d",isign+1),";p_{T}^{pair} [GeV];",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data());
+
+        // pair kinematics requiring 2mu4 trigger
+        h_Deta_2mu4_good_accept[isign] = new TH1D(Form("h_Deta_2mu4_good_accept_sign%d",isign+1),";#Delta#eta;",nDeta_bins_trig_effcy,-4.8,4.8);
+        h_Deta_zoomin_2mu4_good_accept[isign] = new TH1D(Form("h_Deta_zoomin_2mu4_good_accept_sign%d",isign+1),";#Delta#eta;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+        h_Dphi_2mu4_good_accept[isign] = new TH1D(Form("h_Dphi_2mu4_good_accept_sign%d",isign+1),";#Delta#phi;",nDphi_bins_trig_effcy,-pms.PI,pms.PI);
+        h_Dphi_zoomin_2mu4_good_accept[isign] = new TH1D(Form("h_Dphi_zoomin_2mu4_good_accept_sign%d",isign+1),";#Delta#phi;",nDR_deta_dphi_zoomin_bins_trig_effcy,-0.8,0.8);
+        h_DR_2mu4_good_accept[isign] = new TH1D(Form("h_DR_2mu4_good_accept_sign%d",isign+1),";#DeltaR;",nDR_bins_trig_effcy,0,pms.deltaR_thrsh[2]);
+        h_DR_zoomin_2mu4_good_accept[isign] = new TH1D(Form("h_DR_zoomin_2mu4_good_accept_sign%d",isign+1),";#DeltaR;",nDR_deta_dphi_zoomin_bins_trig_effcy,0,0.8);
+        h_minv_zoomin_2mu4_good_accept[isign] = new TH1D(Form("h_minv_zoomin_2mu4_good_accept_sign%d",isign+1),";m_{#mu#mu} [GeV];",nminv_bins_trig_effcy,0,3.);
+        h_pair_pt_log_2mu4_good_accept[isign] = new TH1D(Form("h_pair_pt_log_2mu4_good_accept_sign%d",isign+1),";p_{T}^{pair} [GeV];",int(pms.pT_bins_80.size() - 1), pms.pT_bins_80.data());
+
         // ------------------- trigger efficiency vs pair pT or pT1st histograms (full range) -------------------
         
         // pair kinematics requiring only single mu4 trigger
@@ -536,6 +568,14 @@ bool MuonPairPlottingPP::PassSingleMuonGapCut(float meta, float mpt, int mcharge
 void MuonPairPlottingPP::FillHistograms(int nsign){
 
     bool pass_single_b_signal_selection = (nsign == 1 && minv[nsign] > 1.08 && minv[nsign] < 2.9 && pair_pt[nsign] > 8);
+    bool pass_single_muon_good_acceptance_selection[ParamsSet::nSigns];
+    // 1st muon good accept
+    // pass_single_muon_good_acceptance_selection[0] = (mu1PassSingle[nsign])? (m1pt[nsign] >= 6 && ((m1eta[nsign] > 1.1 && m1eta[nsign] < 2.3) || (m1eta[nsign] > -2.3 && m1eta[nsign] < -1.2))) : false;
+    // pass_single_muon_good_acceptance_selection[1] = (mu2PassSingle[nsign])? (m2pt[nsign] >= 6 && ((m2eta[nsign] > 1.1 && m2eta[nsign] < 2.3) || (m2eta[nsign] > -2.3 && m2eta[nsign] < -1.2))) : false;
+    
+    // 2nd muon good accept
+    pass_single_muon_good_acceptance_selection[0] = (mu2PassSingle[nsign])? (m1pt[nsign] >= 6 && ((m1eta[nsign] > 1.1 && m1eta[nsign] < 2.3) || (m1eta[nsign] > -2.3 && m1eta[nsign] < -1.2))) : false;
+    pass_single_muon_good_acceptance_selection[1] = (mu1PassSingle[nsign])? (m2pt[nsign] >= 6 && ((m2eta[nsign] > 1.1 && m2eta[nsign] < 2.3) || (m2eta[nsign] > -2.3 && m2eta[nsign] < -1.2))) : false;
 
     // ngapcut = 0: all; = 1: only those that pass
 
@@ -652,6 +692,18 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
     h_pair_pt_log_mu4[nsign]->Fill(pair_pt[nsign],weight[nsign]);
     h_minv_pair_pt_log_mu4[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
 
+    for (int i = 0; i < ParamsSet::nSigns; i++){
+        if (pass_single_muon_good_acceptance_selection[i]){ // fill for both
+            h_Deta_mu4_good_accept[nsign]->Fill(deta[nsign],weight[nsign]);
+            h_Deta_zoomin_mu4_good_accept[nsign]->Fill(deta[nsign],weight[nsign]);
+            h_Dphi_mu4_good_accept[nsign]->Fill(dphi[nsign],weight[nsign]);
+            h_Dphi_zoomin_mu4_good_accept[nsign]->Fill(dphi[nsign],weight[nsign]);
+            h_DR_mu4_good_accept[nsign]->Fill(dr[nsign],weight[nsign]);
+            h_DR_zoomin_mu4_good_accept[nsign]->Fill(dr[nsign],weight[nsign]);
+            h_minv_zoomin_mu4_good_accept[nsign]->Fill(minv[nsign],weight[nsign]);
+            h_pair_pt_log_mu4_good_accept[nsign]->Fill(pair_pt[nsign],weight[nsign]);    
+        }
+    }
 
     if (passSeparated[nsign]){
         h_Deta_mu4_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
@@ -757,6 +809,19 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
         h_minv_zoomin_mu4_mu4noL1[nsign]->Fill(minv[nsign],weight[nsign]);
         h_pair_pt_log_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign],weight[nsign]);
         h_minv_pair_pt_log_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
+
+        for (int i = 0; i < ParamsSet::nSigns; i++){
+            if (pass_single_muon_good_acceptance_selection[i]){ // fill for both
+                h_Deta_mu4_mu4noL1_good_accept[nsign]->Fill(deta[nsign],weight[nsign]);
+                h_Deta_zoomin_mu4_mu4noL1_good_accept[nsign]->Fill(deta[nsign],weight[nsign]);
+                h_Dphi_mu4_mu4noL1_good_accept[nsign]->Fill(dphi[nsign],weight[nsign]);
+                h_Dphi_zoomin_mu4_mu4noL1_good_accept[nsign]->Fill(dphi[nsign],weight[nsign]);
+                h_DR_mu4_mu4noL1_good_accept[nsign]->Fill(dr[nsign],weight[nsign]);
+                h_DR_zoomin_mu4_mu4noL1_good_accept[nsign]->Fill(dr[nsign],weight[nsign]);
+                h_minv_zoomin_mu4_mu4noL1_good_accept[nsign]->Fill(minv[nsign],weight[nsign]);
+                h_pair_pt_log_mu4_mu4noL1_good_accept[nsign]->Fill(pair_pt[nsign],weight[nsign]);    
+            }
+        }
 
         if ((!mu1PassSingle[nsign] || !mu2PassSingle[nsign])){ // exclusive: only one muon passes mu4
             h_Deta_mu4_mu4noL1_excl[nsign]->Fill(deta[nsign],weight[nsign]);
@@ -940,6 +1005,19 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
         h_minv_zoomin_2mu4[nsign]->Fill(minv[nsign],weight[nsign]);
         h_pair_pt_log_2mu4[nsign]->Fill(pair_pt[nsign],weight[nsign]);
         h_minv_pair_pt_log_2mu4[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
+
+        for (int i = 0; i < ParamsSet::nSigns; i++){
+            if (pass_single_muon_good_acceptance_selection[i]){ // fill for both
+                h_Deta_2mu4_good_accept[nsign]->Fill(deta[nsign],weight[nsign]);
+                h_Deta_zoomin_2mu4_good_accept[nsign]->Fill(deta[nsign],weight[nsign]);
+                h_Dphi_2mu4_good_accept[nsign]->Fill(dphi[nsign],weight[nsign]);
+                h_Dphi_zoomin_2mu4_good_accept[nsign]->Fill(dphi[nsign],weight[nsign]);
+                h_DR_2mu4_good_accept[nsign]->Fill(dr[nsign],weight[nsign]);
+                h_DR_zoomin_2mu4_good_accept[nsign]->Fill(dr[nsign],weight[nsign]);
+                h_minv_zoomin_2mu4_good_accept[nsign]->Fill(minv[nsign],weight[nsign]);
+                h_pair_pt_log_2mu4_good_accept[nsign]->Fill(pair_pt[nsign],weight[nsign]);    
+            }
+        }
 
         if (passSeparated[nsign]){
             h_Deta_2mu4_sepr[nsign]->Fill(deta[nsign],weight[nsign]);

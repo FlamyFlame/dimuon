@@ -138,6 +138,34 @@ private:
     TH1D* h_pair_pt_log_2mu4[ParamsSet::nSigns];
     TH2D* h_minv_pair_pt_log_2mu4[ParamsSet::nSigns];
 
+    // region with good (and roughly uniform) single-muon acceptance
+    TH1D* h_Deta_mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_Deta_zoomin_mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_Dphi_mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_Dphi_zoomin_mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_DR_mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_DR_zoomin_mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_minv_zoomin_mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_pair_pt_log_mu4_good_accept[ParamsSet::nSigns];
+    
+    TH1D* h_Deta_mu4_mu4noL1_good_accept[ParamsSet::nSigns];
+    TH1D* h_Deta_zoomin_mu4_mu4noL1_good_accept[ParamsSet::nSigns];
+    TH1D* h_Dphi_mu4_mu4noL1_good_accept[ParamsSet::nSigns];
+    TH1D* h_Dphi_zoomin_mu4_mu4noL1_good_accept[ParamsSet::nSigns];
+    TH1D* h_DR_mu4_mu4noL1_good_accept[ParamsSet::nSigns];
+    TH1D* h_DR_zoomin_mu4_mu4noL1_good_accept[ParamsSet::nSigns];
+    TH1D* h_minv_zoomin_mu4_mu4noL1_good_accept[ParamsSet::nSigns];
+    TH1D* h_pair_pt_log_mu4_mu4noL1_good_accept[ParamsSet::nSigns];
+    
+    TH1D* h_Deta_2mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_Deta_zoomin_2mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_Dphi_2mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_Dphi_zoomin_2mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_DR_2mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_DR_zoomin_2mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_minv_zoomin_2mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_pair_pt_log_2mu4_good_accept[ParamsSet::nSigns];
+
     // separated (dR > 0.8)
     TH1D* h_Deta_mu4_sepr[ParamsSet::nSigns];
     TH1D* h_Deta_zoomin_mu4_sepr[ParamsSet::nSigns];
