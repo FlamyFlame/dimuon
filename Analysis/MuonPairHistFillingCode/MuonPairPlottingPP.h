@@ -78,6 +78,8 @@ private:
     TH1D* h_DR_zoomin_mu4[ParamsSet::nSigns];
     TH1D* h_pt2nd_mu4[ParamsSet::nSigns];
     TH2D* h_pt2nd_vs_q_eta_2nd_mu4[ParamsSet::nSigns];
+    TH2D* h_pt2nd_vs_phi2nd_mu4[ParamsSet::nSigns];
+    TH2D* h_phi2nd_vs_q_eta_2nd_mu4[ParamsSet::nSigns];
     TH2D* h_pair_eta_vs_pair_pT_mu4[ParamsSet::nSigns];
     TH2D* h_Deta_Dphi_mu4[ParamsSet::nSigns];
     TH2D* h_eta1_eta2_mu4[ParamsSet::nSigns];
@@ -95,6 +97,8 @@ private:
     TH1D* h_DR_zoomin_mu4_mu4noL1[ParamsSet::nSigns];
     TH1D* h_pt2nd_mu4_mu4noL1[ParamsSet::nSigns];
     TH2D* h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_pt2nd_vs_phi2nd_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_phi2nd_vs_q_eta_2nd_mu4_mu4noL1[ParamsSet::nSigns];
     TH2D* h_pair_eta_vs_pair_pT_mu4_mu4noL1[ParamsSet::nSigns];
     TH2D* h_Deta_Dphi_mu4_mu4noL1[ParamsSet::nSigns];
     TH2D* h_eta1_eta2_mu4_mu4noL1[ParamsSet::nSigns];
@@ -129,6 +133,8 @@ private:
     TH1D* h_DR_zoomin_2mu4[ParamsSet::nSigns];
     TH1D* h_pt2nd_2mu4[ParamsSet::nSigns];
     TH2D* h_pt2nd_vs_q_eta_2nd_2mu4[ParamsSet::nSigns];
+    TH2D* h_pt2nd_vs_phi2nd_2mu4[ParamsSet::nSigns];
+    TH2D* h_phi2nd_vs_q_eta_2nd_2mu4[ParamsSet::nSigns];
     TH2D* h_pair_eta_vs_pair_pT_2mu4[ParamsSet::nSigns];
     TH2D* h_Deta_Dphi_2mu4[ParamsSet::nSigns];
     TH2D* h_eta1_eta2_2mu4[ParamsSet::nSigns];
