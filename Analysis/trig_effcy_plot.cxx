@@ -670,12 +670,13 @@ private:
 
 
 void trig_effcy_plot(){
-   std::vector<std::string> var1Ds = {"Deta", "Deta_zoomin", "Dphi", "Dphi_zoomin", "DR", "DR_zoomin", "pt2nd", "minv_zoomin", "pair_pt_log"};
-   std::vector<std::string> var2Ds = {"pt2nd_vs_q_eta_2nd", "pair_eta_vs_pair_pT", "Deta_Dphi", "eta1_eta2", "eta_avg_Deta", "eta_avg_Dphi", "minv_pair_pt_log",
+   std::vector<std::string> var1Ds = {"Deta", "Deta_zoomin", "Dphi", "Dphi_zoomin", "DR", "DR_zoomin", "DR_0_2", "pt2nd", "minv_zoomin", "pair_pt_log"};
+   std::vector<std::string> var2Ds = {"pt2nd_vs_q_eta_2nd", "pt2nd_vs_phi2nd", "phi2nd_vs_q_eta_2nd", "DR_zoomin_vs_pt2nd", "DR_0_2_vs_pt2nd", "pair_eta_vs_pair_pT", "Deta_Dphi", "eta1_eta2", "eta_avg_Deta", "eta_avg_Dphi", "minv_pair_pt_log",
                                       // "Deta_vs_pT_1st", "Deta_zoomin_vs_pT_1st", "Dphi_vs_pT_1st", "Dphi_zoomin_vs_pT_1st", "DR_vs_pT_1st", "DR_zoomin_vs_pT_1st", "minv_zoomin_vs_pT_1st", "pair_pt_log_vs_pT_1st", "pt2nd_vs_pT_1st", 
                                       // "Deta_vs_pair_pT", "Deta_zoomin_vs_pair_pT", "Dphi_vs_pair_pT", "Dphi_zoomin_vs_pair_pT", "DR_vs_pair_pT", "DR_zoomin_vs_pair_pT", "minv_zoomin_vs_pair_pT", "pair_pt_log_vs_pair_pT", "pt2nd_vs_pair_pT",
                                      };
    std::vector<std::string> var2Ds_for_profile = {
+      "DR_zoomin_vs_pt2nd",
       "Deta_vs_pT_1st", "Deta_zoomin_vs_pT_1st", "Dphi_vs_pT_1st", "Dphi_zoomin_vs_pT_1st", "DR_vs_pT_1st", "DR_zoomin_vs_pT_1st", "minv_zoomin_vs_pT_1st", "pair_pt_log_vs_pT_1st", "pt2nd_vs_pT_1st", 
       "Deta_vs_pair_pT", "Deta_zoomin_vs_pair_pT", "Dphi_vs_pair_pT", "Dphi_zoomin_vs_pair_pT", "DR_vs_pair_pT", "DR_zoomin_vs_pair_pT", "minv_zoomin_vs_pair_pT", "pair_pt_log_vs_pair_pT", "pt2nd_vs_pair_pT",
    };
@@ -702,6 +703,7 @@ void trig_effcy_plot(){
       {"Dphi_zoomin_vs_pair_pT",{true,false}},
       {"DR_vs_pair_pT",{true,false}},
       {"DR_zoomin_vs_pair_pT",{true,false}},
+      {"DR_zoomin_vs_pt2nd",{true,false}},
       {"minv_zoomin_vs_pair_pT",{true,false}},
       {"pair_pt_log_vs_pair_pT",{true,true}},
       {"pt2nd_vs_pair_p",{true,true}},
@@ -709,11 +711,13 @@ void trig_effcy_plot(){
 
    // plot_mu4_mu4noL1_excl_, plot_sepr_, plot_resn_
 
-   // TrigEffPlotter plotter(17,var1Ds,false,false,logaxes,var2Ds,var2Ds_for_profile);
-   // TrigEffPlotter plotter(17,var1Ds,false,true,logaxes,var2Ds,var2Ds_for_profile);
-   // TrigEffPlotter plotter(24,var1Ds,false,false,false,logaxes,var2Ds,var2Ds_for_profile);
-   TrigEffPlotter plotter(24,var1Ds,false,false,true,true,logaxes,var2Ds,var2Ds_for_profile);
-   // TrigEffPlotter plotter(24,var1Ds,false,true,logaxes,var2Ds,var2Ds_for_profile);
+   // TrigEffPlotter plotter(17,var1Ds,false,false,false,false,logaxes,var2Ds,var2Ds_for_profile);
+   // TrigEffPlotter plotter(17,var1Ds,false,true,false,false,logaxes,var2Ds,var2Ds_for_profile);
+   
+   TrigEffPlotter plotter(24,var1Ds,false,false,false,false,logaxes,var2Ds,var2Ds_for_profile);
+   // TrigEffPlotter plotter(24,var1Ds,false,false,true,true,logaxes,var2Ds,var2Ds_for_profile);
+   
+   // TrigEffPlotter plotter(24,var1Ds,false,true,false,false,logaxes,var2Ds,var2Ds_for_profile);
    plotter.Run();
 }
 
