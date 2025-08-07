@@ -41,6 +41,7 @@ public:
 	// int scaleFactorCtrs[nCtrBins] = {1,1,2,3,3};
 	// std::vector<float> ctrbins = {0, 5, 10, 20, 30, 50, 80};
     std::vector<double> pT_bins_40;
+    std::vector<double> pT_bins_60;
     std::vector<double> pT_bins_80;
 	
 	static std::vector<float> pTbins;
@@ -278,8 +279,9 @@ ParamsSet::ParamsSet(){
   		}
   	}
 
-    fillLogBinningArray(pT_bins_40,  18, 4.0, 40.0);  // 10 log bins from 8 to 200 GeV
-    fillLogBinningArray(pT_bins_80,  12, 8.0, 80.0);  // 10 log bins from 8 to 200 GeV
+    fillLogBinningArray(pT_bins_40,  18, 4.0, 40.0);  // 18 log bins from 4 to 40 GeV
+    fillLogBinningArray(pT_bins_60,  20, 4.0, 60.0);  // 20 log bins from 4 to 60 GeV
+    fillLogBinningArray(pT_bins_80,  12, 8.0, 80.0);  // 12 log bins from 8 to 200 GeV
 
 
   	// old set of minv cut
