@@ -26,6 +26,7 @@ protected:
 
     // Define binning
     std::vector<double> pT_bins_40;
+    std::vector<double> pT_bins_8;
     std::vector<double> pT_bins_60;
     std::vector<double> pT_bins_80;
     std::vector<double> pT_bins_120;
@@ -64,8 +65,9 @@ void SingleBAnalysisBase::fillLogBinningArray(std::vector<double>& bins, int nBi
 
 void SingleBAnalysisBase::Initialize(){
     // // Create logarithmic pair-pT bin edges
-    fillLogBinningArray(pT_bins_40,  18, 4.0, 40.0);  // 18 log bins from 8 to 40 GeV
-    fillLogBinningArray(pT_bins_60,  20, 4.0, 60.0);  // 20 log bins from 8 to 60 GeV
+    fillLogBinningArray(pT_bins_40,  18, 4.0, 40.0);  // 18 log bins from 4 to 40 GeV
+    fillLogBinningArray(pT_bins_8,   20, 4.0, 8.0);   // 20 log bins from 4 to 8 GeV
+    fillLogBinningArray(pT_bins_60,  20, 8.0, 60.0);  // 20 log bins from 8 to 60 GeV
     fillLogBinningArray(pT_bins_80,  12, 8.0, 80.0);  // 12 log bins from 8 to 80 GeV
     fillLogBinningArray(pT_bins_120, 14, 8.0, 120.0);  // 10 log bins from 8 to 120 GeV
     fillLogBinningArray(pT_bins_150, 30, 8.0, 150.0);  // 10 log bins from 8 to 150 GeV
@@ -89,7 +91,13 @@ void SingleBAnalysisBase::BinningPrinting(){
     }
     std::cout << std::endl;
 
-    std::cout << "Print out bins for single-muon pT 4-60 GeV" << std::endl;
+    std::cout << "Print out bins for single-muon pT 4-8 GeV" << std::endl;
+    for (auto bin : pT_bins_8){
+        std::cout << bin << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "Print out bins for single-muon pT 8-60 GeV" << std::endl;
     for (auto bin : pT_bins_60){
         std::cout << bin << ", ";
     }
