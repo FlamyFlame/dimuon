@@ -411,30 +411,48 @@ private:
     }
 
     // =========================================================================
-    // Clip numerator bins to denominator for the special single-mu weighting
+    // Clip numerator to denominator for the special single-mu inverse-weight filter
+    // Also enforce the weighted-events consistency: err_num^2 ≤ err_den^2
+    // We touch underflow/overflow as TEfficiency checks them too
     // =========================================================================
-    std::vector<std::pair<int, double>> clipNumeratorIfInvW(TH1* hNum, TH1* hDen, const std::string& fs) const
+    std::vector<std::pair<int,double>>
+    clipNumeratorIfInvW(TH1* hNum, TH1* hDen, const std::string& fs) const
     {
-        if (fs != "_inv_w_by_single_mu_effcy") return {};      // nothing to do
+        if (fs != "_inv_w_by_single_mu_effcy" || !hNum || !hDen) return {};
 
-        if (!hNum || !hDen) return {};
+        // Ensure Sumw2 exists so SetBinError controls ∑w²
+        if (!hNum->GetSumw2N()) hNum->Sumw2();
+        if (!hDen->GetSumw2N()) hDen->Sumw2();
 
-        if (hNum->GetNbinsX() != hDen->GetNbinsX()) {
-            std::cerr << "[TrigEffPlotter] ERROR: nBins mismatch ("
-                      << hNum->GetName() << " vs " << hDen->GetName()
-                      << ") in _inv_w_by_single_mu_effcy mode – skipped.\n";
-            return {};                                         // skip this pair
-        }
+        if (hNum->GetNbinsX() != hDen->GetNbinsX()) return {};
 
-        std::vector<std::pair<int, double>> bins_above1; 
+        std::vector<std::pair<int,double>> bins_above1;
 
-        for (int b = 1; b <= hNum->GetNbinsX(); ++b) {
-            if (hNum->GetBinContent(b) > hDen->GetBinContent(b)) {
-                bins_above1.push_back(std::make_pair(b, hNum->GetBinContent(b) * 1. / hDen->GetBinContent(b)));
-                hNum->SetBinContent(b, hDen->GetBinContent(b));
-                // keep the original error bar – safest conservative choice
+        const int nb = hNum->GetNbinsX();
+        auto clamp_one = [&](int b) {
+            double n  = hNum->GetBinContent(b);
+            double d  = hDen->GetBinContent(b);
+            double ne = hNum->GetBinError(b);
+            double de = hDen->GetBinError(b);
+
+            if (n > d) {
+                if (d > 0) bins_above1.emplace_back(b, n / d);
+                hNum->SetBinContent(b, d);
             }
-        }
+            // Enforce ∑w² consistency as well.
+            if (ne > de) hNum->SetBinError(b, de);
+
+            // If denominator is zero, zero numerator too to keep TEfficiency happy.
+            if (d <= 0.0) {
+                hNum->SetBinContent(b, 0.0);
+                hNum->SetBinError(b,   0.0);
+            }
+        };
+
+        // Underflow, in-range, overflow
+        clamp_one(0);
+        for (int b = 1; b <= nb; ++b) clamp_one(b);
+        clamp_one(nb+1);
 
         return bins_above1;
     }
@@ -515,6 +533,13 @@ private:
                 // r[3] = std::min(0.95, r[3] + extra*0.1);       // comment out: do not grow talled
             }
             return r;
+        };
+
+        auto zeroUFof = [](TH1* h){
+            if (!h) return;
+            const int nb = h->GetNbinsX();
+            h->SetBinContent(0, 0.0);   h->SetBinError(0, 0.0);
+            h->SetBinContent(nb+1, 0.0); h->SetBinError(nb+1, 0.0);
         };
 
         // ===============================================================
@@ -616,16 +641,19 @@ private:
 
                         double ymax = 1.;
 
+                        zeroUFof(h_num);
+                        zeroUFof(h_denom);
+
                         // Build efficiency graph
                         auto g = new TGraphAsymmErrors();
                         g->BayesDivide(h_num, h_denom);
 
-                        if (bins_above1.size() > 0){
-                            for (auto bpair : bins_above1){
-                                g->SetPointY(bpair.first, bpair.second);
-                                ymax = std::max(ymax, bpair.second);
-                            }
-                        }
+                        // if (bins_above1.size() > 0){
+                        //     for (auto bpair : bins_above1){
+                        //         g->SetPointY(bpair.first, bpair.second);
+                        //         ymax = std::max(ymax, bpair.second);
+                        //     }
+                        // }
 
                         Color_t useCol;
                         if (!plot_weighted){
@@ -646,7 +674,8 @@ private:
 
                         if (!firstDrawn) {
                             g->Draw("APL");
-                            g->GetYaxis()->SetRangeUser(0.,ymax);
+                            // g->GetYaxis()->SetRangeUser(0.,ymax);
+                            g->GetYaxis()->SetRangeUser(0.,1.);
                             g->GetXaxis()->SetTitle(h_denom->GetXaxis()->GetTitle());
                             g->GetYaxis()->SetTitle("#epsilon");
                             
@@ -753,28 +782,29 @@ private:
                 g_s2->BayesDivide(h_num_s2, h_den_sign2);
                 SetStyle(g_s2, colourIdx==0? kAzure+2 : kRed+1, colourIdx==0?24:20);
 
-                if (bins_above1_s2.size() > 0){
-                    for (auto bpair : bins_above1_s2){
-                        g_s2->SetPointY(bpair.first, bpair.second);
-                        ymax_opandsig = std::max(ymax_opandsig, bpair.second);
-                    }
-                }
+                // if (bins_above1_s2.size() > 0){
+                //     for (auto bpair : bins_above1_s2){
+                //         g_s2->SetPointY(bpair.first, bpair.second);
+                //         ymax_opandsig = std::max(ymax_opandsig, bpair.second);
+                //     }
+                // }
 
                 // sig‑sel efficiency
                 auto g_sel = new TGraphAsymmErrors();
                 g_sel->BayesDivide(h_num_sel, h_den_sel);
                 SetStyle(g_sel, colourIdx==0? kAzure+1 : kRed+2, colourIdx==0?25:24, 2, 2);
 
-                if (bins_above1_sel.size() > 0){
-                    for (auto bpair : bins_above1_sel){
-                        g_sel->SetPointY(bpair.first, bpair.second);
-                        ymax_opandsig = std::max(ymax_opandsig, bpair.second);
-                    }
-                }
+                // if (bins_above1_sel.size() > 0){
+                //     for (auto bpair : bins_above1_sel){
+                //         g_sel->SetPointY(bpair.first, bpair.second);
+                //         ymax_opandsig = std::max(ymax_opandsig, bpair.second);
+                //     }
+                // }
 
                 if (firstCurve) {
                     g_s2->Draw("APL");                       // sets axes with first curve
-                    g_s2->GetYaxis()->SetRangeUser(0., ymax_opandsig);
+                    // g_s2->GetYaxis()->SetRangeUser(0., ymax_opandsig);
+                    g_s2->GetYaxis()->SetRangeUser(0., 1.);
                     g_s2->GetXaxis()->SetTitle(h_den_sel->GetXaxis()->GetTitle());
                     g_s2->GetYaxis()->SetTitle("#epsilon");
 
@@ -963,6 +993,13 @@ private:
     // ======================================================================
     void plot2Dto1DEffcyProj()
     {
+        auto zeroUFof = [](TH1* h){
+            if (!h) return;
+            const int nb = h->GetNbinsX();
+            h->SetBinContent(0, 0.0);   h->SetBinError(0, 0.0);
+            h->SetBinContent(nb+1, 0.0); h->SetBinError(nb+1, 0.0);
+        };
+
         if (var2Ds_for1Deffcy_proj.empty()) return;
 
         // default + comparisons (keep weighted filter behaviour consistent with plot1D)
@@ -1085,6 +1122,9 @@ private:
 
                                 // special weighting guard
                                 clipNumeratorIfInvW(hNum1D.get(), hDen1D.get(), fs);
+
+                                zeroUFof(hNum1D.get());
+                                zeroUFof(hDen1D.get());
 
                                 // graph
                                 auto g = new TGraphAsymmErrors();
@@ -1268,43 +1308,43 @@ private:
 //  Steering macro (example)
 // ──────────────────────────────────────────────────────────────────────────────
 void trig_effcy_plot(){
-   std::vector<std::string> var1Ds = {"Deta", "Deta_zoomin", "Dphi", "Dphi_zoomin", "DR", "DR_zoomin", "DR_0_2", "pt2nd", "minv_zoomin", "pair_pt_log"};
-   std::vector<std::string> var2Ds = {"pt2nd_vs_q_eta_2nd", "pt2nd_vs_phi2nd", "phi2nd_vs_q_eta_2nd", "DR_zoomin_vs_pt2nd", "DR_0_2_vs_pt2nd", "pair_eta_vs_pair_pT", "Deta_Dphi", "eta1_eta2", "eta_avg_Deta", "eta_avg_Dphi", "minv_pair_pt_log",
-                                      // "Deta_vs_pT_1st", "Deta_zoomin_vs_pT_1st", "Dphi_vs_pT_1st", "Dphi_zoomin_vs_pT_1st", "DR_vs_pT_1st", "DR_zoomin_vs_pT_1st", "minv_zoomin_vs_pT_1st", "pair_pt_log_vs_pT_1st", "pt2nd_vs_pT_1st", 
-                                      // "Deta_vs_pair_pT", "Deta_zoomin_vs_pair_pT", "Dphi_vs_pair_pT", "Dphi_zoomin_vs_pair_pT", "DR_vs_pair_pT", "DR_zoomin_vs_pair_pT", "minv_zoomin_vs_pair_pT", "pair_pt_log_vs_pair_pT", "pt2nd_vs_pair_pT",
-                                     };
-   std::vector<std::string> var2DsProf = {
-      "DR_zoomin_vs_pt2nd",
-      "Deta_vs_pT_1st", "Deta_zoomin_vs_pT_1st", "Dphi_vs_pT_1st", "Dphi_zoomin_vs_pT_1st", "DR_vs_pT_1st", "DR_zoomin_vs_pT_1st", "minv_zoomin_vs_pT_1st", "pair_pt_log_vs_pT_1st", "pt2nd_vs_pT_1st", 
-      "Deta_vs_pair_pT", "Deta_zoomin_vs_pair_pT", "Dphi_vs_pair_pT", "Dphi_zoomin_vs_pair_pT", "DR_vs_pair_pT", "DR_zoomin_vs_pair_pT", "minv_zoomin_vs_pair_pT", "pair_pt_log_vs_pair_pT", "pt2nd_vs_pair_pT",
-   };
+    std::vector<std::string> var1Ds = {"Deta", "Deta_zoomin", "Dphi", "Dphi_zoomin", "DR", "DR_zoomin", "DR_0_2", "pt2nd", "minv_zoomin", "pair_pt_log"};
+    std::vector<std::string> var2Ds = {"pt2nd_vs_q_eta_2nd", "pt2nd_vs_phi2nd", "phi2nd_vs_q_eta_2nd", "DR_zoomin_vs_pt2nd", "DR_0_2_vs_pt2nd", "pair_eta_vs_pair_pT", "Deta_Dphi", "eta1_eta2", "eta_avg_Deta", "eta_avg_Dphi", "minv_pair_pt_log",
+                                       // "Deta_vs_pT_1st", "Deta_zoomin_vs_pT_1st", "Dphi_vs_pT_1st", "Dphi_zoomin_vs_pT_1st", "DR_vs_pT_1st", "DR_zoomin_vs_pT_1st", "minv_zoomin_vs_pT_1st", "pair_pt_log_vs_pT_1st", "pt2nd_vs_pT_1st", 
+                                       // "Deta_vs_pair_pT", "Deta_zoomin_vs_pair_pT", "Dphi_vs_pair_pT", "Dphi_zoomin_vs_pair_pT", "DR_vs_pair_pT", "DR_zoomin_vs_pair_pT", "minv_zoomin_vs_pair_pT", "pair_pt_log_vs_pair_pT", "pt2nd_vs_pair_pT",
+                                      };
+    std::vector<std::string> var2DsProf = {
+       "DR_zoomin_vs_pt2nd",
+       "Deta_vs_pT_1st", "Deta_zoomin_vs_pT_1st", "Dphi_vs_pT_1st", "Dphi_zoomin_vs_pT_1st", "DR_vs_pT_1st", "DR_zoomin_vs_pT_1st", "minv_zoomin_vs_pT_1st", "pair_pt_log_vs_pT_1st", "pt2nd_vs_pT_1st", 
+       "Deta_vs_pair_pT", "Deta_zoomin_vs_pair_pT", "Dphi_vs_pair_pT", "Dphi_zoomin_vs_pair_pT", "DR_vs_pair_pT", "DR_zoomin_vs_pair_pT", "minv_zoomin_vs_pair_pT", "pair_pt_log_vs_pair_pT", "pt2nd_vs_pair_pT",
+    };
 
-   std::map<std::string,std::pair<bool,bool>> logaxes = {
-      {"pt2nd",{true,false}},
-      {"pair_pt_log",{true,false}},
-      {"pt2nd_vs_q_eta_2nd",{false,true}},
-      {"pair_eta_vs_pair_pT",{true,false}},
-      {"minv_pair_pt_log",{true,true}},
-      {"Deta_vs_pT_1st",{true,false}},
-      {"Deta_zoomin_vs_pT_1st",{true,false}},
-      {"Dphi_vs_pT_1st",{true,false}},
-      {"Dphi_zoomin_vs_pT_1st",{true,false}},
-      {"DR_vs_pT_1st",{true,false}},
-      {"DR_zoomin_vs_pT_1st",{true,false}},
-      {"minv_zoomin_vs_pT_1st",{true,false}},
-      {"pair_pt_log_vs_pT_1st",{true,true}},
-      {"pt2nd_vs_pT_1st",{true,true}},
-      {"Deta_vs_pair_pT",{true,false}},
-      {"Deta_zoomin_vs_pair_pT",{true,false}},
-      {"Dphi_vs_pair_pT",{true,false}},
-      {"Dphi_zoomin_vs_pair_pT",{true,false}},
-      {"DR_vs_pair_pT",{true,false}},
-      {"DR_zoomin_vs_pair_pT",{true,false}},
-      {"DR_zoomin_vs_pt2nd",{true,false}},
-      {"minv_zoomin_vs_pair_pT",{true,false}},
-      {"pair_pt_log_vs_pair_pT",{true,true}},
-      {"pt2nd_vs_pair_p",{true,true}},
-   };
+    std::map<std::string,std::pair<bool,bool>> logaxes = {
+       {"pt2nd",{true,false}},
+       {"pair_pt_log",{true,false}},
+       {"pt2nd_vs_q_eta_2nd",{false,true}},
+       {"pair_eta_vs_pair_pT",{true,false}},
+       {"minv_pair_pt_log",{true,true}},
+       {"Deta_vs_pT_1st",{true,false}},
+       {"Deta_zoomin_vs_pT_1st",{true,false}},
+       {"Dphi_vs_pT_1st",{true,false}},
+       {"Dphi_zoomin_vs_pT_1st",{true,false}},
+       {"DR_vs_pT_1st",{true,false}},
+       {"DR_zoomin_vs_pT_1st",{true,false}},
+       {"minv_zoomin_vs_pT_1st",{true,false}},
+       {"pair_pt_log_vs_pT_1st",{true,true}},
+       {"pt2nd_vs_pT_1st",{true,true}},
+       {"Deta_vs_pair_pT",{true,false}},
+       {"Deta_zoomin_vs_pair_pT",{true,false}},
+       {"Dphi_vs_pair_pT",{true,false}},
+       {"Dphi_zoomin_vs_pair_pT",{true,false}},
+       {"DR_vs_pair_pT",{true,false}},
+       {"DR_zoomin_vs_pair_pT",{true,false}},
+       {"DR_zoomin_vs_pt2nd",{true,false}},
+       {"minv_zoomin_vs_pair_pT",{true,false}},
+       {"pair_pt_log_vs_pair_pT",{true,true}},
+       {"pt2nd_vs_pair_p",{true,true}},
+    };
 
     std::map<std::string,std::pair<bool,bool>> var2DProj = {
         {"pt2nd_vs_q_eta_2nd", {true,  true}},   // PX (→ q_eta_2nd) and PY (→ pt2nd)
@@ -1324,12 +1364,12 @@ void trig_effcy_plot(){
     std::map<std::string,TrigEffPlotter::Rect> legOpSig   = {};
 
     std::vector<std::string> filters = {};
-    filters = {"_sepr"};
+    // filters = {"_sepr"};
     // filters = {"_excl"};
     // filters = {"_good_accept"};
-    // filters = {"_inv_w_by_single_mu_effcy"};
+    filters = {"_inv_w_by_single_mu_effcy"};
 
-    TrigEffPlotter plotter(24, var1Ds, true,
+    TrigEffPlotter plotter(24, var1Ds, false,
                            filters, logaxes,
                            var2Ds, var2DsProf,
                            legSigned, legSignal, legOpSig,
