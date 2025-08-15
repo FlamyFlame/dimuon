@@ -41,6 +41,7 @@ public:
 	// int scaleFactorCtrs[nCtrBins] = {1,1,2,3,3};
 	// std::vector<float> ctrbins = {0, 5, 10, 20, 30, 50, 80};
     std::vector<double> pT_bins_40;
+    std::vector<double> pT_bins_8;
     std::vector<double> pT_bins_60;
     std::vector<double> pT_bins_80;
 	
@@ -140,6 +141,7 @@ public:
   	
   	ParamsSet();
   	~ParamsSet(){}
+  	static std::vector<double> makeEtaTrigEffcyBinning();
   	void fillLogBinningArray(std::vector<double>& bins, int nBins, double low, double high);
   	template <typename T>
   	std::string write_single_bin_expr (std::string kinvar, T a, T b);
@@ -160,6 +162,86 @@ void ParamsSet::fillLogBinningArray(std::vector<double>& bins, int nBins, double
         bins.push_back(std::pow(10, logLow + i * logStep));
     }
 }
+
+#include <vector>
+#include <algorithm>
+#include <cmath>
+
+std::vector<double> ParamsSet::makeEtaTrigEffcyBinning(){
+    double minEdge = -2.4;
+    double maxEdge =  2.4;
+
+    // Medium-fine bin ranges (0.02)
+    std::vector<std::pair<double,double>> fineRanges = {
+        {-1.3, 1.0},
+        {-0.8, 1.4}
+    };
+
+    // Ultra-fine bin range (0.005)
+    std::pair<double,double> ultraFineRange = {-0.2, 0.2};
+
+    // Merge overlapping fine ranges first
+    std::sort(fineRanges.begin(), fineRanges.end());
+    std::vector<std::pair<double,double>> merged;
+    for (auto &r : fineRanges) {
+        if (merged.empty() || r.first > merged.back().second) {
+            merged.push_back(r);
+        } else {
+            merged.back().second = std::max(merged.back().second, r.second);
+        }
+    }
+
+    double ultraFineStep = 0.01;
+    double fineStep = 0.02;
+    double coarseStep = 0.1;
+
+    std::vector<double> edges;
+    double x = minEdge;
+
+    auto inUltraFineRange = [&](double val) {
+        return (val >= ultraFineRange.first && val < ultraFineRange.second);
+    };
+
+    auto inFineRange = [&](double val) {
+        for (auto &r : merged) {
+            if (val >= r.first && val < r.second)
+                return true;
+        }
+        return false;
+    };
+
+    edges.push_back(x);
+    while (x < maxEdge - 1e-12) {
+        double step;
+        if (inUltraFineRange(x))
+            step = ultraFineStep;
+        else if (inFineRange(x))
+            step = fineStep;
+        else
+            step = coarseStep;
+
+        // Snap exactly to boundaries when crossing ranges
+        if (x < ultraFineRange.first && ultraFineRange.first < x + step - 1e-12)
+            step = ultraFineRange.first - x;
+        if (x < ultraFineRange.second && ultraFineRange.second < x + step - 1e-12)
+            step = ultraFineRange.second - x;
+
+        for (auto &r : merged) {
+            if (x < r.first && r.first < x + step - 1e-12)
+                step = r.first - x;
+            if (x < r.second && r.second < x + step - 1e-12)
+                step = r.second - x;
+        }
+
+        x += step;
+        x = std::round(x * 1e12) / 1e12; // avoid FP noise
+        edges.push_back(x);
+    }
+
+    return edges;
+}
+
+
 
 
 double ParamsSet::PI = acos(-1.0);
@@ -280,7 +362,8 @@ ParamsSet::ParamsSet(){
   	}
 
     fillLogBinningArray(pT_bins_40,  18, 4.0, 40.0);  // 18 log bins from 4 to 40 GeV
-    fillLogBinningArray(pT_bins_60,  20, 4.0, 60.0);  // 20 log bins from 4 to 60 GeV
+    fillLogBinningArray(pT_bins_8 ,  20, 4.0, 8.0 );  // 15 log bins from 4 to 	8 GeV
+    fillLogBinningArray(pT_bins_60,  20, 8.0, 60.0);  // 20 log bins from 8 to 60 GeV
     fillLogBinningArray(pT_bins_80,  12, 8.0, 80.0);  // 12 log bins from 8 to 200 GeV
 
 
