@@ -83,6 +83,7 @@ public:
     // ---------------- ctor ---------------------------------------------------
     TrigEffPlotter(int runYear,
                    const StrVec& vars1D_in,
+                   bool          draw2mu4_user = false,
                    const StrVec& filter_suffixes = {},
                    const XYLog&  logopt_ = {},
                    const StrVec& vars2D_in = {},
@@ -90,7 +91,8 @@ public:
                    const std::map<std::string,Rect>& legSigned  = {},
                    const std::map<std::string,Rect>& legSignal  = {},
                    const std::map<std::string,Rect>& legOpSig   = {})
-        : fFile(nullptr),
+        : draw2mu4(draw2mu4_user),
+          fFile(nullptr),
           var1Ds(vars1D_in),
           var2Ds(vars2D_in),
           var2Ds_for_profile(vars2DProf_in),
@@ -165,6 +167,8 @@ private:
     bool isRun2pp{};
     std::string data_dir;
     std::string infile_name;
+
+    bool draw2mu4{};
 
     // ROOT interface
     TFile* fFile;
@@ -405,25 +409,30 @@ private:
     // =========================================================================
     // Clip numerator bins to denominator for the special single-mu weighting
     // =========================================================================
-    void clipNumeratorIfInvW(TH1* hNum, TH1* hDen, const std::string& fs) const
+    std::vector<std::pair<int, double>> clipNumeratorIfInvW(TH1* hNum, TH1* hDen, const std::string& fs) const
     {
-        if (fs != "_inv_w_by_single_mu_effcy") return;      // nothing to do
+        if (fs != "_inv_w_by_single_mu_effcy") return {};      // nothing to do
 
-        if (!hNum || !hDen) return;
+        if (!hNum || !hDen) return {};
 
         if (hNum->GetNbinsX() != hDen->GetNbinsX()) {
             std::cerr << "[TrigEffPlotter] ERROR: nBins mismatch ("
                       << hNum->GetName() << " vs " << hDen->GetName()
                       << ") in _inv_w_by_single_mu_effcy mode – skipped.\n";
-            return;                                         // skip this pair
+            return {};                                         // skip this pair
         }
+
+        std::vector<std::pair<int, double>> bins_above1; 
 
         for (int b = 1; b <= hNum->GetNbinsX(); ++b) {
             if (hNum->GetBinContent(b) > hDen->GetBinContent(b)) {
+                bins_above1.push_back(std::make_pair(b, hNum->GetBinContent(b) * 1. / hDen->GetBinContent(b)));
                 hNum->SetBinContent(b, hDen->GetBinContent(b));
                 // keep the original error bar – safest conservative choice
             }
         }
+
+        return bins_above1;
     }
 
     // =========================================================================
@@ -470,7 +479,12 @@ private:
         // Decide which filters will be looped over (default + comparisons)
         // ===============================================================
         StrVec filters = filter_suffix_list;
-        filters.insert(filters.begin(), ""); // ensure default first
+        bool plot_weighted = find(filters.begin(), filters.end(), "_inv_w_by_single_mu_effcy") != filters.end();
+        if (plot_weighted){ // inverted by weight --> ploted weighted first to set the y-axis range
+            filters.push_back("");
+        }else{
+            filters.insert(filters.begin(), ""); // no weighting, ensure default first
+        }
 
         // For each drawing mode iterate ---------------------------------------------------
         for (auto mode : {SignalDrawingMode::Signed, SignalDrawingMode::Signal}) {
@@ -489,8 +503,8 @@ private:
             if (isSigned) c->Divide(2,1);
 
             // Prepare legend & colour styles ----------------------------------------
-            Color_t colBase[3] = {kAzure+2, kRed+1, kGreen+2}; // 2mu4, mu4_mu4noL1, (spare)
-            Color_t colFilt[3] = {kAzure+1, kRed+2, kGreen+1}; // one-shade-lighter palette for filtered / comparison curves
+            Color_t colBase[3] = {kRed+1, kAzure+2, kGreen+2}; // 2mu4, mu4_mu4noL1, (spare)
+            Color_t colFilt[3] = {kOrange+7, kAzure+1, kGreen+1}; // one-shade-lighter palette for filtered / comparison curves
             Style_t mkrBase[3] = {24, 20, 22};
 
             // Iterate over pads (sign1 / sign2 or single)
@@ -526,9 +540,16 @@ private:
                     if (!filt_to_mode_map.at(fs).at(mode)) continue; // skip filter that should not appear in this mode
 
                     // For each (valid) trigger produce TGraphAsymmErrors
-                    std::vector<std::pair<std::string,int>> trigOrder = {
-                        {"2mu4", 0}, {"mu4_mu4noL1", 1}
-                    }; // order & colour idx; mu4 is denom
+                    std::vector<std::pair<std::string,int>> trigOrder; // order & colour idx
+
+                    if (isRun2pp) trigOrder = { {"2mu4", 0} };
+                    else{
+                        if (draw2mu4){
+                            trigOrder = { {"mu4_mu4noL1", 0}, {"2mu4", 1} }; 
+                        }else{
+                            trigOrder = { {"mu4_mu4noL1", 0} };
+                        }
+                    }
 
                     // denominator hist (mu4)
                     std::string mu4name = mappedTrigger(fs, "mu4");
@@ -549,15 +570,33 @@ private:
                         TH1* h_num = getHist<TH1>(numHist);
                         if (!h_num) continue;
 
-                        clipNumeratorIfInvW(h_num, h_denom, fs);
+                        auto bins_above1 = clipNumeratorIfInvW(h_num, h_denom, fs);
+
+                        double ymax = 1.;
 
                         // Build efficiency graph
                         auto g = new TGraphAsymmErrors();
                         g->BayesDivide(h_num, h_denom);
-                        Color_t useCol = (filterIdx==0) ? colBase[colourIdx]   // default
-                                                        : colFilt[colourIdx];  // filtered
+
+                        if (bins_above1.size() > 0){
+                            for (auto bpair : bins_above1){
+                                g->SetPointY(bpair.first, bpair.second);
+                                ymax = std::max(ymax, bpair.second);
+                            }
+                        }
+
+                        Color_t useCol;
+                        if (!plot_weighted){
+                            useCol = (filterIdx == 0) ? colBase[colourIdx]   // default
+                                                    : colFilt[colourIdx];  // filtered
+                        } else{ // plot weighted: default appears at last
+                            useCol = (filterIdx == filters.size() - 1) ? colBase[colourIdx]   // filtered
+                                                                       : colFilt[colourIdx];  // base
+                        }
+
                         SetStyle(g, useCol, mkrBase[colourIdx]);
-                        if (filterIdx > 0) {
+                        bool isFiltered = plot_weighted? (filterIdx < filters.size() - 1) : (filterIdx > 0);
+                        if (isFiltered) {
                             // comparison filter → dashed
                             g->SetLineStyle(2);
                             g->SetMarkerStyle(mkrBase[colourIdx]+4);
@@ -565,7 +604,7 @@ private:
 
                         if (!firstDrawn) {
                             g->Draw("APL");
-                            g->GetYaxis()->SetRangeUser(0.,1.);
+                            g->GetYaxis()->SetRangeUser(0.,ymax);
                             g->GetXaxis()->SetTitle(h_denom->GetXaxis()->GetTitle());
                             g->GetYaxis()->SetTitle("#epsilon");
                             
@@ -662,22 +701,38 @@ private:
                 TH1* h_num_sel = getHist<TH1>(numSel);
                 if (!h_num_s2 || !h_num_sel) continue;
 
-                clipNumeratorIfInvW(h_num_s2, h_den_sign2, fs);
-                clipNumeratorIfInvW(h_num_sel, h_den_sel, fs);
+                auto bins_above1_s2 = clipNumeratorIfInvW(h_num_s2, h_den_sign2, fs);
+                auto bins_above1_sel = clipNumeratorIfInvW(h_num_sel, h_den_sel, fs);
+
+                double ymax_opandsig = 1.;
 
                 // sign2 efficiency
                 auto g_s2 = new TGraphAsymmErrors();
                 g_s2->BayesDivide(h_num_s2, h_den_sign2);
                 SetStyle(g_s2, colourIdx==0? kAzure+2 : kRed+1, colourIdx==0?24:20);
 
+                if (bins_above1_s2.size() > 0){
+                    for (auto bpair : bins_above1_s2){
+                        g_s2->SetPointY(bpair.first, bpair.second);
+                        ymax_opandsig = std::max(ymax_opandsig, bpair.second);
+                    }
+                }
+
                 // sig‑sel efficiency
                 auto g_sel = new TGraphAsymmErrors();
                 g_sel->BayesDivide(h_num_sel, h_den_sel);
                 SetStyle(g_sel, colourIdx==0? kAzure+1 : kRed+2, colourIdx==0?25:24, 2, 2);
 
+                if (bins_above1_sel.size() > 0){
+                    for (auto bpair : bins_above1_sel){
+                        g_sel->SetPointY(bpair.first, bpair.second);
+                        ymax_opandsig = std::max(ymax_opandsig, bpair.second);
+                    }
+                }
+
                 if (firstCurve) {
                     g_s2->Draw("APL");                       // sets axes with first curve
-                    g_s2->GetYaxis()->SetRangeUser(0.,1.);
+                    g_s2->GetYaxis()->SetRangeUser(0., ymax_opandsig);
                     g_s2->GetXaxis()->SetTitle(h_den_sel->GetXaxis()->GetTitle());
                     g_s2->GetYaxis()->SetTitle("#epsilon");
 
@@ -715,7 +770,7 @@ private:
             
             std::string outdir = data_dir + "trig_effcy_plots" + (fs.empty() ? "" : fs);
             makeDirIfNeeded(outdir);
-            std::string fn = Form("%s/%s_trig_effcy%s%s.png", outdir.c_str(), var.c_str(), fs.c_str(), mode_to_png_suffix.at(SignalDrawingMode::OpAndSignal).c_str());
+            std::string fn = Form("%s/op_and_sig/%s_trig_effcy%s%s.png", outdir.c_str(), var.c_str(), fs.c_str(), mode_to_png_suffix.at(SignalDrawingMode::OpAndSignal).c_str());
             c->SaveAs(fn.c_str());
         }
     }
@@ -922,7 +977,7 @@ void trig_effcy_plot(){
     // filters = {"_good_accept"};
     filters = {"_inv_w_by_single_mu_effcy"};
 
-    TrigEffPlotter plotter(24, var1Ds, filters, logaxes, var2Ds, var2DsProf,
+    TrigEffPlotter plotter(24, var1Ds, true, filters, logaxes, var2Ds, var2DsProf,
                            legSigned, legSignal, legOpSig);
     plotter.Run();
 }
