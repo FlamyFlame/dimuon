@@ -15,6 +15,7 @@
 #include "vector"
 #include "TH1D.h"
 #include "TH2D.h"
+#include "TH3D.h"
 
 class MuonPairPlottingPP{
   	//updates histograms - centrality binned
@@ -301,7 +302,7 @@ private:
     TH2D* h_DR_0_2_vs_pt2nd_mu4_mu4noL1_w_single_b_sig_sel;
     TH1D* h_pt2nd_mu4_mu4noL1_w_single_b_sig_sel;
     TH2D* h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_w_single_b_sig_sel;
-    TH2D* h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr_divided_w_single_b_sig_sel;
+    TH2D* h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_divided_w_single_b_sig_sel;
     TH2D* h_pair_eta_vs_pair_pT_mu4_mu4noL1_w_single_b_sig_sel;
     TH2D* h_Deta_Dphi_mu4_mu4noL1_w_single_b_sig_sel;
     TH2D* h_eta1_eta2_mu4_mu4noL1_w_single_b_sig_sel;
@@ -348,7 +349,7 @@ private:
     TH2D* h_DR_0_2_vs_pt2nd_2mu4_w_single_b_sig_sel;
     TH1D* h_pt2nd_2mu4_w_single_b_sig_sel;
     TH2D* h_pt2nd_vs_q_eta_2nd_2mu4_w_single_b_sig_sel;
-    TH2D* h_pt2nd_vs_q_eta_2nd_2mu4_sepr_divided_w_single_b_sig_sel;
+    TH2D* h_pt2nd_vs_q_eta_2nd_2mu4_divided_w_single_b_sig_sel;
     TH2D* h_pair_eta_vs_pair_pT_2mu4_w_single_b_sig_sel;
     TH2D* h_Deta_Dphi_2mu4_w_single_b_sig_sel;
     TH2D* h_eta1_eta2_2mu4_w_single_b_sig_sel;
@@ -453,6 +454,28 @@ private:
     TH2D* h_pair_pt_log_vs_pair_pT_2mu4[ParamsSet::nSigns];
     TH2D* h_pt2nd_vs_pair_pT_2mu4[ParamsSet::nSigns];
 
+    // --------------------- 3D 2nd-muon histograms for trigger efficiency ---------------------------
+    // -------- signed --------
+    // 3D analogs with axes (phi_2nd, q*eta_2nd, pt_2nd)
+    TH3D* h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_sepr[ParamsSet::nSigns];
+    TH3D* h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_sepr[ParamsSet::nSigns];
+    TH3D* h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_sepr[ParamsSet::nSigns];
+
+    // divided (mu4_mu4noL1 / mu4 and 2mu4 / mu4)
+    TH3D* h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_sepr_divided[ParamsSet::nSigns];
+    TH3D* h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_sepr_divided[ParamsSet::nSigns];
+
+    // -------- signal --------
+    // 3D analogs with axes (phi_2nd, q*eta_2nd, pt_2nd)
+    TH3D* h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_w_single_b_sig_sel;
+    TH3D* h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_w_single_b_sig_sel;
+    TH3D* h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_w_single_b_sig_sel;
+
+    // divided (mu4_mu4noL1 / mu4 and 2mu4 / mu4)
+    TH3D* h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_divided_w_single_b_sig_sel;
+    TH3D* h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_divided_w_single_b_sig_sel;
+
+
     // --------------------- input files & trees & data for setting branches---------------------------
 
    	TFile *inFile;
@@ -512,7 +535,10 @@ public:
     // bool require_exclusive_mu4_for_mu4_mu4noL1 = false; // if true, require that only one muon fire mu4, to ensure unambiguous knowledge of which muon fires mu4noL1
     bool doTrigEffcy = true;
     bool filter_out_photo_resn_for_trig_effcy = true;
-  	MuonPairPlottingPP();
+
+    bool use_3D_2nd_muon = false; // if true, use 3D kinematics (phi, q*eta, pT) for single (2nd) muon trigger efficiencies
+  	
+    MuonPairPlottingPP();
   	~MuonPairPlottingPP(){}
   	void Run();
 
