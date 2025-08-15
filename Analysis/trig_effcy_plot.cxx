@@ -83,23 +83,27 @@ public:
     // ---------------- ctor ---------------------------------------------------
     TrigEffPlotter(int runYear,
                    const StrVec& vars1D_in,
+                   bool          draw2mu4_user = false,
                    const StrVec& filter_suffixes = {},
                    const XYLog&  logopt_ = {},
                    const StrVec& vars2D_in = {},
                    const StrVec& vars2DProf_in = {},
                    const std::map<std::string,Rect>& legSigned  = {},
                    const std::map<std::string,Rect>& legSignal  = {},
-                   const std::map<std::string,Rect>& legOpSig   = {})
-        : fFile(nullptr),
+                   const std::map<std::string,Rect>& legOpSig   = {},
+                   const std::map<std::string,std::pair<bool,bool>>& var2DProj = {})
+        : draw2mu4(draw2mu4_user),
+          fFile(nullptr),
           var1Ds(vars1D_in),
           var2Ds(vars2D_in),
           var2Ds_for_profile(vars2DProf_in),
           logopt(logopt_),
           filter_suffix_list(filter_suffixes)
     {
-        legendPosSigned  = legSigned;
-        legendPosSignal  = legSignal;
-        legendPosOpSignal= legOpSig;
+        legendPosSigned         = legSigned;
+        legendPosSignal         = legSignal;
+        legendPosOpSignal       = legOpSig;
+        var2Ds_for1Deffcy_proj  = var2DProj;
 
         isRun2pp = (runYear % 2000 == 17);
         switch (runYear % 2000) {
@@ -153,9 +157,8 @@ public:
             }
         }
 
-
-
-
+        // --- project selected 2D histograms into 1D efficiencies ----------------
+        plot2Dto1DEffcyProj(); 
     }
 
 private:
@@ -166,6 +169,8 @@ private:
     std::string data_dir;
     std::string infile_name;
 
+    bool draw2mu4{};
+
     // ROOT interface
     TFile* fFile;
 
@@ -173,6 +178,9 @@ private:
     StrVec var1Ds;
     StrVec var2Ds;
     StrVec var2Ds_for_profile;
+    
+    // project selected 2D hists to 1D (X/Y) and plot efficiencies like 1D
+    std::map<std::string, std::pair<bool,bool>> var2Ds_for1Deffcy_proj; // key: "Y_vs_X" → {projX, projY}
 
     // user options
     XYLog logopt;
@@ -405,25 +413,30 @@ private:
     // =========================================================================
     // Clip numerator bins to denominator for the special single-mu weighting
     // =========================================================================
-    void clipNumeratorIfInvW(TH1* hNum, TH1* hDen, const std::string& fs) const
+    std::vector<std::pair<int, double>> clipNumeratorIfInvW(TH1* hNum, TH1* hDen, const std::string& fs) const
     {
-        if (fs != "_inv_w_by_single_mu_effcy") return;      // nothing to do
+        if (fs != "_inv_w_by_single_mu_effcy") return {};      // nothing to do
 
-        if (!hNum || !hDen) return;
+        if (!hNum || !hDen) return {};
 
         if (hNum->GetNbinsX() != hDen->GetNbinsX()) {
             std::cerr << "[TrigEffPlotter] ERROR: nBins mismatch ("
                       << hNum->GetName() << " vs " << hDen->GetName()
                       << ") in _inv_w_by_single_mu_effcy mode – skipped.\n";
-            return;                                         // skip this pair
+            return {};                                         // skip this pair
         }
+
+        std::vector<std::pair<int, double>> bins_above1; 
 
         for (int b = 1; b <= hNum->GetNbinsX(); ++b) {
             if (hNum->GetBinContent(b) > hDen->GetBinContent(b)) {
+                bins_above1.push_back(std::make_pair(b, hNum->GetBinContent(b) * 1. / hDen->GetBinContent(b)));
                 hNum->SetBinContent(b, hDen->GetBinContent(b));
                 // keep the original error bar – safest conservative choice
             }
         }
+
+        return bins_above1;
     }
 
     // =========================================================================
@@ -435,6 +448,44 @@ private:
         double xmin = hRef->GetXaxis()->GetBinLowEdge(1);
         double xmax = hRef->GetXaxis()->GetBinLowEdge(hRef->GetNbinsX() + 1);
         g->GetXaxis()->SetRangeUser(xmin, xmax);
+    }
+
+    // =========================================================================
+    // Split "Y_vs_X" → {"Y","X"}; if not matching, returns {var,""}
+    // =========================================================================
+    std::pair<std::string,std::string> parseYvsX(const std::string& var2d) const {
+        auto pos = var2d.find("_vs_");
+        if (pos == std::string::npos) return {var2d, ""};
+        return { var2d.substr(0, pos), var2d.substr(pos+4) };
+    }
+
+    // =========================================================================
+    // re-use legend placement maps with a 1D variable key (X or Y)
+    // =========================================================================
+    TrigEffPlotter::Rect legendBoxFor1DVar(const std::string& v1d,
+                                           SignalDrawingMode mode,
+                                           const StrVec& filters) const
+    {
+        Rect def = (mode==SignalDrawingMode::Signed)
+                   ? Rect{0.43,0.12,0.80,0.35}
+                   : Rect{0.50,0.14,0.77,0.30};
+
+        if      (mode==SignalDrawingMode::Signed  && legendPosSigned.count(v1d))  return legendPosSigned.at(v1d);
+        else if (mode==SignalDrawingMode::Signal  && legendPosSignal.count(v1d))  return legendPosSignal.at(v1d);
+        else if (mode==SignalDrawingMode::OpAndSignal && legendPosOpSignal.count(v1d)) return legendPosOpSignal.at(v1d);
+
+        // fallback: auto-resize by filter label length (same as in plot1D)
+        auto autoBox = [&](Rect r, const StrVec& fsList)->Rect {
+            size_t L=0;
+            for (auto& fs : fsList) if (!fs.empty()) {
+                std::string lab = (filt_suffix_to_label_map.count(fs) ? filt_suffix_to_label_map.at(fs)
+                                                                      : (fs[0]=='_'? fs.substr(1):fs));
+                L = std::max(L, lab.size());
+            }
+            if (L>4) { double extra = std::min(0.01*(L-4), 0.20); r[0]=std::max(0.05,r[0]-extra); }
+            return r;
+        };
+        return autoBox(def, filters);
     }
 
     // =========================================================================
@@ -470,7 +521,12 @@ private:
         // Decide which filters will be looped over (default + comparisons)
         // ===============================================================
         StrVec filters = filter_suffix_list;
-        filters.insert(filters.begin(), ""); // ensure default first
+        bool plot_weighted = find(filters.begin(), filters.end(), "_inv_w_by_single_mu_effcy") != filters.end();
+        if (plot_weighted){ // inverted by weight --> ploted weighted first to set the y-axis range
+            filters.push_back("");
+        }else{
+            filters.insert(filters.begin(), ""); // no weighting, ensure default first
+        }
 
         // For each drawing mode iterate ---------------------------------------------------
         for (auto mode : {SignalDrawingMode::Signed, SignalDrawingMode::Signal}) {
@@ -489,8 +545,8 @@ private:
             if (isSigned) c->Divide(2,1);
 
             // Prepare legend & colour styles ----------------------------------------
-            Color_t colBase[3] = {kAzure+2, kRed+1, kGreen+2}; // 2mu4, mu4_mu4noL1, (spare)
-            Color_t colFilt[3] = {kAzure+1, kRed+2, kGreen+1}; // one-shade-lighter palette for filtered / comparison curves
+            Color_t colBase[3] = {kRed+1, kAzure+2, kGreen+2}; // 2mu4, mu4_mu4noL1, (spare)
+            Color_t colFilt[3] = {kOrange+7, kAzure+1, kGreen+1}; // one-shade-lighter palette for filtered / comparison curves
             Style_t mkrBase[3] = {24, 20, 22};
 
             // Iterate over pads (sign1 / sign2 or single)
@@ -526,9 +582,16 @@ private:
                     if (!filt_to_mode_map.at(fs).at(mode)) continue; // skip filter that should not appear in this mode
 
                     // For each (valid) trigger produce TGraphAsymmErrors
-                    std::vector<std::pair<std::string,int>> trigOrder = {
-                        {"2mu4", 0}, {"mu4_mu4noL1", 1}
-                    }; // order & colour idx; mu4 is denom
+                    std::vector<std::pair<std::string,int>> trigOrder; // order & colour idx
+
+                    if (isRun2pp) trigOrder = { {"2mu4", 0} };
+                    else{
+                        if (draw2mu4){
+                            trigOrder = { {"mu4_mu4noL1", 0}, {"2mu4", 1} }; 
+                        }else{
+                            trigOrder = { {"mu4_mu4noL1", 0} };
+                        }
+                    }
 
                     // denominator hist (mu4)
                     std::string mu4name = mappedTrigger(fs, "mu4");
@@ -549,15 +612,33 @@ private:
                         TH1* h_num = getHist<TH1>(numHist);
                         if (!h_num) continue;
 
-                        clipNumeratorIfInvW(h_num, h_denom, fs);
+                        auto bins_above1 = clipNumeratorIfInvW(h_num, h_denom, fs);
+
+                        double ymax = 1.;
 
                         // Build efficiency graph
                         auto g = new TGraphAsymmErrors();
                         g->BayesDivide(h_num, h_denom);
-                        Color_t useCol = (filterIdx==0) ? colBase[colourIdx]   // default
-                                                        : colFilt[colourIdx];  // filtered
+
+                        if (bins_above1.size() > 0){
+                            for (auto bpair : bins_above1){
+                                g->SetPointY(bpair.first, bpair.second);
+                                ymax = std::max(ymax, bpair.second);
+                            }
+                        }
+
+                        Color_t useCol;
+                        if (!plot_weighted){
+                            useCol = (filterIdx == 0) ? colBase[colourIdx]   // default
+                                                    : colFilt[colourIdx];  // filtered
+                        } else{ // plot weighted: default appears at last
+                            useCol = (filterIdx == filters.size() - 1) ? colBase[colourIdx]   // filtered
+                                                                       : colFilt[colourIdx];  // base
+                        }
+
                         SetStyle(g, useCol, mkrBase[colourIdx]);
-                        if (filterIdx > 0) {
+                        bool isFiltered = plot_weighted? (filterIdx < filters.size() - 1) : (filterIdx > 0);
+                        if (isFiltered) {
                             // comparison filter → dashed
                             g->SetLineStyle(2);
                             g->SetMarkerStyle(mkrBase[colourIdx]+4);
@@ -565,7 +646,7 @@ private:
 
                         if (!firstDrawn) {
                             g->Draw("APL");
-                            g->GetYaxis()->SetRangeUser(0.,1.);
+                            g->GetYaxis()->SetRangeUser(0.,ymax);
                             g->GetXaxis()->SetTitle(h_denom->GetXaxis()->GetTitle());
                             g->GetYaxis()->SetTitle("#epsilon");
                             
@@ -662,22 +743,38 @@ private:
                 TH1* h_num_sel = getHist<TH1>(numSel);
                 if (!h_num_s2 || !h_num_sel) continue;
 
-                clipNumeratorIfInvW(h_num_s2, h_den_sign2, fs);
-                clipNumeratorIfInvW(h_num_sel, h_den_sel, fs);
+                auto bins_above1_s2 = clipNumeratorIfInvW(h_num_s2, h_den_sign2, fs);
+                auto bins_above1_sel = clipNumeratorIfInvW(h_num_sel, h_den_sel, fs);
+
+                double ymax_opandsig = 1.;
 
                 // sign2 efficiency
                 auto g_s2 = new TGraphAsymmErrors();
                 g_s2->BayesDivide(h_num_s2, h_den_sign2);
                 SetStyle(g_s2, colourIdx==0? kAzure+2 : kRed+1, colourIdx==0?24:20);
 
+                if (bins_above1_s2.size() > 0){
+                    for (auto bpair : bins_above1_s2){
+                        g_s2->SetPointY(bpair.first, bpair.second);
+                        ymax_opandsig = std::max(ymax_opandsig, bpair.second);
+                    }
+                }
+
                 // sig‑sel efficiency
                 auto g_sel = new TGraphAsymmErrors();
                 g_sel->BayesDivide(h_num_sel, h_den_sel);
                 SetStyle(g_sel, colourIdx==0? kAzure+1 : kRed+2, colourIdx==0?25:24, 2, 2);
 
+                if (bins_above1_sel.size() > 0){
+                    for (auto bpair : bins_above1_sel){
+                        g_sel->SetPointY(bpair.first, bpair.second);
+                        ymax_opandsig = std::max(ymax_opandsig, bpair.second);
+                    }
+                }
+
                 if (firstCurve) {
                     g_s2->Draw("APL");                       // sets axes with first curve
-                    g_s2->GetYaxis()->SetRangeUser(0.,1.);
+                    g_s2->GetYaxis()->SetRangeUser(0., ymax_opandsig);
                     g_s2->GetXaxis()->SetTitle(h_den_sel->GetXaxis()->GetTitle());
                     g_s2->GetYaxis()->SetTitle("#epsilon");
 
@@ -715,7 +812,7 @@ private:
             
             std::string outdir = data_dir + "trig_effcy_plots" + (fs.empty() ? "" : fs);
             makeDirIfNeeded(outdir);
-            std::string fn = Form("%s/%s_trig_effcy%s%s.png", outdir.c_str(), var.c_str(), fs.c_str(), mode_to_png_suffix.at(SignalDrawingMode::OpAndSignal).c_str());
+            std::string fn = Form("%s/op_and_sig/%s_trig_effcy%s%s.png", outdir.c_str(), var.c_str(), fs.c_str(), mode_to_png_suffix.at(SignalDrawingMode::OpAndSignal).c_str());
             c->SaveAs(fn.c_str());
         }
     }
@@ -860,6 +957,311 @@ private:
         cS->SaveAs(Form("%s/%s_profile%s_w_sig_sel.png",
                         outdir.c_str(),var.c_str(),fs.c_str()));
     }
+
+    // ======================================================================
+    // Project selected 2D histograms to 1D (X/Y) and plot efficiencies like plot1D()
+    // ======================================================================
+    void plot2Dto1DEffcyProj()
+    {
+        if (var2Ds_for1Deffcy_proj.empty()) return;
+
+        // default + comparisons (keep weighted filter behaviour consistent with plot1D)
+        StrVec filters = filter_suffix_list;
+        const bool hasWeighted = (std::find(filters.begin(), filters.end(),
+                                            std::string("_inv_w_by_single_mu_effcy")) != filters.end());
+        if (hasWeighted) filters.push_back(""); else filters.insert(filters.begin(), "");
+
+        for (const auto& kv : var2Ds_for1Deffcy_proj)
+        {
+            const std::string& var2d = kv.first;
+            const bool doPX = kv.second.first;   // ProjectionX → onto X (right side of "..._vs_")
+            const bool doPY = kv.second.second;  // ProjectionY → onto Y (left side of "..._vs_")
+
+            const auto parsed = parseYvsX(var2d);
+            const std::string& yVar = parsed.first;
+            const std::string& xVar = parsed.second;
+
+            for (int proj = 0; proj < 2; ++proj)
+            {
+                const bool isProjX = (proj == 0);
+                if ((isProjX && !doPX) || (!isProjX && !doPY)) continue;
+
+                const std::string projVar = isProjX ? (xVar.empty() ? var2d : xVar)
+                                                    : (yVar.empty() ? var2d : yVar);
+                if (projVar.empty()) continue; // malformed name
+
+                // ---------------- Signed / Signal (shared canvas structure) ----------------
+                for (auto mode : {SignalDrawingMode::Signed, SignalDrawingMode::Signal})
+                {
+                    // mode gate (same rule as plot1D)
+                    bool modeNeeded = filter_suffix_list.empty();
+                    if (!modeNeeded) {
+                        for (const auto& fs : filter_suffix_list) {
+                            if (filt_to_mode_map.at(fs).at(mode)) { modeNeeded = true; break; }
+                        }
+                    }
+                    if (!modeNeeded) continue;
+
+                    const bool isSigned = (mode == SignalDrawingMode::Signed);
+                    const int  nPads    = isSigned ? 2 : 1;
+                    const char* signSuffixes[2] = {"_sign1", "_sign2"};
+
+                    // canvas
+                    std::string cname = Form("c_proj_%s_%s_%s",
+                                             var2d.c_str(),
+                                             isProjX ? "PX" : "PY",
+                                             isSigned ? "signed" : "signal");
+                    TCanvas* c = new TCanvas(cname.c_str(), "", isSigned ? 1200 : 700, 500);
+                    if (isSigned) c->Divide(2,1);
+
+                    // legend box (reuse 1D var positioning)
+                    Rect box = legendBoxFor1DVar(projVar, mode, filter_suffix_list);
+
+                    // styles: [0] → mu4_mu4noL1 (red), [1] → 2mu4 (azure)
+                    Color_t colBase[2] = {kRed+1,   kAzure+2};
+                    Color_t colFilt[2] = {kRed+2,   kAzure+1};
+                    Style_t mkrBase[2] = {20, 24};
+
+                    for (int pad = 0; pad < nPads; ++pad)
+                    {
+                        TPad* P = isSigned ? (TPad*)c->cd(pad+1) : (TPad*)c->cd();
+                        (void)P;
+                        auto xy = xyFor(projVar);
+                        gPad->SetLogx(xy.first);
+                        gPad->SetLogy(xy.second);
+
+                        TLegend* leg = new TLegend(box[0], box[1], box[2], box[3]);
+                        leg->SetBorderSize(0);
+
+                        bool firstDrawn = false;
+                        int  filterIdx  = 0;
+
+                        for (const auto& fs : filters)
+                        {
+                            if (!filt_to_mode_map.at(fs).at(mode)) { ++filterIdx; continue; }
+
+                            // mu4 denominator 2D → project
+                            const std::string mu4name = mappedTrigger(fs, "mu4");
+                            if (mu4name.empty() || mu4name == "NONE") { ++filterIdx; continue; }
+
+                            std::string denom2D = Form("h_%s_%s%s",
+                                var2d.c_str(), mu4name.c_str(),
+                                (mode == SignalDrawingMode::Signal ? "_w_single_b_sig_sel"
+                                                                   : signSuffixes[pad]));
+                            TH2* hDen2D = getHist<TH2>(denom2D);
+                            if (!hDen2D || hDen2D->GetDimension() != 2) { ++filterIdx; continue; }
+
+                            std::unique_ptr<TH1> hDen1D(
+                                isProjX ? hDen2D->ProjectionX(Form("px_%s_%d_den", var2d.c_str(), pad), 1, -1, "e")
+                                        : hDen2D->ProjectionY(Form("py_%s_%d_den", var2d.c_str(), pad), 1, -1, "e")
+                            );
+                            if (!hDen1D) { ++filterIdx; continue; }
+
+                            // triggers to overlay (skip mu4; it’s denom)
+                            std::vector<std::pair<std::string,int>> trigOrder =
+                                isRun2pp ? std::vector<std::pair<std::string,int>>{{"2mu4", 1}}
+                                         : std::vector<std::pair<std::string,int>>{{"mu4_mu4noL1", 0}, {"2mu4", 1}};
+
+                            for (const auto& tp : trigOrder)
+                            {
+                                const std::string& trg = tp.first;
+                                const int idx = tp.second;
+
+                                const std::string mapped = mappedTrigger(fs, trg);
+                                if (mapped.empty() || mapped == "NONE") continue;
+
+                                std::string num2D = Form("h_%s_%s%s",
+                                    var2d.c_str(), mapped.c_str(),
+                                    (mode == SignalDrawingMode::Signal ? "_w_single_b_sig_sel"
+                                                                       : signSuffixes[pad]));
+                                TH2* hNum2D = getHist<TH2>(num2D);
+                                if (!hNum2D || hNum2D->GetDimension() != 2) continue;
+
+                                std::unique_ptr<TH1> hNum1D(
+                                    isProjX ? hNum2D->ProjectionX(Form("px_%s_%d_%s", var2d.c_str(), pad, trg.c_str()), 1, -1, "e")
+                                            : hNum2D->ProjectionY(Form("py_%s_%d_%s", var2d.c_str(), pad, trg.c_str()), 1, -1, "e")
+                                );
+                                if (!hNum1D) continue;
+
+                                // special weighting guard
+                                clipNumeratorIfInvW(hNum1D.get(), hDen1D.get(), fs);
+
+                                // graph
+                                auto g = new TGraphAsymmErrors();
+                                g->BayesDivide(hNum1D.get(), hDen1D.get());
+
+                                // choose colours: default vs filtered
+                                Color_t useCol = (!hasWeighted)
+                                                 ? ((filterIdx == 0) ? colBase[idx] : colFilt[idx])
+                                                 : ((filterIdx == (int)filters.size()-1) ? colBase[idx] : colFilt[idx]);
+                                SetStyle(g, useCol, mkrBase[idx]);
+
+                                const bool isFiltered = (!hasWeighted) ? (filterIdx > 0)
+                                                                       : (filterIdx < (int)filters.size()-1);
+                                if (isFiltered) {
+                                    g->SetLineStyle(2);
+                                    g->SetMarkerStyle(mkrBase[idx] + 4);
+                                }
+
+                                if (!firstDrawn) {
+                                    g->Draw("APL");
+                                    g->GetYaxis()->SetRangeUser(0., 1.);
+                                    g->GetXaxis()->SetTitle(hDen1D->GetXaxis()->GetTitle());
+                                    g->GetYaxis()->SetTitle("#epsilon");
+                                    if (xy.first) adjustLogXRange(g, hDen1D.get());
+                                    firstDrawn = true;
+                                } else {
+                                    g->Draw("PL SAME");
+                                }
+
+                                // legend text
+                                std::string fs_label;
+                                if (!fs.empty()) {
+                                    fs_label = (filt_suffix_to_label_map.count(fs)
+                                               ? filt_suffix_to_label_map.at(fs)
+                                               : (fs[0] == '_' ? fs.substr(1) : fs));
+                                }
+                                std::string label = trg;
+                                if (!fs_label.empty()) label += ", " + fs_label;
+                                leg->AddEntry(g, label.c_str(), "lep");
+                            }
+                            ++filterIdx;
+                        }
+                        leg->Draw();
+                    }
+
+                    // output (use projected 1D var name)
+                    std::string pngDir = data_dir + "trig_effcy_plots";
+                    for (const auto& fs : filter_suffix_list) {
+                        pngDir += fs;
+                    }
+                    makeDirIfNeeded(pngDir);
+                    std::string fn = pngDir + "/";
+                    fn += projVar + "_trig_effcy";
+                    for (const auto& fsu : filter_suffix_list) fn += fsu; // keep your naming convention
+                    fn += mode_to_png_suffix.at(mode) + ".png";
+                    c->SaveAs(fn.c_str());
+                }
+
+                // ---------------- OpAndSignal (one file per filter) ----------------
+                {
+                    StrVec opFilters = filter_suffix_list.empty() ? StrVec{""} : filter_suffix_list;
+                    for (const auto& fs : opFilters)
+                    {
+                        if (!fs.empty() && !filt_to_mode_map.at(fs).at(SignalDrawingMode::OpAndSignal)) continue;
+
+                        const std::string mu4name = mappedTrigger(fs, "mu4");
+                        if (mu4name.empty() || mu4name == "NONE") continue;
+
+                        // denominators (2D → project)
+                        std::string den2D_s2  = Form("h_%s_%s_sign2",                 var2d.c_str(), mu4name.c_str());
+                        std::string den2D_sel = Form("h_%s_%s_w_single_b_sig_sel",    var2d.c_str(), mu4name.c_str());
+                        TH2* hDen2D_s2  = getHist<TH2>(den2D_s2);
+                        TH2* hDen2D_sel = getHist<TH2>(den2D_sel);
+                        if (!hDen2D_s2 || !hDen2D_sel) continue;
+
+                        std::unique_ptr<TH1> hDen1D_s2(
+                            isProjX ? hDen2D_s2->ProjectionX(Form("px_%s_den_s2",  var2d.c_str()), 1, -1, "e")
+                                    : hDen2D_s2->ProjectionY(Form("py_%s_den_s2",  var2d.c_str()), 1, -1, "e")
+                        );
+                        std::unique_ptr<TH1> hDen1D_sel(
+                            isProjX ? hDen2D_sel->ProjectionX(Form("px_%s_den_sel", var2d.c_str()), 1, -1, "e")
+                                    : hDen2D_sel->ProjectionY(Form("py_%s_den_sel", var2d.c_str()), 1, -1, "e")
+                        );
+                        if (!hDen1D_s2 || !hDen1D_sel) continue;
+
+                        auto xy = xyFor(projVar);
+                        TCanvas* c = new TCanvas(
+                            Form("c_opandsig_proj_%s_%s_%s", var2d.c_str(), (isProjX ? "PX" : "PY"), fs.c_str()),
+                            "", 700, 500
+                        );
+                        c->SetLogx(xy.first);
+                        c->SetLogy(xy.second);
+
+                        Rect Lbox = legendBoxFor1DVar(projVar, SignalDrawingMode::OpAndSignal, filter_suffix_list);
+                        TLegend* L = new TLegend(Lbox[0], Lbox[1], Lbox[2], Lbox[3]);
+                        L->SetBorderSize(0);
+
+                        bool firstCurve = true;
+                        int  colourIdx  = 0;  // 0 → Azure, 1 → Red
+
+                        for (const std::string& trg : {std::string("2mu4"), std::string("mu4_mu4noL1")})
+                        {
+                            const std::string mapped = mappedTrigger(fs, trg);
+                            if (mapped.empty() || mapped == "NONE") continue;
+
+                            std::string num2D_s2  = Form("h_%s_%s_sign2",              var2d.c_str(), mapped.c_str());
+                            std::string num2D_sel = Form("h_%s_%s_w_single_b_sig_sel", var2d.c_str(), mapped.c_str());
+                            TH2* hNum2D_s2  = getHist<TH2>(num2D_s2);
+                            TH2* hNum2D_sel = getHist<TH2>(num2D_sel);
+                            if (!hNum2D_s2 || !hNum2D_sel) continue;
+
+                            std::unique_ptr<TH1> hNum1D_s2(
+                                isProjX ? hNum2D_s2->ProjectionX(Form("px_%s_%s_s2",  var2d.c_str(), trg.c_str()), 1, -1, "e")
+                                        : hNum2D_s2->ProjectionY(Form("py_%s_%s_s2",  var2d.c_str(), trg.c_str()), 1, -1, "e")
+                            );
+                            std::unique_ptr<TH1> hNum1D_sel(
+                                isProjX ? hNum2D_sel->ProjectionX(Form("px_%s_%s_sel", var2d.c_str(), trg.c_str()), 1, -1, "e")
+                                        : hNum2D_sel->ProjectionY(Form("py_%s_%s_sel", var2d.c_str(), trg.c_str()), 1, -1, "e")
+                            );
+                            if (!hNum1D_s2 || !hNum1D_sel) continue;
+
+                            clipNumeratorIfInvW(hNum1D_s2.get(),  hDen1D_s2.get(),  fs);
+                            clipNumeratorIfInvW(hNum1D_sel.get(), hDen1D_sel.get(), fs);
+
+                            auto g_s2  = new TGraphAsymmErrors();
+                            g_s2->BayesDivide(hNum1D_s2.get(),  hDen1D_s2.get());
+                            SetStyle(g_s2,  colourIdx==0 ? kAzure+2 : kRed+1, colourIdx==0 ? 24 : 20);
+
+                            auto g_sel = new TGraphAsymmErrors();
+                            g_sel->BayesDivide(hNum1D_sel.get(), hDen1D_sel.get());
+                            SetStyle(g_sel, colourIdx==0 ? kAzure+1 : kRed+2, colourIdx==0 ? 25 : 24, 2, 2);
+
+                            if (firstCurve) {
+                                g_sel->Draw("APL");  // draw dashed first so solid stays visible
+                                g_sel->GetYaxis()->SetRangeUser(0., 1.);
+                                g_sel->GetXaxis()->SetTitle(hDen1D_sel->GetXaxis()->GetTitle());
+                                g_sel->GetYaxis()->SetTitle("#epsilon");
+                                if (xy.first) adjustLogXRange(g_sel, hDen1D_sel.get());
+                                firstCurve = false;
+                            } else {
+                                g_sel->Draw("PL SAME");
+                            }
+                            g_s2->Draw("PL SAME");
+
+                            // legend text
+                            std::string fs_label;
+                            if (!fs.empty()) {
+                                fs_label = (filt_suffix_to_label_map.count(fs)
+                                           ? filt_suffix_to_label_map.at(fs)
+                                           : (fs[0] == '_' ? fs.substr(1) : fs));
+                            }
+                            std::string labS2  = trg + " (all op sign";
+                            std::string labSel = trg + " (single b signal";
+                            if (!fs_label.empty()) {
+                                labS2  += ", " + fs_label;
+                                labSel += ", " + fs_label;
+                            }
+                            labS2  += ")";
+                            labSel += ")";
+                            L->AddEntry(g_s2,  labS2.c_str(),  "lep");
+                            L->AddEntry(g_sel, labSel.c_str(), "lep");
+
+                            ++colourIdx;
+                        }
+                        L->Draw();
+
+                        std::string outdir = data_dir + "trig_effcy_plots" + (fs.empty() ? "" : fs);
+                        makeDirIfNeeded(outdir + "/op_and_sig");
+                        std::string fn = Form("%s/op_and_sig/%s_trig_effcy%s%s.png",
+                                              outdir.c_str(), projVar.c_str(), fs.c_str(),
+                                              mode_to_png_suffix.at(SignalDrawingMode::OpAndSignal).c_str());
+                        c->SaveAs(fn.c_str());
+                    }
+                }
+            }
+        }
+    }
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -904,6 +1306,11 @@ void trig_effcy_plot(){
       {"pt2nd_vs_pair_p",{true,true}},
    };
 
+    std::map<std::string,std::pair<bool,bool>> var2DProj = {
+        {"pt2nd_vs_q_eta_2nd", {true,  true}},   // PX (→ q_eta_2nd) and PY (→ pt2nd)
+        {"pt2nd_vs_phi2nd",    {true,  false}}  // PX only (→ phi2nd)
+    };
+
     // TrigEffPlotter::Rect rSigned  = {0.60,0.15,0.88,0.35};
     // TrigEffPlotter::Rect rSignal  = {0.20,0.70,0.50,0.88};
     // TrigEffPlotter::Rect rOpSig   = {0.60,0.15,0.88,0.31};
@@ -917,12 +1324,16 @@ void trig_effcy_plot(){
     std::map<std::string,TrigEffPlotter::Rect> legOpSig   = {};
 
     std::vector<std::string> filters = {};
-    // filters = {"_sepr"};
+    filters = {"_sepr"};
     // filters = {"_excl"};
     // filters = {"_good_accept"};
-    filters = {"_inv_w_by_single_mu_effcy"};
+    // filters = {"_inv_w_by_single_mu_effcy"};
 
-    TrigEffPlotter plotter(24, var1Ds, filters, logaxes, var2Ds, var2DsProf,
-                           legSigned, legSignal, legOpSig);
+    TrigEffPlotter plotter(24, var1Ds, true,
+                           filters, logaxes,
+                           var2Ds, var2DsProf,
+                           legSigned, legSignal, legOpSig,
+                           var2DProj);
+
     plotter.Run();
 }
