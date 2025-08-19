@@ -287,14 +287,6 @@ void MuonPairPlottingPP::InitHists(){
                  neta_bins_trig_effcy, eta_bins_trig_effcy.data(),
                  int(pT_bins_single_muon.size())-1, pT_bins_single_muon.data());
 
-    // mu4 signal divided
-    h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_divided_w_single_b_sig_sel =
-        new TH3D("h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_divided_w_single_b_sig_sel",
-                 ";#phi_{2nd};q#eta_{2nd};p_{T,2nd} [GeV]",
-                 nphi_bins_trig_effcy, -pms.PI, pms.PI,
-                 neta_bins_trig_effcy, eta_bins_trig_effcy.data(),
-                 int(pT_bins_single_muon.size())-1, pT_bins_single_muon.data());
-
     // mu4_mu4noL1 signal divided
     h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_divided_w_single_b_sig_sel =
         new TH3D("h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_divided_w_single_b_sig_sel",
@@ -566,14 +558,6 @@ void MuonPairPlottingPP::InitHists(){
         // 2mu4 sepr
         h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_sepr[isign] =
             new TH3D(Form("h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_sepr_sign%d",isign+1),
-                     ";#phi_{2nd};q#eta_{2nd};p_{T,2nd} [GeV]",
-                     nphi_bins_trig_effcy, -pms.PI, pms.PI,
-                     neta_bins_trig_effcy, eta_bins_trig_effcy.data(),
-                     int(pT_bins_single_muon.size())-1, pT_bins_single_muon.data());
-
-        // mu4 sepr divided
-        h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_sepr_divided[isign] =
-            new TH3D(Form("h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_sepr_divided_sign%d",isign+1),
                      ";#phi_{2nd};q#eta_{2nd};p_{T,2nd} [GeV]",
                      nphi_bins_trig_effcy, -pms.PI, pms.PI,
                      neta_bins_trig_effcy, eta_bins_trig_effcy.data(),
@@ -1084,9 +1068,7 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
                 h_Deta_Dphi_mu4_mu4noL1_excl_sepr[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
                 h_eta_avg_Deta_mu4_mu4noL1_excl_sepr[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
             }
-        }
 
-        if (passSeparated[nsign]){
             h_Dphi_mu4_mu4noL1_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
             h_Dphi_zoomin_mu4_mu4noL1_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
             h_DR_mu4_mu4noL1_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
@@ -1101,7 +1083,6 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
                 h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr[nsign]->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
                 h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_sepr[nsign]->Fill(m1phi[nsign], m1charge[nsign]*m1eta[nsign], m1pt[nsign], weight[nsign]);
             }
-
 
             h_pair_eta_vs_pair_pT_mu4_mu4noL1_sepr[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
             h_eta1_eta2_mu4_mu4noL1_sepr[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
@@ -1118,11 +1099,12 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
                 if (mu1PassSingle[nsign]){
                     h_pt2nd_mu4_mu4noL1_excl_sepr[nsign]->Fill(m2pt[nsign],weight[nsign]);
                     h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl_sepr[nsign]->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
+                }
 
                 if (mu2PassSingle[nsign]){
                     h_pt2nd_mu4_mu4noL1_excl_sepr[nsign]->Fill(m1pt[nsign],weight[nsign]);
                     h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl_sepr[nsign]->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
-
+                }
 
                 h_pair_eta_vs_pair_pT_mu4_mu4noL1_excl_sepr[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
                 h_eta1_eta2_mu4_mu4noL1_excl_sepr[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
@@ -1269,9 +1251,7 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
             h_Deta_zoomin_2mu4_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
             h_Deta_Dphi_2mu4_sepr[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
             h_eta_avg_Deta_2mu4_sepr[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
-        }
-
-        if (passSeparated[nsign]){
+        
             h_Dphi_2mu4_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
             h_Dphi_zoomin_2mu4_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
             h_DR_2mu4_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
@@ -1391,9 +1371,6 @@ void MuonPairPlottingPP::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(int ns
         ? h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_divided_w_single_b_sig_sel->GetBinContent(bin_num_2mu4_single_b_signal)
         : h_pt2nd_vs_q_eta_2nd_2mu4_divided_w_single_b_sig_sel->GetBinContent(bin_num_2mu4_single_b_signal);
 
-// and the same for the 2mu4 / mu4 single-b divided 3D map
-
-
 
     if (passmu4mu4noL1[nsign]){
         if (eff_mu4_mu4noL1 > 0){
@@ -1406,7 +1383,7 @@ void MuonPairPlottingPP::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(int ns
             h_pt2nd_mu4_mu4noL1_inv_w_by_single_mu_effcy[nsign]->Fill(pt_2nd,weight[nsign] * 1. / eff_mu4_mu4noL1);            
         }
 
-        if (pass_single_b_signal_selection && eff_mu4_mu4noL1_single_b_signal){
+        if (pass_single_b_signal_selection && eff_mu4_mu4noL1_single_b_signal > 0){
             h_Deta_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1_single_b_signal);
             h_Dphi_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1_single_b_signal);
             h_DR_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1_single_b_signal);
