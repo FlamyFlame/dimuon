@@ -749,6 +749,7 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
 
     bool pass_single_mu4 [2] = {mu1PassSingle[nsign], mu2PassSingle[nsign]};
     double pt_2nd [2] = {m2pt[nsign], m1pt[nsign]};
+    double pt_1st [2] = {m1pt[nsign], m2pt[nsign]};
     double q_eta_2nd [2] = {m2charge[nsign] * m2eta[nsign], m1charge[nsign] * m1eta[nsign]};
     double eta_2nd [2] = {m2eta[nsign], m1eta[nsign]};
     double phi_2nd [2] = {m2phi[nsign], m1phi[nsign]};
@@ -828,24 +829,25 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
         h_minv_pair_pt_log[away_side][nsign][0]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
     }
 
-    h_Deta_mu4[nsign]->Fill(deta[nsign],weight[nsign]);
-    h_Deta_zoomin_mu4[nsign]->Fill(deta[nsign],weight[nsign]);
-    h_Dphi_mu4[nsign]->Fill(dphi[nsign],weight[nsign]);
-    h_Dphi_zoomin_mu4[nsign]->Fill(dphi[nsign],weight[nsign]);
-    h_DR_mu4[nsign]->Fill(dr[nsign],weight[nsign]);
-    h_DR_zoomin_mu4[nsign]->Fill(dr[nsign],weight[nsign]);
-    h_DR_0_2_mu4[nsign]->Fill(dr[nsign],weight[nsign]);
-
-    h_Deta_vs_pair_pT_mu4[nsign]->Fill(pair_pt[nsign], deta[nsign],weight[nsign]);
-    h_Deta_zoomin_vs_pair_pT_mu4[nsign]->Fill(pair_pt[nsign], deta[nsign],weight[nsign]);
-    h_Dphi_vs_pair_pT_mu4[nsign]->Fill(pair_pt[nsign], dphi[nsign],weight[nsign]);
-    h_Dphi_zoomin_vs_pair_pT_mu4[nsign]->Fill(pair_pt[nsign], dphi[nsign],weight[nsign]);
-    h_DR_vs_pair_pT_mu4[nsign]->Fill(pair_pt[nsign], dr[nsign],weight[nsign]);
-    h_DR_zoomin_vs_pair_pT_mu4[nsign]->Fill(pair_pt[nsign], dr[nsign],weight[nsign]);
-
     for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
         if (!pass_single_mu4[muon_ind]) continue;
 
+        h_Deta_mu4[nsign]->Fill(deta[nsign],weight[nsign]);
+        h_Deta_zoomin_mu4[nsign]->Fill(deta[nsign],weight[nsign]);
+        h_Dphi_mu4[nsign]->Fill(dphi[nsign],weight[nsign]);
+        h_Dphi_zoomin_mu4[nsign]->Fill(dphi[nsign],weight[nsign]);
+        h_DR_mu4[nsign]->Fill(dr[nsign],weight[nsign]);
+        h_DR_zoomin_mu4[nsign]->Fill(dr[nsign],weight[nsign]);
+        h_DR_0_2_mu4[nsign]->Fill(dr[nsign],weight[nsign]);
+
+        h_Deta_vs_pair_pT_mu4[nsign]->Fill(pair_pt[nsign], deta[nsign],weight[nsign]);
+        h_Deta_zoomin_vs_pair_pT_mu4[nsign]->Fill(pair_pt[nsign], deta[nsign],weight[nsign]);
+        h_Dphi_vs_pair_pT_mu4[nsign]->Fill(pair_pt[nsign], dphi[nsign],weight[nsign]);
+        h_Dphi_zoomin_vs_pair_pT_mu4[nsign]->Fill(pair_pt[nsign], dphi[nsign],weight[nsign]);
+        h_DR_vs_pair_pT_mu4[nsign]->Fill(pair_pt[nsign], dr[nsign],weight[nsign]);
+        h_DR_zoomin_vs_pair_pT_mu4[nsign]->Fill(pair_pt[nsign], dr[nsign],weight[nsign]);
+
+        // pt-2nd-dependent histograms
         h_pt2nd_mu4[nsign]->Fill(pt_2nd[muon_ind],weight[nsign]);
         h_pt2nd_vs_q_eta_2nd_mu4[nsign]->Fill(q_eta_2nd[muon_ind], pt_2nd[muon_ind],weight[nsign]);
         h_pt2nd_vs_phi2nd_mu4[nsign]->Fill(phi_2nd[muon_ind], pt_2nd[muon_ind], weight[nsign]);
@@ -853,25 +855,26 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
         h_DR_zoomin_vs_pt2nd_mu4[nsign]->Fill(pt_2nd[muon_ind],dr[nsign],weight[nsign]);
         h_DR_0_2_vs_pt2nd_mu4[nsign]->Fill(pt_2nd[muon_ind],dr[nsign],weight[nsign]);
 
-        h_Deta_vs_pT_1st_mu4[nsign]->Fill(pt_2nd[muon_ind], deta[nsign],weight[nsign]);
-        h_Deta_zoomin_vs_pT_1st_mu4[nsign]->Fill(pt_2nd[muon_ind], deta[nsign],weight[nsign]);
-        h_Dphi_vs_pT_1st_mu4[nsign]->Fill(pt_2nd[muon_ind], dphi[nsign],weight[nsign]);
-        h_Dphi_zoomin_vs_pT_1st_mu4[nsign]->Fill(pt_2nd[muon_ind], dphi[nsign],weight[nsign]);
-        h_DR_vs_pT_1st_mu4[nsign]->Fill(pt_2nd[muon_ind], dr[nsign],weight[nsign]);
-        h_DR_zoomin_vs_pT_1st_mu4[nsign]->Fill(pt_2nd[muon_ind], dr[nsign],weight[nsign]);
-    }
+        // pt-1st-dependent histograms
+        h_Deta_vs_pT_1st_mu4[nsign]->Fill(pt_1st[muon_ind], deta[nsign],weight[nsign]);
+        h_Deta_zoomin_vs_pT_1st_mu4[nsign]->Fill(pt_1st[muon_ind], deta[nsign],weight[nsign]);
+        h_Dphi_vs_pT_1st_mu4[nsign]->Fill(pt_1st[muon_ind], dphi[nsign],weight[nsign]);
+        h_Dphi_zoomin_vs_pT_1st_mu4[nsign]->Fill(pt_1st[muon_ind], dphi[nsign],weight[nsign]);
+        h_DR_vs_pT_1st_mu4[nsign]->Fill(pt_1st[muon_ind], dr[nsign],weight[nsign]);
+        h_DR_zoomin_vs_pT_1st_mu4[nsign]->Fill(pt_1st[muon_ind], dr[nsign],weight[nsign]);
 
-    h_pair_eta_vs_pair_pT_mu4[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
-    h_Deta_Dphi_mu4[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
-    h_eta1_eta2_mu4[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
-    h_eta_avg_Deta_mu4[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
-    h_eta_avg_Dphi_mu4[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
-    h_minv_zoomin_mu4[nsign]->Fill(minv[nsign],weight[nsign]);
-    h_pair_pt_log_mu4[nsign]->Fill(pair_pt[nsign],weight[nsign]);
-    h_minv_pair_pt_log_mu4[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
-
-    for (int i = 0; i < 2; i++){
-        if (pass_single_muon_good_acceptance_selection[i]){ // fill for both
+        // pair-observable 2D histograms
+        h_pair_eta_vs_pair_pT_mu4[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
+        h_Deta_Dphi_mu4[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
+        h_eta1_eta2_mu4[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
+        h_eta_avg_Deta_mu4[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
+        h_eta_avg_Dphi_mu4[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
+        h_minv_zoomin_mu4[nsign]->Fill(minv[nsign],weight[nsign]);
+        h_pair_pt_log_mu4[nsign]->Fill(pair_pt[nsign],weight[nsign]);
+        h_minv_pair_pt_log_mu4[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
+       
+        // good-acceptance histograms
+        if (pass_single_muon_good_acceptance_selection[muon_ind]){ // fill for both
             h_Deta_mu4_good_accept[nsign]->Fill(deta[nsign],weight[nsign]);
             h_Deta_zoomin_mu4_good_accept[nsign]->Fill(deta[nsign],weight[nsign]);
             h_Dphi_mu4_good_accept[nsign]->Fill(dphi[nsign],weight[nsign]);
@@ -881,85 +884,80 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
             h_minv_zoomin_mu4_good_accept[nsign]->Fill(minv[nsign],weight[nsign]);
             h_pair_pt_log_mu4_good_accept[nsign]->Fill(pair_pt[nsign],weight[nsign]);    
         }
-    }
 
-    if (passSeparated[nsign]){
-        h_Deta_mu4_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
-        h_Deta_zoomin_mu4_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
-        h_Deta_Dphi_mu4_sepr[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
-        h_eta_avg_Deta_mu4_sepr[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
-    }
+        // well-separated histograms
+        if (passSeparated[nsign]){
+            h_Deta_mu4_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
+            h_Deta_zoomin_mu4_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
+            h_Deta_Dphi_mu4_sepr[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
+            h_eta_avg_Deta_mu4_sepr[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
 
-    if (passSeparated[nsign]){
-        h_Dphi_mu4_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
-        h_Dphi_zoomin_mu4_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
-        h_DR_mu4_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
-        h_DR_zoomin_mu4_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
-        
-        for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
-            if (!pass_single_mu4[muon_ind]) continue;
+            h_Dphi_mu4_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
+            h_Dphi_zoomin_mu4_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
+            h_DR_mu4_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
+            h_DR_zoomin_mu4_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
+            
             h_pt2nd_mu4_sepr[nsign]->Fill(pt_2nd[muon_ind],weight[nsign]);
             h_pt2nd_vs_q_eta_2nd_mu4_sepr[nsign]->Fill(q_eta_2nd[muon_ind], pt_2nd[muon_ind],weight[nsign]);
             h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_sepr[nsign]->Fill(phi_2nd[muon_ind], q_eta_2nd[muon_ind], pt_2nd[muon_ind], weight[nsign]);
-        }
 
-        h_pair_eta_vs_pair_pT_mu4_sepr[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
-        h_eta1_eta2_mu4_sepr[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
-        h_eta_avg_Dphi_mu4_sepr[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
-        h_minv_zoomin_mu4_sepr[nsign]->Fill(minv[nsign],weight[nsign]);
-        h_pair_pt_log_mu4_sepr[nsign]->Fill(pair_pt[nsign],weight[nsign]);
-        h_minv_pair_pt_log_mu4_sepr[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
-    }
+            h_pair_eta_vs_pair_pT_mu4_sepr[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
+            h_eta1_eta2_mu4_sepr[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
+            h_eta_avg_Dphi_mu4_sepr[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
+            h_minv_zoomin_mu4_sepr[nsign]->Fill(minv[nsign],weight[nsign]);
+            h_pair_pt_log_mu4_sepr[nsign]->Fill(pair_pt[nsign],weight[nsign]);
+            h_minv_pair_pt_log_mu4_sepr[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
+        } // end if statement for well-separated pairs
 
-    if (pass_single_b_signal_selection){
-        h_DR_zoomin_vs_pair_pT_mu4_w_single_b_sig_sel->Fill(pair_pt[nsign], dr[nsign],weight[nsign]);
+        // signal-selected-pair histograms
+        if (pass_single_b_signal_selection){
+            h_DR_zoomin_vs_pair_pT_mu4_w_single_b_sig_sel->Fill(pair_pt[nsign], dr[nsign],weight[nsign]);
 
-        h_Deta_mu4_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign]);
-        h_Deta_zoomin_mu4_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign]);
-        h_Dphi_mu4_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
-        h_Dphi_zoomin_mu4_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
-        h_DR_mu4_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
-        h_DR_zoomin_mu4_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
-        h_DR_0_2_mu4_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
+            h_Deta_mu4_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign]);
+            h_Deta_zoomin_mu4_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign]);
+            h_Dphi_mu4_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
+            h_Dphi_zoomin_mu4_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
+            h_DR_mu4_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
+            h_DR_zoomin_mu4_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
+            h_DR_0_2_mu4_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
 
-        for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
-            if (!pass_single_mu4[muon_ind]) continue;
             h_pt2nd_mu4_w_single_b_sig_sel->Fill(pt_2nd[muon_ind],weight[nsign]);
             h_pt2nd_vs_q_eta_2nd_mu4_w_single_b_sig_sel->Fill(q_eta_2nd[muon_ind], pt_2nd[muon_ind],weight[nsign]);
             h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_w_single_b_sig_sel->Fill(phi_2nd[muon_ind], q_eta_2nd[muon_ind], pt_2nd[muon_ind], weight[nsign]);
             h_DR_zoomin_vs_pt2nd_mu4_w_single_b_sig_sel->Fill(pt_2nd[muon_ind],dr[nsign],weight[nsign]);
             h_DR_0_2_vs_pt2nd_mu4_w_single_b_sig_sel->Fill(pt_2nd[muon_ind],dr[nsign],weight[nsign]);
-        }
 
-        h_pair_eta_vs_pair_pT_mu4_w_single_b_sig_sel->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
-        h_Deta_Dphi_mu4_w_single_b_sig_sel->Fill(dphi[nsign],deta[nsign],weight[nsign]);
-        h_eta1_eta2_mu4_w_single_b_sig_sel->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
-        h_eta_avg_Deta_mu4_w_single_b_sig_sel->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
-        h_eta_avg_Dphi_mu4_w_single_b_sig_sel->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
-        h_minv_zoomin_mu4_w_single_b_sig_sel->Fill(minv[nsign],weight[nsign]);
-        h_pair_pt_log_mu4_w_single_b_sig_sel->Fill(pair_pt[nsign],weight[nsign]);
-        h_minv_pair_pt_log_mu4_w_single_b_sig_sel->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
-    }
-
+            h_pair_eta_vs_pair_pT_mu4_w_single_b_sig_sel->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
+            h_Deta_Dphi_mu4_w_single_b_sig_sel->Fill(dphi[nsign],deta[nsign],weight[nsign]);
+            h_eta1_eta2_mu4_w_single_b_sig_sel->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
+            h_eta_avg_Deta_mu4_w_single_b_sig_sel->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
+            h_eta_avg_Dphi_mu4_w_single_b_sig_sel->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
+            h_minv_zoomin_mu4_w_single_b_sig_sel->Fill(minv[nsign],weight[nsign]);
+            h_pair_pt_log_mu4_w_single_b_sig_sel->Fill(pair_pt[nsign],weight[nsign]);
+            h_minv_pair_pt_log_mu4_w_single_b_sig_sel->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
+        } // end if statement for single-b signal pairs
+    } // end loop over muon index
 
     if (passmu4mu4noL1[nsign]){
-        h_Deta_mu4_mu4noL1[nsign]->Fill(deta[nsign],weight[nsign]);
-        h_Deta_zoomin_mu4_mu4noL1[nsign]->Fill(deta[nsign],weight[nsign]);
-        h_Dphi_mu4_mu4noL1[nsign]->Fill(dphi[nsign],weight[nsign]);
-        h_Dphi_zoomin_mu4_mu4noL1[nsign]->Fill(dphi[nsign],weight[nsign]);
-        h_DR_mu4_mu4noL1[nsign]->Fill(dr[nsign],weight[nsign]);
-        h_DR_zoomin_mu4_mu4noL1[nsign]->Fill(dr[nsign],weight[nsign]);
-        h_DR_0_2_mu4_mu4noL1[nsign]->Fill(dr[nsign],weight[nsign]);
-
-        h_Deta_vs_pair_pT_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign], deta[nsign],weight[nsign]);
-        h_Deta_zoomin_vs_pair_pT_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign], deta[nsign],weight[nsign]);
-        h_Dphi_vs_pair_pT_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign], dphi[nsign],weight[nsign]);
-        h_Dphi_zoomin_vs_pair_pT_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign], dphi[nsign],weight[nsign]);
-        h_DR_vs_pair_pT_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign], dr[nsign],weight[nsign]);
-        h_DR_zoomin_vs_pair_pT_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign], dr[nsign],weight[nsign]);
-
         for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
             if (!pass_single_mu4[muon_ind]) continue;
+
+            h_Deta_mu4_mu4noL1[nsign]->Fill(deta[nsign],weight[nsign]);
+            h_Deta_zoomin_mu4_mu4noL1[nsign]->Fill(deta[nsign],weight[nsign]);
+            h_Dphi_mu4_mu4noL1[nsign]->Fill(dphi[nsign],weight[nsign]);
+            h_Dphi_zoomin_mu4_mu4noL1[nsign]->Fill(dphi[nsign],weight[nsign]);
+            h_DR_mu4_mu4noL1[nsign]->Fill(dr[nsign],weight[nsign]);
+            h_DR_zoomin_mu4_mu4noL1[nsign]->Fill(dr[nsign],weight[nsign]);
+            h_DR_0_2_mu4_mu4noL1[nsign]->Fill(dr[nsign],weight[nsign]);
+
+            h_Deta_vs_pair_pT_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign], deta[nsign],weight[nsign]);
+            h_Deta_zoomin_vs_pair_pT_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign], deta[nsign],weight[nsign]);
+            h_Dphi_vs_pair_pT_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign], dphi[nsign],weight[nsign]);
+            h_Dphi_zoomin_vs_pair_pT_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign], dphi[nsign],weight[nsign]);
+            h_DR_vs_pair_pT_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign], dr[nsign],weight[nsign]);
+            h_DR_zoomin_vs_pair_pT_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign], dr[nsign],weight[nsign]);
+
+            // pt-2nd-dependent histograms
             h_pt2nd_mu4_mu4noL1[nsign]->Fill(pt_2nd[muon_ind],weight[nsign]);
             h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1[nsign]->Fill(q_eta_2nd[muon_ind], pt_2nd[muon_ind],weight[nsign]);
             h_pt2nd_vs_phi2nd_mu4_mu4noL1[nsign]->Fill(phi_2nd[muon_ind], pt_2nd[muon_ind], weight[nsign]);
@@ -967,25 +965,26 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
             h_DR_zoomin_vs_pt2nd_mu4_mu4noL1[nsign]->Fill(pt_2nd[muon_ind],dr[nsign],weight[nsign]);
             h_DR_0_2_vs_pt2nd_mu4_mu4noL1[nsign]->Fill(pt_2nd[muon_ind],dr[nsign],weight[nsign]);
 
-            h_Deta_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(pt_2nd[muon_ind], deta[nsign],weight[nsign]);
-            h_Deta_zoomin_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(pt_2nd[muon_ind], deta[nsign],weight[nsign]);
-            h_Dphi_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(pt_2nd[muon_ind], dphi[nsign],weight[nsign]);
-            h_Dphi_zoomin_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(pt_2nd[muon_ind], dphi[nsign],weight[nsign]);
-            h_DR_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(pt_2nd[muon_ind], dr[nsign],weight[nsign]);
-            h_DR_zoomin_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(pt_2nd[muon_ind], dr[nsign],weight[nsign]);
-        }
+            // pt-1st-dependent histograms
+            h_Deta_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(pt_1st[muon_ind], deta[nsign],weight[nsign]);
+            h_Deta_zoomin_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(pt_1st[muon_ind], deta[nsign],weight[nsign]);
+            h_Dphi_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(pt_1st[muon_ind], dphi[nsign],weight[nsign]);
+            h_Dphi_zoomin_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(pt_1st[muon_ind], dphi[nsign],weight[nsign]);
+            h_DR_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(pt_1st[muon_ind], dr[nsign],weight[nsign]);
+            h_DR_zoomin_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(pt_1st[muon_ind], dr[nsign],weight[nsign]);
+            
+            // pair-observable 2D histograms
+            h_pair_eta_vs_pair_pT_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
+            h_Deta_Dphi_mu4_mu4noL1[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
+            h_eta1_eta2_mu4_mu4noL1[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
+            h_eta_avg_Deta_mu4_mu4noL1[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
+            h_eta_avg_Dphi_mu4_mu4noL1[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
+            h_minv_zoomin_mu4_mu4noL1[nsign]->Fill(minv[nsign],weight[nsign]);
+            h_pair_pt_log_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign],weight[nsign]);
+            h_minv_pair_pt_log_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
 
-        h_pair_eta_vs_pair_pT_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
-        h_Deta_Dphi_mu4_mu4noL1[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
-        h_eta1_eta2_mu4_mu4noL1[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
-        h_eta_avg_Deta_mu4_mu4noL1[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
-        h_eta_avg_Dphi_mu4_mu4noL1[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
-        h_minv_zoomin_mu4_mu4noL1[nsign]->Fill(minv[nsign],weight[nsign]);
-        h_pair_pt_log_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign],weight[nsign]);
-        h_minv_pair_pt_log_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
-
-        for (int i = 0; i < 2; i++){
-            if (pass_single_muon_good_acceptance_selection[i]){ // fill for both
+            // good-acceptance histograms
+            if (pass_single_muon_good_acceptance_selection[muon_ind]){ // fill for both
                 h_Deta_mu4_mu4noL1_good_accept[nsign]->Fill(deta[nsign],weight[nsign]);
                 h_Deta_zoomin_mu4_mu4noL1_good_accept[nsign]->Fill(deta[nsign],weight[nsign]);
                 h_Dphi_mu4_mu4noL1_good_accept[nsign]->Fill(dphi[nsign],weight[nsign]);
@@ -995,152 +994,146 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
                 h_minv_zoomin_mu4_mu4noL1_good_accept[nsign]->Fill(minv[nsign],weight[nsign]);
                 h_pair_pt_log_mu4_mu4noL1_good_accept[nsign]->Fill(pair_pt[nsign],weight[nsign]);    
             }
-        }
 
-        if ((!mu1PassSingle[nsign] || !mu2PassSingle[nsign])){ // exclusive: only one muon passes mu4
-            h_Deta_mu4_mu4noL1_excl[nsign]->Fill(deta[nsign],weight[nsign]);
-            h_Deta_zoomin_mu4_mu4noL1_excl[nsign]->Fill(deta[nsign],weight[nsign]);
-            h_Dphi_mu4_mu4noL1_excl[nsign]->Fill(dphi[nsign],weight[nsign]);
-            h_Dphi_zoomin_mu4_mu4noL1_excl[nsign]->Fill(dphi[nsign],weight[nsign]);
-            h_DR_mu4_mu4noL1_excl[nsign]->Fill(dr[nsign],weight[nsign]);
-            h_DR_zoomin_mu4_mu4noL1_excl[nsign]->Fill(dr[nsign],weight[nsign]);
-            for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
-                if (!pass_single_mu4[muon_ind]) continue;
+            // mu4_mu4noL1 exclusive histograms
+            if ((!mu1PassSingle[nsign] || !mu2PassSingle[nsign])){ // exclusive: only one muon passes mu4
+                h_Deta_mu4_mu4noL1_excl[nsign]->Fill(deta[nsign],weight[nsign]);
+                h_Deta_zoomin_mu4_mu4noL1_excl[nsign]->Fill(deta[nsign],weight[nsign]);
+                h_Dphi_mu4_mu4noL1_excl[nsign]->Fill(dphi[nsign],weight[nsign]);
+                h_Dphi_zoomin_mu4_mu4noL1_excl[nsign]->Fill(dphi[nsign],weight[nsign]);
+                h_DR_mu4_mu4noL1_excl[nsign]->Fill(dr[nsign],weight[nsign]);
+                h_DR_zoomin_mu4_mu4noL1_excl[nsign]->Fill(dr[nsign],weight[nsign]);
+                
                 h_pt2nd_mu4_mu4noL1_excl[nsign]->Fill(pt_2nd[muon_ind],weight[nsign]);
                 h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl[nsign]->Fill(q_eta_2nd[muon_ind], pt_2nd[muon_ind],weight[nsign]);
-            }
 
-            h_pair_eta_vs_pair_pT_mu4_mu4noL1_excl[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
-            h_Deta_Dphi_mu4_mu4noL1_excl[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
-            h_eta1_eta2_mu4_mu4noL1_excl[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
-            h_eta_avg_Deta_mu4_mu4noL1_excl[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
-            h_eta_avg_Dphi_mu4_mu4noL1_excl[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
-            h_minv_zoomin_mu4_mu4noL1_excl[nsign]->Fill(minv[nsign],weight[nsign]);
-            h_pair_pt_log_mu4_mu4noL1_excl[nsign]->Fill(pair_pt[nsign],weight[nsign]);
-            h_minv_pair_pt_log_mu4_mu4noL1_excl[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
-        }
+                h_pair_eta_vs_pair_pT_mu4_mu4noL1_excl[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
+                h_Deta_Dphi_mu4_mu4noL1_excl[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
+                h_eta1_eta2_mu4_mu4noL1_excl[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
+                h_eta_avg_Deta_mu4_mu4noL1_excl[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
+                h_eta_avg_Dphi_mu4_mu4noL1_excl[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
+                h_minv_zoomin_mu4_mu4noL1_excl[nsign]->Fill(minv[nsign],weight[nsign]);
+                h_pair_pt_log_mu4_mu4noL1_excl[nsign]->Fill(pair_pt[nsign],weight[nsign]);
+                h_minv_pair_pt_log_mu4_mu4noL1_excl[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
+            } // end if statement for exclusive pairs
 
-        if (passSeparated[nsign]){
-            h_Deta_mu4_mu4noL1_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
-            h_Deta_zoomin_mu4_mu4noL1_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
-            h_Deta_Dphi_mu4_mu4noL1_sepr[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
-            h_eta_avg_Deta_mu4_mu4noL1_sepr[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
-            if ((!mu1PassSingle[nsign] || !mu2PassSingle[nsign])){ // exclusive: only one muon passes mu4
-                h_Deta_mu4_mu4noL1_excl_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
-                h_Deta_zoomin_mu4_mu4noL1_excl_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
-                h_Deta_Dphi_mu4_mu4noL1_excl_sepr[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
-                h_eta_avg_Deta_mu4_mu4noL1_excl_sepr[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
-            }
+            // well-separated histograms
+            if (passSeparated[nsign]){
+                h_Deta_mu4_mu4noL1_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
+                h_Deta_zoomin_mu4_mu4noL1_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
+                h_Deta_Dphi_mu4_mu4noL1_sepr[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
+                h_eta_avg_Deta_mu4_mu4noL1_sepr[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
+                if ((!mu1PassSingle[nsign] || !mu2PassSingle[nsign])){ // exclusive: only one muon passes mu4
+                    h_Deta_mu4_mu4noL1_excl_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
+                    h_Deta_zoomin_mu4_mu4noL1_excl_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
+                    h_Deta_Dphi_mu4_mu4noL1_excl_sepr[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
+                    h_eta_avg_Deta_mu4_mu4noL1_excl_sepr[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
+                }
 
-            h_Dphi_mu4_mu4noL1_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
-            h_Dphi_zoomin_mu4_mu4noL1_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
-            h_DR_mu4_mu4noL1_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
-            h_DR_zoomin_mu4_mu4noL1_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
-            for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
-                if (!pass_single_mu4[muon_ind]) continue;
+                h_Dphi_mu4_mu4noL1_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
+                h_Dphi_zoomin_mu4_mu4noL1_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
+                h_DR_mu4_mu4noL1_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
+                h_DR_zoomin_mu4_mu4noL1_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
+                
                 h_pt2nd_mu4_mu4noL1_sepr[nsign]->Fill(pt_2nd[muon_ind],weight[nsign]);
                 h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr[nsign]->Fill(q_eta_2nd[muon_ind], pt_2nd[muon_ind],weight[nsign]);
                 h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_sepr[nsign]->Fill(phi_2nd[muon_ind], q_eta_2nd[muon_ind], pt_2nd[muon_ind], weight[nsign]);
-            }
 
-            h_pair_eta_vs_pair_pT_mu4_mu4noL1_sepr[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
-            h_eta1_eta2_mu4_mu4noL1_sepr[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
-            h_eta_avg_Dphi_mu4_mu4noL1_sepr[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
-            h_minv_zoomin_mu4_mu4noL1_sepr[nsign]->Fill(minv[nsign],weight[nsign]);
-            h_pair_pt_log_mu4_mu4noL1_sepr[nsign]->Fill(pair_pt[nsign],weight[nsign]);
-            h_minv_pair_pt_log_mu4_mu4noL1_sepr[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
+                h_pair_eta_vs_pair_pT_mu4_mu4noL1_sepr[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
+                h_eta1_eta2_mu4_mu4noL1_sepr[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
+                h_eta_avg_Dphi_mu4_mu4noL1_sepr[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
+                h_minv_zoomin_mu4_mu4noL1_sepr[nsign]->Fill(minv[nsign],weight[nsign]);
+                h_pair_pt_log_mu4_mu4noL1_sepr[nsign]->Fill(pair_pt[nsign],weight[nsign]);
+                h_minv_pair_pt_log_mu4_mu4noL1_sepr[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
 
-            if ((!mu1PassSingle[nsign] || !mu2PassSingle[nsign])){ // exclusive: only one muon passes mu4
-                h_Dphi_mu4_mu4noL1_excl_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
-                h_Dphi_zoomin_mu4_mu4noL1_excl_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
-                h_DR_mu4_mu4noL1_excl_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
-                h_DR_zoomin_mu4_mu4noL1_excl_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
-                for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
-                    if (!pass_single_mu4[muon_ind]) continue;
+                if ((!mu1PassSingle[nsign] || !mu2PassSingle[nsign])){ // exclusive: only one muon passes mu4
+                    h_Dphi_mu4_mu4noL1_excl_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
+                    h_Dphi_zoomin_mu4_mu4noL1_excl_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
+                    h_DR_mu4_mu4noL1_excl_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
+                    h_DR_zoomin_mu4_mu4noL1_excl_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
+
                     h_pt2nd_mu4_mu4noL1_excl_sepr[nsign]->Fill(pt_2nd[muon_ind],weight[nsign]);
                     h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl_sepr[nsign]->Fill(q_eta_2nd[muon_ind], pt_2nd[muon_ind],weight[nsign]);
+
+                    h_pair_eta_vs_pair_pT_mu4_mu4noL1_excl_sepr[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
+                    h_eta1_eta2_mu4_mu4noL1_excl_sepr[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
+                    h_eta_avg_Dphi_mu4_mu4noL1_excl_sepr[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
+                    h_minv_zoomin_mu4_mu4noL1_excl_sepr[nsign]->Fill(minv[nsign],weight[nsign]);
+                    h_pair_pt_log_mu4_mu4noL1_excl_sepr[nsign]->Fill(pair_pt[nsign],weight[nsign]);
+                    h_minv_pair_pt_log_mu4_mu4noL1_excl_sepr[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
                 }
+            } // end if statement for well-separated pairs
 
-                h_pair_eta_vs_pair_pT_mu4_mu4noL1_excl_sepr[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
-                h_eta1_eta2_mu4_mu4noL1_excl_sepr[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
-                h_eta_avg_Dphi_mu4_mu4noL1_excl_sepr[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
-                h_minv_zoomin_mu4_mu4noL1_excl_sepr[nsign]->Fill(minv[nsign],weight[nsign]);
-                h_pair_pt_log_mu4_mu4noL1_excl_sepr[nsign]->Fill(pair_pt[nsign],weight[nsign]);
-                h_minv_pair_pt_log_mu4_mu4noL1_excl_sepr[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
-            }
-        }
+            // signal-selected-pair histograms
+            if (pass_single_b_signal_selection){
+                h_Deta_mu4_mu4noL1_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign]);
+                h_Deta_zoomin_mu4_mu4noL1_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign]);
+                h_Dphi_mu4_mu4noL1_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
+                h_Dphi_zoomin_mu4_mu4noL1_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
+                h_DR_mu4_mu4noL1_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
+                h_DR_zoomin_mu4_mu4noL1_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
+                h_DR_0_2_mu4_mu4noL1_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
 
-        if (pass_single_b_signal_selection){
-            h_Deta_mu4_mu4noL1_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign]);
-            h_Deta_zoomin_mu4_mu4noL1_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign]);
-            h_Dphi_mu4_mu4noL1_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
-            h_Dphi_zoomin_mu4_mu4noL1_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
-            h_DR_mu4_mu4noL1_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
-            h_DR_zoomin_mu4_mu4noL1_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
-            h_DR_0_2_mu4_mu4noL1_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
-
-            for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
-                if (!pass_single_mu4[muon_ind]) continue;
                 h_pt2nd_mu4_mu4noL1_w_single_b_sig_sel->Fill(pt_2nd[muon_ind],weight[nsign]);
                 h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_w_single_b_sig_sel->Fill(q_eta_2nd[muon_ind], pt_2nd[muon_ind],weight[nsign]);
                 h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_w_single_b_sig_sel->Fill(phi_2nd[muon_ind], q_eta_2nd[muon_ind], pt_2nd[muon_ind], weight[nsign]);
                 h_DR_zoomin_vs_pt2nd_mu4_mu4noL1_w_single_b_sig_sel->Fill(pt_2nd[muon_ind],dr[nsign],weight[nsign]);
                 h_DR_0_2_vs_pt2nd_mu4_mu4noL1_w_single_b_sig_sel->Fill(pt_2nd[muon_ind],dr[nsign],weight[nsign]);
 
-            }
+                h_pair_eta_vs_pair_pT_mu4_mu4noL1_w_single_b_sig_sel->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
+                h_Deta_Dphi_mu4_mu4noL1_w_single_b_sig_sel->Fill(dphi[nsign],deta[nsign],weight[nsign]);
+                h_eta1_eta2_mu4_mu4noL1_w_single_b_sig_sel->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
+                h_eta_avg_Deta_mu4_mu4noL1_w_single_b_sig_sel->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
+                h_eta_avg_Dphi_mu4_mu4noL1_w_single_b_sig_sel->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
+                h_minv_zoomin_mu4_mu4noL1_w_single_b_sig_sel->Fill(minv[nsign],weight[nsign]);
+                h_pair_pt_log_mu4_mu4noL1_w_single_b_sig_sel->Fill(pair_pt[nsign],weight[nsign]);
+                h_minv_pair_pt_log_mu4_mu4noL1_w_single_b_sig_sel->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
 
-            h_pair_eta_vs_pair_pT_mu4_mu4noL1_w_single_b_sig_sel->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
-            h_Deta_Dphi_mu4_mu4noL1_w_single_b_sig_sel->Fill(dphi[nsign],deta[nsign],weight[nsign]);
-            h_eta1_eta2_mu4_mu4noL1_w_single_b_sig_sel->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
-            h_eta_avg_Deta_mu4_mu4noL1_w_single_b_sig_sel->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
-            h_eta_avg_Dphi_mu4_mu4noL1_w_single_b_sig_sel->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
-            h_minv_zoomin_mu4_mu4noL1_w_single_b_sig_sel->Fill(minv[nsign],weight[nsign]);
-            h_pair_pt_log_mu4_mu4noL1_w_single_b_sig_sel->Fill(pair_pt[nsign],weight[nsign]);
-            h_minv_pair_pt_log_mu4_mu4noL1_w_single_b_sig_sel->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
+                if ((!mu1PassSingle[nsign] || !mu2PassSingle[nsign])){ // exclusive: only one muon passes mu4
+                    h_Deta_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign]);
+                    h_Deta_zoomin_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign]);
+                    h_Dphi_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
+                    h_Dphi_zoomin_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
+                    h_DR_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
+                    h_DR_zoomin_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
 
-            if ((!mu1PassSingle[nsign] || !mu2PassSingle[nsign])){ // exclusive: only one muon passes mu4
-                h_Deta_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign]);
-                h_Deta_zoomin_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign]);
-                h_Dphi_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
-                h_Dphi_zoomin_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
-                h_DR_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
-                h_DR_zoomin_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
-                for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
-                    if (!pass_single_mu4[muon_ind]) continue;
                     h_pt2nd_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(pt_2nd[muon_ind],weight[nsign]);
                     h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(q_eta_2nd[muon_ind], pt_2nd[muon_ind],weight[nsign]);
-                }
 
-                h_pair_eta_vs_pair_pT_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
-                h_Deta_Dphi_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(dphi[nsign],deta[nsign],weight[nsign]);
-                h_eta1_eta2_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
-                h_eta_avg_Deta_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
-                h_eta_avg_Dphi_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
-                h_minv_zoomin_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(minv[nsign],weight[nsign]);
-                h_pair_pt_log_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(pair_pt[nsign],weight[nsign]);
-                h_minv_pair_pt_log_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
-            }
-        }
-    }
-    
+                    h_pair_eta_vs_pair_pT_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
+                    h_Deta_Dphi_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(dphi[nsign],deta[nsign],weight[nsign]);
+                    h_eta1_eta2_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
+                    h_eta_avg_Deta_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
+                    h_eta_avg_Dphi_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
+                    h_minv_zoomin_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(minv[nsign],weight[nsign]);
+                    h_pair_pt_log_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(pair_pt[nsign],weight[nsign]);
+                    h_minv_pair_pt_log_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
+                } // end if statement for exclusive pairs
+            } // end if statement for single-b signal pairs
+        } // end loop over muon index
+    } // end if statement for mu4_mu4noL1 trigger
+
     if (pass2mu4[nsign]){
-        h_Deta_2mu4[nsign]->Fill(deta[nsign],weight[nsign]);
-        h_Deta_zoomin_2mu4[nsign]->Fill(deta[nsign],weight[nsign]);
-        h_Dphi_2mu4[nsign]->Fill(dphi[nsign],weight[nsign]);
-        h_Dphi_zoomin_2mu4[nsign]->Fill(dphi[nsign],weight[nsign]);
-        h_DR_2mu4[nsign]->Fill(dr[nsign],weight[nsign]);
-        h_DR_zoomin_2mu4[nsign]->Fill(dr[nsign],weight[nsign]);
-        h_DR_0_2_2mu4[nsign]->Fill(dr[nsign],weight[nsign]);
-
-        h_Deta_vs_pair_pT_2mu4[nsign]->Fill(pair_pt[nsign], deta[nsign],weight[nsign]);
-        h_Deta_zoomin_vs_pair_pT_2mu4[nsign]->Fill(pair_pt[nsign], deta[nsign],weight[nsign]);
-        h_Dphi_vs_pair_pT_2mu4[nsign]->Fill(pair_pt[nsign], dphi[nsign],weight[nsign]);
-        h_Dphi_zoomin_vs_pair_pT_2mu4[nsign]->Fill(pair_pt[nsign], dphi[nsign],weight[nsign]);
-        h_DR_vs_pair_pT_2mu4[nsign]->Fill(pair_pt[nsign], dr[nsign],weight[nsign]);
-        h_DR_zoomin_vs_pair_pT_2mu4[nsign]->Fill(pair_pt[nsign], dr[nsign],weight[nsign]);
 
         for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
             if (!pass_single_mu4[muon_ind]) continue;
+            
+            h_Deta_2mu4[nsign]->Fill(deta[nsign],weight[nsign]);
+            h_Deta_zoomin_2mu4[nsign]->Fill(deta[nsign],weight[nsign]);
+            h_Dphi_2mu4[nsign]->Fill(dphi[nsign],weight[nsign]);
+            h_Dphi_zoomin_2mu4[nsign]->Fill(dphi[nsign],weight[nsign]);
+            h_DR_2mu4[nsign]->Fill(dr[nsign],weight[nsign]);
+            h_DR_zoomin_2mu4[nsign]->Fill(dr[nsign],weight[nsign]);
+            h_DR_0_2_2mu4[nsign]->Fill(dr[nsign],weight[nsign]);
+
+            h_Deta_vs_pair_pT_2mu4[nsign]->Fill(pair_pt[nsign], deta[nsign],weight[nsign]);
+            h_Deta_zoomin_vs_pair_pT_2mu4[nsign]->Fill(pair_pt[nsign], deta[nsign],weight[nsign]);
+            h_Dphi_vs_pair_pT_2mu4[nsign]->Fill(pair_pt[nsign], dphi[nsign],weight[nsign]);
+            h_Dphi_zoomin_vs_pair_pT_2mu4[nsign]->Fill(pair_pt[nsign], dphi[nsign],weight[nsign]);
+            h_DR_vs_pair_pT_2mu4[nsign]->Fill(pair_pt[nsign], dr[nsign],weight[nsign]);
+            h_DR_zoomin_vs_pair_pT_2mu4[nsign]->Fill(pair_pt[nsign], dr[nsign],weight[nsign]);
+
+            // pt-2nd-dependent histograms
             h_pt2nd_2mu4[nsign]->Fill(pt_2nd[muon_ind],weight[nsign]);
             h_pt2nd_vs_q_eta_2nd_2mu4[nsign]->Fill(q_eta_2nd[muon_ind], pt_2nd[muon_ind],weight[nsign]);
             h_pt2nd_vs_phi2nd_2mu4[nsign]->Fill(phi_2nd[muon_ind], pt_2nd[muon_ind], weight[nsign]);
@@ -1148,24 +1141,25 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
             h_DR_zoomin_vs_pt2nd_2mu4[nsign]->Fill(pt_2nd[muon_ind],dr[nsign],weight[nsign]);
             h_DR_0_2_vs_pt2nd_2mu4[nsign]->Fill(pt_2nd[muon_ind],dr[nsign],weight[nsign]);
 
-            h_Deta_vs_pT_1st_2mu4[nsign]->Fill(pt_2nd[muon_ind], deta[nsign],weight[nsign]);
-            h_Deta_zoomin_vs_pT_1st_2mu4[nsign]->Fill(pt_2nd[muon_ind], deta[nsign],weight[nsign]);
-            h_Dphi_vs_pT_1st_2mu4[nsign]->Fill(pt_2nd[muon_ind], dphi[nsign],weight[nsign]);
-            h_Dphi_zoomin_vs_pT_1st_2mu4[nsign]->Fill(pt_2nd[muon_ind], dphi[nsign],weight[nsign]);
-            h_DR_vs_pT_1st_2mu4[nsign]->Fill(pt_2nd[muon_ind], dr[nsign],weight[nsign]);
-            h_DR_zoomin_vs_pT_1st_2mu4[nsign]->Fill(pt_2nd[muon_ind], dr[nsign],weight[nsign]);
-        }
+            // pt-1st-dependent histograms
+            h_Deta_vs_pT_1st_2mu4[nsign]->Fill(pt_1st[muon_ind], deta[nsign],weight[nsign]);
+            h_Deta_zoomin_vs_pT_1st_2mu4[nsign]->Fill(pt_1st[muon_ind], deta[nsign],weight[nsign]);
+            h_Dphi_vs_pT_1st_2mu4[nsign]->Fill(pt_1st[muon_ind], dphi[nsign],weight[nsign]);
+            h_Dphi_zoomin_vs_pT_1st_2mu4[nsign]->Fill(pt_1st[muon_ind], dphi[nsign],weight[nsign]);
+            h_DR_vs_pT_1st_2mu4[nsign]->Fill(pt_1st[muon_ind], dr[nsign],weight[nsign]);
+            h_DR_zoomin_vs_pT_1st_2mu4[nsign]->Fill(pt_1st[muon_ind], dr[nsign],weight[nsign]);
 
-        h_pair_eta_vs_pair_pT_2mu4[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
-        h_Deta_Dphi_2mu4[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
-        h_eta1_eta2_2mu4[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
-        h_eta_avg_Deta_2mu4[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
-        h_eta_avg_Dphi_2mu4[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
-        h_minv_zoomin_2mu4[nsign]->Fill(minv[nsign],weight[nsign]);
-        h_pair_pt_log_2mu4[nsign]->Fill(pair_pt[nsign],weight[nsign]);
-        h_minv_pair_pt_log_2mu4[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
+            // pair-observable 2D histograms
+            h_pair_eta_vs_pair_pT_2mu4[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
+            h_Deta_Dphi_2mu4[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
+            h_eta1_eta2_2mu4[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
+            h_eta_avg_Deta_2mu4[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
+            h_eta_avg_Dphi_2mu4[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
+            h_minv_zoomin_2mu4[nsign]->Fill(minv[nsign],weight[nsign]);
+            h_pair_pt_log_2mu4[nsign]->Fill(pair_pt[nsign],weight[nsign]);
+            h_minv_pair_pt_log_2mu4[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
 
-        for (int i = 0; i < 2; i++){
+            // good-acceptance histograms
             if (pass_single_muon_good_acceptance_selection[i]){ // fill for both
                 h_Deta_2mu4_good_accept[nsign]->Fill(deta[nsign],weight[nsign]);
                 h_Deta_zoomin_2mu4_good_accept[nsign]->Fill(deta[nsign],weight[nsign]);
@@ -1176,61 +1170,58 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
                 h_minv_zoomin_2mu4_good_accept[nsign]->Fill(minv[nsign],weight[nsign]);
                 h_pair_pt_log_2mu4_good_accept[nsign]->Fill(pair_pt[nsign],weight[nsign]);    
             }
-        }
 
-        if (passSeparated[nsign]){
-            h_Deta_2mu4_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
-            h_Deta_zoomin_2mu4_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
-            h_Deta_Dphi_2mu4_sepr[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
-            h_eta_avg_Deta_2mu4_sepr[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
-        
-            h_Dphi_2mu4_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
-            h_Dphi_zoomin_2mu4_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
-            h_DR_2mu4_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
-            h_DR_zoomin_2mu4_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
-            for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
-                if (!pass_single_mu4[muon_ind]) continue;
+            // well-separated histograms
+            if (passSeparated[nsign]){
+                h_Deta_2mu4_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
+                h_Deta_zoomin_2mu4_sepr[nsign]->Fill(deta[nsign],weight[nsign]);
+                h_Deta_Dphi_2mu4_sepr[nsign]->Fill(dphi[nsign],deta[nsign],weight[nsign]);
+                h_eta_avg_Deta_2mu4_sepr[nsign]->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
+            
+                h_Dphi_2mu4_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
+                h_Dphi_zoomin_2mu4_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
+                h_DR_2mu4_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
+                h_DR_zoomin_2mu4_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
+                
                 h_pt2nd_2mu4_sepr[nsign]->Fill(pt_2nd[muon_ind],weight[nsign]);
                 h_pt2nd_vs_q_eta_2nd_2mu4_sepr[nsign]->Fill(q_eta_2nd[muon_ind], pt_2nd[muon_ind],weight[nsign]);
                 h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_sepr[nsign]->Fill(phi_2nd[muon_ind], q_eta_2nd[muon_ind], pt_2nd[muon_ind], weight[nsign]);
-            }
-    
-            h_pair_eta_vs_pair_pT_2mu4_sepr[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
-            h_eta1_eta2_2mu4_sepr[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
-            h_eta_avg_Dphi_2mu4_sepr[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
-            h_minv_zoomin_2mu4_sepr[nsign]->Fill(minv[nsign],weight[nsign]);
-            h_pair_pt_log_2mu4_sepr[nsign]->Fill(pair_pt[nsign],weight[nsign]);
-            h_minv_pair_pt_log_2mu4_sepr[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
-        }
+        
+                h_pair_eta_vs_pair_pT_2mu4_sepr[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
+                h_eta1_eta2_2mu4_sepr[nsign]->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
+                h_eta_avg_Dphi_2mu4_sepr[nsign]->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
+                h_minv_zoomin_2mu4_sepr[nsign]->Fill(minv[nsign],weight[nsign]);
+                h_pair_pt_log_2mu4_sepr[nsign]->Fill(pair_pt[nsign],weight[nsign]);
+                h_minv_pair_pt_log_2mu4_sepr[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
+            } // end if statement for well-separated pairs
 
-        if (pass_single_b_signal_selection){
-            h_Deta_2mu4_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign]);
-            h_Deta_zoomin_2mu4_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign]);
-            h_Dphi_2mu4_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
-            h_Dphi_zoomin_2mu4_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
-            h_DR_2mu4_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
-            h_DR_zoomin_2mu4_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
-            h_DR_0_2_2mu4_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
+            // signal-selected-pair histograms
+            if (pass_single_b_signal_selection){
+                h_Deta_2mu4_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign]);
+                h_Deta_zoomin_2mu4_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign]);
+                h_Dphi_2mu4_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
+                h_Dphi_zoomin_2mu4_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
+                h_DR_2mu4_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
+                h_DR_zoomin_2mu4_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
+                h_DR_0_2_2mu4_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
 
-            for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
-                if (!pass_single_mu4[muon_ind]) continue;
                 h_pt2nd_2mu4_w_single_b_sig_sel->Fill(pt_2nd[muon_ind],weight[nsign]);
                 h_pt2nd_vs_q_eta_2nd_2mu4_w_single_b_sig_sel->Fill(q_eta_2nd[muon_ind], pt_2nd[muon_ind],weight[nsign]);
                 h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_w_single_b_sig_sel->Fill(phi_2nd[muon_ind], q_eta_2nd[muon_ind], pt_2nd[muon_ind], weight[nsign]);
                 h_DR_zoomin_vs_pt2nd_2mu4_w_single_b_sig_sel->Fill(pt_2nd[muon_ind],dr[nsign],weight[nsign]);
                 h_DR_0_2_vs_pt2nd_2mu4_w_single_b_sig_sel->Fill(pt_2nd[muon_ind],dr[nsign],weight[nsign]);
-            }
 
-            h_pair_eta_vs_pair_pT_2mu4_w_single_b_sig_sel->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
-            h_Deta_Dphi_2mu4_w_single_b_sig_sel->Fill(dphi[nsign],deta[nsign],weight[nsign]);
-            h_eta1_eta2_2mu4_w_single_b_sig_sel->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
-            h_eta_avg_Deta_2mu4_w_single_b_sig_sel->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
-            h_eta_avg_Dphi_2mu4_w_single_b_sig_sel->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
-            h_minv_zoomin_2mu4_w_single_b_sig_sel->Fill(minv[nsign],weight[nsign]);
-            h_pair_pt_log_2mu4_w_single_b_sig_sel->Fill(pair_pt[nsign],weight[nsign]);
-            h_minv_pair_pt_log_2mu4_w_single_b_sig_sel->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
-        }
-    }
+                h_pair_eta_vs_pair_pT_2mu4_w_single_b_sig_sel->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
+                h_Deta_Dphi_2mu4_w_single_b_sig_sel->Fill(dphi[nsign],deta[nsign],weight[nsign]);
+                h_eta1_eta2_2mu4_w_single_b_sig_sel->Fill(m2eta[nsign],m1eta[nsign],weight[nsign]);
+                h_eta_avg_Deta_2mu4_w_single_b_sig_sel->Fill(deta[nsign],etaavg[nsign],weight[nsign]);
+                h_eta_avg_Dphi_2mu4_w_single_b_sig_sel->Fill(dphi[nsign],etaavg[nsign],weight[nsign]);
+                h_minv_zoomin_2mu4_w_single_b_sig_sel->Fill(minv[nsign],weight[nsign]);
+                h_pair_pt_log_2mu4_w_single_b_sig_sel->Fill(pair_pt[nsign],weight[nsign]);
+                h_minv_pair_pt_log_2mu4_w_single_b_sig_sel->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
+            } // end if statement for single-b signal pairs
+        } // end loop over muon index
+    } // end if statement for 2mu4 trigger
 }
 
 
