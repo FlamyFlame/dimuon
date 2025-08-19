@@ -747,15 +747,17 @@ bool MuonPairPlottingPP::PassSingleMuonGapCut(float meta, float mpt, int mcharge
 
 void MuonPairPlottingPP::FillHistograms(int nsign){
 
+    bool pass_single_mu4 [2] = {mu1PassSingle[nsign], mu2PassSingle[nsign]};
+    double pt_2nd [2] = {m2pt[nsign], m1pt[nsign]};
+    double q_eta_2nd [2] = {m2charge[nsign] * m2eta[nsign], m1charge[nsign] * m1eta[nsign]};
+    double eta_2nd [2] = {m2eta[nsign], m1eta[nsign]};
+    double phi_2nd [2] = {m2phi[nsign], m1phi[nsign]};
+
     bool pass_single_b_signal_selection = (nsign == 1 && minv[nsign] > 1.08 && minv[nsign] < 2.9 && pair_pt[nsign] > 8);
-    bool pass_single_muon_good_acceptance_selection[ParamsSet::nSigns];
-    // 1st muon good accept
-    // pass_single_muon_good_acceptance_selection[0] = (mu1PassSingle[nsign])? (m1pt[nsign] >= 6 && ((m1eta[nsign] > 1.1 && m1eta[nsign] < 2.3) || (m1eta[nsign] > -2.3 && m1eta[nsign] < -1.2))) : false;
-    // pass_single_muon_good_acceptance_selection[1] = (mu2PassSingle[nsign])? (m2pt[nsign] >= 6 && ((m2eta[nsign] > 1.1 && m2eta[nsign] < 2.3) || (m2eta[nsign] > -2.3 && m2eta[nsign] < -1.2))) : false;
-    
-    // 2nd muon good accept
-    pass_single_muon_good_acceptance_selection[0] = (mu2PassSingle[nsign])? (m1pt[nsign] >= 6 && ((m1eta[nsign] > 1.1 && m1eta[nsign] < 2.3) || (m1eta[nsign] > -2.3 && m1eta[nsign] < -1.2))) : false;
-    pass_single_muon_good_acceptance_selection[1] = (mu1PassSingle[nsign])? (m2pt[nsign] >= 6 && ((m2eta[nsign] > 1.1 && m2eta[nsign] < 2.3) || (m2eta[nsign] > -2.3 && m2eta[nsign] < -1.2))) : false;
+    bool pass_single_muon_good_acceptance_selection[2];
+
+    pass_single_muon_good_acceptance_selection[0] = (mu1PassSingle[nsign])? (m2pt[nsign] >= 6 && ((m2eta[nsign] > 1.1 && m2eta[nsign] < 2.3) || (m2eta[nsign] > -2.3 && m2eta[nsign] < -1.2))) : false;
+    pass_single_muon_good_acceptance_selection[1] = (mu2PassSingle[nsign])? (m1pt[nsign] >= 6 && ((m1eta[nsign] > 1.1 && m1eta[nsign] < 2.3) || (m1eta[nsign] > -2.3 && m1eta[nsign] < -1.2))) : false;
 
     // ngapcut = 0: all; = 1: only those that pass
 
@@ -841,35 +843,22 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
     h_DR_vs_pair_pT_mu4[nsign]->Fill(pair_pt[nsign], dr[nsign],weight[nsign]);
     h_DR_zoomin_vs_pair_pT_mu4[nsign]->Fill(pair_pt[nsign], dr[nsign],weight[nsign]);
 
-    if (mu1PassSingle[nsign]){
-        h_pt2nd_mu4[nsign]->Fill(m2pt[nsign],weight[nsign]);
-        h_pt2nd_vs_q_eta_2nd_mu4[nsign]->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
-        h_pt2nd_vs_phi2nd_mu4[nsign]->Fill(m2phi[nsign], m2pt[nsign], weight[nsign]);
-        h_phi2nd_vs_q_eta_2nd_mu4[nsign]->Fill(m2charge[nsign]*m2eta[nsign], m2phi[nsign], weight[nsign]);
-        h_DR_zoomin_vs_pt2nd_mu4[nsign]->Fill(m2pt[nsign],dr[nsign],weight[nsign]);
-        h_DR_0_2_vs_pt2nd_mu4[nsign]->Fill(m2pt[nsign],dr[nsign],weight[nsign]);
+    for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
+        if (!pass_single_mu4[muon_ind]) continue;
 
-        h_Deta_vs_pT_1st_mu4[nsign]->Fill(m2pt[nsign], deta[nsign],weight[nsign]);
-        h_Deta_zoomin_vs_pT_1st_mu4[nsign]->Fill(m2pt[nsign], deta[nsign],weight[nsign]);
-        h_Dphi_vs_pT_1st_mu4[nsign]->Fill(m2pt[nsign], dphi[nsign],weight[nsign]);
-        h_Dphi_zoomin_vs_pT_1st_mu4[nsign]->Fill(m2pt[nsign], dphi[nsign],weight[nsign]);
-        h_DR_vs_pT_1st_mu4[nsign]->Fill(m2pt[nsign], dr[nsign],weight[nsign]);
-        h_DR_zoomin_vs_pT_1st_mu4[nsign]->Fill(m2pt[nsign], dr[nsign],weight[nsign]);
-    }
-    if (mu2PassSingle[nsign]){
-        h_pt2nd_mu4[nsign]->Fill(m1pt[nsign],weight[nsign]);
-        h_pt2nd_vs_q_eta_2nd_mu4[nsign]->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
-        h_pt2nd_vs_phi2nd_mu4[nsign]->Fill(m1phi[nsign], m1pt[nsign], weight[nsign]);
-        h_phi2nd_vs_q_eta_2nd_mu4[nsign]->Fill(m1charge[nsign]*m1eta[nsign], m1phi[nsign], weight[nsign]);
-        h_DR_zoomin_vs_pt2nd_mu4[nsign]->Fill(m1pt[nsign],dr[nsign],weight[nsign]);
-        h_DR_0_2_vs_pt2nd_mu4[nsign]->Fill(m1pt[nsign],dr[nsign],weight[nsign]);
+        h_pt2nd_mu4[nsign]->Fill(pt_2nd[muon_ind],weight[nsign]);
+        h_pt2nd_vs_q_eta_2nd_mu4[nsign]->Fill(q_eta_2nd[muon_ind], pt_2nd[muon_ind],weight[nsign]);
+        h_pt2nd_vs_phi2nd_mu4[nsign]->Fill(phi_2nd[muon_ind], pt_2nd[muon_ind], weight[nsign]);
+        h_phi2nd_vs_q_eta_2nd_mu4[nsign]->Fill(q_eta_2nd[muon_ind], phi_2nd[muon_ind], weight[nsign]);
+        h_DR_zoomin_vs_pt2nd_mu4[nsign]->Fill(pt_2nd[muon_ind],dr[nsign],weight[nsign]);
+        h_DR_0_2_vs_pt2nd_mu4[nsign]->Fill(pt_2nd[muon_ind],dr[nsign],weight[nsign]);
 
-        h_Deta_vs_pT_1st_mu4[nsign]->Fill(m1pt[nsign], deta[nsign],weight[nsign]);
-        h_Deta_zoomin_vs_pT_1st_mu4[nsign]->Fill(m1pt[nsign], deta[nsign],weight[nsign]);
-        h_Dphi_vs_pT_1st_mu4[nsign]->Fill(m1pt[nsign], dphi[nsign],weight[nsign]);
-        h_Dphi_zoomin_vs_pT_1st_mu4[nsign]->Fill(m1pt[nsign], dphi[nsign],weight[nsign]);
-        h_DR_vs_pT_1st_mu4[nsign]->Fill(m1pt[nsign], dr[nsign],weight[nsign]);
-        h_DR_zoomin_vs_pT_1st_mu4[nsign]->Fill(m1pt[nsign], dr[nsign],weight[nsign]);
+        h_Deta_vs_pT_1st_mu4[nsign]->Fill(pt_2nd[muon_ind], deta[nsign],weight[nsign]);
+        h_Deta_zoomin_vs_pT_1st_mu4[nsign]->Fill(pt_2nd[muon_ind], deta[nsign],weight[nsign]);
+        h_Dphi_vs_pT_1st_mu4[nsign]->Fill(pt_2nd[muon_ind], dphi[nsign],weight[nsign]);
+        h_Dphi_zoomin_vs_pT_1st_mu4[nsign]->Fill(pt_2nd[muon_ind], dphi[nsign],weight[nsign]);
+        h_DR_vs_pT_1st_mu4[nsign]->Fill(pt_2nd[muon_ind], dr[nsign],weight[nsign]);
+        h_DR_zoomin_vs_pT_1st_mu4[nsign]->Fill(pt_2nd[muon_ind], dr[nsign],weight[nsign]);
     }
 
     h_pair_eta_vs_pair_pT_mu4[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
@@ -881,7 +870,7 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
     h_pair_pt_log_mu4[nsign]->Fill(pair_pt[nsign],weight[nsign]);
     h_minv_pair_pt_log_mu4[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
 
-    for (int i = 0; i < ParamsSet::nSigns; i++){
+    for (int i = 0; i < 2; i++){
         if (pass_single_muon_good_acceptance_selection[i]){ // fill for both
             h_Deta_mu4_good_accept[nsign]->Fill(deta[nsign],weight[nsign]);
             h_Deta_zoomin_mu4_good_accept[nsign]->Fill(deta[nsign],weight[nsign]);
@@ -906,15 +895,12 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
         h_Dphi_zoomin_mu4_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
         h_DR_mu4_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
         h_DR_zoomin_mu4_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
-        if (mu1PassSingle[nsign]){
-            h_pt2nd_mu4_sepr[nsign]->Fill(m2pt[nsign],weight[nsign]);
-            h_pt2nd_vs_q_eta_2nd_mu4_sepr[nsign]->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
-            h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_sepr[nsign]->Fill(m2phi[nsign], m2charge[nsign]*m2eta[nsign], m2pt[nsign], weight[nsign]);
-        }
-        if (mu2PassSingle[nsign]){
-            h_pt2nd_mu4_sepr[nsign]->Fill(m1pt[nsign],weight[nsign]);
-            h_pt2nd_vs_q_eta_2nd_mu4_sepr[nsign]->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
-            h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_sepr[nsign]->Fill(m1phi[nsign], m1charge[nsign]*m1eta[nsign], m1pt[nsign], weight[nsign]);
+        
+        for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
+            if (!pass_single_mu4[muon_ind]) continue;
+            h_pt2nd_mu4_sepr[nsign]->Fill(pt_2nd[muon_ind],weight[nsign]);
+            h_pt2nd_vs_q_eta_2nd_mu4_sepr[nsign]->Fill(q_eta_2nd[muon_ind], pt_2nd[muon_ind],weight[nsign]);
+            h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_sepr[nsign]->Fill(phi_2nd[muon_ind], q_eta_2nd[muon_ind], pt_2nd[muon_ind], weight[nsign]);
         }
 
         h_pair_eta_vs_pair_pT_mu4_sepr[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
@@ -936,19 +922,13 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
         h_DR_zoomin_mu4_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
         h_DR_0_2_mu4_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
 
-        if (mu1PassSingle[nsign]){
-            h_pt2nd_mu4_w_single_b_sig_sel->Fill(m2pt[nsign],weight[nsign]);
-            h_pt2nd_vs_q_eta_2nd_mu4_w_single_b_sig_sel->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
-            h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_w_single_b_sig_sel->Fill(m2phi[nsign], m2charge[nsign]*m2eta[nsign], m2pt[nsign], weight[nsign]);
-            h_DR_zoomin_vs_pt2nd_mu4_w_single_b_sig_sel->Fill(m2pt[nsign],dr[nsign],weight[nsign]);
-            h_DR_0_2_vs_pt2nd_mu4_w_single_b_sig_sel->Fill(m2pt[nsign],dr[nsign],weight[nsign]);
-        }
-        if (mu2PassSingle[nsign]){
-            h_pt2nd_mu4_w_single_b_sig_sel->Fill(m1pt[nsign],weight[nsign]);
-            h_pt2nd_vs_q_eta_2nd_mu4_w_single_b_sig_sel->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
-            h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_w_single_b_sig_sel->Fill(m1phi[nsign], m1charge[nsign]*m1eta[nsign], m1pt[nsign], weight[nsign]);
-            h_DR_zoomin_vs_pt2nd_mu4_w_single_b_sig_sel->Fill(m1pt[nsign],dr[nsign],weight[nsign]);
-            h_DR_0_2_vs_pt2nd_mu4_w_single_b_sig_sel->Fill(m1pt[nsign],dr[nsign],weight[nsign]);
+        for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
+            if (!pass_single_mu4[muon_ind]) continue;
+            h_pt2nd_mu4_w_single_b_sig_sel->Fill(pt_2nd[muon_ind],weight[nsign]);
+            h_pt2nd_vs_q_eta_2nd_mu4_w_single_b_sig_sel->Fill(q_eta_2nd[muon_ind], pt_2nd[muon_ind],weight[nsign]);
+            h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_w_single_b_sig_sel->Fill(phi_2nd[muon_ind], q_eta_2nd[muon_ind], pt_2nd[muon_ind], weight[nsign]);
+            h_DR_zoomin_vs_pt2nd_mu4_w_single_b_sig_sel->Fill(pt_2nd[muon_ind],dr[nsign],weight[nsign]);
+            h_DR_0_2_vs_pt2nd_mu4_w_single_b_sig_sel->Fill(pt_2nd[muon_ind],dr[nsign],weight[nsign]);
         }
 
         h_pair_eta_vs_pair_pT_mu4_w_single_b_sig_sel->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
@@ -960,6 +940,7 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
         h_pair_pt_log_mu4_w_single_b_sig_sel->Fill(pair_pt[nsign],weight[nsign]);
         h_minv_pair_pt_log_mu4_w_single_b_sig_sel->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
     }
+
 
     if (passmu4mu4noL1[nsign]){
         h_Deta_mu4_mu4noL1[nsign]->Fill(deta[nsign],weight[nsign]);
@@ -977,36 +958,21 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
         h_DR_vs_pair_pT_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign], dr[nsign],weight[nsign]);
         h_DR_zoomin_vs_pair_pT_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign], dr[nsign],weight[nsign]);
 
-        if (mu1PassSingle[nsign]){
-            h_pt2nd_mu4_mu4noL1[nsign]->Fill(m2pt[nsign],weight[nsign]);
-            h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1[nsign]->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
-            h_pt2nd_vs_phi2nd_mu4_mu4noL1[nsign]->Fill(m2phi[nsign], m2pt[nsign], weight[nsign]);
-            h_phi2nd_vs_q_eta_2nd_mu4_mu4noL1[nsign]->Fill(m2charge[nsign]*m2eta[nsign], m2phi[nsign], weight[nsign]);
-            h_DR_zoomin_vs_pt2nd_mu4_mu4noL1[nsign]->Fill(m2pt[nsign],dr[nsign],weight[nsign]);
-            h_DR_0_2_vs_pt2nd_mu4_mu4noL1[nsign]->Fill(m2pt[nsign],dr[nsign],weight[nsign]);
+        for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
+            if (!pass_single_mu4[muon_ind]) continue;
+            h_pt2nd_mu4_mu4noL1[nsign]->Fill(pt_2nd[muon_ind],weight[nsign]);
+            h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1[nsign]->Fill(q_eta_2nd[muon_ind], pt_2nd[muon_ind],weight[nsign]);
+            h_pt2nd_vs_phi2nd_mu4_mu4noL1[nsign]->Fill(phi_2nd[muon_ind], pt_2nd[muon_ind], weight[nsign]);
+            h_phi2nd_vs_q_eta_2nd_mu4_mu4noL1[nsign]->Fill(q_eta_2nd[muon_ind], phi_2nd[muon_ind], weight[nsign]);
+            h_DR_zoomin_vs_pt2nd_mu4_mu4noL1[nsign]->Fill(pt_2nd[muon_ind],dr[nsign],weight[nsign]);
+            h_DR_0_2_vs_pt2nd_mu4_mu4noL1[nsign]->Fill(pt_2nd[muon_ind],dr[nsign],weight[nsign]);
 
-            h_Deta_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(m2pt[nsign], deta[nsign],weight[nsign]);
-            h_Deta_zoomin_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(m2pt[nsign], deta[nsign],weight[nsign]);
-            h_Dphi_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(m2pt[nsign], dphi[nsign],weight[nsign]);
-            h_Dphi_zoomin_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(m2pt[nsign], dphi[nsign],weight[nsign]);
-            h_DR_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(m2pt[nsign], dr[nsign],weight[nsign]);
-            h_DR_zoomin_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(m2pt[nsign], dr[nsign],weight[nsign]);
-
-        }
-        if (mu2PassSingle[nsign]){
-            h_pt2nd_mu4_mu4noL1[nsign]->Fill(m1pt[nsign],weight[nsign]);
-            h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1[nsign]->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
-            h_pt2nd_vs_phi2nd_mu4_mu4noL1[nsign]->Fill(m1phi[nsign], m1pt[nsign], weight[nsign]);
-            h_phi2nd_vs_q_eta_2nd_mu4_mu4noL1[nsign]->Fill(m1charge[nsign]*m1eta[nsign], m1phi[nsign], weight[nsign]);
-            h_DR_zoomin_vs_pt2nd_mu4_mu4noL1[nsign]->Fill(m1pt[nsign],dr[nsign],weight[nsign]);
-            h_DR_0_2_vs_pt2nd_mu4_mu4noL1[nsign]->Fill(m1pt[nsign],dr[nsign],weight[nsign]);
-
-            h_Deta_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(m1pt[nsign], deta[nsign],weight[nsign]);
-            h_Deta_zoomin_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(m1pt[nsign], deta[nsign],weight[nsign]);
-            h_Dphi_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(m1pt[nsign], dphi[nsign],weight[nsign]);
-            h_Dphi_zoomin_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(m1pt[nsign], dphi[nsign],weight[nsign]);
-            h_DR_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(m1pt[nsign], dr[nsign],weight[nsign]);
-            h_DR_zoomin_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(m1pt[nsign], dr[nsign],weight[nsign]);
+            h_Deta_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(pt_2nd[muon_ind], deta[nsign],weight[nsign]);
+            h_Deta_zoomin_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(pt_2nd[muon_ind], deta[nsign],weight[nsign]);
+            h_Dphi_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(pt_2nd[muon_ind], dphi[nsign],weight[nsign]);
+            h_Dphi_zoomin_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(pt_2nd[muon_ind], dphi[nsign],weight[nsign]);
+            h_DR_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(pt_2nd[muon_ind], dr[nsign],weight[nsign]);
+            h_DR_zoomin_vs_pT_1st_mu4_mu4noL1[nsign]->Fill(pt_2nd[muon_ind], dr[nsign],weight[nsign]);
         }
 
         h_pair_eta_vs_pair_pT_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
@@ -1018,7 +984,7 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
         h_pair_pt_log_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign],weight[nsign]);
         h_minv_pair_pt_log_mu4_mu4noL1[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
 
-        for (int i = 0; i < ParamsSet::nSigns; i++){
+        for (int i = 0; i < 2; i++){
             if (pass_single_muon_good_acceptance_selection[i]){ // fill for both
                 h_Deta_mu4_mu4noL1_good_accept[nsign]->Fill(deta[nsign],weight[nsign]);
                 h_Deta_zoomin_mu4_mu4noL1_good_accept[nsign]->Fill(deta[nsign],weight[nsign]);
@@ -1038,13 +1004,10 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
             h_Dphi_zoomin_mu4_mu4noL1_excl[nsign]->Fill(dphi[nsign],weight[nsign]);
             h_DR_mu4_mu4noL1_excl[nsign]->Fill(dr[nsign],weight[nsign]);
             h_DR_zoomin_mu4_mu4noL1_excl[nsign]->Fill(dr[nsign],weight[nsign]);
-            if (mu1PassSingle[nsign]){
-                h_pt2nd_mu4_mu4noL1_excl[nsign]->Fill(m2pt[nsign],weight[nsign]);
-                h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl[nsign]->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
-            }
-            if (mu2PassSingle[nsign]){
-                h_pt2nd_mu4_mu4noL1_excl[nsign]->Fill(m1pt[nsign],weight[nsign]);
-                h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl[nsign]->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
+            for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
+                if (!pass_single_mu4[muon_ind]) continue;
+                h_pt2nd_mu4_mu4noL1_excl[nsign]->Fill(pt_2nd[muon_ind],weight[nsign]);
+                h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl[nsign]->Fill(q_eta_2nd[muon_ind], pt_2nd[muon_ind],weight[nsign]);
             }
 
             h_pair_eta_vs_pair_pT_mu4_mu4noL1_excl[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
@@ -1073,15 +1036,11 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
             h_Dphi_zoomin_mu4_mu4noL1_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
             h_DR_mu4_mu4noL1_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
             h_DR_zoomin_mu4_mu4noL1_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
-            if (mu1PassSingle[nsign]){
-                h_pt2nd_mu4_mu4noL1_sepr[nsign]->Fill(m2pt[nsign],weight[nsign]);
-                h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr[nsign]->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
-                h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_sepr[nsign]->Fill(m2phi[nsign], m2charge[nsign]*m2eta[nsign], m2pt[nsign], weight[nsign]);
-            }
-            if (mu2PassSingle[nsign]){
-                h_pt2nd_mu4_mu4noL1_sepr[nsign]->Fill(m1pt[nsign],weight[nsign]);
-                h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr[nsign]->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
-                h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_sepr[nsign]->Fill(m1phi[nsign], m1charge[nsign]*m1eta[nsign], m1pt[nsign], weight[nsign]);
+            for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
+                if (!pass_single_mu4[muon_ind]) continue;
+                h_pt2nd_mu4_mu4noL1_sepr[nsign]->Fill(pt_2nd[muon_ind],weight[nsign]);
+                h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr[nsign]->Fill(q_eta_2nd[muon_ind], pt_2nd[muon_ind],weight[nsign]);
+                h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_sepr[nsign]->Fill(phi_2nd[muon_ind], q_eta_2nd[muon_ind], pt_2nd[muon_ind], weight[nsign]);
             }
 
             h_pair_eta_vs_pair_pT_mu4_mu4noL1_sepr[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
@@ -1096,14 +1055,10 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
                 h_Dphi_zoomin_mu4_mu4noL1_excl_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
                 h_DR_mu4_mu4noL1_excl_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
                 h_DR_zoomin_mu4_mu4noL1_excl_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
-                if (mu1PassSingle[nsign]){
-                    h_pt2nd_mu4_mu4noL1_excl_sepr[nsign]->Fill(m2pt[nsign],weight[nsign]);
-                    h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl_sepr[nsign]->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
-                }
-
-                if (mu2PassSingle[nsign]){
-                    h_pt2nd_mu4_mu4noL1_excl_sepr[nsign]->Fill(m1pt[nsign],weight[nsign]);
-                    h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl_sepr[nsign]->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
+                for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
+                    if (!pass_single_mu4[muon_ind]) continue;
+                    h_pt2nd_mu4_mu4noL1_excl_sepr[nsign]->Fill(pt_2nd[muon_ind],weight[nsign]);
+                    h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl_sepr[nsign]->Fill(q_eta_2nd[muon_ind], pt_2nd[muon_ind],weight[nsign]);
                 }
 
                 h_pair_eta_vs_pair_pT_mu4_mu4noL1_excl_sepr[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
@@ -1124,20 +1079,14 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
             h_DR_zoomin_mu4_mu4noL1_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
             h_DR_0_2_mu4_mu4noL1_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
 
-            if (mu1PassSingle[nsign]){
-                h_pt2nd_mu4_mu4noL1_w_single_b_sig_sel->Fill(m2pt[nsign],weight[nsign]);
-                h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_w_single_b_sig_sel->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
-                h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_w_single_b_sig_sel->Fill(m2phi[nsign], m2charge[nsign]*m2eta[nsign], m2pt[nsign], weight[nsign]);
-                h_DR_zoomin_vs_pt2nd_mu4_mu4noL1_w_single_b_sig_sel->Fill(m2pt[nsign],dr[nsign],weight[nsign]);
-                h_DR_0_2_vs_pt2nd_mu4_mu4noL1_w_single_b_sig_sel->Fill(m2pt[nsign],dr[nsign],weight[nsign]);
+            for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
+                if (!pass_single_mu4[muon_ind]) continue;
+                h_pt2nd_mu4_mu4noL1_w_single_b_sig_sel->Fill(pt_2nd[muon_ind],weight[nsign]);
+                h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_w_single_b_sig_sel->Fill(q_eta_2nd[muon_ind], pt_2nd[muon_ind],weight[nsign]);
+                h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_w_single_b_sig_sel->Fill(phi_2nd[muon_ind], q_eta_2nd[muon_ind], pt_2nd[muon_ind], weight[nsign]);
+                h_DR_zoomin_vs_pt2nd_mu4_mu4noL1_w_single_b_sig_sel->Fill(pt_2nd[muon_ind],dr[nsign],weight[nsign]);
+                h_DR_0_2_vs_pt2nd_mu4_mu4noL1_w_single_b_sig_sel->Fill(pt_2nd[muon_ind],dr[nsign],weight[nsign]);
 
-            }
-            if (mu2PassSingle[nsign]){
-                h_pt2nd_mu4_mu4noL1_w_single_b_sig_sel->Fill(m1pt[nsign],weight[nsign]);
-                h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_w_single_b_sig_sel->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
-                h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_w_single_b_sig_sel->Fill(m1phi[nsign], m1charge[nsign]*m1eta[nsign], m1pt[nsign], weight[nsign]);
-                h_DR_zoomin_vs_pt2nd_mu4_mu4noL1_w_single_b_sig_sel->Fill(m1pt[nsign],dr[nsign],weight[nsign]);
-                h_DR_0_2_vs_pt2nd_mu4_mu4noL1_w_single_b_sig_sel->Fill(m1pt[nsign],dr[nsign],weight[nsign]);
             }
 
             h_pair_eta_vs_pair_pT_mu4_mu4noL1_w_single_b_sig_sel->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
@@ -1156,13 +1105,10 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
                 h_Dphi_zoomin_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign]);
                 h_DR_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
                 h_DR_zoomin_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
-                if (mu1PassSingle[nsign]){
-                    h_pt2nd_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(m2pt[nsign],weight[nsign]);
-                    h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
-                }
-                if (mu2PassSingle[nsign]){
-                    h_pt2nd_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(m1pt[nsign],weight[nsign]);
-                    h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
+                for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
+                    if (!pass_single_mu4[muon_ind]) continue;
+                    h_pt2nd_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(pt_2nd[muon_ind],weight[nsign]);
+                    h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(q_eta_2nd[muon_ind], pt_2nd[muon_ind],weight[nsign]);
                 }
 
                 h_pair_eta_vs_pair_pT_mu4_mu4noL1_excl_w_single_b_sig_sel->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
@@ -1176,6 +1122,7 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
             }
         }
     }
+    
     if (pass2mu4[nsign]){
         h_Deta_2mu4[nsign]->Fill(deta[nsign],weight[nsign]);
         h_Deta_zoomin_2mu4[nsign]->Fill(deta[nsign],weight[nsign]);
@@ -1192,36 +1139,21 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
         h_DR_vs_pair_pT_2mu4[nsign]->Fill(pair_pt[nsign], dr[nsign],weight[nsign]);
         h_DR_zoomin_vs_pair_pT_2mu4[nsign]->Fill(pair_pt[nsign], dr[nsign],weight[nsign]);
 
-        if (mu1PassSingle[nsign]){
-            h_pt2nd_2mu4[nsign]->Fill(m2pt[nsign],weight[nsign]);
-            h_pt2nd_vs_q_eta_2nd_2mu4[nsign]->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
-            h_pt2nd_vs_phi2nd_2mu4[nsign]->Fill(m2phi[nsign], m2pt[nsign], weight[nsign]);
-            h_phi2nd_vs_q_eta_2nd_2mu4[nsign]->Fill(m2charge[nsign]*m2eta[nsign], m2phi[nsign], weight[nsign]);
-            h_DR_zoomin_vs_pt2nd_2mu4[nsign]->Fill(m2pt[nsign],dr[nsign],weight[nsign]);
-            h_DR_0_2_vs_pt2nd_2mu4[nsign]->Fill(m2pt[nsign],dr[nsign],weight[nsign]);
+        for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
+            if (!pass_single_mu4[muon_ind]) continue;
+            h_pt2nd_2mu4[nsign]->Fill(pt_2nd[muon_ind],weight[nsign]);
+            h_pt2nd_vs_q_eta_2nd_2mu4[nsign]->Fill(q_eta_2nd[muon_ind], pt_2nd[muon_ind],weight[nsign]);
+            h_pt2nd_vs_phi2nd_2mu4[nsign]->Fill(phi_2nd[muon_ind], pt_2nd[muon_ind], weight[nsign]);
+            h_phi2nd_vs_q_eta_2nd_2mu4[nsign]->Fill(q_eta_2nd[muon_ind], phi_2nd[muon_ind], weight[nsign]);
+            h_DR_zoomin_vs_pt2nd_2mu4[nsign]->Fill(pt_2nd[muon_ind],dr[nsign],weight[nsign]);
+            h_DR_0_2_vs_pt2nd_2mu4[nsign]->Fill(pt_2nd[muon_ind],dr[nsign],weight[nsign]);
 
-            h_Deta_vs_pT_1st_2mu4[nsign]->Fill(m2pt[nsign], deta[nsign],weight[nsign]);
-            h_Deta_zoomin_vs_pT_1st_2mu4[nsign]->Fill(m2pt[nsign], deta[nsign],weight[nsign]);
-            h_Dphi_vs_pT_1st_2mu4[nsign]->Fill(m2pt[nsign], dphi[nsign],weight[nsign]);
-            h_Dphi_zoomin_vs_pT_1st_2mu4[nsign]->Fill(m2pt[nsign], dphi[nsign],weight[nsign]);
-            h_DR_vs_pT_1st_2mu4[nsign]->Fill(m2pt[nsign], dr[nsign],weight[nsign]);
-            h_DR_zoomin_vs_pT_1st_2mu4[nsign]->Fill(m2pt[nsign], dr[nsign],weight[nsign]);
-        }
-        if (mu2PassSingle[nsign]){
-            h_pt2nd_2mu4[nsign]->Fill(m1pt[nsign],weight[nsign]);
-            h_pt2nd_vs_q_eta_2nd_2mu4[nsign]->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
-            h_pt2nd_vs_phi2nd_2mu4[nsign]->Fill(m1phi[nsign], m1pt[nsign], weight[nsign]);
-            h_phi2nd_vs_q_eta_2nd_2mu4[nsign]->Fill(m1charge[nsign]*m1eta[nsign], m1phi[nsign], weight[nsign]);
-            h_DR_zoomin_vs_pt2nd_2mu4[nsign]->Fill(m1pt[nsign],dr[nsign],weight[nsign]);
-            h_DR_0_2_vs_pt2nd_2mu4[nsign]->Fill(m1pt[nsign],dr[nsign],weight[nsign]);
-
-            h_Deta_vs_pT_1st_2mu4[nsign]->Fill(m1pt[nsign], deta[nsign],weight[nsign]);
-            h_Deta_zoomin_vs_pT_1st_2mu4[nsign]->Fill(m1pt[nsign], deta[nsign],weight[nsign]);
-            h_Dphi_vs_pT_1st_2mu4[nsign]->Fill(m1pt[nsign], dphi[nsign],weight[nsign]);
-            h_Dphi_zoomin_vs_pT_1st_2mu4[nsign]->Fill(m1pt[nsign], dphi[nsign],weight[nsign]);
-            h_DR_vs_pT_1st_2mu4[nsign]->Fill(m1pt[nsign], dr[nsign],weight[nsign]);
-            h_DR_zoomin_vs_pT_1st_2mu4[nsign]->Fill(m1pt[nsign], dr[nsign],weight[nsign]);
-
+            h_Deta_vs_pT_1st_2mu4[nsign]->Fill(pt_2nd[muon_ind], deta[nsign],weight[nsign]);
+            h_Deta_zoomin_vs_pT_1st_2mu4[nsign]->Fill(pt_2nd[muon_ind], deta[nsign],weight[nsign]);
+            h_Dphi_vs_pT_1st_2mu4[nsign]->Fill(pt_2nd[muon_ind], dphi[nsign],weight[nsign]);
+            h_Dphi_zoomin_vs_pT_1st_2mu4[nsign]->Fill(pt_2nd[muon_ind], dphi[nsign],weight[nsign]);
+            h_DR_vs_pT_1st_2mu4[nsign]->Fill(pt_2nd[muon_ind], dr[nsign],weight[nsign]);
+            h_DR_zoomin_vs_pT_1st_2mu4[nsign]->Fill(pt_2nd[muon_ind], dr[nsign],weight[nsign]);
         }
 
         h_pair_eta_vs_pair_pT_2mu4[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
@@ -1233,7 +1165,7 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
         h_pair_pt_log_2mu4[nsign]->Fill(pair_pt[nsign],weight[nsign]);
         h_minv_pair_pt_log_2mu4[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
 
-        for (int i = 0; i < ParamsSet::nSigns; i++){
+        for (int i = 0; i < 2; i++){
             if (pass_single_muon_good_acceptance_selection[i]){ // fill for both
                 h_Deta_2mu4_good_accept[nsign]->Fill(deta[nsign],weight[nsign]);
                 h_Deta_zoomin_2mu4_good_accept[nsign]->Fill(deta[nsign],weight[nsign]);
@@ -1256,15 +1188,11 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
             h_Dphi_zoomin_2mu4_sepr[nsign]->Fill(dphi[nsign],weight[nsign]);
             h_DR_2mu4_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
             h_DR_zoomin_2mu4_sepr[nsign]->Fill(dr[nsign],weight[nsign]);
-            if (mu1PassSingle[nsign]){
-                h_pt2nd_2mu4_sepr[nsign]->Fill(m2pt[nsign],weight[nsign]);
-                h_pt2nd_vs_q_eta_2nd_2mu4_sepr[nsign]->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
-                h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_sepr[nsign]->Fill(m2phi[nsign], m2charge[nsign]*m2eta[nsign], m2pt[nsign], weight[nsign]);
-            }
-            if (mu2PassSingle[nsign]){
-                h_pt2nd_2mu4_sepr[nsign]->Fill(m1pt[nsign],weight[nsign]);
-                h_pt2nd_vs_q_eta_2nd_2mu4_sepr[nsign]->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
-                h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_sepr[nsign]->Fill(m1phi[nsign], m1charge[nsign]*m1eta[nsign], m1pt[nsign], weight[nsign]);
+            for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
+                if (!pass_single_mu4[muon_ind]) continue;
+                h_pt2nd_2mu4_sepr[nsign]->Fill(pt_2nd[muon_ind],weight[nsign]);
+                h_pt2nd_vs_q_eta_2nd_2mu4_sepr[nsign]->Fill(q_eta_2nd[muon_ind], pt_2nd[muon_ind],weight[nsign]);
+                h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_sepr[nsign]->Fill(phi_2nd[muon_ind], q_eta_2nd[muon_ind], pt_2nd[muon_ind], weight[nsign]);
             }
     
             h_pair_eta_vs_pair_pT_2mu4_sepr[nsign]->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
@@ -1284,19 +1212,13 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
             h_DR_zoomin_2mu4_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
             h_DR_0_2_2mu4_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
 
-            if (mu1PassSingle[nsign]){
-                h_pt2nd_2mu4_w_single_b_sig_sel->Fill(m2pt[nsign],weight[nsign]);
-                h_pt2nd_vs_q_eta_2nd_2mu4_w_single_b_sig_sel->Fill(m2charge[nsign] * m2eta[nsign], m2pt[nsign],weight[nsign]);
-                h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_w_single_b_sig_sel->Fill(m2phi[nsign], m2charge[nsign]*m2eta[nsign], m2pt[nsign], weight[nsign]);
-                h_DR_zoomin_vs_pt2nd_2mu4_w_single_b_sig_sel->Fill(m2pt[nsign],dr[nsign],weight[nsign]);
-                h_DR_0_2_vs_pt2nd_2mu4_w_single_b_sig_sel->Fill(m2pt[nsign],dr[nsign],weight[nsign]);
-            }
-            if (mu2PassSingle[nsign]){
-                h_pt2nd_2mu4_w_single_b_sig_sel->Fill(m1pt[nsign],weight[nsign]);
-                h_pt2nd_vs_q_eta_2nd_2mu4_w_single_b_sig_sel->Fill(m1charge[nsign] * m1eta[nsign], m1pt[nsign],weight[nsign]);
-                h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_w_single_b_sig_sel->Fill(m1phi[nsign], m1charge[nsign]*m1eta[nsign], m1pt[nsign], weight[nsign]);
-                h_DR_zoomin_vs_pt2nd_2mu4_w_single_b_sig_sel->Fill(m1pt[nsign],dr[nsign],weight[nsign]);
-                h_DR_0_2_vs_pt2nd_2mu4_w_single_b_sig_sel->Fill(m1pt[nsign],dr[nsign],weight[nsign]);
+            for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
+                if (!pass_single_mu4[muon_ind]) continue;
+                h_pt2nd_2mu4_w_single_b_sig_sel->Fill(pt_2nd[muon_ind],weight[nsign]);
+                h_pt2nd_vs_q_eta_2nd_2mu4_w_single_b_sig_sel->Fill(q_eta_2nd[muon_ind], pt_2nd[muon_ind],weight[nsign]);
+                h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_w_single_b_sig_sel->Fill(phi_2nd[muon_ind], q_eta_2nd[muon_ind], pt_2nd[muon_ind], weight[nsign]);
+                h_DR_zoomin_vs_pt2nd_2mu4_w_single_b_sig_sel->Fill(pt_2nd[muon_ind],dr[nsign],weight[nsign]);
+                h_DR_0_2_vs_pt2nd_2mu4_w_single_b_sig_sel->Fill(pt_2nd[muon_ind],dr[nsign],weight[nsign]);
             }
 
             h_pair_eta_vs_pair_pT_2mu4_w_single_b_sig_sel->Fill(pair_pt[nsign],pair_eta[nsign],weight[nsign]);
@@ -1309,7 +1231,6 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
             h_minv_pair_pt_log_2mu4_w_single_b_sig_sel->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
         }
     }
-
 }
 
 
@@ -1321,100 +1242,103 @@ void MuonPairPlottingPP::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(int ns
         ? h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_sepr_divided[nsign]->GetZaxis()->GetXmax()
         : h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr_divided[nsign]->GetYaxis()->GetXmax();
 
-    double pt_2nd = mu1PassSingle[nsign]? m2pt[nsign] : m1pt[nsign];
-    if (pt_2nd >= single_muon_pt_max) return; // return without filling the inversed-weighted-by-single-muon-efficiency histograms
+    bool pass_single_mu4 [2] = {mu1PassSingle[nsign], mu2PassSingle[nsign]};
+    double pt_2nd [2] = {m2pt[nsign], m1pt[nsign]};
+    double q_eta_2nd [2] = {m2charge[nsign] * m2eta[nsign], m1charge[nsign] * m1eta[nsign]};
+    double phi_2nd [2] = {m2phi[nsign], m1phi[nsign]};
 
-    double q_eta_2nd = mu1PassSingle[nsign]? m2charge[nsign] * m2eta[nsign] : m1charge[nsign] * m1eta[nsign];
+    for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
 
-    double phi_2nd = mu1PassSingle[nsign] ? m2phi[nsign] : m1phi[nsign];
+        if (!pass_single_mu4[muon_ind]) continue;
+        if (pt_2nd[muon_ind] >= single_muon_pt_max) continue; // skip to next muon without filling the inversed-weighted-by-single-muon-efficiency histograms
+        int bin_num = h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr_divided[nsign]->FindBin(q_eta_2nd[muon_ind], pt_2nd[muon_ind]);
 
-    int bin_num = h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr_divided[nsign]->FindBin(q_eta_2nd, pt_2nd);
+        int bin_num_mu4_mu4noL1 =
+            use_3D_2nd_muon
+            ? h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_sepr_divided[nsign]->FindBin(phi_2nd[muon_ind], q_eta_2nd[muon_ind], pt_2nd[muon_ind])
+            : h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr_divided[nsign]->FindBin(q_eta_2nd[muon_ind], pt_2nd[muon_ind]);
 
-    int bin_num_mu4_mu4noL1 =
-        use_3D_2nd_muon
-        ? h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_sepr_divided[nsign]->FindBin(phi_2nd, q_eta_2nd, pt_2nd)
-        : h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr_divided[nsign]->FindBin(q_eta_2nd, pt_2nd);
+        double eff_mu4_mu4noL1 =
+            use_3D_2nd_muon
+            ? h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_sepr_divided[nsign]->GetBinContent(bin_num_mu4_mu4noL1)
+            : h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr_divided[nsign]->GetBinContent(bin_num_mu4_mu4noL1);
 
-    double eff_mu4_mu4noL1 =
-        use_3D_2nd_muon
-        ? h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_sepr_divided[nsign]->GetBinContent(bin_num_mu4_mu4noL1)
-        : h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr_divided[nsign]->GetBinContent(bin_num_mu4_mu4noL1);
+        int bin_num_2mu4 =
+            use_3D_2nd_muon
+            ? h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_sepr_divided[nsign]->FindBin(phi_2nd[muon_ind], q_eta_2nd[muon_ind], pt_2nd[muon_ind])
+            : h_pt2nd_vs_q_eta_2nd_2mu4_sepr_divided[nsign]->FindBin(q_eta_2nd[muon_ind], pt_2nd[muon_ind]);
 
-    int bin_num_2mu4 =
-        use_3D_2nd_muon
-        ? h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_sepr_divided[nsign]->FindBin(phi_2nd, q_eta_2nd, pt_2nd)
-        : h_pt2nd_vs_q_eta_2nd_2mu4_sepr_divided[nsign]->FindBin(q_eta_2nd, pt_2nd);
-
-    double eff_2mu4 =
-        use_3D_2nd_muon
-        ? h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_sepr_divided[nsign]->GetBinContent(bin_num_2mu4)
-        : h_pt2nd_vs_q_eta_2nd_2mu4_sepr_divided[nsign]->GetBinContent(bin_num_2mu4);
-
-
-    int bin_num_mu4_mu4noL1_single_b_signal =
-        use_3D_2nd_muon
-        ? h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_divided_w_single_b_sig_sel->FindBin(phi_2nd, q_eta_2nd, pt_2nd)
-        : h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_divided_w_single_b_sig_sel->FindBin(q_eta_2nd, pt_2nd);
-
-    double eff_mu4_mu4noL1_single_b_signal =
-        use_3D_2nd_muon
-        ? h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_divided_w_single_b_sig_sel->GetBinContent(bin_num_mu4_mu4noL1_single_b_signal)
-        : h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_divided_w_single_b_sig_sel->GetBinContent(bin_num_mu4_mu4noL1_single_b_signal);
-
-    int bin_num_2mu4_single_b_signal =
-        use_3D_2nd_muon
-        ? h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_divided_w_single_b_sig_sel->FindBin(phi_2nd, q_eta_2nd, pt_2nd)
-        : h_pt2nd_vs_q_eta_2nd_2mu4_divided_w_single_b_sig_sel->FindBin(q_eta_2nd, pt_2nd);
-
-    double eff_2mu4_single_b_signal =
-        use_3D_2nd_muon
-        ? h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_divided_w_single_b_sig_sel->GetBinContent(bin_num_2mu4_single_b_signal)
-        : h_pt2nd_vs_q_eta_2nd_2mu4_divided_w_single_b_sig_sel->GetBinContent(bin_num_2mu4_single_b_signal);
+        double eff_2mu4 =
+            use_3D_2nd_muon
+            ? h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_sepr_divided[nsign]->GetBinContent(bin_num_2mu4)
+            : h_pt2nd_vs_q_eta_2nd_2mu4_sepr_divided[nsign]->GetBinContent(bin_num_2mu4);
 
 
-    if (passmu4mu4noL1[nsign]){
-        if (eff_mu4_mu4noL1 > 0){
-            h_Deta_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy[nsign]->Fill(deta[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1);
-            h_Dphi_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy[nsign]->Fill(dphi[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1);
-            h_DR_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy[nsign]->Fill(dr[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1);
-            h_DR_0_2_mu4_mu4noL1_inv_w_by_single_mu_effcy[nsign]->Fill(dr[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1);
-            h_minv_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy[nsign]->Fill(minv[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1);
-            h_pair_pt_log_mu4_mu4noL1_inv_w_by_single_mu_effcy[nsign]->Fill(pair_pt[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1);
-            h_pt2nd_mu4_mu4noL1_inv_w_by_single_mu_effcy[nsign]->Fill(pt_2nd,weight[nsign] * 1. / eff_mu4_mu4noL1);            
+        int bin_num_mu4_mu4noL1_single_b_signal =
+            use_3D_2nd_muon
+            ? h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_divided_w_single_b_sig_sel->FindBin(phi_2nd[muon_ind], q_eta_2nd[muon_ind], pt_2nd[muon_ind])
+            : h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_divided_w_single_b_sig_sel->FindBin(q_eta_2nd[muon_ind], pt_2nd[muon_ind]);
+
+        double eff_mu4_mu4noL1_single_b_signal =
+            use_3D_2nd_muon
+            ? h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_divided_w_single_b_sig_sel->GetBinContent(bin_num_mu4_mu4noL1_single_b_signal)
+            : h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_divided_w_single_b_sig_sel->GetBinContent(bin_num_mu4_mu4noL1_single_b_signal);
+
+        int bin_num_2mu4_single_b_signal =
+            use_3D_2nd_muon
+            ? h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_divided_w_single_b_sig_sel->FindBin(phi_2nd[muon_ind], q_eta_2nd[muon_ind], pt_2nd[muon_ind])
+            : h_pt2nd_vs_q_eta_2nd_2mu4_divided_w_single_b_sig_sel->FindBin(q_eta_2nd[muon_ind], pt_2nd[muon_ind]);
+
+        double eff_2mu4_single_b_signal =
+            use_3D_2nd_muon
+            ? h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_divided_w_single_b_sig_sel->GetBinContent(bin_num_2mu4_single_b_signal)
+            : h_pt2nd_vs_q_eta_2nd_2mu4_divided_w_single_b_sig_sel->GetBinContent(bin_num_2mu4_single_b_signal);
+
+
+        if (passmu4mu4noL1[nsign]){
+            if (eff_mu4_mu4noL1 > 0){
+                h_Deta_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy[nsign]->Fill(deta[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1);
+                h_Dphi_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy[nsign]->Fill(dphi[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1);
+                h_DR_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy[nsign]->Fill(dr[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1);
+                h_DR_0_2_mu4_mu4noL1_inv_w_by_single_mu_effcy[nsign]->Fill(dr[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1);
+                h_minv_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy[nsign]->Fill(minv[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1);
+                h_pair_pt_log_mu4_mu4noL1_inv_w_by_single_mu_effcy[nsign]->Fill(pair_pt[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1);
+                h_pt2nd_mu4_mu4noL1_inv_w_by_single_mu_effcy[nsign]->Fill(pt_2nd[muon_ind],weight[nsign] * 1. / eff_mu4_mu4noL1);            
+            }
+
+            if (pass_single_b_signal_selection && eff_mu4_mu4noL1_single_b_signal > 0){
+                h_Deta_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1_single_b_signal);
+                h_Dphi_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1_single_b_signal);
+                h_DR_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1_single_b_signal);
+                h_DR_0_2_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1_single_b_signal);
+                h_minv_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(minv[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1_single_b_signal);
+                h_pair_pt_log_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(pair_pt[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1_single_b_signal);
+                h_pt2nd_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(pt_2nd[muon_ind],weight[nsign] * 1. / eff_mu4_mu4noL1_single_b_signal);
+            }
         }
 
-        if (pass_single_b_signal_selection && eff_mu4_mu4noL1_single_b_signal > 0){
-            h_Deta_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1_single_b_signal);
-            h_Dphi_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1_single_b_signal);
-            h_DR_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1_single_b_signal);
-            h_DR_0_2_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1_single_b_signal);
-            h_minv_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(minv[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1_single_b_signal);
-            h_pair_pt_log_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(pair_pt[nsign],weight[nsign] * 1. / eff_mu4_mu4noL1_single_b_signal);
-            h_pt2nd_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(pt_2nd,weight[nsign] * 1. / eff_mu4_mu4noL1_single_b_signal);
-        }
-    }
+        if (pass2mu4[nsign]){
+            if (eff_2mu4 > 0){            
+                h_Deta_zoomin_2mu4_inv_w_by_single_mu_effcy[nsign]->Fill(deta[nsign],weight[nsign] * 1. / eff_2mu4);
+                h_Dphi_zoomin_2mu4_inv_w_by_single_mu_effcy[nsign]->Fill(dphi[nsign],weight[nsign] * 1. / eff_2mu4);
+                h_DR_zoomin_2mu4_inv_w_by_single_mu_effcy[nsign]->Fill(dr[nsign],weight[nsign] * 1. / eff_2mu4);
+                h_DR_0_2_2mu4_inv_w_by_single_mu_effcy[nsign]->Fill(dr[nsign],weight[nsign] * 1. / eff_2mu4);
+                h_minv_zoomin_2mu4_inv_w_by_single_mu_effcy[nsign]->Fill(minv[nsign],weight[nsign] * 1. / eff_2mu4);
+                h_pair_pt_log_2mu4_inv_w_by_single_mu_effcy[nsign]->Fill(pair_pt[nsign],weight[nsign] * 1. / eff_2mu4);
+                h_pt2nd_2mu4_inv_w_by_single_mu_effcy[nsign]->Fill(pt_2nd[muon_ind],weight[nsign] * 1. / eff_2mu4);
+            }
 
-    if (pass2mu4[nsign]){
-        if (eff_2mu4 > 0){            
-            h_Deta_zoomin_2mu4_inv_w_by_single_mu_effcy[nsign]->Fill(deta[nsign],weight[nsign] * 1. / eff_2mu4);
-            h_Dphi_zoomin_2mu4_inv_w_by_single_mu_effcy[nsign]->Fill(dphi[nsign],weight[nsign] * 1. / eff_2mu4);
-            h_DR_zoomin_2mu4_inv_w_by_single_mu_effcy[nsign]->Fill(dr[nsign],weight[nsign] * 1. / eff_2mu4);
-            h_DR_0_2_2mu4_inv_w_by_single_mu_effcy[nsign]->Fill(dr[nsign],weight[nsign] * 1. / eff_2mu4);
-            h_minv_zoomin_2mu4_inv_w_by_single_mu_effcy[nsign]->Fill(minv[nsign],weight[nsign] * 1. / eff_2mu4);
-            h_pair_pt_log_2mu4_inv_w_by_single_mu_effcy[nsign]->Fill(pair_pt[nsign],weight[nsign] * 1. / eff_2mu4);
-            h_pt2nd_2mu4_inv_w_by_single_mu_effcy[nsign]->Fill(pt_2nd,weight[nsign] * 1. / eff_2mu4);
+            if (pass_single_b_signal_selection && eff_2mu4_single_b_signal > 0){
+                h_Deta_zoomin_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign] * 1. / eff_2mu4_single_b_signal);
+                h_Dphi_zoomin_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign] * 1. / eff_2mu4_single_b_signal);
+                h_DR_zoomin_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign] * 1. / eff_2mu4_single_b_signal);
+                h_DR_0_2_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign] * 1. / eff_2mu4_single_b_signal);
+                h_minv_zoomin_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(minv[nsign],weight[nsign] * 1. / eff_2mu4_single_b_signal);
+                h_pair_pt_log_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(pair_pt[nsign],weight[nsign] * 1. / eff_2mu4_single_b_signal);
+                h_pt2nd_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(pt_2nd[muon_ind],weight[nsign] * 1. / eff_2mu4_single_b_signal);
+            }
         }
-
-        if (pass_single_b_signal_selection && eff_2mu4_single_b_signal > 0){
-            h_Deta_zoomin_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign] * 1. / eff_2mu4_single_b_signal);
-            h_Dphi_zoomin_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(dphi[nsign],weight[nsign] * 1. / eff_2mu4_single_b_signal);
-            h_DR_zoomin_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign] * 1. / eff_2mu4_single_b_signal);
-            h_DR_0_2_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign] * 1. / eff_2mu4_single_b_signal);
-            h_minv_zoomin_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(minv[nsign],weight[nsign] * 1. / eff_2mu4_single_b_signal);
-            h_pair_pt_log_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(pair_pt[nsign],weight[nsign] * 1. / eff_2mu4_single_b_signal);
-            h_pt2nd_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(pt_2nd,weight[nsign] * 1. / eff_2mu4_single_b_signal);
-        }
-    }
+    } // end loop over the two muons
 }
 
 
