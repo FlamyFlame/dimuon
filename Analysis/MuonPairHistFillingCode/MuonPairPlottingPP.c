@@ -135,6 +135,12 @@ void MuonPairPlottingPP::InitHists(){
     int nminv_bins_trig_effcy = 40;
     int nDR_deta_dphi_zoomin_bins_trig_effcy = 20;
 
+    // Build uniform phi edges so we can use the (xbins, ybins, zbins) TH3D ctor
+    std::vector<double> phi2nd_bins(nphi_bins_trig_effcy + 1);
+    for (int i = 0; i <= nphi_bins_trig_effcy; ++i) {
+        phi2nd_bins[i] = -pms.PI + (2.0 * pms.PI) * (static_cast<double>(i) / nphi_bins_trig_effcy);
+    }
+
     std::vector<double> pT_bins_single_muon (pms.pT_bins_8); // make a copy of a suitable set of single-muon pT bins (adjustable) --> use the copy for histogram settings
 
     pT_bins_single_muon.insert(pT_bins_single_muon.end(), pms.pT_bins_60.begin(), pms.pT_bins_60.end());
@@ -267,7 +273,7 @@ void MuonPairPlottingPP::InitHists(){
     h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_w_single_b_sig_sel =
         new TH3D("h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_w_single_b_sig_sel",
                  ";#phi_{2nd};q#eta_{2nd};p_{T,2nd} [GeV]",
-                 nphi_bins_trig_effcy, -pms.PI, pms.PI,
+                 nphi_bins_trig_effcy, phi2nd_bins.data(),
                  neta_bins_trig_effcy, eta_bins_trig_effcy.data(),
                  int(pT_bins_single_muon.size())-1, pT_bins_single_muon.data());
 
@@ -275,7 +281,7 @@ void MuonPairPlottingPP::InitHists(){
     h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_w_single_b_sig_sel =
         new TH3D("h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_w_single_b_sig_sel",
                  ";#phi_{2nd};q#eta_{2nd};p_{T,2nd} [GeV]",
-                 nphi_bins_trig_effcy, -pms.PI, pms.PI,
+                 nphi_bins_trig_effcy, phi2nd_bins.data(),
                  neta_bins_trig_effcy, eta_bins_trig_effcy.data(),
                  int(pT_bins_single_muon.size())-1, pT_bins_single_muon.data());
 
@@ -283,7 +289,7 @@ void MuonPairPlottingPP::InitHists(){
     h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_w_single_b_sig_sel =
         new TH3D("h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_w_single_b_sig_sel",
                  ";#phi_{2nd};q#eta_{2nd};p_{T,2nd} [GeV]",
-                 nphi_bins_trig_effcy, -pms.PI, pms.PI,
+                 nphi_bins_trig_effcy, phi2nd_bins.data(),
                  neta_bins_trig_effcy, eta_bins_trig_effcy.data(),
                  int(pT_bins_single_muon.size())-1, pT_bins_single_muon.data());
 
@@ -291,7 +297,7 @@ void MuonPairPlottingPP::InitHists(){
     h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_divided_w_single_b_sig_sel =
         new TH3D("h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_divided_w_single_b_sig_sel",
                  ";#phi_{2nd};q#eta_{2nd};p_{T,2nd} [GeV]",
-                 nphi_bins_trig_effcy, -pms.PI, pms.PI,
+                 nphi_bins_trig_effcy, phi2nd_bins.data(),
                  neta_bins_trig_effcy, eta_bins_trig_effcy.data(),
                  int(pT_bins_single_muon.size())-1, pT_bins_single_muon.data());
 
@@ -299,7 +305,7 @@ void MuonPairPlottingPP::InitHists(){
     h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_divided_w_single_b_sig_sel =
         new TH3D("h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_divided_w_single_b_sig_sel",
                  ";#phi_{2nd};q#eta_{2nd};p_{T,2nd} [GeV]",
-                 nphi_bins_trig_effcy, -pms.PI, pms.PI,
+                 nphi_bins_trig_effcy, phi2nd_bins.data(),
                  neta_bins_trig_effcy, eta_bins_trig_effcy.data(),
                  int(pT_bins_single_muon.size())-1, pT_bins_single_muon.data());
 
@@ -543,7 +549,7 @@ void MuonPairPlottingPP::InitHists(){
         h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_sepr[isign] =
             new TH3D(Form("h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_sepr_sign%d",isign+1),
                      ";#phi_{2nd};q#eta_{2nd};p_{T,2nd} [GeV]",
-                     nphi_bins_trig_effcy, -pms.PI, pms.PI,
+                     nphi_bins_trig_effcy, phi2nd_bins.data(),
                      neta_bins_trig_effcy, eta_bins_trig_effcy.data(),
                      int(pT_bins_single_muon.size())-1, pT_bins_single_muon.data());
 
@@ -551,7 +557,7 @@ void MuonPairPlottingPP::InitHists(){
         h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_sepr[isign] =
             new TH3D(Form("h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_sepr_sign%d",isign+1),
                      ";#phi_{2nd};q#eta_{2nd};p_{T,2nd} [GeV]",
-                     nphi_bins_trig_effcy, -pms.PI, pms.PI,
+                     nphi_bins_trig_effcy, phi2nd_bins.data(),
                      neta_bins_trig_effcy, eta_bins_trig_effcy.data(),
                      int(pT_bins_single_muon.size())-1, pT_bins_single_muon.data());
 
@@ -559,7 +565,7 @@ void MuonPairPlottingPP::InitHists(){
         h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_sepr[isign] =
             new TH3D(Form("h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_sepr_sign%d",isign+1),
                      ";#phi_{2nd};q#eta_{2nd};p_{T,2nd} [GeV]",
-                     nphi_bins_trig_effcy, -pms.PI, pms.PI,
+                     nphi_bins_trig_effcy, phi2nd_bins.data(),
                      neta_bins_trig_effcy, eta_bins_trig_effcy.data(),
                      int(pT_bins_single_muon.size())-1, pT_bins_single_muon.data());
 
@@ -567,7 +573,7 @@ void MuonPairPlottingPP::InitHists(){
         h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_sepr_divided[isign] =
             new TH3D(Form("h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_sepr_divided_sign%d",isign+1),
                      ";#phi_{2nd};q#eta_{2nd};p_{T,2nd} [GeV]",
-                     nphi_bins_trig_effcy, -pms.PI, pms.PI,
+                     nphi_bins_trig_effcy, phi2nd_bins.data(),
                      neta_bins_trig_effcy, eta_bins_trig_effcy.data(),
                      int(pT_bins_single_muon.size())-1, pT_bins_single_muon.data());
 
@@ -575,7 +581,7 @@ void MuonPairPlottingPP::InitHists(){
         h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_sepr_divided[isign] =
             new TH3D(Form("h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_sepr_divided_sign%d",isign+1),
                      ";#phi_{2nd};q#eta_{2nd};p_{T,2nd} [GeV]",
-                     nphi_bins_trig_effcy, -pms.PI, pms.PI,
+                     nphi_bins_trig_effcy, phi2nd_bins.data(),
                      neta_bins_trig_effcy, eta_bins_trig_effcy.data(),
                      int(pT_bins_single_muon.size())-1, pT_bins_single_muon.data());
 
@@ -1160,7 +1166,7 @@ void MuonPairPlottingPP::FillHistograms(int nsign){
             h_minv_pair_pt_log_2mu4[nsign]->Fill(pair_pt[nsign],minv[nsign],weight[nsign]);
 
             // good-acceptance histograms
-            if (pass_single_muon_good_acceptance_selection[i]){ // fill for both
+            if (pass_single_muon_good_acceptance_selection[muon_ind]){ // fill for both
                 h_Deta_2mu4_good_accept[nsign]->Fill(deta[nsign],weight[nsign]);
                 h_Deta_zoomin_2mu4_good_accept[nsign]->Fill(deta[nsign],weight[nsign]);
                 h_Dphi_2mu4_good_accept[nsign]->Fill(dphi[nsign],weight[nsign]);
