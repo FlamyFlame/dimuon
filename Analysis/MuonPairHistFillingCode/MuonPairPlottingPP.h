@@ -524,6 +524,7 @@ private:
    	void FillHistograms(int nsign);
     void FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(int nsign);
     void CalculateSingleMuonTrigEffcyRatios();
+    void MakeAndWriteDRTrigEffGraphs();
 
 public:
     bool output_non_trig_effcy_hists;

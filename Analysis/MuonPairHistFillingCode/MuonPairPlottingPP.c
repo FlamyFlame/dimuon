@@ -1,5 +1,7 @@
 #include "MuonPairPlottingPP.h"
 #include "time.h"
+#include "TEfficiency.h"
+#include "TGraphAsymmErrors.h"
 
 MuonPairPlottingPP::MuonPairPlottingPP(){
     isScram = false;
@@ -735,6 +737,8 @@ void MuonPairPlottingPP::ProcessData(){
         }
     }
 
+    MakeAndWriteDRTrigEffGraphs();
+
 }
 
 
@@ -1368,6 +1372,82 @@ void MuonPairPlottingPP::CalculateSingleMuonTrigEffcyRatios(){
 
     h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_divided_w_single_b_sig_sel = (TH3D*) h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_w_single_b_sig_sel->Clone(Form("%s_clone", h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_w_single_b_sig_sel->GetName()));
     h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_divided_w_single_b_sig_sel->Divide(h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_w_single_b_sig_sel);
+}
+
+
+// Build 12 graphs for DR variables and write them out.
+// Uses a local analog of clipNumeratorIfInvW and calls it before BayesDivide.
+void MuonPairPlottingPP::MakeAndWriteDRTrigEffGraphs()
+{
+    auto zeroUFof = [](TH1* h){
+        if (!h) return;
+        const int nb = h->GetNbinsX();
+        h->SetBinContent(0,    0.0); h->SetBinError(0,    0.0);
+        h->SetBinContent(nb+1, 0.0); h->SetBinError(nb+1, 0.0);
+    };
+
+    // ---- analog of clipNumeratorIfInvW (content + error + UF/OF clamp) ----
+    auto clipNumToDenForInvW = [](TH1* num, TH1* den){
+        if (!num || !den) return;
+        if (!num->GetSumw2N()) num->Sumw2();
+        if (!den->GetSumw2N()) den->Sumw2();
+        const int nb = num->GetNbinsX();
+
+        auto clamp = [&](int b){
+            double n  = num->GetBinContent(b);
+            double d  = den->GetBinContent(b);
+            double ne = num->GetBinError(b);
+            double de = den->GetBinError(b);
+
+            if (n > d) num->SetBinContent(b, d);
+            if (ne > de) num->SetBinError(b, de);
+            if (d <= 0.0) { num->SetBinContent(b, 0.0); num->SetBinError(b, 0.0); }
+        };
+
+        clamp(0);
+        for (int b = 1; b <= nb; ++b) clamp(b);
+        clamp(nb+1);
+    };
+
+    auto make_and_write = [&](TH1* num_src, TH1* den_src){
+        if (!num_src || !den_src) return (TGraphAsymmErrors*)nullptr;
+
+        // Work on clones so originals remain untouched
+        std::unique_ptr<TH1> num((TH1*)num_src->Clone(Form("%s_tmp", num_src->GetName())));
+        std::unique_ptr<TH1> den((TH1*)den_src->Clone(Form("%s_tmp", den_src->GetName())));
+
+        // Guard for inverse-weighted numerators
+        clipNumToDenForInvW(num.get(), den.get());
+
+        // TEfficiency also checks UF/OF bins
+        zeroUFof(num.get());
+        zeroUFof(den.get());
+
+        auto g = new TGraphAsymmErrors();
+        g->BayesDivide(num.get(), den.get());
+
+        // Name: "h_<...>" → "g_<...>" from the *numerator* histo name
+        std::string n = num_src->GetName() ? num_src->GetName() : "graph";
+        if (n.rfind("h_", 0) == 0) n.replace(0, 2, "g_"); else n = "g_" + n;
+        g->SetName(n.c_str());
+
+        g->Write(g->GetName(), TObject::kOverwrite);
+        return g;
+    };
+
+    // -------- per-sign (8 graphs) --------
+    for (int s = 0; s < ParamsSet::nSigns; ++s) {
+        make_and_write(h_DR_zoomin_2mu4_inv_w_by_single_mu_effcy[s],        h_DR_zoomin_mu4[s]);
+        make_and_write(h_DR_0_2_2mu4_inv_w_by_single_mu_effcy[s],           h_DR_0_2_mu4[s]);
+        make_and_write(h_DR_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy[s], h_DR_zoomin_mu4[s]);
+        make_and_write(h_DR_0_2_mu4_mu4noL1_inv_w_by_single_mu_effcy[s],    h_DR_0_2_mu4[s]);
+    }
+
+    // -------- signal-selected (4 graphs) --------
+    make_and_write(h_DR_zoomin_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel,        h_DR_zoomin_mu4_w_single_b_sig_sel);
+    make_and_write(h_DR_0_2_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel,           h_DR_0_2_mu4_w_single_b_sig_sel);
+    make_and_write(h_DR_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel, h_DR_zoomin_mu4_w_single_b_sig_sel);
+    make_and_write(h_DR_0_2_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel,    h_DR_0_2_mu4_w_single_b_sig_sel);
 }
 
 void MuonPairPlottingPP::WriteOutput(){
