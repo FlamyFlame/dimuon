@@ -293,13 +293,18 @@ private:
 
         // ---------------------------- _excl exceptions ---------------------------------------------------
         filt_to_trig_exception_map["_excl"] = {
-            {"2mu4", "NONE"}
+            {"2mu4", "NONE"} // "exclusiveness" non-existent for 2mu4
         };
         // keep default modes
 
         // ---------------------------- _inv_w_by_single_mu_effcy exceptions ------------------------------
         filt_to_trig_exception_map["_inv_w_by_single_mu_effcy"] = {
-            {"mu4", "mu4"} // means: leave mu4 unchanged
+            {"mu4", "NONE"} // uses separate denominators for mu4_mu4noL1 & 2mu4 weighted efficiencies
+        };
+
+        filt_to_trig_exception_map["_excl_inv_w_by_single_mu_effcy"] = {
+            {"mu4", "mu4"}, // means: leave mu4 unchanged
+            {"2mu4", "NONE"} // "exclusiveness" non-existent for 2mu4
         };
         filt_to_mode_exception_map["_inv_w_by_single_mu_effcy"] = {
             {SignalDrawingMode::OpAndSignal, true}
@@ -572,6 +577,7 @@ private:
             // Prepare legend & colour styles ----------------------------------------
             Color_t colBase[3] = {kRed+1, kAzure+2, kGreen+2}; // 2mu4, mu4_mu4noL1, (spare)
             Color_t colFilt[3] = {kOrange+7, kAzure+1, kGreen+1}; // one-shade-lighter palette for filtered / comparison curves
+            Color_t colFilt2[3] = {kMagenta, kAzure, kGreen+3};
             Style_t mkrBase[3] = {24, 20, 22};
 
             // Iterate over pads (sign1 / sign2 or single)
@@ -584,8 +590,12 @@ private:
                 padPtr->SetLogx(xy.first); padPtr->SetLogy(xy.second);
 
                 Rect def = {0.43,0.12,0.8,0.35};
+                Rect def_excl_inv_w_by_single_mu_effcy = {0.45,0.45,0.83,0.63}; // use for "_excl_inv_w_by_single_mu_effcy"
                 Rect def_default_only = {0.5,0.14,0.77,0.3};
                 if (filter_suffix_list.empty()) def = def_default_only;
+
+                if (find(filters.begin(), filters.end(), "_excl_inv_w_by_single_mu_effcy") != filters.end()) def = def_excl_inv_w_by_single_mu_effcy;
+
                 Rect box = def;
 
                 if      (mode==SignalDrawingMode::Signed  && legendPosSigned.count(var))
@@ -659,9 +669,11 @@ private:
                         if (!plot_weighted){
                             useCol = (filterIdx == 0) ? colBase[colourIdx]   // default
                                                     : colFilt[colourIdx];  // filtered
+                            if (filterIdx == 2) useCol = colFilt2[colourIdx];
                         } else{ // plot weighted: default appears at last
                             useCol = (filterIdx == filters.size() - 1) ? colBase[colourIdx]   // filtered
                                                                        : colFilt[colourIdx];  // base
+                            if (filters.size() == 3 && filterIdx == 1) useCol = colFilt2[colourIdx];
                         }
 
                         SetStyle(g, useCol, mkrBase[colourIdx]);
@@ -1315,8 +1327,8 @@ void trig_effcy_plot(){
                                       };
     std::vector<std::string> var2DsProf = {
        "DR_zoomin_vs_pt2nd",
-       "Deta_vs_pT_1st", "Deta_zoomin_vs_pT_1st", "Dphi_vs_pT_1st", "Dphi_zoomin_vs_pT_1st", "DR_vs_pT_1st", "DR_zoomin_vs_pT_1st", "minv_zoomin_vs_pT_1st", "pair_pt_log_vs_pT_1st", "pt2nd_vs_pT_1st", 
-       "Deta_vs_pair_pT", "Deta_zoomin_vs_pair_pT", "Dphi_vs_pair_pT", "Dphi_zoomin_vs_pair_pT", "DR_vs_pair_pT", "DR_zoomin_vs_pair_pT", "minv_zoomin_vs_pair_pT", "pair_pt_log_vs_pair_pT", "pt2nd_vs_pair_pT",
+       // "Deta_vs_pT_1st", "Deta_zoomin_vs_pT_1st", "Dphi_vs_pT_1st", "Dphi_zoomin_vs_pT_1st", "DR_vs_pT_1st", "DR_zoomin_vs_pT_1st", "minv_zoomin_vs_pT_1st", "pair_pt_log_vs_pT_1st", "pt2nd_vs_pT_1st", 
+       // "Deta_vs_pair_pT", "Deta_zoomin_vs_pair_pT", "Dphi_vs_pair_pT", "Dphi_zoomin_vs_pair_pT", "DR_vs_pair_pT", "DR_zoomin_vs_pair_pT", "minv_zoomin_vs_pair_pT", "pair_pt_log_vs_pair_pT", "pt2nd_vs_pair_pT",
     };
 
     std::map<std::string,std::pair<bool,bool>> logaxes = {
@@ -1355,9 +1367,8 @@ void trig_effcy_plot(){
     // TrigEffPlotter::Rect rSignal  = {0.20,0.70,0.50,0.88};
     // TrigEffPlotter::Rect rOpSig   = {0.60,0.15,0.88,0.31};
 
-    // std::map<std::string,Rect> legSigned  = { {"Dphi", rSigned } };
-    // std::map<std::string,Rect> legSignal  = { {"Dphi", rSignal } };
-    // std::map<std::string,Rect> legOpSig   = { {"Dphi", rOpSig  } };
+    // std::map<std::string,TrigEffPlotter::Rect> legSigned  = { {"Dphi", rSigned } };
+    // std::map<std::string,TrigEffPlotter::Rect> legSignal  = { {"Dphi", rSignal } };
 
     std::map<std::string,TrigEffPlotter::Rect> legSigned  = {};
     std::map<std::string,TrigEffPlotter::Rect> legSignal  = {};
@@ -1366,6 +1377,8 @@ void trig_effcy_plot(){
     std::vector<std::string> filters = {};
     // filters = {"_sepr"};
     // filters = {"_excl"};
+    // filters = {"_excl", "_excl_inv_w_by_single_mu_effcy"};
+    // std::map<std::string,TrigEffPlotter::Rect> legOpSig   = {{"DR_zoomin", {0.5,0.15,0.87,0.33}  }};
     // filters = {"_good_accept"};
     filters = {"_inv_w_by_single_mu_effcy"};
 
