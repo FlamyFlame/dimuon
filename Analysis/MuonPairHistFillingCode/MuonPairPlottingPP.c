@@ -1417,22 +1417,6 @@ void MuonPairPlottingPP::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(int ns
             ? h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_divided_w_single_b_sig_sel->GetBinContent(bin_num_2mu4_single_b_signal)
             : h_pt2nd_vs_q_eta_2nd_2mu4_divided_w_single_b_sig_sel->GetBinContent(bin_num_2mu4_single_b_signal);
 
-            // if (eff_mu4_mu4noL1 > 1){ // for debugging: should never happen
-            //     std::cout << "WARNING: eff_mu4_mu4noL1 value = " << eff_mu4_mu4noL1 << " > 1!!!" << std::endl;
-            //     std::cout << "WARNING: pt 2nd " << pt_2nd[muon_ind] << " q * eta 2nd " << q_eta_2nd[muon_ind] << "phi 2nd " << phi_2nd[muon_ind] << std::endl;
-            //     std::cout << "WARNING: bin number " << bin_num_mu4_mu4noL1 << std::endl;
-            //     std::cout << "sign: " << nsign << std::endl;
-            //     if (use_3D_2nd_muon){
-            //         std::cout << "3D histograms before trigger efficiency? numerator: " << h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_sepr[nsign]->GetBinContent(bin_num_mu4_mu4noL1)
-            //                                                          << "denominator: " << h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_sepr[nsign]->GetBinContent(bin_num_mu4_mu4noL1) << "\n"
-            //                                                          << "3D trigger efficiency: " << h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_sepr_divided[nsign]->GetBinContent(bin_num_mu4_mu4noL1) << std::endl;
-            //     }else{
-            //         std::cout << "2D histograms before trigger efficiency? numerator: " << h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr[nsign]->GetBinContent(bin_num_mu4_mu4noL1)
-            //                                                          << "denominator: " << h_pt2nd_vs_q_eta_2nd_mu4_sepr[nsign]->GetBinContent(bin_num_mu4_mu4noL1) << "\n"
-            //                                                          << "2D trigger efficiency: " << h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr_divided[nsign]->GetBinContent(bin_num_mu4_mu4noL1) << std::endl;
-            //     }
-            // }
-
         if (eff_mu4_mu4noL1 > 0){ // datapoints exist in the 2nd-muon kinematics bin to evaluate single-muon trigger efficiency
             
             h_Deta_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom[nsign]->Fill(deta[nsign],weight[nsign]);
