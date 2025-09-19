@@ -84,6 +84,8 @@ public:
     TrigEffPlotter(int runYear,
                    const StrVec& vars1D_in,
                    bool          draw2mu4_user = false,
+                   bool          use_sepr_for_op_and_signal_user = false,
+                   bool          debug_mode_user = true,
                    const StrVec& filter_suffixes = {},
                    const XYLog&  logopt_ = {},
                    const StrVec& vars2D_in = {},
@@ -93,6 +95,8 @@ public:
                    const std::map<std::string,Rect>& legOpSig   = {},
                    const std::map<std::string,std::pair<bool,bool>>& var2DProj = {})
         : draw2mu4(draw2mu4_user),
+          use_sepr_for_op_and_signal (use_sepr_for_op_and_signal_user),
+          debug_mode (debug_mode_user),
           fFile(nullptr),
           var1Ds(vars1D_in),
           var2Ds(vars2D_in),
@@ -170,6 +174,8 @@ private:
     std::string infile_name;
 
     bool draw2mu4{};
+    bool use_sepr_for_op_and_signal{};
+    bool debug_mode{};
 
     // ROOT interface
     TFile* fFile;
@@ -192,6 +198,7 @@ private:
     std::map<std::string,Rect> legendPosOpSignal;   // for OpAndSignal mode
 
     // --- drawing‑mode infrastructure ----------------------------------------
+    std::string op_and_sig_png_suffix = use_sepr_for_op_and_signal? "_op_sepr_and_sig_sel" : "_all_op_and_sig_sel";
     std::map<SignalDrawingMode, std::string> mode_to_png_suffix = {
         {SignalDrawingMode::Signed,        ""},
         {SignalDrawingMode::Signal,        "_w_sig_sel"},
@@ -241,14 +248,22 @@ private:
         // 1)  Default trigger mapping: trigger → trigger+suffix
         for (const auto& fs : filter_suffix_list) {
             TriggerMap tmap;
+
             for (const auto& trg : kTriggers)
                 tmap[trg] = trg + fs; // simple append rule
+            tmap["mu4_mu4noL1_denom"] = "NONE"; // no mu4_mu4noL1-specific denominator by default
+            tmap["2mu4_denom"] = "NONE"; // no mu4_mu4noL1-specific denominator by default
+            
             filt_to_trig_map[fs] = tmap;
         }
         // The default ("no filter") entry – represented by empty string
         {
             TriggerMap tmap;
+
             for (const auto& trg : kTriggers) tmap[trg] = trg;
+            tmap["mu4_mu4noL1_denom"] = "NONE"; // no mu4_mu4noL1-specific denominator by default
+            tmap["2mu4_denom"] = "NONE"; // no mu4_mu4noL1-specific denominator by default
+
             filt_to_trig_map[""] = tmap; // special key for default
         }
 
@@ -293,13 +308,21 @@ private:
 
         // ---------------------------- _excl exceptions ---------------------------------------------------
         filt_to_trig_exception_map["_excl"] = {
-            {"2mu4", "NONE"}
+            {"2mu4", "NONE"} // "exclusiveness" non-existent for 2mu4
         };
         // keep default modes
 
         // ---------------------------- _inv_w_by_single_mu_effcy exceptions ------------------------------
         filt_to_trig_exception_map["_inv_w_by_single_mu_effcy"] = {
-            {"mu4", "mu4"} // means: leave mu4 unchanged
+            {"mu4", "NONE"},
+            {"mu4_mu4noL1_denom", "mu4_mu4noL1_inv_w_by_single_mu_effcy_denom"}, // uses separate denominators for mu4_mu4noL1 & 2mu4 weighted efficiencies
+            {"2mu4_denom", "2mu4_inv_w_by_single_mu_effcy_denom"}  // uses separate denominators for mu4_mu4noL1 & 2mu4 weighted efficiencies
+        };
+
+        filt_to_trig_exception_map["_excl_inv_w_by_single_mu_effcy"] = {
+            {"mu4", "NONE"}, // means: leave mu4 unchanged
+            {"mu4_mu4noL1_denom", "mu4_mu4noL1_excl_inv_w_by_single_mu_effcy_denom"}, // uses separate denominators for mu4_mu4noL1 & 2mu4 weighted efficiencies
+            {"2mu4", "NONE"} // "exclusiveness" non-existent for 2mu4
         };
         filt_to_mode_exception_map["_inv_w_by_single_mu_effcy"] = {
             {SignalDrawingMode::OpAndSignal, true}
@@ -572,6 +595,7 @@ private:
             // Prepare legend & colour styles ----------------------------------------
             Color_t colBase[3] = {kRed+1, kAzure+2, kGreen+2}; // 2mu4, mu4_mu4noL1, (spare)
             Color_t colFilt[3] = {kOrange+7, kAzure+1, kGreen+1}; // one-shade-lighter palette for filtered / comparison curves
+            Color_t colFilt2[3] = {kMagenta, kAzure, kGreen+3};
             Style_t mkrBase[3] = {24, 20, 22};
 
             // Iterate over pads (sign1 / sign2 or single)
@@ -584,8 +608,12 @@ private:
                 padPtr->SetLogx(xy.first); padPtr->SetLogy(xy.second);
 
                 Rect def = {0.43,0.12,0.8,0.35};
+                Rect def_excl_inv_w_by_single_mu_effcy = {0.45,0.45,0.83,0.63}; // use for "_excl_inv_w_by_single_mu_effcy"
                 Rect def_default_only = {0.5,0.14,0.77,0.3};
                 if (filter_suffix_list.empty()) def = def_default_only;
+
+                if (find(filters.begin(), filters.end(), "_excl_inv_w_by_single_mu_effcy") != filters.end()) def = def_excl_inv_w_by_single_mu_effcy;
+
                 Rect box = def;
 
                 if      (mode==SignalDrawingMode::Signed  && legendPosSigned.count(var))
@@ -618,18 +646,23 @@ private:
                         }
                     }
 
-                    // denominator hist (mu4)
-                    std::string mu4name = mappedTrigger(fs, "mu4");
-                    if (mu4name.empty() || mu4name == "NONE") {
-                        throw std::runtime_error("Base trigger mu4 missing for filter " + fs);
-                    }
-
-                    std::string denomHist = Form("h_%s_%s%s", var.c_str(), mu4name.c_str(),
-                                                  (mode==SignalDrawingMode::Signal?"_w_single_b_sig_sel":signSuffixes[pad].c_str()));
-                    TH1* h_denom = getHist<TH1>(denomHist);
-                    if (!h_denom) continue; // can't proceed – skip filter
-
                     for (auto [trg, colourIdx] : trigOrder) {
+
+                        // denominator hist (mu4 / trigger-specific denominator)
+                        std::string denomName = (mappedTrigger(fs, trg + "_denom") != "NONE")? mappedTrigger(fs, trg + "_denom") : mappedTrigger(fs, "mu4");
+                        
+                        if (denomName.empty() || denomName == "NONE") {
+                            throw std::runtime_error("Base trigger mu4 missing for filter " + fs);
+                        }
+
+                        std::string denomHist = Form("h_%s_%s%s", var.c_str(), denomName.c_str(),
+                                                      (mode==SignalDrawingMode::Signal?"_w_single_b_sig_sel":signSuffixes[pad].c_str()));
+                        
+                        if (debug_mode) std::cout << "Denominator name: " << denomHist << std::endl;
+                        TH1* h_denom = getHist<TH1>(denomHist);
+                        if (!h_denom) continue; // can't proceed – skip filter
+
+
                         std::string mapped = mappedTrigger(fs, trg);
                         if (mapped.empty() || mapped == "NONE") continue; // skip incompatible trigger
                         std::string numHist = Form("h_%s_%s%s", var.c_str(), mapped.c_str(),
@@ -659,9 +692,11 @@ private:
                         if (!plot_weighted){
                             useCol = (filterIdx == 0) ? colBase[colourIdx]   // default
                                                     : colFilt[colourIdx];  // filtered
+                            if (filterIdx == 2) useCol = colFilt2[colourIdx];
                         } else{ // plot weighted: default appears at last
                             useCol = (filterIdx == filters.size() - 1) ? colBase[colourIdx]   // filtered
                                                                        : colFilt[colourIdx];  // base
+                            if (filters.size() == 3 && filterIdx == 1) useCol = colFilt2[colourIdx];
                         }
 
                         SetStyle(g, useCol, mkrBase[colourIdx]);
@@ -731,14 +766,6 @@ private:
             if (!fs.empty() &&
                 !filt_to_mode_map.at(fs).at(SignalDrawingMode::OpAndSignal)) continue;
 
-            std::string mu4name = mappedTrigger(fs, "mu4");
-            if (mu4name.empty() || mu4name == "NONE") continue;
-
-            std::string denomSign2 = Form("h_%s_%s_sign2", var.c_str(), mu4name.c_str());
-            std::string denomSel   = Form("h_%s_%s_w_single_b_sig_sel", var.c_str(), mu4name.c_str());
-            TH1* h_den_sign2 = getHist<TH1>(denomSign2);
-            TH1* h_den_sel   = getHist<TH1>(denomSel);
-            if (!h_den_sign2 || !h_den_sel) continue;
 
             TCanvas* c = new TCanvas(Form("c_opand_%s_%s", var.c_str(), fs.c_str()), "", 700, 500);
             auto xy = xyFor(var);
@@ -760,11 +787,27 @@ private:
             bool firstCurve = true;
 
             for (auto trg : {std::string("2mu4"), std::string("mu4_mu4noL1")}) {
+
+                std::string denomName = (mappedTrigger(fs, trg + "_denom") != "NONE")? mappedTrigger(fs, trg + "_denom") : mappedTrigger(fs, "mu4");
+                if (denomName.empty() || denomName == "NONE") continue;
+
+                std::string denomSign2 = use_sepr_for_op_and_signal? Form("h_%s_%s_sepr_sign2", var.c_str(), denomName.c_str()) : Form("h_%s_%s_sign2", var.c_str(), denomName.c_str());
+                std::string denomSel   = Form("h_%s_%s_w_single_b_sig_sel", var.c_str(), denomName.c_str());
+
+                if (debug_mode){
+                    std::cout << "Denominator name all opposite sign: " << denomSign2 << std::endl;
+                    std::cout << "Denominator name signal: " << denomSel << std::endl;
+                }
+
+                TH1* h_den_sign2 = getHist<TH1>(denomSign2);
+                TH1* h_den_sel   = getHist<TH1>(denomSel);
+                if (!h_den_sign2 || !h_den_sel) continue;
+
                 std::string mapped = mappedTrigger(fs, trg);
                 if (mapped.empty() || mapped == "NONE") continue;
 
                 // _sign2
-                std::string numSign2 = Form("h_%s_%s_sign2", var.c_str(), mapped.c_str());
+                std::string numSign2 = use_sepr_for_op_and_signal? Form("h_%s_%s_sepr_sign2", var.c_str(), mapped.c_str()) : Form("h_%s_%s_sign2", var.c_str(), mapped.c_str());
                 // _w_single_b_sig_sel
                 std::string numSel   = Form("h_%s_%s_w_single_b_sig_sel", var.c_str(), mapped.c_str());
 
@@ -841,7 +884,7 @@ private:
             L->Draw();
             
             std::string outdir = data_dir + "trig_effcy_plots" + (fs.empty() ? "" : fs);
-            makeDirIfNeeded(outdir);
+            makeDirIfNeeded(outdir + "/op_and_sig");
             std::string fn = Form("%s/op_and_sig/%s_trig_effcy%s%s.png", outdir.c_str(), var.c_str(), fs.c_str(), mode_to_png_suffix.at(SignalDrawingMode::OpAndSignal).c_str());
             c->SaveAs(fn.c_str());
         }
@@ -1077,32 +1120,55 @@ private:
                         {
                             if (!filt_to_mode_map.at(fs).at(mode)) { ++filterIdx; continue; }
 
-                            // mu4 denominator 2D → project
-                            const std::string mu4name = mappedTrigger(fs, "mu4");
-                            if (mu4name.empty() || mu4name == "NONE") { ++filterIdx; continue; }
-
-                            std::string denom2D = Form("h_%s_%s%s",
-                                var2d.c_str(), mu4name.c_str(),
-                                (mode == SignalDrawingMode::Signal ? "_w_single_b_sig_sel"
-                                                                   : signSuffixes[pad]));
-                            TH2* hDen2D = getHist<TH2>(denom2D);
-                            if (!hDen2D || hDen2D->GetDimension() != 2) { ++filterIdx; continue; }
-
-                            std::unique_ptr<TH1> hDen1D(
-                                isProjX ? hDen2D->ProjectionX(Form("px_%s_%d_den", var2d.c_str(), pad), 1, -1, "e")
-                                        : hDen2D->ProjectionY(Form("py_%s_%d_den", var2d.c_str(), pad), 1, -1, "e")
-                            );
-                            if (!hDen1D) { ++filterIdx; continue; }
-
                             // triggers to overlay (skip mu4; it’s denom)
                             std::vector<std::pair<std::string,int>> trigOrder =
                                 isRun2pp ? std::vector<std::pair<std::string,int>>{{"2mu4", 1}}
                                          : std::vector<std::pair<std::string,int>>{{"mu4_mu4noL1", 0}, {"2mu4", 1}};
 
+                            bool firstTrgInstance = true; // boolean to indicate first trigger instance: if continue without plotting, only increment filterIdx if first trigger instance
+
                             for (const auto& tp : trigOrder)
                             {
                                 const std::string& trg = tp.first;
                                 const int idx = tp.second;
+                             
+                                // denominator 2D → project
+                                const std::string denomName = (mappedTrigger(fs, trg + "_denom") != "NONE")? mappedTrigger(fs, trg + "_denom") : mappedTrigger(fs, "mu4");
+                                
+                                if (denomName.empty() || denomName == "NONE") {
+                                    if (firstTrgInstance){
+                                        ++filterIdx;
+                                        firstTrgInstance = false;
+                                    }
+                                    continue;
+                                }
+
+                                std::string denom2D = Form("h_%s_%s%s",
+                                    var2d.c_str(), denomName.c_str(),
+                                    (mode == SignalDrawingMode::Signal ? "_w_single_b_sig_sel"
+                                                                       : signSuffixes[pad]));
+                                if (debug_mode) std::cout << "Denominator name: " << denom2D << std::endl;
+        
+                                TH2* hDen2D = getHist<TH2>(denom2D);
+                                if (!hDen2D || hDen2D->GetDimension() != 2) {
+                                    if (firstTrgInstance){
+                                        ++filterIdx;
+                                        firstTrgInstance = false;
+                                    }
+                                    continue;
+                                }
+
+                                std::unique_ptr<TH1> hDen1D(
+                                    isProjX ? hDen2D->ProjectionX(Form("px_%s_%d_den", var2d.c_str(), pad), 1, -1, "e")
+                                            : hDen2D->ProjectionY(Form("py_%s_%d_den", var2d.c_str(), pad), 1, -1, "e")
+                                );
+                                if (!hDen1D) {
+                                    if (firstTrgInstance){
+                                        ++filterIdx;
+                                        firstTrgInstance = false;
+                                    }
+                                    continue;
+                                }
 
                                 const std::string mapped = mappedTrigger(fs, trg);
                                 if (mapped.empty() || mapped == "NONE") continue;
@@ -1164,11 +1230,11 @@ private:
                                 std::string label = trg;
                                 if (!fs_label.empty()) label += ", " + fs_label;
                                 leg->AddEntry(g, label.c_str(), "lep");
-                            }
+                            } // loop over triggers
                             ++filterIdx;
-                        }
+                        } // loop over filters
                         leg->Draw();
-                    }
+                    } // loop over pads
 
                     // output (use projected 1D var name)
                     std::string pngDir = data_dir + "trig_effcy_plots";
@@ -1181,7 +1247,7 @@ private:
                     for (const auto& fsu : filter_suffix_list) fn += fsu; // keep your naming convention
                     fn += mode_to_png_suffix.at(mode) + ".png";
                     c->SaveAs(fn.c_str());
-                }
+                } // loop over signed & signal modes
 
                 // ---------------- OpAndSignal (one file per filter) ----------------
                 {
@@ -1189,26 +1255,6 @@ private:
                     for (const auto& fs : opFilters)
                     {
                         if (!fs.empty() && !filt_to_mode_map.at(fs).at(SignalDrawingMode::OpAndSignal)) continue;
-
-                        const std::string mu4name = mappedTrigger(fs, "mu4");
-                        if (mu4name.empty() || mu4name == "NONE") continue;
-
-                        // denominators (2D → project)
-                        std::string den2D_s2  = Form("h_%s_%s_sign2",                 var2d.c_str(), mu4name.c_str());
-                        std::string den2D_sel = Form("h_%s_%s_w_single_b_sig_sel",    var2d.c_str(), mu4name.c_str());
-                        TH2* hDen2D_s2  = getHist<TH2>(den2D_s2);
-                        TH2* hDen2D_sel = getHist<TH2>(den2D_sel);
-                        if (!hDen2D_s2 || !hDen2D_sel) continue;
-
-                        std::unique_ptr<TH1> hDen1D_s2(
-                            isProjX ? hDen2D_s2->ProjectionX(Form("px_%s_den_s2",  var2d.c_str()), 1, -1, "e")
-                                    : hDen2D_s2->ProjectionY(Form("py_%s_den_s2",  var2d.c_str()), 1, -1, "e")
-                        );
-                        std::unique_ptr<TH1> hDen1D_sel(
-                            isProjX ? hDen2D_sel->ProjectionX(Form("px_%s_den_sel", var2d.c_str()), 1, -1, "e")
-                                    : hDen2D_sel->ProjectionY(Form("py_%s_den_sel", var2d.c_str()), 1, -1, "e")
-                        );
-                        if (!hDen1D_s2 || !hDen1D_sel) continue;
 
                         auto xy = xyFor(projVar);
                         TCanvas* c = new TCanvas(
@@ -1227,10 +1273,37 @@ private:
 
                         for (const std::string& trg : {std::string("2mu4"), std::string("mu4_mu4noL1")})
                         {
+                            const std::string denomName = (mappedTrigger(fs, trg + "_denom") != "NONE")? mappedTrigger(fs, trg + "_denom") : mappedTrigger(fs, "mu4");
+
+                            if (denomName.empty() || denomName == "NONE") continue;
+
+                            // denominators (2D → project)
+                            std::string den2D_s2  = use_sepr_for_op_and_signal? Form("h_%s_%s_sepr_sign2", var2d.c_str(), denomName.c_str()) : Form("h_%s_%s_sign2", var2d.c_str(), denomName.c_str());
+                            std::string den2D_sel = Form("h_%s_%s_w_single_b_sig_sel",    var2d.c_str(), denomName.c_str());
+                            
+                            if (debug_mode){
+                                std::cout << "Denominator name all opposite sign: " << den2D_s2 << std::endl;
+                                std::cout << "Denominator name signal pairs: " << den2D_sel << std::endl;
+                            }
+
+                            TH2* hDen2D_s2  = getHist<TH2>(den2D_s2);
+                            TH2* hDen2D_sel = getHist<TH2>(den2D_sel);
+                            if (!hDen2D_s2 || !hDen2D_sel) continue;
+
+                            std::unique_ptr<TH1> hDen1D_s2(
+                                isProjX ? hDen2D_s2->ProjectionX(Form("px_%s_den_s2",  var2d.c_str()), 1, -1, "e")
+                                        : hDen2D_s2->ProjectionY(Form("py_%s_den_s2",  var2d.c_str()), 1, -1, "e")
+                            );
+                            std::unique_ptr<TH1> hDen1D_sel(
+                                isProjX ? hDen2D_sel->ProjectionX(Form("px_%s_den_sel", var2d.c_str()), 1, -1, "e")
+                                        : hDen2D_sel->ProjectionY(Form("py_%s_den_sel", var2d.c_str()), 1, -1, "e")
+                            );
+                            if (!hDen1D_s2 || !hDen1D_sel) continue;
+
                             const std::string mapped = mappedTrigger(fs, trg);
                             if (mapped.empty() || mapped == "NONE") continue;
 
-                            std::string num2D_s2  = Form("h_%s_%s_sign2",              var2d.c_str(), mapped.c_str());
+                            std::string num2D_s2  = use_sepr_for_op_and_signal? Form("h_%s_%s_sepr_sign2", var2d.c_str(), mapped.c_str()) : Form("h_%s_%s_sign2", var2d.c_str(), mapped.c_str());
                             std::string num2D_sel = Form("h_%s_%s_w_single_b_sig_sel", var2d.c_str(), mapped.c_str());
                             TH2* hNum2D_s2  = getHist<TH2>(num2D_s2);
                             TH2* hNum2D_sel = getHist<TH2>(num2D_sel);
@@ -1315,8 +1388,8 @@ void trig_effcy_plot(){
                                       };
     std::vector<std::string> var2DsProf = {
        "DR_zoomin_vs_pt2nd",
-       "Deta_vs_pT_1st", "Deta_zoomin_vs_pT_1st", "Dphi_vs_pT_1st", "Dphi_zoomin_vs_pT_1st", "DR_vs_pT_1st", "DR_zoomin_vs_pT_1st", "minv_zoomin_vs_pT_1st", "pair_pt_log_vs_pT_1st", "pt2nd_vs_pT_1st", 
-       "Deta_vs_pair_pT", "Deta_zoomin_vs_pair_pT", "Dphi_vs_pair_pT", "Dphi_zoomin_vs_pair_pT", "DR_vs_pair_pT", "DR_zoomin_vs_pair_pT", "minv_zoomin_vs_pair_pT", "pair_pt_log_vs_pair_pT", "pt2nd_vs_pair_pT",
+       // "Deta_vs_pT_1st", "Deta_zoomin_vs_pT_1st", "Dphi_vs_pT_1st", "Dphi_zoomin_vs_pT_1st", "DR_vs_pT_1st", "DR_zoomin_vs_pT_1st", "minv_zoomin_vs_pT_1st", "pair_pt_log_vs_pT_1st", "pt2nd_vs_pT_1st", 
+       // "Deta_vs_pair_pT", "Deta_zoomin_vs_pair_pT", "Dphi_vs_pair_pT", "Dphi_zoomin_vs_pair_pT", "DR_vs_pair_pT", "DR_zoomin_vs_pair_pT", "minv_zoomin_vs_pair_pT", "pair_pt_log_vs_pair_pT", "pt2nd_vs_pair_pT",
     };
 
     std::map<std::string,std::pair<bool,bool>> logaxes = {
@@ -1355,9 +1428,8 @@ void trig_effcy_plot(){
     // TrigEffPlotter::Rect rSignal  = {0.20,0.70,0.50,0.88};
     // TrigEffPlotter::Rect rOpSig   = {0.60,0.15,0.88,0.31};
 
-    // std::map<std::string,Rect> legSigned  = { {"Dphi", rSigned } };
-    // std::map<std::string,Rect> legSignal  = { {"Dphi", rSignal } };
-    // std::map<std::string,Rect> legOpSig   = { {"Dphi", rOpSig  } };
+    // std::map<std::string,TrigEffPlotter::Rect> legSigned  = { {"Dphi", rSigned } };
+    // std::map<std::string,TrigEffPlotter::Rect> legSignal  = { {"Dphi", rSignal } };
 
     std::map<std::string,TrigEffPlotter::Rect> legSigned  = {};
     std::map<std::string,TrigEffPlotter::Rect> legSignal  = {};
@@ -1366,10 +1438,12 @@ void trig_effcy_plot(){
     std::vector<std::string> filters = {};
     // filters = {"_sepr"};
     // filters = {"_excl"};
+    // filters = {"_excl", "_excl_inv_w_by_single_mu_effcy"};
+    // std::map<std::string,TrigEffPlotter::Rect> legOpSig   = {{"DR_zoomin", {0.5,0.15,0.87,0.33}  }};
     // filters = {"_good_accept"};
     filters = {"_inv_w_by_single_mu_effcy"};
 
-    TrigEffPlotter plotter(24, var1Ds, false,
+    TrigEffPlotter plotter(24, var1Ds, false, false, true,
                            filters, logaxes,
                            var2Ds, var2DsProf,
                            legSigned, legSignal, legOpSig,
