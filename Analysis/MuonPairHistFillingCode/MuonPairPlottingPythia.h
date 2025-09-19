@@ -159,7 +159,7 @@ private:
 // --------------------- input files & trees & data for setting branches---------------------------
 
    	TFile* inFile;
-    std::string file_name = "/usatlas/u/yuhanguo/usatlasdata/pythia/muon_pairs_pythia_combined";
+    std::string file_name = "/usatlas/u/yuhanguo/usatlasdata/pythia_private_sample/muon_pairs_pythia_combined";
     
     TTree *inTree[ParamsSet::nSigns];
 

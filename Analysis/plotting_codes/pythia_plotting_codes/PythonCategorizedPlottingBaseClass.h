@@ -47,7 +47,7 @@ protected:
     std::string with_data_resonance_cuts_dir;
     std::string with_data_resonance_cuts_suffix;
 
-    std::string pythia_path = "/usatlas/u/yuhanguo/usatlasdata/pythia/";
+    std::string pythia_path = "/usatlas/u/yuhanguo/usatlasdata/pythia_private_sample/";
     std::string fname;
     std::map<int, std::string> signs;
     std::map<int, std::string> subpl_titles;

@@ -19,7 +19,7 @@ const int nflavors = 3;
 const int nDphi = 2;
 
 std::string flavors[nflavors] = {"bb","bc","cc"};
-std::string py_path = "/usatlas/u/yuhanguo/usatlasdata/pythia/";
+std::string py_path = "/usatlas/u/yuhanguo/usatlasdata/pythia_private_sample/";
 // std::string fname = "muon_pairs_pythia.root";
 std::string fname = "muon_pairs_pythia_0429.root";
 std::vector<std::vector<std::vector<std::string>>> hist_names = {};
@@ -97,7 +97,7 @@ void pythia_muon_pair_origin_categr(){ // mode = 1: unweighted; mode = 2: weight
 
     // if (mode == 1) c->SaveAs(Form("plots/mc_truth/prt_grouping/pythia_muon_pair_sp_ancestor_groups_%s.png",flavors[imc].c_str()));
     // else           c->SaveAs(Form("plots/mc_truth/prt_grouping/pythia_muon_pair_sp_ancestor_groups_%s_weighted.png",flavors[imc].c_str()));
-    c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/pythia/plots/ancestor_tracing/pythia_muon_pair_origin_categr_%s.png",flavors[imc].c_str()));
+    c->SaveAs(Form("/usatlas/u/yuhanguo/usatlasdata/pythia_private_sample/plots/ancestor_tracing/pythia_muon_pair_origin_categr_%s.png",flavors[imc].c_str()));
     c->Close();
     delete c;
   }

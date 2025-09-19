@@ -59,7 +59,7 @@ void MuonPairPlottingPythia::InitInput(){
 
 
 void MuonPairPlottingPythia::InitOutput(){
-    output_file_path = "/usatlas/u/yuhanguo/usatlasdata/pythia/histograms_pythia_combined" + with_data_resonance_cuts_suffix + ".root";
+    output_file_path = "/usatlas/u/yuhanguo/usatlasdata/pythia_private_sample/histograms_pythia_combined" + with_data_resonance_cuts_suffix + ".root";
     outFile = new TFile(output_file_path.c_str(),"recreate");
 }
 
@@ -507,7 +507,7 @@ void MuonPairPlottingPythia::FillPtBinnedHistograms(int npt, int nsign){}
 
 
 void MuonPairPlottingPythia::WriteOutput(){
-    // outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/pythia/histograms_pythia_combined.root","recreate");
+    // outFile = new TFile("/usatlas/u/yuhanguo/usatlasdata/pythia_private_sample/histograms_pythia_combined.root","recreate");
 
     h_crossx_truth_from_single_b_vs_pair_pt_pair_eta->Write();
     

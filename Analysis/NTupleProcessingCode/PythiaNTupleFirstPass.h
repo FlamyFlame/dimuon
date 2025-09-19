@@ -34,7 +34,7 @@ private:
 	Long64_t njobs[nKinRanges] = {0,0,0,0,0};
 	int nevents_per_file[nKinRanges] = {10,100,5000,20000,20000};
 
-    std::string py_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia/";
+    std::string py_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_private_sample/";
 
     std::vector<float> kinRanges = {5., 10., 25., 60., 120., 3200.};
 

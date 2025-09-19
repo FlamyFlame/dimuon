@@ -6,7 +6,7 @@ void PlotMCDataComprBaseClass::initialize(){
     pythia_with_data_resonance_cuts_dir = pythia_with_data_resonance_cuts? "with_data_resonance_cuts/" : "no_data_resonance_cuts/";
     pythia_with_data_resonance_cuts_suffix = pythia_with_data_resonance_cuts? "_with_data_resonance_cuts" : "_no_data_resonance_cuts";
 
-    dt_paths = {"/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/bb_full_sample/","/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/cc_full_sample/","/usatlas/u/yuhanguo/usatlasdata/pythia/","/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/","/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/","/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"};
+    dt_paths = {"/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/bb_full_sample/","/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/cc_full_sample/","/usatlas/u/yuhanguo/usatlasdata/pythia_private_sample/","/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/","/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/","/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"};
     fnames = {"histograms_mc_truth_bb_combined.root","histograms_mc_truth_cc_combined.root","histograms_pythia_combined" + pythia_with_data_resonance_cuts_suffix + ".root","histograms_real_pairs_pp_2017.root","histograms_real_pairs_pp_2024_2mu4.root","histograms_real_pairs_pp_2024_mu4_mu4noL1.root"};
 
     for (int idt = 0; idt < s_nDtTypes; idt++){

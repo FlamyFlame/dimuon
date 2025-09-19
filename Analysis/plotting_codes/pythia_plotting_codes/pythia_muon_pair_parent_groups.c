@@ -20,7 +20,7 @@ const int nSigns = 2;
 const int nDphi = 2;
 
 // std::string mcmodes[nMCmodes] = {"bb","cc"};
-std::string py_path = "/usatlas/u/yuhanguo/usatlasdata/pythia/";
+std::string py_path = "/usatlas/u/yuhanguo/usatlasdata/pythia_private_sample/";
 // std::string fname = "muon_pairs_pythia.root";
 std::string fname = "muon_pairs_pythia_0429.root";
 std::vector<std::vector<std::string>> hist_names;
@@ -85,7 +85,7 @@ void pythia_muon_pair_parent_groups(){
     }
   }
 
-  c->SaveAs("/usatlas/u/yuhanguo/usatlasdata/pythia/plots/ancestor_tracing/pythia_muon_pair_parent_groups.png");
+  c->SaveAs("/usatlas/u/yuhanguo/usatlasdata/pythia_private_sample/plots/ancestor_tracing/pythia_muon_pair_parent_groups.png");
   c->Close();
   delete c;
   // }

@@ -27,8 +27,8 @@ void hadron_muon_dphi_plotting(){
 	ROOT::RDataFrame df_powheg_bb_op("muon_pair_tree_sign2", "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/bb_full_sample/muon_pairs_mc_truth_bb_1-5.root");
 	ROOT::RDataFrame df_powheg_cc_ss("muon_pair_tree_sign1", "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/cc_full_sample/muon_pairs_mc_truth_cc_1-5.root");
 	ROOT::RDataFrame df_powheg_cc_op("muon_pair_tree_sign2", "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/cc_full_sample/muon_pairs_mc_truth_cc_1-5.root");
-	ROOT::RDataFrame df_pythia_ss("muon_pair_tree_sign1", "/usatlas/u/yuhanguo/usatlasdata/pythia/muon_pairs_pythia_after0322.root");
-	ROOT::RDataFrame df_pythia_op("muon_pair_tree_sign2", "/usatlas/u/yuhanguo/usatlasdata/pythia/muon_pairs_pythia_after0322.root");
+	ROOT::RDataFrame df_pythia_ss("muon_pair_tree_sign1", "/usatlas/u/yuhanguo/usatlasdata/pythia_private_sample/muon_pairs_pythia_after0322.root");
+	ROOT::RDataFrame df_pythia_op("muon_pair_tree_sign2", "/usatlas/u/yuhanguo/usatlasdata/pythia_private_sample/muon_pairs_pythia_after0322.root");
 
 	ROOT::RDF::RNode df_powheg_bb_ss_updated = df_powheg_bb_ss.Filter("m1.pt + m2.pt > 10").Filter("abs(deta) > 0.8").Define("ptavg",[](float pt1, float pt2){return static_cast<float>((pt1 + pt2)/2.);}, {"m1.pt", "m2.pt"}).Define("b_hadron_muon_dphi", HadronMuonDphiCalc, {"m1.phi", "m2.phi", "m1_last_b_hadron_prt_pt_eta_phi_m", "m2_last_b_hadron_prt_pt_eta_phi_m"}).Redefine("weight", [](double w){return static_cast<double>(w / 1000000.);},{"weight"});
 	ROOT::RDF::RNode df_powheg_bb_op_updated = df_powheg_bb_op.Filter("m1.pt + m2.pt > 10").Filter("abs(deta) > 0.8").Define("ptavg",[](float pt1, float pt2){return static_cast<float>((pt1 + pt2)/2.);}, {"m1.pt", "m2.pt"}).Define("b_hadron_muon_dphi", HadronMuonDphiCalc, {"m1.phi", "m2.phi", "m1_last_b_hadron_prt_pt_eta_phi_m", "m2_last_b_hadron_prt_pt_eta_phi_m"}).Redefine("weight", [](double w){return static_cast<double>(w / 1000000.);},{"weight"});
