@@ -16,7 +16,9 @@ Gen_tf.py --firstEvent=1 --maxEvents=10 --randomSeed=1235 \
   * PDF weights
 
 ### Check output: ENVT --> AOD --> NTUP
-* EVNT --> AOD: use Reco_tf.py
+* EVNT --> AOD: use `Derivation_tf.py`
+  * Remark: `Reco_tf.py` can only be used for RAW or RDO (simulated RAW) file, not EVNT (truth MC) files. See [track reco twiki](https://atlassoftwaredocs.web.cern.ch/internal-links/tracking-tutorial/recotf/)
+
 
 ```
 Derivation_tf.py \
