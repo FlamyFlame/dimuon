@@ -10,7 +10,7 @@ export ATLAS_LOCAL_ROOT_BASE=/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase
 source $ATLAS_LOCAL_ROOT_BASE/user/atlasLocalSetup.sh
 
 # Setup LCG
-lsetup "views LCG_105 x86_64-centos7-gcc11-opt"
+lsetup "views LCG_107a_ATLAS_2 x86_64-el9-gcc13-opt"
 
 # Run the analysis
 root -b -l << EOF
