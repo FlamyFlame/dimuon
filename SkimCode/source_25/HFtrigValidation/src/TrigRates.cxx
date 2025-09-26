@@ -978,6 +978,7 @@ void TrigRates::InitMuons(TTree *l_OutTree){
     l_OutTree->Branch("muon_pair_muon1_trk_pt"      ,&m_muon_pair_muon1_trk_pt      );
     l_OutTree->Branch("muon_pair_muon1_trk_eta"     ,&m_muon_pair_muon1_trk_eta     );
     l_OutTree->Branch("muon_pair_muon1_trk_phi"     ,&m_muon_pair_muon1_trk_phi     );
+    l_OutTree->Branch("muon_pair_muon1_trk_charge"  ,&m_muon_pair_muon1_trk_charge  );
 
     l_OutTree->Branch("muon_pair_muon2_pt"          ,&m_muon_pair_muon2_pt          );
     l_OutTree->Branch("muon_pair_muon2_eta"         ,&m_muon_pair_muon2_eta         );
@@ -997,6 +998,7 @@ void TrigRates::InitMuons(TTree *l_OutTree){
     l_OutTree->Branch("muon_pair_muon2_trk_pt"      ,&m_muon_pair_muon2_trk_pt      );
     l_OutTree->Branch("muon_pair_muon2_trk_eta"     ,&m_muon_pair_muon2_trk_eta     );
     l_OutTree->Branch("muon_pair_muon2_trk_phi"     ,&m_muon_pair_muon2_trk_phi     );
+    l_OutTree->Branch("muon_pair_muon2_trk_charge"  ,&m_muon_pair_muon2_trk_charge  );
   }
 }
 void TrigRates::ClearMuons()
@@ -1084,6 +1086,7 @@ void TrigRates::ClearMuons()
      m_muon_pair_muon1_trk_pt      .clear();
      m_muon_pair_muon1_trk_eta     .clear();
      m_muon_pair_muon1_trk_phi     .clear();
+     m_muon_pair_muon1_trk_charge  .clear();
      m_muon_pair_muon2_pt          .clear();
      m_muon_pair_muon2_eta         .clear();
      m_muon_pair_muon2_phi         .clear();
@@ -1102,6 +1105,7 @@ void TrigRates::ClearMuons()
      m_muon_pair_muon2_trk_pt      .clear();
      m_muon_pair_muon2_trk_eta     .clear();
      m_muon_pair_muon2_trk_phi     .clear();
+     m_muon_pair_muon2_trk_charge  .clear();
    }
 }
 

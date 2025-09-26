@@ -318,6 +318,7 @@ private:
    std::vector<float> m_muon_trk_pt ;
    std::vector<float> m_muon_trk_eta;
    std::vector<float> m_muon_trk_phi;
+   std::vector<float> m_muon_trk_charge;
    std::vector<int>   m_muon_trk_index;
    std::vector<float> m_muon_me_p   ;
    std::vector<int>   m_muon_elosstype;
@@ -362,6 +363,7 @@ private:
    std::vector<float> m_muon_pair_muon1_trk_pt ;
    std::vector<float> m_muon_pair_muon1_trk_eta;
    std::vector<float> m_muon_pair_muon1_trk_phi;
+   std::vector<float> m_muon_pair_muon1_trk_charge;
    std::vector<float> m_muon_pair_muon2_pt     ;
    std::vector<float> m_muon_pair_muon2_eta    ;
    std::vector<float> m_muon_pair_muon2_phi    ;
@@ -381,6 +383,7 @@ private:
    std::vector<float> m_muon_pair_muon2_trk_pt ;
    std::vector<float> m_muon_pair_muon2_trk_eta;
    std::vector<float> m_muon_pair_muon2_trk_phi;
+   std::vector<float> m_muon_pair_muon2_trk_charge;
 
 
 
