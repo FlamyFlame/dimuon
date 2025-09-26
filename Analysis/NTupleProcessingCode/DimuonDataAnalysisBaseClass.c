@@ -216,17 +216,17 @@ void DimuonDataAnalysisBaseClass::InitOutput() {
 
     // Determine resonance cut suffix
     std::string resonance_cut_suffix;
-    if (!isPbPb) { // PP resonance cuts
-        switch (resonance_cut_mode) {
-            case 0: resonance_cut_suffix = "_no_res_cut"; break;
-            case 1: resonance_cut_suffix = ""; break;
-            case 2: resonance_cut_suffix = "_res_cut_v2"; break;
-            default: 
-				resonance_cut_mode = 1;
-            	resonance_cut_suffix = "";
-            	break;
-        }
+    // if (!isPbPb) { // commented out PP requirement 9/25/2025
+    switch (resonance_cut_mode) {
+        case 0: resonance_cut_suffix = "_no_res_cut"; break;
+        case 1: resonance_cut_suffix = ""; break;
+        case 2: resonance_cut_suffix = "_res_cut_v2"; break;
+        default: 
+			resonance_cut_mode = 1;
+        	resonance_cut_suffix = "";
+        	break;
     }
+    // }
 
     // Construct output paths
     std::string file_name_base = output_single_muon_tree ? "single_muon_trees" : "muon_pairs";
