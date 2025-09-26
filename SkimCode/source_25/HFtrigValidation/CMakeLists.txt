@@ -8,7 +8,7 @@ find_package( ROOT COMPONENTS MathCore RIO Core Tree Hist )
 
 # Declare package as a library
 # Note the convention that library names get "Lib" suffix
-# Any package you depend on you should add
+# Any package you add to dependencies above, you should add
 # to LINK_LIBRARIES line below (see the example)
 atlas_add_library( HFtrigValidationLib src/*.cxx
                    PUBLIC_HEADERS HFtrigValidation
@@ -30,6 +30,11 @@ atlas_add_library( HFtrigValidationLib src/*.cxx
                    xAODMissingET
                    xAODHIEvent
                    GeneratorObjects
+                   GoodRunsListsLib
+                   ZdcAnalysisLib
+                   HIEventUtilsLib
+                   PMGAnalysisInterfacesLib
+                   PMGToolsLib
 )
 
 # if you add athena components (tools, algorithms) to this package

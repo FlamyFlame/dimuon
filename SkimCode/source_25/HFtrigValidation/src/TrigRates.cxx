@@ -14,9 +14,9 @@
 #include "xAODTrigger/EnergySumRoI.h"
 #include "xAODForward/ZdcModuleContainer.h"
 #include "xAODMissingET/MissingETContainer.h"
-#include "xAODTruth/TruthParticleContainer.h"
 #include "xAODTruth/TruthVertexContainer.h"
 
+#include "PMGTools/PMGTruthWeightTool.h"
 #include "GeneratorObjects/McEventCollection.h"
 
 #include <TTree.h>
@@ -58,6 +58,7 @@ TrigRates::TrigRates(const std::string& name, ISvcLocator* pSvcLocator)
 
   declareProperty("StoreAllEvents"        ,  m_StoreAllEvents              =true          );//true,false
   declareProperty("UseTrigger"            ,  m_use_trigger                 =true          );//true,false
+  declareProperty("StoreWeightNames"      ,  m_store_weight_names          =true          );//true,false
   declareProperty("StoreL1Decision"       ,  m_store_L1                    =0             );//set to 1 for storing L1 TBP/TAP/TAV values 
   declareProperty("TriggerChains"         ,  m_Trigger_Chains              ="HLT_.*"      );
   declareProperty("MuonTriggerChains"     ,  m_Muon_Trigger_Chains         ="HLT_mu4"     );
@@ -70,6 +71,7 @@ TrigRates::TrigRates(const std::string& name, ISvcLocator* pSvcLocator)
   declareProperty("L1TEContainerKey"      ,  m_L1TE_container_key          ="LVL1EnergySumRoI"   );
   declareProperty("MuonsKey"              ,  m_muons_key                   ="Muons"              );
   declareProperty("HIEventShapeContainerKey",  m_HIEventShapeContainer_key ="HIEventShape"       );
+  declareProperty("TruthEventContainerKey",  m_truth_event_container_key   ="TruthEvents"        );
   declareProperty("TruthVtxContainerKey"  ,  m_truth_vtx_container_key     ="TruthVertices"      );
   declareProperty("TruthContainerKey"     ,  m_truth_container_key         ="TruthParticles"     );
   declareProperty("TrackJetContainerKeys" ,  m_track_jet_container_keys    ={}                   );
@@ -124,6 +126,9 @@ TrigRates::TrigRates(const std::string& name, ISvcLocator* pSvcLocator)
 StatusCode TrigRates::initialize(){
    ATH_MSG_INFO("Starting initialize()");
 
+   // retrieve truth weighting tool
+   m_weightTool.setTypeAndName("PMGTools::PMGTruthWeightTool/PMGTruthWeightTool");
+   if(m_store_weight_names  ) CHECK( m_weightTool.retrieve() );
 
    //In this case we only setup the Truth branches
    if(m_is_evgen==true){
@@ -136,8 +141,13 @@ StatusCode TrigRates::initialize(){
      if(m_store_truth_Vtx   ) InitTruthVertex(m_OutTree);
      if(m_store_truth       ) InitTruth      (m_OutTree);
      if(m_store_McEvent     ) InitMcEvents   (m_OutTree);
+     
+     ATH_MSG_INFO("TrigRates::initialize(): returning for evgen-only events with only truth-level initializations");
+
      return StatusCode::SUCCESS;
    }
+
+   ATH_MSG_INFO("TrigRates::initialize(): event is NOT evgen only");
 
 //retreive the tools //THIS IS OPTIONAL!
 //-------------------------------------------------------------------------
@@ -913,6 +923,7 @@ void TrigRates::InitMuons(TTree *l_OutTree){
     l_OutTree->Branch("muon_trk_pt"      ,&m_muon_trk_pt      );
     l_OutTree->Branch("muon_trk_eta"     ,&m_muon_trk_eta     );
     l_OutTree->Branch("muon_trk_phi"     ,&m_muon_trk_phi     );
+    l_OutTree->Branch("muon_trk_charge"  ,&m_muon_trk_charge      );
     if(m_store_tracks>=Track::StoreBasic) l_OutTree->Branch("muon_trk_index"   ,&m_muon_trk_index   );
 
     l_OutTree->Branch("muon_me_p"        ,&m_muon_me_p        );
@@ -1020,6 +1031,7 @@ void TrigRates::ClearMuons()
    m_muon_trk_pt      .clear();
    m_muon_trk_eta     .clear();
    m_muon_trk_phi     .clear();
+   m_muon_trk_charge  .clear();
    m_muon_trk_index   .clear();
 
    m_muon_me_p        .clear();
@@ -1193,7 +1205,7 @@ StatusCode TrigRates::ProcessMuons(){
 
      
      //-----------------------------------------------------------------
-     float d0=1000,z0=1000,muon_trk_p=-1000,muon_me_p=-1000,muon_trk_pt=0,muon_trk_eta=1000,muon_trk_phi=0;
+     float d0=1000,z0=1000,muon_trk_p=-1000,muon_me_p=-1000,muon_trk_pt=0,muon_trk_eta=1000,muon_trk_phi=0,muon_trk_charge=1000;
      int trk_index=-1;
      float d0_err=0;
      if(idTrk){
@@ -1203,9 +1215,10 @@ StatusCode TrigRates::ProcessMuons(){
        z0          =idTrk->z0()+idTrk->vz() - z_vtx;
 
        muon_trk_p  =idTrk->p4().P();
-       muon_trk_pt =idTrk->pt () * idTrk->charge ();
+       muon_trk_pt =idTrk->pt ();
        muon_trk_eta=idTrk->eta();
        muon_trk_phi=idTrk->phi();
+       muon_trk_charge =idTrk->charge ();
        if(m_store_tracks>=Track::StoreBasic){
          if(m_track_index_temp.find(idTrk) != m_track_index_temp.end()) trk_index=m_track_index_temp[idTrk];
        }
@@ -1384,6 +1397,7 @@ StatusCode TrigRates::ProcessMuons(){
      m_muon_trk_pt      .push_back(muon_trk_pt);
      m_muon_trk_eta     .push_back(muon_trk_eta);
      m_muon_trk_phi     .push_back(muon_trk_phi);
+     m_muon_trk_charge  .push_back(muon_trk_charge);
      m_muon_trk_index   .push_back(trk_index);
 
      m_muon_me_p        .push_back(muon_me_p);
@@ -1453,6 +1467,7 @@ StatusCode TrigRates::ProcessMuons(){
          m_muon_pair_muon1_trk_pt      .push_back(m_muon_trk_pt      [i]);
          m_muon_pair_muon1_trk_eta     .push_back(m_muon_trk_eta     [i]);
          m_muon_pair_muon1_trk_phi     .push_back(m_muon_trk_phi     [i]);
+         m_muon_pair_muon1_trk_charge  .push_back(m_muon_trk_charge  [i]);
 
          m_muon_pair_muon2_pt          .push_back(m_muon_pt          [j]);
          m_muon_pair_muon2_eta         .push_back(m_muon_eta         [j]);
@@ -1472,6 +1487,7 @@ StatusCode TrigRates::ProcessMuons(){
          m_muon_pair_muon2_trk_pt      .push_back(m_muon_trk_pt      [j]);
          m_muon_pair_muon2_trk_eta     .push_back(m_muon_trk_eta     [j]);
          m_muon_pair_muon2_trk_phi     .push_back(m_muon_trk_phi     [j]);
+         m_muon_pair_muon2_trk_charge  .push_back(m_muon_trk_charge  [j]);
 
          //Trigger matching
          #if defined(__ATHENA_21p2__) || defined(__ATHENA_24p2__)
@@ -1906,18 +1922,35 @@ StatusCode TrigRates::ProcessMET(){
 
 Float_t m_pass;
 std::vector<float> m_EventWeights;
+std::vector<std::string> m_EventWeightNames;
+int m_pdf_id1 = -1;
+int m_pdf_id2 = -1;
+int m_pdg_id1 = 0;
+int m_pdg_id2 = 0;
+float m_Q = 0.;
+
 void TrigRates::InitTruth(TTree *l_OutTree){
   if(m_store_truth & Truth::Basic){
     l_OutTree->Branch("EventWeights" ,&m_EventWeights);
+    l_OutTree->Branch("EventWeightNames" ,&m_EventWeightNames);
+    l_OutTree->Branch("pdf_id1"      ,&m_pdf_id1);
+    l_OutTree->Branch("pdf_id2"      ,&m_pdf_id2);
+    l_OutTree->Branch("pdg_id1"      ,&m_pdg_id1);
+    l_OutTree->Branch("pdg_id2"      ,&m_pdg_id2);
+    l_OutTree->Branch("Q"      ,&m_Q);
     l_OutTree->Branch("truth_pt"     ,&m_truth_pt);
     l_OutTree->Branch("truth_eta"    ,&m_truth_eta);
     l_OutTree->Branch("truth_phi"    ,&m_truth_phi);
+    l_OutTree->Branch("truth_m"    ,&m_truth_m);
+    l_OutTree->Branch("truth_e"    ,&m_truth_e);
     l_OutTree->Branch("truth_charge" ,&m_truth_charge );
     l_OutTree->Branch("truth_id"     ,&m_truth_id     );
     l_OutTree->Branch("truth_barcode",&m_truth_barcode);
     l_OutTree->Branch("truth_qual"   ,&m_truth_quality);
+
     if(m_store_truth&Truth::StoreParents) {
       l_OutTree->Branch("truth_parents",&m_truth_parents);
+      l_OutTree->Branch("truth_children",&m_truth_children);
       l_OutTree->Branch("truth_status" ,&m_truth_status);
     }
     if(m_store_tracks >= Track::StoreBasic) m_OutTree->Branch("truth_trk_index" ,&m_truth_trk_index );
@@ -1962,252 +1995,327 @@ void TrigRates::InitTruth(TTree *l_OutTree){
 }
 
 StatusCode TrigRates::ProcessTruth(){
-   m_truth_pt     .clear();
-   m_truth_eta    .clear();
-   m_truth_phi    .clear();
-   m_truth_charge .clear();
-   m_truth_id     .clear();
-   m_truth_barcode.clear();
-   m_truth_quality.clear();
-   m_truth_parents.clear();
-   m_truth_status .clear();
-   m_truth_trk_index .clear();
-   m_truth_muon_index.clear();
+  m_truth_pt     .clear();
+  m_truth_eta    .clear();
+  m_truth_phi    .clear();
+  m_truth_m    .clear();
+  m_truth_e    .clear();
+  m_truth_charge .clear();
+  m_truth_id     .clear();
+  m_truth_barcode.clear();
+  m_truth_quality.clear();
+  m_truth_parents.clear();
+  m_truth_children.clear();
+  m_truth_status .clear();
+  m_truth_trk_index .clear();
+  m_truth_muon_index.clear();
 
-   //-------------------------------
-   const xAOD::EventInfo* l_EventInfo = nullptr;
-   if(evtStore()->retrieve(l_EventInfo,m_EventInfo_key).isFailure()){
-      ATH_MSG_ERROR(" Could not retrieve EventInfo with key "<<m_EventInfo_key.c_str());
-      return StatusCode::FAILURE;
-   }
-   m_EventWeights.clear();
-   for(float weight:l_EventInfo->mcEventWeights()){
-    m_EventWeights.push_back(weight);
-   }
-   //-------------------------------
-
-   const xAOD::TruthParticleContainer *l_TruthParticleContainer;
-   if(evtStore()->retrieve(l_TruthParticleContainer,m_truth_container_key).isFailure()){
-     ATH_MSG_ERROR("Could not retrieve TruthParticleContainer with key"<<m_truth_container_key);
-     return StatusCode::FAILURE;
-   }
-
-   int truth_index=0;
-   for(auto track_itr=l_TruthParticleContainer->begin();track_itr!=l_TruthParticleContainer->end();track_itr++){
-     auto track=(*track_itr);
-
-     //if the condition below is false, we have to store all patricles and not just the stable ones
-     if((m_store_truth & Truth::StoreParents)==0){ 
-       if(track->status()!=1) continue;
-       if(track->pt()<0.0001 || track->pt()<m_min_pT_Truth) continue;
-       if(track->barcode()>=200000 || track->barcode()==0) continue;
-     //if(fabs(track->charge())<0.1 || fabs(track->eta())>2.5 ) continue;
-       if(fabs(track->charge())<0.1) continue;
-     }
-
-     float pt    =track->pt    ();
-     float eta   =1000;
-     if(fabs(pt)>0.00001) eta   =track->eta   ();
-     float phi   =track->phi   ();
-     float charge=track->charge();
-     int   id    =track->pdgId ();
-     int quality =1;
-     if(track->isStrangeBaryon() ||track->barcode()<=0) quality=-1;
-
-     std::vector<int> parents;
-     for(long unsigned int iparent=0;iparent<track->nParents();iparent++){
-       if(!track->parent(iparent)){
-         std::cout<<"AAAAAAAAAAAA Parent "<<iparent<<" is missing "<<track->nParents()<<std::endl;
-         continue;
-       }
-       parents.push_back(track->parent(iparent)->barcode());
-     }
-
-     m_truth_pt      .push_back(pt);
-     m_truth_eta     .push_back(eta);
-     m_truth_phi     .push_back(phi);
-     m_truth_charge  .push_back(charge);
-     m_truth_id      .push_back(id);
-     m_truth_barcode .push_back(track->barcode());
-     m_truth_quality .push_back(quality);
-     m_truth_parents .push_back(parents);
-     m_truth_status  .push_back( (track->status()!=1)? false:true);
-
-     if(m_store_tracks & Track::StoreBasic){
-       int trk_index=-1;
-       if(m_trk_truth_index_temp1.find(track)!=m_trk_truth_index_temp1.end()){
-         trk_index=m_trk_truth_index_temp1[track];
-         if(m_trk_truth_barcode[trk_index]!=track->barcode()){
-           ATH_MSG_ERROR("Barcodes Dont Match");
-           return StatusCode::FAILURE;
-         }
-         m_trk_truth_index[trk_index]=truth_index;
-       }
-       m_truth_trk_index.push_back(trk_index);
-     }
-
-     if(m_store_single_muon){
-       int muon_index=-1;
-       if(m_muon_truth_index_temp1.find(track)!=m_muon_truth_index_temp1.end()){
-         muon_index=m_muon_truth_index_temp1[track];
-         if(m_muon_truth_barcode[muon_index]!=track->barcode()){
-           ATH_MSG_ERROR("Barcodes Dont Match");
-           return StatusCode::FAILURE;
-         }
-         m_muon_truth_index[muon_index]=truth_index;
-       }
-       m_truth_muon_index.push_back(muon_index);
-     }
-
-     truth_index++;
-   }
-
-
-   if(m_store_truth & Truth::StoreMuSingle){
-     m_truth_muon_pt      .clear();
-     m_truth_muon_eta     .clear();
-     m_truth_muon_phi     .clear();
-     m_truth_muon_ch      .clear();
-     m_truth_muon_barcode .clear();
-     m_truth_muon_id      .clear();
-     m_truth_muon_status  .clear();
-     for(unsigned int index1=0;index1<m_truth_pt.size();index1++){
-       int id1_=fabs(m_truth_id[index1]);
-       if(id1_!=13 || m_truth_status[index1]!=true) continue;
-       // if((id1_!=13 && id1_!=15 && id1_!=11 && id1_!=211) || m_truth_status[index1]!=true) continue;
-       m_truth_muon_pt      .push_back(m_truth_pt     [index1]);
-       m_truth_muon_eta     .push_back(m_truth_eta    [index1]);
-       m_truth_muon_phi     .push_back(m_truth_phi    [index1]);
-       m_truth_muon_ch      .push_back(m_truth_charge [index1]);
-       m_truth_muon_barcode .push_back(m_truth_barcode[index1]);
-       m_truth_muon_id      .push_back(id1_);
-       m_truth_muon_status  .push_back(m_truth_status [index1]);
-     }
-   }
-
-   if(m_store_truth & Truth::StoreMuPairs){
-     m_truth_mupair_asym .clear();
-     m_truth_mupair_acop .clear();
-     m_truth_mupair_kperp.clear();
-     m_truth_mupair_pt   .clear();
-     m_truth_mupair_y    .clear();
-     m_truth_mupair_phi  .clear();
-     m_truth_mupair_m    .clear();
-
-     m_truth_mupair_pt1    .clear();
-     m_truth_mupair_eta1   .clear();
-     m_truth_mupair_phi1   .clear();
-     m_truth_mupair_ch1    .clear();
-     m_truth_mupair_bar1   .clear();
-     m_truth_mupair_id1    .clear();
-     m_truth_mupair_status1.clear();
-
-     m_truth_mupair_pt2    .clear();
-     m_truth_mupair_eta2   .clear();
-     m_truth_mupair_phi2   .clear();
-     m_truth_mupair_ch2    .clear();
-     m_truth_mupair_bar2   .clear();
-     m_truth_mupair_id2    .clear();
-     m_truth_mupair_status2.clear();
+  //-------------------------------
+  const xAOD::EventInfo* l_EventInfo = nullptr;
+  if(evtStore()->retrieve(l_EventInfo,m_EventInfo_key).isFailure()){
+    ATH_MSG_ERROR(" Could not retrieve EventInfo with key "<<m_EventInfo_key.c_str());
+    return StatusCode::FAILURE;
+  }
   
-     const double PI=acos(-1.0);
-     m_pass=0;
-     for(unsigned int index1=0;index1<m_truth_pt.size();index1++){
-       int id1_=fabs(m_truth_id[index1]);
-       if(id1_!=13 || m_truth_status[index1]!=true) continue;
-       // if((id1_!=13 && id1_!=15 && id1_!=11 && id1_!=211) || m_truth_status[index1]!=true) continue;
-       float pt1    =m_truth_pt     [index1];
-       float eta1   =m_truth_eta    [index1];
-       float phi1   =m_truth_phi    [index1];
-       float charge1=m_truth_charge [index1];
-       float bar1   =m_truth_barcode[index1];
-       float id1    =m_truth_id     [index1];
-       for(unsigned int index2=index1+1;index2<m_truth_pt.size();index2++){
-         int id2_=fabs(m_truth_id[index2]);
-         if(id2_!=id1_ || m_truth_status[index2]!=true) continue;
-         float pt2    =m_truth_pt     [index2];
-         float eta2   =m_truth_eta    [index2];
-         float phi2   =m_truth_phi    [index2];
-         float charge2=m_truth_charge [index2];
-         float bar2   =m_truth_barcode[index2];
-         float id2    =m_truth_id     [index2];
-  
-         if(id1_==13 && pt1>=3800 && pt2>=3800 && fabs(eta1)<=2.4 && fabs(eta2)<=2.4) m_pass=1;
-  
-         float asym =(pt1-pt2)/(pt1+pt2);
-         float temp =(phi1-phi2+PI);
-         float acop =atan2(sin(temp),cos(temp))/PI;
-         float kperp=acop*PI*(pt1+pt2)/2.0;
-  
-         float M=0;
-         if     (id1_== 13) M= 105.7  ;
-         else if(id1_== 15) M=1776.86 ;
-         else if(id1_== 11) M=   0.511;
-         else if(id1_==211) M= 139.6  ;
-         else{
-           ATH_MSG_ERROR(" Unknown Particle "<<id1);
-           return StatusCode::FAILURE;
-         }
-         TLorentzVector M1,M2;
-         M1.SetPtEtaPhiM(pt1, eta1, phi1, M);
-         M2.SetPtEtaPhiM(pt2, eta2, phi2, M);
-         TLorentzVector M3=M1+M2;
-  
-         m_truth_mupair_asym .push_back(asym);
-         m_truth_mupair_acop .push_back(acop);
-         m_truth_mupair_kperp.push_back(kperp);
-  
-         m_truth_mupair_pt .push_back(M3.Pt      ());
-         m_truth_mupair_y  .push_back(M3.Rapidity());
-         m_truth_mupair_phi.push_back(M3.Phi     ());
-         m_truth_mupair_m  .push_back(M3.M       ());
-  
-         m_truth_mupair_pt1    .push_back(pt1 );
-         m_truth_mupair_eta1   .push_back(eta1);
-         m_truth_mupair_phi1   .push_back(phi1);
-         m_truth_mupair_ch1    .push_back(charge1);
-         m_truth_mupair_bar1   .push_back(bar1);
-         m_truth_mupair_id1    .push_back(id1);
-         m_truth_mupair_status1.push_back(m_truth_status [index1]);
-  
-         m_truth_mupair_pt2    .push_back(pt2 );
-         m_truth_mupair_eta2   .push_back(eta2);
-         m_truth_mupair_phi2   .push_back(phi2);
-         m_truth_mupair_ch2    .push_back(charge2);
-         m_truth_mupair_bar2   .push_back(bar2);
-         m_truth_mupair_id2    .push_back(id2);
-         m_truth_mupair_status2.push_back(m_truth_status [index2]);
-       }
-     }
-   }
+  m_EventWeights.clear();
+  m_EventWeightNames.clear();
+  for (auto weightname : m_weightTool->getWeightNames()) {
+    m_EventWeightNames.push_back(weightname);
+    m_EventWeights.push_back(m_weightTool->getWeight(l_EventInfo, weightname));
+  }
 
-   return StatusCode::SUCCESS;
+  //-------------------------------
+
+  const xAOD::TruthEventContainer* l_TruthEventContainer = nullptr;
+  if(evtStore()->retrieve(l_TruthEventContainer,m_truth_event_container_key).isFailure()){
+    ATH_MSG_ERROR("Could not retrieve TruthEventContainer with key"<<m_truth_event_container_key);
+    return StatusCode::FAILURE;
+  }
+
+  if (l_TruthEventContainer->size() < 1){
+    ATH_MSG_ERROR("TruthEventContainer has zero event");
+    return StatusCode::FAILURE; // do not terminate the program yet; let's see how often this happens
+  }
+
+  const xAOD::TruthEvent* truthEvent = l_TruthEventContainer->at(0);
+
+  // DO NOT RETURN StatusCode::FAILURE YET
+  if(!truthEvent->pdfInfoParameter(m_pdg_id1,xAOD::TruthEvent::PdfParam::PDGID1))
+    ATH_MSG_ERROR("Failed to get PDFInfo: PDGID1");
+  if(!truthEvent->pdfInfoParameter(m_pdg_id2,xAOD::TruthEvent::PdfParam::PDGID2))
+    ATH_MSG_ERROR("Failed to get PDFInfo: PDGID2");
+  if(!truthEvent->pdfInfoParameter(m_pdf_id1,xAOD::TruthEvent::PdfParam::PDFID1))
+    ATH_MSG_ERROR("Failed to get PDFInfo: PDFID1");
+  if(!truthEvent->pdfInfoParameter(m_pdf_id2,xAOD::TruthEvent::PdfParam::PDFID2))
+    ATH_MSG_ERROR("Failed to get PDFInfo: PDFID2");
+  if(!truthEvent->pdfInfoParameter(m_Q,xAOD::TruthEvent::PdfParam::Q))
+    ATH_MSG_ERROR("Failed to get PDFInfo: Q");
+  
+  if (m_pdg_id1 == 0 || m_pdg_id2 == 0 || m_pdf_id1 < 0 || m_pdf_id2 < 0 || std::isnan(m_Q) ){ // invalid: see TruthEvent_v1::PdfInfo::valid()
+    ATH_MSG_ERROR("Truth Event has invalid pdg id's or pdf id's, or invalid Q: " << m_pdg_id1 << " " << m_pdg_id2 << " " << m_pdf_id1 << " " << m_pdf_id2 << " " << m_Q);
+    return StatusCode::FAILURE;
+  }
+
+  if (l_TruthEventContainer->size() > 1){
+    std::cout << "TruthEventContainer has more then one event" << std::endl;
+    for (int itruth_ev = 1; itruth_ev < l_TruthEventContainer->size(); itruth_ev++){
+      std::cout << itruth_ev << "-th event in TruthEventContainer" << std::endl;
+      const xAOD::TruthEvent* itruthEvent = l_TruthEventContainer->at(itruth_ev);
+      int cur_pdg_id1 = 0;
+      int cur_pdg_id2 = 0;
+      int cur_pdf_id1 = -1;
+      int cur_pdf_id2 = -1;
+      itruthEvent->pdfInfoParameter(cur_pdg_id1,xAOD::TruthEvent::PdfParam::PDGID1);
+      itruthEvent->pdfInfoParameter(cur_pdg_id2,xAOD::TruthEvent::PdfParam::PDGID2);
+      itruthEvent->pdfInfoParameter(cur_pdf_id1,xAOD::TruthEvent::PdfParam::PDFID1);
+      itruthEvent->pdfInfoParameter(cur_pdf_id2,xAOD::TruthEvent::PdfParam::PDFID2);
+      std::cout << itruth_ev << "-th event in TruthEventContainer has the following pdg id's or pdf id's: " << cur_pdg_id1 << " " << cur_pdg_id2 << " " << cur_pdf_id1 << " " << cur_pdf_id2 << std::endl;
+
+    }
+    // return StatusCode::FAILURE; // do not terminate the program yet; let's see how often this happens
+  }
+
+  //-----------------------------
+
+  const xAOD::TruthParticleContainer *l_TruthParticleContainer;
+  if(evtStore()->retrieve(l_TruthParticleContainer,m_truth_container_key).isFailure()){
+    ATH_MSG_ERROR("Could not retrieve TruthParticleContainer with key"<<m_truth_container_key);
+    return StatusCode::FAILURE;
+  }
+
+  int truth_index=0;
+  for(auto track_itr=l_TruthParticleContainer->begin();track_itr!=l_TruthParticleContainer->end();track_itr++){
+    auto track=(*track_itr);
+
+    //if the condition below is false, we have to store all patricles and not just the stable ones
+    if((m_store_truth & Truth::StoreParents)==0){ 
+      if(track->status()!=1) continue;
+      if(track->pt()<0.0001 || track->pt()<m_min_pT_Truth) continue;
+      if(track->barcode()>=200000 || track->barcode()==0) continue;
+    //if(fabs(track->charge())<0.1 || fabs(track->eta())>2.5 ) continue;
+      if(fabs(track->charge())<0.1) continue;
+    }
+    
+    float pt    =track->pt    ();
+    // float eta   =1000; // Soumya's version - used for powheg
+    // if(fabs(pt)>0.00001) eta   =track->eta   (); // Soumya's version - used for powheg
+    float eta   =track->eta   ();
+    float phi   =track->phi   ();
+    float m   =track->m   ();
+    float e   =track->e   ();
+    float charge=track->charge();
+    int   id    =track->pdgId ();
+    int quality =1;
+    if(track->isStrangeBaryon() ||track->barcode()<=0) quality=-1;
+
+    std::vector<int> parents;
+    for(long unsigned int iparent=0;iparent<track->nParents();iparent++){
+      if(!track->parent(iparent)){
+        std::cout<<"AAAAAAAAAAAA Parent "<<iparent<<" is missing "<<track->nParents()<<std::endl;
+        continue;
+      }
+      parents.push_back(track->parent(iparent)->barcode());
+    }
+
+    std::vector<int> children;
+    for(long unsigned int ichild=0;ichild<track->nChildren();ichild++){
+      if(!track->child(ichild)){
+        std::cout<<"AAAAAAAAAAAA Child "<<ichild<<" is missing "<<track->nChildren()<<std::endl;
+        continue;
+      }
+      children.push_back(track->child(ichild)->barcode());
+    }
+
+    m_truth_pt      .push_back(pt);
+    m_truth_eta     .push_back(eta);
+    m_truth_phi     .push_back(phi);
+    m_truth_m     .push_back(m);
+    m_truth_e     .push_back(e);
+    m_truth_charge  .push_back(charge);
+    m_truth_id      .push_back(id);
+    m_truth_barcode .push_back(track->barcode());
+    m_truth_quality .push_back(quality);
+    m_truth_parents .push_back(parents);
+    m_truth_children .push_back(children);
+    // m_truth_status  .push_back( (track->status()!=1)? false:true); // Soumya's version: used for powheg
+    m_truth_status  .push_back(track->status()); // the status is NOT pythia status --> what to do?
+
+    if(m_store_tracks & Track::StoreBasic){
+      int trk_index=-1;
+      if(m_trk_truth_index_temp1.find(track)!=m_trk_truth_index_temp1.end()){
+        trk_index=m_trk_truth_index_temp1[track];
+        if(m_trk_truth_barcode[trk_index]!=track->barcode()){
+          ATH_MSG_ERROR("Barcodes Dont Match");
+          return StatusCode::FAILURE;
+        }
+        m_trk_truth_index[trk_index]=truth_index;
+      }
+      m_truth_trk_index.push_back(trk_index);
+    }
+
+    if(m_store_single_muon){
+      int muon_index=-1;
+      if(m_muon_truth_index_temp1.find(track)!=m_muon_truth_index_temp1.end()){
+        muon_index=m_muon_truth_index_temp1[track];
+        if(m_muon_truth_barcode[muon_index]!=track->barcode()){
+          ATH_MSG_ERROR("Barcodes Dont Match");
+          return StatusCode::FAILURE;
+        }
+        m_muon_truth_index[muon_index]=truth_index;
+      }
+      m_truth_muon_index.push_back(muon_index);
+    }
+
+    truth_index++;
+  }
+
+
+  if(m_store_truth & Truth::StoreMuSingle){
+    m_truth_muon_pt      .clear();
+    m_truth_muon_eta     .clear();
+    m_truth_muon_phi     .clear();
+    m_truth_muon_ch      .clear();
+    m_truth_muon_barcode .clear();
+    m_truth_muon_id      .clear();
+    m_truth_muon_status  .clear();
+    for(unsigned int index1=0;index1<m_truth_pt.size();index1++){
+      int id1_=fabs(m_truth_id[index1]);
+      if(id1_!=13 || m_truth_status[index1] != 1) continue;
+      // if((id1_!=13 && id1_!=15 && id1_!=11 && id1_!=211) || m_truth_status[index1]!=1) continue;
+      m_truth_muon_pt      .push_back(m_truth_pt     [index1]);
+      m_truth_muon_eta     .push_back(m_truth_eta    [index1]);
+      m_truth_muon_phi     .push_back(m_truth_phi    [index1]);
+      m_truth_muon_ch      .push_back(static_cast<int>(m_truth_charge [index1]));
+      m_truth_muon_barcode .push_back(m_truth_barcode[index1]);
+      m_truth_muon_id      .push_back(id1_);
+      m_truth_muon_status  .push_back(m_truth_status [index1]);
+    }
+  }
+
+  if(m_store_truth & Truth::StoreMuPairs){
+    m_truth_mupair_asym .clear();
+    m_truth_mupair_acop .clear();
+    m_truth_mupair_kperp.clear();
+    m_truth_mupair_pt   .clear();
+    m_truth_mupair_y    .clear();
+    m_truth_mupair_phi  .clear();
+    m_truth_mupair_m    .clear();
+
+    m_truth_mupair_pt1    .clear();
+    m_truth_mupair_eta1   .clear();
+    m_truth_mupair_phi1   .clear();
+    m_truth_mupair_ch1    .clear();
+    m_truth_mupair_bar1   .clear();
+    m_truth_mupair_id1    .clear();
+    m_truth_mupair_status1.clear();
+
+    m_truth_mupair_pt2    .clear();
+    m_truth_mupair_eta2   .clear();
+    m_truth_mupair_phi2   .clear();
+    m_truth_mupair_ch2    .clear();
+    m_truth_mupair_bar2   .clear();
+    m_truth_mupair_id2    .clear();
+    m_truth_mupair_status2.clear();
+  
+    const double PI=acos(-1.0);
+    m_pass=0;
+    for(unsigned int index1=0;index1<m_truth_pt.size();index1++){
+      int id1_=fabs(m_truth_id[index1]);
+      if(id1_!=13 || m_truth_status[index1] != 1) continue;
+      // if((id1_!=13 && id1_!=15 && id1_!=11 && id1_!=211) || m_truth_status[index1] != 1) continue;
+      float pt1    =m_truth_pt     [index1];
+      float eta1   =m_truth_eta    [index1];
+      float phi1   =m_truth_phi    [index1];
+      int charge1  = static_cast<int>(m_truth_charge [index1]);
+      int bar1   =m_truth_barcode[index1];
+      int id1    =m_truth_id     [index1];
+
+      for(unsigned int index2=index1+1;index2<m_truth_pt.size();index2++){
+        int id2_=fabs(m_truth_id[index2]);
+        if(id2_!=id1_ || m_truth_status[index2] != 1) continue;
+        float pt2    =m_truth_pt     [index2];
+        float eta2   =m_truth_eta    [index2];
+        float phi2   =m_truth_phi    [index2];
+        int charge2  = static_cast<int>(m_truth_charge [index2]);
+        int bar2   =m_truth_barcode[index2];
+        int id2    =m_truth_id     [index2];
+  
+        if(id1_==13 && pt1>=3800 && pt2>=3800 && fabs(eta1)<=2.4 && fabs(eta2)<=2.4) m_pass=1;
+  
+        float asym =(pt1-pt2)/(pt1+pt2);
+        float temp =(phi1-phi2+PI);
+        float acop =atan2(sin(temp),cos(temp))/PI;
+        float kperp=acop*PI*(pt1+pt2)/2.0;
+  
+        float M=0;
+        if     (id1_== 13) M= 105.7  ;
+        else if(id1_== 15) M=1776.86 ;
+        else if(id1_== 11) M=   0.511;
+        else if(id1_==211) M= 139.6  ;
+        else{
+          ATH_MSG_ERROR(" Unknown Particle "<<id1);
+          return StatusCode::FAILURE;
+        }
+        TLorentzVector M1,M2;
+        M1.SetPtEtaPhiM(pt1, eta1, phi1, M);
+        M2.SetPtEtaPhiM(pt2, eta2, phi2, M);
+        TLorentzVector M3=M1+M2;
+  
+        m_truth_mupair_asym .push_back(asym);
+        m_truth_mupair_acop .push_back(acop);
+        m_truth_mupair_kperp.push_back(kperp);
+  
+        m_truth_mupair_pt .push_back(M3.Pt      ());
+        m_truth_mupair_y  .push_back(M3.Rapidity());
+        m_truth_mupair_phi.push_back(M3.Phi     ());
+        m_truth_mupair_m  .push_back(M3.M       ());
+  
+        m_truth_mupair_pt1    .push_back(pt1 );
+        m_truth_mupair_eta1   .push_back(eta1);
+        m_truth_mupair_phi1   .push_back(phi1);
+        m_truth_mupair_ch1    .push_back(charge1);
+        m_truth_mupair_bar1   .push_back(bar1);
+        m_truth_mupair_id1    .push_back(id1);
+        m_truth_mupair_status1.push_back(m_truth_status [index1]);
+  
+        m_truth_mupair_pt2    .push_back(pt2 );
+        m_truth_mupair_eta2   .push_back(eta2);
+        m_truth_mupair_phi2   .push_back(phi2);
+        m_truth_mupair_ch2    .push_back(charge2);
+        m_truth_mupair_bar2   .push_back(bar2);
+        m_truth_mupair_id2    .push_back(id2);
+        m_truth_mupair_status2.push_back(m_truth_status [index2]);
+      }
+    }
+  }
+
+  return StatusCode::SUCCESS;
 }
 
 void TrigRates::InitTruthVertex(TTree *l_OutTree){
-     l_OutTree->Branch("truth_vtx_z"     ,&m_truth_vtx_z     );
-     l_OutTree->Branch("truth_vtx_x"     ,&m_truth_vtx_x     );
-     l_OutTree->Branch("truth_vtx_y"     ,&m_truth_vtx_y     );
-     l_OutTree->Branch("truth_vtx_t"     ,&m_truth_vtx_t     );
+  l_OutTree->Branch("truth_vtx_z"     ,&m_truth_vtx_z     );
+  l_OutTree->Branch("truth_vtx_x"     ,&m_truth_vtx_x     );
+  l_OutTree->Branch("truth_vtx_y"     ,&m_truth_vtx_y     );
+  l_OutTree->Branch("truth_vtx_t"     ,&m_truth_vtx_t     );
 }
 
 StatusCode TrigRates::ProcessTruthVertex(){
-   const xAOD::TruthVertexContainer *l_TruthVertexContainer = nullptr;
-   if(evtStore()->retrieve(l_TruthVertexContainer,m_truth_vtx_container_key).isFailure()){
-      ATH_MSG_ERROR("Could not retrieve TruthVxContainer with key "<<m_truth_vtx_container_key.c_str());
-      return StatusCode::FAILURE;
-   }
-   m_truth_vtx_z     .clear();
-   m_truth_vtx_x     .clear();
-   m_truth_vtx_y     .clear();
-   m_truth_vtx_t     .clear();
-   for(const auto* vtx : *l_TruthVertexContainer){
-      m_truth_vtx_z     .push_back(vtx->z());
-      m_truth_vtx_x     .push_back(vtx->x());
-      m_truth_vtx_y     .push_back(vtx->y());
-      m_truth_vtx_t     .push_back(vtx->t());
-   }
-   return StatusCode::SUCCESS;
+  const xAOD::TruthVertexContainer *l_TruthVertexContainer = nullptr;
+  if(evtStore()->retrieve(l_TruthVertexContainer,m_truth_vtx_container_key).isFailure()){
+    ATH_MSG_ERROR("Could not retrieve TruthVxContainer with key "<<m_truth_vtx_container_key.c_str());
+    return StatusCode::FAILURE;
+  }
+  m_truth_vtx_z     .clear();
+  m_truth_vtx_x     .clear();
+  m_truth_vtx_y     .clear();
+  m_truth_vtx_t     .clear();
+  for(const auto* vtx : *l_TruthVertexContainer){
+    m_truth_vtx_z     .push_back(vtx->z());
+    m_truth_vtx_x     .push_back(vtx->x());
+    m_truth_vtx_y     .push_back(vtx->y());
+    m_truth_vtx_t     .push_back(vtx->t());
+  }
+  return StatusCode::SUCCESS;
 }
 
 

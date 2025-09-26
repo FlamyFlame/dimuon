@@ -29,6 +29,7 @@ TrigRatesAlg=CfgMgr.TrigRates("TrigRatesAlg",OutputLevel=INFO)
 
 TrigRatesAlg.IsEvgen               = True
 TrigRatesAlg.StoreTruth            = 1 + 2 + 4 + 8
+TrigRatesAlg.StoreTruthVtx         =True
 TrigRatesAlg.StoreEventInfo        = 0
 TrigRatesAlg.StoreTracks           = 0
 TrigRatesAlg.StorePixTracks        = 0
