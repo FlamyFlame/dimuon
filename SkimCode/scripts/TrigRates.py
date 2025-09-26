@@ -90,9 +90,14 @@ elif do_hi2024:
   Muon_triggers    =["HLT_mu4_L1MU3V"  ,
                      "HLT_mu6_L1MU3V"  ,
                      "HLT_mu6_L1MU5VF" ,
-                     "HLT_mu8_L1MU5VF",
-                     "HLT_mu10_L1MU8F",
-                     "HLT_mu10_L1MU5VF"]
+                     "HLT_mu8_L1MU5VF" ,
+                     "HLT_mu10_L1MU8F" ,
+                     "HLT_mu10_L1MU5VF",
+                     "HLT_mu4noL1_hi_uccTh3_L1jTE10000", 
+                     "HLT_mu4noL1_hi_uccTh2_L1jTE9000" , 
+                     "HLT_mu4noL1_L1ZDC_HELT25_jTE4000", 
+                     "HLT_mu4noL1_L1ZDC_HELT20_jTE4000", 
+                     "HLT_mu4noL1_L1ZDC_HELT15_jTE4000"]
   DiMuon_triggers  =["HLT_2mu4_L12MU3V","HLT_mu4_mu4noL1_L1MU3V"]
   ZDC_Configuration=""
 elif do_pp2024:
