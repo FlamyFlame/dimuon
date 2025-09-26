@@ -1209,7 +1209,8 @@ StatusCode TrigRates::ProcessMuons(){
 
      
      //-----------------------------------------------------------------
-     float d0=1000,z0=1000,muon_trk_p=-1000,muon_me_p=-1000,muon_trk_pt=0,muon_trk_eta=1000,muon_trk_phi=0,muon_trk_charge=1000;
+     float d0=1000,z0=1000,muon_trk_p=-1000,muon_me_p=-1000,muon_trk_pt=0,muon_trk_eta=1000,muon_trk_phi=0;
+     int muon_trk_charge=1000;
      int trk_index=-1;
      float d0_err=0;
      if(idTrk){
@@ -1222,7 +1223,7 @@ StatusCode TrigRates::ProcessMuons(){
        muon_trk_pt =idTrk->pt ();
        muon_trk_eta=idTrk->eta();
        muon_trk_phi=idTrk->phi();
-       muon_trk_charge =idTrk->charge ();
+       muon_trk_charge =(int) idTrk->charge ();
        if(m_store_tracks>=Track::StoreBasic){
          if(m_track_index_temp.find(idTrk) != m_track_index_temp.end()) trk_index=m_track_index_temp[idTrk];
        }
