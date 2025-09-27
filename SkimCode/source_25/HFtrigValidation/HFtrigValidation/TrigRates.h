@@ -60,7 +60,7 @@ private:
 
    bool                        m_is_evgen       =false;//=true for EvGen only (withour reconstruction)
    bool                        m_use_trigger    = true;//=true then use the Trigger (make branches, use decision)
-   bool                        m_store_weight_names   = true;//=true then store weight names
+   bool                        m_store_MC_weight_names;//=true then store weight names
    int                         m_store_L1       =0    ;//set to 1 for storing L1 TBP/TAP/TAV values
    std::string                 m_Trigger_Chains       ;//Trigger Chains for TrigDecision and branches
    std::string                 m_Muon_Trigger_Chains  ;//Trigger Chains for TrigDecision and branches

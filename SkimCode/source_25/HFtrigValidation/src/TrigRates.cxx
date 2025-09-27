@@ -58,7 +58,7 @@ TrigRates::TrigRates(const std::string& name, ISvcLocator* pSvcLocator)
 
   declareProperty("StoreAllEvents"        ,  m_StoreAllEvents              =true          );//true,false
   declareProperty("UseTrigger"            ,  m_use_trigger                 =true          );//true,false
-  declareProperty("StoreWeightNames"      ,  m_store_weight_names          =true          );//true,false
+  declareProperty("StoreMCWeightNames"    ,  m_store_MC_weight_names       =false         );//true,false; should always be false for data
   declareProperty("StoreL1Decision"       ,  m_store_L1                    =0             );//set to 1 for storing L1 TBP/TAP/TAV values 
   declareProperty("TriggerChains"         ,  m_Trigger_Chains              ="HLT_.*"      );
   declareProperty("MuonTriggerChains"     ,  m_Muon_Trigger_Chains         ="HLT_mu4"     );
@@ -127,8 +127,10 @@ StatusCode TrigRates::initialize(){
    ATH_MSG_INFO("Starting initialize()");
 
    // retrieve truth weighting tool
-   m_weightTool.setTypeAndName("PMGTools::PMGTruthWeightTool/PMGTruthWeightTool");
-   if(m_store_weight_names  ) CHECK( m_weightTool.retrieve() );
+   if(m_store_MC_weight_names  ){
+     m_weightTool.setTypeAndName("PMGTools::PMGTruthWeightTool/PMGTruthWeightTool");
+     CHECK( m_weightTool.retrieve() );
+   } 
 
    //In this case we only setup the Truth branches
    if(m_is_evgen==true){
@@ -2024,9 +2026,15 @@ StatusCode TrigRates::ProcessTruth(){
   
   m_EventWeights.clear();
   m_EventWeightNames.clear();
-  for (auto weightname : m_weightTool->getWeightNames()) {
-    m_EventWeightNames.push_back(weightname);
-    m_EventWeights.push_back(m_weightTool->getWeight(l_EventInfo, weightname));
+  if (m_store_MC_weight_names){
+    for (auto weightname : m_weightTool->getWeightNames()) {
+      m_EventWeightNames.push_back(weightname);
+      m_EventWeights.push_back(m_weightTool->getWeight(l_EventInfo, weightname));
+    }    
+  } else{
+    for(float weight:l_EventInfo->mcEventWeights()){
+      m_EventWeights.push_back(weight);
+    }
   }
 
   //-------------------------------
