@@ -24,11 +24,11 @@ public:
   float   m1_trk_pt;
   float   m1_trk_eta;
   float   m1_trk_phi;
-  float   m1_trk_charge;
+  int     m1_trk_charge;
   float   m2_trk_pt;
   float   m2_trk_eta;
   float   m2_trk_phi;
-  float   m2_trk_charge;
+  int     m2_trk_charge;
 
   MuonPairData(){}
   ~MuonPairData(){}
@@ -41,7 +41,8 @@ void MuonPairData::Sort(){
 
   float temppt, tempeta, tempphi, tempd0, tempz0, tempdP_overP;
   int tempind, tempcharge, tempquality;
-  int temp_trkpt, temp_trketa, temp_trkphi;
+  float temp_trkpt, temp_trketa, temp_trkphi;
+  int temp_trkcharge;
 
   if (m1.pt < m2.pt){
     temppt = m1.pt;
@@ -81,10 +82,10 @@ void MuonPairData::Sort(){
     m2.charge = tempcharge;
     m2.quality = tempquality;
     m2.dP_overP = tempdP_overP;
-    m1_trk_pt = temp_trkpt;
-    m1_trk_eta = temp_trketa;
-    m1_trk_phi = temp_trkphi;
-    m1_trk_charge = temp_trkcharge;
+    m2_trk_pt = temp_trkpt;
+    m2_trk_eta = temp_trketa;
+    m2_trk_phi = temp_trkphi;
+    m2_trk_charge = temp_trkcharge;
   }
   // std::cout << m1.ev_num << ", child class sorting method called" << std::endl;
 }
