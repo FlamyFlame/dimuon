@@ -1,0 +1,139 @@
+I want a base class HistFillingBaseClass + a struct var1D
+
+the base class 	1) reads a root file with two TTrees muon_pair_tree_sign1, muon_pair_tree_sign2 (contained same-sign / opposite-sign muon pairs) + sets branches using TTreeReaderValue, note that each branch, e.g, dphi, needs to have two addresses, one for each tree, e.g, float dphi [ParamsSet::nSigns];
+				2) defines/initializes a set of signed versus unsigned histograms given variable + filter type + the pair sign --> store the TH1D*/TH2D*/THnD* in a filter-to-hist map
+				3) for each TTree loops over all entries using TTreeReader + call FillHistograms with its sign
+				4) in FillHistograms fill all the signed + unsigned histograms for each filter
+				5) write all the histograms to an output hist file
+
+designed idea:
+each histogram is determined by (1) the variable(s) (2) filter type (e.g, trigger requirement / kinematic cuts / truth origin for simulated muon pairs) (3) signed or unsigned
+2D variables have equivalent info as pair of 1D variables (ordering included in pair ordering)
+nD variables have equivalent info as vector of 1D variables (ordering included in vector ordering)
+each 1D variable is associated with two types of information
+1) binning + title specifications for histogram definition
+2) variable name to pointer container branch address for histogram filling) 
+since the muon pairs + TTrees are signed, the filters are categorized into signed + unsigned
+
+
+the class should at least have the following protected functions
+   	virtual void InitInput(); // specifies the input file + branches
+    virtual void InitOutput(); // specifies output file path
+   	virtual void InitHists(); // auto-defines all histograms
+   	virtual void ProcessData(); // loops over all events in the two signed TTree's + calls FillHistograms for each TTree (passing the sign as argument)
+    virtual void WriteOutput(); // writes to outputfile
+    virtual bool PassSingleMuonGapCut(float meta, float mpt, int mcharge);
+   	virtual void FillHistograms(int nsign); // auto-fills all histograms from maps
+   	virtual void FillHistogramsPerFilter(string filter, int nsign, bool filter_signed = true); // auto-fills all histograms from maps
++ the new functions I'm asking, like MakeHist1D + additional helper functions if needed
+
+
+and the following public function
+  	virtual void Run();
+
+separate declarations in .h + function definitions in .cxx
+
+SPECIFICATIONS for class variables + methods
+
+1) a var1D struct with attributes: string name = "", int nbins = 0, double min = 0., string title = "", double max = 0., vector<double> bins = {}
+note that either min & max or bins is expected to be specified
+
+2) a collection (map<string,var1D> var1D_list) that contains all variables to be filled into 1D/2D/... histograms
+	+ virtual function to fill it
+
+3) functions MakeHist1D, MakeHist2D, MakeHistnD which takes as arguments, repectively:
+var1D var, string suffix, int hist_sign = -1
+var1D varx, var1D vary, string suffix, int hist_sign = -1
+vector<var1D>, string suffix, int hist_sign = -1
++ return a TH1D*/TH2D*/THnD*
+i) add a helper function to check for each var1D if nbins > 0 && (either (min < max) or nbins == bins.size() - 1)
+ii) if hist_sign != -1, suffix += to_string(hist_sign + 1); // filter is signed
+	1D hist name should be Form("h_%s%s",var.name.c_str(), suffix.c_str())
+	2D hist name should be Form("h_%s_vs_%s%s",vary.name.c_str(),varx.name.c_str(), suffix.c_str())
+	hist title should be ";xtitle;d#sigma/d{xtitle}" for 1D / ";xtitle;ytitle" for 2D, where x/ytitle is read from varx.title/vary.title / analog for nD
+
+4) a vector<string> filter_list_signed that contains all "signed" filters
+a vector<string> filter_list_unsigned that contains all "unsigned" filters
+(they will not have overlap: a filter can only be either signed/unsigned)
++ function to write them
+a map<string, string> filter_to_suffix_map + function to write it (virtual, but map "DEFAULT" to "", "jacobian_corrected" to "_jacobian_corrected")
+add helper single-suffix-mapping function that takes string + maps string, which be default returns "_" + input_string (e.g, "jacobian_corrected" to "_jacobian_corrected")
+
+
+5) map <string, vector<string> filter_to_var1Ds_map
+   map <string, vector<pair<string,string>> filter_to_var2Ds_map
+   map <string, vector<vector<string>>> filter_to_varnDs_map
+   + virtual function to write them (these are the "interface" that need to be specified by child classes - which variables to plot for which filter requirement; base class function will fill common 1D/2D variables for "DEFAULT")
+
+6) 
+map <string, vector<pair<string, TH1D*>>> unsigned_filter_to_hist1Ds_map
+map <string, vector<pair<pair<string,string>, TH2D*>>> unsigned_filter_to_hist2Ds_map
+map <string, vector<pair<vector<string>, THnD*>>> unsigned_filter_to_histnDs_map
+
+map <string, vector<pair<string, pair<TH1D*,TH1D*>>> signed_filter_to_hist1Ds_map
+map <string, vector<pair<pair<string,string>, pair<TH2D*,TH2D*>>> signed_filter_to_hist2Ds_map
+map <string, vector<pair<vector<string>, pair<THnD*,THnD*>>> signed_filter_to_histnDs_map
+
+for each histogram, these contain both the variable name(s) + the pointer to histogram. the variable name(s) is needed later for histogram filling.
+these are to be auto-filled in InitHists from filter_to_var1Ds_map etc.:
+
+in InitHists, loop over filter_list_unsigned, for each filter cur_filter, loop over filter_to_var1Ds_map[cur_filter] & filter_to_var2Ds_map[cur_filter] & filter_to_varnDs_map[cur_filter]. (3 loops (1D/2D/nD) inside 1 loop (filters))
+In each loop:
+	--> filter_to_var1Ds_map[cur_filter] etc. gives the 1D/2D/nD variable name(s))
+	--> look up each variable name in var1D_list
+	--> call MakeHist1D with var1D_list[var] + cur_filter (/ MakeHist2D / MakeHistnD analogously)
+	--> push back the pair of the 1D/2D/nD variable name(s) + returned TH1D*/TH2D*/THnD* into unsiged_filter_to_hist1/2/nDs_map
+
+loop over filter_list_signed, for each filter cur_filter, basically do the same thing, except that it's signed now:
+
+loop over filter_to_var1Ds_map[cur_filter] & filter_to_var2Ds_map[cur_filter] & filter_to_varnDs_map[cur_filter]. each entry gives the 1D/2D/nD variable name(s)). in each loop, do:
+	look up each variable name in var1D_list
+	intialize empty pair of pair<TH1/2/nD*,TH1/2/nD*>
+	for (unsigned int isign = 0; isign < ParamsSet::nSigns; isign++){ // loop over the signed
+		calls MakeHist1D / MakeHist2D / MakeHistnD, but now with hist_sign = isign --> update the <TH1/2/nD*,TH1/2/nD*> pair
+	}
+	push back the pair of the 1D/2D/nD variable name(s) + updated <TH1/2/nD*,TH1/2/nD*> pair into signed_filter_to_hist1/2/nDs_map
+
+so now it's 1 loop (over the signs) inside 3 loops (1D/2D/nD) inside 1 loop (signed filters)
+
+7) a map<string, float*> var_hist_to_var_branch_map
+this maps, e.g, "minv_log", "minv", "minv_zoomin", which have different min/max/bins for histogram definition, all to the same float* *minv, which is used for the branch "minv"
+
+
+8) in FillHistogramsPerFilter (to be called after each filter requirement in FillHistograms; the pair sign is passed from FillHistograms as argument)
+
+if !filter_signed // unsigned
+look up the filter in unsigned_filter_to_hist1/2/nDs_map (if not found, give warning specifying the filter + return) --> get a vector of all pairs of [variable string(s) + corresponding TH1/2/nD* to be filled]
+loop over all the pairs, for each:
+	look up each variable string in var_hist_to_var_branch_map (if any not found, give warning specifying the filter + variable + affected histogram name + continue/skip this variable-histogram pair)
+	fill the TH1/2/nD* with the variables + weight[nsign]
+
+else // signed
+look up the filter in signed_filter_to_hist1/2/nDs_map (if not found, give warning specifying the filter + return) 
+ --> get a vector of all pairs of [variable string(s) + corresponding pair of two TH1/2/nD*'s]
+loop over all the pairs, for each:
+	look up each variable string in var_hist_to_var_branch_map (if any not found, give warning specifying the filter + variable + affected histogram name + continue/skip this variable-histogram pair)
+	if nsign == 0 --> fill the first TH1/2/nD*; else, fill the second TH1/2/nD*  with the variables + weight[nsign]
+
+similarly for 2d + nd
+
+in parent class version of FillHistograms, loop over the signs + call FillHistogramsPerFilter with "DEFAULT" + sign 
+the child class version of FillHistograms will override it by specifying filter requirements + fill additional histograms for each filter
+
+9) I/O
+the following protected member variables 
+  	string in_out_dir;
+  	string infile_name;
+  	string outfile_name;
+  	TFile *outFile;
+   	TFile *inFile;
+    TTree *inTree[ParamsSet::nSigns]; (note: ParamsSet::nSigns = 2)
+
+    in InitInput, read infile_name into inFile (check exists), read the TTrees "muon_pair_tree_sign1" "muon_pair_tree_sign2" into inTree[0], inTree[1]
+
+10) add function PrintInstructions
+specifies what needed specifying in child classes
+
+
+
+=============== the attached is example files of how I currently do it. this class will be rewritten as a child class of the new HistFillingBaseClass, with the dedundant histogram initialization etc. by replaced by the half-automated method above.
