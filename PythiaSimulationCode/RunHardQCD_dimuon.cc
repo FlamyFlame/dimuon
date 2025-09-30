@@ -236,6 +236,7 @@ int main(int argc, char **argv)
   TTree *T = new TTree("PyTree","ev1 Tree"); // Tree we will write data into
   std::vector<int>* b_barcode=new std::vector<int>(); // Individual identifiers for particles
   std::vector<int>* b_status=new std::vector<int>(); // What role it plays in calculation -- virtual, real, final state, input, etc.
+  std::vector<int>* b_statusHepMC=new std::vector<int>(); // What role it plays in calculation -- virtual, real, final state, input, etc.
   std::vector<int>* b_id=new std::vector<int>(); // Particle identity: p, n, etc
   std::vector<int>* b_mother1=new std::vector<int>(); // Particle first mother particle
   std::vector<int>* b_mother2=new std::vector<int>(); // Particle last mother particle
@@ -286,6 +287,7 @@ int main(int argc, char **argv)
 
   T->Branch("truth_barcode",&b_barcode);
   T->Branch("truth_status",&b_status);
+  T->Branch("truth_statusHepMC",&b_statusHepMC);
   T->Branch("truth_id",&b_id);
   T->Branch("truth_mother1",&b_mother1);
   T->Branch("truth_mother2",&b_mother2);
@@ -336,6 +338,7 @@ int main(int argc, char **argv)
     // Empty out all of the vectors from the previous event
     b_barcode->clear();
     b_status->clear();
+    b_statusHepMC->clear();
     b_id->clear();
     b_mother1->clear();
     b_mother2->clear();
@@ -371,6 +374,7 @@ int main(int argc, char **argv)
     // Make sure all of our vectors have enough space to handle the outputs of the event.
     b_barcode->reserve(event.size());
     b_status->reserve(event.size());
+    b_statusHepMC->reserve(event.size());
     b_id->reserve(event.size());
     b_mother1->reserve(event.size());
     b_mother2->reserve(event.size());
@@ -424,6 +428,7 @@ int main(int argc, char **argv)
     	  // Write all of the particle properties to the tree vectors
     	  b_barcode->push_back(ip);
     	  b_status->push_back(p.status());
+        b_statusHepMC->push_back(p.statusHepMC());
     	  b_id->push_back(p.id());
     	  b_mother1->push_back(p.mother1());
     	  b_mother2->push_back(p.mother2());

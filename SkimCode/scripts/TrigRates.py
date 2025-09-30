@@ -2,11 +2,11 @@
 #data with muons
 do_pp2015 = False
 do_pp2017 = False
-do_pp2024 = True
+do_pp2024 = False
 do_hi2018 = False
 do_hi2015 = False
 do_hi2023 = False
-do_hi2024 = False
+do_hi2024 = True
 
 #overlay
 do_pp_MC       =False
@@ -47,6 +47,7 @@ if (do_hi2024 or do_pp2024):
 
 
 #------------------------------------------------------------
+RunYear         =0
 m_EvtMax        =1000
 dataSource      ='data'
 GRL             =[]
@@ -90,10 +91,15 @@ elif do_hi2024:
   Muon_triggers    =["HLT_mu4_L1MU3V"  ,
                      "HLT_mu6_L1MU3V"  ,
                      "HLT_mu6_L1MU5VF" ,
-                     "HLT_mu8_L1MU5VF",
-                     "HLT_mu10_L1MU8F",
-                     "HLT_mu10_L1MU5VF"]
-  DiMuon_triggers  =["HLT_2mu4_L12MU3V","HLT_mu4_mu4noL1_L1MU3V"]
+                     "HLT_mu8_L1MU5VF" ,
+                     "HLT_mu10_L1MU8F" ,
+                     "HLT_mu10_L1MU5VF",
+                     "HLT_mu4noL1_hi_uccTh3_L1jTE10000", 
+                     "HLT_mu4noL1_hi_uccTh2_L1jTE9000" , 
+                     "HLT_mu4noL1_L1ZDC_HELT25_jTE4000", 
+                     "HLT_mu4noL1_L1ZDC_HELT20_jTE4000", 
+                     "HLT_mu4noL1_L1ZDC_HELT15_jTE4000"]
+  DiMuon_triggers  =["HLT_2mu4_L12MU3V", "HLT_mu4_mu4noL1_L1MU3V"]
   ZDC_Configuration=""
 elif do_pp2024:
   GRL              =["physics_2024ppRef_25ns.xml"]
@@ -355,7 +361,7 @@ TrigRatesAlg.StoreL1TE               =True                      #ON only for che
 TrigRatesAlg.StoreMuonTruth          =False                     #True only for MC
 TrigRatesAlg.StoreSingleMuon         =True                      #Typically ON
 TrigRatesAlg.StoreAcoplanarMuon      =True                      #OFF for pp Ridge analysis
-TrigRatesAlg.HIEventShapeContainerKey=""            #"HIEventShape" or "CaloSums";="" to turn OFF, for exmple in pp
+TrigRatesAlg.HIEventShapeContainerKey="HIEventShape"            #"HIEventShape" or "CaloSums";="" to turn OFF, for exmple in pp
 TrigRatesAlg.METContainerKey         =""                        #"MET_Calo";="" to turn OFF
 TrigRatesAlg.TrackJetContainerKeys   =[
                                        #"AntiKt2PV0TrackJets", 

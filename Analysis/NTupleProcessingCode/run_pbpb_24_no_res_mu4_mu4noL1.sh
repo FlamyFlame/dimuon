@@ -16,12 +16,14 @@ lsetup "views LCG_107a_ATLAS_2 x86_64-el9-gcc13-opt"
 root -b -l << EOF
 	.L PbPbDataNTupleFirstPass.c
 
-	PbPbDataNTupleFirstPass pbpb_15;
-	pbpb_15.isRun3 = false;
-	pbpb_15.run_year = 15;
-	pbpb_15.file_batch = $file_batch;
-	pbpb_15.Run();
+	PbPbDataNTupleFirstPass pbpb_24;
+	pbpb_24.run_year = 24;
+	pbpb_24.file_batch = $file_batch;
+	pbpb_24.resonance_cut_mode = 0;
+	pbpb_24.trigger_mode = 2;
+	pbpb_24.Run();
 
 	.q;
+
 EOF
 

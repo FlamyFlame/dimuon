@@ -13,7 +13,10 @@
 #include "InDetTrackSelectionTool/IInDetTrackSelectionTool.h"
 #include "xAODTracking/TrackParticleContainer.h"
 #include "xAODTruth/TruthParticleContainer.h"
+#include "xAODTruth/TruthEventContainer.h"
 #include "xAODMuon/MuonContainer.h"
+
+#include "PMGAnalysisInterfaces/IPMGTruthWeightTool.h"
 
 #ifndef __ATHENA_24p2__
   #include "ZdcAnalysis/IZdcAnalysisTool.h"
@@ -57,6 +60,7 @@ private:
 
    bool                        m_is_evgen       =false;//=true for EvGen only (withour reconstruction)
    bool                        m_use_trigger    = true;//=true then use the Trigger (make branches, use decision)
+   bool                        m_store_MC_weight_names;//=true then store weight names
    int                         m_store_L1       =0    ;//set to 1 for storing L1 TBP/TAP/TAV values
    std::string                 m_Trigger_Chains       ;//Trigger Chains for TrigDecision and branches
    std::string                 m_Muon_Trigger_Chains  ;//Trigger Chains for TrigDecision and branches
@@ -207,7 +211,7 @@ private:
    std::vector<float> m_truth_vtx_y;
    std::vector<float> m_truth_vtx_t;
 
-
+   std::string m_truth_event_container_key;
 
    int         m_store_truth;        //=true then store truth track info
    double      m_min_pT_Truth;
@@ -217,12 +221,15 @@ private:
    std::vector<float> m_truth_pt     ;
    std::vector<float> m_truth_eta    ;
    std::vector<float> m_truth_phi    ;
+   std::vector<float> m_truth_m    ;
+   std::vector<float> m_truth_e    ;
    std::vector<float> m_truth_charge ;
    std::vector<int>   m_truth_id     ;
    std::vector<int>   m_truth_barcode;
    std::vector<int>   m_truth_quality;
-   std::vector<bool>  m_truth_status ;
+   std::vector<int>  m_truth_status ;
    std::vector<std::vector<int>>   m_truth_parents;
+   std::vector<std::vector<int>>   m_truth_children;
    std::vector<int>   m_truth_trk_index ;
    std::vector<int>   m_truth_muon_index;
 
@@ -245,10 +252,10 @@ private:
    std::vector<float> m_truth_muon_pt  ;
    std::vector<float> m_truth_muon_eta ;
    std::vector<float> m_truth_muon_phi ;
-   std::vector<float> m_truth_muon_ch  ;
-   std::vector<float> m_truth_muon_barcode;
-   std::vector<float> m_truth_muon_id  ;
-   std::vector<bool > m_truth_muon_status;
+   std::vector<int> m_truth_muon_ch  ;
+   std::vector<int> m_truth_muon_barcode;
+   std::vector<int> m_truth_muon_id  ;
+   std::vector<int > m_truth_muon_status;
 
    std::vector<float> m_truth_mupair_asym ;
    std::vector<float> m_truth_mupair_acop ;
@@ -257,20 +264,22 @@ private:
    std::vector<float> m_truth_mupair_y    ;
    std::vector<float> m_truth_mupair_phi  ;
    std::vector<float> m_truth_mupair_m    ;
+
    std::vector<float> m_truth_mupair_pt1  ;
    std::vector<float> m_truth_mupair_eta1 ;
    std::vector<float> m_truth_mupair_phi1 ;
-   std::vector<float> m_truth_mupair_ch1  ;
-   std::vector<float> m_truth_mupair_bar1 ;
-   std::vector<float> m_truth_mupair_id1  ;
-   std::vector<bool > m_truth_mupair_status1;
+   std::vector<int> m_truth_mupair_ch1  ;
+   std::vector<int> m_truth_mupair_bar1 ;
+   std::vector<int> m_truth_mupair_id1  ;
+   std::vector<int > m_truth_mupair_status1;
+   
    std::vector<float> m_truth_mupair_pt2  ;
    std::vector<float> m_truth_mupair_eta2 ;
    std::vector<float> m_truth_mupair_phi2 ;
-   std::vector<float> m_truth_mupair_ch2  ;
-   std::vector<float> m_truth_mupair_bar2 ;
-   std::vector<float> m_truth_mupair_id2  ;
-   std::vector<bool > m_truth_mupair_status2;
+   std::vector<int> m_truth_mupair_ch2  ;
+   std::vector<int> m_truth_mupair_bar2 ;
+   std::vector<int> m_truth_mupair_id2  ;
+   std::vector<int > m_truth_mupair_status2;
 
 
    bool        m_store_L1TE            = true; //=true then store ET info (from MET object)
@@ -309,6 +318,7 @@ private:
    std::vector<float> m_muon_trk_pt ;
    std::vector<float> m_muon_trk_eta;
    std::vector<float> m_muon_trk_phi;
+   std::vector<int>   m_muon_trk_charge;
    std::vector<int>   m_muon_trk_index;
    std::vector<float> m_muon_me_p   ;
    std::vector<int>   m_muon_elosstype;
@@ -353,6 +363,7 @@ private:
    std::vector<float> m_muon_pair_muon1_trk_pt ;
    std::vector<float> m_muon_pair_muon1_trk_eta;
    std::vector<float> m_muon_pair_muon1_trk_phi;
+   std::vector<int>   m_muon_pair_muon1_trk_charge;
    std::vector<float> m_muon_pair_muon2_pt     ;
    std::vector<float> m_muon_pair_muon2_eta    ;
    std::vector<float> m_muon_pair_muon2_phi    ;
@@ -372,6 +383,7 @@ private:
    std::vector<float> m_muon_pair_muon2_trk_pt ;
    std::vector<float> m_muon_pair_muon2_trk_eta;
    std::vector<float> m_muon_pair_muon2_trk_phi;
+   std::vector<int>   m_muon_pair_muon2_trk_charge;
 
 
 
@@ -401,6 +413,8 @@ private:
    ToolHandle<CP::IMuonEfficiencyScaleFactors    > m_effi_SF_tool_tight ;
    bool m_use_effi_SF_tool = true;
    
+   ToolHandle<PMGTools::IPMGTruthWeightTool> m_weightTool;    // weight tool (recording both the name and value of the weights)
+   
    #if defined(__ATHENA_24p2__)
      asg::AnaToolHandle<Trig::TrigDecisionTool>  m_trigTool;
      ToolHandle<Trig::IMatchingTool>             m_matchTool;
@@ -412,6 +426,7 @@ private:
    #endif
    bool m_ApplyMuonCalibrations=false;
    bool m_isRun3=true;
+
 
    #ifndef __ATHENA_24p2__
    ToolHandle<ZDC::IZdcAnalysisTool> m_ZDCAnalysisTool;
