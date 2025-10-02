@@ -135,6 +135,16 @@ public:
         if (!fFile || fFile->IsZombie()) return;
         gStyle->SetOptStat(0);
 
+        if (isRun2pp){
+            trg_list = {"2mu4"};
+        } else{
+            if (draw2mu4){
+                trg_list = {"2mu4", "mu4_mu4noL1"};
+            } else{
+                trg_list = {"mu4_mu4noL1"};
+            }
+        }
+
         // Which 1‑D variables shall be plotted for this job?
         StrVec vars_to_use = determineVar1DList();
 
@@ -177,6 +187,9 @@ private:
     bool use_sepr_for_op_and_signal{};
     bool debug_mode{};
 
+    // trigger list
+    std::vector<std::string> trg_list;
+    
     // ROOT interface
     TFile* fFile;
 
@@ -771,7 +784,7 @@ private:
             auto xy = xyFor(var);
             c->SetLogx(xy.first); c->SetLogy(xy.second);
 
-            int colourIdx = 0; // use Azure for 2mu4; if mu4_mu4noL1 present will be red
+            int colourIdx = (!draw2mu4)? 1 : 0; // use Azure for 2mu4; if mu4_mu4noL1 present will be red
 
             // Legend
             Rect def = {0.47,0.12,0.87,0.36};
@@ -786,7 +799,7 @@ private:
 
             bool firstCurve = true;
 
-            for (auto trg : {std::string("2mu4"), std::string("mu4_mu4noL1")}) {
+            for (auto trg : trg_list) {
 
                 std::string denomName = (mappedTrigger(fs, trg + "_denom") != "NONE")? mappedTrigger(fs, trg + "_denom") : mappedTrigger(fs, "mu4");
                 if (denomName.empty() || denomName == "NONE") continue;
@@ -921,7 +934,11 @@ private:
         if (isRun2pp) {                       // Run-2 pp → only 2mu4 / mu4
             configs = {{"2mu4","mu4"}};
         } else {                              // heavy-ion / Run-3
-            configs = {{"mu4_mu4noL1","mu4"},{"2mu4","mu4"}};
+            if (draw2mu4){
+                configs = {{"mu4_mu4noL1","mu4"},{"2mu4","mu4"}};
+            } else{
+                configs = {{"mu4_mu4noL1","mu4"}};
+            }
         }
 
         int nPads = static_cast<int>(configs.size())*2;         // each config → 2 signs
@@ -964,7 +981,7 @@ private:
         auto hDenSel = getHist<TH2>(hName("mu4","_w_single_b_sig_sel"));
         if (!hDenSel) return;
 
-        for (auto trg : {std::string("mu4_mu4noL1"),std::string("2mu4")})
+        for (auto trg : trg_list)
         {
             auto hNumSel = getHist<TH2>(hName(trg,"_w_single_b_sig_sel"));
             if (!hNumSel) continue;
@@ -1123,7 +1140,8 @@ private:
                             // triggers to overlay (skip mu4; it’s denom)
                             std::vector<std::pair<std::string,int>> trigOrder =
                                 isRun2pp ? std::vector<std::pair<std::string,int>>{{"2mu4", 1}}
-                                         : std::vector<std::pair<std::string,int>>{{"mu4_mu4noL1", 0}, {"2mu4", 1}};
+                                         : (draw2mu4? std::vector<std::pair<std::string,int>>{{"mu4_mu4noL1", 0}, {"2mu4", 1}}
+                                                    : std::vector<std::pair<std::string,int>>{{"mu4_mu4noL1", 0}});
 
                             bool firstTrgInstance = true; // boolean to indicate first trigger instance: if continue without plotting, only increment filterIdx if first trigger instance
 
@@ -1271,7 +1289,7 @@ private:
                         bool firstCurve = true;
                         int  colourIdx  = 0;  // 0 → Azure, 1 → Red
 
-                        for (const std::string& trg : {std::string("2mu4"), std::string("mu4_mu4noL1")})
+                        for (const std::string& trg : trg_list)
                         {
                             const std::string denomName = (mappedTrigger(fs, trg + "_denom") != "NONE")? mappedTrigger(fs, trg + "_denom") : mappedTrigger(fs, "mu4");
 
