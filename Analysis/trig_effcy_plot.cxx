@@ -38,8 +38,12 @@
 #include <vector>
 #include <map>
 #include <set>
+#include <array>
+#include <string>
 #include <algorithm>
 #include <stdexcept>
+
+
 
 // ──────────────────────────────────────────────────────────────────────────────
 //  Small helpers
@@ -93,11 +97,13 @@ public:
                    const std::map<std::string,Rect>& legSigned  = {},
                    const std::map<std::string,Rect>& legSignal  = {},
                    const std::map<std::string,Rect>& legOpSig   = {},
-                   const std::map<std::string,std::pair<bool,bool>>& var2DProj = {})
+                   const std::map<std::string,std::pair<bool,bool>>& var2DProj = {},
+                   const std::map<std::string,std::pair<bool,bool>>& var2DSingleMuonEffcyProj = {})
         : draw2mu4(draw2mu4_user),
           use_sepr_for_op_and_signal (use_sepr_for_op_and_signal_user),
           debug_mode (debug_mode_user),
-          fFile(nullptr),
+          fFile_mu4(nullptr),
+          fFile_MB(nullptr),
           var1Ds(vars1D_in),
           var2Ds(vars2D_in),
           var2Ds_for_profile(vars2DProf_in),
@@ -108,16 +114,22 @@ public:
         legendPosSignal         = legSignal;
         legendPosOpSignal       = legOpSig;
         var2Ds_for1Deffcy_proj  = var2DProj;
+        var2Ds_for1DsingleMuonEffcy_proj  = var2DSingleMuonEffcyProj;
+
+        isMB = (std::find(filter_suffix_list.begin(), filter_suffix_list.end(),
+                                            std::string("_MB")) != filter_suffix_list.end());
 
         isRun2pp = (runYear % 2000 == 17);
         switch (runYear % 2000) {
         case 17:
             data_dir    = "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/pp_run2/";
-            infile_name = data_dir + "histograms_real_pairs_pp_2017_single_mu4.root";
+            fname_single_mu4 = data_dir + "histograms_real_pairs_pp_2017_single_mu4.root";
+            fname_MB = data_dir + "histograms_real_pairs_pp_2017_MB.root";
             break;
         case 24:
             data_dir    = "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/pp_2024/";
-            infile_name = data_dir + "histograms_real_pairs_pp_2024_single_mu4.root";
+            fname_single_mu4 = data_dir + "histograms_real_pairs_pp_2024_single_mu4.root";
+            fname_MB = data_dir + "histograms_real_pairs_pp_2024_MB.root";
             break;
         default:
             throw std::runtime_error("runYear must be 17 or 24 for pp data");
@@ -132,7 +144,13 @@ public:
     // ---------------- public driver -----------------------------------------
     void Run()
     {
-        if (!fFile || fFile->IsZombie()) return;
+        if (!fFile_mu4 || fFile_mu4->IsZombie()) return;
+        if (isMB && (!fFile_MB || fFile_MB->IsZombie())) return;
+
+        if (std::find(filter_suffix_list.begin(), filter_suffix_list.end(), "_MB") != filter_suffix_list.end()){ // plot for MB
+            
+        }
+
         gStyle->SetOptStat(0);
 
         if (isRun2pp){
@@ -145,34 +163,48 @@ public:
             }
         }
 
-        // Which 1‑D variables shall be plotted for this job?
-        StrVec vars_to_use = determineVar1DList();
+        // ----------- drawing efficiencies for pair observables ------------------------------------
+        if (!isMB){ // no pair observales for MB
+            // // --- 1-D efficiencies (pair observables) --------------------------------------------------
 
-        for (const auto& v : vars_to_use)  plot1D(v);
-        // for (const auto& v : var2Ds)       plot2D(v);
-        // for (const auto& v : var2Ds_for_profile) plotProfile(v);
+            // // Which 1‑D variables shall be plotted for this job?
+            // StrVec vars_to_use = determineVar1DList();
 
-        // --- 2-D efficiencies --------------------------------------------------
-        {
-            StrVec fList = filter_suffix_list.empty() ? StrVec{""} : filter_suffix_list;
-            for (const auto& fs : fList) {
-                if (!filt_to_draw2D_map.at(fs)) continue;
-                for (const auto& v : determineVar2DList(fs))
-                    plot2D(v, fs);
-            }
+            // for (const auto& v : vars_to_use)  plot1D(v);
+
+            // // --- 2-D efficiencies (pair observables) --------------------------------------------------
+            // {
+            //     StrVec fList = filter_suffix_list.empty() ? StrVec{""} : filter_suffix_list;
+            //     for (const auto& fs : fList) {
+            //         if (!filt_to_draw2D_map.at(fs)) continue;
+            //         for (const auto& v : determineVar2DList(fs)){
+            //             plot2D(v, fs);
+            //         }
+            //     }
+            // }
+            
+            // // --- 2-D profiles (pair observables) ------------------------------------------------------
+            // {
+            //     StrVec fList = filter_suffix_list.empty() ? StrVec{""} : filter_suffix_list;
+            //     for (const auto& fs : fList) {
+            //         if (!filt_to_draw2Dprofile_map.at(fs)) continue;
+            //         for (const auto& v : determineVar2DPList(fs))
+            //             plotProfile(v, fs);
+            //     }
+            // }
+
+            // // --- project selected 2D histograms (pair observables) into 1D efficiencies ----------------
+            // plot2Dto1DEffcyProj();
         }
-        // --- 2-D profiles ------------------------------------------------------
-        {
-            StrVec fList = filter_suffix_list.empty() ? StrVec{""} : filter_suffix_list;
-            for (const auto& fs : fList) {
-                if (!filt_to_draw2Dprofile_map.at(fs)) continue;
-                for (const auto& v : determineVar2DPList(fs))
-                    plotProfile(v, fs);
-            }
+
+        // ----------- drawing single-muon efficiencies ------------------------------------
+        
+        if (filter_suffix_list.empty() || isMB){ // only draw if no specific cuts or weighting are applied or if in MB mode
+            // --- 2-D single-muon efficiencies --------------------------------------------------
+            for (const auto& v : vars_2D_2nd_muon)  plot2D_SingleMuonEffcy(v);
+            for (const auto& kv : var2Ds_for1DsingleMuonEffcy_proj) plot2Dto1DsingleMuonEffcyProj(kv);
         }
 
-        // --- project selected 2D histograms into 1D efficiencies ----------------
-        plot2Dto1DEffcyProj(); 
     }
 
 private:
@@ -181,25 +213,36 @@ private:
     // =========================================================================
     bool isRun2pp{};
     std::string data_dir;
-    std::string infile_name;
+    std::string fname_single_mu4;
+    std::string fname_MB;
 
     bool draw2mu4{};
     bool use_sepr_for_op_and_signal{};
     bool debug_mode{};
+    bool isMB{}; // if MB, only draw for single-muon efficiencies & only multi input file to compare with P[2mu4 | mu4, sepr]
 
     // trigger list
     std::vector<std::string> trg_list;
     
+    // list of weighted filters --> 2nd-muon-kinematics-only efficiency plots (single-muon efficiencies) should NOT be drawn
+    std::vector<std::string> filters_weighted = {"_inv_w_by_single_mu_effcy", "_excl_inv_w_by_single_mu_effcy"};
+
+    // 2D variables with 2nd-muon kinematics --> histograms separated by muon charge sign not pair sign (signal pairs ALSO SIGNED)
+    std::vector<std::string> vars_2D_2nd_muon = {"pt2nd_vs_q_eta_2nd", "pt2nd_vs_phi2nd", "phi2nd_vs_q_eta_2nd"};
+
     // ROOT interface
-    TFile* fFile;
+    TFile* fFile_mu4;
+    TFile* fFile_MB;
 
     // variable lists
     StrVec var1Ds;
     StrVec var2Ds;
+    StrVec var2Ds_single_muon_effcy;
     StrVec var2Ds_for_profile;
     
     // project selected 2D hists to 1D (X/Y) and plot efficiencies like 1D
     std::map<std::string, std::pair<bool,bool>> var2Ds_for1Deffcy_proj; // key: "Y_vs_X" → {projX, projY}
+    std::map<std::string, std::pair<bool,bool>> var2Ds_for1DsingleMuonEffcy_proj; // key: "Y_vs_X" → {projX, projY}
 
     // user options
     XYLog logopt;
@@ -220,7 +263,7 @@ private:
 
     // --- central trigger/filter maps ----------------------------------------
     //  key = filter_suffix
-    std::map<std::string, TriggerMap>             filt_to_trig_map;           // default mapping
+    mutable std::map<std::string, TriggerMap>     filt_to_trig_map;           // default mapping
     std::map<std::string, TriggerMap>             filt_to_trig_exception_map; // user provided exceptions
     std::map<std::string, ModeMap>                filt_to_mode_map;           // default all true
     std::map<std::string, ModeMap>                filt_to_mode_exception_map; // user provided exceptions
@@ -243,9 +286,17 @@ private:
     // =========================================================================
     void initializeFile()
     {
-        fFile = TFile::Open(infile_name.c_str(), "READ");
-        if (!fFile || fFile->IsZombie())
-            std::cerr << "[TrigEffPlotter] ERROR: cannot open " << infile_name << "\n";
+        // read nominal file using single mu4 as support trigger
+        fFile_mu4 = TFile::Open(fname_single_mu4.c_str(), "READ");
+        if (!fFile_mu4 || fFile_mu4->IsZombie())
+            std::cerr << "[TrigEffPlotter] ERROR: cannot open " << fname_single_mu4 << "\n";
+        
+        // if MB mode, read MB file using MB as support trigger
+        if (isMB){
+            fFile_MB = TFile::Open(fname_MB.c_str(), "READ");
+            if (!fFile_MB || fFile_MB->IsZombie())
+                std::cerr << "[TrigEffPlotter] ERROR: cannot open " << fname_MB << "\n";
+        }
     }
 
     // ------------------------------------------------------------------------
@@ -253,6 +304,8 @@ private:
     {
         filt_suffix_to_label_map["_good_accept"] = "good accept";
         filt_suffix_to_label_map["_inv_w_by_single_mu_effcy"] = "1/(single muon effcy) weight";
+        filt_suffix_to_label_map["_sepr"] = "#Delta R > 0.8";
+        filt_suffix_to_label_map["_w_single_b_sig_sel"] = "Single-b signal";
     }
     
     // ------------------------------------------------------------------------
@@ -279,6 +332,22 @@ private:
 
             filt_to_trig_map[""] = tmap; // special key for default
         }
+
+        // For single-muon efficiency, signal pairs are also signed (by 2nd-muon charge) 
+        // --> treat single-b signal selection as a regular filter & plot in signed mode
+        // need single-b signal selection to trigger map
+        // should not interfere with pair-observable efficiency plotting (this entry in the map should not be used)
+        {
+            TriggerMap tmap;
+
+            for (const auto& trg : kTriggers) tmap[trg] = trg + "_w_single_b_sig_sel";
+            tmap["mu4_mu4noL1_denom"] = "NONE"; // no mu4_mu4noL1-specific denominator by default
+            tmap["2mu4_denom"] = "NONE"; // no mu4_mu4noL1-specific denominator by default
+
+            filt_to_trig_map["_w_single_b_sig_sel"] = tmap; // special key for default
+        }
+
+
 
         // 2)  Drawing‑mode map – default: signed+signal true, op_and_signal false
         for (const auto& fs : filter_suffix_list) {
@@ -317,7 +386,7 @@ private:
         };
 
         filt_to_draw2D_map["_sepr"]              = true;
-        filt_to_var2D_exception_map["_sepr"]     = {"pt2nd_vs_q_eta_2nd", "pair_eta_vs_pair_pT", "Deta_Dphi", "eta1_eta2", "eta_avg_Deta", "eta_avg_Dphi", "minv_pair_pt_log"};
+        filt_to_var2D_exception_map["_sepr"]     = {"pair_eta_vs_pair_pT", "Deta_Dphi", "eta1_eta2", "eta_avg_Deta", "eta_avg_Dphi", "minv_pair_pt_log"};
 
         // ---------------------------- _excl exceptions ---------------------------------------------------
         filt_to_trig_exception_map["_excl"] = {
@@ -337,11 +406,18 @@ private:
             {"mu4_mu4noL1_denom", "mu4_mu4noL1_excl_inv_w_by_single_mu_effcy_denom"}, // uses separate denominators for mu4_mu4noL1 & 2mu4 weighted efficiencies
             {"2mu4", "NONE"} // "exclusiveness" non-existent for 2mu4
         };
+
         filt_to_mode_exception_map["_inv_w_by_single_mu_effcy"] = {
             {SignalDrawingMode::OpAndSignal, true}
         };
         
         filt_to_var1D_exception_map["_inv_w_by_single_mu_effcy"] = {"Deta_zoomin", "Dphi_zoomin", "DR_zoomin", "DR_0_2", "minv_zoomin", "pair_pt_log", "pt2nd"};
+
+        // filters for weighted efficiencies should not be used to draw 2D variables involving only 2nd-muon kinematics (single-muon efficiencies)
+        // apply before any other 2D variable exception to be added
+        for (auto fs : filters_weighted){
+            filt_to_var2D_exception_map[fs] = vars_2D_2nd_muon;
+        }
 
         // ---------------------------- good/bad accept special per‑variable list ----------------------
         // Only signed‑mode relevant for _good_accept
@@ -429,9 +505,17 @@ private:
     // =========================================================================
     template<typename T> T* getHist(const std::string& name) const
     {
-        T* h = dynamic_cast<T*>(fFile->Get(name.c_str()));
+        T* h = dynamic_cast<T*>(fFile_mu4->Get(name.c_str()));
         if (!h)
             std::cerr << "[TrigEffPlotter] WARNING: missing hist " << name << "\n";
+        return h;
+    }
+
+    template<typename T> T* getHistMB(const std::string& name) const
+    {
+        T* h = dynamic_cast<T*>(fFile_MB->Get(name.c_str()));
+        if (!h)
+            std::cerr << "[TrigEffPlotter] WARNING: in MB file, missing hist " << name << "\n";
         return h;
     }
 
@@ -440,11 +524,35 @@ private:
     // =========================================================================
     std::string mappedTrigger(const std::string& filter_suffix, const std::string& trigger) const
     {
+
+        if (filt_to_trig_map.find(filter_suffix) == filt_to_trig_map.end()) { // filter entry not existing in filt_to_trig_map yet
+
+            TriggerMap tmap;
+
+            for (const auto& trg : kTriggers)
+                tmap[trg] = trg + filter_suffix; // simple append rule
+            tmap["mu4_mu4noL1_denom"] = "NONE"; // no mu4_mu4noL1-specific denominator by default
+            tmap["2mu4_denom"] = "NONE"; // no mu4_mu4noL1-specific denominator by default
+            
+            filt_to_trig_map[filter_suffix] = tmap;
+        }
+
         const auto& m = filt_to_trig_map.at(filter_suffix);
         auto it = m.find(trigger);
         if (it == m.end()) return ""; // should not happen
         return it->second;
     }
+
+    // =========================================================================
+    // ---------- build histogram name helpers --------------------------
+    // =========================================================================
+    std::string hName (const std::string& var, const std::string& fs, const std::string& trg, const std::string& suffix) const
+    {
+        std::string mapped = mappedTrigger(fs, trg);
+        return (mapped.empty() || mapped=="NONE") ? "" :
+               Form("h_%s_%s%s", var.c_str(), mapped.c_str(), suffix.c_str());
+    };
+
 
     // =========================================================================
     // Clip numerator to denominator for the special single-mu inverse-weight filter
@@ -723,7 +831,7 @@ private:
                         if (!firstDrawn) {
                             g->Draw("APL");
                             // g->GetYaxis()->SetRangeUser(0.,ymax);
-                            g->GetYaxis()->SetRangeUser(0.,1.);
+                            g->GetYaxis()->SetRangeUser(0,1.);
                             g->GetXaxis()->SetTitle(h_denom->GetXaxis()->GetTitle());
                             g->GetYaxis()->SetTitle("#epsilon");
                             
@@ -904,7 +1012,7 @@ private:
     }
 
     // =========================================================================
-    //  xyFor helper (unchanged)
+    //  xyFor helper
     // =========================================================================
     std::pair<bool,bool> xyFor(const std::string& v) const
     {
@@ -918,15 +1026,6 @@ private:
     void plot2D(const std::string& var, const std::string& fs)
     {
         const auto xy = xyFor(var);
-
-        // ---------- build histogram name helpers --------------------------
-        auto hName = [&](const std::string& trg,
-                         const std::string& suffix)->std::string
-        {
-            std::string mapped = mappedTrigger(fs, trg);
-            return (mapped.empty() || mapped=="NONE") ? "" :
-                   Form("h_%s_%s%s", var.c_str(), mapped.c_str(), suffix.c_str());
-        };
 
         // ---------- first canvas : sign-1 / sign-2 ------------------------
         std::vector<std::pair<std::string,std::string>> configs;
@@ -952,8 +1051,8 @@ private:
         for (auto& cfg : configs)
         for (auto sign : {std::string("_sign1"),std::string("_sign2")})
         {
-            auto numH = getHist<TH2>(hName(cfg.first , sign));
-            auto denH = getHist<TH2>(hName(cfg.second, sign));
+            auto numH = getHist<TH2>(hName(var, fs, cfg.first , sign));
+            auto denH = getHist<TH2>(hName(var, fs, cfg.second, sign));
             if (!numH||!denH) {++pad; continue;}
             numH = (TH2*)numH->Clone();           // keep originals
             numH->Divide(denH);
@@ -978,12 +1077,12 @@ private:
         gPad->SetLogx(xy.first); gPad->SetLogy(xy.second);
 
         // denominator always mu4, sig-selection
-        auto hDenSel = getHist<TH2>(hName("mu4","_w_single_b_sig_sel"));
+        auto hDenSel = getHist<TH2>(hName(var, fs,"mu4","_w_single_b_sig_sel"));
         if (!hDenSel) return;
 
         for (auto trg : trg_list)
         {
-            auto hNumSel = getHist<TH2>(hName(trg,"_w_single_b_sig_sel"));
+            auto hNumSel = getHist<TH2>(hName(var, fs,trg,"_w_single_b_sig_sel"));
             if (!hNumSel) continue;
             hNumSel = (TH2*)hNumSel->Clone();
             hNumSel->Divide(hDenSel);
@@ -995,19 +1094,70 @@ private:
     }
 
     // ======================================================================
+    // 2-D single-muon efficiency canvases - signed by 2nd-muon charge, plot for separated & signal selection
+    // ======================================================================
+    void plot2D_SingleMuonEffcy(const std::string& var)
+    {
+        std::cout << "Call function plot2D_SingleMuonEffcy" << std::endl;
+        
+        const auto xy = xyFor(var);
+
+        // ---------- first canvas : sign-1 / sign-2 ------------------------
+        std::vector<std::pair<std::string,std::string>> configs;
+
+        if (isRun2pp) {                       // Run-2 pp → only 2mu4 / mu4
+            configs = {{"2mu4","mu4"}};
+        } else {                              // heavy-ion / Run-3
+            if (draw2mu4){
+                configs = {{"mu4_mu4noL1","mu4"},{"2mu4","mu4"}};
+            } else{
+                configs = {{"mu4_mu4noL1","mu4"}};
+            }
+        }
+
+        int nPads = static_cast<int>(configs.size())*2;         // each config → 2 signs
+        int nCols = 2;
+        int nRows = (nPads/2);
+
+        std::vector<std::string> filters_single_muon_effcy = {"_sepr", "_w_single_b_sig_sel"};
+
+        for (auto fs : filters_single_muon_effcy){
+            TCanvas* c = new TCanvas(Form("c2d_%s_%s",var.c_str(),fs.c_str()),"",1100,450*nRows);
+            c->Divide(nCols,nRows);
+
+            int pad=1;
+            for (auto& cfg : configs)
+            for (auto sign : {std::string("_sign1"),std::string("_sign2")})
+            {
+                auto numH = getHist<TH2>(hName(var, fs, cfg.first , sign));
+                auto denH = getHist<TH2>(hName(var, fs, cfg.second, sign));
+                if (!numH||!denH) {++pad; continue;}
+
+                numH = (TH2*)numH->Clone();           // keep originals
+                numH->Divide(denH);
+                c->cd(pad++);
+                gPad->SetRightMargin(0.15);
+                gPad->SetLogx(xy.first); gPad->SetLogy(xy.second);
+                numH->SetTitle(
+                    Form("%s / %s  (%s)",
+                         cfg.first.c_str(),cfg.second.c_str(),
+                         sign=="_sign1"?"same":"opposite"));
+                numH->Draw("COLZ");
+            }
+
+            std::string outdir = data_dir + "trig_effcy_plots/single_muon_effcy";
+            makeDirIfNeeded(outdir);
+            c->SaveAs(Form("%s/%s_2D_trig_effcy%s.png",
+                           outdir.c_str(),var.c_str(),fs.c_str()));
+        }
+    }
+
+    // ======================================================================
     // 2-D profile canvases  (no division) – one PNG per filter
     // ======================================================================
     void plotProfile(const std::string& var, const std::string& fs)
     {
         const auto xy = xyFor(var);
-
-        auto hName = [&](const std::string& trg,
-                         const std::string& suffix)->std::string
-        {
-            std::string mapped = mappedTrigger(fs, trg);
-            return (mapped.empty() || mapped=="NONE") ? "" :
-                   Form("h_%s_%s%s", var.c_str(), mapped.c_str(), suffix.c_str());
-        };
 
         // -------- signed view ---------------------------------------------------
         TCanvas* c = new TCanvas(Form("cProf_%s_%s",var.c_str(),fs.c_str()),"",1100,500);
@@ -1015,7 +1165,7 @@ private:
 
         for (int i=0;i<2;++i) {
             std::string sign = (i==0?"_sign1":"_sign2");
-            auto h = getHist<TH2>(hName("mu4",sign));
+            auto h = getHist<TH2>(hName(var, fs,"mu4",sign));
             if (!h) continue;
             c->cd(i+1);
             gPad->SetRightMargin(0.15);
@@ -1032,7 +1182,7 @@ private:
         c->SaveAs(Form("%s/%s_profile%s.png",outdir.c_str(),var.c_str(),fs.c_str()));
 
         // -------- signal-selection profile --------------------------------------
-        auto hSel = getHist<TH2>(hName("mu4","_w_single_b_sig_sel"));
+        auto hSel = getHist<TH2>(hName(var, fs,"mu4","_w_single_b_sig_sel"));
         if (!hSel) return;
 
         TCanvas* cS = new TCanvas(Form("cProfS_%s_%s",var.c_str(),fs.c_str()),"",550,450);
@@ -1049,7 +1199,7 @@ private:
     }
 
     // ======================================================================
-    // Project selected 2D histograms to 1D (X/Y) and plot efficiencies like plot1D()
+    // Project selected 2D histograms (pair observables) to 1D (X/Y) and plot efficiencies like plot1D()
     // ======================================================================
     void plot2Dto1DEffcyProj()
     {
@@ -1393,14 +1543,230 @@ private:
             }
         }
     }
+
+    // ======================================================================
+    // Project 2nd-muon-kinematic 2D histograms to 1D (X/Y) and plot efficiencies
+    // Gives signed (by 2nd-muon charge) single-muon trigger efficiencies
+    // ======================================================================
+    void plot2Dto1DsingleMuonEffcyProj (const std::pair<const std::string, std::pair<bool,bool>>& kv){
+
+        std::cout << "Call function plot2Dto1DsingleMuonEffcyProj" << std::endl;
+        const std::string& var2d = kv.first;
+        const bool doPX = kv.second.first;   // ProjectionX → onto X (right side of "..._vs_")
+        const bool doPY = kv.second.second;  // ProjectionY → onto Y (left side of "..._vs_")
+
+        const auto parsed = parseYvsX(var2d);
+        const std::string& yVar = parsed.first;
+        const std::string& xVar = parsed.second;
+
+
+        std::vector<std::pair<std::string,std::string>> trig_pairs;
+
+        if (isRun2pp || isMB) { // Run-2 pp or MB mode → only 2mu4 / mu4
+            trig_pairs = {{"2mu4","mu4"}};
+        } else { // draw for both mu4noL1 and mu4 single-muon efficiency
+            trig_pairs = {{"mu4_mu4noL1","mu4"},{"2mu4","mu4"}};
+        }
+
+        std::vector<std::string> filters_single_muon_effcy;
+        if (isMB)   filters_single_muon_effcy = {"_sepr", "_MB"};
+        else        filters_single_muon_effcy = {"_sepr", "", "_w_single_b_sig_sel"};
+
+        std::map<std::string, std::string> filter_to_label_map_single_muon_effcy;
+        filter_to_label_map_single_muon_effcy["_sepr"] = "#Delta R > 0.8";
+        filter_to_label_map_single_muon_effcy[""] = "no selection";
+        filter_to_label_map_single_muon_effcy["_w_single_b_sig_sel"] = "Single-b signal";
+
+        std::map<std::string, std::string> filter_to_label_map_single_muon_effcy_MB;
+        filter_to_label_map_single_muon_effcy_MB["_sepr"] = "P[2mu4 | mu4 && #Delta R > 0.8]";
+        filter_to_label_map_single_muon_effcy_MB["_MB"] = "P[mu4 | MB]";
+
+
+        for (auto& trg_pair : trig_pairs){ // loop over configurations (single-muon triggers): mu4noL1 or mu4
+
+            // --------------------- Step 1: retrieve 2D histogram & perform x/y projections ------------------------------------------
+            // map of (filter, numerator / denominator trigger, +/- 2nd-muon sign, x/y) to the projected TH1D*
+            std::map<std::string, std::array<std::array<std::array<TH1D*, 2>, 2>, 2>> h1D_proj;
+
+            for (auto fs : filters_single_muon_effcy){ // loop over filters
+                for (int trg_ind = 0; trg_ind < 2; ++trg_ind){ // trigger index (numerator / denominator)
+                    std::string trg = (trg_ind == 0)? trg_pair.first : trg_pair.second;
+                    
+                    for (int sign_ind = 0; sign_ind < 2; ++sign_ind){ // charge sign index (+/-)
+                        
+                        std::string sign = "_sign" + std::to_string(sign_ind + 1);                    
+                        std::string hname = hName(var2d, fs, trg , sign);
+
+                        TH2* h2D;
+
+                        if (fs != "_MB"){
+                            h2D = getHist<TH2>(hname);
+                        } else{
+                            h2D = getHistMB<TH2>(hname);
+                        }
+
+                        if (!h2D) continue; // can't proceed with projection: skip current histogram
+
+                        for (int proj_ind = 0; proj_ind < 2; ++proj_ind) { // x/y axis index
+                            
+                            const bool isProjX = (proj_ind == 0);
+                            if ((isProjX && !doPX) || (!isProjX && !doPY)) continue;
+
+                            const std::string projVar = isProjX ? (xVar.empty() ? var2d : xVar)
+                                                                : (yVar.empty() ? var2d : yVar);
+                            if (projVar.empty()) continue; // malformed name
+
+                            h1D_proj[fs][trg_ind][sign_ind][proj_ind] = 
+                                isProjX ? h2D->ProjectionX(Form("px_%s", hname.c_str()), 1, -1, "e")
+                                        : h2D->ProjectionY(Form("py_%s", hname.c_str()), 1, -1, "e");
+                        }            
+                    } // end loop over signs
+                } // end loop over triggers (numerator / denominator)
+            } // end loop over filters
+
+            // --------------------- Step 2: drawing & saving canvases ------------------------------------------
+            Color_t colors[3] = {kRed+1, kAzure+2, kGreen+2};
+            Style_t mkrs[3] = {24, 20, 22};
+
+
+            for (int proj_ind = 0; proj_ind < 2; ++proj_ind) // x, y projection --> fixes the variable of interest
+            {
+                const bool isProjX = (proj_ind == 0);
+                if ((isProjX && !doPX) || (!isProjX && !doPY)) continue;
+
+                const std::string projVar = isProjX ? (xVar.empty() ? var2d : xVar)
+                                                    : (yVar.empty() ? var2d : yVar);
+                if (projVar.empty()) continue; // malformed name
+
+                auto xy = xyFor(projVar);
+
+                // ----------- if not MB mode: draw first canvas: +/- comparison for well-separated pairs ------------------------------------------
+                if (!isMB){
+                    // canvas
+                    std::string cname = Form("c_%s_charge_sign_compr",
+                                             projVar.c_str());
+                    TCanvas* c = new TCanvas(cname.c_str(), "", 700, 500);
+
+                    Rect box = legendBoxFor1DVar(projVar, SignalDrawingMode::OpAndSignal, filter_suffix_list);
+
+                    c->cd();
+                    gPad->SetLogx(xy.first);
+                    gPad->SetLogy(xy.second);
+
+                    TLegend* leg = new TLegend(box[0], box[1], box[2], box[3]);
+                    leg->SetBorderSize(0);
+
+                    for (int sign_ind = 0; sign_ind < 2; ++sign_ind){ // charge sign index (+/-)
+                        
+                        // draw the trigger-efficiency graphs
+                        auto g = new TGraphAsymmErrors();
+
+                        // h1D_proj[fs][trg_ind][sign_ind][proj_ind]
+                        if (!h1D_proj["_sepr"][0][sign_ind][proj_ind] || !h1D_proj["_sepr"][1][sign_ind][proj_ind]){
+                            std::cerr << "The well-separated single-muon trigger-efficiency histograms cannot be found for the variable " << projVar << std::endl;
+                            continue;
+                        }
+                        
+                        g->BayesDivide(h1D_proj["_sepr"][0][sign_ind][proj_ind], h1D_proj["_sepr"][1][sign_ind][proj_ind]);
+                        
+                        SetStyle(g, colors[sign_ind], mkrs[sign_ind]);
+
+                        if (sign_ind == 0) {
+                            g->Draw("APL");
+                            g->GetYaxis()->SetRangeUser(0., 1.);
+                            g->GetXaxis()->SetTitle(h1D_proj["_sepr"][1][sign_ind][proj_ind]->GetXaxis()->GetTitle());
+                            g->GetYaxis()->SetTitle("#epsilon");
+                            if (xy.first) adjustLogXRange(g, h1D_proj["_sepr"][1][sign_ind][proj_ind]);
+                        } else {
+                            g->Draw("PL SAME");
+                        }
+                        
+                        // legend entry
+                        std::string sign_label = (sign_ind == 0)? "#mu^{+}" : "#mu^{-}";
+                        leg->AddEntry(g, sign_label.c_str(), "lep");
+                    } // end loop over charge signs (lines)
+
+                    leg->Draw();
+
+                    std::string outdir = data_dir + "trig_effcy_plots";
+                    makeDirIfNeeded(outdir + "/single_muon_effcy");
+                    std::string fn = Form("%s/single_muon_effcy/%s_trig_effcy_charge_sign_compr.png",
+                                          outdir.c_str(), projVar.c_str());
+                    c->SaveAs(fn.c_str());
+
+                } // end if statement & first canvas drawing
+
+                // ----------- draw second canvas: for +/- 2nd muon, draw EITHER (!isMB) comparison between well-separated, no-selection & signal pairs ------------------------------------------
+                // ------------------------------------------------------ OR (isMB) comparison between well-separated, no-selection & signal pairs ------------------------------------------
+                {
+                    // canvas
+                    std::string cname = Form("c_%s_signed_compr",
+                                             projVar.c_str());
+                    TCanvas* c = new TCanvas(cname.c_str(), "", 1200, 500);
+                    c->Divide(2,1);
+
+                    Rect box = legendBoxFor1DVar(projVar, SignalDrawingMode::Signed, filter_suffix_list);
+
+                    for (int sign_ind = 0; sign_ind < 2; ++sign_ind){ // charge sign index (+/-)
+                        c->cd(sign_ind + 1);
+                        gPad->SetLogx(xy.first);
+                        gPad->SetLogy(xy.second);
+
+                        TLegend* leg = new TLegend(box[0], box[1], box[2], box[3]);
+                        leg->SetBorderSize(0);
+
+                        for (int filter_ind = 0; filter_ind < filters_single_muon_effcy.size(); filter_ind++){
+                            std::string filter = filters_single_muon_effcy.at(filter_ind);
+
+                            // draw the trigger-efficiency graphs
+                            auto g = new TGraphAsymmErrors();
+
+                            // h1D_proj[fs][trg_ind][sign_ind][proj_ind]
+                            if (!h1D_proj[filter][0][sign_ind][proj_ind] || !h1D_proj[filter][1][sign_ind][proj_ind]){
+                                std::cerr << "The well-separated single-muon trigger-efficiency histograms cannot be found for the variable " << projVar << std::endl;
+                                continue;
+                            }
+                            
+                            g->BayesDivide(h1D_proj[filter][0][sign_ind][proj_ind], h1D_proj[filter][1][sign_ind][proj_ind]);
+                            
+                            SetStyle(g, colors[filter_ind], mkrs[filter_ind]);
+
+                            if (filter_ind == 0) {
+                                g->Draw("APL");
+                                g->GetYaxis()->SetRangeUser(0., 1.);
+                                g->GetXaxis()->SetTitle(h1D_proj[filter][1][sign_ind][proj_ind]->GetXaxis()->GetTitle());
+                                g->GetYaxis()->SetTitle("#epsilon");
+                                if (xy.first) adjustLogXRange(g, h1D_proj[filter][1][sign_ind][proj_ind]);
+                            } else {
+                                g->Draw("PL SAME");
+                            }
+                            
+                            // legend entry
+                            std::string label = (isMB)? filter_to_label_map_single_muon_effcy_MB[filter] : filter_to_label_map_single_muon_effcy[filter];
+                            leg->AddEntry(g, label.c_str(), "lep");
+                        } // end loop over filters (lines)
+
+                        leg->Draw();
+                    } // end loop over 2nd-muon signs (pads)
+
+                    std::string compr_type = (isMB)? "MB_2mu4" : "selection";
+                    std::string outdir = data_dir + "trig_effcy_plots";
+                    makeDirIfNeeded(outdir + "/single_muon_effcy");
+                    std::string fn = Form("%s/single_muon_effcy/%s_trig_effcy_%s_compr.png",
+                                          outdir.c_str(), projVar.c_str(), compr_type.c_str());
+                    c->SaveAs(fn.c_str());
+                } // end second canvas drawing
+            } // end loop over x/y projection (determines 1D variable to plot efficiencies for)
+        } // end loop over (target, supporting) trigger pairs
+    } // end function plot2Dto1DsingleMuonEffcyProj
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
 //  Steering macro (example)
 // ──────────────────────────────────────────────────────────────────────────────
 void trig_effcy_plot(){
-    std::vector<std::string> var1Ds = {"Deta", "Deta_zoomin", "Dphi", "Dphi_zoomin", "DR", "DR_zoomin", "DR_0_2", "pt2nd", "minv_zoomin", "pair_pt_log"};
-    std::vector<std::string> var2Ds = {"pt2nd_vs_q_eta_2nd", "pt2nd_vs_phi2nd", "phi2nd_vs_q_eta_2nd", "DR_zoomin_vs_pt2nd", "DR_0_2_vs_pt2nd", "pair_eta_vs_pair_pT", "Deta_Dphi", "eta1_eta2", "eta_avg_Deta", "eta_avg_Dphi", "minv_pair_pt_log",
+    std::vector<std::string> var1Ds = {"Deta", "Deta_zoomin", "Dphi", "Dphi_zoomin", "DR", "DR_zoomin", "DR_0_2", "minv_zoomin", "pair_pt_log"};
+    std::vector<std::string> var2Ds = {"DR_zoomin_vs_pt2nd", "DR_0_2_vs_pt2nd", "pair_eta_vs_pair_pT", "Deta_Dphi", "eta1_eta2", "eta_avg_Deta", "eta_avg_Dphi", "minv_pair_pt_log",
                                        // "Deta_vs_pT_1st", "Deta_zoomin_vs_pT_1st", "Dphi_vs_pT_1st", "Dphi_zoomin_vs_pT_1st", "DR_vs_pT_1st", "DR_zoomin_vs_pT_1st", "minv_zoomin_vs_pT_1st", "pair_pt_log_vs_pT_1st", "pt2nd_vs_pT_1st", 
                                        // "Deta_vs_pair_pT", "Deta_zoomin_vs_pair_pT", "Dphi_vs_pair_pT", "Dphi_zoomin_vs_pair_pT", "DR_vs_pair_pT", "DR_zoomin_vs_pair_pT", "minv_zoomin_vs_pair_pT", "pair_pt_log_vs_pair_pT", "pt2nd_vs_pair_pT",
                                       };
@@ -1437,7 +1803,10 @@ void trig_effcy_plot(){
        {"pt2nd_vs_pair_p",{true,true}},
     };
 
-    std::map<std::string,std::pair<bool,bool>> var2DProj = {
+    std::map<std::string,std::pair<bool,bool>> var2DProj = { // pair observables ONLY
+    };
+
+    std::map<std::string,std::pair<bool,bool>> var2DSingleMuonEffcyProj = {
         {"pt2nd_vs_q_eta_2nd", {true,  true}},   // PX (→ q_eta_2nd) and PY (→ pt2nd)
         {"pt2nd_vs_phi2nd",    {true,  false}}  // PX only (→ phi2nd)
     };
@@ -1459,13 +1828,13 @@ void trig_effcy_plot(){
     // filters = {"_excl", "_excl_inv_w_by_single_mu_effcy"};
     // std::map<std::string,TrigEffPlotter::Rect> legOpSig   = {{"DR_zoomin", {0.5,0.15,0.87,0.33}  }};
     // filters = {"_good_accept"};
-    filters = {"_inv_w_by_single_mu_effcy"};
+    // filters = {"_inv_w_by_single_mu_effcy"};
 
     TrigEffPlotter plotter(24, var1Ds, false, false, true,
                            filters, logaxes,
                            var2Ds, var2DsProf,
                            legSigned, legSignal, legOpSig,
-                           var2DProj);
+                           var2DProj, var2DSingleMuonEffcyProj);
 
     plotter.Run();
 }
