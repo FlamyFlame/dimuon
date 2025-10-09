@@ -399,6 +399,11 @@ private:
     // --------------------- 2D 2nd-muon histograms for trigger efficiency ---------------------------
     // --------------------- SIGNED by 2nd-muon charge (+/-) NOT pair (same/op) sign ---------------------------
     // -------- no signal selection --------
+    // MB
+    TH2D* h_pt2nd_vs_q_eta_2nd_MB[2];
+    TH2D* h_pt2nd_vs_phi2nd_MB[2];    
+    TH2D* h_phi2nd_vs_q_eta_2nd_MB[2];
+
     // mu4
     TH2D* h_pt2nd_vs_q_eta_2nd_mu4[2];
     TH2D* h_pt2nd_vs_phi2nd_mu4[2];    
@@ -418,6 +423,10 @@ private:
     TH2D* h_pt2nd_vs_q_eta_2nd_mu4_sepr[2];
     TH2D* h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr[2];
     TH2D* h_pt2nd_vs_q_eta_2nd_2mu4_sepr[2];
+
+    TH2D* h_pt2nd_vs_phi2nd_mu4_sepr[2];
+    TH2D* h_pt2nd_vs_phi2nd_mu4_mu4noL1_sepr[2];
+    TH2D* h_pt2nd_vs_phi2nd_2mu4_sepr[2];
     
     // well-separated & divided (mu4_mu4noL1 / mu4 and 2mu4 / mu4)
     TH2D* h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr_divided[2];
@@ -428,6 +437,10 @@ private:
     TH2D* h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_w_single_b_sig_sel[2];
     TH2D* h_pt2nd_vs_q_eta_2nd_2mu4_w_single_b_sig_sel[2];
     
+    TH2D* h_pt2nd_vs_phi2nd_mu4_w_single_b_sig_sel[2];
+    TH2D* h_pt2nd_vs_phi2nd_mu4_mu4noL1_w_single_b_sig_sel[2];
+    TH2D* h_pt2nd_vs_phi2nd_2mu4_w_single_b_sig_sel[2];
+
     // signal pairs divided (mu4_mu4noL1 / mu4 and 2mu4 / mu4)
     TH2D* h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_divided_w_single_b_sig_sel[2];
     TH2D* h_pt2nd_vs_q_eta_2nd_2mu4_divided_w_single_b_sig_sel[2];
