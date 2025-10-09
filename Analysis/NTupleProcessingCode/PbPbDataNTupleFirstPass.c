@@ -51,19 +51,21 @@ void PbPbDataNTupleFirstPass::InitOutput(){
 
   DimuonDataAnalysisBaseClass::InitOutput(); // pair-acceptance hist writing + non-centrality-binned muon(-pair) tree writing
 
-  if (output_single_muon_tree){
-    // in addition, write centrality-binned trees: need for scrambling
-    for (int jctr = 0; jctr < ParamsSet::nCtrIntvls; jctr++){
-      muonOutTreeBinned[jctr] = new TTree(Form("muon_tree_ctr%d",jctr+1),Form("all muons, centrality bin %d",jctr+1));
-      muonOutTreeBinned[jctr]->Branch("MuonObj",&tempmuon);
+  if (turn_on_ctr_binned_tree_writing){
+    if (output_single_muon_tree){
+      // in addition, write centrality-binned trees: need for scrambling
+      for (int jctr = 0; jctr < ParamsSet::nCtrIntvls; jctr++){
+        muonOutTreeBinned[jctr] = new TTree(Form("muon_tree_ctr%d",jctr+1),Form("all muons, centrality bin %d",jctr+1));
+        muonOutTreeBinned[jctr]->Branch("MuonObj",&tempmuon);
+      }
     }
-  }
-  else if (turn_on_ctr_binned_tree_writing){
-    for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
-      for (unsigned int jctr = 0; jctr < ParamsSet::nCtrIntvls; jctr++){
-        muonPairOutTreeBinned[jctr][ksign] = new TTree(Form("muon_pair_tree_ctr%u_sign%u",jctr+1,ksign+1),Form("all muon pairs, ctr%u, sign%u",jctr+1,ksign+1));
-        muonPairOutTreeBinned[jctr][ksign]->Branch("MuonPairObj",&mpair_raw_ptr);
-      }        
+    else{
+      for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
+        for (unsigned int jctr = 0; jctr < ParamsSet::nCtrIntvls; jctr++){
+          muonPairOutTreeBinned[jctr][ksign] = new TTree(Form("muon_pair_tree_ctr%u_sign%u",jctr+1,ksign+1),Form("all muon pairs, ctr%u, sign%u",jctr+1,ksign+1));
+          muonPairOutTreeBinned[jctr][ksign]->Branch("MuonPairObj",&mpair_raw_ptr);
+        }        
+      }      
     }
   }
 }
@@ -96,10 +98,13 @@ void PbPbDataNTupleFirstPass::FillMuonPairPbPb(int pair_ind, std::shared_ptr<Muo
 
 void PbPbDataNTupleFirstPass::FillSingleMuonTree(){
   DimuonDataAnalysisBaseClass::FillSingleMuonTree();
-  for (int jctr = 0; jctr < pms.nCtrIntvls; jctr++){
-    if (tempmuon->ev_centrality >= pms.CtrStep * jctr && tempmuon->ev_centrality < pms.CtrStep *(jctr+1)){
-      muonOutTreeBinned[jctr]->Fill();
-    }
+
+  if (turn_on_ctr_binned_tree_writing){
+    for (int jctr = 0; jctr < pms.nCtrIntvls; jctr++){
+      if (tempmuon->ev_centrality >= pms.CtrStep * jctr && tempmuon->ev_centrality < pms.CtrStep *(jctr+1)){
+        muonOutTreeBinned[jctr]->Fill();
+      }
+    }    
   }
 }
 
