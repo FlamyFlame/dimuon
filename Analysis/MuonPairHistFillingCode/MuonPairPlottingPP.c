@@ -166,9 +166,10 @@ void MuonPairPlottingPP::InitHists(){
         }
     }
 
+    // turn on Sumw2 for all histograms
+    TH1::SetDefaultSumw2(kTRUE);
 
     h_crossx_dR_cut_vs_pair_pt_pair_eta = new TH2D("h_crossx_dR_cut_vs_pair_pt_pair_eta",";#eta^{pair};p_{T}^{pair} [GeV];#sigma^{truth}",npair_eta_bins_coarse,pair_eta_min,pair_eta_max,npair_pT_bins_coarse,pair_pt_min,pair_pt_max);
-    h_crossx_dR_cut_vs_pair_pt_pair_eta->Sumw2();
 
     if (trigger_mode == 1){
         // ------------------- trigger efficiency histograms with single-b signal selection -------------------
