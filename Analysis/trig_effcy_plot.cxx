@@ -230,6 +230,9 @@ private:
     // 2D variables with 2nd-muon kinematics --> histograms separated by muon charge sign not pair sign (signal pairs ALSO SIGNED)
     std::vector<std::string> vars_2D_2nd_muon = {"pt2nd_vs_q_eta_2nd", "pt2nd_vs_phi2nd", "phi2nd_vs_q_eta_2nd"};
 
+    // map from target dimuon trigger to single-muon trigger
+    std::map<std::string, std::string> target_dimuon_trigger_to_single_muon_map = {{"mu4_mu4noL1", "mu4noL1"}, {"2mu4", "mu4"}};
+
     // ROOT interface
     TFile* fFile_mu4;
     TFile* fFile_MB;
@@ -1690,8 +1693,8 @@ private:
 
                     std::string outdir = data_dir + "trig_effcy_plots";
                     makeDirIfNeeded(outdir + "/single_muon_effcy");
-                    std::string fn = Form("%s/single_muon_effcy/%s_trig_effcy_charge_sign_compr.png",
-                                          outdir.c_str(), projVar.c_str());
+                    std::string fn = Form("%s/single_muon_effcy/%s_trig_effcy_%s_charge_sign_compr.png",
+                                          outdir.c_str(), projVar.c_str(), target_dimuon_trigger_to_single_muon_map[trg_pair.first].c_str());
                     c->SaveAs(fn.c_str());
 
                 } // end if statement & first canvas drawing
@@ -1752,8 +1755,8 @@ private:
                     std::string compr_type = (isMB)? "MB_2mu4" : "selection";
                     std::string outdir = data_dir + "trig_effcy_plots";
                     makeDirIfNeeded(outdir + "/single_muon_effcy");
-                    std::string fn = Form("%s/single_muon_effcy/%s_trig_effcy_%s_compr.png",
-                                          outdir.c_str(), projVar.c_str(), compr_type.c_str());
+                    std::string fn = Form("%s/single_muon_effcy/%s_trig_effcy_%s_%s_compr.png",
+                                          outdir.c_str(), projVar.c_str(), target_dimuon_trigger_to_single_muon_map[trg_pair.first].c_str(), compr_type.c_str());
                     c->SaveAs(fn.c_str());
                 } // end second canvas drawing
             } // end loop over x/y projection (determines 1D variable to plot efficiencies for)
