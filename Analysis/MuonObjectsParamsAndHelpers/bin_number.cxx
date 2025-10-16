@@ -1,6 +1,6 @@
 // helper function that for a given target (edge of region, e.g, for projection)
 // and a vector of double for bin edges 
-float bin_number(double target, const std::vector<double>& bin_edges, float resolution = 1e-6){
+int bin_number(double target, const std::vector<double>& bin_edges, float resolution = 1e-6){
 
 	// bin indices
 	int low = 0; // zero-based
@@ -37,16 +37,16 @@ float bin_number(double target, const std::vector<double>& bin_edges, float reso
 	return -100;
 }
 
-float bin_number(float target, const std::vector<double>& bin_edges){
+int bin_number(float target, const std::vector<double>& bin_edges){
 	return bin_number((double) target, bin_edges);
 }
 
-float bin_number(double target, const std::vector<float>& bin_edges){
+int bin_number(double target, const std::vector<float>& bin_edges){
 	std::vector<double> bin_edges_double(bin_edges.begin(), bin_edges.end());
 	return bin_number(target, bin_edges_double);
 }
 
-float bin_number(float target, const std::vector<float>& bin_edges){
+int bin_number(float target, const std::vector<float>& bin_edges){
 	std::vector<double> bin_edges_double(bin_edges.begin(), bin_edges.end());
 	return bin_number((double) target, bin_edges_double);
 }
