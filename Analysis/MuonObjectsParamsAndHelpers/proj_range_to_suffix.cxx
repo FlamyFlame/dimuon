@@ -48,9 +48,9 @@ std::pair<float, float> suffixToPair(std::string s) {
 // function to map a projected-histogram name (with fixed-format projection suffix) back into a projection range (pair of float)
 std::pair<float, float> hProjNameToPair(std::string s) {
     // find the "_px" or "_py" marker
-    size_t start = s.find("_py");
+    size_t start = s.find("_py_");
     if (start == std::string::npos)
-        start = s.find("_px");
+        start = s.find("_px_");
     if (start == std::string::npos)
         throw std::runtime_error("hProjNameToPair: no _px or _py found in string: " + s);
 
