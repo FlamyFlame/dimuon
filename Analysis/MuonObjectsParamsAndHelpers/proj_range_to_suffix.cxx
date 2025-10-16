@@ -11,6 +11,12 @@ std::string pairToSuffix(const std::pair<float, float>& p) {
         oss << std::fixed << std::setprecision(2) << x;
         std::string s = oss.str();
         for (auto& c : s) if (c == '.') c = '_'; // replace '.' with '_'
+        
+        // replace '-' with "minus"
+        size_t dash_pos;
+        while ((dash_pos = s.find('-')) != std::string::npos)
+            s.replace(dash_pos, 1, "minus");
+
         return s;
     };
     return formatNum(p.first) + "_TO_" + formatNum(p.second);
@@ -18,11 +24,21 @@ std::string pairToSuffix(const std::pair<float, float>& p) {
 
 // function to map a suffix string (fixed format) back into a projection range (pair of float)
 std::pair<float, float> suffixToPair(std::string s) {
-    // Replace '_' back to '.' except in "_TO_"
     size_t pos = s.find("_TO_");
+    if (pos == std::string::npos)
+        throw std::runtime_error("suffixToPair: missing _TO_ in string: " + s);
+
     std::string s1 = s.substr(0, pos);
     std::string s2 = s.substr(pos + 4);
 
+    // replace "minus" with "-" first
+    size_t mpos;
+    while ((mpos = s1.find("minus")) != std::string::npos)
+        s1.replace(mpos, 5, "-");
+    while ((mpos = s2.find("minus")) != std::string::npos)
+        s2.replace(mpos, 5, "-");
+
+    // then replace '_' with '.'
     for (auto& c : s1) if (c == '_') c = '.';
     for (auto& c : s2) if (c == '_') c = '.';
 
