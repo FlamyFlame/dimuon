@@ -165,36 +165,36 @@ public:
 
         // ----------- drawing efficiencies for pair observables ------------------------------------
         if (!isMB){ // no pair observales for MB
-            // // --- 1-D efficiencies (pair observables) --------------------------------------------------
+            // --- 1-D efficiencies (pair observables) --------------------------------------------------
 
-            // // Which 1‑D variables shall be plotted for this job?
-            // StrVec vars_to_use = determineVar1DList();
+            // Which 1‑D variables shall be plotted for this job?
+            StrVec vars_to_use = determineVar1DList();
 
-            // for (const auto& v : vars_to_use)  plot1D(v);
+            for (const auto& v : vars_to_use)  plot1D(v);
 
-            // // --- 2-D efficiencies (pair observables) --------------------------------------------------
-            // {
-            //     StrVec fList = filter_suffix_list.empty() ? StrVec{""} : filter_suffix_list;
-            //     for (const auto& fs : fList) {
-            //         if (!filt_to_draw2D_map.at(fs)) continue;
-            //         for (const auto& v : determineVar2DList(fs)){
-            //             plot2D(v, fs);
-            //         }
-            //     }
-            // }
+            // --- 2-D efficiencies (pair observables) --------------------------------------------------
+            {
+                StrVec fList = filter_suffix_list.empty() ? StrVec{""} : filter_suffix_list;
+                for (const auto& fs : fList) {
+                    if (!filt_to_draw2D_map.at(fs)) continue;
+                    for (const auto& v : determineVar2DList(fs)){
+                        plot2D(v, fs);
+                    }
+                }
+            }
             
-            // // --- 2-D profiles (pair observables) ------------------------------------------------------
-            // {
-            //     StrVec fList = filter_suffix_list.empty() ? StrVec{""} : filter_suffix_list;
-            //     for (const auto& fs : fList) {
-            //         if (!filt_to_draw2Dprofile_map.at(fs)) continue;
-            //         for (const auto& v : determineVar2DPList(fs))
-            //             plotProfile(v, fs);
-            //     }
-            // }
+            // --- 2-D profiles (pair observables) ------------------------------------------------------
+            {
+                StrVec fList = filter_suffix_list.empty() ? StrVec{""} : filter_suffix_list;
+                for (const auto& fs : fList) {
+                    if (!filt_to_draw2Dprofile_map.at(fs)) continue;
+                    for (const auto& v : determineVar2DPList(fs))
+                        plotProfile(v, fs);
+                }
+            }
 
-            // // --- project selected 2D histograms (pair observables) into 1D efficiencies ----------------
-            // plot2Dto1DEffcyProj();
+            // --- project selected 2D histograms (pair observables) into 1D efficiencies ----------------
+            plot2Dto1DEffcyProj();
         }
 
         // ----------- drawing single-muon efficiencies ------------------------------------
@@ -222,13 +222,13 @@ private:
     bool isMB{}; // if MB, only draw for single-muon efficiencies & only multi input file to compare with P[2mu4 | mu4, sepr]
 
     // trigger list
-    std::vector<std::string> trg_list;
+    StrVec trg_list;
     
     // list of weighted filters --> 2nd-muon-kinematics-only efficiency plots (single-muon efficiencies) should NOT be drawn
-    std::vector<std::string> filters_weighted = {"_inv_w_by_single_mu_effcy", "_excl_inv_w_by_single_mu_effcy"};
+    StrVec filters_weighted = {"_inv_w_by_single_mu_effcy", "_excl_inv_w_by_single_mu_effcy"};
 
     // 2D variables with 2nd-muon kinematics --> histograms separated by muon charge sign not pair sign (signal pairs ALSO SIGNED)
-    std::vector<std::string> vars_2D_2nd_muon = {"pt2nd_vs_q_eta_2nd", "pt2nd_vs_phi2nd", "phi2nd_vs_q_eta_2nd"};
+    StrVec vars_2D_2nd_muon = {"pt2nd_vs_q_eta_2nd", "pt2nd_vs_phi2nd", "phi2nd_vs_q_eta_2nd"};
 
     // map from target dimuon trigger to single-muon trigger
     std::map<std::string, std::string> target_dimuon_trigger_to_single_muon_map = {{"mu4_mu4noL1", "mu4noL1"}, {"2mu4", "mu4"}};
@@ -556,54 +556,6 @@ private:
                Form("h_%s_%s%s", var.c_str(), mapped.c_str(), suffix.c_str());
     };
 
-
-    // =========================================================================
-    // Clip numerator to denominator for the special single-mu inverse-weight filter
-    // Also enforce the weighted-events consistency: err_num^2 ≤ err_den^2
-    // We touch underflow/overflow as TEfficiency checks them too
-    // =========================================================================
-    std::vector<std::pair<int,double>>
-    clipNumeratorIfInvW(TH1* hNum, TH1* hDen, const std::string& fs) const
-    {
-        if (fs != "_inv_w_by_single_mu_effcy" || !hNum || !hDen) return {};
-
-        // Ensure Sumw2 exists so SetBinError controls ∑w²
-        if (!hNum->GetSumw2N()) hNum->Sumw2();
-        if (!hDen->GetSumw2N()) hDen->Sumw2();
-
-        if (hNum->GetNbinsX() != hDen->GetNbinsX()) return {};
-
-        std::vector<std::pair<int,double>> bins_above1;
-
-        const int nb = hNum->GetNbinsX();
-        auto clamp_one = [&](int b) {
-            double n  = hNum->GetBinContent(b);
-            double d  = hDen->GetBinContent(b);
-            double ne = hNum->GetBinError(b);
-            double de = hDen->GetBinError(b);
-
-            if (n > d) {
-                if (d > 0) bins_above1.emplace_back(b, n / d);
-                hNum->SetBinContent(b, d);
-            }
-            // Enforce ∑w² consistency as well.
-            if (ne > de) hNum->SetBinError(b, de);
-
-            // If denominator is zero, zero numerator too to keep TEfficiency happy.
-            if (d <= 0.0) {
-                hNum->SetBinContent(b, 0.0);
-                hNum->SetBinError(b,   0.0);
-            }
-        };
-
-        // Underflow, in-range, overflow
-        clamp_one(0);
-        for (int b = 1; b <= nb; ++b) clamp_one(b);
-        clamp_one(nb+1);
-
-        return bins_above1;
-    }
-
     // =========================================================================
     // Ensure a TGraph drawn on a log-x pad spans the full histogram range
     // =========================================================================
@@ -680,13 +632,6 @@ private:
                 // r[3] = std::min(0.95, r[3] + extra*0.1);       // comment out: do not grow talled
             }
             return r;
-        };
-
-        auto zeroUFof = [](TH1* h){
-            if (!h) return;
-            const int nb = h->GetNbinsX();
-            h->SetBinContent(0, 0.0);   h->SetBinError(0, 0.0);
-            h->SetBinContent(nb+1, 0.0); h->SetBinError(nb+1, 0.0);
         };
 
         // ===============================================================
@@ -794,24 +739,6 @@ private:
                         TH1* h_num = getHist<TH1>(numHist);
                         if (!h_num) continue;
 
-                        auto bins_above1 = clipNumeratorIfInvW(h_num, h_denom, fs);
-
-                        double ymax = 1.;
-
-                        zeroUFof(h_num);
-                        zeroUFof(h_denom);
-
-                        // Build efficiency graph
-                        auto g = new TGraphAsymmErrors();
-                        g->BayesDivide(h_num, h_denom);
-
-                        // if (bins_above1.size() > 0){
-                        //     for (auto bpair : bins_above1){
-                        //         g->SetPointY(bpair.first, bpair.second);
-                        //         ymax = std::max(ymax, bpair.second);
-                        //     }
-                        // }
-
                         Color_t useCol;
                         if (!plot_weighted){
                             useCol = (filterIdx == 0) ? colBase[colourIdx]   // default
@@ -823,26 +750,67 @@ private:
                             if (filters.size() == 3 && filterIdx == 1) useCol = colFilt2[colourIdx];
                         }
 
-                        SetStyle(g, useCol, mkrBase[colourIdx]);
-                        bool isFiltered = plot_weighted? (filterIdx < filters.size() - 1) : (filterIdx > 0);
-                        if (isFiltered) {
-                            // comparison filter → dashed
-                            g->SetLineStyle(2);
-                            g->SetMarkerStyle(mkrBase[colourIdx]+4);
-                        }
+                        TH1* h_ratio = nullptr;
+                        TGraphAsymmErrors* g = nullptr;
 
-                        if (!firstDrawn) {
-                            g->Draw("APL");
-                            // g->GetYaxis()->SetRangeUser(0.,ymax);
-                            g->GetYaxis()->SetRangeUser(0,1.);
-                            g->GetXaxis()->SetTitle(h_denom->GetXaxis()->GetTitle());
-                            g->GetYaxis()->SetTitle("#epsilon");
-                            
-                            if (xy.first) adjustLogXRange(g, h_denom);
+                        if (std::find(filters_weighted.begin(), filters_weighted.end(), fs) != filters_weighted.end()){ // filtered ratio is weighted binomial --> use TH1 instead of TGraphAsymmErrors
+                            h_ratio = (TH1*)h_num->Clone(Form("%s_divided", h_num->GetName()));
+                            h_ratio->Divide(h_denom);
 
-                            firstDrawn = true;
-                        } else {
-                            g->Draw("PL SAME");
+                            SetStyle(h_ratio, useCol, mkrBase[colourIdx]);
+                            bool isFiltered = plot_weighted? (filterIdx < filters.size() - 1) : (filterIdx > 0);
+                            if (isFiltered) {
+                                // comparison filter → dashed
+                                h_ratio->SetLineStyle(2);
+                                h_ratio->SetMarkerStyle(mkrBase[colourIdx]+4);
+                            }
+
+                            if (!firstDrawn) {
+                                h_ratio->Draw("E1");
+                                h_ratio->GetYaxis()->SetRangeUser(0,1.05);
+                                h_ratio->GetXaxis()->SetTitle(h_denom->GetXaxis()->GetTitle());
+                                h_ratio->GetYaxis()->SetTitle("#epsilon");
+                                
+                                gPad->RedrawAxis();
+                                gPad->Update(); // ensure pad limits are known
+
+                                double xmin = gPad->GetUxmin();
+                                double xmax = gPad->GetUxmax();
+                                
+                                TLine *line = new TLine(xmin, 1.0, xmax, 1.0);
+                                line->SetLineColor(kBlack);
+                                line->SetLineStyle(2); // dashed
+                                line->SetLineWidth(2);
+                                line->Draw("same");
+
+                                firstDrawn = true;
+                            } else {
+                                h_ratio->Draw("E1 SAME");
+                            }
+                        } else{ // unweighted --> use TGraphAsymmErrors
+                            g = new TGraphAsymmErrors();
+                            g->BayesDivide(h_num, h_denom);
+
+                            SetStyle(g, useCol, mkrBase[colourIdx]);
+                            bool isFiltered = plot_weighted? (filterIdx < filters.size() - 1) : (filterIdx > 0);
+                            if (isFiltered) {
+                                // comparison filter → dashed
+                                g->SetLineStyle(2);
+                                g->SetMarkerStyle(mkrBase[colourIdx]+4);
+                            }
+
+                            if (!firstDrawn) {
+                                g->Draw("APL");
+                                g->GetYaxis()->SetRangeUser(0,1.);
+                                g->GetXaxis()->SetTitle(h_denom->GetXaxis()->GetTitle());
+                                g->GetYaxis()->SetTitle("#epsilon");
+                                
+                                if (xy.first) adjustLogXRange(g, h_denom);
+
+                                firstDrawn = true;
+                            } else {
+                                g->Draw("PL SAME");
+                            }
                         }
 
                         // Legend entry text
@@ -854,7 +822,11 @@ private:
                             }
                             label += ", " + fs_label;
                         }
-                        leg->AddEntry(g, label.c_str(), "lep");
+                        if (std::find(filters_weighted.begin(), filters_weighted.end(), fs) != filters_weighted.end()){ // filtered ratio is weighted binomial --> use TH1 instead of TGraphAsymmErrors
+                            leg->AddEntry(h_ratio, label.c_str(), "lep");
+                        } else{
+                            leg->AddEntry(g, label.c_str(), "lep");
+                        }
                     } // end loop over triggers
                     ++filterIdx;
                 } // end loop over filters
@@ -939,49 +911,72 @@ private:
                 TH1* h_num_sel = getHist<TH1>(numSel);
                 if (!h_num_s2 || !h_num_sel) continue;
 
-                auto bins_above1_s2 = clipNumeratorIfInvW(h_num_s2, h_den_sign2, fs);
-                auto bins_above1_sel = clipNumeratorIfInvW(h_num_sel, h_den_sel, fs);
-
-                double ymax_opandsig = 1.;
+                TH1* h_ratio_s2 = nullptr;
+                TH1* h_ratio_sel = nullptr;
+                TGraphAsymmErrors* g_s2 = nullptr;
+                TGraphAsymmErrors* g_sel = nullptr;
 
                 // sign2 efficiency
-                auto g_s2 = new TGraphAsymmErrors();
-                g_s2->BayesDivide(h_num_s2, h_den_sign2);
-                SetStyle(g_s2, colourIdx==0? kAzure+2 : kRed+1, colourIdx==0?24:20);
+                if (std::find(filters_weighted.begin(), filters_weighted.end(), fs) != filters_weighted.end()){ // filtered ratio is weighted binomial --> use TH1 instead of TGraphAsymmErrors
+                    
+                    h_ratio_s2 = (TH1*)h_num_s2->Clone(Form("%s_divided", h_num_s2->GetName()));
+                    h_ratio_s2->Divide(h_den_sign2);
 
-                // if (bins_above1_s2.size() > 0){
-                //     for (auto bpair : bins_above1_s2){
-                //         g_s2->SetPointY(bpair.first, bpair.second);
-                //         ymax_opandsig = std::max(ymax_opandsig, bpair.second);
-                //     }
-                // }
+                    SetStyle(h_ratio_s2, colourIdx==0? kAzure+2 : kRed+1, colourIdx==0?24:20);
 
-                // sig‑sel efficiency
-                auto g_sel = new TGraphAsymmErrors();
-                g_sel->BayesDivide(h_num_sel, h_den_sel);
-                SetStyle(g_sel, colourIdx==0? kAzure+1 : kRed+2, colourIdx==0?25:24, 2, 2);
+                    // sig‑sel efficiency
+                    h_ratio_sel = (TH1*)h_num_sel->Clone(Form("%s_divided", h_num_sel->GetName()));
+                    h_ratio_sel->Divide(h_den_sel);
 
-                // if (bins_above1_sel.size() > 0){
-                //     for (auto bpair : bins_above1_sel){
-                //         g_sel->SetPointY(bpair.first, bpair.second);
-                //         ymax_opandsig = std::max(ymax_opandsig, bpair.second);
-                //     }
-                // }
+                    SetStyle(h_ratio_sel, colourIdx==0? kAzure+1 : kRed+2, colourIdx==0?25:24, 2, 2);
+                    
+                    if (firstCurve) {
+                        h_ratio_s2->Draw("E1");                       // sets axes with first curve
+                        h_ratio_s2->GetYaxis()->SetRangeUser(0., 1.05);
+                        h_ratio_s2->GetXaxis()->SetTitle(h_den_sel->GetXaxis()->GetTitle());
+                        h_ratio_s2->GetYaxis()->SetTitle("#epsilon");
+                        
+                        gPad->RedrawAxis();
+                        gPad->Update(); // ensure pad limits are known
 
-                if (firstCurve) {
-                    g_s2->Draw("APL");                       // sets axes with first curve
-                    // g_s2->GetYaxis()->SetRangeUser(0., ymax_opandsig);
-                    g_s2->GetYaxis()->SetRangeUser(0., 1.);
-                    g_s2->GetXaxis()->SetTitle(h_den_sel->GetXaxis()->GetTitle());
-                    g_s2->GetYaxis()->SetTitle("#epsilon");
+                        double xmin = gPad->GetUxmin();
+                        double xmax = gPad->GetUxmax();
+                        
+                        TLine *line = new TLine(xmin, 1.0, xmax, 1.0);
+                        line->SetLineColor(kBlack);
+                        line->SetLineStyle(2); // dashed
+                        line->SetLineWidth(2);
+                        line->Draw("same");
 
-                    if (xy.first) adjustLogXRange(g_s2, h_den_sign2);
+                        firstCurve = false;                      // ← axis is now set
+                    } else {
+                        h_ratio_s2->Draw("E1 SAME");                   // any later curve
+                    }
+                    h_ratio_sel->Draw("PL SAME");                      // dashed sig-sel curve
+                } else{
+                    g_s2 = new TGraphAsymmErrors();
+                    g_s2->BayesDivide(h_num_s2, h_den_sign2);
+                    SetStyle(g_s2, colourIdx==0? kAzure+2 : kRed+1, colourIdx==0?24:20);
 
-                    firstCurve = false;                      // ← axis is now set
-                } else {
-                    g_s2->Draw("PL SAME");                   // any later curve
+                    // sig‑sel efficiency
+                    g_sel = new TGraphAsymmErrors();
+                    g_sel->BayesDivide(h_num_sel, h_den_sel);
+                    SetStyle(g_sel, colourIdx==0? kAzure+1 : kRed+2, colourIdx==0?25:24, 2, 2);
+
+                    if (firstCurve) {
+                        g_s2->Draw("APL");                       // sets axes with first curve
+                        g_s2->GetYaxis()->SetRangeUser(0., 1.);
+                        g_s2->GetXaxis()->SetTitle(h_den_sel->GetXaxis()->GetTitle());
+                        g_s2->GetYaxis()->SetTitle("#epsilon");
+
+                        if (xy.first) adjustLogXRange(g_s2, h_den_sign2);
+
+                        firstCurve = false;                      // ← axis is now set
+                    } else {
+                        g_s2->Draw("PL SAME");                   // any later curve
+                    }
+                    g_sel->Draw("PL SAME");                      // dashed sig-sel curve
                 }
-                g_sel->Draw("PL SAME");                      // dashed sig-sel curve
 
                 colourIdx++;
 
@@ -1000,9 +995,13 @@ private:
                     sig_legend_fs += " (single b signal)";
                 }
 
-                L->AddEntry(g_s2, op_legend_fs.c_str(), "lep");
-                L->AddEntry(g_sel, sig_legend_fs.c_str(), "lep");
-
+                if (std::find(filters_weighted.begin(), filters_weighted.end(), fs) != filters_weighted.end()){ // filtered ratio is weighted binomial --> use TH1 instead of TGraphAsymmErrors
+                    L->AddEntry(h_ratio_s2, op_legend_fs.c_str(), "lep");
+                    L->AddEntry(h_ratio_sel, sig_legend_fs.c_str(), "lep");
+                } else{
+                    L->AddEntry(g_s2, op_legend_fs.c_str(), "lep");
+                    L->AddEntry(g_sel, sig_legend_fs.c_str(), "lep");                    
+                }
             } // finish loop over muon-pair triggers
 
             L->Draw();
@@ -1206,13 +1205,6 @@ private:
     // ======================================================================
     void plot2Dto1DEffcyProj()
     {
-        auto zeroUFof = [](TH1* h){
-            if (!h) return;
-            const int nb = h->GetNbinsX();
-            h->SetBinContent(0, 0.0);   h->SetBinError(0, 0.0);
-            h->SetBinContent(nb+1, 0.0); h->SetBinError(nb+1, 0.0);
-        };
-
         if (var2Ds_for1Deffcy_proj.empty()) return;
 
         // default + comparisons (keep weighted filter behaviour consistent with plot1D)
@@ -1357,38 +1349,71 @@ private:
                                 );
                                 if (!hNum1D) continue;
 
-                                // special weighting guard
-                                clipNumeratorIfInvW(hNum1D.get(), hDen1D.get(), fs);
-
-                                zeroUFof(hNum1D.get());
-                                zeroUFof(hDen1D.get());
-
-                                // graph
-                                auto g = new TGraphAsymmErrors();
-                                g->BayesDivide(hNum1D.get(), hDen1D.get());
-
                                 // choose colours: default vs filtered
                                 Color_t useCol = (!hasWeighted)
                                                  ? ((filterIdx == 0) ? colBase[idx] : colFilt[idx])
                                                  : ((filterIdx == (int)filters.size()-1) ? colBase[idx] : colFilt[idx]);
-                                SetStyle(g, useCol, mkrBase[idx]);
 
                                 const bool isFiltered = (!hasWeighted) ? (filterIdx > 0)
                                                                        : (filterIdx < (int)filters.size()-1);
-                                if (isFiltered) {
-                                    g->SetLineStyle(2);
-                                    g->SetMarkerStyle(mkrBase[idx] + 4);
-                                }
 
-                                if (!firstDrawn) {
-                                    g->Draw("APL");
-                                    g->GetYaxis()->SetRangeUser(0., 1.);
-                                    g->GetXaxis()->SetTitle(hDen1D->GetXaxis()->GetTitle());
-                                    g->GetYaxis()->SetTitle("#epsilon");
-                                    if (xy.first) adjustLogXRange(g, hDen1D.get());
-                                    firstDrawn = true;
-                                } else {
-                                    g->Draw("PL SAME");
+                                TH1* h_ratio;
+                                TGraphAsymmErrors* g;
+
+                                if (std::find(filters_weighted.begin(), filters_weighted.end(), fs) != filters_weighted.end()){ // filtered ratio is weighted binomial --> use TH1 instead of TGraphAsymmErrors
+                                    h_ratio = (TH1*)hNum1D->Clone(Form("%s_divided", hNum1D->GetName()));
+                                    h_ratio->Divide(hDen1D.get());
+
+                                    SetStyle(h_ratio, useCol, mkrBase[idx]);
+                                    
+                                    if (isFiltered) {
+                                        h_ratio->SetLineStyle(2);
+                                        h_ratio->SetMarkerStyle(mkrBase[idx] + 4);
+                                    }
+                                    
+                                    if (!firstDrawn) {
+                                        h_ratio->Draw("E1");
+                                        h_ratio->GetYaxis()->SetRangeUser(0., 1.05);
+                                        h_ratio->GetXaxis()->SetTitle(hDen1D->GetXaxis()->GetTitle());
+                                        h_ratio->GetYaxis()->SetTitle("#epsilon");
+                                        
+                                        gPad->RedrawAxis();
+                                        gPad->Update(); // ensure pad limits are known
+
+                                        double xmin = gPad->GetUxmin();
+                                        double xmax = gPad->GetUxmax();
+                                        
+                                        TLine *line = new TLine(xmin, 1.0, xmax, 1.0);
+                                        line->SetLineColor(kBlack);
+                                        line->SetLineStyle(2); // dashed
+                                        line->SetLineWidth(2);
+                                        line->Draw("same");
+
+                                        firstDrawn = true;
+                                    } else {
+                                        h_ratio->Draw("E1 SAME");
+                                    }
+                                } else{
+                                    g = new TGraphAsymmErrors();
+                                    g->BayesDivide(hNum1D.get(), hDen1D.get());
+
+                                    SetStyle(g, useCol, mkrBase[idx]);
+                                    
+                                    if (isFiltered) {
+                                        g->SetLineStyle(2);
+                                        g->SetMarkerStyle(mkrBase[idx] + 4);
+                                    }
+                                    
+                                    if (!firstDrawn) {
+                                        g->Draw("APL");
+                                        g->GetYaxis()->SetRangeUser(0., 1.);
+                                        g->GetXaxis()->SetTitle(hDen1D->GetXaxis()->GetTitle());
+                                        g->GetYaxis()->SetTitle("#epsilon");
+                                        if (xy.first) adjustLogXRange(g, hDen1D.get());
+                                        firstDrawn = true;
+                                    } else {
+                                        g->Draw("PL SAME");
+                                    }
                                 }
 
                                 // legend text
@@ -1400,7 +1425,11 @@ private:
                                 }
                                 std::string label = trg;
                                 if (!fs_label.empty()) label += ", " + fs_label;
-                                leg->AddEntry(g, label.c_str(), "lep");
+                                if (std::find(filters_weighted.begin(), filters_weighted.end(), fs) != filters_weighted.end()){ // filtered ratio is weighted binomial --> use TH1 instead of TGraphAsymmErrors
+                                    leg->AddEntry(h_ratio, label.c_str(), "lep");
+                                } else{
+                                    leg->AddEntry(g, label.c_str(), "lep");
+                                }
                             } // loop over triggers
                             ++filterIdx;
                         } // loop over filters
@@ -1490,28 +1519,68 @@ private:
                             );
                             if (!hNum1D_s2 || !hNum1D_sel) continue;
 
-                            clipNumeratorIfInvW(hNum1D_s2.get(),  hDen1D_s2.get(),  fs);
-                            clipNumeratorIfInvW(hNum1D_sel.get(), hDen1D_sel.get(), fs);
+                            TH1* h_ratio_s2 = nullptr;
+                            TH1* h_ratio_sel = nullptr;
+                            TGraphAsymmErrors* g_s2 = nullptr;
+                            TGraphAsymmErrors* g_sel = nullptr;
 
-                            auto g_s2  = new TGraphAsymmErrors();
-                            g_s2->BayesDivide(hNum1D_s2.get(),  hDen1D_s2.get());
-                            SetStyle(g_s2,  colourIdx==0 ? kAzure+2 : kRed+1, colourIdx==0 ? 24 : 20);
+                            if (std::find(filters_weighted.begin(), filters_weighted.end(), fs) != filters_weighted.end()){ // filtered ratio is weighted binomial --> use TH1 instead of TGraphAsymmErrors
+                                
+                                h_ratio_s2 = (TH1*)hNum1D_s2->Clone(Form("%s_divided", hNum1D_s2->GetName()));
+                                h_ratio_s2->Divide(hDen1D_s2.get());
 
-                            auto g_sel = new TGraphAsymmErrors();
-                            g_sel->BayesDivide(hNum1D_sel.get(), hDen1D_sel.get());
-                            SetStyle(g_sel, colourIdx==0 ? kAzure+1 : kRed+2, colourIdx==0 ? 25 : 24, 2, 2);
+                                SetStyle(h_ratio_s2,  colourIdx==0 ? kAzure+2 : kRed+1, colourIdx==0 ? 24 : 20);
 
-                            if (firstCurve) {
-                                g_sel->Draw("APL");  // draw dashed first so solid stays visible
-                                g_sel->GetYaxis()->SetRangeUser(0., 1.);
-                                g_sel->GetXaxis()->SetTitle(hDen1D_sel->GetXaxis()->GetTitle());
-                                g_sel->GetYaxis()->SetTitle("#epsilon");
-                                if (xy.first) adjustLogXRange(g_sel, hDen1D_sel.get());
-                                firstCurve = false;
-                            } else {
-                                g_sel->Draw("PL SAME");
+                                h_ratio_sel = (TH1*)hNum1D_sel->Clone(Form("%s_divided", hNum1D_sel->GetName()));
+                                h_ratio_sel->Divide(hDen1D_sel.get());
+
+                                SetStyle(h_ratio_sel, colourIdx==0 ? kAzure+1 : kRed+2, colourIdx==0 ? 25 : 24, 2, 2);
+
+                                if (firstCurve) {
+                                    h_ratio_sel->Draw("E1");  // draw dashed first so solid stays visible
+                                    h_ratio_sel->GetYaxis()->SetRangeUser(0., 1.05);
+                                    h_ratio_sel->GetXaxis()->SetTitle(hDen1D_sel->GetXaxis()->GetTitle());
+                                    h_ratio_sel->GetYaxis()->SetTitle("#epsilon");
+
+                                    gPad->RedrawAxis();
+                                    gPad->Update(); // ensure pad limits are known
+
+                                    double xmin = gPad->GetUxmin();
+                                    double xmax = gPad->GetUxmax();
+                                    
+                                    TLine *line = new TLine(xmin, 1.0, xmax, 1.0);
+                                    line->SetLineColor(kBlack);
+                                    line->SetLineStyle(2); // dashed
+                                    line->SetLineWidth(2);
+                                    line->Draw("same");
+
+                                    firstCurve = false;
+                                } else {
+                                    h_ratio_sel->Draw("E1 SAME");
+                                }
+                                h_ratio_s2->Draw("PL SAME");
+                            } else{
+                                g_s2  = new TGraphAsymmErrors();
+                                g_s2->BayesDivide(hNum1D_s2.get(),  hDen1D_s2.get());
+                                SetStyle(g_s2,  colourIdx==0 ? kAzure+2 : kRed+1, colourIdx==0 ? 24 : 20);
+
+                                g_sel = new TGraphAsymmErrors();
+                                g_sel->BayesDivide(hNum1D_sel.get(), hDen1D_sel.get());
+                                SetStyle(g_sel, colourIdx==0 ? kAzure+1 : kRed+2, colourIdx==0 ? 25 : 24, 2, 2);
+
+                                if (firstCurve) {
+                                    g_sel->Draw("APL");  // draw dashed first so solid stays visible
+                                    g_sel->GetYaxis()->SetRangeUser(0., 1.);
+                                    g_sel->GetXaxis()->SetTitle(hDen1D_sel->GetXaxis()->GetTitle());
+                                    g_sel->GetYaxis()->SetTitle("#epsilon");
+                                    if (xy.first) adjustLogXRange(g_sel, hDen1D_sel.get());
+                                    firstCurve = false;
+                                } else {
+                                    g_sel->Draw("PL SAME");
+                                }
+                                g_s2->Draw("PL SAME");
                             }
-                            g_s2->Draw("PL SAME");
+                            
 
                             // legend text
                             std::string fs_label;
@@ -1528,8 +1597,13 @@ private:
                             }
                             labS2  += ")";
                             labSel += ")";
-                            L->AddEntry(g_s2,  labS2.c_str(),  "lep");
-                            L->AddEntry(g_sel, labSel.c_str(), "lep");
+                            if (std::find(filters_weighted.begin(), filters_weighted.end(), fs) != filters_weighted.end()){ // filtered ratio is weighted binomial --> use TH1 instead of TGraphAsymmErrors
+                                L->AddEntry(h_ratio_s2,  labS2.c_str(),  "lep");
+                                L->AddEntry(h_ratio_sel, labSel.c_str(), "lep");
+                            } else{                                
+                                L->AddEntry(g_s2,  labS2.c_str(),  "lep");
+                                L->AddEntry(g_sel, labSel.c_str(), "lep");
+                            }
 
                             ++colourIdx;
                         }
@@ -1831,7 +1905,7 @@ void trig_effcy_plot(){
     // filters = {"_excl", "_excl_inv_w_by_single_mu_effcy"};
     // std::map<std::string,TrigEffPlotter::Rect> legOpSig   = {{"DR_zoomin", {0.5,0.15,0.87,0.33}  }};
     // filters = {"_good_accept"};
-    // filters = {"_inv_w_by_single_mu_effcy"};
+    filters = {"_inv_w_by_single_mu_effcy"};
 
     TrigEffPlotter plotter(24, var1Ds, false, false, true,
                            filters, logaxes,
