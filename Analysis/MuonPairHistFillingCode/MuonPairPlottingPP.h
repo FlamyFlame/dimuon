@@ -11,6 +11,8 @@
 #include  <stdlib.h>
 #include <fstream>
 #include "../MuonObjectsParamsAndHelpers/ParamsSet.h"
+#include "../MuonObjectsParamsAndHelpers/bin_number.cxx"
+#include "../MuonObjectsParamsAndHelpers/proj_range_to_suffix.cxx"
 #include "../MuonObjectsParamsAndHelpers/MuonPair.h"
 #include "vector"
 #include "TH1D.h"
@@ -517,6 +519,7 @@ private:
    	void FillHistograms(int nsign);
     void FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(int nsign);
     void CalculateSingleMuonTrigEffcyRatios();
+    void MakeAndWriteSingleMuonPtTrigEffGraphs();
     void MakeAndWriteDRTrigEffGraphs();
 
 public:

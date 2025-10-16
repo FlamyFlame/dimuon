@@ -728,6 +728,8 @@ void MuonPairPlottingPP::ProcessData(){
 
     if (trigger_mode != 1) return; // only continue if calculate muon-pair trigger efficiency selecting on mu4 trigger
 
+    MakeAndWriteSingleMuonPtTrigEffGraphs();
+
     CalculateSingleMuonTrigEffcyRatios();
 
     cout << "2nd loop over muon pairs" << endl;
@@ -1384,68 +1386,26 @@ void MuonPairPlottingPP::CalculateSingleMuonTrigEffcyRatios(){
 // Uses a local analog of clipNumeratorIfInvW and calls it before BayesDivide.
 void MuonPairPlottingPP::MakeAndWriteDRTrigEffGraphs()
 {
-    auto zeroUFof = [](TH1* h){
-        if (!h) return;
-        const int nb = h->GetNbinsX();
-        h->SetBinContent(0,    0.0); h->SetBinError(0,    0.0);
-        h->SetBinContent(nb+1, 0.0); h->SetBinError(nb+1, 0.0);
-    };
-
-    // ---- analog of clipNumeratorIfInvW (content + error + UF/OF clamp) ----
-    auto clipNumToDenForInvW = [](TH1* num, TH1* den){
-        if (!num || !den) return;
-        if (!num->GetSumw2N()) num->Sumw2();
-        if (!den->GetSumw2N()) den->Sumw2();
-        const int nb = num->GetNbinsX();
-
-        auto clamp = [&](int b){
-            double n  = num->GetBinContent(b);
-            double d  = den->GetBinContent(b);
-            double ne = num->GetBinError(b);
-            double de = den->GetBinError(b);
-
-            if (n > d) num->SetBinContent(b, d);
-            if (ne > de) num->SetBinError(b, de);
-            if (d <= 0.0) { num->SetBinContent(b, 0.0); num->SetBinError(b, 0.0); }
-        };
-
-        clamp(0);
-        for (int b = 1; b <= nb; ++b) clamp(b);
-        clamp(nb+1);
-    };
 
     auto make_and_write = [&](TH1* num_src, TH1* den_src){
-        if (!num_src || !den_src) return (TGraphAsymmErrors*)nullptr;
+        if (!num_src || !den_src) return (TH1*)nullptr;
 
         // Work on clones so originals remain untouched
-        std::unique_ptr<TH1> num((TH1*)num_src->Clone(Form("%s_tmp", num_src->GetName())));
-        std::unique_ptr<TH1> den((TH1*)den_src->Clone(Form("%s_tmp", den_src->GetName())));
+        TH1* num((TH1*)num_src->Clone(Form("%s_divided", num_src->GetName())));
+        TH1* den((TH1*)den_src->Clone(Form("%s_divided", den_src->GetName())));
 
-        // Guard for inverse-weighted numerators
-        clipNumToDenForInvW(num.get(), den.get());
+        num->Divide(den);
 
-        // TEfficiency also checks UF/OF bins
-        zeroUFof(num.get());
-        zeroUFof(den.get());
-
-        auto g = new TGraphAsymmErrors();
-        g->BayesDivide(num.get(), den.get());
-
-        // Name: "h_<...>" → "g_<...>" from the *numerator* histo name
-        std::string n = num_src->GetName() ? num_src->GetName() : "graph";
-        if (n.rfind("h_", 0) == 0) n.replace(0, 2, "g_"); else n = "g_" + n;
-        g->SetName(n.c_str());
-
-        g->Write(g->GetName(), TObject::kOverwrite);
-        return g;
+        num->Write();
+        return num;
     };
 
     // -------- per-sign (8 graphs) --------
-    for (int s = 0; s < ParamsSet::nSigns; ++s) {
-        make_and_write(h_DR_zoomin_2mu4_inv_w_by_single_mu_effcy[s],        h_DR_zoomin_mu4[s]);
-        make_and_write(h_DR_0_2_2mu4_inv_w_by_single_mu_effcy[s],           h_DR_0_2_mu4[s]);
-        make_and_write(h_DR_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy[s], h_DR_zoomin_mu4[s]);
-        make_and_write(h_DR_0_2_mu4_mu4noL1_inv_w_by_single_mu_effcy[s],    h_DR_0_2_mu4[s]);
+    for (int sign = 0; sign < ParamsSet::nSigns; ++sign) {
+        make_and_write(h_DR_zoomin_2mu4_inv_w_by_single_mu_effcy[sign],        h_DR_zoomin_mu4[sign]);
+        make_and_write(h_DR_0_2_2mu4_inv_w_by_single_mu_effcy[sign],           h_DR_0_2_mu4[sign]);
+        make_and_write(h_DR_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy[sign], h_DR_zoomin_mu4[sign]);
+        make_and_write(h_DR_0_2_mu4_mu4noL1_inv_w_by_single_mu_effcy[sign],    h_DR_0_2_mu4[sign]);
     }
 
     // -------- signal-selected (4 graphs) --------
@@ -1454,6 +1414,73 @@ void MuonPairPlottingPP::MakeAndWriteDRTrigEffGraphs()
     make_and_write(h_DR_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel, h_DR_zoomin_mu4_w_single_b_sig_sel);
     make_and_write(h_DR_0_2_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel,    h_DR_0_2_mu4_w_single_b_sig_sel);
 }
+
+void MuonPairPlottingPP::MakeAndWriteSingleMuonPtTrigEffGraphs()
+{
+    // helper for projection, making & writing of TEfficiency graphs
+    auto proj_make_and_write = [&](TH2* hNum2D, TH2* hDen2D, bool projy = true, int firstbin = 1, int lastbin = -1, std::string proj_range_str = ""){
+        if (!hNum2D || !hDen2D) return (TGraphAsymmErrors*)nullptr;
+
+        // suffix that captures projection axis & range
+        std::string proj_suffix = projy? "_py" : "_px";
+        proj_suffix += proj_range_str;
+
+        std::unique_ptr<TH1> hNum1D(
+            projy ? hNum2D->ProjectionY(Form("%s%s", hNum2D->GetName(), proj_suffix.c_str()), firstbin, lastbin, "e")
+                  : hNum2D->ProjectionX(Form("%s%s", hNum2D->GetName(), proj_suffix.c_str()), firstbin, lastbin, "e")
+        );
+
+        std::unique_ptr<TH1> hDen1D(
+            projy ? hDen2D->ProjectionY(Form("%s%s", hDen2D->GetName(), proj_suffix.c_str()), firstbin, lastbin, "e")
+                  : hDen2D->ProjectionX(Form("%s%s", hDen2D->GetName(), proj_suffix.c_str()), firstbin, lastbin, "e")
+        );
+
+        auto g = new TGraphAsymmErrors();
+        g->BayesDivide(hNum1D.get(), hDen1D.get());
+
+        // Name: "h_<...>" → "g_<...>" from the *numerator* histo name
+        std::string n = hNum1D->GetName() ? hNum1D->GetName() : "graph";
+        
+        n += "_divided";
+        if (n.rfind("h_", 0) == 0) n.replace(0, 2, "g_"); else n = "g_" + n;
+        g->SetName(n.c_str());
+
+        g->Write(g->GetName(), TObject::kOverwrite);
+        return g;
+    };
+
+    // maps of q_eta bins to projection-(x)-range suffix string
+    std::vector<std::pair<float, float>> proj_ranges = {
+        {-2.4f, -2.0f}, 
+        {-2.0f, -1.6f}, 
+        {-1.6f, -1.3f}, 
+        {-0.9f, -0.5f}, 
+        {-0.5f, -0.1f}, 
+        {0.1f, 0.5f}, 
+        {0.5f, 1.0f}, 
+        {1.3f, 1.6f}, 
+        {1.6f, 2.0f}, 
+        {2.0f, 2.4f}
+    };
+
+    // q-eta bins
+    std::vector<double> eta_bins_trig_effcy = ParamsSet::makeEtaTrigEffcyBinning();
+
+    for (int sign = 0; sign < ParamsSet::nSigns; ++sign) {
+        proj_make_and_write(h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr[sign],     h_pt2nd_vs_q_eta_2nd_mu4_sepr[sign]);
+        proj_make_and_write(h_pt2nd_vs_q_eta_2nd_2mu4_sepr[sign],            h_pt2nd_vs_q_eta_2nd_mu4_sepr[sign]);
+
+        for (auto range : proj_ranges){
+            int bin_first = bin_number(range.first, eta_bins_trig_effcy) + 1; // + 1 pushes into next bin (bin lower end agree with range edge if range edge founded)
+            int bin_last = bin_number(range.second, eta_bins_trig_effcy); // bin higher end agree with range edge if range edge founded
+            std::string proj_suffix = pairToSuffix(range);
+
+            proj_make_and_write(h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr[sign],     h_pt2nd_vs_q_eta_2nd_mu4_sepr[sign], true, range.first, range.second, proj_suffix);
+            proj_make_and_write(h_pt2nd_vs_q_eta_2nd_2mu4_sepr[sign],            h_pt2nd_vs_q_eta_2nd_mu4_sepr[sign], true, range.first, range.second, proj_suffix);
+        }
+    }
+}
+
 
 void MuonPairPlottingPP::WriteOutput(){
 
