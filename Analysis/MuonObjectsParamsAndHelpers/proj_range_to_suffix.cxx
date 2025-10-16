@@ -45,7 +45,7 @@ std::pair<float, float> hProjNameToPair(std::string s) {
 }
 
 
-void test(){
+void test_proj_range_to_suffix(){
     std::vector<std::pair<float, float>> proj_ranges = {
         {-2.45f, -2.0f}, 
         {-2.0f, -1.6f}, 
