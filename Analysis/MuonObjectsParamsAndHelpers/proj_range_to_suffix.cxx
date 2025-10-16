@@ -6,7 +6,7 @@
 std::string pairToSuffix(const std::pair<float, float>& p) {
     auto formatNum = [](float x) {
         std::ostringstream oss;
-        oss << std::fixed << std::setprecision(1) << x;
+        oss << std::fixed << std::setprecision(2) << x;
         std::string s = oss.str();
         for (auto& c : s) if (c == '.') c = '_'; // replace '.' with '_'
         return s;
@@ -28,7 +28,7 @@ std::pair<float, float> suffixToPair(std::string s) {
 
 void test(){
     std::vector<std::pair<float, float>> proj_ranges = {
-        {-2.4f, -2.0f}, 
+        {-2.45f, -2.0f}, 
         {-2.0f, -1.6f}, 
         {-1.6f, -1.3f}, 
         {-0.9f, -0.5f}, 
@@ -37,7 +37,7 @@ void test(){
         {0.5f, 1.0f}, 
         {1.3f, 1.6f}, 
         {1.6f, 2.0f}, 
-        {2.0f, 2.4f}
+        {2.0f, 225.42f}
     };
 
     for (auto range : proj_ranges){
