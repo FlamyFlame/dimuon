@@ -51,7 +51,7 @@ int bin_number(float target, const std::vector<float>& bin_edges){
 	return bin_number((double) target, bin_edges_double);
 }
 
-void test(){
+void test_bin_number(){
 	std::vector<double> v = {0,1,2,3,4,5,6,7,8,9,10};
 	cout << bin_number(2.3, v) << endl;
 	cout << bin_number(2.8, v) << endl;
