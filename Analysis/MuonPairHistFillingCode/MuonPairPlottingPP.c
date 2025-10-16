@@ -1423,7 +1423,7 @@ void MuonPairPlottingPP::MakeAndWriteSingleMuonPtTrigEffGraphs()
 
         // suffix that captures projection axis & range
         std::string proj_suffix = projy? "_py" : "_px";
-        proj_suffix += proj_range_str;
+        if (proj_range_str != "") proj_suffix += "_" + proj_range_str;
 
         std::unique_ptr<TH1> hNum1D(
             projy ? hNum2D->ProjectionY(Form("%s%s", hNum2D->GetName(), proj_suffix.c_str()), firstbin, lastbin, "e")
