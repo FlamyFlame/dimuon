@@ -25,17 +25,10 @@ public:
 
 void SingleBAnalysisPP::RunAnalysis(){
 
-    for (auto bin : pT_bins_80){
-        std::cout << bin << ", ";
-    }
-    std::cout << std::endl;
-    // ----------------------------------------------------------------------------------------
-
     // Create RDataFrame and apply initial cuts
     muon_pair_input_file_name = dataset_base_dir + infile_relative_path;
     RDataFrame df("muon_pair_tree_sign2", muon_pair_input_file_name.c_str());
     auto rdf_with_signal_cuts = df.Filter(signal_cuts.c_str());
-
 
     // Create 2D histogram model for metrics calculation
     auto th2dmodel_signal_cuts = ROOT::RDF::TH2DModel(
@@ -51,6 +44,10 @@ void SingleBAnalysisPP::RunAnalysis(){
         {"h_pT_80", "Pair pT (log bins up to 80 GeV)", int(pT_bins_80.size()-1), pT_bins_80.data()}, 
         "pair_pt", "weight");
 
+    auto h_pT_150 = rdf_with_signal_cuts.Histo1D(
+        {"h_pT_150", "Pair pT (log bins up to 150 GeV)", int(pT_bins_150.size()-1), pT_bins_150.data()}, 
+        "pair_pt", "weight");
+
     auto h_pT_200 = rdf_with_signal_cuts.Histo1D(
         {"h_pT_200", "Pair pT (log bins up to 200 GeV)", int(pT_bins_200.size()-1), pT_bins_200.data()}, 
         "pair_pt", "weight");
@@ -64,6 +61,7 @@ void SingleBAnalysisPP::RunAnalysis(){
     std::string outfile_name = dataset_base_dir + outfile_relative_path_truncated + ".root";
     TFile out(outfile_name.c_str(), "RECREATE");
     h_pT_80->Write();
+    h_pT_150->Write();
     h_pT_200->Write();
     h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts->SetTitle("");
     h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts->SetStats(0);
@@ -82,9 +80,9 @@ void simplified_single_b_analysis_pp(){
     double crossx_factor_pp_24_2mu4 = 1/410.815;
     double crossx_factor_pp_24_mu4mu4noL1 = 1/113.999;
 
-    SingleBAnalysisPP pprun2("pp_run2/muon_pairs_pp_run2_old_res_cut.root", "pp_run2/pp_run2_single_b_ana_hists");
-    pprun2.crossx_factor = crossx_factor_pp_run2;
-    pprun2.RunAnalysis();
+    // SingleBAnalysisPP pprun2("pp_run2/muon_pairs_pp_run2_old_res_cut.root", "pp_run2/pp_run2_single_b_ana_hists");
+    // pprun2.crossx_factor = crossx_factor_pp_run2;
+    // pprun2.RunAnalysis();
 
     SingleBAnalysisPP pp2024_mu4mu4noL1("pp_2024/muon_pairs_pp_2024_mu4_mu4noL1.root", "pp_2024/pp_2024_single_b_ana_hists_mu4_mu4noL1");
     pp2024_mu4mu4noL1.crossx_factor = crossx_factor_pp_24_mu4mu4noL1;

@@ -297,7 +297,7 @@ private:
         if (debug_mode) std::cout << "Calling function drawOneCanvas for trigger " << trg << ", muon sign " << musign_maps[musign] << std::endl;
         gStyle->SetOptStat(0);
 
-        TCanvas* c = new TCanvas(Form("c_%s_%s", trg.c_str(), musign.c_str()), "Trigger Turn-on Curves", 1500, 1000);
+        TCanvas* c = new TCanvas(Form("c_%s_%s", trg.c_str(), musign.c_str()), "Trigger Turn-on Curves", 15000, 10000);
         c->Divide(4,3);
         c->SetGrid();
 

@@ -148,6 +148,10 @@ void SingleBAnalysisPbPb::RunAnalysis(){
     std::vector<ROOT::RDF::RResultPtr<TH1D>> hss_pT_80_ctr_binned;
     std::vector<ROOT::RDF::RResultPtr<TH1D>> hop_pT_80_counts_ctr_binned;
     std::vector<ROOT::RDF::RResultPtr<TH1D>> hss_pT_80_counts_ctr_binned;
+    std::vector<ROOT::RDF::RResultPtr<TH1D>> hop_pT_150_ctr_binned;
+    std::vector<ROOT::RDF::RResultPtr<TH1D>> hss_pT_150_ctr_binned;
+    std::vector<ROOT::RDF::RResultPtr<TH1D>> hop_pT_150_counts_ctr_binned;
+    std::vector<ROOT::RDF::RResultPtr<TH1D>> hss_pT_150_counts_ctr_binned;
     std::vector<ROOT::RDF::RResultPtr<TH1D>> hop_pT_200_ctr_binned;
     std::vector<ROOT::RDF::RResultPtr<TH1D>> hss_pT_200_ctr_binned;
     std::vector<ROOT::RDF::RResultPtr<TH1D>> hop_pT_200_counts_ctr_binned;
@@ -166,12 +170,12 @@ void SingleBAnalysisPbPb::RunAnalysis(){
     
             // Book 1D histograms
             auto h_pT_80_op = df_ctr_binned_op_weight_w_signal_cuts.Histo1D(
-                {Form("hop_pT_80_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), Form("h_pT_80_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), int(pT_bins_80.size()-1), pT_bins_80.data()}, 
+                {Form("hop_pT_80_weighted_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), Form("h_pT_80_weighted_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), int(pT_bins_80.size()-1), pT_bins_80.data()}, 
                 "pair_pt", "weight_for_RAA");
             hop_pT_80_ctr_binned.push_back(h_pT_80_op);
 
             auto h_pT_80_ss = df_ctr_binned_ss_weight_w_signal_cuts.Histo1D(
-                {Form("hss_pT_80_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), Form("h_pT_80_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), int(pT_bins_80.size()-1), pT_bins_80.data()}, 
+                {Form("hss_pT_80_weighted_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), Form("h_pT_80_weighted_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), int(pT_bins_80.size()-1), pT_bins_80.data()}, 
                 "pair_pt", "weight_for_RAA");
             hss_pT_80_ctr_binned.push_back(h_pT_80_ss);
 
@@ -185,13 +189,33 @@ void SingleBAnalysisPbPb::RunAnalysis(){
                 "pair_pt");
             hss_pT_80_counts_ctr_binned.push_back(h_pT_80_counts_ss);
 
+            auto h_pT_150_op = df_ctr_binned_op_weight_w_signal_cuts.Histo1D(
+                {Form("hop_pT_150_weighted_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), Form("h_pT_150_weighted_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), int(pT_bins_150.size()-1), pT_bins_150.data()}, 
+                "pair_pt", "weight_for_RAA");
+            hop_pT_150_ctr_binned.push_back(h_pT_150_op);
+
+            auto h_pT_150_ss = df_ctr_binned_ss_weight_w_signal_cuts.Histo1D(
+                {Form("hss_pT_150_weighted_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), Form("h_pT_150_weighted_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), int(pT_bins_150.size()-1), pT_bins_150.data()}, 
+                "pair_pt", "weight_for_RAA");
+            hss_pT_150_ctr_binned.push_back(h_pT_150_ss);
+
+            auto h_pT_150_counts_op = df_ctr_binned_op_weight_w_signal_cuts.Histo1D(
+                {Form("hop_pT_150_counts_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), Form("h_pT_150_counts_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), int(pT_bins_150.size()-1), pT_bins_150.data()}, 
+                "pair_pt");
+            hop_pT_150_counts_ctr_binned.push_back(h_pT_150_counts_op);
+
+            auto h_pT_150_counts_ss = df_ctr_binned_ss_weight_w_signal_cuts.Histo1D(
+                {Form("hss_pT_150_counts_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), Form("h_pT_150_counts_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), int(pT_bins_150.size()-1), pT_bins_150.data()}, 
+                "pair_pt");
+            hss_pT_150_counts_ctr_binned.push_back(h_pT_150_counts_ss);
+
             auto h_pT_200_op = df_ctr_binned_op_weight_w_signal_cuts.Histo1D(
-                {Form("hop_pT_200_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), Form("h_pT_200_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), int(pT_bins_200.size()-1), pT_bins_200.data()}, 
+                {Form("hop_pT_200_weighted_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), Form("h_pT_200_weighted_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), int(pT_bins_200.size()-1), pT_bins_200.data()}, 
                 "pair_pt", "weight_for_RAA");
             hop_pT_200_ctr_binned.push_back(h_pT_200_op);
 
             auto h_pT_200_ss = df_ctr_binned_ss_weight_w_signal_cuts.Histo1D(
-                {Form("hss_pT_200_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), Form("h_pT_200_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), int(pT_bins_200.size()-1), pT_bins_200.data()}, 
+                {Form("hss_pT_200_weighted_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), Form("h_pT_200_weighted_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), int(pT_bins_200.size()-1), pT_bins_200.data()}, 
                 "pair_pt", "weight_for_RAA");
             hss_pT_200_ctr_binned.push_back(h_pT_200_ss);
 
@@ -243,6 +267,10 @@ void SingleBAnalysisPbPb::RunAnalysis(){
             hss_pT_80_ctr_binned.at(ictr)->Write();
             hop_pT_80_counts_ctr_binned.at(ictr)->Write();
             hss_pT_80_counts_ctr_binned.at(ictr)->Write();
+            hop_pT_150_ctr_binned.at(ictr)->Write();
+            hss_pT_150_ctr_binned.at(ictr)->Write();
+            hop_pT_150_counts_ctr_binned.at(ictr)->Write();
+            hss_pT_150_counts_ctr_binned.at(ictr)->Write();
             hop_pT_200_ctr_binned.at(ictr)->Write();
             hss_pT_200_ctr_binned.at(ictr)->Write();
             hop_pT_200_counts_ctr_binned.at(ictr)->Write();
@@ -293,15 +321,15 @@ void simplified_single_b_analysis_PbPb(){
 
     // SingleBAnalysisPbPb pbpb_run2 ("pbpb_run2/muon_pairs_pbpb_run2.root", "pbpb_run2/pbpb_run2_single_b_ana_hists");
     // pbpb_run2.crossx_factors_ctr_binned = crossx_factors_pbpb_run2_ctr_binned;
-    // pbpb_run2.BinningPrinting();
     // pbpb_run2.RunAnalysis();
 
-    // SingleBAnalysisPbPb pbpb_2023 ("pbpb_2023/muon_pairs_pbpb_2023.root", "pbpb_2023/pbpb_2023_single_b_ana_hists");
+    // SingleBAnalysisPbPb pbpb_2023 ("pbpb_2023/muon_pairs_pbpb_2023_mu4_mu4noL1_no_res_cut.root", "pbpb_2023/pbpb_2023_single_b_ana_hists_mu4_mu4noL1_no_res_cut");
     // pbpb_2023.crossx_factors_ctr_binned = crossx_factors_pbpb_2023_ctr_binned;
     // pbpb_2023.RunAnalysis();
 
-    SingleBAnalysisPbPb pbpb_2024 ("pbpb_2024/muon_pairs_pbpb_2024.root", "pbpb_2024/pbpb_2024_single_b_ana_hists");
+    SingleBAnalysisPbPb pbpb_2024 ("pbpb_2024/muon_pairs_pbpb_2024_single_mu4.root", "pbpb_2024/pbpb_2024_single_b_ana_hists_single_mu4");
     pbpb_2024.crossx_factors_ctr_binned = crossx_factors_pbpb_2024_ctr_binned;
+    // pbpb_2024.BinningPrinting();
     pbpb_2024.RunAnalysis();
 }
 
