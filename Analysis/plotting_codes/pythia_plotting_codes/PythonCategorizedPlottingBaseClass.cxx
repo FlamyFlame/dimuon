@@ -16,6 +16,14 @@ void PythonCategorizedPlottingBaseClass::initialize(){
 
     fill_line_map();
     fill_thstack_order_map();  
+
+    legend_ss_position_map["default"] = {0.63,0.58,0.89,0.9};
+    legend_op_position_map["default"] = {0.63,0.58,0.89,0.9};
+
+    legend_ss_position_map["minv_10GeV"] = {0.25,0.58,0.51,0.9};
+    legend_ss_position_map["minv_zoomin"] = {0.2,0.58,0.46,0.9};
+    legend_op_position_map["minv_zoomin"] = {0.25,0.58,0.51,0.9};
+
 }
 
 PythonCategorizedPlottingBaseClass::~PythonCategorizedPlottingBaseClass(){
@@ -56,7 +64,21 @@ void PythonCategorizedPlottingBaseClass::Run(){
         gPad->SetBottomMargin(0.135);
         gPad->SetLogx(logx);
 
-        TLegend* l = new TLegend(0.63,0.58,0.89,0.9);
+        std::map<std::string, std::array<double, 4>>* legend_position_map = (ksign == 0)? &legend_ss_position_map : &legend_op_position_map;
+        std::array<double, 4> legend_position;
+
+        try {
+            if (legend_position_map->find(kin1d) != legend_position_map->end()) { // if the kinematic variable has specialized legend position for the same/opposite-sign pairs
+                legend_position = legend_position_map->at(kin1d);
+            } else { // use default same/opposite-sign-pair legend positions
+                legend_position = legend_position_map->at("default");
+            }            
+        } catch(const std::out_of_range& e){
+            std::cerr << "Out of range error caught for kinematic " << kin << " for legend positions! Use default legend position." << std::endl;
+            legend_position = {0.63,0.58,0.89,0.9};
+        }
+
+        TLegend* l = new TLegend(legend_position[0], legend_position[1], legend_position[2], legend_position[3]);
         l->SetBorderSize(0);
         l->SetFillStyle(0);
         l->SetTextFont(43);
