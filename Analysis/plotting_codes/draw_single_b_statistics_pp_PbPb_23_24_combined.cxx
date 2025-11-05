@@ -11,11 +11,12 @@ void draw_single_b_statistics_pp_PbPb_23_24_combined() {
 
     // --- settings ---
     bool combine_0_5_AND_5_10 = true; // if true, combine 0-5 and 5-10 statistics
+    bool subtract_pp_same_sign = true; // if true, subtract same-sign pairs from opposite-sign pairs for pp24 data
     bool plot_single_pad = true; // if true, plot single pad; if false, plot 2 pads
 
     std::vector<int> ctr_bin_edges = {0,5,10,20,30,50,80}; // if change ctr binning --> adjust this vector for histogram retrieving updates
     int ctr_0_5_ind = 0; // needed if combine_0_5_AND_5_10
-    int pT_max = 200; // if change pT ranges --> adjust this number for histogram retrieving updates
+    int pT_max = 150; // if change pT ranges --> adjust this number for histogram retrieving updates
 
     std::vector<Color_t> colors = {kRed, kGreen+2, kBlue, kOrange+7, kMagenta, kCyan+2, kGray}; // vector of colors
 
@@ -53,13 +54,18 @@ void draw_single_b_statistics_pp_PbPb_23_24_combined() {
 
     // --- retrieve pp histograms ---
 
-    std::string h_name_pp =  "h_pT_" + to_string(pT_max);
-    TH1D* h_pp24 = (TH1D*)fpp24->Get(h_name_pp.c_str());
+    std::string h_name_pp_ss =  "h_pT_" + to_string(pT_max) + "_ss";
+    std::string h_name_pp_op =  "h_pT_" + to_string(pT_max) + "_op";
+    
+    TH1D* h_pp24_ss = (TH1D*)fpp24->Get(h_name_pp_ss.c_str());
+    TH1D* h_pp24 = (TH1D*)fpp24->Get(h_name_pp_op.c_str());
 
-    if (!h_pp24){
-        std::cerr << "Missing pp 24 histogram: " << h_name_pp << std::endl;
+    if (!h_pp24 && !h_pp24_ss){
+        std::cerr << "Missing pp 24 histogram: " << h_name_pp_op << std::endl;
         return;
     }
+
+    if (subtract_pp_same_sign) h_pp24->Add(h_pp24_ss, -1);
 
     h_pp24->SetLineColor(kBlack);
     h_pp24->SetLineStyle(kDashed);
@@ -138,7 +144,12 @@ void draw_single_b_statistics_pp_PbPb_23_24_combined() {
         leg->AddEntry("", "medium muon WP", "");
         leg->AddEntry("", "m_{#mu#mu} #in (1.08, 2.9) GeV, p_{T}^{pair} > 8 GeV", "");
         leg->Draw();
-        c->SaveAs(Form("%ssingle_b_stats_pp_PbPb_23_24_combined_pT%d.png", dataset_base_dir.c_str(), pT_max));
+        if (subtract_pp_same_sign)
+            c->SaveAs(Form("%ssingle_b_stats_pp_PbPb_23_24_combined_pT%d_subtr_pp_same_sign.png", dataset_base_dir.c_str(), pT_max));
+        else
+            c->SaveAs(Form("%ssingle_b_stats_pp_PbPb_23_24_combined_pT%d.png", dataset_base_dir.c_str(), pT_max));
+
+        
     } else{
         c = new TCanvas("c", "Comparison Results", 1400, 500);
         c->Divide(2, 1);
@@ -198,7 +209,10 @@ void draw_single_b_statistics_pp_PbPb_23_24_combined() {
         leg2->AddEntry("", "(opposite sign - same sign) pairs", "");
         leg2->Draw();
 
-        c->SaveAs(Form("%ssingle_b_stats_pp_PbPb_23_24_combined_pT%d_double_panel.png", dataset_base_dir.c_str(), pT_max));
+        if (subtract_pp_same_sign)
+            c->SaveAs(Form("%ssingle_b_stats_pp_PbPb_23_24_combined_pT%d_double_panel_subtr_pp_same_sign.png", dataset_base_dir.c_str(), pT_max));
+        else
+            c->SaveAs(Form("%ssingle_b_stats_pp_PbPb_23_24_combined_pT%d_double_panel.png", dataset_base_dir.c_str(), pT_max));
     }
 
 }
