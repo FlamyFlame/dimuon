@@ -157,6 +157,7 @@ void MuonPairPlottingPythia::InitHists(){
                 
                 h_Deta_Dphi_flavor_binned[ksign][kflav] = new TH2D(Form("h_Deta_Dphi_sign%d%s",ksign+1,flavor_grp_map[kflav].c_str()),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
                 h_minv_pair_pt_flavor_binned[ksign][kflav] = new TH2D(Form("h_minv_pair_pt_sign%d%s",ksign+1,flavor_grp_map[kflav].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
+                h_minv_10GeV_pair_pt_flavor_binned[ksign][kflav] = new TH2D(Form("h_minv_10GeV_pair_pt_sign%d%s",ksign+1,flavor_grp_map[kflav].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,10);
                 h_minv_pair_pt_zoomin_flavor_binned[ksign][kflav] = new TH2D(Form("h_minv_pair_pt_zoomin_sign%d%s",ksign+1,flavor_grp_map[kflav].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,20,nminv_bins_linear,0,4);
                 h_minv_pair_pt_jacobian_corrected_flavor_binned[ksign][kflav] = new TH2D(Form("h_minv_pair_pt_jacobian_corrected_sign%d%s",ksign+1,flavor_grp_map[kflav].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
                 h_minv_pair_pt_zoomin_jacobian_corrected_flavor_binned[ksign][kflav] = new TH2D(Form("h_minv_pair_pt_zoomin_jacobian_corrected_sign%d%s",ksign+1,flavor_grp_map[kflav].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,20,nminv_bins_linear,0,4);
@@ -177,6 +178,7 @@ void MuonPairPlottingPythia::InitHists(){
                 h_pair_pt_jacobian_corrected_flavor_binned[ksign][kflav]->Sumw2();
                 h_Deta_Dphi_flavor_binned[ksign][kflav]->Sumw2();
                 h_minv_pair_pt_flavor_binned[ksign][kflav]->Sumw2();
+                h_minv_10GeV_pair_pt_flavor_binned[ksign][kflav]->Sumw2();
                 h_minv_pair_pt_zoomin_flavor_binned[ksign][kflav]->Sumw2();
                 h_minv_pair_pt_jacobian_corrected_flavor_binned[ksign][kflav]->Sumw2();
                 h_pair_pt_jacobian_corrected_flavor_binned[ksign][kflav]->Sumw2();
@@ -202,6 +204,7 @@ void MuonPairPlottingPythia::InitHists(){
                 
                 h_Deta_Dphi_origin_binned[ksign][korigin] = new TH2D(Form("h_Deta_Dphi_sign%d%s",ksign+1,origin_grp_map[korigin].c_str()),";#Delta#phi;#Delta#eta", nDphi_bins,-pms.PI,pms.PI,nDeta_bins,-4.8,4.8);
                 h_minv_pair_pt_origin_binned[ksign][korigin] = new TH2D(Form("h_minv_pair_pt_sign%d%s",ksign+1,origin_grp_map[korigin].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
+                h_minv_10GeV_pair_pt_origin_binned[ksign][korigin] = new TH2D(Form("h_minv_10GeV_pair_pt_sign%d%s",ksign+1,origin_grp_map[korigin].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,10);
                 h_minv_pair_pt_zoomin_origin_binned[ksign][korigin] = new TH2D(Form("h_minv_pair_pt_zoomin_sign%d%s",ksign+1,origin_grp_map[korigin].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,20,nminv_bins_linear,0,4);
                 h_minv_pair_pt_jacobian_corrected_origin_binned[ksign][korigin] = new TH2D(Form("h_minv_pair_pt_jacobian_corrected_sign%d%s",ksign+1,origin_grp_map[korigin].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,30,nminv_bins_linear,0,30);
                 h_minv_pair_pt_zoomin_jacobian_corrected_origin_binned[ksign][korigin] = new TH2D(Form("h_minv_pair_pt_zoomin_jacobian_corrected_sign%d%s",ksign+1,origin_grp_map[korigin].c_str()),";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]",npair_pT_bins_linear,0,20,nminv_bins_linear,0,4);
@@ -226,6 +229,7 @@ void MuonPairPlottingPythia::InitHists(){
                 h_pair_pt_jacobian_corrected_origin_binned[ksign][korigin]->Sumw2();
                 h_Deta_Dphi_origin_binned[ksign][korigin]->Sumw2();
                 h_minv_pair_pt_origin_binned[ksign][korigin]->Sumw2();
+                h_minv_10GeV_pair_pt_origin_binned[ksign][korigin]->Sumw2();
                 h_minv_pair_pt_zoomin_origin_binned[ksign][korigin]->Sumw2();
                 h_minv_pair_pt_jacobian_corrected_origin_binned[ksign][korigin]->Sumw2();
                 h_minv_pair_pt_zoomin_jacobian_corrected_origin_binned[ksign][korigin]->Sumw2();
@@ -421,6 +425,7 @@ void MuonPairPlottingPythia::FillHistograms(int nsign){
         h_pair_pt_jacobian_corrected_flavor_binned[nsign][iflavor]->Fill(pair_pt[nsign], ev_weight * 1. / pair_pt[nsign]);
         h_Deta_Dphi_flavor_binned[nsign][iflavor]->Fill(dphi[nsign],deta[nsign],ev_weight);
         h_minv_pair_pt_flavor_binned[nsign][iflavor]->Fill(pair_pt[nsign],minv[nsign],ev_weight);
+        h_minv_10GeV_pair_pt_flavor_binned[nsign][iflavor]->Fill(pair_pt[nsign],minv[nsign],ev_weight);
         h_minv_pair_pt_zoomin_flavor_binned[nsign][iflavor]->Fill(pair_pt[nsign],minv[nsign],ev_weight);
         h_minv_pair_pt_jacobian_corrected_flavor_binned[nsign][iflavor]->Fill(pair_pt[nsign],minv[nsign],ev_weight * 1. / dr[nsign]);
         h_pair_pt_jacobian_corrected_flavor_binned[nsign][iflavor]->Fill(pair_pt[nsign],ev_weight * 1. / pair_pt[nsign]);
@@ -450,6 +455,7 @@ void MuonPairPlottingPythia::FillHistograms(int nsign){
         h_pair_pt_jacobian_corrected_origin_binned[nsign][iorigin]->Fill(pair_pt[nsign], ev_weight * 1. / pair_pt[nsign]);
         h_Deta_Dphi_origin_binned[nsign][iorigin]->Fill(dphi[nsign],deta[nsign],ev_weight);
         h_minv_pair_pt_origin_binned[nsign][iorigin]->Fill(pair_pt[nsign],minv[nsign],ev_weight);
+        h_minv_10GeV_pair_pt_origin_binned[nsign][iorigin]->Fill(pair_pt[nsign],minv[nsign],ev_weight);
         h_minv_pair_pt_zoomin_origin_binned[nsign][iorigin]->Fill(pair_pt[nsign],minv[nsign],ev_weight);
         h_minv_pair_pt_jacobian_corrected_origin_binned[nsign][iorigin]->Fill(pair_pt[nsign],minv[nsign],ev_weight * 1. / dr[nsign]);
         h_minv_pair_pt_zoomin_jacobian_corrected_origin_binned[nsign][iorigin]->Fill(pair_pt[nsign],minv[nsign],ev_weight * 1. / dr[nsign]);

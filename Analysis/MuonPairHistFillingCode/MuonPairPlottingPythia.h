@@ -126,6 +126,7 @@ private:
     
     TH2D* h_Deta_Dphi_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
     TH2D* h_minv_pair_pt_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
+    TH2D* h_minv_10GeV_pair_pt_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
     TH2D* h_minv_pair_pt_zoomin_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
     TH2D* h_minv_pair_pt_jacobian_corrected_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
     TH2D* h_minv_pair_pt_zoomin_jacobian_corrected_origin_binned[ParamsSet::nSigns][muon_pair_both_from_open_HF_origin_catgr::nOrigins];
@@ -147,6 +148,7 @@ private:
     
     TH2D* h_Deta_Dphi_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
     TH2D* h_minv_pair_pt_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
+    TH2D* h_minv_10GeV_pair_pt_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
     TH2D* h_minv_pair_pt_zoomin_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
     TH2D* h_minv_pair_pt_jacobian_corrected_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
     TH2D* h_minv_pair_pt_zoomin_jacobian_corrected_flavor_binned[ParamsSet::nSigns][pair_flavor_index::nFlavors];
