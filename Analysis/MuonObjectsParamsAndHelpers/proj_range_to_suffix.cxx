@@ -22,6 +22,15 @@ std::string pairToSuffix(const std::pair<float, float>& p) {
     return formatNum(p.first) + "_TO_" + formatNum(p.second);
 }
 
+// function to map a projection range (pair of float) into a legend label string
+std::string pairToLegendLabel(const std::pair<float, float>& p) {
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(1);
+    oss << p.first << " < q * #eta < " << p.second;
+    return oss.str();
+}
+
+
 // function to map a suffix string (fixed format) back into a projection range (pair of float)
 std::pair<float, float> suffixToPair(std::string s) {
     size_t pos = s.find("_TO_");
@@ -31,6 +40,8 @@ std::pair<float, float> suffixToPair(std::string s) {
     std::string s1 = s.substr(0, pos);
     std::string s2 = s.substr(pos + 4);
 
+    // cout << "s1 " << s1 << ", s2: " << s2 << endl;
+
     // replace "minus" with "-" first
     size_t mpos;
     while ((mpos = s1.find("minus")) != std::string::npos)
@@ -38,10 +49,14 @@ std::pair<float, float> suffixToPair(std::string s) {
     while ((mpos = s2.find("minus")) != std::string::npos)
         s2.replace(mpos, 5, "-");
 
+
+    // cout << "s1 " << s1 << ", s2: " << s2 << endl;
+
     // then replace '_' with '.'
     for (auto& c : s1) if (c == '_') c = '.';
     for (auto& c : s2) if (c == '_') c = '.';
 
+    // cout << "s1 " << s1 << ", s2: " << s2 << endl;
     return {std::stof(s1), std::stof(s2)};
 }
 
@@ -52,10 +67,10 @@ std::pair<float, float> hProjNameToPair(std::string s) {
     if (start == std::string::npos)
         start = s.find("_px_");
     if (start == std::string::npos)
-        throw std::runtime_error("hProjNameToPair: no _px or _py found in string: " + s);
+        throw std::runtime_error("hProjNameToPair: no _px_ or _py_ found in string: " + s);
 
     // extract substring after "_px" or "_py"
-    s = s.substr(start + 3);  // skip past "_px" or "_py"
+    s = s.substr(start + 4);  // skip past "_px" or "_py"
 
     return suffixToPair(s);
 }
@@ -72,18 +87,15 @@ void test_proj_range_to_suffix(){
         {0.5f, 1.0f}, 
         {1.3f, 1.6f}, 
         {1.6f, 2.0f}, 
-        {2.0f, 225.42f}
+        {2.0f, 2.4f}
     };
 
     for (auto range : proj_ranges){
         std::string suffix = pairToSuffix(range);
         std::cout << "Suffix: " << suffix << std::endl;
-        std::string histProjName = "h2D_py" + suffix;
+        std::string histProjName = "h2D_py_" + suffix;
         auto rrange = hProjNameToPair(histProjName);
-        std::cout << "Reverting suffix back to: " << rrange.first << ", " << rrange.second << std::endl << std::endl;
-
+        std::cout << "Reverting suffix back to: " << rrange.first << ", " << rrange.second << std::endl;
+        std::cout << "Legend label: " << pairToLegendLabel(rrange) << std::endl << std::endl;
     }
-    
-    // suffix == "-2_4_TO_-2_0"
-
 }

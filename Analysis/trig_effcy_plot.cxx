@@ -838,6 +838,7 @@ private:
             for (const auto& fs : filter_suffix_list) {
                 pngDir += fs;
             }
+            if (draw2mu4) pngDir += "_w_2mu4";
             makeDirIfNeeded(pngDir);
 
             std::string fn = pngDir + "/" + var + "_trig_effcy";
@@ -1007,11 +1008,12 @@ private:
             L->Draw();
             
             std::string outdir = data_dir + "trig_effcy_plots" + (fs.empty() ? "" : fs);
+            if (draw2mu4) outdir += "_w_2mu4";
             makeDirIfNeeded(outdir + "/op_and_sig");
             std::string fn = Form("%s/op_and_sig/%s_trig_effcy%s%s.png", outdir.c_str(), var.c_str(), fs.c_str(), mode_to_png_suffix.at(SignalDrawingMode::OpAndSignal).c_str());
             c->SaveAs(fn.c_str());
         }
-    }
+    } // end function plot1D
 
     // =========================================================================
     //  xyFor helper
@@ -1069,6 +1071,8 @@ private:
         }
 
         std::string outdir = data_dir + "trig_effcy_plots" + (fs.empty()?"":fs);
+        if (draw2mu4) outdir += "_w_2mu4";
+        
         makeDirIfNeeded(outdir);
         c->SaveAs(Form("%s/%s_2D_trig_effcy%s.png",
                        outdir.c_str(),var.c_str(),fs.c_str()));
@@ -1180,6 +1184,8 @@ private:
         }
 
         std::string outdir = data_dir + "trig_effcy_plots" + (fs.empty()?"":fs);
+        if (draw2mu4) outdir += "_w_2mu4";
+        
         makeDirIfNeeded(outdir);
         c->SaveAs(Form("%s/%s_profile%s.png",outdir.c_str(),var.c_str(),fs.c_str()));
 
@@ -1441,6 +1447,8 @@ private:
                     for (const auto& fs : filter_suffix_list) {
                         pngDir += fs;
                     }
+                    if (draw2mu4) pngDir += "_w_2mu4";
+
                     makeDirIfNeeded(pngDir);
                     std::string fn = pngDir + "/";
                     fn += projVar + "_trig_effcy";
@@ -1610,6 +1618,8 @@ private:
                         L->Draw();
 
                         std::string outdir = data_dir + "trig_effcy_plots" + (fs.empty() ? "" : fs);
+                        if (draw2mu4) outdir += "_w_2mu4";
+                        
                         makeDirIfNeeded(outdir + "/op_and_sig");
                         std::string fn = Form("%s/op_and_sig/%s_trig_effcy%s%s.png",
                                               outdir.c_str(), projVar.c_str(), fs.c_str(),
