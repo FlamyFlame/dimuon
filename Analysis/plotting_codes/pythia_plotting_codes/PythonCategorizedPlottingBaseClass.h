@@ -42,6 +42,8 @@ protected:
     std::map<int, std::vector<int>> thstack_order_map;
     std::map<std::pair<int, int>, TH1D*> hist_map;
 
+    std::array<double, 4> legend_position_default; // default legend position in case the legend_ss/op_position_map's don't work
+    
     // map of variable to same-sign-pair legend position, with default value
     std::map<std::string, std::array<double, 4>> legend_ss_position_map;
     // map of variable to opposite-sign-pair legend position, with default value
@@ -65,6 +67,9 @@ protected:
     virtual void fill_thstack_order_map() = 0;
 public:
     bool with_data_resonance_cuts = false;
+
+    bool text_box_on_both_panels = false; // if true, same text box sits on top of both panels [TO-DO: IMPLEMENT]
+    bool saveAsC = false; // if true, same text box sits on top of both panels
 
     std::string kin; // kinematic variable to be plotted
     bool projx_2d; // boolean to turn on ProjectionX for a 2D histogram
