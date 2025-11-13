@@ -1,4 +1,4 @@
-void hist_helper(TH1* h, float norm, bool norm_unity, std::string title, std::string ytitle=""){
+void hist_helper(TH1* h, float norm, bool norm_unity, std::string title, std::string ytitle="", float labelsize = 28, float titleoffset = 2.1){
 
   h->SetStats(0);
 
@@ -22,16 +22,16 @@ void hist_helper(TH1* h, float norm, bool norm_unity, std::string title, std::st
     // h->SetTitle(title.c_str());
     // h->SetTitleSize(35);
     h->GetYaxis()->SetLabelFont(43);
-    h->GetYaxis()->SetLabelSize(28);
+    h->GetYaxis()->SetLabelSize(labelsize);
     h->GetYaxis()->SetLabelOffset(0.01);
     h->GetYaxis()->SetTitleFont(43);
-    h->GetYaxis()->SetTitleSize(28);
-    h->GetYaxis()->SetTitleOffset(2.1);
+    h->GetYaxis()->SetTitleSize(labelsize);
+    h->GetYaxis()->SetTitleOffset(titleoffset);
     h->GetXaxis()->SetLabelFont(43);
-    h->GetXaxis()->SetLabelSize(28);
+    h->GetXaxis()->SetLabelSize(labelsize);
     h->GetXaxis()->SetLabelOffset(0.01);
     h->GetXaxis()->SetTitleFont(43);  
-    h->GetXaxis()->SetTitleSize(28);
+    h->GetXaxis()->SetTitleSize(labelsize);
     h->GetXaxis()->SetTitleOffset(1);
     h->SetMarkerStyle(20);
     h->SetMarkerSize(0.9);
