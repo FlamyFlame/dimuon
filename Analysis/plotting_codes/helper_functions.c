@@ -1,3 +1,5 @@
+#include <string>
+
 void hist_helper(TH1* h, float norm, bool norm_unity, std::string title, std::string ytitle=""){
 
   h->SetStats(0);
@@ -37,6 +39,24 @@ void hist_helper(TH1* h, float norm, bool norm_unity, std::string title, std::st
     h->SetMarkerSize(0.9);
 }
 
+
+std::string CutBeforeBracket(const std::string& s) {
+    // find both patterns
+    size_t pos1 = s.find(" [");
+    size_t pos2 = s.find("[");
+
+    // choose the earliest valid occurrence
+    size_t pos = std::string::npos;
+
+    if (pos1 != std::string::npos) pos = pos1;
+    if (pos2 != std::string::npos) pos = (pos == std::string::npos ? pos2 : std::min(pos, pos2));
+
+    // if neither found, return original
+    if (pos == std::string::npos) return s;
+
+    return s.substr(0, pos);
+}
+
 void thstack_helper(THStack* h, std::string kin_name, std::string title){
   h->SetTitle(title.c_str());
   h->GetXaxis()->SetTitle(kin_name.c_str());
@@ -49,7 +69,7 @@ void thstack_helper(THStack* h, std::string kin_name, std::string title){
   if (kin_name.rfind(prefix, 0) == 0) {  // starts with "FULL: "
       ytitle = kin_name.substr(prefix.length());
   } else {
-      ytitle = "d#sigma/d" + kin_name + " [nb]";
+      ytitle = "d#sigma/d" + CutBeforeBracket(kin_name) + " [nb]";
   }
 
   h->GetYaxis()->SetTitle(ytitle.c_str());
@@ -214,4 +234,3 @@ void ApplyYAxisCutsTo2DHistogram(TH2* h, const std::vector<std::array<float,2>>&
         }
     }
 }
-
