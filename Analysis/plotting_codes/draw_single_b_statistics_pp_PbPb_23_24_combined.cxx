@@ -1,7 +1,7 @@
+#include "helper_functions.c"
 
 // function to draw single-b statistics as function of pT
 // for Pb+Pb 2023 (mu4_mu4noL1) & 2024 (mu4) combined
-
 void draw_single_b_statistics_pp_PbPb_23_24_combined() {
 
     std::string dataset_base_dir = "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/";
@@ -23,25 +23,28 @@ void draw_single_b_statistics_pp_PbPb_23_24_combined() {
     std::map<int, double> pT_max_to_legend_lowxedge_map_single_pad;
     std::map<int, double> pT_max_to_legend_lowyedge_map_single_pad;
 
+    double legend_upper = 0.9;
+    double legend_right = 0.93;
+
     std::map<int, double> pT_max_to_legend_lowxedge_map_pad1;
     std::map<int, double> pT_max_to_legend_lowyedge_map_pad1;
     std::map<int, double> pT_max_to_legend_lowxedge_map_pad2;
     std::map<int, double> pT_max_to_legend_lowyedge_map_pad2;
 
-    pT_max_to_legend_lowxedge_map_single_pad[200] = 0.35;
+    pT_max_to_legend_lowxedge_map_single_pad[200] = 0.5;
     pT_max_to_legend_lowyedge_map_single_pad[200] = 0.45;
-    pT_max_to_legend_lowxedge_map_single_pad[150] = 0.35;
-    pT_max_to_legend_lowyedge_map_single_pad[150] = 0.45;
+    pT_max_to_legend_lowxedge_map_single_pad[150] = 0.5;
+    pT_max_to_legend_lowyedge_map_single_pad[150] = 0.43;
 
-    pT_max_to_legend_lowxedge_map_pad1[200] = 0.35;
-    pT_max_to_legend_lowyedge_map_pad1[200] = 0.45;
-    pT_max_to_legend_lowxedge_map_pad2[200] = 0.33;
-    pT_max_to_legend_lowyedge_map_pad2[200] = 0.45;
+    pT_max_to_legend_lowxedge_map_pad1[200] = 0.55;
+    pT_max_to_legend_lowyedge_map_pad1[200] = 0.35;
+    pT_max_to_legend_lowxedge_map_pad2[200] = 0.55;
+    pT_max_to_legend_lowyedge_map_pad2[200] = 0.35;
 
-    pT_max_to_legend_lowxedge_map_pad1[150] = 0.35;
-    pT_max_to_legend_lowyedge_map_pad1[150] = 0.53;
-    pT_max_to_legend_lowxedge_map_pad2[150] = 0.33;
-    pT_max_to_legend_lowyedge_map_pad2[150] = 0.45;
+    pT_max_to_legend_lowxedge_map_pad1[150] = 0.55;
+    pT_max_to_legend_lowyedge_map_pad1[150] = 0.4;
+    pT_max_to_legend_lowxedge_map_pad2[150] = 0.55;
+    pT_max_to_legend_lowyedge_map_pad2[150] = 0.35;
 
     // --- open files ---
     TFile *fpp24 = TFile::Open((dataset_base_dir + f_pp_24_single_b).c_str());
@@ -66,6 +69,8 @@ void draw_single_b_statistics_pp_PbPb_23_24_combined() {
     }
 
     if (subtract_pp_same_sign) h_pp24->Add(h_pp24_ss, -1);
+
+    hist_helper(h_pp24, 1., false, "", "", 21, 1.5);
 
     h_pp24->SetLineColor(kBlack);
     h_pp24->SetLineStyle(kDashed);
@@ -102,27 +107,43 @@ void draw_single_b_statistics_pp_PbPb_23_24_combined() {
         h_stats_23_24_comb->Add(v_PbPb_24_op.at(i), 1);
         h_stats_23_24_comb->Add(v_PbPb_24_ss.at(i), -1);
         h_stats_23_24_comb->SetLineColor(colors.at(i));
-        h_stats_23_24_comb->SetMarkerColor(i + 1);
+        h_stats_23_24_comb->SetMarkerColor(colors.at(i));
         h_stats_23_24_comb->SetLineWidth(2);
+
+        hist_helper(h_stats_23_24_comb, 1., false, "", "", 21, 1.5);
+
         v_stats_PbPb_23_24_comb.push_back(h_stats_23_24_comb);
     }
 
     // --- draw canvas ---
     TCanvas *c;
-    if (plot_single_pad){
+    if (plot_single_pad){ // draw single pad
         c = new TCanvas("c", "Comparison Results", 700, 500);
         c->cd(1);
         gPad->SetLogy();
 
-        TLegend *leg = new TLegend(pT_max_to_legend_lowxedge_map_single_pad[pT_max], pT_max_to_legend_lowyedge_map_single_pad[pT_max], 0.9, 0.88);
+        TLegend* legpp = new TLegend(0.21,0.76,0.48,0.9);
+
+        legpp->SetFillColor(0);       // transparent background
+        legpp->SetFillStyle(0);       // fully transparent
+        legpp->SetBorderSize(0);
+        legpp->AddEntry((TObject*)0, "#bf{#it{ATLAS}} Internal", "h");
+
+        TLegend *leg = new TLegend(pT_max_to_legend_lowxedge_map_single_pad[pT_max], pT_max_to_legend_lowyedge_map_single_pad[pT_max], legend_right, legend_upper);
         leg->SetFillStyle(0);
         leg->SetBorderSize(0);
+        leg->SetMargin(0.15);
 
         h_pp24->SetStats(0);
         h_pp24->SetTitle("");
         h_pp24->GetXaxis()->SetTitle("p_{T} [GeV]");
         h_pp24->GetYaxis()->SetTitle("Counts per bin");
         h_pp24->Draw("ELP");
+
+        legpp->AddEntry(h_pp24, "pp 5.36TeV, 2024", "lp");
+
+        // leg->AddEntry(h_pp24, "pp 5.36TeV, 2024", "lp");
+        leg->AddEntry((TObject*)0, "Pb+Pb 5.36TeV, 2023 & 2024", "h");
 
         for (int i = 0; i < v_stats_PbPb_23_24_comb.size(); ++i) {
 
@@ -134,23 +155,26 @@ void draw_single_b_statistics_pp_PbPb_23_24_combined() {
             v_stats_PbPb_23_24_comb.at(i)->Draw("ELP SAME");
 
             if (combine_0_5_AND_5_10 && i == ctr_0_5_ind)
-                leg->AddEntry(v_stats_PbPb_23_24_comb.at(i), "Centrality: 0-10%", "lp");
+                leg->AddEntry(v_stats_PbPb_23_24_comb.at(i), "0-10%", "lp");
             else
-                leg->AddEntry(v_stats_PbPb_23_24_comb.at(i), Form("Centrality: %d-%d%%", ctr_bin_edges.at(i), ctr_bin_edges.at(i+1)), "lp");
+                leg->AddEntry(v_stats_PbPb_23_24_comb.at(i), Form("%d-%d%%", ctr_bin_edges.at(i), ctr_bin_edges.at(i+1)), "lp");
         }
-        leg->AddEntry("", "pp (mu4_mu4noL1)", "");
-        leg->AddEntry("", "Pb+Pb, 2023 (mu4_mu4noL1), 2024 (mu4) combined", "");
-        leg->AddEntry("", "(opposite sign - same sign) pairs", "");
-        leg->AddEntry("", "medium muon WP", "");
-        leg->AddEntry("", "m_{#mu#mu} #in (1.08, 2.9) GeV, p_{T}^{pair} > 8 GeV", "");
-        leg->Draw();
-        if (subtract_pp_same_sign)
-            c->SaveAs(Form("%ssingle_b_stats_pp_PbPb_23_24_combined_pT%d_subtr_pp_same_sign.png", dataset_base_dir.c_str(), pT_max));
-        else
-            c->SaveAs(Form("%ssingle_b_stats_pp_PbPb_23_24_combined_pT%d.png", dataset_base_dir.c_str(), pT_max));
 
-        
-    } else{
+        // leg->AddEntry("", "(opposite sign - same sign) pairs", "");
+        leg->AddEntry((TObject*)0, "m_{#mu#mu} #in (1.08, 2.9) GeV, p_{T}^{pair} > 8 GeV", "h");
+        leg->Draw();
+        legpp->Draw();
+
+        if (subtract_pp_same_sign){            
+            c->SaveAs(Form("%ssingle_b_stats_pp_PbPb_23_24_combined_plots/single_b_stats_pp_PbPb_23_24_combined_pT%d_subtr_pp_same_sign.png", dataset_base_dir.c_str(), pT_max));
+            c->SaveAs(Form("%ssingle_b_stats_pp_PbPb_23_24_combined_plots/single_b_stats_pp_PbPb_23_24_combined_pT%d_subtr_pp_same_sign.c", dataset_base_dir.c_str(), pT_max));
+        }
+        else{            
+            c->SaveAs(Form("%ssingle_b_stats_pp_PbPb_23_24_combined_plots/single_b_stats_pp_PbPb_23_24_combined_pT%d.png", dataset_base_dir.c_str(), pT_max));
+            c->SaveAs(Form("%ssingle_b_stats_pp_PbPb_23_24_combined_plots/single_b_stats_pp_PbPb_23_24_combined_pT%d.c", dataset_base_dir.c_str(), pT_max));
+        }
+
+    } else{ // draw 2 pads
         c = new TCanvas("c", "Comparison Results", 1400, 500);
         c->Divide(2, 1);
 
@@ -178,12 +202,11 @@ void draw_single_b_statistics_pp_PbPb_23_24_combined() {
             v_stats_PbPb_23_24_comb.at(i)->Draw("ELP SAME");
 
             if (combine_0_5_AND_5_10 && i == ctr_0_5_ind)
-                leg1->AddEntry(v_stats_PbPb_23_24_comb.at(i), "Centrality: 0-10%", "lp");
+                leg1->AddEntry(v_stats_PbPb_23_24_comb.at(i), "0-10%", "lp");
             else
-                leg1->AddEntry(v_stats_PbPb_23_24_comb.at(i), Form("Centrality: %d-%d%%", ctr_bin_edges.at(i), ctr_bin_edges.at(i+1)), "lp");
+                leg1->AddEntry(v_stats_PbPb_23_24_comb.at(i), Form("%d-%d%%", ctr_bin_edges.at(i), ctr_bin_edges.at(i+1)), "lp");
         }
-        leg1->AddEntry("", "pp (mu4_mu4noL1)", "");
-        leg1->AddEntry("", "medium muon WP", "");
+        leg1->AddEntry(h_pp24, "pp 5.36TeV, 2024", "lp");
         leg1->AddEntry("", "m_{#mu#mu} #in (1.08, 2.9) GeV, p_{T}^{pair} > 8 GeV", "");
         leg1->Draw();
 
@@ -203,16 +226,15 @@ void draw_single_b_statistics_pp_PbPb_23_24_combined() {
 
         for (int i = v_stats_PbPb_23_24_comb.size()/2; i < v_stats_PbPb_23_24_comb.size(); ++i) {
             v_stats_PbPb_23_24_comb.at(i)->Draw("ELP SAME");
-            leg2->AddEntry(v_stats_PbPb_23_24_comb.at(i), Form("Centrality: %d-%d%%", ctr_bin_edges.at(i), ctr_bin_edges.at(i+1)), "lp");
+            leg2->AddEntry(v_stats_PbPb_23_24_comb.at(i), Form("%d-%d%%", ctr_bin_edges.at(i), ctr_bin_edges.at(i+1)), "lp");
         }
         leg2->AddEntry("", "Pb+Pb, 2023 (mu4_mu4noL1), 2024 (mu4) combined", "");
         leg2->AddEntry("", "(opposite sign - same sign) pairs", "");
         leg2->Draw();
 
         if (subtract_pp_same_sign)
-            c->SaveAs(Form("%ssingle_b_stats_pp_PbPb_23_24_combined_pT%d_double_panel_subtr_pp_same_sign.png", dataset_base_dir.c_str(), pT_max));
+            c->SaveAs(Form("%ssingle_b_stats_pp_PbPb_23_24_combined_plots/single_b_stats_pp_PbPb_23_24_combined_pT%d_double_panel_subtr_pp_same_sign.png", dataset_base_dir.c_str(), pT_max));
         else
-            c->SaveAs(Form("%ssingle_b_stats_pp_PbPb_23_24_combined_pT%d_double_panel.png", dataset_base_dir.c_str(), pT_max));
+            c->SaveAs(Form("%ssingle_b_stats_pp_PbPb_23_24_combined_plots/single_b_stats_pp_PbPb_23_24_combined_pT%d_double_panel.png", dataset_base_dir.c_str(), pT_max));
     }
-
 }
