@@ -78,7 +78,8 @@ void TestClass::BuildHistBinningMap(){
         }
     }
 
-    hist_binning_map["minv_log"] = minv_bins_log[0];
+    hist_binning_map["minv_log_ss"] = minv_bins_log[0];
+    hist_binning_map["minv_log_op"] = minv_bins_log[1];
 }
 
 
