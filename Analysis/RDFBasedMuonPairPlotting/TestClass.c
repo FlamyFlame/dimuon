@@ -5,6 +5,8 @@
 #include <vector>
 #include <string>
 
+#include "../MuonObjectsParamsAndHelpers/ParamsSet.h"
+
 #include <nlohmann/json.hpp>
 using nlohmann::json;
 
@@ -40,9 +42,10 @@ private:
     // members
     std::map<std::string, std::vector<double>> hist_binning_map;
     std::string infile_var1D_json = "var1D.json";
-    std::vector<var1D*> var1D_dict;
+    std::map<std::string, var1D*> var1D_dict;
 
     void ReadVar1DJson();
+    void PrintVar1DList();
 
 private:
     static void BuildHistBinningMap();
@@ -75,7 +78,7 @@ void TestClass::BuildHistBinningMap(){
         }
     }
 
-    hist1d_rresultptrs["minv_log"] = minv_bins_log[0];
+    hist_binning_map["minv_log"] = minv_bins_log[0];
 }
 
 
