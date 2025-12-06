@@ -1,0 +1,20 @@
+{
+    "variables1D": [
+        {
+            "hist_name": "minv_zoomin",
+            "var_name": "minv",
+            "title": "M_{inv} [GeV]",
+            "binning": "minv_log"
+        },
+        {
+            "hist_name": "pt",
+            "var_name": "pt",
+            "title": "p_{T} [GeV]",
+            "binning": {
+                "nbins": 50,
+                "min": 0,
+                "max": 50
+            }
+        }
+    ]
+}
