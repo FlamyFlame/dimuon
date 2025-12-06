@@ -40,6 +40,8 @@ struct var1D {
 class TestClass {
 private:
     // members
+    ParamsSet pms;
+    
     std::map<std::string, std::vector<double>> hist_binning_map;
     std::string infile_var1D_json = "var1D.json";
     std::map<std::string, var1D*> var1D_dict;
@@ -61,8 +63,39 @@ void TestClass::Run(){
     PrintVar1DList();
 }
 
-
 void TestClass::BuildHistBinningMap(){
+
+    // ------- pT binnings -------
+    hist_binning_map["pT_bins_80"] = pms.pT_bins_80;
+
+    // ------- pT binning for single-muon trigger efficieny -------
+
+    std::vector<double> pT_bins_single_muon (pms.pT_bins_8); // make a copy of a suitable set of single-muon pT bins (adjustable) --> use the copy for histogram settings
+
+    pT_bins_single_muon.insert(pT_bins_single_muon.end(), pms.pT_bins_60.begin(), pms.pT_bins_60.end());
+
+    hist_binning_map["pT_bins_single_muon"] = pT_bins_single_muon;
+
+    // ------- eta binning for single-muon trigger efficiency -------
+
+    std::vector<double> eta_bins_trig_effcy = ParamsSet::makeEtaTrigEffcyBinning();
+    int neta_bins_trig_effcy = eta_bins_trig_effcy.size() - 1;
+    hist_binning_map["eta_bins_trig_effcy"] = eta_bins_trig_effcy;
+    
+    // ------- eta binning for single-muon trigger efficiency -------
+
+    // Build uniform phi edges so we can use the (xbins, ybins, zbins) TH3D ctor
+    int nphi_bins_trig_effcy = 128; // phi 2nd muon
+    
+    std::vector<double> phi2nd_bins(nphi_bins_trig_effcy + 1);
+    for (int i = 0; i <= nphi_bins_trig_effcy; ++i) {
+        phi2nd_bins[i] = -pms.PI + (2.0 * pms.PI) * (static_cast<double>(i) / nphi_bins_trig_effcy);
+    }
+
+    hist_binning_map["phi2nd_bins"] = phi2nd_bins;
+
+    // ------- minv log binning -------
+
     static const int nminv_bins_log = 40;
     float minv_logpow[ParamsSet::nSigns];
     minv_logpow[0] = 0.062;
@@ -78,8 +111,8 @@ void TestClass::BuildHistBinningMap(){
         }
     }
 
-    hist_binning_map["minv_log_ss"] = minv_bins_log[0];
-    hist_binning_map["minv_log_op"] = minv_bins_log[1];
+    hist_binning_map["minv_log_bins_ss"] = minv_bins_log[0];
+    hist_binning_map["minv_log_bins_op"] = minv_bins_log[1];
 }
 
 
