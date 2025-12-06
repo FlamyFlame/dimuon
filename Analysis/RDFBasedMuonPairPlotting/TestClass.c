@@ -30,6 +30,14 @@ struct var1D {
     std::vector<double> bins_op{};          // optional variable binning
 
     bool isValid() const {
+        if (nbins_ss > 0){ // ss/op-separate configurations in Json file
+            if (nbins_op <= 0) return false;
+            if (bins_ss.empty() || static_cast<int>(bins_ss.size()) != nbins_ss + 1) return false;
+            if (bins_op.empty() || static_cast<int>(bins_op.size()) != nbins_op + 1) return false;
+            return true;
+        }
+
+        // no ss/op distinction at Json file level
         if (nbins <= 0) return false;
         if (!bins.empty()) return (static_cast<int>(bins.size()) == nbins + 1);
         return vmin < vmax;
