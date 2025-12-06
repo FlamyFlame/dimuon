@@ -45,10 +45,10 @@ private:
     std::map<std::string, var1D*> var1D_dict;
 
     void ReadVar1DJson();
-    void PrintVar1DList();
+    void PrintVar1DList() const;
 
 private:
-    static void BuildHistBinningMap();
+    void BuildHistBinningMap();
     static void throwMissingField(const std::string& field,
                                   const std::string& histName);
 public:
