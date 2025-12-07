@@ -88,6 +88,7 @@ public:
     TrigEffPlotter(int runYear,
                    const StrVec& vars1D_in,
                    bool          draw2mu4_user = false,
+                   bool          draw_single_b_signal_user = false,
                    bool          use_sepr_for_op_and_signal_user = false,
                    bool          debug_mode_user = true,
                    const StrVec& filter_suffixes = {},
@@ -100,6 +101,7 @@ public:
                    const std::map<std::string,std::pair<bool,bool>>& var2DProj = {},
                    const std::map<std::string,std::pair<bool,bool>>& var2DSingleMuonEffcyProj = {})
         : draw2mu4(draw2mu4_user),
+          draw_single_b_signal(draw_single_b_signal_user),
           use_sepr_for_op_and_signal (use_sepr_for_op_and_signal_user),
           debug_mode (debug_mode_user),
           fFile_mu4(nullptr),
@@ -217,6 +219,7 @@ private:
     std::string fname_MB;
 
     bool draw2mu4{};
+    bool draw_single_b_signal{};
     bool use_sepr_for_op_and_signal{};
     bool debug_mode{};
     bool isMB{}; // if MB, only draw for single-muon efficiencies & only multi input file to compare with P[2mu4 | mu4, sepr]
@@ -355,12 +358,12 @@ private:
         // 2)  Drawing‑mode map – default: signed+signal true, op_and_signal false
         for (const auto& fs : filter_suffix_list) {
             filt_to_mode_map[fs] = {{SignalDrawingMode::Signed, true},
-                                    {SignalDrawingMode::Signal, true},
-                                    {SignalDrawingMode::OpAndSignal, false}};
+                                    {SignalDrawingMode::Signal, draw_single_b_signal},
+                                    {SignalDrawingMode::OpAndSignal, draw_single_b_signal}};
         }
         filt_to_mode_map[""] = {{SignalDrawingMode::Signed, true},
-                                 {SignalDrawingMode::Signal, true},
-                                 {SignalDrawingMode::OpAndSignal, false}};
+                                 {SignalDrawingMode::Signal, draw_single_b_signal},
+                                 {SignalDrawingMode::OpAndSignal, draw_single_b_signal}};
 
         // 3)  Per‑filter *exceptions* ------------------------------------------------
         //     Hard‑code known special behaviours.  Extend here when new filter
@@ -469,7 +472,9 @@ private:
                 }
             }
             // drawing‑mode agreement (signed & signal should match across filters)
-            for (auto mode : {SignalDrawingMode::Signed, SignalDrawingMode::Signal}) {
+            auto drawing_modes = draw_single_b_signal? std::vector<SignalDrawingMode>{SignalDrawingMode::Signed, SignalDrawingMode::Signal} : std::vector<SignalDrawingMode>{SignalDrawingMode::Signed};
+
+            for (auto mode : drawing_modes) {
                 bool val0 = filt_to_mode_map.at(fs0).at(mode);
                 for (size_t i = 1; i < filter_suffix_list.size(); ++i) {
                     bool vali = filt_to_mode_map.at(filter_suffix_list[i]).at(mode);
@@ -646,7 +651,10 @@ private:
         }
 
         // For each drawing mode iterate ---------------------------------------------------
-        for (auto mode : {SignalDrawingMode::Signed, SignalDrawingMode::Signal}) {
+        
+        auto drawing_modes = draw_single_b_signal? std::vector<SignalDrawingMode>{SignalDrawingMode::Signed, SignalDrawingMode::Signal} : std::vector<SignalDrawingMode>{SignalDrawingMode::Signed};
+
+        for (auto mode : drawing_modes) {
             // Is this mode requested by *any* of the (comparison) filters?
             bool modeNeeded = filter_suffix_list.empty() ? true : std::any_of(filter_suffix_list.begin(), filter_suffix_list.end(), [&](const std::string& fs){
                 return filt_to_mode_map.at(fs).at(mode);
@@ -1078,6 +1086,7 @@ private:
                        outdir.c_str(),var.c_str(),fs.c_str()));
 
         // ---------- second canvas : signal-selection ----------------------
+        if (!draw_single_b_signal) return;
         TCanvas* cB = new TCanvas(Form("c2ds_%s_%s",var.c_str(),fs.c_str()),"",700,450);
         cB->cd(); gPad->SetRightMargin(0.15);
         gPad->SetLogx(xy.first); gPad->SetLogy(xy.second);
@@ -1125,7 +1134,7 @@ private:
         int nCols = 2;
         int nRows = (nPads/2);
 
-        std::vector<std::string> filters_single_muon_effcy = {"_sepr", "_w_single_b_sig_sel"};
+        std::vector<std::string> filters_single_muon_effcy = draw_single_b_signal? std::vector<std::string>{"_sepr", "_w_single_b_sig_sel"} : std::vector<std::string>{"_sepr"};
 
         for (auto fs : filters_single_muon_effcy){
             TCanvas* c = new TCanvas(Form("c2d_%s_%s",var.c_str(),fs.c_str()),"",1100,450*nRows);
@@ -1190,6 +1199,7 @@ private:
         c->SaveAs(Form("%s/%s_profile%s.png",outdir.c_str(),var.c_str(),fs.c_str()));
 
         // -------- signal-selection profile --------------------------------------
+        if (!draw_single_b_signal) return;
         auto hSel = getHist<TH2>(hName(var, fs,"mu4","_w_single_b_sig_sel"));
         if (!hSel) return;
 
@@ -1239,7 +1249,8 @@ private:
                 if (projVar.empty()) continue; // malformed name
 
                 // ---------------- Signed / Signal (shared canvas structure) ----------------
-                for (auto mode : {SignalDrawingMode::Signed, SignalDrawingMode::Signal})
+                auto drawing_modes = draw_single_b_signal? std::vector<SignalDrawingMode>{SignalDrawingMode::Signed, SignalDrawingMode::Signal} : std::vector<SignalDrawingMode>{SignalDrawingMode::Signed};
+                for (auto mode : drawing_modes)
                 {
                     // mode gate (same rule as plot1D)
                     bool modeNeeded = filter_suffix_list.empty();
@@ -1657,7 +1668,9 @@ private:
 
         std::vector<std::string> filters_single_muon_effcy;
         if (isMB)   filters_single_muon_effcy = {"_sepr", "_MB"};
-        else        filters_single_muon_effcy = {"_sepr", "", "_w_single_b_sig_sel"};
+        else if (draw_single_b_signal)  filters_single_muon_effcy = {"_sepr", "", "_w_single_b_sig_sel"};
+        else                            filters_single_muon_effcy = {"_sepr", ""};
+        
 
         std::map<std::string, std::string> filter_to_label_map_single_muon_effcy;
         filter_to_label_map_single_muon_effcy["_sepr"] = "#Delta R > 0.8";
@@ -1853,14 +1866,15 @@ private:
 // ──────────────────────────────────────────────────────────────────────────────
 void trig_effcy_plot(){
     std::vector<std::string> var1Ds = {"Deta", "Deta_zoomin", "Dphi", "Dphi_zoomin", "DR", "DR_zoomin", "DR_0_2", "minv_zoomin", "pair_pt_log"};
-    std::vector<std::string> var2Ds = {"DR_zoomin_vs_pt2nd", "DR_0_2_vs_pt2nd", "pair_eta_vs_pair_pT", "Deta_Dphi", "eta1_eta2", "eta_avg_Deta", "eta_avg_Dphi", "minv_pair_pt_log",
-                                       // "Deta_vs_pT_1st", "Deta_zoomin_vs_pT_1st", "Dphi_vs_pT_1st", "Dphi_zoomin_vs_pT_1st", "DR_vs_pT_1st", "DR_zoomin_vs_pT_1st", "minv_zoomin_vs_pT_1st", "pair_pt_log_vs_pT_1st", "pt2nd_vs_pT_1st", 
-                                       // "Deta_vs_pair_pT", "Deta_zoomin_vs_pair_pT", "Dphi_vs_pair_pT", "Dphi_zoomin_vs_pair_pT", "DR_vs_pair_pT", "DR_zoomin_vs_pair_pT", "minv_zoomin_vs_pair_pT", "pair_pt_log_vs_pair_pT", "pt2nd_vs_pair_pT",
+    std::vector<std::string> var2Ds = {
+                                        //"DR_zoomin_vs_pt2nd", "DR_0_2_vs_pt2nd", "pair_eta_vs_pair_pT", "Deta_Dphi", "eta1_eta2", "eta_avg_Deta", "eta_avg_Dphi", "minv_pair_pt_log",
+                                        // "Deta_vs_pT_1st", "Deta_zoomin_vs_pT_1st", "Dphi_vs_pT_1st", "Dphi_zoomin_vs_pT_1st", "DR_vs_pT_1st", "DR_zoomin_vs_pT_1st", "minv_zoomin_vs_pT_1st", "pair_pt_log_vs_pT_1st", "pt2nd_vs_pT_1st", 
+                                        // "Deta_vs_pair_pT", "Deta_zoomin_vs_pair_pT", "Dphi_vs_pair_pT", "Dphi_zoomin_vs_pair_pT", "DR_vs_pair_pT", "DR_zoomin_vs_pair_pT", "minv_zoomin_vs_pair_pT", "pair_pt_log_vs_pair_pT", "pt2nd_vs_pair_pT",
                                       };
     std::vector<std::string> var2DsProf = {
-       "DR_zoomin_vs_pt2nd",
+       "DR_zoomin_vs_pt2nd", "DR_zoomin_vs_pair_pT",
        // "Deta_vs_pT_1st", "Deta_zoomin_vs_pT_1st", "Dphi_vs_pT_1st", "Dphi_zoomin_vs_pT_1st", "DR_vs_pT_1st", "DR_zoomin_vs_pT_1st", "minv_zoomin_vs_pT_1st", "pair_pt_log_vs_pT_1st", "pt2nd_vs_pT_1st", 
-       // "Deta_vs_pair_pT", "Deta_zoomin_vs_pair_pT", "Dphi_vs_pair_pT", "Dphi_zoomin_vs_pair_pT", "DR_vs_pair_pT", "DR_zoomin_vs_pair_pT", "minv_zoomin_vs_pair_pT", "pair_pt_log_vs_pair_pT", "pt2nd_vs_pair_pT",
+       // "Deta_vs_pair_pT", "Deta_zoomin_vs_pair_pT", "Dphi_vs_pair_pT", "Dphi_zoomin_vs_pair_pT", "DR_vs_pair_pT", "minv_zoomin_vs_pair_pT", "pair_pt_log_vs_pair_pT", "pt2nd_vs_pair_pT",
     };
 
     std::map<std::string,std::pair<bool,bool>> logaxes = {
@@ -1911,13 +1925,14 @@ void trig_effcy_plot(){
 
     std::vector<std::string> filters = {};
     // filters = {"_sepr"};
-    // filters = {"_excl"};
-    // filters = {"_excl", "_excl_inv_w_by_single_mu_effcy"};
     // std::map<std::string,TrigEffPlotter::Rect> legOpSig   = {{"DR_zoomin", {0.5,0.15,0.87,0.33}  }};
     // filters = {"_good_accept"};
-    filters = {"_inv_w_by_single_mu_effcy"};
+    // filters = {"_inv_w_by_single_mu_effcy"};
 
-    TrigEffPlotter plotter(24, var1Ds, false, false, true,
+    // only draw single-b for weighted trigger efficiency, showing dR corrections & its influence on other observables
+    // never for single-muon efficiencies (single-b gives a biased sample)
+    bool draw_single_b = (std::find(filters.begin(), filters.end(), "_inv_w_by_single_mu_effcy") != filters.end());
+    TrigEffPlotter plotter(24, var1Ds, false, false, false, true,
                            filters, logaxes,
                            var2Ds, var2DsProf,
                            legSigned, legSignal, legOpSig,
