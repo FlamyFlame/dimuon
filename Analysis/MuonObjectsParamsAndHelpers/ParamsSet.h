@@ -36,7 +36,6 @@ public:
 	static std::vector<std::function<bool(float)>> dphi_cut_funcs;
 	static std::vector<std::function<bool(float)>> deta_cut_funcs;
 
-
   	// float pTbins[nPtBins] = {4.,5.,6.,7.,8.,9.,10.,12.,15.,20.};
 	// int scaleFactorCtrs[nCtrBins] = {1,1,2,3,3};
 	// std::vector<float> ctrbins = {0, 5, 10, 20, 30, 50, 80};
@@ -174,7 +173,8 @@ std::vector<double> ParamsSet::makeEtaTrigEffcyBinning(){
     // Medium-fine bin ranges (0.02)
     std::vector<std::pair<double,double>> fineRanges = {
         {-1.3, 1.0},
-        {-0.8, 1.4}
+        {-0.8, 1.4},
+        {2.2, 2.4}
     };
 
     // Ultra-fine bin range (0.005)
