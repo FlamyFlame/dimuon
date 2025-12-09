@@ -99,7 +99,7 @@
             }
         },
         {
-            "hist_name": "pair_pT_log",
+            "hist_name": "pair_pt_log",
             "var_name": "pair_pt",
             "title": "p_{T}^{pair} [GeV]",
             "binning": "pT_bins_80"
