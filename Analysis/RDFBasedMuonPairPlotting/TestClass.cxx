@@ -217,11 +217,13 @@ void TestClass::FillHistogramsSingleDataFrame(const std::string& suffix, // filt
             if (b.bin_edges) {
                 ROOT::RDF::TH1DModel model(hname.c_str(), htitle.c_str(),
                                            b.nbins, b.bin_edges);
-                hist1d_rresultptr_map[hname] = df.Histo1D(model, v->var, weight_col);
+                if (weight_col.empty()) hist1d_rresultptr_map[hname] = df.Histo1D(model, v->var);
+                else                    hist1d_rresultptr_map[hname] = df.Histo1D(model, v->var, weight_col);
             } else {
                 ROOT::RDF::TH1DModel model(hname.c_str(), htitle.c_str(),
                                            b.nbins, b.min, b.max);
-                hist1d_rresultptr_map[hname] = df.Histo1D(model, v->var, weight_col);
+                if (weight_col.empty()) hist1d_rresultptr_map[hname] = df.Histo1D(model, v->var);
+                else                    hist1d_rresultptr_map[hname] = df.Histo1D(model, v->var, weight_col);
             }
         } catch (const std::exception& e) {
             std::cerr << "FillHistogramsSingleDataFrame (1D) exception for suffix '"
@@ -256,7 +258,8 @@ void TestClass::FillHistogramsSingleDataFrame(const std::string& suffix, // filt
         }
 
         try {
-            hist2d_rresultptr_map[hname] = df.Histo2D(model, vx->var, vy->var, weight_col);
+            if (weight_col.empty()) hist2d_rresultptr_map[hname] = df.Histo2D(model, vx->var, vy->var);
+            else                    hist2d_rresultptr_map[hname] = df.Histo2D(model, vx->var, vy->var, weight_col);
         } catch (const std::exception& e) {
             std::cerr << "FillHistogramsSingleDataFrame (2D) exception for suffix '"
                       << suffix << "', columns ('" << vx->var << "', '"
@@ -294,7 +297,9 @@ void TestClass::FillHistogramsSingleDataFrame(const std::string& suffix, // filt
         }
 
         try {
-            hist3d_rresultptr_map[hname] = df.Histo3D(model, vx->var, vy->var, vz->var, weight_col);
+            if (weight_col.empty()) hist3d_rresultptr_map[hname] = df.Histo3D(model, vx->var, vy->var, vz->var);
+            else                    hist3d_rresultptr_map[hname] = df.Histo3D(model, vx->var, vy->var, vz->var, weight_col);
+
         } catch (const std::exception& e) {
             std::cerr << "FillHistogramsSingleDataFrame (3D) exception for suffix '"
                       << suffix << "', columns ('" << vx->var << "', '"
