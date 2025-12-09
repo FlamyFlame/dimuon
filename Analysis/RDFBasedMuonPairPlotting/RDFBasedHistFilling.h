@@ -209,7 +209,7 @@ enum HistFillingCycle{
   	
     bool use_pT_fitting_single_muon_effcy = true;
 
-    RDFBasedHistFilling();
+    RDFBasedHistFilling(){}
   	~RDFBasedHistFilling(){}
   	void Run();
 
