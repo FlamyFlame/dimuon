@@ -18,7 +18,8 @@ void TestClass::Initialize(){
 void TestClass::ProcessData(){
     rdf_store.emplace_back(std::make_unique<ROOT::RDataFrame>(tree_op, input_files));
     ROOT::RDF::RNode node_op = *(rdf_store.back());
-    df_map["df_op"] = node_op;
+    df_map.emplace("df_op", node_op);
+
     FillHistogramsSingleDataFrame("_op", node_op);
 }
 
@@ -115,6 +116,7 @@ void write_hist_map_vector(
 }
 
 void TestClass::Finalize(){
+    std::string file_mode = (hist_filling_cycle == generic)? "recreate" : "update";
     TFile * m_outfile=new TFile(output_file.c_str(), file_mode.c_str());
     write_hist_map_rresult(hist1d_rresultptr_map, hists_to_not_write);
     write_hist_map_rresult(hist2d_rresultptr_map, hists_to_not_write);
@@ -312,7 +314,7 @@ var1D* TestClass::Var1DSearch(const std::string& var1DName) const {
     return it->second;
 }
 
-TestClass::AxisInfo TestClass::GetAxisInfo(const var1D& v, const std::string& filter) const {
+AxisInfo TestClass::GetAxisInfo(const var1D& v, const std::string& filter) const {
     bool hasSS = (filter.find("ss") != std::string::npos);
     bool hasOP = (filter.find("op") != std::string::npos);
 
@@ -329,8 +331,8 @@ TestClass::AxisInfo TestClass::GetAxisInfo(const var1D& v, const std::string& fi
     int nbins = v.nbins;
     const std::vector<double>* binsVec = nullptr;
     if (!v.bins.empty()) binsVec = &v.bins;
-    double vmin = v.min;
-    double vmax = v.max;
+    double vmin = v.vmin;
+    double vmax = v.vmax;
 
     // ss/op override
     if (hasSS && v.nbins_ss > 0 && !v.bins_ss.empty()) {
@@ -383,59 +385,48 @@ ROOT::RDF::TH2DModel TestClass::MakeTH2DModel(const std::string& hname,
 }
 
 ROOT::RDF::TH3DModel TestClass::MakeTH3DModel(const std::string& hname,
-                                            const std::string& xtitle,
-                                            const std::string& ytitle,
-                                            const std::string& ztitle,
-                                            const AxisInfo& bx,
-                                            const AxisInfo& by,
-                                            const AxisInfo& bz) const {
+                                              const std::string& xtitle,
+                                              const std::string& ytitle,
+                                              const std::string& ztitle,
+                                              const AxisInfo& bx,
+                                              const AxisInfo& by,
+                                              const AxisInfo& bz) const
+{
     std::string htitle = ";" + xtitle + ";" + ytitle + ";" + ztitle;
 
-    const bool ex = bx.bin_edges != nullptr;
-    const bool ey = by.bin_edges != nullptr;
-    const bool ez = bz.bin_edges != nullptr;
+    const bool ex = (bx.bin_edges != nullptr);
+    const bool ey = (by.bin_edges != nullptr);
+    const bool ez = (bz.bin_edges != nullptr);
 
-    if (ex && ey && ez) {
-        return ROOT::RDF::TH3DModel(hname.c_str(), htitle.c_str(),
-                                    bx.nbins, bx.bin_edges,
-                                    by.nbins, by.bin_edges,
-                                    bz.nbins, bz.bin_edges);
-    } else if (ex && ey && !ez) {
-        return ROOT::RDF::TH3DModel(hname.c_str(), htitle.c_str(),
-                                    bx.nbins, bx.bin_edges,
-                                    by.nbins, by.bin_edges,
-                                    bz.nbins, bz.min, bz.max);
-    } else if (ex && !ey && ez) {
-        return ROOT::RDF::TH3DModel(hname.c_str(), htitle.c_str(),
-                                    bx.nbins, bx.bin_edges,
-                                    by.nbins, by.min, by.max,
-                                    bz.nbins, bz.bin_edges);
-    } else if (!ex && ey && ez) {
-        return ROOT::RDF::TH3DModel(hname.c_str(), htitle.c_str(),
-                                    bx.nbins, bx.min, bx.max,
-                                    by.nbins, by.bin_edges,
-                                    bz.nbins, bz.bin_edges);
-    } else if (ex && !ey && !ez) {
-        return ROOT::RDF::TH3DModel(hname.c_str(), htitle.c_str(),
-                                    bx.nbins, bx.bin_edges,
-                                    by.nbins, by.min, by.max,
-                                    bz.nbins, bz.min, bz.max);
-    } else if (!ex && ey && !ez) {
-        return ROOT::RDF::TH3DModel(hname.c_str(), htitle.c_str(),
-                                    bx.nbins, bx.min, bx.max,
-                                    by.nbins, by.bin_edges,
-                                    bz.nbins, bz.min, bz.max);
-    } else if (!ex && !ey && ez) {
-        return ROOT::RDF::TH3DModel(hname.c_str(), htitle.c_str(),
-                                    bx.nbins, bx.min, bx.max,
-                                    by.nbins, by.min, by.max,
-                                    bz.nbins, bz.bin_edges);
-    } else { // all uniform
+    // 1) NONE has bin_edges → use uniform on all
+    if (!ex && !ey && !ez) {
         return ROOT::RDF::TH3DModel(hname.c_str(), htitle.c_str(),
                                     bx.nbins, bx.min, bx.max,
                                     by.nbins, by.min, by.max,
                                     bz.nbins, bz.min, bz.max);
     }
+
+    // 2) At least one has bin_edges → all-variable constructor must be used
+    // Define storage for any axis that lacks explicit bin_edges
+    std::vector<double> xStore, yStore, zStore;
+
+    auto makeEdges = [](const AxisInfo& a, std::vector<double>& store) -> const double* {
+        if (a.bin_edges) return a.bin_edges;
+        store.resize(a.nbins + 1);
+        double step = (a.max - a.min) / a.nbins;
+        for (int i = 0; i <= a.nbins; ++i)
+            store[i] = a.min + i * step;
+        return store.data();
+    };
+
+    const double* xEdges = makeEdges(bx, xStore);
+    const double* yEdges = makeEdges(by, yStore);
+    const double* zEdges = makeEdges(bz, zStore);
+
+    return ROOT::RDF::TH3DModel(hname.c_str(), htitle.c_str(),
+                                bx.nbins, xEdges,
+                                by.nbins, yEdges,
+                                bz.nbins, zEdges);
 }
 
 

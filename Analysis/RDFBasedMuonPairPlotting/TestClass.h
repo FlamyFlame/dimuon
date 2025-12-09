@@ -5,6 +5,9 @@
 #include <TH3D.h>
 #include "../MuonObjectsParamsAndHelpers/ParamsSet.h"
 
+#include <nlohmann/json.hpp>
+using nlohmann::json;
+
 struct var1D {
     std::string var{""};   // column name
     std::string name{""};  // histogram base name
@@ -35,6 +38,14 @@ struct var1D {
 
 class TestClass {
 public:
+enum HistFillingCycle{
+    generic = 1,
+    inv_weight_by_single_mu_effcy = 2,
+    inv_weight_by_dR_effcy_corr = 3
+};
+
+    int hist_filling_cycle = generic;
+
     void Run();
 
 private:
@@ -45,6 +56,10 @@ private:
 
     std::vector<std::string> input_files {};
     std::string output_file;
+
+    std::vector<std::unique_ptr<ROOT::RDataFrame>> rdf_store; // pointers for the original dataframes
+
+    std::map<std::string, ROOT::RDF::RNode> df_map; // Map of dataframe label to correspondant RNode
 
     std::map<std::string, std::vector<double>> hist_binning_map;
     std::string infile_var1D_json = "var1D.json";
@@ -92,6 +107,8 @@ private:
                                             const std::vector<std::array<std::string, 3>>& vars3D,
                                             bool hists_not_write = false,
                                             std::array<bool, 3> hists_1_2_3D_not_write = {0,0,0});
+
+    virtual void    BuildFilterToVarListMap();
 
     void BuildHistBinningMap();
     static void ThrowMissingField(const std::string& field,
