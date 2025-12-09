@@ -365,7 +365,7 @@ void RDFBasedHistFilling::TrigEffcyFiltersPrePostSumFlattening(){
     write_post_sum_levels(levels_trg_effcy_filters_2D_3D_pre_sum, levels_trg_effcy_filters_2D_3D_post_sum);
 
     for (int level_ind = 0; level_ind < static_cast<int>(levels_trg_effcy_filters_2D_3D_pre_sum.size()); ++level_ind) {
-        if (std::find(levels_trg_effcy_to_be_contracted.begin(), levels_trg_effcy_to_be_contracted.end(), level_ind) != levels_trg_effcy_to_be_contracted.end()){ // level is NOT contracted
+        if (std::find(levels_trg_effcy_to_be_summed.begin(), levels_trg_effcy_to_be_summed.end(), level_ind) != levels_trg_effcy_to_be_summed.end()){ // level is NOT contracted
             levels_trg_effcy_filters_to_be_summed.push_back(levels_trg_effcy_filters_2D_3D_pre_sum.at(level_ind));
         }
     }
@@ -431,7 +431,7 @@ void RDFBasedHistFilling::BuildHistBinningMap(){
 // ---------- WRITE OUTPUT & FINALIZE ----------
 template <typename H>
 void write_hist_map_vector(
-    std::map<std::string, std::vector<H>>& m,
+    std::map<std::string, H*>& m,
     const std::vector<std::string>& hists_to_not_write)
 {
     for (auto& kv : m) {
@@ -439,9 +439,7 @@ void write_hist_map_vector(
         if (std::find(hists_to_not_write.begin(), hists_to_not_write.end(), name)
             != hists_to_not_write.end()) continue;
 
-        for (auto& h : kv.second) {
-            h->Write();        // THnD in a vector
-        }
+        kv.second->Write();        // THnD in a vector
     }
 }
 
