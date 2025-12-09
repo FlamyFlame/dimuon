@@ -441,7 +441,7 @@ void write_hist_map_vector(
             != hists_to_not_write.end()) continue;
 
         for (auto& h : kv.second) {
-            h.Write();        // THnD in a vector
+            h->Write();        // THnD in a vector
         }
     }
 }

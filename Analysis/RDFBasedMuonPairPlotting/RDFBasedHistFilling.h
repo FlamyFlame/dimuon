@@ -60,9 +60,9 @@ protected:
 
     std::map<std::string, ROOT::RDF::RNode> df_map; // Map of dataframe label to correspondant RNode
 
-	std::map<std::string, std::vector<TH1D*>> hist1D_map; // first "vector" for the different batches/input files (size=1 for data)
-	std::map<std::string, std::vector<TH2D*>> hist2D_map; // second "vector" for the different variables to be plotted & the different bins
-    std::map<std::string, std::vector<TH3D*>> hist3D_map; // second "vector" for the different variables to be plotted & the different bins
+	std::map<std::string, TH1D*> hist1D_map; // first "vector" for the different batches/input files (size=1 for data)
+	std::map<std::string, TH2D*> hist2D_map; // second "vector" for the different variables to be plotted & the different bins
+    std::map<std::string, TH3D*> hist3D_map; // second "vector" for the different variables to be plotted & the different bins
 
 	std::map<std::string, ROOT::RDF::RResultPtr< ::TH1D>> hist1d_rresultptr_map;
 	std::map<std::string, ROOT::RDF::RResultPtr< ::TH2D>> hist2d_rresultptr_map;
