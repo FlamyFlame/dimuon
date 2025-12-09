@@ -87,6 +87,7 @@ public:
     // ---------------- ctor ---------------------------------------------------
     TrigEffPlotter(int runYear,
                    const StrVec& vars1D_in,
+                   bool          old_mode_user = false, // pre-RDF-bases histograms
                    bool          draw2mu4_user = false,
                    bool          draw_single_b_signal_user = false,
                    bool          use_sepr_for_op_and_signal_user = false,
@@ -100,7 +101,8 @@ public:
                    const std::map<std::string,Rect>& legOpSig   = {},
                    const std::map<std::string,std::pair<bool,bool>>& var2DProj = {},
                    const std::map<std::string,std::pair<bool,bool>>& var2DSingleMuonEffcyProj = {})
-        : draw2mu4(draw2mu4_user),
+        : old_mode(old_mode_user),
+          draw2mu4(draw2mu4_user),
           draw_single_b_signal(draw_single_b_signal_user),
           use_sepr_for_op_and_signal (use_sepr_for_op_and_signal_user),
           debug_mode (debug_mode_user),
@@ -131,6 +133,7 @@ public:
         case 24:
             data_dir    = "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/pp_2024/";
             fname_single_mu4 = data_dir + "histograms_real_pairs_pp_2024_single_mu4.root";
+            fname_single_mu4 = data_dir + "histograms_real_pairs_pp_2024_single_mu4_new_RDF.root";
             fname_MB = data_dir + "histograms_real_pairs_pp_2024_MB.root";
             break;
         default:
@@ -218,6 +221,7 @@ private:
     std::string fname_single_mu4;
     std::string fname_MB;
 
+    bool old_mode{};
     bool draw2mu4{};
     bool draw_single_b_signal{};
     bool use_sepr_for_op_and_signal{};
@@ -231,7 +235,8 @@ private:
     StrVec filters_weighted = {"_inv_w_by_single_mu_effcy", "_excl_inv_w_by_single_mu_effcy"};
 
     // 2D variables with 2nd-muon kinematics --> histograms separated by muon charge sign not pair sign (signal pairs ALSO SIGNED)
-    StrVec vars_2D_2nd_muon = {"pt2nd_vs_q_eta_2nd", "pt2nd_vs_phi2nd", "phi2nd_vs_q_eta_2nd"};
+    // StrVec vars_2D_2nd_muon = {"pt2nd_vs_q_eta_2nd", "pt2nd_vs_phi2nd", "phi2nd_vs_q_eta_2nd"};
+    StrVec vars_2D_2nd_muon = {"pt2nd_vs_q_eta2nd", "pt2nd_vs_phi2nd", "phi2nd_vs_q_eta2nd"};
 
     // map from target dimuon trigger to single-muon trigger
     std::map<std::string, std::string> target_dimuon_trigger_to_single_muon_map = {{"mu4_mu4noL1", "mu4noL1"}, {"2mu4", "mu4"}};
@@ -557,8 +562,13 @@ private:
     std::string hName (const std::string& var, const std::string& fs, const std::string& trg, const std::string& suffix) const
     {
         std::string mapped = mappedTrigger(fs, trg);
-        return (mapped.empty() || mapped=="NONE") ? "" :
-               Form("h_%s_%s%s", var.c_str(), mapped.c_str(), suffix.c_str());
+        if (old_mode){ // pre-RDF: musign / single-b-signal at the end
+            return (mapped.empty() || mapped=="NONE") ? "" :
+                   Form("h_%s_%s%s", var.c_str(), mapped.c_str(), suffix.c_str());
+        }else{ // RDF-based: musign / single-b-signal at the beginning
+            return (mapped.empty() || mapped=="NONE") ? "" :
+                   Form("h_%s%s_%s", var.c_str(), suffix.c_str(), mapped.c_str());
+        }
     };
 
     // =========================================================================
@@ -732,8 +742,16 @@ private:
                             throw std::runtime_error("Base trigger mu4 missing for filter " + fs);
                         }
 
-                        std::string denomHist = Form("h_%s_%s%s", var.c_str(), denomName.c_str(),
+                        std::string denomHist;
+
+                        if (old_mode){
+                            denomHist = Form("h_%s_%s%s", var.c_str(), denomName.c_str(),
                                                       (mode==SignalDrawingMode::Signal?"_w_single_b_sig_sel":signSuffixes[pad].c_str()));
+                        }else{
+                            denomHist = Form("h_%s%s_%s", var.c_str(),
+                                                      (mode==SignalDrawingMode::Signal?"_w_single_b_sig_sel":signSuffixes[pad].c_str()),
+                                                      denomName.c_str());
+                        }
                         
                         if (debug_mode) std::cout << "Denominator name: " << denomHist << std::endl;
                         TH1* h_denom = getHist<TH1>(denomHist);
@@ -742,8 +760,18 @@ private:
 
                         std::string mapped = mappedTrigger(fs, trg);
                         if (mapped.empty() || mapped == "NONE") continue; // skip incompatible trigger
-                        std::string numHist = Form("h_%s_%s%s", var.c_str(), mapped.c_str(),
-                                                   (mode==SignalDrawingMode::Signal?"_w_single_b_sig_sel":signSuffixes[pad].c_str()));
+
+                        std::string numHist;
+
+                        if (old_mode){
+                            numHist = Form("h_%s_%s%s", var.c_str(), mapped.c_str(),
+                                                      (mode==SignalDrawingMode::Signal?"_w_single_b_sig_sel":signSuffixes[pad].c_str()));
+                        }else{
+                            numHist = Form("h_%s%s_%s", var.c_str(),
+                                                      (mode==SignalDrawingMode::Signal?"_w_single_b_sig_sel":signSuffixes[pad].c_str()),
+                                                      mapped.c_str());
+                        }
+
                         TH1* h_num = getHist<TH1>(numHist);
                         if (!h_num) continue;
 
@@ -896,8 +924,12 @@ private:
                 std::string denomName = (mappedTrigger(fs, trg + "_denom") != "NONE")? mappedTrigger(fs, trg + "_denom") : mappedTrigger(fs, "mu4");
                 if (denomName.empty() || denomName == "NONE") continue;
 
-                std::string denomSign2 = use_sepr_for_op_and_signal? Form("h_%s_%s_sepr_sign2", var.c_str(), denomName.c_str()) : Form("h_%s_%s_sign2", var.c_str(), denomName.c_str());
-                std::string denomSel   = Form("h_%s_%s_w_single_b_sig_sel", var.c_str(), denomName.c_str());
+                std::string denomSign2;
+                if (old_mode)   denomSign2 = use_sepr_for_op_and_signal? Form("h_%s_%s_sepr_sign2", var.c_str(), denomName.c_str()) : Form("h_%s_%s_sign2", var.c_str(), denomName.c_str());
+                else            denomSign2 = use_sepr_for_op_and_signal? Form("h_%s_sign2_%s_sepr", var.c_str(), denomName.c_str()) : Form("h_%s_sign2_%s", var.c_str(), denomName.c_str());
+                std::string denomSel;
+                if (old_mode)   denomSel = Form("h_%s_%s_w_single_b_sig_sel", var.c_str(), denomName.c_str());
+                else            denomSel = Form("h_%s_single_b_%s", var.c_str(), denomName.c_str());
 
                 if (debug_mode){
                     std::cout << "Denominator name all opposite sign: " << denomSign2 << std::endl;
@@ -911,10 +943,12 @@ private:
                 std::string mapped = mappedTrigger(fs, trg);
                 if (mapped.empty() || mapped == "NONE") continue;
 
-                // _sign2
-                std::string numSign2 = use_sepr_for_op_and_signal? Form("h_%s_%s_sepr_sign2", var.c_str(), mapped.c_str()) : Form("h_%s_%s_sign2", var.c_str(), mapped.c_str());
-                // _w_single_b_sig_sel
-                std::string numSel   = Form("h_%s_%s_w_single_b_sig_sel", var.c_str(), mapped.c_str());
+                std::string numSign2;
+                if (old_mode)   numSign2 = use_sepr_for_op_and_signal? Form("h_%s_%s_sepr_sign2", var.c_str(), mapped.c_str()) : Form("h_%s_%s_sign2", var.c_str(), mapped.c_str());
+                else            numSign2 = use_sepr_for_op_and_signal? Form("h_%s_sign2_%s_sepr", var.c_str(), mapped.c_str()) : Form("h_%s_sign2_%s", var.c_str(), mapped.c_str());
+                std::string numSel;
+                if (old_mode)   numSel = Form("h_%s_%s_w_single_b_sig_sel", var.c_str(), mapped.c_str());
+                else            numSel = Form("h_%s_single_b_%s", var.c_str(), mapped.c_str());
 
                 TH1* h_num_s2 = getHist<TH1>(numSign2);
                 TH1* h_num_sel = getHist<TH1>(numSel);
@@ -1323,10 +1357,19 @@ private:
                                     continue;
                                 }
 
-                                std::string denom2D = Form("h_%s_%s%s",
-                                    var2d.c_str(), denomName.c_str(),
-                                    (mode == SignalDrawingMode::Signal ? "_w_single_b_sig_sel"
-                                                                       : signSuffixes[pad]));
+                                std::string denom2D;
+                                if (old_mode){
+                                    denom2D = Form("h_%s_%s%s",
+                                                    var2d.c_str(), denomName.c_str(),
+                                                    (mode == SignalDrawingMode::Signal ? "_w_single_b_sig_sel"
+                                                                                       : signSuffixes[pad]));
+                                }else{
+                                    denom2D = Form("h_%s%s_%s",
+                                                    var2d.c_str(),
+                                                    (mode == SignalDrawingMode::Signal ? "_w_single_b_sig_sel"
+                                                                                       : signSuffixes[pad]),
+                                                    denomName.c_str());
+                                }
                                 if (debug_mode) std::cout << "Denominator name: " << denom2D << std::endl;
         
                                 TH2* hDen2D = getHist<TH2>(denom2D);
@@ -1353,10 +1396,20 @@ private:
                                 const std::string mapped = mappedTrigger(fs, trg);
                                 if (mapped.empty() || mapped == "NONE") continue;
 
-                                std::string num2D = Form("h_%s_%s%s",
-                                    var2d.c_str(), mapped.c_str(),
-                                    (mode == SignalDrawingMode::Signal ? "_w_single_b_sig_sel"
-                                                                       : signSuffixes[pad]));
+                                std::string num2D;
+                                if (old_mode){
+                                    num2D = Form("h_%s_%s%s",
+                                                    var2d.c_str(), mapped.c_str(),
+                                                    (mode == SignalDrawingMode::Signal ? "_w_single_b_sig_sel"
+                                                                                       : signSuffixes[pad]));
+                                }else{
+                                    num2D = Form("h_%s%s_%s",
+                                                    var2d.c_str(),
+                                                    (mode == SignalDrawingMode::Signal ? "_w_single_b_sig_sel"
+                                                                                       : signSuffixes[pad]),
+                                                    mapped.c_str());
+                                }
+
                                 TH2* hNum2D = getHist<TH2>(num2D);
                                 if (!hNum2D || hNum2D->GetDimension() != 2) continue;
 
@@ -1497,8 +1550,12 @@ private:
                             if (denomName.empty() || denomName == "NONE") continue;
 
                             // denominators (2D → project)
-                            std::string den2D_s2  = use_sepr_for_op_and_signal? Form("h_%s_%s_sepr_sign2", var2d.c_str(), denomName.c_str()) : Form("h_%s_%s_sign2", var2d.c_str(), denomName.c_str());
-                            std::string den2D_sel = Form("h_%s_%s_w_single_b_sig_sel",    var2d.c_str(), denomName.c_str());
+                            std::string den2D_s2;
+                            if (old_mode)   den2D_s2 = use_sepr_for_op_and_signal? Form("h_%s_%s_sepr_sign2", var2d.c_str(), denomName.c_str()) : Form("h_%s_%s_sign2", var2d.c_str(), denomName.c_str());
+                            else            den2D_s2 = use_sepr_for_op_and_signal? Form("h_%s_sign2_%s_sepr", var2d.c_str(), denomName.c_str()) : Form("h_%s_sign2_%s", var2d.c_str(), denomName.c_str());
+                            std::string den2D_sel;
+                            if (old_mode)   den2D_sel = Form("h_%s_%s_w_single_b_sig_sel",    var2d.c_str(), denomName.c_str());
+                            else            den2D_sel = Form("h_%s_single_b_%s",    var2d.c_str(), denomName.c_str());
                             
                             if (debug_mode){
                                 std::cout << "Denominator name all opposite sign: " << den2D_s2 << std::endl;
@@ -1522,8 +1579,13 @@ private:
                             const std::string mapped = mappedTrigger(fs, trg);
                             if (mapped.empty() || mapped == "NONE") continue;
 
-                            std::string num2D_s2  = use_sepr_for_op_and_signal? Form("h_%s_%s_sepr_sign2", var2d.c_str(), mapped.c_str()) : Form("h_%s_%s_sign2", var2d.c_str(), mapped.c_str());
-                            std::string num2D_sel = Form("h_%s_%s_w_single_b_sig_sel", var2d.c_str(), mapped.c_str());
+                            std::string num2D_s2;
+                            if (old_mode)   num2D_s2 = use_sepr_for_op_and_signal? Form("h_%s_%s_sepr_sign2", var2d.c_str(), mapped.c_str()) : Form("h_%s_%s_sign2", var2d.c_str(), mapped.c_str());
+                            else            num2D_s2 = use_sepr_for_op_and_signal? Form("h_%s_sign2_%s_sepr", var2d.c_str(), mapped.c_str()) : Form("h_%s_sign2_%s", var2d.c_str(), mapped.c_str());
+                            std::string num2D_sel;
+                            if (old_mode)   num2D_sel = Form("h_%s_%s_w_single_b_sig_sel",    var2d.c_str(), mapped.c_str());
+                            else            num2D_sel = Form("h_%s_single_b_%s",    var2d.c_str(), mapped.c_str());
+
                             TH2* hNum2D_s2  = getHist<TH2>(num2D_s2);
                             TH2* hNum2D_sel = getHist<TH2>(num2D_sel);
                             if (!hNum2D_s2 || !hNum2D_sel) continue;
@@ -1872,7 +1934,7 @@ void trig_effcy_plot(){
                                         // "Deta_vs_pair_pT", "Deta_zoomin_vs_pair_pT", "Dphi_vs_pair_pT", "Dphi_zoomin_vs_pair_pT", "DR_vs_pair_pT", "DR_zoomin_vs_pair_pT", "minv_zoomin_vs_pair_pT", "pair_pt_log_vs_pair_pT", "pt2nd_vs_pair_pT",
                                       };
     std::vector<std::string> var2DsProf = {
-       "DR_zoomin_vs_pt2nd", "DR_zoomin_vs_pair_pT",
+       "DR_zoomin_vs_pt2nd", "DR_zoomin_vs_pair_pt_log",
        // "Deta_vs_pT_1st", "Deta_zoomin_vs_pT_1st", "Dphi_vs_pT_1st", "Dphi_zoomin_vs_pT_1st", "DR_vs_pT_1st", "DR_zoomin_vs_pT_1st", "minv_zoomin_vs_pT_1st", "pair_pt_log_vs_pT_1st", "pt2nd_vs_pT_1st", 
        // "Deta_vs_pair_pT", "Deta_zoomin_vs_pair_pT", "Dphi_vs_pair_pT", "Dphi_zoomin_vs_pair_pT", "DR_vs_pair_pT", "minv_zoomin_vs_pair_pT", "pair_pt_log_vs_pair_pT", "pt2nd_vs_pair_pT",
     };
@@ -1880,7 +1942,8 @@ void trig_effcy_plot(){
     std::map<std::string,std::pair<bool,bool>> logaxes = {
        {"pt2nd",{true,false}},
        {"pair_pt_log",{true,false}},
-       {"pt2nd_vs_q_eta_2nd",{false,true}},
+       // {"pt2nd_vs_q_eta_2nd",{false,true}},
+       {"pt2nd_vs_q_eta2nd",{false,true}},
        {"pair_eta_vs_pair_pT",{true,false}},
        {"minv_pair_pt_log",{true,true}},
        {"Deta_vs_pT_1st",{true,false}},
@@ -1908,7 +1971,8 @@ void trig_effcy_plot(){
     };
 
     std::map<std::string,std::pair<bool,bool>> var2DSingleMuonEffcyProj = {
-        {"pt2nd_vs_q_eta_2nd", {true,  true}},   // PX (→ q_eta_2nd) and PY (→ pt2nd)
+        // {"pt2nd_vs_q_eta_2nd", {true,  true}},   // PX (→ q_eta_2nd) and PY (→ pt2nd)
+        {"pt2nd_vs_q_eta2nd", {true,  true}},   // PX (→ q_eta2nd) and PY (→ pt2nd)
         {"pt2nd_vs_phi2nd",    {true,  false}}  // PX only (→ phi2nd)
     };
 
@@ -1932,7 +1996,7 @@ void trig_effcy_plot(){
     // only draw single-b for weighted trigger efficiency, showing dR corrections & its influence on other observables
     // never for single-muon efficiencies (single-b gives a biased sample)
     bool draw_single_b = (std::find(filters.begin(), filters.end(), "_inv_w_by_single_mu_effcy") != filters.end());
-    TrigEffPlotter plotter(24, var1Ds, false, false, false, true,
+    TrigEffPlotter plotter(24, var1Ds, false, false, false, false, true,
                            filters, logaxes,
                            var2Ds, var2DsProf,
                            legSigned, legSignal, legOpSig,
