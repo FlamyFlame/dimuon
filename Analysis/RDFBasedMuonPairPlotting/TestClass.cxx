@@ -1,3 +1,6 @@
+#include <algorithm> // std::find
+#include "TestClass.h"
+
 void TestClass::Run(){
     Initialize();
     ProcessData();    
@@ -78,8 +81,6 @@ void TestClass::BuildHistBinningMap(){
 }
 
 // ---------- WRITE OUTPUT & FINALIZE ----------
-
-#include <algorithm> // std::find
 
 // 1) For maps like std::map<std::string, ROOT::RDF::RResultPtr<THnD>>
 template <typename H>
