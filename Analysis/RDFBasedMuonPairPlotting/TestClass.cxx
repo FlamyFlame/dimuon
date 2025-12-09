@@ -16,17 +16,30 @@ void TestClass::Initialize(){
 }
 
 void TestClass::ProcessData(){
+    // ------- Create RDataFrame and keep ownership -------
+    rdf_store.emplace_back(std::make_unique<ROOT::RDataFrame>(tree_ss, input_files));
+    ROOT::RDF::RNode node_ss = *(rdf_store.back());
+    df_map.emplace("df_ss", node_ss);
+
     rdf_store.emplace_back(std::make_unique<ROOT::RDataFrame>(tree_op, input_files));
     ROOT::RDF::RNode node_op = *(rdf_store.back());
     df_map.emplace("df_op", node_op);
 
+    FillHistogramsSingleDataFrame("_ss", node_ss, false, {0,0,1});
     FillHistogramsSingleDataFrame("_op", node_op);
 }
 
 void TestClass::BuildFilterToVarListMap(){
-        df_filter_to_var1D_list_map["_op"]         = {"Dphi", "DR", "DR_zoomin", "minv_zoomin"};
-        df_filter_to_var2D_list_map["_op"]         = {{"pair_pT_log", "minv_log"}};
-        df_filter_to_var3D_list_map["_op"]         = {{"pair_pT_log", "minv_log", "DR"}};
+    for (std::string sign : {"_ss", "_op"}){
+        
+        df_filter_to_var1D_list_map[sign]         = {"Dphi", "DR", "DR_zoomin", "minv_zoomin"};
+        df_filter_to_var2D_list_map[sign]         = {{"pair_pT_log", "minv_log"}};
+        df_filter_to_var3D_list_map[sign]         = {{"pair_pT_log", "minv_log", "DR"}};
+
+        df_filter_to_var1D_list_map[sign]         = {"Dphi", "DR", "DR_zoomin", "minv_zoomin"};
+        df_filter_to_var2D_list_map[sign]         = {{"pair_pT_log", "minv_log"}};
+        df_filter_to_var3D_list_map[sign]         = {{"pair_pT_log", "minv_log", "DR"}};
+    }
 }
 
 void TestClass::BuildHistBinningMap(){
