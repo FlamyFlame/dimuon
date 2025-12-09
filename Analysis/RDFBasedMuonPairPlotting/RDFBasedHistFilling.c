@@ -53,12 +53,6 @@ void RDFBasedHistFilling::ProcessData(){
 void RDFBasedHistFilling::Initialize(){
 	std::cout << "Calling Initialize." << std::endl;
 	input_files.push_back("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024_combined_single_mu4.root");
-    for (auto inFile : input_files){
-	    if (!inFile || inFile->IsZombie()) {
-	        std::cerr << "Error opening input file!" << std::endl;
-	        throw std::exception();
-	    }    	
-    }
 	output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/histograms_real_pairs_pp_2024_single_mu4_new_RDF.root";
 
     hist1d_rresultptr_map.clear();
@@ -95,8 +89,8 @@ void RDFBasedHistFilling::FillHistograms(){
 
                     df_name += mu4sel; // e.g, df_ss_mu1passmu4
 
-					std::string ind1st = (mu4sel == "_mu1passmu4")? "1" : "2";
-                    std::string ind2nd = (mu4sel == "_mu1passmu4")? "2" : "1";
+					std::string ind1st = (std::string(mu4sel) == "_mu1passmu4")? "1" : "2";
+                    std::string ind2nd = (std::string(mu4sel) == "_mu1passmu4")? "2" : "1";
 
 					df_map.emplace(df_name, node.Filter("mu" + ind1st + "PassSingle"));
 					df_map.at(df_name) = df_map.at(df_name).Define("pt1st",	"m" + ind1st + ".pt");
@@ -132,7 +126,7 @@ void RDFBasedHistFilling::FillHistograms(){
 				} // end loop mu4 selection
 	        } // end loop pair sign
 		} catch(const std::out_of_range& e){
-			std::cerr << "FillHistograms:: out_of_range exception caught: " << e.what() << ". Likely " << "df_" << pair_sign << " not defined in df_map!" << std::endl;
+			std::cerr << "FillHistograms:: out_of_range exception caught: " << e.what() << std::endl;
         } catch (const std::runtime_error& e) {
             std::cerr << "FillHistograms:: RDF runtime error: " << e.what() << std::endl;
         }
@@ -262,10 +256,10 @@ void RDFBasedHistFilling::MakeAndWriteSingleMuonPtTrigEffGraphs(){}
 void RDFBasedHistFilling::CalculateSingleMuonTrigEffcyRatios(){}
 
 //--------- ---------
-static float RDFBasedHistFilling::EvaluateSingleMuonEffcyPtFitted(bool charge_sign, std::string trg, float pt_2nd, float q_eta_2nd, float phi_2nd){return 0.;}
+float RDFBasedHistFilling::EvaluateSingleMuonEffcyPtFitted(bool charge_sign, std::string trg, float pt_2nd, float q_eta_2nd, float phi_2nd){return 0.;}
 
 //--------- ---------
-static float RDFBasedHistFilling::EvaluateSingleMuonEffcy(bool charge_sign, std::string trg, float pt_2nd, float q_eta_2nd, float phi_2nd){return 0.;}
+float RDFBasedHistFilling::EvaluateSingleMuonEffcy(bool charge_sign, std::string trg, float pt_2nd, float q_eta_2nd, float phi_2nd){return 0.;}
 
 //--------- ---------
 void RDFBasedHistFilling::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(){}
@@ -276,15 +270,15 @@ void RDFBasedHistFilling::MakeAndWriteDRTrigEffGraphs(){}
 // ---------- ----------
 void RDFBasedHistFilling::BuildFilterToVarListMap(){
 
-	df_filter_to_var1D_and_weight_list_map[{"_single_b", "_crossx"}] = {"pair_pt", "pair_eta"}; // crossx as a weighting
+	df_filter_and_weight_to_var1D_list_map[{"_single_b", "_crossx"}] = {"pair_pt", "pair_eta"}; // crossx as a weighting
 
 	for (std::string sign : {"_ss", "_op"}){
 
 		df_filter_to_var1D_list_map[sign + ""]         = {"pair_dP_overP", "Dphi", "DR", "DR_zoomin", "pair_y", "pt_asym", "pair_pt_ptlead_ratio"};
 		df_filter_to_var1D_list_map[sign + "_wgapcut"] = {"pair_dP_overP", "Dphi", "DR", "DR_zoomin", "pair_y", "pt_asym", "pair_pt_ptlead_ratio"};
 
-		df_filter_to_var1D_and_weight_list_map[{sign + ""			, "_jacobian_corrected"}] = {"DR", "DR_zoomin"};
-		df_filter_to_var1D_and_weight_list_map[{sign + "_wgapcut"	, "_jacobian_corrected"}] = {"DR", "DR_zoomin"};
+		df_filter_and_weight_to_var1D_list_map[{sign + ""			, "_jacobian_corrected"}] = {"DR", "DR_zoomin"};
+		df_filter_and_weight_to_var1D_list_map[{sign + "_wgapcut"	, "_jacobian_corrected"}] = {"DR", "DR_zoomin"};
 
 	}
 	
@@ -316,7 +310,7 @@ void RDFBasedHistFilling::BuildTrgEffcyFilterToVarListMap(){
 //--------- Helper function   ---------
 // Given indices of levels to be summed over, separate pre-sum levels (1D & 2D) into to-be-summed and post-sum levels
 // And flatten all three levels
-void MuonPairPlottingPP::TrigEffcyFiltersPrePostSumFlattening(){
+void RDFBasedHistFilling::TrigEffcyFiltersPrePostSumFlattening(){
 
     // ---- Helper that does the flattening ----
     auto flatten_levels = [](const std::vector<std::vector<std::string>>& levels,
@@ -473,7 +467,7 @@ void RDFBasedHistFilling::Finalize(){
 }
 
 // ---------- THROW MISSING FIELD IN JSON READING HELPER ----------
-void JsonTestClass::ThrowMissingField(const std::string& field,
+void RDFBasedHistFilling::ThrowMissingField(const std::string& field,
                                 const std::string& histName) {
     std::ostringstream oss;
     oss << "ReadVar1DJson: mandatory field '" << field
@@ -485,7 +479,7 @@ void JsonTestClass::ThrowMissingField(const std::string& field,
 }
 
 // ---------- VAR1D JSON FILE READING ----------
-void JsonTestClass::ReadVar1DJson() {
+void RDFBasedHistFilling::ReadVar1DJson() {
     // Open file
     std::ifstream in(infile_var1D_json);
     if (!in) {
@@ -630,7 +624,7 @@ void JsonTestClass::ReadVar1DJson() {
 }
 
 // ---------- VAR1D LIST PRINTINT FOR DEBUG ----------
-void JsonTestClass::PrintVar1DList() const {
+void RDFBasedHistFilling::PrintVar1DList() const {
     std::cout << "===== var1D_dict contents (" 
               << var1D_dict.size() << " entries) =====\n";
 
@@ -679,7 +673,7 @@ void JsonTestClass::PrintVar1DList() const {
 
 // ---------- HELPER FUNCTIONS ----------
 
-void TestClass::FillHistogramsSingleDataFrame(const std::string& filter,
+void RDFBasedHistFilling::FillHistogramsSingleDataFrame(const std::string& filter,
                                             ROOT::RDF::RNode df,
                                             bool hists_not_write = false,
                                             std::array<bool, 3> hists_1_2_3D_not_write = {0,0,0}) {
@@ -698,7 +692,7 @@ void TestClass::FillHistogramsSingleDataFrame(const std::string& filter,
     FillHistogramsSingleDataFrame(filter, df, "", vars1D, vars2D, vars3D, hists_not_write, hists_1_2_3D_not_write);
 }
 
-void TestClass::FillHistogramsSingleDataFrame(const std::string& filter,
+void RDFBasedHistFilling::FillHistogramsSingleDataFrame(const std::string& filter,
                                             const std::string& weight,
                                             ROOT::RDF::RNode df,
                                             bool weight_before_filter = false,
@@ -731,7 +725,7 @@ void TestClass::FillHistogramsSingleDataFrame(const std::string& filter,
     FillHistogramsSingleDataFrame(suffix, df, wCol, vars1D, vars2D, vars3D, hists_not_write, hists_1_2_3D_not_write);
 }
 
-void TestClass::FillHistogramsSingleDataFrame(const std::string& suffix, // filter or filter & weight concatenated with custom order
+void RDFBasedHistFilling::FillHistogramsSingleDataFrame(const std::string& suffix, // filter or filter & weight concatenated with custom order
                                             ROOT::RDF::RNode df,
                                             const std::string& weight_col, // weight column, "" if unweighted
                                             const std::vector<std::string>& vars1D,
@@ -861,7 +855,7 @@ void TestClass::FillHistogramsSingleDataFrame(const std::string& suffix, // filt
     }
 }
 
-var1D* TestClass::Var1DSearch(const std::string& var1DName) const {
+var1D* RDFBasedHistFilling::Var1DSearch(const std::string& var1DName) const {
     auto it = var1D_dict.find(var1DName);
     if (it == var1D_dict.end() || !(it->second)) {
         std::ostringstream oss;
@@ -871,7 +865,7 @@ var1D* TestClass::Var1DSearch(const std::string& var1DName) const {
     return it->second;
 }
 
-AxisInfo TestClass::GetAxisInfo(const var1D& v, const std::string& filter) const {
+AxisInfo RDFBasedHistFilling::GetAxisInfo(const var1D& v, const std::string& filter) const {
     bool hasSS = (filter.find("ss") != std::string::npos);
     bool hasOP = (filter.find("op") != std::string::npos);
 
@@ -915,7 +909,7 @@ AxisInfo TestClass::GetAxisInfo(const var1D& v, const std::string& filter) const
     return b;
 }
 
-ROOT::RDF::TH2DModel TestClass::MakeTH2DModel(const std::string& hname,
+ROOT::RDF::TH2DModel RDFBasedHistFilling::MakeTH2DModel(const std::string& hname,
                                             const std::string& xtitle,
                                             const std::string& ytitle,
                                             const AxisInfo& bx,
@@ -941,7 +935,7 @@ ROOT::RDF::TH2DModel TestClass::MakeTH2DModel(const std::string& hname,
     }
 }
 
-ROOT::RDF::TH3DModel TestClass::MakeTH3DModel(const std::string& hname,
+ROOT::RDF::TH3DModel RDFBasedHistFilling::MakeTH3DModel(const std::string& hname,
                                               const std::string& xtitle,
                                               const std::string& ytitle,
                                               const std::string& ztitle,

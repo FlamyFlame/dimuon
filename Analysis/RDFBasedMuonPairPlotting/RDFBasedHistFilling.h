@@ -192,7 +192,7 @@ enum HistFillingCycle{
     generic = 1,
     inv_weight_by_single_mu_effcy = 2,
     inv_weight_by_dR_effcy_corr = 3
-}
+};
 
     bool output_non_trig_effcy_hists;
     bool isScram;
