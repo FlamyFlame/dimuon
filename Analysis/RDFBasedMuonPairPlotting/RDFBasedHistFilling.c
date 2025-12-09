@@ -224,7 +224,7 @@ void RDFBasedHistFilling::SumSingleMuonTrigEffHists(){
     // 2D
     SumTrigEffHistsGeneric<TH2D, std::array<std::string,2>>(
         single_muon_trig_effcy_var2Ds,
-        levels_trg_effcy_filters_2D_3D_post_sum,
+        trg_effcy_filters_2D_3D_post_sum,
         trg_effcy_filters_to_be_summed,
         hist2D_map,
         [](const std::array<std::string,2>& vars) {
@@ -237,7 +237,7 @@ void RDFBasedHistFilling::SumSingleMuonTrigEffHists(){
     // 3D
     SumTrigEffHistsGeneric<TH3D, std::array<std::string,3>>(
         single_muon_trig_effcy_var3Ds,
-        levels_trg_effcy_filters_2D_3D_post_sum,
+        trg_effcy_filters_2D_3D_post_sum,
         trg_effcy_filters_to_be_summed,
         hist3D_map,
         [](const std::array<std::string,3>& vars) {
@@ -363,7 +363,6 @@ void RDFBasedHistFilling::TrigEffcyFiltersPrePostSumFlattening(){
 
     write_post_sum_levels(levels_trg_effcy_filters_1D_pre_sum, levels_trg_effcy_filters_1D_post_sum);
     write_post_sum_levels(levels_trg_effcy_filters_2D_3D_pre_sum, levels_trg_effcy_filters_2D_3D_post_sum);
-
 
     for (int level_ind = 0; level_ind < static_cast<int>(levels_trg_effcy_filters_2D_3D_pre_sum.size()); ++level_ind) {
         if (std::find(levels_trg_effcy_to_be_contracted.begin(), levels_trg_effcy_to_be_contracted.end(), level_ind) != levels_trg_effcy_to_be_contracted.end()){ // level is NOT contracted
