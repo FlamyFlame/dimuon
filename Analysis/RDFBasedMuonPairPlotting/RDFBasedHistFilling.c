@@ -68,7 +68,22 @@ void RDFBasedHistFilling::Initialize(){
 }
 
 // ---------- ----------
+template <class Map>
+auto& map_at_checked(Map& m, const std::string& key, const char* where)
+{
+    try {
+        return m.at(key);
+    } catch (const std::out_of_range& e) {
+        throw std::out_of_range(
+            std::string("map_at_checked: missing key '") + key +
+            "' in " + where + " (" + e.what() + ")"
+        );
+    }
+}
+
 void RDFBasedHistFilling::FillHistograms(){
+
+    std::cout << "Calling FillHistograms" << std::endl;
 
     if (output_non_trig_effcy_hists){ // non-trigger-efficiency histograms
         for (std::string sign : {"_ss", "_op"}){
@@ -83,11 +98,11 @@ void RDFBasedHistFilling::FillHistograms(){
 		try{
 		    for (std::string pair_sign : {"_ss", "_op"}){
                 std::string df_name = "df" + pair_sign;
-				ROOT::RDF::RNode& node = df_map.at(df_name);
+				ROOT::RDF::RNode& node = map_at_checked(df_map, df_name, Form("FillHistograms: df_map.at(%s)", df_name.c_str()));
 
                 for (auto mu4sel : {"_mu1passmu4", "_mu2passmu4"}){ // mu4 selection
 
-                    df_name += mu4sel; // e.g, df_ss_mu1passmu4
+                    std::string df_name = "df" + pair_sign + mu4sel; // e.g, df_ss_mu1passmu4
 
 					std::string ind1st = (std::string(mu4sel) == "_mu1passmu4")? "1" : "2";
                     std::string ind2nd = (std::string(mu4sel) == "_mu1passmu4")? "2" : "1";
@@ -99,27 +114,27 @@ void RDFBasedHistFilling::FillHistograms(){
 					df_map.at(df_name) = df_map.at(df_name).Define("eta2nd",	"m" + ind2nd + ".eta");
 					df_map.at(df_name) = df_map.at(df_name).Define("phi2nd",	"m" + ind2nd + ".phi");
 					df_map.at(df_name) = df_map.at(df_name).Define("q_eta2nd",	"charge2nd * eta2nd");
-                    df_map.at(df_name) = df_map.at(df_name).Define("2nd_muon_good_acceptance",  "pt2nd >= 6 && ((eta2nd > 1.1 && eta2nd < 2.3) || (eta2nd > -2.3 && eta2nd < -1.2))");
+                    df_map.at(df_name) = df_map.at(df_name).Define("second_muon_good_acceptance",  "pt2nd >= 6 && ((eta2nd > 1.1 && eta2nd < 2.3) || (eta2nd > -2.3 && eta2nd < -1.2))");
 
-					df_map.emplace(df_name + "_sign1", df_map.at(df_name).Filter("charge2nd > 0")); // e.g, df_ss_mu1passmu4_sign1
-					df_map.emplace(df_name + "_sign2", df_map.at(df_name).Filter("charge2nd < 0"));
+					df_map.emplace(df_name + "_sign1", map_at_checked(df_map, df_name, Form("FillHistograms: df_map.at(%s)", df_name.c_str())).Filter("charge2nd > 0")); // e.g, df_ss_mu1passmu4_sign1
+					df_map.emplace(df_name + "_sign2", map_at_checked(df_map, df_name, Form("FillHistograms: df_map.at(%s)", df_name.c_str())).Filter("charge2nd < 0"));
 
 					for (auto mu_sign : {"_sign1", "_sign2"}){
-                        df_name += mu_sign;
-                        df_map.emplace(df_name + "_mu4", df_map.at(df_name));
-                        df_map.emplace(df_name + "_mu4_mu4noL1", df_map.at(df_name).Filter("passmu4mu4noL1"));
-                        df_map.emplace(df_name + "_2mu4", df_map.at(df_name).Filter("pass2mu4"));
+                        std::string df_name = "df" + pair_sign + mu4sel + mu_sign;
+                        df_map.emplace(df_name + "_mu4", map_at_checked(df_map, df_name, Form("FillHistograms: df_map.at(%s)", df_name.c_str())));
+                        df_map.emplace(df_name + "_mu4_mu4noL1", map_at_checked(df_map, df_name, Form("FillHistograms: df_map.at(%s)", df_name.c_str())).Filter("passmu4mu4noL1"));
+                        df_map.emplace(df_name + "_2mu4", map_at_checked(df_map, df_name, Form("FillHistograms: df_map.at(%s)", df_name.c_str())).Filter("pass2mu4"));
 
                         for (auto trg : {"_mu4", "_mu4_mu4noL1", "_2mu4"}){
-                            df_name += trg;
-                            df_map.emplace(df_name + "_sepr", df_map.at(df_name).Filter("passSeparated"));
-                            df_map.emplace(df_name + "_good_accept", df_map.at(df_name).Filter("2nd_muon_good_acceptance"));
+                            std::string df_name = "df" + pair_sign + mu4sel + mu_sign + trg;
+                            df_map.emplace(df_name + "_sepr", map_at_checked(df_map, df_name, Form("FillHistograms: df_map.at(%s)", df_name.c_str())).Filter("passSeparated"));
+                            df_map.emplace(df_name + "_good_accept", map_at_checked(df_map, df_name, Form("FillHistograms: df_map.at(%s)", df_name.c_str())).Filter("second_muon_good_acceptance"));
                             
                             for (auto bias : {"", "_good_accept", "_sepr"}){ // additional selection / bias in data sample
-                                df_name += bias;
+                                std::string df_name = "df" + pair_sign + mu4sel + mu_sign + trg + bias;
                                 std::string filter = df_name.substr(2);
 
-                                FillHistogramsSingleDataFrame(filter, df_map.at(df_name), false); // do not write the sub-dataframe histograms in output file
+                                FillHistogramsSingleDataFrame(filter, map_at_checked(df_map, df_name, Form("FillHistograms: df_map.at(%s)", df_name.c_str())), false); // do not write the sub-dataframe histograms in output file
                             }
                         }
 					}
@@ -135,7 +150,6 @@ void RDFBasedHistFilling::FillHistograms(){
 
 // ---------- ----------
 void RDFBasedHistFilling::HistogramPostProcess(){
-    
     for (auto kv : hist1d_rresultptr_map){
         hist1D_map.emplace(kv.first, kv.second.GetPtr());
     }
@@ -145,6 +159,7 @@ void RDFBasedHistFilling::HistogramPostProcess(){
     for (auto kv : hist3d_rresultptr_map){
         hist3D_map.emplace(kv.first, kv.second.GetPtr());
     }
+
 
     if (trigger_mode == 0 || trigger_mode == 1){
         if (hist_filling_cycle == generic){
@@ -672,8 +687,8 @@ void RDFBasedHistFilling::PrintVar1DList() const {
 
 void RDFBasedHistFilling::FillHistogramsSingleDataFrame(const std::string& filter,
                                             ROOT::RDF::RNode df,
-                                            bool hists_not_write = false,
-                                            std::array<bool, 3> hists_1_2_3D_not_write = {0,0,0}) {
+                                            bool hists_write = true,
+                                            std::array<bool, 3> hists_1_2_3D_write = {1,1,1}) {
     static const std::vector<std::string> empty1D;
     static const std::vector<std::array<std::string, 2>> empty2D;
     static const std::vector<std::array<std::string, 3>> empty3D;
@@ -686,15 +701,15 @@ void RDFBasedHistFilling::FillHistogramsSingleDataFrame(const std::string& filte
     const auto& vars2D = (it2D != df_filter_to_var2D_list_map.end()) ? it2D->second : empty2D;
     const auto& vars3D = (it3D != df_filter_to_var3D_list_map.end()) ? it3D->second : empty3D;
 
-    FillHistogramsSingleDataFrame(filter, df, "", vars1D, vars2D, vars3D, hists_not_write, hists_1_2_3D_not_write);
+    FillHistogramsSingleDataFrame(filter, df, "", vars1D, vars2D, vars3D, hists_write, hists_1_2_3D_write);
 }
 
 void RDFBasedHistFilling::FillHistogramsSingleDataFrame(const std::string& filter,
                                             const std::string& weight,
                                             ROOT::RDF::RNode df,
                                             bool weight_before_filter = false,
-                                            bool hists_not_write = false,
-                                            std::array<bool, 3> hists_1_2_3D_not_write = {0,0,0}) {
+                                            bool hists_write = true,
+                                            std::array<bool, 3> hists_1_2_3D_write = {1,1,1}) {
     static const std::vector<std::string> empty1D;
     static const std::vector<std::array<std::string, 2>> empty2D;
     static const std::vector<std::array<std::string, 3>> empty3D;
@@ -719,7 +734,7 @@ void RDFBasedHistFilling::FillHistogramsSingleDataFrame(const std::string& filte
     }
 
     std::string suffix = (weight_before_filter)? weight + filter : filter + weight;
-    FillHistogramsSingleDataFrame(suffix, df, wCol, vars1D, vars2D, vars3D, hists_not_write, hists_1_2_3D_not_write);
+    FillHistogramsSingleDataFrame(suffix, df, wCol, vars1D, vars2D, vars3D, hists_write, hists_1_2_3D_write);
 }
 
 void RDFBasedHistFilling::FillHistogramsSingleDataFrame(const std::string& suffix, // filter or filter & weight concatenated with custom order
@@ -728,8 +743,8 @@ void RDFBasedHistFilling::FillHistogramsSingleDataFrame(const std::string& suffi
                                             const std::vector<std::string>& vars1D,
                                             const std::vector<std::array<std::string, 2>>& vars2D, 
                                             const std::vector<std::array<std::string, 3>>& vars3D,
-                                            bool hists_not_write = false,
-                                            std::array<bool, 3> hists_1_2_3D_not_write = {0,0,0}) {
+                                            bool hists_write = true,
+                                            std::array<bool, 3> hists_1_2_3D_write = {1,1,1}) {
 
 
     if (vars1D.empty() && vars2D.empty() && vars3D.empty()) {
@@ -752,7 +767,7 @@ void RDFBasedHistFilling::FillHistogramsSingleDataFrame(const std::string& suffi
         std::string hname = "h_" + v->name + suffix;
         std::string htitle = ";" + v->title + ";";
 
-        if (hists_not_write || hists_1_2_3D_not_write.at(0)){
+        if (!hists_write || !hists_1_2_3D_write.at(0)){
             hists_to_not_write.push_back(hname);
         }
         
@@ -796,7 +811,7 @@ void RDFBasedHistFilling::FillHistogramsSingleDataFrame(const std::string& suffi
         std::string hname  = "h_" + vy->name + "_vs_" + vx->name + suffix;
         ROOT::RDF::TH2DModel model = MakeTH2DModel(hname, vx->title, vy->title, bx, by);
 
-        if (hists_not_write || hists_1_2_3D_not_write.at(1)){
+        if (!hists_write || !hists_1_2_3D_write.at(1)){
             hists_to_not_write.push_back(hname);
         }
 
@@ -835,7 +850,7 @@ void RDFBasedHistFilling::FillHistogramsSingleDataFrame(const std::string& suffi
         ROOT::RDF::TH3DModel model = MakeTH3DModel(hname, vx->title, vy->title, vz->title,
                                                    bx, by, bz);
         
-        if (hists_not_write || hists_1_2_3D_not_write.at(2)){
+        if (!hists_write || !hists_1_2_3D_write.at(2)){
             hists_to_not_write.push_back(hname);
         }
 
@@ -863,8 +878,8 @@ var1D* RDFBasedHistFilling::Var1DSearch(const std::string& var1DName) const {
 }
 
 AxisInfo RDFBasedHistFilling::GetAxisInfo(const var1D& v, const std::string& filter) const {
-    bool hasSS = (filter.find("ss") != std::string::npos);
-    bool hasOP = (filter.find("op") != std::string::npos);
+    bool hasSS = (filter.find("_ss") != std::string::npos);
+    bool hasOP = (filter.find("_op") != std::string::npos);
 
     if (hasSS && hasOP) {
         std::ostringstream oss;

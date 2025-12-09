@@ -75,7 +75,7 @@ protected:
     std::map<std::string, var1D*> var1D_dict; // dictionary for 1D variables (to be used in 1D & 2D histograms)
 
     std::vector<std::string> single_muon_trig_effcy_var1Ds = {"Deta", "Deta_zoomin", "Dphi", "Dphi_zoomin", "DR", "DR_zoomin", "DR_0_2", "minv_zoomin", "pair_pt_log"};
-    std::vector<std::array<std::string, 2>> single_muon_trig_effcy_var2Ds = {{"phi2nd","pt2nd"}, {"q_eta2nd","pt2nd"}, {"pt2nd", "DR_zoomin"}, {"pair_pt", "DR_zoomin"}};
+    std::vector<std::array<std::string, 2>> single_muon_trig_effcy_var2Ds = {{"phi2nd","pt2nd"}, {"q_eta2nd","pt2nd"}, {"q_eta2nd","phi2nd"}, {"pt2nd", "DR_zoomin"}, {"pair_pt_log", "DR_zoomin"}};
     std::vector<std::array<std::string, 3>> single_muon_trig_effcy_var3Ds = {{"phi2nd","q_eta2nd","pt2nd"}};
 
     // ----- map of df filters or <filter, weight> pairs to variables to be plotted -----
@@ -137,15 +137,15 @@ protected:
     
     void            FillHistogramsSingleDataFrame(  const std::string& filter,
                                                     ROOT::RDF::RNode df,
-                                                    bool hists_not_write = false,
-                                                    std::array<bool, 3> hists_1_2_3D_not_write = {0,0,0});
+                                                    bool hists_write = true,
+                                                    std::array<bool, 3> hists_1_2_3D_write = {1,1,1});
 
     void            FillHistogramsSingleDataFrame(  const std::string& filter,
                                                     const std::string& weight,
                                                     ROOT::RDF::RNode df,
                                                     bool weight_before_filter = false,
-                                                    bool hists_not_write = false,
-                                                    std::array<bool, 3> hists_1_2_3D_not_write = {0,0,0});
+                                                    bool hists_write = true,
+                                                    std::array<bool, 3> hists_1_2_3D_write = {1,1,1});
 
     void             FillHistogramsSingleDataFrame( const std::string& suffix, // filter or filter & weight concatenated with custom order
                                                     ROOT::RDF::RNode df,
@@ -153,8 +153,8 @@ protected:
                                                     const std::vector<std::string>& vars1D,
                                                     const std::vector<std::array<std::string, 2>>& vars2D, 
                                                     const std::vector<std::array<std::string, 3>>& vars3D,
-                                                    bool hists_not_write = false,
-                                                    std::array<bool, 3> hists_1_2_3D_not_write = {0,0,0});
+                                                    bool hists_write = true,
+                                                    std::array<bool, 3> hists_1_2_3D_write = {1,1,1});
     virtual void    FillHistograms();
     virtual void    HistogramPostProcess();
 
