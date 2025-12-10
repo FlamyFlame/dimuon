@@ -52,7 +52,7 @@ private:
         {0.5f, 1.0f}, 
         {1.3f, 1.6f}, 
         {1.6f, 2.0f}, 
-        {2.0f, 2.4f}
+        {2.0f, 2.2f}
     };
 
     std::vector<std::pair<float, float>> pair_pT_ranges_for_weighted_effcy_dR_fitting = {
@@ -76,7 +76,7 @@ private:
     
     std::string dphi_regions[2] = {"near", "away"};
 
-    TH2D* h_crossx_dR_cut_vs_pair_pt_pair_eta;
+    TH2D* h_crossx_single_b_signal_vs_pair_pt_pair_eta;
 
     TH1D* h_pair_dP_overP[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH1D* h_Dphi[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
@@ -430,72 +430,72 @@ private:
     // --------------------- SIGNED by 2nd-muon charge (+/-) NOT pair (same/op) sign ---------------------------
     // -------- no signal selection --------
     // MB
-    TH2D* h_pt2nd_vs_q_eta_2nd_MB[2];
+    TH2D* h_pt2nd_vs_q_eta2nd_MB[2];
     TH2D* h_pt2nd_vs_phi2nd_MB[2];    
-    TH2D* h_phi2nd_vs_q_eta_2nd_MB[2];
+    TH2D* h_phi2nd_vs_q_eta2nd_MB[2];
 
     // mu4
-    TH2D* h_pt2nd_vs_q_eta_2nd_mu4[2];
+    TH2D* h_pt2nd_vs_q_eta2nd_mu4[2];
     TH2D* h_pt2nd_vs_phi2nd_mu4[2];    
-    TH2D* h_phi2nd_vs_q_eta_2nd_mu4[2];
+    TH2D* h_phi2nd_vs_q_eta2nd_mu4[2];
 
     // mu4_mu4noL1
-    TH2D* h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1[2];
+    TH2D* h_pt2nd_vs_q_eta2nd_mu4_mu4noL1[2];
     TH2D* h_pt2nd_vs_phi2nd_mu4_mu4noL1[2];    
-    TH2D* h_phi2nd_vs_q_eta_2nd_mu4_mu4noL1[2];
+    TH2D* h_phi2nd_vs_q_eta2nd_mu4_mu4noL1[2];
 
     // 2mu4
-    TH2D* h_pt2nd_vs_q_eta_2nd_2mu4[2];
+    TH2D* h_pt2nd_vs_q_eta2nd_2mu4[2];
     TH2D* h_pt2nd_vs_phi2nd_2mu4[2];
-    TH2D* h_phi2nd_vs_q_eta_2nd_2mu4[2];
+    TH2D* h_phi2nd_vs_q_eta2nd_2mu4[2];
 
     // well-separated: mu4, mu4_mu4noL1, 2mu4
-    TH2D* h_pt2nd_vs_q_eta_2nd_mu4_sepr[2];
-    TH2D* h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr[2];
-    TH2D* h_pt2nd_vs_q_eta_2nd_2mu4_sepr[2];
+    TH2D* h_pt2nd_vs_q_eta2nd_mu4_sepr[2];
+    TH2D* h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr[2];
+    TH2D* h_pt2nd_vs_q_eta2nd_2mu4_sepr[2];
 
     TH2D* h_pt2nd_vs_phi2nd_mu4_sepr[2];
     TH2D* h_pt2nd_vs_phi2nd_mu4_mu4noL1_sepr[2];
     TH2D* h_pt2nd_vs_phi2nd_2mu4_sepr[2];
     
     // well-separated & divided (mu4_mu4noL1 / mu4 and 2mu4 / mu4)
-    TH2D* h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr_divided[2];
-    TH2D* h_pt2nd_vs_q_eta_2nd_2mu4_sepr_divided[2];
+    TH2D* h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr_divided[2];
+    TH2D* h_pt2nd_vs_q_eta2nd_2mu4_sepr_divided[2];
 
     // -------- with signal selection --------
-    TH2D* h_pt2nd_vs_q_eta_2nd_mu4_w_single_b_sig_sel[2];
-    TH2D* h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_w_single_b_sig_sel[2];
-    TH2D* h_pt2nd_vs_q_eta_2nd_2mu4_w_single_b_sig_sel[2];
+    TH2D* h_pt2nd_vs_q_eta2nd_mu4_w_single_b_sig_sel[2];
+    TH2D* h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_w_single_b_sig_sel[2];
+    TH2D* h_pt2nd_vs_q_eta2nd_2mu4_w_single_b_sig_sel[2];
     
     TH2D* h_pt2nd_vs_phi2nd_mu4_w_single_b_sig_sel[2];
     TH2D* h_pt2nd_vs_phi2nd_mu4_mu4noL1_w_single_b_sig_sel[2];
     TH2D* h_pt2nd_vs_phi2nd_2mu4_w_single_b_sig_sel[2];
 
     // signal pairs divided (mu4_mu4noL1 / mu4 and 2mu4 / mu4)
-    TH2D* h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_divided_w_single_b_sig_sel[2];
-    TH2D* h_pt2nd_vs_q_eta_2nd_2mu4_divided_w_single_b_sig_sel[2];
+    TH2D* h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_divided_w_single_b_sig_sel[2];
+    TH2D* h_pt2nd_vs_q_eta2nd_2mu4_divided_w_single_b_sig_sel[2];
 
     // --------------------- 3D 2nd-muon histograms for trigger efficiency ---------------------------
     // --------------------- SIGNED by 2nd-muon charge (+/-) NOT pair (same/op) sign ---------------------------
     // -------- no signal selection --------
     // 3D analogs with axes (phi_2nd, q*eta_2nd, pt_2nd)
-    TH3D* h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_sepr[2];
-    TH3D* h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_sepr[2];
-    TH3D* h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_sepr[2];
+    TH3D* h_pt2nd_vs_q_eta2nd_vs_phi2nd_mu4_sepr[2];
+    TH3D* h_pt2nd_vs_q_eta2nd_vs_phi2nd_mu4_mu4noL1_sepr[2];
+    TH3D* h_pt2nd_vs_q_eta2nd_vs_phi2nd_2mu4_sepr[2];
     
     // divided (mu4_mu4noL1 / mu4 and 2mu4 / mu4)
-    TH3D* h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_sepr_divided[2];
-    TH3D* h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_sepr_divided[2];
+    TH3D* h_pt2nd_vs_q_eta2nd_vs_phi2nd_mu4_mu4noL1_sepr_divided[2];
+    TH3D* h_pt2nd_vs_q_eta2nd_vs_phi2nd_2mu4_sepr_divided[2];
 
     // -------- with signal selection --------
     // 3D analogs with axes (phi_2nd, q*eta_2nd, pt_2nd)
-    TH3D* h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_w_single_b_sig_sel[2];
-    TH3D* h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_w_single_b_sig_sel[2];
-    TH3D* h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_w_single_b_sig_sel[2];
+    TH3D* h_pt2nd_vs_q_eta2nd_vs_phi2nd_mu4_w_single_b_sig_sel[2];
+    TH3D* h_pt2nd_vs_q_eta2nd_vs_phi2nd_mu4_mu4noL1_w_single_b_sig_sel[2];
+    TH3D* h_pt2nd_vs_q_eta2nd_vs_phi2nd_2mu4_w_single_b_sig_sel[2];
     
     // divided (mu4_mu4noL1 / mu4 and 2mu4 / mu4)
-    TH3D* h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_divided_w_single_b_sig_sel[2];
-    TH3D* h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_divided_w_single_b_sig_sel[2];
+    TH3D* h_pt2nd_vs_q_eta2nd_vs_phi2nd_mu4_mu4noL1_divided_w_single_b_sig_sel[2];
+    TH3D* h_pt2nd_vs_q_eta2nd_vs_phi2nd_2mu4_divided_w_single_b_sig_sel[2];
 
 
 
@@ -546,8 +546,8 @@ private:
     void        WriteOutput();
     bool        PassSingleMuonGapCut(float meta, float mpt, int mcharge);
     std::string FindBinReturnStr(float number, const std::vector<std::pair<float, float>>& ranges);
-    float       EvaluateSingleMuonEffcyPtFitted(bool charge_sign, std::string trg, float pt_2nd, float q_eta_2nd, float phi_2nd);
-    float       EvaluateSingleMuonEffcy(bool charge_sign, std::string trg, float pt_2nd, float q_eta_2nd, float phi_2nd);
+    float       EvaluateSingleMuonEffcyPtFitted(bool charge_sign, std::string trg, float pt_2nd, float q_eta2nd, float phi_2nd);
+    float       EvaluateSingleMuonEffcy(bool charge_sign, std::string trg, float pt_2nd, float q_eta2nd, float phi_2nd);
     void        FillHistograms(int nsign);
     void        FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(int nsign);
     void        CalculateSingleMuonTrigEffcyRatios();
@@ -555,12 +555,19 @@ private:
     void        MakeAndWriteDRTrigEffGraphs();
 
 public:
+enum HistFillingCycle{
+    generic = 1,
+    inv_weight_by_single_mu_effcy = 2,
+    inv_weight_by_dR_effcy_corr = 3
+}
+
     bool output_non_trig_effcy_hists;
     bool isScram;
     bool isTight;
     bool isRun3;
     // bool isMu4mu4noL1;
     int trigger_mode = 1;
+    int hist_filling_cycle = generic;
     // bool require_exclusive_mu4_for_mu4_mu4noL1 = false; // if true, require that only one muon fire mu4, to ensure unambiguous knowledge of which muon fires mu4noL1
     bool doTrigEffcy = true;
     bool filter_out_photo_resn_for_trig_effcy = true;
