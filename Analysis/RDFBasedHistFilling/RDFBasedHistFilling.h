@@ -122,7 +122,7 @@ protected:
         {0.5f, 1.0f}, 
         {1.3f, 1.6f}, 
         {1.6f, 2.0f}, 
-        {2.0f, 2.4f}
+        {2.0f, 2.2f}
     };
 
     std::vector<std::pair<float, float>> pair_pT_ranges_for_weighted_effcy_dR_fitting = {

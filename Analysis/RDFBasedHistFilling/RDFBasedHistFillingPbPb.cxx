@@ -1,4 +1,4 @@
-#include "RDFBasedHistFilling.h"
+#include "RDFBasedHistFilling.c"
 
 void RDFBasedHistFillingPbPb::Initialize(){
 	// input_files.push_back("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2024/muon_pairs_pbpb_2024_single_mu4.root");
@@ -66,8 +66,8 @@ void RDFBasedHistFillingPbPb::FillHistograms(){
     if (output_non_trig_effcy_hists){ // non-trigger-efficiency histograms
         for (std::string sign : {"_ss", "_op"}){
 	        for (std::string ctr : ctr_bins){
-	            FillHistogramsSingleDataFrame(sign, df_map.at(sign));
-	            FillHistogramsSingleDataFrame(sign, "_jacobian_corrected", df_map.at(sign));
+	            FillHistogramsSingleDataFrame(sign, df_map.at(sign + ctr));
+	            FillHistogramsSingleDataFrame(sign, "_jacobian_corrected", df_map.at(sign + ctr));
 	            // FillHistogramsSingleDataFrame(sign + "_wgapcut", df_map.at(sign));
 	            // FillHistogramsSingleDataFrame(sign + "_wgapcut", "_jacobian_corrected", df_map.at(sign));
 	        }
@@ -142,17 +142,17 @@ void RDFBasedHistFillingPbPb::FillHistograms(){
 
 
 void RDFBasedHistFillingPbPb::HistPostProcess(){
-	// RDFBasedHistFilling::HistPostProcess();
+	RDFBasedHistFilling::HistPostProcess();
 
-    // if (trigger_mode == 0 || trigger_mode == 1){
-    //     if (hist_filling_cycle == generic){
-    //         SumSingleMuonTrigEffHists();
-    //         MakeAndWriteSingleMuonPtTrigEffGraphs();
-    //         CalculateSingleMuonTrigEffcyRatios();           
-    //     } else{
-    //         MakeAndWriteDRTrigEffGraphs();
-    //     }
-    // }
+    if (trigger_mode == 0 || trigger_mode == 1){
+        if (hist_filling_cycle == generic){
+            SumSingleMuonTrigEffHists();
+            MakeAndWriteSingleMuonPtTrigEffGraphs();
+            CalculateSingleMuonTrigEffcyRatios();           
+        } else{
+            MakeAndWriteDRTrigEffGraphs();
+        }
+    }
 }
 
 void RDFBasedHistFillingPbPb::MakeAndWriteSingleMuonPtTrigEffGraphs(){

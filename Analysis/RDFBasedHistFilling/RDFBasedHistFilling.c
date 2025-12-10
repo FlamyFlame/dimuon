@@ -15,10 +15,17 @@ void RDFBasedHistFilling::Run(){
 
 	TH1::SetDefaultSumw2(kTRUE); // turn on Sumw2 for all histograms
 
-	ROOT::EnableImplicitMT();
+	// ROOT::EnableImplicitMT();
 
     ProcessData();
 
+    // info summary for the current for loop (input file)
+    std::cout << "#event loop runs per data frame is: " << df_map.at("df_ss").GetNRuns() << std::endl;
+    std::cout << "#slots per data frame is: " << df_map.at("df_ss").GetNSlots() << std::endl;
+    std::cout << "# 1D histograms: " << hist1D_map.size() << std::endl;
+    std::cout << "# 2D histograms: " << hist2D_map.size() << std::endl;
+    std::cout << "# 3D histograms: " << hist2D_map.size() << std::endl;
+    
 	Finalize();
 }
 
@@ -45,13 +52,6 @@ void RDFBasedHistFilling::ProcessData(){
     }
     
     HistPostProcess();
-
-    // info summary for the current for loop (input file)
-    std::cout << "#event loop runs per data frame is: " << df_map.at("df_ss").GetNRuns() << std::endl;
-    std::cout << "#slots per data frame is: " << df_map.at("df_ss").GetNSlots() << std::endl;
-    std::cout << "# 1D histograms: " << hist1D_map.size() << std::endl;
-    std::cout << "# 2D histograms: " << hist2D_map.size() << std::endl;
-    std::cout << "# 3D histograms: " << hist2D_map.size() << std::endl;
 }
 
 void RDFBasedHistFilling::Initialize(){

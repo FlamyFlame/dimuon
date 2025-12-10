@@ -1,8 +1,8 @@
-#include "RDFBasedHistFilling.h"
+#include "RDFBasedHistFilling.c"
 
 void RDFBasedHistFillingPP::Initialize(){
 	input_files.push_back("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024_combined_single_mu4.root");
-	output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/histograms_real_pairs_pp_2024_single_mu4_new_RDF.root";
+	output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/histograms_real_pairs_pp_2024_single_mu4.root";
 	
     levels_trg_effcy_filters_1D_pre_sum = {{"_ss", "_op"}, // add a level of ctr bins for Pb+Pb
                                         {"_mu1passmu4", "_mu2passmu4"},
