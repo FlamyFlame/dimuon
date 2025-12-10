@@ -1,0 +1,209 @@
+\subsection{Data sample and event selection\label{sec:data}}
+
+\subsubsection{\PbPb\ Data\label{sec:data_PbPb}}
+
+The \PbPb\ data used in this analysis were recorded during the 2015 and 2018 \PbPb\ run 
+  at $\sqrtsnn=5.02$~\TeV\ in the ATLAS experiment. 
+The ATLAS experiment and the trigger system are decribed 
+  in Refs.~\cite{PERF-2007-01}--\cite{TRIG-2016-01}.
+The 2015 data were recorded over 33 separate runs and the 2018 data were 
+  recorded over 39 separate runs. 
+After applying a selection of runs where the detector was fully operational, 
+  a total integrated luminosity of $\sim$1.94~\inb was used for this analysis, 
+  of which 0.50~\inb~\cite{Arratia:2152730} was taken in 2015
+  and 1.44~\inb\ in 2018.
+
+
+Events were selected based using the following di-muon trigger 
+\begin{enumerate}
+\item \verb=HLT_2mu4=. A level 1 (L1) - this trigger requires the \verb=L1_2MU4= 
+     which selects events with two muons above the \verb=L1_MU4= threshold. 
+   A High Level Trigger (HLT) muon reconstruction algorithm is then applied to the regions of 
+     interest identified at L1 which used information from the inner detector.
+   Finally, both HLT-reconstructed muons are required to have a transverse momentum above 4~\GeV.\
+   This trigger was unprescaled during the 2015 and 2018 run periods.
+
+\item \verb=HLT_mu4_mu4noL1=. At L1,  this trigger requires the \verb=L1_MU4=
+  trigger which selects events with a single muon above the \verb=L1_MU4= 
+    threshold. 
+  A HLT muon reconstruction algorithm is then applied to the 
+    region of interest identified at L1 for the first muon and a full scan
+    is performed for the second muon.
+  Both HLT-reconstructed muons are required to have a transverse momentum above 4~\GeV.\
+  This trigger was prescaled for some small parts of the 2015 and 2018 \PbPb\ runs.
+  However, the HLT hypos for the \verb=HLT_mu4= and \verb=HLT_mu4noL1= 
+    chains are different, resulting in \verb=HLT_mu4_mu4noL1= not being 
+    a superset of the \verb=HLT_2mu4= trigger.
+  Additionally, because the \verb=HLT_mu4_mu4noL1= was prescaled in a few runs,
+    while the \verb=HLT_2mu4= trigger was not, including the \verb=HLT_2mu4=
+    trigger gains some additional statistics.
+\end{enumerate}
+
+
+Additional minimum-bias and single-muon triggered samples were used to study the trigger efficiency. 
+The minimum-bias data set was taken using a combination of the following
+  mutually exclusive total transverse energy and ZDC triggers. 
+\begin{enumerate}
+  \item \verb=HLT_noalg_cc_L1TE600_0ETA49= : This required at least 600~\GeV\ 
+    of total transverse energy (\ET) in the L1 calorimeter system. 
+  \item \verb=HLT_noalg_pc_L1TE50_VTE600_0ETA49= : This trigger required that the 
+    total \ET\ in the L1 calorimeter system be between 50 and 600~\GeV.
+  \item \verb=HLT_mb_sptrk_ion_L1ZDC_A_C_VTE50= : This trigger selected events that 
+    had an L1 \ET\ less than 50~\GeV\ but satisfied a ZDC coincidence trigger. 
+    At the HLT, this trigger required at least one track reconstructed in the inner detector 
+      in order to reject empty events.
+\end{enumerate}
+The single-muon triggered sample was taken using a combination of the following triggers:
+\begin{itemize}
+\item \verb=HLT_mu4=
+\item \verb=HLT_mu6=
+\item \verb=HLT_mu8=.
+\end{itemize}
+
+Examples of the trigger menus for the 2015 and 2018 runs can be found
+  from the run query page which are linked here for the 
+  \href{https://atlas-runquery.cern.ch/query.py?q=find+run+286711++%2F+show+all}{2015 Run}
+  and
+  \href{https://atlas-runquery.cern.ch/query.py?q=find+run+365512+%2F+show+all}{2018 Run}.
+The following GRLs were used for the 2015 and 2018 data:
+\begin{itemize}
+\item \verb=data18_hi.periodAllYear_DetStatus-v106-pro22-14_Unknown_PHYS= \newline 
+      \verb=_HeavyIonP_All_Good.xml=
+\item \verb=data15_hi.periodAllYear_DetStatus-v75-repro20-01_DQDefects= \newline 
+      \verb=-00-02-02_PHYS_HeavyIonP_All_Good.xml=
+\end{itemize}
+The 2018 GRL excludes runs 367318-367384 which had issues with the toroid magnet. 
+In addition to the GRL requirements, in the data analysis, events were required 
+  to have a primary reconstructed vertex and contain no detector or data 
+  acquisition errors (e.g. events corrupted from TTC restarts).
+The following datasets (or dataset containers) were used in the Analysis:
+\begin{itemize}
+\item 2018 Data: {\small \verb=data18_hi:data18_hi.<RunNo>.physics_HardProbes.merge.AOD.f1021_m2037=}
+\item 2018 Data: {\small \verb=data18_hi:data18_hi.<RunNo>.physics_HardProbes.merge.AOD.f1021_m2037=}
+\item 2018 Data: {\small \verb=data18_hi:data18_hi.<RunNo>.physics_HardProbes.merge.AOD.f1030_m2048=}
+\item 2015 Data: {\small \verb=data15_hi.periodL.physics_HardProbes.PhysCont.AOD.pro22_v01=}
+\end{itemize}
+
+
+The centrality of the \PbPb\ collisions is characterised by the total
+  transverse energy measured in the FCal modules, \ETfcal. 
+The \ETfcal\ distribution obtained in minimum-bias collisions is partitioned 
+  into separate ranges of \ETfcal\ referred to as centrality
+  classes~\cite{Miller:2007ri,Alver:2008aq,HION-2011-05}. 
+Each class is defined by the fraction of the distribution contained by 
+  the interval, e.g. the 0--10\% centrality class, which corresponds 
+  to the most central collisions, contains the 10\% of minimum-bias (i.e. inclusive)
+  events with the largest \ETfcal.
+An average number of participants, $\langle N_{\mathrm{part}} \rangle$, 
+  is defined for each centrality class using a standard Glauber MC 
+  procedure~\cite{Perepelitsa:2212936,CentralityRec}. 
+The Heavy-ion group provides standard centrality bins 
+  for Pb+Pb events based on the $\ETfcal$, that covers the 0--80\%  
+  centrality-percentile range, with the 80\% centrality value corresponding to 
+  an \ETfcal\ value of 63.7~\GeV.
+Beyond this range it is difficult to assign a centrality-percentile classification 
+  to an event.
+Figure~\ref{fig:events_in_triggers} shows the number of events
+  and the centrality distribution for events collected by the 
+  logical OR of the two di-muon triggers.
+
+\begin{figure}
+\centering
+\includegraphics[width=0.5\textwidth]%
+{figures/AllFigs/can_cent_pTBar_GT5_EffCor}
+\caption{
+The number of events selected by the di-muon triggers 
+  as a function of centrality.
+%The number of events selected by the logical OR of 
+%  the HLT\_2mu4 and HLT\_mu4\_mu4noL1 triggers, 
+%  as a function of centrality.
+%The distribution is shown only over the 0--80\% centrality interval (see text).
+}
+\label{fig:events_in_triggers}
+\end{figure}
+
+
+
+\subsubsection{\pp\ Data\label{sec:data_pp}}
+The \pp\ data at \sqs=5.02~\TeV\ were recorded during a dedicated 
+  reference run in 2017.
+The average interaction per bunch-crossing ($\langle\mu\rangle$) 
+  for this period varied between 0.4 and 4.
+The data used here were recorded by the \verb=HLT_2mu4= trigger.
+This trigger was active during the whole data taking period corresponding
+  to a total integrated luminosity of 0.26~\ifb.
+The following GRL and dataset containers were used for the 2017 \pp\ data:
+\begin{itemize}
+\item GRL: \verb=data17_5TeV.periodAllYear_DetStatus-v98-pro21-16_Unknown_PHYS= \newline 
+           \verb=_StandardGRL_All_Good_25ns_ignore_GLOBAL_LOWMU.xml=
+\item Dataset: \verb=data17_5TeV.periodM.physics_Main.PhysCont.AOD.pro23_v02=
+\end{itemize}
+
+
+
+\subsection{Monte Carlo samples\label{sec:mc_samples}}
+The MC samples are used for two purposes: 
+  1) to obtain the muon reconstruction efficiencies, and 
+  2) to obtain the momentum-imbalance dsitributions for
+     signal and for background muons.
+The \textit{signal} muons are muons that arise
+  from the decay of HF particles.
+The background muons are muons that arise from secondary 
+  interactions in the calorimeter, or from decays from pions and Kaons
+  and from combinatoric background that arise from
+  mis-associations of MS tracks with ID tracks.
+The momentum-imbalance distributions obtained from the MC are used to estimate
+  and correct for the contribution of background muons in data analysis.
+The following MC samples are used in this analysis: 
+
+\subsubsection{\PbPb\ MC Samples~\label{sec:PbPbMc}}
+The \PbPb\ muon reconstruction efficiencies and signal-templates  
+  for momentum-imbalance distributions (for true muons) are obtained 
+  from HIJING-overlay Monte Carlo (MC) samples. 
+These samples were generated for the analysis ANA-HION-2020-10, 
+  which studies the $\gamma\gamma\rightarrow \mumu$ in \PbPb\ events,
+  but can also be used in the present analysis.
+The details for these MC samples can be found at the following JIRAs
+\begin{itemize}
+\item \textbf{HIJING Overlay 2015 conditions: } ATLHI-304~\cite{ATLHI-304}
+\item \textbf{HIJING Overlay 2018 conditions: } ATLHI-313~\cite{ATLHI-313}
+\end{itemize}
+The \starlight\ event generator~\cite{Klein:2016yzr} was used to generate
+  $\gamma\gamma\rightarrow \mumu$ events. 
+To account for the effects of the \PbPb\ underlying event, an \emph{overlay}
+  procedure was utilized; simulated events $\gamma\gamma\rightarrow \mumu$ 
+  were overlaid directly onto MC events generated by the HIJING event generator.
+Through this procedure, the effects of the underlying event (UE) 
+  on the muon measurement in the overlay sample closely match 
+  those present in the data.
+
+The following HIJING overlay Pythia samples were used to generate 
+  momentum-imbalance templates for the background muons (i.e. misidentified muons):
+\begin{itemize}
+  \item {\small \verb=mc16_valid.420011.Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ1R04.recon.AOD.e4108_s2873_r10756=}
+  \item {\small \verb=mc16_valid.420012.Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ2R04.recon.AOD.e4108_s2873_r10756=}
+  \item {\small \verb=mc16_valid.420013.Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ3R04.recon.AOD.e4108_s2873_r10756=}
+  \item {\small \verb=mc16_valid.420014.Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ4R04.recon.AOD.e4108_s2873_r10756=}
+\end {itemize}
+
+
+\subsubsection{\pp\ MC Samples}
+For the \pp\ analysis, the reconstruction efficiency is directly 
+  obtained from the MCP recommendations in Ref.~\cite{Rel21Uncertainties}.
+The MC samples are used to only obtain the momentum-imbalance 
+  distributions for signal and background muons.
+The following Pythia8 dijets samples (2017 Conditions) were used 
+  (\href{https://twiki.cern.ch/twiki/bin/viewauth/AtlasProtected/HIJetMCSamples#Pythia8_dijets_8M_per_sample_in}{link to twiki}): 
+\begin{itemize}
+  \item {\small \verb=mc16_5TeV.420010.Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ0R04.recon.AOD.e4108_s3238_r11199=}
+  \item {\small \verb=mc16_5TeV.420011.Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ1R04.recon.AOD.e4108_s3238_r11199=}
+  \item {\small \verb=mc16_5TeV.420011.Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ1R04.recon.AOD.e6608_s3238_r11199=}
+  \item {\small \verb=mc16_5TeV.420012.Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ2R04.recon.AOD.e4108_s3238_r11199=}
+  \item {\small \verb=mc16_5TeV.420012.Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ2R04.recon.AOD.e6608_s3238_r11199=}
+  \item {\small \verb=mc16_5TeV.420013.Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ3R04.recon.AOD.e4108_s3238_r11199=}
+  \item {\small \verb=mc16_5TeV.420013.Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ3R04.recon.AOD.e6608_s3238_r11199=}
+  \item {\small \verb=mc16_5TeV.420014.Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ4R04.recon.AOD.e4108_s3238_r11199=}
+  \item {\small \verb=mc16_5TeV.420014.Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ4R04.recon.AOD.e6608_s3238_r11199=}
+  \item {\small \verb=mc16_5TeV.420015.Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ5R04.recon.AOD.e4108_s3238_r11199=}
+  \item {\small \verb=mc16_5TeV.420015.Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ5R04.recon.AOD.e6608_s3238_r11199=}
+\end{itemize}

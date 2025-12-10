@@ -1,0 +1,474 @@
+{Note: The trigger and reconstruction efficiencies discussed here are
+  identical to those used in HION-2020-10~\cite{HION-2020-10}.
+In a quick review this section may be skipped.
+The \pp\ reconstruction and trigger efficiencies are taken from
+  the publication HION-2019-58~\cite{HION-2019-58} and are not repeated here.
+}
+
+In constructing the pair distributions, a correction is
+  applied accounting for the inefficiency arising from the trigger
+  selection and the inefficiency of offline muon reconstruction.
+The correction is applied by applying a weight to each dimuon pair,
+  $w$, defined as :
+\begin{eqnarray}
+w^{-1}\equiv \varepsilon_{\mathrm{trig}} (\vec{p}_{a},\vec{p}_{b})
+\varepsilon_{\mathrm{reco}}(\vec{p}_{a})  \varepsilon_{\mathrm{reco}}(\vec{p}_{b})
+\label{eq:net_eff_correction}
+\end{eqnarray}
+where $\varepsilon_{\mathrm{trig}}$ is the efficiency
+  of the dimuon trigger,  $\varepsilon_{\mathrm{reco}}$ is the
+  single muon reconstruction efficiency. 
+These are disscussed in sections~\ref{sec:trig_eff}--\ref{sec:reco_eff} below.
+
+
+\subsection{Triggers efficiencies\label{sec:trig_eff}}
+
+As mentioned before in Section~\ref{sec:data}, events are selected using a combination
+  of the following di-muon triggers:
+\begin{itemize}
+\item \verb=HLT_mu4_mu4noL1= : Main trigger that accounts for most of the statistics.
+\item \verb=HLT_2mu4= : Adds further few percent statistics.
+\end{itemize}
+
+
+It is assumed that the trigger efficiency for \verb=HLT_2mu4= factorizes into the
+  product of the single muon trigger efficiencies :
+\begin{eqnarray}
+\varepsilon_{\mathrm{trig}}^{\mathrm{2mu4}}
+(\vec{p}_{a},\vec{p}_{b}) \equiv
+\varepsilon_{\mathrm{trig}}^{\mathrm{mu4}}   (\vec{p}_{a})
+\varepsilon_{\mathrm{trig}}^{\mathrm{mu4}}   (\vec{p}_{b}),
+\label{eq:2mu3_eff}
+\end{eqnarray}
+where $\varepsilon_{\mathrm{trig}}^{\mathrm{mu4}} $ is the single muon
+  trigger-efficiency from matching an offline-muon with 
+  a HLT muon with $\Delta R < 0.1$.
+
+While for the \verb=HLT_mu4_mu4noL1= trigger the efficiency is given by
+\begin{align}
+\varepsilon_{\mathrm{trig}}^{\mathrm{mu4\_mu4noL1}}
+(\vec{p}_{a},\vec{p}_{b}) \equiv&
+ \varepsilon_{\mathrm{trig}}^{\mathrm{mu4}} (\vec{p}_{a})\ \times\  \varepsilon_{\mathrm{trig}}^{\mathrm{mu4noL1}} (\vec{p}_{b})\ +\ 
+ \varepsilon_{\mathrm{trig}}^{\mathrm{mu4}} (\vec{p}_{b})\ \times\  \varepsilon_{\mathrm{trig}}^{\mathrm{mu4noL1}} (\vec{p}_{a})\nonumber  \\
+ -\ & 
+(\varepsilon_{\mathrm{trig}}^{\mathrm{mu4}} (\vec{p}_{a}) \cap \varepsilon_{\mathrm{trig}}^{\mathrm{mu4noL1}} (\vec{p}_{a}))\ \times\ 
+(\varepsilon_{\mathrm{trig}}^{\mathrm{mu4}} (\vec{p}_{b}) \cap \varepsilon_{\mathrm{trig}}^{\mathrm{mu4noL1}} (\vec{p}_{b})),
+\label{eq:mu4_mu4_nol1_eff}
+\end{align}
+where, in the second line, $(\varepsilon_{\mathrm{trig}}^{\mathrm{mu4}} (\vec{p}_{a}) \cap \varepsilon_{\mathrm{trig}}^{\mathrm{mu4noL1}} (\vec{p}_{a}))$
+  is the probability for a muon to simultaneously fire the  \verb=HLT_mu4= and \verb=HLT_mu4noL1= chains.
+Eq.~\eqref{eq:mu4_mu4_nol1_eff} states that the net efficiency for \verb=HLT_mu4_mu4noL1=
+  is the union of the efficiency for one muon to fire the \verb=HLT_mu4= chain,  
+  and the other muon to fire the \verb=HLT_mu4noL1= chain, while accounting for the double counting
+  in the case both muons fire both chains.
+
+
+The \verb=HLT_mu4_mu4noL1= trigger is the primary trigger used in this analysis
+  and accounts for most of the statistics.
+In principle, it would be expected that events selected by the \verb=HLT_2mu4= 
+  trigger would be a subset of the events selected by the \verb=HLT_mu4_mu4noL1= trigger.
+However, the HLT hypos for the \verb=HLT_mu4= and \verb=HLT_mu4noL1= 
+  chains are different, resulting in \verb=HLT_mu4_mu4noL1= not being 
+  a superset of the \verb=HLT_2mu4= trigger.
+Additionally, because the \verb=HLT_mu4_mu4noL1= was prescaled in a few runs,
+  while the \verb=HLT_2mu4= trigger was not, including the \verb=HLT_2mu4=
+  trigger gains some additional statistics.
+The following strategy is used for combining the \verb=HLT_mu4_mu4noL1= 
+  and \verb=HLT_2mu4= triggers:
+\begin{enumerate}
+  \item Whenever a pair matches the \verb=HLT_mu4_mu4noL1=, the efficiency correction for \verb=HLT_mu4_mu4noL1= (Eq.~\eqref{eq:mu4_mu4_nol1_eff}) is used (and step 2 below is skipped).
+  \item For pairs that do not match the  \verb=HLT_mu4_mu4noL1=, but match the \verb=HLT_2mu4= trigger, it is checked if \verb=HLT_mu4_mu4noL1= was prescaled out in that event (this information is stored in the xAOD):
+  \begin{enumerate}[label=\alph*.]
+    \item If \verb=HLT_mu4_mu4noL1= was prescaled out in this event, then this pair was selected by the \verb=HLT_2mu4 trigger=, and the efficiency correction for \verb=HLT_2mu4= (Eq.~\eqref{eq:2mu3_eff}) is applied.
+    \item If \verb=HLT_mu4_mu4noL1= was not prescaled for this event, then this pair is not used (This is considered as a pair lost because of the inefficiency of the \verb=HLT_mu4_mu4noL1= trigger.
+  \end{enumerate}
+\end{enumerate}
+Put another way, when the \verb=HLT_mu4_mu4noL1= trigger is not prescaled,
+  its decision is used (without looking at the \verb=HLT_2mu4= decision.).
+When the \verb=HLT_mu4_mu4noL1= is prescaled, the \verb=HLT_2mu4= decision is used.
+
+
+
+Once the single-muon efficiencies are known, the efficiencies given
+  in Eq.~\eqref{eq:2mu3_eff} and Eq.~\eqref{eq:mu4_mu4_nol1_eff} can be calculated.
+The evaluation of the single-muon trigger efficiencies is described below.
+
+
+\subsubsection{Triggers efficiencies for HLT\_mu4 Trigger}
+The single muon efficiencies for the \verb=HLT_mu4= trigger are measured using the \PbPb\ minimum bias
+  data samples: events recorded in the min-bias stream satisfying either one
+  of the following triggers (Described in Section~\ref{sec:data}):
+\begin{itemize}
+\item \verb=HLT_noalg_cc_L1TE600_0ETA49=
+\item \verb=HLT_noalg_pc_L1TE50_VTE600_0ETA49=
+\item \verb=HLT_mb_sptrk_L1ZDC_A_C_VTE50=.
+\end{itemize}
+The single-muon trigger efficiency for \verb=HLT_mu4= 
+  is defined to be the fraction of reconstructed (Tight or Medium) muons
+  that have a matching HLT muon within $\Delta R < 0.1$:
+\begin{eqnarray}
+\varepsilon_{\mathrm{trig}}^{\mathrm{mu4}}=
+\frac{\text{Number of reconstructed muons in MinBais Events matching the HLT\_mu4 trigger}}{\text{Number of reconstructed muons in MinBias Events}},
+\label{eq:trig_eff_mb}
+\end{eqnarray}
+  where the ratio in Eq.~\ref{eq:trig_eff_mb} are evaluated as a function of \pt\ and $q*\eta$.
+The efficiencies, for muons passing the Tight working point,
+  measured as a function of \pT\ and $q*\eta$,
+  are shown in Figure~\ref{fig:pbpb_trigEff} as a 2D plot, and in
+  Figure~\ref{fig:pbpb_trigEff_1D2}
+  in different intervals of $q*\eta$.
+Appendix~\ref{sec:medium_muon_trigEff} shows similar 
+  efficiencies but for muons passing the Medium working point.
+For \pt>6~\GeV, the efficiencies at forward (or backward) $q*\eta$ are larger
+  than at mid-rapidity.
+While at low-pt the efficiencies decrease from negative $q*\eta$ to positive
+  $q*\eta$; this is most clearly seen in the 2D plots shown in Figure~\ref{fig:pbpb_trigEff}.
+
+The lines in Figure~\ref{fig:pbpb_trigEff_1D2}
+  indicate fits to Fermi functions + linear function of the form:
+\begin{eqnarray}
+\mathrm{eff}(\pt)=\frac{\epsilon}{1+\exp{(\frac{\pt-p_{\mathrm{T}}^0}{\Delta})}} + A\times\Theta(\pt-p_{\mathrm{T}}^{\mathrm{Thres}})(\pt-p_{\mathrm{T}}^{\mathrm{Thres}})
+\label{eq:trigger_eff_fit}
+\end{eqnarray}
+where $\epsilon$, $p_{\mathrm{T}}^0$, $\Delta$ and $A$ are fit-parameters,
+  $\Theta$ is the step function,
+  and $p_{\mathrm{T}}^{\mathrm{Thres}}$ is 4~\GeV\ for the \verb=HLT_mu4= trigger.
+The fits are made separately for each $q*\eta$ interval and the fit parameters
+  vary as function of $q*\eta$.
+The linear function is included in the parameterization to account
+  for an increasing trend observed in the efficiency in few
+  $q*\eta$ intervals.
+In case the fit function in Eq.~\eqref{eq:trigger_eff_fit} 
+  returns a value greater than 1, which can happen at very high-\pt\ 
+  due to the presence of the linear term, it is trunated to 1.0. 
+Also, the fits are not perfect at low-\pt in a few $q*\eta$ intervals.
+However, since the data-points themselves have very small errors,
+  for $\pt<8$~\GeV\ the data-points are interpolated to obtain the efficiencies
+  and the fits are used only for $\pt>8$~\GeV.
+The trigger efficiencies show a few percent variation with centrality,
+  this is discussed later in Sec~\ref{sec:trigeff_centdep}.
+%This is demonstrated in Figure~\ref{fig:pbpb_trigEff_1D2_centdep}.
+%The efficiency corrections are thus applied as function of 
+%  centrality,\pt, and $q*\eta$.
+
+
+
+
+\begin{figure} 
+\centering
+%\includegraphics[width=0.5\textwidth]%
+%{figures/AllFigs/Can_trigeff_type1_trig0_MuonSelectionCut0}%
+\includegraphics[width=0.5\textwidth]%
+{figures/AllFigs/Can_trigeff_type1_trig0_MuonSelectionCut1}
+\caption{
+HLT\_mu4 trigger efficiency for \PbPb.
+The Plot corresponds to Tight muons.
+\label{fig:pbpb_trigEff}
+}
+\end{figure}
+
+
+
+\begin{figure} \centering
+\includegraphics[width=1\textwidth]%
+{figures/AllFigs/Can_eff_trig_option0_MuonSelectionCut1}%
+\caption{
+HLT\_mu4 trigger efficiency for \PbPb.
+The lines indicate fits to Fermi+linear functions given in Eq.~\eqref{eq:trigger_eff_fit}.
+The fits are made over the range \pt>4~\GeV.
+The plots correspond to Tight muons.
+\label{fig:pbpb_trigEff_1D2}
+}
+\end{figure}
+
+
+
+\begin{comment}
+\begin{figure} \centering
+\includegraphics[width=0.5\textwidth]%
+{figures/AllFigs/Can_eff_cent2_trig0_ptmin40_ptmax200_option0_MuonSelectionCut1}%
+\caption{
+The relate change in the trigger efficiency for 
+  tight muons as a function of centrality (averaged over $\eta$).
+\label{fig:pbpb_trigEff_1D2_centdep}
+}
+\end{figure}
+\end{comment}
+
+
+
+\FloatBarrier
+\clearpage
+\subsubsection{Triggers efficiencies for HLT\_mu4noL1 and  HLT\_mu4noL1$\cap$HLT\_mu4 Triggers}
+The efficiency for the \verb=HLT_mu4_mu4noL1= trigger and the combined
+  efficiency for \verb=HLT_mu4noL1=$\cap$\verb=HLT_mu4= are obtained using 
+  the HardProbes stream, by using events that are triggered by 
+  the following single muon triggers.
+\begin{itemize}
+\item \verb=HLT_mu4=
+\item \verb=HLT_mu6=
+\item \verb=HLT_mu8=.
+\end{itemize}
+Offline muon-pairs are selected where one of the muon matches
+  the \verb=HLT_mu4= or \verb=HLT_mu6= or \verb=HLT_mu8= triggers 
+  (we will call this muon as \textit{first muon} in the text below).
+Then the fraction of such offline muon pairs that match the 
+  \verb=HLT_mu4_mu4noL1= trigger (or simultaneously match both \verb=HLT_mu4_mu4noL1= and \verb=HLT_2mu4=) 
+  are evaluated as a function of the \pT\ and $q\times\eta$ of the other muon
+  in the pair (this muon is called \textit{second muon} in the text below).
+This fraction is the efficiency of the \verb=HLT_mu4noL1= trigger (or \verb=HLT_mu4noL1=$\cap$\verb=HLT_mu4= Trigger).
+For example, the \verb=HLT_mu4noL1= can be obtained as:
+\begin{eqnarray}
+\varepsilon_{\mathrm{trig}}^{\mathrm{mu4\_noL1}}&=&
+\frac{N^{\mathrm{pairs}}\{\text{Matching HLT\_mu4\_mu4noL1, where first muon in pair matches HLT\_mu4}\}}{N^{\mathrm{pairs}}\{\text{First muon in pair matches HLT\_mu4 trigger}\}}, \\
+  &=& \text{Prob}(\text{HLT\_mu4\_mu4noL1}(\vec{p}_{a},\vec{p}_{b})|\text{HLT\_mu4}(\vec{p}_{a})) \nonumber
+\label{eq:trig_eff_hp}
+\end{eqnarray}
+where, the efficiency of the l.h.s. of the above equation is 
+  evaluated as function of \pt\ and $q*\eta$ of the second muon in the pair.
+The efficiencies for the \verb=HLT_mu4noL1= trigger 
+  measured as a function of \pT\ and $q\times\eta$,
+  are shown in Figure~\ref{fig:pbpb_trigEff_noL1}, as 2D plots and in
+  Figures~\ref{fig:pbpb_trigEff_1D1_noL1} in different intervals of $q\times\eta$.
+Figure~\ref{fig:pbpb_trigEff_1D1_noL1} also shows the 
+  combined \verb=HLT_mu4noL1=$\cap$\verb=HLT_mu4= efficiency.
+Figure~\ref{fig:pbpb_trigEff_1D1_noL1} also shows the efficiency 
+  for the HLT\_mu4 trigger obtained using the HP stream.
+
+As a check, the \verb=HLT_mu4= efficiency obtained from the HP stream is compared
+  with the efficiency obtained from the min-bias stream
+  in Figure~\ref{fig:pbpb_trigEff_1D1_compare}.
+The two estimates of the efficiency are found to be consistent.
+This plot demonstrates that the method used here to obtain the 
+  single-muon efficiency from the HP stream works (otherwise the
+  estimate from Eq.~\eqref{eq:trig_eff_hp} would not match the estimate
+  from the MinBias events).
+This plot also implicitly verifies that the facorization
+  of the trigger efficiency, Eq.\eqref{eq:2mu3_eff}, is correct.
+As it shows that :
+\begin{eqnarray}
+\text{Prob}(\text{HLT\_mu4}(\vec{p}_{b})) = \text{Prob}(\text{HLT\_2mu4}(\vec{p}_{a},\vec{p}_{b})|\text{HLT\_mu4}(\vec{p}_{a}))
+\label{eq:2mu4_factorization}
+\end{eqnarray}
+Appendix~\ref{sec:medium_muon_trigEff} shows similar 
+  efficiencies but for muons passing the Medium working point.
+
+\begin{figure}
+\centering
+\includegraphics[width=0.5\textwidth]%
+{figures/AllFigs/can_eff_Mu4NoL1_RefAll_MuonSelectionCut1}%
+\includegraphics[width=0.5\textwidth]%
+{figures/AllFigs/can_eff_Both_RefAll_MuonSelectionCut1}
+\caption{
+  Left: HLT\_mu4noL1 trigger efficiency for \PbPb.
+  Right: HLT\_mu4noL1$\cap$HLT\_mu4 Triggers trigger efficiency for \PbPb.
+  Plots correspond Tight muons.
+\label{fig:pbpb_trigEff_noL1}
+}
+\end{figure}
+
+
+\begin{figure}
+\centering
+\includegraphics[width=1\textwidth]%
+{figures/AllFigs/can_eff1D_All_RefAll_MuonSelectionCut1}%
+\caption{
+  Efficiencies for the HLT\_mu4NoL1 trigger (red) as well as the combined 
+    HLT\_mu4noL1$\cap$HLT\_mu4 eficiency (blue, labelled as \textit{Both}) in \PbPb.
+  Each panel corresponds to a different $q\eta$ interval.
+  The efficiency for the HLT\_mu4 trigger obtained using the HP
+    stream is also shown (black).
+  The plots correspond to Tight muons.
+\label{fig:pbpb_trigEff_1D1_noL1}
+}
+\end{figure}
+
+
+
+\begin{figure}
+\centering
+\includegraphics[width=1\textwidth]%
+{figures/AllFigs/can_eff1D_Mu4_RefAll_MuonSelectionCut1}%
+\caption{
+  Comparison of the efficiency for the HLT\_mu4 trigger obtained using the HP
+    stream to that using the min-bias events.
+  The plots correspond to Tight muons.
+  This plot also demonstrates the validity of the factorization~Eq.~\eqref{eq:2mu3_eff},
+    via Eq.~\eqref{eq:2mu4_factorization}.
+\label{fig:pbpb_trigEff_1D1_compare}
+}
+\end{figure}
+
+
+
+\FloatBarrier
+\subsubsection{Triggers efficiencies: Centrality dependence~\label{sec:trigeff_centdep}}
+The trigger efficiencies also have some centrality dependence.
+This is demonstrated in Figure~\ref{fig:pbpb_trigEff_centdep}.
+The plot shows the relative variation in the efficiencies w.r.t. 
+  the centrality-integrated efficiency, averaged over all $q\eta$ intervals.
+This additional centrality dependence is included when applying the 
+  trigger efficiency corrections.
+This factor is only implemented as a function of centrality and \pt, as there are 
+  not enough statistics to implement it as function of (centrality,\pt,$q\eta$).
+The centrality dependence is evaluated using tight muons as they are less susceptible
+  to misidentified muons.
+The final efficiency (for a given trigger) is obtained by taking the product 
+  of this centrality-dependent factor (Figure~\ref{fig:pbpb_trigEff_centdep})
+  and the centrality averaged efficiency (for ex. Figure~\ref{fig:pbpb_trigEff_1D1_noL1}):
+\begin{align}
+	\epsilon_{\mathrm{trig}}(\pt,q\eta,\mathrm{centrality}) = \epsilon_{\mathrm{trig}}(\pt,q\eta)\times\mathrm{CentDep}(\pt,\mathrm{centrality})
+\label{eq:trigeff_centdep}
+\end{align}
+
+\begin{figure}
+\centering
+\includegraphics[bb=382bp  0bp 565bp 138bp,clip,width=0.33\textwidth]%
+{figures/AllFigs/can_eff_centdep_Mu4_RefAll40_50_MuonSelectionCut1}%
+\includegraphics[bb=382bp  0bp 565bp 138bp,clip,width=0.33\textwidth]%
+{figures/AllFigs/can_eff_centdep_Mu4NoL1_RefAll40_50_MuonSelectionCut1}%
+\includegraphics[bb=382bp  0bp 565bp 138bp,clip,width=0.33\textwidth]%
+{figures/AllFigs/can_eff_centdep_Both_RefAll40_50_MuonSelectionCut1}
+\includegraphics[bb=382bp  0bp 565bp 138bp,clip,width=0.33\textwidth]%
+{figures/AllFigs/can_eff_centdep_Mu4_RefAll50_60_MuonSelectionCut1}%
+\includegraphics[bb=382bp  0bp 565bp 138bp,clip,width=0.33\textwidth]%
+{figures/AllFigs/can_eff_centdep_Mu4NoL1_RefAll50_60_MuonSelectionCut1}%
+\includegraphics[bb=382bp  0bp 565bp 138bp,clip,width=0.33\textwidth]%
+{figures/AllFigs/can_eff_centdep_Both_RefAll50_60_MuonSelectionCut1}
+\includegraphics[bb=382bp  0bp 565bp 138bp,clip,width=0.33\textwidth]%
+{figures/AllFigs/can_eff_centdep_Mu4_RefAll60_80_MuonSelectionCut1}%
+\includegraphics[bb=382bp  0bp 565bp 138bp,clip,width=0.33\textwidth]%
+{figures/AllFigs/can_eff_centdep_Mu4NoL1_RefAll60_80_MuonSelectionCut1}%
+\includegraphics[bb=382bp  0bp 565bp 138bp,clip,width=0.33\textwidth]%
+{figures/AllFigs/can_eff_centdep_Both_RefAll60_80_MuonSelectionCut1}
+\includegraphics[bb=382bp  0bp 565bp 138bp,clip,width=0.33\textwidth]%
+{figures/AllFigs/can_eff_centdep_Mu4_RefAll80_200_MuonSelectionCut1}%
+\includegraphics[bb=382bp  0bp 565bp 138bp,clip,width=0.33\textwidth]%
+{figures/AllFigs/can_eff_centdep_Mu4NoL1_RefAll80_200_MuonSelectionCut1}%
+\includegraphics[bb=382bp  0bp 565bp 138bp,clip,width=0.33\textwidth]%
+{figures/AllFigs/can_eff_centdep_Both_RefAll80_200_MuonSelectionCut1}
+\caption{
+The centrality dependence of the single-muon trigger efficiencies.
+The plot shows the relative variation in the efficiencies w.r.t. 
+  the cenrality-integrated efficiency, averaged over all $q\eta$ intervals.
+The left, center and right panels correspond to the HLT\_mu4, HLT\_mu4noL1 and
+  HLT\_mu4noL1$\cap$HLT\_mu4 (labelled as ``both'') triggers respectively.
+From top to bottom the rows correspond to different muon-\pt\ intervals.
+The red-line shows the parameterization of the centrality dependence 
+  that is used in the analysis, the blue lines show a $\pm$3\% band
+  for reference %which is included as an uncertainty.
+\label{fig:pbpb_trigEff_centdep}
+}
+\end{figure}
+
+
+
+
+
+
+\clearpage
+\subsection{Reconstruction efficiencies\label{sec:reco_eff}}
+The single muon reconstruction efficiency is evaluated using the \starlight\
+  MC samples~\cite{ATLHI-304,ATLHI-313} with HIJING Overlay 
+  discussed in Section~\ref{sec:mc_samples}.
+The HIJING samples with 2015 and 2018 conditions show only a 
+  minor performance difference and the two samples are combined 
+  while evaluating the efficiencies.
+The efficiency is defined as the fraction of the number of generated-muons that have
+  associated reconstructed muons -- obtained with the same requirements as those
+  used in the data analysis -- that match the generated-muon with a probability
+  of 0.5 or more.
+\begin{align}
+\epsilon_{\mathrm{reco}}(\pt,q\eta,\mathrm{centrality}) =\frac{N^{\mathrm{Gen}}(\pt,q\eta,\mathrm{centrality})\text{ with match-prob>0.5 to reco muon passing selections}}{N^{\mathrm{Gen}}(\pt,q\eta,\mathrm{centrality})}
+\end{align}
+Figure~\ref{fig:pbpb_ReconEff_2D2} shows the reconstruction efficiency
+  as a function of \pt and $q*\eta$.
+Figure~\ref{fig:pbpb_ReconEff_tight} shows the reconstruction efficiency
+  a function of \pT\ for several $q*\eta$ bins.
+%\begin{eqnarray}
+%  \mathrm{eff}(\pt)=\frac{\epsilon}{1+\exp{(\frac{\pt-\pt^0}{\Delta})}}
+%\label{eq:reco_eff_fit}
+%\end{eqnarray}
+%where $\epsilon$, $\pt^0$ and $\Delta$ are fit-parameters.
+Appendix~\ref{sec:medium_muon_recoeff} shows similar 
+  efficiencies but for muons passing the Medium working point.
+%In general the Fermi-function fits do not work well in many regions 
+%  for the Tight muons.
+The evaluated points themselves have quite small uncertaintues,
+  so instead of fiting efficiencies with fermi functions, 
+  the evaluated efficiency data-points are interpolated and 
+  used in the analysis.
+
+For brevity, the efficiencies shown in Figure~\ref{fig:pbpb_ReconEff_tight} 
+  are without any centrality binning i.e. they are from all events in 
+  the Overlay MC sample.
+However in the analysis the efficiencies are evaluated in bins of 
+  (10\% or 20\% wide) centrality.
+In general the efficiencies show a small but systematic dependence 
+  on centrality and increase from central to peripheral events.
+Thus the efficiency corrections are applied as a function of 
+  \pt, $q*\eta$ and centrality.
+These efficiencies, in narrow bins of centrality, 
+  are shown in Appendix~\ref{sec:recoeff_centdep}.
+On top of these MC-driven reconstruction efficiency estimates,
+  additional scale-factors as recommended by the MuonCP
+  group~\cite{MCPAnalysisWinterMC16}, and provided by the
+  CP::MuonEfficiencyScaleFactors tool~\cite{MuonEfficiencyScaleFactors}
+  are included.
+
+\begin{figure} 
+\centering
+%\includegraphics[width=0.5\textwidth]%
+%{figures/AllFigs/Can_recoeff2D_medium}%
+\includegraphics[width=0.5\textwidth]%
+{figures/AllFigs/Can_recoeff2D_tight}
+\caption{
+Muon reconstruction efficiencies for \PbPb.
+The plot corresponds to Tight muons.
+\label{fig:pbpb_ReconEff_2D2}
+}
+\end{figure}
+
+
+
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs//Can_recoeff1D_tight}
+\caption{
+Muon reconstruction efficiency as a function of \pt and
+  for several $q*\eta$ slices.
+Plots are for Tight quality muons.
+\label{fig:pbpb_ReconEff_tight}
+}
+\end{figure}
+
+
+\FloatBarrier
+Figure~\ref{fig:check_pair_effs} shows the net efficiency correction 
+  (Eq.~\eqref{eq:net_eff_correction}) for pairs that pass 
+  the selections described later in Section~\ref{sec:analysis}.
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_Eff_Corrections_pTBar_GT5_EffCor}
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_Eff_Corrections_Tight_pTBar_GT5_EffCor}
+\caption{
+Left : the spectra for number of pairs as a function of the 
+  \pt\ of the lower-\pt\ muon in the pair.
+Middle: the mean combined efficiency correction,$\langle w\rangle$ (Eq.~\eqref{eq:net_eff_correction})
+  on the pair as a function
+  of the \pt\ of the lower-\pt\ muon in the pair.
+Right: the distribution of the efficiency correction.
+Plots are for \ptab>4~\GeV and \ptbar>5~\GeV,
+  where \ptbar\ is the average \pt\ of the two muons in the pair.
+The top panels are for Medium muons and the lower ones are for Tight muons.
+\label{fig:check_pair_effs}
+}
+\end{figure}
+
+\clearpage
+
+

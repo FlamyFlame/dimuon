@@ -1,0 +1,150 @@
+%-------------------------------------------------------------------------------
+% This file provides a skeleton ATLAS document.
+%-------------------------------------------------------------------------------
+% \pdfoutput=1
+% The \pdfoutput command is needed by arXiv/JHEP/JINST to ensure use of pdflatex.
+% It should be included in the first 5 lines of the file.
+%-------------------------------------------------------------------------------
+% Specify where ATLAS LaTeX style files can be found.
+\newcommand*{\ATLASLATEXPATH}{latex/}
+% Use this variant if the files are in a central location, e.g. $HOME/texmf.
+% \newcommand*{\ATLASLATEXPATH}{}
+%-------------------------------------------------------------------------------
+\documentclass[NOTE,UKenglish,coverpage,txfonts,texlive=2017]{\ATLASLATEXPATH atlasdoc}
+% The language of the document must be set: usually UKenglish or USenglish.
+% british and american also work!
+% Commonly used options:
+%  texlive=YYYY          Specify TeX Live version (2013 is default).
+%  atlasstyle=true|false Use ATLAS style for document (default).
+%  coverpage             Create ATLAS draft cover page for collaboration circulation.
+%                        See atlas-draft-cover.tex for a list of variables that should be defined.
+%  cernpreprint          Create front page for a CERN preprint.
+%                        See atlas-preprint-cover.tex for a list of variables that should be defined.
+%  PAPER                 The document is an ATLAS paper (draft).
+%  CONF                  The document is a CONF note (draft).
+%  PUB                   The document is a PUB note (draft).
+%  txfonts=true|false    Use txfonts rather than the default newtx - needed for arXiv submission.
+%  paper=a4|letter       Set paper size to A4 (default) or letter.
+
+%-------------------------------------------------------------------------------
+% Extra packages:
+\usepackage[subfigure,backend=bibtex]{\ATLASLATEXPATH atlaspackage}
+
+% Commonly used options:
+%  biblatex=true|false   Use biblatex (default) or bibtex for the bibliography.
+%  backend=biber         Use the biber backend rather than bibtex.
+%  subfigure|subfig|subcaption  to use one of these packages for figures in figures.
+%  minimal               Minimal set of packages.
+%  default               Standard set of packages.
+%  full                  Full set of packages.
+%-------------------------------------------------------------------------------
+% Style file with biblatex options for ATLAS documents.
+\usepackage{\ATLASLATEXPATH atlasbiblatex}
+
+% Package for creating list of authors and contributors to the analysis.
+\usepackage{\ATLASLATEXPATH atlascontribute}
+
+% Useful macros
+\usepackage{\ATLASLATEXPATH atlasphysics}
+\usepackage{\ATLASLATEXPATH atlasprocess}
+\usepackage{\ATLASLATEXPATH atlasparticle}
+\usepackage{\ATLASLATEXPATH atlasheavyion}
+\usepackage{multirow}
+\usepackage{dcolumn}
+\usepackage[export]{adjustbox}
+\usepackage{verbatim}
+\usepackage{graphicx}
+
+
+\usepackage{etoolbox} % for using toggle
+\newtoggle{IncludeYields}
+%\toggletrue{IncludeYields}
+\togglefalse{IncludeYields}
+
+% See doc/atlas-physics.pdf for a list of the defined symbols.
+% Default options are:
+%   true:  journal, misc, particle, unit, xref
+%   false: BSM, hion, jetetmiss, math, process, other, texmf
+% See the package for details on the options.
+
+% Files with references for use with biblatex.
+% Note that biber gives an error if it finds empty bib files.
+\addbibresource{mydocument.bib}
+\addbibresource{bibtex/bib/ATLAS.bib}
+\addbibresource{bibtex/bib/ConfNotes.bib}
+\addbibresource{bibtex/bib/PubNotes.bib}
+
+
+% Paths for figures - do not forget the / at the end of the directory name.
+\graphicspath{{logos/}{figures/}}
+
+% Add you own definitions here (file mydocument-defs.sty).
+\usepackage{mydocument-defs}
+\usepackage{mathrsfs}
+\usepackage{enumitem}
+\usepackage{tabularx}
+
+%\usepackage{amsmath}
+%-------------------------------------------------------------------------------
+% Generic document information
+%-------------------------------------------------------------------------------
+
+% Title, abstract and document
+\input{mydocument-metadata}
+% Author and title for the PDF file
+\hypersetup{pdftitle={ATLAS document},pdfauthor={The ATLAS Collaboration}}
+
+
+
+
+
+
+%-------------------------------------------------------------------------------
+% Content
+%-------------------------------------------------------------------------------
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+
+% List of contributors - print here or after the Bibliography.
+%\PrintAtlasContribute{0.30}
+
+
+
+\subsection{Muon pair selections and observables}
+\label{sec:muon_selection}
+\input{tex/MuonAnalysis.tex}
+\clearpage
+
+\input{tex/Systematics.tex}
+
+
+%-------------------------------------------------------------------------------
+%\FloatBarrier
+%\section{Drell-Yan Contribution}
+%\label{sec:drell_yan}
+%\input{tex/DrellYan.tex}
+%\clearpage
+%-------------------------------------------------------------------------------
+%\FloatBarrier
+%\section{\Dphi fits for $|\Deta|>0.9$}
+%\label{sec:deta0p9}
+%\input{tex/DphiFitsDeta0p9.tex}
+%\clearpage
+%-------------------------------------------------------------------------------
+\clearpage
+\printbibliography
+%-------------------------------------------------------------------------------
+%\clearpage
+%\appendix
+%\part*{Auxiliary material}
+%\addcontentsline{toc}{part}{Auxiliary material}
+%\clearpage
+%-------------------------------------------------------------------------------
+
+
+\PrintAtlasContribute{0.30}
+
+\end{document}

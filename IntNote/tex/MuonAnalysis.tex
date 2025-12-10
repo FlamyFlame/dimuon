@@ -1,0 +1,409 @@
+\subsubsection{Single-muon selections}
+Muons used in this analysis are required to pass the following selections:
+
+\begin{itemize}
+  \item Combined muon
+  \item Tight muons:
+        For details about tight muon selections and performance,
+          see Ref.~\cite{PERF-2015-10}.
+        For cross-checks and systematic uncertainties, muons passing the
+          ``Medium'' requirement are used.
+        The plot captions are always explicitly labelled for what quality muons are used.
+  \item $\pT > 4~\GeV$
+  \item $ |\eta| < 2.4$
+  \item A very loose requirement on the transverse impact parameter of $d_0<5$~mm,  as done in previous analyses~\cite{HION-2015-06}.
+\end{itemize}
+
+
+
+
+\subsubsection{Muon-pair selections\label{sec:muon_pair_selections}}
+Dimuon pairs are formed with both muons meeting the above criteria.
+The muon pair is also required to match the triggers listed in 
+  Section~\ref{sec:data} using the 
+  \href{https://twiki.cern.ch/twiki/bin/view/Atlas/XAODMatchingTool}{TriggerMatchingTool} 
+  package with a $d\mathrm{R}$ requirement of 0.1.
+Additionally the average \pt\ of the muons in the pair, 
+  $\ptbar=(\pt^{\mu_1}+\pt^{\mu_2})/2$ is required to be larger than 5~\GeV.
+This \ptbar\ requirement improves the signal to noise ratio, since 
+  the pairs for $4<\ptbar<5$~\GeV\ are dominated by combinatorial
+  background pairs which will be shown later.
+In events with multiple muon-pairs in the event (that pass all selections),
+  all pairs are used in the analysis.
+For events with muon-pairs that passes all selections,
+  approximately 2\% have more than one muon-pair.
+
+
+The objective of the analysis is to study the $\Dphi=\phia-\phib$
+  distribution between muons where $a$ and $b$ label the two muons 
+  in the pair.
+\iftoggle{IncludeYields}{
+  The goal is to quantify how the width and number of pairs on the 
+    away-side ($\Dphi=\pi$), varies with \pt\ and centrality.
+}
+{
+  The goal is to quantify how the width of the pair distribution on the 
+    away-side ($\Dphi=\pi$), varies with \pt\ and centrality.
+}
+Figure~\ref{fig:example_2pc} shows example \Dphi\ distributions,
+  for \ptab>4~\GeV.
+The pairs are also required to have |\Deta|>0.8, as well as 
+  few additional cuts that are discussed later 
+  in this section\footnote{
+    Typically two-particle correlation analyses use an event-mixing technique
+      to account for detector acceptance effects in \Dphi. 
+    However the full azimuthal acceptance of ATLAS makes these 
+      effects negligible, as has been demonstrated in prior flow 
+      analyses in Pb+Pb collisions~\cite{HION-2016-06,HION-2019-03}.
+    In this analysis no event-mixing is done to account for acceptance in \Dphi.
+  }.
+Figure~\ref{fig:example_2pc} shows the distributions for
+  central \PbPb\ events (top) panels, 
+  peripheral \PbPb\ events (middle panels)
+  and \pp\ events bottom panels.
+In the \pp\ collisions the Underlying Event (UE) pairs
+  are fairly small and most of the pairs are under 
+  the away-side peak. 
+For the central \PbPb\ events significant number of 
+  UE pairs are present, which are themselves modulated in \Dphi\
+  due to the effects of collective flow.
+These UE pairs must be removed -- both the \PbPb\ and \pp\ measurements -- 
+  before the yields and widths on the away-side are evaluated.
+The procedure to remove the UE pairs is discussed later.
+
+\begin{figure}[h] 
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_dphi_fits_cent12_LorentzZYAM_Tight_pTBar_GT5_EffCor}
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_dphi_fits_cent8_LorentzZYAM_Tight_pTBar_GT5_EffCor}
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_dphi_fits_cent11_LorentzZYAM_Tight_pTBar_GT5_pp2017_EffCor}
+\caption{
+Example two-particle distribution in $\Delta\phi$ for
+  muon pairs with |\Deta|>0.8.
+The plots correspond to pairs where both muons have 
+  the \textit{same-charge} (left), \textit{opposite-charge} (middle)
+  and the combined distribution (right).
+The lines indicate fits used to extract yields
+  on the away-side (discussed later in Section~\ref{sec:DphiFits}).
+The top panels correspond to central \PbPb\ events,
+  the middle panels correspond to peripheral \PbPb\ events,
+  and the bottom panels correspond to \pp\ events.
+Note the $y$-ranges of the panels are very different,
+  and they are zero suppressed for the \PbPb\ plots.
+\label{fig:example_2pc}
+}
+\end{figure}
+
+
+Some additional selections are applied on the muon-pairs
+  on top of the single-muon selections discussed above.
+These are:
+\begin{itemize}
+\item Cuts on the muons acoplanarity and \pt-asymmetry (defined in Eqns.~\ref{eq:acop}--\ref{eq:asym} below). 
+\item Cuts on invariant mass.
+\item Cuts on the pseudo-rapidity separation,|\Deta|=|\etaa-\etab|, 
+      between the two muons.
+\end{itemize}
+The Cuts and the reason for applying them are discussed below.
+These cuts are applied for both, the \PbPb\ and \pp\ data.
+
+\textbf{Cuts on acoplanarity and \pt-asymmetry}:
+These cuts are included to remove muon-pairs that arise from 
+  the \gamgammumu\ process~\cite{HION-2018-11,HION-2020-10}, and are only applied to
+  pairs where the two muons have opposite-charge.
+The acoplanarity and asymmetry are defined as:
+\begin{itemize}
+  \item Acoplanarity (\Aco): This quantifies how back-to-back in $\Dphi$ the two muons are.
+    \begin{eqnarray}
+    \Aco \equiv 1- \frac{|\Delta\phi|}{\pi}.
+    \label{eq:acop}
+    \end{eqnarray}
+  \item Asymmetry (\Amumu): This quantifies the \pt\ mismatch between the two muons.
+  \begin{eqnarray}
+  \Amumu \equiv \frac{|\ptplus-\ptminus|}{\ptplus+\ptminus}.
+  \label{eq:asym}
+  \end{eqnarray}
+\end{itemize}
+The \gamgammumu\ process produces dimuons with small values of \Aco\ 
+  and \Amumu~\cite{HION-2018-11}.
+Thus the following selection is imposed on the opposite-sign pairs 
+  to remove the \gamgammumu\ contributions: pairs with $\Aco<0.01$ and $\Amumu<0.08$ are removed.
+In principle these cuts should only be applied for the \PbPb\ data, where the \gamgammumu\ process occurs.
+However, for consistency and to keep acceptance effects identical 
+  between the \pp\ and \PbPb\ analyses, these cuts are applied to the \pp\ data as well.
+This cut rejects less than 1\% of opposite-sign pairs in the \pp\ events (where no such background is expected).
+
+
+\textbf{Invariant mass cuts:} 
+Muon-pairs from decays of mesons $\rho$, $\omega$, $\phi$, $J/\psi$, $\psi'$, $\Upsilon$
+  etc are excluded by applying cuts on the invariant mass of 
+  the pair. 
+These cuts are only applied on the pairs where the muons 
+  have opposite charge.
+The following regions of \Mmumu are removed: 
+  0.6--1.05~\GeV,
+  2.9--3.3~\GeV\, 
+  3.6--3.8~\GeV\, 
+  9.2--10.4~\GeV
+  and
+  70-110~\GeV.
+Figure~\ref{fig:minv_cuts} demonstrates the cuts that are applied 
+  to reject regions of \Mmumu\ around the masses of the mesons.
+the effect of the \Deta\ cuts (discussed below) are also shown.
+The \Deta\ cuts remove all pairs below \Mmumu\ of $\sim$3.4~\GeV\ 
+ effectively making the mass cuts below this threshold redundant. 
+The mass cuts however introduce acceptance effects that are 
+  dependent on \Dphi.
+Thus a \Dphi\ dependent correction needs to be introduced to 
+  the measurement to correct for this.
+This correction is discussed in Section~\ref{sec:minv_cut_correction}.
+
+\begin{figure}[h] 
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_minv2_cent_Tight_pTBar_GT5}
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_minv2_cent_Tight_pTBar_GT5_pp2017}
+\caption{
+Left panel: \Mmumu\ distributions prior to applying any rejections.
+Middle panel: \Mmumu\ distributions after requiring $|\Deta|>0.8$.
+Right panel: The distributions after further applying cuts on \Mmumu\ to the
+  opposite-charge pairs.
+The top and bottom row correspond to \PbPb\ and \pp\ data, respectively.
+\label{fig:minv_cuts}
+}
+\end{figure}
+
+\textbf{\Deta\ cuts}:
+A requirement of $|\Deta|>0.8$ is also imposed on the muon-pairs.
+The reason to implement this cut is to remove the large number of 
+  pairs that are present at $(|\Deta|,\Dphi)\sim(0,0)$.
+While the analysis aims to study the muon-pairs on the away-side 
+  ($\Dphi=\pi$) that arise from decays of back-to-back HF particles,
+  the pair-distribution on the near-side is used to estimate and 
+  correct for the UE pairs on the away-side.
+Before this is done, the excess pairs at $(|\Deta|,\Dphi)\sim(0,0)$
+  need to be removed, and for this reason the $|\Deta|>0.8$ 
+  requirement is imposed.
+The $|\Deta|>0.8$ cut also removes all resonances below
+  a mass of $\sim$3.4~\GeV, as shown in Figure~\ref{fig:minv_cuts}.
+
+
+
+Figure~\ref{fig:cutflow} shows the cutflow for the dimuon-pairs
+  for the Medium and Tight working points,
+  for both the \PbPb\ and \pp\ data.
+Figures~\ref{fig:eta_phi_PbPb} and ~\ref{fig:eta_phi_pp}, show
+ the $\eta$--$\phi$ distributions for muons from pairs
+ that pass all the selections listed above, 
+ for the \PbPb\ and \pp\ data, respectively.
+
+
+
+\begin{figure}[h] 
+\centering
+\includegraphics[width=0.5\textwidth]%
+{figures/AllFigs/can_CutFlow_pTBar_GT5_EffCor}%
+\includegraphics[width=0.5\textwidth]%
+{figures/AllFigs/can_CutFlow_Tight_pTBar_GT5_EffCor}
+\includegraphics[width=0.5\textwidth]%
+{figures/AllFigs/can_CutFlow_pTBar_GT5_pp2017_EffCor}%
+\includegraphics[width=0.5\textwidth]%
+{figures/AllFigs/can_CutFlow_Tight_pTBar_GT5_pp2017_EffCor}
+\caption{
+The number of dimuon pairs progressively passing the different
+  selection requirements. 
+The left and right panels correspond to Medium and Tight 
+  muons, respectively.
+The top and bottom rows correspond to the \PbPb\ and 
+  \pp\ data, respectively.
+\label{fig:cutflow}
+}
+\end{figure}
+
+
+
+\begin{figure}[h] 
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_EtaPhi_pTBar_GT5_EffCor}
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_EtaPhi_Tight_pTBar_GT5_EffCor}
+\caption{
+$\eta$ and $\phi$ distributions for muons 
+  from muon-pairs that pass all the selection requirements.
+The top and bottom rows correspond to Medium and 
+  Tight muons, respectively.
+Plots are for the \PbPb\ data. 
+\label{fig:eta_phi_PbPb}
+}
+\end{figure}
+
+
+\begin{figure}[h] 
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_EtaPhi_pTBar_GT5_pp2017_EffCor}
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_EtaPhi_Tight_pTBar_GT5_pp2017_EffCor}
+\caption{
+Same as Figure~\ref{fig:eta_phi_PbPb}, but for the \pp\ data. 
+\label{fig:eta_phi_pp}
+}
+\end{figure}
+
+
+
+\subsubsection{Correction accounting for inefficiency from \Mmumu\ and \gamgammumu\ cuts\label{sec:minv_cut_correction}}
+The invariant mass cuts that are applied to the opposite sign-pairs introduce 
+  acceptance effects that are $\Dphi$ dependent.
+This is demonstrated in Figure~\ref{fig:minv_deta_dphi},
+  which shows that the 9.40~\GeV<$\Mmumu$<10.2~\GeV\ mass cut
+  which is used to remove the $\Upsilon$ and its excitations
+  affects the $\Dphi$ distribution of the pairs.
+The \Mmumu cuts below 3.8~\GeV\ are mostly restricted to \Deta<0.8
+  and have only a minor effect on the measurement (but are still are corrected for as described below).
+Note that while Figure~\ref{fig:minv_deta_dphi} shows the effect of 
+  the \Mmumu\ cuts for both same-sign and opposite-sign pairs, 
+  in the analysis the are only applied to the opposite-sign pairs.
+Thus the correction discussed in this section is relevant only for 
+  the opposite-sign pairs (which are then propagated into the All-pairs case).
+
+\begin{figure}[h] 
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_DetaDphi_MinvCut0_Tight_pTBar_GT5_EffCor}
+\caption{
+The $\Deta-\Dphi$ distribution of the pairs in various \Mmumu ranges.
+The top, middle and bottom rows corresponds to the ranges of 
+  0<\Mmumu<125~\GeV (i.e. no cuts on \Mmumu), 9.20~\GeV<\Mmumu<10.4~\GeV.
+  and 0<\Mmumu<3.8~\GeV, respectively.
+The left, middle and right panels correspond to same-sign pairs
+  opposite-sign pairs, and All-pairs, respectively.
+Plots are for the \PbPb\ data.
+\label{fig:minv_deta_dphi}
+}
+\end{figure}
+
+
+Besides the acceptance effects arising from the \Mmumu\ cuts,
+  \Dphi\ dependent effects are also introduced because of
+  the cuts on the muons acoplanarity and \pt-asymmetry (Eqns.~\ref{eq:acop}--\ref{eq:asym}).
+The procedure below also corrects for these cuts.
+The $\Dphi$ dependent efficiency effects of the \Mmumu, 
+  acoplanarity and \pt-asymmetry cuts on the 
+  opposite-sign pairs are estimated by the following two methods:
+\begin{enumerate}
+  \item By applying the cuts on the ``same-sign'' pairs, and determining
+    what fraction of pairs are kept as a function of \Dphi.
+  \item By an event-mixing procedure: 
+    In this method a single muon triggered (\verb=HLT_mu4=) sample was used
+    to select events.
+    Pair distributions for muons were build by pairing muons 
+      (that were matched to the \verb=HLT_mu4= trigger) from separate events.
+    The events from which the muons were combined, were required to be from 
+      similar centrality ranges.
+    All single-muon and muon-pair cuts that are applied to in the analysis were 
+      applied to such ``Event-Mixed''muon-pairs, and the pairs were weighted 
+      by the relevant trigger and reconstruction efficiency corrections.
+    The effects of the \Mmumu\ and \gamgammumu\ cuts were evaluated by estimating 
+      what fraction of the mixed-event pairs survive the 
+      cuts as a function of \Dphi.
+\end{enumerate}
+
+
+
+Figure~\ref{fig:minv_eff} shows the estimated efficiency introduced
+  due to the \Mmumu\ cuts as well as the \gamgammumu\ cuts.
+To correct for this efficiency the opposite-sign pairs are weighted
+  by the inverse of the efficiency as a function of $\Dphi$.
+The black points indicate the values estimated using the same-sign
+  pairs (item-1 in the list above).
+The open blue and red points indicate the efficiency estimated
+  using the mixed-events (item-2 in the list above).
+The mixed-event efficiency is shows for the same-sign pairs 
+  as well as the opposite-sign pairs.
+The mixed-event efficiency from the same and opposite-sign
+  pairs are virtually identical.
+There is however some minor differences between the same-event 
+  and mixed-event estimates of the efficiency for $\Dphi>\pi/2$.
+This presumably arises as the same-event pairs can have physical correlations
+  in \pt\ and $\eta$, which the event-mixing cannot reproduce.
+%Also, the event-mixed efficiencies do not show any significant 
+%  centrality dependence, while the same-event estimate of the efficieny
+%  shows some centrality dependence for $\Dphi>\pi/2$.
+%In most central events the same-event and mixed-event estimates of the 
+%  efficiency are most similar, and the difference increases for more peripheral events.
+%This also arises because in more central events, most of the same-event pairs
+%  are combinatoric while in peripheral events the pairs are more likely 
+%  to be correlated.
+For this reason the efficiency estimated from the same-event distributions
+  are used as the default efficiency, with the alternate efficiency obtained from the 
+  mixed events used as an estimate systematic uncertainty.
+
+
+\begin{figure}[h] 
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_MinvCutEfficiencyFromEventMixing_Tight_pTBar_GT5_EffCor}
+\caption{
+The estimated efficiency introduced due to the \Mmumu\ cuts, 
+  as well as the acoplanarity and asymmetry cuts to remove
+  the \gamgammumu\ pairs (see text).
+Each panel indicates a different centrality interval.
+The last panel showd the efficiency for the 0--100\% centrality bin.
+\label{fig:minv_eff}
+}
+\end{figure}
+
+
+
+\subsubsection{Correction for Drell-Yan pairs\label{sec:DY_correction}}
+A small contribution to the opposite-sign pairs arises from the Drell-Yan process.
+This also needs to be corrected for before extracting the features 
+  of the HF pairs.
+This correction is done by evaluating the DY contribution using an official
+  \powheg\ MC sample described in Ref.~\cite{ATLHI-331}.
+This sample was previously used to estimate the DY-background in a previous
+  ATLAS measurement~\cite{HION-2020-10} that studied \gamgammumu\ 
+  process in heavy-ion collision.
+The DY contribution in a given centrality is calculated as:
+\begin{align}
+	\frac{dN_\mathrm{DY}}{d\Delta\phi} = \mathcal{L}\sigma_\mathrm{had}^\mathrm{Pb+Pb}\times \Delta\mathrm{cent}\times\langle\TAA\rangle\times\frac{d\sigma_\mathrm{DY,NN}}{d\Delta\phi}
+\end{align}
+where,
+  $\sigma_\mathrm{had}^\mathrm{Pb+Pb}$ is the total \PbPb\ hadronic cross-section,
+  $\Delta\mathrm{cent}$ represents the width of the centrality interval
+    as a fraction (i.e. the width in percentile/100),
+  $\langle\TAA\rangle$ is the nuclear-thickness function for the centrality interval (values taken from Ref.~\cite{TAAValues}),
+  and $\frac{d\sigma_\mathrm{DY,NN}}{d\Delta\phi}$ is the 
+    differential DY cross-section (Ref.~\cite{ATLHI-331}), when applying the same
+    fiducial selections as those in the data.
+
+Figure~\ref{fig:DY_Corr_PbPb} shows the pair distributions 
+  with/without the DY corrections.
+The DY contributons are estimated using three different PDF sets.
+In the final measurements, the spread between using the three PDFs 
+  is included as a systematic uncertainty, as described later in
+  Section~\ref{sec:systematics_drell_yan}.
+
+
+\begin{figure}[h] 
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_DY_cent12_Tight_pTBar_GT5_EffCor}
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_DY_cent8_Tight_pTBar_GT5_EffCor}
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_DY_cent11_Tight_pTBar_GT5_pp2017_EffCor}
+\caption{
+The \Dphi\ distributions with/without the DY corrections.
+The DY contributons are estimated using three different PDF sets.
+The top and middle rows correspond to the 0--10\% and 60--80\%
+  centrality intervals.
+The bottom row corresponds to the \pp\ data.
+\label{fig:DY_Corr_PbPb}
+}
+\end{figure}

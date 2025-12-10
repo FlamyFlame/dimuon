@@ -1,0 +1,267 @@
+%can_dphi_fits_cent0_Lorentz_EffCor
+
+\subsubsection{Fits to the \Dphi\ distributions}
+
+In order to obtain the \iftoggle{IncludeYields}{yield and}{} widths of the distributions
+  under the away-side peak, the \Dphi\ distributions are fit 
+  with the following functional form:
+\begin{eqnarray}
+dN/d\Dphi=N_{0}(1+v^{\mathrm{flow}}_{2,2}\cos(2\Dphi))+ Y^{\mathrm{corr}}(\Dphi),
+\label{eq:fit_func}
+\end{eqnarray}
+with:
+\begin{eqnarray}
+%Y^{\mathrm{corr}} (\Dphi) = N^{\mathrm{corr}}\frac{\Gamma/\pi}{(\Dphi-\pi)^2 + \Gamma^2}- N^{\mathrm{pedestal}},
+Y^{\mathrm{corr}} (\Dphi) = \frac{N^{\mathrm{corr}}}{(\Dphi-\pi)^2 + \Gamma^2}- N^{\mathrm{pedestal}},
+\label{eq:signal_func}
+\end{eqnarray}
+where $N_0$, $v^{\mathrm{flow}}_{2,2}$, $N^{\mathrm{corr}}$ and $\Gamma$ are fit-parameters.
+The $N^{\mathrm{pedestal}}$ term is constrained to ensure that 
+  $Y^{\mathrm{corr}} (\Dphi)$ is zero at $\Dphi=0$.
+The explanation of the terms in the fit is as follows.
+\begin{itemize}
+  \item $N_0$ : 
+    This term is independent of \Dphi\ and is used to account for
+      the UE pairs that have no modulation in \Dphi.
+
+  \item $v^{\mathrm{flow}}_{2,2}\cos(2\Dphi)$ : 
+    This term accounts for the (elliptic or $2^{\mathrm{nd}}$-order) flow modulation in the UE pairs.
+
+  \item $Y^{\mathrm{corr}}(\Dphi)$ : 
+    This term parameterizes the correlated yield.
+    The yield is parameterized as a Lorentzian function, 
+      centered at $\Dphi=\pi$, with a pedestal that is adjusted
+      to ensure $Y^{\mathrm{corr}} (\Dphi)=0$ at $\Dphi=0$.
+    The Lorentzian form is chosen as it describes the data well.
+    The $Y^{\mathrm{corr}}(\Dphi)$ is folded over the range 
+      ($-\pi/2,3\pi/2$).
+    The integral of $Y^{\mathrm{corr}}(\Dphi)$, over the full \Dphi\ range,
+      is the correlated yield.
+    The standard-deviation of $Y^{\mathrm{corr}}(\Dphi)$, 
+      (and not the parameter $\Gamma$) is taken as
+      the width of the correlation.
+    While calculating the standard-deviation of $Y^{\mathrm{corr}}(\Dphi)$
+      its folding into the range ($-\pi/2,3\pi/2$) is taken into consideration.
+    This is achieved by remapping the $Y^{\mathrm{corr}}(\Dphi)$
+      over the range ($0,2\pi$), so that the away-side peak is centered, 
+      and then calculating its RMS-width.
+    \iftoggle{IncludeYields}
+    {
+      The correlated yields and the RMS-widths are calculated directly 
+        using the fit function Eq.~\ref{eq:signal_func}.
+      Statistical uncertainties in the yields and RMS-widths are
+        obtained using toys, where $dN/d\Dphi$ distribution
+        are resampled and refitted using Eq.\eqref{eq:fit_func},
+        and the standard deviations in the yields and RMS-widths
+        in the resamplings are taken as the corresponding uncertainties.
+    }
+    {
+      The RMS-widths of the correlated pair-distribution are calculated directly 
+        using the fit function Eq.~\ref{eq:signal_func}.
+      Statistical uncertainties of the RMS-widths are
+        obtained using toys, where $dN/d\Dphi$ distribution
+        are resampled and refitted using Eq.\eqref{eq:fit_func},
+        and the standard deviations of the RMS-widths
+        in the resamplings are taken as the corresponding uncertainty.
+    }
+    Plots for the uncertainty estimation using toys are included in Appendix~\ref{sec:stat_errs}.
+\end{itemize}
+
+
+Figure~\ref{fig:fit_PbPb_tight} shows fits to the \Dphi\ distributions
+  using Eq.~\eqref{eq:fit_func}, for the \PbPb\ data.
+The fits are shown for same-charge, opposite-charge pairs as well 
+  as the combined case, and for several centrality intervals.
+And similar plots for the \pp\ data are shown in Figure~\ref{fig:fit_pp}.
+For completeness, Figure~\ref{fig:v22_centdep0} and Figure~\ref{fig:tau_centdep0}
+ in Appendix~\ref{sec:fit_parameters} show the fit-parameters $v_{2,2}^{flow}$ and $\Gamma$
+ from these fits.
+%In all cases, the fits describe the data well.
+
+
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_dphi_fits_cent12_LorentzZYAM_Tight_pTBar_GT5_EffCor}
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_dphi_fits_cent13_LorentzZYAM_Tight_pTBar_GT5_EffCor}
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_dphi_fits_cent4_LorentzZYAM_Tight_pTBar_GT5_EffCor}
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_dphi_fits_cent6_LorentzZYAM_Tight_pTBar_GT5_EffCor}
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_dphi_fits_cent8_LorentzZYAM_Tight_pTBar_GT5_EffCor}
+\caption{
+Fits to the \Dphi\ distributions using Eq.~\eqref{eq:fit_func}.
+Plots are for the \PbPb\ data.
+The left, middle and right panels correspond to same-charge, 
+  opposite-charge and combined-charge pairs, respectively. 
+From top to bottom, each row corresponds to a different centrality interval.
+Note: the $y$-range of the different panels are very different,
+  and they are zero suppressed.
+\label{fig:fit_PbPb_tight}
+}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_dphi_fits_cent11_LorentzZYAM_pTBar_GT5_pp2017_EffCor}
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_dphi_fits_cent11_LorentzZYAM_Tight_pTBar_GT5_pp2017_EffCor}
+\caption{
+Similar to Figure~\ref{fig:fit_PbPb_medium}, but for the \pp \ data.
+The top and bottom panels correspond to Medium and Tight muons, respectively.
+\label{fig:fit_pp}
+}
+\end{figure}
+
+
+
+
+
+
+\clearpage
+\FloatBarrier
+\iftoggle{IncludeYields}
+{
+  \subsubsection{Correlated yields and widths}
+}
+{
+  \subsubsection{Widths for the correlated muon-pair distributions}
+}
+
+Figure~\ref{fig:widths_PbPb} shows the widths for the \PbPb\ data 
+  (standard deviation of $Y^{\mathrm{corr}}(\Dphi)$), 
+  plotted as a function of centrality.
+The results are shown for both the Tight and Medium selections.
+The \PbPb\ data are also compared to the \pp\ measurements 
+  (continuous line).
+The widths for the \PbPb\ show no systematic dependence on centrality
+  over the mid-central and peripheral range, where the widths are 
+  consistent with the widths measured in the \pp\ data.
+However, over the 0--20\% most-central events the same-charge pairs
+  do show a slight narrowing in the widths compared to the more 
+  peripheral intervals.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_widths_pTBar_GT5_EffCor}
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_widths_Tight_pTBar_GT5_EffCor}
+\caption{
+Widths of the away-side correlation in the \PbPb\ data 
+  as a function of centrality.
+The measurements are shown for the same-charge (left),
+  opposite-charge (middle), and combined-charge (right) pairs.
+The top and bottom rows correspond to Medium and Tight muons, respectively.
+The \pp\ measurements are also shown (blue line). 
+\label{fig:widths_PbPb}
+}
+\end{figure}
+
+
+
+
+\iftoggle{IncludeYields}
+{
+  Figure~\ref{fig:yields_PbPb} shows the yields of the correlated pairs
+    in different centrality intervals.
+  The yields increase systematically from peripheral to central intervals.
+  The number of opposite-sign pairs are approximately double the number 
+    of same-sign pairs.
+
+  Figure~\ref{fig:scaled_yields_PbPb} shows the per-event yields scaled by the nuclear 
+    overlap function \TAA\ that is obtained using a Glauber model analysis~\cite{Miller:2007ri}:
+  \begin{eqnarray}
+  \text{Scaled per-event yield}=\frac{Yield}{N_{\mathrm{events}}^{\mathrm{PbPb}}\TAA},
+  \label{eq:TaaYield}
+  \end{eqnarray}
+  where \textit{Yield} is the measured yield in a given 
+    centrality interval (Figure~\ref{fig:yields_PbPb}),
+    and $N_{\mathrm{events}}^{\mathrm{PbPb}}$ is the number
+    of \PbPb\ events in the given centrality interval
+    corresponding to the luminosity of 1.93\inb 
+    (which can be obtained using $\sigma^{\PbPb}=7.66\mu b$~\cite{Loizides:2017ack}).
+  Table~\ref{tbl:TAA} lists the \TAA\ values provided by the Heavy-ion group
+    (\href{https://twiki.cern.ch/twiki/pub/AtlasProtected/HeavyIonAnalysis2015/centrality_values_Gv32_update_26Jul19.txt}{link})
+    for the centrality intervals used in this analysis.
+  The \TAA\ scaled yields (which are equivaled to a cross-section) decrease 
+    considerably from peripheral to central colisions: more than a factor 
+    of 5 decrease from the 60--80\% centrality interval to the 
+    0--10\% centrality interval.
+  This implies that a significant increase in the suppression of correlated 
+    muon pairs is observed from peripheral to central collisions.
+  Figure~\ref{fig:scaled_yields_PbPb} also shows the measured cross-sections 
+    for the \pp\ data.
+  The \TAA\ scaled yields in \PbPb\ are smaller than the \pp\ cross-sections
+    even in the 60--80\% central events, indicating some suppression
+    in this peripheral interval.
+
+
+  \begin{table}[h]
+  \centering
+  \begin{tabular}{|c|c|c|}
+  \hline
+  Centrality [\%] & $T_{AA}$ [mb$^{-1}$]  & $\Delta T_{AA}$ [mb$^{-1}$] \\
+  \hline
+   0--10 & 23.2  & 0.124\\
+  10--20 & 14.4  & 0.132\\
+  20--30 &  8.77 & 0.132\\
+  30--40 &  5.09 & 0.120\\
+  40--50 &  2.75 & 0.095\\
+  50--60 &  1.35 & 0.065\\
+  60--80 &  0.42 & 0.003\\
+  \hline
+  \end{tabular}
+  \caption{
+  The \TAA\ values for the different centrality intervals,
+    and the corresponding uncertainties.
+  \label{tbl:TAA}
+  }
+  \end{table}
+
+
+
+
+
+
+  \begin{figure}[h]
+  \centering
+  \includegraphics[width=1.0\textwidth]%
+  {figures/AllFigs/can_yields_option1_pTBar_GT5_EffCor}
+  \includegraphics[width=1.0\textwidth]%
+  {figures/AllFigs/can_yields_option1_Tight_pTBar_GT5_EffCor}
+  \caption{
+  Yields of the correlated muon-pairs on the away-side 
+    in the \PbPb\ data, as a function of centrality.
+  The measurements are shown for the same-charge (left),
+    opposite-charge (middle), and combined-charge (right) pairs.
+  The top and bottom rows correspond to Medium and Tight muons, respectively.
+  \label{fig:yields_PbPb}
+  }
+  \end{figure}
+
+
+  \begin{figure}[h]
+  \centering
+  \includegraphics[width=1.0\textwidth]%
+  {figures/AllFigs/can_yields_option2_pTBar_GT5_EffCor}
+  \includegraphics[width=1.0\textwidth]%
+  {figures/AllFigs/can_yields_option2_Tight_pTBar_GT5_EffCor}
+  \caption{
+  \TAA\ scaled per-event Yields of the correlated muon-pairs on the away-side 
+    in the \PbPb\ data, as a function of centrality.
+  The measurements are shown for the same-charge (left), 
+    opposite-charge (middle), and combined-charge (right) pairs.
+  The top and bottom rows correspond to Medium and Tight muons, respectively.
+  The cross-section in the \pp\ measurements are also shown (blue line). 
+  \label{fig:scaled_yields_PbPb}
+  }
+  \end{figure}
+}
+{
+  
+}
