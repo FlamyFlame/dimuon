@@ -15,8 +15,6 @@ private:
 
       // --------------------- input files & trees & data for setting branches---------------------------
 
-    MuonPairPbPb* mpair_raw_ptr = nullptr;
-
     // Declaration of additional leaf types
     Float_t         FCal_Et;
     Int_t           centrality;
@@ -24,7 +22,7 @@ private:
     // --------------------- class methods ---------------------------
 
     virtual PairPtr MakeMuonPair() const override {
-        return std::make_shared<MuonPairData>();
+        return std::make_shared<MuonPairPbPb>();
     }
 
     void ParamCheck() override;

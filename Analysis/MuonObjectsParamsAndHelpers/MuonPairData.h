@@ -16,8 +16,6 @@ public:
   bool    passTight;
   bool    passmu4mu4noL1;
   bool    pass2mu4;
-  bool    mu1PassSingle;
-  bool    mu2PassSingle;
   bool    passSeparated; // separated enough for 2mu4 & mu4_mu4noL1 trigger efficiencies to be factorizable into single-muon parts; for now dR > 0.8
   bool    passSeparatedDeta; // separated enough for 2mu4 & mu4_mu4noL1 trigger efficiencies to be factorizable into single-muon parts; for now deta > 0.8
 

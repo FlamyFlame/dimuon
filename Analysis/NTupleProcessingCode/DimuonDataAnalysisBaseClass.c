@@ -21,7 +21,7 @@ void DimuonDataAnalysisBaseClass::PrintInstructions(){
     std::cout << std::endl;
 
     std::cout << "The following public variable(s) should be checked:" << std::endl;
-    std::cout << "--> isMinBias: [BOOL] if true, use MinBias data + trigger mode set to 0" << std::endl;
+    std::cout << "--> isMinBias: [BOOL] if true, use MinBias data + perform single-muon analysis + trigger mode set to 0" << std::endl;
     std::cout << "--> output_single_muon_tree: [BOOL] if true, output single-muon tree" << std::endl;
     std::cout << "                                    if false (DEFAULT), output muon-pair tree" << std::endl;
     if (isPbPb) std::cout << "--> turn_on_ctr_binned_tree_writing (only for PbPb): [BOOL] if true, output centrality-binned muon-pair trees (DEFAULT FALSE)" << std::endl;
@@ -498,8 +498,8 @@ void DimuonDataAnalysisBaseClass::ProcessData(){
     			mpair->Update();
     			mpair->passmu4mu4noL1 = (!isPbPb && !isRun3)? false : dimuon_b_HLT_mu4_mu4noL1->at(pair_ind); // pp run2: no mu4_mu4noL1 trigger
     			mpair->pass2mu4 = dimuon_b_HLT_2mu4->at(pair_ind);
-    			mpair->mu1PassSingle = muon_b_HLT_mu4->at(mpair->m1.ind);
-    			mpair->mu2PassSingle = muon_b_HLT_mu4->at(mpair->m2.ind);
+    			mpair->m1.passmu4 = muon_b_HLT_mu4->at(mpair->m1.ind);
+    			mpair->m2.passmu4 = muon_b_HLT_mu4->at(mpair->m2.ind);
 
                 mpair->passSeparated = (mpair->dr > 0.8);
                 mpair->passSeparatedDeta = (abs(mpair->deta) > 0.8);

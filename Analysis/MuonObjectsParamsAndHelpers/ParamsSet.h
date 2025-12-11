@@ -9,10 +9,10 @@
 #include <functional>
 
 struct AxisInfo{ // a simplified version of axis information - for constructing TH1DModel
-   int        	nbins		= 1;         ///<  Number of bins
-   double     	min			= 0.;          ///<  Low edge of first bin
-   double     	max			= 1.;          ///<  Upper edge of last bin
-   const double*     bin_edges		= nullptr;         ///<  Bin edges array in X
+    int        	nbins		= 1;         ///<  Number of bins
+    double     	min			= 0.;          ///<  Low edge of first bin
+    double     	max			= 1.;          ///<  Upper edge of last bin
+    const double*     bin_edges		= nullptr;         ///<  Bin edges array in X
 };
 
 class ParamsSet{
@@ -274,19 +274,6 @@ const unsigned int ParamsSet::nGapCuts; //0: no gap cut; 1: having gap cut
 const unsigned int ParamsSet::CtrStep;
 const unsigned int ParamsSet::nCtrIntvls; // number of small intervals; the intervals not to be studied by themselves, but to allow easy combinations
 
-// bool ParamsSet::PassSingleMuonGapCut(float meta, float mpt, int mcharge){
-//     // parameters: eta and pT of the same muon
-//     if (fabs(meta) < pms.eta_gap_cut1) return false;
-//     if (mpt < 6){
-//         for (array<float,2> charge_eta_gap_cut : pms.charge_eta_gap_cuts){
-//             if (mcharge * meta > charge_eta_gap_cut[0] && mcharge * meta < charge_eta_gap_cut[1]) return false;
-//         }
-//     }
-//     // if (mpt < 6 && fabs(meta) > pms.eta_gap_cut2[0] && fabs(meta) < pms.eta_gap_cut2[1]) return false;
-//     return true;
-// }
-
-
 template <typename T>
 std::string ParamsSet::write_single_bin_expr (std::string kinvar, T a, T b){
     return kinvar + " >= " + std::to_string(a) + " && " + kinvar + " < " + std::to_string(b);
@@ -385,4 +372,3 @@ ParamsSet::ParamsSet(){
 }
 
 #endif
-
