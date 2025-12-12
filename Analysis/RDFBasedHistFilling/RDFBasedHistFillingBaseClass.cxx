@@ -1,4 +1,4 @@
-#include "RDFBasedHistFilling.h"
+#include "RDFBasedHistFillingBaseClass.h"
 #include <map>
 #include <string>
 #include <vector>
@@ -6,14 +6,12 @@
 #include <iostream>
 #include <algorithm>
 
-void RDFBasedHistFilling::Run(){
+void RDFBasedHistFillingBaseClass::Run(){
 
 	std::cout << "start the run" << std::endl;
 	auto verbosity = ROOT::Experimental::RLogScopedVerbosity(ROOT::Detail::RDF::RDFLogChannel(), ROOT::Experimental::ELogLevel::kInfo);
 
 	Initialize();
-
-	TH1::SetDefaultSumw2(kTRUE); // turn on Sumw2 for all histograms
 
 	// ROOT::EnableImplicitMT();
 
@@ -25,11 +23,19 @@ void RDFBasedHistFilling::Run(){
     std::cout << "# 1D histograms: " << hist1D_map.size() << std::endl;
     std::cout << "# 2D histograms: " << hist2D_map.size() << std::endl;
     std::cout << "# 3D histograms: " << hist2D_map.size() << std::endl;
-    
+
 	Finalize();
 }
 
-void RDFBasedHistFilling::CreateRDFs(){
+// ------- PROCESS DATA -------
+void RDFBasedHistFillingBaseClass::ProcessData(){    
+    CreateRDFs();
+    FillHistograms();
+    HistPostProcess();
+}
+
+// ------- Create RDataFrame and keep ownership -------
+void RDFBasedHistFillingBaseClass::CreateRDFs(){
     rdf_store.emplace_back(std::make_unique<ROOT::RDataFrame>(tree_ss, input_files));
     ROOT::RDF::RNode node_ss = *(rdf_store.back());
     df_map.emplace("df_ss", node_ss);
@@ -39,22 +45,8 @@ void RDFBasedHistFilling::CreateRDFs(){
     df_map.emplace("df_op", node_op);
 }
 
-void RDFBasedHistFilling::ProcessData(){
 
-    // ------- Create RDataFrame and keep ownership -------
-    CreateRDFs();
-    
-    // ------- Fill histograms -------
-    if (hist_filling_cycle == generic){
-        FillHistograms();
-    } else if (hist_filling_cycle == inv_weight_by_single_mu_effcy && trigger_mode == 1){
-        FillTrigEffcyHistsInvWeightedbySingleMuonEffcies();
-    }
-    
-    HistPostProcess();
-}
-
-void RDFBasedHistFilling::Initialize(){
+void RDFBasedHistFillingBaseClass::Initialize(){
 	std::cout << "Calling Initialize." << std::endl;
 
     hist1d_rresultptr_map.clear();
@@ -64,14 +56,16 @@ void RDFBasedHistFilling::Initialize(){
     hist2D_map.clear();
     hist3D_map.clear();
     
+    TH1::SetDefaultSumw2(kTRUE); // turn on Sumw2 for all histograms
+
     InitOutput();
 	BuildFilterToVarListMap();
 	BuildHistBinningMap();
 	ReadVar1DJson();
 }
 
-void RDFBasedHistFilling::InitOutput(){
-    std::string file_mode = (hist_filling_cycle == generic)? "recreate" : "update";
+void RDFBasedHistFillingBaseClass::InitOutput(){
+    std::string file_mode = "recreate";
     m_outfile = new TFile(output_file.c_str(), file_mode.c_str());
 }
 
@@ -90,8 +84,8 @@ auto& map_at_checked(Map& m, const std::string& key, const char* where)
 }
 
 // ---------- ----------
-void RDFBasedHistFilling::HistPostProcess(){
-    std::cout << "Calling RDFBasedHistFilling::HistPostProcess" << std::endl;
+void RDFBasedHistFillingBaseClass::HistPostProcess(){
+    std::cout << "Calling RDFBasedHistFillingBaseClass::HistPostProcess" << std::endl;
 
     for (auto kv : hist1d_rresultptr_map){
         hist1D_map.emplace(kv.first, kv.second.GetPtr());
@@ -105,143 +99,16 @@ void RDFBasedHistFilling::HistPostProcess(){
 }
 
 //--------- ---------
-float RDFBasedHistFilling::EvaluateSingleMuonEffcyPtFitted(bool charge_sign, std::string trg, float pt_2nd, float q_eta_2nd, float phi_2nd){return 0.;}
-
-//--------- ---------
-float RDFBasedHistFilling::EvaluateSingleMuonEffcy(bool charge_sign, std::string trg, float pt_2nd, float q_eta_2nd, float phi_2nd){return 0.;}
-
-//--------- ---------
-void RDFBasedHistFilling::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(){}
-
-// ---------- ----------
-void RDFBasedHistFilling::BuildFilterToVarListMap(){
-
-	df_filter_and_weight_to_var1D_list_map[{"_single_b", "_crossx"}] = {"pair_pt", "pair_eta"}; // crossx as a weighting
-
-	for (std::string sign : {"_ss", "_op"}){
-
-		df_filter_to_var1D_list_map[sign + ""]         = {"pair_dP_overP", "Dphi", "DR", "DR_zoomin", "pair_y", "pt_asym", "pair_pt_ptlead_ratio"};
-		df_filter_to_var1D_list_map[sign + "_wgapcut"] = {"pair_dP_overP", "Dphi", "DR", "DR_zoomin", "pair_y", "pt_asym", "pair_pt_ptlead_ratio"};
-
-		df_filter_and_weight_to_var1D_list_map[{sign + ""			, "_jacobian_corrected"}] = {"DR", "DR_zoomin"};
-		df_filter_and_weight_to_var1D_list_map[{sign + "_wgapcut"	, "_jacobian_corrected"}] = {"DR", "DR_zoomin"};
-
-	}
-	
-	BuildTrgEffcyFilterToVarListMap();
+void RDFBasedHistFillingBaseClass::BuildFilterToVarListMap(){
+    // Add common filter to var maps here
+    df_filter_and_weight_to_var1D_list_map[{"_single_b", "_crossx"}] = {"pair_pt", "pair_eta"}; // crossx as a weighting
 }
 
 // ---------- ----------
-void RDFBasedHistFilling::BuildTrgEffcyFilterToVarListMap(){
-
-    TrigEffcyFiltersPrePostSumFlattening();
-
-    for (auto filter : trg_effcy_filters_1D_pre_sum)    df_filter_to_var1D_list_map[filter] = single_muon_trig_effcy_var1Ds;
-    for (auto filter : trg_effcy_filters_2D_3D_pre_sum) df_filter_to_var2D_list_map[filter] = single_muon_trig_effcy_var2Ds;
-    for (auto filter : trg_effcy_filters_2D_3D_pre_sum) df_filter_to_var3D_list_map[filter] = single_muon_trig_effcy_var3Ds;
-
-    // ----- ADD INVERSE WEIGHTING ONES!! WITH _mu4_mu4noL1_denom, _2mu4_denom (paired with additional filtering) -----
-}
-
-//--------- Helper function   ---------
-// Given indices of levels to be summed over, separate pre-sum levels (1D & 2D) into to-be-summed and post-sum levels
-// And flatten all three levels
-void RDFBasedHistFilling::TrigEffcyFiltersPrePostSumFlattening(){
-
-    // ---- Helper that does the flattening ----
-    auto flatten_levels = [](const std::vector<std::vector<std::string>>& levels,
-                             std::vector<std::string>& flattened)
-    {
-        std::vector<int> level_sizes;
-        int total_size = 1;
-
-        for (const auto& vlevel : levels) {
-            level_sizes.push_back(static_cast<int>(vlevel.size()));
-            if (vlevel.size() != 0) total_size *= static_cast<int>(vlevel.size());
-        }
-
-        flattened.assign(total_size, "");  // allocate & zero-init
-
-        // convert each flattened index into per-level indices
-        for (int flattened_ind = 0; flattened_ind < total_size; ++flattened_ind) {
-            int remaining_ind = flattened_ind;
-
-            for (int level_ind = 0; level_ind < static_cast<int>(levels.size()); ++level_ind) {
-                if (level_sizes.at(level_ind) == 0) continue; // if current level is empty, skip it
-
-                int dim_remaining_levels = 1;
-                for (int level_ind_remain = level_ind + 1;
-                     level_ind_remain < static_cast<int>(levels.size());
-                     ++level_ind_remain)
-                {
-                    if (level_sizes.at(level_ind_remain) != 0) dim_remaining_levels *= level_sizes.at(level_ind_remain);
-                }
-
-                int cur_level_index = remaining_ind / dim_remaining_levels;
-                remaining_ind = remaining_ind % dim_remaining_levels;
-
-                flattened.at(flattened_ind) += levels.at(level_ind).at(cur_level_index);
-            }
-        }
-    };
-
-    // ---- Use it for both cases ----
-    flatten_levels(levels_trg_effcy_filters_1D_pre_sum, trg_effcy_filters_1D_pre_sum);
-    flatten_levels(levels_trg_effcy_filters_2D_3D_pre_sum, trg_effcy_filters_2D_3D_pre_sum);
-
-    auto write_post_sum_levels = [this](const std::vector<std::vector<std::string>>& levels_pre_sum, std::vector<std::vector<std::string>>& levels_post_sum){
-        for (int level_ind = 0; level_ind < static_cast<int>(levels_pre_sum.size()); ++level_ind) {
-            if (std::find(levels_trg_effcy_to_be_summed.begin(), levels_trg_effcy_to_be_summed.end(), level_ind) == levels_trg_effcy_to_be_summed.end()){ // level is NOT contracted
-                levels_post_sum.push_back(levels_pre_sum.at(level_ind));
-            }
-        }
-    };
-
-    write_post_sum_levels(levels_trg_effcy_filters_1D_pre_sum, levels_trg_effcy_filters_1D_post_sum);
-    write_post_sum_levels(levels_trg_effcy_filters_2D_3D_pre_sum, levels_trg_effcy_filters_2D_3D_post_sum);
-
-    for (int level_ind = 0; level_ind < static_cast<int>(levels_trg_effcy_filters_2D_3D_pre_sum.size()); ++level_ind) {
-        if (std::find(levels_trg_effcy_to_be_summed.begin(), levels_trg_effcy_to_be_summed.end(), level_ind) != levels_trg_effcy_to_be_summed.end()){ // level is NOT contracted
-            levels_trg_effcy_filters_to_be_summed.push_back(levels_trg_effcy_filters_2D_3D_pre_sum.at(level_ind));
-        }
-    }
-
-    flatten_levels(levels_trg_effcy_filters_1D_post_sum, trg_effcy_filters_1D_post_sum);
-    flatten_levels(levels_trg_effcy_filters_2D_3D_post_sum, trg_effcy_filters_2D_3D_post_sum);
-    flatten_levels(levels_trg_effcy_filters_to_be_summed, trg_effcy_filters_to_be_summed);
-}
-
-// ---------- ----------
-void RDFBasedHistFilling::BuildHistBinningMap(){
+void RDFBasedHistFillingBaseClass::BuildHistBinningMap(){
 
 	// ------- pT binnings -------
     hist_binning_map["pT_bins_80"] = pms.pT_bins_80;
-
-	// ------- pT binning for single-muon trigger efficieny -------
-
-    std::vector<double> pT_bins_single_muon (pms.pT_bins_8); // make a copy of a suitable set of single-muon pT bins (adjustable) --> use the copy for histogram settings
-
-    pT_bins_single_muon.insert(pT_bins_single_muon.end(), pms.pT_bins_60.begin(), pms.pT_bins_60.end());
-
-    hist_binning_map["pT_bins_single_muon"] = pT_bins_single_muon;
-
-    // ------- eta binning for single-muon trigger efficiency -------
-
-    std::vector<double> eta_bins_trig_effcy = ParamsSet::makeEtaTrigEffcyBinning();
-    int neta_bins_trig_effcy = eta_bins_trig_effcy.size() - 1;
-    hist_binning_map["eta_bins_trig_effcy"] = eta_bins_trig_effcy;
-    
-    // ------- eta binning for single-muon trigger efficiency -------
-
-    // Build uniform phi edges so we can use the (xbins, ybins, zbins) TH3D ctor
-    int nphi_bins_trig_effcy = 128; // phi 2nd muon
-    
-    std::vector<double> phi2nd_bins(nphi_bins_trig_effcy + 1);
-    for (int i = 0; i <= nphi_bins_trig_effcy; ++i) {
-        phi2nd_bins[i] = -pms.PI + (2.0 * pms.PI) * (static_cast<double>(i) / nphi_bins_trig_effcy);
-    }
-
-    hist_binning_map["phi2nd_bins"] = phi2nd_bins;
 
 	// ------- minv log binning -------
 
@@ -279,7 +146,7 @@ void write_hist_map_vector(
     }
 }
 
-void RDFBasedHistFilling::Finalize(){
+void RDFBasedHistFillingBaseClass::Finalize(){
 
     // ----- write output -----
 
@@ -297,7 +164,7 @@ void RDFBasedHistFilling::Finalize(){
 }
 
 // ---------- THROW MISSING FIELD IN JSON READING HELPER ----------
-void RDFBasedHistFilling::ThrowMissingField(const std::string& field,
+void RDFBasedHistFillingBaseClass::ThrowMissingField(const std::string& field,
                                 const std::string& histName) {
     std::ostringstream oss;
     oss << "ReadVar1DJson: mandatory field '" << field
@@ -309,7 +176,7 @@ void RDFBasedHistFilling::ThrowMissingField(const std::string& field,
 }
 
 // ---------- VAR1D JSON FILE READING ----------
-void RDFBasedHistFilling::ReadVar1DJson() {
+void RDFBasedHistFillingBaseClass::ReadVar1DJson() {
     // Open file
     std::ifstream in(infile_var1D_json);
     if (!in) {
@@ -454,7 +321,7 @@ void RDFBasedHistFilling::ReadVar1DJson() {
 }
 
 // ---------- VAR1D LIST PRINTINT FOR DEBUG ----------
-void RDFBasedHistFilling::PrintVar1DList() const {
+void RDFBasedHistFillingBaseClass::PrintVar1DList() const {
     std::cout << "===== var1D_dict contents (" 
               << var1D_dict.size() << " entries) =====\n";
 
@@ -503,7 +370,7 @@ void RDFBasedHistFilling::PrintVar1DList() const {
 
 // ---------- HELPER FUNCTIONS ----------
 
-void RDFBasedHistFilling::FillHistogramsSingleDataFrame(const std::string& filter,
+void RDFBasedHistFillingBaseClass::FillHistogramsSingleDataFrame(const std::string& filter,
                                             ROOT::RDF::RNode df,
                                             bool hists_write = true,
                                             std::array<bool, 3> hists_1_2_3D_write = {1,1,1}) {
@@ -522,7 +389,7 @@ void RDFBasedHistFilling::FillHistogramsSingleDataFrame(const std::string& filte
     FillHistogramsSingleDataFrame(filter, df, "", vars1D, vars2D, vars3D, hists_write, hists_1_2_3D_write);
 }
 
-void RDFBasedHistFilling::FillHistogramsSingleDataFrame(const std::string& filter,
+void RDFBasedHistFillingBaseClass::FillHistogramsSingleDataFrame(const std::string& filter,
                                             const std::string& weight,
                                             ROOT::RDF::RNode df,
                                             bool weight_before_filter = false,
@@ -555,7 +422,7 @@ void RDFBasedHistFilling::FillHistogramsSingleDataFrame(const std::string& filte
     FillHistogramsSingleDataFrame(suffix, df, wCol, vars1D, vars2D, vars3D, hists_write, hists_1_2_3D_write);
 }
 
-void RDFBasedHistFilling::FillHistogramsSingleDataFrame(const std::string& suffix, // filter or filter & weight concatenated with custom order
+void RDFBasedHistFillingBaseClass::FillHistogramsSingleDataFrame(const std::string& suffix, // filter or filter & weight concatenated with custom order
                                             ROOT::RDF::RNode df,
                                             const std::string& weight_col, // weight column, "" if unweighted
                                             const std::vector<std::string>& vars1D,
@@ -685,7 +552,7 @@ void RDFBasedHistFilling::FillHistogramsSingleDataFrame(const std::string& suffi
     }
 }
 
-var1D* RDFBasedHistFilling::Var1DSearch(const std::string& var1DName) const {
+var1D* RDFBasedHistFillingBaseClass::Var1DSearch(const std::string& var1DName) const {
     auto it = var1D_dict.find(var1DName);
     if (it == var1D_dict.end() || !(it->second)) {
         std::ostringstream oss;
@@ -695,7 +562,7 @@ var1D* RDFBasedHistFilling::Var1DSearch(const std::string& var1DName) const {
     return it->second;
 }
 
-AxisInfo RDFBasedHistFilling::GetAxisInfo(const var1D& v, const std::string& filter) const {
+AxisInfo RDFBasedHistFillingBaseClass::GetAxisInfo(const var1D& v, const std::string& filter) const {
     bool hasSS = (filter.find("_ss") != std::string::npos);
     bool hasOP = (filter.find("_op") != std::string::npos);
 
@@ -739,7 +606,7 @@ AxisInfo RDFBasedHistFilling::GetAxisInfo(const var1D& v, const std::string& fil
     return b;
 }
 
-ROOT::RDF::TH2DModel RDFBasedHistFilling::MakeTH2DModel(const std::string& hname,
+ROOT::RDF::TH2DModel RDFBasedHistFillingBaseClass::MakeTH2DModel(const std::string& hname,
                                             const std::string& xtitle,
                                             const std::string& ytitle,
                                             const AxisInfo& bx,
@@ -765,7 +632,7 @@ ROOT::RDF::TH2DModel RDFBasedHistFilling::MakeTH2DModel(const std::string& hname
     }
 }
 
-ROOT::RDF::TH3DModel RDFBasedHistFilling::MakeTH3DModel(const std::string& hname,
+ROOT::RDF::TH3DModel RDFBasedHistFillingBaseClass::MakeTH3DModel(const std::string& hname,
                                               const std::string& xtitle,
                                               const std::string& ytitle,
                                               const std::string& ztitle,
