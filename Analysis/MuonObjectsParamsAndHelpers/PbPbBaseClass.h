@@ -79,13 +79,14 @@ void PbPbBaseClass::InitializePbPb(){
 
     ctr_binning_map["default"] = {0,5,10,20,30,50,80};
     ctr_binning_map["include_upc"] = {0,5,10,20,30,50,100};
-    
+
     ctr_binning_file_suffix_map["default"] = "";
     ctr_binning_file_suffix_map["include_upc"] = "_include_upc";
     ctr_rebin_scale_factor_map["default"] = {1,1,1,1,2,4};
     ctr_rebin_scale_factor_map["include_upc"] = {1,1,1,1,2,4};
 
     ctr_bin_edges = ctr_binning_map[ctr_binning_verion];
+
 	ctr_suffix = ctr_binning_file_suffix_map[ctr_binning_verion];
     ctr_rebin_scale_factors = ctr_rebin_scale_factor_map[ctr_binning_verion];
 

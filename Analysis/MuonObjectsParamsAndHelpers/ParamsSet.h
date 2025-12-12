@@ -140,7 +140,7 @@ public:
   	
   	ParamsSet();
   	~ParamsSet(){}
-  	static std::vector<double> makeEtaTrigEffcyBinning();
+    static std::vector<double> makeEtaTrigEffcyBinning(int rebin_factor = 1);
   	void fillLogBinningArray(std::vector<double>& bins, int nBins, double low, double high);
   	template <typename T>
   	std::string write_single_bin_expr (std::string kinvar, T a, T b);
@@ -166,21 +166,35 @@ void ParamsSet::fillLogBinningArray(std::vector<double>& bins, int nBins, double
 #include <algorithm>
 #include <cmath>
 
-std::vector<double> ParamsSet::makeEtaTrigEffcyBinning(){
-    double minEdge = -2.4;
-    double maxEdge =  2.4;
+#include <algorithm>
+#include <cmath>
+#include <utility>
+#include <vector>
 
-    // Medium-fine bin ranges (0.02)
+std::vector<double> ParamsSet::makeEtaTrigEffcyBinning(int rebin_factor)
+{
+    const double minEdge = -2.4;
+    const double maxEdge =  2.4;
+
+    // Base steps (before rebinning)
+    const double ultraFineBase = 0.01;  // adjust to 0.005 if you really want that
+    const double fineBase      = 0.02;
+    const double coarseStep    = 0.10;
+
+    const double ultraFineStep = ultraFineBase * rebin_factor;
+    const double fineStep      = fineBase      * rebin_factor;
+
+    // Fine ranges (to be merged)
     std::vector<std::pair<double,double>> fineRanges = {
-        {-1.3, 1.0},
-        {-0.8, 1.4},
-        {2.2, 2.4}
+        {-1.3,  1.0},
+        {-0.8,  1.4},
+        { 2.2,  2.4}
     };
 
-    // Ultra-fine bin range (0.005)
-    std::pair<double,double> ultraFineRange = {-0.2, 0.2};
+    // Ultra-fine range
+    const std::pair<double,double> ultraFineRange = {-0.2, 0.2};
 
-    // Merge overlapping fine ranges first
+    // --- merge overlapping fine ranges ---
     std::sort(fineRanges.begin(), fineRanges.end());
     std::vector<std::pair<double,double>> merged;
     for (auto &r : fineRanges) {
@@ -191,57 +205,76 @@ std::vector<double> ParamsSet::makeEtaTrigEffcyBinning(){
         }
     }
 
-    double ultraFineStep = 0.01;
-    double fineStep = 0.02;
-    double coarseStep = 0.1;
-
     std::vector<double> edges;
+    edges.reserve(200); // just to avoid reallocations
+    const double eps = 1e-10;
+
+    auto push_edge = [&](double x) {
+        // round to kill FP noise
+        x = std::round(x * 1e12) / 1e12;
+        if (edges.empty() || std::fabs(edges.back() - x) > eps) {
+            edges.push_back(x);
+        }
+    };
+
+    // Add segment [start, end] with given step
+    auto add_segment = [&](double start, double end, double step) {
+        if (end <= start + eps) {
+            push_edge(start);
+            return;
+        }
+        push_edge(start);
+        double x = start;
+        while (x + step < end - eps) {
+            x += step;
+            push_edge(x);
+        }
+        push_edge(end);
+    };
+
     double x = minEdge;
 
-    auto inUltraFineRange = [&](double val) {
-        return (val >= ultraFineRange.first && val < ultraFineRange.second);
-    };
+    // Walk over all merged fine ranges in order
+    for (const auto &fr : merged) {
+        const double a = fr.first;
+        const double b = fr.second;
 
-    auto inFineRange = [&](double val) {
-        for (auto &r : merged) {
-            if (val >= r.first && val < r.second)
-                return true;
-        }
-        return false;
-    };
-
-    edges.push_back(x);
-    while (x < maxEdge - 1e-12) {
-        double step;
-        if (inUltraFineRange(x))
-            step = ultraFineStep;
-        else if (inFineRange(x))
-            step = fineStep;
-        else
-            step = coarseStep;
-
-        // Snap exactly to boundaries when crossing ranges
-        if (x < ultraFineRange.first && ultraFineRange.first < x + step - 1e-12)
-            step = ultraFineRange.first - x;
-        if (x < ultraFineRange.second && ultraFineRange.second < x + step - 1e-12)
-            step = ultraFineRange.second - x;
-
-        for (auto &r : merged) {
-            if (x < r.first && r.first < x + step - 1e-12)
-                step = r.first - x;
-            if (x < r.second && r.second < x + step - 1e-12)
-                step = r.second - x;
+        // 1) Coarse region up to the start of this fine range
+        if (x < a - eps) {
+            add_segment(x, a, coarseStep);
+            x = a;
         }
 
-        x += step;
-        x = std::round(x * 1e12) / 1e12; // avoid FP noise
-        edges.push_back(x);
+        // 2) Inside the fine range [a, b]
+        double uf_lo = std::max(a, ultraFineRange.first);
+        double uf_hi = std::min(b, ultraFineRange.second);
+
+        // 2a) Fine region before ultra-fine part
+        if (x < uf_lo - eps) {
+            add_segment(x, uf_lo, fineStep);
+            x = uf_lo;
+        }
+
+        // 2b) Ultra-fine region (overlap)
+        if (uf_lo < uf_hi - eps) {
+            add_segment(x, uf_hi, ultraFineStep);
+            x = uf_hi;
+        }
+
+        // 2c) Fine region after ultra-fine part within this fine range
+        if (x < b - eps) {
+            add_segment(x, b, fineStep);
+            x = b;
+        }
+    }
+
+    // 3) After the last fine range: coarse step to maxEdge
+    if (x < maxEdge - eps) {
+        add_segment(x, maxEdge, coarseStep);
     }
 
     return edges;
 }
-
-
 
 
 double ParamsSet::PI = acos(-1.0);
