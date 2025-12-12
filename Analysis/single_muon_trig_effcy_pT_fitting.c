@@ -66,7 +66,7 @@ private:
             fitting_outdir = "trg_effcy_pT_fitting_to_fermi_plus_log/";
         }
 
-        infile_name = data_dir + "histograms_real_pairs_pp_2024_single_mu4_new_RDF.root";
+        infile_name = data_dir + "histograms_real_pairs_pp_2024_single_mu4.root";
         outfile_name = data_dir + fitting_outdir + "single_mu_effcy_pT_fit.root";
         
         makeDirIfNeeded(data_dir + fitting_outdir);
