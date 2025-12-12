@@ -1,6 +1,6 @@
-#include"TrigEffPlotterPbPb.cxx"
+#include"TrigEffPlotterPP.cxx"
 
-void trig_effcy_plot_pbpb(){
+void trig_effcy_plot_pp(){
     std::vector<std::string> var1Ds = {"Deta", "Deta_zoomin", "Dphi", "Dphi_zoomin", "DR", "DR_zoomin", "DR_0_2", "minv_zoomin", "pair_pt_log"};
     std::vector<std::string> var2Ds = {
                                         //"DR_zoomin_vs_pt2nd", "DR_0_2_vs_pt2nd", "pair_eta_vs_pair_pT", "Deta_Dphi", "eta1_eta2", "eta_avg_Deta", "eta_avg_Dphi", "minv_pair_pt_log",
@@ -50,32 +50,31 @@ void trig_effcy_plot_pbpb(){
         {"pt2nd_vs_phi2nd",    {true,  false}}  // PX only (→ phi2nd)
     };
 
-    // TrigEffPlotterPbPb::Rect rSigned  = {0.60,0.15,0.88,0.35};
-    // TrigEffPlotterPbPb::Rect rSignal  = {0.20,0.70,0.50,0.88};
-    // TrigEffPlotterPbPb::Rect rOpSig   = {0.60,0.15,0.88,0.31};
+    // TrigEffPlotterPP::Rect rSigned  = {0.60,0.15,0.88,0.35};
+    // TrigEffPlotterPP::Rect rSignal  = {0.20,0.70,0.50,0.88};
+    // TrigEffPlotterPP::Rect rOpSig   = {0.60,0.15,0.88,0.31};
 
-    // std::map<std::string,TrigEffPlotterPbPb::Rect> legSigned  = { {"Dphi", rSigned } };
-    // std::map<std::string,TrigEffPlotterPbPb::Rect> legSignal  = { {"Dphi", rSignal } };
+    // std::map<std::string,TrigEffPlotterPP::Rect> legSigned  = { {"Dphi", rSigned } };
+    // std::map<std::string,TrigEffPlotterPP::Rect> legSignal  = { {"Dphi", rSignal } };
 
-    std::map<std::string,TrigEffPlotterPbPb::Rect> legSigned  = {};
-    std::map<std::string,TrigEffPlotterPbPb::Rect> legSignal  = {};
-    std::map<std::string,TrigEffPlotterPbPb::Rect> legOpSig   = {};
+    std::map<std::string,TrigEffPlotterPP::Rect> legSigned  = {};
+    std::map<std::string,TrigEffPlotterPP::Rect> legSignal  = {};
+    std::map<std::string,TrigEffPlotterPP::Rect> legOpSig   = {};
 
     std::vector<std::string> filters = {};
     // filters = {"_sepr"};
-    // std::map<std::string,TrigEffPlotterPbPb::Rect> legOpSig   = {{"DR_zoomin", {0.5,0.15,0.87,0.33}  }};
+    // std::map<std::string,TrigEffPlotterPP::Rect> legOpSig   = {{"DR_zoomin", {0.5,0.15,0.87,0.33}  }};
     // filters = {"_good_accept"};
     // filters = {"_inv_w_by_single_mu_effcy"};
 
     // only draw single-b for weighted trigger efficiency, showing dR corrections & its influence on other observables
     // never for single-muon efficiencies (single-b gives a biased sample)
     bool draw_single_b = (std::find(filters.begin(), filters.end(), "_inv_w_by_single_mu_effcy") != filters.end());
-    TrigEffPlotterPbPb plotter(23, var1Ds, "include_upc", false, true,
+    TrigEffPlotterPP plotter(24, var1Ds, false, 
                            filters, logaxes,
                            var2Ds, var2DsProf,
                            legSigned, legSignal, legOpSig,
                            var2DProj, var2DSingleMuonEffcyProj);
 
-    plotter.only_draw_single_muon_effcy = true;
     plotter.Run();
 }
