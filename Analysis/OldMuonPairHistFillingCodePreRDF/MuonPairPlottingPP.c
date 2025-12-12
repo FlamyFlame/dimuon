@@ -61,10 +61,8 @@ void MuonPairPlottingPP::InitInput(){
         inTree[isign]->SetBranchAddress("m2.charge"           , &m2charge[isign]);
         inTree[isign]->SetBranchAddress("passmu4mu4noL1"           , &passmu4mu4noL1[isign]);
         inTree[isign]->SetBranchAddress("pass2mu4"           , &pass2mu4[isign]);
-        inTree[isign]->SetBranchAddress("mu1PassSingle"           , &mu1PassSingle[isign]);
-        inTree[isign]->SetBranchAddress("mu2PassSingle"           , &mu2PassSingle[isign]);
-        // inTree[isign]->SetBranchAddress("m1.passmu4"           , &mu1PassSingle[isign]);
-        // inTree[isign]->SetBranchAddress("m2.passmu4"           , &mu2PassSingle[isign]);
+        inTree[isign]->SetBranchAddress("m1.passmu4"           , &mu1PassSingle[isign]);
+        inTree[isign]->SetBranchAddress("m2.passmu4"           , &mu2PassSingle[isign]);
         inTree[isign]->SetBranchAddress("passSeparated"           , &passSeparated[isign]);
         inTree[isign]->SetBranchAddress("passSeparatedDeta"           , &passSeparatedDeta[isign]);
 
@@ -1600,7 +1598,6 @@ void MuonPairPlottingPP::Run(){
         throw std::exception();
     }
 
-    // if (doTrigEffcy && !filter_out_photo_resn_for_trig_effcy) trig_suffix += "_no_photo_resn_cuts"; // if not filter out photoprod/resn pairs for trigger efficiency study
     if (!filter_out_photo_resn_for_trig_effcy) trig_suffix += "_no_photo_resn_cuts"; // if not filter out photoprod/resn pairs for trigger efficiency study
 
     output_non_trig_effcy_hists = !(trigger_mode == 0 || trigger_mode == 1);
