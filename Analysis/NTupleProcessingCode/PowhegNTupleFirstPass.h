@@ -148,7 +148,6 @@ private:
     std::ofstream* m_bb_op_near_one_b_one_btoc_others_file = nullptr;
 
     TTree* meta_tree;
-    TTree* muonPairOutTree[ParamsSet::nSigns];
     static const int nAncestorGroups = 4;
     TTree* QQPairOutTree[ParamsSet::nSigns][2][nAncestorGroups];
     TTree* muonPairOutTreeBinned[ParamsSet::ndRselcs][ParamsSet::nSigns];

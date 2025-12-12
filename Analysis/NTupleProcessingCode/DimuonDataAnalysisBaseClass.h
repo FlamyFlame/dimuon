@@ -76,10 +76,6 @@ protected:
 
 // --------------------- output file, histograms & trees ---------------------------
 
-    TTree* muonOutTree;
-    TTree* muonPairOutTree[ParamsSet::nSigns];
-
-
 // --------------------- private class methods ---------------------------
 
     void TrigModeToSuffixMap();

@@ -28,7 +28,6 @@ protected:
 // --------------------- input files & trees & data for setting branches ---------------------------
     TChain          *fChain;   //!pointer to the analyzed TTree or TChain
 // --------------------- temporary muon and muonpair objects ---------------------------
-    Muon* tempmuon = nullptr;
 	std::vector<int> resonance_tagged_muon_index_list_v2 {};
 	std::vector<int> resonance_tagged_muon_index_list {};
 // --------------------- output file, histograms & trees ---------------------------
