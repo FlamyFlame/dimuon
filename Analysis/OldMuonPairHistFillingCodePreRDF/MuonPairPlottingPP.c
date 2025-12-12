@@ -165,8 +165,6 @@ void MuonPairPlottingPP::InitHists(){
         }
     }
 
-    // turn on Sumw2 for all histograms
-    TH1::SetDefaultSumw2(kTRUE);
 
     h_pair_eta_vs_pair_pt_single_b_crossx = new TH2D("h_pair_eta_vs_pair_pt_single_b_crossx",";#eta^{pair};p_{T}^{pair} [GeV];#sigma^{truth}",npair_eta_bins_coarse,pair_eta_min,pair_eta_max,npair_pT_bins_coarse,pair_pt_min,pair_pt_max);
 
@@ -704,14 +702,6 @@ void MuonPairPlottingPP::InitHists(){
     } // end if statement - trigger mode = 0 (mu4 | MB)
 }
 
-void MuonPairPlottingPP::OpenEffcyPtFitFile(){
-    // Open the ROOT file
-    file_effcy_pTfits = TFile::Open(file_name_effcy_pTfits.c_str(), "READ");
-    if (!file_effcy_pTfits || file_effcy_pTfits->IsZombie()) {
-        std::cerr << "Error opening file!" << std::endl;
-        return;
-    }
-}
 
 void MuonPairPlottingPP::ProcessData(){
 	
@@ -721,7 +711,7 @@ void MuonPairPlottingPP::ProcessData(){
         
         Long64_t nentries = inTree[isign]->GetEntries(); //#muon pairs
         for (Long64_t lentry=0; lentry<nentries; lentry++) {//loop over the events
-        // for (Long64_t lentry=0; lentry<1000; lentry++) {//loop over the events
+        // for (Long64_t lentry=0; lentry<100; lentry++) {//loop over the events
         if(lentry%100000==0) cout<<"Processing "<<lentry<<" event out of "<<nentries<<" events"<<std::endl;
       		int num_bytes = inTree[isign]->GetEntry(lentry);//read in an event
             if(num_bytes==0){
@@ -735,8 +725,6 @@ void MuonPairPlottingPP::ProcessData(){
 
     if (trigger_mode != 1) return; // only continue if calculate muon-pair trigger efficiency selecting on mu4 trigger
 
-    MakeAndWriteSingleMuonPtTrigEffGraphs();
-
     CalculateSingleMuonTrigEffcyRatios();
 
     cout << "2nd loop over muon pairs" << endl;
@@ -745,7 +733,7 @@ void MuonPairPlottingPP::ProcessData(){
         
         Long64_t nentries = inTree[isign]->GetEntries(); //#muon pairs
         for (Long64_t lentry=0; lentry<nentries; lentry++) {//loop over the events
-        // for (Long64_t lentry=0; lentry<1000; lentry++) {//loop over the events
+        // for (Long64_t lentry=0; lentry<100; lentry++) {//loop over the events
         if(lentry%100000==0) cout<<"Processing "<<lentry<<" event out of "<<nentries<<" events"<<std::endl;
             int num_bytes = inTree[isign]->GetEntry(lentry);//read in an event
             if(num_bytes==0){
@@ -1308,11 +1296,9 @@ void MuonPairPlottingPP::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(int ns
     double phi_2nd [2] = {m2phi[nsign], m1phi[nsign]};
     int charge_2nd [2] = {m2charge[nsign], m1charge[nsign]};
 
-    // ---------- loop over the muon indices ----------
     for (int muon_ind = 0; muon_ind < 2; muon_ind++){ // loop over the two muons + check if either passes the single-muon mu4
         bool charge_sign_2nd_muon = (charge_2nd[muon_ind] > 0)? 0: 1;
 
-        // ---------- require passing single mu4 & 2nd muon pT < pT_max (60GeV) ----------
         double single_muon_pt_max =
             use_3D_2nd_muon
             ? h_pt2nd_vs_q_eta2nd_vs_phi2nd_mu4_mu4noL1_sepr_divided[charge_sign_2nd_muon]->GetZaxis()->GetXmax()
@@ -1333,9 +1319,7 @@ void MuonPairPlottingPP::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(int ns
             h_DR_0_2_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom[nsign]->Fill(dr[nsign],weight[nsign]);
             h_minv_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom[nsign]->Fill(minv[nsign],weight[nsign]);
             h_pair_pt_log_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom[nsign]->Fill(pair_pt[nsign],weight[nsign]);
-            h_DR_zoomin_vs_pair_pt_log_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom[nsign]->Fill(pair_pt[nsign],dr[nsign],weight[nsign] * 1. / eff_2nd_muon_mu4_mu4noL1);
             
-
             if (passmu4mu4noL1[nsign]){
                 h_Deta_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy[nsign]->Fill(deta[nsign],weight[nsign] * 1. / eff_2nd_muon_mu4_mu4noL1);
                 h_Dphi_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy[nsign]->Fill(dphi[nsign],weight[nsign] * 1. / eff_2nd_muon_mu4_mu4noL1);
@@ -1344,7 +1328,6 @@ void MuonPairPlottingPP::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(int ns
                 h_DR_0_2_mu4_mu4noL1_inv_w_by_single_mu_effcy[nsign]->Fill(dr[nsign],weight[nsign] * 1. / eff_2nd_muon_mu4_mu4noL1);
                 h_minv_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy[nsign]->Fill(minv[nsign],weight[nsign] * 1. / eff_2nd_muon_mu4_mu4noL1);
                 h_pair_pt_log_mu4_mu4noL1_inv_w_by_single_mu_effcy[nsign]->Fill(pair_pt[nsign],weight[nsign] * 1. / eff_2nd_muon_mu4_mu4noL1);
-                h_DR_zoomin_vs_pair_pt_log_mu4_mu4noL1_inv_w_by_single_mu_effcy[nsign]->Fill(pair_pt[nsign],dr[nsign],weight[nsign] * 1. / eff_2nd_muon_mu4_mu4noL1);
             }
         }
 
@@ -1356,7 +1339,6 @@ void MuonPairPlottingPP::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(int ns
             h_DR_0_2_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
             h_minv_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom_w_single_b_sig_sel->Fill(minv[nsign],weight[nsign]);
             h_pair_pt_log_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom_w_single_b_sig_sel->Fill(pair_pt[nsign],weight[nsign]);
-            h_DR_zoomin_vs_pair_pt_log_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom_w_single_b_sig_sel->Fill(pair_pt[nsign],dr[nsign],weight[nsign] * 1. / eff_2nd_muon_mu4_mu4noL1);
 
             if (passmu4mu4noL1[nsign]){
                 h_Deta_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign] * 1. / eff_2nd_muon_mu4_mu4noL1);
@@ -1365,7 +1347,6 @@ void MuonPairPlottingPP::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(int ns
                 h_DR_0_2_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign] * 1. / eff_2nd_muon_mu4_mu4noL1);
                 h_minv_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(minv[nsign],weight[nsign] * 1. / eff_2nd_muon_mu4_mu4noL1);
                 h_pair_pt_log_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(pair_pt[nsign],weight[nsign] * 1. / eff_2nd_muon_mu4_mu4noL1);
-                h_DR_zoomin_vs_pair_pt_log_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(pair_pt[nsign],dr[nsign],weight[nsign] * 1. / eff_2nd_muon_mu4_mu4noL1);
             }
         }
 
@@ -1379,7 +1360,6 @@ void MuonPairPlottingPP::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(int ns
             h_DR_0_2_2mu4_inv_w_by_single_mu_effcy_denom[nsign]->Fill(dr[nsign],weight[nsign]);
             h_minv_zoomin_2mu4_inv_w_by_single_mu_effcy_denom[nsign]->Fill(minv[nsign],weight[nsign]);
             h_pair_pt_log_2mu4_inv_w_by_single_mu_effcy_denom[nsign]->Fill(pair_pt[nsign],weight[nsign]);
-            h_DR_zoomin_vs_pair_pt_log_2mu4_inv_w_by_single_mu_effcy_denom[nsign]->Fill(pair_pt[nsign],dr[nsign],weight[nsign] * 1. / eff_2nd_muon_mu4_mu4noL1);
 
             if (pass2mu4[nsign]){
                 h_Deta_zoomin_2mu4_inv_w_by_single_mu_effcy[nsign]->Fill(deta[nsign],weight[nsign] * 1. / eff_2nd_muon_2mu4);
@@ -1389,7 +1369,6 @@ void MuonPairPlottingPP::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(int ns
                 h_DR_0_2_2mu4_inv_w_by_single_mu_effcy[nsign]->Fill(dr[nsign],weight[nsign] * 1. / eff_2nd_muon_2mu4);
                 h_minv_zoomin_2mu4_inv_w_by_single_mu_effcy[nsign]->Fill(minv[nsign],weight[nsign] * 1. / eff_2nd_muon_2mu4);
                 h_pair_pt_log_2mu4_inv_w_by_single_mu_effcy[nsign]->Fill(pair_pt[nsign],weight[nsign] * 1. / eff_2nd_muon_2mu4);
-                h_DR_zoomin_vs_pair_pt_log_2mu4_inv_w_by_single_mu_effcy[nsign]->Fill(pair_pt[nsign],dr[nsign],weight[nsign] * 1. / eff_2nd_muon_mu4_mu4noL1);
             }
         }
 
@@ -1401,7 +1380,6 @@ void MuonPairPlottingPP::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(int ns
             h_DR_0_2_2mu4_inv_w_by_single_mu_effcy_denom_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign]);
             h_minv_zoomin_2mu4_inv_w_by_single_mu_effcy_denom_w_single_b_sig_sel->Fill(minv[nsign],weight[nsign]);
             h_pair_pt_log_2mu4_inv_w_by_single_mu_effcy_denom_w_single_b_sig_sel->Fill(pair_pt[nsign],weight[nsign]);
-            h_DR_zoomin_vs_pair_pt_log_2mu4_inv_w_by_single_mu_effcy_denom_w_single_b_sig_sel->Fill(pair_pt[nsign],dr[nsign],weight[nsign] * 1. / eff_2nd_muon_mu4_mu4noL1);
 
             if (pass2mu4[nsign]){
                 h_Deta_zoomin_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(deta[nsign],weight[nsign] * 1. / eff_2nd_muon_2mu4);
@@ -1410,10 +1388,46 @@ void MuonPairPlottingPP::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(int ns
                 h_DR_0_2_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(dr[nsign],weight[nsign] * 1. / eff_2nd_muon_2mu4);
                 h_minv_zoomin_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(minv[nsign],weight[nsign] * 1. / eff_2nd_muon_2mu4);
                 h_pair_pt_log_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(pair_pt[nsign],weight[nsign] * 1. / eff_2nd_muon_2mu4);
-                h_DR_zoomin_vs_pair_pt_log_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel->Fill(pair_pt[nsign],dr[nsign],weight[nsign] * 1. / eff_2nd_muon_mu4_mu4noL1);
             }
         }
     } // end loop over the two muons
+}
+
+
+void MuonPairPlottingPP::CalculateSingleMuonTrigEffcyRatios(){
+    for (int isign = 0; isign < 2; isign++){ // looping over the 2nd-muon charge sign
+        // mu4_mu4noL1 2D
+        h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr_divided[isign] = (TH2D*)h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr[isign]->Clone(Form("%s_clone", h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr[isign]->GetName()));
+        h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_sepr_divided[isign]->Divide(h_pt2nd_vs_q_eta_2nd_mu4_sepr[isign]);
+        
+        // 2mu4 2D
+        h_pt2nd_vs_q_eta_2nd_2mu4_sepr_divided[isign] = (TH2D*)h_pt2nd_vs_q_eta_2nd_2mu4_sepr[isign]->Clone(Form("%s_clone", h_pt2nd_vs_q_eta_2nd_2mu4_sepr[isign]->GetName()));
+        h_pt2nd_vs_q_eta_2nd_2mu4_sepr_divided[isign]->Divide(h_pt2nd_vs_q_eta_2nd_mu4_sepr[isign]);
+
+        // mu4_mu4noL1 signal 2D
+        h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_divided_w_single_b_sig_sel[isign] = (TH2D*)h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_w_single_b_sig_sel[isign]->Clone(Form("%s_clone", h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_w_single_b_sig_sel[isign]->GetName()));
+        h_pt2nd_vs_q_eta_2nd_mu4_mu4noL1_divided_w_single_b_sig_sel[isign]->Divide(h_pt2nd_vs_q_eta_2nd_mu4_w_single_b_sig_sel[isign]);
+        
+        // 2mu4 signal 2D
+        h_pt2nd_vs_q_eta_2nd_2mu4_divided_w_single_b_sig_sel[isign] = (TH2D*)h_pt2nd_vs_q_eta_2nd_2mu4_w_single_b_sig_sel[isign]->Clone(Form("%s_clone", h_pt2nd_vs_q_eta_2nd_2mu4_w_single_b_sig_sel[isign]->GetName()));
+        h_pt2nd_vs_q_eta_2nd_2mu4_divided_w_single_b_sig_sel[isign]->Divide(h_pt2nd_vs_q_eta_2nd_mu4_w_single_b_sig_sel[isign]);
+
+        // mu4_mu4noL1 3D
+        h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_sepr_divided[isign] = (TH3D*) h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_sepr[isign]->Clone(Form("%s_clone", h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_sepr[isign]->GetName()));
+        h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_sepr_divided[isign]->Divide(h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_sepr[isign]);
+
+        // 2mu4 3D
+        h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_sepr_divided[isign] = (TH3D*) h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_sepr[isign]->Clone(Form("%s_clone", h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_sepr[isign]->GetName()));
+        h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_sepr_divided[isign]->Divide(h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_sepr[isign]);
+
+        // mu4_mu4noL1 signal 3D
+        h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_divided_w_single_b_sig_sel[isign] = (TH3D*) h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_w_single_b_sig_sel[isign]->Clone(Form("%s_clone", h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_w_single_b_sig_sel[isign]->GetName()));
+        h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_mu4noL1_divided_w_single_b_sig_sel[isign]->Divide(h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_w_single_b_sig_sel[isign]);
+
+        // 2mu4 signal 3D
+        h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_divided_w_single_b_sig_sel[isign] = (TH3D*) h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_w_single_b_sig_sel[isign]->Clone(Form("%s_clone", h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_w_single_b_sig_sel[isign]->GetName()));
+        h_pt2nd_vs_q_eta_2nd_vs_phi2nd_2mu4_divided_w_single_b_sig_sel[isign]->Divide(h_pt2nd_vs_q_eta_2nd_vs_phi2nd_mu4_w_single_b_sig_sel[isign]);
+    }
 }
 
 
@@ -1421,118 +1435,55 @@ void MuonPairPlottingPP::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(int ns
 // Uses a local analog of clipNumeratorIfInvW and calls it before BayesDivide.
 void MuonPairPlottingPP::MakeAndWriteDRTrigEffGraphs()
 {
+    auto zeroUFof = [](TH1* h){
+        if (!h) return;
+        const int nb = h->GetNbinsX();
+        h->SetBinContent(0,    0.0); h->SetBinError(0,    0.0);
+        h->SetBinContent(nb+1, 0.0); h->SetBinError(nb+1, 0.0);
+    };
+
+    // ---- analog of clipNumeratorIfInvW (content + error + UF/OF clamp) ----
+    auto clipNumToDenForInvW = [](TH1* num, TH1* den){
+        if (!num || !den) return;
+        if (!num->GetSumw2N()) num->Sumw2();
+        if (!den->GetSumw2N()) den->Sumw2();
+        const int nb = num->GetNbinsX();
+
+        auto clamp = [&](int b){
+            double n  = num->GetBinContent(b);
+            double d  = den->GetBinContent(b);
+            double ne = num->GetBinError(b);
+            double de = den->GetBinError(b);
+
+            if (n > d) num->SetBinContent(b, d);
+            if (ne > de) num->SetBinError(b, de);
+            if (d <= 0.0) { num->SetBinContent(b, 0.0); num->SetBinError(b, 0.0); }
+        };
+
+        clamp(0);
+        for (int b = 1; b <= nb; ++b) clamp(b);
+        clamp(nb+1);
+    };
 
     auto make_and_write = [&](TH1* num_src, TH1* den_src){
-        if (!num_src || !den_src) return (TH1*)nullptr;
+        if (!num_src || !den_src) return (TGraphAsymmErrors*)nullptr;
 
         // Work on clones so originals remain untouched
-        TH1* num((TH1*)num_src->Clone(Form("%s_divided", num_src->GetName())));
-        TH1* den((TH1*)den_src->Clone(Form("%s_divided", den_src->GetName())));
+        std::unique_ptr<TH1> num((TH1*)num_src->Clone(Form("%s_tmp", num_src->GetName())));
+        std::unique_ptr<TH1> den((TH1*)den_src->Clone(Form("%s_tmp", den_src->GetName())));
 
-        num->Divide(den);
+        // Guard for inverse-weighted numerators
+        clipNumToDenForInvW(num.get(), den.get());
 
-        num->Write();
-        return num;
-    };
-
-    // helper for projection, making & writing of TEfficiency graphs
-    auto proj_make_and_write = [&](TH2* hNum2D, TH2* hDen2D, bool projy = true, int firstbin = 1, int lastbin = -1, std::string proj_range_str = ""){
-        if (!hNum2D || !hDen2D){
-            cout << "Either the num or the den TH2D* is nullptr!" << endl;
-            return (TH1*)nullptr;
-        }
-
-        cout << "names: num: " << hNum2D->GetName() << "; den: " << hDen2D->GetName() << endl;
-        cout << "2d numerator #events: " << hNum2D->GetEntries() << "; den #events: " << hDen2D->GetEntries() << endl;
-        cout << "h_DR_zoomin_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel #events: " << h_DR_zoomin_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel->GetEntries() << endl;
-
-        // suffix that captures projection axis & range
-        std::string proj_suffix = projy? "_py" : "_px";
-        if (proj_range_str != "") proj_suffix += "_" + proj_range_str;
-
-        std::unique_ptr<TH1> hNum1D(
-            projy ? hNum2D->ProjectionY(Form("%s%s", hNum2D->GetName(), proj_suffix.c_str()), firstbin, lastbin, "e")
-                  : hNum2D->ProjectionX(Form("%s%s", hNum2D->GetName(), proj_suffix.c_str()), firstbin, lastbin, "e")
-        );
-
-        std::unique_ptr<TH1> hDen1D(
-            projy ? hDen2D->ProjectionY(Form("%s%s", hDen2D->GetName(), proj_suffix.c_str()), firstbin, lastbin, "e")
-                  : hDen2D->ProjectionX(Form("%s%s", hDen2D->GetName(), proj_suffix.c_str()), firstbin, lastbin, "e")
-        );
-
-        // Work on clones so originals remain untouched
-        TH1* num((TH1*)hNum1D->Clone(Form("%s_divided", hNum1D->GetName())));
-        TH1* den((TH1*)hDen1D->Clone(Form("%s_divided", hDen1D->GetName())));
-
-        cout << "numerator #events: " << num->GetEntries() << "; den #events: " << den->GetEntries() << endl;
-        cout << "numerator bin 3 content: " << num->GetBinContent(3) << "; den bin 3 content: " << den->GetBinContent(3) << endl;
-        num->Divide(den);
-        cout << "numerator bin 3 content AFTER DIVIDING: " << num->GetBinContent(3) << endl;
-
-        num->Write();
-        return num;
-    };
-
-    // -------- per-sign --------
-    for (int sign = 0; sign < ParamsSet::nSigns; ++sign) {
-        make_and_write(h_DR_zoomin_2mu4_inv_w_by_single_mu_effcy[sign],        h_DR_zoomin_mu4[sign]);
-        make_and_write(h_DR_0_2_2mu4_inv_w_by_single_mu_effcy[sign],           h_DR_0_2_mu4[sign]);
-        make_and_write(h_DR_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy[sign], h_DR_zoomin_mu4[sign]);
-        make_and_write(h_DR_0_2_mu4_mu4noL1_inv_w_by_single_mu_effcy[sign],    h_DR_0_2_mu4[sign]);
-    }
-
-    // -------- signal pairs --------
-    make_and_write(h_DR_zoomin_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel,        h_DR_zoomin_mu4_w_single_b_sig_sel);
-    make_and_write(h_DR_0_2_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel,           h_DR_0_2_mu4_w_single_b_sig_sel);
-    make_and_write(h_DR_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel, h_DR_zoomin_mu4_w_single_b_sig_sel);
-    make_and_write(h_DR_0_2_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel,    h_DR_0_2_mu4_w_single_b_sig_sel);
-
-    // -------- signed & signal pairs in pair pT ranges --------
-    for (auto range : pair_pT_ranges_for_weighted_effcy_dR_fitting){
-        int bin_first = bin_number(range.first, pms.pT_bins_80) + 1; // + 1 pushes into next bin (bin lower end agree with range edge if range edge founded)
-        int bin_last = bin_number(range.second, pms.pT_bins_80); // bin higher end agree with range edge if range edge founded
-        std::string proj_suffix = pairToSuffix(range);
-
-        std::cout << "pair pT Bin range: " << bin_first << ", " << bin_last << std::endl;
-
-        for (int sign = 0; sign < ParamsSet::nSigns; ++sign) {
-            proj_make_and_write(h_DR_zoomin_vs_pair_pt_log_mu4_mu4noL1_inv_w_by_single_mu_effcy[sign],     h_DR_zoomin_vs_pair_pt_log_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom[sign], true, bin_first, bin_last, proj_suffix);
-            proj_make_and_write(h_DR_zoomin_vs_pair_pt_log_2mu4_inv_w_by_single_mu_effcy[sign],     h_DR_zoomin_vs_pair_pt_log_2mu4_inv_w_by_single_mu_effcy_denom[sign], true, bin_first, bin_last, proj_suffix);
-        }
-
-        proj_make_and_write(h_DR_zoomin_vs_pair_pt_log_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel,     h_DR_zoomin_vs_pair_pt_log_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom_w_single_b_sig_sel, true, bin_first, bin_last, proj_suffix);
-        proj_make_and_write(h_DR_zoomin_vs_pair_pt_log_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel,     h_DR_zoomin_vs_pair_pt_log_2mu4_inv_w_by_single_mu_effcy_denom_w_single_b_sig_sel, true, bin_first, bin_last, proj_suffix);
-    }
-
-}
-
-void MuonPairPlottingPP::MakeAndWriteSingleMuonPtTrigEffGraphs()
-{
-    // helper for projection, making & writing of TEfficiency graphs
-    auto proj_make_and_write = [&](TH2* hNum2D, TH2* hDen2D, bool projy = true, int firstbin = 1, int lastbin = -1, std::string proj_range_str = ""){
-        if (!hNum2D || !hDen2D) return (TGraphAsymmErrors*)nullptr;
-
-        // suffix that captures projection axis & range
-        std::string proj_suffix = projy? "_py" : "_px";
-        if (proj_range_str != "") proj_suffix += "_" + proj_range_str;
-
-        std::unique_ptr<TH1> hNum1D(
-            projy ? hNum2D->ProjectionY(Form("%s%s", hNum2D->GetName(), proj_suffix.c_str()), firstbin, lastbin, "e")
-                  : hNum2D->ProjectionX(Form("%s%s", hNum2D->GetName(), proj_suffix.c_str()), firstbin, lastbin, "e")
-        );
-
-        std::unique_ptr<TH1> hDen1D(
-            projy ? hDen2D->ProjectionY(Form("%s%s", hDen2D->GetName(), proj_suffix.c_str()), firstbin, lastbin, "e")
-                  : hDen2D->ProjectionX(Form("%s%s", hDen2D->GetName(), proj_suffix.c_str()), firstbin, lastbin, "e")
-        );
+        // TEfficiency also checks UF/OF bins
+        zeroUFof(num.get());
+        zeroUFof(den.get());
 
         auto g = new TGraphAsymmErrors();
-        g->BayesDivide(hNum1D.get(), hDen1D.get());
+        g->BayesDivide(num.get(), den.get());
 
         // Name: "h_<...>" → "g_<...>" from the *numerator* histo name
-        std::string n = hNum1D->GetName() ? hNum1D->GetName() : "graph";
-        
-        n += "_divided";
+        std::string n = num_src->GetName() ? num_src->GetName() : "graph";
         if (n.rfind("h_", 0) == 0) n.replace(0, 2, "g_"); else n = "g_" + n;
         g->SetName(n.c_str());
 
@@ -1556,8 +1507,13 @@ void MuonPairPlottingPP::MakeAndWriteSingleMuonPtTrigEffGraphs()
             proj_make_and_write(h_pt2nd_vs_q_eta2nd_2mu4_sepr[sign],            h_pt2nd_vs_q_eta2nd_mu4_sepr[sign], true, bin_first, bin_last, proj_suffix);
         }
     }
-}
 
+    // -------- signal-selected (4 graphs) --------
+    make_and_write(h_DR_zoomin_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel,        h_DR_zoomin_mu4_w_single_b_sig_sel);
+    make_and_write(h_DR_0_2_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel,           h_DR_0_2_mu4_w_single_b_sig_sel);
+    make_and_write(h_DR_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel, h_DR_zoomin_mu4_w_single_b_sig_sel);
+    make_and_write(h_DR_0_2_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel,    h_DR_0_2_mu4_w_single_b_sig_sel);
+}
 
 void MuonPairPlottingPP::WriteOutput(){
 
@@ -1603,10 +1559,10 @@ void MuonPairPlottingPP::Run(){
     output_non_trig_effcy_hists = !(trigger_mode == 0 || trigger_mode == 1);
 
   	InitInput();
-    if (trigger_mode == 1) OpenEffcyPtFitFile();
     InitOutput();
   	InitHists();
   	ProcessData();
+    // CalculateTrigEffcyRatio();
   	WriteOutput();
 
     end = clock();

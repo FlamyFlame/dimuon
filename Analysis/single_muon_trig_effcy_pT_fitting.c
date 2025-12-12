@@ -33,7 +33,7 @@ private:
     std::vector<std::string> musigns = {"sign1", "sign2"};
     std::vector<std::string> q_eta_bins_for_pT_trg_effcy_graphs = {
         "minus2_40_TO_minus2_00", "minus2_00_TO_minus1_60", "minus1_60_TO_minus1_30", "minus0_90_TO_minus0_50", 
-        "minus0_50_TO_minus0_10", "0_10_TO_0_50", "0_50_TO_1_00", "1_30_TO_1_60", "1_60_TO_2_00", "2_00_TO_2_40"
+        "minus0_50_TO_minus0_10", "0_10_TO_0_50", "0_50_TO_1_00", "1_30_TO_1_60", "1_60_TO_2_00", "2_00_TO_2_20"
     };
 
     static bool fileExists(const std::string& dir){
@@ -66,7 +66,7 @@ private:
             fitting_outdir = "trg_effcy_pT_fitting_to_fermi_plus_log/";
         }
 
-        infile_name = old_mode? data_dir + "histograms_real_pairs_pp_2024_single_mu4.root" : data_dir + "histograms_real_pairs_pp_2024_single_mu4_new_RDF.root";
+        infile_name = data_dir + "histograms_real_pairs_pp_2024_single_mu4_new_RDF.root";
         outfile_name = data_dir + fitting_outdir + "single_mu_effcy_pT_fit.root";
         
         makeDirIfNeeded(data_dir + fitting_outdir);
@@ -96,7 +96,6 @@ private:
     }
 
 public:
-    bool old_mode = false; // pre-RDF (_sign1/2 appears after trigger & filter)
     bool debug_mode = false;
 
     enum FittingMode {
@@ -312,9 +311,7 @@ private:
             leg->SetBorderSize(0);
             leg->SetFillStyle(0);
 
-            std::string gname = old_mode? "g_pt2nd_vs_q_eta_2nd_" : "g_pt2nd_vs_q_eta2nd_";
-            if (old_mode)   gname += trg_maps[trg] + "_sepr_" + musign + "_py_" + q_eta_bin + "_divided";
-            else            gname += musign + "_" + trg_maps[trg] + "_sepr_py_" + q_eta_bin + "_divided";
+            std::string gname = "g_pt2nd_vs_q_eta2nd_" + musign + "_" + trg_maps[trg] + "_sepr_py_" + q_eta_bin + "_divided";
             
 
             if (debug_mode) std::cout << "Graph name: " << gname << std::endl;
