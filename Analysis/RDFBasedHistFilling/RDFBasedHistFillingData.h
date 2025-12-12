@@ -106,7 +106,7 @@ enum HistFillingCycle{
 
     bool output_generic_hists;
     bool output_gapcut_hists;
-    
+
     bool filter_out_photo_resn_for_trig_effcy = true;
     bool use_3D_2nd_muon = false; // if true, use 3D kinematics (phi, q*eta, pT) for single (2nd) muon trigger efficiencies
     bool use_pT_fitting_single_muon_effcy = true;
@@ -199,12 +199,8 @@ protected:
 
     AxisInfo            GetAxisInfo(const var1D& v, const std::string& filter) const override;
     void                ReadVar1DJson() override;
+
 public:
-
-    // std::string ctr_binning_verion = "default"; // centrality binning version used in current analysis
-    std::string ctr_binning_verion = "include_upc"; // centrality binning version used in current analysis
-    std::vector<double> crossx_factors_ctr_binned;
-
     RDFBasedHistFillingPbPb(){
         std::cout << "constructor for PbPb called" << std::endl; 
     }

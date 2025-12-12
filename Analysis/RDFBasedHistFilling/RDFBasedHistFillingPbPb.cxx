@@ -73,8 +73,6 @@ void RDFBasedHistFillingPbPb::Initialize(){
 void RDFBasedHistFillingPbPb::BuildHistBinningMap(){
 	RDFBasedHistFillingData::BuildHistBinningMap();
 
-	cout << "ctr_binning_verion: " << ctr_binning_verion << endl;
-
 	hist_binning_map["ctr_bins"] = ctr_bin_edges_double;
 
 	for (int ictr = 0; ictr < ctr_bins.size(); ictr++){
@@ -84,11 +82,6 @@ void RDFBasedHistFillingPbPb::BuildHistBinningMap(){
 	    // ------- ctr-dep eta binning for single-muon trigger efficiency -------
 
 	    std::vector<double> eta_bins_trig_effcy = ParamsSet::makeEtaTrigEffcyBinning(ctr_rebin_factor);
-
-	    cout << "ctr bin: " << ctr << ", ctr_rebin_factor: " << ctr_rebin_factor << ", eta_bins_trig_effcy size: " << eta_bins_trig_effcy.size() << endl;
-	    for (auto bin : eta_bins_trig_effcy) cout << bin << ", ";
-	    cout << endl;
-
 	    hist_binning_map["eta_bins_trig_effcy" + ctr] = eta_bins_trig_effcy;
 	    
 	    // ------- ctr-dep phi binning for single-muon trigger efficiency -------
