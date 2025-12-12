@@ -11,14 +11,20 @@ protected:
     int nCtrBins;
 
     std::map<std::string, std::vector<int>> ctr_binning_map; // map from binning versions to the binnings
+
+    std::map<std::pair<int, std::string>, std::vector<double>> run_yr_and_ctrbin_version_to_crossx_factors_map; // map from (run year, ctr binning version) to crossx factors
+    std::map<std::string, std::vector<int>> ctr_rebin_scale_factor_map; // map from binning versions to the binnings
     std::map<std::string, std::string> ctr_binning_file_suffix_map; // map from binning versions to the suffices
 
-	std::string ctr_binning_version_suffix = ctr_binning_file_suffix_map[ctr_binning_verion];
+    std::vector<int> ctr_rebin_scale_factors;
+
+	std::string ctr_suffix;
 
 	// -------- protected class methods --------
 
-    SanityCheckPbPb();
-    InitializePbPb();
+    void SanityCheckPbPb();
+    void InitializePbPb();
+    double CalculateWeightForRAA(int centrality, double weight);
 
 public:
 	// -------- public variables for configuration --------
@@ -54,19 +60,34 @@ public:
         1./(0.3 * 7.8 * 1000. * 0.6716 * 1.5411 / 1000.) // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 50-80%
     };
 
-	// -------- public class methods --------
-	 PbPbBaseClass();
-	~ PbPbBaseClass();
+    // -------- public class methods --------
+     PbPbBaseClass(){}
+    ~ PbPbBaseClass(){}
 	
 };
 
-PbPbBaseClass::InitializePbPb(){
+void PbPbBaseClass::InitializePbPb(){
+    run_yr_and_ctrbin_version_to_crossx_factors_map[{15, "default"}] = crossx_factors_pbpb_run2_ctr_binned;
+    run_yr_and_ctrbin_version_to_crossx_factors_map[{18, "default"}] = crossx_factors_pbpb_run2_ctr_binned;
+    run_yr_and_ctrbin_version_to_crossx_factors_map[{23, "default"}] = crossx_factors_pbpb_2023_ctr_binned;
+    run_yr_and_ctrbin_version_to_crossx_factors_map[{24, "default"}] = crossx_factors_pbpb_2024_ctr_binned;
+
+    run_yr_and_ctrbin_version_to_crossx_factors_map[{15, "include_upc"}] = crossx_factors_pbpb_run2_ctr_binned; // WRONG!! 50-100% NEED TO BE CORRECTED
+    run_yr_and_ctrbin_version_to_crossx_factors_map[{18, "include_upc"}] = crossx_factors_pbpb_run2_ctr_binned; // WRONG!! 50-100% NEED TO BE CORRECTED
+    run_yr_and_ctrbin_version_to_crossx_factors_map[{23, "include_upc"}] = crossx_factors_pbpb_2023_ctr_binned; // WRONG!! 50-100% NEED TO BE CORRECTED
+    run_yr_and_ctrbin_version_to_crossx_factors_map[{24, "include_upc"}] = crossx_factors_pbpb_2024_ctr_binned; // WRONG!! 50-100% NEED TO BE CORRECTED
 
     ctr_binning_map["default"] = {0,5,10,20,30,50,80};
+    ctr_binning_map["include_upc"] = {0,5,10,20,30,50,100};
+    
     ctr_binning_file_suffix_map["default"] = "";
+    ctr_binning_file_suffix_map["include_upc"] = "_include_upc";
+    ctr_rebin_scale_factor_map["default"] = {1,1,1,1,2,4};
+    ctr_rebin_scale_factor_map["include_upc"] = {1,1,1,1,2,4};
 
     ctr_bin_edges = ctr_binning_map[ctr_binning_verion];
-	ctr_binning_version_suffix = ctr_binning_file_suffix_map[ctr_binning_verion];
+	ctr_suffix = ctr_binning_file_suffix_map[ctr_binning_verion];
+    ctr_rebin_scale_factors = ctr_rebin_scale_factor_map[ctr_binning_verion];
 
     ctr_bin_edges_double = std::vector<double>(ctr_bin_edges.begin(), ctr_bin_edges.end());
     nCtrBins = ctr_bin_edges.size() - 1;
@@ -77,12 +98,15 @@ PbPbBaseClass::InitializePbPb(){
         ctr_bins.push_back("_ctr" + std::to_string(ctr_bin_low_edge) + "_" + std::to_string(ctr_bin_high_edge));
     }
 
-    SanityCheckPbPb();
+    // SanityCheckPbPb(); // at this point, crossx_factors_ctr_binned is not well-defined
 }
 
-PbPbBaseClass::SanityCheckPbPb(){
+void PbPbBaseClass::SanityCheckPbPb(){
 	if (crossx_factors_ctr_binned.size() != ctr_bin_edges.size() - 1){
         throw std::runtime_error("crossx_factors_ctr_binned MUST equal ctr_bin_edges size - 1");
+    }
+    if (ctr_rebin_scale_factors.size() != ctr_bin_edges.size() - 1){
+        throw std::runtime_error("ctr_rebin_scale_factors MUST equal ctr_bin_edges size - 1");
     }
 }
 
