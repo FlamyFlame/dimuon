@@ -1,23 +1,14 @@
+#include "MuonObjectsParamsAndHelpers/PbPbBaseClass.h"
 #include "SingleBAnalysisBase.cxx"
 
 // -------------------------- PbPb analysis class --------------------------
 
-class SingleBAnalysisPbPb : public SingleBAnalysisBase{
+class SingleBAnalysisPbPb : public SingleBAnalysisBase, public PbPbBaseClass{
 private:
     std::string infile_relative_path;
     std::string outfile_relative_path_truncated;
-    std::vector<int> ctr_bin_edges;
-    int nCtrBins;
-
-	double CalculateWeightForRAA(int centrality, double weight);
 
 public:
-    // std::vector<std::vector<std::string>> ctr_bins;
-    std::string ctr_binning_verion = "default"; // centrality binning version used in current analysis (if there are several)
-    std::map<std::string, std::vector<int>> ctr_binning_map; // map from binning versions to the binnings
-    std::map<std::string, std::string> ctr_binning_file_suffix_map; // map from binning versions to the suffices
-    std::vector<double> crossx_factors_ctr_binned;
-
     SingleBAnalysisPbPb(std::string infile_relative_path_input, std::string outfile_relative_path_input){
         infile_relative_path = infile_relative_path_input;
         outfile_relative_path_truncated = outfile_relative_path_input;
@@ -25,8 +16,8 @@ public:
     }
     ~SingleBAnalysisPbPb(){}
 
-    void RunAnalysis();
     void Initialize();
+    void RunAnalysis();
 };
 
 
@@ -34,35 +25,7 @@ public:
 
 void SingleBAnalysisPbPb::Initialize(){
     SingleBAnalysisBase::Initialize();
-
-    ctr_binning_map["default"] = {0,5,10,20,30,50,80};
-    ctr_binning_file_suffix_map["default"] = "";
-}
-
-
-double SingleBAnalysisPbPb::CalculateWeightForRAA(int centrality, double weight){
-    for (int ictr = 0; ictr < nCtrBins; ictr++){
-
-    	int ctr_bin_low_edge, ctr_bin_high_edge;
-    	double crossx_factor;
-
-    	try{
-    		ctr_bin_low_edge = ctr_bin_edges.at(ictr);
-			ctr_bin_high_edge = ctr_bin_edges.at(ictr + 1);
-            crossx_factor = crossx_factors_ctr_binned.at(ictr);
-        }catch (const std::out_of_range& e){
-            std::cerr << "WARNING: out_of_range caught when accessing the " << ictr << "-th element of ctr_bin_edges and crossx_factors_ctr_binned elements" << std::endl;
-            std::cerr << "ctr_bin_edges has size " << ctr_bin_edges.size() << std::endl;
-            std::cerr << "crossx_factors_ctr_binned has size " << crossx_factors_ctr_binned.size() << std::endl;
-            std::cerr << "Assigning ZERO weight to current event: will result in WRONG total crossx" << std::endl;
-            return 0;
-        }
-
-        if (centrality >= ctr_bin_low_edge && centrality < ctr_bin_high_edge){
-        	return weight * crossx_factor;
-        }
-    }
-    return 0.; // assign weight = 0 to event if out of centrality-range of interest
+    PbPbBaseClass::InitializePbPb();
 }
 
 
@@ -77,15 +40,7 @@ void SingleBAnalysisPbPb::RunAnalysis(){
     std::vector<ROOT::RDF::RNode> df_pbpb_run2_ctr_binned_list_ss_w_weight_w_signal_cuts;
     std::vector<ROOT::RDF::RNode> df_pbpb_run2_ctr_binned_list_op_w_weight_w_signal_cuts;
 
-	ctr_bin_edges = ctr_binning_map[ctr_binning_verion];
-	std::vector<double> ctr_bin_edges_double(ctr_bin_edges.begin(), ctr_bin_edges.end());
-
-    if (crossx_factors_ctr_binned.size() != ctr_bin_edges.size() - 1){
-        throw std::runtime_error("crossx_factors_ctr_binned MUST equal ctr_bin_edges size - 1");
-    }
-
-    nCtrBins = ctr_bin_edges.size() - 1;
-
+    
 	auto df_ss_weight = df_ss.Define("weight_for_RAA",
 	    [this](int avg_centrality, double weight) {
 	        return this->CalculateWeightForRAA(avg_centrality, weight);
@@ -254,8 +209,7 @@ void SingleBAnalysisPbPb::RunAnalysis(){
     // ----------------------------------------------------------------------------------------
 
     // Write results
-    std::string ctr_binning_version_suffix = ctr_binning_file_suffix_map[ctr_binning_verion];
-    std::string outfile_name = dataset_base_dir + outfile_relative_path_truncated + ctr_binning_version_suffix + ".root";
+    std::string outfile_name = dataset_base_dir + outfile_relative_path_truncated + ctr_suffix + ".root";
     cout << outfile_name << endl;
     TFile out(outfile_name.c_str(), "RECREATE");
     h3d_ss_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt->Write();
@@ -290,45 +244,16 @@ void SingleBAnalysisPbPb::RunAnalysis(){
 void simplified_single_b_analysis_PbPb(){
     //Run PbPb analyses
 
-    // 67.6 = sigma_{inel} in unit of mb = <TAA> / <N_{coll}>
-    std::vector<double> crossx_factors_pbpb_run2_ctr_binned = {
-        1./(0.05 * 7.67 * 1000. * 26.2339 * (0.436882 + 1.3803) / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * (L_{int15} + L_{int18}) (unit: pb^{-1})] 0-5%
-        1./(0.05 * 7.67 * 1000. * 20.4707 * (0.436882 + 1.3803) / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * (L_{int15} + L_{int18}) (unit: pb^{-1})] 5-10%
-        1./(0.1 * 7.67 * 1000. * 14.3345 * (0.436882 + 1.3803) / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * (L_{int15} + L_{int18}) (unit: pb^{-1})] 10-20%
-        1./(0.1 * 7.67 * 1000. * 8.63844 * (0.436882 + 1.3803) / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * (L_{int15} + L_{int18}) (unit: pb^{-1})] 20-30%
-        1./(0.2 * 7.67 * 1000. * 3.79023 * (0.436882 + 1.3803) / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * (L_{int15} + L_{int18}) (unit: pb^{-1})] 30-50%
-        1./(0.3 * 7.67 * 1000. * 0.689695 * (0.436882 + 1.3803) / 1000.) // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * (L_{int15} + L_{int18}) (unit: pb^{-1})] 50-80%
-    };
-
-    std::vector<double> crossx_factors_pbpb_2023_ctr_binned = {
-        1./(0.05 * 7.8 * 1000. * 26.1428 * 1.3896 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 0-5%
-        1./(0.05 * 7.8 * 1000. * 20.3241 * 1.3896 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 5-10%
-        1./(0.1 * 7.8 * 1000. * 14.0502 * 1.3896 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 10-20%
-        1./(0.1 * 7.8 * 1000. * 8.5074 * 1.3896 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 20-30%
-        1./(0.2 * 7.8 * 1000. * 3.7733 * 1.3896 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 30-50%
-        1./(0.3 * 7.8 * 1000. * 0.6716 * 1.3896 / 1000.) // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 50-80%
-    };
-
-    std::vector<double> crossx_factors_pbpb_2024_ctr_binned = {
-        1./(0.05 * 7.8 * 1000. * 26.1428 * 1.5411 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 0-5%
-        1./(0.05 * 7.8 * 1000. * 20.3241 * 1.5411 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 5-10%
-        1./(0.1 * 7.8 * 1000. * 14.0502 * 1.5411 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 10-20%
-        1./(0.1 * 7.8 * 1000. * 8.5074 * 1.5411 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 20-30%
-        1./(0.2 * 7.8 * 1000. * 3.7733 * 1.5411 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 30-50%
-        1./(0.3 * 7.8 * 1000. * 0.6716 * 1.5411 / 1000.) // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 50-80%
-    };
-
-
     // SingleBAnalysisPbPb pbpb_run2 ("pbpb_run2/muon_pairs_pbpb_run2.root", "pbpb_run2/pbpb_run2_single_b_ana_hists");
-    // pbpb_run2.crossx_factors_ctr_binned = crossx_factors_pbpb_run2_ctr_binned;
+    // pbpb_run2.crossx_factors_ctr_binned = PbPbBaseClass::crossx_factors_pbpb_run2_ctr_binned;
     // pbpb_run2.RunAnalysis();
 
     // SingleBAnalysisPbPb pbpb_2023 ("pbpb_2023/muon_pairs_pbpb_2023_mu4_mu4noL1_no_res_cut.root", "pbpb_2023/pbpb_2023_single_b_ana_hists_mu4_mu4noL1_no_res_cut");
-    // pbpb_2023.crossx_factors_ctr_binned = crossx_factors_pbpb_2023_ctr_binned;
+    // pbpb_2023.crossx_factors_ctr_binned = PbPbBaseClass::crossx_factors_pbpb_2023_ctr_binned;
     // pbpb_2023.RunAnalysis();
 
     SingleBAnalysisPbPb pbpb_2024 ("pbpb_2024/muon_pairs_pbpb_2024_single_mu4.root", "pbpb_2024/pbpb_2024_single_b_ana_hists_single_mu4");
-    pbpb_2024.crossx_factors_ctr_binned = crossx_factors_pbpb_2024_ctr_binned;
+    pbpb_2024.crossx_factors_ctr_binned = PbPbBaseClass::crossx_factors_pbpb_2024_ctr_binned;
     // pbpb_2024.BinningPrinting();
     pbpb_2024.RunAnalysis();
 }
