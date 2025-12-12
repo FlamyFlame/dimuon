@@ -168,38 +168,38 @@ public:
         }
 
         // ----------- drawing efficiencies for pair observables ------------------------------------
-        // if (!isMB){ // no pair observales for MB
-        //     // --- 1-D efficiencies (pair observables) --------------------------------------------------
+        if (!isMB){ // no pair observales for MB
+            // --- 1-D efficiencies (pair observables) --------------------------------------------------
 
-        //     // Which 1‑D variables shall be plotted for this job?
-        //     StrVec vars_to_use = determineVar1DList();
+            // Which 1‑D variables shall be plotted for this job?
+            StrVec vars_to_use = determineVar1DList();
 
-        //     for (const auto& v : vars_to_use)  plot1D(v);
+            for (const auto& v : vars_to_use)  plot1D(v);
 
-        //     // --- 2-D efficiencies (pair observables) --------------------------------------------------
-        //     {
-        //         StrVec fList = filter_suffix_list.empty() ? StrVec{""} : filter_suffix_list;
-        //         for (const auto& fs : fList) {
-        //             if (!filt_to_draw2D_map.at(fs)) continue;
-        //             for (const auto& v : determineVar2DList(fs)){
-        //                 plot2D(v, fs);
-        //             }
-        //         }
-        //     }
+            // --- 2-D efficiencies (pair observables) --------------------------------------------------
+            {
+                StrVec fList = filter_suffix_list.empty() ? StrVec{""} : filter_suffix_list;
+                for (const auto& fs : fList) {
+                    if (!filt_to_draw2D_map.at(fs)) continue;
+                    for (const auto& v : determineVar2DList(fs)){
+                        plot2D(v, fs);
+                    }
+                }
+            }
             
-        //     // --- 2-D profiles (pair observables) ------------------------------------------------------
-        //     {
-        //         StrVec fList = filter_suffix_list.empty() ? StrVec{""} : filter_suffix_list;
-        //         for (const auto& fs : fList) {
-        //             if (!filt_to_draw2Dprofile_map.at(fs)) continue;
-        //             for (const auto& v : determineVar2DPList(fs))
-        //                 plotProfile(v, fs);
-        //         }
-        //     }
+            // --- 2-D profiles (pair observables) ------------------------------------------------------
+            {
+                StrVec fList = filter_suffix_list.empty() ? StrVec{""} : filter_suffix_list;
+                for (const auto& fs : fList) {
+                    if (!filt_to_draw2Dprofile_map.at(fs)) continue;
+                    for (const auto& v : determineVar2DPList(fs))
+                        plotProfile(v, fs);
+                }
+            }
 
-        //     // --- project selected 2D histograms (pair observables) into 1D efficiencies ----------------
-        //     plot2Dto1DEffcyProj();
-        // }
+            // --- project selected 2D histograms (pair observables) into 1D efficiencies ----------------
+            plot2Dto1DEffcyProj();
+        }
 
         // ----------- drawing single-muon efficiencies ------------------------------------
         
@@ -224,7 +224,6 @@ private:
     // std::vector<std::string> ctr_bins = {"_ctr0_5", "_ctr5_10", "_ctr10_20", "_ctr20_30", "_ctr30_50", "_ctr50_80"};
     std::vector<int> ctr_bin_edges = {0,5,10,20,30,50,100};
     std::vector<std::string> ctr_bins = {"_ctr0_5", "_ctr5_10", "_ctr10_20", "_ctr20_30", "_ctr30_50", "_ctr50_100"};
-    bool old_mode{};
     bool draw2mu4{};
     bool add_ctr_0_10{};
     bool draw_single_b_signal{};
@@ -566,13 +565,8 @@ private:
     std::string hName (const std::string& var, const std::string& fs, const std::string& trg, const std::string& suffix) const
     {
         std::string mapped = mappedTrigger(fs, trg);
-        if (old_mode){ // pre-RDF: musign / single-b-signal at the end
-            return (mapped.empty() || mapped=="NONE") ? "" :
-                   Form("h_%s_%s%s", var.c_str(), mapped.c_str(), suffix.c_str());
-        }else{ // RDF-based: musign / single-b-signal at the beginning
-            return (mapped.empty() || mapped=="NONE") ? "" :
-                   Form("h_%s%s_%s", var.c_str(), suffix.c_str(), mapped.c_str());
-        }
+        return (mapped.empty() || mapped=="NONE") ? "" :
+               Form("h_%s%s_%s", var.c_str(), suffix.c_str(), mapped.c_str());
     };
 
     // =========================================================================
@@ -746,16 +740,9 @@ private:
                             throw std::runtime_error("Base trigger mu4 missing for filter " + fs);
                         }
 
-                        std::string denomHist;
-
-                        if (old_mode){
-                            denomHist = Form("h_%s_%s%s", var.c_str(), denomName.c_str(),
-                                                      (mode==SignalDrawingMode::Signal?"_w_single_b_sig_sel":signSuffixes[pad].c_str()));
-                        }else{
-                            denomHist = Form("h_%s%s_%s", var.c_str(),
+                        std::string denomHist = Form("h_%s%s_%s", var.c_str(),
                                                       (mode==SignalDrawingMode::Signal?"_w_single_b_sig_sel":signSuffixes[pad].c_str()),
                                                       denomName.c_str());
-                        }
                         
                         if (debug_mode) std::cout << "Denominator name: " << denomHist << std::endl;
                         TH1* h_denom = getHist<TH1>(denomHist);
@@ -765,16 +752,9 @@ private:
                         std::string mapped = mappedTrigger(fs, trg);
                         if (mapped.empty() || mapped == "NONE") continue; // skip incompatible trigger
 
-                        std::string numHist;
-
-                        if (old_mode){
-                            numHist = Form("h_%s_%s%s", var.c_str(), mapped.c_str(),
-                                                      (mode==SignalDrawingMode::Signal?"_w_single_b_sig_sel":signSuffixes[pad].c_str()));
-                        }else{
-                            numHist = Form("h_%s%s_%s", var.c_str(),
+                        std::string numHist = Form("h_%s%s_%s", var.c_str(),
                                                       (mode==SignalDrawingMode::Signal?"_w_single_b_sig_sel":signSuffixes[pad].c_str()),
                                                       mapped.c_str());
-                        }
 
                         TH1* h_num = getHist<TH1>(numHist);
                         if (!h_num) continue;
@@ -928,12 +908,8 @@ private:
                 std::string denomName = (mappedTrigger(fs, trg + "_denom") != "NONE")? mappedTrigger(fs, trg + "_denom") : mappedTrigger(fs, "mu4");
                 if (denomName.empty() || denomName == "NONE") continue;
 
-                std::string denomSign2;
-                if (old_mode)   denomSign2 = use_sepr_for_op_and_signal? Form("h_%s_%s_sepr_sign2", var.c_str(), denomName.c_str()) : Form("h_%s_%s_sign2", var.c_str(), denomName.c_str());
-                else            denomSign2 = use_sepr_for_op_and_signal? Form("h_%s_sign2_%s_sepr", var.c_str(), denomName.c_str()) : Form("h_%s_sign2_%s", var.c_str(), denomName.c_str());
-                std::string denomSel;
-                if (old_mode)   denomSel = Form("h_%s_%s_w_single_b_sig_sel", var.c_str(), denomName.c_str());
-                else            denomSel = Form("h_%s_single_b_%s", var.c_str(), denomName.c_str());
+                std::string denomSign2 = use_sepr_for_op_and_signal? Form("h_%s_sign2_%s_sepr", var.c_str(), denomName.c_str()) : Form("h_%s_sign2_%s", var.c_str(), denomName.c_str());
+                std::string denomSel = Form("h_%s_single_b_%s", var.c_str(), denomName.c_str());
 
                 if (debug_mode){
                     std::cout << "Denominator name all opposite sign: " << denomSign2 << std::endl;
@@ -947,12 +923,8 @@ private:
                 std::string mapped = mappedTrigger(fs, trg);
                 if (mapped.empty() || mapped == "NONE") continue;
 
-                std::string numSign2;
-                if (old_mode)   numSign2 = use_sepr_for_op_and_signal? Form("h_%s_%s_sepr_sign2", var.c_str(), mapped.c_str()) : Form("h_%s_%s_sign2", var.c_str(), mapped.c_str());
-                else            numSign2 = use_sepr_for_op_and_signal? Form("h_%s_sign2_%s_sepr", var.c_str(), mapped.c_str()) : Form("h_%s_sign2_%s", var.c_str(), mapped.c_str());
-                std::string numSel;
-                if (old_mode)   numSel = Form("h_%s_%s_w_single_b_sig_sel", var.c_str(), mapped.c_str());
-                else            numSel = Form("h_%s_single_b_%s", var.c_str(), mapped.c_str());
+                std::string numSign2 = use_sepr_for_op_and_signal? Form("h_%s_sign2_%s_sepr", var.c_str(), mapped.c_str()) : Form("h_%s_sign2_%s", var.c_str(), mapped.c_str());
+                std::string numSel = Form("h_%s_single_b_%s", var.c_str(), mapped.c_str());
 
                 TH1* h_num_s2 = getHist<TH1>(numSign2);
                 TH1* h_num_sel = getHist<TH1>(numSel);
@@ -1361,19 +1333,12 @@ private:
                                     continue;
                                 }
 
-                                std::string denom2D;
-                                if (old_mode){
-                                    denom2D = Form("h_%s_%s%s",
-                                                    var2d.c_str(), denomName.c_str(),
-                                                    (mode == SignalDrawingMode::Signal ? "_w_single_b_sig_sel"
-                                                                                       : signSuffixes[pad]));
-                                }else{
-                                    denom2D = Form("h_%s%s_%s",
+                                std::string denom2D = Form("h_%s%s_%s",
                                                     var2d.c_str(),
                                                     (mode == SignalDrawingMode::Signal ? "_w_single_b_sig_sel"
                                                                                        : signSuffixes[pad]),
                                                     denomName.c_str());
-                                }
+
                                 if (debug_mode) std::cout << "Denominator name: " << denom2D << std::endl;
         
                                 TH2* hDen2D = getHist<TH2>(denom2D);
@@ -1400,19 +1365,11 @@ private:
                                 const std::string mapped = mappedTrigger(fs, trg);
                                 if (mapped.empty() || mapped == "NONE") continue;
 
-                                std::string num2D;
-                                if (old_mode){
-                                    num2D = Form("h_%s_%s%s",
-                                                    var2d.c_str(), mapped.c_str(),
-                                                    (mode == SignalDrawingMode::Signal ? "_w_single_b_sig_sel"
-                                                                                       : signSuffixes[pad]));
-                                }else{
-                                    num2D = Form("h_%s%s_%s",
+                                std::string num2D = Form("h_%s%s_%s",
                                                     var2d.c_str(),
                                                     (mode == SignalDrawingMode::Signal ? "_w_single_b_sig_sel"
                                                                                        : signSuffixes[pad]),
                                                     mapped.c_str());
-                                }
 
                                 TH2* hNum2D = getHist<TH2>(num2D);
                                 if (!hNum2D || hNum2D->GetDimension() != 2) continue;
@@ -1554,12 +1511,8 @@ private:
                             if (denomName.empty() || denomName == "NONE") continue;
 
                             // denominators (2D → project)
-                            std::string den2D_s2;
-                            if (old_mode)   den2D_s2 = use_sepr_for_op_and_signal? Form("h_%s_%s_sepr_sign2", var2d.c_str(), denomName.c_str()) : Form("h_%s_%s_sign2", var2d.c_str(), denomName.c_str());
-                            else            den2D_s2 = use_sepr_for_op_and_signal? Form("h_%s_sign2_%s_sepr", var2d.c_str(), denomName.c_str()) : Form("h_%s_sign2_%s", var2d.c_str(), denomName.c_str());
-                            std::string den2D_sel;
-                            if (old_mode)   den2D_sel = Form("h_%s_%s_w_single_b_sig_sel",    var2d.c_str(), denomName.c_str());
-                            else            den2D_sel = Form("h_%s_single_b_%s",    var2d.c_str(), denomName.c_str());
+                            std::string den2D_s2 = use_sepr_for_op_and_signal? Form("h_%s_sign2_%s_sepr", var2d.c_str(), denomName.c_str()) : Form("h_%s_sign2_%s", var2d.c_str(), denomName.c_str());
+                            std::string den2D_sel = Form("h_%s_single_b_%s",    var2d.c_str(), denomName.c_str());
                             
                             if (debug_mode){
                                 std::cout << "Denominator name all opposite sign: " << den2D_s2 << std::endl;
@@ -1583,12 +1536,8 @@ private:
                             const std::string mapped = mappedTrigger(fs, trg);
                             if (mapped.empty() || mapped == "NONE") continue;
 
-                            std::string num2D_s2;
-                            if (old_mode)   num2D_s2 = use_sepr_for_op_and_signal? Form("h_%s_%s_sepr_sign2", var2d.c_str(), mapped.c_str()) : Form("h_%s_%s_sign2", var2d.c_str(), mapped.c_str());
-                            else            num2D_s2 = use_sepr_for_op_and_signal? Form("h_%s_sign2_%s_sepr", var2d.c_str(), mapped.c_str()) : Form("h_%s_sign2_%s", var2d.c_str(), mapped.c_str());
-                            std::string num2D_sel;
-                            if (old_mode)   num2D_sel = Form("h_%s_%s_w_single_b_sig_sel",    var2d.c_str(), mapped.c_str());
-                            else            num2D_sel = Form("h_%s_single_b_%s",    var2d.c_str(), mapped.c_str());
+                            std::string num2D_s2 = use_sepr_for_op_and_signal? Form("h_%s_sign2_%s_sepr", var2d.c_str(), mapped.c_str()) : Form("h_%s_sign2_%s", var2d.c_str(), mapped.c_str());
+                            std::string num2D_sel = Form("h_%s_single_b_%s",    var2d.c_str(), mapped.c_str());
 
                             TH2* hNum2D_s2  = getHist<TH2>(num2D_s2);
                             TH2* hNum2D_sel = getHist<TH2>(num2D_sel);
