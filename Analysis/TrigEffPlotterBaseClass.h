@@ -1,5 +1,5 @@
 #pragma once
-// TrigEffcyPlotBaseClass.h (or .cxx if you keep it ROOT-macro style)
+// TrigEffPlotterBaseClass.h (or .cxx if you keep it ROOT-macro style)
 
 #include <TFile.h>
 #include <TH1.h>
@@ -47,7 +47,7 @@ static void makeDirIfNeeded(const std::string& dir)
 // ============================================================
 // Base class
 // ============================================================
-class TrigEffcyPlotBaseClass
+class TrigEffPlotterBaseClass
 {
 public:
     bool only_draw_single_muon_effcy = false; // skip pair observables
@@ -63,7 +63,7 @@ public:
     using TriggerMap = std::map<std::string, std::string>; // trigger → mapped-name
     using Rect       = std::array<double, 4>;
 
-    virtual ~TrigEffcyPlotBaseClass()
+    virtual ~TrigEffPlotterBaseClass()
     {
         if (fFile_mu4) { fFile_mu4->Close(); delete fFile_mu4; fFile_mu4 = nullptr; }
         if (fFile_MB)  { fFile_MB->Close();  delete fFile_MB;  fFile_MB  = nullptr; }
@@ -122,7 +122,7 @@ protected:
     // -------------------------
     // Construction pattern (virtual class: not called as public function)
     // -------------------------
-    TrigEffcyPlotBaseClass(int runYear,
+    TrigEffPlotterBaseClass(int runYear,
                            const StrVec& vars1D_in,
                            bool draw2mu4_user,
                            const StrVec& filter_suffixes,
@@ -249,13 +249,13 @@ protected:
     {
         fFile_mu4 = TFile::Open(fname_single_mu4.c_str(), "READ");
         if (!fFile_mu4 || fFile_mu4->IsZombie())
-            std::cerr << "[TrigEffcyPlotBaseClass] ERROR: cannot open " << fname_single_mu4 << "\n";
+            std::cerr << "[TrigEffPlotterBaseClass] ERROR: cannot open " << fname_single_mu4 << "\n";
 
         if (isMB)
         {
             fFile_MB = TFile::Open(fname_MB.c_str(), "READ");
             if (!fFile_MB || fFile_MB->IsZombie())
-                std::cerr << "[TrigEffcyPlotBaseClass] ERROR: cannot open " << fname_MB << "\n";
+                std::cerr << "[TrigEffPlotterBaseClass] ERROR: cannot open " << fname_MB << "\n";
         }
     }
 
@@ -455,14 +455,14 @@ protected:
     template<typename T> T* getHist(const std::string& name) const
     {
         T* h = dynamic_cast<T*>(fFile_mu4->Get(name.c_str()));
-        if (!h) std::cerr << "[TrigEffcyPlotBaseClass] WARNING: missing hist " << name << "\n";
+        if (!h) std::cerr << "[TrigEffPlotterBaseClass] WARNING: missing hist " << name << "\n";
         return h;
     }
 
     template<typename T> T* getHistMB(const std::string& name) const
     {
         T* h = dynamic_cast<T*>(fFile_MB->Get(name.c_str()));
-        if (!h) std::cerr << "[TrigEffcyPlotBaseClass] WARNING: in MB file, missing hist " << name << "\n";
+        if (!h) std::cerr << "[TrigEffPlotterBaseClass] WARNING: in MB file, missing hist " << name << "\n";
         return h;
     }
 
@@ -562,7 +562,7 @@ protected:
 // ============================================================
 // Derived: PP
 // ============================================================
-class TrigEffPlotterPP : public TrigEffcyPlotBaseClass
+class TrigEffPlotterPP : public TrigEffPlotterBaseClass
 {
 public:
     TrigEffPlotterPP(int runYear,
@@ -577,7 +577,7 @@ public:
                      const std::map<std::string,Rect>& legOpSig   = {},
                      const std::map<std::string,std::pair<bool,bool>>& var2DProj = {},
                      const std::map<std::string,std::pair<bool,bool>>& var2DSingleMuonEffcyProj = {})
-        : TrigEffcyPlotBaseClass(runYear, vars1D_in,
+        : TrigEffPlotterBaseClass(runYear, vars1D_in,
                                  draw2mu4_user,
                                  filter_suffixes, logopt_,
                                  vars2D_in, vars2DProf_in,
@@ -609,7 +609,7 @@ private:
 // ============================================================
 // Derived: PbPb
 // ============================================================
-class TrigEffPlotterPbPb : public TrigEffcyPlotBaseClass, public PbPbBaseClass
+class TrigEffPlotterPbPb : public TrigEffPlotterBaseClass, public PbPbBaseClass
 {
 public:
     TrigEffPlotterPbPb(int runYear,
@@ -626,7 +626,7 @@ public:
                        const std::map<std::string,Rect>& legOpSig   = {},
                        const std::map<std::string,std::pair<bool,bool>>& var2DProj = {},
                        const std::map<std::string,std::pair<bool,bool>>& var2DSingleMuonEffcyProj = {})
-        : TrigEffcyPlotBaseClass(runYear, vars1D_in,
+        : TrigEffPlotterBaseClass(runYear, vars1D_in,
                                  draw2mu4_user, 
                                  filter_suffixes, logopt_,
                                  vars2D_in, vars2DProf_in,
@@ -652,7 +652,7 @@ private:
     // plotting functions implemented in PbPb file
     void initialize() override{
         PbPbBaseClass::InitializePbPb();
-        TrigEffcyPlotBaseClass::initialize();
+        TrigEffPlotterBaseClass::initialize();
     }
     
     void plot1D(const std::string& var) override;

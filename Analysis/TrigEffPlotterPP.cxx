@@ -1,4 +1,4 @@
-#include"TrigEffcyPlotBaseClass.h"
+#include"TrigEffPlotterBaseClass.h"
 
 void TrigEffPlotterPP::configureDataFiles(int runYear)
 {

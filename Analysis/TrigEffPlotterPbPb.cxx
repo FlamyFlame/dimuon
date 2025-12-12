@@ -1,4 +1,4 @@
-#include"TrigEffcyPlotBaseClass.h"
+#include"TrigEffPlotterBaseClass.h"
 
 // =========================================================================
 // configure input data files
