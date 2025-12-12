@@ -16,9 +16,12 @@ public:
    	int ev_num;
    	int ev_centrality;
    	float ev_FCal_Et;
+	bool passmu4;
+
 
    	Muon(){}
    	~Muon(){}
 };
+
 
 #endif

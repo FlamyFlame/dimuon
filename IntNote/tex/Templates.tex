@@ -1,0 +1,38 @@
+In order to ascertain our signal fraction we fit our data in $\Delta p/p$ pair significance.
+HIJING Starlight MC samples from a non-UPC (ultra-peripheral collision) dimuon analysis for signal, and Jet data-overlay MC samples JZ0-JZ5 with 2018 conditions for background are used.
+$\Delta p/p$ significance distributions were made for each of these from single muons, an example of which is shown in the left-hand side of Figure~\ref{fig:Dpopsigdist}.
+
+\begin{figure}
+\centering
+\includegraphics[width=0.5\textwidth]%                                                                                           
+{figures/TemplateFits/dpopsigdist}%
+\includegraphics[width=0.5\textwidth]%                                                                                           
+{figures/TemplateFits/convolutions}
+\caption{
+REMAKE
+\label{fig:Dpopsigdist}
+}
+\end{figure}
+
+
+The single muon $\Delta p/p$ significance distributions were then convoluted and resampled to make signal-signal, signal-background, and background-background distributions as shown in the right-hand side of Figure~\ref{fig:Dpopsigdist}.
+
+
+Also to be noted, as the $p_T>4$ cut was based in $p_{T1}$ and $p_{T2}$ was integrated, a distribution of $p_{T2}$ was stored and randomly sampled to choose which $p_{T2}$ $\Delta p/p$ significance distribution to be used to create the pair significance.
+%An example of these $\Delta p/p$ pair significance distributions can be seen in FIGURE.
+Template fits were then fit to the FUNCTION, an example of which can be seen in the left-hand side of Figure~\ref{fig:Exampletemplatefit}.
+
+\begin{figure}
+\centering
+\includegraphics[width=0.5\textwidth]%                                                                                           
+{figures/TemplateFits/exampletemplatefit}%
+\includegraphics[width=0.5\textwidth]%                                                                                           
+{figures/TemplateFits/sigfraction}
+\caption{
+REMAKE
+\label{fig:Exampletemplatefit}
+}
+\end{figure}
+
+From these fits, signal fractions can be calculated for ranges of $\Delta p/p$ pair significance.
+Several select ranges are shown in right-hand side of Figure~\ref{fig:Exampletemplatefit}.

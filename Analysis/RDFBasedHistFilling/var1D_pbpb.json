@@ -1,6 +1,12 @@
 {
     "variables1D": [
         {
+            "hist_name": "ctr",
+            "var_name": "avg_centrality",
+            "title": "Centrality [%]",
+            "binning": "ctr_bins"
+        },
+        {
             "hist_name": "Deta",
             "var_name": "deta",
             "title": "#Delta#eta",

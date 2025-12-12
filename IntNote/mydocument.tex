@@ -1,0 +1,274 @@
+%-------------------------------------------------------------------------------
+% This file provides a skeleton ATLAS document.
+%-------------------------------------------------------------------------------
+% \pdfoutput=1
+% The \pdfoutput command is needed by arXiv/JHEP/JINST to ensure use of pdflatex.
+% It should be included in the first 5 lines of the file.
+%-------------------------------------------------------------------------------
+% Specify where ATLAS LaTeX style files can be found.
+\newcommand*{\ATLASLATEXPATH}{latex/}
+% Use this variant if the files are in a central location, e.g. $HOME/texmf.
+% \newcommand*{\ATLASLATEXPATH}{}
+%-------------------------------------------------------------------------------
+\documentclass[NOTE,UKenglish,coverpage,txfonts,texlive=2019]{\ATLASLATEXPATH atlasdoc}
+% The language of the document must be set: usually UKenglish or USenglish.
+% british and american also work!
+% Commonly used options:
+%  texlive=YYYY          Specify TeX Live version (2013 is default).
+%  atlasstyle=true|false Use ATLAS style for document (default).
+%  coverpage             Create ATLAS draft cover page for collaboration circulation.
+%                        See atlas-draft-cover.tex for a list of variables that should be defined.
+%  cernpreprint          Create front page for a CERN preprint.
+%                        See atlas-preprint-cover.tex for a list of variables that should be defined.
+%  PAPER                 The document is an ATLAS paper (draft).
+%  CONF                  The document is a CONF note (draft).
+%  PUB                   The document is a PUB note (draft).
+%  txfonts=true|false    Use txfonts rather than the default newtx - needed for arXiv submission.
+%  paper=a4|letter       Set paper size to A4 (default) or letter.
+
+%-------------------------------------------------------------------------------
+% Extra packages:
+\usepackage[subfigure,backend=bibtex]{\ATLASLATEXPATH atlaspackage}
+
+% Commonly used options:
+%  biblatex=true|false   Use biblatex (default) or bibtex for the bibliography.
+%  backend=biber         Use the biber backend rather than bibtex.
+%  subfigure|subfig|subcaption  to use one of these packages for figures in figures.
+%  minimal               Minimal set of packages.
+%  default               Standard set of packages.
+%  full                  Full set of packages.
+%-------------------------------------------------------------------------------
+% Style file with biblatex options for ATLAS documents.
+\usepackage{\ATLASLATEXPATH atlasbiblatex}
+
+% Package for creating list of authors and contributors to the analysis.
+\usepackage{\ATLASLATEXPATH atlascontribute}
+
+% Useful macros
+\usepackage{\ATLASLATEXPATH atlasphysics}
+\usepackage{\ATLASLATEXPATH atlasprocess}
+\usepackage{\ATLASLATEXPATH atlasparticle}
+\usepackage{\ATLASLATEXPATH atlasheavyion}
+\usepackage{multirow}
+\usepackage{dcolumn}
+\usepackage[export]{adjustbox}
+\usepackage{verbatim}
+\usepackage{graphicx}
+
+\RequirePackage{scrlfile}
+\ReplacePackage{scrpage2}{scrlayer-scrpage}
+
+\usepackage{etoolbox} % for using toggle
+\newtoggle{IncludeYields}
+%\toggletrue{IncludeYields}
+\togglefalse{IncludeYields}
+
+% See doc/atlas-physics.pdf for a list of the defined symbols.
+% Default options are:
+%   true:  journal, misc, particle, unit, xref
+%   false: BSM, hion, jetetmiss, math, process, other, texmf
+% See the package for details on the options.
+
+% Files with references for use with biblatex.
+% Note that biber gives an error if it finds empty bib files.
+\addbibresource{mydocument.bib}
+\addbibresource{bibtex/bib/ATLAS.bib}
+\addbibresource{bibtex/bib/ConfNotes.bib}
+\addbibresource{bibtex/bib/PubNotes.bib}
+
+
+% Paths for figures - do not forget the / at the end of the directory name.
+\graphicspath{{logos/}{figures/}}
+
+% Add you own definitions here (file mydocument-defs.sty).
+\usepackage{mydocument-defs}
+\usepackage{mathrsfs}
+\usepackage{enumitem}
+\usepackage{tabularx}
+
+%\usepackage{amsmath}
+%-------------------------------------------------------------------------------
+% Generic document information
+%-------------------------------------------------------------------------------
+
+% Title, abstract and document
+\input{mydocument-metadata}
+% Author and title for the PDF file
+\hypersetup{pdftitle={ATLAS document},pdfauthor={The ATLAS Collaboration}}
+
+
+
+
+
+
+%-------------------------------------------------------------------------------
+% Content
+%-------------------------------------------------------------------------------
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+
+% List of contributors - print here or after the Bibliography.
+%\PrintAtlasContribute{0.30}
+
+\clearpage
+
+%-------------------------------------------------------------------------------
+\section{Introduction}
+\label{sec:intro}
+\input{tex/Introduction.tex}
+\clearpage
+%-------------------------------------------------------------------------------
+\section{Datasets}
+\label{sec:datasets}
+\input{tex/Data_and_selections.tex}
+\clearpage
+%-------------------------------------------------------------------------------
+\section{Efficiency Corrections}
+\label{sec:correction}
+\input{tex/Corrections.tex}
+\FloatBarrier
+\clearpage
+\subsection{MC comparisons between truth and reconstructed quantities}
+\label{sec:MC_closure}
+\input{tex/McClosure.tex}
+\clearpage
+%-------------------------------------------------------------------------------
+\section{Analysis}
+\label{sec:analysis}
+\input{tex/Analysis.tex}
+
+\subsection{Muon pair selections and observables}
+\label{sec:muon_selection}
+\input{tex/MuonAnalysis.tex}
+\clearpage
+
+\iftoggle{IncludeYields}
+{
+  \subsection{Extraction of the yields and widths}
+}
+{
+  \subsection{Extraction of the widths}
+}
+\label{sec:DphiFits}
+\input{tex/DphiFits.tex}
+\clearpage
+%-------------------------------------------------------------------------------
+\FloatBarrier
+\section{Momentum Imbalance and Template Fitting}
+\label{sec:dpop_cuts}
+\input{tex/DpopAna.tex}
+\clearpage
+
+
+%\FloatBarrier
+%\section{Template Fitting}
+%\label{sec:templates}
+%\input{tex/Templates.tex}
+%\clearpage
+%-------------------------------------------------------------------------------
+\FloatBarrier
+\section{Systematic Uncertainties}
+\label{sec:systematics}
+\input{tex/Systematics.tex}
+\clearpage
+%-------------------------------------------------------------------------------
+\FloatBarrier
+\section{Results}%also includes summary
+\label{sec:results}
+\input{tex/Results.tex}
+\clearpage
+%-------------------------------------------------------------------------------
+
+
+
+
+%-------------------------------------------------------------------------------
+%\clearpage
+\FloatBarrier
+\appendix
+\part*{Appendix}
+\addcontentsline{toc}{part}{Appendix}
+%-------------------------------------------------------------------------------
+\section{Fit parameters}
+\label{sec:fit_parameters}
+\input{tex/Appendix_fitParams.tex}
+\clearpage
+%-------------------------------------------------------------------------------
+\section{Systematic Uncertainties for \pp\ measurements}
+\label{sec:systematicsPP}
+\input{tex/SystematicsPP.tex}
+\clearpage
+%-------------------------------------------------------------------------------
+\section{Plots for Medium muons}
+\label{sec:MediumMuonPlots}
+\input{tex/MediumMuons.tex}
+\clearpage
+%-------------------------------------------------------------------------------
+\section{Statistical uncertainty estimation}
+\label{sec:stat_errs}
+\input{tex/StatErrs.tex}
+\clearpage
+%-------------------------------------------------------------------------------
+\section{Muon Sources}
+\label{sec:muon_sources}
+\input{tex/MuonSources.tex}
+\clearpage
+%-------------------------------------------------------------------------------
+\input{tex/Appendix_RecoEffs.tex}
+\clearpage
+%-------------------------------------------------------------------------------
+
+
+
+%-------------------------------------------------------------------------------
+\section{\ptbar\ spectra plots}
+\label{sec:meanpT}
+\input{tex/Appendix_meanpT.tex}
+\clearpage
+%-------------------------------------------------------------------------------
+\section{Fits, Widths and CS for multiple \pt\ intervals}
+\label{sec:multiple_pt}
+\input{tex2/appendix_allpt.tex}
+\clearpage
+%-------------------------------------------------------------------------------
+\section{Additional fits to centrality dependence}
+\label{sec:fits_slope}
+\input{tex/Appendix_linearFits.tex}
+\clearpage
+%-------------------------------------------------------------------------------
+\section{\powheg\ comparisons}
+\label{sec:powheg}
+\input{tex/Appendix_Powheg.tex}
+\clearpage
+%-------------------------------------------------------------------------------
+
+%-------------------------------------------------------------------------------
+%\FloatBarrier
+%\section{Drell-Yan Contribution}
+%\label{sec:drell_yan}
+%\input{tex/DrellYan.tex}
+%\clearpage
+%-------------------------------------------------------------------------------
+%\FloatBarrier
+%\section{\Dphi fits for $|\Deta|>0.9$}
+%\label{sec:deta0p9}
+%\input{tex/DphiFitsDeta0p9.tex}
+%\clearpage
+%-------------------------------------------------------------------------------
+\clearpage
+\printbibliography
+%-------------------------------------------------------------------------------
+%\clearpage
+%\appendix
+%\part*{Auxiliary material}
+%\addcontentsline{toc}{part}{Auxiliary material}
+%\clearpage
+%-------------------------------------------------------------------------------
+
+
+\PrintAtlasContribute{0.30}
+
+\end{document}

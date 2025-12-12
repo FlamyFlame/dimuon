@@ -1,0 +1,303 @@
+A possible source of background for this analysis are muons 
+  that arise from decay of pions and Kaons, as well as muons
+  arising from secondary interactions in the calorimeter.
+In this section, an estimate of the contributions of these
+  background pairs to the measurement is made. 
+The contribution of the background muons can be statistically 
+  estimated using the momentum-imbalance as a discriminant.
+The momentum-imbalance for a muon is defined as:
+
+
+\begin{eqnarray}
+  \frac{\Delta p}{p_{\mathrm{ID}}}=\frac{(p_{\mathrm{ID}}-p_{\mathrm{MS}})}{p_{\mathrm{ID}}}
+\end{eqnarray}
+
+
+where, $p_{\mathrm{ID}}$ is the momentum of the Inner Detector track associated with the muon,
+  and $p_{\mathrm{MS}}$ is the Muon-Spectrometer extrapolated track particle momentum,
+  which is obtained from extrapolating the Muon-Spectrometer segment of the muon track
+  to the interaction region while correcting for the average energy lost by the muon in the calorimeter.
+For muons coming from HF decays this distribution is expected to be Gaussian and symmetric about
+  $\Delta p/p_{\mathrm{ID}}=0$, however for muons produced via inflight decays such as pions and kaons, which become
+  misidentified as muons, the  $\Delta p/p_{\mathrm{ID}}$ is much broader and shifted to a positive mean value
+  of $\Delta p/p_{\mathrm{ID}}$ (i.e. $\langle\Delta p/p_{\mathrm{ID}}\rangle>0$).
+Cuts on this quantity can be used to reduce the background particles identified as muons. 
+However, both the mean and the width of this quantity can be highly $\eta, \pt,$ 
+  and centrality dependent, as shown in Figure~\ref{fig:Dpopmeanandrms}.
+Therefore, a simple cut on this quantity would introduce \pt\ and $\eta$ dependent
+  efficiencies.
+For this reason, it became pertinent to construct a $\Delta p/p$ significance, 
+  defined as
+\begin{eqnarray}
+  \left(\frac{\Delta p}{p}\right)^{\mathrm{sig}}=\frac{(\Delta p/p- \langle\Delta p/p\rangle)}{\sigma(\Delta p/p)}.
+  \label{eq:dpopsig}
+\end{eqnarray}
+where  $\langle\Delta p/p\rangle$ and $\sigma(\Delta p/p)$ are the 
+  mean and standard-deviation of the momentum-imbalance distributions
+  for true muons obtained from MC, evaluated in fine intervals of \pt\ 
+  and $q*\eta$ (Figure~\ref{fig:Dpopmeanandrms}).
+Converting the imbalance to a significance before imposing any cuts on it,
+  makes the inefficiency imposed by the cuts to be independent of \pt\ and $\eta$.
+
+%The significance was calculated through a combination of values obtained from both
+%  HIJING simulations as well as 2015 and 2018 Pb+Pb data.
+
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%                                                                                           
+{figures/DpopAna/dpopmeanandrms}
+\caption{
+Mean (left) and RMS (right) of the momentim-imbalance for (true) muons, 
+  as a function of \pt\ for several different $q*\eta$ ranges.
+The values are obtained from the HIJING-overlay sample (Section~\ref{sec:PbPbMc}).
+\label{fig:Dpopmeanandrms}
+}
+\end{figure}
+
+
+
+
+Once the single-muon significances are obtained (Eq.~\eqref{eq:dpopsig}),
+  a \textit{pair-significance} is obtained for the muon pair as, the
+  quadrature-sum of the individual significances:
+\begin{eqnarray}
+  \left(\frac{\Delta p}{p}\right)^{\mathrm{sig-pair}}=\
+  \sqrt{\left(\left(\frac{\Delta p}{p}\right)^{\mathrm{sig-a}}\right)^2 +\
+        \left(\left(\frac{\Delta p}{p}\right)^{\mathrm{sig-b}}\right)^2}.
+  \label{eq:dpopsigpair}
+\end{eqnarray}
+To estimate the number of background pairs, the 
+  $\left(\frac{\Delta p}{p}\right)^{\mathrm{sig-pair}}$ distributions
+  measured in the data are fit using a three-component template-fit,
+  with the following components obtained from MC:
+\begin{enumerate}
+  \item \textbf{Signal-Signal template}: 
+    Distribution for $\left(\frac{\Delta p}{p}\right)^{\mathrm{sig-pair}}$ 
+      when both muons are signal muons.
+  \item \textbf{Signal-Background template}:
+    Distribution for $\left(\frac{\Delta p}{p}\right)^{\mathrm{sig-pair}}$ 
+      when one muon is a signal muon, and the other is a background muon.
+  \item \textbf{Background-Background template}:
+    Distribution for $\left(\frac{\Delta p}{p}\right)^{\mathrm{sig-pair}}$ 
+      when both muons are background muons.
+\end{enumerate}
+Replacing the momentum-imbalance distributions by the significances means
+  that all of the above distributions become independent of \pt\ and $\eta$
+  of the two muons in the pair.
+Thus instead of performing the analysis in narrow bins of $(\pta,\ptb,q^a*\etaa,q^b*\etab)$
+  we can freely perform the template-analysis across unrestricted regions of
+  $(\pta,\ptb,q^a*\etaa,q^b*\etab)$.
+
+
+Figure~\ref{fig:Templatefits_bycent_qual1_pt4p0to15p0_sign2} shows the template-fit 
+  to the pair-significance distributions in the data using the MC-templates.
+The plot is for Tight muon selection, \ptab>4~\GeV, and shows the fits for several centrality intervals.
+The contributions of the individual templates to the fit are also shown.
+From these fits, the fraction of signal-pairs, i.e. the relative contribution of 
+  the \textbf{Signal-Signal} are obtained.
+Figure~\ref{fig:Signalfractions_qual1}, shows the \textit{signal-fractions} as a function
+  of centrality for Tight muons.
+It is observed that the pairs in the data have a purity of more than 98\%.
+Therefore such, no additional $\Delta p/p$ cuts are imposed in this analysis.
+
+
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%                                                                                           
+{figures/DpopAna/Templatefits_bycent_qual1_pt4p0to15p0_sign2}
+\caption{
+Template fits to data (in black) for the $\Delta p/p$ pair significance. 
+The   \textbf{Signal-Signal} contribution is shown in green, 
+  the \textbf{Signal-Background} in magenta and 
+  the \textbf{Background-Background} in blue.
+The combined fit is shown in red.
+The individual panels correspond to different centrality intervals.
+The fits are for \ptab>4~\GeV, for Tight muons, and for the combined-charge pairs.
+\label{fig:Templatefits_bycent_qual1_pt4p0to15p0_sign2}
+}
+\end{figure}
+
+
+
+
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/DpopAna/Signalfractions_qual1}
+\caption{
+Signal fractions obtained from the template fits for same-sign muon pairs (open circles), 
+  opposite-sign muon pairs (open squares), and their combination (closed circles) 
+  as a function of centrality.
+Plots are for Tight muons.
+\label{fig:Signalfractions_qual1}
+}
+\end{figure}
+
+
+
+\begin{comment}
+
+Although $\eta$-dependence is evident, one of the first tasks in constructing the significance 
+  is ascertaining suitable ranges on which to partition the pseudorapidity, 
+  or rather the pseudorapidity multiplied by the charge, $\eta q$ to account 
+  for the assymmetry of the detector.
+After analyzing the detector geometry, borrowing from past accepted values and 
+  analyzing $\eta$ windows in 0.2 gaps, final values were decided to be:
+$-2.40<\eta q<-1.50$, $-1.50<\eta q<-1.05$, $-1.05<\eta q<-0.50$, $-0.50<\eta q<-0.10$, $-0.10<\eta q<0.10$, $0.10<\eta q<0.50$, $0.50<\eta q<1.05$, $1.05<\eta q<1.50$, $1.50<\eta q<2.40$.
+While the ranges of $\eta q$ need to split into positive and negative regions to 
+  account for detector asymmetries, the $-0.10<\eta q<0.10$ range can combined for 
+  greater statistics because the primary effects in 
+  this region are less asymmetrically dependent.
+
+
+In all but the $-0.1<\eta q<0.1$ bin, data and HIJING overlay values of the $\Delta p/p$ RMS were consistent.
+In this range however, due to physical gaps in the detector, unaccounted for fully in HIJING, some discrepancies were noticed.
+As this study is to examine dimuon pairs generated via heavy flavor decays, generally speaking, acoplanarity and asymmetry cuts
+  on the pairs are employed to remove any photo-nuclear contamination.
+However, one can invert this restriction temporarily to study muon pairs which nearly exclusively come from
+  $\gamma\gamma \rightarrow \mu^{+}\mu^{-}$ and obtain a very pure sample of dimuons to compare to those of HIJING simulations.
+Figure~\ref{fig:Smalletawindowcomparison} shows this comparison (on the left $\gamma\gamma \rightarrow \mu^{+}\mu^{-}$ candidates, and on the right
+  HIJING simulation) in the regions of interest.
+  
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%                                                                                           
+{figures/DpopAna/smalletawindowcomparison}
+\caption{
+The $\Delta p/p$ RMS of $\gamma\gamma \rightarrow \mu^{+}\mu^{-}$ candidates (left) and HIJING samples (right) for small $\eta$ ranges as a function of $\pt$ for an integrated centrality.
+\label{fig:Smalletawindowcomparison}
+}
+\end{figure}  
+
+We can see that while the data is mostly consistent with HIJING for the RMS, HIJING tends to over-predict the
+  width in the $-0.10<\eta q<0.10$ range.
+As such, the $-0.10<\eta q<0.10$ RMS is ascertained from data and then used to scale the simulation, as will be explained momentarily.
+
+Additionally, while inspecting this region of the detector as it relates to the $\Delta p/p$ RMS, it was noticed that the
+   $\gamma\gamma \rightarrow \mu^{+}\mu^{-}$ mean varied noticeably in most all regions of the detector when compared to HIJING,
+   as can be seen in Figure~\ref{fig:Gamgam_hijing_compare}. As such, the $\Delta p/p$ mean is also extracted from $\gamma\gamma \rightarrow \mu^{+}\mu^{-}$ data.
+ 
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%                                                                                           
+{figures/DpopAna/gamgam_hijing_compare}
+\caption{
+REMOVE?
+\label{fig:Gamgam_hijing_compare}
+}
+\end{figure} 
+  
+
+%And in looking at Figure~\ref{fig:Dpoprmsbyeta}, we see the necessity for separating the $0.00<|\eta q|<0.10$ and $0.10<|\eta q|<0.50$ ranges,
+%  but as the $1.50<|\eta q|<2.00$ and $2.00<|\eta q|<2.40$  ranges remaining consistent in both quantities of interest,
+%  we combine these bins in our upcoming parametrization procedure for greater statistics.
+  
+
+%While these figures show the absolute value of $\eta q$, the final ranges of $\eta q$ were split into positive and
+%With these values decided, the mean and the width can be extracted in each and interpolated for the former and
+%  parametrized in the latter.
+
+The means showed no significant centrality dependence and hence the integrated $0-100\%$ centrality was used.
+The final $\Delta p/p$ as a function of $\pt$ for an integrated centrality separated by $\eta q$ ranges is shown in Figure~\ref{fig:Dpopmeanbyeta}.
+As no consistent $\pt$ parametrization is evident amongst all ranges an interpolation was employed in each $\eta q$ shown.  
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%                                                                                           
+{figures/DpopAna/dpopmeanbyeta}
+\caption{
+The $\Delta p/p$ mean of $\gamma\gamma \rightarrow \mu^{+}\mu^{-}$ candidates for an integrated centrality for varying $\eta$ ranges.
+\label{fig:Dpopmeanbyeta}
+}
+\end{figure}
+
+
+
+The parametrization of the width proved to be somewhat more involved.
+Figure~\ref{fig:Dpoprmsbyeta} shows an example width in the 0-10\% centrality as a function of $\pt$ for the given $\eta q$ ranges.
+A linear fit was decided on for the appropriate fit.
+However, as there is no reason to believe the RMS should increase with $\pt$, values of the slope were restricted to be less than 0.
+The slopes of each range were then extracted and plotted as a function of $\eta q$.
+The results with a parabolic fit are plotted in the left-hand side of Figure~\ref{fig:Rmsslopefits}.
+
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%                                                                                           
+{figures/DpopAna/dpoprmsbyeta}
+\caption{
+The $\Delta p/p$ RMS with associated linear fit for HIJING samples for an example 10-20$\%$ centrality for varying $\eta$ ranges.
+\label{fig:Dpoprmsbyeta}
+}
+\end{figure}
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%                                                                                           
+{figures/DpopAna/rmsslopefits}
+\caption{
+The extracted $\Delta p/p$ RMS slope of the integrated centrality of varying $\eta$ ranges and the associated parabolic fit (left), 
+and the $\Delta p/p$ RMS intercept from said slopes (right).
+\label{fig:Rmsslopefits}
+}
+\end{figure}
+
+
+This fit is the parametrization used to calculate the width for all $\pt$ and  $\eta q$ ranges.
+As a certain amount of centrality dependence was observed in the width, this was retained via the intercepts.
+The intercepts for each centrality of a function of $\eta q$ can be seen in the right-hand side of Figure~\ref{fig:Rmsslopefits}.
+These bin by bin values were used directly for each centrality and $\eta q$ as shown.
+However, as mentioned, there was a rather large discrepancy between the data and simulations in the $-0.10<\eta q<0.10$ range as seen here.
+As such, these points shown in Figure~\ref{fig:Rmsslopefits} are shown for HIJING but were not used in the final evaluation.
+Instead, in this $\eta q$ range, the integrated centrality slope and intercept were found independently by using the
+  $\gamma\gamma \rightarrow \mu^{+}\mu^{-}$ candidates.
+The slope found from this was used directly, as it is for the other $\eta$ ranges.
+For the intercept however, the integrated centrality of the HIJING simulations was scaled to the integrated centrality of the data.
+This fraction was then multiplied to each of the intercept centralities found from the the simulation,
+  and this final value was used as the intercept for each centrality for the $-0.10<\eta q<0.10$ region.
+As such, the $\Delta p/p_{RMS}$ is then calculated as a function of $\pt$, $\eta q$, and centrality defined by:
+
+\begin{eqnarray}
+  \Delta p/p_{RMS}=(4.4x10^{-4}\eta^2-2.2x10^{-3})\pt+b_{\eta,c}
+\end{eqnarray}
+
+where $b_{\eta,c}$ represents the intercept for a given $\eta$ and centrality range.
+As values of the slope could feasibly rise above 0 at extreme $\eta$, these are manually held below 0 during computation.
+Additionally, as muons with exceptionally large $\pt$ could unrealistically alter the RMS, muons with $\pt$>15 GeV are held to the same slope value of muons at $\pt$=15 GeV.
+
+
+In the left-hand plot of Figure~\ref{fig:Dpop_sig_meancompare} we see the $\Delta p/p$ mean plotted as a function of $\pt$ for each $\eta q$ range.
+In the right-hand plot of  Figure~\ref{fig:Dpop_sig_meancompare} we see the $\Delta p/p$ significance mean plotted as a function of $\pt$ for each $\eta q$ range.
+As desired, the $\eta q$ and centrality dependence in the mean has been removed by creating the $\Delta p/p$ significance.
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%                                                                                           
+{figures/DpopAna/dpop_sig_meancompare}
+\caption{
+The $\Delta p/p$ mean (left) and and the mean significance (right) for integrated centrality and varying $\eta$ ranges for HIJING samples.
+\label{fig:Dpop_sig_meancompare}
+}
+\end{figure}
+
+
+Additionally, in Figure~\ref{fig:Dpop_sig_rmscompare} we compare the width of $\Delta p/p$ (left) to that of its significance (right), as a function of $\pt$ for each $\eta q$ range.
+Again, we see the $\eta q$ and centrality dependence minimize in all zones as designed.
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%                                                                                           
+{figures/DpopAna/dpop_sig_rmscompare}
+\caption{
+The $\Delta p/p$ RMS (left) and and the RMS significance (right) for integrated centrality and varying $\eta$ ranges for HIJING samples.
+(Note: the deviation seen in the $-0.10<\eta<0.10$ is to be expected as the significance values are obtained from $\gamma\gamma \rightarrow \mu^{+}\mu^{-}$ candidates as explained above.)
+\label{fig:Dpop_sig_rmscompare}
+}
+\end{figure}
+
+
+
+\end{comment}

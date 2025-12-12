@@ -225,7 +225,6 @@ private:
     std::ofstream* m_c_parent_file[ParamsSet::nSigns][2];
 
     TTree* meta_tree_out;
-    TTree* muonPairOutTree[ParamsSet::nSigns];
     TTree* muonPairOutTreeKinRange[nKinRanges][ParamsSet::nSigns];
 
     static const int nAncestorGroups = 4;

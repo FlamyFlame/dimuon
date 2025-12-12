@@ -1,0 +1,119 @@
+In this section, the same fitting procedure that are applied to the
+  data are applied to a \powheg\ sample of 
+  $b\bar{b}$ and $c\bar{c}$ to dimuon decays.
+The sample is an official ATLAS MC event-generation sample described 
+  in Ref.~\cite{ATLHI-420}.
+The same fiducial selections are applied on the single-muons and 
+  on the muon-pair as those in the data analysis.
+  namely that the muons $|eta|<2.4$ and \pt>4~\GeV, and that 
+  for the pair $\ptbar>5$~\GeV\ and $|\Deta|>0.8$.
+For the comparisons here, the $b\bar{b}$ and $c\bar{c}$ 
+  samples are combined appropriately weighted by the cross-sections.
+The samples are generated using nuclear PDFs (nCTEQ15+SIH)~\cite{ATLHI-420}
+  corresponding to the Pb-nucleus, and thus include the correct admixture
+  of $pp$, $pn$ and $nn$ collisions.
+The goal here is not to validate the MC samples, but to get a general idea
+  of how close the \powheg\ calculations are to the measurements.
+
+Figure~\ref{fig:powheg_fit} shows the Fits to Eq.~\eqref{eq:fit_func}
+  for the \powheg\ sample.
+These fits are made constraining the $v_{2,2}$ parameter 0 zero,
+  as no meahanism to generate a global elliptic modulation is present
+  in this MC sample.
+Figure~\ref{fig:powheg_compare} compares the $\Gamma$ and widths 
+  obtained in the data analysis to those obtained from the
+  \powheg\ samples.
+The \powheg\ calculations match with the \pp\ data within a few percent.
+
+
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=1.0\textwidth]{figures/AllFigs/can_dphi_fits_mc3_LorentzZyamNoVn}
+\caption{
+  Fits to the dimuon correlations using Eq.~\eqref{eq:fit_func}.
+  The left, center and right panels correspond to 
+    same-sign, opposite-sign and all-pairs respectively.
+\label{fig:powheg_fit}
+} 
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_systPbPbPPMC_Tau1_Tight_pTBar_GT5_EffCor}
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_systPbPbPPMC_Width1_Tight_pTBar_GT5_EffCor}
+\caption{
+  Comparison of the $\Gamma$ (top) and widths obtained from
+    the \powheg\ samples to those obtained in the data.
+  The left, center and right panels correspond to 
+    same-sign, opposite-sign and all-pairs respectively.
+\label{fig:powheg_compare}
+} 
+\end{figure}
+
+
+Additionally, Figure~\ref{fig:powheg_bb_cc_combined} compares the 
+  relative contributions of the \bbbar\ and \ccbar\ samples
+  to the combined sample to get an idea of the origin of the
+  dimuon pairs.
+The correlations measured in the data for \pp\ collisions are also shown.
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=1.0\textwidth]%
+  {figures/AllFigs/can_dphi_powheg_mc}
+  \caption{
+    Comparison of the relative contribution of \bbbar\ and \ccbar\ pairs.
+    The left, center and right panels correspond to 
+      same-sign, opposite-sign and all-pairs respectively.
+    The correlations measured in the data for \pp\ collisions are also shown.
+  \label{fig:powheg_bb_cc_combined}
+  } 
+\end{figure}
+
+\clearpage
+\section{\Dphi\ smearing from decays}
+\label{sec:powheg_decays}
+In this analysis we compare the angular smearing of muon pairs
+  from decays of HF hadron pairs.
+It is useful to get an idea oh how the $\Dphi$ distributions
+  of the muons compare to that of the parent hadrons.
+Note that the calculations presented here are to be treated
+  as ``back of the envelope calculations'', not as 
+  rigorous calculations.
+Also, since the results in this analysis compare the \pp\ 
+  and \PbPb\ measurements, any smearing from the decay
+  produces identical effects in the \pp\ and \PbPb\ measurements
+  and drops out when the quadrature difference in the measured widths
+  are evaluated.
+  
+
+The \powheg\ sample described in Section~\ref{sec:powheg}
+  is used to obtain the angular correlations between
+  the muon and the last $b$-hadron (or $c$-hadron) in the decay chain.
+The distributions are shown in Figure~\ref{fig:powheg_decays}.
+The $b\rightarrow\mu$ decay introduces a smearing of $\Dphi\sim0.16$
+  while the $c\rightarrow\mu$ decay introduces a smearing of $\Dphi\sim0.06$.
+The final measured widths for the combined-sign pairs are $\approx0.67$ in the \PbPb\ data.
+This would mean that the width for the original corelation between the hadrons (when both hadrons are $b$)
+  would be:
+\begin{eqnarray}
+  \text{Width}^{h-h}=\sqrt{0.67^2-2*(0.16^2)}\approx0.63,
+\end{eqnarray}
+where a factor of two is included in the subtraction to account
+  for each of the $b$-hadron decays.
+
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=1.0\textwidth]%
+  {figures/AllFigs/can_decay_widths}
+  \caption{
+    Left panel: distribution of the $\Dphi$ angle between the muon and the 
+      last $b$-hadron in the decay chain obtained from the \powheg\ sample.
+    Right panel: similar plot for muons from charm-hadron decays.
+    The r.m.s. widths of the distributions are listed on the plots.
+  \label{fig:powheg_decays}
+  } 
+\end{figure}

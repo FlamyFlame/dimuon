@@ -1,0 +1,58 @@
+\boolfalse {citerequest}\boolfalse {citetracker}\boolfalse {pagetracker}\boolfalse {backtracker}\relax 
+\defcounter {refsection}{0}\relax 
+\select@language {UKenglish}
+\contentsline {section}{\numberline {1}Introduction}{6}{section.1}
+\contentsline {section}{\numberline {2}Datasets}{7}{section.2}
+\contentsline {subsection}{\numberline {2.1}Data sample and event selection}{7}{subsection.2.1}
+\contentsline {subsubsection}{\numberline {2.1.1}\ce {Pb}+\ce {Pb}\xspace \ Data}{7}{subsubsection.2.1.1}
+\contentsline {subsubsection}{\numberline {2.1.2}\ensuremath {pp}\xspace \ Data}{9}{subsubsection.2.1.2}
+\contentsline {subsection}{\numberline {2.2}Monte Carlo samples}{9}{subsection.2.2}
+\contentsline {subsubsection}{\numberline {2.2.1}\ce {Pb}+\ce {Pb}\xspace \ MC Samples~}{9}{subsubsection.2.2.1}
+\contentsline {subsubsection}{\numberline {2.2.2}\ensuremath {pp}\xspace \ MC Samples}{10}{subsubsection.2.2.2}
+\contentsline {section}{\numberline {3}Efficiency Corrections}{11}{section.3}
+\contentsline {subsection}{\numberline {3.1}Triggers efficiencies}{11}{subsection.3.1}
+\contentsline {subsubsection}{\numberline {3.1.1}Triggers efficiencies for HLT\_mu4 Trigger}{12}{subsubsection.3.1.1}
+\contentsline {subsubsection}{\numberline {3.1.2}Triggers efficiencies for HLT\_mu4noL1 and HLT\_mu4noL1$\cap $HLT\_mu4 Triggers}{15}{subsubsection.3.1.2}
+\contentsline {subsubsection}{\numberline {3.1.3}Triggers efficiencies: Centrality dependence~}{19}{subsubsection.3.1.3}
+\contentsline {subsection}{\numberline {3.2}Reconstruction efficiencies}{21}{subsection.3.2}
+\contentsline {subsection}{\numberline {3.3}MC comparisons between truth and reconstructed quantities}{24}{subsection.3.3}
+\contentsline {section}{\numberline {4}Analysis}{26}{section.4}
+\contentsline {subsection}{\numberline {4.1}Muon pair selections and observables}{26}{subsection.4.1}
+\contentsline {subsubsection}{\numberline {4.1.1}Single-muon selections}{26}{subsubsection.4.1.1}
+\contentsline {subsubsection}{\numberline {4.1.2}Muon-pair selections}{26}{subsubsection.4.1.2}
+\contentsline {subsubsection}{\numberline {4.1.3}Correction accounting for inefficiency from \unhbox \voidb@x \hbox {$m_{\mu \mu }$}\ and \ensuremath {\gamma \gamma \rightarrow \ensuremath {\mu ^{+} \mu ^{-}}\xspace }\xspace \ cuts}{29}{subsubsection.4.1.3}
+\contentsline {subsubsection}{\numberline {4.1.4}Correction for Drell-Yan pairs}{33}{subsubsection.4.1.4}
+\contentsline {subsection}{\numberline {4.2}Extraction of the widths}{34}{subsection.4.2}
+\contentsline {subsubsection}{\numberline {4.2.1}Fits to the \unhbox \voidb@x \hbox {$\Delta \phi $}\ distributions}{34}{subsubsection.4.2.1}
+\contentsline {subsubsection}{\numberline {4.2.2}Widths for the correlated muon-pair distributions}{37}{subsubsection.4.2.2}
+\contentsline {section}{\numberline {5}Momentum Imbalance and Template Fitting}{38}{section.5}
+\contentsline {section}{\numberline {6}Systematic Uncertainties}{42}{section.6}
+\contentsline {subsection}{\numberline {6.1}Muon selection}{42}{subsection.6.1}
+\contentsline {subsection}{\numberline {6.2}Reconstruction and Trigger efficiency uncertainties}{44}{subsection.6.2}
+\contentsline {subsection}{\numberline {6.3}Dependence in the \unhbox \voidb@x \hbox {$\Delta \eta $}\ cut }{47}{subsection.6.3}
+\contentsline {subsection}{\numberline {6.4}Dependence on the Fit model}{49}{subsection.6.4}
+\contentsline {subsection}{\numberline {6.5}Inclusion of higher-order fourier component in fits}{50}{subsection.6.5}
+\contentsline {subsection}{\numberline {6.6}Alternate efficiency for correcting for the \unhbox \voidb@x \hbox {$m_{\mu \mu }$}\ cuts}{51}{subsection.6.6}
+\contentsline {subsection}{\numberline {6.7}Dependence on the PDF used in the Drell-Yan correction}{53}{subsection.6.7}
+\contentsline {subsection}{\numberline {6.8}Dependence on choice of trigger}{54}{subsection.6.8}
+\contentsline {section}{\numberline {7}Results}{56}{section.7}
+\contentsline {section}{\numberline {8}Summary}{60}{section.8}
+\contentsline {part}{Appendix}{61}{part*.2}
+\contentsline {section}{\numberline {A}Fit parameters}{61}{appendix.A}
+\contentsline {section}{\numberline {B}Systematic Uncertainties for \ensuremath {pp}\xspace \ measurements}{63}{appendix.B}
+\contentsline {section}{\numberline {C}Plots for Medium muons}{74}{appendix.C}
+\contentsline {subsection}{\numberline {C.1}Trigger Efficiencies~}{74}{subsection.C.1}
+\contentsline {subsection}{\numberline {C.2}Reconstruction Efficienciess }{79}{subsection.C.2}
+\contentsline {subsection}{\numberline {C.3}Fits to the \unhbox \voidb@x \hbox {$\Delta \phi $}\ distributions}{81}{subsection.C.3}
+\contentsline {subsection}{\numberline {C.4}Template fits for medium muons}{83}{subsection.C.4}
+\contentsline {section}{\numberline {D}Statistical uncertainty estimation}{86}{appendix.D}
+\contentsline {section}{\numberline {E}Muon Sources}{88}{appendix.E}
+\contentsline {section}{\numberline {F}Reconstruction efficiencies in differential centrality intervals}{90}{appendix.F}
+\contentsline {subsection}{\numberline {F.1}Reconstruction efficiencies for Tight muons}{90}{subsection.F.1}
+\contentsline {subsection}{\numberline {F.2}Reconstruction efficiencies for Medium muons}{97}{subsection.F.2}
+\contentsline {section}{\numberline {G}\unhbox \voidb@x \hbox {$\bar {p}_{\mathrm {T}}$}\ spectra plots}{104}{appendix.G}
+\contentsline {section}{\numberline {H}\unhbox \voidb@x \hbox {$\bar {p}_{\mathrm {T}}$}\ spectra plots for paper}{109}{appendix.H}
+\contentsline {section}{\numberline {I}Fits, Widths and CS for multiple \ensuremath {p_{\text {T}}}\xspace \ intervals}{112}{appendix.I}
+\contentsline {section}{\numberline {J}Additional fits to centrality dependence}{121}{appendix.J}
+\contentsline {section}{\numberline {K}\textsc {Powheg}\xspace {}+\textsc {Pythia}\xspace {8}\xspace \ comparisons}{123}{appendix.K}
+\contentsline {section}{\numberline {L}\unhbox \voidb@x \hbox {$\Delta \phi $}\ smearing from decays}{125}{appendix.L}

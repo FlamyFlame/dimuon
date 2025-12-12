@@ -1,0 +1,32 @@
+An additional concern was an unwanted contribution from Drell-Yan processes.
+As Drell-Yan can only produce opposite-sign muons, by taking the ratio of the yields of opposite-sign muons to same-sign, and comparing to Monte Carlo we can approximate the contribution.
+As mentioned in the last section, we expect the $\Delta p/p$ and $\Delta p/p$ significance of our single signal muons centered around 0, we expect the $\Delta p/p$ pair significance, simply defined by
+$\Delta p/p_{pair sig}= \sqrt{\Delta p/p_{\mu1_{sig}}^2+\Delta p/p_{\mu2_{sig}}^2}$, to consequently be close to 0.
+Taking the distribution as shown in left-hand side of Figure~\ref{fig:Drellyan}, we examine three regions of $\Delta p/p$ pair significance:
+$0.0<\Delta p/p_{pair sig}<2.5$, $2.5<\Delta p/p_{pair sig}<4.5$, $4.5<\Delta p/p_{pair sig}<7.0$, which we expect to correspond to nearly pure signal,
+a mixture of signal and background, and predominantly background, respectively.
+From each of these regions we fit their $\Delta\phi$ distributions to a Gaussian fit centered around $\pi$, allowing for a combinatorial pedestal, and the natural underlying modulation, described by equation:
+
+\begin{eqnarray}
+  f=A+Bcos(2\Delta\phi)+\frac{C}{2\sqrt{2\pi}\sigma}e^{\frac{(\phi-\pi)^2}{2\sigma^2}}
+\end{eqnarray}
+
+and ascertain the yields.
+An example fit is shown in the right-hand side of Figure~\ref{fig:Drellyan}.
+
+\begin{figure} \centering
+\includegraphics[width=0.5\textwidth]%
+{figures/DrellYan/dpoppairsigzones}%
+\includegraphics[width=0.5\textwidth]%
+{figures/DrellYan/examplefit_awayside}
+\caption{
+REMAKE
+\label{fig:Drellyan}
+}
+\end{figure}
+
+Shown in TABLE, we compare the ratio of the yields of opposite-sign muons to same-sign for the three regions as well as our Monte Carlo sample.
+As we see from the Monte Carlo, we expect the ratio to be about 2-1.
+In the signal region of the Pb+Pb data, we do see a modest increase in the ratio from what we expect likely due to a Drell-Yan contribution.
+We don't expect it to be large enough to make a significant difference and rather include it as a systematic uncertainty?
+Additionally, we can see that as move into the higher $\Delta p/p$ significance region where we expect more background to be present, we see the ratio lessen as anticipated with increased, random, background.

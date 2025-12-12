@@ -1,0 +1,8 @@
+# submit_all_batches.sub
+executable = run_pbpb_24_output_single_muon_tree.sh
+arguments = $(Process)
+output = logs/run_pbpb_24_output_single_muon_tree_batch_$(Process).out
+error = logs/run_pbpb_24_output_single_muon_tree_batch_$(Process).err
+log = logs/run_pbpb_24_output_single_muon_tree_batch_$(Process).log
+request_memory = 2GB
+queue 9
