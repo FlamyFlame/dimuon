@@ -22,9 +22,9 @@ void RDFBasedHistFillingPbPb::Initialize(){
 
 	std::vector<double> crossx_factors_null = {};
 	crossx_factors_null.assign(ctr_bins.size(), -1.);
-	crossx_factors_ctr_binned = (run_yr_and_ctrbin_version_to_crossx_factors_map.find(std::pair<int, std::string>(run_year, ctr_binning_verion)) 
+	crossx_factors_ctr_binned = (run_yr_and_ctrbin_version_to_crossx_factors_map.find(std::pair<int, std::string>(run_year, ctr_binning_version)) 
 									!= run_yr_and_ctrbin_version_to_crossx_factors_map.end())
-								? run_yr_and_ctrbin_version_to_crossx_factors_map.at(std::pair<int, std::string>(run_year, ctr_binning_verion))
+								? run_yr_and_ctrbin_version_to_crossx_factors_map.at(std::pair<int, std::string>(run_year, ctr_binning_version))
 								: crossx_factors_null;
 
     levels_trg_effcy_filters_1D_pre_sum = {{"_ss", "_op"}, // add a level of ctr bins for Pb+Pb
@@ -135,7 +135,7 @@ void RDFBasedHistFillingPbPb::CreateRDFs(){
 
 	        auto ctr_in_current_bin = [this, ctr_bin_low_edge, ctr_bin_high_edge](int centrality) 
 	        	{
-	        		if (ctr_binning_verion == "include_upc" && ctr_bin_high_edge == 100){ // most peripheral bin
+	        		if (ctr_binning_version == "include_upc" && ctr_bin_high_edge == 100){ // most peripheral bin
 	        			return centrality >= ctr_bin_low_edge || centrality == -1;
 	        		} else{
 	        			return centrality >= ctr_bin_low_edge && centrality < ctr_bin_high_edge;

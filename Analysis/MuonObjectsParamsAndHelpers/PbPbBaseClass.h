@@ -28,7 +28,7 @@ protected:
 
 public:
 	// -------- public variables for configuration --------
-    std::string ctr_binning_verion = "default"; // centrality binning version used in current analysis (if there are several)
+    std::string ctr_binning_version = "default"; // centrality binning version used in current analysis (if there are several)
 	std::vector<double> crossx_factors_ctr_binned;
 
 	// -------- crossx factors for Pb+Pb years --------
@@ -63,10 +63,10 @@ void PbPbBaseClass::InitializePbPb(){
     ctr_rebin_scale_factor_map["default"] = {1,1,1,1,2,4};
     ctr_rebin_scale_factor_map["include_upc"] = {1,1,1,1,2,4};
 
-    ctr_bin_edges = ctr_binning_map[ctr_binning_verion];
+    ctr_bin_edges = ctr_binning_map[ctr_binning_version];
 
-	ctr_suffix = ctr_binning_file_suffix_map[ctr_binning_verion];
-    ctr_rebin_scale_factors = ctr_rebin_scale_factor_map[ctr_binning_verion];
+	ctr_suffix = ctr_binning_file_suffix_map[ctr_binning_version];
+    ctr_rebin_scale_factors = ctr_rebin_scale_factor_map[ctr_binning_version];
 
     ctr_bin_edges_double = std::vector<double>(ctr_bin_edges.begin(), ctr_bin_edges.end());
     nCtrBins = ctr_bin_edges.size() - 1;
