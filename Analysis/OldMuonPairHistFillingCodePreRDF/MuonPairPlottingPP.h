@@ -11,8 +11,6 @@
 #include  <stdlib.h>
 #include <fstream>
 #include "../MuonObjectsParamsAndHelpers/ParamsSet.h"
-#include "../MuonObjectsParamsAndHelpers/bin_number.cxx"
-#include "../MuonObjectsParamsAndHelpers/proj_range_to_suffix.cxx"
 #include "../MuonObjectsParamsAndHelpers/MuonPair.h"
 #include "vector"
 #include "TH1D.h"
@@ -76,7 +74,7 @@ private:
     
     std::string dphi_regions[2] = {"near", "away"};
 
-    TH2D* h_crossx_single_b_signal_vs_pair_pt_pair_eta;
+    TH2D* h_pair_eta_vs_pair_pt_single_b_crossx;
 
     TH1D* h_pair_dP_overP[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
     TH1D* h_Dphi[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
@@ -538,6 +536,7 @@ private:
 
     // --------------------- class methods ---------------------------
 
+
    	void        InitInput();
     void        InitOutput();
    	void        InitHists();
@@ -574,8 +573,6 @@ enum HistFillingCycle{
 
     bool use_3D_2nd_muon = false; // if true, use 3D kinematics (phi, q*eta, pT) for single (2nd) muon trigger efficiencies
   	
-    bool use_pT_fitting_single_muon_effcy = true;
-
     MuonPairPlottingPP();
   	~MuonPairPlottingPP(){}
   	void Run();
