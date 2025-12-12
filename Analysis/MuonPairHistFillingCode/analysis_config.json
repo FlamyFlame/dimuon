@@ -4,13 +4,11 @@
         {
             "hist_name": "minv_zoomin",
             "var_name": "minv",
-            "title": "Invariant Mass Distribution",
             "xtitle": "M_{inv} [GeV]",
             "binning": "minv_log"
         },
         {
             "hist_name": "pt",
-            "title": "Transverse Momentum",
             "xtitle": "p_{T} [GeV]",
             "binning": {
                 "nbins": 50,
@@ -22,7 +20,6 @@
     "variables2D": [
         {
             "hist_name": "pt_vs_eta",
-            "title": "pT vs #eta",
             "xtitle": "p_{T} [GeV]",
             "ytitle": "#eta",
             "binning": {
@@ -56,7 +53,6 @@
     "variables1D": [
         {
             "hist_name": "minv",
-            "title": "Invariant Mass",
             "xtitle": "M_{inv} [GeV]",
             "binning": "minv_log"
         }

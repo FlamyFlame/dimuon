@@ -11,8 +11,6 @@
 #include  <stdlib.h>
 #include <fstream>
 #include "../MuonObjectsParamsAndHelpers/ParamsSet.h"
-#include "../MuonObjectsParamsAndHelpers/bin_number.cxx"
-#include "../MuonObjectsParamsAndHelpers/proj_range_to_suffix.cxx"
 #include "../MuonObjectsParamsAndHelpers/MuonPair.h"
 #include "vector"
 #include "TH1D.h"
@@ -41,35 +39,7 @@ private:
     float pair_pt_min = 0;
     float pair_pt_max = 30;
 
-    // maps of q_eta bins to pT projection ranges serving single-muon effciency fitting
-    std::vector<std::pair<float, float>> q_eta_proj_ranges_for_single_muon_effcy_pT_fitting = {
-        {-2.4f, -2.0f}, 
-        {-2.0f, -1.6f}, 
-        {-1.6f, -1.3f}, 
-        {-0.9f, -0.5f}, 
-        {-0.5f, -0.1f}, 
-        {0.1f, 0.5f}, 
-        {0.5f, 1.0f}, 
-        {1.3f, 1.6f}, 
-        {1.6f, 2.0f}, 
-        {2.0f, 2.4f}
-    };
-
-    std::vector<std::pair<float, float>> pair_pT_ranges_for_weighted_effcy_dR_fitting = {
-        {8, 12},
-        {12, 24},
-        {24, 80}
-    };
-
-  	// --------------------- intermediate files for reading fitted functions ---------------------------
-    TFile *file_effcy_pTfits = nullptr;
-    TFile *file_weighted_effcy_dRfits = nullptr;
- 
-    // std::string file_name_effcy_pTfits = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/trg_effcy_pT_fitting_to_erf/single_mu_effcy_pT_fit.root";
-    std::string file_name_effcy_pTfits = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/trg_effcy_pT_fitting_to_fermi_plus_log/single_mu_effcy_pT_fit.root";
-    std::string file_name_weighted_effcy_dRfits = "";
-
-    // --------------------- output file & histograms ---------------------------
+  	// --------------------- output file & histograms ---------------------------
 
   	TFile *outFile = nullptr;
     std::string trig_suffix;
@@ -538,21 +508,16 @@ private:
 
     // --------------------- class methods ---------------------------
 
-   	void        InitInput();
-    void        InitOutput();
-   	void        InitHists();
-    void        OpenEffcyPtFitFile();
-   	void        ProcessData();
-    void        WriteOutput();
-    bool        PassSingleMuonGapCut(float meta, float mpt, int mcharge);
-    std::string FindBinReturnStr(float number, const std::vector<std::pair<float, float>>& ranges);
-    float       EvaluateSingleMuonEffcyPtFitted(bool charge_sign, std::string trg, float pt_2nd, float q_eta_2nd, float phi_2nd);
-    float       EvaluateSingleMuonEffcy(bool charge_sign, std::string trg, float pt_2nd, float q_eta_2nd, float phi_2nd);
-    void        FillHistograms(int nsign);
-    void        FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(int nsign);
-    void        CalculateSingleMuonTrigEffcyRatios();
-    void        MakeAndWriteSingleMuonPtTrigEffGraphs();
-    void        MakeAndWriteDRTrigEffGraphs();
+   	void InitInput();
+    void InitOutput();
+   	void InitHists();
+   	void ProcessData();
+    void WriteOutput();
+    bool PassSingleMuonGapCut(float meta, float mpt, int mcharge);
+   	void FillHistograms(int nsign);
+    void FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(int nsign);
+    void CalculateSingleMuonTrigEffcyRatios();
+    void MakeAndWriteDRTrigEffGraphs();
 
 public:
     bool output_non_trig_effcy_hists;
@@ -567,8 +532,6 @@ public:
 
     bool use_3D_2nd_muon = false; // if true, use 3D kinematics (phi, q*eta, pT) for single (2nd) muon trigger efficiencies
   	
-    bool use_pT_fitting_single_muon_effcy = true;
-
     MuonPairPlottingPP();
   	~MuonPairPlottingPP(){}
   	void Run();
