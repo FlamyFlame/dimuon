@@ -70,7 +70,7 @@ public:
     }
 
     // Non-virtual public driver: common flow, but delegates *actual plotting*.
-    void Run()
+    virtual void Run()
     {
         initialize();
 
@@ -637,6 +637,10 @@ public:
         ctr_binning_version = ctr_binning_version_user;
     }
 
+    virtual void Run() override{
+        TrigEffPlotterBaseClass::Run();
+        plotSingleMuEffCtrDep();
+    }
 private:
     bool add_ctr_0_10{};
 
@@ -655,6 +659,7 @@ private:
         TrigEffPlotterBaseClass::initialize();
     }
     
+    void plotSingleMuEffCtrDep();
     void plot1D(const std::string& var) override;
     void plot2D(const std::string& var, const std::string& fs) override;
     void plotProfile(const std::string& var, const std::string& fs) override;
