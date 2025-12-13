@@ -434,6 +434,105 @@ void TrigEffPlotterPbPb::plot1D(const std::string& var)
     }
 } // end function plot1D
 
+#include <TLatex.h>
+#include <TLine.h>
+
+// ----------------------------------------------------------------------
+// Plot single-muon efficiency vs centrality, for fixed pT bins (mid-rapidity)
+// One PNG per trigger-pair, canvas 2x2, one pad per pT bin.
+// ----------------------------------------------------------------------
+void TrigEffPlotterPbPb::plotSingleMuEffCtrDep()
+{
+    // user-specified config
+    const std::vector<std::pair<std::string,std::string>> trig_pairs = {
+        {"mu4_mu4noL1","mu4"},
+        {"2mu4","mu4"}
+    };
+
+    const std::vector<std::string> pT_bins_for_ctr_dep = {
+        "_pt4_6", "_pt6_8", "_pt8_12", "_pt12_30"
+    };
+
+    const std::vector<std::string> pT_labels_for_ctr_dep = {
+        "p_{T}: [4, 6) GeV",
+        "p_{T}: [6, 8) GeV",
+        "p_{T}: [8, 12) GeV",
+        "p_{T}: [12, 30) GeV"
+    };
+
+    // output dir
+    std::string outdir = data_dir + "trig_effcy_plots/single_muon_effcy/ctr_dep";
+    makeDirIfNeeded(outdir);  // helper already in your framework :contentReference[oaicite:1]{index=1}
+
+    // simple style palette (reuse your SetStyle helper) :contentReference[oaicite:2]{index=2}
+    const Color_t col = kAzure + 2;
+    const Style_t mkr = 20;
+
+    for (const auto& tp : trig_pairs)
+    {
+        const std::string& num_trg = tp.first;
+        const std::string& den_trg = tp.second;
+
+        // canvas: 2x2
+        std::string cname = Form("c_singleMuEffCtr_%s_over_%s", num_trg.c_str(), den_trg.c_str());
+        TCanvas* c = new TCanvas(cname.c_str(), cname.c_str(), 1100, 900);
+        c->Divide(2, 2);
+
+        for (int i = 0; i < (int)pT_bins_for_ctr_dep.size(); ++i)
+        {
+            c->cd(i+1);
+            gPad->SetGrid();
+
+            const std::string& pt_bin = pT_bins_for_ctr_dep[i];
+
+            // names exactly as you specified
+            const std::string hnum_name =
+                "h_ctr" + pt_bin + "_mid_rapidity_" + num_trg + "_sepr";
+            const std::string hden_name =
+                "h_ctr" + pt_bin + "_mid_rapidity_" + den_trg + "_sepr";
+
+            TH1D* hnum = getHist<TH1D>(hnum_name);
+            TH1D* hden = getHist<TH1D>(hden_name);
+
+            if (!hnum || !hden) {
+                // getHist already warns; just leave pad blank
+                continue;
+            }
+
+            // graph efficiency
+            auto* g = new TGraphAsymmErrors();
+            g->BayesDivide(hnum, hden);
+
+            SetStyle(g, col, mkr);  // your shared helper :contentReference[oaicite:3]{index=3}
+            // g->GetYaxis()->SetRangeUser(0.0, 1.00);
+            g->GetYaxis()->SetTitle("#epsilon");
+            g->GetXaxis()->SetTitle(hden->GetXaxis()->GetTitle()); // should be centrality axis title
+
+            g->Draw("APL");
+
+            // horizontal line at 1
+            const double xmin = gPad->GetUxmin();
+            const double xmax = gPad->GetUxmax();
+            TLine* line = new TLine(xmin, 1.0, xmax, 1.0);
+            line->SetLineStyle(2);
+            line->SetLineWidth(2);
+            line->Draw("same");
+
+            // pad label: 2 lines, as requested
+            TLatex latex;
+            latex.SetNDC(true);
+            latex.SetTextSize(0.04);
+            latex.DrawLatex(0.16, 0.86, pT_labels_for_ctr_dep[i].c_str());
+            latex.DrawLatex(0.16, 0.80, "-0.5 <= #eta < 0.5");
+        }
+
+        // save png
+        std::string outpng = Form("%s/singleMuEffCtrDep_%s_over_%s.png",
+                                  outdir.c_str(), num_trg.c_str(), den_trg.c_str());
+        c->SaveAs(outpng.c_str());
+    }
+} // end function plotSingleMuEffCtrDep
+
 // ======================================================================
 // 2-D efficiency canvases  (Signed + Signal modes) – one PNG per filter
 // ======================================================================
@@ -1080,12 +1179,13 @@ void TrigEffPlotterPbPb::plot2Dto1DsingleMuonEffcyProj (const std::pair<const st
     filter_to_label_map_single_muon_effcy_MB["_MB"] = "P[mu4 | MB]";
 
 
-    for (auto& ctr : ctr_bins){
-        for (auto& trg_pair : trig_pairs){ // loop over configurations (single-muon triggers): mu4noL1 or mu4
+    for (auto& trg_pair : trig_pairs){ // loop over configurations (single-muon triggers): mu4noL1 or mu4
 
-            // --------------------- Step 1: retrieve 2D histogram & perform x/y projections ------------------------------------------
-            // map of (filter, numerator / denominator trigger, +/- 2nd-muon sign, x/y) to the projected TH1D*
-            std::map<std::string, std::array<std::array<std::array<TH1D*, 2>, 2>, 2>> h1D_proj;
+        // --------------------- Step 1: retrieve 2D histogram & perform x/y projections ------------------------------------------
+        std::map<std::pair<std::string, std::string>, std::array<std::array<std::array<TH1D*, 2>, 2>, 2>> h1D_proj;
+        
+        for (auto& ctr : ctr_bins){
+            // map of ({filter, ctr}, numerator / denominator trigger, +/- 2nd-muon sign, x/y) to the projected TH1D*
 
             for (auto fs : filters_single_muon_effcy){ // loop over filters
                 for (int trg_ind = 0; trg_ind < 2; ++trg_ind){ // trigger index (numerator / denominator)
@@ -1115,30 +1215,33 @@ void TrigEffPlotterPbPb::plot2Dto1DsingleMuonEffcyProj (const std::pair<const st
                                                                 : (yVar.empty() ? var2d : yVar);
                             if (projVar.empty()) continue; // malformed name
 
-                            h1D_proj[fs][trg_ind][sign_ind][proj_ind] = 
+                            h1D_proj[{ctr, fs}][trg_ind][sign_ind][proj_ind] = 
                                 isProjX ? h2D->ProjectionX(Form("px_%s", hname.c_str()), 1, -1, "e")
                                         : h2D->ProjectionY(Form("py_%s", hname.c_str()), 1, -1, "e");
                         }            
                     } // end loop over signs
                 } // end loop over triggers (numerator / denominator)
             } // end loop over filters
+        } // end loop over ctrs
 
-            // --------------------- Step 2: drawing & saving canvases ------------------------------------------
-            Color_t colors[3] = {kRed+1, kAzure+2, kGreen+2};
-            Style_t mkrs[3] = {24, 20, 22};
+        // --------------------- Step 2: drawing & saving canvases ------------------------------------------
+        Color_t colors[3] = {kRed+1, kAzure+2, kGreen+2};
+        Style_t mkrs[3] = {24, 20, 22};
 
+        std::vector<Color_t> ctr_colors = {kBlack, kBlue, kMagenta, kGreen+2, kOrange + 2, kRed, kGray, kBrown};
 
-            for (int proj_ind = 0; proj_ind < 2; ++proj_ind) // x, y projection --> fixes the variable of interest
-            {
-                const bool isProjX = (proj_ind == 0);
-                if ((isProjX && !doPX) || (!isProjX && !doPY)) continue;
+        for (int proj_ind = 0; proj_ind < 2; ++proj_ind) // x, y projection --> fixes the variable of interest
+        {
+            const bool isProjX = (proj_ind == 0);
+            if ((isProjX && !doPX) || (!isProjX && !doPY)) continue;
 
-                const std::string projVar = isProjX ? (xVar.empty() ? var2d : xVar)
-                                                    : (yVar.empty() ? var2d : yVar);
-                if (projVar.empty()) continue; // malformed name
+            const std::string projVar = isProjX ? (xVar.empty() ? var2d : xVar)
+                                                : (yVar.empty() ? var2d : yVar);
+            if (projVar.empty()) continue; // malformed name
 
-                auto xy = xyFor(projVar);
+            auto xy = xyFor(projVar);
 
+            for (auto& ctr : ctr_bins){
                 // ----------- if not MB mode: draw first canvas: +/- comparison for well-separated pairs ------------------------------------------
                 if (!isMB){
                     // canvas
@@ -1160,22 +1263,22 @@ void TrigEffPlotterPbPb::plot2Dto1DsingleMuonEffcyProj (const std::pair<const st
                         // draw the trigger-efficiency graphs
                         auto g = new TGraphAsymmErrors();
 
-                        // h1D_proj[fs][trg_ind][sign_ind][proj_ind]
-                        if (!h1D_proj["_sepr"][0][sign_ind][proj_ind] || !h1D_proj["_sepr"][1][sign_ind][proj_ind]){
+                        // h1D_proj[{ctr,fs}][trg_ind][sign_ind][proj_ind]
+                        if (!h1D_proj[{ctr, "_sepr"}][0][sign_ind][proj_ind] || !h1D_proj[{ctr, "_sepr"}][1][sign_ind][proj_ind]){
                             std::cerr << "The well-separated single-muon trigger-efficiency histograms cannot be found for the variable " << projVar << std::endl;
                             continue;
                         }
                         
-                        g->BayesDivide(h1D_proj["_sepr"][0][sign_ind][proj_ind], h1D_proj["_sepr"][1][sign_ind][proj_ind]);
+                        g->BayesDivide(h1D_proj[{ctr, "_sepr"}][0][sign_ind][proj_ind], h1D_proj[{ctr, "_sepr"}][1][sign_ind][proj_ind]);
                         
                         SetStyle(g, colors[sign_ind], mkrs[sign_ind]);
 
                         if (sign_ind == 0) {
                             g->Draw("APL");
                             g->GetYaxis()->SetRangeUser(0., 1.);
-                            g->GetXaxis()->SetTitle(h1D_proj["_sepr"][1][sign_ind][proj_ind]->GetXaxis()->GetTitle());
+                            g->GetXaxis()->SetTitle(h1D_proj[{ctr, "_sepr"}][1][sign_ind][proj_ind]->GetXaxis()->GetTitle());
                             g->GetYaxis()->SetTitle("#epsilon");
-                            if (xy.first) adjustLogXRange(g, h1D_proj["_sepr"][1][sign_ind][proj_ind]);
+                            if (xy.first) adjustLogXRange(g, h1D_proj[{ctr, "_sepr"}][1][sign_ind][proj_ind]);
                         } else {
                             g->Draw("PL SAME");
                         }
@@ -1193,7 +1296,7 @@ void TrigEffPlotterPbPb::plot2Dto1DsingleMuonEffcyProj (const std::pair<const st
                                           outdir.c_str(), projVar.c_str(), ctr.c_str(), target_dimuon_trigger_to_single_muon_map[trg_pair.first].c_str());
                     c->SaveAs(fn.c_str());
 
-                } // end if statement & first canvas drawing
+                } // end if !MB statement & first canvas drawing
 
                 // ----------- draw second canvas: for +/- 2nd muon, draw EITHER (!isMB) comparison between well-separated, no-selection & signal pairs ------------------------------------------
                 // ------------------------------------------------------ OR (isMB) comparison between well-separated, no-selection & signal pairs ------------------------------------------
@@ -1220,22 +1323,22 @@ void TrigEffPlotterPbPb::plot2Dto1DsingleMuonEffcyProj (const std::pair<const st
                             // draw the trigger-efficiency graphs
                             auto g = new TGraphAsymmErrors();
 
-                            // h1D_proj[fs][trg_ind][sign_ind][proj_ind]
-                            if (!h1D_proj[filter][0][sign_ind][proj_ind] || !h1D_proj[filter][1][sign_ind][proj_ind]){
+                            // h1D_proj[{ctr,fs}][trg_ind][sign_ind][proj_ind]
+                            if (!h1D_proj[{ctr,filter}][0][sign_ind][proj_ind] || !h1D_proj[{ctr,filter}][1][sign_ind][proj_ind]){
                                 std::cerr << "The well-separated single-muon trigger-efficiency histograms cannot be found for the variable " << projVar << std::endl;
                                 continue;
                             }
                             
-                            g->BayesDivide(h1D_proj[filter][0][sign_ind][proj_ind], h1D_proj[filter][1][sign_ind][proj_ind]);
+                            g->BayesDivide(h1D_proj[{ctr,filter}][0][sign_ind][proj_ind], h1D_proj[{ctr,filter}][1][sign_ind][proj_ind]);
                             
                             SetStyle(g, colors[filter_ind], mkrs[filter_ind]);
 
                             if (filter_ind == 0) {
                                 g->Draw("APL");
                                 g->GetYaxis()->SetRangeUser(0., 1.);
-                                g->GetXaxis()->SetTitle(h1D_proj[filter][1][sign_ind][proj_ind]->GetXaxis()->GetTitle());
+                                g->GetXaxis()->SetTitle(h1D_proj[{ctr,filter}][1][sign_ind][proj_ind]->GetXaxis()->GetTitle());
                                 g->GetYaxis()->SetTitle("#epsilon");
-                                if (xy.first) adjustLogXRange(g, h1D_proj[filter][1][sign_ind][proj_ind]);
+                                if (xy.first) adjustLogXRange(g, h1D_proj[{ctr,filter}][1][sign_ind][proj_ind]);
                             } else {
                                 g->Draw("PL SAME");
                             }
@@ -1255,8 +1358,73 @@ void TrigEffPlotterPbPb::plot2Dto1DsingleMuonEffcyProj (const std::pair<const st
                                           outdir.c_str(), projVar.c_str(), ctr.c_str(), target_dimuon_trigger_to_single_muon_map[trg_pair.first].c_str(), compr_type.c_str());
                     c->SaveAs(fn.c_str());
                 } // end second canvas drawing
-            } // end loop over x/y projection (determines 1D variable to plot efficiencies for)
-        } // end loop over (target, supporting) trigger pairs
-    } // end loop over ctr bins
+            } // end loop over ctr bins
+
+            // --------------------- Third canvas: ctr comparison (sum over mu+, mu-) ------------------------------------------
+            // canvas
+            std::string cname = Form("c_%s_%s_ctr_compr",
+                                     projVar.c_str(), trg_pair.first.c_str());
+            TCanvas* c = new TCanvas(cname.c_str(), "", 700, 500);
+
+            Rect box = legendBoxFor1DVar(projVar, SignalDrawingMode::OpAndSignal, filter_suffix_list);
+
+            c->cd();
+            gPad->SetLogx(xy.first);
+            gPad->SetLogy(xy.second);
+
+            TLegend* leg = new TLegend(box[0], box[1], box[2], box[3]);
+            leg->SetBorderSize(0);
+
+            for (int ctr_ind = 0; ctr_ind < ctr_bins.size(); ++ctr_ind){
+                
+                auto ctr = ctr_bins.at(ctr_ind);
+
+                // h1D_proj[{ctr, fs}][trg_ind][sign_ind][proj_ind]
+                for (int sign_ind = 0; sign_ind < 2; ++sign_ind){ // charge sign index (+/-)
+                    if (!h1D_proj[{ctr, "_sepr"}][0][sign_ind][proj_ind] || !h1D_proj[{ctr, "_sepr"}][1][sign_ind][proj_ind]){
+                        std::cerr << "The well-separated single-muon trigger-efficiency histograms cannot be found for the variable " << projVar << ", " << ctr << std::endl;
+                        return;
+                    }
+                }
+
+                // h1D_proj[{ctr, fs}][trg_ind][sign_ind][proj_ind]
+                TH1D* hnum_muplus = h1D_proj[{ctr, "_sepr"}][0][0][proj_ind];
+                TH1D* hnum_sumsign = (TH1D*) hnum_muplus->Clone(Form("%s_added", hnum_muplus->GetName()));
+                hnum_sumsign->Add(h1D_proj[{ctr, "_sepr"}][0][1][proj_ind]);
+
+                TH1D* hdom_muplus = h1D_proj[{ctr, "_sepr"}][1][0][proj_ind];
+                TH1D* hdom_sumsign = (TH1D*) hdom_muplus->Clone(Form("%s_added", hdom_muplus->GetName()));
+                hdom_sumsign->Add(h1D_proj[{ctr, "_sepr"}][1][1][proj_ind]);
+                
+                // draw the trigger-efficiency graphs
+                auto g = new TGraphAsymmErrors();
+                
+                g->BayesDivide(hnum_sumsign, hdom_sumsign);
+                
+                SetStyle(g, ctr_colors.at(ctr_ind), 20);
+
+                if (ctr_ind == 0) {
+                    g->Draw("APL");
+                    g->GetYaxis()->SetRangeUser(0., 1.05);
+                    g->GetXaxis()->SetTitle("Centrality [%]");
+                    g->GetYaxis()->SetTitle("#epsilon");
+                } else {
+                    g->Draw("PL SAME");
+                }
+                
+                // legend entry 
+                std::string ctr_label = std::to_string(ctr_bin_edges.at(ctr_ind)) + "-" + std::to_string(ctr_bin_edges.at(ctr_ind+1)) + "%";
+                leg->AddEntry(g, ctr_label.c_str(), "lep");
+            } // end loop over ctrs (lines)
+
+            leg->Draw();
+
+            std::string outdir = data_dir + "trig_effcy_plots";
+            makeDirIfNeeded(outdir + "/single_muon_effcy/ctr_dep");
+            std::string fn = Form("%s/single_muon_effcy/ctr_dep/%s_trig_effcy_%s_ctr_compr.png",
+                                  outdir.c_str(), projVar.c_str(), target_dimuon_trigger_to_single_muon_map[trg_pair.first].c_str());
+            c->SaveAs(fn.c_str());
+        } // end loop over x/y projection (determines 1D variable to plot efficiencies for)
+    } // end loop over (target, supporting) trigger pairs
 } // end function plot2Dto1DsingleMuonEffcyProj
 

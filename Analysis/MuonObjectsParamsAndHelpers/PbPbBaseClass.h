@@ -60,6 +60,7 @@ void PbPbBaseClass::InitializePbPb(){
 
     ctr_binning_file_suffix_map["default"] = "";
     ctr_binning_file_suffix_map["include_upc"] = "_include_upc";
+    
     ctr_rebin_scale_factor_map["default"] = {1,1,1,1,2,4};
     ctr_rebin_scale_factor_map["include_upc"] = {1,1,1,1,2,4};
 
