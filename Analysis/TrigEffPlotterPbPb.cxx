@@ -1,4 +1,6 @@
 #include"TrigEffPlotterBaseClass.h"
+#include <TLatex.h>
+#include <TLine.h>
 
 // =========================================================================
 // configure input data files
@@ -434,8 +436,22 @@ void TrigEffPlotterPbPb::plot1D(const std::string& var)
     }
 } // end function plot1D
 
-#include <TLatex.h>
-#include <TLine.h>
+// ----------------------------------------------------------------------
+// Helper to scale a TGraph (for relative ctr dependence)
+// ----------------------------------------------------------------------
+void ScaleTGraph(TGraph* g, double scale)
+{
+    if (!g) return;
+
+    const int n = g->GetN();
+    double x, y;
+
+    for (int i = 0; i < n; ++i) {
+        g->GetPoint(i, x, y);
+        g->SetPoint(i, x, scale * y);
+    }
+}
+
 
 // ----------------------------------------------------------------------
 // Plot single-muon efficiency vs centrality, for fixed pT bins (mid-rapidity)
@@ -448,6 +464,17 @@ void TrigEffPlotterPbPb::plotSingleMuEffCtrDep()
         {"mu4_mu4noL1","mu4"},
         {"2mu4","mu4"}
     };
+
+    // map of trigger & pt bin to ctr-integrated trigger efficiency, for relative ctr dependence plots
+    std::map<std::pair<std::string,std::string>, double> trig_pt_to_ctr_intgr_trg_effcy_map;
+    trig_pt_to_ctr_intgr_trg_effcy_map[{"2mu4","_pt4_6"}] = 0.569;
+    trig_pt_to_ctr_intgr_trg_effcy_map[{"mu4_mu4noL1","_pt4_6"}] = 0.797;
+    trig_pt_to_ctr_intgr_trg_effcy_map[{"2mu4","_pt6_8"}] = 0.695;
+    trig_pt_to_ctr_intgr_trg_effcy_map[{"mu4_mu4noL1","_pt6_8"}] = 0.937;
+    trig_pt_to_ctr_intgr_trg_effcy_map[{"2mu4","_pt8_12"}] = 0.710;
+    trig_pt_to_ctr_intgr_trg_effcy_map[{"mu4_mu4noL1","_pt8_12"}] = 0.951;
+    trig_pt_to_ctr_intgr_trg_effcy_map[{"2mu4","_pt12_30"}] = 0.724;
+    trig_pt_to_ctr_intgr_trg_effcy_map[{"mu4_mu4noL1","_pt12_30"}] = 0.954;
 
     const std::vector<std::string> pT_bins_for_ctr_dep = {
         "_pt4_6", "_pt6_8", "_pt8_12", "_pt12_30"
@@ -482,6 +509,7 @@ void TrigEffPlotterPbPb::plotSingleMuEffCtrDep()
         {
             c->cd(i+1);
             gPad->SetGrid();
+            gPad->SetLeftMargin(1.2);
 
             const std::string& pt_bin = pT_bins_for_ctr_dep[i];
 
@@ -503,9 +531,17 @@ void TrigEffPlotterPbPb::plotSingleMuEffCtrDep()
             auto* g = new TGraphAsymmErrors();
             g->BayesDivide(hnum, hden);
 
+            try{
+                ScaleTGraph(g, 1./trig_pt_to_ctr_intgr_trg_effcy_map.at({num_trg, pt_bin}));    
+            } catch(const std::out_of_range& e){
+                std::cerr   << "plotSingleMuEffCtrDep:: out_of_range exception caught when retrieving trig_pt_to_ctr_intgr_trg_effcy_map entry at{"
+                            << num_trg << "," << pt_bin << "}: " << e.what() << std::endl;
+                std::cerr   << "No graph scaling performed" << std::endl;
+            }
+
             SetStyle(g, col, mkr);  // your shared helper :contentReference[oaicite:3]{index=3}
             // g->GetYaxis()->SetRangeUser(0.0, 1.00);
-            g->GetYaxis()->SetTitle("#epsilon");
+            g->GetYaxis()->SetTitle("#epsilon / #bar{#epsilon}");
             g->GetXaxis()->SetTitle(hden->GetXaxis()->GetTitle()); // should be centrality axis title
 
             g->Draw("APL");
@@ -522,13 +558,20 @@ void TrigEffPlotterPbPb::plotSingleMuEffCtrDep()
             TLatex latex;
             latex.SetNDC(true);
             latex.SetTextSize(0.04);
-            latex.DrawLatex(0.16, 0.86, pT_labels_for_ctr_dep[i].c_str());
-            latex.DrawLatex(0.16, 0.80, "-0.5 <= #eta < 0.5");
+            double xstart = 0.16;
+            double ystart = 0.86;
+            if (pt_bin == "_pt6_8" || pt_bin == "_pt12_30"){
+                xstart = 0.45;
+                ystart = 0.4;
+            }
+            latex.DrawLatex(xstart, ystart, ("Pb+Pb 2023, " + target_dimuon_trigger_to_single_muon_map[num_trg]).c_str());
+            latex.DrawLatex(xstart, ystart - 0.06, ("Medium #mu, " + pT_labels_for_ctr_dep[i]).c_str());
+            latex.DrawLatex(xstart, ystart - 0.12, "-0.5 <= #eta < 0.5");
         }
 
         // save png
-        std::string outpng = Form("%s/singleMuEffCtrDep_%s_over_%s.png",
-                                  outdir.c_str(), num_trg.c_str(), den_trg.c_str());
+        std::string outpng = Form("%s/singleMuEffCtrDep_%s.png",
+                                  outdir.c_str(), target_dimuon_trigger_to_single_muon_map[num_trg].c_str());
         c->SaveAs(outpng.c_str());
     }
 } // end function plotSingleMuEffCtrDep
