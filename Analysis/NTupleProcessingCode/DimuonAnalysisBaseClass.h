@@ -51,6 +51,9 @@ protected:
 	
 	virtual void ProcessData(){}
 
+    virtual void FillSingleMuonTree();
+	virtual void FillMuonPairTree() = 0;
+
 	virtual bool PassCuts(std::shared_ptr<MuonPair> const& mpair) = 0;
     // virtual void FillMuonPair(int pair_ind, std::shared_ptr<MuonPair> const& mpair){}
 	virtual void ResonanceTagging(std::shared_ptr<MuonPair> const& mpair);

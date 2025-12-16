@@ -98,8 +98,7 @@ protected:
     bool PassCuts(const std::shared_ptr<MuonPairData>& mpair, bool requireTight);
     bool PassCuts(const std::shared_ptr<MuonPair>& mpair) override;
 
-    virtual void FillSingleMuonTree();
-    virtual void FillMuonPairTree();
+    virtual void FillMuonPairTree() override;
 
     virtual void ParamCheck();
 
