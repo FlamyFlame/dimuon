@@ -149,8 +149,6 @@ private:
     int m1_resonance_barcode; // check if from same resonance
     int m2_resonance_barcode; // check if from same resonance
 
-    int nmuonpairs;
-
     TLorentzVector vg, vQ1, vQ2, vm1out1, vm1out2, vm2out1, vm2out2;
     // bool gs_4vec_correctly_set;
 
@@ -335,6 +333,7 @@ private:
     void ProcessData() override;
     bool PassCuts(const std::shared_ptr<MuonPair>& mpair) override;
 
+    virtual void FillMuonPairTree() override {}
     void FillMuonPairTreePythia(int nkin);
     void HistAdjust() override;
 

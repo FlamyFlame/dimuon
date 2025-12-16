@@ -419,12 +419,6 @@ bool DimuonDataAnalysisBaseClass::PassCuts(const std::shared_ptr<MuonPairData>& 
 	return true;
 }
 
-
-void DimuonDataAnalysisBaseClass::FillSingleMuonTree(){
-  muonOutTree->Fill();
-}
-
-
 void DimuonDataAnalysisBaseClass::FillMuonPairTree(){
   // NECESSARY step: ALWAYS update the raw pointer with the current content of the shared pointer BEFORE FILLING OUTPUT TREES
   try{
