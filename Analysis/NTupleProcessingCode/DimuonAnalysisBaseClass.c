@@ -1,4 +1,7 @@
 #include "DimuonAnalysisBaseClass.h"
+#include <memory>
+#include <stdexcept>
+#include <string>
 
 void DimuonAnalysisBaseClass::InitOutput(){
     cout << "DimuonAnalysisBaseClass::InitOutput: [DEBUG] numCuts = " << numCuts << endl;
@@ -7,6 +10,9 @@ void DimuonAnalysisBaseClass::InitOutput(){
     }
 }
 
+void DimuonAnalysisBaseClass::FillSingleMuonTree(){
+  muonOutTree->Fill();
+}
 
 void DimuonAnalysisBaseClass::ResonanceTaggingV2(std::shared_ptr<MuonPair> const& mpair){
     // function that checks if a muon pair comes from the resonance

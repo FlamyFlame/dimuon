@@ -97,7 +97,7 @@ void PbPbDataNTupleFirstPass::FillMuonPairPbPb(int pair_ind, std::shared_ptr<Muo
 
 
 void PbPbDataNTupleFirstPass::FillSingleMuonTree(){
-  DimuonDataAnalysisBaseClass::FillSingleMuonTree();
+  DimuonAnalysisBaseClass::FillSingleMuonTree();
 
   if (turn_on_ctr_binned_tree_writing){
     for (int jctr = 0; jctr < pms.nCtrIntvls; jctr++){
