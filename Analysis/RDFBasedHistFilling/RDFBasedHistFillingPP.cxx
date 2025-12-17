@@ -7,11 +7,11 @@ void RDFBasedHistFillingPP::Initialize(){
 
     run_year %= 2000;
     if (run_year == 24){
-    	input_files.push_back("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024" + trig_suffix + ".root");
-    	output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/histograms_real_pairs_pp_2024" + trig_suffix + ".root";        
+    	input_files.push_back("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024" + trig_suffix + "_res_cut_v2.root");
+    	output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/histograms_real_pairs_pp_2024" + trig_suffix + "_res_cut_v2.root";        
     } else if (run_year == 17){
-        input_files.push_back("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/muon_pairs_pp_2017" + trig_suffix + ".root");
-        output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/histograms_real_pairs_pp_2017" + trig_suffix + ".root";
+        input_files.push_back("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/muon_pairs_pp_2017" + trig_suffix + "_res_cut_v2.root");
+        output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/histograms_real_pairs_pp_2017" + trig_suffix + "_res_cut_v2.root";
         trigs = {"_mu4", "_2mu4"};
         trigs_pair = {{"_2mu4","_mu4"}};
 
