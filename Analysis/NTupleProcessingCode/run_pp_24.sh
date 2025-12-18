@@ -16,8 +16,7 @@ lsetup "views LCG_107a_ATLAS_2 x86_64-el9-gcc13-opt"
 root -b -l << EOF
 	.L PPDataNTupleFirstPass.c
 
-	PPDataNTupleFirstPass pp_24;
-	pp_24.file_batch = $file_batch;
+	PPDataNTupleFirstPass pp_24 (24, $file_batch);
 	// pp_24.trigger_mode = 2 // uncomment to change trigger mode
 	// pp_24.requireTight = false // uncomment to require tight muons
 	// pp_24.resonance_cut_mode = 0 // uncomment for no-resn-cut

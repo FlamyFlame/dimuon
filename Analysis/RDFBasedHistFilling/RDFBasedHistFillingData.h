@@ -57,6 +57,21 @@ protected:
 
 // --------------------- protected class methods ---------------------------
 
+    RDFBasedHistFillingData(int run_year_input)
+    : run_year (run_year_input){
+        std::cout << " Histogram filling for data:" << std::endl;
+        std::cout << "The following public variable(s) **MUST** be set:" << std::endl;
+        std::cout << "--> run_year: [INT]" << std::endl << std::endl;
+        std::cout << "The following public variable(s) **MUST** be checked:" << std::endl;
+        std::cout << "--> trigger_mode: [INT]" << std::endl;
+        std::cout << "--> hist_filling_cycle: [INT]" << std::endl << std::endl;
+        std::cout << "The following public variable(s) **SHOULD** be checked:" << std::endl;
+        std::cout << "--> isScram: [BOOL]" << std::endl;
+        std::cout << "--> isTight: [BOOL]" << std::endl;
+        std::cout << "--> output_generic_hists: [BOOL]" << std::endl;
+
+    }
+
     virtual void    InitOutput() override;
     virtual void    TriggerModeSettings();
 
@@ -112,19 +127,6 @@ enum HistFillingCycle{
     bool use_pT_fitting_single_muon_effcy = true;
 
 
-    RDFBasedHistFillingData(){
-        std::cout << " Histogram filling for data:" << std::endl;
-        std::cout << "The following public variable(s) **MUST** be set:" << std::endl;
-        std::cout << "--> run_year: [INT]" << std::endl << std::endl;
-        std::cout << "The following public variable(s) **MUST** be checked:" << std::endl;
-        std::cout << "--> trigger_mode: [INT]" << std::endl;
-        std::cout << "--> hist_filling_cycle: [INT]" << std::endl << std::endl;
-        std::cout << "The following public variable(s) **SHOULD** be checked:" << std::endl;
-        std::cout << "--> isScram: [BOOL]" << std::endl;
-        std::cout << "--> isTight: [BOOL]" << std::endl;
-        std::cout << "--> output_generic_hists: [BOOL]" << std::endl;
-
-    }
     ~RDFBasedHistFillingData(){}
     
 };
@@ -149,7 +151,8 @@ protected:
 
 public:
 
-    RDFBasedHistFillingPP(){
+    explicit RDFBasedHistFillingPP(int run_year_input)
+    : RDFBasedHistFillingData (run_year_input){
         std::cout << "constructor for pp called" << std::endl; 
     }
     ~RDFBasedHistFillingPP(){
@@ -201,8 +204,10 @@ protected:
     void                ReadVar1DJson() override;
 
 public:
-    RDFBasedHistFillingPbPb(){
-        std::cout << "constructor for PbPb called" << std::endl; 
+    explicit RDFBasedHistFillingPbPb(int run_year_input, std::string ctr_binning_version_input = "include_upc"){
+    : RDFBasedHistFillingData (run_year_input){
+        ctr_binning_version = ctr_binning_version_input;
+        std::cout << "constructor for PbPb called, run year: " << run_year << std::endl; 
     }
     ~RDFBasedHistFillingPbPb(){
         std::cout << "destructor for PbPb called" << std::endl;
