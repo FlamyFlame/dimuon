@@ -9,11 +9,11 @@ void RDFBasedHistFillingPbPb::Initialize(){
 	std::string run_year_str = std::to_string(run_year);
 
 	if (run_year == 23 || run_year == 24 || run_year == 25){
-		input_files.push_back("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/muon_pairs_pbpb_20" + run_year_str + trig_suffix + ".root");
-		output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/histograms_real_pairs_pbpb_20" + run_year_str + trig_suffix + ".root";
+		input_files.push_back("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/muon_pairs_pbpb_20" + run_year_str + trig_suffix + "_res_cut_v2.root");
+		output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/histograms_real_pairs_pbpb_20" + run_year_str + trig_suffix + "_res_cut_v2.root";
 	} else if (run_year == 15 || run_year == 18){
-		input_files.push_back("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/muon_pairs_pbpb_20" + run_year_str + trig_suffix + ".root");
-		output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/histograms_real_pairs_pbpb_20" + run_year_str + trig_suffix + ".root";
+		input_files.push_back("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/muon_pairs_pbpb_20" + run_year_str + trig_suffix + "_res_cut_v2.root");
+		output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/histograms_real_pairs_pbpb_20" + run_year_str + trig_suffix + "_res_cut_v2.root";
 	} else{
 	    throw std::runtime_error("Run year must be 15/18/23/24/25! Current input invalid: " + run_year_str);
 	}

@@ -387,20 +387,18 @@ ParamsSet::ParamsSet(){
     fillLogBinningArray(pT_bins_80,  12, 8.0, 80.0);  // 12 log bins from 8 to 200 GeV
 
 
-  	// old set of minv cut
+  	// minv cut V1 - cut off all below 1.06GeV
   	minv_cuts.push_back({0,1.06});
    	minv_cuts.push_back({2.9,3.3});
    	minv_cuts.push_back({3.55,3.8});
-   	// minv_cuts.push_back({9.08,9.8});
    	minv_cuts.push_back({9.08,10.5}); // previously 9 - 9.8
 
-   	// new set of minv cut
+   	// minv cut V2 - cut off narrower windows for individual sub-GeV light resonance peaks
   	minv_cuts_v2.push_back({0.,0.6});
   	minv_cuts_v2.push_back({0.72,0.85});
   	minv_cuts_v2.push_back({0.94,1.06});
    	minv_cuts_v2.push_back({2.9,3.3});
    	minv_cuts_v2.push_back({3.55,3.8});
-   	// minv_cuts_v2.push_back({9.08,9.8});
    	minv_cuts_v2.push_back({9.08,10.5}); // previously 9 - 9.8
 }
 

@@ -3,16 +3,14 @@
 void DimuonDataAnalysisBaseClass::PrintInstructions(){
 	std::string datatype = isPbPb? "PbPb" : "PP";
 	std::cout << datatype << " Data Ntuple processing script:" << std::endl;
-    std::cout << "The following public variable(s) **MUST** be set:" << std::endl;
+    std::cout << "The following variable(s) are required by constructor:" << std::endl;
     std::cout << "--> file_batch: [INT] Decides which run3-file batch to process, only has effect when isRun3 is true" << std::endl;
     std::cout << "--> 					PbPb: file batch: 1-6 for 2023 data, 1-9 for 2024 data, 1-7 for 2015/2018 data" << std::endl;
     std::cout << "--> 					PP:   file batch: 1-4 for 2024 data, 1-3 for 2017 data" << std::endl;
-    if (isPbPb) std::cout << "--> run_year (only for PbPb): [INT] (20)23 or (20)24; MUST be set for PbPb if isRun3 is true" << std::endl;
+    std::cout << "--> run_year: [INT] year of data taking" << std::endl;
     std::cout << std::endl;
 
     std::cout << "The following public variable(s) **MUST** be checked:" << std::endl;
-    std::cout << "--> isRun3: [BOOL] if true (DEFAULT), use run3 data" << std::endl;
-    std::cout << "                   if false: use run2 data" << std::endl;
     std::cout << "--> trigger_mode: INT, value = 0,1,2,3" << std::endl;
     std::cout << "                       value = 0 (set true if isMinBias): require MinBias trigger: tag if either muon files single-muon trigger" << std::endl;
     std::cout << "                       value = 1 (DEFAULT): require single-muon trigger: tag which muon files trigger & if pair passes mu4_mu4_noL1 & 2mu4" << std::endl;
@@ -25,13 +23,14 @@ void DimuonDataAnalysisBaseClass::PrintInstructions(){
     std::cout << "--> output_single_muon_tree: [BOOL] if true, output single-muon tree" << std::endl;
     std::cout << "                                    if false (DEFAULT), output muon-pair tree" << std::endl;
     if (isPbPb) std::cout << "--> turn_on_ctr_binned_tree_writing (only for PbPb): [BOOL] if true, output centrality-binned muon-pair trees (DEFAULT FALSE)" << std::endl;
+    std::cout << "--> requireTight: boolean, default false - if true: require tight WP; false; require medium WP" << std::endl;
     std::cout << "--> resonance_cut_mode: integer that determines which set of resonant cuts to apply" << std::endl;
     std::cout << "        * resonance_cut_mode = 0: NO resonance cut" << std::endl;
     std::cout << "        * resonance_cut_mode = 1: old resonance cut (default)" << std::endl;
     std::cout << "        * resonance_cut_mode = 2: new resonance cut" << std::endl;
     std::cout << "        If resonance_cut_mode value is outside {0,1,2}: assume default option" << std::endl;
-    std::cout << "--> requireTight: boolean, default false - if true: require tight WP; false; require medium WP" << std::endl;
-    std::cout << "--> force_nominal: boolean, default false - if true: force nominal cuts (force the boolean trigger_effcy_calc to be false)" << std::endl;
+    std::cout << "--> pbpb24_mu4_NO_trig_calc: boolean, default false - if true: use Pb+Pb 24 single-mu4 data for nominal analysis, not trigger efficiency evaluation" << std::endl;
+    std::cout << "--> filter_out_photo_resn_for_trig_effcy: boolean, default false - if true: do NOT filter out photoproduction / resonance pairs for trigger efficiency study" << std::endl;
 
     std::cout << std::endl;
 
@@ -45,12 +44,30 @@ void DimuonDataAnalysisBaseClass::PrintInstructions(){
     }
 }
 
-void DimuonDataAnalysisBaseClass::ParamCheck(){
+void DimuonDataAnalysisBaseClass::InitParams(){
+    run_year = run_year % 2000; // e.g, 2023 --> 23
+    if (run_year < 15) throw std::runtime_error("Run year invalid: must be >= 2015!");
+
+    isRun3 = (run_year > 20);
+
     if (isMinBias) trigger_mode = 0; // if use MB data, do not require any muon trigger
-    trigger_effcy_calc = (!force_nominal && (trigger_mode == 0 || trigger_mode == 1)); // if NOT force nominal AND either do not require muon trigger or only require single-muon trigger
+    
+    use_mu6_for_trg_eff = (isPbPb && run_year == 23);
+    if (use_mu6_for_trg_eff) std::cout << "Using HLT_mu6_L1MU3V as a support trigger!" << std::endl;
+    
+    if (!(isPbPb && run_year == 24 && pbpb24_mu4_NO_trig_calc)) trigger_effcy_calc = (trigger_mode == 0 || trigger_mode == 1);
+    if (trigger_effcy_calc) resonance_cut_mode = 2; // for sub-GeV mass region, apply narrow-window cuts for each individual resonance peak
+
+    if (pbpb24_mu4_NO_trig_calc && trigger_mode == 1) std::cout << "For Pb+Pb 2024 data, using single_mu4 for NOMINAL analysis (not trigger efficiency)." << std::endl;
 }
 
 void DimuonDataAnalysisBaseClass::InitInput(){
+    std::string base_dir = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/";
+    std::string dt_str = isPbPb? "pbpb" : "pp";
+    std::string data_subdir = isRun3? dt_str + "_20" + std::to_string(run_year) + "/" : dt_str + "_run2/";
+
+    data_dir = base_dir + data_subdir;
+
 	TChainFill();
 	if (!fChain){
 		std::cerr << "FATAL:: TChain for analysis is nullptr! Throwing exception." << std::endl;
@@ -58,14 +75,14 @@ void DimuonDataAnalysisBaseClass::InitInput(){
 	}
 
     if (isMinBias){
-        InitInputBranchesSingleMuon();
+        InitInputBranchesSingleMuonAnalysis();
     }else{
-        InitInputBranchesDimuon();
+        InitInputBranchesDimuonAnalysis();
     }
 
 }
 
-void DimuonDataAnalysisBaseClass::InitInputBranchesSingleMuon(){
+void DimuonDataAnalysisBaseClass::InitInputBranchesSingleMuonAnalysis(){
     fChain->SetBranchAddress("muon_pt"              , &muon_pt);
     fChain->SetBranchAddress("muon_eta"             , &muon_eta);
     fChain->SetBranchAddress("muon_phi"             , &muon_phi);
@@ -94,7 +111,7 @@ void DimuonDataAnalysisBaseClass::InitInputBranchesSingleMuon(){
     fChain->SetBranchStatus(mu4_trigger_match_branch.c_str()                    ,1);
 }
 
-void DimuonDataAnalysisBaseClass::InitInputBranchesDimuon(){
+void DimuonDataAnalysisBaseClass::InitInputBranchesDimuonAnalysis(){
 
     fChain->SetBranchAddress("RunNumber"                   , &RunNumber);
     fChain->SetBranchAddress("lbn"                         , &lbn);
@@ -146,6 +163,11 @@ void DimuonDataAnalysisBaseClass::InitInputBranchesDimuon(){
         fChain->SetBranchAddress(mu4_mu4noL1_trigger_match_branch.c_str()     , &dimuon_b_HLT_mu4_mu4noL1);
     }
 
+    if (use_mu6_for_trg_eff){ // only use mu6 for Pb+Pb 23 for now
+        fChain->SetBranchAddress("b_HLT_mu6_L1MU3V"                      , &b_HLT_mu6_L1MU3V);
+        fChain->SetBranchAddress("muon_b_HLT_mu6_L1MU3V"                 , &muon_b_HLT_mu6_L1MU3V);
+    }
+
     //SetBranch Status
     fChain->SetBranchStatus("*"                               ,0);//switch off all branches, then enable just the ones that we need
     fChain->SetBranchStatus("RunNumber"                       ,1);
@@ -181,6 +203,11 @@ void DimuonDataAnalysisBaseClass::InitInputBranchesDimuon(){
     if (isRun3 || isPbPb){
         fChain->SetBranchStatus(mu4_mu4noL1_trigger_branch.c_str()              ,1);
         fChain->SetBranchStatus(mu4_mu4noL1_trigger_match_branch.c_str()        ,1);
+    }
+    
+    if (use_mu6_for_trg_eff){ // only use mu6 for Pb+Pb 23 for now
+        fChain->SetBranchStatus("b_HLT_mu6_L1MU3V",         1);
+        fChain->SetBranchStatus("muon_b_HLT_mu6_L1MU3V",    1);
     }
 }
 
@@ -240,8 +267,8 @@ void DimuonDataAnalysisBaseClass::InitOutput() {
     
 	std::string file_batch_suffix = "_part" + std::to_string(file_batch);
     std::string outfile_ending = run_suffix + file_batch_suffix + trig_suffix + tight_suffix + resonance_cut_suffix + ".root";
-    output_file_path = in_out_file_dir + file_name_base + outfile_ending;
-    output_hist_file_path = in_out_file_dir + "hists_cut_acceptance" + outfile_ending;
+    output_file_path = data_dir + file_name_base + outfile_ending;
+    output_hist_file_path = data_dir + "hists_cut_acceptance" + outfile_ending;
 
     // Histograms file
     m_outHistFile = new TFile(output_hist_file_path.c_str(), "recreate");
@@ -260,27 +287,6 @@ void DimuonDataAnalysisBaseClass::InitOutput() {
             muonPairOutTree[ksign]->Branch("MuonPairObj", &mpair_raw_ptr);
         }
     }
-
-}
-bool DimuonDataAnalysisBaseClass::EventTrigFilter(){
-
-    if (trigger_mode == 0) return true; // MB data: no muon trigger requirement
-
-    if (trigger_mode == 2 && !isPbPb && !isRun3){ // pp Run2: no mu4_mu4noL1 trigger
-        std::cerr << "PP Run2 data: no mu4_mu4_noL1 trigger!" << std::endl;
-        throw std::exception();
-    }
-
-    switch(trigger_mode){
-    case 1:
-		return b_HLT_mu4;
-    case 2:
-		return b_HLT_mu4_mu4noL1;
-    case 3:
-		return b_HLT_2mu4;
-    }
-
-    return false;
 }
 
 bool DimuonDataAnalysisBaseClass::TrigMatch(int pair_ind, int m1_ind, int m2_ind){
@@ -291,6 +297,20 @@ bool DimuonDataAnalysisBaseClass::TrigMatch(int pair_ind, int m1_ind, int m2_ind
         case 0:
             return true;
 		case 1:
+            if (use_mu6_for_trg_eff){
+                if (!b_HLT_mu4 && !b_HLT_mu6_L1MU3V) return false;
+                if (!muon_b_HLT_mu4 && !muon_b_HLT_mu6_L1MU3V){ // nullptr
+                    throw std::runtime_error("TrigMatch::Either muon_b_HLT_mu4 or muon_b_HLT_mu6_L1MU3V is a null pointer!");
+                }
+                if (!mpair) throw std::runtime_error("TrigMatch: Muon Pair doesn't exist!");
+
+                if (muon_b_HLT_mu4->at(m1_ind) || muon_b_HLT_mu4->at(m2_ind))   return true;
+                if (muon_b_HLT_mu6_L1MU3V->at(m1_ind) && mpair->m1.pt >= 6)     return true;
+                if (muon_b_HLT_mu6_L1MU3V->at(m2_ind) && mpair->m2.pt >= 6)     return true;
+
+                return false;
+            }
+
 			if (!b_HLT_mu4) return false;
 			
 			if (!muon_b_HLT_mu4){ // nullptr
@@ -298,6 +318,11 @@ bool DimuonDataAnalysisBaseClass::TrigMatch(int pair_ind, int m1_ind, int m2_ind
 			}
 			return muon_b_HLT_mu4->at(m1_ind) || muon_b_HLT_mu4->at(m2_ind);
 		case 2:
+            if (!isPbPb && !isRun3){ // pp Run2: no mu4_mu4noL1 trigger
+                std::cerr << "PP Run2 data: no mu4_mu4_noL1 trigger!" << std::endl;
+                throw std::exception();
+            }
+
 			if (!b_HLT_mu4_mu4noL1) return false;
 			
 			if (!dimuon_b_HLT_mu4_mu4noL1){ // nullptr
@@ -439,7 +464,7 @@ void DimuonDataAnalysisBaseClass::ProcessData(){
 
 	Long64_t nentries = fChain->GetEntries();//number of events
 	for (Long64_t jentry=0; jentry<nentries;jentry++) {//loop over the events
-	// for (Long64_t jentry=0; jentry<10000;jentry++) {//loop over the events
+	// for (Long64_t jentry=0; jentry<1000;jentry++) {//loop over the events
 
 		if(jentry%100000==0) cout<<"Processing "<<jentry<<" event out of "<<nentries<<" events"<<std::endl;
 
@@ -452,9 +477,6 @@ void DimuonDataAnalysisBaseClass::ProcessData(){
 		muon_pair_list_cur_event_pre_resonance_cut.clear();
 		resonance_tagged_muon_index_list.clear(); // MUST CLEAR for each event!!
         resonance_tagged_muon_index_list_v2.clear(); // MUST CLEAR for each event!!
-
-		//trigger requirement for event
-		EventTrigFilter();
 
 		std::vector<int> muon_index_list = {};
 		std::vector<int>::iterator it;
@@ -492,8 +514,13 @@ void DimuonDataAnalysisBaseClass::ProcessData(){
     			mpair->Update();
     			mpair->passmu4mu4noL1 = (!isPbPb && !isRun3)? false : dimuon_b_HLT_mu4_mu4noL1->at(pair_ind); // pp run2: no mu4_mu4noL1 trigger
     			mpair->pass2mu4 = dimuon_b_HLT_2mu4->at(pair_ind);
-    			mpair->m1.passmu4 = muon_b_HLT_mu4->at(mpair->m1.ind);
-    			mpair->m2.passmu4 = muon_b_HLT_mu4->at(mpair->m2.ind);
+    			mpair->m1.passmu4 = 
+                    use_mu6_for_trg_eff ? (muon_b_HLT_mu4->at(mpair->m1.ind) || (muon_b_HLT_mu6_L1MU3V->at(mpair->m1.ind) && mpair->m1.pt > 6))
+                                        : muon_b_HLT_mu4->at(mpair->m1.ind);
+                
+    			mpair->m2.passmu4 = 
+                    use_mu6_for_trg_eff ? (muon_b_HLT_mu4->at(mpair->m2.ind) || (muon_b_HLT_mu6_L1MU3V->at(mpair->m2.ind) && mpair->m2.pt > 6))
+                                        : muon_b_HLT_mu4->at(mpair->m2.ind);
 
                 mpair->passSeparated = (mpair->dr > 0.8);
                 mpair->passSeparatedDeta = (abs(mpair->deta) > 0.8);
@@ -580,9 +607,7 @@ void DimuonDataAnalysisBaseClass::Run(){
     double cpu_time_used;
     start = clock();
 
-    run_year = run_year % 2000; // e.g, 2023 --> 23
-
-    ParamCheck();
+    InitParams();
     InitInput();
     InitOutput();
     ProcessData();

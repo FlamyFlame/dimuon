@@ -25,7 +25,7 @@ private:
         return std::make_shared<MuonPairPbPb>();
     }
 
-    void ParamCheck() override;
+    void InitParams() override;
     void InitInput() override;
     void TChainFill() override;
     void InitOutput() override;
@@ -44,8 +44,7 @@ private:
 public :
     bool turn_on_ctr_binned_tree_writing = false;
     
-    PbPbDataNTupleFirstPass();
+    explicit PbPbDataNTupleFirstPass(int run_year_input, int file_batch_input);
     ~PbPbDataNTupleFirstPass(){}
-    void Run() override;
 };
 

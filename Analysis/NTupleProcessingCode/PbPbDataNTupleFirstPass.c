@@ -4,13 +4,12 @@
 #include "time.h"
 
 
-PbPbDataNTupleFirstPass::PbPbDataNTupleFirstPass(){
-    // cuts (filters) on muon pairs, read from muon_pair_enums_data.h
-    cutLabels.assign(cutLabelsPbPb.begin(), cutLabelsPbPb.end());
-    numCuts = static_cast<int>(CutsPbPb::nCuts_PbPb_data);
-
-    isPbPb = true;
-    PrintInstructions();
+PbPbDataNTupleFirstPass::PbPbDataNTupleFirstPass(int run_year_input, int file_batch_input)
+    : DimuonDataAnalysisBaseClass(run_year_input, file_batch_input){
+        isPbPb = true;
+        cutLabels.assign(cutLabelsPbPb.begin(), cutLabelsPbPb.end()); // cuts (filters) on muon pairs, read from muon_pair_enums_data.h
+        numCuts = static_cast<int>(CutsPbPb::nCuts_PbPb_data);
+        PrintInstructions();
 }
 
 //initialize the TChain
@@ -22,9 +21,9 @@ void PbPbDataNTupleFirstPass::TChainFill(){
   std::string file_path;
   if (!isRun3){
     std::string data_trigeffcy_dir = "user.soumya.TrigRates.physics_HP.PbPb20" + std::to_string(run_year) + ".15April2022._MYSTREAM/";
-    file_path = in_out_file_dir + data_trigeffcy_dir + "data_pbpb" + std::to_string(run_year) + "_trigeffcy_part" + std::to_string(file_batch) + ".root";
+    file_path = data_dir + data_trigeffcy_dir + "data_pbpb" + std::to_string(run_year) + "_trigeffcy_part" + std::to_string(file_batch) + ".root";
   } else{
-    file_path = in_out_file_dir + "data_pbpb" + std::to_string(run_year) + "_part" + std::to_string(file_batch) + ".root";
+    file_path = data_dir + "data_pbpb" + std::to_string(run_year) + "_part" + std::to_string(file_batch) + ".root";
   }
 
   // add file to TChain if file path exists
@@ -123,9 +122,9 @@ void PbPbDataNTupleFirstPass::FillMuonPairTree(){
 }
 
 
-void PbPbDataNTupleFirstPass::ParamCheck(){
+void PbPbDataNTupleFirstPass::InitParams(){
 
-  DimuonDataAnalysisBaseClass::ParamCheck();
+  DimuonDataAnalysisBaseClass::InitParams();
   
   std::map<int, int> run_year_to_file_batch_max_map = {
     {23, 6}, {24, 9}, {15, 7}, {18, 7}
@@ -149,17 +148,4 @@ void PbPbDataNTupleFirstPass::ParamCheck(){
     std::cerr<<"Error:: run3 file_batch is invalid! Must be in range 1-6 for 2023 data / 1-9 for 2024 data / 1-7 for 2015/2018 data"<<std::endl;
     throw std::exception();
   }
-}
-
-void PbPbDataNTupleFirstPass::Run(){
-
-  // input, output file directory setting
-  if (isRun3){
-    in_out_file_dir = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + std::to_string(run_year) + "/";
-  }else{
-    in_out_file_dir = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/";
-  }
-
-  DimuonDataAnalysisBaseClass::Run();
-
 }
