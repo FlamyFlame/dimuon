@@ -1,7 +1,7 @@
 #pragma once
 #include "../MuonObjectsParamsAndHelpers/PbPbBaseClass.h"
 #include "../MuonObjectsParamsAndHelpers/TrigEffcyUtils.h"
-#include "RDFBasedHistFillingBaseClass.h"
+#include "RDFBasedHistFillingBaseClass.cxx"
 
 class RDFBasedHistFillingData : public virtual RDFBasedHistFillingBaseClass{
 protected:
@@ -60,15 +60,13 @@ protected:
     RDFBasedHistFillingData(int run_year_input)
     : run_year (run_year_input){
         std::cout << " Histogram filling for data:" << std::endl;
-        std::cout << "The following public variable(s) **MUST** be set:" << std::endl;
-        std::cout << "--> run_year: [INT]" << std::endl << std::endl;
         std::cout << "The following public variable(s) **MUST** be checked:" << std::endl;
-        std::cout << "--> trigger_mode: [INT]" << std::endl;
-        std::cout << "--> hist_filling_cycle: [INT]" << std::endl << std::endl;
+        std::cout << "--> trigger_mode: [INT] default 1 (single_mu4)" << std::endl;
+        std::cout << "--> hist_filling_cycle: [INT] default generic" << std::endl << std::endl;
         std::cout << "The following public variable(s) **SHOULD** be checked:" << std::endl;
-        std::cout << "--> isScram: [BOOL]" << std::endl;
-        std::cout << "--> isTight: [BOOL]" << std::endl;
-        std::cout << "--> output_generic_hists: [BOOL]" << std::endl;
+        std::cout << "--> isScram: [BOOL] default false" << std::endl;
+        std::cout << "--> isTight: [BOOL] default false" << std::endl;
+        std::cout << "--> output_generic_hists: [BOOL] default false" << std::endl;
 
     }
 
@@ -204,10 +202,10 @@ protected:
     void                ReadVar1DJson() override;
 
 public:
-    explicit RDFBasedHistFillingPbPb(int run_year_input, std::string ctr_binning_version_input = "include_upc"){
+    explicit RDFBasedHistFillingPbPb(int run_year_input, std::string ctr_binning_version_input = "include_upc")
     : RDFBasedHistFillingData (run_year_input){
         ctr_binning_version = ctr_binning_version_input;
-        std::cout << "constructor for PbPb called, run year: " << run_year << std::endl; 
+        std::cout << "constructor for PbPb called, run year: " << run_year << ", ctr_binning_version: " << ctr_binning_version << std::endl; 
     }
     ~RDFBasedHistFillingPbPb(){
         std::cout << "destructor for PbPb called" << std::endl;

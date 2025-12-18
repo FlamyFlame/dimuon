@@ -1,4 +1,4 @@
-#include "RDFBasedHistFillingData.h"
+#include "RDFBasedHistFillingData.cxx"
 
 void RDFBasedHistFillingPP::Initialize(){
     TriggerModeSettings();
