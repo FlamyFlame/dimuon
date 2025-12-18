@@ -31,6 +31,10 @@ protected:
     TFile* fout_pT_fit = nullptr;
     FILE* f_txtout = nullptr;
 
+    // ---- reference histogram ----
+    std::string h2d_ref_name;
+    TH1D* h_pt_ref = nullptr; // reference histogram for setting the log axis correctly for the TGraph
+
     // ---- common maps ----
     std::map<std::string, std::string> trg_maps;
     std::map<std::string, std::string> musign_maps;
@@ -97,6 +101,17 @@ protected:
     virtual void configureIO() = 0;  // must set data_dir + infile_name
     virtual std::vector<std::string> centralitySuffixes() const { return {""}; } // pp default
 
+    // =========================================================================
+    // Ensure a TGraph drawn on a log-x pad spans the full histogram range
+    // =========================================================================
+    void adjustLogXRange(TGraphAsymmErrors* g, const TH1* hRef) const
+    {
+        if (!g || !hRef) return;
+        double xmin = hRef->GetXaxis()->GetBinLowEdge(1);
+        double xmax = hRef->GetXaxis()->GetBinLowEdge(hRef->GetNbinsX() + 1);
+        g->GetXaxis()->SetRangeUser(xmin, xmax);
+    }
+
     virtual void initialize() {
         // fitting outdir (same as your two versions) :contentReference[oaicite:5]{index=5} :contentReference[oaicite:6]{index=6}
         switch (fitting_mode){
@@ -122,6 +137,7 @@ protected:
         trg_maps.clear();
         trg_maps["mu4noL1"] = "mu4_mu4noL1";
         trg_maps["mu4"]     = "2mu4";
+        // trg_maps["mu4_AND_mu4noL1"]     = "2mu4_AND_mu4_mu4noL1";
 
         musign_maps.clear();
         musign_maps["sign1"] = "mu+";
@@ -139,6 +155,18 @@ protected:
             std::cerr << "Error: cannot open file " << outfile_name << "\n";
             return;
         }
+
+        initializeHistRef();
+    }
+
+    virtual void initializeHistRef() {
+        TH2D* h2d_ref = dynamic_cast<TH2D*>(f->Get(h2d_ref_name.c_str()));
+        if (!h2d_ref) {
+            std::cerr << "Warning: reference TH2D histogram " << h2d_ref_name << " not found in file " << infile_name << std::endl;
+            return;
+        }
+
+        h_pt_ref = h2d_ref->ProjectionY(Form("%s_py", h2d_ref->GetName()));
     }
 
 private:
@@ -338,6 +366,7 @@ private:
             g->GetYaxis()->SetTitle("#epsilon");
             g->GetYaxis()->SetRangeUser(0, 1.1);
             g->Draw("AP");
+            if (h_pt_ref) adjustLogXRange(g, h_pt_ref);
             fit->Draw("SAME");
 
             std::string musign_label = (musign == "sign1")? "#mu^{+}" : "#mu^{-}";
@@ -375,6 +404,7 @@ protected:
     void configureIO() override {
         data_dir = "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/pp_2024/";
         infile_name = data_dir + "histograms_real_pairs_pp_2024_single_mu4.root";
+        h2d_ref_name = "h_pt2nd_vs_q_eta2nd_sign1_mu4";
     }
 };
 
@@ -396,10 +426,11 @@ protected:
         PbPbBaseClass::InitializePbPb();
         SingleMuEffcyPtTurnOnFitterBase::initialize();
     }
-    
+
     void configureIO() override {
         data_dir = "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/pbpb_2023/";
         infile_name = data_dir + "histograms_real_pairs_pbpb_2023_single_mu4.root";
+        h2d_ref_name = "h_pt2nd_vs_q_eta2nd_ctr0_5_sign1_mu4";
     }
 
     std::vector<std::string> centralitySuffixes() const override {
