@@ -1,4 +1,4 @@
-#include "RDFBasedHistFillingData.cxx"
+#include "RDFBasedHistFillingData.h"
 
 void RDFBasedHistFillingPP::Initialize(){
     TriggerModeSettings();
@@ -72,8 +72,9 @@ void RDFBasedHistFillingPP::FillHistogramsDimuTrigGivenMu4(){
                     df_map.emplace(df_name + "_mu4", map_at_checked(df_map, df_name, Form("FillHistogramsSingleMuonEffcy: df_map.at(%s)", df_name.c_str())));
                     df_map.emplace(df_name + "_mu4_mu4noL1", map_at_checked(df_map, df_name, Form("FillHistogramsSingleMuonEffcy: df_map.at(%s)", df_name.c_str())).Filter("passmu4mu4noL1"));
                     df_map.emplace(df_name + "_2mu4", map_at_checked(df_map, df_name, Form("FillHistogramsSingleMuonEffcy: df_map.at(%s)", df_name.c_str())).Filter("pass2mu4"));
+                    df_map.emplace(df_name + "_2mu4_AND_mu4_mu4noL1", map_at_checked(df_map, df_name, Form("FillHistogramsSingleMuonEffcy: df_map.at(%s)", df_name.c_str())).Filter("pass2mu4 && passmu4mu4noL1"));
 
-                    for (auto trg : {"_mu4", "_mu4_mu4noL1", "_2mu4"}){
+                    for (auto trg : {"_mu4", "_mu4_mu4noL1", "_2mu4", "_2mu4_AND_mu4_mu4noL1"}){
                         std::string df_name = "df" + pair_sign + mu4sel + mu_sign + trg;
                         df_map.emplace(df_name + "_sepr", map_at_checked(df_map, df_name, Form("FillHistogramsSingleMuonEffcy: df_map.at(%s)", df_name.c_str())).Filter("passSeparated"));
                         df_map.emplace(df_name + "_good_accept", map_at_checked(df_map, df_name, Form("FillHistogramsSingleMuonEffcy: df_map.at(%s)", df_name.c_str())).Filter("second_muon_good_acceptance"));

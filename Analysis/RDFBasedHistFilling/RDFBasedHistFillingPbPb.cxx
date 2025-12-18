@@ -1,4 +1,4 @@
-#include "RDFBasedHistFillingData.cxx"
+#include "RDFBasedHistFillingData.h"
 
 void RDFBasedHistFillingPbPb::Initialize(){
     TriggerModeSettings();
@@ -31,14 +31,14 @@ void RDFBasedHistFillingPbPb::Initialize(){
                                         {"_mu1passmu4", "_mu2passmu4"},
                                         ctr_bins,
                                         {"_sign1", "_sign2"},
-                                        {"_mu4", "_mu4_mu4noL1", "_2mu4"}, 
+                                        trigs,
                                         {"", "_sepr"}};
 
     levels_trg_effcy_filters_2D_3D_pre_sum = {{"_ss", "_op"}, // add a level of ctr bins for Pb+Pb
                                         {"_mu1passmu4", "_mu2passmu4"},
                                         ctr_bins,
                                         {"_sign1", "_sign2"},
-                                        {"_mu4", "_mu4_mu4noL1", "_2mu4"}, 
+                                        trigs,
                                         {"", "_sepr"}};
 
     for (int ipt = 0; ipt < pT_bins_edges_for_trg_effcy_ctr_dep.size() - 1; ipt++){
@@ -51,7 +51,7 @@ void RDFBasedHistFillingPbPb::Initialize(){
                                         {"_mu1passmu4", "_mu2passmu4"},
                                         pT_bins_for_trg_effcy_ctr_dep,
                                         {"_mid_rapidity"},
-                                        {"_mu4", "_mu4_mu4noL1", "_2mu4"}, 
+                                        trigs,
                                         {"_sepr"}};
 
 	for (std::string ctr : ctr_bins){
@@ -203,8 +203,9 @@ void RDFBasedHistFillingPbPb::FillHistogramsDimuTrigGivenMu4(){
 	                   	df_map.emplace(df_name + "_mu4", map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name.c_str())));
 	                   	df_map.emplace(df_name + "_mu4_mu4noL1", map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name.c_str())).Filter("passmu4mu4noL1"));
 	                   	df_map.emplace(df_name + "_2mu4", map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name.c_str())).Filter("pass2mu4"));
+	                   	df_map.emplace(df_name + "_2mu4_AND_mu4_mu4noL1", map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name.c_str())).Filter("pass2mu4 && passmu4mu4noL1"));
 
-	                   	for (auto trg : {"_mu4", "_mu4_mu4noL1", "_2mu4"}){
+	                   	for (auto trg : {"_mu4", "_mu4_mu4noL1", "_2mu4", "_2mu4_AND_mu4_mu4noL1"}){
 	                       	std::string df_name = "df" + pair_sign + mu4sel + ctr + mu_sign + trg;
 	                       	df_map.emplace(df_name + "_sepr", map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name.c_str())).Filter("passSeparated"));
 	                        
@@ -263,8 +264,9 @@ void RDFBasedHistFillingPbPb::FillHistogramsDimuTrigGivenMu4CtrDep(){
 	               	df_map.emplace(df_name_new + "_mu4", map_at_checked(df_map, df_name_new, Form("FillHistogramsDimuTrigGivenMu4CtrDep: df_map.at(%s)", df_name_new.c_str())));
 	               	df_map.emplace(df_name_new + "_mu4_mu4noL1", map_at_checked(df_map, df_name_new, Form("FillHistogramsDimuTrigGivenMu4CtrDep: df_map.at(%s)", df_name_new.c_str())).Filter("passmu4mu4noL1"));
 	               	df_map.emplace(df_name_new + "_2mu4", map_at_checked(df_map, df_name_new, Form("FillHistogramsDimuTrigGivenMu4CtrDep: df_map.at(%s)", df_name_new.c_str())).Filter("pass2mu4"));
+	               	df_map.emplace(df_name_new + "_2mu4_AND_mu4_mu4noL1", map_at_checked(df_map, df_name_new, Form("FillHistogramsDimuTrigGivenMu4CtrDep: df_map.at(%s)", df_name_new.c_str())).Filter("pass2mu4 && passmu4mu4noL1"));
 
-	               	for (auto trg : {"_mu4", "_mu4_mu4noL1", "_2mu4"}){
+	               	for (auto trg : {"_mu4", "_mu4_mu4noL1", "_2mu4", "_2mu4_AND_mu4_mu4noL1"}){
 	                   	std::string df_name = "df" + pair_sign + mu4sel + pt + "_mid_rapidity" + trg;
 	                   	df_map.emplace(df_name + "_sepr", map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4CtrDep: df_map.at(%s)", df_name.c_str())).Filter("passSeparated"));
 	                    

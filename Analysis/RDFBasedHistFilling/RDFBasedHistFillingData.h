@@ -1,7 +1,7 @@
 #pragma once
 #include "../MuonObjectsParamsAndHelpers/PbPbBaseClass.h"
 #include "../MuonObjectsParamsAndHelpers/TrigEffcyUtils.h"
-#include "RDFBasedHistFillingBaseClass.cxx"
+#include "RDFBasedHistFillingBaseClass.h"
 
 class RDFBasedHistFillingData : public virtual RDFBasedHistFillingBaseClass{
 protected:

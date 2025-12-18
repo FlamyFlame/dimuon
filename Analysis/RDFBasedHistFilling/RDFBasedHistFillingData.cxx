@@ -64,8 +64,8 @@ void RDFBasedHistFillingData::TriggerModeSettings(){
     case 1:
         trig_suffix = "_single_mu4";
         if (!doTrigEffcy) trig_suffix += "_no_trg_plots";
-        trigs = {"_mu4", "_mu4_mu4noL1", "_2mu4"}; // can be overwritten if, e.g, mu4_mu4noL1 doesn't exist
-        trigs_pair = {{"_mu4_mu4noL1","_mu4"},{"_2mu4","_mu4"}};
+        trigs = {"_mu4", "_mu4_mu4noL1", "_2mu4", "_2mu4_AND_mu4_mu4noL1"}; // can be overwritten if, e.g, mu4_mu4noL1 doesn't exist
+        trigs_pair = {{"_mu4_mu4noL1","_mu4"},{"_2mu4","_mu4"},{"_2mu4_AND_mu4_mu4noL1","_mu4"}};
         break;
     case 2:
         trig_suffix = "_mu4_mu4noL1";
