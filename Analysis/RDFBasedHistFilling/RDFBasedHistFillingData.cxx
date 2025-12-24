@@ -1,5 +1,16 @@
 #include "RDFBasedHistFillingData.h"
+#include "../MuonObjectsParamsAndHelpers/proj_range_to_suffix.cxx"
 #include <type_traits>
+
+
+void RDFBasedHistFillingData::Initialize(){
+    q_eta_ranges_str_incl_gap.clear();
+    for (auto pair : q_eta_proj_ranges_incl_gap_for_single_muon_effcy_pT_fitting){
+        q_eta_ranges_str_incl_gap.push_back("_q_eta_" + pairToSuffix(pair));
+    }
+
+    RDFBasedHistFillingBaseClass::Initialize();
+}
 
 void RDFBasedHistFillingData::FillHistograms(){    
     std::cout << "Calling FillHistograms" << std::endl;
