@@ -49,6 +49,32 @@ protected:
         {2.0f, 2.2f}
     };
 
+    std::vector<std::pair<float, float>> q_eta_proj_ranges_incl_gap_for_single_muon_effcy_pT_fitting = { // coarse bins including gaps
+        {-2.4f, -2.0f}, 
+        {-2.0f, -1.5}, 
+        {-1.5, -1.0f}, 
+        {-1.0f, -0.5f}, 
+        {-0.5f, 0.5f}, 
+        {0.5f, 1.0f}, 
+        {1.0f, 1.5f}, 
+        {1.5f, 2.0f}, 
+        {2.0f, 2.2f}
+    };
+
+    std::vector<std::string> q_eta_ranges_str_incl_gap;
+
+    std::vector<std::pair<float, float>> q_eta_proj_ranges_incl_gap_for_single_muon_effcy_pT_fitting_run2 = { // including [2.2, 2.4]
+        {-2.4f, -2.0f}, 
+        {-2.0f, -1.5}, 
+        {-1.5, -1.0f}, 
+        {-1.0f, -0.5f}, 
+        {-0.5f, 0.5f}, 
+        {0.5f, 1.0f}, 
+        {1.0f, 1.5f}, 
+        {1.5f, 2.0f}, 
+        {2.0f, 2.4f}
+    };
+
     std::vector<std::pair<float, float>> pair_pT_ranges_for_weighted_effcy_dR_fitting = {
         {8, 12},
         {12, 24},
@@ -70,6 +96,7 @@ protected:
 
     }
 
+    virtual void    Initialize() override;
     virtual void    InitOutput() override;
     virtual void    TriggerModeSettings();
 

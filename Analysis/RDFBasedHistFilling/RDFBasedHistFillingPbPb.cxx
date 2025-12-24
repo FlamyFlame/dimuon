@@ -10,10 +10,10 @@ void RDFBasedHistFillingPbPb::Initialize(){
 
 	if (run_year == 23 || run_year == 24 || run_year == 25){
 		input_files.push_back("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/muon_pairs_pbpb_20" + run_year_str + trig_suffix + "_res_cut_v2.root");
-		output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/histograms_real_pairs_pbpb_20" + run_year_str + trig_suffix + "_res_cut_v2.root";
+		output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/histograms_real_pairs_pbpb_20" + run_year_str + trig_suffix + ".root";
 	} else if (run_year == 15 || run_year == 18){
 		input_files.push_back("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/muon_pairs_pbpb_20" + run_year_str + trig_suffix + "_res_cut_v2.root");
-		output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/histograms_real_pairs_pbpb_20" + run_year_str + trig_suffix + "_res_cut_v2.root";
+		output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/histograms_real_pairs_pbpb_20" + run_year_str + trig_suffix + ".root";
 	} else{
 	    throw std::runtime_error("Run year must be 15/18/23/24/25! Current input invalid: " + run_year_str);
 	}
@@ -47,10 +47,17 @@ void RDFBasedHistFillingPbPb::Initialize(){
         pT_bins_for_trg_effcy_ctr_dep.push_back("_pt" + std::to_string(pt_bin_low_edge) + "_" + std::to_string(pt_bin_high_edge));
     }
 
-    levels_trg_effcy_filters_ctr_dep_1D_pre_sum = {{"_ss", "_op"}, // add a level of ctr bins for Pb+Pb
+    levels_trg_effcy_filters_ctr_dep_mid_rapidity_1D_pre_sum = {{"_ss", "_op"}, // add a level of ctr bins for Pb+Pb
                                         {"_mu1passmu4", "_mu2passmu4"},
                                         pT_bins_for_trg_effcy_ctr_dep,
                                         {"_mid_rapidity"},
+                                        trigs,
+                                        {"_sepr"}};
+
+    levels_trg_effcy_filters_ctr_dep_1D_pre_sum = {{"_ss", "_op"}, // add a level of ctr bins for Pb+Pb
+                                        {"_mu1passmu4", "_mu2passmu4"},
+                                        pT_bins_for_trg_effcy_ctr_dep,
+										q_eta_ranges_str_incl_gap,
                                         trigs,
                                         {"_sepr"}};
 
@@ -66,7 +73,7 @@ void RDFBasedHistFillingPbPb::Initialize(){
 	    }
 	}
 
-	RDFBasedHistFillingBaseClass::Initialize();
+	RDFBasedHistFillingData::Initialize();
 }
 
 // ---------- ----------
