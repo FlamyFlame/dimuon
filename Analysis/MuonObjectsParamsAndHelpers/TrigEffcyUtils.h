@@ -1,5 +1,11 @@
 namespace TrigEffcyUtils {
 
+    TGraphAsymmErrors* proj_divide_and_write (TH2* hNum2D, TH2* hDen2D, std::map<std::string, TGraphAsymmErrors*>* graph_map = nullptr);
+    TGraphAsymmErrors* proj_divide_and_write (TH2* hNum2D, TH2* hDen2D, bool projy, int firstbin, int lastbin, std::string proj_range_str, std::map<std::string, TGraphAsymmErrors*>* graph_map = nullptr);
+    TH1D* proj_and_write (TH2* h2D, bool projy, int firstbin = 1, int lastbin = -1, std::string proj_range_str = "", std::map<std::string, TH1D*>* h1D_map = nullptr);
+
+    TGraphAsymmErrors* divide_and_write (TH1* hNum, TH1* hDen, std::map<std::string, TGraphAsymmErrors*>* graph_map = nullptr);
+
     void flatten_levels(const std::vector<std::vector<std::string>>& levels,
                         std::vector<std::string>& flattened);
 
@@ -14,6 +20,92 @@ namespace TrigEffcyUtils {
         const std::vector<std::string>& filters_to_be_summed,
         std::map<std::string, TH*>& hist_map,
         MakeBaseName makeBaseName);
+
+    template <typename H>
+    void write_hist_map_vector(
+        std::map<std::string, H*>& m,
+        const std::vector<std::string>& hists_to_not_write);
+}
+
+
+// helper for projection, making & writing of TEfficiency graphs
+TGraphAsymmErrors* TrigEffcyUtils::proj_divide_and_write (TH2* hNum2D, TH2* hDen2D, std::map<std::string, TGraphAsymmErrors*>* graph_map = nullptr) {
+    return proj_divide_and_write(hNum2D, hDen2D, true, 1, -1, "", graph_map);
+}
+
+TGraphAsymmErrors* TrigEffcyUtils::proj_divide_and_write (TH2* hNum2D, TH2* hDen2D, bool projy, int firstbin, int lastbin, std::string proj_range_str, std::map<std::string, TGraphAsymmErrors*>* graph_map = nullptr) {
+    if (!hNum2D || !hDen2D) return (TGraphAsymmErrors*)nullptr;
+
+    // suffix that captures projection axis & range
+    std::string proj_suffix = projy? "_py" : "_px";
+    if (proj_range_str != "") proj_suffix += "_" + proj_range_str;
+
+    std::unique_ptr<TH1> hNum1D(
+        projy ? hNum2D->ProjectionY(Form("%s%s", hNum2D->GetName(), proj_suffix.c_str()), firstbin, lastbin, "e")
+              : hNum2D->ProjectionX(Form("%s%s", hNum2D->GetName(), proj_suffix.c_str()), firstbin, lastbin, "e")
+    );
+
+    std::unique_ptr<TH1> hDen1D(
+        projy ? hDen2D->ProjectionY(Form("%s%s", hDen2D->GetName(), proj_suffix.c_str()), firstbin, lastbin, "e")
+              : hDen2D->ProjectionX(Form("%s%s", hDen2D->GetName(), proj_suffix.c_str()), firstbin, lastbin, "e")
+    );
+
+    auto g = new TGraphAsymmErrors();
+    g->BayesDivide(hNum1D.get(), hDen1D.get());
+
+    // Name: "h_<...>" → "g_<...>" from the *numerator* histo name
+    std::string n = hNum1D->GetName() ? hNum1D->GetName() : "graph";
+    
+    n += "_divided";
+    if (n.rfind("h_", 0) == 0) n.replace(0, 2, "g_"); else n = "g_" + n;
+    g->SetName(n.c_str());
+
+    if (graph_map == nullptr)   g->Write(g->GetName(), TObject::kOverwrite);
+    else{
+        (*graph_map)[g->GetName()] = g;
+    }
+
+    return g;
+}
+
+TH1D* TrigEffcyUtils::proj_and_write (TH2* h2D, bool projy, int firstbin = 1, int lastbin = -1, std::string proj_range_str = "", std::map<std::string, TH1D*>* h1D_map = nullptr){
+    if (!h2D) return (TH1D*)nullptr;
+
+    // suffix that captures projection axis & range
+    std::string proj_suffix = projy? "_py" : "_px";
+    if (proj_range_str != "") proj_suffix += "_" + proj_range_str;
+
+    TH1D* h1D(
+        projy ? h2D->ProjectionY(Form("%s%s", h2D->GetName(), proj_suffix.c_str()), firstbin, lastbin, "e")
+              : h2D->ProjectionX(Form("%s%s", h2D->GetName(), proj_suffix.c_str()), firstbin, lastbin, "e")
+    );
+    if (!h1D) return nullptr;
+    
+    if (h1D_map == nullptr)     h1D->Write(h1D->GetName(), TObject::kOverwrite);
+    else                        (*h1D_map)[h1D->GetName()] = h1D;
+
+    return h1D;
+}
+
+TGraphAsymmErrors* TrigEffcyUtils::divide_and_write (TH1* hNum, TH1* hDen, std::map<std::string, TGraphAsymmErrors*>* graph_map = nullptr) {
+    if (!hNum || !hDen) return (TGraphAsymmErrors*)nullptr;
+
+    auto g = new TGraphAsymmErrors();
+    g->BayesDivide(hNum, hDen);
+
+    // Name: "h_<...>" → "g_<...>" from the *numerator* histo name
+    std::string n = hNum->GetName() ? hNum->GetName() : "graph";
+    
+    n += "_divided";
+    if (n.rfind("h_", 0) == 0) n.replace(0, 2, "g_"); else n = "g_" + n;
+    g->SetName(n.c_str());
+
+    if (graph_map == nullptr)   g->Write(g->GetName(), TObject::kOverwrite);
+    else{
+        (*graph_map)[g->GetName()] = g;
+    }
+
+    return g;
 }
 
 void TrigEffcyUtils::flatten_levels(
@@ -119,5 +211,19 @@ void TrigEffcyUtils::SumTrigEffHistsGeneric(
                 hist_map.emplace(hname_post_sum, h_post_sum);
             }
         }
+    }
+}
+
+template <typename H>
+void TrigEffcyUtils::write_hist_map_vector(
+    std::map<std::string, H*>& m,
+    const std::vector<std::string>& hists_to_not_write)
+{
+    for (auto& kv : m) {
+        const auto& name = kv.first;
+        if (std::find(hists_to_not_write.begin(), hists_to_not_write.end(), name)
+            != hists_to_not_write.end()) continue;
+
+        kv.second->Write();        // THnD in a vector
     }
 }

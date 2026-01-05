@@ -90,7 +90,19 @@ void test_proj_range_to_suffix(){
         {2.0f, 2.4f}
     };
 
-    for (auto range : proj_ranges){
+    std::vector<std::pair<float, float>> q_eta_proj_ranges_incl_gap_for_single_muon_effcy_pT_fitting = { // coarse bins including gaps
+        {-2.4f, -2.0f}, 
+        {-2.0f, -1.5}, 
+        {-1.5, -1.0f}, 
+        {-1.0f, -0.5f}, 
+        {-0.5f, 0.5f}, 
+        {0.5f, 1.0f}, 
+        {1.0f, 1.5f}, 
+        {1.5f, 2.0f}, 
+        {2.0f, 2.2f}
+    };
+
+    for (auto range : q_eta_proj_ranges_incl_gap_for_single_muon_effcy_pT_fitting){
         std::string suffix = pairToSuffix(range);
         std::cout << "Suffix: " << suffix << std::endl;
         std::string histProjName = "h2D_py_" + suffix;

@@ -1,27 +1,27 @@
 #include "RDFBasedHistFillingData.cxx"
 
 void RDFBasedHistFillingPP::Initialize(){
-    TriggerModeSettings();
+    InitializeData();
     
     infile_var1D_json = "var1D_pp.json";
 
-    run_year %= 2000;
     if (run_year == 24){
     	input_files.push_back("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024" + trig_suffix + "_res_cut_v2.root");
-    	output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/histograms_real_pairs_pp_2024" + trig_suffix + ".root";        
+    	output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/histograms_real_pairs_pp_2024" + out_file_suffix + ".root";
     } else if (run_year == 17){
         input_files.push_back("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/muon_pairs_pp_2017" + trig_suffix + "_res_cut_v2.root");
-        output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/histograms_real_pairs_pp_2017" + trig_suffix + ".root";
+        output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/histograms_real_pairs_pp_2017" + out_file_suffix + ".root";
         trigs = {"_mu4", "_2mu4"};
         trigs_pair = {{"_2mu4","_mu4"}};
-
     }
 	
+    levels_trg_effcy_to_be_summed_w_musign_summing = {0,1,2}; // ss/op + mu1/2 + mu+/-
+
     levels_trg_effcy_filters_1D_pre_sum = {{"_ss", "_op"},
                                         {"_mu1passmu4", "_mu2passmu4"},
                                         {"_sign1", "_sign2"},
                                         trigs,
-                                        {"", "_good_accept", "_sepr"}};
+                                        trg_effcy_biases};
 
     levels_trg_effcy_filters_2D_3D_pre_sum = {{"_ss", "_op"},
                                         {"_mu1passmu4", "_mu2passmu4"},
@@ -31,7 +31,42 @@ void RDFBasedHistFillingPP::Initialize(){
 
     categories_essential = pair_signs;
 
-	RDFBasedHistFillingData::Initialize();
+	RDFBasedHistFillingBaseClass::Initialize();
+}
+
+void RDFBasedHistFillingPP::TrigEffcyFiltersPrePostSumFlattening(){
+    RDFBasedHistFillingData::TrigEffcyFiltersPrePostSumFlattening();
+
+    // build to-be-summed levels, with mu-sign summing
+    for (int level_ind = 0;
+         level_ind < static_cast<int>(levels_trg_effcy_filters_2D_3D_pre_sum.size());
+         ++level_ind)
+    {
+        if (std::find(levels_trg_effcy_to_be_summed_w_musign_summing.begin(),
+                      levels_trg_effcy_to_be_summed_w_musign_summing.end(),
+                      level_ind) != levels_trg_effcy_to_be_summed_w_musign_summing.end())
+        {
+            levels_trg_effcy_filters_to_be_summed_w_musign_summing.push_back(
+                levels_trg_effcy_filters_2D_3D_pre_sum.at(level_ind)
+            );
+        }
+    }
+
+    // flatten to-be-summed levels, with mu-sign summing
+    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_to_be_summed_w_musign_summing, trg_effcy_filters_to_be_summed_w_musign_summing);    
+
+    // build post-sum levels, with mu-sign summing
+    TrigEffcyUtils::write_post_sum_levels(levels_trg_effcy_filters_1D_pre_sum,
+                          levels_trg_effcy_to_be_summed_w_musign_summing,
+                          levels_trg_effcy_filters_1D_post_sum_w_musign_summing);
+
+    TrigEffcyUtils::write_post_sum_levels(levels_trg_effcy_filters_2D_3D_pre_sum,
+                          levels_trg_effcy_to_be_summed_w_musign_summing,
+                          levels_trg_effcy_filters_2D_3D_post_sum_w_musign_summing);
+
+    // flatten post-sum levels, with mu-sign summing
+    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_1D_post_sum_w_musign_summing, trg_effcy_filters_1D_post_sum_w_musign_summing);
+    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_2D_3D_post_sum_w_musign_summing, trg_effcy_filters_2D_3D_post_sum_w_musign_summing);
 }
 
 void RDFBasedHistFillingPP::FillHistogramsSingleMuonEffcy(){
@@ -79,7 +114,7 @@ void RDFBasedHistFillingPP::FillHistogramsDimuTrigGivenMu4(){
                         df_map.emplace(df_name + "_sepr", map_at_checked(df_map, df_name, Form("FillHistogramsSingleMuonEffcy: df_map.at(%s)", df_name.c_str())).Filter("passSeparated"));
                         df_map.emplace(df_name + "_good_accept", map_at_checked(df_map, df_name, Form("FillHistogramsSingleMuonEffcy: df_map.at(%s)", df_name.c_str())).Filter("second_muon_good_acceptance"));
                         
-                        for (auto bias : {"", "_good_accept", "_sepr"}){ // additional selection / bias in data sample
+                        for (auto bias : trg_effcy_biases){ // additional selection / bias in data sample
                             std::string df_name = "df" + pair_sign + mu4sel + mu_sign + trg + bias;
                             std::string filter = df_name.substr(2);
 
@@ -98,15 +133,57 @@ void RDFBasedHistFillingPP::FillHistogramsDimuTrigGivenMu4(){
 
 void RDFBasedHistFillingPP::FillHistogramsMu4GivenMB(){}
 
-
 void RDFBasedHistFillingPP::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(){}
+
+void RDFBasedHistFillingPP::SumSingleMuonTrigEffHists(){
+    RDFBasedHistFillingData::SumSingleMuonTrigEffHists();
+
+    // 1D, with mu-sign summing
+    TrigEffcyUtils::SumTrigEffHistsGeneric<TH1D, std::string>(
+        single_muon_trig_effcy_var1Ds,
+        trg_effcy_filters_1D_post_sum_w_musign_summing,
+        trg_effcy_filters_to_be_summed_w_musign_summing,
+        hist1D_map,
+        [](const std::string& var) {
+            return "h_" + var;
+        }
+    );
+
+    // 2D, with mu-sign summing
+    TrigEffcyUtils::SumTrigEffHistsGeneric<TH2D, std::array<std::string,2>>(
+        single_muon_trig_effcy_var2Ds,
+        trg_effcy_filters_2D_3D_post_sum_w_musign_summing,
+        trg_effcy_filters_to_be_summed_w_musign_summing,
+        hist2D_map,
+        [](const std::array<std::string,2>& vars) {
+            const std::string& varx = vars[0];
+            const std::string& vary = vars[1];
+            return "h_" + vary + "_vs_" + varx;
+        }
+    );
+
+    // 3D, with mu-sign summing
+    TrigEffcyUtils::SumTrigEffHistsGeneric<TH3D, std::array<std::string,3>>(
+        single_muon_trig_effcy_var3Ds,
+        trg_effcy_filters_2D_3D_post_sum_w_musign_summing,
+        trg_effcy_filters_to_be_summed_w_musign_summing,
+        hist3D_map,
+        [](const std::array<std::string,3>& vars) {
+            const std::string& varx = vars[0];
+            const std::string& vary = vars[1];
+            const std::string& varz = vars[2];
+            return "h_" + varz + "_vs_" + vary + "_vs_" + varx;
+        }
+    );
+}
 
 void RDFBasedHistFillingPP::CalculateSingleMuonTrigEffcyRatios(){
     CalculateSingleMuonTrigEffcyRatiosHelper(musigns);
 }
 
-void RDFBasedHistFillingPP::MakeAndWriteSingleMuonPtTrigEffGraphs(){
-    MakeAndWriteSingleMuonPtTrigEffGraphsHelper(musigns);
+void RDFBasedHistFillingPP::MakeAndWriteSingleMuonTrigEffPtGraphs(){
+    if(useCoarseQEtaBin)    MakeAndWriteSingleMuonTrigEffPtGraphsHelper({});
+    else                    MakeAndWriteSingleMuonTrigEffPtGraphsHelper(musigns);
 }
 
 void RDFBasedHistFillingPP::OpenEffcyPtFitFile(){}
