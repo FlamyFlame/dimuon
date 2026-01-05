@@ -1,15 +1,67 @@
 #include "RDFBasedHistFillingData.h"
-#include "../MuonObjectsParamsAndHelpers/proj_range_to_suffix.cxx"
 #include <type_traits>
 
 
-void RDFBasedHistFillingData::Initialize(){
-    q_eta_ranges_str_incl_gap.clear();
-    for (auto pair : q_eta_proj_ranges_incl_gap_for_single_muon_effcy_pT_fitting){
-        q_eta_ranges_str_incl_gap.push_back("_q_eta_" + pairToSuffix(pair));
+RDFBasedHistFillingData::RDFBasedHistFillingData(int run_year_input, bool isForSoumya_input)
+: run_year (run_year_input), isForSoumya (isForSoumya_input){
+    std::cout << " Histogram filling for data:" << std::endl << std::endl;
+
+    std::cout << "The following public variable(s) **MUST** be checked:" << std::endl;
+    std::cout << "--> trigger_mode: [INT] default 1 (single_mu4)" << std::endl;
+    std::cout << "--> hist_filling_cycle: [INT] default generic" << std::endl << std::endl;
+    std::cout << "--> isForSoumya: [BOOL] default false" << std::endl;
+    std::cout << "--> useCoarseQEtaBin: [BOOL] default true" << std::endl << std::endl;
+
+    std::cout << "The following public variable(s) **SHOULD** be checked:" << std::endl;
+    std::cout << "--> isScram: [BOOL] default false" << std::endl;
+    std::cout << "--> isTight: [BOOL] default false" << std::endl;
+    std::cout << "--> output_generic_hists: [BOOL] default false" << std::endl;
+    std::cout << "--> save_non_sepr_trg_hists: [BOOL] default false" << std::endl;
+    std::cout << "--> save_good_accept_trg_hists: [BOOL] default false" << std::endl;
+    std::cout << std::endl;
+}
+
+void RDFBasedHistFillingData::InitializeData(){
+    run_year %= 2000;
+
+    isForSoumya_suffix = isForSoumya? "_for_soumya" : "";
+
+    useCoarseQEtaBin |= isForSoumya;
+
+    qEtaBin_suffix = isForSoumya    ? ""
+                                    : (useCoarseQEtaBin  ? "_coarse_q_eta_bin"
+                                                        : "_fine_q_eta_bin");
+
+    q_eta_proj_ranges = (run_year > 20)
+        ? (useCoarseQEtaBin ? q_eta_proj_ranges_coarse_incl_gap      : q_eta_proj_ranges_fine_excl_gap)
+        : (useCoarseQEtaBin ? q_eta_proj_ranges_coarse_incl_gap_run2 : q_eta_proj_ranges_fine_excl_gap_run2);
+
+    // fill q_eta_ranges_str needed for child class Initialize() overriden part
+    q_eta_ranges_str.clear();
+    for (auto pair : q_eta_proj_ranges){
+        q_eta_ranges_str.push_back("_q_eta_" + pairToSuffix(pair));
     }
 
-    RDFBasedHistFillingBaseClass::Initialize();
+    if (isForSoumya){
+        single_muon_trig_effcy_var1Ds = {};
+        single_muon_trig_effcy_var2Ds = {{"q_eta2nd","pt2nd"}};
+        single_muon_trig_effcy_var3Ds = {};
+    }
+
+    trig_to_filter_str_map["_mu4"] = "";
+    trig_to_filter_str_map["_mu4_mu4noL1"] = "passmu4mu4noL1";
+    trig_to_filter_str_map["_2mu4"] = "pass2mu4";
+    trig_to_filter_str_map["_2mu4_AND_mu4_mu4noL1"] = "pass2mu4 && passmu4mu4noL1";
+
+    trg_effcy_biases = {"_sepr"};
+    if (save_non_sepr_trg_hists) trg_effcy_biases.push_back("");
+    if (save_good_accept_trg_hists) trg_effcy_biases.push_back("_good_accept");
+
+    TriggerModeSettings();
+
+    out_file_suffix = trig_suffix + isForSoumya_suffix + qEtaBin_suffix;
+    if (save_non_sepr_trg_hists) out_file_suffix += "_w_nonsepr";
+    if (save_good_accept_trg_hists) out_file_suffix += "_w_good_accept";
 }
 
 void RDFBasedHistFillingData::FillHistograms(){    
@@ -26,7 +78,6 @@ void RDFBasedHistFillingData::FillHistograms(){
     } else if (hist_filling_cycle == inv_weight_by_single_mu_effcy && trigger_mode == 1){
         FillTrigEffcyHistsInvWeightedbySingleMuonEffcies();
     }
-    
 }
 
 bool PassSingleMuonGapCut(float meta, float mpt, int mcharge){
@@ -163,7 +214,6 @@ void RDFBasedHistFillingData::BuildTrgEffcyFilterToVarListMap(){
     // ----- ADD INVERSE WEIGHTING ONES!! WITH _mu4_mu4noL1_denom, _2mu4_denom (paired with additional filtering) -----
 }
 
-//--------- BUILD & FLATTERN PRE-SUM, POST-SUM, TO-BE-SUMMED LEVELS ---------
 void RDFBasedHistFillingData::TrigEffcyFiltersPrePostSumFlattening()
 {
     // flatten pre-sum levels
@@ -209,8 +259,8 @@ void RDFBasedHistFillingData::HistPostProcess(){
     if (trigger_mode == 0 || trigger_mode == 1){
         if (hist_filling_cycle == generic){
             SumSingleMuonTrigEffHists();
-            MakeAndWriteSingleMuonPtTrigEffGraphs();
-            CalculateSingleMuonTrigEffcyRatios();           
+            MakeAndWriteSingleMuonTrigEffPtGraphs();
+            if (!isForSoumya) CalculateSingleMuonTrigEffcyRatios();
         } else if (hist_filling_cycle == inv_weight_by_single_mu_effcy){
             MakeAndWriteDRTrigEffGraphs();
         }
@@ -260,51 +310,20 @@ void RDFBasedHistFillingData::SumSingleMuonTrigEffHists(){
 }
 
 //--------- MAKE & WRITE SINGLE-MUON TRIG EFFICIENCY GRAPHS AS FUNCTION OF PT ---------
-void RDFBasedHistFillingData::MakeAndWriteSingleMuonPtTrigEffGraphsHelper(const std::vector<std::string>& categories){
-	std::cout << "Calling MakeAndWriteSingleMuonPtTrigEffGraphs" << std::endl;
+void RDFBasedHistFillingData::MakeAndWriteSingleMuonTrigEffPtGraphsHelper(const std::vector<std::string>& categories){
+	std::cout << "Calling MakeAndWriteSingleMuonTrigEffPtGraphs" << std::endl;
 
-    // helper for projection, making & writing of TEfficiency graphs
-    auto proj_make_and_write = [&](TH2* hNum2D, TH2* hDen2D, bool projy = true, int firstbin = 1, int lastbin = -1, std::string proj_range_str = ""){
-        if (!hNum2D || !hDen2D) return (TGraphAsymmErrors*)nullptr;
+    if (categories.empty()){
 
-        // suffix that captures projection axis & range
-        std::string proj_suffix = projy? "_py" : "_px";
-        if (proj_range_str != "") proj_suffix += "_" + proj_range_str;
+        TH2D* h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr  = map_at_checked(hist2D_map, "h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr",    "MakeAndWriteSingleMuonTrigEffPtGraphs: hist2D_map.at(h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr)");
+        TH2D* h_pt2nd_vs_q_eta2nd_mu4_sepr          = map_at_checked(hist2D_map, "h_pt2nd_vs_q_eta2nd_mu4_sepr",            "MakeAndWriteSingleMuonTrigEffPtGraphs: hist2D_map.at(h_pt2nd_vs_q_eta2nd_mu4_sepr)");
+        TH2D* h_pt2nd_vs_q_eta2nd_2mu4_sepr         = map_at_checked(hist2D_map, "h_pt2nd_vs_q_eta2nd_2mu4_sepr",           "MakeAndWriteSingleMuonTrigEffPtGraphs: hist2D_map.at(h_pt2nd_vs_q_eta2nd_2mu4_sepr)");
+        TH2D* h_pt2nd_vs_q_eta2nd_2mu4_AND_mu4_mu4noL1_sepr         = map_at_checked(hist2D_map, "h_pt2nd_vs_q_eta2nd_2mu4_AND_mu4_mu4noL1_sepr",           "MakeAndWriteSingleMuonTrigEffPtGraphs: hist2D_map.at(h_pt2nd_vs_q_eta2nd_2mu4_AND_mu4_mu4noL1_sepr)");
 
-        std::unique_ptr<TH1> hNum1D(
-            projy ? hNum2D->ProjectionY(Form("%s%s", hNum2D->GetName(), proj_suffix.c_str()), firstbin, lastbin, "e")
-                  : hNum2D->ProjectionX(Form("%s%s", hNum2D->GetName(), proj_suffix.c_str()), firstbin, lastbin, "e")
-        );
-
-        std::unique_ptr<TH1> hDen1D(
-            projy ? hDen2D->ProjectionY(Form("%s%s", hDen2D->GetName(), proj_suffix.c_str()), firstbin, lastbin, "e")
-                  : hDen2D->ProjectionX(Form("%s%s", hDen2D->GetName(), proj_suffix.c_str()), firstbin, lastbin, "e")
-        );
-
-        auto g = new TGraphAsymmErrors();
-        g->BayesDivide(hNum1D.get(), hDen1D.get());
-
-        // Name: "h_<...>" → "g_<...>" from the *numerator* histo name
-        std::string n = hNum1D->GetName() ? hNum1D->GetName() : "graph";
-        
-        n += "_divided";
-        if (n.rfind("h_", 0) == 0) n.replace(0, 2, "g_"); else n = "g_" + n;
-        g->SetName(n.c_str());
-
-        g->Write(g->GetName(), TObject::kOverwrite);
-        return g;
-    };
-
-    // ----- draw for each category -----
-    for (std::string category : categories){
-        TH2D* h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr  = map_at_checked(hist2D_map, "h_pt2nd_vs_q_eta2nd" + category + "_mu4_mu4noL1_sepr",    Form("MakeAndWriteSingleMuonPtTrigEffGraphs: hist2D_map.at(%s)", ("h_pt2nd_vs_q_eta2nd" + category + "_mu4_mu4noL1_sepr").c_str()));
-        TH2D* h_pt2nd_vs_q_eta2nd_mu4_sepr          = map_at_checked(hist2D_map, "h_pt2nd_vs_q_eta2nd" + category + "_mu4_sepr",            Form("MakeAndWriteSingleMuonPtTrigEffGraphs: hist2D_map.at(%s)", ("h_pt2nd_vs_q_eta2nd" + category + "_mu4_sepr").c_str()));
-        TH2D* h_pt2nd_vs_q_eta2nd_2mu4_sepr         = map_at_checked(hist2D_map, "h_pt2nd_vs_q_eta2nd" + category + "_2mu4_sepr",           Form("MakeAndWriteSingleMuonPtTrigEffGraphs: hist2D_map.at(%s)", ("h_pt2nd_vs_q_eta2nd" + category + "_2mu4_sepr").c_str()));
-
-        if (!h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr || !h_pt2nd_vs_q_eta2nd_mu4_sepr || !h_pt2nd_vs_q_eta2nd_2mu4_sepr) continue;
-
-        proj_make_and_write(h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr,     h_pt2nd_vs_q_eta2nd_mu4_sepr);
-        proj_make_and_write(h_pt2nd_vs_q_eta2nd_2mu4_sepr,            h_pt2nd_vs_q_eta2nd_mu4_sepr);
+        if (!h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr || !h_pt2nd_vs_q_eta2nd_mu4_sepr || !h_pt2nd_vs_q_eta2nd_2mu4_sepr || !h_pt2nd_vs_q_eta2nd_2mu4_AND_mu4_mu4noL1_sepr){
+            std::cout << "MakeAndWriteSingleMuonTrigEffPtGraphsHelper: Histogram pointers are nullptr! Return without making graphs!" << std::endl;
+            return;
+        }
 
         // ----- extract q-eta bins (might be category dependent) -----
         std::vector<double> eta_bins_trig_effcy = {};
@@ -314,15 +333,65 @@ void RDFBasedHistFillingData::MakeAndWriteSingleMuonPtTrigEffGraphsHelper(const 
         const double* arr = xaxis->GetXbins()->GetArray();
         eta_bins_trig_effcy.assign(arr, arr + nbins + 1);
 
-        for (auto range : q_eta_proj_ranges_for_single_muon_effcy_pT_fitting){
+        for (auto range : q_eta_proj_ranges){
+            int bin_first = bin_number(range.first, eta_bins_trig_effcy) + 1; // + 1 pushes into next bin (bin lower end agree with range edge if range edge founded)
+            int bin_last = bin_number(range.second, eta_bins_trig_effcy); // bin higher end agree with range edge if range edge founded
+            
+            std::string proj_suffix = pairToSuffix(range);
+
+            if (isForSoumya){
+                TrigEffcyUtils::proj_and_write(h_pt2nd_vs_q_eta2nd_mu4_sepr,                    true, bin_first, bin_last, proj_suffix, &hist1D_map);
+                TrigEffcyUtils::proj_and_write(h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr,            true, bin_first, bin_last, proj_suffix, &hist1D_map);
+                TrigEffcyUtils::proj_and_write(h_pt2nd_vs_q_eta2nd_2mu4_sepr,                   true, bin_first, bin_last, proj_suffix, &hist1D_map);
+                TrigEffcyUtils::proj_and_write(h_pt2nd_vs_q_eta2nd_2mu4_AND_mu4_mu4noL1_sepr,   true, bin_first, bin_last, proj_suffix, &hist1D_map);
+            } else{
+
+                TrigEffcyUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr,           h_pt2nd_vs_q_eta2nd_mu4_sepr, true, bin_first, bin_last, proj_suffix, &graph_map);
+                TrigEffcyUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_2mu4_sepr,                  h_pt2nd_vs_q_eta2nd_mu4_sepr, true, bin_first, bin_last, proj_suffix, &graph_map);
+                TrigEffcyUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_2mu4_AND_mu4_mu4noL1_sepr,  h_pt2nd_vs_q_eta2nd_mu4_sepr, true, bin_first, bin_last, proj_suffix, &graph_map);                
+            }
+        }
+
+        return;
+    }
+
+    for (std::string category : categories){
+        TH2D* h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr  = map_at_checked(hist2D_map, "h_pt2nd_vs_q_eta2nd" + category + "_mu4_mu4noL1_sepr",    Form("MakeAndWriteSingleMuonTrigEffPtGraphs: hist2D_map.at(%s)", ("h_pt2nd_vs_q_eta2nd" + category + "_mu4_mu4noL1_sepr").c_str()));
+        TH2D* h_pt2nd_vs_q_eta2nd_mu4_sepr          = map_at_checked(hist2D_map, "h_pt2nd_vs_q_eta2nd" + category + "_mu4_sepr",            Form("MakeAndWriteSingleMuonTrigEffPtGraphs: hist2D_map.at(%s)", ("h_pt2nd_vs_q_eta2nd" + category + "_mu4_sepr").c_str()));
+        TH2D* h_pt2nd_vs_q_eta2nd_2mu4_sepr         = map_at_checked(hist2D_map, "h_pt2nd_vs_q_eta2nd" + category + "_2mu4_sepr",           Form("MakeAndWriteSingleMuonTrigEffPtGraphs: hist2D_map.at(%s)", ("h_pt2nd_vs_q_eta2nd" + category + "_2mu4_sepr").c_str()));
+        TH2D* h_pt2nd_vs_q_eta2nd_2mu4_AND_mu4_mu4noL1_sepr         = map_at_checked(hist2D_map, "h_pt2nd_vs_q_eta2nd" + category + "_2mu4_AND_mu4_mu4noL1_sepr",           Form("MakeAndWriteSingleMuonTrigEffPtGraphs: hist2D_map.at(%s)", ("h_pt2nd_vs_q_eta2nd" + category + "_2mu4_AND_mu4_mu4noL1_sepr").c_str()));
+
+        if (!h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr || !h_pt2nd_vs_q_eta2nd_mu4_sepr || !h_pt2nd_vs_q_eta2nd_2mu4_sepr || !h_pt2nd_vs_q_eta2nd_2mu4_AND_mu4_mu4noL1_sepr) continue;
+
+        // TrigEffcyUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr,           h_pt2nd_vs_q_eta2nd_mu4_sepr, &graph_map);
+        // TrigEffcyUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_2mu4_sepr,                  h_pt2nd_vs_q_eta2nd_mu4_sepr, &graph_map);
+        // TrigEffcyUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_2mu4_AND_mu4_mu4noL1_sepr,  h_pt2nd_vs_q_eta2nd_mu4_sepr, &graph_map);
+
+        // ----- extract q-eta bins (might be category dependent) -----
+        std::vector<double> eta_bins_trig_effcy = {};
+
+        const TAxis* xaxis = h_pt2nd_vs_q_eta2nd_mu4_sepr->GetXaxis();
+        int nbins = xaxis->GetNbins();
+        const double* arr = xaxis->GetXbins()->GetArray();
+        eta_bins_trig_effcy.assign(arr, arr + nbins + 1);
+
+        for (auto range : q_eta_proj_ranges){
             int bin_first = bin_number(range.first, eta_bins_trig_effcy) + 1; // + 1 pushes into next bin (bin lower end agree with range edge if range edge founded)
             int bin_last = bin_number(range.second, eta_bins_trig_effcy); // bin higher end agree with range edge if range edge founded
             std::string proj_suffix = pairToSuffix(range);
 
-            proj_make_and_write(h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr,     h_pt2nd_vs_q_eta2nd_mu4_sepr, true, bin_first, bin_last, proj_suffix);
-            proj_make_and_write(h_pt2nd_vs_q_eta2nd_2mu4_sepr,            h_pt2nd_vs_q_eta2nd_mu4_sepr, true, bin_first, bin_last, proj_suffix);
+            if (isForSoumya){
+                TrigEffcyUtils::proj_and_write(h_pt2nd_vs_q_eta2nd_mu4_sepr,                    true, bin_first, bin_last, proj_suffix, &hist1D_map);
+                TrigEffcyUtils::proj_and_write(h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr,            true, bin_first, bin_last, proj_suffix, &hist1D_map);
+                TrigEffcyUtils::proj_and_write(h_pt2nd_vs_q_eta2nd_2mu4_sepr,                   true, bin_first, bin_last, proj_suffix, &hist1D_map);
+                TrigEffcyUtils::proj_and_write(h_pt2nd_vs_q_eta2nd_2mu4_AND_mu4_mu4noL1_sepr,   true, bin_first, bin_last, proj_suffix, &hist1D_map);
+            } else{
+                TrigEffcyUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr,           h_pt2nd_vs_q_eta2nd_mu4_sepr, true, bin_first, bin_last, proj_suffix, &graph_map);
+                TrigEffcyUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_2mu4_sepr,                  h_pt2nd_vs_q_eta2nd_mu4_sepr, true, bin_first, bin_last, proj_suffix, &graph_map);
+                TrigEffcyUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_2mu4_AND_mu4_mu4noL1_sepr,  h_pt2nd_vs_q_eta2nd_mu4_sepr, true, bin_first, bin_last, proj_suffix, &graph_map);
+            }
         }
-    }	
+    }
 }
 
 void RDFBasedHistFillingData::CalculateSingleMuonTrigEffcyRatiosHelper(
@@ -374,3 +443,12 @@ std::string RDFBasedHistFillingData::FindBinReturnStr(float number, const std::v
 float RDFBasedHistFillingData::EvaluateSingleMuonEffcyPtFitted(bool charge_sign, std::string trg, float pt_2nd, float q_eta_2nd, float phi_2nd){return 0;}
 
 float RDFBasedHistFillingData::EvaluateSingleMuonEffcy(bool charge_sign, std::string trg, float pt_2nd, float q_eta_2nd, float phi_2nd){return 0;}
+
+void RDFBasedHistFillingData::Finalize(){
+
+    TrigEffcyUtils::write_hist_map_vector(graph_map, graphs_to_not_write);
+
+    RDFBasedHistFillingBaseClass::Finalize();
+
+    for (auto g : graph_map) delete g.second;
+}

@@ -1,4 +1,6 @@
 #include "RDFBasedHistFillingBaseClass.h"
+#include <ROOT/RDFHelpers.hxx>     // ROOT::RDF::RunGraphs
+#include <ROOT/RResultHandle.hxx>  // ROOT::RDF::RResultHandle
 #include <map>
 #include <string>
 #include <vector>
@@ -12,8 +14,6 @@ void RDFBasedHistFillingBaseClass::Run(){
 	auto verbosity = ROOT::Experimental::RLogScopedVerbosity(ROOT::Detail::RDF::RDFLogChannel(), ROOT::Experimental::ELogLevel::kInfo);
 
 	Initialize();
-
-	// ROOT::EnableImplicitMT();
 
     ProcessData();
 
@@ -29,8 +29,11 @@ void RDFBasedHistFillingBaseClass::Run(){
 
 // ------- PROCESS DATA -------
 void RDFBasedHistFillingBaseClass::ProcessData(){    
+    ROOT::EnableImplicitMT();
+    
     CreateRDFs();
     FillHistograms();
+
     HistPostProcess();
 }
 
@@ -52,9 +55,6 @@ void RDFBasedHistFillingBaseClass::Initialize(){
     hist1d_rresultptr_map.clear();
     hist2d_rresultptr_map.clear();
     hist3d_rresultptr_map.clear();
-    hist1D_map.clear();
-    hist2D_map.clear();
-    hist3D_map.clear();
     
     TH1::SetDefaultSumw2(kTRUE); // turn on Sumw2 for all histograms
 
@@ -87,16 +87,28 @@ auto& map_at_checked(Map& m, const std::string& key, const char* where)
 void RDFBasedHistFillingBaseClass::HistPostProcess(){
     std::cout << "Calling RDFBasedHistFillingBaseClass::HistPostProcess" << std::endl;
 
-    for (auto kv : hist1d_rresultptr_map){
-        hist1D_map.emplace(kv.first, kv.second.GetPtr());
-    }
-    for (auto kv : hist2d_rresultptr_map){
-        hist2D_map.emplace(kv.first, kv.second.GetPtr());
-    }
-    for (auto kv : hist3d_rresultptr_map){
-        hist3D_map.emplace(kv.first, kv.second.GetPtr());
-    }
+    // 1) Force completion of all booked actions (1D/2D/3D) before GetPtr()
+    std::vector<ROOT::RDF::RResultHandle> handles;
+    handles.reserve(hist1d_rresultptr_map.size()
+                  + hist2d_rresultptr_map.size()
+                  + hist3d_rresultptr_map.size());
+
+    for (auto &kv : hist1d_rresultptr_map) handles.emplace_back(ROOT::RDF::RResultHandle{kv.second});
+    for (auto &kv : hist2d_rresultptr_map) handles.emplace_back(ROOT::RDF::RResultHandle{kv.second});
+    for (auto &kv : hist3d_rresultptr_map) handles.emplace_back(ROOT::RDF::RResultHandle{kv.second});
+
+    ROOT::RDF::RunGraphs(std::move(handles));
+
+    // 2) Convert to raw histogram pointers (RResultPtr must outlive your use of these!)
+    hist1D_map.clear();
+    hist2D_map.clear();
+    hist3D_map.clear();
+
+    for (auto &kv : hist1d_rresultptr_map) hist1D_map.emplace(kv.first, kv.second.GetPtr());
+    for (auto &kv : hist2d_rresultptr_map) hist2D_map.emplace(kv.first, kv.second.GetPtr());
+    for (auto &kv : hist3d_rresultptr_map) hist3D_map.emplace(kv.first, kv.second.GetPtr());
 }
+
 
 //--------- ---------
 void RDFBasedHistFillingBaseClass::BuildFilterToVarListMap(){
@@ -132,30 +144,18 @@ void RDFBasedHistFillingBaseClass::BuildHistBinningMap(){
 }
 
 // ---------- WRITE OUTPUT & FINALIZE ----------
-template <typename H>
-void write_hist_map_vector(
-    std::map<std::string, H*>& m,
-    const std::vector<std::string>& hists_to_not_write)
-{
-    for (auto& kv : m) {
-        const auto& name = kv.first;
-        if (std::find(hists_to_not_write.begin(), hists_to_not_write.end(), name)
-            != hists_to_not_write.end()) continue;
-
-        kv.second->Write();        // THnD in a vector
-    }
-}
 
 void RDFBasedHistFillingBaseClass::Finalize(){
 
     // ----- write output -----
 
     // std::vector<THnD> maps
-    write_hist_map_vector(hist1D_map, hists_to_not_write);
-    write_hist_map_vector(hist2D_map, hists_to_not_write);
-    write_hist_map_vector(hist3D_map, hists_to_not_write);
+    TrigEffcyUtils::write_hist_map_vector(hist1D_map, hists_to_not_write);
+    TrigEffcyUtils::write_hist_map_vector(hist2D_map, hists_to_not_write);
+    TrigEffcyUtils::write_hist_map_vector(hist3D_map, hists_to_not_write);
 
     // ----- delete pointers -----
+    m_outfile->Close();
     delete m_outfile;
 
     for (auto kv : var1D_dict){

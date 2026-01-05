@@ -1,19 +1,18 @@
 #include "RDFBasedHistFillingData.cxx"
 
 void RDFBasedHistFillingPbPb::Initialize(){
-    TriggerModeSettings();
+    InitializeData();
 
 	infile_var1D_json = "var1D_pbpb.json";
 
-	run_year %= 2000;
 	std::string run_year_str = std::to_string(run_year);
 
 	if (run_year == 23 || run_year == 24 || run_year == 25){
 		input_files.push_back("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/muon_pairs_pbpb_20" + run_year_str + trig_suffix + "_res_cut_v2.root");
-		output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/histograms_real_pairs_pbpb_20" + run_year_str + trig_suffix + ".root";
+		output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/histograms_real_pairs_pbpb_20" + run_year_str + out_file_suffix + ".root";
 	} else if (run_year == 15 || run_year == 18){
 		input_files.push_back("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/muon_pairs_pbpb_20" + run_year_str + trig_suffix + "_res_cut_v2.root");
-		output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/histograms_real_pairs_pbpb_20" + run_year_str + trig_suffix + ".root";
+		output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/histograms_real_pairs_pbpb_20" + run_year_str + out_file_suffix + ".root";
 	} else{
 	    throw std::runtime_error("Run year must be 15/18/23/24/25! Current input invalid: " + run_year_str);
 	}
@@ -30,16 +29,43 @@ void RDFBasedHistFillingPbPb::Initialize(){
     levels_trg_effcy_filters_1D_pre_sum = {{"_ss", "_op"}, // add a level of ctr bins for Pb+Pb
                                         {"_mu1passmu4", "_mu2passmu4"},
                                         ctr_bins,
-                                        {"_sign1", "_sign2"},
+                                        musigns,
                                         trigs,
-                                        {"", "_sepr"}};
+                                        trg_effcy_biases};
 
     levels_trg_effcy_filters_2D_3D_pre_sum = {{"_ss", "_op"}, // add a level of ctr bins for Pb+Pb
                                         {"_mu1passmu4", "_mu2passmu4"},
                                         ctr_bins,
-                                        {"_sign1", "_sign2"},
+                                        musigns,
                                         trigs,
-                                        {"", "_sepr"}};
+                                        trg_effcy_biases};
+
+	levels_trg_effcy_filters_1D_pre_sum_w_musign_ctr_summing 
+									=  {{"_ss", "_op"}, // add a level of ctr bins for Pb+Pb
+                                        {"_mu1passmu4", "_mu2passmu4"},
+                                        trigs,
+                                        trg_effcy_biases};
+
+	levels_trg_effcy_filters_2D_3D_pre_sum_w_musign_ctr_summing
+									=  {{"_ss", "_op"}, // add a level of ctr bins for Pb+Pb
+                                        {"_mu1passmu4", "_mu2passmu4"},
+                                        trigs,
+                                        trg_effcy_biases};
+
+	levels_trg_effcy_filters_1D_pre_sum_w_ctr_summing
+									=  {{"_ss", "_op"}, // add a level of ctr bins for Pb+Pb
+                                        {"_mu1passmu4", "_mu2passmu4"},
+                                        musigns,
+                                        trigs,
+                                        trg_effcy_biases};
+
+	levels_trg_effcy_filters_2D_3D_pre_sum_w_ctr_summing
+									=  {{"_ss", "_op"}, // add a level of ctr bins for Pb+Pb
+                                        {"_mu1passmu4", "_mu2passmu4"},
+                                        musigns,
+                                        trigs,
+                                        trg_effcy_biases};
+
 
     for (int ipt = 0; ipt < pT_bins_edges_for_trg_effcy_ctr_dep.size() - 1; ipt++){
         int pt_bin_low_edge = pT_bins_edges_for_trg_effcy_ctr_dep.at(ipt);
@@ -47,19 +73,12 @@ void RDFBasedHistFillingPbPb::Initialize(){
         pT_bins_for_trg_effcy_ctr_dep.push_back("_pt" + std::to_string(pt_bin_low_edge) + "_" + std::to_string(pt_bin_high_edge));
     }
 
-    levels_trg_effcy_filters_ctr_dep_mid_rapidity_1D_pre_sum = {{"_ss", "_op"}, // add a level of ctr bins for Pb+Pb
+    levels_trg_effcy_filters_ctr_dep_pre_sum = {{"_ss", "_op"}, // add a level of ctr bins for Pb+Pb
                                         {"_mu1passmu4", "_mu2passmu4"},
                                         pT_bins_for_trg_effcy_ctr_dep,
-                                        {"_mid_rapidity"},
+										q_eta_ranges_str,
                                         trigs,
-                                        {"_sepr"}};
-
-    levels_trg_effcy_filters_ctr_dep_1D_pre_sum = {{"_ss", "_op"}, // add a level of ctr bins for Pb+Pb
-                                        {"_mu1passmu4", "_mu2passmu4"},
-                                        pT_bins_for_trg_effcy_ctr_dep,
-										q_eta_ranges_str_incl_gap,
-                                        trigs,
-                                        {"_sepr"}};
+                                        trg_effcy_biases};
 
 	for (std::string ctr : ctr_bins){
     	for (std::string sign : {"_sign1", "_sign2"}){
@@ -73,7 +92,7 @@ void RDFBasedHistFillingPbPb::Initialize(){
 	    }
 	}
 
-	RDFBasedHistFillingData::Initialize();
+	RDFBasedHistFillingBaseClass::Initialize();
 }
 
 // ---------- ----------
@@ -110,23 +129,64 @@ void RDFBasedHistFillingPbPb::BuildTrgEffcyFilterToVarListMap(){
 
 	RDFBasedHistFillingData::BuildTrgEffcyFilterToVarListMap();
 
+    for (auto filter : trg_effcy_filters_1D_pre_sum_w_ctr_summing)    df_filter_to_var1D_list_map[filter] = single_muon_trig_effcy_var1Ds;
+    for (auto filter : trg_effcy_filters_2D_3D_pre_sum_w_ctr_summing) df_filter_to_var2D_list_map[filter] = single_muon_trig_effcy_var2Ds;
+    for (auto filter : trg_effcy_filters_2D_3D_pre_sum_w_ctr_summing) df_filter_to_var3D_list_map[filter] = single_muon_trig_effcy_var3Ds;
+
+    for (auto filter : trg_effcy_filters_1D_pre_sum_w_musign_ctr_summing)    df_filter_to_var1D_list_map[filter] = single_muon_trig_effcy_var1Ds;
+    for (auto filter : trg_effcy_filters_2D_3D_pre_sum_w_musign_ctr_summing) df_filter_to_var2D_list_map[filter] = single_muon_trig_effcy_var2Ds;
+    for (auto filter : trg_effcy_filters_2D_3D_pre_sum_w_musign_ctr_summing) df_filter_to_var3D_list_map[filter] = single_muon_trig_effcy_var3Ds;
+
     for (auto filter : trg_effcy_filters_ctr_dep_1D_pre_sum) df_filter_to_var1D_list_map[filter] = std::vector<std::string>({"ctr"});
 }
 
+//--------- BUILD & FLATTERN PRE-SUM, POST-SUM, TO-BE-SUMMED LEVELS ---------
 void RDFBasedHistFillingPbPb::TrigEffcyFiltersPrePostSumFlattening()
 {
     RDFBasedHistFillingData::TrigEffcyFiltersPrePostSumFlattening();
 
-    // build post-sum levels
-    TrigEffcyUtils::write_post_sum_levels(levels_trg_effcy_filters_ctr_dep_1D_pre_sum,
+    // build post-sum levels, ctr dep
+    TrigEffcyUtils::write_post_sum_levels(levels_trg_effcy_filters_ctr_dep_pre_sum,
                           levels_trg_effcy_to_be_summed,
-                          levels_trg_effcy_filters_ctr_dep_1D_post_sum);
+                          levels_trg_effcy_filters_ctr_dep_post_sum);
 
-    // flatten pre-sum & post-sum levels
-    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_ctr_dep_1D_pre_sum,	trg_effcy_filters_ctr_dep_1D_pre_sum);
-    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_ctr_dep_1D_post_sum, trg_effcy_filters_ctr_dep_1D_post_sum);
+    // flatten pre-sum & post-sum levels, ctr dep
+    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_ctr_dep_pre_sum,	trg_effcy_filters_ctr_dep_1D_pre_sum);
+    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_ctr_dep_post_sum, 	trg_effcy_filters_ctr_dep_1D_post_sum);
+
+    // flatten pre-sum levels, with ctr (+ musign) summing
+    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_1D_pre_sum_w_musign_ctr_summing, trg_effcy_filters_1D_pre_sum_w_musign_ctr_summing);
+    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_2D_3D_pre_sum_w_musign_ctr_summing, trg_effcy_filters_2D_3D_pre_sum_w_musign_ctr_summing);
+
+    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_1D_pre_sum_w_ctr_summing, trg_effcy_filters_1D_pre_sum_w_ctr_summing);
+    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_2D_3D_pre_sum_w_ctr_summing, trg_effcy_filters_2D_3D_pre_sum_w_ctr_summing);
+
+    // build post-sum levels, with ctr (+ musign) summing
+    TrigEffcyUtils::write_post_sum_levels(levels_trg_effcy_filters_1D_pre_sum_w_musign_ctr_summing,
+                          levels_trg_effcy_to_be_summed,
+                          levels_trg_effcy_filters_1D_post_sum_w_musign_ctr_summing);
+
+    TrigEffcyUtils::write_post_sum_levels(levels_trg_effcy_filters_2D_3D_pre_sum_w_musign_ctr_summing,
+                          levels_trg_effcy_to_be_summed,
+                          levels_trg_effcy_filters_2D_3D_post_sum_w_musign_ctr_summing);
+
+    TrigEffcyUtils::write_post_sum_levels(levels_trg_effcy_filters_1D_pre_sum_w_ctr_summing,
+                          levels_trg_effcy_to_be_summed,
+                          levels_trg_effcy_filters_1D_post_sum_w_ctr_summing);
+
+    TrigEffcyUtils::write_post_sum_levels(levels_trg_effcy_filters_2D_3D_pre_sum_w_ctr_summing,
+                          levels_trg_effcy_to_be_summed,
+                          levels_trg_effcy_filters_2D_3D_post_sum_w_ctr_summing);
+
+    // flatten post-sum levels, with ctr (+ musign) summing
+    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_1D_post_sum_w_musign_ctr_summing, trg_effcy_filters_1D_post_sum_w_musign_ctr_summing);
+    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_2D_3D_post_sum_w_musign_ctr_summing, trg_effcy_filters_2D_3D_post_sum_w_musign_ctr_summing);
+
+    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_1D_post_sum_w_ctr_summing, trg_effcy_filters_1D_post_sum_w_ctr_summing);
+    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_2D_3D_post_sum_w_ctr_summing, trg_effcy_filters_2D_3D_post_sum_w_ctr_summing);
 }
 
+// ---------- create essential RDFs ----------
 void RDFBasedHistFillingPbPb::CreateRDFs(){
 	RDFBasedHistFillingBaseClass::CreateRDFs();
 	
@@ -188,7 +248,49 @@ void RDFBasedHistFillingPbPb::FillHistogramsDimuTrigGivenMu4(){
 				df_map.at(df_name) = df_map.at(df_name).Define("phi2nd",	"m" + ind2nd + ".phi");
 				df_map.at(df_name) = df_map.at(df_name).Define("q_eta2nd",	"charge2nd * eta2nd");
 	           	df_map.at(df_name) = df_map.at(df_name).Define("second_muon_good_acceptance",  "pt2nd >= 6 && ((eta2nd > 1.1 && eta2nd < 2.3) || (eta2nd > -2.3 && eta2nd < -1.2))");
-									
+				
+				// ----------- no musign / ctr ----------- 
+
+	            for (auto trg : {"_mu4", "_mu4_mu4noL1", "_2mu4", "_2mu4_AND_mu4_mu4noL1"}){
+	            	std::string trg_filter = map_at_checked(trig_to_filter_str_map, trg, Form("trig_to_filter_str_map.at(%s)", trg));
+	            	if (trg_filter.empty()) df_map.emplace(df_name + trg, map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name.c_str())));
+	            	else 					df_map.emplace(df_name + trg, map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name.c_str())).Filter(trg_filter));
+	               	
+	               	std::string df_name_new = "df" + pair_sign + mu4sel + trg;
+	               	df_map.emplace(df_name_new + "_sepr", map_at_checked(df_map, df_name_new, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name_new.c_str())).Filter("passSeparated"));
+	                
+	               	for (auto bias : trg_effcy_biases){ // additional selection / bias in data sample
+	                   	std::string df_name_new = "df" + pair_sign + mu4sel + trg + bias;
+	                   	std::string filter = df_name_new.substr(2);
+
+	                   	FillHistogramsSingleDataFrame(filter, map_at_checked(df_map, df_name_new, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name.c_str())), false); // do not write the sub-dataframe histograms in output file
+	                }
+	            }
+				// ----------- with musign, no ctr ----------- 
+				df_map.emplace(df_name + "_sign1", map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name.c_str())).Filter("charge2nd > 0")); // e.g, df_ss_mu1passmu4_sign1
+				df_map.emplace(df_name + "_sign2", map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name.c_str())).Filter("charge2nd < 0"));
+
+				for (auto mu_sign : {"_sign1", "_sign2"}){
+	               	std::string df_name = "df" + pair_sign + mu4sel + mu_sign;
+
+	               	for (auto trg : {"_mu4", "_mu4_mu4noL1", "_2mu4", "_2mu4_AND_mu4_mu4noL1"}){
+		            	std::string trg_filter = map_at_checked(trig_to_filter_str_map, trg, Form("trig_to_filter_str_map.at(%s)", trg));
+	            		if (trg_filter.empty()) df_map.emplace(df_name + trg, map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name.c_str())));
+		            	else 					df_map.emplace(df_name + trg, map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name.c_str())).Filter(trg_filter));
+
+	                   	std::string df_name_new = "df" + pair_sign + mu4sel + mu_sign + trg;
+	                   	df_map.emplace(df_name_new + "_sepr", map_at_checked(df_map, df_name_new, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name_new.c_str())).Filter("passSeparated"));
+	                    
+	                   	for (auto bias : trg_effcy_biases){ // additional selection / bias in data sample
+	                       	std::string df_name_new = "df" + pair_sign + mu4sel + mu_sign + trg + bias;
+	                       	std::string filter = df_name_new.substr(2);
+
+	                       	FillHistogramsSingleDataFrame(filter, map_at_checked(df_map, df_name_new, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name_new.c_str())), false); // do not write the sub-dataframe histograms in output file
+	                    }
+	                }
+				}
+
+				// ----------- with musign & ctr ----------- 
 			   	for (int ictr = 0; ictr < nCtrBins; ictr++){
 
 			       	int ctr_bin_low_edge = ctr_bin_edges.at(ictr);
@@ -207,20 +309,20 @@ void RDFBasedHistFillingPbPb::FillHistogramsDimuTrigGivenMu4(){
 
 					for (auto mu_sign : {"_sign1", "_sign2"}){
 	                   	std::string df_name = "df" + pair_sign + mu4sel + ctr + mu_sign;
-	                   	df_map.emplace(df_name + "_mu4", map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name.c_str())));
-	                   	df_map.emplace(df_name + "_mu4_mu4noL1", map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name.c_str())).Filter("passmu4mu4noL1"));
-	                   	df_map.emplace(df_name + "_2mu4", map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name.c_str())).Filter("pass2mu4"));
-	                   	df_map.emplace(df_name + "_2mu4_AND_mu4_mu4noL1", map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name.c_str())).Filter("pass2mu4 && passmu4mu4noL1"));
 
 	                   	for (auto trg : {"_mu4", "_mu4_mu4noL1", "_2mu4", "_2mu4_AND_mu4_mu4noL1"}){
-	                       	std::string df_name = "df" + pair_sign + mu4sel + ctr + mu_sign + trg;
-	                       	df_map.emplace(df_name + "_sepr", map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name.c_str())).Filter("passSeparated"));
-	                        
-	                       	for (auto bias : {"", "_sepr"}){ // additional selection / bias in data sample
-	                           	std::string df_name = "df" + pair_sign + mu4sel + ctr + mu_sign + trg + bias;
-	                           	std::string filter = df_name.substr(2);
+	                    	std::string trg_filter = map_at_checked(trig_to_filter_str_map, trg, Form("trig_to_filter_str_map.at(%s)", trg));
+	            			if (trg_filter.empty()) df_map.emplace(df_name + trg, map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name.c_str())));
+		            		else 		            df_map.emplace(df_name + trg, map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name.c_str())).Filter(trg_filter));
 
-	                           	FillHistogramsSingleDataFrame(filter, map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name.c_str())), false); // do not write the sub-dataframe histograms in output file
+	                       	std::string df_name_new = "df" + pair_sign + mu4sel + ctr + mu_sign + trg;
+	                       	df_map.emplace(df_name_new + "_sepr", map_at_checked(df_map, df_name_new, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name_new.c_str())).Filter("passSeparated"));
+	                        
+	                       	for (auto bias : trg_effcy_biases){ // additional selection / bias in data sample
+	                           	std::string df_name_new = "df" + pair_sign + mu4sel + ctr + mu_sign + trg + bias;
+	                           	std::string filter = df_name_new.substr(2);
+
+	                           	FillHistogramsSingleDataFrame(filter, map_at_checked(df_map, df_name_new, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name_new.c_str())), false); // do not write the sub-dataframe histograms in output file
 	                        }
 	                    }
 					}
@@ -247,9 +349,9 @@ void RDFBasedHistFillingPbPb::FillHistogramsDimuTrigGivenMu4CtrDep(){
 				   	int pt_bin_low_edge = pT_bins_edges_for_trg_effcy_ctr_dep.at(ipt);
 				   	int pt_bin_high_edge = pT_bins_edges_for_trg_effcy_ctr_dep.at(ipt + 1);
 
-					std::string pt = "_pt" + std::to_string(pt_bin_low_edge) + "_" + std::to_string(pt_bin_high_edge);
+					std::string pt_bin = "_pt" + std::to_string(pt_bin_low_edge) + "_" + std::to_string(pt_bin_high_edge);
 					
-					df_map.emplace (df_name + pt, 
+					df_map.emplace (df_name + pt_bin, 
 									map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4CtrDep: df_map.at(%s)", df_name.c_str()))
 									.Filter(
 				        					[pt_bin_low_edge, pt_bin_high_edge](float pt2nd) 
@@ -257,34 +359,38 @@ void RDFBasedHistFillingPbPb::FillHistogramsDimuTrigGivenMu4CtrDep(){
 				        					{"pt2nd"})
 								    );
 
-					df_map.emplace(	df_name + pt + "_mid_rapidity", 
-									map_at_checked(df_map, df_name + pt, 
-										Form("FillHistogramsDimuTrigGivenMu4CtrDep: df_map.at(%s)", 
-											(df_name + pt).c_str()))
-									.Filter([this](float eta2nd) 
-										{return eta2nd >= mid_rapidity_range.first && eta2nd < mid_rapidity_range.second;}
-										, {"eta2nd"})
-									);
-					
-	               	std::string df_name_new = "df" + pair_sign + mu4sel + pt + "_mid_rapidity";
+					for (auto q_eta_pair : q_eta_proj_ranges){
+		               	
+						std::string q_eta_bin = "_q_eta_" + pairToSuffix(q_eta_pair);
 
-	               	df_map.emplace(df_name_new + "_mu4", map_at_checked(df_map, df_name_new, Form("FillHistogramsDimuTrigGivenMu4CtrDep: df_map.at(%s)", df_name_new.c_str())));
-	               	df_map.emplace(df_name_new + "_mu4_mu4noL1", map_at_checked(df_map, df_name_new, Form("FillHistogramsDimuTrigGivenMu4CtrDep: df_map.at(%s)", df_name_new.c_str())).Filter("passmu4mu4noL1"));
-	               	df_map.emplace(df_name_new + "_2mu4", map_at_checked(df_map, df_name_new, Form("FillHistogramsDimuTrigGivenMu4CtrDep: df_map.at(%s)", df_name_new.c_str())).Filter("pass2mu4"));
-	               	df_map.emplace(df_name_new + "_2mu4_AND_mu4_mu4noL1", map_at_checked(df_map, df_name_new, Form("FillHistogramsDimuTrigGivenMu4CtrDep: df_map.at(%s)", df_name_new.c_str())).Filter("pass2mu4 && passmu4mu4noL1"));
+						df_map.emplace(	df_name + pt_bin + q_eta_bin, 
+										map_at_checked(df_map, df_name + pt_bin, 
+											Form("FillHistogramsDimuTrigGivenMu4CtrDep: df_map.at(%s)", 
+												(df_name + pt_bin).c_str()))
+										.Filter([q_eta_pair](float q_eta2nd) 
+											{return q_eta2nd >= q_eta_pair.first && q_eta2nd < q_eta_pair.second;}
+											, {"q_eta2nd"})
+										);
+						
+		               	std::string df_name_new = "df" + pair_sign + mu4sel + pt_bin + q_eta_bin;
 
-	               	for (auto trg : {"_mu4", "_mu4_mu4noL1", "_2mu4", "_2mu4_AND_mu4_mu4noL1"}){
-	                   	std::string df_name = "df" + pair_sign + mu4sel + pt + "_mid_rapidity" + trg;
-	                   	df_map.emplace(df_name + "_sepr", map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4CtrDep: df_map.at(%s)", df_name.c_str())).Filter("passSeparated"));
-	                    
-	                   	for (auto bias : {"_sepr"}){ // additional selection / bias in data sample
-	                       	std::string df_name = "df" + pair_sign + mu4sel + pt + "_mid_rapidity" + trg + bias;
-	                       	std::string filter = df_name.substr(2);
+		               	for (auto trg : {"_mu4", "_mu4_mu4noL1", "_2mu4", "_2mu4_AND_mu4_mu4noL1"}){
+			            	std::string trg_filter = map_at_checked(trig_to_filter_str_map, trg, Form("trig_to_filter_str_map.at(%s)", trg));
+	            			if (trg_filter.empty()) df_map.emplace(df_name_new + trg, map_at_checked(df_map, df_name_new, Form("FillHistogramsDimuTrigGivenMu4CtrDep: df_map.at(%s)", df_name_new.c_str())));
+			            	else 			        df_map.emplace(df_name_new + trg, map_at_checked(df_map, df_name_new, Form("FillHistogramsDimuTrigGivenMu4CtrDep: df_map.at(%s)", df_name_new.c_str())).Filter(trg_filter));
 
-	                       	FillHistogramsSingleDataFrame(filter, map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4CtrDep: df_map.at(%s)", df_name.c_str())), false); // do not write the sub-dataframe histograms in output file
-	                    }
-	                }
-				} // end loop 2nd-muon 	pt
+		                   	std::string df_name_final = "df" + pair_sign + mu4sel + pt_bin + q_eta_bin + trg;
+		                   	df_map.emplace(df_name_final + "_sepr", map_at_checked(df_map, df_name_final, Form("FillHistogramsDimuTrigGivenMu4CtrDep: df_map.at(%s)", df_name_final.c_str())).Filter("passSeparated"));
+		                    
+		                   	for (auto bias : trg_effcy_biases){ // additional selection / bias in data sample
+		                       	std::string df_name_final = "df" + pair_sign + mu4sel + pt_bin + q_eta_bin + trg + bias;
+		                       	std::string filter = df_name_final.substr(2);
+
+		                       	FillHistogramsSingleDataFrame(filter, map_at_checked(df_map, df_name_final, Form("FillHistogramsDimuTrigGivenMu4CtrDep: df_map.at(%s)", df_name_final.c_str())), false); // do not write the sub-dataframe histograms in output file
+		                    }
+		                }
+					} // end loop 2nd-muon q * eta
+				} // end loop 2nd-muon pt
 			} // end loop mu4 selection
 	   	} // end loop pair sign
 	} catch(const std::out_of_range& e){
@@ -299,6 +405,15 @@ void RDFBasedHistFillingPbPb::FillHistogramsMu4GivenMB(){}
 void RDFBasedHistFillingPbPb::FillHistogramsMu4GivenMBCtrDep(){}
 
 void RDFBasedHistFillingPbPb::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(){}
+
+//--------- DATA HIST POST PROCESSING ---------
+void RDFBasedHistFillingPbPb::HistPostProcess(){
+	RDFBasedHistFillingData::HistPostProcess();
+
+    if ((trigger_mode == 0 || trigger_mode == 1) && hist_filling_cycle == generic){
+        MakeAndWriteSingleMuonTrigEffCtrGraphs();
+    }
+}
 
 void RDFBasedHistFillingPbPb::SumSingleMuonTrigEffHists(){
 
@@ -315,14 +430,114 @@ void RDFBasedHistFillingPbPb::SumSingleMuonTrigEffHists(){
             return "h_" + var;
         }
     );
+
+    // 1D, with musign + ctr binning
+    TrigEffcyUtils::SumTrigEffHistsGeneric<TH1D, std::string>(
+        single_muon_trig_effcy_var1Ds,
+        trg_effcy_filters_1D_post_sum_w_musign_ctr_summing,
+        trg_effcy_filters_to_be_summed,
+        hist1D_map,
+        [](const std::string& var) {
+            return "h_" + var;
+        }
+    );
+
+    // 1D, with ctr binning
+    TrigEffcyUtils::SumTrigEffHistsGeneric<TH1D, std::string>(
+        single_muon_trig_effcy_var1Ds,
+        trg_effcy_filters_1D_post_sum_w_ctr_summing,
+        trg_effcy_filters_to_be_summed,
+        hist1D_map,
+        [](const std::string& var) {
+            return "h_" + var;
+        }
+    );
+
+    // 2D, with musign + ctr binning
+    TrigEffcyUtils::SumTrigEffHistsGeneric<TH2D, std::array<std::string,2>>(
+        single_muon_trig_effcy_var2Ds,
+        trg_effcy_filters_2D_3D_post_sum_w_musign_ctr_summing,
+        trg_effcy_filters_to_be_summed,
+        hist2D_map,
+        [](const std::array<std::string,2>& vars) {
+            const std::string& varx = vars[0];
+            const std::string& vary = vars[1];
+            return "h_" + vary + "_vs_" + varx;
+        }
+    );
+
+    // 2D, with ctr binning
+    TrigEffcyUtils::SumTrigEffHistsGeneric<TH2D, std::array<std::string,2>>(
+        single_muon_trig_effcy_var2Ds,
+        trg_effcy_filters_2D_3D_post_sum_w_ctr_summing,
+        trg_effcy_filters_to_be_summed,
+        hist2D_map,
+        [](const std::array<std::string,2>& vars) {
+            const std::string& varx = vars[0];
+            const std::string& vary = vars[1];
+            return "h_" + vary + "_vs_" + varx;
+        }
+    );
+
+    // 3D, with musign + ctr binning
+    TrigEffcyUtils::SumTrigEffHistsGeneric<TH3D, std::array<std::string,3>>(
+        single_muon_trig_effcy_var3Ds,
+        trg_effcy_filters_2D_3D_post_sum_w_musign_ctr_summing,
+        trg_effcy_filters_to_be_summed,
+        hist3D_map,
+        [](const std::array<std::string,3>& vars) {
+            const std::string& varx = vars[0];
+            const std::string& vary = vars[1];
+            const std::string& varz = vars[2];
+            return "h_" + varz + "_vs_" + vary + "_vs_" + varx;
+        }
+    );
+
+    // 3D, with ctr binning
+    TrigEffcyUtils::SumTrigEffHistsGeneric<TH3D, std::array<std::string,3>>(
+        single_muon_trig_effcy_var3Ds,
+        trg_effcy_filters_2D_3D_post_sum_w_ctr_summing,
+        trg_effcy_filters_to_be_summed,
+        hist3D_map,
+        [](const std::array<std::string,3>& vars) {
+            const std::string& varx = vars[0];
+            const std::string& vary = vars[1];
+            const std::string& varz = vars[2];
+            return "h_" + varz + "_vs_" + vary + "_vs_" + varx;
+        }
+    );
 }
 
 void RDFBasedHistFillingPbPb::CalculateSingleMuonTrigEffcyRatios(){
     CalculateSingleMuonTrigEffcyRatiosHelper(ctr_musign_categories);
 }
 
-void RDFBasedHistFillingPbPb::MakeAndWriteSingleMuonPtTrigEffGraphs(){
-	MakeAndWriteSingleMuonPtTrigEffGraphsHelper(ctr_musign_categories);
+void RDFBasedHistFillingPbPb::MakeAndWriteSingleMuonTrigEffPtGraphs(){
+	if (useCoarseQEtaBin)	MakeAndWriteSingleMuonTrigEffPtGraphsHelper({});
+	else{
+		MakeAndWriteSingleMuonTrigEffPtGraphsHelper(ctr_musign_categories);
+		MakeAndWriteSingleMuonTrigEffPtGraphsHelper(musigns);
+	} 					
+}
+
+void RDFBasedHistFillingPbPb::MakeAndWriteSingleMuonTrigEffCtrGraphs(){
+
+	for (auto pT_bin : pT_bins_for_trg_effcy_ctr_dep){
+		for (auto q_eta_bin : q_eta_ranges_str){
+	        TH1D* h_ctr_mu4_mu4noL1_sepr  = map_at_checked(hist1D_map, 	Form("h_ctr%s%s_mu4_mu4noL1_sepr", pT_bin.c_str(), q_eta_bin.c_str()),    
+	        															Form("MakeAndWriteSingleMuonTrigEffCtrGraphs: hist1D_map.at(h_ctr%s%s_mu4_mu4noL1_sepr)", pT_bin.c_str(), q_eta_bin.c_str()));
+	        TH1D* h_ctr_mu4_sepr          = map_at_checked(hist1D_map, 	Form("h_ctr%s%s_mu4_sepr", pT_bin.c_str(), q_eta_bin.c_str()),            
+	        															Form("MakeAndWriteSingleMuonTrigEffCtrGraphs: hist1D_map.at(h_ctr%s%s_mu4_sepr)", pT_bin.c_str(), q_eta_bin.c_str()));
+    	    TH1D* h_ctr_2mu4_sepr         = map_at_checked(hist1D_map, 	Form("h_ctr%s%s_2mu4_sepr", pT_bin.c_str(), q_eta_bin.c_str()),           
+    	    															Form("MakeAndWriteSingleMuonTrigEffCtrGraphs: hist1D_map.at(h_ctr%s%s_2mu4_sepr)", pT_bin.c_str(), q_eta_bin.c_str()));
+        	TH1D* h_ctr_2mu4_AND_mu4_mu4noL1_sepr   = map_at_checked(hist1D_map, 	Form("h_ctr%s%s_2mu4_AND_mu4_mu4noL1_sepr", pT_bin.c_str(), q_eta_bin.c_str()),           
+        																			Form("MakeAndWriteSingleMuonTrigEffCtrGraphs: hist1D_map.at(h_ctr%s%s_2mu4_AND_mu4_mu4noL1_sepr)", pT_bin.c_str(), q_eta_bin.c_str()));
+
+		    TrigEffcyUtils::divide_and_write(h_ctr_mu4_mu4noL1_sepr,           h_ctr_mu4_sepr, &graph_map);
+		    TrigEffcyUtils::divide_and_write(h_ctr_2mu4_sepr,                  h_ctr_mu4_sepr, &graph_map);
+		    TrigEffcyUtils::divide_and_write(h_ctr_2mu4_AND_mu4_mu4noL1_sepr,  h_ctr_mu4_sepr, &graph_map);
+		}
+	}
 }
 
 void RDFBasedHistFillingPbPb::OpenEffcyPtFitFile(){}
@@ -372,7 +587,10 @@ AxisInfo RDFBasedHistFillingPbPb::GetAxisInfo(const var1D& v,
 
     // second loop - rebinning for the (nbins, min, max) case
     for (int ictr = 0; ictr < ctr_bins.size(); ictr++) {
-	    if (b.min != 0){ // no special ctr-dependent binning found, (nbins, min, max) format used --> apply rebin
+    	auto ctr = ctr_bins.at(ictr);
+        if (filter.find(ctr) == std::string::npos) continue; // current ctr not substring of filter
+
+	    if (!(b.min == 0 && b.max == 0)){ // no special ctr-dependent binning found, (nbins, min, max) format used --> apply rebin
 	        if (std::find(var1D_list_no_ctr_rebin.begin(), var1D_list_no_ctr_rebin.end(), v.name)
 	        		 != var1D_list_no_ctr_rebin.end()) 	break; // do not apply rebin
 
