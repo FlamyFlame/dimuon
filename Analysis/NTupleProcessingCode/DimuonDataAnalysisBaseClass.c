@@ -52,8 +52,10 @@ void DimuonDataAnalysisBaseClass::InitParams(){
 
     if (isMinBias) trigger_mode = 0; // if use MB data, do not require any muon trigger
     
-    use_mu6_for_trg_eff = (isPbPb && run_year == 23);
+    use_mu6_for_trg_eff = ((isPbPb && run_year == 23) || (!isPbPb && run_year == 24)); // Pb+Pb 23 or pp24
+    use_mu8_for_trg_eff = (!isPbPb && run_year == 24); // pp24
     if (use_mu6_for_trg_eff) std::cout << "Using HLT_mu6_L1MU3V as a support trigger!" << std::endl;
+    if (use_mu8_for_trg_eff) std::cout << "Using HLT_mu8_L1MU5VF as a support trigger!" << std::endl;
     
     if (!(isPbPb && run_year == 24 && pbpb24_mu4_NO_trig_calc)) trigger_effcy_calc = (trigger_mode == 0 || trigger_mode == 1);
     if (trigger_effcy_calc) resonance_cut_mode = 2; // for sub-GeV mass region, apply narrow-window cuts for each individual resonance peak
@@ -168,6 +170,11 @@ void DimuonDataAnalysisBaseClass::InitInputBranchesDimuonAnalysis(){
         fChain->SetBranchAddress("muon_b_HLT_mu6_L1MU3V"                 , &muon_b_HLT_mu6_L1MU3V);
     }
 
+    if (use_mu8_for_trg_eff){ // only use mu6 for Pb+Pb 23 for now
+        fChain->SetBranchAddress("b_HLT_mu8_L1MU5VF"                      , &b_HLT_mu8_L1MU5VF);
+        fChain->SetBranchAddress("muon_b_HLT_mu8_L1MU5VF"                 , &muon_b_HLT_mu8_L1MU5VF);
+    }
+
     //SetBranch Status
     fChain->SetBranchStatus("*"                               ,0);//switch off all branches, then enable just the ones that we need
     fChain->SetBranchStatus("RunNumber"                       ,1);
@@ -208,6 +215,11 @@ void DimuonDataAnalysisBaseClass::InitInputBranchesDimuonAnalysis(){
     if (use_mu6_for_trg_eff){ // only use mu6 for Pb+Pb 23 for now
         fChain->SetBranchStatus("b_HLT_mu6_L1MU3V",         1);
         fChain->SetBranchStatus("muon_b_HLT_mu6_L1MU3V",    1);
+    }
+
+    if (use_mu8_for_trg_eff){ // only use mu6 for Pb+Pb 23 for now
+        fChain->SetBranchStatus("b_HLT_mu8_L1MU5VF",         1);
+        fChain->SetBranchStatus("muon_b_HLT_mu8_L1MU5VF",    1);
     }
 }
 
@@ -296,27 +308,40 @@ bool DimuonDataAnalysisBaseClass::TrigMatch(int pair_ind, int m1_ind, int m2_ind
 		switch (trigger_mode){
         case 0:
             return true;
-		case 1:
-            if (use_mu6_for_trg_eff){
-                if (!b_HLT_mu4 && !b_HLT_mu6_L1MU3V) return false;
-                if (!muon_b_HLT_mu4 && !muon_b_HLT_mu6_L1MU3V){ // nullptr
-                    throw std::runtime_error("TrigMatch::Either muon_b_HLT_mu4 or muon_b_HLT_mu6_L1MU3V is a null pointer!");
-                }
-                if (!mpair) throw std::runtime_error("TrigMatch: Muon Pair doesn't exist!");
+		case 1:{
+            // Default case: first consider mu4
+            bool pass_mu4 = b_HLT_mu4;
 
-                if (muon_b_HLT_mu4->at(m1_ind) || muon_b_HLT_mu4->at(m2_ind))   return true;
-                if (muon_b_HLT_mu6_L1MU3V->at(m1_ind) && mpair->m1.pt >= 6)     return true;
-                if (muon_b_HLT_mu6_L1MU3V->at(m2_ind) && mpair->m2.pt >= 6)     return true;
-
-                return false;
+            if (!muon_b_HLT_mu4){ // nullptr
+                throw std::runtime_error("TrigMatch:: muon_b_HLT_mu4 is a null pointer!");
             }
 
-			if (!b_HLT_mu4) return false;
-			
-			if (!muon_b_HLT_mu4){ // nullptr
-			  	throw std::runtime_error("The pointer muon_b_HLT_mu4 (to vector of bool) is a null pointer!");
-			}
-			return muon_b_HLT_mu4->at(m1_ind) || muon_b_HLT_mu4->at(m2_ind);
+            pass_mu4 &= muon_b_HLT_mu4->at(m1_ind) || muon_b_HLT_mu4->at(m2_ind);
+
+            if (pass_mu4 || !use_mu6_for_trg_eff) return pass_mu4; // if pass mu4 or not using higher pT triggers, return mu4 result
+
+            // Case II: Not passing mu4 && using mu6 (mu4 prescaled) --> look at mu6
+            bool pass_mu6 = b_HLT_mu6_L1MU3V;
+
+            if (!muon_b_HLT_mu6_L1MU3V){ // nullptr
+                throw std::runtime_error("TrigMatch:: muon_b_HLT_mu6_L1MU3V is a null pointer!");
+            }
+            if (!mpair) throw std::runtime_error("TrigMatch: Muon Pair doesn't exist!");
+
+            pass_mu6 &= ((muon_b_HLT_mu6_L1MU3V->at(m1_ind) && mpair->m1.pt >= 6) || (muon_b_HLT_mu6_L1MU3V->at(m2_ind) && mpair->m2.pt >= 6));
+
+            if (pass_mu6 || !use_mu8_for_trg_eff) return pass_mu6; // if pass mu4 or not using higher 
+
+            // Case III: Not passing either mu4 or mu6 && using mu8 (mu4 & mu6 prescaled) --> look at mu8
+            
+            if (!b_HLT_mu8_L1MU5VF) return false;
+
+            if (!muon_b_HLT_mu8_L1MU5VF){ // nullptr
+                throw std::runtime_error("TrigMatch:: muon_b_HLT_mu8_L1MU5VF is a null pointer!");
+            }
+
+            return ((muon_b_HLT_mu8_L1MU5VF->at(m1_ind) && mpair->m1.pt >= 8) || (muon_b_HLT_mu8_L1MU5VF->at(m2_ind) && mpair->m2.pt >= 8));
+        }
 		case 2:
             if (!isPbPb && !isRun3){ // pp Run2: no mu4_mu4noL1 trigger
                 std::cerr << "PP Run2 data: no mu4_mu4_noL1 trigger!" << std::endl;
@@ -514,13 +539,15 @@ void DimuonDataAnalysisBaseClass::ProcessData(){
     			mpair->Update();
     			mpair->passmu4mu4noL1 = (!isPbPb && !isRun3)? false : dimuon_b_HLT_mu4_mu4noL1->at(pair_ind); // pp run2: no mu4_mu4noL1 trigger
     			mpair->pass2mu4 = dimuon_b_HLT_2mu4->at(pair_ind);
-    			mpair->m1.passmu4 = 
-                    use_mu6_for_trg_eff ? (muon_b_HLT_mu4->at(mpair->m1.ind) || (muon_b_HLT_mu6_L1MU3V->at(mpair->m1.ind) && mpair->m1.pt > 6))
-                                        : muon_b_HLT_mu4->at(mpair->m1.ind);
+    	
+        		mpair->m1.passmu4 = muon_b_HLT_mu4->at(mpair->m1.ind);
+                if (use_mu6_for_trg_eff) mpair->m1.passmu4 |= (muon_b_HLT_mu6_L1MU3V->at(mpair->m1.ind) && mpair->m1.pt > 6);
+                if (use_mu8_for_trg_eff) mpair->m1.passmu4 |= (muon_b_HLT_mu8_L1MU5VF->at(mpair->m1.ind) && mpair->m1.pt > 8);
+         
+                mpair->m2.passmu4 = muon_b_HLT_mu4->at(mpair->m2.ind);
+                if (use_mu6_for_trg_eff) mpair->m2.passmu4 |= (muon_b_HLT_mu6_L1MU3V->at(mpair->m2.ind) && mpair->m2.pt > 6);
+                if (use_mu8_for_trg_eff) mpair->m2.passmu4 |= (muon_b_HLT_mu8_L1MU5VF->at(mpair->m2.ind) && mpair->m2.pt > 8);
                 
-    			mpair->m2.passmu4 = 
-                    use_mu6_for_trg_eff ? (muon_b_HLT_mu4->at(mpair->m2.ind) || (muon_b_HLT_mu6_L1MU3V->at(mpair->m2.ind) && mpair->m2.pt > 6))
-                                        : muon_b_HLT_mu4->at(mpair->m2.ind);
 
                 mpair->passSeparated = (mpair->dr > 0.8);
                 mpair->passSeparatedDeta = (abs(mpair->deta) > 0.8);

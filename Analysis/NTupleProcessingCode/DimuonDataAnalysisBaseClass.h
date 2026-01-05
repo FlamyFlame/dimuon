@@ -23,6 +23,7 @@ protected:
 
     bool trigger_effcy_calc; // if true, not care about physics origin, e.g, skip photoproduction + resonance cuts to gain more statistics
     bool use_mu6_for_trg_eff; // if true (now only for Pb+Pb 23), use mu6 as a supporting trigger for P[dimuon trg | supporting] efficiency analysis
+    bool use_mu8_for_trg_eff; // if true (now only for Pb+Pb 23), use mu6 as a supporting trigger for P[dimuon trg | supporting] efficiency analysis
 // --------------------- input files & trees & data for setting branches---------------------------
 
     TChain          *fChain;   //!pointer to the analyzed TTree or TChain
@@ -37,6 +38,9 @@ protected:
 
     Bool_t               b_HLT_mu6_L1MU3V; // single muon 6GeV trigger (same L1 trigger as mu4)
     std::vector<bool>    *muon_b_HLT_mu6_L1MU3V     =nullptr; // single muon 6GeV trigger (same L1 trigger as mu4)
+
+    Bool_t               b_HLT_mu8_L1MU5VF; // single muon 6GeV trigger (same L1 trigger as mu4)
+    std::vector<bool>    *muon_b_HLT_mu8_L1MU5VF     =nullptr; // single muon 6GeV trigger (same L1 trigger as mu4)
 
     Bool_t               b_HLT_2mu4;
     std::vector<bool>    *dimuon_b_HLT_2mu4    =nullptr;
@@ -131,5 +135,5 @@ public:
 	~DimuonDataAnalysisBaseClass(){}
     virtual void PrintInstructions();
     void Run() override;
-    
+
 };
