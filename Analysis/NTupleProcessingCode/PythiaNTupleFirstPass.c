@@ -738,14 +738,14 @@ std::pair<int,int> PythiaNTupleFirstPass::UpdateCurParents(bool isMuon1, std::ve
   }
 
   if (prev_out_hard_scatt){
-    if (cur_prt_bars.size() != 2 || (truth_status->at(cur_prt_bars[0]) != -21 && truth_status->at(cur_prt_bars[0]) != -31) && (print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file)){
+    if (cur_prt_bars.size() != 2 || (abs(truth_status->at(cur_prt_bars[0])) != 21 && abs(truth_status->at(cur_prt_bars[0])) != 31) && (print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file)){
       *m_very_bad_warning_file << "The current parents should be the incoming particles of a hard scattering." << std::endl;
       PrintHistory(m_very_bad_warning_file, true, isMuon1);
     }
 
     int catgr = HardAnalysisCategr(cur_prt_bars[0], cur_prt_bars[1]);
 
-    if ((truth_status->at(cur_prt_bars[0]+2) != -23 && truth_status->at(cur_prt_bars[0]+2) != -33) || (truth_status->at(cur_prt_bars[1]+2) != -23 && truth_status->at(cur_prt_bars[1]+2) != -33) && (print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file)){
+    if ((abs(truth_status->at(cur_prt_bars[0]+2)) != 23 && abs(truth_status->at(cur_prt_bars[0]+2)) != 33) || (abs(truth_status->at(cur_prt_bars[1]+2)) != 23 && abs(truth_status->at(cur_prt_bars[1]+2)) != 33) && (print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file)){
       *m_very_bad_warning_file << "Outgoing particles of a HS don't have barcode as 2 + incoming particles' barcodes" << std::endl;
       PrintHistory(m_very_bad_warning_file, true, isMuon1);
     }
@@ -781,7 +781,7 @@ std::pair<int,int> PythiaNTupleFirstPass::UpdateCurParents(bool isMuon1, std::ve
     prev_out_hard_scatt = false;
   }
 
-  if (truth_status->at(cur_prt_bars[0]) == -23 || truth_status->at(cur_prt_bars[0]) == -33){
+  if (abs(truth_status->at(cur_prt_bars[0])) == 23 || abs(truth_status->at(cur_prt_bars[0])) == 33){
     if ((isMuon1 && m1_hard_scatt_in_bar1 > 0) || (!isMuon1 && m2_hard_scatt_in_bar1 > 0) && (print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file)){
       *m_very_bad_warning_file << "There should be at most one hard scattering in a muon's history chain." << std::endl;
       PrintHistory(m_very_bad_warning_file, true, isMuon1);
@@ -877,7 +877,7 @@ int PythiaNTupleFirstPass::FindHeavyQuarks(std::vector<int>& cur_prt_ids, std::v
         index_candidate = it_q - cur_prt_ids.begin();
       else if (hadron_child_id * sign_correction < 0)
         index_candidate = it_qbar - cur_prt_ids.begin();
-      else if (status == -21 || status == -31){ // hard scattering is Q Qbar (or Qbar Q)
+      else if (abs(status) == 21 || abs(status) == 31){ // hard scattering is Q Qbar (or Qbar Q)
         if (prev_hq_bar - 2 == cur_prt_bars[0]){
           index_candidate = 0;
         }else{
@@ -903,7 +903,7 @@ int PythiaNTupleFirstPass::FindHeavyQuarks(std::vector<int>& cur_prt_ids, std::v
 
     if (std::find(it_q + 1,cur_prt_ids.end(),quark_type) != cur_prt_ids.end()){ // find two q's 
       // require it's from a hard scattering of c c --> c c
-      if (cur_prt_ids.size() != 2 || (status != -21 && status != -31) || it_qbar != cur_prt_ids.end()){
+      if (cur_prt_ids.size() != 2 || (abs(status) != 21 && abs(status) != 31) || it_qbar != cur_prt_ids.end()){
         // std::cout << "In the current parents there are more than one same-sign, same-flavor HQ's." << std::endl;
         // std::cout << "Yet the parents are not incoming particles of a hard scattering." << std::endl;
         // PrintHistory(&std::cout, true, isMuon1);
@@ -928,7 +928,7 @@ int PythiaNTupleFirstPass::FindHeavyQuarks(std::vector<int>& cur_prt_ids, std::v
     std::vector<int>::iterator it_qbar_second = std::find(it_qbar + 1,cur_prt_ids.end(), (-1) * quark_type);
     if (it_qbar_second != cur_prt_ids.end()){ // find two q's 
       // cout << prev_hq_bar << " " << it_qbar_second - cur_prt_ids.begin() << " " << cur_prt_ids.end() - cur_prt_ids.begin() << endl;
-      if (cur_prt_ids.size() != 2 || (status != -21 && status != -31)){
+      if (cur_prt_ids.size() != 2 || (abs(status) != 21 && abs(status) != 31)){
         std::cout << "In the current parents there are more than one same-sign, same-flavor HQ's." << std::endl;
         std::cout << "Yet the parents are not incoming particles of a hard scattering." << std::endl;
         PrintHistory(&std::cout, true, isMuon1);
@@ -1276,7 +1276,7 @@ int PythiaNTupleFirstPass::GluonHistoryTracking(int gluon_bar, bool isMuon1){
   std::vector<int> parent_bars;
   std::vector<int> parent_ids;
 
-  bool prev_step_status_m23_m33 = (truth_status->at(gluon_bar) == -23 || truth_status->at(gluon_bar) == -33); // for sanity check
+  bool prev_step_status_m23_m33 = (abs(truth_status->at(gluon_bar)) == 23 || abs(truth_status->at(gluon_bar)) == 33); // for sanity check
 
   float pt = truth_pt->at(gluon_bar);
   float eta = truth_eta->at(gluon_bar);
@@ -1303,14 +1303,14 @@ int PythiaNTupleFirstPass::GluonHistoryTracking(int gluon_bar, bool isMuon1){
   while(!terminate){
     UpdateCurParents(isMuon1, parent_bars, parent_ids, false, prev_step_status_m23_m33);
     // cout << parent_bars[0] << endl;
-    terminate = (truth_status->at(parent_bars[0]) == -21 || truth_mother1->at(parent_bars[0]) <= 2);
+    terminate = (abs(truth_status->at(parent_bars[0])) == 21 || truth_mother1->at(parent_bars[0]) <= 2);
   }
 
   // cout << "terminate" << endl;
   // at this stage, if the gluon is from FSR
   // the hard scattering information (hard_scatt_after_gs & category) has been updated 
 
-  if (truth_status->at(parent_bars[0]) == -21){ // gluon is from FSR
+  if (abs(truth_status->at(parent_bars[0])) == 21){ // gluon is from FSR
     return 1;
   }
 
