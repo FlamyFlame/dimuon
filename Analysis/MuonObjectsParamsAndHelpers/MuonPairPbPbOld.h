@@ -1,48 +1,30 @@
-#pragma once
 #include "MuonPairData.h"
-#include <functional>
 
-template <class Derived>
-struct PairPbPbExtras {
-  	int avg_centrality{};
-	  int year{-1};
-  	float FCal_Et{-1e6f};
-  	void UpdateCentrality();
+class MuonPairPbPb : public MuonPairData{ 
+private:
+  static const std::vector<float> FCal_ET_Bins_PbPb2015;
 
-protected:
-  	static const std::vector<float> FCal_ET_Bins_PbPb2015;
-  	static const std::vector<float> FCal_ET_Bins_PbPb2023;
-  	static const std::vector<float> FCal_ET_Bins_PbPb2024;
-  	  
-  	static int GetCentrality(float fcalET, const std::vector<float> & fCal_centr_boundaries);
-  	static int GetCentralityPbPb2015(float FCal_Et);
-  	static int GetCentralityPbPb2023(float FCal_Et);
-  	static int GetCentralityPbPb2024(float FCal_Et);
+
+  static const std::vector<float> FCal_ET_Bins_PbPb2023;
+
+  static const std::vector<float> FCal_ET_Bins_PbPb2024;
+    
+
+  static int GetCentrality(float fcalET, const std::vector<float> & fCal_centr_boundaries);
+  static int GetCentralityPbPb2015(float FCal_Et);
+  static int GetCentralityPbPb2023(float FCal_Et);
+  static int GetCentralityPbPb2024(float FCal_Et);
 
 public:
-	void PairValueCalcPbPb() {
-      	auto& d = static_cast<Derived&>(*this);
-      	d.avg_centrality = (d.m1.ev_centrality + d.m2.ev_centrality)/2;
-    }
-};
+  int year;
+  float FCal_Et;
+  void UpdateCentrality();
 
-struct MuonPairPbPb
-  : MuonPairBaseT<MuonPairPbPb, MuonPbPb>
-  , PairDataExtras<MuonPairPbPb>
-  , PairPbPbExtras<MuonPairPbPb>
-  , PairCalcHookDefault<MuonPairPbPb>
-{
-    void PairValueCalcHook() {
-        this->PairValueCalcData(); // compute pair_dPoverP
-        this->PairValueCalcPbPb(); // compute avg_centrality
-    }
 };
-
 
 
 // Glauber v3.2 based: https://cds.cern.ch/record/2672348/files/ATL-COM-PHYS-2019-340.pdf
-template <class Derived>
-const std::vector<float> PairPbPbExtras<Derived>::FCal_ET_Bins_PbPb2015={
+const std::vector<float> MuonPairPbPb::FCal_ET_Bins_PbPb2015={
   4.26372, 4.08338, 3.92041, 3.767, 3.6226, 3.48557, 3.35466, 3.22967, 3.11027, 2.99594, // 0-10
   2.88571, 2.77968, 2.6776, 2.57956, 2.48475, 2.39311, 2.30447, 2.21888, 2.13617, 2.05577, // 10-20
   1.97802, 1.90273, 1.82974, 1.75906, 1.69047, 1.62434, 1.56005, 1.49754, 1.43729, 1.37892, // 20-30
@@ -53,8 +35,7 @@ const std::vector<float> PairPbPbExtras<Derived>::FCal_ET_Bins_PbPb2015={
   0.137874, 0.127745, 0.118249, 0.109333, 0.100928, 0.093071, 0.085729, 0.078834, 0.072411, 0.066402 // 70-80
 };
 
-template <class Derived>
-const std::vector<float> PairPbPbExtras<Derived>::FCal_ET_Bins_PbPb2023 = {
+const std::vector<float> MuonPairPbPb::FCal_ET_Bins_PbPb2023 = {
   4.51272, 4.32043, 4.15372, 3.99602, 3.84498, 3.69944, 3.55802, 3.42045, 3.28744, 3.15972, // 0-10
   3.03748, 2.92012, 2.80723, 2.69878, 2.59464, 2.49406, 2.39646, 2.3018, 2.21028, 2.12188, // 10-20
   2.03659, 1.95428, 1.87489, 1.79842, 1.72484, 1.65387, 1.58516, 1.51853, 1.45406, 1.39178, // 20-30
@@ -66,8 +47,7 @@ const std::vector<float> PairPbPbExtras<Derived>::FCal_ET_Bins_PbPb2023 = {
   0.0575959, 0.052731, 0.0478661, 0.0430012, 0.0388482 // 80-85
 };
 
-template <class Derived>
-const std::vector<float> PairPbPbExtras<Derived>::FCal_ET_Bins_PbPb2024 = { // update to agree with 2023 final
+const std::vector<float> MuonPairPbPb::FCal_ET_Bins_PbPb2024 = { // update to agree with 2023 final
   4.51272, 4.32043, 4.15372, 3.99602, 3.84498, 3.69944, 3.55802, 3.42045, 3.28744, 3.15972, // 0-10
   3.03748, 2.92012, 2.80723, 2.69878, 2.59464, 2.49406, 2.39646, 2.3018, 2.21028, 2.12188, // 10-20
   2.03659, 1.95428, 1.87489, 1.79842, 1.72484, 1.65387, 1.58516, 1.51853, 1.45406, 1.39178, // 20-30
@@ -79,8 +59,7 @@ const std::vector<float> PairPbPbExtras<Derived>::FCal_ET_Bins_PbPb2024 = { // u
   0.0575959, 0.052731, 0.0478661, 0.0430012, 0.0388482 // 80-85
 };
 
-template <class Derived>
-int PairPbPbExtras<Derived>::GetCentrality(float fcalET, const std::vector<float> & fCal_centr_boundaries) {
+int MuonPairPbPb::GetCentrality(float fcalET, const std::vector<float> & fCal_centr_boundaries) {
   // fCal_centr_boundaries is sorted descending
   // We want the first boundary that is <= fcalET.
   // That is exactly what lower_bound with std::greater does:
@@ -100,23 +79,18 @@ int PairPbPbExtras<Derived>::GetCentrality(float fcalET, const std::vector<float
   return centrality;
 }
 
-template <class Derived>
-int PairPbPbExtras<Derived>::GetCentralityPbPb2015(float FCal_Et){
+
+int MuonPairPbPb::GetCentralityPbPb2015(float FCal_Et){
   return GetCentrality(FCal_Et, FCal_ET_Bins_PbPb2015);
 }
-
-template <class Derived>
-int PairPbPbExtras<Derived>::GetCentralityPbPb2023(float FCal_Et){
+int MuonPairPbPb::GetCentralityPbPb2023(float FCal_Et){
   return GetCentrality(FCal_Et, FCal_ET_Bins_PbPb2023);
 }
-
-template <class Derived>
-int PairPbPbExtras<Derived>::GetCentralityPbPb2024(float FCal_Et){
+int MuonPairPbPb::GetCentralityPbPb2024(float FCal_Et){
   return GetCentrality(FCal_Et, FCal_ET_Bins_PbPb2024);
 }
 
-template <class Derived>
-void PairPbPbExtras<Derived>::UpdateCentrality(){
+void MuonPairPbPb::UpdateCentrality(){
   switch (year % 2000){
   case 15:
     avg_centrality = GetCentralityPbPb2015(FCal_Et);
@@ -131,7 +105,7 @@ void PairPbPbExtras<Derived>::UpdateCentrality(){
     avg_centrality = GetCentralityPbPb2024(FCal_Et);
     break;
   default:
-    std::cout << "PairPbPbExtras::UpdateCentrality:    WARNING:: UpdateCentrality called but year is INVALID (must be 2015 / 2023 / 2024)" << std::endl;
+    std::cout << "MuonPairPbPb::UpdateCentrality:    WARNING:: UpdateCentrality called but year is INVALID (must be 2015 / 2023 / 2024)" << std::endl;
     std::cout << "Centrality is NOT updated!" << std::endl;
   }
 }
