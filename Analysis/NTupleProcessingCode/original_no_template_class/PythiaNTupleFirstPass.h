@@ -77,6 +77,9 @@ private:
     // std::vector <TChain*> metaChain;	// each element: pointer to a collection of the ttrees named meta_tree (recording job-level info)
     TChain* evChain;
     TChain* metaChain;
+    
+    std::shared_ptr<MuonPairPythia> mpair;
+    MuonPairPythia* mpair_raw_ptr = nullptr;
 
     // for meta tree
     double efficiency = 1.;
@@ -123,6 +126,10 @@ private:
     long nentries_k2;
     long nentries_k3;
     long nentries_k4;
+
+    Muon* tempmuon = nullptr;
+    // std::vector<std::shared_ptr<MuonPairPythia>> muon_pair_list_cur_event;
+    std::vector<std::shared_ptr<MuonPairPythia>> muon_pair_list_cur_event_pre_resonance_cut;
 
     // TruthQQPair* qqpair = nullptr;
 
@@ -320,7 +327,6 @@ private:
 
 // --------------------- class methods ---------------------------
   
-    void Initialize() override;
     void InitInput() override;
     void InitOutput() override;
     void InitTempVariables() override;
@@ -355,7 +361,7 @@ private:
     void CrossxClear();
     void PerPairCrossxUpdate();
     void WriteCrossxSummary();
-    void Finalize() override;
+    void Finalize();
 
 public :
 
@@ -372,6 +378,7 @@ public :
 
     PythiaNTupleFirstPass();
     ~PythiaNTupleFirstPass(){}
+    void Run() override;
     // float filter_effcy;
 
 };

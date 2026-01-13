@@ -476,13 +476,6 @@ void PythiaNTupleFirstPass::InitOutput(){
 
 
 void PythiaNTupleFirstPass::Finalize(){
-    HistAdjust();
-  
-    m_outfile->Write();
-    m_outHistFile->Write();
-    std::cout << "Output muon-pair trees have been written to: " << output_file_path << std::endl;
-    std::cout << "Output histograms have been written to: " << output_hist_file_path << std::endl;
-
     delete m1_history;
     delete m2_history;
     delete m1_history_particle;
@@ -2085,7 +2078,7 @@ void PythiaNTupleFirstPass::ProcessData(){
 
       for(int pair_ind=0;pair_ind<NPairs;pair_ind++){//first loop over all muon-pairs in the event
 
-        mpair.Clear();
+        mpair = std::make_shared<MuonPairPythia>(MuonPairPythia());
 
         FillMuonPair(pair_ind, mpair);
 
@@ -2185,24 +2178,40 @@ void PythiaNTupleFirstPass::ProcessData(){
 }
 
 
-void PythiaNTupleFirstPass::Initialize(){
-    clock_t start, end;
-    double cpu_time_used;
-    start = clock();
-    
-    ResonanceNameMap();
-    SetInputOutputFilesFromBatch(); // must be called before InitInput and InputOutput
+void PythiaNTupleFirstPass::Run(){
+  clock_t start, end;
+  double cpu_time_used;
+  start = clock();
   
-    InputSanityCheck();
-    InitInput();
-    end = clock();
-    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-    std::cout << "Took " << cpu_time_used << " seconds to initiate the inputs." << std::endl;
+  ResonanceNameMap();
+
+  SetInputOutputFilesFromBatch(); // must be called before InitInput and InputOutput
+
+  InputSanityCheck();
+  InitInput();
+  end = clock();
+  cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+  std::cout << "Took " << cpu_time_used << " seconds to initiate the inputs." << std::endl;
+
+  InitTempVariables();
+  InitOutput();
   
-    InitTempVariables();
-    InitOutput();
-    
-    meta_tree_out->Fill();
+  meta_tree_out->Fill();
+
+  start = clock();
+  ProcessData();
+  end = clock();
+  cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+  std::cout << "Took " << cpu_time_used << " seconds to run the event loop." << std::endl;
+  
+  HistAdjust();
+
+  m_outfile->Write();
+  m_outHistFile->Write();
+  std::cout << "Output muon-pair trees have been written to: " << output_file_path << std::endl;
+  std::cout << "Output histograms have been written to: " << output_hist_file_path << std::endl;
+
+  Finalize();
 }
 
 #endif

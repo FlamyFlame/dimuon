@@ -1,12 +1,16 @@
 #pragma once
 #include "MuonPairPbPb.h"
-
+#include "MuonPairMC.h"
 
 template <class Derived>
 struct PairPythiaExtras {
     double crossx{};
     double effcy{};
-    
+};
+
+template <class Derived>
+struct PairPythiaTruthExtras {
+
     // parent groups: {direct b, c from b, c not from b, strange & light hadrons, photons}; if others: print out
     int   m1_parent_group{};
     int   m2_parent_group{};
@@ -18,8 +22,8 @@ struct PairPythiaExtras {
     bool  from_same_resonance{};
     bool  resonance_contaminated{};
     
-    bool  data_resonance_or_reso_contam_tagged_old{}; // pairs tagged as either from resonances or contaminated by resonances using old data resonance cuts
-    bool  data_resonance_or_reso_contam_tagged_new{}; // pairs tagged as either from resonances or contaminated by resonances using new data resonance cuts
+    bool  Reco_resonance_or_reso_contam_tagged_old{}; // pairs tagged as either from resonances or contaminated by resonances using old Reco resonance cuts
+    bool  Reco_resonance_or_reso_contam_tagged_new{}; // pairs tagged as either from resonances or contaminated by resonances using new Reco resonance cuts
     
     int   m1_hard_scatt_category{};
     int   m2_hard_scatt_category{};
@@ -55,32 +59,47 @@ struct PairPythiaExtras {
     std::vector<float> m2_first_hq_ancestor_pt_eta_phi_m;
 };
 
-struct MuonPairPythia
-  : MuonPairBaseT<MuonPairPythia, MuonPythia>
-  , PairPythiaExtras<MuonPairPythia>
-  , PairCalcHookDefault<MuonPairPythia>
+struct MuonPairPythiaTruth
+  : MuonPairBaseT<MuonPairPythiaTruth, MuonPythia>
+  , PairMCTruthExtras<MuonPairPythiaTruth>
+  , PairPythiaExtras<MuonPairPythiaTruth>
+  , PairPythiaTruthExtras<MuonPairPythiaTruth>
 {};
 
-struct MuonPairPythiaFullSim
-  : MuonPairBaseT<MuonPairPythiaFullSim, MuonPythiaFullSim>
-  , PairPythiaExtras<MuonPairPythiaFullSim>
-  , PairDataExtras<MuonPairPythiaFullSim>
-  , PairCalcHookDefault<MuonPairPythiaFullSim>
+struct MuonPairPythiaFullSimNoTruth
+  : MuonPairBaseT<MuonPairPythiaFullSimNoTruth, MuonPythiaFullSimNoTruth>
+  , PairPythiaExtras<MuonPairPythiaFullSimNoTruth>
+  , PairRecoExtras<MuonPairPythiaFullSimNoTruth>
+{};
+
+struct MuonPairPythiaFullSimWTruth
+  : MuonPairBaseT<MuonPairPythiaFullSimWTruth, MuonPythiaFullSimWTruth>
+  , PairMCTruthExtras<MuonPairPythiaFullSimWTruth>
+  , PairPythiaExtras<MuonPairPythiaFullSimWTruth>
+  , PairPythiaTruthExtras<MuonPairPythiaFullSimWTruth>
+  , PairRecoExtras<MuonPairPythiaFullSimWTruth>
+{};
+
+struct MuonPairPythiaFullSimOverlayNoTruth
+  : MuonPairBaseT<MuonPairPythiaFullSimOverlayNoTruth, MuonPythiaFullSimOverlayNoTruth>
+  , PairPythiaExtras<MuonPairPythiaFullSimOverlayNoTruth>
+  , PairRecoExtras<MuonPairPythiaFullSimOverlayNoTruth>
+  , PairPbPbExtras<MuonPairPythiaFullSimOverlayNoTruth>
 {
     void PairValueCalcHook() {
-        this->PairValueCalcData(); // compute pair_dPoverP
+        this->PairValueCalcPbPb(); // compute avg_centrality
     }
 };
 
-struct MuonPairPythiaFullSimOverlay
-  : MuonPairBaseT<MuonPairPythiaFullSimOverlay, MuonPythiaFullSimOverlay>
-  , PairPythiaExtras<MuonPairPythiaFullSimOverlay>
-  , PairDataExtras<MuonPairPythiaFullSimOverlay>
-  , PairPbPbExtras<MuonPairPythiaFullSimOverlay>
-  , PairCalcHookDefault<MuonPairPythiaFullSimOverlay>
+struct MuonPairPythiaFullSimOverlayWTruth
+  : MuonPairBaseT<MuonPairPythiaFullSimOverlayWTruth, MuonPythiaFullSimOverlayWTruth>
+  , PairMCTruthExtras<MuonPairPythiaFullSimOverlayWTruth>
+  , PairPythiaExtras<MuonPairPythiaFullSimOverlayWTruth>
+  , PairPythiaTruthExtras<MuonPairPythiaFullSimOverlayWTruth>
+  , PairRecoExtras<MuonPairPythiaFullSimOverlayWTruth>
+  , PairPbPbExtras<MuonPairPythiaFullSimOverlayWTruth>
 {
     void PairValueCalcHook() {
-        this->PairValueCalcData(); // compute pair_dPoverP
         this->PairValueCalcPbPb(); // compute avg_centrality
     }
 };
