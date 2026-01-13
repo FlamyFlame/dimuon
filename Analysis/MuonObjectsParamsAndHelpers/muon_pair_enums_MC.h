@@ -1,6 +1,4 @@
-#ifndef __muon_pair_enums_MC_h__
-#define __muon_pair_enums_MC_h__
-
+#pragma once
 
 enum cuts_MC{
   nocut, 
@@ -73,5 +71,3 @@ enum powheg_origin_categories{
   qqbar_gQQbar,
   not_in_powheg
 };
-
-#endif

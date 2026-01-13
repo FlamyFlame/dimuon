@@ -1,11 +1,16 @@
 #pragma once
 #include "MuonPairPbPb.h"
-
+#include "MuonPairMC.h"
 
 template <class Derived>
 struct PairPowhegExtras {
     float crossx;
-    
+    float Q;
+};
+
+template <class Derived>
+struct PairPowhegTruthExtras {
+
     // parent groups: {direct b, c from b, c not from b, strange & light hadrons, photons}; if others: print out
     int m1_parent_group;
     int m2_parent_group;
@@ -20,7 +25,6 @@ struct PairPowhegExtras {
     int   m1_ancestor_category;
     int   m2_ancestor_category;
 
-    float Q;
     float mQQ; // mHat for the relevant hard scattering
     float mHard_relevant; // mHat for the relevant hard scattering
     // float s_cm; // mHat for the relevant hard scattering
@@ -34,30 +38,45 @@ struct PairPowhegExtras {
 
 struct MuonPairPowheg
   : MuonPairBaseT<MuonPairPowheg, MuonPowheg>
+  , PairMCTruthExtras<MuonPairPowheg>
   , PairPowhegExtras<MuonPairPowheg>
-  , PairCalcHookDefault<MuonPairPowheg>
+  , PairPowhegTruthExtras<MuonPairPowheg>
 {};
 
-struct MuonPairPowhegFullSim
-  : MuonPairBaseT<MuonPairPowhegFullSim, MuonPowhegFullSim>
-  , PairPowhegExtras<MuonPairPowhegFullSim>
-  , PairDataExtras<MuonPairPowhegFullSim>
-  , PairCalcHookDefault<MuonPairPowhegFullSim>
+struct MuonPairPowhegFullSimNoTruth
+  : MuonPairBaseT<MuonPairPowhegFullSimNoTruth, MuonPowhegFullSimNoTruth>
+  , PairPowhegExtras<MuonPairPowhegFullSimNoTruth>
+  , PairRecoExtras<MuonPairPowhegFullSimNoTruth>
+{};
+
+struct MuonPairPowhegFullSimWTruth
+  : MuonPairBaseT<MuonPairPowhegFullSimWTruth, MuonPowhegFullSimWTruth>
+  , PairMCTruthExtras<MuonPairPowhegFullSimWTruth>
+  , PairPowhegExtras<MuonPairPowhegFullSimWTruth>
+  , PairPowhegTruthExtras<MuonPairPowhegFullSimWTruth>
+  , PairRecoExtras<MuonPairPowhegFullSimWTruth>
+{};
+
+struct MuonPairPowhegFullSimOverlayNoTruth
+  : MuonPairBaseT<MuonPairPowhegFullSimOverlayNoTruth, MuonPowhegFullSimOverlayNoTruth>
+  , PairPowhegExtras<MuonPairPowhegFullSimOverlayNoTruth>
+  , PairRecoExtras<MuonPairPowhegFullSimOverlayNoTruth>
+  , PairPbPbExtras<MuonPairPowhegFullSimOverlayNoTruth>
 {
     void PairValueCalcHook() {
-        this->PairValueCalcData(); // compute pair_dPoverP
+        this->PairValueCalcPbPb(); // compute avg_centrality
     }
 };
 
-struct MuonPairPowhegFullSimOverlay
-  : MuonPairBaseT<MuonPairPowhegFullSimOverlay, MuonPowhegFullSimOverlay>
-  , PairPowhegExtras<MuonPairPowhegFullSimOverlay>
-  , PairDataExtras<MuonPairPowhegFullSimOverlay>
-  , PairPbPbExtras<MuonPairPowhegFullSimOverlay>
-  , PairCalcHookDefault<MuonPairPowhegFullSimOverlay>
+struct MuonPairPowhegFullSimOverlayWTruth
+  : MuonPairBaseT<MuonPairPowhegFullSimOverlayWTruth, MuonPowhegFullSimOverlayWTruth>
+  , PairMCTruthExtras<MuonPairPowhegFullSimOverlayWTruth>
+  , PairPowhegExtras<MuonPairPowhegFullSimOverlayWTruth>
+  , PairPowhegTruthExtras<MuonPairPowhegFullSimOverlayWTruth>
+  , PairRecoExtras<MuonPairPowhegFullSimOverlayWTruth>
+  , PairPbPbExtras<MuonPairPowhegFullSimOverlayWTruth>
 {
     void PairValueCalcHook() {
-        this->PairValueCalcData(); // compute pair_dPoverP
         this->PairValueCalcPbPb(); // compute avg_centrality
     }
 };

@@ -1,5 +1,5 @@
 #pragma once
-#include "MuonPairData.h"
+#include "MuonPairReco.h"
 #include <functional>
 
 template <class Derived>
@@ -28,12 +28,10 @@ public:
 
 struct MuonPairPbPb
   : MuonPairBaseT<MuonPairPbPb, MuonPbPb>
-  , PairDataExtras<MuonPairPbPb>
+  , PairRecoExtras<MuonPairPbPb>
   , PairPbPbExtras<MuonPairPbPb>
-  , PairCalcHookDefault<MuonPairPbPb>
 {
     void PairValueCalcHook() {
-        this->PairValueCalcData(); // compute pair_dPoverP
         this->PairValueCalcPbPb(); // compute avg_centrality
     }
 };
