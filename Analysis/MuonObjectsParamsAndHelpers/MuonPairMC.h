@@ -16,7 +16,7 @@ struct PairMCTruthExtras {
         if (d.m2.truth_pt > d.m1.truth_pt) std::swap(d.m1, d.m2);
     }
 
-    PairValueCalcTruth(){
+    void PairValueCalcTruth(){
         auto& d = static_cast<Derived&>(*this);
 
         double PI=acos(-1.0);
@@ -46,6 +46,6 @@ struct PairMCTruthExtras {
 
         truth_same_sign = (d.m1.truth_charge == d.m2.truth_charge);
     }
-}
+};
 
 

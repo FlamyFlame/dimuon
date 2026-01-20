@@ -142,13 +142,6 @@ void DimuonAlgCoreT<PairT, MuonT, Derived>::ResonanceTagging(){
     return; // not resonance
 }
 
-
-template <class PairT, class MuonT, class Derived>
-bool DimuonAlgCoreT<PairT, MuonT, Derived>::IsPhotoProduction(const std::shared_ptr<MuonPair>& mpair){
-  return (!(mpair->same_sign) && mpair->asym < 0.05 && mpair->acop < 0.01);
-}
-
-
 template <class PairT, class MuonT, class Derived>
 void DimuonAlgCoreT<PairT, MuonT, Derived>::HistAdjust(){
     // set labels for the cut-acceptance histograms

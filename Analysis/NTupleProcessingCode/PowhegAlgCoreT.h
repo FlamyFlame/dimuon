@@ -1,20 +1,27 @@
 #pragma once
 
+#include "../MuonObjectsParamsAndHelpers/Muon.h"
 #include "../MuonObjectsParamsAndHelpers/MuonPairPowheg.h"
 #include "../MuonObjectsParamsAndHelpers/muon_pair_enums_MC.h"
 #include "DimuonAlgCoreT.c"
 
 template <class PairT, class MuonT, class Derived, class... Extras>
 class PowhegAlgCoreT
-    : DimuonAlgCoreT<PairT, MuonT, Derived>
+    : public DimuonAlgCoreT<PairT, MuonT, Derived>
 {
 protected:
+    auto& fChain()   { return this->fChain; }
+    auto& mpair()   { return this->mpair; }
+    auto& h_cutAcceptance()   { return this->h_cutAcceptance; }
+
 // --------------------- general settings ---------------------------
 
     int file_batch;
     std::string mc_mode;
-    bool   is_fullsim; // if is fullsim, load reco quantities
-    
+    bool    is_fullsim{false}; // if is fullsim, load reco quantities
+    bool    is_fullsim_overlay{false}; // if is fullsim overlay, load centrality info
+    bool    perform_truth{false};
+    int     fullsim_run_yr {-1};
     double crossx_cut;
     double filter_effcy;
     double filter_effcy_bb = 0.003;
@@ -30,60 +37,47 @@ protected:
 
 // --------------------- input files & trees & data for setting branches---------------------------
   
-    TChain          *fChain;   //!pointer to the analyzed TTree or TChain
-  
     // Declaration of leaf types
     float                 Q;
     std::vector<float>   *EventWeights           =nullptr;
   
+    std::vector<float>   *truth_mupair_pt1           =nullptr;
+    std::vector<float>   *truth_mupair_eta1       =nullptr;
+    std::vector<float>   *truth_mupair_phi1          =nullptr;
+    std::vector<int>     *truth_mupair_ch1         =nullptr;
+    std::vector<int>     *truth_mupair_bar1         =nullptr;
+
+    std::vector<float>   *truth_mupair_pt2       =nullptr;
+    std::vector<float>   *truth_mupair_eta2          =nullptr;
+    std::vector<float>   *truth_mupair_phi2         =nullptr;
+    std::vector<int>     *truth_mupair_ch2         =nullptr;
+    std::vector<int>     *truth_mupair_bar2         =nullptr;
+
+    std::vector<float>   *truth_mupair_asym         =nullptr;
+    std::vector<float>   *truth_mupair_acop         =nullptr;
+    std::vector<float>   *truth_mupair_pt         =nullptr;
+    std::vector<float>   *truth_mupair_y         =nullptr;
+    std::vector<float>   *truth_mupair_m         =nullptr;
+    
   // --------------------- output file, histograms & trees ---------------------------
   
     TTree* meta_tree;
-    static const int nAncestorGroups = 4;
-
-    // configuration
-    std::string sign_labels[ParamsSet::nSigns] = {"same_sign", "op_sign"};
-    std::string signs[ParamsSet::nSigns] = {"_ss", "_op"};
-    std::string dphis[2] = {"_near", "_away"};
-    std::string ancestor_grps[nAncestorGroups] = {"_gg", "_qg","_single_g","_qq"};
-
-
-
-    // std::vector<std::string> parentGroupLabels = {"direct b","b to c","direct c","s/light","single photon", "Drell-Yan"};
-    std::vector<std::string> parentGroupLabels = {"direct b","b to c","direct c","s/light","single photon"};
-    int nParentGroups = parentGroupLabels.size();    
-    
-    std::vector<std::string> ancestor_labels = {"gg", "gq", "single g", "q qbar"};
-    
-    std::vector<std::string> samePrtsLabels = {"Same Parents", "Different Parents"};
-    std::vector<std::string> bb_op_one_b_one_btoc_labels = {"Same b", "Involve osc(s)", "From different ancestors", "Others"};
-
-    // std::vector<std::string> osc_labels = {"0 osc, one b one b-to-c", "0 osc, others", "1 osc, one b one b-to-c", "1 osc, regular", "2 oscs, one b one b-to-c", "2 oscs, others"};
-    std::vector<std::string> osc_labels = {"0 osc, one c-tag", "0 osc, others(*)", "1 osc, one c-tag(*)", "1 osc, regular", "2 oscs, one c-tag", "2 oscs, others(*)"};
-    std::vector<std::string> num_hard_scatt_out_labels = {"2","3","more"};
 
 // --------------------- class methods ---------------------------
   
-    PowhegAlgCoreT(int file_batch_input, std::string mc_mode_input, bool is_fullsim_input, bool is_fullsim_overlay_input = false)
-    : is_fullsim (is_fullsim_input)
-    : is_fullsim_overlay (is_fullsim_overlay_input)
-    , file_batch (file_batch_input) {
-        mc_mode = mc_mode_input;
-
-        is_fullsim |= is_fullsim_overlay;
+    PowhegAlgCoreT(int file_batch_input, std::string mc_mode_input)
+    : file_batch (file_batch_input)
+    , mc_mode (mc_mode_input){
         
-        cutLabels = cutLabels_MC;
-        numCuts = cutLabels_MC.size();
         crossx_cut = 5 * pow(10,8);
         std::cout << "Powheg Ntuple processing script:" << std::endl;
         std::cout << "mc_mode: " << mc_mode << std::endl;
-        std::cout << "file_batch: " << file_batch << std::endl;
-        std::cout << "is_fullsim? " << is_fullsim << std::endl;
-        std::cout << "is_fullsim_overlay? " << is_fullsim_overlay << std::endl;
     }
 
-    
-    
+    void ProcessDataHook();
+    void OutputTreePathHook();
+    void OutputHistPathHook();
+
     // --------------- InitInputHook ---------------
     template <class E>
     void CallInitInput() {
@@ -110,8 +104,8 @@ protected:
     void InitParams_PowhegCore();
 
     void InitParamsHook(){
+        (CallInitParams<Extras>(), ...); // first init parameters from the subanalyses
         InitParams_PowhegCore();
-        (CallInitParams<Extras>(), ...);
     }
 
     // --------------- InitTempVariablesHook ---------------
@@ -152,10 +146,7 @@ protected:
         }
     }
 
-    void InitOutputTreesExtra_PowhegCore(){
-        meta_tree = new TTree("meta_tree","meta_tree");
-        meta_tree->Branch("nentries_before_cuts", &nentries, "nentries_before_cuts/L");
-    }
+    void InitOutputTreesExtra_PowhegCore();
 
     void InitOutputTreesExtraHook(){
         InitOutputTreesExtra_PowhegCore();
@@ -263,7 +254,5 @@ protected:
     }
 
 public :
-    bool perform_truth {false}; // if true, perform truth analysis even if fullsim
-
     ~PowhegAlgCoreT(){}
 };

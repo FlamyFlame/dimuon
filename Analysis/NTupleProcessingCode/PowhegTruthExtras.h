@@ -11,8 +11,10 @@ protected:
 
     auto& mc_mode() { return self().mc_mode; }
     auto& pms()     { return self().pms; }
+    auto& fChain()   { return self().fChain; }
     auto& mpair()   { return self().mpair; }
     auto& mcdir()   { return self().mcdir; }
+    auto& EventWeights()   { return self().EventWeights; }
 
 // --------------------- input files & trees & data for setting branches---------------------------
 
@@ -28,24 +30,28 @@ protected:
     // std::vector<std::vector<int>>* truth_muon_parent_ids = nullptr;
     // std::vector<std::vector<int>>* truth_muon_parent_bars = nullptr;
 
-    std::vector<float>   *truth_mupair_pt1           =nullptr;
-    std::vector<float>   *truth_mupair_eta1       =nullptr;
-    std::vector<float>   *truth_mupair_phi1          =nullptr;
-    std::vector<int>     *truth_mupair_ch1         =nullptr;
-    std::vector<int>     *truth_mupair_bar1         =nullptr;
+// --------------------- truth origin parameters ---------------------------
 
-    std::vector<float>   *truth_mupair_pt2       =nullptr;
-    std::vector<float>   *truth_mupair_eta2          =nullptr;
-    std::vector<float>   *truth_mupair_phi2         =nullptr;
-    std::vector<int>     *truth_mupair_ch2         =nullptr;
-    std::vector<int>     *truth_mupair_bar2         =nullptr;
+    static const int nAncestorGroups = 4;
 
-    std::vector<float>   *truth_mupair_asym         =nullptr;
-    std::vector<float>   *truth_mupair_acop         =nullptr;
-    std::vector<float>   *truth_mupair_pt         =nullptr;
-    std::vector<float>   *truth_mupair_y         =nullptr;
-    // std::vector<float>   *truth_mupair_phi         =nullptr;
-    std::vector<float>   *truth_mupair_m         =nullptr;
+    // configuration
+    std::string sign_labels[ParamsSet::nSigns] = {"same_sign", "op_sign"};
+    std::string signs[ParamsSet::nSigns] = {"_ss", "_op"};
+    std::string dphis[2] = {"_near", "_away"};
+    std::string ancestor_grps[nAncestorGroups] = {"_gg", "_qg","_single_g","_qq"};
+
+    // std::vector<std::string> parentGroupLabels = {"direct b","b to c","direct c","s/light","single photon", "Drell-Yan"};
+    std::vector<std::string> parentGroupLabels = {"direct b","b to c","direct c","s/light","single photon"};
+    int nParentGroups = parentGroupLabels.size();    
+    
+    std::vector<std::string> ancestor_labels = {"gg", "gq", "single g", "q qbar"};
+    
+    std::vector<std::string> samePrtsLabels = {"Same Parents", "Different Parents"};
+    std::vector<std::string> bb_op_one_b_one_btoc_labels = {"Same b", "Involve osc(s)", "From different ancestors", "Others"};
+
+    // std::vector<std::string> osc_labels = {"0 osc, one b one b-to-c", "0 osc, others", "1 osc, one b one b-to-c", "1 osc, regular", "2 oscs, one b one b-to-c", "2 oscs, others"};
+    std::vector<std::string> osc_labels = {"0 osc, one c-tag", "0 osc, others(*)", "1 osc, one c-tag(*)", "1 osc, regular", "2 oscs, one c-tag", "2 oscs, others(*)"};
+    std::vector<std::string> num_hard_scatt_out_labels = {"2","3","more"};
 
 // --------------------- temporary variables (muon, muonpair objects, vectors, etc.) ---------------------------
 
@@ -104,6 +110,7 @@ protected:
     std::vector<float>* m2_first_hf_hadron_prt_pt_eta_phi_m;
     // std::vector<float>* m1_hq_ancestor_pt_eta_phi_m;
     // std::vector<float>* m2_hq_ancestor_pt_eta_phi_m;
+
 // --------------------- output file, histograms & trees ---------------------------
   
     std::ofstream* m_unspecified_parent_file = nullptr;
@@ -163,6 +170,10 @@ protected:
     void CheckIfFromSameB();
 
     void InitializeExtra();
+    void InitParamsExtra(){
+        self().perform_truth = true;
+    }
+    void InitInputExtra();
     void InitTempVariablesExtra();
 
     void InitOutStreamFiles();
@@ -180,20 +191,5 @@ public:
     bool print_prt_history = false;
     bool print_specific_prt_history = false;
 
-    PowhegTruthExtras(int file_batch_input, std::string mc_mode_input)
-        : PowhegNTupleFirstPass(file_batch_input, mc_mode_input, false){}
     ~PowhegTruthExtras(){}
 };
-
-
-class PowhegFullSimNTupleFirstPass : public virtual PowhegNTupleFirstPass{
-public: 
-    PowhegFullSimNTupleFirstPass(int file_batch_input, std::string mc_mode_input)
-        : PowhegNTupleFirstPass(file_batch_input, mc_mode_input, true){
-            output_single_muon_tree = false;
-        }
-
-    ~PowhegFullSimNTupleFirstPass(){}
-};
-
-

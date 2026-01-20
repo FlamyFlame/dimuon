@@ -71,14 +71,16 @@ protected:
     void FillSingleMuonTree();
 	void FillMuonPairTree();
 
-	bool PassCuts(){return self().PassCutsHook();} // required
+	bool PassCuts(){return self().PassCutsHook();} // require child-class definition
 
-    void FillMuonPair(int pair_ind){self().FillMuonPairHook(pair_ind);}
+    void FillMuonPair(int pair_ind){self().FillMuonPairHook(pair_ind);} // require child-class definition
 	void ResonanceTagging();
 	void ResonanceTaggingV2();
 	bool IsPhotoProduction();
 	
-	void HistAdjust();
+	void ProcessData(){return self().ProcessDataHook();} // require child-class definition
+    
+    void HistAdjust();
 
     void Finalize();
 
@@ -88,12 +90,11 @@ protected:
     void InitTempVariablesHook() {}
     void InitOutputSettingsHook() {}
 
-    void OutputTreePath() {return self().OutputTreePathHook();} // required
-    void OutputHistPath() {return self().OutputHistPathHook();} // required
+    void OutputTreePath() {return self().OutputTreePathHook();} // require child-class definition
+    void OutputHistPath() {return self().OutputHistPathHook();} // require child-class definition
     void InitOutputTreesExtraHook(){}
     void InitOutputHistsExtraHook(){}
 
-	void ProcessDataHook(){}
 	void FillMuonPairTreeHook(){}
     void FillSingleMuonTreeHook(){}
 
