@@ -7,10 +7,14 @@
 
 template <class PairT, class MuonT, class Derived, class... Extras>
 class DimuonDataAlgCoreT
-    : DimuonAlgCoreT<PairT, MuonT, Derived>
+    : public DimuonAlgCoreT<PairT, MuonT, Derived>
 {
 
 protected:
+    auto& fChain()   { return this->fChain; }
+    auto& mpair()   { return this->mpair; }
+    auto& h_cutAcceptance()   { return this->h_cutAcceptance; }
+
     DimuonDataAlgCoreT(int run_year_input, int file_batch_input)
         : run_year (run_year_input), file_batch (file_batch_input){
             PrintInstructions();
@@ -31,8 +35,6 @@ protected:
     bool use_mu6_for_trg_eff; // if true (now only for Pb+Pb 23), use mu6 as a supporting trigger for P[dimuon trg | supporting] efficiency analysis
     bool use_mu8_for_trg_eff; // if true (now only for Pb+Pb 23), use mu6 as a supporting trigger for P[dimuon trg | supporting] efficiency analysis
 // --------------------- input files & trees & data for setting branches---------------------------
-
-    TChain          *fChain;   //!pointer to the analyzed TTree or TChain
 
     // Declaration of leaf types
     UInt_t          RunNumber;
@@ -96,7 +98,9 @@ protected:
     void InitInputBranchesSingleMuonAnalysis(); // set branches for single-muon variables (for MB-data mu4-trigger-efficiency study)
     void TChainFill(){ return self().TChainFill(); }
 
-    void ProcessData();
+    bool IsPhotoProduction();
+
+    void ProcessDataHook();
 
     // --------------- InitInputHook ---------------
     template <class E>
@@ -128,19 +132,19 @@ protected:
         (CallInitInputBranchesSingleMuonAnalysis<Extras>(), ...);
     }
 
-    // --------------- InitInitInputBranchesSingleMuonAnalysisHook ---------------
+    // --------------- InitInputBranchesDimuonAnalysisHook ---------------
     template <class E>
-    void CallInitInitInputBranchesSingleMuonAnalysis() {
-        if constexpr (requires(E& e){ e.InitInitInputBranchesSingleMuonAnalysisExtra(); }) {
-            static_cast<E&>(*this).InitInitInputBranchesSingleMuonAnalysisExtra();
+    void CallInitInputBranchesDimuonAnalysis() {
+        if constexpr (requires(E& e){ e.InitInputBranchesDimuonAnalysisExtra(); }) {
+            static_cast<E&>(*this).InitInputBranchesDimuonAnalysisExtra();
         }
     }
 
-    void InitInitInputBranchesSingleMuonAnalysis_DataCore();
+    void InitInputBranchesDimuonAnalysis_DataCore();
 
-    void InitInitInputBranchesSingleMuonAnalysisHook(){
-        InitInitInputBranchesSingleMuonAnalysis_DataCore();
-        (CallInitInitInputBranchesSingleMuonAnalysis<Extras>(), ...);
+    void InitInputBranchesDimuonAnalysisHook(){
+        InitInputBranchesDimuonAnalysis_DataCore();
+        (CallInitInputBranchesDimuonAnalysis<Extras>(), ...);
     }
 
     // --------------- InitTempVariablesHook ---------------
@@ -342,7 +346,6 @@ public:
     int trigger_mode = 1; // default to single-muon trigger
 
     bool isMinBias = false; // whether use MinBias data for single-muon trigger efficiency
-    bool output_single_muon_tree = false;
 
     bool requireTight = false;
     int resonance_cut_mode = 1; // only applies to nominal (not-trigger-efficiency) analysis

@@ -36,11 +36,11 @@ struct PairPowhegTruthExtras {
     std::vector<float> m1_first_hq_ancestor_pt_eta_phi_m;
 };
 
-struct MuonPairPowheg
-  : MuonPairBaseT<MuonPairPowheg, MuonPowheg>
-  , PairMCTruthExtras<MuonPairPowheg>
-  , PairPowhegExtras<MuonPairPowheg>
-  , PairPowhegTruthExtras<MuonPairPowheg>
+struct MuonPairPowhegTruth
+  : MuonPairBaseT<MuonPairPowhegTruth, MuonPowhegTruth>
+  , PairMCTruthExtras<MuonPairPowhegTruth>
+  , PairPowhegExtras<MuonPairPowhegTruth>
+  , PairPowhegTruthExtras<MuonPairPowhegTruth>
 {};
 
 struct MuonPairPowhegFullSimNoTruth
@@ -64,7 +64,7 @@ struct MuonPairPowhegFullSimOverlayNoTruth
   , PairPbPbExtras<MuonPairPowhegFullSimOverlayNoTruth>
 {
     void PairValueCalcHook() {
-        this->PairValueCalcPbPb(); // compute avg_centrality
+        this->PairPbPbExtras<MuonPairPowhegFullSimOverlayNoTruth>::PairValueCalcPbPb(); // compute avg_centrality
     }
 };
 
@@ -77,6 +77,6 @@ struct MuonPairPowhegFullSimOverlayWTruth
   , PairPbPbExtras<MuonPairPowhegFullSimOverlayWTruth>
 {
     void PairValueCalcHook() {
-        this->PairValueCalcPbPb(); // compute avg_centrality
+        this->PairPbPbExtras<MuonPairPowhegFullSimOverlayWTruth>::PairValueCalcPbPb();
     }
 };

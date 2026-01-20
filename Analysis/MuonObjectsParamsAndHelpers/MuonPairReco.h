@@ -61,9 +61,7 @@ struct PairRecoExtras {
   	}
 };
 
-struct MuonPairReco
-  : MuonPairBaseT<MuonPairReco, MuonReco>
-  , PairRecoExtras<MuonPairReco>
+struct MuonPairPP
+  : MuonPairBaseT<MuonPairPP, MuonPP>
+  , PairRecoExtras<MuonPairPP>
 {};
-
-using MuonPairPP = MuonPairReco;

@@ -8,6 +8,19 @@ enum cuts_MC{
   pass_resonance 
 };
 
+// enum class CutsCommon : int {
+//   nocut = 0,
+//   pass_trigger_match,
+//   pass_muon_quality,
+//   pass_muon_eta,
+//   pass_muon_pt,
+//   pass_muon_dP_overP,
+//   pass_muon_d0_z0,
+//   pass_muon_trk_charge,
+//   NumCommonCuts
+// };
+
+
 std::vector<std::string> cutLabels_MC = {"no cut", "muon eta", "muon pT", "resonance"};
 
 enum single_muon_parent_group{ // parent groups for a single muon; used for pythia + powheg

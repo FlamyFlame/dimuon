@@ -27,23 +27,23 @@ struct MuonPairBaseT {
     // --- base-controlled dispatch ---
     void Sort() {
         // Prefer reco sort if available
-        if constexpr (requires(Derived& d) { d.SortReco(); }) {
-            self().SortReco();
-        } else if constexpr (requires(Derived& d) { d.SortTruth(); }) {
+        if constexpr (requires(Derived& d) { d.SortTruth(); }) {
             self().SortTruth();
+        } else if constexpr (requires(Derived& d) { d.SortReco(); }) {
+            self().SortReco();
         } else {
             static_assert([]{ return false; }(),
-                          "MuonPairBaseT::Sort(): need SortReco() or SortTruth() in Derived");
+                          "MuonPairBaseT::Sort(): need SortTruth() or SortReco() in Derived");
         }
     }
 
     void PairValueCalc() {
         // Call whichever exist (possibly both)
-        if constexpr (requires(Derived& d) { d.PairValueCalcReco(); }) {
-            self().PairValueCalcReco();
-        }
         if constexpr (requires(Derived& d) { d.PairValueCalcTruth(); }) {
             self().PairValueCalcTruth();
+        }
+        if constexpr (requires(Derived& d) { d.PairValueCalcReco(); }) {
+            self().PairValueCalcReco();
         }
 
         // Optional: enforce at least one exists
@@ -65,9 +65,3 @@ protected:
     void PairValueCalcHook() {}  // no-op by default
 };
 
-
-
-template <class Derived, class MuonT>
-void MuonPairBaseT<Derived, MuonT>::PairValueCalcBase(){
-
-}
