@@ -41,6 +41,8 @@ protected:
     float                 Q;
     std::vector<float>   *EventWeights           =nullptr;
   
+    std::vector<int>     *truth_muon_barcode        =nullptr;
+
     std::vector<float>   *truth_mupair_pt1           =nullptr;
     std::vector<float>   *truth_mupair_eta1       =nullptr;
     std::vector<float>   *truth_mupair_phi1          =nullptr;
@@ -75,6 +77,7 @@ protected:
     }
 
     void ProcessDataHook();
+    void ProcessEventTruthOnly(int ev_num);
     void OutputTreePathHook();
     void OutputHistPathHook();
 
@@ -236,6 +239,18 @@ protected:
 
     void PerformTruthPairAnalysisHook(){
         (CallTruthPairAnalysis<Extras>(), ...);
+    }
+
+    // --------------- ProcessEventFullsimHook ---------------
+    template <class E>
+    void CallProcessEventFullsim(int ev_num) {
+        if constexpr (requires(E& e, int num){ e.ProcessEventFullsim(num); }) {
+            static_cast<E&>(*this).ProcessEventFullsim(ev_num);
+        }
+    }
+
+    void ProcessEventFullsimHook(int ev_num){
+        (CallProcessEventFullsim<Extras>(ev_num), ...);
     }
 
     // --------------- FinalizeHook ---------------

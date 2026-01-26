@@ -23,10 +23,8 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_PowhegCore(){
     data_subdir = is_fullsim ? "user.yuhang.TrigRates.dimuon.PowhegPythia.fullsim." + mc_mode + ".June2024.1._MYSTREAM/"
                              : mc_mode + "_evgen_truth_full_sample/";
 
-    dt_suffix = is_fullsim? "_fullsim" : "_truth";
-
-    truth_suffix = is_fullsim   ?   (perform_truth ? "_w_truth" : "_no_truth")
-                                            :   "";
+    dt_suffix= is_fullsim   ?   (perform_truth ? "_fullsim_w_truth" : "_fullsim_no_truth")
+                            :   "_truth";
 
     if (!is_fullsim && file_batch > 6){
         throw std::runtime_error("For Powheg MC truth, file_batch has to be between 1 and 6!");
@@ -72,6 +70,8 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInput_PowhegCore(){
     fChain()->SetBranchAddress("EventWeights"               , &EventWeights);
     fChain()->SetBranchAddress("Q"                          , &Q);
 
+    fChain()->SetBranchAddress("truth_muon_barcode"         , &truth_muon_barcode);
+
     fChain()->SetBranchAddress("truth_mupair_pt1"           , &truth_mupair_pt1);
     fChain()->SetBranchAddress("truth_mupair_eta1"          , &truth_mupair_eta1);
     fChain()->SetBranchAddress("truth_mupair_phi1"          , &truth_mupair_phi1);
@@ -94,6 +94,7 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInput_PowhegCore(){
     fChain()->SetBranchStatus("EventWeights"                  ,1);
     fChain()->SetBranchStatus("Q"                             ,1);
 
+    fChain()->SetBranchStatus("truth_muon_barcode"            ,1);
     fChain()->SetBranchStatus("truth_mupair_pt1"              ,1);
     fChain()->SetBranchStatus("truth_mupair_eta1"             ,1);
     fChain()->SetBranchStatus("truth_mupair_phi1"             ,1);
@@ -111,14 +112,15 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInput_PowhegCore(){
     fChain()->SetBranchStatus("truth_mupair_pt"               ,1);
     fChain()->SetBranchStatus("truth_mupair_y"                ,1);
     fChain()->SetBranchStatus("truth_mupair_m"                ,1);   
-
 }
 
 
 template <class PairT, class MuonT, class Derived, class... Extras>
 void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::OutputTreePathHook(){
     this->output_file_path = mcdir + data_subdir;
-    this->output_file_path += "muon_pairs_powheg" + dt_suffix + "_" + mc_mode + "_part" + std::to_string(file_batch) + truth_suffix + ".root";
+    std::string file_name_base = this->output_single_muon_tree ? "single_muon_trees_powheg" : "muon_pairs_powheg";
+
+    this->output_file_path += file_name_base + "_" + mc_mode + dt_suffix + "_part" + std::to_string(file_batch) + ".root";
 }
 
 template <class PairT, class MuonT, class Derived, class... Extras>
@@ -130,7 +132,7 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::InitOutputTreesExtra_Powh
 template <class PairT, class MuonT, class Derived, class... Extras>
 void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::OutputHistPathHook(){
     this->output_hist_file_path = mcdir + data_subdir;
-    this->output_hist_file_path += "hists_powheg_ntuple_processing_powheg" + dt_suffix + "_" + mc_mode + "_part" + std::to_string(file_batch) + truth_suffix + ".root";
+    this->output_hist_file_path += "hists_powheg_ntuple_processing_powheg_" + mc_mode + dt_suffix + "_part" + std::to_string(file_batch) + ".root";
 }
 
 template <class PairT, class MuonT, class Derived, class... Extras>
@@ -158,6 +160,17 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::FillMuonPair_PowhegCore(i
     mpair()->truth_asym       = abs(truth_mupair_asym->at(pair_ind));
     mpair()->truth_acop       = abs(truth_mupair_acop->at(pair_ind));
     assert (mpair()->truth_asym >= 0 && mpair()->truth_acop >= 0);
+
+    auto it1 = std::find(truth_muon_barcode->begin(), truth_muon_barcode->end(), mpair()->m1.truth_bar);
+    auto it2 = std::find(truth_muon_barcode->begin(), truth_muon_barcode->end(), mpair()->m2.truth_bar);
+
+    if (it1 == truth_muon_barcode->end() || it2 == truth_muon_barcode->end()) { // either muon barcode not matched
+        throw std::runtime_error("Truth muon in current pair NOT matched to truth muon list!");
+    }
+    
+    mpair()->m1.ind = std::distance(truth_muon_barcode->begin(), it1);
+    mpair()->m2.ind = std::distance(truth_muon_barcode->begin(), it2);
+
 }
 
 template <class PairT, class MuonT, class Derived, class... Extras>
@@ -177,8 +190,8 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook(){
     this->nentries = fChain()->GetEntries();//number of events
     meta_tree->Fill();
     
-    // for (Long64_t jentry=0; jentry<1000; jentry++) {//loop over the events
-    for (Long64_t jentry=0; jentry<this->nentries; jentry++) {//loop over the events
+    for (Long64_t jentry=0; jentry<1000; jentry++) {//loop over the events
+    // for (Long64_t jentry=0; jentry<this->nentries; jentry++) {//loop over the events
         // cout << jentry << endl;
         if(jentry%10000==0) cout<<"Processing "<<jentry<<" event out of "<<this->nentries<<" events"<<std::endl;
 
@@ -187,99 +200,88 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook(){
           std::cout<<"Error:: Read in event has size of zero bytes,  quitting"<<std::endl;
           throw std::exception();
         }
-    
-        this->muon_pair_list_cur_event_pre_resonance_cut.clear();
-        this->resonance_tagged_muon_index_list.clear(); // MUST CLEAR for each event!!
 
-        std::vector<int> muon_index_list = {};
-        std::vector<int>::iterator it;
+        if (!is_fullsim)    ProcessEventTruthOnly(jentry);
+        else                ProcessEventFullsimHook(jentry);  
+    }
+}
 
-        int NPairs = muon_pair_muon1_pt->size();//number of muon pairs in the event
+template <class PairT, class MuonT, class Derived, class... Extras>
+void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessEventTruthOnly(int ev_num){
 
-        for(int pair_ind = 0; pair_ind < NPairs; pair_ind++){//first loop over all muon-pairs in the event
+    this->muon_pair_list_cur_event_pre_resonance_cut.clear();
+    this->resonance_tagged_muon_index_list.clear(); // MUST CLEAR for each event!!
 
-            mpair().Clear();
+    std::vector<int> muon_index_list = {};
+    std::vector<int>::iterator it;
 
-            this->FillMuonPair(pair_ind);
-            
-            mpair()->m1.ev_num = jentry;
-            mpair()->m2.ev_num = jentry;
+    int NPairs = truth_mupair_pt1->size();//number of muon pairs in the event
 
-            if (perform_truth){ // order: truth > reco
-                h_cutAcceptance()[mpair()->m1.truth_charge != mpair()->m2.truth_charge]->Fill(double(nocut) + 0.5, mpair()->weight);
-            } else{
-                h_cutAcceptance()[mpair()->m1.charge != mpair()->m2.charge]->Fill(double(nocut) + 0.5, mpair()->weight);
-            }
+    for(int pair_ind = 0; pair_ind < NPairs; pair_ind++){//first loop over all muon-pairs in the event
 
-            // ------------------------------------------------------------
+        mpair().Clear();
 
-            // Apply cuts
-
-            // Trigger match for muon pair
-            // if(dimuon_b_HLT_2mu4->at(pair_ind)==false) continue;
-
-            if (abs(mpair()->weight) > crossx_cut * filter_effcy) continue;
-            if (!PassCuts(mpair()))continue;
+        this->FillMuonPair(pair_ind);
         
-            //------------------------------------------------------------
+        mpair()->m1.ev_num = ev_num;
+        mpair()->m2.ev_num = ev_num;
 
-            mpair()->Update(); // only afterwards can we use mpair()->same_sign
+        if (perform_truth){ // order: truth > reco
+            h_cutAcceptance()[mpair()->m1.truth_charge != mpair()->m2.truth_charge]->Fill(double(nocut) + 0.5, mpair()->weight);
+        } else{
+            h_cutAcceptance()[mpair()->m1.charge != mpair()->m2.charge]->Fill(double(nocut) + 0.5, mpair()->weight);
+        }
 
-            // resonance tag
-            ResonanceTagging(mpair());
-            
-            this->muon_pair_list_cur_event_pre_resonance_cut.push_back(std::move(mpair()));
-            
-        } // finish first loop over all muon pairs
+        // ------------------------------------------------------------
 
-        for(int pair_ind = 0; pair_ind < this->muon_pair_list_cur_event_pre_resonance_cut.size(); pair_ind++){//second loop over all muon-pairs in the event
-            // discard the pair if either muon is resonance-tagged
+        // Apply cuts
 
-            mpair() = std::move(this->muon_pair_list_cur_event_pre_resonance_cut.at(pair_ind));
+        // Trigger match for muon pair
+        // if(dimuon_b_HLT_2mu4->at(pair_ind)==false) continue;
 
-            if (!mpair()){
-                std::cerr << "mpair() at second muon-pair loop NOT found! Return without resonance-tag checking or pair analysis." << std::endl;
-                continue;
-            }
+        if (abs(mpair()->weight) > crossx_cut * filter_effcy) continue;
+        if (!PassCuts(mpair()))continue;
+        
+        //------------------------------------------------------------
 
-            std::vector<int>::iterator itres_m1;
-            std::vector<int>::iterator itres_m2;
+        mpair()->Update(); // only afterwards can we use mpair()->same_sign
 
-            itres_m1 = std::find(this->resonance_tagged_muon_index_list.begin(),this->resonance_tagged_muon_index_list.end(),mpair()->m1.ind);
-            if(itres_m1 != this->resonance_tagged_muon_index_list.end())  continue;
+        // resonance tag
+        ResonanceTagging(mpair());
+        
+        this->muon_pair_list_cur_event_pre_resonance_cut.push_back(std::move(mpair()));
+        
+    } // finish first loop over all muon pairs
 
-            itres_m2 = std::find(this->resonance_tagged_muon_index_list.begin(),this->resonance_tagged_muon_index_list.end(),mpair()->m2.ind);
-            if(itres_m2 != this->resonance_tagged_muon_index_list.end())  continue;
+    for(int pair_ind = 0; pair_ind < this->muon_pair_list_cur_event_pre_resonance_cut.size(); pair_ind++){//second loop over all muon-pairs in the event
+        // discard the pair if either muon is resonance-tagged
 
-            h_cutAcceptance()[mpair()->m1.charge != mpair()->m2.charge]->Fill(double(pass_resonance) + 0.5, mpair()->weight);
-            
-            //------------------------------------------------------------
+        mpair() = std::move(this->muon_pair_list_cur_event_pre_resonance_cut.at(pair_ind));
 
-            if (is_fullsim){
-                if(this->output_single_muon_tree){
-                  it = std::find(muon_index_list.begin(),muon_index_list.end(),mpair()->m1.ind);
-                  if(it == muon_index_list.end()){ //muon1 index NOT found
-                        muon_index_list.push_back(mpair()->m1.ind);
-                        this->muon_raw_ptr = &(mpair()->m1);
-                        this->FillSingleMuonTree();
-                  }
-                  it = std::find(muon_index_list.begin(),muon_index_list.end(),mpair()->m2.ind);
-                  if(it == muon_index_list.end()){ //muon1 index NOT found
-                        muon_index_list.push_back(mpair()->m2.ind);
-                        this->muon_raw_ptr = &(mpair()->m2);
-                        this->FillSingleMuonTree();
-                  }
-                }
-                else{ // fill muon pair trees
-                    this->FillMuonPairTree();
-                }
-            }
+        if (!mpair()){
+            std::cerr << "mpair() at second muon-pair loop NOT found! Return without resonance-tag checking or pair analysis." << std::endl;
+            continue;
+        }
 
-            PerformTruthPairAnalysisHook();
+        std::vector<int>::iterator itres_m1;
+        std::vector<int>::iterator itres_m2;
 
-        } // finish second loop over muon pairs
+        itres_m1 = std::find(this->resonance_tagged_muon_index_list.begin(),this->resonance_tagged_muon_index_list.end(),mpair()->m1.ind);
+        if(itres_m1 != this->resonance_tagged_muon_index_list.end())  continue;
 
-        this->muon_pair_list_cur_event_pre_resonance_cut.clear();
-    }//loop over events
+        itres_m2 = std::find(this->resonance_tagged_muon_index_list.begin(),this->resonance_tagged_muon_index_list.end(),mpair()->m2.ind);
+        if(itres_m2 != this->resonance_tagged_muon_index_list.end())  continue;
+
+        h_cutAcceptance()[mpair()->m1.charge != mpair()->m2.charge]->Fill(double(pass_resonance) + 0.5, mpair()->weight);
+        
+        //------------------------------------------------------------
+
+        PerformTruthPairAnalysisHook();
+        this->FillMuonPairTree();
+
+
+    } // finish second loop over muon pairs
+
+    this->muon_pair_list_cur_event_pre_resonance_cut.clear();
 }
 

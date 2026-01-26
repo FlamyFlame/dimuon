@@ -200,9 +200,6 @@ void PowhegTruthExtras<Derived>::TruthPairAnalysis(){
     }
 
     //------------------------------------------------------------
-
-    // cout << "mQQ " << mpair()->mQQ << ", mHard_relevant " << mpair()->mHard_relevant << endl;
-    self().FillMuonPairTree(); // mode = 2 for MC truth
     
     h_crossx->Fill(EventWeights()->at(0));
     if(mpair()->truth_pt_lead < 8) // 4-8
@@ -212,8 +209,8 @@ void PowhegTruthExtras<Derived>::TruthPairAnalysis(){
     else // > 15
         h_crossx_pt_binned[2]->Fill(EventWeights()->at(0));
 
-    int isign = !(mpair()->truth_same_sign);
-    int jdphi = (abs(mpair()->truth_dphi) >= pms().PI / 2.);
+    // int isign = !(mpair()->truth_same_sign);
+    // int jdphi = (abs(mpair()->truth_dphi) >= pms().PI / 2.);
 }
 
 template <class Derived>

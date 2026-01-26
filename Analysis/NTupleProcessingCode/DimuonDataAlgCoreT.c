@@ -513,7 +513,7 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::ProcessDataHook(){
 
     			if (!PassCuts(mpair()))continue;
     			
-    			mpair()->passTight = (mpair()->m1.quality&mpair()->m2.quality&16); //tag tight muon pairs
+    			mpair()->pair_pass_tight = (mpair()->m1.quality&mpair()->m2.quality&16); //tag tight muon pairs
     		
     			//------------------------------------------------------------
 
