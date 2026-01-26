@@ -9,11 +9,15 @@ template <class PairT, class MuonT, class Derived, class... Extras>
 class DimuonDataAlgCoreT
     : public DimuonAlgCoreT<PairT, MuonT, Derived>
 {
+public:
+    using pair_t = PairT;
 
 protected:
-    auto& fChain()   { return this->fChain; }
-    auto& mpair()   { return this->mpair; }
-    auto& h_cutAcceptance()   { return this->h_cutAcceptance; }
+    TChain*&                    fChainRef()            { return this->fChain; }
+    std::shared_ptr<pair_t>&    mpairRef()             { return this->mpair; }
+    TH1D* (&h_cutAcceptanceRef())[ParamsSet::nSigns] {
+        return this->h_cutAcceptance;
+    }
 
     DimuonDataAlgCoreT(int run_year_input, int file_batch_input)
         : run_year (run_year_input), file_batch (file_batch_input){
@@ -100,9 +104,8 @@ protected:
 
     bool IsPhotoProduction();
 
-    void ProcessDataHook();
 
-    // --------------- InitInputHook ---------------
+    // --------------- InitInputImpl ---------------
     template <class E>
     void CallInitInput() {
         if constexpr (requires(E& e){ e.InitInputExtra(); }) {
@@ -112,12 +115,7 @@ protected:
 
     void InitInput_DataCore();
 
-    void InitInputHook(){
-        InitInput_DataCore();
-        (CallInitInput<Extras>(), ...);
-    }
-
-    // --------------- InitInputBranchesSingleMuonAnalysisHook ---------------
+    // --------------- InitInputBranchesSingleMuonAnalysisImpl ---------------
     template <class E>
     void CallInitInputBranchesSingleMuonAnalysis() {
         if constexpr (requires(E& e){ e.InitInputBranchesSingleMuonAnalysisExtra(); }) {
@@ -127,12 +125,7 @@ protected:
 
     void InitInputBranchesSingleMuonAnalysis_DataCore();
 
-    void InitInputBranchesSingleMuonAnalysisHook(){
-        InitInputBranchesSingleMuonAnalysis_DataCore();
-        (CallInitInputBranchesSingleMuonAnalysis<Extras>(), ...);
-    }
-
-    // --------------- InitInputBranchesDimuonAnalysisHook ---------------
+    // --------------- InitInputBranchesDimuonAnalysisImpl ---------------
     template <class E>
     void CallInitInputBranchesDimuonAnalysis() {
         if constexpr (requires(E& e){ e.InitInputBranchesDimuonAnalysisExtra(); }) {
@@ -142,12 +135,7 @@ protected:
 
     void InitInputBranchesDimuonAnalysis_DataCore();
 
-    void InitInputBranchesDimuonAnalysisHook(){
-        InitInputBranchesDimuonAnalysis_DataCore();
-        (CallInitInputBranchesDimuonAnalysis<Extras>(), ...);
-    }
-
-    // --------------- InitTempVariablesHook ---------------
+    // --------------- InitTempVariablesImpl ---------------
     template <class E>
     void CallInitTempVariables() {
         if constexpr (requires(E& e){ e.InitTempVariablesExtra(); }) {
@@ -157,12 +145,7 @@ protected:
 
     void InitTempVariables_DataCore(){}
 
-    void InitTempVariablesHook(){
-        InitTempVariables_DataCore();
-        (CallInitTempVariables<Extras>(), ...);
-    }
-
-    // --------------- InitParamsHook ---------------
+    // --------------- InitParamsImpl ---------------
     template <class E>
     void CallInitParams() {
         if constexpr (requires(E& e){ e.InitParamsExtra(); }) {
@@ -172,12 +155,7 @@ protected:
 
     void InitParams_DataCore();
 
-    void InitParamsHook(){
-        InitParams_DataCore();
-        (CallInitParams<Extras>(), ...);
-    }
-
-    // --------------- InitOutputSettingsHookHook ---------------
+    // --------------- InitOutputSettingsImpl ---------------
     template <class E>
     void CallInitOutputSettings() {
         if constexpr (requires(E& e){ e.InitOutputSettingsExtra(); }) {
@@ -187,12 +165,7 @@ protected:
 
     void InitOutputSettings_DataCore(){}
 
-    void InitOutputSettings(){
-        InitOutputSettings_DataCore();
-        (CallInitOutputSettings<Extras>(), ...);
-    }
-
-    // --------------- InitOutputTreesExtraHook ---------------
+    // --------------- InitOutputTreesExtraImpl ---------------
     template <class E>
     void CallInitOutputTreesExtra() {
         if constexpr (requires(E& e){ e.InitOutputTreesExtra(); }) {
@@ -200,11 +173,7 @@ protected:
         }
     }
 
-    void InitOutputTreesExtraHook(){
-        (CallInitOutputTreesExtra<Extras>(), ...);
-    }
-
-    // --------------- InitOutputHistsExtraHook ---------------
+    // --------------- InitOutputHistsExtraImpl ---------------
     template <class E>
     void CallInitOutputHistsExtra() {
         if constexpr (requires(E& e){ e.InitOutputHistsExtra(); }) {
@@ -212,11 +181,7 @@ protected:
         }
     }
 
-    void InitOutputHistsExtraHook(){
-        (CallInitOutputHistsExtra<Extras>(), ...);
-    }
-
-    // --------------- InitializeExtraHook ---------------
+    // --------------- InitializeExtraImpl ---------------
     template <class E>
     void CallInitializeExtra() {
         if constexpr (requires(E& e){ e.InitializeExtra(); }) {
@@ -226,12 +191,7 @@ protected:
 
     void InitializeExtra_DataCore(){}
 
-    void InitializeExtraHook(){
-        InitializeExtra_DataCore();
-        (CallInitializeExtra<Extras>(), ...);
-    }
-
-    // --------------- PassCutsHook ---------------
+    // --------------- PassCutsImpl ---------------
     template <class E>
     bool CallPassCuts() {
         if constexpr (requires(E& e){ e.PassCutsExtra(); }) {
@@ -243,11 +203,7 @@ protected:
 
     bool PassCuts_DataCore(bool requireTight);
 
-    bool PassCutsHook(){
-        return (PassCuts_DataCore(bool requireTight) && (CallPassCuts<Extras>(), ...));
-    }
-
-    // --------------- FillMuonPairTreeHook ---------------
+    // --------------- FillMuonPairTreeImpl ---------------
     template <class E>
     void CallFillMuonPairTree() {
         if constexpr (requires(E& e){ e.FillMuonPairTreeExtra(); }) {
@@ -255,11 +211,7 @@ protected:
         }
     }
 
-    void FillMuonPairTreeHook(){
-        (CallFillMuonPairTree<Extras>(), ...);
-    }
-
-    // --------------- FillSingleMuonTreeHook ---------------
+    // --------------- FillSingleMuonTreeImpl ---------------
     template <class E>
     void CallFillSingleMuonTree() {
         if constexpr (requires(E& e){ e.FillSingleMuonTreeExtra(); }) {
@@ -267,11 +219,7 @@ protected:
         }
     }
 
-    void FillSingleMuonTreeHook(){
-        (CallFillSingleMuonTree<Extras>(), ...);
-    }
-
-    // --------------- FillMuonPairHook ---------------
+    // --------------- FillMuonPairImpl ---------------
     template <class E>
     void CallFillMuonPair(int pair_ind) {
         if constexpr (requires(E& e, int ind) { e.FillMuonPairExtra(ind); }) {
@@ -281,12 +229,7 @@ protected:
 
     void FillMuonPair_DataCore(int pair_ind);
 
-    void FillMuonPairHook(int pair_ind){
-        FillMuonPair_DataCore(pair_ind);
-        (CallFillMuonPair<Extras>(pair_ind), ...);
-    }
-
-    // --------------- HistAdjustHook ---------------
+    // --------------- HistAdjustImpl ---------------
     template <class E>
     void CallHistAdjust() {
         if constexpr (requires(E& e){ e.HistAdjustExtra(); }) {
@@ -296,12 +239,7 @@ protected:
 
     void HistAdjust_DataCore(){}
 
-    void HistAdjustHook(){
-        HistAdjust_DataCore();
-        (CallHistAdjust<Extras>(), ...);
-    }
-
-   // --------------- PrintInstructionsHook ---------------
+   // --------------- PrintInstructionsImpl ---------------
     template <class E>
     void CallPrintInstructions() {
         if constexpr (requires(E& e){ e.PrintInstructionsExtra(); }) {
@@ -311,12 +249,7 @@ protected:
 
     void PrintInstructions_DataCore();
 
-    void PrintInstructionsHook(){
-        PrintInstructions_DataCore();
-        (CallPrintInstructions<Extras>(), ...);
-    }
-
-    // --------------- PerformAdditionalPairAnalysisHook ---------------
+    // --------------- PerformAdditionalPairAnalysisImpl ---------------
     template <class E>
     void CallAdditionalPairAnalysis() {
         if constexpr (requires(E& e){ e.AdditionalPairAnalysis(); }) {
@@ -324,11 +257,7 @@ protected:
         }
     }
 
-    void PerformAdditionalPairAnalysisHook(){
-        (CallAdditionalPairAnalysis<Extras>(), ...);
-    }
-
-    // --------------- FinalizeHook ---------------
+    // --------------- FinalizeImpl ---------------
     template <class E>
     void CallFinalize() {
         if constexpr (requires(E& e){ e.FinalizeExtra(); }) {
@@ -338,10 +267,6 @@ protected:
 
     void Finalize_DataCore(){}
 
-    void FinalizeHook(){
-        Finalize_DataCore();
-        (CallFinalize<Extras>(), ...);
-    }
 public:
     int trigger_mode = 1; // default to single-muon trigger
 
@@ -358,5 +283,103 @@ public:
 // --------------------- public class methods ---------------------------
 	~DimuonDataAlgCoreT(){}
     void PrintInstructions();
+    void ProcessDataHook();
+
+
+    // --------------- InitInputHook ---------------
+    void InitInputHook(){
+        InitInput_DataCore();
+        (CallInitInput<Extras>(), ...);
+    }
+
+    // --------------- InitInputBranchesSingleMuonAnalysisHook ---------------
+    void InitInputBranchesSingleMuonAnalysisHook(){
+        InitInputBranchesSingleMuonAnalysis_DataCore();
+        (CallInitInputBranchesSingleMuonAnalysis<Extras>(), ...);
+    }
+
+    // --------------- InitInputBranchesDimuonAnalysisHook ---------------
+    void InitInputBranchesDimuonAnalysisHook(){
+        InitInputBranchesDimuonAnalysis_DataCore();
+        (CallInitInputBranchesDimuonAnalysis<Extras>(), ...);
+    }
+
+    // --------------- InitTempVariablesHook ---------------
+    void InitTempVariablesHook(){
+        InitTempVariables_DataCore();
+        (CallInitTempVariables<Extras>(), ...);
+    }
+
+    // --------------- InitParamsHook ---------------
+    void InitParamsHook(){
+        InitParams_DataCore();
+        (CallInitParams<Extras>(), ...);
+    }
+
+    // --------------- InitOutputSettingsHookHook ---------------
+    void InitOutputSettings(){
+        InitOutputSettings_DataCore();
+        (CallInitOutputSettings<Extras>(), ...);
+    }
+
+    // --------------- InitOutputTreesExtraHook ---------------
+    void InitOutputTreesExtraHook(){
+        (CallInitOutputTreesExtra<Extras>(), ...);
+    }
+
+    // --------------- InitOutputHistsExtraHook ---------------
+    void InitOutputHistsExtraHook(){
+        (CallInitOutputHistsExtra<Extras>(), ...);
+    }
+
+    // --------------- InitializeExtraHook ---------------
+    void InitializeExtraHook(){
+        InitializeExtra_DataCore();
+        (CallInitializeExtra<Extras>(), ...);
+    }
+
+    // --------------- PassCutsHook ---------------
+    bool PassCutsHook(){
+        return (PassCuts_DataCore(bool requireTight) && (CallPassCuts<Extras>(), ...));
+    }
+
+    // --------------- FillMuonPairTreeHook ---------------
+    void FillMuonPairTreeHook(){
+        (CallFillMuonPairTree<Extras>(), ...);
+    }
+
+    // --------------- FillSingleMuonTreeHook ---------------
+    void FillSingleMuonTreeHook(){
+        (CallFillSingleMuonTree<Extras>(), ...);
+    }
+
+    // --------------- FillMuonPairHook ---------------
+    void FillMuonPairHook(int pair_ind){
+        FillMuonPair_DataCore(pair_ind);
+        (CallFillMuonPair<Extras>(pair_ind), ...);
+    }
+
+    // --------------- HistAdjustHook ---------------
+    void HistAdjustHook(){
+        HistAdjust_DataCore();
+        (CallHistAdjust<Extras>(), ...);
+    }
+
+   // --------------- PrintInstructionsHook ---------------
+    void PrintInstructionsHook(){
+        PrintInstructions_DataCore();
+        (CallPrintInstructions<Extras>(), ...);
+    }
+
+    // --------------- PerformAdditionalPairAnalysisHook ---------------
+    void PerformAdditionalPairAnalysisHook(){
+        (CallAdditionalPairAnalysis<Extras>(), ...);
+    }
+
+    // --------------- FinalizeHook ---------------
+    void FinalizeHook(){
+        Finalize_DataCore();
+        (CallFinalize<Extras>(), ...);
+    }
 
 };

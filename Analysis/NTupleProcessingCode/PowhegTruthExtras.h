@@ -3,18 +3,21 @@
 #include "../MuonObjectsParamsAndHelpers/struct_particle.h"
 #include "../MuonObjectsParamsAndHelpers/muon_pair_enums_MC.h"
 
-template <class Derived>
+template <class PairT, class Derived>
 class PowhegTruthExtras{
+public:
+    using pair_t = PairT;
+
 protected:
     Derived& self() { return static_cast<Derived&>(*this); }
     const Derived& self() const { return static_cast<const Derived&>(*this); }
 
-    auto& mc_mode() { return self().mc_mode; }
-    auto& pms()     { return self().pms; }
-    auto& fChain()   { return self().fChain; }
-    auto& mpair()   { return self().mpair; }
-    auto& mcdir()   { return self().mcdir; }
-    auto& EventWeights()   { return self().EventWeights; }
+    auto&                       mc_modeRef() { return self().mc_mode; }
+    ParamsSet&                  pmsRef()     { return self().pms; }
+    TChain*&                    fChainRef()  { return self().fChain; }
+    std::shared_ptr<pair_t>&    mpairRef()   { return self().mpair; }
+    auto&                       mcdirRef()   { return self().mcdir; }
+    auto&                       EventWeightsRef()   { return self().EventWeights; }
 
 // --------------------- input files & trees & data for setting branches---------------------------
 
@@ -172,6 +175,7 @@ protected:
     void InitializeExtra();
     void InitParamsExtra(){
         self().perform_truth = true;
+        cout << "PowhegTruthExtras::InitParamsExtra() called" << endl;
     }
     void InitInputExtra();
     void InitTempVariablesExtra();
@@ -181,7 +185,7 @@ protected:
     void InitOutputTreesExtra();
     void InitOutputHistsExtra();
     void HistAdjustExtra();
-    void TruthPairAnalysis();
+    void PerformTruthPairAnalysis();
     
     void FinalizeExtra();
 public: 

@@ -2,7 +2,7 @@
 #include "MuonPairBase.h"
 
 template <class Derived>
-struct PairMCTruthExtras {
+struct PairMCTruthKinExtras {
     float truth_pt_lead{};
     float truth_pair_pt{}, truth_pair_eta{}, truth_pair_phi{}, truth_pair_y{};
     float truth_dpt{}, truth_deta{}, truth_dphi{}, truth_dr{}; 
@@ -48,4 +48,7 @@ struct PairMCTruthExtras {
     }
 };
 
-
+template <class Derived>
+struct PairFullSimExtras {
+    bool pair_pass_medium{};
+};
