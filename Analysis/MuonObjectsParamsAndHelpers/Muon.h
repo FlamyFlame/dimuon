@@ -14,7 +14,7 @@ struct MuonRecoExtra{
    	float   dP_overP{1e6}, z0{1e6}, d0{1e6};
    	int     quality{-1};
 	bool    passmu4{};
-    bool    passTight{};
+    bool    pass_tight{};
 
     float   trk_pt{-1e6}, trk_eta{1e6}, trk_phi{1e6};
     int     trk_charge{};
@@ -28,9 +28,14 @@ struct MuonPbPbExtra{
 struct MuonPP: MuonBase, MuonRecoExtra{};
 struct MuonPbPb: MuonBase, MuonRecoExtra, MuonPbPbExtra{};
 
-struct MuonMCTruthExtra {
+struct MuonMCTruthKinExtra {
     float truth_pt{-1e6}, truth_eta{1e6}, truth_phi{1e6};
     int   truth_bar{-1}, truth_charge{0};
+};
+
+struct MuonFullsimExtra {
+    bool pass_d0_z0{}, pass_medium{};
+    bool reco_match{}; // matched with a reco muon with prob > 0.5
 };
 
 struct MuonPythiaExtra {
@@ -41,18 +46,18 @@ struct MuonPowhegExtra {
     // powheg-only fields (placeholder)
 };
 
-struct MuonPythiaTruth : MuonBase, MuonMCTruthExtra, MuonPythiaExtra {};
-struct MuonPowhegTruth : MuonBase, MuonMCTruthExtra, MuonPowhegExtra {};
+struct MuonPythiaTruth : MuonBase, MuonMCTruthKinExtra, MuonPythiaExtra {};
+struct MuonPowhegTruth : MuonBase, MuonMCTruthKinExtra, MuonPowhegExtra {};
 
-struct MuonPythiaFullSimNoTruth : MuonBase, MuonRecoExtra, MuonPythiaExtra {};
-struct MuonPowhegFullSimNoTruth : MuonBase, MuonRecoExtra, MuonPowhegExtra {};
+struct MuonPythiaFullSimNoTruth : MuonBase, MuonRecoExtra, MuonMCTruthKinExtra, MuonPythiaExtra {};
+struct MuonPowhegFullSimNoTruth : MuonBase, MuonRecoExtra, MuonMCTruthKinExtra, MuonPowhegExtra {};
 
-struct MuonPythiaFullSimWTruth : MuonBase, MuonRecoExtra, MuonMCTruthExtra, MuonPythiaExtra {};
-struct MuonPowhegFullSimWTruth : MuonBase, MuonRecoExtra, MuonMCTruthExtra, MuonPowhegExtra {};
+struct MuonPythiaFullSimWTruth : MuonBase, MuonRecoExtra, MuonMCTruthKinExtra, MuonPythiaExtra {};
+struct MuonPowhegFullSimWTruth : MuonBase, MuonRecoExtra, MuonMCTruthKinExtra, MuonPowhegExtra {};
 
-struct MuonPythiaFullSimOverlayNoTruth : MuonBase, MuonRecoExtra, MuonPythiaExtra, MuonPbPbExtra {};
-struct MuonPowhegFullSimOverlayNoTruth : MuonBase, MuonRecoExtra, MuonPowhegExtra, MuonPbPbExtra {};
+struct MuonPythiaFullSimOverlayNoTruth : MuonBase, MuonRecoExtra, MuonMCTruthKinExtra, MuonPythiaExtra, MuonPbPbExtra {};
+struct MuonPowhegFullSimOverlayNoTruth : MuonBase, MuonRecoExtra, MuonMCTruthKinExtra, MuonPowhegExtra, MuonPbPbExtra {};
 
-struct MuonPythiaFullSimOverlayWTruth : MuonBase, MuonRecoExtra, MuonMCTruthExtra, MuonPythiaExtra, MuonPbPbExtra {};
-struct MuonPowhegFullSimOverlayWTruth : MuonBase, MuonRecoExtra, MuonMCTruthExtra, MuonPowhegExtra, MuonPbPbExtra {};
+struct MuonPythiaFullSimOverlayWTruth : MuonBase, MuonRecoExtra, MuonMCTruthKinExtra, MuonPythiaExtra, MuonPbPbExtra {};
+struct MuonPowhegFullSimOverlayWTruth : MuonBase, MuonRecoExtra, MuonMCTruthKinExtra, MuonPowhegExtra, MuonPbPbExtra {};
 

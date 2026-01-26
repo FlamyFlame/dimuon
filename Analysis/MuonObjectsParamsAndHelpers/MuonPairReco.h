@@ -17,7 +17,7 @@ struct PairRecoExtras {
 
     UInt_t  run_number{}, lb{}, bcid{};
     
-    bool    passTight;
+    bool    pair_pass_tight;
     bool    passmu4mu4noL1;
     bool    pass2mu4;
     bool    passSeparated; // separated enough for 2mu4 & mu4_mu4noL1 trigger efficiencies to be factorizable into single-muon parts; for now dR > 0.8
