@@ -46,6 +46,8 @@ PythiaNTupleFirstPass::PythiaNTupleFirstPass(){
 }
 
 void PythiaNTupleFirstPass::InputSanityCheck(){
+  if (!isPrivate) return;
+
   if (job_dirs.size() != kn_in_job.size() || job_dirs.size() != nfiles_factor.size()){
     std::cout << "The vectors job_dirs, kn_in_job and nfiles_factor must have the same length!" << std::endl;
     std::cout << "The length should be the number of runs (directories) to include." << std::endl;
@@ -66,6 +68,11 @@ void PythiaNTupleFirstPass::InputSanityCheck(){
 }
 
 void PythiaNTupleFirstPass::SetInputOutputFilesFromBatch(){
+  if (!isPrivate){
+    return;
+  }
+
+  // private mode
   switch(batch_num){
   case 1:
     new_run = false;
@@ -108,9 +115,13 @@ void PythiaNTupleFirstPass::ResonanceNameMap(){
   resonance_id_to_name_and_crossx_map[553] = {"Upsilon", 0.};
 }
 
+void PythiaNTupleFirstPass::InitInput(){
+    if (isPrivate)  InitInputPrivate();
+    else            InitInputCentrProd();
+}
 
 //initialize the TChain
-void PythiaNTupleFirstPass::InitInput(){
+void PythiaNTupleFirstPass::InitInputPrivate(){
     clock_t start, end;
     double cpu_time_used;
 
@@ -119,28 +130,24 @@ void PythiaNTupleFirstPass::InitInput(){
     evChain->SetMakeClass(1);
     metaChain->SetMakeClass(1);
 
-  for (int ikin = 0; ikin < nKinRanges; ikin++){
-    std::cout << "Currently loading root files for the " << ikin << "-th kinematic range into the TChains." << std::endl;
-
-    // for (int ikin = 3; ikin <= 3; ikin++){
-    // evChain.push_back(new TChain("PyTree","PyTree"));
-      // metaChain.push_back(new TChain("meta_tree","meta_tree"));
-
-      for (int jjob = 0; jjob < job_dirs.size(); jjob++){
+    for (int ikin = 0; ikin < nKinRanges; ikin++){
+        std::cout << "Currently loading root files for the " << ikin << "-th kinematic range into the TChains." << std::endl;
+      
+        for (int jjob = 0; jjob < job_dirs.size(); jjob++){
             std::cout << "For kin-range" << ikin << ", currently loading root files from the directory " << job_dirs[jjob] << "." << std::endl;
             start = clock();
-
+  
             if (kn_in_job[jjob][ikin]){ // we have run the i-th kinematic range in the j-th job
-
-          for (int kbeam = 0; kbeam < nBeamTypes; kbeam++){
-            std::string job_path = py_dir + job_dirs[jjob] + kin_dirs[ikin] + beam_dirs[kbeam];
-            int nfiles = nfiles_base[kbeam] * nfiles_factor[jjob][ikin];
-            njobs[ikin] += nfiles;
-            nevents[ikin] += nfiles * nevents_per_file[ikin];
-            // std::cout << "Dir: " << job_dirs[jjob] << kin_dirs[ikin] << beam_dirs[kbeam] << std::endl;
-            // std::cout << "Number of root files: " << nfiles << std::endl;
-
-            for (int lfile = 1; lfile <= nfiles; lfile++){ // note: pytree_N.root starts with 1 not 0
+  
+                for (int kbeam = 0; kbeam < nBeamTypes; kbeam++){
+                    std::string job_path = py_dir + job_dirs[jjob] + kin_dirs[ikin] + beam_dirs[kbeam];
+                    int nfiles = nfiles_base[kbeam] * nfiles_factor[jjob][ikin];
+                    njobs[ikin] += nfiles;
+                    nevents[ikin] += nfiles * nevents_per_file[ikin];
+                    // std::cout << "Dir: " << job_dirs[jjob] << kin_dirs[ikin] << beam_dirs[kbeam] << std::endl;
+                    // std::cout << "Number of root files: " << nfiles << std::endl;
+        
+                    for (int lfile = 1; lfile <= nfiles; lfile++){ // note: pytree_N.root starts with 1 not 0
                         // const char* filename = (job_path + "pytree_" + std::to_string(lfile) + ".root").c_str();
                         std::ifstream infile((job_path + "pytree_" + std::to_string(lfile) + ".root").c_str());
                         if (!infile.good()){
@@ -154,16 +161,14 @@ void PythiaNTupleFirstPass::InitInput(){
                         }
                         evChain->Add((job_path + "pytree_" + std::to_string(lfile) + ".root?#PyTree").c_str());
                         metaChain->Add((job_path + "pytree_" + std::to_string(lfile) + ".root?#meta_tree").c_str());
-                        // evChain->Add((job_path + "pytree_" + std::to_string(lfile) + ".root?#PyTree").c_str(), 0);
-                        // metaChain->Add((job_path + "pytree_" + std::to_string(lfile) + ".root?#meta_tree").c_str(), 0);
                     }
-          }
-        }
-
+                }
+            }
+  
             end = clock();
             cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
             std::cout << "Took " << cpu_time_used << " seconds to load the events in kin-range" << ikin << ", job directory " << job_dirs[jjob] << std::endl;
-      }
+        }
 
         std::cout << "Finished loading all roots files from all job directories for the " << ikin << "-th kinematic range." << std::endl;
 
@@ -193,20 +198,8 @@ void PythiaNTupleFirstPass::InitInput(){
 
         std::cout << "Number of events in kinematic range " << ikin << ": " << nevents[ikin] << std::endl;
         std::cout << "Number of jobs (files) in kinematic range " << ikin << ": " << njobs[ikin] << std::endl;
-      // if (njobs[ikin] != njobs_accum[ikin] - njobs_prev){
-    //  std::cout << "The " << ikin << "-th kinematic-range contributions to metaChain doesn't have the correct number of entries" << std::endl;
-    //  std::cout << "The correct number of entries should be " << njobs[ikin] << std::endl;
-    //  std::cout << "The actual number of entries is " << njobs_accum[ikin] - njobs_prev << std::endl;
-    //  throw std::exception();
-      // }
-      // if (nevents[ikin] != nevents_accum[ikin] - nevents_prev){
-    //  std::cout << "The " << ikin << "-th kinematic-range contributions to evChain doesn't have the correct number of entries" << std::endl;
-    //  std::cout << "The correct number of entries should be " << nevents[ikin] << std::endl;
-    //  std::cout << "The actual number of entries is " << nevents_accum[ikin] - nevents_prev << std::endl;
-    //  throw std::exception();
-      // }
 
-      metaChain->SetBranchAddress("efficiency"                , &efficiency);
+        metaChain->SetBranchAddress("efficiency"                , &efficiency);
         if (new_run){
             metaChain->SetBranchAddress("eventWeight"                , &ev_weight);
         }else{
@@ -221,25 +214,18 @@ void PythiaNTupleFirstPass::InitInput(){
             metaChain->SetBranchStatus("totalSigma"                ,1);
         }
 
-        // metaChain->SetBranchStatus("eventWeight"                ,1);
-
         evChain->SetBranchAddress("QHard"                     , &QHard);
         evChain->SetBranchAddress("pTHat"                   , &pTHat);
         evChain->SetBranchAddress("mHat"                    , &mHat);
         evChain->SetBranchAddress("truth_id"                  , &truth_id);
         evChain->SetBranchAddress("truth_barcode"               , &truth_barcode);
         evChain->SetBranchAddress("truth_status"               , &truth_status);
-        // evChain->SetBranchAddress("truth_qual"                , &truth_qual);
         evChain->SetBranchAddress("truth_m"                   , &truth_m);
         evChain->SetBranchAddress("truth_pt"                    , &truth_pt);
         evChain->SetBranchAddress("truth_eta"                   , &truth_eta);
         evChain->SetBranchAddress("truth_phi"                   , &truth_phi);
         evChain->SetBranchAddress("truth_mother1"               , &truth_mother1);
         evChain->SetBranchAddress("truth_mother2"               , &truth_mother2);
-        // if (new_run){
-        //     evChain->SetBranchAddress("truth_daughter1"               , &truth_daughter1);
-        //     evChain->SetBranchAddress("truth_daughter2"               , &truth_daughter2);
-        // }
 
         evChain->SetBranchAddress("truth_mupair_pt1"           , &muon_pair_muon1_pt);
         evChain->SetBranchAddress("truth_mupair_eta1"          , &muon_pair_muon1_eta);
@@ -262,17 +248,12 @@ void PythiaNTupleFirstPass::InitInput(){
         evChain->SetBranchStatus("truth_id"             ,1);
         evChain->SetBranchStatus("truth_barcode"         ,1);
         evChain->SetBranchStatus("truth_status"         ,1);
-        // evChain->SetBranchStatus("truth_qual"             ,1);
         evChain->SetBranchStatus("truth_m"             ,1);
         evChain->SetBranchStatus("truth_pt"             ,1);
         evChain->SetBranchStatus("truth_eta"             ,1);
         evChain->SetBranchStatus("truth_phi"             ,1);
         evChain->SetBranchStatus("truth_mother1"             ,1);
         evChain->SetBranchStatus("truth_mother2"             ,1);
-        // if (new_run){
-        //     evChain->SetBranchStatus("truth_daughter1"             ,1);
-        //     evChain->SetBranchStatus("truth_daughter2"             ,1);
-        // }
 
         evChain->SetBranchStatus("truth_mupair_pt1"           ,1);
         evChain->SetBranchStatus("truth_mupair_eta1"              ,1);
@@ -286,7 +267,7 @@ void PythiaNTupleFirstPass::InitInput(){
         evChain->SetBranchStatus("truth_mupair_ch2"              ,1);
         evChain->SetBranchStatus("truth_mupair_bar2"              ,1);
 
-    }
+    } // end loop over kinematic ranges
 }
 
 void PythiaNTupleFirstPass::InitTempVariables(){
@@ -318,30 +299,30 @@ void PythiaNTupleFirstPass::InitOutput(){
     std::string py_dir_output_diagnostic_files = py_dir + "ancestor_tracing_output_diagnostic_files/";
 
     if (print_bad_warnings){
-      m_very_bad_warning_file = new std::ofstream(py_dir_output_diagnostic_files + "very_bad_warnings_pythia" + batch_suffix + ".txt");
-      *m_very_bad_warning_file << "Test writing into warning files [begining]" << std::endl;
-      m_hard_scattering_warning_file = new std::ofstream(py_dir_output_diagnostic_files + "hard_scattering_warnings_pythia" + batch_suffix + ".txt");      
+        m_very_bad_warning_file = new std::ofstream(py_dir_output_diagnostic_files + "very_bad_warnings_pythia" + batch_suffix + ".txt");
+        *m_very_bad_warning_file << "Test writing into warning files [begining]" << std::endl;
+        m_hard_scattering_warning_file = new std::ofstream(py_dir_output_diagnostic_files + "hard_scattering_warnings_pythia" + batch_suffix + ".txt");      
     }
     m_crossx_summary_file = new std::ofstream(py_dir_output_diagnostic_files + "crossx_summary_pythia" + batch_suffix + ".txt");
 
     if (print_low_minv_resonances){
-      m_very_low_minv_resonance_file = new std::ofstream(py_dir_output_diagnostic_files + "very_low_minv_resonances_pythia" + batch_suffix + ".txt");
+        m_very_low_minv_resonance_file = new std::ofstream(py_dir_output_diagnostic_files + "very_low_minv_resonances_pythia" + batch_suffix + ".txt");
     }
 
     if (print_unspecified_parent){
-      m_unspecified_parent_file = new std::ofstream(py_dir_output_diagnostic_files + "unspecified_parents_pythia" + batch_suffix + ".txt");
+        m_unspecified_parent_file = new std::ofstream(py_dir_output_diagnostic_files + "unspecified_parents_pythia" + batch_suffix + ".txt");
     }
 
     if (print_FE){
-      m_FE_file = new std::ofstream(py_dir_output_diagnostic_files + "FE_pythia" + batch_suffix + ".txt");
+        m_FE_file = new std::ofstream(py_dir_output_diagnostic_files + "FE_pythia" + batch_suffix + ".txt");
     }
     
     if (print_HF_pair_origin_others_history){ // debug mode for pairs in the "others" category
-      m_HF_pair_origin_others_category_file = new std::ofstream(py_dir_output_diagnostic_files + "HF_pair_origin_others_category" + batch_suffix + ".txt");
+        m_HF_pair_origin_others_category_file = new std::ofstream(py_dir_output_diagnostic_files + "HF_pair_origin_others_category" + batch_suffix + ".txt");
     }
 
     if (print_other_flavor_history){ // debug mode for pairs in the "others" category
-      m_other_flavor_category_file = new std::ofstream(py_dir_output_diagnostic_files + "other_flavor_category" + batch_suffix + ".txt");
+        m_other_flavor_category_file = new std::ofstream(py_dir_output_diagnostic_files + "other_flavor_category" + batch_suffix + ".txt");
     }
 
     if (print_prt_history){
@@ -444,32 +425,6 @@ void PythiaNTupleFirstPass::InitOutput(){
             h_Qsplit_gs_FSR[isign][jdphi]->Sumw2();
             h_Qsplit_to_mHard_gs_ISR_one_hard_scatt[isign][jdphi]->Sumw2();
             h_Qsplit_to_mHard_gs_FSR[isign][jdphi]->Sumw2();
-
-            // h_ptlead_pair_pt[isign][jdphi]->Sumw2();
-            // h_num_hard_scatt_out[isign][jdphi]->Sumw2();
-            // h_pt_muon_pt_closest_hadr_ratio[isign][jdphi]->Sumw2();
-            // h_pt_closest_hadr_pt_furthest_hadr_ratio[isign][jdphi]->Sumw2();
-            // h_pt_hadr_hq_ratio[isign][jdphi]->Sumw2();
-            // h_dphi_muon_closest_hadr[isign][jdphi]->Sumw2();
-
-            // for (int kgrp = 0; kgrp < nAncestorGroups; kgrp++){
-            //     h_QQ_DR[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_DR_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#Delta R;d#sigma/d#Delta R", 50,0,5.75);
-            //     h_QQ_Dphi[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_Dphi_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#Delta#phi;d#sigma/d#Delta#phi", 32,-pms.PI,pms.PI);
-            //     h_QQ_minv[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_minv_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";m_{QQ} [GeV]; d#sigma/dm_{QQ}",pms.n_hq_minv_bins,pms.hq_minvBins);
-            //     h_QQ_pair_pt_ptlead_ratio[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_pair_pt_ptlead_ratio_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", 25,0,2.);
-            //     h_QQ_pt_avg[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_pt_avg_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";p_{T}^{avg};d#sigma/dp_{T}^{avg}", pms.n_hq_pt_bins,pms.hq_pTBins);
-            //     h_QQ_asym[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_asym_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", 25,0,1);
-            //     // if (kgrp != 2) // do not initialize for single gluon case
-            //     h_QQ_minv_s_cm_ratio[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_minv_s_cm_ratio_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#frac{m_{QQ}}{#hat{s}};d#sigma/d#frac{m_{QQ}}{#hat{s}}", 25,0,1);
-                
-            //     // h_QQ_ptlead_pair_pt[isign][jdphi] = new TH2D(Form("h_QQ_ptlead_pair_pt_sign%d%s",isign+1, dphis[jdphi].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.npairPT_bins,pms.pairPTBins[isign][2],pms.n_hq_pt_bins,pms.hq_pTBins);
-            //     h_QQ_ptlead_pair_pt[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_ptlead_pair_pt_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms.n_hq_pt_bins,pms.hq_pTBins,pms.n_hq_pt_bins,pms.hq_pTBins);
-            //     h_QQ_pt1_pt2[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_pt1_pt2_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";p_{T}^{sublead} [GeV];p_{T}^{lead} [GeV]",pms.n_hq_pt_bins,pms.hq_pTBins,pms.n_hq_pt_bins,pms.hq_pTBins);
-            //     h_QQ_Deta_Dphi[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_Deta_Dphi_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#Delta#phi;#Delta#eta", 32,-pms.PI,pms.PI,40,-4.8,4.8);
-            //     h_QQ_eta1_eta2[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_eta1_eta2_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#eta_{sublead};#eta_{lead}",40,-2.4,2.4, 40,-2.4,2.4);
-            //     h_QQ_minv_pair_pt[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_minv_pair_pt_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";p_{T}^{pair} [GeV];m_{QQ} [GeV]",pms.n_hq_pt_bins,pms.hq_pTBins,pms.n_hq_minv_bins,pms.hq_minvBins);
-            //     h_QQ_minv_Dphi[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_minv_Dphi_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#Delta#phi;m_{QQ} [GeV]",pms.npt_bins,pms.pTBins,pms.n_hq_minv_bins,pms.hq_minvBins);
-            // }
         }
     }
 }
@@ -495,17 +450,17 @@ void PythiaNTupleFirstPass::Finalize(){
     delete m_crossx_summary_file;
 
     if (print_bad_warnings){
-      *m_very_bad_warning_file << "Test writing into warning files [end]" << std::endl;
-      m_very_bad_warning_file->close();
-      delete m_very_bad_warning_file;
-
-      m_hard_scattering_warning_file->close();
-      delete m_hard_scattering_warning_file;      
+        *m_very_bad_warning_file << "Test writing into warning files [end]" << std::endl;
+        m_very_bad_warning_file->close();
+        delete m_very_bad_warning_file;
+  
+        m_hard_scattering_warning_file->close();
+        delete m_hard_scattering_warning_file;      
     }
 
     if (print_low_minv_resonances){
-      m_very_low_minv_resonance_file->close();
-      delete m_very_low_minv_resonance_file;      
+        m_very_low_minv_resonance_file->close();
+        delete m_very_low_minv_resonance_file;      
     }
 
     if (print_unspecified_parent && m_unspecified_parent_file){
@@ -582,79 +537,79 @@ void PythiaNTupleFirstPass::Finalize(){
 }
 
 void PythiaNTupleFirstPass::FillMuonPair(int pair_ind, std::shared_ptr<MuonPairPythia> const& mpair){
-  // // use ind to record barcode instead
-  mpair->m1.ind     = muon_pair_muon1_bar->at(pair_ind);
-  mpair->m2.ind     = muon_pair_muon2_bar->at(pair_ind);
-  mpair->m1.charge  = muon_pair_muon1_ch->at(pair_ind);//sign of pt stores charge
-  mpair->m2.charge  = muon_pair_muon2_ch->at(pair_ind);//sign of pt stores charge
-
-  mpair->m1.pt    = static_cast<float>(muon_pair_muon1_pt->at(pair_ind));//pt of the first muon in the pair
-  mpair->m2.pt    = static_cast<float>(muon_pair_muon2_pt->at(pair_ind));//pt of the second muon in the pair
-  mpair->m1.eta   = static_cast<float>(muon_pair_muon1_eta->at(pair_ind));
-  mpair->m2.eta   = static_cast<float>(muon_pair_muon2_eta->at(pair_ind));
-  mpair->m1.phi   = static_cast<float>(muon_pair_muon1_phi->at(pair_ind));
-  mpair->m2.phi   = static_cast<float>(muon_pair_muon2_phi->at(pair_ind));
-
-  mpair->effcy      = efficiency;
-  mpair->QHard      = QHard;
-  mpair->pTHat      = pTHat;
-  mpair->mHat       = mHat;
+    // // use ind to record barcode instead
+    mpair->m1.ind     = muon_pair_muon1_bar->at(pair_ind);
+    mpair->m2.ind     = muon_pair_muon2_bar->at(pair_ind);
+    mpair->m1.charge  = muon_pair_muon1_ch->at(pair_ind);//sign of pt stores charge
+    mpair->m2.charge  = muon_pair_muon2_ch->at(pair_ind);//sign of pt stores charge
+  
+    mpair->m1.pt    = static_cast<float>(muon_pair_muon1_pt->at(pair_ind));//pt of the first muon in the pair
+    mpair->m2.pt    = static_cast<float>(muon_pair_muon2_pt->at(pair_ind));//pt of the second muon in the pair
+    mpair->m1.eta   = static_cast<float>(muon_pair_muon1_eta->at(pair_ind));
+    mpair->m2.eta   = static_cast<float>(muon_pair_muon2_eta->at(pair_ind));
+    mpair->m1.phi   = static_cast<float>(muon_pair_muon1_phi->at(pair_ind));
+    mpair->m2.phi   = static_cast<float>(muon_pair_muon2_phi->at(pair_ind));
+  
+    mpair->effcy      = efficiency;
+    mpair->QHard      = QHard;
+    mpair->pTHat      = pTHat;
+    mpair->mHat       = mHat;
 }
 
 bool PythiaNTupleFirstPass::PassCuts(const std::shared_ptr<MuonPair>& mpair){
-  //Apply ALL CUTS but for resonances
-  // NO quality cuts or dP over P cut (s + light hadron decay turned OFF) on the MC truth muons
-
-  // passed muon eta cut
-  if (fabs(mpair->m1.eta) > 2.4 || fabs(mpair->m2.eta) > 2.4) return false;
-  h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill(pass_muon_eta + 0.5, mpair->weight); // if same sign: fill the h_cutAcceptance[0] histogram; if opposite sign, fill the h_cutAcceptance[1] histogram
-
-  // passed muon pt cut
-  if (mpair->m1.pt < 4 || mpair->m2.pt < 4) return false;
-  h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill(pass_muon_pt + 0.5, mpair->weight);
-   
-  return true;
+    //Apply ALL CUTS but for resonances
+    // NO quality cuts or dP over P cut (s + light hadron decay turned OFF) on the MC truth muons
+  
+    // passed muon eta cut
+    if (fabs(mpair->m1.eta) > 2.4 || fabs(mpair->m2.eta) > 2.4) return false;
+    h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill(pass_muon_eta + 0.5, mpair->weight); // if same sign: fill the h_cutAcceptance[0] histogram; if opposite sign, fill the h_cutAcceptance[1] histogram
+  
+    // passed muon pt cut
+    if (mpair->m1.pt < 4 || mpair->m2.pt < 4) return false;
+    h_cutAcceptance[mpair->m1.charge != mpair->m2.charge]->Fill(pass_muon_pt + 0.5, mpair->weight);
+     
+    return true;
 }
 
 
 int PythiaNTupleFirstPass::ParentGrouping(std::vector<int>& parent_ids, bool c_tag, bool prev_is_lepton){
 
-  if (parent_ids.size() == 2 && abs(parent_ids[0]) <= 5 && parent_ids[1] == (-1) * parent_ids[0] && prev_is_lepton){
-    return prt_drell_yan;
-  } 
-
-  int parent_id = abs(parent_ids[0]) % 10000;
-
-  auto it_truth_resonance = std::find(resonance_ids.begin(), resonance_ids.end(), parent_id);
-
-  if (it_truth_resonance != resonance_ids.end()) { // current muon comes from resonance
-    return resonance_decay;
-  }
-
-  if ((parent_id >= 500 && parent_id < 600) || (parent_id >= 5000 && parent_id < 6000)){
-    if (! c_tag) return single_muon_parent_group::direct_b; // direct b
-    else         return single_muon_parent_group::b_to_c; // b -> c
-  }
-
-  if (c_tag) return single_muon_parent_group::direct_c; // c not from b
+    if (parent_ids.size() == 2 && abs(parent_ids[0]) <= 5 && parent_ids[1] == (-1) * parent_ids[0] && prev_is_lepton){
+        return prt_drell_yan;
+    } 
   
-  if ((parent_id >= 100 && parent_id < 400) || (parent_id >= 1000 && parent_id < 4000)) // light and s-hadrons
-    return s_light; // light and s-flavored hadrons
-
-  if (parent_id == 22) // photons
-    return single_photon;
-
-  std::cout << "Not in the given set of parent groups. Parent ids: " << std::endl;
-  for (auto id : parent_ids) std::cout << id << " ";
-  std::cout << std::endl;
-  return -1; // others
+    int parent_id = abs(parent_ids[0]) % 10000;
+  
+    auto it_truth_resonance = std::find(resonance_ids.begin(), resonance_ids.end(), parent_id);
+  
+    if (it_truth_resonance != resonance_ids.end()) { // current muon comes from resonance
+        return resonance_decay;
+    }
+  
+    if ((parent_id >= 500 && parent_id < 600) || (parent_id >= 5000 && parent_id < 6000)){
+        if (! c_tag) return single_muon_parent_group::direct_b; // direct b
+        else         return single_muon_parent_group::b_to_c; // b -> c
+    }
+  
+    if (c_tag) return single_muon_parent_group::direct_c; // c not from b
+    
+    if ((parent_id >= 100 && parent_id < 400) || (parent_id >= 1000 && parent_id < 4000)) // light and s-hadrons
+        return s_light; // light and s-flavored hadrons
+  
+    if (parent_id == 22) // photons
+        return single_photon;
+  
+    std::cout << "Not in the given set of parent groups. Parent ids: " << std::endl;
+    for (auto id : parent_ids) std::cout << id << " ";
+    std::cout << std::endl;
+    return -1; // others
 }
 
 void PythiaNTupleFirstPass::GetPtEtaPhiMFromBarcode(int barcode, std::vector<float>* pt_eta_phi_m){
-  pt_eta_phi_m->clear();
-  pt_eta_phi_m->push_back(truth_pt->at(barcode));
-  pt_eta_phi_m->push_back(truth_eta->at(barcode));
-  pt_eta_phi_m->push_back(truth_phi->at(barcode));
+    pt_eta_phi_m->clear();
+    pt_eta_phi_m->push_back(truth_pt->at(barcode));
+    pt_eta_phi_m->push_back(truth_eta->at(barcode));
+    pt_eta_phi_m->push_back(truth_phi->at(barcode));
 }
 
 std::pair<int,int> PythiaNTupleFirstPass::UpdateCurParents(bool isMuon1, std::vector<int>& cur_prt_bars, std::vector<int>& cur_prt_ids, bool before_gs, bool& prev_out_hard_scatt, int hf_quark_index = -1000000){
@@ -2190,6 +2145,7 @@ void PythiaNTupleFirstPass::Initialize(){
     double cpu_time_used;
     start = clock();
     
+    if (isPrivate) py_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_private_sample/";
     ResonanceNameMap();
     SetInputOutputFilesFromBatch(); // must be called before InitInput and InputOutput
   
