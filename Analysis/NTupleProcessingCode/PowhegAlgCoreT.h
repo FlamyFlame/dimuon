@@ -9,10 +9,18 @@ template <class PairT, class MuonT, class Derived, class... Extras>
 class PowhegAlgCoreT
     : public DimuonAlgCoreT<PairT, MuonT, Derived>
 {
-protected:
-    auto& fChain()   { return this->fChain; }
-    auto& mpair()   { return this->mpair; }
-    auto& h_cutAcceptance()   { return this->h_cutAcceptance; }
+public:
+    using pair_t = PairT;
+
+protected:    
+    using Base = DimuonAlgCoreT<PairT, MuonT, Derived>;
+    using Base::self;
+
+    TChain*&                    fChainRef()            { return this->fChain; }
+    std::shared_ptr<pair_t>&    mpairRef()             { return this->mpair; }
+    TH1D* (&h_cutAcceptanceRef())[ParamsSet::nSigns] {
+        return this->h_cutAcceptance;
+    }
 
 // --------------------- general settings ---------------------------
 
@@ -76,12 +84,7 @@ protected:
         std::cout << "mc_mode: " << mc_mode << std::endl;
     }
 
-    void ProcessDataHook();
-    void ProcessEventTruthOnly(int ev_num);
-    void OutputTreePathHook();
-    void OutputHistPathHook();
-
-    // --------------- InitInputHook ---------------
+    // --------------- InitInputImpl ---------------
     template <class E>
     void CallInitInput() {
         if constexpr (requires(E& e){ e.InitInputExtra(); }) {
@@ -91,12 +94,7 @@ protected:
 
     void InitInput_PowhegCore();
 
-    void InitInputHook(){
-        InitInput_PowhegCore();
-        (CallInitInput<Extras>(), ...);
-    }
-
-    // --------------- InitParamsHook ---------------
+    // --------------- InitParamsImpl ---------------
     template <class E>
     void CallInitParams() {
         if constexpr (requires(E& e){ e.InitParamsExtra(); }) {
@@ -106,12 +104,7 @@ protected:
 
     void InitParams_PowhegCore();
 
-    void InitParamsHook(){
-        (CallInitParams<Extras>(), ...); // first init parameters from the subanalyses
-        InitParams_PowhegCore();
-    }
-
-    // --------------- InitTempVariablesHook ---------------
+    // --------------- InitTempVariablesImpl ---------------
     template <class E>
     void CallInitTempVariables() {
         if constexpr (requires(E& e){ e.InitTempVariablesExtra(); }) {
@@ -121,12 +114,7 @@ protected:
 
     void InitTempVariables_PowhegCore(){}
 
-    void InitTempVariablesHook(){
-        InitTempVariables_PowhegCore();
-        (CallInitTempVariables<Extras>(), ...);
-    }
-
-    // --------------- InitOutputSettingsHookHook ---------------
+    // --------------- InitOutputSettingsHookImpl ---------------
     template <class E>
     void CallInitOutputSettings() {
         if constexpr (requires(E& e){ e.InitOutputSettingsExtra(); }) {
@@ -136,12 +124,7 @@ protected:
 
     void InitOutputSettings_PowhegCore(){}
 
-    void InitOutputSettings(){
-        InitOutputSettings_PowhegCore();
-        (CallInitOutputSettings<Extras>(), ...);
-    }
-
-    // --------------- InitOutputTreesExtraHook ---------------
+    // --------------- InitOutputTreesExtraImpl ---------------
     template <class E>
     void CallInitOutputTreesExtra() {
         if constexpr (requires(E& e){ e.InitOutputTreesExtra(); }) {
@@ -151,12 +134,7 @@ protected:
 
     void InitOutputTreesExtra_PowhegCore();
 
-    void InitOutputTreesExtraHook(){
-        InitOutputTreesExtra_PowhegCore();
-        (CallInitOutputTreesExtra<Extras>(), ...);
-    }
-
-    // --------------- InitializeExtraHook ---------------
+    // --------------- InitializeExtraImpl ---------------
     template <class E>
     void CallInitializeExtra() {
         if constexpr (requires(E& e){ e.InitializeExtra(); }) {
@@ -166,12 +144,7 @@ protected:
 
     void InitializeExtra_PowhegCore(){}
 
-    void InitializeExtraHook(){
-        InitializeExtra_PowhegCore();
-        (CallInitializeExtra<Extras>(), ...);
-    }
-
-    // --------------- PassCutsHook ---------------
+    // --------------- PassCutsImpl ---------------
     template <class E>
     bool CallPassCuts() {
         if constexpr (requires(E& e){ e.PassCutsExtra(); }) {
@@ -183,11 +156,7 @@ protected:
 
     bool PassCuts_PowhegCore();
 
-    bool PassCutsHook(){
-        return (PassCuts_PowhegCore() && (CallPassCuts<Extras>(), ...));
-    }
-
-    // --------------- FillMuonPairTreeHook ---------------
+    // --------------- FillMuonPairTreeImpl ---------------
     template <class E>
     void CallFillMuonPairTree() {
         if constexpr (requires(E& e){ e.FillMuonPairTreeExtra(); }) {
@@ -195,11 +164,7 @@ protected:
         }
     }
 
-    void FillMuonPairTreeHook(){
-        (CallFillMuonPairTree<Extras>(), ...);
-    }
-
-    // --------------- FillMuonPairHook ---------------
+    // --------------- FillMuonPairImpl ---------------
     template <class E>
     void CallFillMuonPair(int pair_ind) {
         if constexpr (requires(E& e, int ind) { e.FillMuonPairExtra(ind); }) {
@@ -209,12 +174,7 @@ protected:
 
     void FillMuonPair_PowhegCore(int pair_ind);
 
-    void FillMuonPairHook(int pair_ind){
-        FillMuonPair_PowhegCore(pair_ind);
-        (CallFillMuonPair<Extras>(pair_ind), ...);
-    }
-
-    // --------------- HistAdjustHook ---------------
+    // --------------- HistAdjustImpl ---------------
     template <class E>
     void CallHistAdjust() {
         if constexpr (requires(E& e){ e.HistAdjustExtra(); }) {
@@ -224,24 +184,15 @@ protected:
 
     void HistAdjust_PowhegCore(){}
 
-    void HistAdjustHook(){
-        HistAdjust_PowhegCore();
-        (CallHistAdjust<Extras>(), ...);
-    }
-
-    // --------------- PerformTruthPairAnalysisHook ---------------
+    // --------------- PerformTruthPairAnalysisImpl ---------------
     template <class E>
     void CallTruthPairAnalysis() {
-        if constexpr (requires(E& e){ e.TruthPairAnalysis(); }) {
-            static_cast<E&>(*this).TruthPairAnalysis();
+        if constexpr (requires(E& e){ e.PerformTruthPairAnalysis(); }) {
+            static_cast<E&>(*this).PerformTruthPairAnalysis();
         }
     }
 
-    void PerformTruthPairAnalysisHook(){
-        (CallTruthPairAnalysis<Extras>(), ...);
-    }
-
-    // --------------- ProcessEventFullsimHook ---------------
+    // --------------- ProcessEventFullsimImpl ---------------
     template <class E>
     void CallProcessEventFullsim(int ev_num) {
         if constexpr (requires(E& e, int num){ e.ProcessEventFullsim(num); }) {
@@ -249,11 +200,7 @@ protected:
         }
     }
 
-    void ProcessEventFullsimHook(int ev_num){
-        (CallProcessEventFullsim<Extras>(ev_num), ...);
-    }
-
-    // --------------- FinalizeHook ---------------
+    // --------------- FinalizeImpl ---------------
     template <class E>
     void CallFinalize() {
         if constexpr (requires(E& e){ e.FinalizeExtra(); }) {
@@ -263,6 +210,81 @@ protected:
 
     void Finalize_PowhegCore(){}
 
+public:
+    void ProcessDataHook();
+    void ProcessEventTruthOnly(int ev_num);
+    void OutputTreePathHook();
+    void OutputHistPathHook();
+
+    // --------------- InitInputHook ---------------
+    void InitInputHook(){
+        InitInput_PowhegCore();
+        (CallInitInput<Extras>(), ...);
+    }
+
+    // --------------- InitParamsHook ---------------
+    void InitParamsHook(){
+        (CallInitParams<Extras>(), ...); // first init parameters from the subanalyses
+        InitParams_PowhegCore();
+    }
+
+    // --------------- InitTempVariablesHook ---------------
+    void InitTempVariablesHook(){
+        InitTempVariables_PowhegCore();
+        (CallInitTempVariables<Extras>(), ...);
+    }
+
+    // --------------- InitOutputSettingsHookHook ---------------
+    void InitOutputSettings(){
+        InitOutputSettings_PowhegCore();
+        (CallInitOutputSettings<Extras>(), ...);
+    }
+
+    // --------------- InitOutputTreesExtraHook ---------------
+    void InitOutputTreesExtraHook(){
+        InitOutputTreesExtra_PowhegCore();
+        (CallInitOutputTreesExtra<Extras>(), ...);
+    }
+
+    // --------------- InitializeExtraHook ---------------
+    void InitializeExtraHook(){
+        InitializeExtra_PowhegCore();
+        (CallInitializeExtra<Extras>(), ...);
+    }
+
+    // --------------- PassCutsHook ---------------
+    bool PassCutsHook(){
+        return (PassCuts_PowhegCore() && (CallPassCuts<Extras>(), ...));
+    }
+
+    // --------------- FillMuonPairTreeHook ---------------
+    void FillMuonPairTreeHook(){
+        (CallFillMuonPairTree<Extras>(), ...);
+    }
+
+    // --------------- FillMuonPairHook ---------------
+    void FillMuonPairHook(int pair_ind){
+        FillMuonPair_PowhegCore(pair_ind);
+        (CallFillMuonPair<Extras>(pair_ind), ...);
+    }
+
+    // --------------- HistAdjustHook ---------------
+    void HistAdjustHook(){
+        HistAdjust_PowhegCore();
+        (CallHistAdjust<Extras>(), ...);
+    }
+
+    // --------------- PerformTruthPairAnalysisHook ---------------
+    void PerformTruthPairAnalysisHook(){
+        (CallTruthPairAnalysis<Extras>(), ...);
+    }
+
+    // --------------- ProcessEventFullsimHook ---------------
+    void ProcessEventFullsimHook(int ev_num){
+        (CallProcessEventFullsim<Extras>(ev_num), ...);
+    }
+
+    // --------------- FinalizeHook ---------------
     void FinalizeHook(){
         Finalize_PowhegCore();
         (CallFinalize<Extras>(), ...);

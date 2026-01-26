@@ -7,9 +7,6 @@
 
 template <class PairT, class MuonT, class Derived, class... Extras>
 void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_PowhegCore(){
-    perform_truth |= (!is_fullsim);
-    this->output_single_muon_tree &= is_fullsim; // should not output single-muon trees for MC truth
-
     this->cutLabels = cutLabels_MC;
     this->numCuts = cutLabels_MC.size();
 
@@ -31,7 +28,7 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_PowhegCore(){
     }
 
     if (is_fullsim && file_batch > 11){
-        throw std::runtime_error("For Powheg MC truth, file_batch has to be between 1 and 6!");
+        throw std::runtime_error("For Powheg MC fullsim, file_batch has to be between 1 and 11!");
     }
 
     if (mc_mode == "bb") filter_effcy = filter_effcy_bb;
@@ -48,8 +45,8 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_PowhegCore(){
 template <class PairT, class MuonT, class Derived, class... Extras>
 void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInput_PowhegCore(){
 
-    fChain() = new TChain("HeavyIonD3PD","HeavyIonD3PD");
-    fChain()->SetMakeClass(1);
+    fChainRef() = new TChain("HeavyIonD3PD","HeavyIonD3PD");
+    fChainRef()->SetMakeClass(1);
 
     for (int ifile = 5 * (file_batch - 1); ifile < 5 * file_batch; ifile++){
         char filename[100];
@@ -62,56 +59,56 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInput_PowhegCore(){
             std::cout << "Warning: File " << filename << " not found. Skip.\n";
             continue; // skip this file
         }
-        fChain()->Add(filename);
+        fChainRef()->Add(filename);
     }
    
-    cout << "nentries: " << fChain()->GetEntries() << endl;
+    cout << "nentries: " << fChainRef()->GetEntries() << endl;
 
-    fChain()->SetBranchAddress("EventWeights"               , &EventWeights);
-    fChain()->SetBranchAddress("Q"                          , &Q);
+    fChainRef()->SetBranchAddress("EventWeights"               , &EventWeights);
+    fChainRef()->SetBranchAddress("Q"                          , &Q);
 
-    fChain()->SetBranchAddress("truth_muon_barcode"         , &truth_muon_barcode);
+    fChainRef()->SetBranchAddress("truth_muon_barcode"         , &truth_muon_barcode);
 
-    fChain()->SetBranchAddress("truth_mupair_pt1"           , &truth_mupair_pt1);
-    fChain()->SetBranchAddress("truth_mupair_eta1"          , &truth_mupair_eta1);
-    fChain()->SetBranchAddress("truth_mupair_phi1"          , &truth_mupair_phi1);
-    fChain()->SetBranchAddress("truth_mupair_ch1"           , &truth_mupair_ch1);
-    fChain()->SetBranchAddress("truth_mupair_bar1"          , &truth_mupair_bar1);
+    fChainRef()->SetBranchAddress("truth_mupair_pt1"           , &truth_mupair_pt1);
+    fChainRef()->SetBranchAddress("truth_mupair_eta1"          , &truth_mupair_eta1);
+    fChainRef()->SetBranchAddress("truth_mupair_phi1"          , &truth_mupair_phi1);
+    fChainRef()->SetBranchAddress("truth_mupair_ch1"           , &truth_mupair_ch1);
+    fChainRef()->SetBranchAddress("truth_mupair_bar1"          , &truth_mupair_bar1);
 
-    fChain()->SetBranchAddress("truth_mupair_pt2"           , &truth_mupair_pt2);
-    fChain()->SetBranchAddress("truth_mupair_eta2"          , &truth_mupair_eta2);
-    fChain()->SetBranchAddress("truth_mupair_phi2"          , &truth_mupair_phi2);
-    fChain()->SetBranchAddress("truth_mupair_ch2"           , &truth_mupair_ch2);
-    fChain()->SetBranchAddress("truth_mupair_bar2"          , &truth_mupair_bar2);
+    fChainRef()->SetBranchAddress("truth_mupair_pt2"           , &truth_mupair_pt2);
+    fChainRef()->SetBranchAddress("truth_mupair_eta2"          , &truth_mupair_eta2);
+    fChainRef()->SetBranchAddress("truth_mupair_phi2"          , &truth_mupair_phi2);
+    fChainRef()->SetBranchAddress("truth_mupair_ch2"           , &truth_mupair_ch2);
+    fChainRef()->SetBranchAddress("truth_mupair_bar2"          , &truth_mupair_bar2);
 
-    fChain()->SetBranchAddress("truth_mupair_asym"          , &truth_mupair_asym);
-    fChain()->SetBranchAddress("truth_mupair_acop"          , &truth_mupair_acop);
-    fChain()->SetBranchAddress("truth_mupair_pt"            , &truth_mupair_pt);
-    fChain()->SetBranchAddress("truth_mupair_y"             , &truth_mupair_y);
-    fChain()->SetBranchAddress("truth_mupair_m"             , &truth_mupair_m);
+    fChainRef()->SetBranchAddress("truth_mupair_asym"          , &truth_mupair_asym);
+    fChainRef()->SetBranchAddress("truth_mupair_acop"          , &truth_mupair_acop);
+    fChainRef()->SetBranchAddress("truth_mupair_pt"            , &truth_mupair_pt);
+    fChainRef()->SetBranchAddress("truth_mupair_y"             , &truth_mupair_y);
+    fChainRef()->SetBranchAddress("truth_mupair_m"             , &truth_mupair_m);
   
-    fChain()->SetBranchStatus("*"                             ,0);//switch off all branches, then enable just the ones that we need
-    fChain()->SetBranchStatus("EventWeights"                  ,1);
-    fChain()->SetBranchStatus("Q"                             ,1);
+    fChainRef()->SetBranchStatus("*"                             ,0);//switch off all branches, then enable just the ones that we need
+    fChainRef()->SetBranchStatus("EventWeights"                  ,1);
+    fChainRef()->SetBranchStatus("Q"                             ,1);
 
-    fChain()->SetBranchStatus("truth_muon_barcode"            ,1);
-    fChain()->SetBranchStatus("truth_mupair_pt1"              ,1);
-    fChain()->SetBranchStatus("truth_mupair_eta1"             ,1);
-    fChain()->SetBranchStatus("truth_mupair_phi1"             ,1);
-    fChain()->SetBranchStatus("truth_mupair_ch1"              ,1);
-    fChain()->SetBranchStatus("truth_mupair_bar1"             ,1);
+    fChainRef()->SetBranchStatus("truth_muon_barcode"            ,1);
+    fChainRef()->SetBranchStatus("truth_mupair_pt1"              ,1);
+    fChainRef()->SetBranchStatus("truth_mupair_eta1"             ,1);
+    fChainRef()->SetBranchStatus("truth_mupair_phi1"             ,1);
+    fChainRef()->SetBranchStatus("truth_mupair_ch1"              ,1);
+    fChainRef()->SetBranchStatus("truth_mupair_bar1"             ,1);
 
-    fChain()->SetBranchStatus("truth_mupair_pt2"              ,1);
-    fChain()->SetBranchStatus("truth_mupair_eta2"             ,1);
-    fChain()->SetBranchStatus("truth_mupair_phi2"             ,1);
-    fChain()->SetBranchStatus("truth_mupair_ch2"              ,1);
-    fChain()->SetBranchStatus("truth_mupair_bar2"             ,1);
+    fChainRef()->SetBranchStatus("truth_mupair_pt2"              ,1);
+    fChainRef()->SetBranchStatus("truth_mupair_eta2"             ,1);
+    fChainRef()->SetBranchStatus("truth_mupair_phi2"             ,1);
+    fChainRef()->SetBranchStatus("truth_mupair_ch2"              ,1);
+    fChainRef()->SetBranchStatus("truth_mupair_bar2"             ,1);
 
-    fChain()->SetBranchStatus("truth_mupair_asym"             ,1);
-    fChain()->SetBranchStatus("truth_mupair_acop"             ,1);
-    fChain()->SetBranchStatus("truth_mupair_pt"               ,1);
-    fChain()->SetBranchStatus("truth_mupair_y"                ,1);
-    fChain()->SetBranchStatus("truth_mupair_m"                ,1);   
+    fChainRef()->SetBranchStatus("truth_mupair_asym"             ,1);
+    fChainRef()->SetBranchStatus("truth_mupair_acop"             ,1);
+    fChainRef()->SetBranchStatus("truth_mupair_pt"               ,1);
+    fChainRef()->SetBranchStatus("truth_mupair_y"                ,1);
+    fChainRef()->SetBranchStatus("truth_mupair_m"                ,1);   
 }
 
 
@@ -137,57 +134,57 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::OutputHistPathHook(){
 
 template <class PairT, class MuonT, class Derived, class... Extras>
 void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::FillMuonPair_PowhegCore(int pair_ind){
-    mpair()->Q          = Q;
-    // mpair()->weight     = static_cast<double>(EventWeights->at(0) * filter_effcy / this->nentries);
-    mpair()->weight     = static_cast<double>(EventWeights->at(0) * filter_effcy);
-    mpair()->crossx     = EventWeights->at(0);
+    mpairRef()->Q          = Q;
+    // mpairRef()->weight     = static_cast<double>(EventWeights->at(0) * filter_effcy / this->nentries);
+    mpairRef()->weight     = static_cast<double>(EventWeights->at(0) * filter_effcy);
+    mpairRef()->crossx     = EventWeights->at(0);
 
-    mpair()->m1.truth_bar     = truth_mupair_bar1->at(pair_ind);
-    mpair()->m2.truth_bar     = truth_mupair_bar2->at(pair_ind);
-    mpair()->m1.truth_charge  = truth_mupair_ch1->at(pair_ind);//sign of pt stores charge
-    mpair()->m2.truth_charge  = truth_mupair_ch2->at(pair_ind);//sign of pt stores charge
+    mpairRef()->m1.truth_bar     = truth_mupair_bar1->at(pair_ind);
+    mpairRef()->m2.truth_bar     = truth_mupair_bar2->at(pair_ind);
+    mpairRef()->m1.truth_charge  = truth_mupair_ch1->at(pair_ind);//sign of pt stores charge
+    mpairRef()->m2.truth_charge  = truth_mupair_ch2->at(pair_ind);//sign of pt stores charge
 
-    mpair()->m1.truth_pt    = fabs(truth_mupair_pt1->at(pair_ind))/1000.0;//pt of the first muon in the pair
-    mpair()->m2.truth_pt    = fabs(truth_mupair_pt2->at(pair_ind))/1000.0;//pt of the second muon in the pair
-    mpair()->m1.truth_eta   = truth_mupair_eta1->at(pair_ind);
-    mpair()->m2.truth_eta   = truth_mupair_eta2->at(pair_ind);
-    mpair()->m1.truth_phi   = truth_mupair_phi1->at(pair_ind);
-    mpair()->m2.truth_phi   = truth_mupair_phi2->at(pair_ind);
+    mpairRef()->m1.truth_pt    = fabs(truth_mupair_pt1->at(pair_ind))/1000.0;//pt of the first muon in the pair
+    mpairRef()->m2.truth_pt    = fabs(truth_mupair_pt2->at(pair_ind))/1000.0;//pt of the second muon in the pair
+    mpairRef()->m1.truth_eta   = truth_mupair_eta1->at(pair_ind);
+    mpairRef()->m2.truth_eta   = truth_mupair_eta2->at(pair_ind);
+    mpairRef()->m1.truth_phi   = truth_mupair_phi1->at(pair_ind);
+    mpairRef()->m2.truth_phi   = truth_mupair_phi2->at(pair_ind);
 
-    mpair()->truth_minv       = truth_mupair_m->at(pair_ind)/1000.;
-    mpair()->truth_pair_pt    = truth_mupair_pt->at(pair_ind)/1000.;
-    mpair()->truth_pair_y     = truth_mupair_y->at(pair_ind);
-    mpair()->truth_asym       = abs(truth_mupair_asym->at(pair_ind));
-    mpair()->truth_acop       = abs(truth_mupair_acop->at(pair_ind));
-    assert (mpair()->truth_asym >= 0 && mpair()->truth_acop >= 0);
+    mpairRef()->truth_minv       = truth_mupair_m->at(pair_ind)/1000.;
+    mpairRef()->truth_pair_pt    = truth_mupair_pt->at(pair_ind)/1000.;
+    mpairRef()->truth_pair_y     = truth_mupair_y->at(pair_ind);
+    mpairRef()->truth_asym       = abs(truth_mupair_asym->at(pair_ind));
+    mpairRef()->truth_acop       = abs(truth_mupair_acop->at(pair_ind));
+    assert (mpairRef()->truth_asym >= 0 && mpairRef()->truth_acop >= 0);
 
-    auto it1 = std::find(truth_muon_barcode->begin(), truth_muon_barcode->end(), mpair()->m1.truth_bar);
-    auto it2 = std::find(truth_muon_barcode->begin(), truth_muon_barcode->end(), mpair()->m2.truth_bar);
+    auto it1 = std::find(truth_muon_barcode->begin(), truth_muon_barcode->end(), mpairRef()->m1.truth_bar);
+    auto it2 = std::find(truth_muon_barcode->begin(), truth_muon_barcode->end(), mpairRef()->m2.truth_bar);
 
     if (it1 == truth_muon_barcode->end() || it2 == truth_muon_barcode->end()) { // either muon barcode not matched
         throw std::runtime_error("Truth muon in current pair NOT matched to truth muon list!");
     }
     
-    mpair()->m1.ind = std::distance(truth_muon_barcode->begin(), it1);
-    mpair()->m2.ind = std::distance(truth_muon_barcode->begin(), it2);
+    mpairRef()->m1.ind = std::distance(truth_muon_barcode->begin(), it1);
+    mpairRef()->m2.ind = std::distance(truth_muon_barcode->begin(), it2);
 
 }
 
 template <class PairT, class MuonT, class Derived, class... Extras>
 bool PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::PassCuts_PowhegCore(){
     // truth is the base (reco is with detector effect --> relative to truth): apply cuts w.r.t. truth kinematics
-    if (fabs(mpair()->m1.truth_eta) > 2.4 || fabs(mpair()->m2.truth_eta) > 2.4) return false;
-    h_cutAcceptance()[mpair()->m1.truth_charge != mpair()->m2.truth_charge]->Fill(double(pass_muon_eta) + 0.5, mpair()->weight); // if same sign: fill the h_cutAcceptance()[0] histogram; if opposite sign, fill the h_cutAcceptance()[1] histogram
+    if (fabs(mpairRef()->m1.truth_eta) > 2.4 || fabs(mpairRef()->m2.truth_eta) > 2.4) return false;
+    h_cutAcceptanceRef()[mpairRef()->m1.truth_charge != mpairRef()->m2.truth_charge]->Fill(double(pass_muon_eta) + 0.5, mpairRef()->weight); // if same sign: fill the h_cutAcceptanceRef()[0] histogram; if opposite sign, fill the h_cutAcceptanceRef()[1] histogram
 
-    if (mpair()->m1.truth_pt < 4 || mpair()->m2.truth_pt < 4) return false;
-    h_cutAcceptance()[mpair()->m1.truth_charge != mpair()->m2.truth_charge]->Fill(double(pass_muon_pt) + 0.5, mpair()->weight);
+    if (mpairRef()->m1.truth_pt < 4 || mpairRef()->m2.truth_pt < 4) return false;
+    h_cutAcceptanceRef()[mpairRef()->m1.truth_charge != mpairRef()->m2.truth_charge]->Fill(double(pass_muon_pt) + 0.5, mpairRef()->weight);
 
     return true;
  }
 
 template <class PairT, class MuonT, class Derived, class... Extras>
 void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook(){
-    this->nentries = fChain()->GetEntries();//number of events
+    this->nentries = fChainRef()->GetEntries();//number of events
     meta_tree->Fill();
     
     for (Long64_t jentry=0; jentry<1000; jentry++) {//loop over the events
@@ -195,7 +192,7 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook(){
         // cout << jentry << endl;
         if(jentry%10000==0) cout<<"Processing "<<jentry<<" event out of "<<this->nentries<<" events"<<std::endl;
 
-        int num_bytes = fChain()->GetEntry(jentry);//read in an event
+        int num_bytes = fChainRef()->GetEntry(jentry);//read in an event
         if(num_bytes==0){
           std::cout<<"Error:: Read in event has size of zero bytes,  quitting"<<std::endl;
           throw std::exception();
@@ -219,17 +216,17 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessEventTruthOnly(int
 
     for(int pair_ind = 0; pair_ind < NPairs; pair_ind++){//first loop over all muon-pairs in the event
 
-        mpair().Clear();
+        mpairRef()->Clear();
 
         this->FillMuonPair(pair_ind);
         
-        mpair()->m1.ev_num = ev_num;
-        mpair()->m2.ev_num = ev_num;
+        mpairRef()->m1.ev_num = ev_num;
+        mpairRef()->m2.ev_num = ev_num;
 
         if (perform_truth){ // order: truth > reco
-            h_cutAcceptance()[mpair()->m1.truth_charge != mpair()->m2.truth_charge]->Fill(double(nocut) + 0.5, mpair()->weight);
+            h_cutAcceptanceRef()[mpairRef()->m1.truth_charge != mpairRef()->m2.truth_charge]->Fill(double(nocut) + 0.5, mpairRef()->weight);
         } else{
-            h_cutAcceptance()[mpair()->m1.charge != mpair()->m2.charge]->Fill(double(nocut) + 0.5, mpair()->weight);
+            h_cutAcceptanceRef()[mpairRef()->m1.charge != mpairRef()->m2.charge]->Fill(double(nocut) + 0.5, mpairRef()->weight);
         }
 
         // ------------------------------------------------------------
@@ -239,40 +236,40 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessEventTruthOnly(int
         // Trigger match for muon pair
         // if(dimuon_b_HLT_2mu4->at(pair_ind)==false) continue;
 
-        if (abs(mpair()->weight) > crossx_cut * filter_effcy) continue;
-        if (!PassCuts(mpair()))continue;
+        if (abs(mpairRef()->weight) > crossx_cut * filter_effcy) continue;
+        if (!this->PassCuts())continue;
         
         //------------------------------------------------------------
 
-        mpair()->Update(); // only afterwards can we use mpair()->same_sign
+        mpairRef()->Update(); // only afterwards can we use mpairRef()->same_sign
 
         // resonance tag
-        ResonanceTagging(mpair());
+        this->ResonanceTagging();
         
-        this->muon_pair_list_cur_event_pre_resonance_cut.push_back(std::move(mpair()));
+        this->muon_pair_list_cur_event_pre_resonance_cut.push_back(std::move(mpairRef()));
         
     } // finish first loop over all muon pairs
 
     for(int pair_ind = 0; pair_ind < this->muon_pair_list_cur_event_pre_resonance_cut.size(); pair_ind++){//second loop over all muon-pairs in the event
         // discard the pair if either muon is resonance-tagged
 
-        mpair() = std::move(this->muon_pair_list_cur_event_pre_resonance_cut.at(pair_ind));
+        mpairRef() = std::move(this->muon_pair_list_cur_event_pre_resonance_cut.at(pair_ind));
 
-        if (!mpair()){
-            std::cerr << "mpair() at second muon-pair loop NOT found! Return without resonance-tag checking or pair analysis." << std::endl;
+        if (!mpairRef()){
+            std::cerr << "mpairRef() at second muon-pair loop NOT found! Return without resonance-tag checking or pair analysis." << std::endl;
             continue;
         }
 
         std::vector<int>::iterator itres_m1;
         std::vector<int>::iterator itres_m2;
 
-        itres_m1 = std::find(this->resonance_tagged_muon_index_list.begin(),this->resonance_tagged_muon_index_list.end(),mpair()->m1.ind);
+        itres_m1 = std::find(this->resonance_tagged_muon_index_list.begin(),this->resonance_tagged_muon_index_list.end(),mpairRef()->m1.ind);
         if(itres_m1 != this->resonance_tagged_muon_index_list.end())  continue;
 
-        itres_m2 = std::find(this->resonance_tagged_muon_index_list.begin(),this->resonance_tagged_muon_index_list.end(),mpair()->m2.ind);
+        itres_m2 = std::find(this->resonance_tagged_muon_index_list.begin(),this->resonance_tagged_muon_index_list.end(),mpairRef()->m2.ind);
         if(itres_m2 != this->resonance_tagged_muon_index_list.end())  continue;
 
-        h_cutAcceptance()[mpair()->m1.charge != mpair()->m2.charge]->Fill(double(pass_resonance) + 0.5, mpair()->weight);
+        h_cutAcceptanceRef()[mpairRef()->m1.charge != mpairRef()->m2.charge]->Fill(double(pass_resonance) + 0.5, mpairRef()->weight);
         
         //------------------------------------------------------------
 

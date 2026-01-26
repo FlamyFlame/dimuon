@@ -7,64 +7,76 @@ class PowhegTruthAnalysis
   : public PowhegAlgCoreT<
         MuonPairPowhegTruth, MuonPowhegTruth,
         PowhegTruthAnalysis,
-        PowhegTruthExtras<PowhegTruthAnalysis>
+        PowhegTruthExtras<MuonPairPowhegTruth,PowhegTruthAnalysis>
     >
-  , public PowhegTruthExtras<PowhegTruthAnalysis>
-{};
+  , public PowhegTruthExtras<MuonPairPowhegTruth,PowhegTruthAnalysis>
+{
+public:
+    PowhegTruthAnalysis(int file_batch_input, std::string mc_mode_input)
+        : PowhegAlgCoreT(file_batch_input, mc_mode_input){
+        }
+};
 
 class PowhegFullSimAnalysisNoTruth
   : public PowhegAlgCoreT<
         MuonPairPowhegFullSimNoTruth, MuonPowhegFullSimNoTruth,
         PowhegFullSimAnalysisNoTruth,
-        PowhegFullSimExtras<PowhegFullSimAnalysisNoTruth>
+        PowhegFullSimExtras<MuonPairPowhegFullSimNoTruth, MuonPowhegFullSimNoTruth, PowhegFullSimAnalysisNoTruth>
     >
-  , public PowhegFullSimExtras<PowhegFullSimAnalysisNoTruth>
-{};
+  , public PowhegFullSimExtras<MuonPairPowhegFullSimNoTruth, MuonPowhegFullSimNoTruth, PowhegFullSimAnalysisNoTruth>
+{
+public:
+    PowhegFullSimAnalysisNoTruth(int file_batch_input, std::string mc_mode_input)
+        : PowhegAlgCoreT(file_batch_input, mc_mode_input){
+        }
+};
 
 class PowhegFullSimAnalysisWTruth
   : public PowhegAlgCoreT<
         MuonPairPowhegFullSimWTruth, MuonPowhegFullSimWTruth,
         PowhegFullSimAnalysisWTruth,
-        PowhegFullSimExtras<PowhegFullSimAnalysisWTruth>,
-        PowhegTruthExtras<PowhegFullSimAnalysisWTruth>
+        PowhegFullSimExtras<MuonPairPowhegFullSimWTruth, MuonPowhegFullSimWTruth, PowhegFullSimAnalysisWTruth>,
+        PowhegTruthExtras<MuonPairPowhegFullSimWTruth, PowhegFullSimAnalysisWTruth>
     >
-  , public PowhegFullSimExtras<PowhegFullSimAnalysisWTruth>
-  , public PowhegTruthExtras<PowhegFullSimAnalysisWTruth>
-{};
+  , public PowhegFullSimExtras<MuonPairPowhegFullSimWTruth, MuonPowhegFullSimWTruth, PowhegFullSimAnalysisWTruth>
+  , public PowhegTruthExtras<MuonPairPowhegFullSimWTruth, PowhegFullSimAnalysisWTruth>
+{
+public:
+    PowhegFullSimAnalysisWTruth(int file_batch_input, std::string mc_mode_input)
+        : PowhegAlgCoreT(file_batch_input, mc_mode_input){
+        }
+};
 
 class PowhegFullSimOverlayAnalysisNoTruth
   : public PowhegAlgCoreT<
         MuonPairPowhegFullSimOverlayNoTruth, MuonPowhegFullSimOverlayNoTruth,
         PowhegFullSimOverlayAnalysisNoTruth,
-        PowhegFullSimExtras<PowhegFullSimOverlayAnalysisNoTruth>,
+        PowhegFullSimExtras<MuonPairPowhegFullSimOverlayNoTruth, MuonPowhegFullSimOverlayNoTruth, PowhegFullSimOverlayAnalysisNoTruth>,
         PowhegFullSimOverlayExtras<PowhegFullSimOverlayAnalysisNoTruth>
     >
-  , public PowhegFullSimExtras<PowhegFullSimOverlayAnalysisNoTruth>
+  , public PowhegFullSimExtras<MuonPairPowhegFullSimOverlayNoTruth, MuonPowhegFullSimOverlayNoTruth, PowhegFullSimOverlayAnalysisNoTruth>
   , public PowhegFullSimOverlayExtras<PowhegFullSimOverlayAnalysisNoTruth>
-{};
+{
+public:
+    PowhegFullSimOverlayAnalysisNoTruth(int file_batch_input, std::string mc_mode_input)
+        : PowhegAlgCoreT(file_batch_input, mc_mode_input){
+        }
+};
 
 class PowhegFullSimOverlayAnalysisWTruth
   : public PowhegAlgCoreT<
         MuonPairPowhegFullSimOverlayWTruth, MuonPowhegFullSimOverlayWTruth,
         PowhegFullSimOverlayAnalysisWTruth,
-        PowhegFullSimExtras<PowhegFullSimOverlayAnalysisWTruth>,
+        PowhegFullSimExtras<MuonPairPowhegFullSimOverlayWTruth, MuonPowhegFullSimOverlayWTruth, PowhegFullSimOverlayAnalysisWTruth>,
         PowhegFullSimOverlayExtras<PowhegFullSimOverlayAnalysisWTruth>,
-        PowhegTruthExtras<PowhegFullSimOverlayAnalysisWTruth>
+        PowhegTruthExtras<MuonPairPowhegFullSimOverlayWTruth,PowhegFullSimOverlayAnalysisWTruth>
     >
-  , public PowhegFullSimExtras<PowhegFullSimOverlayAnalysisWTruth>
+  , public PowhegFullSimExtras<MuonPairPowhegFullSimOverlayWTruth, MuonPowhegFullSimOverlayWTruth, PowhegFullSimOverlayAnalysisWTruth>
   , public PowhegFullSimOverlayExtras<PowhegFullSimOverlayAnalysisWTruth>
-  , public PowhegTruthExtras<PowhegFullSimOverlayAnalysisWTruth>
-{};
-
-
-// class PowhegFullSimNTupleFirstPass : public virtual PowhegNTupleFirstPass{
-// public: 
-//     PowhegFullSimNTupleFirstPass(int file_batch_input, std::string mc_mode_input)
-//         : PowhegNTupleFirstPass(file_batch_input, mc_mode_input, true){
-//             output_single_muon_tree = false;
-//         }
-
-//     ~PowhegFullSimNTupleFirstPass(){}
-// };
-
-
+  , public PowhegTruthExtras<MuonPairPowhegFullSimOverlayWTruth,PowhegFullSimOverlayAnalysisWTruth>
+{
+public:
+    PowhegFullSimOverlayAnalysisWTruth(int file_batch_input, std::string mc_mode_input)
+        : PowhegAlgCoreT(file_batch_input, mc_mode_input){
+        }
+};

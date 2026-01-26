@@ -1,16 +1,16 @@
-template <class Derived>
-class PowhegFullSimExtras{
+template <class PairT, class MuonT, class Derived>
+class PowhegFullSimExtras {
 protected:
+    using pair_t = PairT;
+    using muon_t = MuonT;
 
     float truth_match_prob_thrsh = 0.5;
-    using pair_t = typename Derived::pair_t;
-    using muon_t = typename Derived::muon_t;
 
     Derived& self() { return static_cast<Derived&>(*this); }
     const Derived& self() const { return static_cast<const Derived&>(*this); }
 
-    auto& mpair()   { return self().mpair; }
-    auto& fChain()   { return self().fChain; }
+    std::shared_ptr<pair_t>&    mpairRef()     { return self().mpair; }
+    TChain*&                    fChainRef()    { return self().fChain; }
 
     // reco muon quantities
     std::vector<float>*      muon_pt;
@@ -39,6 +39,7 @@ protected:
 	void InitInputExtra();
     void InitParamsExtra(){
         self().is_fullsim = true;
+        cout << "PowhegFullSimExtras::InitParamsExtra() called" << endl;
     }
     void ProcessEventFullsim(int ev_num);
     bool PassMuonMediumCuts(const muon_t& muon);
