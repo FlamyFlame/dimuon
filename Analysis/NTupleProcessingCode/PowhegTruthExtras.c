@@ -1,13 +1,13 @@
 #include "PowhegTruthExtras.h"
 
-template <class Derived>
-void PowhegTruthExtras<Derived>::InitializeExtra(){
-    int quark = (mc_mode() == "bb")? 5:4;
+template <class PairT, class Derived>
+void PowhegTruthExtras<PairT, Derived>::InitializeExtra(){
+    int quark = (mc_modeRef() == "bb")? 5:4;
     qqpair = new TruthQQPair(quark);
 }
 
-template <class Derived>
-void PowhegTruthExtras<Derived>::InitTempVariablesExtra(){
+template <class PairT, class Derived>
+void PowhegTruthExtras<PairT, Derived>::InitTempVariablesExtra(){
     single_gluon_history = new std::vector<std::vector<int>>();
     m1_history = new std::vector<std::vector<int>>();
     m2_history = new std::vector<std::vector<int>>();
@@ -23,77 +23,77 @@ void PowhegTruthExtras<Derived>::InitTempVariablesExtra(){
     // m2_hq_ancestor_pt_eta_phi_m = new std::vector<float>();
 }
 
-template <class Derived>
-void PowhegTruthExtras<Derived>::InitInputExtra(){
+template <class PairT, class Derived>
+void PowhegTruthExtras<PairT, Derived>::InitInputExtra(){
 
     // MC muons have no quality, d0 or z0 recorded
-    fChain()->SetBranchAddress("truth_id"                   , &truth_id);
-    fChain()->SetBranchAddress("truth_barcode"              , &truth_barcode);
-    fChain()->SetBranchAddress("truth_qual"                 , &truth_qual);
-    fChain()->SetBranchAddress("truth_pt"                 , &truth_pt);
-    fChain()->SetBranchAddress("truth_eta"                 , &truth_eta);
-    fChain()->SetBranchAddress("truth_phi"                 , &truth_phi);
-    fChain()->SetBranchAddress("truth_m"                 , &truth_m);
-    fChain()->SetBranchAddress("truth_parents"              , &truth_parents);
-    fChain()->SetBranchAddress("truth_children"              , &truth_children);
+    fChainRef()->SetBranchAddress("truth_id"                   , &truth_id);
+    fChainRef()->SetBranchAddress("truth_barcode"              , &truth_barcode);
+    fChainRef()->SetBranchAddress("truth_qual"                 , &truth_qual);
+    fChainRef()->SetBranchAddress("truth_pt"                 , &truth_pt);
+    fChainRef()->SetBranchAddress("truth_eta"                 , &truth_eta);
+    fChainRef()->SetBranchAddress("truth_phi"                 , &truth_phi);
+    fChainRef()->SetBranchAddress("truth_m"                 , &truth_m);
+    fChainRef()->SetBranchAddress("truth_parents"              , &truth_parents);
+    fChainRef()->SetBranchAddress("truth_children"              , &truth_children);
 
-    fChain()->SetBranchStatus("truth_id"           ,1);
-    fChain()->SetBranchStatus("truth_barcode"              ,1);
-    fChain()->SetBranchStatus("truth_qual"             ,1);
-    fChain()->SetBranchStatus("truth_pt"             ,1);
-    fChain()->SetBranchStatus("truth_eta"             ,1);
-    fChain()->SetBranchStatus("truth_phi"             ,1);
-    fChain()->SetBranchStatus("truth_m"             ,1);
-    fChain()->SetBranchStatus("truth_parents"             ,1);
-    fChain()->SetBranchStatus("truth_children"             ,1);
+    fChainRef()->SetBranchStatus("truth_id"           ,1);
+    fChainRef()->SetBranchStatus("truth_barcode"              ,1);
+    fChainRef()->SetBranchStatus("truth_qual"             ,1);
+    fChainRef()->SetBranchStatus("truth_pt"             ,1);
+    fChainRef()->SetBranchStatus("truth_eta"             ,1);
+    fChainRef()->SetBranchStatus("truth_phi"             ,1);
+    fChainRef()->SetBranchStatus("truth_m"             ,1);
+    fChainRef()->SetBranchStatus("truth_parents"             ,1);
+    fChainRef()->SetBranchStatus("truth_children"             ,1);
 }
 
-template <class Derived>
-void PowhegTruthExtras<Derived>::InitOutputExtra(){
+template <class PairT, class Derived>
+void PowhegTruthExtras<PairT, Derived>::InitOutputExtra(){
     InitOutStreamFiles();
 }
 
-template <class Derived>
-void PowhegTruthExtras<Derived>::InitOutStreamFiles(){
+template <class PairT, class Derived>
+void PowhegTruthExtras<PairT, Derived>::InitOutStreamFiles(){
     // ---------------------------------------------------------------------------------------------------------------------------
 
     if (print_specific_prt_history){
-        if (mc_mode() == "cc"){
+        if (mc_modeRef() == "cc"){
 
-            m_cc_ss_small_dphi_file = new std::ofstream(Form("%scc_ss_small_dphi.txt", mcdir().c_str()));
+            m_cc_ss_small_dphi_file = new std::ofstream(Form("%scc_ss_small_dphi.txt", mcdirRef().c_str()));
             *m_cc_ss_small_dphi_file << "Event#\tm1-grp\tm2-grp" << std::endl;
         }else{
-            m_bb_ss_near_file = new std::ofstream(Form("%sbb_ss_near.txt", mcdir().c_str()));
-            m_bb_ss_away_file = new std::ofstream(Form("%sbb_ss_away.txt", mcdir().c_str()));
-            m_bb_op_near_one_b_one_btoc_others_file = new std::ofstream(Form("%sbb_op_near_one_b_one_btoc_others.txt", mcdir().c_str()));
+            m_bb_ss_near_file = new std::ofstream(Form("%sbb_ss_near.txt", mcdirRef().c_str()));
+            m_bb_ss_away_file = new std::ofstream(Form("%sbb_ss_away.txt", mcdirRef().c_str()));
+            m_bb_op_near_one_b_one_btoc_others_file = new std::ofstream(Form("%sbb_op_near_one_b_one_btoc_others.txt", mcdirRef().c_str()));
         }
     }
 
     // ---------------------------------------------------------------------------------------------------------------------------
 
-    if (mc_mode() == "bb"){
-        m_unspecified_parent_file = new std::ofstream(mcdir() + "unspecified_parents_bb.txt");
+    if (mc_modeRef() == "bb"){
+        m_unspecified_parent_file = new std::ofstream(mcdirRef() + "unspecified_parents_bb.txt");
         if (print_prt_history){
             for (int isign = 0; isign < ParamsSet::nSigns; isign++){
                 for (int jdphi = 0; jdphi < 2; jdphi++){
-                    m_b_parent_file[isign][jdphi] = new std::ofstream(Form("%sb_parents_%s%s.txt", mcdir().c_str(), sign_labels[isign].c_str(), dphis[jdphi].c_str()));
+                    m_b_parent_file[isign][jdphi] = new std::ofstream(Form("%sb_parents_%s%s.txt", mcdirRef().c_str(), sign_labels[isign].c_str(), dphis[jdphi].c_str()));
                 }
             }
         }
     }else{
-        m_unspecified_parent_file = new std::ofstream(mcdir() + "unspecified_parents_cc.txt");
+        m_unspecified_parent_file = new std::ofstream(mcdirRef() + "unspecified_parents_cc.txt");
         if (print_prt_history){
             for (int isign = 0; isign < ParamsSet::nSigns; isign++){
                 for (int jdphi = 0; jdphi < 2; jdphi++){
-                    m_c_parent_file[isign][jdphi] = new std::ofstream(Form("%sc_parents_%s%s.txt", mcdir().c_str(), sign_labels[isign].c_str(), dphis[jdphi].c_str()));
+                    m_c_parent_file[isign][jdphi] = new std::ofstream(Form("%sc_parents_%s%s.txt", mcdirRef().c_str(), sign_labels[isign].c_str(), dphis[jdphi].c_str()));
                 }
             }
         }
     } 
 }
 
-template <class Derived>
-void PowhegTruthExtras<Derived>::InitOutputTreesExtra(){    
+template <class PairT, class Derived>
+void PowhegTruthExtras<PairT, Derived>::InitOutputTreesExtra(){    
     if (output_QQpair_tree){
         for (unsigned int isign = 0; isign < ParamsSet::nSigns; isign++){
             for (int jdphi = 0; jdphi < 2; jdphi++){
@@ -106,8 +106,8 @@ void PowhegTruthExtras<Derived>::InitOutputTreesExtra(){
     }
 }
 
-template <class Derived>
-void PowhegTruthExtras<Derived>::InitOutputHistsExtra(){
+template <class PairT, class Derived>
+void PowhegTruthExtras<PairT, Derived>::InitOutputHistsExtra(){
     if (output_truth_hists){
 
         for (int isign = 0; isign < ParamsSet::nSigns; isign++){
@@ -117,24 +117,24 @@ void PowhegTruthExtras<Derived>::InitOutputHistsExtra(){
                 h_pt_muon_pt_closest_hadr_ratio[isign][jdphi] = new TH1D(Form("h_pt_muon_pt_closest_hadr_ratio_sign%d%s",isign+1, dphis[jdphi].c_str()),Form("h_pt_muon_pt_closest_hadr_ratio_sign%d%s",isign+1, dphis[jdphi].c_str()),40,0,1.);
                 h_pt_closest_hadr_pt_furthest_hadr_ratio[isign][jdphi] = new TH1D(Form("h_pt_closest_hadr_pt_furthest_hadr_ratio_sign%d%s",isign+1, dphis[jdphi].c_str()),Form("h_pt_closest_hadr_pt_furthest_hadr_ratio_sign%d%s",isign+1, dphis[jdphi].c_str()),40,0,1.);
                 h_pt_hadr_hq_ratio[isign][jdphi] = new TH1D(Form("h_pt_hadr_hq_ratio_sign%d%s",isign+1, dphis[jdphi].c_str()),Form("h_pt_hadr_hq_ratio_sign%d%s",isign+1, dphis[jdphi].c_str()),40,0,1.);
-                h_dphi_muon_closest_hadr[isign][jdphi] = new TH1D(Form("h_dphi_muon_closest_hadr_sign%d%s",isign+1, dphis[jdphi].c_str()),Form("h_dphi_muon_closest_hadr_sign%d%s",isign+1, dphis[jdphi].c_str()),32,-pms().PI,pms().PI);
+                h_dphi_muon_closest_hadr[isign][jdphi] = new TH1D(Form("h_dphi_muon_closest_hadr_sign%d%s",isign+1, dphis[jdphi].c_str()),Form("h_dphi_muon_closest_hadr_sign%d%s",isign+1, dphis[jdphi].c_str()),32,-pmsRef().PI,pmsRef().PI);
                 
                 for (int kgrp = 0; kgrp < nAncestorGroups; kgrp++){
                     h_QQ_DR[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_DR_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#Delta R;d#sigma/d#Delta R", 50,0,5.75);
-                    h_QQ_Dphi[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_Dphi_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#Delta#phi;d#sigma/d#Delta#phi", 32,-pms().PI,pms().PI);
-                    h_QQ_minv[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_minv_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";m_{QQ} [GeV]; d#sigma/dm_{QQ}",pms().n_hq_minv_bins,pms().hq_minvBins);
+                    h_QQ_Dphi[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_Dphi_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#Delta#phi;d#sigma/d#Delta#phi", 32,-pmsRef().PI,pmsRef().PI);
+                    h_QQ_minv[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_minv_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";m_{QQ} [GeV]; d#sigma/dm_{QQ}",pmsRef().n_hq_minv_bins,pmsRef().hq_minvBins);
                     h_QQ_pair_pt_ptlead_ratio[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_pair_pt_ptlead_ratio_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#frac{p_{T}^{pair}}{p_{T}^{lead}};d#sigma/d#frac{p_{T}^{pair}}{p_{T}^{lead}}", 25,0,2.);
-                    h_QQ_pt_avg[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_pt_avg_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";p_{T}^{avg};d#sigma/dp_{T}^{avg}", pms().n_hq_pt_bins,pms().hq_pTBins);
+                    h_QQ_pt_avg[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_pt_avg_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";p_{T}^{avg};d#sigma/dp_{T}^{avg}", pmsRef().n_hq_pt_bins,pmsRef().hq_pTBins);
                     h_QQ_asym[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_asym_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";A = (pT1 - pT2)/(pT1 + pT2);d#sigma/dA", 25,0,1);
                     h_QQ_minv_mHard_ratio[isign][jdphi][kgrp] = new TH1D(Form("h_QQ_minv_mHard_ratio_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#frac{m_{QQ}}{#hat{s}};d#sigma/d#frac{m_{QQ}}{#hat{s}}", 25,0,1);
                     
-                    // h_QQ_ptlead_pair_pt[isign][jdphi] = new TH2D(Form("h_QQ_ptlead_pair_pt_sign%d%s",isign+1, dphis[jdphi].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms().npairPT_bins,pms().pairPTBins[isign][2],pms().n_hq_pt_bins,pms().hq_pTBins);
-                    h_QQ_ptlead_pair_pt[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_ptlead_pair_pt_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pms().n_hq_pt_bins,pms().hq_pTBins,pms().n_hq_pt_bins,pms().hq_pTBins);
-                    h_QQ_pt1_pt2[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_pt1_pt2_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";p_{T}^{sublead} [GeV];p_{T}^{lead} [GeV]",pms().n_hq_pt_bins,pms().hq_pTBins,pms().n_hq_pt_bins,pms().hq_pTBins);
-                    h_QQ_Deta_Dphi[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_Deta_Dphi_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#Delta#phi;#Delta#eta", 32,-pms().PI,pms().PI,40,-4.8,4.8);
+                    // h_QQ_ptlead_pair_pt[isign][jdphi] = new TH2D(Form("h_QQ_ptlead_pair_pt_sign%d%s",isign+1, dphis[jdphi].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pmsRef().npairPT_bins,pmsRef().pairPTBins[isign][2],pmsRef().n_hq_pt_bins,pmsRef().hq_pTBins);
+                    h_QQ_ptlead_pair_pt[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_ptlead_pair_pt_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";p_{T}^{pair} [GeV];p_{T}^{lead} [GeV]",pmsRef().n_hq_pt_bins,pmsRef().hq_pTBins,pmsRef().n_hq_pt_bins,pmsRef().hq_pTBins);
+                    h_QQ_pt1_pt2[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_pt1_pt2_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";p_{T}^{sublead} [GeV];p_{T}^{lead} [GeV]",pmsRef().n_hq_pt_bins,pmsRef().hq_pTBins,pmsRef().n_hq_pt_bins,pmsRef().hq_pTBins);
+                    h_QQ_Deta_Dphi[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_Deta_Dphi_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#Delta#phi;#Delta#eta", 32,-pmsRef().PI,pmsRef().PI,40,-4.8,4.8);
                     h_QQ_eta1_eta2[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_eta1_eta2_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#eta_{sublead};#eta_{lead}",40,-2.4,2.4, 40,-2.4,2.4);
-                    h_QQ_minv_pair_pt[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_minv_pair_pt_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";p_{T}^{pair} [GeV];m_{QQ} [GeV]",pms().n_hq_pt_bins,pms().hq_pTBins,pms().n_hq_minv_bins,pms().hq_minvBins);
-                    h_QQ_minv_Dphi[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_minv_Dphi_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#Delta#phi;m_{QQ} [GeV]",pms().npt_bins,pms().pTBins,pms().n_hq_minv_bins,pms().hq_minvBins);
+                    h_QQ_minv_pair_pt[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_minv_pair_pt_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";p_{T}^{pair} [GeV];m_{QQ} [GeV]",pmsRef().n_hq_pt_bins,pmsRef().hq_pTBins,pmsRef().n_hq_minv_bins,pmsRef().hq_minvBins);
+                    h_QQ_minv_Dphi[isign][jdphi][kgrp] = new TH2D(Form("h_QQ_minv_Dphi_sign%d%s%s",isign+1, dphis[jdphi].c_str(), ancestor_grps[kgrp].c_str()),";#Delta#phi;m_{QQ} [GeV]",pmsRef().npt_bins,pmsRef().pTBins,pmsRef().n_hq_minv_bins,pmsRef().hq_minvBins);
                 }
             }
         }
@@ -163,7 +163,7 @@ void PowhegTruthExtras<Derived>::InitOutputHistsExtra(){
         crossx_bins_cc[icrossx] = crossx_max_cc * pow(10.0, ((float)(icrossx - ncrossx_bins))*crossx_logpow_cc);
     }
 
-    if (mc_mode() == "bb"){
+    if (mc_modeRef() == "bb"){
         h_crossx = new TH1D("h_crossx","h_crossx",ncrossx_bins,crossx_bins_bb);
         for (int ipt = 0; ipt < npTbins; ipt++){
             // h_crossx_pt_binned[ipt] = new TH1D(Form("h_crossx_pt%d",ipt+1),Form("h_crossx_pt%d",ipt+1),ncrossx_bins,crossx_bins_bb);
@@ -177,14 +177,16 @@ void PowhegTruthExtras<Derived>::InitOutputHistsExtra(){
     }
 }
 
-template <class Derived>
-void PowhegTruthExtras<Derived>::TruthPairAnalysis(){
+template <class PairT, class Derived>
+void PowhegTruthExtras<PairT, Derived>::PerformTruthPairAnalysis(){
+    cout << "Calling PowhegTruthExtras::PerformTruthPairAnalysis" << endl;
+    
     if (truth_children->at(2).size() == 2){
-      crossx_2_to_2 += mpair()->weight;
+      crossx_2_to_2 += mpairRef()->weight;
     }else if (truth_children->at(2).size() == 3){
-      crossx_2_to_3 += mpair()->weight;
+      crossx_2_to_3 += mpairRef()->weight;
     }else{
-        std::cout << "The current event (Event# " << mpair()->m1.ev_num << ")'s hardest scattering is neither 2-to-2 nor 2-to-3." << std::endl;
+        std::cout << "The current event (Event# " << mpairRef()->m1.ev_num << ")'s hardest scattering is neither 2-to-2 nor 2-to-3." << std::endl;
         std::cout << "Number of outgoing particles from the hard scattering is:" << truth_children->at(2).size() << std::endl;
         for (auto child : truth_children->at(2)){
             cout << child << " ";
@@ -196,37 +198,37 @@ void PowhegTruthExtras<Derived>::TruthPairAnalysis(){
     MuonPairAncestorTracing();
     if (m1_ancestor_is_incoming && m2_ancestor_is_incoming){
         std::cout << "Both muons are from quarks that are incoming partons." << std::endl;
-        PrintHistory(&std::cout, false, mpair()->from_same_ancestors);
+        PrintHistory(&std::cout, false, mpairRef()->from_same_ancestors);
     }
 
     //------------------------------------------------------------
     
-    h_crossx->Fill(EventWeights()->at(0));
-    if(mpair()->truth_pt_lead < 8) // 4-8
-        h_crossx_pt_binned[0]->Fill(EventWeights()->at(0));
-    else if(mpair()->truth_pt_lead < 15) // 8-15
-        h_crossx_pt_binned[1]->Fill(EventWeights()->at(0));
+    h_crossx->Fill(EventWeightsRef()->at(0));
+    if(mpairRef()->truth_pt_lead < 8) // 4-8
+        h_crossx_pt_binned[0]->Fill(EventWeightsRef()->at(0));
+    else if(mpairRef()->truth_pt_lead < 15) // 8-15
+        h_crossx_pt_binned[1]->Fill(EventWeightsRef()->at(0));
     else // > 15
-        h_crossx_pt_binned[2]->Fill(EventWeights()->at(0));
+        h_crossx_pt_binned[2]->Fill(EventWeightsRef()->at(0));
 
-    // int isign = !(mpair()->truth_same_sign);
-    // int jdphi = (abs(mpair()->truth_dphi) >= pms().PI / 2.);
+    // int isign = !(mpairRef()->truth_same_sign);
+    // int jdphi = (abs(mpairRef()->truth_dphi) >= pmsRef().PI / 2.);
 }
 
-template <class Derived>
-void PowhegTruthExtras<Derived>::MuonPairAncestorTracing(){
+template <class PairT, class Derived>
+void PowhegTruthExtras<PairT, Derived>::MuonPairAncestorTracing(){
 
   MuonPairTagsReinit();
   
   SingleMuonAncestorTracing(true);
   SingleMuonAncestorTracing(false);
   
-  bool not_near = !(abs(mpair()->truth_dphi) < pms().PI / 2.);
+  bool not_near = !(abs(mpairRef()->truth_dphi) < pmsRef().PI / 2.);
 
-  if (output_truth_hists) h_parent_groups[!mpair()->truth_same_sign][not_near]->Fill(mpair()->m1_parent_group + 0.5, mpair()->m2_parent_group + 0.5, mpair()->weight);
+  if (output_truth_hists) h_parent_groups[!mpairRef()->truth_same_sign][not_near]->Fill(mpairRef()->m1_parent_group + 0.5, mpairRef()->m2_parent_group + 0.5, mpairRef()->weight);
 
   if (skip_event){ // if skip event: return without recording any ancestor-categorizing tags, since these would be inaccurate
-    skipped_event_crossx += mpair()->weight;
+    skipped_event_crossx += mpairRef()->weight;
     return; // return without filling in the ancestor-category histograms
   }
 
@@ -234,34 +236,34 @@ void PowhegTruthExtras<Derived>::MuonPairAncestorTracing(){
   // for these muon pairs, at least one's ancestor tracing stops at the hadronic level
   // (which has to happend since FindHeavyQuark() is b/c mode-dependent)
   // hence, cur_m1_ancestor_bars and cur_m1_ancestor_ids, etc. are NOT accurate
-  if (mc_mode() == "bb" && !mpair()->both_from_b) return;
-  if (mc_mode() == "cc" && !mpair()->both_from_c) return;
+  if (mc_modeRef() == "bb" && !mpairRef()->both_from_b) return;
+  if (mc_modeRef() == "cc" && !mpairRef()->both_from_c) return;
 
   bool same_ancestors = (cur_m1_ancestor_bars == cur_m2_ancestor_bars);
-  mpair()->from_same_ancestors = same_ancestors;
+  mpairRef()->from_same_ancestors = same_ancestors;
 
-  mpair()->m1_ancestor_category = AncestorGrouping(cur_m1_ancestor_ids);
-  mpair()->m2_ancestor_category = AncestorGrouping(cur_m2_ancestor_ids);
+  mpairRef()->m1_ancestor_category = AncestorGrouping(cur_m1_ancestor_ids);
+  mpairRef()->m2_ancestor_category = AncestorGrouping(cur_m2_ancestor_ids);
 
-  if (same_ancestors && mpair()->m1_ancestor_category != single_gluon && mpair()->m1_ancestor_category != -1 && cur_m1_ancestor_bars[0] != 3){
-    if (mpair()->m1.ev_num < 10000){
+  if (same_ancestors && mpairRef()->m1_ancestor_category != single_gluon && mpairRef()->m1_ancestor_category != -1 && cur_m1_ancestor_bars[0] != 3){
+    if (mpairRef()->m1.ev_num < 10000){
       std::cout << "The relevant hard scattering is not the hardest scattering. Printing out history to make sure:" << std::endl;
       PrintHistory(&std::cout, false, true);
     }
-    crossx_relevant_hard_isnt_hardest += mpair()->weight;
+    crossx_relevant_hard_isnt_hardest += mpairRef()->weight;
   }
   
   CheckIfFromSameB();
-  if (mpair()->from_same_b) return;
+  if (mpairRef()->from_same_b) return;
 
-  bool near_side = (abs(mpair()->truth_dphi) < pms().PI / 2.);
-  bool small_dphi = (abs(mpair()->truth_dphi) < 0.4);
+  bool near_side = (abs(mpairRef()->truth_dphi) < pmsRef().PI / 2.);
+  bool small_dphi = (abs(mpairRef()->truth_dphi) < 0.4);
 
       
   // print out unspecified cases where an ancestor vector contains both b and -b
   if (!same_ancestors && (m1_multi_hf_quark_ids.size() != 0 || m2_multi_hf_quark_ids.size() != 0)){
     std::vector<int> multi_hf_quark_ids = (m1_multi_hf_quark_ids.size() != 0)? m1_multi_hf_quark_ids : m2_multi_hf_quark_ids;
-    *m_unspecified_parent_file << "Event#: " << mpair()->m1.ev_num << std::endl;
+    *m_unspecified_parent_file << "Event#: " << mpairRef()->m1.ev_num << std::endl;
     *m_unspecified_parent_file << "Unexpected. Both Q and -Q found." << std::endl;
     for (auto v : multi_hf_quark_ids) *m_unspecified_parent_file << v << " ";
     *m_unspecified_parent_file << std::endl << std::endl;
@@ -269,17 +271,17 @@ void PowhegTruthExtras<Derived>::MuonPairAncestorTracing(){
 
   // fill in histograms
   if (output_truth_hists){    
-      h_QQ_both_from_Q_same_ancestors[!mpair()->truth_same_sign][not_near]->Fill(!same_ancestors + 0.5, mpair()->weight); // 0.5 for same parents; 1.5 for different parents
+      h_QQ_both_from_Q_same_ancestors[!mpairRef()->truth_same_sign][not_near]->Fill(!same_ancestors + 0.5, mpairRef()->weight); // 0.5 for same parents; 1.5 for different parents
       if (same_ancestors){
-        h_QQ_both_from_Q_ancestor_sp[!mpair()->truth_same_sign][not_near]->Fill(mpair()->m1_ancestor_category + 0.5, mpair()->weight);
+        h_QQ_both_from_Q_ancestor_sp[!mpairRef()->truth_same_sign][not_near]->Fill(mpairRef()->m1_ancestor_category + 0.5, mpairRef()->weight);
       }else{
-        h_QQ_both_from_Q_ancestor_dp[!mpair()->truth_same_sign][not_near]->Fill(mpair()->m1_ancestor_category + 0.5, mpair()->m2_ancestor_category + 0.5, mpair()->weight);
+        h_QQ_both_from_Q_ancestor_dp[!mpairRef()->truth_same_sign][not_near]->Fill(mpairRef()->m1_ancestor_category + 0.5, mpairRef()->m2_ancestor_category + 0.5, mpairRef()->weight);
       }
   }
 
   // print history
-  if (print_prt_history && mpair()->m1.ev_num < 1000){
-    std::ofstream* m_prt_file = (mc_mode() == "bb")? m_b_parent_file[!mpair()->truth_same_sign][not_near] : m_c_parent_file[!mpair()->truth_same_sign][not_near];
+  if (print_prt_history && mpairRef()->m1.ev_num < 1000){
+    std::ofstream* m_prt_file = (mc_modeRef() == "bb")? m_b_parent_file[!mpairRef()->truth_same_sign][not_near] : m_c_parent_file[!mpairRef()->truth_same_sign][not_near];
     if (same_ancestors)  PrintHistory(m_prt_file, false, true);
     else            PrintHistory(m_prt_file, false, false);
   }
@@ -287,18 +289,18 @@ void PowhegTruthExtras<Derived>::MuonPairAncestorTracing(){
   // analysis of the [QQ sample, both both Q, same ancestors] case --> both muons from hard scattering
   if (same_ancestors){
     // // same sign - categorization
-    // if (mpair()->truth_same_sign) SameSignSameAncestorsAnalysis(near_side, one_b_one_btoc);
+    // if (mpairRef()->truth_same_sign) SameSignSameAncestorsAnalysis(near_side, one_b_one_btoc);
 
     // analysis of hard scattering outproducts
-    int isign = !(mpair()->truth_same_sign);
+    int isign = !(mpairRef()->truth_same_sign);
     int jdphi = !(near_side);
-    HardScatteringAnalysis(cur_m1_ancestor_bars, cur_m1_ancestor_ids, 2 * isign + jdphi, mpair()->m1_ancestor_category);
+    HardScatteringAnalysis(cur_m1_ancestor_bars, cur_m1_ancestor_ids, 2 * isign + jdphi, mpairRef()->m1_ancestor_category);
     if (output_truth_hists) KinematicCorrPlots(isign, jdphi);
   }
 }
 
-template <class Derived>
-void PowhegTruthExtras<Derived>::SingleMuonAncestorTracing(bool isMuon1){
+template <class PairT, class Derived>
+void PowhegTruthExtras<PairT, Derived>::SingleMuonAncestorTracing(bool isMuon1){
   // cout << "starting on m1/m2 ancestor tracing" << endl;
 
   std::vector<int> parent_bars;
@@ -306,11 +308,11 @@ void PowhegTruthExtras<Derived>::SingleMuonAncestorTracing(bool isMuon1){
   int first_hadron_id = 0;
   int prev_first_prt_id = -1;
 
-  float pt = (isMuon1)? mpair()->m1.truth_pt : mpair()->m2.truth_pt;
-  float eta = (isMuon1)? mpair()->m1.truth_eta : mpair()->m2.truth_eta;
-  float phi = (isMuon1)? mpair()->m1.truth_phi : mpair()->m2.truth_phi;
-  int ind = (isMuon1)? mpair()->m1.truth_bar : mpair()->m2.truth_bar;
-  int charge = (isMuon1)? mpair()->m1.truth_charge : mpair()->m2.truth_charge;
+  float pt = (isMuon1)? mpairRef()->m1.truth_pt : mpairRef()->m2.truth_pt;
+  float eta = (isMuon1)? mpairRef()->m1.truth_eta : mpairRef()->m2.truth_eta;
+  float phi = (isMuon1)? mpairRef()->m1.truth_phi : mpairRef()->m2.truth_phi;
+  int ind = (isMuon1)? mpairRef()->m1.truth_bar : mpairRef()->m2.truth_bar;
+  int charge = (isMuon1)? mpairRef()->m1.truth_charge : mpairRef()->m2.truth_charge;
   int id = -13 * charge;
   int status = -10;
   Particle p {pt, eta, phi, ind, id, status};
@@ -345,20 +347,20 @@ void PowhegTruthExtras<Derived>::SingleMuonAncestorTracing(bool isMuon1){
     m1_earliest_parent_id = parent_ids[0];
     cur_m1_earliest_parent_barcode = parent_bars[0];
     cur_parent_group = ParentGrouping(parent_ids, m1_c_tag, prev_is_lepton);
-    mpair()->m1_parent_group = cur_parent_group;
+    mpairRef()->m1_parent_group = cur_parent_group;
   } 
   else{
     m2_earliest_parent_id = parent_ids[0];
     cur_m2_earliest_parent_barcode = parent_bars[0];
     cur_parent_group = ParentGrouping(parent_ids, m2_c_tag, prev_is_lepton);
-    mpair()->m2_parent_group = cur_parent_group;
+    mpairRef()->m2_parent_group = cur_parent_group;
   }
 
   // cout << "finished hadronic parent tagging" << endl;
 
-  if (mc_mode() == "bb"){
+  if (mc_modeRef() == "bb"){
     if (cur_parent_group != direct_b && cur_parent_group != b_to_c){
-      mpair()->both_from_b = false;
+      mpairRef()->both_from_b = false;
       return;
     }
     while((abs(parent_ids[0]) >= 500 && abs(parent_ids[0]) < 600) || (abs(parent_ids[0]) >= 5000 && abs(parent_ids[0]) < 6000)){
@@ -367,15 +369,15 @@ void PowhegTruthExtras<Derived>::SingleMuonAncestorTracing(bool isMuon1){
   }else{ // cc
     // bool first_hadron_is_c_hadron = ((abs(first_hadron_id) >= 400 && abs(first_hadron_id) < 500) || (abs(first_hadron_id) >= 4000 && abs(first_hadron_id) < 5000));
     if (cur_parent_group != direct_c){
-      mpair()->both_from_c = false;
+      mpairRef()->both_from_c = false;
       return;
     }
   }
 
-  // std::cout << mpair()->m1.ev_num << "\t" << first_hadron_id << ",\t";
+  // std::cout << mpairRef()->m1.ev_num << "\t" << first_hadron_id << ",\t";
 
-  int quark = (mc_mode() == "bb")? 5:4;
-  // if (mpair()->m1.ev_num < 80) std::cout << first_hadron_id << std::endl;
+  int quark = (mc_modeRef() == "bb")? 5:4;
+  // if (mpairRef()->m1.ev_num < 80) std::cout << first_hadron_id << std::endl;
   int quark_index = FindHeavyQuarks(parent_ids, quark, isMuon1, first_hadron_id);
 
   // cout << "finished HQ index initializaiton" << endl;
@@ -409,7 +411,7 @@ void PowhegTruthExtras<Derived>::SingleMuonAncestorTracing(bool isMuon1){
   if (prev_hq_bar < 0){
     if (!((isMuon1 && m1_from_J_psi) || (!isMuon1 && m2_from_J_psi) || (isMuon1 && m1_from_Upsilon) || (!isMuon1 && m2_from_Upsilon))){
       std::cout << "Previous HQ barcode is -1: heavy quark never found." << std::endl;
-      std::cout << "Event #: " << mpair()->m1.ev_num << std::endl;
+      std::cout << "Event #: " << mpairRef()->m1.ev_num << std::endl;
       PrintHistory(&std::cout, true, isMuon1);
       skip_event = true;
 
@@ -441,19 +443,19 @@ void PowhegTruthExtras<Derived>::SingleMuonAncestorTracing(bool isMuon1){
     m1_ancestor_is_incoming = (quark_index == -2); // if Case II: then is incoming
     cur_m1_ancestor_ids = parent_ids;
     cur_m1_ancestor_bars = parent_bars;
-    GetPtEtaPhiMFromBarcode(prev_hq_bar, &mpair()->m1_first_hq_ancestor_pt_eta_phi_m);
+    GetPtEtaPhiMFromBarcode(prev_hq_bar, &mpairRef()->m1_first_hq_ancestor_pt_eta_phi_m);
   }
   else{
     m2_ancestor_is_incoming = (quark_index == -2);
     cur_m2_ancestor_ids = parent_ids;
     cur_m2_ancestor_bars = parent_bars;
-    GetPtEtaPhiMFromBarcode(prev_hq_bar, &mpair()->m2_first_hq_ancestor_pt_eta_phi_m);
+    GetPtEtaPhiMFromBarcode(prev_hq_bar, &mpairRef()->m2_first_hq_ancestor_pt_eta_phi_m);
   }
 
   // cout << "finished pt_eta_phi_m_recording" << endl;
 
   // if (quark_index == -2){ // the current muon is incoming
-  //   *m_unspecified_parent_file << "Event#: " << mpair()->m1.ev_num << std::endl;
+  //   *m_unspecified_parent_file << "Event#: " << mpairRef()->m1.ev_num << std::endl;
   //   std::string which_muon = (isMuon1)? "1" : "2";
   //   *m_unspecified_parent_file << "Muon " << which_muon << " is incoming:" << std::endl;
   //   *m_unspecified_parent_file << "Sea HQ barcode: " << prev_hq_bar;
@@ -470,8 +472,8 @@ void PowhegTruthExtras<Derived>::SingleMuonAncestorTracing(bool isMuon1){
   // }
 }
 
-template <class Derived>
-int PowhegTruthExtras<Derived>::ParentGrouping(std::vector<int>& parent_ids, bool c_tag, bool prev_is_lepton){
+template <class PairT, class Derived>
+int PowhegTruthExtras<PairT, Derived>::ParentGrouping(std::vector<int>& parent_ids, bool c_tag, bool prev_is_lepton){
 
   if (parent_ids.size() == 2 && abs(parent_ids[0]) <= 5 && parent_ids[1] == (-1) * parent_ids[0] && prev_is_lepton){
     // std::cout << "For study purpose - Drell-Yan:" << std::endl;
@@ -498,8 +500,8 @@ int PowhegTruthExtras<Derived>::ParentGrouping(std::vector<int>& parent_ids, boo
   return -1; // others
 }
 
-template <class Derived>
-void PowhegTruthExtras<Derived>::GetPtEtaPhiMFromBarcode(int barcode, std::vector<float>* pt_eta_phi_m){
+template <class PairT, class Derived>
+void PowhegTruthExtras<PairT, Derived>::GetPtEtaPhiMFromBarcode(int barcode, std::vector<float>* pt_eta_phi_m){
   std::vector<int>::iterator itbar = std::find(truth_barcode->begin(), truth_barcode->end(), barcode);
 
   if (itbar == truth_barcode->end()){ // found the barcode of muon1 among all truth particles
@@ -513,9 +515,9 @@ void PowhegTruthExtras<Derived>::GetPtEtaPhiMFromBarcode(int barcode, std::vecto
   pt_eta_phi_m->push_back(truth_phi->at(itbar - truth_barcode->begin()));
 }
 
-template <class Derived>
-int PowhegTruthExtras<Derived>::UpdateCurParents(bool isMuon1, std::vector<int>& cur_prt_bars, std::vector<int>& cur_prt_ids, int hf_quark_index = -1){
-  // if (mpair()->m1.ev_num == 1 && !isMuon1){
+template <class PairT, class Derived>
+int PowhegTruthExtras<PairT, Derived>::UpdateCurParents(bool isMuon1, std::vector<int>& cur_prt_bars, std::vector<int>& cur_prt_ids, int hf_quark_index = -1){
+  // if (mpairRef()->m1.ev_num == 1 && !isMuon1){
   //   PrintHistory(&std::cout, true, isMuon1);
   // }
 
@@ -525,7 +527,7 @@ int PowhegTruthExtras<Derived>::UpdateCurParents(bool isMuon1, std::vector<int>&
   // if (cur_prt_bars.size() > 1 && !(cur_is_quark_gluon)){
   if (cur_prt_bars.size() > 1 && hf_quark_index < 0){
     // LATER REMEMBER TO ADD [EXCLUDE 21 21 / 21 2]
-    *m_unspecified_parent_file << "Event#: " << mpair()->m1.ev_num << std::endl;
+    *m_unspecified_parent_file << "Event#: " << mpairRef()->m1.ev_num << std::endl;
     *m_unspecified_parent_file << "More than one parent at hadronic level:" << std::endl;
     for (int parent_id : cur_prt_ids) *m_unspecified_parent_file << parent_id << " ";
     *m_unspecified_parent_file << std::endl << std::endl;
@@ -615,8 +617,8 @@ int PowhegTruthExtras<Derived>::UpdateCurParents(bool isMuon1, std::vector<int>&
   // from muon to hadron stage
   if (abs(prev_first_prt_id) == 13 || abs(prev_first_prt_id) == 15){
     if ((abs(cur_prt_ids[0]) >= 400 && abs(cur_prt_ids[0]) < 600) || (abs(cur_prt_ids[0]) >= 4000 && abs(cur_prt_ids[0]) < 6000)){ // c-hadrons
-      if (isMuon1)  GetPtEtaPhiMFromBarcode(cur_prt_bars[0], &mpair()->m1_last_hf_hadron_prt_pt_eta_phi_m);
-      else          GetPtEtaPhiMFromBarcode(cur_prt_bars[0], &mpair()->m2_last_hf_hadron_prt_pt_eta_phi_m);
+      if (isMuon1)  GetPtEtaPhiMFromBarcode(cur_prt_bars[0], &mpairRef()->m1_last_hf_hadron_prt_pt_eta_phi_m);
+      else          GetPtEtaPhiMFromBarcode(cur_prt_bars[0], &mpairRef()->m2_last_hf_hadron_prt_pt_eta_phi_m);
     }
   }
 
@@ -624,8 +626,8 @@ int PowhegTruthExtras<Derived>::UpdateCurParents(bool isMuon1, std::vector<int>&
   bool prev_is_b_hadron = ((abs(prev_first_prt_id) >= 500 && abs(prev_first_prt_id) < 600) || (abs(prev_first_prt_id) >= 5000 && abs(prev_first_prt_id) < 6000));
   bool current_is_b_hadron = ((abs(cur_prt_ids[0]) >= 500 && abs(cur_prt_ids[0]) < 600) || (abs(cur_prt_ids[0]) >= 5000 && abs(cur_prt_ids[0]) < 6000));
   if ((!prev_is_b_hadron) && current_is_b_hadron){ // the last b hadron
-    if (isMuon1)  GetPtEtaPhiMFromBarcode(cur_prt_bars[0], &mpair()->m1_last_b_hadron_prt_pt_eta_phi_m);
-    else          GetPtEtaPhiMFromBarcode(cur_prt_bars[0], &mpair()->m2_last_b_hadron_prt_pt_eta_phi_m);
+    if (isMuon1)  GetPtEtaPhiMFromBarcode(cur_prt_bars[0], &mpairRef()->m1_last_b_hadron_prt_pt_eta_phi_m);
+    else          GetPtEtaPhiMFromBarcode(cur_prt_bars[0], &mpairRef()->m2_last_b_hadron_prt_pt_eta_phi_m);
   }
 
   // from hadron to quark/gluon stage
@@ -638,8 +640,8 @@ int PowhegTruthExtras<Derived>::UpdateCurParents(bool isMuon1, std::vector<int>&
   return 0;
 }
 
-template <class Derived>
-int PowhegTruthExtras<Derived>::FindHeavyQuarks(std::vector<int>& cur_prt_ids, int quark_type, bool isMuon1, int hadron_child_id = 0){
+template <class PairT, class Derived>
+int PowhegTruthExtras<PairT, Derived>::FindHeavyQuarks(std::vector<int>& cur_prt_ids, int quark_type, bool isMuon1, int hadron_child_id = 0){
   if (quark_type != 4 && quark_type != 5){
     std::cout << "Error:: the parameter quark_type must take value of 4 (c) or 5 (b), quitting" << std::endl;
     throw std::exception();
@@ -679,8 +681,8 @@ int PowhegTruthExtras<Derived>::FindHeavyQuarks(std::vector<int>& cur_prt_ids, i
   return -1;
 }
 
-template <class Derived>
-int PowhegTruthExtras<Derived>::AncestorGrouping(std::vector<int>& ancestor_ids){
+template <class PairT, class Derived>
+int PowhegTruthExtras<PairT, Derived>::AncestorGrouping(std::vector<int>& ancestor_ids){
   // incoming
   if (ancestor_ids.size() == 1 && ancestor_ids[0] == 2212)
     return incoming;
@@ -694,7 +696,7 @@ int PowhegTruthExtras<Derived>::AncestorGrouping(std::vector<int>& ancestor_ids)
     ((ancestor_ids[0] == 21 && (abs(ancestor_ids[1]) == 1 || abs(ancestor_ids[1]) == 2 || abs(ancestor_ids[1]) == 3)) || 
      (ancestor_ids[1] == 21 && (abs(ancestor_ids[0]) == 1 || abs(ancestor_ids[0]) == 2 || abs(ancestor_ids[0]) == 3))))
     return gq;
-  if(mc_mode() == "bb" && ancestor_ids.size() == 2 && 
+  if(mc_modeRef() == "bb" && ancestor_ids.size() == 2 && 
     ((ancestor_ids[0] == 21 && abs(ancestor_ids[1]) == 4) ||
      (ancestor_ids[1] == 21 && abs(ancestor_ids[0]) == 4)))
     return gq;
@@ -707,27 +709,27 @@ int PowhegTruthExtras<Derived>::AncestorGrouping(std::vector<int>& ancestor_ids)
   if (ancestor_ids.size() == 2 && (ancestor_ids[0] == (-1) * ancestor_ids[1])){
     if (abs(ancestor_ids[0]) == 1 || abs(ancestor_ids[0]) == 2 || abs(ancestor_ids[0]) == 3)
       return qqbar;
-    if (mc_mode() == "bb" && abs(ancestor_ids[0]) == 4)
+    if (mc_modeRef() == "bb" && abs(ancestor_ids[0]) == 4)
       return qqbar;
   }
 
   // others
-  std::cout << "Event#: " << mpair()->m1.ev_num << std::endl;
+  std::cout << "Event#: " << mpairRef()->m1.ev_num << std::endl;
   // if (sameprts)
   std::cout << "Ancestor not in any group. Printing out the history of both for better understanding:" << std::endl;
-  PrintHistory(&std::cout, false, mpair()->from_same_ancestors);
+  PrintHistory(&std::cout, false, mpairRef()->from_same_ancestors);
   // for (auto v : ancestor_ids) std::cout << v << " ";
   // std::cout << std::endl << std::endl;
   return -1;
 }
 
-template <class Derived>
-void PowhegTruthExtras<Derived>::HardScatteringAnalysis(std::vector<int>& ancestor_bars, std::vector<int>& ancestor_ids, int sign_dphi_mode, int ancestor_grp){
+template <class PairT, class Derived>
+void PowhegTruthExtras<PairT, Derived>::HardScatteringAnalysis(std::vector<int>& ancestor_bars, std::vector<int>& ancestor_ids, int sign_dphi_mode, int ancestor_grp){
   // find the outgoing particles from the hard scattering
   // record the number, and kinematics, of the hard-scattering outproducts
   // the latter in the different muon-pair-sign/dphi regions
 
-  int quark = (mc_mode() == "bb")? 5:4;
+  int quark = (mc_modeRef() == "bb")? 5:4;
 
   std::vector<int>::iterator itbar = std::find(truth_barcode->begin(),truth_barcode->end(),ancestor_bars[0]);
   if (itbar == truth_barcode->end()){
@@ -778,11 +780,11 @@ void PowhegTruthExtras<Derived>::HardScatteringAnalysis(std::vector<int>& ancest
 
   int isign = (sign_dphi_mode >= 2);
   int idphi = sign_dphi_mode % 2;
-  if (output_truth_hists) h_num_hard_scatt_out[isign][idphi]->Fill(hard_out_ids.size() + 0.5, mpair()->weight);
+  if (output_truth_hists) h_num_hard_scatt_out[isign][idphi]->Fill(hard_out_ids.size() + 0.5, mpairRef()->weight);
 
   if (hard_out_qq_pts.size() != 2){
     std::cout << "Error:: Not exactly 2 heavy quarks found from the hard scattering." << std::endl;
-    std::cout << "Event number: " << mpair()->m1.ev_num << std::endl;
+    std::cout << "Event number: " << mpairRef()->m1.ev_num << std::endl;
     std::cout << "Ancestor1 barcode: " << ancestor_bars[0] << std::endl;
     // throw std::exception();
     return;
@@ -794,17 +796,17 @@ void PowhegTruthExtras<Derived>::HardScatteringAnalysis(std::vector<int>& ancest
   qqpair->q2.pt = hard_out_qq_pts[1];
   qqpair->q2.eta = hard_out_qq_etas[1];
   qqpair->q2.phi = hard_out_qq_phis[1];
-  qqpair->ev_num = mpair()->m1.ev_num;
-  qqpair->weight = mpair()->weight;
-  qqpair->weight = mpair()->weight;
+  qqpair->ev_num = mpairRef()->m1.ev_num;
+  qqpair->weight = mpairRef()->weight;
+  qqpair->weight = mpairRef()->weight;
   qqpair->ancestor_group = ancestor_grp;
   qqpair->Update();
 
   if (output_QQpair_tree) QQPairOutTree[isign][idphi][ancestor_grp]->Fill();
 
-  mpair()->mQQ = qqpair->minv;
-  mpair()->mHard_relevant = s_cm;
-  // cout << "mQQ " << mpair()->mQQ << ", mHard_relevant " << mpair()->mHard_relevant << endl;
+  mpairRef()->mQQ = qqpair->minv;
+  mpairRef()->mHard_relevant = s_cm;
+  // cout << "mQQ " << mpairRef()->mQQ << ", mHard_relevant " << mpairRef()->mHard_relevant << endl;
   
   if (output_truth_hists){    
       h_QQ_Dphi[isign][idphi][ancestor_grp]->Fill(qqpair->dphi, qqpair->weight);
@@ -851,21 +853,21 @@ void PowhegTruthExtras<Derived>::HardScatteringAnalysis(std::vector<int>& ancest
 
     float s_cm = Mtotal.M();
 
-    mpair()->mQQ = qqpair->minv;
-    mpair()->mHard_relevant = s_cm;
+    mpairRef()->mQQ = qqpair->minv;
+    mpairRef()->mHard_relevant = s_cm;
 
     if (output_truth_hists) h_QQ_minv_mHard_ratio[isign][idphi][ancestor_grp]->Fill(qqpair->minv / s_cm, qqpair->weight);
   }
 }
 
-template <class Derived>
-void PowhegTruthExtras<Derived>::PrintHistory(std::ostream* f, bool print_single, bool muon1_sameancestor){
+template <class PairT, class Derived>
+void PowhegTruthExtras<PairT, Derived>::PrintHistory(std::ostream* f, bool print_single, bool muon1_sameancestor){
   // print_single: if True then print single muon history; else then print both muons' history
   // muon1_sameancestor: meaning depends on print_single
   // if (print_single): True = muon1, False = muon2
   // if (!print_single): True = same partonic ancestors, False = different partonic ancestors
   // if True then print single muon history; else then print both muons' history
-  *f << "Event #: " << mpair()->m1.ev_num << std::endl;
+  *f << "Event #: " << mpairRef()->m1.ev_num << std::endl;
 
   if (print_single){
     std::vector<std::vector<Particle>>* m_history_particle = (muon1_sameancestor)? m1_history_particle : m2_history_particle;
@@ -925,8 +927,8 @@ void PowhegTruthExtras<Derived>::PrintHistory(std::ostream* f, bool print_single
   }
 }
 
-template <class Derived>
-void PowhegTruthExtras<Derived>::MuonPairTagsReinit(){
+template <class PairT, class Derived>
+void PowhegTruthExtras<PairT, Derived>::MuonPairTagsReinit(){
   m1_c_tag = false;
   m2_c_tag = false;
   m1_osc = false;
@@ -938,15 +940,15 @@ void PowhegTruthExtras<Derived>::MuonPairTagsReinit(){
 
   skip_event = false;
 
-  mpair()->from_same_b = false;
-  // mpair()->from_same_ancestors = false;
-  mpair()->both_from_b = true;
-  // mpair()->one_from_b_one_from_c = false;
-  mpair()->both_from_c = true;
-  mpair()->m1_ancestor_category = -10;
-  mpair()->m2_ancestor_category = -10;
-  mpair()->mQQ                  = -10.;
-  mpair()->mHard_relevant       = -10.;
+  mpairRef()->from_same_b = false;
+  // mpairRef()->from_same_ancestors = false;
+  mpairRef()->both_from_b = true;
+  // mpairRef()->one_from_b_one_from_c = false;
+  mpairRef()->both_from_c = true;
+  mpairRef()->m1_ancestor_category = -10;
+  mpairRef()->m2_ancestor_category = -10;
+  mpairRef()->mQQ                  = -10.;
+  mpairRef()->mHard_relevant       = -10.;
 
   for (std::vector<int> v : *m1_history) v.clear();
   for (std::vector<int> v : *m2_history) v.clear();
@@ -966,8 +968,8 @@ void PowhegTruthExtras<Derived>::MuonPairTagsReinit(){
 
 }
 
-template <class Derived>
-void PowhegTruthExtras<Derived>::CheckIfFromSameB(){
+template <class PairT, class Derived>
+void PowhegTruthExtras<PairT, Derived>::CheckIfFromSameB(){
   // check if from same b
   // not necessarily [op sign + one from direct b, one from b to c]
   // can also be from some 1-to-n hadronic weak decay (so perhaps both are b to c)
@@ -985,9 +987,9 @@ void PowhegTruthExtras<Derived>::CheckIfFromSameB(){
     // since it's possible that the first not-c-hadron parent vectors is quark level
     // and contains both 4 and -4, where the 4's barcode is recorded as cur_m1_earliest_parent_barcode
     if ((prt_id >= 500 && prt_id < 600) || (prt_id >= 5000 && prt_id < 6000)){
-      mpair()->from_same_b = true;
+      mpairRef()->from_same_b = true;
 
-      // if (mpair()->truth_same_sign){
+      // if (mpairRef()->truth_same_sign){
       //   std::cout << "The same b-flavored hadron give a SAME-SIGN muon pair. How does this happen?" << std::endl;
       //   std::cout << "muon 1 & muon2 hardonic parent barcode: " << cur_m1_earliest_parent_barcode << std::endl;
       //   PrintHistory(&std::cout, false, true);
@@ -996,24 +998,24 @@ void PowhegTruthExtras<Derived>::CheckIfFromSameB(){
   }
 }
 
-template <class Derived>
-void PowhegTruthExtras<Derived>::KinematicCorrPlots(int isign, int idphi){
-  h_pt_muon_pt_closest_hadr_ratio[isign][idphi]->Fill(mpair()->m1.truth_pt / (mpair()->m1_last_hf_hadron_prt_pt_eta_phi_m)[0],mpair()->weight);
-  h_pt_muon_pt_closest_hadr_ratio[isign][idphi]->Fill(mpair()->m2.truth_pt / (mpair()->m2_last_hf_hadron_prt_pt_eta_phi_m)[0],mpair()->weight);
-  h_pt_closest_hadr_pt_furthest_hadr_ratio[isign][idphi]->Fill((mpair()->m1_last_hf_hadron_prt_pt_eta_phi_m)[0] / (*m1_first_hf_hadron_prt_pt_eta_phi_m)[0], mpair()->weight);
-  h_pt_closest_hadr_pt_furthest_hadr_ratio[isign][idphi]->Fill((mpair()->m2_last_hf_hadron_prt_pt_eta_phi_m)[0] / (*m2_first_hf_hadron_prt_pt_eta_phi_m)[0], mpair()->weight);
-  h_pt_hadr_hq_ratio[isign][idphi]->Fill((mpair()->m1_last_hf_hadron_prt_pt_eta_phi_m)[0] / (mpair()->m1_first_hq_ancestor_pt_eta_phi_m)[0], mpair()->weight);
-  h_pt_hadr_hq_ratio[isign][idphi]->Fill((mpair()->m2_last_hf_hadron_prt_pt_eta_phi_m)[0] / (mpair()->m2_first_hq_ancestor_pt_eta_phi_m)[0], mpair()->weight);
-  float muon_hadr_dphi = mpair()->m1.truth_phi - (mpair()->m1_last_hf_hadron_prt_pt_eta_phi_m)[2];
+template <class PairT, class Derived>
+void PowhegTruthExtras<PairT, Derived>::KinematicCorrPlots(int isign, int idphi){
+  h_pt_muon_pt_closest_hadr_ratio[isign][idphi]->Fill(mpairRef()->m1.truth_pt / (mpairRef()->m1_last_hf_hadron_prt_pt_eta_phi_m)[0],mpairRef()->weight);
+  h_pt_muon_pt_closest_hadr_ratio[isign][idphi]->Fill(mpairRef()->m2.truth_pt / (mpairRef()->m2_last_hf_hadron_prt_pt_eta_phi_m)[0],mpairRef()->weight);
+  h_pt_closest_hadr_pt_furthest_hadr_ratio[isign][idphi]->Fill((mpairRef()->m1_last_hf_hadron_prt_pt_eta_phi_m)[0] / (*m1_first_hf_hadron_prt_pt_eta_phi_m)[0], mpairRef()->weight);
+  h_pt_closest_hadr_pt_furthest_hadr_ratio[isign][idphi]->Fill((mpairRef()->m2_last_hf_hadron_prt_pt_eta_phi_m)[0] / (*m2_first_hf_hadron_prt_pt_eta_phi_m)[0], mpairRef()->weight);
+  h_pt_hadr_hq_ratio[isign][idphi]->Fill((mpairRef()->m1_last_hf_hadron_prt_pt_eta_phi_m)[0] / (mpairRef()->m1_first_hq_ancestor_pt_eta_phi_m)[0], mpairRef()->weight);
+  h_pt_hadr_hq_ratio[isign][idphi]->Fill((mpairRef()->m2_last_hf_hadron_prt_pt_eta_phi_m)[0] / (mpairRef()->m2_first_hq_ancestor_pt_eta_phi_m)[0], mpairRef()->weight);
+  float muon_hadr_dphi = mpairRef()->m1.truth_phi - (mpairRef()->m1_last_hf_hadron_prt_pt_eta_phi_m)[2];
   muon_hadr_dphi = atan2(sin(muon_hadr_dphi),cos(muon_hadr_dphi));//fold muon_hadr_dphi to [-pi,pi]
-  h_dphi_muon_closest_hadr[isign][idphi]->Fill(abs(muon_hadr_dphi), mpair()->weight);
-  muon_hadr_dphi = mpair()->m2.truth_phi - (mpair()->m2_last_hf_hadron_prt_pt_eta_phi_m)[2];
+  h_dphi_muon_closest_hadr[isign][idphi]->Fill(abs(muon_hadr_dphi), mpairRef()->weight);
+  muon_hadr_dphi = mpairRef()->m2.truth_phi - (mpairRef()->m2_last_hf_hadron_prt_pt_eta_phi_m)[2];
   muon_hadr_dphi = atan2(sin(muon_hadr_dphi),cos(muon_hadr_dphi));//fold muon_hadr_dphi to [-pi,pi]
-  h_dphi_muon_closest_hadr[isign][idphi]->Fill(abs(muon_hadr_dphi), mpair()->weight);
+  h_dphi_muon_closest_hadr[isign][idphi]->Fill(abs(muon_hadr_dphi), mpairRef()->weight);
 }
 
-template <class Derived>
-void PowhegTruthExtras<Derived>::HistAdjustExtra(){
+template <class PairT, class Derived>
+void PowhegTruthExtras<PairT, Derived>::HistAdjustExtra(){
     if (!output_truth_hists) return;
     for (int ibin = 0; ibin < 3; ibin++){
         for (int isign = 0; isign < ParamsSet::nSigns; isign++){
@@ -1047,8 +1049,8 @@ void PowhegTruthExtras<Derived>::HistAdjustExtra(){
     }
 }
 
-template <class Derived>
-void PowhegTruthExtras<Derived>::FinalizeExtra(){    
+template <class PairT, class Derived>
+void PowhegTruthExtras<PairT, Derived>::FinalizeExtra(){    
     delete qqpair;
 
     std::cout << "The total integral of events where the hardest scattering is 2-to-2 is: " << crossx_2_to_2 << std::endl;
@@ -1067,7 +1069,7 @@ void PowhegTruthExtras<Derived>::FinalizeExtra(){
     delete m_unspecified_parent_file;
 
     if (print_prt_history){
-        if (mc_mode() == "bb"){
+        if (mc_modeRef() == "bb"){
             for (int isign = 0; isign < ParamsSet::nSigns; isign++){
                 m_b_parent_file[isign][0]->close();
                 m_b_parent_file[isign][1]->close();
@@ -1085,7 +1087,7 @@ void PowhegTruthExtras<Derived>::FinalizeExtra(){
     }
 
     if (print_specific_prt_history){
-        if (mc_mode() == "bb"){
+        if (mc_modeRef() == "bb"){
             m_bb_ss_near_file->close();
             m_bb_ss_away_file->close();
             m_bb_op_near_one_b_one_btoc_others_file->close();

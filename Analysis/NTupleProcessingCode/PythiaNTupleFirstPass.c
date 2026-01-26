@@ -2117,9 +2117,6 @@ void PythiaNTupleFirstPass::ProcessData(){
         ResonanceTagging(mpair);
         ResonanceTaggingV2(mpair);
 
-        // photo-production cut - do NOT apply for MC
-        // if (IsPhotoProduction()) continue;
-              
         muon_pair_list_cur_event_pre_resonance_cut.push_back(std::move(mpair));
         
       } // finish first loop over all muon pairs

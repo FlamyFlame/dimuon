@@ -38,29 +38,34 @@ struct PairPowhegTruthExtras {
 
 struct MuonPairPowhegTruth
   : MuonPairBaseT<MuonPairPowhegTruth, MuonPowhegTruth>
-  , PairMCTruthExtras<MuonPairPowhegTruth>
+  , PairMCTruthKinExtras<MuonPairPowhegTruth>
   , PairPowhegExtras<MuonPairPowhegTruth>
   , PairPowhegTruthExtras<MuonPairPowhegTruth>
 {};
 
 struct MuonPairPowhegFullSimNoTruth
   : MuonPairBaseT<MuonPairPowhegFullSimNoTruth, MuonPowhegFullSimNoTruth>
+  , PairMCTruthKinExtras<MuonPairPowhegFullSimNoTruth>
   , PairPowhegExtras<MuonPairPowhegFullSimNoTruth>
   , PairRecoExtras<MuonPairPowhegFullSimNoTruth>
+  , PairFullSimExtras<MuonPairPowhegFullSimNoTruth>
 {};
 
 struct MuonPairPowhegFullSimWTruth
   : MuonPairBaseT<MuonPairPowhegFullSimWTruth, MuonPowhegFullSimWTruth>
-  , PairMCTruthExtras<MuonPairPowhegFullSimWTruth>
+  , PairMCTruthKinExtras<MuonPairPowhegFullSimWTruth>
   , PairPowhegExtras<MuonPairPowhegFullSimWTruth>
   , PairPowhegTruthExtras<MuonPairPowhegFullSimWTruth>
   , PairRecoExtras<MuonPairPowhegFullSimWTruth>
+  , PairFullSimExtras<MuonPairPowhegFullSimWTruth>
 {};
 
 struct MuonPairPowhegFullSimOverlayNoTruth
   : MuonPairBaseT<MuonPairPowhegFullSimOverlayNoTruth, MuonPowhegFullSimOverlayNoTruth>
+  , PairMCTruthKinExtras<MuonPairPowhegFullSimOverlayNoTruth>
   , PairPowhegExtras<MuonPairPowhegFullSimOverlayNoTruth>
   , PairRecoExtras<MuonPairPowhegFullSimOverlayNoTruth>
+  , PairFullSimExtras<MuonPairPowhegFullSimOverlayNoTruth>
   , PairPbPbExtras<MuonPairPowhegFullSimOverlayNoTruth>
 {
     void PairValueCalcHook() {
@@ -70,10 +75,11 @@ struct MuonPairPowhegFullSimOverlayNoTruth
 
 struct MuonPairPowhegFullSimOverlayWTruth
   : MuonPairBaseT<MuonPairPowhegFullSimOverlayWTruth, MuonPowhegFullSimOverlayWTruth>
-  , PairMCTruthExtras<MuonPairPowhegFullSimOverlayWTruth>
+  , PairMCTruthKinExtras<MuonPairPowhegFullSimOverlayWTruth>
   , PairPowhegExtras<MuonPairPowhegFullSimOverlayWTruth>
   , PairPowhegTruthExtras<MuonPairPowhegFullSimOverlayWTruth>
   , PairRecoExtras<MuonPairPowhegFullSimOverlayWTruth>
+  , PairFullSimExtras<MuonPairPowhegFullSimOverlayWTruth>
   , PairPbPbExtras<MuonPairPowhegFullSimOverlayWTruth>
 {
     void PairValueCalcHook() {

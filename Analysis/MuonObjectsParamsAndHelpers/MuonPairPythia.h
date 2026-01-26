@@ -70,6 +70,7 @@ struct MuonPairPythiaFullSimNoTruth
   : MuonPairBaseT<MuonPairPythiaFullSimNoTruth, MuonPythiaFullSimNoTruth>
   , PairPythiaExtras<MuonPairPythiaFullSimNoTruth>
   , PairRecoExtras<MuonPairPythiaFullSimNoTruth>
+  , PairFullSimExtras<MuonPairPythiaFullSimNoTruth>
 {};
 
 struct MuonPairPythiaFullSimWTruth
@@ -78,16 +79,18 @@ struct MuonPairPythiaFullSimWTruth
   , PairPythiaExtras<MuonPairPythiaFullSimWTruth>
   , PairPythiaTruthExtras<MuonPairPythiaFullSimWTruth>
   , PairRecoExtras<MuonPairPythiaFullSimWTruth>
+  , PairFullSimExtras<MuonPairPythiaFullSimWTruth>
 {};
 
 struct MuonPairPythiaFullSimOverlayNoTruth
   : MuonPairBaseT<MuonPairPythiaFullSimOverlayNoTruth, MuonPythiaFullSimOverlayNoTruth>
   , PairPythiaExtras<MuonPairPythiaFullSimOverlayNoTruth>
   , PairRecoExtras<MuonPairPythiaFullSimOverlayNoTruth>
+  , PairFullSimExtras<MuonPairPythiaFullSimOverlayNoTruth>
   , PairPbPbExtras<MuonPairPythiaFullSimOverlayNoTruth>
 {
     void PairValueCalcHook() {
-        this->PairValueCalcPbPb(); // compute avg_centrality
+        this->PairPbPbExtras<MuonPairPythiaFullSimOverlayNoTruth>::PairValueCalcPbPb(); // compute avg_centrality
     }
 };
 
@@ -97,9 +100,10 @@ struct MuonPairPythiaFullSimOverlayWTruth
   , PairPythiaExtras<MuonPairPythiaFullSimOverlayWTruth>
   , PairPythiaTruthExtras<MuonPairPythiaFullSimOverlayWTruth>
   , PairRecoExtras<MuonPairPythiaFullSimOverlayWTruth>
+  , PairFullSimExtras<MuonPairPythiaFullSimOverlayWTruth>
   , PairPbPbExtras<MuonPairPythiaFullSimOverlayWTruth>
 {
     void PairValueCalcHook() {
-        this->PairValueCalcPbPb(); // compute avg_centrality
+        this->PairPbPbExtras<MuonPairPythiaFullSimOverlayWTruth>::PairValueCalcPbPb(); // compute avg_centrality
     }
 };
