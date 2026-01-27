@@ -1,5 +1,7 @@
 template <class PairT, class MuonT, class Derived>
 class PowhegFullSimExtras {
+    template <class, class, class, class...> friend class PowhegAlgCoreT;
+
 protected:
     using pair_t = PairT;
     using muon_t = MuonT;
@@ -8,9 +10,6 @@ protected:
 
     Derived& self() { return static_cast<Derived&>(*this); }
     const Derived& self() const { return static_cast<const Derived&>(*this); }
-
-    std::shared_ptr<pair_t>&    mpairRef()     { return self().mpair; }
-    TChain*&                    fChainRef()    { return self().fChain; }
 
     // reco muon quantities
     std::vector<float>*      muon_pt;
@@ -35,11 +34,9 @@ protected:
     std::vector<float>*      truth_muon_ch;
     std::vector<float>*      truth_muon_barcode;
 
-
 	void InitInputExtra();
     void InitParamsExtra(){
-        self().is_fullsim = true;
-        cout << "PowhegFullSimExtras::InitParamsExtra() called" << endl;
+        self().setIsFullsim(true);
     }
     void ProcessEventFullsim(int ev_num);
     bool PassMuonMediumCuts(const muon_t& muon);

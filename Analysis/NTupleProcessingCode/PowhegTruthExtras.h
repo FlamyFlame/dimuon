@@ -5,6 +5,8 @@
 
 template <class PairT, class Derived>
 class PowhegTruthExtras{
+    template <class, class, class, class...> friend class PowhegAlgCoreT;
+
 public:
     using pair_t = PairT;
 
@@ -12,14 +14,9 @@ protected:
     Derived& self() { return static_cast<Derived&>(*this); }
     const Derived& self() const { return static_cast<const Derived&>(*this); }
 
-    auto&                       mc_modeRef() { return self().mc_mode; }
-    ParamsSet&                  pmsRef()     { return self().pms; }
-    TChain*&                    fChainRef()  { return self().fChain; }
-    std::shared_ptr<pair_t>&    mpairRef()   { return self().mpair; }
-    auto&                       mcdirRef()   { return self().mcdir; }
-    auto&                       EventWeightsRef()   { return self().EventWeights; }
-
 // --------------------- input files & trees & data for setting branches---------------------------
+
+    float                 Q;
 
     std::vector<int>* truth_id = nullptr;
     std::vector<int>* truth_barcode = nullptr;
@@ -174,8 +171,7 @@ protected:
 
     void InitializeExtra();
     void InitParamsExtra(){
-        self().perform_truth = true;
-        cout << "PowhegTruthExtras::InitParamsExtra() called" << endl;
+        self().setPerformTruth(true);
     }
     void InitInputExtra();
     void InitTempVariablesExtra();
@@ -184,11 +180,15 @@ protected:
     void InitOutputExtra();
     void InitOutputTreesExtra();
     void InitOutputHistsExtra();
+    
+    void FillMuonPairExtra(int pair_ind);
+
     void HistAdjustExtra();
     void PerformTruthPairAnalysis();
     
     void FinalizeExtra();
 public: 
+    bool debug_mode_cout_warnings = false;
     bool output_QQpair_tree = true;
     bool output_truth_hists = true;
 

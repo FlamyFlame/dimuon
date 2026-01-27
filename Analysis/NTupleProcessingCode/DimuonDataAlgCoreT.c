@@ -47,6 +47,8 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::PrintInstructions_DataCo
 
 template <class PairT, class MuonT, class Derived, class... Extras>
 void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::InitParams_DataCore(){
+    this->isMC = false; // is MC: regardless of truth only or fullsim
+    
     run_year = run_year % 2000; // e.g, 2023 --> 23
     if (run_year < 15) throw std::runtime_error("Run year invalid: must be >= 2015!");
 
@@ -495,8 +497,7 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::ProcessDataHook(){
     		int NPairs=muon_pair_muon1_pt->size();//number of muon pairs in the event
 
     		for(int pair_ind=0;pair_ind<NPairs;pair_ind++){//first loop over all muon-pairs in the event
-
-    			mpairRef().Clear();
+                mpairRef() = std::make_shared<pair_t>();
 
     			self().FillMuonPairHook(pair_ind);
     			mpairRef()->m1.ev_num = jentry;
@@ -604,6 +605,8 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::ProcessDataHook(){
     			 	FillMuonPairTree();
     			}
     		}
+
+            mpairRef().reset(); // make sure the reference to the last muon pair gets reset
         }
 	}//loop over events
 }

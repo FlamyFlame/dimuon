@@ -8,7 +8,7 @@ private:
       
 // --------------------- class methods ---------------------------
   
-    void TChainFill();
+    void PerformTChainFill();
     void InitParamsExtra();
 
 public :

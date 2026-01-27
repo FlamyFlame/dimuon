@@ -3,6 +3,16 @@
 
 
 template <class Derived>
+struct PairDataExtras {
+    UInt_t  run_number{}, lb{}, bcid{};
+    
+    bool    passmu4mu4noL1;
+    bool    pass2mu4;
+    bool    passSeparated; // separated enough for 2mu4 & mu4_mu4noL1 trigger efficiencies to be factorizable into single-muon parts; for now dR > 0.8
+    bool    passSeparatedDeta; // separated enough for 2mu4 & mu4_mu4noL1 trigger efficiencies to be factorizable into single-muon parts; for now deta > 0.8
+};
+
+template <class Derived>
 struct PairRecoExtras {
   	float pt_lead{};
     float pair_pt{}, pair_eta{}, pair_phi{}, pair_y{};
@@ -15,13 +25,7 @@ struct PairRecoExtras {
 
     float pair_dPoverP{};
 
-    UInt_t  run_number{}, lb{}, bcid{};
-    
     bool    pair_pass_tight;
-    bool    passmu4mu4noL1;
-    bool    pass2mu4;
-    bool    passSeparated; // separated enough for 2mu4 & mu4_mu4noL1 trigger efficiencies to be factorizable into single-muon parts; for now dR > 0.8
-    bool    passSeparatedDeta; // separated enough for 2mu4 & mu4_mu4noL1 trigger efficiencies to be factorizable into single-muon parts; for now deta > 0.8
 
     void SortReco() {
         auto& d = static_cast<Derived&>(*this);
@@ -64,4 +68,5 @@ struct PairRecoExtras {
 struct MuonPairPP
   : MuonPairBaseT<MuonPairPP, MuonPP>
   , PairRecoExtras<MuonPairPP>
+  , PairDataExtras<MuonPairPP>
 {};
