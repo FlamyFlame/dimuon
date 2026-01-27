@@ -29,6 +29,7 @@ public:
 struct MuonPairPbPb
   : MuonPairBaseT<MuonPairPbPb, MuonPbPb>
   , PairRecoExtras<MuonPairPbPb>
+  , PairDataExtras<MuonPairPbPb>
   , PairPbPbExtras<MuonPairPbPb>
 {
     void PairValueCalcHook() {

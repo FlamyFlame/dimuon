@@ -9,18 +9,21 @@ template <class PairT, class MuonT, class Derived, class... Extras>
 class PowhegAlgCoreT
     : public DimuonAlgCoreT<PairT, MuonT, Derived>
 {
+    template<class, class> friend class PowhegTruthExtras;  // match your template params
+    template<class, class, class> friend class PowhegFullSimExtras;  // match your template params
+    template<class> friend class PowhegFullSimOverlayExtras;  // match your template params
+
+
 public:
     using pair_t = PairT;
 
 protected:    
     using Base = DimuonAlgCoreT<PairT, MuonT, Derived>;
     using Base::self;
-
-    TChain*&                    fChainRef()            { return this->fChain; }
-    std::shared_ptr<pair_t>&    mpairRef()             { return this->mpair; }
-    TH1D* (&h_cutAcceptanceRef())[ParamsSet::nSigns] {
-        return this->h_cutAcceptance;
-    }
+    using Base::fChainRef;
+    using Base::mpairRef;
+    using Base::pmsRef;
+    using Base::h_cutAcceptanceRef;
 
 // --------------------- general settings ---------------------------
 
@@ -36,8 +39,6 @@ protected:
     double filter_effcy_cc = 0.001108;
     // static const int nMCmodes = 2;
 
-    ParamsSet pms;
-
     std::string mcdir;
     std::string data_subdir;
     std::string dt_suffix;
@@ -46,7 +47,6 @@ protected:
 // --------------------- input files & trees & data for setting branches---------------------------
   
     // Declaration of leaf types
-    float                 Q;
     std::vector<float>   *EventWeights           =nullptr;
   
     std::vector<int>     *truth_muon_barcode        =nullptr;
@@ -72,6 +72,20 @@ protected:
   // --------------------- output file, histograms & trees ---------------------------
   
     TTree* meta_tree;
+
+  // --------------------- reference API, setters & getters ---------------------------
+
+    std::string&                mcModeRef() { return mc_mode; }
+    std::string&                mcdirRef()   { return mcdir; }
+    std::vector<float> *&       EventWeightsRef()   { return EventWeights; }
+    
+    bool                        getIsFullsim(){ return is_fullsim; }
+    bool                        getIsFullsimOverlay(){ return is_fullsim_overlay; }
+    bool                        getPerformTruth(){ return perform_truth; }
+
+    void                        setIsFullsim(bool is_fullsim_input){ is_fullsim = is_fullsim_input; }
+    void                        setIsFullsimOverlay(bool is_fullsim_overlay_input){ is_fullsim_overlay = is_fullsim_overlay_input; }
+    void                        setPerformTruth(bool perform_truth_input){ perform_truth = perform_truth_input; }
 
 // --------------------- class methods ---------------------------
   
@@ -138,6 +152,22 @@ protected:
     }
 
     void InitOutputTreesExtra_PowhegCore();
+
+    // --------------- InitOutputHistsExtraImpl ---------------
+        template <class E>
+    void CallInitOutputHistsExtra() {
+        if constexpr (requires(Derived& d){ static_cast<E&>(d).InitOutputHistsExtra(); }) {
+            static_cast<E&>(self()).InitOutputHistsExtra();
+        }
+    }
+
+    // --------------- InitOutputExtraImpl ---------------
+        template <class E>
+    void CallInitOutputExtra() {
+        if constexpr (requires(Derived& d){ static_cast<E&>(d).InitOutputExtra(); }) {
+            static_cast<E&>(self()).InitOutputExtra();
+        }
+    }
 
     // --------------- InitializeExtraImpl ---------------
         template <class E>
@@ -257,6 +287,16 @@ public:
     void InitOutputTreesExtraHook(){
         InitOutputTreesExtra_PowhegCore();
         (CallInitOutputTreesExtra<Extras>(), ...);
+    }
+
+    // --------------- InitOutputHistsExtraHook ---------------
+    void InitOutputHistsExtraHook(){
+        (CallInitOutputHistsExtra<Extras>(), ...);
+    }
+
+    // --------------- InitOutputExtraHook ---------------
+    void InitOutputExtraHook(){
+        (CallInitOutputExtra<Extras>(), ...);
     }
 
     // --------------- InitializeExtraHook ---------------

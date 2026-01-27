@@ -23,7 +23,7 @@ protected:
 
     void InitParamsExtra();
     void InitInputExtra();
-    void TChainFill();
+    void PerformTChainFill();
     void InitOutputSettingsExtra();
 
     void FillSingleMuonTreeExtra();

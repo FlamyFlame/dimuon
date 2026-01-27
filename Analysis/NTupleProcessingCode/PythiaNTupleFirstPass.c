@@ -612,7 +612,7 @@ void PythiaNTupleFirstPass::GetPtEtaPhiMFromBarcode(int barcode, std::vector<flo
     pt_eta_phi_m->push_back(truth_phi->at(barcode));
 }
 
-std::pair<int,int> PythiaNTupleFirstPass::UpdateCurParents(bool isMuon1, std::vector<int>& cur_prt_bars, std::vector<int>& cur_prt_ids, bool before_gs, bool& prev_out_hard_scatt, int hf_quark_index = -1000000){
+std::pair<int,int> PythiaNTupleFirstPass::UpdateCurParents(bool isMuon1, std::vector<int>& cur_prt_bars, std::vector<int>& cur_prt_ids, bool before_gs, bool& prev_out_hard_scatt, int hf_quark_index){
   
   // function that traces one step back and updates the current parent barcodes + ids
   // it returns a pair of integer that is {previous first parent barcode, previous first parent id} if the previous first parent was a HF hadron
@@ -810,7 +810,7 @@ std::pair<int,int> PythiaNTupleFirstPass::UpdateCurParents(bool isMuon1, std::ve
 }
 
 
-int PythiaNTupleFirstPass::FindHeavyQuarks(std::vector<int>& cur_prt_ids, std::vector<int>& cur_prt_bars, int quark_type, bool isMuon1, int prev_hq_bar, int hadron_child_id = 0){
+int PythiaNTupleFirstPass::FindHeavyQuarks(std::vector<int>& cur_prt_ids, std::vector<int>& cur_prt_bars, int quark_type, bool isMuon1, int prev_hq_bar, int hadron_child_id){
   if ((quark_type != 4 && quark_type != 5) && (print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file)){
     *m_very_bad_warning_file << "Error:: the parameter quark_type must take value of 4 (c) or 5 (b), quitting" << std::endl;
     *m_very_bad_warning_file << "Event #: " << mpair->m1.ev_num << std::endl;
@@ -1132,7 +1132,7 @@ int PythiaNTupleFirstPass::HardAnalysisCategr(int in_bar1, int in_bar2){
 }
 
 
-void PythiaNTupleFirstPass::PrintHistory(std::ostream* f, bool print_single, bool muon1_sameancestor, bool print_category = false){
+void PythiaNTupleFirstPass::PrintHistory(std::ostream* f, bool print_single, bool muon1_sameancestor, bool print_category){
   // print_single: if True then print single muon history; else then print both muons' history
   // muon1_sameancestor: meaning depends on print_single
   // if (print_single): True = muon1, False = muon2

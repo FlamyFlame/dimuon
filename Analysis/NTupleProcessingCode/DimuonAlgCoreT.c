@@ -22,9 +22,6 @@ void DimuonAlgCoreT<PairT, MuonT, Derived>::Run(){
 template <class PairT, class MuonT, class Derived>
 void DimuonAlgCoreT<PairT, MuonT, Derived>::Initialize(){
     
-    mpair = std::make_shared<pair_t>();
-    mpair_raw_ptr = mpair.get();
-
     self().InitParamsHook();
     self().InitInputHook();
     InitOutput();
@@ -37,15 +34,17 @@ void DimuonAlgCoreT<PairT, MuonT, Derived>::InitOutput(){
     self().InitOutputSettingsHook();
     InitOutputTrees();
     InitOutputHists();
+    self().InitOutputExtraHook(); // e.g, log files
 }
 
 template <class PairT, class MuonT, class Derived>
 void DimuonAlgCoreT<PairT, MuonT, Derived>::InitOutputTrees(){
     self().OutputTreePath(); // including output hist file path
-    if (!m_outfile) throw std::runtime_error("Output file is nullptr!");
 
     // Create muon/muon-pair output file
+    std::cout << "output file path: " << output_file_path << std::endl;
     m_outfile = new TFile(output_file_path.c_str(), "recreate");
+    if (!m_outfile) throw std::runtime_error("Output file is nullptr!");
 
     // Create main trees
     if (output_single_muon_tree) {
@@ -63,6 +62,7 @@ void DimuonAlgCoreT<PairT, MuonT, Derived>::InitOutputTrees(){
 template <class PairT, class MuonT, class Derived>
 void DimuonAlgCoreT<PairT, MuonT, Derived>::InitOutputHists(){
     self().OutputHistPath(); // including output hist file path
+    m_outHistFile = new TFile(output_hist_file_path.c_str(), "recreate");
     if (!m_outHistFile) throw std::runtime_error("Output hist file is nullptr!");
 
     cout << "DimuonAlgCoreT::InitOutputHists: [DEBUG] numCuts = " << numCuts << endl;
@@ -71,6 +71,36 @@ void DimuonAlgCoreT<PairT, MuonT, Derived>::InitOutputHists(){
     }
     self().InitOutputHistsExtraHook();
 }
+
+#include <type_traits>
+#include <concepts>
+
+template <class PairT>
+constexpr float GetMuPairMinv(const PairT& mupair) {
+    if constexpr (requires { mupair.truth_minv; }) {
+        return mupair.truth_minv;
+    } else if constexpr (requires { mupair.minv; }) {
+        return mupair.minv;
+    } else {
+        static_assert(sizeof(PairT) == 0,
+            "PairT has no truth_minv / minv variable. Add one or specialize GetMuPairMinv.");
+        return 0.f;
+    }
+}
+
+template <class PairT>
+constexpr bool GetMuPairIsSameSign(const PairT& mupair) {
+    if constexpr (requires { mupair.truth_same_sign; }) {
+        return mupair.truth_same_sign;
+    } else if constexpr (requires { mupair.same_sign; }) {
+        return mupair.same_sign;
+    } else {
+        static_assert(sizeof(PairT) == 0,
+            "PairT has no truth_same_sign / same_sign variable. Add one or specialize GetMuPairIsSameSign.");
+        return false;
+    }
+}
+
 
 
 template <class PairT, class MuonT, class Derived>
@@ -81,10 +111,10 @@ void DimuonAlgCoreT<PairT, MuonT, Derived>::FillSingleMuonTree(){
 
 template <class PairT, class MuonT, class Derived>
 void DimuonAlgCoreT<PairT, MuonT, Derived>::FillMuonPairTree(){
-    int nsign = (mpair->same_sign)? 0:1;
+    if (!mpair) throw std::runtime_error("FillMuonPairTree: mpair is nullptr!");
+    int nsign = GetMuPairIsSameSign(*mpair)? 0:1;
 
     try{
-      if (!mpair) throw std::runtime_error("FillMuonPairTree: Muon Pair doesn't exist!");
       if (!muonPairOutTree[nsign]) throw std::runtime_error("FillMuonPairTree: Muon Pair output tree doesn't exist!");
       mpair_raw_ptr = mpair.get();
     }catch(const std::runtime_error& e){
@@ -100,15 +130,18 @@ template <class PairT, class MuonT, class Derived>
 void DimuonAlgCoreT<PairT, MuonT, Derived>::ResonanceTaggingV2(){
     // function that checks if a muon pair comes from the resonance
   
-    if (!(mpair->same_sign)){ // opposite sign
-        if (mpair->minv > pms.minv_upper){ // if minv is too large - treat as a "resonance" and tag both
+    if (!mpair) throw std::runtime_error("ResonanceTaggingV2: mpair is nullptr!");
+    float pair_minv = GetMuPairMinv(*mpair);
+    
+    if (!GetMuPairIsSameSign(*mpair)){ // opposite sign
+        if (pair_minv > pms.minv_upper){ // if minv is too large - treat as a "resonance" and tag both
             resonance_tagged_muon_index_list_v2.push_back(mpair->m1.ind);
             resonance_tagged_muon_index_list_v2.push_back(mpair->m2.ind);
             return;
         }
 
         for (array<float,2> ires : pms.minv_cuts_v2){
-            if (mpair->minv > ires[0] && mpair->minv < ires[1]){ // if minv fits within a resonance-cut range: tag both as from resonance
+            if (pair_minv > ires[0] && pair_minv < ires[1]){ // if minv fits within a resonance-cut range: tag both as from resonance
                 resonance_tagged_muon_index_list_v2.push_back(mpair->m1.ind);
                 resonance_tagged_muon_index_list_v2.push_back(mpair->m2.ind);
                 return;
@@ -123,15 +156,18 @@ template <class PairT, class MuonT, class Derived>
 void DimuonAlgCoreT<PairT, MuonT, Derived>::ResonanceTagging(){
     // function that checks if a muon pair comes from the resonance
   
-    if (!(mpair->same_sign)){ // opposite sign
-        if (mpair->minv > pms.minv_upper){ // if minv is too large - treat as a "resonance" and tag both
+    if (!mpair) throw std::runtime_error("ResonanceTagging: mpair is nullptr!");
+    float pair_minv = GetMuPairMinv(*mpair);
+    
+    if (!GetMuPairIsSameSign(*mpair)){ // opposite sign
+        if (pair_minv > pms.minv_upper){ // if minv is too large - treat as a "resonance" and tag both
             resonance_tagged_muon_index_list.push_back(mpair->m1.ind);
             resonance_tagged_muon_index_list.push_back(mpair->m2.ind);
             return;
         }
 
         for (array<float,2> ires : pms.minv_cuts){
-            if (mpair->minv > ires[0] && mpair->minv < ires[1]){ // if minv fits within a resonance-cut range: tag both as from resonance
+            if (pair_minv > ires[0] && pair_minv < ires[1]){ // if minv fits within a resonance-cut range: tag both as from resonance
                 resonance_tagged_muon_index_list.push_back(mpair->m1.ind);
                 resonance_tagged_muon_index_list.push_back(mpair->m2.ind);
                 return;

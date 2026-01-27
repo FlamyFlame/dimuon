@@ -16,7 +16,7 @@ lsetup "views LCG_107a_ATLAS_2 x86_64-el9-gcc13-opt"
 root -b -l << EOF
 	.L PowhegAnalysisClasses.h 
 
-	PowhegTruthAnalysis pw($file_batch, "bb");
+	PowhegTruthAnalysis pw($file_batch, "cc");
 	pw.Run();
 
 	.q;

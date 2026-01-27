@@ -18,7 +18,7 @@ void PPExtras<Derived>::InitParamsExtra(){
 
 //initialize the TChain
 template <class Derived>
-void PPExtras<Derived>::TChainFill(){
+void PPExtras<Derived>::PerformTChainFill(){
 
     fChain = new TChain("HeavyIonD3PD","HeavyIonD3PD");
     fChain->SetMakeClass(1);

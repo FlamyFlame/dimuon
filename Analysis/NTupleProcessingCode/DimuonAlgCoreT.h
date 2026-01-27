@@ -26,6 +26,8 @@ protected:
     Derived& self() { return static_cast<Derived&>(*this); }
     const Derived& self() const { return static_cast<const Derived&>(*this); }
 
+    bool isMC; // if MC, use truth quantities
+
 // --------------------- input parameter ---------------------------
     ParamsSet pms;
 
@@ -60,6 +62,15 @@ protected:
 	std::vector<std::string> cutLabels = {};
 	TH1D* h_cutAcceptance[ParamsSet::nSigns];
 
+// --------------------- reference API ---------------------------
+    TChain*& fChainRef() { return fChain; }
+    PairPtr& mpairRef() { return mpair; }
+    ParamsSet& pmsRef() { return pms; }
+
+    TH1D* (&h_cutAcceptanceRef())[ParamsSet::nSigns] {
+        return this->h_cutAcceptance;
+    }
+
 // --------------------- protected class methods ---------------------------
 
 	void Initialize();
@@ -88,12 +99,14 @@ protected:
     void InitParamsHook(){}
     void InitInputHook() {}
     void InitTempVariablesHook() {}
-    void InitOutputSettingsHook() {}
 
     void OutputTreePath() {return self().OutputTreePathHook();} // require child-class definition
     void OutputHistPath() {return self().OutputHistPathHook();} // require child-class definition
+    
+    void InitOutputSettingsHook() {}
     void InitOutputTreesExtraHook(){}
     void InitOutputHistsExtraHook(){}
+    void InitOutputExtraHook() {}
 
 	void FillMuonPairTreeHook(){}
     void FillSingleMuonTreeHook(){}

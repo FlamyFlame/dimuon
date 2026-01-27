@@ -13,11 +13,12 @@ public:
     using pair_t = PairT;
 
 protected:
-    TChain*&                    fChainRef()            { return this->fChain; }
-    std::shared_ptr<pair_t>&    mpairRef()             { return this->mpair; }
-    TH1D* (&h_cutAcceptanceRef())[ParamsSet::nSigns] {
-        return this->h_cutAcceptance;
-    }
+    using Base = DimuonAlgCoreT<PairT, MuonT, Derived>;
+    using Base::self;
+    using Base::fChainRef;
+    using Base::mpairRef;
+    using Base::pmsRef;
+    using Base::h_cutAcceptanceRef;
 
     DimuonDataAlgCoreT(int run_year_input, int file_batch_input)
         : run_year (run_year_input), file_batch (file_batch_input){
@@ -100,16 +101,25 @@ protected:
 
     void InitInputBranchesDimuonAnalysis(); // set branches for muon-pair variables
     void InitInputBranchesSingleMuonAnalysis(); // set branches for single-muon variables (for MB-data mu4-trigger-efficiency study)
-    void TChainFill(){ return self().TChainFill(); }
+    void TChainFill(){ return self().TChainFillHook(); }
 
     bool IsPhotoProduction();
 
 
+    // --------------- TChainFillImpl ---------------
+        template <class E>
+    void CallTChainFill() {
+        // Evaluate access in Derived context so Extras may keep TChainFill(int) protected
+        if constexpr (requires(Derived& d){ static_cast<E&>(d).PerformTChainFill(); }) {
+            static_cast<E&>(self()).PerformTChainFill();
+        }
+    }
+
     // --------------- InitInputImpl ---------------
     template <class E>
     void CallInitInput() {
-        if constexpr (requires(E& e){ e.InitInputExtra(); }) {
-            static_cast<E&>(*this).InitInputExtra();
+        if constexpr (requires(Derived& d){ static_cast<E&>(d).InitInputExtra(); }) {
+            static_cast<E&>(self()).InitInputExtra();
         }
     }
 
@@ -118,8 +128,8 @@ protected:
     // --------------- InitInputBranchesSingleMuonAnalysisImpl ---------------
     template <class E>
     void CallInitInputBranchesSingleMuonAnalysis() {
-        if constexpr (requires(E& e){ e.InitInputBranchesSingleMuonAnalysisExtra(); }) {
-            static_cast<E&>(*this).InitInputBranchesSingleMuonAnalysisExtra();
+        if constexpr (requires(Derived& d){ static_cast<E&>(d).InitInputBranchesSingleMuonAnalysisExtra(); }) {
+            static_cast<E&>(self()).InitInputBranchesSingleMuonAnalysisExtra();
         }
     }
 
@@ -128,8 +138,8 @@ protected:
     // --------------- InitInputBranchesDimuonAnalysisImpl ---------------
     template <class E>
     void CallInitInputBranchesDimuonAnalysis() {
-        if constexpr (requires(E& e){ e.InitInputBranchesDimuonAnalysisExtra(); }) {
-            static_cast<E&>(*this).InitInputBranchesDimuonAnalysisExtra();
+        if constexpr (requires(Derived& d){ static_cast<E&>(d).InitInputBranchesDimuonAnalysisExtra(); }) {
+            static_cast<E&>(self()).InitInputBranchesDimuonAnalysisExtra();
         }
     }
 
@@ -138,8 +148,8 @@ protected:
     // --------------- InitTempVariablesImpl ---------------
     template <class E>
     void CallInitTempVariables() {
-        if constexpr (requires(E& e){ e.InitTempVariablesExtra(); }) {
-            static_cast<E&>(*this).InitTempVariablesExtra();
+        if constexpr (requires(Derived& d){ static_cast<E&>(d).InitTempVariablesExtra(); }) {
+            static_cast<E&>(self()).InitTempVariablesExtra();
         }
     }
 
@@ -148,8 +158,8 @@ protected:
     // --------------- InitParamsImpl ---------------
     template <class E>
     void CallInitParams() {
-        if constexpr (requires(E& e){ e.InitParamsExtra(); }) {
-            static_cast<E&>(*this).InitParamsExtra();
+        if constexpr (requires(Derived& d){ static_cast<E&>(d).InitParamsExtra(); }) {
+            static_cast<E&>(self()).InitParamsExtra();
         }
     }
 
@@ -158,8 +168,8 @@ protected:
     // --------------- InitOutputSettingsImpl ---------------
     template <class E>
     void CallInitOutputSettings() {
-        if constexpr (requires(E& e){ e.InitOutputSettingsExtra(); }) {
-            static_cast<E&>(*this).InitOutputSettingsExtra();
+        if constexpr (requires(Derived& d){ static_cast<E&>(d).InitOutputSettingsExtra(); }) {
+            static_cast<E&>(self()).InitOutputSettingsExtra();
         }
     }
 
@@ -168,24 +178,24 @@ protected:
     // --------------- InitOutputTreesExtraImpl ---------------
     template <class E>
     void CallInitOutputTreesExtra() {
-        if constexpr (requires(E& e){ e.InitOutputTreesExtra(); }) {
-            static_cast<E&>(*this).InitOutputTreesExtra();
+        if constexpr (requires(Derived& d){ static_cast<E&>(d).InitOutputTreesExtra(); }) {
+            static_cast<E&>(self()).InitOutputTreesExtra();
         }
     }
 
     // --------------- InitOutputHistsExtraImpl ---------------
     template <class E>
     void CallInitOutputHistsExtra() {
-        if constexpr (requires(E& e){ e.InitOutputHistsExtra(); }) {
-            static_cast<E&>(*this).InitOutputHistsExtra();
+        if constexpr (requires(Derived& d){ static_cast<E&>(d).InitOutputHistsExtra(); }) {
+            static_cast<E&>(self()).InitOutputHistsExtra();
         }
     }
 
     // --------------- InitializeExtraImpl ---------------
     template <class E>
     void CallInitializeExtra() {
-        if constexpr (requires(E& e){ e.InitializeExtra(); }) {
-            static_cast<E&>(*this).InitializeExtra();
+        if constexpr (requires(Derived& d){ static_cast<E&>(d).InitializeExtra(); }) {
+            static_cast<E&>(self()).InitializeExtra();
         }
     }
 
@@ -194,8 +204,8 @@ protected:
     // --------------- PassCutsImpl ---------------
     template <class E>
     bool CallPassCuts() {
-        if constexpr (requires(E& e){ e.PassCutsExtra(); }) {
-            return static_cast<E&>(*this).PassCutsExtra();
+        if constexpr (requires(Derived& d){ static_cast<E&>(d).PassCutsExtra(); }) {
+            return static_cast<E&>(self()).PassCutsExtra();
         } else {
             return true;
         }
@@ -206,16 +216,16 @@ protected:
     // --------------- FillMuonPairTreeImpl ---------------
     template <class E>
     void CallFillMuonPairTree() {
-        if constexpr (requires(E& e){ e.FillMuonPairTreeExtra(); }) {
-            static_cast<E&>(*this).FillMuonPairTreeExtra();
+        if constexpr (requires(Derived& d){ static_cast<E&>(d).FillMuonPairTreeExtra(); }) {
+            static_cast<E&>(self()).FillMuonPairTreeExtra();
         }
     }
 
     // --------------- FillSingleMuonTreeImpl ---------------
     template <class E>
     void CallFillSingleMuonTree() {
-        if constexpr (requires(E& e){ e.FillSingleMuonTreeExtra(); }) {
-            static_cast<E&>(*this).FillSingleMuonTreeExtra();
+        if constexpr (requires(Derived& d){ static_cast<E&>(d).FillSingleMuonTreeExtra(); }) {
+            static_cast<E&>(self()).FillSingleMuonTreeExtra();
         }
     }
 
@@ -223,7 +233,7 @@ protected:
     template <class E>
     void CallFillMuonPair(int pair_ind) {
         if constexpr (requires(E& e, int ind) { e.FillMuonPairExtra(ind); }) {
-            static_cast<E&>(*this).FillMuonPairExtra(pair_ind);
+            static_cast<E&>(self()).FillMuonPairExtra(pair_ind);
         }
     }
 
@@ -232,8 +242,8 @@ protected:
     // --------------- HistAdjustImpl ---------------
     template <class E>
     void CallHistAdjust() {
-        if constexpr (requires(E& e){ e.HistAdjustExtra(); }) {
-            static_cast<E&>(*this).HistAdjustExtra();
+        if constexpr (requires(Derived& d){ static_cast<E&>(d).HistAdjustExtra(); }) {
+            static_cast<E&>(self()).HistAdjustExtra();
         }
     }
 
@@ -242,8 +252,8 @@ protected:
    // --------------- PrintInstructionsImpl ---------------
     template <class E>
     void CallPrintInstructions() {
-        if constexpr (requires(E& e){ e.PrintInstructionsExtra(); }) {
-            static_cast<E&>(*this).PrintInstructionsExtra();
+        if constexpr (requires(Derived& d){ static_cast<E&>(d).PrintInstructionsExtra(); }) {
+            static_cast<E&>(self()).PrintInstructionsExtra();
         }
     }
 
@@ -252,16 +262,16 @@ protected:
     // --------------- PerformAdditionalPairAnalysisImpl ---------------
     template <class E>
     void CallAdditionalPairAnalysis() {
-        if constexpr (requires(E& e){ e.AdditionalPairAnalysis(); }) {
-            static_cast<E&>(*this).AdditionalPairAnalysis();
+        if constexpr (requires(Derived& d){ static_cast<E&>(d).AdditionalPairAnalysis(); }) {
+            static_cast<E&>(self()).AdditionalPairAnalysis();
         }
     }
 
     // --------------- FinalizeImpl ---------------
     template <class E>
     void CallFinalize() {
-        if constexpr (requires(E& e){ e.FinalizeExtra(); }) {
-            static_cast<E&>(*this).FinalizeExtra();
+        if constexpr (requires(Derived& d){ static_cast<E&>(d).FinalizeExtra(); }) {
+            static_cast<E&>(self()).FinalizeExtra();
         }
     }
 
@@ -285,6 +295,10 @@ public:
     void PrintInstructions();
     void ProcessDataHook();
 
+    // --------------- TChainFillHook ---------------
+    void TChainFillHook(){
+        (CallTChainFill<Extras>(), ...);
+    }
 
     // --------------- InitInputHook ---------------
     void InitInputHook(){

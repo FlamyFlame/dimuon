@@ -13,7 +13,7 @@ PbPbDataNTupleFirstPass::PbPbDataNTupleFirstPass(int run_year_input, int file_ba
 }
 
 template <class Derived>
-void PbPbExtras<Derived>::TChainFill(){
+void PbPbExtras<Derived>::PerformTChainFill(){
 
   fChain = new TChain("HeavyIonD3PD","HeavyIonD3PD");
   fChain->SetMakeClass(1);
