@@ -2,6 +2,7 @@
 #include "../MuonObjectsParamsAndHelpers/TruthQQPair.h"
 #include "../MuonObjectsParamsAndHelpers/struct_particle.h"
 #include "../MuonObjectsParamsAndHelpers/muon_pair_enums_MC.h"
+#include "../Utilities/GeneralUtils.h"
 
 template <class PairT, class Derived>
 class PowhegTruthExtras{
@@ -102,14 +103,8 @@ protected:
     int m1_earliest_parent_id;
     int m2_earliest_parent_id;
 
-    // std::vector<float>* m1_last_b_hadron_prt_pt_eta_phi_m;
-    // std::vector<float>* m2_last_b_hadron_prt_pt_eta_phi_m;
-    // std::vector<float>* m1_last_hf_hadron_prt_pt_eta_phi_m;
-    // std::vector<float>* m2_last_hf_hadron_prt_pt_eta_phi_m;
     std::vector<float>* m1_first_hf_hadron_prt_pt_eta_phi_m;
     std::vector<float>* m2_first_hf_hadron_prt_pt_eta_phi_m;
-    // std::vector<float>* m1_hq_ancestor_pt_eta_phi_m;
-    // std::vector<float>* m2_hq_ancestor_pt_eta_phi_m;
 
 // --------------------- output file, histograms & trees ---------------------------
   
@@ -156,6 +151,8 @@ protected:
 
     TTree* QQPairOutTree[ParamsSet::nSigns][2][nAncestorGroups];
 
+    void CheckBranchPtrsExtra();
+
     void MuonPairAncestorTracing();
     void SingleMuonAncestorTracing(bool isMuon1);
     int  ParentGrouping(std::vector<int>& parent_ids, bool c_tag, bool prev_is_lepton);
@@ -190,7 +187,7 @@ protected:
 public: 
     bool debug_mode_cout_warnings = false;
     bool output_QQpair_tree = true;
-    bool output_truth_hists = true;
+    bool output_truth_hists = false;
 
     bool print_prt_history = false;
     bool print_specific_prt_history = false;

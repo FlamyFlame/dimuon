@@ -16,8 +16,7 @@ lsetup "views LCG_107a_ATLAS_2 x86_64-el9-gcc13-opt"
 root -b -l << EOF
 	.L PowhegAnalysisClasses.h 
 
-	PowhegFullSimAnalysisWTruth pw($file_batch, "bb");
-	// pw.debug_mode = true; // uncomment to turn on debug mode
+	PowhegFullSimAnalysisWTruth pw($file_batch, "cc");
 	pw.Run();
 
 	.q;

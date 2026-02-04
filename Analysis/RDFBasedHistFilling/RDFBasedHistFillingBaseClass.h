@@ -6,8 +6,9 @@
 #include <utility> 
 #include <numeric>
 #include "../MuonObjectsParamsAndHelpers/ParamsSet.h"
-#include "../MuonObjectsParamsAndHelpers/bin_number.cxx"
-#include "../MuonObjectsParamsAndHelpers/proj_range_to_suffix.cxx"
+#include "../Utilities/bin_number.cxx"
+#include "../Utilities/proj_range_to_suffix.cxx"
+#include "../Utilities/GeneralUtils.h"
 #include "time.h"
 #include <ROOT/RLogger.hxx>
 #include <ROOT/RDF/InterfaceUtils.hxx>

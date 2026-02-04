@@ -98,10 +98,24 @@ protected:
         std::cout << "mc_mode: " << mc_mode << std::endl;
     }
 
+    // --------------- CheckBranchPtrs ---------------
+        template <class E>
+    void CallCheckBranchPtrs() {
+        if constexpr (requires(Derived& d){ static_cast<E&>(d).CheckBranchPtrsExtra(); }) {
+            static_cast<E&>(self()).CheckBranchPtrsExtra();
+        }
+    }
+
+    void CheckBranchPtrs_PowhegCore();
+
+    void CheckBranchPtrs(){
+        CheckBranchPtrs_PowhegCore();
+        (CallCheckBranchPtrs<Extras>(), ...);
+    }
+
     // --------------- InitInputImpl ---------------
         template <class E>
     void CallInitInput() {
-        // Evaluate access in Derived context so Extras may keep InitInputExtra() protected
         if constexpr (requires(Derived& d){ static_cast<E&>(d).InitInputExtra(); }) {
             static_cast<E&>(self()).InitInputExtra();
         }
@@ -112,7 +126,6 @@ protected:
     // --------------- InitParamsImpl ---------------
         template <class E>
     void CallInitParams() {
-        // Evaluate access in Derived context so Extras may keep InitParamsExtra() protected
         if constexpr (requires(Derived& d){ static_cast<E&>(d).InitParamsExtra(); }) {
             static_cast<E&>(self()).InitParamsExtra();
         }
@@ -123,7 +136,6 @@ protected:
     // --------------- InitTempVariablesImpl ---------------
         template <class E>
     void CallInitTempVariables() {
-        // Evaluate access in Derived context so Extras may keep InitTempVariablesExtra() protected
         if constexpr (requires(Derived& d){ static_cast<E&>(d).InitTempVariablesExtra(); }) {
             static_cast<E&>(self()).InitTempVariablesExtra();
         }
@@ -134,7 +146,6 @@ protected:
     // --------------- InitOutputSettingsHookImpl ---------------
         template <class E>
     void CallInitOutputSettings() {
-        // Evaluate access in Derived context so Extras may keep InitOutputSettingsExtra() protected
         if constexpr (requires(Derived& d){ static_cast<E&>(d).InitOutputSettingsExtra(); }) {
             static_cast<E&>(self()).InitOutputSettingsExtra();
         }
@@ -145,7 +156,6 @@ protected:
     // --------------- InitOutputTreesExtraImpl ---------------
         template <class E>
     void CallInitOutputTreesExtra() {
-        // Evaluate access in Derived context so Extras may keep InitOutputTreesExtra() protected
         if constexpr (requires(Derived& d){ static_cast<E&>(d).InitOutputTreesExtra(); }) {
             static_cast<E&>(self()).InitOutputTreesExtra();
         }
@@ -172,7 +182,6 @@ protected:
     // --------------- InitializeExtraImpl ---------------
         template <class E>
     void CallInitializeExtra() {
-        // Evaluate access in Derived context so Extras may keep InitializeExtra() protected
         if constexpr (requires(Derived& d){ static_cast<E&>(d).InitializeExtra(); }) {
             static_cast<E&>(self()).InitializeExtra();
         }
@@ -183,7 +192,6 @@ protected:
     // --------------- PassCutsImpl ---------------
         template <class E>
     bool CallPassCuts() {
-        // Evaluate access in Derived context so Extras may keep PassCutsExtra() protected
         if constexpr (requires(Derived& d){ static_cast<E&>(d).PassCutsExtra(); }) {
             return static_cast<E&>(self()).PassCutsExtra();
         } else {
@@ -196,7 +204,6 @@ protected:
     // --------------- FillMuonPairTreeImpl ---------------
         template <class E>
     void CallFillMuonPairTree() {
-        // Evaluate access in Derived context so Extras may keep FillMuonPairTreeExtra() protected
         if constexpr (requires(Derived& d){ static_cast<E&>(d).FillMuonPairTreeExtra(); }) {
             static_cast<E&>(self()).FillMuonPairTreeExtra();
         }
@@ -205,7 +212,6 @@ protected:
     // --------------- FillMuonPairImpl ---------------
         template <class E>
     void CallFillMuonPair(int pair_ind) {
-        // Evaluate access in Derived context so Extras may keep FillMuonPairExtra(int) protected
         if constexpr (requires(Derived& d, int ind) { static_cast<E&>(d).FillMuonPairExtra(ind); }) {
             static_cast<E&>(self()).FillMuonPairExtra(pair_ind);
         }
@@ -216,7 +222,6 @@ protected:
     // --------------- HistAdjustImpl ---------------
         template <class E>
     void CallHistAdjust() {
-        // Evaluate access in Derived context so Extras may keep HistAdjustExtra() protected
         if constexpr (requires(Derived& d){ static_cast<E&>(d).HistAdjustExtra(); }) {
             static_cast<E&>(self()).HistAdjustExtra();
         }
@@ -227,7 +232,6 @@ protected:
     // --------------- PerformTruthPairAnalysisImpl ---------------
         template <class E>
     void CallTruthPairAnalysis() {
-        // Evaluate access in Derived context so Extras may keep PerformTruthPairAnalysis() protected
         if constexpr (requires(Derived& d){ static_cast<E&>(d).PerformTruthPairAnalysis(); }) {
             static_cast<E&>(self()).PerformTruthPairAnalysis();
         }
@@ -236,7 +240,6 @@ protected:
     // --------------- ProcessEventFullsimImpl ---------------
         template <class E>
     void CallProcessEventFullsim(int ev_num) {
-        // Evaluate access in Derived context so Extras may keep ProcessEventFullsim(int) protected
         if constexpr (requires(Derived& d, int num){ static_cast<E&>(d).ProcessEventFullsim(num); }) {
             static_cast<E&>(self()).ProcessEventFullsim(ev_num);
         }
@@ -245,7 +248,6 @@ protected:
     // --------------- FinalizeImpl ---------------
         template <class E>
     void CallFinalize() {
-        // Evaluate access in Derived context so Extras may keep FinalizeExtra() protected
         if constexpr (requires(Derived& d){ static_cast<E&>(d).FinalizeExtra(); }) {
             static_cast<E&>(self()).FinalizeExtra();
         }
