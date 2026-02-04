@@ -12,9 +12,9 @@
 
 
 struct HQ{
-    float pt;
-    float eta;
-    float phi;
+    float pt{0.};
+    float eta{5.};
+    float phi{5.};
 };
 
 class TruthQQPair{ 
@@ -45,43 +45,24 @@ public:
     ~TruthQQPair(){}
     void Sort();
     void Update();
+    void Clear() {
+        *this = TruthQQPair(quark_type);   // ← canonical C++ reset
+    }
 };
 
 
 TruthQQPair::TruthQQPair(int quark){
     if (quark != 4 && quark != 5){
-        std::cout << "Quark type needs to be 4 (c) or 5(b)! Quitting." << std::endl;
-        throw std::exception();
+        throw std::invalid_argument("quark_type must be 4 or 5");
     }
     quark_type = quark;
-    q1.pt = 0;
-    q2.pt = 0;
-    q1.eta = 5;
-    q2.eta = 5;
-    q1.phi = 5;
-    q2.phi = 5;
 }
 
 
 
 void TruthQQPair::Sort(){
-    //sort pt, eta, phi by pt
-
-    float temppt, tempeta, tempphi, tempd0, tempz0, tempdP_overP;
-    int tempind, tempcharge, tempquality;
-    if (q1.pt < q2.pt){
-        temppt = q1.pt;
-        tempphi = q1.phi;
-        tempeta = q1.eta;
-    
-        q1.pt = q2.pt;
-        q1.eta = q2.eta;
-        q1.phi = q2.phi;
-    
-        q2.pt = temppt;
-        q2.eta = tempeta;
-        q2.phi = tempphi;
-    }
+    //sort q1, q2 by pt
+    if (q2.pt > q1.pt) std::swap(q1, q2);
 }
 
 void TruthQQPair::Update(){

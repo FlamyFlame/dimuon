@@ -1,3 +1,5 @@
+#pragma once
+
 template <class Derived>
 class PowhegFullSimOverlayExtras{
     template <class, class, class, class...> friend class PowhegAlgCoreT;

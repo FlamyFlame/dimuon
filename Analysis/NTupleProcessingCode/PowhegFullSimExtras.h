@@ -1,3 +1,5 @@
+#pragma once
+
 template <class PairT, class MuonT, class Derived>
 class PowhegFullSimExtras {
     template <class, class, class, class...> friend class PowhegAlgCoreT;
@@ -39,6 +41,7 @@ protected:
         self().setIsFullsim(true);
     }
     void ProcessEventFullsim(int ev_num);
+    void CheckBranchPtrsExtra();
     bool PassMuonMediumCuts(const muon_t& muon);
 
 public:

@@ -75,7 +75,8 @@ enum powheg_ancestor_categories{
   gq,
   single_gluon,
   qqbar,
-  incoming
+  incoming,
+  NANCESTOERS
 };
 
 enum powheg_origin_categories{

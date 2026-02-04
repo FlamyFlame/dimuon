@@ -1,42 +1,60 @@
 #include "PowhegFullSimExtras.h"
+#include "../Utilities/tchain_helpers.h"
 
 template <class PairT, class MuonT, class Derived>
 void PowhegFullSimExtras<PairT, MuonT, Derived>::InitInputExtra(){
-    self().fChainRef()->SetBranchAddress("muon_pt"                , &muon_pt);
-    self().fChainRef()->SetBranchAddress("muon_eta"               , &muon_eta);
-    self().fChainRef()->SetBranchAddress("muon_phi"               , &muon_phi);
-    self().fChainRef()->SetBranchAddress("muon_quality"           , &muon_quality);
-    self().fChainRef()->SetBranchAddress("muon_deltaP_overP"      , &muon_deltaP_overP);
-    self().fChainRef()->SetBranchAddress("muon_d0"                , &muon_d0);
-    self().fChainRef()->SetBranchAddress("muon_z0"                , &muon_z0);
-    self().fChainRef()->SetBranchAddress("muon_trk_pt"            , &muon_trk_pt);
-    self().fChainRef()->SetBranchAddress("muon_trk_eta"           , &muon_trk_eta);
-    self().fChainRef()->SetBranchAddress("muon_trk_phi"           , &muon_trk_phi);
-    self().fChainRef()->SetBranchAddress("muon_truth_prob"        , &muon_truth_prob);
-    self().fChainRef()->SetBranchAddress("muon_truth_barcode"     , &muon_truth_barcode);
-    self().fChainRef()->SetBranchAddress("truth_muon_pt"          , &truth_muon_pt);
-    self().fChainRef()->SetBranchAddress("truth_muon_eta"         , &truth_muon_eta);
-    self().fChainRef()->SetBranchAddress("truth_muon_phi"         , &truth_muon_phi);
-    self().fChainRef()->SetBranchAddress("truth_muon_ch"          , &truth_muon_ch);
-    self().fChainRef()->SetBranchAddress("truth_muon_barcode"     , &truth_muon_barcode);
+    enable_and_bind(self().fChainRef(), "muon_pt"                , &muon_pt);
+    enable_and_bind(self().fChainRef(), "muon_eta"               , &muon_eta);
+    enable_and_bind(self().fChainRef(), "muon_phi"               , &muon_phi);
+    enable_and_bind(self().fChainRef(), "muon_quality"           , &muon_quality);
+    enable_and_bind(self().fChainRef(), "muon_deltaP_overP"      , &muon_deltaP_overP);
+    enable_and_bind(self().fChainRef(), "muon_d0"                , &muon_d0);
+    enable_and_bind(self().fChainRef(), "muon_z0"                , &muon_z0);
+    enable_and_bind(self().fChainRef(), "muon_trk_pt"            , &muon_trk_pt);
+    enable_and_bind(self().fChainRef(), "muon_trk_eta"           , &muon_trk_eta);
+    enable_and_bind(self().fChainRef(), "muon_trk_phi"           , &muon_trk_phi);
+    enable_and_bind(self().fChainRef(), "muon_truth_prob"        , &muon_truth_prob);
+    enable_and_bind(self().fChainRef(), "muon_truth_barcode"     , &muon_truth_barcode);
+    enable_and_bind(self().fChainRef(), "truth_muon_pt"          , &truth_muon_pt);
+    enable_and_bind(self().fChainRef(), "truth_muon_eta"         , &truth_muon_eta);
+    enable_and_bind(self().fChainRef(), "truth_muon_phi"         , &truth_muon_phi);
+    enable_and_bind(self().fChainRef(), "truth_muon_ch"          , &truth_muon_ch);
+    enable_and_bind(self().fChainRef(), "truth_muon_barcode"     , &truth_muon_barcode);
 
-    self().fChainRef()->SetBranchStatus("muon_pt"                 ,1);
-    self().fChainRef()->SetBranchStatus("muon_eta"                ,1);
-    self().fChainRef()->SetBranchStatus("muon_phi"                ,1);
-    self().fChainRef()->SetBranchStatus("muon_quality"            ,1);
-    self().fChainRef()->SetBranchStatus("muon_deltaP_overP"       ,1);
-    self().fChainRef()->SetBranchStatus("muon_d0"                 ,1);
-    self().fChainRef()->SetBranchStatus("muon_z0"                 ,1);
-    self().fChainRef()->SetBranchStatus("muon_trk_pt"             ,1);
-    self().fChainRef()->SetBranchStatus("muon_trk_eta"            ,1);
-    self().fChainRef()->SetBranchStatus("muon_trk_phi"            ,1);
-    self().fChainRef()->SetBranchStatus("muon_truth_prob"         ,1);
-    self().fChainRef()->SetBranchStatus("muon_truth_barcode"      ,1);
-    self().fChainRef()->SetBranchStatus("truth_muon_pt"           ,1);
-    self().fChainRef()->SetBranchStatus("truth_muon_eta"          ,1);
-    self().fChainRef()->SetBranchStatus("truth_muon_phi"          ,1);
-    self().fChainRef()->SetBranchStatus("truth_muon_ch"           ,1);
-    self().fChainRef()->SetBranchStatus("truth_muon_barcode"      ,1);
+    // cout << "muon_pt, rc: " << self().fChainRef()->SetBranchAddress("muon_pt"                , &muon_pt) << ", " << muon_pt << ", " << endl;
+    // cout << "muon_eta, rc: " << self().fChainRef()->SetBranchAddress("muon_eta"               , &muon_eta) << ", " << muon_eta << ", " << endl;
+    // cout << "muon_phi, rc: " << self().fChainRef()->SetBranchAddress("muon_phi"               , &muon_phi) << ", " << muon_phi << ", " << endl;
+    // cout << "muon_quality, rc: " << self().fChainRef()->SetBranchAddress("muon_quality"           , &muon_quality) << ", " << muon_quality << ", " << endl;
+    // cout << "muon_deltaP_overP, rc: " << self().fChainRef()->SetBranchAddress("muon_deltaP_overP"      , &muon_deltaP_overP) << ", " << muon_deltaP_overP << ", " << endl;
+    // cout << "muon_d0, rc: " << self().fChainRef()->SetBranchAddress("muon_d0"                , &muon_d0) << ", " << muon_d0 << ", " << endl;
+    // cout << "muon_z0, rc: " << self().fChainRef()->SetBranchAddress("muon_z0"                , &muon_z0) << ", " << muon_z0 << ", " << endl;
+    // cout << "muon_trk_pt, rc: " << self().fChainRef()->SetBranchAddress("muon_trk_pt"            , &muon_trk_pt) << ", " << muon_trk_pt << ", " << endl;
+    // cout << "muon_trk_eta, rc: " << self().fChainRef()->SetBranchAddress("muon_trk_eta"           , &muon_trk_eta) << ", " << muon_trk_eta << ", " << endl;
+    // cout << "muon_trk_phi, rc: " << self().fChainRef()->SetBranchAddress("muon_trk_phi"           , &muon_trk_phi) << ", " << muon_trk_phi << ", " << endl;
+    // cout << "muon_truth_prob, rc: " << self().fChainRef()->SetBranchAddress("muon_truth_prob"        , &muon_truth_prob) << ", " << muon_truth_prob << ", " << endl;
+    // cout << "muon_truth_barcode, rc: " << self().fChainRef()->SetBranchAddress("muon_truth_barcode"     , &muon_truth_barcode) << ", " << muon_truth_barcode << ", " << endl;
+    // cout << "truth_muon_pt, rc: " << self().fChainRef()->SetBranchAddress("truth_muon_pt"          , &truth_muon_pt) << ", " << truth_muon_pt << ", " << endl;
+    // cout << "truth_muon_eta, rc: " << self().fChainRef()->SetBranchAddress("truth_muon_eta"         , &truth_muon_eta) << ", " << truth_muon_eta << ", " << endl;
+    // cout << "truth_muon_phi, rc: " << self().fChainRef()->SetBranchAddress("truth_muon_phi"         , &truth_muon_phi) << ", " << truth_muon_phi << ", " << endl;
+    // cout << "truth_muon_ch, rc: " << self().fChainRef()->SetBranchAddress("truth_muon_ch"          , &truth_muon_ch) << ", " << truth_muon_ch << ", " << endl;
+
+    // self().fChainRef()->SetBranchStatus("muon_pt"                 ,1);
+    // self().fChainRef()->SetBranchStatus("muon_eta"                ,1);
+    // self().fChainRef()->SetBranchStatus("muon_phi"                ,1);
+    // self().fChainRef()->SetBranchStatus("muon_quality"            ,1);
+    // self().fChainRef()->SetBranchStatus("muon_deltaP_overP"       ,1);
+    // self().fChainRef()->SetBranchStatus("muon_d0"                 ,1);
+    // self().fChainRef()->SetBranchStatus("muon_z0"                 ,1);
+    // self().fChainRef()->SetBranchStatus("muon_trk_pt"             ,1);
+    // self().fChainRef()->SetBranchStatus("muon_trk_eta"            ,1);
+    // self().fChainRef()->SetBranchStatus("muon_trk_phi"            ,1);
+    // self().fChainRef()->SetBranchStatus("muon_truth_prob"         ,1);
+    // self().fChainRef()->SetBranchStatus("muon_truth_barcode"      ,1);
+    // self().fChainRef()->SetBranchStatus("truth_muon_pt"           ,1);
+    // self().fChainRef()->SetBranchStatus("truth_muon_eta"          ,1);
+    // self().fChainRef()->SetBranchStatus("truth_muon_phi"          ,1);
+    // self().fChainRef()->SetBranchStatus("truth_muon_ch"           ,1);
+
 }
 
 template <class PairT, class MuonT, class Derived>
@@ -70,7 +88,37 @@ bool PowhegFullSimExtras<PairT, MuonT, Derived>::PassMuonMediumCuts(const muon_t
 }
 
 template <class PairT, class MuonT, class Derived>
-void PowhegFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num){ // per-event analysis
+void PowhegFullSimExtras<PairT, MuonT, Derived>::CheckBranchPtrsExtra(){
+    if (self().debug_mode) std::cout << "Calling PowhegFullSimExtras::CheckBranchPtrsExtra" << std::endl;
+    
+    auto require = [&](auto* p, const char* name){
+        if(!p) throw std::runtime_error(std::string("Null branch pointer: ") + name);
+    };
+
+    require(muon_pt, "muon_pt");
+    require(muon_eta, "muon_eta");
+    require(muon_phi, "muon_phi");
+    require(muon_quality, "muon_quality");
+    require(muon_deltaP_overP, "muon_deltaP_overP");
+    require(muon_d0, "muon_d0");
+    require(muon_z0, "muon_z0");
+    require(muon_trk_pt, "muon_trk_pt");
+    require(muon_trk_eta, "muon_trk_eta");
+    require(muon_trk_phi, "muon_trk_phi");
+    require(muon_truth_prob, "muon_truth_prob");
+    require(muon_truth_barcode, "muon_truth_barcode");
+    require(truth_muon_pt, "truth_muon_pt");
+    require(truth_muon_eta, "truth_muon_eta");
+    require(truth_muon_phi, "truth_muon_phi");
+    require(truth_muon_ch, "truth_muon_ch");
+    require(truth_muon_barcode, "truth_muon_barcode");
+
+    if (self().debug_mode) std::cout << "muon_pt size " << muon_pt->size() << ", " << muon_pt->at(0) << std::endl;
+    if (self().debug_mode) std::cout << "truth_muon_eta size " << truth_muon_eta->size() << ", " << truth_muon_eta->at(0) << std::endl;
+}
+
+template <class PairT, class MuonT, class Derived>
+void PowhegFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num){ // per-event analysis    
     
     // -------- save barcode for truth muons that match with reco muons with prob > truth_match_prob_thrsh --------
     std::vector<int> real_muon_truth_barcode_list({}); // truth barcodes of "real" reco muons matched to truth muons with probability > threshold
@@ -106,6 +154,7 @@ void PowhegFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
         cur_muon.truth_phi      = truth_muon_phi->at(truth_ind);
         cur_muon.truth_charge   = truth_muon_ch->at(truth_ind);
         cur_muon.truth_bar      = truth_muon_barcode->at(truth_ind);
+        // cur_muon.truth_bar      = self().truth_muon_barcode->at(truth_ind);
 
         // -------- truth-to-reco-muon matching --------
         int reco_ind = -1;
@@ -184,5 +233,4 @@ void PowhegFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
             self().FillMuonPairTree();
         }
     } // end loop over truth muon pairs
-    
 }
