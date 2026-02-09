@@ -25,17 +25,12 @@ public:
 
 void SingleBAnalysisPP::RunAnalysis(){
 
-    for (auto bin : pT_bins_80){
-        std::cout << bin << ", ";
-    }
-    std::cout << std::endl;
-    // ----------------------------------------------------------------------------------------
-
     // Create RDataFrame and apply initial cuts
     muon_pair_input_file_name = dataset_base_dir + infile_relative_path;
-    RDataFrame df("muon_pair_tree_sign2", muon_pair_input_file_name.c_str());
-    auto rdf_with_signal_cuts = df.Filter(signal_cuts.c_str());
-
+    RDataFrame df_ss("muon_pair_tree_sign1", muon_pair_input_file_name.c_str());
+    RDataFrame df_op("muon_pair_tree_sign2", muon_pair_input_file_name.c_str());
+    auto rdf_ss_with_signal_cuts = df_ss.Filter(signal_cuts.c_str());
+    auto rdf_op_with_signal_cuts = df_op.Filter(signal_cuts.c_str());
 
     // Create 2D histogram model for metrics calculation
     auto th2dmodel_signal_cuts = ROOT::RDF::TH2DModel(
@@ -47,24 +42,44 @@ void SingleBAnalysisPP::RunAnalysis(){
     // ----------------------------------------------------------------------------------------
 
     // Book 1D histograms
-    auto h_pT_80 = rdf_with_signal_cuts.Histo1D(
-        {"h_pT_80", "Pair pT (log bins up to 80 GeV)", int(pT_bins_80.size()-1), pT_bins_80.data()}, 
+    auto h_pT_80_ss = rdf_ss_with_signal_cuts.Histo1D(
+        {"h_pT_80_ss", "Pair pT (log bins up to 80 GeV)", int(pT_bins_80.size()-1), pT_bins_80.data()}, 
         "pair_pt", "weight");
 
-    auto h_pT_200 = rdf_with_signal_cuts.Histo1D(
-        {"h_pT_200", "Pair pT (log bins up to 200 GeV)", int(pT_bins_200.size()-1), pT_bins_200.data()}, 
+    auto h_pT_150_ss = rdf_ss_with_signal_cuts.Histo1D(
+        {"h_pT_150_ss", "Pair pT (log bins up to 150 GeV)", int(pT_bins_150.size()-1), pT_bins_150.data()}, 
+        "pair_pt", "weight");
+
+    auto h_pT_200_ss = rdf_ss_with_signal_cuts.Histo1D(
+        {"h_pT_200_ss", "Pair pT (log bins up to 200 GeV)", int(pT_bins_200.size()-1), pT_bins_200.data()}, 
+        "pair_pt", "weight");
+
+    auto h_pT_80_op = rdf_op_with_signal_cuts.Histo1D(
+        {"h_pT_80_op", "Pair pT (log bins up to 80 GeV)", int(pT_bins_80.size()-1), pT_bins_80.data()}, 
+        "pair_pt", "weight");
+
+    auto h_pT_150_op = rdf_op_with_signal_cuts.Histo1D(
+        {"h_pT_150_op", "Pair pT (log bins up to 150 GeV)", int(pT_bins_150.size()-1), pT_bins_150.data()}, 
+        "pair_pt", "weight");
+
+    auto h_pT_200_op = rdf_op_with_signal_cuts.Histo1D(
+        {"h_pT_200_op", "Pair pT (log bins up to 200 GeV)", int(pT_bins_200.size()-1), pT_bins_200.data()}, 
         "pair_pt", "weight");
     
     // Book 2D histograms for metric calculations
-    auto h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts = rdf_with_signal_cuts.Histo2D(th2dmodel_signal_cuts, "pair_pt", "pair_eta", "weight");
+    auto h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts = rdf_op_with_signal_cuts.Histo2D(th2dmodel_signal_cuts, "pair_pt", "pair_eta", "weight");
 
     // ----------------------------------------------------------------------------------------
 
     // Write results
     std::string outfile_name = dataset_base_dir + outfile_relative_path_truncated + ".root";
     TFile out(outfile_name.c_str(), "RECREATE");
-    h_pT_80->Write();
-    h_pT_200->Write();
+    h_pT_80_ss->Write();
+    h_pT_150_ss->Write();
+    h_pT_200_ss->Write();
+    h_pT_80_op->Write();
+    h_pT_150_op->Write();
+    h_pT_200_op->Write();
     h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts->SetTitle("");
     h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts->SetStats(0);
     h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts->Scale(crossx_factor);

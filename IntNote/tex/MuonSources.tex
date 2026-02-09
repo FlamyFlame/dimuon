@@ -1,0 +1,114 @@
+In performing this study it became pertinent to understand where
+  the sources of the muons under consideration were originating.
+
+A large set of Pythia events were generated to understand the sources, namely,
+  101 million raw events of \textit{HardQCD:hardbbbar}, 
+  576 million raw events for \textit{HardQCD:hardccbar},
+  and 576 million raw events for \textit{HardQCD:all}.
+Imposing the requirement of at least two muons with 
+  a $\pt$ greater than 4.0~\GeV within $|\eta|<2.5$,
+  on these Pythia events, resulted in 59k, 9.1k, and 4.0k 
+  dimuon pairs respectively.
+
+The overwhelming brunt of the pairs were generated via the 
+  hard scattering process and not from the initial parton shower.
+Pairs were created both via pair production and flavor excitation.
+The origins of these pairs can be seen more cleanly in Figure~\ref{fig:Parents}.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.5\textwidth]{figures/MuonSources/parents}
+\caption{
+   Parents vs governing process and origin (hard scattering vs initial parton shower) of Pythia-generated dimuon pairs. 
+   b: b-quark, c: c-quark, g: gluon, q: other quark, hf: heavy flavor, onia: quarkonia, ex: excitation, hs: hard scattering,
+   o11: both muons coming from hard scattering,
+   o12: one muon from hard scattering and one muon from the initial parton shower,
+   o22: both muons from the initial parton shower.
+   For examples "c ex" means c-flavor excitation process.
+   "gg/qq$\rightarrow$bb" would signify a b pair production process,
+   whereas a Parent "bbc" would indicate one muon from a b-decay, the other from a b$\rightarrow$c decay.
+\label{fig:Parents}
+} 
+\end{figure}
+
+\begin{table}[h]
+	\centering
+	\begin{tabularx}{0.65\textwidth}{ | X | X | X |  }
+	\hline
+		HardQCD Process & $c\bar{c}$ $\sigma$ [$\mu b$]& $b\bar{b}$ $\sigma$ [$\mu b$] \\ \hline
+		$c\bar{c}$ & 150 $\pm$ 0.5 & N/A \\ \hline
+		$b\bar{b}$ & N/A & 46 $\pm$ 0.2  \\ \hline 
+ 		all & 167 $\pm$ 10 & 49 $\pm$ 5 \\	\hline
+	\end{tabularx}
+	\caption{Cross-sections of $c\bar{c}$, $b\bar{b}$ for HardQCD:hardccbar, HardQCD:hardbbbar, and HardQCD:all with no dimuon quantity or kinematic restrictions}
+	\label{tab:AllEvents}
+\end{table}
+
+      
+We also ran these simulations with no dimuon requirements, and we see in Table ~\ref{tab:AllEvents} that, as we might expect,
+  the cross-section for muons created is about three times greater for $c\bar{c}$ than $b\bar{b}$ when including all events
+  with no dimuon restriction or kinematic cuts.
+However, perhaps somewhat surprisingly, although hinted at by the number of pairs generated per events ran, and Figure~\ref{fig:Parents} being dominated 
+  by bb parents coming from both b-flavor excitation and pair production, we see more clearly in Figure ~\ref{fig:Pairs_bbvscc}, 
+  the $\Delta\phi$ distributions are plotted for normalized yields of both $c\bar{c}$ and $b\bar{b}$ events, that given the requirements (kinematic,
+  and more notably requiring two muons) the yields in the away-side peak of interest from $b\bar{b}$ events are close to
+  10 times the yields from the $c\bar{c}$ events. This is also reflected in the cross-section shown in Table ~\ref{tab:DimuonsReq} when the dimuon requirements are employed.
+
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.5\textwidth]{figures/MuonSources/pairs_bbvscc}
+\caption{
+   Scaled yields of all dimuon pairs from all possible decays channels for both 
+   $c\bar{c}$ (red) and $b\bar{b}$ (blue) with the kinematic requirements enforced.	
+   No \Deta\ cuts are imposed on the muons.
+} \label{fig:Pairs_bbvscc}
+\end{figure}
+
+\begin{table}[h]
+\centering
+\begin{tabularx}{0.65\textwidth}{ | X | X | X |  }
+\hline
+	HardQCD Process & $c\bar{c}$  $\sigma$ [$\mu b$]& $b\bar{b}$ $\sigma$ [$\mu b$]\\ \hline
+	$c\bar{c}$ & 0.0021 $\pm$ 2e-5 & N/A \\ \hline
+	$b\bar{b}$ & N/A & 0.018 $\pm$ 1e-4  \\ \hline 
+		all & 0.0023 $\pm$ 3e-5 & 0.020 $\pm$ 2e-4 \\	\hline
+\end{tabularx}
+\caption{
+  Cross-sections of $c\bar{c}$, $b\bar{b}$ for HardQCD:hardccbar, 
+  HardQCD:hardbbbar, and HardQCD:all with listed dimuon quantity or kinematic restrictions
+ \label{tab:DimuonsReq}
+}
+\end{table}
+
+
+Additionally, these simulated muon pairs were split into same sign and opposite sign pairs.
+The scaled yields are shown in Figure ~\ref{fig:ss_v_os_yields}. We can see that opposite-sign
+  pairs should out-weigh same-sign pairs about 2:1 in the away-side peak for $bb$ pairs, 
+  and $c\bar{c}$ pairs can only exist in the opposite-sign configuration, as expected.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/MuonSources/ss_v_os_yields}
+\caption{
+   Same-sign and Opposite-sign scaled yields of all dimuon pairs from all possible decays channels for both 
+   $c\bar{c}$ (red) and $b\bar{b}$ (blue) with the kinematic requirements enforced.	
+   No \Deta\ cuts are imposed on the muons.
+} \label{fig:ss_v_os_yields}
+\end{figure}
+
+
+\begin{comment}
+I don't think this is needed anymore and can be deleted.
+
+Additionally, in for Pb+Pb and pp data, the yields were split into same sign pairs and opposite sign pairs.
+FIGURE plots the Pb+Pb in points as a function of centrality and pp as the dotted line for same-sign pairs
+  in the left most plot, opposite sign pairs in the central most plot and their ratio in the right plot.
+While opposite sign pairs can be generated from from either $b\bar{b}$ or $c\bar{c}$ decays,
+  but same sign pairs can only come from $b\bar{b}$ pairs via a $b\rightarrow c \rightarrow \mu$ decay.
+We see here that about a third of the events are same-sign pairs, which come exclusively from bbbar events,
+  and we expect at least $50\%$ of the opposite-sign pairs to come from bbbar events, although
+  likely more given the Pythia findings.
+Regardless however, we once again find that dimuon pairs with these requirements should be dominated by
+  processes originating from bbbar events.
+\end{comment}

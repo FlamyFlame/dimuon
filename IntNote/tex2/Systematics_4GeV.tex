@@ -1,0 +1,721 @@
+This Section discusses estimations of the uncertainties on the
+  measured widths \iftoggle{IncludeYields}{and Yields}{} of the dimuon-pairs.
+The widths are characterized by the standard deviation of the $
+  Y^{\mathrm{corr}} (\Dphi)$ in Eq.\eqref{eq:signal_func}.
+Systematics are also evaluated for the $\Gamma$ parameter
+  in Eq.~\eqref{eq:signal_func}.
+
+
+The following sources of systematic uncertainties on the measurements 
+  are considered:
+\begin{enumerate}
+\iftoggle{IncludeYields}
+{
+  \item Luminosity and \TAA\ uncertainties
+}{}
+\item Choice of muon selection: Tight (default) vs Medium.
+\item Effect of uncertainties on reconstruction efficiencies.
+\item Dependence on the \Deta\ cut.
+\item Dependence on the Fit model (excluded for the $\Gamma$, as that parameter is tied in with the fit-model).
+\item Inclusion of higher-order fourier component in fits in~Eq.\eqref{eq:fit_func}.
+\item Alternate efficiency for correcting for the \Mmumu\ cuts.
+\item Alternate PDFs for correcting for the Drell-Yan pairs.
+\item Dependence on choice of the trigger (Check Only).
+\end{enumerate}
+These items are discussed further below. 
+This section mostly discusses the systematics for the \PbPb\ measurements.
+The \pp\ systematics are evaluated in Appendix~\ref{sec:systematicsPP}.
+
+
+
+
+
+%--------------------------------------------------------------------------
+\iftoggle{IncludeYields}
+{
+  \subsection{Luminosity and \TAA\ uncertainties\label{sec:systematics_lumi}}
+  The luminosity used in this analysis as an uncertainty of $\pm1.5\%$ for the \PbPb\
+    data and 1.6\% for the \pp\ data.
+  While the measured yields are not directly affected by the luminosity,
+    they are reported as yields corresponding to a luminosity of 1.93~\inb.
+  For the \TAA\ scaled per-event yields Eq.~\eqref{eq:TaaYield},
+    the $N_{\mathrm{events}}^{\mathrm{PbPb}}$ are obtained
+    using the luminosity, so luminosity uncertainties
+    are directly relevant.
+  This uncertainty is directly propagated as an overall uncertainty 
+    on the Yields and \TAA\ scaled per-event yields (or cross-section for \pp).
+  Similarly the \TAA\ uncertainties (listed in Table~\ref{tbl:TAA})
+    are propagated to the \TAA\ scaled per-event yields.
+  These uncertainties do not affect the widths parameters of the fits.
+}{}
+%--------------------------------------------------------------------------
+
+
+
+
+
+%--------------------------------------------------------------------------
+\subsection{Muon selection\label{sec:systematics_muonselection}}
+The default analysis is performed using the ``Tight'' muon working point,
+  which gives a purer muon selection compared to the ``Medium''
+  working point, but yields lower statistics.
+The measurements are repeated using the ``Medium'' working point,
+  with the intent of including any systematic variations,
+  if observed, in the measurements as a systematic uncertainty.
+The variation in the measurements when using the Medium working point 
+  are shown in Figure~\ref{fig:SystMuonQuality} for the widths
+  and in Figure~\ref{fig:SystMuonQualityTau} for $\Gamma$.
+\iftoggle{IncludeYields}
+{
+  They are shown in Figure~\ref{fig:SystMuonQuality2} for the Yields.
+}{}
+This comparison covers effects of possible contamination of the
+  measurement from fakes and from misidentified muons -- which
+  are increased in the Medium working point.
+The systematic uncertainty is smoothed using the fits
+  shown in the lower panels of 
+  \iftoggle{IncludeYields}
+  {
+    Figures~\ref{fig:SystMuonQuality}--\ref{fig:SystMuonQuality2}.
+  }
+  {
+    Figures~\ref{fig:SystMuonQuality} and \ref{fig:SystMuonQualityTau}.
+  }
+\FuncDescr
+
+
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_yields_QualityDep_YieldType0_Tight_pTBar_GT5_EffCor}
+\caption{
+Top panel: variations in the measured widths of the away-side correlation 
+  when using the Tight muon working-point vs. the Medium
+  muon working-point.
+From left to right, the panels show the comparisons for
+  same-sign pairs, opposite-sign pairs and All-pairs.
+The lower panels show the variation as a percentage,
+  together with a fit function used to smooth 
+  the uncertainties.
+\FuncDescr\  
+%The statistical uncertainties are not plotted in the 
+%  lower panels, for clarity.
+For determining the fits in the lower panels, each data-point is given equal weight, 
+  irrespective of its uncertainty.
+}
+\label{fig:SystMuonQuality}
+\end{figure}
+
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_yields_QualityDep_YieldType5_Tight_pTBar_GT5_EffCor}
+\caption{
+Same as Figure~\ref{fig:SystMuonQuality} but for the $\Gamma$.
+}
+\label{fig:SystMuonQualityTau}
+\end{figure}
+
+
+
+\iftoggle{IncludeYields}
+{
+  \begin{figure}
+  \centering
+  \includegraphics[width=1.0\textwidth]%
+  {figures/AllFigs/can_yields_QualityDep_YieldType1_Tight_pTBar_GT5_EffCor}
+  \caption{
+  Same as Figure~\ref{fig:SystMuonQuality} but for the Yields. 
+  }
+  \label{fig:SystMuonQuality2}
+\end{figure}
+}{}
+%--------------------------------------------------------------------------
+
+
+
+
+
+%--------------------------------------------------------------------------
+\FloatBarrier
+\subsection{Reconstruction and Trigger efficiency uncertainties\label{sec:systematics_efficiencies}}
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_yields_EffDep_YieldType0_Tight_pTBar_GT5_EffCor}
+\caption{
+Top panel: variations in the measured widths of the away-side correlation 
+  when varying the muon reconstrution efficiencies up and down 
+  within their allowed uncertainties.
+From left to right, the panels show the comparisons for
+  same-sign pairs, opposite-sign pairs and All-pairs.
+The lower panels show the variation as a percentage,
+  together with a fit function used to smooth 
+  the uncertainties.
+\FuncDescr\ 
+The statistical uncertainties are not plotted in the 
+  lower panels, for clarity.
+For determining the fits in the lower panels, each data-point is given equal weight, 
+  irrespective of its uncertainty.
+}
+\label{fig:SystEfficiency}
+\end{figure}
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_yields_EffDep_YieldType5_Tight_pTBar_GT5_EffCor}
+\caption{
+Same as Figure~\ref{fig:SystEfficiency} but for the $\Gamma$.
+}
+\label{fig:SystEfficiencyTau}
+\end{figure}
+
+
+\iftoggle{IncludeYields}
+{
+  \begin{figure}
+  \centering
+  \includegraphics[width=1.0\textwidth]%
+  {figures/AllFigs/can_yields_EffDep_YieldType1_Tight_pTBar_GT5_EffCor}
+  \caption{
+  Same as Figure~\ref{fig:SystEfficiency} but for the Yields. 
+  }
+  \label{fig:SystEfficiency2}
+  \end{figure}
+}{}
+
+The effects of reconstruction efficiencies are
+  accounted for by  applying corresponding weights
+  -- inverse of the efficiencies --  as a function of \pt\
+  and $q*\eta$ to the muons used in the analysis.
+The efficiency measurements were detailed
+  in Section~\ref{sec:correction}.
+These corrections apply a higher weight to reconstructed muons
+  to account for muons that were not reconstructed.
+Uncertainties in the efficiencies thus result in uncertainties
+  in the measured \Dphi\ distributions and thus in the measured 
+  widths/yields of the away-side correlation.
+The effect of the reconstruction efficiency uncertainties on the
+  meaasurements is determined by varying the muon reconstrution 
+  efficiencies up and down within their allowed uncertainties, 
+  and repeating the analysis.
+Any differences observed in the measurements in included 
+  as a systematic uncertainty. 
+Figures~\ref{fig:SystEfficiency} and~\ref{fig:SystEfficiencyTau} 
+  show the variations in the measured 
+  widths and $\Gamma$, respectively, when following the above procedure.
+The efficiency systematic mostly leads to a variation in the overall normalization 
+  of the pair-yields, but does not siginficantly affect the stape of the distributions.
+Consequently the effect of this uncertainty on the widths is quite small.
+\iftoggle{IncludeYields}
+{
+  Figure~\ref{fig:SystEfficiency2} shows the variations in the yields.
+}
+{}
+The systematic uncertainty is obtained using the fits shown in the lower panels of 
+\iftoggle{IncludeYields}{
+  Figures~\ref{fig:SystEfficiency}--\ref{fig:SystEfficiency2}.
+  In addition to these uncertainties for the muon efficiency, 
+    an additional uncertainty of 1\% is included, which accounts 
+    for the muon ID reconstruction efficiency systematics~\cite{HION-2019-11}.
+  \FuncDescr\ 
+  Effects from the the trigger efficiency are also integrated into the 
+    systematic uncertainties.
+  The trigger efficiency uncertainty is included based on the difference between
+    the change in the efficiency between most central and most-peripheral
+    bins for medium and tight muons:
+  \begin{eqnarray}
+  \delta\epsilon=\frac{1}{2}(\Delta\epsilon_{\mathrm{medium}}-\Delta\epsilon_{\mathrm{tight}}),\nonumber
+  \end{eqnarray} 
+  with:
+  \begin{eqnarray}
+  \Delta\epsilon_{\mathrm{medium}}=\epsilon^{\mathrm{0-10\%}}-\epsilon^{\mathrm{60--100\%}}.\nonumber
+  \end{eqnarray}
+  These uncertainties are $\sim3\%$ leading to $\sim$6\% uncertainty for the pairs.
+}
+{
+  Figures~\ref{fig:SystEfficiency} and~\ref{fig:SystEfficiencyTau}.
+}
+As an additional check (not included in systematic uncertainties),
+  Figures~\ref{fig:SystEfficiency2} and~\ref{fig:SystEfficiency2Tau}
+  show the variation in the width and $\Gamma$ when not applying 
+  any efficiency corrections at all.
+The variation is quite minimal and consistent with the nominal measurements
+  within statistical uncertainties.
+
+
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_yields_EffDep2_YieldType0_Tight_pTBar_GT5_EffCor}
+\caption{
+Top panel: variations in the measured widths of the away-side correlation 
+  when not applying the trigger and reconstruction efficiency corrections.
+From left to right, the panels show the comparisons for
+  same-sign pairs, opposite-sign pairs and All-pairs.
+The lower panels show the variation as a percentage,
+  together with a fit function used to smooth 
+  the uncertainties.
+\FuncDescr\ 
+}
+\label{fig:SystEfficiency2}
+\end{figure}
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_yields_EffDep2_YieldType5_Tight_pTBar_GT5_EffCor}
+\caption{
+Same as Figure~\ref{fig:SystEfficiency2} but for the $\Gamma$.
+}
+\label{fig:SystEfficiency2Tau}
+\end{figure}
+%--------------------------------------------------------------------------
+
+
+
+
+
+
+
+%--------------------------------------------------------------------------
+\FloatBarrier
+\subsection{Dependence in the \Deta\ cut \label{sec:systematics_deta}}
+As discussed before in Section~\ref{sec:muon_pair_selections}, 
+  a requirement of \Deta>0.8 is imposed on the two muons in the pair,
+  in order to remove the large near-side jet peak from the measurements.
+A systematic uncertainty is included to account for possible
+  biases that this requirement introduces.
+The measurement is repeated with a stronger requirement of \Deta>0.9. 
+Figure~\ref{fig:SystDeta} compares the changes in the measured widths, 
+  when performing this variation.
+Figure~\ref{fig:SystDetaTau} shows the corresponding plots for the $\Gamma$.
+\iftoggle{IncludeYields}
+{
+  Figure~\ref{fig:SystDeta2} shows the corresponding variations for the yields.
+  For the yields, the increase of the \Deta\ gap from 0.8 to 0.9 results in a 
+    geometric reduction in the pair-acceptance.
+  The geometric reduction is $(4.0^2 -3.9^2)/4.0^2\sim5\%$,
+    where $4.0^2$ is the original pair-acceptance (with \Deta>0.8)
+    and  $3.9^2$ is the reduced pair acceptance (with \Deta>0.9).  
+  When considering the effect that the \Deta\ separation increase has on the yields,
+    this trivial factor of 5\% is taken out.
+}
+The systematic uncertainty is obtained using the fits shown in the lower panels of 
+  \iftoggle{IncludeYields}{
+    Figures~\ref{fig:SystDeta}--\ref{fig:SystDeta2}.
+  }
+  {
+    Figures~\ref{fig:SystDeta} and~\ref{fig:SystDetaTau}.
+  }
+\FuncDescr\ 
+
+\begin{figure} 
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_yields_DetaDep_YieldType0_Tight_pTBar_GT5_EffCor}
+\caption{
+Top panel: variations in the measured widths of the away-side correlation 
+  when applying a $\Deta$>0.8 (default) requirement on the 
+  muons in the pairs, vs. when applying a $\Deta$>0.9 requirement.
+From left to right, the panels show the comparisons for
+  same-sign pairs, opposite-sign pairs and All-pairs.
+The lower panels show the variation as a percentage,
+  together with a fit function used to smooth 
+  the uncertainties.
+\FuncDescr\ 
+%The statistical uncertainties are not plotted in the 
+%  lower panels, for clarity.
+For determining the fits in the lower panels, each data-point is given equal weight, 
+  irrespective of its uncertainty.
+}
+\label{fig:SystDeta}
+\end{figure}
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_yields_DetaDep_YieldType5_Tight_pTBar_GT5_EffCor}
+\caption{
+Same as Figure~\ref{fig:SystDeta} but for the $\Gamma$.
+}
+\label{fig:SystDetaTau}
+\end{figure}
+
+
+\iftoggle{IncludeYields}{
+  \begin{figure}
+  \centering
+  \includegraphics[width=1.0\textwidth]%
+  {figures/AllFigs/can_yields_DetaDep_YieldType1_Tight_pTBar_GT5_EffCor}
+  \caption{
+  Same as Figure~\ref{fig:SystDeta} but for the Yields.
+  The fit function in this case is taken to be a linear function
+    over the 10--80\% centrality range. 
+  }
+  \label{fig:SystDeta2}
+  \end{figure}
+}
+{}
+%--------------------------------------------------------------------------
+
+
+
+
+%--------------------------------------------------------------------------
+\FloatBarrier
+\subsection{Dependence on the Fit model\label{sec:systematics_fitmodel}}
+The analysis used Eq.~\ref{eq:fit_func}--~\ref{eq:signal_func} to extract
+  the number of correlated pairs and the width of the correlation.
+Here an alternate model-independent method is used to evaluate the correlated 
+  pairs and the correlation width.
+For the alternate model, the measured correlation  for 
+  $-\pi/2<\Dphi<\pi/2$ is shifted by $\pi$ and subtracted from
+  the correlation measured in the range $\pi/2<\Dphi<3\pi/2$.
+After this subtraction the 
+  \iftoggle{IncludeYields}{yields and widths}{widths}
+  on the away-side ($\pi/2<\Dphi<3\pi/2$) are directly evaluated from 
+  the subtracted histograms.
+The differences for results obtained with this \textit{Subtracted} procedure and the 
+  Nominal one (Eq.~\ref{eq:fit_func}--~\ref{eq:signal_func})
+  are quite significant.
+This is because this new procedure implicitly assumes that the 
+  correlation becomes zero for $-\pi/2<\Dphi<\pi/2$,
+  while the $Y^{\mathrm{corr}}(\Dphi)$ in the nominal procedure
+  has a significant tail that extends below $\pi/2$.
+In order to do a more consistent comparison, the nominal-results
+  are re-evaluated with a similar subtraction applied.
+That is, with the $Y^{\mathrm{corr}}(\Dphi<\pi/2)$, shifted and subtracted from
+  $Y^{\mathrm{corr}}(\Dphi>\pi/2)$, 
+  \iftoggle{IncludeYields}{and the integral and rms-widths}{and the rms-widths}
+  computed with after this subtraction.
+The fractional difference between results obtained from these 
+  two procedures is taken as a systematic uncertainty.
+The systematic uncertainty obtained from this procedure
+  is summarized in 
+  \iftoggle{IncludeYields}{Figures~\ref{fig:SystModel} and ~\ref{fig:SystModel2}}{Figure~\ref{fig:SystModel}}.
+This uncertainty is excluded for the $\Gamma$, as that parameter is 
+  tied in with the fit-model (i.e. the parameter is part of the fit model).
+
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_yields_ModelDep_YieldType0_Tight_pTBar_GT5_EffCor}
+\caption{
+Top panel: variations in the measured widths of the away-side correlation 
+  when 
+  1) using the nominal fitting procedure (Eq.~\ref{eq:fit_func}--~\ref{eq:signal_func})
+     but with the $Y^{\mathrm{corr}}(\Dphi<\pi/2)$, shifted and subtracted from
+     $Y^{\mathrm{corr}}(\Dphi>\pi/2)$, and
+  2) using the \textit{Subtracted} procedure (see text).
+From left to right, the panels show the comparisons for
+  same-sign pairs, opposite-sign pairs and All-pairs.
+The lower panels show the variation as a percentage,
+  together with a fit function used to smooth 
+  the uncertainties.
+\FuncDescr\ 
+%The statistical uncertainties are not plotted in the 
+%  lower panels, for clarity.
+For determining the fits in the lower panels, each data-point is given equal weight, 
+  irrespective of its uncertainty.
+}
+\label{fig:SystModel}
+\end{figure}
+
+\iftoggle{IncludeYields}{
+  \begin{figure}
+  \centering
+  \includegraphics[width=1.0\textwidth]%
+  {figures/AllFigs/can_yields_ModelDep_YieldType1_Tight_pTBar_GT5_EffCor}
+  \caption{
+  Same as Figure~\ref{fig:SystModel} but for the Yields. 
+  }
+  \label{fig:SystModel2}
+  \end{figure}
+}{}
+%--------------------------------------------------------------------------
+
+
+
+
+
+%--------------------------------------------------------------------------
+\FloatBarrier
+\subsection{Inclusion of higher-order fourier component in fits\label{sec:systematics_includeV3}}
+By default Eq.\eqref{eq:fit_func} includes only a second-order Fourier term ($\cos(2\Dphi)$).
+While the second order flow component is the dominating flow contribution, 
+  in general the collective flow results in higher order Fourier terms as well.
+To account for this, the fits are repeated including a $\cos(3\Dphi)$ term in Eq.~\eqref{eq:fit_func},
+  and the variation in the results is included as a systematic uncertainty.
+The effect of the variation on the widths is shown in Figure~\ref{fig:SystIncludeV3}
+  and is about a 2\% effect.
+Figure~\ref{fig:SystIncludeV3Tau} shows the corresponding plot for the $\Gamma$.
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_yields_CheckV3_YieldType0_Tight_pTBar_GT5_EffCor}
+\caption{
+Top panel: variations in the measured widths of the away-side correlation 
+  when including a third order fourier term in Eq.~\eqref{eq:fit_func}.
+From left to right, the panels show the comparisons for
+  same-sign pairs, opposite-sign pairs and All-pairs.
+The lower panels show the variation as a percentage,
+  together with a fit function used to smooth 
+  the uncertainties.
+}
+\label{fig:SystIncludeV3}
+\end{figure}
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_yields_CheckV3_YieldType5_Tight_pTBar_GT5_EffCor}
+\caption{
+Same as Figure~\ref{fig:SystIncludeV3} but for the $\Gamma$.
+}
+\label{fig:SystIncludeV3Tau}
+\end{figure}
+%--------------------------------------------------------------------------
+
+
+
+
+
+
+
+%--------------------------------------------------------------------------
+\FloatBarrier
+\subsection{Alternate efficiency for correcting for the \Mmumu\ cuts\label{sec:systematics_MinvEffType}}
+Section~\ref{sec:minv_cut_correction} discussed the two ways of estimating the 
+  acceptance effects on the opposite-sign pairs that arise because of 
+  the \Mmumu, Acoplanarity and \pt-asymmetry cuts.
+These were:
+\begin{enumerate}
+  \item Default Method: By applying the cuts on the ``same-sign'' pairs, and determining
+    what fraction of pairs are kept as a function of \Dphi.
+  \item Alternate Method: an event-mixing procedure where single muons from different events
+    are used to build the pair-distribution and the effect of the cuts on these
+    mixed-event pairs is used to estimate the efficiency.
+\end{enumerate}
+The variation in the results when using these two estimates 
+  is shown in Figures~\ref{fig:SystMinvEffType} (for the widths)
+  and~\ref{fig:SystMinvEffTypeTau} (for $\Gamma$)
+  and is included as a systematic uncertainty.
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_yields_MinvEffType_YieldType0_Tight_pTBar_GT5_EffCor}
+\caption{
+Top panel: variations in the measured widths of the away-side correlation 
+  when using the two different estimates of the efficiency loss
+  introduced by the \Mmumu, Acoplanarity and \pt-asymmetry cuts.
+From left to right, the panels show the comparisons for
+  same-sign pairs, opposite-sign pairs and All-pairs.
+The lower panels show the variation as a percentage,
+  together with a fit function used to smooth 
+  the uncertainties.
+Note: this correction doesnot affect the same-sign pairs
+  and thus there is no associated systematic uncertainty
+  for the same-sharge pairs.
+}
+\label{fig:SystMinvEffType}
+\end{figure}
+
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_yields_MinvEffType_YieldType5_Tight_pTBar_GT5_EffCor}
+\caption{
+Same as Figure~\ref{fig:SystMinvEffType} but for the $\Gamma$.
+}
+\label{fig:SystMinvEffTypeTau}
+\end{figure}
+%--------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+%--------------------------------------------------------------------------
+\FloatBarrier
+\subsection{Dependence on the PDF used in the Drell-Yan correction\label{sec:systematics_drell_yan}}
+As discussed previously in Section~\ref{sec:DY_correction}, 
+  the measurements are corrected to account for Drell-Yan pairs.
+These corrections are applied for the Opposite-Sign, and consequently 
+  the Combined-sign pairs.
+The default correction uses the nNNPDF2.0 PDF, with the nCTEQ15 and NNPDF3.0
+  used to evaluate systematic uncertainties.
+The effect of the variation is shown in Figures~\ref{fig:SystDY}
+  and~\ref{fig:SystDYTau} for the widths and for $\Gamma$, respectively.
+The results are consistent within statistical uncertainties.
+This is treated as a check only (and not included as a systematic uncertainty).
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_yields_PDFDep_YieldType0_Tight_pTBar_GT5_EffCor}
+\caption{
+Top panel: variations in the measured widths of the away-side correlation 
+  when using the different PDFs for the Drell-Yan background estimation. 
+From left to right, the panels show the comparisons for
+  same-sign pairs (where no corrections are applied),
+  opposite-sign pairs and All-pairs.
+The lower panels show the variation as a percentage,
+  together with a fit function used to smooth 
+  the uncertainties. 
+The fit is made only over the 10-80\% centrality range 
+  to exclude the outlier behavior of the 0-10\%
+  centrality bin.
+The statistical uncertainties are not plotted in the 
+  lower panels, for clarity.
+Note: this correction doesnot affect the same-sign pairs
+  and thus there is no associated systematic uncertainty
+  for the same-sharge pairs.
+}
+\label{fig:SystDY}
+\end{figure}
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]%
+{figures/AllFigs/can_yields_PDFDep_YieldType5_Tight_pTBar_GT5_EffCor}
+\caption{
+Same as Figure~\ref{fig:SystDY} but for the $\Gamma$.
+}
+\label{fig:SystDYTau}
+\end{figure}
+%--------------------------------------------------------------------------
+
+
+
+
+
+
+%--------------------------------------------------------------------------
+\FloatBarrier
+\subsection{Dependence on choice of trigger\label{sec:systematics_trigger}}
+As discussed previously in Section~\ref{sec:data_PbPb}, 
+  the \PbPb\ measurements are performed using
+  the \verb=HLT_mu4_mu4NoL1= and \verb=HLT_2mu4= triggers.
+The analysis is repeated when using only the \verb=HLT_2mu4= trigger.
+The effect of the variation is shown in Figures~\ref{fig:SystTrigger}
+  and~\ref{fig:SystTriggerTau} for the widths and for $\Gamma$, respectively.
+The results are consistent within statistical uncertainties.
+This is treated as a check only (and not included as a systematic uncertainty).
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth,bb=0bp  140bp 570bp 280bp,clip]%
+{figures/AllFigs/can_yields_TrigDep_YieldType0_Tight_pTBar_GT5_EffCor}
+\caption{
+Top panel: variations in the measured widths of the away-side correlation 
+  when using both the HLT\_mu4\_mu4NoL1 and  HLT\_2mu4 triggers,
+  vs. when using the HLT\_2mu4 trigger only. 
+From left to right, the panels show the comparisons for
+  same-sign pairs, opposite-sign pairs and All-pairs.
+%The lower panels show the variation as a percentage.
+%  together with a fit function used to smooth 
+%  the uncertainties. 
+%The statistical uncertainties are not plotted in the 
+%  lower panels, for clarity.
+}
+\label{fig:SystTrigger}
+\end{figure}
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth,bb=0bp  140bp 570bp 280bp,clip]%
+{figures/AllFigs/can_yields_TrigDep_YieldType0_Tight_pTBar_GT5_EffCor}
+\caption{
+Same as Figure~\ref{fig:SystTrigger} but for the $\Gamma$.
+}
+\label{fig:SystTriggerTau}
+\end{figure}
+
+
+
+\iftoggle{IncludeYields}{
+  \begin{figure}
+  \centering
+  \includegraphics[width=1.0\textwidth,bb=0bp  140bp 570bp 280bp,clip]%
+  {figures/AllFigs/can_yields_TrigDep_YieldType1_Tight_pTBar_GT5_EffCor}
+  \caption{
+  Same as Figure~\ref{fig:SystTrigger} but for the Yields. 
+  }
+  \label{fig:SystTrigger2}
+  \end{figure}
+}{}
+%--------------------------------------------------------------------------
+
+
+
+
+
+
+
+%--------------------------------------------------------------------------
+\FloatBarrier
+The final systematic uncertainties are summarized in 
+  Table~\ref{tab:systematics} for the widths.
+  and in Table~\ref{tab:systematics2} for the $\Gamma$.
+The total uncertainty is taken as the quadrature sum of individual uncertainties.
+
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|c|c|c|c|}
+\hline
+       & Same-sign & Opposite-sign & All-pairs    \\ 
+\hline
+Source & \multicolumn{3}{ c|}{Uncertainty [\%]}   \\
+\hline
+Working point       & 3       & 1.5     & $\sim$0 \\
+Efficiency          & $\sim$0 & $\sim$0 & $\sim$0 \\
+$\Deta$ cut         & 1       & 2       & 1.5     \\
+Fit-Model           & 2.5     & 3.5     & 3.5     \\ %TODO
+Higher order $\vn$  & 3       & 1       & 1.5     \\
+$\Mmumu$ correction & -       & 1       & 0.5     \\
+\hline
+\end{tabular}
+\caption{
+  Summary of systematic uncertainty on the widths ($\sigma$).
+  \label{tab:systematics}
+}
+\end{table}
+
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|c|c|c|c|}
+\hline
+       & Same-sign & Opposite-sign & All-pairs    \\ 
+\hline
+Source & \multicolumn{3}{ c|}{Uncertainty [\%]}   \\
+\hline
+Working point       & 8       & 2.0     & 0.5     \\
+Efficiency          & $\sim$0 & $\sim$0 & $\sim$0 \\
+$\Deta$ cut         & 2       & 1       & 1.5     \\
+Higher order $\vn$  & 6.5     & 2.5     & 3.5     \\
+$\Mmumu$ correction & -       & 2       & 1.0     \\
+\hline
+\end{tabular}
+\caption{
+  Summary of systematic uncertainty on the $\Gamma$.
+  \label{tab:systematics2}
+}
+\end{table}
+%--------------------------------------------------------------------------
+

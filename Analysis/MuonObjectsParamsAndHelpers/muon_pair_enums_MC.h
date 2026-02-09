@@ -1,6 +1,4 @@
-#ifndef __muon_pair_enums_MC_h__
-#define __muon_pair_enums_MC_h__
-
+#pragma once
 
 enum cuts_MC{
   nocut, 
@@ -9,6 +7,19 @@ enum cuts_MC{
   // pass_photoprod,
   pass_resonance 
 };
+
+// enum class CutsCommon : int {
+//   nocut = 0,
+//   pass_trigger_match,
+//   pass_muon_quality,
+//   pass_muon_eta,
+//   pass_muon_pt,
+//   pass_muon_dP_overP,
+//   pass_muon_d0_z0,
+//   pass_muon_trk_charge,
+//   NumCommonCuts
+// };
+
 
 std::vector<std::string> cutLabels_MC = {"no cut", "muon eta", "muon pT", "resonance"};
 
@@ -64,7 +75,8 @@ enum powheg_ancestor_categories{
   gq,
   single_gluon,
   qqbar,
-  incoming
+  incoming,
+  NANCESTOERS
 };
 
 enum powheg_origin_categories{
@@ -73,5 +85,3 @@ enum powheg_origin_categories{
   qqbar_gQQbar,
   not_in_powheg
 };
-
-#endif

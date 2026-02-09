@@ -1,0 +1,584 @@
+// Assumes that we exclude resonances
+
+#ifndef __MuonPairPlottingPP_h__
+#define __MuonPairPlottingPP_h__
+
+#include <TROOT.h>
+// #include <TChain.h>
+#include <TTree.h>
+#include <TFile.h>
+#include <string.h>
+#include  <stdlib.h>
+#include <fstream>
+#include "../MuonObjectsParamsAndHelpers/ParamsSet.h"
+#include "../MuonObjectsParamsAndHelpers/MuonPair.h"
+#include "vector"
+#include "TH1D.h"
+#include "TH2D.h"
+#include "TH3D.h"
+
+class MuonPairPlottingPP{
+  	//updates histograms - centrality binned
+    //if need histograms with all centrality bins added together
+    //can add at the histograms level
+
+
+private:
+  	// --------------------- general settings ---------------------------
+
+    // bool isScram = true;
+    // bool isScram = false;
+
+  	ParamsSet pms;
+
+// --------------------- histogram settings needed for multiple class methods ---------------------------
+    int npair_eta_bins_coarse = 24;
+    int npair_pT_bins_coarse = 30;
+    float pair_eta_min = -2.4;
+    float pair_eta_max = 2.4;
+    float pair_pt_min = 0;
+    float pair_pt_max = 30;
+
+    // maps of q_eta bins to pT projection ranges serving single-muon effciency fitting
+    std::vector<std::pair<float, float>> q_eta_proj_ranges_for_single_muon_effcy_pT_fitting = {
+        {-2.4f, -2.0f}, 
+        {-2.0f, -1.6f}, 
+        {-1.6f, -1.3f}, 
+        {-0.9f, -0.5f}, 
+        {-0.5f, -0.1f}, 
+        {0.1f, 0.5f}, 
+        {0.5f, 1.0f}, 
+        {1.3f, 1.6f}, 
+        {1.6f, 2.0f}, 
+        {2.0f, 2.2f}
+    };
+
+    std::vector<std::pair<float, float>> pair_pT_ranges_for_weighted_effcy_dR_fitting = {
+        {8, 12},
+        {12, 24},
+        {24, 80}
+    };
+
+  	// --------------------- intermediate files for reading fitted functions ---------------------------
+    TFile *file_effcy_pTfits = nullptr;
+    TFile *file_weighted_effcy_dRfits = nullptr;
+ 
+    // std::string file_name_effcy_pTfits = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/trg_effcy_pT_fitting_to_erf/single_mu_effcy_pT_fit.root";
+    std::string file_name_effcy_pTfits = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/trg_effcy_pT_fitting_to_fermi_plus_log/single_mu_effcy_pT_fit.root";
+    std::string file_name_weighted_effcy_dRfits = "";
+
+    // --------------------- output file & histograms ---------------------------
+
+  	TFile *outFile = nullptr;
+    std::string trig_suffix;
+    
+    std::string dphi_regions[2] = {"near", "away"};
+
+    TH2D* h_pair_eta_vs_pair_pt_single_b_crossx;
+
+    TH1D* h_pair_dP_overP[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH1D* h_Dphi[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH1D* h_DR[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH1D* h_DR_zoomin[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH1D* h_DR_jacobian_corrected[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH1D* h_DR_zoomin_jacobian_corrected[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH1D* h_pair_y[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH1D* h_pt_asym[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH1D* h_pair_pt_ptlead_ratio[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_eta_avg_Dphi[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_Deta_Dphi[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_eta1_eta2[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_eta_avg_Deta[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_pt1_pt2[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_ptlead_pair_pt[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_ptlead_pair_pt_zoomin[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_ptlead_pair_pt_log[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_minv_pair_pt[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_minv_pair_pt_zoomin[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_minv_pair_pt_jacobian_corrected[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_minv_pair_pt_zoomin_jacobian_corrected[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+    TH2D* h_minv_pair_pt_log[2][ParamsSet::nSigns][ParamsSet::nGapCuts];
+
+    TH1D* h_Deta_mu4[ParamsSet::nSigns];
+    TH1D* h_Deta_zoomin_mu4[ParamsSet::nSigns];
+    TH1D* h_Dphi_mu4[ParamsSet::nSigns];
+    TH1D* h_Dphi_zoomin_mu4[ParamsSet::nSigns];
+    TH1D* h_DR_mu4[ParamsSet::nSigns];
+    TH1D* h_DR_zoomin_mu4[ParamsSet::nSigns];
+    TH2D* h_DR_zoomin_vs_pt2nd_mu4[ParamsSet::nSigns];
+    TH1D* h_DR_0_2_mu4[ParamsSet::nSigns];
+    TH2D* h_DR_0_2_vs_pt2nd_mu4[ParamsSet::nSigns];
+    TH2D* h_pair_eta_vs_pair_pT_mu4[ParamsSet::nSigns];
+    TH2D* h_Deta_Dphi_mu4[ParamsSet::nSigns];
+    TH2D* h_eta1_eta2_mu4[ParamsSet::nSigns];
+    TH2D* h_eta_avg_Deta_mu4[ParamsSet::nSigns];
+    TH2D* h_eta_avg_Dphi_mu4[ParamsSet::nSigns];
+    TH1D* h_minv_zoomin_mu4[ParamsSet::nSigns];
+    TH1D* h_pair_pt_log_mu4[ParamsSet::nSigns];
+    TH2D* h_minv_pair_pt_log_mu4[ParamsSet::nSigns];
+    
+    TH1D* h_Deta_mu4_mu4noL1[ParamsSet::nSigns];
+    TH1D* h_Deta_zoomin_mu4_mu4noL1[ParamsSet::nSigns];
+    TH1D* h_Dphi_mu4_mu4noL1[ParamsSet::nSigns];
+    TH1D* h_Dphi_zoomin_mu4_mu4noL1[ParamsSet::nSigns];
+    TH1D* h_DR_mu4_mu4noL1[ParamsSet::nSigns];
+    TH1D* h_DR_zoomin_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_DR_zoomin_vs_pt2nd_mu4_mu4noL1[ParamsSet::nSigns];
+    TH1D* h_DR_0_2_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_DR_0_2_vs_pt2nd_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_pair_eta_vs_pair_pT_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_Deta_Dphi_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_eta1_eta2_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_eta_avg_Deta_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_eta_avg_Dphi_mu4_mu4noL1[ParamsSet::nSigns];
+    TH1D* h_minv_zoomin_mu4_mu4noL1[ParamsSet::nSigns];
+    TH1D* h_pair_pt_log_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_minv_pair_pt_log_mu4_mu4noL1[ParamsSet::nSigns];
+
+    TH1D* h_Deta_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy[ParamsSet::nSigns];
+    TH1D* h_Dphi_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy[ParamsSet::nSigns];
+    TH1D* h_DR_mu4_mu4noL1_inv_w_by_single_mu_effcy[ParamsSet::nSigns];
+    TH1D* h_DR_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy[ParamsSet::nSigns];
+    TH1D* h_DR_0_2_mu4_mu4noL1_inv_w_by_single_mu_effcy[ParamsSet::nSigns];
+    TH1D* h_minv_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy[ParamsSet::nSigns];
+    TH1D* h_pair_pt_log_mu4_mu4noL1_inv_w_by_single_mu_effcy[ParamsSet::nSigns];
+    TH2D* h_DR_zoomin_vs_pair_pt_log_mu4_mu4noL1_inv_w_by_single_mu_effcy[ParamsSet::nSigns];
+
+    TH1D* h_Deta_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom[ParamsSet::nSigns];
+    TH1D* h_Dphi_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom[ParamsSet::nSigns];
+    TH1D* h_DR_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom[ParamsSet::nSigns];
+    TH1D* h_DR_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom[ParamsSet::nSigns];
+    TH1D* h_DR_0_2_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom[ParamsSet::nSigns];
+    TH1D* h_minv_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom[ParamsSet::nSigns];
+    TH1D* h_pair_pt_log_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom[ParamsSet::nSigns];
+    TH2D* h_DR_zoomin_vs_pair_pt_log_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom[ParamsSet::nSigns];
+
+
+
+
+    TH1D* h_Deta_2mu4[ParamsSet::nSigns];
+    TH1D* h_Deta_zoomin_2mu4[ParamsSet::nSigns];
+    TH1D* h_Dphi_2mu4[ParamsSet::nSigns];
+    TH1D* h_Dphi_zoomin_2mu4[ParamsSet::nSigns];
+    TH1D* h_DR_2mu4[ParamsSet::nSigns];
+    TH1D* h_DR_zoomin_2mu4[ParamsSet::nSigns];
+    TH2D* h_DR_zoomin_vs_pt2nd_2mu4[ParamsSet::nSigns];
+    TH1D* h_DR_0_2_2mu4[ParamsSet::nSigns];
+    TH2D* h_DR_0_2_vs_pt2nd_2mu4[ParamsSet::nSigns];
+    TH2D* h_pair_eta_vs_pair_pT_2mu4[ParamsSet::nSigns];
+    TH2D* h_Deta_Dphi_2mu4[ParamsSet::nSigns];
+    TH2D* h_eta1_eta2_2mu4[ParamsSet::nSigns];
+    TH2D* h_eta_avg_Deta_2mu4[ParamsSet::nSigns];
+    TH2D* h_eta_avg_Dphi_2mu4[ParamsSet::nSigns];
+    TH1D* h_minv_zoomin_2mu4[ParamsSet::nSigns];
+    TH1D* h_pair_pt_log_2mu4[ParamsSet::nSigns];
+    TH2D* h_minv_pair_pt_log_2mu4[ParamsSet::nSigns];
+
+    TH1D* h_Deta_zoomin_2mu4_inv_w_by_single_mu_effcy[ParamsSet::nSigns];
+    TH1D* h_Dphi_zoomin_2mu4_inv_w_by_single_mu_effcy[ParamsSet::nSigns];
+    TH1D* h_DR_2mu4_inv_w_by_single_mu_effcy[ParamsSet::nSigns];
+    TH1D* h_DR_zoomin_2mu4_inv_w_by_single_mu_effcy[ParamsSet::nSigns];
+    TH1D* h_DR_0_2_2mu4_inv_w_by_single_mu_effcy[ParamsSet::nSigns];
+    TH1D* h_minv_zoomin_2mu4_inv_w_by_single_mu_effcy[ParamsSet::nSigns];
+    TH1D* h_pair_pt_log_2mu4_inv_w_by_single_mu_effcy[ParamsSet::nSigns];
+    TH2D* h_DR_zoomin_vs_pair_pt_log_2mu4_inv_w_by_single_mu_effcy[ParamsSet::nSigns];
+
+    TH1D* h_Deta_zoomin_2mu4_inv_w_by_single_mu_effcy_denom[ParamsSet::nSigns];
+    TH1D* h_Dphi_zoomin_2mu4_inv_w_by_single_mu_effcy_denom[ParamsSet::nSigns];
+    TH1D* h_DR_2mu4_inv_w_by_single_mu_effcy_denom[ParamsSet::nSigns];
+    TH1D* h_DR_zoomin_2mu4_inv_w_by_single_mu_effcy_denom[ParamsSet::nSigns];
+    TH1D* h_DR_0_2_2mu4_inv_w_by_single_mu_effcy_denom[ParamsSet::nSigns];
+    TH1D* h_minv_zoomin_2mu4_inv_w_by_single_mu_effcy_denom[ParamsSet::nSigns];
+    TH1D* h_pair_pt_log_2mu4_inv_w_by_single_mu_effcy_denom[ParamsSet::nSigns];
+    TH2D* h_DR_zoomin_vs_pair_pt_log_2mu4_inv_w_by_single_mu_effcy_denom[ParamsSet::nSigns];
+
+    // region with good (and roughly uniform) single-muon acceptance
+    TH1D* h_Deta_mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_Deta_zoomin_mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_Dphi_mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_Dphi_zoomin_mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_DR_mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_DR_zoomin_mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_minv_zoomin_mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_pair_pt_log_mu4_good_accept[ParamsSet::nSigns];
+    
+    TH1D* h_Deta_mu4_mu4noL1_good_accept[ParamsSet::nSigns];
+    TH1D* h_Deta_zoomin_mu4_mu4noL1_good_accept[ParamsSet::nSigns];
+    TH1D* h_Dphi_mu4_mu4noL1_good_accept[ParamsSet::nSigns];
+    TH1D* h_Dphi_zoomin_mu4_mu4noL1_good_accept[ParamsSet::nSigns];
+    TH1D* h_DR_mu4_mu4noL1_good_accept[ParamsSet::nSigns];
+    TH1D* h_DR_zoomin_mu4_mu4noL1_good_accept[ParamsSet::nSigns];
+    TH1D* h_minv_zoomin_mu4_mu4noL1_good_accept[ParamsSet::nSigns];
+    TH1D* h_pair_pt_log_mu4_mu4noL1_good_accept[ParamsSet::nSigns];
+    
+    TH1D* h_Deta_2mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_Deta_zoomin_2mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_Dphi_2mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_Dphi_zoomin_2mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_DR_2mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_DR_zoomin_2mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_minv_zoomin_2mu4_good_accept[ParamsSet::nSigns];
+    TH1D* h_pair_pt_log_2mu4_good_accept[ParamsSet::nSigns];
+
+    // separated (dR > 0.8)
+    TH1D* h_Deta_mu4_sepr[ParamsSet::nSigns];
+    TH1D* h_Deta_zoomin_mu4_sepr[ParamsSet::nSigns];
+    TH1D* h_Dphi_mu4_sepr[ParamsSet::nSigns];
+    TH1D* h_Dphi_zoomin_mu4_sepr[ParamsSet::nSigns];
+    TH1D* h_DR_mu4_sepr[ParamsSet::nSigns];
+    TH1D* h_DR_zoomin_mu4_sepr[ParamsSet::nSigns];
+    TH2D* h_pair_eta_vs_pair_pT_mu4_sepr[ParamsSet::nSigns];
+    TH2D* h_Deta_Dphi_mu4_sepr[ParamsSet::nSigns];
+    TH2D* h_eta1_eta2_mu4_sepr[ParamsSet::nSigns];
+    TH2D* h_eta_avg_Deta_mu4_sepr[ParamsSet::nSigns];
+    TH2D* h_eta_avg_Dphi_mu4_sepr[ParamsSet::nSigns];
+    TH1D* h_minv_zoomin_mu4_sepr[ParamsSet::nSigns];
+    TH1D* h_pair_pt_log_mu4_sepr[ParamsSet::nSigns];
+    TH2D* h_minv_pair_pt_log_mu4_sepr[ParamsSet::nSigns];
+
+    TH1D* h_Deta_mu4_mu4noL1_sepr[ParamsSet::nSigns];
+    TH1D* h_Deta_zoomin_mu4_mu4noL1_sepr[ParamsSet::nSigns];
+    TH1D* h_Dphi_mu4_mu4noL1_sepr[ParamsSet::nSigns];
+    TH1D* h_Dphi_zoomin_mu4_mu4noL1_sepr[ParamsSet::nSigns];
+    TH1D* h_DR_mu4_mu4noL1_sepr[ParamsSet::nSigns];
+    TH1D* h_DR_zoomin_mu4_mu4noL1_sepr[ParamsSet::nSigns];
+    TH2D* h_pair_eta_vs_pair_pT_mu4_mu4noL1_sepr[ParamsSet::nSigns];
+    TH2D* h_Deta_Dphi_mu4_mu4noL1_sepr[ParamsSet::nSigns];
+    TH2D* h_eta1_eta2_mu4_mu4noL1_sepr[ParamsSet::nSigns];
+    TH2D* h_eta_avg_Deta_mu4_mu4noL1_sepr[ParamsSet::nSigns];
+    TH2D* h_eta_avg_Dphi_mu4_mu4noL1_sepr[ParamsSet::nSigns];
+    TH1D* h_minv_zoomin_mu4_mu4noL1_sepr[ParamsSet::nSigns];
+    TH1D* h_pair_pt_log_mu4_mu4noL1_sepr[ParamsSet::nSigns];
+    TH2D* h_minv_pair_pt_log_mu4_mu4noL1_sepr[ParamsSet::nSigns];
+
+    TH1D* h_Deta_2mu4_sepr[ParamsSet::nSigns];
+    TH1D* h_Deta_zoomin_2mu4_sepr[ParamsSet::nSigns];
+    TH1D* h_Dphi_2mu4_sepr[ParamsSet::nSigns];
+    TH1D* h_Dphi_zoomin_2mu4_sepr[ParamsSet::nSigns];
+    TH1D* h_DR_2mu4_sepr[ParamsSet::nSigns];
+    TH1D* h_DR_zoomin_2mu4_sepr[ParamsSet::nSigns];
+    TH2D* h_pair_eta_vs_pair_pT_2mu4_sepr[ParamsSet::nSigns];
+    TH2D* h_Deta_Dphi_2mu4_sepr[ParamsSet::nSigns];
+    TH2D* h_eta1_eta2_2mu4_sepr[ParamsSet::nSigns];
+    TH2D* h_eta_avg_Deta_2mu4_sepr[ParamsSet::nSigns];
+    TH2D* h_eta_avg_Dphi_2mu4_sepr[ParamsSet::nSigns];
+    TH1D* h_minv_zoomin_2mu4_sepr[ParamsSet::nSigns];
+    TH1D* h_pair_pt_log_2mu4_sepr[ParamsSet::nSigns];
+    TH2D* h_minv_pair_pt_log_2mu4_sepr[ParamsSet::nSigns];
+
+    // with signal selection 
+
+    // mu4 signal selection
+    TH1D* h_Deta_mu4_w_single_b_sig_sel;
+    TH1D* h_Deta_zoomin_mu4_w_single_b_sig_sel;
+    TH1D* h_Dphi_mu4_w_single_b_sig_sel;
+    TH1D* h_Dphi_zoomin_mu4_w_single_b_sig_sel;
+    TH1D* h_DR_mu4_w_single_b_sig_sel;
+    TH1D* h_DR_zoomin_mu4_w_single_b_sig_sel;
+    TH2D* h_DR_zoomin_vs_pt2nd_mu4_w_single_b_sig_sel;
+    TH1D* h_DR_0_2_mu4_w_single_b_sig_sel;
+    TH2D* h_DR_0_2_vs_pt2nd_mu4_w_single_b_sig_sel;
+    TH2D* h_pair_eta_vs_pair_pT_mu4_w_single_b_sig_sel;
+    TH2D* h_Deta_Dphi_mu4_w_single_b_sig_sel;
+    TH2D* h_eta1_eta2_mu4_w_single_b_sig_sel;
+    TH2D* h_eta_avg_Deta_mu4_w_single_b_sig_sel;
+    TH2D* h_eta_avg_Dphi_mu4_w_single_b_sig_sel;
+    TH1D* h_minv_zoomin_mu4_w_single_b_sig_sel;
+    TH1D* h_pair_pt_log_mu4_w_single_b_sig_sel;
+    TH2D* h_minv_pair_pt_log_mu4_w_single_b_sig_sel;
+
+    // mu4_mu4noL1 signal selection
+    TH1D* h_Deta_mu4_mu4noL1_w_single_b_sig_sel;
+    TH1D* h_Deta_zoomin_mu4_mu4noL1_w_single_b_sig_sel;
+    TH1D* h_Dphi_mu4_mu4noL1_w_single_b_sig_sel;
+    TH1D* h_Dphi_zoomin_mu4_mu4noL1_w_single_b_sig_sel;
+    TH1D* h_DR_mu4_mu4noL1_w_single_b_sig_sel;
+    TH1D* h_DR_zoomin_mu4_mu4noL1_w_single_b_sig_sel;
+    TH2D* h_DR_zoomin_vs_pt2nd_mu4_mu4noL1_w_single_b_sig_sel;
+    TH1D* h_DR_0_2_mu4_mu4noL1_w_single_b_sig_sel;
+    TH2D* h_DR_0_2_vs_pt2nd_mu4_mu4noL1_w_single_b_sig_sel;
+    TH2D* h_pair_eta_vs_pair_pT_mu4_mu4noL1_w_single_b_sig_sel;
+    TH2D* h_Deta_Dphi_mu4_mu4noL1_w_single_b_sig_sel;
+    TH2D* h_eta1_eta2_mu4_mu4noL1_w_single_b_sig_sel;
+    TH2D* h_eta_avg_Deta_mu4_mu4noL1_w_single_b_sig_sel;
+    TH2D* h_eta_avg_Dphi_mu4_mu4noL1_w_single_b_sig_sel;
+    TH1D* h_minv_zoomin_mu4_mu4noL1_w_single_b_sig_sel;
+    TH1D* h_pair_pt_log_mu4_mu4noL1_w_single_b_sig_sel;
+    TH2D* h_minv_pair_pt_log_mu4_mu4noL1_w_single_b_sig_sel;
+
+    TH1D* h_Deta_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel;
+    TH1D* h_Dphi_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel;
+    TH1D* h_DR_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel;
+    TH1D* h_DR_0_2_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel;
+    TH1D* h_minv_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel;
+    TH1D* h_pair_pt_log_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel;
+    TH2D* h_DR_zoomin_vs_pair_pt_log_mu4_mu4noL1_inv_w_by_single_mu_effcy_w_single_b_sig_sel;
+
+    TH1D* h_Deta_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom_w_single_b_sig_sel;
+    TH1D* h_Dphi_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom_w_single_b_sig_sel;
+    TH1D* h_DR_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom_w_single_b_sig_sel;
+    TH1D* h_DR_0_2_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom_w_single_b_sig_sel;
+    TH1D* h_minv_zoomin_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom_w_single_b_sig_sel;
+    TH1D* h_pair_pt_log_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom_w_single_b_sig_sel;
+    TH2D* h_DR_zoomin_vs_pair_pt_log_mu4_mu4noL1_inv_w_by_single_mu_effcy_denom_w_single_b_sig_sel;
+
+    // 2mu4 signal selection
+    TH1D* h_Deta_2mu4_w_single_b_sig_sel;
+    TH1D* h_Deta_zoomin_2mu4_w_single_b_sig_sel;
+    TH1D* h_Dphi_2mu4_w_single_b_sig_sel;
+    TH1D* h_Dphi_zoomin_2mu4_w_single_b_sig_sel;
+    TH1D* h_DR_2mu4_w_single_b_sig_sel;
+    TH1D* h_DR_zoomin_2mu4_w_single_b_sig_sel;
+    TH2D* h_DR_zoomin_vs_pt2nd_2mu4_w_single_b_sig_sel;
+    TH1D* h_DR_0_2_2mu4_w_single_b_sig_sel;
+    TH2D* h_DR_0_2_vs_pt2nd_2mu4_w_single_b_sig_sel;
+    TH2D* h_pair_eta_vs_pair_pT_2mu4_w_single_b_sig_sel;
+    TH2D* h_Deta_Dphi_2mu4_w_single_b_sig_sel;
+    TH2D* h_eta1_eta2_2mu4_w_single_b_sig_sel;
+    TH2D* h_eta_avg_Deta_2mu4_w_single_b_sig_sel;
+    TH2D* h_eta_avg_Dphi_2mu4_w_single_b_sig_sel;
+    TH1D* h_minv_zoomin_2mu4_w_single_b_sig_sel;
+    TH1D* h_pair_pt_log_2mu4_w_single_b_sig_sel;
+    TH2D* h_minv_pair_pt_log_2mu4_w_single_b_sig_sel;
+
+    TH1D* h_Deta_zoomin_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel;
+    TH1D* h_Dphi_zoomin_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel;
+    TH1D* h_DR_zoomin_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel;
+    TH1D* h_DR_0_2_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel;
+    TH1D* h_minv_zoomin_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel;
+    TH1D* h_pair_pt_log_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel;
+    TH2D* h_DR_zoomin_vs_pair_pt_log_2mu4_inv_w_by_single_mu_effcy_w_single_b_sig_sel;
+
+    TH1D* h_Deta_zoomin_2mu4_inv_w_by_single_mu_effcy_denom_w_single_b_sig_sel;
+    TH1D* h_Dphi_zoomin_2mu4_inv_w_by_single_mu_effcy_denom_w_single_b_sig_sel;
+    TH1D* h_DR_zoomin_2mu4_inv_w_by_single_mu_effcy_denom_w_single_b_sig_sel;
+    TH1D* h_DR_0_2_2mu4_inv_w_by_single_mu_effcy_denom_w_single_b_sig_sel;
+    TH1D* h_minv_zoomin_2mu4_inv_w_by_single_mu_effcy_denom_w_single_b_sig_sel;
+    TH1D* h_pair_pt_log_2mu4_inv_w_by_single_mu_effcy_denom_w_single_b_sig_sel;
+    TH2D* h_DR_zoomin_vs_pair_pt_log_2mu4_inv_w_by_single_mu_effcy_denom_w_single_b_sig_sel;
+
+    TH2D* h_DR_zoomin_vs_pair_pT_mu4_w_single_b_sig_sel;
+
+    // ------------------- trigger efficiency vs pair pT or pT1st histograms (full range) -------------------
+        
+    // pair kinematics requiring only single mu4 trigger
+    TH2D* h_Deta_vs_pT_1st_mu4[ParamsSet::nSigns];
+    TH2D* h_Deta_zoomin_vs_pT_1st_mu4[ParamsSet::nSigns];
+    TH2D* h_Dphi_vs_pT_1st_mu4[ParamsSet::nSigns];
+    TH2D* h_Dphi_zoomin_vs_pT_1st_mu4[ParamsSet::nSigns];
+    TH2D* h_DR_vs_pT_1st_mu4[ParamsSet::nSigns];
+    TH2D* h_DR_zoomin_vs_pT_1st_mu4[ParamsSet::nSigns];
+    TH2D* h_minv_zoomin_vs_pT_1st_mu4[ParamsSet::nSigns];
+    TH2D* h_pair_pt_log_vs_pT_1st_mu4[ParamsSet::nSigns];
+    TH2D* h_pt2nd_vs_pT_1st_mu4[ParamsSet::nSigns];
+    TH2D* h_pt2nd_vs_pair_pT_mu4[ParamsSet::nSigns];
+
+    TH2D* h_Deta_vs_pair_pT_mu4[ParamsSet::nSigns];
+    TH2D* h_Deta_zoomin_vs_pair_pT_mu4[ParamsSet::nSigns];
+    TH2D* h_Dphi_vs_pair_pT_mu4[ParamsSet::nSigns];
+    TH2D* h_Dphi_zoomin_vs_pair_pT_mu4[ParamsSet::nSigns];
+    TH2D* h_DR_vs_pair_pT_mu4[ParamsSet::nSigns];
+    TH2D* h_DR_zoomin_vs_pair_pT_mu4[ParamsSet::nSigns];
+    TH2D* h_minv_zoomin_vs_pair_pT_mu4[ParamsSet::nSigns];
+    TH2D* h_pair_pt_log_vs_pair_pT_mu4[ParamsSet::nSigns];
+
+    // pair kinematics requiring mu4_mu4noL1 trigger
+    TH2D* h_Deta_vs_pT_1st_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_Deta_zoomin_vs_pT_1st_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_Dphi_vs_pT_1st_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_Dphi_zoomin_vs_pT_1st_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_DR_vs_pT_1st_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_DR_zoomin_vs_pT_1st_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_minv_zoomin_vs_pT_1st_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_pair_pt_log_vs_pT_1st_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_pt2nd_vs_pT_1st_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_pt2nd_vs_pair_pT_mu4_mu4noL1[ParamsSet::nSigns];
+
+    TH2D* h_Deta_vs_pair_pT_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_Deta_zoomin_vs_pair_pT_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_Dphi_vs_pair_pT_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_Dphi_zoomin_vs_pair_pT_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_DR_vs_pair_pT_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_DR_zoomin_vs_pair_pT_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_minv_zoomin_vs_pair_pT_mu4_mu4noL1[ParamsSet::nSigns];
+    TH2D* h_pair_pt_log_vs_pair_pT_mu4_mu4noL1[ParamsSet::nSigns];
+
+    // pair kinematics requiring 2mu4 trigger
+    TH2D* h_Deta_vs_pT_1st_2mu4[ParamsSet::nSigns];
+    TH2D* h_Deta_zoomin_vs_pT_1st_2mu4[ParamsSet::nSigns];
+    TH2D* h_Dphi_vs_pT_1st_2mu4[ParamsSet::nSigns];
+    TH2D* h_Dphi_zoomin_vs_pT_1st_2mu4[ParamsSet::nSigns];
+    TH2D* h_DR_vs_pT_1st_2mu4[ParamsSet::nSigns];
+    TH2D* h_DR_zoomin_vs_pT_1st_2mu4[ParamsSet::nSigns];
+    TH2D* h_minv_zoomin_vs_pT_1st_2mu4[ParamsSet::nSigns];
+    TH2D* h_pair_pt_log_vs_pT_1st_2mu4[ParamsSet::nSigns];
+    TH2D* h_pt2nd_vs_pT_1st_2mu4[ParamsSet::nSigns];
+    TH2D* h_pt2nd_vs_pair_pT_2mu4[ParamsSet::nSigns];
+
+    TH2D* h_Deta_vs_pair_pT_2mu4[ParamsSet::nSigns];
+    TH2D* h_Deta_zoomin_vs_pair_pT_2mu4[ParamsSet::nSigns];
+    TH2D* h_Dphi_vs_pair_pT_2mu4[ParamsSet::nSigns];
+    TH2D* h_Dphi_zoomin_vs_pair_pT_2mu4[ParamsSet::nSigns];
+    TH2D* h_DR_vs_pair_pT_2mu4[ParamsSet::nSigns];
+    TH2D* h_DR_zoomin_vs_pair_pT_2mu4[ParamsSet::nSigns];
+    TH2D* h_minv_zoomin_vs_pair_pT_2mu4[ParamsSet::nSigns];
+    TH2D* h_pair_pt_log_vs_pair_pT_2mu4[ParamsSet::nSigns];
+
+    // --------------------- 2D 2nd-muon histograms for trigger efficiency ---------------------------
+    // --------------------- SIGNED by 2nd-muon charge (+/-) NOT pair (same/op) sign ---------------------------
+    // -------- no signal selection --------
+    // MB
+    TH2D* h_pt2nd_vs_q_eta2nd_MB[2];
+    TH2D* h_pt2nd_vs_phi2nd_MB[2];    
+    TH2D* h_phi2nd_vs_q_eta2nd_MB[2];
+
+    // mu4
+    TH2D* h_pt2nd_vs_q_eta2nd_mu4[2];
+    TH2D* h_pt2nd_vs_phi2nd_mu4[2];    
+    TH2D* h_phi2nd_vs_q_eta2nd_mu4[2];
+
+    // mu4_mu4noL1
+    TH2D* h_pt2nd_vs_q_eta2nd_mu4_mu4noL1[2];
+    TH2D* h_pt2nd_vs_phi2nd_mu4_mu4noL1[2];    
+    TH2D* h_phi2nd_vs_q_eta2nd_mu4_mu4noL1[2];
+
+    // 2mu4
+    TH2D* h_pt2nd_vs_q_eta2nd_2mu4[2];
+    TH2D* h_pt2nd_vs_phi2nd_2mu4[2];
+    TH2D* h_phi2nd_vs_q_eta2nd_2mu4[2];
+
+    // well-separated: mu4, mu4_mu4noL1, 2mu4
+    TH2D* h_pt2nd_vs_q_eta2nd_mu4_sepr[2];
+    TH2D* h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr[2];
+    TH2D* h_pt2nd_vs_q_eta2nd_2mu4_sepr[2];
+
+    TH2D* h_pt2nd_vs_phi2nd_mu4_sepr[2];
+    TH2D* h_pt2nd_vs_phi2nd_mu4_mu4noL1_sepr[2];
+    TH2D* h_pt2nd_vs_phi2nd_2mu4_sepr[2];
+    
+    // well-separated & divided (mu4_mu4noL1 / mu4 and 2mu4 / mu4)
+    TH2D* h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr_divided[2];
+    TH2D* h_pt2nd_vs_q_eta2nd_2mu4_sepr_divided[2];
+
+    // -------- with signal selection --------
+    TH2D* h_pt2nd_vs_q_eta2nd_mu4_w_single_b_sig_sel[2];
+    TH2D* h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_w_single_b_sig_sel[2];
+    TH2D* h_pt2nd_vs_q_eta2nd_2mu4_w_single_b_sig_sel[2];
+    
+    TH2D* h_pt2nd_vs_phi2nd_mu4_w_single_b_sig_sel[2];
+    TH2D* h_pt2nd_vs_phi2nd_mu4_mu4noL1_w_single_b_sig_sel[2];
+    TH2D* h_pt2nd_vs_phi2nd_2mu4_w_single_b_sig_sel[2];
+
+    // signal pairs divided (mu4_mu4noL1 / mu4 and 2mu4 / mu4)
+    TH2D* h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_divided_w_single_b_sig_sel[2];
+    TH2D* h_pt2nd_vs_q_eta2nd_2mu4_divided_w_single_b_sig_sel[2];
+
+    // --------------------- 3D 2nd-muon histograms for trigger efficiency ---------------------------
+    // --------------------- SIGNED by 2nd-muon charge (+/-) NOT pair (same/op) sign ---------------------------
+    // -------- no signal selection --------
+    // 3D analogs with axes (phi_2nd, q*eta_2nd, pt_2nd)
+    TH3D* h_pt2nd_vs_q_eta2nd_vs_phi2nd_mu4_sepr[2];
+    TH3D* h_pt2nd_vs_q_eta2nd_vs_phi2nd_mu4_mu4noL1_sepr[2];
+    TH3D* h_pt2nd_vs_q_eta2nd_vs_phi2nd_2mu4_sepr[2];
+    
+    // divided (mu4_mu4noL1 / mu4 and 2mu4 / mu4)
+    TH3D* h_pt2nd_vs_q_eta2nd_vs_phi2nd_mu4_mu4noL1_sepr_divided[2];
+    TH3D* h_pt2nd_vs_q_eta2nd_vs_phi2nd_2mu4_sepr_divided[2];
+
+    // -------- with signal selection --------
+    // 3D analogs with axes (phi_2nd, q*eta_2nd, pt_2nd)
+    TH3D* h_pt2nd_vs_q_eta2nd_vs_phi2nd_mu4_w_single_b_sig_sel[2];
+    TH3D* h_pt2nd_vs_q_eta2nd_vs_phi2nd_mu4_mu4noL1_w_single_b_sig_sel[2];
+    TH3D* h_pt2nd_vs_q_eta2nd_vs_phi2nd_2mu4_w_single_b_sig_sel[2];
+    
+    // divided (mu4_mu4noL1 / mu4 and 2mu4 / mu4)
+    TH3D* h_pt2nd_vs_q_eta2nd_vs_phi2nd_mu4_mu4noL1_divided_w_single_b_sig_sel[2];
+    TH3D* h_pt2nd_vs_q_eta2nd_vs_phi2nd_2mu4_divided_w_single_b_sig_sel[2];
+
+
+
+    // --------------------- input files & trees & data for setting branches---------------------------
+
+   	TFile *inFile;
+    // TTree *inTree_ctrbin[ParamsSet::nSigns];
+    // TTree *inTree[ParamsSet::nSigns];
+    TTree *inTree[ParamsSet::nSigns];
+
+    double weight[ParamsSet::nSigns];
+  	float pair_dPoverP[ParamsSet::nSigns];
+  	float pt_lead[ParamsSet::nSigns];
+  	float pair_pt[ParamsSet::nSigns];
+  	float pair_eta[ParamsSet::nSigns];
+  	float pair_y[ParamsSet::nSigns];
+    float asym[ParamsSet::nSigns];
+  	float dpt[ParamsSet::nSigns];
+  	float deta[ParamsSet::nSigns];
+  	float etaavg[ParamsSet::nSigns];
+  	float phiavg[ParamsSet::nSigns];
+  	float dphi[ParamsSet::nSigns];
+  	float dr[ParamsSet::nSigns];
+  	float minv[ParamsSet::nSigns];
+  	float m1pt[ParamsSet::nSigns];
+  	float m2pt[ParamsSet::nSigns];
+  	float m1eta[ParamsSet::nSigns];
+  	float m2eta[ParamsSet::nSigns];
+  	float m1phi[ParamsSet::nSigns];
+  	float m2phi[ParamsSet::nSigns];
+    int m1charge[ParamsSet::nSigns];
+    int m2charge[ParamsSet::nSigns];
+    bool passmu4mu4noL1[ParamsSet::nSigns];
+    bool pass2mu4[ParamsSet::nSigns];
+    bool mu1PassSingle[ParamsSet::nSigns];
+    bool mu2PassSingle[ParamsSet::nSigns];
+    bool passSeparated[ParamsSet::nSigns];
+    bool passSeparatedDeta[ParamsSet::nSigns];
+
+
+    // --------------------- class methods ---------------------------
+
+
+   	void        InitInput();
+    void        InitOutput();
+   	void        InitHists();
+    void        OpenEffcyPtFitFile();
+   	void        ProcessData();
+    void        WriteOutput();
+    bool        PassSingleMuonGapCut(float meta, float mpt, int mcharge);
+    std::string FindBinReturnStr(float number, const std::vector<std::pair<float, float>>& ranges);
+    float       EvaluateSingleMuonEffcyPtFitted(bool charge_sign, std::string trg, float pt_2nd, float q_eta2nd, float phi_2nd);
+    float       EvaluateSingleMuonEffcy(bool charge_sign, std::string trg, float pt_2nd, float q_eta2nd, float phi_2nd);
+    void        FillHistograms(int nsign);
+    void        FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(int nsign);
+    void        CalculateSingleMuonTrigEffcyRatios();
+    void        MakeAndWriteSingleMuonPtTrigEffGraphs();
+    void        MakeAndWriteDRTrigEffGraphs();
+
+public:
+enum HistFillingCycle{
+    generic = 1,
+    inv_weight_by_single_mu_effcy = 2,
+    inv_weight_by_dR_effcy_corr = 3
+}
+
+    bool output_non_trig_effcy_hists;
+    bool isScram;
+    bool isTight;
+    bool isRun3;
+    // bool isMu4mu4noL1;
+    int trigger_mode = 1;
+    int hist_filling_cycle = generic;
+    // bool require_exclusive_mu4_for_mu4_mu4noL1 = false; // if true, require that only one muon fire mu4, to ensure unambiguous knowledge of which muon fires mu4noL1
+    bool doTrigEffcy = true;
+    bool filter_out_photo_resn_for_trig_effcy = true;
+
+    bool use_3D_2nd_muon = false; // if true, use 3D kinematics (phi, q*eta, pT) for single (2nd) muon trigger efficiencies
+  	
+    MuonPairPlottingPP();
+  	~MuonPairPlottingPP(){}
+  	void Run();
+
+};
+
+
+
+#endif

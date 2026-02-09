@@ -32,6 +32,7 @@ enum sign{
     nSigns
 };
 
+// class for plotting a single observable that is either flavor or origin categorized
 class PythonCategorizedPlottingBaseClass{
 protected:
 
@@ -40,6 +41,13 @@ protected:
     std::map<int, line*> line_map;
     std::map<int, std::vector<int>> thstack_order_map;
     std::map<std::pair<int, int>, TH1D*> hist_map;
+
+    std::array<double, 4> legend_position_default; // default legend position in case the legend_ss/op_position_map's don't work
+    
+    // map of variable to same-sign-pair legend position, with default value
+    std::map<std::string, std::array<double, 4>> legend_ss_position_map;
+    // map of variable to opposite-sign-pair legend position, with default value
+    std::map<std::string, std::array<double, 4>> legend_op_position_map;
 
     TH2D* h2d;
     TFile* f;
@@ -60,14 +68,17 @@ protected:
 public:
     bool with_data_resonance_cuts = false;
 
-    std::string kin;
-    bool projx_2d;
-    bool projy_2d;
-    bool staggered;
-    bool norm_unity;
-    std::string kin1d;
-    std::string kin_title;
-    std::vector<std::array<float,2>> cuts;
+    bool text_box_on_both_panels = false; // if true, same text box sits on top of both panels [TO-DO: IMPLEMENT]
+    bool saveAsC = false; // if true, same text box sits on top of both panels
+
+    std::string kin; // kinematic variable to be plotted
+    bool projx_2d; // boolean to turn on ProjectionX for a 2D histogram
+    bool projy_2d; // boolean to turn on ProjectionY for a 2D histogram
+    bool staggered; // boolean to plot the categories staggered
+    bool norm_unity; // boolean to normalize to unity (PDF)
+    std::string kin1d; // 1D kinematic variable name (for 2D-to-1D projection)
+    std::string kin_title; // kinematic variable title for axis title settings
+    std::vector<std::array<float,2>> cuts; // regions to apply cuts to (set bin content to be 0) for 1D histograms
     bool logx=false;
 
     std::string subdir_name = "";
