@@ -11,11 +11,25 @@ void PythonCategorizedPlottingBaseClass::initialize(){
     signs[sign::same_sign]  = "_sign1";
     signs[sign::op_sign]    = "_sign2";
 
-    subpl_titles[sign::same_sign]   = "pythia, same sign";
-    subpl_titles[sign::op_sign]     = "pythia, opposite sign";
+    subpl_titles[sign::same_sign]   = "Pythia8, same sign";
+    subpl_titles[sign::op_sign]     = "Pythia8, opposite sign";
 
     fill_line_map();
     fill_thstack_order_map();  
+
+    legend_position_default = {0.65,0.3,0.89,0.7};
+
+    legend_ss_position_map["default"] = {0.65,0.3,0.89,0.7};
+    legend_op_position_map["default"] = {0.65,0.3,0.89,0.7};
+    
+    legend_op_position_map["minv"] =        {0.65,0.2,0.89,0.7};
+
+    legend_ss_position_map["minv_10GeV"] =  {0.25,0.3,0.51,0.7};
+    legend_op_position_map["minv_10GeV"] =  {0.5,0.25,0.89,0.7};
+
+    legend_ss_position_map["minv_zoomin"] = {0.2,0.3,0.46,0.7};
+    legend_op_position_map["minv_zoomin"] = {0.25,0.3,0.51,0.7};
+
 }
 
 PythonCategorizedPlottingBaseClass::~PythonCategorizedPlottingBaseClass(){
@@ -39,7 +53,7 @@ void PythonCategorizedPlottingBaseClass::Run(){
         throw std::exception();
     }
 
-    TCanvas* c = new TCanvas("c1","c1",1250,500);
+    TCanvas* c = new TCanvas("c1","c1",1400,500);
     c->Divide(2,1);
 
     f = TFile::Open((pythia_path + fname).c_str());
@@ -56,17 +70,50 @@ void PythonCategorizedPlottingBaseClass::Run(){
         gPad->SetBottomMargin(0.135);
         gPad->SetLogx(logx);
 
-        TLegend* l = new TLegend(0.63,0.58,0.89,0.9);
+        // ---------- legend box ----------
+        std::map<std::string, std::array<double, 4>>* legend_position_map = (ksign == 0)? &legend_ss_position_map : &legend_op_position_map;
+        std::array<double, 4> legend_position;
+
+        try {
+            if (legend_position_map->find(kin1d) != legend_position_map->end()) { // if the kinematic variable has specialized legend position for the same/opposite-sign pairs
+                legend_position = legend_position_map->at(kin1d);
+            } else { // use default same/opposite-sign-pair legend positions
+                legend_position = legend_position_map->at("default");
+            }            
+        } catch(const std::out_of_range& e){
+            std::cerr << "Out of range error caught for kinematic " << kin << " for legend positions! Use default legend position." << std::endl;
+            legend_position = legend_position_default;
+        }
+
+        TLegend* l = new TLegend(legend_position[0], legend_position[1], legend_position[2], legend_position[3]);
         l->SetBorderSize(0);
         l->SetFillStyle(0);
         l->SetTextFont(43);
         l->SetMargin(0.2);
         l->SetTextColor(1);
 
+        // ---------- text box ----------
+        // draw text box with the same x position + sits on top of y position of the legend box
+        TPaveText* tbox = new TPaveText(legend_position[0], legend_position[3], legend_position[2], legend_position[3]+0.2, "NDC");
+
+        tbox->SetFillColor(0);       // transparent background
+        tbox->SetFillStyle(0);       // fully transparent
+        tbox->SetBorderSize(0);
+        tbox->SetTextAlign(12);
+        
+        std::string panel_descr_text = subpl_titles[ksign];
+        if(norm_unity)  panel_descr_text += ", unity";
+
+        tbox->AddText(panel_descr_text.c_str());
+        tbox->AddText("nCTEQ15npFullNuc_208_82");
+        tbox->AddText("p_{T}^{#mu} > 4GeV, |#eta^{#mu}| < 2.4");
+
+        // ---------- THStack ----------
         if (staggered){
             hs[ksign] = new THStack(("hs" + signs[ksign]).c_str(), ("hs" + signs[ksign]).c_str());
         }
 
+        // ---------- loop over the categories ----------
         for (int kgrp : thstack_order_map[ksign]){
 
             if (!line_map[kgrp]){
@@ -103,13 +150,8 @@ void PythonCategorizedPlottingBaseClass::Run(){
             if (!cuts.empty()) ApplyCutsTo1DHistogram(hist_map[{ksign, kgrp}], cuts);
 
             if (hist_map[{ksign, kgrp}]->Integral() > min_integral_thrsh){ // skipping categories with too low or zero crossx
-                if (staggered){
-                    hist_helper(hist_map[{ksign, kgrp}], pow(10,6), norm_unity, subpl_titles[ksign] + ", accumulative");
-                }else if(norm_unity){
-                    hist_helper(hist_map[{ksign, kgrp}], 1., norm_unity, subpl_titles[ksign] + ", unity");
-                }else{
-                    hist_helper(hist_map[{ksign, kgrp}], pow(10,6), norm_unity, subpl_titles[ksign]);
-                }
+                float norm = norm_unity? 1. : pow(10,6);
+                hist_helper(hist_map[{ksign, kgrp}], norm, norm_unity, "");
 
                 if (!staggered){
                     hist_map[{ksign, kgrp}]->SetLineColor(line_map[kgrp]->line_color);
@@ -125,7 +167,7 @@ void PythonCategorizedPlottingBaseClass::Run(){
                     l->AddEntry(hist_map[{ksign, kgrp}], (line_map[kgrp]->line_label).c_str(),"lp");
                 }
             }
-        }
+        } // end loop over flavor/origin categories
 
         float ymax = hist_map[{ksign, thstack_order_map[ksign].at(0)}]->GetMaximum();
         if (!staggered){
@@ -157,12 +199,10 @@ void PythonCategorizedPlottingBaseClass::Run(){
             }
         }else{
             hs[ksign]->Draw("hist");
-            thstack_helper(hs[ksign], kin_title, subpl_titles[ksign]);
-            // hs[ksign]->GetXaxis()->SetTitle(kin1d.c_str());
-            // hs[ksign]->GetYaxis()->SetTitle(("d#sigma/d" + kin1d).c_str());
-            // hs[ksign]->SetTitle(subpl_titles[ksign].c_str());          
+            thstack_helper(hs[ksign], kin_title, "");
         }
 
+        tbox->Draw();
         l->Draw();
     }
 
@@ -171,15 +211,17 @@ void PythonCategorizedPlottingBaseClass::Run(){
     auto it_obs = std::find(single_b_analysis_observables.begin(), single_b_analysis_observables.end(), kin1d);
     std::string sub_dir = (it_obs != single_b_analysis_observables.end())? "" : "others/";
 
-    if (staggered){
-        c->SaveAs(Form("%splots/%s%s%spythia_%s_staggered%s%s.png", pythia_path.c_str(), subdir_name.c_str(), with_data_resonance_cuts_dir.c_str(), sub_dir.c_str(), kin1d.c_str(), optional_suffix.c_str(), with_data_resonance_cuts_suffix.c_str()));
-    }else if (norm_unity){
-        c->SaveAs(Form("%splots/%s%s%spythia_%s_unity%s%s.png", pythia_path.c_str(), subdir_name.c_str(), with_data_resonance_cuts_dir.c_str(), sub_dir.c_str(), kin1d.c_str(), optional_suffix.c_str(), with_data_resonance_cuts_suffix.c_str()));
-    }else{
-        c->SaveAs(Form("%splots/%s%s%spythia_%s%s%s.png", pythia_path.c_str(), subdir_name.c_str(), with_data_resonance_cuts_dir.c_str(), sub_dir.c_str(), kin1d.c_str(), optional_suffix.c_str(), with_data_resonance_cuts_suffix.c_str()));
-    }
+    std::string outdir_name = pythia_path + "plots/" + subdir_name + with_data_resonance_cuts_dir + sub_dir;
+
+    std::string drawing_option_suffix = "";
+    if (staggered)  drawing_option_suffix += "_staggered";
+    else if (norm_unity)    drawing_option_suffix += "_unity";
+
+    std::string outfile_name = outdir_name + "pythia_" + kin1d + drawing_option_suffix + optional_suffix + with_data_resonance_cuts_suffix;
+
+    c->SaveAs(Form("%s.png", outfile_name.c_str()));
+    if (saveAsC) c->SaveAs(Form("%s.c", outfile_name.c_str()));
 
     c->Close();
     delete c;
-
 }

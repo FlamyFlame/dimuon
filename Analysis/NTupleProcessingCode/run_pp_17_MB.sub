@@ -1,0 +1,8 @@
+# submit_all_batches.sub
+executable = run_pp_17_MB.sh
+arguments = $(Process)
+output = logs/run_pp_17_MB_batch_$(Process).out
+error = logs/run_pp_17_MB_batch_$(Process).err
+log = logs/run_pp_17_MB_batch_$(Process).log
+request_memory = 2GB
+queue 3

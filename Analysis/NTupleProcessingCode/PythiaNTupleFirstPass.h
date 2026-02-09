@@ -1,11 +1,11 @@
 #ifndef __PythiaNTupleFirstPass_h__
 #define __PythiaNTupleFirstPass_h__
 
-#include "../MuonObjectsParamsAndHelpers/MuonPairPythia.h"
+#include "../MuonObjectsParamsAndHelpers/MuonPairPythiaOld.h"
 #include "../MuonObjectsParamsAndHelpers/TruthQQPair.h"
 #include "../MuonObjectsParamsAndHelpers/muon_pair_enums_MC.h"
 #include "../MuonObjectsParamsAndHelpers/struct_particle.h"
-#include "DimuonAnalysisBaseClass.c"
+#include "DimuonAnalysisBaseClassOld.c"
 #include "time.h"
 
 class PythiaNTupleFirstPass : public DimuonAnalysisBaseClass{
@@ -34,7 +34,7 @@ private:
 	Long64_t njobs[nKinRanges] = {0,0,0,0,0};
 	int nevents_per_file[nKinRanges] = {10,100,5000,20000,20000};
 
-    std::string py_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_private_sample/";
+    std::string py_dir;
 
     std::vector<float> kinRanges = {5., 10., 25., 60., 120., 3200.};
 
@@ -77,9 +77,6 @@ private:
     // std::vector <TChain*> metaChain;	// each element: pointer to a collection of the ttrees named meta_tree (recording job-level info)
     TChain* evChain;
     TChain* metaChain;
-    
-    std::shared_ptr<MuonPairPythia> mpair;
-    MuonPairPythia* mpair_raw_ptr = nullptr;
 
     // for meta tree
     double efficiency = 1.;
@@ -127,10 +124,6 @@ private:
     long nentries_k3;
     long nentries_k4;
 
-    Muon* tempmuon = nullptr;
-    // std::vector<std::shared_ptr<MuonPairPythia>> muon_pair_list_cur_event;
-    std::vector<std::shared_ptr<MuonPairPythia>> muon_pair_list_cur_event_pre_resonance_cut;
-
     // TruthQQPair* qqpair = nullptr;
 
     int m1_youngest_non_chadron_parent_barcode;
@@ -148,8 +141,6 @@ private:
 
     int m1_resonance_barcode; // check if from same resonance
     int m2_resonance_barcode; // check if from same resonance
-
-    int nmuonpairs;
 
     TLorentzVector vg, vQ1, vQ2, vm1out1, vm1out2, vm2out1, vm2out2;
     // bool gs_4vec_correctly_set;
@@ -225,7 +216,6 @@ private:
     std::ofstream* m_c_parent_file[ParamsSet::nSigns][2];
 
     TTree* meta_tree_out;
-    TTree* muonPairOutTree[ParamsSet::nSigns];
     TTree* muonPairOutTreeKinRange[nKinRanges][ParamsSet::nSigns];
 
     static const int nAncestorGroups = 4;
@@ -281,29 +271,6 @@ private:
     TH1D* h_both_from_c_ancestor_sp[ParamsSet::nSigns][2];
     TH2D* h_both_from_c_ancestor_dp[ParamsSet::nSigns][2];
 
-    // TH1D* h_dphi_bb_op_near_both_from_b;
-    // TH1D* h_dphi_bb_op_near_one_b_one_btoc;
-    // TH1D* h_dphi_bb_ss_near;
-    // TH1D* h_dphi_bb_op_near;
-    // TH1D* h_dphi_bb_op_near_from_same_b;
-    // TH1D* h_bb_ss_near_involv_osc;
-    // TH1D* h_bb_ss_away_involv_osc;
-
-    // TH2D* h_cc_ss_small_dphi_prt_gps;
-    // TH1D* h_cc_ss_small_dphi_same_ancestors;
-    // TH1D* h_cc_ss_small_dphi_sp;
-    // TH2D* h_cc_ss_small_dphi_dp;
-    // TH2D* h_cc_ss_plateau_prt_gps;
-    // TH1D* h_cc_ss_plateau_same_ancestors;
-    // TH1D* h_cc_ss_plateau_sp;
-    // TH2D* h_cc_ss_plateau_dp;
-
-    // TH1D* h_num_hard_scatt_out[ParamsSet::nSigns][2];
-    // TH1D* h_pt_muon_pt_closest_hadr_ratio[ParamsSet::nSigns][2];
-    // TH1D* h_pt_closest_hadr_pt_furthest_hadr_ratio[ParamsSet::nSigns][2];
-    // TH1D* h_pt_hadr_hq_ratio[ParamsSet::nSigns][2];
-    // TH1D* h_dphi_muon_closest_hadr[ParamsSet::nSigns][2];
-
     std::vector<std::string> parentGroupLabels = {"direct b","b to c","direct c","s/light","direct photon", "Drell-Yan"};
     // std::vector<std::string> parentGroupLabels = {"direct b","b to c","direct c","s/light","direct photon"};
     int nParentGroups = parentGroupLabels.size();
@@ -330,12 +297,18 @@ private:
 
 // --------------------- class methods ---------------------------
   
+    void Initialize() override;
+
     void InitInput() override;
+    void InitInputPrivate() override;
+    void InitInputCentrProd() override;
+    
     void InitOutput() override;
     void InitTempVariables() override;
     void ProcessData() override;
     bool PassCuts(const std::shared_ptr<MuonPair>& mpair) override;
 
+    virtual void FillMuonPairTree() override {}
     void FillMuonPairTreePythia(int nkin);
     void HistAdjust() override;
 
@@ -363,10 +336,11 @@ private:
     void CrossxClear();
     void PerPairCrossxUpdate();
     void WriteCrossxSummary();
-    void Finalize();
+    void Finalize() override;
 
 public :
 
+    bool isPrivate = false;
     bool print_prt_history = false;
     bool print_HF_pair_origin_others_history = false;
     bool print_other_flavor_history = false;
@@ -380,7 +354,6 @@ public :
 
     PythiaNTupleFirstPass();
     ~PythiaNTupleFirstPass(){}
-    void Run() override;
     // float filter_effcy;
 
 };
