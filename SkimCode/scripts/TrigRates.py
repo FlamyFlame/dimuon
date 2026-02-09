@@ -9,7 +9,8 @@ do_hi2023 = False
 do_hi2024 = True
 
 #overlay
-do_pp_MC       =False
+do_pp_MC_fullsim_17       =False
+do_pp_MC_fullsim_24       =False
 
 
 
@@ -28,7 +29,7 @@ if(do_hi2018     or
 #------------------------------------------------------------
 #for Run3 data
 is_Run3=False
-if (do_hi2023 or do_hi2024 or do_pp2024):
+if (do_hi2023 or do_hi2024 or do_pp2024 or do_pp_MC_fullsim_24):
   is_Run3=True
 #------------------------------------------------------------
 
@@ -37,14 +38,16 @@ if (do_hi2023 or do_hi2024 or do_pp2024):
 #for Analysis in Releases>=22 and (athena) Releases>=24
 is_Rel22orAbove=False
 is_Rel24orAbove=False
-if (do_hi2023 or do_hi2024 or do_pp2024):
+if (do_hi2023 or do_hi2024 or do_pp2024 or do_pp_MC_fullsim_24):
   is_Rel22orAbove=True
-if (do_hi2024 or do_pp2024):
+if (do_hi2024 or do_pp2024 or do_pp_MC_fullsim_24):
   is_Rel24orAbove=True
 
 #------------------------------------------------------------
 
-
+#------------------------------------------------------------
+is_MC = do_pp_MC_fullsim_17 or do_pp_MC_fullsim_24
+#------------------------------------------------------------
 
 #------------------------------------------------------------
 RunYear         =0
@@ -54,7 +57,6 @@ GRL             =[]
 MinBias_triggers=[]
 Muon_triggers   =[]
 DiMuon_triggers =[]
-ZDC_Configuration="PbPb2018" 
 
 if do_hi2018:
   RunYear          =2018 # only set RunYear for PbPb (needed for centrality)
@@ -62,14 +64,12 @@ if do_hi2018:
   InputFile        ="/afs/cern.ch/user/s/soumya/workarea/DATA/JobTestData/data18_hi/data18_hi.00366142.physics_HardProbes.merge.AOD.f1027_m2037._lb0570._0003.1"
   MinBias_triggers =[]
   DiMuon_triggers  =["HLT_2mu3","HLT_2mu4","HLT_2mu6","HLT_2mu8","HLT_mu4_mu4noL1"]
-  ZDC_Configuration="PbPb2018" 
 elif do_hi2015:
   RunYear          =2015 # only set RunYear for PbPb (needed for centrality)
   GRL              =["data15_hi.periodAllYear_DetStatus-v75-repro20-01_DQDefects-00-02-02_PHYS_HeavyIonP_All_Good.xml"]
   InputFile        ="/afs/cern.ch/user/s/soumya/workarea/DATA/JobTestData/data15_hi/AOD.16615737._000065.pool.root.1"
   MinBias_triggers =[]
   DiMuon_triggers  =["HLT_2mu3","HLT_2mu4","HLT_2mu6","HLT_2mu8","HLT_mu4_mu4noL1"]
-  ZDC_Configuration="PbPb2015" 
 elif do_hi2023:
   RunYear          =2023 # only set RunYear for PbPb (needed for centrality)
   GRL              =["data23_hi.periodAllYear_DetStatus-v113-pro31-08_MERGED_PHYS_HeavyIonP_All_Good.xml"]
@@ -81,7 +81,6 @@ elif do_hi2023:
                      "HLT_mu6_L1MU3V_VTE50",
                      "HLT_mu8_L1MU5VF_VTE50"]
   DiMuon_triggers  =["HLT_2mu4_L12MU3V","HLT_mu4_mu4noL1_L1MU3V"]
-  ZDC_Configuration=""
 elif do_hi2024:
   RunYear          =2024 # only set RunYear for PbPb (needed for centrality)
   GRL              =["physics_HI2024_50ns.xml"]
@@ -100,7 +99,6 @@ elif do_hi2024:
                      "HLT_mu4noL1_L1ZDC_HELT20_jTE4000", 
                      "HLT_mu4noL1_L1ZDC_HELT15_jTE4000"]
   DiMuon_triggers  =["HLT_2mu4_L12MU3V", "HLT_mu4_mu4noL1_L1MU3V"]
-  ZDC_Configuration=""
 elif do_pp2024:
   GRL              =["physics_2024ppRef_25ns.xml"]
   InputFile        ="/eos/atlas/atlastier0/rucio/data24_5p36TeV/physics_Main/00488474/"\
@@ -114,7 +112,6 @@ elif do_pp2024:
                      "HLT_mu15_L1MU8F",
                      "HLT_mu15_L1MU14FCH"]
   DiMuon_triggers  =["HLT_2mu3_L12MU3V","HLT_2mu4_L12MU3V","HLT_mu4_mu6_L12MU3V","HLT_mu4_mu4noL1_L1MU3V"]
-  ZDC_Configuration=""
 elif do_pp2017:
   GRL              =["data17_5TeV.periodAllYear_DetStatus-v98-pro21-16_Unknown_PHYS_StandardGRL_All_Good_25ns_ignore_GLOBAL_LOWMU.xml"]
   InputFile        ="/eos/user/y/yuhang/data/pp_17/data17_5TeV/*"
@@ -127,9 +124,9 @@ elif do_pp2015:
   InputFile        ="/eos/user/y/yuhang/data/pp_15/data15_5TeV_r9582/*"
   Muon_triggers    =["HLT_mu4", "HLT_mu6", "HLT_mu8", "HLT_mu10"]
   DiMuon_triggers  =["HLT_2mu4"]
-elif do_ppMC13TeV:
+elif do_pp_MC_fullsim_17:
   dataSource       ='geant4'
-  InputFile        ="/atlas/work/shared/JobTestData/MC_13TeV/links/0000.root"
+  InputFile        ="/eos/user/y/yuhang/data/mc_powheg_fullsim/example_fullsim_AOD_files/AOD.36949837._016835.pool.root.1"
 else :
   print("*"*50,"\nUnknown Dataset\n","*"*50)
   exit()
@@ -168,7 +165,7 @@ ToolSvc += CfgMgr.InDet__InDetTrackSelectionTool("TrackSelectionTool_HILoose",Cu
 ToolSvc += CfgMgr.InDet__InDetTrackSelectionTool("TrackSelectionTool_HITight",CutLevel="HITight",minPt=100.)
 ##------------------------------------------------------------
 
-##------------------------------------------------------------
+##---------------------------- Muon Selection Tool --------------------------------
 # Create a MuonSelectionTool if we do not yet have one 
 if not hasattr(ToolSvc, "MyMuonSelectionTool"):
     from MuonSelectorTools.MuonSelectorToolsConf import CP__MuonSelectionTool
@@ -185,7 +182,7 @@ if not hasattr(ToolSvc, "MyMuonSelectionTool"):
     print(ToolSvc.MyMuonSelectionTool)
 ##------------------------------------------------------------
 
-##------------------------------------------------------------
+##---------------------------- Muon Calibration Tool --------------------------------
 if is_Rel22orAbove:
   #https://gitlab.cern.ch/atlas/athena/-/blob/release/24.2.9/PhysicsAnalysis/MuonID/MuonIDAnalysis/MuonMomentumCorrections/MuonMomentumCorrections/MuonCalibTool.h
   #https://twiki.cern.ch/twiki/bin/view/AtlasProtected/MCPAnalysisGuidelinesR22#CP_MuonCalibTool_tool
@@ -234,7 +231,10 @@ else:
   elif do_pp2015:
     ToolSvc.MyMuonCalibrationAndSmearingTool.Year               ="Data16"
     ToolSvc.MyMuonCalibrationAndSmearingTool.SagittaRelease     ="sagittaBiasDataAll_03_02_19_Data17" # sagittaBiasDataAll_03_02_19_Data15 NOT FOUND
-  elif do_pp_MC:
+  elif do_pp_MC_fullsim_17:
+    ToolSvc.MyMuonCalibrationAndSmearingTool.Year               ="Data17"
+    ToolSvc.MyMuonCalibrationAndSmearingTool.SagittaRelease     ="sagittaBiasDataAll_03_02_19_Data17"
+  elif do_pp_MC_fullsim_24:
     ToolSvc.MyMuonCalibrationAndSmearingTool.SagittaCorr        =False
   else:
     print("*"*50,"\nCouldnot configure MuonCalibrationAndSmearingTool\n","*"*50)
@@ -243,74 +243,36 @@ else:
 print(ToolSvc.MyMuonCalibrationAndSmearingTool)
 ##------------------------------------------------------------
 
-##------------------------------------------------------------
+##---------------------------- Muon Efficiency Tool --------------------------------
 #https://gitlab.cern.ch/atlas/athena/blob/21.2/PhysicsAnalysis/MuonID/MuonIDAnalysis/MuonEfficiencyCorrections/Root/MuonEfficiencyScaleFactors.cxx
 #https://twiki.cern.ch/twiki/bin/view/Atlas/MuonEfficiencyScaleFactorsToolUsage
 if not is_Rel24orAbove:
   from MuonEfficiencyCorrections.CommonToolSetup import *
-  scale_medium = GetMuonEfficiencyTool("Medium",Release="190312_Winter_r21")
-  scale_tight  = GetMuonEfficiencyTool("Tight" ,Release="190312_Winter_r21")
+  scale_medium = GetMuonEfficiencyTool("Medium",Release="210222_Precision_r21") # release R21 recommendations
+  scale_tight  = GetMuonEfficiencyTool("Tight" ,Release="210222_Precision_r21")
 else:
   scale_medium = None
   scale_tight = None
 ##------------------------------------------------------------
 
-##------------------------------------------------------------
+##---------------------------- Muon Trigger Matching Tool --------------------------------
 # Create trigger matching tool
 #https://twiki.cern.ch/twiki/bin/view/Atlas/XAODMatchingTool
 #https://twiki.cern.ch/twiki/bin/view/Atlas/R22TriggerAnalysis
-if is_Run3:
-  ToolSvc += CfgMgr.Trig__R3MatchingTool("MyTriggerMatchTool", OutputLevel=DEBUG)
-else:
-  ToolSvc += CfgMgr.Trig__MatchingTool("MyTriggerMatchTool", OutputLevel=DEBUG)
+if not is_MC:
+  if is_Run3:
+    ToolSvc += CfgMgr.Trig__R3MatchingTool("MyTriggerMatchTool", OutputLevel=DEBUG)
+  else:
+    ToolSvc += CfgMgr.Trig__MatchingTool("MyTriggerMatchTool", OutputLevel=DEBUG)
 ##------------------------------------------------------------
 
-##------------------------------------------------------------
+##---------------------------- GRL Tool --------------------------------
 #The GRLTool
 MyGRLTool=CfgMgr.GoodRunsListSelectionTool("MyGRLTool")                                                             
 MyGRLTool.GoodRunsListVec=GRL
 #MyGRLTool.PassThrough    =True                                                                                      
 ToolSvc += MyGRLTool  
 ##------------------------------------------------------------
-
-
-
-
-ZdcAnalysisTool=None
-ZdcAuxSuffix="" #currently not reprocessing ZDC
-HIPileupTool=None
-if (is_Rel22orAbove==False):
-  ##------------------------------------------------------------
-  #The ZDCTool
-  #https://twiki.cern.ch/twiki/bin/viewauth/Atlas/ZdcAnalysisTool
-  ZdcAuxSuffix="RP"
-
-  ZdcAnalysisTool=CfgMgr.ZDC__ZdcAnalysisTool("ZdcAnalysisTool")
-  ZdcAnalysisTool.FlipEMDelay  =  False
-  ZdcAnalysisTool.LowGainOnly  =  False     
-  ZdcAnalysisTool.DoCalib      =  True       
-  ZdcAnalysisTool.Configuration=  ZDC_Configuration
-  ZdcAnalysisTool.AuxSuffix    =  ZdcAuxSuffix
-  ZdcAnalysisTool.ForceCalibRun=  -1
-  if(ZDC_Configuration ==  "PbPb2018"): 
-    print("Soumya:: ZDC Tool configured for 2018")
-    ZdcAnalysisTool.DoTrigEff    =  False #for 2018 only? 
-    ZdcAnalysisTool.DoTimeCalib  =  False #for 2018 only?
-  else:
-    print("Soumya:: ZDC Tool configured for 2015")
-  ToolSvc += ZdcAnalysisTool 
-  ##------------------------------------------------------------
-  
-  ##------------------------------------------------------------
-  #Pileup tool
-  #from HIEventUtils.HIEventUtilsConf import HI__HIPileupTool
-  #HIPileupTool=HI__HIPileupTool("HIPileupTool")
-  HIPileupTool=CfgMgr.HI__HIPileupTool("HIPileupTool")
-  HIPileupTool.Year="2018"
-  ToolSvc += HIPileupTool
-  ##------------------------------------------------------------
-
-
 
 
 if not is_Rel24orAbove:
@@ -328,50 +290,38 @@ TrigRatesAlg.TrackSelectionTool_MinBias  =ToolSvc.TrackSelectionTool_MinBias
 TrigRatesAlg.TrackSelectionTool_HILoose  =ToolSvc.TrackSelectionTool_HILoose
 TrigRatesAlg.TrackSelectionTool_HITight  =ToolSvc.TrackSelectionTool_HITight
 TrigRatesAlg.MuonSelectionTool           =ToolSvc.MyMuonSelectionTool
-TrigRatesAlg.TriggerMatchTool            =ToolSvc.MyTriggerMatchTool
+if not is_MC:
+  TrigRatesAlg.TriggerMatchTool            =ToolSvc.MyTriggerMatchTool
+
 TrigRatesAlg.GRLTool                     =ToolSvc.MyGRLTool
 TrigRatesAlg.muonCorrectionTool          =ToolSvc.MyMuonCalibrationAndSmearingTool
 TrigRatesAlg.use_effi_SF_tool            = (not is_Rel24orAbove)
 TrigRatesAlg.effi_SF_tool_medium         =scale_medium
 TrigRatesAlg.effi_SF_tool_tight          =scale_tight
-if (is_Rel22orAbove==False):
-  TrigRatesAlg.ZDCAnalysisTool             =ZdcAnalysisTool
-  TrigRatesAlg.HIPileupTool                =HIPileupTool
 #------------------------------------------------------------
-
-TrigRatesAlg.IsZdcCalib              =False                     #disables storing of all other objects except EventInfo
-TrigRatesAlg.StoreZdc                =0                       #bitflag
-TrigRatesAlg.ZdcAuxSuffix            =ZdcAuxSuffix              #Suffix for container when Reprozessing ZDC
 
 TrigRatesAlg.RunYear                 =RunYear
 TrigRatesAlg.IsEvgen                 =False                     #True only for truth-only input (i.e. reco is missing)
 TrigRatesAlg.UseGRL                  =True                      #Automatically ignored for MC
 TrigRatesAlg.StoreAllEvents          =False                     #Typically true only for MC & CalibStream, ignores Trigger requirement if set to "True"
-TrigRatesAlg.UseTrigger              =True                      #Typically True for data False for MC; If "False" Trigger branches are not created
-TrigRatesAlg.StoreL1Decision         =1                         #Typically 0; set to 1 for storing L1 TBP/TAP/TAV values
+TrigRatesAlg.UseTrigger              =(not is_MC)               #Typically True for data False for MC; If "False" Trigger branches are not created
+TrigRatesAlg.StoreL1Decision         =(not is_MC)               #Typically 0; set to 1 for storing L1 TBP/TAP/TAV values
 TrigRatesAlg.TriggerChains           ="|".join(MinBias_triggers)
 TrigRatesAlg.MuonTriggerChains       ="|".join(Muon_triggers)
 TrigRatesAlg.DiMuonTriggerChains     ="|".join(DiMuon_triggers)
-TrigRatesAlg.StoreEventInfo          =1                         #2 requires ZDC info, works only for Pb+Pb
+TrigRatesAlg.StoreEventInfo          =1                         
 TrigRatesAlg.StoreTracks             =0                         #0+1+2+4+8 bitmap
 TrigRatesAlg.StorePixTracks          =0                         #0+1+2+4 bitmap
 TrigRatesAlg.MaxZvtx                 =250                       #require vtx with |z_vtx|<MaxZvtx; -negative to disable vtx cut
 TrigRatesAlg.StoreVtx                =True                      #Always ON
-TrigRatesAlg.StoreL1TE               =True                      #ON only for checks 
-TrigRatesAlg.StoreMuonTruth          =False                     #True only for MC
+TrigRatesAlg.StoreL1TE               =(not is_MC)                      #ON only for checks 
+TrigRatesAlg.StoreMuonTruth          =is_MC                     #True only for MC
 TrigRatesAlg.StoreSingleMuon         =True                      #Typically ON
 TrigRatesAlg.StoreAcoplanarMuon      =True                      #OFF for pp Ridge analysis
 TrigRatesAlg.HIEventShapeContainerKey="HIEventShape"            #"HIEventShape" or "CaloSums";="" to turn OFF, for exmple in pp
 TrigRatesAlg.METContainerKey         =""                        #"MET_Calo";="" to turn OFF
-TrigRatesAlg.TrackJetContainerKeys   =[
-                                       #"AntiKt2PV0TrackJets", 
-                                       #"AntiKt3PV0TrackJets",
-                                       #"AntiKt4PV0TrackJets",
-                                       #"AntiKt4EMPFlowJets",  
-                                       #"AntiKt4EMTopoJets"
-                                       ]     #=[] or comment to turn OFF
-TrigRatesAlg.StoreTruthVtx           =False                     #True only for MC
-TrigRatesAlg.StoreTruth              =0                         #True only for MC 0:disable, 1:stable only with pt>"TruthMinPT", 1+2-all, 4-single muons+tau, 8-(muon,muon)+(tau,tau) pairs
+TrigRatesAlg.StoreTruthVtx           =is_MC                     #True only for MC
+TrigRatesAlg.StoreTruth              =1+2+4+8 if is_MC else 0                         #True only for MC 0:disable, 1:stable only with pt>"TruthMinPT", 1+2-all, 4-single muons+tau, 8-(muon,muon)+(tau,tau) pairs
 TrigRatesAlg.TruthMinPT              =300                       #cut in MeV above which to store truth particles (only stable and primary particles stored)
 TrigRatesAlg.ApplyMuonCalibrations   =True                      #True for Data and MC (see link above where the tool is initialized)
 TrigRatesAlg.IsRun3                  =is_Run3                   #True only for Run-3 Data 

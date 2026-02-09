@@ -57,5 +57,12 @@ atlas_add_component( HFtrigValidation src/components/*.cxx
 # You can access your data from code using path resolver, e.g.
 # PathResolverFindCalibFile("HFtrigValidation/file.txt")
 
+if("$ENV{AtlasVersion}" MATCHES "^21\\.")
+  target_compile_definitions(HFtrigValidationLib PUBLIC HF_IS_R21)
+endif()
+
+if("$ENV{AtlasVersion}" MATCHES "^25\\.")
+  target_compile_definitions(HFtrigValidationLib PUBLIC HF_IS_R25)
+endif()
 
 

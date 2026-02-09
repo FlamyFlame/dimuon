@@ -13,12 +13,13 @@
 #include "InDetTrackSelectionTool/IInDetTrackSelectionTool.h"
 #include "xAODTracking/TrackParticleContainer.h"
 #include "xAODTruth/TruthParticleContainer.h"
+#include "xAODTruth/TruthEventContainer.h"
 #include "xAODMuon/MuonContainer.h"
 
-#ifndef __ATHENA_24p2__
-  #include "ZdcAnalysis/IZdcAnalysisTool.h"
-  #include "HIEventUtils/IHIPileupTool.h" 
-#endif
+#include "PMGAnalysisInterfaces/IPMGTruthWeightTool.h"
+
+
+// #include "TrigMuonMatching/ITrigMuonMatching.h"
 
 #if defined(__ATHENA_21p2__) || defined(__ATHENA_24p2__)
   #include "AsgTools/AnaToolHandle.h"
@@ -30,7 +31,6 @@
 #else
   #include "GoodRunsLists/IGoodRunsListSelectionTool.h"
   #include "MuonSelectorTools/IMuonSelectionTool.h"
-  #include "TrigMuonMatching/ITrigMuonMatching.h"
   #include "MuonMomentumCorrections/IMuonCalibrationAndSmearingTool.h"
 #endif
 
@@ -57,6 +57,7 @@ private:
 
    bool                        m_is_evgen       =false;//=true for EvGen only (withour reconstruction)
    bool                        m_use_trigger    = true;//=true then use the Trigger (make branches, use decision)
+   bool                        m_store_MC_weight_names;//=true then store weight names
    int                         m_store_L1       =0    ;//set to 1 for storing L1 TBP/TAP/TAV values
    std::string                 m_Trigger_Chains       ;//Trigger Chains for TrigDecision and branches
    std::string                 m_Muon_Trigger_Chains  ;//Trigger Chains for TrigDecision and branches
@@ -64,6 +65,9 @@ private:
    std::vector<std::string>    m_ListOfTriggers       ;
    std::vector<std::string>    m_ListOfMuonTriggers   ;
    std::vector<std::string>    m_ListOfDiMuonTriggers ;
+
+   double                      m_muonTriggerMatchDR;
+
    std::map<std::string,Bool_t*             > m_trigger_map            ;//flags that indicate if the trigger passes,
    std::map<std::string,Float_t*            > m_trigger_prescale_map   ;//trigger prescale values, 
    std::map<std::string,Bool_t*             > m_trigger_isPrescaled_map;//if a trigger was prescaled in the present event, 
@@ -72,9 +76,17 @@ private:
    std::map<std::string,Bool_t*             > m_trigger_L1TAV_map      ;//decision at L1 after  veto, 
    std::map<std::string,Bool_t*             > m_trigger_isRerun_map    ;//if Trigger was rerun,
    std::map<std::string,Bool_t*             > m_trigger_rerun_map      ;//Trigger rerun decision,
+   
    std::map<std::string,std::vector<Bool_t>*> m_trigger_match_map      ;//matching of reco objects to trigger,
+   std::map<std::string,std::vector<Bool_t>*> m_trigger_match_map_0_01 ;//matching of reco objects to trigger, using dR of 0.01
    std::map<std::string,std::vector<Bool_t>*> m_trigger_match_map_V2   ;//matching of reco objects to trigger; doesnot require trigger passing "Physics"
    std::map<std::string,std::vector<Bool_t>*> m_trigger_match_map_V3   ;//matching of reco objects to trigger; require trigger passing "Physics|allowResurrectedDecision"
+   
+   std::map<std::string,std::vector<std::pair<Bool_t, Bool_t>>*> m_dimu_trigger_match_map_mu1_pass_chains_0_01   ;//matching of reco objects to trigger; require trigger passing "Physics|allowResurrectedDecision"
+   std::map<std::string,std::vector<std::pair<Bool_t, Bool_t>>*> m_dimu_trigger_match_map_mu2_pass_chains_0_01   ;//matching of reco objects to trigger; require trigger passing "Physics|allowResurrectedDecision"
+   std::map<std::string,std::vector<std::pair<Bool_t, Bool_t>>*> m_dimu_trigger_match_map_mu1_pass_chains_dR   ;//matching of reco objects to trigger; require trigger passing "Physics|allowResurrectedDecision"
+   std::map<std::string,std::vector<std::pair<Bool_t, Bool_t>>*> m_dimu_trigger_match_map_mu2_pass_chains_dR   ;//matching of reco objects to trigger; require trigger passing "Physics|allowResurrectedDecision"
+   
    Bool_t  m_trigger_Flag                     [1000];//stores if a trigger passes, this is written to the output tree
    Float_t m_trigger_prescale_Value           [1000];//stores trigger prescale
    Bool_t  m_trigger_isPrescaled_Flag         [1000];//stores=1 if trigger didnot fire because it was Prescaled
@@ -83,27 +95,32 @@ private:
    Bool_t  m_trigger_L1TAV_Flag               [1000];//stores Trigger decision at L1 after  veto
    Bool_t  m_trigger_isRerun_Flag             [1000];//stores if a trigger was rerun
    Bool_t  m_trigger_rerun_Flag               [1000];//stores if a trigger passes rerun
-   std::vector<Bool_t> m_trigger_match_Flag   [1000];//whether a given object fired this trigger
-   std::vector<Bool_t> m_trigger_match_Flag_V2[1000];//whether a given object fired this trigger; doesnot require trigger passing "Physics" 
-   std::vector<Bool_t> m_trigger_match_Flag_V3[1000];//whether a given object fired this trigger; require trigger passing "Physics|allowResurrectedDecision"
+   
+   std::vector<Bool_t> m_trigger_match_Flag     [1000];//whether a given object fired this trigger
+   std::vector<Bool_t> m_trigger_match_Flag_0_01[1000];//whether a given object fired this trigger
+   std::vector<Bool_t> m_trigger_match_Flag_V2  [1000];//whether a given object fired this trigger; doesnot require trigger passing "Physics" 
+   std::vector<Bool_t> m_trigger_match_Flag_V3  [1000];//whether a given object fired this trigger; require trigger passing "Physics|allowResurrectedDecision"
+   
+   std::vector<std::pair<Bool_t, Bool_t>> m_dimu_trigger_match_Flag_mu1_pass_chains_0_01[1000];// probability of mu^1 pass two dimuon chains from TrigMuonMatching::matchDimuon: if 2mu4, the pairs should agree; if mu4_mu4noL1, gives probability of mu^1 pass (mu4, mu4noL1)
+   std::vector<std::pair<Bool_t, Bool_t>> m_dimu_trigger_match_Flag_mu2_pass_chains_0_01[1000];// probability of mu^2 pass two dimuon chains from TrigMuonMatching::matchDimuon: if 2mu4, the pairs should agree; if mu4_mu4noL1, gives probability of mu^1 pass (mu4, mu4noL1)
+   std::vector<std::pair<Bool_t, Bool_t>> m_dimu_trigger_match_Flag_mu1_pass_chains_dR[1000];// probability of mu^1 pass two dimuon chains from TrigMuonMatching::matchDimuon: if 2mu4, the pairs should agree; if mu4_mu4noL1, gives probability of mu^1 pass (mu4, mu4noL1)
+   std::vector<std::pair<Bool_t, Bool_t>> m_dimu_trigger_match_Flag_mu2_pass_chains_dR[1000];// probability of mu^2 pass two dimuon chains from TrigMuonMatching::matchDimuon: if 2mu4, the pairs should agree; if mu4_mu4noL1, gives probability of mu^1 pass (mu4, mu4noL1)
    void       AddTriggerBranches();
    StatusCode ProcessTriggers (bool &pass_trigger_cuts);
 
 
 
-   int m_store_EventInfo   =1;//>=1 then store even info,  >=2 then also store ZDC
+   int m_store_EventInfo   =1;//>=1 then store even info
    std::string m_EventInfo_key    ;
    void       InitEventInfo   (TTree *l_OutTree = nullptr);
    StatusCode ProcessEventInfo();
    UInt_t RunNumber=0,lumi_block=0,bunch_crossing_id=0;
    ULong64_t eventNumber=0;
    Float_t AvgIntPerXing=0,ActIntPerXing=0;
-   Float_t ZdcEtA=0,ZdcEtC=0;
    Int_t   m_NumTrackNoCuts=0, m_NumTrackPPMinBias=0, m_NumTrackHILoose=0, m_NumTrackHITight=0;
-   Bool_t  m_is_pileup=false,m_is_oo_pileup=false;
-   Int_t   m_numtrk_HITight_pt500;
    Float_t m_FCalET,m_FCalETP,m_FCalETN;
 
+   UInt_t m_year; // needed for PbPb centrality
 
    bool        m_store_Vtx           = true; //=true then store vertex info           
    std::string m_vtx_container_key;
@@ -113,13 +130,6 @@ private:
    std::vector<float> m_vtx_x     ;
    std::vector<float> m_vtx_y     ;
    std::vector<int>   m_vtx_ntrk  ;
-
-
-   bool m_is_Zdc_Calib;
-   int m_store_Zdc;
-   std::string m_ZdcAuxSuffix;
-   void InitZdc(TTree *l_OutTree);
-   StatusCode ProcessZdc();
 
 
    int         m_store_tracks        =1+2; //1 then store tracks, 2 then store more details, 4 store link to truth
@@ -158,7 +168,7 @@ private:
    std::vector<int  > m_trk_truth_barcode;
    std::vector<Bool_t>m_trk_truth_IsPrimary;
    bool IsPrimaryParticle(const xAOD::TruthParticle* particle);
-
+   std::string DoubleToString(double value);
 
    //-------------------------------------------------------------------
    int         m_store_pix_tracks  =1+2;
@@ -206,7 +216,7 @@ private:
    std::vector<float> m_truth_vtx_y;
    std::vector<float> m_truth_vtx_t;
 
-
+   std::string m_truth_event_container_key;
 
    int         m_store_truth;        //=true then store truth track info
    double      m_min_pT_Truth;
@@ -216,12 +226,15 @@ private:
    std::vector<float> m_truth_pt     ;
    std::vector<float> m_truth_eta    ;
    std::vector<float> m_truth_phi    ;
+   std::vector<float> m_truth_m    ;
+   std::vector<float> m_truth_e    ;
    std::vector<float> m_truth_charge ;
    std::vector<int>   m_truth_id     ;
    std::vector<int>   m_truth_barcode;
    std::vector<int>   m_truth_quality;
-   std::vector<bool>  m_truth_status ;
+   std::vector<int>  m_truth_status ;
    std::vector<std::vector<int>>   m_truth_parents;
+   std::vector<std::vector<int>>   m_truth_children;
    std::vector<int>   m_truth_trk_index ;
    std::vector<int>   m_truth_muon_index;
 
@@ -244,10 +257,10 @@ private:
    std::vector<float> m_truth_muon_pt  ;
    std::vector<float> m_truth_muon_eta ;
    std::vector<float> m_truth_muon_phi ;
-   std::vector<float> m_truth_muon_ch  ;
-   std::vector<float> m_truth_muon_barcode;
-   std::vector<float> m_truth_muon_id  ;
-   std::vector<bool > m_truth_muon_status;
+   std::vector<int> m_truth_muon_ch  ;
+   std::vector<int> m_truth_muon_barcode;
+   std::vector<int> m_truth_muon_id  ;
+   std::vector<int > m_truth_muon_status;
 
    std::vector<float> m_truth_mupair_asym ;
    std::vector<float> m_truth_mupair_acop ;
@@ -256,20 +269,22 @@ private:
    std::vector<float> m_truth_mupair_y    ;
    std::vector<float> m_truth_mupair_phi  ;
    std::vector<float> m_truth_mupair_m    ;
+
    std::vector<float> m_truth_mupair_pt1  ;
    std::vector<float> m_truth_mupair_eta1 ;
    std::vector<float> m_truth_mupair_phi1 ;
-   std::vector<float> m_truth_mupair_ch1  ;
-   std::vector<float> m_truth_mupair_bar1 ;
-   std::vector<float> m_truth_mupair_id1  ;
-   std::vector<bool > m_truth_mupair_status1;
+   std::vector<int> m_truth_mupair_ch1  ;
+   std::vector<int> m_truth_mupair_bar1 ;
+   std::vector<int> m_truth_mupair_id1  ;
+   std::vector<int > m_truth_mupair_status1;
+   
    std::vector<float> m_truth_mupair_pt2  ;
    std::vector<float> m_truth_mupair_eta2 ;
    std::vector<float> m_truth_mupair_phi2 ;
-   std::vector<float> m_truth_mupair_ch2  ;
-   std::vector<float> m_truth_mupair_bar2 ;
-   std::vector<float> m_truth_mupair_id2  ;
-   std::vector<bool > m_truth_mupair_status2;
+   std::vector<int> m_truth_mupair_ch2  ;
+   std::vector<int> m_truth_mupair_bar2 ;
+   std::vector<int> m_truth_mupair_id2  ;
+   std::vector<int > m_truth_mupair_status2;
 
 
    bool        m_store_L1TE            = true; //=true then store ET info (from MET object)
@@ -308,6 +323,7 @@ private:
    std::vector<float> m_muon_trk_pt ;
    std::vector<float> m_muon_trk_eta;
    std::vector<float> m_muon_trk_phi;
+   std::vector<int>   m_muon_trk_charge;
    std::vector<int>   m_muon_trk_index;
    std::vector<float> m_muon_me_p   ;
    std::vector<int>   m_muon_elosstype;
@@ -352,6 +368,7 @@ private:
    std::vector<float> m_muon_pair_muon1_trk_pt ;
    std::vector<float> m_muon_pair_muon1_trk_eta;
    std::vector<float> m_muon_pair_muon1_trk_phi;
+   std::vector<int>   m_muon_pair_muon1_trk_charge;
    std::vector<float> m_muon_pair_muon2_pt     ;
    std::vector<float> m_muon_pair_muon2_eta    ;
    std::vector<float> m_muon_pair_muon2_phi    ;
@@ -371,6 +388,7 @@ private:
    std::vector<float> m_muon_pair_muon2_trk_pt ;
    std::vector<float> m_muon_pair_muon2_trk_eta;
    std::vector<float> m_muon_pair_muon2_trk_phi;
+   std::vector<int>   m_muon_pair_muon2_trk_charge;
 
 
 
@@ -398,21 +416,24 @@ private:
    ToolHandle<CP::IMuonCalibrationAndSmearingTool> m_muonCalibrationAndSmearingTool;
    ToolHandle<CP::IMuonEfficiencyScaleFactors    > m_effi_SF_tool_medium;
    ToolHandle<CP::IMuonEfficiencyScaleFactors    > m_effi_SF_tool_tight ;
+   bool m_use_effi_SF_tool = true;
+   
+   ToolHandle<PMGTools::IPMGTruthWeightTool> m_weightTool;    // weight tool (recording both the name and value of the weights)
+   
    #if defined(__ATHENA_24p2__)
      asg::AnaToolHandle<Trig::TrigDecisionTool>  m_trigTool;
      ToolHandle<Trig::IMatchingTool>             m_matchTool;
+     // ToolHandle<Trig::ITrigMuonMatching>         m_muonmatchTool; // tool for (di)muon trigger matching
    #elif defined(__ATHENA_21p2__)
      ToolHandle<Trig::TrigDecisionTool>          m_trigTool;
      ToolHandle<Trig::IMatchingTool>             m_matchTool;
+     // ToolHandle<Trig::ITrigMuonMatching>         m_muonmatchTool; // tool for (di)muon trigger matching
    #else
      ToolHandle<Trig::ITrigMuonMatching>         m_matchTool;
    #endif
    bool m_ApplyMuonCalibrations=false;
    bool m_isRun3=true;
- 
-   #ifndef __ATHENA_24p2__
-   ToolHandle<ZDC::IZdcAnalysisTool> m_ZDCAnalysisTool;
-   ToolHandle<HI::IHIPileupTool    > m_HIPileupTool;
-   #endif
+
+
 };
 #endif
