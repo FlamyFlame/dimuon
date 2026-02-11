@@ -19,8 +19,8 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_PowhegCore(){
     std::cout << "perform_truth? " << perform_truth << std::endl;
 
     mcdir = "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/";
-    data_subdir = is_fullsim_overlay    ? "user.yuhang.TrigRates.dimuon.PowhegPythia.fullsim." + mc_mode + ".June2024.1._MYSTREAM/"
-                                        : ( is_fullsim  ? "user.yuhang.TrigRates.dimuon.PowhegPythia.fullsim." + mc_mode + ".June2024.1._MYSTREAM/"
+    data_subdir = is_fullsim_overlay    ? "user.yuhang.TrigRates.dimuon.PowhegPythia.fullsim." + mc_mode + ".Feb2026.v1._MYSTREAM/"
+                                        : ( is_fullsim  ? "user.yuhang.TrigRates.dimuon.PowhegPythia.fullsim." + mc_mode + ".Feb2026.v1._MYSTREAM/"
                                                         : mc_mode + "_evgen_truth_full_sample/");
 
     dt_suffix = "";
@@ -62,7 +62,8 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInput_PowhegCore(){
 
     fChainRef()->SetMakeClass(1);
 
-    std::string task_id = (mc_mode == "bb")? "39654549" : "39654557";
+    std::string task_id = (mc_mode == "bb")? "48591366" : "48591379";
+
     for (int ifile = 5 * (file_batch - 1); ifile < 5 * file_batch; ifile++){
         std::string filename =
             is_fullsim
@@ -216,7 +217,7 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook(){
 
     Long64_t nentries_actual = this->nentries;
     
-    // for (Long64_t jentry=0; jentry<50000; jentry++) {//loop over the events
+    // for (Long64_t jentry=0; jentry<10000; jentry++) {//loop over the events
     for (Long64_t jentry=0; jentry<this->nentries; jentry++) {//loop over the events
         if (this->debug_mode)       std::cout << "Event#: " << jentry << std::endl;
         else if(jentry%10000==0)    std::cout << "Processing "<<jentry<<" event out of "<<this->nentries<<" events"<<std::endl;
@@ -245,9 +246,6 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessEventTruthOnly(int
 
     this->muon_pair_list_cur_event_pre_resonance_cut.clear();
     this->resonance_tagged_muon_index_list.clear(); // MUST CLEAR for each event!!
-
-    std::vector<int> muon_index_list = {};
-    std::vector<int>::iterator it;
 
     int NPairs = truth_mupair_pt1->size();//number of muon pairs in the event
 
@@ -286,7 +284,7 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessEventTruthOnly(int
         mpairRef() = std::move(this->muon_pair_list_cur_event_pre_resonance_cut.at(pair_ind));
 
         if (!mpairRef()){
-            std::cerr << "mpairRef() at second muon-pair loop NOT found! Return without resonance-tag checking or pair analysis." << std::endl;
+            std::cerr << "mpairRef() at second muon-pair loop NOT found! Skipping pair in output tree filling." << std::endl;
             continue;
         }
 

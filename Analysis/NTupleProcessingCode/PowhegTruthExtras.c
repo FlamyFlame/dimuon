@@ -221,7 +221,7 @@ void PowhegTruthExtras<PairT, Derived>::PerformTruthPairAnalysis(){
     // fill in muon parents (now that we have finished applying all the cuts)
     MuonPairAncestorTracing();
     if (m1_ancestor_is_incoming && m2_ancestor_is_incoming){
-        if (debug_mode_cout_warnings){            
+        if (self().debug_mode){            
             std::cout << "Both muons are from quarks that are incoming partons." << std::endl;
             PrintHistory(&std::cout, false, self().mpairRef()->from_same_ancestors);
         }
@@ -277,7 +277,7 @@ void PowhegTruthExtras<PairT, Derived>::MuonPairAncestorTracing(){
   else  self().mpairRef()->m2_ancestor_category = AncestorGrouping(cur_m2_ancestor_ids);
 
   if (same_ancestors && self().mpairRef()->m1_ancestor_category != single_gluon && self().mpairRef()->m1_ancestor_category != -1 && cur_m1_ancestor_bars.size() > 0 && cur_m1_ancestor_bars.at(0) != 3){
-    if (self().mpairRef()->m1.ev_num < 10000 && debug_mode_cout_warnings){
+    if (self().mpairRef()->m1.ev_num < 10000 && self().debug_mode){
       std::cout << "The relevant hard scattering is not the hardest scattering. Printing out history to make sure:" << std::endl;
       PrintHistory(&std::cout, false, true);
     }
@@ -391,6 +391,10 @@ void PowhegTruthExtras<PairT, Derived>::SingleMuonAncestorTracing(bool isMuon1){
     cur_parent_group = ParentGrouping(parent_ids, m2_c_tag, prev_is_lepton);
     self().mpairRef()->m2_parent_group = cur_parent_group;
   }
+    if (cur_parent_group == -1){
+        std::cout << "ParentGrouping returned -1: Print out history for reference:" << std::endl;
+        PrintHistory(&std::cout, true, isMuon1);
+    }
 
   if(self().debug_mode) std::cout << "finished hadronic parent tagging" << std::endl;
 
@@ -489,29 +493,33 @@ void PowhegTruthExtras<PairT, Derived>::SingleMuonAncestorTracing(bool isMuon1){
 template <class PairT, class Derived>
 int PowhegTruthExtras<PairT, Derived>::ParentGrouping(std::vector<int>& parent_ids, bool c_tag, bool prev_is_lepton){
 
-  if (parent_ids.size() == 2 && abs(parent_ids.at(0)) <= 5 && parent_ids.at(1) == (-1) * parent_ids.at(0) && prev_is_lepton){
-    // std::cout << "For study purpose - Drell-Yan:" << std::endl;
-    // PrintHistory(&std::cout, false, true);
-    return prt_drell_yan;
-  }
+    if (parent_ids.size() == 2 && abs(parent_ids.at(0)) <= 5 && parent_ids.at(1) == (-1) * parent_ids.at(0) && prev_is_lepton){
+      // std::cout << "For study purpose - Drell-Yan:" << std::endl;
+      // PrintHistory(&std::cout, false, true);
+      return prt_drell_yan;
+    }
 
-  int parent_id = abs(parent_ids.at(0));
+    int parent_id = abs(parent_ids.at(0));
 
-  if ((parent_id >= 500 && parent_id < 600) || (parent_id >= 5000 && parent_id < 6000)){
-    if (! c_tag) return direct_b; // direct b
-    else         return b_to_c; // b -> c
-  }
-  if (c_tag) return direct_c; // c not from b
-  if ((parent_id >= 100 && parent_id < 400) || (parent_id >= 1000 && parent_id < 4000)) // light and s-hadrons
-    return s_light; // light and s-flavored hadrons
+    if ((parent_id >= 500 && parent_id < 600) || (parent_id >= 5000 && parent_id < 6000)){
+      if (! c_tag) return direct_b; // direct b
+      else         return b_to_c; // b -> c
+    }
+    if (c_tag) return direct_c; // c not from b
+    if ((parent_id >= 100 && parent_id < 400) || (parent_id >= 1000 && parent_id < 4000)) // light and s-hadrons
+      return s_light; // light and s-flavored hadrons
 
-  if (parent_id == 22) // photons
-    return single_photon;
+    if (parent_id == 22) // photons
+      return single_photon;
 
-  std::cout << "Not in the given set of parent groups. Parent ids: " << std::endl;
-  for (auto id : parent_ids) std::cout << id << " ";
-  std::cout << std::endl;
-  return -1; // others
+    if (parent_id == 0 || parent_id == 2147483648){
+
+    }
+
+    std::cout << "ParentGrouping::Not in the given set of parent groups. Parent ids: " << std::endl;
+    for (auto id : parent_ids) std::cout << id << " ";
+    std::cout << std::endl;
+    return -1; // others
 }
 
 template <class PairT, class Derived>
@@ -684,7 +692,7 @@ int PowhegTruthExtras<PairT, Derived>::FindHeavyQuarks(std::vector<int>& cur_prt
 
     if (cur_prt_ids.size() == 0){
         if (self().getIsFullsim()){
-            if (debug_mode_cout_warnings){
+            if (self().debug_mode){
                 std::cout << "FindHeavyQuarks: WARNING:: parent list is empty, assume incoming" << std::endl;
                 PrintHistory(&std::cout, true, isMuon1);
             }
@@ -755,7 +763,7 @@ int PowhegTruthExtras<PairT, Derived>::AncestorGrouping(std::vector<int>& ancest
 
     // others
     // if (sameprts)
-    if (debug_mode_cout_warnings){
+    if (self().debug_mode){
         std::cout << "Event#: " << self().mpairRef()->m1.ev_num << std::endl;
         std::cout << "Ancestor not in any group. Printing out the history of both for better understanding:" << std::endl;
         PrintHistory(&std::cout, false, self().mpairRef()->from_same_ancestors);    
@@ -769,16 +777,20 @@ void PowhegTruthExtras<PairT, Derived>::HardScatteringAnalysis(std::vector<int>&
     if (self().debug_mode) std::cout << "Calling HardScatteringAnalysis" << std::endl;
 
     if (ancestor_grp < 0 || ancestor_grp >= powheg_ancestor_categories::NANCESTOERS){
-        std::cerr << "HardScatteringAnalysis:: WARNING: ancestor group passed in (" << ancestor_grp << ") is INVALID! Return without hard scattering analysis!" << std::endl;
-        std::cerr << "Print out history for checks:" << std::endl;
-        PrintHistory(&std::cerr, false, true);
+        if (self().debug_mode){
+            std::cerr << "HardScatteringAnalysis:: WARNING: ancestor group passed in (" << ancestor_grp << ") is INVALID! Return without hard scattering analysis!" << std::endl;
+            std::cerr << "Print out history for checks:" << std::endl;
+            PrintHistory(&std::cerr, false, true);
+        }
         return;
     }
 
     if (ancestor_grp == powheg_ancestor_categories::incoming){
-        std::cout << "HardScatteringAnalysis:: INFO: both muons' ancestors are incoming. Return without hard scattering analysis!" << std::endl;
-        std::cout << "Print out pair history for checks:" << std::endl;
-        PrintHistory(&std::cout, false, true);
+        if (self().debug_mode){
+            std::cout << "HardScatteringAnalysis:: INFO: both muons' ancestors are incoming. Return without hard scattering analysis!" << std::endl;
+            std::cout << "Print out pair history for checks:" << std::endl;
+            PrintHistory(&std::cout, false, true);
+        }
         return;
     }
 
