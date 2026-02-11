@@ -1,20 +1,23 @@
 #include "RDFBasedHistFillingData.cxx"
 
-void RDFBasedHistFillingPP::Initialize(){
-    InitializeData();
-    
+void RDFBasedHistFillingPP::SetIOPathsHook(){
     infile_var1D_json = "var1D_pp.json";
 
     if (run_year == 24){
-    	input_files.push_back("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024" + trig_suffix + "_res_cut_v2.root");
-    	output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/histograms_real_pairs_pp_2024" + out_file_suffix + ".root";
+        input_files.push_back("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024" + trig_suffix + "_res_cut_v2.root");
+        output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/histograms_real_pairs_pp_2024" + out_file_suffix + ".root";
     } else if (run_year == 17){
         input_files.push_back("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/muon_pairs_pp_2017" + trig_suffix + "_res_cut_v2.root");
         output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/histograms_real_pairs_pp_2017" + out_file_suffix + ".root";
+    }
+}
+
+void RDFBasedHistFillingPP::InitializePPExtra(){
+	if (run_year == 17){
         trigs = {"_mu4", "_2mu4"};
         trigs_pair = {{"_2mu4","_mu4"}};
     }
-	
+
     levels_trg_effcy_to_be_summed_w_musign_summing = {0,1,2}; // ss/op + mu1/2 + mu+/-
 
     levels_trg_effcy_filters_1D_pre_sum = {{"_ss", "_op"},
@@ -30,12 +33,9 @@ void RDFBasedHistFillingPP::Initialize(){
                                         {"", "_sepr"}};
 
     categories_essential = pair_signs;
-
-	RDFBasedHistFillingBaseClass::Initialize();
 }
 
-void RDFBasedHistFillingPP::TrigEffcyFiltersPrePostSumFlattening(){
-    RDFBasedHistFillingData::TrigEffcyFiltersPrePostSumFlattening();
+void RDFBasedHistFillingPP::TrigEffcyFiltersPrePostSumFlatteningExtra(){
 
     // build to-be-summed levels, with mu-sign summing
     for (int level_ind = 0;

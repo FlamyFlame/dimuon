@@ -51,17 +51,21 @@ void RDFBasedHistFillingBaseClass::CreateRDFs(){
 
 void RDFBasedHistFillingBaseClass::Initialize(){
 	std::cout << "Calling Initialize." << std::endl;
+    InitializeBaseCommon();
+    InitAnalysisSettingsHook(); // hook to set datatype-specific analysis settings
+    SetIOPathsHook();
+    InitOutput();
+	BuildFilterToVarListMap();
+	BuildHistBinningMap();
+	ReadVar1DJson();
+}
 
+void RDFBasedHistFillingBaseClass::InitializeBaseCommon(){
     hist1d_rresultptr_map.clear();
     hist2d_rresultptr_map.clear();
     hist3d_rresultptr_map.clear();
     
     TH1::SetDefaultSumw2(kTRUE); // turn on Sumw2 for all histograms
-
-    InitOutput();
-	BuildFilterToVarListMap();
-	BuildHistBinningMap();
-	ReadVar1DJson();
 }
 
 void RDFBasedHistFillingBaseClass::InitOutput(){
@@ -71,7 +75,12 @@ void RDFBasedHistFillingBaseClass::InitOutput(){
 
 // ---------- ----------
 void RDFBasedHistFillingBaseClass::HistPostProcess(){
-    std::cout << "Calling RDFBasedHistFillingBaseClass::HistPostProcess" << std::endl;
+    HistPostProcessBaseCommon();
+    HistPostProcessExtra();
+}
+
+void RDFBasedHistFillingBaseClass::HistPostProcessBaseCommon(){
+    if (debug_mode) std::cout << "Calling HistPostProcess" << std::endl;
 
     // 1) Force completion of all booked actions (1D/2D/3D) before GetPtr()
     std::vector<ROOT::RDF::RResultHandle> handles;
@@ -95,22 +104,31 @@ void RDFBasedHistFillingBaseClass::HistPostProcess(){
     for (auto &kv : hist3d_rresultptr_map) hist3D_map.emplace(kv.first, kv.second.GetPtr());
 }
 
-
 //--------- ---------
 void RDFBasedHistFillingBaseClass::BuildFilterToVarListMap(){
+    BuildFilterToVarListMapBaseCommon();
+    BuildFilterToVarListMapExtra();
+}
+
+void RDFBasedHistFillingBaseClass::BuildFilterToVarListMapBaseCommon(){
     // Add common filter to var maps here
     df_filter_and_weight_to_var1D_list_map[{"_single_b", "_crossx"}] = {"pair_pt", "pair_eta"}; // crossx as a weighting
 }
 
 // ---------- ----------
 void RDFBasedHistFillingBaseClass::BuildHistBinningMap(){
+    BuildHistBinningMapBaseCommon();
+    BuildHistBinningMapExtra();
+}
 
-	// ------- pT binnings -------
+void RDFBasedHistFillingBaseClass::BuildHistBinningMapBaseCommon(){
+
+    // ------- pT binnings -------
     hist_binning_map["pT_bins_80"] = pms.pT_bins_80;
 
-	// ------- minv log binning -------
+    // ------- minv log binning -------
 
-	static const int nminv_bins_log = 40;
+    static const int nminv_bins_log = 40;
     float minv_logpow[ParamsSet::nSigns];
     minv_logpow[0] = 0.062;
     minv_logpow[1] = 0.045;
@@ -132,14 +150,30 @@ void RDFBasedHistFillingBaseClass::BuildHistBinningMap(){
 // ---------- WRITE OUTPUT & FINALIZE ----------
 
 void RDFBasedHistFillingBaseClass::Finalize(){
+    WriteOutput();
+    Cleanup();
+}
 
+void RDFBasedHistFillingBaseClass::WriteOutput(){
+    WriteOutputBaseCommon();
+    WriteOutputExtra();
+}
+
+void RDFBasedHistFillingBaseClass::WriteOutputBaseCommon(){
     // ----- write output -----
 
     // std::vector<THnD> maps
     TrigEffcyUtils::write_hist_map_vector(hist1D_map, hists_to_not_write);
     TrigEffcyUtils::write_hist_map_vector(hist2D_map, hists_to_not_write);
     TrigEffcyUtils::write_hist_map_vector(hist3D_map, hists_to_not_write);
+}
 
+void RDFBasedHistFillingBaseClass::Cleanup(){
+    CleanupBaseCommon();
+    CleanupExtra();
+}
+
+void RDFBasedHistFillingBaseClass::CleanupBaseCommon(){
     // ----- delete pointers -----
     m_outfile->Close();
     delete m_outfile;
@@ -148,6 +182,7 @@ void RDFBasedHistFillingBaseClass::Finalize(){
         delete kv.second;
     }
 }
+
 
 // ---------- THROW MISSING FIELD IN JSON READING HELPER ----------
 void RDFBasedHistFillingBaseClass::ThrowMissingField(const std::string& field,

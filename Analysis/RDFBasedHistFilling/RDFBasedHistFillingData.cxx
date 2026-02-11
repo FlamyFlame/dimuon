@@ -21,7 +21,12 @@ RDFBasedHistFillingData::RDFBasedHistFillingData(int run_year_input, bool isForS
     std::cout << std::endl;
 }
 
-void RDFBasedHistFillingData::InitializeData(){
+void RDFBasedHistFillingData::InitializeDataImpl(){
+    InitializeDataCommon();
+    InitializeDataExtra();
+}
+
+void RDFBasedHistFillingData::InitializeDataCommon(){
     run_year %= 2000;
 
     isForSoumya_suffix = isForSoumya? "_for_soumya" : "";
@@ -184,10 +189,15 @@ void RDFBasedHistFillingData::BuildHistBinningMap(){
 }
 
 // ---------- ----------
-void RDFBasedHistFillingData::BuildFilterToVarListMap(){
+void RDFBasedHistFillingData::BuildFilterToVarListMapDataImpl(){
+    // data-common filter to variable list maps
+    BuildFilterToVarListMapDataCommon();
 
-    RDFBasedHistFillingBaseClass::BuildFilterToVarListMap();
+    // trigger-efficiency specific filter to variable list map
+    BuildTrgEffcyFilterToVarListMap();
+}
 
+void RDFBasedHistFillingData::BuildFilterToVarListMapDataCommon(){
     for (std::string sign : pair_signs){
 
         df_filter_to_var1D_list_map[sign + ""]         = {"pair_dP_overP", "Dphi", "DR", "DR_zoomin", "pair_y", "pt_asym", "pair_pt_ptlead_ratio"};
@@ -197,24 +207,33 @@ void RDFBasedHistFillingData::BuildFilterToVarListMap(){
         df_filter_and_weight_to_var1D_list_map[{sign + "_wgapcut"   , "_jacobian_corrected"}] = {"DR", "DR_zoomin"};
 
     }
-    
-    BuildTrgEffcyFilterToVarListMap();
 }
 
-
-// ---------- ----------
 void RDFBasedHistFillingData::BuildTrgEffcyFilterToVarListMap(){
-
     TrigEffcyFiltersPrePostSumFlattening();
+    BuildFlattenedTrgEffcyFilterToVarListMap();
+}
 
+void RDFBasedHistFillingData::BuildFlattenedTrgEffcyFilterToVarListMap(){
+    BuildFlattenedTrgEffcyFilterToVarListMapDataCommon();
+    BuildFlattenedTrgEffcyFilterToVarListMapExtra();
+}
+
+void BuildFlattenedTrgEffcyFilterToVarListMapDataCommon(){
     for (auto filter : trg_effcy_filters_1D_pre_sum)    df_filter_to_var1D_list_map[filter] = single_muon_trig_effcy_var1Ds;
     for (auto filter : trg_effcy_filters_2D_3D_pre_sum) df_filter_to_var2D_list_map[filter] = single_muon_trig_effcy_var2Ds;
     for (auto filter : trg_effcy_filters_2D_3D_pre_sum) df_filter_to_var3D_list_map[filter] = single_muon_trig_effcy_var3Ds;
-
     // ----- ADD INVERSE WEIGHTING ONES!! WITH _mu4_mu4noL1_denom, _2mu4_denom (paired with additional filtering) -----
+
 }
 
 void RDFBasedHistFillingData::TrigEffcyFiltersPrePostSumFlattening()
+{
+    TrigEffcyFiltersPrePostSumFlatteningDataCommon();
+    TrigEffcyFiltersPrePostSumFlatteningExtra();
+}
+
+void RDFBasedHistFillingData::TrigEffcyFiltersPrePostSumFlatteningDataCommon()
 {
     // flatten pre-sum levels
     TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_1D_pre_sum, trg_effcy_filters_1D_pre_sum);
@@ -253,9 +272,12 @@ void RDFBasedHistFillingData::TrigEffcyFiltersPrePostSumFlattening()
 }
 
 //--------- DATA HIST POST PROCESSING ---------
-void RDFBasedHistFillingData::HistPostProcess(){
-	RDFBasedHistFillingBaseClass::HistPostProcess();
+void RDFBasedHistFillingData::HistPostProcessDataImpl(){
+    HistPostProcessDataCommon();
+    HistPostProcessDataExtra();
+}
 
+void RDFBasedHistFillingData::HistPostProcessDataCommon(){
     if (trigger_mode == 0 || trigger_mode == 1){
         if (hist_filling_cycle == generic){
             SumSingleMuonTrigEffHists();
@@ -444,11 +466,10 @@ float RDFBasedHistFillingData::EvaluateSingleMuonEffcyPtFitted(bool charge_sign,
 
 float RDFBasedHistFillingData::EvaluateSingleMuonEffcy(bool charge_sign, std::string trg, float pt_2nd, float q_eta_2nd, float phi_2nd){return 0;}
 
-void RDFBasedHistFillingData::Finalize(){
-
+void RDFBasedHistFillingData::WriteOutputExtra(){
     TrigEffcyUtils::write_hist_map_vector(graph_map, graphs_to_not_write);
+}
 
-    RDFBasedHistFillingBaseClass::Finalize();
-
+void RDFBasedHistFillingData::CleanupExtra(){
     for (auto g : graph_map) delete g.second;
 }

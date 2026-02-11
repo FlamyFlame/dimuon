@@ -117,14 +117,30 @@ protected:
     RDFBasedHistFillingData(int run_year_input, bool isForSoumya_input);
 
     virtual void    InitOutput() override;
-    virtual void    InitializeData(); // initializations common for all data types
+    virtual void    InitAnalysisSettingsHook() override{
+        return InitializeDataImpl();
+    }
+
+    void    InitializeDataImpl(); // initializations common for all data types
+    void    InitializeDataCommon(); // initializations common for all data types
+    virtual void    InitializeDataExtra(){} // initializations for specific child-class data types
     virtual void    TriggerModeSettings();
 
     virtual void    BuildHistBinningMap() override;
 
-    virtual void    BuildFilterToVarListMap() override;
-    virtual void    TrigEffcyFiltersPrePostSumFlattening();
-    virtual void    BuildTrgEffcyFilterToVarListMap();
+    void            BuildFilterToVarListMapDataImpl();
+    virtual void    BuildFilterToVarListMapExtra() override{ return BuildFilterToVarListMapDataImpl();  }
+    
+    void            BuildFilterToVarListMapDataCommon();
+    void            BuildTrgEffcyFilterToVarListMap();
+
+    void            TrigEffcyFiltersPrePostSumFlattening();
+    void            TrigEffcyFiltersPrePostSumFlatteningDataCommon();
+    virtual void    TrigEffcyFiltersPrePostSumFlatteningExtra();
+
+    void            BuildFlattenedTrgEffcyFilterToVarListMap();
+    void            BuildFlattenedTrgEffcyFilterToVarListMapDataCommon();
+    virtual void    BuildFlattenedTrgEffcyFilterToVarListMapExtra(){}
 
     virtual void    FillHistograms() override;
     virtual void    FillHistogramsGeneric();
@@ -136,7 +152,13 @@ protected:
 
     virtual void    OpenEffcyPtFitFile() = 0;
 
-    virtual void    HistPostProcess() override;
+    void            HistPostProcessDataImpl();
+    virtual void    HistPostProcessExtra() override{
+        HistPostProcessDataImpl();
+    }
+    void            HistPostProcessDataCommon();
+    virtual void    HistPostProcessDataExtra(){}
+
     virtual void    SumSingleMuonTrigEffHists();
 
     virtual void    CalculateSingleMuonTrigEffcyRatios() = 0;
@@ -151,7 +173,8 @@ protected:
     static float            EvaluateSingleMuonEffcyPtFitted(bool charge_sign, std::string trg, float pt_2nd, float q_eta_2nd, float phi_2nd);
     static float            EvaluateSingleMuonEffcy(bool charge_sign, std::string trg, float pt_2nd, float q_eta_2nd, float phi_2nd);
 
-    virtual void     Finalize() override;
+    virtual void     WriteOutputExtra() override;
+    virtual void     CleanupExtra() override;
 
 public:
 enum HistFillingCycle{
@@ -200,8 +223,10 @@ protected:
 
 // --------------------- protected class methods ---------------------------
 
-    virtual void        Initialize() override;
-    virtual void        TrigEffcyFiltersPrePostSumFlattening() override;
+    virtual void        SetIOPathsHook() override;
+    void                InitializePPExtra();
+    virtual void        InitializeDataExtra() override{ return InitializePPExtra(); }
+    virtual void        TrigEffcyFiltersPrePostSumFlatteningExtra() override;
     
     virtual void        FillHistogramsSingleMuonEffcy() override;
     virtual void        FillHistogramsDimuTrigGivenMu4() override;
@@ -275,10 +300,12 @@ protected:
 
 // --------------------- protected class methods ---------------------------
 
-    virtual void        Initialize() override;
+    virtual void        SetIOPathsHook() override;
+    void                InitializePbPbExtra();
+    virtual void        InitializeDataExtra() override{ return InitializePbPbExtra(); }
     virtual void        BuildHistBinningMap() override;
-    virtual void        BuildTrgEffcyFilterToVarListMap() override;
-    virtual void        TrigEffcyFiltersPrePostSumFlattening() override;
+    virtual void        BuildFlattenedTrgEffcyFilterToVarListMapExtra() override;
+    virtual void        TrigEffcyFiltersPrePostSumFlatteningExtra() override;
 
     virtual void        CreateRDFs() override;
     virtual void        FillHistogramsSingleMuonEffcy() override;
@@ -290,7 +317,8 @@ protected:
 
     virtual void        OpenEffcyPtFitFile() override;
 
-    virtual void        HistPostProcess() override;
+    void                HistPostProcessPbPb() override;
+    virtual void        HistPostProcessDataExtra() override{ return HistPostProcessPbPb();}
     virtual void        SumSingleMuonTrigEffHists() override;
 
     virtual void        CalculateSingleMuonTrigEffcyRatios() override;
