@@ -28,8 +28,6 @@ protected:
     std::vector<float>* truth_m = nullptr;
     std::vector<std::vector<int>>* truth_parents = nullptr;
     std::vector<std::vector<int>>* truth_children = nullptr;
-    // std::vector<std::vector<int>>* truth_muon_parent_ids = nullptr;
-    // std::vector<std::vector<int>>* truth_muon_parent_bars = nullptr;
 
 // --------------------- truth origin parameters ---------------------------
 
@@ -187,7 +185,7 @@ protected:
 public: 
     bool debug_mode_cout_warnings = false;
     bool output_QQpair_tree = true;
-    bool output_truth_hists = false;
+    bool output_truth_hists = true;
 
     bool print_prt_history = false;
     bool print_specific_prt_history = false;

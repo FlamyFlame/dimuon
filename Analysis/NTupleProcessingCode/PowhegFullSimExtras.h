@@ -33,12 +33,41 @@ protected:
     std::vector<float>*      truth_muon_pt;
     std::vector<float>*      truth_muon_eta;
     std::vector<float>*      truth_muon_phi;
-    std::vector<float>*      truth_muon_ch;
-    std::vector<float>*      truth_muon_barcode;
+    std::vector<int>*        truth_muon_ch;
+
+    std::vector<int> resonance_tagged_muon_index_list_reco {};
+    std::vector<int> resonance_tagged_muon_index_list_truth {};
+
+    void ResonanceTaggingReco(){
+        if (!self().mpairRef()) throw std::runtime_error("ResonanceTaggingReco: mpair is nullptr!");
+        auto& pair = *self().mpairRef();
+
+        if constexpr (requires { pair.minv; pair.same_sign; }) {
+            return self().ResonanceTaggingImpl(!pair.same_sign, pair.minv, resonance_tagged_muon_index_list_reco);
+        } else {
+            std::cerr << "ResonanceTaggingReco requires PairT to have members `minv` and `same_sign`" << std::endl;
+            std::cerr << "Returns without reco-minv-based resonance tagging!" << std::endl;
+            return;
+        }
+    }
+    void ResonanceTaggingTruth(){
+        if (!self().mpairRef()) throw std::runtime_error("ResonanceTaggingTruth: mpair is nullptr!");
+        auto& pair = *self().mpairRef();
+
+        if constexpr (requires { pair.truth_minv; pair.truth_same_sign; }) {
+            return self().ResonanceTaggingImpl(!pair.truth_same_sign, pair.truth_minv, resonance_tagged_muon_index_list_truth);
+        } else {
+            std::cerr << "ResonanceTaggingTruth requires PairT to have members `truth_minv` and `truth_same_sign`" << std::endl;
+            std::cerr << "Returns without truth-minv-based resonance tagging!" << std::endl;
+            return;
+        }
+    }
 
 	void InitInputExtra();
     void InitParamsExtra(){
         self().setIsFullsim(true);
+        self().output_QQpair_tree = false;
+        self().output_truth_hists = false;
     }
     void ProcessEventFullsim(int ev_num);
     void CheckBranchPtrsExtra();

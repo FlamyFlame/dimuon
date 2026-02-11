@@ -101,7 +101,27 @@ constexpr bool GetMuPairIsSameSign(const PairT& mupair) {
     }
 }
 
+template <class PairT>
+constexpr float GetMuPairRecoMinv(const PairT& mupair) {
+    if constexpr (requires { mupair.minv; }) {
+        return mupair.minv;
+    } else {
+        static_assert(sizeof(PairT) == 0,
+            "PairT has no truth_minv / minv variable. Add one or specialize GetMuPairMinv.");
+        return 0.f;
+    }
+}
 
+template <class PairT>
+constexpr bool GetMuPairRecoIsSameSign(const PairT& mupair) {
+    if constexpr (requires { mupair.same_sign; }) {
+        return mupair.same_sign;
+    } else {
+        static_assert(sizeof(PairT) == 0,
+            "PairT has no truth_same_sign / same_sign variable. Add one or specialize GetMuPairIsSameSign.");
+        return false;
+    }
+}
 
 template <class PairT, class MuonT, class Derived>
 void DimuonAlgCoreT<PairT, MuonT, Derived>::FillSingleMuonTree(){
@@ -127,23 +147,19 @@ void DimuonAlgCoreT<PairT, MuonT, Derived>::FillMuonPairTree(){
 }
 
 template <class PairT, class MuonT, class Derived>
-void DimuonAlgCoreT<PairT, MuonT, Derived>::ResonanceTaggingV2(){
-    // function that checks if a muon pair comes from the resonance
-  
-    if (!mpair) throw std::runtime_error("ResonanceTaggingV2: mpair is nullptr!");
-    float pair_minv = GetMuPairMinv(*mpair);
-    
-    if (!GetMuPairIsSameSign(*mpair)){ // opposite sign
-        if (pair_minv > pms.minv_upper){ // if minv is too large - treat as a "resonance" and tag both
-            resonance_tagged_muon_index_list_v2.push_back(mpair->m1.ind);
-            resonance_tagged_muon_index_list_v2.push_back(mpair->m2.ind);
+void DimuonAlgCoreT<PairT, MuonT, Derived>::ResonanceTaggingImpl(bool op_sign, float minv, std::vector<int>& resonance_tagged_list){
+
+    if (op_sign){ // opposite sign
+        if (minv > pms.minv_upper){ // if minv is too large - treat as a "resonance" and tag both
+            resonance_tagged_list.push_back(mpair->m1.ind);
+            resonance_tagged_list.push_back(mpair->m2.ind);
             return;
         }
 
-        for (array<float,2> ires : pms.minv_cuts_v2){
-            if (pair_minv > ires[0] && pair_minv < ires[1]){ // if minv fits within a resonance-cut range: tag both as from resonance
-                resonance_tagged_muon_index_list_v2.push_back(mpair->m1.ind);
-                resonance_tagged_muon_index_list_v2.push_back(mpair->m2.ind);
+        for (array<float,2> ires : pms.minv_cuts){
+            if (minv > ires[0] && minv < ires[1]){ // if minv fits within a resonance-cut range: tag both as from resonance
+                resonance_tagged_list.push_back(mpair->m1.ind);
+                resonance_tagged_list.push_back(mpair->m2.ind);
                 return;
             }
         }
@@ -153,29 +169,25 @@ void DimuonAlgCoreT<PairT, MuonT, Derived>::ResonanceTaggingV2(){
 }
 
 template <class PairT, class MuonT, class Derived>
+void DimuonAlgCoreT<PairT, MuonT, Derived>::ResonanceTaggingV2(){
+    // function that checks if a muon pair comes from the resonance
+
+    if (!mpair) throw std::runtime_error("ResonanceTaggingV2: mpair is nullptr!");
+    float   pair_minv = GetMuPairMinv(*mpair);
+    bool    pair_op_sign = (!GetMuPairIsSameSign(*mpair));
+
+    ResonanceTaggingImpl(pair_op_sign, pair_minv, resonance_tagged_muon_index_list_v2);
+}
+
+template <class PairT, class MuonT, class Derived>
 void DimuonAlgCoreT<PairT, MuonT, Derived>::ResonanceTagging(){
     // function that checks if a muon pair comes from the resonance
   
-    if (!mpair) throw std::runtime_error("ResonanceTagging: mpair is nullptr!");
-    float pair_minv = GetMuPairMinv(*mpair);
-    
-    if (!GetMuPairIsSameSign(*mpair)){ // opposite sign
-        if (pair_minv > pms.minv_upper){ // if minv is too large - treat as a "resonance" and tag both
-            resonance_tagged_muon_index_list.push_back(mpair->m1.ind);
-            resonance_tagged_muon_index_list.push_back(mpair->m2.ind);
-            return;
-        }
+    if (!mpair) throw std::runtime_error("ResonanceTaggingV2: mpair is nullptr!");
+    float   pair_minv = GetMuPairMinv(*mpair);
+    bool    pair_op_sign = (!GetMuPairIsSameSign(*mpair));
 
-        for (array<float,2> ires : pms.minv_cuts){
-            if (pair_minv > ires[0] && pair_minv < ires[1]){ // if minv fits within a resonance-cut range: tag both as from resonance
-                resonance_tagged_muon_index_list.push_back(mpair->m1.ind);
-                resonance_tagged_muon_index_list.push_back(mpair->m2.ind);
-                return;
-            }
-        }
-    }
-    
-    return; // not resonance
+    ResonanceTaggingImpl(pair_op_sign, pair_minv, resonance_tagged_muon_index_list);
 }
 
 template <class PairT, class MuonT, class Derived>
