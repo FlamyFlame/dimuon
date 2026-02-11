@@ -101,28 +101,6 @@ constexpr bool GetMuPairIsSameSign(const PairT& mupair) {
     }
 }
 
-template <class PairT>
-constexpr float GetMuPairRecoMinv(const PairT& mupair) {
-    if constexpr (requires { mupair.minv; }) {
-        return mupair.minv;
-    } else {
-        static_assert(sizeof(PairT) == 0,
-            "PairT has no truth_minv / minv variable. Add one or specialize GetMuPairMinv.");
-        return 0.f;
-    }
-}
-
-template <class PairT>
-constexpr bool GetMuPairRecoIsSameSign(const PairT& mupair) {
-    if constexpr (requires { mupair.same_sign; }) {
-        return mupair.same_sign;
-    } else {
-        static_assert(sizeof(PairT) == 0,
-            "PairT has no truth_same_sign / same_sign variable. Add one or specialize GetMuPairIsSameSign.");
-        return false;
-    }
-}
-
 template <class PairT, class MuonT, class Derived>
 void DimuonAlgCoreT<PairT, MuonT, Derived>::FillSingleMuonTree(){
     muonOutTree->Fill();
