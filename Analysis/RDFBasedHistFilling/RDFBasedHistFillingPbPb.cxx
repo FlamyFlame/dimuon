@@ -95,8 +95,7 @@ void RDFBasedHistFillingPbPb::InitializePbPbExtra(){
 }
 
 // ---------- ----------
-void RDFBasedHistFillingPbPb::BuildHistBinningMap(){
-	RDFBasedHistFillingData::BuildHistBinningMap();
+void RDFBasedHistFillingPbPb::BuildHistBinningMapPbPbExtra(){
 
 	hist_binning_map["ctr_bins"] = ctr_bin_edges_double;
 
@@ -401,19 +400,13 @@ void RDFBasedHistFillingPbPb::FillHistogramsMu4GivenMBCtrDep(){}
 void RDFBasedHistFillingPbPb::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(){}
 
 //--------- DATA HIST POST PROCESSING ---------
-void RDFBasedHistFillingPbPb::HistPostProcess(){
-	RDFBasedHistFillingData::HistPostProcess();
-
+void RDFBasedHistFillingPbPb::HistPostProcessPbPb(){
     if ((trigger_mode == 0 || trigger_mode == 1) && hist_filling_cycle == generic){
         MakeAndWriteSingleMuonTrigEffCtrGraphs();
     }
 }
 
-void RDFBasedHistFillingPbPb::SumSingleMuonTrigEffHists(){
-
-	// calling base-class version
-	RDFBasedHistFillingData::SumSingleMuonTrigEffHists();
-
+void RDFBasedHistFillingPbPb::SumSingleMuonTrigEffHistsPbPb(){
     // sum centrality-dependent trigger-efficiency histograms
     TrigEffcyUtils::SumTrigEffHistsGeneric<TH1D, std::string>(
         std::vector<std::string>({"ctr"}),
