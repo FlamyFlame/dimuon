@@ -126,13 +126,20 @@ protected:
     virtual void    InitializeDataExtra(){} // initializations for specific child-class data types
     virtual void    TriggerModeSettings();
 
-    virtual void    BuildHistBinningMap() override;
+    void            BuildHistBinningMapDataExtraImpl();
+    void            BuildHistBinningMapDataCommon();
+    virtual void    BuildHistBinningMapDataExtraHook(){}
+    virtual void    BuildHistBinningMapExtra() override{
+        return BuildHistBinningMapDataExtraImpl();
+    }
 
-    void            BuildFilterToVarListMapDataImpl();
-    virtual void    BuildFilterToVarListMapExtra() override{ return BuildFilterToVarListMapDataImpl();  }
-    
+    void            BuildFilterToVarListMapDataExtraImpl();
+    virtual void    BuildFilterToVarListMapExtra() override{ 
+        return BuildFilterToVarListMapDataExtraImpl();
+    }
     void            BuildFilterToVarListMapDataCommon();
     void            BuildTrgEffcyFilterToVarListMap();
+    virtual void    BuildFilterToVarListMapDataExtraHook(){}
 
     void            TrigEffcyFiltersPrePostSumFlattening();
     void            TrigEffcyFiltersPrePostSumFlatteningDataCommon();
@@ -159,7 +166,9 @@ protected:
     void            HistPostProcessDataCommon();
     virtual void    HistPostProcessDataExtra(){}
 
-    virtual void    SumSingleMuonTrigEffHists();
+    void            SumSingleMuonTrigEffHists();
+    void            SumSingleMuonTrigEffHistsDataCommon();
+    virtual void    SumSingleMuonTrigEffHistsExtra(){}
 
     virtual void    CalculateSingleMuonTrigEffcyRatios() = 0;
     void            CalculateSingleMuonTrigEffcyRatiosHelper(const std::vector<std::string>& categories);
@@ -235,7 +244,8 @@ protected:
 
     virtual void        OpenEffcyPtFitFile() override;
 
-    virtual void        SumSingleMuonTrigEffHists() override;
+    void                SumSingleMuonTrigEffHistsPP() override;
+    virtual void        SumSingleMuonTrigEffHistsExtra() override{ return SumSingleMuonTrigEffHistsPP();}
 
     virtual void        CalculateSingleMuonTrigEffcyRatios() override;
     virtual void        MakeAndWriteSingleMuonTrigEffPtGraphs() override;
@@ -303,7 +313,8 @@ protected:
     virtual void        SetIOPathsHook() override;
     void                InitializePbPbExtra();
     virtual void        InitializeDataExtra() override{ return InitializePbPbExtra(); }
-    virtual void        BuildHistBinningMap() override;
+    void                BuildHistBinningMapPbPbExtra();
+    virtual void        BuildHistBinningMapDataExtraHook() override{ return BuildHistBinningMapPbPbExtra();}
     virtual void        BuildFlattenedTrgEffcyFilterToVarListMapExtra() override;
     virtual void        TrigEffcyFiltersPrePostSumFlatteningExtra() override;
 
@@ -319,7 +330,8 @@ protected:
 
     void                HistPostProcessPbPb() override;
     virtual void        HistPostProcessDataExtra() override{ return HistPostProcessPbPb();}
-    virtual void        SumSingleMuonTrigEffHists() override;
+    void                SumSingleMuonTrigEffHistsPbPb() override;
+    virtual void        SumSingleMuonTrigEffHistsExtra() override{ return SumSingleMuonTrigEffHistsPbPb();}
 
     virtual void        CalculateSingleMuonTrigEffcyRatios() override;
     virtual void        MakeAndWriteSingleMuonTrigEffPtGraphs() override;

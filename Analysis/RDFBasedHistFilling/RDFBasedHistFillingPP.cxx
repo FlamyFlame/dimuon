@@ -135,8 +135,7 @@ void RDFBasedHistFillingPP::FillHistogramsMu4GivenMB(){}
 
 void RDFBasedHistFillingPP::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(){}
 
-void RDFBasedHistFillingPP::SumSingleMuonTrigEffHists(){
-    RDFBasedHistFillingData::SumSingleMuonTrigEffHists();
+void RDFBasedHistFillingPP::SumSingleMuonTrigEffHistsPP(){
 
     // 1D, with mu-sign summing
     TrigEffcyUtils::SumTrigEffHistsGeneric<TH1D, std::string>(

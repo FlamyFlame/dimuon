@@ -158,9 +158,12 @@ void RDFBasedHistFillingData::InitOutput(){
 }
 
 // ---------- ----------
-void RDFBasedHistFillingData::BuildHistBinningMap(){
-    
-    RDFBasedHistFillingBaseClass::BuildHistBinningMap();
+void RDFBasedHistFillingData::BuildHistBinningMapDataExtraImpl(){
+    BuildHistBinningMapDataCommon();
+    BuildHistBinningMapDataExtraHook();
+}
+
+void RDFBasedHistFillingData::BuildHistBinningMapDataCommon(){
 
     // ------- pT binning for single-muon trigger efficieny -------
 
@@ -189,12 +192,13 @@ void RDFBasedHistFillingData::BuildHistBinningMap(){
 }
 
 // ---------- ----------
-void RDFBasedHistFillingData::BuildFilterToVarListMapDataImpl(){
+void RDFBasedHistFillingData::BuildFilterToVarListMapDataExtraImpl(){
     // data-common filter to variable list maps
     BuildFilterToVarListMapDataCommon();
 
     // trigger-efficiency specific filter to variable list map
     BuildTrgEffcyFilterToVarListMap();
+    BuildFilterToVarListMapDataExtraHook();
 }
 
 void RDFBasedHistFillingData::BuildFilterToVarListMapDataCommon(){
@@ -291,6 +295,11 @@ void RDFBasedHistFillingData::HistPostProcessDataCommon(){
 
 //--------- SUMMING 1,2,3D TRIGGER EFFICIENCY HISTOGRAMS ---------
 void RDFBasedHistFillingData::SumSingleMuonTrigEffHists(){
+    SumSingleMuonTrigEffHistsDataCommon();
+    SumSingleMuonTrigEffHistsExtra();
+}
+
+void RDFBasedHistFillingData::SumSingleMuonTrigEffHistsDataCommon(){
 
     // 1D
     TrigEffcyUtils::SumTrigEffHistsGeneric<TH1D, std::string>(
