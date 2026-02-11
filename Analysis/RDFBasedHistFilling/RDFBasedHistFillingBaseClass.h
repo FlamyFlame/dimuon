@@ -117,19 +117,33 @@ protected:
 
 // --------------------- class methods ---------------------------
 
+
     // ----- main functions in workflow -----
-    virtual void    Initialize();
+    void            Initialize();
     void            ProcessData();
-    virtual void    Finalize();
+    void            Finalize();
 
     // ----- data processing -----
     virtual void    CreateRDFs();
     virtual void    FillHistograms() = 0;
-    virtual void    HistPostProcess();
 
-    // ----- initialization -----
-    virtual void    BuildHistBinningMap();
-    virtual void    InitOutput();
+    // ----- data post processing -----
+    void            HistPostProcess();
+    void            HistPostProcessBaseCommon();
+    virtual void    HistPostProcessExtra(){}
+
+    // ----- initialize base & analysis settings -----
+    void            InitializeBaseCommon();
+    virtual void    InitAnalysisSettingsHook(){}
+
+    // ----- initialize I/O -----
+    virtual void    SetIOPathsHook() = 0;
+    void    InitOutput();
+
+    // ----- histogram binning name to vector map -----
+    void            BuildHistBinningMap();
+    void            BuildHistBinningMapBaseCommon();
+    virtual void    BuildHistBinningMapExtra(){}
     
     // ----- json reading -----
     static void     ThrowMissingField(  const std::string& field,
@@ -138,7 +152,19 @@ protected:
     void            PrintVar1DList() const; //print list of 1D variables for testing
     
     // ----- filter & filter-to-variable mapping helpers -----
-    virtual void    BuildFilterToVarListMap();
+    void            BuildFilterToVarListMap();
+    void            BuildFilterToVarListMapBaseCommon();
+    virtual void    BuildFilterToVarListMapExtra(){}
+
+    // ----- write output -----
+    void            WriteOutput();
+    void            WriteOutputBaseCommon();
+    virtual void    WriteOutputExtra(){}
+    
+    // ----- cleanup -----
+    void            Cleanup();
+    void            CleanupBaseCommon();
+    virtual void    CleanupExtra(){}
 
     // ----- hist filling helper functions -----
     
@@ -183,6 +209,7 @@ protected:
 
 public:
 
+    bool debug_mode = false;
     RDFBasedHistFillingBaseClass(){}
   	~RDFBasedHistFillingBaseClass(){}
   	void Run();

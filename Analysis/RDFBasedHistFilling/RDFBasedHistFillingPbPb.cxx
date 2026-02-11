@@ -1,8 +1,6 @@
 #include "RDFBasedHistFillingData.cxx"
 
-void RDFBasedHistFillingPbPb::Initialize(){
-    InitializeData();
-
+void RDFBasedHistFillingPbPb::SetIOPathsHook(){
 	infile_var1D_json = "var1D_pbpb.json";
 
 	std::string run_year_str = std::to_string(run_year);
@@ -16,8 +14,11 @@ void RDFBasedHistFillingPbPb::Initialize(){
 	} else{
 	    throw std::runtime_error("Run year must be 15/18/23/24/25! Current input invalid: " + run_year_str);
 	}
-	
-	InitializePbPb();
+}
+
+void RDFBasedHistFillingPbPb::InitializePbPbExtra(){
+
+	PbPbBaseClass::InitializePbPb();
 
 	std::vector<double> crossx_factors_null = {};
 	crossx_factors_null.assign(ctr_bins.size(), -1.);
@@ -91,8 +92,6 @@ void RDFBasedHistFillingPbPb::Initialize(){
     		categories_essential.push_back(pair_sign + ctr);
 	    }
 	}
-
-	RDFBasedHistFillingBaseClass::Initialize();
 }
 
 // ---------- ----------
@@ -125,10 +124,7 @@ void RDFBasedHistFillingPbPb::BuildHistBinningMap(){
 }
 
 // ---------- ----------
-void RDFBasedHistFillingPbPb::BuildTrgEffcyFilterToVarListMap(){
-
-	RDFBasedHistFillingData::BuildTrgEffcyFilterToVarListMap();
-
+void RDFBasedHistFillingPbPb::BuildFlattenedTrgEffcyFilterToVarListMapExtra(){
     for (auto filter : trg_effcy_filters_1D_pre_sum_w_ctr_summing)    df_filter_to_var1D_list_map[filter] = single_muon_trig_effcy_var1Ds;
     for (auto filter : trg_effcy_filters_2D_3D_pre_sum_w_ctr_summing) df_filter_to_var2D_list_map[filter] = single_muon_trig_effcy_var2Ds;
     for (auto filter : trg_effcy_filters_2D_3D_pre_sum_w_ctr_summing) df_filter_to_var3D_list_map[filter] = single_muon_trig_effcy_var3Ds;
@@ -141,10 +137,8 @@ void RDFBasedHistFillingPbPb::BuildTrgEffcyFilterToVarListMap(){
 }
 
 //--------- BUILD & FLATTERN PRE-SUM, POST-SUM, TO-BE-SUMMED LEVELS ---------
-void RDFBasedHistFillingPbPb::TrigEffcyFiltersPrePostSumFlattening()
+void RDFBasedHistFillingPbPb::TrigEffcyFiltersPrePostSumFlatteningExtra()
 {
-    RDFBasedHistFillingData::TrigEffcyFiltersPrePostSumFlattening();
-
     // build post-sum levels, ctr dep
     TrigEffcyUtils::write_post_sum_levels(levels_trg_effcy_filters_ctr_dep_pre_sum,
                           levels_trg_effcy_to_be_summed,
