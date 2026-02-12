@@ -173,15 +173,15 @@ void PbPbBaseClass<Derived>::SetCrossxFactorsPbPbCtrBinned(int run_yr, const std
 
     if (it != run_yr_and_ctrbin_version_to_crossx_factors_map.end()) {
         crossx_factors_ctr_binned = it->second;
+    }else{        
+        std::cerr << "[WARNING] PbPbBaseClass::SetCrossxFactorsPbPbCtrBinned: "
+                  << "No cross-section factors found for "
+                  << "run_yr=" << run_yr
+                  << ", ctr_binning_v=\"" << ctr_binning_v << "\"" << std::endl
+                  << "Return a list of -1." << std::endl;
+
+        crossx_factors_ctr_binned = crossx_factors_null;
     }
-
-    std::cerr << "[WARNING] PbPbBaseClass::SetCrossxFactorsPbPbCtrBinned: "
-              << "No cross-section factors found for "
-              << "run_yr=" << run_yr
-              << ", ctr_binning_v=\"" << ctr_binning_v << "\"" << std::endl
-              << "Return a list of -1." << std::endl;
-
-    crossx_factors_ctr_binned = crossx_factors_null;
 }
 
 
