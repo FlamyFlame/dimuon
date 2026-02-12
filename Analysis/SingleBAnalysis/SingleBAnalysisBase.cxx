@@ -17,8 +17,7 @@ using namespace ROOT::VecOps;
 // -------------------------- analysis base class --------------------------
 class SingleBAnalysisBase{
 protected:
-    // std::string dataset_base_dir = "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/";
-    std::string dataset_base_dir = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/";
+    std::string dataset_base_dir;
     std::string muon_pair_input_file_name;
 
     constexpr static double pi = 3.14159265358979323846;
@@ -39,20 +38,63 @@ protected:
     std::vector<double> eta_bins;
     constexpr static double eta_min = -2.5, eta_max = 2.5;
 
-    virtual void Initialize();
-    void fillLogBinningArray(std::vector<double>& bins, int nBins, double low, double high);
+    void Initialize();
+    virtual void InitializeExtra(){}
+
+    virtual void SetIOPaths() = 0;
+    virtual void RunAnalysisImpl() = 0;
+
+    void SetDataBaseDir();
+    void SetCommonBinnings();
+    void FillSingleLogBinningArray(std::vector<double>& bins, int nBins, double low, double high);
 
 public:
-    SingleBAnalysisBase(){    }
+    bool isBNL = false; // if true, use BNL paths; if not, use local paths
+
+    SingleBAnalysisBase(){}
     ~SingleBAnalysisBase(){}
 
     void BinningPrinting();
-    virtual void RunAnalysis() = 0;
+
+    virtual void RunAnalysis(){
+        Initialize();
+        RunAnalysisImpl();
+    }
 };
 
 // -------------------------- base-class member functions --------------------------
+void SingleBAnalysisBase::Initialize(){
+    SetDataBaseDir();
+    SetIOPaths();
+    SetCommonBinnings();
+    InitializeExtra();
+}
 
-void SingleBAnalysisBase::fillLogBinningArray(std::vector<double>& bins, int nBins, double low, double high) {
+void SingleBAnalysisBase::SetDataBaseDir(){
+    dataset_base_dir = isBNL    ? "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/"
+                                : "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/";
+}
+
+void SingleBAnalysisBase::SetCommonBinnings(){
+    // Create logarithmic pair-pT bin edges
+    FillSingleLogBinningArray(pT_bins_40,  18, 4.0, 40.0);  // 18 log bins from 4 to 40 GeV
+    FillSingleLogBinningArray(pT_bins_8,   20, 4.0, 8.0);   // 20 log bins from 4 to 8 GeV
+    FillSingleLogBinningArray(pT_bins_60,  20, 8.0, 60.0);  // 20 log bins from 8 to 60 GeV
+    FillSingleLogBinningArray(pT_bins_80,  12, 8.0, 80.0);  // 12 log bins from 8 to 80 GeV
+    FillSingleLogBinningArray(pT_bins_120, 15, 8.0, 120.0);  // 10 log bins from 8 to 120 GeV
+    FillSingleLogBinningArray(pT_bins_150, 15, 8.0, 150.0);  // 15 log bins from 8 to 150 GeV
+    FillSingleLogBinningArray(pT_bins_200, 18, 8.0, 200.0);  // 10 log bins from 8 to 200 GeV
+    FillSingleLogBinningArray(pT_bins_300, 30, 8.0, 300.0);  // 10 log bins from 8 to 200 GeV
+    FillSingleLogBinningArray(pT_bins_500, 30, 8.0, 500.0);  // 10 log bins from 8 to 200 GeV
+
+    // Create eta bin edges
+    eta_bins.clear();
+    for (int i = 0; i <= n_eta_bins; ++i){
+        eta_bins.push_back(eta_min + (eta_max - eta_min) * i / n_eta_bins);
+    }
+}
+
+void SingleBAnalysisBase::FillSingleLogBinningArray(std::vector<double>& bins, int nBins, double low, double high) {
     bins.clear();
 
     double logLow = std::log10(low);
@@ -63,27 +105,6 @@ void SingleBAnalysisBase::fillLogBinningArray(std::vector<double>& bins, int nBi
         bins.push_back(std::pow(10, logLow + i * logStep));
     }
 }
-
-void SingleBAnalysisBase::Initialize(){
-    // // Create logarithmic pair-pT bin edges
-    fillLogBinningArray(pT_bins_40,  18, 4.0, 40.0);  // 18 log bins from 4 to 40 GeV
-    fillLogBinningArray(pT_bins_8,   20, 4.0, 8.0);   // 20 log bins from 4 to 8 GeV
-    fillLogBinningArray(pT_bins_60,  20, 8.0, 60.0);  // 20 log bins from 8 to 60 GeV
-    fillLogBinningArray(pT_bins_80,  12, 8.0, 80.0);  // 12 log bins from 8 to 80 GeV
-    fillLogBinningArray(pT_bins_120, 15, 8.0, 120.0);  // 10 log bins from 8 to 120 GeV
-    fillLogBinningArray(pT_bins_150, 15, 8.0, 150.0);  // 15 log bins from 8 to 150 GeV
-    fillLogBinningArray(pT_bins_200, 18, 8.0, 200.0);  // 10 log bins from 8 to 200 GeV
-    fillLogBinningArray(pT_bins_300, 30, 8.0, 300.0);  // 10 log bins from 8 to 200 GeV
-    fillLogBinningArray(pT_bins_500, 30, 8.0, 500.0);  // 10 log bins from 8 to 200 GeV
-
-    // Create eta bin edges
-    eta_bins.clear();
-    for (int i = 0; i <= n_eta_bins; ++i){
-        eta_bins.push_back(eta_min + (eta_max - eta_min) * i / n_eta_bins);
-    }
-}
-
-
 
 void SingleBAnalysisBase::BinningPrinting(){
     std::cout << "Print out bins for single-muon pT 4-40 GeV" << std::endl;

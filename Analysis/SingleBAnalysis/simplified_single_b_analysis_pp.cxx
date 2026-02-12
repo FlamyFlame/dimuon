@@ -7,6 +7,11 @@ private:
     std::string infile_relative_path;
     std::string outfile_relative_path_truncated;
 
+    virtual void SetIOPaths() override{
+        muon_pair_input_file_name = dataset_base_dir + infile_relative_path;
+    }
+    virtual void RunAnalysisImpl() override;
+
 public:
 
     // 1/(integrated luminosity) factor to normalize to crossx (unit: pb)
@@ -18,15 +23,13 @@ public:
         Initialize();
     }
 
-    void RunAnalysis();
 };
 
 // -------------------------- PP-class member functions --------------------------
 
-void SingleBAnalysisPP::RunAnalysis(){
+void SingleBAnalysisPP::RunAnalysisImpl(){
 
     // Create RDataFrame and apply initial cuts
-    muon_pair_input_file_name = dataset_base_dir + infile_relative_path;
     RDataFrame df_ss("muon_pair_tree_sign1", muon_pair_input_file_name.c_str());
     RDataFrame df_op("muon_pair_tree_sign2", muon_pair_input_file_name.c_str());
     auto rdf_ss_with_signal_cuts = df_ss.Filter(signal_cuts.c_str());

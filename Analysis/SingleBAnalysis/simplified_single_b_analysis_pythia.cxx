@@ -3,21 +3,26 @@
 // -------------------------- pythia analysis class --------------------------
 
 class SingleBAnalysisPythia : public SingleBAnalysisBase{
-public:
-    SingleBAnalysisPythia(){
-        Initialize();
+private:
+    virtual void SetIOPaths() override{
+        muon_pair_input_file_name = dataset_base_dir + "pythia/muon_pairs_pythia_combined_no_data_resonance_cuts.root";
     }
+    virtual void RunAnalysisImpl() override;
+
+public:
+    SingleBAnalysisPythia(){}
     ~SingleBAnalysisPythia(){}
-    void RunAnalysis();
 };
 
 
 // -------------------------- pythia-class member functions --------------------------
 
-void SingleBAnalysisPythia::RunAnalysis() {
+void SingleBAnalysisPythia::SetIOPaths() {
+}
+
+void SingleBAnalysisPythia::RunAnalysisImpl() {
 
     // Create RDataFrame and apply initial cuts
-    muon_pair_input_file_name = dataset_base_dir + "pythia/muon_pairs_pythia_combined_no_data_resonance_cuts.root";
     RDataFrame df("muon_pair_tree_sign2", muon_pair_input_file_name.c_str());
     auto rdf_with_signal_cuts = df.Filter("minv > 1.08 && minv < 2.9 && pair_pt > 8 && !data_resonance_or_reso_contam_tagged_old");
 
