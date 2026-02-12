@@ -1,7 +1,7 @@
 #ifndef MuonPairPythia_h
 #define MuonPairPythia_h
 
-#include "MuonPair.h"
+#include "MuonPairOld.h"
 #include "vector"
 #include <iostream>
 
