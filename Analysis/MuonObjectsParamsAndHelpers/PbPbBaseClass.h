@@ -56,7 +56,6 @@ public:
     static std::vector<double> crossx_factors_pbpb_2023_ctr_binned;
     static std::vector<double> crossx_factors_pbpb_2024_ctr_binned;
 
-
     // -------- public class methods --------
      PbPbBaseClass(){
         BuildPbPbMaps();

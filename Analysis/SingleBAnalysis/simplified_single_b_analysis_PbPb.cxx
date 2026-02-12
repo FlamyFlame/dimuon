@@ -9,9 +9,13 @@ protected:
     std::string infile_relative_path;
     std::string outfile_relative_path_truncated;
 
-    void SetIOPaths();
+    virtual void SetIOPaths() override;
+    virtual void InitializeExtra() override;
+    virtual void RunAnalysisImpl() override;
+
 public:
     SingleBAnalysisPbPb(int run_year_input, std::string ctr_binning_version_input = "default"){
+        isBNL = true; // have to run on BNL --> PbPbBaseClass requires C++20
         run_year = run_year_input % 2000;
         ctr_binning_version = ctr_binning_version_input;
         Initialize(); // run the PbPb version of Initialize()
@@ -19,22 +23,17 @@ public:
     ~SingleBAnalysisPbPb(){}
 
     int RunYear() const { return run_year; }
-    void Initialize();
-    void RunAnalysis();
 };
 
 
 // -------------------------- PbPb-class member functions --------------------------
 
-void SingleBAnalysisPbPb::Initialize(){
-    SetIOPaths();
-    SingleBAnalysisBase::Initialize();
+void SingleBAnalysisPbPb::InitializeExtra(){
     PbPbBaseClass::InitializePbPb();
 }
 
 void SingleBAnalysisPbPb::SetIOPaths(){
     switch (run_year) {
-
         case 18:
             infile_relative_path  = "pbpb_run2/muon_pairs_pbpb_run2.root";
             outfile_relative_path_truncated = "pbpb_run2/pbpb_run2_single_b_ana_hists";
@@ -55,13 +54,13 @@ void SingleBAnalysisPbPb::SetIOPaths(){
                 "Invalid run_year: " + std::to_string(run_year)
             );
     }
+
+    muon_pair_input_file_name = dataset_base_dir + infile_relative_path;
 }
 
-void SingleBAnalysisPbPb::RunAnalysis(){
+void SingleBAnalysisPbPb::RunAnalysisImpl(){
 
     // Create RDataFrame for the diff Centrality groups & signs, correctly weighted
-    muon_pair_input_file_name = dataset_base_dir + infile_relative_path;
-
     RDataFrame df_ss("muon_pair_tree_sign1", muon_pair_input_file_name.c_str());    
     RDataFrame df_op("muon_pair_tree_sign2", muon_pair_input_file_name.c_str());    
 
