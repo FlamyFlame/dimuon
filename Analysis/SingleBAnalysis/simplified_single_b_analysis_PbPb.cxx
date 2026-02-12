@@ -1,21 +1,24 @@
-#include "MuonObjectsParamsAndHelpers/PbPbBaseClass.h"
+#include "../MuonObjectsParamsAndHelpers/PbPbBaseClass.h"
 #include "SingleBAnalysisBase.cxx"
 
 // -------------------------- PbPb analysis class --------------------------
 
-class SingleBAnalysisPbPb : public SingleBAnalysisBase, public PbPbBaseClass{
-private:
+class SingleBAnalysisPbPb : public SingleBAnalysisBase, public PbPbBaseClass<SingleBAnalysisPbPb>{
+protected:
+    int run_year; // 18 gets mapped to run2 (15+18 combined)
     std::string infile_relative_path;
     std::string outfile_relative_path_truncated;
 
+    void SetIOPaths();
 public:
-    SingleBAnalysisPbPb(std::string infile_relative_path_input, std::string outfile_relative_path_input){
-        infile_relative_path = infile_relative_path_input;
-        outfile_relative_path_truncated = outfile_relative_path_input;
+    SingleBAnalysisPbPb(int run_year_input, std::string ctr_binning_version_input = "default"){
+        run_year = run_year_input % 2000;
+        ctr_binning_version = ctr_binning_version_input;
         Initialize(); // run the PbPb version of Initialize()
     }
     ~SingleBAnalysisPbPb(){}
 
+    int RunYear() const { return run_year; }
     void Initialize();
     void RunAnalysis();
 };
@@ -24,10 +27,35 @@ public:
 // -------------------------- PbPb-class member functions --------------------------
 
 void SingleBAnalysisPbPb::Initialize(){
+    SetIOPaths();
     SingleBAnalysisBase::Initialize();
     PbPbBaseClass::InitializePbPb();
 }
 
+void SingleBAnalysisPbPb::SetIOPaths(){
+    switch (run_year) {
+
+        case 18:
+            infile_relative_path  = "pbpb_run2/muon_pairs_pbpb_run2.root";
+            outfile_relative_path_truncated = "pbpb_run2/pbpb_run2_single_b_ana_hists";
+            break;
+
+        case 23:
+            infile_relative_path  = "pbpb_2023/muon_pairs_pbpb_2023_mu4_mu4noL1_no_res_cut.root";
+            outfile_relative_path_truncated = "pbpb_2023/pbpb_2023_single_b_ana_hists_mu4_mu4noL1_no_res_cut";
+            break;
+
+        case 24:
+            infile_relative_path  = "pbpb_2024/muon_pairs_pbpb_2024_single_mu4.root";
+            outfile_relative_path_truncated = "pbpb_2024/pbpb_2024_single_b_ana_hists_single_mu4";
+            break;
+
+        default:
+            throw std::runtime_error(
+                "Invalid run_year: " + std::to_string(run_year)
+            );
+    }
+}
 
 void SingleBAnalysisPbPb::RunAnalysis(){
 
@@ -244,16 +272,13 @@ void SingleBAnalysisPbPb::RunAnalysis(){
 void simplified_single_b_analysis_PbPb(){
     //Run PbPb analyses
 
-    // SingleBAnalysisPbPb pbpb_run2 ("pbpb_run2/muon_pairs_pbpb_run2.root", "pbpb_run2/pbpb_run2_single_b_ana_hists");
-    // pbpb_run2.crossx_factors_ctr_binned = PbPbBaseClass::crossx_factors_pbpb_run2_ctr_binned;
+    // SingleBAnalysisPbPb pbpb_run2 (18); // optionally add ctr_binning_version as 2nd argument
     // pbpb_run2.RunAnalysis();
 
-    // SingleBAnalysisPbPb pbpb_2023 ("pbpb_2023/muon_pairs_pbpb_2023_mu4_mu4noL1_no_res_cut.root", "pbpb_2023/pbpb_2023_single_b_ana_hists_mu4_mu4noL1_no_res_cut");
-    // pbpb_2023.crossx_factors_ctr_binned = PbPbBaseClass::crossx_factors_pbpb_2023_ctr_binned;
+    // SingleBAnalysisPbPb pbpb_2023 (23);
     // pbpb_2023.RunAnalysis();
 
-    SingleBAnalysisPbPb pbpb_2024 ("pbpb_2024/muon_pairs_pbpb_2024_single_mu4.root", "pbpb_2024/pbpb_2024_single_b_ana_hists_single_mu4");
-    pbpb_2024.crossx_factors_ctr_binned = PbPbBaseClass::crossx_factors_pbpb_2024_ctr_binned;
+    SingleBAnalysisPbPb pbpb_2024 (24);
     // pbpb_2024.BinningPrinting();
     pbpb_2024.RunAnalysis();
 }
