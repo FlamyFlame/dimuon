@@ -17,7 +17,8 @@ using namespace ROOT::VecOps;
 // -------------------------- analysis base class --------------------------
 class SingleBAnalysisBase{
 protected:
-    std::string dataset_base_dir = "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/";
+    // std::string dataset_base_dir = "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/";
+    std::string dataset_base_dir = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/";
     std::string muon_pair_input_file_name;
 
     constexpr static double pi = 3.14159265358979323846;
