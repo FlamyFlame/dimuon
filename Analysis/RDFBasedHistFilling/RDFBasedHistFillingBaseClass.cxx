@@ -7,6 +7,8 @@
 #include <array>
 #include <iostream>
 #include <algorithm>
+#include <mutex>
+#include <cmath>
 
 void RDFBasedHistFillingBaseClass::Run(){
 
@@ -653,13 +655,14 @@ ROOT::RDF::TH2DModel RDFBasedHistFillingBaseClass::MakeTH2DModel(const std::stri
     }
 }
 
-ROOT::RDF::TH3DModel RDFBasedHistFillingBaseClass::MakeTH3DModel(const std::string& hname,
-                                              const std::string& xtitle,
-                                              const std::string& ytitle,
-                                              const std::string& ztitle,
-                                              const AxisInfo& bx,
-                                              const AxisInfo& by,
-                                              const AxisInfo& bz) const
+ROOT::RDF::TH3DModel RDFBasedHistFillingBaseClass::MakeTH3DModel(
+                                            const std::string& hname,
+                                            const std::string& xtitle,
+                                            const std::string& ytitle,
+                                            const std::string& ztitle,
+                                            const AxisInfo& bx,
+                                            const AxisInfo& by,
+                                            const AxisInfo& bz) const
 {
     std::string htitle = ";" + xtitle + ";" + ytitle + ";" + ztitle;
 
@@ -667,7 +670,7 @@ ROOT::RDF::TH3DModel RDFBasedHistFillingBaseClass::MakeTH3DModel(const std::stri
     const bool ey = (by.bin_edges != nullptr);
     const bool ez = (bz.bin_edges != nullptr);
 
-    // 1) NONE has bin_edges → use uniform on all
+    // 1) NONE has bin_edges → uniform constructor is fine
     if (!ex && !ey && !ez) {
         return ROOT::RDF::TH3DModel(hname.c_str(), htitle.c_str(),
                                     bx.nbins, bx.min, bx.max,
@@ -675,26 +678,49 @@ ROOT::RDF::TH3DModel RDFBasedHistFillingBaseClass::MakeTH3DModel(const std::stri
                                     bz.nbins, bz.min, bz.max);
     }
 
-    // 2) At least one has bin_edges → all-variable constructor must be used
-    // Define storage for any axis that lacks explicit bin_edges
-    std::vector<double> xStore, yStore, zStore;
+    // 2) At least one has bin_edges → must use all-variable constructor.
+    // Any axis lacking bin_edges must get generated edges with stable lifetime.
 
-    auto makeEdges = [](const AxisInfo& a, std::vector<double>& store) -> const double* {
+    // Pool of generated edge arrays; pointers remain valid for program lifetime.
+    static std::mutex s_edges_mutex;
+    static std::vector<std::vector<double>> s_edges_pool;
+
+    auto edgesPtr = [&](const AxisInfo& a) -> const double* {
         if (a.bin_edges) return a.bin_edges;
+
+        // Defensive checks (optional but nice)
+        if (a.nbins <= 0) {
+            throw std::runtime_error("MakeTH3DModel: nbins <= 0 for axis in hist " + hname);
+        }
+        if (!(a.max > a.min)) {
+            throw std::runtime_error("MakeTH3DModel: axis max <= min for hist " + hname);
+        }
+
+        std::lock_guard<std::mutex> lock(s_edges_mutex);
+
+        s_edges_pool.emplace_back();
+        auto &store = s_edges_pool.back();
         store.resize(a.nbins + 1);
-        double step = (a.max - a.min) / a.nbins;
-        for (int i = 0; i <= a.nbins; ++i)
-            store[i] = a.min + i * step;
+
+        const double step = (a.max - a.min) / static_cast<double>(a.nbins);
+        for (int i = 0; i <= a.nbins; ++i) {
+            store[i] = a.min + static_cast<double>(i) * step;
+        }
+        // Ensure exact endpoints (avoid FP drift at the top edge)
+        store.front() = a.min;
+        store.back()  = a.max;
+
         return store.data();
     };
 
-    const double* xEdges = makeEdges(bx, xStore);
-    const double* yEdges = makeEdges(by, yStore);
-    const double* zEdges = makeEdges(bz, zStore);
+    const double* xEdges = edgesPtr(bx);
+    const double* yEdges = edgesPtr(by);
+    const double* zEdges = edgesPtr(bz);
 
     return ROOT::RDF::TH3DModel(hname.c_str(), htitle.c_str(),
                                 bx.nbins, xEdges,
                                 by.nbins, yEdges,
                                 bz.nbins, zEdges);
 }
+
 

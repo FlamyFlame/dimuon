@@ -158,7 +158,7 @@ void RDFBasedHistFillingData::InitOutput(){
 }
 
 // ---------- ----------
-void RDFBasedHistFillingData::BuildHistBinningMapDataExtraImpl(){
+void RDFBasedHistFillingData::BuildHistBinningMapDataImpl(){
     BuildHistBinningMapDataCommon();
     BuildHistBinningMapDataExtraHook();
 }
@@ -192,7 +192,7 @@ void RDFBasedHistFillingData::BuildHistBinningMapDataCommon(){
 }
 
 // ---------- ----------
-void RDFBasedHistFillingData::BuildFilterToVarListMapDataExtraImpl(){
+void RDFBasedHistFillingData::BuildFilterToVarListMapDataImpl(){
     // data-common filter to variable list maps
     BuildFilterToVarListMapDataCommon();
 
