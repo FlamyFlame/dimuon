@@ -20,13 +20,6 @@ void RDFBasedHistFillingPbPb::InitializePbPbExtra(){
 
 	PbPbBaseClass::InitializePbPb();
 
-	std::vector<double> crossx_factors_null = {};
-	crossx_factors_null.assign(ctr_bins.size(), -1.);
-	crossx_factors_ctr_binned = (run_yr_and_ctrbin_version_to_crossx_factors_map.find(std::pair<int, std::string>(run_year, ctr_binning_version)) 
-									!= run_yr_and_ctrbin_version_to_crossx_factors_map.end())
-								? run_yr_and_ctrbin_version_to_crossx_factors_map.at(std::pair<int, std::string>(run_year, ctr_binning_version))
-								: crossx_factors_null;
-
     levels_trg_effcy_filters_1D_pre_sum = {{"_ss", "_op"}, // add a level of ctr bins for Pb+Pb
                                         {"_mu1passmu4", "_mu2passmu4"},
                                         ctr_bins,

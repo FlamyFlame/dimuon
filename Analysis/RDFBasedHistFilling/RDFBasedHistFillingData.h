@@ -126,16 +126,16 @@ protected:
     virtual void    InitializeDataExtra(){} // initializations for specific child-class data types
     virtual void    TriggerModeSettings();
 
-    void            BuildHistBinningMapDataExtraImpl();
+    void            BuildHistBinningMapDataImpl();
     void            BuildHistBinningMapDataCommon();
     virtual void    BuildHistBinningMapDataExtraHook(){}
     virtual void    BuildHistBinningMapExtra() override{
-        return BuildHistBinningMapDataExtraImpl();
+        return BuildHistBinningMapDataImpl();
     }
 
-    void            BuildFilterToVarListMapDataExtraImpl();
+    void            BuildFilterToVarListMapDataImpl();
     virtual void    BuildFilterToVarListMapExtra() override{ 
-        return BuildFilterToVarListMapDataExtraImpl();
+        return BuildFilterToVarListMapDataImpl();
     }
     void            BuildFilterToVarListMapDataCommon();
     void            BuildTrgEffcyFilterToVarListMap();
@@ -253,6 +253,8 @@ protected:
 
 public:
 
+    int RunYear() const { return run_year; }
+
     explicit RDFBasedHistFillingPP(int run_year_input, bool isForSoumya_input = false)
     : RDFBasedHistFillingData (run_year_input, isForSoumya_input){
         std::cout << "constructor for pp called" << std::endl; 
@@ -264,7 +266,7 @@ public:
 };
 
 // ----------------------------------------------------------------------------------------------------------------
-class RDFBasedHistFillingPbPb : public RDFBasedHistFillingData, public PbPbBaseClass{
+class RDFBasedHistFillingPbPb : public RDFBasedHistFillingData, public PbPbBaseClass<RDFBasedHistFillingPbPb>{
 protected:
 
 // --------------------- protected class variables ---------------------------
