@@ -18,16 +18,23 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_PowhegCore(){
     std::cout << "is_fullsim_overlay? " << is_fullsim_overlay << std::endl;
     std::cout << "perform_truth? " << perform_truth << std::endl;
 
-    mcdir = "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/";
-    data_subdir = is_fullsim_overlay    ? "user.yuhang.TrigRates.dimuon.PowhegPythia.fullsim." + mc_mode + ".Feb2026.v1._MYSTREAM/"
-                                        : ( is_fullsim  ? "user.yuhang.TrigRates.dimuon.PowhegPythia.fullsim." + mc_mode + ".Feb2026.v1._MYSTREAM/"
-                                                        : mc_mode + "_evgen_truth_full_sample/");
+    powheg_dir = "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/";
+    
+    std::string run_year_str = std::to_string(run_year);
+
+    if (is_fullsim_overlay){
+        data_subdir = "user.yuhang.TrigRates.dimuon.PowhegPythia.fullsimOverlay.PbPb" + run_year_str + "." + mc_mode + ".Feb2026.v1._MYSTREAM/";
+    } else if (is_fullsim){
+        data_subdir = "user.yuhang.TrigRates.dimuon.PowhegPythia.fullsim.pp" + run_year_str + "." + mc_mode + ".Feb2026.v1._MYSTREAM/";
+    } else{
+        data_subdir = mc_mode + "_evgen_truth_full_sample/";
+    }
 
     dt_suffix = "";
     if (is_fullsim_overlay){
-        dt_suffix = (perform_truth ? "_fullsim_overlay_w_truth" : "_fullsim_overlay_no_truth");
+        dt_suffix = (perform_truth ? "_fullsim_overlay_PbPb" + run_year_str + "_w_truth" : "_fullsim_overlay_PbPb" + run_year_str + "_no_truth");
     } else if (is_fullsim){
-        dt_suffix = (perform_truth ? "_fullsim_w_truth" : "_fullsim_no_truth");
+        dt_suffix = (perform_truth ? "_fullsim_pp" + run_year_str + "_w_truth" : "_fullsim_pp" + run_year_str + "_no_truth");
     } else{
         dt_suffix = "_truth";
     }
@@ -67,8 +74,8 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInput_PowhegCore(){
     for (int ifile = 5 * (file_batch - 1); ifile < 5 * file_batch; ifile++){
         std::string filename =
             is_fullsim
-            ? (mcdir + data_subdir + "user.yuhang." + task_id + ".MYSTREAM._" + Form("%06d", ifile+1) + ".root")
-            : (mcdir + data_subdir + "mc_truth_" + mc_mode + "_" + Form("%02d", ifile+1) + ".root");
+            ? (powheg_dir + data_subdir + "user.yuhang." + task_id + ".MYSTREAM._" + Form("%06d", ifile+1) + ".root")
+            : (powheg_dir + data_subdir + "mc_truth_" + mc_mode + "_" + Form("%02d", ifile+1) + ".root");
 
         std::cout << filename << std::endl;
         std::ifstream in_file(filename.c_str());
@@ -142,7 +149,7 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::CheckBranchPtrs_PowhegCor
 
 template <class PairT, class MuonT, class Derived, class... Extras>
 void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::OutputTreePathHook(){
-    this->output_file_path = mcdir + data_subdir;
+    this->output_file_path = powheg_dir + data_subdir;
     std::string file_name_base = this->output_single_muon_tree ? "single_muon_trees_powheg" : "muon_pairs_powheg";
 
     this->output_file_path += file_name_base + "_" + mc_mode + dt_suffix + "_part" + std::to_string(file_batch) + ".root";
@@ -156,7 +163,7 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::InitOutputTreesExtra_Powh
 
 template <class PairT, class MuonT, class Derived, class... Extras>
 void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::OutputHistPathHook(){
-    this->output_hist_file_path = mcdir + data_subdir;
+    this->output_hist_file_path = powheg_dir + data_subdir;
     this->output_hist_file_path += "hists_powheg_ntuple_processing_powheg_" + mc_mode + dt_suffix + "_part" + std::to_string(file_batch) + ".root";
 }
 

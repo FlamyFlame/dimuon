@@ -78,32 +78,32 @@ void PowhegTruthExtras<PairT, Derived>::InitOutStreamFiles(){
     if (print_specific_prt_history){
         if (self().mcModeRef() == "cc"){
 
-            m_cc_ss_small_dphi_file = new std::ofstream(Form("%scc_ss_small_dphi.txt", self().mcdirRef().c_str()));
+            m_cc_ss_small_dphi_file = new std::ofstream(Form("%scc_ss_small_dphi.txt", self().powhegDirRef().c_str()));
             *m_cc_ss_small_dphi_file << "Event#\tm1-grp\tm2-grp" << std::endl;
         }else{
-            m_bb_ss_near_file = new std::ofstream(Form("%sbb_ss_near.txt", self().mcdirRef().c_str()));
-            m_bb_ss_away_file = new std::ofstream(Form("%sbb_ss_away.txt", self().mcdirRef().c_str()));
-            m_bb_op_near_one_b_one_btoc_others_file = new std::ofstream(Form("%sbb_op_near_one_b_one_btoc_others.txt", self().mcdirRef().c_str()));
+            m_bb_ss_near_file = new std::ofstream(Form("%sbb_ss_near.txt", self().powhegDirRef().c_str()));
+            m_bb_ss_away_file = new std::ofstream(Form("%sbb_ss_away.txt", self().powhegDirRef().c_str()));
+            m_bb_op_near_one_b_one_btoc_others_file = new std::ofstream(Form("%sbb_op_near_one_b_one_btoc_others.txt", self().powhegDirRef().c_str()));
         }
     }
 
     // ---------------------------------------------------------------------------------------------------------------------------
 
     if (self().mcModeRef() == "bb"){
-        m_unspecified_parent_file = new std::ofstream(self().mcdirRef() + "unspecified_parents_bb.txt");
+        m_unspecified_parent_file = new std::ofstream(self().powhegDirRef() + "unspecified_parents_bb.txt");
         if (print_prt_history){
             for (int isign = 0; isign < ParamsSet::nSigns; isign++){
                 for (int jdphi = 0; jdphi < 2; jdphi++){
-                    m_b_parent_file[isign][jdphi] = new std::ofstream(Form("%sb_parents_%s%s.txt", self().mcdirRef().c_str(), sign_labels[isign].c_str(), dphis[jdphi].c_str()));
+                    m_b_parent_file[isign][jdphi] = new std::ofstream(Form("%sb_parents_%s%s.txt", self().powhegDirRef().c_str(), sign_labels[isign].c_str(), dphis[jdphi].c_str()));
                 }
             }
         }
     }else{
-        m_unspecified_parent_file = new std::ofstream(self().mcdirRef() + "unspecified_parents_cc.txt");
+        m_unspecified_parent_file = new std::ofstream(self().powhegDirRef() + "unspecified_parents_cc.txt");
         if (print_prt_history){
             for (int isign = 0; isign < ParamsSet::nSigns; isign++){
                 for (int jdphi = 0; jdphi < 2; jdphi++){
-                    m_c_parent_file[isign][jdphi] = new std::ofstream(Form("%sc_parents_%s%s.txt", self().mcdirRef().c_str(), sign_labels[isign].c_str(), dphis[jdphi].c_str()));
+                    m_c_parent_file[isign][jdphi] = new std::ofstream(Form("%sc_parents_%s%s.txt", self().powhegDirRef().c_str(), sign_labels[isign].c_str(), dphis[jdphi].c_str()));
                 }
             }
         }
