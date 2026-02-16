@@ -29,6 +29,10 @@ protected:
 
     int file_batch;
     std::string mc_mode;
+
+    int     run_year;
+    bool    isRun3; // auto-determined from run_year
+
     bool    is_fullsim{false}; // if is fullsim, load reco quantities
     bool    is_fullsim_overlay{false}; // if is fullsim overlay, load centrality info
     bool    perform_truth{false};
@@ -39,7 +43,7 @@ protected:
     double filter_effcy_cc = 0.001108;
     // static const int nMCmodes = 2;
 
-    std::string mcdir;
+    std::string powheg_dir;
     std::string data_subdir;
     std::string dt_suffix;
     std::string truth_suffix;
@@ -76,7 +80,7 @@ protected:
   // --------------------- reference API, setters & getters ---------------------------
 
     std::string&                mcModeRef() { return mc_mode; }
-    std::string&                mcdirRef()   { return mcdir; }
+    std::string&                powhegDirRef()   { return powheg_dir; }
     std::vector<float> *&       EventWeightsRef()   { return EventWeights; }
     
     bool                        getIsFullsim(){ return is_fullsim; }
@@ -89,10 +93,11 @@ protected:
 
 // --------------------- class methods ---------------------------
   
-    PowhegAlgCoreT(int file_batch_input, std::string mc_mode_input)
+    explicit PowhegAlgCoreT(int file_batch_input, std::string mc_mode_input, int run_year_input)
     : file_batch (file_batch_input)
-    , mc_mode (mc_mode_input){
-        
+    , mc_mode (mc_mode_input)
+    , run_year (run_year_input){
+        isRun3 = !(run_year <= 18);
         crossx_cut = 5 * pow(10,8);
         std::cout << "Powheg Ntuple processing script:" << std::endl;
         std::cout << "mc_mode: " << mc_mode << std::endl;
