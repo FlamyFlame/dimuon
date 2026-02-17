@@ -9,6 +9,7 @@
 #include "../Utilities/bin_number.cxx"
 #include "../Utilities/proj_range_to_suffix.cxx"
 #include "../Utilities/GeneralUtils.h"
+#include "../Utilities/HistFillUtils.h"
 #include "time.h"
 #include <ROOT/RLogger.hxx>
 #include <ROOT/RDF/InterfaceUtils.hxx>

@@ -1,7 +1,7 @@
 {
     "variables1D": [
         {
-            "hist_name": "Deta",
+            "hist_name": "deta",
             "var_name": "deta",
             "title": "#Delta#eta",
             "binning": {
@@ -11,7 +11,7 @@
             }
         },
         {
-            "hist_name": "Deta_zoomin",
+            "hist_name": "deta_zoomin",
             "var_name": "deta",
             "title": "#Delta#eta",
             "binning": {
@@ -21,7 +21,7 @@
             }
         },
         {
-            "hist_name": "Dphi",
+            "hist_name": "dphi",
             "var_name": "dphi",
             "title": "#Delta#phi",
             "binning": {
@@ -31,7 +31,7 @@
             }
         },
         {
-            "hist_name": "Dphi_zoomin",
+            "hist_name": "dphi_zoomin",
             "var_name": "dphi",
             "title": "#Delta#phi",
             "binning": {
@@ -41,7 +41,7 @@
             }
         },
         {
-            "hist_name": "DR",
+            "hist_name": "dr",
             "var_name": "dr",
             "title": "#DeltaR",
             "binning": {
@@ -51,33 +51,23 @@
             }
         },
         {
-            "hist_name": "DR_zoomin",
+            "hist_name": "dr_zoomin",
             "var_name": "dr",
             "title": "#DeltaR",
             "binning": {
                 "nbins": 20,
                 "min": 0.0,
-                "max": 1.0,
+                "max": 1.0
             }
         },
         {
-            "hist_name": "truth_DR_zoomin",
+            "hist_name": "truth_dr_zoomin",
             "var_name": "truth_dr",
             "title": "#DeltaR",
             "binning": {
                 "nbins": 20,
                 "min": 0.0,
-                "max": 1.0,
-            }
-        },
-        {
-            "hist_name": "DR_0_2",
-            "var_name": "dr",
-            "title": "#DeltaR",
-            "binning": {
-                "nbins": 20,
-                "min": 0.0,
-                "max": 0.2
+                "max": 1.0
             }
         },
         {
@@ -101,13 +91,13 @@
             }
         },
         {
-            "hist_name": "pair_pt_log",
+            "hist_name": "pair_pt",
             "var_name": "pair_pt",
             "title": "p_{T}^{pair} [GeV]",
             "binning": "pT_bins_80"
         },
         {
-            "hist_name": "truth_pair_pt_log",
+            "hist_name": "truth_pair_pt",
             "var_name": "truth_pair_pt",
             "title": "p_{T}^{pair} [GeV]",
             "binning": "pT_bins_80"
@@ -116,25 +106,31 @@
             "hist_name": "pair_eta",
             "var_name": "pair_eta",
             "title": "#eta^{pair}",
-            "binning": "eta_bins_trig_effcy"
+            "binning": "eta_bins_reco_effcy"
+        },
+        {
+            "hist_name": "truth_pair_eta",
+            "var_name": "truth_pair_eta",
+            "title": "#eta^{pair}",
+            "binning": "eta_bins_reco_effcy"
         },
         {
             "hist_name": "eta2",
             "var_name": "m2.eta",
             "title": "#eta_{sublead}",
-            "binning": "eta_bins_trig_effcy"
+            "binning": "eta_bins_reco_effcy"
         },
         {
             "hist_name": "eta1",
             "var_name": "m1.eta",
             "title": "#eta_{lead}",
-            "binning": "eta_bins_trig_effcy"
+            "binning": "eta_bins_reco_effcy"
         },
         {
             "hist_name": "eta_avg",
             "var_name": "etaavg",
             "title": "#bar{#eta}",
-            "binning": "eta_bins_trig_effcy"
+            "binning": "eta_bins_reco_effcy"
         },
         {
             "hist_name": "minv_log",

@@ -1,3 +1,5 @@
+#pragma once
+
 namespace HistFillUtils {
 
     TGraphAsymmErrors* proj_divide_and_write (TH2* hNum2D, TH2* hDen2D, std::map<std::string, TGraphAsymmErrors*>* graph_map = nullptr);

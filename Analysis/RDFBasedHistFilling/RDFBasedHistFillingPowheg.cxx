@@ -20,8 +20,8 @@ void RDFBasedHistFillingPowheg::SetIOPathsHook(){
     for (std::string mc_mode : {"bb", "cc"}){
         mc_mode_to_data_subdir_map[mc_mode]["fullsim_overlay_run2"] = "user.yuhang.TrigRates.dimuon.PowhegPythia.fullsimOverlay.PbPb" + run_year_str + "." + mc_mode + ".Feb2026.v1._MYSTREAM/";
         mc_mode_to_data_subdir_map[mc_mode]["fullsim_overlay_run3"] = "user.yuhang.TrigRates.dimuon.PowhegPythia.fullsimOverlay.PbPb" + run_year_str + "." + mc_mode + ".Feb2026.v1._MYSTREAM/";
-        mc_mode_to_data_subdir_map[mc_mode]["fullsim_run2"]         = "user.yuhang.TrigRates.dimuon.PowhegPythia.fullsim.pp17" + "." + mc_mode + ".Feb2026.v1._MYSTREAM/";
-        mc_mode_to_data_subdir_map[mc_mode]["fullsim_run3"]         = "user.yuhang.TrigRates.dimuon.PowhegPythia.fullsim.pp24" + "." + mc_mode + ".Feb2026.v1._MYSTREAM/";
+        mc_mode_to_data_subdir_map[mc_mode]["fullsim_run2"]         = "user.yuhang.TrigRates.dimuon.PowhegPythia.fullsim.pp17." + mc_mode + ".Feb2026.v1._MYSTREAM/";
+        mc_mode_to_data_subdir_map[mc_mode]["fullsim_run3"]         = "user.yuhang.TrigRates.dimuon.PowhegPythia.fullsim.pp24." + mc_mode + ".Feb2026.v1._MYSTREAM/";
         mc_mode_to_data_subdir_map[mc_mode]["truth"]                = mc_mode + "_evgen_truth_full_sample/";
 
         mc_mode_to_mpair_infile_name_map[mc_mode]["fullsim_overlay_run2"]   = "muon_pairs_powheg_" + mc_mode + "_fullsim_overlay_PbPb" + run_year_str + "_w_truth.root";
@@ -76,7 +76,6 @@ void RDFBasedHistFillingPowheg::CreateBaseRDFsPowhegImpl(){
 }
 
 void RDFBasedHistFillingPowheg::CreateBaseRDFsPowhegCommon(){
-
     // Sum over #entries before filter & calculate weight for normalizing histogram intergrals to crossx * filter efficiencies
     // Where filter efficiencies include all cuts applied in analysis 
 
@@ -95,7 +94,6 @@ void RDFBasedHistFillingPowheg::CreateBaseRDFsPowhegCommon(){
 
     auto df_single_b_weighted = df_op_weighted.Filter("from_same_b");
     df_map.emplace("df_single_b_weighted", df_single_b_weighted);
-
 }
 
 void RDFBasedHistFillingPowheg::FillHistograms(){
