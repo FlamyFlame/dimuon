@@ -27,3 +27,15 @@ decltype(auto) at_checked(const Container& c, const Index& idx, const char* wher
         );
     }
 }
+
+template <typename Map, typename Key, typename Vec>
+void InsertOrAppend(Map& m, const Key& key, const Vec& v_new)
+{
+    auto [it, inserted] = m.try_emplace(key, v_new);
+
+    if (!inserted) {
+        it->second.insert(it->second.end(),
+                          v_new.begin(),
+                          v_new.end());
+    }
+}

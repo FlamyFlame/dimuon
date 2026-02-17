@@ -6,6 +6,9 @@
 #include <vector>
 #include <array>
 #include <iostream>
+#include <sstream>
+#include <fstream>
+#include <stdexcept>
 #include <algorithm>
 #include <mutex>
 #include <cmath>
@@ -33,14 +36,19 @@ void RDFBasedHistFillingBaseClass::Run(){
 void RDFBasedHistFillingBaseClass::ProcessData(){    
     ROOT::EnableImplicitMT();
     
-    CreateRDFs();
+    CreateBaseRDFs();
     FillHistograms();
 
     HistPostProcess();
 }
 
 // ------- Create RDataFrame and keep ownership -------
-void RDFBasedHistFillingBaseClass::CreateRDFs(){
+void RDFBasedHistFillingBaseClass::CreateBaseRDFs(){
+    CreateBaseRDFsBaseCommon();
+    CreateBaseRDFsExtra();
+}
+
+void RDFBasedHistFillingBaseClass::CreateBaseRDFsBaseCommon(){
     rdf_store.emplace_back(std::make_unique<ROOT::RDataFrame>(tree_ss, input_files));
     ROOT::RDF::RNode node_ss = *(rdf_store.back());
     df_map.emplace("df_ss", node_ss);
@@ -82,8 +90,6 @@ void RDFBasedHistFillingBaseClass::HistPostProcess(){
 }
 
 void RDFBasedHistFillingBaseClass::HistPostProcessBaseCommon(){
-    if (debug_mode) std::cout << "Calling HistPostProcess" << std::endl;
-
     // 1) Force completion of all booked actions (1D/2D/3D) before GetPtr()
     std::vector<ROOT::RDF::RResultHandle> handles;
     handles.reserve(hist1d_rresultptr_map.size()
@@ -442,6 +448,11 @@ void RDFBasedHistFillingBaseClass::FillHistogramsSingleDataFrame(const std::stri
     }
 
     std::string suffix = (weight_before_filter)? weight + filter : filter + weight;
+
+    if (debug_mode){
+        std::cout << "FillHistogramsSingleDataFrame: \"weight\" parameter: " << weight << ", weight column: " << wCol << ", suffix: " << suffix << std::endl;
+    }
+
     FillHistogramsSingleDataFrame(suffix, df, wCol, vars1D, vars2D, vars3D, hists_write, hists_1_2_3D_write);
 }
 

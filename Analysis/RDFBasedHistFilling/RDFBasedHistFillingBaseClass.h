@@ -124,7 +124,10 @@ protected:
     void            Finalize();
 
     // ----- data processing -----
-    virtual void    CreateRDFs();
+    void            CreateBaseRDFs();
+    void            CreateBaseRDFsBaseCommon();
+    virtual void    CreateBaseRDFsExtra(){}
+
     virtual void    FillHistograms() = 0;
 
     // ----- data post processing -----

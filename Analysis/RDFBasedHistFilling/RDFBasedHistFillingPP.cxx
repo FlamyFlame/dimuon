@@ -35,7 +35,7 @@ void RDFBasedHistFillingPP::InitializePPExtra(){
     categories_essential = pair_signs;
 }
 
-void RDFBasedHistFillingPP::TrigEffcyFiltersPrePostSumFlatteningExtra(){
+void RDFBasedHistFillingPP::FlattenTrigEffcyFiltersExtra(){
 
     // build to-be-summed levels, with mu-sign summing
     for (int level_ind = 0;
