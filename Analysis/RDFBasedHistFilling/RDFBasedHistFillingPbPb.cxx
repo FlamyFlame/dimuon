@@ -129,7 +129,7 @@ void RDFBasedHistFillingPbPb::BuildFlattenedTrgEffcyFilterToVarListMapExtra(){
 }
 
 //--------- BUILD & FLATTERN PRE-SUM, POST-SUM, TO-BE-SUMMED LEVELS ---------
-void RDFBasedHistFillingPbPb::TrigEffcyFiltersPrePostSumFlatteningExtra()
+void RDFBasedHistFillingPbPb::FlattenTrigEffcyFiltersExtra()
 {
     // build post-sum levels, ctr dep
     TrigEffcyUtils::write_post_sum_levels(levels_trg_effcy_filters_ctr_dep_pre_sum,
@@ -173,13 +173,11 @@ void RDFBasedHistFillingPbPb::TrigEffcyFiltersPrePostSumFlatteningExtra()
 }
 
 // ---------- create essential RDFs ----------
-void RDFBasedHistFillingPbPb::CreateRDFs(){
-	RDFBasedHistFillingBaseClass::CreateRDFs();
-	
+void RDFBasedHistFillingPbPb::CreateBaseRDFsPbPbExtra(){	
 	// create ctr-divided RDFs
 	for (std::string pair_sign : {"_ss", "_op"}){
 		std::string df_name = "df" + pair_sign;
-		ROOT::RDF::RNode& node = map_at_checked(df_map, df_name, Form("CreateRDFs: df_map.at(%s)", df_name.c_str()));
+		ROOT::RDF::RNode& node = map_at_checked(df_map, df_name, Form("CreateBaseRDFsPbPbExtra: df_map.at(%s)", df_name.c_str()));
 	    
 	    for (int ictr = 0; ictr < nCtrBins; ictr++){
 

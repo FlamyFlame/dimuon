@@ -195,10 +195,11 @@ void RDFBasedHistFillingData::BuildHistBinningMapDataCommon(){
 void RDFBasedHistFillingData::BuildFilterToVarListMapDataImpl(){
     // data-common filter to variable list maps
     BuildFilterToVarListMapDataCommon();
+    // extras
+    BuildFilterToVarListMapDataExtraHook();
 
     // trigger-efficiency specific filter to variable list map
     BuildTrgEffcyFilterToVarListMap();
-    BuildFilterToVarListMapDataExtraHook();
 }
 
 void RDFBasedHistFillingData::BuildFilterToVarListMapDataCommon(){
@@ -214,7 +215,7 @@ void RDFBasedHistFillingData::BuildFilterToVarListMapDataCommon(){
 }
 
 void RDFBasedHistFillingData::BuildTrgEffcyFilterToVarListMap(){
-    TrigEffcyFiltersPrePostSumFlattening();
+    FlattenTrigEffcyFilters();
     BuildFlattenedTrgEffcyFilterToVarListMap();
 }
 
@@ -231,13 +232,13 @@ void BuildFlattenedTrgEffcyFilterToVarListMapDataCommon(){
 
 }
 
-void RDFBasedHistFillingData::TrigEffcyFiltersPrePostSumFlattening()
+void RDFBasedHistFillingData::FlattenTrigEffcyFilters()
 {
-    TrigEffcyFiltersPrePostSumFlatteningDataCommon();
-    TrigEffcyFiltersPrePostSumFlatteningExtra();
+    FlattenTrigEffcyFiltersDataCommon();
+    FlattenTrigEffcyFiltersExtra();
 }
 
-void RDFBasedHistFillingData::TrigEffcyFiltersPrePostSumFlatteningDataCommon()
+void RDFBasedHistFillingData::FlattenTrigEffcyFiltersDataCommon()
 {
     // flatten pre-sum levels
     TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_1D_pre_sum, trg_effcy_filters_1D_pre_sum);

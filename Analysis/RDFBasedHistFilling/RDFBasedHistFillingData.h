@@ -141,9 +141,9 @@ protected:
     void            BuildTrgEffcyFilterToVarListMap();
     virtual void    BuildFilterToVarListMapDataExtraHook(){}
 
-    void            TrigEffcyFiltersPrePostSumFlattening();
-    void            TrigEffcyFiltersPrePostSumFlatteningDataCommon();
-    virtual void    TrigEffcyFiltersPrePostSumFlatteningExtra();
+    void            FlattenTrigEffcyFilters();
+    void            FlattenTrigEffcyFiltersDataCommon();
+    virtual void    FlattenTrigEffcyFiltersExtra();
 
     void            BuildFlattenedTrgEffcyFilterToVarListMap();
     void            BuildFlattenedTrgEffcyFilterToVarListMapDataCommon();
@@ -235,7 +235,7 @@ protected:
     virtual void        SetIOPathsHook() override;
     void                InitializePPExtra();
     virtual void        InitializeDataExtra() override{ return InitializePPExtra(); }
-    virtual void        TrigEffcyFiltersPrePostSumFlatteningExtra() override;
+    virtual void        FlattenTrigEffcyFiltersExtra() override;
     
     virtual void        FillHistogramsSingleMuonEffcy() override;
     virtual void        FillHistogramsDimuTrigGivenMu4() override;
@@ -318,9 +318,10 @@ protected:
     void                BuildHistBinningMapPbPbExtra();
     virtual void        BuildHistBinningMapDataExtraHook() override{ return BuildHistBinningMapPbPbExtra();}
     virtual void        BuildFlattenedTrgEffcyFilterToVarListMapExtra() override;
-    virtual void        TrigEffcyFiltersPrePostSumFlatteningExtra() override;
+    virtual void        FlattenTrigEffcyFiltersExtra() override;
 
-    virtual void        CreateRDFs() override;
+    void                CreateBaseRDFsPbPbExtra();
+    virtual void        CreateBaseRDFsExtra() override{ return CreateBaseRDFsPbPbExtra(); }
     virtual void        FillHistogramsSingleMuonEffcy() override;
     virtual void        FillHistogramsDimuTrigGivenMu4() override;
     virtual void        FillHistogramsDimuTrigGivenMu4CtrDep();
