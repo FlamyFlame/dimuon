@@ -169,7 +169,7 @@ void RDFBasedHistFillingBaseClass::WriteOutput(){
 
 void RDFBasedHistFillingBaseClass::WriteOutputBaseCommon(){
     // ----- write output -----
-
+    m_outfile->cd();
     // std::vector<THnD> maps
     HistFillUtils::write_hist_map_vector(hist1D_map, hists_to_not_write);
     HistFillUtils::write_hist_map_vector(hist2D_map, hists_to_not_write);

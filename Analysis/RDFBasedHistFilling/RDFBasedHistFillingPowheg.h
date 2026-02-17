@@ -1,5 +1,8 @@
+#pragma once
+
 #include "RDFBasedHistFillingBaseClass.cxx"
 #include "../Utilities/MC_helpers.h"
+#include "../Utilities/HistFillUtils.h"
 
 class RDFBasedHistFillingPowheg : public virtual RDFBasedHistFillingBaseClass{
 protected:
@@ -15,6 +18,7 @@ protected:
 
     // ----- initialize powheg-specific settings -----
     
+    virtual void    SetIOPathsHook() override;
     void    InitializePowhegImpl(); // initializations common for all Powheg types
     void    InitializePowhegCommon(); // initializations common for all Powheg types
     virtual void    InitializePowhegExtra(){} // initializations for specific child-class Powheg types
@@ -50,7 +54,6 @@ protected:
     virtual void    FillHistogramsTruth(){}
     virtual void    FillHistogramsFullSim(){}
 
-public:
     explicit RDFBasedHistFillingPowheg(bool is_fullsim_input, bool is_fullsim_overlay_input, int run_year_input = 0)
     : is_fullsim(is_fullsim_input), is_fullsim_overlay(is_fullsim_overlay_input), run_year(run_year_input % 2000){
         if (is_fullsim && run_year < 15){
@@ -59,15 +62,19 @@ public:
         isRun3 = !(run_year <= 18);
     }
 
+public:
+    ~RDFBasedHistFillingPowheg(){}
+
 };
 
 class RDFBasedHistFillingPowhegTruth : public virtual RDFBasedHistFillingPowheg{
 protected:
-    virtual void        FillHistogramsTruth() override(){}
+    // virtual void        FillHistogramsTruth() override();
 
 public:
     explicit RDFBasedHistFillingPowhegTruth()
     : RDFBasedHistFillingPowheg(false, false){}
+    ~RDFBasedHistFillingPowhegTruth(){}
 };
 
 class RDFBasedHistFillingPowhegFullsim : public virtual RDFBasedHistFillingPowheg{
@@ -92,6 +99,9 @@ protected:
     void                InitializePowhegFullsimExtra();
     virtual void        InitializePowhegExtra() override{ return InitializePowhegFullsimExtra(); }
     
+    void                BuildHistBinningMapPowhegFullsimExtra();
+    virtual void        BuildHistBinningMapExtra() override{ return BuildHistBinningMapPowhegFullsimExtra();}
+
     void                FlattenFiltersPowhegFullsim();
     void                BuildFlattenedFilterToVarListMapPowhegFullsim();
 
@@ -108,6 +118,7 @@ protected:
 public:
     explicit RDFBasedHistFillingPowhegFullsim(int run_year_input = 17)
     : RDFBasedHistFillingPowheg(true, false, run_year_input){}
+    ~RDFBasedHistFillingPowhegFullsim(){}
 
 };
 
@@ -115,5 +126,6 @@ class RDFBasedHistFillingPowhegFullsimOverlay : public RDFBasedHistFillingPowheg
 public:
     explicit RDFBasedHistFillingPowhegFullsimOverlay(int run_year_input)
     : RDFBasedHistFillingPowheg(true, true, run_year_input){}
+    ~RDFBasedHistFillingPowhegFullsimOverlay(){}
 
 };
