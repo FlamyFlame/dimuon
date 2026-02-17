@@ -171,9 +171,9 @@ void RDFBasedHistFillingBaseClass::WriteOutputBaseCommon(){
     // ----- write output -----
 
     // std::vector<THnD> maps
-    TrigEffcyUtils::write_hist_map_vector(hist1D_map, hists_to_not_write);
-    TrigEffcyUtils::write_hist_map_vector(hist2D_map, hists_to_not_write);
-    TrigEffcyUtils::write_hist_map_vector(hist3D_map, hists_to_not_write);
+    HistFillUtils::write_hist_map_vector(hist1D_map, hists_to_not_write);
+    HistFillUtils::write_hist_map_vector(hist2D_map, hists_to_not_write);
+    HistFillUtils::write_hist_map_vector(hist3D_map, hists_to_not_write);
 }
 
 void RDFBasedHistFillingBaseClass::Cleanup(){

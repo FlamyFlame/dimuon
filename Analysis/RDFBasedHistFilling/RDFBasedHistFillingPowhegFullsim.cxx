@@ -15,8 +15,8 @@ void RDFBasedHistFillingPowhegFullsim::InitializePowhegFullsimExtra(){
 }
 
 void RDFBasedHistFillingPowhegFullsim::FlattenFiltersPowhegFullsim(){
-    TrigEffcyUtils::flatten_levels(levels_reco_effcy_filters, reco_effcy_filters);
-    TrigEffcyUtils::flatten_levels(levels_detector_response_filters, detector_response_filters);
+    HistFillUtils::flatten_levels(levels_reco_effcy_filters, reco_effcy_filters);
+    HistFillUtils::flatten_levels(levels_detector_response_filters, detector_response_filters);
 }
 
 void RDFBasedHistFillingPowhegFullsim::BuildFlattenedFilterToVarListMapPowhegFullsim(){
