@@ -53,20 +53,20 @@ void RDFBasedHistFillingPP::FlattenTrigEffcyFiltersExtra(){
     }
 
     // flatten to-be-summed levels, with mu-sign summing
-    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_to_be_summed_w_musign_summing, trg_effcy_filters_to_be_summed_w_musign_summing);    
+    HistFillUtils::flatten_levels(levels_trg_effcy_filters_to_be_summed_w_musign_summing, trg_effcy_filters_to_be_summed_w_musign_summing);    
 
     // build post-sum levels, with mu-sign summing
-    TrigEffcyUtils::write_post_sum_levels(levels_trg_effcy_filters_1D_pre_sum,
+    HistFillUtils::write_post_sum_levels(levels_trg_effcy_filters_1D_pre_sum,
                           levels_trg_effcy_to_be_summed_w_musign_summing,
                           levels_trg_effcy_filters_1D_post_sum_w_musign_summing);
 
-    TrigEffcyUtils::write_post_sum_levels(levels_trg_effcy_filters_2D_3D_pre_sum,
+    HistFillUtils::write_post_sum_levels(levels_trg_effcy_filters_2D_3D_pre_sum,
                           levels_trg_effcy_to_be_summed_w_musign_summing,
                           levels_trg_effcy_filters_2D_3D_post_sum_w_musign_summing);
 
     // flatten post-sum levels, with mu-sign summing
-    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_1D_post_sum_w_musign_summing, trg_effcy_filters_1D_post_sum_w_musign_summing);
-    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_2D_3D_post_sum_w_musign_summing, trg_effcy_filters_2D_3D_post_sum_w_musign_summing);
+    HistFillUtils::flatten_levels(levels_trg_effcy_filters_1D_post_sum_w_musign_summing, trg_effcy_filters_1D_post_sum_w_musign_summing);
+    HistFillUtils::flatten_levels(levels_trg_effcy_filters_2D_3D_post_sum_w_musign_summing, trg_effcy_filters_2D_3D_post_sum_w_musign_summing);
 }
 
 void RDFBasedHistFillingPP::FillHistogramsSingleMuonEffcy(){
@@ -138,7 +138,7 @@ void RDFBasedHistFillingPP::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(){}
 void RDFBasedHistFillingPP::SumSingleMuonTrigEffHistsPP(){
 
     // 1D, with mu-sign summing
-    TrigEffcyUtils::SumTrigEffHistsGeneric<TH1D, std::string>(
+    HistFillUtils::SumTrigEffHistsGeneric<TH1D, std::string>(
         single_muon_trig_effcy_var1Ds,
         trg_effcy_filters_1D_post_sum_w_musign_summing,
         trg_effcy_filters_to_be_summed_w_musign_summing,
@@ -149,7 +149,7 @@ void RDFBasedHistFillingPP::SumSingleMuonTrigEffHistsPP(){
     );
 
     // 2D, with mu-sign summing
-    TrigEffcyUtils::SumTrigEffHistsGeneric<TH2D, std::array<std::string,2>>(
+    HistFillUtils::SumTrigEffHistsGeneric<TH2D, std::array<std::string,2>>(
         single_muon_trig_effcy_var2Ds,
         trg_effcy_filters_2D_3D_post_sum_w_musign_summing,
         trg_effcy_filters_to_be_summed_w_musign_summing,
@@ -162,7 +162,7 @@ void RDFBasedHistFillingPP::SumSingleMuonTrigEffHistsPP(){
     );
 
     // 3D, with mu-sign summing
-    TrigEffcyUtils::SumTrigEffHistsGeneric<TH3D, std::array<std::string,3>>(
+    HistFillUtils::SumTrigEffHistsGeneric<TH3D, std::array<std::string,3>>(
         single_muon_trig_effcy_var3Ds,
         trg_effcy_filters_2D_3D_post_sum_w_musign_summing,
         trg_effcy_filters_to_be_summed_w_musign_summing,

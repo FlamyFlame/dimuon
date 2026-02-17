@@ -132,44 +132,44 @@ void RDFBasedHistFillingPbPb::BuildFlattenedTrgEffcyFilterToVarListMapExtra(){
 void RDFBasedHistFillingPbPb::FlattenTrigEffcyFiltersExtra()
 {
     // build post-sum levels, ctr dep
-    TrigEffcyUtils::write_post_sum_levels(levels_trg_effcy_filters_ctr_dep_pre_sum,
+    HistFillUtils::write_post_sum_levels(levels_trg_effcy_filters_ctr_dep_pre_sum,
                           levels_trg_effcy_to_be_summed,
                           levels_trg_effcy_filters_ctr_dep_post_sum);
 
     // flatten pre-sum & post-sum levels, ctr dep
-    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_ctr_dep_pre_sum,	trg_effcy_filters_ctr_dep_1D_pre_sum);
-    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_ctr_dep_post_sum, 	trg_effcy_filters_ctr_dep_1D_post_sum);
+    HistFillUtils::flatten_levels(levels_trg_effcy_filters_ctr_dep_pre_sum,	trg_effcy_filters_ctr_dep_1D_pre_sum);
+    HistFillUtils::flatten_levels(levels_trg_effcy_filters_ctr_dep_post_sum, 	trg_effcy_filters_ctr_dep_1D_post_sum);
 
     // flatten pre-sum levels, with ctr (+ musign) summing
-    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_1D_pre_sum_w_musign_ctr_summing, trg_effcy_filters_1D_pre_sum_w_musign_ctr_summing);
-    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_2D_3D_pre_sum_w_musign_ctr_summing, trg_effcy_filters_2D_3D_pre_sum_w_musign_ctr_summing);
+    HistFillUtils::flatten_levels(levels_trg_effcy_filters_1D_pre_sum_w_musign_ctr_summing, trg_effcy_filters_1D_pre_sum_w_musign_ctr_summing);
+    HistFillUtils::flatten_levels(levels_trg_effcy_filters_2D_3D_pre_sum_w_musign_ctr_summing, trg_effcy_filters_2D_3D_pre_sum_w_musign_ctr_summing);
 
-    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_1D_pre_sum_w_ctr_summing, trg_effcy_filters_1D_pre_sum_w_ctr_summing);
-    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_2D_3D_pre_sum_w_ctr_summing, trg_effcy_filters_2D_3D_pre_sum_w_ctr_summing);
+    HistFillUtils::flatten_levels(levels_trg_effcy_filters_1D_pre_sum_w_ctr_summing, trg_effcy_filters_1D_pre_sum_w_ctr_summing);
+    HistFillUtils::flatten_levels(levels_trg_effcy_filters_2D_3D_pre_sum_w_ctr_summing, trg_effcy_filters_2D_3D_pre_sum_w_ctr_summing);
 
     // build post-sum levels, with ctr (+ musign) summing
-    TrigEffcyUtils::write_post_sum_levels(levels_trg_effcy_filters_1D_pre_sum_w_musign_ctr_summing,
+    HistFillUtils::write_post_sum_levels(levels_trg_effcy_filters_1D_pre_sum_w_musign_ctr_summing,
                           levels_trg_effcy_to_be_summed,
                           levels_trg_effcy_filters_1D_post_sum_w_musign_ctr_summing);
 
-    TrigEffcyUtils::write_post_sum_levels(levels_trg_effcy_filters_2D_3D_pre_sum_w_musign_ctr_summing,
+    HistFillUtils::write_post_sum_levels(levels_trg_effcy_filters_2D_3D_pre_sum_w_musign_ctr_summing,
                           levels_trg_effcy_to_be_summed,
                           levels_trg_effcy_filters_2D_3D_post_sum_w_musign_ctr_summing);
 
-    TrigEffcyUtils::write_post_sum_levels(levels_trg_effcy_filters_1D_pre_sum_w_ctr_summing,
+    HistFillUtils::write_post_sum_levels(levels_trg_effcy_filters_1D_pre_sum_w_ctr_summing,
                           levels_trg_effcy_to_be_summed,
                           levels_trg_effcy_filters_1D_post_sum_w_ctr_summing);
 
-    TrigEffcyUtils::write_post_sum_levels(levels_trg_effcy_filters_2D_3D_pre_sum_w_ctr_summing,
+    HistFillUtils::write_post_sum_levels(levels_trg_effcy_filters_2D_3D_pre_sum_w_ctr_summing,
                           levels_trg_effcy_to_be_summed,
                           levels_trg_effcy_filters_2D_3D_post_sum_w_ctr_summing);
 
     // flatten post-sum levels, with ctr (+ musign) summing
-    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_1D_post_sum_w_musign_ctr_summing, trg_effcy_filters_1D_post_sum_w_musign_ctr_summing);
-    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_2D_3D_post_sum_w_musign_ctr_summing, trg_effcy_filters_2D_3D_post_sum_w_musign_ctr_summing);
+    HistFillUtils::flatten_levels(levels_trg_effcy_filters_1D_post_sum_w_musign_ctr_summing, trg_effcy_filters_1D_post_sum_w_musign_ctr_summing);
+    HistFillUtils::flatten_levels(levels_trg_effcy_filters_2D_3D_post_sum_w_musign_ctr_summing, trg_effcy_filters_2D_3D_post_sum_w_musign_ctr_summing);
 
-    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_1D_post_sum_w_ctr_summing, trg_effcy_filters_1D_post_sum_w_ctr_summing);
-    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_2D_3D_post_sum_w_ctr_summing, trg_effcy_filters_2D_3D_post_sum_w_ctr_summing);
+    HistFillUtils::flatten_levels(levels_trg_effcy_filters_1D_post_sum_w_ctr_summing, trg_effcy_filters_1D_post_sum_w_ctr_summing);
+    HistFillUtils::flatten_levels(levels_trg_effcy_filters_2D_3D_post_sum_w_ctr_summing, trg_effcy_filters_2D_3D_post_sum_w_ctr_summing);
 }
 
 // ---------- create essential RDFs ----------
@@ -399,7 +399,7 @@ void RDFBasedHistFillingPbPb::HistPostProcessPbPb(){
 
 void RDFBasedHistFillingPbPb::SumSingleMuonTrigEffHistsPbPb(){
     // sum centrality-dependent trigger-efficiency histograms
-    TrigEffcyUtils::SumTrigEffHistsGeneric<TH1D, std::string>(
+    HistFillUtils::SumTrigEffHistsGeneric<TH1D, std::string>(
         std::vector<std::string>({"ctr"}),
         trg_effcy_filters_ctr_dep_1D_post_sum,
         trg_effcy_filters_to_be_summed,
@@ -410,7 +410,7 @@ void RDFBasedHistFillingPbPb::SumSingleMuonTrigEffHistsPbPb(){
     );
 
     // 1D, with musign + ctr binning
-    TrigEffcyUtils::SumTrigEffHistsGeneric<TH1D, std::string>(
+    HistFillUtils::SumTrigEffHistsGeneric<TH1D, std::string>(
         single_muon_trig_effcy_var1Ds,
         trg_effcy_filters_1D_post_sum_w_musign_ctr_summing,
         trg_effcy_filters_to_be_summed,
@@ -421,7 +421,7 @@ void RDFBasedHistFillingPbPb::SumSingleMuonTrigEffHistsPbPb(){
     );
 
     // 1D, with ctr binning
-    TrigEffcyUtils::SumTrigEffHistsGeneric<TH1D, std::string>(
+    HistFillUtils::SumTrigEffHistsGeneric<TH1D, std::string>(
         single_muon_trig_effcy_var1Ds,
         trg_effcy_filters_1D_post_sum_w_ctr_summing,
         trg_effcy_filters_to_be_summed,
@@ -432,7 +432,7 @@ void RDFBasedHistFillingPbPb::SumSingleMuonTrigEffHistsPbPb(){
     );
 
     // 2D, with musign + ctr binning
-    TrigEffcyUtils::SumTrigEffHistsGeneric<TH2D, std::array<std::string,2>>(
+    HistFillUtils::SumTrigEffHistsGeneric<TH2D, std::array<std::string,2>>(
         single_muon_trig_effcy_var2Ds,
         trg_effcy_filters_2D_3D_post_sum_w_musign_ctr_summing,
         trg_effcy_filters_to_be_summed,
@@ -445,7 +445,7 @@ void RDFBasedHistFillingPbPb::SumSingleMuonTrigEffHistsPbPb(){
     );
 
     // 2D, with ctr binning
-    TrigEffcyUtils::SumTrigEffHistsGeneric<TH2D, std::array<std::string,2>>(
+    HistFillUtils::SumTrigEffHistsGeneric<TH2D, std::array<std::string,2>>(
         single_muon_trig_effcy_var2Ds,
         trg_effcy_filters_2D_3D_post_sum_w_ctr_summing,
         trg_effcy_filters_to_be_summed,
@@ -458,7 +458,7 @@ void RDFBasedHistFillingPbPb::SumSingleMuonTrigEffHistsPbPb(){
     );
 
     // 3D, with musign + ctr binning
-    TrigEffcyUtils::SumTrigEffHistsGeneric<TH3D, std::array<std::string,3>>(
+    HistFillUtils::SumTrigEffHistsGeneric<TH3D, std::array<std::string,3>>(
         single_muon_trig_effcy_var3Ds,
         trg_effcy_filters_2D_3D_post_sum_w_musign_ctr_summing,
         trg_effcy_filters_to_be_summed,
@@ -472,7 +472,7 @@ void RDFBasedHistFillingPbPb::SumSingleMuonTrigEffHistsPbPb(){
     );
 
     // 3D, with ctr binning
-    TrigEffcyUtils::SumTrigEffHistsGeneric<TH3D, std::array<std::string,3>>(
+    HistFillUtils::SumTrigEffHistsGeneric<TH3D, std::array<std::string,3>>(
         single_muon_trig_effcy_var3Ds,
         trg_effcy_filters_2D_3D_post_sum_w_ctr_summing,
         trg_effcy_filters_to_be_summed,
@@ -511,9 +511,9 @@ void RDFBasedHistFillingPbPb::MakeAndWriteSingleMuonTrigEffCtrGraphs(){
         	TH1D* h_ctr_2mu4_AND_mu4_mu4noL1_sepr   = map_at_checked(hist1D_map, 	Form("h_ctr%s%s_2mu4_AND_mu4_mu4noL1_sepr", pT_bin.c_str(), q_eta_bin.c_str()),           
         																			Form("MakeAndWriteSingleMuonTrigEffCtrGraphs: hist1D_map.at(h_ctr%s%s_2mu4_AND_mu4_mu4noL1_sepr)", pT_bin.c_str(), q_eta_bin.c_str()));
 
-		    TrigEffcyUtils::divide_and_write(h_ctr_mu4_mu4noL1_sepr,           h_ctr_mu4_sepr, &graph_map);
-		    TrigEffcyUtils::divide_and_write(h_ctr_2mu4_sepr,                  h_ctr_mu4_sepr, &graph_map);
-		    TrigEffcyUtils::divide_and_write(h_ctr_2mu4_AND_mu4_mu4noL1_sepr,  h_ctr_mu4_sepr, &graph_map);
+		    HistFillUtils::divide_and_write(h_ctr_mu4_mu4noL1_sepr,           h_ctr_mu4_sepr, &graph_map);
+		    HistFillUtils::divide_and_write(h_ctr_2mu4_sepr,                  h_ctr_mu4_sepr, &graph_map);
+		    HistFillUtils::divide_and_write(h_ctr_2mu4_AND_mu4_mu4noL1_sepr,  h_ctr_mu4_sepr, &graph_map);
 		}
 	}
 }

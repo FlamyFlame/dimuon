@@ -1,6 +1,6 @@
 #pragma once
 #include "../MuonObjectsParamsAndHelpers/PbPbBaseClass.h"
-#include "../Utilities/TrigEffcyUtils.h"
+#include "../Utilities/HistFillUtils.h"
 #include "RDFBasedHistFillingBaseClass.cxx"
 
 class RDFBasedHistFillingData : public virtual RDFBasedHistFillingBaseClass{

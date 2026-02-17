@@ -1,4 +1,4 @@
-namespace TrigEffcyUtils {
+namespace HistFillUtils {
 
     TGraphAsymmErrors* proj_divide_and_write (TH2* hNum2D, TH2* hDen2D, std::map<std::string, TGraphAsymmErrors*>* graph_map = nullptr);
     TGraphAsymmErrors* proj_divide_and_write (TH2* hNum2D, TH2* hDen2D, bool projy, int firstbin, int lastbin, std::string proj_range_str, std::map<std::string, TGraphAsymmErrors*>* graph_map = nullptr);
@@ -29,11 +29,11 @@ namespace TrigEffcyUtils {
 
 
 // helper for projection, making & writing of TEfficiency graphs
-TGraphAsymmErrors* TrigEffcyUtils::proj_divide_and_write (TH2* hNum2D, TH2* hDen2D, std::map<std::string, TGraphAsymmErrors*>* graph_map = nullptr) {
+TGraphAsymmErrors* HistFillUtils::proj_divide_and_write (TH2* hNum2D, TH2* hDen2D, std::map<std::string, TGraphAsymmErrors*>* graph_map = nullptr) {
     return proj_divide_and_write(hNum2D, hDen2D, true, 1, -1, "", graph_map);
 }
 
-TGraphAsymmErrors* TrigEffcyUtils::proj_divide_and_write (TH2* hNum2D, TH2* hDen2D, bool projy, int firstbin, int lastbin, std::string proj_range_str, std::map<std::string, TGraphAsymmErrors*>* graph_map = nullptr) {
+TGraphAsymmErrors* HistFillUtils::proj_divide_and_write (TH2* hNum2D, TH2* hDen2D, bool projy, int firstbin, int lastbin, std::string proj_range_str, std::map<std::string, TGraphAsymmErrors*>* graph_map = nullptr) {
     if (!hNum2D || !hDen2D) return (TGraphAsymmErrors*)nullptr;
 
     // suffix that captures projection axis & range
@@ -68,7 +68,7 @@ TGraphAsymmErrors* TrigEffcyUtils::proj_divide_and_write (TH2* hNum2D, TH2* hDen
     return g;
 }
 
-TH1D* TrigEffcyUtils::proj_and_write (TH2* h2D, bool projy, int firstbin = 1, int lastbin = -1, std::string proj_range_str = "", std::map<std::string, TH1D*>* h1D_map = nullptr){
+TH1D* HistFillUtils::proj_and_write (TH2* h2D, bool projy, int firstbin = 1, int lastbin = -1, std::string proj_range_str = "", std::map<std::string, TH1D*>* h1D_map = nullptr){
     if (!h2D) return (TH1D*)nullptr;
 
     // suffix that captures projection axis & range
@@ -87,7 +87,7 @@ TH1D* TrigEffcyUtils::proj_and_write (TH2* h2D, bool projy, int firstbin = 1, in
     return h1D;
 }
 
-TGraphAsymmErrors* TrigEffcyUtils::divide_and_write (TH1* hNum, TH1* hDen, std::map<std::string, TGraphAsymmErrors*>* graph_map = nullptr) {
+TGraphAsymmErrors* HistFillUtils::divide_and_write (TH1* hNum, TH1* hDen, std::map<std::string, TGraphAsymmErrors*>* graph_map = nullptr) {
     if (!hNum || !hDen) return (TGraphAsymmErrors*)nullptr;
 
     auto g = new TGraphAsymmErrors();
@@ -108,7 +108,7 @@ TGraphAsymmErrors* TrigEffcyUtils::divide_and_write (TH1* hNum, TH1* hDen, std::
     return g;
 }
 
-void TrigEffcyUtils::flatten_levels(
+void HistFillUtils::flatten_levels(
     const std::vector<std::vector<std::string>>& levels,
     std::vector<std::string>& flattened)
 {
@@ -149,7 +149,7 @@ void TrigEffcyUtils::flatten_levels(
     }
 }
 
-void TrigEffcyUtils::write_post_sum_levels(
+void HistFillUtils::write_post_sum_levels(
     const std::vector<std::vector<std::string>>& levels_pre_sum,
     const std::vector<int>& levels_to_be_summed,
     std::vector<std::vector<std::string>>& levels_post_sum)
@@ -168,7 +168,7 @@ void TrigEffcyUtils::write_post_sum_levels(
 
 //--------- TEMPLATE FUNCTION FOR SUMMING TRIGGER EFFICIENCY HISTOGRAMS WITH AN ARBITRARY DATATYPE (DIMENSION) ---------
 template <class TH, class Var, class MakeBaseName>
-void TrigEffcyUtils::SumTrigEffHistsGeneric(
+void HistFillUtils::SumTrigEffHistsGeneric(
     const std::vector<Var>& vars,
     const std::vector<std::string>& filters_post_sum,
     const std::vector<std::string>& filters_to_be_summed,
@@ -215,7 +215,7 @@ void TrigEffcyUtils::SumTrigEffHistsGeneric(
 }
 
 template <typename H>
-void TrigEffcyUtils::write_hist_map_vector(
+void HistFillUtils::write_hist_map_vector(
     std::map<std::string, H*>& m,
     const std::vector<std::string>& hists_to_not_write)
 {

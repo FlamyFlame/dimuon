@@ -241,21 +241,21 @@ void RDFBasedHistFillingData::FlattenTrigEffcyFilters()
 void RDFBasedHistFillingData::FlattenTrigEffcyFiltersDataCommon()
 {
     // flatten pre-sum levels
-    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_1D_pre_sum, trg_effcy_filters_1D_pre_sum);
-    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_2D_3D_pre_sum, trg_effcy_filters_2D_3D_pre_sum);
+    HistFillUtils::flatten_levels(levels_trg_effcy_filters_1D_pre_sum, trg_effcy_filters_1D_pre_sum);
+    HistFillUtils::flatten_levels(levels_trg_effcy_filters_2D_3D_pre_sum, trg_effcy_filters_2D_3D_pre_sum);
 
     // build post-sum levels
-    TrigEffcyUtils::write_post_sum_levels(levels_trg_effcy_filters_1D_pre_sum,
+    HistFillUtils::write_post_sum_levels(levels_trg_effcy_filters_1D_pre_sum,
                           levels_trg_effcy_to_be_summed,
                           levels_trg_effcy_filters_1D_post_sum);
 
-    TrigEffcyUtils::write_post_sum_levels(levels_trg_effcy_filters_2D_3D_pre_sum,
+    HistFillUtils::write_post_sum_levels(levels_trg_effcy_filters_2D_3D_pre_sum,
                           levels_trg_effcy_to_be_summed,
                           levels_trg_effcy_filters_2D_3D_post_sum);
 
     // flatten post-sum levels
-    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_1D_post_sum, trg_effcy_filters_1D_post_sum);
-    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_2D_3D_post_sum, trg_effcy_filters_2D_3D_post_sum);
+    HistFillUtils::flatten_levels(levels_trg_effcy_filters_1D_post_sum, trg_effcy_filters_1D_post_sum);
+    HistFillUtils::flatten_levels(levels_trg_effcy_filters_2D_3D_post_sum, trg_effcy_filters_2D_3D_post_sum);
 
     // build to-be-summed levels
     for (int level_ind = 0;
@@ -273,7 +273,7 @@ void RDFBasedHistFillingData::FlattenTrigEffcyFiltersDataCommon()
     }
 
     // flatten to-be-summed levels
-    TrigEffcyUtils::flatten_levels(levels_trg_effcy_filters_to_be_summed, trg_effcy_filters_to_be_summed);
+    HistFillUtils::flatten_levels(levels_trg_effcy_filters_to_be_summed, trg_effcy_filters_to_be_summed);
 }
 
 //--------- DATA HIST POST PROCESSING ---------
@@ -303,7 +303,7 @@ void RDFBasedHistFillingData::SumSingleMuonTrigEffHists(){
 void RDFBasedHistFillingData::SumSingleMuonTrigEffHistsDataCommon(){
 
     // 1D
-    TrigEffcyUtils::SumTrigEffHistsGeneric<TH1D, std::string>(
+    HistFillUtils::SumTrigEffHistsGeneric<TH1D, std::string>(
         single_muon_trig_effcy_var1Ds,
         trg_effcy_filters_1D_post_sum,
         trg_effcy_filters_to_be_summed,
@@ -314,7 +314,7 @@ void RDFBasedHistFillingData::SumSingleMuonTrigEffHistsDataCommon(){
     );
 
     // 2D
-    TrigEffcyUtils::SumTrigEffHistsGeneric<TH2D, std::array<std::string,2>>(
+    HistFillUtils::SumTrigEffHistsGeneric<TH2D, std::array<std::string,2>>(
         single_muon_trig_effcy_var2Ds,
         trg_effcy_filters_2D_3D_post_sum,
         trg_effcy_filters_to_be_summed,
@@ -327,7 +327,7 @@ void RDFBasedHistFillingData::SumSingleMuonTrigEffHistsDataCommon(){
     );
 
     // 3D
-    TrigEffcyUtils::SumTrigEffHistsGeneric<TH3D, std::array<std::string,3>>(
+    HistFillUtils::SumTrigEffHistsGeneric<TH3D, std::array<std::string,3>>(
         single_muon_trig_effcy_var3Ds,
         trg_effcy_filters_2D_3D_post_sum,
         trg_effcy_filters_to_be_summed,
@@ -372,15 +372,15 @@ void RDFBasedHistFillingData::MakeAndWriteSingleMuonTrigEffPtGraphsHelper(const 
             std::string proj_suffix = pairToSuffix(range);
 
             if (isForSoumya){
-                TrigEffcyUtils::proj_and_write(h_pt2nd_vs_q_eta2nd_mu4_sepr,                    true, bin_first, bin_last, proj_suffix, &hist1D_map);
-                TrigEffcyUtils::proj_and_write(h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr,            true, bin_first, bin_last, proj_suffix, &hist1D_map);
-                TrigEffcyUtils::proj_and_write(h_pt2nd_vs_q_eta2nd_2mu4_sepr,                   true, bin_first, bin_last, proj_suffix, &hist1D_map);
-                TrigEffcyUtils::proj_and_write(h_pt2nd_vs_q_eta2nd_2mu4_AND_mu4_mu4noL1_sepr,   true, bin_first, bin_last, proj_suffix, &hist1D_map);
+                HistFillUtils::proj_and_write(h_pt2nd_vs_q_eta2nd_mu4_sepr,                    true, bin_first, bin_last, proj_suffix, &hist1D_map);
+                HistFillUtils::proj_and_write(h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr,            true, bin_first, bin_last, proj_suffix, &hist1D_map);
+                HistFillUtils::proj_and_write(h_pt2nd_vs_q_eta2nd_2mu4_sepr,                   true, bin_first, bin_last, proj_suffix, &hist1D_map);
+                HistFillUtils::proj_and_write(h_pt2nd_vs_q_eta2nd_2mu4_AND_mu4_mu4noL1_sepr,   true, bin_first, bin_last, proj_suffix, &hist1D_map);
             } else{
 
-                TrigEffcyUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr,           h_pt2nd_vs_q_eta2nd_mu4_sepr, true, bin_first, bin_last, proj_suffix, &graph_map);
-                TrigEffcyUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_2mu4_sepr,                  h_pt2nd_vs_q_eta2nd_mu4_sepr, true, bin_first, bin_last, proj_suffix, &graph_map);
-                TrigEffcyUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_2mu4_AND_mu4_mu4noL1_sepr,  h_pt2nd_vs_q_eta2nd_mu4_sepr, true, bin_first, bin_last, proj_suffix, &graph_map);                
+                HistFillUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr,           h_pt2nd_vs_q_eta2nd_mu4_sepr, true, bin_first, bin_last, proj_suffix, &graph_map);
+                HistFillUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_2mu4_sepr,                  h_pt2nd_vs_q_eta2nd_mu4_sepr, true, bin_first, bin_last, proj_suffix, &graph_map);
+                HistFillUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_2mu4_AND_mu4_mu4noL1_sepr,  h_pt2nd_vs_q_eta2nd_mu4_sepr, true, bin_first, bin_last, proj_suffix, &graph_map);                
             }
         }
 
@@ -395,9 +395,9 @@ void RDFBasedHistFillingData::MakeAndWriteSingleMuonTrigEffPtGraphsHelper(const 
 
         if (!h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr || !h_pt2nd_vs_q_eta2nd_mu4_sepr || !h_pt2nd_vs_q_eta2nd_2mu4_sepr || !h_pt2nd_vs_q_eta2nd_2mu4_AND_mu4_mu4noL1_sepr) continue;
 
-        // TrigEffcyUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr,           h_pt2nd_vs_q_eta2nd_mu4_sepr, &graph_map);
-        // TrigEffcyUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_2mu4_sepr,                  h_pt2nd_vs_q_eta2nd_mu4_sepr, &graph_map);
-        // TrigEffcyUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_2mu4_AND_mu4_mu4noL1_sepr,  h_pt2nd_vs_q_eta2nd_mu4_sepr, &graph_map);
+        // HistFillUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr,           h_pt2nd_vs_q_eta2nd_mu4_sepr, &graph_map);
+        // HistFillUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_2mu4_sepr,                  h_pt2nd_vs_q_eta2nd_mu4_sepr, &graph_map);
+        // HistFillUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_2mu4_AND_mu4_mu4noL1_sepr,  h_pt2nd_vs_q_eta2nd_mu4_sepr, &graph_map);
 
         // ----- extract q-eta bins (might be category dependent) -----
         std::vector<double> eta_bins_trig_effcy = {};
@@ -413,14 +413,14 @@ void RDFBasedHistFillingData::MakeAndWriteSingleMuonTrigEffPtGraphsHelper(const 
             std::string proj_suffix = pairToSuffix(range);
 
             if (isForSoumya){
-                TrigEffcyUtils::proj_and_write(h_pt2nd_vs_q_eta2nd_mu4_sepr,                    true, bin_first, bin_last, proj_suffix, &hist1D_map);
-                TrigEffcyUtils::proj_and_write(h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr,            true, bin_first, bin_last, proj_suffix, &hist1D_map);
-                TrigEffcyUtils::proj_and_write(h_pt2nd_vs_q_eta2nd_2mu4_sepr,                   true, bin_first, bin_last, proj_suffix, &hist1D_map);
-                TrigEffcyUtils::proj_and_write(h_pt2nd_vs_q_eta2nd_2mu4_AND_mu4_mu4noL1_sepr,   true, bin_first, bin_last, proj_suffix, &hist1D_map);
+                HistFillUtils::proj_and_write(h_pt2nd_vs_q_eta2nd_mu4_sepr,                    true, bin_first, bin_last, proj_suffix, &hist1D_map);
+                HistFillUtils::proj_and_write(h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr,            true, bin_first, bin_last, proj_suffix, &hist1D_map);
+                HistFillUtils::proj_and_write(h_pt2nd_vs_q_eta2nd_2mu4_sepr,                   true, bin_first, bin_last, proj_suffix, &hist1D_map);
+                HistFillUtils::proj_and_write(h_pt2nd_vs_q_eta2nd_2mu4_AND_mu4_mu4noL1_sepr,   true, bin_first, bin_last, proj_suffix, &hist1D_map);
             } else{
-                TrigEffcyUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr,           h_pt2nd_vs_q_eta2nd_mu4_sepr, true, bin_first, bin_last, proj_suffix, &graph_map);
-                TrigEffcyUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_2mu4_sepr,                  h_pt2nd_vs_q_eta2nd_mu4_sepr, true, bin_first, bin_last, proj_suffix, &graph_map);
-                TrigEffcyUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_2mu4_AND_mu4_mu4noL1_sepr,  h_pt2nd_vs_q_eta2nd_mu4_sepr, true, bin_first, bin_last, proj_suffix, &graph_map);
+                HistFillUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_mu4_mu4noL1_sepr,           h_pt2nd_vs_q_eta2nd_mu4_sepr, true, bin_first, bin_last, proj_suffix, &graph_map);
+                HistFillUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_2mu4_sepr,                  h_pt2nd_vs_q_eta2nd_mu4_sepr, true, bin_first, bin_last, proj_suffix, &graph_map);
+                HistFillUtils::proj_divide_and_write(h_pt2nd_vs_q_eta2nd_2mu4_AND_mu4_mu4noL1_sepr,  h_pt2nd_vs_q_eta2nd_mu4_sepr, true, bin_first, bin_last, proj_suffix, &graph_map);
             }
         }
     }
@@ -477,7 +477,7 @@ float RDFBasedHistFillingData::EvaluateSingleMuonEffcyPtFitted(bool charge_sign,
 float RDFBasedHistFillingData::EvaluateSingleMuonEffcy(bool charge_sign, std::string trg, float pt_2nd, float q_eta_2nd, float phi_2nd){return 0;}
 
 void RDFBasedHistFillingData::WriteOutputExtra(){
-    TrigEffcyUtils::write_hist_map_vector(graph_map, graphs_to_not_write);
+    HistFillUtils::write_hist_map_vector(graph_map, graphs_to_not_write);
 }
 
 void RDFBasedHistFillingData::CleanupExtra(){
