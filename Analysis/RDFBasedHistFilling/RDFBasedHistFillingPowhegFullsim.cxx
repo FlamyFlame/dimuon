@@ -5,7 +5,7 @@ void RDFBasedHistFillingPowhegFullsim::InitializePowhegFullsimExtra(){
     
     levels_reco_effcy_filters = {
         {"_ss", "_op", "_single_b"}, // all truth-same/op-sign pairs & truth single-b-signal pairs
-        {"", "_pair_pass_medium", "_pair_pass_tight"}
+        {"_pair_pass_resonance_truth", "_pair_pass_medium", "_pair_pass_tight"}
     };
 
     levels_detector_response_filters = {
@@ -21,13 +21,15 @@ void RDFBasedHistFillingPowhegFullsim::FlattenFiltersPowhegFullsim(){
 
 void RDFBasedHistFillingPowhegFullsim::BuildFlattenedFilterToVarListMapPowhegFullsim(){
     reco_effcy_var1Ds = {
-        "truth_pair_pt", "truth_pair_eta", "truth_dr_zoomin"
+        "truth_pair_pt", "truth_pair_eta", "truth_dr_zoomin", "truth_dr_2_0", "truth_minv_zoomin"
     };
 
     reco_effcy_var2Ds = {
         {"truth_pair_pt", "truth_pair_eta"}, 
         {"truth_pair_pt", "truth_dr_zoomin"}, 
-        {"truth_pair_eta", "truth_dr_zoomin"}
+        {"truth_pair_eta", "truth_dr_zoomin"},
+        {"truth_pair_pt", "truth_minv_zoomin"}, 
+        {"truth_minv_zoomin", "truth_dr_zoomin"}
     };
 
     reco_effcy_var3Ds = {
@@ -68,8 +70,10 @@ void RDFBasedHistFillingPowhegFullsim::CreateBaseRDFsPowhegFullsimExtra(){
         std::string df_name = "df" + pair_catgr;
         ROOT::RDF::RNode& node = map_at_checked(df_map, df_name + "_weighted", Form("CreateBaseRDFsPowhegFullsimExtra: df_map.at(%s)", (df_name + "_weighted").c_str()));
 
-        df_map.emplace(df_name + "_pair_pass_medium_weighted" , node.Filter("pair_pass_medium"));
-        df_map.emplace(df_name + "_pair_pass_tight_weighted"  , node.Filter("pair_pass_tight"));
+        df_map.emplace(df_name + "_pair_pass_resonance_truth_weighted" , node.Filter("pair_pass_resonance_truth"));
+
+        df_map.emplace(df_name + "_pair_pass_medium_weighted" , node.Filter("pair_pass_medium && pair_pass_resonance_truth"));
+        df_map.emplace(df_name + "_pair_pass_tight_weighted"  , node.Filter("pair_pass_tight && pair_pass_resonance_truth"));
     }
 }
 
@@ -100,7 +104,7 @@ void RDFBasedHistFillingPowhegFullsim::FillHistogramsFullSimDetecResp(){
 void RDFBasedHistFillingPowhegFullsim::FillHistogramsFullSimRecoEffcies(){
     try{
         for (std::string pair_catgr : {"_ss", "_op", "_single_b"}){
-            for (auto quality_catgr : {"", "_pair_pass_medium", "_pair_pass_tight"}){ // mu4 selection
+            for (auto quality_catgr : {"_pair_pass_resonance_truth", "_pair_pass_medium", "_pair_pass_tight"}){ // mu4 selection
 
                 std::string filter = pair_catgr + quality_catgr;
                 std::string df_name = "df" + filter + "_weighted"; // e.g, df_ss_mu1passmu4
