@@ -53,6 +53,7 @@ protected:
 
     std::string run_period;
     std::string wp_suffix; // working point suffix
+    std::string truth_resn_filter; // working point suffix
     std::string wp_filter; // working point suffix
 
     PlotCommonConfig cfg;
@@ -61,12 +62,15 @@ protected:
     std::string infile_name;
     TFile* infile{nullptr};
     std::vector<std::string> pair_vars_for_det_resp = {"pair_pt", "minv_zoomin", "dr_zoomin"};
-    std::vector<std::string> pair_vars_for_1d_reco_effcy = {"truth_pair_pt", "truth_pair_eta", "truth_dr_zoomin"};
+    // std::vector<std::string> pair_vars_for_1d_reco_effcy = {"truth_pair_pt", "truth_pair_eta", "truth_dr_zoomin"};
+    std::vector<std::string> pair_vars_for_1d_reco_effcy = {"truth_pair_pt", "truth_pair_eta", "truth_dr_zoomin", "truth_dr_2_0", "truth_minv_zoomin"};
 
     std::vector<std::array<std::string,2>> pair_vars_for_2d_reco_effcy = {
         {"truth_pair_pt", "truth_pair_eta"}, 
         {"truth_pair_pt", "truth_dr_zoomin"}, 
-        {"truth_pair_eta", "truth_dr_zoomin"}
+        {"truth_pair_eta", "truth_dr_zoomin"},
+        {"truth_pair_pt", "truth_minv_zoomin"}, 
+        {"truth_minv_zoomin", "truth_dr_zoomin"}
     };
     
 
@@ -87,7 +91,8 @@ protected:
     bool Initialize() {
         run_period = isRun3? "run3" : "run2";
         wp_suffix = tight_WP? "_tightWP" : "_mediumWP";
-        wp_filter = tight_WP? "_pair_pass_tight" : "_pair_pass_medium" + wp_filter;
+        wp_filter = tight_WP? "_pair_pass_tight" : "_pair_pass_medium";
+        truth_resn_filter = "_pair_pass_resonance_truth"; // set to "" to turn off
 
         data_dir = "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/powheg/powheg_fullsim/";
         infile_name = "histograms_powheg_fullsim_pp" + std::to_string(run_year) + ".root";
@@ -214,7 +219,7 @@ protected:
             gPad->SetLogx(logx);
 
             const std::string hnum_name_ss   = "h_" + var + "_ss" + wp_filter;
-            const std::string hdenom_name_ss = "h_" + var + "_ss";
+            const std::string hdenom_name_ss = "h_" + var + "_ss" + truth_resn_filter;
 
             TH1D* h_num_ss   = dynamic_cast<TH1D*>(infile->Get(hnum_name_ss.c_str()));
             TH1D* h_den_ss   = dynamic_cast<TH1D*>(infile->Get(hdenom_name_ss.c_str()));
@@ -253,7 +258,7 @@ protected:
             gPad->SetLogx(logx);
 
             const std::string hnum_name_op   = "h_" + var + "_op" + wp_filter;
-            const std::string hdenom_name_op = "h_" + var + "_op";
+            const std::string hdenom_name_op = "h_" + var + "_op" + truth_resn_filter;
 
             TH1D* h_num_op = dynamic_cast<TH1D*>(infile->Get(hnum_name_op.c_str()));
             TH1D* h_den_op = dynamic_cast<TH1D*>(infile->Get(hdenom_name_op.c_str()));
@@ -317,7 +322,7 @@ protected:
             gPad->SetRightMargin(0.14);
 
             const std::string hnum_ss   = "h_" + vary + "_vs_" + varx + "_ss" + wp_filter;
-            const std::string hden_ss   = "h_" + vary + "_vs_" + varx + "_ss";
+            const std::string hden_ss   = "h_" + vary + "_vs_" + varx + "_ss" + truth_resn_filter;
 
             TH2D* h_num_ss = dynamic_cast<TH2D*>(infile->Get(hnum_ss.c_str()));
             TH2D* h_den_ss = dynamic_cast<TH2D*>(infile->Get(hden_ss.c_str()));
@@ -353,7 +358,7 @@ protected:
             gPad->SetRightMargin(0.14);
 
             const std::string hnum_op   = "h_" + vary + "_vs_" + varx + "_op" + wp_filter;
-            const std::string hden_op   = "h_" + vary + "_vs_" + varx + "_op";
+            const std::string hden_op   = "h_" + vary + "_vs_" + varx + "_op" + truth_resn_filter;
 
             TH2D* h_num_op = dynamic_cast<TH2D*>(infile->Get(hnum_op.c_str()));
             TH2D* h_den_op = dynamic_cast<TH2D*>(infile->Get(hden_op.c_str()));
@@ -411,7 +416,7 @@ void Plot1DRecoEffcySingleBOpCompr()
 
         // ---- opposite sign ----
         const std::string hnum_name_op   = "h_" + var + "_op" + wp_filter;
-        const std::string hdenom_name_op = "h_" + var + "_op";
+        const std::string hdenom_name_op = "h_" + var + "_op" + truth_resn_filter;
 
         TH1D* h_num_op = dynamic_cast<TH1D*>(infile->Get(hnum_name_op.c_str()));
         TH1D* h_den_op = dynamic_cast<TH1D*>(infile->Get(hdenom_name_op.c_str()));
@@ -421,7 +426,7 @@ void Plot1DRecoEffcySingleBOpCompr()
 
         // ---- single-b ----
         const std::string hnum_name_single_b   = "h_" + var + "_single_b" + wp_filter;
-        const std::string hdenom_name_single_b = "h_" + var + "_single_b";
+        const std::string hdenom_name_single_b = "h_" + var + "_single_b" + truth_resn_filter;
 
         TH1D* h_num_single_b = dynamic_cast<TH1D*>(infile->Get(hnum_name_single_b.c_str()));
         TH1D* h_den_single_b = dynamic_cast<TH1D*>(infile->Get(hdenom_name_single_b.c_str()));
