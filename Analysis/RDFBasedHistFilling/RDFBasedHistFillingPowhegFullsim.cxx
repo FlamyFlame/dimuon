@@ -21,7 +21,7 @@ void RDFBasedHistFillingPowhegFullsim::FlattenFiltersPowhegFullsim(){
 
 void RDFBasedHistFillingPowhegFullsim::BuildFlattenedFilterToVarListMapPowhegFullsim(){
     reco_effcy_var1Ds = {
-        "truth_pair_pt", "truth_pair_eta", "truth_dr_zoomin", "truth_minv_zoomin"
+        "truth_pair_pt", "truth_pair_eta", "truth_dr_zoomin", "truth_dr_2_0", "truth_minv_zoomin"
     };
 
     reco_effcy_var2Ds = {
