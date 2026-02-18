@@ -19,8 +19,8 @@ protected:
     // ----- initialize powheg-specific settings -----
     
     virtual void    SetIOPathsHook() override;
-    void    InitializePowhegImpl(); // initializations common for all Powheg types
-    void    InitializePowhegCommon(); // initializations common for all Powheg types
+    void            InitializePowhegImpl(); // initializations common for all Powheg types
+    void            InitializePowhegCommon(); // initializations common for all Powheg types
     virtual void    InitializePowhegExtra(){} // initializations for specific child-class Powheg types
 
     virtual void    InitAnalysisSettingsHook() override{
