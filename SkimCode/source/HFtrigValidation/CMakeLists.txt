@@ -33,6 +33,7 @@ atlas_add_library( HFtrigValidationLib src/*.cxx
                    GoodRunsListsLib
                    ZdcAnalysisLib
                    HIEventUtilsLib
+                   MuonAnalysisInterfacesLib
                    PMGAnalysisInterfacesLib
                    PMGToolsLib
 )

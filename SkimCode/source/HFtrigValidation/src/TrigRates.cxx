@@ -116,7 +116,7 @@ TrigRates::TrigRates(const std::string& name, ISvcLocator* pSvcLocator)
   declareProperty("IsRun3"                , m_isRun3 = true                 );
 
   declareProperty("MuonSelectionTool"     , m_muonSelection                 );
-  #if defined(__ATHENA_21p2__) || defined(__ATHENA_24p2__)
+  #if defined(HF_IS_R21) || defined(HF_IS_R25)
     declareProperty("TriggerMatchTool"    , m_matchTool                     );
   #else
     declareProperty("MuonTriggerMatchTool", m_matchTool                     );
@@ -164,7 +164,7 @@ StatusCode TrigRates::initialize(){
 
    if(m_use_trigger  ){
      if(m_isRun3){
-       #ifdef __ATHENA_24p2__
+      #if defined(HF_IS_R25)
        //https://twiki.cern.ch/twiki/bin/view/Atlas/R22TriggerAnalysis
        m_trigTool.setTypeAndName("Trig::TrigDecisionTool/TrigDecisionTool");
        CHECK(m_trigTool.setProperty("NavigationFormat","TrigComposite"));
@@ -185,7 +185,7 @@ StatusCode TrigRates::initialize(){
         CHECK( m_matchTool.retrieve());
        //CHECK( m_matchTool.setProperty("TrigDecisionTool",m_trigTool.getHandle()));
        
-       #if defined(__ATHENA_21p2__) || defined(__ATHENA_24p2__)
+      #if defined(HF_IS_R21) || defined(HF_IS_R25)
        // CHECK( m_muonmatchTool.retrieve());
        #endif
       }
@@ -536,7 +536,7 @@ void TrigRates::AddTriggerBranches(){
    }
    if(m_store_acoplanar_muon){
      for(auto trigger_name: m_ListOfDiMuonTriggers){
-        #if defined(__ATHENA_21p2__) || defined(__ATHENA_24p2__)
+        #if defined(HF_IS_R21) || defined(HF_IS_R25)
         //Branch storing trigger matching for offline objects
         std::string BranchName="b_";BranchName+=trigger_name;
         std::string BranchName2="dimuon_"+BranchName;
@@ -733,7 +733,7 @@ StatusCode TrigRates::ProcessVertex(){
 //Muons
 void TrigRates::InitMuons(TTree *l_OutTree){
   if(m_store_single_muon){
-    #if defined(__ATHENA_24p2__)
+    #if defined(HF_IS_R25)
     l_OutTree->Branch("muon_match_mu4roi",&m_muon_match_mu4roi);
     l_OutTree->Branch("muon_match_mu6roi",&m_muon_match_mu6roi);
     #endif
@@ -843,7 +843,7 @@ void TrigRates::InitMuons(TTree *l_OutTree){
 }
 void TrigRates::ClearMuons()
 {
-   #if defined(__ATHENA_24p2__)
+  #if defined(HF_IS_R25)
    m_muon_match_mu4roi.clear();
    m_muon_match_mu6roi.clear();
    #endif
@@ -1112,7 +1112,7 @@ StatusCode TrigRates::ProcessMuons(){
     bool is_matched=false;
     if(m_store_single_muon && m_use_trigger){
       for(std::string trig_chain_name:m_ListOfMuonTriggers){
-        #if defined(__ATHENA_21p2__) || defined(__ATHENA_24p2__)
+        #if defined(HF_IS_R21) || defined(HF_IS_R25)
         if(m_matchTool->match(*Muon, trig_chain_name, m_muonTriggerMatchDR)==true){ //}
         #else
         if(m_matchTool->match(Muon, trig_chain_name, m_muonTriggerMatchDR)==true){
@@ -1125,7 +1125,7 @@ StatusCode TrigRates::ProcessMuons(){
           m_trigger_match_map[trig_chain_name]->push_back(false);
         }
 
-        #if defined(__ATHENA_21p2__) || defined(__ATHENA_24p2__)
+        #if defined(HF_IS_R21) || defined(HF_IS_R25)
         m_trigger_match_map_0_01[trig_chain_name]->push_back(m_matchTool->match(*Muon, trig_chain_name, 0.01));
         //https://gitlab.cern.ch/atlas/athena/-/blob/21.2/Trigger/TrigAnalysis/TriggerMatchingTool/Root/MatchingTool.cxx#L146
         m_trigger_match_map_V3[trig_chain_name]->push_back(m_matchTool->match(*Muon, trig_chain_name, m_muonTriggerMatchDR, true));
@@ -1143,7 +1143,7 @@ StatusCode TrigRates::ProcessMuons(){
     if(m_store_single_muon && m_use_trigger){
       for(std::string trig_chain_name:m_ListOfMuonTriggers){
         bool match=false;
-        #ifndef __ATHENA_24p2__ //This part fails for Rel>=22 currently (works for Rel21)
+        #ifdef HF_IS_R21 //This part fails for Rel>=22 currently (works for Rel21)
         auto cg = m_trigTool->getChainGroup(trig_chain_name);     
         auto fc = cg->features();
         auto MuFeatureContainers=fc.containerFeature<xAOD::MuonContainer>();
@@ -1342,7 +1342,6 @@ StatusCode TrigRates::ProcessMuons(){
         m_muon_pair_muon2_trk_charge  .push_back(m_muon_trk_charge  [j]);
 
         //Trigger matching
-        #if defined(__ATHENA_21p2__) || defined(__ATHENA_24p2__)
         if(m_use_trigger){
           std::vector<const xAOD::IParticle*> myParticles;
           myParticles.push_back(muon_particle_map[i]);
@@ -1366,7 +1365,6 @@ StatusCode TrigRates::ProcessMuons(){
 
           }
         }
-        #endif
       } // end loop 2nd muon in pair
     } // end loop 1st muon in pair
   } // end if statement on m_store_acoplanar_muon
@@ -1704,11 +1702,12 @@ int TrigRates::GetTrackQuality(const xAOD::TrackParticle* track,const xAOD::Vert
   //-------------------------------------------------------------------------------------------------
   bool pass_hi_tight_loose_d0_z0=true;
   if(pass_hi_tight==false){
-    #ifndef __ATHENA_24p2__
-    const auto& taccept = m_trkSelTool_HITight->getTAccept();
-    #else
-    const auto& taccept = m_trkSelTool_HITight->accept(*track, pv);
-    #endif
+    // #if !defined(HF_IS_R25)
+    // const auto& taccept = m_trkSelTool_HITight->getTAccept();
+    // #else
+    const auto& taccept = m_trkSelTool_HITight->accept(*track, pv); // test: this seems to be available at R21 already
+                                                                    // see /cvmfs/atlas.cern.ch/repo/sw/software/21.2/AthAnalysis/21.2.200/InstallArea/x86_64-centos7-gcc8-opt/src/InnerDetector/InDetRecTools/InDetTrackSelectionTool/InDetTrackSelectionTool/IInDetTrackSelectionTool.h
+    // #endif
     static const auto d0Index = taccept.getCutPosition("D0");
     static const auto z0Index = taccept.getCutPosition("Z0SinTheta");
     static const auto nCuts = taccept.getNCuts();
@@ -2193,7 +2192,7 @@ StatusCode TrigRates::ProcessTruthVertex(){
 
 
 void TrigRates::InitMcEvents(TTree *l_OutTree){
-  #if defined(__ATHENA_24p2__)
+  #if defined(HF_IS_R25)
   l_OutTree->Branch("mc_pt"    , &m_mc_pt    );
   l_OutTree->Branch("mc_px"    , &m_mc_px    );
   l_OutTree->Branch("mc_py"    , &m_mc_py    );

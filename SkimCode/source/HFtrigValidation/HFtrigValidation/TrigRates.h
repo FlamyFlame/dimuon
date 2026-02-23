@@ -21,7 +21,7 @@
 
 // #include "TrigMuonMatching/ITrigMuonMatching.h"
 
-#if defined(__ATHENA_21p2__) || defined(__ATHENA_24p2__)
+#if defined(HF_IS_R21) || defined(HF_IS_R25)
   #include "AsgTools/AnaToolHandle.h"
   #include "AsgAnalysisInterfaces/IGoodRunsListSelectionTool.h"
   #include "MuonAnalysisInterfaces/IMuonSelectionTool.h"
@@ -58,7 +58,7 @@ private:
    bool                        m_is_evgen       =false;//=true for EvGen only (withour reconstruction)
    bool                        m_use_trigger    = true;//=true then use the Trigger (make branches, use decision)
    bool                        m_store_MC_weight_names;//=true then store weight names
-   int                         m_store_L1       =0    ;//set to 1 for storing L1 TBP/TAP/TAV values
+   bool                        m_store_L1       =false;//set to true for storing L1 TBP/TAP/TAV values
    std::string                 m_Trigger_Chains       ;//Trigger Chains for TrigDecision and branches
    std::string                 m_Muon_Trigger_Chains  ;//Trigger Chains for TrigDecision and branches
    std::string                 m_DiMuon_Trigger_Chains;//Trigger Chains for TrigDecision and branches
@@ -249,10 +249,10 @@ private:
    void InitMcEvents(TTree *l_OutTree);
    StatusCode ProcessMcEvents();
 
-   #if defined(__ATHENA_24p2__)
+  #if defined(HF_IS_R25)
    std::vector<bool > m_muon_match_mu4roi;
    std::vector<bool > m_muon_match_mu6roi;
-   #endif
+  #endif
    
    std::vector<float> m_truth_muon_pt  ;
    std::vector<float> m_truth_muon_eta ;
@@ -420,11 +420,11 @@ private:
    
    ToolHandle<PMGTools::IPMGTruthWeightTool> m_weightTool;    // weight tool (recording both the name and value of the weights)
    
-   #if defined(__ATHENA_24p2__)
+   #if defined(HF_IS_R25)
      asg::AnaToolHandle<Trig::TrigDecisionTool>  m_trigTool;
      ToolHandle<Trig::IMatchingTool>             m_matchTool;
      // ToolHandle<Trig::ITrigMuonMatching>         m_muonmatchTool; // tool for (di)muon trigger matching
-   #elif defined(__ATHENA_21p2__)
+   #elif defined(HF_IS_R21)
      ToolHandle<Trig::TrigDecisionTool>          m_trigTool;
      ToolHandle<Trig::IMatchingTool>             m_matchTool;
      // ToolHandle<Trig::ITrigMuonMatching>         m_muonmatchTool; // tool for (di)muon trigger matching
