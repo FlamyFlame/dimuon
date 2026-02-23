@@ -1,7 +1,12 @@
 #include "DimuonDataAlgCoreT.h"
 
 template <class PairT, class MuonT, class Derived, class... Extras>
-void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::PrintInstructions_DataCore(){
+void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::PrintInstructions(){
+    PrintInstructionsHook();
+}
+
+template <class PairT, class MuonT, class Derived, class... Extras>
+void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::PrintInstructions_DataCore(){
 	std::string datatype = isPbPb? "PbPb" : "PP";
 	std::cout << datatype << " Data Ntuple processing script:" << std::endl;
     std::cout << "The following variable(s) are required by constructor:" << std::endl;
@@ -46,7 +51,7 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::PrintInstructions_DataCo
 }
 
 template <class PairT, class MuonT, class Derived, class... Extras>
-void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::InitParams_DataCore(){
+void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_DataCore(){
     this->isMC = false; // is MC: regardless of truth only or fullsim
     
     run_year = run_year % 2000; // e.g, 2023 --> 23
@@ -68,7 +73,7 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::InitParams_DataCore(){
 }
 
 template <class PairT, class MuonT, class Derived, class... Extras>
-void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::InitInput_DataCore(){
+void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInput_DataCore(){
     std::string base_dir = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/";
     std::string dt_str = isPbPb? "pbpb" : "pp";
     std::string data_subdir = isRun3? dt_str + "_20" + std::to_string(run_year) + "/" : dt_str + "_run2/";
@@ -89,7 +94,7 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::InitInput_DataCore(){
 }
 
 template <class PairT, class MuonT, class Derived, class... Extras>
-void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::InitInputBranchesSingleMuonAnalysis_DataCore(){
+void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputBranchesSingleMuonAnalysis_DataCore(){
     fChainRef()->SetBranchAddress("muon_pt"              , &muon_pt);
     fChainRef()->SetBranchAddress("muon_eta"             , &muon_eta);
     fChainRef()->SetBranchAddress("muon_phi"             , &muon_phi);
@@ -119,7 +124,7 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::InitInputBranchesSingleM
 }
 
 template <class PairT, class MuonT, class Derived, class... Extras>
-void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::InitInputBranchesDimuonAnalysis_DataCore(){
+void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputBranchesDimuonAnalysis_DataCore(){
 
     fChainRef()->SetBranchAddress("RunNumber"                   , &RunNumber);
     fChainRef()->SetBranchAddress("lbn"                         , &lbn);
@@ -230,7 +235,7 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::InitInputBranchesDimuonA
 }
 
 template <class PairT, class MuonT, class Derived, class... Extras>
-void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::TrigModeToSuffixMap(){
+void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::TrigModeToSuffixMap(){
     trig_suffix = "";
 
     switch(trigger_mode){
@@ -256,7 +261,7 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::TrigModeToSuffixMap(){
 
 
 template <class PairT, class MuonT, class Derived, class... Extras>
-void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::InitOutputSettings_DataCore() {
+void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitOutputSettings_DataCore() {
     // Common suffix setup
     std::string tight_suffix = (requireTight) ? "_tight" : "";
     TrigModeToSuffixMap(); // Sets trig_suffix based on trigger_mode
@@ -290,14 +295,10 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::InitOutputSettings_DataC
     output_file_path = data_dir + file_name_base + outfile_ending;
     output_hist_file_path = data_dir + "hists_cut_acceptance" + outfile_ending;
 
-    // Histograms file
-    m_outHistFile = new TFile(output_hist_file_path.c_str(), "recreate");
-
-
 }
 
 template <class PairT, class MuonT, class Derived, class... Extras>
-bool DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::TrigMatch(int pair_ind, int m1_ind, int m2_ind){
+bool DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::TrigMatch(int pair_ind, int m1_ind, int m2_ind){
 	//Trigger match for muon pair or single muon
 
 	try{
@@ -376,7 +377,7 @@ bool DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::TrigMatch(int pair_ind, 
 }
 
 template <class PairT, class MuonT, class Derived, class... Extras>
-void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::FillMuonPair_DataCore(int pair_ind){
+void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::FillMuonPair_DataCore(int pair_ind){
   	if (debug_mode) std::cout << "DEBUG: Calling DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::FillMuonPair" << std::endl;
   	
   	mpairRef()->run_number = RunNumber;
@@ -422,7 +423,7 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::FillMuonPair_DataCore(in
 
 
 template <class PairT, class MuonT, class Derived, class... Extras>
-bool DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::PassCuts_DataCore(bool requireTight){
+bool DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::PassCuts_DataCore(bool requireTight){
 
 	//require some quality cuts on the muons
 	if((mpairRef()->m1.quality&mpairRef()->m2.quality&1  )==0) return false;//combined muon
@@ -455,7 +456,7 @@ bool DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::PassCuts_DataCore(bool r
 
 	// for both muons, require muon + track charge to agree
 	if (turn_on_track_charge){
-		if (mpairRef()->m1_trk_charge != mpairRef()->m1.charge || mpairRef()->m2_trk_charge != mpairRef()->m2.charge) return false;
+        if (mpairRef()->m1.trk_charge != mpairRef()->m1.charge || mpairRef()->m2.trk_charge != mpairRef()->m2.charge) return false;
 	}
 	h_cutAcceptanceRef()[mpairRef()->m1.charge != mpairRef()->m2.charge]->Fill(static_cast<int>(CutsCommon::pass_muon_trk_charge) + 0.5, mpairRef()->weight); // always fill if NOT turn on track charge
 	
@@ -464,13 +465,13 @@ bool DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::PassCuts_DataCore(bool r
 
 
 template <class PairT, class MuonT, class Derived, class... Extras>
-bool DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::IsPhotoProduction(){
+bool DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::IsPhotoProduction(){
     return (!(mpairRef()->same_sign) && mpairRef()->asym < 0.05 && mpairRef()->acop < 0.01);
 }
 
 
 template <class PairT, class MuonT, class Derived, class... Extras>
-void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::ProcessDataHook(){
+void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook(){
 
 	nentries = fChainRef()->GetEntries();//number of events
 	for (Long64_t jentry=0; jentry<nentries;jentry++) {//loop over the events
@@ -511,7 +512,7 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::ProcessDataHook(){
     			if(!TrigMatch(pair_ind, mpairRef()->m1.ind, mpairRef()->m2.ind)) continue;
     			h_cutAcceptanceRef()[mpairRef()->m1.charge != mpairRef()->m2.charge]->Fill(static_cast<int>(CutsCommon::pass_trigger_match) + 0.5, mpairRef()->weight);
 
-    			if (!PassCuts())continue;
+                if (!this->PassCuts())continue;
     			
     			mpairRef()->pair_pass_tight = (mpairRef()->m1.quality&mpairRef()->m2.quality&16); //tag tight muon pairs
     		
@@ -542,7 +543,7 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::ProcessDataHook(){
 
     			// photo-production cut
     			if (isPbPb){
-    			  	if (!(trigger_effcy_calc && !filter_out_photo_resn_for_trig_effcy) && IsPhotoProduction(mpairRef())) continue;
+              	if (!(trigger_effcy_calc && !filter_out_photo_resn_for_trig_effcy) && IsPhotoProduction()) continue;
     			  	h_cutAcceptanceRef()[mpairRef()->m1.charge != mpairRef()->m2.charge]->Fill(static_cast<int>(CutsPbPb::pass_photoprod) + 0.5, mpairRef()->weight);      	
     			}
 
@@ -585,7 +586,7 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras>::ProcessDataHook(){
 
     			//------------------------------------------------------------
     			// perform additional pair-level analysis if needed
-    			PerformAdditionalPairAnalysis();
+                PerformAdditionalPairAnalysisHook();
 
     			if(output_single_muon_tree){
     			  it = std::find(muon_index_list.begin(),muon_index_list.end(),mpairRef()->m1.ind);

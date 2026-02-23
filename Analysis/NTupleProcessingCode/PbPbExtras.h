@@ -1,9 +1,15 @@
 #pragma once
 
 #include "../MuonObjectsParamsAndHelpers/MuonPairPbPb.h"
-#include "DimuonDataAnalysisBaseClass.c"
+#include "TTree.h"
 
+template <class PairT, class MuonT, class Derived, class... Extras>
+class DimuonDataAlgCoreT;
+
+template <class Derived>
 class PbPbExtras{
+    template <class, class, class, class...> friend class DimuonDataAlgCoreT;
+
     // Read through the N-tuple, apply appropriate cuts, including killing pairs from resonances or photoproduction
     // output muon-pair or single-muon information into a TTree
 protected:
@@ -38,8 +44,10 @@ protected:
 
 public :
     bool turn_on_ctr_binned_tree_writing = false;
-    
-    explicit PbPbExtras(int run_year_input, int file_batch_input);
+
+    Derived& self() { return static_cast<Derived&>(*this); }
+    const Derived& self() const { return static_cast<const Derived&>(*this); }
+
     ~PbPbExtras(){}
 };
 

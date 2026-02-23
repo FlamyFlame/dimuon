@@ -14,9 +14,9 @@ lsetup "views LCG_107a_ATLAS_2 x86_64-el9-gcc13-opt"
 
 # Run the analysis
 root -b -l << EOF
-	.L PbPbDataNTupleFirstPass.c
+	.L DataAnalysisClasses.h
 
-	PbPbDataNTupleFirstPass pbpb_24 (24, $file_batch);
+	PbPbAnalysis pbpb_24 (24, $file_batch);
 	pbpb_24.resonance_cut_mode = 0;
 	pbpb_24.trigger_mode = 2;
 	pbpb_24.Run();

@@ -3,32 +3,23 @@
 #include "TLorentzVector.h"
 #include "time.h"
 
-
-PbPbDataNTupleFirstPass::PbPbDataNTupleFirstPass(int run_year_input, int file_batch_input)
-    : DimuonDataAnalysisBaseClass(run_year_input, file_batch_input){
-        isPbPb = true;
-        cutLabels.assign(cutLabelsPbPb.begin(), cutLabelsPbPb.end()); // cuts (filters) on muon pairs, read from muon_pair_enums_data.h
-        numCuts = static_cast<int>(CutsPbPb::nCuts_PbPb_data);
-        PrintInstructions();
-}
-
 template <class Derived>
 void PbPbExtras<Derived>::PerformTChainFill(){
 
-  fChain = new TChain("HeavyIonD3PD","HeavyIonD3PD");
-  fChain->SetMakeClass(1);
+  self().fChainRef() = new TChain("HeavyIonD3PD","HeavyIonD3PD");
+  self().fChainRef()->SetMakeClass(1);
 
   std::string file_path;
-  if (!isRun3){
-    std::string data_trigeffcy_dir = "user.soumya.TrigRates.physics_HP.PbPb20" + std::to_string(run_year) + ".15April2022._MYSTREAM/";
-    file_path = data_dir + data_trigeffcy_dir + "data_pbpb" + std::to_string(run_year) + "_trigeffcy_part" + std::to_string(file_batch) + ".root";
+  if (!self().isRun3){
+    std::string data_trigeffcy_dir = "user.soumya.TrigRates.physics_HP.PbPb20" + std::to_string(self().run_year) + ".15April2022._MYSTREAM/";
+    file_path = self().data_dir + data_trigeffcy_dir + "data_pbpb" + std::to_string(self().run_year) + "_trigeffcy_part" + std::to_string(self().file_batch) + ".root";
   } else{
-    file_path = data_dir + "data_pbpb" + std::to_string(run_year) + "_part" + std::to_string(file_batch) + ".root";
+    file_path = self().data_dir + "data_pbpb" + std::to_string(self().run_year) + "_part" + std::to_string(self().file_batch) + ".root";
   }
 
   // add file to TChain if file path exists
   if (!gSystem->AccessPathName(file_path.c_str())) {
-      fChain->Add(file_path.c_str());
+      self().fChainRef()->Add(file_path.c_str());
   } else {
       std::cerr << "File does not exist: " << file_path << std::endl;
       throw std::exception();
@@ -38,28 +29,28 @@ void PbPbExtras<Derived>::PerformTChainFill(){
 template <class Derived>
 void PbPbExtras<Derived>::InitInputExtra(){
   
-  fChain->SetBranchAddress("FCal_Et"                     , &FCal_Et);
-  fChain->SetBranchAddress("centrality"                  , &centrality);
+  self().fChainRef()->SetBranchAddress("FCal_Et"                     , &FCal_Et);
+  self().fChainRef()->SetBranchAddress("centrality"                  , &centrality);
 
-  fChain->SetBranchStatus("FCal_Et"                         ,1);
-  fChain->SetBranchStatus("centrality"                      ,1);
+  self().fChainRef()->SetBranchStatus("FCal_Et"                         ,1);
+  self().fChainRef()->SetBranchStatus("centrality"                      ,1);
 }
 
 template <class Derived>
 void PbPbExtras<Derived>::InitOutputSettingsExtra(){
   if (turn_on_ctr_binned_tree_writing){
-    if (output_single_muon_tree){
+    if (self().output_single_muon_tree){
       // in addition, write centrality-binned trees: need for scrambling
       for (int jctr = 0; jctr < ParamsSet::nCtrIntvls; jctr++){
         muonOutTreeBinned[jctr] = new TTree(Form("muon_tree_ctr%d",jctr+1),Form("all muons, centrality bin %d",jctr+1));
-        muonOutTreeBinned[jctr]->Branch("MuonObj",&muon_raw_ptr);
+        muonOutTreeBinned[jctr]->Branch("MuonObj",&self().muon_raw_ptr);
       }
     }
     else{
       for (unsigned int ksign = 0; ksign < ParamsSet::nSigns; ksign++){
         for (unsigned int jctr = 0; jctr < ParamsSet::nCtrIntvls; jctr++){
           muonPairOutTreeBinned[jctr][ksign] = new TTree(Form("muon_pair_tree_ctr%u_sign%u",jctr+1,ksign+1),Form("all muon pairs, ctr%u, sign%u",jctr+1,ksign+1));
-          muonPairOutTreeBinned[jctr][ksign]->Branch("MuonPairObj",&mpair_raw_ptr);
+          muonPairOutTreeBinned[jctr][ksign]->Branch("MuonPairObj",&self().mpair_raw_ptr);
         }        
       }      
     }
@@ -69,27 +60,31 @@ void PbPbExtras<Derived>::InitOutputSettingsExtra(){
 
 template <class Derived>
 void PbPbExtras<Derived>::FillMuonPairExtra(int pair_ind){
-  if (debug_mode) std::cout << "DEBUG: Calling PbPbExtras::FillMuonPairPbPb" << std::endl;
+  if (self().debug_mode) std::cout << "DEBUG: Calling PbPbExtras::FillMuonPairPbPb" << std::endl;
 
-  mpair->m1.ev_centrality = centrality;
-  mpair->m2.ev_centrality = centrality;
-  mpair->FCal_Et = FCal_Et;
-  mpair->m1.ev_FCal_Et = FCal_Et;
-  mpair->m2.ev_FCal_Et = FCal_Et;
+  if (!self().mpairRef()) {
+    throw std::runtime_error("PbPbExtras::FillMuonPairExtra: mpair is nullptr");
+  }
 
-  if (isRun3){  // run3: no need to update centrality (for now)
-    mpair->year = run_year;
+  self().mpairRef()->m1.ev_centrality = centrality;
+  self().mpairRef()->m2.ev_centrality = centrality;
+  self().mpairRef()->FCal_Et = FCal_Et;
+  self().mpairRef()->m1.ev_FCal_Et = FCal_Et;
+  self().mpairRef()->m2.ev_FCal_Et = FCal_Et;
+
+  if (self().isRun3){  // run3: no need to update centrality (for now)
+    self().mpairRef()->year = self().run_year;
   }else{
-    mpair->year = run_year;
-    mpair->UpdateCentrality();
+    self().mpairRef()->year = self().run_year;
+    self().mpairRef()->UpdateCentrality();
   }
 }
 
 template <class Derived>
 void PbPbExtras<Derived>::FillSingleMuonTreeExtra(){
   if (turn_on_ctr_binned_tree_writing){
-    for (int jctr = 0; jctr < pms.nCtrIntvls; jctr++){
-      if (muon_raw_ptr->ev_centrality >= pms.CtrStep * jctr && muon_raw_ptr->ev_centrality < pms.CtrStep *(jctr+1)){
+    for (int jctr = 0; jctr < self().pms.nCtrIntvls; jctr++){
+      if (self().muon_raw_ptr->ev_centrality >= self().pms.CtrStep * jctr && self().muon_raw_ptr->ev_centrality < self().pms.CtrStep *(jctr+1)){
         muonOutTreeBinned[jctr]->Fill();
       }
     }    
@@ -99,9 +94,9 @@ void PbPbExtras<Derived>::FillSingleMuonTreeExtra(){
 template <class Derived>
 void PbPbExtras<Derived>::FillMuonPairTreeExtra(){
   if (turn_on_ctr_binned_tree_writing){
-    int nsign = (mpair->same_sign)? 0:1;
-    for (unsigned int jctr = 0; jctr < pms.nCtrIntvls; jctr++){
-      if (mpair->avg_centrality >= pms.CtrStep * jctr && mpair->avg_centrality < pms.CtrStep *(jctr+1)){
+    int nsign = (self().mpairRef()->same_sign)? 0:1;
+    for (unsigned int jctr = 0; jctr < self().pms.nCtrIntvls; jctr++){
+      if (self().mpairRef()->avg_centrality >= self().pms.CtrStep * jctr && self().mpairRef()->avg_centrality < self().pms.CtrStep *(jctr+1)){
         muonPairOutTreeBinned[jctr][nsign]->Fill();
       }
     }      
@@ -111,29 +106,32 @@ void PbPbExtras<Derived>::FillMuonPairTreeExtra(){
 
 template <class Derived>
 void PbPbExtras<Derived>::InitParamsExtra(){
-  isPbPb = true;
-  cutLabels.assign(cutLabelsPbPb.begin(), cutLabelsPbPb.end()); // cuts (filters) on muon pairs, read from muon_pair_enums_data.h
-  numCuts = static_cast<int>(CutsPbPb::nCuts_PbPb_data);
+  self().isPbPb = true;
+  self().cutLabels.assign(cutLabelsPbPb.begin(), cutLabelsPbPb.end()); // cuts (filters) on muon pairs, read from muon_pair_enums_data.h
+  self().numCuts = static_cast<int>(CutsPbPb::nCuts_PbPb_data);
+
+  int run_year_short = self().run_year % 2000;
+  bool is_run3_local = (run_year_short > 20);
 
   std::map<int, int> run_year_to_file_batch_max_map = {
     {23, 6}, {24, 9}, {15, 7}, {18, 7}
   };
 
   // check for run year
-  if (isRun3){
-    if (run_year != 23 && run_year != 24){
+  if (is_run3_local){
+    if (run_year_short != 23 && run_year_short != 24){
       std::cerr<<"Error:: If isRun3 is true, run_year must be set to (20)23 or (20)24"<<std::endl;
       throw std::exception();
     }
   }else{
-    if (run_year != 15 && run_year != 18){
+    if (run_year_short != 15 && run_year_short != 18){
       std::cerr<<"Error:: If isRun3 be false, run_year must be set to (20)15 or (20)18"<<std::endl;
       throw std::exception();      
     }
   }
 
   // check for file batch
-  if (file_batch <= 0 || file_batch > run_year_to_file_batch_max_map[run_year]){
+  if (self().file_batch <= 0 || self().file_batch > run_year_to_file_batch_max_map[run_year_short]){
     std::cerr<<"Error:: run3 file_batch is invalid! Must be in range 1-6 for 2023 data / 1-9 for 2024 data / 1-7 for 2015/2018 data"<<std::endl;
     throw std::exception();
   }

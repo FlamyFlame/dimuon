@@ -14,9 +14,9 @@ lsetup "views LCG_107a_ATLAS_2 x86_64-el9-gcc13-opt"
 
 # Run the analysis
 root -b -l << EOF
-	.L PPDataNTupleFirstPass.c
+	.L DataAnalysisClasses.h
 
-	PPDataNTupleFirstPass pp_17 (17, $file_batch);
+	PPAnalysis pp_17 (17, $file_batch);
 	pp_17.Run();
 
 	.q;
