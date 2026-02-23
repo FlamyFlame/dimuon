@@ -42,7 +42,8 @@ public:
         PlotTruthRecoCompr();
         PlotResponseMatrix();
         Plot1DRecoEffcy();
-        Plot2DRecoEffcy();
+        Plot2DRecoEffcySigned();
+        Plot2DRecoEffcySingleB();
         Plot1DRecoEffcySingleBOpCompr();
     }
 
@@ -296,7 +297,7 @@ protected:
         }
     }
 
-    void Plot2DRecoEffcy()
+    void Plot2DRecoEffcySigned()
     {
         if (!CheckFile()) return;
 
@@ -391,6 +392,60 @@ protected:
 
             delete h_eff_ss;
             delete h_eff_op;
+        }
+    }
+
+    void Plot2DRecoEffcySingleB()
+    {
+        if (!CheckFile()) return;
+
+        const std::string outdir = GetRecoEffcyOutDir();
+        makeDirIfNeeded(outdir);
+
+        for (const auto& var_pair : pair_vars_for_2d_reco_effcy) {
+            const std::string& varx = var_pair[0];
+            const std::string& vary = var_pair[1];
+
+            TCanvas c(Form("c_reco_eff2d_%s_vs_%s_single_b", vary.c_str(), varx.c_str()),
+                      Form("c_reco_eff2d_%s_vs_%s_single_b", vary.c_str(), varx.c_str()),
+                      700, 600);
+            c.cd();
+
+            const bool logx = LogAx(varx, cfg);
+            const bool logy = LogAx(vary, cfg);
+
+            gPad->SetTicks(1, 1);
+            gPad->SetLogx(logx);
+            gPad->SetLogy(logy);
+            gPad->SetRightMargin(0.14);
+
+            const std::string hnum_single_b = "h_" + vary + "_vs_" + varx + "_single_b" + wp_filter;
+            const std::string hden_single_b = "h_" + vary + "_vs_" + varx + "_single_b" + truth_resn_filter;
+
+            TH2D* h_num_single_b = dynamic_cast<TH2D*>(infile->Get(hnum_single_b.c_str()));
+            TH2D* h_den_single_b = dynamic_cast<TH2D*>(infile->Get(hden_single_b.c_str()));
+
+            if (!h_num_single_b) { std::cerr << "[Plot2DRecoEffcySingleB] WARNING: missing " << hnum_single_b << "\n"; }
+            if (!h_den_single_b) { std::cerr << "[Plot2DRecoEffcySingleB] WARNING: missing " << hden_single_b << "\n"; }
+
+            TH2D* h_eff_single_b = nullptr;
+            if (h_num_single_b && h_den_single_b) {
+                h_eff_single_b = dynamic_cast<TH2D*>(h_num_single_b->Clone(("h_eff_single_b_" + vary + "_vs_" + varx).c_str()));
+                h_eff_single_b->SetDirectory(nullptr);
+                h_eff_single_b->SetStats(0);
+                h_eff_single_b->Divide(h_den_single_b);
+
+                h_eff_single_b->SetMinimum(0.0);
+                h_eff_single_b->SetMaximum(1.0);
+                h_eff_single_b->SetTitle("single-b");
+
+                h_eff_single_b->Draw("colz");
+            }
+
+            const std::string out = outdir + "reco_effcy_" + vary + "_vs_" + varx + "_single_b" + wp_suffix + ".png";
+            c.SaveAs(out.c_str());
+
+            delete h_eff_single_b;
         }
     }
 
