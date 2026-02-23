@@ -3,6 +3,8 @@
 #include "RDFBasedHistFillingBaseClass.cxx"
 #include "../Utilities/MC_helpers.h"
 #include "../Utilities/HistFillUtils.h"
+#include <limits>
+#include <tuple>
 
 class RDFBasedHistFillingPowheg : public virtual RDFBasedHistFillingBaseClass{
 protected:
@@ -94,6 +96,23 @@ protected:
     std::vector<std::string>                detec_resp_var1Ds;
     std::vector<std::array<std::string,2>>  detec_resp_var2Ds;
 
+    // --- mu-pair reco efficiency projection-graph configurations ---
+    std::vector<float> dr_bins_edges_for_reco_effcy = {0.0f, 0.2f, 0.4f, 0.6f, 0.8f, 1.0f};
+    std::vector<float> pair_pT_bins_edges_for_reco_effcy_dR = {8.0f, 12.0f, 20.0f, std::numeric_limits<float>::max()};
+
+    std::vector<std::pair<float, float>> dr_ranges_for_reco_effcy;
+    std::vector<std::pair<float, float>> pair_pT_ranges_for_reco_effcy_dR;
+
+    // tuple: (varx, vary, project_y_axis, projection_ranges)
+    std::vector<std::tuple<std::string, std::string, bool, const std::vector<std::pair<float, float>>*>>
+        mu_pair_reco_eff_proj_cfgs;
+
+    // {numerator, denominator}
+    std::vector<std::pair<std::string, std::string>> reco_eff_num_denom_suffix_pairs;
+
+    std::map<std::string, TGraphAsymmErrors*> mu_pair_reco_eff_proj_graph_map;
+    std::vector<std::string> mu_pair_reco_eff_proj_graphs_to_not_write {};
+
 // --------------------- protected class methods ---------------------------
 
     void                InitializePowhegFullsimExtra();
@@ -114,6 +133,13 @@ protected:
     virtual void        FillHistogramsFullSim() override;
     virtual void        FillHistogramsFullSimDetecResp();
     virtual void        FillHistogramsFullSimRecoEffcies();
+
+    virtual void        HistPostProcessExtra() override{ return MakeAndWriteMuPairRecoEffProjGraphs(); }
+    virtual void        WriteOutputExtra() override;
+    virtual void        CleanupExtra() override;
+
+    void                MakeAndWriteMuPairRecoEffProjGraphsHelper(const std::vector<std::string>& categories);
+    void                MakeAndWriteMuPairRecoEffProjGraphs();
 
 public:
     explicit RDFBasedHistFillingPowhegFullsim(int run_year_input = 17)

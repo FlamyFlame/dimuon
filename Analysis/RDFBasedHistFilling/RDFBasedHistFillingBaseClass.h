@@ -142,7 +142,7 @@ protected:
 
     // ----- initialize I/O -----
     virtual void    SetIOPathsHook() = 0;
-    void    InitOutput();
+    virtual void    InitOutput();
 
     // ----- histogram binning name to vector map -----
     void            BuildHistBinningMap();
