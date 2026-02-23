@@ -1,6 +1,7 @@
 #pragma once
 #include "../MuonObjectsParamsAndHelpers/PbPbBaseClass.h"
 #include "../Utilities/HistFillUtils.h"
+#include "CommonEffcyConfig.h"
 #include "RDFBasedHistFillingBaseClass.cxx"
 
 class RDFBasedHistFillingData : public virtual RDFBasedHistFillingBaseClass{
@@ -53,57 +54,6 @@ protected:
     QEtaBinning q_eta_proj_ranges;
 
     std::vector<std::string> q_eta_ranges_str;
-
-    // maps of q_eta bins to pT projection ranges serving single-muon effciency fitting
-    QEtaBinning q_eta_proj_ranges_fine_excl_gap = {
-        {-2.4f, -2.0f}, 
-        {-2.0f, -1.6f}, 
-        {-1.6f, -1.3f}, 
-        {-0.9f, -0.5f}, 
-        {-0.5f, -0.1f}, 
-        {0.1f, 0.5f}, 
-        {0.5f, 1.0f}, 
-        {1.3f, 1.6f}, 
-        {1.6f, 2.0f}, 
-        {2.0f, 2.2f}
-    };
-
-    QEtaBinning q_eta_proj_ranges_fine_excl_gap_run2 = {
-        {-2.4f, -2.0f}, 
-        {-2.0f, -1.6f}, 
-        {-1.6f, -1.3f}, 
-        {-0.9f, -0.5f}, 
-        {-0.5f, -0.1f}, 
-        {0.1f, 0.5f}, 
-        {0.5f, 1.0f}, 
-        {1.3f, 1.6f}, 
-        {1.6f, 2.0f}, 
-        {2.0f, 2.4f}
-    };
-
-    QEtaBinning q_eta_proj_ranges_coarse_incl_gap = { // coarse bins including gaps
-        {-2.4f, -2.0f}, 
-        {-2.0f, -1.5}, 
-        {-1.5, -1.0f}, 
-        {-1.0f, -0.5f}, 
-        {-0.5f, 0.5f}, 
-        {0.5f, 1.0f}, 
-        {1.0f, 1.5f}, 
-        {1.5f, 2.0f}, 
-        {2.0f, 2.2f}
-    };
-
-    QEtaBinning q_eta_proj_ranges_coarse_incl_gap_run2 = { // including [2.2, 2.4]
-        {-2.4f, -2.0f}, 
-        {-2.0f, -1.5}, 
-        {-1.5, -1.0f}, 
-        {-1.0f, -0.5f}, 
-        {-0.5f, 0.5f}, 
-        {0.5f, 1.0f}, 
-        {1.0f, 1.5f}, 
-        {1.5f, 2.0f}, 
-        {2.0f, 2.4f}
-    };
 
     std::vector<std::pair<float, float>> pair_pT_ranges_for_weighted_effcy_dR_fitting = {
         {8, 12},
@@ -244,7 +194,7 @@ protected:
 
     virtual void        OpenEffcyPtFitFile() override;
 
-    void                SumSingleMuonTrigEffHistsPP() override;
+    void                SumSingleMuonTrigEffHistsPP();
     virtual void        SumSingleMuonTrigEffHistsExtra() override{ return SumSingleMuonTrigEffHistsPP();}
 
     virtual void        CalculateSingleMuonTrigEffcyRatios() override;
@@ -331,9 +281,9 @@ protected:
 
     virtual void        OpenEffcyPtFitFile() override;
 
-    void                HistPostProcessPbPb() override;
+    void                HistPostProcessPbPb();
     virtual void        HistPostProcessDataExtra() override{ return HistPostProcessPbPb();}
-    void                SumSingleMuonTrigEffHistsPbPb() override;
+    void                SumSingleMuonTrigEffHistsPbPb();
     virtual void        SumSingleMuonTrigEffHistsExtra() override{ return SumSingleMuonTrigEffHistsPbPb();}
 
     virtual void        CalculateSingleMuonTrigEffcyRatios() override;
@@ -345,6 +295,7 @@ protected:
     void                ReadVar1DJson() override;
 
 public:
+    int RunYear() const { return run_year; }
     explicit RDFBasedHistFillingPbPb(int run_year_input, std::string ctr_binning_version_input = "include_upc")
     : RDFBasedHistFillingData (run_year_input, false){
         isForSoumya = false;

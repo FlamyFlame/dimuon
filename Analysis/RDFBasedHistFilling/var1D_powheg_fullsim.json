@@ -73,7 +73,7 @@
         {
             "hist_name": "truth_dr_2_0",
             "var_name": "dr",
-            "title": "#DeltaR^{reco}",
+            "title": "#DeltaR^{truth}",
             "binning": {
                 "nbins": 20,
                 "min": 0.0,

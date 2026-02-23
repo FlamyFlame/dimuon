@@ -37,15 +37,7 @@ void RDFBasedHistFillingData::InitializeDataCommon(){
                                     : (useCoarseQEtaBin  ? "_coarse_q_eta_bin"
                                                         : "_fine_q_eta_bin");
 
-    q_eta_proj_ranges = (run_year > 20)
-        ? (useCoarseQEtaBin ? q_eta_proj_ranges_coarse_incl_gap      : q_eta_proj_ranges_fine_excl_gap)
-        : (useCoarseQEtaBin ? q_eta_proj_ranges_coarse_incl_gap_run2 : q_eta_proj_ranges_fine_excl_gap_run2);
-
-    // fill q_eta_ranges_str needed for child class Initialize() overriden part
-    q_eta_ranges_str.clear();
-    for (auto pair : q_eta_proj_ranges){
-        q_eta_ranges_str.push_back("_q_eta_" + pairToSuffix(pair));
-    }
+    SetQEtaProjRanges(run_year, q_eta_proj_ranges, q_eta_ranges_str, useCoarseQEtaBin);
 
     if (isForSoumya){
         single_muon_trig_effcy_var1Ds = {};
@@ -205,8 +197,8 @@ void RDFBasedHistFillingData::BuildFilterToVarListMapDataImpl(){
 void RDFBasedHistFillingData::BuildFilterToVarListMapDataCommon(){
     for (std::string sign : pair_signs){
 
-        df_filter_to_var1D_list_map[sign + ""]         = {"pair_dP_overP", "Dphi", "DR", "DR_zoomin", "pair_y", "pt_asym", "pair_pt_ptlead_ratio"};
-        df_filter_to_var1D_list_map[sign + "_wgapcut"] = {"pair_dP_overP", "Dphi", "DR", "DR_zoomin", "pair_y", "pt_asym", "pair_pt_ptlead_ratio"};
+        df_filter_to_var1D_list_map[sign + ""]         = {"pair_dPoverP", "Dphi", "DR", "DR_zoomin", "pair_y", "pt_asym", "pair_pt_ptlead_ratio"};
+        df_filter_to_var1D_list_map[sign + "_wgapcut"] = {"pair_dPoverP", "Dphi", "DR", "DR_zoomin", "pair_y", "pt_asym", "pair_pt_ptlead_ratio"};
 
         df_filter_and_weight_to_var1D_list_map[{sign + ""           , "_jacobian_corrected"}] = {"DR", "DR_zoomin"};
         df_filter_and_weight_to_var1D_list_map[{sign + "_wgapcut"   , "_jacobian_corrected"}] = {"DR", "DR_zoomin"};
@@ -224,7 +216,7 @@ void RDFBasedHistFillingData::BuildFlattenedTrgEffcyFilterToVarListMap(){
     BuildFlattenedTrgEffcyFilterToVarListMapExtra();
 }
 
-void BuildFlattenedTrgEffcyFilterToVarListMapDataCommon(){
+void RDFBasedHistFillingData::BuildFlattenedTrgEffcyFilterToVarListMapDataCommon(){
     for (auto filter : trg_effcy_filters_1D_pre_sum)    df_filter_to_var1D_list_map[filter] = single_muon_trig_effcy_var1Ds;
     for (auto filter : trg_effcy_filters_2D_3D_pre_sum) df_filter_to_var2D_list_map[filter] = single_muon_trig_effcy_var2Ds;
     for (auto filter : trg_effcy_filters_2D_3D_pre_sum) df_filter_to_var3D_list_map[filter] = single_muon_trig_effcy_var3Ds;
