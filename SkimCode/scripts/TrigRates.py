@@ -84,9 +84,7 @@ elif do_hi2023:
 elif do_hi2024:
   RunYear          =2024 # only set RunYear for PbPb (needed for centrality)
   GRL              =["physics_HI2024_50ns.xml"]
-  InputFile        ="/eos/atlas/atlastier0/rucio/data24_hi/physics_HardProbes/00489961/"\
-                    "data24_hi.00489961.physics_HardProbes.merge.AOD.f1550_m2267/"\
-                    "data24_hi.00489961.physics_HardProbes.merge.AOD.f1550_m2267._lb0390._0001.1"
+  InputFile        ="/eos/user/y/yuhang/data/data24_hi_testfile_AOD/data24_hi.00489961.physics_HardProbes.merge.AOD.f1550_m2267._lb0113._0007.1"
   Muon_triggers    =["HLT_mu4_L1MU3V"  ,
                      "HLT_mu6_L1MU3V"  ,
                      "HLT_mu6_L1MU5VF" ,
@@ -101,9 +99,7 @@ elif do_hi2024:
   DiMuon_triggers  =["HLT_2mu4_L12MU3V", "HLT_mu4_mu4noL1_L1MU3V"]
 elif do_pp2024:
   GRL              =["physics_2024ppRef_25ns.xml"]
-  InputFile        ="/eos/atlas/atlastier0/rucio/data24_5p36TeV/physics_Main/00488474/"\
-                    "data24_5p36TeV.00488474.physics_Main.merge.AOD.f1529_m2259/"\
-                    "data24_5p36TeV.00488474.physics_Main.merge.AOD.f1529_m2259._lb1102._0011.1"
+  InputFile        ="/eos/user/y/yuhang/data/data24_pp_testfile_AOD/data24_5p36TeV.00488427.physics_Main.merge.AOD.f1529_m2259._lb0128._0004.1"
   Muon_triggers    =["HLT_mu4_L1MU3V"  ,
                      "HLT_mu6_L1MU3V"  ,
                      "HLT_mu8_L1MU5VF" ,
