@@ -4,11 +4,20 @@
 #include "../MuonObjectsParamsAndHelpers/muon_pair_enums_data.h"
 #include "DimuonAlgCoreT.c"
 
+template <class Derived>
+class PPExtras;
+
+template <class Derived>
+class PbPbExtras;
+
 
 template <class PairT, class MuonT, class Derived, class... Extras>
 class DimuonDataAlgCoreT
     : public DimuonAlgCoreT<PairT, MuonT, Derived>
 {
+    template<class> friend class PPExtras;
+    template<class> friend class PbPbExtras;
+
 public:
     using pair_t = PairT;
 
@@ -19,26 +28,37 @@ protected:
     using Base::mpairRef;
     using Base::pmsRef;
     using Base::h_cutAcceptanceRef;
+    using Base::debug_mode;
+    using Base::output_single_muon_tree;
+    using Base::muon_raw_ptr;
+    using Base::nentries;
+    using Base::FillSingleMuonTree;
+    using Base::FillMuonPairTree;
+    using Base::ResonanceTagging;
+    using Base::ResonanceTaggingV2;
+    using Base::muon_pair_list_cur_event_pre_resonance_cut;
+    using Base::resonance_tagged_muon_index_list;
+    using Base::resonance_tagged_muon_index_list_v2;
+    using Base::pms;
+    using Base::output_file_path;
+    using Base::output_hist_file_path;
 
     DimuonDataAlgCoreT(int run_year_input, int file_batch_input)
-        : run_year (run_year_input), file_batch (file_batch_input){
-            PrintInstructions();
-        }
+        : run_year (run_year_input), file_batch (file_batch_input){}
 
 // --------------------- general settings ---------------------------
     std::string trig_suffix = "";
-    ParamsSet pms;
     std::string data_dir;
 
     int run_year; // used (only) by PbPb
     int file_batch;
-    bool isRun3;
+    bool isRun3{false};
 
-    bool isPbPb; // true for PbPb, false for pp
+    bool isPbPb{false}; // true for PbPb, false for pp
 
-    bool trigger_effcy_calc; // if true, not care about physics origin, e.g, skip photoproduction + resonance cuts to gain more statistics
-    bool use_mu6_for_trg_eff; // if true (now only for Pb+Pb 23), use mu6 as a supporting trigger for P[dimuon trg | supporting] efficiency analysis
-    bool use_mu8_for_trg_eff; // if true (now only for Pb+Pb 23), use mu6 as a supporting trigger for P[dimuon trg | supporting] efficiency analysis
+    bool trigger_effcy_calc{false}; // if true, not care about physics origin, e.g, skip photoproduction + resonance cuts to gain more statistics
+    bool use_mu6_for_trg_eff{false}; // if true (now only for Pb+Pb 23), use mu6 as a supporting trigger for P[dimuon trg | supporting] efficiency analysis
+    bool use_mu8_for_trg_eff{false}; // if true (now only for Pb+Pb 23), use mu6 as a supporting trigger for P[dimuon trg | supporting] efficiency analysis
 // --------------------- input files & trees & data for setting branches---------------------------
 
     // Declaration of leaf types
@@ -173,7 +193,7 @@ protected:
         }
     }
 
-    void InitOutputSettings_DataCore(){}
+    void InitOutputSettings_DataCore();
 
     // --------------- InitOutputTreesExtraImpl ---------------
     template <class E>
@@ -262,8 +282,8 @@ protected:
     // --------------- PerformAdditionalPairAnalysisImpl ---------------
     template <class E>
     void CallAdditionalPairAnalysis() {
-        if constexpr (requires(Derived& d){ static_cast<E&>(d).AdditionalPairAnalysis(); }) {
-            static_cast<E&>(self()).AdditionalPairAnalysis();
+        if constexpr (requires(Derived& d){ static_cast<E&>(d).PerformAdditionalPairAnalysis(); }) {
+            static_cast<E&>(self()).PerformAdditionalPairAnalysis();
         }
     }
 
@@ -294,6 +314,8 @@ public:
 	~DimuonDataAlgCoreT(){}
     void PrintInstructions();
     void ProcessDataHook();
+    void OutputTreePathHook(){}
+    void OutputHistPathHook(){}
 
     // --------------- TChainFillHook ---------------
     void TChainFillHook(){
@@ -326,12 +348,13 @@ public:
 
     // --------------- InitParamsHook ---------------
     void InitParamsHook(){
-        InitParams_DataCore();
         (CallInitParams<Extras>(), ...);
+        InitParams_DataCore();
+        PrintInstructions();
     }
 
     // --------------- InitOutputSettingsHookHook ---------------
-    void InitOutputSettings(){
+    void InitOutputSettingsHook(){
         InitOutputSettings_DataCore();
         (CallInitOutputSettings<Extras>(), ...);
     }
@@ -354,7 +377,7 @@ public:
 
     // --------------- PassCutsHook ---------------
     bool PassCutsHook(){
-        return (PassCuts_DataCore(bool requireTight) && (CallPassCuts<Extras>(), ...));
+        return (PassCuts_DataCore(requireTight) && (CallPassCuts<Extras>(), ...));
     }
 
     // --------------- FillMuonPairTreeHook ---------------

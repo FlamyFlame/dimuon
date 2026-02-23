@@ -1,27 +1,23 @@
 #pragma once
 
-#include "DimuonDataAnalysisBaseClass.c"
+#include "Riostream.h"
+#include "TChain.h"
+#include "../MuonObjectsParamsAndHelpers/muon_pair_enums_data.h"
 
-class PPExtras : public DimuonDataAnalysisBaseClass{
+template <class PairT, class MuonT, class Derived, class... Extras>
+class DimuonDataAlgCoreT;
 
-private:
-      
-// --------------------- class methods ---------------------------
-  
-    void PerformTChainFill();
+template <class Derived>
+class PPExtras {
+  template <class, class, class, class...> friend class DimuonDataAlgCoreT;
+
+protected:
+  Derived& self() { return static_cast<Derived&>(*this); }
+  const Derived& self() const { return static_cast<const Derived&>(*this); }
+
     void InitParamsExtra();
+  void PerformTChainFill();
 
-public :
-    explicit PPExtras(int run_year_input, int file_batch_input);
-    ~PPExtras(){}
+public:
+  ~PPExtras(){}
 };
-
-
-class PPAnalysis
-  : public DimuonDataAlgCoreT<
-        MuonPairPP, MuonPP,
-        PPAnalysis,
-        PPExtras<PPAnalysis>
-    >
-  , public PPExtras<PPAnalysis>
-{};
