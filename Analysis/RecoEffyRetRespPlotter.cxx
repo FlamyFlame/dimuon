@@ -132,7 +132,7 @@ protected:
                             : "_pair_pass_medium" + no_reco_resn_cuts_hist_suffix;
         truth_resn_filter = "_pair_pass_resonance_truth"; // set to "" to turn off
 
-        data_dir = "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample";
+        data_dir = "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/powheg/powheg_fullsim/";
         infile_name = "histograms_powheg_fullsim_pp" + std::to_string(run_year) + no_reco_resn_cuts_file_dir_suffix + ".root";
 
         std::string infile_path = data_dir;
@@ -634,6 +634,8 @@ void Plot1DRecoEffcyRangedSingleBOpComprHelper(
     };
 
     auto best_grid = [](int n) {
+        if (n <= 3) return std::pair<int,int>(1, n);
+
         int best_rows = n;
         int best_cols = 1;
         int best_diff = n - 1;
@@ -667,6 +669,8 @@ void Plot1DRecoEffcyRangedSingleBOpComprHelper(
     c.Divide(ncols, nrows);
 
     const std::string xvar = proj_axis ? vary : varx;
+    const bool projx = !proj_axis;
+    const std::string var_target = projx ? varx : vary;
     const bool logx = LogAx(xvar, cfg);
 
     for (std::size_t i = 0; i < proj_ranges.size(); ++i) {
@@ -708,26 +712,57 @@ void Plot1DRecoEffcyRangedSingleBOpComprHelper(
         TGraphAsymmErrors* g_frame = g_op ? g_op : g_single_b;
         g_frame->GetYaxis()->SetTitle("#varepsilon");
         g_frame->GetYaxis()->SetRangeUser(0.0, 1.0);
-        g_frame->GetXaxis()->SetTitle(xvar.c_str());
+        std::string x_title = g_frame->GetXaxis()->GetTitle();
+        if (x_title.empty()) x_title = var_target;
+        g_frame->GetXaxis()->SetTitle(x_title.c_str());
         g_frame->Draw("AP");
+
+        if (logx) {
+            const int npt = g_frame->GetN();
+            if (npt > 0) {
+                std::vector<double> edges;
+                edges.reserve(npt + 1);
+
+                bool valid_edges = true;
+                for (int ip = 0; ip < npt; ++ip) {
+                    double x = 0.0, y = 0.0;
+                    g_frame->GetPoint(ip, x, y);
+
+                    const double low  = x - g_frame->GetErrorXlow(ip);
+                    const double high = x + g_frame->GetErrorXhigh(ip);
+
+                    if (ip == 0) edges.push_back(low);
+                    if (high <= edges.back()) {
+                        valid_edges = false;
+                        break;
+                    }
+                    edges.push_back(high);
+                }
+
+                if (valid_edges && static_cast<int>(edges.size()) == npt + 1) {
+                    TH1D h_ref_logx(Form("h_ref_logx_%zu", i), "", npt, edges.data());
+                    adjustLogXRange(g_frame, &h_ref_logx);
+                }
+            }
+        }
 
         if (g_op && g_op != g_frame) g_op->Draw("P SAME");
         if (g_single_b && g_single_b != g_frame) g_single_b->Draw("P SAME");
 
-        TLegend* leg = new TLegend(0.42, 0.62, 0.88, 0.88);
+        TLegend* leg = new TLegend(0.12, 0.12, 0.54, 0.36);
         leg->SetBorderSize(0);
         leg->SetFillStyle(0);
+        leg->SetTextSize(0.034);
         if (g_op) leg->AddEntry(g_op, "opposite sign", "lp");
         if (g_single_b) leg->AddEntry(g_single_b, "single-b", "lp");
 
         const std::string ranged_var = proj_axis ? varx : vary;
-        const std::string ranged_text = var_label(ranged_var) + ": [" + fmt_range_val(range.first) + ", " + fmt_range_val(range.second) + "]";
+        const std::string ranged_unit = (ranged_var == "truth_pair_pt") ? " [GeV]" : "";
+        const std::string ranged_text = var_label(ranged_var) + ": [" + fmt_range_val(range.first) + ", " + fmt_range_val(range.second) + "]" + ranged_unit;
         leg->AddEntry((TObject*)nullptr, ranged_text.c_str(), "");
         leg->Draw("same");
     }
 
-    const bool projx = !proj_axis;
-    const std::string var_target = projx ? varx : vary;
     const std::string var_range = projx ? vary : varx;
     const std::string out = ranged_outdir + "reco_effcy_single_b_op_compr_" + var_target + "_in_" + var_range + "_bins" + wp_suffix + ".png";
     c.SaveAs(out.c_str());
