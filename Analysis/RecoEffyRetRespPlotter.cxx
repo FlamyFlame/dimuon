@@ -9,8 +9,11 @@
 #include <TGraphAsymmErrors.h>
 #include <TLatex.h>
 #include <array>
+#include <cmath>
+#include <limits>
 #include <map>
 #include <string>
+#include <tuple>
 #include <vector>
 #include <iostream>
 #include "Utilities/PlotUtils.h"
@@ -48,6 +51,9 @@ public:
         Plot2DRecoEffcySigned();
         Plot2DRecoEffcySingleB();
         Plot1DRecoEffcySingleBOpCompr();
+        if (!no_reco_resn_cuts){
+            Plot1DRecoEffcyRangedSingleBOpCompr();
+        }
     }
 
 protected:
@@ -79,6 +85,26 @@ protected:
         {"truth_pair_pt", "truth_minv_zoomin"}, 
         {"truth_minv_zoomin", "truth_dr_zoomin"}
     };
+
+    std::vector<std::pair<float, float>> dr_ranges_for_reco_effcy = {
+        {0.0f, 0.2f},
+        {0.2f, 0.4f},
+        {0.4f, 0.6f},
+        {0.6f, 1.0f}
+    };
+
+    std::vector<std::pair<float, float>> pair_pT_ranges_for_reco_effcy_dR = {
+        {8.0f, 12.0f},
+        {12.0f, 20.0f},
+        {20.0f, std::numeric_limits<float>::max()}
+    };
+
+    std::vector<std::tuple<std::string, std::string, bool, const std::vector<std::pair<float, float>>*>>
+        reco_eff_proj_divide_cfgs = {
+            {"truth_pair_pt",  "truth_dr_zoomin", false, &dr_ranges_for_reco_effcy},
+            {"truth_pair_eta", "truth_dr_zoomin", false, &dr_ranges_for_reco_effcy},
+            {"truth_pair_pt",  "truth_dr_zoomin", true,  &pair_pT_ranges_for_reco_effcy_dR}
+        };
     
 
     using QEtaBinning = std::vector<std::pair<float, float>>;
@@ -106,10 +132,12 @@ protected:
                             : "_pair_pass_medium" + no_reco_resn_cuts_hist_suffix;
         truth_resn_filter = "_pair_pass_resonance_truth"; // set to "" to turn off
 
-        data_dir = "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/powheg/powheg_fullsim/";
+        data_dir = "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample";
         infile_name = "histograms_powheg_fullsim_pp" + std::to_string(run_year) + no_reco_resn_cuts_file_dir_suffix + ".root";
 
-        std::string infile_path = data_dir + infile_name;
+        std::string infile_path = data_dir;
+        if (!infile_path.empty() && infile_path.back() != '/') infile_path += '/';
+        infile_path += infile_name;
         // Open input file
         infile = TFile::Open(infile_path.c_str(), "READ");
         if (!infile || infile->IsZombie()) {
@@ -553,6 +581,170 @@ void Plot1DRecoEffcySingleBOpCompr()
 
         delete g_op;
         delete g_single_b;
+    }
+}
+
+void Plot1DRecoEffcyRangedSingleBOpComprHelper(
+    const std::string& varx,
+    const std::string& vary,
+    bool proj_axis,
+    const std::vector<std::pair<float, float>>& proj_ranges)
+{
+    if (!CheckFile()) return;
+    if (proj_ranges.empty()) return;
+
+    auto axisTag = [proj_axis]() {
+        return proj_axis ? std::string("_py") : std::string("_px");
+    };
+
+    auto as_suffix = [](const std::pair<float, float>& range) {
+        auto format_num = [](float x) {
+            std::ostringstream oss;
+            oss << std::fixed << std::setprecision(2) << x;
+            std::string s = oss.str();
+            for (auto& c : s) if (c == '.') c = '_';
+            while (s.find('-') != std::string::npos) s.replace(s.find('-'), 1, "minus");
+            return s;
+        };
+
+        const bool upper_is_max = (!std::isfinite(range.second)
+                                || range.second >= std::numeric_limits<float>::max() * 0.5f);
+        if (upper_is_max) return format_num(range.first) + "_TO_MAX";
+        return format_num(range.first) + "_TO_" + format_num(range.second);
+    };
+
+    auto fmt_range_val = [](float x) {
+        if (!std::isfinite(x) || x >= std::numeric_limits<float>::max() * 0.5f) return std::string("MAX");
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(1) << x;
+        std::string s = oss.str();
+        if (s.find('.') != std::string::npos) {
+            while (!s.empty() && s.back() == '0') s.pop_back();
+            if (!s.empty() && s.back() == '.') s.pop_back();
+        }
+        return s;
+    };
+
+    auto var_label = [](const std::string& var) {
+        if (var == "truth_dr_zoomin") return std::string("#Delta R");
+        if (var == "truth_pair_pt") return std::string("p_{T}^{truth}");
+        if (var == "truth_pair_eta") return std::string("#eta^{truth}");
+        if (var == "truth_minv_zoomin") return std::string("m_{#mu#mu}^{truth}");
+        return var;
+    };
+
+    auto best_grid = [](int n) {
+        int best_rows = n;
+        int best_cols = 1;
+        int best_diff = n - 1;
+        int best_area = n;
+
+        for (int cols = 1; cols <= n; ++cols) {
+            int rows = (n + cols - 1) / cols;
+            if (rows < cols) continue;
+
+            int diff = rows - cols;
+            int area = rows * cols;
+            if (diff < best_diff || (diff == best_diff && area < best_area)) {
+                best_rows = rows;
+                best_cols = cols;
+                best_diff = diff;
+                best_area = area;
+            }
+        }
+        return std::pair<int,int>(best_rows, best_cols);
+    };
+
+    const auto outdir = GetRecoEffcyOutDir();
+    makeDirIfNeeded(outdir);
+    const auto ranged_outdir = outdir + "ranged/";
+    makeDirIfNeeded(ranged_outdir);
+
+    const auto [nrows, ncols] = best_grid(static_cast<int>(proj_ranges.size()));
+    TCanvas c(Form("c_reco_eff1d_ranged_%s_vs_%s%s", vary.c_str(), varx.c_str(), axisTag().c_str()),
+              Form("c_reco_eff1d_ranged_%s_vs_%s%s", vary.c_str(), varx.c_str(), axisTag().c_str()),
+              500 * ncols, 380 * nrows);
+    c.Divide(ncols, nrows);
+
+    const std::string xvar = proj_axis ? vary : varx;
+    const bool logx = LogAx(xvar, cfg);
+
+    for (std::size_t i = 0; i < proj_ranges.size(); ++i) {
+        c.cd(static_cast<int>(i) + 1);
+        gPad->SetTicks(1, 1);
+        gPad->SetLogx(logx);
+
+        const auto& range = proj_ranges[i];
+        const std::string range_suffix = as_suffix(range);
+
+        const std::string gname_op = "g_" + vary + "_vs_" + varx + "_op" + wp_filter + axisTag() + "_" + range_suffix + "_divided";
+        const std::string gname_single_b = "g_" + vary + "_vs_" + varx + "_single_b" + wp_filter + axisTag() + "_" + range_suffix + "_divided";
+
+        TGraphAsymmErrors* g_op = dynamic_cast<TGraphAsymmErrors*>(infile->Get(gname_op.c_str()));
+        TGraphAsymmErrors* g_single_b = dynamic_cast<TGraphAsymmErrors*>(infile->Get(gname_single_b.c_str()));
+
+        if (!g_op) {
+            std::cerr << "[Plot1DRecoEffcyRangedSingleBOpComprHelper] WARNING: missing " << gname_op << "\n";
+        }
+        if (!g_single_b) {
+            std::cerr << "[Plot1DRecoEffcyRangedSingleBOpComprHelper] WARNING: missing " << gname_single_b << "\n";
+        }
+
+        if (!g_op && !g_single_b) continue;
+
+        if (g_op) {
+            g_op->SetLineColor(kBlack);
+            g_op->SetMarkerColor(kBlack);
+            g_op->SetLineWidth(2);
+            g_op->SetMarkerStyle(20);
+        }
+        if (g_single_b) {
+            g_single_b->SetLineColor(kRed);
+            g_single_b->SetMarkerColor(kRed);
+            g_single_b->SetLineWidth(2);
+            g_single_b->SetMarkerStyle(20);
+        }
+
+        TGraphAsymmErrors* g_frame = g_op ? g_op : g_single_b;
+        g_frame->GetYaxis()->SetTitle("#varepsilon");
+        g_frame->GetYaxis()->SetRangeUser(0.0, 1.0);
+        g_frame->GetXaxis()->SetTitle(xvar.c_str());
+        g_frame->Draw("AP");
+
+        if (g_op && g_op != g_frame) g_op->Draw("P SAME");
+        if (g_single_b && g_single_b != g_frame) g_single_b->Draw("P SAME");
+
+        TLegend* leg = new TLegend(0.42, 0.62, 0.88, 0.88);
+        leg->SetBorderSize(0);
+        leg->SetFillStyle(0);
+        if (g_op) leg->AddEntry(g_op, "opposite sign", "lp");
+        if (g_single_b) leg->AddEntry(g_single_b, "single-b", "lp");
+
+        const std::string ranged_var = proj_axis ? varx : vary;
+        const std::string ranged_text = var_label(ranged_var) + ": [" + fmt_range_val(range.first) + ", " + fmt_range_val(range.second) + "]";
+        leg->AddEntry((TObject*)nullptr, ranged_text.c_str(), "");
+        leg->Draw("same");
+    }
+
+    const bool projx = !proj_axis;
+    const std::string var_target = projx ? varx : vary;
+    const std::string var_range = projx ? vary : varx;
+    const std::string out = ranged_outdir + "reco_effcy_single_b_op_compr_" + var_target + "_in_" + var_range + "_bins" + wp_suffix + ".png";
+    c.SaveAs(out.c_str());
+}
+
+void Plot1DRecoEffcyRangedSingleBOpCompr()
+{
+    if (!CheckFile()) return;
+
+    for (const auto& cfg_tuple : reco_eff_proj_divide_cfgs) {
+        const std::string& varx = std::get<0>(cfg_tuple);
+        const std::string& vary = std::get<1>(cfg_tuple);
+        const bool proj_axis = std::get<2>(cfg_tuple);
+        const auto* proj_ranges = std::get<3>(cfg_tuple);
+
+        if (proj_ranges == nullptr || proj_ranges->empty()) continue;
+        Plot1DRecoEffcyRangedSingleBOpComprHelper(varx, vary, proj_axis, *proj_ranges);
     }
 }
 
