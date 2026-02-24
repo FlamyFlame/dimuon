@@ -289,6 +289,8 @@ void RDFBasedHistFillingPowhegFullsim::MakeAndWriteMuPairRecoEffProjGraphsHelper
                         );
 
                         if (g != nullptr){
+                            g->GetXaxis()->SetTitle(h_num_proj->GetXaxis()->GetTitle());
+
                             std::vector<double> nonzero_den_centers;
                             nonzero_den_centers.reserve(h_den_proj->GetNbinsX());
 
