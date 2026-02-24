@@ -154,9 +154,11 @@ protected:
             // Style (keep minimal; you can customize)
             h_truth->SetLineWidth(2);
             h_truth->SetLineColor(kBlack);
+            h_truth->SetStats(0);
 
             h_reco->SetLineWidth(2);
             h_reco->SetLineColor(kRed);
+            h_reco->SetStats(0);
 
             h_truth->SetTitle((var + " truth vs reco").c_str());
 
@@ -200,6 +202,7 @@ protected:
             c.SetTicks(1,1);
 
             h2->SetTitle((var + " response matrix").c_str());
+            h2->SetStats(0);
             h2->Draw("colz");
 
             const std::string out = outdir + var + "_response_matrix" + wp_suffix + ".png";
