@@ -19,15 +19,16 @@
 class DetRespPlotter {
 public:
 
-    DetRespPlotter(int run_year_input, bool tight_WP_input = false)
+    DetRespPlotter(int run_year_input, bool tight_WP_input = false, bool no_reco_resn_cuts_input = false)
     :   run_year(run_year_input % 2000),
-        tight_WP(tight_WP_input)
+        tight_WP(tight_WP_input),
+        no_reco_resn_cuts(no_reco_resn_cuts_input)
     {
         isRun3 = !(run_year <= 18);
     }
 
     DetRespPlotter()
-    : DetRespPlotter(17, false){}
+    : DetRespPlotter(17, false, false){}
 
     ~DetRespPlotter() {
         if (infile) {
@@ -39,8 +40,10 @@ public:
 
     void Run(){
         Initialize();
-        PlotTruthRecoCompr();
-        PlotResponseMatrix();
+        if (!no_reco_resn_cuts){ // do not run detector response for pre-resonance cross-check          
+            PlotTruthRecoCompr();
+            PlotResponseMatrix();
+        }
         Plot1DRecoEffcy();
         Plot2DRecoEffcySigned();
         Plot2DRecoEffcySingleB();
@@ -51,9 +54,12 @@ protected:
     int run_year = 17;
     bool isRun3;
     bool tight_WP;
+    bool no_reco_resn_cuts; // true if not apply reco resn cuts (cross-check for resn cuts' effects on reco effcies)
 
     std::string run_period;
     std::string wp_suffix; // working point suffix
+    std::string no_reco_resn_cuts_hist_suffix; // histogram suffix if apply no reco resn cuts
+    std::string no_reco_resn_cuts_file_dir_suffix; // file & dir suffix if apply no reco resn cuts
     std::string truth_resn_filter; // working point suffix
     std::string wp_filter; // working point suffix
 
@@ -91,12 +97,17 @@ protected:
 
     bool Initialize() {
         run_period = isRun3? "run3" : "run2";
+
+        no_reco_resn_cuts_hist_suffix = no_reco_resn_cuts ? "_pre_resonance" : "";
+        no_reco_resn_cuts_file_dir_suffix = no_reco_resn_cuts ? "_no_reco_resn_cuts" : "";
+
         wp_suffix = tight_WP? "_tightWP" : "_mediumWP";
-        wp_filter = tight_WP? "_pair_pass_tight" : "_pair_pass_medium";
+        wp_filter = tight_WP? "_pair_pass_tight" + no_reco_resn_cuts_hist_suffix 
+                            : "_pair_pass_medium" + no_reco_resn_cuts_hist_suffix;
         truth_resn_filter = "_pair_pass_resonance_truth"; // set to "" to turn off
 
         data_dir = "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/powheg/powheg_fullsim/";
-        infile_name = "histograms_powheg_fullsim_pp" + std::to_string(run_year) + ".root";
+        infile_name = "histograms_powheg_fullsim_pp" + std::to_string(run_year) + no_reco_resn_cuts_file_dir_suffix + ".root";
 
         std::string infile_path = data_dir + infile_name;
         // Open input file
@@ -107,10 +118,6 @@ protected:
             if (infile) { delete infile; infile = nullptr; }
             return false;
         }
-
-        // Make output directory
-        const std::string outdir = GetDetRespOutDir();
-        makeDirIfNeeded(outdir);
 
         return true;
     }
@@ -551,7 +558,7 @@ private:
         // Ensure trailing slash on data_dir (optional)
         std::string base = data_dir;
         if (!base.empty() && base.back() != '/') base += '/';
-        return base + run_period + "_det_resp_plots/";
+        return base + run_period + "_det_resp_plots" + no_reco_resn_cuts_file_dir_suffix + "/";
     }
 
     bool CheckFile() const {
@@ -566,7 +573,7 @@ private:
     {
         std::string base = data_dir;
         if (!base.empty() && base.back() != '/') base += '/';
-        return base + run_period + "_reco_effcy_plots/";
+        return base + run_period + "_reco_effcy_plots" + no_reco_resn_cuts_file_dir_suffix + "/";
     }
 
 };
