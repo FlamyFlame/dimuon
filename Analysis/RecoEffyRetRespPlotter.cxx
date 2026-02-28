@@ -6,8 +6,8 @@
 #include <TLegend.h>
 #include <TSystem.h>
 #include <TError.h>
-#include <TGraphAsymmErrors.h>
 #include <TLatex.h>
+#include <TPad.h>
 #include <array>
 #include <cmath>
 #include <iomanip>
@@ -88,6 +88,7 @@ protected:
         {"truth_pair_pt", "truth_pair_eta"}, 
         {"truth_pair_pt", "truth_dr_zoomin"}, 
         {"truth_pair_eta", "truth_dr_zoomin"},
+        {"truth_deta_zoomin", "truth_dphi_zoomin"},
         {"truth_pair_pt", "truth_minv_zoomin"}, 
         {"truth_minv_zoomin", "truth_dr_zoomin"}
     };
@@ -190,11 +191,21 @@ protected:
                 continue;
             }
 
-            // Basic draw
-            TCanvas c("c", "c", 800, 600);
-            c.SetTicks(1,1);
+            TCanvas c("c", "c", 900, 760);
+            c.cd();
+
+            TPad* pad_top = new TPad("pad_top", "pad_top", 0.0, 0.30, 1.0, 1.0);
+            TPad* pad_bot = new TPad("pad_bot", "pad_bot", 0.0, 0.00, 1.0, 0.30);
+            pad_top->SetBottomMargin(0.02);
+            pad_bot->SetTopMargin(0.02);
+            pad_bot->SetBottomMargin(0.30);
+            pad_top->SetTicks(1, 1);
+            pad_bot->SetTicks(1, 1);
+            pad_top->Draw();
+            pad_bot->Draw();
 
             bool logy = LogAx(var, cfg);
+            pad_top->cd();
             gPad->SetLogy(logy);
 
             // Style (keep minimal; you can customize)
@@ -206,7 +217,8 @@ protected:
             h_reco->SetLineColor(kRed);
             h_reco->SetStats(0);
 
-            h_truth->SetTitle((var + " truth vs reco").c_str());
+            h_truth->SetTitle("");
+            h_truth->GetXaxis()->SetLabelSize(0.0);
 
             // Draw with sensible max
             const double maxy = std::max(h_truth->GetMaximum(), h_reco->GetMaximum());
@@ -221,6 +233,34 @@ protected:
             leg->AddEntry(h_truth, "Truth", "l");
             leg->AddEntry(h_reco,  "Reco",  "l");
             leg->Draw("same");
+
+            TLatex lab;
+            lab.SetNDC();
+            lab.SetTextSize(0.045);
+            lab.DrawLatex(0.12, 0.92, (var + " truth vs reco").c_str());
+
+            pad_bot->cd();
+            TH1* h_ratio = dynamic_cast<TH1*>(h_reco->Clone(("h_ratio_" + var).c_str()));
+            h_ratio->SetDirectory(nullptr);
+            h_ratio->SetStats(0);
+            h_ratio->Divide(h_truth);
+            h_ratio->SetTitle("");
+            h_ratio->GetYaxis()->SetTitle("Reco/Truth");
+            h_ratio->GetYaxis()->SetNdivisions(505);
+            h_ratio->GetYaxis()->SetTitleSize(0.10);
+            h_ratio->GetYaxis()->SetTitleOffset(0.45);
+            h_ratio->GetYaxis()->SetLabelSize(0.09);
+            h_ratio->GetYaxis()->SetRangeUser(0.0, 2.0);
+            h_ratio->GetXaxis()->SetTitle(h_truth->GetXaxis()->GetTitle());
+            h_ratio->GetXaxis()->SetTitleSize(0.12);
+            h_ratio->GetXaxis()->SetTitleOffset(0.95);
+            h_ratio->GetXaxis()->SetLabelSize(0.10);
+            h_ratio->SetLineColor(kBlue + 1);
+            h_ratio->SetMarkerColor(kBlue + 1);
+            h_ratio->SetMarkerStyle(20);
+            h_ratio->Draw("E1");
+
+            delete h_ratio;
 
             const std::string out = outdir + var + "_truth_reco_compr" + wp_suffix + ".png";
             c.SaveAs(out.c_str());
@@ -246,6 +286,7 @@ protected:
             TCanvas c("c", "c", 850, 700);
             c.SetRightMargin(0.14);
             c.SetTicks(1,1);
+            c.SetLogz(true);
 
             h2->SetTitle((var + " response matrix").c_str());
             h2->SetStats(0);
@@ -291,17 +332,23 @@ protected:
                 std::cerr << "[Plot1DRecoEffcy] WARNING: missing " << hdenom_name_ss << "\n";
             }
 
-            TGraphAsymmErrors* g_ss = nullptr;
+            TH1D* h_eff_ss = nullptr;
             if (h_num_ss && h_den_ss) {
-                g_ss = new TGraphAsymmErrors();
-                g_ss->BayesDivide(h_num_ss, h_den_ss);
+                h_eff_ss = dynamic_cast<TH1D*>(h_num_ss->Clone(("h_eff_ss_" + var).c_str()));
+                h_eff_ss->SetDirectory(nullptr);
+                h_eff_ss->SetStats(0);
+                h_eff_ss->Divide(h_den_ss);
 
-                g_ss->SetTitle("same sign");
-                g_ss->GetXaxis()->SetTitle(h_den_ss->GetXaxis()->GetTitle());
-                g_ss->GetYaxis()->SetTitle("#varepsilon");
-                g_ss->GetYaxis()->SetRangeUser(0.0, 1.0);
+                h_eff_ss->SetTitle("same sign");
+                h_eff_ss->GetXaxis()->SetTitle(h_den_ss->GetXaxis()->GetTitle());
+                h_eff_ss->GetYaxis()->SetTitle("#varepsilon");
+                h_eff_ss->GetYaxis()->SetRangeUser(0.0, 1.0);
 
-                g_ss->Draw("AP");
+                h_eff_ss->SetLineColor(kBlack);
+                h_eff_ss->SetMarkerColor(kBlack);
+                h_eff_ss->SetLineWidth(2);
+                h_eff_ss->SetMarkerStyle(20);
+                h_eff_ss->Draw("E1");
 
                 // // subplot title
                 // TLatex lab;
@@ -309,7 +356,7 @@ protected:
                 // lab.SetTextSize(0.045);
                 // lab.DrawLatex(0.12, 0.92, "same sign");
 
-                if (logx) adjustLogXRange(g_ss, h_den_ss);
+                if (logx) AdjustLogXRangeForHist(h_eff_ss, h_den_ss);
             }
 
             // ---- RIGHT: opposite sign ----
@@ -330,29 +377,38 @@ protected:
                 std::cerr << "[Plot1DRecoEffcy] WARNING: missing " << hdenom_name_op << "\n";
             }
 
-            TGraphAsymmErrors* g_op = nullptr;
+            TH1D* h_eff_op = nullptr;
             if (h_num_op && h_den_op) {
-                g_op = new TGraphAsymmErrors();
-                g_op->BayesDivide(h_num_op, h_den_op);
+                h_eff_op = dynamic_cast<TH1D*>(h_num_op->Clone(("h_eff_op_" + var).c_str()));
+                h_eff_op->SetDirectory(nullptr);
+                h_eff_op->SetStats(0);
+                h_eff_op->Divide(h_den_op);
 
-                g_op->SetTitle("opposite sign");
-                g_op->GetXaxis()->SetTitle(h_den_op->GetXaxis()->GetTitle());
-                g_op->GetYaxis()->SetTitle("#varepsilon");
-                g_op->GetYaxis()->SetRangeUser(0.0, 1.0);
+                h_eff_op->SetTitle("opposite sign");
+                h_eff_op->GetXaxis()->SetTitle(h_den_op->GetXaxis()->GetTitle());
+                h_eff_op->GetYaxis()->SetTitle("#varepsilon");
+                h_eff_op->GetYaxis()->SetRangeUser(0.0, 1.0);
 
-                g_op->Draw("AP");
+                h_eff_op->SetLineColor(kBlack);
+                h_eff_op->SetMarkerColor(kBlack);
+                h_eff_op->SetLineWidth(2);
+                h_eff_op->SetMarkerStyle(20);
+                h_eff_op->Draw("E1");
 
                 TLatex lab;
                 lab.SetNDC();
                 lab.SetTextSize(0.045);
                 lab.DrawLatex(0.12, 0.92, "opposite sign");
 
-                if (logx) adjustLogXRange(g_op, h_den_op);
+                if (logx) AdjustLogXRangeForHist(h_eff_op, h_den_op);
             }
 
             // save
             const std::string out = outdir + "reco_effcy_" + var + wp_suffix + ".png";
             c.SaveAs(out.c_str());
+
+            delete h_eff_ss;
+            delete h_eff_op;
         }
     }
 
@@ -555,60 +611,63 @@ void Plot1DRecoEffcySingleBOpCompr()
         if (!h_num_single_b) { std::cerr << "[Plot1DRecoEffcySingleBOpCompr] WARNING: missing " << hnum_name_single_b   << "\n"; }
         if (!h_den_single_b) { std::cerr << "[Plot1DRecoEffcySingleBOpCompr] WARNING: missing " << hdenom_name_single_b << "\n"; }
 
-        TGraphAsymmErrors* g_op = nullptr;
-        TGraphAsymmErrors* g_single_b = nullptr;
+        TH1D* h_eff_op = nullptr;
+        TH1D* h_eff_single_b = nullptr;
 
         if (h_num_op && h_den_op) {
-            g_op = new TGraphAsymmErrors();
-            g_op->BayesDivide(h_num_op, h_den_op);
+            h_eff_op = dynamic_cast<TH1D*>(h_num_op->Clone(("h_eff_op_" + var).c_str()));
+            h_eff_op->SetDirectory(nullptr);
+            h_eff_op->SetStats(0);
+            h_eff_op->Divide(h_den_op);
 
-            g_op->GetXaxis()->SetTitle(h_den_op->GetXaxis()->GetTitle());
-            g_op->SetLineColor(kBlack);
-            g_op->SetMarkerColor(kBlack);
-            g_op->SetLineWidth(2);
-            g_op->SetMarkerStyle(20);
+            h_eff_op->GetXaxis()->SetTitle(h_den_op->GetXaxis()->GetTitle());
+            h_eff_op->SetLineColor(kBlack);
+            h_eff_op->SetMarkerColor(kBlack);
+            h_eff_op->SetLineWidth(2);
+            h_eff_op->SetMarkerStyle(20);
         }
         if (h_num_single_b && h_den_single_b) {
-            g_single_b = new TGraphAsymmErrors();
-            g_single_b->BayesDivide(h_num_single_b, h_den_single_b);
+            h_eff_single_b = dynamic_cast<TH1D*>(h_num_single_b->Clone(("h_eff_single_b_" + var).c_str()));
+            h_eff_single_b->SetDirectory(nullptr);
+            h_eff_single_b->SetStats(0);
+            h_eff_single_b->Divide(h_den_single_b);
 
-            g_single_b->GetXaxis()->SetTitle(h_den_single_b->GetXaxis()->GetTitle());
-            g_single_b->SetLineColor(kRed);
-            g_single_b->SetMarkerColor(kRed);
-            g_single_b->SetLineWidth(2);
-            g_single_b->SetMarkerStyle(20);
+            h_eff_single_b->GetXaxis()->SetTitle(h_den_single_b->GetXaxis()->GetTitle());
+            h_eff_single_b->SetLineColor(kRed);
+            h_eff_single_b->SetMarkerColor(kRed);
+            h_eff_single_b->SetLineWidth(2);
+            h_eff_single_b->SetMarkerStyle(20);
         }
 
-        if (g_op || g_single_b) {
-            // Prefer g_op as the frame if present; otherwise use g_single_b.
-            TGraphAsymmErrors* g_frame = g_op ? g_op : g_single_b;
-            g_frame->GetYaxis()->SetTitle("#varepsilon");
-            g_frame->GetYaxis()->SetRangeUser(0.0, 1.0);
-            g_frame->Draw("AP");
+        if (h_eff_op || h_eff_single_b) {
+            TH1D* h_frame = h_eff_op ? h_eff_op : h_eff_single_b;
+            h_frame->GetYaxis()->SetTitle("#varepsilon");
+            h_frame->GetYaxis()->SetRangeUser(0.0, 1.0);
+            h_frame->Draw("E1");
 
-            if (g_op && g_op != g_frame)             g_op->Draw("P same");
-            if (g_single_b && g_single_b != g_frame) g_single_b->Draw("P same");
+            if (h_eff_op && h_eff_op != h_frame)                   h_eff_op->Draw("E1 same");
+            if (h_eff_single_b && h_eff_single_b != h_frame)       h_eff_single_b->Draw("E1 same");
 
             // Match log-x range behavior used in Plot1DRecoEffcy.
             // Use opposite-sign denom as the reference; if missing, fall back to single-b denom.
             if (logx) {
-                if (h_den_op) adjustLogXRange(g_frame, h_den_op);
-                else if (h_den_single_b) adjustLogXRange(g_frame, h_den_single_b);
+                if (h_den_op) AdjustLogXRangeForHist(h_frame, h_den_op);
+                else if (h_den_single_b) AdjustLogXRangeForHist(h_frame, h_den_single_b);
             }
 
             TLegend* leg = new TLegend(0.62, 0.7, 0.85, 0.85);
             leg->SetBorderSize(0);
             leg->SetFillStyle(0);
-            if (g_op)       leg->AddEntry(g_op,       "opposite sign", "lp");
-            if (g_single_b) leg->AddEntry(g_single_b, "single-b",      "lp");
+            if (h_eff_op)       leg->AddEntry(h_eff_op,       "opposite sign", "lp");
+            if (h_eff_single_b) leg->AddEntry(h_eff_single_b, "single-b",      "lp");
             leg->Draw("same");
         }
 
         const std::string out = outdir + "reco_effcy_" + var + "_single_b_op_compr" + wp_suffix + ".png";
         c.SaveAs(out.c_str());
 
-        delete g_op;
-        delete g_single_b;
+        delete h_eff_op;
+        delete h_eff_single_b;
     }
 }
 
@@ -711,80 +770,70 @@ void Plot1DRecoEffcyRangedSingleBOpComprHelper(
         const auto& range = proj_ranges[i];
         const std::string range_suffix = as_suffix(range);
 
-        const std::string gname_op = "g_" + vary + "_vs_" + varx + "_op" + num_filter + axisTag() + "_" + range_suffix + "_divided";
-        const std::string gname_single_b = "g_" + vary + "_vs_" + varx + "_single_b" + num_filter + axisTag() + "_" + range_suffix + "_divided";
+        const std::string hname_op = "h_" + vary + "_vs_" + varx + "_op" + num_filter + axisTag() + "_" + range_suffix + "_divided";
+        const std::string hname_single_b = "h_" + vary + "_vs_" + varx + "_single_b" + num_filter + axisTag() + "_" + range_suffix + "_divided";
 
-        TGraphAsymmErrors* g_op = GetHistReco<TGraphAsymmErrors>(gname_op);
-        TGraphAsymmErrors* g_single_b = GetHistReco<TGraphAsymmErrors>(gname_single_b);
+        TH1D* h_op = GetHistReco<TH1D>(hname_op);
+        TH1D* h_single_b = GetHistReco<TH1D>(hname_single_b);
 
-        if (!g_op) {
-            std::cerr << "[Plot1DRecoEffcyRangedSingleBOpComprHelper] WARNING: missing " << gname_op << "\n";
+        if (!h_op) {
+            std::cerr << "[Plot1DRecoEffcyRangedSingleBOpComprHelper] WARNING: missing " << hname_op << "\n";
         }
-        if (!g_single_b) {
-            std::cerr << "[Plot1DRecoEffcyRangedSingleBOpComprHelper] WARNING: missing " << gname_single_b << "\n";
-        }
-
-        if (!g_op && !g_single_b) continue;
-
-        if (g_op) {
-            g_op->SetLineColor(kBlack);
-            g_op->SetMarkerColor(kBlack);
-            g_op->SetLineWidth(2);
-            g_op->SetMarkerStyle(20);
-        }
-        if (g_single_b) {
-            g_single_b->SetLineColor(kRed);
-            g_single_b->SetMarkerColor(kRed);
-            g_single_b->SetLineWidth(2);
-            g_single_b->SetMarkerStyle(20);
+        if (!h_single_b) {
+            std::cerr << "[Plot1DRecoEffcyRangedSingleBOpComprHelper] WARNING: missing " << hname_single_b << "\n";
         }
 
-        TGraphAsymmErrors* g_frame = g_op ? g_op : g_single_b;
-        g_frame->GetYaxis()->SetTitle("#varepsilon");
-        g_frame->GetYaxis()->SetRangeUser(0.0, 1.0);
-        std::string x_title = g_frame->GetXaxis()->GetTitle();
-        if (x_title.empty()) x_title = var_target;
-        g_frame->GetXaxis()->SetTitle(x_title.c_str());
-        g_frame->Draw("AP");
+        if (!h_op && !h_single_b) continue;
 
-        if (logx) {
-            const int npt = g_frame->GetN();
-            if (npt > 0) {
-                std::vector<double> edges;
-                edges.reserve(npt + 1);
+        if (h_op) {
+            h_op->SetLineColor(kBlack);
+            h_op->SetMarkerColor(kBlack);
+            h_op->SetLineWidth(2);
+            h_op->SetMarkerStyle(20);
+            h_op->SetTitle("");
+            h_op->SetStats(0);
+        }
+        if (h_single_b) {
+            h_single_b->SetLineColor(kRed);
+            h_single_b->SetMarkerColor(kRed);
+            h_single_b->SetLineWidth(2);
+            h_single_b->SetMarkerStyle(20);
+            h_single_b->SetTitle("");
+            h_single_b->SetStats(0);
+        }
 
-                bool valid_edges = true;
-                for (int ip = 0; ip < npt; ++ip) {
-                    double x = 0.0, y = 0.0;
-                    g_frame->GetPoint(ip, x, y);
+        if (h_op) {
+            h_op->GetYaxis()->SetTitle("#varepsilon");
+            h_op->GetYaxis()->SetRangeUser(0.0, 1.0);
+            std::string x_title = h_op->GetXaxis()->GetTitle();
+            if (x_title.empty()) x_title = var_target;
+            h_op->GetXaxis()->SetTitle(x_title.c_str());
+            h_op->Draw("E1");
 
-                    const double low  = x - g_frame->GetErrorXlow(ip);
-                    const double high = x + g_frame->GetErrorXhigh(ip);
+            if (logx) {
+                AdjustLogXRangeForHist(h_op, h_op);
+            }
+        } else if (h_single_b) {
+            h_single_b->GetYaxis()->SetTitle("#varepsilon");
+            h_single_b->GetYaxis()->SetRangeUser(0.0, 1.0);
+            std::string x_title = h_single_b->GetXaxis()->GetTitle();
+            if (x_title.empty()) x_title = var_target;
+            h_single_b->GetXaxis()->SetTitle(x_title.c_str());
+            h_single_b->Draw("E1");
 
-                    if (ip == 0) edges.push_back(low);
-                    if (high <= edges.back()) {
-                        valid_edges = false;
-                        break;
-                    }
-                    edges.push_back(high);
-                }
-
-                if (valid_edges && static_cast<int>(edges.size()) == npt + 1) {
-                    TH1D h_ref_logx(Form("h_ref_logx_%zu", i), "", npt, edges.data());
-                    adjustLogXRange(g_frame, &h_ref_logx);
-                }
+            if (logx) {
+                AdjustLogXRangeForHist(h_single_b, h_single_b);
             }
         }
 
-        if (g_op && g_op != g_frame) g_op->Draw("P SAME");
-        if (g_single_b && g_single_b != g_frame) g_single_b->Draw("P SAME");
+        if (h_single_b) h_single_b->Draw("E1 SAME");
 
         TLegend* leg = new TLegend(0.12, 0.12, 0.54, 0.36);
         leg->SetBorderSize(0);
         leg->SetFillStyle(0);
         leg->SetTextSize(0.034);
-        if (g_op) leg->AddEntry(g_op, "opposite sign", "lp");
-        if (g_single_b) leg->AddEntry(g_single_b, "single-b", "lp");
+        if (h_op) leg->AddEntry(h_op, "opposite sign", "lp");
+        if (h_single_b) leg->AddEntry(h_single_b, "single-b", "lp");
 
         const std::string ranged_var = proj_axis ? varx : vary;
         const std::string ranged_unit = (ranged_var == "truth_pair_pt") ? " [GeV]" : "";
@@ -852,11 +901,26 @@ private:
         return dynamic_cast<T*>(src->Get(hname.c_str()));
     }
 
+    void AdjustLogXRangeForHist(TH1* h_draw, const TH1* h_ref) const {
+        if (!h_draw || !h_ref) return;
+
+        const int nbins = h_ref->GetNbinsX();
+        if (nbins <= 0) return;
+
+        int first_bin = 1;
+        while (first_bin <= nbins && h_ref->GetBinLowEdge(first_bin) <= 0.0) ++first_bin;
+        if (first_bin > nbins) return;
+
+        const double xmin = h_ref->GetBinLowEdge(first_bin);
+        const double xmax = h_ref->GetBinLowEdge(nbins) + h_ref->GetBinWidth(nbins);
+        h_draw->GetXaxis()->SetLimits(xmin, xmax);
+    }
+
     std::string GetDetRespOutDir() const {
         // Ensure trailing slash on data_dir (optional)
         std::string base = data_dir;
         if (!base.empty() && base.back() != '/') base += '/';
-        return base + run_period + "_det_resp_plots/";
+        return base + run_period + "_det_resp_plots/" + (tight_WP ? "tight/" : "medium/");
     }
 
     bool CheckUnmixedFile() const {
@@ -883,7 +947,7 @@ private:
     {
         std::string base = data_dir;
         if (!base.empty() && base.back() != '/') base += '/';
-        return base + run_period + "_reco_effcy_plots" + require_signal_cuts_file_dir_suffix + "/";
+        return base + run_period + "_reco_effcy_plots" + require_signal_cuts_file_dir_suffix + "/" + (tight_WP ? "tight/" : "medium/");
     }
 
 };

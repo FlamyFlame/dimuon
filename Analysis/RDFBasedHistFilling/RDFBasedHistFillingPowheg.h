@@ -145,6 +145,8 @@ protected:
 
     std::map<std::string, TGraphAsymmErrors*> mu_pair_reco_eff_proj_graph_map;
     std::vector<std::string> mu_pair_reco_eff_proj_graphs_to_not_write {};
+    std::map<std::string, TH1D*> mu_pair_reco_eff_proj_hist_map;
+    std::vector<std::string> mu_pair_reco_eff_proj_hists_to_not_write {};
 
 // --------------------- protected class methods ---------------------------
 
@@ -173,7 +175,7 @@ protected:
     virtual void        WriteOutputExtra() override;
     virtual void        CleanupExtra() override;
 
-    void                MakeAndWriteMuPairRecoEffProjGraphsHelper(const std::vector<std::string>& categories);
+    void                MakeAndWriteMuPairRecoEffProjGraphsHelper(const std::vector<std::string>& categories, bool use_TH_divide = true, bool require_signal_cuts = false);
     void                MakeAndWriteMuPairRecoEffProjGraphs();
 
 public:

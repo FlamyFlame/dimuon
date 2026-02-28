@@ -12,14 +12,13 @@ source $ATLAS_LOCAL_ROOT_BASE/user/atlasLocalSetup.sh
 # Setup LCG
 lsetup "views LCG_107a_ATLAS_2 x86_64-el9-gcc13-opt"
 
-# Run cc mixing with fixed targets: 40k (pT<=20), 20k (pT>20)
+# Run cc mixing with fixed target: 50k mixed pairs per job (truth-pt^5 weighted sampling)
 root -b -l << EOF
     .L mix_powheg_single_muon_pairs.C
-  run_powheg_single_muon_pair_mixing("cc", 40000, 20000, $file_batch, 17,
+  run_powheg_single_muon_pair_mixing("cc", 50000, $file_batch, 17,
       "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/user.yuhang.TrigRates.dimuon.PowhegPythia.fullsim.pp17.cc.Feb2026.v1._MYSTREAM/single_muon_trees_powheg_cc_fullsim_pp17.root",
       "",
       $file_batch,
-      "pt_power",
-      6.0);
+      5.0);
     .q
 EOF
