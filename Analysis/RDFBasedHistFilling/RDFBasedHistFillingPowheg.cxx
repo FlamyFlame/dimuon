@@ -26,8 +26,8 @@ void RDFBasedHistFillingPowheg::SetIOPathsHook(){
 
         mc_mode_to_mpair_infile_name_map[mc_mode]["fullsim_overlay_run2"]   = "muon_pairs_powheg_" + mc_mode + "_fullsim_overlay_PbPb" + run_year_str + "_w_truth.root";
         mc_mode_to_mpair_infile_name_map[mc_mode]["fullsim_overlay_run3"]   = "muon_pairs_powheg_" + mc_mode + "_fullsim_overlay_PbPb" + run_year_str + "_w_truth.root";
-        mc_mode_to_mpair_infile_name_map[mc_mode]["fullsim_run2"]           = "muon_pairs_powheg_" + mc_mode + "_fullsim_pp17_w_truth.root";
-        mc_mode_to_mpair_infile_name_map[mc_mode]["fullsim_run3"]           = "muon_pairs_powheg_" + mc_mode + "_fullsim_pp24_w_truth.root";
+        mc_mode_to_mpair_infile_name_map[mc_mode]["fullsim_run2"]           = "muon_pairs_powheg_" + mc_mode + "_fullsim_pp17.root";
+        mc_mode_to_mpair_infile_name_map[mc_mode]["fullsim_run3"]           = "muon_pairs_powheg_" + mc_mode + "_fullsim_pp24.root";
         mc_mode_to_mpair_infile_name_map[mc_mode]["truth"]                  = "muon_pairs_powheg_" + mc_mode + "_truth.root";
     }
 
@@ -79,21 +79,29 @@ void RDFBasedHistFillingPowheg::CreateBaseRDFsPowhegCommon(){
     // Sum over #entries before filter & calculate weight for normalizing histogram intergrals to crossx * filter efficiencies
     // Where filter efficiencies include all cuts applied in analysis 
 
-    const double nentries_before_cuts_sum = SumMetaNentriesBeforeFilter(input_files);
-    if (nentries_before_cuts_sum <= 0.0) throw std::runtime_error("meta_tree-summed nentries_before_cuts is non-positive");
+    bool use_unscaled_weight = false;
+    double nentries_before_cuts_sum = 0.0;
 
-    std::cout << "nentries_before_cuts_sum = " << nentries_before_cuts_sum << "\n";
+    try {
+        nentries_before_cuts_sum = SumMetaNentriesBeforeFilter(input_files);
+        if (nentries_before_cuts_sum <= 0.0) throw std::runtime_error("meta_tree-summed nentries_before_cuts is non-positive");
+        std::cout << "nentries_before_cuts_sum = " << nentries_before_cuts_sum << "\n";
+    } catch (const std::runtime_error& e){
+        use_unscaled_weight = true;
+        std::cout << "[RDFPowheg] meta_tree unavailable; use unscaled event weights." << std::endl;
+    }
 
     ROOT::RDF::RNode& df_ss = map_at_checked(df_map, "df_ss", "RDFBasedHistFillingPowheg::FillHistograms: df_map.at(df_ss)");
-    auto df_ss_weighted = df_ss.Define("weight_norm", [nentries_before_cuts_sum](double w){ return w / nentries_before_cuts_sum; }, {"weight"});
+    auto df_ss_weighted = use_unscaled_weight
+        ? df_ss.Define("weight_norm", "weight")
+        : df_ss.Define("weight_norm", [nentries_before_cuts_sum](double w){ return w / nentries_before_cuts_sum; }, {"weight"});
     df_map.emplace("df_ss_weighted", df_ss_weighted);
 
     ROOT::RDF::RNode& df_op = map_at_checked(df_map, "df_op", "RDFBasedHistFillingPowheg::FillHistograms: df_map.at(df_op)");
-    auto df_op_weighted = df_op.Define("weight_norm", [nentries_before_cuts_sum](double w){ return w / nentries_before_cuts_sum; }, {"weight"});
+    auto df_op_weighted = use_unscaled_weight
+        ? df_op.Define("weight_norm", "weight")
+        : df_op.Define("weight_norm", [nentries_before_cuts_sum](double w){ return w / nentries_before_cuts_sum; }, {"weight"});
     df_map.emplace("df_op_weighted", df_op_weighted);
-
-    auto df_single_b_weighted = df_op_weighted.Filter("from_same_b");
-    df_map.emplace("df_single_b_weighted", df_single_b_weighted);
 }
 
 void RDFBasedHistFillingPowheg::FillHistograms(){

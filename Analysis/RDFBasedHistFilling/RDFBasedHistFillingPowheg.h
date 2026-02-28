@@ -71,7 +71,39 @@ public:
 
 class RDFBasedHistFillingPowhegTruth : public virtual RDFBasedHistFillingPowheg{
 protected:
-    // virtual void        FillHistogramsTruth() override();
+    std::vector<std::vector<std::string>> levels_truth_general_filters;
+    std::vector<std::vector<std::string>> levels_truth_origin_filters;
+    std::vector<std::vector<std::string>> levels_truth_flavor_filters;
+
+    std::vector<std::string> truth_general_filters;
+    std::vector<std::string> truth_origin_filters;
+    std::vector<std::string> truth_flavor_filters;
+
+    std::vector<std::string> truth_general_var1Ds;
+    std::vector<std::array<std::string,2>> truth_general_var2Ds;
+    std::vector<std::string> truth_general_var1Ds_jacobian;
+    std::vector<std::array<std::string,2>> truth_general_var2Ds_jacobian;
+
+    std::vector<std::string> truth_origin_var1Ds;
+    std::vector<std::array<std::string,2>> truth_origin_var2Ds;
+    std::vector<std::string> truth_origin_var1Ds_jacobian;
+    std::vector<std::array<std::string,2>> truth_origin_var2Ds_jacobian;
+
+    std::vector<std::string> truth_flavor_var1Ds;
+    std::vector<std::array<std::string,2>> truth_flavor_var2Ds;
+    std::vector<std::string> truth_flavor_var1Ds_jacobian;
+    std::vector<std::array<std::string,2>> truth_flavor_var2Ds_jacobian;
+
+    virtual void        InitializePowhegExtra() override;
+    virtual void        BuildSimpleFilterToVarListMapPowhegExtra() override;
+    virtual void        FlattenFiltersExtra() override;
+    virtual void        BuildFlattenedFilterToVarListMapExtra() override;
+    virtual void        CreateBaseRDFsPowhegExtra() override;
+
+    virtual void        FillHistogramsTruth() override;
+    void                FillHistogramsTruthGeneral();
+    void                FillHistogramsTruthOriginBinned();
+    void                FillHistogramsTruthFlavorBinned();
 
 public:
     explicit RDFBasedHistFillingPowhegTruth()
@@ -81,6 +113,7 @@ public:
 
 class RDFBasedHistFillingPowhegFullsim : public virtual RDFBasedHistFillingPowheg{
 protected:
+    bool useMixed{false};
 
     // --- levels of reco efficiency & detector response filters ---
     std::vector<std::vector<std::string>> levels_reco_effcy_filters;
@@ -97,7 +130,7 @@ protected:
     std::vector<std::array<std::string,2>>  detec_resp_var2Ds;
 
     // --- mu-pair reco efficiency projection-graph configurations ---
-    std::vector<float> dr_bins_edges_for_reco_effcy = {0.0f, 0.2f, 0.4f, 0.6f, 0.8f, 1.0f};
+    std::vector<float> dr_bins_edges_for_reco_effcy = {0.0f, 0.2f, 0.4f, 0.6f, 1.0f};
     std::vector<float> pair_pT_bins_edges_for_reco_effcy_dR = {8.0f, 12.0f, 20.0f, std::numeric_limits<float>::max()};
 
     std::vector<std::pair<float, float>> dr_ranges_for_reco_effcy;
@@ -117,6 +150,8 @@ protected:
 
     void                InitializePowhegFullsimExtra();
     virtual void        InitializePowhegExtra() override{ return InitializePowhegFullsimExtra(); }
+
+    virtual void        SetIOPathsHook() override;
     
     void                BuildHistBinningMapPowhegFullsimExtra();
     virtual void        BuildHistBinningMapExtra() override{ return BuildHistBinningMapPowhegFullsimExtra();}
@@ -142,9 +177,12 @@ protected:
     void                MakeAndWriteMuPairRecoEffProjGraphs();
 
 public:
-    explicit RDFBasedHistFillingPowhegFullsim(int run_year_input = 17)
-    : RDFBasedHistFillingPowheg(true, false, run_year_input){}
+    explicit RDFBasedHistFillingPowhegFullsim(int run_year_input = 17, bool useMixed_input = false)
+    : RDFBasedHistFillingPowheg(true, false, run_year_input), useMixed(useMixed_input){}
     ~RDFBasedHistFillingPowhegFullsim(){}
+
+    void SetUseMixed(bool useMixed_input){ useMixed = useMixed_input; }
+    bool GetUseMixed() const { return useMixed; }
 
 };
 

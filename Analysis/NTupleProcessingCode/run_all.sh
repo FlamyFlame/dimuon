@@ -4,3 +4,5 @@ condor_submit run_pbpb_23.sub
 condor_submit run_pbpb_24.sub 
 condor_submit run_pbpb_15.sub 
 condor_submit run_pbpb_18.sub 
+condor_submit run_powheg_fullsim_wtruth_bb_single_muon.sub
+condor_submit run_powheg_fullsim_wtruth_cc_single_muon.sub

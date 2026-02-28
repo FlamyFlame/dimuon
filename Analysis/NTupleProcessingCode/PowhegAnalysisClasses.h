@@ -12,8 +12,8 @@ class PowhegTruthAnalysis
   , public PowhegTruthExtras<MuonPairPowhegTruth,PowhegTruthAnalysis>
 {
 public:
-    PowhegTruthAnalysis(int file_batch_input, std::string mc_mode_input)
-        : PowhegAlgCoreT(file_batch_input, mc_mode_input){
+  PowhegTruthAnalysis(int file_batch_input, std::string mc_mode_input)
+    : PowhegAlgCoreT(file_batch_input, mc_mode_input, 0){
         }
 };
 

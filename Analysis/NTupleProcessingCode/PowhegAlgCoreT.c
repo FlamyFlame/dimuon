@@ -18,6 +18,10 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_PowhegCore(){
     std::cout << "is_fullsim_overlay? " << is_fullsim_overlay << std::endl;
     std::cout << "perform_truth? " << perform_truth << std::endl;
 
+    if (is_fullsim && (run_year < 15 || run_year > 26)){
+        throw std::runtime_error("For Powheg MC fullsim/fullsim overlay, run_year has to be between 15 and 26.");
+    }
+
     powheg_dir = "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/";
     
     std::string run_year_str = std::to_string(run_year);
@@ -34,7 +38,7 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_PowhegCore(){
     if (is_fullsim_overlay){
         dt_suffix = (perform_truth ? "_fullsim_overlay_PbPb" + run_year_str + "_w_truth" : "_fullsim_overlay_PbPb" + run_year_str + "_no_truth");
     } else if (is_fullsim){
-        dt_suffix = (perform_truth ? "_fullsim_pp" + run_year_str + "_w_truth" : "_fullsim_pp" + run_year_str + "_no_truth");
+        dt_suffix = (perform_truth ? "_fullsim_pp" + run_year_str + "" : "_fullsim_pp" + run_year_str + "_no_truth");
     } else{
         dt_suffix = "_truth";
     }
@@ -222,12 +226,16 @@ template <class PairT, class MuonT, class Derived, class... Extras>
 void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook(){
     this->nentries = fChainRef()->GetEntries();//number of events
 
-    Long64_t nentries_actual = this->nentries;
+    const Long64_t nentries_to_process = (this->nevents_max <= 0)
+        ? this->nentries
+        : std::min<Long64_t>(this->nentries, this->nevents_max);
+
+    Long64_t nentries_actual = nentries_to_process;
     
     // for (Long64_t jentry=0; jentry<10000; jentry++) {//loop over the events
-    for (Long64_t jentry=0; jentry<this->nentries; jentry++) {//loop over the events
+    for (Long64_t jentry=0; jentry<nentries_to_process; jentry++) {//loop over the events
         if (this->debug_mode)       std::cout << "Event#: " << jentry << std::endl;
-        else if(jentry%10000==0)    std::cout << "Processing "<<jentry<<" event out of "<<this->nentries<<" events"<<std::endl;
+        else if(jentry%10000==0)    std::cout << "Processing "<<jentry<<" event out of "<<nentries_to_process<<" events"<<std::endl;
 
         int num_bytes = fChainRef()->GetEntry(jentry);//read in an event
         if(num_bytes<=0){
@@ -242,7 +250,7 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook(){
         else                ProcessEventFullsimHook(jentry);
     }
 
-    std::cout << "#Entries in file: " << this->nentries << ", #Entries with non-zero size: " << nentries_actual << std::endl;
+    std::cout << "#Entries in file: " << this->nentries << ", #Entries processed: " << nentries_to_process << ", #Entries with non-zero size: " << nentries_actual << std::endl;
     this->nentries = nentries_actual;
     meta_tree->Fill();
 
