@@ -5,6 +5,9 @@
 #include <string>
 #include <utility> 
 #include <numeric>
+#include <memory>
+#include "TH3.h"
+#include <ROOT/RDataFrame.hxx>
 #include "../MuonObjectsParamsAndHelpers/ParamsSet.h"
 #include "../Utilities/bin_number.cxx"
 #include "../Utilities/proj_range_to_suffix.cxx"

@@ -10,8 +10,10 @@
 #include <TLatex.h>
 #include <array>
 #include <cmath>
+#include <iomanip>
 #include <limits>
 #include <map>
+#include <sstream>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -22,10 +24,10 @@
 class DetRespPlotter {
 public:
 
-    DetRespPlotter(int run_year_input, bool tight_WP_input = false, bool no_reco_resn_cuts_input = false)
+    DetRespPlotter(int run_year_input, bool tight_WP_input = false, bool require_signal_cuts_input = false)
     :   run_year(run_year_input % 2000),
         tight_WP(tight_WP_input),
-        no_reco_resn_cuts(no_reco_resn_cuts_input)
+        require_signal_cuts(require_signal_cuts_input)
     {
         isRun3 = !(run_year <= 18);
     }
@@ -34,46 +36,50 @@ public:
     : DetRespPlotter(17, false, false){}
 
     ~DetRespPlotter() {
-        if (infile) {
-            infile->Close();
-            delete infile;
-            infile = nullptr;
+        if (infile_unmixed) {
+            infile_unmixed->Close();
+            delete infile_unmixed;
+            infile_unmixed = nullptr;
+        }
+        if (infile_mixed) {
+            infile_mixed->Close();
+            delete infile_mixed;
+            infile_mixed = nullptr;
         }
     }
 
     void Run(){
-        Initialize();
-        if (!no_reco_resn_cuts){ // do not run detector response for pre-resonance cross-check          
-            PlotTruthRecoCompr();
-            PlotResponseMatrix();
-        }
+        if (!Initialize()) return;
+
+        PlotTruthRecoCompr();
+        PlotResponseMatrix();
         Plot1DRecoEffcy();
         Plot2DRecoEffcySigned();
         Plot2DRecoEffcySingleB();
         Plot1DRecoEffcySingleBOpCompr();
-        if (!no_reco_resn_cuts){
-            Plot1DRecoEffcyRangedSingleBOpCompr();
-        }
+        Plot1DRecoEffcyRangedSingleBOpCompr();
     }
 
 protected:
     int run_year = 17;
     bool isRun3;
     bool tight_WP;
-    bool no_reco_resn_cuts; // true if not apply reco resn cuts (cross-check for resn cuts' effects on reco effcies)
+    bool require_signal_cuts;
 
     std::string run_period;
     std::string wp_suffix; // working point suffix
-    std::string no_reco_resn_cuts_hist_suffix; // histogram suffix if apply no reco resn cuts
-    std::string no_reco_resn_cuts_file_dir_suffix; // file & dir suffix if apply no reco resn cuts
-    std::string truth_resn_filter; // working point suffix
+    std::string require_signal_cuts_hist_suffix_num;
+    std::string require_signal_cuts_hist_suffix_denom;
+    std::string require_signal_cuts_file_dir_suffix;
     std::string wp_filter; // working point suffix
 
     PlotCommonConfig cfg;
 
     std::string data_dir;
-    std::string infile_name;
-    TFile* infile{nullptr};
+    std::string infile_name_unmixed;
+    std::string infile_name_mixed;
+    TFile* infile_unmixed{nullptr};
+    TFile* infile_mixed{nullptr};
     std::vector<std::string> pair_vars_for_det_resp = {"pair_pt", "minv_zoomin", "dr_zoomin"};
     // std::vector<std::string> pair_vars_for_1d_reco_effcy = {"truth_pair_pt", "truth_pair_eta", "truth_dr_zoomin"};
     std::vector<std::string> pair_vars_for_1d_reco_effcy = {"truth_pair_pt", "truth_pair_eta", "truth_dr_zoomin", "truth_dr_2_0", "truth_minv_zoomin"};
@@ -124,26 +130,38 @@ protected:
     bool Initialize() {
         run_period = isRun3? "run3" : "run2";
 
-        no_reco_resn_cuts_hist_suffix = no_reco_resn_cuts ? "_pre_resonance" : "";
-        no_reco_resn_cuts_file_dir_suffix = no_reco_resn_cuts ? "_no_reco_resn_cuts" : "";
+        require_signal_cuts_hist_suffix_num = require_signal_cuts ? "_pass_signal_truth" : "";
+        require_signal_cuts_hist_suffix_denom = require_signal_cuts ? "_and_signal_truth_and_reco" : "";
+        require_signal_cuts_file_dir_suffix = require_signal_cuts ? "_require_signal_cuts" : "";
 
         wp_suffix = tight_WP? "_tightWP" : "_mediumWP";
-        wp_filter = tight_WP? "_pair_pass_tight" + no_reco_resn_cuts_hist_suffix 
-                            : "_pair_pass_medium" + no_reco_resn_cuts_hist_suffix;
-        truth_resn_filter = "_pair_pass_resonance_truth"; // set to "" to turn off
+        wp_filter = tight_WP? "_pass_tight" : "_pass_medium";
 
-        data_dir = "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/powheg/powheg_fullsim/";
-        infile_name = "histograms_powheg_fullsim_pp" + std::to_string(run_year) + no_reco_resn_cuts_file_dir_suffix + ".root";
+        data_dir = "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample";
+        infile_name_unmixed = "histograms_powheg_fullsim_pp" + std::to_string(run_year) + ".root";
+        infile_name_mixed = "histograms_powheg_fullsim_pp" + std::to_string(run_year) + "_mixed.root";
 
-        std::string infile_path = data_dir;
-        if (!infile_path.empty() && infile_path.back() != '/') infile_path += '/';
-        infile_path += infile_name;
-        // Open input file
-        infile = TFile::Open(infile_path.c_str(), "READ");
-        if (!infile || infile->IsZombie()) {
-            std::cerr << "[DetRespPlotter::Initialize] ERROR: failed to open file: "
-                      << infile_path << "\n";
-            if (infile) { delete infile; infile = nullptr; }
+        std::string infile_path_unmixed = data_dir;
+        if (!infile_path_unmixed.empty() && infile_path_unmixed.back() != '/') infile_path_unmixed += '/';
+        infile_path_unmixed += infile_name_unmixed;
+
+        std::string infile_path_mixed = data_dir;
+        if (!infile_path_mixed.empty() && infile_path_mixed.back() != '/') infile_path_mixed += '/';
+        infile_path_mixed += infile_name_mixed;
+
+        infile_unmixed = TFile::Open(infile_path_unmixed.c_str(), "READ");
+        if (!infile_unmixed || infile_unmixed->IsZombie()) {
+            std::cerr << "[DetRespPlotter::Initialize] ERROR: failed to open unmixed file: "
+                      << infile_path_unmixed << "\n";
+            if (infile_unmixed) { delete infile_unmixed; infile_unmixed = nullptr; }
+            return false;
+        }
+
+        infile_mixed = TFile::Open(infile_path_mixed.c_str(), "READ");
+        if (!infile_mixed || infile_mixed->IsZombie()) {
+            std::cerr << "[DetRespPlotter::Initialize] ERROR: failed to open mixed file: "
+                      << infile_path_mixed << "\n";
+            if (infile_mixed) { delete infile_mixed; infile_mixed = nullptr; }
             return false;
         }
 
@@ -151,17 +169,17 @@ protected:
     }
 
     void PlotTruthRecoCompr() {
-        if (!CheckFile()) return;
+        if (!CheckUnmixedFile()) return;
 
         const std::string outdir = GetDetRespOutDir();
-        makeDirIfNeeded(outdir);
+        gSystem->mkdir(outdir.c_str(), kTRUE);
 
         for (const auto& var : pair_vars_for_det_resp) {
             const std::string h_truth_name = "h_truth_" + var + "_single_b" + wp_filter;
             const std::string h_reco_name  = "h_"       + var + "_single_b" + wp_filter;
 
-            TH1* h_truth = dynamic_cast<TH1*>(infile->Get(h_truth_name.c_str()));
-            TH1* h_reco  = dynamic_cast<TH1*>(infile->Get(h_reco_name.c_str()));
+            TH1* h_truth = GetHistUnmixed<TH1>(h_truth_name);
+            TH1* h_reco  = GetHistUnmixed<TH1>(h_reco_name);
 
             if (!h_truth) {
                 std::cerr << "[PlotTruthRecoCompr] WARNING: missing " << h_truth_name << "\n";
@@ -210,16 +228,16 @@ protected:
     }
 
     void PlotResponseMatrix() {
-        if (!CheckFile()) return;
+        if (!CheckUnmixedFile()) return;
 
         const std::string outdir = GetDetRespOutDir();
-        makeDirIfNeeded(outdir);
+        gSystem->mkdir(outdir.c_str(), kTRUE);
 
         for (const auto& var : pair_vars_for_det_resp) {
             const std::string h2_name =
                 "h_" + var + "_vs_truth_" + var + "_single_b" + wp_filter;
 
-            TH2* h2 = dynamic_cast<TH2*>(infile->Get(h2_name.c_str()));
+            TH2* h2 = GetHistUnmixed<TH2>(h2_name);
             if (!h2) {
                 std::cerr << "[PlotResponseMatrix] WARNING: missing " << h2_name << "\n";
                 continue;
@@ -240,10 +258,10 @@ protected:
 
     void Plot1DRecoEffcy()
     {
-        if (!CheckFile()) return;
+        if (!CheckRecoFiles()) return;
 
         const std::string outdir = GetRecoEffcyOutDir();
-        makeDirIfNeeded(outdir);
+        gSystem->mkdir(outdir.c_str(), kTRUE);
 
         for (const auto& var : pair_vars_for_1d_reco_effcy) {
 
@@ -257,11 +275,14 @@ protected:
             bool logx = LogAx(var, cfg);
             gPad->SetLogx(logx);
 
-            const std::string hnum_name_ss   = "h_" + var + "_ss" + wp_filter;
-            const std::string hdenom_name_ss = "h_" + var + "_ss" + truth_resn_filter;
+            const std::string num_filter = RecoEffNumFilter();
+            const std::string denom_filter = RecoEffDenomFilter();
 
-            TH1D* h_num_ss   = dynamic_cast<TH1D*>(infile->Get(hnum_name_ss.c_str()));
-            TH1D* h_den_ss   = dynamic_cast<TH1D*>(infile->Get(hdenom_name_ss.c_str()));
+            const std::string hnum_name_ss   = "h_" + var + "_ss" + num_filter;
+            const std::string hdenom_name_ss = "h_" + var + "_ss" + denom_filter;
+
+            TH1D* h_num_ss   = GetHistReco<TH1D>(hnum_name_ss);
+            TH1D* h_den_ss   = GetHistReco<TH1D>(hdenom_name_ss);
 
             if (!h_num_ss) {
                 std::cerr << "[Plot1DRecoEffcy] WARNING: missing " << hnum_name_ss << "\n";
@@ -296,11 +317,11 @@ protected:
             gPad->SetTicks(1, 1);
             gPad->SetLogx(logx);
 
-            const std::string hnum_name_op   = "h_" + var + "_op" + wp_filter;
-            const std::string hdenom_name_op = "h_" + var + "_op" + truth_resn_filter;
+            const std::string hnum_name_op   = "h_" + var + "_op" + num_filter;
+            const std::string hdenom_name_op = "h_" + var + "_op" + denom_filter;
 
-            TH1D* h_num_op = dynamic_cast<TH1D*>(infile->Get(hnum_name_op.c_str()));
-            TH1D* h_den_op = dynamic_cast<TH1D*>(infile->Get(hdenom_name_op.c_str()));
+            TH1D* h_num_op = GetHistReco<TH1D>(hnum_name_op);
+            TH1D* h_den_op = GetHistReco<TH1D>(hdenom_name_op);
 
             if (!h_num_op) {
                 std::cerr << "[Plot1DRecoEffcy] WARNING: missing " << hnum_name_op << "\n";
@@ -337,10 +358,10 @@ protected:
 
     void Plot2DRecoEffcySigned()
     {
-        if (!CheckFile()) return;
+        if (!CheckRecoFiles()) return;
 
         const std::string outdir = GetRecoEffcyOutDir();
-        makeDirIfNeeded(outdir);
+        gSystem->mkdir(outdir.c_str(), kTRUE);
 
         for (const auto& var_pair : pair_vars_for_2d_reco_effcy) {
             const std::string& varx = var_pair[0];
@@ -352,6 +373,8 @@ protected:
             // "similar to Plot1DRecoEffcy": use logx decision via map; also allow logy for y-var if present
             const bool logx = LogAx(varx, cfg);
             const bool logy = LogAx(vary, cfg);
+            const std::string num_filter = RecoEffNumFilter();
+            const std::string denom_filter = RecoEffDenomFilter();
 
             // ---------- left pad: same sign ----------
             c.cd(1);
@@ -360,11 +383,11 @@ protected:
             gPad->SetLogy(logy);
             gPad->SetRightMargin(0.14);
 
-            const std::string hnum_ss   = "h_" + vary + "_vs_" + varx + "_ss" + wp_filter;
-            const std::string hden_ss   = "h_" + vary + "_vs_" + varx + "_ss" + truth_resn_filter;
+            const std::string hnum_ss   = "h_" + vary + "_vs_" + varx + "_ss" + num_filter;
+            const std::string hden_ss   = "h_" + vary + "_vs_" + varx + "_ss" + denom_filter;
 
-            TH2D* h_num_ss = dynamic_cast<TH2D*>(infile->Get(hnum_ss.c_str()));
-            TH2D* h_den_ss = dynamic_cast<TH2D*>(infile->Get(hden_ss.c_str()));
+            TH2D* h_num_ss = GetHistReco<TH2D>(hnum_ss);
+            TH2D* h_den_ss = GetHistReco<TH2D>(hden_ss);
 
             if (!h_num_ss) { std::cerr << "[Plot2DRecoEffcy] WARNING: missing " << hnum_ss << "\n"; }
             if (!h_den_ss) { std::cerr << "[Plot2DRecoEffcy] WARNING: missing " << hden_ss << "\n"; }
@@ -396,11 +419,11 @@ protected:
             gPad->SetLogy(logy);
             gPad->SetRightMargin(0.14);
 
-            const std::string hnum_op   = "h_" + vary + "_vs_" + varx + "_op" + wp_filter;
-            const std::string hden_op   = "h_" + vary + "_vs_" + varx + "_op" + truth_resn_filter;
+            const std::string hnum_op   = "h_" + vary + "_vs_" + varx + "_op" + num_filter;
+            const std::string hden_op   = "h_" + vary + "_vs_" + varx + "_op" + denom_filter;
 
-            TH2D* h_num_op = dynamic_cast<TH2D*>(infile->Get(hnum_op.c_str()));
-            TH2D* h_den_op = dynamic_cast<TH2D*>(infile->Get(hden_op.c_str()));
+            TH2D* h_num_op = GetHistReco<TH2D>(hnum_op);
+            TH2D* h_den_op = GetHistReco<TH2D>(hden_op);
 
             if (!h_num_op) { std::cerr << "[Plot2DRecoEffcy] WARNING: missing " << hnum_op << "\n"; }
             if (!h_den_op) { std::cerr << "[Plot2DRecoEffcy] WARNING: missing " << hden_op << "\n"; }
@@ -435,10 +458,10 @@ protected:
 
     void Plot2DRecoEffcySingleB()
     {
-        if (!CheckFile()) return;
+        if (!CheckRecoFiles()) return;
 
         const std::string outdir = GetRecoEffcyOutDir();
-        makeDirIfNeeded(outdir);
+        gSystem->mkdir(outdir.c_str(), kTRUE);
 
         for (const auto& var_pair : pair_vars_for_2d_reco_effcy) {
             const std::string& varx = var_pair[0];
@@ -451,17 +474,19 @@ protected:
 
             const bool logx = LogAx(varx, cfg);
             const bool logy = LogAx(vary, cfg);
+            const std::string num_filter = RecoEffNumFilter();
+            const std::string denom_filter = RecoEffDenomFilter();
 
             gPad->SetTicks(1, 1);
             gPad->SetLogx(logx);
             gPad->SetLogy(logy);
             gPad->SetRightMargin(0.14);
 
-            const std::string hnum_single_b = "h_" + vary + "_vs_" + varx + "_single_b" + wp_filter;
-            const std::string hden_single_b = "h_" + vary + "_vs_" + varx + "_single_b" + truth_resn_filter;
+            const std::string hnum_single_b = "h_" + vary + "_vs_" + varx + "_single_b" + num_filter;
+            const std::string hden_single_b = "h_" + vary + "_vs_" + varx + "_single_b" + denom_filter;
 
-            TH2D* h_num_single_b = dynamic_cast<TH2D*>(infile->Get(hnum_single_b.c_str()));
-            TH2D* h_den_single_b = dynamic_cast<TH2D*>(infile->Get(hden_single_b.c_str()));
+            TH2D* h_num_single_b = GetHistReco<TH2D>(hnum_single_b);
+            TH2D* h_den_single_b = GetHistReco<TH2D>(hden_single_b);
 
             if (!h_num_single_b) { std::cerr << "[Plot2DRecoEffcySingleB] WARNING: missing " << hnum_single_b << "\n"; }
             if (!h_den_single_b) { std::cerr << "[Plot2DRecoEffcySingleB] WARNING: missing " << hden_single_b << "\n"; }
@@ -491,10 +516,10 @@ protected:
 // Style intentionally mirrors Plot1DRecoEffcy (ticks/logx/axis ranges).
 void Plot1DRecoEffcySingleBOpCompr()
 {
-    if (!CheckFile()) return;
+    if (!CheckRecoFiles()) return;
 
     const std::string outdir = GetRecoEffcyOutDir();
-    makeDirIfNeeded(outdir);
+    gSystem->mkdir(outdir.c_str(), kTRUE);
 
     for (const auto& var : pair_vars_for_1d_reco_effcy) {
 
@@ -507,22 +532,25 @@ void Plot1DRecoEffcySingleBOpCompr()
         const bool logx = LogAx(var, cfg);
         gPad->SetLogx(logx);
 
-        // ---- opposite sign ----
-        const std::string hnum_name_op   = "h_" + var + "_op" + wp_filter;
-        const std::string hdenom_name_op = "h_" + var + "_op" + truth_resn_filter;
+        const std::string num_filter = RecoEffNumFilter();
+        const std::string denom_filter = RecoEffDenomFilter();
 
-        TH1D* h_num_op = dynamic_cast<TH1D*>(infile->Get(hnum_name_op.c_str()));
-        TH1D* h_den_op = dynamic_cast<TH1D*>(infile->Get(hdenom_name_op.c_str()));
+        // ---- opposite sign ----
+        const std::string hnum_name_op   = "h_" + var + "_op" + num_filter;
+        const std::string hdenom_name_op = "h_" + var + "_op" + denom_filter;
+
+        TH1D* h_num_op = GetHistReco<TH1D>(hnum_name_op);
+        TH1D* h_den_op = GetHistReco<TH1D>(hdenom_name_op);
 
         if (!h_num_op)  { std::cerr << "[Plot1DRecoEffcySingleBOpCompr] WARNING: missing " << hnum_name_op   << "\n"; }
         if (!h_den_op)  { std::cerr << "[Plot1DRecoEffcySingleBOpCompr] WARNING: missing " << hdenom_name_op << "\n"; }
 
         // ---- single-b ----
-        const std::string hnum_name_single_b   = "h_" + var + "_single_b" + wp_filter;
-        const std::string hdenom_name_single_b = "h_" + var + "_single_b" + truth_resn_filter;
+        const std::string hnum_name_single_b   = "h_" + var + "_single_b" + num_filter;
+        const std::string hdenom_name_single_b = "h_" + var + "_single_b" + denom_filter;
 
-        TH1D* h_num_single_b = dynamic_cast<TH1D*>(infile->Get(hnum_name_single_b.c_str()));
-        TH1D* h_den_single_b = dynamic_cast<TH1D*>(infile->Get(hdenom_name_single_b.c_str()));
+        TH1D* h_num_single_b = GetHistReco<TH1D>(hnum_name_single_b);
+        TH1D* h_den_single_b = GetHistReco<TH1D>(hdenom_name_single_b);
 
         if (!h_num_single_b) { std::cerr << "[Plot1DRecoEffcySingleBOpCompr] WARNING: missing " << hnum_name_single_b   << "\n"; }
         if (!h_den_single_b) { std::cerr << "[Plot1DRecoEffcySingleBOpCompr] WARNING: missing " << hdenom_name_single_b << "\n"; }
@@ -590,7 +618,9 @@ void Plot1DRecoEffcyRangedSingleBOpComprHelper(
     bool proj_axis,
     const std::vector<std::pair<float, float>>& proj_ranges)
 {
-    if (!CheckFile()) return;
+    if (!CheckRecoFiles()) return;
+        const std::string num_filter = RecoEffNumFilter();
+
     if (proj_ranges.empty()) return;
 
     auto axisTag = [proj_axis]() {
@@ -658,9 +688,9 @@ void Plot1DRecoEffcyRangedSingleBOpComprHelper(
     };
 
     const auto outdir = GetRecoEffcyOutDir();
-    makeDirIfNeeded(outdir);
+    gSystem->mkdir(outdir.c_str(), kTRUE);
     const auto ranged_outdir = outdir + "ranged/";
-    makeDirIfNeeded(ranged_outdir);
+    gSystem->mkdir(ranged_outdir.c_str(), kTRUE);
 
     const auto [nrows, ncols] = best_grid(static_cast<int>(proj_ranges.size()));
     TCanvas c(Form("c_reco_eff1d_ranged_%s_vs_%s%s", vary.c_str(), varx.c_str(), axisTag().c_str()),
@@ -681,11 +711,11 @@ void Plot1DRecoEffcyRangedSingleBOpComprHelper(
         const auto& range = proj_ranges[i];
         const std::string range_suffix = as_suffix(range);
 
-        const std::string gname_op = "g_" + vary + "_vs_" + varx + "_op" + wp_filter + axisTag() + "_" + range_suffix + "_divided";
-        const std::string gname_single_b = "g_" + vary + "_vs_" + varx + "_single_b" + wp_filter + axisTag() + "_" + range_suffix + "_divided";
+        const std::string gname_op = "g_" + vary + "_vs_" + varx + "_op" + num_filter + axisTag() + "_" + range_suffix + "_divided";
+        const std::string gname_single_b = "g_" + vary + "_vs_" + varx + "_single_b" + num_filter + axisTag() + "_" + range_suffix + "_divided";
 
-        TGraphAsymmErrors* g_op = dynamic_cast<TGraphAsymmErrors*>(infile->Get(gname_op.c_str()));
-        TGraphAsymmErrors* g_single_b = dynamic_cast<TGraphAsymmErrors*>(infile->Get(gname_single_b.c_str()));
+        TGraphAsymmErrors* g_op = GetHistReco<TGraphAsymmErrors>(gname_op);
+        TGraphAsymmErrors* g_single_b = GetHistReco<TGraphAsymmErrors>(gname_single_b);
 
         if (!g_op) {
             std::cerr << "[Plot1DRecoEffcyRangedSingleBOpComprHelper] WARNING: missing " << gname_op << "\n";
@@ -770,7 +800,7 @@ void Plot1DRecoEffcyRangedSingleBOpComprHelper(
 
 void Plot1DRecoEffcyRangedSingleBOpCompr()
 {
-    if (!CheckFile()) return;
+    if (!CheckRecoFiles()) return;
 
     for (const auto& cfg_tuple : reco_eff_proj_divide_cfgs) {
         const std::string& varx = std::get<0>(cfg_tuple);
@@ -784,16 +814,66 @@ void Plot1DRecoEffcyRangedSingleBOpCompr()
 }
 
 private:
+    std::string RecoEffNumFilter() const {
+        if (!require_signal_cuts) return wp_filter;
+        return wp_filter + require_signal_cuts_hist_suffix_denom;
+    }
+
+    std::string RecoEffDenomFilter() const {
+        if (!require_signal_cuts) return "";
+        return require_signal_cuts_hist_suffix_num;
+    }
+
+    bool HistNameUsesMixed(const std::string& hname) const {
+        const bool has_ss = (hname.find("_ss") != std::string::npos);
+        const bool has_op = (hname.find("_op") != std::string::npos);
+        const bool has_single_b = (hname.find("_single_b") != std::string::npos);
+
+        if ((has_ss || has_op) && has_single_b) {
+            throw std::runtime_error("[DetRespPlotter] Invalid reco histogram name with mixed+single_b tags: " + hname);
+        }
+        if (has_ss || has_op) return true;
+        if (has_single_b) return false;
+
+        throw std::runtime_error("[DetRespPlotter] Cannot determine reco input source for histogram name: " + hname);
+    }
+
+    template <typename T>
+    T* GetHistUnmixed(const std::string& hname) const {
+        if (!infile_unmixed) return nullptr;
+        return dynamic_cast<T*>(infile_unmixed->Get(hname.c_str()));
+    }
+
+    template <typename T>
+    T* GetHistReco(const std::string& hname) const {
+        const bool use_mixed = HistNameUsesMixed(hname);
+        TFile* src = use_mixed ? infile_mixed : infile_unmixed;
+        if (!src) return nullptr;
+        return dynamic_cast<T*>(src->Get(hname.c_str()));
+    }
+
     std::string GetDetRespOutDir() const {
         // Ensure trailing slash on data_dir (optional)
         std::string base = data_dir;
         if (!base.empty() && base.back() != '/') base += '/';
-        return base + run_period + "_det_resp_plots" + no_reco_resn_cuts_file_dir_suffix + "/";
+        return base + run_period + "_det_resp_plots/";
     }
 
-    bool CheckFile() const {
-        if (!infile || !infile->IsOpen()) {
-            std::cerr << "[DetRespPlotter] ERROR: input file not open. Call Initialize().\n";
+    bool CheckUnmixedFile() const {
+        if (!infile_unmixed || !infile_unmixed->IsOpen()) {
+            std::cerr << "[DetRespPlotter] ERROR: unmixed input file not open. Call Initialize().\n";
+            return false;
+        }
+        return true;
+    }
+
+    bool CheckRecoFiles() const {
+        if (!infile_unmixed || !infile_unmixed->IsOpen()) {
+            std::cerr << "[DetRespPlotter] ERROR: unmixed input file not open. Call Initialize().\n";
+            return false;
+        }
+        if (!infile_mixed || !infile_mixed->IsOpen()) {
+            std::cerr << "[DetRespPlotter] ERROR: mixed input file not open. Call Initialize().\n";
             return false;
         }
         return true;
@@ -803,7 +883,7 @@ private:
     {
         std::string base = data_dir;
         if (!base.empty() && base.back() != '/') base += '/';
-        return base + run_period + "_reco_effcy_plots" + no_reco_resn_cuts_file_dir_suffix + "/";
+        return base + run_period + "_reco_effcy_plots" + require_signal_cuts_file_dir_suffix + "/";
     }
 
 };

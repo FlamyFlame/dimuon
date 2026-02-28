@@ -1,5 +1,15 @@
 #pragma once
 
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "TH1.h"
+#include "TH1D.h"
+#include "TH2.h"
+#include "TGraphAsymmErrors.h"
+
 namespace HistFillUtils {
 
     TGraphAsymmErrors* proj_divide_and_write (TH2* hNum2D, TH2* hDen2D, std::map<std::string, TGraphAsymmErrors*>* graph_map = nullptr);
@@ -31,11 +41,11 @@ namespace HistFillUtils {
 
 
 // helper for projection, making & writing of TEfficiency graphs
-TGraphAsymmErrors* HistFillUtils::proj_divide_and_write (TH2* hNum2D, TH2* hDen2D, std::map<std::string, TGraphAsymmErrors*>* graph_map = nullptr) {
+TGraphAsymmErrors* HistFillUtils::proj_divide_and_write (TH2* hNum2D, TH2* hDen2D, std::map<std::string, TGraphAsymmErrors*>* graph_map) {
     return proj_divide_and_write(hNum2D, hDen2D, true, 1, -1, "", graph_map);
 }
 
-TGraphAsymmErrors* HistFillUtils::proj_divide_and_write (TH2* hNum2D, TH2* hDen2D, bool projy, int firstbin, int lastbin, std::string proj_range_str, std::map<std::string, TGraphAsymmErrors*>* graph_map = nullptr) {
+TGraphAsymmErrors* HistFillUtils::proj_divide_and_write (TH2* hNum2D, TH2* hDen2D, bool projy, int firstbin, int lastbin, std::string proj_range_str, std::map<std::string, TGraphAsymmErrors*>* graph_map) {
     if (!hNum2D || !hDen2D) return (TGraphAsymmErrors*)nullptr;
 
     // suffix that captures projection axis & range
@@ -70,7 +80,7 @@ TGraphAsymmErrors* HistFillUtils::proj_divide_and_write (TH2* hNum2D, TH2* hDen2
     return g;
 }
 
-TH1D* HistFillUtils::proj_and_write (TH2* h2D, bool projy, int firstbin = 1, int lastbin = -1, std::string proj_range_str = "", std::map<std::string, TH1D*>* h1D_map = nullptr){
+TH1D* HistFillUtils::proj_and_write (TH2* h2D, bool projy, int firstbin, int lastbin, std::string proj_range_str, std::map<std::string, TH1D*>* h1D_map){
     if (!h2D) return (TH1D*)nullptr;
 
     // suffix that captures projection axis & range
@@ -89,7 +99,7 @@ TH1D* HistFillUtils::proj_and_write (TH2* h2D, bool projy, int firstbin = 1, int
     return h1D;
 }
 
-TGraphAsymmErrors* HistFillUtils::divide_and_write (TH1* hNum, TH1* hDen, std::map<std::string, TGraphAsymmErrors*>* graph_map = nullptr) {
+TGraphAsymmErrors* HistFillUtils::divide_and_write (TH1* hNum, TH1* hDen, std::map<std::string, TGraphAsymmErrors*>* graph_map) {
     if (!hNum || !hDen) return (TGraphAsymmErrors*)nullptr;
 
     auto g = new TGraphAsymmErrors();

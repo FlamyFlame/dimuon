@@ -7,6 +7,7 @@
 #include <string>
 #include <utility> 
 #include <functional>
+#include <cmath>
 
 struct AxisInfo{ // a simplified version of axis information - for constructing TH1DModel
     int        	nbins		= 1;         ///<  Number of bins

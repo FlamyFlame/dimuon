@@ -57,8 +57,98 @@
             "binning": {
                 "nbins": 20,
                 "min": 0.0,
-                "max": 1.0,
+                "max": 1.0
             }
+        },
+        {
+            "hist_name": "pair_y",
+            "var_name": "truth_pair_y",
+            "title": "y^{pair}",
+            "binning": {
+                "nbins": 60,
+                "min": -3.0,
+                "max": 3.0
+            }
+        },
+        {
+            "hist_name": "pt_asym",
+            "var_name": "truth_asym",
+            "title": "A_{p_{T}}",
+            "binning": {
+                "nbins": 50,
+                "min": 0.0,
+                "max": 1.0
+            }
+        },
+        {
+            "hist_name": "pair_pt_ptlead_ratio",
+            "var_name": "pair_pt_ptlead_ratio",
+            "title": "p_{T}^{pair}/p_{T}^{lead}",
+            "binning": {
+                "nbins": 50,
+                "min": 0.0,
+                "max": 1.0
+            }
+        },
+        {
+            "hist_name": "eta_avg",
+            "var_name": "truth_etaavg",
+            "title": "#bar{#eta}",
+            "binning": {
+                "nbins": 48,
+                "min": -2.4,
+                "max": 2.4
+            }
+        },
+        {
+            "hist_name": "eta1",
+            "var_name": "m1.truth_eta",
+            "title": "#eta_{lead}",
+            "binning": {
+                "nbins": 48,
+                "min": -2.4,
+                "max": 2.4
+            }
+        },
+        {
+            "hist_name": "eta2",
+            "var_name": "m2.truth_eta",
+            "title": "#eta_{sublead}",
+            "binning": {
+                "nbins": 48,
+                "min": -2.4,
+                "max": 2.4
+            }
+        },
+        {
+            "hist_name": "pt1",
+            "var_name": "m1.truth_pt",
+            "title": "p_{T}^{lead} [GeV]",
+            "binning": "pT_bins_80"
+        },
+        {
+            "hist_name": "pt2",
+            "var_name": "m2.truth_pt",
+            "title": "p_{T}^{sublead} [GeV]",
+            "binning": "pT_bins_80"
+        },
+        {
+            "hist_name": "pt_lead",
+            "var_name": "truth_pt_lead",
+            "title": "p_{T}^{lead} [GeV]",
+            "binning": "pT_bins_80"
+        },
+        {
+            "hist_name": "pair_pt",
+            "var_name": "truth_pair_pt",
+            "title": "p_{T}^{pair} [GeV]",
+            "binning": "pT_bins_80"
+        },
+        {
+            "hist_name": "minv",
+            "var_name": "truth_minv",
+            "title": "m_{#mu#mu} [GeV]",
+            "binning": "minv_log_bins"
         },
         {
             "hist_name": "minv_zoomin",
@@ -81,6 +171,32 @@
             "var_name": "truth_minv",
             "title": "m_{#mu#mu} [GeV]",
             "binning": "minv_log_bins"
+        },
+        {
+            "hist_name": "mQQ",
+            "var_name": "mQQ",
+            "title": "m_{QQ} [GeV]",
+            "binning": "minv_log_bins"
+        },
+        {
+            "hist_name": "mQQ_Q_ratio",
+            "var_name": "mQQ_Q_ratio",
+            "title": "m_{QQ}/Q",
+            "binning": {
+                "nbins": 80,
+                "min": 0.0,
+                "max": 5.0
+            }
+        },
+        {
+            "hist_name": "mQQ_mHard_ratio",
+            "var_name": "mQQ_mHard_ratio",
+            "title": "m_{QQ}/m_{Hard}",
+            "binning": {
+                "nbins": 80,
+                "min": 0.0,
+                "max": 5.0
+            }
         }
     ]
 }

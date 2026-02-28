@@ -474,10 +474,14 @@ template <class PairT, class MuonT, class Derived, class... Extras>
 void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook(){
 
 	nentries = fChainRef()->GetEntries();//number of events
-	for (Long64_t jentry=0; jentry<nentries;jentry++) {//loop over the events
+    const Long64_t nentries_to_process = (nevents_max <= 0)
+        ? nentries
+        : std::min<Long64_t>(nentries, nevents_max);
+
+    for (Long64_t jentry=0; jentry<nentries_to_process;jentry++) {//loop over the events
 	// for (Long64_t jentry=0; jentry<1000;jentry++) {//loop over the events
 
-		if(jentry%100000==0) cout<<"Processing "<<jentry<<" event out of "<<nentries<<" events"<<std::endl;
+        if(jentry%100000==0) cout<<"Processing "<<jentry<<" event out of "<<nentries_to_process<<" events"<<std::endl;
 
 		int num_bytes = fChainRef()->GetEntry(jentry);//read in an event
 		if(num_bytes==0){

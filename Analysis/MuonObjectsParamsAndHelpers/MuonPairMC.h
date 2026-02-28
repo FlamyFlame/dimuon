@@ -50,9 +50,9 @@ struct PairMCTruthKinExtras {
 
 template <class Derived>
 struct PairFullSimExtras {
-    bool pair_pass_medium{}; // imposing resonance cuts: default
-    bool pair_pass_medium_pre_resonance{}; // NOT imposing resonance cuts
-    bool pair_pass_tight_pre_resonance{}; // NOT imposing resonance cuts
+    bool pair_pass_medium{}; // default medium pair selection WITHOUT resonance cuts
+    bool pair_pass_medium_and_resonance{};
+    bool pair_pass_tight_and_resonance{};
     bool pair_pass_resonance_reco{};
     bool pair_pass_resonance_truth{};
 };

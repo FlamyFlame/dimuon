@@ -156,7 +156,10 @@ void PowhegFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
             cur_muon.pass_tight = false;
         }
 
-        if(self().output_single_muon_tree) self().FillSingleMuonTree();
+        if(self().output_single_muon_tree){
+            self().muon_raw_ptr = &cur_muon;
+            self().FillSingleMuonTree();
+        }
         
         truth_muon_list.push_back(std::move(cur_muon));
     } // end loop over single truth muons
@@ -194,11 +197,11 @@ void PowhegFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
             if (self().mpairRef()->m1.reco_match && self().mpairRef()->m2.reco_match){                
                 self().ResonanceTaggingReco();
                 self().ResonanceTaggingTruth();
-                self().mpairRef()->pair_pass_medium_pre_resonance = (self().mpairRef()->m1.pass_medium && self().mpairRef()->m2.pass_medium);
-                self().mpairRef()->pair_pass_tight_pre_resonance  = (self().mpairRef()->m1.pass_tight  && self().mpairRef()->m2.pass_tight);
+                self().mpairRef()->pair_pass_medium = (self().mpairRef()->m1.pass_medium && self().mpairRef()->m2.pass_medium);
+                self().mpairRef()->pair_pass_tight  = (self().mpairRef()->m1.pass_tight  && self().mpairRef()->m2.pass_tight);
             }else{
-                self().mpairRef()->pair_pass_medium_pre_resonance = false;
-                self().mpairRef()->pair_pass_tight_pre_resonance  = false;
+                self().mpairRef()->pair_pass_medium = false;
+                self().mpairRef()->pair_pass_tight  = false;
             }
 
             self().muon_pair_list_cur_event_pre_resonance_cut.push_back(std::move(self().mpairRef()));
@@ -232,13 +235,15 @@ void PowhegFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
             itres_m2 = std::find(resonance_tagged_muon_index_list_truth.begin(),resonance_tagged_muon_index_list_truth.end(),self().mpairRef()->m2.ind);
             self().mpairRef()->pair_pass_resonance_truth &= (itres_m2 == resonance_tagged_muon_index_list_truth.end());
 
-            self().mpairRef()->pair_pass_medium = self().mpairRef()->pair_pass_resonance_reco && self().mpairRef()->pair_pass_medium_pre_resonance;
-            self().mpairRef()->pair_pass_tight  = self().mpairRef()->pair_pass_resonance_reco && self().mpairRef()->pair_pass_tight_pre_resonance;
+            self().mpairRef()->pair_pass_medium_and_resonance = self().mpairRef()->pair_pass_resonance_reco && self().mpairRef()->pair_pass_medium;
+            self().mpairRef()->pair_pass_tight_and_resonance  = self().mpairRef()->pair_pass_resonance_reco && self().mpairRef()->pair_pass_tight;
         }else{
             self().mpairRef()->pair_pass_resonance_reco = false;
             self().mpairRef()->pair_pass_resonance_truth = false;
             self().mpairRef()->pair_pass_medium = false;
             self().mpairRef()->pair_pass_tight  = false;
+            self().mpairRef()->pair_pass_medium_and_resonance = false;
+            self().mpairRef()->pair_pass_tight_and_resonance  = false;
         }
 
         if (self().getPerformTruth()) self().PerformTruthPairAnalysisHook();

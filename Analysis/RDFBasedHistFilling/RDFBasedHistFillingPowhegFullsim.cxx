@@ -7,17 +7,61 @@
 #include <set>
 #include <sstream>
 
+void RDFBasedHistFillingPowhegFullsim::SetIOPathsHook(){
+    if (!useMixed){
+        RDFBasedHistFillingPowheg::SetIOPathsHook();
+        return;
+    }
+
+    if (!is_fullsim || is_fullsim_overlay){
+        throw std::runtime_error("Powheg mixed input is supported only for non-overlay fullsim mode.");
+    }
+
+    if (run_year != 17){
+        throw std::runtime_error("For Powheg mixed fullsim, Run year must be 17. Current input invalid: " + std::to_string(run_year));
+    }
+
+    const std::string powheg_dir = "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/";
+    input_files.clear();
+
+    for (std::string mc_mode : {"bb", "cc"}){
+        const std::string mixed_dir =
+            powheg_dir
+            + "user.yuhang.TrigRates.dimuon.PowhegPythia.fullsim.pp17."
+            + mc_mode + ".Feb2026.v1._MYSTREAM/mixed/";
+
+        for (int ibatch = 1; ibatch <= 100; ++ibatch){
+            input_files.push_back(
+                mixed_dir
+                + "muon_pairs_powheg_" + mc_mode
+                + "_fullsim_mixed_batch" + std::to_string(ibatch)
+                + ".root"
+            );
+        }
+    }
+
+    infile_var1D_json = "var1D_powheg_fullsim.json";
+    output_file = powheg_dir + "histograms_powheg_fullsim_pp17_mixed.root";
+}
+
 void RDFBasedHistFillingPowhegFullsim::InitializePowhegFullsimExtra(){
-    
+
     levels_reco_effcy_filters = {
-        {"_ss", "_op", "_single_b"}, // all truth-same/op-sign pairs & truth single-b-signal pairs
-        {"_pair_pass_resonance_truth", "_pair_pass_medium", "_pair_pass_tight"}
+        (useMixed
+            ? std::vector<std::string>{"_ss", "_op"}
+            : std::vector<std::string>{"_single_b"}),
+        {"", "_pass_medium", "_pass_tight",
+         "_pass_signal_truth",
+         "_pass_medium_and_signal_truth_and_reco",
+         "_pass_tight_and_signal_truth_and_reco"}
     };
 
-    levels_detector_response_filters = {
-        {"_single_b"}, // truth single-b-signal pairs only
-        {"_pair_pass_medium", "_pair_pass_tight"}
-    };
+    levels_detector_response_filters = useMixed
+        ? std::vector<std::vector<std::string>>{}
+        : std::vector<std::vector<std::string>>{
+            {"_single_b"},
+            {"_pass_medium", "_pass_tight"}
+        };
 
     auto make_ranges_from_edges = [](const std::vector<float>& edges){
         std::vector<std::pair<float, float>> ranges;
@@ -44,8 +88,8 @@ void RDFBasedHistFillingPowhegFullsim::InitializePowhegFullsimExtra(){
 
     // {numerator, denominator}
     reco_eff_num_denom_suffix_pairs = {
-        {"_pair_pass_medium", "_pair_pass_resonance_truth"},
-        {"_pair_pass_tight",  "_pair_pass_resonance_truth"}
+        {"_pass_medium", ""},
+        {"_pass_tight",  ""}
     };
 }
 
@@ -56,13 +100,14 @@ void RDFBasedHistFillingPowhegFullsim::FlattenFiltersPowhegFullsim(){
 
 void RDFBasedHistFillingPowhegFullsim::BuildFlattenedFilterToVarListMapPowhegFullsim(){
     reco_effcy_var1Ds = {
-        "truth_pair_pt", "truth_pair_eta", "truth_dr_zoomin", "truth_dr_2_0", "truth_minv_zoomin"
+        "truth_pair_pt", "truth_pair_eta", "truth_dr_zoomin", "truth_dr_2_0", "truth_minv_zoomin", "truth_deta_zoomin", "truth_dphi_zoomin"
     };
 
     reco_effcy_var2Ds = {
         {"truth_pair_pt", "truth_pair_eta"}, 
         {"truth_pair_pt", "truth_dr_zoomin"}, 
         {"truth_pair_eta", "truth_dr_zoomin"},
+        {"truth_deta_zoomin", "truth_dphi_zoomin"},
         {"truth_pair_pt", "truth_minv_zoomin"}, 
         {"truth_minv_zoomin", "truth_dr_zoomin"}
     };
@@ -101,26 +146,45 @@ void RDFBasedHistFillingPowhegFullsim::BuildHistBinningMapPowhegFullsimExtra(){
 
 
 void RDFBasedHistFillingPowhegFullsim::CreateBaseRDFsPowhegFullsimExtra(){
-    for (std::string pair_catgr : {"_ss", "_op", "_single_b"}){
+    ROOT::RDF::RNode& df_op_weighted = map_at_checked(df_map, "df_op_weighted", "CreateBaseRDFsPowhegFullsimExtra: df_op_weighted");
+    auto df_single_b_weighted = useMixed
+        ? df_op_weighted
+        : df_op_weighted.Filter("from_same_b && truth_dr < 1.0");
+    df_map.emplace("df_single_b_weighted", df_single_b_weighted);
+
+    const std::vector<std::string> pair_categories = useMixed
+        ? std::vector<std::string>{"_ss", "_op"}
+        : std::vector<std::string>{"_single_b"};
+
+    for (const std::string& pair_catgr : pair_categories){
         std::string df_name = "df" + pair_catgr;
         ROOT::RDF::RNode& node = map_at_checked(df_map, df_name + "_weighted", Form("CreateBaseRDFsPowhegFullsimExtra: df_map.at(%s)", (df_name + "_weighted").c_str()));
 
-        df_map.emplace(df_name + "_pair_pass_resonance_truth_weighted" , node.Filter("pair_pass_resonance_truth"));
+        auto node_with_signal = node
+            .Define("pass_signal_truth", "truth_minv > 1.08 && truth_minv < 2.9 && truth_pair_pt > 8")
+            .Define("pass_signal_reco", "(m1.reco_match && m2.reco_match) ? (minv > 1.08 && minv < 2.9 && pair_pt > 8) : false");
 
-        df_map.emplace(df_name + "_pair_pass_medium_weighted" , node.Filter("pair_pass_medium && pair_pass_resonance_truth"));
-        df_map.emplace(df_name + "_pair_pass_tight_weighted"  , node.Filter("pair_pass_tight && pair_pass_resonance_truth"));
+        df_map.emplace(df_name + "_pass_medium_weighted" , node_with_signal.Filter("pair_pass_medium"));
+        df_map.emplace(df_name + "_pass_tight_weighted"  , node_with_signal.Filter("pair_pass_tight"));
+        df_map.emplace(df_name + "_pass_signal_truth_weighted", node_with_signal.Filter("pass_signal_truth"));
+        df_map.emplace(df_name + "_pass_medium_and_signal_truth_and_reco_weighted",
+                       node_with_signal.Filter("pair_pass_medium && pass_signal_truth && pass_signal_reco"));
+        df_map.emplace(df_name + "_pass_tight_and_signal_truth_and_reco_weighted",
+                       node_with_signal.Filter("pair_pass_tight && pass_signal_truth && pass_signal_reco"));
     }
 }
 
 void RDFBasedHistFillingPowhegFullsim::FillHistogramsFullSim(){
-    FillHistogramsFullSimDetecResp();
+    if (!useMixed) FillHistogramsFullSimDetecResp();
     FillHistogramsFullSimRecoEffcies();
 }
 
 void RDFBasedHistFillingPowhegFullsim::FillHistogramsFullSimDetecResp(){
+    if (useMixed) return;
+
     try{
         for (std::string pair_catgr : {"_single_b"}){
-            for (auto quality_catgr : {"_pair_pass_medium", "_pair_pass_tight"}){ // mu4 selection
+            for (auto quality_catgr : {"_pass_medium", "_pass_tight"}){ // mu4 selection
 
                 std::string filter = pair_catgr + quality_catgr;
                 std::string df_name = "df" + filter + "_weighted"; // e.g, df_ss_mu1passmu4
@@ -138,8 +202,19 @@ void RDFBasedHistFillingPowhegFullsim::FillHistogramsFullSimDetecResp(){
 
 void RDFBasedHistFillingPowhegFullsim::FillHistogramsFullSimRecoEffcies(){
     try{
-        for (std::string pair_catgr : {"_ss", "_op", "_single_b"}){
-            for (auto quality_catgr : {"_pair_pass_resonance_truth", "_pair_pass_medium", "_pair_pass_tight"}){ // mu4 selection
+        const std::vector<std::string> pair_categories = useMixed
+            ? std::vector<std::string>{"_ss", "_op"}
+            : std::vector<std::string>{"_single_b"};
+
+        const std::vector<std::string> quality_categories = {
+            "", "_pass_medium", "_pass_tight",
+            "_pass_signal_truth",
+            "_pass_medium_and_signal_truth_and_reco",
+            "_pass_tight_and_signal_truth_and_reco"
+        };
+
+        for (const std::string& pair_catgr : pair_categories){
+            for (const std::string& quality_catgr : quality_categories){
 
                 std::string filter = pair_catgr + quality_catgr;
                 std::string df_name = "df" + filter + "_weighted"; // e.g, df_ss_mu1passmu4
@@ -367,7 +442,11 @@ void RDFBasedHistFillingPowhegFullsim::MakeAndWriteMuPairRecoEffProjGraphsHelper
 }
 
 void RDFBasedHistFillingPowhegFullsim::MakeAndWriteMuPairRecoEffProjGraphs(){
-    MakeAndWriteMuPairRecoEffProjGraphsHelper({"_ss", "_op", "_single_b"});
+    if (useMixed){
+        MakeAndWriteMuPairRecoEffProjGraphsHelper({"_ss", "_op"});
+    } else {
+        MakeAndWriteMuPairRecoEffProjGraphsHelper({"_single_b"});
+    }
 }
 
 void RDFBasedHistFillingPowhegFullsim::WriteOutputExtra(){

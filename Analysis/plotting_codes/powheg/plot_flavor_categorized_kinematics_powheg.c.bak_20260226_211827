@@ -7,7 +7,6 @@
 #include "TH1.h"
 #include "TH2.h"
 #include "TCanvas.h"
-#include "TSystem.h"
 #include<algorithm>
 // #include "string"
 // #include <vector>
@@ -15,7 +14,7 @@
 // #include "struct_hist.h"
 
 
-const int nMCmodes = 1;
+const int nMCmodes = 2;
 const int nSigns = 2;
 // const int nDphi = 2;
 // const int nflavorCategories = 4;
@@ -33,19 +32,19 @@ TFile* f[nMCmodes];
 
 
 std::string mcdir = "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/";
-std::vector<std::string> sub_dirs = {""};
+std::vector<std::string> sub_dirs = {"bb_full_sample/", "cc_full_sample/"};
 
-std::string fnames[nMCmodes] = {"histograms_powheg_truth.root"};
-std::vector<std::string> mcmodes = {""};
-std::vector<std::string> signs = {"_ss", "_op"};
+std::string fnames[nMCmodes] = {"histograms_mc_truth_bb_combined.root", "histograms_mc_truth_cc_combined.root"};
+std::vector<std::string> mcmodes = {"_bb","_cc"};
+std::vector<std::string> signs = {"_sign1", "_sign2"};
 // std::vector<std::string> dphis = {"_near", "_away"};
 // std::vector<std::string> flavor_categories = {"_cc", "_other_flavors", "_bb", "_single_b"};
-std::vector<std::string> flavor_categories = {"_flavor_binned_both_from_c", "_flavor_binned_both_from_b", "_flavor_binned_single_b"};
-std::vector<std::string> flavor_catg_labels = {"both from c", "both from b", "single b"};
+std::vector<std::string> flavor_categories = {"_cc", "_bb", "_single_b"};
+std::vector<std::string> flavor_catg_labels = {"cc", "bb", "single b"};
 std::vector<Color_t> line_colors = {kRed, kBlue, kBlack};
 std::vector<Color_t> fill_colors = {kRed, kBlue, kYellow};
 
-std::string subpl_titles[nMCmodes][nSigns] = {{"POWHEG truth, same sign", "POWHEG truth, opposite sign"}};
+std::string subpl_titles[nMCmodes][nSigns] = {{"POWHEG, bb, same sign", "POWHEG, bb, opposite sign"}, {"POWHEG, cc, same sign", "POWHEG, cc, opposite sign"}};
 std::string subpl_titles_sum_bb_cc[nSigns] = {"POWHEG bb+cc, same sign", "POWHEG bb+cc, opposite sign"};
 
 void hist_helper(TH1* h, std::string title, bool norm_unity){
@@ -284,9 +283,7 @@ void plot_flavor_categorized_kinematic_single_sum_bb_cc(std::string kin, bool pr
         }
       }
 
-      if (nMCmodes > 1){
-        h[0][ksign][mgrp]->Add(h[1][ksign][mgrp]);
-      }
+      h[0][ksign][mgrp]->Add(h[1][ksign][mgrp]);
       if(norm_unity){
         hist_helper(h[0][ksign][mgrp], subpl_titles_sum_bb_cc[ksign] + ", unity", norm_unity);
       }else{
@@ -337,28 +334,26 @@ void plot_flavor_categorized_kinematic_single_sum_bb_cc(std::string kin, bool pr
 
 
 void plot_flavor_categorized_kinematics_powheg(){
-  gSystem->mkdir("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/powheg/flavor_categoried/sum_bb_cc", true);
-
   // plot_flavor_categorized_kinematic_single("DR", false, false, false, false, "DR", "#Delta R");
   // plot_flavor_categorized_kinematic_single("DR", false, false, true, false, "DR", "#Delta R"); // accumulative
   // plot_flavor_categorized_kinematic_single("DR", false, false, false, true, "DR", "#Delta R"); // norm to unity
-  plot_flavor_categorized_kinematic_single("dr", false, false, false, false, "dr", "#Delta R");
-  plot_flavor_categorized_kinematic_single("dr", false, false, true, false, "dr", "#Delta R");
-  plot_flavor_categorized_kinematic_single("dr", false, false, false, true, "dr", "#Delta R");
+  plot_flavor_categorized_kinematic_single_sum_bb_cc("DR", false, false, false, false, "DR", "#Delta R");
+  plot_flavor_categorized_kinematic_single_sum_bb_cc("DR", false, false, true, false, "DR", "#Delta R"); // accumulative
+  plot_flavor_categorized_kinematic_single_sum_bb_cc("DR", false, false, false, true, "DR", "#Delta R");
 
   // plot_flavor_categorized_kinematic_single("pt_asym", false, false, false, false, "pt_asym","A");
   // plot_flavor_categorized_kinematic_single("pt_asym", false, false, true, false, "pt_asym","A"); // accumulative
   // plot_flavor_categorized_kinematic_single("pt_asym", false, false, false, true, "pt_asym","A"); // norm to unity
-  plot_flavor_categorized_kinematic_single("pt_asym", false, false, false, false, "pt_asym","A");
-  plot_flavor_categorized_kinematic_single("pt_asym", false, false, true, false, "pt_asym","A");
-  plot_flavor_categorized_kinematic_single("pt_asym", false, false, false, true, "pt_asym","A");
+  plot_flavor_categorized_kinematic_single_sum_bb_cc("pt_asym", false, false, false, false, "pt_asym","A");
+  plot_flavor_categorized_kinematic_single_sum_bb_cc("pt_asym", false, false, true, false, "pt_asym","A"); // accumulative
+  plot_flavor_categorized_kinematic_single_sum_bb_cc("pt_asym", false, false, false, true, "pt_asym","A");
     
   // plot_flavor_categorized_kinematic_single("pair_pt_ptlead_ratio", false, false, false, false, "pair_pt_ptlead_ratio", "p_{T}^{pair}/p_{T}^{lead}");
   // plot_flavor_categorized_kinematic_single("pair_pt_ptlead_ratio", false, false, true, false, "pair_pt_ptlead_ratio", "p_{T}^{pair}/p_{T}^{lead}");
   // plot_flavor_categorized_kinematic_single("pair_pt_ptlead_ratio", false, false, false, true, "pair_pt_ptlead_ratio", "p_{T}^{pair}/p_{T}^{lead}"); // norm to unity
-  plot_flavor_categorized_kinematic_single("pair_pt_ptlead_ratio", false, false, false, false, "pair_pt_ptlead_ratio", "p_{T}^{pair}/p_{T}^{lead}");
-  plot_flavor_categorized_kinematic_single("pair_pt_ptlead_ratio", false, false, true, false, "pair_pt_ptlead_ratio", "p_{T}^{pair}/p_{T}^{lead}");
-  plot_flavor_categorized_kinematic_single("pair_pt_ptlead_ratio", false, false, false, true, "pair_pt_ptlead_ratio", "p_{T}^{pair}/p_{T}^{lead}");
+  plot_flavor_categorized_kinematic_single_sum_bb_cc("pair_pt_ptlead_ratio", false, false, false, false, "pair_pt_ptlead_ratio", "p_{T}^{pair}/p_{T}^{lead}");
+  plot_flavor_categorized_kinematic_single_sum_bb_cc("pair_pt_ptlead_ratio", false, false, true, false, "pair_pt_ptlead_ratio", "p_{T}^{pair}/p_{T}^{lead}");
+  plot_flavor_categorized_kinematic_single_sum_bb_cc("pair_pt_ptlead_ratio", false, false, false, true, "pair_pt_ptlead_ratio", "p_{T}^{pair}/p_{T}^{lead}");
   
   // // plot_flavor_categorized_kinematic_single("mQQ", false, false, false, false, "mQQ","m_{QQ}");
   // // plot_flavor_categorized_kinematic_single("mQQ", false, false, true, false, "mQQ","m_{QQ}");
@@ -384,36 +379,36 @@ void plot_flavor_categorized_kinematics_powheg(){
   // plot_flavor_categorized_kinematic_single("ptlead_pair_pt", true, false, false, false, "pair_pt", "p_{T}^{pair}");
   // plot_flavor_categorized_kinematic_single("ptlead_pair_pt", true, false, true, false, "pair_pt", "p_{T}^{pair}");
   // plot_flavor_categorized_kinematic_single("ptlead_pair_pt", true, false, false, true, "pair_pt", "p_{T}^{pair}"); // norm to unity
-  plot_flavor_categorized_kinematic_single("pt_lead_vs_pair_pt", true, false, false, false, "pair_pt", "p_{T}^{pair}");
-  plot_flavor_categorized_kinematic_single("pt_lead_vs_pair_pt", true, false, true, false, "pair_pt", "p_{T}^{pair}");
-  plot_flavor_categorized_kinematic_single("pt_lead_vs_pair_pt", true, false, false, true, "pair_pt", "p_{T}^{pair}");
+  plot_flavor_categorized_kinematic_single_sum_bb_cc("ptlead_pair_pt", true, false, false, false, "pair_pt", "p_{T}^{pair}");
+  plot_flavor_categorized_kinematic_single_sum_bb_cc("ptlead_pair_pt", true, false, true, false, "pair_pt", "p_{T}^{pair}");
+  plot_flavor_categorized_kinematic_single_sum_bb_cc("ptlead_pair_pt", true, false, false, true, "pair_pt", "p_{T}^{pair}");
 
   // plot_flavor_categorized_kinematic_single("ptlead_pair_pt", false, true, false, false, "ptlead", "p_{T}^{lead}");
   // plot_flavor_categorized_kinematic_single("ptlead_pair_pt", false, true, true, false, "ptlead", "p_{T}^{lead}");
   // plot_flavor_categorized_kinematic_single("ptlead_pair_pt", false, true, false, true, "ptlead", "p_{T}^{lead}"); // norm to unity
-  plot_flavor_categorized_kinematic_single("pt_lead_vs_pair_pt", false, true, false, false, "pt_lead", "p_{T}^{lead}");
-  plot_flavor_categorized_kinematic_single("pt_lead_vs_pair_pt", false, true, true, false, "pt_lead", "p_{T}^{lead}");
-  plot_flavor_categorized_kinematic_single("pt_lead_vs_pair_pt", false, true, false, true, "pt_lead", "p_{T}^{lead}");
+  plot_flavor_categorized_kinematic_single_sum_bb_cc("ptlead_pair_pt", false, true, false, false, "ptlead", "p_{T}^{lead}");
+  plot_flavor_categorized_kinematic_single_sum_bb_cc("ptlead_pair_pt", false, true, true, false, "ptlead", "p_{T}^{lead}");
+  plot_flavor_categorized_kinematic_single_sum_bb_cc("ptlead_pair_pt", false, true, false, true, "ptlead", "p_{T}^{lead}");
   
   // plot_flavor_categorized_kinematic_single ("minv_pair_pt", false, true, false, false, "minv", "m_{#mu#mu}");
   // plot_flavor_categorized_kinematic_single("minv_pair_pt", false, true, true, false, "minv", "m_{#mu#mu}");
   // plot_flavor_categorized_kinematic_single("minv_pair_pt", false, true, false, true, "minv", "m_{#mu#mu}"); // norm to unity
-  plot_flavor_categorized_kinematic_single ("minv_vs_pair_pt", false, true, false, false, "minv", "m_{#mu#mu}");
-  plot_flavor_categorized_kinematic_single("minv_vs_pair_pt", false, true, true, false, "minv", "m_{#mu#mu}");
-  plot_flavor_categorized_kinematic_single ("minv_vs_pair_pt", false, true, false, true, "minv", "m_{#mu#mu}");
+  plot_flavor_categorized_kinematic_single_sum_bb_cc ("minv_pair_pt", false, true, false, false, "minv", "m_{#mu#mu}");
+  plot_flavor_categorized_kinematic_single_sum_bb_cc("minv_pair_pt", false, true, true, false, "minv", "m_{#mu#mu}");
+  plot_flavor_categorized_kinematic_single_sum_bb_cc ("minv_pair_pt", false, true, false, true, "minv", "m_{#mu#mu}");
   
   // plot_flavor_categorized_kinematic_single("Deta_Dphi", true, false, false, false, "Dphi", "#Delta #phi");
   // plot_flavor_categorized_kinematic_single("Deta_Dphi", true, false, true, false, "Dphi", "#Delta #phi");
   // plot_flavor_categorized_kinematic_single("Deta_Dphi", true, false, false, true, "Dphi", "#Delta #phi"); // norm to unity
-  plot_flavor_categorized_kinematic_single("deta_vs_dphi", true, false, false, false, "dphi", "#Delta #phi");
-  plot_flavor_categorized_kinematic_single("deta_vs_dphi", true, false, true, false, "dphi", "#Delta #phi");
-  plot_flavor_categorized_kinematic_single("deta_vs_dphi", true, false, false, true, "dphi", "#Delta #phi");
+  plot_flavor_categorized_kinematic_single_sum_bb_cc("Deta_Dphi", true, false, false, false, "Dphi", "#Delta #phi");
+  plot_flavor_categorized_kinematic_single_sum_bb_cc("Deta_Dphi", true, false, true, false, "Dphi", "#Delta #phi");
+  plot_flavor_categorized_kinematic_single_sum_bb_cc("Deta_Dphi", true, false, false, true, "Dphi", "#Delta #phi");
   
   // plot_flavor_categorized_kinematic_single("Deta_Dphi", false, true, false, false, "Deta", "#Delta #eta");
   // plot_flavor_categorized_kinematic_single("Deta_Dphi", false, true, true, false, "Deta", "#Delta #eta");
   // plot_flavor_categorized_kinematic_single("Deta_Dphi", false, true, false, true, "Deta", "#Delta #eta"); // norm to unity
-  plot_flavor_categorized_kinematic_single("deta_vs_dphi", false, true, false, false, "deta", "#Delta #eta");
-  plot_flavor_categorized_kinematic_single("deta_vs_dphi", false, true, true, false, "deta", "#Delta #eta");
-  plot_flavor_categorized_kinematic_single("deta_vs_dphi", false, true, false, true, "deta", "#Delta #eta");
+  plot_flavor_categorized_kinematic_single_sum_bb_cc("Deta_Dphi", false, true, false, false, "Deta", "#Delta #eta");
+  plot_flavor_categorized_kinematic_single_sum_bb_cc("Deta_Dphi", false, true, true, false, "Deta", "#Delta #eta");
+  plot_flavor_categorized_kinematic_single_sum_bb_cc("Deta_Dphi", false, true, false, true, "Deta", "#Delta #eta");
 }
 

@@ -401,8 +401,8 @@ void RDFBasedHistFillingBaseClass::PrintVar1DList() const {
 
 void RDFBasedHistFillingBaseClass::FillHistogramsSingleDataFrame(const std::string& filter,
                                             ROOT::RDF::RNode df,
-                                            bool hists_write = true,
-                                            std::array<bool, 3> hists_1_2_3D_write = {1,1,1}) {
+                                            bool hists_write,
+                                            std::array<bool, 3> hists_1_2_3D_write) {
     static const std::vector<std::string> empty1D;
     static const std::vector<std::array<std::string, 2>> empty2D;
     static const std::vector<std::array<std::string, 3>> empty3D;
@@ -421,9 +421,9 @@ void RDFBasedHistFillingBaseClass::FillHistogramsSingleDataFrame(const std::stri
 void RDFBasedHistFillingBaseClass::FillHistogramsSingleDataFrame(const std::string& filter,
                                             const std::string& weight,
                                             ROOT::RDF::RNode df,
-                                            bool weight_before_filter = false,
-                                            bool hists_write = true,
-                                            std::array<bool, 3> hists_1_2_3D_write = {1,1,1}) {
+                                            bool weight_before_filter,
+                                            bool hists_write,
+                                            std::array<bool, 3> hists_1_2_3D_write) {
     static const std::vector<std::string> empty1D;
     static const std::vector<std::array<std::string, 2>> empty2D;
     static const std::vector<std::array<std::string, 3>> empty3D;
@@ -462,8 +462,8 @@ void RDFBasedHistFillingBaseClass::FillHistogramsSingleDataFrame(const std::stri
                                             const std::vector<std::string>& vars1D,
                                             const std::vector<std::array<std::string, 2>>& vars2D, 
                                             const std::vector<std::array<std::string, 3>>& vars3D,
-                                            bool hists_write = true,
-                                            std::array<bool, 3> hists_1_2_3D_write = {1,1,1}) {
+                                            bool hists_write,
+                                            std::array<bool, 3> hists_1_2_3D_write) {
 
 
     if (vars1D.empty() && vars2D.empty() && vars3D.empty()) {
