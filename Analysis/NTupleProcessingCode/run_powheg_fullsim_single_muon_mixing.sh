@@ -2,17 +2,16 @@
 set -eo pipefail
 
 # Usage:
-#   ./run_powheg_fullsim_single_muon_mixing.sh [bb|cc|both] [target_lt20] [target_gt20] [run_year] [input_file] [output_file]
+#   ./run_powheg_fullsim_single_muon_mixing.sh [bb|cc|both] [target_pairs] [run_year] [input_file] [output_file]
 # Examples:
-#   ./run_powheg_fullsim_single_muon_mixing.sh bb 5000 5000 17
-#   ./run_powheg_fullsim_single_muon_mixing.sh both 10000000 5000000 17
+#   ./run_powheg_fullsim_single_muon_mixing.sh bb 5000 17
+#   ./run_powheg_fullsim_single_muon_mixing.sh both 5000000 17
 
 mode="${1:-both}"
-target_lt20="${2:-10000000}"
-target_gt20="${3:-5000000}"
-run_year="${4:-17}"
-input_override="${5:-}"
-output_override="${6:-}"
+target_pairs="${2:-5000000}"
+run_year="${3:-17}"
+input_override="${4:-}"
+output_override="${5:-}"
 
 # Prevent atlasLocalSetup from interpreting this script's positional args.
 set --
@@ -36,7 +35,7 @@ run_one_mode () {
 
   root -b -l << EOF
     .L mix_powheg_single_muon_pairs.C+
-    run_powheg_single_muon_pair_mixing("${mmode}", ${target_lt20}, ${target_gt20}, ${run_year}, "${in_file}", "${out_file}", 0);
+    run_powheg_single_muon_pair_mixing("${mmode}", ${target_pairs}, 1, ${run_year}, "${in_file}", "${out_file}", 0, 5.0);
     .q
 EOF
 }

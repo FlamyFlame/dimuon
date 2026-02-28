@@ -19,18 +19,14 @@ class PowhegSingleMuonPairMixer {
 public:
     std::string mc_mode{"bb"}; // bb or cc
 
-    Long64_t nmixed_pairs_target_pT_lt_20GeV{10000000};
-    Long64_t nmixed_pairs_target_pT_gt_20GeV{5000000};
-
-    Long64_t nmixed_pairs_pT_lt_20GeV{0};
-    Long64_t nmixed_pairs_pT_gt_20GeV{0};
+    Long64_t nmixed_pairs_target{5000000};
+    Long64_t nmixed_pairs_generated{0};
 
     int file_batch{1};
     int run_year{17};
     std::string input_file_path{};
     std::string output_file_path{};
-    std::string high_pt_sampling_mode{"uniform"}; // uniform or pt_power
-    double high_pt_truth_pt_alpha{4.0};
+    double truth_pt_sampling_alpha{5.0};
     ULong64_t rng_seed{0};
 
     explicit PowhegSingleMuonPairMixer(const std::string& mode = "bb") : mc_mode(mode) {}
@@ -44,10 +40,8 @@ public:
         std::cout << "[Mixer] file_batch = " << file_batch << std::endl;
         std::cout << "[Mixer] input    = " << input_file_path << std::endl;
         std::cout << "[Mixer] output   = " << output_file_path << std::endl;
-        std::cout << "[Mixer] targets  : pT<=20GeV=" << nmixed_pairs_target_pT_lt_20GeV
-                  << ", pT>20GeV=" << nmixed_pairs_target_pT_gt_20GeV << std::endl;
-        std::cout << "[Mixer] high-pT sampling mode = " << high_pt_sampling_mode
-              << ", alpha = " << high_pt_truth_pt_alpha << std::endl;
+          std::cout << "[Mixer] target pairs = " << nmixed_pairs_target << std::endl;
+          std::cout << "[Mixer] muon sampling alpha (truth_pt^alpha) = " << truth_pt_sampling_alpha << std::endl;
 
         TFile in_file(input_file_path.c_str(), "READ");
         if (!in_file.IsOpen() || in_file.IsZombie()){
@@ -87,52 +81,35 @@ public:
 
         TRandom3 rng(rng_seed);
 
-        std::vector<double> high_pt_weight_cdf;
-        bool use_weighted_high_pt_sampling = (high_pt_sampling_mode == "pt_power");
-
-        if (use_weighted_high_pt_sampling){
-            high_pt_weight_cdf.resize(static_cast<std::size_t>(nmuons), 0.0);
-            double cumsum = 0.0;
-
-            for (Long64_t imu = 0; imu < nmuons; ++imu){
-                muon_tree->GetEntry(imu);
-                const double truth_pt = std::max(0.0, static_cast<double>(in_muon->truth_pt));
-                double w = std::pow(truth_pt, high_pt_truth_pt_alpha);
-                if (!std::isfinite(w) || w < 0.0) w = 0.0;
-                cumsum += w;
-                high_pt_weight_cdf[static_cast<std::size_t>(imu)] = cumsum;
-            }
-
-            if (!(cumsum > 0.0)){
-                std::cout << "[Mixer] WARNING: high-pT weighted sampling requested but total weight <= 0. Fallback to uniform." << std::endl;
-                use_weighted_high_pt_sampling = false;
-                high_pt_weight_cdf.clear();
-            }
+        std::vector<double> weight_cdf(static_cast<std::size_t>(nmuons), 0.0);
+        double cumsum = 0.0;
+        for (Long64_t imu = 0; imu < nmuons; ++imu){
+            muon_tree->GetEntry(imu);
+            const double truth_pt = std::max(0.0, static_cast<double>(in_muon->truth_pt));
+            double w = std::pow(truth_pt, truth_pt_sampling_alpha);
+            if (!std::isfinite(w) || w < 0.0) w = 0.0;
+            cumsum += w;
+            weight_cdf[static_cast<std::size_t>(imu)] = cumsum;
         }
 
-        const Long64_t benchmark_target_pT_lt_20GeV = 10000;
-        const Long64_t benchmark_target_pT_gt_20GeV = 5000;
-        bool benchmark_reported_pT_lt_20GeV = false;
-        bool benchmark_reported_pT_gt_20GeV = false;
+        if (!(cumsum > 0.0)){
+            throw std::runtime_error("[Mixer] Total muon sampling weight <= 0. Check truth_pt input.");
+        }
+
+        const Long64_t benchmark_target_pairs = std::min<Long64_t>(10000, nmixed_pairs_target);
+        bool benchmark_reported = false;
         const auto t_start = std::chrono::steady_clock::now();
 
-        const Long64_t max_attempts_low = std::max<Long64_t>(1000000, nmixed_pairs_target_pT_lt_20GeV * 200);
-        const Long64_t max_attempts_high = std::max<Long64_t>(1000000, nmixed_pairs_target_pT_gt_20GeV * 200);
+        const Long64_t max_attempts = std::max<Long64_t>(1000000, nmixed_pairs_target * 200);
 
-        auto sample_uniform_index = [&rng, nmuons](){
-            return static_cast<Long64_t>(rng.Integer(static_cast<UInt_t>(nmuons)));
+        auto sample_weighted_index = [&rng, &weight_cdf](){
+            const double r = rng.Uniform(0.0, weight_cdf.back());
+            auto it = std::lower_bound(weight_cdf.begin(), weight_cdf.end(), r);
+            if (it == weight_cdf.end()) return static_cast<Long64_t>(weight_cdf.size() - 1);
+            return static_cast<Long64_t>(std::distance(weight_cdf.begin(), it));
         };
 
-        auto sample_weighted_index = [&rng, &high_pt_weight_cdf, &sample_uniform_index](){
-            if (high_pt_weight_cdf.empty() || !(high_pt_weight_cdf.back() > 0.0)) return sample_uniform_index();
-            const double r = rng.Uniform(0.0, high_pt_weight_cdf.back());
-            auto it = std::lower_bound(high_pt_weight_cdf.begin(), high_pt_weight_cdf.end(), r);
-            if (it == high_pt_weight_cdf.end()) return static_cast<Long64_t>(high_pt_weight_cdf.size() - 1);
-            return static_cast<Long64_t>(std::distance(high_pt_weight_cdf.begin(), it));
-        };
-
-        auto fill_one_pair_if_selected = [&](Long64_t idx1, Long64_t idx2, bool require_high_pt){
-            if (idx2 == idx1) idx2 = (idx2 + 1) % nmuons;
+        auto fill_one_pair = [&](Long64_t idx1, Long64_t idx2){
 
             muon_tree->GetEntry(idx1);
             MuonPowhegFullSimNoTruth m1 = ConvertToNoTruth(*in_muon);
@@ -140,10 +117,22 @@ public:
             muon_tree->GetEntry(idx2);
             MuonPowhegFullSimNoTruth m2 = ConvertToNoTruth(*in_muon);
 
+            if (m1.ev_num == m2.ev_num && m1.ind == m2.ind) return false;
+
             MuonPairPowhegFullSimNoTruth pair;
             pair.Clear();
-            pair.weight = 1.0;
-            pair.crossx = 1.0;
+            const double m1_truth_pt = std::max(0.0, static_cast<double>(m1.truth_pt));
+            const double m2_truth_pt = std::max(0.0, static_cast<double>(m2.truth_pt));
+
+            const double w1 = std::pow(m1_truth_pt, truth_pt_sampling_alpha);
+            const double w2 = std::pow(m2_truth_pt, truth_pt_sampling_alpha);
+            if (!(w1 > 0.0) || !(w2 > 0.0) || !std::isfinite(w1) || !std::isfinite(w2)) return false;
+
+            const double inv_pair_weight = 1.0 / (w1 * w2);
+            if (!(inv_pair_weight > 0.0) || !std::isfinite(inv_pair_weight)) return false;
+
+            pair.weight = inv_pair_weight;
+            pair.crossx = inv_pair_weight;
             pair.m1 = m1;
             pair.m2 = m2;
 
@@ -156,102 +145,66 @@ public:
             pair.pair_pass_medium_and_resonance = false;
             pair.pair_pass_tight_and_resonance = false;
 
-            const float pair_pt = pair.truth_pair_pt;
-            const bool pass_category = require_high_pt ? (pair_pt > 20.0f) : (pair_pt <= 20.0f);
-            if (!pass_category) return -1.0f;
-
             out_pair_ptr = &pair;
             if (pair.truth_same_sign) muon_pair_tree_sign1->Fill();
             else muon_pair_tree_sign2->Fill();
 
-            return pair_pt;
+            return true;
         };
 
-        Long64_t attempts_low = 0;
-        Long64_t attempts_high = 0;
+        Long64_t attempts = 0;
+        while (nmixed_pairs_generated < nmixed_pairs_target && attempts < max_attempts){
+            ++attempts;
 
-        while (nmixed_pairs_pT_lt_20GeV < nmixed_pairs_target_pT_lt_20GeV && attempts_low < max_attempts_low){
-            ++attempts_low;
+            const Long64_t idx1 = sample_weighted_index();
 
-            const Long64_t idx1 = sample_uniform_index();
-            Long64_t idx2 = sample_uniform_index();
-            if (idx2 == idx1) idx2 = (idx2 + 1) % nmuons;
+            muon_tree->GetEntry(idx1);
+            const int first_ev_num = in_muon->ev_num;
+            const int first_ind = in_muon->ind;
 
-            const float pair_pt = fill_one_pair_if_selected(idx1, idx2, false);
-            if (pair_pt < 0.0f) continue;
+            Long64_t idx2 = -1;
+            bool found_distinct_second = false;
+            constexpr int max_second_resample = 1000;
+            for (int iresample = 0; iresample < max_second_resample; ++iresample){
+                const Long64_t idx2_candidate = sample_weighted_index();
+                muon_tree->GetEntry(idx2_candidate);
 
-            ++nmixed_pairs_pT_lt_20GeV;
+                if (in_muon->ev_num == first_ev_num && in_muon->ind == first_ind) continue;
 
-            const Long64_t nfilled = nmixed_pairs_pT_lt_20GeV + nmixed_pairs_pT_gt_20GeV;
+                idx2 = idx2_candidate;
+                found_distinct_second = true;
+                break;
+            }
+            if (!found_distinct_second) continue;
 
-            if (!benchmark_reported_pT_lt_20GeV
-                && nmixed_pairs_pT_lt_20GeV >= benchmark_target_pT_lt_20GeV){
+            const bool filled = fill_one_pair(idx1, idx2);
+            if (!filled) continue;
+
+            ++nmixed_pairs_generated;
+
+            if (!benchmark_reported && nmixed_pairs_generated >= benchmark_target_pairs){
                 const auto t_now = std::chrono::steady_clock::now();
                 const double elapsed_sec =
                     std::chrono::duration<double>(t_now - t_start).count();
                 std::cout << "[Mixer] benchmark: time to generate "
-                          << benchmark_target_pT_lt_20GeV
-                          << " pairs with pT<=20 = "
-                          << elapsed_sec << " s" << std::endl;
-                benchmark_reported_pT_lt_20GeV = true;
+                          << benchmark_target_pairs
+                          << " pairs = " << elapsed_sec << " s" << std::endl;
+                benchmark_reported = true;
             }
 
-            if (nfilled % 100000 == 0){
-                std::cout << "[Mixer] attempts_low=" << attempts_low
-                          << " attempts_high=" << attempts_high
-                          << " filled_total=" << nfilled
-                          << " (pT<=20=" << nmixed_pairs_pT_lt_20GeV
-                          << ", pT>20=" << nmixed_pairs_pT_gt_20GeV << ")"
+            if (nmixed_pairs_generated % 100000 == 0){
+                std::cout << "[Mixer] attempts=" << attempts
+                          << " filled_total=" << nmixed_pairs_generated
                           << std::endl;
             }
         }
 
-        while (nmixed_pairs_pT_gt_20GeV < nmixed_pairs_target_pT_gt_20GeV && attempts_high < max_attempts_high){
-            ++attempts_high;
+        std::cout << "[Mixer] done attempts=" << attempts
+                  << " filled=" << nmixed_pairs_generated
+                  << " / " << nmixed_pairs_target << std::endl;
 
-            const Long64_t idx1 = use_weighted_high_pt_sampling ? sample_weighted_index() : sample_uniform_index();
-            Long64_t idx2 = use_weighted_high_pt_sampling ? sample_weighted_index() : sample_uniform_index();
-            if (idx2 == idx1) idx2 = (idx2 + 1) % nmuons;
-
-            const float pair_pt = fill_one_pair_if_selected(idx1, idx2, true);
-            if (pair_pt < 0.0f) continue;
-
-            ++nmixed_pairs_pT_gt_20GeV;
-
-            const Long64_t nfilled = nmixed_pairs_pT_lt_20GeV + nmixed_pairs_pT_gt_20GeV;
-
-            if (!benchmark_reported_pT_gt_20GeV
-                && nmixed_pairs_pT_gt_20GeV >= benchmark_target_pT_gt_20GeV){
-                const auto t_now = std::chrono::steady_clock::now();
-                const double elapsed_sec =
-                    std::chrono::duration<double>(t_now - t_start).count();
-                std::cout << "[Mixer] benchmark: time to generate "
-                          << benchmark_target_pT_gt_20GeV
-                          << " pairs with pT>20 = "
-                          << elapsed_sec << " s" << std::endl;
-                benchmark_reported_pT_gt_20GeV = true;
-            }
-
-            if (nfilled % 100000 == 0){
-                std::cout << "[Mixer] attempts_low=" << attempts_low
-                          << " attempts_high=" << attempts_high
-                          << " filled_total=" << nfilled
-                          << " (pT<=20=" << nmixed_pairs_pT_lt_20GeV
-                          << ", pT>20=" << nmixed_pairs_pT_gt_20GeV << ")"
-                          << std::endl;
-            }
-        }
-
-        std::cout << "[Mixer] done attempts_low=" << attempts_low
-              << ", attempts_high=" << attempts_high
-                  << " filled pT<=20=" << nmixed_pairs_pT_lt_20GeV
-                  << " / " << nmixed_pairs_target_pT_lt_20GeV
-                  << ", pT>20=" << nmixed_pairs_pT_gt_20GeV
-                  << " / " << nmixed_pairs_target_pT_gt_20GeV << std::endl;
-
-        if (nmixed_pairs_pT_lt_20GeV < nmixed_pairs_target_pT_lt_20GeV
-            || nmixed_pairs_pT_gt_20GeV < nmixed_pairs_target_pT_gt_20GeV){
-            std::cerr << "[Mixer] WARNING: targets not reached before max attempts." << std::endl;
+        if (nmixed_pairs_generated < nmixed_pairs_target){
+            std::cerr << "[Mixer] WARNING: target not reached before max attempts." << std::endl;
         }
 
         out_file.cd();
@@ -265,9 +218,6 @@ private:
     void ValidateMode() const {
         if (mc_mode != "bb" && mc_mode != "cc"){
             throw std::runtime_error("[Mixer] mc_mode must be 'bb' or 'cc'.");
-        }
-        if (high_pt_sampling_mode != "uniform" && high_pt_sampling_mode != "pt_power"){
-            throw std::runtime_error("[Mixer] high_pt_sampling_mode must be 'uniform' or 'pt_power'.");
         }
     }
 
@@ -320,25 +270,21 @@ private:
 
 void run_powheg_single_muon_pair_mixing(
     const std::string& mc_mode = "bb",
-    Long64_t target_lt_20 = 10000000,
-    Long64_t target_gt_20 = 5000000,
+    Long64_t target_pairs = 5000000,
     int file_batch = 1,
     int run_year = 17,
     const std::string& input_file = "",
     const std::string& output_file = "",
     ULong64_t seed = 0,
-    const std::string& high_pt_sampling_mode = "uniform",
-    double high_pt_truth_pt_alpha = 4.0)
+    double truth_pt_sampling_alpha = 5.0)
 {
     PowhegSingleMuonPairMixer mixer(mc_mode);
-    mixer.nmixed_pairs_target_pT_lt_20GeV = target_lt_20;
-    mixer.nmixed_pairs_target_pT_gt_20GeV = target_gt_20;
+    mixer.nmixed_pairs_target = target_pairs;
     mixer.file_batch = file_batch;
     mixer.run_year = run_year;
     mixer.rng_seed = seed;
     mixer.input_file_path = input_file;
     mixer.output_file_path = output_file;
-    mixer.high_pt_sampling_mode = high_pt_sampling_mode;
-    mixer.high_pt_truth_pt_alpha = high_pt_truth_pt_alpha;
+    mixer.truth_pt_sampling_alpha = truth_pt_sampling_alpha;
     mixer.Run();
 }

@@ -49,7 +49,7 @@ void RDFBasedHistFillingPowhegFullsim::InitializePowhegFullsimExtra(){
     levels_reco_effcy_filters = {
         (useMixed
             ? std::vector<std::string>{"_ss", "_op"}
-            : std::vector<std::string>{"_single_b"}),
+            : std::vector<std::string>{"_ss", "_op", "_single_b"}),
         {"", "_pass_medium", "_pass_tight",
          "_pass_signal_truth",
          "_pass_medium_and_signal_truth_and_reco",
@@ -154,7 +154,7 @@ void RDFBasedHistFillingPowhegFullsim::CreateBaseRDFsPowhegFullsimExtra(){
 
     const std::vector<std::string> pair_categories = useMixed
         ? std::vector<std::string>{"_ss", "_op"}
-        : std::vector<std::string>{"_single_b"};
+        : std::vector<std::string>{"_ss", "_op", "_single_b"};
 
     for (const std::string& pair_catgr : pair_categories){
         std::string df_name = "df" + pair_catgr;
@@ -204,7 +204,7 @@ void RDFBasedHistFillingPowhegFullsim::FillHistogramsFullSimRecoEffcies(){
     try{
         const std::vector<std::string> pair_categories = useMixed
             ? std::vector<std::string>{"_ss", "_op"}
-            : std::vector<std::string>{"_single_b"};
+            : std::vector<std::string>{"_ss", "_op", "_single_b"};
 
         const std::vector<std::string> quality_categories = {
             "", "_pass_medium", "_pass_tight",
@@ -231,7 +231,9 @@ void RDFBasedHistFillingPowhegFullsim::FillHistogramsFullSimRecoEffcies(){
 }
 
 void RDFBasedHistFillingPowhegFullsim::MakeAndWriteMuPairRecoEffProjGraphsHelper(
-    const std::vector<std::string>& categories)
+    const std::vector<std::string>& categories,
+    bool use_TH_divide,
+    bool require_signal_cuts)
 {
     const std::vector<std::string> default_categories = {"_ss", "_op", "_single_b"};
     const std::vector<std::string>& cats = categories.empty() ? default_categories : categories;
@@ -285,8 +287,12 @@ void RDFBasedHistFillingPowhegFullsim::MakeAndWriteMuPairRecoEffProjGraphsHelper
 
             for (const std::string& catgr : cats){
                 for (const auto& num_denom : reco_eff_num_denom_suffix_pairs){
-                    const std::string& num_suffix = num_denom.first;
-                    const std::string& denom_suffix = num_denom.second;
+                    const std::string num_suffix = require_signal_cuts
+                        ? (num_denom.first + "_and_signal_truth_and_reco")
+                        : num_denom.first;
+                    const std::string denom_suffix = require_signal_cuts
+                        ? "_pass_signal_truth"
+                        : num_denom.second;
 
                     const std::string hname_num = "h_" + vary + "_vs_" + varx + catgr + num_suffix;
                     const std::string hname_den = "h_" + vary + "_vs_" + varx + catgr + denom_suffix;
@@ -357,57 +363,67 @@ void RDFBasedHistFillingPowhegFullsim::MakeAndWriteMuPairRecoEffProjGraphsHelper
                             continue;
                         }
 
-                        TGraphAsymmErrors* g = HistFillUtils::divide_and_write(
-                            h_num_proj.get(),
-                            h_den_proj.get(),
-                            &mu_pair_reco_eff_proj_graph_map
-                        );
-
-                        if (g != nullptr){
-                            g->GetXaxis()->SetTitle(h_num_proj->GetXaxis()->GetTitle());
-
-                            std::vector<double> nonzero_den_centers;
-                            nonzero_den_centers.reserve(h_den_proj->GetNbinsX());
-
-                            for (int ib = 1; ib <= h_den_proj->GetNbinsX(); ++ib){
-                                if (h_den_proj->GetBinContent(ib) > 0.0){
-                                    nonzero_den_centers.push_back(h_den_proj->GetBinCenter(ib));
-                                }
+                        if (use_TH_divide){
+                            TH1D* h_divided = dynamic_cast<TH1D*>(h_num_proj->Clone((std::string(h_num_proj->GetName()) + "_divided").c_str()));
+                            if (h_divided != nullptr){
+                                h_divided->SetDirectory(nullptr);
+                                h_divided->SetStats(0);
+                                h_divided->Divide(h_den_proj.get());
+                                mu_pair_reco_eff_proj_hist_map[h_divided->GetName()] = h_divided;
                             }
+                        } else {
+                            TGraphAsymmErrors* g = HistFillUtils::divide_and_write(
+                                h_num_proj.get(),
+                                h_den_proj.get(),
+                                &mu_pair_reco_eff_proj_graph_map
+                            );
 
-                            bool x_mismatch = false;
-                            for (int ip = 0; ip < g->GetN(); ++ip){
-                                double gx = 0.0;
-                                double gy = 0.0;
-                                g->GetPoint(ip, gx, gy);
+                            if (g != nullptr){
+                                g->GetXaxis()->SetTitle(h_num_proj->GetXaxis()->GetTitle());
 
-                                bool matched_center = false;
-                                for (double xc : nonzero_den_centers){
-                                    if (std::abs(gx - xc) < 1e-9){
-                                        matched_center = true;
+                                std::vector<double> nonzero_den_centers;
+                                nonzero_den_centers.reserve(h_den_proj->GetNbinsX());
+
+                                for (int ib = 1; ib <= h_den_proj->GetNbinsX(); ++ib){
+                                    if (h_den_proj->GetBinContent(ib) > 0.0){
+                                        nonzero_den_centers.push_back(h_den_proj->GetBinCenter(ib));
+                                    }
+                                }
+
+                                bool x_mismatch = false;
+                                for (int ip = 0; ip < g->GetN(); ++ip){
+                                    double gx = 0.0;
+                                    double gy = 0.0;
+                                    g->GetPoint(ip, gx, gy);
+
+                                    bool matched_center = false;
+                                    for (double xc : nonzero_den_centers){
+                                        if (std::abs(gx - xc) < 1e-9){
+                                            matched_center = true;
+                                            break;
+                                        }
+                                    }
+
+                                    if (!matched_center){
+                                        x_mismatch = true;
                                         break;
                                     }
                                 }
 
-                                if (!matched_center){
-                                    x_mismatch = true;
-                                    break;
+                                if (x_mismatch){
+                                    xcheck_mismatch_proj_graphs.insert(g->GetName());
+                                    std::cout
+                                        << "[RecoEffProjXCheckWarn] "
+                                        << "varx=" << varx
+                                        << ", vary=" << vary
+                                        << ", catgr=" << catgr
+                                        << ", num=" << num_suffix
+                                        << ", den=" << denom_suffix
+                                        << ", axis=" << (project_y ? "Y" : "X")
+                                        << ", range=" << proj_suffix
+                                        << " -> graph x position mismatch vs nonzero-denominator bin centers"
+                                        << std::endl;
                                 }
-                            }
-
-                            if (x_mismatch){
-                                xcheck_mismatch_proj_graphs.insert(g->GetName());
-                                std::cout
-                                    << "[RecoEffProjXCheckWarn] "
-                                    << "varx=" << varx
-                                    << ", vary=" << vary
-                                    << ", catgr=" << catgr
-                                    << ", num=" << num_suffix
-                                    << ", den=" << denom_suffix
-                                    << ", axis=" << (project_y ? "Y" : "X")
-                                    << ", range=" << proj_suffix
-                                    << " -> graph x position mismatch vs nonzero-denominator bin centers"
-                                    << std::endl;
                             }
                         }
                     }
@@ -443,16 +459,20 @@ void RDFBasedHistFillingPowhegFullsim::MakeAndWriteMuPairRecoEffProjGraphsHelper
 
 void RDFBasedHistFillingPowhegFullsim::MakeAndWriteMuPairRecoEffProjGraphs(){
     if (useMixed){
-        MakeAndWriteMuPairRecoEffProjGraphsHelper({"_ss", "_op"});
+        MakeAndWriteMuPairRecoEffProjGraphsHelper({"_ss", "_op"}, true);
+        MakeAndWriteMuPairRecoEffProjGraphsHelper({"_ss", "_op"}, true, true);
     } else {
-        MakeAndWriteMuPairRecoEffProjGraphsHelper({"_single_b"});
+        MakeAndWriteMuPairRecoEffProjGraphsHelper({"_ss", "_op", "_single_b"}, true);
+        MakeAndWriteMuPairRecoEffProjGraphsHelper({"_ss", "_op", "_single_b"}, true, true);
     }
 }
 
 void RDFBasedHistFillingPowhegFullsim::WriteOutputExtra(){
     HistFillUtils::write_hist_map_vector(mu_pair_reco_eff_proj_graph_map, mu_pair_reco_eff_proj_graphs_to_not_write);
+    HistFillUtils::write_hist_map_vector(mu_pair_reco_eff_proj_hist_map, mu_pair_reco_eff_proj_hists_to_not_write);
 }
 
 void RDFBasedHistFillingPowhegFullsim::CleanupExtra(){
     for (auto kv : mu_pair_reco_eff_proj_graph_map) delete kv.second;
+    for (auto kv : mu_pair_reco_eff_proj_hist_map) delete kv.second;
 }
