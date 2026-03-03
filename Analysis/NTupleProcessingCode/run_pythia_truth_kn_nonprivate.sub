@@ -1,0 +1,11 @@
+# Submit Pythia truth analysis for NON-PRIVATE (central) sample.
+# $(Process) = 0..5 maps directly to kinematic range kn = 0..5
+# Each job processes one kinematic range independently.
+
+executable = run_pythia_truth_kn.sh
+arguments  = $(Process) 0
+output     = logs/run_pythia_truth_kn_nonprivate_kn$(Process).out
+error      = logs/run_pythia_truth_kn_nonprivate_kn$(Process).err
+log        = logs/run_pythia_truth_kn_nonprivate_kn$(Process).log
+request_memory = 4GB
+queue 6

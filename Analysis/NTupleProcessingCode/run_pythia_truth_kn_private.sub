@@ -1,0 +1,12 @@
+# Submit Pythia truth analysis for PRIVATE sample.
+# $(Process) = 0 -> batch_num=1 (kn=0)
+# $(Process) = 1 -> batch_num=2 (kn=1)
+# Each job processes all kinematic ranges for that batch.
+
+executable = run_pythia_truth_kn.sh
+arguments  = $(Process) 1
+output     = logs/run_pythia_truth_kn_private_batch$(Process).out
+error      = logs/run_pythia_truth_kn_private_batch$(Process).err
+log        = logs/run_pythia_truth_kn_private_batch$(Process).log
+request_memory = 4GB
+queue 2

@@ -1,7 +1,9 @@
 #ifndef __PythiaNTupleFirstPass_h__
 #define __PythiaNTupleFirstPass_h__
 
-#include "../MuonObjectsParamsAndHelpers/MuonPairPythiaOld.h"
+#include "../MuonObjectsParamsAndHelpers/MuonPairPythia.h"
+// Use MuonPairPythiaTruth as MuonPairPythia for this analysis
+using MuonPairPythia = MuonPairPythiaTruth;
 #include "../MuonObjectsParamsAndHelpers/TruthQQPair.h"
 #include "../MuonObjectsParamsAndHelpers/muon_pair_enums_MC.h"
 #include "../MuonObjectsParamsAndHelpers/struct_particle.h"
@@ -20,28 +22,25 @@ private:
     float low_minv_threshold = 0.6; // minv threshold where very low minv backgrounds start to take over single-b signal events
 
     static const int nBeamTypes = 4;
-	static const int nKinRanges = 5;
+    int nKinRanges = 5;  // set from isPrivate: 5 (private) or 6 (non-private)
 
-    std::string kin_dirs[nKinRanges] = {"k0/", "k1/", "k2/", "k3/", "k4/"};
-    std::string beam_dirs[nBeamTypes] = {"pp/", "pn/", "np/", "nn/"};
-	int nfiles_base[nBeamTypes] = {4, 6, 6, 9};
-    // int nfiles_base[nBeamTypes] = {1,1,1,1};
+    std::vector<std::string> kin_dirs;
+    std::vector<std::string> beam_dirs = {"pp/", "pn/", "np/", "nn/"};
+    int nfiles_base[nBeamTypes] = {4, 6, 6, 9};
 
+    std::vector<Long64_t> nevents;
+    std::vector<Long64_t> nevents_accum;
+    std::vector<Long64_t> njobs_accum;
+    std::vector<Long64_t> njobs;
+    std::vector<int> nevents_per_file;
 
-	Long64_t nevents[nKinRanges] = {0,0,0,0,0};
-    Long64_t nevents_accum[nKinRanges] = {0,0,0,0,0};
-    Long64_t njobs_accum[nKinRanges] = {0,0,0,0,0};
-	Long64_t njobs[nKinRanges] = {0,0,0,0,0};
-	int nevents_per_file[nKinRanges] = {10,100,5000,20000,20000};
+    std::string py_dir;
 
-    std::string py_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_private_sample/";
-
-    std::vector<float> kinRanges = {5., 10., 25., 60., 120., 3200.};
+    std::vector<float> kinRanges;
 
     // WARNING: when using 1/njobs_all_files_combined[kin_i] rather than 1/njobs[kin_i]
-    // MUST use combined muon-pairs root file, NOT the individual ones 
-    // (the individual ones will have incorrect weights causing kinematic-range stitching to fail)
-    Long64_t njobs_all_files_combined[nKinRanges] = {11991, 4500, 500, 125, 125};
+    // MUST use combined muon-pairs root file, NOT the individual ones
+    std::vector<Long64_t> njobs_all_files_combined;
     
     bool new_run;
     std::string batch_suffix = "";
@@ -73,13 +72,14 @@ private:
     double  FE_from_same_ancestors_not_same_b_or_gs_total_crossx = 0.;
 // --------------------- input files & trees & data for setting branches ---------------------------
 
-    // std::vector <TChain*> evChain;	// each element: pointer to a collection of the ttrees named PyTree (recording event-level info)
-    // std::vector <TChain*> metaChain;	// each element: pointer to a collection of the ttrees named meta_tree (recording job-level info)
-    TChain* evChain;
-    TChain* metaChain;
-    
-    std::shared_ptr<MuonPairPythia> mpair;
-    MuonPairPythia* mpair_raw_ptr = nullptr;
+    TChain* evChain = nullptr;
+    TChain* metaChain = nullptr;
+    // Non-private: one chain per (kinematic range, beam type); empty when isPrivate
+    std::vector<std::vector<TChain*>> evChains_kn_beam;
+    std::vector<std::vector<Long64_t>> nentries_kn_beam;
+    std::vector<Long64_t> nentries_kn_sum;
+    std::vector<std::vector<double>> ami_weight_kn_beam;  // crossSection * genFiltEff per (kn, beam) for !isPrivate
+    std::map<std::string, double> nominal_beam_ratio;   // pp:4/25, np:6/25, pn:6/25, nn:9/25
 
     // for meta tree
     double efficiency = 1.;
@@ -104,6 +104,7 @@ private:
     std::vector<double>* truth_phi = nullptr;
     std::vector<int>* truth_mother1 = nullptr;
     std::vector<int>* truth_mother2 = nullptr;
+    std::vector<std::vector<int>>* truth_parents = nullptr;  // non-private (HeavyIonD3PD) uses this instead of truth_mother1/2
     // std::vector<int>* truth_daughter1 = nullptr;
     // std::vector<int>* truth_daughter2 = nullptr;
 
@@ -120,16 +121,8 @@ private:
     std::vector<int>     *muon_pair_muon2_bar         =nullptr;
 
 // --------------------- temporary variables (muon, muonpair objects, vectors, etc.) ---------------------------
-  
-    long nentries_k0;
-    long nentries_k1;
-    long nentries_k2;
-    long nentries_k3;
-    long nentries_k4;
 
-    Muon* tempmuon = nullptr;
-    // std::vector<std::shared_ptr<MuonPairPythia>> muon_pair_list_cur_event;
-    std::vector<std::shared_ptr<MuonPairPythia>> muon_pair_list_cur_event_pre_resonance_cut;
+    std::vector<long> nentries_per_kin;
 
     // TruthQQPair* qqpair = nullptr;
 
@@ -223,7 +216,7 @@ private:
     std::ofstream* m_c_parent_file[ParamsSet::nSigns][2];
 
     TTree* meta_tree_out;
-    TTree* muonPairOutTreeKinRange[nKinRanges][ParamsSet::nSigns];
+    std::vector<std::vector<TTree*>> muonPairOutTreeKinRange;
 
     static const int nAncestorGroups = 4;
     // TTree* QQPairOutTree[ParamsSet::nSigns][2][nAncestorGroups];
@@ -278,29 +271,6 @@ private:
     TH1D* h_both_from_c_ancestor_sp[ParamsSet::nSigns][2];
     TH2D* h_both_from_c_ancestor_dp[ParamsSet::nSigns][2];
 
-    // TH1D* h_dphi_bb_op_near_both_from_b;
-    // TH1D* h_dphi_bb_op_near_one_b_one_btoc;
-    // TH1D* h_dphi_bb_ss_near;
-    // TH1D* h_dphi_bb_op_near;
-    // TH1D* h_dphi_bb_op_near_from_same_b;
-    // TH1D* h_bb_ss_near_involv_osc;
-    // TH1D* h_bb_ss_away_involv_osc;
-
-    // TH2D* h_cc_ss_small_dphi_prt_gps;
-    // TH1D* h_cc_ss_small_dphi_same_ancestors;
-    // TH1D* h_cc_ss_small_dphi_sp;
-    // TH2D* h_cc_ss_small_dphi_dp;
-    // TH2D* h_cc_ss_plateau_prt_gps;
-    // TH1D* h_cc_ss_plateau_same_ancestors;
-    // TH1D* h_cc_ss_plateau_sp;
-    // TH2D* h_cc_ss_plateau_dp;
-
-    // TH1D* h_num_hard_scatt_out[ParamsSet::nSigns][2];
-    // TH1D* h_pt_muon_pt_closest_hadr_ratio[ParamsSet::nSigns][2];
-    // TH1D* h_pt_closest_hadr_pt_furthest_hadr_ratio[ParamsSet::nSigns][2];
-    // TH1D* h_pt_hadr_hq_ratio[ParamsSet::nSigns][2];
-    // TH1D* h_dphi_muon_closest_hadr[ParamsSet::nSigns][2];
-
     std::vector<std::string> parentGroupLabels = {"direct b","b to c","direct c","s/light","direct photon", "Drell-Yan"};
     // std::vector<std::string> parentGroupLabels = {"direct b","b to c","direct c","s/light","direct photon"};
     int nParentGroups = parentGroupLabels.size();
@@ -327,7 +297,12 @@ private:
 
 // --------------------- class methods ---------------------------
   
+    void Initialize() override;
+
     void InitInput() override;
+    void InitInputPrivate() override;
+    void InitInputCentrProd() override;
+    
     void InitOutput() override;
     void InitTempVariables() override;
     void ProcessData() override;
@@ -361,10 +336,11 @@ private:
     void CrossxClear();
     void PerPairCrossxUpdate();
     void WriteCrossxSummary();
-    void Finalize();
+    void Finalize() override;
 
 public :
 
+    bool isPrivate = false;
     bool print_prt_history = false;
     bool print_HF_pair_origin_others_history = false;
     bool print_other_flavor_history = false;
@@ -378,7 +354,6 @@ public :
 
     PythiaNTupleFirstPass();
     ~PythiaNTupleFirstPass(){}
-    void Run() override;
     // float filter_effcy;
 
 };
