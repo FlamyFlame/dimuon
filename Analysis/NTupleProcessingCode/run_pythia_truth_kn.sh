@@ -17,15 +17,19 @@ export ATLAS_LOCAL_ROOT_BASE=/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase
 source $ATLAS_LOCAL_ROOT_BASE/user/atlasLocalSetup.sh --quiet
 lsetup "views LCG_107a_ATLAS_2 x86_64-el9-gcc13-opt"
 
-# batch_num: for private use kn+1 (kn=0->batch1, kn=1->batch2); for non-private batch_num is unused
-batch_num=$(( kn + 1 ))
+# batch_num: for private use kn+1 (kn=0->batch1, kn=1->batch2);
+# for non-private use kn directly (constructor now sets kn_batch from batch_num)
+if [[ "$is_private" -eq 1 ]]; then
+	batch_num=$(( kn + 1 ))
+else
+	batch_num=$kn
+fi
 
 echo "Starting PythiaTruthAnalysis: kn=${kn}, is_private=${is_private}, batch_num=${batch_num}, nevents_max=${nevents_max}"
 
 root -b -l << EOF
 	.L PythiaAnalysisClasses.h
 	PythiaTruthAnalysis pw($batch_num, (bool)$is_private);
-	pw.SetKnBatch($kn);
 	pw.Run();
 	.q;
 EOF

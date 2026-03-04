@@ -306,30 +306,64 @@ void PythiaTruthExtras<PairT, Derived>::FinalizeExtra() {
 // ===========================================================================
 
 template <class PairT, class Derived>
+int PythiaTruthExtras<PairT, Derived>::GetParticleIndex(int barcode) const {
+    if (barcode < 0)
+        throw std::runtime_error("GetParticleIndex: negative barcode " + std::to_string(barcode));
+
+    if (isPrivate) {
+        if (!truth_status)
+            throw std::runtime_error("GetParticleIndex: truth_status is null for private sample.");
+        if (barcode >= static_cast<int>(truth_status->size()))
+            throw std::runtime_error("GetParticleIndex: private barcode out of range: " + std::to_string(barcode));
+        return barcode;
+    }
+
+    if (!truth_barcode)
+        throw std::runtime_error("GetParticleIndex: truth_barcode is null for non-private sample.");
+
+    if (barcode_lookup_source != truth_barcode || barcode_lookup_size != truth_barcode->size()) {
+        barcode_to_index_cache.clear();
+        for (size_t i = 0; i < truth_barcode->size(); ++i)
+            barcode_to_index_cache[truth_barcode->at(i)] = static_cast<int>(i);
+        barcode_lookup_source = truth_barcode;
+        barcode_lookup_size = truth_barcode->size();
+    }
+
+    auto it = barcode_to_index_cache.find(barcode);
+    if (it == barcode_to_index_cache.end())
+        throw std::runtime_error("GetParticleIndex: barcode not found in truth_barcode: " + std::to_string(barcode));
+    return it->second;
+}
+
+template <class PairT, class Derived>
 double PythiaTruthExtras<PairT, Derived>::TruthPtAt(size_t i) const {
-    if (isPrivate && truth_pt)    return truth_pt->at(i);
-    if (!isPrivate && truth_pt_f) return static_cast<double>(truth_pt_f->at(i));
+    const int idx = GetParticleIndex(static_cast<int>(i));
+    if (isPrivate && truth_pt)    return truth_pt->at(idx);
+    if (!isPrivate && truth_pt_f) return static_cast<double>(truth_pt_f->at(idx));
     return 0.;
 }
 
 template <class PairT, class Derived>
 double PythiaTruthExtras<PairT, Derived>::TruthEtaAt(size_t i) const {
-    if (isPrivate && truth_eta)    return truth_eta->at(i);
-    if (!isPrivate && truth_eta_f) return static_cast<double>(truth_eta_f->at(i));
+    const int idx = GetParticleIndex(static_cast<int>(i));
+    if (isPrivate && truth_eta)    return truth_eta->at(idx);
+    if (!isPrivate && truth_eta_f) return static_cast<double>(truth_eta_f->at(idx));
     return 0.;
 }
 
 template <class PairT, class Derived>
 double PythiaTruthExtras<PairT, Derived>::TruthPhiAt(size_t i) const {
-    if (isPrivate && truth_phi)    return truth_phi->at(i);
-    if (!isPrivate && truth_phi_f) return static_cast<double>(truth_phi_f->at(i));
+    const int idx = GetParticleIndex(static_cast<int>(i));
+    if (isPrivate && truth_phi)    return truth_phi->at(idx);
+    if (!isPrivate && truth_phi_f) return static_cast<double>(truth_phi_f->at(idx));
     return 0.;
 }
 
 template <class PairT, class Derived>
 double PythiaTruthExtras<PairT, Derived>::TruthMAt(size_t i) const {
-    if (isPrivate && truth_m)    return truth_m->at(i);
-    if (!isPrivate && truth_m_f) return static_cast<double>(truth_m_f->at(i));
+    const int idx = GetParticleIndex(static_cast<int>(i));
+    if (isPrivate && truth_m)    return truth_m->at(idx);
+    if (!isPrivate && truth_m_f) return static_cast<double>(truth_m_f->at(idx));
     return 0.;
 }
 
@@ -365,10 +399,12 @@ void PythiaTruthExtras<PairT, Derived>::PerPairCrossxUpdate() {
     total_crossx += mpair->weight;
     pair_counter++;
 
-    bool parton1_hq = (abs(truth_id->at(3)) == 4 || abs(truth_id->at(3)) == 5);
-    bool parton2_hq = (abs(truth_id->at(4)) == 4 || abs(truth_id->at(4)) == 5);
-    bool parton1_glq = (abs(truth_id->at(3)) <= 3 || abs(truth_id->at(3)) == 21);
-    bool parton2_glq = (abs(truth_id->at(4)) <= 3 || abs(truth_id->at(4)) == 21);
+    const int idx3 = GetParticleIndex(3);
+    const int idx4 = GetParticleIndex(4);
+    bool parton1_hq = (abs(truth_id->at(idx3)) == 4 || abs(truth_id->at(idx3)) == 5);
+    bool parton2_hq = (abs(truth_id->at(idx4)) == 4 || abs(truth_id->at(idx4)) == 5);
+    bool parton1_glq = (abs(truth_id->at(idx3)) <= 3 || abs(truth_id->at(idx3)) == 21);
+    bool parton2_glq = (abs(truth_id->at(idx4)) <= 3 || abs(truth_id->at(idx4)) == 21);
     bool flavor_excitation = (parton1_hq && parton2_glq) || (parton2_hq && parton1_glq);
     bool hard_QQ_scatt = parton1_hq && parton2_hq;
     bool both_incoming = m1_ancestor_is_incoming && m2_ancestor_is_incoming;
@@ -390,8 +426,8 @@ void PythiaTruthExtras<PairT, Derived>::PerPairCrossxUpdate() {
                 *m_FE_file << "Event #: " << mpair->m1.ev_num
                            << ". FE, same ancestors, not same b or GS." << std::endl;
                 if (truth_id->size() > 6)
-                    *m_FE_file << truth_id->at(3) << " " << truth_id->at(4) << " "
-                               << truth_id->at(5) << " " << truth_id->at(6) << " "
+                    *m_FE_file << truth_id->at(GetParticleIndex(3)) << " " << truth_id->at(GetParticleIndex(4)) << " "
+                               << truth_id->at(GetParticleIndex(5)) << " " << truth_id->at(GetParticleIndex(6)) << " "
                                << mpair->from_same_ancestors << std::endl;
                 PrintHistory(m_FE_file, false, mpair->from_same_ancestors);
             }
@@ -618,34 +654,53 @@ std::pair<int,int> PythiaTruthExtras<PairT, Derived>::UpdateCurParents(
 
     int mother1, mother2;
     bool mother_out_of_range = false;
+    const int cur_idx = GetParticleIndex(cur_prt_bars[index]);
     if (isPrivate) {
-        mother1 = truth_mother1->at(cur_prt_bars[index]);
-        mother2 = truth_mother2->at(cur_prt_bars[index]);
+        mother1 = truth_mother1->at(cur_idx);
+        mother2 = truth_mother2->at(cur_idx);
     } else {
-        if (!truth_parents || cur_prt_bars[index] >= (int)truth_parents->size()) {
+        if (!truth_parents || cur_idx >= (int)truth_parents->size()) {
             mother1 = 0; mother2 = 0;
         } else {
-            const auto& v = truth_parents->at(cur_prt_bars[index]);
+            const auto& v = truth_parents->at(cur_idx);
             mother1 = v.empty() ? 0 : v.front();
             mother2 = v.empty() ? 0 : v.back();
-            // Validate parent barcodes are within truth vector bounds
-            const int n_truth = (int)truth_status->size();
-            if (mother1 < 0 || mother1 >= n_truth) {
+            if (mother1 != 0) {
+                try {
+                    (void)GetParticleIndex(mother1);
+                } catch (...) {
+                    std::cerr << "[UCP] Warning: mother1=" << mother1
+                              << " not found in truth_barcode for barcode="
+                              << cur_prt_bars[index] << ". Treating as no parent." << std::endl;
+                    mother1 = 0; mother_out_of_range = true;
+                }
+            }
+            if (mother2 != 0) {
+                try {
+                    (void)GetParticleIndex(mother2);
+                } catch (...) {
+                    std::cerr << "[UCP] Warning: mother2=" << mother2
+                              << " not found in truth_barcode for barcode="
+                              << cur_prt_bars[index] << ". Treating as 0." << std::endl;
+                    mother2 = 0; mother_out_of_range = true;
+                }
+            }
+            if (mother1 < 0) {
                 std::cerr << "[UCP] Warning: mother1=" << mother1
-                          << " out of range [0," << n_truth << ") for barcode="
+                          << " invalid for barcode="
                           << cur_prt_bars[index] << ". Treating as no parent." << std::endl;
                 mother1 = 0; mother_out_of_range = true;
             }
-            if (mother2 < 0 || mother2 >= n_truth) {
+            if (mother2 < 0) {
                 std::cerr << "[UCP] Warning: mother2=" << mother2
-                          << " out of range [0," << n_truth << ") for barcode="
+                          << " invalid for barcode="
                           << cur_prt_bars[index] << ". Treating as 0." << std::endl;
                 mother2 = 0; mother_out_of_range = true;
             }
         }
     }
 
-    int status = abs(truth_status->at(cur_prt_bars[index]));
+    int status = abs(truth_status->at(cur_idx));
     cur_prt_bars.clear();
     cur_prt_ids.clear();
 
@@ -653,11 +708,12 @@ std::pair<int,int> PythiaTruthExtras<PairT, Derived>::UpdateCurParents(
         std::cout << "Error:: Mother1 cannot be 0" << std::endl;
         PrintHistory(&std::cout, true, isMuon1);
         std::cout << "bar: " << prev_first_prt_bar << ", mother1 " << mother1 << ", mother2 " << mother2 << std::endl;
+        return {0, 0};
     }
 
     if (mother2 == mother1 || mother2 == 0) {
         cur_prt_bars.push_back(mother1);
-        cur_prt_ids.push_back(truth_id->at(mother1) % 10000);
+        cur_prt_ids.push_back(truth_id->at(GetParticleIndex(mother1)) % 10000);
         if ((mother1 == 1 || mother1 == 2) && before_gs) {
             if (isMuon1) m1_ancestor_is_incoming = true;
             else         m2_ancestor_is_incoming = true;
@@ -665,13 +721,13 @@ std::pair<int,int> PythiaTruthExtras<PairT, Derived>::UpdateCurParents(
     } else if (((status >= 81 && status <= 86) || (status >= 101 && status <= 106)) && mother1 < mother2) {
         for (int cm = mother1; cm <= mother2; cm++) {
             cur_prt_bars.push_back(cm);
-            cur_prt_ids.push_back(truth_id->at(cm) % 10000);
+            cur_prt_ids.push_back(truth_id->at(GetParticleIndex(cm)) % 10000);
         }
     } else {
         cur_prt_bars.push_back(mother1);
-        cur_prt_ids.push_back(truth_id->at(mother1) % 10000);
+        cur_prt_ids.push_back(truth_id->at(GetParticleIndex(mother1)) % 10000);
         cur_prt_bars.push_back(mother2);
-        cur_prt_ids.push_back(truth_id->at(mother2) % 10000);
+        cur_prt_ids.push_back(truth_id->at(GetParticleIndex(mother2)) % 10000);
     }
 
     if ((cur_prt_bars.empty() || cur_prt_ids.empty()) && (print_bad_warnings && m_very_bad_warning_file)) {
@@ -685,8 +741,8 @@ std::pair<int,int> PythiaTruthExtras<PairT, Derived>::UpdateCurParents(
         float pt  = static_cast<float>(TruthPtAt(bar));
         float eta = static_cast<float>(TruthEtaAt(bar));
         float phi = static_cast<float>(TruthPhiAt(bar));
-        int id_p  = truth_id->at(bar);
-        int st_p  = truth_status->at(bar);
+        int id_p  = truth_id->at(GetParticleIndex(bar));
+        int st_p  = truth_status->at(GetParticleIndex(bar));
         cur_prt_profiles.push_back({pt, eta, phi, bar, id_p, st_p});
     }
 
@@ -700,17 +756,24 @@ std::pair<int,int> PythiaTruthExtras<PairT, Derived>::UpdateCurParents(
 
     // Handle "prev_out_hard_scatt" case — we just traced back from an outgoing hard-scatter particle
     if (prev_out_hard_scatt) {
-        if ((cur_prt_bars.size() != 2 || (abs(truth_status->at(cur_prt_bars[0])) != 21 && abs(truth_status->at(cur_prt_bars[0])) != 31))
+        const int cur0_idx = cur_prt_bars.empty() ? -1 : GetParticleIndex(cur_prt_bars[0]);
+        if ((cur_prt_bars.size() != 2 || (abs(truth_status->at(cur0_idx)) != 21 && abs(truth_status->at(cur0_idx)) != 31))
             && (print_bad_warnings && m_very_bad_warning_file && m_hard_scattering_warning_file)) {
             *m_very_bad_warning_file << "Current parents should be incoming particles of a hard scattering." << std::endl;
             PrintHistory(m_very_bad_warning_file, true, isMuon1);
         }
         int catgr = (cur_prt_bars.size() >= 2) ? HardAnalysisCategr(cur_prt_bars[0], cur_prt_bars[1]) : -1;
 
-        const int n_truth = (int)truth_status->size();
-        bool bars_ok = (cur_prt_bars.size() >= 2
-                        && cur_prt_bars[0]+2 < n_truth
-                        && cur_prt_bars[1]+2 < n_truth);
+        bool bars_ok = false;
+        if (cur_prt_bars.size() >= 2) {
+            try {
+                (void)GetParticleIndex(cur_prt_bars[0] + 2);
+                (void)GetParticleIndex(cur_prt_bars[1] + 2);
+                bars_ok = true;
+            } catch (...) {
+                bars_ok = false;
+            }
+        }
         if (isMuon1) {
             if (bars_ok) {
                 vm1out1.SetPtEtaPhiM(TruthPtAt(cur_prt_bars[0]+2), TruthEtaAt(cur_prt_bars[0]+2),
@@ -747,7 +810,7 @@ std::pair<int,int> PythiaTruthExtras<PairT, Derived>::UpdateCurParents(
 
     // Check if current parent is outgoing from hard scatter (status 23 or 33)
     if (!cur_prt_bars.empty() &&
-        (abs(truth_status->at(cur_prt_bars[0])) == 23 || abs(truth_status->at(cur_prt_bars[0])) == 33)) {
+        (abs(truth_status->at(GetParticleIndex(cur_prt_bars[0]))) == 23 || abs(truth_status->at(GetParticleIndex(cur_prt_bars[0]))) == 33)) {
         if ((isMuon1 && m1_hard_scatt_in_bar1 > 0) || (!isMuon1 && m2_hard_scatt_in_bar1 > 0)) {
             if (print_bad_warnings && m_very_bad_warning_file)
                 *m_very_bad_warning_file << "More than one hard scattering in muon history chain." << std::endl;
@@ -836,7 +899,7 @@ int PythiaTruthExtras<PairT, Derived>::FindHeavyQuarks(
         return -1;
     }
 
-    int status = truth_status->at(cur_prt_bars[0]);
+    int status = truth_status->at(GetParticleIndex(cur_prt_bars[0]));
 
     if (cur_prt_ids.size() == 1 && (cur_prt_ids[0] == 2212 || cur_prt_ids[0] == 2112))
         return -2;
@@ -855,7 +918,7 @@ int PythiaTruthExtras<PairT, Derived>::FindHeavyQuarks(
                 index_candidate = it_qbar - cur_prt_ids.begin();
             else if (abs(status) == 21 || abs(status) == 31) {
                 index_candidate = (prev_hq_bar - 2 == cur_prt_bars[0]) ? 0 : 1;
-                if (truth_id->at(prev_hq_bar) != cur_prt_ids[index_candidate]) {
+                if (truth_id->at(GetParticleIndex(prev_hq_bar)) != cur_prt_ids[index_candidate]) {
                     std::cout << "HQ mismatch in FindHeavyQuarks." << std::endl;
                     PrintHistory(&std::cout, true, isMuon1);
                 }
@@ -896,10 +959,10 @@ template <class PairT, class Derived>
 int PythiaTruthExtras<PairT, Derived>::HardAnalysisCategr(int in_bar1, int in_bar2) {
     PairT* mpair = self().mpairRef().get();
 
-    int s1 = abs(truth_status->at(in_bar1));
-    int s2 = abs(truth_status->at(in_bar2));
-    int id1 = abs(truth_id->at(in_bar1));
-    int id2 = abs(truth_id->at(in_bar2));
+    int s1 = abs(truth_status->at(GetParticleIndex(in_bar1)));
+    int s2 = abs(truth_status->at(GetParticleIndex(in_bar2)));
+    int id1 = abs(truth_id->at(GetParticleIndex(in_bar1)));
+    int id2 = abs(truth_id->at(GetParticleIndex(in_bar2)));
 
     if ((in_bar2 != in_bar1 + 1 || (s1 != 21 && s1 != 31) || (s2 != 21 && s2 != 31))
         && print_bad_warnings && m_hard_scattering_warning_file)
@@ -912,17 +975,18 @@ int PythiaTruthExtras<PairT, Derived>::HardAnalysisCategr(int in_bar1, int in_ba
 
     int out_bar1 = in_bar1 + 2;
     int out_bar2 = in_bar2 + 2;
-    int out_id1 = abs(truth_id->at(out_bar1));
-    int out_id2 = abs(truth_id->at(out_bar2));
+    int out_id1 = abs(truth_id->at(GetParticleIndex(out_bar1)));
+    int out_id2 = abs(truth_id->at(GetParticleIndex(out_bar2)));
 
     bool fe = (in1_hq && in2_glq) || (in2_hq && in1_glq);
     if (fe) return flavor_excit;
 
-    if (in1_hq && in2_hq && truth_id->at(in_bar1) == truth_id->at(out_bar1)
-        && truth_id->at(in_bar2) == truth_id->at(out_bar2))
+    if (in1_hq && in2_hq && truth_id->at(GetParticleIndex(in_bar1)) == truth_id->at(GetParticleIndex(out_bar1))
+        && truth_id->at(GetParticleIndex(in_bar2)) == truth_id->at(GetParticleIndex(out_bar2)))
         return hq_scatt;
 
-    bool final_QQbar = ((out_id1 == 4 || out_id1 == 5) && truth_id->at(out_bar2) == -truth_id->at(out_bar1));
+    bool final_QQbar = ((out_id1 == 4 || out_id1 == 5)
+                        && truth_id->at(GetParticleIndex(out_bar2)) == -truth_id->at(GetParticleIndex(out_bar1)));
     if (final_QQbar) {
         if (!((id1 <= 5 || id1 == 21) && id2 == id1) && print_bad_warnings && m_hard_scattering_warning_file)
             *m_hard_scattering_warning_file << "FC with unexpected initial state." << std::endl;
@@ -930,7 +994,7 @@ int PythiaTruthExtras<PairT, Derived>::HardAnalysisCategr(int in_bar1, int in_ba
     }
 
     if (id1 == 21 && id2 == 21) {
-        if (truth_id->at(out_bar1) == 21) return gg_gg;
+        if (truth_id->at(GetParticleIndex(out_bar1)) == 21) return gg_gg;
         if (out_id1 > 3 && print_bad_warnings && m_hard_scattering_warning_file)
             *m_hard_scattering_warning_file << "gg->qqbar unexpected." << std::endl;
         return gg_qqbar;
@@ -959,12 +1023,13 @@ template <class PairT, class Derived>
 int PythiaTruthExtras<PairT, Derived>::GluonHistoryTracking(int gluon_bar, bool isMuon1) {
     std::vector<int> parent_bars = {gluon_bar};
     std::vector<int> parent_ids  = {21};
-    bool prev_step_m23_m33 = (abs(truth_status->at(gluon_bar)) == 23 || abs(truth_status->at(gluon_bar)) == 33);
+    bool prev_step_m23_m33 = (abs(truth_status->at(GetParticleIndex(gluon_bar))) == 23
+                              || abs(truth_status->at(GetParticleIndex(gluon_bar))) == 33);
 
     float pt  = static_cast<float>(TruthPtAt(gluon_bar));
     float eta = static_cast<float>(TruthEtaAt(gluon_bar));
     float phi = static_cast<float>(TruthPhiAt(gluon_bar));
-    Particle p {pt, eta, phi, gluon_bar, 21, truth_status->at(gluon_bar)};
+    Particle p {pt, eta, phi, gluon_bar, 21, truth_status->at(GetParticleIndex(gluon_bar))};
     // Note: we track in the muon's history vectors - UpdateCurParents appends
     // We do NOT push gluon's initial entry here; GluonHistoryTracking uses its own local vectors
     // and calls UpdateCurParents which appends into m1/m2_history_* for the correct muon.
@@ -974,15 +1039,16 @@ int PythiaTruthExtras<PairT, Derived>::GluonHistoryTracking(int gluon_bar, bool 
         UpdateCurParents(isMuon1, parent_bars, parent_ids, false, prev_step_m23_m33);
         int pm1;
         if (isPrivate) {
-            pm1 = truth_mother1->at(parent_bars[0]);
+            pm1 = truth_mother1->at(GetParticleIndex(parent_bars[0]));
         } else {
-            pm1 = (truth_parents && parent_bars[0] < (int)truth_parents->size() && !truth_parents->at(parent_bars[0]).empty())
-                  ? truth_parents->at(parent_bars[0]).front() : 0;
+            int pidx = GetParticleIndex(parent_bars[0]);
+            pm1 = (truth_parents && pidx < (int)truth_parents->size() && !truth_parents->at(pidx).empty())
+                  ? truth_parents->at(pidx).front() : 0;
         }
-        terminate = (abs(truth_status->at(parent_bars[0])) == 21 || pm1 <= 2);
+        terminate = (abs(truth_status->at(GetParticleIndex(parent_bars[0]))) == 21 || pm1 <= 2);
     }
 
-    if (abs(truth_status->at(parent_bars[0])) == 21) return 1; // FSR
+    if (abs(truth_status->at(GetParticleIndex(parent_bars[0]))) == 21) return 1; // FSR
     return 2; // ISR
 }
 
@@ -1030,16 +1096,17 @@ void PythiaTruthExtras<PairT, Derived>::SingleMuonAncestorTracing(bool isMuon1) 
     float eta = isMuon1 ? static_cast<float>(mpair->m1.truth_eta) : static_cast<float>(mpair->m2.truth_eta);
     float phi = isMuon1 ? static_cast<float>(mpair->m1.truth_phi) : static_cast<float>(mpair->m2.truth_phi);
     int barcode = isMuon1 ? mpair->m1.truth_bar : mpair->m2.truth_bar;
-    // Guard against out-of-range barcode (can occur in non-private samples with anomalous data)
-    if (barcode < 0 || barcode >= (int)truth_status->size()) {
+    int mu_idx = -1;
+    try {
+        mu_idx = GetParticleIndex(barcode);
+    } catch (const std::exception& e) {
         std::cerr << "[SAT] Warning: muon barcode=" << barcode
-                  << " out of range [0," << truth_status->size()
-                  << "). Skipping ancestor tracing for this muon." << std::endl;
+                  << " cannot be resolved (" << e.what() << "). Skipping ancestor tracing for this muon." << std::endl;
         return;
     }
     int charge  = isMuon1 ? mpair->m1.truth_charge : mpair->m2.truth_charge;
     int id = -13 * charge;
-    int status = truth_status->at(barcode);
+    int status = truth_status->at(mu_idx);
     Particle p {pt, eta, phi, barcode, id, status};
 
     parent_bars.push_back(barcode);
@@ -1158,7 +1225,7 @@ void PythiaTruthExtras<PairT, Derived>::HFMuonPairAnalysis() {
     // Check from_same_b
     if (m1_youngest_non_chadron_parent_barcode == m2_youngest_non_chadron_parent_barcode
         && m1_youngest_non_chadron_parent_barcode >= 0) {
-        int prt_id = abs(truth_id->at(m1_youngest_non_chadron_parent_barcode));
+        int prt_id = abs(truth_id->at(GetParticleIndex(m1_youngest_non_chadron_parent_barcode)));
         if ((prt_id >= 500 && prt_id < 600) || (prt_id >= 5000 && prt_id < 6000)) {
             if (m1_eldest_bhadron_barcode == 10 || m1_eldest_bhadron_barcode != m2_eldest_bhadron_barcode) {
                 std::cout << "FROM SAME B EVENT WRONG!!! Printing history" << std::endl;
@@ -1388,7 +1455,7 @@ void PythiaTruthExtras<PairT, Derived>::MuonPairAncestorTracing() {
         mpair->muon_pair_flavor_category = from_resonance;
         // update resonance crossx map
         if (!resonance_ids.empty() && m1_resonance_barcode >= 0) {
-            int res_id = abs(truth_id->at(m1_resonance_barcode)) % 10000;
+            int res_id = abs(truth_id->at(GetParticleIndex(m1_resonance_barcode))) % 10000;
             auto it = resonance_id_to_name_and_crossx_map.find(res_id);
             if (it != resonance_id_to_name_and_crossx_map.end())
                 it->second.second += mpair->weight;
@@ -1447,6 +1514,15 @@ void PythiaTruthExtras<PairT, Derived>::MuonPairAncestorTracing() {
             *m_other_flavor_category_file << "pair minv: " << mpair->truth_minv << std::endl;
             PrintHistory(m_other_flavor_category_file, false, mpair->from_same_ancestors);
         }
+    }
+
+    if (self().debug_mode && mpair->m1.ev_num < 50) {
+        std::cout << "[DEBUG] MuonPairAncestorTracing event " << mpair->m1.ev_num
+                  << ": muon1 history" << std::endl;
+        PrintHistory(&std::cout, true, true, true);
+        std::cout << "[DEBUG] MuonPairAncestorTracing event " << mpair->m1.ev_num
+                  << ": muon2 history" << std::endl;
+        PrintHistory(&std::cout, true, false, true);
     }
 
 }
