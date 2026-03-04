@@ -3,6 +3,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <unordered_map>
 #include <fstream>
 #include "../MuonObjectsParamsAndHelpers/struct_particle.h"
 #include "../MuonObjectsParamsAndHelpers/muon_pair_enums_MC.h"
@@ -61,10 +62,16 @@ protected:
 
 // --------------------- kinematic accessors ---------------------------
 
+    int GetParticleIndex(int barcode) const;
+
     double TruthPtAt(size_t i)  const;
     double TruthEtaAt(size_t i) const;
     double TruthPhiAt(size_t i) const;
     double TruthMAt(size_t i)   const;
+
+    mutable const std::vector<int>* barcode_lookup_source = nullptr;
+    mutable size_t barcode_lookup_size = 0;
+    mutable std::unordered_map<int, int> barcode_to_index_cache;
 
 // --------------------- resonance data ---------------------------
 

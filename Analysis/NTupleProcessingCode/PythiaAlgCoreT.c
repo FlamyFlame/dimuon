@@ -44,9 +44,12 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_PythiaCore() {
         kinRanges = {8.f, 14.f, 24.f, 40.f, 70.f, 125.f, 300.f};
         nevents_per_file.resize(6, 0);
         njobs_all_files_combined.resize(6, 0);
+        SetKnBatch(batch_num);
+        std::cout << "PythiaAlgCoreT: kn_batch=" << kn_batch << ", low=" << kinRanges[kn_batch] << ", high=" << kinRanges[kn_batch + 1] << std::endl;
         if (kn_batch < 0 || kn_batch >= nKinRanges)
             throw std::runtime_error("PythiaAlgCoreT (non-private): kn_batch=" + std::to_string(kn_batch)
-                + " is out of range [0," + std::to_string(nKinRanges) + "). Call SetKnBatch() before Run().");
+                + " (from constructor batch_num=" + std::to_string(batch_num)
+                + ") is out of range [0," + std::to_string(nKinRanges) + ").");
         outfile_name     = "muon_pairs_pythia_" + ecom_str + "_kn" + std::to_string(kn_batch);
         outhistfile_name = "hists_pythia_ntuple_processing_" + ecom_str + "_kn" + std::to_string(kn_batch);
     }
