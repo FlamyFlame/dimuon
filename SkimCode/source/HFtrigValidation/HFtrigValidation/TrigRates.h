@@ -20,6 +20,7 @@
 
 
 // #include "TrigMuonMatching/ITrigMuonMatching.h"
+#include "HFtrigValidation/Module_TrigMuonMatching.h"
 
 #if defined(HF_IS_R21) || defined(HF_IS_R25)
   #include "AsgTools/AnaToolHandle.h"
@@ -82,10 +83,17 @@ private:
    std::map<std::string,std::vector<Bool_t>*> m_trigger_match_map_V2   ;//matching of reco objects to trigger; doesnot require trigger passing "Physics"
    std::map<std::string,std::vector<Bool_t>*> m_trigger_match_map_V3   ;//matching of reco objects to trigger; require trigger passing "Physics|allowResurrectedDecision"
    
-   std::map<std::string,std::vector<std::pair<Bool_t, Bool_t>>*> m_dimu_trigger_match_map_mu1_pass_chains_0_01   ;//matching of reco objects to trigger; require trigger passing "Physics|allowResurrectedDecision"
-   std::map<std::string,std::vector<std::pair<Bool_t, Bool_t>>*> m_dimu_trigger_match_map_mu2_pass_chains_0_01   ;//matching of reco objects to trigger; require trigger passing "Physics|allowResurrectedDecision"
-   std::map<std::string,std::vector<std::pair<Bool_t, Bool_t>>*> m_dimu_trigger_match_map_mu1_pass_chains_dR   ;//matching of reco objects to trigger; require trigger passing "Physics|allowResurrectedDecision"
-   std::map<std::string,std::vector<std::pair<Bool_t, Bool_t>>*> m_dimu_trigger_match_map_mu2_pass_chains_dR   ;//matching of reco objects to trigger; require trigger passing "Physics|allowResurrectedDecision"
+   // Per-leg dimuon matching (split from pair<Bool_t,Bool_t> to avoid ROOT dict issues)
+   // leg1 = result.first  (muX matched leg1 in assignment muX->leg1)
+   // leg2 = result.second (muX matched leg2 in assignment muX->leg2)
+   std::map<std::string,std::vector<Bool_t>*> m_dimu_trigger_match_map_mu1_leg1_0_01;
+   std::map<std::string,std::vector<Bool_t>*> m_dimu_trigger_match_map_mu1_leg2_0_01;
+   std::map<std::string,std::vector<Bool_t>*> m_dimu_trigger_match_map_mu2_leg1_0_01;
+   std::map<std::string,std::vector<Bool_t>*> m_dimu_trigger_match_map_mu2_leg2_0_01;
+   std::map<std::string,std::vector<Bool_t>*> m_dimu_trigger_match_map_mu1_leg1_dR;
+   std::map<std::string,std::vector<Bool_t>*> m_dimu_trigger_match_map_mu1_leg2_dR;
+   std::map<std::string,std::vector<Bool_t>*> m_dimu_trigger_match_map_mu2_leg1_dR;
+   std::map<std::string,std::vector<Bool_t>*> m_dimu_trigger_match_map_mu2_leg2_dR;
    
    Bool_t  m_trigger_Flag                     [1000];//stores if a trigger passes, this is written to the output tree
    Float_t m_trigger_prescale_Value           [1000];//stores trigger prescale
@@ -101,10 +109,16 @@ private:
    std::vector<Bool_t> m_trigger_match_Flag_V2  [1000];//whether a given object fired this trigger; doesnot require trigger passing "Physics" 
    std::vector<Bool_t> m_trigger_match_Flag_V3  [1000];//whether a given object fired this trigger; require trigger passing "Physics|allowResurrectedDecision"
    
-   std::vector<std::pair<Bool_t, Bool_t>> m_dimu_trigger_match_Flag_mu1_pass_chains_0_01[1000];// probability of mu^1 pass two dimuon chains from TrigMuonMatching::matchDimuon: if 2mu4, the pairs should agree; if mu4_mu4noL1, gives probability of mu^1 pass (mu4, mu4noL1)
-   std::vector<std::pair<Bool_t, Bool_t>> m_dimu_trigger_match_Flag_mu2_pass_chains_0_01[1000];// probability of mu^2 pass two dimuon chains from TrigMuonMatching::matchDimuon: if 2mu4, the pairs should agree; if mu4_mu4noL1, gives probability of mu^1 pass (mu4, mu4noL1)
-   std::vector<std::pair<Bool_t, Bool_t>> m_dimu_trigger_match_Flag_mu1_pass_chains_dR[1000];// probability of mu^1 pass two dimuon chains from TrigMuonMatching::matchDimuon: if 2mu4, the pairs should agree; if mu4_mu4noL1, gives probability of mu^1 pass (mu4, mu4noL1)
-   std::vector<std::pair<Bool_t, Bool_t>> m_dimu_trigger_match_Flag_mu2_pass_chains_dR[1000];// probability of mu^2 pass two dimuon chains from TrigMuonMatching::matchDimuon: if 2mu4, the pairs should agree; if mu4_mu4noL1, gives probability of mu^1 pass (mu4, mu4noL1)
+   // Per-leg storage: leg1=result.first, leg2=result.second for each of mu1/mu2 at each dR
+   // (symmetric chain e.g. HLT_2mu4: leg1==leg2 always; asymmetric e.g. HLT_mu4_mu4noL1: leg1=seeded, leg2=fullscan)
+   std::vector<Bool_t> m_dimu_trigger_match_Flag_mu1_leg1_0_01[1000];
+   std::vector<Bool_t> m_dimu_trigger_match_Flag_mu1_leg2_0_01[1000];
+   std::vector<Bool_t> m_dimu_trigger_match_Flag_mu2_leg1_0_01[1000];
+   std::vector<Bool_t> m_dimu_trigger_match_Flag_mu2_leg2_0_01[1000];
+   std::vector<Bool_t> m_dimu_trigger_match_Flag_mu1_leg1_dR[1000];
+   std::vector<Bool_t> m_dimu_trigger_match_Flag_mu1_leg2_dR[1000];
+   std::vector<Bool_t> m_dimu_trigger_match_Flag_mu2_leg1_dR[1000];
+   std::vector<Bool_t> m_dimu_trigger_match_Flag_mu2_leg2_dR[1000];
    void       AddTriggerBranches();
    StatusCode ProcessTriggers (bool &pass_trigger_cuts);
 
@@ -431,9 +445,11 @@ private:
    #else
      ToolHandle<Trig::ITrigMuonMatching>         m_matchTool;
    #endif
-   bool m_ApplyMuonCalibrations=false;
-   bool m_isRun3=true;
+  bool m_ApplyMuonCalibrations=false;
+  bool m_isRun3=true;
 
+  // Dimuon trigger matching module (owned by this algorithm)
+  TrigMuonMatchingModule* m_dimuMatchModule = nullptr;
 
 };
 #endif

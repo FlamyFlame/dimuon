@@ -186,7 +186,10 @@ StatusCode TrigRates::initialize(){
        //CHECK( m_matchTool.setProperty("TrigDecisionTool",m_trigTool.getHandle()));
        
       #if defined(HF_IS_R21) || defined(HF_IS_R25)
-       // CHECK( m_muonmatchTool.retrieve());
+       if(m_store_acoplanar_muon){
+         m_dimuMatchModule = new TrigMuonMatchingModule(&(*m_matchTool), m_trigTool.get());
+         ATH_MSG_INFO("TrigMuonMatchingModule created for dimuon trigger matching");
+       }
        #endif
       }
 
@@ -293,10 +296,14 @@ StatusCode TrigRates::execute(){
    for(auto trigger_match:m_trigger_match_map_V2  ) trigger_match.second->clear();
    for(auto trigger_match:m_trigger_match_map_V3  ) trigger_match.second->clear();
    
-   for(auto dimu_trigger_match:m_dimu_trigger_match_map_mu1_pass_chains_0_01) dimu_trigger_match.second->clear();
-   for(auto dimu_trigger_match:m_dimu_trigger_match_map_mu2_pass_chains_0_01) dimu_trigger_match.second->clear();
-   for(auto dimu_trigger_match:m_dimu_trigger_match_map_mu1_pass_chains_dR) dimu_trigger_match.second->clear();
-   for(auto dimu_trigger_match:m_dimu_trigger_match_map_mu2_pass_chains_dR) dimu_trigger_match.second->clear();
+   for(auto& kv:m_dimu_trigger_match_map_mu1_leg1_0_01) kv.second->clear();
+   for(auto& kv:m_dimu_trigger_match_map_mu1_leg2_0_01) kv.second->clear();
+   for(auto& kv:m_dimu_trigger_match_map_mu2_leg1_0_01) kv.second->clear();
+   for(auto& kv:m_dimu_trigger_match_map_mu2_leg2_0_01) kv.second->clear();
+   for(auto& kv:m_dimu_trigger_match_map_mu1_leg1_dR  ) kv.second->clear();
+   for(auto& kv:m_dimu_trigger_match_map_mu1_leg2_dR  ) kv.second->clear();
+   for(auto& kv:m_dimu_trigger_match_map_mu2_leg1_dR  ) kv.second->clear();
+   for(auto& kv:m_dimu_trigger_match_map_mu2_leg2_dR  ) kv.second->clear();
 
    if(m_is_evgen==false){
      if(m_store_EventInfo>0)    CHECK(ProcessEventInfo   ());
@@ -327,6 +334,8 @@ StatusCode TrigRates::execute(){
 
 
 StatusCode TrigRates::finalize(){
+  delete m_dimuMatchModule;
+  m_dimuMatchModule = nullptr;
   return StatusCode::SUCCESS;
 }
 
@@ -539,32 +548,45 @@ void TrigRates::AddTriggerBranches(){
         #if defined(HF_IS_R21) || defined(HF_IS_R25)
         //Branch storing trigger matching for offline objects
         std::string BranchName="b_";BranchName+=trigger_name;
-        std::string BranchName2="dimuon_"+BranchName;
+        std::string BranchName2="dimuon_"+BranchName + "_" + DoubleToString(m_muonTriggerMatchDR);
         m_OutTree->Branch(BranchName2.c_str(), &m_trigger_match_Flag[itrig]);
 
         //Trigger matching using dR of 0.01
         BranchName2="dimuon_"+BranchName+"_0_01";
         m_OutTree->Branch(BranchName2.c_str(), &m_trigger_match_Flag_0_01[itrig]);
 
-        BranchName2="dimuon_"+BranchName+"_mu1passChains_dR_0_01";
-        m_OutTree->Branch(BranchName2.c_str(), &m_dimu_trigger_match_Flag_mu1_pass_chains_0_01[itrig]);
-        BranchName2="dimuon_"+BranchName+"_mu2passChains_dR_0_01";
-        m_OutTree->Branch(BranchName2.c_str(), &m_dimu_trigger_match_Flag_mu2_pass_chains_0_01[itrig]);
-
-        BranchName2="dimuon_"+BranchName+"_mu1passChains_dR_" + DoubleToString(m_muonTriggerMatchDR);
-        m_OutTree->Branch(BranchName2.c_str(), &m_dimu_trigger_match_Flag_mu1_pass_chains_dR[itrig]);
-        BranchName2="dimuon_"+BranchName+"_mu2passChains_dR_" + DoubleToString(m_muonTriggerMatchDR);
-        m_OutTree->Branch(BranchName2.c_str(), &m_dimu_trigger_match_Flag_mu2_pass_chains_dR[itrig]);
+        // Per-leg dimuon matching branches (dR=0.01)
+        BranchName2="dimuon_"+BranchName+"_mu1passLeg1_dR_0_01";
+        m_OutTree->Branch(BranchName2.c_str(), &m_dimu_trigger_match_Flag_mu1_leg1_0_01[itrig]);
+        BranchName2="dimuon_"+BranchName+"_mu1passLeg2_dR_0_01";
+        m_OutTree->Branch(BranchName2.c_str(), &m_dimu_trigger_match_Flag_mu1_leg2_0_01[itrig]);
+        BranchName2="dimuon_"+BranchName+"_mu2passLeg1_dR_0_01";
+        m_OutTree->Branch(BranchName2.c_str(), &m_dimu_trigger_match_Flag_mu2_leg1_0_01[itrig]);
+        BranchName2="dimuon_"+BranchName+"_mu2passLeg2_dR_0_01";
+        m_OutTree->Branch(BranchName2.c_str(), &m_dimu_trigger_match_Flag_mu2_leg2_0_01[itrig]);
+        // Per-leg dimuon matching branches (dR=m_muonTriggerMatchDR)
+        BranchName2="dimuon_"+BranchName+"_mu1passLeg1_dR_" + DoubleToString(m_muonTriggerMatchDR);
+        m_OutTree->Branch(BranchName2.c_str(), &m_dimu_trigger_match_Flag_mu1_leg1_dR[itrig]);
+        BranchName2="dimuon_"+BranchName+"_mu1passLeg2_dR_" + DoubleToString(m_muonTriggerMatchDR);
+        m_OutTree->Branch(BranchName2.c_str(), &m_dimu_trigger_match_Flag_mu1_leg2_dR[itrig]);
+        BranchName2="dimuon_"+BranchName+"_mu2passLeg1_dR_" + DoubleToString(m_muonTriggerMatchDR);
+        m_OutTree->Branch(BranchName2.c_str(), &m_dimu_trigger_match_Flag_mu2_leg1_dR[itrig]);
+        BranchName2="dimuon_"+BranchName+"_mu2passLeg2_dR_" + DoubleToString(m_muonTriggerMatchDR);
+        m_OutTree->Branch(BranchName2.c_str(), &m_dimu_trigger_match_Flag_mu2_leg2_dR[itrig]);
 
         #endif
 
         m_trigger_match_map      [trigger_name]=&m_trigger_match_Flag      [itrig];
         m_trigger_match_map_0_01 [trigger_name]=&m_trigger_match_Flag_0_01 [itrig];
-        
-        m_dimu_trigger_match_map_mu1_pass_chains_0_01 [trigger_name] = &m_dimu_trigger_match_Flag_mu1_pass_chains_0_01 [itrig];
-        m_dimu_trigger_match_map_mu2_pass_chains_0_01 [trigger_name] = &m_dimu_trigger_match_Flag_mu2_pass_chains_0_01 [itrig];
-        m_dimu_trigger_match_map_mu1_pass_chains_dR [trigger_name] = &m_dimu_trigger_match_Flag_mu1_pass_chains_dR [itrig];
-        m_dimu_trigger_match_map_mu2_pass_chains_dR [trigger_name] = &m_dimu_trigger_match_Flag_mu2_pass_chains_dR [itrig];
+
+        m_dimu_trigger_match_map_mu1_leg1_0_01[trigger_name] = &m_dimu_trigger_match_Flag_mu1_leg1_0_01[itrig];
+        m_dimu_trigger_match_map_mu1_leg2_0_01[trigger_name] = &m_dimu_trigger_match_Flag_mu1_leg2_0_01[itrig];
+        m_dimu_trigger_match_map_mu2_leg1_0_01[trigger_name] = &m_dimu_trigger_match_Flag_mu2_leg1_0_01[itrig];
+        m_dimu_trigger_match_map_mu2_leg2_0_01[trigger_name] = &m_dimu_trigger_match_Flag_mu2_leg2_0_01[itrig];
+        m_dimu_trigger_match_map_mu1_leg1_dR  [trigger_name] = &m_dimu_trigger_match_Flag_mu1_leg1_dR  [itrig];
+        m_dimu_trigger_match_map_mu1_leg2_dR  [trigger_name] = &m_dimu_trigger_match_Flag_mu1_leg2_dR  [itrig];
+        m_dimu_trigger_match_map_mu2_leg1_dR  [trigger_name] = &m_dimu_trigger_match_Flag_mu2_leg1_dR  [itrig];
+        m_dimu_trigger_match_map_mu2_leg2_dR  [trigger_name] = &m_dimu_trigger_match_Flag_mu2_leg2_dR  [itrig];
 
         itrig++;
      }
@@ -1350,18 +1372,24 @@ StatusCode TrigRates::ProcessMuons(){
             m_trigger_match_map[trigger_name]->push_back(m_matchTool->match(myParticles, trigger_name, m_muonTriggerMatchDR));
             m_trigger_match_map_0_01[trigger_name]->push_back(m_matchTool->match(myParticles, trigger_name, 0.01));
           
-            // ---------------- LIBRARY NOT EXIST IN ATHANALYSIS ----------------
-            // std::pair<Bool_t, Bool_t> result_mu1, result_mu2;
-            // // https://acode-browser1.usatlas.bnl.gov/lxr/source/athena/Trigger/TrigAnalysis/TrigMuonMatching/Root/TrigMuonMatching.cxx?v=24.0#0089
-            // m_muonmatchTool->matchDimuon(muon_map[i], muon_map[j], trigger_name, result_mu1, result_mu2, m_muonTriggerMatchDR);
-            // m_dimu_trigger_match_map_mu1_pass_chains_dR[trigger_name] = result_mu1;
-            // m_dimu_trigger_match_map_mu2_pass_chains_dR[trigger_name] = result_mu2;
-
-            // m_muonmatchTool->matchDimuon(muon_map[i], muon_map[j], trigger_name, result_mu1, result_mu2, 0.01);
-            // m_dimu_trigger_match_map_mu1_pass_chains_0_01[trigger_name] = result_mu1;
-            // m_dimu_trigger_match_map_mu2_pass_chains_0_01[trigger_name] = result_mu2;
-            
-            // ---------------- LIBRARY NOT EXIST IN ATHANALYSIS ----------------
+            #if defined(HF_IS_R21) || defined(HF_IS_R25)
+            if(m_dimuMatchModule){
+              std::pair<Bool_t, Bool_t> res_mu1_dR,  res_mu2_dR;
+              std::pair<Bool_t, Bool_t> res_mu1_001, res_mu2_001;
+              m_dimuMatchModule->matchDimuon(muon_map[i], muon_map[j], trigger_name,
+                                             res_mu1_dR,  res_mu2_dR,  m_muonTriggerMatchDR);
+              m_dimuMatchModule->matchDimuon(muon_map[i], muon_map[j], trigger_name,
+                                             res_mu1_001, res_mu2_001, 0.01);
+              m_dimu_trigger_match_map_mu1_leg1_dR  [trigger_name]->push_back(res_mu1_dR.first);
+              m_dimu_trigger_match_map_mu1_leg2_dR  [trigger_name]->push_back(res_mu1_dR.second);
+              m_dimu_trigger_match_map_mu2_leg1_dR  [trigger_name]->push_back(res_mu2_dR.first);
+              m_dimu_trigger_match_map_mu2_leg2_dR  [trigger_name]->push_back(res_mu2_dR.second);
+              m_dimu_trigger_match_map_mu1_leg1_0_01[trigger_name]->push_back(res_mu1_001.first);
+              m_dimu_trigger_match_map_mu1_leg2_0_01[trigger_name]->push_back(res_mu1_001.second);
+              m_dimu_trigger_match_map_mu2_leg1_0_01[trigger_name]->push_back(res_mu2_001.first);
+              m_dimu_trigger_match_map_mu2_leg2_0_01[trigger_name]->push_back(res_mu2_001.second);
+            }
+            #endif
 
           }
         }
