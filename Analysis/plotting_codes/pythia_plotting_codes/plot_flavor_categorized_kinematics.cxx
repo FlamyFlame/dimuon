@@ -1,7 +1,7 @@
 #include "PythonCategorizedPlottingBaseClass.cxx"
 
 
-class PythonFlavorCategorizedPlotting : public PythonCategorizedPlottingBaseClass{
+class PythonFlavorCategorizedPlotting : public PythiaCategorizedPlottingBaseClass{
 protected:
     void initialize();
     void fill_line_map();
@@ -9,16 +9,16 @@ protected:
 public:
     bool turn_single_b_resonance_on = true;
 
-    PythonFlavorCategorizedPlotting(std::string kin_in, bool projx_2d_in, bool projy_2d_in, bool staggered_in, bool norm_unity_in, std::string kin1d_in, std::string kin_title_in)
-            : PythonCategorizedPlottingBaseClass(kin_in, projx_2d_in, projy_2d_in, staggered_in, norm_unity_in, kin1d_in, kin_title_in){}
-    PythonFlavorCategorizedPlotting(std::string kin_in, bool projx_2d_in, bool projy_2d_in, bool staggered_in, bool norm_unity_in, std::string kin1d_in, std::string kin_title_in, std::vector<std::array<float,2>> cuts_in)
-            : PythonCategorizedPlottingBaseClass(kin_in, projx_2d_in, projy_2d_in, staggered_in, norm_unity_in, kin1d_in, kin_title_in, cuts_in){}
+        PythonFlavorCategorizedPlotting(bool isPrivate_in, double ecom_in = 5.36, std::string kin_in = "", bool projx_2d_in = false, bool projy_2d_in = false, bool staggered_in = false, bool norm_unity_in = false, std::string kin1d_in = "", std::string kin_title_in = "")
+            : PythiaCategorizedPlottingBaseClass(isPrivate_in, ecom_in, kin_in, projx_2d_in, projy_2d_in, staggered_in, norm_unity_in, kin1d_in, kin_title_in){}
+        PythonFlavorCategorizedPlotting(bool isPrivate_in, double ecom_in, std::string kin_in, bool projx_2d_in, bool projy_2d_in, bool staggered_in, bool norm_unity_in, std::string kin1d_in, std::string kin_title_in, std::vector<std::array<float,2>> cuts_in)
+            : PythiaCategorizedPlottingBaseClass(isPrivate_in, ecom_in, kin_in, projx_2d_in, projy_2d_in, staggered_in, norm_unity_in, kin1d_in, kin_title_in, cuts_in){}
     
     ~PythonFlavorCategorizedPlotting(){}
 };
 
 void PythonFlavorCategorizedPlotting::initialize(){
-    PythonCategorizedPlottingBaseClass::initialize();
+    PythiaCategorizedPlottingBaseClass::initialize();
     subdir_name = "flavor_categoried/";
     if (!turn_single_b_resonance_on){
         optional_suffix = "_no_single_b_no_res";
@@ -64,79 +64,79 @@ void PythonFlavorCategorizedPlotting::fill_thstack_order_map(){
     }
 }
 
-void plot_flavor_categorized_kinematics(){
+void plot_flavor_categorized_kinematics(bool isPrivate = true, double E_COM = 5.36){
     ParamsSet pms;
     bool with_data_resonance_cuts = false;
 
     std::vector<PythonFlavorCategorizedPlotting*> flavor_plotting_list = {};
     
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("DR", false, false, false, false, "DR", "#Delta R"));
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("DR", false, false, true, false, "DR", "#Delta R")); // accumulative
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("DR", false, false, false, true, "DR", "#Delta R")); // norm to unity
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "DR", false, false, false, false, "DR", "#Delta R"));
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "DR", false, false, true, false, "DR", "#Delta R")); // accumulative
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "DR", false, false, false, true, "DR", "#Delta R")); // norm to unity
     
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("DR_zoomin", false, false, false, false, "DR_zoomin", "#Delta R"));
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("DR_zoomin", false, false, true, false, "DR_zoomin", "#Delta R")); // accumulative
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "DR_zoomin", false, false, false, false, "DR_zoomin", "#Delta R"));
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "DR_zoomin", false, false, true, false, "DR_zoomin", "#Delta R")); // accumulative
     // flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("DR_zoomin", false, false, false, true, "DR_zoomin", "#Delta R")); // norm to unity
     
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("Deta_zoomin", false, false, false, false, "Deta_zoomin", "#Delta #eta"));
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("Deta_zoomin", false, false, true, false, "Deta_zoomin", "#Delta #eta")); // accumulative
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "Deta_zoomin", false, false, false, false, "Deta_zoomin", "#Delta #eta"));
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "Deta_zoomin", false, false, true, false, "Deta_zoomin", "#Delta #eta")); // accumulative
     
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("Dphi_zoomin", false, false, false, false, "Dphi_zoomin", "#Delta #phi"));
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("Dphi_zoomin", false, false, true, false, "Dphi_zoomin", "#Delta #phi")); // accumulative
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "Dphi_zoomin", false, false, false, false, "Dphi_zoomin", "#Delta #phi"));
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "Dphi_zoomin", false, false, true, false, "Dphi_zoomin", "#Delta #phi")); // accumulative
     
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("DR_jacobian_corrected", false, false, false, false, "DR_jacobian_corrected", "FULL: #frac{1}{#Delta R} #frac{d#sigma}{d#Delta R}"));
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("DR_jacobian_corrected", false, false, true, false, "DR_jacobian_corrected", "FULL: #frac{1}{#Delta R} #frac{d#sigma}{d#Delta R}")); // accumulative
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("DR_jacobian_corrected", false, false, false, true, "DR_jacobian_corrected", "FULL: #frac{1}{#Delta R} #frac{d#sigma}{d#Delta R}")); // norm to unity
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "DR_jacobian_corrected", false, false, false, false, "DR_jacobian_corrected", "FULL: #frac{1}{#Delta R} #frac{d#sigma}{d#Delta R}"));
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "DR_jacobian_corrected", false, false, true, false, "DR_jacobian_corrected", "FULL: #frac{1}{#Delta R} #frac{d#sigma}{d#Delta R}")); // accumulative
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "DR_jacobian_corrected", false, false, false, true, "DR_jacobian_corrected", "FULL: #frac{1}{#Delta R} #frac{d#sigma}{d#Delta R}")); // norm to unity
     
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("DR_zoomin_jacobian_corrected", false, false, false, false, "DR_zoomin_jacobian_corrected", "FULL: #frac{1}{#Delta R} #frac{d#sigma}{d#Delta R}"));
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("DR_zoomin_jacobian_corrected", false, false, true, false, "DR_zoomin_jacobian_corrected", "FULL: #frac{1}{#Delta R} #frac{d#sigma}{d#Delta R}")); // accumulative
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "DR_zoomin_jacobian_corrected", false, false, false, false, "DR_zoomin_jacobian_corrected", "FULL: #frac{1}{#Delta R} #frac{d#sigma}{d#Delta R}"));
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "DR_zoomin_jacobian_corrected", false, false, true, false, "DR_zoomin_jacobian_corrected", "FULL: #frac{1}{#Delta R} #frac{d#sigma}{d#Delta R}")); // accumulative
     // flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("DR_zoomin_jacobian_corrected", false, false, false, true, "DR_zoomin_jacobian_corrected", "FULL: #frac{1}{#Delta R} #frac{d#sigma}{d#Delta R}")); // norm to unity
     
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("pt_asym", false, false, false, false, "pt_asym", "A"));
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("pt_asym", false, false, true, false, "pt_asym", "A")); // accumulative
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "pt_asym", false, false, false, false, "pt_asym", "A"));
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "pt_asym", false, false, true, false, "pt_asym", "A")); // accumulative
     // flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("pt_asym", false, false, false, true, "pt_asym", "A")); // norm to unity
     
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("psrapidity_ordered_pt_asym", false, false, false, false, "psrapidity_ordered_pt_asym", "#Tilde{A}"));
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("psrapidity_ordered_pt_asym", false, false, true, false, "psrapidity_ordered_pt_asym", "#Tilde{A}")); // accumulative
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "psrapidity_ordered_pt_asym", false, false, false, false, "psrapidity_ordered_pt_asym", "#Tilde{A}"));
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "psrapidity_ordered_pt_asym", false, false, true, false, "psrapidity_ordered_pt_asym", "#Tilde{A}")); // accumulative
     // flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("psrapidity_ordered_pt_asym", false, false, false, true, "psrapidity_ordered_pt_asym", "#Tilde{A}")); // norm to unity
     
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("pair_pt_ptlead_ratio", false, false, false, false, "pair_pt_ptlead_ratio", "p_{T}^{pair} / p_{T}^{lead}"));
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("pair_pt_ptlead_ratio", false, false, true, false, "pair_pt_ptlead_ratio", "p_{T}^{pair} / p_{T}^{lead}")); // accumulative
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "pair_pt_ptlead_ratio", false, false, false, false, "pair_pt_ptlead_ratio", "p_{T}^{pair} / p_{T}^{lead}"));
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "pair_pt_ptlead_ratio", false, false, true, false, "pair_pt_ptlead_ratio", "p_{T}^{pair} / p_{T}^{lead}")); // accumulative
     // flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("pair_pt_ptlead_ratio", false, false, false, true, "pair_pt_ptlead_ratio", "p_{T}^{pair} / p_{T}^{lead}")); // norm to unity
     
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("ptlead_pair_pt", true, false, false, false, "pair_pt", "p_{T}^{pair}"));
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("ptlead_pair_pt", true, false, true, false, "pair_pt", "p_{T}^{pair}")); // accumulative
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "ptlead_pair_pt", true, false, false, false, "pair_pt", "p_{T}^{pair}"));
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "ptlead_pair_pt", true, false, true, false, "pair_pt", "p_{T}^{pair}")); // accumulative
     // flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("ptlead_pair_pt", true, false, false, true, "pair_pt", "p_{T}^{pair}")); // norm to unity
     
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("ptlead_pair_pt", false, true, false, false, "ptlead", "p_{T}^{lead}"));
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("ptlead_pair_pt", false, true, true, false, "ptlead", "p_{T}^{lead}")); // accumulative
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "ptlead_pair_pt", false, true, false, false, "ptlead", "p_{T}^{lead}"));
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "ptlead_pair_pt", false, true, true, false, "ptlead", "p_{T}^{lead}")); // accumulative
     // flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("ptlead_pair_pt", false, true, false, true, "ptlead", "p_{T}^{lead}")); // norm to unity
 
     std::vector<std::array<float,2>> minv_cuts;
     if (with_data_resonance_cuts) minv_cuts = pms.minv_cuts;
 
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("minv_pair_pt", false, true, false, false, "minv", "m_{#mu#mu}", minv_cuts));
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("minv_pair_pt", false, true, true, false, "minv", "m_{#mu#mu}", minv_cuts)); // accumulative
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("minv_pair_pt", false, true, false, true, "minv", "m_{#mu#mu}", minv_cuts)); // norm to unity
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "minv_pair_pt", false, true, false, false, "minv", "m_{#mu#mu}", minv_cuts));
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "minv_pair_pt", false, true, true, false, "minv", "m_{#mu#mu}", minv_cuts)); // accumulative
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "minv_pair_pt", false, true, false, true, "minv", "m_{#mu#mu}", minv_cuts)); // norm to unity
     
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("minv_pair_pt_zoomin", false, true, false, false, "minv_zoomin", "m_{#mu#mu}", minv_cuts));
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("minv_pair_pt_zoomin", false, true, true, false, "minv_zoomin", "m_{#mu#mu}", minv_cuts)); // accumulative
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "minv_pair_pt_zoomin", false, true, false, false, "minv_zoomin", "m_{#mu#mu}", minv_cuts));
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "minv_pair_pt_zoomin", false, true, true, false, "minv_zoomin", "m_{#mu#mu}", minv_cuts)); // accumulative
     // flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("minv_pair_pt_zoomin", false, true, false, true, "minv_zoomin", "m_{#mu#mu}", minv_cuts)); // norm to unity
     
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("minv_pair_pt_jacobian_corrected", false, true, false, false, "minv_jacobian_corrected", "FULL: #frac{1}{#Delta R} #frac{d#sigma}{dm_{#mu#mu}}", minv_cuts));
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("minv_pair_pt_jacobian_corrected", false, true, true, false, "minv_jacobian_corrected", "FULL: #frac{1}{#Delta R} #frac{d#sigma}{dm_{#mu#mu}}", minv_cuts)); // accumulative
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "minv_pair_pt_jacobian_corrected", false, true, false, false, "minv_jacobian_corrected", "FULL: #frac{1}{#Delta R} #frac{d#sigma}{dm_{#mu#mu}}", minv_cuts));
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "minv_pair_pt_jacobian_corrected", false, true, true, false, "minv_jacobian_corrected", "FULL: #frac{1}{#Delta R} #frac{d#sigma}{dm_{#mu#mu}}", minv_cuts)); // accumulative
     // flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("minv_pair_pt_jacobian_corrected", false, true, false, true, "minv_jacobian_corrected", "FULL: #frac{1}{#Delta R} #frac{d#sigma}{dm_{#mu#mu}}", minv_cuts)); // norm to unity
     
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("minv_pair_pt_zoomin_jacobian_corrected", false, true, false, false, "minv_zoomin_jacobian_corrected", "FULL: #frac{1}{#Delta R} #frac{d#sigma}{dm_{#mu#mu}}", minv_cuts));
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("minv_pair_pt_zoomin_jacobian_corrected", false, true, true, false, "minv_zoomin_jacobian_corrected", "FULL: #frac{1}{#Delta R} #frac{d#sigma}{dm_{#mu#mu}}", minv_cuts)); // accumulative
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "minv_pair_pt_zoomin_jacobian_corrected", false, true, false, false, "minv_zoomin_jacobian_corrected", "FULL: #frac{1}{#Delta R} #frac{d#sigma}{dm_{#mu#mu}}", minv_cuts));
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "minv_pair_pt_zoomin_jacobian_corrected", false, true, true, false, "minv_zoomin_jacobian_corrected", "FULL: #frac{1}{#Delta R} #frac{d#sigma}{dm_{#mu#mu}}", minv_cuts)); // accumulative
     // flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("minv_pair_pt_zoomin_jacobian_corrected", false, true, false, true, "minv_zoomin_jacobian_corrected", "FULL: #frac{1}{#Delta R} #frac{d#sigma}{dm_{#mu#mu}}", minv_cuts)); // norm to unity
     
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("Deta_Dphi", true, false, false, false, "Dphi", "#Delta #phi"));
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("Deta_Dphi", true, false, true, false, "Dphi", "#Delta #phi")); // accumulative
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "Deta_Dphi", true, false, false, false, "Dphi", "#Delta #phi"));
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "Deta_Dphi", true, false, true, false, "Dphi", "#Delta #phi")); // accumulative
     // flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("Deta_Dphi", true, false, false, true, "Dphi", "#Delta #phi")); // norm to unity
     
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("Deta_Dphi", false, true, false, false, "Deta", "#Delta #eta"));
-    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("Deta_Dphi", false, true, true, false, "Deta", "#Delta #eta")); // accumulative
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "Deta_Dphi", false, true, false, false, "Deta", "#Delta #eta"));
+    flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting(isPrivate, E_COM, "Deta_Dphi", false, true, true, false, "Deta", "#Delta #eta")); // accumulative
     // flavor_plotting_list.push_back(new PythonFlavorCategorizedPlotting("Deta_Dphi", false, true, false, true, "Deta", "#Delta #eta")); // norm to unity
 
     for (auto& flavor_plot : flavor_plotting_list){
@@ -145,15 +145,15 @@ void plot_flavor_categorized_kinematics(){
         delete flavor_plot;
     }
 
-    PythonFlavorCategorizedPlotting DR_no_single_b_no_res ("DR", false, false, false, false, "DR", "#Delta R");
+    PythonFlavorCategorizedPlotting DR_no_single_b_no_res (isPrivate, E_COM, "DR", false, false, false, false, "DR", "#Delta R");
     DR_no_single_b_no_res.turn_single_b_resonance_on = false;
     DR_no_single_b_no_res.Run();
 
-    PythonFlavorCategorizedPlotting DR_jacobian_corrected_no_single_b_no_res ("DR_jacobian_corrected", false, false, false, false, "DR_jacobian_corrected", "FULL: #frac{1}{#Delta R} #frac{d#sigma}{d#Delta R}");
+    PythonFlavorCategorizedPlotting DR_jacobian_corrected_no_single_b_no_res (isPrivate, E_COM, "DR_jacobian_corrected", false, false, false, false, "DR_jacobian_corrected", "FULL: #frac{1}{#Delta R} #frac{d#sigma}{d#Delta R}");
     DR_jacobian_corrected_no_single_b_no_res.turn_single_b_resonance_on = false;
     DR_jacobian_corrected_no_single_b_no_res.Run();
 
-    PythonFlavorCategorizedPlotting minv_no_single_b_no_res ("minv_pair_pt", false, true, false, false, "minv", "m_{#mu#mu}", minv_cuts);
+    PythonFlavorCategorizedPlotting minv_no_single_b_no_res (isPrivate, E_COM, "minv_pair_pt", false, true, false, false, "minv", "m_{#mu#mu}", minv_cuts);
     minv_no_single_b_no_res.turn_single_b_resonance_on = false;
     minv_no_single_b_no_res.Run();
 

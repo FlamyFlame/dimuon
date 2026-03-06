@@ -1,12 +1,30 @@
 #include "PythonCategorizedPlottingBaseClass.h"
+#include <set>
 
-void PythonCategorizedPlottingBaseClass::initialize(){
+PythiaCategorizedPlottingBaseClass::PythiaCategorizedPlottingBaseClass()
+    : isPrivate(true), E_COM(5.36) {}
+
+void PythiaCategorizedPlottingBaseClass::initialize(){
 
     with_data_resonance_cuts_dir = with_data_resonance_cuts? "with_data_resonance_cuts/" : "no_data_resonance_cuts/";
     with_data_resonance_cuts_suffix = with_data_resonance_cuts? "_with_data_resonance_cuts" : "_no_data_resonance_cuts";
     // with_data_resonance_cuts_suffix = with_data_resonance_cuts? "_with_data_resonance_cuts" : "";
     
-    fname = "histograms_pythia_combined" + with_data_resonance_cuts_suffix + ".root";
+    if (isPrivate) {
+        pythia_data_path = "/usatlas/u/yuhanguo/usatlasdata/pythia_private_sample/";
+        pythia_plots_path = "/usatlas/u/yuhanguo/usatlasdata/pythia_private_sample/plots/";
+        fname = "histograms_pythia_combined" + with_data_resonance_cuts_suffix + ".root";
+    } else if (std::abs(E_COM - 5.36) < 0.01) {
+        pythia_data_path = "/usatlas/u/yuhanguo/usatlasdata/pythia_truth_full_sample/pythia_5p36TeV/";
+        pythia_plots_path = "/usatlas/u/yuhanguo/usatlasdata/pythia_truth_full_sample/pythia_5p36TeV/plots/";
+        fname = "histograms_pythia_5p36TeV" + with_data_resonance_cuts_suffix + ".root";
+    } else if (std::abs(E_COM - 5.02) < 0.01) {
+        pythia_data_path = "/usatlas/u/yuhanguo/usatlasdata/pythia_truth_full_sample/pythia_5TeV/";
+        pythia_plots_path = "/usatlas/u/yuhanguo/usatlasdata/pythia_truth_full_sample/pythia_5TeV/plots/";
+        fname = "histograms_pythia_5p02TeV" + with_data_resonance_cuts_suffix + ".root";
+    } else {
+        throw std::runtime_error("PythiaCategorizedPlottingBaseClass: E_COM must be 5.02 or 5.36 TeV for non-private plotting.");
+    }
 
     signs[sign::same_sign]  = "_sign1";
     signs[sign::op_sign]    = "_sign2";
@@ -32,13 +50,13 @@ void PythonCategorizedPlottingBaseClass::initialize(){
 
 }
 
-PythonCategorizedPlottingBaseClass::~PythonCategorizedPlottingBaseClass(){
+PythiaCategorizedPlottingBaseClass::~PythiaCategorizedPlottingBaseClass(){
     for (auto& [grp_id, grp_line_ptr] : line_map){
         delete grp_line_ptr;
     }
 }
 
-void PythonCategorizedPlottingBaseClass::Run(){
+void PythiaCategorizedPlottingBaseClass::Run(){
 
     initialize();
 
@@ -53,16 +71,31 @@ void PythonCategorizedPlottingBaseClass::Run(){
         throw std::exception();
     }
 
+    std::string kin_hist = kin;
+    if (kin == "ptlead_pair_pt") kin_hist = "pt_lead_vs_pair_pt";
+    else if (kin == "minv_pair_pt") kin_hist = "minv_vs_pair_pt";
+    else if (kin == "minv_pair_pt_zoomin") kin_hist = "minv_zoomin_vs_pair_pt";
+    else if (kin == "minv_pair_pt_jacobian_corrected") kin_hist = "minv_jacobian_corrected_vs_pair_pt";
+    else if (kin == "minv_pair_pt_zoomin_jacobian_corrected") kin_hist = "minv_zoomin_jacobian_corrected_vs_pair_pt";
+    else if (kin == "Deta_Dphi") kin_hist = "Deta_vs_Dphi";
+
     TCanvas* c = new TCanvas("c1","c1",1400,500);
     c->Divide(2,1);
+    int n_panels_drawn = 0;
+    std::set<std::pair<int, int>> bad_hist_indices;
 
-    f = TFile::Open((pythia_path + fname).c_str());
+    auto is_bad_hist = [&bad_hist_indices](int ksign_in, int kgrp_in){
+        return bad_hist_indices.find({ksign_in, kgrp_in}) != bad_hist_indices.end();
+    };
+
+    f = TFile::Open((pythia_data_path + fname).c_str());
 
     if (!f){
-        std::cout << "File with the name " << pythia_path << fname << "does not exist or cannot be opened";
+        std::cout << "File with the name " << pythia_data_path << fname << " does not exist or cannot be opened";
         throw std::exception();
     }
     for (unsigned int ksign = 0; ksign < sign::nSigns; ksign++){
+        int n_added_this_sign = 0;
 
         c->cd(ksign + 1);
         gPad->SetLeftMargin(0.16);
@@ -123,7 +156,11 @@ void PythonCategorizedPlottingBaseClass::Run(){
             }
 
             if (projx_2d){
-                h2d = (TH2D*) f->Get(("h_" + kin + signs[ksign] + line_map[kgrp]->line_category).c_str());
+                h2d = (TH2D*) f->Get(("h_" + kin_hist + signs[ksign] + line_map[kgrp]->line_category).c_str());
+                if (!h2d){
+                    std::cout << "file h_" << kin_hist << signs[ksign] << line_map[kgrp]->line_category << " does not exist." << std::endl;
+                    throw std::exception();
+                }
                 if (norm_unity){
                     hist_map[{ksign, kgrp}] = (TH1D*) h2d->ProjectionX(("h_unity_" + kin1d + signs[ksign] + line_map[kgrp]->line_category).c_str());
                 }else{
@@ -131,7 +168,11 @@ void PythonCategorizedPlottingBaseClass::Run(){
                 }
             }
             else if (projy_2d){
-                h2d = (TH2D*) f->Get(("h_" + kin + signs[ksign] + line_map[kgrp]->line_category).c_str());
+                h2d = (TH2D*) f->Get(("h_" + kin_hist + signs[ksign] + line_map[kgrp]->line_category).c_str());
+                if (!h2d){
+                    std::cout << "file h_" << kin_hist << signs[ksign] << line_map[kgrp]->line_category << " does not exist." << std::endl;
+                    throw std::exception();
+                }
                 if (norm_unity){
                     hist_map[{ksign, kgrp}] = (TH1D*) h2d->ProjectionY(("h_unity_" + kin1d + signs[ksign] + line_map[kgrp]->line_category).c_str());
                 }else{
@@ -149,7 +190,7 @@ void PythonCategorizedPlottingBaseClass::Run(){
             // if the argument cuts is not empty, do not draw the bins overlapping with the cuts
             if (!cuts.empty()) ApplyCutsTo1DHistogram(hist_map[{ksign, kgrp}], cuts);
 
-            if (hist_map[{ksign, kgrp}]->Integral() > min_integral_thrsh){ // skipping categories with too low or zero crossx
+            if (hist_map[{ksign, kgrp}]->Integral() > min_integral_thrsh){ // this is the only threshold gate
                 float norm = norm_unity? 1. : pow(10,6);
                 hist_helper(hist_map[{ksign, kgrp}], norm, norm_unity, "");
 
@@ -157,6 +198,7 @@ void PythonCategorizedPlottingBaseClass::Run(){
                     hist_map[{ksign, kgrp}]->SetLineColor(line_map[kgrp]->line_color);
                     hist_map[{ksign, kgrp}]->SetMarkerColor(line_map[kgrp]->line_color);          
                 }else{
+                n_added_this_sign++;
                     hs[ksign]->Add(hist_map[{ksign, kgrp}]);
                     hist_map[{ksign, kgrp}]->SetFillColor(line_map[kgrp]->fill_color);          
                 }
@@ -166,40 +208,59 @@ void PythonCategorizedPlottingBaseClass::Run(){
                 }else{
                     l->AddEntry(hist_map[{ksign, kgrp}], (line_map[kgrp]->line_label).c_str(),"lp");
                 }
+            } else {
+                bad_hist_indices.insert({static_cast<int>(ksign), kgrp});
             }
         } // end loop over flavor/origin categories
 
-        float ymax = hist_map[{ksign, thstack_order_map[ksign].at(0)}]->GetMaximum();
+        float ymax = 0.;
         if (!staggered){
 
+            bool has_good_hist = false;
+
             for (int kgrp : thstack_order_map[ksign]){
+                if (is_bad_hist(static_cast<int>(ksign), kgrp)) continue;
                 ymax = (ymax > hist_map[{ksign, kgrp}]->GetMaximum())? ymax : hist_map[{ksign, kgrp}]->GetMaximum();
+                has_good_hist = true;
+            }
+
+            if (!has_good_hist){
+                std::cerr << "Trying to find first index of category with integral over minimum threshold, but NONE found!" << std::endl;
+                std::cerr << "Skip drawing this panel." << std::endl;
+                continue;
             }
 
             // find the same index where the category has nonnegligible integral
             int first_ind = 0;
-            while (first_ind < thstack_order_map[ksign].size() && hist_map[{ksign, thstack_order_map[ksign].at(first_ind)}]->Integral("width") < min_integral_thrsh){
+            while (first_ind < thstack_order_map[ksign].size() && is_bad_hist(static_cast<int>(ksign), thstack_order_map[ksign].at(first_ind))){
                 first_ind++;
             }
 
             if (first_ind >= thstack_order_map[ksign].size()){
                 std::cerr << "Trying to find first index of category with integral over minimum threshold, but NONE found!" << std::endl;
-                std::cerr << "Return without plotting or saving histograms!" << std::endl;
+                std::cerr << "Skip drawing this panel." << std::endl;
+                continue;
             }
 
             hist_map[{ksign, thstack_order_map[ksign].at(first_ind)}]->GetYaxis()->SetRangeUser(0., ymax * 1.1);
     
             hist_map[{ksign, thstack_order_map[ksign].at(first_ind)}]->Draw("E");
+            n_panels_drawn++;
 
             for (int grp_ind = first_ind+1; grp_ind < thstack_order_map[ksign].size(); grp_ind++){
                 int kgrp = thstack_order_map[ksign].at(grp_ind);
-                if (hist_map[{ksign, kgrp}]->Integral("width") > min_integral_thrsh){ // skipping categories with too low or zero crossx
+                if (!is_bad_hist(static_cast<int>(ksign), kgrp)){
                     hist_map[{ksign, kgrp}]->Draw("E,same");
                 }
             }
         }else{
+            if (n_added_this_sign == 0){
+                std::cerr << "No categories above threshold for this panel (staggered mode). Skip drawing this panel." << std::endl;
+                continue;
+            }
             hs[ksign]->Draw("hist");
             thstack_helper(hs[ksign], kin_title, "");
+            n_panels_drawn++;
         }
 
         tbox->Draw();
@@ -211,7 +272,8 @@ void PythonCategorizedPlottingBaseClass::Run(){
     auto it_obs = std::find(single_b_analysis_observables.begin(), single_b_analysis_observables.end(), kin1d);
     std::string sub_dir = (it_obs != single_b_analysis_observables.end())? "" : "others/";
 
-    std::string outdir_name = pythia_path + "plots/" + subdir_name + with_data_resonance_cuts_dir + sub_dir;
+    std::string outdir_name = pythia_plots_path + subdir_name + with_data_resonance_cuts_dir + sub_dir;
+    gSystem->mkdir(outdir_name.c_str(), true);
 
     std::string drawing_option_suffix = "";
     if (staggered)  drawing_option_suffix += "_staggered";
@@ -219,8 +281,12 @@ void PythonCategorizedPlottingBaseClass::Run(){
 
     std::string outfile_name = outdir_name + "pythia_" + kin1d + drawing_option_suffix + optional_suffix + with_data_resonance_cuts_suffix;
 
-    c->SaveAs(Form("%s.png", outfile_name.c_str()));
-    if (saveAsC) c->SaveAs(Form("%s.c", outfile_name.c_str()));
+    if (n_panels_drawn > 0){
+        c->SaveAs(Form("%s.png", outfile_name.c_str()));
+        if (saveAsC) c->SaveAs(Form("%s.c", outfile_name.c_str()));
+    } else {
+        std::cerr << "No drawable panels for " << kin1d << ", skip saving empty canvas." << std::endl;
+    }
 
     c->Close();
     delete c;

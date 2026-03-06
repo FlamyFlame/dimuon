@@ -9,6 +9,8 @@
 #include "TH1.h"
 #include "TH2.h"
 #include "TCanvas.h"
+#include "TSystem.h"
+#include <cmath>
 #include<algorithm>
 #include "../helper_functions.c"
 #include "../../MuonObjectsParamsAndHelpers/ParamsSet.h"
@@ -33,7 +35,7 @@ enum sign{
 };
 
 // class for plotting a single observable that is either flavor or origin categorized
-class PythonCategorizedPlottingBaseClass{
+class PythiaCategorizedPlottingBaseClass{
 protected:
 
     double min_integral_thrsh = 1e-6;
@@ -55,7 +57,10 @@ protected:
     std::string with_data_resonance_cuts_dir;
     std::string with_data_resonance_cuts_suffix;
 
-    std::string pythia_path = "/usatlas/u/yuhanguo/usatlasdata/pythia_private_sample/";
+    bool isPrivate;
+    double E_COM;
+    std::string pythia_data_path;
+    std::string pythia_plots_path;
     std::string fname;
     std::map<int, std::string> signs;
     std::map<int, std::string> subpl_titles;
@@ -84,20 +89,22 @@ public:
     std::string subdir_name = "";
     std::string optional_suffix = ""; // allow child classes to have an optional suffix if needed
 
-    PythonCategorizedPlottingBaseClass();
-	PythonCategorizedPlottingBaseClass(std::string kin_in, bool projx_2d_in, bool projy_2d_in, bool staggered_in, bool norm_unity_in, std::string kin1d_in, std::string kin_title_in): projx_2d (projx_2d_in), projy_2d (projy_2d_in), staggered (staggered_in), norm_unity (norm_unity_in){
+    PythiaCategorizedPlottingBaseClass();
+    PythiaCategorizedPlottingBaseClass(bool isPrivate_in, double ecom_in = 5.36, std::string kin_in = "", bool projx_2d_in = false, bool projy_2d_in = false, bool staggered_in = false, bool norm_unity_in = false, std::string kin1d_in = "", std::string kin_title_in = "")
+    : isPrivate(isPrivate_in), E_COM(ecom_in), projx_2d (projx_2d_in), projy_2d (projy_2d_in), staggered (staggered_in), norm_unity (norm_unity_in){
 	    kin = kin_in;
 	    kin1d = kin1d_in;
 	    kin_title = kin_title_in;
 	}
 
-	PythonCategorizedPlottingBaseClass(std::string kin_in, bool projx_2d_in, bool projy_2d_in, bool staggered_in, bool norm_unity_in, std::string kin1d_in, std::string kin_title_in, std::vector<std::array<float,2>> cuts_in): projx_2d (projx_2d_in), projy_2d (projy_2d_in), staggered (staggered_in), norm_unity (norm_unity_in){
+    PythiaCategorizedPlottingBaseClass(bool isPrivate_in, double ecom_in, std::string kin_in, bool projx_2d_in, bool projy_2d_in, bool staggered_in, bool norm_unity_in, std::string kin1d_in, std::string kin_title_in, std::vector<std::array<float,2>> cuts_in)
+    : isPrivate(isPrivate_in), E_COM(ecom_in), projx_2d (projx_2d_in), projy_2d (projy_2d_in), staggered (staggered_in), norm_unity (norm_unity_in){
 	    kin = kin_in;
 	    kin1d = kin1d_in;
 	    kin_title = kin_title_in;
 	    cuts = cuts_in;
 	}
-    ~PythonCategorizedPlottingBaseClass();
+    ~PythiaCategorizedPlottingBaseClass();
     void Run();
 };
 

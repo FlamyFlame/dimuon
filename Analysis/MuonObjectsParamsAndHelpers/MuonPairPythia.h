@@ -60,8 +60,8 @@ struct PairPythiaTruthExtras {
 };
 
 struct MuonPairPythiaTruth
-  : MuonPairBaseT<MuonPairPythiaTruth, MuonPythia>
-  , PairMCTruthExtras<MuonPairPythiaTruth>
+  : MuonPairBaseT<MuonPairPythiaTruth, MuonPythiaTruth>
+  , PairMCTruthKinExtras<MuonPairPythiaTruth>
   , PairPythiaExtras<MuonPairPythiaTruth>
   , PairPythiaTruthExtras<MuonPairPythiaTruth>
 {};
@@ -75,7 +75,7 @@ struct MuonPairPythiaFullSimNoTruth
 
 struct MuonPairPythiaFullSimWTruth
   : MuonPairBaseT<MuonPairPythiaFullSimWTruth, MuonPythiaFullSimWTruth>
-  , PairMCTruthExtras<MuonPairPythiaFullSimWTruth>
+  , PairMCTruthKinExtras<MuonPairPythiaFullSimWTruth>
   , PairPythiaExtras<MuonPairPythiaFullSimWTruth>
   , PairPythiaTruthExtras<MuonPairPythiaFullSimWTruth>
   , PairRecoExtras<MuonPairPythiaFullSimWTruth>
@@ -96,7 +96,7 @@ struct MuonPairPythiaFullSimOverlayNoTruth
 
 struct MuonPairPythiaFullSimOverlayWTruth
   : MuonPairBaseT<MuonPairPythiaFullSimOverlayWTruth, MuonPythiaFullSimOverlayWTruth>
-  , PairMCTruthExtras<MuonPairPythiaFullSimOverlayWTruth>
+  , PairMCTruthKinExtras<MuonPairPythiaFullSimOverlayWTruth>
   , PairPythiaExtras<MuonPairPythiaFullSimOverlayWTruth>
   , PairPythiaTruthExtras<MuonPairPythiaFullSimOverlayWTruth>
   , PairRecoExtras<MuonPairPythiaFullSimOverlayWTruth>
