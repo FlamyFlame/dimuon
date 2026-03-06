@@ -97,7 +97,7 @@ if do_hi2023:
 elif do_hi2024:
 	RunYear = 2024
 	GRL = ["physics_HI2024_50ns.xml"]
-	InputFile = "/eos/user/y/yuhang/data/data24_hi_testfile_AOD/data24_hi.00489961.physics_HardProbes.merge.AOD.f1550_m2267._lb0113._0007.1"
+	InputFile = "/eos/user/y/yuhang/data/data24_hi_testfile_AOD/data24_hi.00488980.physics_HardProbes.merge.AOD.f1537_m2259._lb0230._0001.1"
 	Muon_triggers = ["HLT_mu4_L1MU3V",
 									 "HLT_mu6_L1MU3V",
 									 "HLT_mu6_L1MU5VF",
