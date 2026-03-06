@@ -1,6 +1,6 @@
 # submit_all_batches.sub
 executable = run_powheg_fullsim_wtruth_cc.sh
-arguments = $(Process)
+arguments = $(Process) 0
 output = logs/run_powheg_fullsim_wtruth_cc_batch_$(Process).out
 error = logs/run_powheg_fullsim_wtruth_cc_batch_$(Process).err
 log = logs/run_powheg_fullsim_wtruth_cc_batch_$(Process).log

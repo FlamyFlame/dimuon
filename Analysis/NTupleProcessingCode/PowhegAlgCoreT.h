@@ -32,11 +32,12 @@ protected:
 
     int     run_year;
     bool    isRun3; // auto-determined from run_year
+    bool    useLocal{false};
 
     bool    is_fullsim{false}; // if is fullsim, load reco quantities
     bool    is_fullsim_overlay{false}; // if is fullsim overlay, load centrality info
     bool    perform_truth{false};
-    int     fullsim_run_yr {-1};
+
     double crossx_cut;
     double filter_effcy;
     double filter_effcy_bb = 0.003;
@@ -44,6 +45,7 @@ protected:
     // static const int nMCmodes = 2;
 
     std::string powheg_dir;
+    std::string powheg_input_dir;
     std::string data_subdir;
     std::string dt_suffix;
     std::string truth_suffix;
@@ -86,21 +88,25 @@ protected:
     bool                        getIsFullsim(){ return is_fullsim; }
     bool                        getIsFullsimOverlay(){ return is_fullsim_overlay; }
     bool                        getPerformTruth(){ return perform_truth; }
+    bool                        getUseLocal() const { return useLocal; }
 
     void                        setIsFullsim(bool is_fullsim_input){ is_fullsim = is_fullsim_input; }
     void                        setIsFullsimOverlay(bool is_fullsim_overlay_input){ is_fullsim_overlay = is_fullsim_overlay_input; }
     void                        setPerformTruth(bool perform_truth_input){ perform_truth = perform_truth_input; }
+    void                        setUseLocal(bool useLocal_input){ useLocal = useLocal_input; }
 
 // --------------------- class methods ---------------------------
   
-    explicit PowhegAlgCoreT(int file_batch_input, std::string mc_mode_input, int run_year_input)
+    explicit PowhegAlgCoreT(int file_batch_input, std::string mc_mode_input, int run_year_input, bool useLocal_input = false)
     : file_batch (file_batch_input)
     , mc_mode (mc_mode_input)
-    , run_year (run_year_input){
+    , run_year (run_year_input)
+    , useLocal (useLocal_input){
         isRun3 = !(run_year <= 18);
         crossx_cut = 5 * pow(10,8);
         std::cout << "Powheg Ntuple processing script:" << std::endl;
         std::cout << "mc_mode: " << mc_mode << std::endl;
+        std::cout << "useLocal: " << useLocal << std::endl;
     }
 
     // --------------- CheckBranchPtrs ---------------

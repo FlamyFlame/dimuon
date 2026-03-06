@@ -4,6 +4,7 @@
 #include "time.h"
 #include <math.h> 
 #include <assert.h>
+#include <cstdlib>
 #include "../Utilities/tchain_helpers.h"
 
 
@@ -17,12 +18,16 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_PowhegCore(){
     std::cout << "is_fullsim? " << is_fullsim << std::endl;
     std::cout << "is_fullsim_overlay? " << is_fullsim_overlay << std::endl;
     std::cout << "perform_truth? " << perform_truth << std::endl;
+    std::cout << "useLocal? " << useLocal << std::endl;
 
     if (is_fullsim && (run_year < 15 || run_year > 26)){
         throw std::runtime_error("For Powheg MC fullsim/fullsim overlay, run_year has to be between 15 and 26.");
     }
 
-    powheg_dir = "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/";
+    const std::string powheg_local_dir = "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/";
+    const std::string powheg_dcache_dir = "/pnfs/usatlas.bnl.gov/users/yuhanguo/powheg_full_sample/";
+    powheg_dir = powheg_local_dir;
+    powheg_input_dir = useLocal ? powheg_local_dir : powheg_dcache_dir;
     
     std::string run_year_str = std::to_string(run_year);
 
@@ -43,15 +48,15 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_PowhegCore(){
         dt_suffix = "_truth";
     }
 
-    if (!is_fullsim && file_batch > 6){ // truth
+    if (!useLocal && !is_fullsim && file_batch > 6){ // truth
         throw std::runtime_error("For Powheg MC truth, file_batch has to be between 1 and 6!");
     }
 
-    if (is_fullsim && (!is_fullsim_overlay) && file_batch > 11) { // fullsim, no overlay
+    if (!useLocal && is_fullsim && (!is_fullsim_overlay) && file_batch > 11) { // fullsim, no overlay
         throw std::runtime_error("For Powheg MC fullsim, file_batch has to be between 1 and 11!");
     }
 
-    if (is_fullsim_overlay && file_batch > 11){ // fullsim overlay
+    if (!useLocal && is_fullsim_overlay && file_batch > 11){ // fullsim overlay
         throw std::runtime_error("For Powheg MC fullsim overlay, file_batch has to be between 1 and 11!");
     }
 
@@ -75,20 +80,46 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInput_PowhegCore(){
 
     std::string task_id = (mc_mode == "bb")? "48591366" : "48591379";
 
-    for (int ifile = 5 * (file_batch - 1); ifile < 5 * file_batch; ifile++){
+    std::vector<std::string> input_files;
+    if (useLocal){
         std::string filename =
             is_fullsim
-            ? (powheg_dir + data_subdir + "user.yuhang." + task_id + ".MYSTREAM._" + Form("%06d", ifile+1) + ".root")
-            : (powheg_dir + data_subdir + "mc_truth_" + mc_mode + "_" + Form("%02d", ifile+1) + ".root");
-
-        std::cout << filename << std::endl;
-        std::ifstream in_file(filename.c_str());
-        
-        if (!in_file.good()){
-            std::cout << "Warning: File " << filename << " not found. Skip.\n";
-            continue; // skip this file
+            ? (powheg_input_dir + data_subdir + "user.yuhang." + task_id + ".MYSTREAM._000001.root")
+            : (powheg_input_dir + data_subdir + "mc_truth_" + mc_mode + "_01.root");
+        input_files.push_back(filename);
+    } else {
+        for (int ifile = 5 * (file_batch - 1); ifile < 5 * file_batch; ifile++){
+            std::string filename =
+                is_fullsim
+                ? (powheg_input_dir + data_subdir + "user.yuhang." + task_id + ".MYSTREAM._" + Form("%06d", ifile+1) + ".root")
+                : (powheg_input_dir + data_subdir + "mc_truth_" + mc_mode + "_" + Form("%02d", ifile+1) + ".root");
+            input_files.push_back(filename);
         }
-        fChainRef()->Add(filename.c_str());
+    }
+
+    const char* use_xrootd_env = std::getenv("POWHEG_USE_XROOTD");
+    const bool use_xrootd = (!useLocal && use_xrootd_env && std::string(use_xrootd_env) == "1");
+
+    auto to_access_path = [&](const std::string& filename){
+        if (!use_xrootd) return filename;
+        if (filename.rfind("/pnfs/", 0) == 0){
+            return std::string("root://dcgftp.usatlas.bnl.gov:1096/") + filename;
+        }
+        return filename;
+    };
+
+    for (const auto& filename : input_files){
+        const std::string access_path = to_access_path(filename);
+        std::cout << access_path << std::endl;
+
+        if (useLocal){
+            std::ifstream in_file(filename.c_str());
+            if (!in_file.good()){
+                std::cout << "Warning: File " << filename << " not found. Skip.\n";
+                continue;
+            }
+        }
+        fChainRef()->Add(access_path.c_str());
     }
     
     fChainRef()->LoadTree(0);
@@ -155,8 +186,9 @@ template <class PairT, class MuonT, class Derived, class... Extras>
 void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::OutputTreePathHook(){
     this->output_file_path = powheg_dir + data_subdir;
     std::string file_name_base = this->output_single_muon_tree ? "single_muon_trees_powheg" : "muon_pairs_powheg";
+    std::string batch_suffix = useLocal ? "_local_batch" : "_part";
 
-    this->output_file_path += file_name_base + "_" + mc_mode + dt_suffix + "_part" + std::to_string(file_batch) + ".root";
+    this->output_file_path += file_name_base + "_" + mc_mode + dt_suffix + batch_suffix + std::to_string(file_batch) + ".root";
 }
 
 template <class PairT, class MuonT, class Derived, class... Extras>
@@ -168,7 +200,8 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::InitOutputTreesExtra_Powh
 template <class PairT, class MuonT, class Derived, class... Extras>
 void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::OutputHistPathHook(){
     this->output_hist_file_path = powheg_dir + data_subdir;
-    this->output_hist_file_path += "hists_powheg_ntuple_processing_powheg_" + mc_mode + dt_suffix + "_part" + std::to_string(file_batch) + ".root";
+    std::string batch_suffix = useLocal ? "_local_batch" : "_part";
+    this->output_hist_file_path += "hists_powheg_ntuple_processing_powheg_" + mc_mode + dt_suffix + batch_suffix + std::to_string(file_batch) + ".root";
 }
 
 template <class PairT, class MuonT, class Derived, class... Extras>
