@@ -234,17 +234,24 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputCentrProd_Pythia
     int kin_hi = static_cast<int>(kinRanges.at(ikin + 1));
 
     for (int ibeam = 0; ibeam < nBeamTypes; ibeam++) {
+        TChain* ch = new TChain("HeavyIonD3PD", "HeavyIonD3PD");
         std::string path = py_dir + "pythia_" + ecom_str + "_" + beam_names.at(ibeam)
             + "_hQCD_DiMu_pTH" + std::to_string(kin_lo) + "_" + std::to_string(kin_hi) + ".TRUTH0.NTUP.root";
         std::ifstream f(path);
         if (!f.good()) {
             std::cerr << "InitInputCentrProd: WARNING - missing file (skipping): " << path << std::endl;
+            delete ch;
             continue;
         }
         f.close();
 
-        TChain* ch = new TChain("HeavyIonD3PD", "HeavyIonD3PD");
-        ch->Add(path.c_str());
+        int add_ret = ch->Add(path.c_str());
+        if (add_ret <= 0) {
+            std::cerr << "InitInputCentrProd: WARNING - failed to add nominal file: " << path << std::endl;
+            delete ch;
+            continue;
+        }
+
         ch->SetMakeClass(1);
         Long64_t nent = ch->GetEntries();
         evChains_kn_beam.at(ikin).at(ibeam) = ch;
@@ -406,14 +413,14 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::FillMuonPair_PythiaCore(i
             !truth_mupair_pt1_f  || !truth_mupair_pt2_f  || !truth_mupair_eta1_f || !truth_mupair_eta2_f ||
             !truth_mupair_phi1_f || !truth_mupair_phi2_f)
             throw std::runtime_error("FillMuonPair_PythiaCore (non-private): null branch vector pointer");
-        p->m1.ind          = truth_mupair_bar1->at(pair_ind) - 1; // centrally produced: truth barcode is 1-based!!
-        p->m2.ind          = truth_mupair_bar2->at(pair_ind) - 1; // centrally produced: truth barcode is 1-based!!
+        p->m1.ind          = truth_mupair_bar1->at(pair_ind);
+        p->m2.ind          = truth_mupair_bar2->at(pair_ind);
         p->m1.truth_bar    = p->m1.ind;
         p->m2.truth_bar    = p->m2.ind;
         p->m1.truth_charge = truth_mupair_ch1->at(pair_ind);
         p->m2.truth_charge = truth_mupair_ch2->at(pair_ind);
-        p->m1.truth_pt     = truth_mupair_pt1_f->at(pair_ind);
-        p->m2.truth_pt     = truth_mupair_pt2_f->at(pair_ind);
+        p->m1.truth_pt     = truth_mupair_pt1_f->at(pair_ind) / 1000.;  // Convert MeV to GeV
+        p->m2.truth_pt     = truth_mupair_pt2_f->at(pair_ind) / 1000.;  // Convert MeV to GeV
         p->m1.truth_eta    = truth_mupair_eta1_f->at(pair_ind);
         p->m2.truth_eta    = truth_mupair_eta2_f->at(pair_ind);
         p->m1.truth_phi    = truth_mupair_phi1_f->at(pair_ind);

@@ -1,9 +1,0 @@
-# Submit Pythia truth analysis: one job per kinematic range (kn 0-5)
-# $(Process) = 0,1,...,5 maps to kinematic range index kn = 0,...,5
-executable = run_pythia_truth_kn.sh
-arguments = $(Process)
-output = logs/run_pythia_truth_kn_$(Process).out
-error = logs/run_pythia_truth_kn_$(Process).err
-log = logs/run_pythia_truth_kn_$(Process).log
-request_memory = 2GB
-queue 6

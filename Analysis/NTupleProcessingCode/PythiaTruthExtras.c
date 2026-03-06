@@ -652,82 +652,79 @@ std::pair<int,int> PythiaTruthExtras<PairT, Derived>::UpdateCurParents(
     int prev_first_prt_bar = cur_prt_bars[0];
     int index = (hf_quark_index >= 0) ? hf_quark_index : 0;
 
-    int mother1, mother2;
-    bool mother_out_of_range = false;
+    int mother1 = 0, mother2 = 0;
     const int cur_idx = GetParticleIndex(cur_prt_bars[index]);
-    if (isPrivate) {
-        mother1 = truth_mother1->at(cur_idx);
-        mother2 = truth_mother2->at(cur_idx);
-    } else {
-        if (!truth_parents || cur_idx >= (int)truth_parents->size()) {
-            mother1 = 0; mother2 = 0;
-        } else {
-            const auto& v = truth_parents->at(cur_idx);
-            mother1 = v.empty() ? 0 : v.front();
-            mother2 = v.empty() ? 0 : v.back();
-            if (mother1 != 0) {
-                try {
-                    (void)GetParticleIndex(mother1);
-                } catch (...) {
-                    std::cerr << "[UCP] Warning: mother1=" << mother1
-                              << " not found in truth_barcode for barcode="
-                              << cur_prt_bars[index] << ". Treating as no parent." << std::endl;
-                    mother1 = 0; mother_out_of_range = true;
-                }
-            }
-            if (mother2 != 0) {
-                try {
-                    (void)GetParticleIndex(mother2);
-                } catch (...) {
-                    std::cerr << "[UCP] Warning: mother2=" << mother2
-                              << " not found in truth_barcode for barcode="
-                              << cur_prt_bars[index] << ". Treating as 0." << std::endl;
-                    mother2 = 0; mother_out_of_range = true;
-                }
-            }
-            if (mother1 < 0) {
-                std::cerr << "[UCP] Warning: mother1=" << mother1
-                          << " invalid for barcode="
-                          << cur_prt_bars[index] << ". Treating as no parent." << std::endl;
-                mother1 = 0; mother_out_of_range = true;
-            }
-            if (mother2 < 0) {
-                std::cerr << "[UCP] Warning: mother2=" << mother2
-                          << " invalid for barcode="
-                          << cur_prt_bars[index] << ". Treating as 0." << std::endl;
-                mother2 = 0; mother_out_of_range = true;
-            }
-        }
-    }
 
-    int status = abs(truth_status->at(cur_idx));
     cur_prt_bars.clear();
     cur_prt_ids.clear();
 
-    if (mother1 == 0 && !mother_out_of_range) {
-        std::cout << "Error:: Mother1 cannot be 0" << std::endl;
-        PrintHistory(&std::cout, true, isMuon1);
-        std::cout << "bar: " << prev_first_prt_bar << ", mother1 " << mother1 << ", mother2 " << mother2 << std::endl;
-        return {0, 0};
-    }
+    if (isPrivate) {
+        mother1 = truth_mother1->at(cur_idx);
+        mother2 = truth_mother2->at(cur_idx);
 
-    if (mother2 == mother1 || mother2 == 0) {
-        cur_prt_bars.push_back(mother1);
-        cur_prt_ids.push_back(truth_id->at(GetParticleIndex(mother1)) % 10000);
-        if ((mother1 == 1 || mother1 == 2) && before_gs) {
-            if (isMuon1) m1_ancestor_is_incoming = true;
-            else         m2_ancestor_is_incoming = true;
+        int status = abs(truth_status->at(cur_idx));
+
+        if (mother1 == 0) {
+            std::cout << "Error:: Mother1 cannot be 0" << std::endl;
+            PrintHistory(&std::cout, true, isMuon1);
+            std::cout << "bar: " << prev_first_prt_bar << ", mother1 " << mother1 << ", mother2 " << mother2 << std::endl;
+            return {0, 0};
         }
-    } else if (((status >= 81 && status <= 86) || (status >= 101 && status <= 106)) && mother1 < mother2) {
-        for (int cm = mother1; cm <= mother2; cm++) {
-            cur_prt_bars.push_back(cm);
-            cur_prt_ids.push_back(truth_id->at(GetParticleIndex(cm)) % 10000);
+
+        if (mother2 == mother1 || mother2 == 0) {
+            cur_prt_bars.push_back(mother1);
+            cur_prt_ids.push_back(truth_id->at(GetParticleIndex(mother1)) % 10000);
+            if ((mother1 == 1 || mother1 == 2) && before_gs) {
+                if (isMuon1) m1_ancestor_is_incoming = true;
+                else         m2_ancestor_is_incoming = true;
+            }
+        } else if (((status >= 81 && status <= 86) || (status >= 101 && status <= 106)) && mother1 < mother2) {
+            for (int cm = mother1; cm <= mother2; cm++) {
+                cur_prt_bars.push_back(cm);
+                cur_prt_ids.push_back(truth_id->at(GetParticleIndex(cm)) % 10000);
+            }
+        } else {
+            cur_prt_bars.push_back(mother1);
+            cur_prt_ids.push_back(truth_id->at(GetParticleIndex(mother1)) % 10000);
+            cur_prt_bars.push_back(mother2);
+            cur_prt_ids.push_back(truth_id->at(GetParticleIndex(mother2)) % 10000);
         }
     } else {
-        cur_prt_bars.push_back(mother1);
-        cur_prt_ids.push_back(truth_id->at(GetParticleIndex(mother1)) % 10000);
-        cur_prt_bars.push_back(mother2);
-        cur_prt_ids.push_back(truth_id->at(GetParticleIndex(mother2)) % 10000);
+        if (!truth_parents || cur_idx >= (int)truth_parents->size()) {
+            std::cout << "Error:: parent list unavailable" << std::endl;
+            PrintHistory(&std::cout, true, isMuon1);
+            std::cout << "bar: " << prev_first_prt_bar << std::endl;
+            return {0, 0};
+        }
+
+        const auto& parents = truth_parents->at(cur_idx);
+        if (parents.empty()) {
+            std::cout << "Error:: parent list empty" << std::endl;
+            PrintHistory(&std::cout, true, isMuon1);
+            std::cout << "bar: " << prev_first_prt_bar << std::endl;
+            return {0, 0};
+        }
+
+        for (int parent_barcode : parents) {
+            int parent_idx = -1;
+            try {
+                parent_idx = GetParticleIndex(parent_barcode);
+            } catch (const std::exception& e) {
+                throw std::runtime_error(
+                    "UpdateCurParents(non-private): failed to find parent barcode "
+                    + std::to_string(parent_barcode)
+                    + " for child barcode " + std::to_string(prev_first_prt_bar)
+                    + ". " + e.what()
+                );
+            }
+
+            cur_prt_bars.push_back(parent_barcode);
+            cur_prt_ids.push_back(truth_id->at(parent_idx) % 10000);
+            if ((parent_barcode == 1 || parent_barcode == 2) && before_gs) {
+                if (isMuon1) m1_ancestor_is_incoming = true;
+                else         m2_ancestor_is_incoming = true;
+            }
+        }
     }
 
     if ((cur_prt_bars.empty() || cur_prt_ids.empty()) && (print_bad_warnings && m_very_bad_warning_file)) {
@@ -919,8 +916,10 @@ int PythiaTruthExtras<PairT, Derived>::FindHeavyQuarks(
             else if (abs(status) == 21 || abs(status) == 31) {
                 index_candidate = (prev_hq_bar - 2 == cur_prt_bars[0]) ? 0 : 1;
                 if (truth_id->at(GetParticleIndex(prev_hq_bar)) != cur_prt_ids[index_candidate]) {
-                    std::cout << "HQ mismatch in FindHeavyQuarks." << std::endl;
-                    PrintHistory(&std::cout, true, isMuon1);
+                    if (self().debug_mode){                        
+                        std::cout << "HQ mismatch in FindHeavyQuarks." << std::endl;
+                        PrintHistory(&std::cout, true, isMuon1);
+                    }
                 }
             } else if (print_bad_warnings && m_very_bad_warning_file) {
                 *m_very_bad_warning_file << "Both Q and Qbar in parent vec, not incoming to HS, not immediate parent of hadron." << std::endl;
@@ -1371,7 +1370,7 @@ void PythiaTruthExtras<PairT, Derived>::HFMuonPairAnalysis() {
         // Different ancestors
         if (m1_from_hard_scatt_before_gs && m1_hard_scatt_in_bar1 == m2_hard_scatt_in_bar1
             && mpair->m1_hard_scatt_category != hq_scatt) {
-            std::cout << "Not same ancestors. Same HS, not Q-Q scattering." << std::endl;
+            if (self().debug_mode) std::cout << "Not same ancestors. Same HS, not Q-Q scattering." << std::endl;
         }
 
         auto trace_if_needed = [&](bool isMuon1) {

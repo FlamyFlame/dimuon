@@ -1,0 +1,53 @@
+{
+    "variables1D": [
+        {"hist_name": "pair_dP_overP", "var_name": "truth_pair_dPoverP", "title": "(#Delta p / p)_{pair}", "binning": {"nbins": 100, "min": 0.0, "max": 1.0}},
+        {"hist_name": "DR", "var_name": "truth_dr", "title": "#Delta R", "binning": {"nbins": 100, "min": 0.0, "max": 5.75}},
+        {"hist_name": "DR_zoomin", "var_name": "truth_dr", "title": "#Delta R", "binning": {"nbins": 100, "min": 0.0, "max": 1.0}},
+        {"hist_name": "Deta", "var_name": "truth_deta", "title": "#Delta#eta", "binning": {"nbins": 100, "min": -4.8, "max": 4.8}},
+        {"hist_name": "Deta_zoomin", "var_name": "truth_deta", "title": "#Delta#eta", "binning": {"nbins": 100, "min": -1.0, "max": 1.0}},
+        {"hist_name": "Dphi", "var_name": "truth_dphi", "title": "#Delta#phi", "binning": {"nbins": 64, "min": -3.141592653589793, "max": 3.141592653589793}},
+        {"hist_name": "Dphi_zoomin", "var_name": "truth_dphi", "title": "#Delta#phi", "binning": {"nbins": 100, "min": -1.0, "max": 1.0}},
+        {"hist_name": "pair_y", "var_name": "truth_pair_y", "title": "y_{pair}", "binning": {"nbins": 45, "min": -3.0, "max": 3.0}},
+        {"hist_name": "pt_asym", "var_name": "truth_asym", "title": "A_{p_{T}}", "binning": {"nbins": 50, "min": 0.0, "max": 1.0}},
+        {"hist_name": "psrapidity_ordered_pt_asym", "var_name": "truth_psrapidity_ordered_pt_asym", "title": "A'", "binning": {"nbins": 100, "min": -1.0, "max": 1.0}},
+        {"hist_name": "pair_pt_ptlead_ratio", "var_name": "truth_pair_pt_ptlead_ratio", "title": "p_{T}^{pair}/p_{T}^{lead}", "binning": {"nbins": 50, "min": 0.0, "max": 2.0}},
+
+        {"hist_name": "DR_jacobian_corrected", "var_name": "truth_dr", "title": "#Delta R", "binning": {"nbins": 100, "min": 0.0, "max": 5.75}},
+        {"hist_name": "DR_zoomin_jacobian_corrected", "var_name": "truth_dr", "title": "#Delta R", "binning": {"nbins": 100, "min": 0.0, "max": 1.0}},
+        {"hist_name": "pair_pt_jacobian_corrected", "var_name": "truth_pair_pt", "title": "p_{T}^{pair} [GeV]", "binning": {"nbins": 50, "min": 0.0, "max": 30.0}},
+
+        {"hist_name": "eta_avg", "var_name": "truth_etaavg", "title": "#bar{#eta}", "binning": {"nbins": 50, "min": -2.4, "max": 2.4}},
+        {"hist_name": "eta1", "var_name": "m1.truth_eta", "title": "#eta_{lead}", "binning": {"nbins": 50, "min": -2.4, "max": 2.4}},
+        {"hist_name": "eta2", "var_name": "m2.truth_eta", "title": "#eta_{sublead}", "binning": {"nbins": 50, "min": -2.4, "max": 2.4}},
+        {"hist_name": "pt1", "var_name": "m1.truth_pt", "title": "p_{T}^{lead} [GeV]", "binning": "pT_bins_80"},
+        {"hist_name": "pt2", "var_name": "m2.truth_pt", "title": "p_{T}^{sublead} [GeV]", "binning": "pT_bins_80"},
+        {"hist_name": "pair_pt", "var_name": "truth_pair_pt", "title": "p_{T}^{pair} [GeV]", "binning": {"nbins": 50, "min": 0.0, "max": 30.0}},
+        {"hist_name": "pt_lead", "var_name": "truth_pt_lead", "title": "p_{T}^{lead} [GeV]", "binning": {"nbins": 50, "min": 0.0, "max": 30.0}},
+        {"hist_name": "pt_lead_zoomin", "var_name": "truth_pt_lead", "title": "p_{T}^{lead} [GeV]", "binning": {"nbins": 50, "min": 0.0, "max": 15.0}},
+        {"hist_name": "pair_pt_log", "var_name": "truth_pair_pt", "title": "p_{T}^{pair} [GeV]", "binning": "pT_bins_80"},
+
+        {"hist_name": "minv", "var_name": "truth_minv", "title": "m_{#mu#mu} [GeV]", "binning": {"nbins": 50, "min": 0.0, "max": 30.0}},
+        {"hist_name": "minv_10GeV", "var_name": "truth_minv", "title": "m_{#mu#mu} [GeV]", "binning": {"nbins": 50, "min": 0.0, "max": 10.0}},
+        {"hist_name": "minv_zoomin", "var_name": "truth_minv", "title": "m_{#mu#mu} [GeV]", "binning": {"nbins": 50, "min": 0.0, "max": 4.0}},
+        {"hist_name": "minv_log", "var_name": "truth_minv", "title": "m_{#mu#mu} [GeV]", "binning": "minv_log_bins"},
+        {"hist_name": "minv_jacobian_corrected", "var_name": "truth_minv", "title": "m_{#mu#mu} [GeV]", "binning": {"nbins": 50, "min": 0.0, "max": 30.0}},
+        {"hist_name": "minv_zoomin_jacobian_corrected", "var_name": "truth_minv", "title": "m_{#mu#mu} [GeV]", "binning": {"nbins": 50, "min": 0.0, "max": 4.0}},
+
+        {"hist_name": "Qsplit", "var_name": "Qsplit", "title": "Q_{split}", "binning": {"nbins": 160, "min": 0.0, "max": 80.0}},
+        {"hist_name": "Qsplit_pTHat_ratio", "var_name": "Qsplit_pTHat_ratio", "title": "Q_{split}/#hat{p}_{T}", "binning": {"nbins": 100, "min": -2.0, "max": 2.0}},
+        {"hist_name": "Qsplit_mHat_ratio", "var_name": "Qsplit_mHat_ratio", "title": "Q_{split}/m_{Hard}", "binning": {"nbins": 140, "min": -0.7, "max": 0.7}},
+
+        {"hist_name": "pair_eta", "var_name": "truth_pair_eta", "title": "#eta^{pair}", "binning": {"nbins": 24, "min": -2.4, "max": 2.4}},
+        {"hist_name": "pair_pt_crossx", "var_name": "truth_pair_pt", "title": "p_{T}^{pair} [GeV]", "binning": {"nbins": 30, "min": 0.0, "max": 30.0}},
+
+        {"hist_name": "minv_sub_GeV_signal", "var_name": "truth_minv", "title": "m_{#mu#mu} [GeV]", "binning": {"nbins": 120, "min": 0.0, "max": 1.2}},
+        {"hist_name": "minv_sub_GeV_jacobian_corrected_signal", "var_name": "truth_minv", "title": "m_{#mu#mu} [GeV]", "binning": {"nbins": 120, "min": 0.0, "max": 1.2}},
+        {"hist_name": "minv_single_b_region_signal", "var_name": "truth_minv", "title": "m_{#mu#mu} [GeV]", "binning": {"nbins": 80, "min": 0.0, "max": 3.2}},
+        {"hist_name": "minv_single_b_region_jacobian_corrected_signal", "var_name": "truth_minv", "title": "m_{#mu#mu} [GeV]", "binning": {"nbins": 80, "min": 0.0, "max": 3.2}},
+
+        {"hist_name": "minv_sub_GeV_resonance_and_res_contam_bkg", "var_name": "truth_minv", "title": "m_{#mu#mu} [GeV]", "binning": {"nbins": 120, "min": 0.0, "max": 1.2}},
+        {"hist_name": "minv_sub_GeV_jacobian_corrected_resonance_and_res_contam_bkg", "var_name": "truth_minv", "title": "m_{#mu#mu} [GeV]", "binning": {"nbins": 120, "min": 0.0, "max": 1.2}},
+        {"hist_name": "minv_single_b_region_resonance_and_res_contam_bkg", "var_name": "truth_minv", "title": "m_{#mu#mu} [GeV]", "binning": {"nbins": 80, "min": 0.0, "max": 3.2}},
+        {"hist_name": "minv_single_b_region_jacobian_corrected_resonance_and_res_contam_bkg", "var_name": "truth_minv", "title": "m_{#mu#mu} [GeV]", "binning": {"nbins": 80, "min": 0.0, "max": 3.2}}
+    ]
+}
