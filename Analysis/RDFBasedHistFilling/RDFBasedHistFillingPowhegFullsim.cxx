@@ -146,6 +146,16 @@ void RDFBasedHistFillingPowhegFullsim::BuildHistBinningMapPowhegFullsimExtra(){
 
 
 void RDFBasedHistFillingPowhegFullsim::CreateBaseRDFsPowhegFullsimExtra(){
+    {
+        var1D* v_truth_dr_2_0 = map_at_checked(var1D_dict, std::string("truth_dr_2_0"),
+            "CreateBaseRDFsPowhegFullsimExtra: var1D_dict.at(truth_dr_2_0)");
+        if (v_truth_dr_2_0->var != "truth_dr"){
+            throw std::runtime_error(
+                "Invalid var1D mapping: truth_dr_2_0 must map to column 'truth_dr', got '"
+                + v_truth_dr_2_0->var + "'. Please fix var1D_powheg_fullsim.json.");
+        }
+    }
+
     ROOT::RDF::RNode& df_op_weighted = map_at_checked(df_map, "df_op_weighted", "CreateBaseRDFsPowhegFullsimExtra: df_op_weighted");
     auto df_single_b_weighted = useMixed
         ? df_op_weighted
