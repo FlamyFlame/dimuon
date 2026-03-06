@@ -1,0 +1,7 @@
+executable = run_powheg_fullsim_single_muon_mixing.sh
+arguments = $(Process)
+output = logs/run_powheg_fullsim_single_muon_mixing_batch_$(Process).out
+error = logs/run_powheg_fullsim_single_muon_mixing_batch_$(Process).err
+log = logs/run_powheg_fullsim_single_muon_mixing_batch_$(Process).log
+request_memory = 4GB
+queue 240

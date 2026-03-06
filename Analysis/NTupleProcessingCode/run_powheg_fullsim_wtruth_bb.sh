@@ -2,6 +2,7 @@
 
 # The argument gets passed as the argument $(Process) in batch-submission script
 file_batch=$(( $1 + 1 ))
+use_local=${2:-0}
 
 cd $PWD
 
@@ -16,7 +17,7 @@ lsetup "views LCG_107a_ATLAS_2 x86_64-el9-gcc13-opt"
 root -b -l << EOF
 	.L PowhegAnalysisClasses.h 
 
-	PowhegFullSimAnalysisWTruth pw($file_batch, "bb");
+	PowhegFullSimAnalysisWTruth pw($file_batch, "bb", 17, $use_local);
 	// pw.debug_mode = true; // uncomment to turn on debug mode
 	pw.Run();
 

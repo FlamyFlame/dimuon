@@ -12,8 +12,8 @@ class PowhegTruthAnalysis
   , public PowhegTruthExtras<MuonPairPowhegTruth,PowhegTruthAnalysis>
 {
 public:
-  PowhegTruthAnalysis(int file_batch_input, std::string mc_mode_input)
-    : PowhegAlgCoreT(file_batch_input, mc_mode_input, 0){
+  PowhegTruthAnalysis(int file_batch_input, std::string mc_mode_input, bool useLocal_input = false)
+    : PowhegAlgCoreT(file_batch_input, mc_mode_input, 0, useLocal_input){
         }
 };
 
@@ -26,8 +26,8 @@ class PowhegFullSimAnalysisNoTruth
   , public PowhegFullSimExtras<MuonPairPowhegFullSimNoTruth, MuonPowhegFullSimNoTruth, PowhegFullSimAnalysisNoTruth>
 {
 public:
-    PowhegFullSimAnalysisNoTruth(int file_batch_input, std::string mc_mode_input, int run_year_input = 17)
-        : PowhegAlgCoreT(file_batch_input, mc_mode_input, run_year_input){
+  PowhegFullSimAnalysisNoTruth(int file_batch_input, std::string mc_mode_input, int run_year_input = 17, bool useLocal_input = false)
+    : PowhegAlgCoreT(file_batch_input, mc_mode_input, run_year_input, useLocal_input){
         }
 };
 
@@ -42,8 +42,8 @@ class PowhegFullSimAnalysisWTruth
   , public PowhegTruthExtras<MuonPairPowhegFullSimWTruth, PowhegFullSimAnalysisWTruth>
 {
 public:
-    PowhegFullSimAnalysisWTruth(int file_batch_input, std::string mc_mode_input, int run_year_input = 17)
-        : PowhegAlgCoreT(file_batch_input, mc_mode_input, run_year_input){
+  PowhegFullSimAnalysisWTruth(int file_batch_input, std::string mc_mode_input, int run_year_input = 17, bool useLocal_input = false)
+    : PowhegAlgCoreT(file_batch_input, mc_mode_input, run_year_input, useLocal_input){
         }
 };
 
@@ -58,8 +58,8 @@ class PowhegFullSimOverlayAnalysisNoTruth
   , public PowhegFullSimOverlayExtras<PowhegFullSimOverlayAnalysisNoTruth>
 {
 public:
-    PowhegFullSimOverlayAnalysisNoTruth(int file_batch_input, std::string mc_mode_input, int run_year_input = 24)
-        : PowhegAlgCoreT(file_batch_input, mc_mode_input, run_year_input){
+  PowhegFullSimOverlayAnalysisNoTruth(int file_batch_input, std::string mc_mode_input, int run_year_input = 24, bool useLocal_input = false)
+    : PowhegAlgCoreT(file_batch_input, mc_mode_input, run_year_input, useLocal_input){
         }
 };
 
@@ -76,7 +76,7 @@ class PowhegFullSimOverlayAnalysisWTruth
   , public PowhegTruthExtras<MuonPairPowhegFullSimOverlayWTruth,PowhegFullSimOverlayAnalysisWTruth>
 {
 public:
-    PowhegFullSimOverlayAnalysisWTruth(int file_batch_input, std::string mc_mode_input, int run_year_input = 24)
-        : PowhegAlgCoreT(file_batch_input, mc_mode_input, run_year_input){
+  PowhegFullSimOverlayAnalysisWTruth(int file_batch_input, std::string mc_mode_input, int run_year_input = 24, bool useLocal_input = false)
+    : PowhegAlgCoreT(file_batch_input, mc_mode_input, run_year_input, useLocal_input){
         }
 };

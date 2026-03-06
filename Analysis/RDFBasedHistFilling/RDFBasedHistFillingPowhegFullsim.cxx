@@ -1,6 +1,7 @@
 #include "RDFBasedHistFillingPowheg.cxx"
 #include "../Utilities/GeneralUtils.h"
 #include <cmath>
+#include <fstream>
 #include <iomanip>
 #include <limits>
 #include <memory>
@@ -23,21 +24,20 @@ void RDFBasedHistFillingPowhegFullsim::SetIOPathsHook(){
 
     const std::string powheg_dir = "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/";
     input_files.clear();
+    const std::string mixed_dir = powheg_dir + "mixed/";
+    constexpr int nbatches_mixed = 240;
+    for (int ibatch = 1; ibatch <= nbatches_mixed; ++ibatch){
+        const std::string input_file =
+            mixed_dir
+            + "muon_pairs_powheg_bbcc_fullsim_mixed_batch"
+            + std::to_string(ibatch)
+            + ".root";
 
-    for (std::string mc_mode : {"bb", "cc"}){
-        const std::string mixed_dir =
-            powheg_dir
-            + "user.yuhang.TrigRates.dimuon.PowhegPythia.fullsim.pp17."
-            + mc_mode + ".Feb2026.v1._MYSTREAM/mixed/";
-
-        for (int ibatch = 1; ibatch <= 100; ++ibatch){
-            input_files.push_back(
-                mixed_dir
-                + "muon_pairs_powheg_" + mc_mode
-                + "_fullsim_mixed_batch" + std::to_string(ibatch)
-                + ".root"
-            );
+        std::ifstream fin(input_file);
+        if (!fin.good()){
+            throw std::runtime_error("Missing mixed Powheg input file: " + input_file);
         }
+        input_files.push_back(input_file);
     }
 
     infile_var1D_json = "var1D_powheg_fullsim.json";
@@ -347,31 +347,48 @@ void RDFBasedHistFillingPowhegFullsim::MakeAndWriteMuPairRecoEffProjGraphsHelper
                         if (!h_num_proj || !h_den_proj) continue;
 
                         const double den_integral = h_den_proj->Integral(1, h_den_proj->GetNbinsX());
-                        if (h_den_proj->GetEntries() <= 0.0 || den_integral <= 0.0){
-                            skipped_empty_proj_hists.insert(h_den_proj->GetName());
-                            std::cout
-                                << "[RecoEffProjSkip] "
-                                << "varx=" << varx
-                                << ", vary=" << vary
-                                << ", catgr=" << catgr
-                                << ", num=" << num_suffix
-                                << ", den=" << denom_suffix
-                                << ", axis=" << (project_y ? "Y" : "X")
-                                << ", range=" << proj_suffix
-                                << " -> projected denominator empty (entries/integral <= 0), skip division"
-                                << std::endl;
-                            continue;
-                        }
+                        const bool denom_empty = (h_den_proj->GetEntries() <= 0.0 || den_integral <= 0.0);
 
                         if (use_TH_divide){
                             TH1D* h_divided = dynamic_cast<TH1D*>(h_num_proj->Clone((std::string(h_num_proj->GetName()) + "_divided").c_str()));
                             if (h_divided != nullptr){
                                 h_divided->SetDirectory(nullptr);
                                 h_divided->SetStats(0);
-                                h_divided->Divide(h_den_proj.get());
+                                if (denom_empty){
+                                    skipped_empty_proj_hists.insert(h_den_proj->GetName());
+                                    h_divided->Reset("ICES");
+                                    std::cout
+                                        << "[RecoEffProjZeroFill] "
+                                        << "varx=" << varx
+                                        << ", vary=" << vary
+                                        << ", catgr=" << catgr
+                                        << ", num=" << num_suffix
+                                        << ", den=" << denom_suffix
+                                        << ", axis=" << (project_y ? "Y" : "X")
+                                        << ", range=" << proj_suffix
+                                        << " -> projected denominator empty (entries/integral <= 0), write zero-filled divided histogram"
+                                        << std::endl;
+                                } else {
+                                    h_divided->Divide(h_den_proj.get());
+                                }
                                 mu_pair_reco_eff_proj_hist_map[h_divided->GetName()] = h_divided;
                             }
                         } else {
+                            if (denom_empty){
+                                skipped_empty_proj_hists.insert(h_den_proj->GetName());
+                                std::cout
+                                    << "[RecoEffProjSkip] "
+                                    << "varx=" << varx
+                                    << ", vary=" << vary
+                                    << ", catgr=" << catgr
+                                    << ", num=" << num_suffix
+                                    << ", den=" << denom_suffix
+                                    << ", axis=" << (project_y ? "Y" : "X")
+                                    << ", range=" << proj_suffix
+                                    << " -> projected denominator empty (entries/integral <= 0), skip graph division"
+                                    << std::endl;
+                                continue;
+                            }
                             TGraphAsymmErrors* g = HistFillUtils::divide_and_write(
                                 h_num_proj.get(),
                                 h_den_proj.get(),
