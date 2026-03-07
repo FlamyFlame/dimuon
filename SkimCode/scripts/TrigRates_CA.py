@@ -133,9 +133,13 @@ print(MinBias_triggers + Muon_triggers + DiMuon_triggers)
 
 def build_cfg(evt_max=1000):
 	flags = initConfigFlags()
-	flags.Input.Files = [InputFile]
+	flags.Input.Files = [InputFile]   # local default; overridden by --filesInput=%IN on the grid
 	flags.Input.isMC = is_MC
-	flags.Exec.MaxEvents = evt_max
+	flags.Exec.MaxEvents = evt_max    # local default; overridden by --evtMax=%MAXEVENTS on the grid
+	# Pick up --filesInput / --evtMax / other CA flags passed on the command line.
+	# This is required when submitted via:
+	#   pathena --trf "athena.py --CA TrigRates_CA.py --filesInput=%IN --evtMax=%MAXEVENTS" ...
+	flags.fillFromArgs()
 	flags.lock()
 
 	cfg = MainServicesCfg(flags)
