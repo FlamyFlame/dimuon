@@ -254,10 +254,18 @@ if __name__ == "__main__":
 
 	evtmax = _parse_evtmax(m_EvtMax)
 
-	# On the grid the PanDA pilot pre-loads legacy Athena modules that activate
-	# global Configurable behavior. MainServicesCfg requires CA behavior, so
-	# explicitly switch to it here. Locally this is a no-op.
+	# On the grid the PanDA pilot pre-loads legacy Athena modules
+	# (AthenaCommon/Preparation.py, Execution.py, FakeAppMgr.py) that:
+	#   1. activate global Configurable behavior (fixed by ConfigurableCABehavior), and
+	#   2. create legacy instances of AthAlgEvtSeq, AthMasterSeq, etc.
+	#      which linger in Configurable.allConfigurables.  When MainServicesCfg
+	#      then calls AthSequencer('AthAlgEvtSeq') it finds the pre-existing legacy
+	#      object and raises "AthAlgEvtSeq is not a sequence".
+	# Fix: clear the registry immediately after entering CA behavior so that
+	#      MainServicesCfg creates all sequences fresh in CA mode.
 	with ConfigurableCABehavior():
+		from AthenaCommon.Configurable import Configurable
+		Configurable.allConfigurables.clear()
 		cfg = build_cfg(evtmax)
 		sc = cfg.run()
 
