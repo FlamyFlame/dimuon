@@ -70,6 +70,10 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_DataCore()
     if (trigger_effcy_calc) resonance_cut_mode = 2; // for sub-GeV mass region, apply narrow-window cuts for each individual resonance peak
 
     if (pbpb24_mu4_NO_trig_calc && trigger_mode == 1) std::cout << "For Pb+Pb 2024 data, using single_mu4 for NOMINAL analysis (not trigger efficiency)." << std::endl;
+
+    if (mindR_trig != 0.01 && mindR_trig != 0.02)
+        throw std::runtime_error("mindR_trig must be 0.01 or 0.02! Got: " + std::to_string(mindR_trig));
+    std::cout << "mindR_trig = " << mindR_trig << " (will use matching branches if available)" << std::endl;
 }
 
 template <class PairT, class MuonT, class Derived, class... Extras>
@@ -166,14 +170,67 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputBranchesDimu
     std::string twomu4_trigger_branch = "b_" + twomu4_trigger_name;
     std::string twomu4_trigger_match_branch = "dimuon_b_" + twomu4_trigger_name;
 
+    // mindR suffix strings: "_dR_0_02" for leg branches, "_0_02" for order-insensitive mindR branch
+    std::string mindR_str = (mindR_trig == 0.01) ? "0_01" : "0_02";
+    std::string leg_dR_suffix  = "_dR_" + mindR_str;       // e.g. "_dR_0_02"
+    std::string mindR_suffix   = "_" + mindR_str;           // e.g. "_0_02"
+
     fChainRef()->SetBranchAddress(mu4_trigger_branch.c_str()                       , &b_HLT_mu4);
     fChainRef()->SetBranchAddress(twomu4_trigger_branch.c_str()                    , &b_HLT_2mu4);
     fChainRef()->SetBranchAddress(mu4_trigger_match_branch.c_str()                 , &muon_b_HLT_mu4);
-    fChainRef()->SetBranchAddress(twomu4_trigger_match_branch.c_str()              , &dimuon_b_HLT_2mu4);        
-    
+
+    // --- 2mu4: prefer mindR branch, fall back to old branch ---
+    if (isRun3 || isPbPb) {
+        std::string twomu4_mindR_branch = twomu4_trigger_match_branch + mindR_suffix;
+        if (fChainRef()->GetBranch(twomu4_mindR_branch.c_str())) {
+            fChainRef()->SetBranchAddress(twomu4_mindR_branch.c_str(), &dimuon_b_2mu4_mindR);
+            use_mindR_branch_2mu4 = true;
+            use_mindR_suffix_in_output = true;
+            std::cout << "INFO: 2mu4 mindR branch found: " << twomu4_mindR_branch << std::endl;
+        } else {
+            fChainRef()->SetBranchAddress(twomu4_trigger_match_branch.c_str(), &dimuon_b_HLT_2mu4);
+            std::cerr << "SERIOUS WARNING: 2mu4 mindR branch '" << twomu4_mindR_branch
+                      << "' not found; falling back to old branch (likely outdated skimmed data)" << std::endl;
+        }
+    } else {
+        fChainRef()->SetBranchAddress(twomu4_trigger_match_branch.c_str(), &dimuon_b_HLT_2mu4);
+    }
+
+    // --- mu4_mu4noL1: try leg branches first, then mindR-only, then old branch ---
     if (isRun3 || isPbPb){
-        fChainRef()->SetBranchAddress(mu4_mu4noL1_trigger_branch.c_str()           , &b_HLT_mu4_mu4noL1);
-        fChainRef()->SetBranchAddress(mu4_mu4noL1_trigger_match_branch.c_str()     , &dimuon_b_HLT_mu4_mu4noL1);
+        fChainRef()->SetBranchAddress(mu4_mu4noL1_trigger_branch.c_str(), &b_HLT_mu4_mu4noL1);
+
+        std::string mu1Leg1_branch = mu4_mu4noL1_trigger_match_branch + "_mu1passLeg1" + leg_dR_suffix;
+        std::string mu1Leg2_branch = mu4_mu4noL1_trigger_match_branch + "_mu1passLeg2" + leg_dR_suffix;
+        std::string mu2Leg1_branch = mu4_mu4noL1_trigger_match_branch + "_mu2passLeg1" + leg_dR_suffix;
+        std::string mu2Leg2_branch = mu4_mu4noL1_trigger_match_branch + "_mu2passLeg2" + leg_dR_suffix;
+
+        if (fChainRef()->GetBranch(mu1Leg2_branch.c_str())) {
+            // Leg branches with mindR found - best quality
+            fChainRef()->SetBranchAddress(mu1Leg1_branch.c_str(), &dimuon_b_mu4_mu4noL1_mu1passLeg1);
+            fChainRef()->SetBranchAddress(mu1Leg2_branch.c_str(), &dimuon_b_mu4_mu4noL1_mu1passLeg2);
+            fChainRef()->SetBranchAddress(mu2Leg1_branch.c_str(), &dimuon_b_mu4_mu4noL1_mu2passLeg1);
+            fChainRef()->SetBranchAddress(mu2Leg2_branch.c_str(), &dimuon_b_mu4_mu4noL1_mu2passLeg2);
+            use_leg_branches_mu4_mu4noL1 = true;
+            use_mindR_suffix_in_output = true;
+            std::cout << "INFO: mu4_mu4noL1 leg branches found (mindR=" << mindR_trig << ")" << std::endl;
+        } else {
+            // No leg branches - try mindR-only (order-insensitive) branch
+            std::string mindR_only_branch = mu4_mu4noL1_trigger_match_branch + mindR_suffix;
+            if (fChainRef()->GetBranch(mindR_only_branch.c_str())) {
+                fChainRef()->SetBranchAddress(mindR_only_branch.c_str(), &dimuon_b_mu4_mu4noL1_mindR_only);
+                use_mindR_only_branch_mu4_mu4noL1 = true;
+                use_mindR_suffix_in_output = true;
+                std::cout << "WARNING: mu4_mu4noL1 leg branches not found; using mindR-only branch '"
+                          << mindR_only_branch << "' (no per-muon leg info available)" << std::endl;
+            } else {
+                // Full fallback: old branch without mindR
+                fChainRef()->SetBranchAddress(mu4_mu4noL1_trigger_match_branch.c_str(), &dimuon_b_HLT_mu4_mu4noL1);
+                std::cerr << "SERIOUS WARNING: mu4_mu4noL1 mindR branches not found; falling back to old branch '"
+                          << mu4_mu4noL1_trigger_match_branch << "' (likely outdated skimmed data). "
+                          << "passmu4noL1 per-muon flags will be false for all pairs." << std::endl;
+            }
+        }
     }
 
     if (use_mu6_for_trg_eff){ // only use mu6 for Pb+Pb 23 for now
@@ -216,11 +273,30 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputBranchesDimu
     fChainRef()->SetBranchStatus(mu4_trigger_branch.c_str()                          ,1);
     fChainRef()->SetBranchStatus(twomu4_trigger_branch.c_str()                       ,1);
     fChainRef()->SetBranchStatus(mu4_trigger_match_branch.c_str()                    ,1);
-    fChainRef()->SetBranchStatus(twomu4_trigger_match_branch.c_str()                 ,1);
 
     if (isRun3 || isPbPb){
         fChainRef()->SetBranchStatus(mu4_mu4noL1_trigger_branch.c_str()              ,1);
-        fChainRef()->SetBranchStatus(mu4_mu4noL1_trigger_match_branch.c_str()        ,1);
+
+        // 2mu4: enable whichever branch is in use
+        if (use_mindR_branch_2mu4) {
+            fChainRef()->SetBranchStatus((twomu4_trigger_match_branch + mindR_suffix).c_str(), 1);
+        } else {
+            fChainRef()->SetBranchStatus(twomu4_trigger_match_branch.c_str(), 1);
+        }
+
+        // mu4_mu4noL1: enable whichever branch(es) are in use
+        if (use_leg_branches_mu4_mu4noL1) {
+            fChainRef()->SetBranchStatus((mu4_mu4noL1_trigger_match_branch + "_mu1passLeg1" + leg_dR_suffix).c_str(), 1);
+            fChainRef()->SetBranchStatus((mu4_mu4noL1_trigger_match_branch + "_mu1passLeg2" + leg_dR_suffix).c_str(), 1);
+            fChainRef()->SetBranchStatus((mu4_mu4noL1_trigger_match_branch + "_mu2passLeg1" + leg_dR_suffix).c_str(), 1);
+            fChainRef()->SetBranchStatus((mu4_mu4noL1_trigger_match_branch + "_mu2passLeg2" + leg_dR_suffix).c_str(), 1);
+        } else if (use_mindR_only_branch_mu4_mu4noL1) {
+            fChainRef()->SetBranchStatus((mu4_mu4noL1_trigger_match_branch + mindR_suffix).c_str(), 1);
+        } else {
+            fChainRef()->SetBranchStatus(mu4_mu4noL1_trigger_match_branch.c_str()        ,1);
+        }
+    } else {
+        fChainRef()->SetBranchStatus(twomu4_trigger_match_branch.c_str()                 ,1);
     }
     
     if (use_mu6_for_trg_eff){ // only use mu6 for Pb+Pb 23 for now
@@ -291,7 +367,10 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitOutputSettings_Da
     }
     
 	std::string file_batch_suffix = "_part" + std::to_string(file_batch);
-    std::string outfile_ending = run_suffix + file_batch_suffix + trig_suffix + tight_suffix + resonance_cut_suffix + ".root";
+    std::string mindR_suffix_output = use_mindR_suffix_in_output
+        ? ("_mindR_" + (mindR_trig == 0.01 ? std::string("0_01") : std::string("0_02")))
+        : "";
+    std::string outfile_ending = run_suffix + file_batch_suffix + trig_suffix + mindR_suffix_output + tight_suffix + resonance_cut_suffix + ".root";
     output_file_path = data_dir + file_name_base + outfile_ending;
     output_hist_file_path = data_dir + "hists_cut_acceptance" + outfile_ending;
 
@@ -344,20 +423,36 @@ bool DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::TrigMatch(int pair_in
                 std::cerr << "PP Run2 data: no mu4_mu4_noL1 trigger!" << std::endl;
                 throw std::exception();
             }
-
 			if (!b_HLT_mu4_mu4noL1) return false;
-			
-			if (!dimuon_b_HLT_mu4_mu4noL1){ // nullptr
-			  	throw std::runtime_error("The pointer dimuon_b_HLT_mu4_mu4noL1 (to vector of bool) is a null pointer!");
-			}
-			return dimuon_b_HLT_mu4_mu4noL1->at(pair_ind);
+
+            if (use_leg_branches_mu4_mu4noL1) {
+                if (!dimuon_b_mu4_mu4noL1_mu1passLeg1 || !dimuon_b_mu4_mu4noL1_mu2passLeg2 ||
+                    !dimuon_b_mu4_mu4noL1_mu2passLeg1 || !dimuon_b_mu4_mu4noL1_mu1passLeg2)
+                    throw std::runtime_error("TrigMatch case 2: leg branch pointer(s) are null!");
+                bool r1 = dimuon_b_mu4_mu4noL1_mu1passLeg1->at(pair_ind) && dimuon_b_mu4_mu4noL1_mu2passLeg2->at(pair_ind);
+                bool r2 = dimuon_b_mu4_mu4noL1_mu2passLeg1->at(pair_ind) && dimuon_b_mu4_mu4noL1_mu1passLeg2->at(pair_ind);
+                return r1 || r2;
+            } else if (use_mindR_only_branch_mu4_mu4noL1) {
+                if (!dimuon_b_mu4_mu4noL1_mindR_only)
+                    throw std::runtime_error("TrigMatch case 2: dimuon_b_mu4_mu4noL1_mindR_only is null!");
+                return dimuon_b_mu4_mu4noL1_mindR_only->at(pair_ind);
+            } else {
+                if (!dimuon_b_HLT_mu4_mu4noL1)
+                    throw std::runtime_error("TrigMatch case 2: dimuon_b_HLT_mu4_mu4noL1 is null!");
+                return dimuon_b_HLT_mu4_mu4noL1->at(pair_ind);
+            }
 		case 3:
 			if (!b_HLT_2mu4) return false;
-			
-			if (!dimuon_b_HLT_2mu4){ // nullptr
-			  	throw std::runtime_error("The pointer dimuon_b_HLT_2mu4 (to vector of bool) is a null pointer!");
-			}
-			return dimuon_b_HLT_2mu4->at(pair_ind);
+
+            if (use_mindR_branch_2mu4) {
+                if (!dimuon_b_2mu4_mindR)
+                    throw std::runtime_error("TrigMatch case 3: dimuon_b_2mu4_mindR is null!");
+                return dimuon_b_2mu4_mindR->at(pair_ind);
+            } else {
+                if (!dimuon_b_HLT_2mu4)
+                    throw std::runtime_error("TrigMatch case 3: dimuon_b_HLT_2mu4 is null!");
+                return dimuon_b_HLT_2mu4->at(pair_ind);
+            }
 		default:
 	    	std::cerr << "Trigger mode INVALID: must be 1 / 2 / 3!" << std::endl;
 	    	throw std::exception();
@@ -474,9 +569,9 @@ template <class PairT, class MuonT, class Derived, class... Extras>
 void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook(){
 
 	nentries = fChainRef()->GetEntries();//number of events
-    const Long64_t nentries_to_process = (nevents_max <= 0)
+    const Long64_t nentries_to_process = (this->nevents_max <= 0)
         ? nentries
-        : std::min<Long64_t>(nentries, nevents_max);
+        : std::min<Long64_t>(nentries, this->nevents_max);
 
     for (Long64_t jentry=0; jentry<nentries_to_process;jentry++) {//loop over the events
 	// for (Long64_t jentry=0; jentry<1000;jentry++) {//loop over the events
@@ -522,12 +617,46 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook(){
     		
     			//------------------------------------------------------------
 
+    			// Set per-muon passmu4noL1 BEFORE Update() so that the flag follows
+    			// the correct muon if pt-ordering swaps m1 and m2.
+    			// mu1passLeg2 = mu1 passes the unseeded (noL1) leg (Leg2) of the trigger.
+    			if (isRun3 || isPbPb) {
+    			    mpairRef()->m1.passmu4noL1 = use_leg_branches_mu4_mu4noL1
+    			        ? dimuon_b_mu4_mu4noL1_mu1passLeg2->at(pair_ind) : false;
+    			    mpairRef()->m2.passmu4noL1 = use_leg_branches_mu4_mu4noL1
+    			        ? dimuon_b_mu4_mu4noL1_mu2passLeg2->at(pair_ind) : false;
+    			} else {
+    			    mpairRef()->m1.passmu4noL1 = false;
+    			    mpairRef()->m2.passmu4noL1 = false;
+    			}
+
     			//Two things at this step: 
-    			//1) sort pt, eta, phi by pt
+    			//1) sort pt, eta, phi by pt (also swaps passmu4noL1 correctly)
     			//2) update the muon-pair values
     			mpairRef()->Update();
-    			mpairRef()->passmu4mu4noL1 = (!isPbPb && !isRun3)? false : dimuon_b_HLT_mu4_mu4noL1->at(pair_ind); // pp run2: no mu4_mu4noL1 trigger
-    			mpairRef()->pass2mu4 = dimuon_b_HLT_2mu4->at(pair_ind);
+
+    			// pair-level trigger flags (after Update so m1/m2 are pt-sorted)
+    			if (!isPbPb && !isRun3) {
+    			    mpairRef()->passmu4mu4noL1 = false;
+    			    mpairRef()->passmu4noL1    = false;
+    			} else if (use_leg_branches_mu4_mu4noL1) {
+    			    bool r1 = dimuon_b_mu4_mu4noL1_mu1passLeg1->at(pair_ind) && dimuon_b_mu4_mu4noL1_mu2passLeg2->at(pair_ind);
+    			    bool r2 = dimuon_b_mu4_mu4noL1_mu2passLeg1->at(pair_ind) && dimuon_b_mu4_mu4noL1_mu1passLeg2->at(pair_ind);
+    			    mpairRef()->passmu4mu4noL1 = r1 || r2;
+    			    mpairRef()->passmu4noL1    = mpairRef()->m1.passmu4noL1 || mpairRef()->m2.passmu4noL1;
+    			} else if (use_mindR_only_branch_mu4_mu4noL1) {
+    			    mpairRef()->passmu4mu4noL1 = dimuon_b_mu4_mu4noL1_mindR_only->at(pair_ind);
+    			    mpairRef()->passmu4noL1    = false; // no per-leg info available
+    			} else {
+    			    mpairRef()->passmu4mu4noL1 = dimuon_b_HLT_mu4_mu4noL1->at(pair_ind);
+    			    mpairRef()->passmu4noL1    = false; // fallback: no per-leg info
+    			}
+
+    			if (use_mindR_branch_2mu4) {
+    			    mpairRef()->pass2mu4 = dimuon_b_2mu4_mindR->at(pair_ind);
+    			} else {
+    			    mpairRef()->pass2mu4 = dimuon_b_HLT_2mu4->at(pair_ind);
+    			}
     	
         		mpairRef()->m1.passmu4 = muon_b_HLT_mu4->at(mpairRef()->m1.ind);
                 if (use_mu6_for_trg_eff) mpairRef()->m1.passmu4 |= (muon_b_HLT_mu6_L1MU3V->at(mpairRef()->m1.ind) && mpairRef()->m1.pt > 6);

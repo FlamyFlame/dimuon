@@ -1,3 +1,4 @@
+#pragma once
 #include "RDFBasedHistFillingBaseClass.h"
 #include <ROOT/RDFHelpers.hxx>     // ROOT::RDF::RunGraphs
 #include <ROOT/RResultHandle.hxx>  // ROOT::RDF::RResultHandle

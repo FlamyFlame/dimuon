@@ -51,10 +51,38 @@ public:
     std::string ctr_binning_version = "default"; // centrality binning version used in current analysis (if there are several)
 
 	// -------- crossx factors for Pb+Pb years --------
-    // 67.6 = sigma_{inel} in unit of mb = <TAA> / <N_{coll}>
-    static std::vector<double> crossx_factors_pbpb_run2_ctr_binned;
-    static std::vector<double> crossx_factors_pbpb_2023_ctr_binned;
-    static std::vector<double> crossx_factors_pbpb_2024_ctr_binned;
+    // Returned by private helper functions (not static data members) so that cling does not need to
+    // JIT-link template-static guard variables (_ZGVN...) which it cannot materialize.
+    static std::vector<double> make_crossx_factors_pbpb_run2() {
+        return {
+            1./(0.05 * 7.67 * 1000. * 26.2339 * (0.436882 + 1.3803) / 1000.),
+            1./(0.05 * 7.67 * 1000. * 20.4707 * (0.436882 + 1.3803) / 1000.),
+            1./(0.1  * 7.67 * 1000. * 14.3345 * (0.436882 + 1.3803) / 1000.),
+            1./(0.1  * 7.67 * 1000. * 8.63844 * (0.436882 + 1.3803) / 1000.),
+            1./(0.2  * 7.67 * 1000. * 3.79023 * (0.436882 + 1.3803) / 1000.),
+            1./(0.3  * 7.67 * 1000. * 0.689695* (0.436882 + 1.3803) / 1000.)
+        };
+    }
+    static std::vector<double> make_crossx_factors_pbpb_2023() {
+        return {
+            1./(0.05 * 7.8 * 1000. * 26.1428 * 1.3896 / 1000.),
+            1./(0.05 * 7.8 * 1000. * 20.3241 * 1.3896 / 1000.),
+            1./(0.1  * 7.8 * 1000. * 14.0502 * 1.3896 / 1000.),
+            1./(0.1  * 7.8 * 1000. *  8.5074 * 1.3896 / 1000.),
+            1./(0.2  * 7.8 * 1000. *  3.7733 * 1.3896 / 1000.),
+            1./(0.3  * 7.8 * 1000. *  0.6716 * 1.3896 / 1000.)
+        };
+    }
+    static std::vector<double> make_crossx_factors_pbpb_2024() {
+        return {
+            1./(0.05 * 7.8 * 1000. * 26.1428 * 1.5411 / 1000.),
+            1./(0.05 * 7.8 * 1000. * 20.3241 * 1.5411 / 1000.),
+            1./(0.1  * 7.8 * 1000. * 14.0502 * 1.5411 / 1000.),
+            1./(0.1  * 7.8 * 1000. *  8.5074 * 1.5411 / 1000.),
+            1./(0.2  * 7.8 * 1000. *  3.7733 * 1.5411 / 1000.),
+            1./(0.3  * 7.8 * 1000. *  0.6716 * 1.5411 / 1000.)
+        };
+    }
 
     // -------- public class methods --------
      PbPbBaseClass(){
@@ -77,13 +105,13 @@ void PbPbBaseClass<Derived>::BuildPbPbMaps(){
     ctr_rebin_scale_factor_map["include_upc"] = {1,1,1,1,2,4};
 
     // 2015 + 2018 are combined --> use 2018 for Run2-combined crossx factors
-    run_yr_and_ctrbin_version_to_crossx_factors_map[{18, "default"}] = crossx_factors_pbpb_run2_ctr_binned;
-    run_yr_and_ctrbin_version_to_crossx_factors_map[{23, "default"}] = crossx_factors_pbpb_2023_ctr_binned;
-    run_yr_and_ctrbin_version_to_crossx_factors_map[{24, "default"}] = crossx_factors_pbpb_2024_ctr_binned;
+    run_yr_and_ctrbin_version_to_crossx_factors_map[{18, "default"}] = make_crossx_factors_pbpb_run2();
+    run_yr_and_ctrbin_version_to_crossx_factors_map[{23, "default"}] = make_crossx_factors_pbpb_2023();
+    run_yr_and_ctrbin_version_to_crossx_factors_map[{24, "default"}] = make_crossx_factors_pbpb_2024();
 
-    run_yr_and_ctrbin_version_to_crossx_factors_map[{18, "include_upc"}] = crossx_factors_pbpb_run2_ctr_binned; // WRONG!! 50-100% NEED TO BE CORRECTED
-    run_yr_and_ctrbin_version_to_crossx_factors_map[{23, "include_upc"}] = crossx_factors_pbpb_2023_ctr_binned; // WRONG!! 50-100% NEED TO BE CORRECTED
-    run_yr_and_ctrbin_version_to_crossx_factors_map[{24, "include_upc"}] = crossx_factors_pbpb_2024_ctr_binned; // WRONG!! 50-100% NEED TO BE CORRECTED
+    run_yr_and_ctrbin_version_to_crossx_factors_map[{18, "include_upc"}] = make_crossx_factors_pbpb_run2(); // WRONG!! 50-100% NEED TO BE CORRECTED
+    run_yr_and_ctrbin_version_to_crossx_factors_map[{23, "include_upc"}] = make_crossx_factors_pbpb_2023(); // WRONG!! 50-100% NEED TO BE CORRECTED
+    run_yr_and_ctrbin_version_to_crossx_factors_map[{24, "include_upc"}] = make_crossx_factors_pbpb_2024(); // WRONG!! 50-100% NEED TO BE CORRECTED
 
 }
 
@@ -184,34 +212,4 @@ void PbPbBaseClass<Derived>::SetCrossxFactorsPbPbCtrBinned(int run_yr, const std
 }
 
 
-// Crossx factors: RAA = (AA event distribution weighted by crossx factor) / (pp differential crossx)
-// Compare with literature: N_events 
-template <class Derived>
-std::vector<double> PbPbBaseClass<Derived>::crossx_factors_pbpb_run2_ctr_binned = {
-    1./(0.05 * 7.67 * 1000. * 26.2339 * (0.436882 + 1.3803) / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * (L_{int15} + L_{int18}) (unit: pb^{-1})] 0-5%
-    1./(0.05 * 7.67 * 1000. * 20.4707 * (0.436882 + 1.3803) / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * (L_{int15} + L_{int18}) (unit: pb^{-1})] 5-10%
-    1./(0.1 * 7.67 * 1000. * 14.3345 * (0.436882 + 1.3803) / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * (L_{int15} + L_{int18}) (unit: pb^{-1})] 10-20%
-    1./(0.1 * 7.67 * 1000. * 8.63844 * (0.436882 + 1.3803) / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * (L_{int15} + L_{int18}) (unit: pb^{-1})] 20-30%
-    1./(0.2 * 7.67 * 1000. * 3.79023 * (0.436882 + 1.3803) / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * (L_{int15} + L_{int18}) (unit: pb^{-1})] 30-50%
-    1./(0.3 * 7.67 * 1000. * 0.689695 * (0.436882 + 1.3803) / 1000.) // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * (L_{int15} + L_{int18}) (unit: pb^{-1})] 50-80%
-};
-
-template <class Derived>
-std::vector<double> PbPbBaseClass<Derived>::crossx_factors_pbpb_2023_ctr_binned = {
-    1./(0.05 * 7.8 * 1000. * 26.1428 * 1.3896 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 0-5%
-    1./(0.05 * 7.8 * 1000. * 20.3241 * 1.3896 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 5-10%
-    1./(0.1 * 7.8 * 1000. * 14.0502 * 1.3896 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 10-20%
-    1./(0.1 * 7.8 * 1000. * 8.5074 * 1.3896 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 20-30%
-    1./(0.2 * 7.8 * 1000. * 3.7733 * 1.3896 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 30-50%
-    1./(0.3 * 7.8 * 1000. * 0.6716 * 1.3896 / 1000.) // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 50-80%
-};
-
-template <class Derived>
-std::vector<double> PbPbBaseClass<Derived>::crossx_factors_pbpb_2024_ctr_binned = {
-    1./(0.05 * 7.8 * 1000. * 26.1428 * 1.5411 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 0-5%
-    1./(0.05 * 7.8 * 1000. * 20.3241 * 1.5411 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 5-10%
-    1./(0.1 * 7.8 * 1000. * 14.0502 * 1.5411 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 10-20%
-    1./(0.1 * 7.8 * 1000. * 8.5074 * 1.5411 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 20-30%
-    1./(0.2 * 7.8 * 1000. * 3.7733 * 1.5411 / 1000.), // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 30-50%
-    1./(0.3 * 7.8 * 1000. * 0.6716 * 1.5411 / 1000.) // 1/[crossx_{incl AA} [unit: mb] * TAA [unit: mb^{-1}] * L_{int} (unit: pb^{-1})] 50-80%
-};
+// (out-of-line static definitions removed: crossx_factors now use inline static in class body above)
