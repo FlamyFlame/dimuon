@@ -187,7 +187,15 @@ StatusCode TrigRates::initialize(){
        
       #if defined(HF_IS_R21) || defined(HF_IS_R25)
        if(m_store_acoplanar_muon){
-         m_dimuMatchModule = new TrigMuonMatchingModule(&(*m_matchTool), m_trigTool.get());
+         // R25: AnaToolHandle<T>::get() returns T* directly.
+         // R21: ToolHandle<T>::get() returns IAlgTool* (base interface) due to virtual
+         //      inheritance, so dynamic_cast is required.
+         #if defined(HF_IS_R21)
+           auto* tdt = dynamic_cast<Trig::TrigDecisionTool*>(m_trigTool.get());
+         #else
+           auto* tdt = m_trigTool.get();
+         #endif
+         m_dimuMatchModule = new TrigMuonMatchingModule(&(*m_matchTool), tdt);
          ATH_MSG_INFO("TrigMuonMatchingModule created for dimuon trigger matching");
        }
        #endif

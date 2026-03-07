@@ -25,8 +25,8 @@
 
 #if defined(HF_IS_R21)
   #include "xAODMuon/MuonContainer.h"
-  // TrigDefs for alsoDeactivateTEs flag
-  #include "TrigSteeringEvent/TrigDefs.h"
+  // Note: TrigDefs.h (TrigSteeringEvent) is not available in AthAnalysis 21.2
+  // and is not actually needed here — no TrigDefs:: constants are used.
 #endif
 
 #include <sstream>
