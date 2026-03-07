@@ -249,8 +249,16 @@ def _parse_evtmax(default_evtmax):
 
 
 if __name__ == "__main__":
-	evtmax = _parse_evtmax(m_EvtMax)
-	cfg = build_cfg(evtmax)
-	sc = cfg.run()
 	import sys
+	from AthenaCommon.Configurable import ConfigurableCABehavior
+
+	evtmax = _parse_evtmax(m_EvtMax)
+
+	# On the grid the PanDA pilot pre-loads legacy Athena modules that activate
+	# global Configurable behavior. MainServicesCfg requires CA behavior, so
+	# explicitly switch to it here. Locally this is a no-op.
+	with ConfigurableCABehavior():
+		cfg = build_cfg(evtmax)
+		sc = cfg.run()
+
 	sys.exit(not sc.isSuccess())
