@@ -920,7 +920,7 @@ private:
         // Ensure trailing slash on data_dir (optional)
         std::string base = data_dir;
         if (!base.empty() && base.back() != '/') base += '/';
-        return base + run_period + "_det_resp_plots/" + (tight_WP ? "tight/" : "medium/");
+        return base + "plots/" + run_period + "_det_resp_plots/" + (tight_WP ? "tight/" : "medium/");
     }
 
     bool CheckUnmixedFile() const {
@@ -947,7 +947,7 @@ private:
     {
         std::string base = data_dir;
         if (!base.empty() && base.back() != '/') base += '/';
-        return base + run_period + "_reco_effcy_plots" + require_signal_cuts_file_dir_suffix + "/" + (tight_WP ? "tight/" : "medium/");
+        return base + "plots/" + run_period + "_reco_effcy_plots" + require_signal_cuts_file_dir_suffix + "/" + (tight_WP ? "tight/" : "medium/");
     }
 
 };
