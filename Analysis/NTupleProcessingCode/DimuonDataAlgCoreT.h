@@ -79,7 +79,25 @@ protected:
     std::vector<bool>    *dimuon_b_HLT_2mu4    =nullptr;
 
     Bool_t               b_HLT_mu4_mu4noL1;
-    std::vector<bool>    *dimuon_b_HLT_mu4_mu4noL1    =nullptr;
+    std::vector<bool>    *dimuon_b_HLT_mu4_mu4noL1    =nullptr; // fallback: old branch without mindR
+
+    // --- mu4_mu4noL1: leg branches with mindR (highest quality) ---
+    std::vector<bool>    *dimuon_b_mu4_mu4noL1_mu1passLeg1 =nullptr; // mu1 passes seeded leg in result1 ordering
+    std::vector<bool>    *dimuon_b_mu4_mu4noL1_mu1passLeg2 =nullptr; // mu1 passes unseeded (noL1) leg in result2 ordering
+    std::vector<bool>    *dimuon_b_mu4_mu4noL1_mu2passLeg1 =nullptr; // mu2 passes seeded leg in result2 ordering
+    std::vector<bool>    *dimuon_b_mu4_mu4noL1_mu2passLeg2 =nullptr; // mu2 passes unseeded (noL1) leg in result1 ordering
+
+    // --- mu4_mu4noL1: mindR-only branch (fallback level 1: no per-leg info) ---
+    std::vector<bool>    *dimuon_b_mu4_mu4noL1_mindR_only =nullptr;
+
+    // --- 2mu4: mindR branch ---
+    std::vector<bool>    *dimuon_b_2mu4_mindR =nullptr;
+
+    // --- flags set during InitInputBranchesDimuonAnalysis ---
+    bool use_leg_branches_mu4_mu4noL1     = false; // leg branches with mindR found and in use
+    bool use_mindR_only_branch_mu4_mu4noL1 = false; // mindR-only branch found (no leg info)
+    bool use_mindR_branch_2mu4             = false; // mindR branch found for 2mu4
+    bool use_mindR_suffix_in_output        = false; // append _mindR_X_XX to output file names
 
     std::vector<float>   *muon_deltaP_overP           =nullptr;
 
@@ -299,6 +317,7 @@ protected:
 
 public:
     int trigger_mode = 1; // default to single-muon trigger
+    double mindR_trig = 0.02; // min dR for dimuon trigger matching; must be 0.01 or 0.02; use corresponding branches if available
 
     bool isMinBias = false; // whether use MinBias data for single-muon trigger efficiency
 

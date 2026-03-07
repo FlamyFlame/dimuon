@@ -14,6 +14,7 @@ struct MuonRecoExtra{
    	float   dP_overP{1e6}, z0{1e6}, d0{1e6};
    	int     quality{-1};
 	bool    passmu4{};
+    bool    passmu4noL1{}; // passes the mu4noL1 (unseeded) leg of the mu4_mu4noL1 dimuon trigger
     bool    pass_tight{};
 
     float   trk_pt{-1e6}, trk_eta{1e6}, trk_phi{1e6};

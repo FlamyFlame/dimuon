@@ -6,10 +6,16 @@ void RDFBasedHistFillingPbPb::SetIOPathsHook(){
 	std::string run_year_str = std::to_string(run_year);
 
 	if (run_year == 23 || run_year == 24 || run_year == 25){
-		input_files.push_back("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/muon_pairs_pbpb_20" + run_year_str + trig_suffix + "_res_cut_v2.root");
+		std::string in_path = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/muon_pairs_pbpb_20" + run_year_str + trig_suffix + input_mindR_suffix + "_res_cut_v2.root";
+		if (!input_mindR_suffix.empty() && gSystem->AccessPathName(in_path.c_str()))
+		    throw std::runtime_error("RDFBasedHistFillingPbPb: mindR input file not found: " + in_path);
+		input_files.push_back(in_path);
 		output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/histograms_real_pairs_pbpb_20" + run_year_str + out_file_suffix + ".root";
 	} else if (run_year == 15 || run_year == 18){
-		input_files.push_back("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/muon_pairs_pbpb_20" + run_year_str + trig_suffix + "_res_cut_v2.root");
+		std::string in_path = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/muon_pairs_pbpb_20" + run_year_str + trig_suffix + input_mindR_suffix + "_res_cut_v2.root";
+		if (!input_mindR_suffix.empty() && gSystem->AccessPathName(in_path.c_str()))
+		    throw std::runtime_error("RDFBasedHistFillingPbPb: mindR input file not found: " + in_path);
+		input_files.push_back(in_path);
 		output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/histograms_real_pairs_pbpb_20" + run_year_str + out_file_suffix + ".root";
 	} else{
 	    throw std::runtime_error("Run year must be 15/18/23/24/25! Current input invalid: " + run_year_str);
@@ -184,20 +190,18 @@ void RDFBasedHistFillingPbPb::CreateBaseRDFsPbPbExtra(){
 	        int ctr_bin_low_edge = ctr_bin_edges.at(ictr);
 	        int ctr_bin_high_edge = ctr_bin_edges.at(ictr + 1);
 
-	        auto ctr_in_current_bin = [this, ctr_bin_low_edge, ctr_bin_high_edge](int centrality) 
-	        	{
-	        		if (ctr_binning_version == "include_upc" && ctr_bin_high_edge == 100){ // most peripheral bin
-	        			return centrality >= ctr_bin_low_edge || centrality == -1;
-	        		} else{
-	        			return centrality >= ctr_bin_low_edge && centrality < ctr_bin_high_edge;
-	        		}
-	        		
-	        	};
-			std::string ctr = "_ctr" + std::to_string(ctr_bin_low_edge) + "_" + std::to_string(ctr_bin_high_edge);
+		std::string ctr = "_ctr" + std::to_string(ctr_bin_low_edge) + "_" + std::to_string(ctr_bin_high_edge);
 
-			df_map.emplace (df_name + ctr, 
-							node.Filter(ctr_in_current_bin, {"avg_centrality"})
-						    );
+        // Use string filter to avoid capturing-lambda JIT linkage issues in cling
+        std::string ctr_filter;
+        if (ctr_binning_version == "include_upc" && ctr_bin_high_edge == 100)
+            ctr_filter = Form("avg_centrality >= %d || avg_centrality == -1", ctr_bin_low_edge);
+        else
+            ctr_filter = Form("avg_centrality >= %d && avg_centrality < %d", ctr_bin_low_edge, ctr_bin_high_edge);
+
+		df_map.emplace (df_name + ctr, 
+						node.Filter(ctr_filter)
+					    );
 	    }
 	}
 }
@@ -224,14 +228,15 @@ void RDFBasedHistFillingPbPb::FillHistogramsDimuTrigGivenMu4(){
 				std::string ind1st = (std::string(mu4sel) == "_mu1passmu4")? "1" : "2";
 	           	std::string ind2nd = (std::string(mu4sel) == "_mu1passmu4")? "2" : "1";
 				
-				df_map.emplace(df_name, node.Filter("m" + ind1st + ".passmu4"));
-				df_map.at(df_name) = df_map.at(df_name).Define("pt1st",	"m" + ind1st + ".pt");
-				df_map.at(df_name) = df_map.at(df_name).Define("pt2nd",	"m" + ind2nd + ".pt");
-				df_map.at(df_name) = df_map.at(df_name).Define("charge2nd","m" + ind2nd + ".charge");
-				df_map.at(df_name) = df_map.at(df_name).Define("eta2nd",	"m" + ind2nd + ".eta");
-				df_map.at(df_name) = df_map.at(df_name).Define("phi2nd",	"m" + ind2nd + ".phi");
-				df_map.at(df_name) = df_map.at(df_name).Define("q_eta2nd",	"charge2nd * eta2nd");
-	           	df_map.at(df_name) = df_map.at(df_name).Define("second_muon_good_acceptance",  "pt2nd >= 6 && ((eta2nd > 1.1 && eta2nd < 2.3) || (eta2nd > -2.3 && eta2nd < -1.2))");
+			df_map.emplace(df_name, node.Filter("m" + ind1st + ".passmu4"));
+			df_map.at(df_name) = df_map.at(df_name).Define("pt1st",	"m" + ind1st + ".pt");
+			df_map.at(df_name) = df_map.at(df_name).Define("pt2nd",	"m" + ind2nd + ".pt");
+			df_map.at(df_name) = df_map.at(df_name).Define("charge2nd","m" + ind2nd + ".charge");
+			df_map.at(df_name) = df_map.at(df_name).Define("eta2nd",	"m" + ind2nd + ".eta");
+			df_map.at(df_name) = df_map.at(df_name).Define("phi2nd",	"m" + ind2nd + ".phi");
+			df_map.at(df_name) = df_map.at(df_name).Define("q_eta2nd",	"charge2nd * eta2nd");
+			df_map.at(df_name) = df_map.at(df_name).Define("mu2nd_passmu4noL1", "m" + ind2nd + ".passmu4noL1");
+           	df_map.at(df_name) = df_map.at(df_name).Define("mu2nd_good_acceptance",  "pt2nd >= 6 && ((eta2nd > 1.1 && eta2nd < 2.3) || (eta2nd > -2.3 && eta2nd < -1.2))");
 				
 				// ----------- no musign / ctr ----------- 
 
@@ -335,26 +340,22 @@ void RDFBasedHistFillingPbPb::FillHistogramsDimuTrigGivenMu4CtrDep(){
 
 					std::string pt_bin = "_pt" + std::to_string(pt_bin_low_edge) + "_" + std::to_string(pt_bin_high_edge);
 					
-					df_map.emplace (df_name + pt_bin, 
-									map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4CtrDep: df_map.at(%s)", df_name.c_str()))
-									.Filter(
-				        					[pt_bin_low_edge, pt_bin_high_edge](float pt2nd) 
-				        					{return pt2nd >= pt_bin_low_edge && pt2nd < pt_bin_high_edge;},
-				        					{"pt2nd"})
+				df_map.emplace (df_name + pt_bin, 
+								map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4CtrDep: df_map.at(%s)", df_name.c_str()))
+								.Filter(Form("pt2nd >= %d && pt2nd < %d", pt_bin_low_edge, pt_bin_high_edge))
 								    );
 
 					for (auto q_eta_pair : q_eta_proj_ranges){
 		               	
 						std::string q_eta_bin = "_q_eta_" + pairToSuffix(q_eta_pair);
 
-						df_map.emplace(	df_name + pt_bin + q_eta_bin, 
-										map_at_checked(df_map, df_name + pt_bin, 
-											Form("FillHistogramsDimuTrigGivenMu4CtrDep: df_map.at(%s)", 
-												(df_name + pt_bin).c_str()))
-										.Filter([q_eta_pair](float q_eta2nd) 
-											{return q_eta2nd >= q_eta_pair.first && q_eta2nd < q_eta_pair.second;}
-											, {"q_eta2nd"})
-										);
+					df_map.emplace(	df_name + pt_bin + q_eta_bin, 
+									map_at_checked(df_map, df_name + pt_bin, 
+										Form("FillHistogramsDimuTrigGivenMu4CtrDep: df_map.at(%s)", 
+											(df_name + pt_bin).c_str()))
+									.Filter(Form("q_eta2nd >= %f && q_eta2nd < %f",
+										(double)q_eta_pair.first, (double)q_eta_pair.second))
+									);
 						
 		               	std::string df_name_new = "df" + pair_sign + mu4sel + pt_bin + q_eta_bin;
 
@@ -397,6 +398,13 @@ void RDFBasedHistFillingPbPb::HistPostProcessPbPb(){
     }
 }
 
+// Named helpers to avoid non-capturing-lambda JIT linkage issues in cling
+static std::string pbpb_make_hist1D_name(const std::string& var) { return "h_" + var; }
+static std::string pbpb_make_hist2D_name(const std::array<std::string,2>& vars)
+    { return "h_" + vars[1] + "_vs_" + vars[0]; }
+static std::string pbpb_make_hist3D_name(const std::array<std::string,3>& vars)
+    { return "h_" + vars[2] + "_vs_" + vars[1] + "_vs_" + vars[0]; }
+
 void RDFBasedHistFillingPbPb::SumSingleMuonTrigEffHistsPbPb(){
     // sum centrality-dependent trigger-efficiency histograms
     HistFillUtils::SumTrigEffHistsGeneric<TH1D, std::string>(
@@ -404,9 +412,7 @@ void RDFBasedHistFillingPbPb::SumSingleMuonTrigEffHistsPbPb(){
         trg_effcy_filters_ctr_dep_1D_post_sum,
         trg_effcy_filters_to_be_summed,
         hist1D_map,
-        [](const std::string& var) {
-            return "h_" + var;
-        }
+        pbpb_make_hist1D_name
     );
 
     // 1D, with musign + ctr binning
@@ -415,9 +421,7 @@ void RDFBasedHistFillingPbPb::SumSingleMuonTrigEffHistsPbPb(){
         trg_effcy_filters_1D_post_sum_w_musign_ctr_summing,
         trg_effcy_filters_to_be_summed,
         hist1D_map,
-        [](const std::string& var) {
-            return "h_" + var;
-        }
+        pbpb_make_hist1D_name
     );
 
     // 1D, with ctr binning
@@ -426,9 +430,7 @@ void RDFBasedHistFillingPbPb::SumSingleMuonTrigEffHistsPbPb(){
         trg_effcy_filters_1D_post_sum_w_ctr_summing,
         trg_effcy_filters_to_be_summed,
         hist1D_map,
-        [](const std::string& var) {
-            return "h_" + var;
-        }
+        pbpb_make_hist1D_name
     );
 
     // 2D, with musign + ctr binning
@@ -437,11 +439,7 @@ void RDFBasedHistFillingPbPb::SumSingleMuonTrigEffHistsPbPb(){
         trg_effcy_filters_2D_3D_post_sum_w_musign_ctr_summing,
         trg_effcy_filters_to_be_summed,
         hist2D_map,
-        [](const std::array<std::string,2>& vars) {
-            const std::string& varx = vars[0];
-            const std::string& vary = vars[1];
-            return "h_" + vary + "_vs_" + varx;
-        }
+        pbpb_make_hist2D_name
     );
 
     // 2D, with ctr binning
@@ -450,11 +448,7 @@ void RDFBasedHistFillingPbPb::SumSingleMuonTrigEffHistsPbPb(){
         trg_effcy_filters_2D_3D_post_sum_w_ctr_summing,
         trg_effcy_filters_to_be_summed,
         hist2D_map,
-        [](const std::array<std::string,2>& vars) {
-            const std::string& varx = vars[0];
-            const std::string& vary = vars[1];
-            return "h_" + vary + "_vs_" + varx;
-        }
+        pbpb_make_hist2D_name
     );
 
     // 3D, with musign + ctr binning
@@ -463,12 +457,7 @@ void RDFBasedHistFillingPbPb::SumSingleMuonTrigEffHistsPbPb(){
         trg_effcy_filters_2D_3D_post_sum_w_musign_ctr_summing,
         trg_effcy_filters_to_be_summed,
         hist3D_map,
-        [](const std::array<std::string,3>& vars) {
-            const std::string& varx = vars[0];
-            const std::string& vary = vars[1];
-            const std::string& varz = vars[2];
-            return "h_" + varz + "_vs_" + vary + "_vs_" + varx;
-        }
+        pbpb_make_hist3D_name
     );
 
     // 3D, with ctr binning
@@ -477,12 +466,7 @@ void RDFBasedHistFillingPbPb::SumSingleMuonTrigEffHistsPbPb(){
         trg_effcy_filters_2D_3D_post_sum_w_ctr_summing,
         trg_effcy_filters_to_be_summed,
         hist3D_map,
-        [](const std::array<std::string,3>& vars) {
-            const std::string& varx = vars[0];
-            const std::string& vary = vars[1];
-            const std::string& varz = vars[2];
-            return "h_" + varz + "_vs_" + vary + "_vs_" + varx;
-        }
+        pbpb_make_hist3D_name
     );
 }
 

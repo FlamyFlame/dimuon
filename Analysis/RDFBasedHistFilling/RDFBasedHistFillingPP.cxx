@@ -4,10 +4,16 @@ void RDFBasedHistFillingPP::SetIOPathsHook(){
     infile_var1D_json = "var1D_pp.json";
 
     if (run_year == 24){
-        input_files.push_back("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024" + trig_suffix + "_res_cut_v2.root");
+        std::string in_path = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024" + trig_suffix + input_mindR_suffix + "_res_cut_v2.root";
+        if (!input_mindR_suffix.empty() && gSystem->AccessPathName(in_path.c_str()))
+            throw std::runtime_error("RDFBasedHistFillingPP: mindR input file not found: " + in_path);
+        input_files.push_back(in_path);
         output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/histograms_real_pairs_pp_2024" + out_file_suffix + ".root";
     } else if (run_year == 17){
-        input_files.push_back("/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/muon_pairs_pp_2017" + trig_suffix + "_res_cut_v2.root");
+        std::string in_path = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/muon_pairs_pp_2017" + trig_suffix + input_mindR_suffix + "_res_cut_v2.root";
+        if (!input_mindR_suffix.empty() && gSystem->AccessPathName(in_path.c_str()))
+            throw std::runtime_error("RDFBasedHistFillingPP: mindR input file not found: " + in_path);
+        input_files.push_back(in_path);
         output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/histograms_real_pairs_pp_2017" + out_file_suffix + ".root";
     }
 }
@@ -97,28 +103,28 @@ void RDFBasedHistFillingPP::FillHistogramsDimuTrigGivenMu4(){
                 df_map.at(df_name) = df_map.at(df_name).Define("eta2nd",    "m" + ind2nd + ".eta");
                 df_map.at(df_name) = df_map.at(df_name).Define("phi2nd",    "m" + ind2nd + ".phi");
                 df_map.at(df_name) = df_map.at(df_name).Define("q_eta2nd",  "charge2nd * eta2nd");
-                df_map.at(df_name) = df_map.at(df_name).Define("second_muon_good_acceptance",  "pt2nd >= 6 && ((eta2nd > 1.1 && eta2nd < 2.3) || (eta2nd > -2.3 && eta2nd < -1.2))");
+                df_map.at(df_name) = df_map.at(df_name).Define("mu2nd_passmu4noL1", "m" + ind2nd + ".passmu4noL1");
+                df_map.at(df_name) = df_map.at(df_name).Define("mu2nd_good_acceptance",  "pt2nd >= 6 && ((eta2nd > 1.1 && eta2nd < 2.3) || (eta2nd > -2.3 && eta2nd < -1.2))");
 
                 df_map.emplace(df_name + "_sign1", map_at_checked(df_map, df_name, Form("FillHistogramsSingleMuonEffcy: df_map.at(%s)", df_name.c_str())).Filter("charge2nd > 0")); // e.g, df_ss_mu1passmu4_sign1
                 df_map.emplace(df_name + "_sign2", map_at_checked(df_map, df_name, Form("FillHistogramsSingleMuonEffcy: df_map.at(%s)", df_name.c_str())).Filter("charge2nd < 0"));
 
                 for (auto mu_sign : {"_sign1", "_sign2"}){
                     std::string df_name = "df" + pair_sign + mu4sel + mu_sign;
-                    df_map.emplace(df_name + "_mu4", map_at_checked(df_map, df_name, Form("FillHistogramsSingleMuonEffcy: df_map.at(%s)", df_name.c_str())));
-                    df_map.emplace(df_name + "_mu4_mu4noL1", map_at_checked(df_map, df_name, Form("FillHistogramsSingleMuonEffcy: df_map.at(%s)", df_name.c_str())).Filter("passmu4mu4noL1"));
-                    df_map.emplace(df_name + "_2mu4", map_at_checked(df_map, df_name, Form("FillHistogramsSingleMuonEffcy: df_map.at(%s)", df_name.c_str())).Filter("pass2mu4"));
-                    df_map.emplace(df_name + "_2mu4_AND_mu4_mu4noL1", map_at_checked(df_map, df_name, Form("FillHistogramsSingleMuonEffcy: df_map.at(%s)", df_name.c_str())).Filter("pass2mu4 && passmu4mu4noL1"));
 
                     for (auto trg : {"_mu4", "_mu4_mu4noL1", "_2mu4", "_2mu4_AND_mu4_mu4noL1"}){
-                        std::string df_name = "df" + pair_sign + mu4sel + mu_sign + trg;
-                        df_map.emplace(df_name + "_sepr", map_at_checked(df_map, df_name, Form("FillHistogramsSingleMuonEffcy: df_map.at(%s)", df_name.c_str())).Filter("passSeparated"));
-                        df_map.emplace(df_name + "_good_accept", map_at_checked(df_map, df_name, Form("FillHistogramsSingleMuonEffcy: df_map.at(%s)", df_name.c_str())).Filter("second_muon_good_acceptance"));
-                        
-                        for (auto bias : trg_effcy_biases){ // additional selection / bias in data sample
-                            std::string df_name = "df" + pair_sign + mu4sel + mu_sign + trg + bias;
-                            std::string filter = df_name.substr(2);
+                        std::string trg_filter = map_at_checked(trig_to_filter_str_map, trg, Form("trig_to_filter_str_map.at(%s)", trg));
+                        if (trg_filter.empty()) df_map.emplace(df_name + trg, map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name.c_str())));
+                        else                    df_map.emplace(df_name + trg, map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name.c_str())).Filter(trg_filter));
 
-                            FillHistogramsSingleDataFrame(filter, map_at_checked(df_map, df_name, Form("FillHistogramsSingleMuonEffcy: df_map.at(%s)", df_name.c_str())), false); // do not write the sub-dataframe histograms in output file
+                        std::string df_name_new = "df" + pair_sign + mu4sel + mu_sign + trg;
+                        df_map.emplace(df_name_new + "_sepr",        map_at_checked(df_map, df_name_new, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name_new.c_str())).Filter("passSeparated"));
+                        df_map.emplace(df_name_new + "_good_accept", map_at_checked(df_map, df_name_new, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name_new.c_str())).Filter("mu2nd_good_acceptance"));
+
+                        for (auto bias : trg_effcy_biases){ // additional selection / bias in data sample
+                            std::string df_name_bias = "df" + pair_sign + mu4sel + mu_sign + trg + bias;
+                            std::string filter = df_name_bias.substr(2);
+                            FillHistogramsSingleDataFrame(filter, map_at_checked(df_map, df_name_bias, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name_bias.c_str())), false);
                         }
                     }
                 }

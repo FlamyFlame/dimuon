@@ -14,6 +14,7 @@ protected:
     std::string isForSoumya_suffix;
     std::string qEtaBin_suffix;
     std::string trig_suffix;
+    std::string input_mindR_suffix; // e.g. "_mindR_0_02" appended between trig_suffix and _res_cut_v2 in input paths; "" for old files
 
     std::string out_file_suffix;
 
@@ -145,6 +146,8 @@ enum HistFillingCycle{
     bool useCoarseQEtaBin = true;
     int hist_filling_cycle = generic;
     int trigger_mode = 1;
+    bool useMu4NoL1Leg = true;  // if true, require the probe muon to pass the mu4noL1 (unseeded) leg for _mu4_mu4noL1 filters
+    double mindR_trig = 0.02;   // > 0: search input files with _mindR_X_XX suffix; <= 0: use old input files (no suffix)
     bool isScram = false;
     bool isTight = false;
     bool doTrigEffcy = true; // default true; can turn off manually; automatically turn off if trigger_mode != 0 or 1

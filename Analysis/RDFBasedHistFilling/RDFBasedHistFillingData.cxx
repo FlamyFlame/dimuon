@@ -45,10 +45,26 @@ void RDFBasedHistFillingData::InitializeDataCommon(){
         single_muon_trig_effcy_var3Ds = {};
     }
 
+    // Compute input_mindR_suffix: > 0 means use new files with mindR suffix; <= 0 means old files (no suffix)
+    if (mindR_trig > 0) {
+        std::string mindR_str = (mindR_trig == 0.01) ? "0_01" : "0_02";
+        input_mindR_suffix = "_mindR_" + mindR_str;
+    } else {
+        input_mindR_suffix = "";
+    }
+    std::cout << "RDFBasedHistFillingData: mindR_trig=" << mindR_trig
+              << ", input_mindR_suffix='" << input_mindR_suffix << "'"
+              << ", useMu4NoL1Leg=" << useMu4NoL1Leg << std::endl;
+
     trig_to_filter_str_map["_mu4"] = "";
-    trig_to_filter_str_map["_mu4_mu4noL1"] = "passmu4mu4noL1";
+    if (useMu4NoL1Leg) {
+        trig_to_filter_str_map["_mu4_mu4noL1"]           = "passmu4mu4noL1 && mu2nd_passmu4noL1";
+        trig_to_filter_str_map["_2mu4_AND_mu4_mu4noL1"]  = "pass2mu4 && passmu4mu4noL1 && mu2nd_passmu4noL1";
+    } else {
+        trig_to_filter_str_map["_mu4_mu4noL1"]           = "passmu4mu4noL1";
+        trig_to_filter_str_map["_2mu4_AND_mu4_mu4noL1"]  = "pass2mu4 && passmu4mu4noL1";
+    }
     trig_to_filter_str_map["_2mu4"] = "pass2mu4";
-    trig_to_filter_str_map["_2mu4_AND_mu4_mu4noL1"] = "pass2mu4 && passmu4mu4noL1";
 
     trg_effcy_biases = {"_sepr"};
     if (save_non_sepr_trg_hists) trg_effcy_biases.push_back("");
@@ -223,6 +239,11 @@ void RDFBasedHistFillingData::BuildFlattenedTrgEffcyFilterToVarListMapDataCommon
     // ----- ADD INVERSE WEIGHTING ONES!! WITH _mu4_mu4noL1_denom, _2mu4_denom (paired with additional filtering) -----
 
 }
+
+// Default no-op: all concrete derived classes override this.
+// Needed explicitly by cling's JIT linker even though a compiled linker elides it
+// for abstract classes whose virtual functions are all overridden.
+void RDFBasedHistFillingData::FlattenTrigEffcyFiltersExtra() {}
 
 void RDFBasedHistFillingData::FlattenTrigEffcyFilters()
 {

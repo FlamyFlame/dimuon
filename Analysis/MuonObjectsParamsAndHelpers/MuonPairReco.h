@@ -7,6 +7,7 @@ struct PairDataExtras {
     UInt_t  run_number{}, lb{}, bcid{};
     
     bool    passmu4mu4noL1;
+    bool    passmu4noL1; // pair-level: true if either muon in the pair passes the mu4noL1 (unseeded) leg
     bool    pass2mu4;
     bool    passSeparated; // separated enough for 2mu4 & mu4_mu4noL1 trigger efficiencies to be factorizable into single-muon parts; for now dR > 0.8
     bool    passSeparatedDeta; // separated enough for 2mu4 & mu4_mu4noL1 trigger efficiencies to be factorizable into single-muon parts; for now deta > 0.8

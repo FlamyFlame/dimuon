@@ -293,8 +293,16 @@ AxisInfo ParamsSet::ptlead_axis = {100, 0, 30., nullptr};
 AxisInfo ParamsSet::dr_axis = {100, 0, ParamsSet::deltaR_thrsh[2], nullptr};
 AxisInfo ParamsSet::dphi_axis = {32, -ParamsSet::PI/2., ParamsSet::PI * 3. / 2., nullptr};
 
-std::vector<std::function<bool(float)>> ParamsSet::dphi_cut_funcs {[](float x){return abs(x) < 1.5708;}, [](float x){return abs(x) >= 1.5708;}, [](float x){return abs(x) < 0.6;}};
-std::vector<std::function<bool(float)>> ParamsSet::deta_cut_funcs {[](float x){return abs(x) < 0.8;}, [](float x){return abs(x) >= 0.8;}};
+// Named helper functions instead of lambdas: cling cannot JIT-link lambdas
+// defined at file scope because closure types lack external linkage.
+inline bool ParamsSet_dphi_near  (float x){ return std::abs(x) < 1.5708f; }
+inline bool ParamsSet_dphi_away  (float x){ return std::abs(x) >= 1.5708f; }
+inline bool ParamsSet_dphi_lt0_6 (float x){ return std::abs(x) < 0.6f; }
+inline bool ParamsSet_deta_lt0_8 (float x){ return std::abs(x) < 0.8f; }
+inline bool ParamsSet_deta_ge0_8 (float x){ return std::abs(x) >= 0.8f; }
+
+std::vector<std::function<bool(float)>> ParamsSet::dphi_cut_funcs {ParamsSet_dphi_near, ParamsSet_dphi_away, ParamsSet_dphi_lt0_6};
+std::vector<std::function<bool(float)>> ParamsSet::deta_cut_funcs {ParamsSet_deta_lt0_8, ParamsSet_deta_ge0_8};
 const unsigned int ParamsSet::nCtrBins; // number of coarse bins; each can be studied by itself
 const unsigned int ParamsSet::nPtBins;
 const unsigned int ParamsSet::nPythiaKinRanges;
