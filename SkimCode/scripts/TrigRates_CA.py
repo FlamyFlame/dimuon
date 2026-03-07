@@ -255,17 +255,33 @@ if __name__ == "__main__":
 	evtmax = _parse_evtmax(m_EvtMax)
 
 	# On the grid the PanDA pilot pre-loads legacy Athena modules
-	# (AthenaCommon/Preparation.py, Execution.py, FakeAppMgr.py) that:
-	#   1. activate global Configurable behavior (fixed by ConfigurableCABehavior), and
-	#   2. create legacy instances of AthAlgEvtSeq, AthMasterSeq, etc.
-	#      which linger in Configurable.allConfigurables.  When MainServicesCfg
-	#      then calls AthSequencer('AthAlgEvtSeq') it finds the pre-existing legacy
-	#      object and raises "AthAlgEvtSeq is not a sequence".
-	# Fix: clear the registry immediately after entering CA behavior so that
-	#      MainServicesCfg creates all sequences fresh in CA mode.
+	# (AthenaCommon/Preparation.py, Execution.py, FakeAppMgr.py) before our
+	# script runs.  These cause two problems inside ConfigurableCABehavior:
+	#
+	# Problem 1 – stale AthSequencer type in CFElements:
+	#   CFElements.py executes  AthSequencer = CompFactory.AthSequencer  at
+	#   import time, while still in legacy mode.  CompFactory.__getattr__ is
+	#   mode-aware but the cached name is not, so isSequence() keeps checking
+	#   isinstance(obj, <legacy class>).  When MainServicesCfg then creates
+	#   CompFactory.AthSequencer('AthAlgEvtSeq') in CA mode it produces a
+	#   GaudiConfig2 instance that fails the legacy isinstance check →
+	#   "AthAlgEvtSeq is not a sequence".
+	#   Fix: re-bind CFElements.AthSequencer to the CA class while inside the
+	#   CA context (where CompFactory.__getattr__ already returns the CA class).
+	#
+	# Problem 2 – legacy instances in allConfigurables:
+	#   FakeAppMgr.py creates legacy AthAlgEvtSeq / AthMasterSeq instances.
+	#   Fix: clear the registry so MainServicesCfg builds them fresh in CA mode.
 	with ConfigurableCABehavior():
+		# Fix problem 1: update the stale CFElements cache
+		import AthenaCommon.CFElements as _cfe
+		from AthenaConfiguration.ComponentFactory import CompFactory as _cf
+		_cfe.AthSequencer = _cf.AthSequencer  # now resolves to GaudiConfig2 class
+
+		# Fix problem 2: discard legacy instances from the grid preamble
 		from AthenaCommon.Configurable import Configurable
 		Configurable.allConfigurables.clear()
+
 		cfg = build_cfg(evtmax)
 		sc = cfg.run()
 
