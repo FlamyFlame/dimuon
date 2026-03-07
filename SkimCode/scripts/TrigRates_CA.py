@@ -112,7 +112,7 @@ elif do_hi2024:
 	DiMuon_triggers = ["HLT_2mu4_L12MU3V", "HLT_mu4_mu4noL1_L1MU3V"]
 elif do_pp2024:
 	GRL = ["physics_2024ppRef_25ns.xml"]
-	InputFile = "/eos/user/y/yuhang/data/data24_pp_testfile_AOD/data24_5p36TeV.00488427.physics_Main.merge.AOD.f1529_m2259._lb0128._0004.1"
+	InputFile = "/eos/user/y/yuhang/data/data24_pp_testfile_AOD/data24_5p36TeV.00488427.physics_Main.merge.AOD.f1529_m2259._lb0100._0004.1"
 	Muon_triggers = ["HLT_mu4_L1MU3V",
 									 "HLT_mu6_L1MU3V",
 									 "HLT_mu8_L1MU5VF",
