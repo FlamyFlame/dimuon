@@ -137,8 +137,12 @@ void PythiaCategorizedPlottingBaseClass::Run(){
         std::string panel_descr_text = subpl_titles[ksign];
         if(norm_unity)  panel_descr_text += ", unity";
 
+        const std::string pdf_label = isPrivate
+            ? "nCTEQ15npFullNuc_208_82"
+            : "nNNPDF30_nlo_as_0118_A208_Z82";
+
         tbox->AddText(panel_descr_text.c_str());
-        tbox->AddText("nCTEQ15npFullNuc_208_82");
+        tbox->AddText(pdf_label.c_str());
         tbox->AddText("p_{T}^{#mu} > 4GeV, |#eta^{#mu}| < 2.4");
 
         // ---------- THStack ----------

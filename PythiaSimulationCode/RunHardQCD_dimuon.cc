@@ -189,8 +189,8 @@ int main(int argc, char **argv)
     pythia.readString("Beams:idA = 2112");
     pythia.readString("Beams:idB = 2112");
   }
-  // pythia.readString("PDF:pSet = LHAPDF6:nCTEQ15npFullNuc_208_82/0001"); // Set PDFs
-  pythia.readString("PDF:pSet = LHAPDF6:nNNPDF30_nlo_as_0118_A208_Z82/0001"); // Set PDFs
+  // pythia.readString("PDF:pSet = LHAPDF6:nCTEQ15npFullNuc_208_82/0001"); // Set PDFs --> originally used in private sample
+  pythia.readString("PDF:pSet = LHAPDF6:nNNPDF30_nlo_as_0118_A208_Z82/0001"); // Set PDFs --> used in centrally-produced sample
   // Enable photon flux sampling from a PDF. Currently set to muon EPA but will be re-pointed to custom nuclear
   //pythia.readString("PDF:lepton2gamma = on");
 
