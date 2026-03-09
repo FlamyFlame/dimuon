@@ -227,7 +227,20 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputCentrProd_Pythia
         ami_weight_kn_beam.at(i).assign(nBeamTypes, 0.);
     }
 
-    const std::string ecom_str = (std::abs(self().E_COM - 5.36) < 0.01) ? "5p36TeV" : "5p02TeV";
+    std::string ecom_input_tag;
+    std::string ami_campaign_tag;
+    std::string ami_ecom_tag;
+    if (std::abs(self().E_COM - 5.36) < 0.01) {
+        ecom_input_tag = "5p36TeV";
+        ami_campaign_tag = "mc23";
+        ami_ecom_tag = "5p36TeV";
+    } else if (std::abs(self().E_COM - 5.02) < 0.01) {
+        ecom_input_tag = "5TeV";
+        ami_campaign_tag = "mc15";
+        ami_ecom_tag = "5TeV";
+    } else {
+        throw std::runtime_error("InitInputCentrProd: E_COM must be 5.02 or 5.36 TeV.");
+    }
 
     int ikin   = kn_batch;
     int kin_lo = static_cast<int>(kinRanges.at(ikin));
@@ -235,7 +248,7 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputCentrProd_Pythia
 
     for (int ibeam = 0; ibeam < nBeamTypes; ibeam++) {
         TChain* ch = new TChain("HeavyIonD3PD", "HeavyIonD3PD");
-        std::string path = py_dir + "pythia_" + ecom_str + "_" + beam_names.at(ibeam)
+        std::string path = py_dir + "pythia_" + ecom_input_tag + "_" + beam_names.at(ibeam)
             + "_hQCD_DiMu_pTH" + std::to_string(kin_lo) + "_" + std::to_string(kin_hi) + ".TRUTH0.NTUP.root";
         std::ifstream f(path);
         if (!f.good()) {
@@ -264,7 +277,7 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputCentrProd_Pythia
     // AMI weights for kn_batch only
     for (int ibeam = 0; ibeam < nBeamTypes; ibeam++) {
         if (!evChains_kn_beam.at(ikin).at(ibeam)) continue;
-        std::string ami_path = py_dir + "ami_info/ami_info_mc23_" + ecom_str + "_Py8EG_A14_" + beam_names.at(ibeam)
+        std::string ami_path = py_dir + "ami_info/ami_info_" + ami_campaign_tag + "_" + ami_ecom_tag + "_Py8EG_A14_" + beam_names.at(ibeam)
             + "_hQCD_DiMu_pTH" + std::to_string(kin_lo) + "_" + std::to_string(kin_hi) + ".txt";
         std::ifstream ami(ami_path);
         if (!ami.good()) {
