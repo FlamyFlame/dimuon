@@ -8,6 +8,7 @@
 #include <TError.h>
 #include <TLatex.h>
 #include <TPad.h>
+#include <TRatioPlot.h>
 #include <array>
 #include <cmath>
 #include <iomanip>
@@ -179,53 +180,127 @@ protected:
             const std::string h_truth_name = "h_truth_" + var + "_single_b" + wp_filter;
             const std::string h_reco_name  = "h_"       + var + "_single_b" + wp_filter;
 
-            TH1* h_truth = GetHistUnmixed<TH1>(h_truth_name);
-            TH1* h_reco  = GetHistUnmixed<TH1>(h_reco_name);
+            TH1* h_truth_in = GetHistUnmixed<TH1>(h_truth_name);
+            TH1* h_reco_in  = GetHistUnmixed<TH1>(h_reco_name);
 
-            if (!h_truth) {
+            if (!h_truth_in) {
                 std::cerr << "[PlotTruthRecoCompr] WARNING: missing " << h_truth_name << "\n";
                 continue;
             }
-            if (!h_reco) {
+            if (!h_reco_in) {
                 std::cerr << "[PlotTruthRecoCompr] WARNING: missing " << h_reco_name << "\n";
                 continue;
             }
 
+            // Work with detached clones so styling/division does not mutate input-file objects.
+            TH1* h_truth = dynamic_cast<TH1*>(h_truth_in->Clone((h_truth_name + "_clone").c_str()));
+            TH1* h_reco  = dynamic_cast<TH1*>(h_reco_in->Clone((h_reco_name + "_clone").c_str()));
+            if (!h_truth || !h_reco) {
+                std::cerr << "[PlotTruthRecoCompr] WARNING: failed to clone input histograms for " << var << "\n";
+                delete h_truth;
+                delete h_reco;
+                continue;
+            }
+            h_truth->SetDirectory(nullptr);
+            h_reco->SetDirectory(nullptr);
+            if (h_truth->GetSumw2N() == 0) h_truth->Sumw2();
+            if (h_reco->GetSumw2N() == 0) h_reco->Sumw2();
+
             TCanvas c("c", "c", 900, 760);
             c.cd();
 
-            TPad* pad_top = new TPad("pad_top", "pad_top", 0.0, 0.30, 1.0, 1.0);
-            TPad* pad_bot = new TPad("pad_bot", "pad_bot", 0.0, 0.00, 1.0, 0.30);
-            pad_top->SetBottomMargin(0.02);
-            pad_bot->SetTopMargin(0.02);
-            pad_bot->SetBottomMargin(0.30);
-            pad_top->SetTicks(1, 1);
-            pad_bot->SetTicks(1, 1);
-            pad_top->Draw();
-            pad_bot->Draw();
-
             bool logy = LogAx(var, cfg);
-            pad_top->cd();
-            gPad->SetLogy(logy);
 
-            // Style (keep minimal; you can customize)
             h_truth->SetLineWidth(2);
             h_truth->SetLineColor(kBlack);
             h_truth->SetStats(0);
+            h_truth->SetTitle("");
 
             h_reco->SetLineWidth(2);
             h_reco->SetLineColor(kRed);
             h_reco->SetStats(0);
+            h_reco->SetTitle("");
 
-            h_truth->SetTitle("");
-            h_truth->GetXaxis()->SetLabelSize(0.0);
+            auto min_positive_bin_content = [](const TH1* h) {
+                double vmin = std::numeric_limits<double>::max();
+                if (!h) return vmin;
+                for (int ib = 1; ib <= h->GetNbinsX(); ++ib) {
+                    const double v = h->GetBinContent(ib);
+                    if (v > 0.0 && v < vmin) vmin = v;
+                }
+                return vmin;
+            };
 
-            // Draw with sensible max
+            // Build ratio as h_reco/h_truth using TH1::Divide semantics (symmetric errors).
+            TRatioPlot rp(h_reco, h_truth, "divsym");
+            rp.SetLeftMargin(0.12);
+            rp.SetRightMargin(0.05);
+            rp.SetUpTopMargin(0.08);
+            rp.SetUpBottomMargin(0.02);
+            rp.SetLowTopMargin(0.02);
+            rp.SetLowBottomMargin(0.32);
+            rp.SetH1DrawOpt("hist");
+            rp.SetH2DrawOpt("hist");
+            rp.SetGraphDrawOpt("PE1"); // points with error bars in ratio pad
+            rp.SetSplitFraction(0.30);
+            rp.SetSeparationMargin(0.02);
+            rp.Draw();
+
+            if (rp.GetUpperPad()) {
+                rp.GetUpperPad()->SetTicks(1, 1);
+                rp.GetUpperPad()->SetLogy(logy);
+                rp.GetUpperPad()->cd();
+            }
+
             const double maxy = std::max(h_truth->GetMaximum(), h_reco->GetMaximum());
-            h_truth->SetMaximum(1.15 * maxy);
+            if (maxy > 0.0 && rp.GetUpperRefYaxis()) {
+                if (logy) {
+                    const double min_truth = min_positive_bin_content(h_truth);
+                    const double min_reco = min_positive_bin_content(h_reco);
+                    const double miny = (min_truth < min_reco) ? min_truth : min_reco;
+                    if (std::isfinite(miny) && miny > 0.0) {
+                        rp.GetUpperRefYaxis()->SetRangeUser(0.5 * miny, 2.0 * maxy);
+                    } else {
+                        rp.GetUpperRefYaxis()->SetRangeUser(1e-6, 2.0 * maxy);
+                    }
+                } else {
+                    rp.GetUpperRefYaxis()->SetRangeUser(0.0, 1.15 * maxy);
+                }
+                rp.GetUpperRefYaxis()->SetTitleSize(0.050);
+                rp.GetUpperRefYaxis()->SetTitleSize(0.038);
+                rp.GetUpperRefYaxis()->SetLabelSize(0.030);
+                rp.GetUpperRefYaxis()->SetTitleOffset(1.15);
+            }
+            if (rp.GetUpperRefXaxis()) {
+                rp.GetUpperRefXaxis()->SetTitleSize(0.0);
+                rp.GetUpperRefXaxis()->SetLabelSize(0.0);
+            }
 
-            h_truth->Draw("hist");
-            h_reco->Draw("hist same");
+            if (rp.GetLowerRefYaxis()) {
+                rp.GetLowerRefYaxis()->SetTitle("Reco/Truth");
+                if (var == "minv_zoomin" || var == "dr_zoomin") {
+                    rp.GetLowerRefYaxis()->SetRangeUser(0.0, 2.0);
+                    // 5 major divisions -> labels at 0.0, 0.5, 1.0, 1.5, 2.0
+                    rp.GetLowerRefYaxis()->SetNdivisions(405);
+                } else {
+                    // keep pair_pt behavior unchanged
+                    rp.GetLowerRefYaxis()->SetRangeUser(0.0, 2.0);
+                    rp.GetLowerRefYaxis()->SetNdivisions(505);
+                }
+                rp.GetLowerRefYaxis()->SetTitleSize(0.050);
+                rp.GetLowerRefYaxis()->SetTitleOffset(0.95);
+                rp.GetLowerRefYaxis()->SetLabelSize(0.040);
+            }
+            if (rp.GetLowerRefXaxis()) {
+                rp.GetLowerRefXaxis()->SetTitle(h_truth->GetXaxis()->GetTitle());
+                rp.GetLowerRefXaxis()->SetTitleSize(0.060);
+                rp.GetLowerRefXaxis()->SetTitleOffset(1.10);
+                rp.GetLowerRefXaxis()->SetLabelSize(0.050);
+            }
+
+            if (rp.GetUpperPad()) {
+                rp.GetUpperPad()->cd();
+            }
 
             TLegend* leg = new TLegend(0.62, 0.7, 0.88, 0.85);
             leg->SetBorderSize(0);
@@ -239,31 +314,14 @@ protected:
             lab.SetTextSize(0.045);
             lab.DrawLatex(0.12, 0.92, (var + " truth vs reco").c_str());
 
-            pad_bot->cd();
-            TH1* h_ratio = dynamic_cast<TH1*>(h_reco->Clone(("h_ratio_" + var).c_str()));
-            h_ratio->SetDirectory(nullptr);
-            h_ratio->SetStats(0);
-            h_ratio->Divide(h_truth);
-            h_ratio->SetTitle("");
-            h_ratio->GetYaxis()->SetTitle("Reco/Truth");
-            h_ratio->GetYaxis()->SetNdivisions(505);
-            h_ratio->GetYaxis()->SetTitleSize(0.10);
-            h_ratio->GetYaxis()->SetTitleOffset(0.45);
-            h_ratio->GetYaxis()->SetLabelSize(0.09);
-            h_ratio->GetYaxis()->SetRangeUser(0.0, 2.0);
-            h_ratio->GetXaxis()->SetTitle(h_truth->GetXaxis()->GetTitle());
-            h_ratio->GetXaxis()->SetTitleSize(0.12);
-            h_ratio->GetXaxis()->SetTitleOffset(0.95);
-            h_ratio->GetXaxis()->SetLabelSize(0.10);
-            h_ratio->SetLineColor(kBlue + 1);
-            h_ratio->SetMarkerColor(kBlue + 1);
-            h_ratio->SetMarkerStyle(20);
-            h_ratio->Draw("E1");
-
-            delete h_ratio;
+            c.Modified();
+            c.Update();
 
             const std::string out = outdir + var + "_truth_reco_compr" + wp_suffix + ".png";
             c.SaveAs(out.c_str());
+
+            delete h_truth;
+            delete h_reco;
         }
     }
 
