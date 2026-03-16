@@ -38,7 +38,9 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_PythiaCore() {
     } else {
         const std::string ecom_str = (std::abs(self().E_COM - 5.36) < 0.01) ? "5p36TeV" : "5p02TeV";
         const std::string ecom_subdir = (std::abs(self().E_COM - 5.36) < 0.01) ? "pythia_5p36TeV" : "pythia_5TeV";
-        py_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_truth_full_sample/" + ecom_subdir + "/";
+        const std::string pythia_local_dir = "/usatlas/u/yuhanguo/dcachearea/pythia_truth_full_sample/";
+        const std::string pythia_pnfs_dir = "/pnfs/usatlas.bnl.gov/users/yuhanguo/pythia_truth_full_sample/";
+        py_dir = (getUseLocal() ? pythia_local_dir : pythia_pnfs_dir) + ecom_subdir + "/";
         nKinRanges = 6;
         kin_dirs = {"k0/", "k1/", "k2/", "k3/", "k4/", "k5/"};
         kinRanges = {8.f, 14.f, 24.f, 40.f, 70.f, 125.f, 300.f};
@@ -50,6 +52,19 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_PythiaCore() {
             throw std::runtime_error("PythiaAlgCoreT (non-private): kn_batch=" + std::to_string(kn_batch)
                 + " (from constructor batch_num=" + std::to_string(batch_num)
                 + ") is out of range [0," + std::to_string(nKinRanges) + ").");
+
+        if (getUseLocal()) {
+            if (std::abs(self().E_COM - 5.02) > 0.01) {
+                throw std::runtime_error("PythiaAlgCoreT (non-private): useLocal=true is only supported for 5.02 TeV.");
+            }
+            if (kn_batch != 3) {
+                throw std::runtime_error(
+                    "PythiaAlgCoreT (non-private): local file does not exist for this kn batch. "
+                    "Use the 40-70 GeV kn batch (kn=3) when useLocal=true.");
+            }
+        }
+
+        std::cout << "PythiaAlgCoreT: useLocal=" << getUseLocal() << ", input_dir=" << py_dir << std::endl;
         outfile_name     = "muon_pairs_pythia_" + ecom_str + "_kn" + std::to_string(kn_batch);
         outhistfile_name = "hists_pythia_ntuple_processing_" + ecom_str + "_kn" + std::to_string(kn_batch);
     }
@@ -352,13 +367,33 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInput_PythiaCore() {
 template <class PairT, class MuonT, class Derived, class... Extras>
 void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::OutputTreePathHook() {
     std::string apply_suffix = turn_data_resonance_cuts_on ? "_with_data_resonance_cuts" : "_no_data_resonance_cuts";
-    this->output_file_path = (py_dir.empty() ? "./" : py_dir) + outfile_name + apply_suffix + ".root";
+    std::string local_suffix = getUseLocal() ? "_local_batch" : "";
+
+    std::string output_dir;
+    if (getIsPrivate()) {
+        output_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_private_sample/";
+    } else {
+        const std::string ecom_subdir = (std::abs(self().E_COM - 5.36) < 0.01) ? "pythia_5p36TeV" : "pythia_5TeV";
+        output_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_truth_full_sample/" + ecom_subdir + "/";
+    }
+
+    this->output_file_path = output_dir + outfile_name + apply_suffix + local_suffix + ".root";
 }
 
 template <class PairT, class MuonT, class Derived, class... Extras>
 void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::OutputHistPathHook() {
     std::string apply_suffix = turn_data_resonance_cuts_on ? "_with_data_resonance_cuts" : "_no_data_resonance_cuts";
-    this->output_hist_file_path = (py_dir.empty() ? "./" : py_dir) + outhistfile_name + apply_suffix + ".root";
+    std::string local_suffix = getUseLocal() ? "_local_batch" : "";
+
+    std::string output_dir;
+    if (getIsPrivate()) {
+        output_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_private_sample/";
+    } else {
+        const std::string ecom_subdir = (std::abs(self().E_COM - 5.36) < 0.01) ? "pythia_5p36TeV" : "pythia_5TeV";
+        output_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_truth_full_sample/" + ecom_subdir + "/";
+    }
+
+    this->output_hist_file_path = output_dir + outhistfile_name + apply_suffix + local_suffix + ".root";
 }
 
 // ---------------------------------------------------------------------------
@@ -539,6 +574,8 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook() {
                         p->m1.ev_num = static_cast<int>(jevent);
                         p->m2.ev_num = static_cast<int>(jevent);
                         p->weight = w_norm;
+                        p->m1.ev_weight = p->weight;
+                        p->m2.ev_weight = p->weight;
                         p->crossx = p->weight * N_beam / efficiency;
 
                         h_cutAcceptanceRef()[p->m1.truth_charge != p->m2.truth_charge]->Fill(
@@ -640,6 +677,8 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook() {
                 p->m1.ev_num = static_cast<int>(jevent);
                 p->m2.ev_num = static_cast<int>(jevent);
                 p->weight = ev_weight / njobs_all_files_combined.at(ikin);
+                p->m1.ev_weight = p->weight;
+                p->m2.ev_weight = p->weight;
                 p->crossx = p->weight * nevents.at(ikin) / efficiency;
 
                 h_cutAcceptanceRef()[p->m1.truth_charge != p->m2.truth_charge]->Fill(
