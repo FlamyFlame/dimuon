@@ -138,11 +138,19 @@ public:
             const double w2 = muon_sampling_weight[static_cast<std::size_t>(idx2)];
             if (!(w1 > 0.0) || !(w2 > 0.0) || !std::isfinite(w1) || !std::isfinite(w2)) return false;
 
+            if (in_m1.ev_weight == 0.0f || in_m2.ev_weight == 0.0f)
+                throw std::runtime_error("[Mixer] ev_weight is zero on input muon. Was the single-muon tree produced with ev_weight filled?");
+
             const double inv_pair_weight = 1.0 / (w1 * w2);
             if (!(inv_pair_weight > 0.0) || !std::isfinite(inv_pair_weight)) return false;
 
-            pair.weight = inv_pair_weight;
-            pair.crossx = inv_pair_weight;
+            const double final_weight = inv_pair_weight
+                * static_cast<double>(in_m1.ev_weight)
+                * static_cast<double>(in_m2.ev_weight);
+            if (!std::isfinite(final_weight) || !(final_weight > 0.0)) return false;
+
+            pair.weight = final_weight;
+            pair.crossx = final_weight;
             pair.m1 = m1;
             pair.m2 = m2;
 
@@ -285,6 +293,7 @@ private:
         out.truth_phi = in.truth_phi;
         out.truth_bar = in.truth_bar;
         out.truth_charge = in.truth_charge;
+        out.ev_weight = in.ev_weight;
 
         out.pass_medium = in.pass_medium;
         out.reco_match = in.reco_match;
