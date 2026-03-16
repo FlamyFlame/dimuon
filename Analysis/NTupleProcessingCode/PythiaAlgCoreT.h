@@ -34,6 +34,7 @@ protected:
     bool is_fullsim = false;
     bool is_fullsim_overlay = false;
     bool perform_truth = true;
+    bool useLocal = false;
 
     int batch_num = 0;
     int kn_batch = 0;
@@ -114,7 +115,9 @@ protected:
 
     bool getIsPrivate() const { return self().isPrivate; }
     bool getPerformTruth() const { return perform_truth; }
+    bool getUseLocal() const { return useLocal; }
     void setPerformTruth(bool v) { perform_truth = v; }
+    void setUseLocal(bool v) { useLocal = v; }
 
     TChain* GetChainForBranchSetup() const {
         if (getIsPrivate() && evChain) return evChain;
@@ -224,8 +227,9 @@ public:
 
     bool turn_data_resonance_cuts_on = false;
 
-    explicit PythiaAlgCoreT(int batch_num_input)
+    explicit PythiaAlgCoreT(int batch_num_input, bool useLocal_input = false)
         : batch_num(batch_num_input)
+        , useLocal(useLocal_input)
     {}
 
     void ProcessDataHook();
