@@ -1,18 +1,21 @@
 #!/bin/bash
 # Run Pythia truth analysis (CRTP). Queue index maps to kinematic range / batch.
-# Usage: ./run_pythia_truth_kn.sh <kn_index> [is_private] [e_com]
+# Usage: ./run_pythia_truth_kn.sh <kn_index> [is_private] [e_com] [use_local]
 #   kn_index:   0-5 (kinematic range for non-private); for private batch_num = kn_index + 1 (valid: 0,1 -> batch 1,2)
 #   is_private: 0 = non-private (central), 1 = private (default 0)
 #   e_com:      center-of-mass energy in TeV for non-private mode (5.36 or 5.02; default 5.36)
+#   use_local:  1 = use local input path (non-private 5.02, kn=3 only), 0 = use pnfs inputs (default 0)
 #
 # Examples:
 #   ./run_pythia_truth_kn.sh 0        -> kn=0, non-private, e_com=5.36
 #   ./run_pythia_truth_kn.sh 2 1      -> batch_num=3, private
-#   ./run_pythia_truth_kn.sh 4 0 5.02 -> kn=4, non-private, e_com=5.02
+#   ./run_pythia_truth_kn.sh 4 0 5.02   -> kn=4, non-private, e_com=5.02, use_local=0
+#   ./run_pythia_truth_kn.sh 3 0 5.02 1 -> kn=3, non-private local 40-70 sample
 
 kn=${1:-0}
 is_private=${2:-0}
 e_com=${3:-5.36}
+use_local=${4:-0}
 
 cd "$(dirname "$0")"
 
@@ -28,11 +31,11 @@ else
 	batch_num=$kn
 fi
 
-echo "Starting PythiaTruthAnalysis: kn=${kn}, is_private=${is_private}, batch_num=${batch_num}, e_com=${e_com}, nevents_max=${nevents_max}"
+echo "Starting PythiaTruthAnalysis: kn=${kn}, is_private=${is_private}, batch_num=${batch_num}, e_com=${e_com}, use_local=${use_local}, nevents_max=${nevents_max}"
 
 root -b -l << EOF
 	.L PythiaAnalysisClasses.h
-	PythiaTruthAnalysis pw($batch_num, (bool)$is_private, $e_com);
+	PythiaTruthAnalysis pw($batch_num, (bool)$is_private, $e_com, (bool)$use_local);
 	pw.Run();
 	.q;
 EOF
