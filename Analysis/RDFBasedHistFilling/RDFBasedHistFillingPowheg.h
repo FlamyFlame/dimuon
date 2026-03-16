@@ -131,9 +131,11 @@ protected:
 
     // --- mu-pair reco efficiency projection-graph configurations ---
     std::vector<float> dr_bins_edges_for_reco_effcy = {0.0f, 0.2f, 0.4f, 0.6f, 1.0f};
+    std::vector<float> dr_bins_edges_for_reco_effcy_mixed_wide = {0.0f, 1.0f, 2.5f, 4.0f};
     std::vector<float> pair_pT_bins_edges_for_reco_effcy_dR = {8.0f, 12.0f, 20.0f, std::numeric_limits<float>::max()};
 
     std::vector<std::pair<float, float>> dr_ranges_for_reco_effcy;
+    std::vector<std::pair<float, float>> dr_ranges_for_reco_effcy_mixed_wide;
     std::vector<std::pair<float, float>> pair_pT_ranges_for_reco_effcy_dR;
 
     // tuple: (varx, vary, project_y_axis, projection_ranges)
