@@ -27,7 +27,6 @@ public:
     int run_year{17};
     std::string input_file_path{};
     std::string output_file_path{};
-    double truth_pt_sampling_alpha{2.5};
     ULong64_t rng_seed{0};
 
     explicit PowhegSingleMuonPairMixer(const std::string& mode = "bb") : mc_mode(mode) {}
@@ -46,7 +45,8 @@ public:
         }
         std::cout << "[Mixer] output   = " << output_file_path << std::endl;
           std::cout << "[Mixer] target pairs = " << nmixed_pairs_target << std::endl;
-          std::cout << "[Mixer] muon sampling alpha (truth_pt^alpha) = " << truth_pt_sampling_alpha << std::endl;
+          std::cout << "[Mixer] muon sampling: uniform (no pT weighting)" << std::endl;
+          std::cout << "[Mixer] pair filter: truth_minv in [1.0, 3.0] GeV" << std::endl;
 
         const std::size_t out_slash = output_file_path.find_last_of('/');
         if (out_slash != std::string::npos){
@@ -91,41 +91,23 @@ public:
 
         TRandom3 rng(rng_seed);
 
-        std::vector<double> muon_sampling_weight(static_cast<std::size_t>(nmuons), 0.0);
-        std::vector<double> weight_cdf(static_cast<std::size_t>(nmuons), 0.0);
-        double cumsum = 0.0;
         for (Long64_t imu = 0; imu < nmuons; ++imu){
             muon_chain.GetEntry(imu);
             muon_cache[static_cast<std::size_t>(imu)] = *in_muon;
-            const double truth_pt = std::max(0.0, static_cast<double>(in_muon->truth_pt));
-            double w = std::pow(truth_pt, truth_pt_sampling_alpha);
-            if (!std::isfinite(w) || w < 0.0) w = 0.0;
-            muon_sampling_weight[static_cast<std::size_t>(imu)] = w;
-            cumsum += w;
-            weight_cdf[static_cast<std::size_t>(imu)] = cumsum;
-        }
-
-        if (!(cumsum > 0.0)){
-            throw std::runtime_error("[Mixer] Total muon sampling weight <= 0. Check truth_pt input.");
         }
 
         const Long64_t benchmark_step_pairs = 10000;
         const auto t_start = std::chrono::steady_clock::now();
         auto t_last_benchmark = t_start;
 
-        const Long64_t max_attempts = std::max<Long64_t>(1000000, nmixed_pairs_target * 200);
+        const Long64_t max_attempts = std::max<Long64_t>(1000000, nmixed_pairs_target * 10000);
 
-        auto sample_weighted_index = [&rng, &weight_cdf](){
-            const double r = rng.Uniform(0.0, weight_cdf.back());
-            auto it = std::lower_bound(weight_cdf.begin(), weight_cdf.end(), r);
-            if (it == weight_cdf.end()) return static_cast<Long64_t>(weight_cdf.size() - 1);
-            return static_cast<Long64_t>(std::distance(weight_cdf.begin(), it));
+        auto sample_uniform_index = [&rng, nmuons]() -> Long64_t {
+            return static_cast<Long64_t>(rng.Uniform(0.0, static_cast<double>(nmuons)));
         };
 
         auto fill_one_pair = [&](const MuonPowhegFullSimWTruth& in_m1,
-                                 const MuonPowhegFullSimWTruth& in_m2,
-                                 Long64_t idx1,
-                                 Long64_t idx2){
+                                 const MuonPowhegFullSimWTruth& in_m2){
 
             MuonPowhegFullSimNoTruth m1 = ConvertToNoTruth(in_m1);
             MuonPowhegFullSimNoTruth m2 = ConvertToNoTruth(in_m2);
@@ -134,18 +116,11 @@ public:
 
             MuonPairPowhegFullSimNoTruth pair;
             pair.Clear();
-            const double w1 = muon_sampling_weight[static_cast<std::size_t>(idx1)];
-            const double w2 = muon_sampling_weight[static_cast<std::size_t>(idx2)];
-            if (!(w1 > 0.0) || !(w2 > 0.0) || !std::isfinite(w1) || !std::isfinite(w2)) return false;
 
             if (in_m1.ev_weight == 0.0f || in_m2.ev_weight == 0.0f)
                 throw std::runtime_error("[Mixer] ev_weight is zero on input muon. Was the single-muon tree produced with ev_weight filled?");
 
-            const double inv_pair_weight = 1.0 / (w1 * w2);
-            if (!(inv_pair_weight > 0.0) || !std::isfinite(inv_pair_weight)) return false;
-
-            const double final_weight = inv_pair_weight
-                * static_cast<double>(in_m1.ev_weight)
+            const double final_weight = static_cast<double>(in_m1.ev_weight)
                 * static_cast<double>(in_m2.ev_weight);
             if (!std::isfinite(final_weight) || !(final_weight > 0.0)) return false;
 
@@ -155,6 +130,9 @@ public:
             pair.m2 = m2;
 
             pair.Update();
+
+            if (pair.truth_minv < 1.0f || pair.truth_minv > 3.0f)
+                return false;
 
             pair.pair_pass_medium = pair.m1.pass_medium && pair.m2.pass_medium;
             pair.pair_pass_tight = pair.m1.pass_tight && pair.m2.pass_tight;
@@ -174,7 +152,7 @@ public:
         while (nmixed_pairs_generated < nmixed_pairs_target && attempts < max_attempts){
             ++attempts;
 
-            const Long64_t idx1 = sample_weighted_index();
+            const Long64_t idx1 = sample_uniform_index();
 
             const MuonPowhegFullSimWTruth& first_muon = muon_cache[static_cast<std::size_t>(idx1)];
             const int first_ev_num = first_muon.ev_num;
@@ -184,7 +162,7 @@ public:
             bool found_distinct_second = false;
             constexpr int max_second_resample = 1000;
             for (int iresample = 0; iresample < max_second_resample; ++iresample){
-                const Long64_t idx2_candidate = sample_weighted_index();
+                const Long64_t idx2_candidate = sample_uniform_index();
                 const MuonPowhegFullSimWTruth& second_candidate = muon_cache[static_cast<std::size_t>(idx2_candidate)];
 
                 if (second_candidate.ev_num == first_ev_num && second_candidate.ind == first_ind) continue;
@@ -196,7 +174,7 @@ public:
             if (!found_distinct_second) continue;
 
             const MuonPowhegFullSimWTruth& second_muon = muon_cache[static_cast<std::size_t>(idx2)];
-            const bool filled = fill_one_pair(first_muon, second_muon, idx1, idx2);
+            const bool filled = fill_one_pair(first_muon, second_muon);
             if (!filled) continue;
 
             ++nmixed_pairs_generated;
@@ -228,7 +206,12 @@ public:
                   << " / " << nmixed_pairs_target << std::endl;
 
         if (nmixed_pairs_generated < nmixed_pairs_target){
-            std::cerr << "[Mixer] WARNING: target not reached before max attempts." << std::endl;
+            throw std::runtime_error(
+                "[Mixer] ERROR: target not reached before max attempts ("
+                + std::to_string(attempts) + " attempts, "
+                + std::to_string(nmixed_pairs_generated) + " / "
+                + std::to_string(nmixed_pairs_target) + " pairs filled). "
+                "Increase max_attempts or decrease target_pairs.");
         }
 
         out_file.cd();
@@ -308,8 +291,7 @@ void run_powheg_single_muon_pair_mixing(
     int run_year = 17,
     const std::string& input_file = "",
     const std::string& output_file = "",
-    ULong64_t seed = 0,
-    double truth_pt_sampling_alpha = 2.5)
+    ULong64_t seed = 0)
 {
     PowhegSingleMuonPairMixer mixer(mc_mode);
     mixer.nmixed_pairs_target = target_pairs;
@@ -318,6 +300,5 @@ void run_powheg_single_muon_pair_mixing(
     mixer.rng_seed = seed;
     mixer.input_file_path = input_file;
     mixer.output_file_path = output_file;
-    mixer.truth_pt_sampling_alpha = truth_pt_sampling_alpha;
     mixer.Run();
 }
