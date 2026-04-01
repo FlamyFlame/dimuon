@@ -1,0 +1,219 @@
+<!-- This document is created by GoodRunsListWriter. -->
+<LumiRangeCollection>
+<NamedLumiRange>
+<Name>PHYS_HeavyIonP_All_Good</Name>
+<Version>20</Version>
+<Metadata Name="ARQEquivalentQuery">find run data25_hi.periodR and dq PHYS_HeavyIonP_All_Good \TRIG_HLT_IDT_BSPOT_INVALID_STATUS DEFECTS#DetStatus-v140-pro53-01 g and dq TRIG_HLT_IDT_BSPOT_INVALID_STATUS DEFECTS#DetStatus-v140-pro53-01 r | find run data25_hi.periodS and dq PHYS_HeavyIonP_All_Good \TRIG_HLT_IDT_BSPOT_INVALID_STATUS DEFECTS#DetStatus-v140-pro53-01 g and dq TRIG_HLT_IDT_BSPOT_INVALID_STATUS DEFECTS#DetStatus-v140-pro53-01 r | find run data25_hi.periodT and dq PHYS_HeavyIonP_All_Good \TRIG_HLT_IDT_BSPOT_INVALID_STATUS DEFECTS#DetStatus-v140-pro53-01 g and dq TRIG_HLT_IDT_BSPOT_INVALID_STATUS DEFECTS#DetStatus-v140-pro53-01 r</Metadata>
+<Metadata Name="Query">Period: data25_hi.R; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v140-pro53-01; Ignoring TRIG_HLT_IDT_BSPOT_INVALID_STATUS | Period: data25_hi.S; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v140-pro53-01; Ignoring TRIG_HLT_IDT_BSPOT_INVALID_STATUS | Period: data25_hi.T; Defect: PHYS_HeavyIonP_All_Good; Defect tag: DetStatus-v140-pro53-01; Ignoring TRIG_HLT_IDT_BSPOT_INVALID_STATUS</Metadata>
+<Metadata Name="RunList">510493,510510,510547,510583,510587,510594,510639,510703,510732,510816,510878,510992,511020,511026,511035,511094,511115,511132,511151,511244,511278,511382,511399,511436,511463,511506,511519,511552,511617,511650,511658,511783,511857,511866,511894,511902,511920,511967,511978,512013,512028,512049</Metadata>
+<LumiBlockCollection>
+<Run>510493</Run>
+<LBRange Start="220" End="235"/>
+<LBRange Start="237" End="356"/>
+<LBRange Start="418" End="425"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>510510</Run>
+<LBRange Start="146" End="160"/>
+<LBRange Start="162" End="172"/>
+<LBRange Start="174" End="198"/>
+<LBRange Start="200" End="261"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>510547</Run>
+<LBRange Start="341" End="444"/>
+<LBRange Start="446" End="525"/>
+<LBRange Start="527" End="584"/>
+<LBRange Start="586" End="600"/>
+<LBRange Start="603" End="707"/>
+<LBRange Start="709" End="776"/>
+<LBRange Start="778" End="875"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>510583</Run>
+<LBRange Start="245" End="674"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>510587</Run>
+<LBRange Start="150" End="398"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>510594</Run>
+<LBRange Start="179" End="284"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>510639</Run>
+<LBRange Start="147" End="633"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>510703</Run>
+<LBRange Start="118" End="561"/>
+<LBRange Start="563" End="649"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>510732</Run>
+<LBRange Start="175" End="306"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>510816</Run>
+<LBRange Start="119" End="119"/>
+<LBRange Start="122" End="703"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>510878</Run>
+<LBRange Start="542" End="1053"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>510992</Run>
+<LBRange Start="434" End="697"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511020</Run>
+<LBRange Start="127" End="601"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511026</Run>
+<LBRange Start="173" End="647"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511035</Run>
+<LBRange Start="147" End="659"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511094</Run>
+<LBRange Start="122" End="271"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511115</Run>
+<LBRange Start="169" End="527"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511132</Run>
+<LBRange Start="109" End="150"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511151</Run>
+<LBRange Start="107" End="398"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511244</Run>
+<LBRange Start="110" End="476"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511278</Run>
+<LBRange Start="187" End="542"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511382</Run>
+<LBRange Start="137" End="172"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511399</Run>
+<LBRange Start="119" End="287"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511436</Run>
+<LBRange Start="118" End="172"/>
+<LBRange Start="174" End="608"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511463</Run>
+<LBRange Start="132" End="259"/>
+<LBRange Start="261" End="290"/>
+<LBRange Start="293" End="439"/>
+<LBRange Start="441" End="501"/>
+<LBRange Start="503" End="605"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511506</Run>
+<LBRange Start="135" End="650"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511519</Run>
+<LBRange Start="115" End="465"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511552</Run>
+<LBRange Start="271" End="569"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511617</Run>
+<LBRange Start="121" End="279"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511650</Run>
+<LBRange Start="3" End="111"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511658</Run>
+<LBRange Start="286" End="286"/>
+<LBRange Start="288" End="699"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511783</Run>
+<LBRange Start="126" End="477"/>
+<LBRange Start="479" End="499"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511857</Run>
+<LBRange Start="229" End="342"/>
+<LBRange Start="344" End="441"/>
+<LBRange Start="444" End="746"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511866</Run>
+<LBRange Start="126" End="371"/>
+<LBRange Start="373" End="493"/>
+<LBRange Start="495" End="656"/>
+<LBRange Start="658" End="664"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511894</Run>
+<LBRange Start="129" End="557"/>
+<LBRange Start="559" End="601"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511902</Run>
+<LBRange Start="119" End="282"/>
+<LBRange Start="284" End="607"/>
+<LBRange Start="609" End="658"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511920</Run>
+<LBRange Start="110" End="180"/>
+<LBRange Start="182" End="317"/>
+<LBRange Start="319" End="404"/>
+<LBRange Start="406" End="574"/>
+<LBRange Start="576" End="593"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511967</Run>
+<LBRange Start="137" End="664"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>511978</Run>
+<LBRange Start="121" End="467"/>
+<LBRange Start="469" End="485"/>
+<LBRange Start="488" End="491"/>
+<LBRange Start="494" End="564"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>512013</Run>
+<LBRange Start="125" End="185"/>
+<LBRange Start="188" End="232"/>
+<LBRange Start="234" End="262"/>
+<LBRange Start="322" End="333"/>
+<LBRange Start="335" End="411"/>
+<LBRange Start="445" End="483"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>512028</Run>
+<LBRange Start="140" End="221"/>
+</LumiBlockCollection>
+<LumiBlockCollection>
+<Run>512049</Run>
+<LBRange Start="147" End="168"/>
+<LBRange Start="170" End="230"/>
+</LumiBlockCollection>
+</NamedLumiRange>
+</LumiRangeCollection>
