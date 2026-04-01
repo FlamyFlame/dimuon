@@ -1,3 +1,5 @@
+#include <TSystem.h>
+#include <algorithm>
 #include "RDFBasedHistFillingData.cxx"
 
 void RDFBasedHistFillingPbPb::SetIOPathsHook(){
@@ -6,15 +8,43 @@ void RDFBasedHistFillingPbPb::SetIOPathsHook(){
 	std::string run_year_str = std::to_string(run_year);
 
 	if (run_year == 23 || run_year == 24 || run_year == 25){
-		std::string in_path = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/muon_pairs_pbpb_20" + run_year_str + trig_suffix + input_mindR_suffix + "_res_cut_v2.root";
-		if (!input_mindR_suffix.empty() && gSystem->AccessPathName(in_path.c_str()))
-		    throw std::runtime_error("RDFBasedHistFillingPbPb: mindR input file not found: " + in_path);
+        std::vector<std::string> input_candidates = {
+            "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/muon_pairs_pbpb_20" + run_year_str + trig_suffix + input_mindR_suffix + "_res_cut_v2.root",
+            "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/muon_pairs_pbpb_20" + run_year_str + trig_suffix + input_mindR_suffix + ".root",
+            "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/muon_pairs_pbpb_20" + run_year_str + trig_suffix + "_no_res_cut.root",
+            "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/muon_pairs_pbpb_20" + run_year_str + trig_suffix + ".root"
+        };
+
+        std::string in_path;
+        for (const auto& cand : input_candidates) {
+            if (!gSystem->AccessPathName(cand.c_str())) {
+                in_path = cand;
+                break;
+            }
+        }
+        if (in_path.empty()) {
+            throw std::runtime_error("RDFBasedHistFillingPbPb: input file not found for run_year=20" + run_year_str + " and trig_suffix=" + trig_suffix);
+        }
 		input_files.push_back(in_path);
-		output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/histograms_real_pairs_pbpb_20" + run_year_str + out_file_suffix + ".root";
+        output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/histograms_real_pairs_pbpb_20" + run_year_str + out_file_suffix + ".root";
 	} else if (run_year == 15 || run_year == 18){
-		std::string in_path = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/muon_pairs_pbpb_20" + run_year_str + trig_suffix + input_mindR_suffix + "_res_cut_v2.root";
-		if (!input_mindR_suffix.empty() && gSystem->AccessPathName(in_path.c_str()))
-		    throw std::runtime_error("RDFBasedHistFillingPbPb: mindR input file not found: " + in_path);
+        std::vector<std::string> input_candidates = {
+            "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/muon_pairs_pbpb_20" + run_year_str + trig_suffix + input_mindR_suffix + "_res_cut_v2.root",
+            "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/muon_pairs_pbpb_20" + run_year_str + trig_suffix + input_mindR_suffix + ".root",
+            "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/muon_pairs_pbpb_20" + run_year_str + trig_suffix + "_no_res_cut.root",
+            "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/muon_pairs_pbpb_20" + run_year_str + trig_suffix + ".root"
+        };
+
+        std::string in_path;
+        for (const auto& cand : input_candidates) {
+            if (!gSystem->AccessPathName(cand.c_str())) {
+                in_path = cand;
+                break;
+            }
+        }
+        if (in_path.empty()) {
+            throw std::runtime_error("RDFBasedHistFillingPbPb: input file not found for run_year=20" + run_year_str + " and trig_suffix=" + trig_suffix);
+        }
 		input_files.push_back(in_path);
 		output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/histograms_real_pairs_pbpb_20" + run_year_str + out_file_suffix + ".root";
 	} else{
@@ -739,4 +769,99 @@ void RDFBasedHistFillingPbPb::ReadVar1DJson() {
         // All good, store pointer in dictionary
         var1D_dict[v->name] = v;
     }
+}
+
+// ============================================================================
+// FillHistogramsCrossx: Single B → J/psi crossx measurements (trigger_mode==2)
+// ============================================================================
+
+void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
+    std::cout << "[PbPb] FillHistogramsCrossx: opposite-sign only, signal cuts, centrality-aware weighted crossx histograms" << std::endl;
+
+    const std::string signal_cuts = "minv > 1.08 && minv < 2.9 && pair_pt > 8 && pair_eta < 2.2 && dr > 0.05";
+
+    ROOT::RDF::RNode df_op_base = map_at_checked(df_map, "df_op", "FillHistogramsCrossx PbPb: df_op");
+    ROOT::RDF::RNode df_single_b_crossx = df_op_base.Filter(signal_cuts);
+    if (df_map.find("df_single_b_crossx") == df_map.end()) {
+        df_map.emplace("df_single_b_crossx", df_single_b_crossx);
+    }
+
+    ROOT::RDF::RNode df_single_b_crossx_weighted = df_single_b_crossx.Define(
+        "weight_for_RAA",
+        [this](int avg_centrality, double weight) {
+            return this->CalculateWeightForRAA(avg_centrality, weight);
+        },
+        {"avg_centrality", "weight"}
+    );
+    if (df_map.find("df_single_b_crossx_weighted") == df_map.end()) {
+        df_map.emplace("df_single_b_crossx_weighted", df_single_b_crossx_weighted);
+    }
+
+    // Store 3D global histogram as RResultPtr (will be evaluated during HistPostProcess)
+    // Create uniform bin arrays for x and y axes, use ctr_bin_edges for z axis
+    std::vector<double> pt_bins(51);
+    for (int i = 0; i <= 50; ++i) pt_bins[i] = 8.0 + i * (80.0 - 8.0) / 50.0;
+    std::vector<double> eta_bins(45);
+    for (int i = 0; i <= 44; ++i) eta_bins[i] = -2.4 + i * (2.4 - (-2.4)) / 44.0;
+    
+    hist3d_rresultptr_map["h3d_op_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt"] = df_single_b_crossx_weighted.Histo3D(
+        ROOT::RDF::TH3DModel("h3d_op_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt", ";p_{T} [GeV];#eta;Centrality", 
+            50, pt_bins.data(), 44, eta_bins.data(), nCtrBins, ctr_bin_edges_double.data()),
+        "pair_pt", "pair_eta", "avg_centrality", "weight_for_RAA");
+
+    const std::vector<std::pair<float, float>> dr_ranges = {{0.0f, 0.2f}, {0.2f, 0.4f}, {0.4f, 0.6f}, {0.6f, 1.0f}};
+
+    for (int ictr = 0; ictr < nCtrBins; ++ictr){
+        const int ctr_lo = ctr_bin_edges.at(ictr);
+        const int ctr_hi = ctr_bin_edges.at(ictr + 1);
+        const std::string ctr = "ctr" + std::to_string(ctr_lo) + "_" + std::to_string(ctr_hi);
+        const std::string df_ctr_name = "df_op_" + ctr;
+
+        ROOT::RDF::RNode df_op_ctr = map_at_checked(df_map, df_ctr_name, Form("FillHistogramsCrossx PbPb: %s", df_ctr_name.c_str()));
+        ROOT::RDF::RNode df_single_b_crossx_ctr = df_op_ctr.Filter(signal_cuts);
+        const std::string df_crossx_ctr_name = "df_single_b_crossx_" + ctr;
+        if (df_map.find(df_crossx_ctr_name) == df_map.end()) {
+            df_map.emplace(df_crossx_ctr_name, df_single_b_crossx_ctr);
+        }
+
+        ROOT::RDF::RNode df_single_b_crossx_ctr_weighted = df_single_b_crossx_ctr.Define(
+            "weight_for_RAA",
+            [this](int avg_centrality, double weight) {
+                return this->CalculateWeightForRAA(avg_centrality, weight);
+            },
+            {"avg_centrality", "weight"}
+        );
+        const std::string df_crossx_ctr_weighted_name = "df_single_b_crossx_weighted_" + ctr;
+        if (df_map.find(df_crossx_ctr_weighted_name) == df_map.end()) {
+            df_map.emplace(df_crossx_ctr_weighted_name, df_single_b_crossx_ctr_weighted);
+        }
+
+        // Store 2D/3D histograms as RResultPtrs (lazy-evaluated, converted during HistPostProcess)
+        const std::string h2_eta_name = "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr;
+        hist2d_rresultptr_map[h2_eta_name] = df_single_b_crossx_ctr_weighted.Histo2D(
+            ROOT::RDF::TH2DModel(h2_eta_name.c_str(), ";p_{T} [GeV];#eta", 50, 8, 80, 44, -2.4, 2.4),
+            "pair_pt", "pair_eta", "weight_for_RAA");
+
+        const std::string h2_minv_name = "h2d_crossx_pair_pt_minv_w_signal_cuts_" + ctr;
+        hist2d_rresultptr_map[h2_minv_name] = df_single_b_crossx_ctr_weighted.Histo2D(
+            ROOT::RDF::TH2DModel(h2_minv_name.c_str(), ";p_{T} [GeV];m_{#mu#mu} [GeV]", 50, 8, 80, 50, 1.0, 3.0),
+            "pair_pt", "minv", "weight_for_RAA");
+
+        const std::string h2_dr_name = "h2d_crossx_pair_pt_dr_w_signal_cuts_" + ctr;
+        hist2d_rresultptr_map[h2_dr_name] = df_single_b_crossx_ctr_weighted.Histo2D(
+            ROOT::RDF::TH2DModel(h2_dr_name.c_str(), ";p_{T} [GeV];#DeltaR", 50, 8, 80, 50, 0.05, 1.0),
+            "pair_pt", "dr", "weight_for_RAA");
+
+        const std::string h3_minv_name = "h3d_crossx_minv_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr;
+        hist3d_rresultptr_map[h3_minv_name] = df_single_b_crossx_ctr_weighted.Histo3D(
+            ROOT::RDF::TH3DModel(h3_minv_name.c_str(), ";p_{T} [GeV];#eta;m_{#mu#mu} [GeV]", 50, 8, 80, 44, -2.4, 2.4, 50, 1.0, 3.0),
+            "pair_pt", "pair_eta", "minv", "weight_for_RAA");
+
+        const std::string h3_dr_name = "h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr;
+        hist3d_rresultptr_map[h3_dr_name] = df_single_b_crossx_ctr_weighted.Histo3D(
+            ROOT::RDF::TH3DModel(h3_dr_name.c_str(), ";p_{T} [GeV];#eta;#DeltaR", 50, 8, 80, 44, -2.4, 2.4, 50, 0.05, 1.0),
+            "pair_pt", "pair_eta", "dr", "weight_for_RAA");
+    }
+
+    std::cout << "[PbPb] FillHistogramsCrossx completed for all centrality bins" << std::endl;
 }
