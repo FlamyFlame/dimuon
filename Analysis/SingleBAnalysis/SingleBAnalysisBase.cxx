@@ -22,7 +22,7 @@ protected:
 
     constexpr static double pi = 3.14159265358979323846;
 
-    std::string signal_cuts = "minv > 1.08 && minv < 2.9 && pair_pt > 8";
+    std::string signal_cuts = "minv > 1.08 && minv < 2.9 && pair_pt > 8 && pair_eta < 2.2 && dr > 0.05";
 
     // Define binning
     std::vector<double> pT_bins_40;
