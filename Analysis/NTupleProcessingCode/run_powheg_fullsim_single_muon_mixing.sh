@@ -7,7 +7,7 @@ file_batch=$(( process_id + 1 ))
 
 # Optional overrides for local quick tests:
 #   TARGET_PAIRS=1000 RUN_YEAR=17 ./run_powheg_fullsim_single_muon_mixing.sh 0
-target_pairs="${TARGET_PAIRS:-250000}"
+target_pairs="${TARGET_PAIRS:-125000}"
 run_year="${RUN_YEAR:-17}"
 
 cd "$PWD"

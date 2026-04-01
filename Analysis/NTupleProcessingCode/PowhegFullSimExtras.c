@@ -161,8 +161,13 @@ void PowhegFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
         }
 
         if(self().output_single_muon_tree){
-            self().muon_raw_ptr = &cur_muon;
-            self().FillSingleMuonTree();
+            // Mirror the pair-level truth cuts from PassCuts_PowhegCore():
+            // only store muons that are in the fiducial acceptance used for
+            // the muon-pair analysis (truth_pt > 4 GeV, |truth_eta| < 2.4).
+            if (cur_muon.truth_pt > 4.0 && fabs(cur_muon.truth_eta) < 2.4){
+                self().muon_raw_ptr = &cur_muon;
+                self().FillSingleMuonTree();
+            }
         }
         
         truth_muon_list.push_back(std::move(cur_muon));
