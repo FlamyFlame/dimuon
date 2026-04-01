@@ -2204,6 +2204,8 @@ void PythiaNTupleFirstPass::ProcessData(){
             mpair->m1.ev_num = static_cast<int>(jevent);
             mpair->m2.ev_num = static_cast<int>(jevent);
             mpair->weight = w_norm;
+            mpair->m1.ev_weight = mpair->weight;
+            mpair->m2.ev_weight = mpair->weight;
             mpair->crossx = mpair->weight * N_beam / efficiency;
             h_cutAcceptance[mpair->m1.truth_charge != mpair->m2.truth_charge]->Fill(nocut + 0.5, mpair->weight);
             if (!PassCuts(mpair)) continue;
@@ -2288,6 +2290,8 @@ void PythiaNTupleFirstPass::ProcessData(){
                                                         // but combining them for histogram filling requires reweighting
         mpair->weight     = ev_weight / njobs_all_files_combined[ikin]; // new version: MUST use combined muon-pairs output file
                                                                         // the individual files will have wrong weights
+        mpair->m1.ev_weight = mpair->weight;
+        mpair->m2.ev_weight = mpair->weight;
         mpair->crossx     = mpair->weight * nevents[ikin] / efficiency;
 
         // ------------------------------------------------------------

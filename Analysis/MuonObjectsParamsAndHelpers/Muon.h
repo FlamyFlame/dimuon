@@ -32,6 +32,7 @@ struct MuonPbPb: MuonBase, MuonRecoExtra, MuonPbPbExtra{};
 struct MuonMCTruthKinExtra {
     float truth_pt{-1e6}, truth_eta{1e6}, truth_phi{1e6};
     int   truth_bar{-1}, truth_charge{0};
+    float ev_weight{0.0f};
 };
 
 struct MuonFullsimExtra {

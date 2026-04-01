@@ -2089,6 +2089,8 @@ void PythiaNTupleFirstPass::ProcessData(){
                                                         // but combining them for histogram filling requires reweighting
         mpair->weight     = ev_weight / njobs_all_files_combined[ikin]; // new version: MUST use combined muon-pairs output file
                                                                         // the individual files will have wrong weights
+        mpair->m1.ev_weight = mpair->weight;
+        mpair->m2.ev_weight = mpair->weight;
         mpair->crossx     = mpair->weight * nevents[ikin] / efficiency;
 
         // ------------------------------------------------------------

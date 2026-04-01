@@ -75,6 +75,7 @@ void RDFBasedHistFillingPowhegFullsim::InitializePowhegFullsimExtra(){
     };
 
     dr_ranges_for_reco_effcy = make_ranges_from_edges(dr_bins_edges_for_reco_effcy);
+    dr_ranges_for_reco_effcy_mixed_wide = make_ranges_from_edges(dr_bins_edges_for_reco_effcy_mixed_wide);
     pair_pT_ranges_for_reco_effcy_dR = make_ranges_from_edges(pair_pT_bins_edges_for_reco_effcy_dR);
 
     // tuple: (varx, vary, project_y_axis, projection_ranges)
@@ -100,13 +101,15 @@ void RDFBasedHistFillingPowhegFullsim::FlattenFiltersPowhegFullsim(){
 
 void RDFBasedHistFillingPowhegFullsim::BuildFlattenedFilterToVarListMapPowhegFullsim(){
     reco_effcy_var1Ds = {
-        "truth_pair_pt", "truth_pair_eta", "truth_dr_zoomin", "truth_dr_2_0", "truth_minv_zoomin", "truth_deta_zoomin", "truth_dphi_zoomin"
+        "truth_pair_pt", "truth_pair_eta", "truth_dr_zoomin", "truth_dr_2_0", "truth_dr_4_0", "truth_minv_zoomin", "truth_deta_zoomin", "truth_dphi_zoomin"
     };
 
     reco_effcy_var2Ds = {
         {"truth_pair_pt", "truth_pair_eta"}, 
         {"truth_pair_pt", "truth_dr_zoomin"}, 
         {"truth_pair_eta", "truth_dr_zoomin"},
+        {"truth_pair_pt", "truth_dr_4_0"},
+        {"truth_pair_eta", "truth_dr_4_0"},
         {"truth_deta_zoomin", "truth_dphi_zoomin"},
         {"truth_pair_pt", "truth_minv_zoomin"}, 
         {"truth_minv_zoomin", "truth_dr_zoomin"}
@@ -171,8 +174,8 @@ void RDFBasedHistFillingPowhegFullsim::CreateBaseRDFsPowhegFullsimExtra(){
         ROOT::RDF::RNode& node = map_at_checked(df_map, df_name + "_weighted", Form("CreateBaseRDFsPowhegFullsimExtra: df_map.at(%s)", (df_name + "_weighted").c_str()));
 
         auto node_with_signal = node
-            .Define("pass_signal_truth", "truth_minv > 1.08 && truth_minv < 2.9 && truth_pair_pt > 8")
-            .Define("pass_signal_reco", "(m1.reco_match && m2.reco_match) ? (minv > 1.08 && minv < 2.9 && pair_pt > 8) : false");
+            .Define("pass_signal_truth", "truth_minv > 1.08 && truth_minv < 2.9 && truth_pair_pt > 8 && truth_pair_eta < 2.2 && truth_dr > 0.05")
+            .Define("pass_signal_reco", "(m1.reco_match && m2.reco_match) ? (minv > 1.08 && minv < 2.9 && pair_pt > 8 && pair_eta < 2.2 && dr > 0.05) : false");
 
         df_map.emplace(df_name + "_pass_medium_weighted" , node_with_signal.Filter("pair_pass_medium"));
         df_map.emplace(df_name + "_pass_tight_weighted"  , node_with_signal.Filter("pair_pass_tight"));
@@ -488,6 +491,17 @@ void RDFBasedHistFillingPowhegFullsim::MakeAndWriteMuPairRecoEffProjGraphs(){
     if (useMixed){
         MakeAndWriteMuPairRecoEffProjGraphsHelper({"_ss", "_op"}, true);
         MakeAndWriteMuPairRecoEffProjGraphsHelper({"_ss", "_op"}, true, true);
+
+        // Additional mixed-only wide dR slices for pT/eta projections (medium/tight over inclusive denominator).
+        if (!dr_ranges_for_reco_effcy_mixed_wide.empty()){
+            const auto saved_cfgs = mu_pair_reco_eff_proj_cfgs;
+            mu_pair_reco_eff_proj_cfgs = {
+                {"truth_pair_pt",  "truth_dr_4_0", false, &dr_ranges_for_reco_effcy_mixed_wide},
+                {"truth_pair_eta", "truth_dr_4_0", false, &dr_ranges_for_reco_effcy_mixed_wide}
+            };
+            MakeAndWriteMuPairRecoEffProjGraphsHelper({"_ss", "_op"}, true, false);
+            mu_pair_reco_eff_proj_cfgs = saved_cfgs;
+        }
     } else {
         MakeAndWriteMuPairRecoEffProjGraphsHelper({"_ss", "_op", "_single_b"}, true);
         MakeAndWriteMuPairRecoEffProjGraphsHelper({"_ss", "_op", "_single_b"}, true, true);

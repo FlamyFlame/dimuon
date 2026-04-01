@@ -104,6 +104,9 @@ void PowhegFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
         throw std::runtime_error("Muon truth (including fakes) & muon vectors (muon_truth_barcode & muon_pt) must have the same size!");
     }
 
+    float event_crossx = (self().EventWeightsRef()->size() == 0)? 1. : self().EventWeightsRef()->at(0);
+    float event_weight = (self().EventWeightsRef()->size() == 0)? 1. : event_crossx * self().filter_effcy;
+
     std::vector<muon_t> truth_muon_list ({});
 
     for (int truth_ind = 0; truth_ind < truth_muon_pt->size(); truth_ind++){
@@ -111,6 +114,7 @@ void PowhegFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
         muon_t cur_muon;
         cur_muon.ind = truth_ind;
         cur_muon.ev_num = ev_num;
+        cur_muon.ev_weight = event_weight;
 
         cur_muon.truth_pt       = fabs(truth_muon_pt->at(truth_ind))/1000.0;
         cur_muon.truth_eta      = truth_muon_eta->at(truth_ind);
@@ -157,8 +161,13 @@ void PowhegFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
         }
 
         if(self().output_single_muon_tree){
-            self().muon_raw_ptr = &cur_muon;
-            self().FillSingleMuonTree();
+            // Mirror the pair-level truth cuts from PassCuts_PowhegCore():
+            // only store muons that are in the fiducial acceptance used for
+            // the muon-pair analysis (truth_pt > 4 GeV, |truth_eta| < 2.4).
+            if (cur_muon.truth_pt > 4.0 && fabs(cur_muon.truth_eta) < 2.4){
+                self().muon_raw_ptr = &cur_muon;
+                self().FillSingleMuonTree();
+            }
         }
         
         truth_muon_list.push_back(std::move(cur_muon));
@@ -167,9 +176,6 @@ void PowhegFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
     if(self().output_single_muon_tree) return;
 
     // -------- build truth pairs --------
-
-    float event_crossx = (self().EventWeightsRef()->size() == 0)? 1. : self().EventWeightsRef()->at(0);
-    float event_weight = (self().EventWeightsRef()->size() == 0)? 1. : event_crossx * self().filter_effcy;
 
     self().muon_pair_list_cur_event_pre_resonance_cut.clear();
     self().resonance_tagged_muon_index_list_reco.clear(); // MUST CLEAR for each event!!

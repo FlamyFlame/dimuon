@@ -64,25 +64,15 @@ void SingleBAnalysisPbPb::RunAnalysisImpl(){
     RDataFrame df_ss("muon_pair_tree_sign1", muon_pair_input_file_name.c_str());    
     RDataFrame df_op("muon_pair_tree_sign2", muon_pair_input_file_name.c_str());    
 
-    std::vector<ROOT::RDF::RNode> df_pbpb_run2_ctr_binned_list_ss_w_weight_w_signal_cuts;
     std::vector<ROOT::RDF::RNode> df_pbpb_run2_ctr_binned_list_op_w_weight_w_signal_cuts;
 
-    
-	auto df_ss_weight = df_ss.Define("weight_for_RAA",
+    auto df_op_weight = df_op.Define("weight_for_RAA",
 	    [this](int avg_centrality, double weight) {
 	        return this->CalculateWeightForRAA(avg_centrality, weight);
 	    },
 	    {"avg_centrality", "weight"}
 	);
 
-	auto df_op_weight = df_op.Define("weight_for_RAA",
-	    [this](int avg_centrality, double weight) {
-	        return this->CalculateWeightForRAA(avg_centrality, weight);
-	    },
-	    {"avg_centrality", "weight"}
-	);
-
-    auto df_ss_weight_w_signal_cuts = df_ss_weight.Filter(signal_cuts.c_str());
     auto df_op_weight_w_signal_cuts = df_op_weight.Filter(signal_cuts.c_str());
 
     // fill centrality-binned RDF lists
@@ -91,27 +81,16 @@ void SingleBAnalysisPbPb::RunAnalysisImpl(){
         int ctr_bin_low_edge = ctr_bin_edges.at(ictr);
         int ctr_bin_high_edge = ctr_bin_edges.at(ictr + 1);
 
-        auto df_ctr_binned_ss_weight_w_signal_cuts = df_ss_weight_w_signal_cuts.Filter(
-            [ctr_bin_low_edge, ctr_bin_high_edge](int centrality) {return centrality >= ctr_bin_low_edge && centrality < ctr_bin_high_edge;},
-            {"avg_centrality"});
-
         auto df_ctr_binned_op_weight_w_signal_cuts = df_op_weight_w_signal_cuts.Filter(
             [ctr_bin_low_edge, ctr_bin_high_edge](int centrality) {return centrality >= ctr_bin_low_edge && centrality < ctr_bin_high_edge;},
             {"avg_centrality"});
 
-        df_pbpb_run2_ctr_binned_list_ss_w_weight_w_signal_cuts.push_back(df_ctr_binned_ss_weight_w_signal_cuts);
         df_pbpb_run2_ctr_binned_list_op_w_weight_w_signal_cuts.push_back(df_ctr_binned_op_weight_w_signal_cuts);
     }
 
     // ----------------------------------------------------------------------------------------
 
     // Create 3D histogram model for crossx dependence on centrality, pair pt & pair eta
-    auto th3dmodel_ss_crossx_signal_cuts = ROOT::RDF::TH3DModel(
-        "h3d_ss_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt", ";p_{T} [GeV];#eta;Centrality",
-        int(pT_bins_80.size() - 1), pT_bins_80.data(),
-        int(eta_bins.size() - 1), eta_bins.data(),
-        int(ctr_bin_edges_double.size() - 1), ctr_bin_edges_double.data()
-    );
     auto th3dmodel_op_crossx_signal_cuts = ROOT::RDF::TH3DModel(
         "h3d_op_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt", ";p_{T} [GeV];#eta;Centrality",
         int(pT_bins_80.size() - 1), pT_bins_80.data(),
@@ -119,26 +98,18 @@ void SingleBAnalysisPbPb::RunAnalysisImpl(){
         int(ctr_bin_edges_double.size() - 1), ctr_bin_edges_double.data()
     );
 
-    // Book 3D histograms: crossx dependence on centrality, pair pt & pair eta
-    auto h3d_ss_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt = df_ss_weight_w_signal_cuts.Histo3D(th3dmodel_ss_crossx_signal_cuts, "pair_pt", "pair_eta", "avg_centrality", "weight_for_RAA");
+    // Book 3D histogram: crossx dependence on centrality, pair pt & pair eta
     auto h3d_op_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt = df_op_weight_w_signal_cuts.Histo3D(th3dmodel_op_crossx_signal_cuts, "pair_pt", "pair_eta", "avg_centrality", "weight_for_RAA");
 
     // ----------------------------------------------------------------------------------------
     // booking pT-pair 1D histograms
 
     std::vector<ROOT::RDF::RResultPtr<TH1D>> hop_pT_80_ctr_binned;
-    std::vector<ROOT::RDF::RResultPtr<TH1D>> hss_pT_80_ctr_binned;
     std::vector<ROOT::RDF::RResultPtr<TH1D>> hop_pT_80_counts_ctr_binned;
-    std::vector<ROOT::RDF::RResultPtr<TH1D>> hss_pT_80_counts_ctr_binned;
     std::vector<ROOT::RDF::RResultPtr<TH1D>> hop_pT_150_ctr_binned;
-    std::vector<ROOT::RDF::RResultPtr<TH1D>> hss_pT_150_ctr_binned;
     std::vector<ROOT::RDF::RResultPtr<TH1D>> hop_pT_150_counts_ctr_binned;
-    std::vector<ROOT::RDF::RResultPtr<TH1D>> hss_pT_150_counts_ctr_binned;
     std::vector<ROOT::RDF::RResultPtr<TH1D>> hop_pT_200_ctr_binned;
-    std::vector<ROOT::RDF::RResultPtr<TH1D>> hss_pT_200_ctr_binned;
     std::vector<ROOT::RDF::RResultPtr<TH1D>> hop_pT_200_counts_ctr_binned;
-    std::vector<ROOT::RDF::RResultPtr<TH1D>> hss_pT_200_counts_ctr_binned;
-    std::vector<ROOT::RDF::RResultPtr<TH2D>> h2d_ss_crossx_w_signal_cuts_ctr_binned;
     std::vector<ROOT::RDF::RResultPtr<TH2D>> h2d_op_crossx_w_signal_cuts_ctr_binned;
 
     for (int ictr = 0; ictr < nCtrBins; ictr++){
@@ -148,7 +119,6 @@ void SingleBAnalysisPbPb::RunAnalysisImpl(){
 
         try{
             auto df_ctr_binned_op_weight_w_signal_cuts = df_pbpb_run2_ctr_binned_list_op_w_weight_w_signal_cuts.at(ictr);
-            auto df_ctr_binned_ss_weight_w_signal_cuts = df_pbpb_run2_ctr_binned_list_ss_w_weight_w_signal_cuts.at(ictr);
     
             // Book 1D histograms
             auto h_pT_80_op = df_ctr_binned_op_weight_w_signal_cuts.Histo1D(
@@ -156,75 +126,38 @@ void SingleBAnalysisPbPb::RunAnalysisImpl(){
                 "pair_pt", "weight_for_RAA");
             hop_pT_80_ctr_binned.push_back(h_pT_80_op);
 
-            auto h_pT_80_ss = df_ctr_binned_ss_weight_w_signal_cuts.Histo1D(
-                {Form("hss_pT_80_weighted_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), Form("h_pT_80_weighted_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), int(pT_bins_80.size()-1), pT_bins_80.data()}, 
-                "pair_pt", "weight_for_RAA");
-            hss_pT_80_ctr_binned.push_back(h_pT_80_ss);
-
             auto h_pT_80_counts_op = df_ctr_binned_op_weight_w_signal_cuts.Histo1D(
                 {Form("hop_pT_80_counts_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), Form("h_pT_80_counts_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), int(pT_bins_80.size()-1), pT_bins_80.data()}, 
                 "pair_pt");
             hop_pT_80_counts_ctr_binned.push_back(h_pT_80_counts_op);
-
-            auto h_pT_80_counts_ss = df_ctr_binned_ss_weight_w_signal_cuts.Histo1D(
-                {Form("hss_pT_80_counts_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), Form("h_pT_80_counts_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), int(pT_bins_80.size()-1), pT_bins_80.data()}, 
-                "pair_pt");
-            hss_pT_80_counts_ctr_binned.push_back(h_pT_80_counts_ss);
 
             auto h_pT_150_op = df_ctr_binned_op_weight_w_signal_cuts.Histo1D(
                 {Form("hop_pT_150_weighted_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), Form("h_pT_150_weighted_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), int(pT_bins_150.size()-1), pT_bins_150.data()}, 
                 "pair_pt", "weight_for_RAA");
             hop_pT_150_ctr_binned.push_back(h_pT_150_op);
 
-            auto h_pT_150_ss = df_ctr_binned_ss_weight_w_signal_cuts.Histo1D(
-                {Form("hss_pT_150_weighted_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), Form("h_pT_150_weighted_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), int(pT_bins_150.size()-1), pT_bins_150.data()}, 
-                "pair_pt", "weight_for_RAA");
-            hss_pT_150_ctr_binned.push_back(h_pT_150_ss);
-
             auto h_pT_150_counts_op = df_ctr_binned_op_weight_w_signal_cuts.Histo1D(
                 {Form("hop_pT_150_counts_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), Form("h_pT_150_counts_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), int(pT_bins_150.size()-1), pT_bins_150.data()}, 
                 "pair_pt");
             hop_pT_150_counts_ctr_binned.push_back(h_pT_150_counts_op);
-
-            auto h_pT_150_counts_ss = df_ctr_binned_ss_weight_w_signal_cuts.Histo1D(
-                {Form("hss_pT_150_counts_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), Form("h_pT_150_counts_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), int(pT_bins_150.size()-1), pT_bins_150.data()}, 
-                "pair_pt");
-            hss_pT_150_counts_ctr_binned.push_back(h_pT_150_counts_ss);
 
             auto h_pT_200_op = df_ctr_binned_op_weight_w_signal_cuts.Histo1D(
                 {Form("hop_pT_200_weighted_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), Form("h_pT_200_weighted_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), int(pT_bins_200.size()-1), pT_bins_200.data()}, 
                 "pair_pt", "weight_for_RAA");
             hop_pT_200_ctr_binned.push_back(h_pT_200_op);
 
-            auto h_pT_200_ss = df_ctr_binned_ss_weight_w_signal_cuts.Histo1D(
-                {Form("hss_pT_200_weighted_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), Form("h_pT_200_weighted_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), int(pT_bins_200.size()-1), pT_bins_200.data()}, 
-                "pair_pt", "weight_for_RAA");
-            hss_pT_200_ctr_binned.push_back(h_pT_200_ss);
-
             auto h_pT_200_counts_op = df_ctr_binned_op_weight_w_signal_cuts.Histo1D(
                 {Form("hop_pT_200_counts_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), Form("h_pT_200_counts_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), int(pT_bins_200.size()-1), pT_bins_200.data()}, 
                 "pair_pt");
             hop_pT_200_counts_ctr_binned.push_back(h_pT_200_counts_op);
 
-            auto h_pT_200_counts_ss = df_ctr_binned_ss_weight_w_signal_cuts.Histo1D(
-                {Form("hss_pT_200_counts_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), Form("h_pT_200_counts_ctr%d_%d_w_signal_cuts", ctr_bin_low_edge, ctr_bin_high_edge), int(pT_bins_200.size()-1), pT_bins_200.data()}, 
-                "pair_pt");
-            hss_pT_200_counts_ctr_binned.push_back(h_pT_200_counts_ss);
-
-		    auto th2dmodel_ss_crossx_signal_cuts = ROOT::RDF::TH2DModel(
-		        Form("h2d_ss_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_ctr%d_%d", ctr_bin_low_edge, ctr_bin_high_edge), ";p_{T} [GeV];#eta",
-		        int(pT_bins_80.size() - 1), pT_bins_80.data(),
-		        int(eta_bins.size() - 1), eta_bins.data()
-		    );
 		    auto th2dmodel_op_crossx_signal_cuts = ROOT::RDF::TH2DModel(
 		        Form("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_ctr%d_%d", ctr_bin_low_edge, ctr_bin_high_edge), ";p_{T} [GeV];#eta",
 		        int(pT_bins_80.size() - 1), pT_bins_80.data(),
 		        int(eta_bins.size() - 1), eta_bins.data()
 		    );
 
-	        auto h2d_ss_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt = df_ss_weight_w_signal_cuts.Histo2D(th2dmodel_ss_crossx_signal_cuts, "pair_pt", "pair_eta", "weight_for_RAA");
-		    auto h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt = df_op_weight_w_signal_cuts.Histo2D(th2dmodel_op_crossx_signal_cuts, "pair_pt", "pair_eta", "weight_for_RAA");
-			h2d_ss_crossx_w_signal_cuts_ctr_binned.push_back(h2d_ss_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt);
+	        auto h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt = df_ctr_binned_op_weight_w_signal_cuts.Histo2D(th2dmodel_op_crossx_signal_cuts, "pair_pt", "pair_eta", "weight_for_RAA");
 			h2d_op_crossx_w_signal_cuts_ctr_binned.push_back(h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt);
 
         }catch (const std::out_of_range& e){
@@ -239,24 +172,16 @@ void SingleBAnalysisPbPb::RunAnalysisImpl(){
     std::string outfile_name = dataset_base_dir + outfile_relative_path_truncated + ctr_suffix + ".root";
     cout << outfile_name << endl;
     TFile out(outfile_name.c_str(), "RECREATE");
-    h3d_ss_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt->Write();
 	h3d_op_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt->Write();
     
     for (int ictr = 0; ictr < nCtrBins; ictr++){
         try{
             hop_pT_80_ctr_binned.at(ictr)->Write();
-            hss_pT_80_ctr_binned.at(ictr)->Write();
             hop_pT_80_counts_ctr_binned.at(ictr)->Write();
-            hss_pT_80_counts_ctr_binned.at(ictr)->Write();
             hop_pT_150_ctr_binned.at(ictr)->Write();
-            hss_pT_150_ctr_binned.at(ictr)->Write();
             hop_pT_150_counts_ctr_binned.at(ictr)->Write();
-            hss_pT_150_counts_ctr_binned.at(ictr)->Write();
             hop_pT_200_ctr_binned.at(ictr)->Write();
-            hss_pT_200_ctr_binned.at(ictr)->Write();
             hop_pT_200_counts_ctr_binned.at(ictr)->Write();
-            hss_pT_200_counts_ctr_binned.at(ictr)->Write();
-            h2d_ss_crossx_w_signal_cuts_ctr_binned.at(ictr)->Write();
             h2d_op_crossx_w_signal_cuts_ctr_binned.at(ictr)->Write();
         }catch (const std::out_of_range& e){
             std::cerr << "WARNING: out_of_range caught when writing output histograms" << std::endl;

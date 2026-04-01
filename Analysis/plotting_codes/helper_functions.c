@@ -1,5 +1,43 @@
 #include <string>
 
+void DetermineSubplotGrid(int nsubplots, int& nrow, int& ncol) {
+    if (nsubplots <= 0) {
+        nrow = 1;
+        ncol = 1;
+        return;
+    }
+
+    if (nsubplots <= 3) {
+        ncol = 1;
+        nrow = nsubplots;
+        return;
+    }
+
+    // Choose nrow >= ncol, close to sqrt(nsubplots), and with minimal empty pads.
+    int best_row = nsubplots;
+    int best_col = 1;
+    int best_shape = 1e9;
+    int best_empty = 1e9;
+
+    for (int col = 1; col <= nsubplots; ++col) {
+        int row = (nsubplots + col - 1) / col;
+        if (row < col) continue;
+
+        int shape = row - col;
+        int empty = row * col - nsubplots;
+
+        if (shape < best_shape || (shape == best_shape && empty < best_empty)) {
+            best_shape = shape;
+            best_empty = empty;
+            best_row = row;
+            best_col = col;
+        }
+    }
+
+    nrow = best_row;
+    ncol = best_col;
+}
+
 void hist_helper(TH1* h, float norm, bool norm_unity, std::string title, std::string ytitle="", float labelsize = 28, float titleoffset = 2.1){
 
   h->SetStats(0);
