@@ -197,3 +197,33 @@ public:
     ~RDFBasedHistFillingPowhegFullsimOverlay(){}
 
 };
+
+class RDFBasedHistFillingPowhegFullsimSingleMuon : public virtual RDFBasedHistFillingPowheg {
+protected:
+    std::vector<std::vector<std::string>> levels_reco_effcy_filters;
+    std::vector<std::vector<std::string>> levels_detector_response_filters;
+
+    std::vector<std::string> reco_effcy_filters;
+    std::vector<std::string> detector_response_filters;
+
+    std::vector<std::string>                reco_effcy_var1Ds;
+    std::vector<std::array<std::string,2>>  reco_effcy_var2Ds;
+    std::vector<std::array<std::string,3>>  reco_effcy_var3Ds;
+
+    std::vector<std::string>                detec_resp_var1Ds;
+    std::vector<std::array<std::string,2>>  detec_resp_var2Ds;
+
+    virtual void SetIOPathsHook() override;
+    virtual void InitializePowhegExtra() override;
+    virtual void FlattenFiltersExtra() override;
+    virtual void BuildFlattenedFilterToVarListMapExtra() override;
+    virtual void CreateBaseRDFsExtra() override; // fully replaces powheg common (uses ev_weight, not weight)
+    virtual void FillHistogramsFullSim() override;
+    void FillHistogramsFullSimDetecResp();
+    void FillHistogramsFullSimRecoEffcies();
+
+public:
+    explicit RDFBasedHistFillingPowhegFullsimSingleMuon(int run_year_input = 17)
+    : RDFBasedHistFillingPowheg(true, false, run_year_input) {}
+    ~RDFBasedHistFillingPowhegFullsimSingleMuon() {}
+};
