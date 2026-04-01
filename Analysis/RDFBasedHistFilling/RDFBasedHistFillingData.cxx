@@ -81,7 +81,9 @@ void RDFBasedHistFillingData::FillHistograms(){
     std::cout << "Calling FillHistograms" << std::endl;
     
     // ------- Fill histograms -------
-    if (hist_filling_cycle == generic){
+    if (trigger_mode == 2){
+        FillHistogramsCrossx();
+    } else if (hist_filling_cycle == generic){
         if (output_generic_hists){
             FillHistogramsGeneric();
         }

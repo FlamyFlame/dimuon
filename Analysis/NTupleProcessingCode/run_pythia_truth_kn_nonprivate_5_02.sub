@@ -1,0 +1,11 @@
+# Standalone submit file for Pythia truth NON-PRIVATE 5.02 TeV sample.
+# $(Process) = 0..5 maps directly to kinematic range kn = 0..5.
+# This does not rely on pipeline argument overrides.
+
+executable = run_pythia_truth_kn.sh
+arguments  = $(Process) 0 5.02 0
+output     = logs/run_pythia_truth_kn_nonprivate_5_02_kn$(Process).out
+error      = logs/run_pythia_truth_kn_nonprivate_5_02_kn$(Process).err
+log        = logs/run_pythia_truth_kn_nonprivate_5_02_kn$(Process).log
+request_memory = 4GB
+queue 6

@@ -102,6 +102,7 @@ protected:
 
     virtual void    FillHistograms() override;
     virtual void    FillHistogramsGeneric();
+    virtual void    FillHistogramsCrossx() = 0; // trigger_mode == 2 crossx filling (opposite-sign only, with signal cuts)
     virtual void    FillHistogramsSingleMuonEffcy() = 0;
     virtual void    FillHistogramsDimuTrigGivenMu4() = 0;
     virtual void    FillHistogramsMu4GivenMB() = 0;
@@ -142,6 +143,8 @@ enum HistFillingCycle{
     inv_weight_by_single_mu_effcy = 2,
     inv_weight_by_dR_effcy_corr = 3
 };
+    // Public method to run histogram filling
+    void RunFillHistograms() { FillHistograms(); }
 
     bool useCoarseQEtaBin = true;
     int hist_filling_cycle = generic;
@@ -194,6 +197,7 @@ protected:
     virtual void        FillHistogramsDimuTrigGivenMu4() override;
     virtual void        FillHistogramsMu4GivenMB() override;
     virtual void        FillTrigEffcyHistsInvWeightedbySingleMuonEffcies() override;
+    virtual void        FillHistogramsCrossx() override;
 
     virtual void        OpenEffcyPtFitFile() override;
 
@@ -281,6 +285,7 @@ protected:
     virtual void        FillHistogramsMu4GivenMB() override;
     virtual void        FillHistogramsMu4GivenMBCtrDep();
     virtual void        FillTrigEffcyHistsInvWeightedbySingleMuonEffcies() override;
+    virtual void        FillHistogramsCrossx() override;
 
     virtual void        OpenEffcyPtFitFile() override;
 

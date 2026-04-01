@@ -1,4 +1,4 @@
-// DetRespPlotter.h (or put in a .cxx you .L in ROOT)
+// RecoEffyRetRespPlotter.h (or put in a .cxx you .L in ROOT)
 #include <TFile.h>
 #include <TH1.h>
 #include <TH2.h>
@@ -8,6 +8,7 @@
 #include <TError.h>
 #include <TLatex.h>
 #include <TPad.h>
+#include <TGraphAsymmErrors.h>
 #include <TRatioPlot.h>
 #include <array>
 #include <cmath>
@@ -22,10 +23,10 @@
 #include "Utilities/PlotUtils.h"
 #include "Utilities/PlotCommonConfig.h"
 
-class DetRespPlotter {
+class RecoEffyRetRespPlotter {
 public:
 
-    DetRespPlotter(int run_year_input, bool tight_WP_input = false, bool require_signal_cuts_input = false)
+    RecoEffyRetRespPlotter(int run_year_input, bool tight_WP_input = false, bool require_signal_cuts_input = false)
     :   run_year(run_year_input % 2000),
         tight_WP(tight_WP_input),
         require_signal_cuts(require_signal_cuts_input)
@@ -33,10 +34,10 @@ public:
         isRun3 = !(run_year <= 18);
     }
 
-    DetRespPlotter()
-    : DetRespPlotter(17, false, false){}
+    RecoEffyRetRespPlotter()
+    : RecoEffyRetRespPlotter(17, false, false){}
 
-    ~DetRespPlotter() {
+    ~RecoEffyRetRespPlotter() {
         if (infile_unmixed) {
             infile_unmixed->Close();
             delete infile_unmixed;
@@ -59,6 +60,7 @@ public:
         Plot2DRecoEffcySingleB();
         Plot1DRecoEffcySingleBOpCompr();
         Plot1DRecoEffcyRangedSingleBOpCompr();
+        if (!require_signal_cuts) Plot1DRecoEffcyRangedMixed();
     }
 
 protected:
@@ -107,6 +109,12 @@ protected:
         {20.0f, std::numeric_limits<float>::max()}
     };
 
+    std::vector<std::pair<float, float>> dr_ranges_for_reco_effcy_mixed_wide = {
+        {0.0f, 1.0f},
+        {1.0f, 2.5f},
+        {2.5f, 4.0f}
+    };
+
     std::vector<std::tuple<std::string, std::string, bool, const std::vector<std::pair<float, float>>*>>
         reco_eff_proj_divide_cfgs = {
             {"truth_pair_pt",  "truth_dr_zoomin", false, &dr_ranges_for_reco_effcy},
@@ -153,7 +161,7 @@ protected:
 
         infile_unmixed = TFile::Open(infile_path_unmixed.c_str(), "READ");
         if (!infile_unmixed || infile_unmixed->IsZombie()) {
-            std::cerr << "[DetRespPlotter::Initialize] ERROR: failed to open unmixed file: "
+            std::cerr << "[RecoEffyRetRespPlotter::Initialize] ERROR: failed to open unmixed file: "
                       << infile_path_unmixed << "\n";
             if (infile_unmixed) { delete infile_unmixed; infile_unmixed = nullptr; }
             return false;
@@ -161,7 +169,7 @@ protected:
 
         infile_mixed = TFile::Open(infile_path_mixed.c_str(), "READ");
         if (!infile_mixed || infile_mixed->IsZombie()) {
-            std::cerr << "[DetRespPlotter::Initialize] ERROR: failed to open mixed file: "
+            std::cerr << "[RecoEffyRetRespPlotter::Initialize] ERROR: failed to open mixed file: "
                       << infile_path_mixed << "\n";
             if (infile_mixed) { delete infile_mixed; infile_mixed = nullptr; }
             return false;
@@ -242,9 +250,9 @@ protected:
             rp.SetH1DrawOpt("hist");
             rp.SetH2DrawOpt("hist");
             rp.SetGraphDrawOpt("PE1"); // points with error bars in ratio pad
+            rp.Draw();
             rp.SetSplitFraction(0.30);
             rp.SetSeparationMargin(0.02);
-            rp.Draw();
 
             if (rp.GetUpperPad()) {
                 rp.GetUpperPad()->SetTicks(1, 1);
@@ -254,18 +262,6 @@ protected:
 
             const double maxy = std::max(h_truth->GetMaximum(), h_reco->GetMaximum());
             if (maxy > 0.0 && rp.GetUpperRefYaxis()) {
-                if (logy) {
-                    const double min_truth = min_positive_bin_content(h_truth);
-                    const double min_reco = min_positive_bin_content(h_reco);
-                    const double miny = (min_truth < min_reco) ? min_truth : min_reco;
-                    if (std::isfinite(miny) && miny > 0.0) {
-                        rp.GetUpperRefYaxis()->SetRangeUser(0.5 * miny, 2.0 * maxy);
-                    } else {
-                        rp.GetUpperRefYaxis()->SetRangeUser(1e-6, 2.0 * maxy);
-                    }
-                } else {
-                    rp.GetUpperRefYaxis()->SetRangeUser(0.0, 1.15 * maxy);
-                }
                 rp.GetUpperRefYaxis()->SetTitleSize(0.050);
                 rp.GetUpperRefYaxis()->SetTitleSize(0.038);
                 rp.GetUpperRefYaxis()->SetLabelSize(0.030);
@@ -278,19 +274,13 @@ protected:
 
             if (rp.GetLowerRefYaxis()) {
                 rp.GetLowerRefYaxis()->SetTitle("Reco/Truth");
-                if (var == "minv_zoomin" || var == "dr_zoomin") {
-                    rp.GetLowerRefYaxis()->SetRangeUser(0.0, 2.0);
-                    // 5 major divisions -> labels at 0.0, 0.5, 1.0, 1.5, 2.0
-                    rp.GetLowerRefYaxis()->SetNdivisions(405);
-                } else {
-                    // keep pair_pt behavior unchanged
-                    rp.GetLowerRefYaxis()->SetRangeUser(0.0, 2.0);
-                    rp.GetLowerRefYaxis()->SetNdivisions(505);
-                }
+                if (var == "minv_zoomin" || var == "dr_zoomin") rp.GetLowerRefYaxis()->SetNdivisions(405);
+                else rp.GetLowerRefYaxis()->SetNdivisions(505);
                 rp.GetLowerRefYaxis()->SetTitleSize(0.050);
                 rp.GetLowerRefYaxis()->SetTitleOffset(0.95);
                 rp.GetLowerRefYaxis()->SetLabelSize(0.040);
             }
+            // Keep ROOT's automatic ratio range to avoid internal axis-bound warnings.
             if (rp.GetLowerRefXaxis()) {
                 rp.GetLowerRefXaxis()->SetTitle(h_truth->GetXaxis()->GetTitle());
                 rp.GetLowerRefXaxis()->SetTitleSize(0.060);
@@ -344,7 +334,12 @@ protected:
             TCanvas c("c", "c", 850, 700);
             c.SetRightMargin(0.14);
             c.SetTicks(1,1);
-            c.SetLogz(true);
+            c.cd();
+            gPad->SetLogz(true);
+            if (var == "pair_pt") {
+                gPad->SetLogx(true);
+                gPad->SetLogy(true);
+            }
 
             h2->SetTitle((var + " response matrix").c_str());
             h2->SetStats(0);
@@ -400,7 +395,8 @@ protected:
                 h_eff_ss->SetTitle("same sign");
                 h_eff_ss->GetXaxis()->SetTitle(h_den_ss->GetXaxis()->GetTitle());
                 h_eff_ss->GetYaxis()->SetTitle("#varepsilon");
-                h_eff_ss->GetYaxis()->SetRangeUser(0.0, 1.0);
+                h_eff_ss->SetMinimum(0.0);
+                h_eff_ss->SetMaximum(1.0);
 
                 h_eff_ss->SetLineColor(kBlack);
                 h_eff_ss->SetMarkerColor(kBlack);
@@ -445,7 +441,8 @@ protected:
                 h_eff_op->SetTitle("opposite sign");
                 h_eff_op->GetXaxis()->SetTitle(h_den_op->GetXaxis()->GetTitle());
                 h_eff_op->GetYaxis()->SetTitle("#varepsilon");
-                h_eff_op->GetYaxis()->SetRangeUser(0.0, 1.0);
+                h_eff_op->SetMinimum(0.0);
+                h_eff_op->SetMaximum(1.0);
 
                 h_eff_op->SetLineColor(kBlack);
                 h_eff_op->SetMarkerColor(kBlack);
@@ -700,7 +697,8 @@ void Plot1DRecoEffcySingleBOpCompr()
         if (h_eff_op || h_eff_single_b) {
             TH1D* h_frame = h_eff_op ? h_eff_op : h_eff_single_b;
             h_frame->GetYaxis()->SetTitle("#varepsilon");
-            h_frame->GetYaxis()->SetRangeUser(0.0, 1.0);
+            h_frame->SetMinimum(0.0);
+            h_frame->SetMaximum(1.0);
             h_frame->Draw("E1");
 
             if (h_eff_op && h_eff_op != h_frame)                   h_eff_op->Draw("E1 same");
@@ -862,7 +860,8 @@ void Plot1DRecoEffcyRangedSingleBOpComprHelper(
 
         if (h_op) {
             h_op->GetYaxis()->SetTitle("#varepsilon");
-            h_op->GetYaxis()->SetRangeUser(0.0, 1.0);
+            h_op->SetMinimum(0.0);
+            h_op->SetMaximum(1.0);
             std::string x_title = h_op->GetXaxis()->GetTitle();
             if (x_title.empty()) x_title = var_target;
             h_op->GetXaxis()->SetTitle(x_title.c_str());
@@ -873,7 +872,8 @@ void Plot1DRecoEffcyRangedSingleBOpComprHelper(
             }
         } else if (h_single_b) {
             h_single_b->GetYaxis()->SetTitle("#varepsilon");
-            h_single_b->GetYaxis()->SetRangeUser(0.0, 1.0);
+            h_single_b->SetMinimum(0.0);
+            h_single_b->SetMaximum(1.0);
             std::string x_title = h_single_b->GetXaxis()->GetTitle();
             if (x_title.empty()) x_title = var_target;
             h_single_b->GetXaxis()->SetTitle(x_title.c_str());
@@ -920,6 +920,96 @@ void Plot1DRecoEffcyRangedSingleBOpCompr()
     }
 }
 
+void Plot1DRecoEffcyRangedMixed()
+{
+    if (!CheckRecoFiles()) return;
+    if (require_signal_cuts) return;
+
+    const std::string outdir = GetRecoEffcyOutDir();
+    gSystem->mkdir(outdir.c_str(), kTRUE);
+    const std::string ranged_outdir = outdir + "ranged/";
+    gSystem->mkdir(ranged_outdir.c_str(), kTRUE);
+
+    auto as_suffix = [](const std::pair<float, float>& range) {
+        auto format_num = [](float x) {
+            std::ostringstream oss;
+            oss << std::fixed << std::setprecision(2) << x;
+            std::string s = oss.str();
+            for (auto& c : s) if (c == '.') c = '_';
+            while (s.find('-') != std::string::npos) s.replace(s.find('-'), 1, "minus");
+            return s;
+        };
+        return format_num(range.first) + "_TO_" + format_num(range.second);
+    };
+
+    auto fmt_range = [](const std::pair<float, float>& range) {
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(1) << range.first << " < #DeltaR < " << range.second;
+        return oss.str();
+    };
+
+    const std::vector<std::string> vars = {"truth_pair_pt", "truth_pair_eta"};
+    const std::vector<std::string> signs = {"_ss", "_op"};
+    const std::vector<Color_t> colors = {kBlack, kRed + 1, kBlue + 1, kGreen + 2, kMagenta + 1, kOrange + 7, kCyan + 1};
+
+    const std::string num_filter = RecoEffNumFilter(); // _pass_medium or _pass_tight
+
+    for (const auto& varx : vars) {
+        TCanvas c(Form("c_reco_eff_mixed_ranged_%s", varx.c_str()), Form("c_reco_eff_mixed_ranged_%s", varx.c_str()), 1400, 550);
+        c.Divide(2, 1);
+
+        for (std::size_t is = 0; is < signs.size(); ++is) {
+            c.cd(static_cast<int>(is) + 1);
+            gPad->SetTicks(1, 1);
+            gPad->SetLogx(LogAx(varx, cfg));
+
+            std::vector<TH1D*> hs;
+            hs.reserve(dr_ranges_for_reco_effcy_mixed_wide.size());
+
+            for (std::size_t ir = 0; ir < dr_ranges_for_reco_effcy_mixed_wide.size(); ++ir) {
+                const auto& range = dr_ranges_for_reco_effcy_mixed_wide[ir];
+                const std::string range_suffix = as_suffix(range);
+                const std::string hname = "h_truth_dr_4_0_vs_" + varx + signs[is] + num_filter + "_px_" + range_suffix + "_divided";
+
+                TH1D* h = GetHistReco<TH1D>(hname);
+                if (!h) {
+                    throw std::runtime_error("Plot1DRecoEffcyRangedMixed: missing histogram '" + hname + "' in mixed file.");
+                }
+
+                h->SetLineColor(colors[ir % colors.size()]);
+                h->SetMarkerColor(colors[ir % colors.size()]);
+                h->SetLineWidth(2);
+                h->SetMarkerStyle(20);
+                h->SetMarkerSize(0.8);
+                h->SetStats(0);
+                h->GetYaxis()->SetTitle("#varepsilon");
+                h->SetMinimum(0.0);
+                h->SetMaximum(1.0);
+                hs.push_back(h);
+            }
+
+            if (!hs.empty()) {
+                hs.front()->SetTitle((std::string(is == 0 ? "same-sign" : "opposite-sign") + ";" + hs.front()->GetXaxis()->GetTitle() + ";#varepsilon").c_str());
+                hs.front()->Draw("E1");
+                if (LogAx(varx, cfg)) AdjustLogXRangeForHist(hs.front(), hs.front());
+                for (std::size_t ih = 1; ih < hs.size(); ++ih) hs[ih]->Draw("E1 SAME");
+
+                TLegend* leg = new TLegend(0.14, 0.12, 0.58, 0.42);
+                leg->SetBorderSize(0);
+                leg->SetFillStyle(0);
+                leg->SetTextSize(0.03);
+                for (std::size_t ir = 0; ir < dr_ranges_for_reco_effcy_mixed_wide.size(); ++ir) {
+                    leg->AddEntry(hs[ir], fmt_range(dr_ranges_for_reco_effcy_mixed_wide[ir]).c_str(), "lp");
+                }
+                leg->Draw("same");
+            }
+        }
+
+        const std::string out = ranged_outdir + "reco_effcy_mixed_" + varx + "_in_truth_dr_bins" + wp_suffix + ".png";
+        c.SaveAs(out.c_str());
+    }
+}
+
 private:
     std::string RecoEffNumFilter() const {
         if (!require_signal_cuts) return wp_filter;
@@ -937,12 +1027,12 @@ private:
         const bool has_single_b = (hname.find("_single_b") != std::string::npos);
 
         if ((has_ss || has_op) && has_single_b) {
-            throw std::runtime_error("[DetRespPlotter] Invalid reco histogram name with mixed+single_b tags: " + hname);
+            throw std::runtime_error("[RecoEffyRetRespPlotter] Invalid reco histogram name with mixed+single_b tags: " + hname);
         }
         if (has_ss || has_op) return true;
         if (has_single_b) return false;
 
-        throw std::runtime_error("[DetRespPlotter] Cannot determine reco input source for histogram name: " + hname);
+        throw std::runtime_error("[RecoEffyRetRespPlotter] Cannot determine reco input source for histogram name: " + hname);
     }
 
     template <typename T>
@@ -983,7 +1073,7 @@ private:
 
     bool CheckUnmixedFile() const {
         if (!infile_unmixed || !infile_unmixed->IsOpen()) {
-            std::cerr << "[DetRespPlotter] ERROR: unmixed input file not open. Call Initialize().\n";
+            std::cerr << "[RecoEffyRetRespPlotter] ERROR: unmixed input file not open. Call Initialize().\n";
             return false;
         }
         return true;
@@ -991,11 +1081,11 @@ private:
 
     bool CheckRecoFiles() const {
         if (!infile_unmixed || !infile_unmixed->IsOpen()) {
-            std::cerr << "[DetRespPlotter] ERROR: unmixed input file not open. Call Initialize().\n";
+            std::cerr << "[RecoEffyRetRespPlotter] ERROR: unmixed input file not open. Call Initialize().\n";
             return false;
         }
         if (!infile_mixed || !infile_mixed->IsOpen()) {
-            std::cerr << "[DetRespPlotter] ERROR: mixed input file not open. Call Initialize().\n";
+            std::cerr << "[RecoEffyRetRespPlotter] ERROR: mixed input file not open. Call Initialize().\n";
             return false;
         }
         return true;

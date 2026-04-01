@@ -15,8 +15,8 @@ class PythiaTruthAnalysis
   , public PythiaTruthExtras<MuonPairPythiaTruth, PythiaTruthAnalysis>
 {
 public:
-    PythiaTruthAnalysis(int batch_num_input, bool is_private, double e_com = 5.36)
-        : PythiaAlgCoreT(batch_num_input)
+    PythiaTruthAnalysis(int batch_num_input, bool is_private, double e_com = 5.36, bool use_local = false)
+        : PythiaAlgCoreT(batch_num_input, use_local)
     {
         if (std::abs(e_com - 5.36) > 0.01 && std::abs(e_com - 5.02) > 0.01)
             throw std::runtime_error("PythiaTruthAnalysis: E_COM must be 5.02 or 5.36, got "

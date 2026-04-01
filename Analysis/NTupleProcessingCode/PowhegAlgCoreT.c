@@ -241,6 +241,9 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::FillMuonPair_PowhegCore(i
     mpairRef()->m1.ind = std::distance(truth_muon_barcode->begin(), it1);
     mpairRef()->m2.ind = std::distance(truth_muon_barcode->begin(), it2);
 
+    mpairRef()->m1.ev_weight = event_weight;
+    mpairRef()->m2.ev_weight = event_weight;
+
 }
 
 template <class PairT, class MuonT, class Derived, class... Extras>

@@ -391,7 +391,7 @@ ParamsSet::ParamsSet(){
   	}
 
     fillLogBinningArray(pT_bins_40,  18, 4.0, 40.0);  // 18 log bins from 4 to 40 GeV
-    fillLogBinningArray(pT_bins_8 ,  20, 4.0, 8.0 );  // 15 log bins from 4 to 	8 GeV
+    fillLogBinningArray(pT_bins_8 ,  20, 4.0, 8.0 );  // 20 log bins from 4 to 	8 GeV
     fillLogBinningArray(pT_bins_60,  20, 8.0, 60.0);  // 20 log bins from 8 to 60 GeV
     fillLogBinningArray(pT_bins_80,  12, 8.0, 80.0);  // 12 log bins from 8 to 200 GeV
 

@@ -101,6 +101,16 @@
             }
         },
         {
+            "hist_name": "truth_dr_4_0",
+            "var_name": "truth_dr",
+            "title": "#DeltaR^{truth}",
+            "binning": {
+                "nbins": 40,
+                "min": 0.0,
+                "max": 4.0
+            }
+        },
+        {
             "hist_name": "minv_zoomin",
             "var_name": "minv",
             "title": "m_{#mu#mu}^{reco} [GeV]",

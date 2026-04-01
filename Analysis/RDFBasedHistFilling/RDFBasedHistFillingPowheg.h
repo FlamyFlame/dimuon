@@ -131,9 +131,11 @@ protected:
 
     // --- mu-pair reco efficiency projection-graph configurations ---
     std::vector<float> dr_bins_edges_for_reco_effcy = {0.0f, 0.2f, 0.4f, 0.6f, 1.0f};
+    std::vector<float> dr_bins_edges_for_reco_effcy_mixed_wide = {0.0f, 1.0f, 2.5f, 4.0f};
     std::vector<float> pair_pT_bins_edges_for_reco_effcy_dR = {8.0f, 12.0f, 20.0f, std::numeric_limits<float>::max()};
 
     std::vector<std::pair<float, float>> dr_ranges_for_reco_effcy;
+    std::vector<std::pair<float, float>> dr_ranges_for_reco_effcy_mixed_wide;
     std::vector<std::pair<float, float>> pair_pT_ranges_for_reco_effcy_dR;
 
     // tuple: (varx, vary, project_y_axis, projection_ranges)
@@ -194,4 +196,34 @@ public:
     : RDFBasedHistFillingPowheg(true, true, run_year_input){}
     ~RDFBasedHistFillingPowhegFullsimOverlay(){}
 
+};
+
+class RDFBasedHistFillingPowhegFullsimSingleMuon : public virtual RDFBasedHistFillingPowheg {
+protected:
+    std::vector<std::vector<std::string>> levels_reco_effcy_filters;
+    std::vector<std::vector<std::string>> levels_detector_response_filters;
+
+    std::vector<std::string> reco_effcy_filters;
+    std::vector<std::string> detector_response_filters;
+
+    std::vector<std::string>                reco_effcy_var1Ds;
+    std::vector<std::array<std::string,2>>  reco_effcy_var2Ds;
+    std::vector<std::array<std::string,3>>  reco_effcy_var3Ds;
+
+    std::vector<std::string>                detec_resp_var1Ds;
+    std::vector<std::array<std::string,2>>  detec_resp_var2Ds;
+
+    virtual void SetIOPathsHook() override;
+    virtual void InitializePowhegExtra() override;
+    virtual void FlattenFiltersExtra() override;
+    virtual void BuildFlattenedFilterToVarListMapExtra() override;
+    virtual void CreateBaseRDFsExtra() override; // fully replaces powheg common (uses ev_weight, not weight)
+    virtual void FillHistogramsFullSim() override;
+    void FillHistogramsFullSimDetecResp();
+    void FillHistogramsFullSimRecoEffcies();
+
+public:
+    explicit RDFBasedHistFillingPowhegFullsimSingleMuon(int run_year_input = 17)
+    : RDFBasedHistFillingPowheg(true, false, run_year_input) {}
+    ~RDFBasedHistFillingPowhegFullsimSingleMuon() {}
 };

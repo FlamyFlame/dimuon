@@ -14,6 +14,7 @@
 #include <TH1D.h>
 #include <TH2D.h>
 #include <TH3D.h>
+#include <TSystem.h>
 #include <ROOT/RDataFrame.hxx>
 #include <ROOT/RLogger.hxx>
 #include <ROOT/RDF/InterfaceUtils.hxx>
