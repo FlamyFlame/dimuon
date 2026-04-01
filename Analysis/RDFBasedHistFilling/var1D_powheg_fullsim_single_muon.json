@@ -1,0 +1,56 @@
+{
+    "variables1D": [
+        {
+            "hist_name": "truth_pt",
+            "var_name": "MuonObj.truth_pt",
+            "title": "p_{T}^{truth} [GeV]",
+            "binning": "pT_bins_40"
+        },
+        {
+            "hist_name": "pt",
+            "var_name": "MuonObj.pt",
+            "title": "p_{T}^{reco} [GeV]",
+            "binning": "pT_bins_40"
+        },
+        {
+            "hist_name": "truth_eta",
+            "var_name": "MuonObj.truth_eta",
+            "title": "#eta^{truth}",
+            "binning": {
+                "nbins": 48,
+                "min": -2.4,
+                "max": 2.4
+            }
+        },
+        {
+            "hist_name": "eta",
+            "var_name": "MuonObj.eta",
+            "title": "#eta^{reco}",
+            "binning": {
+                "nbins": 48,
+                "min": -2.4,
+                "max": 2.4
+            }
+        },
+        {
+            "hist_name": "truth_phi",
+            "var_name": "MuonObj.truth_phi",
+            "title": "#phi^{truth}",
+            "binning": {
+                "nbins": 64,
+                "min": -3.141592653589793,
+                "max": 3.141592653589793
+            }
+        },
+        {
+            "hist_name": "phi",
+            "var_name": "MuonObj.phi",
+            "title": "#phi^{reco}",
+            "binning": {
+                "nbins": 64,
+                "min": -3.141592653589793,
+                "max": 3.141592653589793
+            }
+        }
+    ]
+}
