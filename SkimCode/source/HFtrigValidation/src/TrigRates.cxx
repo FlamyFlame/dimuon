@@ -14,6 +14,7 @@
 #include "xAODTrigger/EnergySumRoI.h"
 #include "xAODMissingET/MissingETContainer.h"
 #include "xAODTruth/TruthVertexContainer.h"
+#include "xAODForward/ZdcModuleContainer.h"
 
 #include "PMGTools/PMGTruthWeightTool.h"
 #include "GeneratorObjects/McEventCollection.h"
@@ -52,7 +53,7 @@ std::string TrigRates::DoubleToString(double value) {
 bool TrigRates::IsPrimaryParticle(const xAOD::TruthParticle* particle){
   if(!particle) return false;
   if(particle->status()!=1                             ) return false;
-  if(particle->barcode()>=2e5 || particle->barcode()==0) return false;
+  if(particle->uid()>=2e5 || particle->uid()==0) return false;
   if(particle->charge()==0                             ) return false;
   return true;
 }
@@ -112,6 +113,10 @@ TrigRates::TrigRates(const std::string& name, ISvcLocator* pSvcLocator)
   declareProperty("TrackSelectionTool_HITight"    , m_trkSelTool_HITight                    );
   declareProperty("TrackSelectionTool_HILoose"    , m_trkSelTool_HILoose                    );
   declareProperty("TrackSelectionTool_MinBias"    , m_trkSelTool_MinBias                    );
+
+  declareProperty("IsZdcCalib"            , m_is_Zdc_Calib                 =false         );//true only for Zdc Calib Stream
+  declareProperty("StoreZdc"              , m_store_Zdc                    =0             );//bitflag: 1=basic ZDC, 2=RPD/centroid info, 3=both
+  declareProperty("ZdcAuxSuffix"          , m_ZdcAuxSuffix                 =""            );//AuxSuffix for Zdc Reprocessing
 
   declareProperty("IsRun3"                , m_isRun3 = true                 );
 
@@ -230,6 +235,8 @@ StatusCode TrigRates::initialize(){
 
    if(m_store_EventInfo>0 ) InitEventInfo(m_OutTree);
 
+   if(m_store_Zdc         ) InitZdc      (m_OutTree);
+
    if(m_store_tracks      ) InitTracks   (m_OutTree);
    if(m_store_pix_tracks  ) InitPixTracks(m_OutTree);
    if(m_store_Vtx         ) InitVertex   (m_OutTree);
@@ -315,6 +322,7 @@ StatusCode TrigRates::execute(){
 
    if(m_is_evgen==false){
      if(m_store_EventInfo>0)    CHECK(ProcessEventInfo   ());
+     if(m_store_Zdc        )    CHECK(ProcessZdc         ());
      if(m_store_tracks     )    CHECK(ProcessTracks      ());
      if(m_store_pix_tracks )    CHECK(ProcessPixTracks   ());
      if(m_store_Vtx        )    CHECK(ProcessVertex      ());
@@ -393,10 +401,14 @@ StatusCode TrigRates::CleaningCuts(bool &pass_cleaning_cuts){
 //Event by Event Cleaning
     if(!isMC){
       int flag=0;
-      if(l_EventInfo->errorState(xAOD::EventInfo::LAr)==xAOD::EventInfo::Error  ) flag =1;
-      if(l_EventInfo->errorState(xAOD::EventInfo::Tile)==xAOD::EventInfo::Error ) flag+=2;
-      if(l_EventInfo->errorState(xAOD::EventInfo::SCT)==xAOD::EventInfo::Error  ) flag+=4;
-      if(l_EventInfo->isEventFlagBitSet(xAOD::EventInfo::Core,18)               ) flag+=8;
+      if(l_EventInfo->errorState(xAOD::EventInfo::Pixel)==xAOD::EventInfo::Error) flag += 1;
+      if(l_EventInfo->errorState(xAOD::EventInfo::SCT)==xAOD::EventInfo::Error  ) flag += 2;
+      if(l_EventInfo->errorState(xAOD::EventInfo::TRT)==xAOD::EventInfo::Error  ) flag += 4;
+      if(l_EventInfo->errorState(xAOD::EventInfo::Muon)==xAOD::EventInfo::Error ) flag += 8;
+      if(l_EventInfo->errorState(xAOD::EventInfo::LAr)==xAOD::EventInfo::Error  ) flag += 16;
+      if(l_EventInfo->errorState(xAOD::EventInfo::Tile)==xAOD::EventInfo::Error ) flag += 32;
+      if(l_EventInfo->errorState(xAOD::EventInfo::Core)==xAOD::EventInfo::Error ) flag += 64;
+      if(l_EventInfo->isEventFlagBitSet(xAOD::EventInfo::Core,18)               ) flag += 128;
       if(flag!=0){
           pass_cleaning_cuts=false;
           ATH_MSG_DEBUG("Event FAILED EventLevelCleaning :flag="<<flag);
@@ -728,6 +740,144 @@ StatusCode TrigRates::ProcessEventInfo(){
    }
 
    return StatusCode::SUCCESS;
+}
+
+
+//ZDC
+// File-scope storage for ZDC tree branches (R25/Run-3 path only)
+#if defined(HF_IS_R25)
+static float t_ZdcAmp      [2]={0};
+static float t_ZdcAmpErr   [2]={0};
+static float t_ZdcEnergy   [2]={0};
+static float t_ZdcEnergyErr[2]={0};
+static float t_ZdcTime     [2]={0};
+static short t_ZdcStatus   [2]={0};
+static unsigned int t_ZdcModuleMask    =0;
+// Module-level (stored when m_store_Zdc & 1)
+static float t_ZdcModulePreSampleAmp[2][4]={};
+// RPD / centroid (stored when m_store_Zdc & 2)
+static float t_RpdSubAmpSum         [2]={0};
+static float t_xDetCentroid         [2]={0};
+static float t_yDetCentroid         [2]={0};
+static float t_xCentroid            [2]={0};
+static float t_yCentroid            [2]={0};
+static float t_xDetCentroidUnsub    [2]={0};
+static float t_yDetCentroidUnsub    [2]={0};
+static float t_xDetRowCentroid      [2][4]={};
+static float t_yDetColCentroid      [2][4]={};
+static float t_xDetRowCentroidStdev [2]={0};
+static float t_yDetColCentroidStdev [2]={0};
+static float t_reactionPlaneAngle   [2]={0};
+static float t_cosDeltaReactionPlaneAngle=0;
+static unsigned int t_centroidStatus[2]={0};
+#endif
+
+void TrigRates::InitZdc(TTree *l_OutTree){
+#if defined(HF_IS_R25)
+  l_OutTree->Branch("zdc_ZdcAmp"       , t_ZdcAmp      , "zdc_ZdcAmp[2]/F");
+  l_OutTree->Branch("zdc_ZdcAmpErr"    , t_ZdcAmpErr   , "zdc_ZdcAmpErr[2]/F");
+  l_OutTree->Branch("zdc_ZdcEnergy"    , t_ZdcEnergy   , "zdc_ZdcEnergy[2]/F");
+  l_OutTree->Branch("zdc_ZdcEnergyErr" , t_ZdcEnergyErr, "zdc_ZdcEnergyErr[2]/F");
+  l_OutTree->Branch("zdc_ZdcTime"      , t_ZdcTime     , "zdc_ZdcTime[2]/F");
+  l_OutTree->Branch("zdc_ZdcStatus"    , t_ZdcStatus   , "zdc_ZdcStatus[2]/S");
+  l_OutTree->Branch("zdc_ZdcModuleMask"        , &t_ZdcModuleMask         , "zdc_ZdcModuleMask/i");
+  l_OutTree->Branch("zdc_ZdcModulePreSampleAmp", &t_ZdcModulePreSampleAmp , "zdc_ZdcModulePreSampleAmp[2][4]/F");
+  if(m_store_Zdc & 2){
+    l_OutTree->Branch("zdc_RpdSubAmpSum"              , t_RpdSubAmpSum          , "zdc_RpdSubAmpSum[2]/F");
+    l_OutTree->Branch("zdc_xDetCentroid"              , t_xDetCentroid          , "zdc_xDetCentroid[2]/F");
+    l_OutTree->Branch("zdc_yDetCentroid"              , t_yDetCentroid          , "zdc_yDetCentroid[2]/F");
+    l_OutTree->Branch("zdc_xCentroid"                 , t_xCentroid             , "zdc_xCentroid[2]/F");
+    l_OutTree->Branch("zdc_yCentroid"                 , t_yCentroid             , "zdc_yCentroid[2]/F");
+    l_OutTree->Branch("zdc_xDetCentroidUnsub"         , t_xDetCentroidUnsub     , "zdc_xDetCentroidUnsub[2]/F");
+    l_OutTree->Branch("zdc_yDetCentroidUnsub"         , t_yDetCentroidUnsub     , "zdc_yDetCentroidUnsub[2]/F");
+    l_OutTree->Branch("zdc_xDetRowCentroidStdev"      , t_xDetRowCentroidStdev  , "zdc_xDetRowCentroidStdev[2]/F");
+    l_OutTree->Branch("zdc_yDetColCentroidStdev"      , t_yDetColCentroidStdev  , "zdc_yDetColCentroidStdev[2]/F");
+    l_OutTree->Branch("zdc_reactionPlaneAngle"        , t_reactionPlaneAngle    , "zdc_reactionPlaneAngle[2]/F");
+    l_OutTree->Branch("zdc_cosDeltaReactionPlaneAngle", &t_cosDeltaReactionPlaneAngle, "zdc_cosDeltaReactionPlaneAngle/F");
+    l_OutTree->Branch("zdc_centroidStatus"            , t_centroidStatus        , "zdc_centroidStatus[2]/i");
+  }
+#else
+  ATH_MSG_WARNING("ZDC storage is only supported for R25 builds; InitZdc() is a no-op.");
+#endif
+}
+
+StatusCode TrigRates::ProcessZdc(){
+#if defined(HF_IS_R25)
+  t_ZdcModuleMask              = 0;
+  t_cosDeltaReactionPlaneAngle = 0;
+  for(int i=0;i<2;i++){
+    t_ZdcAmp[i]=t_ZdcAmpErr[i]=t_ZdcEnergy[i]=t_ZdcEnergyErr[i]=t_ZdcTime[i]=0;
+    t_ZdcStatus[i]=0;
+    for(int j=0;j<4;j++) t_ZdcModulePreSampleAmp[i][j]=0;
+    if(m_store_Zdc & 2){
+      t_RpdSubAmpSum[i]=t_xDetCentroid[i]=t_yDetCentroid[i]=0;
+      t_xCentroid[i]=t_yCentroid[i]=0;
+      t_xDetCentroidUnsub[i]=t_yDetCentroidUnsub[i]=0;
+      t_xDetRowCentroidStdev[i]=t_yDetColCentroidStdev[i]=0;
+      t_reactionPlaneAngle[i]=0; t_centroidStatus[i]=0;
+    }
+  }
+
+  const xAOD::ZdcModuleContainer *zdcSums = nullptr;
+  if(evtStore()->retrieve(zdcSums, "ZdcSums").isFailure()){
+    ATH_MSG_ERROR(" Could not retrieve ZdcSums");
+    return StatusCode::FAILURE;
+  }
+
+  std::string auxSuffix = m_ZdcAuxSuffix;
+  for(const auto* zdcSum : *zdcSums){
+    int zdcside = zdcSum->zdcSide();
+    if(zdcside == 0){
+      t_cosDeltaReactionPlaneAngle = zdcSum->auxdataConst<float>("cosDeltaReactionPlaneAngle" + auxSuffix);
+      continue;
+    }
+    const int iside = (zdcside > 0) ? 1 : 0;
+    t_ZdcEnergy    [iside] = zdcSum->auxdataConst<float       >("CalibEnergy"   + auxSuffix);
+    t_ZdcEnergyErr [iside] = zdcSum->auxdataConst<float       >("CalibEnergyErr"+ auxSuffix);
+    t_ZdcAmp       [iside] = zdcSum->auxdataConst<float       >("UncalibSum"    + auxSuffix);
+    t_ZdcAmpErr    [iside] = zdcSum->auxdataConst<float       >("UncalibSumErr" + auxSuffix);
+    t_ZdcTime      [iside] = zdcSum->auxdataConst<float       >("AverageTime"   + auxSuffix);
+    t_ZdcStatus    [iside] = zdcSum->auxdataConst<unsigned int>("Status"        + auxSuffix);
+    t_ZdcModuleMask       += (zdcSum->auxdataConst<unsigned int>("ModuleMask"   + auxSuffix) << (4 * iside));
+    if(m_store_Zdc & 2){
+      t_RpdSubAmpSum     [iside] = zdcSum->auxdataConst<float>("RpdSubAmpSum"    + auxSuffix);
+      t_xDetCentroid     [iside] = zdcSum->auxdataConst<float>("xDetCentroid"    + auxSuffix);
+      t_yDetCentroid     [iside] = zdcSum->auxdataConst<float>("yDetCentroid"    + auxSuffix);
+      t_xCentroid        [iside] = zdcSum->auxdataConst<float>("xCentroid"       + auxSuffix);
+      t_yCentroid        [iside] = zdcSum->auxdataConst<float>("yCentroid"       + auxSuffix);
+      t_xDetCentroidUnsub[iside] = zdcSum->auxdataConst<float>("xDetCentroidUnsub" + auxSuffix);
+      t_yDetCentroidUnsub[iside] = zdcSum->auxdataConst<float>("yDetCentroidUnsub" + auxSuffix);
+      std::vector<float> rx = zdcSum->auxdataConst<std::vector<float>>("xDetRowCentroid" + auxSuffix);
+      std::vector<float> ry = zdcSum->auxdataConst<std::vector<float>>("yDetColCentroid" + auxSuffix);
+      for(int r=0;r<4;r++) t_xDetRowCentroid[iside][r] = rx.at(r);
+      for(int c=0;c<4;c++) t_yDetColCentroid[iside][c] = ry.at(c);
+      t_xDetRowCentroidStdev[iside] = zdcSum->auxdataConst<float       >("xDetRowCentroidStdev" + auxSuffix);
+      t_yDetColCentroidStdev[iside] = zdcSum->auxdataConst<float       >("yDetColCentroidStdev" + auxSuffix);
+      t_reactionPlaneAngle  [iside] = zdcSum->auxdataConst<float       >("reactionPlaneAngle"   + auxSuffix);
+      t_centroidStatus      [iside] = zdcSum->auxdataConst<unsigned int>("centroidStatus"        + auxSuffix);
+    }
+  }
+
+  // Module-level quantities (PreSampleAmp) — read from ZdcModules container
+  const xAOD::ZdcModuleContainer *zdcModules = nullptr;
+  if(evtStore()->retrieve(zdcModules, "ZdcModules").isFailure()){
+    ATH_MSG_ERROR(" Could not retrieve ZdcModules");
+    return StatusCode::FAILURE;
+  }
+  for(const auto* zdcMod : *zdcModules){
+    const int zdcside = zdcMod->zdcSide();
+    if(zdcside == 0) continue; // skip global sum entries
+    const int iside = (zdcside > 0) ? 1 : 0;
+    const int imod  = zdcMod->zdcModule();
+    if(imod < 0 || imod >= 4) continue;
+    t_ZdcModulePreSampleAmp[iside][imod] = zdcMod->auxdataConst<float>("PreSampleAmp" + auxSuffix);
+  }
+
+  return StatusCode::SUCCESS;
+#else
+  ATH_MSG_ERROR("ZDC processing (ProcessZdc) is only supported for HF_IS_R25 builds.");
+  return StatusCode::FAILURE;
+#endif
 }
 
 
@@ -1213,7 +1363,7 @@ StatusCode TrigRates::ProcessMuons(){
 
             truth_index=-1;
             match_prob =idTrk->auxdata<float>("truthMatchProbability"); 
-            barcode    =associated_truth->barcode();
+            barcode    =associated_truth->uid();
             is_primary =IsPrimaryParticle(associated_truth);
 
             //added 30/9/2021
@@ -1222,7 +1372,7 @@ StatusCode TrigRates::ProcessMuons(){
             truth_phi   =associated_truth->phi   ();
             truth_charge=associated_truth->charge();
             truth_id    =associated_truth->pdgId ();
-            truth_quality =(associated_truth->isStrangeBaryon() ||associated_truth->barcode()<=0)?-1:1;
+            truth_quality =(associated_truth->isStrangeBaryon() ||associated_truth->uid()<=0)?-1:1;
             truth_status  =(associated_truth->status()!=1)? false:true;
           }
         }
@@ -1558,7 +1708,7 @@ StatusCode TrigRates::ProcessTracks(){
            m_trk_truth_index_temp1   [associated_truth]=itrk; 
            m_trk_truth_index    .push_back(-1);
            m_trk_truth_prob     .push_back(track->auxdata<float>("truthMatchProbability")); 
-           m_trk_truth_barcode  .push_back(associated_truth->barcode());
+           m_trk_truth_barcode  .push_back(associated_truth->uid());
            m_trk_truth_IsPrimary.push_back(IsPrimaryParticle(associated_truth));
          }
          else{
@@ -1998,7 +2148,7 @@ StatusCode TrigRates::ProcessTruth(){
     if((m_store_truth & Truth::StoreParents)==0){ 
       if(track->status()!=1) continue;
       if(track->pt()<0.0001 || track->pt()<m_min_pT_Truth) continue;
-      if(track->barcode()>=200000 || track->barcode()==0) continue;
+      if(track->uid()>=200000 || track->uid()==0) continue;
     //if(fabs(track->charge())<0.1 || fabs(track->eta())>2.5 ) continue;
       if(fabs(track->charge())<0.1) continue;
     }
@@ -2013,7 +2163,7 @@ StatusCode TrigRates::ProcessTruth(){
     float charge=track->charge();
     int   id    =track->pdgId ();
     int quality =1;
-    if(track->isStrangeBaryon() ||track->barcode()<=0) quality=-1;
+    if(track->isStrangeBaryon() ||track->uid()<=0) quality=-1;
 
     std::vector<int> parents;
     for(long unsigned int iparent=0;iparent<track->nParents();iparent++){
@@ -2021,7 +2171,7 @@ StatusCode TrigRates::ProcessTruth(){
         ATH_MSG_DEBUG("++++++++++++++++++ A Parent "<<iparent<<" is missing, #Parents: "<<track->nParents());
         continue;
       }
-      parents.push_back(track->parent(iparent)->barcode());
+      parents.push_back(track->parent(iparent)->uid());
     }
 
     std::vector<int> children;
@@ -2030,7 +2180,7 @@ StatusCode TrigRates::ProcessTruth(){
         ATH_MSG_DEBUG("++++++++++++++++++ A Child "<<ichild<<" is missing, #Children: "<<track->nChildren());
         continue;
       }
-      children.push_back(track->child(ichild)->barcode());
+      children.push_back(track->child(ichild)->uid());
     }
 
     m_truth_pt      .push_back(pt);
@@ -2040,7 +2190,7 @@ StatusCode TrigRates::ProcessTruth(){
     m_truth_e     .push_back(e);
     m_truth_charge  .push_back(charge);
     m_truth_id      .push_back(id);
-    m_truth_barcode .push_back(track->barcode());
+    m_truth_barcode .push_back(track->uid());
     m_truth_quality .push_back(quality);
     m_truth_parents .push_back(parents);
     m_truth_children .push_back(children);
@@ -2051,7 +2201,7 @@ StatusCode TrigRates::ProcessTruth(){
       int trk_index=-1;
       if(m_trk_truth_index_temp1.find(track)!=m_trk_truth_index_temp1.end()){
         trk_index=m_trk_truth_index_temp1[track];
-        if(m_trk_truth_barcode[trk_index]!=track->barcode()){
+        if(m_trk_truth_barcode[trk_index]!=track->uid()){
           ATH_MSG_ERROR("Barcodes Dont Match");
           return StatusCode::FAILURE;
         }
@@ -2064,7 +2214,7 @@ StatusCode TrigRates::ProcessTruth(){
       int muon_index=-1;
       if(m_muon_truth_index_temp1.find(track)!=m_muon_truth_index_temp1.end()){
         muon_index=m_muon_truth_index_temp1[track];
-        if(m_muon_truth_barcode[muon_index]!=track->barcode()){
+        if(m_muon_truth_barcode[muon_index]!=track->uid()){
           ATH_MSG_ERROR("Barcodes Dont Match");
           return StatusCode::FAILURE;
         }

@@ -35,6 +35,10 @@
   #include "MuonMomentumCorrections/IMuonCalibrationAndSmearingTool.h"
 #endif
 
+#if defined(HF_IS_R25)
+  #include "ZdcAnalysis/IZdcAnalysisTool.h"
+#endif
+
 
 class TTree;
 class Module;
@@ -131,10 +135,17 @@ private:
    UInt_t RunNumber=0,lumi_block=0,bunch_crossing_id=0;
    ULong64_t eventNumber=0;
    Float_t AvgIntPerXing=0,ActIntPerXing=0;
+   Float_t ZdcEtA=0,ZdcEtC=0;
    Int_t   m_NumTrackNoCuts=0, m_NumTrackPPMinBias=0, m_NumTrackHILoose=0, m_NumTrackHITight=0;
    Float_t m_FCalET,m_FCalETP,m_FCalETN;
 
    UInt_t m_year; // needed for PbPb centrality
+
+   bool        m_is_Zdc_Calib  = false; //=true only for Zdc Calib Stream
+   int         m_store_Zdc     = 0;     //bitflag: 1=basic ZDC, 2=RPD/centroid info, 3=both
+   std::string m_ZdcAuxSuffix;          //AuxSuffix for Zdc (e.g. "RP" when reprocessing)
+   void       InitZdc   (TTree *l_OutTree);
+   StatusCode ProcessZdc();
 
    bool        m_store_Vtx           = true; //=true then store vertex info           
    std::string m_vtx_container_key;
