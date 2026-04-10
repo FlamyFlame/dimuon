@@ -21,28 +21,54 @@ do_pp2024 = False
 do_hi2018 = False
 do_hi2015 = False
 do_hi2023 = False
-do_hi2024 = True
+do_hi2024 = False
+do_hi2025 = False
 
 # overlay
 do_pp_MC_fullsim_17 = False
 do_pp_MC_fullsim_24 = False
 
-_run_dir = os.path.basename(os.getcwd())
-if _run_dir == "run_23hi":
-	do_hi2023 = True
-	do_hi2024 = False
-	do_pp2024 = False
-	do_pp_MC_fullsim_24 = False
-elif _run_dir == "run_24hi":
-	do_hi2023 = False
-	do_hi2024 = True
-	do_pp2024 = False
-	do_pp_MC_fullsim_24 = False
-elif _run_dir == "run_24pp":
-	do_hi2023 = False
-	do_hi2024 = False
-	do_pp2024 = True
-	do_pp_MC_fullsim_24 = False
+# Resolve run mode (priority order):
+#   1) explicit TRIGRATES_RUNMODE environment variable (most robust for grid)
+#   2) infer from --filesInput dataset name
+#   3) infer from run directory name (local convenience)
+_cli_parser = argparse.ArgumentParser(add_help=False)
+_cli_parser.add_argument("--filesInput", type=str, default="")
+_cli_args, _ = _cli_parser.parse_known_args()
+_files_input_arg = (_cli_args.filesInput or "").lower()
+_run_mode_arg = (os.environ.get("TRIGRATES_RUNMODE", "") or "").strip().lower()
+
+
+def _set_run_mode(mode):
+	global do_hi2023, do_hi2024, do_hi2025, do_pp2024, do_pp_MC_fullsim_24
+	do_hi2023 = (mode == "hi2023")
+	do_hi2024 = (mode == "hi2024")
+	do_hi2025 = (mode == "hi2025")
+	do_pp2024 = (mode == "pp2024")
+	do_pp_MC_fullsim_24 = (mode == "ppmcfullsim2024")
+
+
+if _run_mode_arg in ("hi2023", "hi2024", "hi2025", "pp2024", "ppmcfullsim2024"):
+	_set_run_mode(_run_mode_arg)
+elif _files_input_arg:
+	if "data23_hi" in _files_input_arg:
+		_set_run_mode("hi2023")
+	elif "data24_hi" in _files_input_arg:
+		_set_run_mode("hi2024")
+	elif "data25_hi" in _files_input_arg:
+		_set_run_mode("hi2025")
+	elif "data24_5p36tev" in _files_input_arg or "data24_pp" in _files_input_arg:
+		_set_run_mode("pp2024")
+else:
+	_run_dir = os.path.basename(os.getcwd())
+	if _run_dir == "run_23hi":
+		_set_run_mode("hi2023")
+	elif _run_dir == "run_24hi":
+		_set_run_mode("hi2024")
+	elif _run_dir == "run_25hi":
+		_set_run_mode("hi2025")
+	elif _run_dir == "run_24pp":
+		_set_run_mode("pp2024")
 
 
 # ------------------------------------------------------------
@@ -51,7 +77,8 @@ is_HION = False
 if (do_hi2018 or
 	 do_hi2015 or
 	 do_hi2023 or
-	 do_hi2024
+	 do_hi2024 or
+	 do_hi2025
 	 ):
 	is_HION = True
 # ------------------------------------------------------------
@@ -60,7 +87,7 @@ if (do_hi2018 or
 # ------------------------------------------------------------
 # for Run3 data
 is_Run3 = False
-if (do_hi2023 or do_hi2024 or do_pp2024 or do_pp_MC_fullsim_24):
+if (do_hi2023 or do_hi2024 or do_hi2025 or do_pp2024 or do_pp_MC_fullsim_24):
 	is_Run3 = True
 # ------------------------------------------------------------
 
@@ -70,7 +97,7 @@ is_MC = do_pp_MC_fullsim_17 or do_pp_MC_fullsim_24
 
 
 # CA config here is intended for modern Run-3-style configurations
-if not (do_hi2023 or do_hi2024 or do_pp2024 or do_pp_MC_fullsim_24):
+if not (do_hi2023 or do_hi2024 or do_hi2025 or do_pp2024 or do_pp_MC_fullsim_24):
 	print("*"*50, "\nTrigRates_CA.py is for modern Run-3 style samples. Use TrigRates_JO.py for older samples.\n", "*"*50)
 	exit()
 
@@ -110,6 +137,19 @@ elif do_hi2024:
 									 "HLT_mu4noL1_L1ZDC_HELT20_jTE4000",
 									 "HLT_mu4noL1_L1ZDC_HELT15_jTE4000"]
 	DiMuon_triggers = ["HLT_2mu4_L12MU3V", "HLT_mu4_mu4noL1_L1MU3V"]
+elif do_hi2025:
+	RunYear = 2025
+	GRL = ["physics_HI2025_50ns_PbPb_IgnoreBSPOT_INVALID.xml"]
+	# data25_hi Pb+Pb HardProbes AOD (periods R/S/T, runs 510493+).
+	# Files are not yet staged at CERN EOS; update path once staged or use xrootd/Rucio.
+	InputFile = "/eos/atlas/atlastier0/rucio/data25_hi/physics_HardProbes/00510493/data25_hi.00510493.physics_HardProbes.merge.AOD.f1655_m2272/data25_hi.00510493.physics_HardProbes.merge.AOD.f1655_m2272._lb0001._0001.1"
+	Muon_triggers = ["HLT_mu4_L1MU3V",
+									 "HLT_mu6_L1MU3V",
+									 "HLT_mu6_L1MU5VF",
+									 "HLT_mu8_L1MU5VF",
+									 "HLT_mu10_L1MU8F",
+									 "HLT_mu10_L1MU5VF"]
+	DiMuon_triggers = ["HLT_2mu4_L12MU3V", "HLT_mu4_mu4noL1_L1MU3V"]
 elif do_pp2024:
 	GRL = ["physics_2024ppRef_25ns.xml"]
 	InputFile = "/eos/user/y/yuhang/data/data24_pp_testfile_AOD/data24_5p36TeV.00488427.physics_Main.merge.AOD.f1529_m2259._lb0100._0004.1"
@@ -138,7 +178,7 @@ def build_cfg(evt_max=1000):
 	flags.Exec.MaxEvents = evt_max    # local default; overridden by --evtMax=%MAXEVENTS on the grid
 	# Pick up --filesInput / --evtMax / other CA flags passed on the command line.
 	# This is required when submitted via:
-	#   pathena --trf "athena.py --CA TrigRates_CA.py --filesInput=%IN --evtMax=%MAXEVENTS" ...
+	#   pathena --trf "TRIGRATES_RUNMODE=hi2023 athena.py TrigRates_CA.py --filesInput=%IN --evtMax=%MAXEVENTS" ...
 	flags.fillFromArgs()
 	flags.lock()
 
@@ -218,7 +258,11 @@ def build_cfg(evt_max=1000):
 	alg.MuonTriggerChains = "|".join(Muon_triggers)
 	alg.DiMuonTriggerChains = "|".join(DiMuon_triggers)
 	alg.StoreEventInfo = 1
-	alg.StoreTracks = 0
+	# StoreTracks bitmap: 1=trk_numqual only (all+PPMinBias+HILoose+HITight counts, with and without pt>400 cut)
+	#                     1+2=also per-track vectors (pt/eta/phi/charge/quality)
+	#                     1+2+4=also hit details (d0, z0, pixel/SCT hits, etc.)
+	#                     1+2+4+8=also truth links (MC only)
+	alg.StoreTracks = 1
 	alg.StorePixTracks = 0
 	alg.MaxZvtx = 250
 	alg.StoreVtx = True
@@ -233,7 +277,10 @@ def build_cfg(evt_max=1000):
 	alg.TruthMinPT = 300
 	alg.ApplyMuonCalibrations = True
 	alg.IsRun3 = is_Run3
-	if do_hi2023 or do_hi2024 or do_pp2024:
+	alg.IsZdcCalib = False
+	alg.StoreZdc = 1 if is_HION else 0   # 1=basic ZDC (energy/time/status/PreSampleAmp); add 2 for RPD centroid data
+	alg.ZdcAuxSuffix = ""
+	if do_hi2023 or do_hi2024 or do_hi2025 or do_pp2024:
 		alg.HLTMuonsKey = "HLT_MuonsCB_RoI"
 	else:
 		alg.HLTMuonsKey = ""
