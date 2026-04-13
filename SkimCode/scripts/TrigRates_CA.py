@@ -281,9 +281,11 @@ def build_cfg(evt_max=1000):
 	alg.StoreZdc = 1 if is_HION else 0   # 1=basic ZDC (energy/time/status/PreSampleAmp); add 2 for RPD centroid data
 	alg.ZdcAuxSuffix = ""
 	if do_hi2023 or do_hi2024 or do_hi2025 or do_pp2024:
-		alg.HLTMuonsKey = "HLT_MuonsCB_RoI"
+		alg.HLTMuonsKey   = "HLT_MuonsCB_RoI"
+		alg.HLTMuonsFSKey = "HLT_MuonsCB_FS"
 	else:
-		alg.HLTMuonsKey = ""
+		alg.HLTMuonsKey   = ""
+		alg.HLTMuonsFSKey = ""
 
 	cfg.addEventAlgo(alg)
 	return cfg

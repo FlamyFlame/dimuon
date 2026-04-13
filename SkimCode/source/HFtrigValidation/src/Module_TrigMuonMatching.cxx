@@ -163,6 +163,120 @@ double TrigMuonMatchingModule::matchedTrackDetail(
 #endif // HF_IS_R21
 
 // ============================================================
+// chainMuons / bestMatch / matchDimuon_inner_direct / matchDimuonPerLeg
+// (R25 TDT-navigation-based per-leg matching)
+// ============================================================
+
+#if defined(HF_IS_R25)
+
+// Collect all HLT muon pointers from TDT features for a given chain and
+// StoreGate container key.  Returns an empty vector when the chain did not
+// fire (features() returns nothing) — this naturally caps the per-leg
+// efficiency at 100%.
+std::vector<const xAOD::Muon*>
+TrigMuonMatchingModule::chainMuons(const std::string& chain,
+                                    const std::string& containerKey) const
+{
+  std::vector<const xAOD::Muon*> result;
+  if (!m_trigDecTool) return result;
+  auto feats = m_trigDecTool->features<xAOD::MuonContainer>(
+      chain, TrigDefs::Physics, containerKey);
+  // In Run 3, each LinkInfo entry holds an ElementLink to ONE muon within the
+  // container; dereferencing gives const xAOD::Muon* directly.
+  for (auto& linfo : feats) {
+    if (!linfo.isValid()) continue;
+    const xAOD::Muon* mu = *(linfo.link);
+    if (mu) result.push_back(mu);
+  }
+  return result;
+}
+
+std::pair<double, const xAOD::Muon*>
+TrigMuonMatchingModule::bestMatch(const xAOD::Muon*                      offline,
+                                   const std::vector<const xAOD::Muon*>&  muons,
+                                   double                                 mindelR,
+                                   const xAOD::Muon*                      exclude) const
+{
+  double            best_dr = mindelR;
+  const xAOD::Muon* best_mu = nullptr;
+  for (const xAOD::Muon* hlt : muons) {
+    if (hlt == exclude) continue;
+    double dr = dR(offline->eta(), offline->phi(), hlt->eta(), hlt->phi());
+    if (dr < best_dr) { best_dr = dr; best_mu = hlt; }
+  }
+  return {best_dr, best_mu};
+}
+
+std::pair<Bool_t, Bool_t>
+TrigMuonMatchingModule::matchDimuon_inner_direct(
+    const xAOD::Muon*                     xmu1,
+    const xAOD::Muon*                     xmu2,
+    const TrigMuonDimuonChainInfo&        chainInfo,
+    const std::vector<const xAOD::Muon*>& muons_leg1,
+    const std::vector<const xAOD::Muon*>& muons_leg2,
+    double                                mindelR)
+{
+  auto [dr1, best1] = bestMatch(xmu1, muons_leg1, mindelR);
+  auto [dr2, best2] = bestMatch(xmu2, muons_leg2, mindelR);
+
+  // Pointer-based disambiguation: only needed when both legs share the same
+  // container (symmetric chain) and both offline muons claim the same HLT object.
+  if (chainInfo.isSymmetric && best1 != nullptr && best1 == best2) {
+    if (dr1 > dr2)
+      best1 = bestMatch(xmu1, muons_leg1, mindelR, best2).second;
+    else
+      best2 = bestMatch(xmu2, muons_leg2, mindelR, best1).second;
+  }
+
+  return {static_cast<Bool_t>(best1 != nullptr),
+          static_cast<Bool_t>(best2 != nullptr)};
+}
+
+Bool_t TrigMuonMatchingModule::matchDimuonPerLeg(
+    const xAOD::Muon*          mu1,
+    const xAOD::Muon*          mu2,
+    const std::string&         chain,
+    std::pair<Bool_t, Bool_t>& result1,
+    std::pair<Bool_t, Bool_t>& result2,
+    double                     mindelR)
+{
+  TrigMuonDimuonChainInfo chainInfo(chain);
+  if (!decodeDimuonChain(chainInfo)) {
+    std::cerr << "TrigMuonMatchingModule::matchDimuonPerLeg : "
+                 "Failed to decode chain \"" << chain << "\"." << std::endl;
+    result1 = result2 = {false, false};
+    return false;
+  }
+
+  // Build chain-filtered HLT muon lists via TDT navigation.
+  // For symmetric chains both legs reconstruct in HLT_MuonsCB_RoI;
+  // for asymmetric chains the seeded leg uses RoI and the FS leg uses FS.
+  const std::vector<const xAOD::Muon*> muons1 = chainMuons(chain, "HLT_MuonsCB_RoI");
+  const std::vector<const xAOD::Muon*> muons2 =
+      chainInfo.isSymmetric ? muons1 : chainMuons(chain, "HLT_MuonsCB_FS");
+
+  // Assignment A: mu1->leg1, mu2->leg2
+  std::pair<Bool_t, Bool_t> rc12 =
+      matchDimuon_inner_direct(mu1, mu2, chainInfo, muons1, muons2, mindelR);
+
+  std::pair<Bool_t, Bool_t> rc21;
+  if (chainInfo.isSymmetric) {
+    rc21 = {rc12.second, rc12.first};
+  } else {
+    // Assignment B: mu2->leg1, mu1->leg2
+    rc21 = matchDimuon_inner_direct(mu2, mu1, chainInfo, muons1, muons2, mindelR);
+  }
+
+  result1.first  = rc12.first;   // mu1 as leg1 in assignment A
+  result1.second = rc21.second;  // mu1 as leg2 in assignment B
+  result2.first  = rc21.first;   // mu2 as leg1 in assignment B
+  result2.second = rc12.second;  // mu2 as leg2 in assignment A
+  return true;
+}
+
+#endif // HF_IS_R25 (TDT per-leg matching)
+
+// ============================================================
 // matchDimuon_inner  — ordered assignment (mu1->threshold1, mu2->threshold2)
 // ============================================================
 
