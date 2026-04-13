@@ -205,16 +205,18 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputBranchesDimu
         std::string mu2Leg1_branch = mu4_mu4noL1_trigger_match_branch + "_mu2passLeg1" + leg_dR_suffix;
         std::string mu2Leg2_branch = mu4_mu4noL1_trigger_match_branch + "_mu2passLeg2" + leg_dR_suffix;
 
-        if (fChainRef()->GetBranch(mu1Leg2_branch.c_str())) {
-            // Leg branches with mindR found - best quality
+        if (fChainRef()->GetBranch(mu1Leg2_branch.c_str()) && use_per_leg_matching) {
+            // Per-leg branches found and use_per_leg_matching enabled - use per-leg matching
             fChainRef()->SetBranchAddress(mu1Leg1_branch.c_str(), &dimuon_b_mu4_mu4noL1_mu1passLeg1);
             fChainRef()->SetBranchAddress(mu1Leg2_branch.c_str(), &dimuon_b_mu4_mu4noL1_mu1passLeg2);
             fChainRef()->SetBranchAddress(mu2Leg1_branch.c_str(), &dimuon_b_mu4_mu4noL1_mu2passLeg1);
             fChainRef()->SetBranchAddress(mu2Leg2_branch.c_str(), &dimuon_b_mu4_mu4noL1_mu2passLeg2);
             use_leg_branches_mu4_mu4noL1 = true;
             use_mindR_suffix_in_output = true;
-            std::cout << "INFO: mu4_mu4noL1 leg branches found (mindR=" << mindR_trig << ")" << std::endl;
+            std::cout << "INFO: mu4_mu4noL1 per-leg branches enabled (mindR=" << mindR_trig << ")" << std::endl;
         } else {
+            if (fChainRef()->GetBranch(mu1Leg2_branch.c_str()))
+                std::cout << "INFO: mu4_mu4noL1 per-leg branches exist but use_per_leg_matching=false; using pair-level branch" << std::endl;
             // No leg branches - try mindR-only (order-insensitive) branch
             std::string mindR_only_branch = mu4_mu4noL1_trigger_match_branch + mindR_suffix;
             if (fChainRef()->GetBranch(mindR_only_branch.c_str())) {

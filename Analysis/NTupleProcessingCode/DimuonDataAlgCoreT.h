@@ -329,6 +329,12 @@ public:
     bool turn_on_track_charge = false; // turn on if track charge is stored
 
     bool filter_out_photo_resn_for_trig_effcy = true; // if true: filter out pairs from photoproduction or resonance decay for trigger efficiency study as well
+
+    // Per-leg trigger matching for mu4_mu4noL1.
+    // Default false: use pair-level branch (safe for old skims where per-leg branches
+    // may have been filled with the unfiltered-container (wrong) algorithm).
+    // Set true only for skims produced with the corrected TDT-navigation per-leg matching.
+    bool use_per_leg_matching = false;
 // --------------------- public class methods ---------------------------
 	~DimuonDataAlgCoreT(){}
     void PrintInstructions();
