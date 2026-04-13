@@ -167,6 +167,12 @@
             "binning": "pT_bins_80"
         },
         {
+            "hist_name": "pair_pt_log_150",
+            "var_name": "truth_pair_pt",
+            "title": "p_{T}^{pair} [GeV]",
+            "binning": "pT_bins_150"
+        },
+        {
             "hist_name": "minv_log",
             "var_name": "truth_minv",
             "title": "m_{#mu#mu} [GeV]",

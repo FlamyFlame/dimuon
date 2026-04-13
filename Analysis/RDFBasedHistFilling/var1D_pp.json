@@ -102,7 +102,13 @@
             "hist_name": "pair_pt_log",
             "var_name": "pair_pt",
             "title": "p_{T}^{pair} [GeV]",
-            "binning": "pT_bins_80"
+            "binning": "pT_bins_120"
+        },
+        {
+            "hist_name": "pair_pt_log_150",
+            "var_name": "pair_pt",
+            "title": "p_{T}^{pair} [GeV]",
+            "binning": "pT_bins_150"
         },
         {
             "hist_name": "pair_eta",

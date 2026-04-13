@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Test FillHistogramsCrossx for pp24 with trigger_mode=2
+# Test FillHistogramsCrossx for pp24 with trigger_mode=3 (2mu4)
 
 set -eo pipefail
 
@@ -18,20 +18,17 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${SCRIPT_DIR}"
 
-echo "[TEST] Running FillHistogramsCrossx for pp24 with trigger_mode=2..."
+echo "[TEST] Running FillHistogramsCrossx for pp24 with trigger_mode=3 (2mu4)..."
 
 root -l -b <<EOF
-// Pre-load Powheg .so for base class symbols
-.L RDFBasedHistFillingPowheg.cxx
-
 // Load and compile PP (+ forces recompilation)
 .L RDFBasedHistFillingPP.cxx+
 
 // Create PP instance for run_year=24
 RDFBasedHistFillingPP pp(24);
 
-// Configure for trigger_mode=2 (crossx measurements)
-pp.trigger_mode = 2;
+// Configure for trigger_mode=3 (2mu4, crossx measurements for pp)
+pp.trigger_mode = 3;
 
 // Set mindR_trig to -1 to disable mindR filtering
 pp.mindR_trig   = -1;

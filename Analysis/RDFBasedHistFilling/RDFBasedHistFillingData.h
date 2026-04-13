@@ -1,5 +1,7 @@
 #pragma once
 #include "../MuonObjectsParamsAndHelpers/PbPbBaseClass.h"
+#include "../MuonObjectsParamsAndHelpers/PPBaseClass.h"
+#include "../MuonObjectsParamsAndHelpers/DatasetTriggerMap.h"
 #include "../Utilities/HistFillUtils.h"
 #include "CommonEffcyConfig.h"
 #include "RDFBasedHistFillingBaseClass.cxx"
@@ -13,7 +15,8 @@ protected:
 
     std::string isForSoumya_suffix;
     std::string qEtaBin_suffix;
-    std::string trig_suffix;
+    std::string trig_suffix;       // includes _no_trg_plots suffix when doTrigEffcy=false; used for output path
+    std::string base_trig_suffix;  // trigger type only, no _no_trg_plots; used for input ntuple paths
     std::string input_mindR_suffix; // e.g. "_mindR_0_02" appended between trig_suffix and _res_cut_v2 in input paths; "" for old files
 
     std::string out_file_suffix;
@@ -100,6 +103,7 @@ protected:
     void            BuildFlattenedTrgEffcyFilterToVarListMapDataCommon();
     virtual void    BuildFlattenedTrgEffcyFilterToVarListMapExtra(){}
 
+    virtual bool    IsPbPb() const { return false; } // avoids dynamic_cast<PbPb*> cross-dependency when compiling PP and PbPb separately
     virtual void    FillHistograms() override;
     virtual void    FillHistogramsGeneric();
     virtual void    FillHistogramsCrossx() = 0; // trigger_mode == 2 crossx filling (opposite-sign only, with signal cuts)
@@ -176,6 +180,8 @@ class RDFBasedHistFillingPP : public RDFBasedHistFillingData{
 
 protected:
 // --------------------- protected class variables ---------------------------
+    double pp_crossx_lumi_factor = -1.; // set in InitializePPExtra(); -1 = not set / not applicable
+
     std::vector<int> levels_trg_effcy_to_be_summed_w_musign_summing;
     std::vector<std::vector<std::string>> levels_trg_effcy_filters_to_be_summed_w_musign_summing;
     std::vector<std::string> trg_effcy_filters_to_be_summed_w_musign_summing;
@@ -269,6 +275,7 @@ protected:
 
 // --------------------- protected class methods ---------------------------
 
+    bool                IsPbPb() const override { return true; }
     virtual void        SetIOPathsHook() override;
     void                InitializePbPbExtra();
     virtual void        InitializeDataExtra() override{ return InitializePbPbExtra(); }
@@ -304,7 +311,7 @@ protected:
 
 public:
     int RunYear() const { return run_year; }
-    explicit RDFBasedHistFillingPbPb(int run_year_input, std::string ctr_binning_version_input = "include_upc")
+    explicit RDFBasedHistFillingPbPb(int run_year_input, std::string ctr_binning_version_input = "default")
     : RDFBasedHistFillingData (run_year_input, false){
         isForSoumya = false;
         ctr_binning_version = ctr_binning_version_input;

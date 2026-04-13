@@ -25,6 +25,7 @@
         {"hist_name": "pt_lead", "var_name": "truth_pt_lead", "title": "p_{T}^{lead} [GeV]", "binning": {"nbins": 50, "min": 0.0, "max": 30.0}},
         {"hist_name": "pt_lead_zoomin", "var_name": "truth_pt_lead", "title": "p_{T}^{lead} [GeV]", "binning": {"nbins": 50, "min": 0.0, "max": 15.0}},
         {"hist_name": "pair_pt_log", "var_name": "truth_pair_pt", "title": "p_{T}^{pair} [GeV]", "binning": "pT_bins_80"},
+        {"hist_name": "pair_pt_log_150", "var_name": "truth_pair_pt", "title": "p_{T}^{pair} [GeV]", "binning": "pT_bins_150"},
 
         {"hist_name": "minv", "var_name": "truth_minv", "title": "m_{#mu#mu} [GeV]", "binning": {"nbins": 50, "min": 0.0, "max": 30.0}},
         {"hist_name": "minv_10GeV", "var_name": "truth_minv", "title": "m_{#mu#mu} [GeV]", "binning": {"nbins": 50, "min": 0.0, "max": 10.0}},
