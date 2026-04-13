@@ -8,7 +8,9 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -29,6 +31,11 @@ public:
     std::string output_file_path{};
     ULong64_t rng_seed{0};
 
+    // When true (default), apply truth_minv ∈ [1, 3] GeV fiducial filter and
+    // write output to .../mixed_mass_1_3GeV/.
+    // When false, accept all pairs (no minv cut) and write to .../mixed/.
+    bool apply_mass_filter{true};
+
     explicit PowhegSingleMuonPairMixer(const std::string& mode = "bb") : mc_mode(mode) {}
 
     void Run(){
@@ -44,9 +51,12 @@ public:
             std::cout << "[Mixer] input    = " << input_file_path << std::endl;
         }
         std::cout << "[Mixer] output   = " << output_file_path << std::endl;
-          std::cout << "[Mixer] target pairs = " << nmixed_pairs_target << std::endl;
-          std::cout << "[Mixer] muon sampling: uniform (no pT weighting)" << std::endl;
-          std::cout << "[Mixer] pair filter: truth_minv in [1.0, 3.0] GeV" << std::endl;
+        std::cout << "[Mixer] target pairs = " << nmixed_pairs_target << std::endl;
+        std::cout << "[Mixer] muon sampling: uniform (no pT weighting)" << std::endl;
+        if (apply_mass_filter)
+            std::cout << "[Mixer] pair filter: truth_minv in [1.0, 3.0] GeV" << std::endl;
+        else
+            std::cout << "[Mixer] pair filter: NONE (no mass window applied)" << std::endl;
 
         const std::size_t out_slash = output_file_path.find_last_of('/');
         if (out_slash != std::string::npos){
@@ -106,6 +116,10 @@ public:
             return static_cast<Long64_t>(rng.Uniform(0.0, static_cast<double>(nmuons)));
         };
 
+        // Track truth_minv range of accepted pairs for post-fill validation.
+        float min_stored_minv =  1e10f;
+        float max_stored_minv = -1e10f;
+
         auto fill_one_pair = [&](const MuonPowhegFullSimWTruth& in_m1,
                                  const MuonPowhegFullSimWTruth& in_m2){
 
@@ -131,7 +145,9 @@ public:
 
             pair.Update();
 
-            if (pair.truth_minv < 1.0f || pair.truth_minv > 3.0f)
+            // NaN-safe filter: negated conjunction correctly rejects NaN
+            // (NaN comparisons always return false, so !(NaN>=1 && NaN<=3) == true -> reject).
+            if (apply_mass_filter && !(pair.truth_minv >= 1.0f && pair.truth_minv <= 3.0f))
                 return false;
 
             pair.pair_pass_medium = pair.m1.pass_medium && pair.m2.pass_medium;
@@ -140,6 +156,9 @@ public:
             pair.pair_pass_resonance_truth = false;
             pair.pair_pass_medium_and_resonance = false;
             pair.pair_pass_tight_and_resonance = false;
+
+            min_stored_minv = std::min(min_stored_minv, pair.truth_minv);
+            max_stored_minv = std::max(max_stored_minv, pair.truth_minv);
 
             out_pair_ptr = &pair;
             if (pair.truth_same_sign) muon_pair_tree_sign1->Fill();
@@ -185,25 +204,42 @@ public:
                     std::chrono::duration<double>(t_now - t_start).count();
                 const double elapsed_interval_sec =
                     std::chrono::duration<double>(t_now - t_last_benchmark).count();
+                const double filter_eff_pct =
+                    100.0 * static_cast<double>(nmixed_pairs_generated)
+                    / static_cast<double>(attempts);
                 std::cout << "[Mixer] benchmark: generated="
                           << nmixed_pairs_generated
                           << " interval_pairs=" << benchmark_step_pairs
                           << " interval_time_s=" << elapsed_interval_sec
                           << " total_time_s=" << elapsed_total_sec
+                          << " filter_eff=" << std::fixed << std::setprecision(3)
+                          << filter_eff_pct << "%"
                           << std::endl;
                 t_last_benchmark = t_now;
             }
 
             if (nmixed_pairs_generated % 100000 == 0){
+                const double filter_eff_pct =
+                    100.0 * static_cast<double>(nmixed_pairs_generated)
+                    / static_cast<double>(attempts);
                 std::cout << "[Mixer] attempts=" << attempts
                           << " filled_total=" << nmixed_pairs_generated
+                          << " filter_eff=" << std::fixed << std::setprecision(3)
+                          << filter_eff_pct << "%"
                           << std::endl;
             }
         }
 
+        const double done_filter_eff_pct =
+            (attempts > 0)
+            ? 100.0 * static_cast<double>(nmixed_pairs_generated) / static_cast<double>(attempts)
+            : 0.0;
         std::cout << "[Mixer] done attempts=" << attempts
                   << " filled=" << nmixed_pairs_generated
-                  << " / " << nmixed_pairs_target << std::endl;
+                  << " / " << nmixed_pairs_target
+                  << " filter_eff=" << std::fixed << std::setprecision(3)
+                  << done_filter_eff_pct << "%"
+                  << std::endl;
 
         if (nmixed_pairs_generated < nmixed_pairs_target){
             throw std::runtime_error(
@@ -212,6 +248,18 @@ public:
                 + std::to_string(nmixed_pairs_generated) + " / "
                 + std::to_string(nmixed_pairs_target) + " pairs filled). "
                 "Increase max_attempts or decrease target_pairs.");
+        }
+
+        // Post-fill validation (only when mass filter is active).
+        std::cout << "[Mixer] stored truth_minv range: ["
+                  << std::fixed << std::setprecision(4) << min_stored_minv
+                  << ", " << max_stored_minv << "] GeV" << std::endl;
+        if (apply_mass_filter && !(min_stored_minv >= 1.0f && max_stored_minv <= 3.0f)){
+            throw std::runtime_error(
+                "[Mixer] ERROR: stored pairs have truth_minv outside [1, 3] GeV! "
+                "min=" + std::to_string(min_stored_minv) +
+                " max=" + std::to_string(max_stored_minv) +
+                ". The output file will NOT be written.");
         }
 
         out_file.cd();
@@ -246,7 +294,9 @@ private:
     }
 
     std::string DefaultOutputPath() const {
-        const std::string mixed_dir = "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/mixed";
+        // Use different subdirectory depending on whether the mass filter is applied.
+        const std::string subdir = apply_mass_filter ? "mixed_mass_1_3GeV" : "mixed";
+        const std::string mixed_dir = "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/" + subdir;
         gSystem->mkdir(mixed_dir.c_str(), true);
         return mixed_dir + "/muon_pairs_powheg_bbcc_fullsim_mixed_batch" + std::to_string(file_batch) + ".root";
     }
@@ -291,7 +341,8 @@ void run_powheg_single_muon_pair_mixing(
     int run_year = 17,
     const std::string& input_file = "",
     const std::string& output_file = "",
-    ULong64_t seed = 0)
+    ULong64_t seed = 0,
+    bool apply_mass_filter = true)
 {
     PowhegSingleMuonPairMixer mixer(mc_mode);
     mixer.nmixed_pairs_target = target_pairs;
@@ -300,5 +351,6 @@ void run_powheg_single_muon_pair_mixing(
     mixer.rng_seed = seed;
     mixer.input_file_path = input_file;
     mixer.output_file_path = output_file;
+    mixer.apply_mass_filter = apply_mass_filter;
     mixer.Run();
 }
