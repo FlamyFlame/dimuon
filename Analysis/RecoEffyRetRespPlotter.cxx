@@ -63,6 +63,21 @@ public:
         if (!require_signal_cuts) Plot1DRecoEffcyRangedMixed();
     }
 
+    // Minimum effective number of events (N_eff = (ΣW)²/Σw²) required in the
+    // denominator bin for the efficiency point to be drawn.  Bins below this
+    // threshold are zeroed-out (content=0, error=0) so they disappear from the
+    // efficiency plots.  Determined empirically: noise bins from the minv filter
+    // leakage have N_eff ≤ 6.2; the first legitimate bin has N_eff ≥ 10.3.
+    double min_denom_neff = 10.0;
+
+    // Suffix appended after "_mixed" in the input histogram file name and in the
+    // output plot directory names.
+    //   "_mass_1_3GeV" (default) → reads histograms_*_mixed_mass_1_3GeV.root
+    //                              writes run2_reco_effcy_plots_mass_1_3GeV/
+    //   ""                        → reads histograms_*_mixed.root
+    //                              writes run2_reco_effcy_plots/
+    std::string mixed_hist_name_suffix = "_mass_1_3GeV";
+
 protected:
     int run_year = 17;
     bool isRun3;
@@ -137,6 +152,31 @@ protected:
         {2.0f, 2.4f}
     };
 
+    // Zero out efficiency bins whose denominator has N_eff < min_denom_neff.
+    // N_eff = (ΣW)² / Σw² = (GetBinContent)² / (GetBinError)².
+    // Such bins arise from mixing-filter float leakage or extreme weight
+    // fluctuations and produce spurious non-zero efficiency values.
+    void SuppressLowNeffBins(TH1D* h_eff, const TH1D* h_den) const {
+        if (!h_eff || !h_den || min_denom_neff <= 0.0) return;
+        for (int ib = 1; ib <= h_den->GetNbinsX(); ++ib) {
+            const double den_val = h_den->GetBinContent(ib);
+            const double den_err = h_den->GetBinError(ib);
+            if (den_err <= 0.0) {
+                // err=0: either no fill at all or a single fill with weight 0
+                if (den_val <= 0.0) {
+                    h_eff->SetBinContent(ib, 0.0);
+                    h_eff->SetBinError(ib, 0.0);
+                }
+                continue;
+            }
+            const double neff = (den_val / den_err) * (den_val / den_err);
+            if (neff < min_denom_neff) {
+                h_eff->SetBinContent(ib, 0.0);
+                h_eff->SetBinError(ib, 0.0);
+            }
+        }
+    }
+
     bool Initialize() {
         run_period = isRun3? "run3" : "run2";
 
@@ -149,7 +189,8 @@ protected:
 
         data_dir = "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample";
         infile_name_unmixed = "histograms_powheg_fullsim_pp" + std::to_string(run_year) + ".root";
-        infile_name_mixed = "histograms_powheg_fullsim_pp" + std::to_string(run_year) + "_mixed.root";
+        infile_name_mixed   = "histograms_powheg_fullsim_pp" + std::to_string(run_year)
+                              + "_mixed" + mixed_hist_name_suffix + ".root";
 
         std::string infile_path_unmixed = data_dir;
         if (!infile_path_unmixed.empty() && infile_path_unmixed.back() != '/') infile_path_unmixed += '/';
@@ -391,6 +432,7 @@ protected:
                 h_eff_ss->SetDirectory(nullptr);
                 h_eff_ss->SetStats(0);
                 h_eff_ss->Divide(h_den_ss);
+                SuppressLowNeffBins(h_eff_ss, h_den_ss);
 
                 h_eff_ss->SetTitle("same sign");
                 h_eff_ss->GetXaxis()->SetTitle(h_den_ss->GetXaxis()->GetTitle());
@@ -437,6 +479,7 @@ protected:
                 h_eff_op->SetDirectory(nullptr);
                 h_eff_op->SetStats(0);
                 h_eff_op->Divide(h_den_op);
+                SuppressLowNeffBins(h_eff_op, h_den_op);
 
                 h_eff_op->SetTitle("opposite sign");
                 h_eff_op->GetXaxis()->SetTitle(h_den_op->GetXaxis()->GetTitle());
@@ -674,6 +717,7 @@ void Plot1DRecoEffcySingleBOpCompr()
             h_eff_op->SetDirectory(nullptr);
             h_eff_op->SetStats(0);
             h_eff_op->Divide(h_den_op);
+            SuppressLowNeffBins(h_eff_op, h_den_op);
 
             h_eff_op->GetXaxis()->SetTitle(h_den_op->GetXaxis()->GetTitle());
             h_eff_op->SetLineColor(kBlack);
@@ -686,6 +730,7 @@ void Plot1DRecoEffcySingleBOpCompr()
             h_eff_single_b->SetDirectory(nullptr);
             h_eff_single_b->SetStats(0);
             h_eff_single_b->Divide(h_den_single_b);
+            SuppressLowNeffBins(h_eff_single_b, h_den_single_b);
 
             h_eff_single_b->GetXaxis()->SetTitle(h_den_single_b->GetXaxis()->GetTitle());
             h_eff_single_b->SetLineColor(kRed);
@@ -1065,10 +1110,10 @@ private:
     }
 
     std::string GetDetRespOutDir() const {
-        // Ensure trailing slash on data_dir (optional)
         std::string base = data_dir;
         if (!base.empty() && base.back() != '/') base += '/';
-        return base + "plots/" + run_period + "_det_resp_plots/" + (tight_WP ? "tight/" : "medium/");
+        return base + "plots/" + run_period + "_det_resp_plots"
+               + mixed_hist_name_suffix + "/" + (tight_WP ? "tight/" : "medium/");
     }
 
     bool CheckUnmixedFile() const {
@@ -1095,7 +1140,10 @@ private:
     {
         std::string base = data_dir;
         if (!base.empty() && base.back() != '/') base += '/';
-        return base + "plots/" + run_period + "_reco_effcy_plots" + require_signal_cuts_file_dir_suffix + "/" + (tight_WP ? "tight/" : "medium/");
+        return base + "plots/" + run_period + "_reco_effcy_plots"
+               + require_signal_cuts_file_dir_suffix
+               + mixed_hist_name_suffix + "/"
+               + (tight_WP ? "tight/" : "medium/");
     }
 
 };

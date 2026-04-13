@@ -1,3 +1,5 @@
+#include "MuonObjectsParamsAndHelpers/DatasetTriggerMap.h"
+
 class RAAPlotting{
 private:
 
@@ -6,6 +8,8 @@ private:
 	std::string base_dir = "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/";
 	std::string out_dir;
 	std::string run_year_trigger_suffix;
+	std::string legend_pbpb_label;
+	std::string legend_pp_label;
 
 	// x: pair pt; y: pair eta; z: centrality
     std::string h3d_name_ss = "h3d_ss_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt";
@@ -75,30 +79,40 @@ void RAAPlotting::InputOutputPrepare(){
 		pbpb_infile = base_dir + "pbpb_run2/pbpb_run2_single_b_ana_hists.root";
 		run_year_trigger_suffix = "_pbpbrun2_pp17_2mu4";
 		out_dir = base_dir + "pbpb_run2/plots/";
+		legend_pbpb_label = "PbPb Run2 data, mu4_mu4noL1";
+		legend_pp_label   = "pp 2017 data, 2mu4";
 		break;
 	case 2: // 2023 PbPb, 2024 pp mu4mu4noL1
 		pp_infile = base_dir + "pp_2024/pp_2024_single_b_ana_hists_mu4_mu4noL1.root";
 		pbpb_infile = base_dir + "pbpb_2023/pbpb_2023_single_b_ana_hists.root";
 		run_year_trigger_suffix = "_pbpb23_pp24_mu4mu4noL1";
 		out_dir = base_dir + "pbpb_2023/plots/";
+		legend_pbpb_label = "PbPb 2023 data, " + DatasetTriggerMap::GetTriggerLabel(23, "PbPb");
+		legend_pp_label   = "pp 2024 data, "   + DatasetTriggerMap::GetTriggerLabel(24, "pp");
 		break;
 	case 3: // 2023 PbPb, 2024 pp 2mu4
 		pp_infile = base_dir + "pp_2024/pp_2024_single_b_ana_hists_2mu4.root";
 		pbpb_infile = base_dir + "pbpb_2023/pbpb_2023_single_b_ana_hists.root";
 		run_year_trigger_suffix = "_pbpb23_pp24_2mu4";
 		out_dir = base_dir + "pbpb_2023/plots/";
+		legend_pbpb_label = "PbPb 2023 data, " + DatasetTriggerMap::GetTriggerLabel(23, "PbPb");
+		legend_pp_label   = "pp 2024 data, "   + DatasetTriggerMap::GetTriggerLabel(24, "pp_2mu4");
 		break;
 	case 4: // 2024 PbPb, 2024 pp mu4mu4noL1
 		pp_infile = base_dir + "pp_2024/pp_2024_single_b_ana_hists_mu4_mu4noL1.root";
 		pbpb_infile = base_dir + "pbpb_2024/pbpb_2024_single_b_ana_hists.root";
 		run_year_trigger_suffix = "_pbpb24_pp24_mu4mu4noL1";
 		out_dir = base_dir + "pbpb_2024/plots/";
+		legend_pbpb_label = "PbPb 2024 data, " + DatasetTriggerMap::GetTriggerLabel(24, "PbPb");
+		legend_pp_label   = "pp 2024 data, "   + DatasetTriggerMap::GetTriggerLabel(24, "pp");
 		break;
 	case 5: // 2024 PbPb, 2024 pp 2mu4
 		pp_infile = base_dir + "pp_2024/pp_2024_single_b_ana_hists_2mu4.root";
 		pbpb_infile = base_dir + "pbpb_2024/pbpb_2024_single_b_ana_hists.root";
 		run_year_trigger_suffix = "_pbpb24_pp24_2mu4";
 		out_dir = base_dir + "pbpb_2024/plots/";
+		legend_pbpb_label = "PbPb 2024 data, " + DatasetTriggerMap::GetTriggerLabel(24, "PbPb");
+		legend_pp_label   = "pp 2024 data, "   + DatasetTriggerMap::GetTriggerLabel(24, "pp_2mu4");
 		break;
 	default:
 		std::cout << "Run year + trigger mode must be in range 1-5! Either not set or out of range!" << std::endl;
@@ -286,8 +300,8 @@ void RAAPlotting::RunPlotting(){
 			h_RAA_list.push_back(h_RAA_cur_bin);
 			l->AddEntry(h_RAA_cur_bin, line_var_labels.at(iline).c_str(), "lp");
 		}
-		l->AddEntry("","PbPb 2023 data","");
-		l->AddEntry("","pp 2024 data, mu4mu4noL1","");
+		l->AddEntry("", legend_pbpb_label.c_str(), "");
+		l->AddEntry("", legend_pp_label.c_str(), "");
 		l->AddEntry("","m_{#mu#mu} #in (1.08, 2.9) GeV, p_{T}^{pair} > 8 GeV","");
 		l->AddEntry("","opposite sign","");
 	    

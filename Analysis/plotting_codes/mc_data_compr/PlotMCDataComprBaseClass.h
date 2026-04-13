@@ -27,8 +27,8 @@ protected:
         powheg_cc,
         pythia,
         pp_2017,
-        pbpb_2024_2mu4,
-        pbpb_2024_mu4mu4
+        pp_2024_2mu4,
+        pp_2024_mu4mu4noL1
     };
 
     double pi = acos(-1.0);

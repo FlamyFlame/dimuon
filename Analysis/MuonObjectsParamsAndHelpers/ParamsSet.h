@@ -44,6 +44,8 @@ public:
     std::vector<double> pT_bins_8;
     std::vector<double> pT_bins_60;
     std::vector<double> pT_bins_80;
+    std::vector<double> pT_bins_120;
+    std::vector<double> pT_bins_150;
 	
 	static std::vector<float> pTbins;
 	static std::vector<double> pTHatbins_pythia;
@@ -390,10 +392,12 @@ ParamsSet::ParamsSet(){
   		}
   	}
 
-    fillLogBinningArray(pT_bins_40,  18, 4.0, 40.0);  // 18 log bins from 4 to 40 GeV
-    fillLogBinningArray(pT_bins_8 ,  20, 4.0, 8.0 );  // 20 log bins from 4 to 	8 GeV
-    fillLogBinningArray(pT_bins_60,  20, 8.0, 60.0);  // 20 log bins from 8 to 60 GeV
-    fillLogBinningArray(pT_bins_80,  12, 8.0, 80.0);  // 12 log bins from 8 to 200 GeV
+    fillLogBinningArray(pT_bins_40,  18, 4.0,  40.0);  // 18 log bins from 4  to 40  GeV
+    fillLogBinningArray(pT_bins_8 ,  20, 4.0,  8.0 );  // 20 log bins from 4  to 8   GeV
+    fillLogBinningArray(pT_bins_60,  20, 8.0,  60.0);  // 20 log bins from 8  to 60  GeV
+    fillLogBinningArray(pT_bins_80,  12, 8.0,  80.0);  // 12 log bins from 8  to 80  GeV
+    fillLogBinningArray(pT_bins_120, 15, 8.0, 120.0);  // 15 log bins from 8  to 120 GeV
+    fillLogBinningArray(pT_bins_150, 15, 8.0, 150.0);  // 15 log bins from 8  to 150 GeV
 
 
   	// minv cut V1 - cut off all below 1.06GeV

@@ -1,4 +1,5 @@
 #include <string>
+#include "THStack.h"
 
 void DetermineSubplotGrid(int nsubplots, int& nrow, int& ncol) {
     if (nsubplots <= 0) {

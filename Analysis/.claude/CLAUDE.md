@@ -1,0 +1,3 @@
+- Remote cluster (BNL SDCC); run `/usatlas/u/yuhanguo/setup.sh` for ROOT environment
+- No pip install — use what's in the release
+- For C++ class testing, use ROOT ACLiC: `.L MyClass.cxx+`
