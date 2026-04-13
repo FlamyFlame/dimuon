@@ -1,5 +1,8 @@
 #pragma once
 
+#include "TFile.h"
+#include "TTree.h"
+
 double SumMetaNentriesBeforeFilter(const std::vector<std::string>& files,
                                   const char* metaTreeName = "meta_tree",
                                   const char* brName       = "nentries_before_cuts")

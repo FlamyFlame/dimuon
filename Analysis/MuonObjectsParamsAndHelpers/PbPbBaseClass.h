@@ -84,6 +84,10 @@ public:
             1./(0.3  * 7.8 * 1000. *  0.6716 * 1.5411 / 1000.)
         };
     }
+    // TODO: replace with actual 2025 T_AA and luminosity values once available
+    static std::vector<double> make_crossx_factors_pbpb_2025() {
+        return make_crossx_factors_pbpb_2023();
+    }
 
     // -------- public class methods --------
      PbPbBaseClass(){
@@ -110,9 +114,11 @@ void PbPbBaseClass<Derived>::BuildPbPbMaps(){
     run_yr_and_ctrbin_version_to_crossx_factors_map[{23, "default"}] = make_crossx_factors_pbpb_2023();
     run_yr_and_ctrbin_version_to_crossx_factors_map[{24, "default"}] = make_crossx_factors_pbpb_2024();
 
+    run_yr_and_ctrbin_version_to_crossx_factors_map[{25, "default"}]     = make_crossx_factors_pbpb_2025(); // TODO: update with 2025 values
     run_yr_and_ctrbin_version_to_crossx_factors_map[{18, "include_upc"}] = make_crossx_factors_pbpb_run2(); // WRONG!! 50-100% NEED TO BE CORRECTED
     run_yr_and_ctrbin_version_to_crossx_factors_map[{23, "include_upc"}] = make_crossx_factors_pbpb_2023(); // WRONG!! 50-100% NEED TO BE CORRECTED
     run_yr_and_ctrbin_version_to_crossx_factors_map[{24, "include_upc"}] = make_crossx_factors_pbpb_2024(); // WRONG!! 50-100% NEED TO BE CORRECTED
+    run_yr_and_ctrbin_version_to_crossx_factors_map[{25, "include_upc"}] = make_crossx_factors_pbpb_2025(); // TODO: update with 2025 values
 
 }
 

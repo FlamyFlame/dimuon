@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(/atlasgpfs01/usatlas/data/yuhanguo/**)",
+      "Edit(/atlasgpfs01/usatlas/data/yuhanguo/**)",
+      "Edit(/tmp/yuhanguo/**)",
+      "Bash(source *)", ". *",
+      "Bash(setupATLAS)", "Bash(asetup *)", "Bash(lsetup *)",
+      "Bash(root *)", "Bash(python *)", "Bash(athena *)", "Bash(python3 *)",
+      "Bash(cmake *)", "Bash(make *)", "Bash(ctest *)",
+      "Bash(git *)",
+      "Bash(rucio *)",
+      "Bash(voms-proxy-info)"
+    ],
+    "deny": [
+      "Edit(/atlasgpfs01/usatlas/data/yuhanguo/pythia_private_sample/0*/**)",
+      "Edit(/atlasgpfs01/usatlas/data/yuhanguo/pythia_truth_full_sample/*/pythia*NTUP.root)",
+      "Edit(/atlasgpfs01/usatlas/data/yuhanguo/powheg_full_sample/*/user*.root)",
+      "Edit(/atlasgpfs01/usatlas/data/yuhanguo/powheg_full_sample/*/mc_truth*.root)",
+      "Bash(voms-proxy-init *)",
+      "Bash(pip install *)"
+    ]
+  }
+}

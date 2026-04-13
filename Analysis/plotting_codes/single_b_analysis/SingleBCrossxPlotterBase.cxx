@@ -19,6 +19,8 @@
 #include "../helper_functions.c"
 #include "../../RDFBasedHistFilling/CommonEffcyConfig.h"
 #include "../../Utilities/proj_range_to_suffix.cxx"
+#include "../../MuonObjectsParamsAndHelpers/DatasetTriggerMap.h"
+#include "../../MuonObjectsParamsAndHelpers/PPBaseClass.h"
 
 class SingleBCrossxPlotterBase {
 protected:
@@ -61,10 +63,7 @@ public:
     }
 
     bool CheckHistogramExists(const std::string& hname, const std::string& htype = "TH1") {
-        if (!fin) {
-            throw std::runtime_error("Input file not opened");
-        }
-        TObject* obj = fin->Get(hname.c_str());
+        TObject* obj = GetHistObject(hname);
         if (!obj) {
             throw std::runtime_error("Missing histogram: " + hname);
         }
@@ -76,7 +75,7 @@ public:
     }
 
     bool CheckHistogramNonEmpty(const std::string& hname) {
-        TH1* h = dynamic_cast<TH1*>(fin->Get(hname.c_str()));
+        TH1* h = dynamic_cast<TH1*>(GetHistObject(hname));
         if (!h) {
             throw std::runtime_error("Cannot retrieve histogram to check non-empty: " + hname);
         }
@@ -89,32 +88,78 @@ public:
     virtual void Run() = 0;
 
 protected:
-    void Save2DColz(const std::string& hname, const std::string& png_name) {
+    virtual TObject* GetHistObject(const std::string& name) {
+        if (!fin) throw std::runtime_error("Input file not opened, cannot retrieve: " + name);
+        return fin->Get(name.c_str());
+    }
+
+    void Save2DColz(const std::string& hname, const std::string& png_name,
+                    const std::string& z_title = "") {
         CheckHistogramExists(hname, "TH2D");
         CheckHistogramNonEmpty(hname);
 
-        TH2D* h = dynamic_cast<TH2D*>(fin->Get(hname.c_str()));
+        TH2D* h = dynamic_cast<TH2D*>(GetHistObject(hname));
         if (!h) {
             throw std::runtime_error("Failed to retrieve TH2D: " + hname);
         }
+        // Clone so we don't modify the in-file object
+        TH2D* hplot = dynamic_cast<TH2D*>(h->Clone((hname + "_plot").c_str()));
+        hplot->SetDirectory(nullptr);
+        // Patch axis titles to physics notation
+        {
+            auto fix = [](TAxis* ax) {
+                const std::string t = ax->GetTitle();
+                if (t == "p_{T} [GeV]")  ax->SetTitle("p_{T}^{pair} [GeV]");
+                else if (t == "#eta")     ax->SetTitle("#eta^{pair}");
+            };
+            fix(hplot->GetXaxis());
+            fix(hplot->GetYaxis());
+        }
+        // Make differential: divide by bin widths of both axes
+        hplot->Scale(1., "width");
 
-        TCanvas c("c2d", "c2d", 800, 700);
+        TCanvas c("c2d", "c2d", 900, 750);
         c.cd();
-        h->Draw("colz");
+        c.SetRightMargin(0.17);
+        c.SetLeftMargin(0.12);
+        c.SetBottomMargin(0.12);
+
+        const std::string xt = hplot->GetXaxis()->GetTitle();
+        const std::string yt = hplot->GetYaxis()->GetTitle();
+        const bool x_is_pair_pt = xt.find("p_{T}") != std::string::npos;
+        const bool y_is_pair_pt = yt.find("p_{T}") != std::string::npos;
+        if (x_is_pair_pt) c.SetLogx();
+        if (y_is_pair_pt) c.SetLogy();
+        if (x_is_pair_pt || y_is_pair_pt) c.SetLogz();
+
+        hplot->GetXaxis()->SetTitleSize(0.05);
+        hplot->GetYaxis()->SetTitleSize(0.05);
+        hplot->GetZaxis()->SetTitleSize(0.045);
+        hplot->GetXaxis()->SetLabelSize(0.04);
+        hplot->GetYaxis()->SetLabelSize(0.04);
+        hplot->GetZaxis()->SetLabelSize(0.035);
+        hplot->GetYaxis()->SetTitleOffset(1.35);
+
+        hplot->GetZaxis()->SetTitle(z_title.empty() ? "d^{2}N/d[X]d[Y]" : z_title.c_str());
+        hplot->GetZaxis()->SetTitleOffset(1.35);
+        hplot->Draw("colz");
         std::string full_path = output_dir + "/" + png_name;
         c.SaveAs(full_path.c_str());
         std::cout << "[INFO] Saved: " << full_path << std::endl;
+        delete hplot;
     }
 
     void DrawPairPtByEtaWithDrLines(
         const std::string& h3_name,
-        const std::string& data_spec,
-        const std::string& png_name)
+        const std::string& data_info_line1,
+        const std::string& data_info_line2,
+        const std::string& png_name,
+        const std::string& y_title = "d#sigma/dp_{T} [pb GeV^{-1}]")
     {
         CheckHistogramExists(h3_name, "TH3D");
         CheckHistogramNonEmpty(h3_name);
 
-        TH3D* h3 = dynamic_cast<TH3D*>(fin->Get(h3_name.c_str()));
+        TH3D* h3 = dynamic_cast<TH3D*>(GetHistObject(h3_name));
         if (!h3) {
             throw std::runtime_error("Failed to retrieve TH3D: " + h3_name);
         }
@@ -126,8 +171,16 @@ protected:
         TCanvas c("cpt", "pair_pt by eta with dr lines", 450 * ncol, 350 * nrow);
         c.Divide(ncol, nrow);
 
+        std::vector<std::vector<TH1D*>> all_lines(q_eta_bins.size());
+        std::vector<TLegend*> all_legends;
+        all_legends.reserve(q_eta_bins.size());
+
         for (size_t ieta = 0; ieta < q_eta_bins.size(); ++ieta) {
             c.cd(static_cast<int>(ieta) + 1);
+            gPad->SetLogx();
+            gPad->SetLogy();
+            gPad->SetLeftMargin(0.16);
+            gPad->SetBottomMargin(0.13);
 
             const auto& eta_bin = q_eta_bins.at(ieta);
             const int y1 = h3->GetYaxis()->FindBin(eta_bin.first + 1e-6);
@@ -145,13 +198,19 @@ protected:
                 const std::string proj_name = "hpt_eta" + std::to_string(ieta) + "_dr" + std::to_string(idr) + "_" + std::to_string(std::rand());
                 TH1D* hp = h3->ProjectionX(proj_name.c_str(), y1, y2, z1, z2, "e");
                 hp->SetDirectory(nullptr);
+                hp->Scale(1.0, "width");
                 hp->SetLineWidth(2);
                 hp->SetLineColor(line_colors.at(idr % line_colors.size()));
                 hp->SetMarkerColor(line_colors.at(idr % line_colors.size()));
                 hp->SetMarkerStyle(marker_styles.at(idr % marker_styles.size()));
                 hp->SetMarkerSize(0.9);
-                hp->GetXaxis()->SetTitle("pair p_{T} [GeV]");
-                hp->GetYaxis()->SetTitle("d#sigma/dp_{T}");
+                hp->GetXaxis()->SetTitle("p_{T}^{pair} [GeV]");
+                hp->GetYaxis()->SetTitle(y_title.c_str());
+                hp->GetXaxis()->SetTitleSize(0.06);
+                hp->GetYaxis()->SetTitleSize(0.06);
+                hp->GetXaxis()->SetLabelSize(0.05);
+                hp->GetYaxis()->SetLabelSize(0.05);
+                hp->GetYaxis()->SetTitleOffset(1.45);
                 hp->SetTitle("");
 
                 max_y = std::max(max_y, hp->GetMaximum());
@@ -166,24 +225,128 @@ protected:
                 lines.at(il)->Draw("E1 SAME");
             }
 
-            TLegend leg(0.43, 0.52, 0.90, 0.90);
-            leg.SetBorderSize(0);
-            leg.SetFillStyle(0);
-            leg.AddEntry((TObject*)0, data_spec.c_str(), "");
-            leg.AddEntry((TObject*)0, Form("q#eta #in [%.1f, %.1f]", eta_bin.first, eta_bin.second), "");
+            // Info text (no symbols): right-aligned, minimal margin
+            TLegend* leg_info = new TLegend(0.38, 0.72, 0.93, 0.90);
+            leg_info->SetBorderSize(0);
+            leg_info->SetFillStyle(0);
+            leg_info->SetTextSize(0.045);
+            leg_info->SetTextAlign(32);
+            leg_info->SetMargin(0.01);
+            leg_info->AddEntry((TObject*)0, data_info_line1.c_str(), "");
+            leg_info->AddEntry((TObject*)0, data_info_line2.c_str(), "");
+            leg_info->AddEntry((TObject*)0, Form("#eta^{pair} #in [%.1f, %.1f]", eta_bin.first, eta_bin.second), "");
+            leg_info->Draw();
+            all_legends.push_back(leg_info);
+
+            // dR lines: narrow legend, left-aligned text, symbol just left of text
+            TLegend* leg_dr = new TLegend(0.70, 0.48, 0.93, 0.72);
+            leg_dr->SetBorderSize(0);
+            leg_dr->SetFillStyle(0);
+            leg_dr->SetTextSize(0.045);
+            leg_dr->SetTextAlign(12);
+            leg_dr->SetMargin(0.22);
             for (size_t idr = 0; idr < dr_bins.size(); ++idr) {
                 const auto& dr_bin = dr_bins.at(idr);
-                leg.AddEntry(lines.at(idr), Form("#DeltaR #in [%.1f, %.1f]", dr_bin.first, dr_bin.second), "lep");
+                leg_dr->AddEntry(lines.at(idr), Form("#DeltaR #in [%.1f, %.1f]", dr_bin.first, dr_bin.second), "lep");
             }
-            leg.Draw();
+            leg_dr->Draw();
+            all_legends.push_back(leg_dr);
 
-            for (TH1D* h : lines) {
-                delete h;
-            }
+            all_lines.at(ieta) = std::move(lines);
         }
 
         std::string full_path = output_dir + "/" + png_name;
         c.SaveAs(full_path.c_str());
         std::cout << "[INFO] Saved: " << full_path << std::endl;
+
+        for (auto& lines : all_lines) {
+            for (TH1D* h : lines) delete h;
+        }
+        for (TLegend* leg : all_legends) delete leg;
+    }
+
+    // dR-integrated pair-pT vs pair-eta: one subplot per eta bin, single line per subplot.
+    // h2_name: TH2D with pair_pt on X, pair_eta on Y.
+    // differential=true: divide by bin width (d/dp_T); false: raw counts per eta bin.
+    void DrawPairPtByEta(
+        const std::string& h2_name,
+        const std::string& data_info_line1,
+        const std::string& data_info_line2,
+        const std::string& png_name,
+        const std::string& y_title = "d#sigma/dp_{T} [pb GeV^{-1}]",
+        bool differential = true)
+    {
+        CheckHistogramExists(h2_name, "TH2D");
+        CheckHistogramNonEmpty(h2_name);
+
+        TH2D* h2 = dynamic_cast<TH2D*>(GetHistObject(h2_name));
+        if (!h2) {
+            throw std::runtime_error("Failed to retrieve TH2D: " + h2_name);
+        }
+
+        int nrow = 1, ncol = 1;
+        DetermineSubplotGrid(static_cast<int>(q_eta_bins.size()), nrow, ncol);
+
+        TCanvas c("cpt_eta", "pair_pt by eta dR-integrated", 450 * ncol, 350 * nrow);
+        c.Divide(ncol, nrow);
+
+        std::vector<TH1D*> all_hists;
+        all_hists.reserve(q_eta_bins.size());
+        std::vector<TLegend*> all_legends;
+        all_legends.reserve(q_eta_bins.size());
+
+        for (size_t ieta = 0; ieta < q_eta_bins.size(); ++ieta) {
+            c.cd(static_cast<int>(ieta) + 1);
+            gPad->SetLogx();
+            gPad->SetLogy();
+            gPad->SetLeftMargin(0.16);
+            gPad->SetBottomMargin(0.13);
+
+            const auto& eta_bin = q_eta_bins.at(ieta);
+            const int y1 = h2->GetYaxis()->FindBin(eta_bin.first  + 1e-6);
+            const int y2 = h2->GetYaxis()->FindBin(eta_bin.second - 1e-6);
+
+            const std::string proj_name = "hpt_eta" + std::to_string(ieta) + "_"
+                                          + std::to_string(std::rand());
+            TH1D* hp = h2->ProjectionX(proj_name.c_str(), y1, y2, "e");
+            hp->SetDirectory(nullptr);
+            if (differential) hp->Scale(1.0, "width");
+            hp->SetLineWidth(2);
+            hp->SetLineColor(kBlack);
+            hp->SetMarkerColor(kBlack);
+            hp->SetMarkerStyle(20);
+            hp->SetMarkerSize(0.9);
+            hp->GetXaxis()->SetTitle("p_{T}^{pair} [GeV]");
+            hp->GetYaxis()->SetTitle(y_title.c_str());
+            hp->GetXaxis()->SetTitleSize(0.06);
+            hp->GetYaxis()->SetTitleSize(0.06);
+            hp->GetXaxis()->SetLabelSize(0.05);
+            hp->GetYaxis()->SetLabelSize(0.05);
+            hp->GetYaxis()->SetTitleOffset(1.45);
+            hp->SetTitle("");
+
+            if (hp->GetMaximum() > 0) hp->SetMaximum(hp->GetMaximum() * 1.45);
+            hp->Draw("E1");
+
+            TLegend* leg = new TLegend(0.60, 0.70, 0.93, 0.90);
+            leg->SetBorderSize(0);
+            leg->SetFillStyle(0);
+            leg->SetTextSize(0.045);
+            leg->SetTextAlign(32);
+            leg->SetMargin(0.06);
+            leg->AddEntry((TObject*)0, data_info_line1.c_str(), "");
+            leg->AddEntry((TObject*)0, data_info_line2.c_str(), "");
+            leg->AddEntry((TObject*)0, Form("#eta^{pair} #in [%.1f, %.1f]", eta_bin.first, eta_bin.second), "");
+            leg->Draw();
+            all_legends.push_back(leg);
+            all_hists.push_back(hp);
+        }
+
+        std::string full_path = output_dir + "/" + png_name;
+        c.SaveAs(full_path.c_str());
+        std::cout << "[INFO] Saved: " << full_path << std::endl;
+
+        for (TH1D* h : all_hists) delete h;
+        for (TLegend* leg : all_legends) delete leg;
     }
 };

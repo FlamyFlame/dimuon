@@ -1,4 +1,5 @@
 #include "SingleBAnalysisBase.cxx"
+#include "../MuonObjectsParamsAndHelpers/PPBaseClass.h"
 
 // -------------------------- PP analysis class --------------------------
 
@@ -96,19 +97,15 @@ void SingleBAnalysisPP::RunAnalysisImpl(){
 void simplified_single_b_analysis_pp(){
     //Run PP analyses
 
-    double crossx_factor_pp_run2 = 1/256.8; // 256.793
-    double crossx_factor_pp_24_2mu4 = 1/410.815;
-    double crossx_factor_pp_24_mu4mu4noL1 = 1/113.999;
-
     SingleBAnalysisPP pprun2("pp_run2/muon_pairs_pp_run2_old_res_cut.root", "pp_run2/pp_run2_single_b_ana_hists");
-    pprun2.crossx_factor = crossx_factor_pp_run2;
+    pprun2.crossx_factor = PPBaseClass::GetCrossxFactor(17, "2mu4");
     pprun2.RunAnalysis();
 
     SingleBAnalysisPP pp2024_mu4mu4noL1("pp_2024/muon_pairs_pp_2024_mu4_mu4noL1.root", "pp_2024/pp_2024_single_b_ana_hists_mu4_mu4noL1");
-    pp2024_mu4mu4noL1.crossx_factor = crossx_factor_pp_24_mu4mu4noL1;
+    pp2024_mu4mu4noL1.crossx_factor = PPBaseClass::GetCrossxFactor(24, "mu4_mu4noL1");
     pp2024_mu4mu4noL1.RunAnalysis();
 
     SingleBAnalysisPP pp2024_2mu4("pp_2024/muon_pairs_pp_2024_2mu4.root", "pp_2024/pp_2024_single_b_ana_hists_2mu4");
-    pp2024_2mu4.crossx_factor = crossx_factor_pp_24_2mu4;
+    pp2024_2mu4.crossx_factor = PPBaseClass::GetCrossxFactor(24, "2mu4");
     pp2024_2mu4.RunAnalysis();
 }
