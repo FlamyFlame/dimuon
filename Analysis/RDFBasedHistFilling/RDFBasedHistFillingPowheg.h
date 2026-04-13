@@ -4,6 +4,7 @@
 #include "../Utilities/MC_helpers.h"
 #include "../Utilities/HistFillUtils.h"
 #include <limits>
+#include <set>
 #include <tuple>
 
 class RDFBasedHistFillingPowheg : public virtual RDFBasedHistFillingBaseClass{
@@ -104,6 +105,8 @@ protected:
     void                FillHistogramsTruthGeneral();
     void                FillHistogramsTruthOriginBinned();
     void                FillHistogramsTruthFlavorBinned();
+    void                FillHistogramsSignalAcceptance();
+    virtual void        HistPostProcessExtra() override;
 
 public:
     explicit RDFBasedHistFillingPowhegTruth()
@@ -187,6 +190,17 @@ public:
 
     void SetUseMixed(bool useMixed_input){ useMixed = useMixed_input; }
     bool GetUseMixed() const { return useMixed; }
+
+    // Batch indices (1-based) to skip when building the mixed input file list.
+    // Set this before calling Run() when a job was killed/timed-out but its
+    // output file either doesn't exist or should be ignored.
+    std::set<int> skip_batches_mixed;
+
+    // Subdirectory name under powheg_full_sample/ that holds the mixed pair files.
+    // "mixed_mass_1_3GeV" (default) → files produced with truth_minv in [1,3] GeV filter.
+    // "mixed"                        → files produced without the mass filter.
+    // This also controls the output histogram file name suffix.
+    std::string mixed_subdir = "mixed_mass_1_3GeV";
 
 };
 

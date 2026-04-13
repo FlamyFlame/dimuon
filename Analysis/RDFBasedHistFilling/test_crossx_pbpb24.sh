@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Test FillHistogramsCrossx for pbpb24 with trigger_mode=2
+# Test FillHistogramsCrossx for pbpb24 with trigger_mode=1 (mu4)
 
 set -eo pipefail
 
@@ -18,20 +18,19 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${SCRIPT_DIR}"
 
-echo "[TEST] Running FillHistogramsCrossx for pbpb24 with trigger_mode=2..."
+echo "[TEST] Running FillHistogramsCrossx for pbpb24 with trigger_mode=1 (mu4)..."
 
 root -l -b <<EOF
-// Pre-load Powheg .so for base class symbols
-.L RDFBasedHistFillingPowheg.cxx
-
 // Load and compile PbPb (+ forces recompilation)
 .L RDFBasedHistFillingPbPb.cxx+
 
 // Create PbPb instance for run_year=24
 RDFBasedHistFillingPbPb pbpb(24);
 
-// Configure for trigger_mode=2 (crossx measurements)
-pbpb.trigger_mode = 2;
+// Configure for trigger_mode=1 (mu4 single muon crossx)
+// doTrigEffcy left at default (true); run_crossx=true prevents trig effcy filling
+// so the output filename stays _single_mu4 (no _no_trg_plots suffix)
+pbpb.trigger_mode = 1;
 
 // Set mindR_trig to -1 to disable mindR filtering
 pbpb.mindR_trig   = -1;

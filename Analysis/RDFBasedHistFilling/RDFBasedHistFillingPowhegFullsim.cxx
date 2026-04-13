@@ -24,9 +24,14 @@ void RDFBasedHistFillingPowhegFullsim::SetIOPathsHook(){
 
     const std::string powheg_dir = "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/";
     input_files.clear();
-    const std::string mixed_dir = powheg_dir + "mixed/";
-    constexpr int nbatches_mixed = 240;
+    const std::string mixed_dir = powheg_dir + mixed_subdir + "/";
+    constexpr int nbatches_mixed = 480;
     for (int ibatch = 1; ibatch <= nbatches_mixed; ++ibatch){
+        if (skip_batches_mixed.count(ibatch) > 0){
+            std::cout << "[SetIOPathsHook] Skipping mixed batch " << ibatch
+                      << " (in skip_batches_mixed)" << std::endl;
+            continue;
+        }
         const std::string input_file =
             mixed_dir
             + "muon_pairs_powheg_bbcc_fullsim_mixed_batch"
@@ -41,7 +46,10 @@ void RDFBasedHistFillingPowhegFullsim::SetIOPathsHook(){
     }
 
     infile_var1D_json = "var1D_powheg_fullsim.json";
-    output_file = powheg_dir + "histograms_powheg_fullsim_pp17_mixed.root";
+    // Output histogram file name mirrors the mixed_subdir:
+    //   mixed_mass_1_3GeV → histograms_powheg_fullsim_pp17_mixed_mass_1_3GeV.root
+    //   mixed             → histograms_powheg_fullsim_pp17_mixed.root
+    output_file = powheg_dir + "histograms_powheg_fullsim_pp17_" + mixed_subdir + ".root";
 }
 
 void RDFBasedHistFillingPowhegFullsim::InitializePowhegFullsimExtra(){

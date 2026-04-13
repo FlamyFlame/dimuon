@@ -214,6 +214,7 @@ void RDFBasedHistFillingPythiaTruth::FillHistogramsTruth(){
     FillHistogramsOriginBinned();
     FillHistogramsResonanceStudy();
     FillHistogramsCrossxAndSpecialEta();
+    FillHistogramsSignalAcceptance();
 }
 
 void RDFBasedHistFillingPythiaTruth::FillHistogramsGeneral(){
@@ -402,6 +403,48 @@ void RDFBasedHistFillingPythiaTruth::FillHistogramsCrossxAndSpecialEta(){
     }
 }
 
+void RDFBasedHistFillingPythiaTruth::FillHistogramsSignalAcceptance(){
+    try {
+        ROOT::RDF::RNode& df_op = map_at_checked(df_map, "df_op_weighted", "FillHistogramsSignalAcceptance: df_op_weighted");
+
+        const std::string signal_cuts =
+            "from_same_b && truth_minv > 1.08 && truth_minv < 2.9 "
+            "&& truth_pair_pt > 8 && m1.truth_charge * m1.truth_eta < 2.2 && m2.truth_charge * m2.truth_eta < 2.2 && truth_dr > 0.05";
+
+        auto df_denom = df_op.Filter("from_same_b");
+        auto df_num   = df_op.Filter(signal_cuts);
+
+        const int     npt    = static_cast<int>(pms.pT_bins_120.size() - 1);
+        const double* ptbins = pms.pT_bins_120.data();
+
+        hist2d_rresultptr_map["h2d_sig_accept_num_pt_eta"] = df_num.Histo2D(
+            ROOT::RDF::TH2DModel("h2d_sig_accept_num_pt_eta",
+                ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, 44, -2.4, 2.4),
+            "truth_pair_pt", "truth_pair_eta", "weight");
+
+        hist2d_rresultptr_map["h2d_sig_accept_denom_pt_eta"] = df_denom.Histo2D(
+            ROOT::RDF::TH2DModel("h2d_sig_accept_denom_pt_eta",
+                ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, 44, -2.4, 2.4),
+            "truth_pair_pt", "truth_pair_eta", "weight");
+
+        // pT_bins_150 variants
+        const int     npt150    = static_cast<int>(pms.pT_bins_150.size() - 1);
+        const double* ptbins150 = pms.pT_bins_150.data();
+        hist2d_rresultptr_map["h2d_sig_accept_num_pt_150_eta"] = df_num.Histo2D(
+            ROOT::RDF::TH2DModel("h2d_sig_accept_num_pt_150_eta",
+                ";p_{T}^{pair} [GeV];#eta^{pair}", npt150, ptbins150, 44, -2.4, 2.4),
+            "truth_pair_pt", "truth_pair_eta", "weight");
+        hist2d_rresultptr_map["h2d_sig_accept_denom_pt_150_eta"] = df_denom.Histo2D(
+            ROOT::RDF::TH2DModel("h2d_sig_accept_denom_pt_150_eta",
+                ";p_{T}^{pair} [GeV];#eta^{pair}", npt150, ptbins150, 44, -2.4, 2.4),
+            "truth_pair_pt", "truth_pair_eta", "weight");
+    }
+    catch (const std::exception& e) {
+        std::cerr << "FillHistogramsSignalAcceptance (Pythia): " << e.what() << std::endl;
+        throw;
+    }
+}
+
 void RDFBasedHistFillingPythiaTruth::HistPostProcessExtra(){
     BuildAndStoreNearAwaySummedHistograms();
 
@@ -457,6 +500,26 @@ void RDFBasedHistFillingPythiaTruth::HistPostProcessExtra(){
 
     for (const auto& hname : combined_resonance_hists){
         sum_sign_hists(hname, hname);
+    }
+
+    // Signal acceptance ratio: num / denom (both already in hist2D_map from base HistPostProcessBaseCommon)
+    {
+        auto it_num = hist2D_map.find("h2d_sig_accept_num_pt_eta");
+        auto it_den = hist2D_map.find("h2d_sig_accept_denom_pt_eta");
+        if (it_num != hist2D_map.end() && it_den != hist2D_map.end()) {
+            TH2D* hratio = static_cast<TH2D*>(it_num->second->Clone("h2d_sig_accept_pt_eta"));
+            hratio->Divide(it_den->second);
+            hist2D_map["h2d_sig_accept_pt_eta"] = hratio;
+        } else {
+            std::cerr << "[WARN] HistPostProcessExtra (Pythia): acceptance num/denom not found in hist2D_map." << std::endl;
+        }
+        auto it_num150 = hist2D_map.find("h2d_sig_accept_num_pt_150_eta");
+        auto it_den150 = hist2D_map.find("h2d_sig_accept_denom_pt_150_eta");
+        if (it_num150 != hist2D_map.end() && it_den150 != hist2D_map.end()) {
+            TH2D* hratio150 = static_cast<TH2D*>(it_num150->second->Clone("h2d_sig_accept_pt_150_eta"));
+            hratio150->Divide(it_den150->second);
+            hist2D_map["h2d_sig_accept_pt_150_eta"] = hratio150;
+        }
     }
 
     MarkNearAwayHistogramsForNominalExclusion();

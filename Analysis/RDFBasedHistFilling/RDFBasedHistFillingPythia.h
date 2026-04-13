@@ -82,6 +82,7 @@ protected:
     void FillHistogramsOriginBinned();
     void FillHistogramsResonanceStudy();
     void FillHistogramsCrossxAndSpecialEta();
+    void FillHistogramsSignalAcceptance();
     void ValidatePythiaTruthSchemaAndCoverage();
     void BuildAndStoreNearAwaySummedHistograms();
     void MarkNearAwayHistogramsForNominalExclusion();

@@ -133,8 +133,10 @@ void RDFBasedHistFillingBaseClass::BuildHistBinningMap(){
 void RDFBasedHistFillingBaseClass::BuildHistBinningMapBaseCommon(){
 
     // ------- pT binnings -------
-    hist_binning_map["pT_bins_80"] = pms.pT_bins_80;
-    hist_binning_map["pT_bins_40"] = pms.pT_bins_40;
+    hist_binning_map["pT_bins_40"]  = pms.pT_bins_40;
+    hist_binning_map["pT_bins_80"]  = pms.pT_bins_80;
+    hist_binning_map["pT_bins_120"] = pms.pT_bins_120;
+    hist_binning_map["pT_bins_150"] = pms.pT_bins_150;
 
     // ------- minv log binning -------
 

@@ -81,12 +81,18 @@ void RDFBasedHistFillingData::FillHistograms(){
     std::cout << "Calling FillHistograms" << std::endl;
     
     // ------- Fill histograms -------
-    if (trigger_mode == 2){
-        FillHistogramsCrossx();
-    } else if (hist_filling_cycle == generic){
+    const bool is_pbpb_data = IsPbPb();
+    const bool run_crossx = (trigger_mode == 2) || (trigger_mode == 3)
+        || (is_pbpb_data && (run_year == 23 || run_year == 24 || run_year == 25) && trigger_mode == 1);
+
+    if (hist_filling_cycle == generic){
         if (output_generic_hists){
             FillHistogramsGeneric();
         }
+        if (run_crossx){
+            FillHistogramsCrossx();
+        } 
+
         if (doTrigEffcy){
             FillHistogramsSingleMuonEffcy();
         }
@@ -133,29 +139,31 @@ void RDFBasedHistFillingData::TriggerModeSettings(){
 
     switch(trigger_mode){
     case 0:
-        trig_suffix = "_min_bias";
-        if (!doTrigEffcy) trig_suffix += "_no_trg_plots";
+        base_trig_suffix = "_min_bias";
         trigs = {"_MB", "_mu4"};
         trigs_pair = {{"_mu4","_MB"}};
         break;
     case 1:
-        trig_suffix = "_single_mu4";
-        if (!doTrigEffcy) trig_suffix += "_no_trg_plots";
+        base_trig_suffix = "_single_mu4";
         trigs = {"_mu4", "_mu4_mu4noL1", "_2mu4", "_2mu4_AND_mu4_mu4noL1"}; // can be overwritten if, e.g, mu4_mu4noL1 doesn't exist
         trigs_pair = {{"_mu4_mu4noL1","_mu4"},{"_2mu4","_mu4"},{"_2mu4_AND_mu4_mu4noL1","_mu4"}};
         break;
     case 2:
-        trig_suffix = "_mu4_mu4noL1";
+        base_trig_suffix = "_mu4_mu4noL1";
         break;
     case 3:
-        trig_suffix = "_2mu4";
-        break;        
+        base_trig_suffix = "_2mu4";
+        break;
     default:
         std::cerr << "Trigger mode INVALID: must be 0 / 1 / 2 / 3!" << std::endl;
         throw std::exception();
     }
 
+    // base_trig_suffix: pure trigger type used for input ntuple paths
+    // trig_suffix: adds _no_trg_plots (output-only marker) for modes 0/1 when doTrigEffcy=false
+    trig_suffix = base_trig_suffix;
     doTrigEffcy = (doTrigEffcy && (trigger_mode == 0 || trigger_mode == 1)); // turn off trig effcy plotting if trigger_mode isn't 0 or 1
+    if (!doTrigEffcy && (trigger_mode == 0 || trigger_mode == 1)) trig_suffix += "_no_trg_plots";
 
     if (!filter_out_photo_resn_for_trig_effcy) trig_suffix += "_no_photo_resn_cuts"; // if not filter out photoprod/resn pairs for trigger efficiency study
 
@@ -298,6 +306,11 @@ void RDFBasedHistFillingData::HistPostProcessDataImpl(){
 }
 
 void RDFBasedHistFillingData::HistPostProcessDataCommon(){
+    const bool is_pbpb_data = IsPbPb();
+    const bool run_crossx = (trigger_mode == 2) || (trigger_mode == 3)
+        || (is_pbpb_data && (run_year == 23 || run_year == 24 || run_year == 25) && trigger_mode == 1);
+    if (run_crossx) return;
+
     if (trigger_mode == 0 || trigger_mode == 1){
         if (hist_filling_cycle == generic){
             SumSingleMuonTrigEffHists();

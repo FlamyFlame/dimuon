@@ -1,4 +1,5 @@
 #include "RDFBasedHistFillingPowheg.h"
+#include <TSystem.h>
 
 void RDFBasedHistFillingPowheg::InitializePowhegImpl(){
     InitializePowhegCommon();
@@ -57,7 +58,15 @@ void RDFBasedHistFillingPowheg::SetIOPathsHook(){
     }
 
     for (std::string mc_mode : {"bb", "cc"}){
-        input_files.push_back(powheg_dir + mc_mode_to_data_subdir_map[mc_mode][mctype] + mc_mode_to_mpair_infile_name_map[mc_mode][mctype]);
+        const std::string fpath = powheg_dir + mc_mode_to_data_subdir_map[mc_mode][mctype] + mc_mode_to_mpair_infile_name_map[mc_mode][mctype];
+        if (gSystem->AccessPathName(fpath.c_str())) {
+            std::cout << "[RDFPowheg] Skipping missing input file: " << fpath << std::endl;
+        } else {
+            input_files.push_back(fpath);
+        }
+    }
+    if (input_files.empty()) {
+        throw std::runtime_error("RDFBasedHistFillingPowheg: no input files found for mctype=" + mctype);
     }
 
     infile_var1D_json = is_fullsim  ? "var1D_powheg_fullsim.json"
