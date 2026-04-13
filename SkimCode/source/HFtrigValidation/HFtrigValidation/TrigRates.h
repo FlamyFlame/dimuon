@@ -321,8 +321,10 @@ private:
 
    std::string m_muons_key;
    std::string m_hlt_muons_key;
+   std::string m_hlt_muons_fs_key;
    bool m_store_single_muon;
    bool m_store_acoplanar_muon;
+   bool m_store_dimuon_perleg;   // save per-leg branch vectors (default false)
    bool m_store_muon_truth;
    void InitMuons(TTree *l_OutTree = nullptr);
    void ClearMuons();
