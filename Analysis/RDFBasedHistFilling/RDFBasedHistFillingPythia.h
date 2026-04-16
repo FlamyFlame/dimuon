@@ -2,9 +2,13 @@
 
 #include "RDFBasedHistFillingBaseClass.cxx"
 #include "../MuonObjectsParamsAndHelpers/muon_pair_enums_MC.h"
+#include "../Utilities/HistFillUtils.h"
 #include <cmath>
+#include <limits>
 #include <map>
+#include <set>
 #include <string>
+#include <tuple>
 #include <vector>
 
 class RDFBasedHistFillingPythia : public virtual RDFBasedHistFillingBaseClass{
@@ -97,4 +101,71 @@ public:
     {}
 
     ~RDFBasedHistFillingPythiaTruth(){}
+};
+
+class RDFBasedHistFillingPythiaFullsim : public virtual RDFBasedHistFillingPythia {
+protected:
+    // --- filter levels ---
+    std::vector<std::vector<std::string>> levels_reco_effcy_filters;
+    std::vector<std::vector<std::string>> levels_detector_response_filters;
+
+    std::vector<std::string> reco_effcy_filters;
+    std::vector<std::string> detector_response_filters;
+
+    std::vector<std::string>               reco_effcy_var1Ds;
+    std::vector<std::array<std::string,2>> reco_effcy_var2Ds;
+    std::vector<std::array<std::string,3>> reco_effcy_var3Ds;
+
+    std::vector<std::string>               detec_resp_var1Ds;
+    std::vector<std::array<std::string,2>> detec_resp_var2Ds;
+
+    // --- projection-graph configs ---
+    std::vector<float> dr_bins_edges_for_reco_effcy          = {0.0f, 0.2f, 0.4f, 0.6f, 1.0f};
+    std::vector<float> pair_pT_bins_edges_for_reco_effcy_dR  = {8.0f, 12.0f, 20.0f, std::numeric_limits<float>::max()};
+
+    std::vector<std::pair<float,float>> dr_ranges_for_reco_effcy;
+    std::vector<std::pair<float,float>> pair_pT_ranges_for_reco_effcy_dR;
+
+    std::vector<std::tuple<std::string, std::string, bool, const std::vector<std::pair<float,float>>*>>
+        mu_pair_reco_eff_proj_cfgs;
+
+    std::vector<std::pair<std::string,std::string>> reco_eff_num_denom_suffix_pairs;
+
+    std::map<std::string, TGraphAsymmErrors*> mu_pair_reco_eff_proj_graph_map;
+    std::vector<std::string>                  mu_pair_reco_eff_proj_graphs_to_not_write {};
+    std::map<std::string, TH1D*>              mu_pair_reco_eff_proj_hist_map;
+    std::vector<std::string>                  mu_pair_reco_eff_proj_hists_to_not_write {};
+
+// ----- hooks -----
+
+    void             InitializePythiaFullsimExtra();
+    virtual void     InitializePythiaExtra() override { return InitializePythiaFullsimExtra(); }
+
+    virtual void     SetIOPathsHook() override;
+
+    void             BuildHistBinningMapPythiaFullsimExtra();
+    virtual void     BuildHistBinningMapExtra() override { return BuildHistBinningMapPythiaFullsimExtra(); }
+
+    virtual void     BuildFilterToVarListMapExtra() override;
+
+    void             CreateBaseRDFsPythiaFullsimExtra();
+    virtual void     CreateBaseRDFsPythiaExtra() override { return CreateBaseRDFsPythiaFullsimExtra(); }
+
+    virtual void     FillHistogramsFullSim() override;
+    virtual void     FillHistogramsFullSimDetecResp();
+    virtual void     FillHistogramsFullSimRecoEffcies();
+
+    virtual void     HistPostProcessExtra() override { return MakeAndWriteMuPairRecoEffProjGraphs(); }
+    virtual void     WriteOutputExtra() override;
+    virtual void     CleanupExtra() override;
+
+    void             MakeAndWriteMuPairRecoEffProjGraphsHelper(
+                         const std::vector<std::string>& categories,
+                         bool use_TH_divide = true,
+                         bool require_signal_cuts = false);
+    void             MakeAndWriteMuPairRecoEffProjGraphs();
+
+public:
+    explicit RDFBasedHistFillingPythiaFullsim() { is_fullsim = true; }
+    ~RDFBasedHistFillingPythiaFullsim(){}
 };
