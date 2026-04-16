@@ -1,0 +1,202 @@
+{
+    "variables1D": [
+        {
+            "hist_name": "deta",
+            "var_name": "deta",
+            "title": "#Delta#eta^{reco}",
+            "binning": {
+                "nbins": 40,
+                "min": -4.8,
+                "max": 4.8
+            }
+        },
+        {
+            "hist_name": "deta_zoomin",
+            "var_name": "deta",
+            "title": "#Delta#eta^{reco}",
+            "binning": {
+                "nbins": 20,
+                "min": -1.0,
+                "max": 1.0
+            }
+        },
+        {
+            "hist_name": "truth_deta_zoomin",
+            "var_name": "truth_deta",
+            "title": "#Delta#eta^{truth}",
+            "binning": {
+                "nbins": 20,
+                "min": -1.0,
+                "max": 1.0
+            }
+        },
+        {
+            "hist_name": "dphi",
+            "var_name": "dphi",
+            "title": "#Delta#phi^{reco}",
+            "binning": {
+                "nbins": 64,
+                "min": -3.141592653589793,
+                "max": 3.141592653589793
+            }
+        },
+        {
+            "hist_name": "dphi_zoomin",
+            "var_name": "dphi",
+            "title": "#Delta#phi^{reco}",
+            "binning": {
+                "nbins": 20,
+                "min": -1.0,
+                "max": 1.0
+            }
+        },
+        {
+            "hist_name": "truth_dphi_zoomin",
+            "var_name": "truth_dphi",
+            "title": "#Delta#phi^{truth}",
+            "binning": {
+                "nbins": 20,
+                "min": -1.0,
+                "max": 1.0
+            }
+        },
+        {
+            "hist_name": "dr",
+            "var_name": "dr",
+            "title": "#DeltaR^{reco}",
+            "binning": {
+                "nbins": 40,
+                "min": 0.0,
+                "max": 5.75
+            }
+        },
+        {
+            "hist_name": "dr_zoomin",
+            "var_name": "dr",
+            "title": "#DeltaR^{reco}",
+            "binning": {
+                "nbins": 20,
+                "min": 0.0,
+                "max": 1.0
+            }
+        },
+        {
+            "hist_name": "truth_dr_zoomin",
+            "var_name": "truth_dr",
+            "title": "#DeltaR^{truth}",
+            "binning": {
+                "nbins": 20,
+                "min": 0.0,
+                "max": 1.0
+            }
+        },
+        {
+            "hist_name": "truth_dr_2_0",
+            "var_name": "truth_dr",
+            "title": "#DeltaR^{truth}",
+            "binning": {
+                "nbins": 20,
+                "min": 0.0,
+                "max": 2.0
+            }
+        },
+        {
+            "hist_name": "truth_dr_4_0",
+            "var_name": "truth_dr",
+            "title": "#DeltaR^{truth}",
+            "binning": {
+                "nbins": 40,
+                "min": 0.0,
+                "max": 4.0
+            }
+        },
+        {
+            "hist_name": "minv_zoomin",
+            "var_name": "minv",
+            "title": "m_{#mu#mu}^{reco} [GeV]",
+            "binning": {
+                "nbins": 40,
+                "min": 0.0,
+                "max": 3.0
+            }
+        },
+        {
+            "hist_name": "truth_minv_zoomin",
+            "var_name": "truth_minv",
+            "title": "m_{#mu#mu}^{truth} [GeV]",
+            "binning": {
+                "nbins": 40,
+                "min": 0.0,
+                "max": 3.0
+            }
+        },
+        {
+            "hist_name": "pair_pt",
+            "var_name": "pair_pt",
+            "title": "p_{T}^{pair,reco} [GeV]",
+            "binning": "pT_bins_80"
+        },
+        {
+            "hist_name": "truth_pair_pt",
+            "var_name": "truth_pair_pt",
+            "title": "p_{T}^{pair,truth} [GeV]",
+            "binning": "pT_bins_80"
+        },
+        {
+            "hist_name": "pair_eta",
+            "var_name": "pair_eta",
+            "title": "#eta^{pair,reco}",
+            "binning": {
+                "nbins": 48,
+                "min": -2.4,
+                "max": 2.4
+            }
+        },
+        {
+            "hist_name": "truth_pair_eta",
+            "var_name": "truth_pair_eta",
+            "title": "#eta^{pair,truth}",
+            "binning": {
+                "nbins": 48,
+                "min": -2.4,
+                "max": 2.4
+            }
+        },
+        {
+            "hist_name": "eta2",
+            "var_name": "m2.eta",
+            "title": "#eta_{sublead}^{reco}",
+            "binning": {
+                "nbins": 48,
+                "min": -2.4,
+                "max": 2.4
+            }
+        },
+        {
+            "hist_name": "eta1",
+            "var_name": "m1.eta",
+            "title": "#eta_{lead}^{reco}",
+            "binning": {
+                "nbins": 48,
+                "min": -2.4,
+                "max": 2.4
+            }
+        },
+        {
+            "hist_name": "eta_avg",
+            "var_name": "etaavg",
+            "title": "#bar{#eta}^{reco}",
+            "binning": {
+                "nbins": 48,
+                "min": -2.4,
+                "max": 2.4
+            }
+        },
+        {
+            "hist_name": "minv_log",
+            "var_name": "minv",
+            "title": "m_{#mu#mu}^{reco} [GeV]",
+            "binning": "minv_log_bins"
+        }
+    ]
+}
