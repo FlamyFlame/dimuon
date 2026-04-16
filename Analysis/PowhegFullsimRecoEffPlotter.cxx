@@ -1,4 +1,4 @@
-// RecoEffyRetRespPlotter.h (or put in a .cxx you .L in ROOT)
+// PowhegFullsimRecoEffPlotter.h (or put in a .cxx you .L in ROOT)
 #include <TFile.h>
 #include <TH1.h>
 #include <TH2.h>
@@ -23,10 +23,10 @@
 #include "Utilities/PlotUtils.h"
 #include "Utilities/PlotCommonConfig.h"
 
-class RecoEffyRetRespPlotter {
+class PowhegFullsimRecoEffPlotter {
 public:
 
-    RecoEffyRetRespPlotter(int run_year_input, bool tight_WP_input = false, bool require_signal_cuts_input = false)
+    PowhegFullsimRecoEffPlotter(int run_year_input, bool tight_WP_input = false, bool require_signal_cuts_input = false)
     :   run_year(run_year_input % 2000),
         tight_WP(tight_WP_input),
         require_signal_cuts(require_signal_cuts_input)
@@ -34,10 +34,10 @@ public:
         isRun3 = !(run_year <= 18);
     }
 
-    RecoEffyRetRespPlotter()
-    : RecoEffyRetRespPlotter(17, false, false){}
+    PowhegFullsimRecoEffPlotter()
+    : PowhegFullsimRecoEffPlotter(17, false, false){}
 
-    ~RecoEffyRetRespPlotter() {
+    ~PowhegFullsimRecoEffPlotter() {
         if (infile_unmixed) {
             infile_unmixed->Close();
             delete infile_unmixed;
@@ -202,7 +202,7 @@ protected:
 
         infile_unmixed = TFile::Open(infile_path_unmixed.c_str(), "READ");
         if (!infile_unmixed || infile_unmixed->IsZombie()) {
-            std::cerr << "[RecoEffyRetRespPlotter::Initialize] ERROR: failed to open unmixed file: "
+            std::cerr << "[PowhegFullsimRecoEffPlotter::Initialize] ERROR: failed to open unmixed file: "
                       << infile_path_unmixed << "\n";
             if (infile_unmixed) { delete infile_unmixed; infile_unmixed = nullptr; }
             return false;
@@ -210,7 +210,7 @@ protected:
 
         infile_mixed = TFile::Open(infile_path_mixed.c_str(), "READ");
         if (!infile_mixed || infile_mixed->IsZombie()) {
-            std::cerr << "[RecoEffyRetRespPlotter::Initialize] ERROR: failed to open mixed file: "
+            std::cerr << "[PowhegFullsimRecoEffPlotter::Initialize] ERROR: failed to open mixed file: "
                       << infile_path_mixed << "\n";
             if (infile_mixed) { delete infile_mixed; infile_mixed = nullptr; }
             return false;
@@ -1072,12 +1072,12 @@ private:
         const bool has_single_b = (hname.find("_single_b") != std::string::npos);
 
         if ((has_ss || has_op) && has_single_b) {
-            throw std::runtime_error("[RecoEffyRetRespPlotter] Invalid reco histogram name with mixed+single_b tags: " + hname);
+            throw std::runtime_error("[PowhegFullsimRecoEffPlotter] Invalid reco histogram name with mixed+single_b tags: " + hname);
         }
         if (has_ss || has_op) return true;
         if (has_single_b) return false;
 
-        throw std::runtime_error("[RecoEffyRetRespPlotter] Cannot determine reco input source for histogram name: " + hname);
+        throw std::runtime_error("[PowhegFullsimRecoEffPlotter] Cannot determine reco input source for histogram name: " + hname);
     }
 
     template <typename T>
@@ -1118,7 +1118,7 @@ private:
 
     bool CheckUnmixedFile() const {
         if (!infile_unmixed || !infile_unmixed->IsOpen()) {
-            std::cerr << "[RecoEffyRetRespPlotter] ERROR: unmixed input file not open. Call Initialize().\n";
+            std::cerr << "[PowhegFullsimRecoEffPlotter] ERROR: unmixed input file not open. Call Initialize().\n";
             return false;
         }
         return true;
@@ -1126,11 +1126,11 @@ private:
 
     bool CheckRecoFiles() const {
         if (!infile_unmixed || !infile_unmixed->IsOpen()) {
-            std::cerr << "[RecoEffyRetRespPlotter] ERROR: unmixed input file not open. Call Initialize().\n";
+            std::cerr << "[PowhegFullsimRecoEffPlotter] ERROR: unmixed input file not open. Call Initialize().\n";
             return false;
         }
         if (!infile_mixed || !infile_mixed->IsOpen()) {
-            std::cerr << "[RecoEffyRetRespPlotter] ERROR: mixed input file not open. Call Initialize().\n";
+            std::cerr << "[PowhegFullsimRecoEffPlotter] ERROR: mixed input file not open. Call Initialize().\n";
             return false;
         }
         return true;
