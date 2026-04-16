@@ -13,6 +13,8 @@ class PythiaAlgCoreT
     : public DimuonAlgCoreT<PairT, MuonT, Derived>
 {
     template <class, class> friend class PythiaTruthExtras;
+    template <class, class, class> friend class PythiaFullSimExtras;
+    template <class> friend class PythiaFullSimOverlayExtras;
 
 public:
     using pair_t = PairT;
@@ -62,6 +64,7 @@ protected:
     std::string outfile_name;
     std::string outhistfile_name;
     std::string py_dir;
+    std::string fullsim_input_dir;  // directory holding Pythia fullsim NTUP files
 
 // --------------------- input files & trees & data for setting branches ---------------------------
 
@@ -103,6 +106,12 @@ protected:
     std::vector<int>*    truth_mupair_ch2  = nullptr;
     std::vector<int>*    truth_mupair_bar2 = nullptr;
 
+    // Fullsim-specific branches (bound by InitInputFullsim_PythiaCore)
+    std::vector<int>*    truth_muon_barcode = nullptr; // barcodes of truth muons (indexed by truth muon index)
+
+    // Fullsim per-beam/kn normalization factor: ami_weight * isospin_ratio / N_beam
+    double fullsim_weight_factor = 1.0;
+
 // --------------------- output trees ---------------------------
 
     std::vector<long> nentries_per_kin;
@@ -114,10 +123,16 @@ protected:
 // --------------------- getters ---------------------------
 
     bool getIsPrivate() const { return self().isPrivate; }
+    bool getIsFullsim() const { return is_fullsim; }
+    bool getIsFullsimOverlay() const { return is_fullsim_overlay; }
     bool getPerformTruth() const { return perform_truth; }
     bool getUseLocal() const { return useLocal; }
+    void setIsFullsim(bool v) { is_fullsim = v; }
+    void setIsFullsimOverlay(bool v) { is_fullsim_overlay = v; }
     void setPerformTruth(bool v) { perform_truth = v; }
     void setUseLocal(bool v) { useLocal = v; }
+
+    std::vector<int>*& TruthMuonBarcodeRef() { return truth_muon_barcode; }
 
     TChain* GetChainForBranchSetup() const {
         if (getIsPrivate() && evChain) return evChain;
@@ -131,6 +146,7 @@ protected:
     void InitInput_PythiaCore();
     void InitInputPrivate_PythiaCore();
     void InitInputCentrProd_PythiaCore();
+    void InitInputFullsim_PythiaCore();
     void SetInputOutputFilesFromBatch_PythiaCore();
     void InputSanityCheck_PythiaCore();
 
@@ -208,6 +224,12 @@ protected:
         }
     }
     template <class E>
+    void CallProcessEventFullsim(int ev_num) {
+        if constexpr (requires(Derived& d){ static_cast<E&>(d).ProcessEventFullsim(ev_num); }) {
+            static_cast<E&>(self()).ProcessEventFullsim(ev_num);
+        }
+    }
+    template <class E>
     void CallHistAdjust() {
         if constexpr (requires(Derived& d){ static_cast<E&>(d).HistAdjustExtra(); }) {
             static_cast<E&>(self()).HistAdjustExtra();
@@ -226,6 +248,7 @@ public:
     void SetKnBatch(int kn) { kn_batch = kn; }
 
     bool turn_data_resonance_cuts_on = false;
+    bool fill_kn_trees_fullsim = false;  // set true to bin fullsim pairs into per-kn trees
 
     explicit PythiaAlgCoreT(int batch_num_input, bool useLocal_input = false)
         : batch_num(batch_num_input)
@@ -235,6 +258,9 @@ public:
     void ProcessDataHook();
     void PerformTruthPairAnalysisHook() {
         (CallPerformTruthPairAnalysis<Extras>(), ...);
+    }
+    void ProcessEventFullsimHook(int ev_num) {
+        (CallProcessEventFullsim<Extras>(ev_num), ...);
     }
     void OutputTreePathHook();
     void OutputHistPathHook();

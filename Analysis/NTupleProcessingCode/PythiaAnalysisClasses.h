@@ -5,6 +5,8 @@
 #include "../MuonObjectsParamsAndHelpers/MuonPairPythia.h"
 #include "PythiaAlgCoreT.c"
 #include "PythiaTruthExtras.c"
+#include "PythiaFullSimExtras.c"
+#include "PythiaFullSimOverlayExtras.c"
 
 class PythiaTruthAnalysis
   : public PythiaAlgCoreT<
@@ -23,6 +25,51 @@ public:
                 + std::to_string(e_com));
         this->isPrivate = is_private;
         this->E_COM = e_com;
+    }
+};
+
+// Full-sim pp24 analysis: truth ancestry tracing + reco muon matching
+class PythiaFullSimAnalysis
+  : public PythiaAlgCoreT<
+        MuonPairPythiaFullSimWTruth, MuonPythiaFullSimWTruth,
+        PythiaFullSimAnalysis,
+        PythiaFullSimExtras<MuonPairPythiaFullSimWTruth, MuonPythiaFullSimWTruth, PythiaFullSimAnalysis>,
+        PythiaTruthExtras<MuonPairPythiaFullSimWTruth, PythiaFullSimAnalysis>
+    >
+  , public PythiaFullSimExtras<MuonPairPythiaFullSimWTruth, MuonPythiaFullSimWTruth, PythiaFullSimAnalysis>
+  , public PythiaTruthExtras<MuonPairPythiaFullSimWTruth, PythiaFullSimAnalysis>
+{
+public:
+    // batch_num_input unused for fullsim (all kn ranges processed together); kept for API symmetry
+    PythiaFullSimAnalysis(int batch_num_input = 0, bool use_local = false)
+        : PythiaAlgCoreT(batch_num_input, use_local)
+    {
+        this->isPrivate = false;
+        this->E_COM = 5.36;
+        this->run_year = 24;
+    }
+};
+
+// Placeholder: full-sim PbPb overlay analysis (to be implemented when overlay samples available)
+class PythiaFullSimOverlayAnalysis
+  : public PythiaAlgCoreT<
+        MuonPairPythiaFullSimOverlayWTruth, MuonPythiaFullSimOverlayWTruth,
+        PythiaFullSimOverlayAnalysis,
+        PythiaFullSimExtras<MuonPairPythiaFullSimOverlayWTruth, MuonPythiaFullSimOverlayWTruth, PythiaFullSimOverlayAnalysis>,
+        PythiaFullSimOverlayExtras<PythiaFullSimOverlayAnalysis>,
+        PythiaTruthExtras<MuonPairPythiaFullSimOverlayWTruth, PythiaFullSimOverlayAnalysis>
+    >
+  , public PythiaFullSimExtras<MuonPairPythiaFullSimOverlayWTruth, MuonPythiaFullSimOverlayWTruth, PythiaFullSimOverlayAnalysis>
+  , public PythiaFullSimOverlayExtras<PythiaFullSimOverlayAnalysis>
+  , public PythiaTruthExtras<MuonPairPythiaFullSimOverlayWTruth, PythiaFullSimOverlayAnalysis>
+{
+public:
+    PythiaFullSimOverlayAnalysis(int batch_num_input = 0, bool use_local = false)
+        : PythiaAlgCoreT(batch_num_input, use_local)
+    {
+        this->isPrivate = false;
+        this->E_COM = 5.36;
+        this->run_year = 24;
     }
 };
 

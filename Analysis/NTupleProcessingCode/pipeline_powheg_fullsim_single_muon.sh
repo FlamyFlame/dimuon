@@ -274,12 +274,12 @@ validate_files_or_fail "single-muon histogram" "${SINGLE_MUON_HIST}"
 log "Running plotter for medium + tight WPs (from ${ANALYSIS_DIR})"
 pushd "${ANALYSIS_DIR}" >/dev/null
 root -l -b <<'ROOTEOF' || fail "ROOT exited non-zero during single-muon plotting"
-.L RecoEffcyDetRespPlotterSingleMuon.cxx+
+.L PowhegFullsimDetRespPlotterSingleMuon.cxx+
 {
     gROOT->SetBatch(kTRUE);
-    DetRespPlotterSingleMuon pl_medium(17, false);
+    PowhegFullsimDetRespPlotterSingleMuon pl_medium(17, false);
     pl_medium.Run();
-    DetRespPlotterSingleMuon pl_tight(17, true);
+    PowhegFullsimDetRespPlotterSingleMuon pl_tight(17, true);
     pl_tight.Run();
 }
 .q

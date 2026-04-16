@@ -321,12 +321,16 @@ int PythiaTruthExtras<PairT, Derived>::GetParticleIndex(int barcode) const {
     if (!truth_barcode)
         throw std::runtime_error("GetParticleIndex: truth_barcode is null for non-private sample.");
 
-    if (barcode_lookup_source != truth_barcode || barcode_lookup_size != truth_barcode->size()) {
+    int bc_back = truth_barcode->empty() ? -1 : truth_barcode->back();
+    if (barcode_lookup_source != truth_barcode
+        || barcode_lookup_size != truth_barcode->size()
+        || barcode_lookup_back != bc_back) {
         barcode_to_index_cache.clear();
         for (size_t i = 0; i < truth_barcode->size(); ++i)
             barcode_to_index_cache[truth_barcode->at(i)] = static_cast<int>(i);
         barcode_lookup_source = truth_barcode;
         barcode_lookup_size = truth_barcode->size();
+        barcode_lookup_back = bc_back;
     }
 
     auto it = barcode_to_index_cache.find(barcode);
@@ -1480,12 +1484,24 @@ void PythiaTruthExtras<PairT, Derived>::MuonPairAncestorTracing() {
     mpair->m2_from_pdf = m2_ancestor_is_incoming;
 
     if (mpair->m1_parent_group < 0) {
-        std::cout << "Muon1 parents not in any group." << std::endl;
-        PrintHistory(&std::cout, true, true);
+        int truth_bc_size = (truth_barcode ? (int)truth_barcode->size() : -1);
+        if (print_unspecified_parent && m_unspecified_parent_file) {
+            *m_unspecified_parent_file
+                << "[SAT-fail] Muon1 barcode=" << mpair->m1.truth_bar
+                << " not in truth_barcode table (size=" << truth_bc_size << ")."
+                << " parent_group stays -10. History below (empty = SAT bailed before tracing):" << std::endl;
+            PrintHistory(m_unspecified_parent_file, true, true);
+        }
     }
     if (mpair->m2_parent_group < 0) {
-        std::cout << "Muon2 parents not in any group." << std::endl;
-        PrintHistory(&std::cout, true, false);
+        int truth_bc_size = (truth_barcode ? (int)truth_barcode->size() : -1);
+        if (print_unspecified_parent && m_unspecified_parent_file) {
+            *m_unspecified_parent_file
+                << "[SAT-fail] Muon2 barcode=" << mpair->m2.truth_bar
+                << " not in truth_barcode table (size=" << truth_bc_size << ")."
+                << " parent_group stays -10. History below (empty = SAT bailed before tracing):" << std::endl;
+            PrintHistory(m_unspecified_parent_file, true, false);
+        }
     }
 
     int isign = !mpair->truth_same_sign;

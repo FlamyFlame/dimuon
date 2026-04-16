@@ -436,13 +436,13 @@ log "Histogram output OK: ${MIXED_HIST}"
 log "Running pair plotter for medium + tight WPs (from ${ANALYSIS_DIR}, mixed_hist_suffix=${MIXED_HIST_SUFFIX})"
 pushd "${ANALYSIS_DIR}" >/dev/null
 root -l -b <<ROOTEOF || fail "ROOT exited non-zero during mixed-pair plotting"
-.L RecoEffyRetRespPlotter.cxx+
+.L PowhegFullsimRecoEffPlotter.cxx+
 {
     gROOT->SetBatch(kTRUE);
-    RecoEffyRetRespPlotter pl_medium(17, false, false);
+    PowhegFullsimRecoEffPlotter pl_medium(17, false, false);
     pl_medium.mixed_hist_name_suffix = "${MIXED_HIST_SUFFIX}";
     pl_medium.Run();
-    RecoEffyRetRespPlotter pl_tight(17, true, false);
+    PowhegFullsimRecoEffPlotter pl_tight(17, true, false);
     pl_tight.mixed_hist_name_suffix = "${MIXED_HIST_SUFFIX}";
     pl_tight.Run();
 }
