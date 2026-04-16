@@ -71,6 +71,7 @@ protected:
 
     mutable const std::vector<int>* barcode_lookup_source = nullptr;
     mutable size_t barcode_lookup_size = 0;
+    mutable int barcode_lookup_back = -1;
     mutable std::unordered_map<int, int> barcode_to_index_cache;
 
 // --------------------- resonance data ---------------------------

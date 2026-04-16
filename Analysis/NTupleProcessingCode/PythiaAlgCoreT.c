@@ -21,10 +21,20 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_PythiaCore() {
 
     isRun3 = (run_year > 18);
     if (is_fullsim || is_fullsim_overlay) {
-        py_dir = "";
-        outfile_name = "muon_pairs_pythia_fullsim";
-        outhistfile_name = "hists_pythia_ntuple_processing_fullsim";
-        nKinRanges = 0;
+        // Fullsim: load all kn ranges at once; AMI info read from truth directory
+        nKinRanges = 6;
+        kinRanges  = {8.f, 14.f, 24.f, 40.f, 70.f, 125.f, 300.f};
+        // py_dir used for AMI info (same path as truth non-private)
+        py_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_truth_full_sample/pythia_5p36TeV/";
+        // Fullsim NTUPs are here:
+        fullsim_input_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/";
+        outfile_name     = "muon_pairs_pythia_fullsim_pp24";
+        outhistfile_name = "hists_pythia_ntuple_processing_fullsim_pp24";
+        nevents.resize(nKinRanges, 0);
+        nevents_accum.resize(nKinRanges, 0);
+        njobs_accum.resize(nKinRanges, 0);
+        njobs.resize(nKinRanges, 0);
+        nentries_per_kin.resize(nKinRanges, 0);
         return;
     }
 
@@ -347,6 +357,101 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputCentrProd_Pythia
 }
 
 // ---------------------------------------------------------------------------
+// InitInputFullsim_PythiaCore
+// ---------------------------------------------------------------------------
+
+template <class PairT, class MuonT, class Derived, class... Extras>
+void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputFullsim_PythiaCore() {
+    // kn_batch is unused for fullsim (all ranges processed together)
+    const std::vector<std::string> beam_names = {"pp", "pn", "np", "nn"};
+
+    evChains_kn_beam.resize(nKinRanges);
+    nentries_kn_beam.resize(nKinRanges);
+    nentries_kn_sum.assign(nKinRanges, 0);
+    ami_weight_kn_beam.resize(nKinRanges);
+
+    for (int i = 0; i < nKinRanges; i++) {
+        evChains_kn_beam[i].assign(nBeamTypes, nullptr);
+        nentries_kn_beam[i].assign(nBeamTypes, 0);
+        ami_weight_kn_beam[i].assign(nBeamTypes, 0.);
+    }
+
+    for (int ikin = 0; ikin < nKinRanges; ikin++) {
+        int kin_lo = static_cast<int>(kinRanges.at(ikin));
+        int kin_hi = static_cast<int>(kinRanges.at(ikin + 1));
+
+        for (int ibeam = 0; ibeam < nBeamTypes; ibeam++) {
+            std::string fname = fullsim_input_dir
+                + "Pythia_5p36TeV_" + beam_names.at(ibeam)
+                + "_hQCD_DiMu_pTH" + std::to_string(kin_lo) + "_" + std::to_string(kin_hi)
+                + ".FullSimPP24.NTUP.root";
+
+            std::ifstream fin(fname);
+            if (!fin.good()) {
+                std::cout << "InitInputFullsim: missing file (skip): " << fname << std::endl;
+                continue;
+            }
+            fin.close();
+
+            TChain* ch = new TChain("HeavyIonD3PD", "HeavyIonD3PD");
+            int add_ret = ch->Add(fname.c_str());
+            if (add_ret <= 0) {
+                std::cerr << "InitInputFullsim: failed to add: " << fname << std::endl;
+                delete ch;
+                continue;
+            }
+            ch->SetMakeClass(1);
+            Long64_t nent = ch->GetEntries();
+            evChains_kn_beam[ikin][ibeam] = ch;
+            nentries_kn_beam[ikin][ibeam] = nent;
+            nentries_kn_sum[ikin] += nent;
+
+            // Disable all branches; Extras will enable what they need
+            ch->SetBranchStatus("*", 0);
+            // Enable and bind core branches
+            ch->SetBranchStatus("truth_muon_barcode", 1);
+            ch->SetBranchAddress("truth_muon_barcode", &truth_muon_barcode);
+
+            std::cout << "Loaded " << nent << " events from " << fname << std::endl;
+
+            // AMI weight for this kn/beam
+            std::string ami_path = py_dir + "ami_info/ami_info_mc23_5p36TeV_Py8EG_A14_"
+                + beam_names.at(ibeam)
+                + "_hQCD_DiMu_pTH" + std::to_string(kin_lo) + "_" + std::to_string(kin_hi) + ".txt";
+            std::ifstream ami(ami_path);
+            if (!ami.good()) {
+                std::cerr << "InitInputFullsim: WARNING - missing AMI file: " << ami_path << std::endl;
+            } else {
+                double crossSection = 0., genFiltEff = 0.;
+                std::string line;
+                while (std::getline(ami, line)) {
+                    if (line.find("crossSection") != std::string::npos) {
+                        size_t c = line.find(':');
+                        if (c != std::string::npos) { std::istringstream(line.substr(c+1)) >> crossSection; break; }
+                    }
+                }
+                ami.close(); ami.open(ami_path);
+                while (std::getline(ami, line)) {
+                    if (line.find("genFiltEff") != std::string::npos) {
+                        size_t c = line.find(':');
+                        if (c != std::string::npos) { std::istringstream(line.substr(c+1)) >> genFiltEff; break; }
+                    }
+                }
+                ami.close();
+                ami_weight_kn_beam[ikin][ibeam] = crossSection * genFiltEff;
+                std::cout << "  AMI: crossSection=" << crossSection << " pb, genFiltEff=" << genFiltEff
+                          << " -> ami_weight=" << ami_weight_kn_beam[ikin][ibeam] << " pb" << std::endl;
+            }
+        }
+    }
+
+    nominal_beam_ratio["pp"] = 4./25.;
+    nominal_beam_ratio["pn"] = 6./25.;
+    nominal_beam_ratio["np"] = 6./25.;
+    nominal_beam_ratio["nn"] = 9./25.;
+}
+
+// ---------------------------------------------------------------------------
 // InitInput (dispatcher)
 // ---------------------------------------------------------------------------
 
@@ -354,10 +459,13 @@ template <class PairT, class MuonT, class Derived, class... Extras>
 void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInput_PythiaCore() {
     SetInputOutputFilesFromBatch_PythiaCore();
     InputSanityCheck_PythiaCore();
-    if (getIsPrivate())
+    if (is_fullsim || is_fullsim_overlay) {
+        InitInputFullsim_PythiaCore();
+    } else if (getIsPrivate()) {
         InitInputPrivate_PythiaCore();
-    else
+    } else {
         InitInputCentrProd_PythiaCore();
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -370,7 +478,9 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::OutputTreePathHook() {
     std::string local_suffix = getUseLocal() ? "_local_batch" : "";
 
     std::string output_dir;
-    if (getIsPrivate()) {
+    if (is_fullsim || is_fullsim_overlay) {
+        output_dir = fullsim_input_dir;
+    } else if (getIsPrivate()) {
         output_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_private_sample/";
     } else {
         const std::string ecom_subdir = (std::abs(self().E_COM - 5.36) < 0.01) ? "pythia_5p36TeV" : "pythia_5TeV";
@@ -386,7 +496,9 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::OutputHistPathHook() {
     std::string local_suffix = getUseLocal() ? "_local_batch" : "";
 
     std::string output_dir;
-    if (getIsPrivate()) {
+    if (is_fullsim || is_fullsim_overlay) {
+        output_dir = fullsim_input_dir;
+    } else if (getIsPrivate()) {
         output_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_private_sample/";
     } else {
         const std::string ecom_subdir = (std::abs(self().E_COM - 5.36) < 0.01) ? "pythia_5p36TeV" : "pythia_5TeV";
@@ -526,6 +638,43 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::FillMuonPairTreePythia(in
 
 template <class PairT, class MuonT, class Derived, class... Extras>
 void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook() {
+
+    // Fullsim branch: loop over all kn × beam, call ProcessEventFullsimHook per event
+    if (is_fullsim || is_fullsim_overlay) {
+        const std::vector<std::string> beam_names = {"pp", "pn", "np", "nn"};
+
+        for (int ikin = 0; ikin < nKinRanges; ikin++) {
+            int kin_lo = static_cast<int>(kinRanges.at(ikin));
+            int kin_hi = static_cast<int>(kinRanges.at(ikin + 1));
+            if (fill_kn_trees_fullsim) current_ikin = ikin;
+
+            for (int ibeam = 0; ibeam < nBeamTypes; ibeam++) {
+                TChain* ch = evChains_kn_beam.at(ikin).at(ibeam);
+                Long64_t N_beam = nentries_kn_beam.at(ikin).at(ibeam);
+                if (!ch || N_beam == 0) continue;
+
+                double nom_ratio = nominal_beam_ratio.at(beam_names.at(ibeam));
+                double ami_w     = ami_weight_kn_beam.at(ikin).at(ibeam);
+                fullsim_weight_factor = (N_beam > 0) ? ami_w * nom_ratio / static_cast<double>(N_beam) : 0.;
+
+                Long64_t N_proc = (this->nevents_max <= 0) ? N_beam
+                                  : std::min<Long64_t>(N_beam, this->nevents_max);
+                std::cout << "Fullsim pTH" << kin_lo << "_" << kin_hi
+                          << " beam=" << beam_names.at(ibeam)
+                          << " N=" << N_proc << "/" << N_beam
+                          << " w_factor=" << fullsim_weight_factor << std::endl;
+
+                for (Long64_t jev = 0; jev < N_proc; jev++) {
+                    if (jev % 10000 == 0)
+                        std::cout << "  event " << jev << " / " << N_proc << std::endl;
+                    int nb = ch->GetEntry(jev);
+                    if (nb <= 0) continue;
+                    ProcessEventFullsimHook(static_cast<int>(jev));
+                }
+            }
+        }
+        return;
+    }
 
     // Non-private branch: one kinematic range per job (kn_batch, validated in InitParams)
     if (!getIsPrivate()) {
