@@ -918,8 +918,10 @@ StatusCode TrigRates::ProcessVertex(){
 void TrigRates::InitMuons(TTree *l_OutTree){
   if(m_store_single_muon){
     #if defined(HF_IS_R25)
-    l_OutTree->Branch("muon_match_mu4roi",&m_muon_match_mu4roi);
-    l_OutTree->Branch("muon_match_mu6roi",&m_muon_match_mu6roi);
+    if(m_use_trigger){
+      l_OutTree->Branch("muon_match_mu4roi",&m_muon_match_mu4roi);
+      l_OutTree->Branch("muon_match_mu6roi",&m_muon_match_mu6roi);
+    }
     #endif
 
     l_OutTree->Branch("muon_pt"          ,&m_muon_pt          );
@@ -1146,9 +1148,11 @@ StatusCode TrigRates::ProcessMuons(){
 
 
   #ifdef HF_IS_R25
-  const xAOD::MuonContainer *l_muons_trig_roi;
-  CHECK(evtStore()->retrieve(l_muons_trig_roi, m_hlt_muons_key));
-  // Per-leg matching uses TDT navigation internally; no FS container retrieve needed.
+  const xAOD::MuonContainer *l_muons_trig_roi = nullptr;
+  if(m_use_trigger){
+    CHECK(evtStore()->retrieve(l_muons_trig_roi, m_hlt_muons_key));
+    // Per-leg matching uses TDT navigation internally; no FS container retrieve needed.
+  }
   #endif
 
 
@@ -1391,20 +1395,22 @@ StatusCode TrigRates::ProcessMuons(){
     //-----------------------------------------------------------------
 
     #ifdef HF_IS_R25
-     bool match_mu4roi=false;
-     bool match_mu6roi=false;
-     for(auto muon_trig:*l_muons_trig_roi){
-       float pt_ =muon_trig->pt ();
-       float eta_=muon_trig->eta();
-       float phi_=muon_trig->phi();
-       float dr2=pow(eta_precorr-eta_,2.0) + pow(phi_precorr-phi_,2.0);
-       if(dr2<0.01){
-         if(pt_>4000.0) match_mu4roi=true;
-         if(pt_>6000.0) match_mu6roi=true;
+     if(m_use_trigger){
+       bool match_mu4roi=false;
+       bool match_mu6roi=false;
+       for(auto muon_trig:*l_muons_trig_roi){
+         float pt_ =muon_trig->pt ();
+         float eta_=muon_trig->eta();
+         float phi_=muon_trig->phi();
+         float dr2=pow(eta_precorr-eta_,2.0) + pow(phi_precorr-phi_,2.0);
+         if(dr2<0.01){
+           if(pt_>4000.0) match_mu4roi=true;
+           if(pt_>6000.0) match_mu6roi=true;
+         }
        }
+       m_muon_match_mu4roi.push_back(match_mu4roi);
+       m_muon_match_mu6roi.push_back(match_mu6roi);
      }
-     m_muon_match_mu4roi.push_back(match_mu4roi);
-     m_muon_match_mu6roi.push_back(match_mu6roi);
     #endif
 
 
