@@ -18,20 +18,20 @@
 #include "Utilities/PlotUtils.h"
 #include "Utilities/PlotCommonConfig.h"
 
-class DetRespPlotterSingleMuon {
+class PowhegFullsimDetRespPlotterSingleMuon {
 public:
 
-    DetRespPlotterSingleMuon(int run_year_input, bool tight_WP_input = false)
+    PowhegFullsimDetRespPlotterSingleMuon(int run_year_input, bool tight_WP_input = false)
     :   run_year(run_year_input % 2000),
         tight_WP(tight_WP_input)
     {
         isRun3 = !(run_year <= 18);
     }
 
-    DetRespPlotterSingleMuon()
-    : DetRespPlotterSingleMuon(17, false) {}
+    PowhegFullsimDetRespPlotterSingleMuon()
+    : PowhegFullsimDetRespPlotterSingleMuon(17, false) {}
 
-    ~DetRespPlotterSingleMuon(){
+    ~PowhegFullsimDetRespPlotterSingleMuon(){
         if (infile){
             infile->Close();
             delete infile;
@@ -95,7 +95,7 @@ protected:
 
         infile = TFile::Open(infile_path.c_str(), "READ");
         if (!infile || infile->IsZombie()){
-            std::cerr << "[DetRespPlotterSingleMuon::Initialize] ERROR: failed to open file: "
+            std::cerr << "[PowhegFullsimDetRespPlotterSingleMuon::Initialize] ERROR: failed to open file: "
                       << infile_path << "\n";
             if (infile){ delete infile; infile = nullptr; }
             return false;
@@ -149,6 +149,16 @@ protected:
 
                 const bool logy = LogAx(var, cfg);
 
+                h_truth->Scale(1, "width");
+                h_reco ->Scale(1, "width");
+
+                auto DiffY1D = [](const std::string& v) -> std::string {
+                    if (v == "pt")  return "d#sigma/dp_{T} [pb/GeV]";
+                    if (v == "eta") return "d#sigma/d#eta";
+                    if (v == "phi") return "d#sigma/d#phi";
+                    return "d#sigma/d(" + v + ")";
+                };
+
                 h_truth->SetLineWidth(2);
                 h_truth->SetLineColor(kBlack);
                 h_truth->SetStats(0);
@@ -160,12 +170,12 @@ protected:
                 h_reco->SetTitle("");
 
                 TRatioPlot rp(h_reco, h_truth, "divsym");
-                rp.SetLeftMargin(0.12);
+                rp.SetLeftMargin(0.16);
                 rp.SetRightMargin(0.05);
                 rp.SetUpTopMargin(0.08);
                 rp.SetUpBottomMargin(0.02);
                 rp.SetLowTopMargin(0.02);
-                rp.SetLowBottomMargin(0.32);
+                rp.SetLowBottomMargin(0.40);
                 rp.SetH1DrawOpt("hist");
                 rp.SetH2DrawOpt("hist");
                 rp.SetGraphDrawOpt("PE1");
@@ -180,9 +190,10 @@ protected:
                 }
 
                 if (rp.GetUpperRefYaxis()){
+                    rp.GetUpperRefYaxis()->SetTitle(DiffY1D(var).c_str());
                     rp.GetUpperRefYaxis()->SetTitleSize(0.038);
                     rp.GetUpperRefYaxis()->SetLabelSize(0.030);
-                    rp.GetUpperRefYaxis()->SetTitleOffset(1.15);
+                    rp.GetUpperRefYaxis()->SetTitleOffset(1.30);
                 }
                 if (rp.GetUpperRefXaxis()){
                     rp.GetUpperRefXaxis()->SetTitleSize(0.0);
@@ -190,16 +201,17 @@ protected:
                 }
                 if (rp.GetLowerRefYaxis()){
                     rp.GetLowerRefYaxis()->SetTitle("Reco/Truth");
-                    rp.GetLowerRefYaxis()->SetNdivisions(505);
-                    rp.GetLowerRefYaxis()->SetTitleSize(0.050);
-                    rp.GetLowerRefYaxis()->SetTitleOffset(0.95);
-                    rp.GetLowerRefYaxis()->SetLabelSize(0.040);
+                    rp.GetLowerRefYaxis()->SetNdivisions(4, kFALSE);
+                    rp.GetLowerRefYaxis()->SetRangeUser(-1.2, 1.2);
+                    rp.GetLowerRefYaxis()->SetTitleSize(0.030);
+                    rp.GetLowerRefYaxis()->SetTitleOffset(1.20);
+                    rp.GetLowerRefYaxis()->SetLabelSize(0.025);
                 }
                 if (rp.GetLowerRefXaxis()){
                     rp.GetLowerRefXaxis()->SetTitle(h_truth->GetXaxis()->GetTitle());
-                    rp.GetLowerRefXaxis()->SetTitleSize(0.060);
+                    rp.GetLowerRefXaxis()->SetTitleSize(0.040);
                     rp.GetLowerRefXaxis()->SetTitleOffset(1.10);
-                    rp.GetLowerRefXaxis()->SetLabelSize(0.050);
+                    rp.GetLowerRefXaxis()->SetLabelSize(0.032);
                 }
 
                 if (rp.GetUpperPad()) rp.GetUpperPad()->cd();
@@ -236,10 +248,19 @@ protected:
         const std::string outdir = GetDetRespOutDir();
         gSystem->mkdir(outdir.c_str(), kTRUE);
 
+        auto DiffZ2D = [](const std::string& v) -> std::string {
+            if (v == "pt")  return "d^{2}#sigma/dp_{T}^{reco}dp_{T}^{truth} [pb/GeV^{2}]";
+            if (v == "eta") return "d^{2}#sigma/d#eta^{reco}d#eta^{truth}";
+            if (v == "phi") return "d^{2}#sigma/d#phi^{reco}d#phi^{truth}";
+            return "d^{2}#sigma/d" + v + "^{reco}d" + v + "^{truth}";
+        };
+
         for (const auto& var : muon_vars_for_det_resp){
 
             TCanvas c("c", "c", 1300, 550);
             c.Divide(2, 1);
+
+            std::vector<TH2*> h2_clones;
 
             for (std::size_t is = 0; is < signs.size(); ++is){
                 c.cd(static_cast<int>(is) + 1);
@@ -249,11 +270,14 @@ protected:
                 const std::string& sign = signs[is];
                 const std::string h2_name = "h_" + var + "_vs_truth_" + var + sign + wp_filter;
 
-                TH2* h2 = GetHist<TH2>(h2_name);
-                if (!h2){
+                TH2* h2_in = GetHist<TH2>(h2_name);
+                if (!h2_in){
                     std::cerr << "[PlotResponseMatrix] WARNING: missing " << h2_name << "\n";
                     continue;
                 }
+                TH2* h2 = dynamic_cast<TH2*>(h2_in->Clone(("h2_resp_" + var + sign).c_str()));
+                h2->SetDirectory(nullptr);
+                h2->Scale(1, "width");
 
                 gPad->SetLogz(true);
                 if (var == "pt"){
@@ -263,11 +287,14 @@ protected:
 
                 h2->SetTitle((sign_labels[is] + " " + var + " response matrix").c_str());
                 h2->SetStats(0);
+                h2->GetZaxis()->SetTitle(DiffZ2D(var).c_str());
                 h2->Draw("colz");
+                h2_clones.push_back(h2);
             }
 
             const std::string out = outdir + var + "_response_matrix" + wp_suffix + ".png";
             c.SaveAs(out.c_str());
+            for (auto* h : h2_clones) delete h;
         }
     }
 
@@ -488,7 +515,7 @@ private:
 
     bool CheckFile() const {
         if (!infile || !infile->IsOpen()){
-            std::cerr << "[DetRespPlotterSingleMuon] ERROR: input file not open.\n";
+            std::cerr << "[PowhegFullsimDetRespPlotterSingleMuon] ERROR: input file not open.\n";
             return false;
         }
         return true;
