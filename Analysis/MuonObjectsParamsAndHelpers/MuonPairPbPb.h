@@ -7,6 +7,17 @@ struct PairPbPbExtras {
   	int avg_centrality{};
 	  int year{-1};
   	float FCal_Et{-1e6f};
+  	float FCal_Et_A{-1e6f};     // FCal_Et_P in raw data (positive z = side A)
+  	float FCal_Et_C{-1e6f};     // FCal_Et_N in raw data (negative z = side C)
+  	float ZDC_E_tot{-1e6f};     // zdc_ZdcEnergy[0] + [1]
+  	float ZDC_t_A{-1e6f};       // zdc_ZdcTime[1]
+  	float ZDC_t_C{-1e6f};       // zdc_ZdcTime[0]
+  	float ZDC_preamp_A{-1e6f};  // sum zdc_ZdcModulePreSampleAmp[1][0..3]
+  	float ZDC_preamp_C{-1e6f};  // sum zdc_ZdcModulePreSampleAmp[0][0..3]
+  	int ntrk_HIloose{-1};           // trk_numqual[2]: HI_LOOSE, pT > 400 MeV
+  	int ntrk_HItight{-1};           // trk_numqual[3]: HI_TIGHT, pT > 400 MeV
+  	int ntrk_HIloose_noPtCut{-1};   // trk_numqual[6]: HI_LOOSE, no pT cut
+  	int ntrk_HItight_noPtCut{-1};   // trk_numqual[7]: HI_TIGHT, no pT cut
   	void UpdateCentrality();
 
 protected:

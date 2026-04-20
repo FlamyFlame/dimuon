@@ -23,7 +23,13 @@ protected:
 
     // Declaration of additional leaf types
     Float_t         FCal_Et;
+    Float_t         FCal_Et_P, FCal_Et_N;               // side A, side C
     Int_t           centrality;
+    // Run 3 only
+    Float_t         zdc_ZdcEnergy[2]{};                 // [0]=A, [1]=C
+    Float_t         zdc_ZdcTime[2]{};                   // [0]=A, [1]=C
+    Float_t         zdc_ZdcModulePreSampleAmp[2][4]{};  // [side][module], [0]=A, [1]=C
+    std::vector<int>* trk_numqual{nullptr};              // 8-element; indices: [2]=HIloose+pT, [3]=HItight+pT, [6]=HIloose, [7]=HItight
 
     // --------------------- class methods ---------------------------
 
