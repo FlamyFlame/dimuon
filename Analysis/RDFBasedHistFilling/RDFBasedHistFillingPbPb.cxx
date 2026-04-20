@@ -934,3 +934,55 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
 
     std::cout << "[PbPb] FillHistogramsCrossx completed for all centrality bins" << std::endl;
 }
+
+// ============================================================================
+// FillHistogramsEventSelection: FCal / ZDC / ntrk diagnostic 2D histograms
+// ============================================================================
+
+void RDFBasedHistFillingPbPb::FillHistogramsEventSelection() {
+    std::cout << "[PbPb] FillHistogramsEventSelection: FCal/ZDC/ntrk event-selection diagnostics" << std::endl;
+
+    ROOT::RDF::RNode df = map_at_checked(df_map, "df_op", "FillHistogramsEventSelection PbPb: df_op");
+
+    // FCal_Et_A/C stored in TeV (converted from MeV at ntuple step); ZDC_E_tot stored in GeV
+    auto df_evsel = df
+        .Define("FCal_Et_AC_TeV", "FCal_Et_A + FCal_Et_C")
+        .Define("ZDC_E_tot_TeV",  "ZDC_E_tot / 1000.0f");
+
+    // FCal Et A vs C [TeV] — per-side range ~ [-0.5, 3] TeV
+    hist2d_rresultptr_map["h2d_evsel_FCal_Et_C_vs_A"] = df_evsel.Histo2D(
+        ROOT::RDF::TH2DModel("h2d_evsel_FCal_Et_C_vs_A",
+            ";FCal E_{T}^{A} [TeV];FCal E_{T}^{C} [TeV]",
+            110, -0.5, 3., 110, -0.5, 3.),
+        "FCal_Et_A", "FCal_Et_C");
+
+    // ZDC total energy (Y) vs FCal Et A+C (X) [TeV]
+    hist2d_rresultptr_map["h2d_evsel_ZDC_E_tot_vs_FCal_Et_AC"] = df_evsel.Histo2D(
+        ROOT::RDF::TH2DModel("h2d_evsel_ZDC_E_tot_vs_FCal_Et_AC",
+            ";FCal E_{T}^{A+C} [TeV];ZDC E_{total} [TeV]",
+            120, -0.5, 5.5, 100, 0., 400.),
+        "FCal_Et_AC_TeV", "ZDC_E_tot_TeV");
+
+    // nTrk HIloose vs FCal Et A+C [TeV]
+    hist2d_rresultptr_map["h2d_evsel_ntrk_HIloose_vs_FCal_Et_AC"] = df_evsel.Histo2D(
+        ROOT::RDF::TH2DModel("h2d_evsel_ntrk_HIloose_vs_FCal_Et_AC",
+            ";FCal E_{T}^{A+C} [TeV];N_{trk}^{HIloose}",
+            120, -0.5, 5.5, 100, 0., 5000.),
+        "FCal_Et_AC_TeV", "ntrk_HIloose");
+
+    // nTrk HItight vs FCal Et A+C [TeV]
+    hist2d_rresultptr_map["h2d_evsel_ntrk_HItight_vs_FCal_Et_AC"] = df_evsel.Histo2D(
+        ROOT::RDF::TH2DModel("h2d_evsel_ntrk_HItight_vs_FCal_Et_AC",
+            ";FCal E_{T}^{A+C} [TeV];N_{trk}^{HItight}",
+            120, -0.5, 5.5, 100, 0., 5000.),
+        "FCal_Et_AC_TeV", "ntrk_HItight");
+
+    // ZDC time A vs C [ns]
+    hist2d_rresultptr_map["h2d_evsel_ZDC_t_C_vs_A"] = df_evsel.Histo2D(
+        ROOT::RDF::TH2DModel("h2d_evsel_ZDC_t_C_vs_A",
+            ";ZDC t^{A} [ns];ZDC t^{C} [ns]",
+            100, -10., 10., 100, -10., 10.),
+        "ZDC_t_A", "ZDC_t_C");
+
+    std::cout << "[PbPb] FillHistogramsEventSelection completed" << std::endl;
+}

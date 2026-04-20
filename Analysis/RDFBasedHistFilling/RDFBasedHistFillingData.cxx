@@ -91,10 +91,14 @@ void RDFBasedHistFillingData::FillHistograms(){
         }
         if (run_crossx){
             FillHistogramsCrossx();
-        } 
+        }
 
         if (doTrigEffcy){
             FillHistogramsSingleMuonEffcy();
+        }
+
+        if (is_pbpb_data){
+            FillHistogramsEventSelection();
         }
     } else if (hist_filling_cycle == inv_weight_by_single_mu_effcy && trigger_mode == 1){
         FillTrigEffcyHistsInvWeightedbySingleMuonEffcies();
