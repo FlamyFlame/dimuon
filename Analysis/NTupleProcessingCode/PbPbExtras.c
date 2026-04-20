@@ -29,11 +29,27 @@ void PbPbExtras<Derived>::PerformTChainFill(){
 template <class Derived>
 void PbPbExtras<Derived>::InitInputExtra(){
   
-  self().fChainRef()->SetBranchAddress("FCal_Et"                     , &FCal_Et);
-  self().fChainRef()->SetBranchAddress("centrality"                  , &centrality);
+  // Enable branches BEFORE SetBranchAddress: with SetMakeClass(1) + prior SetBranchStatus("*",0),
+  // calling SetBranchAddress on a disabled branch returns code 3 and doesn't connect the buffer.
+  self().fChainRef()->SetBranchStatus("FCal_Et"   , 1);
+  self().fChainRef()->SetBranchStatus("FCal_Et_P" , 1);
+  self().fChainRef()->SetBranchStatus("FCal_Et_N" , 1);
+  self().fChainRef()->SetBranchStatus("centrality", 1);
+  self().fChainRef()->SetBranchAddress("FCal_Et"   , &FCal_Et);
+  self().fChainRef()->SetBranchAddress("FCal_Et_P" , &FCal_Et_P);  // side A
+  self().fChainRef()->SetBranchAddress("FCal_Et_N" , &FCal_Et_N);  // side C
+  self().fChainRef()->SetBranchAddress("centrality", &centrality);
 
-  self().fChainRef()->SetBranchStatus("FCal_Et"                         ,1);
-  self().fChainRef()->SetBranchStatus("centrality"                      ,1);
+  if (self().isRun3) {
+    self().fChainRef()->SetBranchStatus("zdc_ZdcEnergy",              1);
+    self().fChainRef()->SetBranchStatus("zdc_ZdcTime",                1);
+    self().fChainRef()->SetBranchStatus("zdc_ZdcModulePreSampleAmp",  1);
+    self().fChainRef()->SetBranchStatus("trk_numqual",                1);
+    self().fChainRef()->SetBranchAddress("zdc_ZdcEnergy",             zdc_ZdcEnergy);
+    self().fChainRef()->SetBranchAddress("zdc_ZdcTime",               zdc_ZdcTime);
+    self().fChainRef()->SetBranchAddress("zdc_ZdcModulePreSampleAmp", zdc_ZdcModulePreSampleAmp);
+    self().fChainRef()->SetBranchAddress("trk_numqual",               &trk_numqual);
+  }
 }
 
 template <class Derived>
@@ -68,13 +84,31 @@ void PbPbExtras<Derived>::FillMuonPairExtra(int pair_ind){
 
   self().mpairRef()->m1.ev_centrality = centrality;
   self().mpairRef()->m2.ev_centrality = centrality;
-  self().mpairRef()->FCal_Et = FCal_Et;
-  self().mpairRef()->m1.ev_FCal_Et = FCal_Et;
-  self().mpairRef()->m2.ev_FCal_Et = FCal_Et;
+  self().mpairRef()->FCal_Et   = FCal_Et   * 1e-6f;  // MeV → TeV
+  self().mpairRef()->FCal_Et_A = FCal_Et_P * 1e-6f;  // MeV → TeV
+  self().mpairRef()->FCal_Et_C = FCal_Et_N * 1e-6f;  // MeV → TeV
+  self().mpairRef()->m1.ev_FCal_Et = FCal_Et * 1e-6f;
+  self().mpairRef()->m2.ev_FCal_Et = FCal_Et * 1e-6f;
 
-  if (self().isRun3){  // run3: no need to update centrality (for now)
+  if (self().isRun3){
     self().mpairRef()->year = self().run_year;
-  }else{
+
+    self().mpairRef()->ZDC_E_tot = zdc_ZdcEnergy[0] + zdc_ZdcEnergy[1];  // [0]=A, [1]=C
+    self().mpairRef()->ZDC_t_A   = zdc_ZdcTime[0];   // [0] = A-side
+    self().mpairRef()->ZDC_t_C   = zdc_ZdcTime[1];   // [1] = C-side
+    float preamp_A = 0.f, preamp_C = 0.f;
+    for (int i = 0; i < 4; ++i) preamp_A += zdc_ZdcModulePreSampleAmp[0][i];  // [0]=A
+    for (int i = 0; i < 4; ++i) preamp_C += zdc_ZdcModulePreSampleAmp[1][i];  // [1]=C
+    self().mpairRef()->ZDC_preamp_A = preamp_A;
+    self().mpairRef()->ZDC_preamp_C = preamp_C;
+
+    if (trk_numqual && trk_numqual->size() >= 8) {
+      self().mpairRef()->ntrk_HIloose         = (*trk_numqual)[2];
+      self().mpairRef()->ntrk_HItight         = (*trk_numqual)[3];
+      self().mpairRef()->ntrk_HIloose_noPtCut = (*trk_numqual)[6];
+      self().mpairRef()->ntrk_HItight_noPtCut = (*trk_numqual)[7];
+    }
+  } else {
     self().mpairRef()->year = self().run_year;
     self().mpairRef()->UpdateCentrality();
   }
@@ -114,7 +148,7 @@ void PbPbExtras<Derived>::InitParamsExtra(){
   bool is_run3_local = (run_year_short > 20);
 
   std::map<int, int> run_year_to_file_batch_max_map = {
-    {23, 6}, {24, 9}, {15, 7}, {18, 7}
+    {23, 6}, {24, 2}, {15, 7}, {18, 7}
   };
 
   // check for run year
@@ -132,7 +166,7 @@ void PbPbExtras<Derived>::InitParamsExtra(){
 
   // check for file batch
   if (self().file_batch <= 0 || self().file_batch > run_year_to_file_batch_max_map[run_year_short]){
-    std::cerr<<"Error:: run3 file_batch is invalid! Must be in range 1-6 for 2023 data / 1-9 for 2024 data / 1-7 for 2015/2018 data"<<std::endl;
+    std::cerr<<"Error:: run3 file_batch is invalid! Must be in range 1-6 for 2023 data / 1-2 for 2024 data / 1-7 for 2015/2018 data"<<std::endl;
     throw std::exception();
   }
 }
