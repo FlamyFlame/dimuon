@@ -5,4 +5,4 @@ output = logs/run_pbpb_24_batch_$(Process).out
 error = logs/run_pbpb_24_batch_$(Process).err
 log = logs/run_pbpb_24_batch_$(Process).log
 request_memory = 2GB
-queue 9
+queue 2
