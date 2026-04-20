@@ -18,6 +18,7 @@
 #include <iostream>
 #include "Utilities/PlotUtils.h"
 #include "Utilities/PlotCommonConfig.h"
+#include "RDFBasedHistFilling/CommonEffcyConfig.h"
 
 class PythiaFullsimRecoEffPlotter {
 public:
