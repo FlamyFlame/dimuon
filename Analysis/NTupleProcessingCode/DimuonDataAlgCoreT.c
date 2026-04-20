@@ -372,7 +372,8 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitOutputSettings_Da
     std::string mindR_suffix_output = use_mindR_suffix_in_output
         ? ("_mindR_" + (mindR_trig == 0.01 ? std::string("0_01") : std::string("0_02")))
         : "";
-    std::string outfile_ending = run_suffix + file_batch_suffix + trig_suffix + mindR_suffix_output + tight_suffix + resonance_cut_suffix + ".root";
+    std::string test_suffix = this->is_test_run ? "_test" : "";
+    std::string outfile_ending = run_suffix + file_batch_suffix + trig_suffix + mindR_suffix_output + tight_suffix + resonance_cut_suffix + test_suffix + ".root";
     output_file_path = data_dir + file_name_base + outfile_ending;
     output_hist_file_path = data_dir + "hists_cut_acceptance" + outfile_ending;
 
