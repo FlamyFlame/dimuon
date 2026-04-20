@@ -106,7 +106,6 @@ protected:
     virtual bool    IsPbPb() const { return false; } // avoids dynamic_cast<PbPb*> cross-dependency when compiling PP and PbPb separately
     virtual void    FillHistograms() override;
     virtual void    FillHistogramsGeneric();
-    virtual void    FillHistogramsEventSelection() {} // event-level diagnostic histograms (FCal, ZDC, ntrk); no-op for non-PbPb
     virtual void    FillHistogramsCrossx() = 0; // trigger_mode == 2 crossx filling (opposite-sign only, with signal cuts)
     virtual void    FillHistogramsSingleMuonEffcy() = 0;
     virtual void    FillHistogramsDimuTrigGivenMu4() = 0;
@@ -287,7 +286,6 @@ protected:
 
     void                CreateBaseRDFsPbPbExtra();
     virtual void        CreateBaseRDFsExtra() override{ return CreateBaseRDFsPbPbExtra(); }
-    virtual void        FillHistogramsEventSelection() override;
     virtual void        FillHistogramsSingleMuonEffcy() override;
     virtual void        FillHistogramsDimuTrigGivenMu4() override;
     virtual void        FillHistogramsDimuTrigGivenMu4CtrDep();
