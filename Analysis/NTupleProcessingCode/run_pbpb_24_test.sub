@@ -1,0 +1,7 @@
+executable = run_pbpb_24_test.sh
+arguments  = $(Process)
+output     = logs/run_pbpb_24_test_batch_$(Process).out
+error      = logs/run_pbpb_24_test_batch_$(Process).err
+log        = logs/run_pbpb_24_test_batch_$(Process).log
+request_memory = 2GB
+queue 1

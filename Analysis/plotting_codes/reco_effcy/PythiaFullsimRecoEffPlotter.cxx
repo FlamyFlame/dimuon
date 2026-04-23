@@ -16,28 +16,25 @@
 #include <tuple>
 #include <vector>
 #include <iostream>
-#include "Utilities/PlotUtils.h"
-#include "Utilities/PlotCommonConfig.h"
+#include "../../Utilities/PlotUtils.h"
+#include "../../Utilities/PlotCommonConfig.h"
+#include "../../RDFBasedHistFilling/CommonEffcyConfig.h"
+#include "../../MuonObjectsParamsAndHelpers/FullSimSampleType.h"
+#include "../../MuonObjectsParamsAndHelpers/PbPbBaseClass.h"
 
-class PythiaFullsimRecoEffPlotter {
+class PythiaFullsimRecoEffPlotterBase {
 public:
 
-    PythiaFullsimRecoEffPlotter(bool tight_WP_input = false, bool require_signal_cuts_input = false)
+    PythiaFullsimRecoEffPlotterBase(bool tight_WP_input = false, bool require_signal_cuts_input = false)
     : tight_WP(tight_WP_input), require_signal_cuts(require_signal_cuts_input){}
 
-    ~PythiaFullsimRecoEffPlotter(){
+    virtual ~PythiaFullsimRecoEffPlotterBase(){
         if (infile){ infile->Close(); delete infile; infile = nullptr; }
     }
 
-    void Run(){
+    virtual void Run(){
         if (!Initialize()) return;
-        PlotTruthRecoCompr();
-        PlotResponseMatrix();
-        Plot1DRecoEffcy();
-        Plot2DRecoEffcySigned();
-        Plot2DRecoEffcySingleB();
-        Plot1DRecoEffcySingleBOpCompr();
-        Plot1DRecoEffcyRangedSingleBOpCompr();
+        RunForFilter("");
     }
 
     double min_denom_neff = 10.0;
@@ -54,8 +51,10 @@ protected:
 
     PlotCommonConfig cfg;
 
-    const std::string data_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/";
     TFile* infile{nullptr};
+
+    virtual std::string GetDataDir() const = 0;
+    virtual std::string GetPlotDirPrefix() const = 0;
 
     std::vector<std::string> pair_vars_for_det_resp = {
         "pair_pt", "minv_zoomin", "dr_zoomin"
@@ -101,6 +100,11 @@ protected:
         }
     }
 
+    virtual std::string GetInputFilePath() const {
+        return GetDataDir() + "histograms_pythia_fullsim_"
+            + GetPlotDirPrefix() + "_no_data_resonance_cuts.root";
+    }
+
     bool Initialize(){
         wp_suffix   = tight_WP ? "_tightWP"  : "_mediumWP";
         wp_filter   = tight_WP ? "_pass_tight" : "_pass_medium";
@@ -108,12 +112,11 @@ protected:
         require_signal_cuts_hist_suffix_denom  = require_signal_cuts ? "_and_signal_truth_and_reco" : "";
         require_signal_cuts_file_dir_suffix    = require_signal_cuts ? "_require_signal_cuts" : "";
 
-        const std::string infile_path = data_dir
-            + "histograms_pythia_fullsim_pp24_no_data_resonance_cuts.root";
+        const std::string infile_path = GetInputFilePath();
 
         infile = TFile::Open(infile_path.c_str(), "READ");
         if (!infile || infile->IsZombie()){
-            std::cerr << "[PythiaFullsimRecoEffPlotter::Initialize] ERROR: failed to open "
+            std::cerr << "[PythiaFullsimRecoEffPlotterBase::Initialize] ERROR: failed to open "
                       << infile_path << "\n";
             if (infile){ delete infile; infile = nullptr; }
             return false;
@@ -137,17 +140,19 @@ protected:
         return dynamic_cast<T*>(infile->Get(hname.c_str()));
     }
 
-    std::string GetDetRespOutDir() const {
-        return data_dir + "plots/pp24_det_resp_plots/" + (tight_WP ? "tight/" : "medium/");
+    std::string GetDetRespOutDir(const std::string& ctr_tag = "") const {
+        return GetDataDir() + "plots/" + GetPlotDirPrefix() + "_det_resp_plots"
+            + ctr_tag + "/" + (tight_WP ? "tight/" : "medium/");
     }
-    std::string GetRecoEffcyOutDir() const {
-        return data_dir + "plots/pp24_reco_effcy_plots"
-            + require_signal_cuts_file_dir_suffix + "/" + (tight_WP ? "tight/" : "medium/");
+    std::string GetRecoEffcyOutDir(const std::string& ctr_tag = "") const {
+        return GetDataDir() + "plots/" + GetPlotDirPrefix() + "_reco_effcy_plots"
+            + require_signal_cuts_file_dir_suffix + ctr_tag + "/"
+            + (tight_WP ? "tight/" : "medium/");
     }
 
     bool CheckFile() const {
         if (!infile || !infile->IsOpen()){
-            std::cerr << "[PythiaFullsimRecoEffPlotter] ERROR: input file not open.\n";
+            std::cerr << "[PythiaFullsimRecoEffPlotterBase] ERROR: input file not open.\n";
             return false;
         }
         return true;
@@ -165,16 +170,30 @@ protected:
         h_draw->GetXaxis()->SetLimits(xmin, xmax);
     }
 
-    // --- plot functions ---
+    void RunForFilter(const std::string& filter_prefix){
+        const std::string ctr_tag = filter_prefix;
+        PlotTruthRecoCompr(filter_prefix, ctr_tag);
+        PlotResponseMatrix(filter_prefix, ctr_tag);
+        Plot1DRecoEffcy(filter_prefix, ctr_tag);
+        Plot2DRecoEffcySigned(filter_prefix, ctr_tag);
+        Plot2DRecoEffcySingleB(filter_prefix, ctr_tag);
+        Plot1DRecoEffcySingleBOpCompr(filter_prefix, ctr_tag);
+        Plot1DRecoEffcyRangedSingleBOpCompr(filter_prefix, ctr_tag);
+    }
 
-    void PlotTruthRecoCompr(){
+    // --- plot functions ---
+    // filter_prefix: inserted between pair_catgr and wp_filter in hist names
+    //   PP: "" ; overlay: "_ctr0_5" etc.
+    // ctr_tag: used for output directory differentiation
+
+    void PlotTruthRecoCompr(const std::string& fp, const std::string& ctr_tag){
         if (!CheckFile()) return;
-        const std::string outdir = GetDetRespOutDir();
+        const std::string outdir = GetDetRespOutDir(ctr_tag);
         gSystem->mkdir(outdir.c_str(), kTRUE);
 
         for (const auto& var : pair_vars_for_det_resp){
-            const std::string h_truth_name = "h_truth_" + var + "_single_b" + wp_filter;
-            const std::string h_reco_name  = "h_"       + var + "_single_b" + wp_filter;
+            const std::string h_truth_name = "h_truth_" + var + "_single_b" + fp + wp_filter;
+            const std::string h_reco_name  = "h_"       + var + "_single_b" + fp + wp_filter;
 
             TH1* h_truth_in = GetHist<TH1>(h_truth_name);
             TH1* h_reco_in  = GetHist<TH1>(h_reco_name);
@@ -231,13 +250,13 @@ protected:
         }
     }
 
-    void PlotResponseMatrix(){
+    void PlotResponseMatrix(const std::string& fp, const std::string& ctr_tag){
         if (!CheckFile()) return;
-        const std::string outdir = GetDetRespOutDir();
+        const std::string outdir = GetDetRespOutDir(ctr_tag);
         gSystem->mkdir(outdir.c_str(), kTRUE);
 
         for (const auto& var : pair_vars_for_det_resp){
-            const std::string h2_name = "h_" + var + "_vs_truth_" + var + "_single_b" + wp_filter;
+            const std::string h2_name = "h_" + var + "_vs_truth_" + var + "_single_b" + fp + wp_filter;
             TH2* h2_in = GetHist<TH2>(h2_name);
             if (!h2_in){ std::cerr << "[PlotResponseMatrix] WARNING: missing " << h2_name << "\n"; continue; }
             TH2* h2 = dynamic_cast<TH2*>(h2_in->Clone(("h2_resp_" + var).c_str()));
@@ -263,9 +282,9 @@ protected:
         }
     }
 
-    void Plot1DRecoEffcy(){
+    void Plot1DRecoEffcy(const std::string& fp, const std::string& ctr_tag){
         if (!CheckFile()) return;
-        const std::string outdir = GetRecoEffcyOutDir();
+        const std::string outdir = GetRecoEffcyOutDir(ctr_tag);
         gSystem->mkdir(outdir.c_str(), kTRUE);
 
         const std::string num_filter   = RecoEffNumFilter();
@@ -284,8 +303,8 @@ protected:
                 c.cd(ipad+1);
                 gPad->SetTicks(1,1); gPad->SetLogx(logx);
 
-                const std::string hnum_name   = "h_" + var + sign + num_filter;
-                const std::string hdenom_name = "h_" + var + sign + denom_filter;
+                const std::string hnum_name   = "h_" + var + sign + fp + num_filter;
+                const std::string hdenom_name = "h_" + var + sign + fp + denom_filter;
 
                 TH1D* h_num = GetHist<TH1D>(hnum_name);
                 TH1D* h_den = GetHist<TH1D>(hdenom_name);
@@ -315,9 +334,9 @@ protected:
         }
     }
 
-    void Plot2DRecoEffcySigned(){
+    void Plot2DRecoEffcySigned(const std::string& fp, const std::string& ctr_tag){
         if (!CheckFile()) return;
-        const std::string outdir = GetRecoEffcyOutDir();
+        const std::string outdir = GetRecoEffcyOutDir(ctr_tag);
         gSystem->mkdir(outdir.c_str(), kTRUE);
 
         const std::string num_filter   = RecoEffNumFilter();
@@ -336,12 +355,11 @@ protected:
             TH2D* h_eff_ss = nullptr;
             TH2D* h_eff_op = nullptr;
 
-            // ---------- left pad: same sign ----------
             c.cd(1);
             gPad->SetTicks(1, 1); gPad->SetLogx(lx); gPad->SetLogy(ly); gPad->SetRightMargin(0.14);
             {
-                const std::string hnum_name   = "h_" + vary + "_vs_" + varx + "_ss" + num_filter;
-                const std::string hdenom_name = "h_" + vary + "_vs_" + varx + "_ss" + denom_filter;
+                const std::string hnum_name   = "h_" + vary + "_vs_" + varx + "_ss" + fp + num_filter;
+                const std::string hdenom_name = "h_" + vary + "_vs_" + varx + "_ss" + fp + denom_filter;
                 TH2D* h_num = GetHist<TH2D>(hnum_name);
                 TH2D* h_den = GetHist<TH2D>(hdenom_name);
                 if (!h_num) std::cerr << "[Plot2DRecoEffcySigned] WARNING: missing " << hnum_name   << "\n";
@@ -356,12 +374,11 @@ protected:
                 }
             }
 
-            // ---------- right pad: opposite sign ----------
             c.cd(2);
             gPad->SetTicks(1, 1); gPad->SetLogx(lx); gPad->SetLogy(ly); gPad->SetRightMargin(0.14);
             {
-                const std::string hnum_name   = "h_" + vary + "_vs_" + varx + "_op" + num_filter;
-                const std::string hdenom_name = "h_" + vary + "_vs_" + varx + "_op" + denom_filter;
+                const std::string hnum_name   = "h_" + vary + "_vs_" + varx + "_op" + fp + num_filter;
+                const std::string hdenom_name = "h_" + vary + "_vs_" + varx + "_op" + fp + denom_filter;
                 TH2D* h_num = GetHist<TH2D>(hnum_name);
                 TH2D* h_den = GetHist<TH2D>(hdenom_name);
                 if (!h_num) std::cerr << "[Plot2DRecoEffcySigned] WARNING: missing " << hnum_name   << "\n";
@@ -381,9 +398,9 @@ protected:
         }
     }
 
-    void Plot2DRecoEffcySingleB(){
+    void Plot2DRecoEffcySingleB(const std::string& fp, const std::string& ctr_tag){
         if (!CheckFile()) return;
-        const std::string outdir = GetRecoEffcyOutDir();
+        const std::string outdir = GetRecoEffcyOutDir(ctr_tag);
         gSystem->mkdir(outdir.c_str(), kTRUE);
 
         const std::string num_filter   = RecoEffNumFilter();
@@ -393,8 +410,8 @@ protected:
             const std::string& varx = vars[0];
             const std::string& vary = vars[1];
 
-            const std::string hnum_name   = "h_" + vary + "_vs_" + varx + "_single_b" + num_filter;
-            const std::string hdenom_name = "h_" + vary + "_vs_" + varx + "_single_b" + denom_filter;
+            const std::string hnum_name   = "h_" + vary + "_vs_" + varx + "_single_b" + fp + num_filter;
+            const std::string hdenom_name = "h_" + vary + "_vs_" + varx + "_single_b" + fp + denom_filter;
 
             TH2D* h_num = GetHist<TH2D>(hnum_name);
             TH2D* h_den = GetHist<TH2D>(hdenom_name);
@@ -420,9 +437,9 @@ protected:
         }
     }
 
-    void Plot1DRecoEffcySingleBOpCompr(){
+    void Plot1DRecoEffcySingleBOpCompr(const std::string& fp, const std::string& ctr_tag){
         if (!CheckFile()) return;
-        const std::string outdir = GetRecoEffcyOutDir();
+        const std::string outdir = GetRecoEffcyOutDir(ctr_tag);
         gSystem->mkdir(outdir.c_str(), kTRUE);
 
         const std::string num_filter   = RecoEffNumFilter();
@@ -433,10 +450,10 @@ protected:
             c.cd(); gPad->SetTicks(1,1);
             bool logx = LogAx(var, cfg); gPad->SetLogx(logx);
 
-            TH1D* h_num_op       = GetHist<TH1D>("h_" + var + "_op"       + num_filter);
-            TH1D* h_den_op       = GetHist<TH1D>("h_" + var + "_op"       + denom_filter);
-            TH1D* h_num_single_b = GetHist<TH1D>("h_" + var + "_single_b" + num_filter);
-            TH1D* h_den_single_b = GetHist<TH1D>("h_" + var + "_single_b" + denom_filter);
+            TH1D* h_num_op       = GetHist<TH1D>("h_" + var + "_op"       + fp + num_filter);
+            TH1D* h_den_op       = GetHist<TH1D>("h_" + var + "_op"       + fp + denom_filter);
+            TH1D* h_num_single_b = GetHist<TH1D>("h_" + var + "_single_b" + fp + num_filter);
+            TH1D* h_den_single_b = GetHist<TH1D>("h_" + var + "_single_b" + fp + denom_filter);
 
             TH1D* h_eff_op = nullptr, *h_eff_single_b = nullptr;
             if (h_num_op && h_den_op){
@@ -479,9 +496,9 @@ protected:
         }
     }
 
-    void Plot1DRecoEffcyRangedSingleBOpCompr(){
+    void Plot1DRecoEffcyRangedSingleBOpCompr(const std::string& fp, const std::string& ctr_tag){
         if (!CheckFile()) return;
-        const std::string outdir = GetRecoEffcyOutDir();
+        const std::string outdir = GetRecoEffcyOutDir(ctr_tag);
         const std::string ranged_outdir = outdir + "ranged/";
         gSystem->mkdir(ranged_outdir.c_str(), kTRUE);
 
@@ -549,8 +566,8 @@ protected:
                 const std::string range_suffix = as_suffix(range);
                 const std::string label_range = fmt_range_val(range.first) + " - " + fmt_range_val(range.second);
 
-                const std::string hname_op = "h_" + vary + "_vs_" + varx + "_op" + num_filter + axisTag + "_" + range_suffix + "_divided";
-                const std::string hname_sb = "h_" + vary + "_vs_" + varx + "_single_b" + num_filter + axisTag + "_" + range_suffix + "_divided";
+                const std::string hname_op = "h_" + vary + "_vs_" + varx + "_op" + fp + num_filter + axisTag + "_" + range_suffix + "_divided";
+                const std::string hname_sb = "h_" + vary + "_vs_" + varx + "_single_b" + fp + num_filter + axisTag + "_" + range_suffix + "_divided";
 
                 TH1D* h_op = GetHist<TH1D>(hname_op);
                 TH1D* h_sb = GetHist<TH1D>(hname_sb);
@@ -585,4 +602,67 @@ protected:
         }
     }
 
+};
+
+
+// ---------- PP child ----------
+class PythiaFullsimRecoEffPlotter : public PythiaFullsimRecoEffPlotterBase {
+public:
+    PythiaFullsimRecoEffPlotter(bool tight_WP_input = false, bool require_signal_cuts_input = false)
+    : PythiaFullsimRecoEffPlotterBase(tight_WP_input, require_signal_cuts_input){}
+    ~PythiaFullsimRecoEffPlotter() override {}
+
+protected:
+    std::string GetDataDir() const override {
+        return FullSimSampleInputDir(FullSimSampleType::pp);
+    }
+    std::string GetPlotDirPrefix() const override {
+        return FullSimSamplePlotDir(FullSimSampleType::pp);
+    }
+};
+
+
+// ---------- Overlay child ----------
+class PythiaFullsimRecoEffPlotterOverlay
+  : public PythiaFullsimRecoEffPlotterBase
+  , public PbPbBaseClass<PythiaFullsimRecoEffPlotterOverlay>
+{
+    friend class PbPbBaseClass<PythiaFullsimRecoEffPlotterOverlay>;
+    int RunYear() const { return 24; }
+
+public:
+    FullSimSampleType fullsim_sample_type;
+
+    PythiaFullsimRecoEffPlotterOverlay(
+        FullSimSampleType sample_type = FullSimSampleType::hijing,
+        bool tight_WP_input = false,
+        bool require_signal_cuts_input = false)
+    : PythiaFullsimRecoEffPlotterBase(tight_WP_input, require_signal_cuts_input)
+    , fullsim_sample_type(sample_type)
+    {}
+    ~PythiaFullsimRecoEffPlotterOverlay() override {}
+
+    void Run() override {
+        InitializePbPb();
+        if (!Initialize()) return;
+
+        RunForFilter("");
+
+        for (int ictr = 0; ictr < nCtrBins; ++ictr){
+            const std::string& ctr_tag = ctr_bins[ictr];
+            RunForFilter(ctr_tag);
+        }
+    }
+
+protected:
+    std::string GetDataDir() const override {
+        return FullSimSampleInputDir(fullsim_sample_type);
+    }
+    std::string GetPlotDirPrefix() const override {
+        return FullSimSamplePlotDir(fullsim_sample_type);
+    }
+    std::string GetInputFilePath() const override {
+        return GetDataDir() + "histograms_pythia_fullsim_"
+            + FullSimSampleLabel(fullsim_sample_type) + "_no_data_resonance_cuts.root";
+    }
 };

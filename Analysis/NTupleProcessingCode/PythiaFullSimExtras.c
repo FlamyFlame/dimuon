@@ -151,6 +151,10 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
             cur_muon.pass_tight  = false;
         }
 
+        if constexpr (requires { self().FillMuonOverlay(cur_muon); }) {
+            self().FillMuonOverlay(cur_muon);
+        }
+
         if (self().output_single_muon_tree){
             if (cur_muon.truth_pt > 4.0 && fabs(cur_muon.truth_eta) < 2.4){
                 self().muon_raw_ptr = &cur_muon;
@@ -185,6 +189,10 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
             if (!self().PassCuts()) continue; // truth fiducial cuts
 
             self().mpairRef()->Update(); // compute reco+truth kinematics
+
+            if constexpr (requires { self().FillPairOverlay(); }) {
+                self().FillPairOverlay();
+            }
 
             if (self().mpairRef()->m1.reco_match && self().mpairRef()->m2.reco_match){
                 ResonanceTaggingReco();

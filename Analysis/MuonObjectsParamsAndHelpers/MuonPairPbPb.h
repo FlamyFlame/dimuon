@@ -7,6 +7,17 @@ struct PairPbPbExtras {
   	int avg_centrality{};
 	  int year{-1};
   	float FCal_Et{-1e6f};
+  	float FCal_Et_A{-1e6f};     // FCal_Et_P in raw data (positive z = side A)
+  	float FCal_Et_C{-1e6f};     // FCal_Et_N in raw data (negative z = side C)
+  	float ZDC_E_tot{-1e6f};     // zdc_ZdcEnergy[0] + [1]
+  	float ZDC_t_A{-1e6f};       // zdc_ZdcTime[0]  (index 0 = side A)
+  	float ZDC_t_C{-1e6f};       // zdc_ZdcTime[1]  (index 1 = side C)
+  	float ZDC_preamp_A{-1e6f};  // sum zdc_ZdcModulePreSampleAmp[0][0..3]
+  	float ZDC_preamp_C{-1e6f};  // sum zdc_ZdcModulePreSampleAmp[1][0..3]
+  	int ntrk_HIloose{-1};           // trk_numqual[2]: HI_LOOSE, pT > 400 MeV
+  	int ntrk_HItight{-1};           // trk_numqual[3]: HI_TIGHT, pT > 400 MeV
+  	int ntrk_HIloose_noPtCut{-1};   // trk_numqual[6]: HI_LOOSE, no pT cut
+  	int ntrk_HItight_noPtCut{-1};   // trk_numqual[7]: HI_TIGHT, no pT cut
   	void UpdateCentrality();
 
 protected:
@@ -33,7 +44,10 @@ struct MuonPairPbPb
   , PairPbPbExtras<MuonPairPbPb>
 {
     void PairValueCalcHook() {
-        this->PairValueCalcPbPb(); // compute avg_centrality
+        this->PairValueCalcPbPb(); // sets avg_centrality from ev_centrality branch
+        // For years where the centrality branch is not filled, recalculate from FCal ET.
+        // pbpb2025: centrality branch is all zeros in the skim.
+        if (year % 2000 == 25) this->UpdateCentrality();
     }
 };
 
@@ -129,8 +143,11 @@ void PairPbPbExtras<Derived>::UpdateCentrality(){
   case 24:
     avg_centrality = GetCentralityPbPb2024(FCal_Et);
     break;
+  case 25:
+    avg_centrality = GetCentralityPbPb2023(FCal_Et);  // use pbpb2023 thresholds until pbpb2025 are derived
+    break;
   default:
-    std::cout << "PairPbPbExtras::UpdateCentrality:    WARNING:: UpdateCentrality called but year is INVALID (must be 2015 / 2023 / 2024)" << std::endl;
+    std::cout << "PairPbPbExtras::UpdateCentrality:    WARNING:: UpdateCentrality called but year is INVALID (must be 2015 / 2023 / 2024 / 2025)" << std::endl;
     std::cout << "Centrality is NOT updated!" << std::endl;
   }
 }

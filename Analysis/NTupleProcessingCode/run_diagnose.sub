@@ -1,0 +1,6 @@
+executable = run_pbpb_24_diagnose.sh
+output     = logs/run_diagnose.out
+error      = logs/run_diagnose.err
+log        = logs/run_diagnose.log
+request_memory = 2GB
+queue 1

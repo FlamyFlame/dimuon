@@ -18,7 +18,7 @@
 #include <algorithm>
 #include <stdexcept>
 
-#include "MuonObjectsParamsAndHelpers/PbPbBaseClass.h"
+#include "../../MuonObjectsParamsAndHelpers/PbPbBaseClass.h"
 
 // ------------------------------------------------------------
 // Shared tiny helpers (keep as-is from your current files)

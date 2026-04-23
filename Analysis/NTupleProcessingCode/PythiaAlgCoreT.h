@@ -6,6 +6,7 @@
 #include "../MuonObjectsParamsAndHelpers/Muon.h"
 #include "../MuonObjectsParamsAndHelpers/MuonPairPythia.h"
 #include "../MuonObjectsParamsAndHelpers/muon_pair_enums_MC.h"
+#include "../MuonObjectsParamsAndHelpers/FullSimSampleType.h"
 #include "DimuonAlgCoreT.c"
 
 template <class PairT, class MuonT, class Derived, class... Extras>
@@ -35,6 +36,7 @@ protected:
     bool isRun3 = true;
     bool is_fullsim = false;
     bool is_fullsim_overlay = false;
+    FullSimSampleType fullsim_sample_type = FullSimSampleType::pp;
     bool perform_truth = true;
     bool useLocal = false;
 
@@ -127,8 +129,10 @@ protected:
     bool getIsFullsimOverlay() const { return is_fullsim_overlay; }
     bool getPerformTruth() const { return perform_truth; }
     bool getUseLocal() const { return useLocal; }
+    FullSimSampleType getFullSimSampleType() const { return fullsim_sample_type; }
     void setIsFullsim(bool v) { is_fullsim = v; }
     void setIsFullsimOverlay(bool v) { is_fullsim_overlay = v; }
+    void setFullSimSampleType(FullSimSampleType t) { fullsim_sample_type = t; }
     void setPerformTruth(bool v) { perform_truth = v; }
     void setUseLocal(bool v) { useLocal = v; }
 

@@ -2,6 +2,8 @@
 
 #include "../MuonObjectsParamsAndHelpers/MuonPairPbPb.h"
 #include "TTree.h"
+#include "TGraph.h"
+#include "PbPbEventSelConfig.h"
 
 template <class PairT, class MuonT, class Derived, class... Extras>
 class DimuonDataAlgCoreT;
@@ -23,7 +25,13 @@ protected:
 
     // Declaration of additional leaf types
     Float_t         FCal_Et;
+    Float_t         FCal_Et_P, FCal_Et_N;               // side A, side C
     Int_t           centrality;
+    // Run 3 only
+    Float_t         zdc_ZdcEnergy[2]{};                 // [0]=A, [1]=C
+    Float_t         zdc_ZdcTime[2]{};                   // [0]=A, [1]=C
+    Float_t         zdc_ZdcModulePreSampleAmp[2][4]{};  // [side][module], [0]=A, [1]=C
+    std::vector<int>* trk_numqual{nullptr};              // 8-element; indices: [2]=HIloose+pT, [3]=HItight+pT, [6]=HIloose, [7]=HItight
 
     // --------------------- class methods ---------------------------
 
@@ -36,6 +44,21 @@ protected:
     void FillMuonPairTreeExtra();
 
     void FillMuonPairExtra(int pair_ind);
+
+    // --------------------- event-level selection (Run 3 PbPb only) ---------------
+    void InitEventSel();
+    bool PassEventSel() const;
+    bool PassEventSelExtra() { return PassEventSel(); }
+
+    // Loaded by InitEventSel() from event_sel_cuts_pbpb_20YY.root
+    TGraph* g_evsel_cut1_{nullptr};       // ZDC-FCal banana upper bound
+    double  evsel_cut2_ns_{1.8};          // ZDC time window [ns]
+    float   evsel_cut3_A_{385.f};         // ZDC preamp A upper cut [ADC]
+    float   evsel_cut3_C_{385.f};         // ZDC preamp C upper cut [ADC]
+    TGraph* g_evsel_cut4_{nullptr};       // nTrk frac lower bound
+    TGraph* g_evsel_cut5_lo_{nullptr};    // nTrk-FCal lower bound
+    TGraph* g_evsel_cut5_hi_{nullptr};    // nTrk-FCal upper bound
+
     // --------------------- output file, histograms & trees ---------------------------
 
     TTree* muonOutTreeBinned[ParamsSet::nCtrIntvls];

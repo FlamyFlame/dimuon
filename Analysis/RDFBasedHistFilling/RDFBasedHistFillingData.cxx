@@ -91,7 +91,7 @@ void RDFBasedHistFillingData::FillHistograms(){
         }
         if (run_crossx){
             FillHistogramsCrossx();
-        } 
+        }
 
         if (doTrigEffcy){
             FillHistogramsSingleMuonEffcy();

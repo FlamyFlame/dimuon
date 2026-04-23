@@ -27,6 +27,7 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ANALYSIS_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+NTP_DIR="${ANALYSIS_DIR}/NTupleProcessingCode"
 RDF_DIR="${ANALYSIS_DIR}/RDFBasedHistFilling"
 PLOT_DIR="${ANALYSIS_DIR}/plotting_codes/pythia_plotting_codes"
 
@@ -225,7 +226,7 @@ run_rdf_stage() {
 submit_condor_cluster() {
   local submit_file="$1"
   local submit_args="$2"
-  pushd "$SCRIPT_DIR" >/dev/null
+  pushd "$NTP_DIR" >/dev/null
   local out
   if [[ -n "$submit_args" ]]; then
     out="$(condor_submit -append "arguments = ${submit_args}" "$submit_file")"

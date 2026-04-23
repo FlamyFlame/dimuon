@@ -251,6 +251,16 @@ protected:
 
     bool PassCuts_DataCore(bool requireTight);
 
+    // --------------- PassEventSelImpl ---------------
+    template <class E>
+    bool CallPassEventSel() {
+        if constexpr (requires(Derived& d){ static_cast<E&>(d).PassEventSelExtra(); }) {
+            return static_cast<E&>(self()).PassEventSelExtra();
+        } else {
+            return true;
+        }
+    }
+
     // --------------- FillMuonPairTreeImpl ---------------
     template <class E>
     void CallFillMuonPairTree() {
@@ -403,6 +413,11 @@ public:
     // --------------- PassCutsHook ---------------
     bool PassCutsHook(){
         return (PassCuts_DataCore(requireTight) && (CallPassCuts<Extras>(), ...));
+    }
+
+    // --------------- PassEventSelHook ---------------
+    bool PassEventSelHook(){
+        return (CallPassEventSel<Extras>() && ...);
     }
 
     // --------------- FillMuonPairTreeHook ---------------
