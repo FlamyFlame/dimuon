@@ -2,6 +2,8 @@
 
 #include "../MuonObjectsParamsAndHelpers/MuonPairPbPb.h"
 #include "TTree.h"
+#include "TGraph.h"
+#include "PbPbEventSelConfig.h"
 
 template <class PairT, class MuonT, class Derived, class... Extras>
 class DimuonDataAlgCoreT;
@@ -42,6 +44,21 @@ protected:
     void FillMuonPairTreeExtra();
 
     void FillMuonPairExtra(int pair_ind);
+
+    // --------------------- event-level selection (Run 3 PbPb only) ---------------
+    void InitEventSel();
+    bool PassEventSel() const;
+    bool PassEventSelExtra() { return PassEventSel(); }
+
+    // Loaded by InitEventSel() from event_sel_cuts_pbpb_20YY.root
+    TGraph* g_evsel_cut1_{nullptr};       // ZDC-FCal banana upper bound
+    double  evsel_cut2_ns_{1.8};          // ZDC time window [ns]
+    float   evsel_cut3_A_{385.f};         // ZDC preamp A upper cut [ADC]
+    float   evsel_cut3_C_{385.f};         // ZDC preamp C upper cut [ADC]
+    TGraph* g_evsel_cut4_{nullptr};       // nTrk frac lower bound
+    TGraph* g_evsel_cut5_lo_{nullptr};    // nTrk-FCal lower bound
+    TGraph* g_evsel_cut5_hi_{nullptr};    // nTrk-FCal upper bound
+
     // --------------------- output file, histograms & trees ---------------------------
 
     TTree* muonOutTreeBinned[ParamsSet::nCtrIntvls];

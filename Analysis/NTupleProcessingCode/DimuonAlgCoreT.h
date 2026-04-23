@@ -87,7 +87,7 @@ protected:
     void FillMuonPair(int pair_ind){self().FillMuonPairHook(pair_ind);} // require child-class definition
 	void ResonanceTagging();
 	void ResonanceTaggingV2();
-    void ResonanceTaggingImpl(bool op_sign, float minv, std::vector<int>& resonance_tagged_list);
+    void ResonanceTaggingImpl(bool op_sign, float minv, std::vector<int>& resonance_tagged_list, const std::vector<std::array<float,2>>& minv_cuts_to_use);
 	bool IsPhotoProduction();
 	
 	void ProcessData(){return self().ProcessDataHook();} // require child-class definition
