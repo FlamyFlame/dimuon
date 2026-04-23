@@ -44,7 +44,10 @@ struct MuonPairPbPb
   , PairPbPbExtras<MuonPairPbPb>
 {
     void PairValueCalcHook() {
-        this->PairValueCalcPbPb(); // compute avg_centrality
+        this->PairValueCalcPbPb(); // sets avg_centrality from ev_centrality branch
+        // For years where the centrality branch is not filled, recalculate from FCal ET.
+        // pbpb2025: centrality branch is all zeros in the skim.
+        if (year % 2000 == 25) this->UpdateCentrality();
     }
 };
 
@@ -140,8 +143,11 @@ void PairPbPbExtras<Derived>::UpdateCentrality(){
   case 24:
     avg_centrality = GetCentralityPbPb2024(FCal_Et);
     break;
+  case 25:
+    avg_centrality = GetCentralityPbPb2023(FCal_Et);  // use pbpb2023 thresholds until pbpb2025 are derived
+    break;
   default:
-    std::cout << "PairPbPbExtras::UpdateCentrality:    WARNING:: UpdateCentrality called but year is INVALID (must be 2015 / 2023 / 2024)" << std::endl;
+    std::cout << "PairPbPbExtras::UpdateCentrality:    WARNING:: UpdateCentrality called but year is INVALID (must be 2015 / 2023 / 2024 / 2025)" << std::endl;
     std::cout << "Centrality is NOT updated!" << std::endl;
   }
 }
