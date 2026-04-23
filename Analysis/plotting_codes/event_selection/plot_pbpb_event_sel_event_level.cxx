@@ -34,6 +34,7 @@
 static const int    N_BINS_PER_SLICE = 2;
 static const int    MIN_ENTRIES      = 100;
 static const double N_SIGMA_CUT      = 5.0;
+static const double FCAL_SPLIT_TEV   = 4.6;   // FCal ET above which ZDC bands split; extrapolate linearly beyond
 
 // ---- per-year input file lists ----------------------------------------------
 static std::map<int, std::vector<std::string>> BuildFileMap() {
@@ -51,7 +52,14 @@ static std::map<int, std::vector<std::string>> BuildFileMap() {
             base + "pbpb_2024/data_pbpb24_part1.root",
             base + "pbpb_2024/data_pbpb24_part2.root",
         }},
-        // {25, { base + "pbpb_2025/data_pbpb25_part1.root" }},
+        {25, {
+            base + "pbpb_2025/data_pbpb25_part1.root",
+            base + "pbpb_2025/data_pbpb25_part2.root",
+            base + "pbpb_2025/data_pbpb25_part3.root",
+            base + "pbpb_2025/data_pbpb25_part4.root",
+            base + "pbpb_2025/data_pbpb25_part5.root",
+            base + "pbpb_2025/data_pbpb25_part6.root",
+        }},
     };
 }
 
@@ -61,7 +69,7 @@ public:
     explicit PbPbEventSel(int run_year) : run_year_(run_year % 2000) {
         yr_       = std::to_string(run_year_);
         out_dir_  = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
-                    "single_b_analysis/event_selection";
+                    "single_b_analysis/event_selection/pbpb_20" + yr_;
         cuts_dir_ = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + yr_;
         auto file_map = BuildFileMap();
         if (file_map.find(run_year_) == file_map.end())
@@ -279,8 +287,15 @@ private:
         TF1 gfunc("gfit_evsel", "gaus");
 
         for (int isl = 0; isl < n_slices; ++isl) {
-            const int ix_lo = isl * N_BINS_PER_SLICE + 1;
-            const int ix_hi = std::min((isl + 1) * N_BINS_PER_SLICE, nx);
+            const int    ix_lo = isl * N_BINS_PER_SLICE + 1;
+            const int    ix_hi = std::min((isl + 1) * N_BINS_PER_SLICE, nx);
+            const double xlo   = h_zdc_fcal_->GetXaxis()->GetBinLowEdge(ix_lo);
+            const double xhi   = h_zdc_fcal_->GetXaxis()->GetBinUpEdge(ix_hi);
+            const double xcen  = 0.5 * (xlo + xhi);
+
+            // Above FCAL_SPLIT_TEV the signal and pile-up bands split; skip fitting
+            // entirely here — the cut is linearly extrapolated below.
+            if (xcen > FCAL_SPLIT_TEV) continue;
 
             TH1D* hpy = (TH1D*)h_zdc_fcal_->ProjectionY(
                 Form("__hpy_ev_%d", isl), ix_lo, ix_hi);
@@ -313,15 +328,13 @@ private:
             const double mu2  = gfunc.GetParameter(1);
             const double sig2 = gfunc.GetParameter(2);
             const double cut  = mu2 + N_SIGMA_CUT * sig2;
-            const double xlo  = h_zdc_fcal_->GetXaxis()->GetBinLowEdge(ix_lo);
-            const double xhi  = h_zdc_fcal_->GetXaxis()->GetBinUpEdge(ix_hi);
 
             if (!first_sl.found)
                 first_sl = {true, ix_lo, ix_hi, xlo, xhi,
                             gfunc.GetParameter(0), mu2, sig2, lo2, hi2};
             delete hpy;
 
-            gr_x.push_back(0.5*(xlo+xhi));
+            gr_x.push_back(xcen);
             gr_cut.push_back(cut);
             gr_mu.push_back(mu2);
             gr_sigma.push_back(sig2);
@@ -331,10 +344,40 @@ private:
                               isl, xlo, xhi, mu2, sig2, cut);
         }
         const int n_fit = (int)gr_x.size();
-        std::cout << "Fitting: " << n_fit << "/" << n_slices << " slices converged." << std::endl;
+        std::cout << "Fitting: " << n_fit << " slices converged (FCal <= "
+                  << FCAL_SPLIT_TEV << " TeV)." << std::endl;
+
+        // ---- linear extrapolation beyond FCAL_SPLIT_TEV using last 3 points ---
+        if (n_fit < 3) {
+            std::cerr << "FitAndPlotZDC: too few converged slices for extrapolation!" << std::endl;
+            return;
+        }
+        {
+            TGraph g_last3(3, gr_x.data() + n_fit - 3, gr_cut.data() + n_fit - 3);
+            TF1 f_extrap("__f_extrap_c1", "pol1",
+                         gr_x[n_fit - 3], gr_x[n_fit - 1]);
+            g_last3.Fit(&f_extrap, "RNQ");
+            const double slope     = f_extrap.GetParameter(1);
+            const double intercept = f_extrap.GetParameter(0);
+            std::cout << Form("Banana extrapolation (last 3 pts, linear): "
+                              "intercept=%.3f  slope=%.4f\n", intercept, slope);
+            std::cout << Form("  anchor pts: (%.3f, %.3f) (%.3f, %.3f) (%.3f, %.3f)\n",
+                              gr_x[n_fit-3], gr_cut[n_fit-3],
+                              gr_x[n_fit-2], gr_cut[n_fit-2],
+                              gr_x[n_fit-1], gr_cut[n_fit-1]);
+            // Append extrapolated points up to the histogram edge
+            const double fcal_end = h_zdc_fcal_->GetXaxis()->GetXmax();
+            const int n_ext = 8;
+            for (int k = 0; k < n_ext; ++k) {
+                double x = FCAL_SPLIT_TEV + (k + 1) * (fcal_end - FCAL_SPLIT_TEV) / n_ext;
+                gr_x.push_back(x);
+                gr_cut.push_back(f_extrap.Eval(x));
+            }
+        }
 
         // ---- build TGraph objects for interpolation and persistence ----------
-        TGraph  g_cut(n_fit, gr_x.data(), gr_cut.data());
+        // g_cut includes the extrapolated tail; g_mu and g_mu_err use only fitted pts.
+        TGraph  g_cut((int)gr_x.size(), gr_x.data(), gr_cut.data());
         TGraph  g_mu (n_fit, gr_x.data(), gr_mu.data());
         TGraphErrors g_mu_err(n_fit, gr_x.data(), gr_mu.data(),
                               gr_ex.data(), gr_sigma.data());
