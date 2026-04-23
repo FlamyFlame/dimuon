@@ -216,13 +216,13 @@ void PbPbExtras<Derived>::InitParamsExtra(){
   bool is_run3_local = (run_year_short > 20);
 
   std::map<int, int> run_year_to_file_batch_max_map = {
-    {23, 6}, {24, 2}, {15, 7}, {18, 7}
+    {23, 6}, {24, 2}, {25, 6}, {15, 7}, {18, 7}
   };
 
   // check for run year
   if (is_run3_local){
-    if (run_year_short != 23 && run_year_short != 24){
-      std::cerr<<"Error:: If isRun3 is true, run_year must be set to (20)23 or (20)24"<<std::endl;
+    if (run_year_short != 23 && run_year_short != 24 && run_year_short != 25){
+      std::cerr<<"Error:: If isRun3 is true, run_year must be set to (20)23, (20)24, or (20)25"<<std::endl;
       throw std::exception();
     }
   }else{
