@@ -29,7 +29,8 @@ private:
   int GetCentrality(float fcalET, const std::vector<float> & fCal_centr_boundaries);
   int GetCentralityPbPb2015(float FCal_Et);
   int GetCentralityPbPb2023(float FCal_Et);
-  int GetCentralityPbPb2024(float FCal_Et);
+  // For Run-3 (2023/2024/2025/2026) a single calibration (2023 thresholds) is
+  // used for now.  Once per-year calibrations are available, add the functions.
 
 public:
 EventShape(ServiceHandle<StoreGateSvc> evtStore,
