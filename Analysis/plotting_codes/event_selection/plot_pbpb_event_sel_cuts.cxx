@@ -43,7 +43,7 @@ static const double CUT2_T_NS_ALT    = 1.5;    // ZDC time window [ns]
 // Values are {side_A, side_C}. pbpb2023 not yet evaluated (uses 2024 value as placeholder).
 static std::pair<float,float> GetPreampCuts(int yr) {
     static const std::map<int, std::pair<float,float>> kMap = {
-        {23, {385.f, 385.f}},  // placeholder; not yet evaluated
+        {23, {250.f, 300.f}},  // side A ~250 ADC, side C ~300 ADC
         {24, {385.f, 385.f}},  // symmetric; turnover well above 385 for both sides
         {25, {650.f, 850.f}},  // side A ~650 ADC, side C ~850 ADC
     };
@@ -91,13 +91,12 @@ static int CentralityFromFCal2023(float fcal_AC) {
 static std::map<int, std::vector<std::string>> BuildFileMapAlt() {
     const std::string base = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/";
     return {
+        // pbpb2023 should have part1..part4, but currently only part1..part3 finished skimming.
+        // This needs to be rerun after part4 is available.
         {23, {
             base + "pbpb_2023/data_pbpb23_part1.root",
             base + "pbpb_2023/data_pbpb23_part2.root",
             base + "pbpb_2023/data_pbpb23_part3.root",
-            base + "pbpb_2023/data_pbpb23_part4.root",
-            base + "pbpb_2023/data_pbpb23_part5.root",
-            base + "pbpb_2023/data_pbpb23_part6.root",
         }},
         {24, {
             base + "pbpb_2024/data_pbpb24_part1.root",
@@ -218,6 +217,8 @@ private:
 
     TH2D*   hh_[kNStages_A][kNHTypes_A] = {};
     TH2D*   h_zdctime_ctr_[6] = {};   // ZDC time AC corr: [0-4] = top 1-5%, [5] = 5-10%
+    TH1D*   h_centr_before_cuts_ = nullptr; // centrality distribution before any cuts (post-HLT)
+    TH1D*   h_centr_after_cuts_  = nullptr; // centrality distribution after all 5 cuts
     // FCal ET lower bounds (TeV) per centrality bin — from PbPb2023 Glauber table (MuonPairPbPb.h).
     // Applied to all Run3 years until per-year tables are derived.
     //   [0]=0-1%, [1]=1-2%, [2]=2-3%, [3]=3-4%, [4]=4-5%, [5]=5-10% (lower bound = 9th-percentile entry)
@@ -259,6 +260,14 @@ private:
                 100, -10., 10., 100, -10., 10.);
             h_zdctime_ctr_[k]->SetDirectory(nullptr);
         }
+        h_centr_before_cuts_ = new TH1D("h_centr_before_cuts",
+            ";Centrality percentile;Events (before event selection)",
+            80, -0.5, 79.5);
+        h_centr_before_cuts_->SetDirectory(nullptr);
+        h_centr_after_cuts_ = new TH1D("h_centr_after_cuts",
+            ";Centrality percentile;Events (after all 5 cuts)",
+            80, -0.5, 79.5);
+        h_centr_after_cuts_->SetDirectory(nullptr);
     }
 
     // -------------------------------------------------------------------------
@@ -306,7 +315,7 @@ private:
         Float_t FCal_Et_P = 0.f, FCal_Et_N = 0.f;
         Float_t zdc_E[2] = {}, zdc_t[2] = {};
         Float_t preamp[2][4] = {};
-        Float_t centrality_f = 0.f;
+        Int_t   centrality_i = 0;
         std::vector<int>* trk_numqual = nullptr;
 
         chain.SetBranchStatus("b_HLT_mu4_L1MU3V",         1);
@@ -325,7 +334,7 @@ private:
         chain.SetBranchAddress("zdc_ZdcTime",               zdc_t);
         chain.SetBranchAddress("zdc_ZdcModulePreSampleAmp", preamp);
         chain.SetBranchAddress("trk_numqual",               &trk_numqual);
-        chain.SetBranchAddress("centrality",                &centrality_f);
+        chain.SetBranchAddress("centrality",                &centrality_i);
 
         const Long64_t n_total = chain.GetEntries();
         std::cout << "FillHists: " << n_total << " total events (PbPb 20" << yr_ << ")" << std::endl;
@@ -353,11 +362,14 @@ private:
             // using the same Glauber table as MuonPairPbPb::UpdateCentrality().
             ev.centrality = (run_year_ == 25)
                             ? CentralityFromFCal2023(ev.fcal_AC)
-                            : (int)centrality_f;
+                            : centrality_i;
             const bool is_ctr80 = (ev.centrality >= 0 && ev.centrality < 80);
 
             FillOneStage(kNoCut_A, ev);
-            if (is_ctr80) ++n_ctr80_[kNoCut_A];
+            if (is_ctr80) {
+                ++n_ctr80_[kNoCut_A];
+                h_centr_before_cuts_->Fill(ev.centrality);
+            }
 
             // Per-centrality ZDC time AC correlation (no cuts, PbPb2023 Glauber FCal thresholds)
             {
@@ -477,8 +489,10 @@ private:
             const double cut5_hi = PbPbEvSelEvalCut(g_cut5_hi_, ev.fcal_AC);
             const bool pass_c5   = (ev.ntrk_tight >= cut5_lo && ev.ntrk_tight <= cut5_hi);
             FillOneStage(pass_c5 ? kC5Pass_A : kC5Fail_A, ev);
-            if (ev.centrality >= 0 && ev.centrality < 80)
+            if (ev.centrality >= 0 && ev.centrality < 80) {
                 ++n_ctr80_[pass_c5 ? kC5Pass_A : kC5Fail_A];
+                if (pass_c5) h_centr_after_cuts_->Fill(ev.centrality);
+            }
         }
         std::cout << "Cut 5 filled: pass=" << (Long64_t)hh_[kC5Pass_A][kZdcFcal_A]->Integral()
                   << " fail=" << (Long64_t)hh_[kC5Fail_A][kZdcFcal_A]->Integral() << std::endl;
@@ -555,6 +569,12 @@ private:
         TH1D* hd[2] = {};
 
         const float cutV[2] = {cut3_preamp_A_, cut3_preamp_C_};  // per-side cut values
+        // Per-year zoom range for the standalone preamp plot
+        double zoom_lo = -800., zoom_hi = 1500.;
+        if      (run_year_ == 23) { zoom_lo = -500.; zoom_hi =  700.; }
+        else if (run_year_ == 24) { zoom_lo = -800.; zoom_hi =  800.; }
+        // year 25: keep [-800, 1500]
+
         TCanvas* c = new TCanvas("c_alt_cut3_sa", "", 1200, 600);
         c->Divide(2, 1, 0.005, 0.005);
         for (int i = 0; i < 2; ++i) {
@@ -565,12 +585,12 @@ private:
             hd[i] = (TH1D*)hArr[i]->Clone(Form("__alt_hd3_%d", i));
             hd[i]->Rebin(rebin);
             hd[i]->Scale(1.0 / rebin);
-            hd[i]->GetXaxis()->SetRangeUser(-800., 1500.);
+            hd[i]->GetXaxis()->SetRangeUser(zoom_lo, zoom_hi);
 
             // Find peak max within displayed window for y-axis scaling
             double lmax = 0.;
-            const int b_lo = hd[i]->FindBin(-800.);
-            const int b_hi = hd[i]->FindBin(1500.);
+            const int b_lo = hd[i]->FindBin(zoom_lo);
+            const int b_hi = hd[i]->FindBin(zoom_hi);
             for (int b = b_lo; b <= b_hi; ++b)
                 lmax = std::max(lmax, hd[i]->GetBinContent(b));
             hd[i]->GetYaxis()->SetRangeUser(0.5, lmax * 3.0);
@@ -818,6 +838,60 @@ private:
     }
 
     // -------------------------------------------------------------------------
+    void DrawCentralityRatio() {
+        TH1D* ratio = (TH1D*)h_centr_after_cuts_->Clone("h_centr_ratio");
+        ratio->SetDirectory(nullptr);
+        ratio->Divide(h_centr_before_cuts_);
+        ratio->SetTitle(";Centrality percentile;(after cuts) / (before cuts)");
+        ratio->SetMarkerStyle(20);
+        ratio->SetMarkerSize(0.7);
+
+        TCanvas* c = new TCanvas("c_centr_ratio", "", 800, 600);
+        c->SetLeftMargin(0.13); c->SetBottomMargin(0.13);
+        ratio->GetYaxis()->SetRangeUser(0., 1.05);
+        ratio->Draw("E");
+        TLine lone(-.5, 1., 79.5, 1.);
+        lone.SetLineColor(kRed); lone.SetLineStyle(2); lone.SetLineWidth(1);
+        lone.DrawClone();
+        TLatex tl; tl.SetNDC(); tl.SetTextSize(0.035);
+        AddLabel(tl, 0.17, 0.25);
+        if (run_year_ == 25)
+            tl.DrawLatex(0.17, 0.19, "Centrality from FCal E_{T} (pbpb2023 Glauber thresholds)");
+        c->SaveAs(OutPath("centrality_ratio_after_before_cuts").c_str());
+        delete c; delete ratio;
+    }
+
+    // -------------------------------------------------------------------------
+    void DrawCentralityBeforeCuts() {
+        TCanvas* c = new TCanvas("c_centr_before_cuts", "", 800, 600);
+        c->SetLeftMargin(0.13); c->SetBottomMargin(0.13);
+        h_centr_before_cuts_->SetMarkerStyle(20);
+        h_centr_before_cuts_->SetMarkerSize(0.7);
+        h_centr_before_cuts_->Draw("E");
+        TLatex tl; tl.SetNDC(); tl.SetTextSize(0.035);
+        AddLabel(tl, 0.17, 0.88);
+        if (run_year_ == 25)
+            tl.DrawLatex(0.17, 0.82, "Centrality from FCal E_{T} (pbpb2023 Glauber thresholds)");
+        c->SaveAs(OutPath("centrality_before_cuts").c_str());
+        delete c;
+    }
+
+    // -------------------------------------------------------------------------
+    void DrawCentralityAfterCuts() {
+        TCanvas* c = new TCanvas("c_centr_after_cuts", "", 800, 600);
+        c->SetLeftMargin(0.13); c->SetBottomMargin(0.13);
+        h_centr_after_cuts_->SetMarkerStyle(20);
+        h_centr_after_cuts_->SetMarkerSize(0.7);
+        h_centr_after_cuts_->Draw("E");
+        TLatex tl; tl.SetNDC(); tl.SetTextSize(0.035);
+        AddLabel(tl, 0.17, 0.88);
+        if (run_year_ == 25)
+            tl.DrawLatex(0.17, 0.82, "Centrality from FCal E_{T} (pbpb2023 Glauber thresholds)");
+        c->SaveAs(OutPath("centrality_after_cuts").c_str());
+        delete c;
+    }
+
+    // -------------------------------------------------------------------------
     void SavePlots() {
         gStyle->SetOptStat(0);
         gStyle->SetPalette(kBird);
@@ -837,6 +911,9 @@ private:
         DrawSurvivalPlot();
         DrawCumulativeSurvivalPlot();
         DrawZdcTimeCorrByCentr();
+        DrawCentralityBeforeCuts();
+        DrawCentralityAfterCuts();
+        DrawCentralityRatio();
 
         std::cout << "All plots saved to: " << out_dir_ << std::endl;
     }
