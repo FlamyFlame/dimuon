@@ -43,7 +43,8 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::PrintInstructions_Dat
     if (isPbPb){
 	    std::cout << "if run_year == 23, output files will be written to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2023" << std::endl;
 	    std::cout << "if run_year == 24, output files will be written to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2024" << std::endl;
-	    std::cout << "else,      output files will be written to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2" << std::endl;
+	    std::cout << "if run_year == 25, output files will be written to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2025" << std::endl;
+	    std::cout << "else (Run 2),      output files will be written to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2" << std::endl;
     }else{
 	    std::cout << "if isRun3, output files will be written to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024" << std::endl;
 	    std::cout << "else,      output files will be written to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2" << std::endl;
