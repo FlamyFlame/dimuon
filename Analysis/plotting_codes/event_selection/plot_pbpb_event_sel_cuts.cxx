@@ -188,6 +188,7 @@ private:
     float cut3_preamp_C_ = 385.f;
 
     TH2D*   hh_[kNStages_A][kNHTypes_A] = {};
+    TH2D*   h_zdctime_ctr_[6] = {};   // ZDC time AC corr: [0-4] = top 1-5%, [5] = 5-10%
     TGraph* g_cut1_    = nullptr;
     TGraph* g_cut4_    = nullptr;
     TGraph* g_cut5_lo_ = nullptr;
@@ -217,6 +218,14 @@ private:
                     sp.nx, sp.xlo, sp.xhi, sp.ny, sp.ylo, sp.yhi);
                 hh_[s][t]->SetDirectory(nullptr);
             }
+        // Per-centrality ZDC time AC correlation (no cuts, post-HLT)
+        // [0-4] = 0-1%,1-2%,...,4-5% (centrality==k); [5] = 5-10% (centrality 5-9)
+        for (int k = 0; k < 6; ++k) {
+            h_zdctime_ctr_[k] = new TH2D(Form("h_zdctime_ctr_%d", k),
+                Form(";ZDC t^{A} [ns];ZDC t^{C} [ns]"),
+                100, -10., 10., 100, -10., 10.);
+            h_zdctime_ctr_[k]->SetDirectory(nullptr);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -312,6 +321,12 @@ private:
 
             FillOneStage(kNoCut_A, ev);
             if (is_ctr80) ++n_ctr80_[kNoCut_A];
+
+            // Per-centrality ZDC time AC correlation (no cuts)
+            if (ev.centrality >= 0 && ev.centrality <= 4)
+                h_zdctime_ctr_[ev.centrality]->Fill(ev.tA, ev.tC);
+            else if (ev.centrality >= 5 && ev.centrality <= 9)
+                h_zdctime_ctr_[5]->Fill(ev.tA, ev.tC);
 
             // Cut 1: ZDC banana
             const double cut1_val = PbPbEvSelEvalCut(g_cut1_, ev.fcal_AC);
@@ -508,12 +523,12 @@ private:
             hd[i] = (TH1D*)hArr[i]->Clone(Form("__alt_hd3_%d", i));
             hd[i]->Rebin(rebin);
             hd[i]->Scale(1.0 / rebin);
-            hd[i]->GetXaxis()->SetRangeUser(-800., 800.);
+            hd[i]->GetXaxis()->SetRangeUser(-800., 1200.);
 
             // Find peak max within displayed window for y-axis scaling
             double lmax = 0.;
             const int b_lo = hd[i]->FindBin(-800.);
-            const int b_hi = hd[i]->FindBin( 800.);
+            const int b_hi = hd[i]->FindBin(1200.);
             for (int b = b_lo; b <= b_hi; ++b)
                 lmax = std::max(lmax, hd[i]->GetBinContent(b));
             hd[i]->GetYaxis()->SetRangeUser(0.5, lmax * 3.0);
@@ -535,6 +550,37 @@ private:
         c->SaveAs(OutPath(Form("event_sel_cut3_%s_standalone", kPbPbEvSelCutLabel(3))).c_str());
         delete c;
         for (int i = 0; i < 2; ++i) delete hd[i];
+
+        // Full-range preamp plot (no x-axis restriction)
+        TH1D* hdf[2] = {};
+        TCanvas* cf = new TCanvas("c_alt_cut3_sa_full", "", 1200, 600);
+        cf->Divide(2, 1, 0.005, 0.005);
+        for (int i = 0; i < 2; ++i) {
+            cf->cd(i + 1);
+            gPad->SetLogy();
+            gPad->SetLeftMargin(0.14); gPad->SetBottomMargin(0.13);
+            hdf[i] = (TH1D*)hArr[i]->Clone(Form("__alt_hdf3_%d", i));
+            hdf[i]->Rebin(rebin);
+            hdf[i]->Scale(1.0 / rebin);
+            hdf[i]->GetXaxis()->SetTitle(Form("ZDC preamp sum side %s [ADC counts]", sides[i]));
+            hdf[i]->GetYaxis()->SetTitle("Events / 60 ADC");
+            hdf[i]->SetMarkerStyle(20); hdf[i]->SetMarkerSize(0.5);
+            hdf[i]->Draw("E");
+
+            TLine lfcut(cutV[i], hdf[i]->GetMinimum(1e-3), cutV[i], hdf[i]->GetMaximum() * 3.0);
+            lfcut.SetLineColor(kBlue+1); lfcut.SetLineWidth(2); lfcut.SetLineStyle(2);
+            lfcut.DrawClone();
+
+            TLatex tl; tl.SetNDC(); tl.SetTextSize(0.038);
+            tl.DrawLatex(0.17, 0.88, Form("Pb+Pb 20%s  side %s  (full range)", yr_.c_str(), sides[i]));
+            tl.SetTextColor(kBlue+1); tl.SetTextSize(0.033);
+            tl.DrawLatex(0.17, 0.82, Form("cut = %.0f ADC", (double)cutV[i]));
+            tl.SetTextColor(kBlack);
+        }
+        cf->SaveAs(OutPath(Form("event_sel_cut3_%s_standalone_fullrange", kPbPbEvSelCutLabel(3))).c_str());
+        delete cf;
+        for (int i = 0; i < 2; ++i) delete hdf[i];
+
         delete hA; delete hC;
     }
 
@@ -689,6 +735,37 @@ private:
     }
 
     // -------------------------------------------------------------------------
+    void DrawZdcTimeCorrByCentr() {
+        // 2x3 canvas: pads 1-5 = top 1% each (centrality 0-4), pad 6 = 5-10%
+        // Centrality convention: integer percentile, 0 = most central (0-1%)
+        static const char* ctr_labels[6] = {"0-1%","1-2%","2-3%","3-4%","4-5%","5-10%"};
+        TCanvas* c = new TCanvas("c_zdctime_ctr", "", 1500, 900);
+        c->Divide(3, 2, 0.003, 0.003);
+        for (int k = 0; k < 6; ++k) {
+            c->cd(k + 1);
+            gPad->SetLogz();
+            gPad->SetRightMargin(0.16);
+            gPad->SetLeftMargin(0.13);
+            gPad->SetBottomMargin(0.13);
+            h_zdctime_ctr_[k]->SetContour(99);
+            h_zdctime_ctr_[k]->SetTitle(Form(";ZDC t^{A} [ns];ZDC t^{C} [ns]"));
+            h_zdctime_ctr_[k]->Draw("COLZ");
+
+            // Time-box cut lines
+            TLine l; l.SetLineColor(kRed); l.SetLineWidth(2); l.SetLineStyle(2);
+            l.DrawLine(-CUT2_T_NS_ALT, -10., -CUT2_T_NS_ALT, 10.);
+            l.DrawLine( CUT2_T_NS_ALT, -10.,  CUT2_T_NS_ALT, 10.);
+            l.DrawLine(-10., -CUT2_T_NS_ALT, 10., -CUT2_T_NS_ALT);
+            l.DrawLine(-10.,  CUT2_T_NS_ALT, 10.,  CUT2_T_NS_ALT);
+
+            TLatex tl; tl.SetNDC(); tl.SetTextSize(0.048);
+            tl.DrawLatex(0.17, 0.88, Form("Pb+Pb 20%s  ctr %s", yr_.c_str(), ctr_labels[k]));
+        }
+        c->SaveAs(OutPath("ZDC_time_AC_corr_top5_centr").c_str());
+        delete c;
+    }
+
+    // -------------------------------------------------------------------------
     void SavePlots() {
         gStyle->SetOptStat(0);
         gStyle->SetPalette(kBird);
@@ -707,6 +784,7 @@ private:
 
         DrawSurvivalPlot();
         DrawCumulativeSurvivalPlot();
+        DrawZdcTimeCorrByCentr();
 
         std::cout << "All plots saved to: " << out_dir_ << std::endl;
     }
