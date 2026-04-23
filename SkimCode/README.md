@@ -1,267 +1,271 @@
-# SkimCode quick README
+# SkimCode — ATLAS dimuon AOD skim
 
-## What this code does
+Runs the `TrigRates` Athena algorithm to produce a flat ntuple (`HeavyIonD3PD`
+TTree) from heavy-ion and pp AODs, for dimuon trigger + physics studies.
 
-This package runs the `TrigRates` Athena algorithm to produce a skim ROOT ntuple (`myfile.root`) for heavy-ion / pp dimuon studies.
-
-Main features in `TrigRates`:
+Main features of `TrigRates`:
 
 - Event cleaning (GRL, detector-error checks, vertex cut)
-- Trigger decisions and prescales (including L1 info)
-- Muon trigger matching (single- and dimuon paths)
-- Muon MCP tools:
-	- selection
-	- momentum calibration
-	- efficiency corrections (Medium + Tight)
-	- trigger matching
+- Trigger decisions and prescales (L1 + HLT)
+- Muon trigger matching (single-muon and dimuon chains)
+- Muon MCP tools: selection, momentum calibration, efficiency corrections (Medium + Tight), trigger matching
 - Optional storage of tracks, vertex, MET, truth, and MC event info
-- ZDC information (energy, time, status, per-module PreSampleAmp; RPD centroid optional)
+- ZDC information (energy, time, status, per-module PreSampleAmp; optional RPD centroid)
+- HI event-shape quantities (FCal Et A/C, Q-vectors, centrality)
 
 
-## Config scripts (JO vs CA)
+## Repository layout
 
-Under `scripts/`:
-
-- `TrigRates_JO.py`:
-	- Legacy job options configuration
-	- Use for **R21 / pre-R24** workflows
-- `TrigRates_CA.py`:
-	- ComponentAccumulator-based configuration
-	- Use for **R24/R25 (recommended for modern setup)**
-	- **This is the canonical master copy** — always edit here, then sync to run directories (see below)
-- `TrigRates.py`:
-	- Original legacy script (kept for compatibility with existing run folders)
-- `TruthTrigRates.py`:
-	- Truth-only skimming configuration
-
-
-## !! IMPORTANT: How to update TrigRates_CA.py !!
-
-`scripts/TrigRates_CA.py` is the **single source of truth**.
-After every change, always sync it to all run directories in one command:
-
-```bash
-cp scripts/TrigRates_CA.py run_23hi/TrigRates_CA.py
-cp scripts/TrigRates_CA.py run_24hi/TrigRates_CA.py
-cp scripts/TrigRates_CA.py run_24pp/TrigRates_CA.py
-cp scripts/TrigRates_CA.py run_25hi/TrigRates_CA.py
+```
+SkimCode/
+├── setup_21.sh / setup_25.sh    # base AthAnalysis release setup
+├── source/                      # C++ package (shared across releases)
+│   └── HFtrigValidation/
+│       ├── HFtrigValidation/    # public headers (TrigRates.h, Module_*.h)
+│       └── src/                 # TrigRates.cxx + Module_EventShape.cxx etc.
+├── build_21/ build_25/          # per-release cmake build dirs (gitignored)
+├── scripts/                     # canonical Python/bash templates
+│   ├── TrigRates_CA.py          # CA config (master copy; R25)
+│   ├── TrigRates_JO.py          # legacy JO config (R21)
+│   ├── TruthTrigRates.py        # truth-only skim config
+│   ├── grid_sub.sh              # pathena submission template
+│   ├── print_ds_size.sh         # rucio helper: list datasets + sizes
+│   ├── add_replication_rule_data23.sh  # batch rucio add-rule example
+│   └── useful_rucio_commands.txt
+├── run_<year/sample>/           # one per dataset family (see "Run modes")
+├── xmls/                        # GRL XMLs (data-quality lumiblock lists)
+└── datasetnames/                # txt files listing rucio datasets per year
 ```
 
-The script auto-selects the correct dataset based on the directory name it is run from (via `_run_dir = os.path.basename(os.getcwd())`), so the identical file works in every run folder without manual edits.
+Available AthAnalysis releases: see
+<https://twiki.cern.ch/twiki/bin/viewauth/AtlasProtected/AnalysisRelease>.
 
 
-## How to run
-
-### R25 (CA) — standard workflow
-
-#### 1. Setup (once per login session)
-
-```bash
-cd /afs/cern.ch/user/y/yuhang/eos/dimuon/SkimCode
-source setup_25.sh
-```
-
-`setup_25.sh` runs `asetup AthAnalysis,25.2.55` and configures the `acm` workarea in `build_25/`.
-
-#### 2. Compile (after any C++ change in `source/`)
-
-```bash
-cd /afs/cern.ch/user/y/yuhang/eos/dimuon/SkimCode
-source setup_25.sh && cd build_25 && acm compile
-cd ..
-```
-
-(`setup_25.sh` must be sourced in the same shell call as `acm compile` because environment variables don't persist between separate shell invocations on this cluster.)
-
-#### 3. Test run (100 events)
-
-```bash
-cd /afs/cern.ch/user/y/yuhang/eos/dimuon/SkimCode
-source setup_25.sh && cd run_24pp && athena TrigRates_CA.py --evtMax=100
-```
-
-Or for a HI run folder:
-
-```bash
-source setup_25.sh && cd run_24hi && athena TrigRates_CA.py --evtMax=100
-source setup_25.sh && cd run_25hi && athena TrigRates_CA.py --evtMax=100
-```
-
-If `athena` is not accepted by your environment wrapper, fallback:
-
-```bash
-python TrigRates_CA.py --evtMax=100
-```
-
-#### 4. Full run
-
-```bash
-cd <run_folder>
-athena TrigRates_CA.py
-```
-
-Default `m_EvtMax = 1000` (set in the script). Override with `--evtMax=<N>`.
-
----
-
-### R21 (legacy JO)
-
-Important: run `setupATLAS -c centos7` first, then run setup inside the container shell.
-
-```bash
-cd /afs/cern.ch/user/y/yuhang/eos/dimuon/SkimCode
-setupATLAS -c centos7
-```
-
-Inside the container:
-
-```bash
-export ATLAS_LOCAL_ROOT_BASE=/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase
-source $ATLAS_LOCAL_ROOT_BASE/user/atlasLocalSetup.sh
-cd build_21
-acmSetup --sourcedir=../source AthAnalysis,21.2.200
-cd ../run_powheg_pp17fullsim
-cp ../scripts/TrigRates_JO.py ./TrigRates_JO.py
-athena TrigRates_JO.py --evtMax=100
-```
-
-If you still use an old tested local script in the run folder, you can run:
-
-```bash
-athena TrigRates.py --evtMax=100
-```
-
-
-## Output
-
-- Default output file: `myfile.root`
-- Tree name: `HeavyIonD3PD`
-
-
-## Notes
-
-- Keep R21 and R25 environments separate (do not mix setup scripts in one shell).
-- If C++ in `source/HFtrigValidation/` changes, always rebuild (`acm compile`) in the matching release build directory.
-- `setup_25.sh` and `acm compile` must be called in the **same shell invocation** (environment variables are lost between calls on this cluster).
-- Recommended workflow:
-	- R21 -> `TrigRates_JO.py`
-	- R25 -> `TrigRates_CA.py`
-
-
-## Dataset toggle cheat-sheet
-
-Use exactly one dataset toggle as `True` in the chosen script, **or rely on automatic directory-based selection** (recommended).
-
-### Common run folders
-
-- `run_powheg_pp17fullsim` (R21 JO):
-	- script: `TrigRates_JO.py` (or legacy local `TrigRates.py`)
-	- toggle: `do_pp_MC_fullsim_17 = True`
-
-- `run_23hi` (R25 CA):
-	- script: `TrigRates_CA.py`
-	- toggle: `do_hi2023 = True` (auto-detected from directory name)
-
-- `run_24hi` (R25 CA):
-	- script: `TrigRates_CA.py`
-	- toggle: `do_hi2024 = True` (auto-detected from directory name)
-
-- `run_24pp` (R25 CA):
-	- script: `TrigRates_CA.py`
-	- toggle: `do_pp2024 = True` (auto-detected from directory name)
-
-- `run_25hi` (R25 CA):
-	- script: `TrigRates_CA.py`
-	- toggle: `do_hi2025 = True` (auto-detected from directory name)
-	- GRL: `physics_HI2025_50ns_PbPb_IgnoreBSPOT_INVALID.xml` (2025 Pb+Pb run)
-
-
-### Available toggles
-
-- Data:
-	- `do_hi2015`, `do_hi2018`, `do_hi2023`, `do_hi2024`, `do_hi2025`
-	- `do_pp2015`, `do_pp2017`, `do_pp2024`
-- MC fullsim:
-	- `do_pp_MC_fullsim_17`, `do_pp_MC_fullsim_24`
-
-
-### Quick sanity checks before running
-
-- Exactly one `do_*` toggle is `True` (or rely on auto-detection from directory name)
-- Input file path for that toggle exists
-- Correct script for release:
-	- R21: JO (`TrigRates_JO.py`)
-	- R25: CA (`TrigRates_CA.py`)
-
-
-## StoreTracks bitmap reference
-
-`alg.StoreTracks` controls what track information is stored:
-
-| Value | Branches stored |
-|-------|----------------|
-| `0`   | nothing (tracks disabled) |
-| `1`   | `trk_numqual[8]` only — per-event track counts for: all/PPMinBias/HILoose/HITight (with and without pt > 400 MeV cut) |
-| `1+2` | + per-track vectors: `trk_pt`, `trk_eta`, `trk_phi`, `trk_charge`, `trk_qual` |
-| `1+2+4` | + hit details: `trk_d0`, `trk_z0_wrtPV`, pixel/SCT hits, chi2, etc. |
-| `1+2+4+8` | + truth links: `trk_truth_index`, `trk_truth_prob`, etc. (MC only) |
-
-Current setting: `StoreTracks = 1` for all runs (HI and pp).
-
-
-## StoreZdc bitmap reference
-
-`alg.StoreZdc` controls ZDC output:
-
-| Value | Branches stored |
-|-------|----------------|
-| `0`   | ZDC disabled |
-| `1`   | Basic: `zdc_ZdcAmp[2]`, `zdc_ZdcAmpErr[2]`, `zdc_ZdcEnergy[2]`, `zdc_ZdcEnergyErr[2]`, `zdc_ZdcTime[2]`, `zdc_ZdcStatus[2]`, `zdc_ZdcModuleMask`, `zdc_ZdcModulePreSampleAmp[2][4]` |
-| `1+2` | + RPD/centroid: `zdc_RpdSubAmpSum[2]`, `zdc_xDetCentroid[2]`, `zdc_yDetCentroid[2]`, `zdc_xCentroid[2]`, `zdc_yCentroid[2]`, `zdc_xDetCentroidUnsub[2]`, `zdc_yDetCentroidUnsub[2]`, `zdc_xDetRowCentroidStdev[2]`, `zdc_yDetColCentroidStdev[2]`, `zdc_reactionPlaneAngle[2]`, `zdc_cosDeltaReactionPlaneAngle`, `zdc_centroidStatus[2]` |
-
-Array index convention: `[0]` = A-side (`zdcSide < 0`), `[1]` = C-side (`zdcSide > 0`).
-Current setting: `StoreZdc = 1` for HI runs; `0` for pp runs.
-
-
----
-
-## Grid Submission Guide
-
-### Key PanDA/pathena parameters
-
-| Parameter | Description |
-|-----------|-------------|
-| `--nFilesPerJob N` | N input AOD files per grid job. Primary splitting knob. |
-| `--nGBPerJob MAX` | Alternative: let PanDA auto-size to the max allowed per site (site-dependent, ~30–200 files for large PbPb AOD). |
-| `--nEventsPerJob N` | Split by events rather than files (needs `--useAMIEventLevelSplit` for accurate AMI metadata). |
-| `--mergeOutput` | Merge per-job ROOT outputs into one file per task at job completion. |
-| `--extOutFile myfile.root` | Required with `--trf`-style CA submission to declare the output filename. |
-| `--inDsTxt FILE` | File listing one `scope:dataset` per line; enables multi-dataset tasks. |
-
-**Maximum jobs per task:** ATLAS PanDA enforces ~500 jobs per user-analysis task as a practical grid-quota guideline. Larger tasks experience reduced scheduling priority. Use `--nGBPerJob MAX` to let PanDA auto-optimize within the limit when replanning.
-
-**Job wall-time estimate:** For our fast skimming algorithm (trigger bits + ZDC + track counts only):
-- PbPb HardProbes AOD: ~11 GB/file, ~5800 events/file, read via XRootD
-- Estimated processing: ~10–30 min per file over WAN XRootD
-- At nFilesPerJob=60: expected wall time ~10–30 h/job (within typical 24–48 h site limit)
-- Reduce to nFilesPerJob=30 if jobs frequently timeout
-
-### Submitting grid jobs (CA-based, R25)
-
-Setup before running `grid_sub.sh`:
+## Build
 
 ```bash
 cd SkimCode
-source setup_25.sh          # sets up the Athena release
-lsetup panda                # sets up panda client
-voms-proxy-init -voms atlas # initialize grid certificate proxy
-cd run_25hi
-bash grid_sub.sh            # submits all 6 tasks
+source setup_25.sh
 ```
 
-Monitor with `pbook` or [BigPanDA](https://bigpanda.cern.ch/?user=yuhang).
+`setup_25.sh` runs `asetup AthAnalysis,25.2.89` and configures the `acm` work
+area in `build_25/`. After any C++ change in `source/`, in the same shell:
 
----
+```bash
+cd build_25 && acm compile && cd ..
+```
+
+If you hit mysterious build problems, delete `build_25/` and re-run
+`setup_25.sh`.
+
+
+## Run modes (`TRIGRATES_RUNMODE`)
+
+`scripts/TrigRates_CA.py` selects per-year / per-sample configuration via a
+single global run mode. Dispatch priority (first match wins):
+
+1. Environment variable `TRIGRATES_RUNMODE=<mode>` (most robust; used in grid submission).
+2. `--filesInput=...` substring match (`data23_hi` → `hi2023`, etc.).
+3. `basename($PWD)` (running from `run_25hi/` implies `hi2025`, etc.).
+
+Supported modes:
+
+| Mode                       | Year  | Sample                                | Input     | GRL                                  | Triggers | ZDC readout |
+|----------------------------|------:|---------------------------------------|-----------|--------------------------------------|----------|-------------|
+| `hi2023`                   | 2023  | data23_hi Pb+Pb                       | data      | v120-pro33-03                        | yes      | yes         |
+| `hi2024`                   | 2024  | data24_hi Pb+Pb                       | data      | HI2024_50ns                          | yes      | yes         |
+| `hi2025`                   | 2025  | data25_hi Pb+Pb                       | data      | HI2025_50ns                          | yes      | yes         |
+| `pp2024`                   | 2024  | data24_5p36TeV pp reference           | data      | 2024ppRef_25ns                       | yes      | no          |
+| `ppmcfullsim2024`          | –     | Pythia8 pp fullsim MC                 | geant4    | (none)                               | off      | no          |
+| `ppmcfullsim_hioverlay24`* | 2024  | Pythia8 pp fullsim + HIJING overlay   | geant4    | (none)                               | off      | **off** — overlay AOD has no ZDC |
+
+*Lives in `run_pythia_fullsim_HIJING_overlay/TrigRates_CA.py`, not in
+`scripts/TrigRates_CA.py`. Uses a specialized config that adds the overlay run
+mode and an environment-driven output filename (`TRIGRATES_OUTPUT_FILE`,
+see below). Keep in mind when syncing from `scripts/`.
+
+Centrality calibration (`Module_EventShape.cxx`, as of 2026-04): Run-3 years
+2023/24/25/26 all map to the PbPb2023 FCal-ET thresholds. Update the switch
+when per-year calibrations are finalised.
+
+
+### Sync `scripts/TrigRates_CA.py` → run dirs
+
+`scripts/TrigRates_CA.py` is the canonical copy for the data-skim run modes
+(`hi*`, `pp*`, `ppmcfullsim2024`). After every change:
+
+```bash
+for d in run_23hi run_24hi run_24pp run_25hi run_pythia_fullsim; do
+  cp scripts/TrigRates_CA.py $d/TrigRates_CA.py
+done
+```
+
+`run_pythia_fullsim_HIJING_overlay/` has its own specialization and should be
+synced manually when shared config (triggers, GRL paths, muon-tool settings)
+changes.
+
+
+## Workflow
+
+### Local test (one AOD, 20–100 events)
+
+```bash
+cd run_<dir>/
+source ../setup_25.sh
+athena.py TrigRates_CA.py --evtMax=20
+```
+
+Output: `myfile.root` (TTree `HeavyIonD3PD`). Default `m_EvtMax = 1000` if
+`--evtMax` is omitted. If `athena.py` isn't found, source of `setup_25.sh`
+failed silently — re-run without piping its output (see Pitfalls).
+
+### Grid submission
+
+```bash
+cd run_<dir>/
+source ../setup_25.sh && lsetup panda
+voms-proxy-init -voms atlas        # if proxy expired
+bash grid_sub.sh                   # submits one pathena task per line
+```
+
+Bump the `.v<N>.` tag in `grid_sub.sh` before every resubmission; task names
+are immutable and reusing a tag fails at submission.
+
+Monitor:
+- `pbook` (interactive)
+- BigPanDA web UI: <https://bigpanda.cern.ch/?user=yuhang>
+
+
+## Output conventions
+
+### Dataset naming
+
+```
+user.yuhang.<type>.<sample>.<campaign>.v<N>.part<K>.
+```
+Trailing dot is required by pathena (it appends a 10-char hash).
+
+### NTUP file naming (`TRIGRATES_OUTPUT_FILE`)
+
+The `THistSvc` output filename in `TrigRates_CA.py` is (in the HIJING-overlay
+run dir) taken from `TRIGRATES_OUTPUT_FILE`, defaulting to `myfile.root` for
+local tests. In `grid_sub.sh`, both the env var and `--extOutFile` are set to
+the same sample-specific name so that pathena picks up the produced file:
+
+```bash
+pathena --trf "TRIGRATES_RUNMODE=... TRIGRATES_OUTPUT_FILE=${fname} athena.py TrigRates_CA.py --filesInput=%IN --evtMax=%MAXEVENTS" \
+        --inDS ... --outDS ... --extOutFile "${fname}" --mergeOutput ...
+```
+
+`scripts/TrigRates_CA.py` currently hardcodes `myfile.root`. Standard
+data-skim run dirs therefore produce `myfile.root` inside their output
+datasets (downloaded files land as
+`user.yuhang.<...>._EXT0.myfile.root`).
+
+
+## Output branch reference
+
+### `StoreTracks` bitmap (`alg.StoreTracks`)
+
+| Value     | Branches stored |
+|-----------|-----------------|
+| `0`       | nothing |
+| `1`       | `trk_numqual[8]` only — per-event track counts for all / PPMinBias / HILoose / HITight, with and without pt > 400 MeV cut |
+| `1+2`     | + per-track vectors: `trk_pt`, `trk_eta`, `trk_phi`, `trk_charge`, `trk_qual` |
+| `1+2+4`   | + hit details: `trk_d0`, `trk_z0_wrtPV`, pixel/SCT hits, chi² |
+| `1+2+4+8` | + truth links (MC only): `trk_truth_index`, `trk_truth_prob` |
+
+Current setting: `StoreTracks = 1` in all run modes.
+
+`trk_numqual` layout: `[0–3]` with pt > 400 MeV (all / PPMinBias / HILoose /
+HITight); `[4–7]` no pt cut.
+
+### `StoreZdc` bitmap (`alg.StoreZdc`)
+
+| Value | Branches stored |
+|-------|-----------------|
+| `0`   | ZDC disabled |
+| `1`   | Basic: `zdc_ZdcAmp[2]`, `zdc_ZdcAmpErr[2]`, `zdc_ZdcEnergy[2]`, `zdc_ZdcEnergyErr[2]`, `zdc_ZdcTime[2]`, `zdc_ZdcStatus[2]`, `zdc_ZdcModuleMask`, `zdc_ZdcModulePreSampleAmp[2][4]` |
+| `1+2` | + RPD / centroid: `zdc_RpdSubAmpSum[2]`, `zdc_xDetCentroid[2]`, `zdc_yDetCentroid[2]`, `zdc_xCentroid[2]`, `zdc_yCentroid[2]`, `zdc_xDetCentroidUnsub[2]`, `zdc_yDetCentroidUnsub[2]`, `zdc_xDetRowCentroidStdev[2]`, `zdc_yDetColCentroidStdev[2]`, `zdc_reactionPlaneAngle[2]`, `zdc_cosDeltaReactionPlaneAngle`, `zdc_centroidStatus[2]` |
+
+Array index: `[0]` = A-side (`zdcSide < 0`), `[1]` = C-side (`zdcSide > 0`).
+
+Current setting:
+- HI data modes (`hi2023/24/25`): `StoreZdc = 1`.
+- pp modes and Pythia fullsim: `StoreZdc = 0`.
+- HIJING-overlay MC: `StoreZdc = 0` — the overlay AOD has no
+  `ZdcSums`/`ZdcModules` containers even though `is_HION = True`.
+
+### `StoreEventInfo` bitmap
+
+Flag `& 1` always writes `RunNumber / lbn / bcid / eventNumber / (Act|Avg)IntPerXing`. Flag `& 4` additionally writes `NumTrackNoCuts`, `NumTrackPPMinBias`, `NumTrackHILoose`, `NumTrackHITight`, `FCalET_aux`, `FCalETP_aux`, `FCalETN_aux` — **but** those auxdata entries come from a private derivation and don't exist on production AODs. Leave `StoreEventInfo = 1` unless you know you're reading a derivation that has them.
+
+
+## Non-obvious details
+
+- **HIJING-overlay MC has no ZDC containers.** The reco chain skips ZDC
+  digitization. `StoreZdc = 1` will fail with
+  `No valid proxy for object ZdcSums`. The overlay-specific config forces
+  `StoreZdc = 0`.
+- **Run-3 centrality uses 2023 bins for all years.** See
+  `Module_EventShape.cxx` — the year switch falls through for 2023–2026.
+  Events in a mode without a year case (e.g. pp-only MC with
+  `RunYear = 0`) get the default sentinel and should be treated as
+  unreliable centrality.
+- **`--nGBPerJob MAX` is mandatory for large PbPb AOD tasks.** Without it
+  PanDA assumes local staging (~490 GB scratch/job for 60 × ~8 GB files) and
+  no site qualifies. `MAX` enables XRootD remote-read brokerage; only
+  output + workdir disk is required (~50 GB).
+- **`HLT_MuonsCB_RoI` / `HLT_MuonsCB_FS` keys are data-only.** For MC modes
+  the HLT muon container keys are left empty; setting them on a MC AOD
+  causes retrieval failures.
+- **`asetup` must run in the same shell that later calls `athena.py`.**
+  Piping its output (e.g. `source foo.sh | tail -3`) puts `source` in a
+  subshell — env changes never reach the caller. Use
+  `source foo.sh > /tmp/log 2>&1` instead, then inspect the log.
+
+
+## External resources
+
+- **BigPanDA** (no auth for JSON API):
+  - Task info: `https://bigpanda.cern.ch/task/<tid>/?json`
+  - Failed jobs: `https://bigpanda.cern.ch/jobs/?jeditaskid=<tid>&jobstatus=failed&json&limit=2000`
+  - User dashboard: <https://bigpanda.cern.ch/?user=yuhang>
+- **Rucio scopes**:
+  - user outputs: `user.yuhang`
+  - data inputs: `data23_hi`, `data24_hi`, `data25_hi`, `data24_5p36TeV`
+  - MC inputs: `mc23_5p36TeV`, …
+- **pathena client reference**:
+  <https://panda-wms.readthedocs.io/en/latest/client/pathena.html>
+  (full option list also via `pathena --help`).
+- **ATLAS AnalysisRelease list**:
+  <https://twiki.cern.ch/twiki/bin/viewauth/AtlasProtected/AnalysisRelease>
+
+
+## Data-staging helpers (tape-only datasets)
+
+If the Rucio query shows an input container has replicas only on tape
+(common for older `data23_hi` reprocessings), use the helpers in `scripts/`
+before submitting:
+
+- `scripts/print_ds_size.sh` — list datasets with size (TB/GB/MB) for a
+  given year/collision-type/stream. Copy into the target run dir and edit
+  the filter.
+- `scripts/add_replication_rule_data23.sh` — batched `rucio add-rule`
+  commands to pull datasets to a SCRATCHDISK RSE. See the script header
+  for the expected form.
+- `scripts/useful_rucio_commands.txt` — grab-bag of common rucio
+  invocations (list-rules, list-dataset-replicas, update-rule, quota
+  checks).
+
+Workflow sketch:
+1. `rucio list-dataset-replicas <scope:container>` — check disk vs tape.
+2. If disk-only: submit directly.
+3. If partial or tape-only: add a replication rule to a SCRATCHDISK RSE
+   with enough free quota, wait for OK, then submit. For stuck rules, a
+   user can only edit `--source-replica-expression`; `--boost-rule` and
+   `--priority` are privileged.
+
 
 ## Dataset inventory and partition plan — 2025 Pb+Pb HardProbes
 
@@ -324,9 +328,11 @@ Monitor with `pbook` or [BigPanDA](https://bigpanda.cern.ch/?user=yuhang).
 **Totals (47 active datasets):** 143,528 files | 1587 TB | ~827.8 M events
 **Average per file:** 11.3 GB | 5,768 events
 
-### Partition plan (nFilesPerJob=60, ≤500 jobs/task)
+### Partition plan (`--nGBPerJob MAX`, ≤500 jobs/task)
 
-**Strategy:** Greedy sequential grouping by run number. Each task keeps ≤ 500 × 60 = 30,000 files to stay within the ~500 jobs/task ATLAS PanDA user-analysis guideline. This maximises events per task at the given per-job limit.
+**Strategy:** sequential greedy grouping by run number. Each task targets
+~30 k input files (≤500 jobs × ~60 files/job) to stay within the
+~500-jobs/user-task PanDA practical guideline.
 
 | Part | Datasets (runs) | Files | Jobs | Size (TB) | Events |
 |------|-----------------|------:|-----:|----------:|-------:|
@@ -338,27 +344,50 @@ Monitor with `pbook` or [BigPanDA](https://bigpanda.cern.ch/?user=yuhang).
 | 6 | 512013–512049 (3 ds)  |  7,119 | 119 |  82.2 |  41.9 M |
 | **Total** | **47 datasets** | **143,528** | **2,394** | **1587** | **827.8 M** |
 
-**Events per task (max):** ~346,000 events/job × 500 jobs = **173 M events/task**
-**Total expected grid output:** ~827.8 M events across 6 tasks
-
-Partition text files are in `run_25hi/`: `InDstxt_PbPb2025_5p36TeV_part{1..6}.txt`
-Grid submission script: `run_25hi/grid_sub.sh`
+Partition text files: `run_25hi/InDstxt_PbPb2025_5p36TeV_part{1..6}.txt`.
+Submission script: `run_25hi/grid_sub.sh`.
 
 ### Notes on dataset scale (2025 vs 2024)
 
-The 2025 Pb+Pb run (Oct–Nov 2025) produced dramatically more data than 2024:
-- 2024 PbPb HardProbes: ~41 datasets, processed in 3 tasks with nFilesPerJob=60
-- 2025 PbPb HardProbes: 47 active datasets, **requires 6 tasks** with the same per-job setting
-- The largest individual runs (510878, 510703, 510816) each have 5,800–6,400 files (~65–73 TB), comparable to the entire 2024 dataset
-- Run 511013 (1 file, 8 events) is excluded as an empty/corrupt run
+- 2024 PbPb HardProbes: ~41 datasets, processed in 3 tasks with `nFilesPerJob=60`.
+- 2025 PbPb HardProbes: 47 active datasets, **requires 6 tasks** at the same
+  per-job setting. The largest individual runs (510878, 510703, 510816) each
+  have 5,800–6,400 files (~65–73 TB), comparable to the entire 2024 dataset.
+- Run 511013 (1 file, 8 events) is excluded as an empty/corrupt run.
 
-### Re-running with different nFilesPerJob
+### Re-running with different `nFilesPerJob`
 
-If jobs time out (wall-time exceeded), reduce `nFilesPerJob`:
-- `nFilesPerJob=30` → ~4,785 total jobs → ~10 tasks
-- `nFilesPerJob=40` → ~3,588 total jobs → ~8 tasks
+| `nFilesPerJob` | Total jobs | Tasks needed |
+|---------------:|-----------:|-------------:|
+| 30 | ~4,785 | ~10 |
+| 40 | ~3,588 |  ~8 |
+| 60 | ~2,394 |   6 |
+| 100 | ~1,436 |  ~3 |
 
-If you want fewer tasks and jobs do not time out, increase `nFilesPerJob`:
-- `nFilesPerJob=100` → ~1,436 total jobs → ~3 tasks (Part 5 alone: 292 jobs; all 6 parts fit in 3 tasks)
+Alternative: `--nGBPerJob MAX` lets PanDA auto-size per site; most adaptive
+but per-task job count is less predictable.
 
-Alternative: use `--nGBPerJob MAX` to let PanDA auto-determine per-job input size based on site capabilities. This is the most adaptive option but gives less predictable job counts.
+
+## Legacy R21 JO workflow
+
+For legacy samples that still need R21 (`run_powheg_pp17fullsim/`, etc.):
+
+```bash
+setupATLAS -c centos7      # enter CentOS7 container
+```
+
+Inside the container:
+
+```bash
+export ATLAS_LOCAL_ROOT_BASE=/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase
+source $ATLAS_LOCAL_ROOT_BASE/user/atlasLocalSetup.sh
+cd build_21
+acmSetup --sourcedir=../source AthAnalysis,21.2.200
+cd ../run_powheg_pp17fullsim
+cp ../scripts/TrigRates_JO.py ./TrigRates_JO.py
+athena TrigRates_JO.py --evtMax=100
+```
+
+Legacy local scripts such as `TrigRates.py` are kept in some run dirs for
+compatibility; new work should use `TrigRates_JO.py` (R21) or
+`TrigRates_CA.py` (R25). Do not mix R21 and R25 setups in the same shell.

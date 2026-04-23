@@ -123,10 +123,12 @@ StatusCode EventShape::Process(){
     m_cent=GetCentralityPbPb2015(FCal_Et/1e6);
     break;
   case 2023:
-    m_cent=GetCentralityPbPb2023(FCal_Et/1e6);
-    break;
   case 2024:
-    m_cent=GetCentralityPbPb2024(FCal_Et/1e6);
+  case 2025:
+  case 2026:
+    // Run-3 PbPb: use the 2023 FCal-ET centrality thresholds for all years
+    // until per-year calibrations are finalised.
+    m_cent=GetCentralityPbPb2023(FCal_Et/1e6);
     break;
   default:
     m_cent=1000; // set to some nonsense value
@@ -148,18 +150,6 @@ const std::vector<float> FCal_ET_Bins_PbPb2015={
 
 
 const std::vector<float> FCal_ET_Bins_PbPb2023 = {
-  4.51272, 4.32043, 4.15372, 3.99602, 3.84498, 3.69944, 3.55802, 3.42045, 3.28744, 3.15972, // 0-10
-  3.03748, 2.92012, 2.80723, 2.69878, 2.59464, 2.49406, 2.39646, 2.3018, 2.21028, 2.12188, // 10-20
-  2.03659, 1.95428, 1.87489, 1.79842, 1.72484, 1.65387, 1.58516, 1.51853, 1.45406, 1.39178, // 20-30
-  1.33168, 1.27363, 1.21752, 1.16336, 1.11112, 1.06069, 1.0121, 0.965176, 0.919908, 0.876324, // 30-40
-  0.834306, 0.793842, 0.754927, 0.71753, 0.681616, 0.647138, 0.61393, 0.581945, 0.55126, 0.52171, // 40-50
-  0.493477, 0.466404, 0.440432, 0.415694, 0.392004, 0.369334, 0.347675, 0.327011, 0.30731, 0.288534, // 50-60
-  0.270635, 0.253565, 0.237264, 0.221782, 0.207197, 0.19325, 0.179834, 0.167476, 0.155568, 0.144347, // 60-70
-  0.13388, 0.12389, 0.114683, 0.105976, 0.0976472, 0.0901451, 0.082643, 0.0758922, 0.0695501, 0.063208, // 70-80
-  0.0575959, 0.052731, 0.0478661, 0.0430012, 0.0388482 // 80-85
-};
-
-const std::vector<float> FCal_ET_Bins_PbPb2024 = { // same as 2023
   4.51272, 4.32043, 4.15372, 3.99602, 3.84498, 3.69944, 3.55802, 3.42045, 3.28744, 3.15972, // 0-10
   3.03748, 2.92012, 2.80723, 2.69878, 2.59464, 2.49406, 2.39646, 2.3018, 2.21028, 2.12188, // 10-20
   2.03659, 1.95428, 1.87489, 1.79842, 1.72484, 1.65387, 1.58516, 1.51853, 1.45406, 1.39178, // 20-30
@@ -198,10 +188,6 @@ int EventShape::GetCentralityPbPb2015(float FCal_Et){
 
 int EventShape::GetCentralityPbPb2023(float FCal_Et){
   return GetCentrality(FCal_Et, FCal_ET_Bins_PbPb2023);
-}
-
-int EventShape::GetCentralityPbPb2024(float FCal_Et){
-  return GetCentrality(FCal_Et, FCal_ET_Bins_PbPb2024);
 }
 
 
