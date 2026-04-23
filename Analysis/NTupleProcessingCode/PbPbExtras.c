@@ -2,6 +2,8 @@
 #include "Riostream.h"
 #include "TLorentzVector.h"
 #include "time.h"
+#include "TFile.h"
+#include "TParameter.h"
 
 template <class Derived>
 void PbPbExtras<Derived>::PerformTChainFill(){
@@ -49,6 +51,7 @@ void PbPbExtras<Derived>::InitInputExtra(){
     self().fChainRef()->SetBranchAddress("zdc_ZdcTime",               zdc_ZdcTime);
     self().fChainRef()->SetBranchAddress("zdc_ZdcModulePreSampleAmp", zdc_ZdcModulePreSampleAmp);
     self().fChainRef()->SetBranchAddress("trk_numqual",               &trk_numqual);
+    InitEventSel();
   }
 }
 
@@ -137,6 +140,71 @@ void PbPbExtras<Derived>::FillMuonPairTreeExtra(){
   }
 }
 
+
+template <class Derived>
+void PbPbExtras<Derived>::InitEventSel() {
+  const std::string path = PbPbEvSelCutsPath(self().run_year);
+  TFile* f = TFile::Open(path.c_str(), "READ");
+  if (!f || f->IsZombie())
+    throw std::runtime_error("PbPbExtras::InitEventSel: cuts file not found: " + path);
+
+  auto get_graph = [&](const char* key) -> TGraph* {
+    TGraph* g = (TGraph*)f->Get(key);
+    if (!g) throw std::runtime_error(std::string("PbPbExtras::InitEventSel: key not found: ") + key);
+    return (TGraph*)g->Clone();
+  };
+  auto get_param = [&](const char* key) -> double {
+    TParameter<double>* p = (TParameter<double>*)f->Get(key);
+    if (!p) throw std::runtime_error(std::string("PbPbExtras::InitEventSel: key not found: ") + key);
+    return p->GetVal();
+  };
+
+  g_evsel_cut1_    = get_graph(PbPbEvSelKey::kZDCFCalCut);
+  evsel_cut2_ns_   = get_param(PbPbEvSelKey::kZDCTimeCutNs);
+  evsel_cut3_A_    = (float)get_param(PbPbEvSelKey::kPreampACutADC);
+  evsel_cut3_C_    = (float)get_param(PbPbEvSelKey::kPreampCCutADC);
+  g_evsel_cut4_    = get_graph(PbPbEvSelKey::kNTrkFracCutLo);
+  g_evsel_cut5_lo_ = get_graph(PbPbEvSelKey::kNTrkFCalCutLo);
+  g_evsel_cut5_hi_ = get_graph(PbPbEvSelKey::kNTrkFCalCutHi);
+
+  f->Close();
+  std::cout << "PbPbExtras::InitEventSel: loaded cuts from " << path << std::endl;
+}
+
+template <class Derived>
+bool PbPbExtras<Derived>::PassEventSel() const {
+  const float fcal_AC = (FCal_Et_P + FCal_Et_N) * 1e-6f;              // MeV → TeV
+  const float zdc_tot = (zdc_ZdcEnergy[0] + zdc_ZdcEnergy[1]) / 1000.f; // GeV → TeV (matches cut derivation)
+
+  // Cut 1: ZDC-FCal banana
+  if (zdc_tot > (float)PbPbEvSelEvalCut(g_evsel_cut1_, fcal_AC)) return false;
+
+  // Cut 2: ZDC time box
+  if (std::abs(zdc_ZdcTime[0]) >= (float)evsel_cut2_ns_) return false;
+  if (std::abs(zdc_ZdcTime[1]) >= (float)evsel_cut2_ns_) return false;
+
+  // Cut 3: ZDC preamp amplitude
+  float preamp_A = 0.f, preamp_C = 0.f;
+  for (int i = 0; i < 4; ++i) preamp_A += zdc_ZdcModulePreSampleAmp[0][i];
+  for (int i = 0; i < 4; ++i) preamp_C += zdc_ZdcModulePreSampleAmp[1][i];
+  if (preamp_A >= evsel_cut3_A_) return false;
+  if (preamp_C >= evsel_cut3_C_) return false;
+
+  // Cut 4: nTrk HItight fraction
+  if (!trk_numqual || (int)trk_numqual->size() < 4) return false;
+  const int ntrk_total = (*trk_numqual)[0];  // total nTrk
+  const int ntrk_tight = (*trk_numqual)[3];  // HItight + pT
+  if (ntrk_total > 0) {
+    const double frac = (double)ntrk_tight / ntrk_total;
+    if (frac < PbPbEvSelEvalCut(g_evsel_cut4_, ntrk_total)) return false;
+  }
+
+  // Cut 5: nTrk HItight vs FCal ET band
+  if ((double)ntrk_tight < PbPbEvSelEvalCut(g_evsel_cut5_lo_, fcal_AC)) return false;
+  if ((double)ntrk_tight > PbPbEvSelEvalCut(g_evsel_cut5_hi_, fcal_AC)) return false;
+
+  return true;
+}
 
 template <class Derived>
 void PbPbExtras<Derived>::InitParamsExtra(){

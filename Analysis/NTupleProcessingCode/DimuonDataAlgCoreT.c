@@ -36,7 +36,7 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::PrintInstructions_Dat
     std::cout << "        * resonance_cut_mode = 2: new resonance cut" << std::endl;
     std::cout << "        If resonance_cut_mode value is outside {0,1,2}: assume default option" << std::endl;
     std::cout << "--> pbpb24_mu4_NO_trig_calc: boolean, default false - if true: use Pb+Pb 24 single-mu4 data for nominal analysis, not trigger efficiency evaluation" << std::endl;
-    std::cout << "--> filter_out_photo_resn_for_trig_effcy: boolean, default false - if true: do NOT filter out photoproduction / resonance pairs for trigger efficiency study" << std::endl;
+    std::cout << "--> filter_out_photo_resn_for_trig_effcy: boolean, default true - if true: filter out photoproduction / resonance pairs even in trigger efficiency study mode" << std::endl;
 
     std::cout << std::endl;
 
@@ -590,6 +590,8 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook(){
 		muon_pair_list_cur_event_pre_resonance_cut.clear();
 		resonance_tagged_muon_index_list.clear(); // MUST CLEAR for each event!!
         resonance_tagged_muon_index_list_v2.clear(); // MUST CLEAR for each event!!
+
+        if (!this->PassEventSelHook()) continue;
 
 		std::vector<int> muon_index_list = {};
 		std::vector<int>::iterator it;
