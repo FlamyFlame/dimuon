@@ -40,13 +40,13 @@ class PythiaFullSimAnalysis
   , public PythiaTruthExtras<MuonPairPythiaFullSimWTruth, PythiaFullSimAnalysis>
 {
 public:
-    // batch_num_input unused for fullsim (all kn ranges processed together); kept for API symmetry
     PythiaFullSimAnalysis(int batch_num_input = 0, bool use_local = false)
         : PythiaAlgCoreT(batch_num_input, use_local)
     {
         this->isPrivate = false;
         this->E_COM = 5.36;
         this->run_year = 24;
+        this->fullsim_sample_type = FullSimSampleType::pp;
     }
 };
 
@@ -64,12 +64,14 @@ class PythiaFullSimOverlayAnalysis
   , public PythiaTruthExtras<MuonPairPythiaFullSimOverlayWTruth, PythiaFullSimOverlayAnalysis>
 {
 public:
-    PythiaFullSimOverlayAnalysis(int batch_num_input = 0, bool use_local = false)
+    PythiaFullSimOverlayAnalysis(FullSimSampleType sample_type = FullSimSampleType::hijing,
+                                 int batch_num_input = 0, bool use_local = false)
         : PythiaAlgCoreT(batch_num_input, use_local)
     {
         this->isPrivate = false;
         this->E_COM = 5.36;
         this->run_year = 24;
+        this->fullsim_sample_type = sample_type;
     }
 };
 
