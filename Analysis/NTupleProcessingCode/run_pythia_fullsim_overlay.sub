@@ -1,0 +1,14 @@
+# Submit Pythia fullsim overlay NTuple processing.
+# Arguments passed via pipeline: sample_type (hijing|zmumu|data)
+#
+# TEMPORARY: Currently queue 1 job because the test sample is small
+# enough to process all 6 kn ranges in a single job. When full
+# overlay samples become available, update queue count and add
+# batch splitting logic to the worker script.
+
+executable = run_pythia_fullsim_overlay_condor.sh
+output     = logs/run_pythia_fullsim_overlay_$(sample_type).out
+error      = logs/run_pythia_fullsim_overlay_$(sample_type).err
+log        = logs/run_pythia_fullsim_overlay_$(sample_type).log
+request_memory = 4GB
+queue 1
