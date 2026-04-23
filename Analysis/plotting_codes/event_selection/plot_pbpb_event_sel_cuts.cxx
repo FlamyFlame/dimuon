@@ -173,7 +173,6 @@ public:
         gSystem->mkdir(out_dir_.c_str(), true);
         BookHists();
         LoadCut1();
-        ComputeFCalCentralityThresholds();
         FillHists();
         DeriveCut4();
         FillCuts45();
@@ -190,7 +189,10 @@ private:
 
     TH2D*   hh_[kNStages_A][kNHTypes_A] = {};
     TH2D*   h_zdctime_ctr_[6] = {};   // ZDC time AC corr: [0-4] = top 1-5%, [5] = 5-10%
-    float   ctr_thresh_[6] = {};      // FCal ET lower bound (TeV) for each centrality bin [0-4]=top1-5%,[5]=5-10%
+    // FCal ET lower bounds (TeV) per centrality bin — from PbPb2023 Glauber table (MuonPairPbPb.h).
+    // Applied to all Run3 years until per-year tables are derived.
+    //   [0]=0-1%, [1]=1-2%, [2]=2-3%, [3]=3-4%, [4]=4-5%, [5]=5-10% (lower bound = 9th-percentile entry)
+    static constexpr float kCtrThresh[6] = {4.51272f, 4.32043f, 4.15372f, 3.99602f, 3.84498f, 3.15972f};
     TGraph* g_cut1_    = nullptr;
     TGraph* g_cut4_    = nullptr;
     TGraph* g_cut5_lo_ = nullptr;
@@ -254,49 +256,6 @@ private:
             hh_[s][kFrac_A]    ->Fill(ev.ntrk_total, frac);
             hh_[s][kNtrkFcal_A]->Fill(ev.fcal_AC, ev.ntrk_tight);
         }
-    }
-
-    // -------------------------------------------------------------------------
-    // Pre-scan: derive FCal ET percentile thresholds for centrality binning.
-    // Needed because the 'centrality' branch may be unfilled (e.g. pbpb2025).
-    void ComputeFCalCentralityThresholds() {
-        TChain chain("HeavyIonD3PD", "HeavyIonD3PD");
-        for (const auto& f : infiles_) {
-            if (!gSystem->AccessPathName(f.c_str())) chain.Add(f.c_str());
-        }
-        chain.SetMakeClass(1);
-        chain.SetBranchStatus("*", 0);
-        Int_t   b_HLT = 0;
-        Float_t fcal_p = 0.f, fcal_n = 0.f;
-        chain.SetBranchStatus("b_HLT_mu4_L1MU3V", 1);
-        chain.SetBranchStatus("FCal_Et_P",         1);
-        chain.SetBranchStatus("FCal_Et_N",         1);
-        chain.SetBranchAddress("b_HLT_mu4_L1MU3V", &b_HLT);
-        chain.SetBranchAddress("FCal_Et_P",         &fcal_p);
-        chain.SetBranchAddress("FCal_Et_N",         &fcal_n);
-
-        std::vector<float> vals;
-        vals.reserve(chain.GetEntries());
-        for (Long64_t i = 0, n = chain.GetEntries(); i < n; ++i) {
-            chain.GetEntry(i);
-            if (!b_HLT) continue;
-            vals.push_back((fcal_p + fcal_n) * 1e-6f);
-        }
-        // Sort descending: index 0 = most central (highest FCal ET)
-        std::sort(vals.begin(), vals.end(), std::greater<float>());
-        const int N = (int)vals.size();
-
-        // ctr_thresh_[k] = minimum FCal ET (TeV) to be in centrality bin k
-        //   bin 0 = top 1%, bin 1 = 1-2%, ..., bin 4 = 4-5%, bin 5 = 5-10%
-        static const double fracs[6] = {0.01, 0.02, 0.03, 0.04, 0.05, 0.10};
-        for (int k = 0; k < 6; ++k) {
-            int idx = std::max(0, std::min(N - 1, (int)(N * fracs[k]) - 1));
-            ctr_thresh_[k] = vals[idx];
-        }
-        printf("FCal centrality thresholds [TeV, lower bound of top-%]: "
-               "1%%=%.3f  2%%=%.3f  3%%=%.3f  4%%=%.3f  5%%=%.3f  10%%=%.3f  (N=%d)\n",
-               ctr_thresh_[0], ctr_thresh_[1], ctr_thresh_[2],
-               ctr_thresh_[3], ctr_thresh_[4], ctr_thresh_[5], N);
     }
 
     // -------------------------------------------------------------------------
@@ -367,15 +326,15 @@ private:
             FillOneStage(kNoCut_A, ev);
             if (is_ctr80) ++n_ctr80_[kNoCut_A];
 
-            // Per-centrality ZDC time AC correlation (no cuts, FCal ET-based centrality)
+            // Per-centrality ZDC time AC correlation (no cuts, PbPb2023 Glauber FCal thresholds)
             {
                 const float f = ev.fcal_AC;
-                if      (f >= ctr_thresh_[0]) h_zdctime_ctr_[0]->Fill(ev.tA, ev.tC);
-                else if (f >= ctr_thresh_[1]) h_zdctime_ctr_[1]->Fill(ev.tA, ev.tC);
-                else if (f >= ctr_thresh_[2]) h_zdctime_ctr_[2]->Fill(ev.tA, ev.tC);
-                else if (f >= ctr_thresh_[3]) h_zdctime_ctr_[3]->Fill(ev.tA, ev.tC);
-                else if (f >= ctr_thresh_[4]) h_zdctime_ctr_[4]->Fill(ev.tA, ev.tC);
-                else if (f >= ctr_thresh_[5]) h_zdctime_ctr_[5]->Fill(ev.tA, ev.tC);
+                if      (f >= kCtrThresh[0]) h_zdctime_ctr_[0]->Fill(ev.tA, ev.tC);
+                else if (f >= kCtrThresh[1]) h_zdctime_ctr_[1]->Fill(ev.tA, ev.tC);
+                else if (f >= kCtrThresh[2]) h_zdctime_ctr_[2]->Fill(ev.tA, ev.tC);
+                else if (f >= kCtrThresh[3]) h_zdctime_ctr_[3]->Fill(ev.tA, ev.tC);
+                else if (f >= kCtrThresh[4]) h_zdctime_ctr_[4]->Fill(ev.tA, ev.tC);
+                else if (f >= kCtrThresh[5]) h_zdctime_ctr_[5]->Fill(ev.tA, ev.tC);
             }
 
             // Cut 1: ZDC banana
@@ -788,10 +747,10 @@ private:
     void DrawZdcTimeCorrByCentr() {
         // 2x3 canvas: pads 1-5 = top 1% each (FCal ET-based), pad 6 = 5-10%
         static const char* ctr_labels[6] = {"0-1%","1-2%","2-3%","3-4%","4-5%","5-10%"};
-        printf("ZDC time corr per centrality bin GetEntries:\n");
+        printf("ZDC time corr per centrality bin GetEntries (PbPb2023 Glauber thresholds):\n");
         for (int k = 0; k < 6; ++k)
-            printf("  bin %d (%s): %.0f entries  FCal lower=%.3f TeV\n",
-                   k, ctr_labels[k], h_zdctime_ctr_[k]->GetEntries(), (double)ctr_thresh_[k]);
+            printf("  bin %d (%s): %.0f entries  FCal lower=%.5f TeV\n",
+                   k, ctr_labels[k], h_zdctime_ctr_[k]->GetEntries(), (double)kCtrThresh[k]);
         TCanvas* c = new TCanvas("c_zdctime_ctr", "", 1500, 900);
         c->Divide(3, 2, 0.003, 0.003);
         for (int k = 0; k < 6; ++k) {
@@ -815,11 +774,11 @@ private:
             tl.DrawLatex(0.17, 0.89, Form("Pb+Pb 20%s  ctr %s (FCal)", yr_.c_str(), ctr_labels[k]));
             tl.SetTextSize(0.036);
             if (k == 0)
-                tl.DrawLatex(0.17, 0.83, Form("FCal > %.3f TeV", (double)ctr_thresh_[0]));
+                tl.DrawLatex(0.17, 0.83, Form("FCal > %.3f TeV", (double)kCtrThresh[0]));
             else if (k < 5)
-                tl.DrawLatex(0.17, 0.83, Form("FCal [%.3f, %.3f) TeV", (double)ctr_thresh_[k], (double)ctr_thresh_[k-1]));
+                tl.DrawLatex(0.17, 0.83, Form("FCal [%.3f, %.3f) TeV", (double)kCtrThresh[k], (double)kCtrThresh[k-1]));
             else
-                tl.DrawLatex(0.17, 0.83, Form("FCal [%.3f, %.3f) TeV", (double)ctr_thresh_[5], (double)ctr_thresh_[4]));
+                tl.DrawLatex(0.17, 0.83, Form("FCal [%.3f, %.3f) TeV", (double)kCtrThresh[5], (double)kCtrThresh[4]));
         }
         c->SaveAs(OutPath("ZDC_time_AC_corr_top5_centr").c_str());
         delete c;
