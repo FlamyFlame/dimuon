@@ -215,8 +215,10 @@ void PbPbExtras<Derived>::InitParamsExtra(){
   int run_year_short = self().run_year % 2000;
   bool is_run3_local = (run_year_short > 20);
 
+  // pbpb2023: should have parts 1..4 but currently only 1..3 finished skimming.
+  // Update {23, 3} -> {23, 4} and rerun after part4 is available.
   std::map<int, int> run_year_to_file_batch_max_map = {
-    {23, 6}, {24, 2}, {25, 6}, {15, 7}, {18, 7}
+    {23, 3}, {24, 2}, {25, 6}, {15, 7}, {18, 7}
   };
 
   // check for run year
@@ -234,7 +236,7 @@ void PbPbExtras<Derived>::InitParamsExtra(){
 
   // check for file batch
   if (self().file_batch <= 0 || self().file_batch > run_year_to_file_batch_max_map[run_year_short]){
-    std::cerr<<"Error:: run3 file_batch is invalid! Must be in range 1-6 for 2023 data / 1-2 for 2024 data / 1-7 for 2015/2018 data"<<std::endl;
+    std::cerr<<"Error:: run3 file_batch is invalid! Must be in range 1-3 for 2023 data (currently) / 1-2 for 2024 data / 1-6 for 2025 data / 1-7 for 2015/2018 data"<<std::endl;
     throw std::exception();
   }
 }
