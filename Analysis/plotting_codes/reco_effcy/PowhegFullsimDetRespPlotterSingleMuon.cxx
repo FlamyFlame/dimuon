@@ -15,8 +15,8 @@
 #include <string>
 #include <vector>
 #include <iostream>
-#include "Utilities/PlotUtils.h"
-#include "Utilities/PlotCommonConfig.h"
+#include "../../Utilities/PlotUtils.h"
+#include "../../Utilities/PlotCommonConfig.h"
 
 class PowhegFullsimDetRespPlotterSingleMuon {
 public:

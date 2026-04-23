@@ -20,8 +20,9 @@
 #include <tuple>
 #include <vector>
 #include <iostream>
-#include "Utilities/PlotUtils.h"
-#include "Utilities/PlotCommonConfig.h"
+#include "../../Utilities/PlotUtils.h"
+#include "../../Utilities/PlotCommonConfig.h"
+#include "../../RDFBasedHistFilling/CommonEffcyConfig.h"
 
 class PowhegFullsimRecoEffPlotter {
 public:
@@ -138,19 +139,6 @@ protected:
         };
     
 
-    using QEtaBinning = std::vector<std::pair<float, float>>;
-    QEtaBinning q_eta_proj_ranges_fine_excl_gap_run2 = {
-        {-2.4f, -2.0f}, 
-        {-2.0f, -1.6f}, 
-        {-1.6f, -1.3f}, 
-        {-0.9f, -0.5f}, 
-        {-0.5f, -0.1f}, 
-        {0.1f, 0.5f}, 
-        {0.5f, 1.0f}, 
-        {1.3f, 1.6f}, 
-        {1.6f, 2.0f}, 
-        {2.0f, 2.4f}
-    };
 
     // Zero out efficiency bins whose denominator has N_eff < min_denom_neff.
     // N_eff = (ΣW)² / Σw² = (GetBinContent)² / (GetBinError)².

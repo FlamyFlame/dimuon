@@ -87,7 +87,7 @@ protected:
     void FillMuonPair(int pair_ind){self().FillMuonPairHook(pair_ind);} // require child-class definition
 	void ResonanceTagging();
 	void ResonanceTaggingV2();
-    void ResonanceTaggingImpl(bool op_sign, float minv, std::vector<int>& resonance_tagged_list);
+    void ResonanceTaggingImpl(bool op_sign, float minv, std::vector<int>& resonance_tagged_list, const std::vector<std::array<float,2>>& minv_cuts_to_use);
 	bool IsPhotoProduction();
 	
 	void ProcessData(){return self().ProcessDataHook();} // require child-class definition
@@ -120,6 +120,7 @@ public:
     bool debug_mode = false;
 	bool output_single_muon_tree = false;
     Long64_t nevents_max = -1; // <= 0: process all available entries; > 0: process up to min(nevents_max, nentries)
+    bool is_test_run = false;  // if true, append "_test" to output paths (prevents overwriting full-run files)
 
 // --------------------- public class methods ---------------------------
     void Run();

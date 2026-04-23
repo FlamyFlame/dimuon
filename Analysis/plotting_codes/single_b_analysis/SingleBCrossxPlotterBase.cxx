@@ -37,7 +37,7 @@ protected:
 
 public:
     SingleBCrossxPlotterBase(const std::string& in_path, const std::string& out_dir)
-        : input_file_path(in_path), output_dir(out_dir), q_eta_bins(cfg.q_eta_proj_ranges_coarse_incl_gap) {}
+        : input_file_path(in_path), output_dir(out_dir), q_eta_bins(cfg.pair_eta_proj_ranges_coarse_incl_gap) {}
 
     virtual ~SingleBCrossxPlotterBase() {
         if (fin) {

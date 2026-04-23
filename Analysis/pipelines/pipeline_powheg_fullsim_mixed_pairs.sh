@@ -36,7 +36,9 @@ set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ANALYSIS_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+NTP_DIR="${ANALYSIS_DIR}/NTupleProcessingCode"
 RDF_DIR="${ANALYSIS_DIR}/RDFBasedHistFilling"
+RECO_EFFCY_DIR="${ANALYSIS_DIR}/plotting_codes/reco_effcy"
 
 POLL_SECONDS="${POLL_SECONDS:-45}"
 CONDOR_TIMEOUT_SECONDS="${CONDOR_TIMEOUT_SECONDS:-0}"
@@ -279,7 +281,7 @@ run_smoke_test() {
     local smoke_output="${MIXED_DIR}/muon_pairs_powheg_bbcc_fullsim_mixed_batch999_smoke.root"
     mkdir -p "${MIXED_DIR}"
 
-    pushd "${SCRIPT_DIR}" >/dev/null
+    pushd "${NTP_DIR}" >/dev/null
     root -l -b <<ROOTEOF || fail "[SMOKE TEST] ROOT exited non-zero during smoke mixing"
 .L mix_powheg_single_muon_pairs.C
 run_powheg_single_muon_pair_mixing(
@@ -336,7 +338,7 @@ else
     # --- Step 1: submit mixing condor cluster ---
     log "Submitting mixing Condor jobs (run_powheg_fullsim_single_muon_mixing.sub, 480 batches, APPLY_MASS_FILTER=${APPLY_MASS_FILTER})"
     mkdir -p "${MIXED_DIR}"
-    pushd "${SCRIPT_DIR}" >/dev/null
+    pushd "${NTP_DIR}" >/dev/null
     # Export APPLY_MASS_FILTER so the Condor wrapper script picks it up.
     mix_submit_out="$(APPLY_MASS_FILTER=${APPLY_MASS_FILTER} condor_submit \
         -append "environment = APPLY_MASS_FILTER=${APPLY_MASS_FILTER}" \
@@ -433,8 +435,8 @@ EOF
 log "Histogram output OK: ${MIXED_HIST}"
 
 # --- Step 6: plot for medium and tight WPs ---
-log "Running pair plotter for medium + tight WPs (from ${ANALYSIS_DIR}, mixed_hist_suffix=${MIXED_HIST_SUFFIX})"
-pushd "${ANALYSIS_DIR}" >/dev/null
+log "Running pair plotter for medium + tight WPs (from ${RECO_EFFCY_DIR}, mixed_hist_suffix=${MIXED_HIST_SUFFIX})"
+pushd "${RECO_EFFCY_DIR}" >/dev/null
 root -l -b <<ROOTEOF || fail "ROOT exited non-zero during mixed-pair plotting"
 .L PowhegFullsimRecoEffPlotter.cxx+
 {

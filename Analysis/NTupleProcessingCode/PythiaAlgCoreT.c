@@ -21,15 +21,13 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_PythiaCore() {
 
     isRun3 = (run_year > 18);
     if (is_fullsim || is_fullsim_overlay) {
-        // Fullsim: load all kn ranges at once; AMI info read from truth directory
         nKinRanges = 6;
         kinRanges  = {8.f, 14.f, 24.f, 40.f, 70.f, 125.f, 300.f};
-        // py_dir used for AMI info (same path as truth non-private)
         py_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_truth_full_sample/pythia_5p36TeV/";
-        // Fullsim NTUPs are here:
-        fullsim_input_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/";
-        outfile_name     = "muon_pairs_pythia_fullsim_pp24";
-        outhistfile_name = "hists_pythia_ntuple_processing_fullsim_pp24";
+        fullsim_input_dir = FullSimSampleInputDir(fullsim_sample_type);
+        const std::string label = FullSimSampleLabel(fullsim_sample_type);
+        outfile_name     = "muon_pairs_pythia_fullsim_" + label;
+        outhistfile_name = "hists_pythia_ntuple_processing_fullsim_" + label;
         nevents.resize(nKinRanges, 0);
         nevents_accum.resize(nKinRanges, 0);
         njobs_accum.resize(nKinRanges, 0);
@@ -376,15 +374,20 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputFullsim_PythiaCo
         ami_weight_kn_beam[i].assign(nBeamTypes, 0.);
     }
 
+    const std::string file_tag = FullSimSampleFileTag(fullsim_sample_type);
+    const bool overlay_only_pp = FullSimSampleIsOverlay(fullsim_sample_type);
+
     for (int ikin = 0; ikin < nKinRanges; ikin++) {
         int kin_lo = static_cast<int>(kinRanges.at(ikin));
         int kin_hi = static_cast<int>(kinRanges.at(ikin + 1));
 
         for (int ibeam = 0; ibeam < nBeamTypes; ibeam++) {
+            if (overlay_only_pp && ibeam != 0) continue;
+
             std::string fname = fullsim_input_dir
                 + "Pythia_5p36TeV_" + beam_names.at(ibeam)
                 + "_hQCD_DiMu_pTH" + std::to_string(kin_lo) + "_" + std::to_string(kin_hi)
-                + ".FullSimPP24.NTUP.root";
+                + "." + file_tag + ".NTUP.root";
 
             std::ifstream fin(fname);
             if (!fin.good()) {

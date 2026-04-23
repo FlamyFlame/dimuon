@@ -22,7 +22,9 @@ set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ANALYSIS_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+NTP_DIR="${ANALYSIS_DIR}/NTupleProcessingCode"
 RDF_DIR="${ANALYSIS_DIR}/RDFBasedHistFilling"
+RECO_EFFCY_DIR="${ANALYSIS_DIR}/plotting_codes/reco_effcy"
 
 POLL_SECONDS="${POLL_SECONDS:-45}"
 CONDOR_TIMEOUT_SECONDS="${CONDOR_TIMEOUT_SECONDS:-0}"
@@ -206,7 +208,7 @@ require_cmd hadd
 
 # --- Step 1: submit bb and cc condor clusters ---
 log "Submitting bb single-muon Condor jobs (run_powheg_fullsim_wtruth_bb_single_muon.sub)"
-pushd "${SCRIPT_DIR}" >/dev/null
+pushd "${NTP_DIR}" >/dev/null
 bb_submit_out="$(condor_submit run_powheg_fullsim_wtruth_bb_single_muon.sub)"
 echo "${bb_submit_out}" >&2
 bb_cluster="$(extract_cluster_id "${bb_submit_out}")"
@@ -271,8 +273,8 @@ log "Validating single-muon histogram output: ${SINGLE_MUON_HIST}"
 validate_files_or_fail "single-muon histogram" "${SINGLE_MUON_HIST}"
 
 # --- Step 7: plot for medium and tight WPs ---
-log "Running plotter for medium + tight WPs (from ${ANALYSIS_DIR})"
-pushd "${ANALYSIS_DIR}" >/dev/null
+log "Running plotter for medium + tight WPs (from ${RECO_EFFCY_DIR})"
+pushd "${RECO_EFFCY_DIR}" >/dev/null
 root -l -b <<'ROOTEOF' || fail "ROOT exited non-zero during single-muon plotting"
 .L PowhegFullsimDetRespPlotterSingleMuon.cxx+
 {

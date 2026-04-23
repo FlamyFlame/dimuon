@@ -36,14 +36,15 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::PrintInstructions_Dat
     std::cout << "        * resonance_cut_mode = 2: new resonance cut" << std::endl;
     std::cout << "        If resonance_cut_mode value is outside {0,1,2}: assume default option" << std::endl;
     std::cout << "--> pbpb24_mu4_NO_trig_calc: boolean, default false - if true: use Pb+Pb 24 single-mu4 data for nominal analysis, not trigger efficiency evaluation" << std::endl;
-    std::cout << "--> filter_out_photo_resn_for_trig_effcy: boolean, default false - if true: do NOT filter out photoproduction / resonance pairs for trigger efficiency study" << std::endl;
+    std::cout << "--> filter_out_photo_resn_for_trig_effcy: boolean, default true - if true: filter out photoproduction / resonance pairs even in trigger efficiency study mode" << std::endl;
 
     std::cout << std::endl;
 
     if (isPbPb){
 	    std::cout << "if run_year == 23, output files will be written to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2023" << std::endl;
 	    std::cout << "if run_year == 24, output files will be written to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2024" << std::endl;
-	    std::cout << "else,      output files will be written to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2" << std::endl;
+	    std::cout << "if run_year == 25, output files will be written to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2025" << std::endl;
+	    std::cout << "else (Run 2),      output files will be written to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2" << std::endl;
     }else{
 	    std::cout << "if isRun3, output files will be written to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024" << std::endl;
 	    std::cout << "else,      output files will be written to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2" << std::endl;
@@ -372,7 +373,8 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitOutputSettings_Da
     std::string mindR_suffix_output = use_mindR_suffix_in_output
         ? ("_mindR_" + (mindR_trig == 0.01 ? std::string("0_01") : std::string("0_02")))
         : "";
-    std::string outfile_ending = run_suffix + file_batch_suffix + trig_suffix + mindR_suffix_output + tight_suffix + resonance_cut_suffix + ".root";
+    std::string test_suffix = this->is_test_run ? "_test" : "";
+    std::string outfile_ending = run_suffix + file_batch_suffix + trig_suffix + mindR_suffix_output + tight_suffix + resonance_cut_suffix + test_suffix + ".root";
     output_file_path = data_dir + file_name_base + outfile_ending;
     output_hist_file_path = data_dir + "hists_cut_acceptance" + outfile_ending;
 
@@ -589,6 +591,8 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook(){
 		muon_pair_list_cur_event_pre_resonance_cut.clear();
 		resonance_tagged_muon_index_list.clear(); // MUST CLEAR for each event!!
         resonance_tagged_muon_index_list_v2.clear(); // MUST CLEAR for each event!!
+
+        if (!this->PassEventSelHook()) continue;
 
 		std::vector<int> muon_index_list = {};
 		std::vector<int>::iterator it;
