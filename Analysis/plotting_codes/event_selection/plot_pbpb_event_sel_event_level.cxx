@@ -293,7 +293,7 @@ private:
         // Main band fit results (all FCal slices that converge)
         std::vector<double> gr_x, gr_cut, gr_main_cut, gr_mu, gr_sigma, gr_ex;
         // Background band fit results (FCal > FCAL_BG_FIT_MIN_TEV slices only)
-        std::vector<double> gr_bg_x, gr_bg_cut;
+        std::vector<double> gr_bg_x, gr_bg_cut, gr_bg_mu, gr_bg_sig;
 
         struct FirstSlice {
             bool   found = false;
@@ -367,18 +367,24 @@ private:
                     if (hpy->Fit(&gfunc, "RNQ") == 0 && gfunc.GetParameter(2) > 0.) {
                         const double bg_mu1  = gfunc.GetParameter(1);
                         const double bg_sig1 = gfunc.GetParameter(2);
-                        // Pass 2: mu1 ± BG_N_SIGMA_INNER * sigma1 window
-                        gfunc.SetRange(std::max(ymin, bg_mu1 - BG_N_SIGMA_INNER*bg_sig1),
-                                       std::min(ymax, bg_mu1 + BG_N_SIGMA_INNER*bg_sig1));
+                        // Pass 2: mu1 ± BG_N_SIGMA_INNER * sigma1, clamped to [bg_lo, bg_hi]
+                        // to prevent the fit sliding back to the main band.
+                        gfunc.SetRange(std::max(bg_lo, bg_mu1 - BG_N_SIGMA_INNER*bg_sig1),
+                                       std::min(bg_hi, bg_mu1 + BG_N_SIGMA_INNER*bg_sig1));
                         gfunc.SetParameters(gfunc.GetParameter(0), bg_mu1, bg_sig1);
                         if (hpy->Fit(&gfunc, "RNQ") == 0 && gfunc.GetParameter(2) > 0.) {
                             bg_mu2  = gfunc.GetParameter(1);
                             bg_sig2 = gfunc.GetParameter(2);
-                            bg_ok   = true;
-                            const double bg_cut = bg_mu2 - BG_N_SIGMA_CUT * bg_sig2;
-                            gr_bg_x.push_back(xcen);
-                            gr_bg_cut.push_back(bg_cut);
-                            final_cut = std::max(main_cut, bg_cut);
+                            // Sanity: mu2 must remain within the search window
+                            if (bg_mu2 >= bg_lo && bg_mu2 <= bg_hi) {
+                                bg_ok   = true;
+                                const double bg_cut = bg_mu2 - BG_N_SIGMA_CUT * bg_sig2;
+                                gr_bg_x.push_back(xcen);
+                                gr_bg_cut.push_back(bg_cut);
+                                gr_bg_mu.push_back(bg_mu2);
+                                gr_bg_sig.push_back(bg_sig2);
+                                final_cut = std::max(main_cut, bg_cut);
+                            }
                         }
                     }
                 }
@@ -415,10 +421,15 @@ private:
         TGraph  g_mu      (n_fit, gr_x.data(),       gr_mu.data());
         TGraphErrors g_mu_err(n_fit, gr_x.data(), gr_mu.data(),
                               gr_ex.data(), gr_sigma.data());
-        // Background cut graph (may be empty for years with insufficient stats)
+        // Background cut graph and mu±sigma graph (may be empty)
         const bool have_bg = (n_bg > 0);
-        TGraph g_bg;
-        if (have_bg) g_bg = TGraph(n_bg, gr_bg_x.data(), gr_bg_cut.data());
+        TGraph       g_bg;
+        TGraphErrors g_bg_mu_err;
+        if (have_bg) {
+            g_bg        = TGraph(n_bg, gr_bg_x.data(), gr_bg_cut.data());
+            g_bg_mu_err = TGraphErrors(n_bg, gr_bg_x.data(), gr_bg_mu.data(),
+                                       nullptr, gr_bg_sig.data());
+        }
 
         // ---- save cut curves to ROOT file ------------------------------------
         const std::string cuts_path = cuts_dir_ + "/event_sel_cuts_pbpb_20" + yr_ + ".root";
@@ -591,6 +602,10 @@ private:
                 gb->SetMarkerStyle(20); gb->SetMarkerSize(0.6);
                 gb->SetMarkerColor(kBlue+1); gb->SetLineColor(kBlue+1); gb->SetLineWidth(2);
                 gb->Draw("LP SAME");
+                TGraphErrors* gmu = (TGraphErrors*)g_bg_mu_err.Clone("__gd_bg_mu_sup");
+                gmu->SetMarkerStyle(21); gmu->SetMarkerSize(0.8);
+                gmu->SetMarkerColor(kYellow+1); gmu->SetLineColor(kYellow+1); gmu->SetLineWidth(2);
+                gmu->Draw("P SAME");
             }
             TLatex ts; ts.SetNDC(); ts.SetTextSize(0.036);
             ts.DrawLatex(0.15, 0.87, lbl.c_str());
@@ -601,6 +616,8 @@ private:
                 ts.DrawLatex(0.15, 0.75,
                     Form("blue: bg band #mu-%.0f#sigma  (FCal > %.1f TeV)",
                          BG_N_SIGMA_CUT, FCAL_BG_FIT_MIN_TEV));
+                ts.SetTextColor(kYellow+1);
+                ts.DrawLatex(0.15, 0.69, "yellow: bg band #mu #pm #sigma");
             }
             cs->SaveAs(OutPath("cut1_ZDC_FCal_2graph_support").c_str());
             delete cs; delete hd;
