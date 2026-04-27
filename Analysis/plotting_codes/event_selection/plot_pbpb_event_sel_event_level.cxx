@@ -34,7 +34,7 @@
 static const int    N_BINS_PER_SLICE    = 2;
 static const int    MIN_ENTRIES         = 100;
 static const double N_SIGMA_CUT         = 5.0;   // main band: cut at mu + N_SIGMA_CUT * sigma
-static const double FCAL_BG_FIT_MIN_TEV = 2.0;   // FCal ET above which background band is also fitted
+static const double FCAL_BG_FIT_MIN_TEV = 3.5;   // FCal ET above which background band is also fitted
 static const double BG_N_SIGMA_INNER    = 2.5;   // background band second-pass window half-width
 static const double BG_N_SIGMA_CUT      = 3.0;   // background band: veto at mu - BG_N_SIGMA_CUT * sigma
 
