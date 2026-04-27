@@ -29,8 +29,8 @@ protected:
     Int_t           centrality;
     // Run 3 only
     Float_t         zdc_ZdcEnergy[2]{};                 // [0]=A, [1]=C
-    Float_t         zdc_ZdcTime[2]{};                   // [0]=A, [1]=C
-    Float_t         zdc_ZdcModulePreSampleAmp[2][4]{};  // [side][module], [0]=A, [1]=C
+    Float_t         zdc_ZdcTime[2]{};                   // [0]=C, [1]=A
+    Float_t         zdc_ZdcModulePreSampleAmp[2][4]{};  // [side][module], [0]=C, [1]=A
     std::vector<int>* trk_numqual{nullptr};              // 8-element; indices: [2]=HIloose+pT, [3]=HItight+pT, [6]=HIloose, [7]=HItight
 
     // --------------------- class methods ---------------------------
@@ -58,6 +58,10 @@ protected:
     TGraph* g_evsel_cut4_{nullptr};       // nTrk frac lower bound
     TGraph* g_evsel_cut5_lo_{nullptr};    // nTrk-FCal lower bound
     TGraph* g_evsel_cut5_hi_{nullptr};    // nTrk-FCal upper bound
+
+    // FCal-ET-dependent event weight aligning this year's FCal distribution to PbPb 2023.
+    // Loaded from fcal_weight_pbpb_20YY.root for years 24/25; nullptr for year 23 (weight=1).
+    TGraph* g_fcal_weight_{nullptr};
 
     // --------------------- output file, histograms & trees ---------------------------
 

@@ -48,6 +48,16 @@ inline std::string PbPbEvSelCutsPath(int run_year) {
            std::to_string(yr) + ".root";
 }
 
+// ---- Path to per-year FCal ET weight file -----------------------------------
+// Contains TGraph("g_fcal_weight") derived by derive_fcal_scaling.cxx.
+// Exists for years 24 and 25 only; year 23 is the reference (weight = 1 everywhere).
+inline std::string PbPbFCalWeightPath(int run_year) {
+    int yr = run_year % 2000;
+    return "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" +
+           std::to_string(yr) + "/fcal_weight_pbpb_20" +
+           std::to_string(yr) + ".root";
+}
+
 // ---- TGraph cut evaluator with clamped extrapolation -----------------------
 inline double PbPbEvSelEvalCut(const TGraph* g, double x) {
     if (!g || g->GetN() == 0) return -1.;
