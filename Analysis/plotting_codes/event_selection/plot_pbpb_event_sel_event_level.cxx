@@ -34,12 +34,11 @@
 static const int    N_BINS_PER_SLICE    = 2;
 static const int    MIN_ENTRIES         = 100;
 static const double N_SIGMA_CUT         = 5.0;   // main band: cut at mu + N_SIGMA_CUT * sigma
-static const double FCAL_BG_FIT_MIN_TEV = 3.5;   // FCal ET above which background band is also fitted
+static const double FCAL_BG_FIT_MIN_TEV = 2.0;   // FCal ET above which background band is also fitted
 static const double BG_N_SIGMA_INNER    = 2.5;   // background band second-pass window half-width
 static const double BG_N_SIGMA_CUT      = 3.0;   // background band: veto at mu - BG_N_SIGMA_CUT * sigma
 
 // Per-year ZDC search window for the out-of-time pileup band (in h_zdc_fcal_ y-axis units).
-// Used for the first-pass restricted fit of the background band for FCal > FCAL_BG_FIT_MIN_TEV.
 static std::pair<double,double> GetBgSearchRange(int yr) {
     static const std::map<int, std::pair<double,double>> kBgMap = {
         {23, {220., 350.}},
@@ -48,6 +47,24 @@ static std::pair<double,double> GetBgSearchRange(int yr) {
     };
     auto it = kBgMap.find(yr);
     return (it != kBgMap.end()) ? it->second : std::make_pair(180., 300.);
+}
+
+// Per-year quadratic initial guess for background-band mu vs FCal ET [TeV].
+// Coefficients a,b,c of  mu(x) = a*x^2 + b*x + c  fitted through 3 calibration points:
+//   2023: (2.2,252), (2.6,306), (3.4,291)  -> a=-128.125,  b=750,       c=-777.875
+//   2024: (2.0,272), (3.6,256), (5.4,225)  -> a=-325/153,  b=290/153,   c=272+720/153
+//   2025: (2.2,270), (3.4,252), (4.6,218)  -> a=-50/9,     b=145/9,     c=270-77/9
+static double GetBgMuGuess(int yr, double xcen) {
+    struct Quad { double a, b, c; };
+    static const std::map<int, Quad> kQuad = {
+        {23, {-128.125,       750.0,          -777.875          }},
+        {24, {-325./153.,     290./153.,       272. + 720./153. }},
+        {25, {-50./9.,        145./9.,         270. -  77./9.   }},
+    };
+    auto it = kQuad.find(yr);
+    if (it == kQuad.end()) return 250.;
+    const auto& q = it->second;
+    return q.a * xcen * xcen + q.b * xcen + q.c;
 }
 
 // ---- per-year input file lists ----------------------------------------------
@@ -349,26 +366,29 @@ private:
             bool   bg_ok     = false;
             double bg_mu2 = 0., bg_sig2 = 0.;
             if (xcen > FCAL_BG_FIT_MIN_TEV) {
-                // Find max in background search window [bg_lo, bg_hi]
-                const int b_lo = hpy->FindBin(bg_lo);
-                const int b_hi = hpy->FindBin(bg_hi);
-                double bg_amp0 = 0., bg_mu0 = 0.5*(bg_lo + bg_hi);
-                for (int b = b_lo; b <= b_hi; ++b) {
-                    if (hpy->GetBinContent(b) > bg_amp0) {
-                        bg_amp0 = hpy->GetBinContent(b);
-                        bg_mu0  = hpy->GetBinCenter(b);
-                    }
-                }
-                const double bg_entries = hpy->Integral(b_lo, b_hi);
-                if (bg_amp0 > 0. && bg_entries >= MIN_ENTRIES) {
-                    // Pass 1: restricted to search window
-                    gfunc.SetRange(bg_lo, bg_hi);
-                    gfunc.SetParameters(bg_amp0, bg_mu0, (bg_hi - bg_lo) / 6.);
+                // Quadratic initial guess for bg_mu
+                const double bg_mu0_raw = GetBgMuGuess(run_year_, xcen);
+                const double bg_mu0    = std::max(bg_lo, std::min(bg_hi, bg_mu0_raw));
+                const double sigma_init = (bg_hi - bg_lo) / 6.;
+                // Pass-1 fit range: ±3σ_init centered on quadratic guess, clamped to [bg_lo,bg_hi].
+                // This excludes the main-band tail at the lower edge of the search window,
+                // which otherwise dominates and causes fit divergence at low FCal ET.
+                const double p1_lo = std::max(bg_lo, bg_mu0 - 3.*sigma_init);
+                const double p1_hi = std::min(bg_hi, bg_mu0 + 3.*sigma_init);
+                const int bp1_lo = hpy->FindBin(p1_lo);
+                const int bp1_hi = hpy->FindBin(p1_hi);
+                double bg_amp0 = 1.;
+                for (int b = bp1_lo; b <= bp1_hi; ++b)
+                    bg_amp0 = std::max(bg_amp0, hpy->GetBinContent(b));
+                const double bg_entries = hpy->Integral(bp1_lo, bp1_hi);
+                if (bg_entries >= MIN_ENTRIES) {
+                    // Pass 1: narrow window centered on quadratic guess
+                    gfunc.SetRange(p1_lo, p1_hi);
+                    gfunc.SetParameters(bg_amp0, bg_mu0, sigma_init);
                     if (hpy->Fit(&gfunc, "RNQ") == 0 && gfunc.GetParameter(2) > 0.) {
                         const double bg_mu1  = gfunc.GetParameter(1);
                         const double bg_sig1 = gfunc.GetParameter(2);
                         // Pass 2: mu1 ± BG_N_SIGMA_INNER * sigma1, clamped to [bg_lo, bg_hi]
-                        // to prevent the fit sliding back to the main band.
                         gfunc.SetRange(std::max(bg_lo, bg_mu1 - BG_N_SIGMA_INNER*bg_sig1),
                                        std::min(bg_hi, bg_mu1 + BG_N_SIGMA_INNER*bg_sig1));
                         gfunc.SetParameters(gfunc.GetParameter(0), bg_mu1, bg_sig1);
