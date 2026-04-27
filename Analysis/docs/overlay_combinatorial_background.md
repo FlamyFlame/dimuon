@@ -1,100 +1,65 @@
-# HIJING Overlay: Combinatorial Background and Single-B Statistics
+# HIJING Overlay: Truth Pair Structure and HF-Ancestry Limitations
 
-Test sample: HIJING 0–5 fm impact parameter (ultra-central Pb+Pb), Pythia bb→μμ overlaid.
-
----
-
-## 1. Combinatorial Background
-
-### Pair structure in the overlay NTUP
-
-The overlay `truth_mupair_*` branches store pairs of **one Pythia signal truth muon** paired with **one reconstructed muon from the combined (Pythia+HIJING) event**. This is not the same as PP fullsim, where both muons in every pair are Pythia-generated truth muons.
-
-Because most reconstructed "second muons" come from HIJING soft muon production (π/K decays), the pair pool is dominated by combinatorial (signal×background) pairs.
-
-### Counts (test sample: 60k events total, 6 kn bins × 10k events)
-
-| Centrality | OS pairs (`_op`) | SS pairs (`_ss`) | SS/OS |
-|-----------|-----------------|-----------------|-------|
-| ctr0–5 | 67,362 | 20,790 | 31% |
-| ctr5–10 | 14,888 | 4,842 | 31% |
-| ctr10–20 | 554 | — | — |
-| ctr20+ | 0 | — | — |
-
-Only the two most central bins are populated because the HIJING sample uses b < 5 fm impact parameter selection.
-
-### Effect on reconstruction efficiency
-
-The `_op` reco efficiency uses all OS pairs as denominator. Since the denominator is dominated by HIJING combinatorial background (Pythia×HIJING pairs), the apparent OS efficiency in ctr0–5 is:
-
-| Category | Denom | Pass medium | Apparent efficiency |
-|----------|-------|-------------|---------------------|
-| `_op_ctr0_5` | 67,362 | 612 | ~0.9% |
-
-This does **not** represent the signal reconstruction efficiency; it measures the probability that a random HIJING combinatorial OS pair passes medium selection. The `_single_b` efficiency is the physically meaningful quantity (see §2).
-
-### SS/OS symmetry
-
-The SS/OS ratio is ~31% (not ~100%) because the genuine Pythia signal pair (μ+×μ−) contributes only to OS. With N_HIJING soft muons per event, all with equal probability of + or −:
-- OS ≈ N_HIJING + 1 (HIJING×Pythia cross-pairs + signal pair)
-- SS ≈ N_HIJING (HIJING×Pythia same-sign cross-pairs)
-
-The imbalance reflects that Pythia contributes exactly one OS pair per event with no SS counterpart.
-
-### Strategies to deal with combinatorial background
-
-| Method | Signal purity | Status |
-|--------|--------------|--------|
-| `_single_b` (same-b truth flag) | 100% | Implemented; see §2 for structural limitation |
-| OS − SS subtraction | High (leading order) | SS per-centrality histograms now filled |
-| `_op` (all OS) | ~0.01% | Misleading; documents combinatorial level only |
+Test sample: Pythia 5.36 TeV pp hQCD pTH8–14 overlaid with HIJING b < 5 fm (ultra-central Pb+Pb).
 
 ---
 
-## 2. Single-B Statistics and Structural Limitation
+## 1. Truth Pair Structure
 
-### Comparison: overlay vs PP fullsim
+### What `truth_mupair_*` actually stores
 
-| Sample | Events (total) | `single_b` (truth, all) | `single_b` pass medium | Rate per event |
-|--------|----------------|------------------------|----------------------|---------------|
-| PP fullsim | 240k (40k/kn × 6) | 93,400 | 67,516 (72%) | 0.39 |
-| Overlay (HIJING) | 60k (10k/kn × 6) | **6** | 0 | ~0.0001 |
-| Expected if scaled | 60k | ~23,350 | ~17,000 | 0.39 |
-| Actual / expected | — | **×4,000 lower** | — | — |
+The overlay NTUP `truth_mupair_bar1/bar2` barcodes are ALL < 200,000 — i.e., **Pythia-only pairs**. The skimmer mupair loop (`TrigRates.cxx:2300`) filters for `id==13 && status==1` from `TruthParticles`. HIJING hard-scatter particles in the overlay `TruthParticles` container are not stable muons (they are quarks, gluons, and hadrons), so only Pythia stable muons form pairs.
 
-### What `from_same_b` means
+Empirically verified: across 200 overlay NTUP events, every `truth_mupair_bar1` and `truth_mupair_bar2` value is < 200,000.
 
-`from_same_b = true` requires both muons in a pair to trace to the **same b-hadron** (same `m1_eldest_bhadron_barcode == m2_eldest_bhadron_barcode`). The dominant topology is the b→c→μ cascade: a single B meson produces two muons — one direct (B→Dμν) and one secondary (D→μν). This is the open-bottom dimuon signal of interest (~39% of in-acceptance events in PP fullsim).
+### Why there are so many pairs per event
 
-### Root cause of the 4,000× suppression
+Overlay event 0 has 78,226 truth particles with bc < 200,000 (vs 486 in PP fullsim). The difference is Geant4 shower secondaries: in the overlay AOD, all Geant4 products (δ-rays, shower electrons, pions, kaons decaying to muons) are stored as truth particles with sequential Pythia barcodes. These include many soft muons from light-hadron decays — they form most of the mupairs.
 
-The suppression is **not from combinatorial background**. Combinatorial pairs add more entries to the OS denominator but do not remove signal pairs. The root cause is structural: the overlay NTUP `truth_mupair_*` branches store **(Pythia signal μ) × (HIJING reco μ)** pairs, not **(Pythia μ₁) × (Pythia μ₂)** pairs.
+### Parent group distribution (100-event test, after `truth_parents` fix)
 
-For these pairs:
-- `m1_eldest_bhadron_barcode`: valid (Pythia signal muon traces to a b-hadron)
-- `m2_eldest_bhadron_barcode`: **−10** (HIJING soft muon traces to π/K, not a b-hadron; ancestry trace terminates without finding a b-flavored hadron)
-- Condition `m1_bcode != -10 && m1_bcode == m2_bcode` → **always false**
+| Group | Fraction |
+|-------|---------|
+| `s_light` (4) | 68% |
+| `resonance_decay` (0) | 29% |
+| `direct_b` (1) | 0.5% |
+| `direct_c` (3) | 1.8% |
 
-The 6 observed `from_same_b` events are rare HIJING events where the second muon happens to come from a b-quark produced in the HIJING heavy-ion collision itself.
+Compare PP fullsim: 51% `direct_b`, 0% `s_light`.
 
-### Per-centrality single-B truth counts
+The 68% `s_light` comes from soft Geant4 muons (pion/kaon decays) that dominate the truth-level pair pool. The 0.5% `direct_b` are the genuine Pythia hard-scatter B-decay muons.
 
-| Bin | `single_b` denom | pass_medium | pass_tight | det response |
-|-----|-----------------|-------------|------------|--------------|
-| ctr0–5 | 4 | 0 | 0 | 0 |
-| ctr5–10 | 2 | 0 | 0 | 0 |
-| ctr10–20 | 0 | 0 | 0 | 0 |
+---
 
-- The 4+2 pairs in the top two bins are the rare HIJING-b cases, not Pythia signal.
-- Zero pass medium/tight: HIJING-origin muons embedded in ultra-central events fail quality selection.
-- Detector response histograms require `_single_b_pass_medium` (non-zero reco) → identically empty.
+## 2. `from_same_b` and HF Ancestry Limitations
+
+### Observed counts
+
+| Sample | Events | `from_same_b` pairs |
+|--------|--------|---------------------|
+| PP fullsim | 10k×6 kn | 93,400 (29.7%) |
+| Overlay (test) | 100 | ≈ 0 |
+
+### Root causes
+
+**Cause 1: Geant4 soft muons dominate the pair pool.**  
+Most pairs in the overlay flat tree are Geant4 secondary muons from pion/kaon decays. Their parent group is `s_light`, not `direct_b`. Even for the genuine Pythia B-decay muons, they are a tiny fraction of all pairs.
+
+**Cause 2: b-quark absent from overlay truth chain.**  
+For Pythia B-decay muons, the ancestry trace shows:
+```
+μ → B-meson → 3000208 (beam, bc=1)
+```
+The b-quark is missing (Geant4/AOD truth thinning in overlay suppresses parton-shower intermediates). `FindHeavyQuarks` returns −1 → `skip_event_origin_analysis = true` → `from_same_b` is never set, even for pairs where both muons come from b-decays.
+
+**Note on `truth_parents` reading**: `SetBranchAddress("truth_parents", &ptr)` requires a compiled CollectionProxy for `vector<vector<int>>`. This proxy is only available if `PythiaAnalysisClasses_h.so` (ACLiC pre-compiled) is newer than the source (ROOT auto-loads it), OR via `gInterpreter->GenerateDictionary("vector<vector<int>>","vector")`. Without it, `SetBranchAddress` silently returns −3 and ancestry trace fails. Fixed in `PythiaTruthExtras.c::InitInputExtra` (Apr 2026). The original overlay flat tree (Apr 23) was generated when the header was newer than the .so, so this bug was active.
 
 ### Path forward
 
-The current overlay pair structure does not permit `from_same_b` efficiency measurements. Two approaches exist:
+`from_same_b` efficiency measurements in overlay require:
 
-1. **Store Pythia-only truth pairs in the overlay NTUP** (skimmer change): add a separate branch set `truth_mupair_signal_*` containing only (Pythia truth μ₁) × (Pythia truth μ₂) pairs. This is the clean solution.
+1. **Apply truth-level pT cut** (≥ 4 GeV) to select hard-scatter Pythia muons before pair formation, eliminating the Geant4 soft-muon contamination.
 
-2. **Process Pythia truth pairs separately in the NTP** (analysis-side): after the standard overlay pair loop, iterate over the Pythia truth muon pair (two signal muons per event), match each to a reco muon, and record the efficiency for that signal pair separately. Requires access to `truth_mupair_bar1/bar2` that specifically references both Pythia signal barcodes.
+2. **Replace b-quark matching with B-hadron matching**: modify `HFMuonPairAnalysis` to allow `from_same_b` when both muons trace to the same `m1_eldest_bhadron_barcode` (the B-meson) even without finding the b-quark above it. Currently `skip_event_origin_analysis=true` prevents this.
 
-Both require that the full sample (1.6M–3.2M events/kn) is available, at which point the signal yield at full statistics would give ~{630k–1.25M} true single-b pairs in ctr0–5 — ample for efficiency maps.
+Both changes together should restore the ~29% from_same_b rate seen in PP fullsim.

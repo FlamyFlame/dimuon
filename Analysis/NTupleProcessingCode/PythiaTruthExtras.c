@@ -36,6 +36,12 @@ void PythiaTruthExtras<PairT, Derived>::ResonanceNameMap() {
 template <class PairT, class Derived>
 void PythiaTruthExtras<PairT, Derived>::InitInputExtra() {
 
+    // Ensure vector<vector<int>> CollectionProxy exists before SetBranchAddress.
+    // Without this, ROOT returns -3 ("no compiled CollectionProxy") in sessions
+    // where PythiaTruthExtras.h was not JIT-compiled by Cling.
+    if (!isPrivate)
+        gInterpreter->GenerateDictionary("vector<vector<int>>", "vector");
+
     // Helper lambda: bind truth particle branches onto one chain
     auto bind_truth = [&](TChain* ch) {
         if (!ch) return;

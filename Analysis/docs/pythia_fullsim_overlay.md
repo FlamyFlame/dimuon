@@ -168,11 +168,17 @@ From `PbPbBaseClass.h`:
 
 Centrality is stored as `avg_centrality` (integer percentage) in the overlay NTUP. The HIJING test sample uses a 0–5 fm impact parameter selection (ultra-central), so only ctr [0,5) (~81%) and [5,10) (~18%) are populated; all peripheral bins are empty for this sample.
 
-## HIJING combinatorial background
+## Overlay truth pair structure and HF-ancestry limitations
 
-In ultra-central HIJING overlay events, the large soft-muon multiplicity creates O(10,000) combinatorial OS pairs per genuine same-b signal pair. This dominates the `_op` (all OS) efficiency denominator, making the apparent `_op` efficiency (~1%) meaningless as a signal efficiency. Use `_single_b` efficiency plots (which filter for `from_same_b = true`) as the primary output; these require full sample statistics to have adequate signal yield.
+The overlay NTUP `truth_mupair_*` pairs are **Pythia×Pythia** (all barcodes < 200,000). The skimmer pairs only stable truth muons; HIJING hard-scatter particles are not stable muons.
 
-See [overlay_combinatorial_background.md](overlay_combinatorial_background.md) for quantitative observations and mitigation strategies (OS−SS subtraction, Pythia-only denominator filter).
+The pair pool is dominated by Geant4 secondary muons: the overlay AOD stores all GEANT4 shower products as truth particles with sequential Pythia-range barcodes (~74k per event vs ~500 in PP fullsim), including many soft pion/kaon-decay muons. This gives ~68% `s_light` parent group and makes `_op` efficiency meaningless as a signal efficiency.
+
+`from_same_b = true` requires both muons to trace to the same B-hadron. In overlay this is structurally suppressed by two effects:
+1. **Geant4 soft muons dominate** the truth pair pool, with `parent_group = s_light`, never `from_same_b`.
+2. **b-quark missing from overlay truth chain**: the ancestry trace ends at `B-meson → beam particle (id=3000208)` with no b-quark above it. `FindHeavyQuarks` returns −1 → `skip_event_origin_analysis = true` → `from_same_b` never set even for genuine B-decay pairs.
+
+Both issues need to be resolved before `_single_b` efficiency measurements are possible. See [overlay_combinatorial_background.md](overlay_combinatorial_background.md) for full diagnosis and required fixes.
 
 ## Running manually (without pipeline)
 
