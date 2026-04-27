@@ -140,13 +140,13 @@ protected:
         return dynamic_cast<T*>(infile->Get(hname.c_str()));
     }
 
-    std::string GetDetRespOutDir(const std::string& ctr_tag = "") const {
-        return GetDataDir() + "plots/" + GetPlotDirPrefix() + "_det_resp_plots"
-            + ctr_tag + "/" + (tight_WP ? "tight/" : "medium/");
+    std::string GetDetRespOutDir(const std::string& /*ctr_tag*/ = "") const {
+        return GetDataDir() + "plots/" + GetPlotDirPrefix() + "_det_resp_plots/"
+            + (tight_WP ? "tight/" : "medium/");
     }
-    std::string GetRecoEffcyOutDir(const std::string& ctr_tag = "") const {
+    std::string GetRecoEffcyOutDir(const std::string& /*ctr_tag*/ = "") const {
         return GetDataDir() + "plots/" + GetPlotDirPrefix() + "_reco_effcy_plots"
-            + require_signal_cuts_file_dir_suffix + ctr_tag + "/"
+            + require_signal_cuts_file_dir_suffix + "/"
             + (tight_WP ? "tight/" : "medium/");
     }
 
@@ -245,7 +245,7 @@ protected:
             TLatex lab; lab.SetNDC(); lab.SetTextSize(0.045); lab.DrawLatex(0.12, 0.92, (var + " truth vs reco").c_str());
 
             c.Modified(); c.Update();
-            c.SaveAs((outdir + var + "_truth_reco_compr" + wp_suffix + ".png").c_str());
+            c.SaveAs((outdir + var + "_truth_reco_compr" + ctr_tag + wp_suffix + ".png").c_str());
             delete h_truth; delete h_reco;
         }
     }
@@ -277,7 +277,7 @@ protected:
             h2->SetStats(0); h2->SetTitle((var + " response matrix").c_str());
             h2->GetZaxis()->SetTitle(DiffZ2D(var).c_str());
             h2->Draw("colz");
-            c.SaveAs((outdir + var + "_response_matrix" + wp_suffix + ".png").c_str());
+            c.SaveAs((outdir + var + "_response_matrix" + ctr_tag + wp_suffix + ".png").c_str());
             delete h2;
         }
     }
@@ -329,7 +329,7 @@ protected:
                 }
             }
 
-            c.SaveAs((outdir + "reco_effcy_" + var + "_ss_op" + wp_suffix + ".png").c_str());
+            c.SaveAs((outdir + "reco_effcy_" + var + "_ss_op" + ctr_tag + wp_suffix + ".png").c_str());
             for (auto* h : effs_to_delete) delete h;
         }
     }
@@ -393,7 +393,7 @@ protected:
                 }
             }
 
-            c.SaveAs((outdir + "reco_effcy_2d_" + vary + "_vs_" + varx + wp_suffix + ".png").c_str());
+            c.SaveAs((outdir + "reco_effcy_2d_" + vary + "_vs_" + varx + ctr_tag + wp_suffix + ".png").c_str());
             delete h_eff_ss; delete h_eff_op;
         }
     }
@@ -432,7 +432,7 @@ protected:
             if (LogAx(varx, cfg)) gPad->SetLogx(true);
             h_eff->SetTitle((vary + " vs " + varx + "_single_b reco effcy").c_str());
             h_eff->Draw("colz");
-            c.SaveAs((outdir + "reco_effcy_2d_" + vary + "_vs_" + varx + "_single_b" + wp_suffix + ".png").c_str());
+            c.SaveAs((outdir + "reco_effcy_2d_" + vary + "_vs_" + varx + "_single_b" + ctr_tag + wp_suffix + ".png").c_str());
             delete h_eff;
         }
     }
@@ -491,7 +491,7 @@ protected:
                 leg->Draw("same");
             }
 
-            c.SaveAs((outdir + "reco_effcy_" + var + "_single_b_op_compr" + wp_suffix + ".png").c_str());
+            c.SaveAs((outdir + "reco_effcy_" + var + "_single_b_op_compr" + ctr_tag + wp_suffix + ".png").c_str());
             delete h_eff_op; delete h_eff_single_b;
         }
     }
@@ -597,7 +597,7 @@ protected:
             }
 
             const std::string out = ranged_outdir + "reco_effcy_" + vary + "_vs_" + varx + "_single_b_op_compr"
-                + axisTag + wp_suffix + ".png";
+                + axisTag + ctr_tag + wp_suffix + ".png";
             c.SaveAs(out.c_str());
         }
     }
@@ -645,8 +645,6 @@ public:
     void Run() override {
         InitializePbPb();
         if (!Initialize()) return;
-
-        RunForFilter("");
 
         for (int ictr = 0; ictr < nCtrBins; ++ictr){
             const std::string& ctr_tag = ctr_bins[ictr];
