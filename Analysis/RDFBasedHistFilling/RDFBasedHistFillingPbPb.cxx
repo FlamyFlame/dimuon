@@ -792,10 +792,10 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
 
     ROOT::RDF::RNode df_single_b_crossx_weighted = df_single_b_crossx.Define(
         "weight_for_RAA",
-        [this](int avg_centrality, double weight, float fcal_corr_weight) {
-            return this->CalculateWeightForRAA(avg_centrality, weight) * fcal_corr_weight;
+        [this](int avg_centrality, double weight) {
+            return this->CalculateWeightForRAA(avg_centrality, weight);
         },
-        {"avg_centrality", "weight", "fcal_corr_weight"}
+        {"avg_centrality", "weight"}
     );
     if (df_map.find("df_single_b_crossx_weighted") == df_map.end()) {
         df_map.emplace("df_single_b_crossx_weighted", df_single_b_crossx_weighted);
@@ -839,10 +839,10 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
 
         ROOT::RDF::RNode df_single_b_crossx_ctr_weighted = df_single_b_crossx_ctr.Define(
             "weight_for_RAA",
-            [this](int avg_centrality, double weight, float fcal_corr_weight) {
-                return this->CalculateWeightForRAA(avg_centrality, weight) * fcal_corr_weight;
+            [this](int avg_centrality, double weight) {
+                return this->CalculateWeightForRAA(avg_centrality, weight);
             },
-            {"avg_centrality", "weight", "fcal_corr_weight"}
+            {"avg_centrality", "weight"}
         );
         const std::string df_crossx_ctr_weighted_name = "df_single_b_crossx_weighted_" + ctr;
         if (df_map.find(df_crossx_ctr_weighted_name) == df_map.end()) {
