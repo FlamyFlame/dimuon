@@ -178,8 +178,8 @@ private:
             const float fcal_C  = FCal_Et_N * 1e-6f;
             const float fcal_AC = fcal_A + fcal_C;
             const float zdc_tot = (zdc_E[0] + zdc_E[1]) / 1000.f;  // GeV → TeV
-            const float zdc_tA  = zdc_t[0];                // [0]=A-side
-            const float zdc_tC  = zdc_t[1];
+            const float zdc_tA  = zdc_t[1];                // [1]=A-side
+            const float zdc_tC  = zdc_t[0];                // [0]=C-side
 
             // trk_numqual[0] = all tracks pT > 400 MeV
             // trk_numqual[3] = HItight + pT > 400 MeV
@@ -602,7 +602,7 @@ private:
             // Apply banana cut (interpolated)
             if (EvalCut(&g_cut, fcal_AC) > 0. && zdc_tot > EvalCut(&g_cut, fcal_AC)) continue;
 
-            const float tA = zdc_t[0], tC = zdc_t[1];
+            const float tA = zdc_t[1], tC = zdc_t[0];  // [1]=A, [0]=C
             int ic = (centrality <= 4) ? centrality : 5;  // 0-4 individual, 5-9 → bin 5
             hh[ic]->Fill(tA, tC);
         }

@@ -43,9 +43,9 @@ static const double CUT2_T_NS_ALT    = 1.5;    // ZDC time window [ns]
 // Values are {side_A, side_C}. pbpb2023 not yet evaluated (uses 2024 value as placeholder).
 static std::pair<float,float> GetPreampCuts(int yr) {
     static const std::map<int, std::pair<float,float>> kMap = {
-        {23, {250.f, 300.f}},  // side A ~250 ADC, side C ~300 ADC
+        {23, {300.f, 250.f}},  // side A ~300 ADC, side C ~250 ADC
         {24, {385.f, 385.f}},  // symmetric; turnover well above 385 for both sides
-        {25, {650.f, 850.f}},  // side A ~650 ADC, side C ~850 ADC
+        {25, {850.f, 650.f}},  // side A ~850 ADC, side C ~650 ADC
     };
     auto it = kMap.find(yr);
     return (it != kMap.end()) ? it->second : std::make_pair(385.f, 385.f);
@@ -349,10 +349,10 @@ private:
             ev.fcal_C   = FCal_Et_N * 1e-6f;
             ev.fcal_AC  = ev.fcal_A + ev.fcal_C;
             ev.zdc_tot  = (zdc_E[0] + zdc_E[1]) / 1000.f;
-            ev.tA       = zdc_t[0];
-            ev.tC       = zdc_t[1];
-            ev.preamp_A = preamp[0][0] + preamp[0][1] + preamp[0][2] + preamp[0][3];
-            ev.preamp_C = preamp[1][0] + preamp[1][1] + preamp[1][2] + preamp[1][3];
+            ev.tA       = zdc_t[1];   // [1]=A
+            ev.tC       = zdc_t[0];   // [0]=C
+            ev.preamp_A = preamp[1][0] + preamp[1][1] + preamp[1][2] + preamp[1][3];  // [1]=A
+            ev.preamp_C = preamp[0][0] + preamp[0][1] + preamp[0][2] + preamp[0][3];  // [0]=C
             ev.ntrk_total = 0; ev.ntrk_tight = 0;
             if (trk_numqual && (int)trk_numqual->size() >= 4) {
                 ev.ntrk_total = (*trk_numqual)[0];
