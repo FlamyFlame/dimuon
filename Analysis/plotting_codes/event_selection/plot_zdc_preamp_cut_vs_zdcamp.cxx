@@ -29,7 +29,7 @@
 #include "../../NTupleProcessingCode/PbPbEventSelConfig.h"
 
 static const std::string kBase    = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/";
-static const std::string kPlotDir = kBase + "plots/";
+static const std::string kPlotDir = kBase + "plots/single_b_analysis/event_selection/";
 
 static std::vector<std::string> FilesForYear(int yr) {
     std::string base = kBase + "pbpb_20" + std::to_string(yr) + "/";
