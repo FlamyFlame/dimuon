@@ -8,7 +8,7 @@ Controlled by `FullSimSampleType` enum (`MuonObjectsParamsAndHelpers/FullSimSamp
 
 | Enum value | Label | Overlay | Input directory (test) |
 |-----------|-------|---------|----------------------|
-| `hijing` | `hijing_overlay_pp24` | HIJING minimum-bias | `usatlasdata/pythia_fullsim_hijing_overlay_test_sample/` |
+| `hijing` | `hijing_overlay_pp24` | HIJING 0–5 fm impact parameter (ultra-central) | `usatlasdata/pythia_fullsim_hijing_overlay_test_sample/` |
 | `zmumu` | `zmumu_overlay_pp24` | Z->mumu | `usatlasdata/pythia_fullsim_zmumu_overlay_test_sample/` |
 | `data` | `data_overlay_pp24` | Real data | `usatlasdata/pythia_fullsim_data_overlay_test_sample/` |
 
@@ -133,12 +133,18 @@ root -l -b -q '.L PythiaFullsimRecoEffPlotter.cxx+'
 **Output structure:**
 ```
 {data_dir}/plots/
-  {plot_dir_prefix}_reco_effcy_plots/medium/          -- inclusive medium WP
-  {plot_dir_prefix}_reco_effcy_plots_ctr0_5/medium/   -- centrality [0,5)
-  {plot_dir_prefix}_reco_effcy_plots_ctr5_10/medium/
-  ...
-  {plot_dir_prefix}_det_resp_plots/medium/            -- detector response
+  {plot_dir_prefix}_reco_effcy_plots/medium/   -- reco efficiency, all centrality bins
+      reco_effcy_truth_pair_pt_ss_op_ctr0_5_mediumWP.png
+      reco_effcy_truth_pair_pt_ss_op_ctr5_10_mediumWP.png
+      ...
+  {plot_dir_prefix}_reco_effcy_plots/tight/
+  {plot_dir_prefix}_reco_effcy_plots_signal_cuts/medium/
+  {plot_dir_prefix}_reco_effcy_plots_signal_cuts/tight/
+  {plot_dir_prefix}_det_resp_plots/medium/     -- detector response, ctr_tag in filename
+      pair_pt_truth_reco_compr_ctr0_5_mediumWP.png
+  {plot_dir_prefix}_det_resp_plots/tight/
 ```
+All centrality bins go into a single flat directory; the bin tag (`_ctrX_Y`) is embedded in each filename. No inclusive (centrality-integrated) plots are produced for the overlay.
 
 ### Validation between stages
 
@@ -160,7 +166,13 @@ From `PbPbBaseClass.h`:
 | 4 | [30, 50) | `_ctr30_50` | `sigma_ctr[4]` |
 | 5 | [50, 80) | `_ctr50_80` | `sigma_ctr[5]` |
 
-Centrality is stored as `avg_centrality` (integer percentage) in the overlay NTUP. The test sample is dominated by central events (ctr [0,5) and [5,10) populated; peripheral bins may be empty).
+Centrality is stored as `avg_centrality` (integer percentage) in the overlay NTUP. The HIJING test sample uses a 0–5 fm impact parameter selection (ultra-central), so only ctr [0,5) (~81%) and [5,10) (~18%) are populated; all peripheral bins are empty for this sample.
+
+## HIJING combinatorial background
+
+In ultra-central HIJING overlay events, the large soft-muon multiplicity creates O(10,000) combinatorial OS pairs per genuine same-b signal pair. This dominates the `_op` (all OS) efficiency denominator, making the apparent `_op` efficiency (~1%) meaningless as a signal efficiency. Use `_single_b` efficiency plots (which filter for `from_same_b = true`) as the primary output; these require full sample statistics to have adequate signal yield.
+
+See [overlay_combinatorial_background.md](overlay_combinatorial_background.md) for quantitative observations and mitigation strategies (OS−SS subtraction, Pythia-only denominator filter).
 
 ## Running manually (without pipeline)
 
