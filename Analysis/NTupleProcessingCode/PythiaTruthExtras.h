@@ -10,6 +10,7 @@
 #include "../MuonObjectsParamsAndHelpers/ParamsSet.h"
 #include "TH1D.h"
 #include "TH2D.h"
+#include "TInterpreter.h"
 #include "TLorentzVector.h"
 
 template <class PairT, class Derived>
