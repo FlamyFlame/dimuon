@@ -59,10 +59,6 @@ protected:
     TGraph* g_evsel_cut5_lo_{nullptr};    // nTrk-FCal lower bound
     TGraph* g_evsel_cut5_hi_{nullptr};    // nTrk-FCal upper bound
 
-    // FCal-ET-dependent event weight aligning this year's FCal distribution to PbPb 2023.
-    // Loaded from fcal_weight_pbpb_20YY.root for years 24/25; nullptr for year 23 (weight=1).
-    TGraph* g_fcal_weight_{nullptr};
-
     // --------------------- output file, histograms & trees ---------------------------
 
     TTree* muonOutTreeBinned[ParamsSet::nCtrIntvls];

@@ -93,15 +93,6 @@ void PbPbExtras<Derived>::FillMuonPairExtra(int pair_ind){
   self().mpairRef()->m1.ev_FCal_Et = FCal_Et * 1e-6f;
   self().mpairRef()->m2.ev_FCal_Et = FCal_Et * 1e-6f;
 
-  // Per-event FCal correction weight (years 24/25, centrality 0-80%).
-  // g_fcal_weight_ is nullptr for year 23 → weight stays at default 1.
-  if (g_fcal_weight_) {
-    const float fcal_tev = FCal_Et * 1e-6f;
-    constexpr float kFCal_80_ref = 0.063208f;  // FCal_ET_Bins_PbPb2023[79] [TeV]
-    self().mpairRef()->fcal_corr_weight =
-        (fcal_tev > kFCal_80_ref) ? (float)g_fcal_weight_->Eval(fcal_tev) : 0.f;
-  }
-
   if (self().isRun3){
     self().mpairRef()->year = self().run_year;
 
@@ -179,22 +170,6 @@ void PbPbExtras<Derived>::InitEventSel() {
   f->Close();
   std::cout << "PbPbExtras::InitEventSel: loaded cuts from " << path << std::endl;
 
-  // Load FCal-ET-dependent weight for years where the FCal distribution is corrected.
-  // File produced by plotting_codes/fcal_scaling/derive_fcal_scaling.cxx.
-  const int yr = self().run_year % 2000;
-  if (yr == 24 || yr == 25) {
-    const std::string wpath = PbPbFCalWeightPath(self().run_year);
-    TFile* fw = TFile::Open(wpath.c_str(), "READ");
-    if (!fw || fw->IsZombie())
-      throw std::runtime_error("PbPbExtras::InitEventSel: FCal weight file not found: " + wpath);
-    TGraph* g = (TGraph*)fw->Get("g_fcal_weight");
-    if (!g)
-      throw std::runtime_error("PbPbExtras::InitEventSel: 'g_fcal_weight' not found in " + wpath);
-    g_fcal_weight_ = (TGraph*)g->Clone();
-    fw->Close();
-    std::cout << "PbPbExtras::InitEventSel: loaded FCal weight ("
-              << g_fcal_weight_->GetN() << " points) for year 20" << yr << std::endl;
-  }
 }
 
 template <class Derived>

@@ -21,7 +21,6 @@ struct PairPbPbExtras {
   	// FCal distribution correction weight for years 24/25 (derived vs PbPb23 reference).
   	// Applies for FCal_Et > 80% centrality boundary; 0 for more peripheral events.
   	// Year 23: always 1.0.
-  	float fcal_corr_weight{1.f};
   	void UpdateCentrality();
 
 protected:
@@ -49,11 +48,9 @@ struct MuonPairPbPb
 {
     void PairValueCalcHook() {
         this->PairValueCalcPbPb(); // sets avg_centrality from ev_centrality branch
-        // Recalculate centrality from FCal ET (which is pre-scaled to the 2023 reference).
-        // pbpb2025: centrality branch is all zeros in the skim.
-        // pbpb2024: overrides the branch value to be consistent with the FCal scaling.
+        // pbpb2025: centrality branch is all zeros in the skim → recalculate.
         int yr = year % 2000;
-        if (yr == 24 || yr == 25) this->UpdateCentrality();
+        if (yr == 25) this->UpdateCentrality();
     }
 };
 
@@ -147,8 +144,7 @@ void PairPbPbExtras<Derived>::UpdateCentrality(){
     avg_centrality = GetCentralityPbPb2023(FCal_Et);
     break;
   case 24:
-    // FCal_Et is pre-scaled to the 2023 reference; use 2023 thresholds.
-    avg_centrality = GetCentralityPbPb2023(FCal_Et);
+    avg_centrality = GetCentralityPbPb2024(FCal_Et);
     break;
   case 25:
     avg_centrality = GetCentralityPbPb2023(FCal_Et);  // use pbpb2023 thresholds until pbpb2025 are derived
