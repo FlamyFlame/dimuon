@@ -39,6 +39,8 @@ protected:
 
         ROOT::RDF::RNode& df_op_weighted = map_at_checked(df_map, "df_op_weighted",
             "CreateBaseRDFsPythiaExtra (overlay): df_op_weighted");
+        ROOT::RDF::RNode& df_ss_weighted = map_at_checked(df_map, "df_ss_weighted",
+            "CreateBaseRDFsPythiaExtra (overlay): df_ss_weighted");
 
         for (int ictr = 0; ictr < nCtrBins; ictr++) {
             int lo = ctr_bin_edges[ictr];
@@ -49,13 +51,15 @@ protected:
 
             df_map.emplace("df_op" + ctr_tag + "_weighted",
                 df_op_weighted.Filter(ctr_filter, {"avg_centrality"}));
+            df_map.emplace("df_ss" + ctr_tag + "_weighted",
+                df_ss_weighted.Filter(ctr_filter, {"avg_centrality"}));
 
             ROOT::RDF::RNode& df_sb = map_at_checked(df_map, "df_single_b_weighted",
                 "CreateBaseRDFsPythiaExtra (overlay): df_single_b_weighted");
             df_map.emplace("df_single_b" + ctr_tag + "_weighted",
                 df_sb.Filter(ctr_filter, {"avg_centrality"}));
 
-            for (const std::string& pair_catgr : {"_op", "_single_b"}) {
+            for (const std::string& pair_catgr : {"_ss", "_op", "_single_b"}) {
                 const std::string base = "df" + pair_catgr + ctr_tag;
                 ROOT::RDF::RNode& node = map_at_checked(df_map, base + "_weighted",
                     Form("CreateBaseRDFsPythiaExtra (overlay): %s_weighted", base.c_str()));
@@ -86,7 +90,7 @@ protected:
         for (int ictr = 0; ictr < nCtrBins; ictr++) {
             const std::string& ctr_tag = ctr_bins[ictr];
 
-            for (const std::string& pair_catgr : {"_op", "_single_b"}) {
+            for (const std::string& pair_catgr : {"_ss", "_op", "_single_b"}) {
                 const std::vector<std::string> quality_cats = {
                     "", "_pass_medium", "_pass_tight",
                     "_pass_signal_truth",
@@ -111,9 +115,9 @@ protected:
         for (int ictr = 0; ictr < nCtrBins; ictr++) {
             const std::string& ctr_tag = ctr_bins[ictr];
             MakeAndWriteMuPairRecoEffProjGraphsHelper(
-                {"_op" + ctr_tag, "_single_b" + ctr_tag}, true);
+                {"_ss" + ctr_tag, "_op" + ctr_tag, "_single_b" + ctr_tag}, true);
             MakeAndWriteMuPairRecoEffProjGraphsHelper(
-                {"_op" + ctr_tag, "_single_b" + ctr_tag}, true, true);
+                {"_ss" + ctr_tag, "_op" + ctr_tag, "_single_b" + ctr_tag}, true, true);
         }
     }
 
@@ -125,7 +129,7 @@ protected:
             std::vector<std::string> ctr_reco_effcy_filters;
             std::vector<std::string> ctr_detector_response_filters;
 
-            for (const std::string& pair_catgr : {"_op", "_single_b"}) {
+            for (const std::string& pair_catgr : {"_ss", "_op", "_single_b"}) {
                 const std::vector<std::string> quality_cats_eff = {
                     "", "_pass_medium", "_pass_tight",
                     "_pass_signal_truth",
