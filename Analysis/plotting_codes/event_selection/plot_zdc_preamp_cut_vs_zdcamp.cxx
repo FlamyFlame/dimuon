@@ -15,6 +15,8 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <algorithm>
+#include <utility>
 #include "TChain.h"
 #include "TFile.h"
 #include "TParameter.h"
@@ -48,6 +50,7 @@ static std::vector<std::string> FilesForYear(int yr) {
 }
 
 struct YearResult {
+    double cut_A{0.},   cut_C{0.};    // hard preamp cut [ADC]
     double ratio_A{0.}, ratio_C{0.};  // cut_preamp / mean_zdcAmp
 };
 
@@ -109,12 +112,91 @@ static YearResult ProcessYear(int yr) {
     const double meanA = (n_sel > 0) ? sumA / n_sel : 1.;
     const double meanC = (n_sel > 0) ? sumC / n_sel : 1.;
     YearResult res;
+    res.cut_A   = cut_A;  res.cut_C   = cut_C;
     res.ratio_A = cut_A / meanA;
     res.ratio_C = cut_C / meanC;
     std::cout << "  mean_zdcAmp_A=" << meanA << "  mean_zdcAmp_C=" << meanC
               << "  cut_A=" << cut_A << "  cut_C=" << cut_C
               << "  ratio_A=" << res.ratio_A << "  ratio_C=" << res.ratio_C << "\n";
     return res;
+}
+
+// Draw one panel: 3-column LP graph for side A (black) and C (blue).
+// valsA/valsC: 3-element arrays; fmt: printf format for value annotations.
+static void DrawPanel(TPad* pad,
+                      const double* valsA, const double* valsC,
+                      const char* ytitle, const char* fmt,
+                      bool drawLegend, double ylo, double yhi) {
+    pad->cd();
+    pad->SetLeftMargin(0.18);
+    pad->SetRightMargin(0.05);
+    pad->SetBottomMargin(0.18);
+    pad->SetTopMargin(0.07);
+
+    const double xs[3] = {0., 1., 2.};
+    TGraph* gA = new TGraph(3, xs, valsA);
+    TGraph* gC = new TGraph(3, xs, valsC);
+    gA->SetMarkerStyle(20); gA->SetMarkerSize(1.8);
+    gA->SetMarkerColor(kBlack); gA->SetLineColor(kBlack); gA->SetLineWidth(2);
+    gC->SetMarkerStyle(21); gC->SetMarkerSize(1.8);
+    gC->SetMarkerColor(kBlue+1); gC->SetLineColor(kBlue+1); gC->SetLineWidth(2);
+
+    TGraph* fr = new TGraph(3, xs, valsA);
+    fr->SetTitle(Form(";PbPb year;%s", ytitle));
+    fr->GetXaxis()->SetLimits(-0.5, 2.5);
+    fr->GetYaxis()->SetRangeUser(ylo, yhi);
+    fr->GetXaxis()->SetNdivisions(3);
+    fr->GetXaxis()->SetLabelOffset(999);
+    fr->GetYaxis()->SetTitleOffset(1.6);
+    fr->GetYaxis()->SetTitleSize(0.052);
+    fr->GetXaxis()->SetTitleSize(0.052);
+    fr->SetMarkerStyle(1); fr->SetMarkerColor(0); fr->SetLineColor(0);
+    fr->Draw("AP");
+    fr->GetXaxis()->SetLimits(-0.5, 2.5);
+    fr->GetYaxis()->SetRangeUser(ylo, yhi);
+
+    if (ylo < 0. && yhi > 0.) {
+        TLine* zl = new TLine(-0.5, 0., 2.5, 0.);
+        zl->SetLineStyle(2); zl->SetLineColor(kGray+1);
+        zl->Draw();
+    }
+
+    gA->Draw("LP same");
+    gC->Draw("LP same");
+
+    TLatex lab;
+    lab.SetTextAlign(22); lab.SetTextSize(0.055);
+    const double laby = ylo - 0.09*(yhi - ylo);
+    lab.DrawLatex(0., laby, "2023");
+    lab.DrawLatex(1., laby, "2024");
+    lab.DrawLatex(2., laby, "2025");
+
+    TLatex val;
+    val.SetTextSize(0.042); val.SetTextAlign(21);
+    const double off = 0.04 * (yhi - ylo);
+    for (int i = 0; i < 3; ++i) {
+        val.SetTextColor(kBlack);
+        val.DrawLatex(xs[i] - 0.09, valsA[i] + off, Form(fmt, valsA[i]));
+        val.SetTextColor(kBlue+1);
+        val.DrawLatex(xs[i] + 0.09, valsC[i] + off, Form(fmt, valsC[i]));
+    }
+
+    if (drawLegend) {
+        TLegend* leg = new TLegend(0.22, 0.73, 0.54, 0.91);
+        leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.050);
+        leg->AddEntry(gA, "Side A", "lp");
+        leg->AddEntry(gC, "Side C", "lp");
+        leg->Draw();
+    }
+}
+
+// y-axis range: 25% padding, always includes zero.
+static std::pair<double,double> YRange(const double* a, const double* b) {
+    double lo = std::min(*std::min_element(a,a+3), *std::min_element(b,b+3));
+    double hi = std::max(*std::max_element(a,a+3), *std::max_element(b,b+3));
+    lo = std::min(lo, 0.);
+    double pad = 0.25 * (hi - lo);
+    return {lo - pad, hi + pad};
 }
 
 void plot_zdc_preamp_cut_vs_zdcamp() {
@@ -125,84 +207,22 @@ void plot_zdc_preamp_cut_vs_zdcamp() {
     YearResult R[3];
     for (int i = 0; i < 3; ++i) R[i] = ProcessYear(years[i]);
 
-    const double xs[3]     = {0., 1., 2.};
-    double ratioA[3], ratioC[3];
-    for (int i = 0; i < 3; ++i) { ratioA[i] = R[i].ratio_A; ratioC[i] = R[i].ratio_C; }
-
-    // y-axis range with 25% padding above/below
-    double lo = *std::min_element(ratioA, ratioA+3);
-    lo = std::min(lo, *std::min_element(ratioC, ratioC+3));
-    double hi = *std::max_element(ratioA, ratioA+3);
-    hi = std::max(hi, *std::max_element(ratioC, ratioC+3));
-    lo = std::min(lo, 0.);   // always include zero
-    const double pad = 0.25 * (hi - lo);
-    const double ylo = lo - pad, yhi = hi + pad;
-
-    TCanvas* c = new TCanvas("c", "ZDC preamp cut / ZdcAmp", 600, 550);
-    c->SetLeftMargin(0.17);
-    c->SetRightMargin(0.05);
-    c->SetBottomMargin(0.18);
-    c->SetTopMargin(0.07);
-
-    TGraph* gA = new TGraph(3, xs, ratioA);
-    TGraph* gC = new TGraph(3, xs, ratioC);
-    gA->SetMarkerStyle(20); gA->SetMarkerSize(1.8);
-    gA->SetMarkerColor(kBlack); gA->SetLineColor(kBlack); gA->SetLineWidth(2);
-    gC->SetMarkerStyle(21); gC->SetMarkerSize(1.8);
-    gC->SetMarkerColor(kBlue+1); gC->SetLineColor(kBlue+1); gC->SetLineWidth(2);
-
-    // invisible frame to set axis range and labels
-    TGraph* fr = new TGraph(3, xs, ratioA);
-    fr->SetTitle(";PbPb year;Preamp cut / mean ZDC amplitude");
-    fr->GetXaxis()->SetLimits(-0.5, 2.5);
-    fr->GetYaxis()->SetRangeUser(ylo, yhi);
-    fr->GetXaxis()->SetNdivisions(3);
-    fr->GetXaxis()->SetLabelOffset(999);
-    fr->GetYaxis()->SetTitleOffset(1.6);
-    fr->GetYaxis()->SetTitleSize(0.050);
-    fr->GetXaxis()->SetTitleSize(0.050);
-    fr->SetMarkerStyle(1); fr->SetMarkerColor(0); fr->SetLineColor(0);
-    fr->Draw("AP");
-    fr->GetXaxis()->SetLimits(-0.5, 2.5);
-    fr->GetYaxis()->SetRangeUser(ylo, yhi);
-
-    // dashed line at y=0 if range crosses zero
-    if (ylo < 0. && yhi > 0.) {
-        TLine* zl = new TLine(-0.5, 0., 2.5, 0.);
-        zl->SetLineStyle(2); zl->SetLineColor(kGray+1);
-        zl->Draw();
-    }
-
-    gA->Draw("LP same");
-    gC->Draw("LP same");
-
-    // year labels on x-axis
-    TLatex lab;
-    lab.SetTextAlign(22); lab.SetTextSize(0.055);
-    const double laby = ylo - 0.09*(yhi - ylo);
-    lab.DrawLatex(0., laby, "2023");
-    lab.DrawLatex(1., laby, "2024");
-    lab.DrawLatex(2., laby, "2025");
-
-    // value annotations
-    TLatex val;
-    val.SetTextSize(0.042); val.SetTextAlign(21);
-    const double off = 0.04 * (yhi - ylo);
+    double cutA[3], cutC[3], ratioA[3], ratioC[3];
     for (int i = 0; i < 3; ++i) {
-        val.SetTextColor(kBlack);
-        val.DrawLatex(xs[i] - 0.09, ratioA[i] + off, Form("%.2f", ratioA[i]));
-        val.SetTextColor(kBlue+1);
-        val.DrawLatex(xs[i] + 0.09, ratioC[i] + off, Form("%.2f", ratioC[i]));
+        cutA[i]   = R[i].cut_A;   cutC[i]   = R[i].cut_C;
+        ratioA[i] = R[i].ratio_A; ratioC[i] = R[i].ratio_C;
     }
 
-    TLegend* leg = new TLegend(0.20, 0.75, 0.50, 0.91);
-    leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.050);
-    leg->AddEntry(gA, "Side A", "lp");
-    leg->AddEntry(gC, "Side C", "lp");
-    leg->Draw();
+    auto [clo, chi] = YRange(cutA, cutC);
+    auto [rlo, rhi] = YRange(ratioA, ratioC);
 
-    TLatex atl; atl.SetNDC(); atl.SetTextSize(0.038); atl.SetTextAlign(11);
-    atl.DrawLatex(0.19, 0.09, "#bf{ATLAS Internal} | ZDC preamp cut vs ZDC amp");
+    TCanvas* c = new TCanvas("c", "ZDC preamp cut vs ZdcAmp", 1100, 500);
+    TPad* pL = new TPad("pL", "", 0.00, 0.00, 0.50, 1.00);
+    TPad* pR = new TPad("pR", "", 0.50, 0.00, 1.00, 1.00);
+    pL->Draw(); pR->Draw();
+
+    DrawPanel(pL, cutA,   cutC,   "Preamp hard cut [ADC]",          "%.0f", true,  clo, chi);
+    DrawPanel(pR, ratioA, ratioC, "Preamp cut / mean ZDC amplitude", "%.3f", false, rlo, rhi);
 
     const std::string out = kPlotDir + "zdc_preamp_cut_vs_zdcamp.png";
     c->SaveAs(out.c_str());
