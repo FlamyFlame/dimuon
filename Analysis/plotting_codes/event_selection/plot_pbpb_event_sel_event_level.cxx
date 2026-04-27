@@ -31,10 +31,24 @@
 // N_BINS_PER_SLICE=2 gives 0.10 TeV slices (120 bins × 0.05 TeV/bin).
 // With ~6.8M trigger-passing events, 55+/60 slices converge (min ~110 entries),
 // giving dense TGraph interpolation points vs the old 0.25 TeV step-function.
-static const int    N_BINS_PER_SLICE = 2;
-static const int    MIN_ENTRIES      = 100;
-static const double N_SIGMA_CUT      = 5.0;
-static const double FCAL_SPLIT_TEV   = 4.6;   // FCal ET above which ZDC bands split; extrapolate linearly beyond
+static const int    N_BINS_PER_SLICE    = 2;
+static const int    MIN_ENTRIES         = 100;
+static const double N_SIGMA_CUT         = 5.0;   // main band: cut at mu + N_SIGMA_CUT * sigma
+static const double FCAL_BG_FIT_MIN_TEV = 2.0;   // FCal ET above which background band is also fitted
+static const double BG_N_SIGMA_INNER    = 2.5;   // background band second-pass window half-width
+static const double BG_N_SIGMA_CUT      = 3.0;   // background band: veto at mu - BG_N_SIGMA_CUT * sigma
+
+// Per-year ZDC search window for the out-of-time pileup band (in h_zdc_fcal_ y-axis units).
+// Used for the first-pass restricted fit of the background band for FCal > FCAL_BG_FIT_MIN_TEV.
+static std::pair<double,double> GetBgSearchRange(int yr) {
+    static const std::map<int, std::pair<double,double>> kBgMap = {
+        {23, {220., 350.}},
+        {24, {180., 300.}},
+        {25, {170., 320.}},
+    };
+    auto it = kBgMap.find(yr);
+    return (it != kBgMap.end()) ? it->second : std::make_pair(180., 300.);
+}
 
 // ---- per-year input file lists ----------------------------------------------
 static std::map<int, std::vector<std::string>> BuildFileMap() {
@@ -270,11 +284,16 @@ private:
 
     // -------------------------------------------------------------------------
     void FitAndPlotZDC() {
-        const int nx      = h_zdc_fcal_->GetNbinsX();
-        const int ny      = h_zdc_fcal_->GetNbinsY();
+        const int nx       = h_zdc_fcal_->GetNbinsX();
+        const int ny       = h_zdc_fcal_->GetNbinsY();
         const int n_slices = nx / N_BINS_PER_SLICE;
 
-        std::vector<double> gr_x, gr_cut, gr_mu, gr_sigma, gr_ex;
+        const auto [bg_lo, bg_hi] = GetBgSearchRange(run_year_);
+
+        // Main band fit results (all FCal slices that converge)
+        std::vector<double> gr_x, gr_cut, gr_main_cut, gr_mu, gr_sigma, gr_ex;
+        // Background band fit results (FCal > FCAL_BG_FIT_MIN_TEV slices only)
+        std::vector<double> gr_bg_x, gr_bg_cut;
 
         struct FirstSlice {
             bool   found = false;
@@ -292,10 +311,6 @@ private:
             const double xhi   = h_zdc_fcal_->GetXaxis()->GetBinUpEdge(ix_hi);
             const double xcen  = 0.5 * (xlo + xhi);
 
-            // Above FCAL_SPLIT_TEV the signal and pile-up bands split; skip fitting
-            // entirely here — the cut is linearly extrapolated below.
-            if (xcen > FCAL_SPLIT_TEV) continue;
-
             TH1D* hpy = (TH1D*)h_zdc_fcal_->ProjectionY(
                 Form("__hpy_ev_%d", isl), ix_lo, ix_hi);
             hpy->SetDirectory(nullptr);
@@ -307,15 +322,13 @@ private:
             const double ymin = hpy->GetXaxis()->GetXmin();
             const double ymax = hpy->GetXaxis()->GetXmax();
 
-            // Pass 1
+            // ---- Main banana band: two-pass Gaussian fit --------------------
             gfunc.SetRange(std::max(ymin, mu0 - 3.*rms), std::min(ymax, mu0 + 3.*rms));
             gfunc.SetParameters(hpy->GetMaximum(), mu0, rms);
             if (hpy->Fit(&gfunc, "RNQ") != 0 || gfunc.GetParameter(2) <= 0.) {
                 delete hpy; continue;
             }
             const double mu1 = gfunc.GetParameter(1), sig1 = gfunc.GetParameter(2);
-
-            // Pass 2
             const double lo2 = std::max(ymin, mu1 - 3.*sig1);
             const double hi2 = std::min(ymax, mu1 + 3.*sig1);
             gfunc.SetRange(lo2, hi2);
@@ -323,65 +336,89 @@ private:
             if (hpy->Fit(&gfunc, "RNQ") != 0 || gfunc.GetParameter(2) <= 0.) {
                 delete hpy; continue;
             }
-
-            const double mu2  = gfunc.GetParameter(1);
-            const double sig2 = gfunc.GetParameter(2);
-            const double cut  = mu2 + N_SIGMA_CUT * sig2;
+            const double mu2       = gfunc.GetParameter(1);
+            const double sig2      = gfunc.GetParameter(2);
+            const double main_cut  = mu2 + N_SIGMA_CUT * sig2;
 
             if (!first_sl.found)
                 first_sl = {true, ix_lo, ix_hi, xlo, xhi,
                             gfunc.GetParameter(0), mu2, sig2, lo2, hi2};
+
+            // ---- Background (pileup) band: two-pass fit for FCal > 2 TeV ---
+            double final_cut = main_cut;
+            bool   bg_ok     = false;
+            double bg_mu2 = 0., bg_sig2 = 0.;
+            if (xcen > FCAL_BG_FIT_MIN_TEV) {
+                // Find max in background search window [bg_lo, bg_hi]
+                const int b_lo = hpy->FindBin(bg_lo);
+                const int b_hi = hpy->FindBin(bg_hi);
+                double bg_amp0 = 0., bg_mu0 = 0.5*(bg_lo + bg_hi);
+                for (int b = b_lo; b <= b_hi; ++b) {
+                    if (hpy->GetBinContent(b) > bg_amp0) {
+                        bg_amp0 = hpy->GetBinContent(b);
+                        bg_mu0  = hpy->GetBinCenter(b);
+                    }
+                }
+                const double bg_entries = hpy->Integral(b_lo, b_hi);
+                if (bg_amp0 > 0. && bg_entries >= MIN_ENTRIES) {
+                    // Pass 1: restricted to search window
+                    gfunc.SetRange(bg_lo, bg_hi);
+                    gfunc.SetParameters(bg_amp0, bg_mu0, (bg_hi - bg_lo) / 6.);
+                    if (hpy->Fit(&gfunc, "RNQ") == 0 && gfunc.GetParameter(2) > 0.) {
+                        const double bg_mu1  = gfunc.GetParameter(1);
+                        const double bg_sig1 = gfunc.GetParameter(2);
+                        // Pass 2: mu1 ± BG_N_SIGMA_INNER * sigma1 window
+                        gfunc.SetRange(std::max(ymin, bg_mu1 - BG_N_SIGMA_INNER*bg_sig1),
+                                       std::min(ymax, bg_mu1 + BG_N_SIGMA_INNER*bg_sig1));
+                        gfunc.SetParameters(gfunc.GetParameter(0), bg_mu1, bg_sig1);
+                        if (hpy->Fit(&gfunc, "RNQ") == 0 && gfunc.GetParameter(2) > 0.) {
+                            bg_mu2  = gfunc.GetParameter(1);
+                            bg_sig2 = gfunc.GetParameter(2);
+                            bg_ok   = true;
+                            const double bg_cut = bg_mu2 - BG_N_SIGMA_CUT * bg_sig2;
+                            gr_bg_x.push_back(xcen);
+                            gr_bg_cut.push_back(bg_cut);
+                            final_cut = std::max(main_cut, bg_cut);
+                        }
+                    }
+                }
+            }
             delete hpy;
 
+            std::cout << Form("  sl %2d [%.2f-%.2f]  mu=%.2f sig=%.2f main=%.2f",
+                              isl, xlo, xhi, mu2, sig2, main_cut);
+            if (bg_ok)
+                std::cout << Form("  bg_mu=%.2f bg_sig=%.2f bg_cut=%.2f  final=%.2f",
+                                  bg_mu2, bg_sig2, bg_mu2 - BG_N_SIGMA_CUT*bg_sig2, final_cut);
+            std::cout << "\n";
+
             gr_x.push_back(xcen);
-            gr_cut.push_back(cut);
+            gr_cut.push_back(final_cut);
+            gr_main_cut.push_back(main_cut);
             gr_mu.push_back(mu2);
             gr_sigma.push_back(sig2);
-            gr_ex.push_back(0.5*(xhi-xlo));
-
-            std::cout << Form("  slice %2d [%.3f-%.3f TeV]  mu=%.3f  sig=%.3f  cut=%.3f TeV\n",
-                              isl, xlo, xhi, mu2, sig2, cut);
+            gr_ex.push_back(0.5*(xhi - xlo));
         }
-        const int n_fit = (int)gr_x.size();
-        std::cout << "Fitting: " << n_fit << " slices converged (FCal <= "
-                  << FCAL_SPLIT_TEV << " TeV)." << std::endl;
 
-        // ---- linear extrapolation beyond FCAL_SPLIT_TEV using last 3 points ---
-        if (n_fit < 3) {
-            std::cerr << "FitAndPlotZDC: too few converged slices for extrapolation!" << std::endl;
+        const int n_fit = (int)gr_x.size();
+        const int n_bg  = (int)gr_bg_x.size();
+        std::cout << n_fit << " main-band slices converged; "
+                  << n_bg  << " background-band slices converged (FCal > "
+                  << FCAL_BG_FIT_MIN_TEV << " TeV)." << std::endl;
+        if (n_fit < 2) {
+            std::cerr << "FitAndPlotZDC: too few converged slices!" << std::endl;
             return;
         }
-        {
-            TGraph g_last3(3, gr_x.data() + n_fit - 3, gr_cut.data() + n_fit - 3);
-            TF1 f_extrap("__f_extrap_c1", "pol1",
-                         gr_x[n_fit - 3], gr_x[n_fit - 1]);
-            g_last3.Fit(&f_extrap, "RNQ");
-            const double slope     = f_extrap.GetParameter(1);
-            const double intercept = f_extrap.GetParameter(0);
-            std::cout << Form("Banana extrapolation (last 3 pts, linear): "
-                              "intercept=%.3f  slope=%.4f\n", intercept, slope);
-            std::cout << Form("  anchor pts: (%.3f, %.3f) (%.3f, %.3f) (%.3f, %.3f)\n",
-                              gr_x[n_fit-3], gr_cut[n_fit-3],
-                              gr_x[n_fit-2], gr_cut[n_fit-2],
-                              gr_x[n_fit-1], gr_cut[n_fit-1]);
-            // Append extrapolated points up to the histogram edge
-            const double fcal_end = h_zdc_fcal_->GetXaxis()->GetXmax();
-            const int n_ext = 8;
-            for (int k = 0; k < n_ext; ++k) {
-                double x = FCAL_SPLIT_TEV + (k + 1) * (fcal_end - FCAL_SPLIT_TEV) / n_ext;
-                gr_x.push_back(x);
-                gr_cut.push_back(f_extrap.Eval(x));
-            }
-        }
 
-        // ---- build TGraph objects for interpolation and persistence ----------
-        // g_cut includes the extrapolated tail; g_mu and g_mu_err use only fitted pts.
-        TGraph  g_cut((int)gr_x.size(), gr_x.data(), gr_cut.data());
-        TGraph  g_mu (n_fit, gr_x.data(), gr_mu.data());
+        TGraph  g_cut     (n_fit, gr_x.data(),       gr_cut.data());
+        TGraph  g_main    (n_fit, gr_x.data(),       gr_main_cut.data());
+        TGraph  g_mu      (n_fit, gr_x.data(),       gr_mu.data());
         TGraphErrors g_mu_err(n_fit, gr_x.data(), gr_mu.data(),
                               gr_ex.data(), gr_sigma.data());
-
-        // Sorted by x is guaranteed because slices are processed in order.
+        // Background cut graph (may be empty for years with insufficient stats)
+        const bool have_bg = (n_bg > 0);
+        TGraph g_bg;
+        if (have_bg) g_bg = TGraph(n_bg, gr_bg_x.data(), gr_bg_cut.data());
 
         // ---- save cut curves to ROOT file ------------------------------------
         const std::string cuts_path = cuts_dir_ + "/event_sel_cuts_pbpb_20" + yr_ + ".root";
@@ -390,15 +427,25 @@ private:
             if (!fcuts || fcuts->IsZombie()) {
                 std::cerr << "Cannot open cuts file for writing: " << cuts_path << std::endl;
             } else {
-                TGraph* g_c = (TGraph*)g_cut.Clone("g_ZDC_FCal_cut");
-                TGraph* g_m = (TGraph*)g_mu.Clone("g_ZDC_FCal_mu");
-                TGraphErrors* g_s = (TGraphErrors*)g_mu_err.Clone("g_ZDC_FCal_mu_sigma");
-                g_c->SetTitle(Form("ZDC out-of-time pileup cut (mu+%.0fsigma);FCal E_{T}^{A+C} [TeV];ZDC E_{total} cut [TeV]", N_SIGMA_CUT));
-                g_m->SetTitle("ZDC Gaussian mean per FCal slice;FCal E_{T}^{A+C} [TeV];ZDC mean [TeV]");
-                g_s->SetTitle("ZDC Gaussian mean #pm sigma per FCal slice;FCal E_{T}^{A+C} [TeV];ZDC mean [TeV]");
-                g_c->Write("g_ZDC_FCal_cut",  TObject::kOverwrite);
-                g_m->Write("g_ZDC_FCal_mu",   TObject::kOverwrite);
-                g_s->Write("g_ZDC_FCal_mu_sigma", TObject::kOverwrite);
+                auto wg = [&](TGraph* g, const char* name, const char* title) {
+                    g->SetTitle(title); g->Write(name, TObject::kOverwrite);
+                };
+                wg((TGraph*)g_cut.Clone ("g_ZDC_FCal_cut"),
+                   "g_ZDC_FCal_cut",
+                   Form("ZDC cut: max(main+%.0f#sigma, bg-%.0f#sigma);FCal E_{T} [TeV];ZDC cut",
+                        N_SIGMA_CUT, BG_N_SIGMA_CUT));
+                wg((TGraph*)g_main.Clone("g_ZDC_FCal_main_cut"),
+                   "g_ZDC_FCal_main_cut",
+                   Form("ZDC banana main band #mu+%.0f#sigma;FCal E_{T} [TeV];ZDC cut", N_SIGMA_CUT));
+                wg((TGraph*)g_mu.Clone  ("g_ZDC_FCal_mu"),
+                   "g_ZDC_FCal_mu",
+                   "ZDC Gaussian mean per FCal slice;FCal E_{T} [TeV];ZDC mean");
+                ((TGraphErrors*)g_mu_err.Clone("g_ZDC_FCal_mu_sigma"))
+                    ->Write("g_ZDC_FCal_mu_sigma", TObject::kOverwrite);
+                if (have_bg)
+                    wg((TGraph*)g_bg.Clone("g_ZDC_FCal_bg_cut"),
+                       "g_ZDC_FCal_bg_cut",
+                       Form("ZDC bg band #mu-%.0f#sigma;FCal E_{T} [TeV];ZDC cut", BG_N_SIGMA_CUT));
                 fcuts->Close();
                 std::cout << "Cut TGraphs saved to: " << cuts_path << std::endl;
             }
@@ -407,21 +454,22 @@ private:
         const std::string lbl = "Pb+Pb 20" + yr_ + " data";
         TLatex tl; tl.SetNDC(); tl.SetTextSize(0.036);
 
-        // ---- Canvas 1: 2D + interpolated cut curve --------------------------
+        // ---- Canvas 1: 2D + final cut curve ---------------------------------
         {
             TH2D* hd = (TH2D*)h_zdc_fcal_->Clone("__h2_c1_ev");
             hd->SetDirectory(nullptr);
             TCanvas* c1 = new TCanvas("c_zdc_fcal_cut_ev", "", 800, 650);
             c1->SetLogz(); c1->SetRightMargin(0.13);
             hd->SetContour(99); hd->Draw("COLZ");
-            if (n_fit > 0) {
+            {
                 TGraph* gd = (TGraph*)g_cut.Clone("__gd_c1");
                 gd->SetMarkerStyle(20); gd->SetMarkerSize(0.6);
                 gd->SetMarkerColor(kRed); gd->SetLineColor(kRed); gd->SetLineWidth(2);
-                gd->Draw("LP SAME");  // line through interpolation points
+                gd->Draw("LP SAME");
             }
             tl.DrawLatex(0.15, 0.87, lbl.c_str());
-            tl.DrawLatex(0.15, 0.81, Form("red: #mu_{2} + %.0f#sigma_{2} (TGraph interp.)", N_SIGMA_CUT));
+            tl.DrawLatex(0.15, 0.81,
+                Form("red: max(main #mu+%.0f#sigma, bg #mu-%.0f#sigma)", N_SIGMA_CUT, BG_N_SIGMA_CUT));
             c1->SaveAs(OutPath("ZDC_E_tot_vs_FCal_Et_AC_with_cut").c_str());
             delete c1; delete hd;
         }
@@ -435,7 +483,7 @@ private:
 
             for (int ix = 1; ix <= nx; ++ix) {
                 const double xc  = h_zdc_fcal_->GetXaxis()->GetBinCenter(ix);
-                const double cut = (n_fit > 0) ? EvalCut(&g_cut, xc) : -1.;
+                const double cut = EvalCut(&g_cut, xc);
                 for (int iy = 1; iy <= ny; ++iy) {
                     const double w = h_zdc_fcal_->GetBinContent(ix, iy);
                     if (w == 0.) continue;
@@ -447,58 +495,47 @@ private:
 
             TCanvas* c2 = new TCanvas("c_zdc_fcal_pf_ev", "", 1400, 620);
             c2->Divide(2, 1);
-
+            auto draw_cut = [&](TGraph* src, const char* name) {
+                TGraph* gd = (TGraph*)src->Clone(name);
+                gd->SetMarkerStyle(20); gd->SetMarkerSize(0.6);
+                gd->SetMarkerColor(kRed); gd->SetLineColor(kRed); gd->SetLineWidth(2);
+                gd->Draw("LP SAME");
+            };
             c2->cd(1); gPad->SetLogz(); gPad->SetRightMargin(0.15);
             h_pass->SetContour(99); h_pass->Draw("COLZ");
-            if (n_fit > 0) {
-                TGraph* gd = (TGraph*)g_cut.Clone("__gd_pass");
-                gd->SetMarkerStyle(20); gd->SetMarkerSize(0.6);
-                gd->SetMarkerColor(kRed); gd->SetLineColor(kRed); gd->SetLineWidth(2);
-                gd->Draw("LP SAME");
-            }
-            {
-                TLatex t2; t2.SetNDC(); t2.SetTextSize(0.036);
-                t2.DrawLatex(0.15, 0.87, lbl.c_str());
-                t2.DrawLatex(0.15, 0.81, Form("Passing: ZDC #leq interp. cut (#mu_{2}+%.0f#sigma_{2})", N_SIGMA_CUT));
-            }
-
+            draw_cut(&g_cut, "__gd_pass");
+            { TLatex t2; t2.SetNDC(); t2.SetTextSize(0.036);
+              t2.DrawLatex(0.15, 0.87, lbl.c_str());
+              t2.DrawLatex(0.15, 0.81, "Passing cut"); }
             c2->cd(2); gPad->SetLogz(); gPad->SetRightMargin(0.15);
             h_fail->SetContour(99); h_fail->Draw("COLZ");
-            if (n_fit > 0) {
-                TGraph* gd = (TGraph*)g_cut.Clone("__gd_fail");
-                gd->SetMarkerStyle(20); gd->SetMarkerSize(0.6);
-                gd->SetMarkerColor(kRed); gd->SetLineColor(kRed); gd->SetLineWidth(2);
-                gd->Draw("LP SAME");
-            }
-            {
-                TLatex t2; t2.SetNDC(); t2.SetTextSize(0.036);
-                t2.DrawLatex(0.15, 0.87, lbl.c_str());
-                t2.DrawLatex(0.15, 0.81, Form("Failing: ZDC > interp. cut (#mu_{2}+%.0f#sigma_{2})", N_SIGMA_CUT));
-            }
+            draw_cut(&g_cut, "__gd_fail");
+            { TLatex t2; t2.SetNDC(); t2.SetTextSize(0.036);
+              t2.DrawLatex(0.15, 0.87, lbl.c_str());
+              t2.DrawLatex(0.15, 0.81, "Failing cut"); }
             c2->SaveAs(OutPath("ZDC_E_tot_vs_FCal_Et_AC_pass_fail").c_str());
             delete c2; delete h_pass; delete h_fail;
         }
 
-        // ---- Canvas 3 (debug): 2D + mu+5sigma line + mu±sigma error bars ----
+        // ---- Canvas 3 (debug): 2D + cut + mu±sigma --------------------------
         {
             TH2D* hd = (TH2D*)h_zdc_fcal_->Clone("__h2_c3_ev");
             hd->SetDirectory(nullptr);
             TCanvas* c3 = new TCanvas("c_zdc_fcal_dbg_ev", "", 800, 650);
             c3->SetLogz(); c3->SetRightMargin(0.13);
             hd->SetContour(99); hd->Draw("COLZ");
-            if (n_fit > 0) {
-                TGraph* gd_cut = (TGraph*)g_cut.Clone("__gd_c3_cut");
-                gd_cut->SetMarkerStyle(20); gd_cut->SetMarkerSize(0.6);
-                gd_cut->SetMarkerColor(kRed); gd_cut->SetLineColor(kRed); gd_cut->SetLineWidth(2);
-                gd_cut->Draw("LP SAME");
-                TGraphErrors* gd_mu = (TGraphErrors*)g_mu_err.Clone("__gd_c3_mu");
-                gd_mu->SetMarkerStyle(24); gd_mu->SetMarkerSize(0.6);
-                gd_mu->SetMarkerColor(kRed); gd_mu->SetLineColor(kRed); gd_mu->SetLineWidth(1);
-                gd_mu->Draw("P SAME");
+            {
+                TGraph* gd = (TGraph*)g_cut.Clone("__gd_c3_cut");
+                gd->SetMarkerStyle(20); gd->SetMarkerSize(0.6);
+                gd->SetMarkerColor(kRed); gd->SetLineColor(kRed); gd->SetLineWidth(2);
+                gd->Draw("LP SAME");
+                TGraphErrors* gm = (TGraphErrors*)g_mu_err.Clone("__gd_c3_mu");
+                gm->SetMarkerStyle(24); gm->SetMarkerSize(0.6);
+                gm->SetMarkerColor(kRed); gm->SetLineColor(kRed); gm->SetLineWidth(1);
+                gm->Draw("P SAME");
             }
             tl.DrawLatex(0.15, 0.87, lbl.c_str());
-            tl.DrawLatex(0.15, 0.81, Form("#bullet  #mu_{2}+%.0f#sigma_{2}  (filled, interpolated)", N_SIGMA_CUT));
-            tl.DrawLatex(0.15, 0.75, "#circ  #mu_{2} #pm #sigma_{2}  (open, x = slice half-width)");
+            tl.DrawLatex(0.15, 0.81, "#bullet final cut  #circ #mu_{2}#pm#sigma_{2}");
             c3->SaveAs(OutPath("ZDC_E_tot_vs_FCal_Et_AC_with_cut_debug").c_str());
             delete c3; delete hd;
         }
@@ -527,16 +564,46 @@ private:
             gfit2_ext.Draw("SAME");
             TLatex tl4; tl4.SetNDC(); tl4.SetTextSize(0.038);
             tl4.DrawLatex(0.55, 0.82,
-                Form("FCal E_{T}^{A+C} #in [%.3f, %.3f] TeV", first_sl.xlo, first_sl.xhi));
-            tl4.DrawLatex(0.55, 0.75, Form("#mu_{2} = %.2f TeV", first_sl.mu2));
-            tl4.DrawLatex(0.55, 0.68, Form("#sigma_{2} = %.2f TeV", first_sl.sig2));
+                Form("FCal [%.3f, %.3f] TeV", first_sl.xlo, first_sl.xhi));
+            tl4.DrawLatex(0.55, 0.75, Form("#mu_{2} = %.2f", first_sl.mu2));
+            tl4.DrawLatex(0.55, 0.68, Form("#sigma_{2} = %.2f", first_sl.sig2));
             tl4.DrawLatex(0.55, 0.61,
-                Form("#mu_{2} + 5#sigma_{2} = %.2f TeV", first_sl.mu2 + N_SIGMA_CUT*first_sl.sig2));
-            tl4.SetTextSize(0.032);
-            tl4.DrawLatex(0.55, 0.53,
-                Form("Fit range: [%.2f, %.2f] TeV", first_sl.lo2, first_sl.hi2));
+                Form("#mu_{2}+5#sigma_{2} = %.2f", first_sl.mu2 + N_SIGMA_CUT*first_sl.sig2));
             c4->SaveAs(OutPath("ZDC_1D_first_slice_fit_debug").c_str());
             delete c4; delete h1d;
+        }
+
+        // ---- Supporting plot: main-band and bg-band TGraphs separately ------
+        {
+            TH2D* hd = (TH2D*)h_zdc_fcal_->Clone("__h2_support");
+            hd->SetDirectory(nullptr);
+            TCanvas* cs = new TCanvas("c_zdc_support", "", 800, 650);
+            cs->SetLogz(); cs->SetRightMargin(0.13);
+            hd->SetContour(99); hd->Draw("COLZ");
+            {
+                TGraph* gm = (TGraph*)g_main.Clone("__gd_main_sup");
+                gm->SetMarkerStyle(20); gm->SetMarkerSize(0.6);
+                gm->SetMarkerColor(kRed); gm->SetLineColor(kRed); gm->SetLineWidth(2);
+                gm->Draw("LP SAME");
+            }
+            if (have_bg) {
+                TGraph* gb = (TGraph*)g_bg.Clone("__gd_bg_sup");
+                gb->SetMarkerStyle(20); gb->SetMarkerSize(0.6);
+                gb->SetMarkerColor(kBlue+1); gb->SetLineColor(kBlue+1); gb->SetLineWidth(2);
+                gb->Draw("LP SAME");
+            }
+            TLatex ts; ts.SetNDC(); ts.SetTextSize(0.036);
+            ts.DrawLatex(0.15, 0.87, lbl.c_str());
+            ts.SetTextColor(kRed);
+            ts.DrawLatex(0.15, 0.81, Form("red: main band #mu+%.0f#sigma", N_SIGMA_CUT));
+            if (have_bg) {
+                ts.SetTextColor(kBlue+1);
+                ts.DrawLatex(0.15, 0.75,
+                    Form("blue: bg band #mu-%.0f#sigma  (FCal > %.1f TeV)",
+                         BG_N_SIGMA_CUT, FCAL_BG_FIT_MIN_TEV));
+            }
+            cs->SaveAs(OutPath("cut1_ZDC_FCal_2graph_support").c_str());
+            delete cs; delete hd;
         }
     }
     // -------------------------------------------------------------------------
