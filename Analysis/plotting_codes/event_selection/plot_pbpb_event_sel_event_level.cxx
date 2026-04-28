@@ -102,7 +102,7 @@ public:
         out_dir_      = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
                         "single_b_analysis/event_selection/pbpb_20" + yr_;
         alt_out_dir_  = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
-                        "single_b_analysis/event_selection_alt/pbpb_20" + yr_;
+                        "single_b_analysis/event_selection_alternative_banana/pbpb_20" + yr_;
         cuts_dir_     = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + yr_;
         auto file_map = BuildFileMap();
         if (file_map.find(run_year_) == file_map.end())
@@ -978,41 +978,6 @@ private:
             delete c2; delete h_pass; delete h_fail;
         }
 
-        // ---- Canvas 3 (support): main cut + alt cut + mu±sigma ---------------
-        {
-            TH2D* hd = (TH2D*)h_zdc_fcal_->Clone("__h2_c3_alt");
-            hd->SetDirectory(nullptr);
-            TCanvas* c3 = new TCanvas("c_zdc_support_alt", "", 800, 650);
-            c3->SetLogz(); c3->SetRightMargin(0.13);
-            hd->SetContour(99); hd->Draw("COLZ");
-            {
-                TGraph* gm = (TGraph*)g_main.Clone("__gd_main_alt");
-                gm->SetMarkerStyle(20); gm->SetMarkerSize(0.6);
-                gm->SetMarkerColor(kRed); gm->SetLineColor(kRed); gm->SetLineWidth(2);
-                gm->Draw("LP SAME");
-            }
-            {
-                TGraph* gd = (TGraph*)g_cut.Clone("__gd_cut_alt");
-                gd->SetMarkerStyle(24); gd->SetMarkerSize(0.6);
-                gd->SetMarkerColor(kMagenta+1); gd->SetLineColor(kMagenta+1); gd->SetLineWidth(2);
-                gd->Draw("LP SAME");
-            }
-            {
-                TGraphErrors* gme = (TGraphErrors*)g_mu_err.Clone("__gd_mu_alt");
-                gme->SetMarkerStyle(24); gme->SetMarkerSize(0.6);
-                gme->SetMarkerColor(kRed); gme->SetLineColor(kRed); gme->SetLineWidth(1);
-                gme->Draw("P SAME");
-            }
-            TLatex ts; ts.SetNDC(); ts.SetTextSize(0.036);
-            ts.DrawLatex(0.15, 0.87, lbl.c_str());
-            ts.SetTextColor(kRed);
-            ts.DrawLatex(0.15, 0.81, Form("red: main band #mu+%.0f#sigma", N_SIGMA_CUT));
-            ts.SetTextColor(kMagenta+1);
-            ts.DrawLatex(0.15, 0.75,
-                Form("magenta: alt cut (quad. for FCal #geq %.1f TeV)", ALT_POLY_X1));
-            c3->SaveAs(OutPathAlt("cut1_ZDC_FCal_2graph_support").c_str());
-            delete c3; delete hd;
-        }
     }
 
     // -------------------------------------------------------------------------

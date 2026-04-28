@@ -43,9 +43,9 @@ static const double CUT2_T_NS_ALT    = 1.5;    // ZDC time window [ns]
 // Values are {side_A, side_C}. pbpb2023 not yet evaluated (uses 2024 value as placeholder).
 static std::pair<float,float> GetPreampCuts(int yr) {
     static const std::map<int, std::pair<float,float>> kMap = {
-        {23, {300.f, 250.f}},  // side A ~300 ADC, side C ~250 ADC
-        {24, {385.f, 385.f}},  // symmetric; turnover well above 385 for both sides
-        {25, {850.f, 650.f}},  // side A ~850 ADC, side C ~650 ADC
+        {23, {300.f, 300.f}},  // side A ~300 ADC, side C ~300 ADC
+        {24, {420.f, 420.f}},  // symmetric; both sides well above 420
+        {25, {850.f, 700.f}},  // side A ~850 ADC, side C ~700 ADC
     };
     auto it = kMap.find(yr);
     return (it != kMap.end()) ? it->second : std::make_pair(385.f, 385.f);
@@ -181,11 +181,15 @@ static std::vector<SliceFitAlt> FitSlices2DAlt(TH2D* h2, int n_bins_per_slice) {
 // =============================================================================
 class PbPbEventSelCutsAlt {
 public:
-    explicit PbPbEventSelCutsAlt(int run_year) : run_year_(run_year % 2000) {
-        yr_      = std::to_string(run_year_);
-        out_dir_ = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
-                   "single_b_analysis/event_selection/pbpb_20" + yr_;
-        cuts_dir_= "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + yr_;
+    explicit PbPbEventSelCutsAlt(int run_year, bool is_alt = false)
+        : run_year_(run_year % 2000), is_alt_(is_alt) {
+        yr_       = std::to_string(run_year_);
+        out_dir_  = is_alt_
+            ? "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
+              "single_b_analysis/event_selection_alternative_banana/pbpb_20" + yr_
+            : "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
+              "single_b_analysis/event_selection/pbpb_20" + yr_;
+        cuts_dir_ = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + yr_;
         auto fm = BuildFileMapAlt();
         if (fm.find(run_year_) == fm.end())
             throw std::runtime_error("No files for year " + yr_);
@@ -209,7 +213,8 @@ public:
     }
 
 private:
-    int run_year_;
+    int  run_year_;
+    bool is_alt_ = false;
     std::string yr_, out_dir_, cuts_dir_;
     std::vector<std::string> infiles_;
     float cut3_preamp_A_ = 385.f;
@@ -272,7 +277,8 @@ private:
 
     // -------------------------------------------------------------------------
     void LoadCut1() {
-        const std::string path = cuts_dir_ + "/event_sel_cuts_pbpb_20" + yr_ + ".root";
+        const std::string suffix = is_alt_ ? "_alt" : "";
+        const std::string path = cuts_dir_ + "/event_sel_cuts_pbpb_20" + yr_ + suffix + ".root";
         TFile* f = TFile::Open(path.c_str(), "READ");
         if (!f || f->IsZombie())
             throw std::runtime_error("Cannot open cuts file: " + path);
@@ -500,28 +506,25 @@ private:
 
     // -------------------------------------------------------------------------
     void SaveCuts() {
-        const std::string path = cuts_dir_ + "/event_sel_cuts_pbpb_20" + yr_ + ".root";
-        TFile* f = TFile::Open(path.c_str(), "RECREATE");
+        const std::string suffix = is_alt_ ? "_alt" : "";
+        const std::string path = cuts_dir_ + "/event_sel_cuts_pbpb_20" + yr_ + suffix + ".root";
+        // Alt mode: UPDATE to preserve alt_poly_a_b_c_x1 and other keys from FitAndPlotZDCAlt.
+        // Nominal mode: RECREATE (clean slate each run).
+        const char* open_mode = is_alt_ ? "UPDATE" : "RECREATE";
+        TFile* f = TFile::Open(path.c_str(), open_mode);
         if (!f || f->IsZombie()) { std::cerr << "Cannot open " << path << std::endl; return; }
-        if (g_cut1_) {
-            TGraph* gc1 = (TGraph*)g_cut1_->Clone(PbPbEvSelKey::kZDCFCalCut);
-            gc1->Write(PbPbEvSelKey::kZDCFCalCut);
-        }
-        if (g_cut4_) {
-            TGraph* gc = (TGraph*)g_cut4_->Clone(PbPbEvSelKey::kNTrkFracCutLo);
-            gc->Write(PbPbEvSelKey::kNTrkFracCutLo);
-        }
+        auto wobj = [](TObject* o, const char* key) { o->Write(key, TObject::kOverwrite); };
+        if (g_cut1_) wobj(g_cut1_->Clone(PbPbEvSelKey::kZDCFCalCut),    PbPbEvSelKey::kZDCFCalCut);
+        if (g_cut4_) wobj(g_cut4_->Clone(PbPbEvSelKey::kNTrkFracCutLo), PbPbEvSelKey::kNTrkFracCutLo);
         if (g_cut5_lo_ && g_cut5_hi_) {
-            TGraph* glo = (TGraph*)g_cut5_lo_->Clone(PbPbEvSelKey::kNTrkFCalCutLo);
-            TGraph* ghi = (TGraph*)g_cut5_hi_->Clone(PbPbEvSelKey::kNTrkFCalCutHi);
-            glo->Write(PbPbEvSelKey::kNTrkFCalCutLo);
-            ghi->Write(PbPbEvSelKey::kNTrkFCalCutHi);
+            wobj(g_cut5_lo_->Clone(PbPbEvSelKey::kNTrkFCalCutLo), PbPbEvSelKey::kNTrkFCalCutLo);
+            wobj(g_cut5_hi_->Clone(PbPbEvSelKey::kNTrkFCalCutHi), PbPbEvSelKey::kNTrkFCalCutHi);
         }
-        TParameter<double>(PbPbEvSelKey::kZDCTimeCutNs,  CUT2_T_NS_ALT)  .Write(PbPbEvSelKey::kZDCTimeCutNs);
-        TParameter<double>(PbPbEvSelKey::kPreampACutADC, cut3_preamp_A_).Write(PbPbEvSelKey::kPreampACutADC);
-        TParameter<double>(PbPbEvSelKey::kPreampCCutADC, cut3_preamp_C_).Write(PbPbEvSelKey::kPreampCCutADC);
-        TParameter<double>("nTrk_frac_n_sigma",     CUT4_N_SIGMA_ALT).Write("nTrk_frac_n_sigma");
-        TParameter<double>("nTrk_FCal_band_n_sigma", CUT5_N_SIGMA_ALT).Write("nTrk_FCal_band_n_sigma");
+        TParameter<double> p1(PbPbEvSelKey::kZDCTimeCutNs,  CUT2_T_NS_ALT);   p1.Write(PbPbEvSelKey::kZDCTimeCutNs,  TObject::kOverwrite);
+        TParameter<double> p2(PbPbEvSelKey::kPreampACutADC, cut3_preamp_A_);   p2.Write(PbPbEvSelKey::kPreampACutADC, TObject::kOverwrite);
+        TParameter<double> p3(PbPbEvSelKey::kPreampCCutADC, cut3_preamp_C_);   p3.Write(PbPbEvSelKey::kPreampCCutADC, TObject::kOverwrite);
+        TParameter<double> p4("nTrk_frac_n_sigma",      CUT4_N_SIGMA_ALT);     p4.Write("nTrk_frac_n_sigma",          TObject::kOverwrite);
+        TParameter<double> p5("nTrk_FCal_band_n_sigma", CUT5_N_SIGMA_ALT);     p5.Write("nTrk_FCal_band_n_sigma",     TObject::kOverwrite);
         f->Close();
         std::cout << "All cuts saved to: " << path << std::endl;
     }
@@ -921,6 +924,13 @@ private:
 
 // =============================================================================
 void plot_pbpb_event_sel_cuts(int run_year = 24) {
-    PbPbEventSelCutsAlt plotter(run_year);
+    PbPbEventSelCutsAlt plotter(run_year, /*is_alt=*/false);
+    plotter.Run();
+}
+
+// Alt banana-cut variant: loads Cut 1 from *_alt.root, saves all derived cuts
+// there (UPDATE), and writes plots to event_selection_alternative_banana/.
+void plot_pbpb_event_sel_cuts_alt(int run_year = 24) {
+    PbPbEventSelCutsAlt plotter(run_year, /*is_alt=*/true);
     plotter.Run();
 }
