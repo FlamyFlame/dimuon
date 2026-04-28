@@ -352,6 +352,9 @@ private:
    std::vector<float> m_muon_trk_phi;
    std::vector<int>   m_muon_trk_charge;
    std::vector<int>   m_muon_trk_index;
+   std::vector<float> m_muon_trk_vx  ;
+   std::vector<float> m_muon_trk_vy  ;
+   std::vector<float> m_muon_trk_vz  ;
    std::vector<float> m_muon_me_p   ;
    std::vector<int>   m_muon_elosstype;
    std::vector<float> m_muon_mspt;

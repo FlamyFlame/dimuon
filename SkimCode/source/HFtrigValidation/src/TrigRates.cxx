@@ -951,6 +951,9 @@ void TrigRates::InitMuons(TTree *l_OutTree){
     l_OutTree->Branch("muon_trk_phi"     ,&m_muon_trk_phi     );
     l_OutTree->Branch("muon_trk_charge"  ,&m_muon_trk_charge      );
     if(m_store_tracks>=Track::StoreBasic) l_OutTree->Branch("muon_trk_index"   ,&m_muon_trk_index   );
+    l_OutTree->Branch("muon_trk_vx"     ,&m_muon_trk_vx      );
+    l_OutTree->Branch("muon_trk_vy"     ,&m_muon_trk_vy      );
+    l_OutTree->Branch("muon_trk_vz"     ,&m_muon_trk_vz      );
 
     l_OutTree->Branch("muon_me_p"        ,&m_muon_me_p        );
 
@@ -1061,6 +1064,9 @@ void TrigRates::ClearMuons()
    m_muon_trk_phi     .clear();
    m_muon_trk_charge  .clear();
    m_muon_trk_index   .clear();
+   m_muon_trk_vx      .clear();
+   m_muon_trk_vy      .clear();
+   m_muon_trk_vz      .clear();
 
    m_muon_me_p        .clear();
 
@@ -1243,6 +1249,7 @@ StatusCode TrigRates::ProcessMuons(){
     int muon_trk_charge=1000;
     int trk_index=-1;
     float d0_err=0;
+    float muon_trk_vx=0, muon_trk_vy=0, muon_trk_vz=0;
     if(idTrk){
       xAOD::ParametersCovMatrix_t covmat=idTrk->definingParametersCovMatrix();
       d0          =idTrk->d0();
@@ -1254,6 +1261,9 @@ StatusCode TrigRates::ProcessMuons(){
       muon_trk_eta=idTrk->eta();
       muon_trk_phi=idTrk->phi();
       muon_trk_charge =(int) idTrk->charge ();
+      muon_trk_vx =idTrk->vx();
+      muon_trk_vy =idTrk->vy();
+      muon_trk_vz =idTrk->vz();
       if(m_store_tracks>=Track::StoreBasic){
         if(m_track_index_temp.find(idTrk) != m_track_index_temp.end()) trk_index=m_track_index_temp[idTrk];
       }
@@ -1441,6 +1451,9 @@ StatusCode TrigRates::ProcessMuons(){
     m_muon_trk_phi     .push_back(muon_trk_phi);
     m_muon_trk_charge  .push_back(muon_trk_charge);
     m_muon_trk_index   .push_back(trk_index);
+    m_muon_trk_vx      .push_back(muon_trk_vx);
+    m_muon_trk_vy      .push_back(muon_trk_vy);
+    m_muon_trk_vz      .push_back(muon_trk_vz);
 
     m_muon_me_p        .push_back(muon_me_p);
 
