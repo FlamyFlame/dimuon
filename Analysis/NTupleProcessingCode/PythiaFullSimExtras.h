@@ -68,5 +68,6 @@ protected:
     bool PassMuonMediumCuts(const muon_t& muon);
 
 public:
-    int turn_on_track_charge = false;
+    int  turn_on_track_charge = false;
+    bool disable_ip_cut       = false; // debug: skip d0/z0 cuts in PassMuonMediumCuts
 };

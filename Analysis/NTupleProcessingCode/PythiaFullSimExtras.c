@@ -41,8 +41,10 @@ bool PythiaFullSimExtras<PairT, MuonT, Derived>::PassMuonMediumCuts(const muon_t
 
     if (muon.dP_overP > self().pmsRef().deltaP_overP_thrsh) return false;
 
-    double z0sinTheta = fabs(muon.z0 * sin(2.0*atan(exp(-muon.eta))));
-    if (fabs(muon.d0) >= self().pmsRef().d0cut || z0sinTheta >= self().pmsRef().z0cut) return false;
+    if (!self().disable_ip_cut) {
+        double z0sinTheta = fabs(muon.z0 * sin(2.0*atan(exp(-muon.eta))));
+        if (fabs(muon.d0) >= self().pmsRef().d0cut || z0sinTheta >= self().pmsRef().z0cut) return false;
+    }
 
     if (turn_on_track_charge){
         if (muon.trk_charge != muon.charge) return false;

@@ -1,4 +1,4 @@
-# HIJING Overlay: Truth Pair Structure and HF-Ancestry Limitations
+# HIJING Overlay: Truth Pair Structure and HF-Ancestry Fixes
 
 Test sample: Pythia 5.36 TeV pp hQCD pTH8–14 overlaid with HIJING b < 5 fm (ultra-central Pb+Pb).
 
@@ -8,58 +8,69 @@ Test sample: Pythia 5.36 TeV pp hQCD pTH8–14 overlaid with HIJING b < 5 fm (ul
 
 ### What `truth_mupair_*` actually stores
 
-The overlay NTUP `truth_mupair_bar1/bar2` barcodes are ALL < 200,000 — i.e., **Pythia-only pairs**. The skimmer mupair loop (`TrigRates.cxx:2300`) filters for `id==13 && status==1` from `TruthParticles`. HIJING hard-scatter particles in the overlay `TruthParticles` container are not stable muons (they are quarks, gluons, and hadrons), so only Pythia stable muons form pairs.
+The overlay NTUP `truth_mupair_bar1/bar2` barcodes are ALL < 200,000 — i.e., **Pythia-only pairs**. The skimmer mupair loop (`TrigRates.cxx:2300`) filters for `id==13 && status==1` from `TruthParticles`. HIJING hard-scatter particles in the overlay `TruthParticles` container are not stable muons, so only Pythia stable muons form pairs.
 
-Empirically verified: across 200 overlay NTUP events, every `truth_mupair_bar1` and `truth_mupair_bar2` value is < 200,000.
+### Why there are so many truth particles with Pythia-range barcodes
 
-### Why there are so many pairs per event
-
-Overlay event 0 has 78,226 truth particles with bc < 200,000 (vs 486 in PP fullsim). The difference is Geant4 shower secondaries: in the overlay AOD, all Geant4 products (δ-rays, shower electrons, pions, kaons decaying to muons) are stored as truth particles with sequential Pythia barcodes. These include many soft muons from light-hadron decays — they form most of the mupairs.
-
-### Parent group distribution (100-event test, after `truth_parents` fix)
-
-| Group | Fraction |
-|-------|---------|
-| `s_light` (4) | 68% |
-| `resonance_decay` (0) | 29% |
-| `direct_b` (1) | 0.5% |
-| `direct_c` (3) | 1.8% |
-
-Compare PP fullsim: 51% `direct_b`, 0% `s_light`.
-
-The 68% `s_light` comes from soft Geant4 muons (pion/kaon decays) that dominate the truth-level pair pool. The 0.5% `direct_b` are the genuine Pythia hard-scatter B-decay muons.
+Overlay event 0 has ~78k truth particles with bc < 200,000 (vs ~486 in PP fullsim). The difference is Geant4 shower secondaries: in the overlay AOD, all Geant4 products (δ-rays, shower electrons, pions, kaons decaying to muons) are stored as truth particles with sequential Pythia barcodes. These include many soft muons from light-hadron decays.
 
 ---
 
-## 2. `from_same_b` and HF Ancestry Limitations
+## 2. Root Causes and Fixes (resolved Apr 2026)
 
-### Observed counts
+Three bugs were identified and fixed in `PythiaTruthExtras.c`.
 
-| Sample | Events | `from_same_b` pairs |
-|--------|--------|---------------------|
-| PP fullsim | 10k×6 kn | 93,400 (29.7%) |
-| Overlay (test) | 100 | ≈ 0 |
+### Bug 1: `truth_parents` branch not read (CollectionProxy missing)
 
-### Root causes
+`SetBranchAddress("truth_parents", &ptr)` requires a compiled CollectionProxy for `vector<vector<int>>`. Without it, the call silently returns −3 and ancestry tracing fails entirely (all pairs get `s_light`).
 
-**Cause 1: Geant4 soft muons dominate the pair pool.**  
-Most pairs in the overlay flat tree are Geant4 secondary muons from pion/kaon decays. Their parent group is `s_light`, not `direct_b`. Even for the genuine Pythia B-decay muons, they are a tiny fraction of all pairs.
+**Fix**: `gInterpreter->GenerateDictionary("vector<vector<int>>","vector")` added to `InitInputExtra`. Also `#include "TInterpreter.h"` added to `PythiaTruthExtras.h`.
 
-**Cause 2: b-quark absent from overlay truth chain.**  
-For Pythia B-decay muons, the ancestry trace shows:
+### Bug 2: Barcode collision in `GetParticleIndex` cache (critical)
+
+The overlay truth table has ~600–1200 barcode collisions per event: the full `truth_barcode` vector contains the original Pythia muon at index `i1` and a Geant4 secondary (rho⁻, π⁺, φ, etc.) at index `i2 > i1`, both with the same barcode value. The cache was built with `bc_map[bc] = i` (last-writer-wins), so lookups always returned the Geant4 secondary instead of the muon.
+
+With wrong bc_map entries:
+- Ancestry tracing started from the wrong particle (non-muon Geant4 secondary)
+- Parent groups resolved to `s_light` for nearly all pairs → 68% `s_light`
+- `from_same_b` never set → 0%
+
+**Fix**: Changed `barcode_to_index_cache[bc] = i` → `barcode_to_index_cache.emplace(bc, i)`. The `emplace` call is a no-op if the key already exists, so the first occurrence (the Pythia muon) is always preserved.
+
+### Bug 3: `m_eldest_bhadron_barcode` stores beam barcode (not B-meson barcode)
+
+In overlay AODs, the b-quark is absent from the truth chain (AOD truth thinning). The ancestry chain ends at:
 ```
-μ → B-meson → 3000208 (beam, bc=1)
+μ → B-meson → proton (id=2212, bc=1)
 ```
-The b-quark is missing (Geant4/AOD truth thinning in overlay suppresses parton-shower intermediates). `FindHeavyQuarks` returns −1 → `skip_event_origin_analysis = true` → `from_same_b` is never set, even for pairs where both muons come from b-decays.
+rather than `μ → B-meson → b-quark → ...` as in PP fullsim.
 
-**Note on `truth_parents` reading**: `SetBranchAddress("truth_parents", &ptr)` requires a compiled CollectionProxy for `vector<vector<int>>`. This proxy is only available if `PythiaAnalysisClasses_h.so` (ACLiC pre-compiled) is newer than the source (ROOT auto-loads it), OR via `gInterpreter->GenerateDictionary("vector<vector<int>>","vector")`. Without it, `SetBranchAddress` silently returns −3 and ancestry trace fails. Fixed in `PythiaTruthExtras.c::InitInputExtra` (Apr 2026). The original overlay flat tree (Apr 23) was generated when the header was newer than the .so, so this bug was active.
+The B-hadron tracing loop (after bc_map fix) correctly traces into the B-meson, then steps to the parent: a proton (id=2212) at bc=1. At that point, `m_eldest_bhadron_barcode` was set to bc=1 (the **proton's** barcode) for ALL B-meson chains, causing a false `from_same_b` when any two B-meson muons were paired.
 
-### Path forward
+**Fix**: When exiting the B-hadron tracing loop, check if the particle above the eldest B-hadron is a b-quark (`abs(first_hadron_id) == 5`). If so (standard MC), store the b-quark barcode as before. If not (overlay: proton/beam), store `last_bhadron_bc` — the eldest B-hadron's own barcode. This correctly identifies genuinely same-B pairs.
 
-`from_same_b` efficiency measurements in overlay require:
+---
 
-1. **Apply truth-level pT cut** (≥ 4 GeV) to select hard-scatter Pythia muons before pair formation, eliminating the Geant4 soft-muon contamination.
+## 3. Parent Group Distribution After Fixes
 
-2. **Replace b-quark matching with B-hadron matching**: modify `HFMuonPairAnalysis` to allow `from_same_b` when both muons trace to the same `m1_eldest_bhadron_barcode` (the B-meson) even without finding the b-quark above it. Currently `skip_event_origin_analysis=true` prevents this.
+500-event test (kn=0, pTH8–14), sign2 (OS pairs):
 
-Both changes together should restore the ~29% from_same_b rate seen in PP fullsim.
+| Group | Count | Fraction |
+|-------|-------|---------|
+| `s_light` (0) | 626 / 4096 | 15% |
+| `direct_b` (1) | 2132 / 4096 | 52% |
+| `b_to_c` (2) | 640 / 4096 | 16% |
+| `direct_c` (3) | 624 / 4096 | 15% |
+| `from_same_b` | 1228 / 4096 | **30%** |
+
+PP fullsim baseline (same kn=0, 200-event test): `direct_b` 51%, `from_same_b` 30%. Overlay matches closely.
+
+The residual 15% `s_light` comes from Geant4 soft muons (pion/kaon decays) in the overlay truth record. These pairs can be removed by applying the truth-level pT ≥ 4 GeV cut at pair formation (implemented via `PassCuts_PythiaCore` — already present but acts on the individual muon level; the Geant4 muons that pass pT > 4 GeV are unavoidable and constitute genuine combinatorial background).
+
+---
+
+## 4. b-quark Absence and `skip_event_origin_analysis`
+
+For B-meson chains, `FindHeavyQuarks` returns −1 (b-quark not in truth record) → `skip_event_origin_analysis = true`. The "Previous HQ barcode is -1" print is suppressed when `abs(first_hadron_id) != 5` (overlay case). The `from_same_b` check in `HFMuonPairAnalysis` (line 1246) runs **before** the `skip_event_origin_analysis` guard (line 1278), so same-B matching is unaffected by the skip flag.
+
+Pairs with `skip_event_origin_analysis = true` have `pair_origin_analysis_skipped = true` and their `muon_pair_origin_category` is not set. These should be treated as unclassified for origin-level analysis, but their `from_same_b` and `m1/m2_parent_group` fields are valid.
