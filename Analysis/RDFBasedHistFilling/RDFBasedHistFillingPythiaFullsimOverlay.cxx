@@ -24,8 +24,8 @@ protected:
             : "_no_data_resonance_cuts";
 
         input_files.clear();
-        input_files.push_back(data_dir + "muon_pairs_pythia_fullsim_" + label + cut_suffix + ".root");
-        output_file = data_dir + "histograms_pythia_fullsim_" + label + cut_suffix + ".root";
+        input_files.push_back(data_dir + "muon_pairs_pythia_fullsim_" + label + cut_suffix + extra_suffix + ".root");
+        output_file = data_dir + "histograms_pythia_fullsim_" + label + cut_suffix + extra_suffix + ".root";
         infile_var1D_json = "var1D_pythia_fullsim.json";
     }
 
@@ -161,6 +161,7 @@ protected:
 
 public:
     FullSimSampleType fullsim_sample_type = FullSimSampleType::hijing;
+    std::string extra_suffix = ""; // appended to NTP input and histogram output filenames
 
     explicit RDFBasedHistFillingPythiaFullsimOverlay(
         FullSimSampleType sample_type = FullSimSampleType::hijing)

@@ -121,6 +121,7 @@ public:
 	bool output_single_muon_tree = false;
     Long64_t nevents_max = -1; // <= 0: process all available entries; > 0: process up to min(nevents_max, nentries)
     bool is_test_run = false;  // if true, append "_test" to output paths (prevents overwriting full-run files)
+    std::string extra_output_suffix = ""; // extra tag appended to NTP output file name (e.g. "_no_ip")
 
 // --------------------- public class methods ---------------------------
     void Run();
