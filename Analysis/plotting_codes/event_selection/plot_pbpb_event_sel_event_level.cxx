@@ -311,6 +311,9 @@ private:
         std::vector<double> gr_x, gr_cut, gr_main_cut, gr_mu, gr_sigma, gr_ex;
         // Background band fit results (FCal > FCAL_BG_FIT_MIN_TEV slices only)
         std::vector<double> gr_bg_x, gr_bg_cut, gr_bg_mu, gr_bg_sig;
+        // Slices in bg region where Gaussian didn't converge — filled by post-loop interpolation
+        struct PendingBg { double xcen; int gr_idx; };
+        std::vector<PendingBg> pending_bg;
 
         struct FirstSlice {
             bool   found = false;
@@ -418,6 +421,8 @@ private:
                                   bg_mu2, bg_sig2, bg_mu2 - BG_N_SIGMA_CUT*bg_sig2, final_cut);
             std::cout << "\n";
 
+            if (xcen > FCAL_BG_FIT_MIN_TEV && !bg_ok)
+                pending_bg.push_back({xcen, (int)gr_x.size()});
             gr_x.push_back(xcen);
             gr_cut.push_back(final_cut);
             gr_main_cut.push_back(main_cut);
@@ -428,9 +433,32 @@ private:
 
         const int n_fit = (int)gr_x.size();
         const int n_bg  = (int)gr_bg_x.size();
+
+        // For bg-region slices where the Gaussian didn't converge, interpolate/extrapolate
+        // bg_cut from the converged-point TGraph and apply max(main_cut, bg_cut_interp).
+        int n_bg_interp = 0;
+        if (n_bg >= 2 && !pending_bg.empty()) {
+            TGraph g_bg_interp(n_bg, gr_bg_x.data(), gr_bg_cut.data());
+            auto eval_bg = [&](double x) -> double {
+                const int n = g_bg_interp.GetN();
+                if (x <= g_bg_interp.GetX()[0])   return g_bg_interp.GetY()[0];
+                if (x >= g_bg_interp.GetX()[n-1]) return g_bg_interp.GetY()[n-1];
+                return g_bg_interp.Eval(x);
+            };
+            for (auto& pb : pending_bg) {
+                const double bg_cut_i = eval_bg(pb.xcen);
+                const double new_cut  = std::max(gr_main_cut[pb.gr_idx], bg_cut_i);
+                if (new_cut > gr_cut[pb.gr_idx]) {
+                    gr_cut[pb.gr_idx] = new_cut;
+                    ++n_bg_interp;
+                }
+            }
+        }
+
         std::cout << n_fit << " main-band slices converged; "
                   << n_bg  << " background-band slices converged (FCal > "
-                  << FCAL_BG_FIT_MIN_TEV << " TeV)." << std::endl;
+                  << FCAL_BG_FIT_MIN_TEV << " TeV); "
+                  << n_bg_interp << " filled by interpolation." << std::endl;
         if (n_fit < 2) {
             std::cerr << "FitAndPlotZDC: too few converged slices!" << std::endl;
             return;
