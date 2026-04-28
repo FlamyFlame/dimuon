@@ -26,6 +26,7 @@
 #include "TStyle.h"
 #include "TSystem.h"
 #include "TLatex.h"
+#include "TVectorD.h"
 
 // ---- ZDC fit tuning ---------------------------------------------------------
 // N_BINS_PER_SLICE=2 gives 0.10 TeV slices (120 bins × 0.05 TeV/bin).
@@ -97,10 +98,12 @@ static std::map<int, std::vector<std::string>> BuildFileMap() {
 class PbPbEventSel {
 public:
     explicit PbPbEventSel(int run_year) : run_year_(run_year % 2000) {
-        yr_       = std::to_string(run_year_);
-        out_dir_  = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
-                    "single_b_analysis/event_selection/pbpb_20" + yr_;
-        cuts_dir_ = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + yr_;
+        yr_           = std::to_string(run_year_);
+        out_dir_      = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
+                        "single_b_analysis/event_selection/pbpb_20" + yr_;
+        alt_out_dir_  = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
+                        "single_b_analysis/event_selection_alt/pbpb_20" + yr_;
+        cuts_dir_     = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + yr_;
         auto file_map = BuildFileMap();
         if (file_map.find(run_year_) == file_map.end())
             throw std::runtime_error("No input files configured for run year " + yr_);
@@ -111,6 +114,7 @@ public:
         gStyle->SetOptStat(0);
         gStyle->SetPalette(kBird);
         gSystem->mkdir(out_dir_.c_str(), true);
+        gSystem->mkdir(alt_out_dir_.c_str(), true);
         BookHists();
         FillHists();
         SavePlots();
@@ -126,7 +130,7 @@ public:
 
 private:
     int run_year_;
-    std::string yr_, out_dir_, cuts_dir_;
+    std::string yr_, out_dir_, alt_out_dir_, cuts_dir_;
     std::vector<std::string> infiles_;
 
     TH2D *h_fcal_ac_    = nullptr;
@@ -286,6 +290,7 @@ private:
             delete c;
         }
         FitAndPlotZDC();
+        FitAndPlotZDCAlt();
         MakeZDCTimeCentralityPlot();
     }
 
@@ -749,6 +754,267 @@ private:
             delete cs; delete hd;
         }
     }
+    // -------------------------------------------------------------------------
+    std::string OutPathAlt(const std::string& stem) const {
+        return alt_out_dir_ + "/" + stem + "_pbpb_20" + yr_ + ".png";
+    }
+
+    // Hard-coded calibration points (x2,y2,x3,y3) for the alt-cut quadratic.
+    static std::tuple<double,double,double,double> GetAltCutPts(int yr) {
+        static const std::map<int, std::array<double,4>> kPts = {
+            {23, {3.4, 225., 4.8, 165.}},
+            {24, {3.4, 202., 4.8, 153.}},
+            {25, {3.4, 200., 4.8, 152.}},
+        };
+        auto it = kPts.find(yr);
+        if (it == kPts.end()) return {3.4, 202., 4.8, 153.};
+        return {it->second[0], it->second[1], it->second[2], it->second[3]};
+    }
+
+    // Solve a*x^2 + b*x + c through three distinct points.
+    static std::tuple<double,double,double> SolveQuad3Pts(
+        double x1, double y1, double x2, double y2, double x3, double y3)
+    {
+        const double d21 = x2 - x1, d31 = x3 - x1, d32 = x3 - x2;
+        const double a = ((y3 - y1)*d21 - (y2 - y1)*d31) / (d31 * d21 * d32);
+        const double b = (y2 - y1)/d21 - (x2 + x1)*a;
+        const double c = y1 - a*x1*x1 - b*x1;
+        return {a, b, c};
+    }
+
+    // -------------------------------------------------------------------------
+    // Alternative Cut 1: no background-band fitting.
+    // For FCal < ALT_POLY_X1: use main-band TGraph (mu + N_SIGMA_CUT*sigma).
+    // For FCal >= ALT_POLY_X1: quadratic through (ALT_POLY_X1, main_cut_at_x1)
+    //   and two per-year hard-coded calibration points.
+    void FitAndPlotZDCAlt() {
+        static const double ALT_POLY_X1 = 2.0;  // TeV: cutoff between TGraph and quadratic
+
+        const int nx       = h_zdc_fcal_->GetNbinsX();
+        const int ny       = h_zdc_fcal_->GetNbinsY();
+        const int n_slices = nx / N_BINS_PER_SLICE;
+
+        std::vector<double> gr_x, gr_main_cut, gr_mu, gr_sigma, gr_ex;
+
+        struct FirstSlice {
+            bool found = false;
+            int ix_lo = 0, ix_hi = 0;
+            double xlo = 0., xhi = 0.;
+            double amp2 = 0., mu2 = 0., sig2 = 0., lo2 = 0., hi2 = 0.;
+        } first_sl;
+
+        TF1 gfunc("gfit_alt", "gaus");
+
+        for (int isl = 0; isl < n_slices; ++isl) {
+            const int    ix_lo = isl * N_BINS_PER_SLICE + 1;
+            const int    ix_hi = std::min((isl + 1) * N_BINS_PER_SLICE, nx);
+            const double xlo   = h_zdc_fcal_->GetXaxis()->GetBinLowEdge(ix_lo);
+            const double xhi   = h_zdc_fcal_->GetXaxis()->GetBinUpEdge(ix_hi);
+            const double xcen  = 0.5 * (xlo + xhi);
+
+            TH1D* hpy = (TH1D*)h_zdc_fcal_->ProjectionY(
+                Form("__hpy_alt_%d", isl), ix_lo, ix_hi);
+            hpy->SetDirectory(nullptr);
+
+            if (hpy->GetEntries() < MIN_ENTRIES) { delete hpy; continue; }
+
+            const double mu0  = hpy->GetBinCenter(hpy->GetMaximumBin());
+            const double rms  = (hpy->GetRMS() > 0.) ? hpy->GetRMS() : 1.0;
+            const double ymin = hpy->GetXaxis()->GetXmin();
+            const double ymax = hpy->GetXaxis()->GetXmax();
+
+            gfunc.SetRange(std::max(ymin, mu0 - 3.*rms), std::min(ymax, mu0 + 3.*rms));
+            gfunc.SetParameters(hpy->GetMaximum(), mu0, rms);
+            if (hpy->Fit(&gfunc, "RNQ") != 0 || gfunc.GetParameter(2) <= 0.) {
+                delete hpy; continue;
+            }
+            const double mu1 = gfunc.GetParameter(1), sig1 = gfunc.GetParameter(2);
+            const double lo2 = std::max(ymin, mu1 - 3.*sig1);
+            const double hi2 = std::min(ymax, mu1 + 3.*sig1);
+            gfunc.SetRange(lo2, hi2);
+            gfunc.SetParameters(gfunc.GetParameter(0), mu1, sig1);
+            if (hpy->Fit(&gfunc, "RNQ") != 0 || gfunc.GetParameter(2) <= 0.) {
+                delete hpy; continue;
+            }
+            const double mu2      = gfunc.GetParameter(1);
+            const double sig2     = gfunc.GetParameter(2);
+            const double main_cut = mu2 + N_SIGMA_CUT * sig2;
+            delete hpy;
+
+            if (!first_sl.found)
+                first_sl = {true, ix_lo, ix_hi, xlo, xhi,
+                            gfunc.GetParameter(0), mu2, sig2, lo2, hi2};
+
+            gr_x.push_back(xcen);
+            gr_main_cut.push_back(main_cut);
+            gr_mu.push_back(mu2);
+            gr_sigma.push_back(sig2);
+            gr_ex.push_back(0.5*(xhi - xlo));
+        }
+
+        const int n_fit = (int)gr_x.size();
+        if (n_fit < 2) {
+            std::cerr << "FitAndPlotZDCAlt: too few converged slices!" << std::endl;
+            return;
+        }
+
+        TGraph       g_main  (n_fit, gr_x.data(), gr_main_cut.data());
+        TGraph       g_mu    (n_fit, gr_x.data(), gr_mu.data());
+        TGraphErrors g_mu_err(n_fit, gr_x.data(), gr_mu.data(),
+                              gr_ex.data(), gr_sigma.data());
+
+        // First quadratic point: main-band cut evaluated at ALT_POLY_X1
+        const double y1 = EvalCut(&g_main, ALT_POLY_X1);
+        const auto [x2, y2, x3, y3] = GetAltCutPts(run_year_);
+        const auto [qa, qb, qc]      = SolveQuad3Pts(ALT_POLY_X1, y1, x2, y2, x3, y3);
+
+        std::cout << Form("[Alt] poly through (%.1f,%.2f),(%.1f,%.2f),(%.1f,%.2f)"
+                          "  =>  a=%.4f b=%.4f c=%.4f\n",
+                          ALT_POLY_X1, y1, x2, y2, x3, y3, qa, qb, qc);
+
+        // Build combined alt cut vector
+        std::vector<double> gr_alt_cut;
+        for (int i = 0; i < n_fit; ++i) {
+            const double x = gr_x[i];
+            gr_alt_cut.push_back(x < ALT_POLY_X1 ? gr_main_cut[i]
+                                                  : qa*x*x + qb*x + qc);
+        }
+        TGraph g_cut(n_fit, gr_x.data(), gr_alt_cut.data());
+
+        // ---- save to ROOT file -----------------------------------------------
+        const std::string cuts_path = cuts_dir_ + "/event_sel_cuts_pbpb_20" + yr_ + "_alt.root";
+        {
+            TFile* fcuts = TFile::Open(cuts_path.c_str(), "RECREATE");
+            if (!fcuts || fcuts->IsZombie()) {
+                std::cerr << "Cannot open alt cuts file: " << cuts_path << std::endl;
+            } else {
+                auto wg = [&](TGraph* g, const char* name, const char* title) {
+                    g->SetTitle(title); g->Write(name, TObject::kOverwrite);
+                };
+                wg((TGraph*)g_cut.Clone("g_ZDC_FCal_cut"),
+                   "g_ZDC_FCal_cut",
+                   Form("ZDC alt cut (main<%.1fTeV, quad>=%.1fTeV);FCal E_{T} [TeV];ZDC cut",
+                        ALT_POLY_X1, ALT_POLY_X1));
+                wg((TGraph*)g_main.Clone("g_ZDC_FCal_main_cut"),
+                   "g_ZDC_FCal_main_cut",
+                   Form("ZDC banana main band #mu+%.0f#sigma;FCal E_{T} [TeV];ZDC cut", N_SIGMA_CUT));
+                wg((TGraph*)g_mu.Clone("g_ZDC_FCal_mu"),
+                   "g_ZDC_FCal_mu",
+                   "ZDC Gaussian mean per FCal slice;FCal E_{T} [TeV];ZDC mean");
+                ((TGraphErrors*)g_mu_err.Clone("g_ZDC_FCal_mu_sigma"))
+                    ->Write("g_ZDC_FCal_mu_sigma", TObject::kOverwrite);
+                TVectorD poly(4);
+                poly[0] = qa; poly[1] = qb; poly[2] = qc; poly[3] = ALT_POLY_X1;
+                poly.Write("alt_poly_a_b_c_x1");
+                fcuts->Close();
+                std::cout << "Alt cut TGraphs saved to: " << cuts_path << std::endl;
+            }
+        }
+
+        const std::string lbl = "Pb+Pb 20" + yr_ + " data (alt)";
+        TLatex tl; tl.SetNDC(); tl.SetTextSize(0.036);
+
+        // ---- Canvas 1: 2D + alt cut ------------------------------------------
+        {
+            TH2D* hd = (TH2D*)h_zdc_fcal_->Clone("__h2_c1_alt");
+            hd->SetDirectory(nullptr);
+            TCanvas* c1 = new TCanvas("c_zdc_fcal_cut_alt", "", 800, 650);
+            c1->SetLogz(); c1->SetRightMargin(0.13);
+            hd->SetContour(99); hd->Draw("COLZ");
+            {
+                TGraph* gd = (TGraph*)g_cut.Clone("__gd_c1_alt");
+                gd->SetMarkerStyle(20); gd->SetMarkerSize(0.6);
+                gd->SetMarkerColor(kRed); gd->SetLineColor(kRed); gd->SetLineWidth(2);
+                gd->Draw("LP SAME");
+            }
+            tl.DrawLatex(0.15, 0.87, lbl.c_str());
+            tl.DrawLatex(0.15, 0.81,
+                Form("red: main #mu+%.0f#sigma (<%.0fTeV), quadratic (#geq%.0fTeV)",
+                     N_SIGMA_CUT, ALT_POLY_X1, ALT_POLY_X1));
+            c1->SaveAs(OutPathAlt("ZDC_E_tot_vs_FCal_Et_AC_with_cut").c_str());
+            delete c1; delete hd;
+        }
+
+        // ---- Canvas 2: pass | fail -------------------------------------------
+        {
+            TH2D* h_pass = (TH2D*)h_zdc_fcal_->Clone("__h2_pass_alt");
+            TH2D* h_fail = (TH2D*)h_zdc_fcal_->Clone("__h2_fail_alt");
+            h_pass->Reset(); h_pass->SetDirectory(nullptr);
+            h_fail->Reset(); h_fail->SetDirectory(nullptr);
+
+            for (int ix = 1; ix <= nx; ++ix) {
+                const double xc  = h_zdc_fcal_->GetXaxis()->GetBinCenter(ix);
+                const double cut = EvalCut(&g_cut, xc);
+                for (int iy = 1; iy <= ny; ++iy) {
+                    const double w = h_zdc_fcal_->GetBinContent(ix, iy);
+                    if (w == 0.) continue;
+                    const double yc = h_zdc_fcal_->GetYaxis()->GetBinCenter(iy);
+                    if (cut > 0. && yc > cut) h_fail->Fill(xc, yc, w);
+                    else                       h_pass->Fill(xc, yc, w);
+                }
+            }
+
+            TCanvas* c2 = new TCanvas("c_zdc_fcal_pf_alt", "", 1400, 620);
+            c2->Divide(2, 1);
+            auto draw_cut = [&](TGraph* src, const char* name) {
+                TGraph* gd = (TGraph*)src->Clone(name);
+                gd->SetMarkerStyle(20); gd->SetMarkerSize(0.6);
+                gd->SetMarkerColor(kRed); gd->SetLineColor(kRed); gd->SetLineWidth(2);
+                gd->Draw("LP SAME");
+            };
+            c2->cd(1); gPad->SetLogz(); gPad->SetRightMargin(0.15);
+            h_pass->SetContour(99); h_pass->Draw("COLZ");
+            draw_cut(&g_cut, "__gd_pass_alt");
+            { TLatex t2; t2.SetNDC(); t2.SetTextSize(0.036);
+              t2.DrawLatex(0.15, 0.87, lbl.c_str());
+              t2.DrawLatex(0.15, 0.81, "Passing cut"); }
+            c2->cd(2); gPad->SetLogz(); gPad->SetRightMargin(0.15);
+            h_fail->SetContour(99); h_fail->Draw("COLZ");
+            draw_cut(&g_cut, "__gd_fail_alt");
+            { TLatex t2; t2.SetNDC(); t2.SetTextSize(0.036);
+              t2.DrawLatex(0.15, 0.87, lbl.c_str());
+              t2.DrawLatex(0.15, 0.81, "Failing cut"); }
+            c2->SaveAs(OutPathAlt("ZDC_E_tot_vs_FCal_Et_AC_pass_fail").c_str());
+            delete c2; delete h_pass; delete h_fail;
+        }
+
+        // ---- Canvas 3 (support): main cut + alt cut + mu±sigma ---------------
+        {
+            TH2D* hd = (TH2D*)h_zdc_fcal_->Clone("__h2_c3_alt");
+            hd->SetDirectory(nullptr);
+            TCanvas* c3 = new TCanvas("c_zdc_support_alt", "", 800, 650);
+            c3->SetLogz(); c3->SetRightMargin(0.13);
+            hd->SetContour(99); hd->Draw("COLZ");
+            {
+                TGraph* gm = (TGraph*)g_main.Clone("__gd_main_alt");
+                gm->SetMarkerStyle(20); gm->SetMarkerSize(0.6);
+                gm->SetMarkerColor(kRed); gm->SetLineColor(kRed); gm->SetLineWidth(2);
+                gm->Draw("LP SAME");
+            }
+            {
+                TGraph* gd = (TGraph*)g_cut.Clone("__gd_cut_alt");
+                gd->SetMarkerStyle(24); gd->SetMarkerSize(0.6);
+                gd->SetMarkerColor(kMagenta+1); gd->SetLineColor(kMagenta+1); gd->SetLineWidth(2);
+                gd->Draw("LP SAME");
+            }
+            {
+                TGraphErrors* gme = (TGraphErrors*)g_mu_err.Clone("__gd_mu_alt");
+                gme->SetMarkerStyle(24); gme->SetMarkerSize(0.6);
+                gme->SetMarkerColor(kRed); gme->SetLineColor(kRed); gme->SetLineWidth(1);
+                gme->Draw("P SAME");
+            }
+            TLatex ts; ts.SetNDC(); ts.SetTextSize(0.036);
+            ts.DrawLatex(0.15, 0.87, lbl.c_str());
+            ts.SetTextColor(kRed);
+            ts.DrawLatex(0.15, 0.81, Form("red: main band #mu+%.0f#sigma", N_SIGMA_CUT));
+            ts.SetTextColor(kMagenta+1);
+            ts.DrawLatex(0.15, 0.75,
+                Form("magenta: alt cut (quad. for FCal #geq %.1f TeV)", ALT_POLY_X1));
+            c3->SaveAs(OutPathAlt("cut1_ZDC_FCal_2graph_support").c_str());
+            delete c3; delete hd;
+        }
+    }
+
     // -------------------------------------------------------------------------
     // ZDC time A vs C for the top 5 individual centrality percent bins (0-4)
     // and the combined 5-10% bin (centrality 5-9), for events passing the
