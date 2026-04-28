@@ -228,6 +228,11 @@ void PythiaTruthExtras<PairT, Derived>::InitOutputExtra() {
                     Form("%sc_parents_%s%s%s.txt", diag_dir.c_str(), sign_labels[isign].c_str(), dphis[jdphi].c_str(), bsuf.c_str()));
             }
     }
+
+    if (debug_print_history_nevents > 0)
+        m_debug_history_file = new std::ofstream(diag_dir + "debug_history" + bsuf + ".txt");
+    if (debug_print_bhadron_id_nevents > 0)
+        m_debug_bhadron_id_file = new std::ofstream(diag_dir + "debug_bhadron_id" + bsuf + ".txt");
 }
 
 // ---------------------------------------------------------------------------
@@ -1554,6 +1559,30 @@ void PythiaTruthExtras<PairT, Derived>::MuonPairAncestorTracing() {
         std::cout << "[DEBUG] MuonPairAncestorTracing event " << mpair->m1.ev_num
                   << ": muon2 history" << std::endl;
         PrintHistory(&std::cout, true, false, true);
+    }
+
+    if (debug_print_history_nevents > 0 && m_debug_history_file &&
+        mpair->m1.ev_num < debug_print_history_nevents) {
+        *m_debug_history_file << "=== Event " << mpair->m1.ev_num << " ===" << std::endl;
+        PrintHistory(m_debug_history_file, true, true,  true);
+        PrintHistory(m_debug_history_file, true, false, true);
+    }
+
+    if (debug_print_bhadron_id_nevents > 0 && m_debug_bhadron_id_file &&
+        mpair->m1.ev_num < debug_print_bhadron_id_nevents) {
+        auto safe_id = [&](int bc) -> int {
+            if (bc < 0 || !truth_id) return -999;
+            int idx = GetParticleIndex(bc);
+            if (idx < 0 || idx >= (int)truth_id->size()) return -999;
+            return truth_id->at(idx);
+        };
+        *m_debug_bhadron_id_file
+            << "ev=" << mpair->m1.ev_num
+            << "  m1_eldest_bhadron_bc=" << m1_eldest_bhadron_barcode
+            << "  m1_eldest_bhadron_id=" << safe_id(m1_eldest_bhadron_barcode)
+            << "  m2_eldest_bhadron_bc=" << m2_eldest_bhadron_barcode
+            << "  m2_eldest_bhadron_id=" << safe_id(m2_eldest_bhadron_barcode)
+            << std::endl;
     }
 
 }
