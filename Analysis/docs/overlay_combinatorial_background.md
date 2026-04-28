@@ -59,18 +59,18 @@ while (parent_ids[0] is a B-hadron) {
 m_eldest_bhadron_barcode = first_hadron_barcode
 ```
 
-- **PP fullsim**: eldest B-hadron's parent is the **b-quark** → stores b-quark barcode. Since each b-quark produces one B-meson branch, b-quark barcode identity ↔ same-B identity. This is effectively quark-level matching, not hadron-level, even though the variable name says "bhadron".
+- **PP fullsim (pre-fix)**: The loop exits when the particle above the eldest B-hadron is not a B-hadron. What that particle is depends on which parent appears first in `truth_parents`: often it's a light quark (u, d, s) from the qqbar→B-meson vertex, not the b-quark. So `first_hadron_barcode` and `first_hadron_id` reflect whichever parent was indexed first — not necessarily the b-quark. The old code stored this barcode unconditionally: sometimes b-quark bc, sometimes light-quark bc. Since both muons trace through the same B-meson, the stored barcode is the same for both → `from_same_b` still worked (the value is a coincidental proxy for B-hadron identity, not quark identity).
 - **Overlay**: b-quark is absent (AOD truth thinning). Chain ends at `μ → B-meson → proton (id=2212, bc=1)`. After Bug 2 fix, the loop steps into the B-meson correctly, then exits when the parent (proton) is not a B-hadron. Stores `bc=1` (the proton's barcode) for **all** B-meson chains → `m1 == m2 == 1` for all B-decay pairs → `from_same_b=true` for all, which is wrong.
 
-**The user concern** (raised during investigation): "HF tagging is set at the HF hadron level, not the quark level — so the fix shouldn't be needed." This is correct in intent: `from_same_b` *should* work at the B-hadron level. The bug was that the code was actually working at the **b-quark level** in PP fullsim (accidentally correct because one b-quark → one B-meson branch), and in overlay it stored the proton barcode instead. The fix makes it genuinely work at the B-hadron level in both cases.
+**The user concern** (raised during investigation): "HF tagging is set at the HF hadron level, not the quark level — so the fix shouldn't be needed." This is correct in intent: `from_same_b` *should* work at the B-hadron level. The pre-fix code happened to work for PP fullsim because the stored value (whatever parent came first) was unique per B-meson branch. In overlay it broke because all chains ended at bc=1. The fix makes it explicitly correct at B-hadron level in both samples.
 
 **Fix** (`dee4050`): Track `last_bhadron_bc` (the eldest B-hadron's own barcode) during the tracing loop. After exit:
 ```cpp
-int store_bc = (abs(first_hadron_id) == 5)   // parent is b-quark → standard MC
-             ? first_hadron_barcode            // store b-quark bc (unchanged)
-             : last_bhadron_bc;               // store B-hadron's own bc (overlay)
+int store_bc = (abs(first_hadron_id) == 5)   // parent is b-quark (rare in practice)
+             ? first_hadron_barcode            // store b-quark bc
+             : last_bhadron_bc;               // store B-hadron's own bc (default path)
 ```
-PP fullsim behavior is identical to before. In overlay, same-B pairs now share the same B-meson barcode.
+Debug output on 100 events (Apr 2026) confirms: **both PP fullsim and overlay now store genuine B-meson PDG IDs** (511, 513, 521, 523, 531, 533 family) at `m_eldest_bhadron_barcode`. The `abs(first_hadron_id)==5` branch is rarely triggered since light quarks typically appear first in `truth_parents` for qqbar→B production. In overlay, `from_same_b=true` pairs (ev=13, ev=99, etc.) share the same B-meson barcode as intended.
 
 ---
 
