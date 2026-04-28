@@ -38,6 +38,7 @@ public:
     }
 
     double min_denom_neff = 10.0;
+    std::string extra_tag = ""; // appended to histogram filename and plot dir name
 
 protected:
     bool tight_WP;
@@ -146,7 +147,7 @@ protected:
     }
     std::string GetRecoEffcyOutDir(const std::string& /*ctr_tag*/ = "") const {
         return GetDataDir() + "plots/" + GetPlotDirPrefix() + "_reco_effcy_plots"
-            + require_signal_cuts_file_dir_suffix + "/"
+            + require_signal_cuts_file_dir_suffix + extra_tag + "/"
             + (tight_WP ? "tight/" : "medium/");
     }
 
@@ -661,6 +662,6 @@ protected:
     }
     std::string GetInputFilePath() const override {
         return GetDataDir() + "histograms_pythia_fullsim_"
-            + FullSimSampleLabel(fullsim_sample_type) + "_no_data_resonance_cuts.root";
+            + FullSimSampleLabel(fullsim_sample_type) + "_no_data_resonance_cuts" + extra_tag + ".root";
     }
 };

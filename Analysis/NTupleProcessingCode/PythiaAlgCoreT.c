@@ -490,7 +490,7 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::OutputTreePathHook() {
         output_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_truth_full_sample/" + ecom_subdir + "/";
     }
 
-    this->output_file_path = output_dir + outfile_name + apply_suffix + local_suffix + ".root";
+    this->output_file_path = output_dir + outfile_name + apply_suffix + local_suffix + this->extra_output_suffix + ".root";
 }
 
 template <class PairT, class MuonT, class Derived, class... Extras>
@@ -508,7 +508,7 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::OutputHistPathHook() {
         output_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_truth_full_sample/" + ecom_subdir + "/";
     }
 
-    this->output_hist_file_path = output_dir + outhistfile_name + apply_suffix + local_suffix + ".root";
+    this->output_hist_file_path = output_dir + outhistfile_name + apply_suffix + local_suffix + this->extra_output_suffix + ".root";
 }
 
 // ---------------------------------------------------------------------------
