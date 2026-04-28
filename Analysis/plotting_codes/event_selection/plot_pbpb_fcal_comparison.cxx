@@ -101,8 +101,8 @@ static TH1D* FillFCalHist(int yr, const CutSetFC& cs) {
 
     static int s_uid = 0;
     TH1D* h = new TH1D(Form("h_fcal_yr%d_%d", yr, s_uid++),
-                        ";FCal E_{T}^{A+C} [TeV];Events (normalized to unit area)",
-                        120, -0.5, 5.5);
+                        ";FCal E_{T}^{A+C} [TeV];Events (norm., 0-80%)",
+                        600, 0., 6.);
     h->SetDirectory(nullptr);
     h->Sumw2();
 
@@ -194,32 +194,31 @@ static void DrawRatioColumn(TPad* p_top, TPad* p_bot,
     p_top->SetTopMargin(0.12);
     p_top->SetLeftMargin(0.18);
     p_top->SetRightMargin(0.04);
+    p_top->SetLogy();
 
     TH1D* ht_ref = (TH1D*)h_ref->Clone();
     TH1D* ht_yr  = (TH1D*)h_yr ->Clone();
     ht_ref->SetDirectory(nullptr);
     ht_yr ->SetDirectory(nullptr);
 
-    ht_ref->SetLineColor(col_ref);  ht_ref->SetMarkerColor(col_ref);
-    ht_yr ->SetLineColor(col_yr);   ht_yr ->SetMarkerColor(col_yr);
-    ht_ref->SetMarkerStyle(20);  ht_ref->SetMarkerSize(0.4);
-    ht_yr ->SetMarkerStyle(24);  ht_yr ->SetMarkerSize(0.4);
+    ht_ref->SetLineColor(col_ref);  ht_ref->SetLineWidth(2);
+    ht_yr ->SetLineColor(col_yr);   ht_yr ->SetLineWidth(2);
 
     ht_ref->GetXaxis()->SetLabelSize(0.);
-    ht_ref->GetYaxis()->SetTitle("Normalized");
+    ht_ref->GetXaxis()->SetRangeUser(0.04, 5.5);
+    ht_ref->GetYaxis()->SetTitle("Events (norm., 0-80%)");
     ht_ref->GetYaxis()->SetTitleSize(0.060);
     ht_ref->GetYaxis()->SetLabelSize(0.052);
     ht_ref->GetYaxis()->SetTitleOffset(1.30);
+    ht_ref->SetMinimum(1e-7);
 
-    const double ymax = std::max(ht_ref->GetMaximum(), ht_yr->GetMaximum()) * 1.20;
-    ht_ref->GetYaxis()->SetRangeUser(0., ymax);
-    ht_ref->Draw("E HIST");
-    ht_yr ->Draw("E HIST SAME");
+    ht_ref->Draw("HIST");
+    ht_yr ->Draw("HIST SAME");
 
     TLegend* leg = new TLegend(0.55, 0.67, 0.93, 0.85);
     leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.052);
-    leg->AddEntry(ht_ref, lbl_ref, "lp");
-    leg->AddEntry(ht_yr,  lbl_yr,  "lp");
+    leg->AddEntry(ht_ref, lbl_ref, "l");
+    leg->AddEntry(ht_yr,  lbl_yr,  "l");
     leg->Draw();
 
     TLatex tl; tl.SetNDC(); tl.SetTextSize(0.052); tl.SetTextColor(kGray+2);
@@ -241,6 +240,7 @@ static void DrawRatioColumn(TPad* p_top, TPad* p_bot,
     ratio->SetMarkerSize(0.4 * scale);
 
     ratio->GetXaxis()->SetTitle("FCal E_{T}^{A+C} [TeV]");
+    ratio->GetXaxis()->SetRangeUser(0.04, 5.5);
     ratio->GetXaxis()->SetTitleSize(0.060 * scale);
     ratio->GetXaxis()->SetLabelSize(0.052 * scale);
     ratio->GetXaxis()->SetTitleOffset(1.0);
@@ -252,7 +252,7 @@ static void DrawRatioColumn(TPad* p_top, TPad* p_bot,
     ratio->GetYaxis()->SetRangeUser(0.50, 1.50);
 
     ratio->Draw("E");
-    TLine line(h_ref->GetXaxis()->GetXmin(), 1., h_ref->GetXaxis()->GetXmax(), 1.);
+    TLine line(0.04, 1., 5.5, 1.);
     line.SetLineColor(kGray+1); line.SetLineStyle(2); line.SetLineWidth(1);
     line.DrawClone();
 }
