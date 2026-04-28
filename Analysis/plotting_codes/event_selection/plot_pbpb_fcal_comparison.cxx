@@ -270,9 +270,13 @@ static void MakeComparisonPlot(bool is_alt) {
     if (!h23 || !h24 || !h25) {
         std::cerr << "Missing histogram — aborting." << std::endl; return;
     }
-    // Normalize to unit area
-    for (TH1D* h : {h23, h24, h25})
-        if (h->Integral() > 0.) h->Scale(1. / h->Integral());
+    // Normalize to unit area within 0-80% centrality (FCal_ET > PbPb2023 80% boundary).
+    static const double kFCal80pct = 0.063208;  // TeV — FCal_ET_Bins_PbPb2023[79]
+    for (TH1D* h : {h23, h24, h25}) {
+        const int bin_lo = h->FindBin(kFCal80pct);
+        const double integ = h->Integral(bin_lo, h->GetNbinsX());
+        if (integ > 0.) h->Scale(1. / integ);
+    }
 
     const double split = 0.30;   // fraction of canvas height for ratio pads
 
