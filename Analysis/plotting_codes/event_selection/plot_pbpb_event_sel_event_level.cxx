@@ -313,8 +313,8 @@ private:
         std::vector<double> gr_bg_x, gr_bg_cut, gr_bg_mu, gr_bg_sig;
         // Initial guess used for each bg-region slice (for debug plot)
         std::vector<double> gr_guess_x, gr_guess_mu;
-        // Slices in bg region where Gaussian didn't converge — filled by post-loop interpolation
-        struct PendingBg { double xcen; int gr_idx; };
+        // Slices in bg region where Gaussian didn't converge — extended by post-loop retry/extrapolation
+        struct PendingBg { double xcen; int gr_idx; int isl; };
         std::vector<PendingBg> pending_bg;
 
         struct FirstSlice {
@@ -426,7 +426,7 @@ private:
             std::cout << "\n";
 
             if (xcen > FCAL_BG_FIT_MIN_TEV && !bg_ok)
-                pending_bg.push_back({xcen, (int)gr_x.size()});
+                pending_bg.push_back({xcen, (int)gr_x.size(), isl});
             gr_x.push_back(xcen);
             gr_cut.push_back(final_cut);
             gr_main_cut.push_back(main_cut);
@@ -438,20 +438,73 @@ private:
         const int n_fit = (int)gr_x.size();
         const int n_bg  = (int)gr_bg_x.size();
 
-        // For bg-region slices where the Gaussian didn't converge, interpolate/extrapolate
-        // bg_cut from the converged-point TGraph and apply max(main_cut, bg_cut_interp).
+        // ---- Post-loop: wider-slice retry then TGraph extrapolation for non-converged bg slices ----
+        // Results extend the plotting TGraphs to FCAL_BG_FIT_MIN_TEV; gr_cut updated where tighter.
+        std::vector<double> ext_bg_x, ext_bg_cut, ext_bg_mu, ext_bg_sig;
         int n_bg_interp = 0;
-        if (n_bg >= 2 && !pending_bg.empty()) {
-            TGraph g_bg_interp(n_bg, gr_bg_x.data(), gr_bg_cut.data());
-            auto eval_bg = [&](double x) -> double {
-                const int n = g_bg_interp.GetN();
-                if (x <= g_bg_interp.GetX()[0])   return g_bg_interp.GetY()[0];
-                if (x >= g_bg_interp.GetX()[n-1]) return g_bg_interp.GetY()[n-1];
-                return g_bg_interp.Eval(x);
+
+        if (!pending_bg.empty() && n_bg >= 2) {
+            TF1 gfe("gfit_ext", "gaus");
+            const double sigma_init = (bg_hi - bg_lo) / 6.;
+            // Two-pass bg Gaussian fit on arbitrary projection h at xcen; returns true if converged.
+            auto try_bg_fit = [&](TH1D* h, double xcen, double& mu_out, double& sig_out) -> bool {
+                const double mu0   = std::max(bg_lo, std::min(bg_hi, GetBgMuGuess(run_year_, xcen)));
+                const double p1_lo = std::max(bg_lo, mu0 - 3.*sigma_init);
+                const double p1_hi = std::min(bg_hi, mu0 + 3.*sigma_init);
+                const int bp1 = h->FindBin(p1_lo), bp2 = h->FindBin(p1_hi);
+                if (h->Integral(bp1, bp2) < MIN_ENTRIES) return false;
+                double amp = 1.;
+                for (int b = bp1; b <= bp2; ++b) amp = std::max(amp, h->GetBinContent(b));
+                gfe.SetRange(p1_lo, p1_hi);
+                gfe.SetParameters(amp, mu0, sigma_init);
+                if (h->Fit(&gfe, "RNQ") != 0 || gfe.GetParameter(2) <= 0.) return false;
+                const double mu1 = gfe.GetParameter(1), sig1 = gfe.GetParameter(2);
+                gfe.SetRange(std::max(bg_lo, mu1 - BG_N_SIGMA_INNER*sig1),
+                             std::min(bg_hi, mu1 + BG_N_SIGMA_INNER*sig1));
+                gfe.SetParameters(gfe.GetParameter(0), mu1, sig1);
+                if (h->Fit(&gfe, "RNQ") != 0 || gfe.GetParameter(2) <= 0.) return false;
+                mu_out  = gfe.GetParameter(1);
+                sig_out = gfe.GetParameter(2);
+                return (mu_out >= bg_lo && mu_out <= bg_hi);
             };
+
+            // Build extrapolation TGraphs from converged points (clamped at boundaries)
+            TGraph g_mu_e (n_bg, gr_bg_x.data(), gr_bg_mu.data());
+            TGraph g_sig_e(n_bg, gr_bg_x.data(), gr_bg_sig.data());
+            auto eval_e = [](const TGraph& g, double x) -> double {
+                int n = g.GetN();
+                if (x <= g.GetX()[0])   return g.GetY()[0];
+                if (x >= g.GetX()[n-1]) return g.GetY()[n-1];
+                return g.Eval(x);
+            };
+
             for (auto& pb : pending_bg) {
-                const double bg_cut_i = eval_bg(pb.xcen);
-                const double new_cut  = std::max(gr_main_cut[pb.gr_idx], bg_cut_i);
+                double mu_e = 0., sig_e = 0.;
+                bool found = false;
+                // Try 4× wider then 8× wider bins (0.2 and 0.4 TeV slices)
+                for (int mult : {4, 8}) {
+                    const int half    = mult / 2;
+                    const int ix_w_lo = std::max(1,  (pb.isl - half) * N_BINS_PER_SLICE + 1);
+                    const int ix_w_hi = std::min(nx, (pb.isl - half + mult) * N_BINS_PER_SLICE);
+                    TH1D* hw = (TH1D*)h_zdc_fcal_->ProjectionY(
+                        Form("__hpy_w%d_%d", mult, pb.isl), ix_w_lo, ix_w_hi);
+                    hw->SetDirectory(nullptr);
+                    found = try_bg_fit(hw, pb.xcen, mu_e, sig_e);
+                    delete hw;
+                    if (found) break;
+                }
+                // Fallback: extrapolate from converged TGraph
+                if (!found) {
+                    mu_e  = eval_e(g_mu_e,  pb.xcen);
+                    sig_e = eval_e(g_sig_e, pb.xcen);
+                }
+                const double cut_e = mu_e - BG_N_SIGMA_CUT * sig_e;
+                ext_bg_x.push_back(pb.xcen);
+                ext_bg_mu.push_back(mu_e);
+                ext_bg_sig.push_back(sig_e);
+                ext_bg_cut.push_back(cut_e);
+
+                const double new_cut = std::max(gr_main_cut[pb.gr_idx], cut_e);
                 if (new_cut > gr_cut[pb.gr_idx]) {
                     gr_cut[pb.gr_idx] = new_cut;
                     ++n_bg_interp;
@@ -459,10 +512,19 @@ private:
             }
         }
 
+        // Full bg vectors: extended (lower FCal) prepended to converged (higher FCal)
+        std::vector<double> gr_bg_x_all = ext_bg_x,   gr_bg_cut_all = ext_bg_cut,
+                            gr_bg_mu_all = ext_bg_mu, gr_bg_sig_all = ext_bg_sig;
+        gr_bg_x_all.insert(gr_bg_x_all.end(),    gr_bg_x.begin(),   gr_bg_x.end());
+        gr_bg_cut_all.insert(gr_bg_cut_all.end(), gr_bg_cut.begin(), gr_bg_cut.end());
+        gr_bg_mu_all.insert(gr_bg_mu_all.end(),   gr_bg_mu.begin(),  gr_bg_mu.end());
+        gr_bg_sig_all.insert(gr_bg_sig_all.end(), gr_bg_sig.begin(), gr_bg_sig.end());
+        const int n_bg_all = (int)gr_bg_x_all.size();
+
         std::cout << n_fit << " main-band slices converged; "
-                  << n_bg  << " background-band slices converged (FCal > "
-                  << FCAL_BG_FIT_MIN_TEV << " TeV); "
-                  << n_bg_interp << " filled by interpolation." << std::endl;
+                  << n_bg  << " bg-band converged; "
+                  << (int)ext_bg_x.size() << " extended (wider-slice or extrapolated); "
+                  << n_bg_interp << " tightened gr_cut." << std::endl;
         if (n_fit < 2) {
             std::cerr << "FitAndPlotZDC: too few converged slices!" << std::endl;
             return;
@@ -473,14 +535,14 @@ private:
         TGraph  g_mu      (n_fit, gr_x.data(),       gr_mu.data());
         TGraphErrors g_mu_err(n_fit, gr_x.data(), gr_mu.data(),
                               gr_ex.data(), gr_sigma.data());
-        // Background cut graph and mu±sigma graph (may be empty)
-        const bool have_bg = (n_bg > 0);
+        // Background cut graph and mu±sigma graph (converged + extended)
+        const bool have_bg = (n_bg_all > 0);
         TGraph       g_bg;
         TGraphErrors g_bg_mu_err;
         if (have_bg) {
-            g_bg        = TGraph(n_bg, gr_bg_x.data(), gr_bg_cut.data());
-            g_bg_mu_err = TGraphErrors(n_bg, gr_bg_x.data(), gr_bg_mu.data(),
-                                       nullptr, gr_bg_sig.data());
+            g_bg        = TGraph(n_bg_all, gr_bg_x_all.data(), gr_bg_cut_all.data());
+            g_bg_mu_err = TGraphErrors(n_bg_all, gr_bg_x_all.data(), gr_bg_mu_all.data(),
+                                       nullptr, gr_bg_sig_all.data());
         }
 
         // ---- save cut curves to ROOT file ------------------------------------
