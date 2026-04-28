@@ -35,6 +35,10 @@ public:
     bool print_low_minv_resonances = false;
     bool print_FE = false;
 
+    // Debug dump flags: set > 0 before Run() to enable file output
+    int debug_print_history_nevents    = 0;  // print full muon history for first N events
+    int debug_print_bhadron_id_nevents = 0;  // print m_eldest_bhadron_barcode truth_id for first N events
+
 protected:
     Derived& self() { return static_cast<Derived&>(*this); }
     const Derived& self() const { return static_cast<const Derived&>(*this); }
@@ -209,6 +213,8 @@ protected:
     std::ofstream* m_other_flavor_category_file = nullptr;
     std::ofstream* m_b_parent_file[ParamsSet::nSigns][2] = {};
     std::ofstream* m_c_parent_file[ParamsSet::nSigns][2] = {};
+    std::ofstream* m_debug_history_file    = nullptr;
+    std::ofstream* m_debug_bhadron_id_file = nullptr;
 
 // --------------------- method declarations ---------------------------
 
