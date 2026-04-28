@@ -168,17 +168,21 @@ From `PbPbBaseClass.h`:
 
 Centrality is stored as `avg_centrality` (integer percentage) in the overlay NTUP. The HIJING test sample uses a 0–5 fm impact parameter selection (ultra-central), so only ctr [0,5) (~81%) and [5,10) (~18%) are populated; all peripheral bins are empty for this sample.
 
-## Overlay truth pair structure and HF-ancestry limitations
+## Overlay truth pair structure and HF-ancestry
 
 The overlay NTUP `truth_mupair_*` pairs are **Pythia×Pythia** (all barcodes < 200,000). The skimmer pairs only stable truth muons; HIJING hard-scatter particles are not stable muons.
 
-The pair pool is dominated by Geant4 secondary muons: the overlay AOD stores all GEANT4 shower products as truth particles with sequential Pythia-range barcodes (~74k per event vs ~500 in PP fullsim), including many soft pion/kaon-decay muons. This gives ~68% `s_light` parent group and makes `_op` efficiency meaningless as a signal efficiency.
+**Three bugs were fixed in Apr 2026 (see [overlay_combinatorial_background.md](overlay_combinatorial_background.md) for details):**
 
-`from_same_b = true` requires both muons to trace to the same B-hadron. In overlay this is structurally suppressed by two effects:
-1. **Geant4 soft muons dominate** the truth pair pool, with `parent_group = s_light`, never `from_same_b`.
-2. **b-quark missing from overlay truth chain**: the ancestry trace ends at `B-meson → beam particle (id=3000208)` with no b-quark above it. `FindHeavyQuarks` returns −1 → `skip_event_origin_analysis = true` → `from_same_b` never set even for genuine B-decay pairs.
+1. **`truth_parents` CollectionProxy missing**: Fixed by `gInterpreter->GenerateDictionary("vector<vector<int>>","vector")` in `InitInputExtra`.
 
-Both issues need to be resolved before `_single_b` efficiency measurements are possible. See [overlay_combinatorial_background.md](overlay_combinatorial_background.md) for full diagnosis and required fixes.
+2. **Barcode collision in `GetParticleIndex` cache**: The overlay truth table has ~600–1200 duplicate barcodes per event (Pythia muon + Geant4 secondary assigned the same bc). The cache was built last-writer-wins, so lookups returned the wrong particle. Fixed with `emplace` (first-writer-wins).
+
+3. **`m_eldest_bhadron_barcode` stored beam barcode**: In overlay the b-quark is absent; the chain ends at `B-meson → proton(bc=1)`. The B-meson barcode (not the proton's bc=1) is now stored for same-b matching.
+
+**After fixes**, 500-event test (OS pairs, kn=0): `direct_b` 52%, `from_same_b` 30% — consistent with PP fullsim.
+
+The residual ~15% `s_light` is genuine Geant4 combinatorial background (pion/kaon decay muons passing the pT > 4 GeV cut). These pairs appear in `_op` efficiency but not `_single_b`.
 
 ## Running manually (without pipeline)
 
