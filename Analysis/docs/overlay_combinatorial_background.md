@@ -16,61 +16,92 @@ Overlay event 0 has ~78k truth particles with bc < 200,000 (vs ~486 in PP fullsi
 
 ---
 
-## 2. Root Causes and Fixes (resolved Apr 2026)
+## 2. Observed Symptom Before Fixes
 
-Three bugs were identified and fixed in `PythiaTruthExtras.c`.
+| Sample | `from_same_b` rate | `direct_b` parent group |
+|--------|--------------------|------------------------|
+| PP fullsim | ~30% | ~51% |
+| Overlay (before fixes) | **~0%** | **~0.5%** |
+
+Both metrics were near zero in overlay. Root cause: three bugs in `PythiaTruthExtras.c`, described below.
+
+---
+
+## 3. Root Causes and Fixes (resolved Apr 2026)
 
 ### Bug 1: `truth_parents` branch not read (CollectionProxy missing)
 
-`SetBranchAddress("truth_parents", &ptr)` requires a compiled CollectionProxy for `vector<vector<int>>`. Without it, the call silently returns −3 and ancestry tracing fails entirely (all pairs get `s_light`).
+`SetBranchAddress("truth_parents", &ptr)` requires a compiled CollectionProxy for `vector<vector<int>>`. Without it, the call silently returns −3 and ancestry tracing fails entirely — all pairs get `s_light`, `from_same_b` stays false.
 
-**Fix**: `gInterpreter->GenerateDictionary("vector<vector<int>>","vector")` added to `InitInputExtra`. Also `#include "TInterpreter.h"` added to `PythiaTruthExtras.h`.
+**Fix** (`f748e3f`): `gInterpreter->GenerateDictionary("vector<vector<int>>","vector")` added to `InitInputExtra`. Also `#include "TInterpreter.h"` added to `PythiaTruthExtras.h`.
 
-### Bug 2: Barcode collision in `GetParticleIndex` cache (critical)
+### Bug 2: Barcode collision in `GetParticleIndex` cache
 
-The overlay truth table has ~600–1200 barcode collisions per event: the full `truth_barcode` vector contains the original Pythia muon at index `i1` and a Geant4 secondary (rho⁻, π⁺, φ, etc.) at index `i2 > i1`, both with the same barcode value. The cache was built with `bc_map[bc] = i` (last-writer-wins), so lookups always returned the Geant4 secondary instead of the muon.
+The overlay truth table has ~600–1200 barcode collisions per event: the `truth_barcode` vector contains the original Pythia muon at index `i1` and a Geant4 secondary (rho⁻, π⁺, φ, etc.) at index `i2 > i1`, both with the same barcode. The cache used `bc_map[bc] = i` (last-writer-wins), so lookups returned the Geant4 secondary rather than the original muon.
 
-With wrong bc_map entries:
-- Ancestry tracing started from the wrong particle (non-muon Geant4 secondary)
-- Parent groups resolved to `s_light` for nearly all pairs → 68% `s_light`
-- `from_same_b` never set → 0%
+Effect: ancestry tracing started from the wrong particle → parent groups resolved to `s_light` for ~68% of pairs → `from_same_b` = 0%.
 
-**Fix**: Changed `barcode_to_index_cache[bc] = i` → `barcode_to_index_cache.emplace(bc, i)`. The `emplace` call is a no-op if the key already exists, so the first occurrence (the Pythia muon) is always preserved.
+**Fix** (`dee4050`): Changed to `barcode_to_index_cache.emplace(bc, i)` — `emplace` is a no-op if the key exists, preserving the first (Pythia) occurrence.
 
-### Bug 3: `m_eldest_bhadron_barcode` stores beam barcode (not B-meson barcode)
+### Bug 3: `m_eldest_bhadron_barcode` stores wrong barcode
 
-In overlay AODs, the b-quark is absent from the truth chain (AOD truth thinning). The ancestry chain ends at:
+**Context — what the code was actually doing, and the quark-vs-hadron question:**
+
+The `from_same_b` check in `HFMuonPairAnalysis` compares `m1_eldest_bhadron_barcode == m2_eldest_bhadron_barcode`. The variable name suggests B-hadron level, but examining `SingleMuonAncestorTracing()` before the fix reveals what value was actually stored:
+
+```cpp
+// B-hadron tracing loop — steps UP through B-meson chain
+while (parent_ids[0] is a B-hadron) {
+    first_hadron_barcode = parent_barcode_ABOVE  // UpdateCurParents returns parent's bc
+    first_hadron_id      = parent_id_ABOVE
+}
+// After loop: first_hadron_barcode = barcode of particle ONE LEVEL ABOVE eldest B-hadron
+m_eldest_bhadron_barcode = first_hadron_barcode
 ```
-μ → B-meson → proton (id=2212, bc=1)
+
+- **PP fullsim**: eldest B-hadron's parent is the **b-quark** → stores b-quark barcode. Since each b-quark produces one B-meson branch, b-quark barcode identity ↔ same-B identity. This is effectively quark-level matching, not hadron-level, even though the variable name says "bhadron".
+- **Overlay**: b-quark is absent (AOD truth thinning). Chain ends at `μ → B-meson → proton (id=2212, bc=1)`. After Bug 2 fix, the loop steps into the B-meson correctly, then exits when the parent (proton) is not a B-hadron. Stores `bc=1` (the proton's barcode) for **all** B-meson chains → `m1 == m2 == 1` for all B-decay pairs → `from_same_b=true` for all, which is wrong.
+
+**The user concern** (raised during investigation): "HF tagging is set at the HF hadron level, not the quark level — so the fix shouldn't be needed." This is correct in intent: `from_same_b` *should* work at the B-hadron level. The bug was that the code was actually working at the **b-quark level** in PP fullsim (accidentally correct because one b-quark → one B-meson branch), and in overlay it stored the proton barcode instead. The fix makes it genuinely work at the B-hadron level in both cases.
+
+**Fix** (`dee4050`): Track `last_bhadron_bc` (the eldest B-hadron's own barcode) during the tracing loop. After exit:
+```cpp
+int store_bc = (abs(first_hadron_id) == 5)   // parent is b-quark → standard MC
+             ? first_hadron_barcode            // store b-quark bc (unchanged)
+             : last_bhadron_bc;               // store B-hadron's own bc (overlay)
 ```
-rather than `μ → B-meson → b-quark → ...` as in PP fullsim.
-
-The B-hadron tracing loop (after bc_map fix) correctly traces into the B-meson, then steps to the parent: a proton (id=2212) at bc=1. At that point, `m_eldest_bhadron_barcode` was set to bc=1 (the **proton's** barcode) for ALL B-meson chains, causing a false `from_same_b` when any two B-meson muons were paired.
-
-**Fix**: When exiting the B-hadron tracing loop, check if the particle above the eldest B-hadron is a b-quark (`abs(first_hadron_id) == 5`). If so (standard MC), store the b-quark barcode as before. If not (overlay: proton/beam), store `last_bhadron_bc` — the eldest B-hadron's own barcode. This correctly identifies genuinely same-B pairs.
+PP fullsim behavior is identical to before. In overlay, same-B pairs now share the same B-meson barcode.
 
 ---
 
-## 3. Parent Group Distribution After Fixes
+## 4. Parent Group Distribution After Fixes
 
-500-event test (kn=0, pTH8–14), sign2 (OS pairs):
+500-event test (kn=0, pTH8–14), OS pairs:
 
 | Group | Count | Fraction |
-|-------|-------|---------|
-| `s_light` (0) | 626 / 4096 | 15% |
-| `direct_b` (1) | 2132 / 4096 | 52% |
-| `b_to_c` (2) | 640 / 4096 | 16% |
-| `direct_c` (3) | 624 / 4096 | 15% |
+|-------|-------|----------|
+| `s_light` | 626 / 4096 | 15% |
+| `direct_b` | 2132 / 4096 | 52% |
+| `b_to_c` | 640 / 4096 | 16% |
+| `direct_c` | 624 / 4096 | 15% |
 | `from_same_b` | 1228 / 4096 | **30%** |
 
-PP fullsim baseline (same kn=0, 200-event test): `direct_b` 51%, `from_same_b` 30%. Overlay matches closely.
+PP fullsim baseline (same kn=0): `direct_b` 51%, `from_same_b` 30%. Overlay matches closely.
 
-The residual 15% `s_light` comes from Geant4 soft muons (pion/kaon decays) in the overlay truth record. These pairs can be removed by applying the truth-level pT ≥ 4 GeV cut at pair formation (implemented via `PassCuts_PythiaCore` — already present but acts on the individual muon level; the Geant4 muons that pass pT > 4 GeV are unavoidable and constitute genuine combinatorial background).
+The residual 15% `s_light` arises from Geant4 soft muons (pion/kaon decays) whose individual pT can pass the ≥ 4 GeV threshold and enter the pair pool. These are genuine combinatorial background in the overlay truth record.
 
 ---
 
-## 4. b-quark Absence and `skip_event_origin_analysis`
+## 5. b-quark Absence and `skip_event_origin_analysis`
 
-For B-meson chains, `FindHeavyQuarks` returns −1 (b-quark not in truth record) → `skip_event_origin_analysis = true`. The "Previous HQ barcode is -1" print is suppressed when `abs(first_hadron_id) != 5` (overlay case). The `from_same_b` check in `HFMuonPairAnalysis` (line 1246) runs **before** the `skip_event_origin_analysis` guard (line 1278), so same-B matching is unaffected by the skip flag.
+For B-meson chains in overlay, `FindHeavyQuarks` returns −1 (b-quark not in truth record) → `skip_event_origin_analysis = true`. The warning print "Previous HQ barcode is -1" is suppressed when `abs(first_hadron_id) != 5` (overlay case, added in `dee4050`).
 
-Pairs with `skip_event_origin_analysis = true` have `pair_origin_analysis_skipped = true` and their `muon_pair_origin_category` is not set. These should be treated as unclassified for origin-level analysis, but their `from_same_b` and `m1/m2_parent_group` fields are valid.
+The `from_same_b` check in `HFMuonPairAnalysis` (line ~1246) runs **before** the `skip_event_origin_analysis` guard (line ~1278), so same-B matching is unaffected by the skip. Pairs with `skip_event_origin_analysis = true` have their `muon_pair_origin_category` unset but `from_same_b` and `m1/m2_parent_group` fields are valid.
+
+---
+
+## 6. Open Questions / Future Investigation
+
+- **Residual 15% `s_light`**: some Geant4 kaon/pion-decay muons survive the ≥ 4 GeV pT cut. Applying an additional truth-level pT cut at pair formation (not just per-muon) may reduce this.
+- **`muon_pair_origin_category` for skipped events**: events where the b-quark is absent have no `origin_category` set. Need to decide how to handle these in the origin-level analysis (treat as unclassified or apply separate category).
+- **Verification on full dataset**: the 30% `from_same_b` and flavor fractions were measured on a 500-event kn=0 pTH8–14 test. Need to confirm on the full 6-pTH-bin NTP run.
