@@ -57,7 +57,7 @@ static std::pair<double,double> GetBgSearchRange(int yr) {
 static double GetBgMuGuess(int yr, double xcen) {
     struct Quad { double a, b, c; };
     static const std::map<int, Quad> kQuad = {
-        {23, {-128.125,       750.0,          -777.875          }},
+        {23, {-8./3.,          16./3.,          296.              }},  // pts: (3.5,282),(4.5,266),(5.0,256)
         {24, {-325./153.,     290./153.,       272. + 720./153. }},
         {25, {-50./9.,        145./9.,         270. -  77./9.   }},
     };
@@ -317,67 +317,6 @@ private:
         struct PendingBg { double xcen; int gr_idx; };
         std::vector<PendingBg> pending_bg;
 
-        // ---- Pre-pass: collect bg_mu by running fits high→low FCal with quadratic seed ----------
-        // Produces a data-driven TGraph used as the initial guess in the main pass,
-        // replacing the hard-coded quadratic (which breaks for 2023 at FCal > ~3.9 TeV).
-        std::vector<double> pre_bg_x, pre_bg_mu;
-        {
-            const double sigma_init = (bg_hi - bg_lo) / 6.;
-            TF1 gfpre("gfit_pre", "gaus");
-            for (int isl = n_slices - 1; isl >= 0; --isl) {
-                const int    ix_lo = isl * N_BINS_PER_SLICE + 1;
-                const int    ix_hi = std::min((isl + 1) * N_BINS_PER_SLICE, nx);
-                const double xcen  = 0.5 * (h_zdc_fcal_->GetXaxis()->GetBinLowEdge(ix_lo) +
-                                             h_zdc_fcal_->GetXaxis()->GetBinUpEdge(ix_hi));
-                if (xcen <= FCAL_BG_FIT_MIN_TEV) break;
-                TH1D* hpy = (TH1D*)h_zdc_fcal_->ProjectionY(
-                    Form("__hpy_pre_%d", isl), ix_lo, ix_hi);
-                hpy->SetDirectory(nullptr);
-                const double mu0 = std::max(bg_lo, std::min(bg_hi, GetBgMuGuess(run_year_, xcen)));
-                const double p1_lo = std::max(bg_lo, mu0 - 3.*sigma_init);
-                const double p1_hi = std::min(bg_hi, mu0 + 3.*sigma_init);
-                const int bp1_lo = hpy->FindBin(p1_lo), bp1_hi = hpy->FindBin(p1_hi);
-                double amp0 = 1.;
-                for (int b = bp1_lo; b <= bp1_hi; ++b)
-                    amp0 = std::max(amp0, hpy->GetBinContent(b));
-                if (hpy->Integral(bp1_lo, bp1_hi) >= MIN_ENTRIES) {
-                    gfpre.SetRange(p1_lo, p1_hi);
-                    gfpre.SetParameters(amp0, mu0, sigma_init);
-                    if (hpy->Fit(&gfpre, "RNQ") == 0 && gfpre.GetParameter(2) > 0.) {
-                        const double mu1 = gfpre.GetParameter(1), sig1 = gfpre.GetParameter(2);
-                        gfpre.SetRange(std::max(bg_lo, mu1 - BG_N_SIGMA_INNER*sig1),
-                                       std::min(bg_hi, mu1 + BG_N_SIGMA_INNER*sig1));
-                        gfpre.SetParameters(gfpre.GetParameter(0), mu1, sig1);
-                        if (hpy->Fit(&gfpre, "RNQ") == 0 && gfpre.GetParameter(2) > 0.) {
-                            const double mu2 = gfpre.GetParameter(1);
-                            if (mu2 >= bg_lo && mu2 <= bg_hi) {
-                                pre_bg_x.push_back(xcen);
-                                pre_bg_mu.push_back(mu2);
-                            }
-                        }
-                    }
-                }
-                delete hpy;
-            }
-            // loop was high→low; reverse to ascending order for TGraph
-            std::reverse(pre_bg_x.begin(), pre_bg_x.end());
-            std::reverse(pre_bg_mu.begin(), pre_bg_mu.end());
-        }
-        const int n_pre = (int)pre_bg_x.size();
-        std::cout << n_pre << " pre-pass bg_mu points; used as TGraph seed in main pass." << std::endl;
-
-        // Clamped interpolation/extrapolation from the pre-pass TGraph.
-        // Falls back to quadratic if pre-pass yielded < 2 points.
-        TGraph* g_pre_mu_ptr = (n_pre >= 2)
-            ? new TGraph(n_pre, pre_bg_x.data(), pre_bg_mu.data()) : nullptr;
-        auto eval_pre_mu = [&](double x) -> double {
-            if (!g_pre_mu_ptr) return GetBgMuGuess(run_year_, x);
-            const int n = g_pre_mu_ptr->GetN();
-            if (x <= g_pre_mu_ptr->GetX()[0])   return g_pre_mu_ptr->GetY()[0];
-            if (x >= g_pre_mu_ptr->GetX()[n-1]) return g_pre_mu_ptr->GetY()[n-1];
-            return g_pre_mu_ptr->Eval(x);
-        };
-
         struct FirstSlice {
             bool   found = false;
             int    ix_lo = 0, ix_hi = 0;
@@ -432,8 +371,8 @@ private:
             bool   bg_ok     = false;
             double bg_mu2 = 0., bg_sig2 = 0.;
             if (xcen > FCAL_BG_FIT_MIN_TEV) {
-                // Initial guess from pre-pass TGraph (falls back to quadratic if < 2 pre-pass points)
-                const double bg_mu0_raw = eval_pre_mu(xcen);
+                // Quadratic initial guess for bg_mu (per-year polynomial through 3 calibration points)
+                const double bg_mu0_raw = GetBgMuGuess(run_year_, xcen);
                 const double bg_mu0    = std::max(bg_lo, std::min(bg_hi, bg_mu0_raw));
                 gr_guess_x.push_back(xcen);
                 gr_guess_mu.push_back(bg_mu0);
@@ -747,7 +686,6 @@ private:
             cs->SaveAs(OutPath("cut1_ZDC_FCal_2graph_support").c_str());
             delete cs; delete hd;
         }
-        delete g_pre_mu_ptr;
     }
     // -------------------------------------------------------------------------
     // ZDC time A vs C for the top 5 individual centrality percent bins (0-4)
