@@ -37,7 +37,7 @@ static const int    MIN_ENTRIES         = 100;
 static const double N_SIGMA_CUT         = 5.0;   // main band: cut at mu + N_SIGMA_CUT * sigma
 static const double FCAL_BG_FIT_MIN_TEV = 2.0;   // FCal ET above which background band is also fitted
 static const double BG_N_SIGMA_INNER    = 2.5;   // background band second-pass window half-width
-static const double BG_N_SIGMA_CUT      = 3.0;   // background band: veto at mu - BG_N_SIGMA_CUT * sigma
+static const double BG_N_SIGMA_CUT      = 2.5;   // background band: veto at mu - BG_N_SIGMA_CUT * sigma
 
 // Per-year ZDC search window for the out-of-time pileup band (in h_zdc_fcal_ y-axis units).
 static std::pair<double,double> GetBgSearchRange(int yr) {
@@ -314,6 +314,8 @@ private:
 
         // Main band fit results (all FCal slices that converge)
         std::vector<double> gr_x, gr_cut, gr_main_cut, gr_mu, gr_sigma, gr_ex;
+        // Per-slice bg cut: bg_mu - BG_N_SIGMA_CUT*bg_sig; -1e300 sentinel where bg not fitted.
+        std::vector<double> gr_bg_cut_per_idx;
         // Background band fit results (FCal > FCAL_BG_FIT_MIN_TEV slices only)
         std::vector<double> gr_bg_x, gr_bg_cut, gr_bg_mu, gr_bg_sig;
         // Initial guess used for each bg-region slice (for debug plot)
@@ -415,7 +417,6 @@ private:
                                 gr_bg_cut.push_back(bg_cut);
                                 gr_bg_mu.push_back(bg_mu2);
                                 gr_bg_sig.push_back(bg_sig2);
-                                final_cut = std::max(main_cut, bg_cut);
                             }
                         }
                     }
@@ -433,8 +434,9 @@ private:
             if (xcen > FCAL_BG_FIT_MIN_TEV && !bg_ok)
                 pending_bg.push_back({xcen, (int)gr_x.size(), isl});
             gr_x.push_back(xcen);
-            gr_cut.push_back(final_cut);
+            gr_cut.push_back(main_cut);   // placeholder; step-cutover applied after post-loop
             gr_main_cut.push_back(main_cut);
+            gr_bg_cut_per_idx.push_back(bg_ok ? (bg_mu2 - BG_N_SIGMA_CUT * bg_sig2) : -1e300);
             gr_mu.push_back(mu2);
             gr_sigma.push_back(sig2);
             gr_ex.push_back(0.5*(xhi - xlo));
@@ -509,11 +511,8 @@ private:
                 ext_bg_sig.push_back(sig_e);
                 ext_bg_cut.push_back(cut_e);
 
-                const double new_cut = std::max(gr_main_cut[pb.gr_idx], cut_e);
-                if (new_cut > gr_cut[pb.gr_idx]) {
-                    gr_cut[pb.gr_idx] = new_cut;
-                    ++n_bg_interp;
-                }
+                gr_bg_cut_per_idx[pb.gr_idx] = cut_e;
+                ++n_bg_interp;
             }
         }
 
@@ -526,10 +525,32 @@ private:
         gr_bg_sig_all.insert(gr_bg_sig_all.end(), gr_bg_sig.begin(), gr_bg_sig.end());
         const int n_bg_all = (int)gr_bg_x_all.size();
 
+        // ---- Step-cutover: find first FCal slice where bg_cut > main_cut, -------
+        // then use main_cut below and bg_cut above (no per-bin max).
+        {
+            int i_cross = n_fit;
+            for (int i = 0; i < n_fit; ++i) {
+                if (gr_bg_cut_per_idx[i] > -1e299 &&
+                    gr_bg_cut_per_idx[i] > gr_main_cut[i]) {
+                    i_cross = i;
+                    break;
+                }
+            }
+            for (int i = 0; i < n_fit; ++i) {
+                gr_cut[i] = (i >= i_cross && gr_bg_cut_per_idx[i] > -1e299)
+                            ? gr_bg_cut_per_idx[i] : gr_main_cut[i];
+            }
+            if (i_cross < n_fit)
+                std::cout << Form("Step crossover at FCal = %.2f TeV (slice idx %d)\n",
+                                  gr_x[i_cross], i_cross);
+            else
+                std::cout << "No bg crossover found; using main-band cut throughout.\n";
+        }
+
         std::cout << n_fit << " main-band slices converged; "
                   << n_bg  << " bg-band converged; "
                   << (int)ext_bg_x.size() << " extended (wider-slice or extrapolated); "
-                  << n_bg_interp << " tightened gr_cut." << std::endl;
+                  << n_bg_interp << " bg cuts filled by extension." << std::endl;
         if (n_fit < 2) {
             std::cerr << "FitAndPlotZDC: too few converged slices!" << std::endl;
             return;
@@ -562,7 +583,7 @@ private:
                 };
                 wg((TGraph*)g_cut.Clone ("g_ZDC_FCal_cut"),
                    "g_ZDC_FCal_cut",
-                   Form("ZDC cut: max(main+%.0f#sigma, bg-%.0f#sigma);FCal E_{T} [TeV];ZDC cut",
+                   Form("ZDC cut: main+%.0f#sigma / bg-%.1f#sigma (step);FCal E_{T} [TeV];ZDC cut",
                         N_SIGMA_CUT, BG_N_SIGMA_CUT));
                 wg((TGraph*)g_main.Clone("g_ZDC_FCal_main_cut"),
                    "g_ZDC_FCal_main_cut",
@@ -575,7 +596,7 @@ private:
                 if (have_bg)
                     wg((TGraph*)g_bg.Clone("g_ZDC_FCal_bg_cut"),
                        "g_ZDC_FCal_bg_cut",
-                       Form("ZDC bg band #mu-%.0f#sigma;FCal E_{T} [TeV];ZDC cut", BG_N_SIGMA_CUT));
+                       Form("ZDC bg band #mu-%.1f#sigma;FCal E_{T} [TeV];ZDC cut", BG_N_SIGMA_CUT));
                 fcuts->Close();
                 std::cout << "Cut TGraphs saved to: " << cuts_path << std::endl;
             }
@@ -599,7 +620,7 @@ private:
             }
             tl.DrawLatex(0.15, 0.87, lbl.c_str());
             tl.DrawLatex(0.15, 0.81,
-                Form("red: max(main #mu+%.0f#sigma, bg #mu-%.0f#sigma)", N_SIGMA_CUT, BG_N_SIGMA_CUT));
+                Form("red: main #mu+%.0f#sigma (left) / bg #mu-%.1f#sigma (right, step)", N_SIGMA_CUT, BG_N_SIGMA_CUT));
             c1->SaveAs(OutPath("ZDC_E_tot_vs_FCal_Et_AC_with_cut").c_str());
             delete c1; delete hd;
         }
@@ -741,7 +762,7 @@ private:
             if (have_bg) {
                 ts.SetTextColor(kBlue+1);
                 ts.DrawLatex(0.15, 0.75,
-                    Form("blue: bg band #mu-%.0f#sigma  (FCal > %.1f TeV)",
+                    Form("blue: bg band #mu-%.1f#sigma  (FCal > %.1f TeV)",
                          BG_N_SIGMA_CUT, FCAL_BG_FIT_MIN_TEV));
                 ts.SetTextColor(kYellow+1);
                 ts.DrawLatex(0.15, 0.69, "yellow: bg band #mu #pm #sigma");
