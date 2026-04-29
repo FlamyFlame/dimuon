@@ -339,8 +339,9 @@ overlay = 6 files (~60k events), Pythia truth = full 5.36 TeV sample.
 | `from_same_b` | 25.7% | 25.9% | 24.7% | 1.2% |
 | pair_origin_analysis_skipped | 0.1% | ~0% | **5.3%** | — |
 
-m1/m2 parent group: all three datasets agree to ≤1% absolute on every bin (see plots
-`/tmp/truthcmp_m1_parent_ss.png`, `/tmp/truthcmp_m2_parent_ss.png`).
+m1/m2 parent group: all three datasets agree to ≤1% absolute on every bin.
+
+Plots: `usatlasdata/pythia_fullsim_hijing_overlay_test_sample/plots/truth_origin_comparison/`
 
 Flavor category (SS) — notable discrepancy:
 
