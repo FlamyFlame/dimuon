@@ -283,9 +283,12 @@ void PythiaTruthExtras<PairT, Derived>::FinalizeExtra() {
         double frac = 100. * m_n_truncated_bhadron_muons / m_n_bhadron_muons;
         std::cout << "[TruthExtras] #muons with truncated B-hadron history: "
                   << m_n_truncated_bhadron_muons << " (" << frac << "%)" << std::endl;
-        if (m_n_truncated_bhadron_muons > 0)
+        if (m_n_truncated_bhadron_muons > 0) {
             std::cout << "[TruthExtras]   eldest B-hadron barcode range: ["
                       << m_truncated_bc_min << ", " << m_truncated_bc_max << "]" << std::endl;
+            std::cout << "[TruthExtras]   muon barcode range for those muons: ["
+                      << m_truncated_mu_bc_min << ", " << m_truncated_mu_bc_max << "]" << std::endl;
+        }
     }
 
     if (m_crossx_summary_file) { m_crossx_summary_file->close(); delete m_crossx_summary_file; m_crossx_summary_file = nullptr; }
@@ -480,10 +483,14 @@ void PythiaTruthExtras<PairT, Derived>::WriteCrossxSummary() {
         *m_crossx_summary_file
             << "#muons from B-hadron with truncated history (no b-quark found): "
             << m_n_truncated_bhadron_muons << " (" << frac << "%)" << std::endl;
-        if (m_n_truncated_bhadron_muons > 0)
+        if (m_n_truncated_bhadron_muons > 0) {
             *m_crossx_summary_file
                 << "  eldest B-hadron barcode range for truncated muons: ["
                 << m_truncated_bc_min << ", " << m_truncated_bc_max << "]" << std::endl;
+            *m_crossx_summary_file
+                << "  muon barcode range for truncated muons: ["
+                << m_truncated_mu_bc_min << ", " << m_truncated_mu_bc_max << "]" << std::endl;
+        }
     }
     *m_crossx_summary_file << "Total crossx: " << total_crossx << std::endl;
     *m_crossx_summary_file << "Total crossx of skipped HF events: " << skipped_event_crossx << std::endl;
@@ -1247,6 +1254,9 @@ void PythiaTruthExtras<PairT, Derived>::SingleMuonAncestorTracing(bool isMuon1) 
             int trunc_bc = isMuon1 ? m1_eldest_bhadron_barcode : m2_eldest_bhadron_barcode;
             if (m_truncated_bc_min < 0 || trunc_bc < m_truncated_bc_min) m_truncated_bc_min = trunc_bc;
             if (trunc_bc > m_truncated_bc_max)                            m_truncated_bc_max = trunc_bc;
+            // also track the muon's own barcode to verify it is also in Geant4-secondary range
+            if (m_truncated_mu_bc_min < 0 || barcode < m_truncated_mu_bc_min) m_truncated_mu_bc_min = barcode;
+            if (barcode > m_truncated_mu_bc_max)                               m_truncated_mu_bc_max = barcode;
 
             // Only call PrintHistory for standard MC chains where first_hadron_id is the
             // b-quark itself (abs==5); suppressed for truncated overlay chains to avoid crash.
