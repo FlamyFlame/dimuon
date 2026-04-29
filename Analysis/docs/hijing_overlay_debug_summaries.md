@@ -248,7 +248,7 @@ Debug on 100 events confirms both pp fullsim and overlay now store genuine B-mes
 
 ## 6. Parent Group and Same-B Distribution After Fixes
 
-**Full test-sample validation** (all available files, Apr 2026), same-sign (SS) pairs
+**Full test-sample validation** (all available files, Apr 2026), opposite-sign (OS) pairs
 (`muon_pair_tree_sign2`), cross-section weighted fractions:
 
 | Group (m1) | Truth | PP fullsim | Overlay |
@@ -265,14 +265,14 @@ Debug on 100 events confirms both pp fullsim and overlay now store genuine B-mes
 | `direct_c` | 22% | 22% | 22% |
 | `s_light` | 12% | 12% | 13% |
 
-**`from_same_b` fraction (SS):** truth = 25.7%, PP fullsim = 25.9%, overlay = 24.7% — excellent
-agreement across all three datasets.  OS from_same_b is ≈0% for all (expected: opposite-sign
-combinatorial pairs rarely share the same b-quark).
+**`from_same_b` fraction (OS):** truth = 25.7%, PP fullsim = 25.9%, overlay = 24.7% — excellent
+agreement across all three datasets.  SS from_same_b is ≈0% for all (expected: same-sign pairs
+cannot both arise from a single B-meson sequential decay).
 
-All three datasets agree to better than 1% absolute on SS parent groups.  The residual ~12%
-`s_light` in SS pairs arises from Geant4 soft muons (pion/kaon decays, bc < 200k) entering the
+All three datasets agree to better than 1% absolute on OS parent groups.  The residual ~12%
+`s_light` in OS pairs arises from Geant4 soft muons (pion/kaon decays, bc < 200k) entering the
 pair pool; they are correctly tagged and excluded from `_single_b` histograms.  The overlay
-s_light fraction is indistinguishable from PP fullsim in SS, confirming the fixes are complete.
+s_light fraction is indistinguishable from PP fullsim in OS, confirming the fixes are complete.
 
 ---
 
@@ -307,14 +307,14 @@ have `muon_pair_origin_category` unset but `from_same_b` and `m1/m2_parent_group
 
 ## 8. Open Questions
 
-- **Residual ~12% `s_light` in SS pairs**: Geant4 kaon/pion-decay muons that survive the
+- **Residual ~12% `s_light` in OS pairs**: Geant4 kaon/pion-decay muons that survive the
   ≥ 4 GeV pT cut contribute combinatorial background.  The fraction matches between PP fullsim
   and overlay, so the effect is correctly modeled.  Whether to apply an additional pair-pT cut
   to reduce it should be evaluated against signal acceptance cost.
 
 - **`muon_pair_origin_category` for 2.28% truncated B-meson pairs**: these pairs have no
-  `origin_category` set (pair_origin_analysis_skipped=true).  The pair-level skip rate in OS
-  is 19.1% and in SS is 5.3% (pair skipped if either muon is truncated).  Need to decide
+  `origin_category` set (pair_origin_analysis_skipped=true).  The pair-level skip rate in SS
+  is 19.1% and in OS is 5.3% (pair skipped if either muon is truncated).  Need to decide
   whether to treat these as unclassified or add a dedicated category before origin-level
   analysis proceeds.
 
@@ -329,10 +329,10 @@ overlay = 6 files (~60k events), Pythia truth = full 5.36 TeV sample.
 
 | Sign | PP fullsim pairs | Overlay pairs | Truth pairs |
 |---|---|---|---|
-| OS (sign1) | 84,406 | 25,808 | 2,098,165 |
-| SS (sign2) | 314,766 | 82,804 | 8,062,511 |
+| SS (sign1) | 84,406 | 25,808 | 2,098,165 |
+| OS (sign2) | 314,766 | 82,804 | 8,062,511 |
 
-### 9.1 Same-sign (SS): excellent three-way agreement
+### 9.1 Opposite-sign (OS): excellent three-way agreement
 
 | Observable | Truth | PP fullsim | Overlay | Max Δ |
 |---|---|---|---|---|
@@ -343,7 +343,7 @@ m1/m2 parent group: all three datasets agree to ≤1% absolute on every bin.
 
 Plots: `usatlasdata/pythia_fullsim_hijing_overlay_test_sample/plots/truth_origin_comparison/`
 
-Flavor category (SS) — notable discrepancy:
+Flavor category (OS) — notable discrepancy:
 
 | Flavor | Truth | PP fullsim | Overlay |
 |---|---|---|---|
@@ -355,32 +355,32 @@ Flavor category (SS) — notable discrepancy:
 
 `res_contam` is ~2% higher in overlay (absolute) — Geant4 soft muons in the dense PbPb
 environment occasionally pair with a resonance muon, inflating the resonance-contamination
-category.  All other SS flavor bins match truth and PP fullsim to ≤1%.
+category.  All other OS flavor bins match truth and PP fullsim to ≤1%.
 
-Origin category (SS): good agreement on `fc` (~18%), `same_gs_fsr` (~10–11%),
+Origin category (OS): good agreement on `fc` (~18%), `same_gs_fsr` (~10–11%),
 `same_gs_isr_0hs` (~16%).  Overlay shows `diff_gs_same_hs`/`others` elevated by ~4% combined
 compared to truth/fullsim, attributable to the 5.3% skip rate shifting some pairs into default
-category values.  `not_both_open_HF` is ~49% in all three (dominant SS category).
+category values.  `not_both_open_HF` is ~49% in all three (dominant OS category).
 
-**Conclusion SS:** Truth analysis in overlay is validated.  Parent groups, from_same_b, and
+**Conclusion OS:** Truth analysis in overlay is validated.  Parent groups, from_same_b, and
 flavor fractions all agree with PP fullsim and truth to within expected physical differences
 (soft Geant4 muons, 5.3% skip rate for pairs involving truncated Geant4 secondary B-mesons).
 
-### 9.2 Opposite-sign (OS): known discrepancies, all attributable
+### 9.2 Same-sign (SS): known discrepancies, all attributable
 
 | Observable | Truth | PP fullsim | Overlay | Δ (abs) |
 |---|---|---|---|---|
 | `from_same_b` | ~0% | ~0% | ~0.1% | — |
 | pair_origin_analysis_skipped | 0.1% | ~0% | **19.1%** | — |
 
-Flavor category (OS):
+Flavor category (SS):
 
 | Flavor | Truth | PP fullsim | Overlay | Δ |
 |---|---|---|---|---|
 | `bb` | ~83% | ~83% | ~71% | −12% |
 | `res_contam` | ~15% | ~15% | ~25% | +10% |
 
-Origin category (OS):
+Origin category (SS):
 
 | Origin | Truth | PP fullsim | Overlay | Δ |
 |---|---|---|---|---|
@@ -389,17 +389,17 @@ Origin category (OS):
 | `others` | ~10% | ~10% | ~23% | +13% |
 | `not_both_open_HF` | ~6% | ~6% | ~9% | +3% |
 
-m2 parent group (OS): `s_light` overlay = ~16% vs truth/fullsim ~10%; `b_to_c` overlay ~58%
+m2 parent group (SS): `s_light` overlay = ~16% vs truth/fullsim ~10%; `b_to_c` overlay ~58%
 vs ~62%.
 
-**Explanation:** All OS discrepancies originate from two known overlay-specific effects:
+**Explanation:** All SS discrepancies originate from two known overlay-specific effects:
 1. **19.1% pair-level skip rate** (truncated Geant4 secondary B-meson chains) — pairs with
    `skip_event_origin_analysis=true` shift origin fractions; `bb` is lower because many bb
    pairs involve at least one truncated muon.
 2. **Extra Geant4 soft muons** (~15% of single-muon pool) — combinatorial pairing of soft
    muons with resonance muons inflates `res_contam`; pairing with b-decay muons inflates
-   `s_light` as m2 in OS.  This effect is larger in OS (large combinatorial pool) than SS
-   (requires two b-quark muons from same chain).
+   `s_light` as m2 in SS.  This effect is larger in SS (large combinatorial pool) than OS
+   (requires two opposite-sign muons from related chains).
 
-No unexpected discrepancies observed.  SS comparison confirms the HF ancestry fixes are
+No unexpected discrepancies observed.  OS comparison confirms the HF ancestry fixes are
 complete and the truth origin tags are reliable for efficiency/response analysis.
