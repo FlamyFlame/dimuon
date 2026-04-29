@@ -158,6 +158,8 @@ protected:
     long long m_n_truncated_bhadron_muons = 0;  // of those, FindHeavyQuarks returned -1
     int       m_truncated_bc_min          = -1; // barcode range of truncated eldest B-hadrons
     int       m_truncated_bc_max          = -1;
+    int       m_truncated_mu_bc_min       = -1; // barcode range of the muons with truncated B-hadron history
+    int       m_truncated_mu_bc_max       = -1;
     double from_resonance_total_crossx = 0.;
     double from_same_b_total_crossx = 0.;
     double either_from_tau_total_crossx = 0.;
