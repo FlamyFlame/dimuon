@@ -152,6 +152,12 @@ protected:
 
     int    pair_counter = 0;
     double total_crossx = 0.;
+
+    // truncated-history diagnostics
+    long long m_n_bhadron_muons           = 0;  // muons that entered B-hadron tracing
+    long long m_n_truncated_bhadron_muons = 0;  // of those, FindHeavyQuarks returned -1
+    int       m_truncated_bc_min          = -1; // barcode range of truncated eldest B-hadrons
+    int       m_truncated_bc_max          = -1;
     double from_resonance_total_crossx = 0.;
     double from_same_b_total_crossx = 0.;
     double either_from_tau_total_crossx = 0.;

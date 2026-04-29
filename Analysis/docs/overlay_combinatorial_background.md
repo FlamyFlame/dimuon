@@ -60,7 +60,9 @@ m_eldest_bhadron_barcode = first_hadron_barcode
 ```
 
 - **PP fullsim (pre-fix)**: The loop exits when the particle above the eldest B-hadron is not a B-hadron. What that particle is depends on which parent appears first in `truth_parents`: often it's a light quark (u, d, s) from the qqbar→B-meson vertex, not the b-quark. So `first_hadron_barcode` and `first_hadron_id` reflect whichever parent was indexed first — not necessarily the b-quark. The old code stored this barcode unconditionally: sometimes b-quark bc, sometimes light-quark bc. Since both muons trace through the same B-meson, the stored barcode is the same for both → `from_same_b` still worked (the value is a coincidental proxy for B-hadron identity, not quark identity).
-- **Overlay**: b-quark is absent (AOD truth thinning). Chain ends at `μ → B-meson → proton (id=2212, bc=1)`. After Bug 2 fix, the loop steps into the B-meson correctly, then exits when the parent (proton) is not a B-hadron. Stores `bc=1` (the proton's barcode) for **all** B-meson chains → `m1 == m2 == 1` for all B-decay pairs → `from_same_b=true` for all, which is wrong.
+- **Overlay**: Two classes of B-meson chains exist. (1) **Pythia signal B-mesons** (low bc, e.g. 206, 264): the full ancestry is present — b-quark appears among the B-meson's multiple parents, and `FindHeavyQuarks` finds it normally. These chains are NOT truncated. (2) **HIJING background B-mesons** (bc 3939–73710, measured Apr 2026): the parent chain ends at a beam proton (id=2212, bc=1) instead of a b-quark — HIJING stores less truth ancestry than Pythia. For these, the loop exits when `parent_ids[0]` is the proton → stores `bc=1` (the proton's barcode) for **all** such chains → `m1 == m2 == 1` for all → `from_same_b=true` for all, which is wrong.
+
+  The previous description ("b-quark absent due to AOD truth thinning") was incorrect. The b-quark IS stored for Pythia signal chains; only HIJING-generated B-mesons lack it.
 
 **The user concern** (raised during investigation): "HF tagging is set at the HF hadron level, not the quark level — so the fix shouldn't be needed." This is correct in intent: `from_same_b` *should* work at the B-hadron level. The pre-fix code happened to work for PP fullsim because the stored value (whatever parent came first) was unique per B-meson branch. In overlay it broke because all chains ended at bc=1. The fix makes it explicitly correct at B-hadron level in both samples.
 
@@ -94,7 +96,11 @@ The residual 15% `s_light` arises from Geant4 soft muons (pion/kaon decays) whos
 
 ## 5. b-quark Absence and `skip_event_origin_analysis`
 
-For B-meson chains in overlay, `FindHeavyQuarks` returns −1 (b-quark not in truth record) → `skip_event_origin_analysis = true`. The warning print "Previous HQ barcode is -1" is suppressed when `abs(first_hadron_id) != 5` (overlay case, added in `dee4050`).
+For HIJING background B-meson chains, `FindHeavyQuarks` returns −1 (b-quark absent from HIJING truth record) → `skip_event_origin_analysis = true`. Measured on 500-event kn=0 test (Apr 2026): **2.2% of B-hadron muons** in overlay hit this path (84/3789); eldest B-hadron barcodes in this subset span 3939–73710. PP fullsim has 0 truncated chains.
+
+The guard `if (abs(first_hadron_id) == 5)` prevents calling `PrintHistory` for these HIJING chains — `first_hadron_id` here is the ID of the particle **above** the eldest B-hadron (the particle that caused the B-hadron tracing loop to exit), not the B-hadron itself. For normal chains it is 5 (b-quark); for HIJING chains it is 2212 (proton). Calling `PrintHistory` on the proton chain would crash: gluon bc=2 has no valid parent in `truth_barcode`.
+
+The warning print "Previous HQ barcode is -1" is suppressed when `abs(first_hadron_id) != 5` (HIJING case, added in `dee4050`).
 
 The `from_same_b` check in `HFMuonPairAnalysis` (line ~1246) runs **before** the `skip_event_origin_analysis` guard (line ~1278), so same-B matching is unaffected by the skip. Pairs with `skip_event_origin_analysis = true` have their `muon_pair_origin_category` unset but `from_same_b` and `m1/m2_parent_group` fields are valid.
 
