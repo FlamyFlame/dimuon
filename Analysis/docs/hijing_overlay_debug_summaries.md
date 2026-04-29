@@ -57,7 +57,7 @@ container in this overlay AOD; the only separation is by barcode convention (bel
 
 | Barcode range | Owner |
 |---|---|
-| 1 – ~200,000 | Pythia hard-scatter particles **and all Geant4 secondaries** produced by tracking those particles (and HIJING particles) through the detector — including δ-rays, shower electrons, pions/kaons and their muon-decay daughters, and Geant4 secondary B-mesons produced from HIJING b-quarks |
+| 1 – ~200,000 | Pythia hard-scatter particles **and all Geant4 secondaries** produced by tracking those particles (and HIJING particles) through the detector — including δ-rays, shower electrons, pions/kaons and their muon-decay daughters, and Geant4 secondary B-mesons with truncated ancestry (b-quark not visible in truth record; HIJING origin inferred) |
 | 200,001+ | HIJING initial hard-scatter quarks and gluons only |
 
 Both groups appear in the flat `TruthParticles` AOD container.  Crucially, Geant4 secondaries
@@ -140,9 +140,11 @@ are not muons and never enter the ancestry tracing.  Tags are trustworthy after 
 fixes described in Section 5.
 
 **Caveat — 2.2% Geant4 secondary B-meson muons:** Geant4 secondary B-mesons (bc 3939–73710;
-produced by Geant4 tracking HIJING b-quarks through the detector; bc < 200k, distinct from
-HIJING hard-scatter particles which have bc ≥ 200k) have parent chains that end at the beam
-proton (bc=1) rather than at a b-quark — Geant4 stores only dummy beam-particle parents.  For
+bc < 200k, distinct from HIJING hard-scatter particles which have bc ≥ 200k) have parent chains
+that end at the beam proton (bc=1) with no b-quark visible — Geant4 stores only dummy
+beam-particle parents for these secondaries.  HIJING b-quark origin is inferred (B-meson PDG
+ID requires a b-quark ancestor; these are absent from PP fullsim) but cannot be confirmed from
+the truth record.  For
 the 2.2% of B-hadron muons that trace to such a chain, `skip_event_origin_analysis = true`;
 their `muon_pair_origin_category` is unset.  Their `m_parent_group` (e.g. `direct_b`) and
 `from_same_b` fields remain valid (Section 7).
@@ -222,13 +224,15 @@ m_eldest_bhadron_barcode = first_hadron_barcode
 1. **Pythia signal B-mesons** (low bc, e.g. 206, 264): full ancestry present; b-quark appears
    among the B-meson's parents; `FindHeavyQuarks` finds it normally.  These are NOT truncated.
 
-2. **Geant4 secondary B-mesons from HIJING b-quarks** (bc 3939–73710, measured Apr 2026;
-   bc < 200k — NOT HIJING hard-scatter which has bc ≥ 200k): Geant4 tracks HIJING b-quarks
-   through the detector and produces secondary B-mesons, assigning them sequential barcodes in
-   the Pythia range.  Geant4 stores only dummy beam-particle parents for these secondaries.
-   Parent chain ends at the beam proton (id=2212, bc=1).  After Bug 2 fix, the loop correctly
-   reaches these B-mesons but exits when the parent is the proton → stores `bc=1` for **all**
-   such chains → `m1 == m2 == 1` for all pairs → spurious `from_same_b=true` for all.
+2. **Geant4 secondary B-mesons with truncated ancestry** (bc 3939–73710, measured Apr 2026;
+   bc < 200k — NOT HIJING hard-scatter which has bc ≥ 200k): the truth parent chain ends at
+   the beam proton (id=2212, bc=1) with no b-quark visible.  HIJING origin is inferred from:
+   (a) B-meson PDG ID requires a b-quark ancestor by b-number conservation; (b) high Geant4
+   bc range inconsistent with Pythia hard-scatter; (c) near-absence in PP fullsim (0.0007%).
+   The b-quark is not stored in the truth record, so the origin cannot be confirmed from ancestry
+   alone.  After Bug 2 fix, the loop correctly reaches these B-mesons but exits when the parent
+   is the proton → stores `bc=1` for **all** such chains → `m1 == m2 == 1` for all pairs →
+   spurious `from_same_b=true` for all.
 
 **Fix** (`dee4050`): Track `last_bhadron_bc` (the eldest B-hadron's own barcode) during the
 loop.  After exit:
@@ -274,8 +278,9 @@ s_light fraction is indistinguishable from PP fullsim in SS, confirming the fixe
 
 ## 7. b-quark Absence in Geant4 Secondary B-meson Chains and `skip_event_origin_analysis`
 
-For Geant4 secondary B-meson chains (from HIJING b-quarks; bc 3939–73710), `FindHeavyQuarks`
-returns −1 (no b-quark in the truth record) → `skip_event_origin_analysis = true`.
+For Geant4 secondary B-meson chains with truncated ancestry (bc 3939–73710; HIJING origin
+inferred but b-quark not visible in truth record), `FindHeavyQuarks` returns −1 →
+`skip_event_origin_analysis = true`.
 
 **Counts from full test-sample validation** (all available NTUP files, Apr 2026):
 
@@ -285,7 +290,7 @@ returns −1 (no b-quark in the truth record) → `skip_event_origin_analysis = 
 | Overlay (6 files, ~60k events) | 75,499 | 1,725 | **2.28%** | [3939, 73710] | [4229, 73916] |
 
 The 2 truncated chains in PP fullsim have very low Geant4 barcodes (78, 370), consistent with
-edge cases in Pythia chains rather than Geant4 secondary B-mesons from HIJING b-quarks; their muon barcodes (635, 681)
+edge cases in Pythia chains rather than truncated Geant4 secondary B-mesons; their muon barcodes (635, 681)
 are also in the very low Geant4 range.
 
 The guard `if (abs(first_hadron_id) == 5)` prevents calling `PrintHistory` for Geant4
