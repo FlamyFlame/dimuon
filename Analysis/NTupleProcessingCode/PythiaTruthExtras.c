@@ -1196,10 +1196,9 @@ void PythiaTruthExtras<PairT, Derived>::SingleMuonAncestorTracing(bool isMuon1) 
             first_hadron_barcode = first_hadron_bar_id.first;
             first_hadron_id = first_hadron_bar_id.second;
         }
-        // In overlay AODs the b-quark is absent above the eldest B-hadron; the chain ends
-        // at a beam/proton particle instead.  Store the B-hadron's own barcode so
-        // same-b matching still works.  In standard MC first_hadron_id == 5 (b-quark),
-        // so the original behaviour (store b-quark barcode) is preserved.
+        // In overlay, some B-meson chains (Geant4 secondaries) end at a beam/proton
+        // particle instead of a b-quark.  Store the B-hadron's own barcode so
+        // same-b matching still works; also prevents crash in PrintHistory below.
         int store_bc = (abs(first_hadron_id) == 5) ? first_hadron_barcode : last_bhadron_bc;
         if (isMuon1) m1_eldest_bhadron_barcode = store_bc;
         else         m2_eldest_bhadron_barcode = store_bc;
@@ -1217,7 +1216,8 @@ void PythiaTruthExtras<PairT, Derived>::SingleMuonAncestorTracing(bool isMuon1) 
     }
 
     if (prev_hq_bar < 0) {
-        // Suppress in overlay AODs where b-quark is structurally absent above the B-meson.
+        // Suppress in overlay when b-quark is absent above the B-meson (Geant4 secondary
+        // chains end at beam proton bc=1 whose parent bc=0 would crash PrintHistory).
         if (abs(first_hadron_id) == 5) {
             std::cout << "Previous HQ barcode is -1: heavy quark never found." << std::endl;
             PrintHistory(&std::cout, true, isMuon1);
