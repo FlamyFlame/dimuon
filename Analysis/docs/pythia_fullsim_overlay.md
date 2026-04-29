@@ -172,7 +172,7 @@ Centrality is stored as `avg_centrality` (integer percentage) in the overlay NTU
 
 The overlay NTUP `truth_mupair_*` pairs are **Pythia×Pythia** (all barcodes < 200,000). The skimmer pairs only stable truth muons; HIJING hard-scatter particles are not stable muons.
 
-**Three bugs were fixed in Apr 2026 (see [overlay_combinatorial_background.md](overlay_combinatorial_background.md) for details):**
+**Three bugs were fixed in Apr 2026 (see [hijing_overlay_debug_summaries.md](hijing_overlay_debug_summaries.md) for details):**
 
 1. **`truth_parents` CollectionProxy missing**: Fixed by `gInterpreter->GenerateDictionary("vector<vector<int>>","vector")` in `InitInputExtra`.
 
