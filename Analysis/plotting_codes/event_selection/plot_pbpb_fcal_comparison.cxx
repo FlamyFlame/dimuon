@@ -317,6 +317,54 @@ static void MakeComparisonPlot(bool is_alt) {
         delete g;
 }
 
+// ---- 2025 vs 2024 single-column comparison ----------------------------------
+static void MakeComparisonPlot2524(bool is_alt) {
+    CutSetFC cs24 = LoadCutsFC(24, is_alt);
+    CutSetFC cs25 = LoadCutsFC(25, is_alt);
+
+    TH1D* h24 = FillFCalHist(24, cs24);
+    TH1D* h25 = FillFCalHist(25, cs25);
+
+    if (!h24 || !h25) {
+        std::cerr << "Missing histogram — aborting." << std::endl; return;
+    }
+    static const double kFCal80pct = 0.063208;  // TeV — FCal_ET_Bins_PbPb2023[79]
+    for (TH1D* h : {h24, h25}) {
+        const int bin_lo = h->FindBin(kFCal80pct);
+        const double integ = h->Integral(bin_lo, h->GetNbinsX());
+        if (integ > 0.) h->Scale(1. / integ);
+    }
+
+    const double split = 0.30;
+    TCanvas* c = new TCanvas("c_fcal_comp_2524", "", 700, 750);
+    c->SetMargin(0, 0, 0, 0);
+
+    TPad* pTop = new TPad("pTop", "", 0.00, split, 1.00, 1.00);
+    TPad* pBot = new TPad("pBot", "", 0.00, 0.00, 1.00, split);
+    pTop->Draw(); pBot->Draw();
+
+    const char* proc_label = is_alt ? "Alt. banana cut (quadratic)" : "Nominal 2-band banana cut";
+    DrawRatioColumn(pTop, pBot, h24, h25, kRed+1, kBlue+1,
+                    "PbPb 2024", "PbPb 2025", proc_label);
+
+    const std::string base = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/single_b_analysis/";
+    const std::string out_dir = is_alt
+        ? base + "event_selection_alternative_banana/"
+        : base + "event_selection/";
+    gSystem->mkdir(out_dir.c_str(), true);
+    const std::string outname = out_dir +
+        (is_alt ? "fcal_comparison_pbpb_2524_alt_banana.png"
+                : "fcal_comparison_pbpb_2524_nominal.png");
+    c->SaveAs(outname.c_str());
+    std::cout << "Saved: " << outname << std::endl;
+
+    delete c;
+    delete h24; delete h25;
+    for (auto* g : {cs24.g_cut1, cs24.g_cut4, cs24.g_cut5_lo, cs24.g_cut5_hi,
+                    cs25.g_cut1, cs25.g_cut4, cs25.g_cut5_lo, cs25.g_cut5_hi})
+        delete g;
+}
+
 // =============================================================================
 void plot_pbpb_fcal_comparison() {
     gStyle->SetOptStat(0);
@@ -326,4 +374,14 @@ void plot_pbpb_fcal_comparison() {
 void plot_pbpb_fcal_comparison_alt() {
     gStyle->SetOptStat(0);
     MakeComparisonPlot(true);
+}
+
+void plot_pbpb_fcal_comparison_2524() {
+    gStyle->SetOptStat(0);
+    MakeComparisonPlot2524(false);
+}
+
+void plot_pbpb_fcal_comparison_2524_alt() {
+    gStyle->SetOptStat(0);
+    MakeComparisonPlot2524(true);
 }
