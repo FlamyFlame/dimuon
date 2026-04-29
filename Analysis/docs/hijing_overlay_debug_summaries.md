@@ -57,11 +57,11 @@ container in this overlay AOD; the only separation is by barcode convention (bel
 
 | Barcode range | Owner |
 |---|---|
-| 1 – ~200,000 | Pythia hard-scatter particles **and all Geant4 secondaries** produced by tracking those particles (and HIJING particles) through the detector — including δ-rays, shower electrons, pions/kaons and their muon-decay daughters, and B-mesons from HIJING b-quarks |
+| 1 – ~200,000 | Pythia hard-scatter particles **and all Geant4 secondaries** produced by tracking those particles (and HIJING particles) through the detector — including δ-rays, shower electrons, pions/kaons and their muon-decay daughters, and Geant4 secondary B-mesons produced from HIJING b-quarks |
 | 200,001+ | HIJING initial hard-scatter quarks and gluons only |
 
 Both groups appear in the flat `TruthParticles` AOD container.  Crucially, Geant4 secondaries
-from HIJING particles (including HIJING B-mesons, bc 3939–73710 measured) carry bc < 200k and are
+from HIJING particles (including Geant4 secondary B-mesons, bc 3939–73710 measured) carry bc < 200k and are
 indistinguishable by barcode from Pythia Geant4 secondaries.  Only the HIJING hard-scatter
 initiators themselves carry bc ≥ 200,001.
 
@@ -285,7 +285,7 @@ returns −1 (no b-quark in the truth record) → `skip_event_origin_analysis = 
 | Overlay (6 files, ~60k events) | 75,499 | 1,725 | **2.28%** | [3939, 73710] | [4229, 73916] |
 
 The 2 truncated chains in PP fullsim have very low Geant4 barcodes (78, 370), consistent with
-edge cases in Pythia chains rather than HIJING-driven B-mesons; their muon barcodes (635, 681)
+edge cases in Pythia chains rather than Geant4 secondary B-mesons from HIJING b-quarks; their muon barcodes (635, 681)
 are also in the very low Geant4 range.
 
 The guard `if (abs(first_hadron_id) == 5)` prevents calling `PrintHistory` for Geant4
