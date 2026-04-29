@@ -277,6 +277,17 @@ template <class PairT, class Derived>
 void PythiaTruthExtras<PairT, Derived>::FinalizeExtra() {
     WriteCrossxSummary();
 
+    // Always print truncated-history stats to stdout for quick inspection
+    std::cout << "[TruthExtras] #muons from B-hadron: " << m_n_bhadron_muons << std::endl;
+    if (m_n_bhadron_muons > 0) {
+        double frac = 100. * m_n_truncated_bhadron_muons / m_n_bhadron_muons;
+        std::cout << "[TruthExtras] #muons with truncated B-hadron history: "
+                  << m_n_truncated_bhadron_muons << " (" << frac << "%)" << std::endl;
+        if (m_n_truncated_bhadron_muons > 0)
+            std::cout << "[TruthExtras]   eldest B-hadron barcode range: ["
+                      << m_truncated_bc_min << ", " << m_truncated_bc_max << "]" << std::endl;
+    }
+
     if (m_crossx_summary_file) { m_crossx_summary_file->close(); delete m_crossx_summary_file; m_crossx_summary_file = nullptr; }
 
     if (print_bad_warnings) {
@@ -463,6 +474,17 @@ template <class PairT, class Derived>
 void PythiaTruthExtras<PairT, Derived>::WriteCrossxSummary() {
     if (!m_crossx_summary_file) return;
     *m_crossx_summary_file << "#muon pairs: " << pair_counter << std::endl;
+    *m_crossx_summary_file << "#muons from B-hadron: " << m_n_bhadron_muons << std::endl;
+    if (m_n_bhadron_muons > 0) {
+        double frac = 100. * m_n_truncated_bhadron_muons / m_n_bhadron_muons;
+        *m_crossx_summary_file
+            << "#muons from B-hadron with truncated history (no b-quark found): "
+            << m_n_truncated_bhadron_muons << " (" << frac << "%)" << std::endl;
+        if (m_n_truncated_bhadron_muons > 0)
+            *m_crossx_summary_file
+                << "  eldest B-hadron barcode range for truncated muons: ["
+                << m_truncated_bc_min << ", " << m_truncated_bc_max << "]" << std::endl;
+    }
     *m_crossx_summary_file << "Total crossx: " << total_crossx << std::endl;
     *m_crossx_summary_file << "Total crossx of skipped HF events: " << skipped_event_crossx << std::endl;
     *m_crossx_summary_file << "Total crossx [from resonance]: " << from_resonance_total_crossx << std::endl;
@@ -1188,6 +1210,7 @@ void PythiaTruthExtras<PairT, Derived>::SingleMuonAncestorTracing(bool isMuon1) 
     // Trace through b-flavored hadrons
     if ((abs(parent_ids[0]) >= 500 && abs(parent_ids[0]) < 600) ||
         (abs(parent_ids[0]) >= 5000 && abs(parent_ids[0]) < 6000)) {
+        m_n_bhadron_muons++;
         int last_bhadron_bc = parent_bars[0];
         while ((abs(parent_ids[0]) >= 500 && abs(parent_ids[0]) < 600) ||
                (abs(parent_ids[0]) >= 5000 && abs(parent_ids[0]) < 6000)) {
@@ -1216,11 +1239,21 @@ void PythiaTruthExtras<PairT, Derived>::SingleMuonAncestorTracing(bool isMuon1) 
     }
 
     if (prev_hq_bar < 0) {
-        // Suppress in overlay when b-quark is absent above the B-meson (Geant4 secondary
-        // chains end at beam proton bc=1 whose parent bc=0 would crash PrintHistory).
-        if (abs(first_hadron_id) == 5) {
-            std::cout << "Previous HQ barcode is -1: heavy quark never found." << std::endl;
-            PrintHistory(&std::cout, true, isMuon1);
+        if (quark == 5) {
+            // Truncated B-hadron chain: b-quark not found above the eldest B-meson.
+            // In overlay, Geant4 secondary B-mesons end at a beam proton (bc=1) instead
+            // of a b-quark, so FindHeavyQuarks returns -1.
+            m_n_truncated_bhadron_muons++;
+            int trunc_bc = isMuon1 ? m1_eldest_bhadron_barcode : m2_eldest_bhadron_barcode;
+            if (m_truncated_bc_min < 0 || trunc_bc < m_truncated_bc_min) m_truncated_bc_min = trunc_bc;
+            if (trunc_bc > m_truncated_bc_max)                            m_truncated_bc_max = trunc_bc;
+
+            // Only call PrintHistory for standard MC chains where first_hadron_id is the
+            // b-quark itself (abs==5); suppressed for truncated overlay chains to avoid crash.
+            if (abs(first_hadron_id) == 5) {
+                std::cout << "Previous HQ barcode is -1: heavy quark never found." << std::endl;
+                PrintHistory(&std::cout, true, isMuon1);
+            }
         }
         skip_event_origin_analysis = true;
         return;
