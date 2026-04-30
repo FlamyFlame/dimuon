@@ -299,11 +299,20 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputCentrProd_Pythia
               << nentries_kn_sum.at(ikin) << " total entries" << std::endl;
 
     // AMI weights for kn_batch only
+    const std::string ami_file_base = "ami_info_" + ami_campaign_tag + "_" + ami_ecom_tag + "_Py8EG_A14_";
+    const std::string ami_local_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_truth_full_sample/pythia_"
+                                      + ami_ecom_tag + "/ami_info/";
     for (int ibeam = 0; ibeam < nBeamTypes; ibeam++) {
         if (!evChains_kn_beam.at(ikin).at(ibeam)) continue;
-        std::string ami_path = py_dir + "ami_info/ami_info_" + ami_campaign_tag + "_" + ami_ecom_tag + "_Py8EG_A14_" + beam_names.at(ibeam)
+        std::string ami_fname = ami_file_base + beam_names.at(ibeam)
             + "_hQCD_DiMu_pTH" + std::to_string(kin_lo) + "_" + std::to_string(kin_hi) + ".txt";
+        std::string ami_path = py_dir + "ami_info/" + ami_fname;
         std::ifstream ami(ami_path);
+        if (!ami.good()) {
+            // pnfs not accessible (e.g. no Kerberos ticket); try local usatlasdata copy
+            ami_path = ami_local_dir + ami_fname;
+            ami.open(ami_path);
+        }
         if (!ami.good()) {
             std::cerr << "InitInputCentrProd: WARNING - missing AMI file (skipping): " << ami_path << std::endl;
             continue;
