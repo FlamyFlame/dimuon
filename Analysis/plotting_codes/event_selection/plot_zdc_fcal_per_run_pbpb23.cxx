@@ -60,10 +60,12 @@ static void DrawRunGrid(const std::vector<int>& runs, int start,
         pad->cd();
 
         TH2D* h = hmap.at(run);
-        TH2D* hd = h;
+        // Always clone: TPad::Close() (via delete cv) calls fPrimitives->Delete()
+        // which frees every drawn object. Drawing h directly would destroy the
+        // originals in hmap; a clone lets the canvas own the drawn copy safely.
+        TH2D* hd = (TH2D*)h->Clone(Form("htmp_%d_%d_%d", start, idx, (int)normalize));
+        hd->SetDirectory(nullptr);
         if (normalize) {
-            hd = (TH2D*)h->Clone(Form("%s_pdf", h->GetName()));
-            hd->SetDirectory(nullptr);
             double integ = hd->Integral("width");
             if (integ > 0.) hd->Scale(1. / integ);
         }
@@ -76,7 +78,7 @@ static void DrawRunGrid(const std::vector<int>& runs, int start,
         hd->GetYaxis()->SetTitleOffset(0.90);
         hd->GetZaxis()->SetLabelSize(0.048);
         hd->SetMinimum(normalize ? 1e-10 : 0.5);
-        hd->Draw("COLZ");
+        hd->Draw("COLZ");  // hd owned by pad; deleted when canvas is destroyed
 
         long long nev = nmap.count(run) ? nmap.at(run) : 0LL;
         TLatex tl; tl.SetNDC(); tl.SetTextAlign(11);
@@ -85,7 +87,6 @@ static void DrawRunGrid(const std::vector<int>& runs, int start,
         tl.SetTextSize(0.060);
         tl.DrawLatex(0.15, 0.81, Form("N = %lld", nev));
 
-        if (normalize) delete hd;
         cv->cd();
     }
     cv->SaveAs(outPath.c_str());
