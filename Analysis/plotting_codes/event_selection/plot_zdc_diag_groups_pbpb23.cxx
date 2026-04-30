@@ -403,17 +403,15 @@ void plot_zdc_diag_groups_pbpb23() {
         TPad* pads[4];
         TCanvas* cv = Make2x2Canvas("cv_tdbg", pads);
 
-        // Determine common y range from the larger sample (other runs)
-        double yhi_t = std::max(hTA_other->GetMaximum(), hTC_other->GetMaximum()) * 1.5;
-        if (yhi_t < 1.) yhi_t = 10.;
-
-        // Helper to draw one ZDC time pad
+        // Helper to draw one ZDC time pad — y scale per-histogram, x scale fixed by histogram range
         auto DrawTimePad = [&](TPad* pad, TH1D* h, const char* label,
                                 long long n, const char* fitName, int grpIdx) {
             pad->cd();
             SetPadStyle(pad);
             Style1D(h, kBlack);
-            h->SetMaximum(yhi_t);
+            double yhi = h->GetMaximum() * 1.5;
+            if (yhi < 1.) yhi = 10.;
+            h->SetMaximum(yhi);
             h->SetMinimum(0.);
             h->Draw("E");
             FitAndDrawTime(h, fitName);
