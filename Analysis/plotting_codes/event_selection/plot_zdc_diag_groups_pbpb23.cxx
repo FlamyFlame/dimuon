@@ -182,10 +182,10 @@ void plot_zdc_diag_groups_pbpb23() {
         // preamp: fixed range 0–5000 ADC
         hPA[g]  = new TH1D(Form("hPA%d",g),  ";PreSampleAmp sum [ADC];Events", 100, 0., 5000.);
         hPC[g]  = new TH1D(Form("hPC%d",g),  ";PreSampleAmp sum [ADC];Events", 100, 0., 5000.);
-        // ZDC vs FCal 2D: linear y-axis, 100 linear bins 0–50 TeV ZDC total
+        // ZDC vs FCal 2D: linear y-axis, 100 linear bins 0–400 TeV ZDC total
         hEF[g]  = new TH2D(Form("hEF%d",g),
                             ";FCal E_{T}^{A+C} [TeV];ZDC E_{total} [TeV]",
-                            120,-0.5,5.5, 100,0.,50.);
+                            120,-0.5,5.5, 100,0.,400.);
         hEA[g]->SetDirectory(nullptr); hEC[g]->SetDirectory(nullptr);
         hTAC[g]->SetDirectory(nullptr);
         hTA[g]->SetDirectory(nullptr);  hTC[g]->SetDirectory(nullptr);
@@ -272,11 +272,8 @@ void plot_zdc_diag_groups_pbpb23() {
     auto [txLo, txHi] = EffRange2D(hTAC[kRefGrp], true);
     auto [tyLo, tyHi] = EffRange2D(hTAC[kRefGrp], false);
 
-    // FCal 2D: linear y range from projection
-    auto [fxLo, fxHi] = EffRange2D(hEF[kRefGrp], true);
-    TH1D* pyEF = hEF[kRefGrp]->ProjectionY("__pyEF");
-    auto [eyLo, eyHi] = EffRange1D(pyEF, false);   // linear y-axis
-    delete pyEF;
+    // FCal 2D: fixed ranges matching event selection plots
+    // x: [-0.5, 5.5] TeV (histogram range); y: [0, 400] TeV ZDC total
 
     // ---- Helper lambdas ----
     auto Style2D = [](TH2D* h) {
@@ -386,8 +383,6 @@ void plot_zdc_diag_groups_pbpb23() {
             pads[g]->SetRightMargin(0.14);
             // linear scales: no SetLogy, no SetLogz
             Style2D(hEF[g]);
-            hEF[g]->GetXaxis()->SetRangeUser(fxLo, fxHi);
-            hEF[g]->GetYaxis()->SetRangeUser(eyLo, eyHi);
             hEF[g]->SetMinimum(0.5);
             hEF[g]->Draw("COLZ");
             LabelPad(g, nEvt[g]);
