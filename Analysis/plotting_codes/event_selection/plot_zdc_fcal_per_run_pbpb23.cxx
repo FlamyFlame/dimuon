@@ -77,7 +77,12 @@ static void DrawRunGrid(const std::vector<int>& runs, int start,
         hd->GetYaxis()->SetLabelSize(0.050);
         hd->GetYaxis()->SetTitleOffset(0.90);
         hd->GetZaxis()->SetLabelSize(0.048);
-        hd->SetMinimum(normalize ? 1e-10 : 0.5);
+        if (normalize) {
+            // Floor at 3 decades below peak so the color scale matches the data range
+            hd->SetMinimum(hd->GetMaximum() * 1e-3);
+        } else {
+            hd->SetMinimum(0.5);
+        }
         hd->Draw("COLZ");  // hd owned by pad; deleted when canvas is destroyed
 
         long long nev = nmap.count(run) ? nmap.at(run) : 0LL;
