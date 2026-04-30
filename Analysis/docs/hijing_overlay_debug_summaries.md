@@ -432,3 +432,60 @@ vs ~62%.
 
 No unexpected discrepancies observed.  OS comparison confirms the HF ancestry fixes are
 complete and the truth origin tags are reliable for efficiency/response analysis.
+
+---
+
+## 10. PP-Isospin-Only Comparison: Isolating Isospin / PDF Effects (Apr 2026)
+
+**Motivation:** The HIJING overlay is produced with pp isospin only, while the Pythia truth
+and PP fullsim in Section 9 used all four isospins (pp, pn, np, nn weighted 4:6:6:9).  To
+check whether any of the differences observed in Section 9 are attributable to isospin / PDF
+effects, the truth and fullsim analyses were rerun with pp isospin only and the three-way
+comparison repeated.
+
+**New code:** `only_pp_isospin` flag in `PythiaAlgCoreT`; `pp_only=true` constructor arg in
+`PythiaTruthAnalysis` / `PythiaFullSimAnalysis` (auto-appends `_pp_only` to output filename).
+Also fixed AMI file lookup to fall back to local `usatlasdata/` copy when pnfs is inaccessible
+without Kerberos.  Committed `88e54af` and `140ef3f`.
+
+**Outputs:**
+- Truth: `muon_pairs_pythia_5p36TeV_no_data_resonance_cuts_pp_only.root` (hadd of 6 kn files)
+- Fullsim: `muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_pp_only.root`
+- Overlay: unchanged (`final_validation` file, already pp-only)
+- Plots: `truthcmp_pponly_*.png` in `plots/truth_origin_comparison/`
+- Reference (all-isospin): `truthcmp_*.png` in `plots/truth_origin_comparison_all_isospins/`
+
+**Tree entry counts:**
+
+| Sign | Truth (pp only) | PP fullsim (pp only) | Overlay (pp only) |
+|---|---|---|---|
+| SS (sign1) | 615,369 | 10,629 | 12,904 |
+| OS (sign2) | 2,325,496 | 39,201 | 41,402 |
+
+### 10.1 Opposite-sign (OS): pp-only vs all-isospin unchanged
+
+| Observable | Truth (pp) | PP fullsim (pp) | Overlay | vs Section 9 |
+|---|---|---|---|---|
+| `from_same_b` | 25.7% | 26.1% | 24.7% | **identical** to all-isospin |
+| pair_origin_analysis_skipped | 0.0% | 0.1% | 5.3% | same |
+
+The `from_same_b` fraction and all parent-group/flavor/origin bin fractions are unchanged
+compared to the all-isospin run in Section 9.  The 1.2% difference in `from_same_b` between
+truth/fullsim (25.7–26.1%) and overlay (24.7%) is therefore **not** an isospin / PDF effect —
+it is a genuine overlay-specific effect (combinatorial HIJING soft muons diluting the
+same-B fraction).
+
+### 10.2 Same-sign (SS): same picture
+
+| Observable | Truth (pp) | PP fullsim (pp) | Overlay |
+|---|---|---|---|
+| `from_same_b` | 0.0% | 0.1% | 0.1% |
+| pair_origin_analysis_skipped | 0.1% | 0.0% | 19.1% |
+
+All SS discrepancies described in Section 9.2 are unchanged.  Isospin effects do not explain
+any of the observed overlay–reference differences.
+
+**Conclusion:** The Section 9 comparison is not biased by isospin composition.  All observed
+discrepancies between the HIJING overlay and the reference samples are attributable to known
+physics effects (HIJING soft muons, truncated Geant4 B-meson chains) rather than PDF /
+isospin differences.
