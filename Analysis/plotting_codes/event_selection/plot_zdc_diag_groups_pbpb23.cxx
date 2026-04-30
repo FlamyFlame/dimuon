@@ -8,7 +8,7 @@
 //   zdc_diag_zdce_logx.png          — ZDC energy E/E_1N^truth log-x A/C overlay
 //   zdc_diag_time_2d.png            — 2D ZDC time A vs C
 //   zdc_diag_preamp.png             — ZDC preamp A/C overlay (x: 0–5000 ADC)
-//   zdc_diag_zdce_vs_fcal_2d.png    — 2D ZDC energy vs FCal ET (linear scales)
+//   zdc_diag_zdce_vs_fcal_2d.png    — 2D ZDC energy vs FCal ET (linear xy, log z)
 //   zdc_diag_time_461674_debug.png  — 2×2 ZDC time A/C with Gaussian fits:
 //                                     top = run 461674, bottom = all other runs
 //
@@ -381,7 +381,7 @@ void plot_zdc_diag_groups_pbpb23() {
             pads[g]->cd();
             SetPadStyle(pads[g]);
             pads[g]->SetRightMargin(0.14);
-            // linear scales: no SetLogy, no SetLogz
+            pads[g]->SetLogz();
             Style2D(hEF[g]);
             hEF[g]->SetMinimum(0.5);
             hEF[g]->Draw("COLZ");
