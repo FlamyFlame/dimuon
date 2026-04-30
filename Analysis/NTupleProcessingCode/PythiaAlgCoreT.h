@@ -39,6 +39,7 @@ protected:
     FullSimSampleType fullsim_sample_type = FullSimSampleType::pp;
     bool perform_truth = true;
     bool useLocal = false;
+    bool only_pp_isospin = false;
 
     int batch_num = 0;
     int kn_batch = 0;

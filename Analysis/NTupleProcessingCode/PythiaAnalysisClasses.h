@@ -17,7 +17,8 @@ class PythiaTruthAnalysis
   , public PythiaTruthExtras<MuonPairPythiaTruth, PythiaTruthAnalysis>
 {
 public:
-    PythiaTruthAnalysis(int batch_num_input, bool is_private, double e_com = 5.36, bool use_local = false)
+    PythiaTruthAnalysis(int batch_num_input, bool is_private, double e_com = 5.36,
+                        bool use_local = false, bool pp_only = false)
         : PythiaAlgCoreT(batch_num_input, use_local)
     {
         if (std::abs(e_com - 5.36) > 0.01 && std::abs(e_com - 5.02) > 0.01)
@@ -25,6 +26,10 @@ public:
                 + std::to_string(e_com));
         this->isPrivate = is_private;
         this->E_COM = e_com;
+        if (pp_only) {
+            this->only_pp_isospin = true;
+            this->extra_output_suffix = "_pp_only";
+        }
     }
 };
 
@@ -40,13 +45,17 @@ class PythiaFullSimAnalysis
   , public PythiaTruthExtras<MuonPairPythiaFullSimWTruth, PythiaFullSimAnalysis>
 {
 public:
-    PythiaFullSimAnalysis(int batch_num_input = 0, bool use_local = false)
+    PythiaFullSimAnalysis(int batch_num_input = 0, bool use_local = false, bool pp_only = false)
         : PythiaAlgCoreT(batch_num_input, use_local)
     {
         this->isPrivate = false;
         this->E_COM = 5.36;
         this->run_year = 24;
         this->fullsim_sample_type = FullSimSampleType::pp;
+        if (pp_only) {
+            this->only_pp_isospin = true;
+            this->extra_output_suffix = "_pp_only";
+        }
     }
 };
 
