@@ -270,6 +270,7 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputCentrProd_Pythia
     int kin_hi = static_cast<int>(kinRanges.at(ikin + 1));
 
     for (int ibeam = 0; ibeam < nBeamTypes; ibeam++) {
+        if (only_pp_isospin && ibeam != 0) continue;
         TChain* ch = new TChain("HeavyIonD3PD", "HeavyIonD3PD");
         std::string path = py_dir + "pythia_" + ecom_input_tag + "_" + beam_names.at(ibeam)
             + "_hQCD_DiMu_pTH" + std::to_string(kin_lo) + "_" + std::to_string(kin_hi) + ".TRUTH0.NTUP.root";
@@ -375,7 +376,7 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputFullsim_PythiaCo
     }
 
     const std::string file_tag = FullSimSampleFileTag(fullsim_sample_type);
-    const bool overlay_only_pp = FullSimSampleIsOverlay(fullsim_sample_type);
+    const bool overlay_only_pp = FullSimSampleIsOverlay(fullsim_sample_type) || only_pp_isospin;
 
     for (int ikin = 0; ikin < nKinRanges; ikin++) {
         int kin_lo = static_cast<int>(kinRanges.at(ikin));

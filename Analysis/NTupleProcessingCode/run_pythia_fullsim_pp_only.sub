@@ -1,0 +1,10 @@
+# Submit Pythia pp24 fullsim analysis (pp isospin only).
+# Single job processes all 6 kn ranges for pp beam only.
+# Output: muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_pp_only.root
+
+executable = run_pythia_fullsim_pp_only.sh
+output     = logs/run_pythia_fullsim_pp_only.out
+error      = logs/run_pythia_fullsim_pp_only.err
+log        = logs/run_pythia_fullsim_pp_only.log
+request_memory = 4GB
+queue 1
