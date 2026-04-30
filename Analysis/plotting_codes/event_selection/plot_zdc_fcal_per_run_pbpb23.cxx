@@ -3,7 +3,9 @@
 // ZDC total energy vs FCal ET 2D, one pad per run, all 60 pbpb2023 runs.
 // Axes: x = FCal ET^{A+C} in [-0.5, 5.5] TeV, y = ZDC E_total in [0, 400] TeV.
 // Color scale: log z.  Selection: b_HLT_mu4_L1MU3V only.
-// Output: 3 PNG files, 20 runs each (5 col × 4 row per file).
+// Output (6 PNG files total, 20 runs each, 5 col × 4 row per file):
+//   zdc_fcal_per_run_pbpb23_part{1,2,3}.png     — raw counts
+//   zdc_fcal_per_run_pbpb23_pdf_part{1,2,3}.png — 2D differential PDF [TeV^{-2}]
 //
 // Usage (run from Analysis/):
 //   source /usatlas/u/yuhanguo/setup.sh
@@ -27,12 +29,14 @@ static const std::string kPlotDir = kBase + "plots/single_b_analysis/event_selec
 
 static const int kNCols = 5, kNRows = 4, kPerFile = kNCols * kNRows;  // 20 runs per PNG
 
+// normalize=false → raw counts (z min = 0.5)
+// normalize=true  → 2D differential PDF: scale by 1/Integral("width") [TeV^{-2}]; z min = 1e-10
 static void DrawRunGrid(const std::vector<int>& runs, int start,
                         const std::map<int, TH2D*>& hmap,
                         const std::map<int, long long>& nmap,
-                        const std::string& outPath) {
+                        const std::string& outPath, bool normalize) {
     int n = std::min(kPerFile, (int)runs.size() - start);
-    TCanvas* cv = new TCanvas(Form("cv_gr%d", start), "", 1600, 1280);
+    TCanvas* cv = new TCanvas(Form("cv_gr%d_%d", start, (int)normalize), "", 1600, 1280);
     cv->SetFillColor(0);
 
     for (int idx = 0; idx < n; ++idx) {
@@ -40,12 +44,13 @@ static void DrawRunGrid(const std::vector<int>& runs, int start,
         int row = idx / kNCols;
         int col = idx % kNCols;
 
-        double xLo = col              * (1.0 / kNCols);
-        double xHi = (col + 1)        * (1.0 / kNCols);
-        double yLo = (kNRows-row-1)   * (1.0 / kNRows);
-        double yHi = (kNRows-row)     * (1.0 / kNRows);
+        double xLo = col            * (1.0 / kNCols);
+        double xHi = (col + 1)      * (1.0 / kNCols);
+        double yLo = (kNRows-row-1) * (1.0 / kNRows);
+        double yHi = (kNRows-row)   * (1.0 / kNRows);
 
-        TPad* pad = new TPad(Form("pad%d_%d", start, idx), "", xLo, yLo, xHi, yHi);
+        TPad* pad = new TPad(Form("pad%d_%d_%d", start, idx, (int)normalize),
+                             "", xLo, yLo, xHi, yHi);
         pad->SetLeftMargin(0.13);
         pad->SetRightMargin(0.17);
         pad->SetTopMargin(0.08);
@@ -55,17 +60,23 @@ static void DrawRunGrid(const std::vector<int>& runs, int start,
         pad->cd();
 
         TH2D* h = hmap.at(run);
-        h->SetContour(99);
-        h->GetXaxis()->SetTitleSize(0.065);
-        h->GetXaxis()->SetLabelSize(0.050);
-        h->GetYaxis()->SetTitleSize(0.065);
-        h->GetYaxis()->SetLabelSize(0.050);
-        h->GetYaxis()->SetTitleOffset(0.90);
-        h->GetZaxis()->SetLabelSize(0.048);
-        h->SetMinimum(0.5);
-        h->GetXaxis()->SetRangeUser(-0.5, 5.5);
-        h->GetYaxis()->SetRangeUser(0., 400.);
-        h->Draw("COLZ");
+        TH2D* hd = h;
+        if (normalize) {
+            hd = (TH2D*)h->Clone(Form("%s_pdf", h->GetName()));
+            hd->SetDirectory(nullptr);
+            double integ = hd->Integral("width");
+            if (integ > 0.) hd->Scale(1. / integ);
+        }
+
+        hd->SetContour(99);
+        hd->GetXaxis()->SetTitleSize(0.065);
+        hd->GetXaxis()->SetLabelSize(0.050);
+        hd->GetYaxis()->SetTitleSize(0.065);
+        hd->GetYaxis()->SetLabelSize(0.050);
+        hd->GetYaxis()->SetTitleOffset(0.90);
+        hd->GetZaxis()->SetLabelSize(0.048);
+        hd->SetMinimum(normalize ? 1e-10 : 0.5);
+        hd->Draw("COLZ");
 
         long long nev = nmap.count(run) ? nmap.at(run) : 0LL;
         TLatex tl; tl.SetNDC(); tl.SetTextAlign(11);
@@ -74,6 +85,7 @@ static void DrawRunGrid(const std::vector<int>& runs, int start,
         tl.SetTextSize(0.060);
         tl.DrawLatex(0.15, 0.81, Form("N = %lld", nev));
 
+        if (normalize) delete hd;
         cv->cd();
     }
     cv->SaveAs(outPath.c_str());
@@ -144,8 +156,10 @@ void plot_zdc_fcal_per_run_pbpb23() {
     for (int file = 0; file < 3; ++file) {
         int start = file * kPerFile;
         if (start >= (int)runs.size()) break;
-        std::string outPath = kPlotDir + Form("zdc_fcal_per_run_pbpb23_part%d.png", file + 1);
-        DrawRunGrid(runs, start, hmap, nmap, outPath);
+        DrawRunGrid(runs, start, hmap, nmap,
+                    kPlotDir + Form("zdc_fcal_per_run_pbpb23_part%d.png",     file+1), false);
+        DrawRunGrid(runs, start, hmap, nmap,
+                    kPlotDir + Form("zdc_fcal_per_run_pbpb23_pdf_part%d.png", file+1), true);
     }
 
     for (auto& p : hmap) delete p.second;
