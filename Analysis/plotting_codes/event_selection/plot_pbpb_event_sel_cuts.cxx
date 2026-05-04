@@ -16,12 +16,14 @@
 
 #include <string>
 #include <vector>
+#include <map>
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
 #include <iostream>
 #include "TChain.h"
 #include "TFile.h"
+#include "TTree.h"
 #include "TH1D.h"
 #include "TH2D.h"
 #include "TF1.h"
@@ -205,6 +207,7 @@ public:
         gSystem->mkdir(out_dir_.c_str(), true);
         BookHists();
         LoadCut1();
+        DerivePerRunPreampCuts25();  // no-op for 23/24; populates per_run_preamp_cuts_ for 25
         FillHists();
         DeriveCut4();
         FillCuts45();
@@ -236,6 +239,15 @@ private:
     Long64_t n_HLT_             = 0;
     Long64_t n_ctr80_[kNStages_A] = {};
     std::vector<EvDataAlt> stored_;  // events passing cuts 1-3
+
+    // Per-run preamp cuts for PbPb25 (derived by DerivePerRunPreampCuts25)
+    std::map<int, std::pair<float,float>> per_run_preamp_cuts_;
+
+    // Part III: preamp AC correlation split by Cut-3 pass/fail status
+    // Groups: [0]=both pass, [1]=exactly one side fails, [2]=both fail
+    TH2D*     h_preamp_grp_[3] = {};
+    long long n_after_c12_   = 0;
+    long long n_preamp_grp_[3] = {};
 
     // -------------------------------------------------------------------------
     void BookHists() {
@@ -273,6 +285,15 @@ private:
             ";Centrality percentile;Events (after all 5 cuts)",
             80, -0.5, 79.5);
         h_centr_after_cuts_->SetDirectory(nullptr);
+
+        // Part III: preamp A vs C correlation for three Cut-3 outcome groups
+        static const char* grp_tag[3] = {"both_pass", "one_fail", "both_fail"};
+        for (int g = 0; g < 3; ++g) {
+            h_preamp_grp_[g] = new TH2D(Form("h_pgrp_%s_%d", grp_tag[g], run_year_),
+                ";ZDC preamp sum side A [ADC];ZDC preamp sum side C [ADC]",
+                200, -1000., 3000., 200, -1000., 3000.);
+            h_preamp_grp_[g]->SetDirectory(nullptr);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -287,6 +308,114 @@ private:
         g_cut1_ = (TGraph*)g->Clone("g_cut1_local_alt");
         f->Close();
         std::cout << "Loaded cut 1 TGraph: " << g_cut1_->GetN() << " points." << std::endl;
+    }
+
+    // -------------------------------------------------------------------------
+    // PbPb25 only: derive per-run mu+7sigma ZDC preamp cuts from a first pass over
+    // the raw skim (trigger + Cut1 + Cut2), populating per_run_preamp_cuts_.
+    // No-op for 23/24.  Must be called after LoadCut1().
+    void DerivePerRunPreampCuts25() {
+        if (run_year_ != 25) return;
+
+        static const double kFitLo  = -800., kFitHi = 1500.;
+        static const int    kNSig   = 7;      // mu + 7*sigma
+        static const int    kMinEnt = 50;
+
+        TChain chain("HeavyIonD3PD", "HeavyIonD3PD");
+        for (const auto& f : infiles_) {
+            if (!gSystem->AccessPathName(f.c_str())) chain.Add(f.c_str());
+        }
+        chain.SetMakeClass(1);
+        chain.SetBranchStatus("*", 0);
+
+        Int_t   b_HLT = 0, run_num = 0;
+        Float_t FCal_Et_P = 0.f, FCal_Et_N = 0.f;
+        Float_t zdc_E[2] = {}, zdc_t[2] = {};
+        Float_t preamp[2][4] = {};
+
+        chain.SetBranchStatus("b_HLT_mu4_L1MU3V",         1);
+        chain.SetBranchStatus("RunNumber",                  1);
+        chain.SetBranchStatus("FCal_Et_P",                  1);
+        chain.SetBranchStatus("FCal_Et_N",                  1);
+        chain.SetBranchStatus("zdc_ZdcEnergy",              1);
+        chain.SetBranchStatus("zdc_ZdcTime",                1);
+        chain.SetBranchStatus("zdc_ZdcModulePreSampleAmp",  1);
+
+        chain.SetBranchAddress("b_HLT_mu4_L1MU3V",         &b_HLT);
+        chain.SetBranchAddress("RunNumber",                  &run_num);
+        chain.SetBranchAddress("FCal_Et_P",                  &FCal_Et_P);
+        chain.SetBranchAddress("FCal_Et_N",                  &FCal_Et_N);
+        chain.SetBranchAddress("zdc_ZdcEnergy",              zdc_E);
+        chain.SetBranchAddress("zdc_ZdcTime",                zdc_t);
+        chain.SetBranchAddress("zdc_ZdcModulePreSampleAmp",  preamp);
+
+        std::map<int, TH1D*> hA_map, hC_map;
+        const Long64_t n_tot = chain.GetEntries();
+        std::cout << "DerivePerRunPreampCuts25: " << n_tot << " events, scanning..." << std::flush;
+        long long n_sel = 0;
+
+        for (Long64_t i = 0; i < n_tot; ++i) {
+            chain.GetEntry(i);
+            if (!b_HLT) continue;
+            const float fcal_AC = (FCal_Et_P + FCal_Et_N) * 1e-6f;
+            const float zdc_tot = (zdc_E[0] + zdc_E[1]) / 1000.f;
+            if (zdc_tot > (float)PbPbEvSelEvalCut(g_cut1_, fcal_AC)) continue;  // Cut 1
+            if (std::abs(zdc_t[1]) >= CUT2_T_NS_ALT) continue;                 // Cut 2 A
+            if (std::abs(zdc_t[0]) >= CUT2_T_NS_ALT) continue;                 // Cut 2 C
+            ++n_sel;
+
+            if (hA_map.find(run_num) == hA_map.end()) {
+                hA_map[run_num] = new TH1D(Form("prc25_hA_%d", run_num), "", 198, -1000., 2960.);
+                hC_map[run_num] = new TH1D(Form("prc25_hC_%d", run_num), "", 198, -1000., 2960.);
+                hA_map[run_num]->SetDirectory(nullptr);
+                hC_map[run_num]->SetDirectory(nullptr);
+            }
+            float pA = 0.f, pC = 0.f;
+            for (int k = 0; k < 4; ++k) pA += preamp[1][k];
+            for (int k = 0; k < 4; ++k) pC += preamp[0][k];
+            hA_map[run_num]->Fill(pA);
+            hC_map[run_num]->Fill(pC);
+        }
+        std::cout << "  " << n_sel << " pass Cut1+Cut2; " << hA_map.size() << " runs." << std::endl;
+
+        // Two-pass Gaussian fit per run per side; returns {mu+kNSig*sigma, ok}
+        auto fitCut = [&](TH1D* h, const char* name) -> std::pair<double, bool> {
+            if (h->GetEntries() < kMinEnt) return {0., false};
+            const double seed_hi = kFitLo + 0.6 * (kFitHi - kFitLo);
+            TF1 g1(Form("%s_p1", name), "gaus", kFitLo, seed_hi);
+            g1.SetParameters(h->GetMaximum(), (kFitLo + seed_hi) * 0.5,
+                             (seed_hi - kFitLo) * 0.25);
+            h->Fit(&g1, "RQN");
+            const double mu1 = g1.GetParameter(1), sig1 = std::abs(g1.GetParameter(2));
+            if (sig1 < 1.) return {0., false};
+            TF1 g2(Form("%s_p2", name), "gaus", mu1 - 3.*sig1, mu1 + 1.5*sig1);
+            g2.SetParameters(g1.GetParameter(0), mu1, sig1);
+            h->Fit(&g2, "RQN");
+            const double mu2 = g2.GetParameter(1), sig2 = std::abs(g2.GetParameter(2));
+            if (sig2 < 1.) return {0., false};
+            return {mu2 + kNSig * sig2, true};
+        };
+
+        const auto [hard_A, hard_C] = GetPreampCuts(25);
+        int n_fit_ok = 0;
+        for (auto& [run, hA] : hA_map) {
+            TH1D* hC = hC_map[run];
+            auto [cutA, okA] = fitCut(hA, Form("prc25_fA_%d", run));
+            auto [cutC, okC] = fitCut(hC, Form("prc25_fC_%d", run));
+            per_run_preamp_cuts_[run] = {
+                okA ? (float)cutA : hard_A,
+                okC ? (float)cutC : hard_C
+            };
+            if (okA && okC) ++n_fit_ok;
+            std::cout << Form("  Run %d  cutA=%.0f(%s)  cutC=%.0f(%s)\n",
+                run, (double)per_run_preamp_cuts_[run].first,  (okA ? "fit" : "hard"),
+                     (double)per_run_preamp_cuts_[run].second, (okC ? "fit" : "hard"));
+        }
+        std::cout << "DerivePerRunPreampCuts25: " << n_fit_ok << "/" << hA_map.size()
+                  << " runs with successful fits on both sides." << std::endl;
+
+        for (auto& [r, h] : hA_map) delete h;
+        for (auto& [r, h] : hC_map) delete h;
     }
 
     // -------------------------------------------------------------------------
@@ -317,7 +446,7 @@ private:
         chain.SetMakeClass(1);
         chain.SetBranchStatus("*", 0);
 
-        Int_t   b_HLT = 0;
+        Int_t   b_HLT = 0, run_num_ev = 0;
         Float_t FCal_Et_P = 0.f, FCal_Et_N = 0.f;
         Float_t zdc_E[2] = {}, zdc_t[2] = {};
         Float_t preamp[2][4] = {};
@@ -325,6 +454,7 @@ private:
         std::vector<int>* trk_numqual = nullptr;
 
         chain.SetBranchStatus("b_HLT_mu4_L1MU3V",         1);
+        chain.SetBranchStatus("RunNumber",                  1);
         chain.SetBranchStatus("FCal_Et_P",                  1);
         chain.SetBranchStatus("FCal_Et_N",                  1);
         chain.SetBranchStatus("zdc_ZdcEnergy",              1);
@@ -334,6 +464,7 @@ private:
         chain.SetBranchStatus("centrality",                 1);
 
         chain.SetBranchAddress("b_HLT_mu4_L1MU3V",         &b_HLT);
+        chain.SetBranchAddress("RunNumber",                  &run_num_ev);
         chain.SetBranchAddress("FCal_Et_P",                 &FCal_Et_P);
         chain.SetBranchAddress("FCal_Et_N",                 &FCal_Et_N);
         chain.SetBranchAddress("zdc_ZdcEnergy",             zdc_E);
@@ -401,8 +532,26 @@ private:
             if (is_ctr80) ++n_ctr80_[pass_c2 ? kC2Pass_A : kC2Fail_A];
             if (!pass_c2) continue;
 
-            // Cut 3: ZDC preamp — per-year hard cut (A and C may differ)
-            const bool pass_c3 = (ev.preamp_A < cut3_preamp_A_ && ev.preamp_C < cut3_preamp_C_);
+            // Determine Cut 3 threshold: per-run mu+7sigma for yr25, hard cut for 23/24
+            float c3_A = cut3_preamp_A_, c3_C = cut3_preamp_C_;
+            if (run_year_ == 25 && !per_run_preamp_cuts_.empty()) {
+                auto it = per_run_preamp_cuts_.find(run_num_ev);
+                if (it != per_run_preamp_cuts_.end()) {
+                    c3_A = it->second.first;
+                    c3_C = it->second.second;
+                }
+            }
+
+            // Part III: classify event by Cut-3 outcome on each side
+            ++n_after_c12_;
+            const bool fail_A = (ev.preamp_A >= c3_A);
+            const bool fail_C = (ev.preamp_C >= c3_C);
+            const int grp = (fail_A && fail_C) ? 2 : ((fail_A || fail_C) ? 1 : 0);
+            h_preamp_grp_[grp]->Fill(ev.preamp_A, ev.preamp_C);
+            ++n_preamp_grp_[grp];
+
+            // Cut 3 decision
+            const bool pass_c3 = (!fail_A && !fail_C);
             FillOneStage(pass_c3 ? kC3Pass_A : kC3Fail_A, ev);
             if (is_ctr80) ++n_ctr80_[pass_c3 ? kC3Pass_A : kC3Fail_A];
             if (!pass_c3) continue;
@@ -525,6 +674,32 @@ private:
         TParameter<double> p3(PbPbEvSelKey::kPreampCCutADC, cut3_preamp_C_);   p3.Write(PbPbEvSelKey::kPreampCCutADC, TObject::kOverwrite);
         TParameter<double> p4("nTrk_frac_n_sigma",      CUT4_N_SIGMA_ALT);     p4.Write("nTrk_frac_n_sigma",          TObject::kOverwrite);
         TParameter<double> p5("nTrk_FCal_band_n_sigma", CUT5_N_SIGMA_ALT);     p5.Write("nTrk_FCal_band_n_sigma",     TObject::kOverwrite);
+
+        // PbPb25: write per-run preamp cut TTree (branches: run_number, cut_A_ADC, cut_C_ADC)
+        if (run_year_ == 25 && !per_run_preamp_cuts_.empty()) {
+            f->cd();
+            std::vector<int> runs;
+            for (auto& kv : per_run_preamp_cuts_) runs.push_back(kv.first);
+            std::sort(runs.begin(), runs.end());
+            Int_t    run_num_w = 0;
+            Double_t cut_a_w = 0., cut_c_w = 0.;
+            TTree* t = new TTree(PbPbEvSelKey::kPreampPerRunTree,
+                                 "Per-run ZDC preamp mu+7sigma cuts (PbPb25)");
+            t->SetDirectory(nullptr);
+            t->Branch("run_number", &run_num_w, "run_number/I");
+            t->Branch("cut_A_ADC",  &cut_a_w,  "cut_A_ADC/D");
+            t->Branch("cut_C_ADC",  &cut_c_w,  "cut_C_ADC/D");
+            for (int r : runs) {
+                run_num_w = r;
+                cut_a_w   = per_run_preamp_cuts_.at(r).first;
+                cut_c_w   = per_run_preamp_cuts_.at(r).second;
+                t->Fill();
+            }
+            t->Write(PbPbEvSelKey::kPreampPerRunTree, TObject::kOverwrite);
+            delete t;
+            std::cout << "Per-run preamp cut TTree saved (" << runs.size() << " runs)." << std::endl;
+        }
+
         f->Close();
         std::cout << "All cuts saved to: " << path << std::endl;
     }
@@ -895,6 +1070,85 @@ private:
     }
 
     // -------------------------------------------------------------------------
+    // Part III: 3-panel preamp A vs C correlation for Cut-3 pass/fail groups.
+    // For each year: events after Cuts 1+2 are split into:
+    //   [0] Both A and C pass Cut 3   [1] Exactly one side fails   [2] Both fail
+    void DrawPreampCorrelationGroups() {
+        if (n_after_c12_ == 0) {
+            std::cerr << "DrawPreampCorrelationGroups: no events after Cuts 1+2" << std::endl;
+            return;
+        }
+
+        gStyle->SetOptStat(0);
+        gStyle->SetPalette(kBird);
+
+        static const char* grp_title[3] = {
+            "Both A & C pass Cut 3",
+            "Exactly one side fails Cut 3",
+            "Both A & C fail Cut 3"
+        };
+        const bool is_perrun = (run_year_ == 25);
+        const std::string cut_desc = is_perrun
+            ? "per-run #mu+7#sigma"
+            : Form("A=%.0f ADC, C=%.0f ADC", (double)cut3_preamp_A_, (double)cut3_preamp_C_);
+
+        // Zoom range: show a bit beyond the hard cut; cap at histogram max
+        const double zoom_lo = -800.;
+        const double zoom_hi = std::min(3000., (double)std::max(cut3_preamp_A_, cut3_preamp_C_) * 2.5 + 300.);
+
+        TCanvas* cv = new TCanvas(Form("c_pgrp_%d", run_year_), "", 2100, 700);
+        cv->Divide(3, 1, 0.004, 0.004);
+
+        for (int g = 0; g < 3; ++g) {
+            cv->cd(g + 1);
+            gPad->SetLogz();
+            gPad->SetRightMargin(0.16);
+            gPad->SetLeftMargin(0.13);
+            gPad->SetBottomMargin(0.13);
+            gPad->SetTopMargin(0.17);
+
+            TH2D* hd = (TH2D*)h_preamp_grp_[g]->Clone(
+                Form("hd_pgrp_%d_%d", run_year_, g));
+            hd->GetXaxis()->SetRangeUser(zoom_lo, zoom_hi);
+            hd->GetYaxis()->SetRangeUser(zoom_lo, zoom_hi);
+            hd->SetContour(99);
+            hd->SetMinimum(1.);
+            hd->Draw("COLZ");
+
+            // Cut lines for fixed cuts (23/24)
+            if (!is_perrun) {
+                TLine lA(cut3_preamp_A_, zoom_lo, cut3_preamp_A_, zoom_hi);
+                TLine lC(zoom_lo, cut3_preamp_C_, zoom_hi, cut3_preamp_C_);
+                for (TLine* l : {&lA, &lC}) {
+                    l->SetLineColor(kRed); l->SetLineWidth(1); l->SetLineStyle(2);
+                    l->DrawClone();
+                }
+            }
+
+            double pct = 100. * n_preamp_grp_[g] / (double)n_after_c12_;
+
+            // Text box at top of pad
+            TLatex tl; tl.SetNDC(); tl.SetTextAlign(13);
+            tl.SetTextSize(0.046);
+            tl.DrawLatex(0.14, 0.98, Form("Pb+Pb 20%s  |  %s", yr_.c_str(), grp_title[g]));
+            tl.SetTextSize(0.040);
+            tl.DrawLatex(0.14, 0.92,
+                Form("%.3f%%  (%lld / %lld events)", pct, n_preamp_grp_[g], n_after_c12_));
+            tl.DrawLatex(0.14, 0.87, Form("[Cut 3: %s]", cut_desc.c_str()));
+        }
+
+        cv->SaveAs(OutPath("event_sel_cut3_preamp_AC_corr_groups").c_str());
+        std::cout << "Saved: " << OutPath("event_sel_cut3_preamp_AC_corr_groups") << std::endl;
+        delete cv;
+        for (int g = 0; g < 3; ++g) {
+            std::cout << Form("  Group %d (%s): %lld events (%.3f%%)\n",
+                g, grp_title[g], n_preamp_grp_[g], 100.*n_preamp_grp_[g]/(double)n_after_c12_);
+        }
+
+        for (int g = 0; g < 3; ++g) { delete h_preamp_grp_[g]; h_preamp_grp_[g] = nullptr; }
+    }
+
+    // -------------------------------------------------------------------------
     void SavePlots() {
         gStyle->SetOptStat(0);
         gStyle->SetPalette(kBird);
@@ -917,6 +1171,7 @@ private:
         DrawCentralityBeforeCuts();
         DrawCentralityAfterCuts();
         DrawCentralityRatio();
+        DrawPreampCorrelationGroups();
 
         std::cout << "All plots saved to: " << out_dir_ << std::endl;
     }
