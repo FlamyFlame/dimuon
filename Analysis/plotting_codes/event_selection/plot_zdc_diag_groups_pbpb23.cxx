@@ -103,8 +103,11 @@ static void LogBins(int n, double lo, double hi, double* edges) {
 static std::pair<double,double> EffRange1D(TH1D* h, bool logScale = false, double pad = 0.05) {
     int first = h->FindFirstBinAbove(0);
     int last  = h->FindLastBinAbove(0);
+    // clamp to valid bin range (exclude under/overflow)
+    first = std::max(first, 1);
+    last  = std::min(last,  h->GetNbinsX());
     const double hmin = h->GetXaxis()->GetXmin(), hmax = h->GetXaxis()->GetXmax();
-    if (first <= 0) return {hmin, hmax};
+    if (first > last) return {hmin, hmax};
     double lo = h->GetXaxis()->GetBinLowEdge(first);
     double hi = h->GetXaxis()->GetBinUpEdge(last);
     if (logScale) {
@@ -301,7 +304,7 @@ void plot_zdc_diag_groups_pbpb23() {
             pads[g]->SetLogx(); pads[g]->SetLogy();
             Style1D(hEA[g], kBlack); Style1D(hEC[g], kRed+1);
             hEA[g]->GetXaxis()->SetRangeUser(eLo, eHi);
-            double yhi = std::max(hEA[kRefGrp]->GetMaximum(), hEC[kRefGrp]->GetMaximum()) * 5.;
+            double yhi = std::max(hEA[g]->GetMaximum(), hEC[g]->GetMaximum()) * 5.;
             if (yhi < 1.) yhi = 10.;
             hEA[g]->SetMinimum(0.5); hEA[g]->SetMaximum(yhi);
             hEA[g]->Draw("E"); hEC[g]->Draw("E SAME");
@@ -353,7 +356,7 @@ void plot_zdc_diag_groups_pbpb23() {
             SetPadStyle(pads[g]);
             pads[g]->SetLogy();
             Style1D(hPA[g], kBlack); Style1D(hPC[g], kRed+1);
-            double yhi = std::max(hPA[kRefGrp]->GetMaximum(), hPC[kRefGrp]->GetMaximum()) * 5.;
+            double yhi = std::max(hPA[g]->GetMaximum(), hPC[g]->GetMaximum()) * 5.;
             if (yhi < 1.) yhi = 10.;
             hPA[g]->SetMinimum(0.5); hPA[g]->SetMaximum(yhi);
             hPA[g]->Draw("E"); hPC[g]->Draw("E SAME");

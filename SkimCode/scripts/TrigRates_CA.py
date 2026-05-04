@@ -181,7 +181,7 @@ elif do_pp_MC_fullsim_hioverlay24:
 	# RunYear=2024 selects the 2024 HIEventShape centrality calibration.
 	RunYear = 2024
 	dataSource = 'geant4'
-	InputFile = "/eos/user/y/yuhang/data/mc23_pythia_fullsim_hijing_overlay_test/AOD.49786401._000011.pool.root.1"
+	InputFile = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/test_AOD_pythia_fullsim_hijing.root"
 else:
 	print("*"*50, "\nUnknown Dataset\n", "*"*50)
 	exit()
