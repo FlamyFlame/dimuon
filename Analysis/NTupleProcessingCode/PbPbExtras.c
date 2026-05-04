@@ -167,6 +167,29 @@ void PbPbExtras<Derived>::InitEventSel() {
   g_evsel_cut5_lo_ = get_graph(PbPbEvSelKey::kNTrkFCalCutLo);
   g_evsel_cut5_hi_ = get_graph(PbPbEvSelKey::kNTrkFCalCutHi);
 
+  // PbPb25: load per-run preamp cuts from TTree (keyed by run number)
+  if ((self().run_year % 2000) == 25) {
+    TTree* t = dynamic_cast<TTree*>(f->Get(PbPbEvSelKey::kPreampPerRunTree));
+    if (t) {
+      Int_t    run_num = 0;
+      Double_t cut_a = 0., cut_c = 0.;
+      t->SetBranchAddress("run_number", &run_num);
+      t->SetBranchAddress("cut_A_ADC",  &cut_a);
+      t->SetBranchAddress("cut_C_ADC",  &cut_c);
+      for (Long64_t i = 0; i < t->GetEntries(); ++i) {
+        t->GetEntry(i);
+        evsel_cut3_per_run_[run_num] = {(float)cut_a, (float)cut_c};
+      }
+      std::cout << "PbPbExtras::InitEventSel: loaded per-run preamp cuts for "
+                << evsel_cut3_per_run_.size() << " runs (scalar fallback A="
+                << evsel_cut3_A_ << " C=" << evsel_cut3_C_ << " ADC)." << std::endl;
+    } else {
+      std::cout << "PbPbExtras::InitEventSel: WARNING — per-run TTree not found in "
+                << path << "; falling back to scalar cut A=" << evsel_cut3_A_
+                << " C=" << evsel_cut3_C_ << " ADC." << std::endl;
+    }
+  }
+
   f->Close();
   std::cout << "PbPbExtras::InitEventSel: loaded cuts from " << path << std::endl;
 
@@ -184,12 +207,20 @@ bool PbPbExtras<Derived>::PassEventSel() const {
   if (std::abs(zdc_ZdcTime[1]) >= (float)evsel_cut2_ns_) return false;  // [1]=A
   if (std::abs(zdc_ZdcTime[0]) >= (float)evsel_cut2_ns_) return false;  // [0]=C
 
-  // Cut 3: ZDC preamp amplitude
+  // Cut 3: ZDC preamp amplitude (per-run mu+7sigma for yr25; hard scalar cut for 23/24)
   float preamp_A = 0.f, preamp_C = 0.f;
   for (int i = 0; i < 4; ++i) preamp_A += zdc_ZdcModulePreSampleAmp[1][i];  // [1]=A
   for (int i = 0; i < 4; ++i) preamp_C += zdc_ZdcModulePreSampleAmp[0][i];  // [0]=C
-  if (preamp_A >= evsel_cut3_A_) return false;
-  if (preamp_C >= evsel_cut3_C_) return false;
+  float cut3_A = evsel_cut3_A_, cut3_C = evsel_cut3_C_;
+  if ((self().run_year % 2000) == 25 && !evsel_cut3_per_run_.empty()) {
+    auto it = evsel_cut3_per_run_.find(static_cast<int>(self().RunNumber));
+    if (it != evsel_cut3_per_run_.end()) {
+      cut3_A = it->second.first;
+      cut3_C = it->second.second;
+    }
+  }
+  if (preamp_A >= cut3_A) return false;
+  if (preamp_C >= cut3_C) return false;
 
   // Cut 4: nTrk HItight fraction
   if (!trk_numqual || (int)trk_numqual->size() < 4) return false;
