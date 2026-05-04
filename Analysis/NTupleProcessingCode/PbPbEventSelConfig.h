@@ -35,9 +35,12 @@ namespace PbPbEvSelKey {
     constexpr const char* kZDCTimeCutNs  = "ZDC_time_cut_ns";
     constexpr const char* kPreampACutADC = "ZDC_preamp_A_cut_ADC";
     constexpr const char* kPreampCCutADC = "ZDC_preamp_C_cut_ADC";
-    constexpr const char* kNTrkFracCutLo = "g_ntrk_frac_cut_lo";
-    constexpr const char* kNTrkFCalCutLo = "g_ntrk_fcal_cut_lo";
-    constexpr const char* kNTrkFCalCutHi = "g_ntrk_fcal_cut_hi";
+    constexpr const char* kNTrkFracCutLo   = "g_ntrk_frac_cut_lo";
+    constexpr const char* kNTrkFCalCutLo   = "g_ntrk_fcal_cut_lo";
+    constexpr const char* kNTrkFCalCutHi   = "g_ntrk_fcal_cut_hi";
+    // PbPb25 only: TTree with per-run mu+7sigma preamp cuts
+    // Branches: run_number (Int_t), cut_A_ADC (Double_t), cut_C_ADC (Double_t)
+    constexpr const char* kPreampPerRunTree = "t_preamp_per_run";
 }
 
 // ---- Path to per-year cuts ROOT file (nominal, fit-derived) -----------------
