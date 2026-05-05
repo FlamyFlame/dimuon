@@ -121,9 +121,10 @@ enum StageAlt {
     kC1Pass_A = 1, kC1Fail_A = 2,
     kC2Pass_A = 3, kC2Fail_A = 4,
     kC3Pass_A = 5, kC3Fail_A = 6,
+    kC3FailOne_A = 11, kC3FailBoth_A = 12,  // fail exactly one side / both sides
     kC4Pass_A = 7, kC4Fail_A = 8,
     kC5Pass_A = 9, kC5Fail_A = 10,
-    kNStages_A = 11
+    kNStages_A = 13
 };
 enum HTypeAlt {
     kZdcFcal_A  = 0,
@@ -554,7 +555,12 @@ private:
             const bool pass_c3 = (!fail_A && !fail_C);
             FillOneStage(pass_c3 ? kC3Pass_A : kC3Fail_A, ev);
             if (is_ctr80) ++n_ctr80_[pass_c3 ? kC3Pass_A : kC3Fail_A];
-            if (!pass_c3) continue;
+            if (!pass_c3) {
+                const StageAlt sub = (fail_A && fail_C) ? kC3FailBoth_A : kC3FailOne_A;
+                FillOneStage(sub, ev);
+                if (is_ctr80) ++n_ctr80_[sub];
+                continue;
+            }
 
             stored_.push_back(ev);
         }
@@ -1164,6 +1170,11 @@ private:
             DrawFivePanelCanvas(fail_stages[cut-1],
                 OutPath(Form("event_sel_cut%d_%s_fail_5panel", cut, kPbPbEvSelCutLabel(cut))));
         }
+
+        DrawFivePanelCanvas(kC3FailOne_A,
+            OutPath("event_sel_cut3_ZDC_preamp_fail_one_side_5panel"));
+        DrawFivePanelCanvas(kC3FailBoth_A,
+            OutPath("event_sel_cut3_ZDC_preamp_fail_both_sides_5panel"));
 
         DrawSurvivalPlot();
         DrawCumulativeSurvivalPlot();
