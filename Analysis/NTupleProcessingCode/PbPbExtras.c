@@ -191,12 +191,23 @@ void PbPbExtras<Derived>::InitEventSel() {
   }
 
   f->Close();
+
+  evsel_bad_runs_ = PbPbBadRuns(self().run_year % 2000);
+  if (!evsel_bad_runs_.empty())
+    std::cout << "PbPbExtras::InitEventSel: excluding " << evsel_bad_runs_.size()
+              << " bad run(s) for PbPb 20" << (self().run_year % 2000) << std::endl;
+
   std::cout << "PbPbExtras::InitEventSel: loaded cuts from " << path << std::endl;
 
 }
 
 template <class Derived>
 bool PbPbExtras<Derived>::PassEventSel() const {
+  // Exclude bad runs (e.g. problematic detector conditions)
+  if (!evsel_bad_runs_.empty() &&
+      evsel_bad_runs_.count(static_cast<int>(self().RunNumber)))
+    return false;
+
   const float fcal_AC = (FCal_Et_P + FCal_Et_N) * 1e-6f;              // MeV → TeV
   const float zdc_tot = (zdc_ZdcEnergy[0] + zdc_ZdcEnergy[1]) / 1000.f; // GeV → TeV (matches cut derivation)
 
@@ -219,8 +230,7 @@ bool PbPbExtras<Derived>::PassEventSel() const {
       cut3_C = it->second.second;
     }
   }
-  if (preamp_A >= cut3_A) return false;
-  if (preamp_C >= cut3_C) return false;
+  if (preamp_A >= cut3_A && preamp_C >= cut3_C) return false;  // fail only if both sides exceed threshold
 
   // Cut 4: nTrk HItight fraction
   if (!trk_numqual || (int)trk_numqual->size() < 4) return false;

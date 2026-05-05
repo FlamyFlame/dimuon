@@ -2,7 +2,7 @@
 // Sequential 5-cut event selection pipeline for PbPb data.
 //   Cut 1: ZDC vs FCal banana (loaded from event_sel_cuts_pbpb_YYYY.root)
 //   Cut 2: ZDC time |tA| < 1.5 ns AND |tC| < 1.5 ns
-//   Cut 3: ZDC preamp sum: A < CUT3_PREAMP AND C < CUT3_PREAMP  (fixed hard cut, evaluated per year)
+//   Cut 3: ZDC preamp sum: fail only if BOTH A and C exceed threshold (hard cut per year; per-run mu+7sigma for 2025)
 //   Cut 4: nTrk HItight fraction vs total nTrk — lower bound at mu-5sigma (per-slice Gauss)
 //   Cut 5: nTrk HItight vs FCal ET — band [mu-5sigma, mu+5sigma] (per-slice Gauss)
 // All cuts saved to event_sel_cuts_pbpb_YYYY.root.
@@ -206,6 +206,10 @@ public:
         gStyle->SetOptStat(0);
         gStyle->SetPalette(kBird);
         gSystem->mkdir(out_dir_.c_str(), true);
+        bad_runs_ = PbPbBadRuns(run_year_);
+        if (!bad_runs_.empty())
+            std::cout << "Excluding " << bad_runs_.size()
+                      << " bad run(s) from PbPb 20" << yr_ << std::endl;
         BookHists();
         LoadCut1();
         DerivePerRunPreampCuts25();  // no-op for 23/24; populates per_run_preamp_cuts_ for 25
@@ -223,6 +227,7 @@ private:
     std::vector<std::string> infiles_;
     float cut3_preamp_A_ = 385.f;
     float cut3_preamp_C_ = 385.f;
+    std::unordered_set<int> bad_runs_;
 
     TH2D*   hh_[kNStages_A][kNHTypes_A] = {};
     TH2D*   h_zdctime_ctr_[6] = {};   // ZDC time AC corr: [0-4] = top 1-5%, [5] = 5-10%
@@ -358,6 +363,7 @@ private:
         for (Long64_t i = 0; i < n_tot; ++i) {
             chain.GetEntry(i);
             if (!b_HLT) continue;
+            if (bad_runs_.count(run_num)) continue;
             const float fcal_AC = (FCal_Et_P + FCal_Et_N) * 1e-6f;
             const float zdc_tot = (zdc_E[0] + zdc_E[1]) / 1000.f;
             if (zdc_tot > (float)PbPbEvSelEvalCut(g_cut1_, fcal_AC)) continue;  // Cut 1
@@ -480,6 +486,7 @@ private:
         for (Long64_t i = 0; i < n_total; ++i) {
             chain.GetEntry(i);
             if (!b_HLT) continue;
+            if (bad_runs_.count(run_num_ev)) continue;
             ++n_HLT_;
 
             EvDataAlt ev;
@@ -551,8 +558,8 @@ private:
             h_preamp_grp_[grp]->Fill(ev.preamp_A, ev.preamp_C);
             ++n_preamp_grp_[grp];
 
-            // Cut 3 decision
-            const bool pass_c3 = (!fail_A && !fail_C);
+            // Cut 3 decision: fail only if both sides exceed threshold
+            const bool pass_c3 = !(fail_A && fail_C);
             FillOneStage(pass_c3 ? kC3Pass_A : kC3Fail_A, ev);
             if (is_ctr80) ++n_ctr80_[pass_c3 ? kC3Pass_A : kC3Fail_A];
             if (!pass_c3) {

@@ -4,6 +4,7 @@
 // so that key names and cut order never drift between the two.
 
 #include <string>
+#include <unordered_set>
 #include "TGraph.h"
 
 // ---- Cut order (1-indexed; 0 unused) ----------------------------------------
@@ -49,6 +50,14 @@ inline std::string PbPbEvSelCutsPath(int run_year) {
     return "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" +
            std::to_string(yr) + "/event_sel_cuts_pbpb_20" +
            std::to_string(yr) + ".root";
+}
+
+// ---- Run-quality exclusion list (keyed by 2-digit or 4-digit year) ---------
+// Returns runs excluded from all event selection derivations and analysis.
+inline std::unordered_set<int> PbPbBadRuns(int run_year) {
+    int yr = run_year % 2000;
+    if (yr == 23) return {461674, 462964};
+    return {};
 }
 
 // ---- TGraph cut evaluator with clamped extrapolation -----------------------

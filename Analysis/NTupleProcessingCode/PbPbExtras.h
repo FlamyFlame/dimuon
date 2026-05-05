@@ -59,6 +59,8 @@ protected:
     float   evsel_cut3_C_{385.f};         // ZDC preamp C upper cut [ADC] (scalar fallback / 23+24)
     // PbPb25 only: per-run mu+7sigma preamp cuts, keyed by run number
     std::unordered_map<int, std::pair<float,float>> evsel_cut3_per_run_;
+    // Runs excluded from all event selection and analysis (loaded by InitEventSel)
+    std::unordered_set<int> evsel_bad_runs_;
     TGraph* g_evsel_cut4_{nullptr};       // nTrk frac lower bound
     TGraph* g_evsel_cut5_lo_{nullptr};    // nTrk-FCal lower bound
     TGraph* g_evsel_cut5_hi_{nullptr};    // nTrk-FCal upper bound
