@@ -116,17 +116,18 @@ static TH1D* FillFCalHist(int yr, const CutSetFC& cs) {
     chain.SetMakeClass(1);
     chain.SetBranchStatus("*", 0);
 
-    Int_t   b_HLT = 0;
+    Int_t   b_HLT = 0, run_num = 0;
     Float_t FCal_Et_P = 0.f, FCal_Et_N = 0.f;
     Float_t zdc_E[2] = {}, zdc_t[2] = {};
     Float_t preamp[2][4] = {};
     std::vector<int>* trk_numqual = nullptr;
 
-    for (const char* br : {"b_HLT_mu4_L1MU3V","FCal_Et_P","FCal_Et_N",
+    for (const char* br : {"b_HLT_mu4_L1MU3V","RunNumber","FCal_Et_P","FCal_Et_N",
                             "zdc_ZdcEnergy","zdc_ZdcTime","zdc_ZdcModulePreSampleAmp","trk_numqual"})
         chain.SetBranchStatus(br, 1);
 
     chain.SetBranchAddress("b_HLT_mu4_L1MU3V",        &b_HLT);
+    chain.SetBranchAddress("RunNumber",                 &run_num);
     chain.SetBranchAddress("FCal_Et_P",                 &FCal_Et_P);
     chain.SetBranchAddress("FCal_Et_N",                 &FCal_Et_N);
     chain.SetBranchAddress("zdc_ZdcEnergy",              zdc_E);
@@ -134,6 +135,7 @@ static TH1D* FillFCalHist(int yr, const CutSetFC& cs) {
     chain.SetBranchAddress("zdc_ZdcModulePreSampleAmp",  preamp);
     chain.SetBranchAddress("trk_numqual",               &trk_numqual);
 
+    const auto bad_runs = PbPbBadRuns(yr);
     const Long64_t ntot = chain.GetEntries();
     std::cout << Form("PbPb 20%d: processing %lld events...\n", yr, ntot);
     Long64_t n_pass = 0;
@@ -141,6 +143,7 @@ static TH1D* FillFCalHist(int yr, const CutSetFC& cs) {
     for (Long64_t i = 0; i < ntot; ++i) {
         chain.GetEntry(i);
         if (!b_HLT) continue;
+        if (bad_runs.count(run_num)) continue;
 
         const float fcal_AC = (FCal_Et_P + FCal_Et_N) * 1e-6f;
         const float zdc_tot = (zdc_E[0] + zdc_E[1]) / 1000.f;
@@ -160,8 +163,8 @@ static TH1D* FillFCalHist(int yr, const CutSetFC& cs) {
         if (c1 > 0. && zdc_tot > c1) continue;
         // Cut 2: ZDC time box
         if (std::fabs(tA) >= (float)cs.t_ns || std::fabs(tC) >= (float)cs.t_ns) continue;
-        // Cut 3: ZDC preamp
-        if (pA >= (float)cs.preamp_A || pC >= (float)cs.preamp_C) continue;
+        // Cut 3: ZDC preamp — fail only if both sides exceed threshold
+        if (pA >= (float)cs.preamp_A && pC >= (float)cs.preamp_C) continue;
         // Cuts 4 & 5: track-based — skip events with no tracks (consistent with cuts plotter)
         if (ntrk_total <= 0) continue;
         // Cut 4: nTrk frac lower bound
