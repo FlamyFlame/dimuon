@@ -5,5 +5,4 @@ output = logs/run_pbpb_23_batch_$(Process).out
 error = logs/run_pbpb_23_batch_$(Process).err
 log = logs/run_pbpb_23_batch_$(Process).log
 request_memory = 2GB
-# pbpb2023: only parts 1..3 available; update to queue 4 after part4 finishes skimming
-queue 3
+queue 4
