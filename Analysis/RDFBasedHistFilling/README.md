@@ -110,8 +110,9 @@ Rules:
 ```bash
 # Fill histograms (PbPb before PP, since run_all_crossx.sh now enforces this order)
 cd RDFBasedHistFilling
-bash test_crossx_pbpb23.sh
-bash test_crossx_pbpb24.sh
+bash run_crossx_hist_filling_pbpb23.sh
+bash run_crossx_hist_filling_pbpb24.sh
+bash run_crossx_hist_filling_pbpb25.sh
 bash test_crossx_pp24.sh
 
 # Plot

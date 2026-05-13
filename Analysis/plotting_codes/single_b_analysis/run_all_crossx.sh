@@ -23,8 +23,9 @@ run_and_log() {
 # 1) Fill crossx histograms
 # PbPb runs first: test_crossx_pp24.sh loads the PbPb .so in a separate session to resolve
 # the dynamic_cast<RDFBasedHistFillingPbPb*> typeinfo dependency before linking PP.
-run_and_log "RDF crossx pbpb23" "cd '${RDF_DIR}' && bash test_crossx_pbpb23.sh"
-run_and_log "RDF crossx pbpb24" "cd '${RDF_DIR}' && bash test_crossx_pbpb24.sh"
+run_and_log "RDF crossx pbpb23" "cd '${RDF_DIR}' && bash run_crossx_hist_filling_pbpb23.sh"
+run_and_log "RDF crossx pbpb24" "cd '${RDF_DIR}' && bash run_crossx_hist_filling_pbpb24.sh"
+run_and_log "RDF crossx pbpb25" "cd '${RDF_DIR}' && bash run_crossx_hist_filling_pbpb25.sh"
 run_and_log "RDF crossx pp24" "cd '${RDF_DIR}' && bash test_crossx_pp24.sh"
 
 # 2) Plot
@@ -51,7 +52,7 @@ validate_png "${OUT_DIR}/pp24/pp24_crossx_pair_pt_dr.png"
 validate_png "${OUT_DIR}/pp24/pp24_crossx_pair_pt_in_eta_subplots_dr_lines.png"
 
 # Combined PbPb (discovers which years are available; check a representative subset)
-COMB_TAA="${OUT_DIR}/pbpb_23_24_combined/TAA_weighted"
+COMB_TAA="${OUT_DIR}/pbpb_23_24_25_combined/TAA_weighted"
 for ctr in ctr0_5 ctr5_10 ctr10_20 ctr20_30 ctr30_50 ctr50_80; do
   validate_png "${COMB_TAA}/pbpb_combined_${ctr}_pair_pt_pair_eta.png"
   validate_png "${COMB_TAA}/pbpb_combined_${ctr}_pair_pt_in_eta_subplots_dr_lines.png"
