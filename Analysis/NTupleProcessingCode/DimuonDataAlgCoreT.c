@@ -112,10 +112,21 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputBranchesSing
     std::string mu4_trigger_branch = "b_" + mu4_trigger_name;
     std::string mu4_trigger_match_branch = "muon_b_" + mu4_trigger_name;
 
-    fChainRef()->SetBranchAddress(mu4_trigger_branch.c_str()                       , &b_HLT_mu4);
-    fChainRef()->SetBranchAddress(mu4_trigger_match_branch.c_str()                 , &muon_b_HLT_mu4);
+    fChainRef()->SetBranchAddress(mu4_trigger_branch.c_str(), &b_HLT_mu4);
+    if (mindR_trig == 0.01) {
+        std::string mu4_match_mindR = mu4_trigger_match_branch + "_0_01";
+        if (fChainRef()->GetBranch(mu4_match_mindR.c_str())) {
+            fChainRef()->SetBranchAddress(mu4_match_mindR.c_str(), &muon_b_HLT_mu4);
+            std::cout << "INFO: single mu4 using mindR=0.01 branch: " << mu4_match_mindR << std::endl;
+        } else {
+            fChainRef()->SetBranchAddress(mu4_trigger_match_branch.c_str(), &muon_b_HLT_mu4);
+            std::cerr << "WARNING: single mu4 _0_01 branch not found; falling back to bare branch (dR=0.02)" << std::endl;
+        }
+    } else {
+        fChainRef()->SetBranchAddress(mu4_trigger_match_branch.c_str(), &muon_b_HLT_mu4);
+    }
 
-    fChainRef()->SetBranchStatus("*"                     ,0);//switch off all branches, then enable just the ones that we need
+    fChainRef()->SetBranchStatus("*"                     ,0);
     fChainRef()->SetBranchStatus("muon_pt"               ,1);
     fChainRef()->SetBranchStatus("muon_eta"              ,1);
     fChainRef()->SetBranchStatus("muon_phi"              ,1);
@@ -125,7 +136,10 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputBranchesSing
     fChainRef()->SetBranchStatus("muon_z0"               ,1);
 
     fChainRef()->SetBranchStatus(mu4_trigger_branch.c_str()                          ,1);
-    fChainRef()->SetBranchStatus(mu4_trigger_match_branch.c_str()                    ,1);
+    if (mindR_trig == 0.01 && fChainRef()->GetBranch((mu4_trigger_match_branch + "_0_01").c_str()))
+        fChainRef()->SetBranchStatus((mu4_trigger_match_branch + "_0_01").c_str()    ,1);
+    else
+        fChainRef()->SetBranchStatus(mu4_trigger_match_branch.c_str()                ,1);
 }
 
 template <class PairT, class MuonT, class Derived, class... Extras>
@@ -178,7 +192,21 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputBranchesDimu
 
     fChainRef()->SetBranchAddress(mu4_trigger_branch.c_str()                       , &b_HLT_mu4);
     fChainRef()->SetBranchAddress(twomu4_trigger_branch.c_str()                    , &b_HLT_2mu4);
-    fChainRef()->SetBranchAddress(mu4_trigger_match_branch.c_str()                 , &muon_b_HLT_mu4);
+
+    // --- single mu4: use _0_01 branch when mindR_trig=0.01, otherwise bare (=0.02) ---
+    if (mindR_trig == 0.01) {
+        std::string mu4_match_mindR = mu4_trigger_match_branch + "_0_01";
+        if (fChainRef()->GetBranch(mu4_match_mindR.c_str())) {
+            fChainRef()->SetBranchAddress(mu4_match_mindR.c_str(), &muon_b_HLT_mu4);
+            use_mindR_suffix_in_output = true;
+            std::cout << "INFO: single mu4 using mindR=0.01 branch: " << mu4_match_mindR << std::endl;
+        } else {
+            fChainRef()->SetBranchAddress(mu4_trigger_match_branch.c_str(), &muon_b_HLT_mu4);
+            std::cerr << "WARNING: single mu4 _0_01 branch not found; falling back to bare branch (dR=0.02)" << std::endl;
+        }
+    } else {
+        fChainRef()->SetBranchAddress(mu4_trigger_match_branch.c_str(), &muon_b_HLT_mu4);
+    }
 
     // --- 2mu4: prefer mindR branch, fall back to old branch ---
     if (isRun3 || isPbPb) {
@@ -236,14 +264,24 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputBranchesDimu
         }
     }
 
-    if (use_mu6_for_trg_eff){ // only use mu6 for Pb+Pb 23 for now
-        fChainRef()->SetBranchAddress("b_HLT_mu6_L1MU3V"                      , &b_HLT_mu6_L1MU3V);
-        fChainRef()->SetBranchAddress("muon_b_HLT_mu6_L1MU3V"                 , &muon_b_HLT_mu6_L1MU3V);
+    if (use_mu6_for_trg_eff){
+        fChainRef()->SetBranchAddress("b_HLT_mu6_L1MU3V", &b_HLT_mu6_L1MU3V);
+        if (mindR_trig == 0.01 && fChainRef()->GetBranch("muon_b_HLT_mu6_L1MU3V_0_01")) {
+            fChainRef()->SetBranchAddress("muon_b_HLT_mu6_L1MU3V_0_01", &muon_b_HLT_mu6_L1MU3V);
+            std::cout << "INFO: mu6 using mindR=0.01 branch: muon_b_HLT_mu6_L1MU3V_0_01" << std::endl;
+        } else {
+            fChainRef()->SetBranchAddress("muon_b_HLT_mu6_L1MU3V", &muon_b_HLT_mu6_L1MU3V);
+        }
     }
 
-    if (use_mu8_for_trg_eff){ // only use mu6 for Pb+Pb 23 for now
-        fChainRef()->SetBranchAddress("b_HLT_mu8_L1MU5VF"                      , &b_HLT_mu8_L1MU5VF);
-        fChainRef()->SetBranchAddress("muon_b_HLT_mu8_L1MU5VF"                 , &muon_b_HLT_mu8_L1MU5VF);
+    if (use_mu8_for_trg_eff){
+        fChainRef()->SetBranchAddress("b_HLT_mu8_L1MU5VF", &b_HLT_mu8_L1MU5VF);
+        if (mindR_trig == 0.01 && fChainRef()->GetBranch("muon_b_HLT_mu8_L1MU5VF_0_01")) {
+            fChainRef()->SetBranchAddress("muon_b_HLT_mu8_L1MU5VF_0_01", &muon_b_HLT_mu8_L1MU5VF);
+            std::cout << "INFO: mu8 using mindR=0.01 branch: muon_b_HLT_mu8_L1MU5VF_0_01" << std::endl;
+        } else {
+            fChainRef()->SetBranchAddress("muon_b_HLT_mu8_L1MU5VF", &muon_b_HLT_mu8_L1MU5VF);
+        }
     }
 
     //SetBranch Status
@@ -275,7 +313,10 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputBranchesDimu
   
     fChainRef()->SetBranchStatus(mu4_trigger_branch.c_str()                          ,1);
     fChainRef()->SetBranchStatus(twomu4_trigger_branch.c_str()                       ,1);
-    fChainRef()->SetBranchStatus(mu4_trigger_match_branch.c_str()                    ,1);
+    if (mindR_trig == 0.01 && fChainRef()->GetBranch((mu4_trigger_match_branch + "_0_01").c_str()))
+        fChainRef()->SetBranchStatus((mu4_trigger_match_branch + "_0_01").c_str()    ,1);
+    else
+        fChainRef()->SetBranchStatus(mu4_trigger_match_branch.c_str()                ,1);
 
     if (isRun3 || isPbPb){
         fChainRef()->SetBranchStatus(mu4_mu4noL1_trigger_branch.c_str()              ,1);
@@ -302,14 +343,20 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputBranchesDimu
         fChainRef()->SetBranchStatus(twomu4_trigger_match_branch.c_str()                 ,1);
     }
     
-    if (use_mu6_for_trg_eff){ // only use mu6 for Pb+Pb 23 for now
-        fChainRef()->SetBranchStatus("b_HLT_mu6_L1MU3V",         1);
-        fChainRef()->SetBranchStatus("muon_b_HLT_mu6_L1MU3V",    1);
+    if (use_mu6_for_trg_eff){
+        fChainRef()->SetBranchStatus("b_HLT_mu6_L1MU3V", 1);
+        if (mindR_trig == 0.01 && fChainRef()->GetBranch("muon_b_HLT_mu6_L1MU3V_0_01"))
+            fChainRef()->SetBranchStatus("muon_b_HLT_mu6_L1MU3V_0_01", 1);
+        else
+            fChainRef()->SetBranchStatus("muon_b_HLT_mu6_L1MU3V", 1);
     }
 
-    if (use_mu8_for_trg_eff){ // only use mu6 for Pb+Pb 23 for now
-        fChainRef()->SetBranchStatus("b_HLT_mu8_L1MU5VF",         1);
-        fChainRef()->SetBranchStatus("muon_b_HLT_mu8_L1MU5VF",    1);
+    if (use_mu8_for_trg_eff){
+        fChainRef()->SetBranchStatus("b_HLT_mu8_L1MU5VF", 1);
+        if (mindR_trig == 0.01 && fChainRef()->GetBranch("muon_b_HLT_mu8_L1MU5VF_0_01"))
+            fChainRef()->SetBranchStatus("muon_b_HLT_mu8_L1MU5VF_0_01", 1);
+        else
+            fChainRef()->SetBranchStatus("muon_b_HLT_mu8_L1MU5VF", 1);
     }
 }
 
