@@ -1,7 +1,7 @@
 - Remote cluster (BNL SDCC); run `/usatlas/u/yuhanguo/setup.sh` for ROOT environment
 - No pip install — use what's in the release
 - For C++ class testing, use ROOT ACLiC: `.L MyClass.cxx+`
-- Read `/gpfs/mnt/atlasgpfs01/usatlas/workarea/yuhanguo/dimuon_codes/Analysis/README.md` and `/gpfs/mnt/atlasgpfs01/usatlas/workarea/yuhanguo/dimuon_codes/Analysis/docs/` for analysis context (class hierarchy, pipelines, sample types)
+- Read `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/README.md` and `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/` for analysis context (class hierarchy, pipelines, sample types)
 - For any analysis change: always update and maintain the relevant documentation in those files
 
 ## Tracking Documents
@@ -10,7 +10,7 @@ Create a tracking doc when: (a) investigating an unknown root cause with
 multiple hypotheses, or (b) the user requests documentation for a new
 analysis or major rework spanning many editing cycles.
 
-**Start:** Create `/gpfs/mnt/atlasgpfs01/usatlas/workarea/yuhanguo/dimuon_codes/Analysis/docs/tracking/<name>.md`. Register in Active Tracking
+**Start:** Create `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/<name>.md`. Register in Active Tracking
 Docs below. Structure depends on mode:
 - *Investigation:* Objective, Context, Sub-steps, Accumulated Findings
   (append-only), Ruled Out (append-only), Latest Stage.
