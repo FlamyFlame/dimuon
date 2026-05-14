@@ -1,0 +1,7 @@
+executable = run_pbpb_23.sh
+arguments = 3
+output = logs/run_pbpb_23_batch_3.out
+error = logs/run_pbpb_23_batch_3.err
+log = logs/run_pbpb_23_batch_3.log
+request_memory = 2GB
+queue 1
