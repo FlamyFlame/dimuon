@@ -12,7 +12,6 @@
 # optionally a user.yuhang..._EXT0 outDS on the same line.  Comment lines
 # (#) and decoration are ignored.  Works directly with may2026_skim.txt.
 
-set -u
 set -o pipefail
 
 # ── Configuration ────────────────────────────────────────────────────────────
@@ -235,7 +234,7 @@ process_task() {
 
 	# Download
 	log_status "task $tid: downloading $outds → $target_subdir/"
-	if ! rucio download --dir "$target_dir" --no-subdir "$rucio_did" 2>&1 | tee -a "$STATUS_LOG"; then
+	if ! rucio download --dir "$target_dir" "$rucio_did" 2>&1 | tee -a "$STATUS_LOG"; then
 		log_error "task $tid: rucio download failed for $outds"
 		return 1
 	fi
