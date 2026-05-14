@@ -29,6 +29,7 @@ SkimCode/
 │   ├── TrigRates_JO.py          # legacy JO config (R21)
 │   ├── TruthTrigRates.py        # truth-only skim config
 │   ├── grid_sub.sh              # pathena submission template
+│   ├── grid_monitor.sh          # post-submission: monitor → download → hadd → validate
 │   ├── print_ds_size.sh         # rucio helper: list datasets + sizes
 │   ├── add_replication_rule_data23.sh  # batch rucio add-rule example
 │   └── useful_rucio_commands.txt
@@ -240,6 +241,74 @@ Flag `& 1` always writes `RunNumber / lbn / bcid / eventNumber / (Act|Avg)IntPer
   (full option list also via `pathena --help`).
 - **ATLAS AnalysisRelease list**:
   <https://twiki.cern.ch/twiki/bin/viewauth/AtlasProtected/AnalysisRelease>
+
+
+## Post-submission: monitoring, download, and merge
+
+`scripts/grid_monitor.sh` automates the full post-submission pipeline:
+check task status → download completed output → hadd → validate → update
+the merging record. Designed to run unattended in a **tmux** session.
+
+```bash
+# In tmux on the submission node:
+cd ~/usatlasdata
+./grid_monitor.sh ~/usatlasdata/dimuon_data/may2026_skim.txt
+
+# Custom check interval (default 5h):
+./grid_monitor.sh -i 3 ~/usatlasdata/dimuon_data/may2026_skim.txt
+
+# Or pass task IDs directly:
+./grid_monitor.sh 50267206 50267236 50267371
+```
+
+The input file can be any text file containing 8-digit JEDI task IDs
+(with optional `user.yuhang..._EXT0` outDS on the same line).  Comment
+lines and decoration are ignored, so `may2026_skim.txt` works directly.
+
+**What it does each cycle:**
+
+1. Queries BigPanDA REST API (`/task/<tid>/?json`) for each pending task.
+2. **done** or **finished** (≥90% file success): checks VOMS proxy →
+   `rucio download` to the correct dataset directory (e.g. `pbpb_2023/`) →
+   `hadd` → validates entry counts → appends to `data-merging-record.txt` →
+   cleans up the downloaded subdirectory.
+3. **broken / aborted / exhausted** or <90% success: logs to
+   `grid_monitor_errors.log`, marks the task failed, continues with others.
+4. **Still running**: skips, retries next cycle.
+5. Exits when all tasks are resolved (completed or failed).
+
+**Output files** (all in `~/usatlasdata/dimuon_data/`):
+
+| File | Purpose |
+|------|---------|
+| `grid_monitor_status.log` | Progress log (timestamped) |
+| `grid_monitor_errors.log` | Failed tasks and download/merge errors |
+| `grid_monitor_state.txt`  | Persistent state (pending/completed/failed per task); survives script restart |
+| `data-merging-record.txt` | Merged-file bookkeeping (appended by the script) |
+
+**outDS → directory mapping** (automatic):
+
+| outDS pattern | Target directory | Output name |
+|---------------|-----------------|-------------|
+| `PbPb2023data...partN._EXT0` | `pbpb_2023/` | `data_pbpb23_partN.root` |
+| `PbPb2024data...partN._EXT0` | `pbpb_2024/` | `data_pbpb24_partN.root` |
+| `PbPb2025data...partN._EXT0` | `pbpb_2025/` | `data_pbpb25_partN.root` |
+| `pp2024data...partN._EXT0`   | `pp_2024/`   | `data_pp24_partN.root`   |
+
+**VOMS proxy:** The script checks proxy validity before each download.
+If expired, it logs a message and skips the download (retries next cycle).
+Renew from another session on the **same node**:
+
+```bash
+voms-proxy-init -voms atlas
+```
+
+The proxy file (`/tmp/x509up_u<uid>`) is shared across all sessions on
+that node — the running script picks it up automatically.
+
+**Prerequisites:** The script runs `source ~/setup.sh && lsetup rucio`
+internally, providing ROOT (for hadd / entry counting) and rucio (for
+download).
 
 
 ## Data-staging helpers (tape-only datasets)
