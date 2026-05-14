@@ -3,6 +3,10 @@
 *.pcm
 *.so
 *.d
+AutoDict_*.cxx
+
+# Claude Code / Codex plugin cache #
+.codex
 
 # Packages #
 ############
