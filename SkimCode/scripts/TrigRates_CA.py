@@ -27,9 +27,6 @@ do_hi2025 = False
 # overlay
 do_pp_MC_fullsim_17 = False
 do_pp_MC_fullsim_24 = False
-# Pythia8 HardQCD DiMu Fullsim reweighted HIJING overlay on 2024 HI conditions.
-# The overlay AOD has no ZDC containers — StoreZdc is forced to 0 below.
-do_pp_MC_fullsim_hioverlay24 = False
 
 # Resolve run mode (priority order):
 #   1) explicit TRIGRATES_RUNMODE environment variable (most robust for grid)
@@ -43,18 +40,15 @@ _run_mode_arg = (os.environ.get("TRIGRATES_RUNMODE", "") or "").strip().lower()
 
 
 def _set_run_mode(mode):
-	global do_hi2023, do_hi2024, do_hi2025, do_pp2024
-	global do_pp_MC_fullsim_24, do_pp_MC_fullsim_hioverlay24
+	global do_hi2023, do_hi2024, do_hi2025, do_pp2024, do_pp_MC_fullsim_24
 	do_hi2023 = (mode == "hi2023")
 	do_hi2024 = (mode == "hi2024")
 	do_hi2025 = (mode == "hi2025")
 	do_pp2024 = (mode == "pp2024")
 	do_pp_MC_fullsim_24 = (mode == "ppmcfullsim2024")
-	do_pp_MC_fullsim_hioverlay24 = (mode == "ppmcfullsim_hioverlay24")
 
 
-if _run_mode_arg in ("hi2023", "hi2024", "hi2025", "pp2024",
-                     "ppmcfullsim2024", "ppmcfullsim_hioverlay24"):
+if _run_mode_arg in ("hi2023", "hi2024", "hi2025", "pp2024", "ppmcfullsim2024"):
 	_set_run_mode(_run_mode_arg)
 elif _files_input_arg:
 	if "data23_hi" in _files_input_arg:
@@ -78,16 +72,13 @@ else:
 
 
 # ------------------------------------------------------------
-# whether the sample is HION or not: HIJING overlay has a PbPb underlying
-# event and the full HI reconstruction (HIEventShape, HI tracks), so it is
-# treated as HION for muon selection and HI-event-shape readout.
+# whether the sample is HION or not
 is_HION = False
 if (do_hi2018 or
 	 do_hi2015 or
 	 do_hi2023 or
 	 do_hi2024 or
-	 do_hi2025 or
-	 do_pp_MC_fullsim_hioverlay24
+	 do_hi2025
 	 ):
 	is_HION = True
 # ------------------------------------------------------------
@@ -96,26 +87,23 @@ if (do_hi2018 or
 # ------------------------------------------------------------
 # for Run3 data
 is_Run3 = False
-if (do_hi2023 or do_hi2024 or do_hi2025 or do_pp2024 or
-    do_pp_MC_fullsim_24 or do_pp_MC_fullsim_hioverlay24):
+if (do_hi2023 or do_hi2024 or do_hi2025 or do_pp2024 or do_pp_MC_fullsim_24):
 	is_Run3 = True
 # ------------------------------------------------------------
 
 # ------------------------------------------------------------
-is_MC = (do_pp_MC_fullsim_17 or do_pp_MC_fullsim_24 or
-         do_pp_MC_fullsim_hioverlay24)
+is_MC = do_pp_MC_fullsim_17 or do_pp_MC_fullsim_24
 # ------------------------------------------------------------
 
 
 # CA config here is intended for modern Run-3-style configurations
-if not (do_hi2023 or do_hi2024 or do_hi2025 or do_pp2024 or
-        do_pp_MC_fullsim_24 or do_pp_MC_fullsim_hioverlay24):
+if not (do_hi2023 or do_hi2024 or do_hi2025 or do_pp2024 or do_pp_MC_fullsim_24):
 	print("*"*50, "\nTrigRates_CA.py is for modern Run-3 style samples. Use TrigRates_JO.py for older samples.\n", "*"*50)
 	exit()
 
 
 RunYear = 0
-m_EvtMax = 1000
+m_EvtMax        = -1
 dataSource = 'data'
 GRL = []
 MinBias_triggers = []
@@ -176,12 +164,6 @@ elif do_pp2024:
 elif do_pp_MC_fullsim_24:
 	dataSource = 'geant4'
 	InputFile = "/eos/user/y/yuhang/data/mc_powheg_fullsim/example_fullsim_AOD_files/AOD.36949837._016835.pool.root.1"
-elif do_pp_MC_fullsim_hioverlay24:
-	# Pythia8 HardQCD DiMu Fullsim reweighted HIJING overlay (2024 HI conditions).
-	# RunYear=2024 selects the 2024 HIEventShape centrality calibration.
-	RunYear = 2024
-	dataSource = 'geant4'
-	InputFile = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/test_AOD_pythia_fullsim_hijing.root"
 else:
 	print("*"*50, "\nUnknown Dataset\n", "*"*50)
 	exit()
@@ -203,11 +185,7 @@ def build_cfg(evt_max=1000):
 	cfg = MainServicesCfg(flags)
 	cfg.merge(PoolReadCfg(flags))
 
-	# Output filename taken from TRIGRATES_OUTPUT_FILE when set (grid sub uses
-	# this for per-sample filenames that match pathena --extOutFile).  Default
-	# is myfile.root for local tests.
-	_out_file = os.environ.get("TRIGRATES_OUTPUT_FILE", "myfile.root")
-	cfg.addService(CompFactory.THistSvc(Output=["MYSTREAM DATAFILE='%s' OPT='RECREATE'" % _out_file]))
+	cfg.addService(CompFactory.THistSvc(Output=["MYSTREAM DATAFILE='myfile.root' OPT='RECREATE'"]))
 
 	trk_sel_cls = CompFactory.getComp("InDet::InDetTrackSelectionTool")
 	grl_cls = CompFactory.getComp("GoodRunsListSelectionTool")
@@ -300,18 +278,12 @@ def build_cfg(evt_max=1000):
 	alg.ApplyMuonCalibrations = True
 	alg.IsRun3 = is_Run3
 	alg.IsZdcCalib = False
-	# ZDC reconstruction is NOT present in the HIJING-overlay MC AOD (no
-	# ZdcSums / ZdcModules containers) even though is_HION=True, so ZDC
-	# readout is forced off for that mode.  Other HI modes store basic ZDC
-	# (energy / time / status / PreSampleAmp); add 2 to also store RPD centroid.
-	alg.StoreZdc = 0 if do_pp_MC_fullsim_hioverlay24 else (1 if is_HION else 0)
+	alg.StoreZdc = 1 if is_HION else 0   # 1=basic ZDC (energy/time/status/PreSampleAmp); add 2 for RPD centroid data
 	alg.ZdcAuxSuffix = ""
 	if do_hi2023 or do_hi2024 or do_hi2025 or do_pp2024:
-		alg.HLTMuonsKey   = "HLT_MuonsCB_RoI"
-		alg.HLTMuonsFSKey = "HLT_MuonsCB_FS"
+		alg.HLTMuonsKey = "HLT_MuonsCB_RoI"
 	else:
-		alg.HLTMuonsKey   = ""
-		alg.HLTMuonsFSKey = ""
+		alg.HLTMuonsKey = ""
 
 	cfg.addEventAlgo(alg)
 	return cfg
