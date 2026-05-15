@@ -50,3 +50,6 @@ vim_backup
 job*
 ATLHI-*
 01RootFiles
+
+# Agent loop logs (session-specific, not committed)
+.claude/logs/*.md
