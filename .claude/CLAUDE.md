@@ -24,7 +24,7 @@ files involved. Write BEFORE doing any work.
 **After each step:** append results to Accumulated Findings (investigation)
 or Progress Log (implementation) with step number. Keep exact values:
 paths, line numbers, names, numbers. For investigations, add ruled-out
-approaches to Ruled Out with reason. For implementations, mark step done
+approaches/hypotheses to Ruled Out with reason. For implementations, mark step done
 and update Remaining Work.
 
 **Design changes (implementation):** record old approach, new approach,
@@ -53,24 +53,39 @@ Before working on any task, check these existing docs:
 - Data paths and directory layout: root `README.md`
 - Internal note structure: `IntNote/tex/` (section files), `IntNote/mydocument.tex` (master)
 
-## Agent Dispatch
+## Auto-Dispatch Rules
 
-When working on plotting: read `.claude/agents/plot-reviewer.md` + `.claude/conventions/atlas-plotting.md`
-When working on analysis code (C++/RDF): read `.claude/agents/code-reviewer.md` + `.claude/conventions/codebase-patterns.md` + `.claude/conventions/rdf-patterns.md`
-When working on physics / event selection: read `.claude/agents/physics-reviewer.md`
-When verifying numbers or yields: read `.claude/agents/numerical-verifier.md`
-When writing internal notes or papers: read `.claude/agents/note-reviewer.md`
+When the user asks to create, fix, or modify a plot → invoke `/review-plot`
+When the user asks to write, modify, or fix C++/ROOT/RDF analysis code → invoke `/review-analysis-code`
+When the user asks to investigate a discrepancy, debug, or understand an unexpected result → invoke `/review-investigation`
+When the user asks to write or edit an internal note section → invoke `/review-note`
+When the user asks to write or polish paper text for publication → invoke `/review-paper`
 
-## Available Commands
+Each command runs an executor-reviewer loop: the main agent executes, then
+spawns a reviewer subagent (via Agent tool) for independent evaluation. The
+reviewer returns a structured VERDICT: PASS/FAIL. Loop continues until PASS
+or MAX_ITERATIONS (5).
 
-- `/review-plot` — Executor-reviewer loop for creating/fixing plots
-- `/review-analysis-code` — Executor-reviewer loop for analysis code changes
-- `/review-investigation` — Executor-reviewer loop for physics investigations
-- `/review-note` — Executor-reviewer loop for internal note writing
-- `/review-paper` — Executor-reviewer loop for paper writing
+## Agent Reference Files
+
+These files define review criteria. They are embedded in subagent prompts by
+the commands above — you do not need to read them directly unless working
+outside of a command loop.
+
+- `.claude/agents/executor.md` — executor behavior
+- `.claude/agents/plot-reviewer.md` — plot review criteria
+- `.claude/agents/code-reviewer.md` — code review criteria
+- `.claude/agents/physics-reviewer.md` — physics correctness criteria
+- `.claude/agents/numerical-verifier.md` — number verification procedure
+- `.claude/agents/note-reviewer.md` — note/paper review criteria
+- `.claude/conventions/atlas-plotting.md` — plotting conventions
+- `.claude/conventions/codebase-patterns.md` — codebase conventions
+- `.claude/conventions/rdf-patterns.md` — RDataFrame conventions
 
 ## Agent Logs
 
-All executor-reviewer loops write logs to `.claude/logs/`. Review to understand what was attempted and what issues arose.
+All executor-reviewer loops write logs to `.claude/logs/`. Log files are named
+`review-<type>-YYYYMMDD-HHMMSS-<task-slug>.md`. The active session's log path
+is also written to `.claude/logs/active-session.txt` for compaction recovery.
 
 ## Active Tracking Docs
