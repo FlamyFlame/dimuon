@@ -3,18 +3,24 @@
 void TrigEffPlotterPP::configureDataFiles(int runYear)
 {
     isRun2pp = ((runYear % 2000) == 17);
+    std::string base = isBNL ? "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/"
+                             : "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/";
+    int yr = runYear % 2000;
+    std::string yr_str = std::to_string(yr);
 
-    switch (runYear % 2000)
+    switch (yr)
     {
     case 17:
-        data_dir = "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/pp_run2/";
+        data_dir = base + "pp_run2/";
         fname_single_mu4 = data_dir + "histograms_real_pairs_pp_2017_single_mu4.root";
         fname_MB         = data_dir + "histograms_real_pairs_pp_2017_MB.root";
+        plot_base_dir    = base + "plots/pp_trigger_efficiency/mu4/no_corr/pp17";
         break;
     case 24:
-        data_dir = "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/pp_2024/";
-        fname_single_mu4 = data_dir + "histograms_real_pairs_pp_2024_single_mu4.root";
+        data_dir = base + "pp_2024/";
+        fname_single_mu4 = data_dir + "histograms_real_pairs_pp_2024_single_mu4_coarse_q_eta_bin.root";
         fname_MB         = data_dir + "histograms_real_pairs_pp_2024_MB.root";
+        plot_base_dir    = base + "plots/pp_trigger_efficiency/mu4/no_corr/pp24";
         break;
     default:
         throw std::runtime_error("runYear must be 17 or 24 for pp");
@@ -257,7 +263,7 @@ void TrigEffPlotterPP::plot1D(const std::string& var)
         } // end loop over pads (subplots)
 
         // Save png -----------------------------------------------------------------
-        std::string pngDir = data_dir + "trig_effcy_plots";
+        std::string pngDir = plot_base_dir;
         for (const auto& fs : filter_suffix_list) {
             pngDir += fs;
         }
@@ -428,7 +434,7 @@ void TrigEffPlotterPP::plot1D(const std::string& var)
 
         L->Draw();
         
-        std::string outdir = data_dir + "trig_effcy_plots" + (fs.empty() ? "" : fs);
+        std::string outdir = plot_base_dir + (fs.empty() ? "" : fs);
         if (draw2mu4) outdir += "_w_2mu4";
         makeDirIfNeeded(outdir + "/op_and_sig");
         std::string fn = Form("%s/op_and_sig/%s_trig_effcy%s%s.png", outdir.c_str(), var.c_str(), fs.c_str(), mode_to_png_suffix.at(SignalDrawingMode::OpAndSignal).c_str());
@@ -479,7 +485,7 @@ void TrigEffPlotterPP::plot2D(const std::string& var, const std::string& fs)
         numH->Draw("COLZ");
     }
 
-    std::string outdir = data_dir + "trig_effcy_plots" + (fs.empty()?"":fs);
+    std::string outdir = plot_base_dir + (fs.empty()?"":fs);
     if (draw2mu4) outdir += "_w_2mu4";
     
     makeDirIfNeeded(outdir);
@@ -562,7 +568,7 @@ void TrigEffPlotterPP::plot2D_SingleMuonEffcy(const std::string& var)
             numH->Draw("COLZ");
         }
 
-        std::string outdir = data_dir + "trig_effcy_plots/single_muon_effcy";
+        std::string outdir = plot_base_dir + "/single_muon_effcy";
         makeDirIfNeeded(outdir);
         c->SaveAs(Form("%s/%s_2D_trig_effcy%s.png",
                        outdir.c_str(),var.c_str(),fs.c_str()));
@@ -594,7 +600,7 @@ void TrigEffPlotterPP::plotProfile(const std::string& var, const std::string& fs
         pfx->Draw("E SAME");
     }
 
-    std::string outdir = data_dir + "trig_effcy_plots" + (fs.empty()?"":fs);
+    std::string outdir = plot_base_dir + (fs.empty()?"":fs);
     if (draw2mu4) outdir += "_w_2mu4";
     
     makeDirIfNeeded(outdir);
@@ -859,7 +865,7 @@ void TrigEffPlotterPP::plot2Dto1DEffcyProj()
                 } // loop over pads
 
                 // output (use projected 1D var name)
-                std::string pngDir = data_dir + "trig_effcy_plots";
+                std::string pngDir = plot_base_dir;
                 for (const auto& fs : filter_suffix_list) {
                     pngDir += fs;
                 }
@@ -1034,7 +1040,7 @@ void TrigEffPlotterPP::plot2Dto1DEffcyProj()
                     }
                     L->Draw();
 
-                    std::string outdir = data_dir + "trig_effcy_plots" + (fs.empty() ? "" : fs);
+                    std::string outdir = plot_base_dir + (fs.empty() ? "" : fs);
                     if (draw2mu4) outdir += "_w_2mu4";
                     
                     makeDirIfNeeded(outdir + "/op_and_sig");
@@ -1194,7 +1200,7 @@ void TrigEffPlotterPP::plot2Dto1DsingleMuonEffcyProj (const std::pair<const std:
 
                 leg->Draw();
 
-                std::string outdir = data_dir + "trig_effcy_plots";
+                std::string outdir = plot_base_dir;
                 makeDirIfNeeded(outdir + "/single_muon_effcy");
                 std::string fn = Form("%s/single_muon_effcy/%s_trig_effcy_%s_charge_sign_compr.png",
                                       outdir.c_str(), projVar.c_str(), target_dimuon_trigger_to_single_muon_map[trg_pair.first].c_str());
@@ -1256,7 +1262,7 @@ void TrigEffPlotterPP::plot2Dto1DsingleMuonEffcyProj (const std::pair<const std:
                 } // end loop over 2nd-muon signs (pads)
 
                 std::string compr_type = (isMB)? "MB_2mu4" : "selection";
-                std::string outdir = data_dir + "trig_effcy_plots";
+                std::string outdir = plot_base_dir;
                 makeDirIfNeeded(outdir + "/single_muon_effcy");
                 std::string fn = Form("%s/single_muon_effcy/%s_trig_effcy_%s_%s_compr.png",
                                       outdir.c_str(), projVar.c_str(), target_dimuon_trigger_to_single_muon_map[trg_pair.first].c_str(), compr_type.c_str());

@@ -54,6 +54,7 @@ public:
     bool draw_single_b_signal = false;
     bool use_sepr_for_op_and_signal = false;
     bool debug_mode = false;
+    bool isBNL = true;
 
     enum class SignalDrawingMode { Signed, Signal, OpAndSignal };
 
@@ -175,6 +176,7 @@ protected:
     // ============================================================
     int runYear_{0};
     std::string data_dir;
+    std::string plot_base_dir;  // e.g., .../plots/pbpb_trigger_efficiency/mu4/no_corr/pbpb23
     std::string fname_single_mu4;
     std::string fname_MB;
 
@@ -609,7 +611,7 @@ private:
 // ============================================================
 // Derived: PbPb
 // ============================================================
-class TrigEffPlotterPbPb : public TrigEffPlotterBaseClass, public PbPbBaseClass
+class TrigEffPlotterPbPb : public TrigEffPlotterBaseClass, public PbPbBaseClass<TrigEffPlotterPbPb>
 {
 public:
     TrigEffPlotterPbPb(int runYear,
@@ -637,6 +639,8 @@ public:
         ctr_binning_version = ctr_binning_version_user;
     }
 
+    int RunYear() const { return runYear_; }
+
     virtual void Run() override{
         TrigEffPlotterBaseClass::Run();
         plotSingleMuEffCtrDep();
@@ -655,7 +659,7 @@ private:
 
     // plotting functions implemented in PbPb file
     void initialize() override{
-        PbPbBaseClass::InitializePbPb();
+        PbPbBaseClass<TrigEffPlotterPbPb>::InitializePbPb();
         TrigEffPlotterBaseClass::initialize();
     }
     
