@@ -194,7 +194,9 @@ void RDFBasedHistFillingPP::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(){
         "DR", "DR_zoomin", "DR_0_2", "Deta", "Deta_zoomin",
         "Dphi", "Dphi_zoomin", "pair_pt_log", "minv_zoomin"
     };
-    static const std::vector<std::array<std::string, 2>> empty2D;
+    std::vector<std::array<std::string, 2>> invw_var2Ds = {
+        {{"DR_zoomin", "pair_pt_log"}}
+    };
     static const std::vector<std::array<std::string, 3>> empty3D;
 
     try {
@@ -220,11 +222,11 @@ void RDFBasedHistFillingPP::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(){
             // §3c: PP 2mu4 — one term only, no tag/probe, no cross-term
             auto df_denom = node.Filter("valid_both");
             FillHistogramsSingleDataFrame(pair_sign + "_2mu4_denom", df_denom, "",
-                invw_var1Ds, empty2D, empty3D, true, {true, false, false});
+                invw_var1Ds, invw_var2Ds, empty3D, true, {true, true, false});
 
             auto df_num = df_denom.Filter("pass2mu4");
             FillHistogramsSingleDataFrame(pair_sign + "_2mu4_invw_num", df_num, "invw_cross",
-                invw_var1Ds, empty2D, empty3D, true, {true, false, false});
+                invw_var1Ds, invw_var2Ds, empty3D, true, {true, true, false});
         }
     } catch (const std::out_of_range& e) {
         std::cerr << "FillTrigEffcyHistsInvWeighted (PP):: out_of_range: " << e.what() << std::endl;
