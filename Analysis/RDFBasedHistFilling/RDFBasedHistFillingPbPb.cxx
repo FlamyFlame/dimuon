@@ -428,7 +428,8 @@ void RDFBasedHistFillingPbPb::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies()
         "Dphi", "Dphi_zoomin", "pair_pt_log", "minv_zoomin"
     };
     std::vector<std::array<std::string, 2>> invw_var2Ds = {
-        {{"DR_zoomin", "pair_pt_log"}}
+        {{"DR_zoomin", "pair_pt_log"}},
+        {{"DR", "pair_pt_log"}}
     };
     static const std::vector<std::array<std::string, 3>> empty3D;
 

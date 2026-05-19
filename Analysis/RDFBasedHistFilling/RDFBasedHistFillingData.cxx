@@ -590,24 +590,25 @@ void RDFBasedHistFillingData::MakeAndWriteDRTrigEffGraphsHelper(const std::vecto
                     HistFillUtils::ratio_divide_and_write(h_num, h_den, &graph_map);
             }
 
-            // Pair-pT-binned dR corrections from 2D histogram (DR_zoomin vs pair_pt_log)
-            std::string h2d_num_name = "h_pair_pt_log_vs_DR_zoomin" + pair_sign + pair_suffix + "_invw_num" + cat;
-            std::string h2d_den_name = "h_pair_pt_log_vs_DR_zoomin" + pair_sign + pair_suffix + "_denom" + cat;
-            auto it_num = hist2D_map.find(h2d_num_name);
-            auto it_den = hist2D_map.find(h2d_den_name);
-            if (it_num != hist2D_map.end() && it_den != hist2D_map.end()) {
+            // Pair-pT-binned dR corrections from 2D histograms
+            struct PtSlice { double lo, hi; std::string label; };
+            std::vector<PtSlice> pt_slices = {
+                {8.0, 12.0, "_pt8_12"}, {12.0, 20.0, "_pt12_20"},
+                {20.0, 40.0, "_pt20_40"}, {40.0, 120.0, "_pt40_120"}
+            };
+            for (const std::string& dr_var : {"DR_zoomin", "DR"}) {
+                std::string h2d_num_name = "h_pair_pt_log_vs_" + dr_var + pair_sign + pair_suffix + "_invw_num" + cat;
+                std::string h2d_den_name = "h_pair_pt_log_vs_" + dr_var + pair_sign + pair_suffix + "_denom" + cat;
+                auto it_num = hist2D_map.find(h2d_num_name);
+                auto it_den = hist2D_map.find(h2d_den_name);
+                if (it_num == hist2D_map.end() || it_den == hist2D_map.end()) continue;
                 TH2D* h2_num = it_num->second;
                 TH2D* h2_den = it_den->second;
-                struct PtSlice { double lo, hi; std::string label; };
-                std::vector<PtSlice> pt_slices = {
-                    {8.0, 12.0, "_pt8_12"}, {12.0, 20.0, "_pt12_20"},
-                    {20.0, 40.0, "_pt20_40"}, {40.0, 120.0, "_pt40_120"}
-                };
                 for (const auto& sl : pt_slices) {
                     int ybin_lo = h2_num->GetYaxis()->FindBin(sl.lo + 0.001);
                     int ybin_hi = h2_num->GetYaxis()->FindBin(sl.hi - 0.001);
-                    std::string proj_num_name = "h_DR_zoomin" + pair_sign + pair_suffix + "_invw_num" + cat + sl.label;
-                    std::string proj_den_name = "h_DR_zoomin" + pair_sign + pair_suffix + "_denom" + cat + sl.label;
+                    std::string proj_num_name = "h_" + dr_var + pair_sign + pair_suffix + "_invw_num" + cat + sl.label;
+                    std::string proj_den_name = "h_" + dr_var + pair_sign + pair_suffix + "_denom" + cat + sl.label;
                     TH1D* h_proj_num = h2_num->ProjectionX(proj_num_name.c_str(), ybin_lo, ybin_hi);
                     TH1D* h_proj_den = h2_den->ProjectionX(proj_den_name.c_str(), ybin_lo, ybin_hi);
                     hist1D_map[proj_num_name] = h_proj_num;
