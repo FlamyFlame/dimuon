@@ -1,0 +1,52 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb}
+\usepackage[margin=2.5cm]{geometry}
+\pagestyle{empty}
+
+\begin{document}
+
+\section*{Pair-level \texorpdfstring{$\Delta R$}{dR} trigger efficiency correction}
+
+\subsection*{Single-muon efficiency}
+
+The single-muon mu4 firing probability $\varepsilon(p_T, q\!\cdot\!\eta)$ is measured via tag-and-probe on muon pairs with $\Delta R > 0.8$, where proximity effects are negligible. The efficiency is extracted per centrality bin, fitted as a function of $p_T$ with a Fermi$+$log parametrization in each $q\!\cdot\!\eta$ slice.
+
+\subsection*{Pair-level no-correlation efficiency}
+
+Assuming the two muons fire independently (valid at large $\Delta R$), the probability that at least one muon in a pair fires mu4 is:
+\begin{equation}
+  \varepsilon_{\text{pair}}^{\text{nc}} = \varepsilon_1 + \varepsilon_2 - \varepsilon_1\,\varepsilon_2\,,
+\end{equation}
+where $\varepsilon_i \equiv \varepsilon(p_{T,i},\, q_i\!\cdot\!\eta_i)$ are the single-muon efficiencies evaluated at each muon's kinematics.
+
+\subsection*{Inverse-weighted \texorpdfstring{$\Delta R$}{dR} ratio}
+
+To isolate the $\Delta R$-dependent deviation from the no-correlation assumption, we form the ratio:
+\begin{equation}
+  R(\Delta R) = \frac{\displaystyle\sum_{\text{pairs},\;\Delta R\,\in\,\text{bin}}
+    \frac{\mathbf{1}[\text{pair fires mu4}]}{\varepsilon_{\text{pair}}^{\text{nc}}}}
+    {\displaystyle\sum_{\text{pairs},\;\Delta R\,\in\,\text{bin}} 1}\,.
+\end{equation}
+The denominator includes all pairs (no trigger requirement); the numerator counts pairs where at least one muon passes mu4, each weighted by $1/\varepsilon_{\text{pair}}^{\text{nc}}$.
+
+If the no-correlation assumption held exactly and the inverse weighting were unbiased, $R(\Delta R) = 1$ everywhere. In practice, $R$ is flat at large $\Delta R$ but deviates from unity at small $\Delta R$ where trigger-object overlap suppresses the firing probability.
+
+\subsection*{Normalization bias and plateau normalization}
+
+The flat-region value of $R$ is systematically $> 1$ because the expectation value of the inverse weight is biased:
+\begin{equation}
+  E\!\left[\frac{1}{\varepsilon_{\text{pair}}^{\text{nc}}}\right] > \frac{1}{E[\varepsilon_{\text{pair}}^{\text{nc}}]}\,,
+\end{equation}
+by Jensen's inequality (since $1/x$ is convex). This offset depends on the spread of $\varepsilon_{\text{pair}}^{\text{nc}}$ across the event sample and is therefore $p_T$- and centrality-dependent.
+
+Since the physics of interest is the $\Delta R$ \emph{shape}---not the absolute scale---we extract the error-weighted plateau $\bar{R}$ from the flat region ($1.0 < \Delta R < 3.0$) and define the correction factor:
+\begin{equation}
+  \varepsilon_{\Delta R}^{\text{pair}}(\Delta R) = \frac{R(\Delta R)}{\bar{R}}\,.
+\end{equation}
+
+The full pair-level trigger efficiency applied to the data is then:
+\begin{equation}
+  P(\text{pair fires mu4}\mid\Delta R) = \varepsilon_{\text{pair}}^{\text{nc}}\;\times\;\varepsilon_{\Delta R}^{\text{pair}}(\Delta R)\,.
+\end{equation}
+
+\end{document}
