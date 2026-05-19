@@ -276,7 +276,27 @@ Scope:
 - Update plot_dR_trig_corr.C for new graph names
 
 ### Step 14: Rerun Pipeline 3 + replot after Steps 12-13
-Status: TODO
+Status: DONE
+
+### Step 15: Add full-range DR×pair_pt_log 2D histograms + plateau normalization
+Status: DONE
+Files: RDFBasedHistFillingPbPb.cxx, RDFBasedHistFillingPP.cxx (added `{"DR", "pair_pt_log"}` 2D hist),
+  RDFBasedHistFillingData.cxx (MakeAndWriteDRTrigEffGraphsHelper: project both DR and DR_zoomin by pair pT),
+  plotting_codes/plateau_normalize_dR_corr.C (standalone plateau normalization script)
+Output:
+- 2 normalization modes: pT-integrated and pT-binned plateau
+- Plateau extracted as error-weighted mean of full-range DR ratio in dR ∈ [1.0, 3.0]
+- 54 PNGs per mode (DR, DR_zoomin, DR_0_2 × OS/SS × 7 ctr cats + pT-sliced overlays)
+- Normalized TGraphs saved to `dR_corr_plateau_norm_{mode}_pbpb_20YY.root` per year
+
+### Step 16: Reprocess PbPb 2023 ntuples with mu6/mu8 disabled — per D7
+Status: DONE (parts 2-4; part 1 raw data missing)
+- Parts 2-4 reprocessed locally (640s + 621s + 122s). New skim has ~20x more data.
+- Part 1: raw data `data_pbpb23_part1.root` MISSING — need to locate/re-download.
+- hadded parts 2-4 → combined file (sign1=622626 sign2=678115, total 1.3M entries).
+- Old files backed up with `_before_mu6_disable` suffix.
+- Reran Pipeline 2 (coarse), pT fitting, Pipeline 3, plotter, plateau normalization.
+- **Key change:** PbPb 2023 plateau increased 1.222→1.285 (OS, ctr-int) due to mu6 removal + new skim.
 
 ## Progress Log
 
@@ -394,32 +414,59 @@ Per-muon `m1/m2.passmu4noL1` is always false in current ntuples. Bug in `DimuonD
 - **Interpretation:** Flat offset is kinematic selection bias (E[1/ε_pair | selected] = 1/P(pair passes) > 1).
   Physical signal is the dR shape: ~10% pair trigger suppression at small dR relative to large-dR plateau.
 
+### 2026-05-19: Step 15 complete — Full-range DR×pT 2D hists + plateau normalization
+- Added `{"DR", "pair_pt_log"}` to invw_var2Ds in both PbPb.cxx and PP.cxx
+- Updated MakeAndWriteDRTrigEffGraphsHelper: refactored pair-pT projection to loop over both DR_zoomin and DR, producing full-range pair-pT-binned dR ratio graphs
+- Reran Pipeline 3 for PbPb 23/24/25
+- Created `plotting_codes/plateau_normalize_dR_corr.C`:
+  - Extracts plateau as error-weighted mean in dR ∈ [1.0, 3.0] from full-range DR graphs
+  - Mode 1 (pT-int): one plateau per sign/centrality, applied to all variables and pT slices
+  - Mode 2 (pT-binned): per-pT-slice plateaus for pT-sliced plots, pT-int plateau for aggregate plots. Falls back to pT-int if <3 points in pT bin.
+  - Saves normalized TGraphs to ROOT files + 54 PNG plots per mode
+- Key results (PbPb 2025 OS ctr-int, pT-binned mode):
+  - 8-12 GeV plateau=1.190, after norm: ~0.95 at dR<0.1, rising to ~1.0 at dR>0.3
+  - 12-20 GeV plateau=1.094, after norm: ~0.99 at dR<0.1, nearly flat
+  - 20-40 GeV plateau=1.076, after norm: ~0.99, nearly flat
+  - All pT slices collapse to ~1.0 with pT-binned normalization — dR suppression is ~5-8% at small dR
+- Plateau values are centrality-dependent: 0-5%=1.312, 10-20%=1.239, 30-50%=1.154, 50-80%=1.132
+  (higher centrality → higher combinatorial background → larger kinematic selection bias)
+
+### 2026-05-19: Step 16 complete — PbPb 2023 ntuple reprocessing + full re-pipeline
+- Condor schedd unavailable on attsub06; ran parts 2-4 locally (640+621+122 = 1383s total)
+- Part 1 raw data missing; parts 2-4 from new skim (much larger dataset)
+- New combined file: 1.3M entries (vs old 127k). Old files backed up with `_before_mu6_disable` suffix.
+- Reran Pipeline 2 (coarse, 54+82s), pT fitting (24 PNGs), Pipeline 3 (3.5+3.7s)
+- Re-ran plot_dR_trig_corr.C and plateau_normalize_dR_corr.C
+- **PbPb 2023 plateau values (OS, new skim, no mu6):**
+  - ctr-int: 1.285 (was 1.222 with old skim + mu6)
+  - 0-5%: 1.387, 5-10%: 1.324, 10-20%: 1.260, 20-30%: 1.210, 30-50%: 1.180, 50-80%: 1.160
+  - pT-binned: 8-12=1.242, 12-20=1.123, 20-40=1.092, 40-120=1.110
+- After plateau normalization, all 3 years show consistent dR suppression: ~10-13% at dR<0.1, rising to ~1.0 by dR~0.5
+
 ## Remaining Work
 
-- Reprocess ntuples with mu6/mu8 disabled (Step 12 code done; awaiting new skim)
-- Rerun Pipeline 2 + 3 after ntuple reprocessing (ε^{nc} may change for PbPb 2023)
-- Decide normalization strategy: plateau normalization vs supporting trigger approach
-- Update docs: README.md, analysis docs
+- Locate/re-download PbPb 2023 part 1 raw data, reprocess + re-hadd
 - PP24 Pipeline 2+3 when re-skim completes
 - Reprocess ntuples for passmu4noL1 fix (separate issue)
+- Update docs: README.md, analysis docs
 
 ## Latest Stage
 
-**Steps 12-13 DONE. Step 14 (rerun + replot) DONE.**
+**Steps 15-16 DONE.**
 
-Pair-level approach implemented and run. Key result: pair-level ratio is ~1.08 at small dR,
-rising to ~1.2 at large dR. The flat offset (~1.15-1.20) is a kinematic selection bias from
-using mu4-selected events to measure mu4 efficiency. The physical dR correction is the
-shape (small-dR suppression relative to large-dR plateau).
+### Step 15-16 summary
+- Added full-range DR×pair_pt_log 2D hists. Plateau normalization in 2 modes (pT-int, pT-binned).
+- PbPb 2023 reprocessed with mu6/mu8 disabled (parts 2-4; part 1 raw data missing).
+- New skim → 1.3M entries (10x previous). Full pipeline re-run: Pipeline 2 + fitting + Pipeline 3.
+- All 3 years show consistent ~10-13% dR suppression at small dR after plateau normalization.
+- Plateau values (OS, ctr-int): yr23=1.285, yr24=1.208, yr25=1.232.
 
 **After state:**
-- PbPb.cxx: pair-level fill (`_pair_mu4_denom`, `_pair_mu4_invw_num`) with 2D DR_zoomin×pair_pt_log
-- Data.cxx: MakeAndWriteDRTrigEffGraphsHelper produces 1D ratios + pair-pT-sliced dR projections
-- PP.cxx: added 2D histograms to existing 2mu4 fills
-- plot_dR_trig_corr.C: plots pair-level term + pair-pT-sliced overlay
-- DimuonDataAlgCoreT.c: mu6/mu8 disabled (ntuple rerun deferred)
-- Old plots preserved in dR_single_muon/ and dR_cross_term/; new plots in dR_pair_level/
-- Old ROOT files backed up as `*_before_pair_level.root`
+- PbPb.cxx + PP.cxx: pair-level fill with 2D {DR_zoomin, pair_pt_log} AND {DR, pair_pt_log}
+- Data.cxx: MakeAndWriteDRTrigEffGraphsHelper produces 1D ratios + pair-pT-sliced dR projections (both DR and DR_zoomin)
+- plot_dR_trig_corr.C: plots pair-level term + pair-pT-sliced overlay (unnormalized)
+- plateau_normalize_dR_corr.C: plateau-normalized versions (2 modes)
+- DimuonDataAlgCoreT.c: mu6/mu8 disabled
 - Note: ratio_divide_and_write uses "B" (binomial) errors — central values OK, errors approximate
 
 ## Potential Issues
