@@ -62,8 +62,8 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_DataCore()
 
     if (isMinBias) trigger_mode = 0; // if use MB data, do not require any muon trigger
     
-    use_mu6_for_trg_eff = ((isPbPb && run_year == 23) || (!isPbPb && run_year == 24)); // Pb+Pb 23 or pp24
-    use_mu8_for_trg_eff = (!isPbPb && run_year == 24); // pp24
+    use_mu6_for_trg_eff = false; // D7: disabled — creates inconsistency with Pipeline 2 ε^{nc} (measured from 2mu4, no mu6)
+    use_mu8_for_trg_eff = false; // D7: disabled — same reason as mu6
     if (use_mu6_for_trg_eff) std::cout << "Using HLT_mu6_L1MU3V as a support trigger!" << std::endl;
     if (use_mu8_for_trg_eff) std::cout << "Using HLT_mu8_L1MU5VF as a support trigger!" << std::endl;
     
