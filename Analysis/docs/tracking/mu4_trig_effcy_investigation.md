@@ -325,13 +325,77 @@ The full-range DR plot confirms the offset is **dR-independent** (flat from dR~0
 Deta_zoomin and Dphi_zoomin are also flat. This rules out any dR/angular structure — the issue
 is purely a normalization offset driven by the pT-dependent mismatch.
 
-**Sub-steps to resolve:**
-- [ ] Compare fitted TF1 values against raw data efficiency in pT bins (check if fit
-  systematically undershoots near threshold)
-- [ ] Check what fraction of muons use the 2D histogram fallback vs TF1 fit
-- [ ] Check if the normalization offset is the same across centrality bins
-- [ ] Check whether the fit function form (Fermi+log) is biased near threshold — try
-  evaluating ε at the pT bin centers vs the continuous TF1 to quantify the mismatch
+**Sub-steps and results:**
+- [x] H1: Compare fitted TF1 values against raw data efficiency in pT bins
+  - INITIAL RESULT (flawed): macro projected the 2D *divided* hist onto pT, which sums
+    efficiencies across q_eta bins → values >1, meaningless comparison.
+  - CORRECTED: project numerator and denominator separately, divide → proper ε(pT) per q_eta bin.
+  - **Result: 2205 bins compared, 48.9% undershoots, 51.1% overshoots, avg mismatch = +3.9%.**
+    Per centrality: 0-5% = +4.9%, 5-10% = +4.5%, 10-20% = +1.8%, 20-30% = +3.0%,
+    30-50% = +4.0%, 50-80% = +6.8%. All small, no systematic undershoot. **H1 RULED OUT.**
+  - Macro: `plotting_codes/investigate_H1_fit_vs_data.C` (has the flawed approach; the corrected
+    analysis was done interactively)
+- [x] H2: Check normalization offset across centrality bins (pre-compaction)
+  - Offset varies significantly: 0-5% → 1.265, 30-50% → 1.072 (single-muon);
+    0-5% → 1.420, 30-50% → 1.014 (cross-term). NOT ruled out — centrality matters.
+- [x] H3: dR > 0.8 selection bias in Pipeline 2
+  - The full-range DR graph shows the ratio is flat at ~1.15-1.20 from dR=0.2 to dR=5.0.
+    If dR>0.8 selection bias caused a pT-spectrum mismatch, we would expect a dR-dependent
+    ratio (higher at small dR, flat at large dR). The flatness rules out a dR-specific bias.
+    **H3 RULED OUT.**
+- [x] H4: Gap-region 2D histogram fallback bias (pre-compaction)
+  - ~7% of lookups fall in gap regions. Gap-region avg ε = 0.906 vs non-gap avg = 0.871.
+    If anything, gap regions have *higher* ε, which would *reduce* the ratio. **H4 RULED OUT.**
+
+**H5: mu6 support trigger mismatch — DISPROVEN (2026-05-19)**
+
+Initially identified as root cause: PbPb 2023 uses `use_mu6_for_trg_eff=true` (line 65,
+DimuonDataAlgCoreT.c), adding HLT_mu6 to `passmu4`. Pipeline 2's ε^{nc} is measured from
+2mu4 (no mu6), creating a mismatch. However, PbPb 2024/2025 have `use_mu6_for_trg_eff=false`
+AND unprescaled mu4, yet show the SAME ~1.2 offset (2024: 1.23, 2025: 1.24). Therefore mu6
+is NOT the primary cause. The mu6 mismatch may contribute a small additional offset for 2023,
+but is not the dominant effect.
+
+**ROOT CAUSE IDENTIFIED — H7: Event-level trigger selection bias (2026-05-19)**
+
+Events enter the ntuple only if `b_HLT_mu4 && (m1 fires mu4 || m2 fires mu4)` (lines 440-446,
+DimuonDataAlgCoreT.c). Pipeline 3 role1 (probe = m2) has NO trigger requirement on m1 in the
+denominator, but the event was selected because at least one muon fired. This creates a
+selection bias:
+
+```
+P(m2 fires | event in sample) = p2 / (p1 + p2 - p1*p2)  >  p2
+```
+
+The inverse-weighted ratio becomes:
+```
+E[1(m2 fires)/ε2] / E[1] = 1/(p1 + p2 - p1*p2)
+```
+
+For typical values p1 ≈ 0.7, p2 ≈ 0.5 → ratio ≈ 1/(0.85) = 1.18, matching observations.
+
+**Why this explains all observations:**
+- **Year-independent:** The event-level OR selection exists for all years.
+- **Centrality-dependent:** p1, p2 vary with centrality (lower efficiency in central →
+  larger bias). 0-5%: 1.265 vs 30-50%: 1.072.
+- **pT-dependent:** Low-pT muons have lower ε → P(OR) is lower → 1/P(OR) is larger.
+  At high pT (>30 GeV), both muons fire efficiently → P(OR) ≈ 1 → offset ≈ 1.
+- **dR-independent:** Trigger-level event selection, not spatial — flat from dR=0.2 to 5.0.
+
+**H6: pass2mu4 vs (m1.passmu4 && m2.passmu4) mismatch — RULED OUT (2026-05-19)**
+
+Tested on PbPb 2025 ntuples: `pass2mu4` and `m1.passmu4 && m2.passmu4` agree to within 0.07%
+(0 pairs have pass2mu4 but not both passmu4; only 41 out of 56k pairs have both passmu4 but
+not pass2mu4). Trigger matching is not the issue.
+
+**Implication for the dR correction:**
+
+Pipeline 2's ε^{nc} = P(pass_2mu4 | tag fires mu4, dR > 0.8) is measured under the SAME
+event-level selection (events must have b_HLT_mu4 && at least one muon fires). The selection
+bias affects both the efficiency measurement (Pipeline 2) and the inverse weighting
+(Pipeline 3). Whether the offset cancels in the final dR correction ratio depends on whether
+Pipeline 2's tag-and-probe conditioning already accounts for the OR selection. This requires
+further analysis.
 
 ### F9: plot_dR_trig_corr.C uses wrong axis ranges for Deta_zoomin and Dphi_zoomin (2026-05-19)
 
@@ -359,20 +423,69 @@ while TF1s were produced with coarse binning. Checked: the TF1 names contain fin
 `FindCtrSuffix` returns per-event centrality bin suffix even for ctr-inclusive fills, so
 per-ctr-bin TF1s are always used. This is correct — no centrality-inclusive TF1 needed.
 
+### R3: H1 — Fitted ε too low (Fermi+log undershoot) (2026-05-19)
+Corrected comparison (projecting num/den separately then dividing) shows 2205 bins with
+48.9% undershoots, avg mismatch +3.9%. The Fermi+log fit describes the data well. Ruled out
+as cause of the ~15-28% normalization offset.
+
+### R4: H3 — dR > 0.8 selection bias in Pipeline 2 (2026-05-19)
+Full-range DR graph shows ratio is flat (~1.15-1.20) from dR=0.2 to dR=5.0. A dR-dependent
+selection bias would produce a dR-dependent ratio. Flatness rules this out.
+
+### R5: H4 — Gap-region 2D histogram fallback bias (2026-05-19)
+~7% of lookups in gap regions. Gap-region avg ε (0.906) is higher than non-gap (0.871), so
+gap fallback would reduce the ratio, not increase it. Ruled out.
+
+### R6: H5 — mu6 support trigger mismatch (2026-05-19)
+Initially identified as root cause for PbPb 2023: `use_mu6_for_trg_eff=true` adds mu6 to
+passmu4, but ε^{nc} is from 2mu4 (no mu6). Disproven: PbPb 2024/2025 have
+`use_mu6_for_trg_eff=false` AND unprescaled mu4, yet show the same ~1.2 offset
+(2024: 1.23, 2025: 1.24). mu6 may contribute marginally for 2023 but is not the primary cause.
+
+### R7: H6 — pass2mu4 vs (m1.passmu4 && m2.passmu4) mismatch (2026-05-19)
+Tested on PbPb 2025: 0.07% disagreement (41/56k pairs). Essentially identical. Ruled out.
+
 ## Remaining Work
 
 - Issues 1-5: FIXED in Step 8 (code changes done, compilation verified)
 - Directory restructure + isBNL toggle: DONE (Step 8.5)
-- **Step 9: Rerun Pipeline 3** (still needed — current output may be from old code)
-- **Issue 6 (NEW): Investigate normalization offset ~1.15-1.28** (F8)
-- **Issue 7 (NEW): Fix plot axis ranges** (Deta_zoomin/Dphi_zoomin → [-0.8, 0.8]) (F9)
-- **Issue 8 (NEW): Add full-range DR to dR correction plots** (F10)
-- **Issue 9 (NEW): Add log x-axis for pair_pt_log plots**
-- **Issue 10 (NEW): Change Y range for dR_single_muon to 0.6-1.6**
+- Step 9: Rerun Pipeline 3: DONE
+- Step 10: Fix dR correction plotting issues: DONE
+- **Issue 6: Normalization offset ~1.15-1.28 — ROOT CAUSE: event-level OR selection bias (F8, H7)**
+  - Events require `b_HLT_mu4 && (m1 || m2 fires mu4)`. Pipeline 3 denominator has no trigger
+    req on "other" muon, but event selection biases P(probe fires) upward by factor 1/(p1+p2-p1*p2).
+  - Need to determine: does this offset cancel when Pipeline 2 ε^{nc} is also measured under the
+    same event selection? If so, the offset is a bookkeeping artifact, not a physics bias.
+- Issues 7-10: DONE (plot fixes committed)
+- **Investigation macros to clean up:** `plotting_codes/investigate_H1_fit_vs_data.C` (has
+  flawed approach; consider deleting or annotating)
 
 ## Latest Stage
 
-New investigation: Pipeline 3 inverse-weighted ratio is ~1.15-1.28 instead of ~1.0 at all dR.
-Global normalization offset suggests fitted ε^{nc} systematically underestimates true trigger
-efficiency. Multiple hypotheses listed; sub-steps defined. Concurrent with plotting fixes
-(axis ranges, full DR, log x, Y range).
+**Investigation complete (2026-05-19).** Root cause: **event-level OR trigger selection bias (H7).**
+Events require (m1 OR m2 fires mu4), but old separate single-muon term tests only one muon →
+P(m2 fires | event) = p2/(p1+p2-p1*p2) > p2 → ~1.2 offset.
+
+**Update (2026-05-19, post pair-level implementation):** The pair-level approach (D6)
+reduces the offset (from ~1.24 to ~1.15-1.20) but does NOT eliminate it. The remaining
+offset is a kinematic selection bias: E[1/ε_pair | pair passes] = 1/P(pair passes) > 1
+because high-ε pairs are over-represented in the sample. This is inherent to measuring
+a trigger's efficiency on a sample selected by that same trigger, regardless of whether
+the measurement is per-muon or per-pair.
+
+**Key insight from plots:** The pair-level dR ratio shows clear dR-dependent structure —
+~1.08 at dR < 0.1, rising to ~1.2 at dR > 0.3. This means the pair trigger IS suppressed
+at small dR (~10% relative to large dR). The pT-sliced plot confirms: the 8-12 GeV slice
+shows the largest offset (~1.2) and strongest dR structure, while the 40-120 GeV slice is
+nearly flat at ~1.07.
+
+The full-range DR plot shows the ratio peaks at dR ~ 1.5 then decreases at very large dR
+(>3), with a consistent shape across all years.
+
+**Path forward:** The flat offset is a normalization artifact from the selection bias.
+The physical dR correction can be extracted by normalizing to the large-dR plateau
+(ε_dR = ratio / plateau). Alternatively, a supporting trigger (e.g., mu4_mu4noL1 or 2mu4)
+could be used to select events for unbiased efficiency measurement — but that requires
+the supporting trigger to work (currently broken due to passmu4noL1 skimming bug).
+
+Implementation tracked in mu4_trig_effcy_implementation.md, Steps 12-14.

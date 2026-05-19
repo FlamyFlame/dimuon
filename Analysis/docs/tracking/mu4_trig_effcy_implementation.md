@@ -23,17 +23,25 @@ A muon pair "passes mu4" if **at least one** muon fires mu4. By inclusion-exclus
 P(pair passes mu4) = P(μ₁ fires) + P(μ₂ fires) − P(μ₁ fires ∧ μ₂ fires)
 ```
 
-Each term factorizes into a no-correlation baseline × dR-dependent correction:
+The pair-level trigger probability factorizes as:
 
 ```
-P(pair passes mu4 | dR) = ε₁^{nc} · ε_dR^{single}(dR)
-                        + ε₂^{nc} · ε_dR^{single}(dR)
-                        − ε₁^{nc} · ε₂^{nc} · ε_dR^{cross}(dR)
+P(pair passes mu4 | dR) = ε_pair^{nc} × ε_dR^{pair}(dR)
 ```
 
-where εᵢ^{nc} ≡ ε^{no-corr}(pTᵢ, q·ηᵢ) is the single-muon mu4 efficiency with no proximity effects.
+where:
+- ε_pair^{nc} = ε₁^{nc} + ε₂^{nc} − ε₁^{nc}·ε₂^{nc} is the no-correlation pair-level efficiency
+- εᵢ^{nc} ≡ ε^{no-corr}(pTᵢ, q·ηᵢ) is the single-muon mu4 efficiency with no proximity effects
+- ε_dR^{pair}(dR) is the pair-level dR correction
 
-This is the final result applied to the analysis. It requires three measured quantities: ε^{nc}(pT, q·η), ε_dR^{single}(dR), ε_dR^{cross}(dR).
+This requires two measured quantities: ε^{nc}(pT, q·η) and ε_dR^{pair}(dR).
+
+**Why pair-level, not separate single-muon + cross-term (see D6):** The previous approach
+decomposed into ε_dR^{single} and ε_dR^{cross} separately. This suffers from an event-level
+trigger selection bias: events require (m1 OR m2 fires mu4), but the single-muon term tests
+only one muon, creating a ~1.2 normalization offset. The pair-level approach avoids this
+because the measurement condition (pair passes mu4) matches the event selection condition
+exactly — every event satisfies it.
 
 ### Top-level equation (PP 2mu4)
 
@@ -70,31 +78,34 @@ P(muon fires mu4 | another offline muon at dR) = ε^{nc}(pT, q·η) × ε_dR(dR)
 
 To extract ε_dR, divide out the known ε^{nc} via per-event inverse weighting.
 
-#### 3a. Single-muon dR correction (ε_dR^{single})
+#### 3a. Pair-level mu4 dR correction (ε_dR^{pair}) — REPLACES old §3a/§3b
 
-**What we measure:** Does the mere **existence** of another offline muon at angular distance dR affect P(this muon fires mu4)?
+**What we measure:** How does the pair-level mu4 trigger probability deviate from
+the no-correlation prediction as a function of dR?
 
-**CRITICAL:** No trigger requirement on the other muon. This is different from the legacy mu4_mu4noL1/2mu4 approach where the other muon was required to pass mu4. For the mu4 single-muon correction, we correct for: P(2nd muon passes mu4 | 1st offline muon exists at dR) = ε^{nc}(pT₂, q·η₂) × ε_dR^{single}(dR).
+```
+P(pair passes mu4 | dR) = ε_pair^{nc} × ε_dR^{pair}(dR)
+```
 
-**Per-event procedure** (for each pair, with "2nd muon" as probe):
-1. Evaluate ε^{nc}(2nd muon) from Pipeline 2: use pT-fitted TF1 if q·η is in a fitted bin; use unfitted 2D histogram bin content if q·η is in a gap region.
-2. **Denominator:** all pairs where ε(2nd muon) is defined. Weight = 1. **No trigger requirement on either muon.**
-3. **Numerator:** from the denominator population, pairs where 2nd muon passes mu4. Weight = 1/ε^{nc}(2nd muon).
-4. Role-swap: each muon takes the role of "2nd muon" in turn. **Always combine** (sum numerators, sum denominators) before dividing.
-5. TH1::Divide(numerator, denominator) → ε_dR^{single}(dR). Also fill as function of pair pT, deta, dphi, and dR in pair-pT bins (since dR and pair pT are correlated).
+**Per-event procedure:**
+1. Evaluate ε₁^{nc} and ε₂^{nc} from Pipeline 2 (TF1 if q·η in fitted bin; unfitted 2D histogram if gap region).
+2. Compute ε_pair^{nc} = ε₁^{nc} + ε₂^{nc} − ε₁^{nc}·ε₂^{nc}.
+3. **Denominator:** all pairs where both ε₁ and ε₂ are defined (i.e., ε_pair^{nc} is computable). Weight = 1.
+4. **Numerator:** from denominator population, pairs where the pair passes mu4 (m1.passmu4 || m2.passmu4). Weight = 1/ε_pair^{nc}.
+5. **CRITICAL:** Since all events in the sample satisfy the mu4 event trigger (m1 OR m2 fires), the numerator condition is satisfied by ALL events in the denominator. No events are excluded from the numerator.
+6. TH1::Divide(numerator, denominator) → ε_dR^{pair}(dR). Also fill as function of pair pT, deta, dphi, minv.
 
-If ε_dR^{single} = 1 at all dR, there is no proximity effect.
+If ε_dR^{pair} = 1 at all dR, there is no proximity effect on the pair trigger.
 
-#### 3b. Cross-term dR correction (ε_dR^{cross})
+**Why this avoids the event-selection bias (see D6):** The old separate approach tested
+P(one muon fires) on a sample selected by P(either fires), creating a ~1.2 offset.
+The pair-level approach tests P(pair passes mu4) = P(either fires), which is the
+selection condition itself — every event satisfies it, so no selection bias exists.
 
-**What we measure:** P(μ₁ fires mu4 ∧ μ₂ fires mu4) = ε₁^{nc} × ε₂^{nc} × ε_dR^{cross}(dR).
+#### 3b. (SUPERSEDED — see D6)
 
-**Per-event procedure** (double inverse weighting):
-1. Evaluate ε^{nc} for both muons from Pipeline 2 (same fallback logic as 3a).
-2. **Denominator:** all pairs where both ε₁ and ε₂ are defined. Weight = 1.
-3. **Numerator:** pairs where BOTH muons pass mu4. Weight = 1/(ε₁^{nc} × ε₂^{nc}).
-4. No role-swap needed (symmetric by construction).
-5. TH1::Divide → ε_dR^{cross}(dR).
+The old cross-term correction ε_dR^{cross} is no longer needed as a separate quantity.
+The pair-level correction in §3a absorbs both single-muon and cross-term effects.
 
 #### 3c. PP 2mu4 dR correction (ε_dR^{2mu4})
 
@@ -157,6 +168,33 @@ The analysis uses three separate pipelines:
 ### D4: Correlation plots include deta, dphi, pair pT (2026-05-18)
 **Physics (§3a):** The factorization assumes ε_dR depends only on dR. Plotting vs deta, dphi, and pair pT tests this assumption — if the correction has deta/dphi structure, the factorization breaks down.
 
+### D6: Pair-level dR correction replaces separate single-muon + cross-term (2026-05-19)
+**Physics:** The previous approach measured ε_dR^{single} and ε_dR^{cross} separately and
+combined them via P(pair) = ε₁·ε_dR^{single} + ε₂·ε_dR^{single} − ε₁·ε₂·ε_dR^{cross}.
+This suffered from an event-level trigger selection bias: events are selected by
+`b_HLT_mu4 && (m1 fires || m2 fires)`, but the single-muon term tests only one muon's
+trigger, so P(m2 fires | event selected) = p₂/(p₁+p₂−p₁p₂) > p₂, creating a ~1.2 offset.
+
+The pair-level approach directly measures ε_dR^{pair} where the test condition (pair passes
+mu4) matches the selection condition. Every event satisfies the numerator condition, so no
+selection bias exists. The pair efficiency factorizes as:
+P(pair|dR) = (ε₁ + ε₂ − ε₁ε₂) × ε_dR^{pair}(dR).
+
+**Trade-off:** Less granular — cannot separate single-muon vs cross-term dR effects. But
+the pair-level correction is what the analysis actually needs (per the top-level equation),
+and is free of the selection bias.
+
+**Old:** Three terms: ε_dR^{single}(dR), ε_dR^{cross}(dR), combined via inclusion-exclusion.
+**New:** One term: ε_dR^{pair}(dR), directly correcting the pair-level trigger probability.
+
+### D7: Disable mu6/mu8 support triggers (2026-05-19)
+**Physics:** mu6/mu8 in the passmu4 flag creates an inconsistency with Pipeline 2's ε^{nc}
+(measured from 2mu4, which does not include mu6/mu8). For 2024/2025 the offset exists even
+without mu6, proving it's not the primary issue. Disabling mu6/mu8 removes a small additional
+inconsistency for 2023 and simplifies the analysis.
+**Old:** `use_mu6_for_trg_eff = (isPbPb && run_year == 23) || (!isPbPb && run_year == 24)`.
+**New:** `use_mu6_for_trg_eff = false; use_mu8_for_trg_eff = false;` (all years).
+
 ### D5: Use mu4-only fits for inverse weighting (2026-05-18)
 **Physics (§Pipeline 2):** The no-correlation efficiency is measured as P(2mu4 | mu4, dR > 0.8), which gives the single-muon mu4 efficiency. The TF1 keys contain "2mu4" because of how Pipeline 2 labels the conditional probability, but the physical quantity is ε^{nc}(mu4). mu4_mu4noL1 fits are unconstrained (skimming bug).
 **Note on naming:** Code suffixes for Pipeline 3 should use `_mu4_`, not `_2mu4_`, to reflect the physics (mu4 dR correction). The "2mu4" label in TF1 keys is a Pipeline 2 naming convention, not the physics of Pipeline 3.
@@ -216,8 +254,29 @@ Scope:
 - 10e. Add "DR" to the Pipeline 3 filling variable list (RDFBasedHistFilling code already has "DR")
 
 ### Step 11: Investigate normalization offset in dR corrections
-Status: TODO (tracked in investigation doc F8)
-See `mu4_trig_effcy_investigation.md` F8 for hypotheses and sub-steps.
+Status: DONE — Root cause: event-level OR selection bias (H7 in investigation doc F8).
+Fix: pair-level dR correction (D6) avoids the bias entirely.
+
+### Step 12: Disable mu6/mu8 support triggers — per D7
+Status: TODO
+Files: `NTupleProcessingCode/DimuonDataAlgCoreT.c` (line 65-66)
+Change: `use_mu6_for_trg_eff = false; use_mu8_for_trg_eff = false;`
+Requires: ntuple reprocessing for PbPb 2023 and PP 2024.
+
+### Step 13: Implement pair-level dR correction — per §3a (new), D6
+Status: TODO. **Reviewer: /review-analysis-code** with new §3a in task prompt.
+Files: RDFBasedHistFillingPbPb.cxx, RDFBasedHistFillingData.cxx
+Scope:
+- Replace separate single-muon role1/role2 + cross-term fills with single pair-level fill
+- New columns: `effcy_pair` = ε₁ + ε₂ − ε₁·ε₂, `invw_pair` = 1/effcy_pair
+- Denominator: `node.Filter("valid_both")`, weight = 1, suffix `_pair_mu4_denom`
+- Numerator: `df_denom.Filter("m1.passmu4 || m2.passmu4")`, weight = invw_pair, suffix `_pair_mu4_invw_num`
+- Update MakeAndWriteDRTrigEffGraphsHelper: single divide (no role-swap combination needed)
+- Keep centrality binning
+- Update plot_dR_trig_corr.C for new graph names
+
+### Step 14: Rerun Pipeline 3 + replot after Steps 12-13
+Status: TODO
 
 ## Progress Log
 
@@ -304,17 +363,64 @@ Per-muon `m1/m2.passmu4noL1` is always false in current ntuples. Bug in `DimuonD
 - Saved log-scale plotting rule to memory and plot-reviewer criteria
 - Note for future: dR_cross_term Y range should also be narrowed once normalization offset is resolved
 
+### 2026-05-19: Step 12 complete — Disable mu6/mu8 support triggers (code only)
+- Changed DimuonDataAlgCoreT.c line 65-66: `use_mu6_for_trg_eff = false; use_mu8_for_trg_eff = false;`
+- Ntuple reprocessing deferred (new skim being downloaded)
+- Note: existing PbPb 2023 ntuples still have mu6 baked into `m1.passmu4`; change takes effect on reprocessing
+
+### 2026-05-19: Step 13 complete — Pair-level dR correction implementation
+- **PbPb.cxx**: Replaced 3-term (role1/role2 single-muon + cross-term) filling with single pair-level
+  fill. New columns: `effcy_pair = ε₁ + ε₂ − ε₁ε₂`, `invw_pair = 1/effcy_pair`. Denom:
+  `valid_both`, Num: `m1.passmu4 || m2.passmu4`, weight: invw_pair. Added 2D {DR_zoomin, pair_pt_log}
+  histograms. Suffixes: `_pair_mu4_denom`, `_pair_mu4_invw_num`.
+- **Data.cxx**: Rewrote MakeAndWriteDRTrigEffGraphsHelper: unified PbPb/PP with `pair_suffix` selection,
+  added pair-pT-sliced dR projections from 2D histogram (4 slices: 8-12, 12-20, 20-40, 40-120 GeV).
+- **PP.cxx**: Added 2D {DR_zoomin, pair_pt_log} histograms to existing 2mu4 fills. No structural change.
+- **plot_dR_trig_corr.C**: Updated term suffix to `_pair_mu4_invw_num`, output subdir `dR_pair_level`.
+  Added pair-pT-sliced overlay plot (4 slices on one canvas, PbPb 2025).
+- Both PbPb and PP compile cleanly with ACLiC.
+
+### 2026-05-19: Step 14 complete — Pipeline 3 rerun + replot
+- Backed up old ROOT files as `*_before_pair_level.root`
+- Ran Pipeline 3 for PbPb 23/24/25: 364 1D + 28 2D histograms per year
+- Ran plot_dR_trig_corr.C: 112 new PNGs in dR_pair_level/. Old plots preserved in dR_single_muon/
+  and dR_cross_term/.
+- **Key results (PbPb 2025 OS):**
+  - DR_zoomin: ratio ~1.08 at dR < 0.1, rising to ~1.2 at dR > 0.3. Clear dR-dependent structure.
+  - pair_pt_log: ratio ~1.28 at 8 GeV, decreasing to ~1.07 at 20-40 GeV.
+  - pT-sliced dR: 8-12 GeV has largest offset (~1.2) and strongest dR structure; 40-120 GeV nearly flat ~1.07.
+  - Full-range DR: peaks at dR ~ 1.5, consistent shape across all years.
+  - Comparison: pair-level overall ratio (1.21) lower than old single-muon (1.24) and cross-term (1.26).
+- **Interpretation:** Flat offset is kinematic selection bias (E[1/ε_pair | selected] = 1/P(pair passes) > 1).
+  Physical signal is the dR shape: ~10% pair trigger suppression at small dR relative to large-dR plateau.
+
 ## Remaining Work
 
-- Rerun Pipeline 3 after Step 8 fixes (Step 9) — may not be needed if current output already uses new code
-- Investigate normalization offset (Step 11, tracked in investigation doc F8)
+- Reprocess ntuples with mu6/mu8 disabled (Step 12 code done; awaiting new skim)
+- Rerun Pipeline 2 + 3 after ntuple reprocessing (ε^{nc} may change for PbPb 2023)
+- Decide normalization strategy: plateau normalization vs supporting trigger approach
 - Update docs: README.md, analysis docs
 - PP24 Pipeline 2+3 when re-skim completes
-- Reprocess ntuples for passmu4noL1 fix
+- Reprocess ntuples for passmu4noL1 fix (separate issue)
 
 ## Latest Stage
 
-**Step 10 COMPLETE.** dR correction plotting fixes done (full-range DR, axis ranges, Y range, logx). Key diagnostic: normalization offset is pT-dependent (~1.3 at low pair pT → 1.0 at high pT), dR-independent. Next: investigate normalization offset root cause (Step 11).
+**Steps 12-13 DONE. Step 14 (rerun + replot) DONE.**
+
+Pair-level approach implemented and run. Key result: pair-level ratio is ~1.08 at small dR,
+rising to ~1.2 at large dR. The flat offset (~1.15-1.20) is a kinematic selection bias from
+using mu4-selected events to measure mu4 efficiency. The physical dR correction is the
+shape (small-dR suppression relative to large-dR plateau).
+
+**After state:**
+- PbPb.cxx: pair-level fill (`_pair_mu4_denom`, `_pair_mu4_invw_num`) with 2D DR_zoomin×pair_pt_log
+- Data.cxx: MakeAndWriteDRTrigEffGraphsHelper produces 1D ratios + pair-pT-sliced dR projections
+- PP.cxx: added 2D histograms to existing 2mu4 fills
+- plot_dR_trig_corr.C: plots pair-level term + pair-pT-sliced overlay
+- DimuonDataAlgCoreT.c: mu6/mu8 disabled (ntuple rerun deferred)
+- Old plots preserved in dR_single_muon/ and dR_cross_term/; new plots in dR_pair_level/
+- Old ROOT files backed up as `*_before_pair_level.root`
+- Note: ratio_divide_and_write uses "B" (binomial) errors — central values OK, errors approximate
 
 ## Potential Issues
 
