@@ -13,7 +13,7 @@
 #include <cstdio>
 
 #include "MuonObjectsParamsAndHelpers/PbPbBaseClass.h"
-#include "MuonObjectsParamsAndHelpers/proj_range_to_suffix.cxx"
+#include "Utilities/proj_range_to_suffix.cxx"
 
 // ============================================================
 // Base class: all shared logic
@@ -23,6 +23,7 @@ protected:
     // ---- I/O that differs by dataset ----
     std::string data_dir;
     std::string fitting_outdir;
+    std::string plot_outdir;   // PNG output directory (under plots/)
     std::string infile_name;
     std::string outfile_name;
 
@@ -55,6 +56,7 @@ protected:
 
 public:
     bool debug_mode = false;
+    bool isBNL = true;
 
     enum FittingMode {
         erf_plus_log,
@@ -125,9 +127,9 @@ protected:
             fitting_outdir = "trg_effcy_pT_fitting_to_erf_plus_log/";
         }
 
-        // outfile always under data_dir + fitting_outdir (same as your code) :contentReference[oaicite:7]{index=7} :contentReference[oaicite:8]{index=8}
         outfile_name = data_dir + fitting_outdir + "single_mu_effcy_pT_fit.root";
         makeDirIfNeeded(data_dir + fitting_outdir);
+        if (!plot_outdir.empty()) makeDirIfNeeded(plot_outdir);
 
         // text output
         f_txtout = fopen((data_dir + fitting_outdir + "fit_results.txt").c_str(), "w");
@@ -380,14 +382,14 @@ private:
             ++idx;
         }
 
-        // filename differs only by ctr insertion (exactly like your two files) :contentReference[oaicite:15]{index=15} :contentReference[oaicite:16]{index=16}
+        std::string png_dir = plot_outdir.empty() ? (data_dir + fitting_outdir) : (plot_outdir + "/");
         if (ctr.empty()){
-            c->SaveAs(Form("%s%strg_effcy_pT_fitting_%s_%s.png",
-                           data_dir.c_str(), fitting_outdir.c_str(),
+            c->SaveAs(Form("%strg_effcy_pT_fitting_%s_%s.png",
+                           png_dir.c_str(),
                            trg_maps.at(trg).c_str(), musign_maps.at(musign).c_str()));
         } else {
-            c->SaveAs(Form("%s%strg_effcy_pT_fitting_%s%s_%s.png",
-                           data_dir.c_str(), fitting_outdir.c_str(),
+            c->SaveAs(Form("%strg_effcy_pT_fitting_%s%s_%s.png",
+                           png_dir.c_str(),
                            trg_maps.at(trg).c_str(), ctr.c_str(), musign_maps.at(musign).c_str()));
         }
     }
@@ -402,35 +404,47 @@ public:
 
 protected:
     void configureIO() override {
-        data_dir = "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/pp_2024/";
-        infile_name = data_dir + "histograms_real_pairs_pp_2024_single_mu4.root";
+        std::string base = isBNL ? "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/"
+                                 : "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/";
+        data_dir = base + "pp_2024/";
+        infile_name = data_dir + "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin.root";
         h2d_ref_name = "h_pt2nd_vs_q_eta2nd_sign1_mu4";
+        plot_outdir = base + "plots/pp_trigger_efficiency/mu4/pT_fitting/pp24";
     }
 };
 
 // ============================================================
 // Derived: PbPb
 // ============================================================
-class SingleMuEffcyPtTurnOnFitterPbPb : public SingleMuEffcyPtTurnOnFitterBase, public PbPbBaseClass {
+class SingleMuEffcyPtTurnOnFitterPbPb : public SingleMuEffcyPtTurnOnFitterBase, public PbPbBaseClass<SingleMuEffcyPtTurnOnFitterPbPb> {
 public:
+    int run_year = 25;
+    int RunYear() const { return run_year; }
+
     SingleMuEffcyPtTurnOnFitterPbPb(
+                                    int run_year_input = 25,
                                     const std::string ctr_binning_version_input = "default",
                                     bool debug_mode_input=false)
-                    : SingleMuEffcyPtTurnOnFitterBase(debug_mode_input){
+                    : SingleMuEffcyPtTurnOnFitterBase(debug_mode_input),
+                      run_year(run_year_input){
                         ctr_binning_version = ctr_binning_version_input;
                     }
 
 
 protected:
     void initialize() override {
-        PbPbBaseClass::InitializePbPb();
+        PbPbBaseClass<SingleMuEffcyPtTurnOnFitterPbPb>::InitializePbPb();
         SingleMuEffcyPtTurnOnFitterBase::initialize();
     }
 
     void configureIO() override {
-        data_dir = "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/pbpb_2023/";
-        infile_name = data_dir + "histograms_real_pairs_pbpb_2023_single_mu4.root";
+        std::string yr = std::to_string(run_year);
+        std::string base = isBNL ? "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/"
+                                 : "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/";
+        data_dir = base + "pbpb_20" + yr + "/";
+        infile_name = data_dir + "histograms_real_pairs_pbpb_20" + yr + "_single_mu4_fine_q_eta_bin.root";
         h2d_ref_name = "h_pt2nd_vs_q_eta2nd_ctr0_5_sign1_mu4";
+        plot_outdir = base + "plots/pbpb_trigger_efficiency/mu4/pT_fitting/pbpb" + yr;
     }
 
     std::vector<std::string> centralitySuffixes() const override {
@@ -448,8 +462,8 @@ void single_muon_trig_effcy_pT_fitting() {
     delete fitter;
 }
 
-void single_muon_trig_effcy_pT_fitting_PbPb() {
-    auto* fitter = new SingleMuEffcyPtTurnOnFitterPbPb();
+void single_muon_trig_effcy_pT_fitting_PbPb(int year = 25) {
+    auto* fitter = new SingleMuEffcyPtTurnOnFitterPbPb(year);
     fitter->fitting_mode = SingleMuEffcyPtTurnOnFitterBase::fermi_plus_log;
     fitter->Run();
     delete fitter;

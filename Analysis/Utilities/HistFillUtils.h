@@ -17,6 +17,7 @@ namespace HistFillUtils {
     TH1D* proj_and_write (TH2* h2D, bool projy, int firstbin = 1, int lastbin = -1, std::string proj_range_str = "", std::map<std::string, TH1D*>* h1D_map = nullptr);
 
     TGraphAsymmErrors* divide_and_write (TH1* hNum, TH1* hDen, std::map<std::string, TGraphAsymmErrors*>* graph_map = nullptr);
+    TGraphAsymmErrors* ratio_divide_and_write (TH1* hNum, TH1* hDen, std::map<std::string, TGraphAsymmErrors*>* graph_map = nullptr);
 
     void flatten_levels(const std::vector<std::vector<std::string>>& levels,
                         std::vector<std::string>& flattened);
@@ -116,6 +117,27 @@ TGraphAsymmErrors* HistFillUtils::divide_and_write (TH1* hNum, TH1* hDen, std::m
     else{
         (*graph_map)[g->GetName()] = g;
     }
+
+    return g;
+}
+
+TGraphAsymmErrors* HistFillUtils::ratio_divide_and_write(TH1* hNum, TH1* hDen, std::map<std::string, TGraphAsymmErrors*>* graph_map) {
+    if (!hNum || !hDen) return nullptr;
+
+    TH1D* hRatio = (TH1D*)hNum->Clone("tmp_ratio");
+    hRatio->Divide(hNum, hDen, 1, 1, "B");
+
+    auto g = new TGraphAsymmErrors(hRatio);
+
+    std::string n = hNum->GetName() ? hNum->GetName() : "graph";
+    n += "_divided";
+    if (n.rfind("h_", 0) == 0) n.replace(0, 2, "g_"); else n = "g_" + n;
+    g->SetName(n.c_str());
+
+    delete hRatio;
+
+    if (graph_map == nullptr) g->Write(g->GetName(), TObject::kOverwrite);
+    else (*graph_map)[g->GetName()] = g;
 
     return g;
 }

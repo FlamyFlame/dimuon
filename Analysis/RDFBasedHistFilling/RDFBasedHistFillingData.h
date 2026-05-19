@@ -21,6 +21,9 @@ protected:
 
     std::string out_file_suffix;
 
+    bool trigger_effcy_calc = false;  // derived in TriggerModeSettings(): true iff trigger_mode ∈ {0,1} AND NOT (isPbPb && isRun3 && mu4_nominal_pbpb_NO_trig_calc)
+    bool use_mu6_for_trg_eff = false; // derived: true when trigger_effcy_calc && trigger_mode == 1
+
     std::vector<std::string> categories_essential;
     std::vector<std::string> trigs;
     std::map<std::string, std::string> trig_to_filter_str_map;
@@ -135,8 +138,9 @@ protected:
     void            MakeAndWriteDRTrigEffGraphsHelper(const std::vector<std::string>& categories);
 
     static std::string      FindBinReturnStr(float number, const std::vector<std::pair<float, float>>& ranges);
-    static float            EvaluateSingleMuonEffcyPtFitted(bool charge_sign, std::string trg, float pt_2nd, float q_eta_2nd, float phi_2nd);
-    static float            EvaluateSingleMuonEffcy(bool charge_sign, std::string trg, float pt_2nd, float q_eta_2nd, float phi_2nd);
+    static std::string      FindCtrSuffix(int centrality);
+    static float            EvaluateSingleMuonEffcyPtFitted(const std::string& ctr_suffix, bool charge_positive, float pt, float q_eta);
+    static float            EvaluateSingleMuonEffcy(const std::string& ctr_suffix, bool charge_positive, float pt, float q_eta);
 
     virtual void     WriteOutputExtra() override;
     virtual void     CleanupExtra() override;
@@ -157,7 +161,8 @@ enum HistFillingCycle{
     double mindR_trig = 0.02;   // > 0: search input files with _mindR_X_XX suffix; <= 0: use old input files (no suffix)
     bool isScram = false;
     bool isTight = false;
-    bool doTrigEffcy = true; // default true; can turn off manually; automatically turn off if trigger_mode != 0 or 1
+    bool doTrigEffcy = true; // default true; derived from trigger_effcy_calc in TriggerModeSettings()
+    bool mu4_nominal_pbpb_NO_trig_calc = false; // PbPb nominal pipeline: use mu4 trigger for event selection only (no trig effcy derivation)
 
     bool save_non_sepr_trg_hists = false; // save trigger efficiency histograms without separation requirement
     bool save_good_accept_trg_hists = false; // save trigger efficiency histograms with good acceptance requirement

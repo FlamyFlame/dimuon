@@ -1,4 +1,5 @@
 #include <TSystem.h>
+#include <TKey.h>
 #include <algorithm>
 #include "RDFBasedHistFillingData.cxx"
 
@@ -419,15 +420,93 @@ void RDFBasedHistFillingPbPb::FillHistogramsMu4GivenMB(){}
 
 void RDFBasedHistFillingPbPb::FillHistogramsMu4GivenMBCtrDep(){}
 
-void RDFBasedHistFillingPbPb::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(){}
+void RDFBasedHistFillingPbPb::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies() {
+    OpenEffcyPtFitFile();
+
+    std::vector<std::string> invw_var1Ds = {
+        "DR", "DR_zoomin", "DR_0_2", "Deta", "Deta_zoomin",
+        "Dphi", "Dphi_zoomin", "pair_pt_log", "minv_zoomin"
+    };
+    static const std::vector<std::array<std::string, 2>> empty2D;
+    static const std::vector<std::array<std::string, 3>> empty3D;
+
+    static const std::vector<std::pair<int, int>> ctr_bins = {
+        {0, 5}, {5, 10}, {10, 20}, {20, 30}, {30, 50}, {50, 80}
+    };
+
+    auto fillInvWeightedHists = [&](ROOT::RDF::RNode node, const std::string& pair_sign, const std::string& cat_suffix) {
+        // --- Single-muon role 1: mu2 is probe (§3a — NO trigger req on mu1) ---
+        auto df_role1 = node.Filter("valid2");
+        FillHistogramsSingleDataFrame(pair_sign + "_mu2probe_mu4_denom" + cat_suffix, df_role1, "",
+            invw_var1Ds, empty2D, empty3D, true, {true, false, false});
+
+        auto df_role1_num = df_role1.Filter("m2.passmu4");
+        FillHistogramsSingleDataFrame(pair_sign + "_mu2probe_mu4_invw_num" + cat_suffix, df_role1_num, "invw_probe2",
+            invw_var1Ds, empty2D, empty3D, true, {true, false, false});
+
+        // --- Single-muon role 2: mu1 is probe (§3a — NO trigger req on mu2) ---
+        auto df_role2 = node.Filter("valid1");
+        FillHistogramsSingleDataFrame(pair_sign + "_mu1probe_mu4_denom" + cat_suffix, df_role2, "",
+            invw_var1Ds, empty2D, empty3D, true, {true, false, false});
+
+        auto df_role2_num = df_role2.Filter("m1.passmu4");
+        FillHistogramsSingleDataFrame(pair_sign + "_mu1probe_mu4_invw_num" + cat_suffix, df_role2_num, "invw_probe1",
+            invw_var1Ds, empty2D, empty3D, true, {true, false, false});
+
+        // --- Cross-term (§3b): both pass mu4 ---
+        auto df_cross_den = node.Filter("valid_both");
+        FillHistogramsSingleDataFrame(pair_sign + "_cross_mu4_denom" + cat_suffix, df_cross_den, "",
+            invw_var1Ds, empty2D, empty3D, true, {true, false, false});
+
+        auto df_cross_num = df_cross_den.Filter("m1.passmu4 && m2.passmu4");
+        FillHistogramsSingleDataFrame(pair_sign + "_cross_mu4_invw_num" + cat_suffix, df_cross_num, "invw_cross",
+            invw_var1Ds, empty2D, empty3D, true, {true, false, false});
+    };
+
+    try {
+        for (std::string pair_sign : {"_ss", "_op"}) {
+            std::string df_name = "df" + pair_sign;
+            ROOT::RDF::RNode& base_node = map_at_checked(df_map, df_name,
+                Form("FillTrigEffcyHistsInvWeighted: df_map.at(%s)", df_name.c_str()));
+
+            auto node = base_node
+                .Define("q_eta1", "(float)(m1.charge * m1.eta)")
+                .Define("q_eta2", "(float)(m2.charge * m2.eta)")
+                .Define("ctr_suf", [](int ctr) { return RDFBasedHistFillingData::FindCtrSuffix(ctr); }, {"avg_centrality"})
+                .Define("effcy1", [](const std::string& cs, int q, float pt, float qe) {
+                    return RDFBasedHistFillingData::EvaluateSingleMuonEffcy(cs, q > 0, pt, qe);
+                }, {"ctr_suf", "m1.charge", "m1.pt", "q_eta1"})
+                .Define("effcy2", [](const std::string& cs, int q, float pt, float qe) {
+                    return RDFBasedHistFillingData::EvaluateSingleMuonEffcy(cs, q > 0, pt, qe);
+                }, {"ctr_suf", "m2.charge", "m2.pt", "q_eta2"})
+                .Define("valid1", "effcy1 > 0")
+                .Define("valid2", "effcy2 > 0")
+                .Define("valid_both", "valid1 && valid2")
+                .Define("invw_probe1", "valid1 ? (double)(1.0f / effcy1) : 0.0")
+                .Define("invw_probe2", "valid2 ? (double)(1.0f / effcy2) : 0.0")
+                .Define("invw_cross", "valid_both ? (double)(1.0f / (effcy1 * effcy2)) : 0.0");
+
+            fillInvWeightedHists(node, pair_sign, "");
+
+            for (const auto& [lo, hi] : ctr_bins) {
+                std::string ctr_filter = "avg_centrality >= " + std::to_string(lo) + " && avg_centrality < " + std::to_string(hi);
+                std::string ctr_suffix = "_ctr" + std::to_string(lo) + "_" + std::to_string(hi);
+                auto node_ctr = node.Filter(ctr_filter);
+                fillInvWeightedHists(node_ctr, pair_sign, ctr_suffix);
+            }
+        }
+    } catch (const std::out_of_range& e) {
+        std::cerr << "FillTrigEffcyHistsInvWeighted:: out_of_range: " << e.what() << std::endl;
+    } catch (const std::runtime_error& e) {
+        std::cerr << "FillTrigEffcyHistsInvWeighted:: runtime error: " << e.what() << std::endl;
+    }
+}
 
 //--------- DATA HIST POST PROCESSING ---------
 void RDFBasedHistFillingPbPb::HistPostProcessPbPb(){
-    const bool run_crossx = (trigger_mode == 2) || (trigger_mode == 3)
-        || ((run_year == 23 || run_year == 24 || run_year == 25) && trigger_mode == 1);
-    if (run_crossx) return;
+    if (!trigger_effcy_calc) return; // Pipeline 1 (nominal): no PbPb-specific trigger efficiency post-processing
 
-    if ((trigger_mode == 0 || trigger_mode == 1) && hist_filling_cycle == generic){
+    if (hist_filling_cycle == generic) {
         MakeAndWriteSingleMuonTrigEffCtrGraphs();
     }
 }
@@ -536,9 +615,54 @@ void RDFBasedHistFillingPbPb::MakeAndWriteSingleMuonTrigEffCtrGraphs(){
 	}
 }
 
-void RDFBasedHistFillingPbPb::OpenEffcyPtFitFile(){}
+void RDFBasedHistFillingPbPb::OpenEffcyPtFitFile() {
+    if (!s_effcy_pT_fit_map.empty()) {
+        std::cout << "OpenEffcyPtFitFile: TF1 map already loaded (" << s_effcy_pT_fit_map.size() << " entries)" << std::endl;
+        return;
+    }
+    std::string yr = std::to_string(run_year);
+    std::string base_dir = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + yr;
 
-void RDFBasedHistFillingPbPb::MakeAndWriteDRTrigEffGraphs(){}
+    std::string fit_path = base_dir + "/trg_effcy_pT_fitting_to_fermi_plus_log/single_mu_effcy_pT_fit.root";
+    s_effcy_pT_fit_file = TFile::Open(fit_path.c_str(), "READ");
+    if (!s_effcy_pT_fit_file || s_effcy_pT_fit_file->IsZombie()) {
+        std::cerr << "OpenEffcyPtFitFile: FAILED to open " << fit_path << std::endl;
+        return;
+    }
+    TIter next_tf1(s_effcy_pT_fit_file->GetListOfKeys());
+    TKey* key;
+    while ((key = (TKey*)next_tf1())) {
+        if (std::string(key->GetClassName()) == "TF1") {
+            TF1* func = (TF1*)key->ReadObj();
+            s_effcy_pT_fit_map[func->GetName()] = func;
+        }
+    }
+    std::cout << "OpenEffcyPtFitFile: loaded " << s_effcy_pT_fit_map.size() << " TF1s from " << fit_path << std::endl;
+
+    std::string hist_path = base_dir + "/histograms_real_pairs_pbpb_20" + yr + "_single_mu4_coarse_q_eta_bin.root";
+    s_effcy_2D_hist_file = TFile::Open(hist_path.c_str(), "READ");
+    if (!s_effcy_2D_hist_file || s_effcy_2D_hist_file->IsZombie()) {
+        std::cerr << "OpenEffcyPtFitFile: FAILED to open 2D hist file " << hist_path << std::endl;
+        return;
+    }
+    TIter next_h2d(s_effcy_2D_hist_file->GetListOfKeys());
+    int n2d = 0;
+    while ((key = (TKey*)next_h2d())) {
+        std::string name = key->GetName();
+        if (std::string(key->GetClassName()) == "TH2D" && name.find("_divided") != std::string::npos
+            && name.find("pt2nd_vs_q_eta2nd") != std::string::npos) {
+            TH2D* h = (TH2D*)key->ReadObj();
+            s_effcy_2D_hist_map[h->GetName()] = h;
+            n2d++;
+        }
+    }
+    std::cout << "OpenEffcyPtFitFile: loaded " << n2d << " 2D efficiency histograms from " << hist_path << std::endl;
+}
+
+void RDFBasedHistFillingPbPb::MakeAndWriteDRTrigEffGraphs() {
+    MakeAndWriteDRTrigEffGraphsHelper({});
+    MakeAndWriteDRTrigEffGraphsHelper({"_ctr0_5", "_ctr5_10", "_ctr10_20", "_ctr20_30", "_ctr30_50", "_ctr50_80"});
+}
 
 
 AxisInfo RDFBasedHistFillingPbPb::GetAxisInfo(const var1D& v,

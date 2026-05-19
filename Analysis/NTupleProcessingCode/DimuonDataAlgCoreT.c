@@ -672,12 +672,32 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook(){
 
     			// Set per-muon passmu4noL1 BEFORE Update() so that the flag follows
     			// the correct muon if pt-ordering swaps m1 and m2.
-    			// mu1passLeg2 = mu1 passes the unseeded (noL1) leg (Leg2) of the trigger.
     			if (isRun3 || isPbPb) {
-    			    mpairRef()->m1.passmu4noL1 = use_leg_branches_mu4_mu4noL1
-    			        ? dimuon_b_mu4_mu4noL1_mu1passLeg2->at(pair_ind) : false;
-    			    mpairRef()->m2.passmu4noL1 = use_leg_branches_mu4_mu4noL1
-    			        ? dimuon_b_mu4_mu4noL1_mu2passLeg2->at(pair_ind) : false;
+    			    if (use_leg_branches_mu4_mu4noL1) {
+    			        // Per-leg branches: mu1passLeg2 = mu1 passes the unseeded (noL1) leg.
+    			        mpairRef()->m1.passmu4noL1 = dimuon_b_mu4_mu4noL1_mu1passLeg2->at(pair_ind);
+    			        mpairRef()->m2.passmu4noL1 = dimuon_b_mu4_mu4noL1_mu2passLeg2->at(pair_ind);
+    			    } else {
+    			        // Legacy fallback: derive per-muon noL1 from pair-level mu4_mu4noL1 match
+    			        // + per-muon mu4 (seeded leg). If the pair passes mu4_mu4noL1 and the
+    			        // OTHER muon fires the seeded mu4 leg, this muon fires the noL1 leg.
+    			        bool pair_pass_mu4_mu4noL1 = false;
+    			        if (use_mindR_only_branch_mu4_mu4noL1)
+    			            pair_pass_mu4_mu4noL1 = b_HLT_mu4_mu4noL1 && dimuon_b_mu4_mu4noL1_mindR_only->at(pair_ind);
+    			        else if (dimuon_b_HLT_mu4_mu4noL1)
+    			            pair_pass_mu4_mu4noL1 = b_HLT_mu4_mu4noL1 && dimuon_b_HLT_mu4_mu4noL1->at(pair_ind);
+
+    			        bool m1_pass_mu4 = muon_b_HLT_mu4->at(mpairRef()->m1.ind);
+    			        if (use_mu6_for_trg_eff) m1_pass_mu4 |= (muon_b_HLT_mu6_L1MU3V->at(mpairRef()->m1.ind) && mpairRef()->m1.pt > 6);
+    			        if (use_mu8_for_trg_eff) m1_pass_mu4 |= (muon_b_HLT_mu8_L1MU5VF->at(mpairRef()->m1.ind) && mpairRef()->m1.pt > 8);
+
+    			        bool m2_pass_mu4 = muon_b_HLT_mu4->at(mpairRef()->m2.ind);
+    			        if (use_mu6_for_trg_eff) m2_pass_mu4 |= (muon_b_HLT_mu6_L1MU3V->at(mpairRef()->m2.ind) && mpairRef()->m2.pt > 6);
+    			        if (use_mu8_for_trg_eff) m2_pass_mu4 |= (muon_b_HLT_mu8_L1MU5VF->at(mpairRef()->m2.ind) && mpairRef()->m2.pt > 8);
+
+    			        mpairRef()->m1.passmu4noL1 = pair_pass_mu4_mu4noL1 && m2_pass_mu4;
+    			        mpairRef()->m2.passmu4noL1 = pair_pass_mu4_mu4noL1 && m1_pass_mu4;
+    			    }
     			} else {
     			    mpairRef()->m1.passmu4noL1 = false;
     			    mpairRef()->m2.passmu4noL1 = false;
@@ -699,10 +719,10 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook(){
     			    mpairRef()->passmu4noL1    = mpairRef()->m1.passmu4noL1 || mpairRef()->m2.passmu4noL1;
     			} else if (use_mindR_only_branch_mu4_mu4noL1) {
     			    mpairRef()->passmu4mu4noL1 = dimuon_b_mu4_mu4noL1_mindR_only->at(pair_ind);
-    			    mpairRef()->passmu4noL1    = false; // no per-leg info available
+    			    mpairRef()->passmu4noL1    = mpairRef()->m1.passmu4noL1 || mpairRef()->m2.passmu4noL1;
     			} else {
     			    mpairRef()->passmu4mu4noL1 = dimuon_b_HLT_mu4_mu4noL1->at(pair_ind);
-    			    mpairRef()->passmu4noL1    = false; // fallback: no per-leg info
+    			    mpairRef()->passmu4noL1    = mpairRef()->m1.passmu4noL1 || mpairRef()->m2.passmu4noL1;
     			}
 
     			if (use_mindR_branch_2mu4) {

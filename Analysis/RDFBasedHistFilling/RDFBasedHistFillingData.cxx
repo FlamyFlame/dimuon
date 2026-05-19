@@ -1,6 +1,12 @@
 #include "RDFBasedHistFillingData.h"
+#include <TF1.h>
+#include <TH2D.h>
 #include <type_traits>
 
+static TFile* s_effcy_pT_fit_file = nullptr;
+static std::map<std::string, TF1*> s_effcy_pT_fit_map;
+static TFile* s_effcy_2D_hist_file = nullptr;
+static std::map<std::string, TH2D*> s_effcy_2D_hist_map;
 
 RDFBasedHistFillingData::RDFBasedHistFillingData(int run_year_input, bool isForSoumya_input)
 : run_year (run_year_input), isForSoumya (isForSoumya_input){
@@ -8,7 +14,8 @@ RDFBasedHistFillingData::RDFBasedHistFillingData(int run_year_input, bool isForS
 
     std::cout << "The following public variable(s) **MUST** be checked:" << std::endl;
     std::cout << "--> trigger_mode: [INT] default 1 (single_mu4)" << std::endl;
-    std::cout << "--> hist_filling_cycle: [INT] default generic" << std::endl << std::endl;
+    std::cout << "--> hist_filling_cycle: [INT] default generic" << std::endl;
+    std::cout << "--> mu4_nominal_pbpb_NO_trig_calc: [BOOL] default false (set true for PbPb nominal pipeline)" << std::endl << std::endl;
     std::cout << "--> isForSoumya: [BOOL] default false" << std::endl;
     std::cout << "--> useCoarseQEtaBin: [BOOL] default true" << std::endl << std::endl;
 
@@ -77,26 +84,26 @@ void RDFBasedHistFillingData::InitializeDataCommon(){
     if (save_good_accept_trg_hists) out_file_suffix += "_w_good_accept";
 }
 
-void RDFBasedHistFillingData::FillHistograms(){    
-    std::cout << "Calling FillHistograms" << std::endl;
-    
-    // ------- Fill histograms -------
-    const bool is_pbpb_data = IsPbPb();
-    const bool run_crossx = (trigger_mode == 2) || (trigger_mode == 3)
-        || (is_pbpb_data && (run_year == 23 || run_year == 24 || run_year == 25) && trigger_mode == 1);
+void RDFBasedHistFillingData::FillHistograms(){
+    std::cout << "Calling FillHistograms (cycle=" << hist_filling_cycle
+              << ", trigger_effcy_calc=" << trigger_effcy_calc << ")" << std::endl;
 
-    if (hist_filling_cycle == generic){
-        if (output_generic_hists){
+    if (hist_filling_cycle == generic) {
+        if (output_generic_hists) {
             FillHistogramsGeneric();
         }
-        if (run_crossx){
+
+        if (!trigger_effcy_calc) {
+            // Pipeline 1 (nominal): crossx for signal pairs
             FillHistogramsCrossx();
         }
 
-        if (doTrigEffcy){
+        if (trigger_effcy_calc) {
+            // Pipeline 2 (trig effcy loop 1): single-muon no-correlation efficiency
             FillHistogramsSingleMuonEffcy();
         }
-    } else if (hist_filling_cycle == inv_weight_by_single_mu_effcy && trigger_mode == 1){
+    } else if (hist_filling_cycle == inv_weight_by_single_mu_effcy && trigger_effcy_calc) {
+        // Pipeline 3 (trig effcy loop 2): inverse-weighted dR corrections
         FillTrigEffcyHistsInvWeightedbySingleMuonEffcies();
     }
 }
@@ -144,8 +151,7 @@ void RDFBasedHistFillingData::TriggerModeSettings(){
         trigs_pair = {{"_mu4","_MB"}};
         break;
     case 1:
-        base_trig_suffix = "_single_mu4";
-        trigs = {"_mu4", "_mu4_mu4noL1", "_2mu4", "_2mu4_AND_mu4_mu4noL1"}; // can be overwritten if, e.g, mu4_mu4noL1 doesn't exist
+        trigs = {"_mu4", "_mu4_mu4noL1", "_2mu4", "_2mu4_AND_mu4_mu4noL1"};
         trigs_pair = {{"_mu4_mu4noL1","_mu4"},{"_2mu4","_mu4"},{"_2mu4_AND_mu4_mu4noL1","_mu4"}};
         break;
     case 2:
@@ -159,13 +165,31 @@ void RDFBasedHistFillingData::TriggerModeSettings(){
         throw std::exception();
     }
 
-    // base_trig_suffix: pure trigger type used for input ntuple paths
-    // trig_suffix: adds _no_trg_plots (output-only marker) for modes 0/1 when doTrigEffcy=false
+    // --- Derive trigger_effcy_calc, use_mu6_for_trg_eff ---
+    const bool isRun3 = (run_year >= 22);
+    trigger_effcy_calc = (trigger_mode == 0 || trigger_mode == 1)
+        && !(IsPbPb() && isRun3 && mu4_nominal_pbpb_NO_trig_calc);
+    use_mu6_for_trg_eff = trigger_effcy_calc && (trigger_mode == 1);
+    doTrigEffcy = trigger_effcy_calc;
+
+    // --- Set mu4 suffix AFTER mu4_nominal_pbpb_NO_trig_calc is finalized ---
+    if (trigger_mode == 1) {
+        base_trig_suffix = mu4_nominal_pbpb_NO_trig_calc ? "_mu4_nominal" : "_single_mu4";
+    }
+
+    // base_trig_suffix: trigger type used for input ntuple paths
+    // trig_suffix: output-only, adds markers when trig effcy is off
     trig_suffix = base_trig_suffix;
-    doTrigEffcy = (doTrigEffcy && (trigger_mode == 0 || trigger_mode == 1)); // turn off trig effcy plotting if trigger_mode isn't 0 or 1
     if (!doTrigEffcy && (trigger_mode == 0 || trigger_mode == 1)) trig_suffix += "_no_trg_plots";
 
-    if (!filter_out_photo_resn_for_trig_effcy) trig_suffix += "_no_photo_resn_cuts"; // if not filter out photoprod/resn pairs for trigger efficiency study
+    if (!filter_out_photo_resn_for_trig_effcy) trig_suffix += "_no_photo_resn_cuts";
+
+    std::cout << "TriggerModeSettings: trigger_mode=" << trigger_mode
+              << ", mu4_nominal_pbpb_NO_trig_calc=" << mu4_nominal_pbpb_NO_trig_calc
+              << ", trigger_effcy_calc=" << trigger_effcy_calc
+              << ", use_mu6_for_trg_eff=" << use_mu6_for_trg_eff
+              << ", base_trig_suffix='" << base_trig_suffix << "'"
+              << ", trig_suffix='" << trig_suffix << "'" << std::endl;
 
 }
 
@@ -306,19 +330,16 @@ void RDFBasedHistFillingData::HistPostProcessDataImpl(){
 }
 
 void RDFBasedHistFillingData::HistPostProcessDataCommon(){
-    const bool is_pbpb_data = IsPbPb();
-    const bool run_crossx = (trigger_mode == 2) || (trigger_mode == 3)
-        || (is_pbpb_data && (run_year == 23 || run_year == 24 || run_year == 25) && trigger_mode == 1);
-    if (run_crossx) return;
+    if (!trigger_effcy_calc) return; // Pipeline 1 (nominal): no trigger efficiency post-processing
 
-    if (trigger_mode == 0 || trigger_mode == 1){
-        if (hist_filling_cycle == generic){
-            SumSingleMuonTrigEffHists();
-            MakeAndWriteSingleMuonTrigEffPtGraphs();
-            if (!isForSoumya) CalculateSingleMuonTrigEffcyRatios();
-        } else if (hist_filling_cycle == inv_weight_by_single_mu_effcy){
-            MakeAndWriteDRTrigEffGraphs();
-        }
+    if (hist_filling_cycle == generic) {
+        // Pipeline 2: project & divide trigger efficiency histograms
+        SumSingleMuonTrigEffHists();
+        MakeAndWriteSingleMuonTrigEffPtGraphs();
+        if (!isForSoumya) CalculateSingleMuonTrigEffcyRatios();
+    } else if (hist_filling_cycle == inv_weight_by_single_mu_effcy) {
+        // Pipeline 3: dR correction graphs from inverse-weighted histograms
+        MakeAndWriteDRTrigEffGraphs();
     }
 }
 
@@ -495,14 +516,117 @@ void RDFBasedHistFillingData::CalculateSingleMuonTrigEffcyRatiosHelper(
 }
 
 
-//--------- PLACEHOLDER ---------
-void RDFBasedHistFillingData::MakeAndWriteDRTrigEffGraphsHelper(const std::vector<std::string>& categories){}
+std::string RDFBasedHistFillingData::FindBinReturnStr(float number, const std::vector<std::pair<float, float>>& ranges) {
+    for (const auto& range : ranges) {
+        if (number >= range.first && number < range.second) {
+            return pairToSuffix(range);
+        }
+    }
+    return "";
+}
 
-std::string RDFBasedHistFillingData::FindBinReturnStr(float number, const std::vector<std::pair<float, float>>& ranges){return "";}
+std::string RDFBasedHistFillingData::FindCtrSuffix(int centrality) {
+    if (centrality < 0) return "";
+    static const std::vector<std::pair<int, int>> ctr_edges = {
+        {0, 5}, {5, 10}, {10, 20}, {20, 30}, {30, 50}, {50, 80}
+    };
+    for (const auto& [lo, hi] : ctr_edges) {
+        if (centrality >= lo && centrality < hi)
+            return "_ctr" + std::to_string(lo) + "_" + std::to_string(hi);
+    }
+    return "";
+}
 
-float RDFBasedHistFillingData::EvaluateSingleMuonEffcyPtFitted(bool charge_sign, std::string trg, float pt_2nd, float q_eta_2nd, float phi_2nd){return 0;}
+float RDFBasedHistFillingData::EvaluateSingleMuonEffcyPtFitted(const std::string& ctr_suffix, bool charge_positive, float pt, float q_eta) {
+    static const CommonEffcyConfig cfg{};
+    std::string musign = charge_positive ? "_sign1" : "_sign2";
+    std::string q_eta_suffix = FindBinReturnStr(q_eta, cfg.q_eta_proj_ranges_fine_excl_gap);
 
-float RDFBasedHistFillingData::EvaluateSingleMuonEffcy(bool charge_sign, std::string trg, float pt_2nd, float q_eta_2nd, float phi_2nd){return 0;}
+    if (!q_eta_suffix.empty()) {
+        std::string key = "f_pt2nd_vs_q_eta2nd" + ctr_suffix + musign + "_2mu4_sepr_py_" + q_eta_suffix + "_divided";
+        auto it = s_effcy_pT_fit_map.find(key);
+        if (it != s_effcy_pT_fit_map.end()) {
+            double val = it->second->Eval(pt);
+            if (val < 0.01) val = 0.01;
+            if (val > 1.0) val = 1.0;
+            return static_cast<float>(val);
+        }
+    }
+
+    // Fallback: unfitted 2D histogram for gap regions or missing TF1
+    std::string h2d_key = "h_pt2nd_vs_q_eta2nd" + ctr_suffix + musign + "_2mu4_sepr_divided";
+    auto it2d = s_effcy_2D_hist_map.find(h2d_key);
+    if (it2d != s_effcy_2D_hist_map.end()) {
+        int bin = it2d->second->FindBin(q_eta, pt);
+        double val = it2d->second->GetBinContent(bin);
+        if (val > 0.01 && val <= 1.0) return static_cast<float>(val);
+    }
+    return -1.0f;
+}
+
+float RDFBasedHistFillingData::EvaluateSingleMuonEffcy(const std::string& ctr_suffix, bool charge_positive, float pt, float q_eta) {
+    return EvaluateSingleMuonEffcyPtFitted(ctr_suffix, charge_positive, pt, q_eta);
+}
+
+void RDFBasedHistFillingData::MakeAndWriteDRTrigEffGraphsHelper(const std::vector<std::string>& categories) {
+    std::vector<std::string> invw_var1Ds = {
+        "DR", "DR_zoomin", "DR_0_2", "Deta", "Deta_zoomin",
+        "Dphi", "Dphi_zoomin", "pair_pt_log", "minv_zoomin"
+    };
+
+    std::vector<std::string> cats = categories.empty() ? std::vector<std::string>{""} : categories;
+
+    for (const std::string& cat : cats) {
+        for (const std::string& pair_sign : {"_ss", "_op"}) {
+            // Single-muon dR correction: combine role-swaps (§3a.4, D3)
+            if (IsPbPb()) {
+                for (const auto& var : invw_var1Ds) {
+                    std::string hn_r1 = "h_" + var + pair_sign + "_mu2probe_mu4_invw_num" + cat;
+                    std::string hd_r1 = "h_" + var + pair_sign + "_mu2probe_mu4_denom" + cat;
+                    std::string hn_r2 = "h_" + var + pair_sign + "_mu1probe_mu4_invw_num" + cat;
+                    std::string hd_r2 = "h_" + var + pair_sign + "_mu1probe_mu4_denom" + cat;
+
+                    TH1D* h_num_r1 = map_at_checked(hist1D_map, hn_r1, Form("MakeAndWriteDRTrigEffGraphsHelper: %s", hn_r1.c_str()));
+                    TH1D* h_den_r1 = map_at_checked(hist1D_map, hd_r1, Form("MakeAndWriteDRTrigEffGraphsHelper: %s", hd_r1.c_str()));
+                    TH1D* h_num_r2 = map_at_checked(hist1D_map, hn_r2, Form("MakeAndWriteDRTrigEffGraphsHelper: %s", hn_r2.c_str()));
+                    TH1D* h_den_r2 = map_at_checked(hist1D_map, hd_r2, Form("MakeAndWriteDRTrigEffGraphsHelper: %s", hd_r2.c_str()));
+
+                    if (h_num_r1 && h_den_r1 && h_num_r2 && h_den_r2) {
+                        std::string comb_num_name = "h_" + var + pair_sign + "_mu4_combined_invw_num" + cat;
+                        std::string comb_den_name = "h_" + var + pair_sign + "_mu4_combined_denom" + cat;
+                        TH1D* h_comb_num = (TH1D*)h_num_r1->Clone(comb_num_name.c_str());
+                        h_comb_num->Add(h_num_r2);
+                        TH1D* h_comb_den = (TH1D*)h_den_r1->Clone(comb_den_name.c_str());
+                        h_comb_den->Add(h_den_r2);
+                        hist1D_map[comb_num_name] = h_comb_num;
+                        hist1D_map[comb_den_name] = h_comb_den;
+                        HistFillUtils::ratio_divide_and_write(h_comb_num, h_comb_den, &graph_map);
+                    }
+                }
+
+                // Cross-term (§3b): no role-swap needed
+                for (const auto& var : invw_var1Ds) {
+                    std::string hname_num = "h_" + var + pair_sign + "_cross_mu4_invw_num" + cat;
+                    std::string hname_den = "h_" + var + pair_sign + "_cross_mu4_denom" + cat;
+                    TH1D* h_num = map_at_checked(hist1D_map, hname_num, Form("MakeAndWriteDRTrigEffGraphsHelper: %s", hname_num.c_str()));
+                    TH1D* h_den = map_at_checked(hist1D_map, hname_den, Form("MakeAndWriteDRTrigEffGraphsHelper: %s", hname_den.c_str()));
+                    if (h_num && h_den)
+                        HistFillUtils::ratio_divide_and_write(h_num, h_den, &graph_map);
+                }
+            } else {
+                // PP: 2mu4 single term (§3c), no role-swap, no cross-term
+                for (const auto& var : invw_var1Ds) {
+                    std::string hname_num = "h_" + var + pair_sign + "_2mu4_invw_num" + cat;
+                    std::string hname_den = "h_" + var + pair_sign + "_2mu4_denom" + cat;
+                    TH1D* h_num = map_at_checked(hist1D_map, hname_num, Form("MakeAndWriteDRTrigEffGraphsHelper: %s", hname_num.c_str()));
+                    TH1D* h_den = map_at_checked(hist1D_map, hname_den, Form("MakeAndWriteDRTrigEffGraphsHelper: %s", hname_den.c_str()));
+                    if (h_num && h_den)
+                        HistFillUtils::ratio_divide_and_write(h_num, h_den, &graph_map);
+                }
+            }
+        }
+    }
+}
 
 void RDFBasedHistFillingData::WriteOutputExtra(){
     HistFillUtils::write_hist_map_vector(graph_map, graphs_to_not_write);

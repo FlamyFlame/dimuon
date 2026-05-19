@@ -1,4 +1,5 @@
 #include <TSystem.h>
+#include <TKey.h>
 #include <algorithm>
 #include "RDFBasedHistFillingData.cxx"
 
@@ -186,7 +187,51 @@ void RDFBasedHistFillingPP::FillHistogramsDimuTrigGivenMu4(){
 
 void RDFBasedHistFillingPP::FillHistogramsMu4GivenMB(){}
 
-void RDFBasedHistFillingPP::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(){}
+void RDFBasedHistFillingPP::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies(){
+    OpenEffcyPtFitFile();
+
+    std::vector<std::string> invw_var1Ds = {
+        "DR", "DR_zoomin", "DR_0_2", "Deta", "Deta_zoomin",
+        "Dphi", "Dphi_zoomin", "pair_pt_log", "minv_zoomin"
+    };
+    static const std::vector<std::array<std::string, 2>> empty2D;
+    static const std::vector<std::array<std::string, 3>> empty3D;
+
+    try {
+        for (std::string pair_sign : {"_ss", "_op"}) {
+            std::string df_name = "df" + pair_sign;
+            ROOT::RDF::RNode& base_node = map_at_checked(df_map, df_name,
+                Form("FillTrigEffcyHistsInvWeighted: df_map.at(%s)", df_name.c_str()));
+
+            auto node = base_node
+                .Define("q_eta1", "(float)(m1.charge * m1.eta)")
+                .Define("q_eta2", "(float)(m2.charge * m2.eta)")
+                .Define("effcy1", [](int q, float pt, float qe) {
+                    return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe);
+                }, {"m1.charge", "m1.pt", "q_eta1"})
+                .Define("effcy2", [](int q, float pt, float qe) {
+                    return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe);
+                }, {"m2.charge", "m2.pt", "q_eta2"})
+                .Define("valid1", "effcy1 > 0")
+                .Define("valid2", "effcy2 > 0")
+                .Define("valid_both", "valid1 && valid2")
+                .Define("invw_cross", "valid_both ? (double)(1.0f / (effcy1 * effcy2)) : 0.0");
+
+            // §3c: PP 2mu4 — one term only, no tag/probe, no cross-term
+            auto df_denom = node.Filter("valid_both");
+            FillHistogramsSingleDataFrame(pair_sign + "_2mu4_denom", df_denom, "",
+                invw_var1Ds, empty2D, empty3D, true, {true, false, false});
+
+            auto df_num = df_denom.Filter("pass2mu4");
+            FillHistogramsSingleDataFrame(pair_sign + "_2mu4_invw_num", df_num, "invw_cross",
+                invw_var1Ds, empty2D, empty3D, true, {true, false, false});
+        }
+    } catch (const std::out_of_range& e) {
+        std::cerr << "FillTrigEffcyHistsInvWeighted (PP):: out_of_range: " << e.what() << std::endl;
+    } catch (const std::runtime_error& e) {
+        std::cerr << "FillTrigEffcyHistsInvWeighted (PP):: runtime error: " << e.what() << std::endl;
+    }
+}
 
 void RDFBasedHistFillingPP::SumSingleMuonTrigEffHistsPP(){
 
@@ -238,9 +283,52 @@ void RDFBasedHistFillingPP::MakeAndWriteSingleMuonTrigEffPtGraphs(){
     else                    MakeAndWriteSingleMuonTrigEffPtGraphsHelper(musigns);
 }
 
-void RDFBasedHistFillingPP::OpenEffcyPtFitFile(){}
+void RDFBasedHistFillingPP::OpenEffcyPtFitFile() {
+    if (!s_effcy_pT_fit_map.empty()) {
+        std::cout << "OpenEffcyPtFitFile: TF1 map already loaded (" << s_effcy_pT_fit_map.size() << " entries)" << std::endl;
+        return;
+    }
+    std::string fit_path = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_20" + std::to_string(run_year) + "/trg_effcy_pT_fitting_to_fermi_plus_log/single_mu_effcy_pT_fit.root";
+    s_effcy_pT_fit_file = TFile::Open(fit_path.c_str(), "READ");
+    if (!s_effcy_pT_fit_file || s_effcy_pT_fit_file->IsZombie()) {
+        std::cerr << "OpenEffcyPtFitFile: FAILED to open " << fit_path << std::endl;
+        return;
+    }
+    TIter next(s_effcy_pT_fit_file->GetListOfKeys());
+    TKey* key;
+    while ((key = (TKey*)next())) {
+        if (std::string(key->GetClassName()) == "TF1") {
+            TF1* func = (TF1*)key->ReadObj();
+            s_effcy_pT_fit_map[func->GetName()] = func;
+        }
+    }
+    std::cout << "OpenEffcyPtFitFile: loaded " << s_effcy_pT_fit_map.size() << " TF1s from " << fit_path << std::endl;
 
-void RDFBasedHistFillingPP::MakeAndWriteDRTrigEffGraphs(){}
+    std::string base_dir = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_20" + std::to_string(run_year);
+    std::string hist_path = base_dir + "/histograms_real_pairs_pp_20" + std::to_string(run_year) + "_single_mu4_coarse_q_eta_bin.root";
+    s_effcy_2D_hist_file = TFile::Open(hist_path.c_str(), "READ");
+    if (!s_effcy_2D_hist_file || s_effcy_2D_hist_file->IsZombie()) {
+        std::cerr << "OpenEffcyPtFitFile: WARNING — 2D hist file not found: " << hist_path << " (gap fallback disabled)" << std::endl;
+        return;
+    }
+    TIter next_h2d(s_effcy_2D_hist_file->GetListOfKeys());
+    TKey* key2;
+    int n2d = 0;
+    while ((key2 = (TKey*)next_h2d())) {
+        std::string name = key2->GetName();
+        if (std::string(key2->GetClassName()) == "TH2D" && name.find("_divided") != std::string::npos
+            && name.find("pt2nd_vs_q_eta2nd") != std::string::npos) {
+            TH2D* h = (TH2D*)key2->ReadObj();
+            s_effcy_2D_hist_map[h->GetName()] = h;
+            n2d++;
+        }
+    }
+    std::cout << "OpenEffcyPtFitFile: loaded " << n2d << " 2D efficiency histograms from " << hist_path << std::endl;
+}
+
+void RDFBasedHistFillingPP::MakeAndWriteDRTrigEffGraphs() {
+    MakeAndWriteDRTrigEffGraphsHelper({});
+}
 
 // ============================================================================
 // FillHistogramsCrossx: Single B → J/psi crossx measurements (trigger_mode==2)
