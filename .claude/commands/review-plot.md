@@ -63,6 +63,7 @@ After completing the work, record what you did:
 - Files created or modified (with paths)
 - Any computed values with their source
 - Plots produced (with paths)
+- If fitting was performed: report fit parameters, χ²/ndf, and fit range for each fit. These will be passed to the reviewer for numerical verification.
 
 ### Step 2: Spawn reviewer subagent
 
@@ -88,6 +89,9 @@ Review the following plot work and return a structured verdict.
 ## Numbers reported by executor
 [list any computed values — integrals, yields, bin counts — or "None." if none reported]
 
+## Directory structure context
+[If the user requested a specific directory structure or plot organization, paste that request here verbatim. If plots for a related physics procedure already exist elsewhere, list the existing paths and whether they should be reorganized. Otherwise write "No specific directory structure requested."]
+
 ## Review criteria
 
 ### Plot checklist
@@ -99,6 +103,19 @@ For each item, state PASS or FAIL with specific evidence.
 4. **Legends/textboxes do not obscure data**: no overlap with data points.
 5. **ATLAS style (if required)**: SetAtlasStyle() called, "ATLAS Internal" present. Mark N/A if not requested.
 6. **Axis labels readable**: not cropped, not overlapping, appropriate size.
+7. **Plot output directory**: plots saved under the designated area for the sample type (data → `.../dimuon_data/plots/`, Pythia truth → `.../pythia_truth_full_sample/plots/`, Pythia fullsim PP → `.../pythia_fullsim_full_sample/plots/`, Pythia fullsim HIJING overlay → `.../pythia_fullsim_hijing_overlay_test_sample/plots/`, Powheg → `.../powheg_full_sample/plots/`). Check SaveAs paths in code.
+8. **Directory structure clear**: subdirectories organized by physics topic; no flat dump of many PNGs. If "Directory structure context" above specifies a user-requested layout, verify it is implemented exactly.
+9. **Related plots co-located**: if existing plots for the same physics procedure live elsewhere, verify both old and new plotting code are updated to use a common parent directory.
+
+### Fitting checks (apply when plots include fits)
+10. **Fit overlay visible**: fit curve drawn on data, visually distinguishable (different color/style).
+11. **Fit follows data**: no wild divergence or large systematic residual pattern. Do NOT fail on moderate scatter — goodness-of-fit depends on statistics and model choice.
+12. **Fit not obviously unconstrained**: flag fits driven by parameter bounds rather than data (featureless shape despite turn-on model, identical across many bins, data consistent with zero).
+13. **Fit range and asymptote reasonable**: not extrapolated far beyond data; efficiency plateau ≤ 1; dR corrections approach expected asymptote at large separation.
+
+### Efficiency-specific checks (apply when plots show efficiencies)
+14. **Efficiency values in expected range**: standard efficiencies in [0, 1]. Inverse-weighted ratios (dR corrections from TH1::Divide with 1/ε weights) can fluctuate above 1 — flag only if far above 1 beyond what statistical error bars explain.
+15. **Turn-on shape qualitatively correct**: pT turn-on should trend increasing (sigmoid-like). Do not require strict monotonic increase — raw unfitted data has statistical fluctuations, especially at high pT. Flag only if overall trend is non-physical.
 
 ### Physics checklist (apply only items relevant to this plot)
 1. Sign convention: OS=sign2/_op, SS=sign1/_ss.
@@ -120,6 +137,8 @@ For any numbers reported by the executor:
 - Raw branch names as axis titles instead of physics labels
 - Missing log scale when dynamic range > ~10x
 - Ratio panels with Y-axis range hiding data points
+- Plots saved to ad-hoc or flat directories instead of designated plot areas
+- New plots for a procedure placed in a different directory from existing plots for the same procedure
 
 ## Response format
 
@@ -184,23 +203,26 @@ Go back to **Step 2** (spawn a fresh reviewer subagent for the amended work).
 
 ## Exit: Approved
 
-Update log:
+**MANDATORY — do ALL three in order:**
+
+1. Update log:
 ```
 **Status**: APPROVED at iteration [N]
 **Summary**: [1-2 sentences]
 ```
 
-Append to `.claude/logs/tracking.jsonl`:
+2. **Emit end event** — append to `.claude/logs/tracking.jsonl`:
 ```json
 {"event":"end","command":"review-plot","status":"approved","iterations":<N>,"timestamp":"<ISO 8601>","criticals":0,"warnings":0,"slug":"<slug>"}
 ```
 
-Delete `.claude/logs/active-session.txt`.
-Present final output to user.
+3. Delete `.claude/logs/active-session.txt`, then present final output to user.
 
 ## Exit: Escalate
 
-Update log:
+**MANDATORY — do ALL three in order:**
+
+1. Update log:
 ```
 **Status**: ESCALATED at iteration [N] (max iterations reached)
 **Unresolved issues**:
@@ -208,11 +230,10 @@ Update log:
 **Recommended action**: [specific suggestions]
 ```
 
-Append to `.claude/logs/tracking.jsonl`:
+2. **Emit end event** — append to `.claude/logs/tracking.jsonl`:
 ```json
 {"event":"end","command":"review-plot","status":"escalated","iterations":<N>,"timestamp":"<ISO 8601>","criticals":<count>,"warnings":<count>,"unresolved":["<short issue description>",...],"slug":"<slug>"}
 ```
 
-Delete `.claude/logs/active-session.txt`.
-Present unresolved issues to user with:
+3. Delete `.claude/logs/active-session.txt`, then present unresolved issues to user with:
 "These issues need your judgment: [list with context]"

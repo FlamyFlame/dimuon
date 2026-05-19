@@ -190,23 +190,26 @@ Go back to **Step 2** (spawn a fresh reviewer subagent for the amended work).
 
 ## Exit: Approved
 
-Update log:
+**MANDATORY — do ALL three in order:**
+
+1. Update log:
 ```
 **Status**: APPROVED at iteration [N]
 **Summary**: [1-2 sentences]
 ```
 
-Append to `.claude/logs/tracking.jsonl`:
+2. **Emit end event** — append to `.claude/logs/tracking.jsonl`:
 ```json
 {"event":"end","command":"review-note","status":"approved","iterations":<N>,"timestamp":"<ISO 8601>","criticals":0,"warnings":0,"slug":"<slug>"}
 ```
 
-Delete `.claude/logs/active-session.txt`.
-Present final output to user.
+3. Delete `.claude/logs/active-session.txt`, then present final output to user.
 
 ## Exit: Escalate
 
-Update log:
+**MANDATORY — do ALL three in order:**
+
+1. Update log:
 ```
 **Status**: ESCALATED at iteration [N] (max iterations reached)
 **Unresolved issues**:
@@ -214,11 +217,10 @@ Update log:
 **Recommended action**: [specific suggestions]
 ```
 
-Append to `.claude/logs/tracking.jsonl`:
+2. **Emit end event** — append to `.claude/logs/tracking.jsonl`:
 ```json
 {"event":"end","command":"review-note","status":"escalated","iterations":<N>,"timestamp":"<ISO 8601>","criticals":<count>,"warnings":<count>,"unresolved":["<short issue description>",...],"slug":"<slug>"}
 ```
 
-Delete `.claude/logs/active-session.txt`.
-Present unresolved issues to user with:
+3. Delete `.claude/logs/active-session.txt`, then present unresolved issues to user with:
 "These issues need your judgment: [list with context]"
