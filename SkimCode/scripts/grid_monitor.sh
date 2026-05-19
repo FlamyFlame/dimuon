@@ -1,29 +1,39 @@
 #!/bin/bash
 # grid_monitor.sh — Monitor grid tasks, download, hadd, validate, update record.
-# Run in tmux to survive logout. Renew VOMS proxy from another session on the
-# same node when needed (proxy is a shared file at /tmp/x509up_u<uid>).
+# Supports parallel execution across multiple nodes via flock on the shared
+# state file (GPFS). Run one instance per node in tmux.
 #
 # Usage:
-#   ./grid_monitor.sh may2026_skim.txt
-#   ./grid_monitor.sh -i 3 may2026_skim.txt          # check every 3 hours
-#   ./grid_monitor.sh 50267206 50267236 50267371      # task IDs directly
+#   ./grid_monitor.sh may2026_skim.txt                # single node, default 10min poll
+#   ./grid_monitor.sh -i 15 may2026_skim.txt          # poll every 15 min when idle
+#   ./grid_monitor.sh 50267206 50267236 50267371       # task IDs directly
+#
+# Multi-node: run the same command on each node (e.g. one tmux pane per node).
+# Each instance claims one task at a time; flock prevents double-claiming.
+# Renew VOMS proxy from another session when needed.
 #
 # Input file format: any file containing lines with an 8-digit task ID and
 # optionally a user.yuhang..._EXT0 outDS on the same line.  Comment lines
 # (#) and decoration are ignored.  Works directly with may2026_skim.txt.
+#
+# State file format: TASK_ID STATE [HOSTNAME EPOCH_TIMESTAMP]
+#   States: pending → ready → downloading → completed | failed
 
 set -o pipefail
 
 # ── Configuration ────────────────────────────────────────────────────────────
-INTERVAL_HOURS=5
+POLL_INTERVAL_MIN=10
+STALE_TIMEOUT=10800   # 3 hours: reclaim downloads from crashed workers
 DATA_BASE="/usatlas/u/yuhanguo/usatlasdata/dimuon_data"
 RECORD_FILE="${DATA_BASE}/data-merging-record.txt"
 LOG_DIR="${DATA_BASE}"
 STATUS_LOG="${LOG_DIR}/grid_monitor_status.log"
 ERROR_LOG="${LOG_DIR}/grid_monitor_errors.log"
 STATE_FILE="${LOG_DIR}/grid_monitor_state.txt"
+LOCK_FILE="${STATE_FILE}.lock"
 BIGPANDA_URL="https://bigpanda.cern.ch/task"
 MIN_SUCCESS_PCT=90
+MY_HOSTNAME=$(hostname -s)
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Parse arguments ──────────────────────────────────────────────────────────
@@ -32,7 +42,7 @@ TASK_OUTDS=()   # parallel array: outDS for each task (may be empty)
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
-		-i) INTERVAL_HOURS="$2"; shift 2 ;;
+		-i) POLL_INTERVAL_MIN="$2"; shift 2 ;;
 		-h|--help)
 			sed -n '2,/^$/s/^# //p' "$0"; exit 0 ;;
 		*)
@@ -55,49 +65,60 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ ${#TASK_IDS[@]} -eq 0 ]]; then
-	echo "ERROR: no task IDs provided. Usage: $0 [-i HOURS] FILE_OR_TASKIDS..." >&2
+	echo "ERROR: no task IDs provided. Usage: $0 [-i POLL_MINUTES] FILE_OR_TASKIDS..." >&2
 	exit 1
 fi
 
-INTERVAL=$((INTERVAL_HOURS * 3600))
+POLL_INTERVAL=$((POLL_INTERVAL_MIN * 60))
+
+# Build associative array for outDS lookup by task ID
+declare -A OUTDS_MAP
+for i in "${!TASK_IDS[@]}"; do
+	[[ -n "${TASK_OUTDS[$i]}" ]] && OUTDS_MAP["${TASK_IDS[$i]}"]="${TASK_OUTDS[$i]}"
+done
 
 # ── Logging helpers ──────────────────────────────────────────────────────────
 ts() { date "+%Y-%m-%d %H:%M:%S"; }
 
 log_status() {
-	local msg="[$(ts)] $*"
+	local msg="[$(ts)] [$MY_HOSTNAME] $*"
 	echo "$msg"
 	echo "$msg" >> "$STATUS_LOG"
 }
 
 log_error() {
-	local msg="[$(ts)] ERROR: $*"
+	local msg="[$(ts)] [$MY_HOSTNAME] ERROR: $*"
 	echo "$msg" >&2
 	echo "$msg" >> "$ERROR_LOG"
 }
 
+# ── Locking helpers ──────────────────────────────────────────────────────────
+# fd 200 is opened once; flock/unlock operate on it across all functions.
+exec 200>"$LOCK_FILE"
+lock_state() { flock -w 30 200; }
+unlock_state() { flock -u 200; }
+
 # ── State management ─────────────────────────────────────────────────────────
-# State file tracks: TASK_ID STATUS (pending|completed|failed)
-# On startup, load existing state (supports restart after crash).
 
-declare -A TASK_STATE
-
-load_state() {
-	if [[ -f "$STATE_FILE" ]]; then
-		while IFS=' ' read -r tid st; do
-			[[ -n "$tid" ]] && TASK_STATE["$tid"]="$st"
-		done < "$STATE_FILE"
-	fi
+init_state() {
+	lock_state
+	[[ -f "$STATE_FILE" ]] || touch "$STATE_FILE"
 	for tid in "${TASK_IDS[@]}"; do
-		[[ -z "${TASK_STATE[$tid]:-}" ]] && TASK_STATE["$tid"]="pending"
+		if ! grep -q "^${tid} " "$STATE_FILE"; then
+			echo "$tid pending" >> "$STATE_FILE"
+		fi
 	done
+	unlock_state
 }
 
-save_state() {
-	: > "$STATE_FILE"
-	for tid in "${TASK_IDS[@]}"; do
-		echo "$tid ${TASK_STATE[$tid]}" >> "$STATE_FILE"
-	done
+# Compare-and-swap: only update if current state starts with expected_prefix
+set_task_state_if() {
+	local tid="$1" expected_prefix="$2" new_state="$3"
+	lock_state
+	if grep -q "^${tid} ${expected_prefix}" "$STATE_FILE"; then
+		sed -i "s/^${tid} ${expected_prefix}.*/${tid} ${new_state}/" "$STATE_FILE"
+	fi
+	unlock_state
 }
 
 # ── outDS → directory / filename mapping ─────────────────────────────────────
@@ -256,12 +277,39 @@ process_task() {
 	pre_count=$(count_entries_chain "${roots[@]}")
 	log_status "task $tid: pre-merge entries = $pre_count"
 
-	# hadd
+	# hadd — with half-merge fallback for large datasets
 	log_status "task $tid: hadd (${#roots[@]} files) → $output_name.root"
 	if ! hadd -f "$output_file" "${roots[@]}" >> "$STATUS_LOG" 2>&1; then
-		log_error "task $tid: hadd failed for $output_name"
+		log_status "task $tid: single hadd failed, trying half-merge fallback..."
 		rm -f "$output_file"
-		return 1
+		local n=${#roots[@]}
+		local mid=$(( n / 2 ))
+		local half1=("${roots[@]:0:$mid}")
+		local half2=("${roots[@]:$mid}")
+		local tmp_a="${target_dir}/.tmp_merge_${tid}_a.root"
+		local tmp_b="${target_dir}/.tmp_merge_${tid}_b.root"
+
+		log_status "task $tid: hadd half-A (${#half1[@]} files)"
+		if ! hadd -f "$tmp_a" "${half1[@]}" >> "$STATUS_LOG" 2>&1; then
+			log_error "task $tid: half-A hadd failed"
+			rm -f "$tmp_a"
+			return 1
+		fi
+
+		log_status "task $tid: hadd half-B (${#half2[@]} files)"
+		if ! hadd -f "$tmp_b" "${half2[@]}" >> "$STATUS_LOG" 2>&1; then
+			log_error "task $tid: half-B hadd failed"
+			rm -f "$tmp_a" "$tmp_b"
+			return 1
+		fi
+
+		log_status "task $tid: hadd halves → final output"
+		if ! hadd -f "$output_file" "$tmp_a" "$tmp_b" >> "$STATUS_LOG" 2>&1; then
+			log_error "task $tid: final merge of halves failed"
+			rm -f "$tmp_a" "$tmp_b" "$output_file"
+			return 1
+		fi
+		rm -f "$tmp_a" "$tmp_b"
 	fi
 
 	# Count entries after merge
@@ -319,6 +367,141 @@ if tn:
 " "$raw"
 }
 
+# ── Parallel coordination ───────────────────────────────────────────────────
+
+# Poll BigPanDA for pending tasks, mark ready ones.
+refresh_task_states() {
+	# Collect pending tasks from our list (brief lock)
+	lock_state
+	local pending_tids=()
+	for tid in "${TASK_IDS[@]}"; do
+		local state
+		state=$(grep "^${tid} " "$STATE_FILE" | head -1 | awk '{print $2}')
+		if [[ "$state" == "pending" ]]; then
+			pending_tids+=("$tid")
+		fi
+	done
+	unlock_state
+
+	if [[ ${#pending_tids[@]} -gt 0 ]]; then
+		log_status "Polling BigPanDA for ${#pending_tids[@]} pending task(s)..."
+
+		for tid in "${pending_tids[@]}"; do
+			local result
+			result=$(query_task "$tid")
+			IFS='|' read -r status pct taskname errmsg <<< "$result"
+
+			case "$status" in
+				done)
+					log_status "  Task $tid: grid DONE (100%). Marking ready."
+					set_task_state_if "$tid" "pending" "ready"
+					;;
+				finished)
+					if (( $(echo "$pct >= $MIN_SUCCESS_PCT" | bc -l) )); then
+						log_status "  Task $tid: grid FINISHED (${pct}%). Marking ready."
+						set_task_state_if "$tid" "pending" "ready"
+					else
+						log_error "task $tid: FINISHED with low success (${pct}% < ${MIN_SUCCESS_PCT}%)"
+						set_task_state_if "$tid" "pending" "failed"
+					fi
+					;;
+				broken|aborted|failed|exhausted)
+					log_error "task $tid: terminal grid status '$status'. $errmsg"
+					set_task_state_if "$tid" "pending" "failed"
+					;;
+				api_error)
+					log_status "  Task $tid: API error ($errmsg), will retry."
+					;;
+				*)
+					log_status "  Task $tid: $status (${pct}%). Still running."
+					;;
+			esac
+		done
+	fi
+
+	reclaim_stale_downloads
+}
+
+# Reset downloads that have been stuck longer than STALE_TIMEOUT
+reclaim_stale_downloads() {
+	lock_state
+	local now=$(date +%s)
+	local stale_tids=()
+	local stale_hosts=()
+	local stale_ages=()
+	while IFS=' ' read -r tid state host epoch_ts; do
+		if [[ "$state" == "downloading" && -n "$epoch_ts" ]]; then
+			local age=$(( now - epoch_ts ))
+			if (( age > STALE_TIMEOUT )); then
+				stale_tids+=("$tid")
+				stale_hosts+=("$host")
+				stale_ages+=("$age")
+			fi
+		fi
+	done < "$STATE_FILE"
+	for i in "${!stale_tids[@]}"; do
+		sed -i "s/^${stale_tids[$i]} downloading.*/${stale_tids[$i]} ready/" "$STATE_FILE"
+	done
+	unlock_state
+	for i in "${!stale_tids[@]}"; do
+		log_status "Reclaimed stale task ${stale_tids[$i]} (was ${stale_hosts[$i]}, ${stale_ages[$i]}s ago)"
+	done
+}
+
+# Atomically claim one ready task from our task list. Echoes task ID or empty.
+claim_one_ready_task() {
+	lock_state
+	local tid=""
+	for t in "${TASK_IDS[@]}"; do
+		local state
+		state=$(grep "^${t} " "$STATE_FILE" | head -1 | awk '{print $2}')
+		if [[ "$state" == "ready" ]]; then
+			tid="$t"
+			break
+		fi
+	done
+	if [[ -n "$tid" ]]; then
+		local now=$(date +%s)
+		sed -i "s/^${tid} ready.*/${tid} downloading ${MY_HOSTNAME} ${now}/" "$STATE_FILE"
+	fi
+	unlock_state
+	echo "$tid"
+}
+
+# Check if all tasks in our list are resolved (completed or failed)
+all_tasks_resolved() {
+	lock_state
+	local unresolved=0
+	for tid in "${TASK_IDS[@]}"; do
+		local state
+		state=$(grep "^${tid} " "$STATE_FILE" | head -1 | awk '{print $2}')
+		case "$state" in
+			pending|ready|downloading) unresolved=$((unresolved + 1)) ;;
+		esac
+	done
+	unlock_state
+	(( unresolved == 0 ))
+}
+
+# Print summary of task states
+print_summary() {
+	local completed=0 failed=0 pending=0 ready=0 downloading=0
+	lock_state
+	for tid in "${TASK_IDS[@]}"; do
+		local state
+		state=$(grep "^${tid} " "$STATE_FILE" | head -1 | awk '{print $2}')
+		case "$state" in
+			completed)   completed=$((completed + 1)) ;;
+			failed)      failed=$((failed + 1)) ;;
+			pending)     pending=$((pending + 1)) ;;
+			ready)       ready=$((ready + 1)) ;;
+			downloading) downloading=$((downloading + 1)) ;;
+		esac
+	done
+	unlock_state
+	log_status "Summary: ${completed} completed, ${failed} failed, ${downloading} downloading, ${ready} ready, ${pending} pending"
+}
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Main
 # ══════════════════════════════════════════════════════════════════════════════
@@ -329,116 +512,147 @@ source ~/setup.sh || { echo "ERROR: setup.sh failed" >&2; exit 1; }
 lsetup rucio      || { echo "ERROR: lsetup rucio failed" >&2; exit 1; }
 log_status "Environment ready. root=$(command -v root) rucio=$(command -v rucio)"
 
-load_state
+init_state
 
 log_status "════════════════════════════════════════════════════════════════"
-log_status "Grid monitor started: ${#TASK_IDS[@]} tasks, checking every ${INTERVAL_HOURS}h"
+log_status "Worker started: ${#TASK_IDS[@]} tasks, poll every ${POLL_INTERVAL_MIN}min"
 log_status "  Status log: $STATUS_LOG"
 log_status "  Error log:  $ERROR_LOG"
 log_status "  State file: $STATE_FILE"
 log_status "════════════════════════════════════════════════════════════════"
 
-for i in "${!TASK_IDS[@]}"; do
-	log_status "  ${TASK_IDS[$i]}  ${TASK_OUTDS[$i]:-<will resolve>}  [${TASK_STATE[${TASK_IDS[$i]}]}]"
+# Print initial state
+lock_state
+for tid in "${TASK_IDS[@]}"; do
+	local_state=$(grep "^${tid} " "$STATE_FILE" | head -1 | awk '{print $2}')
+	log_status "  $tid  ${OUTDS_MAP[$tid]:-<will resolve>}  [$local_state]"
 done
+unlock_state
 
-cycle=0
+# ── Worker loop ──────────────────────────────────────────────────────────────
 while true; do
-	((cycle++))
-	log_status ""
-	log_status "━━━━━━━━━━ Cycle $cycle  $(ts) ━━━━━━━━━━"
+	# Step 1: Try to claim a ready task (fast, no API calls)
+	claimed_tid=$(claim_one_ready_task)
 
-	pending=0
-	for i in "${!TASK_IDS[@]}"; do
-		tid="${TASK_IDS[$i]}"
-		[[ "${TASK_STATE[$tid]}" != "pending" ]] && continue
-		((pending++))
+	if [[ -z "$claimed_tid" ]]; then
+		# Step 2: Nothing ready. Poll BigPanDA for newly completed grid tasks.
+		refresh_task_states
 
-		log_status "Checking task $tid ..."
-		result=$(query_task "$tid")
-		IFS='|' read -r status pct taskname errmsg <<< "$result"
+		# Try again after refresh
+		claimed_tid=$(claim_one_ready_task)
+	fi
 
-		log_status "  status=$status  success=${pct}%  taskname=$taskname"
-		[[ -n "$errmsg" ]] && log_status "  errordialog: $errmsg"
-
-		case "$status" in
-			done)
-				log_status "  Task $tid DONE (100%). Proceeding to download+merge."
-				;;
-			finished)
-				if (( $(echo "$pct >= $MIN_SUCCESS_PCT" | bc -l) )); then
-					log_status "  Task $tid FINISHED (${pct}% >= ${MIN_SUCCESS_PCT}%). Proceeding to download+merge."
-				else
-					log_error "task $tid: FINISHED with low success rate (${pct}% < ${MIN_SUCCESS_PCT}%). Marking failed."
-					TASK_STATE["$tid"]="failed"
-					save_state
-					continue
-				fi
-				;;
-			broken|aborted|failed|exhausted)
-				log_error "task $tid: terminal status '$status'. $errmsg"
-				TASK_STATE["$tid"]="failed"
-				save_state
-				continue
-				;;
-			api_error)
-				log_error "task $tid: API query failed ($errmsg). Will retry next cycle."
-				continue
-				;;
-			*)
-				log_status "  Task $tid still in progress ($status). Skipping."
-				continue
-				;;
-		esac
-
-		# Task is ready for download — check proxy first
+	if [[ -n "$claimed_tid" ]]; then
+		# Check proxy before downloading
 		if ! check_proxy; then
-			log_status "  Skipping download (proxy expired). Will retry next cycle."
+			log_error "Proxy expired. Releasing task $claimed_tid."
+			set_task_state_if "$claimed_tid" "downloading" "ready"
+			log_status "Sleeping 5min waiting for proxy renewal..."
+			sleep 300
 			continue
 		fi
 
 		# Resolve outDS
-		outds=$(resolve_outds "$tid" "${TASK_OUTDS[$i]:-}")
+		outds="${OUTDS_MAP[$claimed_tid]:-}"
 		if [[ -z "$outds" ]]; then
-			log_error "task $tid: could not resolve output dataset name"
+			outds=$(resolve_outds "$claimed_tid" "")
+			if [[ -n "$outds" ]]; then
+				OUTDS_MAP["$claimed_tid"]="$outds"
+			fi
+		fi
+
+		if [[ -z "$outds" ]]; then
+			log_error "task $claimed_tid: could not resolve outDS. Marking failed."
+			set_task_state_if "$claimed_tid" "downloading" "failed"
 			continue
 		fi
-		TASK_OUTDS[$i]="$outds"
-		log_status "  outDS: $outds"
 
-		# Download, hadd, validate
-		if process_task "$tid" "$outds"; then
-			TASK_STATE["$tid"]="completed"
-			log_status "  Task $tid: COMPLETED successfully."
+		log_status "Claimed task $claimed_tid -> $outds"
+
+		# Download, hadd, validate — retry up to 3 times on transient failures
+		max_attempts=3
+		attempt=0
+		success=false
+		while (( attempt < max_attempts )); do
+			attempt=$((attempt + 1))
+			log_status "  Attempt $attempt/$max_attempts for task $claimed_tid"
+			if process_task "$claimed_tid" "$outds"; then
+				success=true
+				break
+			fi
+			if (( attempt < max_attempts )); then
+				log_status "  Attempt $attempt failed. Waiting 60s before retry..."
+				sleep 60
+			fi
+		done
+
+		if [[ "$success" == "true" ]]; then
+			set_task_state_if "$claimed_tid" "downloading" "completed"
+			log_status "Task $claimed_tid: COMPLETED successfully."
 		else
-			log_error "task $tid: download/merge failed. Will NOT retry automatically — investigate."
-			TASK_STATE["$tid"]="failed"
+			set_task_state_if "$claimed_tid" "downloading" "failed"
+			log_error "task $claimed_tid: FAILED after $max_attempts attempts."
 		fi
-		save_state
-	done
 
-	# Recount pending
-	pending=0
-	for tid in "${TASK_IDS[@]}"; do
-		[[ "${TASK_STATE[$tid]}" == "pending" ]] && ((pending++))
-	done
-
-	# Summary
-	completed=0; failed=0
-	for tid in "${TASK_IDS[@]}"; do
-		[[ "${TASK_STATE[$tid]}" == "completed" ]] && ((completed++))
-		[[ "${TASK_STATE[$tid]}" == "failed" ]] && ((failed++))
-	done
-	log_status "Cycle $cycle done: $completed completed, $failed failed, $pending pending"
-
-	if [[ $pending -eq 0 ]]; then
-		log_status ""
-		log_status "════════════════════════════════════════════════════════════════"
-		log_status "All tasks resolved. $completed completed, $failed failed."
-		log_status "════════════════════════════════════════════════════════════════"
-		exit 0
+		print_summary
+		continue  # Immediately check for more work
 	fi
 
-	log_status "Sleeping ${INTERVAL_HOURS}h until next check ($(date -d "+${INTERVAL} seconds" "+%Y-%m-%d %H:%M"))..."
-	sleep "$INTERVAL"
+	# Step 3: Nothing ready even after polling. Check if all done.
+	if all_tasks_resolved; then
+		log_status ""
+		log_status "════════════════════════════════════════════════════════════════"
+		print_summary
+		log_status "All tasks resolved. Worker exiting."
+		log_status "════════════════════════════════════════════════════════════════"
+
+		# Reorganize merging record via Claude Code (first worker to finish does this)
+		if [[ -f "$RECORD_FILE" ]] && command -v claude &>/dev/null; then
+			reorg_lock="${STATE_FILE}.reorg_lock"
+			if (set -C; echo $$ > "$reorg_lock") 2>/dev/null; then
+				log_status "Reorganizing $RECORD_FILE ..."
+				RECORD_BACKUP="${RECORD_FILE}.bak"
+				cp "$RECORD_FILE" "$RECORD_BACKUP"
+				claude_err_file=$(mktemp)
+				claude -p "$(cat << CLAUDEOF
+You are reorganizing a bookkeeping log file for merged ROOT datasets.
+
+File path: ${RECORD_FILE}
+
+Each non-empty, non-comment line has the format:
+  <output_file> | <source_subdir> | <date> | <N> entries[  !!! MISMATCH: source=<X> merged=<Y>]
+
+The dataset key is derived from the output filename:
+- For sequential-named files (contain _part): the prefix before _part (e.g. data_pbpb24, data_pp23).
+- For custom-named files (no _part): the full basename without .root.
+
+Task:
+1. Read the file.
+2. Group lines by dataset key. Discard existing comment lines (starting with #).
+3. Within each group, sort by part number ascending (if present); otherwise by date ascending.
+4. Between groups, sort alphabetically by dataset key.
+5. Write the file back with: a blank line before each group (except the first),
+   a comment header line  # <dataset_key>  before each group, then the sorted data lines.
+6. Do not alter any data line's content, only reorder lines and add/replace headers.
+CLAUDEOF
+)" 2>"$claude_err_file"
+				claude_exit=$?
+				if [[ $claude_exit -eq 0 ]]; then
+					log_status "  Record reorganized successfully"
+					rm -f "$RECORD_BACKUP"
+				else
+					log_status "  Claude reorganization failed (exit $claude_exit) — record preserved as-is"
+					cp "$RECORD_BACKUP" "$RECORD_FILE"
+					rm -f "$RECORD_BACKUP"
+				fi
+				rm -f "$claude_err_file" "$reorg_lock"
+			fi
+		fi
+
+		break
+	fi
+
+	# Step 4: Some tasks still pending or being downloaded by other workers.
+	log_status "No tasks ready. Sleeping ${POLL_INTERVAL_MIN}min..."
+	sleep "$POLL_INTERVAL"
 done
