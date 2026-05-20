@@ -574,47 +574,81 @@ void RDFBasedHistFillingData::MakeAndWriteDRTrigEffGraphsHelper(const std::vecto
         "Dphi", "Dphi_zoomin", "pair_pt_log", "minv_zoomin"
     };
 
-    std::string pair_suffix = IsPbPb() ? "_pair_mu4" : "_2mu4";
+    struct PtSlice { double lo, hi; std::string label; };
+    std::vector<PtSlice> pt_slices = {
+        {8.0, 12.0, "_pt8_12"}, {12.0, 20.0, "_pt12_20"},
+        {20.0, 40.0, "_pt20_40"}, {40.0, 120.0, "_pt40_120"}
+    };
+
+    auto divideAndProject = [&](const std::string& suffix, const std::string& pair_sign, const std::string& cat) {
+        for (const auto& var : invw_var1Ds) {
+            std::string hn = "h_" + var + pair_sign + suffix + "_invw_num" + cat;
+            std::string hd = "h_" + var + pair_sign + suffix + "_denom" + cat;
+            TH1D* h_num = map_at_checked(hist1D_map, hn, Form("MakeAndWriteDRTrigEffGraphsHelper: %s", hn.c_str()));
+            TH1D* h_den = map_at_checked(hist1D_map, hd, Form("MakeAndWriteDRTrigEffGraphsHelper: %s", hd.c_str()));
+            if (h_num && h_den) HistFillUtils::ratio_divide_and_write(h_num, h_den, &graph_map);
+        }
+        for (const std::string& dr_var : {"DR_zoomin", "DR"}) {
+            std::string h2n = "h_pair_pt_log_vs_" + dr_var + pair_sign + suffix + "_invw_num" + cat;
+            std::string h2d = "h_pair_pt_log_vs_" + dr_var + pair_sign + suffix + "_denom" + cat;
+            auto it_n = hist2D_map.find(h2n);
+            auto it_d = hist2D_map.find(h2d);
+            if (it_n == hist2D_map.end() || it_d == hist2D_map.end()) continue;
+            for (const auto& sl : pt_slices) {
+                int ylo = it_n->second->GetYaxis()->FindBin(sl.lo + 0.001);
+                int yhi = it_n->second->GetYaxis()->FindBin(sl.hi - 0.001);
+                std::string pn = "h_" + dr_var + pair_sign + suffix + "_invw_num" + cat + sl.label;
+                std::string pd = "h_" + dr_var + pair_sign + suffix + "_denom" + cat + sl.label;
+                TH1D* hp_n = it_n->second->ProjectionX(pn.c_str(), ylo, yhi);
+                TH1D* hp_d = it_d->second->ProjectionX(pd.c_str(), ylo, yhi);
+                hist1D_map[pn] = hp_n;
+                hist1D_map[pd] = hp_d;
+                HistFillUtils::ratio_divide_and_write(hp_n, hp_d, &graph_map);
+            }
+        }
+    };
 
     std::vector<std::string> cats = categories.empty() ? std::vector<std::string>{""} : categories;
 
     for (const std::string& cat : cats) {
         for (const std::string& pair_sign : {"_ss", "_op"}) {
-            // 1D ratio graphs
-            for (const auto& var : invw_var1Ds) {
-                std::string hname_num = "h_" + var + pair_sign + pair_suffix + "_invw_num" + cat;
-                std::string hname_den = "h_" + var + pair_sign + pair_suffix + "_denom" + cat;
-                TH1D* h_num = map_at_checked(hist1D_map, hname_num, Form("MakeAndWriteDRTrigEffGraphsHelper: %s", hname_num.c_str()));
-                TH1D* h_den = map_at_checked(hist1D_map, hname_den, Form("MakeAndWriteDRTrigEffGraphsHelper: %s", hname_den.c_str()));
-                if (h_num && h_den)
-                    HistFillUtils::ratio_divide_and_write(h_num, h_den, &graph_map);
-            }
-
-            // Pair-pT-binned dR corrections from 2D histograms
-            struct PtSlice { double lo, hi; std::string label; };
-            std::vector<PtSlice> pt_slices = {
-                {8.0, 12.0, "_pt8_12"}, {12.0, 20.0, "_pt12_20"},
-                {20.0, 40.0, "_pt20_40"}, {40.0, 120.0, "_pt40_120"}
-            };
-            for (const std::string& dr_var : {"DR_zoomin", "DR"}) {
-                std::string h2d_num_name = "h_pair_pt_log_vs_" + dr_var + pair_sign + pair_suffix + "_invw_num" + cat;
-                std::string h2d_den_name = "h_pair_pt_log_vs_" + dr_var + pair_sign + pair_suffix + "_denom" + cat;
-                auto it_num = hist2D_map.find(h2d_num_name);
-                auto it_den = hist2D_map.find(h2d_den_name);
-                if (it_num == hist2D_map.end() || it_den == hist2D_map.end()) continue;
-                TH2D* h2_num = it_num->second;
-                TH2D* h2_den = it_den->second;
-                for (const auto& sl : pt_slices) {
-                    int ybin_lo = h2_num->GetYaxis()->FindBin(sl.lo + 0.001);
-                    int ybin_hi = h2_num->GetYaxis()->FindBin(sl.hi - 0.001);
-                    std::string proj_num_name = "h_" + dr_var + pair_sign + pair_suffix + "_invw_num" + cat + sl.label;
-                    std::string proj_den_name = "h_" + dr_var + pair_sign + pair_suffix + "_denom" + cat + sl.label;
-                    TH1D* h_proj_num = h2_num->ProjectionX(proj_num_name.c_str(), ybin_lo, ybin_hi);
-                    TH1D* h_proj_den = h2_den->ProjectionX(proj_den_name.c_str(), ybin_lo, ybin_hi);
-                    hist1D_map[proj_num_name] = h_proj_num;
-                    hist1D_map[proj_den_name] = h_proj_den;
-                    HistFillUtils::ratio_divide_and_write(h_proj_num, h_proj_den, &graph_map);
+            if (IsPbPb()) {
+                // §3a: Single-muon combined — sum role-swap 1D hists
+                for (const auto& var : invw_var1Ds) {
+                    for (const std::string& hw : {"_invw_num", "_denom"}) {
+                        std::string h1 = "h_" + var + pair_sign + "_mu2probe_mu4" + hw + cat;
+                        std::string h2 = "h_" + var + pair_sign + "_mu1probe_mu4" + hw + cat;
+                        TH1D* hr1 = map_at_checked(hist1D_map, h1, Form("Helper: %s", h1.c_str()));
+                        TH1D* hr2 = map_at_checked(hist1D_map, h2, Form("Helper: %s", h2.c_str()));
+                        if (!hr1 || !hr2) continue;
+                        std::string hc_name = "h_" + var + pair_sign + "_mu4_combined" + hw + cat;
+                        TH1D* hc = (TH1D*)hr1->Clone(hc_name.c_str()); hc->Add(hr2);
+                        hist1D_map[hc_name] = hc;
+                    }
                 }
+                // §3a: Sum role-swap 2D hists
+                for (const std::string& dr_var : {"DR_zoomin", "DR"}) {
+                    for (const std::string& hw : {"_invw_num", "_denom"}) {
+                        std::string h2r1 = "h_pair_pt_log_vs_" + dr_var + pair_sign + "_mu2probe_mu4" + hw + cat;
+                        std::string h2r2 = "h_pair_pt_log_vs_" + dr_var + pair_sign + "_mu1probe_mu4" + hw + cat;
+                        auto it1 = hist2D_map.find(h2r1);
+                        auto it2 = hist2D_map.find(h2r2);
+                        if (it1 == hist2D_map.end() || it2 == hist2D_map.end()) continue;
+                        std::string h2c = "h_pair_pt_log_vs_" + dr_var + pair_sign + "_mu4_combined" + hw + cat;
+                        TH2D* hc = (TH2D*)it1->second->Clone(h2c.c_str()); hc->Add(it2->second);
+                        hist2D_map[h2c] = hc;
+                    }
+                }
+                divideAndProject("_mu4_combined", pair_sign, cat);
+
+                // §3b: Cross-term
+                divideAndProject("_cross_mu4", pair_sign, cat);
+
+                // D6: Pair-level
+                divideAndProject("_pair_mu4", pair_sign, cat);
+            } else {
+                // PP: 2mu4 (§3c)
+                divideAndProject("_2mu4", pair_sign, cat);
             }
         }
     }

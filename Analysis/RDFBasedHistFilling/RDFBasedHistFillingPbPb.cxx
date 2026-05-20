@@ -438,15 +438,36 @@ void RDFBasedHistFillingPbPb::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies()
     };
 
     auto fillInvWeightedHists = [&](ROOT::RDF::RNode node, const std::string& pair_sign, const std::string& cat_suffix) {
-        // §3a (D6): Pair-level mu4 dR correction
-        // Denominator: all pairs with valid ε for both muons
-        auto df_denom = node.Filter("valid_both");
-        FillHistogramsSingleDataFrame(pair_sign + "_pair_mu4_denom" + cat_suffix, df_denom, "",
+        // §3a: Single-muon role 1 — mu2 is probe (no trigger req on mu1)
+        auto df_role1 = node.Filter("valid2");
+        FillHistogramsSingleDataFrame(pair_sign + "_mu2probe_mu4_denom" + cat_suffix, df_role1, "",
+            invw_var1Ds, invw_var2Ds, empty3D, true, {true, true, false});
+        auto df_role1_num = df_role1.Filter("m2.passmu4");
+        FillHistogramsSingleDataFrame(pair_sign + "_mu2probe_mu4_invw_num" + cat_suffix, df_role1_num, "invw_probe2",
             invw_var1Ds, invw_var2Ds, empty3D, true, {true, true, false});
 
-        // Numerator: pairs where pair passes mu4 (m1 OR m2), weighted by 1/ε_pair^{nc}
-        auto df_num = df_denom.Filter("m1.passmu4 || m2.passmu4");
-        FillHistogramsSingleDataFrame(pair_sign + "_pair_mu4_invw_num" + cat_suffix, df_num, "invw_pair",
+        // §3a: Single-muon role 2 — mu1 is probe (no trigger req on mu2)
+        auto df_role2 = node.Filter("valid1");
+        FillHistogramsSingleDataFrame(pair_sign + "_mu1probe_mu4_denom" + cat_suffix, df_role2, "",
+            invw_var1Ds, invw_var2Ds, empty3D, true, {true, true, false});
+        auto df_role2_num = df_role2.Filter("m1.passmu4");
+        FillHistogramsSingleDataFrame(pair_sign + "_mu1probe_mu4_invw_num" + cat_suffix, df_role2_num, "invw_probe1",
+            invw_var1Ds, invw_var2Ds, empty3D, true, {true, true, false});
+
+        // §3b: Cross-term — both pass mu4
+        auto df_cross_den = node.Filter("valid_both");
+        FillHistogramsSingleDataFrame(pair_sign + "_cross_mu4_denom" + cat_suffix, df_cross_den, "",
+            invw_var1Ds, invw_var2Ds, empty3D, true, {true, true, false});
+        auto df_cross_num = df_cross_den.Filter("m1.passmu4 && m2.passmu4");
+        FillHistogramsSingleDataFrame(pair_sign + "_cross_mu4_invw_num" + cat_suffix, df_cross_num, "invw_cross",
+            invw_var1Ds, invw_var2Ds, empty3D, true, {true, true, false});
+
+        // D6: Pair-level mu4 dR correction
+        auto df_pair_den = node.Filter("valid_both");
+        FillHistogramsSingleDataFrame(pair_sign + "_pair_mu4_denom" + cat_suffix, df_pair_den, "",
+            invw_var1Ds, invw_var2Ds, empty3D, true, {true, true, false});
+        auto df_pair_num = df_pair_den.Filter("m1.passmu4 || m2.passmu4");
+        FillHistogramsSingleDataFrame(pair_sign + "_pair_mu4_invw_num" + cat_suffix, df_pair_num, "invw_pair",
             invw_var1Ds, invw_var2Ds, empty3D, true, {true, true, false});
     };
 
@@ -469,6 +490,9 @@ void RDFBasedHistFillingPbPb::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies()
                 .Define("valid1", "effcy1 > 0")
                 .Define("valid2", "effcy2 > 0")
                 .Define("valid_both", "valid1 && valid2")
+                .Define("invw_probe1", "valid1 ? (double)(1.0f / effcy1) : 0.0")
+                .Define("invw_probe2", "valid2 ? (double)(1.0f / effcy2) : 0.0")
+                .Define("invw_cross", "valid_both ? (double)(1.0f / (effcy1 * effcy2)) : 0.0")
                 .Define("effcy_pair", "valid_both ? (double)(effcy1 + effcy2 - effcy1 * effcy2) : 0.0")
                 .Define("invw_pair", "valid_both ? (double)(1.0 / (effcy1 + effcy2 - effcy1 * effcy2)) : 0.0");
 
