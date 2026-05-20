@@ -71,6 +71,8 @@ void plot_dR_trig_corr() {
     };
 
     std::vector<TermDef> terms = {
+        {"_mu4_combined_invw_num",   "single-muon combined",   "dR_single_muon", 0.6, 1.6},
+        {"_cross_mu4_invw_num",      "cross-term",             "dR_cross_term",  0.6, 1.6},
         {"_pair_mu4_invw_num",       "pair-level",             "dR_pair_level",  0.6, 1.4}
     };
 
@@ -152,7 +154,7 @@ void plot_dR_trig_corr() {
         makePlots(label, suffix, "ctr_binned");
     }
 
-    // Pair-pT-binned dR corrections (DR_zoomin only)
+    // Pair-pT-binned dR corrections (DR_zoomin and DR full range)
     struct PtSliceDef {
         std::string suffix;
         std::string label;
@@ -164,60 +166,67 @@ void plot_dR_trig_corr() {
         {"_pt40_120", "40 < p_{T}^{pair} < 120 GeV"}
     };
 
+    struct DrRange { std::string var; double xmin, xmax; };
+    std::vector<DrRange> dr_ranges = {
+        {"DR_zoomin", 0.0, 0.8},
+        {"DR",        0.0, 5.75}
+    };
+
     auto makePtSlicePlots = [&](const std::string& ctr_label, const std::string& ctr_graph_suffix,
                                 const std::string& ctr_subdir) {
         for (const auto& sign : {"_op", "_ss"}) {
             std::string sign_label = (std::string(sign) == "_op") ? "OS" : "SS";
             for (const auto& term : terms) {
-                auto c = new TCanvas("c", "", 800, 600);
-                c->SetLeftMargin(0.12);
-                c->SetRightMargin(0.05);
-                auto frame = c->DrawFrame(0.0, term.ymin, 0.8, term.ymax);
-                frame->GetXaxis()->SetTitle("#DeltaR");
-                frame->GetYaxis()->SetTitle("#varepsilon_{#DeltaR} (inv-weighted ratio)");
+                for (const auto& dr : dr_ranges) {
+                    auto c = new TCanvas("c", "", 800, 600);
+                    c->SetLeftMargin(0.12);
+                    c->SetRightMargin(0.05);
+                    auto frame = c->DrawFrame(dr.xmin, term.ymin, dr.xmax, term.ymax);
+                    frame->GetXaxis()->SetTitle("#DeltaR");
+                    frame->GetYaxis()->SetTitle("#varepsilon_{#DeltaR} (inv-weighted ratio)");
 
-                auto leg = new TLegend(0.50, 0.15, 0.90, 0.45);
-                leg->SetBorderSize(0);
-                leg->SetFillStyle(0);
+                    auto leg = new TLegend(0.50, 0.15, 0.90, 0.45);
+                    leg->SetBorderSize(0);
+                    leg->SetFillStyle(0);
 
-                int colors[] = {kBlue, kRed, kGreen+2, kMagenta+1};
-                int markers[] = {20, 21, 22, 23};
-                bool any_drawn = false;
+                    int colors[] = {kBlue, kRed, kGreen+2, kMagenta+1};
+                    int markers[] = {20, 21, 22, 23};
+                    bool any_drawn = false;
 
-                for (int isl = 0; isl < (int)pt_slices.size(); isl++) {
-                    // Use year 25 (most stats) for pt-slice comparison
-                    std::string gname = "g_DR_zoomin" + std::string(sign) + term.graph_suffix + ctr_graph_suffix + pt_slices[isl].suffix + "_divided";
-                    auto g = (TGraphAsymmErrors*)files[25]->Get(gname.c_str());
-                    if (!g) { std::cerr << "WARNING: missing " << gname << std::endl; continue; }
-                    g->SetMarkerColor(colors[isl]);
-                    g->SetLineColor(colors[isl]);
-                    g->SetMarkerStyle(markers[isl]);
-                    g->SetMarkerSize(0.8);
-                    g->Draw("P same");
-                    leg->AddEntry(g, pt_slices[isl].label.c_str(), "lp");
-                    any_drawn = true;
+                    for (int isl = 0; isl < (int)pt_slices.size(); isl++) {
+                        std::string gname = "g_" + dr.var + std::string(sign) + term.graph_suffix + ctr_graph_suffix + pt_slices[isl].suffix + "_divided";
+                        auto g = (TGraphAsymmErrors*)files[25]->Get(gname.c_str());
+                        if (!g) { std::cerr << "WARNING: missing " << gname << std::endl; continue; }
+                        g->SetMarkerColor(colors[isl]);
+                        g->SetLineColor(colors[isl]);
+                        g->SetMarkerStyle(markers[isl]);
+                        g->SetMarkerSize(0.8);
+                        g->Draw("P same");
+                        leg->AddEntry(g, pt_slices[isl].label.c_str(), "lp");
+                        any_drawn = true;
+                    }
+
+                    if (!any_drawn) { delete c; continue; }
+
+                    auto line = new TLine(dr.xmin, 1.0, dr.xmax, 1.0);
+                    line->SetLineStyle(2);
+                    line->SetLineColor(kGray+2);
+                    line->Draw();
+                    leg->Draw();
+
+                    TLatex tex;
+                    tex.SetNDC();
+                    tex.SetTextSize(0.035);
+                    std::string header = "PbPb 2025, " + sign_label + ", " + term.label;
+                    if (!ctr_label.empty()) header += ", " + ctr_label;
+                    tex.DrawLatex(0.15, 0.88, header.c_str());
+
+                    std::string outdir = plot_base() + "pbpb_trigger_efficiency/mu4/" + term.subdir + "/combined/" + ctr_subdir;
+                    gSystem->mkdir(outdir.c_str(), true);
+                    std::string outname = outdir + "/" + dr.var + std::string(sign) + term.graph_suffix + ctr_graph_suffix + "_pt_slices.png";
+                    c->SaveAs(outname.c_str());
+                    delete c;
                 }
-
-                if (!any_drawn) { delete c; continue; }
-
-                auto line = new TLine(0.0, 1.0, 0.8, 1.0);
-                line->SetLineStyle(2);
-                line->SetLineColor(kGray+2);
-                line->Draw();
-                leg->Draw();
-
-                TLatex tex;
-                tex.SetNDC();
-                tex.SetTextSize(0.035);
-                std::string header = "PbPb 2025, " + sign_label + ", " + term.label;
-                if (!ctr_label.empty()) header += ", " + ctr_label;
-                tex.DrawLatex(0.15, 0.88, header.c_str());
-
-                std::string outdir = plot_base() + "pbpb_trigger_efficiency/mu4/" + term.subdir + "/combined/" + ctr_subdir;
-                gSystem->mkdir(outdir.c_str(), true);
-                std::string outname = outdir + "/DR_zoomin" + std::string(sign) + term.graph_suffix + ctr_graph_suffix + "_pt_slices.png";
-                c->SaveAs(outname.c_str());
-                delete c;
             }
         }
     };
