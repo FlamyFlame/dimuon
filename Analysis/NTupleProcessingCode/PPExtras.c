@@ -11,9 +11,11 @@ void PPExtras<Derived>::InitParamsExtra(){
         throw std::exception();
     }
 
-    int file_batch_max = (self().run_year == 24) ? 4 : 3;
-    if (self().file_batch <= 0 || self().file_batch > file_batch_max) {
-        std::cerr << "Error:: pp file_batch invalid! Must be 1-4 for 2024 data, 1-3 for 2017 data" << std::endl;
+    std::map<int, int> run_year_to_file_batch_max = {{17, 3}, {24, 7}};
+    if (self().file_batch <= 0 || self().file_batch > run_year_to_file_batch_max[self().run_year]) {
+        std::cerr << "Error:: pp file_batch invalid! Must be 1-"
+                  << run_year_to_file_batch_max[self().run_year]
+                  << " for 20" << self().run_year << " data" << std::endl;
         throw std::exception();
     }
 }
@@ -24,36 +26,14 @@ void PPExtras<Derived>::PerformTChainFill(){
 
     self().fChainRef() = new TChain("HeavyIonD3PD","HeavyIonD3PD");
     self().fChainRef()->SetMakeClass(1);
-    if (!self().isRun3){ //run2
-        std::string in_file = self().data_dir + "data_pp17_part" + std::to_string(self().file_batch) + ".root";
-        self().fChainRef()->Add(in_file.c_str());
-    }else{ //run3
-        switch (self().file_batch){
-        case 1:
-            self().fChainRef()->Add((self().data_dir + "data_pp24_part1.root").c_str());
-            break;
-        case 2:
-            self().fChainRef()->Add((self().data_dir + "data_pp24_part3/data_pp24_part3_1.root").c_str());
-            self().fChainRef()->Add((self().data_dir + "data_pp24_part3/data_pp24_part3_2.root").c_str());
-            self().fChainRef()->Add((self().data_dir + "data_pp24_part3/data_pp24_part3_3.root").c_str());
-            self().fChainRef()->Add((self().data_dir + "data_pp24_part3/data_pp24_part3_4.root").c_str());
-            self().fChainRef()->Add((self().data_dir + "data_pp24_part3/data_pp24_part3_5.root").c_str());
-            self().fChainRef()->Add((self().data_dir + "data_pp24_part3/data_pp24_part3_6.root").c_str());
-            break;
-        case 3:
-            self().fChainRef()->Add((self().data_dir + "data_pp24_part2/data_pp24_part2_1.root").c_str());
-            self().fChainRef()->Add((self().data_dir + "data_pp24_part2/data_pp24_part2_2.root").c_str());
-            self().fChainRef()->Add((self().data_dir + "data_pp24_part2/data_pp24_part2_4.root").c_str());
-            self().fChainRef()->Add((self().data_dir + "data_pp24_part2/data_pp24_part2_5.root").c_str());
-            self().fChainRef()->Add((self().data_dir + "data_pp24_part2/data_pp24_part2_6.root").c_str());
-            self().fChainRef()->Add((self().data_dir + "data_pp24_part2/data_pp24_part2_8.root").c_str());
-            break;
-        case 4:
-            self().fChainRef()->Add((self().data_dir + "data_pp24_part2/data_pp24_part2_3.root").c_str());
-            self().fChainRef()->Add((self().data_dir + "data_pp24_part2/data_pp24_part2_7.root").c_str());
-            break;
-        default:
-            throw std::runtime_error("Run3 file batch invalid/unspecified: have to be between 1 and 4. No result gets run.");
-        }
+
+    std::string file_path = self().data_dir + "data_pp" + std::to_string(self().run_year)
+                          + "_part" + std::to_string(self().file_batch) + ".root";
+
+    if (!gSystem->AccessPathName(file_path.c_str())) {
+        self().fChainRef()->Add(file_path.c_str());
+    } else {
+        std::cerr << "File does not exist: " << file_path << std::endl;
+        throw std::exception();
     }
 }
