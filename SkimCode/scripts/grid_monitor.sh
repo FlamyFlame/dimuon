@@ -225,7 +225,54 @@ check_proxy() {
 	return 0
 }
 
+# ── Recursive chunked hadd ──────────────────────────────────────────────────
+# Merges an array of ROOT files into one output. If direct hadd fails,
+# recursively splits into halves until chunks are small enough (≤50 files).
+RECURSIVE_HADD_CHUNK=50
+recursive_hadd() {
+	local output="$1"; shift
+	local files=("$@")
+	local n=${#files[@]}
+	local label="${output##*/}"
+
+	# Small enough to merge directly (no fallback)
+	if (( n <= RECURSIVE_HADD_CHUNK )); then
+		hadd -f "$output" "${files[@]}" >> "$STATUS_LOG" 2>&1
+		return $?
+	fi
+
+	# Try direct hadd first
+	if hadd -f "$output" "${files[@]}" >> "$STATUS_LOG" 2>&1; then
+		return 0
+	fi
+
+	# Direct hadd failed — split and recurse
+	rm -f "$output"
+	log_status "  recursive_hadd: splitting $n files for $label"
+	local mid=$(( n / 2 ))
+	local tmp_a="${output%.root}_chunka.root"
+	local tmp_b="${output%.root}_chunkb.root"
+
+	if ! recursive_hadd "$tmp_a" "${files[@]:0:$mid}"; then
+		rm -f "$tmp_a"
+		return 1
+	fi
+	if ! recursive_hadd "$tmp_b" "${files[@]:$mid}"; then
+		rm -f "$tmp_a" "$tmp_b"
+		return 1
+	fi
+
+	if ! hadd -f "$output" "$tmp_a" "$tmp_b" >> "$STATUS_LOG" 2>&1; then
+		log_error "  recursive_hadd: final merge failed for $label"
+		rm -f "$tmp_a" "$tmp_b" "$output"
+		return 1
+	fi
+	rm -f "$tmp_a" "$tmp_b"
+	return 0
+}
+
 # ── Download + hadd + validate for one task ──────────────────────────────────
+# Split into two phases so retries only repeat hadd, never re-download.
 process_task() {
 	local tid="$1"
 	local outds="$2"
@@ -253,7 +300,7 @@ process_task() {
 		mv "$output_file" "$bak"
 	fi
 
-	# Download
+	# ── Phase 1: Download (runs once; rucio skips already-downloaded files) ──
 	log_status "task $tid: downloading $outds → $target_subdir/"
 	if ! rucio download --dir "$target_dir" "$rucio_did" 2>&1 | tee -a "$STATUS_LOG"; then
 		log_error "task $tid: rucio download failed for $outds"
@@ -277,39 +324,13 @@ process_task() {
 	pre_count=$(count_entries_chain "${roots[@]}")
 	log_status "task $tid: pre-merge entries = $pre_count"
 
-	# hadd — with half-merge fallback for large datasets
+	# ── Phase 2: hadd (recursive splitting handles large datasets) ──────────
 	log_status "task $tid: hadd (${#roots[@]} files) → $output_name.root"
-	if ! hadd -f "$output_file" "${roots[@]}" >> "$STATUS_LOG" 2>&1; then
-		log_status "task $tid: single hadd failed, trying half-merge fallback..."
+	rm -f "$output_file"
+	if ! recursive_hadd "$output_file" "${roots[@]}"; then
+		log_error "task $tid: hadd FAILED"
 		rm -f "$output_file"
-		local n=${#roots[@]}
-		local mid=$(( n / 2 ))
-		local half1=("${roots[@]:0:$mid}")
-		local half2=("${roots[@]:$mid}")
-		local tmp_a="${target_dir}/.tmp_merge_${tid}_a.root"
-		local tmp_b="${target_dir}/.tmp_merge_${tid}_b.root"
-
-		log_status "task $tid: hadd half-A (${#half1[@]} files)"
-		if ! hadd -f "$tmp_a" "${half1[@]}" >> "$STATUS_LOG" 2>&1; then
-			log_error "task $tid: half-A hadd failed"
-			rm -f "$tmp_a"
-			return 1
-		fi
-
-		log_status "task $tid: hadd half-B (${#half2[@]} files)"
-		if ! hadd -f "$tmp_b" "${half2[@]}" >> "$STATUS_LOG" 2>&1; then
-			log_error "task $tid: half-B hadd failed"
-			rm -f "$tmp_a" "$tmp_b"
-			return 1
-		fi
-
-		log_status "task $tid: hadd halves → final output"
-		if ! hadd -f "$output_file" "$tmp_a" "$tmp_b" >> "$STATUS_LOG" 2>&1; then
-			log_error "task $tid: final merge of halves failed"
-			rm -f "$tmp_a" "$tmp_b" "$output_file"
-			return 1
-		fi
-		rm -f "$tmp_a" "$tmp_b"
+		return 1
 	fi
 
 	# Count entries after merge
@@ -569,29 +590,12 @@ while true; do
 
 		log_status "Claimed task $claimed_tid -> $outds"
 
-		# Download, hadd, validate — retry up to 3 times on transient failures
-		max_attempts=3
-		attempt=0
-		success=false
-		while (( attempt < max_attempts )); do
-			attempt=$((attempt + 1))
-			log_status "  Attempt $attempt/$max_attempts for task $claimed_tid"
-			if process_task "$claimed_tid" "$outds"; then
-				success=true
-				break
-			fi
-			if (( attempt < max_attempts )); then
-				log_status "  Attempt $attempt failed. Waiting 60s before retry..."
-				sleep 60
-			fi
-		done
-
-		if [[ "$success" == "true" ]]; then
+		if process_task "$claimed_tid" "$outds"; then
 			set_task_state_if "$claimed_tid" "downloading" "completed"
 			log_status "Task $claimed_tid: COMPLETED successfully."
 		else
 			set_task_state_if "$claimed_tid" "downloading" "failed"
-			log_error "task $claimed_tid: FAILED after $max_attempts attempts."
+			log_error "task $claimed_tid: FAILED."
 		fi
 
 		print_summary
