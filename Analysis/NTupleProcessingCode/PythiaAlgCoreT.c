@@ -62,14 +62,7 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_PythiaCore() {
                 + ") is out of range [0," + std::to_string(nKinRanges) + ").");
 
         if (getUseLocal()) {
-            if (std::abs(self().E_COM - 5.02) > 0.01) {
-                throw std::runtime_error("PythiaAlgCoreT (non-private): useLocal=true is only supported for 5.02 TeV.");
-            }
-            if (kn_batch != 3) {
-                throw std::runtime_error(
-                    "PythiaAlgCoreT (non-private): local file does not exist for this kn batch. "
-                    "Use the 40-70 GeV kn batch (kn=3) when useLocal=true.");
-            }
+            // Local mode reads from dcachearea (all kn, both 5.02 and 5.36 TeV)
         }
 
         std::cout << "PythiaAlgCoreT: useLocal=" << getUseLocal() << ", input_dir=" << py_dir << std::endl;
