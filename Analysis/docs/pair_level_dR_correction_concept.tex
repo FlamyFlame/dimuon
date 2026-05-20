@@ -31,13 +31,18 @@ The denominator includes all pairs (no trigger requirement); the numerator count
 
 If the no-correlation assumption held exactly and the inverse weighting were unbiased, $R(\Delta R) = 1$ everywhere. In practice, $R$ is flat at large $\Delta R$ but deviates from unity at small $\Delta R$ where trigger-object overlap suppresses the firing probability.
 
-\subsection*{Normalization bias and plateau normalization}
+\subsection*{Why per-event inverse weighting}
 
-The flat-region value of $R$ is systematically $> 1$ because the expectation value of the inverse weight is biased:
+An averaged correction---dividing by $\langle\varepsilon_{\text{pair}}^{\text{nc}}\rangle$ per $\Delta R$ bin---would leave the result entangled with the single-muon kinematic composition of each bin. Per-event inverse weighting avoids this: each pair's expected numerator contribution is
 \begin{equation}
-  E\!\left[\frac{1}{\varepsilon_{\text{pair}}^{\text{nc}}}\right] > \frac{1}{E[\varepsilon_{\text{pair}}^{\text{nc}}]}\,,
+  E\!\left[\frac{\mathbf{1}[\text{fires}]}{\varepsilon_{\text{pair}}^{\text{nc}}}\right]
+  = \frac{\varepsilon_{\text{pair}}^{\text{true}}}{\varepsilon_{\text{pair}}^{\text{nc}}} \,,
 \end{equation}
-by Jensen's inequality (since $1/x$ is convex). This offset depends on the spread of $\varepsilon_{\text{pair}}^{\text{nc}}$ across the event sample and is therefore $p_T$- and centrality-dependent.
+which equals unity when the estimated efficiency matches the true one, \emph{regardless} of the kinematic distribution. The measurement is thus decorrelated from single-muon $p_T$ and $\eta$.
+
+\subsection*{Large-$\Delta R$ offset and plateau normalization}
+
+In practice, the flat-region value of $R$ is systematically $> 1$ ($\sim 1.2$). Since per-event weighting removes kinematic bias by construction, this offset reflects a systematic underestimate of $\varepsilon_{\text{pair}}^{\text{nc}}$ by the fitted parametrization (i.e.\ $\varepsilon^{\text{fit}} < \varepsilon^{\text{true}}$, so $\varepsilon^{\text{true}}/\varepsilon^{\text{fit}} > 1$). The bias is largest at low $p_T$ where the Fermi turn-on fit is most strained, consistent with the observed $p_T$- and centrality-dependence of the offset.
 
 Since the physics of interest is the $\Delta R$ \emph{shape}---not the absolute scale---we extract the error-weighted plateau $\bar{R}$ from the flat region ($1.0 < \Delta R < 3.0$) and define the correction factor:
 \begin{equation}

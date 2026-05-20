@@ -411,7 +411,9 @@ Per-muon `m1/m2.passmu4noL1` is always false in current ntuples. Bug in `DimuonD
   - pT-sliced dR: 8-12 GeV has largest offset (~1.2) and strongest dR structure; 40-120 GeV nearly flat ~1.07.
   - Full-range DR: peaks at dR ~ 1.5, consistent shape across all years.
   - Comparison: pair-level overall ratio (1.21) lower than old single-muon (1.24) and cross-term (1.26).
-- **Interpretation:** Flat offset is kinematic selection bias (E[1/ε_pair | selected] = 1/P(pair passes) > 1).
+- **Interpretation:** Per-event inverse weighting decorrelates the measurement from single-muon kinematics
+  (each event's expected contribution is ε_true/ε_fit, which equals 1 when the fit is exact). The flat offset
+  (~1.2) reflects systematic underestimation of efficiency by the Fermi+log fit, especially near threshold.
   Physical signal is the dR shape: ~10% pair trigger suppression at small dR relative to large-dR plateau.
 
 ### 2026-05-19: Step 15 complete — Full-range DR×pT 2D hists + plateau normalization
@@ -429,7 +431,7 @@ Per-muon `m1/m2.passmu4noL1` is always false in current ntuples. Bug in `DimuonD
   - 20-40 GeV plateau=1.076, after norm: ~0.99, nearly flat
   - All pT slices collapse to ~1.0 with pT-binned normalization — dR suppression is ~5-8% at small dR
 - Plateau values are centrality-dependent: 0-5%=1.312, 10-20%=1.239, 30-50%=1.154, 50-80%=1.132
-  (higher centrality → higher combinatorial background → larger kinematic selection bias)
+  (higher centrality → softer pT spectrum → larger fit underestimate near threshold → larger offset)
 
 ### 2026-05-19: Step 16 complete — PbPb 2023 ntuple reprocessing + full re-pipeline
 - Condor schedd unavailable on attsub06; ran parts 2-4 locally (640+621+122 = 1383s total)
