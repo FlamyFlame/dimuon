@@ -1,0 +1,93 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\pagestyle{empty}
+
+\begin{document}
+
+\section*{Pair-level $\Delta R$ trigger efficiency correction}
+We want to evaluate the probability that a muon pair passes the HLT\_MU4\_L1MU3V trigger. 
+
+\subsection*{Single-muon efficiency}
+
+Before we evaluate the probability of a pair passing the single-muon mu4 trigger, it's easy to evaluate P[a single muon passes mu4].
+
+The single-muon mu4 firing probability $\varepsilon(p_T, q\!\cdot\!\eta)$ is measured via tag-and-probe on muon pairs with $\Delta R > 0.8$, where proximity effects are negligible. I.e, 
+\begin{equation}
+    \varepsilon_2 (p_{T2}, q_2 \cdot \eta_2) = \textrm{P[2nd muon fires mu4] = P[2mu4}\ |\ \textrm{1st muon fires mu4 \&\& dR} > 0.8]
+\end{equation}
+
+The efficiency is extracted per centrality bin, fitted as a function of $p_T$ with a Fermi$+$log parametrization in each $q\!\cdot\!\eta$ slice.
+
+\subsection*{Pair-level no-correlation efficiency}
+
+Assuming the two muons fire independently (valid at large $\Delta R$), the probability that at least one muon in a pair fires mu4 is:
+\begin{equation}
+    \begin{split}
+        &\ \ \ \ \textrm{P[a muon pair passes mu4, assuming no correlation]} \\
+        &= \textrm{P[1st muon passes mu4] + P[2nd muon passes mu4] - P[1st muon passes mu4 \&\& 2nd muon passes mu4]}\\
+        &= \textrm{P[1st muon passes mu4] + P[2nd muon passes mu4] - P[1st muon passes mu4]} \times \textrm{P[2nd muon passes mu4]}\\
+    \end{split}
+\end{equation}
+
+The cross term can be factorized into a product of single-muon mu4 trigger efficiencies due to the no-correlation assumption. In short,
+
+\begin{equation}\label{Eq: no corr pair effcy}
+  \varepsilon_{\text{pair}}^{\text{nc}} = \varepsilon_1 + \varepsilon_2 - \varepsilon_1\,\varepsilon_2\,,
+\end{equation}
+where $\varepsilon_i \equiv \varepsilon(p_{T,i},\, q_i\!\cdot\!\eta_i)$ are the single-muon efficiencies evaluated at each muon's kinematics.
+
+\subsection*{Inverse-weighted $\Delta R$ ratio}
+
+We assume that the pair correlation can be factored out as a ($\Delta R$, pair $p_{T}$) dependent factor multiplied to the no correlation pair efficiency. I.e,
+\begin{equation}
+    \varepsilon_{\text{pair}} = \varepsilon_{\text{pair}}^{\text{nc}}\;\times\;\varepsilon_{\Delta R}^{\text{corr}}(\Delta R,\ p_T^{\textrm{pair}})\,.
+\end{equation}
+
+where the no-correlation pair efficiency gets corrected by the $\varepsilon_{\Delta R}^{\text{corr}}$ factor.
+
+To isolate the $\Delta R$-dependent deviation from the no-correlation assumption, we form the ratio:
+\begin{equation}
+  R(\Delta R) = \frac{\displaystyle\sum_{\text{pairs},\;\Delta R\,\in\,\text{bin}}
+    \frac{\mathbf{1}[\text{pair fires mu4}]}{\varepsilon_{\text{pair}}^{\text{nc}}}}
+    {\displaystyle\sum_{\text{pairs},\;\Delta R\,\in\,\text{bin}} 1}\,.
+\end{equation}
+Note that $ R(\Delta R)$ can be generalized to $ R(\Delta R, p_T^{\text{pair}})$ to include pair pT dependence as well.
+
+Here, the denominator includes all pairs (no trigger requirement); the numerator counts pairs where at least one muon passes mu4, each weighted by $1/\varepsilon_{\text{pair}}^{\text{nc}}$. {\color{blue}Note that in reality, since the dimuon events are selected by the mu4 trigger, all pairs enter the numerator as well (with the $1/\varepsilon_{\text{pair}}^{\text{nc}}$ not applied to the denominator). In fact, we suspect that the unexpected behavior we observe is due to the fact that the \textbf{sample used to evaluate mu4 trigger efficiencies} is itself selected by mu4. I.e, mu4 trigger serves both as the probe \& supporting trigger, which can introduce a bias even if the procedure is correct.}
+
+If the no-correlation assumption held exactly and the inverse weighting were unbiased, $R(\Delta R) = 1$ everywhere. Alternatively, if our factorization assumption holds and the inverse weighting procedure with the sample choise is exactly valid, $R(\Delta R,\ p_T^{\textrm{pair}}) = \varepsilon_{\Delta R}^{\text{corr}}(\Delta R,\ p_T^{\textrm{pair}})$ should give the correction term: $R$ should sit flatly about 1 at large $\Delta R$ (at scale $>$ 0.8) but deviates from unity at small $\Delta R$ where trigger-object overlap either suppresses or enhances the firing probability.
+
+\subsection*{Normalization bias and plateau normalization}
+However, we observe that $R$ at large $\Delta R$ is mostly flat but sits systematically $> 1$. Below shows the $R(\Delta R)$ value in 10-20\% centrality bin for same-sign (left) and opposite-sign (right) pairs.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.48\textwidth]{plots/DR_fullrange_ss_pair_ctr10_20.png}
+\hfill
+\includegraphics[width=0.48\textwidth]{plots/DR_fullrange_op_pair_ctr10_20.png}
+\end{figure}
+
+While this is not understood yet and may indicate {\color{red}a sample bias, procedure invalidaty or pT fitting issues (undershoot) for single-muon mu4 efficiency}, since the most informative is $\Delta R$ \emph{shape}---not the absolute scale-- one workaround is to extract the error-weighted plateau $\bar{R}$ from the flat region ($1.0 < \Delta R < 3.0$) and define the correction factor:
+\begin{equation}
+  \varepsilon_{\Delta R}^{\text{corr}}(\Delta R) = \frac{R(\Delta R)}{\bar{R}}\,.
+\end{equation}
+In this way, we force the large $\delta R$ plateau of $\varepsilon_{\Delta R}^{\text{corr}}(\Delta R)$ to sit at 1.
+
+The full pair-level trigger efficiency applied to the data is then:
+\begin{equation}
+  P(\text{pair fires mu4}\mid\Delta R,\ p_T^{\textrm{pair}}) = \varepsilon_{\text{pair}}^{\text{nc}}\;\times\;\varepsilon_{\Delta R}^{\text{corr}}(\Delta R,\ p_T^{\textrm{pair}})\,.
+\end{equation}
+
+\subsection*{Alternative formulations \& Concerns}
+Looking back at the no-correlation, pair-level efficiency Eq.~\ref{Eq: no corr pair effcy}, the single-muon term $\varepsilon_{1,2}$ may have a different $\Delta R$ difference to the cross term: in particular,
+\begin{itemize}
+    \item for the single muon in a pair efficiency term, P[a muon fires mu4 $\mid$ another offline muon exists at $\Delta R$ away] $= \varepsilon_{i} \times \varepsilon^{\textrm{corr}}_{\textrm{single muon}}$ may have a very small positive correction at small $\Delta R$, and minimal/no correction beyond: when the two muons are very close, only one of them needs to fire the L1 ROI: given the limited L1 resolution, the chance of one of the two muons firing is higher than for a muon in a well-separated pair. This small correction should occur at $\Delta R \sim$ the scale of L1 resolution.
+    \item For the cross term P[1st \&\& 2nd muon both fires mu4 $\mid\Delta R$] = $\varepsilon_{1} \varepsilon_{2} \times \varepsilon^{\textrm{corr}}_{\textrm{cross}}$, where the correction term is exactly that of the 2mu4 trigger: we expect a negative correlation at small $\Delta R$ due to the L1 resolution (and possibly a small impact from HLT too, especially in the central-to-endcap gap regions).
+\end{itemize}
+While for the dimuon triggers (2mu4 and mu4\_mu4noL1), the pair-level correction factor procedure is more valid, for the dimuon single mu4 trigger efficiency, we may need to evaluate the correction terms for the single muon and the cross term separately.
+
+Besides, on the issue of bias coming from mu4 serving both as the supporting (sample selecting) trigger and the probe trigger we evaluate efficiency for, we may need to skim CC and PC streams to use minbias triggers as a supporting trigger for mu4 efficiency evaluation. However, a key issue for the MB-supporting-trigger approach: probably not enough dimuon pairs; still need to find out how to do the inverse weighting using the mu4-triggered sample without bias
+\end{document}
