@@ -11,7 +11,7 @@ void PPExtras<Derived>::InitParamsExtra(){
         throw std::exception();
     }
 
-    std::map<int, int> run_year_to_file_batch_max = {{17, 3}, {24, 7}};
+    std::map<int, int> run_year_to_file_batch_max = {{17, 3}, {24, 12}};
     if (self().file_batch <= 0 || self().file_batch > run_year_to_file_batch_max[self().run_year]) {
         std::cerr << "Error:: pp file_batch invalid! Must be 1-"
                   << run_year_to_file_batch_max[self().run_year]
