@@ -1,6 +1,6 @@
 #include"TrigEffPlotterPbPb.cxx"
 
-void trig_effcy_plot_pbpb(){
+void trig_effcy_plot_PbPb(int run_year = 23){
     std::vector<std::string> var1Ds = {"Deta", "Deta_zoomin", "Dphi", "Dphi_zoomin", "DR", "DR_zoomin", "DR_0_2", "minv_zoomin", "pair_pt_log"};
     std::vector<std::string> var2Ds = {
                                         //"DR_zoomin_vs_pt2nd", "DR_0_2_vs_pt2nd", "pair_eta_vs_pair_pT", "Deta_Dphi", "eta1_eta2", "eta_avg_Deta", "eta_avg_Dphi", "minv_pair_pt_log",
@@ -70,7 +70,7 @@ void trig_effcy_plot_pbpb(){
     // only draw single-b for weighted trigger efficiency, showing dR corrections & its influence on other observables
     // never for single-muon efficiencies (single-b gives a biased sample)
     bool draw_single_b = (std::find(filters.begin(), filters.end(), "_inv_w_by_single_mu_effcy") != filters.end());
-    TrigEffPlotterPbPb plotter(23, var1Ds, "include_upc", false, true,
+    TrigEffPlotterPbPb plotter(run_year, var1Ds, "include_upc", false, true,
                            filters, logaxes,
                            var2Ds, var2DsProf,
                            legSigned, legSignal, legOpSig,
