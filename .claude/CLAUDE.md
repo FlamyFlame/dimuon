@@ -6,7 +6,7 @@
 
 ## Tracking Documents
 
-**INVARIANT:** For every active tracking doc, every step MUST: (1) write plan to Latest Stage BEFORE work, (2) verify against Physics Procedure, (3) append results to Progress Log AFTER work, with physics motivation where applicable. No exceptions, including after compaction.
+**INVARIANT:** For every active tracking doc, every step MUST: (1) write plan to Latest Stage BEFORE work, (2) verify against Physics Procedure, (3) append results to Progress Log AFTER work, with physics motivation where applicable. No exceptions, including after compaction. **First action in any conversation or after compaction MUST be reading all active tracking docs — no code changes, no tool calls (other than Read), no planning until this is done.**
 
 Create a tracking doc when: (a) investigating an unknown root cause with
 multiple hypotheses, or (b) the user requests documentation for a new
@@ -92,6 +92,12 @@ the Per-step protocol and INVARIANT above. For implementation docs,
 re-read the Physics Procedure section first. The doc is ground truth — if
 conversation history or compaction summaries conflict, trust the doc.
 
+**How to detect compaction:** If you cannot recall reading the tracking
+doc's full text in this conversation (i.e., there is no Read tool call
+for it in your visible history), treat it as a compaction event and
+re-read before proceeding. When in doubt, re-read — reading the doc is
+cheap, skipping it risks contradicting the Physics Procedure.
+
 **Completion:** Write final summary, clear Latest Stage, remove from Active
 Tracking Docs.
 
@@ -117,8 +123,11 @@ When the user asks to write, modify, or fix C++/ROOT/RDF analysis code → invok
 When the user asks to investigate a discrepancy, debug, or understand an unexpected result → invoke `/review-investigation`
 When the user asks to write or edit an internal note section → invoke `/review-note`
 When the user asks to write or polish paper text for publication → invoke `/review-paper`
+When the user asks to review, audit, or validate a Claude Code plugin or skill → invoke `/review-plugin`
 
 ## Active Tracking Docs
 
-- `Analysis/docs/tracking/mu4_trig_effcy_implementation.md` — MU4 trigger efficiency: 3-pipeline separation, no-corr efficiency, inverse-weighted dR corrections
-- `Analysis/docs/tracking/mu4_trig_effcy_investigation.md` — Investigation: Pipeline 3 physics procedure bugs, plot directory structure, isBNL toggle
+- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/mu4_trig_effcy_implementation.md` — MU4 trigger efficiency: 3-pipeline separation, no-corr efficiency, inverse-weighted dR corrections
+- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/mu4_trig_effcy_investigation.md` — Investigation: Pipeline 3 physics procedure bugs, plot directory structure, isBNL toggle
+- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/grid_monitor_data_infra.md` — Grid monitoring: parallel download, recursive hadd, chunked fallback with auto code/sub updates
+- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/localgroupdisk_migration.md` — Migrate ~1.4 TB from personal pnfs to BNL-OSG2_LOCALGROUPDISK; symlink swap for transparent analysis access

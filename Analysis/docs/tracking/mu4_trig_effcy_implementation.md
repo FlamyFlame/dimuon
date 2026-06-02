@@ -195,6 +195,21 @@ inconsistency for 2023 and simplifies the analysis.
 **Old:** `use_mu6_for_trg_eff = (isPbPb && run_year == 23) || (!isPbPb && run_year == 24)`.
 **New:** `use_mu6_for_trg_eff = false; use_mu8_for_trg_eff = false;` (all years).
 
+### D8: Switch useCoarseQEtaBin default from true to false (2026-05-28)
+**Physics (§Pipeline 2, §3a):** The pT turn-on fitter produces fits in fine q-eta bins.
+EvaluateSingleMuonEffcyPtFitted looks up TF1s by fine q-eta bin index. The TH2D fallback
+for gap regions also lives in the fine-binned histogram file. With useCoarseQEtaBin=true,
+OpenEffcyPtFitFile was loading the TH2D fallback from the coarse file, creating an
+inconsistency: TF1s keyed to fine bins but fallback histograms from coarse binning.
+Switching the default to false makes all downstream readers (OpenEffcyPtFitFile,
+TrigEffPlotterPbPb, TrigEffPlotterPP, plot_dR_trig_corr.C, plateau_normalize_dR_corr.C,
+both pipeline scripts, crossx plotter candidate list) consistent with the fitter's
+fine-binned output.
+**Old:** `useCoarseQEtaBin = true` in RDFBasedHistFillingData.h; downstream readers
+defaulted to coarse.
+**New:** `useCoarseQEtaBin = false` in RDFBasedHistFillingData.h; all downstream readers
+updated to use fine binning.
+
 ### D5: Use mu4-only fits for inverse weighting (2026-05-18)
 **Physics (§Pipeline 2):** The no-correlation efficiency is measured as P(2mu4 | mu4, dR > 0.8), which gives the single-muon mu4 efficiency. The TF1 keys contain "2mu4" because of how Pipeline 2 labels the conditional probability, but the physical quantity is ε^{nc}(mu4). mu4_mu4noL1 fits are unconstrained (skimming bug).
 **Note on naming:** Code suffixes for Pipeline 3 should use `_mu4_`, not `_2mu4_`, to reflect the physics (mu4 dR correction). The "2mu4" label in TF1 keys is a Pipeline 2 naming convention, not the physics of Pipeline 3.
@@ -298,6 +313,27 @@ Status: DONE (parts 2-4; part 1 raw data missing)
 - Reran Pipeline 2 (coarse), pT fitting, Pipeline 3, plotter, plateau normalization.
 - **Key change:** PbPb 2023 plateau increased 1.222→1.285 (OS, ctr-int) due to mu6 removal + new skim.
 
+### Step 17: Expand pipeline script with stages 5-10 — per §Pipeline 2, §3a
+Status: DONE
+Files: pipelines/pipeline_pbpb_trig_eff.sh
+Scope:
+- Added stages 5-8 (Pipeline 2): RDF hist filling (fine q-eta), pT fitting, fit/TH2D validation, plotting
+- Added stages 9-10 (Pipeline 3): inv_weight hist filling, dR correction plotting + plateau normalization
+- Added RDF_NTHREADS env var (default 2)
+- Full end-to-end automation from condor submit through final plots
+
+### Step 18: Switch useCoarseQEtaBin default to false — per D8
+Status: DONE
+Files: RDFBasedHistFillingData.h, OpenEffcyPtFitFile (PbPb/PP), TrigEffPlotterPbPb, TrigEffPlotterPP, plot_dR_trig_corr.C, plateau_normalize_dR_corr.C, pipeline scripts, crossx plotter candidate list
+Scope:
+- Changed default in RDFBasedHistFillingData.h from true to false
+- Updated all downstream readers to be consistent with fine binning
+- Rationale: fitter output is fine-binned; coarse default caused TH2D fallback file mismatch (see D8)
+
+### Step 19: Re-run Pipeline 2 + Pipeline 3 with fine q-eta default
+Status: IN PROGRESS (SKIP_CONDOR=1, reusing existing ntuples)
+Files: All Pipeline 2 + Pipeline 3 outputs for PbPb 23/24/25
+
 ## Progress Log
 
 ### 2026-05-18: Initial setup
@@ -366,6 +402,22 @@ Per-muon `m1/m2.passmu4noL1` is always false in current ntuples. Bug in `DimuonD
 
 ### PbPb25 mu4_mu4noL1 anomaly
 `passmu4mu4noL1` is only 2.4% for PbPb25 vs ~70–80% for PbPb23/24. Likely different trigger menu or prescale. Separate issue from the passmu4noL1 skimming bug.
+
+### 2026-05-28: Steps 17-19 — Pipeline script expansion + coarse-to-fine fix
+- **Step 17:** Expanded `pipelines/pipeline_pbpb_trig_eff.sh` with stages 5-10:
+  stages 5-8 cover Pipeline 2 (RDF hist filling with fine q-eta, pT fitting, fit/TH2D
+  validation, P2 plotting); stages 9-10 cover Pipeline 3 (inv_weight hist filling,
+  dR correction plotting + plateau normalization). Added `RDF_NTHREADS` env var
+  (default 2; 8 needs ~48 GB RAM).
+- **Step 18 (D8):** Changed `useCoarseQEtaBin` default from `true` to `false` in
+  `RDFBasedHistFillingData.h`. Root cause: the fitter produces TF1s keyed by fine q-eta
+  bin, and `EvaluateSingleMuonEffcyPtFitted` uses fine q-eta ranges, but
+  `OpenEffcyPtFitFile` was loading the TH2D fallback from the coarse-binned file when
+  `useCoarseQEtaBin=true`. All downstream readers updated: OpenEffcyPtFitFile (PbPb/PP),
+  TrigEffPlotterPbPb, TrigEffPlotterPP, plot_dR_trig_corr.C, plateau_normalize_dR_corr.C,
+  both pipeline scripts, crossx plotter candidate list.
+- **Step 19:** Re-running all Pipeline 2 + Pipeline 3 steps with SKIP_CONDOR=1 using
+  the new fine default. In progress.
 
 ## Progress Log (cont.)
 
@@ -454,21 +506,28 @@ Per-muon `m1/m2.passmu4noL1` is always false in current ntuples. Bug in `DimuonD
 
 ## Latest Stage
 
-**Steps 15-16 DONE.**
+**Steps 17-18 DONE. Step 19 IN PROGRESS.**
 
-### Step 15-16 summary
-- Added full-range DR×pair_pt_log 2D hists. Plateau normalization in 2 modes (pT-int, pT-binned).
-- PbPb 2023 reprocessed with mu6/mu8 disabled (parts 2-4; part 1 raw data missing).
-- New skim → 1.3M entries (10x previous). Full pipeline re-run: Pipeline 2 + fitting + Pipeline 3.
-- All 3 years show consistent ~10-13% dR suppression at small dR after plateau normalization.
-- Plateau values (OS, ctr-int): yr23=1.285, yr24=1.208, yr25=1.232.
+### Step 17-18 summary
+- **Step 17:** Expanded `pipelines/pipeline_pbpb_trig_eff.sh` with stages 5-10 (P2: RDF hist
+  filling, pT fitting, fit/TH2D validation, plotting; P3: inv_weight hist filling, dR plots +
+  plateau normalization). Added `RDF_NTHREADS` env var.
+- **Step 18 (D8):** Switched `useCoarseQEtaBin` default from `true` to `false` in
+  `RDFBasedHistFillingData.h`. Fixed TH2D fallback file mismatch: fitter output is fine-binned
+  but OpenEffcyPtFitFile was loading coarse-binned TH2D fallback. All downstream readers updated.
 
-**After state:**
+### Step 19: Re-run with fine q-eta default (IN PROGRESS)
+- Re-running all Pipeline 2 + Pipeline 3 steps for PbPb 23/24/25 with SKIP_CONDOR=1
+- Using new fine q-eta default throughout
+- Files involved: all RDF hist filling outputs, pT fit outputs, dR correction outputs
+
+**After state (from Steps 15-16, still current):**
 - PbPb.cxx + PP.cxx: pair-level fill with 2D {DR_zoomin, pair_pt_log} AND {DR, pair_pt_log}
 - Data.cxx: MakeAndWriteDRTrigEffGraphsHelper produces 1D ratios + pair-pT-sliced dR projections (both DR and DR_zoomin)
 - plot_dR_trig_corr.C: plots pair-level term + pair-pT-sliced overlay (unnormalized)
 - plateau_normalize_dR_corr.C: plateau-normalized versions (2 modes)
 - DimuonDataAlgCoreT.c: mu6/mu8 disabled
+- **useCoarseQEtaBin now defaults to false** — all Pipeline 2/3 code and scripts use fine q-eta
 - Note: ratio_divide_and_write uses "B" (binomial) errors — central values OK, errors approximate
 
 ## Potential Issues
