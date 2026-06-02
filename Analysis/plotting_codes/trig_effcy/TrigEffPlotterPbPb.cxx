@@ -12,7 +12,7 @@ void TrigEffPlotterPbPb::configureDataFiles(int runYear)
     int yr = runYear % 2000;
     std::string yr_str = std::to_string(yr);
     data_dir = base + "pbpb_20" + yr_str + "/";
-    fname_single_mu4 = data_dir + "histograms_real_pairs_pbpb_20" + yr_str + "_single_mu4_coarse_q_eta_bin.root";
+    fname_single_mu4 = data_dir + "histograms_real_pairs_pbpb_20" + yr_str + "_single_mu4_fine_q_eta_bin.root";
     fname_MB         = data_dir + "histograms_real_pairs_pbpb_20" + yr_str + "_MB.root";
     plot_base_dir    = base + "plots/pbpb_trigger_efficiency/mu4/no_corr/pbpb" + yr_str;
 }

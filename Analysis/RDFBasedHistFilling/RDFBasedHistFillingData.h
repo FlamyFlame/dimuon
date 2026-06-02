@@ -154,7 +154,7 @@ enum HistFillingCycle{
     // Public method to run histogram filling
     void RunFillHistograms() { FillHistograms(); }
 
-    bool useCoarseQEtaBin = true;
+    bool useCoarseQEtaBin = false;
     int hist_filling_cycle = generic;
     int trigger_mode = 1;
     bool useMu4NoL1Leg = true;  // if true, require the probe muon to pass the mu4noL1 (unseeded) leg for _mu4_mu4noL1 filters

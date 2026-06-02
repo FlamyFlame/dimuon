@@ -61,9 +61,9 @@ void plateau_normalize_dR_corr() {
 
     struct YearInfo { int year; std::string path; int color; int marker; };
     std::vector<YearInfo> years = {
-        {23, base_dir() + "pbpb_2023/histograms_real_pairs_pbpb_2023_single_mu4_coarse_q_eta_bin.root", kBlue, 20},
-        {24, base_dir() + "pbpb_2024/histograms_real_pairs_pbpb_2024_single_mu4_coarse_q_eta_bin.root", kRed, 21},
-        {25, base_dir() + "pbpb_2025/histograms_real_pairs_pbpb_2025_single_mu4_coarse_q_eta_bin.root", kGreen+2, 22}
+        {23, base_dir() + "pbpb_2023/histograms_real_pairs_pbpb_2023_single_mu4_fine_q_eta_bin.root", kBlue, 20},
+        {24, base_dir() + "pbpb_2024/histograms_real_pairs_pbpb_2024_single_mu4_fine_q_eta_bin.root", kRed, 21},
+        {25, base_dir() + "pbpb_2025/histograms_real_pairs_pbpb_2025_single_mu4_fine_q_eta_bin.root", kGreen+2, 22}
     };
 
     std::map<int, TFile*> files;

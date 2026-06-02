@@ -18,7 +18,7 @@ void TrigEffPlotterPP::configureDataFiles(int runYear)
         break;
     case 24:
         data_dir = base + "pp_2024/";
-        fname_single_mu4 = data_dir + "histograms_real_pairs_pp_2024_single_mu4_coarse_q_eta_bin.root";
+        fname_single_mu4 = data_dir + "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin.root";
         fname_MB         = data_dir + "histograms_real_pairs_pp_2024_MB.root";
         plot_base_dir    = base + "plots/pp_trigger_efficiency/mu4/no_corr/pp24";
         break;

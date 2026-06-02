@@ -227,13 +227,19 @@ void plot_single_b_crossx_pbpb(bool use_pt_bins_150 = false)
         const std::string base = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20"
                                  + std::to_string(yr) + "/histograms_real_pairs_pbpb_20"
                                  + std::to_string(yr);
-        std::string path = base + "_" + trig + "_coarse_q_eta_bin.root";
-        if (gSystem->AccessPathName(path.c_str())) {
-            path = base + "_" + trig + ".root";
-            if (gSystem->AccessPathName(path.c_str())) {
-                std::cout << "[INFO] No input file found for PbPb 20" << yr << " — skipping." << std::endl;
-                continue;
-            }
+        std::vector<std::string> candidates = {
+            base + "_" + trig + "_no_trg_plots_fine_q_eta_bin.root",
+            base + "_" + trig + "_fine_q_eta_bin.root",
+            base + "_" + trig + "_no_trg_plots_coarse_q_eta_bin.root",
+            base + "_" + trig + "_coarse_q_eta_bin.root",
+        };
+        std::string path;
+        for (const auto& c : candidates) {
+            if (!gSystem->AccessPathName(c.c_str())) { path = c; break; }
+        }
+        if (path.empty()) {
+            std::cout << "[INFO] No input file found for PbPb 20" << yr << " — skipping." << std::endl;
+            continue;
         }
         std::cout << "[INFO] Found PbPb 20" << yr << ": " << path << std::endl;
         year_paths.push_back({yr, path});

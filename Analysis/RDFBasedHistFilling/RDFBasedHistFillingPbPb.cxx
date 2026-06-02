@@ -9,12 +9,23 @@ void RDFBasedHistFillingPbPb::SetIOPathsHook(){
 	std::string run_year_str = std::to_string(run_year);
 
 	if (run_year == 23 || run_year == 24 || run_year == 25){
-        std::vector<std::string> input_candidates = {
-            "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/muon_pairs_pbpb_20" + run_year_str + base_trig_suffix + input_mindR_suffix + "_res_cut_v2.root",
-            "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/muon_pairs_pbpb_20" + run_year_str + base_trig_suffix + input_mindR_suffix + ".root",
-            "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/muon_pairs_pbpb_20" + run_year_str + base_trig_suffix + "_no_res_cut.root",
-            "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/muon_pairs_pbpb_20" + run_year_str + base_trig_suffix + ".root"
-        };
+        std::string base = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/muon_pairs_pbpb_20" + run_year_str + base_trig_suffix;
+        std::vector<std::string> input_candidates;
+        if (mu4_nominal_pbpb_NO_trig_calc) {
+            input_candidates = {
+                base + input_mindR_suffix + ".root",
+                base + input_mindR_suffix + "_res_cut_v2.root",
+                base + "_no_res_cut.root",
+                base + ".root"
+            };
+        } else {
+            input_candidates = {
+                base + input_mindR_suffix + "_res_cut_v2.root",
+                base + input_mindR_suffix + ".root",
+                base + "_no_res_cut.root",
+                base + ".root"
+            };
+        }
 
         std::string in_path;
         for (const auto& cand : input_candidates) {
@@ -29,12 +40,23 @@ void RDFBasedHistFillingPbPb::SetIOPathsHook(){
 		input_files.push_back(in_path);
         output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/histograms_real_pairs_pbpb_20" + run_year_str + out_file_suffix + ".root";
 	} else if (run_year == 15 || run_year == 18){
-        std::vector<std::string> input_candidates = {
-            "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/muon_pairs_pbpb_20" + run_year_str + base_trig_suffix + input_mindR_suffix + "_res_cut_v2.root",
-            "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/muon_pairs_pbpb_20" + run_year_str + base_trig_suffix + input_mindR_suffix + ".root",
-            "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/muon_pairs_pbpb_20" + run_year_str + base_trig_suffix + "_no_res_cut.root",
-            "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/muon_pairs_pbpb_20" + run_year_str + base_trig_suffix + ".root"
-        };
+        std::string base = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/muon_pairs_pbpb_20" + run_year_str + base_trig_suffix;
+        std::vector<std::string> input_candidates;
+        if (mu4_nominal_pbpb_NO_trig_calc) {
+            input_candidates = {
+                base + input_mindR_suffix + ".root",
+                base + input_mindR_suffix + "_res_cut_v2.root",
+                base + "_no_res_cut.root",
+                base + ".root"
+            };
+        } else {
+            input_candidates = {
+                base + input_mindR_suffix + "_res_cut_v2.root",
+                base + input_mindR_suffix + ".root",
+                base + "_no_res_cut.root",
+                base + ".root"
+            };
+        }
 
         std::string in_path;
         for (const auto& cand : input_candidates) {
@@ -649,7 +671,7 @@ void RDFBasedHistFillingPbPb::OpenEffcyPtFitFile() {
     }
     std::cout << "OpenEffcyPtFitFile: loaded " << s_effcy_pT_fit_map.size() << " TF1s from " << fit_path << std::endl;
 
-    std::string hist_path = base_dir + "/histograms_real_pairs_pbpb_20" + yr + "_single_mu4_coarse_q_eta_bin.root";
+    std::string hist_path = base_dir + "/histograms_real_pairs_pbpb_20" + yr + "_single_mu4_fine_q_eta_bin.root";
     s_effcy_2D_hist_file = TFile::Open(hist_path.c_str(), "READ");
     if (!s_effcy_2D_hist_file || s_effcy_2D_hist_file->IsZombie()) {
         std::cerr << "OpenEffcyPtFitFile: FAILED to open 2D hist file " << hist_path << std::endl;
