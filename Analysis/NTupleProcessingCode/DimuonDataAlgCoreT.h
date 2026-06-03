@@ -334,7 +334,7 @@ public:
     bool requireTight = false;
     int resonance_cut_mode = 1; // only applies to nominal (not-trigger-efficiency) analysis
 
-    bool pbpb24_mu4_NO_trig_calc = false; // only affects Pb+Pb24: set to true if for Pb+Pb 24, single mu4, do NOT want to perform trigger efficiency study
+    bool pbpb_run3_mu4_force_nominal = false; // PbPb Run3: set true for nominal/crossx analysis with single mu4 (skips trigger efficiency derivation)
 
     bool turn_on_track_charge = false; // turn on if track charge is stored
 

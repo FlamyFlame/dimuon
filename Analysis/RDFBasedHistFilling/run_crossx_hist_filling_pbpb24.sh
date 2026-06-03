@@ -27,10 +27,9 @@ root -l -b <<EOF
 // Create PbPb instance for run_year=24
 RDFBasedHistFillingPbPb pbpb(24);
 
-// Configure for trigger_mode=1 (mu4 single muon crossx)
-// doTrigEffcy left at default (true); run_crossx=true prevents trig effcy filling
-// so the output filename stays _single_mu4 (no _no_trg_plots suffix)
+// Configure for trigger_mode=1 (single_mu4, crossx/nominal measurements for PbPb24)
 pbpb.trigger_mode = 1;
+pbpb.mu4_nominal_pbpb_NO_trig_calc = true;
 
 // Use mindR_trig=0.02 to read latest ntuples with event selection
 pbpb.mindR_trig   = 0.02;

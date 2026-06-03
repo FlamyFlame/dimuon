@@ -35,7 +35,7 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::PrintInstructions_Dat
     std::cout << "        * resonance_cut_mode = 1: old resonance cut (default)" << std::endl;
     std::cout << "        * resonance_cut_mode = 2: new resonance cut" << std::endl;
     std::cout << "        If resonance_cut_mode value is outside {0,1,2}: assume default option" << std::endl;
-    std::cout << "--> pbpb24_mu4_NO_trig_calc: boolean, default false - if true: use Pb+Pb 24 single-mu4 data for nominal analysis, not trigger efficiency evaluation" << std::endl;
+    std::cout << "--> pbpb_run3_mu4_force_nominal: boolean, default false - if true: PbPb Run3 single-mu4 nominal/crossx analysis (no trigger efficiency derivation)" << std::endl;
     std::cout << "--> filter_out_photo_resn_for_trig_effcy: boolean, default true - if true: filter out photoproduction / resonance pairs even in trigger efficiency study mode" << std::endl;
 
     std::cout << std::endl;
@@ -67,10 +67,10 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_DataCore()
     if (use_mu6_for_trg_eff) std::cout << "Using HLT_mu6_L1MU3V as a support trigger!" << std::endl;
     if (use_mu8_for_trg_eff) std::cout << "Using HLT_mu8_L1MU5VF as a support trigger!" << std::endl;
     
-    if (!(isPbPb && run_year == 24 && pbpb24_mu4_NO_trig_calc)) trigger_effcy_calc = (trigger_mode == 0 || trigger_mode == 1);
+    trigger_effcy_calc = (trigger_mode == 0 || trigger_mode == 1) && !pbpb_run3_mu4_force_nominal;
     if (trigger_effcy_calc) resonance_cut_mode = 2; // for sub-GeV mass region, apply narrow-window cuts for each individual resonance peak
 
-    if (pbpb24_mu4_NO_trig_calc && trigger_mode == 1) std::cout << "For Pb+Pb 2024 data, using single_mu4 for NOMINAL analysis (not trigger efficiency)." << std::endl;
+    if (pbpb_run3_mu4_force_nominal && trigger_mode == 1) std::cout << "PbPb Run3: using single_mu4 for NOMINAL analysis (not trigger efficiency)." << std::endl;
 
     if (mindR_trig != 0.01 && mindR_trig != 0.02)
         throw std::runtime_error("mindR_trig must be 0.01 or 0.02! Got: " + std::to_string(mindR_trig));

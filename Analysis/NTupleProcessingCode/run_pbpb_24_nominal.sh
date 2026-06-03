@@ -17,7 +17,7 @@ root -b -l << EOF
 	.L DataAnalysisClasses.h
 
 	PbPbAnalysis pbpb_24 (24, $file_batch);
-	pbpb_24.pbpb24_mu4_NO_trig_calc = true;  // nominal analysis: disable trigger_effcy_calc, use res cut v1
+	pbpb_24.pbpb_run3_mu4_force_nominal = true;
 	pbpb_24.Run();
 
 	.q;

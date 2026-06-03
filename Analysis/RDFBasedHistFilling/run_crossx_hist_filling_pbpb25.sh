@@ -27,8 +27,9 @@ root -l -b <<EOF
 // Create PbPb instance for run_year=25
 RDFBasedHistFillingPbPb pbpb(25);
 
-// Configure for trigger_mode=1 (single_mu4, crossx measurements for PbPb25)
+// Configure for trigger_mode=1 (single_mu4, crossx/nominal measurements for PbPb25)
 pbpb.trigger_mode = 1;
+pbpb.mu4_nominal_pbpb_NO_trig_calc = true;
 
 // Use mindR_trig=0.02 to read latest ntuples with event selection
 pbpb.mindR_trig   = 0.02;

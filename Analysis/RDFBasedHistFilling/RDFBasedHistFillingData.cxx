@@ -172,9 +172,8 @@ void RDFBasedHistFillingData::TriggerModeSettings(){
     use_mu6_for_trg_eff = trigger_effcy_calc && (trigger_mode == 1);
     doTrigEffcy = trigger_effcy_calc;
 
-    // --- Set mu4 suffix AFTER mu4_nominal_pbpb_NO_trig_calc is finalized ---
     if (trigger_mode == 1) {
-        base_trig_suffix = mu4_nominal_pbpb_NO_trig_calc ? "_mu4_nominal" : "_single_mu4";
+        base_trig_suffix = "_single_mu4";
     }
 
     // base_trig_suffix: trigger type used for input ntuple paths
