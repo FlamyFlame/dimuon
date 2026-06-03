@@ -8,7 +8,7 @@ Generator-level Pythia8 dimuon analysis: traces muon ancestry to tag heavy-flavo
 |------|--------|--------|---------------|
 | `private` | 5.36 TeV | Private production (2 batches) | `run_pythia_truth_kn_private.sub` |
 | `nonprivate_5p36` | 5.36 TeV | Central production (6 kn ranges) | `run_pythia_truth_kn_nonprivate.sub` |
-| `nonprivate_5p02` | 5.02 TeV | Central production (6 kn ranges) | `run_pythia_truth_kn_nonprivate_5_02.sub` |
+| `nonprivate_5p02` | 5.02 TeV | Central production (6 kn ranges) | `run_pythia_truth_kn_nonprivate.sub` (args overridden by pipeline) |
 
 Each kinematic range (kn 0-5) covers a different pT-hat slice of the Pythia generation. Non-private samples split into 6 Condor jobs (one per kn), then hadd the results.
 

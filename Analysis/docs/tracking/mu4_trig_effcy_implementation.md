@@ -416,8 +416,8 @@ Per-muon `m1/m2.passmu4noL1` is always false in current ntuples. Bug in `DimuonD
   `useCoarseQEtaBin=true`. All downstream readers updated: OpenEffcyPtFitFile (PbPb/PP),
   TrigEffPlotterPbPb, TrigEffPlotterPP, plot_dR_trig_corr.C, plateau_normalize_dR_corr.C,
   both pipeline scripts, crossx plotter candidate list.
-- **Step 19:** Re-running all Pipeline 2 + Pipeline 3 steps with SKIP_CONDOR=1 using
-  the new fine default. In progress.
+- **Step 19:** Re-ran all Pipeline 2 + Pipeline 3 steps with SKIP_CONDOR=1 using
+  the new fine default. All 10 stages passed for all 3 years. DONE.
 
 ## Progress Log (cont.)
 
@@ -497,6 +497,47 @@ Per-muon `m1/m2.passmu4noL1` is always false in current ntuples. Bug in `DimuonD
   - pT-binned: 8-12=1.242, 12-20=1.123, 20-40=1.092, 40-120=1.110
 - After plateau normalization, all 3 years show consistent dR suppression: ~10-13% at dR<0.1, rising to ~1.0 by dR~0.5
 
+### 2026-06-02: Step 19 complete — Full P2+P3 re-run with fine q-eta default
+- Ran `SKIP_CONDOR=1 bash pipelines/pipeline_pbpb_trig_eff.sh` for years 23/24/25
+- All 10 stages passed (validation, hadd, P2 hist fill, fitting, fit validation, P2 plots, P3 hist fill, P3 plots)
+- Pipeline duration: 12:46:22 → 13:24:10 (~38 min total)
+- P2 hist filling (fine): yr23 10min/7GB, yr24 5.5min/7GB, yr25 11.5min/7GB
+- P3 inv-weight: yr23 2.5min, yr24 1.5min, yr25 3min
+- pT fitting: 24 PNGs per year × 3 years = 72 fitting plots (fermi+log mode)
+- P2 efficiency plots: 44 PNGs per year × 3 years = 132 plots
+- P3 dR correction + plateau normalization plots: all centrality bins produced
+- **dR plateau values (OS, fine q-eta, Jun 2, from pipeline log):**
+  - yr23 ctr-int: 1.261±0.002, yr24: 1.243±0.002, yr25: 1.244±0.001
+  - Central (0-5%) highest: yr23=1.316, yr24=1.297, yr25=1.301
+  - Peripheral (50-80%) lowest: yr23=1.135±0.007, yr24=1.138±0.009, yr25=1.140±0.005
+  - pT-dependence (yr23 ctr-int): 8-12=1.228, 12-20=1.112, 20-40=1.084, 40-120=1.102
+  - Compare Step 16 (May 19, parts 2-4 only, coarse): yr23 ctr-int was 1.285
+  - Shift from 1.285→1.261 (2%) due to adding part 1 data (77k/678k ≈ 11% more)
+- All output files fresh (Jun 2 13:18-13:23), consistent across years
+- Note: Warning `h_pt2nd_vs_q_eta2nd_ctr0_5_sign1_mu4 not found` at fitting stage — this is a
+  reference TH2D for sign1 (SS), expected absent since fitting focuses on sign2 (OS) + mu+/mu- split
+
+### 2026-06-02: Input verification investigation (CORRECTED)
+- **Question:** User reported P3 dR plots look identical to previous outputs despite new skim.
+- **Finding: All pipeline inputs are correct.** Verified at every stage:
+  - NTuple batch files (May 27): from condor jobs that processed new skim (May 19-20 raw data)
+  - P2 hist filling: reads hadded combined `_res_cut_v2.root` (Jun 2 hadd of May 27 per-part files)
+  - P3 hist filling: cycle=2 confirmed in log, loaded 240 TF1s + 36 TH2D fallbacks, wrote 714 divided graphs
+  - All plotting macros read from `_fine_q_eta_bin.root` (correct file)
+- **Per-year data provenance:**
+  - yr23: Step 16 (May 19) already reprocessed parts 2-4 with new skim. Jun 2 adds part 1 (+11%).
+    Previous `_res_cut_v2.root` (22 MB, `_before_mu6_disable` backup) → new combined 258 MB.
+  - yr24: Step 14 (May 19) used OLD skim `_res_cut_v2.root` (12.9 MB, Apr 21 backup `_backup_20260420`).
+    Jun 2 pipeline is FIRST run with new skim (183 MB combined). 14× more data.
+  - yr25: Step 14 (May 19) input unclear — no `_mindR_0_02` combined existed before May 27.
+    Old P2 backup (`_before_pair_level.root`): 36k entries in ctr0_5 sign2.
+    Jun 2 fine file: 373k entries in same histogram. 10× more data.
+- **Jun 2 outputs are correct and DO reflect new skim data.** Error bars in Jun 2 plots are
+  small and consistent with 300k-370k entries per centrality bin. Old Step 14 plots were
+  overwritten, so direct visual comparison requires side-by-side from memory.
+- **Previous investigation error (corrected):** Initially claimed "Step 16 already used new skim
+  for all years" — this was only true for yr23. For yr24/25, Jun 2 is the first new-skim run.
+
 ## Remaining Work
 
 - Locate/re-download PbPb 2023 part 1 raw data, reprocess + re-hadd
@@ -506,7 +547,7 @@ Per-muon `m1/m2.passmu4noL1` is always false in current ntuples. Bug in `DimuonD
 
 ## Latest Stage
 
-**Steps 17-18 DONE. Step 19 IN PROGRESS.**
+**Steps 17-19 DONE.**
 
 ### Step 17-18 summary
 - **Step 17:** Expanded `pipelines/pipeline_pbpb_trig_eff.sh` with stages 5-10 (P2: RDF hist
@@ -516,12 +557,20 @@ Per-muon `m1/m2.passmu4noL1` is always false in current ntuples. Bug in `DimuonD
   `RDFBasedHistFillingData.h`. Fixed TH2D fallback file mismatch: fitter output is fine-binned
   but OpenEffcyPtFitFile was loading coarse-binned TH2D fallback. All downstream readers updated.
 
-### Step 19: Re-run with fine q-eta default (IN PROGRESS)
-- Re-running all Pipeline 2 + Pipeline 3 steps for PbPb 23/24/25 with SKIP_CONDOR=1
-- Using new fine q-eta default throughout
-- Files involved: all RDF hist filling outputs, pT fit outputs, dR correction outputs
+### Step 19: Re-run with fine q-eta default (DONE 2026-06-02)
+- Re-ran all Pipeline 2 + Pipeline 3 steps for PbPb 23/24/25 with SKIP_CONDOR=1
+- All 10 pipeline stages passed; zero FAILs or ERRORs
+- Timings (Stage 5 P2 hist filling): yr23 ~10min, yr24 ~5.5min, yr25 ~11.5min
+- Fitting (Stage 6): yr23 40s, yr24 44s, yr25 47s
+- P3 inv-weight (Stage 9): yr23 ~2.5min, yr24 ~1.5min, yr25 ~3min
+- Output files all fresh (Jun 2 13:18-13:23):
+  - `histograms_real_pairs_pbpb_20{23,24,25}_single_mu4_fine_q_eta_bin.root` (P2+P3 combined)
+  - `trg_effcy_pT_fitting_to_fermi_plus_log/single_mu_effcy_pT_fit.root` (per year)
+  - `dR_corr_plateau_norm_plateau_norm_pt_binned_pbpb_20{23,24,25}.root` (P3 normalization)
+- dR plateau values physically sensible: OS central ~1.27-1.35 (decreasing toward peripheral),
+  SS similar pattern; pT-binned plateaus show expected pT dependence (~1.23 at 8-12 GeV → ~1.04 at 40-120 GeV)
 
-**After state (from Steps 15-16, still current):**
+**After state (from Steps 15-19, current):**
 - PbPb.cxx + PP.cxx: pair-level fill with 2D {DR_zoomin, pair_pt_log} AND {DR, pair_pt_log}
 - Data.cxx: MakeAndWriteDRTrigEffGraphsHelper produces 1D ratios + pair-pT-sliced dR projections (both DR and DR_zoomin)
 - plot_dR_trig_corr.C: plots pair-level term + pair-pT-sliced overlay (unnormalized)

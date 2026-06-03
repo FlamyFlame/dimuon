@@ -72,7 +72,7 @@ the trigger is used purely for event selection.
 - Validates the combined muon_pairs file has non-empty
   `muon_pair_tree_sign1` and `muon_pair_tree_sign2` TTrees
 
-#### Stage 5 -- RDF crossx hist filling
+#### Stage 5 -- RDF crossx hist filling + validate
 - Runs `run_crossx_hist_filling_pbpbYY.sh` per year
 - Each script calls `RDFBasedHistFillingPbPb` with:
   - `trigger_mode = 1`
@@ -80,7 +80,7 @@ the trigger is used purely for event selection.
   - `mindR_trig = 0.02`
 - Validates the RDF output file
 
-#### Stage 7 -- Crossx plotting (combined)
+#### Stage 6 -- Crossx plotting (combined)
 - Runs `plot_single_b_crossx_pbpb.cxx()` which auto-discovers all
   available year files, sums histograms, and produces combined PbPb plots
 - PbPb crossx plots are always combined across all years; per-year plots
