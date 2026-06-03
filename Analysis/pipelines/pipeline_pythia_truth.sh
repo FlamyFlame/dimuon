@@ -18,6 +18,7 @@ set -Eeuo pipefail
 # Optional env vars:
 #   POLL_SECONDS=45
 #   CONDOR_TIMEOUT_SECONDS=0   # 0 => no timeout
+#   SKIP_CONDOR=1               # skip condor submit+wait, reuse existing NTuple outputs
 
 MODE="${1:-}"
 if [[ -z "${MODE}" ]]; then
@@ -33,6 +34,7 @@ PLOT_DIR="${ANALYSIS_DIR}/plotting_codes/pythia_plotting_codes"
 
 POLL_SECONDS="${POLL_SECONDS:-45}"
 CONDOR_TIMEOUT_SECONDS="${CONDOR_TIMEOUT_SECONDS:-0}"
+SKIP_CONDOR="${SKIP_CONDOR:-0}"
 
 now() { date '+%F %T'; }
 log() { echo "[$(now)] $*"; }
@@ -333,21 +335,25 @@ esac
 # ------------------------------
 # Pipeline execution
 # ------------------------------
-require_cmd condor_submit
-require_cmd condor_q
-
 log "Mode: ${MODE_LABEL}"
 log "Sourcing ~/setup.sh for ROOT/LCG tools (including hadd)"
 source_env_once
 require_cmd root
 require_cmd hadd
 
-log "Submitting CRTP condor jobs via ${CRTP_SUBMIT_FILE}"
-cluster_id="$(submit_condor_cluster "${CRTP_SUBMIT_FILE}" "${CRTP_SUBMIT_ARGS}")"
-log "Submitted cluster: ${cluster_id}"
+if [[ "$SKIP_CONDOR" -eq 1 ]]; then
+  log "SKIP_CONDOR=1 — skipping condor submit+wait, reusing existing NTuple outputs"
+else
+  require_cmd condor_submit
+  require_cmd condor_q
 
-log "Waiting for completion of submitted cluster only"
-wait_for_cluster_completion "${cluster_id}"
+  log "Submitting CRTP condor jobs via ${CRTP_SUBMIT_FILE}"
+  cluster_id="$(submit_condor_cluster "${CRTP_SUBMIT_FILE}" "${CRTP_SUBMIT_ARGS}")"
+  log "Submitted cluster: ${cluster_id}"
+
+  log "Waiting for completion of submitted cluster only"
+  wait_for_cluster_completion "${cluster_id}"
+fi
 
 log "Validating per-batch CRTP outputs before hadd"
 validate_files_or_fail "CRTP batch" "${BATCH_OUTPUTS[@]}"

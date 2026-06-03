@@ -14,6 +14,15 @@
 #   - PowhegFullSimExtras.c has the truth_pt > 4 && |eta| < 2.4 guard in place
 #   - ~/setup.sh provides ROOT, hadd, condor_submit, condor_q
 #
+# Usage:
+#   ./pipeline_powheg_fullsim_single_muon.sh
+#   ./pipeline_powheg_fullsim_single_muon.sh --skip-condor
+#
+#   --skip-condor  : skip Condor job submission and waiting (Steps 1-2);
+#                    go straight to validating existing per-batch files,
+#                    then hadd + RDF filling + plotting.
+#                    Useful when Condor jobs are already done.
+#
 # Optional env vars:
 #   POLL_SECONDS=45
 #   CONDOR_TIMEOUT_SECONDS=0   # 0 => no timeout
@@ -28,6 +37,14 @@ RECO_EFFCY_DIR="${ANALYSIS_DIR}/plotting_codes/reco_effcy"
 
 POLL_SECONDS="${POLL_SECONDS:-45}"
 CONDOR_TIMEOUT_SECONDS="${CONDOR_TIMEOUT_SECONDS:-0}"
+SKIP_CONDOR=0
+
+for arg in "$@"; do
+    case "$arg" in
+        --skip-condor) SKIP_CONDOR=1 ;;
+        *) echo "Unknown argument: $arg"; exit 1 ;;
+    esac
+done
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -206,27 +223,34 @@ source_env_once
 require_cmd root
 require_cmd hadd
 
-# --- Step 1: submit bb and cc condor clusters ---
-log "Submitting bb single-muon Condor jobs (run_powheg_fullsim_wtruth_bb_single_muon.sub)"
-pushd "${NTP_DIR}" >/dev/null
-bb_submit_out="$(condor_submit run_powheg_fullsim_wtruth_bb_single_muon.sub)"
-echo "${bb_submit_out}" >&2
-bb_cluster="$(extract_cluster_id "${bb_submit_out}")"
-log "Submitted bb cluster: ${bb_cluster}"
+log "=== Pipeline mode: SKIP_CONDOR=${SKIP_CONDOR} ==="
 
-log "Submitting cc single-muon Condor jobs (run_powheg_fullsim_wtruth_cc_single_muon.sub)"
-cc_submit_out="$(condor_submit run_powheg_fullsim_wtruth_cc_single_muon.sub)"
-echo "${cc_submit_out}" >&2
-cc_cluster="$(extract_cluster_id "${cc_submit_out}")"
-log "Submitted cc cluster: ${cc_cluster}"
-popd >/dev/null
+if (( SKIP_CONDOR )); then
+    log "=== --skip-condor: skipping Condor job submission and waiting (Steps 1-2) ==="
+    log "    Will validate existing per-batch files in ${BB_DIR} and ${CC_DIR}"
+else
+    # --- Step 1: submit bb and cc condor clusters ---
+    log "Submitting bb single-muon Condor jobs (run_powheg_fullsim_wtruth_bb_single_muon.sub)"
+    pushd "${NTP_DIR}" >/dev/null
+    bb_submit_out="$(condor_submit run_powheg_fullsim_wtruth_bb_single_muon.sub)"
+    echo "${bb_submit_out}" >&2
+    bb_cluster="$(extract_cluster_id "${bb_submit_out}")"
+    log "Submitted bb cluster: ${bb_cluster}"
 
-# --- Step 2: wait for both clusters ---
-log "Waiting for bb cluster ${bb_cluster} to finish"
-wait_for_cluster_completion "${bb_cluster}"
+    log "Submitting cc single-muon Condor jobs (run_powheg_fullsim_wtruth_cc_single_muon.sub)"
+    cc_submit_out="$(condor_submit run_powheg_fullsim_wtruth_cc_single_muon.sub)"
+    echo "${cc_submit_out}" >&2
+    cc_cluster="$(extract_cluster_id "${cc_submit_out}")"
+    log "Submitted cc cluster: ${cc_cluster}"
+    popd >/dev/null
 
-log "Waiting for cc cluster ${cc_cluster} to finish"
-wait_for_cluster_completion "${cc_cluster}"
+    # --- Step 2: wait for both clusters ---
+    log "Waiting for bb cluster ${bb_cluster} to finish"
+    wait_for_cluster_completion "${bb_cluster}"
+
+    log "Waiting for cc cluster ${cc_cluster} to finish"
+    wait_for_cluster_completion "${cc_cluster}"
+fi
 
 # --- Step 3: validate per-batch outputs ---
 log "Validating bb per-batch outputs"

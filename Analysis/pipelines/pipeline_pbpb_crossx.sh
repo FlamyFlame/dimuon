@@ -6,9 +6,8 @@ set -Eeuo pipefail
 #   2) wait for all clusters to finish
 #   3) validate per-batch ROOT outputs
 #   4) hadd per-batch outputs into combined muon_pairs + hists_cut_acceptance per year
-#   5) run RDF crossx hist filling per year
-#   6) validate RDF outputs
-#   7) run crossx plotting (combined, auto-discovers all years)
+#   5) run RDF crossx hist filling per year + validate RDF outputs
+#   6) run crossx plotting (combined, auto-discovers all years)
 #
 # Usage:
 #   ./pipeline_pbpb_crossx.sh
@@ -292,7 +291,7 @@ for yr in "${YEARS[@]}"; do
   validate_files_or_fail "RDF crossx yr${yr}" "$rdf_out"
 done
 
-# ------ Stage 7: Crossx plotting (combined) ------
+# ------ Stage 6: Crossx plotting (combined) ------
 log "Running crossx plotting (all years combined)"
 pushd "$PLOT_DIR" >/dev/null
 root -l -b -q 'plot_single_b_crossx_pbpb.cxx()'

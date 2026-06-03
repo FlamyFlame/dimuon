@@ -302,7 +302,8 @@ done
 for yr in "${YEARS[@]}"; do
   log "Running RDF Pipeline 2 hist filling for PbPb 20${yr}"
   pushd "$RDF_DIR" >/dev/null
-  root -l -b <<EOF
+  root_rc=0
+  root -l -b <<EOF || root_rc=$?
 ROOT::EnableImplicitMT(${RDF_NTHREADS});
 .L RDFBasedHistFillingPbPb.cxx+
 
@@ -316,7 +317,6 @@ std::cout << "\\n[RUN] PbPb 20${yr} Pipeline 2 hist filling completed." << std::
 
 gSystem->Exit(0);
 EOF
-  root_rc=$?
   popd >/dev/null
   if [[ $root_rc -ne 0 ]]; then
     fail "RDF Pipeline 2 hist filling failed for year ${yr} (ROOT exit code ${root_rc})"
@@ -329,12 +329,12 @@ done
 for yr in "${YEARS[@]}"; do
   log "Running pT turn-on fitting for PbPb 20${yr}"
   pushd "$FITTER_DIR" >/dev/null
-  root -l -b <<EOF
+  root_rc=0
+  root -l -b <<EOF || root_rc=$?
 .L SingleMuEffcyPtTurnOnFitter.cxx
 single_muon_trig_effcy_pT_fitting_PbPb(${yr});
 gSystem->Exit(0);
 EOF
-  root_rc=$?
   popd >/dev/null
   if [[ $root_rc -ne 0 ]]; then
     fail "pT turn-on fitting failed for year ${yr} (ROOT exit code ${root_rc})"
@@ -347,6 +347,7 @@ for yr in "${YEARS[@]}"; do
   fit_file="$(get_fit_output "$yr")"
   rdf_file="$(get_rdf_output "$yr")"
   log "Validating TF1 fits and TH2D fallback for PbPb 20${yr}"
+  root_rc=0
   check_output="$(root -l -b -q <<EOF
 TFile *ffit = TFile::Open("${fit_file}", "READ");
 if (!ffit || ffit->IsZombie()) {
@@ -392,10 +393,10 @@ fhist->Close();
 std::cout << "PASS: yr${yr} TF1=" << ntf1 << " TH2D_fallback=" << n2d_div << std::endl;
 gSystem->Exit(0);
 EOF
-)"
+)" || root_rc=$?
   echo "$check_output"
-  if echo "$check_output" | grep -q "^FAIL:"; then
-    fail "Fit/TH2D validation failed for year ${yr}"
+  if [[ $root_rc -ne 0 ]] || echo "$check_output" | grep -q "^FAIL:"; then
+    fail "Fit/TH2D validation failed for year ${yr} (ROOT exit code ${root_rc})"
   fi
 done
 
@@ -415,7 +416,8 @@ done
 for yr in "${YEARS[@]}"; do
   log "Running RDF Pipeline 3 hist filling for PbPb 20${yr}"
   pushd "$RDF_DIR" >/dev/null
-  root -l -b <<EOF
+  root_rc=0
+  root -l -b <<EOF || root_rc=$?
 ROOT::EnableImplicitMT(${RDF_NTHREADS});
 .L RDFBasedHistFillingPbPb.cxx+
 
@@ -430,7 +432,6 @@ std::cout << "\\n[RUN] PbPb 20${yr} Pipeline 3 hist filling completed." << std::
 
 gSystem->Exit(0);
 EOF
-  root_rc=$?
   popd >/dev/null
   if [[ $root_rc -ne 0 ]]; then
     fail "RDF Pipeline 3 hist filling failed for year ${yr} (ROOT exit code ${root_rc})"
