@@ -124,10 +124,11 @@ When the user asks to investigate a discrepancy, debug, or understand an unexpec
 When the user asks to write or edit an internal note section → invoke `/review-note`
 When the user asks to write or polish paper text for publication → invoke `/review-paper`
 When the user asks to review, audit, or validate a Claude Code plugin or skill → invoke `/review-plugin`
+When the user asks to write, modify, review, or audit a multi-step analysis pipeline script → invoke `/review-pipeline`
+When the user asks to run, execute, or steer a pipeline, or wants autonomous end-to-end pipeline execution → invoke `/steer-pipeline`
 
 ## Active Tracking Docs
 
 - `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/mu4_trig_effcy_implementation.md` — MU4 trigger efficiency: 3-pipeline separation, no-corr efficiency, inverse-weighted dR corrections
-- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/mu4_trig_effcy_investigation.md` — Investigation: Pipeline 3 physics procedure bugs, plot directory structure, isBNL toggle
 - `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/grid_monitor_data_infra.md` — Grid monitoring: parallel download, recursive hadd, chunked fallback with auto code/sub updates
 - `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/localgroupdisk_migration.md` — Migrate ~1.4 TB from personal pnfs to BNL-OSG2_LOCALGROUPDISK; symlink swap for transparent analysis access

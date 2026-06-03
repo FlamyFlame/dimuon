@@ -8,3 +8,14 @@
 {"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-05-18T23:10:00Z","criticals":0,"warnings":1,"slug":"pbpb-trig-effcy-plots"}
 {"event":"start","command":"review-investigation","task":"Investigate normalization offset in Pipeline 3 dR corrections","slug":"normalization-offset-pipeline3","timestamp":"2026-05-19T01:00:00Z"}
 {"event":"end","command":"review-investigation","status":"PASS","iterations":1,"timestamp":"2026-05-19T03:30:00Z","criticals":0,"warnings":0,"slug":"normalization-offset-pipeline3"}
+{"event":"start","command":"review-plugin","task":"bnl-localgroupdisk-plugin review","slug":"bnl-lgd-plugin-review","timestamp":"2026-05-29T04:26:00Z"}
+{"event":"end","command":"review-plugin","status":"approved","iterations":1,"timestamp":"2026-05-29T04:35:00Z","criticals":0,"warnings":0,"slug":"bnl-lgd-plugin-review"}
+{"event":"start","command":"review-plugin","task":"BNL_LOCALGROUPDISK_backup/bnl-localgroupdisk-plugin","slug":"bnl-localgroupdisk-plugin","timestamp":"2026-05-29T20:18:13Z"}
+{"event":"end","command":"review-plugin","status":"approved","iterations":1,"timestamp":"2026-05-29T20:20:30Z","criticals":0,"warnings":4,"slug":"bnl-localgroupdisk-plugin"}
+{"event":"start","command":"review-plugin","task":"BNL_LOCALGROUPDISK_backup/bnl-localgroupdisk-plugin (round 2)","slug":"bnl-localgroupdisk-plugin-r2","timestamp":"2026-05-29T20:32:04Z"}
+{"event":"end","command":"review-plugin","status":"approved","iterations":2,"timestamp":"2026-05-29T20:34:00Z","criticals":0,"warnings":2,"slug":"bnl-localgroupdisk-plugin-r2"}
+{"event":"end","command":"review-plugin","status":"approved","iterations":3,"timestamp":"2026-05-29T20:37:00Z","criticals":0,"warnings":0,"slug":"bnl-localgroupdisk-plugin-r2"}
+{"event":"start","command":"review-plugin","task":"BNL_LOCALGROUPDISK_backup/bnl-localgroupdisk-plugin","slug":"bnl-lgd-plugin","timestamp":"2026-05-29T22:02:00Z"}
+{"event":"end","command":"review-plugin","status":"approved","iterations":3,"timestamp":"2026-05-29T22:35:00Z","criticals":0,"warnings":0,"slug":"bnl-lgd-plugin"}
+{"event":"start","command":"review-pipeline","task":"Review PbPb trig eff + crossx pipelines","slug":"pbpb-trig-eff-crossx","timestamp":"2026-06-02T14:00:00Z"}
+{"event":"end","command":"review-pipeline","status":"approved","iterations":1,"timestamp":"2026-06-02T15:00:00Z","criticals":0,"warnings":0,"slug":"pbpb-trig-eff-crossx"}

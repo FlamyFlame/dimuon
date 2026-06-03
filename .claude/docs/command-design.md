@@ -103,8 +103,18 @@ N. [CATEGORY] Description
 ## What Passed
 [brief list]
 
+## Verdict rules (MANDATORY — follow exactly)
+
+- **VERDICT: PASS** ONLY if zero CRITICAL AND zero WARNING issues.
+- **VERDICT: FAIL** if ANY CRITICAL or WARNING issue exists.
+- Do NOT return PASS with outstanding WARNINGs.
+
 VERDICT: PASS | FAIL
 ```
+
+**IMPORTANT:** The verdict rules section MUST be included verbatim in every
+reviewer subagent prompt. Without it, the reviewer uses its own judgment and
+may return PASS with outstanding WARNINGs, causing the loop to exit prematurely.
 
 ### Section Roles
 

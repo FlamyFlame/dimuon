@@ -160,6 +160,12 @@ N. [CATEGORY] Description of the problem
 ## What Passed
 [brief list of criteria that passed]
 
+## Verdict rules (MANDATORY — follow exactly)
+
+- **VERDICT: PASS** ONLY if zero CRITICAL AND zero WARNING issues.
+- **VERDICT: FAIL** if ANY CRITICAL or WARNING issue exists.
+- Do NOT return PASS with outstanding WARNINGs.
+
 VERDICT: PASS
 
 or
