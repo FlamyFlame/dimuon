@@ -24,6 +24,8 @@ set -o pipefail
 # ── Configuration ────────────────────────────────────────────────────────────
 POLL_INTERVAL_MIN=10
 STALE_TIMEOUT=10800   # 3 hours: reclaim downloads from crashed workers
+HADD_CHUNK_MAX_FILES=100  # max files per chunk in chunked fallback
+ANALYSIS_CODE_DIR="/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/NTupleProcessingCode"
 DATA_BASE="/usatlas/u/yuhanguo/usatlasdata/dimuon_data"
 RECORD_FILE="${DATA_BASE}/data-merging-record.txt"
 LOG_DIR="${DATA_BASE}"
@@ -196,10 +198,10 @@ query_task() {
 		return 1
 	fi
 
-	python3 -c "
+	echo "$raw" | python3 -c "
 import json, sys
 try:
-    d = json.loads(sys.argv[1])
+    d = json.loads(sys.stdin.read())
 except:
     print('api_error|0|unknown|json parse failed'); sys.exit(0)
 task = d.get('task', d)
@@ -211,7 +213,7 @@ nf = di.get('nfiles', 0) or 0
 nff = di.get('nfilesfinished', 0) or 0
 pct = (nff * 100.0 / nf) if nf > 0 else 0.0
 print(f'{status}|{pct:.1f}|{taskname}|{errmsg}')
-" "$raw"
+"
 }
 
 # ── Check VOMS proxy ────────────────────────────────────────────────────────
@@ -271,6 +273,175 @@ recursive_hadd() {
 	return 0
 }
 
+# ── Code-to-dataset mapping (for auto-update after chunking) ────────────────
+# Returns: EXTRAS_FILE SUB_FILE RUN_YEAR_KEY
+get_code_update_info() {
+	local target_subdir="$1"
+	case "$target_subdir" in
+		pp_2024)   echo "$ANALYSIS_CODE_DIR/PPExtras.c   $ANALYSIS_CODE_DIR/run_pp_24.sub   24" ;;
+		pbpb_2023) echo "$ANALYSIS_CODE_DIR/PbPbExtras.c $ANALYSIS_CODE_DIR/run_pbpb_23.sub 23" ;;
+		pbpb_2024) echo "$ANALYSIS_CODE_DIR/PbPbExtras.c $ANALYSIS_CODE_DIR/run_pbpb_24.sub 24" ;;
+		pbpb_2025) echo "$ANALYSIS_CODE_DIR/PbPbExtras.c $ANALYSIS_CODE_DIR/run_pbpb_25.sub 25" ;;
+		*) echo "" ;;
+	esac
+}
+
+# Update file_batch_max in C++ source and queue count in .sub, then git commit.
+update_source_for_new_max() {
+	local extras_file="$1" sub_file="$2" run_year_key="$3" new_max="$4"
+
+	if [[ ! -f "$extras_file" ]]; then
+		log_error "Cannot update source: $extras_file not found"
+		return 1
+	fi
+
+	sed -i "s/{${run_year_key}, [0-9]*}/{${run_year_key}, ${new_max}}/" "$extras_file"
+	if grep -q "{${run_year_key}, ${new_max}}" "$extras_file"; then
+		log_status "  Updated $extras_file: {$run_year_key, $new_max} — verified"
+	else
+		log_error "  FAILED to update $extras_file: {$run_year_key, $new_max} not found after sed"
+		return 1
+	fi
+
+	if [[ -f "$sub_file" ]]; then
+		sed -i "s/^queue [0-9]*/queue ${new_max}/" "$sub_file"
+		if grep -q "^queue ${new_max}$" "$sub_file"; then
+			log_status "  Updated $sub_file: queue $new_max — verified"
+		else
+			log_error "  FAILED to update $sub_file: 'queue $new_max' not found after sed"
+			return 1
+		fi
+	fi
+
+	(cd "$ANALYSIS_CODE_DIR" && \
+	 git add "$(basename "$extras_file")" "$(basename "$sub_file")" 2>/dev/null && \
+	 git commit -m "auto: update file_batch_max to $new_max for run_year $run_year_key (hadd chunking)" 2>/dev/null) && \
+		log_status "  Git committed source changes" || \
+		log_status "  Git commit skipped (no changes or not a repo)"
+}
+
+# ── Chunked hadd fallback ───────────────────────────────────────────────────
+# When recursive_hadd fails, split input files into separate partN.root files.
+# Updates record, source code, and .sub automatically.
+# Sets FALLBACK_TOTAL_ENTRIES on success.
+FALLBACK_TOTAL_ENTRIES=0
+chunked_hadd_fallback() {
+	local tid="$1" outds="$2" target_dir="$3" target_subdir="$4"
+	local pre_count="$5" original_part="$6"
+	shift 6
+	local files=("$@")
+
+	local n=${#files[@]}
+	local num_chunks=$(( (n + HADD_CHUNK_MAX_FILES - 1) / HADD_CHUNK_MAX_FILES ))
+	local file_prefix
+	case "$target_subdir" in
+		pp_2024)   file_prefix="data_pp24" ;;
+		pbpb_2023) file_prefix="data_pbpb23" ;;
+		pbpb_2024) file_prefix="data_pbpb24" ;;
+		pbpb_2025) file_prefix="data_pbpb25" ;;
+		*) log_error "task $tid: unknown target_subdir '$target_subdir'"; return 1 ;;
+	esac
+
+	local original_pnum
+	original_pnum=$(echo "$original_part" | grep -oP '[0-9]+')
+
+	log_status "task $tid: chunked fallback — splitting $n files into $num_chunks chunks of ≤$HADD_CHUNK_MAX_FILES"
+
+	# Find current max part number on disk
+	local max_existing=0
+	for f in "$target_dir"/${file_prefix}_part*.root; do
+		[[ -f "$f" ]] || continue
+		local pnum
+		pnum=$(basename "$f" | grep -oP 'part\K[0-9]+')
+		if (( pnum > max_existing )); then max_existing=$pnum; fi
+	done
+
+	# Assign part numbers: first chunk keeps original_pnum, rest get max_existing+1, +2, ...
+	local chunk_pnums=("$original_pnum")
+	local next_new=$(( max_existing + 1 ))
+	for (( i=1; i<num_chunks; i++ )); do
+		if (( next_new == original_pnum )); then
+			next_new=$(( next_new + 1 ))
+		fi
+		chunk_pnums+=("$next_new")
+		next_new=$(( next_new + 1 ))
+	done
+
+	# hadd each chunk and validate
+	local chunk_counts=()
+	local total_entries=0
+	for (( i=0; i<num_chunks; i++ )); do
+		local start=$(( i * HADD_CHUNK_MAX_FILES ))
+		local count=$HADD_CHUNK_MAX_FILES
+		if (( start + count > n )); then count=$(( n - start )); fi
+		local chunk=("${files[@]:$start:$count}")
+		local pnum=${chunk_pnums[$i]}
+		local chunk_out="${target_dir}/${file_prefix}_part${pnum}.root"
+
+		log_status "task $tid: chunk $((i+1))/$num_chunks (${#chunk[@]} files) → ${file_prefix}_part${pnum}.root"
+
+		rm -f "$chunk_out"
+		if ! recursive_hadd "$chunk_out" "${chunk[@]}"; then
+			log_error "task $tid: chunk $((i+1)) hadd failed"
+			for (( j=0; j<=i; j++ )); do
+				rm -f "${target_dir}/${file_prefix}_part${chunk_pnums[$j]}.root"
+			done
+			return 1
+		fi
+
+		local post_cnt pre_cnt
+		post_cnt=$(count_entries_chain "$chunk_out")
+		pre_cnt=$(count_entries_chain "${chunk[@]}")
+
+		if [[ "$post_cnt" -ne "$pre_cnt" ]]; then
+			log_error "task $tid: chunk $((i+1)) entry mismatch: pre=$pre_cnt post=$post_cnt"
+			for (( j=0; j<=i; j++ )); do
+				rm -f "${target_dir}/${file_prefix}_part${chunk_pnums[$j]}.root"
+			done
+			return 1
+		fi
+
+		chunk_counts+=("$post_cnt")
+		total_entries=$(( total_entries + post_cnt ))
+		log_status "task $tid: chunk $((i+1)) OK — $post_cnt entries"
+	done
+
+	# Validate total
+	if [[ "$total_entries" -ne "$pre_count" ]]; then
+		log_error "task $tid: TOTAL ENTRY MISMATCH: pre=$pre_count chunks_total=$total_entries"
+		for (( j=0; j<num_chunks; j++ )); do
+			rm -f "${target_dir}/${file_prefix}_part${chunk_pnums[$j]}.root"
+		done
+		return 1
+	fi
+
+	# Record all chunks
+	for (( i=0; i<num_chunks; i++ )); do
+		local pnum=${chunk_pnums[$i]}
+		echo "${file_prefix}_part${pnum}.root | ${outds} | $(date +%F) | ${chunk_counts[$i]} entries (chunk $((i+1))/${num_chunks} of ${original_part})" >> "$RECORD_FILE"
+	done
+	log_status "task $tid: recorded $num_chunks chunks in $RECORD_FILE"
+
+	# Update new max part number across all existing + newly created
+	local new_max=$max_existing
+	for pn in "${chunk_pnums[@]}"; do
+		if (( pn > new_max )); then new_max=$pn; fi
+	done
+
+	# Update source code and .sub
+	local code_info
+	code_info=$(get_code_update_info "$target_subdir")
+	if [[ -n "$code_info" ]]; then
+		local extras_file sub_file run_year_key
+		read -r extras_file sub_file run_year_key <<< "$code_info"
+		update_source_for_new_max "$extras_file" "$sub_file" "$run_year_key" "$new_max"
+	fi
+
+	FALLBACK_TOTAL_ENTRIES=$total_entries
+	log_status "task $tid: chunked fallback complete — $num_chunks chunks, max part=$new_max, total=$total_entries entries"
+	return 0
+}
+
 # ── Download + hadd + validate for one task ──────────────────────────────────
 # Split into two phases so retries only repeat hadd, never re-download.
 process_task() {
@@ -324,30 +495,44 @@ process_task() {
 	pre_count=$(count_entries_chain "${roots[@]}")
 	log_status "task $tid: pre-merge entries = $pre_count"
 
-	# ── Phase 2: hadd (recursive splitting handles large datasets) ──────────
+	# ── Phase 2: hadd (try single-file merge, fall back to separate chunks) ──
 	log_status "task $tid: hadd (${#roots[@]} files) → $output_name.root"
 	rm -f "$output_file"
-	if ! recursive_hadd "$output_file" "${roots[@]}"; then
-		log_error "task $tid: hadd FAILED"
+
+	if recursive_hadd "$output_file" "${roots[@]}"; then
+		# Single-file merge succeeded
+		local post_count
+		post_count=$(count_entries_chain "$output_file")
+		log_status "task $tid: post-merge entries = $post_count"
+
+		if [[ "$post_count" -ne "$pre_count" ]]; then
+			log_error "task $tid: ENTRY MISMATCH for $output_name: pre=$pre_count post=$post_count"
+			echo "${output_name}.root | ${outds} | $(date +%F) | ${post_count} entries !!! MISMATCH: source=${pre_count} merged=${post_count}" >> "$RECORD_FILE"
+			return 1
+		fi
+
+		echo "${output_name}.root | ${outds} | $(date +%F) | ${post_count} entries" >> "$RECORD_FILE"
+		log_status "task $tid: validated OK — ${post_count} entries."
+	else
+		# Single-file merge failed — chunked fallback
 		rm -f "$output_file"
-		return 1
+		log_status "task $tid: recursive hadd failed, using chunked fallback..."
+
+		local part_str
+		part_str=$(echo "$output_name" | grep -oP 'part[0-9]+')
+
+		if ! chunked_hadd_fallback "$tid" "$outds" "$target_dir" "$target_subdir" "$pre_count" "$part_str" "${roots[@]}"; then
+			return 1
+		fi
+
+		if [[ "$FALLBACK_TOTAL_ENTRIES" -ne "$pre_count" ]]; then
+			log_error "task $tid: TOTAL ENTRY MISMATCH after chunked fallback: pre=$pre_count total=$FALLBACK_TOTAL_ENTRIES"
+			return 1
+		fi
+		log_status "task $tid: chunked fallback OK — $FALLBACK_TOTAL_ENTRIES entries across multiple parts."
 	fi
 
-	# Count entries after merge
-	local post_count
-	post_count=$(count_entries_chain "$output_file")
-	log_status "task $tid: post-merge entries = $post_count"
-
-	# Validate
-	if [[ "$post_count" -ne "$pre_count" ]]; then
-		log_error "task $tid: ENTRY MISMATCH for $output_name: pre=$pre_count post=$post_count"
-		echo "${output_name}.root | ${outds} | $(date +%F) | ${post_count} entries !!! MISMATCH: source=${pre_count} merged=${post_count}" >> "$RECORD_FILE"
-		return 1
-	fi
-
-	# Record and cleanup
-	echo "${output_name}.root | ${outds} | $(date +%F) | ${post_count} entries" >> "$RECORD_FILE"
-	log_status "task $tid: validated OK — ${post_count} entries. Cleaning up download dir."
+	log_status "task $tid: Cleaning up download dir."
 	rm -rf "$rucio_subdir"
 	return 0
 }
