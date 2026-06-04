@@ -186,7 +186,19 @@ done < pfns.txt
 8. **Pilot P6**: Test analysis read ✓ DONE
 9. **Plugin**: Create `bnl-localgroupdisk` Claude Code plugin ✓ DONE
 10. **Plugin v1.1**: Add decision-point flow (upload-only / same-path swap / full integration) ✓ DONE
-11. **Apply** to remaining datasets (powheg cc truth, pythia truth, powheg fullsim) ← NEXT
+11. **Plugin v1.2**: Add autonomous mode, safety features, README settings section ✓ DONE
+12. **Plugin publish**: Standalone repo at `FlamyFlame/claude-bnl-localgroupdisk`, marketplace PR #61 ✓ DONE (PR pending review)
+13. **Plugin marketplace compliance**: Frontmatter, section order, cursor/codex manifests ✓ DONE
+14. **Plugin test**: Isolated environment at `/tmp/plugin-test/` — NOT RUN YET
+15. **Apply** to remaining datasets (powheg cc truth, pythia truth, powheg fullsim) ← IN PROGRESS
+    - 15a: Deleted `bb_evgen_truth_full_sample_orig` (pilot backup) ✓ DONE
+    - 15b: CC truth — files already on scratchdisk, dataset `powheg_cc_evgen_truth` (26 files), rule `f228a61b35ad4d1a8250f8780ec3c50a` — 24/26 symlinks built, `mc_truth_cc_01.root` (pnfs path not yet visible) and `mc_truth_cc_02.root` (still REPLICATING) pending
+    - 15c: Pythia truth 5TeV — uploaded ✓, dataset `pythia_truth_5TeV` (24 files), rule `94b3464b...` — **OK**, symlink farm ✓ DONE
+    - 15d: Pythia truth 5.36TeV — uploaded ✓, dataset `pythia_truth_5p36TeV` (24 files), rule `f5d11de7...` — **OK**, symlink farm ✓ DONE
+    - 15e: Powheg fullsim bb — uploaded (clean names), dataset `powheg_fullsim_bb` (51 files), rule `06110def...` — **OK**, symlink farm ✓ DONE (mapped `user.yuhang.` prefix back)
+    - 15f: Powheg fullsim cc — uploaded (clean names), dataset `powheg_fullsim_cc` (52 files), rule `b07e8270...` — **OK**, symlink farm ✓ DONE (mapped `user.yuhang.` prefix back)
+    - **Fullsim naming issue**: Files named `user.yuhang.48591366.MYSTREAM._NNNNNN.root` caused Rucio 500 "Database exception" on upload. Workaround: strip `user.yuhang.` prefix → upload as `48591366.MYSTREAM._NNNNNN.root`. Symlink farm maps `user.yuhang.<name>` → LGD pnfs path `<name>`.
+    - **`_orig` directories** to delete after verification: `pythia_5TeV_orig`, `pythia_5p36TeV_orig`, `cc_evgen_truth_full_sample_orig`, `*bb*_MYSTREAM_orig`, `*cc*_MYSTREAM_orig`
 
 ## Accumulated Findings
 
@@ -200,6 +212,9 @@ done < pfns.txt
 - Pilot P6: **SUCCESS**. Full Powheg truth analysis (`PowhegTruthAnalysis pw(1, "bb", 0)`) ran to completion on LOCALGROUPDISK symlinks. 1,000,000 events processed in 625s. Output: `muon_pairs_powheg_bb_truth_part1.root` (131 MB), `hists_powheg_ntuple_processing_powheg_bb_truth_part1.root` (948 KB). No code changes needed — symlink farm is fully transparent.
 - Plugin: Created `bnl-localgroupdisk` Claude Code plugin at `BNL_LOCALGROUPDISK_backup/bnl-localgroupdisk-plugin/` with 4 skills (`preflight`, `migrate`, `check-rule`, `build-symlinks`). Encodes full procedure, troubleshooting, and key facts from pilot. Publicly shareable.
 - Plugin v1.1: Restructured `migrate` skill with 3 decision points: (1) upload only vs. upload + symlink swap (default), (2) same-path swap (default, no code changes) vs. different path, (3) symlink only vs. full integration (codebase scan, path updates, test, git-branch rollback). `farm_dir` dropped from required argument to conditional. `disable-model-invocation` set to `false`, `Edit` added to `allowed-tools` for full integration path. User is asked for explicit approval before code modification begins.
+- Plugin v1.2 (2026-06-03): Added autonomous mode (recognizes "no confirmation" etc.), non-.root file warning, TTree smoke test for same-path swap, `_orig` cleanup prompt, 96h VOMS validity note, BNL storage docs link. Published standalone repo at `github.com:FlamyFlame/claude-bnl-localgroupdisk` (4 commits on main). README updated with recommended settings, quick start with autonomous mode, worked example.
+- Marketplace PR #61 (2026-06-03): Submitted to `usatlas/marketplace` from fork `FlamyFlame/marketplace` branch `add-bnl-localgroupdisk-plugin`. CodeRabbit review required compliance fixes: frontmatter (only `name`+`description` allowed, "Use when..." prefix), canonical section order (Overview→When to Use→Key Concepts→Canonical Patterns→Gotchas→Interop→Docs), `## Docs` section, `.cursor-plugin/plugin.json`, `marketplace.json` entry, `.codex/INSTALL.md` update. All fixes committed and pushed (`8958f34`). Standalone repo back-ported content improvements (Gotchas, Interop, When to Use, Key Concepts, Docs) while keeping standalone-specific frontmatter (`arguments`, `argument-hint`, `allowed-tools`) — commit `ecdf841`.
+- Plugin test environment: set up at `/tmp/plugin-test/` with isolated `.claude/settings.json` and minimal CLAUDE.md (no project tracking docs). Plugin copied to `.claude/plugins/`. **Test was never executed** — no upload_scratch.log or test-log.md generated. The environment is ready for a future test run.
 
 ## Ruled Out
 
@@ -209,8 +224,9 @@ done < pfns.txt
 
 ## Latest Stage
 
-**Plugin v1.1 updated with decision-point flow** — Migrate skill restructured with 3 interactive decision points: (1) upload only vs. upload + symlink swap, (2) same-path swap vs. different path, (3) symlink only vs. full integration. Same-path swap is default → no code changes needed. Full integration path (different-path only) scans codebase, updates paths, tests in temp dir, rolls back on failure via git branch. `disable-model-invocation: false`, `Edit` added to allowed-tools. User asked for explicit approval before code edits. README and plugin.json updated (v1.1.0). Next: apply migration to remaining datasets:
-1. `powheg_full_sample/cc_evgen_truth_full_sample/` (powheg cc truth)
-2. `pythia_truth_full_sample/pythia_5TeV/` and `pythia_truth_full_sample/pythia_5p36TeV/` (pythia truth)
-3. `powheg_full_sample/user.yuhang.TrigRates.dimuon.PowhegPythia.fullsim.pp17.bb.Feb2026.v1._MYSTREAM/` (powheg fullsim bb)
-4. `powheg_full_sample/user.yuhang.TrigRates.dimuon.PowhegPythia.fullsim.pp17.cc.Feb2026.v1._MYSTREAM/` (powheg fullsim cc)
+**Step 15 nearly complete.** 4/5 datasets fully migrated with symlink farms. CC truth 24/26 symlinks (2 files pending replication/pnfs visibility).
+
+Remaining:
+- Add symlinks for `mc_truth_cc_01.root` and `mc_truth_cc_02.root` when replication completes (check: `rucio rule-info f228a61b35ad4d1a8250f8780ec3c50a`)
+- Delete `_orig` directories after verifying analysis code works with new symlinks
+- `dimuon_data` migration not yet started (594 GB, was not in this batch)
