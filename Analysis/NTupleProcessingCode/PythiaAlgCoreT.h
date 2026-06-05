@@ -254,6 +254,7 @@ public:
 
     bool turn_data_resonance_cuts_on = false;
     bool fill_kn_trees_fullsim = false;  // set true to bin fullsim pairs into per-kn trees
+    std::string fullsim_input_dir_override;  // if non-empty, replaces computed fullsim_input_dir
 
     explicit PythiaAlgCoreT(int batch_num_input, bool useLocal_input = false)
         : batch_num(batch_num_input)

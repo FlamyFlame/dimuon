@@ -132,3 +132,4 @@ When the user asks to run, execute, or steer a pipeline, or wants autonomous end
 - `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/mu4_trig_effcy_implementation.md` — MU4 trigger efficiency: 3-pipeline separation, no-corr efficiency, inverse-weighted dR corrections
 - `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/grid_monitor_data_infra.md` — Grid monitoring: parallel download, recursive hadd, chunked fallback with auto code/sub updates
 - `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/localgroupdisk_migration.md` — Migrate ~1.4 TB from personal pnfs to BNL-OSG2_LOCALGROUPDISK; symlink swap for transparent analysis access
+- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/hijing_overlay_truth_barcode_duplicate_investigation.md` — Truth/barcode investigation across r17618/r17662/r17663: StandardSignalOnlyTruth vs no-overlay vs original

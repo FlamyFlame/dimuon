@@ -1,0 +1,6 @@
+{"event":"start","command":"review-plot","task":"Review all PbPb pipeline output plots from crossx and trig eff pipelines","slug":"pbpb-pipeline-output-plots","timestamp":"2026-05-27T19:55:00-04:00"}
+{"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-05-27T20:05:00-04:00","criticals":0,"warnings":1,"slug":"pbpb-pipeline-output-plots"}
+{"event":"start","command":"review-pipeline","task":"Review POWHEG fullsim single-muon and mixed-pairs pipelines","slug":"powheg-single-mixed","timestamp":"2026-06-02T18:24:35-04:00"}
+{"event":"start","command":"review-pipeline","task":"Review and improve Pythia truth + fullsim overlay pipeline scripts","slug":"pythia-truth-overlay","timestamp":"2026-06-02T15:00:00-04:00"}
+{"event":"end","command":"review-pipeline","status":"approved","iterations":2,"timestamp":"2026-06-02T15:10:00-04:00","criticals":0,"warnings":0,"slug":"pythia-truth-overlay"}
+{"event":"end","command":"review-pipeline","status":"approved","iterations":1,"timestamp":"2026-06-02T18:30:00-04:00","criticals":0,"warnings":0,"slug":"powheg-single-mixed"}
