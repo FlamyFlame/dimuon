@@ -93,12 +93,11 @@ static int CentralityFromFCal2023(float fcal_AC) {
 static std::map<int, std::vector<std::string>> BuildFileMapAlt() {
     const std::string base = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/";
     return {
-        // pbpb2023 should have part1..part4, but currently only part1..part3 finished skimming.
-        // This needs to be rerun after part4 is available.
         {23, {
             base + "pbpb_2023/data_pbpb23_part1.root",
             base + "pbpb_2023/data_pbpb23_part2.root",
             base + "pbpb_2023/data_pbpb23_part3.root",
+            base + "pbpb_2023/data_pbpb23_part4.root",
         }},
         {24, {
             base + "pbpb_2024/data_pbpb24_part1.root",

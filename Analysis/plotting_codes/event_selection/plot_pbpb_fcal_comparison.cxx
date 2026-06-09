@@ -33,7 +33,8 @@ static std::map<int, std::vector<std::string>> BuildFilesFC() {
     return {
         {23, {base+"pbpb_2023/data_pbpb23_part1.root",
               base+"pbpb_2023/data_pbpb23_part2.root",
-              base+"pbpb_2023/data_pbpb23_part3.root"}},
+              base+"pbpb_2023/data_pbpb23_part3.root",
+              base+"pbpb_2023/data_pbpb23_part4.root"}},
         {24, {base+"pbpb_2024/data_pbpb24_part1.root",
               base+"pbpb_2024/data_pbpb24_part2.root"}},
         {25, {base+"pbpb_2025/data_pbpb25_part1.root",
