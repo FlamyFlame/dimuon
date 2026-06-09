@@ -71,9 +71,7 @@ void plot_dR_trig_corr() {
     };
 
     std::vector<TermDef> terms = {
-        {"_mu4_combined_invw_num",   "single-muon combined",   "dR_single_muon", 0.6, 1.6},
-        {"_cross_mu4_invw_num",      "cross-term",             "dR_cross_term",  0.6, 1.6},
-        {"_pair_mu4_invw_num",       "pair-level",             "dR_pair_level",  0.6, 1.4}
+        {"_cross_mu4_invw_num",      "cross-term",             "dR_cross_term",  0.6, 1.6}
     };
 
     auto makePlots = [&](const std::string& ctr_label, const std::string& ctr_graph_suffix,

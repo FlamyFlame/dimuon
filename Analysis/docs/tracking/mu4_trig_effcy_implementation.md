@@ -78,36 +78,25 @@ P(muon fires mu4 | another offline muon at dR) = ε^{nc}(pT, q·η) × ε_dR(dR)
 
 To extract ε_dR, divide out the known ε^{nc} via per-event inverse weighting.
 
-#### 3a. Pair-level mu4 dR correction (ε_dR^{pair}) — REPLACES old §3a/§3b
+#### 3a. (REMOVED — see D9)
 
-**What we measure:** How does the pair-level mu4 trigger probability deviate from
-the no-correlation prediction as a function of dR?
+Single-muon dR correction removed. We expect negligible pair dR correlation on
+single-muon mu4 efficiency. Code removed from PbPb.cxx.
 
-```
-P(pair passes mu4 | dR) = ε_pair^{nc} × ε_dR^{pair}(dR)
-```
+#### 3b. (REMOVED — see D9)
 
-**Per-event procedure:**
-1. Evaluate ε₁^{nc} and ε₂^{nc} from Pipeline 2 (TF1 if q·η in fitted bin; unfitted 2D histogram if gap region).
-2. Compute ε_pair^{nc} = ε₁^{nc} + ε₂^{nc} − ε₁^{nc}·ε₂^{nc}.
-3. **Denominator:** all pairs where both ε₁ and ε₂ are defined (i.e., ε_pair^{nc} is computable). Weight = 1.
-4. **Numerator:** from denominator population, pairs where the pair passes mu4 (m1.passmu4 || m2.passmu4). Weight = 1/ε_pair^{nc}.
-5. **CRITICAL:** Since all events in the sample satisfy the mu4 event trigger (m1 OR m2 fires), the numerator condition is satisfied by ALL events in the denominator. No events are excluded from the numerator.
-6. TH1::Divide(numerator, denominator) → ε_dR^{pair}(dR). Also fill as function of pair pT, deta, dphi, minv.
+Pair-level dR correction removed. On a mu4-selected sample, the numerator condition
+(at least one fires) is the selection condition itself — ε_dR^{pair} ≡ 1 by
+construction, measuring only fit quality rather than a physical dR effect. The
+previous D6 "fix" was a tautology, not a physics measurement. Code removed.
 
-If ε_dR^{pair} = 1 at all dR, there is no proximity effect on the pair trigger.
+#### 3c. Cross-term dR correction (ε_dR^{cross}) — reference for MC
 
-**Why this avoids the event-selection bias (see D6):** The old separate approach tested
-P(one muon fires) on a sample selected by P(either fires), creating a ~1.2 offset.
-The pair-level approach tests P(pair passes mu4) = P(either fires), which is the
-selection condition itself — every event satisfies it, so no selection bias exists.
+Measures P(both muons fire mu4 | dR) / (ε₁ε₂) via inverse weighting. On a
+mu4-selected sample, the denominator is biased by 1/(ε₁+ε₂−ε₁ε₂), inflating
+the ratio. Kept as reference for unbiased MC samples. Code in PbPb.cxx.
 
-#### 3b. (SUPERSEDED — see D6)
-
-The old cross-term correction ε_dR^{cross} is no longer needed as a separate quantity.
-The pair-level correction in §3a absorbs both single-muon and cross-term effects.
-
-#### 3c. PP 2mu4 dR correction (ε_dR^{2mu4})
+#### 3d. PP 2mu4 dR correction (ε_dR^{2mu4})
 
 Same as 3b but numerator condition is `pass2mu4` (pair-level trigger decision) instead of `m1.passmu4 && m2.passmu4`. The 2mu4 hardware trigger can differ from "both individually pass mu4" by prescales. No tag/probe. No separate single-muon term.
 
@@ -209,6 +198,36 @@ fine-binned output.
 defaulted to coarse.
 **New:** `useCoarseQEtaBin = false` in RDFBasedHistFillingData.h; all downstream readers
 updated to use fine binning.
+
+### D9: Remove single-muon and pair-level dR corrections; keep cross-term as MC reference (2026-06-09)
+**Physics:** All three inverse-weighted dR corrections (single-muon, pair-level, cross-term)
+suffer from event-level trigger selection bias when evaluated on the mu4-selected sample.
+The sample only contains events where at least one muon fires mu4 (OR condition). The
+denominator of the inv-weighted ratio is therefore depleted by a factor P(at least one fires)
+= ε₁ + ε₂ − ε₁ε₂, inflating the ratio by 1/(ε₁ + ε₂ − ε₁ε₂) > 1. This bias is
+pT-dependent (~1.3 at low pT, ~1.0 at high pT) and creates apparent dR structure through
+kinematic correlations between dR and pT.
+
+The pair-level approach (D6) appeared to avoid this bias because the numerator condition
+(pair passes mu4 = OR) matched the selection, making every event satisfy the numerator.
+But this is a tautology — ε_dR^{pair} ≡ 1 by construction on this sample, and the measured
+ratio only reflects the fit quality of ε^{nc}, not a real dR correlation. The D6 "fix"
+did not measure a physical quantity; it just removed the symptom of the bias without
+measuring anything useful.
+
+For the single-muon term, we expect negligible pair dR correlation on the mu4 single-muon
+efficiency (each muon's L1 trigger is largely independent). Combining single-muon and
+cross-term into a pair-level correction (D6) conflates two physically distinct behaviors
+and is not meaningful.
+
+The cross-term is kept as a reference because it measures the genuine two-body trigger
+correlation P(both fire | dR) / (ε₁ε₂). On an unbiased sample (MC with no trigger
+selection), this procedure is correct and gives ε_dR^{cross}(dR) directly.
+
+**Old:** Three terms filled: single-muon (role-swap combined), cross-term, pair-level.
+Plateau normalization applied to pair-level. All plotted.
+**New:** Only cross-term filled and plotted. Single-muon and pair-level fills removed
+from PbPb.cxx. Plateau normalization removed from pipeline. Old plots/ROOT files deleted.
 
 ### D5: Use mu4-only fits for inverse weighting (2026-05-18)
 **Physics (§Pipeline 2):** The no-correlation efficiency is measured as P(2mu4 | mu4, dR > 0.8), which gives the single-muon mu4 efficiency. The TF1 keys contain "2mu4" because of how Pipeline 2 labels the conditional probability, but the physical quantity is ε^{nc}(mu4). mu4_mu4noL1 fits are unconstrained (skimming bug).
@@ -517,6 +536,17 @@ Per-muon `m1/m2.passmu4noL1` is always false in current ntuples. Bug in `DimuonD
 - Note: Warning `h_pt2nd_vs_q_eta2nd_ctr0_5_sign1_mu4 not found` at fitting stage — this is a
   reference TH2D for sign1 (SS), expected absent since fitting focuses on sign2 (OS) + mu+/mu- split
 
+### 2026-06-09: Step 20 — Remove single-muon & pair-level dR corrections (D9)
+- **Root cause:** All inv-weighted dR corrections are biased on mu4-selected sample. Denominator
+  depleted by P(at least one fires) = ε₁+ε₂−ε₁ε₂. Pair-level "fix" (D6) was tautological.
+- **Code changes:** PbPb.cxx: removed role1/role2/pair-level fills + columns. Data.cxx: removed
+  role-swap combination + pair-level post-processing. plot_dR_trig_corr.C: terms reduced to
+  cross-term only. Pipeline: removed plateau_normalize_dR_corr.C.
+- **Deleted outputs:** 4 plot dirs (dR_single_muon, dR_pair_level, 2× plateau_norm; 360 PNGs),
+  6 plateau ROOT files.
+- **Kept:** Cross-term fills + plots as reference for unbiased MC evaluation.
+- **Compilation:** PbPb.cxx ✓, PP.cxx ✓ (ACLiC, only -Wsign-compare warning).
+
 ### 2026-06-02: Input verification investigation (CORRECTED)
 - **Question:** User reported P3 dR plots look identical to previous outputs despite new skim.
 - **Finding: All pipeline inputs are correct.** Verified at every stage:
@@ -543,41 +573,29 @@ Per-muon `m1/m2.passmu4noL1` is always false in current ntuples. Bug in `DimuonD
 - Locate/re-download PbPb 2023 part 1 raw data, reprocess + re-hadd
 - PP24 Pipeline 2+3 when re-skim completes
 - Reprocess ntuples for passmu4noL1 fix (separate issue)
+- Evaluate cross-term/2mu4 dR correction on MC samples (unbiased — no trigger selection)
 - Update docs: README.md, analysis docs
 
 ## Latest Stage
 
-**Steps 17-19 DONE.**
+**Step 20 DONE (2026-06-09): Remove single-muon & pair-level dR corrections (D9)**
 
-### Step 17-18 summary
-- **Step 17:** Expanded `pipelines/pipeline_pbpb_trig_eff.sh` with stages 5-10 (P2: RDF hist
-  filling, pT fitting, fit/TH2D validation, plotting; P3: inv_weight hist filling, dR plots +
-  plateau normalization). Added `RDF_NTHREADS` env var.
-- **Step 18 (D8):** Switched `useCoarseQEtaBin` default from `true` to `false` in
-  `RDFBasedHistFillingData.h`. Fixed TH2D fallback file mismatch: fitter output is fine-binned
-  but OpenEffcyPtFitFile was loading coarse-binned TH2D fallback. All downstream readers updated.
+Cleaned up codebase after identifying that all inverse-weighted dR corrections are biased
+on the mu4-selected sample. The denominator only contains triggered events (at least one
+muon fires), inflating the ratio by 1/(ε₁+ε₂−ε₁ε₂). The pair-level "fix" (D6) was a
+tautology (numerator condition = selection condition → ratio measures fit quality, not physics).
 
-### Step 19: Re-run with fine q-eta default (DONE 2026-06-02)
-- Re-ran all Pipeline 2 + Pipeline 3 steps for PbPb 23/24/25 with SKIP_CONDOR=1
-- All 10 pipeline stages passed; zero FAILs or ERRORs
-- Timings (Stage 5 P2 hist filling): yr23 ~10min, yr24 ~5.5min, yr25 ~11.5min
-- Fitting (Stage 6): yr23 40s, yr24 44s, yr25 47s
-- P3 inv-weight (Stage 9): yr23 ~2.5min, yr24 ~1.5min, yr25 ~3min
-- Output files all fresh (Jun 2 13:18-13:23):
-  - `histograms_real_pairs_pbpb_20{23,24,25}_single_mu4_fine_q_eta_bin.root` (P2+P3 combined)
-  - `trg_effcy_pT_fitting_to_fermi_plus_log/single_mu_effcy_pT_fit.root` (per year)
-  - `dR_corr_plateau_norm_plateau_norm_pt_binned_pbpb_20{23,24,25}.root` (P3 normalization)
-- dR plateau values physically sensible: OS central ~1.27-1.35 (decreasing toward peripheral),
-  SS similar pattern; pT-binned plateaus show expected pT dependence (~1.23 at 8-12 GeV → ~1.04 at 40-120 GeV)
-
-**After state (from Steps 15-19, current):**
-- PbPb.cxx + PP.cxx: pair-level fill with 2D {DR_zoomin, pair_pt_log} AND {DR, pair_pt_log}
-- Data.cxx: MakeAndWriteDRTrigEffGraphsHelper produces 1D ratios + pair-pT-sliced dR projections (both DR and DR_zoomin)
-- plot_dR_trig_corr.C: plots pair-level term + pair-pT-sliced overlay (unnormalized)
-- plateau_normalize_dR_corr.C: plateau-normalized versions (2 modes)
-- DimuonDataAlgCoreT.c: mu6/mu8 disabled
-- **useCoarseQEtaBin now defaults to false** — all Pipeline 2/3 code and scripts use fine q-eta
-- Note: ratio_divide_and_write uses "B" (binomial) errors — central values OK, errors approximate
+**Changes:**
+- PbPb.cxx: removed single-muon role1/role2 fills, pair-level fills, and unused columns
+  (invw_probe1/2, effcy_pair, invw_pair). Only cross-term fills remain (reference for MC).
+- Data.cxx: removed role-swap combination and pair-level divideAndProject from
+  MakeAndWriteDRTrigEffGraphsHelper. Only cross-term divideAndProject remains.
+- plot_dR_trig_corr.C: removed single-muon and pair-level from `terms` vector.
+- pipeline_pbpb_trig_eff.sh: removed plateau_normalize_dR_corr.C call from stage 10.
+- Deleted 4 plot directories (360 PNGs): dR_single_muon, dR_pair_level, 2× plateau_norm.
+- Deleted 6 plateau normalization ROOT files (2 modes × 3 years).
+- Both PbPb and PP compile cleanly with ACLiC.
+- Added D9 to Design Decisions, updated Physics Procedure §3a-§3c.
 
 ## Potential Issues
 

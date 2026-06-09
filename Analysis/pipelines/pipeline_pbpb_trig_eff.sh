@@ -18,7 +18,7 @@ set -Eeuo pipefail
 #
 # Pipeline 3 (dR corrections via inverse weighting):
 #   9) RDF hist filling — inv_weight_by_single_mu_effcy cycle per year
-#   10) Pipeline 3 plotting (dR correction overlays + plateau normalization)
+#   10) Pipeline 3 plotting (cross-term dR correction overlays)
 #
 # Usage:
 #   ./pipeline_pbpb_trig_eff.sh
@@ -494,15 +494,10 @@ EOF
   validate_files_or_fail "RDF Pipeline 3 yr${yr}" "$(get_rdf_output "$yr")"
 done
 
-# ------ Stage 10: Pipeline 3 plotting (dR corrections + plateau normalization) ------
+# ------ Stage 10: Pipeline 3 plotting (dR corrections) ------
 log "Running dR correction plots (all years combined)"
 pushd "$PLOT_DR_DIR" >/dev/null
 root -l -b -q "plot_dR_trig_corr.C"
-popd >/dev/null
-
-log "Running plateau normalization (all years combined)"
-pushd "$PLOT_DR_DIR" >/dev/null
-root -l -b -q "plateau_normalize_dR_corr.C"
 popd >/dev/null
 
 log "PbPb trigger efficiency pipeline completed successfully for years: ${YEARS[*]}"

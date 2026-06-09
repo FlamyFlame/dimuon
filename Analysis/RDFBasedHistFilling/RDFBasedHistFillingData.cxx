@@ -612,39 +612,8 @@ void RDFBasedHistFillingData::MakeAndWriteDRTrigEffGraphsHelper(const std::vecto
     for (const std::string& cat : cats) {
         for (const std::string& pair_sign : {"_ss", "_op"}) {
             if (IsPbPb()) {
-                // §3a: Single-muon combined — sum role-swap 1D hists
-                for (const auto& var : invw_var1Ds) {
-                    for (const std::string& hw : {"_invw_num", "_denom"}) {
-                        std::string h1 = "h_" + var + pair_sign + "_mu2probe_mu4" + hw + cat;
-                        std::string h2 = "h_" + var + pair_sign + "_mu1probe_mu4" + hw + cat;
-                        TH1D* hr1 = map_at_checked(hist1D_map, h1, Form("Helper: %s", h1.c_str()));
-                        TH1D* hr2 = map_at_checked(hist1D_map, h2, Form("Helper: %s", h2.c_str()));
-                        if (!hr1 || !hr2) continue;
-                        std::string hc_name = "h_" + var + pair_sign + "_mu4_combined" + hw + cat;
-                        TH1D* hc = (TH1D*)hr1->Clone(hc_name.c_str()); hc->Add(hr2);
-                        hist1D_map[hc_name] = hc;
-                    }
-                }
-                // §3a: Sum role-swap 2D hists
-                for (const std::string& dr_var : {"DR_zoomin", "DR"}) {
-                    for (const std::string& hw : {"_invw_num", "_denom"}) {
-                        std::string h2r1 = "h_pair_pt_log_vs_" + dr_var + pair_sign + "_mu2probe_mu4" + hw + cat;
-                        std::string h2r2 = "h_pair_pt_log_vs_" + dr_var + pair_sign + "_mu1probe_mu4" + hw + cat;
-                        auto it1 = hist2D_map.find(h2r1);
-                        auto it2 = hist2D_map.find(h2r2);
-                        if (it1 == hist2D_map.end() || it2 == hist2D_map.end()) continue;
-                        std::string h2c = "h_pair_pt_log_vs_" + dr_var + pair_sign + "_mu4_combined" + hw + cat;
-                        TH2D* hc = (TH2D*)it1->second->Clone(h2c.c_str()); hc->Add(it2->second);
-                        hist2D_map[h2c] = hc;
-                    }
-                }
-                divideAndProject("_mu4_combined", pair_sign, cat);
-
-                // §3b: Cross-term
+                // Cross-term only (single-muon and pair-level removed — see D9)
                 divideAndProject("_cross_mu4", pair_sign, cat);
-
-                // D6: Pair-level
-                divideAndProject("_pair_mu4", pair_sign, cat);
             } else {
                 // PP: 2mu4 (§3c)
                 divideAndProject("_2mu4", pair_sign, cat);
