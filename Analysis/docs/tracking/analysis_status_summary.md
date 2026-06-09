@@ -31,7 +31,7 @@ remains.
 | pT turn-on fitting | P2 trig eff | **DONE** | 2026-06-09 | (run as part of P3 cycle) |
 | P2 plotting (no-corr trig eff) | P2 trig eff | **DONE** | 2026-06-09 | All 3 years |
 | RDF P3 hist filling (inv weight) | P3 dR corr | **DONE** | 2026-06-09 | — |
-| P3 plotting (dR corr + plateau) | P3 dR corr | **DONE** | 2026-06-09 | — |
+| P3 plotting (cross-term dR corr) | P3 dR corr | **DONE** | 2026-06-09 | Single-muon/pair-level/plateau removed (D9: biased on mu4 sample) |
 
 ## Non-Pipeline Data Code (Producing Final Results)
 

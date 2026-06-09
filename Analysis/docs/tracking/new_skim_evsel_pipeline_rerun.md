@@ -127,8 +127,8 @@ read both MC and data; called from other plotting codes.
 - P2 RDF hist filling: yr23/24/25 complete.
 - P2 plotting (no-corr trig eff): yr23/24/25 complete.
 - P3 RDF hist filling: yr23/24/25 complete.
-- P3 plotting (dR corr + plateau norm): all 3 years complete.
-- dR correction ROOT files: 6 files (3 years × pt_int + pt_binned).
+- P3 plotting (cross-term dR corr only): all 3 years complete.
+  (Single-muon/pair-level/plateau removed per D9: biased on mu4-selected sample.)
 
 ## Remaining Work
 

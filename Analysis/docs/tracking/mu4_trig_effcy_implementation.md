@@ -128,16 +128,16 @@ The analysis uses three separate pipelines:
 - [ ] 1d. /review-plot to verify fitting output — BLOCKED: mu4_mu4noL1 fits unconstrained (skimming bug)
 
 ### Phase 2: Inverse weighting (Pipeline 3)
-- [x] 2a. Implement (done, has bugs) → **2a-FIX below**
-- [x] 2b–d. Run (done, output has bugs) → **2d-RERUN below**
-- [ ] **2a-FIX.** Fix physics bugs per investigation doc (§3a, §3b, D5 naming). **Reviewer: /review-analysis-code** with §3a, §3b, §3c in task prompt.
-- [ ] **2d-RERUN.** Rerun Pipeline 3 for PbPb after fixes.
-- [ ] 2e. Implement PP24 Pipeline 3 (§3c: no tag, no cross-term). **Reviewer: /review-analysis-code** with §3c in task prompt.
+- [x] 2a. Implement cross-term + PP 2mu4 inverse weighting
+- [x] 2b–d. Run Pipeline 3 for PbPb (all 3 years)
+- [x] 2e. Implement PP24 Pipeline 3 (§3d: no tag, pass2mu4)
 - [ ] 2f. (When PP24 ntuple ready) Run for PP24.
+- [x] **D9 cleanup.** Removed single-muon and pair-level dR terms (biased on mu4-selected sample).
+  Cross-term kept as reference for unbiased MC. Plateau normalization removed.
 
 ### Phase 3: Plotting
-- [ ] 3a. Create SingleMuTrigDRCorrPlotter. **Reviewer: /review-plot.**
-- [ ] 3b. /review-plot on all output.
+- [x] 3a. Cross-term dR correction plots via `plot_dR_trig_corr.C`.
+- [ ] 3b. Evaluate cross-term/2mu4 dR on MC samples (unbiased).
 
 ## Design Decisions
 
@@ -152,7 +152,7 @@ The analysis uses three separate pipelines:
 **New:** Numerator = pairs passing 2mu4, weight = 1/(ε₁ × ε₂). No tag/probe. No cross-term.
 
 ### D3: Muon role swapping (2026-05-18)
-**Physics (§Pipeline 2, §3a):** Muon 1 and muon 2 are physically interchangeable — the labeling is arbitrary. Swapping roles and combining (sum num, sum denom, then divide) doubles statistics and ensures the result doesn't depend on arbitrary labeling. Role-swap terms are **never** used separately.
+**Physics (§Pipeline 2):** Muon 1 and muon 2 are physically interchangeable — the labeling is arbitrary. Swapping roles and combining (sum num, sum denom, then divide) doubles statistics and ensures the result doesn't depend on arbitrary labeling. Role-swap terms are **never** used separately. (Applies to Pipeline 2 tag-and-probe only; Pipeline 3 single-muon role-swap removed per D9.)
 
 ### D4: Correlation plots include deta, dphi, pair pT (2026-05-18)
 **Physics (§3a):** The factorization assumes ε_dR depends only on dR. Plotting vs deta, dphi, and pair pT tests this assumption — if the correction has deta/dphi structure, the factorization breaks down.

@@ -155,7 +155,10 @@ All paths relative to `DATA_BASE`.
 Derive single-muon trigger efficiency as a function of pT, charge * eta,
 and centrality, then measure dR-dependent corrections via inverse
 weighting. Pipeline 2 produces the no-correlation efficiency; Pipeline 3
-applies it as inverse weights to measure residual dR correlations.
+applies it as inverse weights to measure the cross-term dR correction
+(P(both muons fire) / (ε₁ε₂)). Note: on a mu4-triggered sample, the
+cross-term ratio is biased by the event selection (see D9 in tracking
+doc); it is kept as a reference for evaluation on unbiased MC samples.
 
 ### Pipeline 2: No-Correlation Single-Muon Efficiency
 
@@ -232,9 +235,15 @@ applies it as inverse weights to measure residual dR correlations.
   for each year.
 
 #### Stage 10 -- Pipeline 3 plotting (dR corrections)
-- Runs `plot_dR_trig_corr.C` (dR correction overlays, all years combined)
-- Runs `plateau_normalize_dR_corr.C` (plateau normalization, all years
-  combined)
+- Runs `plot_dR_trig_corr.C` (cross-term dR correction overlays, all
+  years combined)
+
+**Note (D9):** Only the cross-term dR correction is produced. On a
+mu4-triggered sample, all inverse-weighted dR corrections are biased by
+the event selection (denominator depleted by P(at least one muon fires)).
+The cross-term is kept as a reference for unbiased MC samples. The
+single-muon and pair-level terms, and the plateau normalization script,
+have been removed.
 
 ### RDF Configuration (Pipeline 2)
 
@@ -309,7 +318,7 @@ Pipeline 2+3 (trig eff):
                                --> RDF (P2: single-mu eff, RECREATE)
                                --> pT fitting --> validate --> P2 plots
                                --> RDF (P3: inv-weight dR, UPDATE same file)
-                               --> P3 plots (dR corr + plateau norm)
+                               --> P3 plots (cross-term dR corr)
 ```
 
 Pipeline 2 must complete fully (including fitting and validation) before
