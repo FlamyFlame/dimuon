@@ -4,9 +4,10 @@
 # state file (GPFS). Run one instance per node in tmux.
 #
 # Usage:
-#   ./grid_monitor.sh may2026_skim.txt                # single node, default 10min poll
+#   ./grid_monitor.sh may2026_skim.txt                # data mode (default)
 #   ./grid_monitor.sh -i 15 may2026_skim.txt          # poll every 15 min when idle
 #   ./grid_monitor.sh 50267206 50267236 50267371       # task IDs directly
+#   ./grid_monitor.sh --mode overlay 50774658 50774690 # MC overlay mode
 #
 # Multi-node: run the same command on each node (e.g. one tmux pane per node).
 # Each instance claims one task at a time; flock prevents double-claiming.
@@ -25,18 +26,34 @@ set -o pipefail
 POLL_INTERVAL_MIN=10
 STALE_TIMEOUT=10800   # 3 hours: reclaim downloads from crashed workers
 HADD_CHUNK_MAX_FILES=100  # max files per chunk in chunked fallback
-ANALYSIS_CODE_DIR="/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/NTupleProcessingCode"
-DATA_BASE="/usatlas/u/yuhanguo/usatlasdata/dimuon_data"
-RECORD_FILE="${DATA_BASE}/data-merging-record.txt"
-LOG_DIR="${DATA_BASE}"
-STATUS_LOG="${LOG_DIR}/grid_monitor_status.log"
-ERROR_LOG="${LOG_DIR}/grid_monitor_errors.log"
-STATE_FILE="${LOG_DIR}/grid_monitor_state.txt"
-LOCK_FILE="${STATE_FILE}.lock"
 BIGPANDA_URL="https://bigpanda.cern.ch/task"
 MIN_SUCCESS_PCT=90
 MY_HOSTNAME=$(hostname -s)
+MODE="data"  # "data" or "overlay"
+
+# Mode-dependent defaults are applied after argument parsing (see apply_mode_config).
+ANALYSIS_CODE_DIR="/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/NTupleProcessingCode"
 # ─────────────────────────────────────────────────────────────────────────────
+
+apply_mode_config() {
+	case "$MODE" in
+		data)
+			DATA_BASE="/usatlas/u/yuhanguo/usatlasdata/dimuon_data"
+			RECORD_FILE="${DATA_BASE}/data-merging-record.txt"
+			;;
+		overlay)
+			DATA_BASE="/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample"
+			RECORD_FILE="${DATA_BASE}/merging-record.txt"
+			;;
+		*)
+			echo "ERROR: unknown mode '$MODE'. Use 'data' or 'overlay'." >&2; exit 1 ;;
+	esac
+	LOG_DIR="${DATA_BASE}"
+	STATUS_LOG="${LOG_DIR}/grid_monitor_status.log"
+	ERROR_LOG="${LOG_DIR}/grid_monitor_errors.log"
+	STATE_FILE="${LOG_DIR}/grid_monitor_state.txt"
+	LOCK_FILE="${STATE_FILE}.lock"
+}
 
 # ── Parse arguments ──────────────────────────────────────────────────────────
 TASK_IDS=()
@@ -45,6 +62,7 @@ TASK_OUTDS=()   # parallel array: outDS for each task (may be empty)
 while [[ $# -gt 0 ]]; do
 	case "$1" in
 		-i) POLL_INTERVAL_MIN="$2"; shift 2 ;;
+		--mode) MODE="$2"; shift 2 ;;
 		-h|--help)
 			sed -n '2,/^$/s/^# //p' "$0"; exit 0 ;;
 		*)
@@ -67,9 +85,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ ${#TASK_IDS[@]} -eq 0 ]]; then
-	echo "ERROR: no task IDs provided. Usage: $0 [-i POLL_MINUTES] FILE_OR_TASKIDS..." >&2
+	echo "ERROR: no task IDs provided. Usage: $0 [--mode data|overlay] [-i POLL_MINUTES] FILE_OR_TASKIDS..." >&2
 	exit 1
 fi
+
+apply_mode_config
 
 POLL_INTERVAL=$((POLL_INTERVAL_MIN * 60))
 
@@ -129,8 +149,21 @@ set_task_state_if() {
 
 map_outds() {
 	local outds="$1"
-	local dir="" prefix="" part=""
 
+	if [[ "$MODE" == "overlay" ]]; then
+		# user.yuhang.NTUP.Pythia_5p36TeV_pp_hQCD_DiMu_pTH8_14.FullSimHIJINGOverlayPP24.June2026.v1._EXT0
+		# → dir="." (flat, DATA_BASE is the target), output_name from the NTUP filename pattern
+		local sample
+		sample=$(echo "$outds" | sed -n 's/.*NTUP\.\(Pythia_5p36TeV_[^.]*\)\.\(FullSim[^.]*\)\..*/\1.\2.NTUP/p')
+		if [[ -z "$sample" ]]; then
+			echo "UNKNOWN UNKNOWN"; return 1
+		fi
+		echo ". ${sample}"
+		return 0
+	fi
+
+	# Data mode
+	local dir="" prefix="" part=""
 	part=$(echo "$outds" | grep -oP 'part\d+')
 
 	if   [[ "$outds" == *PbPb2023* ]]; then dir="pbpb_2023"; prefix="data_pbpb23"
@@ -277,6 +310,7 @@ recursive_hadd() {
 # Returns: EXTRAS_FILE SUB_FILE RUN_YEAR_KEY
 get_code_update_info() {
 	local target_subdir="$1"
+	[[ "$MODE" == "overlay" ]] && { echo ""; return; }
 	case "$target_subdir" in
 		pp_2024)   echo "$ANALYSIS_CODE_DIR/PPExtras.c   $ANALYSIS_CODE_DIR/run_pp_24.sub   24" ;;
 		pbpb_2023) echo "$ANALYSIS_CODE_DIR/PbPbExtras.c $ANALYSIS_CODE_DIR/run_pbpb_23.sub 23" ;;
@@ -514,8 +548,14 @@ process_task() {
 		echo "${output_name}.root | ${outds} | $(date +%F) | ${post_count} entries" >> "$RECORD_FILE"
 		log_status "task $tid: validated OK — ${post_count} entries."
 	else
-		# Single-file merge failed — chunked fallback
+		# Single-file merge failed — chunked fallback (data mode only)
 		rm -f "$output_file"
+
+		if [[ "$MODE" == "overlay" ]]; then
+			log_error "task $tid: recursive hadd failed for overlay (${#roots[@]} files). Manual intervention needed."
+			return 1
+		fi
+
 		log_status "task $tid: recursive hadd failed, using chunked fallback..."
 
 		local part_str
@@ -721,7 +761,7 @@ log_status "Environment ready. root=$(command -v root) rucio=$(command -v rucio)
 init_state
 
 log_status "════════════════════════════════════════════════════════════════"
-log_status "Worker started: ${#TASK_IDS[@]} tasks, poll every ${POLL_INTERVAL_MIN}min"
+log_status "Worker started: mode=$MODE, ${#TASK_IDS[@]} tasks, poll every ${POLL_INTERVAL_MIN}min"
 log_status "  Status log: $STATUS_LOG"
 log_status "  Error log:  $ERROR_LOG"
 log_status "  State file: $STATE_FILE"

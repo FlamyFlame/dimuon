@@ -223,12 +223,131 @@ r17662 and r17663 eliminate this contamination entirely.  Since r17662
 preserves detector-level HIJING overlay effects in reco while r17663
 does not, r17662 is the preferred choice for production.
 
+## Temporary Code Changes (to be undone after testing)
+
+*(Track all temporary modifications here. Remove each entry once undone.
+If we adopt r17662 for production, none of these changes need to persist.)*
+
+| File | Change | Purpose | Status |
+|------|--------|---------|--------|
+| `PythiaTruthExtras.h` | Added `bool pythia_only_barcode_cache = false;` member | Step 3a: flag to restrict barcode cache | **done** |
+| `PythiaTruthExtras.c:GetParticleIndex` | When `pythia_only_barcode_cache`, cache only up to first bc > 200k | Step 3a: test barcode duplication hypothesis | **done** |
+| `run_rtag_comparison.sh` | Added optional 3rd arg `pythia_only_bc` | Step 3a: pass flag to NTP processing | **done** |
+
 ## Ruled Out
 
 (none yet)
 
 ## Latest Stage
 
-**Step 2 complete.**  All three r-tags processed, 8 comparison plots
-produced.  Next: deeper truth container comparison (sub-step 2–4) or
-summarize findings and recommend r-tag for production.
+**Step 3 complete. (2026-06-04)**
+
+### Step 3a: Barcode duplication in r17618
+
+**Truth container structure in r17618 (event 0, 81030 particles):**
+
+```
+Pythia truth:    idx 0..650    (bc 1..651)
+Pythia Geant4:   idx 651..662  (bc 200001..200171)
+HIJING truth:    idx 663..76522 (bc 1..75860, RESTARTS FROM 1!)
+HIJING Geant4:   idx 76523..81029 (bc 200027+)
+```
+
+**652 duplicate barcodes** (barcodes 1–651 all appear twice: Pythia idx +
+HIJING idx).  `barcode_to_index_cache.emplace()` stores the **first**
+occurrence (Pythia), so Pythia muons trace correctly.  But:
+
+**Reco muon truth-matching reveals the mechanism:**
+- Reco muons truth-matched to Pythia particles (e.g. bc=633) have
+  ambiguous barcodes but resolve to the Pythia index (first occurrence) → OK
+- Reco muons truth-matched to HIJING particles (bc=67878, 11699, etc.
+  at HIJING+ indices) are unique → they enter truth-pair analysis but
+  their ancestor chains are HIJING particles, causing truncation.
+- ~4.7 reco muons/event in r17618 (due to HIJING overlay), many from HIJING.
+
+**Pythia-only barcode cache fix (temporary):**
+Added `pythia_only_barcode_cache` flag to `PythiaTruthExtras`.  When
+set, `GetParticleIndex` caches only Pythia truth (indices before first
+bc > 200k).  HIJING muons now fail to resolve in `SingleMuonAncestorTracing`
+(SAT warning + skip), instead of silently misclassifying.
+
+**Results:** Reran r17618 with `pythia_only_barcode_cache=1`:
+- **0 truncated B-hadron histories** (was 27 = 2.95%)
+- 888 B-hadron muons (was 915; 27 fewer = HIJING muons no longer entering B-hadron tracing)
+- Many SAT warnings for HIJING muon barcodes not in cache → correctly skipped.
+
+**Before/After comparison** (8 plots at `before_after_*.png`):
+
+| Category | Before (all bc) | After (Pyth-only) | r17662 | r17663 |
+|----------|-----------------|---------------------|--------|--------|
+| others (OS) | 0.058 ± 0.010 | **0.015 ± 0.005** | 0.020 ± 0.006 | 0.014 ± 0.005 |
+| others (SS) | 0.234 ± 0.040 | **0.103 ± 0.027** | 0.063 ± 0.024 | 0.074 ± 0.028 |
+| not_both_open_HF (OS) | 0.479 ± 0.029 | 0.523 ± 0.031 | 0.461 ± 0.030 | 0.462 ± 0.030 |
+| not_both_open_HF (SS) | 0.117 ± 0.028 | 0.248 ± 0.041 | 0.081 ± 0.027 | 0.096 ± 0.032 |
+
+- OS "others" now agrees with r17662/r17663 (0.015 vs 0.020/0.014).
+- SS "others" improved from 0.234 to 0.103 (now ~1σ from r17662/r17663).
+- `not_both_open_HF` increases because HIJING muons in pairs (whose
+  barcode can't be resolved) now get `parent_group = -10` → they fall
+  into `not_both_open_HF` instead of being misclassified.
+
+**Conclusion (3a):** Barcode duplication is the primary root cause of the
+"others" excess in r17618.  The fix (Pythia-only barcode cache)
+eliminates the misclassification for OS and dramatically reduces it for SS.
+The remaining SS discrepancy comes from the higher pair count in r17618
+(more HIJING-origin reco muons forming pairs).
+
+### Step 3b: r17662 vs r17663 disagreement
+
+**Investigation findings:**
+
+1. **Different EVNT inputs confirmed:** r17662 eventNumbers start at
+   2601,2646,2640,... while r17663 starts at 1,7,11,...  These are
+   different MC draws → statistical fluctuations are expected.
+
+2. **No barcode duplication in either:** r17662 has 0 duplicates (331
+   truth particles/event, bc 1..319 + Geant4 bc > 200k).  r17663 also
+   0 duplicates (486 particles/event, bc 1..475 + Geant4 bc > 200k).
+   r17663 has more truth particles because the full Pythia shower is
+   preserved (r17662's StandardSignalOnlyTruth may trim some particles).
+
+3. **Reco muon multiplicity differs drastically:**
+   - r17662: avg **4.7 reco muons/event** (HIJING detector overlay →
+     many HIJING tracks reconstructed as muon candidates)
+   - r17663: avg **1.9 reco muons/event** (pure signal → only Pythia muons)
+   - This is the primary driver of the pair count difference
+     (r17662=111SS/508OS vs r17663=94SS/507OS).
+
+4. **Truth content is equivalent:** Both have Pythia-only truth with no
+   HIJING contamination.  The truth-level ancestor tracing works
+   identically for both (0 truncated chains each).
+
+**Conclusion (3b):** r17662 and r17663 disagreements are purely
+statistical (different EVNT inputs, 1000 events) and driven by the
+reco muon selection difference (HIJING detector overlay present in r17662
+but not r17663).  There is **no bug** in the truth analysis for these
+two samples.  All categories agree within 1–2σ, consistent with
+statistical expectations for ~100–500 pairs.
+
+### Summary of findings
+
+The truth analysis code has **no bug for signal-only truth samples**
+(r17662, r17663).  The disagreement between r17618 (original) and the
+other two is entirely caused by **HIJING truth barcode duplication**:
+Pythia and HIJING truth particles share barcodes 1..N, and HIJING muons
+entering the truth-pair analysis get misclassified because their ancestor
+chains lead into HIJING territory that the tracing code was not designed
+to handle.
+
+**Suggested fix for production:**
+- Use **r17662 (StandardSignalOnlyTruth)** which eliminates HIJING truth
+  entirely while preserving detector-level overlay effects.
+- No code change needed — the existing truth analysis works correctly
+  with r17662 out of the box.
+- The `pythia_only_barcode_cache` fix is a workaround for r17618 and
+  should be removed once r17662 is adopted.
+
+**Files:**
+- Backups: `rtag_orig/*.bak_before_pythia_only`, `plots/bak_before_pythia_only/`
+- New output: `rtag_orig/*_rtag_orig_pythiaonly.root`
+- Plots: `plots/truth_origin_comparison/before_after_*.png` (8 plots)

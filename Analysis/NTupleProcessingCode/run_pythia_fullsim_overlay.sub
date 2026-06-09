@@ -10,5 +10,5 @@ executable = run_pythia_fullsim_overlay_condor.sh
 output     = logs/run_pythia_fullsim_overlay_$(sample_type).out
 error      = logs/run_pythia_fullsim_overlay_$(sample_type).err
 log        = logs/run_pythia_fullsim_overlay_$(sample_type).log
-request_memory = 4GB
+request_memory = 8GB
 queue 1

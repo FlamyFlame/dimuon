@@ -190,15 +190,58 @@ done < pfns.txt
 12. **Plugin publish**: Standalone repo at `FlamyFlame/claude-bnl-localgroupdisk`, marketplace PR #61 ✓ DONE (PR pending review)
 13. **Plugin marketplace compliance**: Frontmatter, section order, cursor/codex manifests ✓ DONE
 14. **Plugin test**: Isolated environment at `/tmp/plugin-test/` — NOT RUN YET
-15. **Apply** to remaining datasets (powheg cc truth, pythia truth, powheg fullsim) ← IN PROGRESS
+15. **Apply** to remaining datasets (powheg cc truth, pythia truth, powheg fullsim) ← NEARLY DONE
     - 15a: Deleted `bb_evgen_truth_full_sample_orig` (pilot backup) ✓ DONE
-    - 15b: CC truth — files already on scratchdisk, dataset `powheg_cc_evgen_truth` (26 files), rule `f228a61b35ad4d1a8250f8780ec3c50a` — 24/26 symlinks built, `mc_truth_cc_01.root` (pnfs path not yet visible) and `mc_truth_cc_02.root` (still REPLICATING) pending
-    - 15c: Pythia truth 5TeV — uploaded ✓, dataset `pythia_truth_5TeV` (24 files), rule `94b3464b...` — **OK**, symlink farm ✓ DONE
-    - 15d: Pythia truth 5.36TeV — uploaded ✓, dataset `pythia_truth_5p36TeV` (24 files), rule `f5d11de7...` — **OK**, symlink farm ✓ DONE
-    - 15e: Powheg fullsim bb — uploaded (clean names), dataset `powheg_fullsim_bb` (51 files), rule `06110def...` — **OK**, symlink farm ✓ DONE (mapped `user.yuhang.` prefix back)
-    - 15f: Powheg fullsim cc — uploaded (clean names), dataset `powheg_fullsim_cc` (52 files), rule `b07e8270...` — **OK**, symlink farm ✓ DONE (mapped `user.yuhang.` prefix back)
-    - **Fullsim naming issue**: Files named `user.yuhang.48591366.MYSTREAM._NNNNNN.root` caused Rucio 500 "Database exception" on upload. Workaround: strip `user.yuhang.` prefix → upload as `48591366.MYSTREAM._NNNNNN.root`. Symlink farm maps `user.yuhang.<name>` → LGD pnfs path `<name>`.
-    - **`_orig` directories** to delete after verification: `pythia_5TeV_orig`, `pythia_5p36TeV_orig`, `cc_evgen_truth_full_sample_orig`, `*bb*_MYSTREAM_orig`, `*cc*_MYSTREAM_orig`
+    - 15b: CC truth ✓ DONE — dataset `powheg_cc_evgen_truth` (26 files, 108 GB). Old rules (ghost/stuck) cleaned up; fresh rule `9aa0d72bc282413a85bf6658e7e753e4` → OK (26/26 replicated in ~10 min on 2026-06-04). Symlink farm at `~/dcachearea/powheg_full_sample/cc_evgen_truth_full_sample/` rebuilt with all LGD targets. Original → `cc_evgen_truth_full_sample_orig`.
+    - 15c: Pythia truth 5TeV ✓ DONE — uploaded to scratchdisk (24 files, ~172 GB, ~1 min/file), dataset `pythia_truth_5TeV`, rule `94b3464b4d3746128a466f5a6c26144f` → OK. Symlink farm at `~/dcachearea/pythia_truth_full_sample/pythia_5TeV/`. Original → `pythia_5TeV_orig`.
+    - 15d: Pythia truth 5.36TeV ✓ DONE — uploaded (24 files, ~187 GB), dataset `pythia_truth_5p36TeV`, rule `f5d11de7f63f4bc795d484f36629a906` → OK. Symlink farm at `~/dcachearea/pythia_truth_full_sample/pythia_5p36TeV/`. Original → `pythia_5p36TeV_orig`.
+    - 15e: Powheg fullsim bb ✓ DONE — uploaded with clean names (51 files, 119 GB), dataset `powheg_fullsim_bb`, rule `06110deffc8049e88ce24f9d1543689c` → OK. Symlink farm at `~/dcachearea/powheg_full_sample/user.yuhang.TrigRates.dimuon.PowhegPythia.fullsim.pp17.bb.Feb2026.v1._MYSTREAM/`. Symlink names have `user.yuhang.` prefix restored → LGD pnfs paths use stripped names. Original → `*_MYSTREAM_orig`.
+    - 15f: Powheg fullsim cc ✓ DONE — uploaded with clean names (52 files, 125 GB), dataset `powheg_fullsim_cc`, rule `b07e82704a564688b18010b4af2a2eea` → OK. Symlink farm at `~/dcachearea/powheg_full_sample/user.yuhang.TrigRates.dimuon.PowhegPythia.fullsim.pp17.cc.Feb2026.v1._MYSTREAM/`. Same name mapping as bb. Original → `*_MYSTREAM_orig`.
+
+### CC Truth Issues — Investigation & Resolution (2026-06-04)
+
+**Original problems (from 2026-06-03):**
+- `mc_truth_cc_01.root`: Ghost replica — Rucio catalog showed LGD entry at `9d/ca/` but pnfs path did not exist
+- `mc_truth_cc_02.root`: FTS transfer stuck at REPLICATING for >12h; had duplicate file-level rule `6588c2674dbe4947bc540fe6426b8860` from prior session
+
+**Investigation findings:**
+- `declare-bad-file-replicas` via Python API → AccessDenied (non-admin can't declare bad replicas)
+- `delete_replicas` via Python API → AccessDenied
+- `add_bad_pfns` via Python API → AccessDenied
+- `update-rule --stuck --boost-rule` → AccessDenied
+- `rucio download` of ghost cc_01 from LGD → failed (both davs and root protocols), but did NOT auto-mark suspicious
+- `declare_suspicious_file_replicas` via Python API → **succeeded** (only method available to regular users)
+- Cannot write directly to LOCALGROUPDISK pnfs (`mkdir` → Permission denied)
+
+**Resolution steps:**
+1. Declared cc_01 ghost replica as suspicious via `ReplicaClient.declare_suspicious_file_replicas()`
+2. Deleted duplicate file-level rule for cc_02 (`rucio delete-rule 6588c267...`)
+3. Deleted old dataset rule `f228a61b` (`rucio delete-rule`) — intended to recreate fresh
+4. **LESSON LEARNED**: `rucio update-rule --lifetime 0` means "expire in 0 seconds" (immediate expiration), NOT "set to permanent/no expiration". Both rules were purged by daemon, and all 24 previously-replicated LGD files were also deleted.
+5. Ghost replica for cc_01 was cleaned up (suspicious flag + rule deletion caused catalog cleanup)
+6. Created fresh rule `9aa0d72bc282413a85bf6658e7e753e4` — clean slate with 0/26/0 (all 26 need replication from SCRATCHDISK)
+7. All 26 symlinks in farm temporarily point to `_orig` directory while replication proceeds
+
+**Deduplication result:** Now only 1 rule for CC truth dataset. No file-level rules. Clean.
+
+**After replication completes:** Get PFNs for all 26 files, rebuild symlink farm pointing to LGD paths.
+
+### Fullsim Upload Workaround (for reference)
+
+Files named `user.yuhang.<jobid>.MYSTREAM._NNNNNN.root` cause Rucio server 500 "Database exception" when uploading with `--scope user.yuhang`. Root cause: Rucio server-side fails on POST `/replicas` when DID name starts with the same string as the scope (`user.yuhang.`).
+
+**Workaround**: create symlinks in `/tmp/fullsim_{bb,cc}_upload/` with prefix stripped (e.g., `48591366.MYSTREAM._000001.root`), upload those. Rucio DID names are the stripped versions. Symlink farm maps original names back: `user.yuhang.48591366.MYSTREAM._000001.root` → `/pnfs/.../48591366.MYSTREAM._000001.root`.
+
+### `_orig` directories to delete
+
+All at `~/dcachearea/`:
+1. `pythia_truth_full_sample/pythia_5TeV_orig/` (24 files, ~172 GB)
+2. `pythia_truth_full_sample/pythia_5p36TeV_orig/` (24 files, ~187 GB)
+3. `powheg_full_sample/cc_evgen_truth_full_sample_orig/` (26 files, 101 GB)
+4. `powheg_full_sample/user.yuhang.TrigRates.dimuon.PowhegPythia.fullsim.pp17.bb.Feb2026.v1._MYSTREAM_orig/` (51 files, 111 GB)
+5. `powheg_full_sample/user.yuhang.TrigRates.dimuon.PowhegPythia.fullsim.pp17.cc.Feb2026.v1._MYSTREAM_orig/` (52 files, 117 GB)
+
+**Do not delete until**: analysis code verified to work with all symlink farms. The `bb_evgen_truth_full_sample_orig` was already deleted (pilot was verified).
 
 ## Accumulated Findings
 
@@ -215,18 +258,38 @@ done < pfns.txt
 - Plugin v1.2 (2026-06-03): Added autonomous mode (recognizes "no confirmation" etc.), non-.root file warning, TTree smoke test for same-path swap, `_orig` cleanup prompt, 96h VOMS validity note, BNL storage docs link. Published standalone repo at `github.com:FlamyFlame/claude-bnl-localgroupdisk` (4 commits on main). README updated with recommended settings, quick start with autonomous mode, worked example.
 - Marketplace PR #61 (2026-06-03): Submitted to `usatlas/marketplace` from fork `FlamyFlame/marketplace` branch `add-bnl-localgroupdisk-plugin`. CodeRabbit review required compliance fixes: frontmatter (only `name`+`description` allowed, "Use when..." prefix), canonical section order (Overview→When to Use→Key Concepts→Canonical Patterns→Gotchas→Interop→Docs), `## Docs` section, `.cursor-plugin/plugin.json`, `marketplace.json` entry, `.codex/INSTALL.md` update. All fixes committed and pushed (`8958f34`). Standalone repo back-ported content improvements (Gotchas, Interop, When to Use, Key Concepts, Docs) while keeping standalone-specific frontmatter (`arguments`, `argument-hint`, `allowed-tools`) — commit `ecdf841`.
 - Plugin test environment: set up at `/tmp/plugin-test/` with isolated `.claude/settings.json` and minimal CLAUDE.md (no project tracking docs). Plugin copied to `.claude/plugins/`. **Test was never executed** — no upload_scratch.log or test-log.md generated. The environment is ready for a future test run.
+- Step 15 batch migration (2026-06-03): Uploaded 4 new datasets to scratchdisk in parallel (~35 min total). CC truth was already on scratchdisk and had a dataset from a prior session — most files (24/26) already on LGD. Pythia truth 5TeV and 5.36TeV replicated almost instantly after upload (rules went OK within minutes — much faster than pilot's 9h queue). Fullsim bb/cc also replicated within ~30 min. Upload rate: ~1 min/file for 7–15 GB pythia files, ~20s/file for 2 GB fullsim files. All 4 new symlink farms verified (pnfs paths resolve, `ls -lL` returns real file sizes). Fullsim naming workaround required (see above). CC truth has 2 problem files: cc_01 ghost replica, cc_02 still replicating.
+- **PFN files saved**: `/tmp/pfns_pythia_5TeV.txt`, `/tmp/pfns_pythia_5p36TeV.txt`, `/tmp/pfns_cc_truth.txt`, `/tmp/pfns_fullsim_bb.txt`, `/tmp/pfns_fullsim_cc.txt`. Also temp upload dirs at `/tmp/fullsim_{bb,cc}_upload/` (symlinks with stripped names).
+- CC truth fix (2026-06-04): Ghost replica (cc_01) and stuck transfer (cc_02) resolved by: (1) `declare_suspicious_file_replicas` on ghost, (2) deleting all old rules, (3) creating fresh rule `9aa0d72bc282413a85bf6658e7e753e4`. **Critical lesson**: `rucio update-rule --lifetime 0` = expire immediately, NOT "set permanent". Old rules were purged and all 24 LGD files were deleted. Fortunately all 26 source files intact on scratchdisk. Fresh rule triggered clean re-replication. Regular users cannot: `declare-bad-file-replicas`, `delete_replicas`, `add_bad_pfns`, `update-rule --stuck/--boost` on LOCALGROUPDISK. Only `declare_suspicious_file_replicas` is available.
 
 ## Ruled Out
 
 - Workflow A (add-rule only): original grid scratchdisk replicas have expired
 - Single symlink swap of `~/dcachearea`: LOCALGROUPDISK doesn't preserve directory structure
 - Backup before upload: `rucio upload` copies, does not delete source
+- `rucio update-rule --lifetime 0` for undoing deletion: causes immediate expiration + file purge. Don't use.
+- `rucio declare-bad-file-replicas` / `delete_replicas` / `add_bad_pfns` / `update-rule --stuck/--boost`: all require admin, not available to regular users
+- `rucio download` of a ghost replica does NOT auto-mark it suspicious on server side
 
 ## Latest Stage
 
-**Step 15 nearly complete.** 4/5 datasets fully migrated with symlink farms. CC truth 24/26 symlinks (2 files pending replication/pnfs visibility).
+**Step 15 complete (2026-06-04).** All 6 datasets migrated with same-path-swap symlink farms pointing to LOCALGROUPDISK. CC truth fixed: ghost/stuck issues resolved by deleting old rules + creating fresh rule → 26/26 replicated in ~10 min.
 
-Remaining:
-- Add symlinks for `mc_truth_cc_01.root` and `mc_truth_cc_02.root` when replication completes (check: `rucio rule-info f228a61b35ad4d1a8250f8780ec3c50a`)
-- Delete `_orig` directories after verifying analysis code works with new symlinks
-- `dimuon_data` migration not yet started (594 GB, was not in this batch)
+### Current symlink farm status (all under `~/dcachearea/`)
+
+| Directory | Symlinks | Status |
+|---|---|---|
+| `powheg_full_sample/bb_evgen_truth_full_sample/` | 25/25 | ✓ Complete (LGD targets) |
+| `powheg_full_sample/cc_evgen_truth_full_sample/` | 26/26 | ✓ Complete (LGD targets, rebuilt 2026-06-04) |
+| `pythia_truth_full_sample/pythia_5TeV/` | 24/24 | ✓ Complete (LGD targets) |
+| `pythia_truth_full_sample/pythia_5p36TeV/` | 24/24 | ✓ Complete (LGD targets) |
+| `powheg_full_sample/user.yuhang.TrigRates...bb..._MYSTREAM/` | 51/51 | ✓ Complete (LGD targets) |
+| `powheg_full_sample/user.yuhang.TrigRates...cc..._MYSTREAM/` | 52/52 | ✓ Complete (LGD targets) |
+
+### TO-DO
+
+1. **Verify analysis code** works with all symlink farms (run quick tests for each dataset type)
+2. **Delete `_orig` directories** (5 dirs, ~688 GB) after verification
+3. **`dimuon_data` migration** not yet started (594 GB, 3rd top-level dir under `~/dcachearea/`) — separate batch
+4. **Marketplace PR #61** — still pending CodeRabbit re-review after compliance fixes
+5. **Plugin test** at `/tmp/plugin-test/` — never executed

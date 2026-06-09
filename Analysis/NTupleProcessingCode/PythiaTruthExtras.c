@@ -351,7 +351,13 @@ int PythiaTruthExtras<PairT, Derived>::GetParticleIndex(int barcode) const {
         || barcode_lookup_size != truth_barcode->size()
         || barcode_lookup_back != bc_back) {
         barcode_to_index_cache.clear();
-        for (size_t i = 0; i < truth_barcode->size(); ++i)
+        size_t cache_limit = truth_barcode->size();
+        if (pythia_only_barcode_cache) {
+            for (size_t i = 0; i < truth_barcode->size(); ++i) {
+                if (truth_barcode->at(i) > 200000) { cache_limit = i; break; }
+            }
+        }
+        for (size_t i = 0; i < cache_limit; ++i)
             barcode_to_index_cache.emplace(truth_barcode->at(i), static_cast<int>(i));
         barcode_lookup_source = truth_barcode;
         barcode_lookup_size = truth_barcode->size();

@@ -4,3 +4,4 @@
 {"event":"start","command":"review-pipeline","task":"Review and improve Pythia truth + fullsim overlay pipeline scripts","slug":"pythia-truth-overlay","timestamp":"2026-06-02T15:00:00-04:00"}
 {"event":"end","command":"review-pipeline","status":"approved","iterations":2,"timestamp":"2026-06-02T15:10:00-04:00","criticals":0,"warnings":0,"slug":"pythia-truth-overlay"}
 {"event":"end","command":"review-pipeline","status":"approved","iterations":1,"timestamp":"2026-06-02T18:30:00-04:00","criticals":0,"warnings":0,"slug":"powheg-single-mixed"}
+{"event":"start","command":"steer-pipeline","pipeline":"pipeline_pbpb_crossx.sh + pipeline_pbpb_trig_eff.sh","task":"Full rerun with May 2026 skim for PbPb 23/24/25","slug":"pbpb-crossx+trig-eff","timestamp":"2026-06-08T20:22:49Z","git_sha":"bf55e870c0b992d2b23fd73e0f3e8d2f0fe1f0a5"}

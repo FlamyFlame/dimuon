@@ -23,6 +23,11 @@ public:
     // public flags / settings - must be set before Run()
     bool isPrivate = false;
 
+    // TEMPORARY (barcode investigation): when true, restrict barcode cache
+    // to Pythia-only truth particles (indices before the first bc > 200000).
+    // This excludes HIJING truth from ancestor tracing lookups.
+    bool pythia_only_barcode_cache = false;
+
     // Centre-of-mass energy in TeV. Allowed values: 5.02, 5.36 (default).
     // Used for non-private I/O path selection only; ignored for private samples.
     double E_COM = 5.36;
