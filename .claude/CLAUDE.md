@@ -133,3 +133,5 @@ When the user asks to run, execute, or steer a pipeline, or wants autonomous end
 - `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/grid_monitor_data_infra.md` — Grid monitoring: parallel download, recursive hadd, chunked fallback with auto code/sub updates
 - `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/localgroupdisk_migration.md` — Migrate ~1.4 TB from personal pnfs to BNL-OSG2_LOCALGROUPDISK; symlink swap for transparent analysis access
 - `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/hijing_overlay_truth_barcode_duplicate_investigation.md` — Truth/barcode investigation across r17618/r17662/r17663: StandardSignalOnlyTruth vs no-overlay vs original
+- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/hijing_overlay_r17618_grid_reprocessing.md` — Reprocess 6 pT slices with r17618 AODs (beamspot fix); grid submit, monitor, hadd, replace old NTUPs
+- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/analysis_status_summary.md` — Current analysis status: which steps updated with May 2026 skim
