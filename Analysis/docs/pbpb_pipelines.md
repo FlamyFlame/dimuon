@@ -8,6 +8,7 @@ but differ in how that stage is configured and what follows it:
 
 | Script | Alias | Purpose |
 |--------|-------|---------|
+| `run_pbpb_all.sh` | Master | Runs shared event selection once, then launches P1 and P2+3 in parallel |
 | `pipeline_pbpb_crossx.sh` | Pipeline 1 | Crossx/nominal measurements: mass spectra, differential distributions |
 | `pipeline_pbpb_trig_eff.sh` | Pipeline 2 + 3 | Single-muon trigger efficiency (no-correlation) and dR corrections |
 
@@ -33,11 +34,29 @@ All variables are optional. Defaults are shown.
 | `YEARS` | `"23 24 25"` | Both | Space-separated 2-digit years to process |
 | `POLL_SECONDS` | `45` | Both | Condor polling interval (seconds) |
 | `CONDOR_TIMEOUT_SECONDS` | `0` | Both | Max seconds to wait for condor (0 = no limit) |
-| `SKIP_CONDOR` | `0` | Both | Set to `1` to skip condor submit+wait; reuses existing NTuple outputs but still validates and hadds |
+| `SKIP_CONDOR` | `0` | Both | Set to `1` to skip event selection and condor submit+wait; reuses existing cuts and NTuple outputs but still validates and hadds |
+| `SKIP_EVSEL` | `${SKIP_CONDOR}` | Both | Set to `1` to skip event selection only (still runs condor+RDF+plots). Useful when event selection was already run (e.g. by `run_pbpb_all.sh`) |
 | `RDF_NTHREADS` | `2` | Trig eff only | ROOT implicit MT thread count. Value of 8 needs ~48 GB RAM due to per-thread histogram duplication; 2 is safe on standard condor nodes |
 
 `DATA_BASE` is hardcoded to `/usatlas/u/yuhanguo/usatlasdata/dimuon_data`.
 Per-year data lives in `${DATA_BASE}/pbpb_20YY/`.
+
+
+## Master Wrapper: `run_pbpb_all.sh`
+
+Runs the shared event selection once, then launches both pipelines in
+parallel with `SKIP_EVSEL=1`. This avoids the OOM risk of two concurrent
+260M-event ROOT processes writing to the same output files.
+
+```bash
+./run_pbpb_all.sh                     # full run: event sel + both pipelines
+SKIP_EVSEL=1 ./run_pbpb_all.sh        # skip event sel, run both pipelines
+SKIP_CONDOR=1 ./run_pbpb_all.sh       # skip event sel + condor, reuse existing outputs
+```
+
+Sub-pipeline logs are written to `pipelines/crossx_$$.log` and
+`pipelines/trigeff_$$.log`. The wrapper waits for both to complete and
+reports success/failure.
 
 
 ## Pipeline 1: Crossx / Nominal (`pipeline_pbpb_crossx.sh`)
@@ -50,6 +69,21 @@ for the PbPb dimuon analysis. Events are selected using the mu4 trigger
 the trigger is used purely for event selection.
 
 ### Stages
+
+#### Stage 0 -- Event selection (derive cuts + plots)
+- Runs `plot_pbpb_event_sel_event_level(YY)` per year to derive
+  ZDC/FCal/preamp/nTrk cuts from the raw data and write them to
+  `event_sel_cuts_pbpb_20YY.root` and `_alt.root`
+- Runs `plot_pbpb_event_sel_cuts(YY)` and `plot_pbpb_event_sel_cuts_alt(YY)`
+  per year to produce all cut visualization plots (nominal + alternative banana)
+- Runs 4 FCal comparison functions (nominal/alt x all-years/2524) to produce
+  FCal scaling comparison plots
+- Validates that both `event_sel_cuts_pbpb_20YY.root` and `_alt.root` exist
+  after each year
+- **Skipped when `SKIP_EVSEL=1`** (defaults to `SKIP_CONDOR`) — the event
+  selection only needs to be rerun when the input data changes
+- The NTuple processing code (`PbPbEventSelConfig.h`) reads TGraphs from
+  these ROOT files to apply event-level cuts
 
 #### Stage 1 -- Submit NTuple condor jobs
 - Submits `run_pbpb_YY_nominal.sub` for each year
@@ -124,6 +158,12 @@ weighting. Pipeline 2 produces the no-correlation efficiency; Pipeline 3
 applies it as inverse weights to measure residual dR correlations.
 
 ### Pipeline 2: No-Correlation Single-Muon Efficiency
+
+#### Stage 0 -- Event selection (derive cuts + plots)
+- Identical to Pipeline 1 Stage 0 (same code, same outputs)
+- Both pipelines share the same event selection cuts; running either
+  pipeline updates the cuts for all years
+- Skipped when `SKIP_CONDOR=1`
 
 #### Stage 1 -- Submit NTuple condor jobs (trig eff mode)
 - Submits `run_pbpb_YY.sub` for each year (note: no `_nominal` suffix)
@@ -261,13 +301,15 @@ NTuple input file search order depends on the pipeline:
 
 ```
 Pipeline 1 (crossx):
-  NTuple (nominal) --> hadd --> RDF (crossx hists) --> combined crossx plots
+  Event sel (cuts + plots) --> NTuple (nominal) --> hadd --> RDF (crossx hists)
+                               --> combined crossx plots
 
 Pipeline 2+3 (trig eff):
-  NTuple (trig eff) --> hadd --> RDF (P2: single-mu eff, RECREATE)
-                                  --> pT fitting --> validate --> P2 plots
-                                  --> RDF (P3: inv-weight dR, UPDATE same file)
-                                  --> P3 plots (dR corr + plateau norm)
+  Event sel (cuts + plots) --> NTuple (trig eff) --> hadd
+                               --> RDF (P2: single-mu eff, RECREATE)
+                               --> pT fitting --> validate --> P2 plots
+                               --> RDF (P3: inv-weight dR, UPDATE same file)
+                               --> P3 plots (dR corr + plateau norm)
 ```
 
 Pipeline 2 must complete fully (including fitting and validation) before

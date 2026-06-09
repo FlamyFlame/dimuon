@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 
 # End-to-end PbPb crossx/nominal analysis pipeline:
+#   0) event selection: derive cuts + produce all event selection plots
 #   1) submit NTuple processing condor jobs (nominal mode, all 3 PbPb years)
 #   2) wait for all clusters to finish
 #   3) validate per-batch ROOT outputs
@@ -17,16 +18,19 @@ set -Eeuo pipefail
 #   CONDOR_TIMEOUT_SECONDS=0   # 0 => no timeout
 #   YEARS="23 24 25"           # override which years to process
 #   SKIP_CONDOR=1              # skip condor submit+wait, reuse existing NTuple outputs
+#   SKIP_EVSEL=1               # skip event selection only, still run condor+RDF+plots
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ANALYSIS_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 NTP_DIR="${ANALYSIS_DIR}/NTupleProcessingCode"
 RDF_DIR="${ANALYSIS_DIR}/RDFBasedHistFilling"
 PLOT_DIR="${ANALYSIS_DIR}/plotting_codes/single_b_analysis"
+EVSEL_DIR="${ANALYSIS_DIR}/plotting_codes/event_selection"
 
 POLL_SECONDS="${POLL_SECONDS:-45}"
 CONDOR_TIMEOUT_SECONDS="${CONDOR_TIMEOUT_SECONDS:-0}"
 SKIP_CONDOR="${SKIP_CONDOR:-0}"
+SKIP_EVSEL="${SKIP_EVSEL:-${SKIP_CONDOR}}"
 YEARS=(${YEARS:-23 24 25})
 DATA_BASE="/usatlas/u/yuhanguo/usatlasdata/dimuon_data"
 
@@ -214,6 +218,55 @@ log "Sourcing ~/setup.sh"
 source_env_once
 require_cmd root
 require_cmd hadd
+
+# ------ Stage 0: Event selection (derive cuts + plots) ------
+if [[ "$SKIP_EVSEL" -eq 1 ]]; then
+  log "SKIP_EVSEL=1 — skipping event selection (reusing existing cuts)"
+else
+  log "Running event selection for all years"
+  for yr in "${YEARS[@]}"; do
+    log "Event selection: deriving cuts for PbPb 20${yr}"
+    pushd "$EVSEL_DIR" >/dev/null
+    root -l -b -q "plot_pbpb_event_sel_event_level.cxx(${yr})"
+    popd >/dev/null
+    for suffix in "" "_alt"; do
+      evsel_file="${DATA_BASE}/pbpb_20${yr}/event_sel_cuts_pbpb_20${yr}${suffix}.root"
+      validate_root_file_quick "$evsel_file" || fail "Event selection output missing: $evsel_file"
+      log "OK event_sel yr${yr}: $evsel_file"
+    done
+
+    log "Event selection: plotting cuts for PbPb 20${yr} (nominal + alt)"
+    pushd "$EVSEL_DIR" >/dev/null
+    root -l -b -q "plot_pbpb_event_sel_cuts.cxx(${yr})"
+    root -l -b <<EOF
+.L plot_pbpb_event_sel_cuts.cxx
+plot_pbpb_event_sel_cuts_alt(${yr});
+gSystem->Exit(0);
+EOF
+    popd >/dev/null
+  done
+
+  log "Event selection: FCal comparison plots (all years)"
+  pushd "$EVSEL_DIR" >/dev/null
+  root -l -b -q 'plot_pbpb_fcal_comparison.cxx()'
+  root -l -b <<EOF
+.L plot_pbpb_fcal_comparison.cxx
+plot_pbpb_fcal_comparison_alt();
+gSystem->Exit(0);
+EOF
+  root -l -b <<EOF
+.L plot_pbpb_fcal_comparison.cxx
+plot_pbpb_fcal_comparison_2524();
+gSystem->Exit(0);
+EOF
+  root -l -b <<EOF
+.L plot_pbpb_fcal_comparison.cxx
+plot_pbpb_fcal_comparison_2524_alt();
+gSystem->Exit(0);
+EOF
+  popd >/dev/null
+  log "Event selection complete for all years"
+fi
 
 if [[ "$SKIP_CONDOR" -eq 1 ]]; then
   log "SKIP_CONDOR=1 — skipping condor submit+wait, reusing existing NTuple outputs"
