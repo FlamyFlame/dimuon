@@ -84,15 +84,17 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
 
     // ---- Build list of "real" reco muon truth barcodes (prob > threshold) ----
     std::vector<int> real_muon_truth_barcode_list;
+    std::vector<int> real_muon_orig_index;
     std::vector<int> fake_muon_ind_list;
 
     if (muon_truth_barcode->size() != muon_truth_prob->size())
         throw std::runtime_error("muon_truth_barcode & muon_truth_prob size mismatch!");
 
     for (int ind = 0; ind < (int)muon_truth_barcode->size(); ind++){
-        if (muon_truth_prob->at(ind) > truth_match_prob_thrsh)
+        if (muon_truth_prob->at(ind) > truth_match_prob_thrsh){
             real_muon_truth_barcode_list.push_back(muon_truth_barcode->at(ind));
-        else
+            real_muon_orig_index.push_back(ind);
+        } else
             fake_muon_ind_list.push_back(ind);
     }
 
@@ -126,7 +128,8 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
 
         if (it != real_muon_truth_barcode_list.end()){
             cur_muon.reco_match = true;
-            int reco_ind = std::distance(real_muon_truth_barcode_list.begin(), it);
+            int list_pos = std::distance(real_muon_truth_barcode_list.begin(), it);
+            int reco_ind = real_muon_orig_index[list_pos];
 
             cur_muon.pt      = fabs(muon_pt->at(reco_ind)) / 1000.0f;
             cur_muon.eta     = muon_eta->at(reco_ind);
