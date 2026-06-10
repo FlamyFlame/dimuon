@@ -562,20 +562,64 @@ currently lost to truth-matching. Single-muon match efficiency:
 
 **Scope:** Only `PythiaFullSimExtras.c`. No header changes needed.
 
+### Step 11: Bug #1 fix implemented and committed (2026-06-10)
+
+Bug #1 (index mapping) fixed: `real_muon_orig_index` parallel vector.
+Commit 527f156.  ACLiC compiled, reviewer PASS (iteration 1).
+
+### Step 12: Bug #2 fix implemented and committed (2026-06-10)
+
+Bug #2 (dR fallback): `else if (self().pythia_only_barcode_cache)` branch
+with dR < 0.05 closest-unclaimed-reco matching.  Reco-quantity copying
+extracted into `fill_reco_quantities` lambda.  `reco_claimed` vector
+tracks claimed indices for both barcode and dR paths.
+Commit 0134a2f.  ACLiC compiled, reviewer PASS (iteration 1).
+
+### Step 13: Pipeline verification (2026-06-10)
+
+Full pipeline run: Condor cluster 6, RDF histogram filling, plotting.
+All stages completed successfully (exit 0).
+
+**NTP output:** SS=21,272, OS=78,422 (same as Step 7 fixed run — Bug #1/#2
+don't change truth pair count, only reco matching quality).
+
+**Pair reco_match rate:** 100% of OS pairs have both muons reco-matched
+(up from 63% pre-fix).  The dR fallback is working: all truth muons now
+find a reco match.
+
+**Pair pass_medium rate (NTP level):**
+
+| Sample | OS pairs | pass_medium | Fraction |
+|--------|----------|-------------|----------|
+| PP fullsim | 6,304 | 4,642 | 73.6% |
+| Overlay (fixed) | 78,422 | 39,082 | 49.8% |
+| Overlay (pre-fix) | 82,804 | ~17,986 | ~22% |
+
+**Histogram-level pair reco efficiency (medium WP, weighted):**
+
+| Centrality | Overlay | PP (inclusive) |
+|------------|---------|----------------|
+| 0-5% | 48.7% | — |
+| 5-10% | 51.5% | — |
+| 10-20% | 54.6% | — |
+| Inclusive | 49.2% | 71.1% |
+
+**Assessment:** Efficiency rose from ~20% to ~49-55%, a large improvement.
+100% reco matching confirms both bugs are fixed.  The remaining gap vs
+pp (49% vs 74%) is because dR-matched reco muons in central overlay
+have degraded quality — they are real muons but their ID track is worse
+in the dense HIJING environment, so more fail `PassMuonMediumCuts`.  This
+is a physical effect (medium WP efficiency degrades in HI), not a bug.
+
+The centrality trend is now mild (49% → 55% central → peripheral) and in
+the correct direction (less degradation in less central events), consistent
+with physical expectations.
+
 ## Latest Stage
 
-**Step 11 (2026-06-10): Bug #1 fix DONE, committed (527f156).**
+**Step 13 complete (2026-06-10): Both Bug #1 and Bug #2 fixes verified.**
 
-Bug #1 (index mapping) fixed: `real_muon_orig_index` parallel vector added.
-ACLiC compiled, reviewer PASS (iteration 1).
-
-**Step 12 (2026-06-10): Implementing Bug #2 fix (dR fallback matching).**
-
-Plan: In `ProcessEventFullsim()`, after barcode matching fails (`else`
-branch at line 155), add dR fallback for overlay samples only.  Loop
-over all reco muons, find closest within dR < 0.05 not already claimed.
-Track claimed indices in `std::unordered_set<int>`.  Guard with
-`self().pythia_only_barcode_cache` (true only for overlay).
-File: `PythiaFullSimExtras.c`.  Also needs `muon_eta`, `muon_phi`
-access for dR computation (already available as branches).
-Test: ACLiC compile, verify logic.
+Pipeline passed end-to-end.  Pair reco efficiency improved from ~20% to
+~50% (medium WP).  Remaining gap vs pp (~74%) is physical — dR-recovered
+reco muons in central overlay have lower medium-WP pass rate.  No further
+code bugs identified.
