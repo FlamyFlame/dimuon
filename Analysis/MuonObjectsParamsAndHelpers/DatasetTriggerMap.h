@@ -22,8 +22,9 @@ public:
             {{23, "PbPb"},    "single_mu4" },
             {{24, "PbPb"},    "single_mu4" },
             {{25, "PbPb"},    "single_mu4" },
-            {{24, "pp"},      "2mu4"       },
-            {{24, "pp_2mu4"}, "2mu4"       },
+            {{24, "pp"},           "2mu4"       },
+            {{24, "pp_2mu4"},      "2mu4"       },
+            {{24, "pp_single_mu4"},"single_mu4" },
         };
         return m;
     }
@@ -31,11 +32,12 @@ public:
     // Map to display label for legends (shorter, physicist-friendly)
     static const std::map<std::pair<int,std::string>, std::string>& LabelMap() {
         static const std::map<std::pair<int,std::string>, std::string> m = {
-            {{23, "PbPb"},    "mu4"        },
-            {{24, "PbPb"},    "mu4"        },
-            {{25, "PbPb"},    "mu4"        },
-            {{24, "pp"},      "2mu4"       },
-            {{24, "pp_2mu4"}, "2mu4"       },
+            {{23, "PbPb"},         "mu4"        },
+            {{24, "PbPb"},         "mu4"        },
+            {{25, "PbPb"},         "mu4"        },
+            {{24, "pp"},           "2mu4"       },
+            {{24, "pp_2mu4"},      "2mu4"       },
+            {{24, "pp_single_mu4"},"mu4"        },
         };
         return m;
     }
