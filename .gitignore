@@ -53,3 +53,6 @@ ATLHI-*
 
 # Agent loop logs (session-specific, not committed)
 .claude/logs/*.md
+
+# Local-only transition/scratch prompts (not committed)
+_BNL_RESYNC_PROMPT.md
