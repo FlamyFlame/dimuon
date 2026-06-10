@@ -564,9 +564,18 @@ currently lost to truth-matching. Single-muon match efficiency:
 
 ## Latest Stage
 
-**Step 10 complete (2026-06-09): All three bugs identified, documented,
-and implementation specs written.**
+**Step 11 (2026-06-10): Bug #1 fix DONE, committed (527f156).**
 
-Awaiting decision on fix implementation.  Recommended: fix Bug #1
-first (index mapping — biggest impact, easiest fix), then Bug #2
-(dR fallback matching).
+Bug #1 (index mapping) fixed: `real_muon_orig_index` parallel vector added.
+ACLiC compiled, reviewer PASS (iteration 1).
+
+**Step 12 (2026-06-10): Implementing Bug #2 fix (dR fallback matching).**
+
+Plan: In `ProcessEventFullsim()`, after barcode matching fails (`else`
+branch at line 155), add dR fallback for overlay samples only.  Loop
+over all reco muons, find closest within dR < 0.05 not already claimed.
+Track claimed indices in `std::unordered_set<int>`.  Guard with
+`self().pythia_only_barcode_cache` (true only for overlay).
+File: `PythiaFullSimExtras.c`.  Also needs `muon_eta`, `muon_phi`
+access for dR computation (already available as branches).
+Test: ACLiC compile, verify logic.
