@@ -21,3 +21,7 @@
 {"event":"end","command":"review-pipeline","status":"approved","iterations":1,"timestamp":"2026-06-02T15:00:00Z","criticals":0,"warnings":0,"slug":"pbpb-trig-eff-crossx"}
 {"event":"start","command":"review-plot","task":"Review hijing overlay r17618 reco effcy and det response plots","slug":"hijing-overlay-r17618-plots","timestamp":"2026-06-07T22:55:00Z"}
 {"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-08T03:02:46Z","criticals":0,"warnings":0,"slug":"hijing-overlay-r17618-plots"}
+{"event":"start","command":"review-analysis-code","task":"Fix Bug #1 index mapping in PythiaFullSimExtras.c","slug":"bug1-index-mapping-fix","timestamp":"2026-06-10T05:26:03Z"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-10T05:27:30Z","criticals":0,"warnings":0,"slug":"bug1-index-mapping-fix"}
+{"event":"start","command":"review-analysis-code","task":"Fix Bug #2 dR fallback truth-to-reco matching in overlay","slug":"bug2-dr-fallback-matching","timestamp":"2026-06-10T05:30:40Z"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-10T05:33:00Z","criticals":0,"warnings":0,"slug":"bug2-dr-fallback-matching"}
