@@ -1,0 +1,6 @@
+[submodule "IntNotes"]
+	path = IntNotes
+	url = ssh://git@gitlab.cern.ch:7999/atlas-physics-office/HION/ANA-HION-2023-07/ANA-HION-2023-07-INT1.git
+[submodule "IntNotesRun2DimuonReference"]
+	path = IntNotesRun2DimuonReference
+	url = ssh://git@gitlab.cern.ch:7999/yuhang/intnotesrun2dimuonreference.git
