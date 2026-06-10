@@ -44,6 +44,26 @@ public:
     int debug_print_history_nevents    = 0;  // print full muon history for first N events
     int debug_print_bhadron_id_nevents = 0;  // print m_eldest_bhadron_barcode truth_id for first N events
 
+    int GetNPythiaTruthMuons(size_t n_truth_muons) const {
+        if (!truth_barcode || !truth_id || !truth_status)
+            return static_cast<int>(n_truth_muons);
+        int n_pythia_truth = static_cast<int>(truth_barcode->size());
+        for (size_t i = 0; i < truth_barcode->size(); ++i) {
+            if (truth_barcode->at(i) > 200000) {
+                n_pythia_truth = static_cast<int>(i);
+                break;
+            }
+        }
+        if (n_pythia_truth >= static_cast<int>(truth_barcode->size()))
+            return static_cast<int>(n_truth_muons);
+        int count = 0;
+        for (int i = 0; i < n_pythia_truth; ++i) {
+            if (truth_status->at(i) == 1 && abs(truth_id->at(i)) == 13)
+                ++count;
+        }
+        return count;
+    }
+
 protected:
     Derived& self() { return static_cast<Derived&>(*this); }
     const Derived& self() const { return static_cast<const Derived&>(*this); }

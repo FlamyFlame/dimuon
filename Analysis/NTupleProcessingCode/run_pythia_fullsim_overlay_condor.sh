@@ -24,7 +24,7 @@ lsetup "views LCG_107a_ATLAS_2 x86_64-el9-gcc13-opt"
 echo "Starting PythiaFullSimOverlayAnalysis: sample_type=${sample_type}"
 
 root -b -l << EOF
-    .L PythiaAnalysisClasses.h
+    .L PythiaAnalysisClasses.h+
 
     PythiaFullSimOverlayAnalysis py(FullSimSampleType::${sample_type});
     py.fill_kn_trees_fullsim = true;

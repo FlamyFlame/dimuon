@@ -105,7 +105,9 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
     // ---- Build truth muon list with optional reco matching ----
     std::vector<muon_t> truth_muon_list;
 
-    for (int truth_ind = 0; truth_ind < (int)truth_muon_pt->size(); truth_ind++){
+    int n_pythia_truth_muons = self().GetNPythiaTruthMuons(truth_muon_pt->size());
+
+    for (int truth_ind = 0; truth_ind < n_pythia_truth_muons; truth_ind++){
         muon_t cur_muon;
         cur_muon.ind      = truth_ind;
         cur_muon.ev_num   = ev_num;

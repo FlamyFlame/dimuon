@@ -18,6 +18,7 @@ protected:
 
     void InitParamsExtra(){
         self().setIsFullsimOverlay(true);
+        self().pythia_only_barcode_cache = true;
     }
 
     void InitInputExtra() {
