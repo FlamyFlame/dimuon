@@ -333,20 +333,240 @@ structurally identical, only access pattern changed).
   populated, large error bars).
 - 50–80% centrality is empty for both samples.
 
-**Conclusion:**
-The fix successfully resolves both anomalies:
-1. **Reco efficiency doubled** at 0–5% centrality (10% → 20%), and
-   increased ~50% at 5–10% (20% → 35%), now at physically reasonable
-   values.
-2. **from_same_b contamination eliminated**: 0 SAT warnings (vs 3693),
-   single-B efficiency now properly tracks all-OS instead of being
-   inflated by HIJING heavy-flavor pairs.
+**Premature conclusion (retracted):**
+The HIJING filter fix resolved the from_same_b contamination and SAT
+warnings, but the reco efficiency values (~20% at 0-5%, ~35% at 5-10%)
+are still unphysically low.  ATLAS Run 3 single muon reco efficiency is
+near unity at plateau, so pair efficiency should be ~96%, not 20-35%.
+The large centrality dependence (almost doubling from 0-5% to 5-10%) is
+also inconsistent with Run 2 internal note results.  r17662 (signal-only
+truth, 100 events) shows consistent low values, ruling out residual
+HIJING contamination as the cause.
+
+**Investigation re-opened (Step 8+).**
+
+### Step 8: Single-muon reco efficiency breakdown (2026-06-09)
+
+**Single-muon efficiency comparison (10k events each, pTH8_14):**
+
+| Metric | PP fullsim | Overlay (r17618) |
+|--------|-----------|-------------------|
+| Single-muon match (prob>0.5) | 98.6% | **81.7%** |
+| Single-muon medium | 90.4% | **74.6%** |
+| Pair (medium²) | 81.7% | **55.7%** |
+
+**Bug #1 found: Index mapping in ProcessEventFullsim (H1)**
+
+`real_muon_truth_barcode_list` is a filtered list (only prob>0.5 reco
+muons). When a truth muon is matched, `reco_ind = std::distance(begin, it)`
+gives the position in the FILTERED list. This is then used to index
+into the FULL `muon_pt` vector: `muon_pt->at(reco_ind)`.
+
+This is wrong when fake muons (prob≤0.5) appear before real muons in
+the reco list.
+
+| Sample | Fakes (prob≤0.5) | Events with fakes before reals | Wrong index |
+|--------|-----------------|-------------------------------|-------------|
+| PP fullsim | 332/20204 (1.6%) | 80/10000 (0.8%) | 128/19872 (0.6%) |
+| Overlay | Many (HIJING reco) | **6185/10000 (62%)** | **17936/29846 (60%)** |
+
+**60% of matched muons in overlay get the WRONG reco muon kinematics and
+quality flags.** This causes many to fail medium cuts, explaining the
+efficiency drop from 55.7% (true) to ~20% (plotted from NTP output).
+
+In pp fullsim, only 0.6% are affected — negligible.
+
+**Bug #2 found: AOD-level truth-matching failure (H2)**
+
+Of 15,804 fiducial Pythia truth muons in r17618:
+- 12,913 (81.7%) matched with prob>0.5
+- **2,886 (18.3%) have NO reco muon with matching barcode**
+  - 1,997 (69%) DO have a nearby reco muon (dR<0.2) with wrong barcode
+  - 889 (31%) have no nearby reco muon at all
+
+Breakdown of the 1,997 with nearby reco but wrong barcode:
+- Many have `muon_truth_barcode = -1, muon_truth_prob = 0` — reco muon has
+  no truth match at all
+- Some have `muon_truth_barcode` in HIJING range (5078, 30230, 66697) —
+  reco muon truth-matched to HIJING truth instead of Pythia truth
+
+Only 5 truth muons have reco with matching barcode but low prob (≤0.5).
+
+**Implication:** The true overlay reconstruction efficiency is approximately
+(12913 + 1997) / 15804 ≈ 94.3%, close to the pp value of 98.6%. The
+remaining ~4.3% loss is plausibly physical (denser environment). The
+12.6% (1997/15804) "loss" is entirely a truth-matching artifact — the
+reco muons exist but are matched to wrong truth particles.
+
+**Quantitative efficiency budget:**
+
+| Effect | Single-muon | Pair (squared) |
+|--------|------------|----------------|
+| PP fullsim (baseline) | 90.4% | 81.7% |
+| + AOD truth-match failure | 74.6% | 55.7% |
+| + Index mapping bug | (further reduced) | ~20% (plotted) |
+
+**Impact ranking:**
+1. Index mapping bug: ~35 percentage points pair loss (55.7% → ~20%)
+2. AOD truth-matching: ~26 percentage points pair loss (81.7% → 55.7%)
+
+Both must be fixed to get physically meaningful reco efficiency.
+
+### Step 9: AOD truth-matching root cause (2026-06-09)
+
+**Skimmer truth-matching chain** (TrigRates.cxx lines 1376–1397):
+1. Muon → ID track (`idTrk`)
+2. `idTrk->auxdata<ElementLink<xAOD::TruthParticleContainer>>("truthParticleLink")`
+3. If valid: `barcode = associated_truth->uid()`,
+   `match_prob = idTrk->auxdata<float>("truthMatchProbability")`
+4. If not valid: barcode=-1, prob=0
+
+In overlay (r17618), `TruthParticleContainer` has BOTH Pythia AND HIJING
+truth. The ID track truth-matching uses hit-level barcode association in
+the inner detector. When Pythia and HIJING barcodes collide (both use
+1..N), the hit-to-truth assignment becomes ambiguous → two failure modes:
+1. **Wrong match** — reco muon linked to HIJING truth instead of Pythia
+   (bc=5078, 30230, 66697 in our dumps, prob>0.5)
+2. **No match** — truth link invalid → bc=-1, prob=0
+
+The AOD also has `MuonTruthParticles` container with `recoMuonLink`
+(truth→reco direction, using muon spectrometer matching). This may be
+more robust for overlay, but the skimmer does not currently use it.
+
+**Centrality dependence confirmed:**
+
+| Centrality | Events | Fakes (prob≤0.5) | Fake rate |
+|------------|--------|-----------------|-----------|
+| 0–5% | 8,162 | 14,248 | **36.5%** |
+| 5–10% | 1,770 | 1,466 | **23.2%** |
+| 10–20% | 68 | 32 | **14.4%** |
+
+More central events → more HIJING reco muons (bc=-1, prob=0) → more
+fake interspersion → more wrong indices in the index bug → lower
+efficiency.  This explains the strong artificial centrality dependence
+(~20% at 0-5% vs ~35% at 5-10%).
+
+### Step 10: Summary of all bugs and proposed fixes (2026-06-09)
+
+**Three bugs found (ordered by pair-efficiency impact):**
+
+| # | Bug | Pair ε impact | Fix location |
+|---|-----|-------------|-------------|
+| 1 | Index mapping: filtered list pos used as full-list index | 55%→20% (dominant) | ProcessEventFullsim |
+| 2 | AOD truth-matching: ID track barcode collision in overlay | 82%→55% | Skimmer + analysis |
+| 3 | HIJING truth muons in denominator (fixed in Step 6) | 10%→20% (base) | ProcessEventFullsim |
+
+**Proposed fixes:**
+
+**Bug #1 (index mapping):** Track original reco index alongside barcode
+in a parallel vector. Use original index for `muon_pt->at()` etc.
+This is a code-only fix in PythiaFullSimExtras.c.
+
+**Bug #2 (AOD truth-matching):** Two-stage approach:
+- **Immediate (analysis code):** When barcode matching fails, fall back to
+  dR matching: find the closest reco muon in (eta,phi) within dR<0.05
+  that has no existing truth match claim. This recovers the 1,997 truth
+  muons (12.6%) that ARE reconstructed but have wrong truth decoration.
+- **Long-term (skimmer):** Use `MuonTruthParticles.recoMuonLink` (MS-based
+  truth→reco link) instead of/in addition to ID track truthParticleLink.
+
+**Expected result after all fixes:**
+- Bug #1 fix: pair ε jumps from ~20% to ~55%
+- Bug #2 fix: pair ε jumps from ~55% to ~80–82% (matching pp fullsim)
+- Final pair reco efficiency should be within a few % of pp fullsim
+  (~82%), with small physical centrality dependence
+
+### Implementation: Bug #1 fix (index mapping)
+
+**File:** `NTupleProcessingCode/PythiaFullSimExtras.c`
+
+**Current code (lines 86–97):**
+```cpp
+std::vector<int> real_muon_truth_barcode_list;
+std::vector<int> fake_muon_ind_list;
+// ...
+for (int ind = 0; ind < (int)muon_truth_barcode->size(); ind++){
+    if (muon_truth_prob->at(ind) > truth_match_prob_thrsh)
+        real_muon_truth_barcode_list.push_back(muon_truth_barcode->at(ind));
+    else
+        fake_muon_ind_list.push_back(ind);
+}
+```
+
+**Bug (line 129):** `int reco_ind = std::distance(real_muon_truth_barcode_list.begin(), it);`
+uses position in filtered list, then `muon_pt->at(reco_ind)` accesses full list.
+
+**Fix:** Add parallel vector tracking original indices:
+```cpp
+std::vector<int> real_muon_truth_barcode_list;
+std::vector<int> real_muon_orig_index;          // NEW
+std::vector<int> fake_muon_ind_list;
+// ...
+for (int ind = 0; ind < (int)muon_truth_barcode->size(); ind++){
+    if (muon_truth_prob->at(ind) > truth_match_prob_thrsh){
+        real_muon_truth_barcode_list.push_back(muon_truth_barcode->at(ind));
+        real_muon_orig_index.push_back(ind);    // NEW
+    } else
+        fake_muon_ind_list.push_back(ind);
+}
+```
+
+Then change line 129 from:
+```cpp
+int reco_ind = std::distance(real_muon_truth_barcode_list.begin(), it);
+```
+to:
+```cpp
+int list_pos = std::distance(real_muon_truth_barcode_list.begin(), it);
+int reco_ind = real_muon_orig_index[list_pos];
+```
+
+All subsequent `muon_pt->at(reco_ind)` etc. then use the correct original index.
+
+**Scope:** Only `PythiaFullSimExtras.c`. No header changes needed.
+Affects both pp fullsim and overlay (harmless for pp since indices
+almost always match).
+
+### Implementation: Bug #2 fix (dR fallback matching)
+
+**File:** `NTupleProcessingCode/PythiaFullSimExtras.c`, in `ProcessEventFullsim()`
+
+**Location:** After the barcode match attempt (line 127 `if (it != ...end())`),
+add an `else` branch for the case when barcode matching fails.
+
+**Approach:** When no barcode match is found for a Pythia truth muon:
+1. Loop over ALL reco muons (not just the filtered list)
+2. Compute dR between truth muon (eta, phi) and each reco muon
+3. Select the closest reco muon with dR < 0.05
+4. Skip reco muons already claimed by a previous truth muon (track claimed
+   indices in a set)
+5. If found, set `reco_match=true` and copy reco quantities from that index
+
+**Guard:** Only apply the dR fallback when overlay is active
+(`self().isFullsimOverlay()` or `self().pythia_only_barcode_cache`).
+For pp fullsim, the 1.4% unmatched rate is physical and should not use
+dR fallback.
+
+**Claimed-index tracking:** Add `std::unordered_set<int> claimed_reco_indices`
+before the truth muon loop. When a truth muon matches a reco muon (by
+barcode OR dR), insert the reco index into the set. The dR fallback
+skips reco muons already in the set.
+
+**dR threshold:** 0.05 is tight enough to avoid false positives from
+nearby HIJING muons while recovering the 1,997 nearby-but-wrong-bc cases
+(diagnostic showed dR < 0.12 for those, mostly < 0.07).
+
+**Expected recovery:** ~1,997/15,804 = 12.6% of fiducial truth muons
+currently lost to truth-matching. Single-muon match efficiency:
+81.7% → ~94%. Pair efficiency: ~55% → ~80–82%.
+
+**Scope:** Only `PythiaFullSimExtras.c`. No header changes needed.
 
 ## Latest Stage
 
-**COMPLETED (2026-06-09).**
+**Step 10 complete (2026-06-09): All three bugs identified, documented,
+and implementation specs written.**
 
-Investigation closed. Root cause identified (HIJING truth muons in
-denominator + ancestor tracing), fix implemented (Pythia-only truth muon
-filter + pythia_only_barcode_cache auto-enable), and validated on both
-r17618 (full sample) and r17662 (cross-check).
+Awaiting decision on fix implementation.  Recommended: fix Bug #1
+first (index mapping — biggest impact, easiest fix), then Bug #2
+(dR fallback matching).
