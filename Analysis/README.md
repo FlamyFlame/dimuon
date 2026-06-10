@@ -100,6 +100,7 @@ RDFBasedHistFillingBaseClass                (base: variable registration, hist b
 - `PythiaFullsimRecoEffPlotterBase` -> `PythiaFullsimRecoEffPlotter` (pp) / `PythiaFullsimRecoEffPlotterOverlay` (overlay, per-centrality)
 - `PowhegFullsimRecoEffPlotter` -- Powheg fullsim pair reco efficiency
 - `PowhegFullsimDetRespPlotterSingleMuon` -- Powheg single-muon detector response
+- `plot_single_muon_reco_effcy.cxx` -- standalone single-muon reco efficiency vs pT (pp + overlay w/ centrality)
 
 **Trigger efficiency** (`plotting_codes/trig_effcy/`):
 - `TrigEffPlotterBaseClass` -> `TrigEffPlotterPP` / `TrigEffPlotterPbPb`

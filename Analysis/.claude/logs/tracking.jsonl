@@ -7,3 +7,8 @@
 {"event":"start","command":"steer-pipeline","pipeline":"pipeline_pbpb_crossx.sh + pipeline_pbpb_trig_eff.sh","task":"Full rerun with May 2026 skim for PbPb 23/24/25","slug":"pbpb-crossx+trig-eff","timestamp":"2026-06-08T20:22:49Z","git_sha":"bf55e870c0b992d2b23fd73e0f3e8d2f0fe1f0a5"}
 {"event":"start","command":"review-analysis-code","task":"Implement Pythia-only truth muon filter for HIJING overlay","slug":"pythia-truth-muon-filter","timestamp":"2026-06-09T18:43:00Z"}
 {"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-09T18:50:00Z","criticals":0,"warnings":0,"slug":"pythia-truth-muon-filter"}
+{"event":"start","command":"review-analysis-code","task":"Review single-muon reco effcy plotting macro","slug":"single-muon-reco-effcy-macro","timestamp":"2026-06-10T21:35:14Z"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":2,"timestamp":"2026-06-10T21:50:00Z","criticals":0,"warnings":0,"slug":"single-muon-reco-effcy-macro"}
+{"event":"start","command":"review-plot","task":"Review single-muon reco efficiency plots for PP and HIJING overlay","slug":"single-muon-reco-effcy","timestamp":"2026-06-10T22:05:00Z"}
+{"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-10T22:12:00Z","criticals":0,"warnings":0,"slug":"single-muon-reco-effcy"}
+{"event":"start","command":"review-analysis-code","task":"Apply no-corr trig eff to crossx + sanity plots","slug":"crossx-trig-eff-correction","timestamp":"2026-06-10T23:03:55Z"}
