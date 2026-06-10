@@ -124,6 +124,8 @@ RDFBasedHistFillingBaseClass                (base: variable registration, hist b
 | Powheg fullsim single-muon | `pipelines/pipeline_powheg_fullsim_single_muon.sh` | bb+cc | [docs/powheg.md](docs/powheg.md) |
 | Powheg fullsim mixed pairs | `pipelines/pipeline_powheg_fullsim_mixed_pairs.sh` | `--mass-filter`/`--no-mass-filter` | [docs/powheg.md](docs/powheg.md) |
 | pp data | (manual) | pp17, pp24 | [docs/data_analysis.md](docs/data_analysis.md) |
+| pp crossx | `pipelines/pipeline_pp_crossx.sh` | pp24 (2mu4) | [docs/pp_pipelines.md](docs/pp_pipelines.md) |
+| pp trig eff (P2) | `pipelines/pipeline_pp_trig_eff.sh` | pp24 (single_mu4) | [docs/pp_pipelines.md](docs/pp_pipelines.md) |
 | PbPb crossx (P1) | `pipelines/pipeline_pbpb_crossx.sh` | PbPb23, PbPb24, PbPb25 | [docs/pbpb_pipelines.md](docs/pbpb_pipelines.md) |
 | PbPb trig eff (P2+3) | `pipelines/pipeline_pbpb_trig_eff.sh` | PbPb23, PbPb24, PbPb25 | [docs/pbpb_pipelines.md](docs/pbpb_pipelines.md) |
 | PbPb all (master) | `pipelines/run_pbpb_all.sh` | PbPb23, PbPb24, PbPb25 | [docs/pbpb_pipelines.md](docs/pbpb_pipelines.md) |

@@ -110,65 +110,92 @@ but without centrality binning.
 
 ## Design Decisions
 
-(None yet — to be populated during implementation.)
+1. **Crossx uses coarse q·η binning; trig eff uses fine.** Both PP and
+   PbPb crossx pipelines use `useCoarseQEtaBin=true`. Both trig eff
+   pipelines use `useCoarseQEtaBin=false`. Reason: crossx doesn't need
+   fine q·η for pT fitting; trig eff does.
+   **Old approach:** PbPb crossx was using fine (default). **New:** set
+   `useCoarseQEtaBin=true` in PbPb crossx runners + pipeline.
+
+2. **DatasetTriggerMap gets `{24, "pp_single_mu4"}` entry.** Needed for
+   trig eff context where the plotter needs to resolve pp24 → single_mu4.
+
+3. **pp17 legacy code removed from all 3 source stages.** PPExtras.c,
+   RDFBasedHistFillingPP.cxx, TrigEffPlotterPP.cxx — all pp17 branches
+   removed as dead confusing code.
+
+4. **No mindR suffix search for pp 2mu4 NTuple paths.** Documented as
+   future non-urgent item. Current NTuple code for trigger_mode=3 does
+   not produce mindR suffix files.
 
 ## Implementation Plan
 
-### Prerequisite: pp17 Legacy Cleanup
+### Step 1: pp17 Legacy Cleanup
+- Delete `run_pp_17.sh`, `run_pp_17.sub` from NTupleProcessingCode
+- Delete `single_muon_trig_effcy_pT_fitting_pp.c` (legacy wrapper)
+- Remove pp17 from PPExtras.c: simplify year validation to pp24-only,
+  remove `{17, 3}` from file_batch_max map
+- Remove pp17 from RDFBasedHistFillingPP.cxx: delete `else if (run_year == 17)`
+  block in SetIOPathsHook(), delete `if (run_year == 17)` trigger override
+  in InitializePPExtra()
+- Remove pp17 from TrigEffPlotterPP.cxx: delete `case 17:` in
+  configureDataFiles(), remove `isRun2pp` flag and all references
+  (simplify trigger lists to pp24-only)
+- Use `/review-analysis-code` with Physics Procedure §3-§5.
 
-1. [ ] Delete `run_pp_17.sh`, `run_pp_17.sub`, `run_pp_17_MB.sh` (if
-   exists) — per §Cleanup
-2. [ ] Assess pp17 in source code (PPExtras.c, RDFBasedHistFillingPP.cxx,
-   TrigEffPlotterPP.cxx, SingleMuEffcyPtTurnOnFitter.cxx): remove if
-   confusing/bulky, leave if inert — per §Cleanup
-3. [ ] Delete `single_muon_trig_effcy_pT_fitting_pp.c` (standalone
-   legacy; now superseded by unified `SingleMuEffcyPtTurnOnFitter.cxx`
-   entry point `single_muon_trig_effcy_pT_fitting()`)
+### Step 2: NTuple Processing — Create Nominal Scripts
+- Create `run_pp_24_nominal.sh`: sets `pp_24.trigger_mode = 3` (2mu4)
+- Create `run_pp_24_nominal.sub`: queue 12, points to run_pp_24_nominal.sh
+- Verify `run_pp_24.sh` uses default trigger_mode=1 (trig eff mode) — OK as-is
+- Use `/review-analysis-code` with Physics Procedure §Pipeline 1 step 1.
 
-### NTuple Processing Setup
+### Step 3: PbPb Crossx Binning Fix
+- Add `pbpb.useCoarseQEtaBin = true` to all 3 PbPb crossx runner scripts
+  (`run_crossx_hist_filling_pbpb{23,24,25}.sh`)
+- Add `useCoarseQEtaBin = true` to PbPb crossx pipeline inline RDF calls
+  (Stage 5 of `pipeline_pbpb_crossx.sh`)
+- Update PbPb crossx plotter search order
+  (`plot_single_b_crossx_pbpb.cxx`): prefer `_coarse_q_eta_bin` first
+- Use `/review-analysis-code`.
 
-4. [ ] Create `run_pp_24_nominal.sh` + `run_pp_24_nominal.sub`:
-   `trigger_mode=3` (2mu4) — per §Pipeline 1 step 1.
-   Use `/review-analysis-code`.
-5. [ ] Verify existing `run_pp_24.sh` / `run_pp_24.sub` are correct for
-   trig eff mode (trigger_mode=1, default) — per §Pipeline 2 step 1.
+### Step 4: DatasetTriggerMap + PP Crossx Plotter
+- Add `{24, "pp_single_mu4"} → "single_mu4"` to both FileSuffixMap and
+  LabelMap in DatasetTriggerMap.h
+- Verify `plot_single_b_crossx_pp.cxx` search order: already expects
+  `_coarse_q_eta_bin` first → correct, no change needed.
+- Use `/review-analysis-code`.
 
-### RDF Runner Scripts
+### Step 5: RDF Runner Script for PP Crossx
+- Create `run_crossx_hist_filling_pp24.sh`: trigger_mode=3,
+  useCoarseQEtaBin=true. Pattern after PbPb crossx runners.
+- Use `/review-analysis-code`.
 
-6. [ ] Create `run_crossx_hist_filling_pp24.sh`: `trigger_mode=3`,
-   `useCoarseQEtaBin=false` — per §Pipeline 1 step 3.
-   Use `/review-analysis-code`.
+### Step 6: Write `pipeline_pp_crossx.sh`
+- No event selection stage (PP has none)
+- Stage 1: submit NTuple nominal condor jobs (run_pp_24_nominal.sub)
+- Stage 2: wait for condor clusters
+- Stage 3: validate per-batch outputs
+- Stage 4: hadd per year (combined muon_pairs + hists)
+- Stage 5: RDF crossx hist filling (trigger_mode=3, coarse q·η)
+- Stage 6: crossx plotting
+- Use `/review-pipeline`.
 
-### Source Code Fixes (from Audit)
+### Step 7: Write `pipeline_pp_trig_eff.sh`
+- No event selection stage
+- Stage 1: submit NTuple trig eff condor jobs (run_pp_24.sub)
+- Stage 2: wait for condor clusters
+- Stage 3: validate per-batch outputs
+- Stage 4: hadd
+- Stage 5: RDF P2 hist filling (trigger_mode=1, fine q·η)
+- Stage 6: pT turn-on fitting (erf_plus_log)
+- Stage 7: validate fitting output (TF1s + TH2D fallback)
+- Stage 8: trig eff plotting
+- No P3 (dR corrections excluded)
+- Use `/review-pipeline`.
 
-7. [ ] Fix `RDFBasedHistFillingPP::SetIOPathsHook()`: add file candidate
-   for `_2mu4_mindR_0_02` suffix (crossx NTuple files will have 2mu4
-   suffix) — per §Pipeline 1 step 3.
-8. [ ] Update `TrigEffPlotterPP::configureDataFiles()`: pp24 path should
-   use `_fine_q_eta_bin` suffix (consistent with useCoarseQEtaBin=false)
-   — per §Pipeline 2 step 6.
-9. [ ] Update `SingleMuEffcyPtTurnOnFitterPP::configureIO()`: already
-   expects `_fine_q_eta_bin` input — verify correct.
-10. [ ] Fix `DatasetTriggerMap`: no pp24 entry for trig eff mode
-    (single_mu4) — the crossx plotter uses `GetTrigger(24, "pp")` →
-    "2mu4" which is correct for crossx but not for trig eff context.
-    Assess whether an entry is needed.
-11. [ ] Fix `plot_single_b_crossx_pp.cxx`: input path looks for
-    `_coarse_q_eta_bin` first, but pipeline will produce
-    `_no_trg_plots_fine_q_eta_bin` (or `_coarse_q_eta_bin` depending on
-    config). Ensure consistency.
-
-### Pipeline Scripts
-
-12. [ ] Write `pipeline_pp_crossx.sh` — per §Pipeline 1.
-    Use `/review-pipeline`.
-13. [ ] Write `pipeline_pp_trig_eff.sh` — per §Pipeline 2.
-    Use `/review-pipeline`.
-
-### Documentation
-
-14. [ ] Write `docs/pp_pipelines.md` — per §Documentation
-15. [ ] Update `README.md` with pp pipeline info
+### Step 8: Documentation
+- Write `docs/pp_pipelines.md`
+- Update `README.md` with pp pipeline info
 
 ## Progress Log
 
@@ -179,6 +206,51 @@ but without centrality binning.
 - Completed full audit of pp vs PbPb analysis across all stages
 - Identified all gaps, inconsistencies, and needed changes
 - Created this tracking doc with implementation plan
+
+### 2026-06-10: Implementation (Steps 1–8)
+
+**Step 1 (pp17 cleanup):**
+- Deleted `run_pp_17.sh`, `run_pp_17.sub`, `run_pp_17_MB.sh`, `run_pp_17_MB.sub`
+- Deleted `single_muon_trig_effcy_pT_fitting_pp.c`
+- PPExtras.c: simplified year validation to `!= 24`, replaced map with `const int file_batch_max = 12`
+- RDFBasedHistFillingPP.cxx: removed `else if (run_year == 17)` block in SetIOPathsHook,
+  removed `if (run_year == 17)` trigger override in InitializePPExtra
+- TrigEffPlotterPP.cxx: removed `case 17:` in configureDataFiles, removed
+  `isRun2pp` flag + all 6 references
+- TrigEffPlotterBaseClass.h: removed `isRun2pp` member + its use in buildTriggerList
+
+**Step 2 (nominal scripts):**
+- Created `run_pp_24_nominal.sh` (trigger_mode=3) and `run_pp_24_nominal.sub` (queue 12)
+
+**Step 3 (PbPb crossx binning fix):**
+- Added `useCoarseQEtaBin = true` to `run_crossx_hist_filling_pbpb{23,24,25}.sh`
+- Pipeline Stage 5 calls those scripts directly — no inline RDF to fix
+- Fixed `plot_single_b_crossx_pbpb.cxx`: reordered search candidates to prefer
+  `_coarse_q_eta_bin` first (was `_fine_q_eta_bin` first)
+
+**Step 4 (DatasetTriggerMap):**
+- Added `{24, "pp_single_mu4"} → "single_mu4"` to FileSuffixMap
+- Added `{24, "pp_single_mu4"} → "mu4"` to LabelMap
+- PP crossx plotter already expects coarse — no change needed
+
+**Step 5 (RDF runner):**
+- Created `run_crossx_hist_filling_pp24.sh` (trigger_mode=3, useCoarseQEtaBin=true)
+
+**Step 6 (pipeline_pp_crossx.sh):**
+- Created with 6 stages: condor submit → wait → validate → hadd → RDF crossx → plotting
+- NTuple suffix: `_2mu4_mindR_0_02` (mindR detected at runtime from skim branches)
+- RDF output: `_2mu4_coarse_q_eta_bin`
+
+**Step 7 (pipeline_pp_trig_eff.sh):**
+- Created with 8 stages: condor → wait → validate → hadd → RDF P2 → pT fitting → validate → plotting
+- NTuple suffix: `_single_mu4_mindR_0_02_res_cut_v2` (resonance_cut_mode forced to 2)
+- RDF output: `_single_mu4_fine_q_eta_bin`
+- Fitter: `single_muon_trig_effcy_pT_fitting()` (erf+log, no year argument)
+- No P3 (dR corrections excluded)
+
+**Step 8 (documentation):**
+- Created `docs/pp_pipelines.md`
+- Updated `README.md` with pp pipeline entries
 
 ## Results & Observations
 
@@ -313,9 +385,10 @@ confirms both are kept as reference only.
 
 ## Remaining Work
 
-All items in Implementation Plan are pending.
+- Commit all changes (split by logical unit per feedback)
 
 ## Latest Stage
 
-**Research & planning complete.** Report delivered to user. Awaiting
-approval before proceeding to implementation.
+**Steps 1–8 implemented.** All source code changes, NTuple scripts, RDF
+runners, pipeline scripts, and documentation complete. Ready for smoke
+test and review.
