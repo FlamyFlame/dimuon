@@ -465,39 +465,43 @@ done
 
 # ======================================================================
 # Pipeline 3: dR corrections via inverse weighting
+# DISABLED: All inv-weighted dR corrections are biased on the mu4-selected
+# data sample (D9). Cross-term code kept in RDFBasedHistFillingPbPb.cxx as
+# reference for future MC-based derivation (unbiased sample, no trigger
+# selection). Re-enable when running on MC.
 # ======================================================================
 
-# ------ Stage 9: RDF Pipeline 3 hist filling (inv_weight_by_single_mu_effcy) ------
-for yr in "${YEARS[@]}"; do
-  log "Running RDF Pipeline 3 hist filling for PbPb 20${yr}"
-  pushd "$RDF_DIR" >/dev/null
-  root_rc=0
-  root -l -b <<EOF || root_rc=$?
-ROOT::EnableImplicitMT(${RDF_NTHREADS});
-.L RDFBasedHistFillingPbPb.cxx+
-
-RDFBasedHistFillingPbPb pbpb(${yr});
-pbpb.trigger_mode = 1;
-pbpb.mindR_trig = 0.02;
-pbpb.hist_filling_cycle = 2;  // inv_weight_by_single_mu_effcy
-
-std::cout << "\\n[RUN] Starting PbPb 20${yr} Pipeline 3 hist filling..." << std::endl;
-pbpb.Run();
-std::cout << "\\n[RUN] PbPb 20${yr} Pipeline 3 hist filling completed." << std::endl;
-
-gSystem->Exit(0);
-EOF
-  popd >/dev/null
-  if [[ $root_rc -ne 0 ]]; then
-    fail "RDF Pipeline 3 hist filling failed for year ${yr} (ROOT exit code ${root_rc})"
-  fi
-  validate_files_or_fail "RDF Pipeline 3 yr${yr}" "$(get_rdf_output "$yr")"
-done
-
-# ------ Stage 10: Pipeline 3 plotting (dR corrections) ------
-log "Running dR correction plots (all years combined)"
-pushd "$PLOT_DR_DIR" >/dev/null
-root -l -b -q "plot_dR_trig_corr.C"
-popd >/dev/null
+# # ------ Stage 9: RDF Pipeline 3 hist filling (inv_weight_by_single_mu_effcy) ------
+# for yr in "${YEARS[@]}"; do
+#   log "Running RDF Pipeline 3 hist filling for PbPb 20${yr}"
+#   pushd "$RDF_DIR" >/dev/null
+#   root_rc=0
+#   root -l -b <<EOF || root_rc=$?
+# ROOT::EnableImplicitMT(${RDF_NTHREADS});
+# .L RDFBasedHistFillingPbPb.cxx+
+#
+# RDFBasedHistFillingPbPb pbpb(${yr});
+# pbpb.trigger_mode = 1;
+# pbpb.mindR_trig = 0.02;
+# pbpb.hist_filling_cycle = 2;  // inv_weight_by_single_mu_effcy
+#
+# std::cout << "\\n[RUN] Starting PbPb 20${yr} Pipeline 3 hist filling..." << std::endl;
+# pbpb.Run();
+# std::cout << "\\n[RUN] PbPb 20${yr} Pipeline 3 hist filling completed." << std::endl;
+#
+# gSystem->Exit(0);
+# EOF
+#   popd >/dev/null
+#   if [[ $root_rc -ne 0 ]]; then
+#     fail "RDF Pipeline 3 hist filling failed for year ${yr} (ROOT exit code ${root_rc})"
+#   fi
+#   validate_files_or_fail "RDF Pipeline 3 yr${yr}" "$(get_rdf_output "$yr")"
+# done
+#
+# # ------ Stage 10: Pipeline 3 plotting (dR corrections) ------
+# log "Running dR correction plots (all years combined)"
+# pushd "$PLOT_DR_DIR" >/dev/null
+# root -l -b -q "plot_dR_trig_corr.C"
+# popd >/dev/null
 
 log "PbPb trigger efficiency pipeline completed successfully for years: ${YEARS[*]}"
