@@ -108,6 +108,35 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
     std::vector<muon_t> truth_muon_list;
 
     int n_pythia_truth_muons = self().GetNPythiaTruthMuons(truth_muon_pt->size());
+    int n_reco = (int)muon_pt->size();
+
+    std::vector<bool> reco_claimed(n_reco, false);
+
+    auto fill_reco_quantities = [&](muon_t& m, int reco_ind){
+        m.reco_match = true;
+        m.pt      = fabs(muon_pt->at(reco_ind)) / 1000.0f;
+        m.eta     = muon_eta->at(reco_ind);
+        m.phi     = muon_phi->at(reco_ind);
+        m.charge  = (muon_pt->at(reco_ind) > 0) ? 1 : -1;
+
+        m.dP_overP = muon_deltaP_overP->at(reco_ind);
+        m.z0       = muon_z0->at(reco_ind);
+        m.d0       = muon_d0->at(reco_ind);
+        m.quality  = muon_quality->at(reco_ind);
+
+        m.trk_pt  = fabs(muon_trk_pt->at(reco_ind)) / 1000.0f;
+        m.trk_eta = muon_trk_eta->at(reco_ind);
+        m.trk_phi = muon_trk_phi->at(reco_ind);
+
+        if (turn_on_track_charge)
+            m.trk_charge = (muon_trk_pt->at(reco_ind) > 0) ? 1 : -1;
+        else
+            m.trk_charge = 0;
+
+        m.pass_medium = PassMuonMediumCuts(m);
+        m.pass_tight  = (m.pass_medium && (m.quality & 16));
+        reco_claimed[reco_ind] = true;
+    };
 
     for (int truth_ind = 0; truth_ind < n_pythia_truth_muons; truth_ind++){
         muon_t cur_muon;
@@ -127,31 +156,34 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
                             cur_muon.truth_bar);
 
         if (it != real_muon_truth_barcode_list.end()){
-            cur_muon.reco_match = true;
             int list_pos = std::distance(real_muon_truth_barcode_list.begin(), it);
             int reco_ind = real_muon_orig_index[list_pos];
-
-            cur_muon.pt      = fabs(muon_pt->at(reco_ind)) / 1000.0f;
-            cur_muon.eta     = muon_eta->at(reco_ind);
-            cur_muon.phi     = muon_phi->at(reco_ind);
-            cur_muon.charge  = (muon_pt->at(reco_ind) > 0) ? 1 : -1;
-
-            cur_muon.dP_overP = muon_deltaP_overP->at(reco_ind);
-            cur_muon.z0       = muon_z0->at(reco_ind);
-            cur_muon.d0       = muon_d0->at(reco_ind);
-            cur_muon.quality  = muon_quality->at(reco_ind);
-
-            cur_muon.trk_pt  = fabs(muon_trk_pt->at(reco_ind)) / 1000.0f;
-            cur_muon.trk_eta = muon_trk_eta->at(reco_ind);
-            cur_muon.trk_phi = muon_trk_phi->at(reco_ind);
-
-            if (turn_on_track_charge)
-                cur_muon.trk_charge = (muon_trk_pt->at(reco_ind) > 0) ? 1 : -1;
-            else
-                cur_muon.trk_charge = 0;
-
-            cur_muon.pass_medium = PassMuonMediumCuts(cur_muon);
-            cur_muon.pass_tight  = (cur_muon.pass_medium && (cur_muon.quality & 16));
+            fill_reco_quantities(cur_muon, reco_ind);
+        } else if (self().pythia_only_barcode_cache) {
+            // dR fallback for overlay: barcode collision causes wrong truth
+            // decorations on reco muons; find the closest unclaimed reco muon
+            constexpr double dR_threshold = 0.05;
+            double best_dR = dR_threshold;
+            int best_ind = -1;
+            for (int ri = 0; ri < n_reco; ri++){
+                if (reco_claimed[ri]) continue;
+                double deta = cur_muon.truth_eta - muon_eta->at(ri);
+                double dphi = cur_muon.truth_phi - muon_phi->at(ri);
+                if (dphi >  M_PI) dphi -= 2.0 * M_PI;
+                if (dphi < -M_PI) dphi += 2.0 * M_PI;
+                double dR = std::sqrt(deta * deta + dphi * dphi);
+                if (dR < best_dR){
+                    best_dR = dR;
+                    best_ind = ri;
+                }
+            }
+            if (best_ind >= 0){
+                fill_reco_quantities(cur_muon, best_ind);
+            } else {
+                cur_muon.reco_match  = false;
+                cur_muon.pass_medium = false;
+                cur_muon.pass_tight  = false;
+            }
         } else {
             cur_muon.reco_match  = false;
             cur_muon.pass_medium = false;
