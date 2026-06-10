@@ -6,15 +6,15 @@ void PPExtras<Derived>::InitParamsExtra(){
     self().cutLabels.assign(cutLabelsPP.begin(), cutLabelsPP.end());
     self().numCuts = static_cast<int>(CutsPP::nCuts_pp_data);
 
-    if (self().run_year != 17 && self().run_year != 24) {
-        std::cerr << "Error:: pp run_year must be 17 or 24" << std::endl;
+    if (self().run_year != 24) {
+        std::cerr << "Error:: pp run_year must be 24" << std::endl;
         throw std::exception();
     }
 
-    std::map<int, int> run_year_to_file_batch_max = {{17, 3}, {24, 12}};
-    if (self().file_batch <= 0 || self().file_batch > run_year_to_file_batch_max[self().run_year]) {
+    const int file_batch_max = 12;
+    if (self().file_batch <= 0 || self().file_batch > file_batch_max) {
         std::cerr << "Error:: pp file_batch invalid! Must be 1-"
-                  << run_year_to_file_batch_max[self().run_year]
+                  << file_batch_max
                   << " for 20" << self().run_year << " data" << std::endl;
         throw std::exception();
     }

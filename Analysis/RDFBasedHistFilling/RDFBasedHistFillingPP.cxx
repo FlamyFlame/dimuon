@@ -6,57 +6,30 @@
 void RDFBasedHistFillingPP::SetIOPathsHook(){
     infile_var1D_json = "var1D_pp.json";
 
-    if (run_year == 24){
-        std::vector<std::string> input_candidates = {
-            "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024" + base_trig_suffix + input_mindR_suffix + "_res_cut_v2.root",
-            "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024" + base_trig_suffix + input_mindR_suffix + ".root",
-            "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024" + base_trig_suffix + "_no_res_cut.root",
-            "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024" + base_trig_suffix + ".root"
-        };
+    // NOTE: no mindR suffix search for trigger_mode=3 (2mu4) NTuple files — future item
+    std::vector<std::string> input_candidates = {
+        "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024" + base_trig_suffix + input_mindR_suffix + "_res_cut_v2.root",
+        "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024" + base_trig_suffix + input_mindR_suffix + ".root",
+        "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024" + base_trig_suffix + "_no_res_cut.root",
+        "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024" + base_trig_suffix + ".root"
+    };
 
-        std::string in_path;
-        for (const auto& cand : input_candidates) {
-            if (!gSystem->AccessPathName(cand.c_str())) {
-                in_path = cand;
-                break;
-            }
+    std::string in_path;
+    for (const auto& cand : input_candidates) {
+        if (!gSystem->AccessPathName(cand.c_str())) {
+            in_path = cand;
+            break;
         }
-        if (in_path.empty()) {
-            throw std::runtime_error("RDFBasedHistFillingPP: input file not found for run_year=24 and base_trig_suffix=" + base_trig_suffix);
-        }
-
-        input_files.push_back(in_path);
-        output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/histograms_real_pairs_pp_2024" + out_file_suffix + ".root";
-    } else if (run_year == 17){
-        std::vector<std::string> input_candidates = {
-            "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/muon_pairs_pp_2017" + base_trig_suffix + input_mindR_suffix + "_res_cut_v2.root",
-            "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/muon_pairs_pp_2017" + base_trig_suffix + input_mindR_suffix + ".root",
-            "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/muon_pairs_pp_2017" + base_trig_suffix + "_no_res_cut.root",
-            "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/muon_pairs_pp_2017" + base_trig_suffix + ".root"
-        };
-
-        std::string in_path;
-        for (const auto& cand : input_candidates) {
-            if (!gSystem->AccessPathName(cand.c_str())) {
-                in_path = cand;
-                break;
-            }
-        }
-        if (in_path.empty()) {
-            throw std::runtime_error("RDFBasedHistFillingPP: input file not found for run_year=17 and base_trig_suffix=" + base_trig_suffix);
-        }
-
-        input_files.push_back(in_path);
-        output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_run2/histograms_real_pairs_pp_2017" + out_file_suffix + ".root";
     }
+    if (in_path.empty()) {
+        throw std::runtime_error("RDFBasedHistFillingPP: input file not found for run_year=24 and base_trig_suffix=" + base_trig_suffix);
+    }
+
+    input_files.push_back(in_path);
+    output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/histograms_real_pairs_pp_2024" + out_file_suffix + ".root";
 }
 
 void RDFBasedHistFillingPP::InitializePPExtra(){
-	if (run_year == 17){
-        trigs = {"_mu4", "_2mu4"};
-        trigs_pair = {{"_2mu4","_mu4"}};
-    }
-
     // Set pp_crossx_lumi_factor from PPBaseClass map.
     // Only trigger_mode 2 (mu4_mu4noL1) and 3 (2mu4) are crossx modes;
     // trigger_mode 1 never calls FillHistogramsCrossx(), so leave factor at -1.

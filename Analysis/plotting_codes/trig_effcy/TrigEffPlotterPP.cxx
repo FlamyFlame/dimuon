@@ -2,29 +2,18 @@
 
 void TrigEffPlotterPP::configureDataFiles(int runYear)
 {
-    isRun2pp = ((runYear % 2000) == 17);
     std::string base = isBNL ? "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/"
                              : "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/";
     int yr = runYear % 2000;
-    std::string yr_str = std::to_string(yr);
 
-    switch (yr)
-    {
-    case 17:
-        data_dir = base + "pp_run2/";
-        fname_single_mu4 = data_dir + "histograms_real_pairs_pp_2017_single_mu4.root";
-        fname_MB         = data_dir + "histograms_real_pairs_pp_2017_MB.root";
-        plot_base_dir    = base + "plots/pp_trigger_efficiency/mu4/no_corr/pp17";
-        break;
-    case 24:
-        data_dir = base + "pp_2024/";
-        fname_single_mu4 = data_dir + "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin.root";
-        fname_MB         = data_dir + "histograms_real_pairs_pp_2024_MB.root";
-        plot_base_dir    = base + "plots/pp_trigger_efficiency/mu4/no_corr/pp24";
-        break;
-    default:
-        throw std::runtime_error("runYear must be 17 or 24 for pp");
+    if (yr != 24) {
+        throw std::runtime_error("runYear must be 24 for pp");
     }
+
+    data_dir = base + "pp_2024/";
+    fname_single_mu4 = data_dir + "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin.root";
+    fname_MB         = data_dir + "histograms_real_pairs_pp_2024_MB.root";
+    plot_base_dir    = base + "plots/pp_trigger_efficiency/mu4/no_corr/pp24";
 }
 
 // =========================================================================
@@ -131,8 +120,7 @@ void TrigEffPlotterPP::plot1D(const std::string& var)
                 // For each (valid) trigger produce TGraphAsymmErrors
                 std::vector<std::pair<std::string,int>> trigOrder; // order & colour idx
 
-                if (isRun2pp) trigOrder = { {"2mu4", 0} };
-                else{
+                {
                     if (draw2mu4){
                         trigOrder = { {"mu4_mu4noL1", 0}, {"2mu4", 1} }; 
                     }else{
@@ -449,14 +437,10 @@ void TrigEffPlotterPP::plot2D(const std::string& var, const std::string& fs)
     // ---------- first canvas : sign-1 / sign-2 ------------------------
     std::vector<std::pair<std::string,std::string>> configs;
 
-    if (isRun2pp) {                       // Run-2 pp → only 2mu4 / mu4
-        configs = {{"2mu4","mu4"}};
-    } else {                              // heavy-ion / Run-3
-        if (draw2mu4){
-            configs = {{"mu4_mu4noL1","mu4"},{"2mu4","mu4"}};
-        } else{
-            configs = {{"mu4_mu4noL1","mu4"}};
-        }
+    if (draw2mu4){
+        configs = {{"mu4_mu4noL1","mu4"},{"2mu4","mu4"}};
+    } else{
+        configs = {{"mu4_mu4noL1","mu4"}};
     }
 
     int nPads = static_cast<int>(configs.size())*2;         // each config → 2 signs
@@ -487,7 +471,7 @@ void TrigEffPlotterPP::plot2D(const std::string& var, const std::string& fs)
 
     std::string outdir = plot_base_dir + (fs.empty()?"":fs);
     if (draw2mu4) outdir += "_w_2mu4";
-    
+
     makeDirIfNeeded(outdir);
     c->SaveAs(Form("%s/%s_2D_trig_effcy%s.png",
                    outdir.c_str(),var.c_str(),fs.c_str()));
@@ -521,20 +505,16 @@ void TrigEffPlotterPP::plot2D(const std::string& var, const std::string& fs)
 void TrigEffPlotterPP::plot2D_SingleMuonEffcy(const std::string& var)
 {
     std::cout << "Call function plot2D_SingleMuonEffcy" << std::endl;
-    
+
     const auto xy = xyFor(var);
 
     // ---------- first canvas : sign-1 / sign-2 ------------------------
     std::vector<std::pair<std::string,std::string>> configs;
 
-    if (isRun2pp) {                       // Run-2 pp → only 2mu4 / mu4
-        configs = {{"2mu4","mu4"}};
-    } else {                              // heavy-ion / Run-3
-        if (draw2mu4){
-            configs = {{"mu4_mu4noL1","mu4"},{"2mu4","mu4"}};
-        } else{
-            configs = {{"mu4_mu4noL1","mu4"}};
-        }
+    if (draw2mu4){
+        configs = {{"mu4_mu4noL1","mu4"},{"2mu4","mu4"}};
+    } else{
+        configs = {{"mu4_mu4noL1","mu4"}};
     }
 
     int nPads = static_cast<int>(configs.size())*2;         // each config → 2 signs
@@ -709,9 +689,8 @@ void TrigEffPlotterPP::plot2Dto1DEffcyProj()
 
                         // triggers to overlay (skip mu4; it’s denom)
                         std::vector<std::pair<std::string,int>> trigOrder =
-                            isRun2pp ? std::vector<std::pair<std::string,int>>{{"2mu4", 1}}
-                                     : (draw2mu4? std::vector<std::pair<std::string,int>>{{"mu4_mu4noL1", 0}, {"2mu4", 1}}
-                                                : std::vector<std::pair<std::string,int>>{{"mu4_mu4noL1", 0}});
+                            draw2mu4 ? std::vector<std::pair<std::string,int>>{{"mu4_mu4noL1", 0}, {"2mu4", 1}}
+                                     : std::vector<std::pair<std::string,int>>{{"mu4_mu4noL1", 0}};
 
                         bool firstTrgInstance = true; // boolean to indicate first trigger instance: if continue without plotting, only increment filterIdx if first trigger instance
 
@@ -1072,9 +1051,9 @@ void TrigEffPlotterPP::plot2Dto1DsingleMuonEffcyProj (const std::pair<const std:
 
     std::vector<std::pair<std::string,std::string>> trig_pairs;
 
-    if (isRun2pp || isMB) { // Run-2 pp or MB mode → only 2mu4 / mu4
+    if (isMB) {
         trig_pairs = {{"2mu4","mu4"}};
-    } else { // draw for both mu4noL1 and mu4 single-muon efficiency
+    } else {
         trig_pairs = {{"mu4_mu4noL1","mu4"},{"2mu4","mu4"}};
     }
 

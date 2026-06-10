@@ -588,13 +588,10 @@ public:
     {}
 
 private:
-    bool isRun2pp{false};
-
     void configureDataFiles(int runYear) override;
 
     StrVec buildTriggerList() const override
     {
-        if (isRun2pp) return {"2mu4"};
         if (draw2mu4)  return {"2mu4", "mu4_mu4noL1"};
         return {"mu4_mu4noL1"};
     }
