@@ -66,20 +66,22 @@ void plot_single_b_crossx_pp(
         const std::string& trig = DatasetTriggerMap::GetTrigger(yr, "pp");
         const std::string base = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_20"
                                  + std::to_string(yr) + "/";
-        in_path = base + "histograms_real_pairs_pp_20" + std::to_string(yr)
-                  + "_" + trig + "_coarse_q_eta_bin.root";
-        if (gSystem->AccessPathName(in_path.c_str())) {
-            // fallback: without coarse_q_eta_bin suffix
-            const std::string fallback = base + "histograms_real_pairs_pp_20"
-                                         + std::to_string(yr) + "_" + trig + ".root";
-            if (gSystem->AccessPathName(fallback.c_str())) {
-                throw std::runtime_error(
-                    "plot_single_b_crossx_pp: input file not found.\n"
-                    "  Expected (trigger fixed by DatasetTriggerMap for pp 20" +
-                    std::to_string(yr) + " -> " + trig + "):\n"
-                    "  " + in_path + "\n  or\n  " + fallback);
-            }
-            in_path = fallback;
+        const std::string fname_base = base + "histograms_real_pairs_pp_20"
+                                      + std::to_string(yr) + "_" + trig;
+        std::vector<std::string> candidates = {
+            fname_base + "_nominal.root",
+            fname_base + "_coarse_q_eta_bin.root",
+            fname_base + ".root",
+        };
+        for (const auto& c : candidates) {
+            if (!gSystem->AccessPathName(c.c_str())) { in_path = c; break; }
+        }
+        if (in_path.empty()) {
+            throw std::runtime_error(
+                "plot_single_b_crossx_pp: input file not found.\n"
+                "  Expected (trigger fixed by DatasetTriggerMap for pp 20" +
+                std::to_string(yr) + " -> " + trig + "):\n"
+                "  " + candidates.front());
         }
     }
 
