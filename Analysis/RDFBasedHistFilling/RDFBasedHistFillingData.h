@@ -107,6 +107,7 @@ protected:
     virtual void    BuildFlattenedTrgEffcyFilterToVarListMapExtra(){}
 
     virtual bool    IsPbPb() const { return false; } // avoids dynamic_cast<PbPb*> cross-dependency when compiling PP and PbPb separately
+    std::string     generic_weight_col;
     virtual void    FillHistograms() override;
     virtual void    FillHistogramsGeneric();
     virtual void    FillHistogramsCrossx() = 0; // trigger_mode == 2 crossx filling (opposite-sign only, with signal cuts)
@@ -209,6 +210,7 @@ protected:
     virtual void        FillHistogramsMu4GivenMB() override;
     virtual void        FillTrigEffcyHistsInvWeightedbySingleMuonEffcies() override;
     virtual void        FillHistogramsCrossx() override;
+    virtual void        FillHistogramsGeneric() override;
 
     virtual void        OpenEffcyPtFitFile() override;
 

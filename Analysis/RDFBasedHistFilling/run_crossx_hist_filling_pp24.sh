@@ -29,7 +29,8 @@ RDFBasedHistFillingPP pp(24);
 
 // Configure for trigger_mode=3 (2mu4, crossx measurements for PP24)
 pp.trigger_mode = 3;
-pp.useCoarseQEtaBin = true;
+pp.output_generic_hists = true;
+pp.output_gapcut_hists = true;
 
 std::cout << "\\n[RUN] Starting pp24 FillHistogramsCrossx run..." << std::endl;
 pp.Run();

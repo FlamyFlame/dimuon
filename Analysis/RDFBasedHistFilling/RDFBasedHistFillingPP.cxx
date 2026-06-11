@@ -264,7 +264,7 @@ void RDFBasedHistFillingPP::OpenEffcyPtFitFile() {
         std::cout << "OpenEffcyPtFitFile: TF1 map already loaded (" << s_effcy_pT_fit_map.size() << " entries)" << std::endl;
         return;
     }
-    std::string fit_path = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_20" + std::to_string(run_year) + "/trg_effcy_pT_fitting_to_fermi_plus_log/single_mu_effcy_pT_fit.root";
+    std::string fit_path = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_20" + std::to_string(run_year) + "/trg_effcy_pT_fitting_to_erf_plus_log/single_mu_effcy_pT_fit.root";
     s_effcy_pT_fit_file = TFile::Open(fit_path.c_str(), "READ");
     if (!s_effcy_pT_fit_file || s_effcy_pT_fit_file->IsZombie()) {
         std::cerr << "OpenEffcyPtFitFile: FAILED to open " << fit_path << std::endl;
@@ -281,7 +281,7 @@ void RDFBasedHistFillingPP::OpenEffcyPtFitFile() {
     std::cout << "OpenEffcyPtFitFile: loaded " << s_effcy_pT_fit_map.size() << " TF1s from " << fit_path << std::endl;
 
     std::string base_dir = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_20" + std::to_string(run_year);
-    std::string hist_path = base_dir + "/histograms_real_pairs_pp_20" + std::to_string(run_year) + "_single_mu4_coarse_q_eta_bin.root";
+    std::string hist_path = base_dir + "/histograms_real_pairs_pp_20" + std::to_string(run_year) + "_single_mu4_fine_q_eta_bin.root";
     s_effcy_2D_hist_file = TFile::Open(hist_path.c_str(), "READ");
     if (!s_effcy_2D_hist_file || s_effcy_2D_hist_file->IsZombie()) {
         std::cerr << "OpenEffcyPtFitFile: WARNING — 2D hist file not found: " << hist_path << " (gap fallback disabled)" << std::endl;
@@ -307,6 +307,42 @@ void RDFBasedHistFillingPP::MakeAndWriteDRTrigEffGraphs() {
 }
 
 // ============================================================================
+// FillHistogramsGeneric: override to add 2mu4 trigger efficiency weighting
+// ============================================================================
+
+void RDFBasedHistFillingPP::FillHistogramsGeneric(){
+    if (!trigger_effcy_calc) {
+        OpenEffcyPtFitFile();
+
+        for (const std::string& category : categories_essential) {
+            std::string df_name = "df" + category;
+            ROOT::RDF::RNode& df = map_at_checked(df_map, df_name,
+                Form("PP::FillHistogramsGeneric: df_map.at(%s)", df_name.c_str()));
+
+            ROOT::RDF::RNode df_with_trig = df
+                .Define("q_eta1", "(float)(m1.charge * m1.eta)")
+                .Define("q_eta2", "(float)(m2.charge * m2.eta)")
+                .Define("effcy1", [](int q, float pt, float qe) {
+                    return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe);
+                }, {"m1.charge", "m1.pt", "q_eta1"})
+                .Define("effcy2", [](int q, float pt, float qe) {
+                    return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe);
+                }, {"m2.charge", "m2.pt", "q_eta2"})
+                .Define("effcy_pair", "effcy1 > 0 && effcy2 > 0 ? (double)(effcy1 * effcy2) : -1.0")
+                .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0");
+
+            df_map.erase(df_name);
+            df_map.emplace(df_name, df_with_trig);
+        }
+        generic_weight_col = "w_trig";
+        std::cout << "[PP] FillHistogramsGeneric: w_trig columns added to "
+                  << categories_essential.size() << " dataframes" << std::endl;
+    }
+
+    RDFBasedHistFillingData::FillHistogramsGeneric();
+}
+
+// ============================================================================
 // FillHistogramsCrossx: Single B → J/psi crossx measurements (trigger_mode==2)
 // ============================================================================
 
@@ -320,9 +356,11 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
             "Valid crossx trigger_modes: 2 (mu4_mu4noL1), 3 (2mu4)."
         );
     }
+    OpenEffcyPtFitFile();
+
     std::cout << "[PP] FillHistogramsCrossx: opposite-sign only, signal cuts, "
               << "crossx_weight = weight * " << pp_crossx_lumi_factor
-              << " (1/L_int)" << std::endl;
+              << " (1/L_int), with 2mu4 trig eff correction" << std::endl;
 
     const std::string signal_cuts = "minv > 1.08 && minv < 2.9 && pair_pt > 8 && m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2 && dr > 0.05";
 
@@ -332,11 +370,29 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         df_map.emplace("df_single_b_crossx", df_single_b_crossx);
     }
 
+    // Per-pair 2mu4 trigger efficiency: ε_pair = ε₁ · ε₂ (AND logic)
+    // If FillHistogramsGeneric already added trigger columns to df_op, they
+    // propagate through the Filter to df_single_b_crossx — skip re-Define.
+    ROOT::RDF::RNode df_with_trig = generic_weight_col.empty()
+        ? df_single_b_crossx
+            .Define("q_eta1", "(float)(m1.charge * m1.eta)")
+            .Define("q_eta2", "(float)(m2.charge * m2.eta)")
+            .Define("effcy1", [](int q, float pt, float qe) {
+                return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe);
+            }, {"m1.charge", "m1.pt", "q_eta1"})
+            .Define("effcy2", [](int q, float pt, float qe) {
+                return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe);
+            }, {"m2.charge", "m2.pt", "q_eta2"})
+            .Define("effcy_pair", "effcy1 > 0 && effcy2 > 0 ? (double)(effcy1 * effcy2) : -1.0")
+            .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
+        : df_single_b_crossx;
+
     const double lumi_factor = pp_crossx_lumi_factor;
     ROOT::RDF::RNode df_single_b_crossx_weighted =
-        df_single_b_crossx.Define("crossx_weight",
+        df_with_trig.Define("crossx_weight",
             [lumi_factor](double weight){ return weight * lumi_factor; },
-            {"weight"});
+            {"weight"})
+        .Define("crossx_weight_trig_corr", "crossx_weight * w_trig");
 
     if (df_map.find("df_single_b_crossx_weighted") == df_map.end()) {
         df_map.emplace("df_single_b_crossx_weighted", df_single_b_crossx_weighted);
@@ -360,20 +416,23 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
 
     hist2d_rresultptr_map["h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts"] = df_single_b_crossx_weighted.Histo2D(
         ROOT::RDF::TH2DModel("h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, 44, -2.4, 2.4),
+        "pair_pt", "pair_eta", "crossx_weight_trig_corr");
+    hist2d_rresultptr_map["h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts_no_trig_corr"] = df_single_b_crossx_weighted.Histo2D(
+        ROOT::RDF::TH2DModel("h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts_no_trig_corr", ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, 44, -2.4, 2.4),
         "pair_pt", "pair_eta", "crossx_weight");
     hist2d_rresultptr_map["h2d_crossx_pair_pt_minv_w_signal_cuts"] = df_single_b_crossx_weighted.Histo2D(
         ROOT::RDF::TH2DModel("h2d_crossx_pair_pt_minv_w_signal_cuts", ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", npt, ptbins, 50, 1.0, 3.0),
-        "pair_pt", "minv", "crossx_weight");
+        "pair_pt", "minv", "crossx_weight_trig_corr");
     hist2d_rresultptr_map["h2d_crossx_pair_pt_dr_w_signal_cuts"] = df_single_b_crossx_weighted.Histo2D(
         ROOT::RDF::TH2DModel("h2d_crossx_pair_pt_dr_w_signal_cuts", ";p_{T}^{pair} [GeV];#DeltaR", npt, ptbins, 50, 0.05, 1.0),
-        "pair_pt", "dr", "crossx_weight");
+        "pair_pt", "dr", "crossx_weight_trig_corr");
 
     hist3d_rresultptr_map["h3d_crossx_minv_vs_pair_eta_vs_pair_pt_w_signal_cuts"] = df_single_b_crossx_weighted.Histo3D(
         ROOT::RDF::TH3DModel("h3d_crossx_minv_vs_pair_eta_vs_pair_pt_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair};m_{#mu#mu} [GeV]", npt, ptbins, 44, eta_edges.data(), 50, minv_edges.data()),
-        "pair_pt", "pair_eta", "minv", "crossx_weight");
+        "pair_pt", "pair_eta", "minv", "crossx_weight_trig_corr");
     hist3d_rresultptr_map["h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts"] = df_single_b_crossx_weighted.Histo3D(
         ROOT::RDF::TH3DModel("h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt, ptbins, 44, eta_edges.data(), 50, dr_edges.data()),
-        "pair_pt", "pair_eta", "dr", "crossx_weight");
+        "pair_pt", "pair_eta", "dr", "crossx_weight_trig_corr");
 
     // --- pT_bins_150 variants ---
     {
@@ -384,10 +443,10 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
 
         hist2d_rresultptr_map["h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts"] = df_single_b_crossx_weighted.Histo2D(
             ROOT::RDF::TH2DModel("h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair}", npt150, ptbins150, 44, -2.4, 2.4),
-            "pair_pt", "pair_eta", "crossx_weight");
+            "pair_pt", "pair_eta", "crossx_weight_trig_corr");
         hist3d_rresultptr_map["h3d_crossx_dr_vs_pair_eta_vs_pt_150_w_signal_cuts"] = df_single_b_crossx_weighted.Histo3D(
             ROOT::RDF::TH3DModel("h3d_crossx_dr_vs_pair_eta_vs_pt_150_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt150, ptbins150, 44, eta_edges150.data(), 50, dr_edges150.data()),
-            "pair_pt", "pair_eta", "dr", "crossx_weight");
+            "pair_pt", "pair_eta", "dr", "crossx_weight_trig_corr");
     }
 
     std::cout << "[PP] FillHistogramsCrossx completed" << std::endl;

@@ -913,6 +913,8 @@ void RDFBasedHistFillingPbPb::ReadVar1DJson() {
 void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
     std::cout << "[PbPb] FillHistogramsCrossx: opposite-sign only, signal cuts, centrality-aware weighted crossx histograms" << std::endl;
 
+    OpenEffcyPtFitFile();
+
     const std::string signal_cuts = "minv > 1.08 && minv < 2.9 && pair_pt > 8 && m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2 && dr > 0.05";
 
     ROOT::RDF::RNode df_op_base = map_at_checked(df_map, "df_op", "FillHistogramsCrossx PbPb: df_op");
@@ -921,13 +923,27 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
         df_map.emplace("df_single_b_crossx", df_single_b_crossx);
     }
 
-    ROOT::RDF::RNode df_single_b_crossx_weighted = df_single_b_crossx.Define(
+    // Per-pair no-correlation trigger efficiency: ε_pair = ε₁ + ε₂ − ε₁·ε₂ (OR logic)
+    ROOT::RDF::RNode df_with_trig = df_single_b_crossx
+        .Define("q_eta1", "(float)(m1.charge * m1.eta)")
+        .Define("q_eta2", "(float)(m2.charge * m2.eta)")
+        .Define("ctr_suf", [](int ctr) { return RDFBasedHistFillingData::FindCtrSuffix(ctr); }, {"avg_centrality"})
+        .Define("effcy1", [](const std::string& cs, int q, float pt, float qe) {
+            return RDFBasedHistFillingData::EvaluateSingleMuonEffcy(cs, q > 0, pt, qe);
+        }, {"ctr_suf", "m1.charge", "m1.pt", "q_eta1"})
+        .Define("effcy2", [](const std::string& cs, int q, float pt, float qe) {
+            return RDFBasedHistFillingData::EvaluateSingleMuonEffcy(cs, q > 0, pt, qe);
+        }, {"ctr_suf", "m2.charge", "m2.pt", "q_eta2"})
+        .Define("effcy_pair", "effcy1 > 0 && effcy2 > 0 ? (double)(effcy1 + effcy2 - effcy1 * effcy2) : -1.0")
+        .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0");
+
+    ROOT::RDF::RNode df_single_b_crossx_weighted = df_with_trig.Define(
         "weight_for_RAA",
         [this](int avg_centrality, double weight) {
             return this->CalculateWeightForRAA(avg_centrality, weight);
         },
         {"avg_centrality", "weight"}
-    );
+    ).Define("weight_for_RAA_trig_corr", "weight_for_RAA * w_trig");
     if (df_map.find("df_single_b_crossx_weighted") == df_map.end()) {
         df_map.emplace("df_single_b_crossx_weighted", df_single_b_crossx_weighted);
     }
@@ -950,7 +966,7 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
         hist3d_rresultptr_map["h3d_op_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt"] = df_single_b_crossx_weighted.Histo3D(
             ROOT::RDF::TH3DModel("h3d_op_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt", ";p_{T}^{pair} [GeV];#eta^{pair};Centrality",
                 npt, ptbins, 44, eta_edges.data(), nCtrBins, ctr_bin_edges_double.data()),
-            "pair_pt", "pair_eta", "avg_centrality", "weight_for_RAA");
+            "pair_pt", "pair_eta", "avg_centrality", "weight_for_RAA_trig_corr");
     }
 
     const std::vector<std::pair<float, float>> dr_ranges = {{0.0f, 0.2f}, {0.2f, 0.4f}, {0.4f, 0.6f}, {0.6f, 1.0f}};
@@ -959,80 +975,69 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
         const int ctr_lo = ctr_bin_edges.at(ictr);
         const int ctr_hi = ctr_bin_edges.at(ictr + 1);
         const std::string ctr = "ctr" + std::to_string(ctr_lo) + "_" + std::to_string(ctr_hi);
-        const std::string df_ctr_name = "df_op_" + ctr;
+        const std::string ctr_filter = "avg_centrality >= " + std::to_string(ctr_lo) + " && avg_centrality < " + std::to_string(ctr_hi);
 
-        ROOT::RDF::RNode df_op_ctr = map_at_checked(df_map, df_ctr_name, Form("FillHistogramsCrossx PbPb: %s", df_ctr_name.c_str()));
-        ROOT::RDF::RNode df_single_b_crossx_ctr = df_op_ctr.Filter(signal_cuts);
-        const std::string df_crossx_ctr_name = "df_single_b_crossx_" + ctr;
-        if (df_map.find(df_crossx_ctr_name) == df_map.end()) {
-            df_map.emplace(df_crossx_ctr_name, df_single_b_crossx_ctr);
-        }
-
-        ROOT::RDF::RNode df_single_b_crossx_ctr_weighted = df_single_b_crossx_ctr.Define(
-            "weight_for_RAA",
-            [this](int avg_centrality, double weight) {
-                return this->CalculateWeightForRAA(avg_centrality, weight);
-            },
-            {"avg_centrality", "weight"}
-        );
-        const std::string df_crossx_ctr_weighted_name = "df_single_b_crossx_weighted_" + ctr;
-        if (df_map.find(df_crossx_ctr_weighted_name) == df_map.end()) {
-            df_map.emplace(df_crossx_ctr_weighted_name, df_single_b_crossx_ctr_weighted);
-        }
+        ROOT::RDF::RNode df_crossx_ctr = df_single_b_crossx_weighted.Filter(ctr_filter);
 
         // Store 2D/3D histograms as RResultPtrs (lazy-evaluated, converted during HistPostProcess)
         const int    npt    = (int)(pms.pT_bins_120.size() - 1);
         const double* ptbins = pms.pT_bins_120.data();
 
-        // --- Version 1: TAA-weighted crossx-normalized histograms (weight_for_RAA) ---
+        // --- Version 1: TAA-weighted crossx histograms with trigger efficiency correction ---
         const std::string h2_eta_name = "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr;
-        hist2d_rresultptr_map[h2_eta_name] = df_single_b_crossx_ctr_weighted.Histo2D(
+        hist2d_rresultptr_map[h2_eta_name] = df_crossx_ctr.Histo2D(
             ROOT::RDF::TH2DModel(h2_eta_name.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, 44, -2.4, 2.4),
-            "pair_pt", "pair_eta", "weight_for_RAA");
+            "pair_pt", "pair_eta", "weight_for_RAA_trig_corr");
 
         const std::string h2_minv_name = "h2d_crossx_pair_pt_minv_w_signal_cuts_" + ctr;
-        hist2d_rresultptr_map[h2_minv_name] = df_single_b_crossx_ctr_weighted.Histo2D(
+        hist2d_rresultptr_map[h2_minv_name] = df_crossx_ctr.Histo2D(
             ROOT::RDF::TH2DModel(h2_minv_name.c_str(), ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", npt, ptbins, 50, 1.0, 3.0),
-            "pair_pt", "minv", "weight_for_RAA");
+            "pair_pt", "minv", "weight_for_RAA_trig_corr");
 
         const std::string h2_dr_name = "h2d_crossx_pair_pt_dr_w_signal_cuts_" + ctr;
-        hist2d_rresultptr_map[h2_dr_name] = df_single_b_crossx_ctr_weighted.Histo2D(
+        hist2d_rresultptr_map[h2_dr_name] = df_crossx_ctr.Histo2D(
             ROOT::RDF::TH2DModel(h2_dr_name.c_str(), ";p_{T}^{pair} [GeV];#DeltaR", npt, ptbins, 50, 0.05, 1.0),
-            "pair_pt", "dr", "weight_for_RAA");
+            "pair_pt", "dr", "weight_for_RAA_trig_corr");
 
         const std::string h3_minv_name = "h3d_crossx_minv_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr;
-        hist3d_rresultptr_map[h3_minv_name] = df_single_b_crossx_ctr_weighted.Histo3D(
+        hist3d_rresultptr_map[h3_minv_name] = df_crossx_ctr.Histo3D(
             ROOT::RDF::TH3DModel(h3_minv_name.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};m_{#mu#mu} [GeV]", npt, ptbins, 44, eta_edges.data(), 50, minv_edges.data()),
-            "pair_pt", "pair_eta", "minv", "weight_for_RAA");
+            "pair_pt", "pair_eta", "minv", "weight_for_RAA_trig_corr");
 
         const std::string h3_dr_name = "h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr;
-        hist3d_rresultptr_map[h3_dr_name] = df_single_b_crossx_ctr_weighted.Histo3D(
+        hist3d_rresultptr_map[h3_dr_name] = df_crossx_ctr.Histo3D(
             ROOT::RDF::TH3DModel(h3_dr_name.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt, ptbins, 44, eta_edges.data(), 50, dr_edges.data()),
-            "pair_pt", "pair_eta", "dr", "weight_for_RAA");
+            "pair_pt", "pair_eta", "dr", "weight_for_RAA_trig_corr");
+
+        // --- No-trig-corr version: TAA-weighted but without trigger efficiency correction ---
+        const std::string h2_eta_notc = "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr + "_no_trig_corr";
+        hist2d_rresultptr_map[h2_eta_notc] = df_crossx_ctr.Histo2D(
+            ROOT::RDF::TH2DModel(h2_eta_notc.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, 44, -2.4, 2.4),
+            "pair_pt", "pair_eta", "weight_for_RAA");
 
         // --- Version 2: event-count histograms (raw weight, uniform = 1 for data) ---
         const std::string h2_eta_cnt = "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr + "_counts";
-        hist2d_rresultptr_map[h2_eta_cnt] = df_single_b_crossx_ctr.Histo2D(
+        hist2d_rresultptr_map[h2_eta_cnt] = df_crossx_ctr.Histo2D(
             ROOT::RDF::TH2DModel(h2_eta_cnt.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};N_{events}", npt, ptbins, 44, -2.4, 2.4),
             "pair_pt", "pair_eta", "weight");
 
         const std::string h2_minv_cnt = "h2d_crossx_pair_pt_minv_w_signal_cuts_" + ctr + "_counts";
-        hist2d_rresultptr_map[h2_minv_cnt] = df_single_b_crossx_ctr.Histo2D(
+        hist2d_rresultptr_map[h2_minv_cnt] = df_crossx_ctr.Histo2D(
             ROOT::RDF::TH2DModel(h2_minv_cnt.c_str(), ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV];N_{events}", npt, ptbins, 50, 1.0, 3.0),
             "pair_pt", "minv", "weight");
 
         const std::string h2_dr_cnt = "h2d_crossx_pair_pt_dr_w_signal_cuts_" + ctr + "_counts";
-        hist2d_rresultptr_map[h2_dr_cnt] = df_single_b_crossx_ctr.Histo2D(
+        hist2d_rresultptr_map[h2_dr_cnt] = df_crossx_ctr.Histo2D(
             ROOT::RDF::TH2DModel(h2_dr_cnt.c_str(), ";p_{T}^{pair} [GeV];#DeltaR;N_{events}", npt, ptbins, 50, 0.05, 1.0),
             "pair_pt", "dr", "weight");
 
         const std::string h3_minv_cnt = "h3d_crossx_minv_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr + "_counts";
-        hist3d_rresultptr_map[h3_minv_cnt] = df_single_b_crossx_ctr.Histo3D(
+        hist3d_rresultptr_map[h3_minv_cnt] = df_crossx_ctr.Histo3D(
             ROOT::RDF::TH3DModel(h3_minv_cnt.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};m_{#mu#mu} [GeV]", npt, ptbins, 44, eta_edges.data(), 50, minv_edges.data()),
             "pair_pt", "pair_eta", "minv", "weight");
 
         const std::string h3_dr_cnt = "h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr + "_counts";
-        hist3d_rresultptr_map[h3_dr_cnt] = df_single_b_crossx_ctr.Histo3D(
+        hist3d_rresultptr_map[h3_dr_cnt] = df_crossx_ctr.Histo3D(
             ROOT::RDF::TH3DModel(h3_dr_cnt.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt, ptbins, 44, eta_edges.data(), 50, dr_edges.data()),
             "pair_pt", "pair_eta", "dr", "weight");
 
@@ -1044,20 +1049,20 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
             const auto dr_edges150  = make_unif_edges(50, 0.05, 1.0);
 
             const std::string h2_eta_150 = "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pt_150_" + ctr;
-            hist2d_rresultptr_map[h2_eta_150] = df_single_b_crossx_ctr_weighted.Histo2D(
+            hist2d_rresultptr_map[h2_eta_150] = df_crossx_ctr.Histo2D(
                 ROOT::RDF::TH2DModel(h2_eta_150.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt150, ptbins150, 44, -2.4, 2.4),
-                "pair_pt", "pair_eta", "weight_for_RAA");
+                "pair_pt", "pair_eta", "weight_for_RAA_trig_corr");
             const std::string h3_dr_150 = "h3d_crossx_dr_vs_pair_eta_vs_pt_150_w_signal_cuts_" + ctr;
-            hist3d_rresultptr_map[h3_dr_150] = df_single_b_crossx_ctr_weighted.Histo3D(
+            hist3d_rresultptr_map[h3_dr_150] = df_crossx_ctr.Histo3D(
                 ROOT::RDF::TH3DModel(h3_dr_150.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt150, ptbins150, 44, eta_edges150.data(), 50, dr_edges150.data()),
-                "pair_pt", "pair_eta", "dr", "weight_for_RAA");
+                "pair_pt", "pair_eta", "dr", "weight_for_RAA_trig_corr");
 
             const std::string h2_eta_150_cnt = "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pt_150_" + ctr + "_counts";
-            hist2d_rresultptr_map[h2_eta_150_cnt] = df_single_b_crossx_ctr.Histo2D(
+            hist2d_rresultptr_map[h2_eta_150_cnt] = df_crossx_ctr.Histo2D(
                 ROOT::RDF::TH2DModel(h2_eta_150_cnt.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt150, ptbins150, 44, -2.4, 2.4),
                 "pair_pt", "pair_eta", "weight");
             const std::string h3_dr_150_cnt = "h3d_crossx_dr_vs_pair_eta_vs_pt_150_w_signal_cuts_" + ctr + "_counts";
-            hist3d_rresultptr_map[h3_dr_150_cnt] = df_single_b_crossx_ctr.Histo3D(
+            hist3d_rresultptr_map[h3_dr_150_cnt] = df_crossx_ctr.Histo3D(
                 ROOT::RDF::TH3DModel(h3_dr_150_cnt.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt150, ptbins150, 44, eta_edges150.data(), 50, dr_edges150.data()),
                 "pair_pt", "pair_eta", "dr", "weight");
         }

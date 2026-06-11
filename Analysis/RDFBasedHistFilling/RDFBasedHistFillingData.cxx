@@ -79,6 +79,10 @@ void RDFBasedHistFillingData::InitializeDataCommon(){
 
     TriggerModeSettings();
 
+    if (!trigger_effcy_calc) {
+        qEtaBin_suffix = "_nominal";
+    }
+
     out_file_suffix = trig_suffix + isForSoumya_suffix + qEtaBin_suffix;
     if (save_non_sepr_trg_hists) out_file_suffix += "_w_nonsepr";
     if (save_good_accept_trg_hists) out_file_suffix += "_w_good_accept";
@@ -125,18 +129,62 @@ bool MuPairPassGapCut(float m1eta, float m1pt, int m1charge, float m2eta, float 
 }
 
 void RDFBasedHistFillingData::FillHistogramsGeneric(){
+    static const std::vector<std::string> e1D;
+    static const std::vector<std::array<std::string,2>> e2D;
+    static const std::vector<std::array<std::string,3>> e3D;
+
     for (std::string category : categories_essential){
         std::string df_name = "df" + category;
         ROOT::RDF::RNode& df = map_at_checked(df_map, df_name, Form("FillHistogramsGeneric: df_map.at(%s)", df_name.c_str()));
 
-        FillHistogramsSingleDataFrame(category, df);
-        FillHistogramsSingleDataFrame(category, "_jacobian_corrected", df);
+        if (generic_weight_col.empty()) {
+            FillHistogramsSingleDataFrame(category, df);
+            FillHistogramsSingleDataFrame(category, "_jacobian_corrected", df);
+        } else {
+            auto it1D  = df_filter_to_var1D_list_map.find(category);
+            auto it2D  = df_filter_to_var2D_list_map.find(category);
+            auto it3D  = df_filter_to_var3D_list_map.find(category);
+            FillHistogramsSingleDataFrame(category, df, generic_weight_col,
+                (it1D != df_filter_to_var1D_list_map.end() ? it1D->second : e1D),
+                (it2D != df_filter_to_var2D_list_map.end() ? it2D->second : e2D),
+                (it3D != df_filter_to_var3D_list_map.end() ? it3D->second : e3D));
+
+            std::pair<std::string,std::string> jk(category, "_jacobian_corrected");
+            auto jit1D = df_filter_and_weight_to_var1D_list_map.find(jk);
+            auto jit2D = df_filter_and_weight_to_var2D_list_map.find(jk);
+            auto jit3D = df_filter_and_weight_to_var3D_list_map.find(jk);
+            FillHistogramsSingleDataFrame(category + "_jacobian_corrected", df, generic_weight_col,
+                (jit1D != df_filter_and_weight_to_var1D_list_map.end() ? jit1D->second : e1D),
+                (jit2D != df_filter_and_weight_to_var2D_list_map.end() ? jit2D->second : e2D),
+                (jit3D != df_filter_and_weight_to_var3D_list_map.end() ? jit3D->second : e3D));
+        }
 
         if (output_gapcut_hists){
             ROOT::RDF::RNode df_wgapcut = df.Filter(MuPairPassGapCut, {"m1.eta", "m1.pt", "m1.charge", "m2.eta", "m2.pt", "m2.charge"});
             df_map.emplace(df_name + "_wgapcut", df_wgapcut);
-            FillHistogramsSingleDataFrame(category + "_wgapcut", df_wgapcut);
-            FillHistogramsSingleDataFrame(category + "_wgapcut", "_jacobian_corrected", df_wgapcut);
+
+            if (generic_weight_col.empty()) {
+                FillHistogramsSingleDataFrame(category + "_wgapcut", df_wgapcut);
+                FillHistogramsSingleDataFrame(category + "_wgapcut", "_jacobian_corrected", df_wgapcut);
+            } else {
+                std::string cat_gc = category + "_wgapcut";
+                auto it1D_gc  = df_filter_to_var1D_list_map.find(cat_gc);
+                auto it2D_gc  = df_filter_to_var2D_list_map.find(cat_gc);
+                auto it3D_gc  = df_filter_to_var3D_list_map.find(cat_gc);
+                FillHistogramsSingleDataFrame(cat_gc, df_wgapcut, generic_weight_col,
+                    (it1D_gc != df_filter_to_var1D_list_map.end() ? it1D_gc->second : e1D),
+                    (it2D_gc != df_filter_to_var2D_list_map.end() ? it2D_gc->second : e2D),
+                    (it3D_gc != df_filter_to_var3D_list_map.end() ? it3D_gc->second : e3D));
+
+                std::pair<std::string,std::string> jk_gc(cat_gc, "_jacobian_corrected");
+                auto jit1D_gc = df_filter_and_weight_to_var1D_list_map.find(jk_gc);
+                auto jit2D_gc = df_filter_and_weight_to_var2D_list_map.find(jk_gc);
+                auto jit3D_gc = df_filter_and_weight_to_var3D_list_map.find(jk_gc);
+                FillHistogramsSingleDataFrame(cat_gc + "_jacobian_corrected", df_wgapcut, generic_weight_col,
+                    (jit1D_gc != df_filter_and_weight_to_var1D_list_map.end() ? jit1D_gc->second : e1D),
+                    (jit2D_gc != df_filter_and_weight_to_var2D_list_map.end() ? jit2D_gc->second : e2D),
+                    (jit3D_gc != df_filter_and_weight_to_var3D_list_map.end() ? jit3D_gc->second : e3D));
+            }
         }
     }
 }
@@ -151,6 +199,7 @@ void RDFBasedHistFillingData::TriggerModeSettings(){
         trigs_pair = {{"_mu4","_MB"}};
         break;
     case 1:
+        // mu4_mu4noL1 histograms still filled but not currently plotted (not maintained; subject to future change)
         trigs = {"_mu4", "_mu4_mu4noL1", "_2mu4", "_2mu4_AND_mu4_mu4noL1"};
         trigs_pair = {{"_mu4_mu4noL1","_mu4"},{"_2mu4","_mu4"},{"_2mu4_AND_mu4_mu4noL1","_mu4"}};
         break;
@@ -246,8 +295,8 @@ void RDFBasedHistFillingData::BuildFilterToVarListMapDataImpl(){
 void RDFBasedHistFillingData::BuildFilterToVarListMapDataCommon(){
     for (std::string sign : pair_signs){
 
-        df_filter_to_var1D_list_map[sign + ""]         = {"pair_dPoverP", "Dphi", "DR", "DR_zoomin", "pair_y", "pt_asym", "pair_pt_ptlead_ratio"};
-        df_filter_to_var1D_list_map[sign + "_wgapcut"] = {"pair_dPoverP", "Dphi", "DR", "DR_zoomin", "pair_y", "pt_asym", "pair_pt_ptlead_ratio"};
+        df_filter_to_var1D_list_map[sign + ""]         = {"Dphi", "DR", "DR_zoomin"};
+        df_filter_to_var1D_list_map[sign + "_wgapcut"] = {"Dphi", "DR", "DR_zoomin"};
 
         df_filter_and_weight_to_var1D_list_map[{sign + ""           , "_jacobian_corrected"}] = {"DR", "DR_zoomin"};
         df_filter_and_weight_to_var1D_list_map[{sign + "_wgapcut"   , "_jacobian_corrected"}] = {"DR", "DR_zoomin"};
