@@ -590,10 +590,10 @@ public:
 private:
     void configureDataFiles(int runYear) override;
 
+    // mu4_mu4noL1 not maintained; plot 2mu4 only (subject to future change)
     StrVec buildTriggerList() const override
     {
-        if (draw2mu4)  return {"2mu4", "mu4_mu4noL1"};
-        return {"mu4_mu4noL1"};
+        return {"2mu4"};
     }
 
     // plotting functions implemented in PP file

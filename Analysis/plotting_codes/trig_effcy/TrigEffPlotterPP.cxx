@@ -120,13 +120,8 @@ void TrigEffPlotterPP::plot1D(const std::string& var)
                 // For each (valid) trigger produce TGraphAsymmErrors
                 std::vector<std::pair<std::string,int>> trigOrder; // order & colour idx
 
-                {
-                    if (draw2mu4){
-                        trigOrder = { {"mu4_mu4noL1", 0}, {"2mu4", 1} }; 
-                    }else{
-                        trigOrder = { {"mu4_mu4noL1", 0} };
-                    }
-                }
+                // mu4_mu4noL1 not maintained; plot 2mu4 only (subject to future change)
+                { trigOrder = { {"2mu4", 0} }; }
 
                 for (auto [trg, colourIdx] : trigOrder) {
 
@@ -285,7 +280,7 @@ void TrigEffPlotterPP::plot1D(const std::string& var)
         auto xy = xyFor(var);
         c->SetLogx(xy.first); c->SetLogy(xy.second);
 
-        int colourIdx = (!draw2mu4)? 1 : 0; // use Azure for 2mu4; if mu4_mu4noL1 present will be red
+        int colourIdx = 0;
 
         // Legend
         Rect def = {0.47,0.12,0.87,0.36};
@@ -437,11 +432,8 @@ void TrigEffPlotterPP::plot2D(const std::string& var, const std::string& fs)
     // ---------- first canvas : sign-1 / sign-2 ------------------------
     std::vector<std::pair<std::string,std::string>> configs;
 
-    if (draw2mu4){
-        configs = {{"mu4_mu4noL1","mu4"},{"2mu4","mu4"}};
-    } else{
-        configs = {{"mu4_mu4noL1","mu4"}};
-    }
+    // mu4_mu4noL1 not maintained; plot 2mu4 only (subject to future change)
+    configs = {{"2mu4","mu4"}};
 
     int nPads = static_cast<int>(configs.size())*2;         // each config → 2 signs
     int nCols = 2;
@@ -511,11 +503,8 @@ void TrigEffPlotterPP::plot2D_SingleMuonEffcy(const std::string& var)
     // ---------- first canvas : sign-1 / sign-2 ------------------------
     std::vector<std::pair<std::string,std::string>> configs;
 
-    if (draw2mu4){
-        configs = {{"mu4_mu4noL1","mu4"},{"2mu4","mu4"}};
-    } else{
-        configs = {{"mu4_mu4noL1","mu4"}};
-    }
+    // mu4_mu4noL1 not maintained; plot 2mu4 only (subject to future change)
+    configs = {{"2mu4","mu4"}};
 
     int nPads = static_cast<int>(configs.size())*2;         // each config → 2 signs
     int nCols = 2;
@@ -540,7 +529,7 @@ void TrigEffPlotterPP::plot2D_SingleMuonEffcy(const std::string& var)
             c->cd(pad++);
             gPad->SetRightMargin(0.15);
             gPad->SetLogx(xy.first); gPad->SetLogy(xy.second);
-            std::string single_mu_trg = (cfg.first == "mu4_mu4noL1")? "mu4noL1" : "mu4";
+            std::string single_mu_trg = "mu4";
             numH->SetTitle(
                 Form("%s, %s",
                      single_mu_trg.c_str(),
@@ -687,10 +676,8 @@ void TrigEffPlotterPP::plot2Dto1DEffcyProj()
                     {
                         if (!filt_to_mode_map.at(fs).at(mode)) { ++filterIdx; continue; }
 
-                        // triggers to overlay (skip mu4; it’s denom)
-                        std::vector<std::pair<std::string,int>> trigOrder =
-                            draw2mu4 ? std::vector<std::pair<std::string,int>>{{"mu4_mu4noL1", 0}, {"2mu4", 1}}
-                                     : std::vector<std::pair<std::string,int>>{{"mu4_mu4noL1", 0}};
+                        // mu4_mu4noL1 not maintained; plot 2mu4 only (subject to future change)
+                        std::vector<std::pair<std::string,int>> trigOrder = {{"2mu4", 0}};
 
                         bool firstTrgInstance = true; // boolean to indicate first trigger instance: if continue without plotting, only increment filterIdx if first trigger instance
 
@@ -1051,11 +1038,8 @@ void TrigEffPlotterPP::plot2Dto1DsingleMuonEffcyProj (const std::pair<const std:
 
     std::vector<std::pair<std::string,std::string>> trig_pairs;
 
-    if (isMB) {
-        trig_pairs = {{"2mu4","mu4"}};
-    } else {
-        trig_pairs = {{"mu4_mu4noL1","mu4"},{"2mu4","mu4"}};
-    }
+    // mu4_mu4noL1 not maintained; plot 2mu4 only (subject to future change)
+    trig_pairs = {{"2mu4","mu4"}};
 
     std::vector<std::string> filters_single_muon_effcy;
     if (isMB)   filters_single_muon_effcy = {"_sepr", "_MB"};
@@ -1135,7 +1119,7 @@ void TrigEffPlotterPP::plot2Dto1DsingleMuonEffcyProj (const std::pair<const std:
             if (!isMB){
                 // canvas
                 std::string cname = Form("c_%s_%s_charge_sign_compr",
-                                         projVar.c_str(), trig_pair.first.c_str());
+                                         projVar.c_str(), trg_pair.first.c_str());
                 TCanvas* c = new TCanvas(cname.c_str(), "", 700, 500);
 
                 Rect box = legendBoxFor1DVar(projVar, SignalDrawingMode::OpAndSignal, filter_suffix_list);
@@ -1192,7 +1176,7 @@ void TrigEffPlotterPP::plot2Dto1DsingleMuonEffcyProj (const std::pair<const std:
             {
                 // canvas
                 std::string cname = Form("c_%s_%s_signed_compr",
-                                         projVar.c_str(), trig_pair.first.c_str());
+                                         projVar.c_str(), trg_pair.first.c_str());
                 TCanvas* c = new TCanvas(cname.c_str(), "", 1200, 500);
                 c->Divide(2,1);
 
