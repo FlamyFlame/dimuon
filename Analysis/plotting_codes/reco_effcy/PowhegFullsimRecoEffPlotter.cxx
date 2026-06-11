@@ -490,7 +490,9 @@ protected:
             }
 
             // save
-            const std::string out = outdir + "reco_effcy_" + var + wp_suffix + ".png";
+            const std::string oned_outdir = outdir + "1d/";
+            gSystem->mkdir(oned_outdir.c_str(), kTRUE);
+            const std::string out = oned_outdir + "reco_effcy_" + var + wp_suffix + ".png";
             c.SaveAs(out.c_str());
 
             delete h_eff_ss;
@@ -590,7 +592,9 @@ protected:
                 // lab.DrawLatex(0.12, 0.92, "opposite sign");
             }
 
-            const std::string out = outdir + "reco_effcy_" + vary + "_vs_" + varx + wp_suffix + ".png";
+            const std::string twod_outdir = outdir + "2d/";
+            gSystem->mkdir(twod_outdir.c_str(), kTRUE);
+            const std::string out = twod_outdir + "reco_effcy_" + vary + "_vs_" + varx + wp_suffix + ".png";
             c.SaveAs(out.c_str());
 
             delete h_eff_ss;
@@ -647,7 +651,9 @@ protected:
                 h_eff_single_b->Draw("colz");
             }
 
-            const std::string out = outdir + "reco_effcy_" + vary + "_vs_" + varx + "_single_b" + wp_suffix + ".png";
+            const std::string twod_outdir = outdir + "2d/";
+            gSystem->mkdir(twod_outdir.c_str(), kTRUE);
+            const std::string out = twod_outdir + "reco_effcy_" + vary + "_vs_" + varx + "_single_b" + wp_suffix + ".png";
             c.SaveAs(out.c_str());
 
             delete h_eff_single_b;
@@ -752,7 +758,9 @@ void Plot1DRecoEffcySingleBOpCompr()
             leg->Draw("same");
         }
 
-        const std::string out = outdir + "reco_effcy_" + var + "_single_b_op_compr" + wp_suffix + ".png";
+        const std::string sbcompr_outdir = outdir + "single_b_op_compr/";
+        gSystem->mkdir(sbcompr_outdir.c_str(), kTRUE);
+        const std::string out = sbcompr_outdir + "reco_effcy_" + var + "_single_b_op_compr" + wp_suffix + ".png";
         c.SaveAs(out.c_str());
 
         delete h_eff_op;

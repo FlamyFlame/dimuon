@@ -330,7 +330,9 @@ protected:
                 }
             }
 
-            c.SaveAs((outdir + "reco_effcy_" + var + "_ss_op" + ctr_tag + wp_suffix + ".png").c_str());
+            const std::string signed_outdir = outdir + "signed/";
+            gSystem->mkdir(signed_outdir.c_str(), kTRUE);
+            c.SaveAs((signed_outdir + "reco_effcy_" + var + "_ss_op" + ctr_tag + wp_suffix + ".png").c_str());
             for (auto* h : effs_to_delete) delete h;
         }
     }
@@ -394,7 +396,9 @@ protected:
                 }
             }
 
-            c.SaveAs((outdir + "reco_effcy_2d_" + vary + "_vs_" + varx + ctr_tag + wp_suffix + ".png").c_str());
+            const std::string twod_outdir = outdir + "2d/";
+            gSystem->mkdir(twod_outdir.c_str(), kTRUE);
+            c.SaveAs((twod_outdir + "reco_effcy_2d_" + vary + "_vs_" + varx + ctr_tag + wp_suffix + ".png").c_str());
             delete h_eff_ss; delete h_eff_op;
         }
     }
@@ -433,7 +437,9 @@ protected:
             if (LogAx(varx, cfg)) gPad->SetLogx(true);
             h_eff->SetTitle((vary + " vs " + varx + "_single_b reco effcy").c_str());
             h_eff->Draw("colz");
-            c.SaveAs((outdir + "reco_effcy_2d_" + vary + "_vs_" + varx + "_single_b" + ctr_tag + wp_suffix + ".png").c_str());
+            const std::string twod_outdir = outdir + "2d/";
+            gSystem->mkdir(twod_outdir.c_str(), kTRUE);
+            c.SaveAs((twod_outdir + "reco_effcy_2d_" + vary + "_vs_" + varx + "_single_b" + ctr_tag + wp_suffix + ".png").c_str());
             delete h_eff;
         }
     }
@@ -492,7 +498,9 @@ protected:
                 leg->Draw("same");
             }
 
-            c.SaveAs((outdir + "reco_effcy_" + var + "_single_b_op_compr" + ctr_tag + wp_suffix + ".png").c_str());
+            const std::string sbcompr_outdir = outdir + "single_b_op_compr/";
+            gSystem->mkdir(sbcompr_outdir.c_str(), kTRUE);
+            c.SaveAs((sbcompr_outdir + "reco_effcy_" + var + "_single_b_op_compr" + ctr_tag + wp_suffix + ".png").c_str());
             delete h_eff_op; delete h_eff_single_b;
         }
     }

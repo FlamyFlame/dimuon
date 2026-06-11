@@ -12,7 +12,8 @@ void plot_reco_distr_singleb_vs_op_pp24(){
 
     const char* fpath  = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/"
                          "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts.root";
-    const char* outdir = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/plots/";
+    const char* outdir = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/plots/"
+                         "pp24_reco_effcy_plots/medium/distr/";
 
     TFile* f = TFile::Open(fpath, "READ");
     if (!f || f->IsZombie()){ printf("ERROR: cannot open %s\n", fpath); return; }
