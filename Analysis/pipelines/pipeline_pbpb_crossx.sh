@@ -9,6 +9,7 @@ set -Eeuo pipefail
 #   4) hadd per-batch outputs into combined muon_pairs + hists_cut_acceptance per year
 #   5) run RDF crossx hist filling per year + validate RDF outputs
 #   6) run crossx plotting (combined, auto-discovers all years)
+#   7) run before/after trigger efficiency correction sanity check plots
 #
 # Usage:
 #   ./pipeline_pbpb_crossx.sh
@@ -207,7 +208,7 @@ get_combined_hists() {
 
 # RDF output filename
 get_rdf_output() {
-  echo "$(get_year_dir "$1")/histograms_real_pairs_pbpb_20${1}_single_mu4_no_trg_plots_fine_q_eta_bin.root"
+  echo "$(get_year_dir "$1")/histograms_real_pairs_pbpb_20${1}_single_mu4_no_trg_plots_nominal.root"
 }
 
 # ==============================
@@ -348,6 +349,12 @@ done
 log "Running crossx plotting (all years combined)"
 pushd "$PLOT_DIR" >/dev/null
 root -l -b -q 'plot_single_b_crossx_pbpb.cxx()'
+popd >/dev/null
+
+# ------ Stage 7: Trigger efficiency correction sanity check ------
+log "Running before/after trigger efficiency correction sanity plots"
+pushd "$PLOT_DIR" >/dev/null
+root -l -b -q 'plot_crossx_trig_corr_sanity.C()'
 popd >/dev/null
 
 log "PbPb crossx/nominal pipeline completed successfully for years: ${YEARS[*]}"

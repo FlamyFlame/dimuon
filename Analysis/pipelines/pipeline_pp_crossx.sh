@@ -6,8 +6,10 @@ set -Eeuo pipefail
 #   2) wait for all clusters to finish
 #   3) validate per-batch ROOT outputs
 #   4) hadd per-batch outputs into combined muon_pairs + hists_cut_acceptance
-#   5) run RDF crossx hist filling (trigger_mode=3, coarse q·η)
+#   5) run RDF crossx hist filling (trigger_mode=3, nominal mode)
 #   6) run crossx plotting
+#   7) run before/after trigger efficiency correction sanity check plots
+#   8) [optional] run MC-data (POWHEG/Pythia vs pp) comparison plots
 #
 # PP has NO event selection (no ZDC, no centrality, no nTrk_HITight).
 #
@@ -18,6 +20,7 @@ set -Eeuo pipefail
 #   POLL_SECONDS=45
 #   CONDOR_TIMEOUT_SECONDS=0   # 0 => no timeout
 #   SKIP_CONDOR=1              # skip condor submit+wait, reuse existing NTuple outputs
+#   SKIP_MC_DATA_COMPR=1       # skip MC-data comparison plots (default: 0, i.e. enabled)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ANALYSIS_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -202,7 +205,7 @@ get_combined_hists() {
 }
 
 get_rdf_output() {
-  echo "${PP_DIR}/histograms_real_pairs_pp_2024_2mu4_coarse_q_eta_bin.root"
+  echo "${PP_DIR}/histograms_real_pairs_pp_2024_2mu4_nominal.root"
 }
 
 # ==============================
@@ -281,5 +284,24 @@ log "Running crossx plotting for PP 2024"
 pushd "$PLOT_DIR" >/dev/null
 root -l -b -q 'plot_single_b_crossx_pp.cxx()'
 popd >/dev/null
+
+# ------ Stage 7: Trigger efficiency correction sanity check ------
+log "Running before/after trigger efficiency correction sanity plots"
+pushd "$PLOT_DIR" >/dev/null
+root -l -b -q 'plot_crossx_trig_corr_sanity.C()'
+popd >/dev/null
+
+# ------ Stage 8 (optional): MC-data comparison plots ------
+SKIP_MC_DATA_COMPR="${SKIP_MC_DATA_COMPR:-0}"
+if [[ "$SKIP_MC_DATA_COMPR" -eq 1 ]]; then
+  log "SKIP_MC_DATA_COMPR=1 — skipping MC-data comparison plots"
+else
+  MC_COMPR_DIR="${ANALYSIS_DIR}/plotting_codes/mc_data_compr"
+  log "Running MC-data comparison plots (POWHEG/Pythia vs pp data)"
+  pushd "$MC_COMPR_DIR" >/dev/null
+  root -l -b -q 'plot_mc_data_compr.cxx()'
+  popd >/dev/null
+  log "MC-data comparison plots saved to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/"
+fi
 
 log "PP crossx/nominal pipeline completed successfully"
