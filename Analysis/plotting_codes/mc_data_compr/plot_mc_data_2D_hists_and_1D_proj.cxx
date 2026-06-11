@@ -5,7 +5,7 @@ protected:
     TH2D* h2d_list[s_nDtTypes][s_nSigns][s_nDphis];
     std::vector<TH1D*> projY [s_nDtTypes][s_nSigns];
 
-    std::string dt_suffix[s_nDtTypes] = {"_", "_powheg", "_pythia", "_pp2017", "_pp2024"};
+    std::string dt_suffix[s_nDtTypes] = {"_", "_powheg", "_pythia", "_pp2024_2mu4"};
     bool draw_2d_hist = true; // can ONLY plot exclusively 2D histogram or projected intervals (ensure correct scaling)
 
     void initialize() override;
@@ -289,7 +289,7 @@ void PlotMCData2DHistsAnd1DProjClass::plot_minv_distr_pairpt_intvls_data(){
     pair_pt_intvls_data.push_back(std::make_pair(61,80));
     pair_pt_intvls_data.push_back(std::make_pair(81,100));
 
-    std::vector<bool> minv_proj_turn_on_vec_data {false,false,false,true,true};
+    std::vector<bool> minv_proj_turn_on_vec_data {false,false,false,true};
     PlotMCDataSingle2DHistogram minv_distr_pairpt_intvls_data("minv_pair_pt_zoomin", minv_proj_turn_on_vec_data, pair_pt_intvls_data, "minv", "pair_pt", "m_{#mu#mu}");
     if (turn_4_to_8GeV_on){
         minv_distr_pairpt_intvls_data.proj_intvl_labels = pair_pt_intvls_labels;
@@ -320,7 +320,7 @@ void PlotMCData2DHistsAnd1DProjClass::plot_minv_distr_pairpt_intvls_MC(){
     pair_pt_intvls_mc.push_back(std::make_pair(21,30));
     pair_pt_intvls_mc.push_back(std::make_pair(31,40));
     pair_pt_intvls_mc.push_back(std::make_pair(41,50));
-    std::vector<bool> minv_proj_turn_on_vec_mc {true,true,true,false,false};
+    std::vector<bool> minv_proj_turn_on_vec_mc {true,true,true,false};
 
     PlotMCDataSingle2DHistogram minv_distr_pairpt_intvls_mc("minv_pair_pt_zoomin", minv_proj_turn_on_vec_mc, pair_pt_intvls_mc, "minv", "pair_pt", "m_{#mu#mu}");
     if (turn_4_to_8GeV_on){
