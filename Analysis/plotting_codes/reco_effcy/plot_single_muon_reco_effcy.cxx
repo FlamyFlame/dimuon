@@ -205,8 +205,148 @@ void plot_single_muon_reco_effcy(
         c.SaveAs(outname.c_str());
         std::cout << "  Saved: " << outname << "\n";
 
+        // --- Multi-panel version: one subplot per q*eta bin ---
+        {
+            const int nrows = 3, ncols = 3;
+            TCanvas c_sub("c_sub", "c_sub", 1500, 1000);
+            c_sub.Divide(ncols, nrows, 0.002, 0.002);
+
+            std::vector<TH1D*> sub_frames;
+            for (int iq = 0; iq < nQEta; ++iq) {
+                c_sub.cd(iq + 1);
+                gPad->SetTicks(1, 1);
+                gPad->SetLogx(true);
+                gPad->SetLeftMargin(0.15);
+                gPad->SetBottomMargin(0.13);
+                gPad->SetTopMargin(0.06);
+                gPad->SetRightMargin(0.04);
+
+                TH1D* hf = new TH1D(("frame_sub_" + std::to_string(iq) + ctr.suffix).c_str(),
+                                     "", nPtBins, pt_edges.data());
+                hf->SetMinimum(0.0);
+                hf->SetMaximum(1.15);
+                hf->GetXaxis()->SetTitle("Truth p_{T} [GeV]");
+                hf->GetYaxis()->SetTitle("#varepsilon_{reco} (medium)");
+                hf->GetXaxis()->SetTitleSize(0.055);
+                hf->GetYaxis()->SetTitleSize(0.055);
+                hf->GetXaxis()->SetLabelSize(0.048);
+                hf->GetYaxis()->SetLabelSize(0.048);
+                hf->GetXaxis()->SetTitleOffset(1.1);
+                hf->GetYaxis()->SetTitleOffset(1.2);
+                hf->GetXaxis()->SetMoreLogLabels(true);
+                hf->GetXaxis()->SetNoExponent(true);
+                hf->Draw();
+                sub_frames.push_back(hf);
+
+                h_eff_per_qeta[iq]->SetLineColor(kBlack);
+                h_eff_per_qeta[iq]->SetMarkerColor(kBlack);
+                h_eff_per_qeta[iq]->SetMarkerStyle(20);
+                h_eff_per_qeta[iq]->SetMarkerSize(0.9);
+                h_eff_per_qeta[iq]->SetLineWidth(2);
+                h_eff_per_qeta[iq]->Draw("PE1 SAME");
+
+                TLatex lat_sub;
+                lat_sub.SetNDC();
+                lat_sub.SetTextSize(0.055);
+                lat_sub.DrawLatex(0.20, 0.88, qeta_labels[iq].c_str());
+            }
+
+            // Global title on the canvas
+            c_sub.cd(0);
+            TLatex lat_title;
+            lat_title.SetNDC();
+            lat_title.SetTextSize(0.022);
+            lat_title.DrawLatex(0.10, 0.98, sample_label.c_str());
+            if (is_overlay) {
+                lat_title.SetTextSize(0.020);
+                lat_title.DrawLatex(0.40, 0.98, ("Centrality: " + ctr.label).c_str());
+            }
+
+            std::string outname_sub = plot_dir_base + "single_muon_reco_effcy_vs_pt_subplots" + ctr.suffix + ".png";
+            c_sub.SaveAs(outname_sub.c_str());
+            std::cout << "  Saved: " << outname_sub << "\n";
+
+            for (auto* hf : sub_frames) delete hf;
+        }
+
         delete h_frame;
         for (auto* h : h_eff_per_qeta) delete h;
+
+        // --- q*eta-integrated efficiency plot ---
+        {
+            auto h_denom_int = df_ctr.Histo1D(
+                {"h_denom_int", "", nPtBins, pt_edges.data()}, "truth_pt", "ev_weight");
+            auto h_num_int = df_ctr.Filter("pass_medium").Histo1D(
+                {"h_num_int", "", nPtBins, pt_edges.data()}, "truth_pt", "ev_weight");
+
+            TH1D* hd_int = (TH1D*)h_denom_int->Clone(("h_denom_int_" + ctr.suffix).c_str());
+            TH1D* hn_int = (TH1D*)h_num_int->Clone(("h_num_int_" + ctr.suffix).c_str());
+            hd_int->SetDirectory(nullptr);
+            hn_int->SetDirectory(nullptr);
+
+            TH1D* h_eff_int = (TH1D*)hn_int->Clone(("h_eff_int_" + ctr.suffix).c_str());
+            h_eff_int->SetDirectory(nullptr);
+            h_eff_int->Divide(hn_int, hd_int, 1.0, 1.0, "B");
+
+            for (int ib = 1; ib <= h_eff_int->GetNbinsX(); ++ib) {
+                double den_val = hd_int->GetBinContent(ib);
+                double den_err = hd_int->GetBinError(ib);
+                if (den_err <= 0 || (den_val / den_err) * (den_val / den_err) < 10.0) {
+                    h_eff_int->SetBinContent(ib, 0);
+                    h_eff_int->SetBinError(ib, 0);
+                }
+            }
+
+            std::cout << "  Integrated efficiency at plateau (pT>20 GeV bins):\n";
+            for (int ib = 1; ib <= h_eff_int->GetNbinsX(); ++ib) {
+                double lo = h_eff_int->GetBinLowEdge(ib);
+                double hi = lo + h_eff_int->GetBinWidth(ib);
+                if (lo >= 20.0 && h_eff_int->GetBinContent(ib) > 0)
+                    printf("    pT [%.0f, %.0f]: eff = %.4f +/- %.4f\n",
+                           lo, hi, h_eff_int->GetBinContent(ib), h_eff_int->GetBinError(ib));
+            }
+
+            TCanvas c_int("c_int", "c_int", 900, 700);
+            c_int.SetTicks(1,1);
+            c_int.SetLogx(true);
+
+            TH1D* h_frame_int = new TH1D("frame_int", "", nPtBins, pt_edges.data());
+            h_frame_int->SetMinimum(0.0);
+            h_frame_int->SetMaximum(1.15);
+            h_frame_int->GetXaxis()->SetTitle("Truth p_{T} [GeV]");
+            h_frame_int->GetYaxis()->SetTitle("Single-muon reco efficiency (medium WP)");
+            h_frame_int->GetXaxis()->SetTitleSize(0.045);
+            h_frame_int->GetYaxis()->SetTitleSize(0.045);
+            h_frame_int->GetXaxis()->SetLabelSize(0.038);
+            h_frame_int->GetYaxis()->SetLabelSize(0.038);
+            h_frame_int->GetXaxis()->SetMoreLogLabels(true);
+            h_frame_int->GetXaxis()->SetNoExponent(true);
+            h_frame_int->Draw();
+
+            h_eff_int->SetLineColor(kBlack);
+            h_eff_int->SetMarkerColor(kBlack);
+            h_eff_int->SetMarkerStyle(20);
+            h_eff_int->SetMarkerSize(1.0);
+            h_eff_int->SetLineWidth(2);
+            h_eff_int->Draw("PE1 SAME");
+
+            TLatex lat_int;
+            lat_int.SetNDC();
+            lat_int.SetTextSize(0.040);
+            lat_int.DrawLatex(0.16, 0.92, sample_label.c_str());
+            lat_int.SetTextSize(0.034);
+            lat_int.DrawLatex(0.16, 0.87, "q#eta-integrated");
+            if (is_overlay) {
+                lat_int.SetTextSize(0.034);
+                lat_int.DrawLatex(0.16, 0.82, ("Centrality: " + ctr.label).c_str());
+            }
+
+            std::string outname_int = plot_dir_base + "single_muon_reco_effcy_vs_pt_integrated" + ctr.suffix + ".png";
+            c_int.SaveAs(outname_int.c_str());
+            std::cout << "  Saved: " << outname_int << "\n";
+
+            delete h_frame_int; delete hd_int; delete hn_int; delete h_eff_int;
+        }
     }
 
     std::cout << "Done.\n";
