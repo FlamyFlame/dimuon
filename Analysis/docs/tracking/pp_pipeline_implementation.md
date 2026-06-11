@@ -383,12 +383,32 @@ confirms both are kept as reference only.
    need multi-year but the function signature should match for pipeline
    consistency.
 
+### 2026-06-10: First Production Runs
+
+Both pipelines ran successfully with the May 2026 skim:
+
+**PP trig eff pipeline** (`pipeline_pp_trig_eff.sh`):
+- Condor cluster 10 (12 jobs), all completed
+- RDF P2 hist filling: fine q·η → `_single_mu4_fine_q_eta_bin.root` (20M)
+- pT fitting: erf+log, 61K TF1s + TH2D fallback
+- Plotting: 39 plots. Fixed `trig_pair`→`trg_pair` typo in TrigEffPlotterPP.cxx (lines 1138, 1195)
+
+**PP crossx pipeline** (`pipeline_pp_crossx.sh`):
+- Condor cluster 12 (12 jobs); recovered from chmod +x on run_pp_24_nominal.sh
+- RDF crossx hist filling: nominal binning (user changed from coarse), per-pair trig eff correction added
+- Plotting: 5 plots, review PASSED
+
+**User code changes during this session** (not part of original implementation plan):
+- `RDFBasedHistFillingPP.cxx`: added per-pair 2mu4 trig eff correction (`w_trig = 1/(ε₁·ε₂)`) to crossx weight
+- `run_crossx_hist_filling_pp24.sh`: removed `useCoarseQEtaBin=true` → nominal binning
+- `pipeline_pp_crossx.sh`: RDF output → `_2mu4_nominal.root`; added Stage 7 (trig corr sanity plots), Stage 8 (optional MC-data comparison via `plot_mc_data_compr.cxx()`, controlled by `SKIP_MC_DATA_COMPR`)
+- `plot_single_b_crossx_pp.cxx`: input file search uses candidate list
+
 ## Remaining Work
 
 - Commit all changes (split by logical unit per feedback)
 
 ## Latest Stage
 
-**Steps 1–8 implemented.** All source code changes, NTuple scripts, RDF
-runners, pipeline scripts, and documentation complete. Ready for smoke
-test and review.
+**Implementation complete. Both pipelines ran successfully on 2026-06-10.**
+All steps done, both pipelines validated with May 2026 skim. Remaining: commit.

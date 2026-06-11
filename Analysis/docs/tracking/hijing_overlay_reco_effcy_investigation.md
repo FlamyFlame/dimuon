@@ -642,11 +642,54 @@ single-muon efficiency squared.  The remaining difference likely comes from
 correlations (pair-level quality cuts are slightly more restrictive than
 independent single-muon medium WP applied twice).
 
+### Step 15: q*eta-integrated single-muon efficiency & pair-level discrepancy (2026-06-11)
+
+**q*eta-integrated single-muon reco efficiency (medium WP) at plateau:**
+
+| pT bin [GeV] | PP | Overlay (0-80%) | Overlay (0-5%) | Overlay (5-10%) |
+|---|---|---|---|---|
+| 20–30 | 92.4% ± 0.4% | 77.6% ± 1.1% | 76.5% ± 1.2% | 83.2% ± 2.3% |
+| 30–50 | 93.0% ± 0.5% | 77.9% ± 1.5% | 76.7% ± 1.7% | 82.9% ± 2.9% |
+| 50–80 | 89.8% ± 1.5% | 75.6% ± 2.5% | 74.7% ± 2.8% | 80.0% ± 4.7% |
+
+**Pair eta composition (PP fullsim, pair trees):**
+- OS pairs with |truth pair η| < 0.5: 1514/6304 = 24.0%
+- SS pairs with |truth pair η| < 0.5: 332/1632 = 20.3%
+- Single muons with |q*η| < 0.5: 120789/431424 = 28.0%
+
+**Single-muon vs pair efficiency discrepancy (PP):**
+- q*eta-integrated single-muon plateau: ~92–93%
+- Naive pair prediction (independent): 0.925² ≈ 85.6%
+- Observed pair reco efficiency plateau (SS & OS): ~80%
+- Discrepancy: ~6 percentage points below independent-squaring prediction
+
+The central q*eta bin (|q*η| < 0.5, ε ≈ 90%) comprises only 28% of muons,
+so composition alone explains only ~1% reduction from 95% (weighted average
+0.72 × 0.95 + 0.28 × 0.90 = 93.6%, square = 87.6%).
+
+**Likely cause of remaining ~6% gap:** pair-level correlations.  Two muons
+from b-decay are close in (η, φ) (typical dR ~ 0.2–1.0).  Close-by muons
+can interfere with each other's track reconstruction (shared ID hits,
+ambiguity resolution), degrading medium WP pass rate for pairs beyond
+what uncorrelated single-muon efficiencies predict.  This effect is
+invisible to single-muon efficiency (computed per individual truth muon)
+but present in pair efficiency (requires BOTH muons to pass independently).
+
+**No additional cuts at RDF or plotting level** beyond basic fiducial
+(truth pT > 4 GeV, |η| < 2.4) are applied to the pair reco efficiency
+SS/OS denominator.  The `_no_data_resonance_cuts` suffix means resonance
+tagging is computed but NOT applied as a pair-level veto.
+
+**Plots produced:**
+- `plots/pp24_single_muon_reco_effcy/single_muon_reco_effcy_vs_pt_integrated.png`
+- `plots/hijing_overlay_pp24_single_muon_reco_effcy/single_muon_reco_effcy_vs_pt_integrated_ctr_inclusive.png`
+  (+ per-centrality variants)
+
 ## Latest Stage
 
-**Step 14 complete (2026-06-10): Single-muon reco efficiency sanity check.**
+**Step 15 (2026-06-11): q*eta-integrated single-muon efficiency produced.**
 
-Single-muon efficiency plots produced for both PP and overlay. Results
-consistent with pair-level findings: overlay ~10-15% lower than PP at
-plateau due to physical medium WP degradation.  Code reviewed (PASS) and
-plots reviewed (PASS).
+PP single-muon plateau ~92-93%; squaring gives ~86% but observed pair
+efficiency is ~80%.  ~6% gap attributable to pair-level correlations
+(close-by muons from b-decay degrading each other's reconstruction).
+Investigation reopened for further study of this correlation effect.

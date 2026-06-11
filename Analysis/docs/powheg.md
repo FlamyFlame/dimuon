@@ -188,7 +188,10 @@ Because Powheg generates one HQ pair per event, natural muon pairs are single-fl
 3. Validate all 480 batch files + spot-check tree non-emptiness
 4. RDF histogram filling: `RDFBasedHistFillingPowhegFullsim(17, true)` with `mixed_subdir`
 5. Validate histogram output
-6. Plot reco efficiency (medium + tight WPs): `PowhegFullsimRecoEffPlotter`
+6. Plot reco efficiency (medium + tight WPs): `PowhegFullsimRecoEffPlotter`.
+   Output sorted into category subdirs under each `run2_reco_effcy_plots*/{medium,tight}/`:
+   `1d/` (bare `reco_effcy_<var>`), `single_b_op_compr/`, `2d/` (`*_vs_*`), and `ranged/`.
+   (No `signed/` or `distr/` — Powheg pairs are bb/cc-mixed vs single_b, not SS/OS.)
 
 **Lone-job timeout**: if one Condor job remains running alone for > `LONE_JOB_TIMEOUT_SECONDS` (default 12 h) and its output file exists, the job is killed and the batch is added to `skip_batches_mixed`, which is passed to the RDF filler to skip that batch.
 

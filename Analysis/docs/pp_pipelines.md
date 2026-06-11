@@ -25,6 +25,7 @@ PP requires separate NTuple processing for crossx vs trig eff.
 | `POLL_SECONDS` | `45` | Both | Condor polling interval (seconds) |
 | `CONDOR_TIMEOUT_SECONDS` | `0` | Both | Max wait for condor (0 = no limit) |
 | `SKIP_CONDOR` | `0` | Both | Skip condor submit+wait; reuse existing NTuple outputs |
+| `SKIP_MC_DATA_COMPR` | `0` | Crossx only | Skip MC-data comparison plots (Stage 8) |
 | `RDF_NTHREADS` | `2` | Trig eff only | ROOT implicit MT thread count |
 
 `DATA_BASE` is hardcoded to `/usatlas/u/yuhanguo/usatlasdata/dimuon_data`.
@@ -50,6 +51,8 @@ pp24 2mu4 → 1/410.815 pb⁻¹.
 | 4 | hadd into combined files; validate TTree entry counts |
 | 5 | RDF crossx hist filling via `run_crossx_hist_filling_pp24.sh` (trigger_mode=3, coarse q·η) |
 | 6 | Crossx plotting via `plot_single_b_crossx_pp.cxx()` |
+| 7 | Before/after trigger efficiency correction sanity check via `plot_crossx_trig_corr_sanity.C()` |
+| 8 | (Optional) MC-data comparison via `plot_mc_data_compr.cxx()` — skip with `SKIP_MC_DATA_COMPR=1` |
 
 ### NTuple Configuration
 
@@ -72,6 +75,9 @@ pp24 2mu4 → 1/410.815 pb⁻¹.
 | NTuple per-batch muon pairs | `pp_2024/muon_pairs_pp_2024_partN_2mu4_mindR_0_02.root` |
 | Combined muon pairs | `pp_2024/muon_pairs_pp_2024_2mu4_mindR_0_02.root` |
 | RDF crossx histograms | `pp_2024/histograms_real_pairs_pp_2024_2mu4_coarse_q_eta_bin.root` |
+| Crossx plots | `plots/single_b_crossx/pp/` |
+| Trig corr sanity plots | `plots/sanity_check_crossx/pp24_pair_pt_in_eta_subplots.png` |
+| MC-data comparison plots | `plots/mc_data_compr/*.png` (7 plots: DR, Dphi, DR_zoomin ± jacobian ± unity) |
 
 
 ## Pipeline 2: Trigger Efficiency (`pipeline_pp_trig_eff.sh`)

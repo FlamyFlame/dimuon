@@ -12,3 +12,9 @@
 {"event":"start","command":"review-plot","task":"Review single-muon reco efficiency plots for PP and HIJING overlay","slug":"single-muon-reco-effcy","timestamp":"2026-06-10T22:05:00Z"}
 {"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-10T22:12:00Z","criticals":0,"warnings":0,"slug":"single-muon-reco-effcy"}
 {"event":"start","command":"review-analysis-code","task":"Apply no-corr trig eff to crossx + sanity plots","slug":"crossx-trig-eff-correction","timestamp":"2026-06-10T23:03:55Z"}
+{"event":"end","command":"review-analysis-code","task":"crossx-trig-eff-correction","verdict":"PASS","iterations":1,"timestamp":"2026-06-10T23:17:22Z"}
+{"event":"start","command":"review-plot","task":"reco effcy plot subdir reorganization","slug":"reco-effcy-subdir-reorg","timestamp":"2026-06-10T21:07:32-04:00"}
+{"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-10T21:12:00-04:00","criticals":0,"warnings":0,"slug":"reco-effcy-subdir-reorg"}
+{"event":"start","command":"review-analysis-code","task":"Remove pp17 from MC-data comparison; apply 2mu4 trig eff correction to pp24 generic hists","slug":"mc-data-remove-pp17-trig-corr","timestamp":"2026-06-10T23:55:00Z"}
+{"event":"start","command":"review-plot","task":"Add multi-panel 3x3 q*eta-binned single-muon reco efficiency subplots to plot_single_muon_reco_effcy.cxx","slug":"single-muon-effcy-subplots","timestamp":"2026-06-11T14:15:20Z"}
+{"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-11T14:25:00Z","criticals":0,"warnings":0,"slug":"single-muon-effcy-subplots"}

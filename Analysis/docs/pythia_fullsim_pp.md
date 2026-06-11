@@ -107,6 +107,10 @@ EOF
 ```
 
 Output: plots in `{data_dir}/plots/pp24_reco_effcy_plots/` and `pp24_det_resp_plots/`.
+Within each `_reco_effcy_plots/{medium,tight}/` directory, plots are sorted into
+category subdirs: `signed/` (1D SS/OS), `single_b_op_compr/`, `2d/`, `distr/`
+(reco_distr macro), and `ranged/`. Det-resp plots stay in `_det_resp_plots/`
+(not subdivided). See `docs/pythia_fullsim_overlay.md` for the full scheme.
 
 ## Differences from overlay analysis
 

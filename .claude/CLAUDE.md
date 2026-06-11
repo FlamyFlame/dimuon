@@ -129,9 +129,6 @@ When the user asks to run, execute, or steer a pipeline, or wants autonomous end
 
 ## Active Tracking Docs
 
-- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/mu4_trig_effcy_implementation.md` — MU4 trigger efficiency: 3-pipeline separation, no-corr efficiency, inverse-weighted dR corrections
-- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/hijing_overlay_truth_barcode_duplicate_investigation.md` — Truth/barcode investigation across r17618/r17662/r17663: StandardSignalOnlyTruth vs no-overlay vs original
 - `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/analysis_status_summary.md` — Current analysis status: which steps updated with May 2026 skim
-- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/hijing_overlay_reco_effcy_investigation.md` — Reco efficiency still unphysical (~20% pair) after HIJING filter; investigating overlay reco vs truth matching
 - `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/analysis_roadmap_2026_06.md` — Analysis roadmap (2026-06-10): IntNote readiness, missing inputs, full chain with dummies; task files in Analysis/docs/roadmap_tasks/
-- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/pp_pipeline_implementation.md` — PP pipeline build: 2 pipeline scripts, pp17 cleanup, nominal/trig-eff split, source code fixes
+- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/hijing_overlay_reco_effcy_investigation.md` — HIJING overlay reco efficiency: 3 bugs fixed; single-muon vs pair efficiency ~6% discrepancy from pair correlations under investigation

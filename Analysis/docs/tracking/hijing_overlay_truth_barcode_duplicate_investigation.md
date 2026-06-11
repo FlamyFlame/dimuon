@@ -240,6 +240,10 @@ If we adopt r17662 for production, none of these changes need to persist.)*
 
 ## Latest Stage
 
+**CLOSED (2026-06-10).** Investigation complete. Root cause: HIJING truth
+barcode duplication in r17618. Fix: use r17662 (StandardSignalOnlyTruth).
+No code bug in truth analysis for signal-only samples.
+
 **Step 3 complete. (2026-06-04)**
 
 ### Step 3a: Barcode duplication in r17618

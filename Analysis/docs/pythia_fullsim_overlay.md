@@ -134,17 +134,27 @@ root -l -b -q '.L PythiaFullsimRecoEffPlotter.cxx+'
 ```
 {data_dir}/plots/
   {plot_dir_prefix}_reco_effcy_plots/medium/   -- reco efficiency, all centrality bins
-      reco_effcy_truth_pair_pt_ss_op_ctr0_5_mediumWP.png
-      reco_effcy_truth_pair_pt_ss_op_ctr5_10_mediumWP.png
-      ...
-  {plot_dir_prefix}_reco_effcy_plots/tight/
-  {plot_dir_prefix}_reco_effcy_plots_signal_cuts/medium/
-  {plot_dir_prefix}_reco_effcy_plots_signal_cuts/tight/
+      signed/             reco_effcy_<var>_ss_op_ctrX_Y_mediumWP.png      (1D SS/OS)
+      single_b_op_compr/  reco_effcy_<var>_single_b_op_compr_ctrX_Y_mediumWP.png
+      2d/                 reco_effcy_2d_<vary>_vs_<varx>[_single_b]_ctrX_Y_mediumWP.png
+      distr/              reco_distr_*_mediumWP.png   (pp24 only, from plot_reco_distr_singleb_vs_op_pp24.C)
+      ranged/             reco_effcy_<vary>_vs_<varx>_single_b_op_compr_*_mediumWP.png
+  {plot_dir_prefix}_reco_effcy_plots/tight/    -- same subdir layout (no distr/)
+  {plot_dir_prefix}_reco_effcy_plots_require_signal_cuts/medium/   (+tight)
   {plot_dir_prefix}_det_resp_plots/medium/     -- detector response, ctr_tag in filename
       pair_pt_truth_reco_compr_ctr0_5_mediumWP.png
   {plot_dir_prefix}_det_resp_plots/tight/
 ```
-All centrality bins go into a single flat directory; the bin tag (`_ctrX_Y`) is embedded in each filename. No inclusive (centrality-integrated) plots are produced for the overlay.
+Within each `_reco_effcy_plots*` / WP directory, plots are sorted into category
+subdirectories (`signed/`, `single_b_op_compr/`, `2d/`, `distr/`, `ranged/`).
+Detector-response plots live in the separate `_det_resp_plots/` tree (not
+subdivided). All centrality bins share each subdirectory; the bin tag
+(`_ctrX_Y`) is embedded in each filename. No inclusive (centrality-integrated)
+plots are produced for the overlay.
+
+The Powheg pair reco-efficiency plotter (`PowhegFullsimRecoEffPlotter`) uses the
+same scheme but with `1d/` (bare `reco_effcy_<var>` — bb/cc-mixed vs single_b,
+no SS/OS) in place of `signed/`, and no `distr/`.
 
 ### Validation between stages
 

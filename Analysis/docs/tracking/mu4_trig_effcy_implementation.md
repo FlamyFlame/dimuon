@@ -350,8 +350,23 @@ Scope:
 - Rationale: fitter output is fine-binned; coarse default caused TH2D fallback file mismatch (see D8)
 
 ### Step 19: Re-run Pipeline 2 + Pipeline 3 with fine q-eta default
-Status: IN PROGRESS (SKIP_CONDOR=1, reusing existing ntuples)
+Status: DONE
 Files: All Pipeline 2 + Pipeline 3 outputs for PbPb 23/24/25
+
+### Step 21: Apply no-correlation trigger efficiency to PbPb crossx (Pipeline 1) — per top-level equation
+Status: DONE
+**Reviewer: /review-analysis-code** with top-level PbPb mu4 equation in task prompt.
+Files: RDFBasedHistFillingPbPb.cxx (FillHistogramsCrossx), plot_crossx_trig_corr_sanity.C (new)
+Scope:
+- Call `OpenEffcyPtFitFile()` from FillHistogramsCrossx to load P2 TF1 fits
+- Define per-muon efficiency columns `effcy1`, `effcy2` via `EvaluateSingleMuonEffcy`
+- Compute pair efficiency `effcy_pair = ε₁ + ε₂ − ε₁·ε₂` (inclusion-exclusion, OR trigger)
+- Apply `w_trig = 1/effcy_pair` multiplicatively to `weight_for_RAA` → `weight_for_RAA_trig_corr`
+- All crossx histograms now use `weight_for_RAA_trig_corr`; `_counts` hists remain raw
+- Added `_no_trig_corr` h2d pair_eta×pair_pt histograms for sanity-check comparison
+- Created standalone sanity-check plotter overlaying raw vs corrected for PbPb 10-20%
+- Simplified per-ctr loop: branch from `df_single_b_crossx_weighted` (which has all trig columns) instead of duplicating column definitions per centrality
+- P3 stages 9-10 commented out in `pipeline_pbpb_trig_eff.sh` (biased on data, D9)
 
 ## Progress Log
 
@@ -547,6 +562,37 @@ Per-muon `m1/m2.passmu4noL1` is always false in current ntuples. Bug in `DimuonD
 - **Kept:** Cross-term fills + plots as reference for unbiased MC evaluation.
 - **Compilation:** PbPb.cxx ✓, PP.cxx ✓ (ACLiC, only -Wsign-compare warning).
 
+### 2026-06-10: Step 22 — Crossx filename cleanup, PP trig eff code, PbPb rerun
+- **Filename fix:** Crossx output files now use `_nominal` suffix instead of
+  `_coarse_q_eta_bin`/`_fine_q_eta_bin`. `useCoarseQEtaBin` removed from all 4 crossx
+  runner scripts (pbpb23/24/25, pp24). Logic: after `TriggerModeSettings()`, if
+  `!trigger_effcy_calc`, override `qEtaBin_suffix = "_nominal"`.
+- **Files changed (filename):** Data.cxx, run_crossx_hist_filling_{pbpb23,pbpb24,pbpb25,pp24}.sh,
+  pipeline_pbpb_crossx.sh, pipeline_pp_crossx.sh, plot_single_b_crossx_pbpb.cxx,
+  plot_single_b_crossx_pp.cxx, plot_crossx_trig_corr_sanity.C.
+- **PP trig eff code:** `FillHistogramsCrossx` in PP.cxx now calls `OpenEffcyPtFitFile()`,
+  defines q_eta/effcy columns, computes `effcy_pair = ε₁·ε₂` (AND trigger for 2mu4),
+  `w_trig = 1/effcy_pair`. All histograms use `crossx_weight_trig_corr`. Added
+  `_no_trig_corr` h2d. Sanity plotter extended with PP 2024 sample.
+- **PP TF1 key mismatch discovered:** PP fits use `q_eta_2nd` (with underscore) and
+  `_2mu4_sepr_sign1_py_` ordering, but `EvaluateSingleMuonEffcyPtFitted` constructs
+  `q_eta2nd` (no underscore) and `_sign1_2mu4_sepr_py_`. Must fix before running PP.
+- **Compilation:** Both PbPb.cxx and PP.cxx compile cleanly (ACLiC, login shell).
+- **PbPb rerun:** pipeline_pbpb_crossx.sh with SKIP_EVSEL/CONDOR/HADD=1 in progress.
+
+### 2026-06-10: Step 21 — Apply no-correlation trigger efficiency to PbPb crossx
+- **Code:** `FillHistogramsCrossx` in PbPb.cxx now calls `OpenEffcyPtFitFile()` and defines
+  per-muon efficiency columns (`effcy1`, `effcy2`) via `EvaluateSingleMuonEffcy`. Pair
+  efficiency: `effcy_pair = ε₁ + ε₂ − ε₁·ε₂`. Weight: `w_trig = 1/effcy_pair`.
+- All crossx histograms use `weight_for_RAA_trig_corr = weight_for_RAA × w_trig`.
+- `_counts` histograms remain unweighted by trigger efficiency.
+- Added `_no_trig_corr` h2d pair_eta × pair_pt histograms for sanity comparison.
+- Simplified per-ctr loop: branch from `df_single_b_crossx_weighted` (inherits trig columns).
+- Created `plot_crossx_trig_corr_sanity.C`: overlays raw vs corrected for PbPb 10-20%.
+- P3 stages 9-10 commented out in `pipeline_pbpb_trig_eff.sh` (biased on data, D9).
+- **Compilation:** PbPb.cxx ✓ (ACLiC, only pre-existing -Wsign-compare warnings).
+- **Needs rerun:** Pipeline 1 RDF + plotting for all 3 years.
+
 ### 2026-06-02: Input verification investigation (CORRECTED)
 - **Question:** User reported P3 dR plots look identical to previous outputs despite new skim.
 - **Finding: All pipeline inputs are correct.** Verified at every stage:
@@ -570,32 +616,20 @@ Per-muon `m1/m2.passmu4noL1` is always false in current ntuples. Bug in `DimuonD
 
 ## Remaining Work
 
-- Locate/re-download PbPb 2023 part 1 raw data, reprocess + re-hadd
-- PP24 Pipeline 2+3 when re-skim completes
+- ~~Locate/re-download PbPb 2023 part 1 raw data, reprocess + re-hadd~~ DONE (May 2026 skim includes all 4 parts)
+- ~~PP24 Pipeline 2+3 when re-skim completes~~ DONE (2026-06-10, PP trig eff pipeline)
 - Reprocess ntuples for passmu4noL1 fix (separate issue)
-- Evaluate cross-term/2mu4 dR correction on MC samples (unbiased — no trigger selection)
-- Update docs: README.md, analysis docs
+- ~~Evaluate cross-term/2mu4 dR correction on MC samples~~ DEFERRED (need MC sample; will reopen when available)
+- ~~Update docs: README.md, analysis docs~~ DONE
+- ~~Apply no-correlation trigger efficiency to PbPb crossx~~ DONE (Step 21)
 
 ## Latest Stage
 
-**Step 20 DONE (2026-06-09): Remove single-muon & pair-level dR corrections (D9)**
-
-Cleaned up codebase after identifying that all inverse-weighted dR corrections are biased
-on the mu4-selected sample. The denominator only contains triggered events (at least one
-muon fires), inflating the ratio by 1/(ε₁+ε₂−ε₁ε₂). The pair-level "fix" (D6) was a
-tautology (numerator condition = selection condition → ratio measures fit quality, not physics).
-
-**Changes:**
-- PbPb.cxx: removed single-muon role1/role2 fills, pair-level fills, and unused columns
-  (invw_probe1/2, effcy_pair, invw_pair). Only cross-term fills remain (reference for MC).
-- Data.cxx: removed role-swap combination and pair-level divideAndProject from
-  MakeAndWriteDRTrigEffGraphsHelper. Only cross-term divideAndProject remains.
-- plot_dR_trig_corr.C: removed single-muon and pair-level from `terms` vector.
-- pipeline_pbpb_trig_eff.sh: removed plateau_normalize_dR_corr.C call from stage 10.
-- Deleted 4 plot directories (360 PNGs): dR_single_muon, dR_pair_level, 2× plateau_norm.
-- Deleted 6 plateau normalization ROOT files (2 modes × 3 years).
-- Both PbPb and PP compile cleanly with ACLiC.
-- Added D9 to Design Decisions, updated Physics Procedure §3a-§3c.
+**CLOSED (2026-06-10).** All no-correlation trigger efficiency work complete
+for both PbPb (3 years) and PP (pp24). Crossx pipelines run with per-pair
+trig eff correction. mu4_mu4noL1 plotting disabled (not maintained).
+Remaining open item: passmu4noL1 reprocessing (separate issue).
+MC dR evaluation deferred until sample is available — will reopen then.
 
 ## Potential Issues
 

@@ -65,8 +65,11 @@ reports success/failure.
 
 Produce invariant mass spectra and differential cross-section distributions
 for the PbPb dimuon analysis. Events are selected using the mu4 trigger
-(`trigger_mode=1`), but no trigger efficiency is derived or applied --
-the trigger is used purely for event selection.
+(`trigger_mode=1`). The crossx histograms are corrected for the per-pair
+no-correlation trigger efficiency: `w_trig = 1/(ε₁ + ε₂ − ε₁·ε₂)`,
+where εᵢ = ε^{nc}(pTᵢ, q·ηᵢ) from Pipeline 2 TF1 fits. The P2 fit
+file must exist before running Pipeline 1's RDF step. Raw (uncorrected)
+histograms are also saved with `_no_trig_corr` suffix for comparison.
 
 ### Stages
 

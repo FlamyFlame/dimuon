@@ -25,3 +25,9 @@
 {"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-10T05:27:30Z","criticals":0,"warnings":0,"slug":"bug1-index-mapping-fix"}
 {"event":"start","command":"review-analysis-code","task":"Fix Bug #2 dR fallback truth-to-reco matching in overlay","slug":"bug2-dr-fallback-matching","timestamp":"2026-06-10T05:30:40Z"}
 {"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-10T05:33:00Z","criticals":0,"warnings":0,"slug":"bug2-dr-fallback-matching"}
+{"event":"start","command":"review-pipeline","task":"Review PP pipeline scripts: pipeline_pp_crossx.sh, pipeline_pp_trig_eff.sh, run_crossx_hist_filling_pp24.sh","slug":"pp-pipeline-review","timestamp":"2026-06-10T21:24:36Z"}
+{"event":"end","command":"review-pipeline","status":"approved","iterations":2,"timestamp":"2026-06-10T21:32:00Z","criticals":0,"warnings":0,"slug":"pp-pipeline-review"}
+{"event":"start","command":"steer-pipeline","pipeline":"pipeline_pp_crossx.sh + pipeline_pp_trig_eff.sh","task":"Run both PP pipelines end-to-end with May 2026 skim","slug":"pp-crossx-and-trig-eff","timestamp":"2026-06-10T22:43:38Z","git_sha":"e3c5153555b2b7841915dad883bc82d527b8b29c"}
+{"event":"start","command":"review-plot","task":"Review PP crossx plots from pipeline_pp_crossx.sh","slug":"pp-crossx-distributions","timestamp":"2026-06-11T01:55:00Z"}
+{"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-11T01:58:00Z","criticals":0,"warnings":0,"slug":"pp-crossx-distributions"}
+{"event":"end","command":"steer-pipeline","pipeline":"pipeline_pp_crossx.sh","status":"recovered","phases":[1,2,3,4,5],"recovery_attempts":1,"regressions":0,"timestamp":"2026-06-11T01:58:30Z","slug":"pp-crossx"}
