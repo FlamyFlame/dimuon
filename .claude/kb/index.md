@@ -9,6 +9,9 @@
 - [samples.md](data/samples.md) — Dataset container names, runs, luminosity, data paths
 - [variables.md](data/variables.md) — Branch names, sign conventions, ZDC/FCal indexing, units
 
+## Physics
+- [physics/detector/ATLAS_Run2_muon_reconstruction.md](physics/detector/ATLAS_Run2_muon_reconstruction.md) — ATLAS Run 2 pp muon reco/ID/isolation/vertex efficiency (EPJC 81 (2021) 578): reconstruction strategies, working points, tag-and-probe & scale-factor methodology, results (PDF in same dir)
+
 ## Procedures
 _(Added as needed)_
 

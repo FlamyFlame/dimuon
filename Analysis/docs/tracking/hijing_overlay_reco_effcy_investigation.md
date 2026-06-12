@@ -685,11 +685,499 @@ tagging is computed but NOT applied as a pair-level veto.
 - `plots/hijing_overlay_pp24_single_muon_reco_effcy/single_muon_reco_effcy_vs_pt_integrated_ctr_inclusive.png`
   (+ per-centrality variants)
 
+### Step 16: Two failure mechanisms separated; dR fallback physical validity questioned (2026-06-11)
+
+**Motivation:** A prior framing conflated two distinct truth-matching
+failure modes ("barcode ambiguity" vs "hit dilution").  They have
+OPPOSITE physical status, and the distinction determines whether the
+Bug #2 dR fallback is a legitimate correction.
+
+**Exact skimmer matching mechanism (`TrigRates.cxx` 1369–1398):**
+The skimmer is a PASS-THROUGH of Athena's ID-track truth decoration.
+For each reco muon it reads `idTrk->truthParticleLink` and, if valid,
+stores `match_prob = truthMatchProbability` (hit-fraction computed
+upstream in reconstruction) and `barcode = associated_truth->uid()`.
+If the link is invalid → barcode = −1, prob = 0.  The skimmer does NOT
+compute the match and does NOT apply any 0.5 cut.  The 0.5 threshold is
+applied OFFLINE in `PythiaFullSimExtras.c:94`
+(`muon_truth_prob > truth_match_prob_thrsh`).  Crucially, in overlay the
+stored link can point to a HIJING particle (wrong) or be invalid — the
+skimmer records it faithfully either way.
+
+**Exact dR fallback mechanism (`PythiaFullSimExtras.c` 141–191):**
+For each Pythia truth muon: (1) try barcode match against reco muons with
+prob>0.5; (2) if none AND `pythia_only_barcode_cache` (overlay), draw a
+dR<0.05 circle around the TRUTH muon (η,φ) and grab the nearest UNCLAIMED
+reco muon — with NO probability or quality requirement on that reco muon
+(it can be a HIJING fake, prob=0) — then force `reco_match=true`, copy its
+kinematics, and compute `pass_medium` from its quality.  A recovered muon
+enters the efficiency numerator only if that grabbed muon passes medium.
+
+**Two mechanisms, opposite physical status:**
+- **(i) Barcode collision → wrong/hidden match.** Pythia & HIJING reuse
+  `uid()` range 1..N; the correct reco muon is mislabeled/indistinguishable.
+  This is a PURE MC BOOKKEEPING ARTIFACT — no analog in data.  Legitimately
+  needs removal, but via signal-only truth / container-index / MS-link,
+  NOT dR.
+- **(ii) Hit dilution → the muon's OWN track falls below prob>0.5.** Soft
+  HIJING particles deposit real hits picked up by the muon's ID track, so
+  the muon-hit fraction drops under 50%.  This is a REAL PHYSICAL EFFECT —
+  identical to what happens in real Pb+Pb data (high occupancy genuinely
+  degrades muon track-finding/momentum/ID).  It is a major contributor to
+  the genuinely lower, centrality-dependent HI muon efficiency.  NOT a bug.
+
+**Signal-only truth (r17662) clarification:** It removes HIJING from the
+truth RECORD (fixes mechanism i and the denominator contamination, Bug #3),
+but overlay puts HIJING into the detector at the HIT level — those hits
+remain on the tracks.  So mechanism (ii) is UNAFFECTED: a Pythia muon's
+track still drops below prob>0.5 from real HIJING hit occupancy → bc=−1,
+unmatched, even with zero barcode ambiguity.  "Lost Pythia muon" = a muon
+that IS reconstructed (a reco muon sits at its η,φ) but whose track fails
+the prob>0.5 truth-match bar.  (Note: Step 7's "r17662 still low" was also
+confounded by the then-unfixed index-mapping bug.)
+
+**Physics verdict on the dR fallback:** Because it does NOT distinguish (i)
+from (ii), it recovers BOTH — including the physical mechanism-(ii) losses.
+As a reconstruction-efficiency correction it is therefore NOT defensible:
+(a) it recovers real physical losses present in data → overestimate; (b) it
+applies no quality/prob safeguard to the grabbed reco muon → can grab a
+HIJING fake that passes medium → spurious numerator entries; (c) it has no
+data analog (cannot dR-match to truth in data), so the resulting efficiency
+is not comparable to the data efficiency it corrects.
+
+**Honest counter-nuance:** the DATA efficiency is itself measured by
+GEOMETRIC tag-and-probe (no truth probability).  So strict prob>0.5 MC
+matching can, oppositely, UNDERestimate by rejecting muons whose track is
+genuinely good and passes medium but shares >50% hits with background.  The
+correct definition is data-consistent matching that lies BETWEEN strict
+prob>0.5 and grab-nearest-reco.  The current dR fallback is the crude,
+biased extreme of the geometric side.
+
+**Recommendation (not yet implemented):** drop the dR fallback as the
+production correction; use signal-only truth (r17662) to kill mechanism (i);
+define efficiency as truth muon → nearest reco muon THAT PASSES MEDIUM within
+a controlled dR, compared against strict prob>0.5, to bound the
+truth-matching ambiguity — keeping the physical mechanism-(ii) losses in the
+efficiency.  Open technical question (Step Q1): whether MuonTruthParticles
+`recoMuonLink` is MS-hit-derived (would help mechanism i) or just the inverse
+ID-track prob (would not) — needs verification against the association alg.
+
+### Step 17: ATLAS-standard matching is geometric ΔR<0.05; Step 16 verdict corrected (2026-06-11)
+
+**Reference checked:** ATLAS muon performance paper arXiv:2012.00578
+("Muon reconstruction and identification efficiency in ATLAS, full Run 2,
+139 fb⁻¹").  Direct quote on the matching used for efficiency:
+
+> "The efficiency of a certain algorithm is measured using a matching
+> requirement of **ΔR < 0.05** between the given probe and any muon
+> candidate **reconstructed and identified with the algorithm of interest**."
+
+- **Data:** tag-and-probe (Z→μμ, J/ψ→μμ down to 3 GeV), geometric ΔR<0.05
+  to a Medium muon.  No truth.
+- **MC:** the SAME geometric ΔR<0.05 to a reconstructed+identified (Medium)
+  muon.  NOT `truthMatchProbability`, NOT `recoMuonLink`.
+- Medium WP (|η|<2.5): CB/IO muons, ≥2 precision stations (except |η|<0.1).
+
+**Governing principle:** reco efficiency is a CORRECTION applied to data
+(`corrected = N_data / ε`).  Truth matching is MC-only bookkeeping; it must
+identify "did this truth muon yield an accepted Medium reco muon" and nothing
+more.  `truthMatchProbability` and `recoMuonLink` have NO data analog — any
+efficiency that GATES on them is by construction not data-consistent.
+
+**CORRECTION to Step 16's core claim:** Step 16 treated
+`truthMatchProbability < 0.5` as the marker of a PHYSICAL loss.  That is
+wrong.  `truthMatchProbability` is an inner-detector tracking-truth quantity
+(fraction of ID hits from the truth particle); it does NOT decide whether the
+muon is reconstructed.  A muon can be a perfectly good Medium combined muon
+(momentum MS-constrained, passes hit/quality cuts) while its ID-hit fraction
+sits below 0.5 from pure occupancy.  The physical outcome is fully captured
+by "does a Medium reco muon exist within ΔR<0.05."  Hence prob<0.5 is mostly
+an MC BOOKKEEPING rejection, not a physical inefficiency.
+
+**Implication — direction of bias reversed:** Requiring `prob>0.5` as the
+matching gate (the current OFFLINE primary in `PythiaFullSimExtras.c:94`)
+REJECTS genuinely-reconstructed Medium muons in dense events → biases ε LOW
+→ OVER-corrects the cross-section (too-small ε inflates corrected yield).
+This is the real methodological bug, opposite in sign to Step 16's concern.
+
+**Revised verdict on the dR fallback:** Its DIRECTION (geometric ΔR<0.05) is
+the ATLAS standard — same cone as the paper.  Step 16's "recovers physical
+losses → overestimate" was wrong because the prob<0.5 "losses" are mostly MC
+artifacts.  Genuine remaining flaws of the implementation: (a) it is a
+bolt-on FALLBACK to a biased `prob>0.5` PRIMARY (inconsistent hybrid) — the
+geometric match should be the sole/primary definition; (b) it grabs nearest
+reco THEN checks Medium, vs the standard "nearest MEDIUM muon" with charge/pT
+consistency; (c) residual real overestimate = accidental geometric match to
+an unrelated nearby Medium fake in central PbPb — small, estimable as a
+systematic (mitigated by tight cone + charge consistency), NOT a reason to
+revert to prob>0.5.
+
+**Skimmer is not buggy as a record;** it faithfully stores AOD barcode+prob.
+The bug is the OFFLINE use of prob>0.5 as the primary efficiency definition.
+
+**recoMuonLink follow-up WITHDRAWN:** under standard geometric matching it is
+unused; its MS-vs-ID provenance is moot.
+
+**Corrected recommendation:** replace the entire `prob>0.5` + dR-fallback
+hybrid with the single ATLAS-standard definition —
+`ε = (truth muons with a Medium reco muon within ΔR<0.05) / (fiducial truth
+muons)`, charge/pT-consistent, closest-unclaimed reco — with NO
+prob/barcode/recoMuonLink gate.  Use signal-only truth (r17662) so no HIJING
+truth exists (removes barcode collision entirely; also fixes Bug #3
+denominator).  Assess accidental-fake match rate in central bins as a
+systematic.  The "prob>0.5 vs geometric" prototype reduces to VALIDATION:
+confirm pp agreement (low occupancy) and quantify the HI low-bias of the old
+prob method.
+
+### Step 18: Run 2 note refutes "prob>0.5 biases low"; root cause is the barcode collision (2026-06-11)
+
+**Reference checked:** Run 2 dimuon internal note ATL-COM-PHYS-2021-1094
+(`~/workarea/dimuon_codes/IntNotesRun2DimuonReference/`).
+
+**Run 2 reco efficiency definition** (`tex/Corrections.tex:377-383`):
+> "the fraction of the number of generated-muons that have associated
+> reconstructed muons … that match the generated-muon with a probability of
+> **0.5 or more**."
+
+evaluated on a **STARLIGHT γγ→μμ signal OVERLAID onto HIJING** sample
+(`tex/Data_and_selections.tex:171-178`; productions ATLHI-304/313 for
+ANA-HION-2020-10) — the SAME overlay concept as ours — and it yields
+PHYSICAL efficiencies with only a mild central→peripheral trend.
+
+**This REFUTES Step 17.**  `prob>0.5` matching + HIJING overlay gives physical,
+data-consistent efficiencies (existence proof).  So `prob>0.5` does NOT bias ε
+low, and the "hit dilution drops good muons below 0.5" worry (Step 16) is
+quantitatively small — if it were large, the Run 2 efficiencies would be low
+too.  Both Step 16's and Step 17's bias claims are withdrawn.
+
+**True root cause (already named as Bug #2 mechanism i): the barcode collision
+specific to r17618.**  Pythia and HIJING share barcode range 1..N (~652
+collisions, per the barcode-duplicate investigation).  `prob>0.5` matching
+finds the reco muon whose stored barcode equals the truth muon's barcode; when
+barcodes collide, the signal muon's correct reco match is mislabeled/hidden →
+artificially low ε.  The Run 2 STARLIGHT+HIJING sample was produced with proper
+overlay truth handling (no collision), which is exactly why `prob>0.5` works
+there.  **It is the SAMPLE, not the matching method.**
+
+**Geometric ΔR<0.05 matching** is one valid fix because it ignores barcodes
+entirely (collision-immune) — but it is not "more correct" than `prob>0.5`;
+it just sidesteps the production artifact.  Pure-geometric replaces the
+barcode find()+dR-fallback block (`PythiaFullSimExtras.c` 154-191): for each
+truth muon, loop reco muons passing Medium, take closest unclaimed with
+ΔR<0.05.  Skimmer needs no change (reco+truth kinematics already stored).
+
+**Clean path (prefer #1 for direct comparability with the Run 2 reference):**
+1. Reproduce the Run 2 method: **signal-only truth (r17662)** → no HIJING truth
+   → no collision; keep standard **`prob>0.5`**; drop the dR fallback.  Re-test
+   with adequate stats + the Bug #1 index fix.
+2. Or pure geometric **ΔR<0.05-to-Medium** matching (collision-immune; also an
+   ATLAS standard).  Residual: central-PbPb accidental fakes (small systematic).
+
+Either way the current `prob>0.5` + dR-fallback HYBRID should go — it is a
+band-aid for the barcode collision rather than a fix of it.
+
+### Step 19: Full-stats r17662 grid skim submitted; plan to test pure prob>0.5 (2026-06-11)
+
+**Failure-mechanism clarification (recorded for reference):** The barcode
+collision corrupts the link at RECO/AOD level, not at the skimmer.  The
+skimmer does NO matching — it just (a) stores every stable gen muon into
+`truth_muon_*` (the Pythia muon is ALWAYS stored, never dropped), and (b)
+copies each reco muon's upstream `truthParticleLink` barcode/prob into
+`muon_truth_barcode`/`muon_truth_prob`.  Because the hit→truth map is keyed by
+barcode, a shared barcode (Pythia bc=100 ≡ HIJING bc=100) makes the Pythia
+muon's reco track link to a HIJING particle (stored bc e.g. 5078) or to nothing
+(bc=−1).  The skimmer faithfully copies that wrong value.  The mismatch only
+bites OFFLINE (`PythiaFullSimExtras.c` `std::find`): the Pythia gen muon
+(bc 100) finds no reco muon carrying bc 100 → `reco_match=false` → low ε.
+Signal-only truth fixes it at the source (no shared barcode → correct links).
+
+**Event-count check:** r17662 AOD (802781 pTH8_14) =
+`...e8599_s4614_r17662_r15970_tid50427580_00` has **10 files / 10,000 events**
+(verified `rucio list-files`).  The prior 100-event signal-only skim came from
+`run_pythia_fullsim_HIJING_overlay/run_test.sh` hardcoded `--evtMax=100` (a
+LOCAL test) — not an AOD or grid limit.
+
+**Grid skim submitted (background agent):** pathena jediTaskID **50903365**
+(https://bigpanda.cern.ch/task/50903365/), outDS
+`user.yuhang.NTUP.Pythia_5p36TeV_pp_hQCD_DiMu_pTH8_14.FullSimHIJINGOverlayPP24_r17662.June2026.v1.`,
+script `SkimCode/run_pythia_fullsim_HIJING_overlay/grid_sub_r17662_signalonly.sh`.
+Monitor daemon `grid_monitor.sh --mode overlay 50903365` (PID 1170068, node
+attsub07) downloads to `~/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/`
+on completion; state file `grid_monitor_state.txt` marks `50903365 completed`.
+
+**Pending plan (when NTUP downloaded):**
+1. Add a runtime toggle to DISABLE the ad-hoc dR fallback in
+   `PythiaFullSimExtras.c` (default = enabled, preserves current behavior) →
+   via /review-analysis-code.  Run pure `prob>0.5` matching (Run 2 method).
+2. Run NTP (no dR) → RDF hist filling → plotting on r17662.
+3. Compare single-muon & pair reco ε to CURRENT values (r17618 + dR-fallback:
+   Step 13 pair ~49-55% @0-5%, Step 15 single-muon plateau ~77%) and to the
+   Run 2 physical shape.  Expectation: r17662 + pure `prob>0.5` gives physical
+   (Run-2-like, single-muon plateau ~90%+) ε → confirms the barcode collision,
+   not the matching method, was the culprit.
+
+### Step 20: r17662 result — collision & dR fallback are NOT the cause (2026-06-11)
+
+**Setup:** r17662 NTUP downloaded (10,000 events, tree HeavyIonD3PD).  Ran NTP
+via `run_pythia_fullsim_overlay_r17662_nodr.sh` using
+`fullsim_input_dir_override` → `r17662_run/` (symlink of r17662 NTUP under the
+expected FullSimHIJINGOverlayPP24 name; other 5 pT slices absent → skipped).
+`pythia_only_barcode_cache=false` disables the dR fallback (gate at
+PythiaFullSimExtras.c:162); for signal-only truth the cache restriction is moot
+and does NOT affect single-muon barcode matching (only ancestor tracing).
+Compared single-muon ε vs current overlay (r17618+dR) and pp.
+
+**Single-muon ε (qeta-integrated, weighted), turn-on region (pTH8_14 has few
+muons >15 GeV):**
+
+| pT [GeV] | r17662 no-dR | r17662 with-dR | r17618+dR (current) | pp |
+|---|---|---|---|---|
+| 6–8   | 0.743 | 0.743 | 0.732 | 0.869 |
+| 8–10  | 0.751 | 0.751 | 0.751 | 0.890 |
+| 10–12 | 0.814 | 0.814 | 0.762 | 0.904 |
+| 12–15 | 0.857 | 0.857 | 0.773 | 0.909 |
+
+**Key results:**
+1. **dR fallback does NOTHING on r17662** — no-dR and with-dR are byte-identical
+   (no collision → barcode matching succeeds → fallback never fires).
+2. **Removing the collision does NOT raise ε** — r17662 (clean) ≈ r17618+dR ≈
+   ~73-75% turn-on, all ~14% below pp (~87%).
+3. **This REFUTES Step 18's "barcode collision is THE culprit."**  The collision
+   and dR fallback are NEGLIGIBLE for the efficiency.  (Bug #1, the index-mapping
+   fix, 10%→50% pair, was the real killer and remains the main correction.)
+
+**Decomposition (reco_match = prob>0.5 match exists; pass_medium = matched AND
+Medium):**
+
+| pT | r17662 reco_match | r17662 pass_med | pp reco_match | pp pass_med |
+|---|---|---|---|---|
+| 4–5   | 0.858 | 0.635 | 0.967 | 0.744 |
+| 6–8   | 0.895 | 0.743 | 0.983 | 0.869 |
+| 8–10  | 0.918 | 0.751 | 0.983 | 0.888 |
+| 12–15 | 0.959 | 0.857 | 0.980 | 0.901 |
+
+Overlay deficit vs pp = **~10% fewer prob>0.5 reco-matches** + ~3-4% more
+Medium-fails among matched.  The ~10% reco_match deficit is the dominant
+residual and is robust across r17618/r17662.
+
+**THE open question (unchanged, now sharply posed):** is the ~10% reco_match
+deficit (a) PHYSICAL (muon genuinely not reconstructed in the dense environment)
+or (b) a prob>0.5 STRICTNESS artifact (muon IS reconstructed as a Medium muon
+but its ID-track prob<0.5 from HIJING/jet hit dilution → tagged unmatched)?
+Decisive test = **geometric ΔR<0.05-to-Medium matching** (ATLAS standard,
+arXiv:2012.00578): if geometric reco_match → ~pp (~0.97), deficit is (b) and the
+physical ε is ~pp; if it stays ~0.86-0.96, deficit is (a), physical.
+Note: Run 2 note used prob>0.5 and got physical ε but on STARLIGHT (isolated UPC
+muons, little hit dilution); our Pythia HF muons are in jets → more dilution, so
+prob>0.5 may be stricter for us.  Geometric matching is data-consistent either
+way.
+
+**Caveats:** (i) r17662 has only pTH8_14 → no plateau (>20 GeV) stats; plateau
+comparison needs higher-pT r17662 slices (grid).  (ii) NTP printed
+`#muons from B-hadron: 0` on r17662 → ancestor tracing / from_same_b likely
+broken because signal-only-truth thinned the truth parent chain.  Single-muon &
+inclusive SS/OS ε are unaffected, but single-b pair classification on r17662 is
+suspect — flag before using r17662 for single-b.
+
+**Files:** `run_pythia_fullsim_overlay_r17662_nodr.sh`; outputs in
+`pythia_fullsim_hijing_overlay_test_sample/r17662_run/` (suffixes
+`_r17662_nodr_single_muon`, `_r17662_withdr_single_muon`).
+
+### Step 21: Reconsideration — collision may PARTLY contribute; physical low-pT hypothesis (2026-06-12)
+
+**Reconsideration of Step 20's "negligible collision" claim (user-flagged):**
+Step 20 over-stated it.  Re-examining the single-muon comparison table:
+
+| pT [GeV] | r17662 no-dR (8-14, NO collision) | r17618+dR (all slices) | pp | r17662 N |
+|---|---|---|---|---|
+| 4–5   | 0.635 | 0.630 | 0.738 | 8040 |
+| 5–6   | 0.727 | 0.712 | 0.840 | 3885 |
+| 6–8   | 0.743 | 0.732 | 0.869 | 2918 |
+| 8–10  | 0.751 | 0.751 | 0.890 |  743 |
+| 10–12 | 0.814 | 0.762 | 0.904 |  161 |
+| 12–15 | 0.857 | 0.773 | 0.909 |   49 |
+
+- At 6–10 GeV (solid r17662 stats): r17662 ≈ r17618 → collision effect small here.
+- At 10–15 GeV: r17662 noticeably HIGHER (0.814/0.857 vs 0.762/0.773).  This is a
+  real, noticeable improvement → **the collision MAY contribute (partly), at least
+  at higher pT.**  Caveats: low r17662 stats there (N=49–161, errors ~0.03–0.05,
+  ~1.7σ) AND confounded by slice composition (r17662 = 8-14 only vs r17618 = all
+  slices; at fixed muon pT the slice mix differs).  Clean isolation (r17618 8-14
+  ONLY vs r17662) is NOT possible from the single-muon output (no pTHat branch);
+  would need an r17618 8-14-only single-muon NTP run, or use the pair-level kin0
+  trees (which DO carry pTHat).  So: collision is not strictly negligible — revise
+  Step 20 to "small at low pT, possibly contributing at 10–15 GeV (low-significance)."
+
+**Physical hypothesis (user, to be tested):** The low-pT overlay deficit vs pp may
+be (at least partly) PHYSICAL, not a procedural bug.  In real very-central Pb+Pb,
+thousands of soft underlying-event particles (simulated by HIJING) deposit hits;
+**low-pT muons are the most affected** — their ID tracks are softest/shortest-lever
+and most easily corrupted by nearby soft hits, so genuine reco+ID efficiency for
+low-pT muons in central Pb+Pb can be truly lower than in pp.  This is a real
+detector effect, expected in data too.
+
+**Discriminating test = geometric ΔR<0.05-to-Medium matching:**
+- If the deficit is PHYSICAL (muon genuinely fails Medium reco/ID), geometric
+  matching shows the SAME/similar deficit (no Medium reco muon exists near the
+  truth muon to match), because geometric only asks "does a Medium muon exist
+  within ΔR<0.05" — it cannot conjure a muon that was not reconstructed.
+- If the deficit is a prob>0.5 truth-matching ARTIFACT (Medium muon exists but its
+  ID-track prob<0.5 from hit dilution), geometric RECOVERS them → ε rises toward pp.
+So geometric vs prob>0.5 separates physical (a) from matching-artifact (b).  Both
+the collision-contribution and the physical-deficit pictures predict specific
+geometric outcomes; the test adjudicates.
+
+### Step 22: pThat-slice restriction — skew vs statistics (Task 2) (2026-06-12)
+
+Compared pair reco ε vs truth_pair_pt for **pThat 8-14 only (kin0)** vs **all
+slices**, straight from the existing r17618 output (per-kin trees
+`muon_pair_tree_kin0_sign2` vs `muon_pair_tree_sign2`; no re-run needed):
+
+| pair pT [GeV] | ALL slices ε (N) | kin0 8-14 ε (N) |
+|---|---|---|
+| 0–4   | 0.513 (8670)  | 0.495 (1663) |
+| 4–8   | 0.487 (8680)  | 0.472 (1084) |
+| 8–12  | 0.462 (19378) | 0.453 (1938) |
+| 12–16 | 0.510 (13782) | 0.555 (425)  |
+| 16–20 | 0.520 (8510)  | 0.491 (55)   |
+| 20–28 | 0.517 (8814)  | — (3)        |
+| 28–40 | 0.550 (5830)  | — (0)        |
+| 40–60 | 0.590 (3272)  | — (0)        |
+
+**Answer: closer to case (2), with a strong caveat.** Where kin0 has statistics
+(pair pT < ~16 GeV), its efficiency is consistent with all-slices (within ~1-2%,
+the 12-16 point ~1.9σ high but N=425) → **no strong SKEW** of the value.  BUT the
+8-14 slice has essentially **ZERO events at high pair pT (>20 GeV)** → the plateau
+is simply **unreachable** from 8-14 alone (not "lower stats but usable" — it's
+unusable at the plateau).  Implication: r17662 (8-14 only) can test the TURN-ON
+region robustly but **cannot probe the plateau at all**; a plateau comparison
+needs the higher-pThat r17662 slices (grid) — OR we rely on the turn-on, where the
+physics/collision question is already accessible.
+
+### Step 23: GEOMETRIC test result — the low-pT deficit is PHYSICAL (2026-06-12)
+
+**Implementation:** Added `use_geometric_matching` flag (default false → clean
+rollback) to `PythiaTruthExtras.h`; shared `geometric_match` lambda + geometric
+primary path in `PythiaFullSimExtras.c::ProcessEventFullsim` (nearest unclaimed
+reco within ΔR<0.05, ignoring barcode/prob — ATLAS standard arXiv:2012.00578).
+/review-analysis-code PASS iter 1 (log review-analysis-code-20260612-040528).
+ACLiC compiled.  Ran on r17662 single-muon with a SEPARATE suffix.
+
+**Result — geometric vs prob>0.5 on r17662 (single-muon, by muon pT):**
+
+| pT [GeV] | prob>0.5 reco_m / pass_med | geometric reco_m / pass_med |
+|---|---|---|
+| 4–5   | 0.858 / 0.635 | 0.858 / 0.635 |
+| 6–8   | 0.895 / 0.743 | 0.894 / 0.742 |
+| 8–10  | 0.918 / 0.751 | 0.918 / 0.751 |
+| 12–15 | 0.959 / 0.857 | 0.959 / 0.857 |
+
+**Geometric ≡ prob>0.5 (identical within ≤0.0014).**  Decisive interpretation:
+the muons that fail prob>0.5 matching ALSO have NO reco muon within ΔR<0.05 — they
+are **genuinely not reconstructed**, not merely prob-mistagged.  So the ~10-14%
+overlay deficit vs pp is **PHYSICAL** (real reco/ID inefficiency in the dense
+central-PbPb / HIJING environment), NOT a truth-matching artifact.  This
+**confirms the Step-21 physical hypothesis** and answers the long-standing open
+question (a) vs (b) → **(a) PHYSICAL**.
+
+**Consequences / reconciliation of the whole investigation:**
+- The matching method (prob>0.5 vs geometric) does NOT matter on a clean sample —
+  they agree.  Consistent with the Run 2 note using prob>0.5 and getting physical ε.
+- The barcode collision (r17618) and dR fallback are minor perturbations ON TOP of
+  this physical baseline (collision possibly +a few % at 10-15 GeV, Step 21).
+- Bug #1 (index mapping) was the real code bug (10%→50% pair); after it, the
+  residual overlay deficit is physical, expected, and present in data.
+- The deficit is largest at low pT (4-6 GeV: ε~0.64 vs pp~0.74) and shrinks toward
+  higher pT — exactly the "low-pT muons most affected by underlying-event hits"
+  picture.
+
+**Results separation / rollback (per user request):**
+- prob>0.5 (no-dR): `r17662_run/..._r17662_nodr_single_muon.root`
+- geometric: `r17662_run/..._r17662_geometric_single_muon.root`
+- with-dR: `r17662_run/..._r17662_withdr_single_muon.root`
+- plots: `plots/geometric_matching_test/` (geometric), `plots/pth_slice_skew_test/` (Task 2)
+- Code rollback: `use_geometric_matching` defaults false (no behavior change); the
+  diff is additive in 2 files (PythiaTruthExtras.h, PythiaFullSimExtras.c).
+
+### Step 24: InitParamsExtra override discovered; dR fallback decoupled & default-OFF; Step 20-23 reco_match corrected (efficiency conclusions HOLD) (2026-06-12)
+
+**Critical discovery:** `InitParamsExtra()` is called INSIDE `Run()` (via
+`DimuonAlgCoreT::Run` → `InitParamsHook` → `CallInitParams` fold) and unconditionally
+sets `pythia_only_barcode_cache = true`.  It therefore OVERRIDES any
+`py.pythia_only_barcode_cache = false` set in a run macro before `Run()`.  Since the
+old dR-fallback gate was `else if (pythia_only_barcode_cache)`, the dR fallback could
+NEVER be disabled from a macro — so **all prior "nodr" r17662 runs (Steps 20-23)
+actually ran WITH the dR fallback ON.**
+
+**Corrected r17662 single-muon numbers (6-8 GeV, N=2918):**
+
+| matching | reco_match | pass_medium (= EFFICIENCY) |
+|---|---|---|
+| pure prob>0.5 (no dR) — TRUE default | 0.8266 | 0.7426 |
+| prob>0.5 + dR fallback | 0.8955 | 0.7430 |
+| geometric ΔR<0.05 | 0.894  | 0.7423 |
+| pp reference (prob>0.5) | 0.983 | 0.869 |
+
+**The physics conclusion is UNCHANGED and now MORE robust:** `pass_medium` (the
+efficiency) is **~0.743 for ALL three overlay matching methods** (pure prob>0.5,
++dR, geometric) — the matching method does NOT change the efficiency; the
+dR/geometric "recovered" muons (the reco_match difference) all FAIL Medium anyway.
+So the ~14% deficit vs pp (0.743 vs 0.869) is **robustly PHYSICAL**, independent of
+matching method.  This SUPERSEDES the Step-23 wording "geometric ≡ prob>0.5 reco_match"
+(that comparison was geometric-vs-(prob+dR), both ~0.89); the correct invariant is
+**pass_medium is method-independent**.
+
+**Code change (this session, /review-analysis-code PASS, log 20260612-041807):**
+- Decoupled the dR fallback: new flag `use_dr_fallback` (default **false**) in
+  PythiaTruthExtras.h; gate in PythiaFullSimExtras.c changed
+  `pythia_only_barcode_cache` → `use_dr_fallback`.  `pythia_only_barcode_cache` keeps
+  its true cache role (PythiaTruthExtras.c:355) and stays true in InitParamsExtra.
+- **DEFAULT overlay matching is now pure prob>0.5 — NO dR, NO geometric** (verified:
+  default reco_match=0.8266, no dR; use_dr_fallback=true reco_match=0.8955).
+- The geometric-matching refactor (Step 23) was **REVERTED from production** — not
+  needed (efficiency is method-independent) and its restructure exposed, confusingly,
+  the true no-dR rate.  The geometric *result* stands (pass_medium 0.7423).
+- Final production diff: +12/-3 in 2 files (PythiaTruthExtras.h, PythiaFullSimExtras.c).
+  Rollback = set `use_dr_fallback`/`use_geometric_matching` defaults or git revert.
+
+**For the upcoming full signal-truth-only overlay sample:** it will run the original
+prob>0.5 procedure by default (no dR workaround, no geometric) — as required.
+
 ## Latest Stage
 
-**Step 15 (2026-06-11): q*eta-integrated single-muon efficiency produced.**
+**Step 24 (2026-06-12): dR fallback decoupled & default-OFF; efficiency conclusion robust.**
 
-PP single-muon plateau ~92-93%; squaring gives ~86% but observed pair
-efficiency is ~80%.  ~6% gap attributable to pair-level correlations
-(close-by muons from b-decay degrading each other's reconstruction).
-Investigation reopened for further study of this correlation effect.
+DISCOVERY: InitParamsExtra (in Run) forces pythia_only_barcode_cache=true, so prior
+"nodr" runs were actually +dR.  Decoupled the dR fallback into `use_dr_fallback`
+(default false) → DEFAULT overlay matching is now pure prob>0.5 (no dR, no geometric),
+verified on r17662 (reco_match 0.8266 default vs 0.8955 +dR).  Geometric refactor
+reverted from production.  PHYSICS HOLDS & STRONGER: pass_medium efficiency is
+~0.743 for pure-prob / +dR / geometric alike (method-independent) vs pp 0.869 →
+deficit is robustly PHYSICAL.  /review-analysis-code PASS.  Full sample will run the
+original prob>0.5 procedure by default, as the user required.  REMAINING (optional):
+higher-pThat r17662 slices for plateau stats; pair-level cross-check (single²≈pair).
+
+**Prior Step 21-22 (2026-06-12): collision partial-contribution + physical hypothesis logged; pThat skew assessed.**
+
+(1) Revised Step 20: collision NOT strictly negligible — r17662 higher than r17618
+at 10–15 GeV (0.814/0.857 vs 0.762/0.773; low stats, slice-confounded), small at
+6–10 GeV.  Added physical hypothesis: low-pT central-PbPb deficit may be real
+(underlying-event/HIJING soft hits hurt low-pT muon ID most); to be tested by
+geometric matching (physical → same deficit; artifact → recovers).
+(2) Task 2: pThat 8-14-only does NOT strongly skew ε where it has stats, but has
+ZERO plateau stats (>20 GeV) → turn-on testable, plateau not.
+NEXT: (Task 1) implement geometric ΔR<0.05-to-Medium matching (/review-analysis-code),
+run on r17662 with SEPARATE output suffix/dir (no overwrite, clear rollback),
+compare geometric vs prob>0.5 to adjudicate physical vs artifact.
+
+---
+**Prior Step 19 (2026-06-11): r17662 full-stats skim submitted (task 50903365).**
+
+Grid skim of signal-only-truth r17662 (802781 pTH8_14, 10k events) submitted;
+monitor daemon downloads on completion.  Background poll watches
+`grid_monitor_state.txt` for `50903365 completed` and re-invokes to run the
+pipeline.  When NTUP lands: disable dR fallback (toggle, /review-analysis-code),
+run NTP→RDF→plot on r17662 with pure `prob>0.5`, compare reco ε vs current
+(r17618+dR: pair ~49-55%, single-muon plateau ~77%) and vs Run 2 physical shape.
+Prior 100-event signal-only skim was a run_test.sh `--evtMax=100` local test, not
+an AOD limit.
