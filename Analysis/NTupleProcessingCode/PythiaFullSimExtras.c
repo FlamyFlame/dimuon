@@ -159,9 +159,10 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
             int list_pos = std::distance(real_muon_truth_barcode_list.begin(), it);
             int reco_ind = real_muon_orig_index[list_pos];
             fill_reco_quantities(cur_muon, reco_ind);
-        } else if (self().pythia_only_barcode_cache) {
-            // dR fallback for overlay: barcode collision causes wrong truth
-            // decorations on reco muons; find the closest unclaimed reco muon
+        } else if (self().use_dr_fallback) {
+            // ad-hoc dR fallback (default OFF): only for the barcode-collision
+            // r17618 sample, where the collision puts wrong truth decorations on
+            // reco muons; find the closest unclaimed reco muon
             constexpr double dR_threshold = 0.05;
             double best_dR = dR_threshold;
             int best_ind = -1;

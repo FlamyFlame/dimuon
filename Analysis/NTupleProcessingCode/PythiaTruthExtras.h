@@ -28,6 +28,14 @@ public:
     // This excludes HIJING truth from ancestor tracing lookups.
     bool pythia_only_barcode_cache = false;
 
+    // When true, enable the ad-hoc dR<0.05 FALLBACK after a failed barcode
+    // match (PythiaFullSimExtras::ProcessEventFullsim). Only meaningful for the
+    // barcode-collision r17618 overlay sample; default false so the standard
+    // procedure is pure prob>0.5 matching (no dR workaround) for signal-truth-
+    // only samples. Decoupled from pythia_only_barcode_cache (which only gates
+    // the ancestor-tracing cache).
+    bool use_dr_fallback = false;
+
     // Centre-of-mass energy in TeV. Allowed values: 5.02, 5.36 (default).
     // Used for non-private I/O path selection only; ignored for private samples.
     double E_COM = 5.36;
