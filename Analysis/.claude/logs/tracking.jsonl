@@ -18,3 +18,9 @@
 {"event":"start","command":"review-analysis-code","task":"Remove pp17 from MC-data comparison; apply 2mu4 trig eff correction to pp24 generic hists","slug":"mc-data-remove-pp17-trig-corr","timestamp":"2026-06-10T23:55:00Z"}
 {"event":"start","command":"review-plot","task":"Add multi-panel 3x3 q*eta-binned single-muon reco efficiency subplots to plot_single_muon_reco_effcy.cxx","slug":"single-muon-effcy-subplots","timestamp":"2026-06-11T14:15:20Z"}
 {"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-11T14:25:00Z","criticals":0,"warnings":0,"slug":"single-muon-effcy-subplots"}
+{"event":"start","command":"review-analysis-code","task":"Add geometric dR<0.05 truth-matching option (use_geometric_matching, default off) to PythiaFullSimExtras.c","slug":"geometric-dr-matching","timestamp":"2026-06-12T04:05:28Z"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-12T04:15:00Z","criticals":0,"warnings":0,"slug":"geometric-dr-matching"}
+{"event":"start","command":"review-analysis-code","task":"Decouple dR fallback from pythia_only_barcode_cache; use_dr_fallback default false → default matching is prob>0.5 only","slug":"decouple-dr-fallback-default-off","timestamp":"2026-06-12T04:18:07Z"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-12T04:55:00Z","criticals":0,"warnings":0,"slug":"decouple-dr-fallback-default-off"}
+{"event":"start","command":"review-plot","task":"Overlay R17662 on R17618 single-muon reco effcy, integrated + subplots, 0-5% and 5-10%","slug":"r17618-vs-r17662-effcy","timestamp":"2026-06-12T05:01:15Z"}
+{"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-12T05:10:00Z","criticals":0,"warnings":0,"slug":"r17618-vs-r17662-effcy"}
