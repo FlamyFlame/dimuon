@@ -64,29 +64,53 @@ public:
             1./(0.3  * 7.67 * 1000. * 0.689695* (0.436882 + 1.3803) / 1000.)
         };
     }
+    // sigma_PbPb = 7.8 (barn): total Pb+Pb hadronic cross-section at 5.36 TeV.
+    // WARNING: UNVALIDATED GUESS. Not sourced from any reference we have (the 2023
+    // centrality paper gives only Glauber sigma_NN, not the total hadronic sigma in
+    // barns). Roadmap Q2.2 OPEN: needs a citable 5.36 TeV reference before final
+    // results. (Run 2 used 7.66 b at 5.02 TeV.) Same caveat for the 2024/2025 funcs.
+    // L_int below = 1.02426 nb^-1 (PbPb 2023 mu4, prescale-corrected, GRL total minus
+    // excluded bad run 462964; see IntNotes/analysis_metadata.md).
     static std::vector<double> make_crossx_factors_pbpb_2023() {
         return {
-            1./(0.05 * 7.8 * 1000. * 26.1428 * 1.3896 / 1000.),
-            1./(0.05 * 7.8 * 1000. * 20.3241 * 1.3896 / 1000.),
-            1./(0.1  * 7.8 * 1000. * 14.0502 * 1.3896 / 1000.),
-            1./(0.1  * 7.8 * 1000. *  8.5074 * 1.3896 / 1000.),
-            1./(0.2  * 7.8 * 1000. *  3.7733 * 1.3896 / 1000.),
-            1./(0.3  * 7.8 * 1000. *  0.6716 * 1.3896 / 1000.)
+            1./(0.05 * 7.8 * 1000. * 26.1428 * 1.02426 / 1000.),
+            1./(0.05 * 7.8 * 1000. * 20.3241 * 1.02426 / 1000.),
+            1./(0.1  * 7.8 * 1000. * 14.0502 * 1.02426 / 1000.),
+            1./(0.1  * 7.8 * 1000. *  8.5074 * 1.02426 / 1000.),
+            1./(0.2  * 7.8 * 1000. *  3.7733 * 1.02426 / 1000.),
+            1./(0.3  * 7.8 * 1000. *  0.6716 * 1.02426 / 1000.)
         };
     }
+    // PLACEHOLDER T_AA: the T_AA values below are the 2023 Glauber values
+    // (data/centrality/TaaValues2023.txt in the IntNote repo) reused as a
+    // placeholder -- official 2024 centrality/T_AA are not yet available. Only
+    // the luminosity factor (1.59663 nb^-1, PbPb 2024 mu4 prescale-corrected) is
+    // 2024-specific. Must be flagged as a 2023-T_AA placeholder in the internal
+    // note. See IntNotes/analysis_metadata.md. (sigma_PbPb=7.8 b: see 2023 func note.)
     static std::vector<double> make_crossx_factors_pbpb_2024() {
         return {
-            1./(0.05 * 7.8 * 1000. * 26.1428 * 1.5411 / 1000.),
-            1./(0.05 * 7.8 * 1000. * 20.3241 * 1.5411 / 1000.),
-            1./(0.1  * 7.8 * 1000. * 14.0502 * 1.5411 / 1000.),
-            1./(0.1  * 7.8 * 1000. *  8.5074 * 1.5411 / 1000.),
-            1./(0.2  * 7.8 * 1000. *  3.7733 * 1.5411 / 1000.),
-            1./(0.3  * 7.8 * 1000. *  0.6716 * 1.5411 / 1000.)
+            1./(0.05 * 7.8 * 1000. * 26.1428 * 1.59663 / 1000.),
+            1./(0.05 * 7.8 * 1000. * 20.3241 * 1.59663 / 1000.),
+            1./(0.1  * 7.8 * 1000. * 14.0502 * 1.59663 / 1000.),
+            1./(0.1  * 7.8 * 1000. *  8.5074 * 1.59663 / 1000.),
+            1./(0.2  * 7.8 * 1000. *  3.7733 * 1.59663 / 1000.),
+            1./(0.3  * 7.8 * 1000. *  0.6716 * 1.59663 / 1000.)
         };
     }
-    // TODO: replace with actual 2025 T_AA and luminosity values once available
+    // PLACEHOLDER T_AA: official 2025 centrality/T_AA are not yet available, so the
+    // T_AA values below are the 2023 Glauber values (data/centrality/TaaValues2023.txt)
+    // reused as a placeholder -- MUST be flagged as such in the internal note. The
+    // luminosity factor (2.59933 nb^-1, PbPb 2025 mu4 prescale-corrected) IS the
+    // 2025 value. See IntNotes/analysis_metadata.md. (sigma_PbPb=7.8 b: see 2023 func note.)
     static std::vector<double> make_crossx_factors_pbpb_2025() {
-        return make_crossx_factors_pbpb_2023();
+        return {
+            1./(0.05 * 7.8 * 1000. * 26.1428 * 2.59933 / 1000.),
+            1./(0.05 * 7.8 * 1000. * 20.3241 * 2.59933 / 1000.),
+            1./(0.1  * 7.8 * 1000. * 14.0502 * 2.59933 / 1000.),
+            1./(0.1  * 7.8 * 1000. *  8.5074 * 2.59933 / 1000.),
+            1./(0.2  * 7.8 * 1000. *  3.7733 * 2.59933 / 1000.),
+            1./(0.3  * 7.8 * 1000. *  0.6716 * 2.59933 / 1000.)
+        };
     }
 
     // -------- public class methods --------
@@ -114,11 +138,11 @@ void PbPbBaseClass<Derived>::BuildPbPbMaps(){
     run_yr_and_ctrbin_version_to_crossx_factors_map[{23, "default"}] = make_crossx_factors_pbpb_2023();
     run_yr_and_ctrbin_version_to_crossx_factors_map[{24, "default"}] = make_crossx_factors_pbpb_2024();
 
-    run_yr_and_ctrbin_version_to_crossx_factors_map[{25, "default"}]     = make_crossx_factors_pbpb_2025(); // TODO: update with 2025 values
+    run_yr_and_ctrbin_version_to_crossx_factors_map[{25, "default"}]     = make_crossx_factors_pbpb_2025(); // 2025 lumi set; T_AA = 2023 placeholder until official
     run_yr_and_ctrbin_version_to_crossx_factors_map[{18, "include_upc"}] = make_crossx_factors_pbpb_run2(); // WRONG!! 50-100% NEED TO BE CORRECTED
     run_yr_and_ctrbin_version_to_crossx_factors_map[{23, "include_upc"}] = make_crossx_factors_pbpb_2023(); // WRONG!! 50-100% NEED TO BE CORRECTED
     run_yr_and_ctrbin_version_to_crossx_factors_map[{24, "include_upc"}] = make_crossx_factors_pbpb_2024(); // WRONG!! 50-100% NEED TO BE CORRECTED
-    run_yr_and_ctrbin_version_to_crossx_factors_map[{25, "include_upc"}] = make_crossx_factors_pbpb_2025(); // TODO: update with 2025 values
+    run_yr_and_ctrbin_version_to_crossx_factors_map[{25, "include_upc"}] = make_crossx_factors_pbpb_2025(); // 2025 lumi set; T_AA = 2023 placeholder until official
 
 }
 
