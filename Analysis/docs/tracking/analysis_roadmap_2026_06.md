@@ -5,6 +5,10 @@ complete. Companion checklist tracking doc:
 `analysis_roadmap_buildout.md`. Per-task agent instructions:
 `Analysis/docs/roadmap_tasks/`.
 
+**Physics ground truth (stable, no status):** `Analysis/docs/analysis_overview.md`
+— objective, observables, scientific methodology, efficiency strategy, sample
+roles. This roadmap owns all *status*; the overview owns the *what/why*.
+
 **Reference:** Run 2 note summary in
 `.claude/kb/analysis/run2_dimuon_note.md` (full note:
 `IntNotesRun2DimuonReference/`). The Run 3 note skeleton is at
@@ -35,17 +39,17 @@ numbers/figures; **BLOCKED** = see Q4.
 | 1 | Introduction (physics motivation, HF energy loss, single-b method) | DRAFT+PH | Run 2 note intro + Pythia/Powheg truth studies |
 | 2 | Datasets: PbPb 23/24/25 data, triggers, skim | DRAFT+PH | May 2026 skim record (`data-merging-record.txt`); event counts 124.5M/92.6M/260.4M; exact HLT names/GRLs need user confirmation (Q2) |
 | 3 | Datasets: pp24 data | DRAFT+PH | May 2026 skim (12 parts); lumi needs confirmation |
-| 4 | Datasets: MC samples | DRAFT+PH | ATLHI-596 (Pythia truth), ATLHI-666 (Pythia fullsim pp24), ATLHI-658 (Powheg fullsim pp24), overlay r-tags (ATLHI-576 test); final production tags pending |
+| 4 | Datasets: MC samples | DRAFT+PH | ATLHI-596 (Pythia truth), ATLHI-666 (Pythia fullsim pp24 — reco-eff & det-resp), overlay r-tags (ATLHI-576/r17662 — reco-eff overlay), Powheg **truth** bb/cc (NLO template fit only). Powheg **fullsim** (ATLHI-658) obsolete — not requested for Run 3. Final production tags pending |
 | 5 | PbPb event selection (5-cut sequential: banana, ZDC time, preamp, nTrk cuts) | **READY** | Cuts + plots rerun 2026-06-08 with May skim, all 3 years (`plots/single_b_analysis/event_selection*`) |
 | 6 | Centrality determination (FCal ET, 2023 Glauber thresholds, FCal cross-year scaling) | **READY** (method) | `fcal_scale_pbpb_20YY.root`, centrality recalc documented; official T_AA refs needed (Q2) |
 | 7 | Muon & pair selections, cutflow | **READY** (method+plots) | NTuple processing cuts; `hists_cut_acceptance_*`, signal acceptance cutflow plotter |
 | 8 | Trigger efficiency: PbPb single-mu4 ε^nc(pT, q·η, ctr) + Fermi+log fits | **READY** | P2 rerun 2026-06-09 with May skim, all 3 years; 132 plots + fit canvases |
 | 9 | Trigger efficiency: dR correlation corrections | DRAFT+PH | Method settled (D9: cross-term as MC reference); final numbers need unbiased MC (Q4) |
-| 10 | Trigger efficiency: pp24 2mu4 | BLOCKED→Q3 | Code ready (§3d); needs pp24 ntuple rerun (task 02) |
+| 10 | Trigger efficiency: pp24 2mu4 | **READY** | pp24 2mu4 ε^nc + erf+log fits done 2026-06-10 (P2; PP has no Pipeline 3 by design) |
 | 11 | MC truth studies (muon sources analog): Pythia flavor/origin, Powheg ancestor groups | **READY** | Pythia truth 5.36/5.02 + Powheg truth bb/cc processed, plots exist |
-| 12 | Reco efficiency (PbPb overlay + pp fullsim) | BLOCKED (Q4) | Test samples only + 2 open bugs; write method text with placeholder figures |
-| 13 | Detector response / momentum imbalance | BLOCKED (Q4) | Powheg pp17 det-resp exists as method demo; pp24/overlay samples needed |
-| 14 | Cross-sections (pp24, PbPb combined) | DRAFT+PH | Plots exist (2026-06-08 PbPb; pp24 from old skim) but **uncorrected** for trig/reco eff — preliminary |
+| 12 | Reco efficiency (PbPb overlay + pp fullsim) | BLOCKED (Q4) | Method settled; pair ε_reco(pair pT, pair η, dR). Index-mapping/HIJING bugs fixed; residual low-pT overlay deficit shown PHYSICAL (see investigation Step 23–24). Still test samples only → placeholder figures |
+| 13 | Detector response / momentum imbalance | BLOCKED (Q4) | Now from **Pythia fullsim** (pp24 + overlay); pp17 Powheg det-resp kept as method demo only (Powheg fullsim obsolete). Full Pythia fullsim samples needed |
+| 14 | Cross-sections (pp24, PbPb combined) | DRAFT+PH | Plots exist on May skim (PbPb 2026-06-08, pp24 2026-06-10) **with no-correlation trigger-efficiency correction applied**; still **missing reco-eff correction** + confirmed lumi/T_AA (esp. PbPb25) — preliminary |
 | 15 | R_AA | DRAFT+PH | `RAA_plotting.cxx` exists; needs corrected crossx + 2025 lumi/T_AA |
 | 16 | Background / fake-muon purity (Δp/p templates) | BLOCKED (Q4) | No code yet; method from Run 2 note §DpopAna |
 | 17 | Systematics | DRAFT+PH (list only) | Source list adaptable from Run 2; no evaluations yet |
@@ -62,6 +66,33 @@ That is roughly half the note.
 Numbers found in the repo are listed with their location, but their
 provenance is unverified — **treat none of these as known facts until
 confirmed.**
+
+> **2026-06-15 — Q2.1, Q2.3, Q2.4, Q2.5 ANSWERED by the user.** Authoritative
+> values now documented in **`IntNotes/analysis_metadata.md`** (private CERN
+> GitLab IntNote repo), backed by `IntNotes/data/luminosity/` (per-run lumi
+> CSVs) and `IntNotes/data/centrality/TaaValues2023.txt`. Summary:
+> - **Q2.1 lumi** (`Prescale Corrected`, analysis triggers): pp24 2mu4 = 400.412 pb⁻¹;
+>   PbPb23 mu4 = 1.02426 nb⁻¹ (1029.52 µb⁻¹ GRL total − 5.262 µb⁻¹ for excluded
+>   bad run 462964; the other excluded run 461674 is below the table range);
+>   PbPb24 mu4 = 1.59663 nb⁻¹; PbPb25 mu4 = 2.59933 nb⁻¹; PbPb26 = placeholder.
+>   **Action:** update `PbPbBaseClass.h` lumi (currently 1.3896 / 1.5411 / reuse)
+>   and `PPBaseClass.h` pp24 (410.815 → 400.412) via /review-analysis-code.
+>   Per-year official lumi **uncertainty** still needed.
+> - **Q2.3 T_AA**: 2023 values in `TaaValues2023.txt`; **2024 & 2025 reuse 2023
+>   T_AA as a placeholder** (official centralities unavailable) — see reminder below.
+> - **Q2.4 HLT chains** and **Q2.5 GRL names**: per-year tables in
+>   `analysis_metadata.md`, from `SkimCode/scripts/TrigRates_CA.py` (consistent
+>   with the `SkimCode/run_*/` XMLs). Analysis triggers: PbPb `HLT_mu4_L1MU3V`,
+>   pp24 `HLT_2mu4_L12MU3V`.
+>
+> **Q2.2 (total PbPb hadronic σ = 7.8 b) is STILL OPEN** — needs a citable
+> 5.36 TeV reference.
+>
+> **INTERNAL-NOTE REMINDER (Q2.3):** the 2024 and 2025 cross-section / R_AA /
+> T_AA-dependent results use **2023 Glauber T_AA as a placeholder**. This MUST be
+> stated explicitly in the internal note (and revisited once official 2024/2025
+> centralities are released). The code carries the matching remark in
+> `PbPbBaseClass.h::make_crossx_factors_pbpb_2024/2025`.
 
 1. **Integrated luminosities (per year, per trigger, GRL-matched to our
    skim):**
@@ -82,15 +113,19 @@ confirmed.**
    mu4 chain (and mu6/mu8 support chains), mu4_mu4noL1, 2mu4; pp24
    2mu4. Especially: why PbPb25 passmu4mu4noL1 ≈ 2.4% vs ~70–80% in
    23/24 (menu/prescale change?) — affects whether mu4_mu4noL1 is
-   usable at all.
+   usable at all. *(2026-06-14: mu4_mu4noL1 is currently NOT used for pp
+   or PbPb; only single-mu4 (PbPb) and 2mu4 (pp24). Revisit only if that
+   decision changes.)*
 5. **GRL names per year** (PbPb23/24/25, pp24). Skim investigation doc
    mentions v113 vs v120 for PbPb24 — which is final for the note?
 6. **MC production details for the datasets section:** final container
    names/AMI tags, generator versions/tunes, filter efficiencies, event
-   counts for ATLHI-596/666/658; HIJING overlay production status
-   (ATLHI-576 — r17662 StandardSignalOnlyTruth recommended by our
-   investigation; has full production been requested? expected stats &
-   timeline?). Also Powheg fullsim **overlay** (PbPb conditions) plans.
+   counts for ATLHI-596 (Pythia truth) and ATLHI-666 (Pythia fullsim pp24);
+   HIJING overlay production status (ATLHI-576 — r17662 StandardSignalOnlyTruth
+   recommended by our investigation; has full production been requested?
+   expected stats & timeline?). (Powheg **fullsim** — ATLHI-658 — is obsolete
+   for Run 3 and NOT part of the final MC sets; only Powheg **truth** bb/cc is
+   used, for the NLO template fit. No Powheg fullsim overlay is planned.)
 7. **MCP recommendations for Run 3 HI muons** (scale factors, reco-eff
    uncertainties): which release/recommendation applies, or do we go
    fully MC-driven?
@@ -114,37 +149,43 @@ They must be confirmed before any number enters the note.
 
 ### (a) Not yet performed (in sequence; all inputs on disk)
 
-| Step | What | Why pending | Task file |
-|---|---|---|---|
-| pp24 ntuple reprocessing | NTP on May 2026 skim (12 parts); current `muon_pairs_pp_2024_*` are Feb/Mar 2026 (old skim) | Just not run since skim landed | `task_01` |
-| pp24 crossx | RDF hist fill + `plot_single_b_crossx_pp` on new ntuples | Depends on previous | `task_01` |
-| pp24 trig eff P2+P3 | 2mu4 ε^nc + ε_dR^{2mu4} (code implemented, §3d) | Depends on pp24 ntuples | `task_02` |
-| PbPb passmu4noL1 ntuple reprocessing | Skimmer-side fix applied in code; ntuples not reprocessed | Only needed if mu4_mu4noL1 is used (see Q2.4) | — (decide first) |
-| Overlay reco-eff Bug #1 + #2 fixes | Index-mapping fix + dR-fallback matching (specs written in `hijing_overlay_reco_effcy_investigation.md` Step 10) | Awaiting implementation decision | `task_03` |
-| Cross-term dR correction on MC | Run P3-style cross-term on fullsim (unbiased) sample | Test-sample stats only for now → preliminary | `task_03` (validation step) |
-| PbPb23 part 1 raw re-download | `data_pbpb23_part1.root` was missing at one point (mu4 doc Step 16); May skim record lists part1 (24.9M, v2) — verify current hadd includes it | Verification, not blocked | `task_01` (pre-check) |
+*(none currently)*
+
+> **Removed 2026-06-14 (finished — see status ledger):** pp24 ntuple
+> reprocessing, pp24 crossx, pp24 trig eff P2 (`task_01`, `task_02`) — all done
+> on the May skim 2026-06-10. Overlay reco-eff Bug #1/#2 fixes + pipeline rerun
+> (`task_03`) — done & committed (investigation Steps 11–13). PbPb23 part1
+> hadd-inclusion check — verified. The cross-term dR correction is **not** an
+> active reco/trig step (PbPb P3 cross-term plot dropped as biased, D9; PP has
+> no Pipeline 3); dR trigger correction stays a dummy ≡ 1 (Q4).
+>
+> **Dropped 2026-06-14:** PbPb passmu4noL1 ntuple reprocessing — **not needed**.
+> mu4_mu4noL1 is **not used** for either pp or PbPb (current decision); only
+> single-mu4 (PbPb) and 2mu4 (pp24) drive the analysis.
 
 ### (b) Performed but preliminary / not refined
 
-- **PbPb & pp24 crossx plots** — produced (PbPb 2026-06-08 with May
-  skim; pp24 with old skim) but **without trigger- or reco-efficiency
-  corrections**; normalization (lumi/T_AA) unconfirmed (Q2). Treat all
-  current crossx/R_AA numbers as shape-level preliminary.
-- **Overlay reco efficiency** — produced but unphysical (~20%); three
-  bugs identified, one fixed; numbers invalid until task 03.
-- **Powheg fullsim pp17 chain** (single-muon det resp + mixed pairs) —
-  complete, but Run 2 (2017) conditions: serves as method demonstration
-  only; final needs pp24 sample (Q4).
+- **PbPb & pp24 crossx plots** — produced on the May skim (PbPb
+  2026-06-08, pp24 2026-06-10) **with the no-correlation trigger-efficiency
+  correction applied** (`w_trig = 1/ε_trig^pair`); still **missing the
+  reco-efficiency correction**; normalization (lumi/T_AA) unconfirmed (Q2).
+  Treat current crossx/R_AA numbers as preliminary until reco-eff + lumi/T_AA.
+- **Overlay reco efficiency** — three bugs fixed; pair ε now ~49–55%, and the
+  residual low-pT deficit vs pp is shown PHYSICAL (investigation Steps 23–24).
+  Final numbers still await the full signal-only-truth (r17662) sample (Q4).
+- **Powheg fullsim pp17 chain** — Run 2 conditions; **obsolete for Run 3**
+  (reco-eff & det response now come from Pythia fullsim — see `docs/powheg.md`
+  role note). Retained for reference only.
 
 ### (c) Precise but not propagated to final results
 
-- **PbPb single-mu4 ε^nc(pT, q·η, ctr) fits** (P2, all 3 years, May
-  skim, fine q·η) — exist in
-  `pbpb_20YY/trg_effcy_pT_fitting_to_fermi_plus_log/single_mu_effcy_pT_fit.root`
-  but are **not applied as per-pair weights** in the crossx pipeline
-  (P1 deliberately applies no trigger-efficiency correction). The
-  inclusion–exclusion pair weight 1/(ε₁+ε₂−ε₁ε₂) needs to be wired
-  into the crossx hist filling. → `task_05`.
+- **PbPb single-mu4 ε^nc + pp24 2mu4 ε^nc per-pair trigger weights** —
+  **now wired into and applied in the crossx pipeline** (done 2026-06-10):
+  PbPb uses inclusion–exclusion `1/(ε₁+ε₂−ε₁ε₂)` (`RDFBasedHistFillingPbPb.cxx:926`,
+  `weight_for_RAA_trig_corr`), pp24 uses `1/(ε₁·ε₂)`
+  (`RDFBasedHistFillingPP.cxx:373`, `crossx_weight_trig_corr`). The only
+  remaining unpropagated correction is the **pair reco efficiency**
+  ε_reco(pair pT, pair η, dR) → `task_05` (reco-eff part only).
 - **Event-selection cuts & FCal scaling** — derived and applied
   (propagated; no action).
 
@@ -155,12 +196,17 @@ They must be confirmed before any number enters the note.
 All are MC-sample-availability limited. For each, a **dummy strategy**
 keeps the chain runnable end-to-end.
 
+> **Consolidated placeholder list:** `docs/placeholder.md` (symlinked as
+> `IntNotes/placeholder.md`) indexes every standing placeholder — 2024/2025
+> centrality & ⟨T_AA⟩, reco efficiency, σ_PbPb, etc. — with code locations and
+> note-disclosure requirements.
+
 | Step | Missing prerequisite | Dummy strategy until available |
 |---|---|---|
-| PbPb pair reco efficiency ε_reco(pT, q·η, ctr) | Full Pythia fullsim HIJING-overlay production (r17662 recommended; only 60k-evt r17618 + 1k-evt r17662 test samples exist) **and** Bug #1/#2 fixes (task 03 — doable now) | After task 03: use bug-fixed r17618 60k-evt efficiencies (large stat errors) as dummy; or flat ε per Run 2-like values |
-| pp pair reco efficiency | Full Pythia fullsim pp24 sample (`pythia_fullsim_full_sample/` empty; ATLHI-666 test only) | Test-sample efficiency or flat dummy |
-| NLO det response / unfolding inputs, NLO eff cross-check | Powheg fullsim pp24 (ATLHI-658) — not produced; only pp17 exists | Use pp17 Powheg det-resp shapes as placeholder |
-| PbPb NLO overlay | Powheg fullsim overlay samples (classes exist for yr 18, 23–26; no samples) | Skip; not on critical path |
+| PbPb pair reco efficiency ε_reco(pair pT, pair η, dR) | Full Pythia fullsim HIJING-overlay production (r17662 recommended; only 60k-evt r17618 + 10k-evt r17662 test samples exist). Bug #1/#2 fixes DONE (task 03) | Use bug-fixed r17618 60k-evt pair efficiencies (large stat errors) as dummy; or flat ε per Run 2-like values |
+| pp pair reco efficiency ε_reco(pair pT, pair η, dR) | Full Pythia fullsim pp24 sample (`pythia_fullsim_full_sample/` empty; ATLHI-666 test only) | Test-sample efficiency or flat dummy |
+| Det response / unfolding inputs | **Pythia fullsim** pp24 (+ HIJING overlay) — only test samples exist. (Powheg fullsim is obsolete: pp17-only, no pTHat → poor high-pT stats; see `docs/powheg.md`) | Use Pythia fullsim test-sample det-resp shapes as placeholder |
+| ~~PbPb NLO overlay~~ | Powheg fullsim overlay — **dropped** (Powheg fullsim obsolete for Run 3) | n/a |
 | Δp/p significance + template fit (purity) | Signal templates need fullsim/overlay true muons; bkg templates need π/K-enriched MC (Run 2 used jetjet JZ slices — Run 3 equivalent not identified) **and code does not exist yet** | Build the framework now (task 07) on test fullsim samples; quote purity as placeholder |
 | dR trigger-correlation correction (final) | Unbiased trigger decision in MC → needs fullsim overlay with trigger sim | Cross-term on test sample; or assume ε_dR ≡ 1 with a systematic |
 | Final R_AA normalization | 2025 lumi + T_AA (Q2.1/2.3) | Keep placeholder = 2023 values, flagged |
@@ -183,25 +229,25 @@ column of the roadmap.
    PbPb23/24/25 ✓    │ Powheg truth bb/cc ............ DONE         │
    pp24 ✓            │ Pythia fullsim pp24 ........... TEST ONLY    │
         │            │ Pythia fullsim HIJING overlay . TEST ONLY    │
-        ▼            │ Powheg fullsim ................ pp17 ONLY    │
+        ▼            │ (Powheg fullsim ............... OBSOLETE)    │
  [1] PbPb event sel ✓└─────────────────────────────────────────────┘
         │
         ▼
  [2] NTuple processing
-       PbPb 23/24/25 ✓ (2026-06-08)        pp24 ✗ → task_01
+       PbPb 23/24/25 ✓ (2026-06-08)        pp24 ✓ (2026-06-10)
         │
         ▼
  [3] Trigger efficiency
-       PbPb P2 ε^nc + fits ✓ (06-09)       pp24 P2/P3 ✗ → task_02
-       dR corr: cross-term ref ✓ (D9);  final from MC → dummy ε_dR=1
+       PbPb P2 ε^nc + fits ✓ (06-09)       pp24 2mu4 P2 ✓ (06-10)
+       dR corr: dropped (biased, D9 / no PP P3) → dummy ε_dR=1
         │
         ▼
  [4] Reco efficiency                        ← critical dummy
-       fix Bug#1/#2 → task_03; dummy ε_reco files → task_04
+       Bug#1/#2 fixed ✓ (task_03); dummy ε_reco files → task_04
         │
         ▼
- [5] Apply per-pair weights w⁻¹ = ε_trig_pair · ε_reco,1 · ε_reco,2
-       → task_05 (new: currently NO corrections applied in crossx)
+ [5] Apply per-pair weights w⁻¹ = ε_trig^pair · ε_reco(pair pT, pair η, dR)
+       trigger part ✓ applied (06-10); reco-eff part → task_05
         │
         ▼
  [6] Cross-sections: pp24 + PbPb (combined years) → rerun in task_05
@@ -229,18 +275,19 @@ reviewer skill to invoke:
 
 | File | Step | Can start | Blocking input |
 |---|---|---|---|
-| `task_01_pp24_reprocess.md` | pp24 NTP + crossx on May skim | NOW | — |
-| `task_02_pp24_trig_eff.md` | pp24 2mu4 P2+P3 | after 01 | — |
-| `task_03_overlay_recoeff_bugfix.md` | Bug #1/#2 fixes + rerun overlay pipeline | NOW | — |
-| `task_04_dummy_reco_eff.md` | Dummy ε_reco correction files | after 03 | — |
-| `task_05_apply_eff_to_crossx.md` | Wire ε_trig (+ ε_reco) weights into crossx; rerun | after 02, 04 | — |
+| `task_04_dummy_reco_eff.md` | Dummy ε_reco(pair pT, pair η, dR) correction files | NOW | — |
+| `task_05_apply_eff_to_crossx.md` | Wire **ε_reco** pair weight into crossx; rerun (trigger weight already applied) | after 04 | — |
 | `task_06_raa.md` | R_AA from corrected crossx | after 05 | 2025 lumi/T_AA (user) |
 | `task_07_dpop_template_framework.md` | Δp/p significance + template-fit code | NOW | bkg MC choice (user) |
 | `task_08_systematics.md` | Systematics variation framework | after 05 | WP choice (user) |
 | `task_09_intnote_sections.md` | Write IntNote sections (Q1 READY/DRAFT+PH) | NOW | Q2 numbers (placeholders OK) |
 
-Three tasks are immediately startable in parallel: **01, 03, 07** (and
-**09** for note text).
+> **Done & removed 2026-06-14:** `task_01` (pp24 NTP + crossx),
+> `task_02` (pp24 2mu4 trig eff), `task_03` (overlay reco-eff Bug #1/#2 +
+> rerun). The trigger-weight half of `task_05` is also done; `task_05` now
+> covers the reco-eff weight only. Task instruction files kept on disk.
+
+Immediately startable in parallel: **04, 07** (and **09** for note text).
 
 ---
 
@@ -249,3 +296,8 @@ Three tasks are immediately startable in parallel: **01, 03, 07** (and
 | Date | Step | Status change |
 |---|---|---|
 | 2026-06-10 | Roadmap created | — |
+| 2026-06-14 | task_01 (pp24 NTP+crossx), task_02 (pp24 2mu4 trig eff) | DONE (May skim, 2026-06-10) — removed from Q3a/Q5 |
+| 2026-06-14 | task_03 (overlay reco-eff Bug #1/#2 + rerun) | DONE (investigation Steps 11–13) — removed |
+| 2026-06-14 | Trigger no-correlation correction in crossx | DONE & APPLIED (PbPb + pp24); task_05 reduced to reco-eff only |
+| 2026-06-14 | Reco-eff formula corrected | pair ε_reco(pair pT, pair η, dR), not ε₁·ε₂ |
+| 2026-06-14 | Powheg fullsim | marked obsolete; reco-eff & det-resp → Pythia fullsim; Powheg truth → template fit |
