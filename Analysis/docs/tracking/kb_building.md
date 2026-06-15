@@ -75,11 +75,10 @@ it.
 
 1. [DONE] Design: GUIDE + `/kb-build` (+ `kb-builder` agent) + `/kb-review`;
    CLAUDE.md auto-dispatch + PDF gotcha; index/FUTURE_READ stubs; memories.
-2. [TODO] Bulk build from user's paper list → `/kb-build` FULL → `/kb-review` FULL.
-   Blocking input: the paper list (grouped).
-3. [TODO] Directory structure + indexing + knowledge graph (Shuonli wiki as ref);
-   re-review FULL mode incl. structure + use-case sims.
-4. [TODO] Review & self-improve the KB-building procedure (skills, guidelines).
+2. [DONE] Bulk build (12 sources, 2 batches of subagents). → batches 1+2.
+3. [DONE] Structure + index + knowledge graph + `/kb-review` FULL (audit + blind
+   use-case tests). Re-audit iter 2 = PASS.
+4. [DONE] Self-improved the procedure from real build experience (see step-4 log).
 
 ## Progress Log (append-only)
 
@@ -115,6 +114,49 @@ it.
     `*.pdf` is gitignored → orchestrator uses `git add -f`. Update
     `kb-builder.md` + `kb-build.md` accordingly in step 4.
 
+- **2026-06-15 — Step 2 batch 2 DONE** (6 subagents, no-git). Created:
+  `physics/heavy_ion/hf_hot_qcd_matter.md` (Averbeck PPNP70 2013, no arXiv),
+  `physics/heavy_ion/rhic_open_hf_review.md` (2105.11656, SUPP),
+  `physics/heavy_ion/hf_theory_overview.md` (Gossiaux 1901.01606, SUPP),
+  `physics/detector/atlas_run2_muon_trigger.md` (2004.13447, +PDF),
+  `physics/detector/atlas_run3_muon_performance.md` (2401.06630 trigger paper +
+  Run3 reco slides, +2 PDFs; **no full Run-3 reco paper / HI muon perf exists**),
+  `physics/detector/atlas_inner_detector_tracking.md` (1704.07983 dense-env
+  tracking — justifies our pair ε_reco ΔR axis, SUPP). No-git instruction worked
+  (no concurrency collisions this batch).
+- **2026-06-15 — Step 3 DONE (integration; orchestrator).** Read all 12 new docs.
+  Decision: subagents already deduped by deferring shared concepts → **designated
+  canonical hubs** (`open_hf_production` = HF-physics; `ATLAS_Run2_muon_reconstruction`
+  = muon types/WP/tag-and-probe) rather than splitting them. Created the one
+  genuinely cross-paper concept doc `concepts/muon_source_template_fits.md`
+  (Δp/p + d0 fits, preserving per-paper use differences). Wrote
+  `physics/background/gluon_splitting_flavour_excitation.md` (indico talk anti-bot
+  blocked → recorded URL + concept + citeable anchor arXiv:1812.09283 as top
+  future-read). Rebuilt `index.md` (Meta/Analysis/Concepts/HI/Detector/Background/
+  Data/Procedures/Gotchas). Deduped+prioritized `FUTURE_READ.md` (5 HIGH + 6 MED).
+  Added bidirectional hub/back-links. Self-synced kb-review scenarios (+Intro
+  motivation, +background/template). Committed (30a907d sources, 8485bac structure).
+- **2026-06-15 — Step 3 review DONE (the loop).** Ran `/kb-review` FULL: (A)
+  structural-audit subagent → FAIL with 4 WARNINGs (all blind-builder artifacts:
+  one-way hub sink, uncrosslinked duplicate-topic pair + stale claim, one dead
+  `[[...]]`, un-trimmed concept duplication) + INFOs. (B) **3 blind use-case test
+  agents** (write Intro motivation / explain background+template / implement Δp/p
+  purity) — **all PASS**: each discovered the KB via CLAUDE.md→index, found the
+  right docs efficiently (process notes praised the hub designation as "highest
+  leverage"), produced grounded output; the Δp/p agent even found a skim-branch
+  gating issue via KB pointers. Fixed all 4 WARNINGs + INFOs; **re-audit iter 2 =
+  PASS** (0 CRITICAL/0 WARNING; lone INFO = cosmetic `[[...]]` syntax mix).
+- **2026-06-15 — Step 4 DONE (self-improvement from real experience).** Codified
+  build learnings into the tooling: (1) **subagents NEVER run git** — orchestrator
+  does all git, `git add -f` for gitignored PDFs (fixes the batch-1 index.lock
+  collision); (2) **non-arXiv hosts (indico/CDS) block curl** (Anubis anti-bot) →
+  URL-only fallback, never fabricate; (3) **prefer DESIGNATING an existing
+  comprehensive doc as a hub** over creating many concept docs (+ add hub→spoke
+  back-links, since hubs start as one-way sinks); (4) the **deferral-pointer
+  pattern** resolves GUIDE §3-self-sufficiency vs §8-dedup; (5) standardize
+  `[[basename]]` links; (6) `gs` may segfault per-page. Edits: `kb-builder.md`,
+  `kb-build.md` (Phase 2), `KB_BUILDING_GUIDE.md` (§3, §8), `gotchas/reading_pdfs.md`.
+
 - **2026-06-14 — Step 1 refinement.** Per user feedback, made the per-paper
   "subagents blind to each other" explicit in `kb-build.md` as a **drawback/price**
   (not a feature) requiring exhaustive orchestrator integration in Phase 2/step 3;
@@ -133,45 +175,29 @@ it.
 
 ## Remaining Work
 
-- Steps 2–4 (above). Step 2 needs the user's grouped paper list. Step 3 should
-  consult the Shuonli ppg12 wiki and may reshuffle directories/indexing.
+**All four steps complete.** Ongoing (not part of this effort — via `/kb-build`
+ADD mode as needed):
+- Summarize queued `FUTURE_READ.md` items — top priority arXiv:2206.12594 (the
+  actual per-pair trig+reco eff method) and arXiv:1812.09283 (g→bb̄ at small
+  opening angle, our regime).
+- Add docs as new analysis steps (unfolding, template fitting, systematics) appear;
+  `/kb-review` FULL scenarios are stubbed for self-sync.
+
+## Final KB inventory (2026-06-15)
+24 docs. analysis (5: overview, decisions, dimuon note + backtoback paper, HF-muon
+R_AA, HF-muon v_n) · concepts (1: muon_source_template_fits) · physics/heavy_ion
+(5: open_hf_production [HUB], hi_big_picture, hf_hot_qcd_matter, rhic_open_hf_review,
+hf_theory_overview) · physics/detector (4: ATLAS_Run2_muon_reconstruction [HUB],
+run2 trigger, run3 perf, inner_detector_tracking) · physics/background (1:
+gluon_splitting_flavour_excitation) · data (2) · procedures (1) · gotchas (1) ·
+Meta (GUIDE, FUTURE_READ). 12 PDFs committed (`git add -f`). Commits: 30a907d
+(sources), 8485bac (structure/tooling), f44111a (review fixes), + step-4 tooling.
 
 ## Latest Stage
 
-**Steps 2–4 in progress (2026-06-14).** Approach chosen by user: **dogfood** —
-orchestrate the build myself (one subagent per paper), then improve `/kb-build` +
-`/kb-review` from the experience (feeds step 4).
-
-### Step-2 source plan (classification + target dir)
-Analysis (PRIMARY) → `kb/analysis/`:
-- A. 2308.16652 Run2 dimuon back-to-back az. corr (journal/PRL). Also re-read
-  internal note `IntNotesRun2DimuonReference/ATL-COM-PHYS-2021-1094.pdf` and
-  update `run2_dimuon_note.md` re journal relationship.
-- B. 2109.00411 Run2 HF-muon R_AA + local note `Run2 HF muons nuclear
-  modification factor internal notes.pdf`.
-- C. 2003.03565 Run2 HF-muon v_n + local note `Run2 HF muons azimuthal
-  anisotropies internal notes.pdf`.
-
-HI field → `kb/physics/heavy_ion/`:
-- D. 1802.04801 HI big picture (PRIMARY; weight open-HF refs).
-- E. 1903.07709 Open HF production in HI (PRIMARY).
-- F. local `Heavy-flavor production ... hot QCD matter.pdf` (PRIMARY).
-- G. 2105.11656 RHIC open-HF review (SUPPORTIVE).
-- H. 1901.01606 HF theory overview (SUPPORTIVE).
-
-Detector → `kb/physics/detector/`:
-- I. 2004.13447 Run2 muon trigger perf (PRIMARY).
-- J. 2012.00578 Run2 muon reco — already summarized (`ATLAS_Run2_muon_reconstruction.md`); integrate only.
-- K. WEB SEARCH Run3 ATLAS muon perf (reco+trigger) (PRIMARY if official source found).
-- L. WEB SEARCH ATLAS inner detector/tracking (run2+run3) relevant to muon/HI; skip if nothing.
-
-Background → `kb/physics/background/`:
-- M. Gluon splitting / flavour excitation (indico 2308 link is anti-bot blocked;
-  capture concept + future-read citeable source). Orchestrator-handled.
-
-### Empirical learnings so far (for step 4)
-- arXiv `curl https://arxiv.org/pdf/<id>` works (PDF). indico is behind an
-  Anubis anti-bot PoW → curl returns HTML; cannot auto-download. → GUIDE/command
-  should note: non-arXiv hosts may block curl; fall back to URL-only + concept
-  capture, never fabricate.
+— (complete; removed from Active Tracking Docs 2026-06-15.) The KB-building system
+(`/kb-build`, `/kb-review`, `KB_BUILDING_GUIDE`, `kb-builder` agent) and the initial
+bulk build (12 sources) are done and review-validated (re-audit PASS; blind
+use-case tests PASS). Further sources are added incrementally via `/kb-build` +
+`/kb-review`.
 </content>

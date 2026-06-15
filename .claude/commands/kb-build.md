@@ -89,10 +89,21 @@ pair of papers is unrelated just because neither subagent mentioned the other
 - **Read all new docs and group them by topic** (detector subsystem, observable,
   method, background, system/energy). This global view is the prerequisite for
   the rest — you cannot dedup or link papers you have not cross-read.
-- **Dedup (exhaustive):** for any concept that recurs across ≥2 sources, create a
-  canonical concept doc, link every source doc to it (GUIDE §8), and remove the
-  duplicated prose so each source doc keeps only *its* specificity. Check every
-  topic group, not just overlaps a subagent happened to flag.
+- **Dedup (exhaustive) — prefer DESIGNATING a hub over creating new docs.** For
+  any concept recurring across ≥2 sources: **first check whether one existing doc
+  is already the comprehensive treatment** and *designate it the canonical hub*
+  (add a "this is the canonical hub for X" note + back-links to its spokes). Only
+  **create a new `concepts/` doc when the concept spans ≥2 docs with no natural
+  owner.** (In the 2026-06 build, designating `open_hf_production` and
+  `ATLAS_Run2_muon_reconstruction` as hubs beat creating many small concept docs;
+  exactly one new concept doc — `muon_source_template_fits` — was genuinely needed.)
+  Then make each source doc **defer the shared mechanism to the hub via a pointer**
+  while **retaining its own specifics** (provenance, numbers, systematics, per-paper
+  usage) — this resolves the GUIDE §3-self-sufficiency vs §8-dedup tension. Check
+  every topic group, not just overlaps a subagent happened to flag.
+- **Hub back-links (critical):** a doc designated as a hub was often built *before*
+  its spokes and will be a **one-way sink** — it links to nothing. The orchestrator
+  MUST add the hub→spoke back-links (the blind builders could not).
   **Do not dedup from the summaries alone.** Per-paper summaries were written
   blind and may describe the *same* concept in different words or, worse, describe
   *subtly different* things that only look identical. When merging a concept across
@@ -107,6 +118,9 @@ pair of papers is unrelated just because neither subagent mentioned the other
 - **FUTURE_READ.md:** merge all entries, dedupe, sanity-check global size.
 - **Self-sync (GUIDE §9):** ensure `/kb-review` full-KB scenarios cover every
   analysis step and every source area now present.
+- **Git (orchestrator-only, sequential):** subagents never commit. Stage `.md`
+  normally; **`git add -f` the PDFs** (`*.pdf` is gitignored). Commit in a few
+  logical groups (sources; then structure/index/concepts), not one mega-commit.
 - **Hand-off to step 3:** this Phase-2 integration is the *first* pass; the
   dedicated directory/indexing/graph optimization (roadmap step 3) deepens it and
   inherits the same rule — **the orchestrator owns all cross-paper structure

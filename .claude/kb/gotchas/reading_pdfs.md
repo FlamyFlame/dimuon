@@ -8,7 +8,9 @@
 | `WebFetch` on arXiv **PDF URL** | ✗ undecoded binary — content not retrievable |
 | **Read** tool on a local `.pdf` | ✗ needs `pdftoppm` (poppler) — not installed, can't install |
 | `gs -sDEVICE=txtwrite` (ghostscript 9.54) | ✓ extracts text (minor ligature/spacing artifacts; tables extract poorly) |
-| `curl` a PDF | ✓ outbound HTTPS works (no proxy) — but you still need `gs` to read it |
+| `curl` an **arXiv** PDF (`https://arxiv.org/pdf/<id>`) | ✓ works — but you still need `gs` to read it |
+| `curl` a **non-arXiv** PDF (indico, CDS) | ✗ often behind an Anubis anti-bot proof-of-work → returns an HTML challenge, not the PDF. Record the URL; don't fabricate unread content |
+| `gs` on a specific page | ✓ usually; may **segfault on an odd page** → extract per-page-range, cover gaps from adjacent pages |
 
 **Do this to read a local PDF:**
 ```bash

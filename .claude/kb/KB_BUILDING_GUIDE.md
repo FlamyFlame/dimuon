@@ -100,6 +100,11 @@ Notes:
    `gs`. (See `gotchas/reading_pdfs.md`.)
 4. Capture key **tables/numbers in the summary text**, because `gs` extracts
    tables badly — the PDF fallback is weakest exactly where numbers live.
+5. **arXiv `curl` works; many non-arXiv hosts do not.** indico/CDS sit behind an
+   anti-bot proof-of-work, so `curl` returns an HTML challenge, not the PDF. When a
+   source cannot be fetched, record the URL, summarize only what you can
+   legitimately establish, and **never fabricate** unread content — add a citeable
+   arXiv anchor as a future-read instead.
 
 ---
 
@@ -191,14 +196,20 @@ missed.
 
 - **One folder per area** (e.g. analysis papers / detector-performance /
   heavy-ion-field reviews / methods). Default **one file per source**.
-- **Promote shared concepts** that recur across sources (a detector subsystem, a
-  physics-background concept like b-quark energy loss, a method) into a
-  **dedicated concept doc** that multiple source docs link to — **dedup**: do not
-  re-explain the same concept in every paper's doc; explain once, link, and let
-  each paper doc add only *its* specificity.
-- **Every doc** is registered in `index.md` and **cross-linked** to related docs
-  (`[[name]]` / relative links) so an agent finds **all** relevant info, not just
-  the first hit. No orphan docs.
+- **Dedup shared concepts — prefer a designated HUB over a new doc.** When a
+  concept recurs across sources (a detector subsystem, b-quark energy loss, a
+  method), first check whether one existing doc already treats it comprehensively
+  and **designate that doc the canonical hub** (mark it as such; other docs defer
+  to it). Only **create a new `concepts/` doc when the concept spans ≥2 docs with
+  no natural owner.** Either way: explain once, and have each source doc **defer the
+  shared mechanism via a pointer while keeping its own specifics** (provenance,
+  numbers, systematics, per-paper usage) — this is how §3 self-sufficiency and §8
+  dedup coexist.
+- **Every doc** is registered in `index.md` and **cross-linked** to related docs so
+  an agent finds **all** relevant info, not just the first hit. **No orphan docs;
+  links are bidirectional** — in particular, a doc designated as a hub is often
+  built before its spokes and starts as a one-way sink, so back-links into it must
+  be added during integration. **Link syntax: `[[basename]]`** (no path, no `.md`).
 - The structure must make information **fast to find** (clear, indexed) and
   **hard to miss** (graph-linked, deduped). These are the acceptance criteria the
   step-3 structure and the `/kb-review` full-KB mode test.

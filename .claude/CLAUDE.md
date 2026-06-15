@@ -142,7 +142,10 @@ When the user asks to review, audit, or validate the knowledge base or a KB entr
 
 - `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/analysis_status_summary.md` — Current analysis status: which steps updated with May 2026 skim
 - `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/analysis_roadmap_2026_06.md` — Analysis roadmap (2026-06-10): IntNote readiness, missing inputs, full chain with dummies; task files in Analysis/docs/roadmap_tasks/
-- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/kb_building.md` — KB-building system (4 steps): step 1 design DONE (criteria GUIDE + /kb-build + /kb-review); awaiting paper list for step 2 bulk build
+
+<!-- COMPLETED (2026-06-15), do NOT auto-load:
+- Analysis/docs/tracking/kb_building.md — KB-building system (4 steps ALL DONE): /kb-build + /kb-review + GUIDE built; 12-source bulk build done & review-validated. Further sources via /kb-build ADD mode. -->
+
 
 <!-- PARKED (2026-06-12), reopen when inputs ready — do NOT auto-load, but DO consult per the "Cross-reference other tracking docs" rule:
 - Analysis/docs/tracking/hijing_overlay_reco_effcy_investigation.md — HIJING overlay reco efficiency: RESOLVED (deficit is PHYSICAL, method/sample-independent; dR fallback default-off); awaiting full ~10M-event signal-truth-only sample (≥2 months). -->
