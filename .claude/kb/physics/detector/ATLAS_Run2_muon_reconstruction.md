@@ -237,3 +237,16 @@ efficiency ε_µ / light-hadron mis-ID ε_had —
   muon+track triggers (mass 2.5–4.3 GeV, track from MS or ID, pT 3–6 GeV).
 - MC: Z→µµ Powheg+Pythia8 (CT10, AZNLO), ~210 M; J/ψ→µµ Pythia8 LO (+Photos++),
   ~420 M; full Geant4 + pile-up overlay.
+
+---
+
+## Related KB docs   (knowledge graph)
+
+> **This is the canonical muon-performance hub** (5 muon types, working points,
+> tag-and-probe). The trigger and Run-3 docs defer their shared definitions here.
+
+- [[atlas_run2_muon_trigger]] — companion: muon **trigger** efficiency (this doc is reco/ID); shared method = tag-and-probe.
+- [[atlas_run3_muon_performance]] — Run-3 reco+trigger; reuses these muon-type/WP definitions (NSW added).
+- [[atlas_inner_detector_tracking]] — ID dense-environment tracking (merged/shared clusters, ambiguity solver) underlying close-track muon reco.
+- [[../../analysis/run2_hf_muon_raa]], [[../../analysis/run2_hf_muon_vn]], [[../../analysis/run2_dimuon_backtoback_paper]] — analyses that apply this tag-and-probe efficiency method.
+- [[../../concepts/muon_source_template_fits]] — uses the d0/z0 resolution and ID/MS momentum measurements described here.

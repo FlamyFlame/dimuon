@@ -220,6 +220,10 @@ variation. Some sources cancel partially in R_AA (pp↔Pb+Pb correlated).
 
 ## Related KB docs
 
+- [[../concepts/muon_source_template_fits]] — the Δp/p (real vs π/K) and d0
+  (charm vs bottom) template fits this paper uses, as a cross-paper concept hub.
+- [[run2_hf_muon_vn]] — companion v_n measurement on the same muon sample.
+- [[physics/heavy_ion/open_hf_production]] — field background (R_AA, dead-cone, energy loss).
 - [[run2_dimuon_note]] — the Run 2 **dimuon** Δφ analysis from the same
   group; shares the ρ=Δp/p momentum-imbalance fake-muon template fit and
   the FCal/Glauber centrality. (Different observable: away-side widths.)

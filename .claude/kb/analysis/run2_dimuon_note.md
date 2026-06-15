@@ -14,6 +14,11 @@ This is the completed Run 2 (5.02 TeV) analysis that the current Run 3
 (5.36 TeV) analysis follows. Use this file for structure/methodology
 context; consult the tex sources for exact wording, equations, figures.
 
+**Published as PRL 132 (2024) 202301 (arXiv:2308.16652).** For the
+publication-level framing (physics questions, field comparisons,
+implications) see the companion doc [[run2_dimuon_backtoback_paper.md]];
+this note is the implementation detail behind it.
+
 ## Physics goal
 
 Measure Δφ (azimuthal separation) correlations of HF-decay muon pairs in
@@ -30,6 +35,31 @@ angular deflection. 90% C.L. upper limits set on QGP broadening
 SS pairs ≈ pure bb̄ (B-oscillation + b→c cascade); OS pairs from bb̄ and
 cc̄. Pythia studies (note's Muon Sources appendix): with 2μ pT>4 GeV
 |η|<2.5 requirement, bb̄ away-side yield ~10× cc̄; OS:SS ≈ 2:1 for bb̄.
+
+## Publication-level framing (added from PRL 132 (2024) 202301)
+
+Phrasing/comparisons the published Letter adds beyond the note's terse intro
+(use for IntNote/thesis motivation; see [[run2_dimuon_backtoback_paper.md]]):
+
+- **Novelty:** first measurement of HF angular correlations via **pairs of
+  muons from simultaneous semileptonic B decays** — direct b-hadron-pair
+  detection is hard, so the dimuon channel is the feasible probe.
+- **Theory framing:** quark–medium scattering deflects HF quarks — Brownian
+  diffusion at p≲m_Q, collisional broadening at p≫m_Q damped by radiative
+  gluon emission; b-quark angular correlations are sensitive to the
+  **collisional-vs-radiative** balance (Nahrgang et al., PRC 90 (2014)
+  024907). Away-side Δφ width is the observable for this.
+- **Charm handle (quantified):** for both muons pT>4 GeV, charm dimuons are
+  **~an order of magnitude** below bottom (Powheg+Pythia8); bottom pairs are
+  **~90%** of the OS yield in pp; SS pairs ≈ clean bb̄.
+- **Implication:** widths consistent pp↔PbPb and centrality-independent
+  (10–80%), narrowing only in 0–10% → b quarks strongly quenched but little
+  angular deflection; **model-independent 90% CL limit σ_int ≲ 0.2** on
+  extra QGP-induced broadening. Theory expectation of central broadening is
+  not supported.
+- **Field context:** complements HF-hadron/decay-lepton **R_AA** and **v_n**
+  and b-jet quenching measurements (cite ATLAS HF-muon R_AA PLB 829 (2022)
+  137077 and v_n PLB 807 (2020) 135595).
 
 ## Datasets (Run 2)
 
@@ -169,3 +199,10 @@ DphiFitsDeta0p9 sections.)
   STARlight overlay); pp eff from Pythia fullsim pp24.
 - Run 2 measured widths only (yields toggled off); Run 3 scope includes
   cross-sections / R_AA (crossx pipelines).
+
+## Related KB docs   (knowledge graph)
+- [[run2_dimuon_backtoback_paper]] — the published Letter of THIS analysis (publication framing).
+- [[../concepts/muon_source_template_fits]] — the Δp/p significance / pair-significance purity fit (our adapted version) lives here as a concept hub.
+- [[run2_hf_muon_raa]], [[run2_hf_muon_vn]] — same-group HF-muon analyses sharing the Δp/p method + FCal centrality.
+- [[physics/heavy_ion/open_hf_production]] — field background (energy loss, R_AA, dead-cone).
+- [[physics/background/gluon_splitting_flavour_excitation]] — the g→QQ̄ correlated background and the charm-vs-bottom dimuon handle.

@@ -169,9 +169,16 @@ is the fallback for figure-level model details.
 ---
 
 ## Related KB docs   (knowledge graph)
-- [[analysis/overview]] — our R_AA / single-b dimuon goal; this doc is its field
-  background (R_AA, v_2, energy-loss motivation for using b).
-- [[analysis/run2_dimuon_note]] — Run-2 dimuon note (the prior single-b analysis);
-  this review supplies the energy-loss/diffusion physics it measures.
+
+> **This is the canonical HF-physics hub** (energy loss, R_AA, dead-cone, transport
+> coefficients). The other heavy-ion docs defer their shared concepts here.
+
+- [[hi_big_picture]] — broader QGP/HIC frame (η/s, jet quenching, Glauber) this HF review sits inside.
+- [[hf_hot_qcd_matter]] — earlier (2013) open-HF review; RHIC-era discovery + decay-lepton/DD̄-dimuon detail.
+- [[rhic_open_hf_review]] — RHIC-energy experimental complement (open-b via DCA, RHIC↔LHC contrast).
+- [[hf_theory_overview]] — theory-modeling companion (Langevin/Boltzmann, transport-coefficient extraction).
+- [[../background/gluon_splitting_flavour_excitation]] — the g→QQ̄ / DD̄ correlated-background mechanism.
+- [[analysis/overview]] / `Analysis/docs/analysis_overview.md` — our R_AA / single-b dimuon goal (this doc is its field background).
+- [[analysis/run2_dimuon_note]], [[analysis/run2_hf_muon_raa]], [[analysis/run2_hf_muon_vn]] — the prior measurements this physics motivates.
 </content>
 </invoke>
