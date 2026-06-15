@@ -59,18 +59,15 @@
 
 ## References worth future reading   (≤3)
 1. **ATLAS, *Properties of g→bb̄ at small opening angles in pp at √s=13 TeV*,
-   arXiv:1812.09283 (Phys. Rev. D 99, 052004).** — **PRIMARY candidate (strong).**
-   New info: a direct measurement of g→bb̄ at **small opening angle** — exactly our
-   nearby-pair regime — using R=0.2 track-jets / b-tagging; the region with large
-   theory uncertainty our background template must get right. Serves: background
-   template validation (roadmap §16), Intro background discussion. *Worth a full KB
-   doc later.*
+   arXiv:1812.09283.** — ✅ **Now summarized in the KB: [[atlas_g_to_bb_small_angle]]**
+   (the citeable anchor for this background, in our nearby-pair regime).
 2. **ATLAS, *Measurement of b-hadron pair production in pp at √s=8 TeV*,
    arXiv:1705.03374.** — SUPPORTIVE. New info: bb̄ pair kinematics incl.
    flavour-creation vs flavour-excitation vs gluon-splitting decomposition;
    small-ΔR / collinear bb̄ region. Serves: background composition framing.
 
 ## Related KB docs
+- [[atlas_g_to_bb_small_angle]] — the ATLAS g→bb̄ small-opening-angle measurement (citeable anchor / our regime).
 - `Analysis/docs/analysis_overview.md` §6 — our background & template program (ground truth; external to KB).
 - [[run2_dimuon_backtoback_paper]] — quantifies the charm-vs-bottom dimuon handle (both muons pT>4 GeV).
 - [[hf_hot_qcd_matter]] — the DD̄ IMR dimuon continuum (same two-heavy-quark source in HI).

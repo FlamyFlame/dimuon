@@ -16,6 +16,7 @@ Physics ground truth lives in `Analysis/docs/analysis_overview.md`.
 - [run2_dimuon_backtoback_paper.md](analysis/run2_dimuon_backtoback_paper.md) — **PRIMARY.** Published Letter of that analysis (PRL 132 (2024) 202301, arXiv:2308.16652): publication framing, away-side Δφ widths, per-pair eff method we adapt (+ΔR), σ_int≲0.2 limit (PDF in dir)
 - [run2_hf_muon_raa.md](analysis/run2_hf_muon_raa.md) — **PRIMARY.** ATLAS Run 2 HF-muon charm/bottom **R_AA** (PLB 829 (2022) 137077, arXiv:2109.00411) — the single-HF-muon analysis ours derives from: R_AA/T_AA norm, FCal-Glauber centrality, Δp/p + d0 template fits, efficiencies, systematics (PDF + internal note in dir)
 - [run2_hf_muon_vn.md](analysis/run2_hf_muon_vn.md) — **PRIMARY.** ATLAS Run 2 HF-muon azimuthal anisotropy **v_n** (PLB 807 (2020) 135595, arXiv:2003.03565): event-plane flow method, ρ/d0 template fits; charm v_n > bottom v_n (PDF + internal note in dir)
+- [atlas_gammagamma_mumu_pbpb.md](analysis/atlas_gammagamma_mumu_pbpb.md) — **PRIMARY.** ATLAS γγ→μμ in non-UPC Pb+Pb 5.02 TeV (PRC 107 (2023) 054907, arXiv:2206.12594) — Ref [60] of the back-to-back Letter: the **actual per-pair trigger+reco efficiency method** (single-μ ε(pT,qη) product, valid for back-to-back; CONTRAST our pair ε_reco(pair pT,η,ΔR)) + γγ α/A/k⊥ removal (also our OS background) (PDF in dir)
 
 ## Concepts (cross-paper method hubs)
 - [concepts/muon_source_template_fits.md](concepts/muon_source_template_fits.md) — Δp/p momentum-imbalance (real vs π/K fake) and d0 (charm vs bottom) template fits; how they differ across the 3 analysis sources; **our Δp/p purity framework**
@@ -36,7 +37,14 @@ Physics ground truth lives in `Analysis/docs/analysis_overview.md`.
 - [physics/detector/atlas_inner_detector_tracking.md](physics/detector/atlas_inner_detector_tracking.md) — SUPPORTIVE. ID dense-environment tracking (EPJC 77 (2017) 673): merged/shared-cluster + ambiguity solving — the mechanism behind close-track correlated reco (**justifies our pair ε_reco ΔR axis**)
 
 ## Physics — Background (signal-mimicking processes)
-- [physics/background/gluon_splitting_flavour_excitation.md](physics/background/gluon_splitting_flavour_excitation.md) — g→QQ̄ (FSR) and flavour excitation (ISR): the two correlated low-mass/small-angle dimuon backgrounds (two muons from two heavy quarks vs our single-b); template-stitch context
+- [physics/background/gluon_splitting_flavour_excitation.md](physics/background/gluon_splitting_flavour_excitation.md) — **concept hub.** g→QQ̄ (FSR) and flavour excitation (ISR): the two correlated low-mass/small-angle dimuon backgrounds (two muons from two heavy quarks vs our single-b); template-stitch context
+- [physics/background/atlas_g_to_bb_small_angle.md](physics/background/atlas_g_to_bb_small_angle.md) — **PRIMARY.** ATLAS g→bb̄ at small opening angle, pp 13 TeV (PRD 99 (2019) 052004, arXiv:1812.09283): differential ΔR/z/mass via double-b-tagged R=0.2 track-jets; Pythia mismodels collinear g→bb̄ (large theory uncert.) → validates/cautions our g→QQ̄ background template (PDF in dir)
+
+## Physics — Centrality (Pb+Pb geometry / Glauber)
+> Canonical hub for Glauber methodology (N_part/N_coll/T_AA, percentile centrality, systematics): **glauber_modeling**. ATLAS centrality papers defer the mechanism to it.
+- [physics/centrality/glauber_modeling.md](physics/centrality/glauber_modeling.md) — **PRIMARY (hub).** Glauber methodology review (Miller/Reygers/Sanders/Steinberg, ARNPS 57 (2007) 205, arXiv:nucl-ex/0701025): N_part/N_coll/T_AB definitions, Woods-Saxon + σ_NN inputs, optical vs MC Glauber, centrality from percentiles, ⟨T_AB⟩=⟨N_coll⟩/σ_NN, systematics (PDF in dir)
+- [physics/centrality/atlas_centrality_2023.md](physics/centrality/atlas_centrality_2023.md) — **PRIMARY.** ATLAS centrality for **5.36 TeV 2023** Pb+Pb (internal note GROUP-2024-033): FCal-ΣE_T + PHOBOS Glauber; **Table 7 ⟨T_AA⟩ = the source of our hardcoded 6-bin T_AA (confirmed)**; centile cuts, N_part/N_coll, systematics; roadmap Q2.3 (σ_PbPb=7.8b is NOT here → Q2.2 open) (PDF in dir)
+- [physics/centrality/atlas_centrality_2015.md](physics/centrality/atlas_centrality_2015.md) — **PRIMARY.** Earliest ATLAS FCal-ΣE_T centrality methodology note (5.02 TeV / 2015, ATL-COM-PHYS-2016-XXX): Glauber two-component fit to ΣE_T (x=0.09), 40 GeV gap WP, centile cuts, ⟨N_part/N_coll/T_AA⟩ + systematics; **method-depth** companion (numbers are 5.02 TeV, don't transfer) (PDF in dir)
 
 ## Data
 - [samples.md](data/samples.md) — Dataset container names, runs, luminosity, data paths

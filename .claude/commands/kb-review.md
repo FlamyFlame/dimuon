@@ -118,9 +118,13 @@ current roadmap. Baseline set (update/extend as the analysis and KB grow):
 6. **Reason about backgrounds / templates** — e.g. "explain the dominant correlated
    background to the single-b dimuon signal and how the template is built." (Should
    find `physics/background/gluon_splitting_flavour_excitation` + analysis_overview §6.)
+7. **Centrality / R_AA normalization** — e.g. "justify the ⟨T_AA⟩ values used for
+   the PbPb R_AA normalization and the Glauber method behind them." (Should find
+   `physics/centrality/` — hub `glauber_modeling` + `atlas_centrality_2023`, which
+   is the source of our hardcoded T_AA.)
 (Add scenarios when new steps appear — unfolding, template fitting, systematics —
-or when new sources are added; a scenario must exercise them. Scenarios 5–6 were
-added 2026-06-15 with the heavy-ion-field + background bulk build.)
+or when new sources are added; a scenario must exercise them. Scenarios 5–6 added
+2026-06-15 (HI-field + background); scenario 7 added 2026-06-15 (centrality area).)
 
 **B2. Run each scenario with a FRESH, BLIND test agent.** Spawn a
 `general-purpose` agent given ONLY the realistic task — **no hint it is a test**,

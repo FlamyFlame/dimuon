@@ -133,11 +133,9 @@ deflection — a **model-independent constraint** on stochastic b-quark deflecti
 
 ## References worth future reading   (≤3)
 
-1. **ATLAS, γγ→μμ in non-UPC Pb+Pb at 5.02 TeV** — PRC 107 (2023) 054907,
-   arXiv:2206.12594 (Ref. [60]). *PRIMARY.* New info: the **actual definition of
-   the per-pair trigger & reconstruction efficiency method** and the γγ→μμ removal
-   that this Letter only cites. Serves: trigger-eff (steps 8/10) and reco-eff
-   (step 12) method provenance, pair selection.
+1. **ATLAS, γγ→μμ in non-UPC Pb+Pb at 5.02 TeV** (Ref. [60], arXiv:2206.12594) —
+   ✅ **Now summarized: [[atlas_gammagamma_mumu_pbpb]]** (the per-pair trigger+reco
+   efficiency method this Letter cites, + γγ→μμ removal). Not a future-read.
 2. *(Already in the KB — see [[run2_hf_muon_raa]]; Ref. [21] = arXiv:2109.00411,
    the single-muon HF R_AA. Not a future-read.)*
 3. **ATLAS, suppression & azimuthal anisotropy of HF-decay muons in Pb+Pb 2.76
@@ -149,6 +147,7 @@ deflection — a **model-independent constraint** on stochastic b-quark deflecti
 Δφ-broadening interpretation, which is not our nearby-pair observable.)
 
 ## Related KB docs
+- [[atlas_gammagamma_mumu_pbpb]] — Ref [60]: the actual per-pair trigger+reco efficiency method this Letter uses, and the γγ→μμ removal.
 - [[run2_dimuon_note.md]] — same analysis, internal note: full implementation
   detail (exact cuts, fit code, systematics tables). This doc adds the published
   framing/comparisons it lacks.
