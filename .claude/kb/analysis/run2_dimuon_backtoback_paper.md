@@ -148,6 +148,7 @@ deflection — a **model-independent constraint** on stochastic b-quark deflecti
 
 ## Related KB docs
 - [[atlas_gammagamma_mumu_pbpb]] — Ref [60]: the actual per-pair trigger+reco efficiency method this Letter uses, and the γγ→μμ removal.
+- [[yun_tian_thesis]] — its Ch7 (HF dimuon azimuthal correlations, 5.02 TeV) is the Run-1 predecessor of this back-to-back analysis.
 - [[run2_dimuon_note.md]] — same analysis, internal note: full implementation
   detail (exact cuts, fit code, systematics tables). This doc adds the published
   framing/comparisons it lacks.
