@@ -34,8 +34,11 @@ ancestor tracing to Pythia-only truth.
 3. Trace the reco efficiency denominator definition in RDF code ← **done**
 4. Check whether HIJING truth muons enter the denominator ← **done**
 5. Check the `from_same_b` flag for single-B signal pairs ← **done**
-6. Propose and implement fix
-7. Rerun pipeline and verify
+6. Propose and implement fix ← **done** (Bug #1 index-mapping fix; Bug #3 Pythia-only
+   truth-muon filter; dR fallback decoupled & default-OFF — Steps 6,11,12,24)
+7. Rerun pipeline and verify ← **done** (deficit shown PHYSICAL & method/sample-
+   independent — Steps 13-24).  Remaining = full signal-truth-only sample production
+   (see "Watch-list", Step 25).
 
 ## Accumulated Findings
 
@@ -974,10 +977,16 @@ way.
 
 **Caveats:** (i) r17662 has only pTH8_14 → no plateau (>20 GeV) stats; plateau
 comparison needs higher-pT r17662 slices (grid).  (ii) NTP printed
-`#muons from B-hadron: 0` on r17662 → ancestor tracing / from_same_b likely
-broken because signal-only-truth thinned the truth parent chain.  Single-muon &
-inclusive SS/OS ε are unaffected, but single-b pair classification on r17662 is
-suspect — flag before using r17662 for single-b.
+`#muons from B-hadron: 0` on r17662 — **this is NOT a from_same_b problem and NOT
+truth thinning** (corrected Step 25).  It is because these runs used single-muon
+mode (`output_single_muon_tree=true`), which RETURNS EARLY
+(`PythiaFullSimExtras.c:208`) BEFORE the truth-pair loop and
+`PerformTruthPairAnalysisHook` (line 296) that increments the B-hadron counter
+(`PythiaTruthExtras.c:1226`).  So the counter is 0 by construction in single-muon
+mode.  Per `hijing_overlay_truth_barcode_duplicate_investigation.md`, signal-only
+truth (StoreTruth=15) KEEPS full truth parents+links and r17662 in PAIR mode gives
+832 B-hadron muons with 0 truncated — ancestor tracing / from_same_b works and is
+CLEANER than r17618 (no HIJING contamination).
 
 **Files:** `run_pythia_fullsim_overlay_r17662_nodr.sh`; outputs in
 `pythia_fullsim_hijing_overlay_test_sample/r17662_run/` (suffixes
@@ -1143,9 +1152,91 @@ matching method.  This SUPERSEDES the Step-23 wording "geometric ≡ prob>0.5 re
 **For the upcoming full signal-truth-only overlay sample:** it will run the original
 prob>0.5 procedure by default (no dR workaround, no geometric) — as required.
 
+### Step 25: R17618-vs-R17662 comparison plots (TRUE no-dR); resolution summary + full-sample watch-list (2026-06-12)
+
+**TRUE no-dR confirmation:** Reran r17662 single-muon with the committed decoupled
+code, all defaults (`use_dr_fallback=false`) → genuine no-dR.  Confirms the
+InitParamsExtra override: the old `_r17662_nodr` file was actually +dR
+(reco_match 0.8955); the genuine no-dR gives reco_match **0.8266** but the SAME
+efficiency pass_medium **0.7426** (6-8 GeV).  Files: `r17662_run/..._r17662_TRUEnodr.root`
+(default, no-dR) and `..._r17662_TRUEwithdr.root` (+dR).
+
+**Comparison plots (R17618 +dR  vs  R17662 signal-truth-only, TRUE no-dR):**
+`plotting_codes/reco_effcy/plot_single_muon_reco_effcy_r17618_vs_r17662.cxx` →
+`plots/r17618_vs_r17662_comparison/` : single-muon reco ε, q-eta-integrated and
+3x3 q-eta subplots, for 0-5% and 5-10%.  /review-plot PASS.  The two samples
+**agree within stats in the turn-on** (e.g. 0-5%, 6-8 GeV: R17618=0.727 vs
+R17662=0.738) → the deficit is PHYSICAL and **sample-independent** (not the r17618
+barcode collision nor the dR workaround).  R17662 has no points >~15 GeV (pTH8_14
+only).  NOTE: efficiency is matching-method-independent, so the red curve is
+identical whether R17662 is +dR or no-dR; only the label differs.
+
+**RESOLUTION SUMMARY (original objective):**
+1. *Unphysically low ε (~10-20%)* → RESOLVED.  Dominant cause was Bug #1 (index
+   mapping, fixed → 10%→50% pair); Bug #3 (HIJING truth muons in denominator,
+   fixed); residual ~14%-below-pp deficit is PHYSICAL (dense-environment reco
+   inefficiency, largest at low pT), confirmed method- and sample-independent.
+2. *single-B ≈ all-OS* → RESOLVED.  Caused by HIJING contamination of `from_same_b`
+   (ancestor tracing on shared barcodes); fixed by the Pythia-only truth-muon filter.
+3. Matching procedure: default is now pure prob>0.5 (no dR, no geometric).
+The investigation's root causes are resolved.  What remains is producing &
+verifying the FULL signal-truth-only sample (all 6 pThat slices) — see watch-list.
+
+**WATCH-LIST — full signal-truth-only overlay sample (standard signal-truth-only tag):**
+1. **`from_same_b` / ancestor tracing — signal-only truth is GOOD (corrected).**
+   Per `hijing_overlay_truth_barcode_duplicate_investigation.md`: signal-only truth
+   uses `StoreTruth=15`, which KEEPS the full truth with parents & links — it does
+   NOT thin `truth_parents`.  r17662 in PAIR mode gives **832 B-hadron muons, 0
+   truncated** (vs r17618's 2.95% truncated from HIJING barcode collisions), so
+   ancestor tracing / `from_same_b` actually WORKS and is CLEANER than r17618 — that
+   doc concludes "r17662 is the preferred choice for production" and "no code bug in
+   truth analysis for signal-only samples".  (The `#muons from B-hadron: 0` I saw was
+   a single-muon-mode artifact: `output_single_muon_tree=true` returns early at
+   `PythiaFullSimExtras.c:208`, before the ancestor-tracing pair loop — not a from_same_b
+   problem.)  ACTION: just run the full sample in PAIR mode and confirm
+   `#muons from B-hadron` > 0; no special concern.
+2. **Matching default.**  Confirm the run uses the new default: `use_dr_fallback=false`,
+   `use_geometric_matching` unset → pure prob>0.5.  Do NOT use `pythia_only_barcode_cache`
+   to toggle dR (it no longer gates dR, and InitParamsExtra force-sets it true).
+   Report `pass_medium` efficiency (method-independent), not `reco_match`.
+3. **No barcode collision (verify).**  signal-truth-only → no HIJING truth → no
+   Pythia/HIJING barcode collision.  Verify (truth_muon_* all Pythia, no duplicate
+   barcodes).  `GetNPythiaTruthMuons` / the first-bc>200000 Geant4 boundary should
+   still correctly bound the Pythia truth muons (truth = Pythia + Geant4 only).
+4. **Centrality & pT coverage.**  The full sample has all 6 pThat slices and should
+   populate PERIPHERAL centralities and the high-pT PLATEAU (the test/r17662 samples
+   were ~82% central and pTH8_14-only → empty peripheral & no plateau).  Verify the
+   centrality distribution, that all slices load with correct AMI weights, and that
+   the plateau/peripheral bins fill in.
+5. **Efficiency sanity vs Run 2.**  Expect physical single-muon ε (~75-85% plateau in
+   central, lower at low pT, MILD centrality dependence) and pair ≈ single².  Compare
+   the shape to the Run 2 note (ATL-COM-PHYS-2021-1094).  A return to ~10-20% or a
+   strong centrality dependence (e.g. doubling 0-5%→5-10%) would signal a regression
+   (Bug #1 reintroduced, or HIJING truth/barcode contamination).
+
 ## Latest Stage
 
-**Step 24 (2026-06-12): dR fallback decoupled & default-OFF; efficiency conclusion robust.**
+**PARKED 2026-06-12 — removed from Active Tracking Docs.**  Root causes resolved
+(see below); the only remaining work is producing & verifying the FULL
+signal-truth-only overlay sample (~10M events), not expected for ≥2 months.
+**Reopen then.**  On reopen, FIRST read this doc + `hijing_overlay_truth_barcode_duplicate_investigation.md`
++ the Step 25 watch-list, then run the full sample in PAIR mode with the default
+matching (pure prob>0.5; `use_dr_fallback=false`, no geometric).
+
+**Step 25 (2026-06-12): RESOLVED (root causes); comparison plots done; full-sample watch-list logged.**
+
+Investigation root causes RESOLVED: low ε was Bug #1 (index mapping) + Bug #3 (HIJING
+truth in denominator), both fixed; residual deficit is PHYSICAL (method- & sample-
+independent — R17662 TRUE no-dR agrees with R17618 +dR within stats in the turn-on);
+single-B≈all-OS was HIJING `from_same_b` contamination, fixed.  Matching default is
+now pure prob>0.5 (no dR/geometric).  R17618-vs-R17662 comparison plots made
+(/review-plot PASS).  REMAINING: produce & verify the FULL signal-truth-only sample
+(all 6 pThat slices) — see Step 25 watch-list.  (CORRECTION: signal-only truth does
+NOT thin truth_parents — per `hijing_overlay_truth_barcode_duplicate_investigation.md`
+r17662 gives 832 B-hadron muons / 0 truncated and is the PREFERRED production sample;
+the earlier `#muons from B-hadron: 0` was a single-muon-mode early-return artifact.)
+
+**Prior Step 24 (2026-06-12): dR fallback decoupled & default-OFF; efficiency conclusion robust.**
 
 DISCOVERY: InitParamsExtra (in Run) forces pythia_only_barcode_cache=true, so prior
 "nodr" runs were actually +dR.  Decoupled the dR fallback into `use_dr_fallback`
