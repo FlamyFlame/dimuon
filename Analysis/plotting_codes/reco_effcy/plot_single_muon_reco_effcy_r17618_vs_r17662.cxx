@@ -27,7 +27,7 @@ namespace {
         "muon_pairs_pythia_fullsim_hijing_overlay_pp24_no_data_resonance_cuts_single_muon.root";
     const std::string R17662 =
         "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/r17662_run/"
-        "muon_pairs_pythia_fullsim_hijing_overlay_pp24_no_data_resonance_cuts_r17662_withdr_single_muon.root";
+        "muon_pairs_pythia_fullsim_hijing_overlay_pp24_no_data_resonance_cuts_r17662_TRUEnodr.root";
     const std::string OUTDIR =
         "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/plots/r17618_vs_r17662_comparison/";
 
@@ -113,7 +113,7 @@ void plot_single_muon_reco_effcy_r17618_vs_r17662() {
             TLegend leg(0.45, 0.16, 0.90, 0.30);
             leg.SetBorderSize(0); leg.SetFillStyle(0); leg.SetTextSize(0.032);
             leg.AddEntry(e618, "R17618 (+dR fix)", "lpe");
-            leg.AddEntry(e662, "R17662 (signal-only truth)", "lpe");
+            leg.AddEntry(e662, "R17662 (signal-only, no dR)", "lpe");
             leg.Draw("SAME");
 
             TLatex lat; lat.SetNDC();
@@ -167,7 +167,7 @@ void plot_single_muon_reco_effcy_r17618_vs_r17662() {
                     TLegend* leg = new TLegend(0.30, 0.13, 0.97, 0.34);
                     leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.050);
                     leg->AddEntry(e618, "R17618 (+dR fix)", "lpe");
-                    leg->AddEntry(e662, "R17662 (signal-only)", "lpe");
+                    leg->AddEntry(e662, "R17662 (signal-only, no dR)", "lpe");
                     leg->Draw("SAME");
                 }
             }
