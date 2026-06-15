@@ -1,6 +1,7 @@
 - Remote cluster (BNL SDCC); run `/usatlas/u/yuhanguo/setup.sh` for ROOT environment
 - No pip install — use what's in the release
 - For C++ class testing, use ROOT ACLiC: `.L MyClass.cxx+`
+- **Reading PDFs:** the Read tool and WebFetch CANNOT read PDF content here (no poppler; WebFetch returns binary/abstract-only). Use `gs -sDEVICE=txtwrite` to extract text. See `.claude/kb/gotchas/reading_pdfs.md`.
 - Read `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/README.md` and `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/` for analysis context (class hierarchy, pipelines, sample types)
 - For any analysis change: always update and maintain the relevant documentation in those files
 
@@ -109,12 +110,20 @@ code that contradicts the Physics Procedure without user approval.
 ## Documentation References
 
 Before working on any task, check these existing docs:
+- **High-level analysis overview (objective, observables, physics methodology, sample roles): `Analysis/docs/analysis_overview.md`** — the stable conceptual ground truth for implementation and academic writing (no status; status lives in the roadmap).
 - Knowledge base: `.claude/kb/index.md` (analysis overview, decisions, samples, variables, gotchas)
-- Analysis overview, class hierarchy, pipelines: `Analysis/README.md`
+- Class hierarchy, code architecture, pipeline stages: `Analysis/README.md`
 - Per-pipeline docs: `Analysis/docs/` (pythia_truth, pythia_fullsim_pp, pythia_fullsim_overlay, powheg, data_analysis)
 - Skimming code, branches, grid workflow: `SkimCode/README.md`
 - Data paths and directory layout: root `README.md`
 - Internal note structure: `IntNote/tex/` (section files), `IntNote/mydocument.tex` (master)
+
+**Cross-reference other tracking docs.** Before making a factual statement on a
+topic that is NOT the subject of the current tracking doc, search for and
+cross-reference other existing tracking docs in `Analysis/docs/tracking/` —
+including CLOSED ones (those removed from "Active Tracking Docs"). They are not
+deleted and often already settled the question. Cite the doc you relied on, and
+do not assert from inference what a sibling doc has already established or refuted.
 
 ## Auto-Dispatch Rules
 
@@ -126,9 +135,15 @@ When the user asks to write or polish paper text for publication → invoke `/re
 When the user asks to review, audit, or validate a Claude Code plugin or skill → invoke `/review-plugin`
 When the user asks to write, modify, review, or audit a multi-step analysis pipeline script → invoke `/review-pipeline`
 When the user asks to run, execute, or steer a pipeline, or wants autonomous end-to-end pipeline execution → invoke `/steer-pipeline`
+When the user asks to summarize a paper/source into the knowledge base, add references to the KB, or build/reorganize the KB → invoke `/kb-build` (criteria: `.claude/kb/KB_BUILDING_GUIDE.md`)
+When the user asks to review, audit, or validate the knowledge base or a KB entry → invoke `/kb-review`
 
 ## Active Tracking Docs
 
 - `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/analysis_status_summary.md` — Current analysis status: which steps updated with May 2026 skim
 - `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/analysis_roadmap_2026_06.md` — Analysis roadmap (2026-06-10): IntNote readiness, missing inputs, full chain with dummies; task files in Analysis/docs/roadmap_tasks/
-- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/hijing_overlay_reco_effcy_investigation.md` — HIJING overlay reco efficiency: 3 bugs fixed; single-muon vs pair efficiency ~6% discrepancy from pair correlations under investigation
+- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/kb_building.md` — KB-building system (4 steps): step 1 design DONE (criteria GUIDE + /kb-build + /kb-review); awaiting paper list for step 2 bulk build
+
+<!-- PARKED (2026-06-12), reopen when inputs ready — do NOT auto-load, but DO consult per the "Cross-reference other tracking docs" rule:
+- Analysis/docs/tracking/hijing_overlay_reco_effcy_investigation.md — HIJING overlay reco efficiency: RESOLVED (deficit is PHYSICAL, method/sample-independent; dR fallback default-off); awaiting full ~10M-event signal-truth-only sample (≥2 months). -->
+
