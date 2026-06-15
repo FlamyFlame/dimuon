@@ -2,7 +2,7 @@
 
 **Source:** R. Averbeck, "Heavy-flavor production in heavy-ion collisions and implications for the properties of hot QCD matter" — Prog. Part. Nucl. Phys. **70** (2013) 159–209 (review; experimental results published until July 2012).
 **arXiv / DOI:** doi:10.1016/j.ppnp.2013.01.001 (no arXiv id on title page).
-**PDF:** `../Heavy-flavor production in heavy-ion collisions and implications for the properties of hot QCD matter.pdf` (PRIMARY) *(orchestrator may relocate into this dir in step 3)*
+**PDF:** `./Heavy-flavor production in heavy-ion collisions and implications for the properties of hot QCD matter.pdf` (PRIMARY)
 **Classification:** PRIMARY (foundational, heavily-citable PPNP field review of open HF in HIC).
 **Added:** 2026-06-14
 
@@ -160,6 +160,9 @@ low-relevance, and the modern transport refs are already covered elsewhere.)
   doc is the earlier RHIC-era complement adding the decay-lepton/DD̄-dimuon detail.*
 - [[heavy_ion/hi_big_picture]] — general QGP/HIC big picture (η/s, R_AA, Glauber,
   flow); the broader frame this HF review sits inside.
+- [[heavy_ion/rhic_open_hf_review]] — RHIC-energy experimental complement (open-b
+  via DCA template fit; RHIC↔LHC contrast).
+- [[heavy_ion/hf_theory_overview]] — HF-transport theory companion.
 - [[analysis/overview]] — our R_AA / single-b dimuon goal and g→QQ̄ background that
   this field background motivates.
 - [[analysis/run2_dimuon_note]] — the prior Run-2 single-b dimuon measurement whose

@@ -139,6 +139,11 @@ Per-pair weight w⁻¹ = ε_trig(p_a,p_b) · ε_reco(p_a) · ε_reco(p_b).
 
 ## Background (fake-muon) estimate — Δp/p template fits
 
+> **Shared mechanism (ρ=Δp/p real-vs-fake) lives in the concept hub
+> [[../concepts/muon_source_template_fits]] — this is the OUR-adapted purity
+> variant.** Below = *this analysis's specifics* (significance transform, pair
+> significance, 3-template purity demonstration, >98% → no cut).
+
 Momentum imbalance Δp/p = (p_ID − p_MS,extrapolated)/p_ID. HF muons:
 Gaussian around 0; π/K in-flight decays & calo secondaries: broad,
 shifted positive. Converted to a **significance** (Δp/p − μ(pT,qη))/

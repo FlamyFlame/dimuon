@@ -71,8 +71,9 @@
    small-ΔR / collinear bb̄ region. Serves: background composition framing.
 
 ## Related KB docs
-- [[../../analysis/analysis_overview]] / `Analysis/docs/analysis_overview.md` §6 — our background & template program (ground truth).
+- `Analysis/docs/analysis_overview.md` §6 — our background & template program (ground truth; external to KB).
 - [[run2_dimuon_backtoback_paper]] — quantifies the charm-vs-bottom dimuon handle (both muons pT>4 GeV).
 - [[hf_hot_qcd_matter]] — the DD̄ IMR dimuon continuum (same two-heavy-quark source in HI).
-- [[../../analysis/decisions]] / `docs/powheg.md` — Powheg-truth NLO template role & the stitch with a Pythia g→QQ̄ template.
+- [[open_hf_production]] — HF energy-loss/production field hub.
+- [[decisions]] — analysis decisions; `Analysis/docs/powheg.md` has the Powheg-truth NLO template role & the stitch with a Pythia g→QQ̄ template.
 </content>

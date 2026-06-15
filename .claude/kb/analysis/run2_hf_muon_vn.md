@@ -82,6 +82,11 @@ FCal ΣE_T percentiles: 0–10, 10–20, 20–30, 30–40, 40–60%. MC Glauber 
   bottom}, n = 2, 3. **Corrected** v_n = v_n^raw / Res{nΨ_n} [eq.18].
 
 ### Signal/background separation — two-step ρ then d_0 template fit  [PLB p.5; note §6.1–6.3]
+
+> **Shared mechanism (ρ=Δp/p; d_0) lives in the concept hub
+> [[../concepts/muon_source_template_fits]].** Below = *this paper's specifics*
+> (2D PDF factorization, template provenance, shift/smear, η intervals, systematics).
+
 Two discriminating variables:
 - **ρ = (p_ID − p_MS)/p_ID** (momentum imbalance; p_MS energy-loss-corrected).
   Real muons peak at ρ≈0; π/K background is broader, shifted positive.

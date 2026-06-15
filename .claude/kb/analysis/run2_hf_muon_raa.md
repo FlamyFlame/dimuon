@@ -120,6 +120,11 @@ Per-event ΣE_T^FCal percentile, MC Glauber (σ_NN = 70 mb). Bins and
 | 40–60% | 70.5  | 1.96 |
 
 ### Background composition & two-step template fit  [method-we-use (ρ fit); background (d0)]
+
+> **Shared mechanism (ρ=Δp/p real-vs-fake; d0 charm-vs-bottom) lives in the
+> concept hub [[../concepts/muon_source_template_fits]].** Below = *this paper's
+> specifics* (component model, template provenance, FONLL reweighting, fit ranges).
+
 Selected muons (4<pT<30, \|η\|<2) = signal HF muons (c+b semileptonic) +
 three backgrounds: **prompt-muon** (real muons from quarkonia, W/Z, τ —
 fixed from simulation), **hadronic** (π/K decay-in-flight or punch-through

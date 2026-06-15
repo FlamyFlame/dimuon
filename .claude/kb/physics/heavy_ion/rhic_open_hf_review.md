@@ -131,7 +131,8 @@ keep the **open-bottom** slice thorough, open charm moderate, quarkonium brief.
   theory+data review (diffusion, 2πT D_s, energy-loss mechanisms, dead cone).
 - [[hi_big_picture]] — QGP/HIC big-picture motivation (R_AA, v_n, Glauber);
   supplies the field framing this RHIC survey sits inside.
-- *(physics/ also holds the "Heavy-flavor production … hot QCD matter" review PDF,
-  not yet summarized — another LHC-focused open-HF complement.)*
+- [[hf_hot_qcd_matter]] — Averbeck (2013) open-HF review; the earlier RHIC-era
+  complement (decay-lepton channel, DD̄ IMR dimuon continuum).
+- [[hf_theory_overview]] — HF-transport theory companion.
 - [[analysis/overview]] — our single-b → dimuon goal, R_AA observable, and the
   background/template separation these RHIC b/c-isolation methods inform.

@@ -36,9 +36,10 @@ nb⁻¹); p+Pb at 8.16 TeV. Efficiencies from Z→µµ (intermediate p_T), J/ψ�
 **Warnings (acknowledge; do NOT quantify size or direction):**
 - **Run 2 → Run 3.** Our analysis is Run 3 (pp24 and PbPb 23/24/25) at 5.36 TeV.
   The trigger hardware changed for Run 3 (notably the **New Small Wheel** in the
-  endcap, expected to *moderately improve* trigger performance). Run 2 efficiency
-  numbers here are reference, not Run 3 values. Do not assume the magnitude of
-  the change.
+  endcap, *intended* to improve endcap trigger performance — direction/size NOT
+  assumed here; see [[atlas_run3_muon_performance]] for what Run-3 sources state).
+  Run 2 efficiency numbers here are reference, not Run 3 values. Do not assume the
+  magnitude or direction of the change.
 - **Our method ≠ ATLAS official method.** We measure a custom single-muon
   **no-correlation efficiency ε^nc(p_T, q·η)** in our own data and build the pair
   efficiency from it (PbPb inclusion–exclusion ε₁+ε₂−ε₁ε₂; pp 2mu4 product

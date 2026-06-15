@@ -142,6 +142,8 @@ b-tagged-jet R_AA). That is a genuine gap to fill from elsewhere when writing th
 b-energy-loss motivation — ref 69 above is the closest entry it offers.
 
 ## Related KB docs   (knowledge graph)
+- [[open_hf_production]] — the **canonical HF hub** that specializes this big-picture review to open heavy flavor (energy loss, R_AA, dead-cone, transport).
+- [[hf_hot_qcd_matter]], [[hf_theory_overview]], [[rhic_open_hf_review]] — the HF reviews that build on this big-picture framing.
 - [[analysis/overview]] — our physics goal, signal, R_AA observable (this source supplies the field background for that overview's Intro)
 - [[analysis/run2_dimuon_note]] — the Run 2 dimuon measurement whose Intro/motivation this background supports
 </content>

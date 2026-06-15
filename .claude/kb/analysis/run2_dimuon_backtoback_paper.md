@@ -138,10 +138,8 @@ deflection — a **model-independent constraint** on stochastic b-quark deflecti
    the per-pair trigger & reconstruction efficiency method** and the γγ→μμ removal
    that this Letter only cites. Serves: trigger-eff (steps 8/10) and reco-eff
    (step 12) method provenance, pair selection.
-2. **ATLAS, R_AA of muons from charm and bottom hadrons in Pb+Pb 5.02 TeV** —
-   PLB 829 (2022) 137077, arXiv:2109.00411 (Ref. [21]). *PRIMARY.* New info: a
-   single-muon HF **R_AA** measurement — our primary observable and a direct
-   comparison/benchmark. Serves: R_AA (step 15), Intro comparisons.
+2. *(Already in the KB — see [[run2_hf_muon_raa]]; Ref. [21] = arXiv:2109.00411,
+   the single-muon HF R_AA. Not a future-read.)*
 3. **ATLAS, suppression & azimuthal anisotropy of HF-decay muons in Pb+Pb 2.76
    TeV** — PRC 98 (2018) 044905, arXiv:1805.05220 (Ref. [19]). *SUPPORTIVE.* New
    info: the **π/K fake-muon purity procedure** (Δp/p) that both this Letter and
