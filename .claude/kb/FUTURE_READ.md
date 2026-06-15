@@ -20,7 +20,7 @@ When an item is summarized into the KB, move it to "Done" with a link.
 
 | Citation | arXiv/DOI | Class | New info | Serves | Found in |
 |---|---|---|---|---|---|
-| ATLAS HF-muon suppression+v2, Pb+Pb 2.76 TeV | arXiv:1805.05220 (PRC 98 (2018) 044905) | SUPPORTIVE | Predecessor inclusive HF-muon R_AA (no c/b split) + original event-plane method + the π/K **Δp/p purity** procedure | History/Intro; Δp/p purity (step 16) | backtoback, raa, vn |
+| ATLAS HF-muon suppression+v2, Pb+Pb 2.76 TeV | arXiv:1805.05220 (PRC 98 (2018) 044905) | SUPPORTIVE | Predecessor inclusive HF-muon R_AA (no c/b split) + original event-plane method + the π/K **Δp/p purity** procedure. **Method depth now in KB via [[yun_tian_thesis]]** (Ch5/6); the published paper itself remains a citeable summary | History/Intro; Δp/p purity (step 16) | backtoback, raa, vn |
 | ATLAS b-hadron pair production, pp 8 TeV | arXiv:1705.03374 | SUPPORTIVE | bb̄-pair kinematics with flavour-creation/excitation/gluon-splitting decomposition; small-ΔR region | Background composition framing | gluon_splitting_flavour_excitation |
 | Andronic et al., HF + quarkonium in the LHC era | arXiv:1506.03981 (EPJC 76:107 (2016)) | SUPPORTIVE | More detailed dedicated HF+quarkonium pp→AA review (baseline, mechanisms, models) | IntNote §1 Intro; thesis ch.1 | open_hf_production, hf_theory_overview |
 | Beraudo et al. (EMMI task force), HF transport coefficients | arXiv:1803.03824 / Nucl.Phys.A979:21 (2018) | SUPPORTIVE | Quantitative model-to-model HF energy-loss/transport comparison incl. bottom; H_AA uncertainty | b R_AA interpretation & systematics framing | open_hf_production, hf_theory_overview |

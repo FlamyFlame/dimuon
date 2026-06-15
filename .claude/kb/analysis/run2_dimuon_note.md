@@ -208,6 +208,7 @@ DphiFitsDeta0p9 sections.)
 ## Related KB docs   (knowledge graph)
 - [[run2_dimuon_backtoback_paper]] — the published Letter of THIS analysis (publication framing).
 - [[atlas_gammagamma_mumu_pbpb]] — Ref [60]: where the per-pair trigger+reco efficiency method used here is defined; γγ→μμ is also the background removed from our OS pairs.
+- [[yun_tian_thesis]] — its Ch7 (HF dimuon azimuthal correlations, 5.02 TeV) is the **Run-1 predecessor of this dimuon analysis**.
 - [[../concepts/muon_source_template_fits]] — the Δp/p significance / pair-significance purity fit (our adapted version) lives here as a concept hub.
 - [[run2_hf_muon_raa]], [[run2_hf_muon_vn]] — same-group HF-muon analyses sharing the Δp/p method + FCal centrality.
 - [[physics/heavy_ion/open_hf_production]] — field background (energy loss, R_AA, dead-cone).

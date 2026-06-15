@@ -175,6 +175,7 @@ quadrature. Typical **absolute** sizes for v_2 (v_3) [Table 1]:
 - [[../concepts/muon_source_template_fits]] — the ρ=Δp/p (real vs π/K) and d0
   (charm vs bottom) template fits this paper uses, as a cross-paper concept hub.
 - [[run2_hf_muon_raa]] — companion R_AA measurement on the same muon sample.
+- [[yun_tian_thesis]] — PhD thesis with the in-depth (2.76 TeV) method companion (EP + scalar-product v_n) to this HF-muon v_n analysis.
 - [[physics/heavy_ion/open_hf_production]] — field background (energy loss, flow, dead-cone).
 - [[run2_dimuon_note.md]] — Run 2 *dimuon* note (ATL-COM-PHYS-2021-1094); uses
   the **same ρ=Δp/p momentum-imbalance template fit** for fake-muon purity

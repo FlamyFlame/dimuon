@@ -228,6 +228,7 @@ variation. Some sources cancel partially in R_AA (pp↔Pb+Pb correlated).
 - [[../concepts/muon_source_template_fits]] — the Δp/p (real vs π/K) and d0
   (charm vs bottom) template fits this paper uses, as a cross-paper concept hub.
 - [[run2_hf_muon_vn]] — companion v_n measurement on the same muon sample.
+- [[yun_tian_thesis]] — PhD thesis with the in-depth (2.76 TeV) method companion to this HF-muon R_AA analysis.
 - [[physics/heavy_ion/open_hf_production]] — field background (R_AA, dead-cone, energy loss).
 - [[atlas_centrality_2023]] — source of our ⟨T_AA⟩ values (5.36 TeV); [[glauber_modeling]] — the underlying centrality methodology this paper's R_AA normalization uses.
 - [[run2_dimuon_note]] — the Run 2 **dimuon** Δφ analysis from the same
