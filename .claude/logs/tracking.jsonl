@@ -31,3 +31,5 @@
 {"event":"start","command":"review-plot","task":"Review PP crossx plots from pipeline_pp_crossx.sh","slug":"pp-crossx-distributions","timestamp":"2026-06-11T01:55:00Z"}
 {"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-11T01:58:00Z","criticals":0,"warnings":0,"slug":"pp-crossx-distributions"}
 {"event":"end","command":"steer-pipeline","pipeline":"pipeline_pp_crossx.sh","status":"recovered","phases":[1,2,3,4,5],"recovery_attempts":1,"regressions":0,"timestamp":"2026-06-11T01:58:30Z","slug":"pp-crossx"}
+{"event":"start","command":"kb-build","mode":"ADD","slug":"add-effmethod-bbbar-centrality","timestamp":"2026-06-15T04:36:30Z"}
+{"event":"end","command":"kb-build","mode":"ADD","docs":5,"timestamp":"2026-06-15T05:00:35Z","slug":"add-effmethod-bbbar-centrality"}
