@@ -64,6 +64,7 @@ specificity and links here. Per `KB_BUILDING_GUIDE.md` §8 (dedup) and §5
 
 ## Related KB docs
 - [[run2_hf_muon_raa]], [[run2_hf_muon_vn]], [[run2_dimuon_note]] — the three sources using these fits.
+- [[atlas_gammagamma_mumu_pbpb]] — uses a **d0pair** template fit (MC signal vs data-sideband) for HF separation — a complementary d0-based alternative to the Δp/p purity here.
 - [[../physics/detector/ATLAS_Run2_muon_reconstruction]] — d0/z0 resolution and the ID/MS momentum measurements these fits exploit.
 - `Analysis/docs/analysis_overview.md` §6 — our fake-muon purity program (ground truth).
 </content>

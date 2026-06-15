@@ -194,6 +194,12 @@ missed.
 
 ## 8. Placement, dedup & knowledge graph (principles; structure finalized in step 3)
 
+> **No source is added in isolation.** Adding even one paper *always* includes
+> integrating it — dedup against existing docs, bidirectional links, hub
+> designation/deferral, index + FUTURE_READ updates, new area if needed — followed
+> by a `/kb-review` SINGLE pass. An unlinked, undeduped, unreviewed doc is an
+> incomplete add. This applies to ADD mode exactly as it does to a full build.
+
 - **One folder per area** (e.g. analysis papers / detector-performance /
   heavy-ion-field reviews / methods). Default **one file per source**.
 - **Dedup shared concepts — prefer a designated HUB over a new doc.** When a

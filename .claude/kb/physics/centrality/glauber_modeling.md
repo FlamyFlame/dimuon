@@ -156,4 +156,4 @@ ATLAS papers, not from this RHIC-era reference list.
 - [[atlas_centrality_2015]] — **spoke.** ATLAS Run-2 Pb+Pb centrality; earlier LHC implementation. Defers Glauber mechanism here.
 - [[hi_big_picture]] — its Glauber paragraph (§3, N_part/N_coll/spectators/percentile centrality) is the one-paragraph framing version; **defers the full methodology to this doc**.
 - [[run2_hf_muon_raa]] — the ATLAS HF-muon R_AA analysis ours derives from; uses this T_AA-normalized R_AA and FCal-Glauber centrality.
-- [[analysis/overview]] — our R_AA observable and centrality/normalization (§4d–e) rest on this method.
+- [[overview]] — our R_AA observable and centrality/normalization (§4d–e) rest on this method.

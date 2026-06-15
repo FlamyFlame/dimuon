@@ -140,3 +140,8 @@ efficiency, which we measure in HIJING overlay MC.
   sentence on the ambiguity-resolution exception for boosted low-mass dimuons.
   **This doc supplies the missing hit-level mechanism** behind that sentence and
   behind our pair (ΔR-binned) ε_reco.
+- [[atlas_gammagamma_mumu_pbpb]] — its back-to-back pairs *avoid* close-track
+  ambiguity, enabling the ε₁·ε₂ factorization (the contrast that makes OUR nearby
+  pairs need a ΔR-binned pair efficiency).
+- [[atlas_g_to_bb_small_angle]] — uses ID b-tagging / s_d0 of close tracks in the
+  collinear regime; same dense-environment tracking physics.

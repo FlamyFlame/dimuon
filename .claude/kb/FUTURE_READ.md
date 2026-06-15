@@ -28,6 +28,7 @@ When an item is summarized into the KB, move it to "Done" with a link.
 | Si et al., charm/beauty isolation from HF decay electrons | arXiv:1906.08974 (PLB 805 (2020) 135465) | SUPPORTIVE | Concrete **data-driven b/c separation** of semileptonic HF leptons via template fit | Signal/bkg template separation (§6/§16) | rhic_open_hf_review |
 | Loizides, Kamin, d'Enterria, Glauber improved params | arXiv:1710.07098 (PRC 97 (2018) 054910) | SUPPORTIVE | Origin of the Woods-Saxon / σ_NN parameter set + Glauber systematics used by the ATLAS centrality notes | Centrality systematics (overview §4e, roadmap Q2.3) | atlas_centrality_2023 |
 | Ilten, Rodd, Thaler, Williams, disentangling heavy flavor | arXiv:1702.02947 (PRD 96 (2017) 054019) | SUPPORTIVE | Phenomenological statistical separation of g→QQ̄ from other HF production | Background composition / template separation (§6) | atlas_g_to_bb_small_angle |
+| Loizides, Nagle, Steinberg, Improved PHOBOS Glauber MC | arXiv:1408.2549 (SoftwareX 1–2 (2015) 13) | SUPPORTIVE | The actual Glauber-MC **code** that generates the N_part/N_coll/T_AA the ATLAS centrality notes use | Centrality implementation (overview §4e) | atlas_centrality_2023, atlas_centrality_2015 |
 
 > Deferred/merged to keep the list lean: DUKE (Cao 1505.01413) and Prino&Rapp
 > (1603.00529) HF-transport models — folded into the Beraudo/EMMI comparison;

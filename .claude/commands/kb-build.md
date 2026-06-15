@@ -39,6 +39,15 @@ If a list of sources is given with intent to build the whole KB → FULL; otherw
 
 ## ADD mode
 
+> **INVARIANT — no source is ever added in isolation.** Adding even ONE paper is
+> not "write its doc and stop." Every ADD **must** also (a) integrate it into the
+> KB — dedup against existing docs, add **bidirectional** graph links, designate/
+> defer to hubs, update `index.md` + `FUTURE_READ.md`, reorganize if it creates a
+> new area; and (b) **be reviewed** via `/kb-review` SINGLE (which checks exactly
+> this integration). A doc that is written but not linked/deduped/reviewed is an
+> **incomplete add** — the isolated-doc failure mode the whole system exists to
+> prevent. Steps 2–4 below are mandatory, not optional polish.
+
 For each source (do directly if 1–2; spawn one `kb-builder` subagent per source
 if ≥3 to parallelize):
 1. Per `kb-builder.md`: get PDF (PRIMARY → commit; SUPPORTIVE → URL), read with
@@ -48,6 +57,13 @@ if ≥3 to parallelize):
    entries to `FUTURE_READ.md` (dedupe; enforce ≤3/source), and if the source
    duplicates a concept already in the KB, factor the shared part into a concept
    doc and link both (GUIDE §8).
+   - **Bidirectional checklist (do not skip — this is the recurring miss):** for
+     **every** doc the new source links TO, open that doc and add the **reciprocal
+     back-link** — especially hubs, whose "analyses/sources that use this" lists
+     must gain the new entry. A new doc that only links outward (one-way) is an
+     isolated add. Use bare `[[basename]]` (GUIDE §8). When a source is now
+     summarized, also **delist it** from any doc's future-read section and move it
+     to FUTURE_READ "Done."
 3. **Self-sync (GUIDE §9):** if this source covers an analysis step/topic not yet
    in the `/kb-review` full-KB test scenarios, add/extend the scenario.
 4. Hand off to **`/kb-review` (single/few-source mode)**.

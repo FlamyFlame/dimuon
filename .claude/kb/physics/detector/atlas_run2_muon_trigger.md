@@ -160,3 +160,5 @@ detector-TDR, and luminosity papers not specific to this analysis.
   referenced above.
 - `analysis/run2_dimuon_note.md` — our Run 2 dimuon note (the analysis these
   trigger numbers would feed); trigger-efficiency section there.
+- [[atlas_gammagamma_mumu_pbpb]] — builds the per-pair dimuon trigger efficiency
+  from these single-muon trigger efficiencies (the method our dimuon analysis cites).

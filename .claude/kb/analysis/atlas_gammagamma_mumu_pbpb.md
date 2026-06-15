@@ -33,7 +33,7 @@ ATLAS detector* — Phys. Rev. C **107** (2023) 054907; CERN-EP-2022-047.
 | Pair **reconstruction efficiency = product of single-muon reco efficiencies** ε_rec1·ε_rec2, fn of (pT, q·η, centrality), from STARlight+HIJING overlay MC, justified by back-to-back / well-separated topology — §4.1 | The actual definition the back-to-back Letter cites. **CONTRAST for roadmap step 12:** our pairs are nearby → we use a 3D PAIR ε_reco(pair pT, pair η, ΔR), NOT ε₁·ε₂ (overview §4b) | [method-we-use] |
 | Per-pair efficiency weight w = 1/(ε_trig·ε_rec1·ε_rec2·ε_vtx) applied event-by-event; plus a **vertex-pointing efficiency ε_vtx** for the d0pair / z0sinθpair cuts — §4.1 | Per-pair weighting structure (overview §4b); our weight is w⁻¹ = ε_trig^pair·ε_reco^pair (we have no separate vertex-pointing cut) | [method-we-use] |
 | **γγ→μμ identification** via pair **acoplanarity α** and **asymmetry A** (and the k⊥ scale) — §1, §3.2 | γγ→μμ is a **background we REMOVE** from OS pairs ([[run2_dimuon_note]]); this paper *selects* the γγ region that we *veto*. Pair-selection definitions (IntNote §7) | [method-we-use] |
-| HF-decay = the **dominant background** here, suppressed by muon-pair vertex pointing (d0pair, z0sinθpair) + a **d0pair template fit** (MC signal template, data sideband background template) — §3.2, §4.2 | Their HF background is **our signal**. Complementary to our Δp/p purity ([[concepts/muon_source_template_fits]], roadmap step 16); shows a d0-based separation alternative | [background-for-writing] |
+| HF-decay = the **dominant background** here, suppressed by muon-pair vertex pointing (d0pair, z0sinθpair) + a **d0pair template fit** (MC signal template, data sideband background template) — §3.2, §4.2 | Their HF background is **our signal**. Complementary to our Δp/p purity ([[muon_source_template_fits]], roadmap step 16); shows a d0-based separation alternative | [background-for-writing] |
 | DY (OS prompt-dimuon) background via Powheg+Pythia8 with 5 nuclear PDF sets (nNNPDF2.0 nominal), normalized via effective NN cross-section × ⟨T_AA⟩ — §3.1, §4.4 | OS DY treatment if/when needed; IntNote backgrounds | [background-for-writing] |
 | FCal ΣE_T Glauber centrality, **⟨T_AA⟩ table at 5.02 TeV** — §3.3, Table 1 | Centrality method (overview §4e) and a 5.02-TeV T_AA reference (our values are 5.36 TeV — differ) | [background-for-writing] |
 | γγ→μμ as a coherent-photon **QED process / EM probe of the QGP** (acoplanarity broadening, magnetic-field tests) | Intro / thesis context — a non-UPC QED dilepton process; explicitly **not** our HF signal | [background-for-writing] |
@@ -121,7 +121,7 @@ over d0pair < 0.3 mm gives a fit signal fraction, translated to the analysis
 range d0pair < 0.1 mm via Eq. (2). Signal fraction rises with p̄T and toward
 peripheral: ≈50% in 0–5% (p̄T>4 GeV), →1 for UPC; quenching of HF in central
 collisions weakens the centrality dependence at high p̄T. (This d0-based
-separation is **complementary** to our Δp/p purity, [[concepts/muon_source_template_fits]].)
+separation is **complementary** to our Δp/p purity, [[muon_source_template_fits]].)
 
 **DY background (§4.4).** Powheg+Pythia8 (AZNLO tune, CTEQ6L1), 5 nuclear PDFs
 (**nNNPDF2.0 nominal**); only ≈1.8% / 1.2% of preselected DY survive Fid-α /
@@ -181,7 +181,7 @@ Not added (already covered or superseded):
   and data-MC scale factors this paper's reco efficiency builds on.
 - [[atlas_run2_muon_trigger]] — single-muon trigger-efficiency (tag-and-probe,
   dimuon factorization) methodology underlying the per-pair trigger combination here.
-- [[concepts/muon_source_template_fits]] — our Δp/p purity framework; this paper's
+- [[muon_source_template_fits]] — our Δp/p purity framework; this paper's
   d0pair HF/signal template fit is a complementary d0-based separation.
 - [[run2_hf_muon_raa]] — Ref. [49]: HF-muon R_AA (their dominant background = our
   signal); HF quenching context.

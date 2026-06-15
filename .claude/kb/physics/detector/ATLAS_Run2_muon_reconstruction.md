@@ -248,5 +248,5 @@ efficiency ε_µ / light-hadron mis-ID ε_had —
 - [[atlas_run2_muon_trigger]] — companion: muon **trigger** efficiency (this doc is reco/ID); shared method = tag-and-probe.
 - [[atlas_run3_muon_performance]] — Run-3 reco+trigger; reuses these muon-type/WP definitions (NSW added).
 - [[atlas_inner_detector_tracking]] — ID dense-environment tracking (merged/shared clusters, ambiguity solver) underlying close-track muon reco.
-- [[../../analysis/run2_hf_muon_raa]], [[../../analysis/run2_hf_muon_vn]], [[../../analysis/run2_dimuon_backtoback_paper]] — analyses that apply this tag-and-probe efficiency method.
-- [[../../concepts/muon_source_template_fits]] — uses the d0/z0 resolution and ID/MS momentum measurements described here.
+- [[run2_hf_muon_raa]], [[run2_hf_muon_vn]], [[run2_dimuon_backtoback_paper]], [[atlas_gammagamma_mumu_pbpb]] — analyses that apply this tag-and-probe efficiency method.
+- [[muon_source_template_fits]] — uses the d0/z0 resolution and ID/MS momentum measurements described here.

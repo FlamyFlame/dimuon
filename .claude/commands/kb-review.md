@@ -32,6 +32,12 @@ Task / target: $ARGUMENTS
 
 ## SINGLE mode — per-source review
 
+> **Mandatory after every ADD — even a single paper.** SINGLE review is not just a
+> content check of the new doc; its **Part (II)** verifies the source was
+> *integrated, not added in isolation* (correct dir, **bidirectional** links,
+> indexed, deduped against existing docs). If integration was skipped, FAIL. No
+> source is "done" until it has been integrated AND passed this review.
+
 Spawn a **fresh reviewer subagent** (`general-purpose`) per the prompt below. It
 independently reads the new doc AND the source (via `gs` on the committed PDF, or
 `curl`+`gs` for a supportive URL) and the source's reference list.
