@@ -33,3 +33,7 @@
 {"event":"end","command":"steer-pipeline","pipeline":"pipeline_pp_crossx.sh","status":"recovered","phases":[1,2,3,4,5],"recovery_attempts":1,"regressions":0,"timestamp":"2026-06-11T01:58:30Z","slug":"pp-crossx"}
 {"event":"start","command":"kb-build","mode":"ADD","slug":"add-effmethod-bbbar-centrality","timestamp":"2026-06-15T04:36:30Z"}
 {"event":"end","command":"kb-build","mode":"ADD","docs":5,"timestamp":"2026-06-15T05:00:35Z","slug":"add-effmethod-bbbar-centrality"}
+{"event":"start","command":"review-analysis-code","task":"Update PbPb/pp lumi normalization constants to confirmed values; flag sigma_PbPb=7.8b as guess","slug":"fix-lumi-norm-constants","timestamp":"2026-06-15T05:00:23Z"}
+{"event":"start","command":"kb-build","mode":"ADD","slug":"add-ggnote-yuntian-thesis","timestamp":"2026-06-15T05:02:38Z"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-15T05:08:26Z","criticals":0,"warnings":0,"slug":"fix-lumi-norm-constants"}
+{"event":"end","command":"kb-build","mode":"ADD","docs":2,"timestamp":"2026-06-15T05:18:27Z","slug":"add-ggnote-yuntian-thesis"}
