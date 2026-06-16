@@ -1,12 +1,19 @@
 #include "RDFBasedHistFillingData.h"
 #include <TF1.h>
 #include <TH2D.h>
+#include <TGraph.h>
+#include <TKey.h>
+#include <cmath>
 #include <type_traits>
 
 static TFile* s_effcy_pT_fit_file = nullptr;
 static std::map<std::string, TF1*> s_effcy_pT_fit_map;
 static TFile* s_effcy_2D_hist_file = nullptr;
 static std::map<std::string, TH2D*> s_effcy_2D_hist_map;
+
+// Run 2 single-muon reco-efficiency PLACEHOLDER graphs (see header).
+static TFile* s_reco_eff_ph_file = nullptr;
+static std::map<std::string, TGraph*> s_reco_eff_ph_map;
 
 RDFBasedHistFillingData::RDFBasedHistFillingData(int run_year_input, bool isForSoumya_input)
 : run_year (run_year_input), isForSoumya (isForSoumya_input){
@@ -614,6 +621,82 @@ float RDFBasedHistFillingData::EvaluateSingleMuonEffcyPtFitted(const std::string
 
 float RDFBasedHistFillingData::EvaluateSingleMuonEffcy(const std::string& ctr_suffix, bool charge_positive, float pt, float q_eta) {
     return EvaluateSingleMuonEffcyPtFitted(ctr_suffix, charge_positive, pt, q_eta);
+}
+
+// =============================================================================
+// Run 2 single-muon reconstruction-efficiency PLACEHOLDER (eps1*eps2 proxy)
+//
+// PLACEHOLDER: this is a temporary stand-in for the proper Run 3 pair
+// reconstruction efficiency eps_reco(pair pT, pair eta, dR), which does NOT
+// factorize into single-muon products for our nearby signal muons. Replace once
+// Pythia fullsim (pp) + HIJING overlay (PbPb) samples land (task_05, roadmap Q4).
+// See docs/tracking/reco_eff_placeholder_run2.md.
+// =============================================================================
+void RDFBasedHistFillingData::OpenRecoEffPlaceholderFile() {
+    if (!s_reco_eff_ph_map.empty()) {
+        std::cout << "OpenRecoEffPlaceholderFile: reco-eff placeholder map already loaded ("
+                  << s_reco_eff_ph_map.size() << " graphs)" << std::endl;
+        return;
+    }
+    const std::string ph_path =
+        "/gpfs/mnt/atlasgpfs01/usatlas/workarea/yuhanguo/dimuon_codes/Analysis/"
+        "EfficiencyCorrs/EffFiles/run2_reco_eff_placeholder.root";
+    s_reco_eff_ph_file = TFile::Open(ph_path.c_str(), "READ");
+    if (!s_reco_eff_ph_file || s_reco_eff_ph_file->IsZombie()) {
+        std::cerr << "OpenRecoEffPlaceholderFile: FAILED to open " << ph_path
+                  << " -- reco-eff placeholder will be a no-op (w_reco=1)" << std::endl;
+        return;
+    }
+    TIter next(s_reco_eff_ph_file->GetListOfKeys());
+    TKey* key;
+    while ((key = (TKey*)next())) {
+        if (std::string(key->GetClassName()) == "TGraph") {
+            TGraph* g = (TGraph*)key->ReadObj();
+            s_reco_eff_ph_map[g->GetName()] = g;
+        }
+    }
+    std::cout << "OpenRecoEffPlaceholderFile: loaded " << s_reco_eff_ph_map.size()
+              << " reco-eff PLACEHOLDER graphs from " << ph_path << std::endl;
+}
+
+float RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(int centrality, float pt, float q_eta) {
+    if (s_reco_eff_ph_map.empty()) return -1.0f;  // file missing -> caller treats as no-op
+
+    // Build the TGraph key. q*eta slice uses the Run 2 "coarse, gap-included"
+    // binning that the F.2 panels were digitized in (must match the builder).
+    static const CommonEffcyConfig cfg{};
+    std::string key;
+    if (centrality < 0) {
+        // pp: barrel (|q*eta|<1.05) vs endcap, no centrality (HF R_AA Fig.31).
+        key = (std::fabs(q_eta) < 1.05f) ? "gr_reco_eff_medium_pp_barrel"
+                                         : "gr_reco_eff_medium_pp_endcap";
+    } else {
+        // PbPb: map event centrality onto the F.2 7 intervals, then q*eta slice.
+        int lo = 60, hi = 80;  // most-peripheral default (>=60%, incl. >=80 clamp)
+        if      (centrality <  10) { lo =  0; hi = 10; }
+        else if (centrality <  20) { lo = 10; hi = 20; }
+        else if (centrality <  30) { lo = 20; hi = 30; }
+        else if (centrality <  40) { lo = 30; hi = 40; }
+        else if (centrality <  50) { lo = 40; hi = 50; }
+        else if (centrality <  60) { lo = 50; hi = 60; }
+        const std::string qeta_suf = FindBinReturnStr(q_eta, cfg.q_eta_proj_ranges_coarse_incl_gap_run2);
+        if (qeta_suf.empty()) return -1.0f;
+        key = "gr_reco_eff_medium_pbpb_ctr" + std::to_string(lo) + "_" + std::to_string(hi)
+            + "_q_eta_" + qeta_suf;
+    }
+
+    auto it = s_reco_eff_ph_map.find(key);
+    if (it == s_reco_eff_ph_map.end()) return -1.0f;
+
+    // Clamp pT to the digitized anchor range [4,19] (graphs are flat plateaus
+    // beyond), then linear-interpolate; clamp efficiency to (0,1].
+    double x = pt;
+    if (x < 4.0)  x = 4.0;
+    if (x > 19.0) x = 19.0;
+    double val = it->second->Eval(x);  // linear interpolation
+    if (val < 0.01) val = 0.01;
+    if (val > 1.0)  val = 1.0;
+    return static_cast<float>(val);
 }
 
 void RDFBasedHistFillingData::MakeAndWriteDRTrigEffGraphsHelper(const std::vector<std::string>& categories) {

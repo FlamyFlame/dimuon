@@ -914,6 +914,7 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
     std::cout << "[PbPb] FillHistogramsCrossx: opposite-sign only, signal cuts, centrality-aware weighted crossx histograms" << std::endl;
 
     OpenEffcyPtFitFile();
+    OpenRecoEffPlaceholderFile();  // Run 2 reco-eff PLACEHOLDER (eps1*eps2 proxy, per-centrality)
 
     const std::string signal_cuts = "minv > 1.08 && minv < 2.9 && pair_pt > 8 && m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2 && dr > 0.05";
 
@@ -935,15 +936,41 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
             return RDFBasedHistFillingData::EvaluateSingleMuonEffcy(cs, q > 0, pt, qe);
         }, {"ctr_suf", "m2.charge", "m2.pt", "q_eta2"})
         .Define("effcy_pair", "effcy1 > 0 && effcy2 > 0 ? (double)(effcy1 + effcy2 - effcy1 * effcy2) : -1.0")
-        .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0");
+        .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
+        // Per-pair reco-efficiency PLACEHOLDER weight w_reco = 1/(eps_reco1*eps_reco2)
+        // (eps1*eps2 proxy), per-centrality via avg_centrality. Floor the pair eff
+        // at 0.05 to bound the 1/eps blow-up near threshold; lookup failure -> w_reco=1.
+        // ctr < 0 (invalid PbPb centrality) must NOT fall through to the pp
+        // barrel/endcap graphs (centrality<0 is the pp sentinel); return 1 (no
+        // reco correction) instead.
+        .Define("effcy_reco1", [](int ctr, float pt, float qe) {
+            return ctr < 0 ? 1.0f : RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(ctr, pt, qe);
+        }, {"avg_centrality", "m1.pt", "q_eta1"})
+        .Define("effcy_reco2", [](int ctr, float pt, float qe) {
+            return ctr < 0 ? 1.0f : RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(ctr, pt, qe);
+        }, {"avg_centrality", "m2.pt", "q_eta2"})
+        .Define("effcy_reco_pair", "effcy_reco1 > 0 && effcy_reco2 > 0 ? (double)(effcy_reco1 * effcy_reco2) : -1.0")
+        .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / (effcy_reco_pair < 0.05 ? 0.05 : effcy_reco_pair) : 1.0")
+        .Define("w_unfold", "1.0");  // PLACEHOLDER: unfolding identity until det-response unfolding lands (roadmap Q4)
 
+    // Base T_AA+lumi-weighted crossx weight and the sequential correction-stage
+    // weights (raw -> unfolded -> +reco -> +reco+trig). See CorrectionStages.h.
     ROOT::RDF::RNode df_single_b_crossx_weighted = df_with_trig.Define(
         "weight_for_RAA",
         [this](int avg_centrality, double weight) {
             return this->CalculateWeightForRAA(avg_centrality, weight);
         },
         {"avg_centrality", "weight"}
-    ).Define("weight_for_RAA_trig_corr", "weight_for_RAA * w_trig");
+    // NOMINAL corrected weight now INCLUDES the reco-eff PLACEHOLDER (w_reco):
+    // every crossx histogram filled with weight_for_RAA_trig_corr (incl. the
+    // R_AA 3D input h3d_op_..._vs_centr...) is reco+trig corrected. Equals the
+    // _corr_unfolded_reco_trig stage by construction (w_unfold==1). To revert to
+    // trig-only, drop the "w_reco *" factor. (docs/tracking/reco_eff_placeholder_run2.md)
+    ).Define("weight_for_RAA_trig_corr", "weight_for_RAA * w_reco * w_trig")
+     .Define("cw_raw",                "weight_for_RAA")
+     .Define("cw_unfolded",           "cw_raw * w_unfold")
+     .Define("cw_unfolded_reco",      "cw_unfolded * w_reco")
+     .Define("cw_unfolded_reco_trig", "cw_unfolded_reco * w_trig");
     if (df_map.find("df_single_b_crossx_weighted") == df_map.end()) {
         df_map.emplace("df_single_b_crossx_weighted", df_single_b_crossx_weighted);
     }
@@ -1014,6 +1041,15 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
         hist2d_rresultptr_map[h2_eta_notc] = df_crossx_ctr.Histo2D(
             ROOT::RDF::TH2DModel(h2_eta_notc.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, 44, -2.4, 2.4),
             "pair_pt", "pair_eta", "weight_for_RAA");
+
+        // --- Correction-stage histograms (raw -> unfolded -> +reco -> +reco+trig) ---
+        // primary pair_pt x pair_eta differential, per centrality. See CorrectionStages.h.
+        for (const auto& st : CrossxCorrectionStages()) {
+            const std::string nm = "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr + st.suffix;
+            hist2d_rresultptr_map[nm] = df_crossx_ctr.Histo2D(
+                ROOT::RDF::TH2DModel(nm.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, 44, -2.4, 2.4),
+                "pair_pt", "pair_eta", st.weight_col);
+        }
 
         // --- Version 2: event-count histograms (raw weight, uniform = 1 for data) ---
         const std::string h2_eta_cnt = "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr + "_counts";
