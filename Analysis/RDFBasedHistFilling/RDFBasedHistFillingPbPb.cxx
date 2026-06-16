@@ -994,6 +994,40 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
             ROOT::RDF::TH3DModel("h3d_op_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt", ";p_{T}^{pair} [GeV];#eta^{pair};Centrality",
                 npt, ptbins, 44, eta_edges.data(), nCtrBins, ctr_bin_edges_double.data()),
             "pair_pt", "pair_eta", "avg_centrality", "weight_for_RAA_trig_corr");
+
+        // --- Same-sign (SS) signal-region 3D yield, for the OS-SS combinatorial
+        // subtraction in R_AA (analysis_overview.md §4a). Mirrors the OS path with
+        // identical cuts and corrected weight (weight_for_RAA · w_reco · w_trig).
+        // SS muons are real reco'd muons, so the same per-muon efficiency weights apply.
+        ROOT::RDF::RNode df_ss_crossx = map_at_checked(df_map, "df_ss", "FillHistogramsCrossx PbPb: df_ss").Filter(signal_cuts);
+        ROOT::RDF::RNode df_ss_weighted = df_ss_crossx
+            .Define("q_eta1", "(float)(m1.charge * m1.eta)")
+            .Define("q_eta2", "(float)(m2.charge * m2.eta)")
+            .Define("ctr_suf", [](int ctr) { return RDFBasedHistFillingData::FindCtrSuffix(ctr); }, {"avg_centrality"})
+            .Define("effcy1", [](const std::string& cs, int q, float pt, float qe) {
+                return RDFBasedHistFillingData::EvaluateSingleMuonEffcy(cs, q > 0, pt, qe);
+            }, {"ctr_suf", "m1.charge", "m1.pt", "q_eta1"})
+            .Define("effcy2", [](const std::string& cs, int q, float pt, float qe) {
+                return RDFBasedHistFillingData::EvaluateSingleMuonEffcy(cs, q > 0, pt, qe);
+            }, {"ctr_suf", "m2.charge", "m2.pt", "q_eta2"})
+            .Define("effcy_pair", "effcy1 > 0 && effcy2 > 0 ? (double)(effcy1 + effcy2 - effcy1 * effcy2) : -1.0")
+            .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
+            .Define("effcy_reco1", [](int ctr, float pt, float qe) {
+                return ctr < 0 ? 1.0f : RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(ctr, pt, qe);
+            }, {"avg_centrality", "m1.pt", "q_eta1"})
+            .Define("effcy_reco2", [](int ctr, float pt, float qe) {
+                return ctr < 0 ? 1.0f : RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(ctr, pt, qe);
+            }, {"avg_centrality", "m2.pt", "q_eta2"})
+            .Define("effcy_reco_pair", "effcy_reco1 > 0 && effcy_reco2 > 0 ? (double)(effcy_reco1 * effcy_reco2) : -1.0")
+            .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / (effcy_reco_pair < 0.05 ? 0.05 : effcy_reco_pair) : 1.0")
+            .Define("weight_for_RAA",
+                [this](int avg_centrality, double weight) { return this->CalculateWeightForRAA(avg_centrality, weight); },
+                {"avg_centrality", "weight"})
+            .Define("weight_for_RAA_trig_corr", "weight_for_RAA * w_reco * w_trig");
+        hist3d_rresultptr_map["h3d_ss_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt"] = df_ss_weighted.Histo3D(
+            ROOT::RDF::TH3DModel("h3d_ss_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt", ";p_{T}^{pair} [GeV];#eta^{pair};Centrality",
+                npt, ptbins, 44, eta_edges.data(), nCtrBins, ctr_bin_edges_double.data()),
+            "pair_pt", "pair_eta", "avg_centrality", "weight_for_RAA_trig_corr");
     }
 
     const std::vector<std::pair<float, float>> dr_ranges = {{0.0f, 0.2f}, {0.2f, 0.4f}, {0.4f, 0.6f}, {0.6f, 1.0f}};

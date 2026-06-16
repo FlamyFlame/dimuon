@@ -455,6 +455,44 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
             ROOT::RDF::TH2DModel(nm.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, 44, -2.4, 2.4),
             "pair_pt", "pair_eta", st.weight_col);
     }
+
+    // --- Same-sign (SS) signal-region 2D yield, for the OS-SS combinatorial
+    // subtraction in R_AA (analysis_overview.md §4a). Mirrors the OS path with
+    // identical cuts and corrected weight (crossx_weight · w_reco · w_trig).
+    // Trigger columns come from FillHistogramsGeneric (added to df_ss too, since
+    // categories_essential = pair_signs) when generic ran; else define inline.
+    {
+        ROOT::RDF::RNode df_ss_crossx = map_at_checked(df_map, "df_ss", "FillHistogramsCrossx PP: df_ss").Filter(signal_cuts);
+        ROOT::RDF::RNode df_ss_with_trig = generic_weight_col.empty()
+            ? df_ss_crossx
+                .Define("q_eta1", "(float)(m1.charge * m1.eta)")
+                .Define("q_eta2", "(float)(m2.charge * m2.eta)")
+                .Define("effcy1", [](int q, float pt, float qe) {
+                    return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe);
+                }, {"m1.charge", "m1.pt", "q_eta1"})
+                .Define("effcy2", [](int q, float pt, float qe) {
+                    return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe);
+                }, {"m2.charge", "m2.pt", "q_eta2"})
+                .Define("effcy_pair", "effcy1 > 0 && effcy2 > 0 ? (double)(effcy1 * effcy2) : -1.0")
+                .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
+            : df_ss_crossx;
+        ROOT::RDF::RNode df_ss_weighted = df_ss_with_trig
+            .Define("effcy_reco1", [](float pt, float qe) {
+                return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe);
+            }, {"m1.pt", "q_eta1"})
+            .Define("effcy_reco2", [](float pt, float qe) {
+                return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe);
+            }, {"m2.pt", "q_eta2"})
+            .Define("effcy_reco_pair", "effcy_reco1 > 0 && effcy_reco2 > 0 ? (double)(effcy_reco1 * effcy_reco2) : -1.0")
+            .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / (effcy_reco_pair < 0.05 ? 0.05 : effcy_reco_pair) : 1.0")
+            .Define("crossx_weight",
+                [lumi_factor](double weight){ return weight * lumi_factor; }, {"weight"})
+            .Define("crossx_weight_trig_corr", "crossx_weight * w_reco * w_trig");
+        hist2d_rresultptr_map["h2d_ss_crossx_pair_pt_pair_eta_binned_w_signal_cuts"] = df_ss_weighted.Histo2D(
+            ROOT::RDF::TH2DModel("h2d_ss_crossx_pair_pt_pair_eta_binned_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, 44, -2.4, 2.4),
+            "pair_pt", "pair_eta", "crossx_weight_trig_corr");
+    }
+
     hist2d_rresultptr_map["h2d_crossx_pair_pt_minv_w_signal_cuts"] = df_single_b_crossx_weighted.Histo2D(
         ROOT::RDF::TH2DModel("h2d_crossx_pair_pt_minv_w_signal_cuts", ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", npt, ptbins, 50, 1.0, 3.0),
         "pair_pt", "minv", "crossx_weight_trig_corr");
