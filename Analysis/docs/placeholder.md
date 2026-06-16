@@ -94,13 +94,20 @@ the nominal** — `w_reco` is folded into the nominal corrected weight
 `crossx_weight_trig_corr` = `crossx_weight·w_reco·w_trig`), so all standard
 crossx histograms and the R_AA 3D input (`h3d_op_crossx_..._vs_centr...`) are
 reco+trig corrected (== the validated `_corr_unfolded_reco_trig` stage). Nominal
-crossx plots reran (pp24, pbpb_23_24_25_combined). **R_AA plotting:**
-`RAA_plotting.cxx` is stale legacy (Mac `base_dir`, old `*_single_b_ana_hists*`
-filenames, reads a non-produced `h3d_ss_crossx_...`) → not runnable on the
-cluster; modernization is **task_06**. The reco placeholder is nonetheless
-already in the R_AA *input* histogram. **Still placeholder/preliminary** — do
-not quote as final; pre-reco trig-only nominal preserved in
-`dimuon_data/crossx_hist_backup_20260616_pre_reco_nominal/`.
+crossx plots reran (pp24, pbpb_23_24_25_combined). **R_AA (task_06 DONE
+2026-06-16):** `RAA_plotting.cxx` modernized to read the RDF crossx outputs
+(combined PbPb 23+24+25 vs pp24), with SS signal-region histos added to the RDF
+(`h3d_ss_...`, `h2d_ss_...`) so R_AA does the OS−SS combinatorial subtraction;
+reco-corrected R_AA plots (vs pair pT/η/centrality) in
+`dimuon_data/plots/single_b_analysis/RAA/`. See `docs/tracking/raa_from_rdf_crossx.md`.
+**Still placeholder/preliminary** — do not quote as final; pre-reco trig-only
+nominal preserved in `dimuon_data/crossx_hist_backup_20260616_pre_reco_nominal/`.
+
+> **OPEN normalization issue (crossx + R_AA):** combined-year results naive-sum
+> per-year `1/L_year`-weighted histograms (existing crossx convention), inflating
+> the absolute combined scale by ~Σ(years). Correct combination is `ΣN/ΣL`; fix
+> consistently across the crossx combined plotter and R_AA. R_AA absolute scale
+> also preliminary due to the 2023 ⟨T_AA⟩ placeholder (items 1–2).
 
 **Needs:** full Pythia fullsim HIJING-overlay (r17662) + full pp24 fullsim →
 proper 3D pair ε_reco. **Note disclosure:** quote reco-eff and any

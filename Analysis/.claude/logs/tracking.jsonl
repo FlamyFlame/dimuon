@@ -35,3 +35,9 @@
 {"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-16T04:06:48Z","criticals":0,"warnings":0,"slug":"reco-eff-stages-beforeafter"}
 {"event":"start","command":"review-analysis-code","task":"fold w_reco into nominal crossx weight","slug":"reco-fold-nominal-weight","timestamp":"2026-06-16T05:08:59Z"}
 {"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-16T05:10:58Z","criticals":0,"warnings":0,"slug":"reco-fold-nominal-weight"}
+{"event":"start","command":"review-analysis-code","task":"SS crossx histos for RAA","slug":"ss-crossx-histos-for-raa","timestamp":"2026-06-16T05:35:24Z"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-16T05:37:44Z","criticals":0,"warnings":0,"slug":"ss-crossx-histos-for-raa"}
+{"event":"start","command":"review-analysis-code","task":"modernize RAA_plotting","slug":"raa-plotting-modernize","timestamp":"2026-06-16T05:54:46Z"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":2,"timestamp":"2026-06-16T06:03:00Z","criticals":0,"warnings":0,"slug":"raa-plotting-modernize"}
+{"event":"start","command":"review-plot","task":"reco-corrected RAA plots","slug":"raa-reco-corrected-plots","timestamp":"2026-06-16T06:03:22Z"}
+{"event":"end","command":"review-plot","status":"approved","iterations":4,"timestamp":"2026-06-16T06:18:54Z","criticals":0,"warnings":0,"slug":"raa-reco-corrected-plots"}
