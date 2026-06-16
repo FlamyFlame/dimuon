@@ -1,3 +1,13 @@
+#include <TFile.h>
+#include <TH2D.h>
+#include <TH3D.h>
+#include <TCanvas.h>
+#include <TLegend.h>
+#include <TSystem.h>
+#include <string>
+#include <vector>
+#include <iostream>
+#include <cmath>
 #include "MuonObjectsParamsAndHelpers/DatasetTriggerMap.h"
 
 class RAAPlotting{
@@ -5,7 +15,10 @@ private:
 
 	std::string pp_infile;
 	std::string pbpb_infile;
-	std::string base_dir = "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/";
+	std::vector<std::string> pbpb_infiles; // if non-empty: sum these PbPb-year RDF files (combined, per analysis convention)
+	// Cluster data area. Inputs are the RDFBasedHistFilling crossx outputs
+	// (histograms_real_pairs_*), now reco+trig efficiency corrected.
+	std::string base_dir = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/";
 	std::string out_dir;
 	std::string run_year_trigger_suffix;
 	std::string legend_pbpb_label;
@@ -14,17 +27,20 @@ private:
 	// x: pair pt; y: pair eta; z: centrality
     std::string h3d_name_ss = "h3d_ss_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt";
     std::string h3d_name_op = "h3d_op_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt";
-    
-    std::string h2d_name = "h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts";
+
+    std::string h2d_name    = "h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts";    // pp OS
+    std::string h2d_name_ss = "h2d_ss_crossx_pair_pt_pair_eta_binned_w_signal_cuts"; // pp SS (combinatorial)
 
 	int nctr_bins = 6;
 	std::vector<std::vector<int>> ctr_rebins = {{1},{2},{3},{4},{5},{6}};
 	std::vector<Color_t> ctr_colors = {kBlack, kBlue, kRed, kGreen+2, kMagenta, kOrange+2};
-	std::vector<std::string> ctr_labels = {"Centrality: 0-5%", "Centrality: 5-10%", "_Centrality: 10-20%", "Centrality: 20-30%", "Centrality: 30-50%", "Centrality: 50-80%"};
+	std::vector<std::string> ctr_labels = {"Centrality: 0-5%", "Centrality: 5-10%", "Centrality: 10-20%", "Centrality: 20-30%", "Centrality: 30-50%", "Centrality: 50-80%"};
 	
-	std::vector<std::vector<int>> pair_pt_rebins = {{1,2,3,4,5},{6,7,8,9},{10,11,12}};
+	// RDF crossx pT axis has 15 bins, edges {8,10,11,14,16,20,24,28,34,41,49,58,70,84,100,120}.
+	// Group into 3 physics ranges covering ALL 15 bins (legacy used 12 bins / pT_bins_80).
+	std::vector<std::vector<int>> pair_pt_rebins = {{1,2,3,4,5},{6,7,8,9,10},{11,12,13,14,15}};
 	std::vector<Color_t> pair_pt_colors = {kBlue, kRed, kGreen+2};
-	std::vector<std::string> pair_pt_labels = {"p_{T}^{pair} 8-21GeV", "p_{T}^{pair} 21-45GeV", "p_{T}^{pair} 45-80GeV"};
+	std::vector<std::string> pair_pt_labels = {"p_{T}^{pair} 8-20GeV", "p_{T}^{pair} 20-49GeV", "p_{T}^{pair} 49-120GeV"};
 
 	// the rebins, colors & labels for the variable showing up as different lines
 	std::vector<std::vector<int>> line_var_rebins;
@@ -34,9 +50,9 @@ private:
     TFile* infile_pp = nullptr;
     TFile* infile_pbpb = nullptr;
 
-	TH2D* h2d_crossx_pp;
-	TH3D* h3d_crossx_pbpb_ss;
-	TH3D* h3d_crossx_pbpb_op;
+	TH2D* h2d_crossx_pp = nullptr;
+	TH3D* h3d_crossx_pbpb_ss = nullptr;
+	TH3D* h3d_crossx_pbpb_op = nullptr;
 
 	TH1D* hcrossx_pp_proj;
 	std::vector<double> pp_crossx_intgr_in_pair_pT_bin;
@@ -66,10 +82,10 @@ public:
 };
 
 RAAPlotting::~RAAPlotting(){
-	infile_pp->Close();
-	delete infile_pp;
-	infile_pbpb->Close();
-	delete infile_pbpb;
+	// infile_pbpb stays null in the combined (multi-file) path — year files are
+	// opened and closed inside HistRetrieve. Guard both.
+	if (infile_pp)   { infile_pp->Close();   delete infile_pp; }
+	if (infile_pbpb) { infile_pbpb->Close(); delete infile_pbpb; }
 }
 
 void RAAPlotting::InputOutputPrepare(){
@@ -114,8 +130,21 @@ void RAAPlotting::InputOutputPrepare(){
 		legend_pbpb_label = "PbPb 2024 data, " + DatasetTriggerMap::GetTriggerLabel(24, "PbPb");
 		legend_pp_label   = "pp 2024 data, "   + DatasetTriggerMap::GetTriggerLabel(24, "pp_2mu4");
 		break;
+	case 6: // Run 3: PbPb 2023+2024+2025 combined (single_mu4) + pp 2024 (2mu4), from RDF crossx outputs
+		pp_infile   = base_dir + "pp_2024/histograms_real_pairs_pp_2024_2mu4_nominal.root";
+		pbpb_infiles = {
+			base_dir + "pbpb_2023/histograms_real_pairs_pbpb_2023_single_mu4_no_trg_plots_nominal.root",
+			base_dir + "pbpb_2024/histograms_real_pairs_pbpb_2024_single_mu4_no_trg_plots_nominal.root",
+			base_dir + "pbpb_2025/histograms_real_pairs_pbpb_2025_single_mu4_no_trg_plots_nominal.root",
+		};
+		run_year_trigger_suffix = "_pbpb23_24_25_combined_pp24_2mu4";
+		out_dir = base_dir + "plots/single_b_analysis/RAA/";
+		legend_pbpb_label = "Pb+Pb 2023+2024+2025, HLT_mu4";
+		legend_pp_label   = "pp 2024, HLT_2mu4";
+		break;
+
 	default:
-		std::cout << "Run year + trigger mode must be in range 1-5! Either not set or out of range!" << std::endl;
+		std::cout << "Run year + trigger mode must be in range 1-6! Either not set or out of range!" << std::endl;
 		throw std::exception();
 	}
 }
@@ -152,33 +181,47 @@ void RAAPlotting::ModePrepare(){
 
 void RAAPlotting::HistRetrieve(){
 
+    // ---- pp cross-section: OS - SS (combinatorial subtraction, analysis_overview §4a) ----
     infile_pp = TFile::Open(pp_infile.c_str());
     if (!infile_pp || infile_pp->IsZombie()) {
-        std::cerr << "Error opening file: " << pp_infile << std::endl;
+        std::cerr << "Error opening pp file: " << pp_infile << std::endl;
         throw std::exception();
     }
-    infile_pbpb = TFile::Open(pbpb_infile.c_str());
-    if (!infile_pbpb || infile_pbpb->IsZombie()) {
-        std::cerr << "Error opening file: " << pbpb_infile << std::endl;
-        throw std::exception();
+    TH2D* h2d_pp_os = dynamic_cast<TH2D*>(infile_pp->Get(h2d_name.c_str()));
+    if (!h2d_pp_os) { std::cerr << "Error getting pp TH2D " << h2d_name << std::endl; throw std::exception(); }
+    h2d_crossx_pp = dynamic_cast<TH2D*>(h2d_pp_os->Clone("h2d_crossx_pp_osmss"));
+    h2d_crossx_pp->SetDirectory(nullptr);
+    TH2D* h2d_pp_ss = dynamic_cast<TH2D*>(infile_pp->Get(h2d_name_ss.c_str()));
+    if (h2d_pp_ss) h2d_crossx_pp->Add(h2d_pp_ss, -1.);
+    else std::cerr << "WARNING: pp SS hist " << h2d_name_ss
+                   << " missing -> OS-only pp (no combinatorial subtraction)" << std::endl;
+
+    // ---- PbPb yield: sum year files (combined), then OS - SS ----
+    std::vector<std::string> pbpb_files = pbpb_infiles.empty()
+        ? std::vector<std::string>{pbpb_infile} : pbpb_infiles;
+    bool any_pbpb_ss = false;
+    for (const auto& fpath : pbpb_files){
+        TFile* f = TFile::Open(fpath.c_str());
+        if (!f || f->IsZombie()) { std::cerr << "Error opening PbPb file: " << fpath << std::endl; throw std::exception(); }
+        TH3D* op = dynamic_cast<TH3D*>(f->Get(h3d_name_op.c_str()));
+        TH3D* ss = dynamic_cast<TH3D*>(f->Get(h3d_name_ss.c_str()));
+        if (!op) { std::cerr << "Error getting TH3D " << h3d_name_op << " in " << fpath << std::endl; throw std::exception(); }
+        if (!h3d_crossx_pbpb_op){
+            h3d_crossx_pbpb_op = dynamic_cast<TH3D*>(op->Clone("h3d_op_comb"));
+            h3d_crossx_pbpb_op->SetDirectory(nullptr);
+        } else h3d_crossx_pbpb_op->Add(op);
+        if (ss){
+            any_pbpb_ss = true;
+            if (!h3d_crossx_pbpb_ss){
+                h3d_crossx_pbpb_ss = dynamic_cast<TH3D*>(ss->Clone("h3d_ss_comb"));
+                h3d_crossx_pbpb_ss->SetDirectory(nullptr);
+            } else h3d_crossx_pbpb_ss->Add(ss);
+        }
+        f->Close(); delete f;
     }
-
-	h2d_crossx_pp = dynamic_cast<TH2D*>(infile_pp->Get(h2d_name.c_str()));
-	h3d_crossx_pbpb_ss = dynamic_cast<TH3D*>(infile_pbpb->Get(h3d_name_ss.c_str()));
-	h3d_crossx_pbpb_op = dynamic_cast<TH3D*>(infile_pbpb->Get(h3d_name_op.c_str()));
-
-
-    if (!h3d_crossx_pbpb_ss) {
-        std::cerr << "Error getting TH3D " << h3d_name_ss << std::endl;
-        throw std::exception();
-    }
-    if (!h3d_crossx_pbpb_op) {
-        std::cerr << "Error getting TH3D " << h3d_name_op << std::endl;
-        throw std::exception();
-    }
-
-    h3d_crossx_pbpb_op->Add(h3d_crossx_pbpb_ss, -1.);
-
+    if (any_pbpb_ss && h3d_crossx_pbpb_ss) h3d_crossx_pbpb_op->Add(h3d_crossx_pbpb_ss, -1.);
+    else std::cerr << "WARNING: PbPb SS hist " << h3d_name_ss
+                   << " missing -> OS-only PbPb (no combinatorial subtraction)" << std::endl;
 }
 
 
@@ -238,6 +281,7 @@ void RAAPlotting::PrintInstructions(){
 
 void RAAPlotting::RunPlotting(){
 	InputOutputPrepare();
+	gSystem->mkdir(out_dir.c_str(), true); // ensure the (cluster) output dir exists
 	ModePrepare();
 	HistRetrieve();
 	HistProject();
@@ -259,11 +303,15 @@ void RAAPlotting::RunPlotting(){
 	for (int subplot = 1; subplot <= nSubplots; subplot++){
 	    c_raa->cd(subplot);
 
-	    TLegend* l = new TLegend(0.15,0.4,0.6,0.89);
+	    // Upper-centre, compact: with the y-headroom below, the legend clears the
+	    // data bulk everywhere; placing it in x∈[0.30,0.70] also avoids the tall
+	    // low-stat error bars at the extreme eta acceptance edges (far left/right).
+	    TLegend* l = new TLegend(0.30,0.64,0.70,0.90);
 
 		l->SetBorderSize(0);
 		l->SetFillStyle(0);
 		l->SetTextFont(42);
+		l->SetTextSize(0.030);
 		l->SetMargin(0.2);
 		l->SetTextColor(1);
 
@@ -273,20 +321,32 @@ void RAAPlotting::RunPlotting(){
 			TH1D* hcrossx_pbpb_centr_cur_ctr = hcrossx_pbpb_proj_list.at(iline);
 	    	TH1D* h_RAA_cur_bin = (TH1D*) hcrossx_pbpb_centr_cur_ctr->Clone("h_RAA_cur_bin");
 			if (mode == 1 || mode == 2){
-				h_RAA_cur_bin->Divide(hcrossx_pp_proj);
+				// Index-wise ratio R_AA = PbPb / pp. Bin counts match by construction
+				// (same pT/eta axis); done explicitly (not TH1::Divide) because the
+				// PbPb 3D eta axis is an explicit edge array while the pp 2D eta axis
+				// is uniform — numerically identical edges but different internal
+				// representation, which makes TH1::Divide warn. Independent ratio error.
+				for (int ib = 1; ib <= h_RAA_cur_bin->GetNbinsX(); ++ib){
+					double a = hcrossx_pbpb_centr_cur_ctr->GetBinContent(ib), ea = hcrossx_pbpb_centr_cur_ctr->GetBinError(ib);
+					double b = hcrossx_pp_proj->GetBinContent(ib),           eb = hcrossx_pp_proj->GetBinError(ib);
+					double r = (b != 0.) ? a / b : 0.;
+					double er = (a != 0. && b != 0.) ? r * std::sqrt((ea/a)*(ea/a) + (eb/b)*(eb/b)) : 0.;
+					h_RAA_cur_bin->SetBinContent(ib, r);
+					h_RAA_cur_bin->SetBinError(ib, er);
+				}
 			}else{
-				cout << "before + after dividing by pp:" << endl;
-				for (int ibin = 0; ibin < h_RAA_cur_bin->GetNbinsX(); ibin++){
-					try{
-						cout << "bin " << ibin << ": " << h_RAA_cur_bin->GetBinContent(ibin) << ", ";
-						h_RAA_cur_bin->SetBinContent(ibin, h_RAA_cur_bin->GetBinContent(ibin) / pp_crossx_intgr_in_pair_pT_bin.at(iline));
-						cout << h_RAA_cur_bin->GetBinContent(ibin) << endl;
-					}catch (const std::out_of_range& e) {
-					    std::cerr << "Out of Range error when setting RAA vs centrality bin content" << std::endl;
-					    std::cerr << "Occurs at the " << ibin << "-th rebinned pair-pT bin" << std::endl;
-					    std::cerr << "Results in incorrect RAA vs centrality plot!" << std::endl;
-					}
-				}					
+				// mode 3 (R_AA vs centrality): PbPb yield (ProjectionZ over a pair-pT
+				// group) divided by the pp cross-section integrated over the SAME
+				// pair-pT group (a per-line scalar). Iterate REAL bins 1..N (bin 0 is
+				// underflow); the denominator is constant, so the error scales by 1/pp_int.
+				const double pp_int = (iline < (int)pp_crossx_intgr_in_pair_pT_bin.size())
+					? pp_crossx_intgr_in_pair_pT_bin.at(iline) : 0.;
+				for (int ib = 1; ib <= h_RAA_cur_bin->GetNbinsX(); ++ib){
+					double a  = h_RAA_cur_bin->GetBinContent(ib);
+					double ea = h_RAA_cur_bin->GetBinError(ib);
+					h_RAA_cur_bin->SetBinContent(ib, (pp_int != 0.) ? a / pp_int : 0.);
+					h_RAA_cur_bin->SetBinError(ib,   (pp_int != 0.) ? ea / pp_int : 0.);
+				}
 			}
 			h_RAA_cur_bin->SetLineColor(line_var_colors.at(iline));
 			h_RAA_cur_bin->SetLineWidth(2);
@@ -302,15 +362,23 @@ void RAAPlotting::RunPlotting(){
 		}
 		l->AddEntry("", legend_pbpb_label.c_str(), "");
 		l->AddEntry("", legend_pp_label.c_str(), "");
-		l->AddEntry("","m_{#mu#mu} #in (1.08, 2.9) GeV, p_{T}^{pair} > 8 GeV","");
-		l->AddEntry("","opposite sign","");
+		l->AddEntry("","m_{#mu#mu}#in(1.08,2.9), p_{T}^{pair}>8 GeV","");
+		l->AddEntry("","OS #minus SS subtracted","");
+		l->AddEntry("","reco-eff + T_{AA}: PLACEHOLDERS","");
 	    
 
-		double ymax = ylim * 1.1;
+		double ymax = ylim * 1.7; // headroom so the upper-right legend/info block clears the data (esp. the ~flat eta distribution)
 		if (mode == 1 && use_same_y_axis_range_23_24 && run_year_trigger_mode > 1){ // pt mode; use same range for 23 + 24; running 23/24 plotting
 			ymax = ymax_pt_mode_23_24_common.at(run_year_trigger_mode % 2).at(subplot-1);
 		}
-	    h_RAA_list.at((subplot-1) * line_var_rebins.size() / nSubplots)->GetYaxis()->SetRangeUser(0,ymax);
+	    TH1D* h_first = h_RAA_list.at((subplot-1) * line_var_rebins.size() / nSubplots);
+	    h_first->GetYaxis()->SetRangeUser(0,ymax);
+	    h_first->GetYaxis()->SetTitle("R_{AA}");
+	    h_first->GetXaxis()->SetTitle( (mode==1) ? "p_{T}^{pair} [GeV]" : (mode==2) ? "#eta^{pair}" : "Centrality [%]" );
+	    // mode 2: restrict the displayed eta to the well-populated region; the
+	    // |eta| ~ 2.3-2.4 acceptance-edge bins are very low-stat (giant error bars)
+	    // and not meaningful for R_AA (and would otherwise spike into the legend).
+	    if (mode == 2) h_first->GetXaxis()->SetRangeUser(-2.3, 2.3);
 	    
 	    for (int iline = (subplot-1) * line_var_rebins.size() / nSubplots; iline < subplot * line_var_rebins.size() / nSubplots; iline++){
 	    	TH1D* h_RAA_cur_bin = h_RAA_list.at(iline);
@@ -338,21 +406,13 @@ void RAA_plotting_single_run_year_trigger_mode(int run_year_trigger_mode, bool u
 }
 
 void RAA_plotting(){
-	// -------------------- Run2 --------------------
-	// RAA_plotting_single_run_year_trigger_mode(1);
-	
-	// -------------------- 2023 PbPb, 2024 pp mu4mu4noL1 --------------------
-	RAA_plotting_single_run_year_trigger_mode(2,true);
+	// -------------------- Run 3: PbPb 23+24+25 combined + pp24 2mu4, from RDF crossx --------------------
+	// (reco-eff PLACEHOLDER + OS-SS combinatorial subtraction; T_AA 2023 placeholder)
+	RAA_plotting_single_run_year_trigger_mode(6);
 
-	// -------------------- 2023 PbPb, 2024 pp 2mu4 --------------------
-	RAA_plotting_single_run_year_trigger_mode(3,true);
-
-	// -------------------- 2024 PbPb, 2024 pp mu4mu4noL1 --------------------
-	RAA_plotting_single_run_year_trigger_mode(4,true);
-
-	// -------------------- 2024 PbPb, 2024 pp 2mu4 --------------------
-	RAA_plotting_single_run_year_trigger_mode(5,true);
-
-
-
+	// -------------------- legacy cases (SingleBAnalysis-era inputs; not maintained) --------------------
+	// RAA_plotting_single_run_year_trigger_mode(2,true); // 2023 PbPb, 2024 pp mu4mu4noL1
+	// RAA_plotting_single_run_year_trigger_mode(3,true); // 2023 PbPb, 2024 pp 2mu4
+	// RAA_plotting_single_run_year_trigger_mode(4,true); // 2024 PbPb, 2024 pp mu4mu4noL1
+	// RAA_plotting_single_run_year_trigger_mode(5,true); // 2024 PbPb, 2024 pp 2mu4
 }
