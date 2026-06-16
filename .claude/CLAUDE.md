@@ -143,6 +143,9 @@ When the user asks to review, audit, or validate the knowledge base or a KB entr
 - `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/analysis_status_summary.md` — Current analysis status: which steps updated with May 2026 skim
 - `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/analysis_roadmap_2026_06.md` — Analysis roadmap (2026-06-10): IntNote readiness, missing inputs, full chain with dummies; task files in Analysis/docs/roadmap_tasks/
 
+<!-- COMPLETED (2026-06-16), do NOT auto-load:
+- Analysis/docs/tracking/reco_eff_placeholder_run2.md — Reco-eff placeholder (F.2 PbPb + HF R_AA Fig.31 pp); ε₁·ε₂ reco proxy applied as correction STAGE then PROMOTED to nominal crossx + R_AA input (w_reco folded into *_trig_corr weight). CLOSED 2026-06-16. RAA_plotting.cxx still stale → task_06. Replace whole placeholder with proper 3D pair ε_reco when Run 3 MC lands. -->
+
 <!-- COMPLETED (2026-06-15), do NOT auto-load:
 - Analysis/docs/tracking/kb_building.md — KB-building system (4 steps ALL DONE): /kb-build + /kb-review + GUIDE built; 12-source bulk build done & review-validated. Further sources via /kb-build ADD mode. -->
 

@@ -62,6 +62,20 @@ pipelines complete.
 
 ## Latest Update
 
+2026-06-16: **Reco-efficiency PLACEHOLDER applied to nominal crossx (pp + all PbPb years).**
+Run 2 single-muon ε_reco proxy (ε₁·ε₂; PbPb dimuon-note F.2, pp HF R_AA Fig.31)
+folded into the nominal corrected weight (`*_trig_corr` = base·w_reco·w_trig), so
+crossx histograms and the R_AA 3D input are now reco+trig corrected. Crossx RDF +
+nominal crossx plots reran. A correction-stage framework (`CorrectionStages.h`)
+also saves raw/unfolded/reco/reco+trig variants; before/after 3-line plots in
+`plots/sanity_check_crossx/`. Pre-reco backup
+`crossx_hist_backup_20260616_pre_reco_nominal/`. **Still preliminary/placeholder**
+(replace with proper 3D pair ε_reco when Run 3 MC lands; R_AA *plotting* still
+needs task_06 modernization). See `docs/tracking/reco_eff_placeholder_run2.md`,
+`docs/placeholder.md` item 3.
+
+---
+
 2026-06-10: **PP crossx and trigger efficiency pipelines completed with May 2026 skim.**
 
 PP pipelines (both new — first production runs):
