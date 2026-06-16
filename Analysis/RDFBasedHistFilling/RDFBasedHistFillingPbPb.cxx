@@ -1162,6 +1162,16 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
                 ROOT::RDF::TH3DModel(h3_dr_150.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt150, ptbins150, 44, eta_edges150.data(), 50, dr_edges150.data()),
                 "pair_pt", "pair_eta", "dr", "weight_for_RAA_trig_corr");
 
+            // pt_150 GENUINE differential cross-section (nb/GeV) variants
+            const std::string h2_eta_150_dsig = "h2d_op_crossx_dsigma_vs_pair_eta_vs_pt_150_" + ctr;
+            hist2d_rresultptr_map[h2_eta_150_dsig] = df_crossx_ctr.Histo2D(
+                ROOT::RDF::TH2DModel(h2_eta_150_dsig.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt150, ptbins150, 44, -2.4, 2.4),
+                "pair_pt", "pair_eta", "weight_for_dsigma_trig_corr");
+            const std::string h3_dr_150_dsig = "h3d_crossx_dr_vs_pair_eta_vs_pt_150_dsigma_" + ctr;
+            hist3d_rresultptr_map[h3_dr_150_dsig] = df_crossx_ctr.Histo3D(
+                ROOT::RDF::TH3DModel(h3_dr_150_dsig.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt150, ptbins150, 44, eta_edges150.data(), 50, dr_edges150.data()),
+                "pair_pt", "pair_eta", "dr", "weight_for_dsigma_trig_corr");
+
             const std::string h2_eta_150_cnt = "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pt_150_" + ctr + "_counts";
             hist2d_rresultptr_map[h2_eta_150_cnt] = df_crossx_ctr.Histo2D(
                 ROOT::RDF::TH2DModel(h2_eta_150_cnt.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt150, ptbins150, 44, -2.4, 2.4),

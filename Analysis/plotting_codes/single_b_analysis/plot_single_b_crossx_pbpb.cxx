@@ -192,8 +192,8 @@ public:
         if (use_pt_bins_150) {
             const std::string pt150_dir    = base_out + "_pt_150";
             const std::string pt150_cntdir = pt150_dir + "/counts";
-            const std::string pt150_taadir = pt150_dir + "/TAA_weighted";
-            gSystem->mkdir(pt150_taadir.c_str(), true);
+            const std::string pt150_xsecdir = pt150_dir + "/differential_crossx";
+            gSystem->mkdir(pt150_xsecdir.c_str(), true);
             if (has_counts) gSystem->mkdir(pt150_cntdir.c_str(), true);
 
             for (const auto& ctr : ctr_bins) {
@@ -214,17 +214,17 @@ public:
                         tag + "_pair_pt_in_eta_subplots.png",
                         "dN_{events}/dp_{T} [GeV^{-1}]");
                 }
-                output_dir = pt150_taadir;
+                output_dir = pt150_xsecdir;
                 DrawPairPtByEtaWithDrLines(
-                    "h3d_crossx_dr_vs_pair_eta_vs_pt_150_w_signal_cuts_" + ctr,
+                    "h3d_crossx_dr_vs_pair_eta_vs_pt_150_dsigma_" + ctr,
                     l1, label_line3_,
                     tag + "_pair_pt_in_eta_subplots_dr_lines.png",
-                    "d#sigma/dp_{T} [pb GeV^{-1}]");
+                    "d#sigma/dp_{T} [nb GeV^{-1}]");
                 DrawPairPtByEta(
-                    "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pt_150_" + ctr,
+                    "h2d_op_crossx_dsigma_vs_pair_eta_vs_pt_150_" + ctr,
                     l1, label_line3_,
                     tag + "_pair_pt_in_eta_subplots.png",
-                    "d#sigma/dp_{T} [pb GeV^{-1}]");
+                    "d#sigma/dp_{T} [nb GeV^{-1}]");
             }
             output_dir = base_out;
         }

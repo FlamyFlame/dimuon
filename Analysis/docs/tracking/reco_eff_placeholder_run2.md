@@ -263,9 +263,15 @@ runs the comparison; the invariant note + (optional) wiring ensures it isn't ski
   real efficiency corrections, (3) unfolding. The pp crossx pipeline
   `pipeline_pp_crossx.sh` stage 8 runs it automatically; when rerunning the pp
   RDF directly (`run_crossx_hist_filling_pp24.sh`), also rerun the comparison.
-- **Remaining (follow-up):** pt_150 PbPb variant still uses the mislabeled
-  `TAA_weighted/` block (default-off; needs `_dsigma` pt_150 histos if used);
-  optional L==0 guard on `dsigma_lumi_factor` (unreachable).
+- **pt_150 variant — FIXED (2026-06-16):** added `_dsigma` pt_150 histos
+  (`h2d_op_crossx_dsigma_vs_pair_eta_vs_pt_150_<ctr>`,
+  `h3d_crossx_dr_vs_pair_eta_vs_pt_150_dsigma_<ctr>`) and switched the plotter's
+  pt_150 block from `TAA_weighted/` to `differential_crossx/` (nb/GeV). Reran
+  PbPb crossx + plotter (use_pt_bins_150=true); renders correctly. Removed the
+  two now-orphaned live `TAA_weighted/` dirs (pt_120 + pt_150); backups kept.
+  Mechanical mirror of the reviewed pt_120 dσ pattern (compile+render verified).
+- **Remaining (follow-up):** optional L==0 guard on `dsigma_lumi_factor`
+  (unreachable); proper 3D pair ε_reco when Run 3 MC lands.
 
 ## COMPLETION SUMMARY (2026-06-16)
 [superseded by the Q1/Q2 follow-ups above; original placeholder work complete.]
