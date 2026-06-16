@@ -32,6 +32,7 @@
 #include "TSystem.h"
 
 #include "../../RDFBasedHistFilling/CommonEffcyConfig.h"
+#include "../../Utilities/PbPbSampledLumi.h"
 
 void plot_crossx_reco_eff_stages() {
     gStyle->SetOptStat(0);
@@ -73,7 +74,7 @@ void plot_crossx_reco_eff_stages() {
     };
 
     for (const auto& spec : samples) {
-        std::vector<TFile*> files;
+        std::vector<std::pair<int,TFile*>> files; // (year, file) for luminosity-weighted combine
         for (const auto& [yr, dir] : spec.year_paths) {
             std::vector<std::string> candidates;
             if (spec.is_pp) {
@@ -85,17 +86,20 @@ void plot_crossx_reco_eff_stages() {
             }
             for (const auto& c : candidates) {
                 TFile* f = TFile::Open(c.c_str(), "READ");
-                if (f && !f->IsZombie()) { files.push_back(f); std::cout << "[INFO] Opened: " << c << "\n"; break; }
+                if (f && !f->IsZombie()) { files.push_back({yr, f}); std::cout << "[INFO] Opened: " << c << "\n"; break; }
                 if (f) { f->Close(); delete f; }
             }
         }
         if (files.empty()) { std::cerr << "[WARN] No files for " << spec.label << "\n"; continue; }
 
-        // Sum a stage's TH2D across files (and, for PbPb, across all matching
-        // per-centrality keys ending in the stage suffix).
+        // Combine a stage's TH2D across years. pp: single sample (simple). PbPb:
+        // within each year sum the per-centrality stage histos, then combine years
+        // by LUMINOSITY-WEIGHTED AVERAGE Sum(L_y·yr_sum)/Sum(L_y) (HF R_AA note Eq.3),
+        // consistent with the crossx combined plotter and R_AA.
         auto getStage2D = [&](const Stage& st) -> TH2D* {
             TH2D* combined = nullptr;
-            for (TFile* f : files) {
+            double sumL = 0.;
+            for (auto& [yr, f] : files) {
                 if (spec.is_pp) {
                     const std::string nm = spec.pp_base_name + st.suffix;
                     TH2D* h = dynamic_cast<TH2D*>(f->Get(nm.c_str()));
@@ -103,20 +107,28 @@ void plot_crossx_reco_eff_stages() {
                     if (!combined) { combined = dynamic_cast<TH2D*>(h->Clone((nm+"_comb").c_str())); combined->SetDirectory(nullptr); }
                     else combined->Add(h);
                 } else {
+                    // sum this year's per-centrality stage histos
+                    TH2D* yr_sum = nullptr;
                     TIter next(f->GetListOfKeys()); TKey* key;
                     while ((key = (TKey*)next())) {
                         std::string nm = key->GetName();
-                        // match per-centrality stage hist: contains the base and ENDS with this stage suffix
                         const bool ends_with = nm.size() >= st.suffix.size() &&
                             nm.compare(nm.size()-st.suffix.size(), st.suffix.size(), st.suffix) == 0;
                         if (nm.find(spec.pbpb_name_contains) == std::string::npos || !ends_with) continue;
                         TH2D* h = dynamic_cast<TH2D*>(key->ReadObj());
                         if (!h) continue;
-                        if (!combined) { combined = dynamic_cast<TH2D*>(h->Clone("pbpb_stage_comb")); combined->SetDirectory(nullptr); }
-                        else combined->Add(h);
+                        if (!yr_sum) { yr_sum = dynamic_cast<TH2D*>(h->Clone("pbpb_yr_sum")); yr_sum->SetDirectory(nullptr); }
+                        else yr_sum->Add(h);
                     }
+                    if (!yr_sum) continue;
+                    const double L = PbPbMu4SampledLumiNb(yr);
+                    if (!combined) { combined = dynamic_cast<TH2D*>(yr_sum->Clone("pbpb_stage_comb")); combined->SetDirectory(nullptr); combined->Scale(L); }
+                    else combined->Add(yr_sum, L);
+                    sumL += L;
+                    delete yr_sum;
                 }
             }
+            if (!spec.is_pp && combined && sumL > 0.) combined->Scale(1.0 / sumL);
             return combined;
         };
 
@@ -126,7 +138,7 @@ void plot_crossx_reco_eff_stages() {
             h2[s] = getStage2D(stages[s]);
             if (!h2[s]) { std::cerr << "[WARN] Missing stage hist " << stages[s].suffix << " for " << spec.label << "\n"; ok = false; }
         }
-        if (!ok) { for (TFile* f : files){f->Close();delete f;} continue; }
+        if (!ok) { for (auto& [yr,f] : files){f->Close();delete f;} continue; }
 
         int nrow = 2, ncol = 5;
         if ((int)eta_bins.size() <= 6) { nrow = 2; ncol = 3; }
@@ -184,6 +196,6 @@ void plot_crossx_reco_eff_stages() {
 
         for (TH1D* h : trash) delete h;
         for (TH2D* h : h2) delete h;
-        for (TFile* f : files) { f->Close(); delete f; }
+        for (auto& [yr,f] : files) { f->Close(); delete f; }
     }
 }

@@ -1,4 +1,5 @@
 #include "SingleBCrossxPlotterBase.cxx"
+#include "../../Utilities/PbPbSampledLumi.h"
 
 // ======================== PbPb combined-year plotter ========================
 // Sums histograms from all available PbPb years. This is the only supported
@@ -80,18 +81,29 @@ protected:
         auto it = hist_cache_.find(name);
         if (it != hist_cache_.end()) return it->second;
 
+        // Year combination (HF R_AA note HION-2019-58 §4.1 Eq.3):
+        //  - cross-section histos: LUMINOSITY-WEIGHTED AVERAGE  Sum(L_y h_y)/Sum(L_y).
+        //    Each h_y is already crossx_factor(~1/L_y)-weighted, so this yields the
+        //    correct combined ΣN/(f·σ·T_AA·ΣL), NOT a naive sum (which over-counts ~×years).
+        //  - "_counts" histos (raw event counts, weight=1): SIMPLE SUM (total counts).
+        const bool is_counts = (name.find("_counts") != std::string::npos);
         TH1* combined = nullptr;
-        for (TFile* f : files_) {
-            TH1* h = dynamic_cast<TH1*>(f->Get(name.c_str()));
+        double sumL = 0.;
+        for (size_t i = 0; i < files_.size(); ++i) {
+            TH1* h = dynamic_cast<TH1*>(files_[i]->Get(name.c_str()));
             if (!h) continue;
+            const double w = is_counts ? 1.0 : PbPbMu4SampledLumiNb(year_paths_[i].first);
             if (!combined) {
                 combined = dynamic_cast<TH1*>(h->Clone(name.c_str()));
                 combined->SetDirectory(nullptr);
+                combined->Scale(w);
             } else {
-                combined->Add(h);
+                combined->Add(h, w);
             }
+            sumL += w;
         }
         if (!combined) return nullptr;
+        if (!is_counts && sumL > 0.) combined->Scale(1.0 / sumL);
         hist_cache_[name] = combined;
         return combined;
     }

@@ -9,13 +9,15 @@
 #include <iostream>
 #include <cmath>
 #include "MuonObjectsParamsAndHelpers/DatasetTriggerMap.h"
+#include "Utilities/PbPbSampledLumi.h"
 
 class RAAPlotting{
 private:
 
 	std::string pp_infile;
 	std::string pbpb_infile;
-	std::vector<std::string> pbpb_infiles; // if non-empty: sum these PbPb-year RDF files (combined, per analysis convention)
+	std::vector<std::string> pbpb_infiles; // if non-empty: combine these PbPb-year RDF files (luminosity-weighted, per HF R_AA note Eq.3)
+	std::vector<double>      pbpb_lumis;   // per-year HLT_mu4 sampled lumi [nb^-1], parallel to pbpb_infiles (weights for the combine)
 	// Cluster data area. Inputs are the RDFBasedHistFilling crossx outputs
 	// (histograms_real_pairs_*), now reco+trig efficiency corrected.
 	std::string base_dir = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/";
@@ -137,6 +139,7 @@ void RAAPlotting::InputOutputPrepare(){
 			base_dir + "pbpb_2024/histograms_real_pairs_pbpb_2024_single_mu4_no_trg_plots_nominal.root",
 			base_dir + "pbpb_2025/histograms_real_pairs_pbpb_2025_single_mu4_no_trg_plots_nominal.root",
 		};
+		pbpb_lumis = { PbPbMu4SampledLumiNb(23), PbPbMu4SampledLumiNb(24), PbPbMu4SampledLumiNb(25) };
 		run_year_trigger_suffix = "_pbpb23_24_25_combined_pp24_2mu4";
 		out_dir = base_dir + "plots/single_b_analysis/RAA/";
 		legend_pbpb_label = "Pb+Pb 2023+2024+2025, HLT_mu4";
@@ -196,11 +199,17 @@ void RAAPlotting::HistRetrieve(){
     else std::cerr << "WARNING: pp SS hist " << h2d_name_ss
                    << " missing -> OS-only pp (no combinatorial subtraction)" << std::endl;
 
-    // ---- PbPb yield: sum year files (combined), then OS - SS ----
+    // ---- PbPb yield: LUMINOSITY-WEIGHTED combine over year files, then OS - SS ----
+    // combined = Sum_y(L_y * h_y) / Sum_y(L_y)  (HF R_AA note HION-2019-58 §4.1 Eq.3).
+    // Each h_y is already crossx_factor-weighted (~1/L_y), so L_y*h_y recovers the
+    // year-independent (counts * K) and the result is the correct ΣN/(...·ΣL).
     std::vector<std::string> pbpb_files = pbpb_infiles.empty()
         ? std::vector<std::string>{pbpb_infile} : pbpb_infiles;
     bool any_pbpb_ss = false;
-    for (const auto& fpath : pbpb_files){
+    double sumL = 0.;
+    for (size_t iy = 0; iy < pbpb_files.size(); ++iy){
+        const std::string& fpath = pbpb_files[iy];
+        const double L = (iy < pbpb_lumis.size()) ? pbpb_lumis[iy] : 1.0; // legacy single-file -> weight 1
         TFile* f = TFile::Open(fpath.c_str());
         if (!f || f->IsZombie()) { std::cerr << "Error opening PbPb file: " << fpath << std::endl; throw std::exception(); }
         TH3D* op = dynamic_cast<TH3D*>(f->Get(h3d_name_op.c_str()));
@@ -209,15 +218,22 @@ void RAAPlotting::HistRetrieve(){
         if (!h3d_crossx_pbpb_op){
             h3d_crossx_pbpb_op = dynamic_cast<TH3D*>(op->Clone("h3d_op_comb"));
             h3d_crossx_pbpb_op->SetDirectory(nullptr);
-        } else h3d_crossx_pbpb_op->Add(op);
+            h3d_crossx_pbpb_op->Scale(L);
+        } else h3d_crossx_pbpb_op->Add(op, L);
         if (ss){
             any_pbpb_ss = true;
             if (!h3d_crossx_pbpb_ss){
                 h3d_crossx_pbpb_ss = dynamic_cast<TH3D*>(ss->Clone("h3d_ss_comb"));
                 h3d_crossx_pbpb_ss->SetDirectory(nullptr);
-            } else h3d_crossx_pbpb_ss->Add(ss);
+                h3d_crossx_pbpb_ss->Scale(L);
+            } else h3d_crossx_pbpb_ss->Add(ss, L);
         }
+        sumL += L;
         f->Close(); delete f;
+    }
+    if (sumL > 0.){
+        h3d_crossx_pbpb_op->Scale(1.0 / sumL);
+        if (h3d_crossx_pbpb_ss) h3d_crossx_pbpb_ss->Scale(1.0 / sumL);
     }
     if (any_pbpb_ss && h3d_crossx_pbpb_ss) h3d_crossx_pbpb_op->Add(h3d_crossx_pbpb_ss, -1.);
     else std::cerr << "WARNING: PbPb SS hist " << h3d_name_ss
