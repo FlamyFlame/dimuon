@@ -45,3 +45,7 @@
 {"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-16T16:30:38Z","criticals":0,"warnings":0,"slug":"lumi-weighted-year-combine"}
 {"event":"start","command":"review-plot","task":"final lumi-weighted RAA plots","slug":"raa-lumi-weighted-final","timestamp":"2026-06-16T16:31:22Z"}
 {"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-16T16:32:18Z","criticals":0,"warnings":0,"slug":"raa-lumi-weighted-final"}
+{"event":"start","command":"review-analysis-code","task":"pbpb dsigma + mc-data reco","slug":"pbpb-dsigma-and-mcdata-reco","timestamp":"2026-06-16T16:59:17Z"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-16T17:02:27Z","criticals":0,"warnings":0,"slug":"pbpb-dsigma-and-mcdata-reco"}
+{"event":"start","command":"review-plot","task":"dsigma + mc-data plots","slug":"dsigma-mcdata-plots","timestamp":"2026-06-16T17:02:43Z"}
+{"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-16T17:03:45Z","criticals":0,"warnings":0,"slug":"dsigma-mcdata-plots"}

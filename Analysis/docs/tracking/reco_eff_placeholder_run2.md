@@ -208,7 +208,67 @@ the proper 3D pair efficiency (task_05 proper), systematics.
   (correct API is `GetTrigger`); the new `plot_crossx_reco_eff_stages.C` avoids
   it by hardcoding trig suffixes. Fix the old macro if it is ever re-run.
 
+## REOPENED 2026-06-16 — Follow-ups Q1 (PbPb differential crossx) + Q2 (MC-data auto-update)
+
+### Q1 — PbPb differential cross-section plots (not T_AA-weighted)
+**Finding:** the PbPb crossx `TAA_weighted/` plots are filled with
+`weight_for_RAA_trig_corr` (= weight·crossx_factor·w_reco·w_trig, crossx_factor
+= 1/(f·σ_PbPb·T_AA·L)) — i.e. the T_AA-weighted R_AA-input yield dN_AA/T_AA — but
+MIS-LABELLED "d²σ/dp_Tdη [pb GeV⁻¹]". There is no genuine differential
+cross-section (dσ/dp_T = (1/L)·dN/dp_T) in the PbPb crossx.
+**Plan:** add a PbPb differential-cross-section weight in the RDF:
+`weight_for_xsec_trig_corr = weight·(1/L_year)·w_reco·w_trig` (1/L via
+`PbPbMu4SampledLumiNb`, nb units), filled per-centrality (+ no-corr variant
+mirroring pp's `crossx_weight`). Plot a `differential_crossx/` set (dσ/dp_T
+[nb GeV⁻¹], lumi-combined). Keep the T_AA-weighted 3D (R_AA input) but relabel
+its plots honestly (dN_{AA}/T_{AA}) or drop the misleading dir. pp already plots
+true dσ (crossx_weight = weight/L_pp) — no pp change. → /review-analysis-code + /review-plot.
+
+### Q2 — MC-data comparison must reflect reco (and any future) efficiency/det-resp corrections
+**Finding:** `plot_mc_data_compr.cxx` reads the **generic gapcut** data histos
+`h_{kin}_{op,ss}_wgapcut` from the pp crossx output. Those are filled by
+`FillHistogramsGeneric` with `generic_weight_col="w_trig"` — TRIGGER ONLY, NOT
+reco-corrected. So the MC-data comparison does NOT currently reflect the reco
+placeholder, and it is STALE (plots 06-10 vs pp crossx 06-16).
+**Plan:** (a) fold w_reco into the pp generic analysis weight (in
+`RDFBasedHistFillingPP::FillHistogramsGeneric`, the `!trigger_effcy_calc` branch:
+define w_reco, set `generic_weight_col` to w_reco·w_trig) so the gapcut data
+histos are reco+trig corrected; (b) rerun pp crossx RDF (regenerates generic
+histos) + `plot_mc_data_compr.cxx`; (c) document the INVARIANT: MC-data
+comparison MUST be regenerated after any pp efficiency/det-response/unfolding
+change (the pp crossx pipeline stage 8 does this; direct RDF reruns must also run
+it). → /review-analysis-code + /review-plot.
+**Auto-update mechanism:** pp crossx pipeline `pipeline_pp_crossx.sh` stage 8 already
+runs the comparison; the invariant note + (optional) wiring ensures it isn't skipped.
+
+### Q1 + Q2 — DONE & REVIEWED (2026-06-16)
+- **Q1:** PbPb genuine differential cross-section `weight_for_dsigma_trig_corr`
+  = weight·(1/L_year)·w_reco·w_trig added to `RDFBasedHistFillingPbPb.cxx`
+  (`PbPbSampledLumi.h`); per-centrality `*_dsigma` 2D (pair_eta/minv/dr) + 3D
+  (dr×eta×pt) histos. `plot_single_b_crossx_pbpb.cxx`: `TAA_weighted/` plot block
+  → `differential_crossx/` reading the `_dsigma` histos, labeled "dσ/dp_T
+  [nb GeV⁻¹]". T_AA-weighted 3D still produced (R_AA input). Verified dσ/T_AA-weighted
+  = f·σ·T_AA = 10.2 (ctr0_5, exact). `/review-analysis-code` + `/review-plot` PASS.
+- **Q2:** reco folded into the pp generic analysis weight —
+  `RDFBasedHistFillingPP::FillHistogramsGeneric` (`!trigger_effcy_calc` branch)
+  now defines w_reco and sets `generic_weight_col="w_reco_trig"` (was "w_trig"),
+  so the gapcut histos `h_{kin}_{op,ss}_wgapcut` read by the MC-data comparison are
+  reco+trig corrected. Collision fix: reco Defines moved into the
+  `generic_weight_col.empty()` guard in the crossx OS+SS blocks. Reran pp crossx
+  RDF + `plot_mc_data_compr.cxx` (updated). `/review-*` PASS.
+- **INVARIANT (Q2c):** the MC-data comparison (`plot_mc_data_compr.cxx`) MUST be
+  regenerated after ANY change to the pp crossx efficiency / detector-response /
+  unfolding corrections — because its data histos carry those corrections via
+  `generic_weight_col`. This holds for: (1) this reco placeholder, (2) the future
+  real efficiency corrections, (3) unfolding. The pp crossx pipeline
+  `pipeline_pp_crossx.sh` stage 8 runs it automatically; when rerunning the pp
+  RDF directly (`run_crossx_hist_filling_pp24.sh`), also rerun the comparison.
+- **Remaining (follow-up):** pt_150 PbPb variant still uses the mislabeled
+  `TAA_weighted/` block (default-off; needs `_dsigma` pt_150 histos if used);
+  optional L==0 guard on `dsigma_lumi_factor` (unreachable).
+
 ## COMPLETION SUMMARY (2026-06-16)
+[superseded by the Q1/Q2 follow-ups above; original placeholder work complete.]
 All requested work done; tracking doc CLOSED (removed from Active list, file
 kept). Deliverables:
 - **Placeholder choices:** PbPb = dimuon note F.2 (Medium single-μ ε_reco per

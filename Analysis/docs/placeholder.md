@@ -81,6 +81,14 @@ correction **stage** (`CorrectionStages.h`): histograms saved at each stage —
 `_corr_unfolded_reco_trig`; before/after 3-line plots in
 `dimuon_data/plots/sanity_check_crossx/*_reco_eff_stages_*`.
 
+The reco correction is also folded into the **pp generic analysis weight**
+(`FillHistogramsGeneric` → `generic_weight_col = w_reco_trig`), so the **MC-data
+comparison** (POWHEG/Pythia vs pp24) reflects it. **INVARIANT:** regenerate the
+MC-data comparison (`plot_mc_data_compr.cxx`; pp crossx pipeline stage 8) after
+ANY pp efficiency / detector-response / unfolding change. The PbPb crossx also
+has a genuine **differential cross-section** dσ/dp_T = (1/L)·dN [nb/GeV]
+(`differential_crossx/` plots), distinct from the T_AA-weighted R_AA input.
+
 **Why this placeholder is poor (must be replaced):** (1) Run 3 muon reco is
 expected considerably better than Run 2 (New Small Wheel + other Run 3 muon
 upgrades). (2) ε₁·ε₂ does **not** factorize for our signal — the two muons are
