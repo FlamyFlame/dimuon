@@ -144,7 +144,7 @@ When the user asks to review, audit, or validate the knowledge base or a KB entr
 - `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/analysis_roadmap_2026_06.md` — Analysis roadmap (2026-06-10): IntNote readiness, missing inputs, full chain with dummies; task files in Analysis/docs/roadmap_tasks/
 
 <!-- COMPLETED (2026-06-16), do NOT auto-load:
-- Analysis/docs/tracking/raa_from_rdf_crossx.md — task_06: reco-corrected R_AA from RDF crossx; added SS (OS−SS) to RDF + modernized RAA_plotting.cxx (cluster paths, RDF inputs case 6, combined years, 15-bin pT). 2025 lumi verified (2.59933 nb⁻¹); 2023 T_AA placeholder. CLOSED 2026-06-16. OPEN USER DECISION: year-combination normalization naive-sums 1/L_year-weighted histos (shared w/ crossx) → absolute scale inflated ~Σ(years); fix consistently across crossx + R_AA.
+- Analysis/docs/tracking/raa_from_rdf_crossx.md — task_06 R_AA from RDF crossx (reco-corrected, OS−SS, combined years). Year-combination = luminosity-weighted average (HF R_AA note Eq.3) via Utilities/PbPbSampledLumi.h, applied in R_AA + crossx combined plotter + stage plotter. R_AA scale now physical (~0.1-0.9). CLOSED 2026-06-16. Remaining: 2024/2025 official T_AA (2023 placeholder), σ_PbPb 5.36 TeV, proper 3D pair ε_reco.
 - Analysis/docs/tracking/reco_eff_placeholder_run2.md — Reco-eff placeholder (F.2 PbPb + HF R_AA Fig.31 pp); ε₁·ε₂ reco proxy applied as correction STAGE then PROMOTED to nominal crossx + R_AA input (w_reco folded into *_trig_corr weight). CLOSED 2026-06-16. RAA_plotting.cxx still stale → task_06. Replace whole placeholder with proper 3D pair ε_reco when Run 3 MC lands. -->
 
 <!-- COMPLETED (2026-06-15), do NOT auto-load:

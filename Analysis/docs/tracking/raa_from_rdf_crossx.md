@@ -106,6 +106,15 @@ d. **R_AA:** divide normalized PbPb by normalized pp per (X, centrality), then
    any durable fact.
 
 ## Progress Log
+- 2026-06-16 — Step 7 (year-combination fix) IMPLEMENTED. Confirmed correct vs
+  HF R_AA note §4.1 Eq.3 (luminosity-weighted average). New header
+  `Utilities/PbPbSampledLumi.h` (`PbPbMu4SampledLumiNb`: 23=1.02426, 24=1.59663,
+  25=2.59933 nb⁻¹). Lumi-weighted combine `Σ(L_y·h_y)/ΣL` applied in: R_AA
+  `HistRetrieve` (PbPb OS+SS 3D); crossx combined plotter
+  `SingleBCrossxPlotterPbPbCombined::GetHistObject` (cross-section histos;
+  `_counts` kept as simple sum); before/after stage plotter `getStage2D`.
+  Reran R_AA + crossx + stage plots, all clean. **R_AA scale verified physical:**
+  was ~1.5–2.5 mid-pT → now ~0.5–0.8 (÷~3 = ÷N_years in equal-σ limit; ΣL=5.22 nb⁻¹).
 - 2026-06-16 — Steps 2–5 DONE.
   - **Step 2** SS histos added to RDF (PbPb 3D `h3d_ss_..._vs_centr`, pp 2D
     `h2d_ss_...`), same cuts/weights as OS. `/review-analysis-code` PASS. ACLiC clean.
@@ -135,11 +144,12 @@ d. **R_AA:** divide normalized PbPb by normalized pp per (X, centrality), then
   filenames, pT_bins_80 rebins). Committed all prior reco work (3 commits) first.
 
 ## Remaining Work
-- **Year-combination normalization (NEEDS USER DECISION):** combined R_AA (and
-  the existing combined crossx plots) naive-sum per-year `1/L_year`-weighted
-  histos → absolute scale inflated by ~Σ(years)≈3. Fix consistently across
-  crossx + R_AA (combine raw yields / total lumi). Until then R_AA absolute
-  scale is preliminary (also 2023 T_AA placeholder).
+- ~~Year-combination normalization~~ **DONE 2026-06-16** (Step 7): luminosity-
+  weighted average (HF R_AA note Eq.3) across crossx combined plotter + R_AA +
+  stage plotter via `Utilities/PbPbSampledLumi.h`. `/review-*` PASS. R_AA scale
+  now physical (~0.1–0.9).
+- Official 2024/2025 ⟨T_AA⟩ (currently 2023 placeholder) → final R_AA scale.
+- Citable σ_PbPb at 5.36 TeV (currently 7.8 b unvalidated guess) → R_AA scale.
 - Replace reco placeholder with proper 3D pair ε_reco when Run 3 MC lands.
 - Optional: fully retire `SingleBAnalysis/` (RDF now produces all it did + SS).
 - Official 2024/2025 ⟨T_AA⟩ (currently 2023 placeholder).
@@ -158,5 +168,36 @@ Logs: `.claude/logs/review-analysis-code-20260616-013524-ss-crossx-histos-for-ra
 `...-015446-raa-plotting-modernize.md`, `.claude/logs/review-plot-20260616-020322-raa-reco-corrected-plots.md`.
 
 ## Latest Stage
-*(cleared — work complete; see COMPLETION SUMMARY. One open user decision:
-year-combination normalization, see Remaining Work.)*
+*(CLOSED 2026-06-16 — task_06 complete incl. Step 7 year-combination fix; see
+Step 7 DONE below. Record of the Step 7 plan retained for history.)*
+
+**Step 7 (DONE): fix year-combination normalization** (user
+approved; confirmed correct by the HF-muon R_AA note).
+
+**Procedure (HF R_AA note HION-2019-58, §4.1 Eq.3):** "The central value is
+extracted from the **luminosity-weighted average** of the fitted yields in 2015
+and 2018 Pb+Pb data ... central value closer to 2018 due to its larger
+luminosity." → combined = Σ(L_year·h_year)/ΣL_year. For our per-year histos
+already weighted by crossx_factor (∝1/L_year), this equals the correct
+ΣN/(f·σ·T_AA·ΣL). Weights = PbPb HLT_mu4 prescale-corrected sampled lumi:
+2023=1.02426, 2024=1.59663, 2025=2.59933 nb⁻¹ (PbPbBaseClass crossx factors).
+
+**Plan (Step 7):**
+1. New single-source header `Utilities/PbPbSampledLumi.h` → `PbPbMu4SampledLumiNb(year)`.
+2. R_AA `HistRetrieve`: lumi-weight the PbPb year combine (Σ L·h / ΣL); pp single year unchanged.
+3. Crossx combined plotter `SingleBCrossxPlotterPbPbCombined::GetHistObject`:
+   lumi-weighted average for cross-section histos; `_counts` histos = simple sum.
+4. Before/after stage plotter `plot_crossx_reco_eff_stages.C` `getStage2D`: same
+   lumi-weighting (consistency).
+5. Rerun R_AA + crossx plots + before/after; `/review-analysis-code` + `/review-plot`.
+6. Verify R_AA absolute scale drops by ~Σ(years) → physical (~0.5-0.8).
+
+### Step 7 — DONE (2026-06-16): doc CLOSED
+Year-combination normalization fixed to luminosity-weighted average (HF R_AA
+note Eq.3) in all 3 combine sites (R_AA, crossx combined plotter, stage plotter)
+via single-source `Utilities/PbPbSampledLumi.h`. `/review-analysis-code` PASS;
+`/review-plot` PASS — R_AA absolute scale now physical (~0.1–0.9, was ~1.5–2.5).
+Remaining caveats are physics inputs only: 2023 T_AA placeholder, σ_PbPb guess,
+Run 2 reco placeholder — all flagged in `placeholder.md`.
+
+*(Latest Stage cleared — task_06 complete.)*

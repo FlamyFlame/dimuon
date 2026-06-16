@@ -103,11 +103,12 @@ reco-corrected R_AA plots (vs pair pT/η/centrality) in
 **Still placeholder/preliminary** — do not quote as final; pre-reco trig-only
 nominal preserved in `dimuon_data/crossx_hist_backup_20260616_pre_reco_nominal/`.
 
-> **OPEN normalization issue (crossx + R_AA):** combined-year results naive-sum
-> per-year `1/L_year`-weighted histograms (existing crossx convention), inflating
-> the absolute combined scale by ~Σ(years). Correct combination is `ΣN/ΣL`; fix
-> consistently across the crossx combined plotter and R_AA. R_AA absolute scale
-> also preliminary due to the 2023 ⟨T_AA⟩ placeholder (items 1–2).
+> **Year-combination normalization (RESOLVED 2026-06-16):** combined-year Pb+Pb
+> results now use the **luminosity-weighted average** `Σ(L_y·h_y)/ΣL_y` (HF R_AA
+> note HION-2019-58 §4.1 Eq.3), via single-source `Utilities/PbPbSampledLumi.h`,
+> in the crossx combined plotter, R_AA, and the stage plotter. R_AA absolute
+> scale is now physical (~0.1–0.9). Still preliminary due to the 2023 ⟨T_AA⟩
+> placeholder (items 1–2) and σ_PbPb guess (item 4).
 
 **Needs:** full Pythia fullsim HIJING-overlay (r17662) + full pp24 fullsim →
 proper 3D pair ε_reco. **Note disclosure:** quote reco-eff and any
