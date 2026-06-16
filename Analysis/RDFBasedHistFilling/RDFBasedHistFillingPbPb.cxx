@@ -2,6 +2,7 @@
 #include <TKey.h>
 #include <algorithm>
 #include "RDFBasedHistFillingData.cxx"
+#include "../Utilities/PbPbSampledLumi.h"
 
 void RDFBasedHistFillingPbPb::SetIOPathsHook(){
 	infile_var1D_json = "var1D_pbpb.json";
@@ -953,6 +954,9 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
         .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / (effcy_reco_pair < 0.05 ? 0.05 : effcy_reco_pair) : 1.0")
         .Define("w_unfold", "1.0");  // PLACEHOLDER: unfolding identity until det-response unfolding lands (roadmap Q4)
 
+    // Per-year differential-cross-section luminosity factor 1/L_year [nb] (L in nb^-1).
+    const double dsigma_lumi_factor = 1.0 / PbPbMu4SampledLumiNb(run_year);
+
     // Base T_AA+lumi-weighted crossx weight and the sequential correction-stage
     // weights (raw -> unfolded -> +reco -> +reco+trig). See CorrectionStages.h.
     ROOT::RDF::RNode df_single_b_crossx_weighted = df_with_trig.Define(
@@ -970,7 +974,16 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
      .Define("cw_raw",                "weight_for_RAA")
      .Define("cw_unfolded",           "cw_raw * w_unfold")
      .Define("cw_unfolded_reco",      "cw_unfolded * w_reco")
-     .Define("cw_unfolded_reco_trig", "cw_unfolded_reco * w_trig");
+     .Define("cw_unfolded_reco_trig", "cw_unfolded_reco * w_trig")
+    // GENUINE differential cross-section weight dsigma = (1/L_year)*dN, efficiency
+    // corrected (w_reco*w_trig). This is the analysis observable d^2sigma/dpTdeta
+    // [nb/GeV] (analysis_overview §2), distinct from weight_for_RAA_trig_corr which
+    // is the T_AA-weighted R_AA-input yield dN_AA/T_AA. 1/L_year in nb (L in nb^-1);
+    // per-year, combined later by the lumi-weighted plotter -> ΣN/ΣL.
+     .Define("weight_for_dsigma_trig_corr",
+        [dsigma_lumi_factor](double weight, double w_reco, double w_trig){
+            return weight * dsigma_lumi_factor * w_reco * w_trig;
+        }, {"weight", "w_reco", "w_trig"});
     if (df_map.find("df_single_b_crossx_weighted") == df_map.end()) {
         df_map.emplace("df_single_b_crossx_weighted", df_single_b_crossx_weighted);
     }
@@ -1060,6 +1073,22 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
             ROOT::RDF::TH2DModel(h2_dr_name.c_str(), ";p_{T}^{pair} [GeV];#DeltaR", npt, ptbins, 50, 0.05, 1.0),
             "pair_pt", "dr", "weight_for_RAA_trig_corr");
 
+        // --- Version 1b: GENUINE differential cross-section d^2sigma/.. [nb/GeV]
+        // (1/L_year * dN, efficiency corrected) — the analysis observable, distinct
+        // from the T_AA-weighted R_AA-input above. Combined lumi-weighted by the plotter.
+        const std::string h2_eta_dsig = "h2d_op_crossx_dsigma_vs_pair_eta_vs_pair_pt_" + ctr;
+        hist2d_rresultptr_map[h2_eta_dsig] = df_crossx_ctr.Histo2D(
+            ROOT::RDF::TH2DModel(h2_eta_dsig.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, 44, -2.4, 2.4),
+            "pair_pt", "pair_eta", "weight_for_dsigma_trig_corr");
+        const std::string h2_minv_dsig = "h2d_crossx_pair_pt_minv_dsigma_" + ctr;
+        hist2d_rresultptr_map[h2_minv_dsig] = df_crossx_ctr.Histo2D(
+            ROOT::RDF::TH2DModel(h2_minv_dsig.c_str(), ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", npt, ptbins, 50, 1.0, 3.0),
+            "pair_pt", "minv", "weight_for_dsigma_trig_corr");
+        const std::string h2_dr_dsig = "h2d_crossx_pair_pt_dr_dsigma_" + ctr;
+        hist2d_rresultptr_map[h2_dr_dsig] = df_crossx_ctr.Histo2D(
+            ROOT::RDF::TH2DModel(h2_dr_dsig.c_str(), ";p_{T}^{pair} [GeV];#DeltaR", npt, ptbins, 50, 0.05, 1.0),
+            "pair_pt", "dr", "weight_for_dsigma_trig_corr");
+
         const std::string h3_minv_name = "h3d_crossx_minv_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr;
         hist3d_rresultptr_map[h3_minv_name] = df_crossx_ctr.Histo3D(
             ROOT::RDF::TH3DModel(h3_minv_name.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};m_{#mu#mu} [GeV]", npt, ptbins, 44, eta_edges.data(), 50, minv_edges.data()),
@@ -1069,6 +1098,12 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
         hist3d_rresultptr_map[h3_dr_name] = df_crossx_ctr.Histo3D(
             ROOT::RDF::TH3DModel(h3_dr_name.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt, ptbins, 44, eta_edges.data(), 50, dr_edges.data()),
             "pair_pt", "pair_eta", "dr", "weight_for_RAA_trig_corr");
+
+        // differential cross-section 3D (dr x eta x pt) for the dr-lines plot
+        const std::string h3_dr_dsig = "h3d_crossx_dr_vs_pair_eta_vs_pair_pt_dsigma_" + ctr;
+        hist3d_rresultptr_map[h3_dr_dsig] = df_crossx_ctr.Histo3D(
+            ROOT::RDF::TH3DModel(h3_dr_dsig.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt, ptbins, 44, eta_edges.data(), 50, dr_edges.data()),
+            "pair_pt", "pair_eta", "dr", "weight_for_dsigma_trig_corr");
 
         // --- No-trig-corr version: TAA-weighted but without trigger efficiency correction ---
         const std::string h2_eta_notc = "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr + "_no_trig_corr";

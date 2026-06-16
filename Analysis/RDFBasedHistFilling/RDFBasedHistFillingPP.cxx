@@ -313,12 +313,19 @@ void RDFBasedHistFillingPP::MakeAndWriteDRTrigEffGraphs() {
 void RDFBasedHistFillingPP::FillHistogramsGeneric(){
     if (!trigger_effcy_calc) {
         OpenEffcyPtFitFile();
+        OpenRecoEffPlaceholderFile();  // reco-eff PLACEHOLDER (so generic analysis histos are reco-corrected too)
 
         for (const std::string& category : categories_essential) {
             std::string df_name = "df" + category;
             ROOT::RDF::RNode& df = map_at_checked(df_map, df_name,
                 Form("PP::FillHistogramsGeneric: df_map.at(%s)", df_name.c_str()));
 
+            // Generic analysis histograms (incl. the gapcut histos read by the
+            // MC-data comparison) are weighted by the SAME per-pair efficiency
+            // correction as the crossx: w_reco_trig = w_reco * w_trig. This keeps
+            // the MC-data comparison consistent with the reco-eff placeholder
+            // (and any future efficiency/det-response/unfolding change to pp crossx).
+            // w_reco is the eps1*eps2 reco PLACEHOLDER (pp -> centrality = -1).
             ROOT::RDF::RNode df_with_trig = df
                 .Define("q_eta1", "(float)(m1.charge * m1.eta)")
                 .Define("q_eta2", "(float)(m2.charge * m2.eta)")
@@ -329,13 +336,22 @@ void RDFBasedHistFillingPP::FillHistogramsGeneric(){
                     return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe);
                 }, {"m2.charge", "m2.pt", "q_eta2"})
                 .Define("effcy_pair", "effcy1 > 0 && effcy2 > 0 ? (double)(effcy1 * effcy2) : -1.0")
-                .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0");
+                .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
+                .Define("effcy_reco1", [](float pt, float qe) {
+                    return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe);
+                }, {"m1.pt", "q_eta1"})
+                .Define("effcy_reco2", [](float pt, float qe) {
+                    return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe);
+                }, {"m2.pt", "q_eta2"})
+                .Define("effcy_reco_pair", "effcy_reco1 > 0 && effcy_reco2 > 0 ? (double)(effcy_reco1 * effcy_reco2) : -1.0")
+                .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / (effcy_reco_pair < 0.05 ? 0.05 : effcy_reco_pair) : 1.0")
+                .Define("w_reco_trig", "w_reco * w_trig");
 
             df_map.erase(df_name);
             df_map.emplace(df_name, df_with_trig);
         }
-        generic_weight_col = "w_trig";
-        std::cout << "[PP] FillHistogramsGeneric: w_trig columns added to "
+        generic_weight_col = "w_reco_trig";  // reco+trig corrected (was "w_trig")
+        std::cout << "[PP] FillHistogramsGeneric: w_reco_trig (reco+trig) columns added to "
                   << categories_essential.size() << " dataframes" << std::endl;
     }
 
@@ -374,6 +390,11 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
     // Per-pair 2mu4 trigger efficiency: ε_pair = ε₁ · ε₂ (AND logic)
     // If FillHistogramsGeneric already added trigger columns to df_op, they
     // propagate through the Filter to df_single_b_crossx — skip re-Define.
+    // Per-pair trigger (w_trig) AND reco-eff PLACEHOLDER (w_reco = 1/(eps1*eps2),
+    // pp -> centrality=-1, pair eff floored at 0.05, lookup-fail -> 1) columns.
+    // If FillHistogramsGeneric already added them to df_op (generic ran; it now
+    // defines the full trig+reco chain), they propagate through the signal-cut
+    // Filter -> reuse them (skip re-Define to avoid an RDF column collision).
     ROOT::RDF::RNode df_with_trig = generic_weight_col.empty()
         ? df_single_b_crossx
             .Define("q_eta1", "(float)(m1.charge * m1.eta)")
@@ -386,23 +407,19 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
             }, {"m2.charge", "m2.pt", "q_eta2"})
             .Define("effcy_pair", "effcy1 > 0 && effcy2 > 0 ? (double)(effcy1 * effcy2) : -1.0")
             .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
+            .Define("effcy_reco1", [](float pt, float qe) {
+                return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe);
+            }, {"m1.pt", "q_eta1"})
+            .Define("effcy_reco2", [](float pt, float qe) {
+                return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe);
+            }, {"m2.pt", "q_eta2"})
+            .Define("effcy_reco_pair", "effcy_reco1 > 0 && effcy_reco2 > 0 ? (double)(effcy_reco1 * effcy_reco2) : -1.0")
+            .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / (effcy_reco_pair < 0.05 ? 0.05 : effcy_reco_pair) : 1.0")
         : df_single_b_crossx;
 
     const double lumi_factor = pp_crossx_lumi_factor;
-    // Per-pair reco-efficiency PLACEHOLDER weight w_reco = 1/(eps_reco1*eps_reco2)
-    // (eps1*eps2 proxy; pp has no centrality => pass centrality = -1). Floor the
-    // pair efficiency at 0.05 to bound the 1/eps blow-up near threshold; if the
-    // lookup fails (file/key missing) fall back to w_reco = 1 (no correction).
     ROOT::RDF::RNode df_single_b_crossx_weighted =
         df_with_trig
-        .Define("effcy_reco1", [](float pt, float qe) {
-            return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe);
-        }, {"m1.pt", "q_eta1"})
-        .Define("effcy_reco2", [](float pt, float qe) {
-            return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe);
-        }, {"m2.pt", "q_eta2"})
-        .Define("effcy_reco_pair", "effcy_reco1 > 0 && effcy_reco2 > 0 ? (double)(effcy_reco1 * effcy_reco2) : -1.0")
-        .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / (effcy_reco_pair < 0.05 ? 0.05 : effcy_reco_pair) : 1.0")
         .Define("w_unfold", "1.0")  // PLACEHOLDER: unfolding identity until det-response unfolding lands (roadmap Q4)
         // Base crossx weight (lumi-scaled, no efficiency) and the sequential
         // correction-stage weights (see CorrectionStages.h).
@@ -463,6 +480,8 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
     // categories_essential = pair_signs) when generic ran; else define inline.
     {
         ROOT::RDF::RNode df_ss_crossx = map_at_checked(df_map, "df_ss", "FillHistogramsCrossx PP: df_ss").Filter(signal_cuts);
+        // Full trig+reco efficiency chain — defined inline only if generic did NOT
+        // run (else reuse the columns FillHistogramsGeneric added to df_ss).
         ROOT::RDF::RNode df_ss_with_trig = generic_weight_col.empty()
             ? df_ss_crossx
                 .Define("q_eta1", "(float)(m1.charge * m1.eta)")
@@ -475,16 +494,16 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
                 }, {"m2.charge", "m2.pt", "q_eta2"})
                 .Define("effcy_pair", "effcy1 > 0 && effcy2 > 0 ? (double)(effcy1 * effcy2) : -1.0")
                 .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
+                .Define("effcy_reco1", [](float pt, float qe) {
+                    return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe);
+                }, {"m1.pt", "q_eta1"})
+                .Define("effcy_reco2", [](float pt, float qe) {
+                    return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe);
+                }, {"m2.pt", "q_eta2"})
+                .Define("effcy_reco_pair", "effcy_reco1 > 0 && effcy_reco2 > 0 ? (double)(effcy_reco1 * effcy_reco2) : -1.0")
+                .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / (effcy_reco_pair < 0.05 ? 0.05 : effcy_reco_pair) : 1.0")
             : df_ss_crossx;
         ROOT::RDF::RNode df_ss_weighted = df_ss_with_trig
-            .Define("effcy_reco1", [](float pt, float qe) {
-                return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe);
-            }, {"m1.pt", "q_eta1"})
-            .Define("effcy_reco2", [](float pt, float qe) {
-                return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe);
-            }, {"m2.pt", "q_eta2"})
-            .Define("effcy_reco_pair", "effcy_reco1 > 0 && effcy_reco2 > 0 ? (double)(effcy_reco1 * effcy_reco2) : -1.0")
-            .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / (effcy_reco_pair < 0.05 ? 0.05 : effcy_reco_pair) : 1.0")
             .Define("crossx_weight",
                 [lumi_factor](double weight){ return weight * lumi_factor; }, {"weight"})
             .Define("crossx_weight_trig_corr", "crossx_weight * w_reco * w_trig");
