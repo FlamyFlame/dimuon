@@ -2,7 +2,50 @@
 
 ## Overview
 
-Powheg+Pythia8 NLO MC for bb and cc dimuon production. Used to derive reconstruction efficiency corrections and detector response matrices for the cross-section measurement.
+Powheg+Pythia8 NLO MC for bb and cc dimuon production.
+
+> **Role update (2026-06-14).** Reconstruction efficiency and detector
+> response / unfolding are now both derived from **Pythia fullsim** (pp24 +
+> HIJING overlay), NOT Powheg. **Powheg fullsim is obsolete:** (1) only a Run 2
+> (pp17) sample exists and we run Run 3 only; (2) Powheg has no pTHat slicing, so
+> high-pT statistics are too poor for high-pT reco-eff / detector response. No
+> Powheg fullsim is being requested for Run 3. The fullsim sections below are
+> retained for reference / Run 2 cross-checks only.
+>
+> **Powheg EvGen (truth) remains in use — for template fitting.** Advantage:
+> NLO accuracy in the heavy-quark production rate and kinematics. Drawback:
+> Powheg's heavy-quark (HQ) mode requires the QQ̄ pair to be in the 2→3
+> hard-scatter final state every event. It does **not remove** final-state
+> gluon-splitting (g→QQ̄) entirely — that QQ̄ pair can still arise from a *second*
+> gluon (the third 2→3 final-state parton being a gluon, or a gluon radiated in
+> b→bg, or a gluon from a semi-hard secondary scatter, etc.) — but it is
+> **heavily suppressed**. The suppression is kinematic and **stacks across the
+> decay chain**: (1) the gluon must be hard enough to make the pair at all —
+> p_T ≳ 2·m_Q even with the two heavy quarks at rest; (2) each heavy quark then
+> hadronizes into a heavy-flavour hadron and decays semileptonically to a muon
+> that carries only a *fraction* of the hadron's momentum; (3) each of those two
+> muons must still pass the analysis p_T > 4 GeV cut. So in practice the splitting
+> gluon must be considerably harder than 2·m_Q to yield two ≥ 4 GeV muons — a
+> demanding configuration that HQ mode biases against. Net effect: the g→QQ̄
+> background cross-section in the Powheg-HQ sample is **non-zero but far too low**
+> relative to both Pythia and data.
+>
+> g→QQ̄ is a **major background for this analysis** (low dimuon mass / small
+> opening angle, on top of the single-b signal region). So Powheg-HQ truth can
+> supply the NLO **signal** template, but it cannot model the gluon-splitting
+> background on its own.
+>
+> **Template-fitting direction (to be developed — notes for future
+> co-development).** Two ideas worth keeping:
+> 1. Use Powheg-HQ for the **NLO-hardness** part of the spectrum: at NLO the three
+>    classic HQ-production "topologies" (flavour creation, flavour excitation,
+>    gluon splitting) are no longer well-separated — they are all mixed into the
+>    2→3 matrix element — *except* that the low-mass/low-kT gluon-splitting tail is
+>    the piece that is missing/suppressed.
+> 2. "Stitch" that Powheg piece together with a **Pythia gluon-splitting template**
+>    that supplies the low-kT / low-mass g→QQ̄ contribution Powheg lacks. This would
+>    apply to the **background** template (and possibly the signal mix) — exact
+>    stitching/normalization procedure TBD.
 
 Unlike Pythia (LO), Powheg is an NLO generator. This has several consequences throughout the analysis chain:
 

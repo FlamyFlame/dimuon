@@ -1,30 +1,36 @@
 # Task 05 — Apply trigger + reco efficiency corrections to crossx
 
 **Roadmap:** `analysis_roadmap_2026_06.md` §Q3c / chain [5],[6]
-**Depends on:** task 02 (pp24 ε^nc), task 04 (dummy ε_reco). PbPb ε^nc
-already exists. **Reviewer:** `/review-analysis-code` (this is the
-physics-critical step), then `/review-plot`.
+**Depends on:** task 04 (dummy ε_reco). **Reviewer:** `/review-analysis-code`
+(this is the physics-critical step), then `/review-plot`.
+
+> **Status update 2026-06-14:** the **trigger** part of this task is DONE —
+> the no-correlation per-pair trigger weight is already applied in the crossx
+> pipeline (PbPb `RDFBasedHistFillingPbPb.cxx:926`, pp24
+> `RDFBasedHistFillingPP.cxx:373`). This task now covers **only the reco-eff
+> weight**.
 
 ## Objective
 
-Introduce per-pair efficiency weights into the crossx measurement —
-currently Pipeline 1 applies **no** trigger- or reco-efficiency
-correction. Target weight (Run 2 note Eq. net_eff_correction, kb
-`run2_dimuon_note.md`):
+Add the per-pair **reconstruction-efficiency** weight to the crossx
+measurement (trigger weight already applied). Target total weight:
 
 ```
-w⁻¹ = ε_trig^pair · ε_reco(pT₁, q·η₁, ctr) · ε_reco(pT₂, q·η₂, ctr)
+w⁻¹ = ε_trig^pair · ε_reco(pair pT, pair η, dR)
 ```
 
-with, per the mu4 Physics Procedure top-level equations:
-- PbPb (single mu4): ε_trig^pair = ε₁^nc + ε₂^nc − ε₁^nc·ε₂^nc
-  (inclusion–exclusion), εᵢ^nc = fitted ε^{no-corr}(pTᵢ, q·ηᵢ) per
-  (centrality, μ±) from
+- **ε_reco** is a single **pair** reconstruction efficiency binned in
+  **(pair pT, pair η, dR)** — derived from Pythia fullsim (pp) / Pythia
+  fullsim HIJING overlay (PbPb, per centrality). It is **NOT** a product of
+  two single-muon efficiencies (the two muons are correlated; see
+  `docs/tracking/hijing_overlay_reco_effcy_investigation.md` and
+  `RDFBasedHistFillingPythiaFullsim.cxx` `reco_effcy_var3Ds`).
+- **ε_trig^pair** (already applied): PbPb single-mu4 inclusion–exclusion
+  `ε₁^nc + ε₂^nc − ε₁^nc·ε₂^nc`; pp24 2mu4 `ε₁^nc · ε₂^nc`. εᵢ^nc = fitted
+  ε^{no-corr}(pTᵢ, q·ηᵢ) per (centrality, μ±) from
   `pbpb_20YY/trg_effcy_pT_fitting_to_fermi_plus_log/single_mu_effcy_pT_fit.root`.
-- pp24 (2mu4): ε_trig^pair = ε₁^nc · ε₂^nc (one term, no
-  inclusion–exclusion).
-- dR correction ε_dR: **dummy ≡ 1** until measured on unbiased MC
-  (roadmap Q4); keep a hook for it.
+- dR **trigger** correction ε_dR: **dummy ≡ 1** until measured on unbiased
+  MC (roadmap Q4); keep a hook for it.
 
 ## Design notes
 
