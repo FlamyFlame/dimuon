@@ -16,12 +16,19 @@ Task: $ARGUMENTS
 ## Setup
 
 Read these files before starting:
+- `Analysis/docs/academic_writing_workflow.md` (**ground-truth gate spec G1–G7 — this loop enforces it at publication grade**)
 - `.claude/agents/executor.md` (your behavior as executor)
 - `.claude/kb/index.md` (check for relevant KB articles)
-- `IntNote/mydocument.tex` (master document structure)
+- `IntNotes/ANA-HION-2023-07-INT1.tex` (master document structure; biblatex+biber, sections in `IntNotes/tex/`)
+- `Analysis/docs/placeholder.md` — standing placeholders (G7); for a publication these must be resolved or explicitly scoped, not silently carried
 
 Configuration:
 - MAX_ITERATIONS = 5
+
+## Step 0: Pre-flight
+Run `/sync-note-figures --check` for any figure in scope (resolve STALE/MISSING first)
+and `/verify-citations` for the section (publication grade ⇒ 100% citation
+support-check, not a sample). Numerical re-derivation (G3) runs inside the loop.
 
 ### Initialize log file
 
@@ -62,10 +69,16 @@ Write or edit the paper section described in the task. Follow the existing
 document structure. Apply publication-level language quality: precise, formal,
 no colloquialisms, consistent tense.
 
+**Gate G1 — evidence-support + anti-leakage (publication grade):** write strictly
+from the analysis materials, not parametric memory; every claim traces to a citation
+or a named analysis output; describe only what the pipeline actually does; `[MATERIAL
+GAP]` over invention. Quantify every comparative/uncertainty statement (no vague
+"large"/"significant"). Hedge nothing that the evidence supports, and overclaim nothing.
+
 Record:
 - Files created or modified (with paths)
-- Figures/tables added or referenced
-- Any numbers stated in prose
+- Figures/tables added or referenced (+ manifest source paths)
+- Any numbers stated in prose (+ the ROOT file/histogram each came from)
 
 ### Step 2: Spawn reviewer subagent
 
@@ -82,12 +95,18 @@ measurement in pp and Pb+Pb collisions.
 Review the following paper section and return a structured verdict.
 Apply the FULL checklist (items 1-12), including publication-specific criteria.
 
+## Pre-commitment (do this FIRST, before reading the draft — anti-sycophancy)
+From the task description alone, write the 3–6 things a publication-grade version
+MUST get right (expected claims, required citations + prior-measurement comparison,
+the numbers/figures it must cite, systematic-uncertainty completeness, likely failure
+modes). THEN check the draft against that list. Do not lower the bar to fit the draft.
+
 ## Task description
 [paste the original $ARGUMENTS]
 
 ## Files to review
 [list every LaTeX file modified/created, with full paths — the reviewer will Read them]
-[list the master document: IntNote/mydocument.tex]
+[list the master document: IntNotes/ANA-HION-2023-07-INT1.tex]
 
 ## Numbers stated in prose
 [list any numeric values written in the text, with their source]
@@ -103,6 +122,13 @@ Apply the FULL checklist (items 1-12), including publication-specific criteria.
 6. **Figure captions describe content**: each caption states what is shown, which dataset, which selection.
 7. **No placeholders remain**: no TODO, FIXME, XXX, or TBD markers in the source.
 8. **LaTeX compiles cleanly**: no errors; overfull hbox > 10pt flagged.
+
+### Evidence, citation & sync checklist (gates G1, G2, G4, G7 — publication grade)
+E1. **Evidence-support (G1)**: every factual/quantitative claim traces to a citation OR a named analysis output. Un-sourced claim → CRITICAL.
+E2. **No memory-leakage (G1)**: methodology matches the actual pipeline; no invented procedures/numbers.
+E3. **Citations (G2)**: 100% of cited references support their claims (VERIFIED), every `\cite` resolves; MAJOR_DISTORTION / UNVERIFIABLE / UNDEFINED → CRITICAL. (Run `/verify-citations`.)
+E4. **Figure-data fidelity + freshness (G4)**: captions follow from the data; figures current per `/sync-note-figures --check`.
+E5. **Epistemic status (G7)**: any preliminary/placeholder input is resolved or explicitly scoped for publication — an unlabelled placeholder in a paper draft → CRITICAL.
 
 ### Publication-specific checklist (items 9-12)
 9. **Publication-level language**: no colloquialisms, consistent tense, passive voice where appropriate, precise word choices.

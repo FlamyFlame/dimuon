@@ -111,6 +111,7 @@ code that contradicts the Physics Procedure without user approval.
 
 Before working on any task, check these existing docs:
 - **High-level analysis overview (objective, observables, physics methodology, sample roles): `Analysis/docs/analysis_overview.md`** — the stable conceptual ground truth for implementation and academic writing (no status; status lives in the roadmap).
+- **Academic writing production chain (rigor + auto-sync gates G1–G7): `Analysis/docs/academic_writing_workflow.md`** — ground-truth spec that `/review-note`, `/review-paper`, `/verify-citations`, `/sync-note-figures`, `/check-note-sync`, `/compile-note` enforce on EVERY writing task (even one section). Reference material: `Analysis/docs/references/academic_research_skills_summary.md` (why the ARS plugin is NOT installed) + `ppg12_claude_summary.md`.
 - Knowledge base: `.claude/kb/index.md` (analysis overview, decisions, samples, variables, gotchas)
 - Class hierarchy, code architecture, pipeline stages: `Analysis/README.md`
 - Per-pipeline docs: `Analysis/docs/` (pythia_truth, pythia_fullsim_pp, pythia_fullsim_overlay, powheg, data_analysis)
@@ -130,8 +131,12 @@ do not assert from inference what a sibling doc has already established or refut
 When the user asks to create, fix, or modify a plot → invoke `/review-plot`
 When the user asks to write, modify, or fix C++/ROOT/RDF analysis code → invoke `/review-analysis-code`
 When the user asks to investigate a discrepancy, debug, or understand an unexpected result → invoke `/review-investigation`
-When the user asks to write or edit an internal note section → invoke `/review-note`
-When the user asks to write or polish paper text for publication → invoke `/review-paper`
+When the user asks to write or edit an internal note section → invoke `/review-note` (enforces the Academic Writing gate chain G1–G7; see `Analysis/docs/academic_writing_workflow.md`)
+When the user asks to write or polish paper text for publication → invoke `/review-paper` (publication-grade gate chain)
+When the user asks to check/verify citations or references (real & supporting the claim) → invoke `/verify-citations`
+When the user asks to sync, update, or check the note's figures against the latest analysis → invoke `/sync-note-figures`
+When the user asks whether the note is up to date / matches the analysis → invoke `/check-note-sync`
+When the user asks to compile or build the internal note → invoke `/compile-note`
 When the user asks to review, audit, or validate a Claude Code plugin or skill → invoke `/review-plugin`
 When the user asks to write, modify, review, or audit a multi-step analysis pipeline script → invoke `/review-pipeline`
 When the user asks to run, execute, or steer a pipeline, or wants autonomous end-to-end pipeline execution → invoke `/steer-pipeline`
@@ -142,6 +147,7 @@ When the user asks to review, audit, or validate the knowledge base or a KB entr
 
 - `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/analysis_status_summary.md` — Current analysis status: which steps updated with May 2026 skim
 - `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/analysis_roadmap_2026_06.md` — Analysis roadmap (2026-06-10): IntNote readiness, missing inputs, full chain with dummies; task files in Analysis/docs/roadmap_tasks/
+- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/academic_writing_workflow.md` — Academic writing production chain (rigor + auto-sync): building the G1–G7 gates, new commands/agents, ARS-not-installed decision, copy-based figure sync
 <!-- COMPLETED (2026-06-16), do NOT auto-load:
 - Analysis/docs/tracking/reco_eff_placeholder_run2.md — Reco-eff placeholder (F.2 PbPb + HF R_AA Fig.31 pp); ε₁·ε₂ proxy in nominal crossx + R_AA. Follow-ups Q1+Q2 DONE 2026-06-16: Q1 PbPb genuine differential cross-section dσ/dp_T=1/L·dN (nb/GeV, differential_crossx dir; T_AA-weighted kept as R_AA input); Q2 reco folded into pp generic weight (generic_weight_col=w_reco_trig) so MC-data comparison reflects reco + INVARIANT: rerun MC-data comparison after any pp eff/det-resp/unfolding change. CLOSED. Follow-up: pt_150 differential crossx; proper 3D pair ε_reco when MC lands.
 - Analysis/docs/tracking/raa_from_rdf_crossx.md — task_06 R_AA from RDF crossx (reco-corrected, OS−SS, combined years). Year-combination = luminosity-weighted average (HF R_AA note Eq.3) via Utilities/PbPbSampledLumi.h, applied in R_AA + crossx combined plotter + stage plotter. R_AA scale now physical (~0.1-0.9). CLOSED 2026-06-16. Remaining: 2024/2025 official T_AA (2023 placeholder), σ_PbPb 5.36 TeV, proper 3D pair ε_reco. -->

@@ -15,12 +15,21 @@ Task: $ARGUMENTS
 ## Setup
 
 Read these files before starting:
+- `Analysis/docs/academic_writing_workflow.md` (**ground-truth gate spec G1–G7 — this loop enforces it**)
 - `.claude/agents/executor.md` (your behavior as executor)
 - `.claude/kb/index.md` (check for relevant KB articles)
-- `IntNote/mydocument.tex` (master document structure)
+- `IntNotes/ANA-HION-2023-07-INT1.tex` (master document structure; biblatex+biber, `\graphicspath{{logos/}{figures/}}`, sections in `IntNotes/tex/`)
+- `Analysis/docs/placeholder.md` (≡ `IntNotes/placeholder.md`) — standing placeholders (G7)
 
 Configuration:
 - MAX_ITERATIONS = 5
+
+## Step 0: Pre-flight (run before drafting — keeps the note on the latest version)
+
+1. For any figure the section uses or will add: run `/sync-note-figures --check`
+   (or full sync if you are adding/refreshing a figure) and resolve STALE/MISSING-SOURCE first.
+2. Note that `/verify-citations` (G2) and `numerical-verifier` (G3) run inside the
+   loop below; if the section is citation-heavy you may run `/verify-citations` now.
 
 ### Initialize log file
 
@@ -58,13 +67,23 @@ If you have lost context (e.g., after compaction), recover by:
 ### Step 1: Execute
 
 Write or edit the internal note section described in the task. Follow the
-existing note structure in `IntNote/`. Match the LaTeX style and conventions
-already used in `IntNote/tex/`.
+existing note structure in `IntNotes/`. Match the LaTeX style and conventions
+already used in `IntNotes/tex/` and the ATLAS `atlasphysics`/`defs.sty` macros.
+
+**Gate G1 — evidence-support + anti-leakage (apply while drafting):**
+- Write from the analysis materials (ROOT outputs, `analysis_metadata.md`, KB,
+  tracking docs), NOT from parametric memory. Every factual/quantitative claim must
+  trace to a citation OR a named analysis output (file + histogram/bin/table/plot).
+- For each number/figure, record the exact source anchor (you will hand numbers to
+  `numerical-verifier` and figures to the figure-fidelity check).
+- If the section needs content the materials do not cover, write `[MATERIAL GAP]` —
+  do not invent procedures or numbers. Describe only what the pipeline actually does.
+- Label any placeholder/preliminary result honestly, consistent with `placeholder.md` (G7).
 
 Record:
 - Files created or modified (with paths)
-- Figures/tables added or referenced
-- Any numbers stated in prose
+- Figures/tables added or referenced (+ their manifest source paths)
+- Any numbers stated in prose (+ the ROOT file/histogram each came from)
 
 ### Step 2: Spawn reviewer subagent
 
@@ -80,12 +99,19 @@ measurement in pp and Pb+Pb collisions.
 ## Your task
 Review the following note section and return a structured verdict.
 
+## Pre-commitment (do this FIRST, before reading the draft — anti-sycophancy)
+Based ONLY on the task description below, write down the 3–6 specific things a
+correct version of this section MUST get right (expected claims, the numbers/figures
+it should cite, the placeholders it must disclose, the likely failure modes). THEN
+read the draft and check it against your pre-committed list. Do not lower the bar to
+match what the draft happens to contain.
+
 ## Task description
 [paste the original $ARGUMENTS]
 
 ## Files to review
 [list every LaTeX file modified/created, with full paths — the reviewer will Read them]
-[list the master document: IntNote/mydocument.tex]
+[list the master document: IntNotes/ANA-HION-2023-07-INT1.tex]
 
 ## Numbers stated in prose
 [list any numeric values written in the text, with their source]
@@ -101,6 +127,14 @@ Review the following note section and return a structured verdict.
 6. **Figure captions describe content**: each caption states what is shown, which dataset, which selection.
 7. **No placeholders remain**: no TODO, FIXME, XXX, or TBD markers in the source.
 8. **LaTeX compiles cleanly**: no errors; overfull hbox > 10pt flagged.
+
+### Evidence, citation & sync checklist (gates G1, G2, G4, G7 — apply to touched text)
+9. **Evidence-support (G1)**: every factual/quantitative claim traces to a citation OR a named analysis output (ROOT file+histogram/bin, table, plot). A claim with neither → CRITICAL `[UNSUPPORTED]`.
+10. **No memory-leakage (G1)**: methodology prose matches what the pipeline actually does (`Analysis/README.md` + pipeline docs); invented procedures / un-sourced facts → CRITICAL. `[MATERIAL GAP]` markers are acceptable, silent filler is not.
+11. **Citations (G2)**: every `\cite` key resolves in a bib resource; each cited reference actually supports its claim. If not already run, instruct the executor to run `/verify-citations`; treat its MAJOR_DISTORTION / UNVERIFIABLE / UNDEFINED as CRITICAL.
+12. **Figure-data fidelity + freshness (G4)**: each caption's interpretation follows from the data and states dataset+selection; each figure is current per `/sync-note-figures --check` (STALE/MISSING-SOURCE → CRITICAL).
+13. **Placeholder honesty (G7)**: every placeholder/preliminary result is labelled and consistent with `placeholder.md`; an unlabelled placeholder presented as final → CRITICAL.
+14. **Writing quality**: flag vague/hedging ("roughly", "seems"), AI-typical filler ("delve", "pivotal", "it is important to note that", em-dash overuse, throat-clearing openers), sentences > 40 words, inconsistent macro use.
 
 ### Physics checklist (apply only items relevant to this section)
 1. Sign convention: OS=sign2/_op, SS=sign1/_ss.
