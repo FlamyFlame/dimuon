@@ -95,7 +95,7 @@ void build_run2_reco_eff_placeholder(){
     gROOT->SetBatch(kTRUE);
 
     const std::string out_root = "../../EfficiencyCorrs/EffFiles/run2_reco_eff_placeholder.root";
-    const std::string plot_dir = "../../plots/reco_effcy/placeholder/";
+    const std::string plot_dir = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/reco_effcy_placeholder/";
     gSystem->mkdir(plot_dir.c_str(), kTRUE);
 
     TFile* fout = TFile::Open(out_root.c_str(), "RECREATE");

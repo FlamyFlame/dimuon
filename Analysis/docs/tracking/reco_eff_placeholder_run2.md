@@ -192,7 +192,7 @@ the proper 3D pair efficiency (task_05 proper), systematics.
 - **Output ROOT:** `EfficiencyCorrs/EffFiles/run2_reco_eff_placeholder.root` —
   63 PbPb TGraphs `gr_reco_eff_medium_pbpb_ctr{lo}_{hi}_q_eta_{suffix}`
   (7 ctr × 9 q·η) + `gr_reco_eff_medium_pp_barrel`, `..._pp_endcap`.
-- **Reproduction plots:** `plots/reco_effcy/placeholder/` (7 PbPb 3×3 + 1 pp).
+- **Reproduction plots:** `usatlasdata/dimuon_data/plots/reco_effcy_placeholder/` (7 PbPb 3×3 + 1 pp).
   Visual match to F.2: flat forward/backward slices ~0.78–0.85; turn-on for
   |q·η|<1.5 from ~0.45–0.62 at pT=4 to ~0.85–0.95 plateau.
 
