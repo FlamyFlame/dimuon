@@ -117,7 +117,7 @@ Before working on any task, check these existing docs:
 - Per-pipeline docs: `Analysis/docs/` (pythia_truth, pythia_fullsim_pp, pythia_fullsim_overlay, powheg, data_analysis)
 - Skimming code, branches, grid workflow: `SkimCode/README.md`
 - Data paths and directory layout: root `README.md`
-- Internal note structure: `IntNote/tex/` (section files), `IntNote/mydocument.tex` (master)
+- Internal note structure: `IntNotes/tex/` (section files), `IntNotes/ANA-HION-2023-07-INT1.tex` (master; biblatex+biber, CERN GitLab submodule)
 
 **Cross-reference other tracking docs.** Before making a factual statement on a
 topic that is NOT the subject of the current tracking doc, search for and
