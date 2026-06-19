@@ -127,11 +127,8 @@ public:
 
         const std::string base_out   = output_dir;
         const std::string counts_dir = base_out + "/counts";
-        // Genuine differential cross-sections dσ/dp_T = (1/L)·dN (eff-corrected,
-        // lumi-combined) — NOT the T_AA-weighted R_AA-input yield. (The T_AA-weighted
-        // 3D histogram is still in the RDF output and is read directly by RAA_plotting.)
-        const std::string xsec_dir   = base_out + "/differential_crossx";
-        gSystem->mkdir(xsec_dir.c_str(), true);
+        const std::string taa_dir    = base_out + "/TAA_weighted";
+        gSystem->mkdir(taa_dir.c_str(), true);
         if (has_counts) gSystem->mkdir(counts_dir.c_str(), true);
 
         for (const auto& ctr : ctr_bins) {
@@ -167,33 +164,33 @@ public:
                     "N_{events}", false);
             }
 
-            output_dir = xsec_dir;
-            Save2DColz("h2d_op_crossx_dsigma_vs_pair_eta_vs_pair_pt_" + ctr,
+            output_dir = taa_dir;
+            Save2DColz("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr,
                        tag + "_pair_pt_pair_eta.png",
-                       "d^{2}#sigma/dp_{T}d#eta [nb GeV^{-1}]");
-            Save2DColz("h2d_crossx_pair_pt_minv_dsigma_" + ctr,
+                       "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{d^{2}N}{dp_{T}d#eta} [pb GeV^{-1}]");
+            Save2DColz("h2d_crossx_pair_pt_minv_w_signal_cuts_" + ctr,
                        tag + "_pair_pt_minv.png",
-                       "d^{2}#sigma/dp_{T}dm_{#mu#mu} [nb GeV^{-1} GeV^{-1}]");
-            Save2DColz("h2d_crossx_pair_pt_dr_dsigma_" + ctr,
+                       "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{d^{2}N}{dp_{T}dm_{#mu#mu}} [pb GeV^{-1} GeV^{-1}]");
+            Save2DColz("h2d_crossx_pair_pt_dr_w_signal_cuts_" + ctr,
                        tag + "_pair_pt_dr.png",
-                       "d^{2}#sigma/dp_{T}d#DeltaR [nb GeV^{-1}]");
+                       "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{d^{2}N}{dp_{T}d#DeltaR} [pb GeV^{-1}]");
             DrawPairPtByEtaWithDrLines(
-                "h3d_crossx_dr_vs_pair_eta_vs_pair_pt_dsigma_" + ctr,
+                "h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr,
                 l1, label_line3_,
                 tag + "_pair_pt_in_eta_subplots_dr_lines.png",
-                "d#sigma/dp_{T} [nb GeV^{-1}]");
+                "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dN}{dp_{T}} [pb GeV^{-1}]");
             DrawPairPtByEta(
-                "h2d_op_crossx_dsigma_vs_pair_eta_vs_pair_pt_" + ctr,
+                "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr,
                 l1, label_line3_,
                 tag + "_pair_pt_in_eta_subplots.png",
-                "d#sigma/dp_{T} [nb GeV^{-1}]");
+                "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dN}{dp_{T}} [pb GeV^{-1}]");
         }
 
         if (use_pt_bins_150) {
             const std::string pt150_dir    = base_out + "_pt_150";
             const std::string pt150_cntdir = pt150_dir + "/counts";
-            const std::string pt150_xsecdir = pt150_dir + "/differential_crossx";
-            gSystem->mkdir(pt150_xsecdir.c_str(), true);
+            const std::string pt150_taadir = pt150_dir + "/TAA_weighted";
+            gSystem->mkdir(pt150_taadir.c_str(), true);
             if (has_counts) gSystem->mkdir(pt150_cntdir.c_str(), true);
 
             for (const auto& ctr : ctr_bins) {
@@ -214,17 +211,17 @@ public:
                         tag + "_pair_pt_in_eta_subplots.png",
                         "dN_{events}/dp_{T} [GeV^{-1}]");
                 }
-                output_dir = pt150_xsecdir;
+                output_dir = pt150_taadir;
                 DrawPairPtByEtaWithDrLines(
-                    "h3d_crossx_dr_vs_pair_eta_vs_pt_150_dsigma_" + ctr,
+                    "h3d_crossx_dr_vs_pair_eta_vs_pt_150_w_signal_cuts_" + ctr,
                     l1, label_line3_,
                     tag + "_pair_pt_in_eta_subplots_dr_lines.png",
-                    "d#sigma/dp_{T} [nb GeV^{-1}]");
+                    "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dN}{dp_{T}} [pb GeV^{-1}]");
                 DrawPairPtByEta(
-                    "h2d_op_crossx_dsigma_vs_pair_eta_vs_pt_150_" + ctr,
+                    "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pt_150_" + ctr,
                     l1, label_line3_,
                     tag + "_pair_pt_in_eta_subplots.png",
-                    "d#sigma/dp_{T} [nb GeV^{-1}]");
+                    "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dN}{dp_{T}} [pb GeV^{-1}]");
             }
             output_dir = base_out;
         }
