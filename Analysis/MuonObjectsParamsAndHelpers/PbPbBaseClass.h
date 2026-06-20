@@ -69,32 +69,47 @@ public:
     // centrality paper gives only Glauber sigma_NN, not the total hadronic sigma in
     // barns). Roadmap Q2.2 OPEN: needs a citable 5.36 TeV reference before final
     // results. (Run 2 used 7.66 b at 5.02 TeV.) Same caveat for the 2024/2025 funcs.
-    // L_int below = 1.02426 nb^-1 (PbPb 2023 mu4, prescale-corrected, GRL total minus
-    // excluded bad run 462964; see IntNotes/analysis_metadata.md).
+    // L_int below = 1.17576 nb^-1 (PbPb 2023 mu4, prescale-corrected sampled lumi
+    // used in the R_AA / crossx normalization). Corrected 2026-06-19: the old value
+    // 1.02426 was computed with a wrong/old GRL. The correct-GRL Prescale-Corrected
+    // Total is 1183.650457 ub^-1 = 1.18365 nb^-1; the R_AA luminosity excludes the
+    // TWO b-hadron runs 461674 (2.623332 ub^-1) and 462964 (5.262407 ub^-1) =>
+    // 1183.650457 - 2.623332 - 5.262407 = 1175.764718 ub^-1 = 1.17576 nb^-1. (The
+    // old 1.02426 used the old-GRL total and only excluded 462964 because 461674 was
+    // below the old table's run range.) See
+    // IntNotes/data/luminosity/pbpb_2023/lumitable_pbpb_23_HLT_mu4.csv and
+    // IntNotes/analysis_metadata.md. MUST stay in sync with
+    // Utilities/PbPbSampledLumi.h (year-combine cancellation).
     static std::vector<double> make_crossx_factors_pbpb_2023() {
         return {
-            1./(0.05 * 7.8 * 1000. * 26.1428 * 1.02426 / 1000.),
-            1./(0.05 * 7.8 * 1000. * 20.3241 * 1.02426 / 1000.),
-            1./(0.1  * 7.8 * 1000. * 14.0502 * 1.02426 / 1000.),
-            1./(0.1  * 7.8 * 1000. *  8.5074 * 1.02426 / 1000.),
-            1./(0.2  * 7.8 * 1000. *  3.7733 * 1.02426 / 1000.),
-            1./(0.3  * 7.8 * 1000. *  0.6716 * 1.02426 / 1000.)
+            1./(0.05 * 7.8 * 1000. * 26.1428 * 1.17576 / 1000.),
+            1./(0.05 * 7.8 * 1000. * 20.3241 * 1.17576 / 1000.),
+            1./(0.1  * 7.8 * 1000. * 14.0502 * 1.17576 / 1000.),
+            1./(0.1  * 7.8 * 1000. *  8.5074 * 1.17576 / 1000.),
+            1./(0.2  * 7.8 * 1000. *  3.7733 * 1.17576 / 1000.),
+            1./(0.3  * 7.8 * 1000. *  0.6716 * 1.17576 / 1000.)
         };
     }
     // PLACEHOLDER T_AA: the T_AA values below are the 2023 Glauber values
     // (data/centrality/TaaValues2023.txt in the IntNote repo) reused as a
     // placeholder -- official 2024 centrality/T_AA are not yet available. Only
-    // the luminosity factor (1.59663 nb^-1, PbPb 2024 mu4 prescale-corrected) is
+    // the luminosity factor (0.85112 nb^-1, PbPb 2024 mu4 prescale-corrected) is
     // 2024-specific. Must be flagged as a 2023-T_AA placeholder in the internal
     // note. See IntNotes/analysis_metadata.md. (sigma_PbPb=7.8 b: see 2023 func note.)
+    // L_int corrected 2026-06-19: 1.59663 -> 0.85112 nb^-1. The old value was
+    // computed with a stale GRL that did not exclude bad runs before 489703; the
+    // corrected GRL (physics_HI2024_50ns.xml, runs >=489703) gives Prescale
+    // Corrected Total = 851.118101 ub^-1. The 2024 data skim already used the
+    // correct GRL, so only the luminosity (not the event yield) was wrong. This
+    // value MUST stay in sync with Utilities/PbPbSampledLumi.h (year-combine).
     static std::vector<double> make_crossx_factors_pbpb_2024() {
         return {
-            1./(0.05 * 7.8 * 1000. * 26.1428 * 1.59663 / 1000.),
-            1./(0.05 * 7.8 * 1000. * 20.3241 * 1.59663 / 1000.),
-            1./(0.1  * 7.8 * 1000. * 14.0502 * 1.59663 / 1000.),
-            1./(0.1  * 7.8 * 1000. *  8.5074 * 1.59663 / 1000.),
-            1./(0.2  * 7.8 * 1000. *  3.7733 * 1.59663 / 1000.),
-            1./(0.3  * 7.8 * 1000. *  0.6716 * 1.59663 / 1000.)
+            1./(0.05 * 7.8 * 1000. * 26.1428 * 0.85112 / 1000.),
+            1./(0.05 * 7.8 * 1000. * 20.3241 * 0.85112 / 1000.),
+            1./(0.1  * 7.8 * 1000. * 14.0502 * 0.85112 / 1000.),
+            1./(0.1  * 7.8 * 1000. *  8.5074 * 0.85112 / 1000.),
+            1./(0.2  * 7.8 * 1000. *  3.7733 * 0.85112 / 1000.),
+            1./(0.3  * 7.8 * 1000. *  0.6716 * 0.85112 / 1000.)
         };
     }
     // PLACEHOLDER T_AA: official 2025 centrality/T_AA are not yet available, so the
