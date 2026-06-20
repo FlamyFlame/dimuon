@@ -12,7 +12,7 @@ struct CommonEffcyConfig {
     // NOTE: all q_eta_proj_ranges_* below are for SINGLE-MUON TRIGGER EFFICIENCY
     // fitting using q×eta bins. Do NOT use these for pair eta binning.
 
-    QEtaBinning q_eta_proj_ranges_fine_excl_gap = { // Run 3; |q×eta| < 2.2, gap excluded
+    QEtaBinning q_eta_proj_ranges_fine_excl_gap = { // Run 3; -2.4 <= q*eta < 2.2 (one-sided), gap excluded
         {-2.4f, -2.0f},
         {-2.0f, -1.6f},
         {-1.6f, -1.3f},
@@ -38,7 +38,7 @@ struct CommonEffcyConfig {
         {2.0f, 2.4f}
     };
 
-    QEtaBinning q_eta_proj_ranges_coarse_incl_gap = { // Run 3; |q×eta| < 2.2, gap included
+    QEtaBinning q_eta_proj_ranges_coarse_incl_gap = { // Run 3; -2.4 <= q*eta < 2.2 (one-sided), gap included
         {-2.4f, -2.0f},
         {-2.0f, -1.5f},
         {-1.5f, -1.0f},
@@ -63,8 +63,8 @@ struct CommonEffcyConfig {
     };
 
     // For PAIR ETA binning (reco efficiency, cross-section, signal acceptance).
-    // Last bin extends to 2.4: signal cuts are per-muon |q×eta| < 2.2, so pair
-    // eta reaches 2.4. No run-year split needed.
+    // Last bin extends to 2.4: signal cuts are per-muon q*eta < 2.2 (one-sided,
+    // -2.4 <= q*eta < 2.2), so pair eta reaches 2.4. No run-year split needed.
     QEtaBinning pair_eta_proj_ranges_coarse_incl_gap = {
         {-2.4f, -2.0f},
         {-2.0f, -1.5f},

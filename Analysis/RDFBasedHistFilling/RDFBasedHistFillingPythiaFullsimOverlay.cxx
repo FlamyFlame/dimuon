@@ -66,9 +66,9 @@ protected:
 
                 auto node_sig = node
                     .Define("pass_signal_truth" + ctr_tag,
-                        "truth_minv > 1.08 && truth_minv < 2.9 && truth_pair_pt > 8 && truth_pair_eta < 2.2 && truth_dr > 0.05")
+                        "truth_minv > 1.08 && truth_minv < 2.9 && truth_pair_pt > 8 && m1.truth_charge * m1.truth_eta < 2.2 && m2.truth_charge * m2.truth_eta < 2.2 && truth_dr > 0.05")
                     .Define("pass_signal_reco" + ctr_tag,
-                        "(m1.reco_match && m2.reco_match) ? (minv > 1.08 && minv < 2.9 && pair_pt > 8 && pair_eta < 2.2 && dr > 0.05) : false");
+                        "(m1.reco_match && m2.reco_match) ? (minv > 1.08 && minv < 2.9 && pair_pt > 8 && m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2 && dr > 0.05) : false");
 
                 df_map.emplace(base + "_pass_medium_weighted",
                     node_sig.Filter("pair_pass_medium"));
