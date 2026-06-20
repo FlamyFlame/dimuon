@@ -167,23 +167,23 @@ public:
             output_dir = taa_dir;
             Save2DColz("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr,
                        tag + "_pair_pt_pair_eta.png",
-                       "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{d^{2}N}{dp_{T}d#eta} [pb GeV^{-1}]");
+                       "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{d^{2}n_{AA}}{dp_{T}d#eta} [pb GeV^{-1}]");
             Save2DColz("h2d_crossx_pair_pt_minv_w_signal_cuts_" + ctr,
                        tag + "_pair_pt_minv.png",
-                       "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{d^{2}N}{dp_{T}dm_{#mu#mu}} [pb GeV^{-1} GeV^{-1}]");
+                       "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{d^{2}n_{AA}}{dp_{T}dm_{#mu#mu}} [pb GeV^{-1} GeV^{-1}]");
             Save2DColz("h2d_crossx_pair_pt_dr_w_signal_cuts_" + ctr,
                        tag + "_pair_pt_dr.png",
-                       "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{d^{2}N}{dp_{T}d#DeltaR} [pb GeV^{-1}]");
+                       "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{d^{2}n_{AA}}{dp_{T}d#DeltaR} [pb GeV^{-1}]");
             DrawPairPtByEtaWithDrLines(
                 "h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr,
                 l1, label_line3_,
                 tag + "_pair_pt_in_eta_subplots_dr_lines.png",
-                "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dN}{dp_{T}} [pb GeV^{-1}]");
+                "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dn_{AA}}{dp_{T}} [pb GeV^{-1}]");
             DrawPairPtByEta(
                 "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr,
                 l1, label_line3_,
                 tag + "_pair_pt_in_eta_subplots.png",
-                "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dN}{dp_{T}} [pb GeV^{-1}]");
+                "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dn_{AA}}{dp_{T}} [pb GeV^{-1}]");
         }
 
         if (use_pt_bins_150) {
@@ -216,12 +216,12 @@ public:
                     "h3d_crossx_dr_vs_pair_eta_vs_pt_150_w_signal_cuts_" + ctr,
                     l1, label_line3_,
                     tag + "_pair_pt_in_eta_subplots_dr_lines.png",
-                    "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dN}{dp_{T}} [pb GeV^{-1}]");
+                    "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dn_{AA}}{dp_{T}} [pb GeV^{-1}]");
                 DrawPairPtByEta(
                     "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pt_150_" + ctr,
                     l1, label_line3_,
                     tag + "_pair_pt_in_eta_subplots.png",
-                    "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dN}{dp_{T}} [pb GeV^{-1}]");
+                    "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dn_{AA}}{dp_{T}} [pb GeV^{-1}]");
             }
             output_dir = base_out;
         }
