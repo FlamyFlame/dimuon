@@ -37,3 +37,9 @@
 {"event":"start","command":"kb-build","mode":"ADD","slug":"add-ggnote-yuntian-thesis","timestamp":"2026-06-15T05:02:38Z"}
 {"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-15T05:08:26Z","criticals":0,"warnings":0,"slug":"fix-lumi-norm-constants"}
 {"event":"end","command":"kb-build","mode":"ADD","docs":2,"timestamp":"2026-06-15T05:18:27Z","slug":"add-ggnote-yuntian-thesis"}
+{"event":"start","command":"review-investigation","task":"pp24 trigger-eff high-pT jump in crossx/RAA","slug":"pp-trig-eff-highpt-jump","timestamp":"2026-06-20T05:07:18Z"}
+{"event":"end","command":"review-investigation","status":"approved","iterations":1,"timestamp":"2026-06-20T05:11:38Z","criticals":0,"warnings":0,"slug":"pp-trig-eff-highpt-jump"}
+{"event":"start","command":"review-analysis-code","task":"trig-eff plateau clamp fix","slug":"trig-eff-plateau-clamp","timestamp":"2026-06-20T05:30:30Z"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-20T05:36:23Z","criticals":0,"warnings":0,"slug":"trig-eff-plateau-clamp"}
+{"event":"start","command":"review-plot","task":"trig-clamp crossx/RAA replot validation","slug":"trig-clamp-crossx-raa-replot","timestamp":"2026-06-20T05:42:54Z"}
+{"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-20T05:44:37Z","criticals":0,"warnings":0,"slug":"trig-clamp-crossx-raa-replot"}
