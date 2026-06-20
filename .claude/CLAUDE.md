@@ -112,12 +112,25 @@ code that contradicts the Physics Procedure without user approval.
 Before working on any task, check these existing docs:
 - **High-level analysis overview (objective, observables, physics methodology, sample roles): `Analysis/docs/analysis_overview.md`** — the stable conceptual ground truth for implementation and academic writing (no status; status lives in the roadmap).
 - **Academic writing production chain (rigor + auto-sync gates G1–G7): `Analysis/docs/academic_writing_workflow.md`** — ground-truth spec that `/review-note`, `/review-paper`, `/verify-citations`, `/sync-note-figures`, `/check-note-sync`, `/compile-note` enforce on EVERY writing task (even one section). Reference material: `Analysis/docs/references/academic_research_skills_summary.md` (why the ARS plugin is NOT installed) + `ppg12_claude_summary.md`.
-- Knowledge base: `.claude/kb/index.md` (analysis overview, decisions, samples, variables, gotchas)
+- **Knowledge base — index of physics references: `.claude/kb/index.md`** — the curated literature/physics reference library, NOT just analysis bookkeeping. It holds: the two highest-priority Run 2 reference analyses ours derives from (HF-muon R_AA/v_n note+paper; back-to-back dimuon note+Letter), heavy-ion physics (especially heavy-flavor background), ATLAS muon detector (reco + trigger), centrality (ATLAS 2023 + Glauber), plus analysis bookkeeping (decisions, samples, variables, gotchas). **Consult the index for EVERY physics question/task/investigation/decision** — see the required-use rule below.
 - Class hierarchy, code architecture, pipeline stages: `Analysis/README.md`
 - Per-pipeline docs: `Analysis/docs/` (pythia_truth, pythia_fullsim_pp, pythia_fullsim_overlay, powheg, data_analysis)
 - Skimming code, branches, grid workflow: `SkimCode/README.md`
 - Data paths and directory layout: root `README.md`
 - Internal note structure: `IntNotes/tex/` (section files), `IntNotes/ANA-HION-2023-07-INT1.tex` (master; biblatex+biber, CERN GitLab submodule)
+
+**Use the KB for all physics work (REQUIRED).** The knowledge base index
+(`.claude/kb/index.md`) is the mandatory entry point for every physics
+question, task, investigation, and analysis decision. Workflow: consult the
+index → see what references are available → pull the specific entries relevant
+to the task (index-driven lookup — do NOT read every paper; that is the whole
+point of the index). The two Run 2 reference analyses ours derives from are the
+highest priority: HF-muon R_AA/v_n (note + paper) and back-to-back dimuon
+(note + Letter). Beyond those, any question touching centrality (ATLAS 2023 +
+Glauber), heavy-ion-specific physics (especially heavy-flavor background), or
+ATLAS muon-detector specifics (reco/trigger) MUST be grounded in the relevant
+KB entries before answering. Do not answer a physics question from memory when
+a KB entry covers it — give physically grounded, reference-backed answers.
 
 **Cross-reference other tracking docs.** Before making a factual statement on a
 topic that is NOT the subject of the current tracking doc, search for and
@@ -149,6 +162,7 @@ When the user asks to review, audit, or validate the knowledge base or a KB entr
 - `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/analysis_roadmap_2026_06.md` — Analysis roadmap (2026-06-10): IntNote readiness, missing inputs, full chain with dummies; task files in Analysis/docs/roadmap_tasks/
 - `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/academic_writing_workflow.md` — Academic writing production chain (rigor + auto-sync): building the G1–G7 gates, new commands/agents, ARS-not-installed decision, copy-based figure sync
 - `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/raa_from_rdf_crossx.md` — task_06 R_AA from RDF crossx. REOPENED 2026-06-19: PbPb 2024 lumi corrected 1.59663→0.85112 nb⁻¹ (old GRL didn't exclude runs <489703; events already correct, lumi-only fix; combined R_AA ×1.17) + R_AA equation rewritten to common notation (n_AA raw yield, explicit 1/N_evt) + y-title relabel.
+- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/pp_trig_eff_highpt_jump.md` — Investigation (2026-06-20, ROOT CAUSE FOUND, /review-investigation PASS): pp24 crossx/R_AA jumps up at pair pT ~58-60 GeV because the single-muon turn-on TF1s are compiled (no TFormula) and return 0 for pt>60 GeV on read-back → ε floored to 0.01 → amplified by pp's unfloored 2mu4 PRODUCT weight 1/(ε₁ε₂). PbPb immune via UNION weight. Hypothesis-3 (no-correlation) ruled out. Fix not yet applied (recommend clamping pt to TF1 xmax before Eval).
 <!-- COMPLETED (2026-06-16), do NOT auto-load:
 - Analysis/docs/tracking/reco_eff_placeholder_run2.md — Reco-eff placeholder (F.2 PbPb + HF R_AA Fig.31 pp); ε₁·ε₂ proxy in nominal crossx + R_AA. Follow-ups Q1+Q2 DONE 2026-06-16: Q1 PbPb genuine differential cross-section dσ/dp_T=1/L·dN (nb/GeV, differential_crossx dir; T_AA-weighted kept as R_AA input); Q2 reco folded into pp generic weight (generic_weight_col=w_reco_trig) so MC-data comparison reflects reco + INVARIANT: rerun MC-data comparison after any pp eff/det-resp/unfolding change. CLOSED. Follow-up: pt_150 differential crossx; proper 3D pair ε_reco when MC lands. -->
 
