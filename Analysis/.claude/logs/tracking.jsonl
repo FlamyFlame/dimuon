@@ -49,3 +49,23 @@
 {"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-16T17:02:27Z","criticals":0,"warnings":0,"slug":"pbpb-dsigma-and-mcdata-reco"}
 {"event":"start","command":"review-plot","task":"dsigma + mc-data plots","slug":"dsigma-mcdata-plots","timestamp":"2026-06-16T17:02:43Z"}
 {"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-16T17:03:45Z","criticals":0,"warnings":0,"slug":"dsigma-mcdata-plots"}
+{"event":"start","command":"review-plot","task":"Revert PbPb crossx plotter differential_crossx -> TAA_weighted","slug":"pbpb-crossx-revert-taa-weighted","timestamp":"2026-06-18T15:00:15-04:00"}
+{"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-18T15:05:09-04:00","criticals":0,"warnings":0,"slug":"pbpb-crossx-revert-taa-weighted"}
+{"event":"start","command":"review-analysis-code","task":"reco-eff run2 real fits builder","slug":"reco-eff-run2-real-fits","timestamp":"2026-06-19T01:21:09Z"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-19T01:24:14Z","criticals":0,"warnings":0,"slug":"reco-eff-run2-real-fits"}
+{"event":"start","command":"review-plot","task":"reco-eff run2 fits pbpb plots","slug":"reco-eff-run2-fits-pbpb","timestamp":"2026-06-19T01:30:00Z"}
+{"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-19T01:32:43Z","criticals":0,"warnings":0,"slug":"reco-eff-run2-fits-pbpb"}
+{"event":"start","command":"review-plot","task":"Update PbPb TAA_weighted crossx plot axis labels to honest R_AA-numerator form","slug":"pbpb-taa-honest-labels","timestamp":"2026-06-18T22:23:15-04:00"}
+{"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-18T22:27:37-04:00","criticals":0,"warnings":0,"slug":"pbpb-taa-honest-labels"}
+{"event":"start","command":"review-analysis-code","task":"PbPb 2024 lumi GRL correction 1.59663->0.85112","slug":"pbpb-2024-lumi-grl-correction","timestamp":"2026-06-19T01:02:58-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-19T01:11:27-04:00","criticals":0,"warnings":0,"slug":"pbpb-2024-lumi-grl-correction"}
+{"event":"start","command":"review-analysis-code","task":"reco-eff tf1 direct eval","slug":"reco-eff-tf1-direct-eval","timestamp":"2026-06-19T05:12:59Z"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-19T05:16:19Z","criticals":0,"warnings":0,"slug":"reco-eff-tf1-direct-eval"}
+{"event":"start","command":"review-plot","task":"PbPb 2024 lumi correction + RAA n_AA relabel plots","slug":"pbpb-2024-lumi-raa-relabel","timestamp":"2026-06-19T01:17:39-04:00"}
+{"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-19T01:19:44-04:00","criticals":0,"warnings":0,"slug":"pbpb-2024-lumi-raa-relabel"}
+{"event":"start","command":"review-analysis-code","task":"PbPb 2023 lumi GRL correction + subtract two b-hadron runs (1.02426->1.17576 nb^-1, PbPbBaseClass.h + PbPbSampledLumi.h)","slug":"pbpb-2023-lumi-grl-bhadron","timestamp":"2026-06-20T03:02:40Z"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-20T03:10:00Z","criticals":0,"warnings":0,"slug":"pbpb-2023-lumi-grl-bhadron"}
+{"event":"start","command":"review-plot","task":"Regenerate combined PbPb crossx + R_AA plots after PbPb 2023 lumi correction (1.02426->1.17576 nb^-1)","slug":"pbpb-2023-lumi-crossx-raa","timestamp":"2026-06-20T03:19:47Z"}
+{"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-20T03:23:14Z","criticals":0,"warnings":0,"slug":"pbpb-2023-lumi-crossx-raa"}
+{"event":"start","command":"review-analysis-code","task":"qeta per-muon cut fix (FIX A mislabels + FIX B fullsim pair_eta->q*eta)","slug":"qeta-permuon-cut-fix","timestamp":"2026-06-20T03:58:54Z"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-20T04:06:17Z","criticals":0,"warnings":0,"slug":"qeta-permuon-cut-fix"}

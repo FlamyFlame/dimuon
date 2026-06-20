@@ -62,6 +62,44 @@ pipelines complete.
 
 ## Latest Update
 
+2026-06-19: **PbPb 2023 luminosity corrected (wrong/old GRL) + two b-hadron runs
+subtracted from the R_AA luminosity.** The 2023 `mu4` lumi table was re-exported
+with the correct GRL (v120-pro33-03): `Prescale Corrected` total 1029.52 →
+**1183.650457 µb⁻¹ = 1.18365 nb⁻¹**. The R_AA luminosity subtracts the two
+b-hadron runs **461674** (2.623332 µb⁻¹) + **462964** (5.262407 µb⁻¹) — both
+already excluded at event level (`PbPbBadRuns(23)` in `PbPbExtras::PassEventSel`),
+so numerator and denominator stay consistent — giving **1.17576 nb⁻¹** (was
+1.02426). Previously only 462964 was subtracted (461674 was below the old table's
+run range). Updated `PbPbBaseClass.h::make_crossx_factors_pbpb_2023` (6 factors) +
+`Utilities/PbPbSampledLumi.h` case 23 (coupled; `/review-analysis-code` PASS); 2023
+crossx refilled; combined PbPb crossx + R_AA replotted. Net: combined R_AA /
+TAA-weighted crossx **× 0.967** (ΣL 4.475 → 4.626 nb⁻¹); per-2023-year crossx
+× 0.871. Obsolete 2023 `mu4_mu4noL1` lumi CSV deleted. Docs updated
+(analysis_metadata.md, luminosity/README.md, datasets.tex, roadmap). See
+`docs/tracking/raa_from_rdf_crossx.md` "REOPENED 2026-06-19 (2)".
+
+---
+
+2026-06-18→19: **PbPb reco-eff placeholder upgraded to the colleague's EXACT Run 2
+Medium-μ fits, evaluated directly as TF1.** Replaced the eyeball-digitized F.2
+arrays with the colleague's logistic fits
+`MuonRecoEffcyRun2MC_medium.root::tf1_eff_fit_cent{C}_eta{E}` (centrality map
+{12,13,4,5,6,7,8}; q·η slice i↔eta{i}). The fits are stored in
+`run2_reco_eff_placeholder.root` as **TF1** (`tf1_reco_eff_medium_pbpb_...`, 63 of
+them) and **evaluated at the exact muon pT** in the lookup — no resampling (the
+first iteration sampled into TGraphs; switched to TF1-direct on user feedback that
+resampling an analytic fit is needless). `RDFBasedHistFillingData` loads TF1 (PbPb)
++ TGraph (pp). Builder + lookup `/review-analysis-code` PASS (×2). Reran PbPb
+crossx RDF (23/24/25), crossx plots, R_AA, stage plots (`/review-plot` PASS on the
+resampled version; TF1-direct numerics within ~0.2%). dσ shifts vs pre-reco backup:
+ctr0_5 +4.04%, ctr30_50 −5.76%, ctr50_80 −4.44%; reco/raw inflation 1.43–1.81
+(central>peripheral, matching the new fits). pp UNCHANGED (colleague file
+PbPb-only). Backup `dimuon_data/crossx_hist_backup_20260618_pre_run2_real_fits/`.
+Still a placeholder (single-μ ε₁·ε₂ proxy) pending Run 3 3D pair ε_reco. See
+`docs/tracking/reco_eff_placeholder_run2.md` Steps 11–12, `docs/placeholder.md` item 3.
+
+---
+
 2026-06-16: **Reco-efficiency PLACEHOLDER applied to nominal crossx (pp + all PbPb years).**
 Run 2 single-muon ε_reco proxy (ε₁·ε₂; PbPb dimuon-note F.2, pp HF R_AA Fig.31)
 folded into the nominal corrected weight (`*_trig_corr` = base·w_reco·w_trig), so

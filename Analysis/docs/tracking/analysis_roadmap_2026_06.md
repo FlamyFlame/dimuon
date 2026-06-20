@@ -72,12 +72,17 @@ confirmed.**
 > GitLab IntNote repo), backed by `IntNotes/data/luminosity/` (per-run lumi
 > CSVs) and `IntNotes/data/centrality/TaaValues2023.txt`. Summary:
 > - **Q2.1 lumi** (`Prescale Corrected`, analysis triggers): pp24 2mu4 = 400.412 pb⁻¹;
->   PbPb23 mu4 = 1.02426 nb⁻¹ (1029.52 µb⁻¹ GRL total − 5.262 µb⁻¹ for excluded
->   bad run 462964; the other excluded run 461674 is below the table range);
->   PbPb24 mu4 = 1.59663 nb⁻¹; PbPb25 mu4 = 2.59933 nb⁻¹; PbPb26 = placeholder.
->   **Action:** update `PbPbBaseClass.h` lumi (currently 1.3896 / 1.5411 / reuse)
->   and `PPBaseClass.h` pp24 (410.815 → 400.412) via /review-analysis-code.
->   Per-year official lumi **uncertainty** still needed.
+>   PbPb23 mu4 = 1.17576 nb⁻¹ (corrected 2026-06-19: correct-GRL v120 total
+>   1183.650457 µb⁻¹ = 1.18365 nb⁻¹ − the TWO b-hadron runs 461674 (2.623332) +
+>   462964 (5.262407) µb⁻¹, both excluded at event level via PbPbBadRuns; old
+>   1.02426 used a wrong/old GRL total 1029.52 and excluded only 462964 because
+>   461674 was below that table's range);
+>   PbPb24 mu4 = 0.85112 nb⁻¹ (851.118 µb⁻¹, GRL ≥489703 — old 1.59663 used a
+>   stale GRL incl. bad runs <489703; corrected 2026-06-19); PbPb25 mu4 = 2.59933 nb⁻¹; PbPb26 = placeholder.
+>   **Status:** `PbPbBaseClass.h` + `Utilities/PbPbSampledLumi.h` now carry
+>   1.17576 / 0.85112 / 2.59933 nb⁻¹ (DONE via /review-analysis-code). `PPBaseClass.h`
+>   pp24 (410.815 → 400.412) still to reconcile. Per-year official lumi
+>   **uncertainty** still needed.
 > - **Q2.3 T_AA**: 2023 values in `TaaValues2023.txt`; **2024 & 2025 reuse 2023
 >   T_AA as a placeholder** (official centralities unavailable) — see reminder below.
 > - **Q2.4 HLT chains** and **Q2.5 GRL names**: per-year tables in
@@ -304,4 +309,7 @@ Immediately startable in parallel: **04, 07** (and **09** for note text).
 | 2026-06-15 | Reco-eff PLACEHOLDER applied (chain [4]/[5], task_05 reco part) | Run 2 single-muon ε_reco proxy (ε₁·ε₂) wired into crossx as a correction STAGE (`CorrectionStages.h`); PbPb from dimuon note F.2, pp from HF R_AA Fig.31; crossx reran pp+PbPb; before/after 3-line plots; both `/review-*` PASS. Proper 3D pair ε_reco still pending MC (Q4). Docs: `reco_eff_placeholder_run2.md`, `placeholder.md` item 3 |
 | 2026-06-16 | Reco-eff PLACEHOLDER promoted to NOMINAL (user request; Run 3 MC ≥2-3 mo away) | `w_reco` folded into nominal corrected weight (`*_trig_corr` = base·w_reco·w_trig) → all crossx histos + R_AA 3D input now reco+trig corrected (== validated reco_trig stage; verified pp 5739, PbPb 3D ×1.67). `/review-analysis-code` PASS. Crossx reran + nominal crossx plots reran (pp24, pbpb_23_24_25_combined). Pre-reco backup `crossx_hist_backup_20260616_pre_reco_nominal/`. Crossx/R_AA remain placeholder/preliminary |
 | 2026-06-16 | **task_06 R_AA DONE** (reco-corrected R_AA runs) | Added SS signal-region histos to RDF crossx (PbPb 3D `h3d_ss_..._vs_centr`, pp 2D `h2d_ss_...`) for OS−SS combinatorial subtraction (`/review-analysis-code` PASS). Modernized `RAA_plotting.cxx` (cluster paths, RDF inputs case 6, combined PbPb 23+24+25 vs pp24, OS−SS, 15-bin pT, index-wise ratio, segfault+mode-3 off-by-one fixed; `/review-analysis-code` PASS iter2). R_AA plots vs pair pT/η/centrality (`/review-plot` PASS iter4). 2025 lumi verified 2.59933 nb⁻¹; 2023 T_AA placeholder. Tracking: `raa_from_rdf_crossx.md`. |
+| 2026-06-18 | **PbPb reco placeholder → colleague's exact Run 2 Medium fits** | Replaced eyeball F.2 arrays in `run2_reco_eff_placeholder.root` with dense samples of `MuonRecoEffcyRun2MC_medium.root::tf1_eff_fit_cent{C}_eta{E}` (ctr map {12,13,4,5,6,7,8}, q·η slice i↔eta{i}); same 63 graph names ⇒ no lookup change. Builder `/review-analysis-code` PASS; PbPb crossx RDF (23/24/25)+crossx/R_AA/stage plots reran, `/review-plot` PASS. dσ shifts ctr0_5 +4.2%/ctr30_50 −5.6%/ctr50_80 −4.3%; reco/raw 1.43–1.81. pp unchanged. Tracking `reco_eff_placeholder_run2.md` Step 11 |
 | 2026-06-16 | **Year-combination normalization FIXED** (crossx + R_AA) | Switched to luminosity-weighted average `Σ(L_y·h_y)/ΣL_y` (HF R_AA note HION-2019-58 §4.1 Eq.3) via single-source `Utilities/PbPbSampledLumi.h` (2023=1.02426, 2024=1.59663, 2025=2.59933 nb⁻¹). Applied in R_AA `HistRetrieve`, crossx combined plotter `GetHistObject` (`_counts`=simple sum), and the before/after stage plotter. `/review-analysis-code` + `/review-plot` PASS. **R_AA scale now physical (~0.1–0.9; was ~1.5–2.5).** Remaining R_AA-scale caveats: 2023 T_AA placeholder, σ_PbPb 5.36 TeV guess, Run 2 reco placeholder |
+| 2026-06-19 | **PbPb 2024 lumi GRL correction** | 1.59663→0.85112 nb⁻¹ (GRL ≥489703; old GRL over-counted, events already correct). PbPbBaseClass.h + PbPbSampledLumi.h + docs; 2024 crossx refilled; combined R_AA ×1.17. `/review-analysis-code` + `/review-plot` PASS. Tracking `raa_from_rdf_crossx.md`. |
+| 2026-06-19 | **PbPb 2023 lumi GRL correction + b-hadron-run subtraction** | 1.02426→1.17576 nb⁻¹ (correct-GRL v120 total 1.18365 nb⁻¹ minus the two b-hadron runs 461674+462964, both already excluded at event level via PbPbBadRuns). PbPbBaseClass.h (6 factors) + PbPbSampledLumi.h case 23 + docs (metadata, lumi README, datasets.tex, roadmap, status); 2023 crossx refilled. `/review-analysis-code` PASS. Combined R_AA × 0.967 (ΣL 4.475→4.626 nb⁻¹). Tracking `raa_from_rdf_crossx.md`. |

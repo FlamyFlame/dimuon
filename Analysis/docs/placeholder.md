@@ -20,7 +20,7 @@ Last updated: 2026-06-15.
 |---|-------------|-------|----------|-------|----------------------|---------|
 | 1 | **Centrality classification** | PbPb 2024, 2025 | 2023 Glauber FCal-ET thresholds + cross-year FCal scaling | Official 2024/2025 Glauber centrality calibration | `MuonPairPbPb.h:144,150` (`GetCentralityPbPb2023`); `fcal_scale_pbpb_20YY.root` | Q2.3, ledger step 6 |
 | 2 | **⟨T_AA⟩ values** | PbPb 2024, 2025 | 2023 ⟨T_AA⟩ = {26.1428, 20.3241, 14.0502, 8.5074, 3.7733, 0.6716} mb⁻¹ | Official 2024/2025 ⟨T_AA⟩ + uncertainties + citable ref | `PbPbBaseClass.h` `make_crossx_factors_pbpb_2024/2025`; source `IntNotes/data/centrality/TaaValues2023.txt` | Q2.3 |
-| 3 | **Reconstruction efficiency** — Run 2 single-muon ε_reco proxy (ε₁·ε₂), standing in for the proper 3D pair ε_reco(pair pT, pair η, dR) | PbPb (all yrs) + pp | **Applied** in crossx as a correction STAGE (`_corr_unfolded_reco[_trig]` hists); Run 2 Medium-μ single-muon ε_reco digitized from internal notes | Full Pythia fullsim HIJING-overlay (r17662) + full pp24 fullsim → proper 3D pair ε_reco | `RDFBasedHistFilling{Data,PP,PbPb}` (`EvaluateSingleMuonRecoEffPlaceholder`, `CorrectionStages.h`); `EfficiencyCorrs/EffFiles/run2_reco_eff_placeholder.root` | Q4, ledger 12; tracking `reco_eff_placeholder_run2.md` |
+| 3 | **Reconstruction efficiency** — Run 2 single-muon ε_reco proxy (ε₁·ε₂), standing in for the proper 3D pair ε_reco(pair pT, pair η, dR) | PbPb (all yrs) + pp | **Applied** in crossx as a correction STAGE (`_corr_unfolded_reco[_trig]` hists); **PbPb = colleague's EXACT Run 2 Medium-μ TF1 fits** (`MuonRecoEffcyRun2MC_medium.root`, evaluated at exact pT; 2026-06-19); pp = Medium-μ digitized from HF R_AA Fig.31 | Full Pythia fullsim HIJING-overlay (r17662) + full pp24 fullsim → proper 3D pair ε_reco | `RDFBasedHistFilling{Data,PP,PbPb}` (`EvaluateSingleMuonRecoEffPlaceholder`, `CorrectionStages.h`); `EfficiencyCorrs/EffFiles/run2_reco_eff_placeholder.root` | Q4, ledger 12; tracking `reco_eff_placeholder_run2.md` |
 | 4 | **σ_PbPb (total hadronic)** | PbPb (all yrs) | 7.8 b at 5.36 TeV — **unvalidated guess** | Citable 5.36 TeV reference | `PbPbBaseClass.h` (guess comment on 2023 helper) | Q2.2 |
 | 5 | **Luminosity uncertainty** | all years | not set | Official per-year Run 3 lumi uncertainty | — (note systematics) | Q2.1 |
 | 6 | **PbPb 2026 lumi + GRL** | PbPb 2026 | placeholder (data not yet in skim) | 2026 data in skim, then lumi/GRL | `IntNotes/analysis_metadata.md` | Q2.1/Q2.5 |
@@ -47,7 +47,7 @@ exist yet**. Until they do:
 - **⟨T_AA⟩:** the crossx normalization for 2024 and 2025
   (`make_crossx_factors_pbpb_2024/2025` in `PbPbBaseClass.h`) uses the **2023**
   ⟨T_AA⟩ array as a placeholder; only the per-year luminosity is year-specific
-  (2024 = 1.59663, 2025 = 2.59933 nb⁻¹). Source values:
+  (2024 = 0.85112 [GRL ≥489703, corrected 2026-06-19], 2025 = 2.59933 nb⁻¹). Source values:
   `IntNotes/data/centrality/TaaValues2023.txt`.
 
 **Affects:** centrality binning, cross-section normalization, and R_AA for 2024
@@ -66,16 +66,22 @@ it is not yet derivable for real.
 **product proxy** ε_reco(p_a)·ε_reco(p_b), per the Run 2 dimuon-note treatment
 (`w⁻¹ = ε_trig·ε_reco(p_a)·ε_reco(p_b)`). Placeholder source values (Medium muons):
 
-- **PbPb:** Run 2 dimuon note **ATL-COM-PHYS-2021-1094 App. F.2** — single-muon
-  ε_reco(pT, q·η) per centrality (0–10…60–80%), HIJING overlay 5.02 TeV.
+- **PbPb (updated 2026-06-18):** the colleague's **EXACT Run 2 Medium-μ fits**
+  actually used in the Run 2 note — `EfficiencyCorrs/EffFiles/MuonRecoEffcyRun2MC_medium.root`
+  (logistic TF1 `tf1_eff_fit_cent{C}_eta{E}`), single-muon ε_reco(pT, q·η) per
+  centrality (0–10…60–80%), HIJING overlay 5.02 TeV. This **replaces** the earlier
+  eyeball digitization of App. F.2 (same source physics, real fitted numbers).
 - **pp:** Run 2 HF-muon R_AA note **HION-2019-58 / arXiv:2109.00411 Fig. 31** —
   data-driven Medium-μ ε_reco^pp(pT), barrel (|η|<1.05) + endcap (1.3<|η|<2.1).
   This is the source the dimuon note itself cites for its pp efficiencies; chosen
   over the peripheral-PbPb fallback. (See `reading`/memory `project_pp_reco_eff_placeholder`.)
 
-Digitized into `EfficiencyCorrs/EffFiles/run2_reco_eff_placeholder.root`
-(`plotting_codes/reco_effcy/build_run2_reco_eff_placeholder.C`; reproduction plots
-`/review-plot`-validated vs the note panels). Applied in the crossx RDF as a
+Written into `EfficiencyCorrs/EffFiles/run2_reco_eff_placeholder.root`
+(`plotting_codes/reco_effcy/build_run2_reco_eff_placeholder.C`): PbPb stored as the
+colleague's Medium **TF1 fits** (`tf1_reco_eff_medium_pbpb_ctr{lo}_{hi}_q_eta_{suffix}`,
+63 of them) and **evaluated at the exact muon pT** in the lookup — no resampling
+(2026-06-19; pp still eyeball HF R_AA Fig.31 as 2 TGraphs). `EvaluateSingleMuonRecoEffPlaceholder`
+loads TF1 (PbPb) + TGraph (pp) and dispatches by side. Applied in the crossx RDF as a
 correction **stage** (`CorrectionStages.h`): histograms saved at each stage —
 `_corr_raw` → `_corr_unfolded` (identity) → `_corr_unfolded_reco` →
 `_corr_unfolded_reco_trig`; before/after 3-line plots in
