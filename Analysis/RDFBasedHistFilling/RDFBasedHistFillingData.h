@@ -145,10 +145,11 @@ protected:
     static float            EvaluateSingleMuonEffcy(const std::string& ctr_suffix, bool charge_positive, float pt, float q_eta);
 
     // --- Run 2 single-muon reconstruction-efficiency PLACEHOLDER (eps1*eps2 proxy) ---
-    // Loads EfficiencyCorrs/EffFiles/run2_reco_eff_placeholder.root (TGraphs of
-    // eps_reco vs pT per q*eta slice and centrality for PbPb; barrel/endcap for pp),
-    // built from Run 2 dimuon-note F.2 (PbPb) + HF R_AA Fig.31 (pp). This is a
-    // temporary stand-in until the proper 3D pair efficiency exists (task_05).
+    // Loads EfficiencyCorrs/EffFiles/run2_reco_eff_placeholder.root. PbPb: the
+    // colleague's Run 2 Medium-mu reco-eff logistic TF1 fits (eps_reco vs pT) per
+    // q*eta slice and centrality, evaluated at the exact muon pT. pp: barrel/endcap
+    // TGraphs (HF R_AA Fig.31). This is a temporary stand-in until the proper 3D
+    // pair efficiency exists (task_05).
     // See docs/tracking/reco_eff_placeholder_run2.md.
     static void             OpenRecoEffPlaceholderFile();
     // centrality < 0 => pp (barrel/endcap by |q_eta|); otherwise PbPb (F.2 ctr interval).

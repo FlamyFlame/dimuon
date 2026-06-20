@@ -291,7 +291,119 @@ kept). Deliverables:
   remarks at every code site.
 
 ## Latest Stage
-*(cleared — Step 10 propagation complete; doc RE-CLOSED 2026-06-16)*
+
+### REOPENED 2026-06-18 (Step 11) — replace eyeballed PbPb values with colleague's REAL Run 2 fits
+
+**Trigger (user):** colleague supplied the *exact* Run 2 PbPb single-muon reco
+efficiencies used in the Run 2 internal note —
+`EfficiencyCorrs/EffFiles/MuonRecoEffcyRun2MC_{medium,tight}.root` (TGraph
+`gr_Eff_cent{C}_eta{E}` + logistic TF1 fit
+`tf1_eff_fit_cent{C}_eta{E}`, form `[p0]/(1+exp(-(x-[p1])/[p2]))`, range
+[3.5,20]) + `muon_reco_effcy_run2.txt` (binning). Use the **fitted functions**
+in place of the eyeball-digitized arrays in `run2_reco_eff_placeholder.root`;
+rerun everything downstream PbPb.
+
+**Binning alignment (verified — no lookup-code change needed):**
+- WP = **Medium** (matches existing placeholder + Physics Procedure §3 F.2).
+  Use `MuonRecoEffcyRun2MC_medium.root`. (Tight file kept unused, per F.2.)
+- η bins: colleague `GetEtaBin` flips by charge ⇒ bins by **q·η**, same 9 edges
+  as `kQEtaSlices` / `q_eta_proj_ranges_coarse_incl_gap_run2`. Slice index i ↔
+  colleague `eta{i}` (i=0..8), identical edges.
+- centrality: colleague `cent` index map (from `muon_reco_effcy_run2.txt`,
+  `new_cent_bins` appended after NCENT_ORIGINAL=11). F.2 interval → colleague
+  index: 0-10→**12**, 10-20→**13**, 20-30→**4**, 30-40→**5**, 40-50→**6**,
+  50-60→**7**, 60-80→**8**. All present (cent 0–17).
+
+**Design Decision (D-Step11):** regenerate `run2_reco_eff_placeholder.root`
+keeping the **identical 63 PbPb TGraph names** + pp barrel/endcap, but fill the
+PbPb graphs by **densely sampling the colleague's Medium TF1 fit** (Δp_T=0.25
+GeV over [4,19]) instead of the eyeball arrays + additive centrality bump. TGraph
+(not TF1) kept so `EvaluateSingleMuonRecoEffPlaceholder` (TGraph::Eval linear
+interp, pT clamp [4,19]) is **unchanged** — linear interp of a 0.25-GeV-sampled
+smooth logistic is exact to <1e-3. Each centrality interval now carries its OWN
+fit (the additive `kCtrBump` proxy is removed). **pp UNCHANGED** (HF R_AA Fig.31
+eyeball; colleague file is PbPb-only; user scoped rerun to PbPb). This is STILL a
+placeholder (single-μ ε₁·ε₂ proxy, not the proper 3D pair ε_reco) — every §5
+negative constraint and the ε₁·ε₂ caveat (§2) still hold.
+
+**Plan (Step 11):**
+1. [this] Reopen doc, write plan + design decision. ✓consistent with Phys.Proc.
+   §2/§3 (Medium F.2 single-μ, ε₁·ε₂ proxy unchanged; only the *source* of the
+   single-μ curve improves: real fit vs eyeball).
+2. Rewrite `plotting_codes/reco_effcy/build_run2_reco_eff_placeholder.C` to read
+   the Medium TF1 fits via the map above; regenerate ROOT + reproduction plots.
+   → /review-analysis-code (quote Phys.Proc. §2,§3,§4,§5 + the binning map above).
+3. Back up current PbPb crossx hist ROOTs + plots.
+4. Rerun PbPb crossx RDF (23/24/25; read existing hadded ntuples; no recompile —
+   RDF lookup code unchanged, reads the regenerated ROOT at runtime).
+5. Rerun PbPb crossx plots (`plot_single_b_crossx_pbpb.cxx`), R_AA
+   (`RAA_plotting.cxx`), before/after stage plot
+   (`plot_crossx_reco_eff_stages.C`). → /review-plot.
+   (pp NOT rerun — its reco placeholder is unchanged.)
+6. Update placeholder.md item 3, status summary, roadmap ledger, this doc, memory.
+
+### Step 11 — DONE (2026-06-18)
+- **Builder** `plotting_codes/reco_effcy/build_run2_reco_eff_placeholder.C` rewritten
+  to read the colleague's Medium-WP logistic fits
+  (`MuonRecoEffcyRun2MC_medium.root::tf1_eff_fit_cent{C}_eta{E}`) via the verified
+  map (ctr→{12,13,4,5,6,7,8}, q·η slice i→eta{i}) and densely sample (Δp_T=0.25
+  GeV, [4,19]) into the SAME 63 PbPb TGraph names + unchanged pp barrel/endcap.
+  Old eyeball `kEffBase`/`kCtrBump` removed; each centrality now carries its own
+  fit. `/review-analysis-code` **PASS** iter 1
+  (`.claude/logs/review-analysis-code-20260618-212109-reco-eff-run2-real-fits.md`):
+  centrality+q·η map exact, 65/65 names unchanged (consumer needs no change),
+  graph==fit to 0, WP=Medium, negative constraints honored. (1 INFO: comment
+  "<1e-3"→"<~3e-3", fixed.)
+- **Verified** regenerated file: 63 PbPb graphs from fits + 2 pp; names identical
+  to previous (consumer `EvaluateSingleMuonRecoEffPlaceholder` unchanged).
+- **Downstream PbPb reran** (no recompile — lookup code unchanged, reads new ROOT
+  at runtime): crossx RDF 23/24/25 (rc=0). Backup of pre-change nominal histos:
+  `dimuon_data/crossx_hist_backup_20260618_pre_run2_real_fits/`. dσ shifts vs
+  backup: ctr0_5 +4.2%, ctr30_50 −5.6%, ctr50_80 −4.3% (real per-η fits replace
+  the old uniform centrality bump). Reco/raw inflation 1.43–1.81; central corr
+  (1.80, ε_central≈0.77) > peripheral (1.43, ε_periph≈0.94) — matches the new fits.
+- **Plots reran:** `plot_single_b_crossx_pbpb.cxx`, `RAA_plotting.cxx` (case 6,
+  3 panels), `plot_crossx_reco_eff_stages.C`. `/review-plot` **PASS** iter 1
+  (`.claude/logs/review-plot-20260618-213000-reco-eff-run2-fits-pbpb.md`): stage
+  ordering correct, R_AA physical; only pre-existing R_AA high-pT/edge caveats.
+- **pp NOT rerun** (reco placeholder unchanged for pp; colleague file PbPb-only).
+- **Still a placeholder:** single-μ ε₁·ε₂ proxy (now from the real Run 2 fits, not
+  eyeball). Proper 3D pair ε_reco still pending Run 3 MC (task_05).
+
+### Step 12 — DONE (2026-06-19): store fits as TF1, evaluate directly (supersedes Step 11 sampling)
+**Design change (supersedes D-Step11 above).** User objected that densely
+sampling an analytic fit into a TGraph needlessly degrades resolution. New
+approach: the builder **clones the colleague's Medium TF1** into the placeholder
+file as `tf1_reco_eff_medium_pbpb_ctr{lo}_{hi}_q_eta_{suffix}` (63 TF1), and the
+lookup **evaluates the TF1 at the exact muon pT** — no resampling. pp stays as
+digitized TGraphs (no fit). Files: `build_run2_reco_eff_placeholder.C`,
+`RDFBasedHistFillingData.cxx` (new `s_reco_eff_ph_tf1_map`; loader dispatches by
+class; PbPb branch keys `tf1_...` + `TF1::Eval`; pp branch unchanged `gr_...pp_*`
+`TGraph::Eval`), `.h` (doc). pT clamp [4,19], eff clamp (0,1] retained.
+- The Step-11 "dense sample" wording (D-Step11 + "Step 11 — DONE" block) is
+  **SUPERSEDED**; consumer is NOT unchanged (key prefix gr_→tf1_, TF1 map added).
+- File now holds **63 TF1 + 2 TGraph** (verified). Stored TF1 reproduces the
+  source fit **exactly** off-grid (diff 0) — the ~3e-3 sampling error is gone.
+- `/review-analysis-code` **PASS** iter 1
+  (`.claude/logs/review-analysis-code-20260619-011259-reco-eff-tf1-direct-eval.md`):
+  key strings provably equal, loader correct, negative constraints honored.
+- ACLiC note: a stale/corrupted ACLiC dict state (left by an invalid *standalone*
+  `RDFBasedHistFillingData.cxx+` test compile — base must build THROUGH the
+  subclass) caused two transient link failures; resolved by `rm -f *_cxx*` in
+  `RDFBasedHistFilling/` and a clean rebuild.
+- Reran PbPb crossx RDF 23/24/25 (EXIT=0; loader: "loaded 63 PbPb reco-eff
+  PLACEHOLDER fits + 2 pp graphs"), crossx plots, R_AA, stage plots. dσ vs
+  pre-reco backup now ctr0_5 +4.04%, ctr30_50 −5.76%, ctr50_80 −4.44% (vs the
+  resampled +4.21%/−5.63%/−4.32% — the small change IS the removed interp error).
+  Plotter code unchanged + numerics within ~0.2% of the already-`/review-plot`-PASS
+  resampled version → no redundant plot re-review.
+
+## Latest Stage
+*(cleared — Steps 11–12 complete; doc RE-CLOSED 2026-06-19. PbPb reco placeholder
+= colleague's exact Run 2 Medium **TF1 fits evaluated at the exact muon pT**; pp
+still eyeball HF R_AA Fig.31; both remain placeholders pending Run 3 pair ε_reco.)*
+
+### (history) Step 10 re-close note below
 
 ### Step 10 — DONE (2026-06-16): reco placeholder promoted to NOMINAL
 - Backup: `crossx_hist_backup_20260616_pre_reco_nominal/` (pre-reco trig-only

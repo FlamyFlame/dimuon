@@ -13,7 +13,8 @@ static std::map<std::string, TH2D*> s_effcy_2D_hist_map;
 
 // Run 2 single-muon reco-efficiency PLACEHOLDER graphs (see header).
 static TFile* s_reco_eff_ph_file = nullptr;
-static std::map<std::string, TGraph*> s_reco_eff_ph_map;
+static std::map<std::string, TGraph*> s_reco_eff_ph_map;       // pp barrel/endcap (digitized points)
+static std::map<std::string, TF1*>    s_reco_eff_ph_tf1_map;   // PbPb per (ctr, q*eta): colleague's Run 2 Medium fit
 
 RDFBasedHistFillingData::RDFBasedHistFillingData(int run_year_input, bool isForSoumya_input)
 : run_year (run_year_input), isForSoumya (isForSoumya_input){
@@ -633,9 +634,10 @@ float RDFBasedHistFillingData::EvaluateSingleMuonEffcy(const std::string& ctr_su
 // See docs/tracking/reco_eff_placeholder_run2.md.
 // =============================================================================
 void RDFBasedHistFillingData::OpenRecoEffPlaceholderFile() {
-    if (!s_reco_eff_ph_map.empty()) {
-        std::cout << "OpenRecoEffPlaceholderFile: reco-eff placeholder map already loaded ("
-                  << s_reco_eff_ph_map.size() << " graphs)" << std::endl;
+    if (!s_reco_eff_ph_map.empty() || !s_reco_eff_ph_tf1_map.empty()) {
+        std::cout << "OpenRecoEffPlaceholderFile: reco-eff placeholder already loaded ("
+                  << s_reco_eff_ph_tf1_map.size() << " PbPb TF1s, "
+                  << s_reco_eff_ph_map.size() << " pp graphs)" << std::endl;
         return;
     }
     const std::string ph_path =
@@ -647,31 +649,49 @@ void RDFBasedHistFillingData::OpenRecoEffPlaceholderFile() {
                   << " -- reco-eff placeholder will be a no-op (w_reco=1)" << std::endl;
         return;
     }
+    // PbPb: colleague's Run 2 Medium fits (TF1, evaluated at the exact muon pT).
+    // pp: digitized barrel/endcap points (TGraph). Load both by class.
     TIter next(s_reco_eff_ph_file->GetListOfKeys());
     TKey* key;
     while ((key = (TKey*)next())) {
-        if (std::string(key->GetClassName()) == "TGraph") {
+        const std::string cls = key->GetClassName();
+        if (cls == "TF1") {
+            TF1* f = (TF1*)key->ReadObj();
+            s_reco_eff_ph_tf1_map[f->GetName()] = f;
+        } else if (cls == "TGraph") {
             TGraph* g = (TGraph*)key->ReadObj();
             s_reco_eff_ph_map[g->GetName()] = g;
         }
     }
-    std::cout << "OpenRecoEffPlaceholderFile: loaded " << s_reco_eff_ph_map.size()
-              << " reco-eff PLACEHOLDER graphs from " << ph_path << std::endl;
+    std::cout << "OpenRecoEffPlaceholderFile: loaded " << s_reco_eff_ph_tf1_map.size()
+              << " PbPb reco-eff PLACEHOLDER fits + " << s_reco_eff_ph_map.size()
+              << " pp graphs from " << ph_path << std::endl;
 }
 
 float RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(int centrality, float pt, float q_eta) {
-    if (s_reco_eff_ph_map.empty()) return -1.0f;  // file missing -> caller treats as no-op
+    if (s_reco_eff_ph_map.empty() && s_reco_eff_ph_tf1_map.empty())
+        return -1.0f;  // file missing -> caller treats as no-op
 
-    // Build the TGraph key. q*eta slice uses the Run 2 "coarse, gap-included"
-    // binning that the F.2 panels were digitized in (must match the builder).
+    // q*eta slice uses the Run 2 "coarse, gap-included" binning (must match the
+    // builder). Clamp pT to [4,19]: above ~8 GeV the fits plateau; the mu4 trigger
+    // means signal muons are >~4 GeV, so we do not extrapolate the turn-on below 4.
     static const CommonEffcyConfig cfg{};
-    std::string key;
+    double x = pt;
+    if (x < 4.0)  x = 4.0;
+    if (x > 19.0) x = 19.0;
+
+    double val;
     if (centrality < 0) {
         // pp: barrel (|q*eta|<1.05) vs endcap, no centrality (HF R_AA Fig.31).
-        key = (std::fabs(q_eta) < 1.05f) ? "gr_reco_eff_medium_pp_barrel"
-                                         : "gr_reco_eff_medium_pp_endcap";
+        // Digitized points -> TGraph linear interpolation.
+        const std::string key = (std::fabs(q_eta) < 1.05f) ? "gr_reco_eff_medium_pp_barrel"
+                                                            : "gr_reco_eff_medium_pp_endcap";
+        auto it = s_reco_eff_ph_map.find(key);
+        if (it == s_reco_eff_ph_map.end()) return -1.0f;
+        val = it->second->Eval(x);
     } else {
-        // PbPb: map event centrality onto the F.2 7 intervals, then q*eta slice.
+        // PbPb: map event centrality onto the F.2 7 intervals, then q*eta slice,
+        // and evaluate the colleague's Run 2 Medium logistic fit AT the exact pT.
         int lo = 60, hi = 80;  // most-peripheral default (>=60%, incl. >=80 clamp)
         if      (centrality <  10) { lo =  0; hi = 10; }
         else if (centrality <  20) { lo = 10; hi = 20; }
@@ -681,20 +701,14 @@ float RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(int centrali
         else if (centrality <  60) { lo = 50; hi = 60; }
         const std::string qeta_suf = FindBinReturnStr(q_eta, cfg.q_eta_proj_ranges_coarse_incl_gap_run2);
         if (qeta_suf.empty()) return -1.0f;
-        key = "gr_reco_eff_medium_pbpb_ctr" + std::to_string(lo) + "_" + std::to_string(hi)
-            + "_q_eta_" + qeta_suf;
+        const std::string key = "tf1_reco_eff_medium_pbpb_ctr" + std::to_string(lo) + "_" + std::to_string(hi)
+                              + "_q_eta_" + qeta_suf;
+        auto it = s_reco_eff_ph_tf1_map.find(key);
+        if (it == s_reco_eff_ph_tf1_map.end()) return -1.0f;
+        val = it->second->Eval(x);  // exact fit value, no resampling
     }
 
-    auto it = s_reco_eff_ph_map.find(key);
-    if (it == s_reco_eff_ph_map.end()) return -1.0f;
-
-    // Clamp pT to the digitized anchor range [4,19] (graphs are flat plateaus
-    // beyond), then linear-interpolate; clamp efficiency to (0,1].
-    double x = pt;
-    if (x < 4.0)  x = 4.0;
-    if (x > 19.0) x = 19.0;
-    double val = it->second->Eval(x);  // linear interpolation
-    if (val < 0.01) val = 0.01;
+    if (val < 0.01) val = 0.01;  // clamp efficiency to (0,1]
     if (val > 1.0)  val = 1.0;
     return static_cast<float>(val);
 }
