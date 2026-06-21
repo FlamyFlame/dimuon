@@ -85,8 +85,6 @@ For each skill/command used this session:
   other skills.
 
 ### 4b. Reviewer criteria (for executor-reviewer commands only)
-- Did the reviewer miss an issue that was later caught manually? If so,
-  add a specific criterion for it.
 - Did the reviewer flag false positives repeatedly? If so, tighten the
   criterion wording or add an exception.
 - Are there criteria that are never actionable (always N/A)? Consider
@@ -101,6 +99,58 @@ Present proposed changes to the user before applying.
 
 ---
 
+## 4A. Reviewer-miss retrospective
+
+**Gate (INDEPENDENT of §4's gate — run this even if no review loop/skill was used
+this session): run whenever the session investigated/fixed an issue — a wrong
+result, unphysical artifact, discontinuity, magnitude/shape error, or code/plot
+bug — that an executor-reviewer loop previously PASSED, or that the existing
+reviewer criteria would NOT have caught.** (Example: the trigger-eff TF1
+out-of-range bug that `/review-plot` passed, 2026-06-20.) The bug itself is
+already fixed by the time you reach wrap-up; this step fixes the *review process*
+so the same class of issue is caught next time. This section is MANDATORY when the
+gate is met, regardless of whether §4 ran.
+
+Procedure:
+1. **Identify the miss.** Which review command/agent did (or should have) reviewed
+   the artifact? Find the prior review log in `.claude/logs/` if it PASSED. State
+   exactly what slipped through.
+2. **Root-cause the miss (not the bug).** Why did the review not catch it? Pick the
+   real reason(s): criterion absent; criterion present but too weak / wrong
+   severity; check not actually applied; number matched its source but was never
+   sanity-checked against physics expectation; no independent re-derivation; no
+   reference cross-check; reviewer rubber-stamped. Be specific — "the plot checklist
+   covered styling/binning but never asked whether the distribution is physically
+   sensible."
+3. **Determine the future criteria AND process** (this is the deliverable the user
+   asked for):
+   - **Additional criteria** — concrete, specific, testable, each with a severity
+     and what triggers it. Generalize from this one bug to its *class* (e.g. not
+     "check pt>60 GeV" but "any unexplained discontinuity in a physics distribution
+     is CRITICAL").
+   - **Process changes** — e.g. make a check mandatory and run-first; require an
+     independent re-derivation; add a reference (Run 2 / known-good) cross-check;
+     add an auto-trigger so a flagged physics issue launches `/review-investigation`
+     instead of a cosmetic amend; raise a severity; add a pre-commitment/rubric-first
+     step so the reviewer forms expectations before seeing the result.
+4. **Apply (after presenting to the user).** Follow the established pattern:
+   - Physics-result misses → add to the single source of truth
+     `.claude/conventions/physics-results-review.md` (criteria C1–C4), then ensure it
+     is **embedded in the relevant reviewer-prompt(s)** of the command(s)
+     (`review-plot`, `review-analysis-code`, `review-note`, `review-paper`,
+     `review-pipeline`), the **agent definition(s)** (`plot-reviewer`,
+     `numerical-verifier`, `physics-reviewer`), and the **Decide-step control flow**
+     if it needs an auto-action. Verify it actually fires (it must live inside the
+     reviewer-prompt block the executor sends, not only in a reference doc).
+   - Non-physics misses (code/build/pipeline) → add the criterion to the relevant
+     command's embedded checklist and/or agent file.
+5. **Record.** Save a `feedback`-type memory describing the new criterion + why
+   (link the investigation doc/log), and add a one-line provenance note in the
+   criteria doc ("added after <bug>"). Update CLAUDE.md only if a new auto-dispatch
+   or invariant is warranted.
+
+---
+
 ## 5. Summary
 
 Output a short summary:
@@ -108,3 +158,4 @@ Output a short summary:
 - Commits made: [list with short messages]
 - CLAUDE.md changes: [list or "none needed"]
 - Skill/command changes: [list or "none needed"]
+- Reviewer-miss retrospective (§4A): [new criteria/process added + which reviewers, or "no reviewer miss this session"]
