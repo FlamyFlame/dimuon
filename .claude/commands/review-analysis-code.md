@@ -18,6 +18,7 @@ Read these files before starting:
 - `.claude/agents/executor.md` (your behavior as executor)
 - `.claude/conventions/codebase-patterns.md` (codebase conventions)
 - `.claude/conventions/rdf-patterns.md` (RDataFrame conventions)
+- `.claude/conventions/physics-results-review.md` (physics-results criteria C1–C4 — apply when the code produces a physics result)
 - `.claude/kb/index.md` (check for relevant KB articles)
 - `Analysis/README.md` (class hierarchy and pipeline structure)
 
@@ -129,6 +130,25 @@ For any numbers reported above (yields, efficiencies, counts):
 - Report MATCH (<0.1% relative difference) or MISMATCH with both values.
 - For computed quantities, re-derive step by step.
 
+### Physics-results review (MANDATORY when the code produces or changes a physics result)
+If this code produces or alters a physics result (efficiency, cross-section,
+yield, R_AA, ratio, correction factor, spectrum), **read
+`.claude/conventions/physics-results-review.md` and apply C1–C4**, not just
+"does the number match the code's own output" (the code may carry the bug):
+- **C2 Shape & magnitude (rubric-first):** write the physics expectation for the
+  produced quantity (shape AND scale) BEFORE checking, then verify the output
+  against it — e.g. a 1/ε correction factor must be ≥1 and smoothly varying; an
+  efficiency ∈[0,1] plateauing sensibly; a cross-section a smoothly falling
+  spectrum. Order-of-magnitude scale miss or shape violation → **CRITICAL**.
+- **C1 Discontinuity:** if the output is/feeds a distribution, scan for unexplained
+  jumps across bins (or between corrected/uncorrected) → **CRITICAL**.
+- **C3 Run 2 cross-check:** for final/near-final results, sanity-check magnitude
+  vs the Run 2 references via `.claude/kb/index.md` (HF-muon R_AA, back-to-back
+  dimuon; trigger/reco magnitudes), accounting for analysis and Run 2→Run 3
+  differences (efficiency **much lower** than Run 2 for the same trigger → problem).
+  Not comparable in-session → `RUN2-CROSSCHECK UNVERIFIED` (never invent a value).
+- Label any such CRITICAL `PHYSICS-RESULTS` so the loop routes it to C4.
+
 ### Anti-patterns to catch
 - Compiling PP and PbPb in the same ROOT session
 - Using dynamic_cast instead of IsPbPb() virtual dispatch
@@ -191,9 +211,13 @@ Update the `**Iterations completed**` count in the log header.
 ### Step 4: Decide
 
 Count iterations by reading the log file (count `## Iteration` headers).
+First **classify the FAIL**: does any CRITICAL issue carry the `PHYSICS-RESULTS`
+label or arise from criteria C1/C2/C3 (discontinuity, shape/magnitude violation,
+Run 2 inconsistency)?
 
 - **VERDICT: PASS** → go to **Exit: Approved**
-- **VERDICT: FAIL** AND iteration count < MAX_ITERATIONS → go to **Step 5: Amend**
+- **VERDICT: FAIL with a PHYSICS-RESULTS (C1/C2/C3) issue** → go to **Step 5b: Investigate**.
+- **VERDICT: FAIL, code/logic issues only** AND iteration count < MAX_ITERATIONS → go to **Step 5: Amend**
 - **VERDICT: FAIL** AND iteration count >= MAX_ITERATIONS → go to **Exit: Escalate**
 
 ### Step 5: Amend
@@ -203,6 +227,21 @@ Do not refactor or change anything not flagged.
 Recompile and rerun to verify the fix.
 Log what you changed in the log file under the current iteration.
 Go back to **Step 2** (spawn a fresh reviewer subagent for the amended work).
+
+### Step 5b: Investigate (physics-results failure — criterion C4)
+
+A C1/C2/C3 failure means the produced result is unphysical (possibly a
+methodology/procedure bug), not just a code-style fix. Do NOT patch the number to
+look right.
+1. Log the physics finding (which quantity/bins, expected vs observed, failing C-item).
+2. **Invoke `/review-investigation`** on the issue (creates/uses a tracking doc, runs
+   its own loop) to find the root cause; pass the reviewer's evidence.
+3. Apply the root-cause fix, recompile/rerun, then go back to **Step 2** for a fresh review.
+   - **If the investigation concludes the result is EXPECTED physics** (not a bug),
+     record the justification and include it in the next reviewer prompt so it is not
+     re-flagged.
+4. **If the investigation cannot resolve it** (escalates / hits max iterations), go to
+   **Exit: Escalate** with the **full investigation report** — never force a PASS.
 
 ## Exit: Approved
 

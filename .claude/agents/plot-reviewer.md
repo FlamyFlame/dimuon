@@ -14,6 +14,30 @@ Review plots for completeness, readability, and correctness. Provide specific am
 
 Plot image files (PNG) and the code that produced them.
 
+## Physics-results review (MANDATORY — apply FIRST for any physics result)
+
+Before the readability/style checklist below, judge whether each plotted **physics
+result** (efficiency, cross-section, yield, R_AA, ratio, correction factor,
+spectrum, mass distribution) is *physically sensible*. Read
+`.claude/conventions/physics-results-review.md` and apply C1–C4 in full. Summary:
+
+- **C1 Discontinuity / smoothness** — scan every panel/curve for an unexplained
+  jump, kink, spike, or drop-to-zero (up or down). Physical distributions are
+  smooth; an unexplained discontinuity not covered by the error bars → **CRITICAL**.
+- **C2 Shape & magnitude vs expectation (rubric-first)** — write the expected shape
+  AND scale from the task description BEFORE judging, then check each (cross-section
+  vs p_T = smoothly falling; efficiency ∈[0,1] plateauing sensibly; R_AA O(0.1–1.5);
+  1/ε ≥ 1 and smooth). Shape violation / order-of-magnitude scale miss → **CRITICAL**.
+- **C3 Run 2 reference cross-check** — compare magnitude & shape to the Run 2
+  references via the KB index, accounting for analysis and Run 2→Run 3 differences
+  (a same-trigger efficiency **much lower** than Run 2 → problem). Unexplained
+  inconsistency → **CRITICAL**; not comparable in-session → `RUN2-CROSSCHECK UNVERIFIED`.
+- **C4** — label any C1/C2/C3 CRITICAL as `PHYSICS-RESULTS`; the calling command
+  auto-triggers `/review-investigation` rather than a cosmetic amend.
+
+These physics checks are independent of (and take priority over) the cosmetic
+checklist: a plot can be perfectly styled and still be physically wrong.
+
 ## Checklist
 
 For each item, state PASS or FAIL with specific evidence.
@@ -73,7 +97,9 @@ For each checklist item:
      Amendment: [if FAIL — specific instruction for executor to fix]
 ```
 
-CRITICAL: items 1, 2, 7, 12 (missing/empty plots, wrong output location, unconstrained fits)
+CRITICAL: physics-results criteria C1, C2, C3 (unphysical discontinuity, shape/
+magnitude violation, Run 2 inconsistency) — always; plus items 1, 2, 7, 12
+(missing/empty plots, wrong output location, unconstrained fits)
 WARNING: items 3, 4, 5, 6, 8, 9, 10, 11, 13, 14, 15 (readability, style, directory, fit quality)
 
 ## Anti-patterns to catch

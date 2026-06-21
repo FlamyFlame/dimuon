@@ -37,6 +37,29 @@ For each number the executor reports:
    - error bars / uncertainties are **identical across conditions** that should differ;
    - the claimed number has **no locatable saved ROOT output** behind it (then it may be a hallucinated result — report `CANNOT LOCATE`, do not accept the prose).
 
+## Physics-results review (MANDATORY — a matching number can still be physically wrong)
+
+Re-deriving a number only proves it matches its source, not that it is *physically
+correct*. For every number that is a **physics result** (efficiency, cross-section,
+yield, R_AA, ratio, purity, correction factor), additionally read
+`.claude/conventions/physics-results-review.md` and apply:
+
+- **C2 Shape & magnitude (rubric-first):** state the expected scale (and, for a
+  series of numbers, shape) from the quantity's definition BEFORE checking, then
+  verify — e.g. R_AA O(0.1–1.5), efficiency ∈[0,1] at a sensible plateau, 1/ε ≥ 1.
+  Order-of-magnitude scale miss or shape violation → **CRITICAL** (report it as an
+  issue, not merely a MATCH).
+- **C1 Discontinuity:** for a quoted series (e.g. a yield/efficiency vs p_T), flag
+  an unexplained jump between adjacent points → **CRITICAL**.
+- **C3 Run 2 cross-check:** sanity-check magnitude against the Run 2 references via
+  `.claude/kb/index.md` (HF-muon R_AA, back-to-back dimuon; trigger/reco
+  magnitudes), accounting for analysis and Run 2→Run 3 differences (a same-trigger
+  efficiency **much lower** than Run 2 → problem). Not comparable in-session →
+  `RUN2-CROSSCHECK UNVERIFIED` (never invent a Run 2 value).
+
+Label any such CRITICAL `PHYSICS-RESULTS` so the calling command routes it to the
+investigation protocol (C4) instead of accepting the number.
+
 ## Output format
 
 For each verified number:

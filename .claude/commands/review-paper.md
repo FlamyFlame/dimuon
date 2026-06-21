@@ -18,6 +18,7 @@ Task: $ARGUMENTS
 Read these files before starting:
 - `Analysis/docs/academic_writing_workflow.md` (**ground-truth gate spec G1–G7 — this loop enforces it at publication grade**)
 - `.claude/agents/executor.md` (your behavior as executor)
+- `.claude/conventions/physics-results-review.md` (physics-results criteria C1–C4 — apply to any quoted result/figure)
 - `.claude/kb/index.md` (check for relevant KB articles)
 - `IntNotes/ANA-HION-2023-07-INT1.tex` (master document structure; biblatex+biber, sections in `IntNotes/tex/`)
 - `Analysis/docs/placeholder.md` — standing placeholders (G7); for a publication these must be resolved or explicitly scoped, not silently carried
@@ -157,6 +158,23 @@ For any numeric values stated in the text:
 - Identify the source (ROOT file, table, figure, or computation).
 - Verify the value matches the source. Report MATCH or MISMATCH.
 
+### Physics-results review (MANDATORY for any quoted physics result — publication grade)
+For every physics result stated or shown (efficiency, cross-section, yield, R_AA,
+ratio, purity, correction factor), **read `.claude/conventions/physics-results-review.md`
+and apply C1–C4** — at publication grade an internally-consistent-but-unphysical
+result is a hard stop:
+- **C2 Shape & magnitude (rubric-first):** form the physics expectation (scale and
+  shape) BEFORE checking, then verify (R_AA O(0.1–1.5), efficiency ∈[0,1] at a
+  sensible plateau, falling cross-section spectrum). Scale/shape miss → **CRITICAL**.
+- **C1 Discontinuity:** unexplained jumps in any quoted series / shown distribution → **CRITICAL**.
+- **C3 Run 2 cross-check:** compare magnitude & shape against the Run 2 references
+  via `.claude/kb/index.md` (HF-muon R_AA, back-to-back dimuon; trigger/reco
+  magnitudes), accounting for analysis and Run 2→Run 3 differences (efficiency
+  **much lower** than Run 2 for the same trigger → problem). For a publication a
+  comparison plot/number vs prior measurements is expected where one exists; if not
+  comparable in-session → `RUN2-CROSSCHECK UNVERIFIED` (never invent a value).
+- Label such CRITICALs `PHYSICS-RESULTS` so the loop routes them to C4.
+
 ### Anti-patterns to catch
 - Figures included but never referenced in text
 - Inconsistent notation (mixing p_T and pT, or GeV and GeV/c)
@@ -220,9 +238,13 @@ Update the `**Iterations completed**` count in the log header.
 ### Step 4: Decide
 
 Count iterations by reading the log file (count `## Iteration` headers).
+First **classify the FAIL**: does any CRITICAL issue carry the `PHYSICS-RESULTS`
+label or arise from criteria C1/C2/C3 (discontinuity, shape/magnitude violation,
+Run 2 inconsistency)?
 
 - **VERDICT: PASS** → go to **Exit: Approved**
-- **VERDICT: FAIL** AND iteration count < MAX_ITERATIONS → go to **Step 5: Amend**
+- **VERDICT: FAIL with a PHYSICS-RESULTS (C1/C2/C3) issue** → go to **Step 5b: Investigate**.
+- **VERDICT: FAIL, prose/citation/figure issues only** AND iteration count < MAX_ITERATIONS → go to **Step 5: Amend**
 - **VERDICT: FAIL** AND iteration count >= MAX_ITERATIONS → go to **Exit: Escalate**
 
 ### Step 5: Amend
@@ -231,6 +253,21 @@ Address ONLY the specific issues listed in the reviewer's response.
 Do not refactor or change anything not flagged.
 Log what you changed in the log file under the current iteration.
 Go back to **Step 2** (spawn a fresh reviewer subagent for the amended work).
+
+### Step 5b: Investigate (physics-results failure — criterion C4)
+
+A C1/C2/C3 failure means a result destined for publication is physically wrong —
+do NOT polish the prose around it.
+1. Log the physics finding (quantity, expected vs observed, failing C-item).
+2. **Invoke `/review-investigation`** on the underlying result (tracking doc + its
+   own loop); pass the reviewer's evidence. Fix the root cause via
+   `/review-analysis-code` / `/review-plot` and refresh the quoted numbers/figures.
+3. Re-run this review (back to **Step 2**) once corrected.
+   - **If the investigation concludes the result is EXPECTED physics** (not a bug),
+     record the justification and include it in the next reviewer prompt so it is not
+     re-flagged.
+4. **If the investigation cannot resolve it**, go to **Exit: Escalate** with the
+   **full investigation report** — never publish a result known to be off.
 
 ## Exit: Approved
 

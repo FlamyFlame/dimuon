@@ -87,6 +87,14 @@ pre-flight/post-flight steps. A standalone support command can also be run alone
 - [ ] Suspiciously round numbers / identical error bars across conditions are
       challenged (could be a constant leaking through a broken pipeline). *(M1/M3.)*
 - [ ] Unlocatable source ⇒ `CANNOT LOCATE`, never a guessed value.
+- [ ] **Physics-results sanity (C1–C4, `.claude/conventions/physics-results-review.md`):**
+      a number that matches its source can still be physically wrong. For any quoted
+      physics result, also check shape/magnitude vs an explicit expectation (C2),
+      no unexplained discontinuity in a quoted series (C1), and consistency with the
+      Run 2 references via the KB index (C3). A C1/C2/C3 failure is CRITICAL and
+      auto-triggers a `/review-investigation` (C4), not a prose reword. *(Added after
+      a trigger-eff bug produced a ×13–88 cross-section/R_AA discontinuity that a
+      source-matching-only review would pass.)*
 
 ### G4 — Figure-data fidelity + sync  (`/sync-note-figures`, `note-reviewer`)
 - [ ] Every `\includegraphics` figure is referenced by `\ref` in the body.

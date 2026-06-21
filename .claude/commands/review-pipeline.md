@@ -18,6 +18,7 @@ Task: $ARGUMENTS
 Read these files before starting:
 - `.claude/agents/executor.md` (your behavior as executor)
 - `.claude/conventions/codebase-patterns.md` (codebase conventions)
+- `.claude/conventions/physics-results-review.md` (physics-results criteria C1–C4 — apply to any stage that emits a physics result)
 - `.claude/kb/index.md` (check for relevant KB articles)
 - `Analysis/README.md` (class hierarchy and pipeline structure)
 - `Analysis/docs/` — read the pipeline doc(s) relevant to this task
@@ -116,6 +117,24 @@ exists, state "No pipeline documentation found."]
 
 Evaluate EVERY item below. For each, state PASS or FAIL with specific evidence
 (line numbers, function names, file paths). If an item is not applicable, state N/A.
+
+### Dimension 0: Physics-results sanity (MANDATORY for any stage that emits a physics result)
+
+If the pipeline produces or refreshes a physics result (efficiency, cross-section,
+yield, R_AA, ratio, correction factor, spectrum) — or its final outputs feed one —
+**read `.claude/conventions/physics-results-review.md` and apply C1–C4** to the
+produced outputs, not just the script's plumbing:
+- **C1 Discontinuity:** scan produced distributions for unexplained jumps/spikes/
+  drop-to-zero → **CRITICAL**.
+- **C2 Shape & magnitude (rubric-first):** form the expected shape/scale BEFORE
+  checking, then verify (falling spectra, efficiency ∈[0,1] at sensible plateau,
+  R_AA O(0.1–1.5), 1/ε ≥ 1) → **CRITICAL** on violation.
+- **C3 Run 2 cross-check:** sanity-check magnitude/shape vs the Run 2 references via
+  `.claude/kb/index.md`, accounting for analysis and Run 2→Run 3 differences
+  (efficiency **much lower** than Run 2 for the same trigger → problem). Not
+  comparable → `RUN2-CROSSCHECK UNVERIFIED` (never invent a value).
+- Label such CRITICALs `PHYSICS-RESULTS` so the Decide step routes them to the
+  investigation protocol (C4) rather than a cosmetic amend.
 
 ### Dimension 1: Stage completeness
 
@@ -302,9 +321,13 @@ Update the `**Iterations completed**` count in the log header.
 ### Step 4: Decide
 
 Count iterations by reading the log file (count `## Iteration` headers).
+First **classify the FAIL**: does any CRITICAL issue carry the `PHYSICS-RESULTS`
+label or arise from criteria C1/C2/C3 (discontinuity, shape/magnitude violation,
+Run 2 inconsistency in a produced result)?
 
 - **VERDICT: PASS** → go to **Exit: Approved**
-- **VERDICT: FAIL** AND iteration count < MAX_ITERATIONS → go to **Step 5: Amend**
+- **VERDICT: FAIL with a PHYSICS-RESULTS (C1/C2/C3) issue** → go to **Step 5b: Investigate**.
+- **VERDICT: FAIL, pipeline/plumbing issues only** AND iteration count < MAX_ITERATIONS → go to **Step 5: Amend**
 - **VERDICT: FAIL** AND iteration count >= MAX_ITERATIONS → go to **Exit: Escalate**
 
 ### Step 5: Amend
@@ -313,6 +336,21 @@ Address ONLY the specific issues listed in the reviewer's response.
 Do not refactor or change anything not flagged.
 Log what you changed in the log file under the current iteration.
 Go back to **Step 2** (spawn a fresh reviewer subagent for the amended work).
+
+### Step 5b: Investigate (physics-results failure — criterion C4)
+
+A C1/C2/C3 failure means a produced result is unphysical (possibly a
+methodology/procedure bug), not a script-plumbing fix.
+1. Log the physics finding (which stage/output/bins, expected vs observed, failing C-item).
+2. **Invoke `/review-investigation`** on the issue (tracking doc + its own loop) to
+   find the root cause; pass the reviewer's evidence. Fix the root cause (via
+   `/review-analysis-code` / `/review-plot` as needed) and re-run the affected stage(s).
+   - **If the investigation concludes the result is EXPECTED physics** (not a bug),
+     record the justification and include it in the next reviewer prompt so it is not
+     re-flagged.
+3. Re-run this review (back to **Step 2**) once corrected.
+4. **If the investigation cannot resolve it** (escalates / hits max iterations), go to
+   **Exit: Escalate** with the **full investigation report** — never force a PASS.
 
 ## Exit: Approved
 

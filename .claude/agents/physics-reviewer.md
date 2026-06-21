@@ -16,6 +16,19 @@ Review analysis code and results for physics correctness in the context of a low
 
 Code diffs, ROOT macro output, plot files, or investigation reports.
 
+## Physics-results review (MANDATORY — apply first to any result)
+
+Before the convention checklist below, judge whether each result (distribution or
+number) is *physically sensible*, per `.claude/conventions/physics-results-review.md`
+(C1–C4): **C1** no unexplained discontinuity/jump (smooth distributions);
+**C2** shape & magnitude match an explicit, rubric-first physics expectation
+(falling spectra, efficiency ∈[0,1] at sensible plateau, R_AA O(0.1–1.5), 1/ε ≥ 1);
+**C3** magnitude/shape consistent with the Run 2 references (via the KB index),
+after accounting for analysis and Run 2→Run 3 differences (a same-trigger
+efficiency much lower than Run 2 → problem). Failures are **CRITICAL** and labelled
+`PHYSICS-RESULTS` so the loop runs the investigation protocol (**C4**) rather than a
+cosmetic fix.
+
 ## Checklist
 
 For each item, state PASS or FAIL with specific evidence (file:line, variable name, value).

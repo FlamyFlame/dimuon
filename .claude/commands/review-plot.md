@@ -16,6 +16,7 @@ Task: $ARGUMENTS
 Read these files before starting:
 - `.claude/agents/executor.md` (your behavior as executor)
 - `.claude/conventions/atlas-plotting.md` (plotting conventions)
+- `.claude/conventions/physics-results-review.md` (MANDATORY physics-results criteria C1–C4 the reviewer enforces)
 - `.claude/kb/index.md` (check for relevant KB articles)
 
 Configuration:
@@ -93,6 +94,38 @@ Review the following plot work and return a structured verdict.
 [If the user requested a specific directory structure or plot organization, paste that request here verbatim. If plots for a related physics procedure already exist elsewhere, list the existing paths and whether they should be reorganized. Otherwise write "No specific directory structure requested."]
 
 ## Review criteria
+
+### Physics-results review (MANDATORY — apply FIRST, before the plot checklist)
+**Read `.claude/conventions/physics-results-review.md` now and apply EVERY
+applicable criterion (C1–C4).** These catch *physics* problems that a
+readability/binning review misses (e.g. an efficiency-corrected spectrum that
+jumps by ×10–100 at high p_T). The plot checklist below does NOT replace these.
+
+For each plotted physics result (efficiency, cross-section, yield, R_AA, ratio,
+correction factor, spectrum, mass distribution):
+- **C1 Discontinuity / smoothness** — scan every panel/curve for any jump, kink,
+  spike, or drop-to-zero (up or down). Physical distributions are smooth. Any
+  **unexplained** discontinuity (one not from a named kinematic threshold or stated
+  selection boundary, and not covered by the error bars) → **CRITICAL FAIL**.
+- **C2 Shape & magnitude vs expectation (rubric-first)** — BEFORE judging the plot,
+  write down what is plotted and an explicit list of physics expectations for its
+  shape and magnitude (e.g. a cross-section vs p_T must be a smoothly, steeply
+  *falling* spectrum; an efficiency ∈[0,1] plateauing at a sensible value; R_AA
+  O(0.1–1.5)). Check each. Any shape violation or order-of-magnitude scale miss →
+  **CRITICAL FAIL**.
+- **C3 Run 2 reference cross-check** — for final/near-final results, compare
+  magnitude & shape against the Run 2 references via the KB index
+  (`.claude/kb/index.md`: `analysis/run2_hf_muon_raa.md`, `run2_dimuon_note.md`,
+  `run2_dimuon_backtoback_paper.md`; trigger/reco magnitudes in
+  `physics/detector/atlas_run2_muon_trigger.md`). Account for the analysis
+  differences (nearby muon **pair**, not single HF-muon / not back-to-back) and
+  Run 2→Run 3 differences (perf should improve *moderately*; an efficiency **much
+  lower** than Run 2 for the same trigger signals a problem). Clear unexplained
+  inconsistency → **CRITICAL FAIL**; if not comparable in-session, report
+  `RUN2-CROSSCHECK UNVERIFIED` (never invent a Run 2 value).
+- **C4** — any C1/C2/C3 CRITICAL is a *physics* failure: the calling command will
+  auto-trigger an investigation (see the command's Decide step). In your report,
+  label such issues clearly as `PHYSICS-RESULTS` so the loop routes them correctly.
 
 ### Plot checklist
 For each item, state PASS or FAIL with specific evidence.
@@ -196,8 +229,15 @@ Update the `**Iterations completed**` count in the log header.
 
 Count iterations by reading the log file (count `## Iteration` headers).
 
+First, **classify the FAIL** (if any): does any CRITICAL issue carry the
+`PHYSICS-RESULTS` label or arise from criteria C1/C2/C3 (unexplained
+discontinuity, shape/magnitude violation, or Run 2 inconsistency)?
+
 - **VERDICT: PASS** → go to **Exit: Approved**
-- **VERDICT: FAIL** AND iteration count < MAX_ITERATIONS → go to **Step 5: Amend**
+- **VERDICT: FAIL with a PHYSICS-RESULTS (C1/C2/C3) issue** → go to
+  **Step 5b: Investigate** (do NOT cosmetically amend a physics problem).
+- **VERDICT: FAIL, cosmetic/plotting issues only** AND iteration count < MAX_ITERATIONS
+  → go to **Step 5: Amend**
 - **VERDICT: FAIL** AND iteration count >= MAX_ITERATIONS → go to **Exit: Escalate**
 
 ### Step 5: Amend
@@ -206,6 +246,27 @@ Address ONLY the specific issues listed in the reviewer's response.
 Do not refactor or change anything not flagged.
 Log what you changed in the log file under the current iteration.
 Go back to **Step 2** (spawn a fresh reviewer subagent for the amended work).
+
+### Step 5b: Investigate (physics-results failure — criterion C4)
+
+A C1/C2/C3 failure is a *physics* problem (possibly a methodology/procedure bug),
+not a cosmetic plot fix. Do NOT just restyle or re-bin to hide it.
+1. Log the physics finding in the plot-review log (which bins/panels, expected vs
+   observed, the failing C-item).
+2. **Invoke `/review-investigation`** on the flagged issue, passing the reviewer's
+   evidence. It creates/uses a tracking doc and runs its own loop to find the root
+   cause.
+3. When the investigation returns a root cause, **fix it** (via `/review-analysis-code`
+   if code changes are needed), regenerate the plot, then go back to **Step 2** for a
+   fresh review.
+   - **If the investigation concludes the feature is EXPECTED physics** (a named
+     kinematic threshold or stated selection boundary, not a bug), there is nothing
+     to fix: record that justification in the log AND include it in the next
+     reviewer prompt (under "Numbers reported" / context) so C1's named-exception
+     applies and the reviewer does not re-flag the same feature.
+4. **If the investigation cannot resolve it** (escalates / hits its max iterations),
+   go to **Exit: Escalate** and present the user the **full investigation report**
+   (root-cause status, hypotheses tried, what remains) — never force a PASS.
 
 ## Exit: Approved
 

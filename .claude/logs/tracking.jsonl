@@ -43,3 +43,5 @@
 {"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-20T05:36:23Z","criticals":0,"warnings":0,"slug":"trig-eff-plateau-clamp"}
 {"event":"start","command":"review-plot","task":"trig-clamp crossx/RAA replot validation","slug":"trig-clamp-crossx-raa-replot","timestamp":"2026-06-20T05:42:54Z"}
 {"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-20T05:44:37Z","criticals":0,"warnings":0,"slug":"trig-clamp-crossx-raa-replot"}
+{"event":"start","command":"review-plugin","task":"physics-results review criteria wiring","slug":"physics-results-review-criteria","timestamp":"2026-06-21T17:22:50Z"}
+{"event":"end","command":"review-plugin","status":"approved","iterations":2,"timestamp":"2026-06-21T17:32:18Z","criticals":0,"warnings":0,"slug":"physics-results-review-criteria"}
