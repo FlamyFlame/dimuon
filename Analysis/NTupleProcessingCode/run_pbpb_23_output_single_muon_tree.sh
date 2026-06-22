@@ -18,6 +18,7 @@ root -b -l << EOF
 
 	PbPbAnalysis pbpb_23 (23, $file_batch);
 	pbpb_23.output_single_muon_tree = true;
+	pbpb_23.turn_on_ctr_binned_tree_writing = true;
 	pbpb_23.Run();
 
 	.q;

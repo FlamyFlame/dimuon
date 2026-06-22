@@ -16,10 +16,10 @@ lsetup "views LCG_107a_ATLAS_2 x86_64-el9-gcc13-opt"
 root -b -l << EOF
 	.L DataAnalysisClasses.h
 
-	PbPbAnalysis pbpb_24 (24, $file_batch);
-	pbpb_24.output_single_muon_tree = true;
-	pbpb_24.turn_on_ctr_binned_tree_writing = true;
-	pbpb_24.Run();
+	PbPbAnalysis pbpb_25 (25, $file_batch);
+	pbpb_25.output_single_muon_tree = true;
+	pbpb_25.turn_on_ctr_binned_tree_writing = true;
+	pbpb_25.Run();
 
 	.q;
 

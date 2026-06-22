@@ -13,13 +13,13 @@ source $ATLAS_LOCAL_ROOT_BASE/user/atlasLocalSetup.sh
 lsetup "views LCG_107a_ATLAS_2 x86_64-el9-gcc13-opt"
 
 # Run the analysis
+# PP has no centrality binning -> single 'muon_tree' (no ctr-binned trees).
 root -b -l << EOF
 	.L DataAnalysisClasses.h
 
-	PbPbAnalysis pbpb_24 (24, $file_batch);
-	pbpb_24.output_single_muon_tree = true;
-	pbpb_24.turn_on_ctr_binned_tree_writing = true;
-	pbpb_24.Run();
+	PPAnalysis pp_24 (24, $file_batch);
+	pp_24.output_single_muon_tree = true;
+	pp_24.Run();
 
 	.q;
 

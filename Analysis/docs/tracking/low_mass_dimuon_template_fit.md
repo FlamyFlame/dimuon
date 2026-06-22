@@ -571,7 +571,9 @@ the full chain to a PRELIMINARY result with placeholder reco-eff + identity unfo
 - ⏳ **T6 combined OS+SS fitter** — needs T2 + T1e + T4.
 - ⏳ **T7 wire into crossx/R_AA** — needs T6 + T3.
 
-**Current action:** committing bookkeeping, then T1a (single-muon-tree production scripts
-→ `/review-analysis-code` → Condor submit) in parallel with T1b (ScrambGen rewrite).
+**Current action:** T1a single-muon-tree production SUBMITTED to Condor 2026-06-22
+(clusters 82=pbpb23×4, 83=pbpb24×2, 84=pbpb25×6, 85=pp24×12; 24 jobs). While they run:
+T1b ScrambGen rewrite (code, no data dependency). Then monitor T1a → sanity-check
+non-empty `muon_tree_ctr*`/`muon_tree` → hadd parts per year → T1c/T1d/T1e.
 Parallelizable independent tracks: T1 (ScrambGen), T3 (acceptance), T4 (resonance) do not
 conflict file-wise and can interleave; commits sequential (orchestrator).
