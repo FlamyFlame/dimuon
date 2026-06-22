@@ -496,6 +496,34 @@ selection; the fitter; combinatoric (event-mixing) template; k determination; pl
   a full fleet; the protected-member assignment failed SILENTLY in cling (non-fatal error,
   Run() proceeded).
 
+- 2026-06-22 (5) — **INCIDENT recovery is INCOMPLETE — restore wrote the WRONG suffix;
+  exact nominal recipe needs confirmation.** Findings:
+  - The RDF crossx reads `muon_pairs_pbpb_2X_part*_single_mu4_mindR_0_02_**res_cut_v2**.root`
+    (RDFBasedHistFillingPbPb.cxx:18/24/49/55). `_res_cut_v2` ⟺ `resonance_cut_mode=2`
+    (DimuonDataAlgCoreT.c:398-401). These `_res_cut_v2` files are the ones clobbered.
+  - My restore used `run_pbpb_2X_nominal.sub`, which sets only `pbpb_run3_mu4_force_nominal=true`
+    → `resonance_cut_mode` stays default 1 → suffix "" → it produced PARALLEL
+    `muon_pairs_pbpb_2X_part*_single_mu4_mindR_0_02.root` (02:55-56) and did NOT restore the
+    `_res_cut_v2` files. The `_res_cut_v2` files remain CLOBBERED (zombie/missing-trees from
+    the original incident).
+  - **Ambiguity:** no run script sets `resonance_cut_mode=2`; `_res_cut_v2` is auto-set only
+    when `trigger_effcy_calc=true` (plain `run_pbpb_2X.sh`, no force_nominal), but that mode
+    is documented to SKIP the resonance cut — conflicting with the earlier R&O that the
+    nominal OS tree IS resonance-vetoed. So the exact original recipe (force_nominal+res2 vs
+    plain-trigger_effcy) is not certain from the scripts.
+  - **No published results affected:** the downstream `histograms_real_pairs_*` (crossx/R_AA
+    histogram outputs) were NOT regenerated and remain intact; only the upstream muon_pairs
+    ntuples are damaged, which matters only for FUTURE RDF re-runs.
+  - **April `_backup_20260420` backups** exist only for pbpb24 (incomplete, older skim) → not
+    a reliable restore source.
+  - **Action in progress:** running a no-clobber validation test (pbpb23 part4,
+    `force_nominal=true + resonance_cut_mode=2 + is_test_run=true` → `_res_cut_v2_test.root`)
+    to check it reproduces the expected OS resonance-veto structure. If it matches → full
+    restore with that recipe. **Open question for user: confirm the exact recipe used to
+    produce the nominal `_res_cut_v2` crossx ntuples on the May skim.**
+  - Also: `run_pbpb_2X_nominal.sh` appear INCOMPLETE (don't set `resonance_cut_mode=2`), so
+    they do NOT reproduce the crossx inputs — flag for fixing once recipe confirmed.
+
 ## Results & Observations
 
 ### TEMPLATE INVENTORY (for the fitting agent — 1D minv templates, Step 4a) ###
