@@ -179,22 +179,17 @@ private:
         double pT_min = 4;
         double pT_max = 60;
 
-        TF1* fTurnOn = new TF1(fname.c_str(),
-                               [this, pT_min](double* x, double* p){
-                                    double pT = x[0];
-                                    double mean = p[0];
-                                    double sigma = p[1];
-                                    double norm = p[2];
-                                    double corrCoef = p[3];
-
-                                    if (fitting_mode == erf_plus_log)
-                                        return norm * 0.5 * (1.0 + TMath::Erf((pT - mean)/(TMath::Sqrt2()*sigma)))
-                                               * (1 + corrCoef * TMath::Log(1 + (pT - pT_min)/pT_min));
-                                    else
-                                        return norm * 0.5 * (1.0 + TMath::Erf((pT - mean)/(TMath::Sqrt2()*sigma)))
-                                               * (1 + corrCoef * (pT - pT_min)/pT_min);
-                               },
-                               pT_min, pT_max, 4);
+        // Build from a TFormula STRING (not a lambda) so the analytic formula
+        // PERSISTS when the TF1 is written to a ROOT file. A lambda/compiled TF1
+        // can only be saved as a sampled grid (fSave) over [pT_min,pT_max], and on
+        // read-back Eval interpolates that grid and returns 0 outside the range —
+        // the trigger-eff high-pT bug. The 4.0 pivot in the log/linear term is
+        // pT_min (kept numeric to match the original).
+        std::string erf_core = "[2]*0.5*(1.0+TMath::Erf((x-[0])/(sqrt(2.0)*[1])))";
+        std::string formula  = (fitting_mode == erf_plus_log)
+            ? erf_core + "*(1.0+[3]*TMath::Log(1.0+(x-4.0)/4.0))"
+            : erf_core + "*(1.0+[3]*((x-4.0)/4.0))";
+        TF1* fTurnOn = new TF1(fname.c_str(), formula.c_str(), pT_min, pT_max);
 
         fTurnOn->SetParNames("mean", "sigma", "plateau", "corrCoef");
         fTurnOn->SetParameters(4.0, 2.0, 1.0, 0.);
@@ -222,22 +217,14 @@ private:
         double pT_min = 4;
         double pT_max = 60;
 
-        TF1* fTurnOn = new TF1(fname.c_str(),
-                               [this, pT_min](double* x, double* p){
-                                    double pT = x[0];
-                                    double normFermi = p[0];
-                                    double pT0 = p[1];
-                                    double Delta = p[2];
-                                    double corrCoef = p[3];
-
-                                    if (fitting_mode == fermi_plus_log)
-                                        return normFermi / (1 + TMath::Exp((pT0 - pT)/ Delta))
-                                               * (1 + corrCoef * TMath::Log(1 + (pT - pT_min)/pT_min));
-                                    else
-                                        return normFermi / (1 + TMath::Exp((pT0 - pT)/ Delta))
-                                               * (1 + corrCoef * ((pT - pT_min)/pT_min));
-                               },
-                               pT_min, pT_max, 4);
+        // TFormula STRING (not a lambda) so the analytic formula PERSISTS on Write
+        // (a lambda TF1 saves only a sampled grid → Eval returns 0 outside [4,60]).
+        // The 4.0 pivot in the log/linear term is pT_min (numeric, matches original).
+        std::string fermi_core = "[0]/(1.0+TMath::Exp(([1]-x)/[2]))";
+        std::string formula    = (fitting_mode == fermi_plus_log)
+            ? fermi_core + "*(1.0+[3]*TMath::Log(1.0+(x-4.0)/4.0))"
+            : fermi_core + "*(1.0+[3]*((x-4.0)/4.0))";
+        TF1* fTurnOn = new TF1(fname.c_str(), formula.c_str(), pT_min, pT_max);
 
         fTurnOn->SetParNames("normFermi", "pT0", "Delta", "corrCoef");
         fTurnOn->SetParameters(0.9, 4.0, 1.5, 0.);
@@ -265,15 +252,10 @@ private:
         double pT_min = 4;
         double pT_max = 60;
 
+        // TFormula STRING (not a lambda) so the analytic formula PERSISTS on Write.
         TF1* fTurnOn = new TF1(fname.c_str(),
-                               [](double* x, double* p){
-                                   double pT = x[0];
-                                   double mean = p[0];
-                                   double sigma = p[1];
-                                   double norm = p[2];
-                                   return norm * 0.5 * (1.0 + TMath::Erf((pT - mean)/(TMath::Sqrt2()*sigma)));
-                               },
-                               pT_min - 0.1, pT_max, 3);
+                               "[2]*0.5*(1.0+TMath::Erf((x-[0])/(sqrt(2.0)*[1])))",
+                               pT_min - 0.1, pT_max);
 
         fTurnOn->SetParNames("mean", "sigma", "plateau");
         fTurnOn->SetParameters(4.0, 2.0, 1.0);

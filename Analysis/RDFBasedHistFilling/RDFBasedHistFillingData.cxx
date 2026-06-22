@@ -602,18 +602,14 @@ float RDFBasedHistFillingData::EvaluateSingleMuonEffcyPtFitted(const std::string
         std::string key = "f_pt2nd_vs_q_eta2nd" + ctr_suffix + musign + "_2mu4_sepr_py_" + q_eta_suffix + "_divided";
         auto it = s_effcy_pT_fit_map.find(key);
         if (it != s_effcy_pT_fit_map.end()) {
-            // The turn-on TF1s are compiled-function fits (no analytic TFormula):
-            // on read-back TF1::Eval returns 0 OUTSIDE the [xmin,xmax] fit range.
-            // Clamp pt into the fit range before Eval so muons above the turn-on
-            // get the PLATEAU efficiency (trigger eff is flat above threshold),
-            // not 0 → 0.01. Without this, a high-pT muon would be assigned
-            // eps=0.01 and blow up the pp 2mu4 product weight 1/(eps1*eps2).
-            double xmin = 0.0, xmax = 0.0;
-            it->second->GetRange(xmin, xmax);
-            double pt_eval = pt < xmin ? xmin : (pt > xmax ? xmax : pt);
-            double val = it->second->Eval(pt_eval);
-            if (val < 0.01) val = 0.01;
-            if (val > 1.0) val = 1.0;
+            // The turn-on fits are now TFormula-based TF1s (analytic formula
+            // persisted on Write), so evaluate the CONTINUOUS function at the EXACT
+            // pt — never a clamped/nearest sampled point. Above the fit range the
+            // formula extrapolates the plateau (the multiplicative log term can push
+            // it slightly above 1, hence the min(.,1) cap; efficiency must be ≤ 1).
+            double val = it->second->Eval(pt);
+            if (val > 1.0) val = 1.0;   // cap: efficiency ≤ 1
+            if (val < 0.01) val = 0.01; // defensive floor (below-threshold extrapolation)
             return static_cast<float>(val);
         }
     }
