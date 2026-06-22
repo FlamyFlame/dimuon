@@ -296,6 +296,27 @@ selection; the fitter; combinatoric (event-mixing) template; k determination; pl
   regenerated; `analysis_overview` §2 and the RDF `signal_cuts` must drop ΔR too.
   Implication to watch: very-low-ΔR pairs (near-merged muons) now enter — the reco-eff
   ΔR binning must cover ΔR→0 reliably.
+- **Reco-eff / acceptance boundary VERIFIED — no double-count, no reco-eff change
+  (2026-06-22, investigation).** pT>4/|η|<2.4 is NOT folded into either reco-eff value:
+  (a) fullsim 3D pair ε_reco — the truth fiducial (`PythiaAlgCoreT::PassCuts_PythiaCore`,
+  truth pT>4 & |truth η|<2.4) is in BOTH numerator and denominator → cancels → ε_reco is
+  conditional; (b) placeholder `EvaluateSingleMuonRecoEffPlaceholder` clamps pT to [4,19]
+  as a range floor (not a cut), η only for barrel/endcap. ⇒ **acceptance owns
+  pT>4/|η|<2.4; do NOT change reco-eff.** CRITICAL for the acceptance build (Step 7): the
+  A_sig DENOMINATOR must come from the `h_cutAcceptance` cutflow (all truth pairs in the
+  `nocut` bin, filled BEFORE `PassCuts`), NOT the pair tree (already fiducial-restricted
+  → A≈1). Edge migration across pT=4/|η|=2.4 is owned by **unfolding** (detec_resp), not
+  reco-eff or acceptance.
+- **ScrambGen revival approach (2026-06-22, plan):** rewrite ScrambGen to the modern
+  object model (read `MuonObj`, WRITE `muon_pair_tree_sign1/sign2` with `MuonPairObj`) so
+  the **existing RDF `signal_cuts` fills the mixed-event minv template** — identical
+  selection to the data D_OS/D_SS. ScrambGen becomes a pure pair generator: DROP its
+  resonance/photoproduction vetoes + dR bucketing (cuts move to RDF). Defaults adopted:
+  **20 centrality intervals** (0–100%, `ParamsSet::nCtrIntvls`), **per-year** PbPb mixing
+  (combine downstream), **×5 oversampling** for `nScramb` (template is shape-only; N_C
+  floats). Same-centrality (≤5%) mixing kept. Requires a single-muon-tree production pass
+  first (stale/missing for the May 2026 skim). ScrambGen currently does NOT compile (uses
+  the retired `class Muon`); the rewrite fixes that and ensures consistency.
 
 ## Implementation Plan
 1. Tracking doc + Physics Procedure (this file). DONE.
@@ -439,6 +460,19 @@ selection; the fitter; combinatoric (event-mixing) template; k determination; pl
   denominator. KB `gluon_splitting_flavour_excitation` re-synced (>2-HF-μ→systematic).
   **No physics code/behavior change; awaiting user approval to start steps 5–9.**
 
+- 2026-06-22 (3) — **AUTONOMOUS IMPLEMENTATION APPROVED — orchestration started.** User:
+  defer Δp/p (mark future-TODO needing MC); run preliminary with placeholder reco-eff +
+  identity unfolding; start with reco-eff & ScrambGen; proceed autonomously as orchestrator,
+  parallelize independent tasks, tracking-doc + commit each step. **T0 reco-eff/acceptance
+  boundary VERIFIED** (parallel read-only investigation): no double-count — acceptance owns
+  pT>4/|η|<2.4, denominator from `h_cutAcceptance` cutflow; no reco-eff change (Design
+  Decisions). **T0 Δp/p deferred** in `placeholder.md` #9 + roadmap step 16. **ScrambGen
+  plan** captured (Design Decisions; object-model rewrite, cuts in RDF, 20 ctr intervals,
+  per-year, ×5 oversampling; needs single-muon-tree production first). Confirmed
+  `signal_cuts` is already ΔR-free (RDFBasedHistFillingPP.cxx:382). Next: T1a single-muon-
+  tree production (→ Condor) ∥ T1b ScrambGen rewrite (→ /review-analysis-code). Orchestration
+  graph in Latest Stage.
+
 ## Results & Observations
 
 ### TEMPLATE INVENTORY (for the fitting agent — 1D minv templates, Step 4a) ###
@@ -516,16 +550,28 @@ The fit must mask the OS data veto windows ([0,1.06],[2.9,3.3],[3.55,3.8]) consi
   leakage, fit model, fiducial-vs-extrapolated).
 
 ## Latest Stage
-**Steps 2+3 DONE (2026-06-21).** OS+SS no-mass-cut minv histos (0–4 GeV, 50 bins,
-dσ-weighted) in PP + all 3 PbPb years; reviewer PASS; all outputs non-empty and
-sanity-checked. Surfaced the OS-only resonance veto (R&O) — must mask the veto windows
-in any OS−SS/fit.
+**AUTONOMOUS IMPLEMENTATION APPROVED & UNDERWAY (2026-06-22).** User approved running
+the full chain to a PRELIMINARY result with placeholder reco-eff + identity unfolding;
+Δp/p deferred (needs π/K MC); start with reco-eff (DONE: verified, no change) & ScrambGen.
 
-**Next (Step 4, NOT started — needs the truth-template selection fix first):** add a
-Pythia-truth fill producing 1D `minv_zoomin` (0–4 GeV) per flavor/origin category, OS+SS,
-with the MATCHING single-b kinematic selection (pair_pt>8, per-muon q·η<2.2, **no ΔR
-cut**, no minv cut) — the existing truth per-category minv is kinematically inclusive +
-2D (R&O), so not drop-in. Then the baby-step fit (§3c). Steps 5–9 await explicit user
-approval per Progress Log 2026-06-21. **NOTE (2026-06-22): ΔR>0.05 removed from the
-signal selection — Step 2/3 data histos and Step 4a truth templates (both filled with
-ΔR>0.05) MUST be regenerated without it.**
+**Orchestration / dependency graph** (✅=done, ▶=in progress, ⏳=queued):
+- ✅ **T0 reco-eff/acceptance boundary** — verified no double-count; acceptance owns
+  pT>4/|η|<2.4 via the `h_cutAcceptance` cutflow denominator (Design Decisions).
+- ✅ **T0 Δp/p deferred** — placeholder #9 + roadmap step 16 marked "needs π/K MC".
+- ▶ **T1 ScrambGen mixed-event (Step 6 prereq)** — biggest item, two sub-tracks:
+  - T1a produce centrality-binned single-muon trees (May skim) → Condor (long pole, run first/in background).
+  - T1b rewrite ScrambGen to object model (Design Decisions) → `/review-analysis-code` (parallel with T1a Condor).
+  - T1c regenerate `nScramb`; T1d run ScrambGen (Condor); T1e fill T_mix via RDF.
+- ⏳ **T2 data + truth template REGEN without ΔR** — confirm other agent's 1D Pythia
+  histos dropped ΔR + are (pT,η)-binned; refill data D_OS/D_SS if still ΔR>0.05.
+- ⏳ **T3 signal-acceptance map** (log pT, cutflow denominator) — INDEPENDENT of ScrambGen,
+  parallelizable; needs the cutflow-based A_sig fill → `/review-analysis-code`.
+- ⏳ **T4 resonance templates** (no-veto OS pass) — INDEPENDENT.
+- ⏳ **T5 k-validation 5a/5b** — needs T1e + T2.
+- ⏳ **T6 combined OS+SS fitter** — needs T2 + T1e + T4.
+- ⏳ **T7 wire into crossx/R_AA** — needs T6 + T3.
+
+**Current action:** committing bookkeeping, then T1a (single-muon-tree production scripts
+→ `/review-analysis-code` → Condor submit) in parallel with T1b (ScrambGen rewrite).
+Parallelizable independent tracks: T1 (ScrambGen), T3 (acceptance), T4 (resonance) do not
+conflict file-wise and can interleave; commits sequential (orchestrator).

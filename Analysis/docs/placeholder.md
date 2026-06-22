@@ -26,7 +26,7 @@ Last updated: 2026-06-15.
 | 6 | **PbPb 2026 lumi + GRL** | PbPb 2026 | placeholder (data not yet in skim) | 2026 data in skim, then lumi/GRL | `IntNotes/analysis_metadata.md` | Q2.1/Q2.5 |
 | 7 | **dR trigger-correlation correction** | PbPb | dummy ε_dR ≡ 1; **and the former ΔR>0.05 SIGNAL cut was removed 2026-06-22 (interim nominal)** — both pending the MC-based dR trigger correction that decides whether any ΔR cut is needed | Fullsim overlay with trigger sim | crossx pipeline (dR corr = 1; no ΔR signal cut); `docs/tracking/remove_dr_cut_signal_selection.md` | Q4 |
 | 8 | **Detector response / unfolding** | PbPb + pp | test-sample shapes | Full Pythia fullsim (pp24 + overlay) | unfolding inputs | Q4 |
-| 9 | **Δp/p significance + template-fit purity** | PbPb + pp | placeholder; framework only | Signal/bkg templates from fullsim + π/K MC | (to be built) | Q4 |
+| 9 | **Δp/p significance + template-fit purity** | PbPb + pp | **DEFERRED** (2026-06-22) — not built; fake-muon purity treated as ~flat (Run 2 dimuon note >98%) for the preliminary chain | **Future TODO needing MC:** signal/bkg Δp/p templates from fullsim + a π/K-enriched MC (Run 3 equivalent not yet identified). Build the fake fit (at RECO level — Δp/p is intrinsically reco) once that MC exists | (to be built) | Q4; tracking `low_mass_dimuon_template_fit.md` §3a |
 | 10 | **MCP scale factors** | MC | omitted (pure MC-driven) | Run 3 HI MCP recommendation | — | Q2.7 |
 
 ---
