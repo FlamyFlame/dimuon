@@ -37,7 +37,6 @@ static const std::vector<std::pair<std::string, std::string>> kCuts = {
     {"truth_pair_pt > 8",                      "p_{T}^{pair}>8"},
     {"m1.truth_charge * m1.truth_eta < 2.2",   "#mu_{1}:q#eta<2.2"},
     {"m2.truth_charge * m2.truth_eta < 2.2",   "#mu_{2}:q#eta<2.2"},
-    {"truth_dr > 0.05",                        "#DeltaR>0.05"},
 };
 
 // Compute both cutflows (all pT and pT>60) in a single RDF event-loop pass.
