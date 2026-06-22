@@ -473,6 +473,29 @@ selection; the fitter; combinatoric (event-mixing) template; k determination; pl
   tree production (→ Condor) ∥ T1b ScrambGen rewrite (→ /review-analysis-code). Orchestration
   graph in Latest Stage.
 
+- 2026-06-22 (4) — **INCIDENT + RECOVERY: T1a single-muon jobs clobbered PbPb nominal
+  muon_pairs.** Root cause: `output_single_muon_tree` is a **protected** member
+  (`DimuonDataAlgCoreT.h:32` re-exposes the public base member under protected — a
+  regression vs the Oct-2025 era when the existing single-muon scripts worked), so the
+  macro assignment `pbpb_2X.output_single_muon_tree = true;` failed to compile in cling;
+  `Run()` then executed in DEFAULT mode (output_single_muon_tree=false) AND without
+  `pbpb_run3_mu4_force_nominal=true` → `trigger_effcy_calc=TRUE` (no resonance veto) →
+  each job opened the NOMINAL `muon_pairs_pbpb_2X_part*_single_mu4_mindR_0_02_res_cut_v2.root`
+  with `recreate` and wrote wrong-mode (or truncated, for killed jobs) content. **Scope:**
+  PbPb 23/24/25 nominal muon_pairs (+ hists_cut_acceptance) clobbered (Jun 22 02:35–02:40).
+  **PP nominal SAFE** (pp single-muon script lacked `trigger_mode=3` → wrote a different
+  filename, not the nominal `_2mu4_*`; pp nominal files remain Jun 10). **Response:**
+  (1) `condor_rm yuhanguo` to stop the 17 still-running jobs; (2) resubmitted nominal PbPb
+  production run_pbpb_2{3,4,5}_nominal.sub (clusters 86/87/88, 12 jobs) to deterministically
+  restore from intact raw data (`pbpb_run3_mu4_force_nominal` is PUBLIC so nominal scripts
+  work). **Pending fixes before re-running T1a:** make `output_single_muon_tree` publicly
+  settable (header), and add `pbpb_run3_mu4_force_nominal=true` (pbpb) / `trigger_mode=3`
+  (pp) to the single-muon scripts so muon selection matches nominal. Single-muon jobs are
+  SAFE once output_single_muon_tree works (they write `single_muon_trees_*`, not muon_pairs).
+  **Lesson:** verify a Condor job's first output is the intended filename before submitting
+  a full fleet; the protected-member assignment failed SILENTLY in cling (non-fatal error,
+  Run() proceeded).
+
 ## Results & Observations
 
 ### TEMPLATE INVENTORY (for the fitting agent — 1D minv templates, Step 4a) ###

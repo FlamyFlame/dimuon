@@ -20,6 +20,11 @@ class DimuonDataAlgCoreT
 
 public:
     using pair_t = PairT;
+    // PUBLIC: set by run macros to switch on single-muon-tree production. The base
+    // DimuonAlgCoreT declares it public; it MUST stay public here (a protected
+    // re-exposure silently breaks `analysis.output_single_muon_tree = true;` in cling,
+    // which then runs in default pair-output mode — see incident 2026-06-22).
+    using DimuonAlgCoreT<PairT, MuonT, Derived>::output_single_muon_tree;
 
 protected:
     using Base = DimuonAlgCoreT<PairT, MuonT, Derived>;
@@ -29,7 +34,6 @@ protected:
     using Base::pmsRef;
     using Base::h_cutAcceptanceRef;
     using Base::debug_mode;
-    using Base::output_single_muon_tree;
     using Base::muon_raw_ptr;
     using Base::nentries;
     using Base::FillSingleMuonTree;

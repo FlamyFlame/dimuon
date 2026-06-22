@@ -18,6 +18,7 @@ root -b -l << EOF
 	.L DataAnalysisClasses.h
 
 	PPAnalysis pp_24 (24, $file_batch);
+	pp_24.trigger_mode = 3;
 	pp_24.output_single_muon_tree = true;
 	pp_24.Run();
 
