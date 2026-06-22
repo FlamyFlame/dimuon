@@ -28,6 +28,7 @@
 | **Flavour excitation (initial-state radiation, ISR):** a heavy quark from the proton sea (from a g→QQ̄ ISR splitting) is put on shell by the hard scatter; its partner Q is produced too → two heavy quarks, also low-mass/small-angle dimuons. Often grouped loosely (and imprecisely) with "gluon splitting" | Second correlated background; must be modeled/separated; Intro/background framing | [background-for-writing] |
 | At **NLO** the classic flavour-creation / flavour-excitation / gluon-splitting "topologies" merge into the 2→3 matrix element — the low-mass/low-kT g→QQ̄ tail is the piece NLO (Powheg-HQ) under-populates | Justifies the **stitch** of Powheg-HQ NLO + a **Pythia g→QQ̄ template** for the background (and signal-mix) templates — `analysis_overview` §6 (`docs/powheg.md`) | [method-we-use] (template construction) |
 | **Charm handle:** requiring **both muons pT > 4 GeV** kinematically suppresses the cc̄ (charm) dimuon contribution by ~an order of magnitude vs bottom (Powheg+Pythia8) | Why our signal region is bottom-dominated; quantified in [[run2_dimuon_backtoback_paper]] | [background-for-writing] |
+| **OS/SS charge structure** of signal (OS-only) vs g→cc̄ (OS-only) vs g→bb̄ (both signs) → the **k = G_SS/G_OS** like-sign handle | **SS-anchored normalization** of the correlated background in the low-mass dimuon template fit — `docs/tracking/low_mass_dimuon_template_fit.md`, IntNote §16, roadmap step 16 | [method-we-use] |
 
 ## Scope & condition-difference warnings
 - The mechanism is process-level QCD, energy-independent in concept; specific
@@ -57,6 +58,66 @@
   anticipated approach stitches Powheg-HQ with a Pythia g→QQ̄ template to supply
   that tail (`analysis_overview` §6; `docs/powheg.md`).
 
+## OS/SS charge structure of signal vs g→QQ̄ background (the like-sign handle)  [method-we-use]
+
+**Why this matters.** Our combinatorial subtraction and the *normalization* of the
+correlated g→QQ̄ background both rest on how the muon-pair **charge** (opposite-sign
+OS vs same-sign SS) distributes across sources. This is established decay physics
+(semileptonic branchings + B⁰ mixing), and it is the basis for using the SS
+spectrum to **data-anchor** the g→QQ̄ background in the low-mass dimuon template fit
+(`docs/tracking/low_mass_dimuon_template_fit.md`; template-fit context in
+[[muon_source_template_fits]]).
+
+- **Signal (single-b → μμ): OS-only.** Both muons come from one b-hadron decay
+  chain — direct b→μ⁻ and cascade b→c→μ⁺ — opposite-sign by construction. B⁰
+  oscillation does not break this (both muons originate in the one b-hadron decay).
+  SS signal ≈ 0 (confirmed in our MC — memory `project_overlay_pair_structure`).
+- **g→cc̄: OS-only.** c→μ⁺ and c̄→μ⁻; charm has no sign-flipping cascade and D⁰–D̄⁰
+  mixing is negligible (PDG x_D ≈ 0.4%), so the two muons are opposite-sign.
+- **g→bb̄: BOTH OS and SS.** Two separate b-hadrons, each muon direct (b→μ) or
+  cascade (b→c→μ): direct+direct and cascade+cascade → OS; direct+cascade → SS.
+  Additionally **B⁰–B̄⁰ oscillation** flips a direct muon's sign → moves OS↔SS
+  (time-integrated mixing probability χ_d ≈ 0.187, PDG).
+
+**Consequence — the k ratio.** Writing the OS open-HF yield G_OS = (bb̄ OS)+(cc̄ OS)
+and the SS yield G_SS = (bb̄ SS) only:
+```
+k ≡ G_SS / G_OS = (bb̄ SS) / [(bb̄ OS) + (cc̄ OS)] ,   0 < k < 1
+```
+The uncorrelated combinatorial is charge-symmetric (comb_OS ≈ comb_SS), so the
+low-mass dimuon model is `OS = S + comb + G_OS`, `SS = comb + k·G_OS`.
+
+**Why k is theory-robust (the payoff).** k is a *ratio* drawn from the **same**
+g→QQ̄ population, so the absolute g→QQ̄ cross-section — which carries large theory
+uncertainty (this doc's body; [[atlas_g_to_bb_small_angle]]) — largely cancels. k
+is set mainly by *measured* inputs (semileptonic BRs for b→μ vs b→c→μ; χ_d). Its
+one genuinely theory-sensitive ingredient is the **cc̄:bb̄ ratio in OS** (cc̄ enters
+OS but not SS). This is why anchoring the correlated-background normalization via
+**SS + k from data** beats taking the g→QQ̄ normalization from Pythia directly. The
+cc̄:bb̄ sensitivity is mitigated: cc̄ and bb̄ have different m_inv shapes (the OS fit
+partly constrains the mix), and the residual is taken as a systematic.
+
+**Negative constraints (for the code).** k is bb̄-only — do NOT model g→cc̄ as
+contributing to SS beyond the lumped approximation. The **leading** bb̄ SS
+mechanisms are **direct+cascade pairing** (one b→μ direct, the partner b̄→c̄→μ →
+same sign) and **single B⁰ mixing**; these are *captured* by a measured k, not
+neglected. (Note: cascade+cascade is OS, not SS.) k must be **measured in MC**
+(Pythia g→bb̄/g→cc̄ + flavour excitation), including its (pair pT, η, m_inv)
+dependence. **k is EMPIRICAL — it absorbs everything with the QQ̄ charge
+structure:** flavour excitation (ISR g→QQ̄, identical charge structure to FSR
+gluon-splitting) AND all bb̄ charge-flip mechanisms (direct+cascade, single AND
+double B⁰ mixing, b-baryons) are *in* the measured k, not separately modeled or
+"neglected." `SS = C + k·G_OS` can fail only from: (a) **SS sources outside
+{correlated-HF, combinatoric}** — residual jet/fake muons and **>2 HF μ in a
+jet** (the latter expected rare → if the data closure shows the OS/SS factor
+roughly holds, carry it as a systematic rather than modeling it); (b) **MC
+mismodeling of the ratio** (cc̄:bb̄ and
+FE:GS fractions, mixing) → k_MC ≠ k_data, the systematic, checked by a data
+closure test (predict SS = C_mixed-event + k·G_OS vs actual SS); (c)
+**combinatoric charge asymmetry** C_OS ≠ C_SS; (d) uncaptured k(pair pT, η). Do
+NOT leave `OS − SS` as the final background subtraction — it cancels
+combinatorial but leaves `(1−k)·G_OS`.
+
 ## References worth future reading   (≤3)
 1. **ATLAS, *Properties of g→bb̄ at small opening angles in pp at √s=13 TeV*,
    arXiv:1812.09283.** — ✅ **Now summarized in the KB: [[atlas_g_to_bb_small_angle]]**
@@ -67,6 +128,10 @@
    small-ΔR / collinear bb̄ region. Serves: background composition framing.
 
 ## Related KB docs
+- [[muon_source_template_fits]] — template-fit concept hub; the OS/SS charge
+  structure here underpins the **SS-anchored normalization** of the correlated
+  background, used alongside the Δp/p fake-muon purity fit in the low-mass dimuon
+  template fit.
 - [[atlas_g_to_bb_small_angle]] — the ATLAS g→bb̄ small-opening-angle measurement (citeable anchor / our regime).
 - `Analysis/docs/analysis_overview.md` §6 — our background & template program (ground truth; external to KB).
 - [[run2_dimuon_backtoback_paper]] — quantifies the charm-vs-bottom dimuon handle (both muons pT>4 GeV).

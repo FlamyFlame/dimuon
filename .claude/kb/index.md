@@ -38,7 +38,7 @@ Physics ground truth lives in `Analysis/docs/analysis_overview.md`.
 - [physics/detector/atlas_inner_detector_tracking.md](physics/detector/atlas_inner_detector_tracking.md) — SUPPORTIVE. ID dense-environment tracking (EPJC 77 (2017) 673): merged/shared-cluster + ambiguity solving — the mechanism behind close-track correlated reco (**justifies our pair ε_reco ΔR axis**)
 
 ## Physics — Background (signal-mimicking processes)
-- [physics/background/gluon_splitting_flavour_excitation.md](physics/background/gluon_splitting_flavour_excitation.md) — **concept hub.** g→QQ̄ (FSR) and flavour excitation (ISR): the two correlated low-mass/small-angle dimuon backgrounds (two muons from two heavy quarks vs our single-b); template-stitch context
+- [physics/background/gluon_splitting_flavour_excitation.md](physics/background/gluon_splitting_flavour_excitation.md) — **concept hub.** g→QQ̄ (FSR) and flavour excitation (ISR): the two correlated low-mass/small-angle dimuon backgrounds (two muons from two heavy quarks vs our single-b); template-stitch context; **OS/SS charge structure** (signal & g→cc̄ OS-only, g→bb̄ both → k=G_SS/G_OS like-sign handle for SS-anchored background normalization)
 - [physics/background/atlas_g_to_bb_small_angle.md](physics/background/atlas_g_to_bb_small_angle.md) — **PRIMARY.** ATLAS g→bb̄ at small opening angle, pp 13 TeV (PRD 99 (2019) 052004, arXiv:1812.09283): differential ΔR/z/mass via double-b-tagged R=0.2 track-jets; Pythia mismodels collinear g→bb̄ (large theory uncert.) → validates/cautions our g→QQ̄ background template (PDF in dir)
 
 ## Physics — Centrality (Pb+Pb geometry / Glauber)

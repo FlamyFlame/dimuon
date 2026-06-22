@@ -122,8 +122,13 @@ current roadmap. Baseline set (update/extend as the analysis and KB grow):
    Introduction motivating b-quark in-medium energy loss in the QGP." (Should find
    the `physics/heavy_ion/` reviews — hub `open_hf_production` + `hi_big_picture`.)
 6. **Reason about backgrounds / templates** — e.g. "explain the dominant correlated
-   background to the single-b dimuon signal and how the template is built." (Should
-   find `physics/background/gluon_splitting_flavour_excitation` + analysis_overview §6.)
+   background to the single-b dimuon signal and how the template is built"; and
+   "why is the single-b signal opposite-sign while g→bb̄ populates both OS and SS,
+   and how does the same-sign spectrum data-anchor the correlated-background
+   normalization (the k=G_SS/G_OS ratio)?" (Should find
+   `physics/background/gluon_splitting_flavour_excitation` — incl. its OS/SS
+   charge-structure section — + `concepts/muon_source_template_fits` +
+   analysis_overview §6.)
 7. **Centrality / R_AA normalization** — e.g. "justify the ⟨T_AA⟩ values used for
    the PbPb R_AA normalization and the Glauber method behind them." (Should find
    `physics/centrality/` — hub `glauber_modeling` + `atlas_centrality_2023`, which

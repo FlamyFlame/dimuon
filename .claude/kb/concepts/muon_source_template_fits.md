@@ -63,6 +63,12 @@ specificity and links here. Per `KB_BUILDING_GUIDE.md` §8 (dedup) and §5
 - Significance/purity (our version) detail: [[run2_dimuon_note]] (Δp/p section).
 
 ## Related KB docs
+- [[gluon_splitting_flavour_excitation]] — **OS/SS charge structure** of signal
+  (OS-only) vs g→cc̄ (OS-only) vs g→bb̄ (both signs, via cascade + B⁰ mixing) → the
+  **k = G_SS/G_OS** like-sign handle. This is a *third* template-fit ingredient for
+  the low-mass dimuon analysis (alongside the Δp/p fake fit above): the SS spectrum
+  + k **data-anchor** the correlated g→QQ̄ background normalization
+  (`docs/tracking/low_mass_dimuon_template_fit.md`).
 - [[run2_hf_muon_raa]], [[run2_hf_muon_vn]], [[run2_dimuon_note]] — the three sources using these fits.
 - [[atlas_gammagamma_mumu_pbpb]] — uses a **d0pair** template fit (MC signal vs data-sideband) for HF separation — a complementary d0-based alternative to the Δp/p purity here.
 - [[yun_tian_thesis]] — Run-1 (2.76 TeV) origin of the Δp/p "Eloss" momentum-balance template fit, with full method depth.
