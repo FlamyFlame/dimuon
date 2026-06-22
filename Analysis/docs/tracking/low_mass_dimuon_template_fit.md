@@ -622,7 +622,27 @@ the full chain to a PRELIMINARY result with placeholder reco-eff + identity unfo
 - ⏳ **T6 combined OS+SS fitter** — needs T2 + T1e + T4.
 - ⏳ **T7 wire into crossx/R_AA** — needs T6 + T3.
 
-**Current action:** T1a single-muon-tree production SUBMITTED to Condor 2026-06-22
+**⚠ BLOCKED ON USER — nominal-ntuple restore entangled with an evolving resonance-cut scheme (2026-06-22).**
+Root-cause diagnosis of why the clobbered nominal `_res_cut_v2` ntuples cannot be cleanly
+reproduced by current code:
+- `_res_cut_v2` ⟺ `resonance_cut_mode=2` ⟺ `pms.minv_cuts_v2`. Commit **d4c1197** (+8f8cffc)
+  REDEFINED `minv_cuts_v2` to NARROW per-peak windows `{0,0.6},{0.72,0.85},{0.94,1.06},{2.9,3.3},…`
+  "for trigger efficiency study … cut off individual peak windows rather than all pairs <1.06 GeV".
+- Evidence: April `_res_cut_v2` backup (old recipe) has OS fully vetoed [0,1.06]=0; a fresh
+  `resonance_cut_mode=2` test (pbpb23 part4, `_res_cut_v2_test.root`) has OS [0,1.06]=799 (narrow
+  veto) but [2.9,3.3]=[3.55,3.8]=0. So current code ≠ the code that made the clobbered nominal.
+- Additional inconsistency: `run_pbpb_2X_nominal.sh` (force_nominal only) makes `_mindR_0_02`
+  (res_mode 1, full veto), but the crossx RDF READS `_res_cut_v2` — the nominal-production suffix
+  and the crossx-input suffix don't match in the current tree. Likely mid-refactor by concurrent work.
+**Decisions needed from user:** (1) the intended CURRENT resonance-cut scheme for the NOMINAL
+crossx ntuples (full [0,1.06] V1, or narrow v2?), and which run recipe/suffix is canonical; (2)
+confirm regenerating with the NEW narrow veto (which the template fit WANTS — preserves low-mass
+continuum) is acceptable, in which case the crossx/R_AA will be recomputed. **No published results
+affected** (downstream `histograms_real_pairs_*` intact). Spurious files created this session (to
+clean up later): `muon_pairs_pbpb_2X_part*_single_mu4_mindR_0_02.root` (02:55), `..._res_cut_v2_test.root`.
+Root cause of the ORIGINAL clobber (protected `output_single_muon_tree`) is FIXED + committed.
+
+**Current action (SUPERSEDED — see BLOCKED note above):** T1a single-muon-tree production SUBMITTED to Condor 2026-06-22
 (clusters 82=pbpb23×4, 83=pbpb24×2, 84=pbpb25×6, 85=pp24×12; 24 jobs). While they run:
 T1b ScrambGen rewrite (code, no data dependency). Then monitor T1a → sanity-check
 non-empty `muon_tree_ctr*`/`muon_tree` → hadd parts per year → T1c/T1d/T1e.
