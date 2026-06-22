@@ -24,7 +24,7 @@ Last updated: 2026-06-15.
 | 4 | **σ_PbPb (total hadronic)** | PbPb (all yrs) | 7.8 b at 5.36 TeV — **unvalidated guess** | Citable 5.36 TeV reference | `PbPbBaseClass.h` (guess comment on 2023 helper) | Q2.2 |
 | 5 | **Luminosity uncertainty** | all years | not set | Official per-year Run 3 lumi uncertainty | — (note systematics) | Q2.1 |
 | 6 | **PbPb 2026 lumi + GRL** | PbPb 2026 | placeholder (data not yet in skim) | 2026 data in skim, then lumi/GRL | `IntNotes/analysis_metadata.md` | Q2.1/Q2.5 |
-| 7 | **dR trigger-correlation correction** | PbPb | dummy ε_dR ≡ 1 | Fullsim overlay with trigger sim | crossx pipeline (dR corr = 1) | Q4 |
+| 7 | **dR trigger-correlation correction** | PbPb | dummy ε_dR ≡ 1; **and the former ΔR>0.05 SIGNAL cut was removed 2026-06-22 (interim nominal)** — both pending the MC-based dR trigger correction that decides whether any ΔR cut is needed | Fullsim overlay with trigger sim | crossx pipeline (dR corr = 1; no ΔR signal cut); `docs/tracking/remove_dr_cut_signal_selection.md` | Q4 |
 | 8 | **Detector response / unfolding** | PbPb + pp | test-sample shapes | Full Pythia fullsim (pp24 + overlay) | unfolding inputs | Q4 |
 | 9 | **Δp/p significance + template-fit purity** | PbPb + pp | placeholder; framework only | Signal/bkg templates from fullsim + π/K MC | (to be built) | Q4 |
 | 10 | **MCP scale factors** | MC | omitted (pure MC-driven) | Run 3 HI MCP recommendation | — | Q2.7 |

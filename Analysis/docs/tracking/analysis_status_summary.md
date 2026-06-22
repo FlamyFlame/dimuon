@@ -33,6 +33,23 @@ remains.
 | RDF P3 hist filling (inv weight) | P3 dR corr | **DONE** | 2026-06-09 | — |
 | P3 plotting (cross-term dR corr) | P3 dR corr | **DONE** | 2026-06-09 | Single-muon/pair-level/plateau removed (D9: biased on mu4 sample) |
 
+> **⚠ CORRECTION (2026-06-22) — pp crossx/R_AA were NOT on the May-2026 skim until
+> 2026-06-22.** Verified by exact entry-count match: the pp nominal crossx that
+> existed before 2026-06-22 (`histograms_real_pairs_pp_2024_2mu4_nominal.root`, 790870
+> OS signal pairs with the old ΔR cut) was built from the **OLD April-2025**
+> `muon_pairs_pp_2024_2mu4.root` (mtime 2025-04-17; signal-region with-dr count =
+> **790870**, exact match), NOT the May-2026 `muon_pairs_pp_2024_2mu4_mindR_0_02.root`
+> skim (mtime 2026-06-10; with-dr count = 788407). Root cause: the pp `trigger_mode=3`
+> input-candidate search did not select the `_mindR_0_02` file at the time of the
+> 06-10 crossx run (the mindR_0_02 ntuple was produced 06-10 21:53; the crossx output
+> predates/does not match it). **Consequence:** the 06-10 pp crossx **and the 06-19
+> R_AA pp reference used the old April-2025 pp skim** (the pp trigger-efficiency fits,
+> on `_mindR_0_02_res_cut_v2`, were on the new skim — so the pp crossx mixed new-skim
+> trigger weights with old-skim yield). **Fixed 2026-06-22:** the ΔR-removal rerun now
+> reads the May-2026 `_mindR_0_02.root` (788579 no-dr) — current pp crossx/R_AA are on
+> the new skim. PbPb used `_mindR_0_02_res_cut_v2` throughout (correct). The DONE marks
+> in the table below for pp crossx (06-10) therefore reflected the OLD skim.
+
 ## PP Analysis Status (pp 2024)
 
 | Step | Pipeline | Status | Last Run | Notes |
@@ -61,6 +78,33 @@ pipelines complete.
 | `plotting_codes/draw_single_b_statistics_pp_PbPb_23_24_combined.cxx` | Combined pair pT distributions | PbPb + pp24 outputs |
 
 ## Latest Update
+
+2026-06-22: **ΔR>0.05 signal-selection cut REMOVED (interim nominal).** It was a
+stats workaround for the data-based dR trigger-efficiency inverse-weighting (not a
+physics requirement) and biased the high-pair-pT signal acceptance (α dropped
+0.72→0.38 by pT≈100 GeV as the single-b muons collimate below ΔR=0.05). Removed
+from all active signal-region/`pass_signal`/template/cutflow definitions (PP/PbPb/
+PythiaTruth ×2/Powheg/fullsim/overlay) and the ΔR diagnostic 2D-axis floors moved
+0.05→0.0. Data crossx (pp + pbpb 23/24/25) + pythia truth refilled; crossx/R_AA/
+acceptance/cutflow replotted. `/review-analysis-code` + `/review-plot` PASS.
+Effect: truth acceptance now flat ~0.72 across pT (fix validated); data inclusive
+≈unchanged (~0.1%), high-pair-pT yield +13–27%. The dR trigger correction is moving
+to MC; whether any ΔR cut is needed is decided then. Full rerun blast-radius map:
+`docs/signal_selection_change_impact.md` (new must-read repo doc, registered in
+CLAUDE.md/analysis_overview/README). Tracking: `remove_dr_cut_signal_selection.md`.
+Changes uncommitted, awaiting user go-ahead.
+
+---
+
+2026-06-21: **Low-mass template-fit input histos added to crossx RDF (pp + all PbPb years).**
+New OS+SS minv histograms over 0–4 GeV with the dimuon mass window REMOVED (other
+single-b cuts kept), dσ-weighted (reco+trig): `h1d_crossx_minv_0_4_{op,ss}_dsigma`
+(pp) and `..._dsigma_<ctr>` (PbPb per centrality). Crossx RDF reran for all 4 datasets.
+These are the D_OS/D_SS inputs for the low-mass dimuon template fit
+(`docs/tracking/low_mass_dimuon_template_fit.md`). Note: OS muon-pair tree is
+resonance-vetoed (OS-only), SS is not — see that doc's Results & Observations.
+
+---
 
 2026-06-19: **PbPb 2023 luminosity corrected (wrong/old GRL) + two b-hadron runs
 subtracted from the R_AA luminosity.** The 2023 `mu4` lumi table was re-exported

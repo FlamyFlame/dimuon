@@ -19,7 +19,9 @@ MC JIRAs ATLHI-658, ATLHI-596, ATLHI-666).
 **The measurement (as implemented in this repo):** single-b dimuon
 analysis at √s_NN = 5.36 TeV — opposite-sign muon pairs from the same
 b-decay chain (B → μμX via b→μ + b→c→μ; signal region truth-side:
-minv ∈ [1.08, 2.9] GeV, pair pT > 8 GeV, |pair η| < 2.2, dR > 0.05) —
+minv ∈ [1.08, 2.9] GeV, pair pT > 8 GeV, |pair η| < 2.2, NO ΔR cut
+[former ΔR>0.05 removed 2026-06-22, interim nominal — see
+`docs/tracking/remove_dr_cut_signal_selection.md`]) —
 differential cross-sections in pp24 and PbPb 23/24/25 vs (pair pT,
 pair η, centrality), and R_AA. *(Whether a Δφ-correlation/width
 measurement à la Run 2 is also in scope is an open question for the
@@ -49,9 +51,9 @@ numbers/figures; **BLOCKED** = see Q4.
 | 11 | MC truth studies (muon sources analog): Pythia flavor/origin, Powheg ancestor groups | **READY** | Pythia truth 5.36/5.02 + Powheg truth bb/cc processed, plots exist |
 | 12 | Reco efficiency (PbPb overlay + pp fullsim) | BLOCKED (Q4) | Method settled; pair ε_reco(pair pT, pair η, dR). Index-mapping/HIJING bugs fixed; residual low-pT overlay deficit shown PHYSICAL (see investigation Step 23–24). Still test samples only → placeholder figures |
 | 13 | Detector response / momentum imbalance | BLOCKED (Q4) | Now from **Pythia fullsim** (pp24 + overlay); pp17 Powheg det-resp kept as method demo only (Powheg fullsim obsolete). Full Pythia fullsim samples needed |
-| 14 | Cross-sections (pp24, PbPb combined) | DRAFT+PH | Plots exist on May skim (PbPb 2026-06-08, pp24 2026-06-10) **with no-correlation trigger-efficiency correction applied**; still **missing reco-eff correction** + confirmed lumi/T_AA (esp. PbPb25) — preliminary |
-| 15 | R_AA | DRAFT+PH | `RAA_plotting.cxx` exists; needs corrected crossx + 2025 lumi/T_AA |
-| 16 | Background / fake-muon purity (Δp/p templates) | BLOCKED (Q4) | No code yet; method from Run 2 note §DpopAna |
+| 14 | Cross-sections (pp24, PbPb combined) | DRAFT+PH | Plots exist on May skim (PbPb 2026-06-08, pp24 2026-06-10) **with no-correlation trigger-efficiency correction applied**; still **missing reco-eff correction** + confirmed lumi/T_AA (esp. PbPb25) — preliminary. **Background subtraction is `OS − SS` (PROVISIONAL** — combinatoric only; correlated-physics bkg removal pending step 16) |
+| 15 | R_AA | DRAFT+PH | `RAA_plotting.cxx` exists; needs corrected crossx + 2025 lumi/T_AA. **Uses provisional `OS − SS`** (combinatoric only) — to be replaced by the step-16 template-fit + acceptance program |
+| 16 | Background subtraction (full program): (a) Δp/p fake-muon purity, (b) correlated-physics (g→QQ̄ / FE) **minv template fit** with mixed-event combinatorial + **SS-anchored G normalization** (k=G_SS/G_OS), (c) signal acceptance | BLOCKED (Q4) | Δp/p method from Run 2 note §DpopAna; the minv template-fit program is tracked in `low_mass_dimuon_template_fit.md` (Step 2 in progress). **NOTE: the current crossx/R_AA `OS − SS` subtraction (steps 14/15) is PROVISIONAL** — it removes only combinatoric, leaving `(1−k)·G`; it is replaced by this program |
 | 17 | Systematics | DRAFT+PH (list only) | Source list adaptable from Run 2; no evaluations yet |
 | 18 | Results / Summary | BLOCKED | Needs corrected results |
 
@@ -256,13 +258,20 @@ column of the roadmap.
         │
         ▼
  [6] Cross-sections: pp24 + PbPb (combined years) → rerun in task_05
+       (background subtraction = OS−SS, PROVISIONAL — combinatoric only)
         │
         ▼
  [7] R_AA (needs 2025 lumi/T_AA from user) → task_06
+       (provisional OS−SS; superseded by [8])
         │
         ▼
- [8] Purity: Δp/p significance template fits (framework now, dummy
-       templates) → task_07
+ [8] Background subtraction (full program) — REPLACES OS−SS:
+       (a) Δp/p fake purity (task_07) +
+       (b) correlated-physics minv template fit (mixed-event combinatoric,
+           SS-anchored G normalization via k=G_SS/G_OS) +
+       (c) signal acceptance, applied to the fitted signal yield
+       → `low_mass_dimuon_template_fit.md` (Step 2 in progress; awaiting
+         user approval for the acceptance + R_AA-integration steps)
         │
         ▼
  [9] Systematics framework (variations: WP, eff ±1σ, binning, fit
@@ -312,4 +321,6 @@ Immediately startable in parallel: **04, 07** (and **09** for note text).
 | 2026-06-18 | **PbPb reco placeholder → colleague's exact Run 2 Medium fits** | Replaced eyeball F.2 arrays in `run2_reco_eff_placeholder.root` with dense samples of `MuonRecoEffcyRun2MC_medium.root::tf1_eff_fit_cent{C}_eta{E}` (ctr map {12,13,4,5,6,7,8}, q·η slice i↔eta{i}); same 63 graph names ⇒ no lookup change. Builder `/review-analysis-code` PASS; PbPb crossx RDF (23/24/25)+crossx/R_AA/stage plots reran, `/review-plot` PASS. dσ shifts ctr0_5 +4.2%/ctr30_50 −5.6%/ctr50_80 −4.3%; reco/raw 1.43–1.81. pp unchanged. Tracking `reco_eff_placeholder_run2.md` Step 11 |
 | 2026-06-16 | **Year-combination normalization FIXED** (crossx + R_AA) | Switched to luminosity-weighted average `Σ(L_y·h_y)/ΣL_y` (HF R_AA note HION-2019-58 §4.1 Eq.3) via single-source `Utilities/PbPbSampledLumi.h` (2023=1.02426, 2024=1.59663, 2025=2.59933 nb⁻¹). Applied in R_AA `HistRetrieve`, crossx combined plotter `GetHistObject` (`_counts`=simple sum), and the before/after stage plotter. `/review-analysis-code` + `/review-plot` PASS. **R_AA scale now physical (~0.1–0.9; was ~1.5–2.5).** Remaining R_AA-scale caveats: 2023 T_AA placeholder, σ_PbPb 5.36 TeV guess, Run 2 reco placeholder |
 | 2026-06-19 | **PbPb 2024 lumi GRL correction** | 1.59663→0.85112 nb⁻¹ (GRL ≥489703; old GRL over-counted, events already correct). PbPbBaseClass.h + PbPbSampledLumi.h + docs; 2024 crossx refilled; combined R_AA ×1.17. `/review-analysis-code` + `/review-plot` PASS. Tracking `raa_from_rdf_crossx.md`. |
+| 2026-06-21 | **OS−SS marked PROVISIONAL; background program expanded (step 16)** | Clarified that the crossx/R_AA `OS − SS` (task_06) removes combinatoric ONLY and leaves correlated-physics bkg `(1−k)·G`; it is a first-look baby-step. Step 16 expanded from Δp/p-only to the full program: Δp/p fake purity + correlated-physics **minv template fit** (mixed-event combinatoric, **SS-anchored G normalization** via k=G_SS/G_OS) + **signal acceptance** applied to the fitted yield. Correction ordering fixed: origin-blind eff+unfolding BEFORE the fit; acceptance AFTER. Tracked in `low_mass_dimuon_template_fit.md` (scope-extended same day). **Planning only — awaiting user approval to implement.** |
+| 2026-06-22 | **ΔR>0.05 signal cut REMOVED** (interim nominal) | Removed from all active signal-region/pass_signal/template/cutflow defs (PP/PbPb/PythiaTruth×2/Powheg/fullsim/overlay) + ΔR diagnostic 2D-axis floors 0.05→0.0. Reran data crossx pp+pbpb 23/24/25 + pythia truth; replotted crossx/R_AA/acceptance/cutflow. `/review-analysis-code` + `/review-plot` PASS. Truth acceptance flattened (α 0.38→0.72 at pT>100; ΔR-collimation loss gone); data inclusive ~unchanged, high-pT +13–27%. Was a data-trigger-eff stats workaround; dR trig corr moving to MC. Tracking `remove_dr_cut_signal_selection.md`; impact map `signal_selection_change_impact.md` (new repo doc). |
 | 2026-06-19 | **PbPb 2023 lumi GRL correction + b-hadron-run subtraction** | 1.02426→1.17576 nb⁻¹ (correct-GRL v120 total 1.18365 nb⁻¹ minus the two b-hadron runs 461674+462964, both already excluded at event level via PbPbBadRuns). PbPbBaseClass.h (6 factors) + PbPbSampledLumi.h case 23 + docs (metadata, lumi README, datasets.tex, roadmap, status); 2023 crossx refilled. `/review-analysis-code` PASS. Combined R_AA × 0.967 (ΣL 4.475→4.626 nb⁻¹). Tracking `raa_from_rdf_crossx.md`. |

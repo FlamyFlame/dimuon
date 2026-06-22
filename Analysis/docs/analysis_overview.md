@@ -45,12 +45,22 @@ pair has characteristically **low invariant mass** and **small opening angle**.
 - opposite-sign (OS) muon pair,
 - m_μμ ∈ **[1.08, 2.9] GeV**,
 - pair p_T > **8 GeV**,
-- |pair η| < **2.2**,
-- ΔR(μ,μ) > **0.05**.
+- |pair η| < **2.2** (per-muon q·η, one-sided).
+- **No ΔR cut.** *(A former ΔR(μ,μ) > 0.05 cut was removed 2026-06-22 — interim
+  nominal. It was a stats workaround for the data-based dR trigger-efficiency
+  inverse-weighting, not a physics requirement, and it biased the high-pair-pT
+  signal acceptance, α dropping ~0.72→0.38 by p_T≈100 GeV as the muons collimate
+  below ΔR=0.05; removing it flattens α to ~0.72. The dR trigger correction is
+  moving to MC; whether any ΔR cut is needed is decided once that MC exists. See
+  `docs/tracking/remove_dr_cut_signal_selection.md`.)*
 
 This single-b topology is what distinguishes the signal from the dominant
 heavy-flavour background where the two muons come from **two different** heavy
 quarks (see §6).
+
+> **Changing this selection?** Any add/remove/value change to a cut here (incl.
+> selection systematics) has a wide rerun blast radius. **Before editing, read
+> `docs/signal_selection_change_impact.md`** (the full recompile→rerun→replot map).
 
 ## 3. Final observables & physics questions
 

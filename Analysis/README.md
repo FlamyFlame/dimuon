@@ -35,6 +35,11 @@ Analysis/
 +-- ScrambGen/              Scrambled generator utilities
 ```
 
+> **Before changing any single-b signal-selection cut** (minv, pair pT, q·η, ΔR,
+> … — including systematics), read **`docs/signal_selection_change_impact.md`**:
+> the full recompile→rerun-hist-filling→replot blast radius. The signal region is
+> defined in `docs/analysis_overview.md` §2.
+
 ## Three-stage analysis pattern
 
 Every analysis pipeline follows the same three stages:
