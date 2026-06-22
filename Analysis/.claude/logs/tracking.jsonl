@@ -69,3 +69,11 @@
 {"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-20T03:23:14Z","criticals":0,"warnings":0,"slug":"pbpb-2023-lumi-crossx-raa"}
 {"event":"start","command":"review-analysis-code","task":"qeta per-muon cut fix (FIX A mislabels + FIX B fullsim pair_eta->q*eta)","slug":"qeta-permuon-cut-fix","timestamp":"2026-06-20T03:58:54Z"}
 {"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-20T04:06:17Z","criticals":0,"warnings":0,"slug":"qeta-permuon-cut-fix"}
+{"event":"start","command":"review-analysis-code","task":"Add OS/SS minv 0-4 GeV no-mass-cut crossx histos to PP+PbPb RDF for low-mass dimuon template fit","slug":"low-mass-minv-os-ss","timestamp":"2026-06-22T03:51:15Z"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-22T04:20:00Z","criticals":0,"warnings":0,"slug":"low-mass-minv-os-ss"}
+{"event":"start","command":"review-analysis-code","task":"remove dr>0.05 from single-b signal selection + extend dR axis floors to 0","slug":"remove-dr-signal-cut","timestamp":"2026-06-22T05:02:21Z"}
+{"event":"start","command":"review-analysis-code","task":"Add 1D Pythia-truth minv templates per category OS+SS with matching kinematic selection (sigsel)","slug":"truth-minv-templates-sigsel","timestamp":"2026-06-22T05:15:02Z"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":2,"timestamp":"2026-06-22T05:25:00Z","criticals":0,"warnings":0,"slug":"remove-dr-signal-cut"}
+{"event":"start","command":"review-plot","task":"dr-cut-removal replots: acceptance/cutflow/crossx/RAA","slug":"dr-cut-removal-replots","timestamp":"2026-06-22T05:35:39Z"}
+{"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-22T05:40:23Z","criticals":0,"warnings":0,"slug":"dr-cut-removal-replots"}
+{"event":"end","command":"review-analysis-code","status":"subsumed","iterations":0,"timestamp":"2026-06-22T05:45:00Z","criticals":0,"warnings":0,"slug":"truth-minv-templates-sigsel","note":"reviewed-by-proxy via remove_dr_cut_signal_selection sweep"}

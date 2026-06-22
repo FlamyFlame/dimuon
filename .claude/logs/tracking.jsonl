@@ -47,3 +47,9 @@
 {"event":"end","command":"review-plugin","status":"approved","iterations":2,"timestamp":"2026-06-21T17:32:18Z","criticals":0,"warnings":0,"slug":"physics-results-review-criteria"}
 {"event":"start","command":"review-analysis-code","task":"trig-fit TFormula persistence + exact-pt eval","slug":"trig-fit-tformula-persist","timestamp":"2026-06-21T20:48:24Z"}
 {"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-21T20:56:37Z","criticals":0,"warnings":0,"slug":"trig-fit-tformula-persist"}
+{"event":"start","command":"kb-build","mode":"ADD","task":"Add OS/SS charge-structure physics (signal vs HF backgrounds, k=G_SS/G_OS) to KB","slug":"os-ss-charge-structure","timestamp":"2026-06-22T04:10:44Z"}
+{"event":"end","command":"kb-build","mode":"ADD","docs":2,"timestamp":"2026-06-22T04:12:38Z","slug":"os-ss-charge-structure"}
+{"event":"start","command":"kb-review","mode":"SINGLE","slug":"os-ss-charge-structure","timestamp":"2026-06-22T04:17:40Z"}
+{"event":"end","command":"kb-review","mode":"SINGLE","status":"approved","iterations":2,"timestamp":"2026-06-22T04:25:47Z","slug":"os-ss-charge-structure"}
+{"event":"start","command":"kb-review","mode":"SINGLE","slug":"os-ss-empirical-k","timestamp":"2026-06-22T05:54:06Z"}
+{"event":"end","command":"kb-review","mode":"SINGLE","status":"approved","iterations":1,"timestamp":"2026-06-22T05:56:05Z","slug":"os-ss-empirical-k"}
