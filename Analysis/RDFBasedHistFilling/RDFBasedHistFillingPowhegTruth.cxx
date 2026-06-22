@@ -155,7 +155,7 @@ void RDFBasedHistFillingPowhegTruth::FillHistogramsSignalAcceptance(){
 
 		const std::string signal_cuts =
 			"from_same_b && truth_minv > 1.08 && truth_minv < 2.9 "
-			"&& truth_pair_pt > 8 && m1.truth_charge * m1.truth_eta < 2.2 && m2.truth_charge * m2.truth_eta < 2.2 && truth_dr > 0.05";
+			"&& truth_pair_pt > 8 && m1.truth_charge * m1.truth_eta < 2.2 && m2.truth_charge * m2.truth_eta < 2.2";
 
 		auto df_denom = df_op.Filter("from_same_b");
 		auto df_num   = df_op.Filter(signal_cuts);

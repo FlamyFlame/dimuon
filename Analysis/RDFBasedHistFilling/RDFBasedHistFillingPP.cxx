@@ -379,7 +379,7 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
               << "crossx_weight = weight * " << pp_crossx_lumi_factor
               << " (1/L_int), with 2mu4 trig eff correction" << std::endl;
 
-    const std::string signal_cuts = "minv > 1.08 && minv < 2.9 && pair_pt > 8 && m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2 && dr > 0.05";
+    const std::string signal_cuts = "minv > 1.08 && minv < 2.9 && pair_pt > 8 && m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2";
 
     ROOT::RDF::RNode df_op_base = map_at_checked(df_map, "df_op", "FillHistogramsCrossx: df_op");
     ROOT::RDF::RNode df_single_b_crossx = df_op_base.Filter(signal_cuts);
@@ -420,7 +420,12 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
     const double lumi_factor = pp_crossx_lumi_factor;
     ROOT::RDF::RNode df_single_b_crossx_weighted =
         df_with_trig
-        .Define("w_unfold", "1.0")  // PLACEHOLDER: unfolding identity until det-response unfolding lands (roadmap Q4)
+        // PLACEHOLDER: unfolding identity until det-response unfolding lands (roadmap Q4).
+        // NOTE: real unfolding is NOT a per-pair weight — it is a SPECTRUM-LEVEL
+        // operation (response matrix / iterative Bayes on the histogram). Implementing
+        // it requires a STRUCTURAL change (unfold the trigger-corrected reco spectrum,
+        // THEN apply reco-eff binned in TRUTH kinematics), not just replacing this 1.0.
+        .Define("w_unfold", "1.0")
         // Base crossx weight (lumi-scaled, no efficiency) and the sequential
         // correction-stage weights (see CorrectionStages.h).
         .Define("crossx_weight",
@@ -454,7 +459,7 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
     };
     const auto eta_edges  = make_unif_edges(44, -2.4,  2.4);
     const auto minv_edges = make_unif_edges(50,  1.0,  3.0);
-    const auto dr_edges   = make_unif_edges(50,  0.05, 1.0);
+    const auto dr_edges   = make_unif_edges(50,  0.0, 1.0);
 
     hist2d_rresultptr_map["h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts"] = df_single_b_crossx_weighted.Histo2D(
         ROOT::RDF::TH2DModel("h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, 44, -2.4, 2.4),
@@ -516,7 +521,7 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         ROOT::RDF::TH2DModel("h2d_crossx_pair_pt_minv_w_signal_cuts", ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", npt, ptbins, 50, 1.0, 3.0),
         "pair_pt", "minv", "crossx_weight_trig_corr");
     hist2d_rresultptr_map["h2d_crossx_pair_pt_dr_w_signal_cuts"] = df_single_b_crossx_weighted.Histo2D(
-        ROOT::RDF::TH2DModel("h2d_crossx_pair_pt_dr_w_signal_cuts", ";p_{T}^{pair} [GeV];#DeltaR", npt, ptbins, 50, 0.05, 1.0),
+        ROOT::RDF::TH2DModel("h2d_crossx_pair_pt_dr_w_signal_cuts", ";p_{T}^{pair} [GeV];#DeltaR", npt, ptbins, 50, 0.0, 1.0),
         "pair_pt", "dr", "crossx_weight_trig_corr");
 
     hist3d_rresultptr_map["h3d_crossx_minv_vs_pair_eta_vs_pair_pt_w_signal_cuts"] = df_single_b_crossx_weighted.Histo3D(
@@ -531,7 +536,7 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         const int    npt150    = (int)(pms.pT_bins_150.size() - 1);
         const double* ptbins150 = pms.pT_bins_150.data();
         const auto eta_edges150 = make_unif_edges(44, -2.4, 2.4);
-        const auto dr_edges150  = make_unif_edges(50, 0.05, 1.0);
+        const auto dr_edges150  = make_unif_edges(50, 0.0, 1.0);
 
         hist2d_rresultptr_map["h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts"] = df_single_b_crossx_weighted.Histo2D(
             ROOT::RDF::TH2DModel("h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair}", npt150, ptbins150, 44, -2.4, 2.4),
@@ -539,6 +544,61 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         hist3d_rresultptr_map["h3d_crossx_dr_vs_pair_eta_vs_pt_150_w_signal_cuts"] = df_single_b_crossx_weighted.Histo3D(
             ROOT::RDF::TH3DModel("h3d_crossx_dr_vs_pair_eta_vs_pt_150_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt150, ptbins150, 44, eta_edges150.data(), 50, dr_edges150.data()),
             "pair_pt", "pair_eta", "dr", "crossx_weight_trig_corr");
+    }
+
+    // --- Low-mass dimuon template-fit inputs (docs/tracking/low_mass_dimuon_template_fit.md,
+    // Physics Procedure §2,§3a,§4): OS and SS minv over 0–4 GeV with the dimuon
+    // mass window REMOVED (all other single-b cuts kept). Crossx-normalized (1/L_pp)
+    // and reco+trig corrected (crossx_weight_trig_corr), IDENTICAL selection/binning/
+    // weight for OS and SS so D_OS - D_SS is a clean combinatoric subtraction.
+    {
+        // signal_cuts MINUS the two minv-window conditions; everything else identical.
+        const std::string signal_cuts_no_minv =
+            "pair_pt > 8 && m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2";
+
+        // Attach the trig+reco+crossx weight chain to a node filtered WITHOUT the
+        // minv window. If FillHistogramsGeneric ran, it added w_trig/w_reco to
+        // df_op/df_ss before any filter, so they propagate through this filter —
+        // reuse them; else define inline exactly as the OS/SS crossx blocks above do.
+        auto attach_crossx_weight = [&](ROOT::RDF::RNode node) -> ROOT::RDF::RNode {
+            ROOT::RDF::RNode n = generic_weight_col.empty()
+                ? node
+                    .Define("q_eta1", "(float)(m1.charge * m1.eta)")
+                    .Define("q_eta2", "(float)(m2.charge * m2.eta)")
+                    .Define("effcy1", [](int q, float pt, float qe) {
+                        return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe);
+                    }, {"m1.charge", "m1.pt", "q_eta1"})
+                    .Define("effcy2", [](int q, float pt, float qe) {
+                        return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe);
+                    }, {"m2.charge", "m2.pt", "q_eta2"})
+                    .Define("effcy_pair", "effcy1 > 0 && effcy2 > 0 ? (double)(effcy1 * effcy2) : -1.0")
+                    .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
+                    .Define("effcy_reco1", [](float pt, float qe) {
+                        return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe);
+                    }, {"m1.pt", "q_eta1"})
+                    .Define("effcy_reco2", [](float pt, float qe) {
+                        return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe);
+                    }, {"m2.pt", "q_eta2"})
+                    .Define("effcy_reco_pair", "effcy_reco1 > 0 && effcy_reco2 > 0 ? (double)(effcy_reco1 * effcy_reco2) : -1.0")
+                    .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / (effcy_reco_pair < 0.05 ? 0.05 : effcy_reco_pair) : 1.0")
+                : node;
+            return n
+                .Define("crossx_weight",
+                    [lumi_factor](double weight){ return weight * lumi_factor; }, {"weight"})
+                .Define("crossx_weight_trig_corr", "crossx_weight * w_reco * w_trig");
+        };
+
+        ROOT::RDF::RNode df_op_no_minv = attach_crossx_weight(
+            map_at_checked(df_map, "df_op", "FillHistogramsCrossx PP: df_op (no-minv)").Filter(signal_cuts_no_minv));
+        ROOT::RDF::RNode df_ss_no_minv = attach_crossx_weight(
+            map_at_checked(df_map, "df_ss", "FillHistogramsCrossx PP: df_ss (no-minv)").Filter(signal_cuts_no_minv));
+
+        hist1d_rresultptr_map["h1d_crossx_minv_0_4_op_dsigma"] = df_op_no_minv.Histo1D(
+            ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_op_dsigma", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [nb GeV^{-1}]", 50, 0.0, 4.0),
+            "minv", "crossx_weight_trig_corr");
+        hist1d_rresultptr_map["h1d_crossx_minv_0_4_ss_dsigma"] = df_ss_no_minv.Histo1D(
+            ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_ss_dsigma", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [nb GeV^{-1}]", 50, 0.0, 4.0),
+            "minv", "crossx_weight_trig_corr");
     }
 
     std::cout << "[PP] FillHistogramsCrossx completed" << std::endl;

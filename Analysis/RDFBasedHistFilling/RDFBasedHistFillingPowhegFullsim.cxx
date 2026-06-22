@@ -182,8 +182,8 @@ void RDFBasedHistFillingPowhegFullsim::CreateBaseRDFsPowhegFullsimExtra(){
         ROOT::RDF::RNode& node = map_at_checked(df_map, df_name + "_weighted", Form("CreateBaseRDFsPowhegFullsimExtra: df_map.at(%s)", (df_name + "_weighted").c_str()));
 
         auto node_with_signal = node
-            .Define("pass_signal_truth", "truth_minv > 1.08 && truth_minv < 2.9 && truth_pair_pt > 8 && m1.truth_charge * m1.truth_eta < 2.2 && m2.truth_charge * m2.truth_eta < 2.2 && truth_dr > 0.05")
-            .Define("pass_signal_reco", "(m1.reco_match && m2.reco_match) ? (minv > 1.08 && minv < 2.9 && pair_pt > 8 && m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2 && dr > 0.05) : false");
+            .Define("pass_signal_truth", "truth_minv > 1.08 && truth_minv < 2.9 && truth_pair_pt > 8 && m1.truth_charge * m1.truth_eta < 2.2 && m2.truth_charge * m2.truth_eta < 2.2")
+            .Define("pass_signal_reco", "(m1.reco_match && m2.reco_match) ? (minv > 1.08 && minv < 2.9 && pair_pt > 8 && m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2) : false");
 
         df_map.emplace(df_name + "_pass_medium_weighted" , node_with_signal.Filter("pair_pass_medium"));
         df_map.emplace(df_name + "_pass_tight_weighted"  , node_with_signal.Filter("pair_pass_tight"));

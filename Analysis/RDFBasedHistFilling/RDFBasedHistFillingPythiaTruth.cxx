@@ -212,6 +212,7 @@ void RDFBasedHistFillingPythiaTruth::FillHistogramsTruth(){
     FillHistogramsGeneral();
     FillHistogramsFlavorBinned();
     FillHistogramsOriginBinned();
+    FillHistogramsTemplateMinvSignalRegion();
     FillHistogramsResonanceStudy();
     FillHistogramsCrossxAndSpecialEta();
     FillHistogramsSignalAcceptance();
@@ -304,6 +305,55 @@ void RDFBasedHistFillingPythiaTruth::FillHistogramsOriginBinned(){
     }
     catch (const std::exception& e) {
         std::cerr << "FillHistogramsOriginBinned: " << e.what() << std::endl;
+        throw;
+    }
+}
+
+// 1D truth minv TEMPLATES for the low-mass dimuon template fit
+// (docs/tracking/low_mass_dimuon_template_fit.md §3b,§4). Mirrors
+// FillHistogramsFlavorBinned/OriginBinned but (a) applies the single-b kinematic
+// selection on TRUTH columns matching the data signal region MINUS the minv window
+// (so the templates match the efficiency-corrected data spectra D_OS/D_SS), and
+// (b) fills ONLY 1D minv_zoomin (0–4 GeV). Suffix `_sigsel` keeps these distinct
+// from the existing kinematically-inclusive per-category fills (which are 2D and
+// have no kinematic cut). Categories: flavor `_single_b`=signal, `_bb`/`_cc`/
+// `_one_b_one_c`=gluon-splitting/open-HF; origin `_FC` vs `_gs_*`/`_GS_*`.
+void RDFBasedHistFillingPythiaTruth::FillHistogramsTemplateMinvSignalRegion(){
+    try {
+        // Truth single-b kinematic region = data signal_cuts MINUS the minv window
+        // (matched on truth columns; NO ΔR cut — removed, interim nominal). No
+        // from_same_b — every category.
+        const std::string kin_cuts =
+            "truth_pair_pt > 8 && m1.truth_charge * m1.truth_eta < 2.2 "
+            "&& m2.truth_charge * m2.truth_eta < 2.2";
+        const std::vector<std::string> minv_template_var = {"minv_zoomin"};
+
+        const std::vector<std::pair<std::string, std::string>> sign_df_map = {
+            {"_sign1", "df_ss_weighted"},
+            {"_sign2", "df_op_weighted"}
+        };
+
+        for (const auto& [sign_suffix, df_name] : sign_df_map){
+            ROOT::RDF::RNode node =
+                map_at_checked(df_map, df_name, "FillHistogramsTemplateMinvSignalRegion").Filter(kin_cuts);
+
+            for (const auto& [iflavor, flavor_suffix] : flavor_suffix_map){
+                const std::string filter_expr = "muon_pair_flavor_category == " + std::to_string(iflavor);
+                const std::string suffix = sign_suffix + flavor_suffix + "_sigsel";
+                auto node_flavor = node.Filter(filter_expr);
+                FillHistogramsSingleDataFrame(suffix, node_flavor, "weight", minv_template_var, {}, {});
+            }
+
+            for (const auto& [iorigin, origin_suffix] : origin_suffix_map){
+                const std::string filter_expr = "muon_pair_origin_category == " + std::to_string(iorigin);
+                const std::string suffix = sign_suffix + origin_suffix + "_sigsel";
+                auto node_origin = node.Filter(filter_expr);
+                FillHistogramsSingleDataFrame(suffix, node_origin, "weight", minv_template_var, {}, {});
+            }
+        }
+    }
+    catch (const std::exception& e) {
+        std::cerr << "FillHistogramsTemplateMinvSignalRegion: " << e.what() << std::endl;
         throw;
     }
 }
@@ -409,7 +459,7 @@ void RDFBasedHistFillingPythiaTruth::FillHistogramsSignalAcceptance(){
 
         const std::string signal_cuts =
             "from_same_b && truth_minv > 1.08 && truth_minv < 2.9 "
-            "&& truth_pair_pt > 8 && m1.truth_charge * m1.truth_eta < 2.2 && m2.truth_charge * m2.truth_eta < 2.2 && truth_dr > 0.05";
+            "&& truth_pair_pt > 8 && m1.truth_charge * m1.truth_eta < 2.2 && m2.truth_charge * m2.truth_eta < 2.2";
 
         auto df_denom = df_op.Filter("from_same_b");
         auto df_num   = df_op.Filter(signal_cuts);

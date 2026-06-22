@@ -84,6 +84,7 @@ protected:
     void FillHistogramsGeneral();
     void FillHistogramsFlavorBinned();
     void FillHistogramsOriginBinned();
+    void FillHistogramsTemplateMinvSignalRegion();
     void FillHistogramsResonanceStudy();
     void FillHistogramsCrossxAndSpecialEta();
     void FillHistogramsSignalAcceptance();

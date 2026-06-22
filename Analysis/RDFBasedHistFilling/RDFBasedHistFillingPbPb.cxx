@@ -917,7 +917,7 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
     OpenEffcyPtFitFile();
     OpenRecoEffPlaceholderFile();  // Run 2 reco-eff PLACEHOLDER (eps1*eps2 proxy, per-centrality)
 
-    const std::string signal_cuts = "minv > 1.08 && minv < 2.9 && pair_pt > 8 && m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2 && dr > 0.05";
+    const std::string signal_cuts = "minv > 1.08 && minv < 2.9 && pair_pt > 8 && m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2";
 
     ROOT::RDF::RNode df_op_base = map_at_checked(df_map, "df_op", "FillHistogramsCrossx PbPb: df_op");
     ROOT::RDF::RNode df_single_b_crossx = df_op_base.Filter(signal_cuts);
@@ -952,7 +952,12 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
         }, {"avg_centrality", "m2.pt", "q_eta2"})
         .Define("effcy_reco_pair", "effcy_reco1 > 0 && effcy_reco2 > 0 ? (double)(effcy_reco1 * effcy_reco2) : -1.0")
         .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / (effcy_reco_pair < 0.05 ? 0.05 : effcy_reco_pair) : 1.0")
-        .Define("w_unfold", "1.0");  // PLACEHOLDER: unfolding identity until det-response unfolding lands (roadmap Q4)
+        // PLACEHOLDER: unfolding identity until det-response unfolding lands (roadmap Q4).
+        // NOTE: real unfolding is NOT a per-pair weight — it is a SPECTRUM-LEVEL
+        // operation (response matrix / iterative Bayes on the histogram). Implementing
+        // it requires a STRUCTURAL change (unfold the trigger-corrected reco spectrum,
+        // THEN apply reco-eff binned in TRUTH kinematics), not just replacing this 1.0.
+        .Define("w_unfold", "1.0");
 
     // Per-year differential-cross-section luminosity factor 1/L_year [nb] (L in nb^-1).
     const double dsigma_lumi_factor = 1.0 / PbPbMu4SampledLumiNb(run_year);
@@ -997,7 +1002,7 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
     };
     const auto eta_edges  = make_unif_edges(44, -2.4,  2.4);
     const auto minv_edges = make_unif_edges(50,  1.0,  3.0);
-    const auto dr_edges   = make_unif_edges(50,  0.05, 1.0);
+    const auto dr_edges   = make_unif_edges(50,  0.0, 1.0);
 
     // Store 3D global histogram as RResultPtr (will be evaluated during HistPostProcess)
     {
@@ -1070,7 +1075,7 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
 
         const std::string h2_dr_name = "h2d_crossx_pair_pt_dr_w_signal_cuts_" + ctr;
         hist2d_rresultptr_map[h2_dr_name] = df_crossx_ctr.Histo2D(
-            ROOT::RDF::TH2DModel(h2_dr_name.c_str(), ";p_{T}^{pair} [GeV];#DeltaR", npt, ptbins, 50, 0.05, 1.0),
+            ROOT::RDF::TH2DModel(h2_dr_name.c_str(), ";p_{T}^{pair} [GeV];#DeltaR", npt, ptbins, 50, 0.0, 1.0),
             "pair_pt", "dr", "weight_for_RAA_trig_corr");
 
         // --- Version 1b: GENUINE differential cross-section d^2sigma/.. [nb/GeV]
@@ -1086,7 +1091,7 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
             "pair_pt", "minv", "weight_for_dsigma_trig_corr");
         const std::string h2_dr_dsig = "h2d_crossx_pair_pt_dr_dsigma_" + ctr;
         hist2d_rresultptr_map[h2_dr_dsig] = df_crossx_ctr.Histo2D(
-            ROOT::RDF::TH2DModel(h2_dr_dsig.c_str(), ";p_{T}^{pair} [GeV];#DeltaR", npt, ptbins, 50, 0.05, 1.0),
+            ROOT::RDF::TH2DModel(h2_dr_dsig.c_str(), ";p_{T}^{pair} [GeV];#DeltaR", npt, ptbins, 50, 0.0, 1.0),
             "pair_pt", "dr", "weight_for_dsigma_trig_corr");
 
         const std::string h3_minv_name = "h3d_crossx_minv_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr;
@@ -1133,7 +1138,7 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
 
         const std::string h2_dr_cnt = "h2d_crossx_pair_pt_dr_w_signal_cuts_" + ctr + "_counts";
         hist2d_rresultptr_map[h2_dr_cnt] = df_crossx_ctr.Histo2D(
-            ROOT::RDF::TH2DModel(h2_dr_cnt.c_str(), ";p_{T}^{pair} [GeV];#DeltaR;N_{events}", npt, ptbins, 50, 0.05, 1.0),
+            ROOT::RDF::TH2DModel(h2_dr_cnt.c_str(), ";p_{T}^{pair} [GeV];#DeltaR;N_{events}", npt, ptbins, 50, 0.0, 1.0),
             "pair_pt", "dr", "weight");
 
         const std::string h3_minv_cnt = "h3d_crossx_minv_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr + "_counts";
@@ -1151,7 +1156,7 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
             const int    npt150    = (int)(pms.pT_bins_150.size() - 1);
             const double* ptbins150 = pms.pT_bins_150.data();
             const auto eta_edges150 = make_unif_edges(44, -2.4, 2.4);
-            const auto dr_edges150  = make_unif_edges(50, 0.05, 1.0);
+            const auto dr_edges150  = make_unif_edges(50, 0.0, 1.0);
 
             const std::string h2_eta_150 = "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pt_150_" + ctr;
             hist2d_rresultptr_map[h2_eta_150] = df_crossx_ctr.Histo2D(
@@ -1180,6 +1185,70 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
             hist3d_rresultptr_map[h3_dr_150_cnt] = df_crossx_ctr.Histo3D(
                 ROOT::RDF::TH3DModel(h3_dr_150_cnt.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt150, ptbins150, 44, eta_edges150.data(), 50, dr_edges150.data()),
                 "pair_pt", "pair_eta", "dr", "weight");
+        }
+    }
+
+    // --- Low-mass dimuon template-fit inputs (docs/tracking/low_mass_dimuon_template_fit.md,
+    // Physics Procedure §2,§3a,§4): OS and SS minv over 0–4 GeV with the dimuon mass
+    // window REMOVED (all other single-b cuts kept), per centrality. Genuine
+    // differential cross-section weight (weight_for_dsigma_trig_corr = 1/L_year·dN,
+    // reco+trig corrected), lumi-combined at plot time (ΣN/ΣL). IDENTICAL selection/
+    // binning/weight for OS and SS so D_OS - D_SS is a clean combinatoric subtraction.
+    {
+        // signal_cuts MINUS the two minv-window conditions; everything else identical.
+        const std::string signal_cuts_no_minv =
+            "pair_pt > 8 && m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2";
+
+        // Attach the full per-pair efficiency chain + differential cross-section weight.
+        // Both OS and SS use the SAME OR-logic pair trigger ε₁+ε₂−ε₁·ε₂ and the
+        // per-centrality reco placeholder (mirrors the OS chain at ~L929–986 and the
+        // SS chain at L1016–1039). dsigma_lumi_factor (= 1/L_year [nb]) is in scope.
+        auto attach_dsigma_weight = [&](ROOT::RDF::RNode node) -> ROOT::RDF::RNode {
+            return node
+                .Define("q_eta1", "(float)(m1.charge * m1.eta)")
+                .Define("q_eta2", "(float)(m2.charge * m2.eta)")
+                .Define("ctr_suf", [](int ctr) { return RDFBasedHistFillingData::FindCtrSuffix(ctr); }, {"avg_centrality"})
+                .Define("effcy1", [](const std::string& cs, int q, float pt, float qe) {
+                    return RDFBasedHistFillingData::EvaluateSingleMuonEffcy(cs, q > 0, pt, qe);
+                }, {"ctr_suf", "m1.charge", "m1.pt", "q_eta1"})
+                .Define("effcy2", [](const std::string& cs, int q, float pt, float qe) {
+                    return RDFBasedHistFillingData::EvaluateSingleMuonEffcy(cs, q > 0, pt, qe);
+                }, {"ctr_suf", "m2.charge", "m2.pt", "q_eta2"})
+                .Define("effcy_pair", "effcy1 > 0 && effcy2 > 0 ? (double)(effcy1 + effcy2 - effcy1 * effcy2) : -1.0")
+                .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
+                .Define("effcy_reco1", [](int ctr, float pt, float qe) {
+                    return ctr < 0 ? 1.0f : RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(ctr, pt, qe);
+                }, {"avg_centrality", "m1.pt", "q_eta1"})
+                .Define("effcy_reco2", [](int ctr, float pt, float qe) {
+                    return ctr < 0 ? 1.0f : RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(ctr, pt, qe);
+                }, {"avg_centrality", "m2.pt", "q_eta2"})
+                .Define("effcy_reco_pair", "effcy_reco1 > 0 && effcy_reco2 > 0 ? (double)(effcy_reco1 * effcy_reco2) : -1.0")
+                .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / (effcy_reco_pair < 0.05 ? 0.05 : effcy_reco_pair) : 1.0")
+                .Define("weight_for_dsigma_trig_corr",
+                    [dsigma_lumi_factor](double weight, double w_reco, double w_trig){
+                        return weight * dsigma_lumi_factor * w_reco * w_trig;
+                    }, {"weight", "w_reco", "w_trig"});
+        };
+
+        ROOT::RDF::RNode df_op_no_minv = attach_dsigma_weight(
+            map_at_checked(df_map, "df_op", "FillHistogramsCrossx PbPb: df_op (no-minv)").Filter(signal_cuts_no_minv));
+        ROOT::RDF::RNode df_ss_no_minv = attach_dsigma_weight(
+            map_at_checked(df_map, "df_ss", "FillHistogramsCrossx PbPb: df_ss (no-minv)").Filter(signal_cuts_no_minv));
+
+        for (int ictr = 0; ictr < nCtrBins; ++ictr){
+            const int ctr_lo = ctr_bin_edges.at(ictr);
+            const int ctr_hi = ctr_bin_edges.at(ictr + 1);
+            const std::string ctr = "ctr" + std::to_string(ctr_lo) + "_" + std::to_string(ctr_hi);
+            const std::string ctr_filter = "avg_centrality >= " + std::to_string(ctr_lo) + " && avg_centrality < " + std::to_string(ctr_hi);
+
+            const std::string h_op = "h1d_crossx_minv_0_4_op_dsigma_" + ctr;
+            hist1d_rresultptr_map[h_op] = df_op_no_minv.Filter(ctr_filter).Histo1D(
+                ROOT::RDF::TH1DModel(h_op.c_str(), ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [nb GeV^{-1}]", 50, 0.0, 4.0),
+                "minv", "weight_for_dsigma_trig_corr");
+            const std::string h_ss = "h1d_crossx_minv_0_4_ss_dsigma_" + ctr;
+            hist1d_rresultptr_map[h_ss] = df_ss_no_minv.Filter(ctr_filter).Histo1D(
+                ROOT::RDF::TH1DModel(h_ss.c_str(), ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [nb GeV^{-1}]", 50, 0.0, 4.0),
+                "minv", "weight_for_dsigma_trig_corr");
         }
     }
 
