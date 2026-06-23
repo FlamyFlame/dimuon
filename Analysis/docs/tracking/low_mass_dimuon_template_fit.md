@@ -843,6 +843,15 @@ to `FillHistogramsTemplateMinvSignalRegion`. EXECUTION (parallel tracks): FG = (
 read-only verification of the ScrambGen single-muon-production incident fixes (scratch doc
 `_sub_scrambgen_singlemuon_verify_1.md`; NO submit/git by the subagent — orchestrator owns those).
 
+**STATUS 2026-06-23 (checkpoint):** **5a (MC truth) COMPLETE & gate-FAVORABLE** (k stable per R_AA bin;
+all reviewed+committed: 28757cd, 671af99, 53ebd1c, ff6c52d). **Single-muon Condor production RUNNING**
+(clusters 49-52; ~half done — pp finished, PbPb large jobs still writing; background monitor `bapt5tr94`
+polls until drain, then re-invokes). NOTE: do NOT hadd until ALL jobs finish (in-progress files read as
+zombies; verified 2026-06-23 the OK parts have correct `muon_tree` entries, the rest are open/running).
+**Remaining to the gate:** T2 data refill from `_no_res_cut` (independent of Condor — do now) → hadd
+single-muon trees (after Condor) → ScrambGen object-model rewrite + run → T_mix → **5b data closure = the
+gate**. Then (if pass) Part 2c: resonance templates → fitter → acceptance → wire R_AA.
+
 **Next (remaining for the gate):**
 1. **(pT,η)-binned truth fill** of the G categories (+ single_b) → /review-analysis-code → then k(m,pT,η)
    maps/projections → /review-plot (extends 5a to per-RAA-bin).
