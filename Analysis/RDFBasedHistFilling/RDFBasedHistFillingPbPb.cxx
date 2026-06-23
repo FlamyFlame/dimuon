@@ -12,7 +12,15 @@ void RDFBasedHistFillingPbPb::SetIOPathsHook(){
 	if (run_year == 23 || run_year == 24 || run_year == 25){
         std::string base = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/muon_pairs_pbpb_20" + run_year_str + base_trig_suffix;
         std::string in_path;
-        if (mu4_nominal_pbpb_NO_trig_calc) { // nominal / crossx -> V1 ONLY (no fallback; see PP hook)
+        if (low_mass_template_calc) { // low-mass template-fit pass -> _no_res_cut ONLY (resonances present)
+            const std::string nores_path = base + "_no_res_cut.root";
+            if (gSystem->AccessPathName(nores_path.c_str())) {
+                throw std::runtime_error(
+                    "RDFBasedHistFillingPbPb: low-mass template-fit _no_res_cut input not found: " + nores_path +
+                    " (run_year=20" + run_year_str + "). The template-fit pass requires the _no_res_cut ntuples.");
+            }
+            in_path = nores_path;
+        } else if (mu4_nominal_pbpb_NO_trig_calc) { // nominal / crossx -> V1 ONLY (no fallback; see PP hook)
             const std::string v1_path = base + input_mindR_suffix + ".root";
             if (gSystem->AccessPathName(v1_path.c_str())) {
                 throw std::runtime_error(
@@ -43,7 +51,15 @@ void RDFBasedHistFillingPbPb::SetIOPathsHook(){
 	} else if (run_year == 15 || run_year == 18){
         std::string base = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/muon_pairs_pbpb_20" + run_year_str + base_trig_suffix;
         std::string in_path;
-        if (mu4_nominal_pbpb_NO_trig_calc) { // nominal / crossx -> V1 ONLY (no fallback; see PP hook)
+        if (low_mass_template_calc) { // low-mass template-fit pass -> _no_res_cut ONLY (resonances present)
+            const std::string nores_path = base + "_no_res_cut.root";
+            if (gSystem->AccessPathName(nores_path.c_str())) {
+                throw std::runtime_error(
+                    "RDFBasedHistFillingPbPb: low-mass template-fit _no_res_cut input not found: " + nores_path +
+                    " (run_year=20" + run_year_str + "). The template-fit pass requires the _no_res_cut ntuples.");
+            }
+            in_path = nores_path;
+        } else if (mu4_nominal_pbpb_NO_trig_calc) { // nominal / crossx -> V1 ONLY (no fallback; see PP hook)
             const std::string v1_path = base + input_mindR_suffix + ".root";
             if (gSystem->AccessPathName(v1_path.c_str())) {
                 throw std::runtime_error(
@@ -961,6 +977,59 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
 
     // Per-year differential-cross-section luminosity factor 1/L_year [nb] (L in nb^-1).
     const double dsigma_lumi_factor = 1.0 / PbPbMu4SampledLumiNb(run_year);
+
+    // --- LOW-MASS TEMPLATE-FIT pass (low_mass_template_calc) --- (see header / PP hook)
+    // Reads _no_res_cut (resonances PRESENT; selected in SetIOPathsHook), distinct output.
+    // Produces ONLY the per-centrality 0-4 GeV minv template spectra D_OS/D_SS (1D + 2D vs
+    // pair pT/eta) for the low-mass dimuon template fit. Returns early so the signal-region
+    // crossx (minv in [1.08,2.9], WRONG from _no_res_cut due to resonance leakage) is NOT
+    // produced. Same selection + dsigma weight as the nominal h1d_crossx_minv_0_4 block below.
+    if (low_mass_template_calc) {
+        const std::string signal_cuts_no_minv =
+            "pair_pt > 8 && m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2";
+        auto attach_dsigma_weight = [&](ROOT::RDF::RNode node) -> ROOT::RDF::RNode {
+            return node
+                .Define("q_eta1", "(float)(m1.charge * m1.eta)")
+                .Define("q_eta2", "(float)(m2.charge * m2.eta)")
+                .Define("ctr_suf", [](int ctr) { return RDFBasedHistFillingData::FindCtrSuffix(ctr); }, {"avg_centrality"})
+                .Define("effcy1", [](const std::string& cs, int q, float pt, float qe) { return RDFBasedHistFillingData::EvaluateSingleMuonEffcy(cs, q > 0, pt, qe); }, {"ctr_suf", "m1.charge", "m1.pt", "q_eta1"})
+                .Define("effcy2", [](const std::string& cs, int q, float pt, float qe) { return RDFBasedHistFillingData::EvaluateSingleMuonEffcy(cs, q > 0, pt, qe); }, {"ctr_suf", "m2.charge", "m2.pt", "q_eta2"})
+                .Define("effcy_pair", "effcy1 > 0 && effcy2 > 0 ? (double)(effcy1 + effcy2 - effcy1 * effcy2) : -1.0")
+                .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
+                .Define("effcy_reco1", [](int ctr, float pt, float qe) { return ctr < 0 ? 1.0f : RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(ctr, pt, qe); }, {"avg_centrality", "m1.pt", "q_eta1"})
+                .Define("effcy_reco2", [](int ctr, float pt, float qe) { return ctr < 0 ? 1.0f : RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(ctr, pt, qe); }, {"avg_centrality", "m2.pt", "q_eta2"})
+                .Define("effcy_reco_pair", "effcy_reco1 > 0 && effcy_reco2 > 0 ? (double)(effcy_reco1 * effcy_reco2) : -1.0")
+                .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / (effcy_reco_pair < 0.05 ? 0.05 : effcy_reco_pair) : 1.0")
+                .Define("weight_for_dsigma_trig_corr",
+                    [dsigma_lumi_factor](double weight, double w_reco, double w_trig){ return weight * dsigma_lumi_factor * w_reco * w_trig; }, {"weight", "w_reco", "w_trig"});
+        };
+        ROOT::RDF::RNode df_op_t = attach_dsigma_weight(map_at_checked(df_map, "df_op", "FillHistogramsCrossx PbPb: df_op (template)").Filter(signal_cuts_no_minv));
+        ROOT::RDF::RNode df_ss_t = attach_dsigma_weight(map_at_checked(df_map, "df_ss", "FillHistogramsCrossx PbPb: df_ss (template)").Filter(signal_cuts_no_minv));
+        const int npt150 = (int)(pms.pT_bins_150.size() - 1);
+        const double* ptb150 = pms.pT_bins_150.data();
+        for (int ictr = 0; ictr < nCtrBins; ++ictr){
+            const int ctr_lo = ctr_bin_edges.at(ictr);
+            const int ctr_hi = ctr_bin_edges.at(ictr + 1);
+            const std::string ctr = "ctr" + std::to_string(ctr_lo) + "_" + std::to_string(ctr_hi);
+            const std::string ctr_filter = "avg_centrality >= " + std::to_string(ctr_lo) + " && avg_centrality < " + std::to_string(ctr_hi);
+            ROOT::RDF::RNode df_op_c = df_op_t.Filter(ctr_filter);
+            ROOT::RDF::RNode df_ss_c = df_ss_t.Filter(ctr_filter);
+            const std::string h_op = "h1d_crossx_minv_0_4_op_dsigma_" + ctr;
+            hist1d_rresultptr_map[h_op] = df_op_c.Histo1D(ROOT::RDF::TH1DModel(h_op.c_str(), ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [nb GeV^{-1}]", 50, 0.0, 4.0), "minv", "weight_for_dsigma_trig_corr");
+            const std::string h_ss = "h1d_crossx_minv_0_4_ss_dsigma_" + ctr;
+            hist1d_rresultptr_map[h_ss] = df_ss_c.Histo1D(ROOT::RDF::TH1DModel(h_ss.c_str(), ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [nb GeV^{-1}]", 50, 0.0, 4.0), "minv", "weight_for_dsigma_trig_corr");
+            const std::string h2pt_op = "h2d_crossx_minv_0_4_vs_pair_pt_log_150_op_dsigma_" + ctr;
+            hist2d_rresultptr_map[h2pt_op] = df_op_c.Histo2D(ROOT::RDF::TH2DModel(h2pt_op.c_str(), ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", npt150, ptb150, 50, 0.0, 4.0), "pair_pt", "minv", "weight_for_dsigma_trig_corr");
+            const std::string h2pt_ss = "h2d_crossx_minv_0_4_vs_pair_pt_log_150_ss_dsigma_" + ctr;
+            hist2d_rresultptr_map[h2pt_ss] = df_ss_c.Histo2D(ROOT::RDF::TH2DModel(h2pt_ss.c_str(), ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", npt150, ptb150, 50, 0.0, 4.0), "pair_pt", "minv", "weight_for_dsigma_trig_corr");
+            const std::string h2eta_op = "h2d_crossx_minv_0_4_vs_pair_eta_op_dsigma_" + ctr;
+            hist2d_rresultptr_map[h2eta_op] = df_op_c.Histo2D(ROOT::RDF::TH2DModel(h2eta_op.c_str(), ";#eta^{pair};m_{#mu#mu} [GeV]", 24, -2.4, 2.4, 50, 0.0, 4.0), "pair_eta", "minv", "weight_for_dsigma_trig_corr");
+            const std::string h2eta_ss = "h2d_crossx_minv_0_4_vs_pair_eta_ss_dsigma_" + ctr;
+            hist2d_rresultptr_map[h2eta_ss] = df_ss_c.Histo2D(ROOT::RDF::TH2DModel(h2eta_ss.c_str(), ";#eta^{pair};m_{#mu#mu} [GeV]", 24, -2.4, 2.4, 50, 0.0, 4.0), "pair_eta", "minv", "weight_for_dsigma_trig_corr");
+        }
+        std::cout << "[PbPb] FillHistogramsCrossx (low-mass template mode, _no_res_cut) completed" << std::endl;
+        return;
+    }
 
     // Base T_AA+lumi-weighted crossx weight and the sequential correction-stage
     // weights (raw -> unfolded -> +reco -> +reco+trig). See CorrectionStages.h.

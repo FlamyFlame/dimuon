@@ -176,6 +176,14 @@ enum HistFillingCycle{
     bool isTight = false;
     bool doTrigEffcy = true; // default true; derived from trigger_effcy_calc in TriggerModeSettings()
     bool mu4_nominal_pbpb_NO_trig_calc = false; // PbPb nominal pipeline: use mu4 trigger for event selection only (no trig effcy derivation)
+    // PUBLIC (set from run_template_fit_* macros). Low-mass dimuon TEMPLATE-FIT pass: read the
+    // _no_res_cut ntuples (resonances PRESENT) and produce ONLY the 0-4 GeV minv template spectra
+    // D_OS/D_SS (1D + 2D vs pair pT/eta), to a DISTINCT output (out_file_suffix += "_template_fit").
+    // Use the SAME trigger_mode/mu4_nominal flags as nominal crossx. MUST stay public so the cling
+    // macro assignment compiles (a protected member silently fails -> runs in nominal mode and
+    // overwrites the nominal output; cf. the 2026-06-22 output_single_muon_tree incident). Not to be
+    // combined with trigger_effcy_calc. See docs/tracking/low_mass_dimuon_template_fit.md.
+    bool low_mass_template_calc = false;
 
     bool save_non_sepr_trg_hists = false; // save trigger efficiency histograms without separation requirement
     bool save_good_accept_trg_hists = false; // save trigger efficiency histograms with good acceptance requirement

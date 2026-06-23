@@ -13,7 +13,16 @@ void RDFBasedHistFillingPP::SetIOPathsHook(){
     const std::string pp_base =
         "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024" + base_trig_suffix;
     std::string in_path;
-    if (!trigger_effcy_calc) { // pp nominal / crossx (2mu4=mode3, mu4_mu4noL1=mode2) -> V1 ONLY
+    if (low_mass_template_calc) { // low-mass template-fit pass -> _no_res_cut ONLY (resonances present)
+        const std::string nores_path = pp_base + "_no_res_cut.root";
+        if (gSystem->AccessPathName(nores_path.c_str())) {
+            throw std::runtime_error(
+                "RDFBasedHistFillingPP: low-mass template-fit _no_res_cut input not found: " + nores_path +
+                " (base_trig_suffix=" + base_trig_suffix + "). The template-fit pass requires the"
+                " _no_res_cut ntuples (resonances present).");
+        }
+        in_path = nores_path;
+    } else if (!trigger_effcy_calc) { // pp nominal / crossx (2mu4=mode3, mu4_mu4noL1=mode2) -> V1 ONLY
         // NOMINAL requires V1 _mindR_0_02 (no fallback). The old _res_cut_v2 / _no_res_cut / bare
         // fallback was an OLD-skim crutch (pre-mindR branches) and is removed: a silent fallback to
         // the wrong resonance-cut variant would corrupt crossx/R_AA. (docs/data_analysis.md
@@ -468,6 +477,49 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
     // They will be evaluated during HistPostProcess() and converted to raw pointers.
     const int    npt   = (int)(pms.pT_bins_120.size() - 1);
     const double* ptbins = pms.pT_bins_120.data();
+
+    // --- LOW-MASS TEMPLATE-FIT pass (low_mass_template_calc) ---
+    // Reads _no_res_cut (resonances PRESENT; selected in SetIOPathsHook), distinct output.
+    // Produces ONLY the 0-4 GeV minv template spectra D_OS/D_SS (1D + 2D vs pair pT/eta)
+    // for the low-mass dimuon template fit (docs/tracking/low_mass_dimuon_template_fit.md
+    // 3a). Returns early so the signal-region crossx (minv in [1.08,2.9], WRONG from
+    // _no_res_cut because of resonance leakage) is NOT produced. Same selection (signal_cuts
+    // MINUS minv window, NO dR) and dsigma weight as the nominal h1d_crossx_minv_0_4 block.
+    if (low_mass_template_calc) {
+        const std::string signal_cuts_no_minv =
+            "pair_pt > 8 && m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2";
+        const double lumi_factor_tmpl = pp_crossx_lumi_factor;
+        auto attach_crossx_weight = [&](ROOT::RDF::RNode node) -> ROOT::RDF::RNode {
+            ROOT::RDF::RNode n = generic_weight_col.empty()
+                ? node
+                    .Define("q_eta1", "(float)(m1.charge * m1.eta)")
+                    .Define("q_eta2", "(float)(m2.charge * m2.eta)")
+                    .Define("effcy1", [](int q, float pt, float qe){ return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe); }, {"m1.charge","m1.pt","q_eta1"})
+                    .Define("effcy2", [](int q, float pt, float qe){ return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe); }, {"m2.charge","m2.pt","q_eta2"})
+                    .Define("effcy_pair", "effcy1 > 0 && effcy2 > 0 ? (double)(effcy1 * effcy2) : -1.0")
+                    .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
+                    .Define("effcy_reco1", [](float pt, float qe){ return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe); }, {"m1.pt","q_eta1"})
+                    .Define("effcy_reco2", [](float pt, float qe){ return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe); }, {"m2.pt","q_eta2"})
+                    .Define("effcy_reco_pair", "effcy_reco1 > 0 && effcy_reco2 > 0 ? (double)(effcy_reco1 * effcy_reco2) : -1.0")
+                    .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / (effcy_reco_pair < 0.05 ? 0.05 : effcy_reco_pair) : 1.0")
+                : node;
+            return n
+                .Define("crossx_weight", [lumi_factor_tmpl](double weight){ return weight * lumi_factor_tmpl; }, {"weight"})
+                .Define("crossx_weight_trig_corr", "crossx_weight * w_reco * w_trig");
+        };
+        ROOT::RDF::RNode df_op_t = attach_crossx_weight(map_at_checked(df_map, "df_op", "FillHistogramsCrossx PP: df_op (template)").Filter(signal_cuts_no_minv));
+        ROOT::RDF::RNode df_ss_t = attach_crossx_weight(map_at_checked(df_map, "df_ss", "FillHistogramsCrossx PP: df_ss (template)").Filter(signal_cuts_no_minv));
+        const int npt150 = (int)(pms.pT_bins_150.size() - 1);
+        const double* ptb150 = pms.pT_bins_150.data();
+        hist1d_rresultptr_map["h1d_crossx_minv_0_4_op_dsigma"] = df_op_t.Histo1D(ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_op_dsigma", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [nb GeV^{-1}]", 50, 0.0, 4.0), "minv", "crossx_weight_trig_corr");
+        hist1d_rresultptr_map["h1d_crossx_minv_0_4_ss_dsigma"] = df_ss_t.Histo1D(ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_ss_dsigma", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [nb GeV^{-1}]", 50, 0.0, 4.0), "minv", "crossx_weight_trig_corr");
+        hist2d_rresultptr_map["h2d_crossx_minv_0_4_vs_pair_pt_log_150_op_dsigma"] = df_op_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_4_vs_pair_pt_log_150_op_dsigma", ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", npt150, ptb150, 50, 0.0, 4.0), "pair_pt", "minv", "crossx_weight_trig_corr");
+        hist2d_rresultptr_map["h2d_crossx_minv_0_4_vs_pair_pt_log_150_ss_dsigma"] = df_ss_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_4_vs_pair_pt_log_150_ss_dsigma", ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", npt150, ptb150, 50, 0.0, 4.0), "pair_pt", "minv", "crossx_weight_trig_corr");
+        hist2d_rresultptr_map["h2d_crossx_minv_0_4_vs_pair_eta_op_dsigma"] = df_op_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_4_vs_pair_eta_op_dsigma", ";#eta^{pair};m_{#mu#mu} [GeV]", 24, -2.4, 2.4, 50, 0.0, 4.0), "pair_eta", "minv", "crossx_weight_trig_corr");
+        hist2d_rresultptr_map["h2d_crossx_minv_0_4_vs_pair_eta_ss_dsigma"] = df_ss_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_4_vs_pair_eta_ss_dsigma", ";#eta^{pair};m_{#mu#mu} [GeV]", 24, -2.4, 2.4, 50, 0.0, 4.0), "pair_eta", "minv", "crossx_weight_trig_corr");
+        std::cout << "[PP] FillHistogramsCrossx (low-mass template mode, _no_res_cut) completed" << std::endl;
+        return;
+    }
 
     // ROOT 6.34 TH3DModel has no mixed (variable/uniform) ctor; generate edge arrays for uniform axes.
     auto make_unif_edges = [](int n, double lo, double hi) {

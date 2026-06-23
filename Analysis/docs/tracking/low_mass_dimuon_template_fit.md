@@ -605,6 +605,20 @@ selection; the fitter; combinatoric (event-mixing) template; k determination; pl
   - Also: `run_pbpb_2X_nominal.sh` appear INCOMPLETE (don't set `resonance_cut_mode=2`), so
     they do NOT reproduce the crossx inputs — flag for fixing once recipe confirmed.
 
+- 2026-06-23 — **T2 DONE: low-mass template-fit data mode (D_OS/D_SS from `_no_res_cut`)** —
+  `/review-analysis-code` PASS iter 1 (log `review-analysis-code-20260623-181845-low-mass-template-fit-mode.md`;
+  all numbers MATCH). New PUBLIC flag `low_mass_template_calc` (RDFBasedHistFillingData.h) → SetIOPathsHook
+  (PP + both PbPb blocks) reads `_no_res_cut`, TriggerModeSettings appends `_template_fit` to the output;
+  FillHistogramsCrossx early-return block fills `h1d_crossx_minv_0_4_{op,ss}_dsigma` + 2D
+  `h2d_crossx_minv_0_4_vs_{pair_pt_log_150,pair_eta}_{op,ss}_dsigma` (PbPb per-ctr `_<ctr>`), dσ weight,
+  selection signal_cuts MINUS minv (no dR), then returns (no signal-region crossx from `_no_res_cut`). New
+  run scripts `run_template_fit_{pp24,pbpb23,pbpb24,pbpb25}.sh`. Ran all 4 → distinct
+  `histograms_real_pairs_*_template_fit.root`. **OS resonances PRESENT** (pp24 [0,1.06]=3330, J/ψ=7131;
+  pbpb23 ctr0_5 [0,1.06]=15950, J/ψ=21130 — all 0 under V1); SS smooth; nominal outputs UNTOUCHED.
+  **INCIDENT+RECOVERY:** flag first placed PROTECTED → cling assignment silently failed → pp ran nominal mode
+  (output_generic_hists=false) and overwrote the nominal pp output → made flag PUBLIC + restored nominal pp via
+  the canonical nominal crossx (678KB, verified). Same root cause as the 2026-06-22 incident; LESSON: macro-set
+  members MUST be public. **D_OS/D_SS now ready for the 5b closure + the fit.**
 - 2026-06-23 — **5a (pT,η)-dependence DONE (k stable per R_AA bin)** — `/review-plot` PASS iter 1 (log
   `review-plot-20260623-...-k-validation-5a-ptEta.md`; 6 re-extractions MATCH). From the 2D templates:
   **k vs pair pT stable ~0.30–0.32 (8–40 GeV) = k_int**, mild modelable rise to ~0.35–0.41 (46–68 GeV,

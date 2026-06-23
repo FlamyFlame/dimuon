@@ -94,6 +94,9 @@ void RDFBasedHistFillingData::InitializeDataCommon(){
     out_file_suffix = trig_suffix + isForSoumya_suffix + qEtaBin_suffix;
     if (save_non_sepr_trg_hists) out_file_suffix += "_w_nonsepr";
     if (save_good_accept_trg_hists) out_file_suffix += "_w_good_accept";
+    // Low-mass template-fit pass writes to a DISTINCT output so it never overwrites the
+    // nominal crossx histograms (it reads _no_res_cut, not V1). See low_mass_template_calc.
+    if (low_mass_template_calc) out_file_suffix += "_template_fit";
 }
 
 void RDFBasedHistFillingData::FillHistograms(){
