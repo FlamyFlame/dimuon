@@ -345,6 +345,38 @@ selection; the fitter; combinatoric (event-mixing) template; k determination; pl
   floats). Same-centrality (≤5%) mixing kept. Requires a single-muon-tree production pass
   first (stale/missing for the May 2026 skim). ScrambGen currently does NOT compile (uses
   the retired `class Muon`); the rewrite fixes that and ensures consistency.
+- **`_res_cut_v2` NOMINAL fallback REMOVED (2026-06-23, user directive 1).** Background:
+  the data RDF `SetIOPathsHook` nominal/crossx branch had a multi-candidate fallback list
+  (`_mindR_0_02.root` → `_res_cut_v2.root` → `_no_res_cut.root` → bare `.root`) built when
+  the analysis was still on the OLD skim that lacked `mindR` branches, so it could limp
+  along on a V2/no-res file if V1 was missing. The May-2026 skim HAS the mindR branches and
+  V1 `_mindR_0_02.root` is always produced for nominal ⇒ the fallback is **obsolete and
+  unsafe** (it could silently feed the wrong resonance-cut variant into crossx/R_AA). New
+  behavior: the **nominal/crossx** branch (`!trigger_effcy_calc` for PP;
+  `mu4_nominal_pbpb_NO_trig_calc` for PbPb) requires ONLY V1 `_mindR_0_02.root` and **throws
+  a descriptive error if absent** — no silent fallback. The **trigger-efficiency** branch
+  (`_res_cut_v2` first) is UNCHANGED (V2 is the correct trig-eff input — see
+  `data_analysis.md` resonance-cut convention, memory `project_resonance_cut_modes`).
+- **Gate-driven autonomy (2026-06-23, user directive 2).** The template-fit mode is built
+  end-to-end to produce per-R_AA-bin signal yields wired straight into the R_AA inputs, BUT
+  the **k-validation + a closure plot** (Step 5) are delivered as intermediate results and
+  reviewed with `/review-plot` using physics. The GATE is the **major combined-fit
+  assumption**: the SS correlated-physics background (GS + FE) equals the OS correlated-physics
+  background times a factor, i.e. `G_SS = k·G_OS` (and the full `SS = C + k·G_OS`). **If
+  validated → proceed autonomously and wire into R_AA without waiting for review.** **If it
+  fails → STOP/BLOCK and wait for the user's decision** (the fallback the user named: switch
+  to **MC-only templates with SEPARATE fits for SS and OS**, abandoning the coupled OS+SS fit).
+- **Template-fit mode is part of the nominal/crossx pipeline (2026-06-23, user directive 2).**
+  Even though it reads a DIFFERENT input file (`_no_res_cut`), the template fit is integrated
+  into the nominal/crossx pipeline dependency chain: **any change to the template fit MUST
+  rerun crossx & R_AA** (because the fitted signal yield replaces OS−SS in the R_AA inputs).
+  The pipeline wiring must encode this so a template-fit change cannot leave stale crossx/R_AA.
+- **Subagent scratch-doc procedure (2026-06-23, CLAUDE.md update, user directive 3).** For
+  any delegated semi-complex investigation/implementation, each subagent checkpoints to its
+  OWN scratch doc (`Analysis/docs/tracking/_sub_<task>_<n>.md`), append-only, never the
+  canonical doc; subagents NEVER run git or edit shared files. The orchestrator (this agent)
+  merges each scratch doc into this canonical doc's Progress Log on return, THEN deletes the
+  scratch file. Reviewer subagents (`/review-*`) are stateless and exempt.
 
 ## Implementation Plan
 1. Tracking doc + Physics Procedure (this file). DONE.
@@ -552,6 +584,20 @@ selection; the fitter; combinatoric (event-mixing) template; k determination; pl
   - Also: `run_pbpb_2X_nominal.sh` appear INCOMPLETE (don't set `resonance_cut_mode=2`), so
     they do NOT reproduce the crossx inputs — flag for fixing once recipe confirmed.
 
+- 2026-06-23 — **Step A DONE (Task #1): `_res_cut_v2` nominal fallback removed** (user
+  directive 1). `/review-analysis-code` PASS iter 1 (log
+  `review-analysis-code-20260623-160554-remove-res-cut-v2-nominal-fallback.md`). Edited
+  `RDFBasedHistFillingPP.cxx` SetIOPathsHook (nominal `!trigger_effcy_calc` branch) and
+  `RDFBasedHistFillingPbPb.cxx` SetIOPathsHook (BOTH nominal `mu4_nominal_pbpb_NO_trig_calc`
+  blocks: run_year 23/24/25 and 15/18): nominal now resolves ONLY V1
+  `*_mindR_0_02.root` and throws a descriptive runtime_error if absent (states V1 required,
+  fallback removed). Trigger-efficiency `else` branches (V2 `_res_cut_v2` first) UNCHANGED in all
+  three places. ACLiC-clean both classes (separate sessions; PP `.so` 16:09, PbPb `.so` 16:13).
+  **No rerun needed:** for the May-2026 skim the nominal hook now selects the SAME V1 file it
+  already preferred (V1 was first in the old candidate list), so crossx/R_AA output is bit-identical;
+  the change only removes the dangerous silent-fallback path. Verified all 4 V1 nominal files exist
+  (pp24 589M; pbpb 23/24/25 245/174/492M). Committed to master.
+
 ## Results & Observations
 
 ### TEMPLATE INVENTORY (for the fitting agent — 1D minv templates, Step 4a) ###
@@ -677,9 +723,35 @@ production COMPLETE** (clusters 42–45, all batches wrote output) + **hadded** 
 Verified resonances PRESENT in OS (pbpb23 p1: J/ψ=7493, φ=582, low[0,1.06]=5197 — vs 0 under V1).
 These are the inputs for the separate template-fit pass.
 
-**⏸ PAUSED for user go-ahead** before implementing the template-fit MODE (per "no implementation
-yet other than `_no_res_cut`"). When approved: re-fill 0–4 GeV OS+SS from `_no_res_cut` (new mode) →
-ScrambGen mixed-event (T1) → MC k-validation (T5, the gate) → coupled OS+SS fitter +φ/J/ψ+GS/FE+comb
-(T6) → signal acceptance (T3) → wire into crossx/R_AA (T7).
-**Non-urgent cleanup:** zombie `_res_cut_v2_part*` (regenerate only if trig-eff re-hadded), spurious
-`_mindR_0_02_part*` + `_res_cut_v2_test` from the incident.
+**▶ RESUMED 2026-06-23 — autonomous build APPROVED with a GATE (user directives 1–3).**
+Three directives this session (see Design Decisions for each):
+1. **Remove the `_res_cut_v2` nominal fallback** (PP + PbPb data RDF `SetIOPathsHook`) — nominal
+   requires V1 `_mindR_0_02.root`, else throw. → `/review-analysis-code`. (Task #1.)
+2. **Build the template-fit mode end-to-end → per-R_AA-bin signal yields wired into R_AA**, but
+   deliver **k-validation + closure plot** (Step 5) as intermediate `/review-plot` results. GATE =
+   `G_SS = k·G_OS` (full `SS = C + k·G_OS`): PASS → proceed autonomously & wire into R_AA; FAIL →
+   STOP for user (fallback = MC-only separate SS/OS fits). Template fit is part of the nominal/crossx
+   pipeline (its changes always rerun crossx + R_AA). (Tasks #2–#4.)
+3. **Subagent scratch-doc procedure** in force for all delegated work.
+
+**Execution ordering this session (critical path to the GATE):**
+- **Step A (Task #1):** `_res_cut_v2` nominal fallback removal → `/review-analysis-code` → recompile.
+- **Step B (Task #2 = T2):** template-fit mode reads `_no_res_cut`, re-fills 0–4 GeV OS+SS data
+  spectra `D_OS/D_SS` (superseded V1 versions had resonance holes) + per-R_AA-bin minv; distinct
+  output file; pipeline-integrated. → `/review-analysis-code`, rerun (reads existing `_no_res_cut`
+  hadded ntuples).
+- **Step C (Task #3 = T5a, FAST path to the gate):** MC truth-level k = G_SS/G_OS from Pythia truth
+  G categories (`_bb`,`_cc`,`_one_b_one_c`; FSR gs + ISR FE together) binned in (pair pT, pair η,
+  minv). Needs the truth-G minv ALSO (pT,η)-binned — check Step 4a output; add a binned truth fill
+  if pT/η-integrated. Deliver k maps + projections → `/review-plot`. This is the structural MC read
+  on whether `G_SS = k·G_OS` holds (necessary, not sufficient — 5b needed for the full ansatz).
+- **Step D (long pole, parallel/background):** T1 single-muon-tree production (Condor) + ScrambGen
+  object-model rewrite → mixed-event combinatoric template `T_mix`, prerequisite for **5b data
+  closure** (`SS_data ?= C_mixed + k·G_OS`) and the coupled fitter. VERIFY the incident fixes
+  (`output_single_muon_tree` public; `force_nominal`/`trigger_mode=3`) are in place BEFORE
+  resubmitting any single-muon Condor fleet.
+- **Step E (gate decision at 5b):** PASS → T4 resonance templates → T6 coupled fitter → T3 signal
+  acceptance → T7 wire into crossx/R_AA. FAIL → STOP for user.
+
+**Non-urgent cleanup (unchanged):** zombie `_res_cut_v2_part*` (regenerate only if trig-eff
+re-hadded), spurious `_mindR_0_02_part*` + `_res_cut_v2_test` from the incident.

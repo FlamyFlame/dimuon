@@ -11,63 +11,63 @@ void RDFBasedHistFillingPbPb::SetIOPathsHook(){
 
 	if (run_year == 23 || run_year == 24 || run_year == 25){
         std::string base = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/muon_pairs_pbpb_20" + run_year_str + base_trig_suffix;
-        std::vector<std::string> input_candidates;
-        if (mu4_nominal_pbpb_NO_trig_calc) {
-            input_candidates = {
-                base + input_mindR_suffix + ".root",
-                base + input_mindR_suffix + "_res_cut_v2.root",
-                base + "_no_res_cut.root",
-                base + ".root"
-            };
-        } else {
-            input_candidates = {
-                base + input_mindR_suffix + "_res_cut_v2.root",
-                base + input_mindR_suffix + ".root",
-                base + "_no_res_cut.root",
-                base + ".root"
-            };
-        }
-
         std::string in_path;
-        for (const auto& cand : input_candidates) {
-            if (!gSystem->AccessPathName(cand.c_str())) {
-                in_path = cand;
-                break;
+        if (mu4_nominal_pbpb_NO_trig_calc) { // nominal / crossx -> V1 ONLY (no fallback; see PP hook)
+            const std::string v1_path = base + input_mindR_suffix + ".root";
+            if (gSystem->AccessPathName(v1_path.c_str())) {
+                throw std::runtime_error(
+                    "RDFBasedHistFillingPbPb: nominal/crossx V1 input not found: " + v1_path +
+                    " (run_year=20" + run_year_str + "). Nominal requires the V1 _mindR_0_02 file;"
+                    " the obsolete _res_cut_v2 / _no_res_cut fallback has been removed.");
             }
-        }
-        if (in_path.empty()) {
-            throw std::runtime_error("RDFBasedHistFillingPbPb: input file not found for run_year=20" + run_year_str + " and base_trig_suffix=" + base_trig_suffix);
+            in_path = v1_path;
+        } else {
+            std::vector<std::string> input_candidates = {
+                base + input_mindR_suffix + "_res_cut_v2.root",
+                base + input_mindR_suffix + ".root",
+                base + "_no_res_cut.root",
+                base + ".root"
+            };
+            for (const auto& cand : input_candidates) {
+                if (!gSystem->AccessPathName(cand.c_str())) {
+                    in_path = cand;
+                    break;
+                }
+            }
+            if (in_path.empty()) {
+                throw std::runtime_error("RDFBasedHistFillingPbPb: input file not found for run_year=20" + run_year_str + " and base_trig_suffix=" + base_trig_suffix);
+            }
         }
 		input_files.push_back(in_path);
         output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/histograms_real_pairs_pbpb_20" + run_year_str + out_file_suffix + ".root";
 	} else if (run_year == 15 || run_year == 18){
         std::string base = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/muon_pairs_pbpb_20" + run_year_str + base_trig_suffix;
-        std::vector<std::string> input_candidates;
-        if (mu4_nominal_pbpb_NO_trig_calc) {
-            input_candidates = {
-                base + input_mindR_suffix + ".root",
-                base + input_mindR_suffix + "_res_cut_v2.root",
-                base + "_no_res_cut.root",
-                base + ".root"
-            };
-        } else {
-            input_candidates = {
-                base + input_mindR_suffix + "_res_cut_v2.root",
-                base + input_mindR_suffix + ".root",
-                base + "_no_res_cut.root",
-                base + ".root"
-            };
-        }
-
         std::string in_path;
-        for (const auto& cand : input_candidates) {
-            if (!gSystem->AccessPathName(cand.c_str())) {
-                in_path = cand;
-                break;
+        if (mu4_nominal_pbpb_NO_trig_calc) { // nominal / crossx -> V1 ONLY (no fallback; see PP hook)
+            const std::string v1_path = base + input_mindR_suffix + ".root";
+            if (gSystem->AccessPathName(v1_path.c_str())) {
+                throw std::runtime_error(
+                    "RDFBasedHistFillingPbPb: nominal/crossx V1 input not found: " + v1_path +
+                    " (run_year=20" + run_year_str + "). Nominal requires the V1 _mindR_0_02 file;"
+                    " the obsolete _res_cut_v2 / _no_res_cut fallback has been removed.");
             }
-        }
-        if (in_path.empty()) {
-            throw std::runtime_error("RDFBasedHistFillingPbPb: input file not found for run_year=20" + run_year_str + " and base_trig_suffix=" + base_trig_suffix);
+            in_path = v1_path;
+        } else {
+            std::vector<std::string> input_candidates = {
+                base + input_mindR_suffix + "_res_cut_v2.root",
+                base + input_mindR_suffix + ".root",
+                base + "_no_res_cut.root",
+                base + ".root"
+            };
+            for (const auto& cand : input_candidates) {
+                if (!gSystem->AccessPathName(cand.c_str())) {
+                    in_path = cand;
+                    break;
+                }
+            }
+            if (in_path.empty()) {
+                throw std::runtime_error("RDFBasedHistFillingPbPb: input file not found for run_year=20" + run_year_str + " and base_trig_suffix=" + base_trig_suffix);
+            }
         }
 		input_files.push_back(in_path);
 		output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/histograms_real_pairs_pbpb_20" + run_year_str + out_file_suffix + ".root";

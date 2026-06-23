@@ -12,32 +12,36 @@ void RDFBasedHistFillingPP::SetIOPathsHook(){
     // they differ only for generic / low-mass (0–4 GeV) histograms.
     const std::string pp_base =
         "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024" + base_trig_suffix;
-    std::vector<std::string> input_candidates;
-    if (!trigger_effcy_calc) { // pp nominal / crossx (2mu4=mode3, mu4_mu4noL1=mode2) -> V1 first
-        input_candidates = {
-            pp_base + input_mindR_suffix + ".root",
-            pp_base + input_mindR_suffix + "_res_cut_v2.root",
-            pp_base + "_no_res_cut.root",
-            pp_base + ".root"
-        };
-    } else { // pp trigger-efficiency (single mu4) -> V2 first
-        input_candidates = {
-            pp_base + input_mindR_suffix + "_res_cut_v2.root",
-            pp_base + input_mindR_suffix + ".root",
-            pp_base + "_no_res_cut.root",
-            pp_base + ".root"
-        };
-    }
-
     std::string in_path;
-    for (const auto& cand : input_candidates) {
-        if (!gSystem->AccessPathName(cand.c_str())) {
-            in_path = cand;
-            break;
+    if (!trigger_effcy_calc) { // pp nominal / crossx (2mu4=mode3, mu4_mu4noL1=mode2) -> V1 ONLY
+        // NOMINAL requires V1 _mindR_0_02 (no fallback). The old _res_cut_v2 / _no_res_cut / bare
+        // fallback was an OLD-skim crutch (pre-mindR branches) and is removed: a silent fallback to
+        // the wrong resonance-cut variant would corrupt crossx/R_AA. (docs/data_analysis.md
+        // resonance-cut convention; low_mass_dimuon_template_fit.md Design Decisions 2026-06-23.)
+        const std::string v1_path = pp_base + input_mindR_suffix + ".root";
+        if (gSystem->AccessPathName(v1_path.c_str())) {
+            throw std::runtime_error(
+                "RDFBasedHistFillingPP: nominal/crossx V1 input not found: " + v1_path +
+                " (base_trig_suffix=" + base_trig_suffix + "). Nominal requires the V1 _mindR_0_02"
+                " file; the obsolete _res_cut_v2 / _no_res_cut fallback has been removed.");
         }
-    }
-    if (in_path.empty()) {
-        throw std::runtime_error("RDFBasedHistFillingPP: input file not found for run_year=24 and base_trig_suffix=" + base_trig_suffix);
+        in_path = v1_path;
+    } else { // pp trigger-efficiency (single mu4) -> V2 first
+        std::vector<std::string> input_candidates = {
+            pp_base + input_mindR_suffix + "_res_cut_v2.root",
+            pp_base + input_mindR_suffix + ".root",
+            pp_base + "_no_res_cut.root",
+            pp_base + ".root"
+        };
+        for (const auto& cand : input_candidates) {
+            if (!gSystem->AccessPathName(cand.c_str())) {
+                in_path = cand;
+                break;
+            }
+        }
+        if (in_path.empty()) {
+            throw std::runtime_error("RDFBasedHistFillingPP: input file not found for run_year=24 and base_trig_suffix=" + base_trig_suffix);
+        }
     }
 
     input_files.push_back(in_path);
