@@ -6,13 +6,28 @@
 void RDFBasedHistFillingPP::SetIOPathsHook(){
     infile_var1D_json = "var1D_pp.json";
 
-    // NOTE: no mindR suffix search for trigger_mode=3 (2mu4) NTuple files — future item
-    std::vector<std::string> input_candidates = {
-        "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024" + base_trig_suffix + input_mindR_suffix + "_res_cut_v2.root",
-        "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024" + base_trig_suffix + input_mindR_suffix + ".root",
-        "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024" + base_trig_suffix + "_no_res_cut.root",
-        "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024" + base_trig_suffix + ".root"
-    };
+    // Mirror the PbPb SetIOPathsHook ordering (resonance-cut convention, docs/data_analysis.md):
+    // NOMINAL/crossx (2mu4, trigger_mode==3) prefers the V1 file (_mindR_0_02, empty res suffix);
+    // TRIGGER-EFFICIENCY (single mu4) prefers _res_cut_v2 (V2). V1==V2 after the signal selection;
+    // they differ only for generic / low-mass (0–4 GeV) histograms.
+    const std::string pp_base =
+        "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024" + base_trig_suffix;
+    std::vector<std::string> input_candidates;
+    if (!trigger_effcy_calc) { // pp nominal / crossx (2mu4=mode3, mu4_mu4noL1=mode2) -> V1 first
+        input_candidates = {
+            pp_base + input_mindR_suffix + ".root",
+            pp_base + input_mindR_suffix + "_res_cut_v2.root",
+            pp_base + "_no_res_cut.root",
+            pp_base + ".root"
+        };
+    } else { // pp trigger-efficiency (single mu4) -> V2 first
+        input_candidates = {
+            pp_base + input_mindR_suffix + "_res_cut_v2.root",
+            pp_base + input_mindR_suffix + ".root",
+            pp_base + "_no_res_cut.root",
+            pp_base + ".root"
+        };
+    }
 
     std::string in_path;
     for (const auto& cand : input_candidates) {
