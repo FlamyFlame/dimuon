@@ -1,0 +1,7 @@
+executable = run_pbpb_24_no_res_cut.sh
+arguments = $(Process)
+output = logs/run_pbpb_24_no_res_cut_batch_$(Process).out
+error = logs/run_pbpb_24_no_res_cut_batch_$(Process).err
+log = logs/run_pbpb_24_no_res_cut_batch_$(Process).log
+request_memory = 2GB
+queue 2
