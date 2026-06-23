@@ -371,6 +371,27 @@ selection; the fitter; combinatoric (event-mixing) template; k determination; pl
   into the nominal/crossx pipeline dependency chain: **any change to the template fit MUST
   rerun crossx & R_AA** (because the fitted signal yield replaces OS−SS in the R_AA inputs).
   The pipeline wiring must encode this so a template-fit change cannot leave stale crossx/R_AA.
+- **Gate criterion CONFIRMED = k(m,pT,η) function, NOT constant scalar (2026-06-23, user).** The
+  coupled OS+SS fit uses the SS and OS correlated backgrounds' OWN MC shapes (sign1/sign2 templates)
+  tied by a per-bin normalization, so a mass-dependent k is EXPECTED — NOT a failure. The gate is
+  therefore: (a) is the MC-predicted ratio ROBUST against the cc̄:bb̄ theory uncertainty, and (b)
+  does it survive the **5b data closure**. **Focus now on k(m,pT,η): if it passes the closure test,
+  proceed to Part 2c.** The first-look constant-scalar FAIL (k(m) 0.14→0.38) is retained only as the
+  justification artifact (see "Save validation results" below), not as a gate verdict.
+- **TWO candidate code sets for the FINAL background subtraction — consider, do NOT implement B yet
+  (2026-06-23, user).** Because `G_SS(m)` does NOT share `G_OS(m)`'s shape:
+  - **(A) SS+OP COMBINED fit** with k(m,pT,η) from MC — the current path (build this).
+  - **(B) MC-ONLY fit** (NO SS+OP combined) — separate SS/OS fits with pure-MC templates. **NOT
+    implemented yet; a possibility to keep in mind.** The deeper open question it addresses: *if the
+    SS shape does not trace the OS shape, is SS a valid reference for OS at all, and does the combined
+    fit actually buy us anything against the large g→QQ̄ theory uncertainty?* Revisit (A)-vs-(B) after
+    the 5b closure result; if closure is marginal or the cc̄:bb̄ sensitivity is large, (B) becomes the
+    serious alternative. Keep the two as SEPARATE code sets so either can be the nominal.
+- **Save validation results to a dedicated, non-overwriting folder (2026-06-23, user).** All k-validation
+  (5a/5b) deliverables — plots (NOT overwritten), backed-up analysis code, numerical values, and a
+  written summary doc — live together under `dimuon_data/plots/template_fitting/` (dated subfolders per
+  snapshot). This preserves the evidence justifying the constant-scalar-fails finding and the k(m,pT,η)
+  characterization.
 - **Subagent scratch-doc procedure (2026-06-23, CLAUDE.md update, user directive 3).** For
   any delegated semi-complex investigation/implementation, each subagent checkpoints to its
   OWN scratch doc (`Analysis/docs/tracking/_sub_<task>_<n>.md`), append-only, never the
@@ -584,6 +605,19 @@ selection; the fitter; combinatoric (event-mixing) template; k determination; pl
   - Also: `run_pbpb_2X_nominal.sh` appear INCOMPLETE (don't set `resonance_cut_mode=2`), so
     they do NOT reproduce the crossx inputs — flag for fixing once recipe confirmed.
 
+- 2026-06-23 — **Step C / 5a m-dependence DONE (Task #3, partial): k(m) characterised, constant-scalar
+  k disproven, robustness driver identified.** `/review-plot` PASS iter 1 (log
+  `review-plot-20260623-173509-k-validation-5a-mdep.md`; all numbers independently re-extracted, MATCH).
+  Deliverables saved to `dimuon_data/plots/template_fitting/k_validation_5a_20260623/` (plots/, code/,
+  numbers.txt, summary.md — the dedicated non-overwriting folder per user). **Findings:** k_int=0.308;
+  **k_bb=0.512 and ~flat in m (the ROBUST piece: B⁰ mixing χ_d + direct/cascade combinatorics)**;
+  **k_cc≈0.009 (no charge-flip, as expected)**; one_b_one_c genuinely empty under the signal selection
+  (G≈bb+cc here); k_comb(m) rises 0.14→0.38 ENTIRELY because f_bb(m)=OS_bb/G_OS rises 0.31→0.78
+  (cc̄ dilution at low mass). ⇒ constant-scalar k FAILS (SS/(k_int·G_OS) sweeps 0.45→1.25, ~3×); smooth
+  k(m) valid & expected; robustness favorable (robust k_bb modulated by theory-sensitive f_bb, which the
+  OS fit can itself constrain since bb̄/cc̄ have different minv shapes). **Remaining for the gate:**
+  (pT,η)-binned k(m,pT,η) [needs a (pT,η)-binned truth fill, code → /review-analysis-code] + the 5b DATA
+  closure [needs T2 data refill from `_no_res_cut` + ScrambGen mixed-event]. Not git-tracked (data area).
 - 2026-06-23 — **Step A DONE (Task #1): `_res_cut_v2` nominal fallback removed** (user
   directive 1). `/review-analysis-code` PASS iter 1 (log
   `review-analysis-code-20260623-160554-remove-res-cut-v2-nominal-fallback.md`). Edited
@@ -599,6 +633,23 @@ selection; the fitter; combinatoric (event-mixing) template; k determination; pl
   (pp24 589M; pbpb 23/24/25 245/174/492M). Committed to master.
 
 ## Results & Observations
+
+### k-VALIDATION (5a) — FIRST LOOK from existing integrated truth templates (2026-06-23) ###
+Quick read of `G_SS/G_OS` from the pT/η-INTEGRATED `_sigsel` truth templates
+(`histograms_pythia_5p36TeV_no_data_resonance_cuts.root`; G = flavor {bb,cc,one_b_one_c},
+OS=sign2, SS=sign1). 50 bins, 0–4 GeV.
+- **Integrated `k = G_SS/G_OS = 0.308`** — physically sensible (0<k<1; the bb̄ charge-flip
+  fraction of the correlated background). For context: G_OS/S_OS = 0.176 (correlated bkg ≈ 18%
+  of the OS single-b signal integral over 0–4 GeV).
+- **`k(m)` is smooth but NOT constant:** rises monotonically ~0.14 (m≈0.2) → ~0.38 (m≈3.9),
+  a ~2.7× variation. ⇒ `G_SS(m)` does NOT share a shape with `G_OS(m)`; a **single scalar k
+  is NOT valid**, a smooth **k(m) function** trivially is. Physics: `k(m) ≈ k_bb·f_bb(m)` where
+  f_bb = bb̄ fraction of G_OS(m); f_bb rises with minv (bb̄ heavier) while cc̄ (no charge-flip,
+  k≈0) dominates low mass. So the m-dependence is DRIVEN by the cc̄:bb̄ mix — the theory-sensitive
+  piece the doc flagged (§2). **Implication for the GATE:** the constant-scalar reading of "SS
+  bkg = OS bkg × factor" FAILS; the gate hinges on whether a smooth, ROBUST k(m, pT, η) makes the
+  combined fit usable (needs: bb̄-only vs cc̄-dilution decomposition for robustness; (pT,η)
+  binning; and the 5b data closure). NOT yet a pass/fail — full 5a investigation pending.
 
 ### TEMPLATE INVENTORY (for the fitting agent — 1D minv templates, Step 4a) ###
 **Files** (Pythia evgen truth, `_no_data_resonance_cuts` = the truth sample has NO
@@ -752,6 +803,20 @@ Three directives this session (see Design Decisions for each):
   resubmitting any single-muon Condor fleet.
 - **Step E (gate decision at 5b):** PASS → T4 resonance templates → T6 coupled fitter → T3 signal
   acceptance → T7 wire into crossx/R_AA. FAIL → STOP for user.
+
+**PROGRESS 2026-06-23:** Step A DONE+committed (28757cd). Gate criterion CONFIRMED by user = k(m,pT,η)
+function (not constant scalar); save validation to a dedicated folder; keep code-set (B) MC-only as a
+future possibility (Design Decisions). **Step C / 5a m-dependence DONE** (/review-plot PASS; Progress Log
+2026-06-23): k_bb robust ~0.5, k_cc≈0, k(m) rise = cc̄ dilution f_bb(m); constant-scalar disproven; smooth
+k(m) valid; saved to `dimuon_data/plots/template_fitting/k_validation_5a_20260623/`.
+**Next (remaining for the gate):**
+1. **(pT,η)-binned truth fill** of the G categories (+ single_b) → /review-analysis-code → then k(m,pT,η)
+   maps/projections → /review-plot (extends 5a to per-RAA-bin).
+2. **T2 data refill from `_no_res_cut`** (template-fit mode) → /review-analysis-code (D_OS/D_SS for closure).
+3. **ScrambGen mixed-event** (long pole: single-muon Condor production + object-model rewrite) — VERIFY the
+   incident fixes first.
+4. **5b DATA closure** `SS_data ?= C_mixed + k·G_OS` → /review-investigation + /review-plot = the FINAL gate.
+   PASS → Part 2c (fitter → acceptance → wire R_AA) autonomously; FAIL → STOP for user (consider code-set B).
 
 **Non-urgent cleanup (unchanged):** zombie `_res_cut_v2_part*` (regenerate only if trig-eff
 re-hadded), spurious `_mindR_0_02_part*` + `_res_cut_v2_test` from the incident.

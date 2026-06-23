@@ -79,3 +79,5 @@
 {"event":"end","command":"review-analysis-code","status":"subsumed","iterations":0,"timestamp":"2026-06-22T05:45:00Z","criticals":0,"warnings":0,"slug":"truth-minv-templates-sigsel","note":"reviewed-by-proxy via remove_dr_cut_signal_selection sweep"}
 {"event":"start","command":"review-analysis-code","task":"Remove _res_cut_v2 nominal fallback in data RDF SetIOPathsHook (PP+PbPb); nominal requires V1 _mindR_0_02, else throw; trig-eff unchanged","slug":"remove-res-cut-v2-nominal-fallback","timestamp":"2026-06-23T20:05:54Z"}
 {"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-23T20:14:00Z","criticals":0,"warnings":0,"slug":"remove-res-cut-v2-nominal-fallback"}
+{"event":"start","command":"review-plot","task":"k-validation 5a m-dependence plots (G_SS=k(m)*G_OS)","slug":"k-validation-5a-mdep","timestamp":"2026-06-23T21:35:09Z"}
+{"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-23T21:37:38Z","criticals":0,"warnings":0,"slug":"k-validation-5a-mdep"}
