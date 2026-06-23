@@ -605,6 +605,14 @@ selection; the fitter; combinatoric (event-mixing) template; k determination; pl
   - Also: `run_pbpb_2X_nominal.sh` appear INCOMPLETE (don't set `resonance_cut_mode=2`), so
     they do NOT reproduce the crossx inputs — flag for fixing once recipe confirmed.
 
+- 2026-06-23 — **5a (pT,η)-dependence DONE (k stable per R_AA bin)** — `/review-plot` PASS iter 1 (log
+  `review-plot-20260623-...-k-validation-5a-ptEta.md`; 6 re-extractions MATCH). From the 2D templates:
+  **k vs pair pT stable ~0.30–0.32 (8–40 GeV) = k_int**, mild modelable rise to ~0.35–0.41 (46–68 GeV,
+  bb̄ hardening), large low-stat errors >68 GeV; **k vs pair η flat ~0.31, symmetric** (outermost |η|>2.2
+  bins ~0.48–0.50 = forward-acceptance-edge, low-stat, NOT instability); k(m) shape consistent across pT
+  slices. ⇒ the per-R_AA-bin normalization k is STABLE (the m-dependence is the template shape) — favorable
+  for the coupled fit. Plots `k_vs_pair_pt/eta.png`, `k_of_m_in_pt_slices.png` + `numbers_ptEta.txt` +
+  summary in the dedicated folder. **5a (MC truth) COMPLETE; gate now hinges on the 5b DATA closure.**
 - 2026-06-23 — **(pT,η)-binned truth fill DONE (k(m,pT,η) raw material)** + **single-muon Condor
   production SUBMITTED** + **ScrambGen safety verified.** (1) `/review-analysis-code` PASS iter 1 (log
   `review-analysis-code-20260623-175612-ptEta-binned-truth-kfill.md`): added 2D
