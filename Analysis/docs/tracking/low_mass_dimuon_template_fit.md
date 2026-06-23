@@ -118,6 +118,12 @@ a. **Data spectra (this cycle):** fill OS and SS `minv` over **0–4 GeV** in th
    - PbPb: `weight_for_dsigma_trig_corr` (= weight·(1/L_year)·w_reco·w_trig), per
      centrality, lumi-combined at plot time (ΣN/ΣL). Binning **50 bins, 0–4 GeV**
      to match the Pythia truth `minv_zoomin` template exactly.
+   - **⚠ SUPERSEDED (2026-06-22):** Steps 2/3 filled these histos in the NOMINAL crossx
+     RDF, whose OS tree is **V1 resonance-vetoed** (holes at [0,1.06],[2.9,3.3],…) — wrong
+     for the fit, which needs the resonances PRESENT (φ/J/ψ leakage templates, §3h). They
+     MUST be re-filled from the **`_no_res_cut`** ntuples in a SEPARATE template-fit pass
+     (see Design Decisions: "Template-fit input = `_no_res_cut`"). The `_no_res_cut`
+     May-skim production is running (2026-06-22, Condor clusters 42–45).
 b. **Templates:** Pythia evgen truth `minv_zoomin` (0–4 GeV) per flavor category
    (`_single_b` = S; `_bb`,`_cc`,`_one_b_one_c` = G; `_resonance(_contaminated)` =
    J/ψ etc.) and per origin category. Truth = no reco, so compared to
@@ -307,6 +313,28 @@ selection; the fitter; combinatoric (event-mixing) template; k determination; pl
   `nocut` bin, filled BEFORE `PassCuts`), NOT the pair tree (already fiducial-restricted
   → A≈1). Edge migration across pT=4/|η|=2.4 is owned by **unfolding** (detec_resp), not
   reco-eff or acceptance.
+- **Template-fit input = `_no_res_cut`, in a SEPARATE pass — NOT the nominal V1 crossx
+  (DECIDED 2026-06-22 from the pipeline investigation).** Background: the investigation
+  enumerated the nominal crossx histograms and found it DOES produce generic non-signal-cut
+  histos that span the resonance region (case (b)): the 0–4 GeV `h1d_crossx_minv_0_4_{op,ss}`
+  template inputs, plus (pp only) `minv_zoomin`/`minv_log`. So:
+  - **Keep nominal/crossx on V1** (`_mindR_0_02`, `resonance_cut_mode=1`) for the signal-region
+    crossx/R_AA program AND the diagnostic generic plots that expect clean V1 resonance removal.
+    (Confirmed: the 06-08 PbPb nominal ran in NOMINAL mode — photoproduction cut APPLIED, V1
+    OS veto — and the crossx reads the intact hadded V1 `_mindR_0_02.root`.)
+  - **The low-mass template fit needs the resonances PRESENT** (to build the φ/J/ψ leakage
+    templates, §3h) ⇒ it MUST read **`_no_res_cut`** (`resonance_cut_mode=0`), which CANNOT be
+    folded into nominal (that would leave resonances in the nominal OS generic histos and break
+    the OS−SS combinatoric logic that assumes the V1-vetoed OS tree). ⇒ build the template fit
+    as a **SEPARATE pipeline mode/pass** that reads the `_no_res_cut` ntuples.
+  - **Consequence:** the Step 2/3 `h1d_crossx_minv_0_4_{op,ss}_dsigma[_<ctr>]` histos (filled in
+    the nominal V1 crossx, so their OS has V1 resonance HOLES) are **superseded** — they must be
+    re-filled from `_no_res_cut` in the separate template-fit pass. (§3a updated.)
+  - **Logic flow (answering the user):** separate no-res template-fit pass → per coarse RAA bin,
+    fit {signal, GS, FE, mixed-event comb, φ/J/ψ resonance templates} on the 0–4 GeV OS+SS →
+    signal fraction/yield per bin → acceptance-correct → feed crossx/R_AA (§3f/§3g). The nominal
+    V1 crossx still provides the signal-region normalization; the no-res fit provides the
+    background-subtracted signal yield that replaces OS−SS.
 - **ScrambGen revival approach (2026-06-22, plan):** rewrite ScrambGen to the modern
   object model (read `MuonObj`, WRITE `muon_pair_tree_sign1/sign2` with `MuonPairObj`) so
   the **existing RDF `signal_cuts` fills the mixed-event minv template** — identical
@@ -622,29 +650,29 @@ the full chain to a PRELIMINARY result with placeholder reco-eff + identity unfo
 - ⏳ **T6 combined OS+SS fitter** — needs T2 + T1e + T4.
 - ⏳ **T7 wire into crossx/R_AA** — needs T6 + T3.
 
-**⚠ BLOCKED ON USER — nominal-ntuple restore entangled with an evolving resonance-cut scheme (2026-06-22).**
-Root-cause diagnosis of why the clobbered nominal `_res_cut_v2` ntuples cannot be cleanly
-reproduced by current code:
-- `_res_cut_v2` ⟺ `resonance_cut_mode=2` ⟺ `pms.minv_cuts_v2`. Commit **d4c1197** (+8f8cffc)
-  REDEFINED `minv_cuts_v2` to NARROW per-peak windows `{0,0.6},{0.72,0.85},{0.94,1.06},{2.9,3.3},…`
-  "for trigger efficiency study … cut off individual peak windows rather than all pairs <1.06 GeV".
-- Evidence: April `_res_cut_v2` backup (old recipe) has OS fully vetoed [0,1.06]=0; a fresh
-  `resonance_cut_mode=2` test (pbpb23 part4, `_res_cut_v2_test.root`) has OS [0,1.06]=799 (narrow
-  veto) but [2.9,3.3]=[3.55,3.8]=0. So current code ≠ the code that made the clobbered nominal.
-- Additional inconsistency: `run_pbpb_2X_nominal.sh` (force_nominal only) makes `_mindR_0_02`
-  (res_mode 1, full veto), but the crossx RDF READS `_res_cut_v2` — the nominal-production suffix
-  and the crossx-input suffix don't match in the current tree. Likely mid-refactor by concurrent work.
-**Decisions needed from user:** (1) the intended CURRENT resonance-cut scheme for the NOMINAL
-crossx ntuples (full [0,1.06] V1, or narrow v2?), and which run recipe/suffix is canonical; (2)
-confirm regenerating with the NEW narrow veto (which the template fit WANTS — preserves low-mass
-continuum) is acceptable, in which case the crossx/R_AA will be recomputed. **No published results
-affected** (downstream `histograms_real_pairs_*` intact). Spurious files created this session (to
-clean up later): `muon_pairs_pbpb_2X_part*_single_mu4_mindR_0_02.root` (02:55), `..._res_cut_v2_test.root`.
-Root cause of the ORIGINAL clobber (protected `output_single_muon_tree`) is FIXED + committed.
+**✅ INCIDENT RESOLVED — zero result-impact (2026-06-22).** The pipeline investigation showed the
+crossx reads the **hadded** `_mindR_0_02.root` (V1) and trig-eff reads the **hadded** `_res_cut_v2.root`
+(V2). Both hadded files are INTACT (Jun 8–10, untouched by the incident; V1 OS=745k/526k/1.49M valid).
+The single-muon-job clobber only hit the intermediate **V2 part** files (`_res_cut_v2_part*.root`),
+which the RDF does NOT read (regenerate only if trig-eff is re-hadded from parts; trig-eff is done).
+Root cause (protected `output_single_muon_tree`) FIXED + committed. The nominal "restore" was
+unnecessary (hadded V1 was always fine) but harmless — it produced V1 part files. **Cleanup later
+(non-urgent):** zombie `_res_cut_v2_part*` (regenerate on demand), spurious `_mindR_0_02_part*` (02:55),
+`_res_cut_v2_test`, the parallel `_mindR_0_02.root` re-hadd if any.
 
-**Current action (SUPERSEDED — see BLOCKED note above):** T1a single-muon-tree production SUBMITTED to Condor 2026-06-22
-(clusters 82=pbpb23×4, 83=pbpb24×2, 84=pbpb25×6, 85=pp24×12; 24 jobs). While they run:
-T1b ScrambGen rewrite (code, no data dependency). Then monitor T1a → sanity-check
-non-empty `muon_tree_ctr*`/`muon_tree` → hadd parts per year → T1c/T1d/T1e.
-Parallelizable independent tracks: T1 (ScrambGen), T3 (acceptance), T4 (resonance) do not
-conflict file-wise and can interleave; commits sequential (orchestrator).
+**File-usage clarified:** PbPb crossx reads intact hadded V1 (correct nominal, photoproduction+V1
+veto applied); pp on the new skim since 2026-06-22. The d4c1197 `minv_cuts_v2` narrowing is real but
+only affects V2/trigger-eff and the (separate) template-fit path — NOT nominal V1.
+
+**Design DECIDED (investigation):** keep nominal/crossx on **V1**; build the low-mass template fit as
+a **SEPARATE pass reading `_no_res_cut`** (resonances present for φ/J/ψ templates). The Step 2/3
+`h1d_crossx_minv_0_4_*` histos (filled from V1 nominal → OS resonance holes) are superseded; re-fill
+from `_no_res_cut`. See Design Decisions + §3a.
+
+**Current action:** (a) **PP `SetIOPathsHook` fix** — mirror PbPb nominal(V1)/trig-eff(V2) ordering
+(trigger_mode==3 → V1 first); ACLiC-clean; pending reviewer + commit. (b) **`_no_res_cut` May-skim
+production** running (Condor clusters 42=pbpb23×4, 43=pbpb24×2, 44=pbpb25×6, 45=pp24×12) → verify +
+hadd to `muon_pairs_<...>_no_res_cut.root`. **Next:** template-fit pass on `_no_res_cut` (re-fill 0–4
+GeV OS+SS) → ScrambGen mixed-event (T1) → k-validation (T5) → fitter (T6) → acceptance (T3) → R_AA (T7).
+No implementation of the new template-fit MODE yet (design only, per user); `_no_res_cut` production +
+PP fix are the authorized actions.
