@@ -327,6 +327,15 @@ void RDFBasedHistFillingPythiaTruth::FillHistogramsTemplateMinvSignalRegion(){
             "truth_pair_pt > 8 && m1.truth_charge * m1.truth_eta < 2.2 "
             "&& m2.truth_charge * m2.truth_eta < 2.2";
         const std::vector<std::string> minv_template_var = {"minv_zoomin"};
+        // (pair pT, pair eta)-binned versions of the minv_zoomin template, for k(m, pair pT, pair eta)
+        // measured per R_AA bin (low_mass_dimuon_template_fit.md, "Gate criterion = k(m,pT,eta)").
+        // pair_pt_log_150 = pT_bins_150 (15 log bins 8-150 GeV, matches the R_AA pT axis); pair_eta =
+        // 24 uniform bins. Same kin_cuts + _sigsel + "weight" as the 1D fill. Hist names produced:
+        // h_minv_zoomin_vs_pair_pt_log_150<suffix> and h_minv_zoomin_vs_pair_eta<suffix>.
+        const std::vector<std::array<std::string, 2>> minv_template_2D = {
+            {"pair_pt_log_150", "minv_zoomin"},
+            {"pair_eta",        "minv_zoomin"}
+        };
 
         const std::vector<std::pair<std::string, std::string>> sign_df_map = {
             {"_sign1", "df_ss_weighted"},
@@ -341,14 +350,14 @@ void RDFBasedHistFillingPythiaTruth::FillHistogramsTemplateMinvSignalRegion(){
                 const std::string filter_expr = "muon_pair_flavor_category == " + std::to_string(iflavor);
                 const std::string suffix = sign_suffix + flavor_suffix + "_sigsel";
                 auto node_flavor = node.Filter(filter_expr);
-                FillHistogramsSingleDataFrame(suffix, node_flavor, "weight", minv_template_var, {}, {});
+                FillHistogramsSingleDataFrame(suffix, node_flavor, "weight", minv_template_var, minv_template_2D, {});
             }
 
             for (const auto& [iorigin, origin_suffix] : origin_suffix_map){
                 const std::string filter_expr = "muon_pair_origin_category == " + std::to_string(iorigin);
                 const std::string suffix = sign_suffix + origin_suffix + "_sigsel";
                 auto node_origin = node.Filter(filter_expr);
-                FillHistogramsSingleDataFrame(suffix, node_origin, "weight", minv_template_var, {}, {});
+                FillHistogramsSingleDataFrame(suffix, node_origin, "weight", minv_template_var, minv_template_2D, {});
             }
         }
     }

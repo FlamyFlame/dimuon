@@ -81,3 +81,5 @@
 {"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-23T20:14:00Z","criticals":0,"warnings":0,"slug":"remove-res-cut-v2-nominal-fallback"}
 {"event":"start","command":"review-plot","task":"k-validation 5a m-dependence plots (G_SS=k(m)*G_OS)","slug":"k-validation-5a-mdep","timestamp":"2026-06-23T21:35:09Z"}
 {"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-23T21:37:38Z","criticals":0,"warnings":0,"slug":"k-validation-5a-mdep"}
+{"event":"start","command":"review-analysis-code","task":"(pT,eta)-binned 2D truth template fills for k(m,pT,eta)","slug":"ptEta-binned-truth-kfill","timestamp":"2026-06-23T21:56:12Z"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-23T22:03:57Z","criticals":0,"warnings":0,"slug":"ptEta-binned-truth-kfill"}

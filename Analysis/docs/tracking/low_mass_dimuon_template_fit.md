@@ -605,6 +605,23 @@ selection; the fitter; combinatoric (event-mixing) template; k determination; pl
   - Also: `run_pbpb_2X_nominal.sh` appear INCOMPLETE (don't set `resonance_cut_mode=2`), so
     they do NOT reproduce the crossx inputs — flag for fixing once recipe confirmed.
 
+- 2026-06-23 — **(pT,η)-binned truth fill DONE (k(m,pT,η) raw material)** + **single-muon Condor
+  production SUBMITTED** + **ScrambGen safety verified.** (1) `/review-analysis-code` PASS iter 1 (log
+  `review-analysis-code-20260623-175612-ptEta-binned-truth-kfill.md`): added 2D
+  `{pair_pt_log_150,minv_zoomin}`+`{pair_eta,minv_zoomin}` fills (signal-selected, `_sigsel`) to
+  `FillHistogramsTemplateMinvSignalRegion`; 1D templates unchanged (G_OS=2.2138, G_SS=0.6814); new histos
+  `h_minv_zoomin_vs_{pair_pt_log_150,pair_eta}_sign{1,2}_<cat>_sigsel` (15×50 / 24×50); ACLiC-clean; pythia
+  truth refilled (backup `*_pre_ptEta_kfill_backup.root`); sign mapping verified (k_bb=0.512, k_cc=0.009).
+  (2) **ScrambGen single-muon-tree production safety VERIFIED** (background read-only subagent, scratch doc
+  merged here + deleted per directive 3): all 3 incident fixes CONFIRMED in committed source (git 47f81f0):
+  `output_single_muon_tree` now PUBLIC (DimuonAlgCoreT.h:121 / DimuonDataAlgCoreT.h:27); scripts set
+  `output_single_muon_tree=true`+`pbpb_run3_mu4_force_nominal=true` (pbpb) / `trigger_mode=3` (pp) →
+  `trigger_effcy_calc=FALSE`; output base name `single_muon_trees` ≠ `muon_pairs`
+  (DimuonDataAlgCoreT.c:410) ⇒ **clobber structurally impossible**. May-skim inputs ready (pbpb 23/24/25
+  parts 4/2/6, pp24 12); existing single_muon_trees STALE (Oct-2025, old naming) → production needed.
+  (3) **SUBMITTED** 24 jobs: `condor_submit run_{pbpb_23,pbpb_24,pbpb_25,pp_24}_output_single_muon_tree.sub`
+  → clusters 49/50/51/52 (4/2/6/12 jobs). Monitor → sanity-check first job's `.out` (single_muon_trees path,
+  no protected-member error) → hadd parts per dataset for ScrambGen.
 - 2026-06-23 — **Step C / 5a m-dependence DONE (Task #3, partial): k(m) characterised, constant-scalar
   k disproven, robustness driver identified.** `/review-plot` PASS iter 1 (log
   `review-plot-20260623-173509-k-validation-5a-mdep.md`; all numbers independently re-extracted, MATCH).
@@ -809,6 +826,15 @@ function (not constant scalar); save validation to a dedicated folder; keep code
 future possibility (Design Decisions). **Step C / 5a m-dependence DONE** (/review-plot PASS; Progress Log
 2026-06-23): k_bb robust ~0.5, k_cc≈0, k(m) rise = cc̄ dilution f_bb(m); constant-scalar disproven; smooth
 k(m) valid; saved to `dimuon_data/plots/template_fitting/k_validation_5a_20260623/`.
+**USER GO-AHEAD 2026-06-23:** run the FULL chain end-to-end to R_AA with reviews, autonomously,
+stopping ONLY if the 5b k(m,pT,η) closure fails. Binning decided: pair pT = `pair_pt_log_150`
+(=`pT_bins_150`, 15 log bins 8–150 GeV, matches the R_AA pT axis); pair η = `pair_eta` (24 bins).
+k-fill = add 2D `{pair_pt_log_150, minv_zoomin}` + `{pair_eta, minv_zoomin}` (signal-selected, `_sigsel`)
+to `FillHistogramsTemplateMinvSignalRegion`. EXECUTION (parallel tracks): FG = (pT,η) truth-fill code
+(/review-analysis-code) → recompile → rerun pythia truth → k(pT,η) plots (/review-plot). BG =
+read-only verification of the ScrambGen single-muon-production incident fixes (scratch doc
+`_sub_scrambgen_singlemuon_verify_1.md`; NO submit/git by the subagent — orchestrator owns those).
+
 **Next (remaining for the gate):**
 1. **(pT,η)-binned truth fill** of the G categories (+ single_b) → /review-analysis-code → then k(m,pT,η)
    maps/projections → /review-plot (extends 5a to per-RAA-bin).
