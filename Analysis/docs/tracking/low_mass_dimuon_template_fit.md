@@ -669,10 +669,17 @@ a **SEPARATE pass reading `_no_res_cut`** (resonances present for φ/J/ψ templa
 `h1d_crossx_minv_0_4_*` histos (filled from V1 nominal → OS resonance holes) are superseded; re-fill
 from `_no_res_cut`. See Design Decisions + §3a.
 
-**Current action:** (a) **PP `SetIOPathsHook` fix** — mirror PbPb nominal(V1)/trig-eff(V2) ordering
-(trigger_mode==3 → V1 first); ACLiC-clean; pending reviewer + commit. (b) **`_no_res_cut` May-skim
-production** running (Condor clusters 42=pbpb23×4, 43=pbpb24×2, 44=pbpb25×6, 45=pp24×12) → verify +
-hadd to `muon_pairs_<...>_no_res_cut.root`. **Next:** template-fit pass on `_no_res_cut` (re-fill 0–4
-GeV OS+SS) → ScrambGen mixed-event (T1) → k-validation (T5) → fitter (T6) → acceptance (T3) → R_AA (T7).
-No implementation of the new template-fit MODE yet (design only, per user); `_no_res_cut` production +
-PP fix are the authorized actions.
+**DONE this round (2026-06-22):** (a) **PP `SetIOPathsHook` fix** committed — `!trigger_effcy_calc`
+→ V1 first (mirrors PbPb); ACLiC-clean; `/review-analysis-code` PASS. (b) **`_no_res_cut` May-skim
+production COMPLETE** (clusters 42–45, all batches wrote output) + **hadded** to (sizes):
+`pbpb_2023/muon_pairs_pbpb_2023_single_mu4_no_res_cut.root` (290M),
+`pbpb_2024/...` (206M), `pbpb_2025/...` (581M), `pp_2024/muon_pairs_pp_2024_2mu4_no_res_cut.root` (863M).
+Verified resonances PRESENT in OS (pbpb23 p1: J/ψ=7493, φ=582, low[0,1.06]=5197 — vs 0 under V1).
+These are the inputs for the separate template-fit pass.
+
+**⏸ PAUSED for user go-ahead** before implementing the template-fit MODE (per "no implementation
+yet other than `_no_res_cut`"). When approved: re-fill 0–4 GeV OS+SS from `_no_res_cut` (new mode) →
+ScrambGen mixed-event (T1) → MC k-validation (T5, the gate) → coupled OS+SS fitter +φ/J/ψ+GS/FE+comb
+(T6) → signal acceptance (T3) → wire into crossx/R_AA (T7).
+**Non-urgent cleanup:** zombie `_res_cut_v2_part*` (regenerate only if trig-eff re-hadded), spurious
+`_mindR_0_02_part*` + `_res_cut_v2_test` from the incident.
