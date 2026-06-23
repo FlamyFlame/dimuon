@@ -857,14 +857,27 @@ to `FillHistogramsTemplateMinvSignalRegion`. EXECUTION (parallel tracks): FG = (
 read-only verification of the ScrambGen single-muon-production incident fixes (scratch doc
 `_sub_scrambgen_singlemuon_verify_1.md`; NO submit/git by the subagent — orchestrator owns those).
 
-**STATUS 2026-06-23 (checkpoint):** **5a (MC truth) COMPLETE & gate-FAVORABLE** (k stable per R_AA bin;
-all reviewed+committed: 28757cd, 671af99, 53ebd1c, ff6c52d). **Single-muon Condor production RUNNING**
-(clusters 49-52; ~half done — pp finished, PbPb large jobs still writing; background monitor `bapt5tr94`
-polls until drain, then re-invokes). NOTE: do NOT hadd until ALL jobs finish (in-progress files read as
-zombies; verified 2026-06-23 the OK parts have correct `muon_tree` entries, the rest are open/running).
-**Remaining to the gate:** T2 data refill from `_no_res_cut` (independent of Condor — do now) → hadd
-single-muon trees (after Condor) → ScrambGen object-model rewrite + run → T_mix → **5b data closure = the
-gate**. Then (if pass) Part 2c: resonance templates → fitter → acceptance → wire R_AA.
+**STATUS 2026-06-23 (checkpoint — all 5b prerequisites DONE):**
+- ✅ **Part 1** (`28757cd`): nominal RDF requires V1; `_res_cut_v2` fallback removed.
+- ✅ **5a gate (MC truth)** (`671af99`, `53ebd1c`, `ff6c52d`): k STABLE per R_AA bin (k_int=0.308; k_bb≈0.5
+  robust; k_cc≈0; k(pT)/k(η) flat ~0.31). Constant-scalar disproven; smooth k(m) valid. Gate-FAVORABLE. 2×/review-plot PASS.
+- ✅ **(pT,η) truth k-fill** (`53ebd1c`): 2D templates for k(m,pT,η).
+- ✅ **Single-muon production**: 24 Condor jobs done; ALL 24 parts valid (no zombies), 19.72M muon entries
+  (`single_muon_trees_{pbpb_20YY,pp_2024}_part*_*_mindR_0_02.root`). Incident-safe (distinct filename).
+- ✅ **T2 data refill** (`37c5de6`): `low_mass_template_calc` mode → D_OS/D_SS from `_no_res_cut`
+  (`*_template_fit.root`, 1D + 2D pair pT/η, PbPb per-ctr). OS resonances present; nominal untouched. PASS.
+
+**REMAINING to the 5b GATE (Task #4, in progress):**
+1. **ScrambGen object-model REWRITE** — the 4 files `ScrambGen/{ScrambGen,ScrambGenPP}.{c,h}` (2024-25) use the
+   retired `class Muon` and do NOT compile. Rewrite to read `MuonObj` single-muon trees and WRITE
+   `muon_pair_tree_sign1/sign2` (`MuonPairObj`), as a pure pair generator (drop its resonance/photoprod vetoes
+   + dR bucketing — cuts move to the RDF signal selection). 20 ctr intervals, per-year, ×5 oversampling
+   (Design Decisions "ScrambGen revival"). → /review-analysis-code. (May need hadded single-muon trees;
+   hadd with the DataAnalysisClasses dictionary loaded — the object branches need it.)
+2. **Run ScrambGen** (Condor) → scrambled pair trees → fill `T_mix` via the RDF → mixed-event combinatoric.
+3. **5b DATA closure** `SS_data ?= C_mixed + k·G_OS` per (pT,η) bin → /review-investigation + /review-plot.
+   **= THE GATE.** PASS → Part 2c (resonance templates → coupled fitter → signal acceptance → wire R_AA)
+   autonomously; FAIL → STOP for user (consider code-set B, MC-only separate fits).
 
 **Next (remaining for the gate):**
 1. **(pT,η)-binned truth fill** of the G categories (+ single_b) → /review-analysis-code → then k(m,pT,η)
