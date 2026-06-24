@@ -744,6 +744,19 @@ selection; the fitter; combinatoric (event-mixing) template; k determination; pl
 
 ## Results & Observations
 
+- 2026-06-24 — **BUILD step 1 DONE: production OS−SS + MC(S+G) fitter (pp), per R_AA pT bin.**
+  `OSminusSS_SG_fit_20260624/code/osss_sg_fit_pp.C`: per coarse pT bin, OS−SS = N_S·S + N_G·G_OS (NNLS,
+  non-negative, [1.08,4], J/ψ[2.82,3.32]+ψ′[3.55,3.82] PEAKS masked — modeling them with fixed Gaussians
+  failed, χ²→5919, since the sharp data peaks aren't Gaussian; the small smeared-tail leakage below 2.85 →
+  §3h systematic). **Per-bin signal yields N_S (the R_AA inputs):** integrated 5716; pT[8,21]=5298;
+  pT[21,56]=408; pT[56,150]=2.9 (falls steeply ~ cross-section). G/(S+G)=0.18–0.32 (sensible). χ²/ndf high at
+  low pT (60, 58) — MC G/S shape vs data continuum at the %-level amplified by tiny dσ errors → a fit-model/
+  template-shape SYSTEMATIC; the yields are physical (vs the combined fit's N_C=0). Plots
+  `osss_sg_fit_pp_*.png`, numbers `numbers_pp.txt`. NOTE: plot title still says "+ resonances" (stale — now
+  masked) → fix at /review-plot. **Remaining BUILD: /review-plot the fits → PbPb fitter (per centrality) →
+  signal acceptance (N_sig=N_S/A_sig) → wire R_AA → systematics.**
+
+
 ### k-VALIDATION (5a) — FIRST LOOK from existing integrated truth templates (2026-06-23) ###
 Quick read of `G_SS/G_OS` from the pT/η-INTEGRATED `_sigsel` truth templates
 (`histograms_pythia_5p36TeV_no_data_resonance_cuts.root`; G = flavor {bb,cc,one_b_one_c},
