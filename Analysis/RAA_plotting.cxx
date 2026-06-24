@@ -3,7 +3,9 @@
 #include <TH3D.h>
 #include <TCanvas.h>
 #include <TLegend.h>
+#include <TLatex.h>
 #include <TSystem.h>
+#include "AtlasStyle.C"   // ATLAS frame style (SetAtlasStyle); header AtlasStyle.h
 #include <string>
 #include <vector>
 #include <iostream>
@@ -296,6 +298,7 @@ void RAAPlotting::PrintInstructions(){
 
 
 void RAAPlotting::RunPlotting(){
+	SetAtlasStyle();   // apply ATLAS frame style before any object is created
 	InputOutputPrepare();
 	gSystem->mkdir(out_dir.c_str(), true); // ensure the (cluster) output dir exists
 	ModePrepare();
@@ -402,6 +405,24 @@ void RAAPlotting::RunPlotting(){
 	    	h_RAA_cur_bin->Draw(draw_options.c_str());
 		}
 		l->Draw("same");
+
+		// ATLAS-convention label for talks/slides: "ATLAS" (font 72, bold-italic)
+		// + status word (font 42), stacked in the free upper-left strip (legend
+		// starts at x=0.30). "Internal" is correct for unapproved results; switch
+		// to "Preliminary" only if the result is approved for public showing.
+		// Physics caveats remain in the legend (reco-eff + T_AA placeholders, OS-SS).
+		TLatex* atlas = new TLatex();
+		atlas->SetNDC();
+		atlas->SetTextFont(72);           // ATLAS bold-italic
+		atlas->SetTextColor(kBlack);
+		atlas->SetTextSize(0.052);
+		atlas->DrawLatex(0.185, 0.875, "ATLAS");
+		TLatex* lab = new TLatex();
+		lab->SetNDC();
+		lab->SetTextFont(42);
+		lab->SetTextColor(kBlack);
+		lab->SetTextSize(0.044);
+		lab->DrawLatex(0.185, 0.815, "Internal");
 	}
 
 	std::string use_same_y_axis_range_23_24_suffix = (mode == 1 && use_same_y_axis_range_23_24 && run_year_trigger_mode > 1)? "_same_23_24_ymax" : "";
