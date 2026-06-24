@@ -392,6 +392,25 @@ selection; the fitter; combinatoric (event-mixing) template; k determination; pl
   written summary doc — live together under `dimuon_data/plots/template_fitting/` (dated subfolders per
   snapshot). This preserves the evidence justifying the constant-scalar-fails finding and the k(m,pT,η)
   characterization.
+- **ScrambGen rewrite — input/output formats + 5 open-question resolutions (2026-06-23, from the read-only
+  scoping subagent `_sub_scrambgen_rewrite_scope_1.md`, merged + verified).** INPUT: single-muon trees =
+  one TTree `muon_tree`, one branch `MuonObj` (type `MuonPbPb` PbPb / `MuonPP` pp), **one entry = one muon**
+  carrying its own `ev_num`, `pt/eta/phi/charge`, `ev_centrality` (percent 0–84, −1 if >85%/invalid),
+  `ev_FCal_Et`. The per-ctr `muon_tree_ctr{N}` trees were NOT written → the rewrite **bins muons itself** by
+  `ev_centrality`. The `_hadd.root` files are empty (hadd needs the dict) → read parts via `TChain("muon_tree")`.
+  OUTPUT: the RDF reads `muon_pair_tree_sign1`(SS)/`muon_pair_tree_sign2`(OS), branch `MuonPairObj`
+  (`MuonPairPbPb`/`MuonPairPP`). Construct a pair: `p.m1=muonA; p.m2=muonB; p.year=yr; p.weight=1.0; p.Update();`
+  — `Update()` computes minv (m_μ=0.105658), pair_pt/eta, dr, same_sign, avg_centrality. Sign: same_sign→sign1,
+  else sign2. ScrambGen must include `DataAnalysisClasses.h` (object-branch dict). **RESOLUTIONS:**
+  (1) **nScramb** = `5 × N_muons(interval)` per 5% interval (shape-only, N_C floats — no stale tables);
+  (2) **ev_centrality<0 muons EXCLUDED** (outside 0–80%); (3) **spill DROPPED** — strict same 5% interval
+  (`nCtrIntvls=20`, `CtrStep=5`, idx=ev_centrality/5); (4) **avg_centrality set EXPLICITLY** post-`Update()`
+  to `(m1.ev_centrality+m2.ev_centrality)/2` (year-independent; bypasses the ambiguous yr25 single-event FCal
+  recalc; both muons same interval so the average is well-defined); (5) **RDF mixed-event IO hook** (read the
+  scrambled file → fill `T_mix`) is a SEPARATE step after ScrambGen. Mixing core: pick i; pick j≠i with
+  `ev_num[j]≠ev_num[i]` (no same-event pairs); NO resonance/photoprod/dR cuts (now in the RDF signal_cuts).
+  Output `muon_pairs_pbpb_20YY_single_mu4_scrambled.root` / `muon_pairs_pp_2024_2mu4_scrambled.root`. Per-year
+  (combine downstream); run locally (in-memory, fast). PP: single bin, `MuonPP`/`MuonPairPP`, no year/avg_centrality.
 - **Subagent scratch-doc procedure (2026-06-23, CLAUDE.md update, user directive 3).** For
   any delegated semi-complex investigation/implementation, each subagent checkpoints to its
   OWN scratch doc (`Analysis/docs/tracking/_sub_<task>_<n>.md`), append-only, never the
