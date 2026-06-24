@@ -805,6 +805,24 @@ NOT cleanly "SS=C+k·G is wrong," and it would ALSO affect the MC-only fallback 
 user's "switch to MC-only only if 100% sure," I am NOT — escalated to the user; the next investigation is the
 data-soft-vs-MC-hard correlated-background question, not T_mix.
 
+### ROOT CAUSE RESOLVED — soft near-side combinatoric; robust path = OS−SS + MC S+G (2026-06-24,
+### /review-investigation PASS iter 3) ###
+WHY the data is softer than every template: a **soft NEAR-SIDE same-sign combinatoric**. In the low-mass region
+(minv<4, pp24), **40% of SS data pairs are near-side (ΔR<0.3)**, peaking at minv 1.25 — ~15× the MC correlated
+near-side rate (2.7%). The MC g→QQ̄ template is correctly **WIDE-angle/hard** (⟨ΔR⟩=2.50; two separate HF
+hadrons → wide muons → high minv) — NOT mismodeled; the MC signal is collimated (⟨ΔR⟩=0.30, 64% near-side). The
+near-side soft SS combinatoric (within-jet π/K/fakes) is captured by NEITHER event-mixing (uncorrelated→wide)
+NOR the HF template, which is why the combined OS+SS/T_mix fit fails (no template models it). **ROBUST FIX
+(validated):** OS−SS removes the charge-symmetric combinatoric data-drivenly (incl. near-side); then
+**OS−SS = N_S·S + N_G·G_OS** fits with the two well-modeled, well-separated MC templates → N_S=5710, N_G=1639
+(both POSITIVE), G/(S+G)=0.22, χ²/ndf=72 (residual = smeared-J/ψ/ψ′ leakage → §3h resonance templates) — vs the
+combined fit's unphysical N_C=0. Deliverables: `rootcause_data_soft_vs_template_hard_20260624/`
+(summary.md, data_SS_minv_by_dR.png, OSminusSS_S_plus_G_fit.png).
+**STRATEGY DECISION (for the user):** abandon the combined-fit/T_mix path; adopt **OS−SS + 2-template MC
+(S + G_OS) fit + §3h resonance templates** (= the pre-approved MC-only-OS path, sharpened; connects to the
+existing provisional OS−SS — the refinement is the MC S+G removing the residual (1−k)·G). Then signal
+acceptance → wire R_AA. Caveats: MC truth low effective stats; OS−SS charge-symmetry → a systematic.
+
 ### TEMPLATE INVENTORY (for the fitting agent — 1D minv templates, Step 4a) ###
 **Files** (Pythia evgen truth, `_no_data_resonance_cuts` = the truth sample has NO
 resonance veto, unlike OS data):
