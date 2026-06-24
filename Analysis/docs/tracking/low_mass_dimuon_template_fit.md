@@ -624,6 +624,24 @@ selection; the fitter; combinatoric (event-mixing) template; k determination; pl
   - Also: `run_pbpb_2X_nominal.sh` appear INCOMPLETE (don't set `resonance_cut_mode=2`), so
     they do NOT reproduce the crossx inputs — flag for fixing once recipe confirmed.
 
+- 2026-06-23 — **ScrambGen REWRITTEN to the object model + scrambled muon_pairs produced** —
+  `/review-analysis-code` PASS iter 2 (log `review-analysis-code-20260623-202339-scrambgen-objectmodel-rewrite.md`;
+  all numbers MATCH). Replaced the 4 old non-compiling `ScrambGen/{ScrambGen,ScrambGenPP}.{c,h}` (retired
+  `class Muon`) with header-only object-model classes: read `MuonObj` single-muon trees via TChain, bin by
+  ev_centrality into 20 5% intervals (exclude <0), mix two muons from DIFFERENT events (`ev_num` differs) same
+  interval, build `MuonPairPbPb` (m1/m2/year/weight=1/`Update()`), route `same_sign`→sign1(SS)/else sign2(OS),
+  write `muon_pair_tree_sign1/sign2` branch `MuonPairObj`. NO physics cuts (RDF applies signal_cuts).
+  oversample=5, fixed seed. New `run_scrambgen.sh`. Produced `muon_pairs_pbpb_20YY_single_mu4_scrambled.root`
+  (1.9/1.4/3.7 GB) + `muon_pairs_pp_2024_2mu4_scrambled.root` (1.7 GB). **Verified:** SS≈OS (charge-symmetric
+  combinatoric: yr23 7.046M/7.049M etc.); **OS minv = smooth continuum, NO J/ψ/φ peaks** (ratio 0.997/0.968 —
+  the defining mixed-event correctness check); per-ctr population central-weighted.
+  **BUG found+fixed (iter 1 CRITICAL):** yr25 `Update()` recomputes centrality from the pair `FCal_Et` (a mixed
+  pair has none → all yr25 avg_centrality=−1, would be dropped by the RDF filter). Fix: set
+  `avg_centrality=(m1.ev_centrality+m2.ev_centrality)/2` explicitly after `Update()` (Design-Decision
+  resolution #4; no-op for yr23/24). Re-ran: yr25 mean=15.22, 0% at −1. **Open INFO for user:** `MuonPairPbPb.h:51`
+  yr25 "centrality all-zeros→recalc-from-FCal" premise looks STALE (yr25 single-muon ev_centrality now valid,
+  mean 15.48); nominal real pairs unaffected (real FCal valid), but worth revisiting globally later.
+  **Scrambled muon_pairs ready → next: RDF mixed-event mode to fill T_mix → 5b closure.**
 - 2026-06-23 — **5a folder + code RENAMED (user, descriptive naming).** `k_validation_5a_20260623/` →
   `OS_to_SS_factor_validation_MC_truth_constant_k_20260623/`; macros `k_validation_5a_{minv,ptEta}.C` →
   `OS_to_SS_factor_MC_truth_{minv,ptEta}.C` (+ matching function names, OUT paths, header comments, cout tags);

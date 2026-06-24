@@ -87,3 +87,5 @@
 {"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-06-23T22:11:24Z","criticals":0,"warnings":0,"slug":"k-validation-5a-ptEta"}
 {"event":"start","command":"review-analysis-code","task":"low-mass template-fit data mode (_no_res_cut D_OS/D_SS)","slug":"low-mass-template-fit-mode","timestamp":"2026-06-23T22:18:45Z"}
 {"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-23T22:45:18Z","criticals":0,"warnings":0,"slug":"low-mass-template-fit-mode"}
+{"event":"start","command":"review-analysis-code","task":"ScrambGen object-model rewrite (mixed-event combinatoric T_mix)","slug":"scrambgen-objectmodel-rewrite","timestamp":"2026-06-24T00:23:39Z"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":2,"timestamp":"2026-06-24T01:24:12Z","criticals":0,"warnings":0,"slug":"scrambgen-objectmodel-rewrite"}
