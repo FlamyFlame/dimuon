@@ -928,6 +928,118 @@ The fit must mask the OS data veto windows ([0,1.06],[2.9,3.3],[3.55,3.8]) consi
   leakage, fit model, fiducial-vs-extrapolated).
 
 ## Latest Stage
+
+**▶▶ OS−SS FOUNDATION VALIDATION — APPROVED 2026-06-24 (user, mid-BUILD).** Before finalizing OS−SS,
+the user requested two sanity checks on the foundational claim (low-mass SS peak <1 GeV = soft
+near-side combinatoric from within-jet fakes/hadrons → cancels in OS−SS):
+
+- **V1 — charge-misreconstruction ruled out (user directive: "change turn_on_track_charge to true in
+  ntuple process").** Concern: at low minv (small opening angle) a muon's reco (combined) charge could
+  be misreconstructed, so a true OS pair leaks into SS, distorting the SS low-mass spectrum. Independent
+  handle: the ID-**track** charge `m.trk_charge` (from `muon_pair_muon{1,2}_trk_pt` sign) vs the combined
+  `m.charge` (from `muon_pair_muon{1,2}_pt` sign). The cut already exists —
+  `DimuonDataAlgCoreT.c:605` requires `m1.charge==m1.trk_charge && m2.charge==m2.trk_charge` — but is
+  gated by `turn_on_track_charge` (default **false**, `DimuonDataAlgCoreT.h:343`; never set true anywhere
+  → trk_charge stored as 0 in all existing pairs). **Plan:** (a) ntuple-processing change → set/enable
+  `turn_on_track_charge=true` so trk_charge is populated and the consistency cut applies; **WRITE TO A
+  DISTINCT OUTPUT SUFFIX** (e.g. `_trkqcut`) so nominal/`_no_res_cut` pairs are NOT clobbered (incident
+  history: nominal clobbered twice). → `/review-analysis-code`. (b) Re-process pp24 `_no_res_cut` (Condor)
+  with the flag → distinct pairs. (c) RDF `low_mass_template_calc` fill → D_OS/D_SS with the cut.
+  (d) Compare low-mass (<1 GeV) SS minv WITH vs WITHOUT the trk-charge cut + the per-SS/OS
+  `pass_muon_trk_charge` cutflow bin → fraction of SS pairs removed = charge-flip contamination. Expect
+  SMALL (user: SS peak shows no resonance structure → unlikely charge misreco). → `/review-plot`.
+  NOTE: keeping `turn_on_track_charge` default false (nominal unchanged); the flag is set true only in the
+  dedicated check run. User may adopt it as nominal afterward (then blast radius = re-run crossx/R_AA).
+- **V2 — OS/SS mirror of the low-mass peak, with background MC.** Claim to support: the low-mass peak
+  mirrors in SS and OS (charge-symmetric combinatoric) → OS−SS removes it. **Plan:** (a) DATA overlay
+  D_OS vs D_SS (0–4 GeV, from existing `*_template_fit.root`: `h1d_crossx_minv_0_4_{op,ss}_dsigma`) — show
+  the soft peak present in both. (b) Background MC: HIJING overlay (`pythia_fullsim_hijing_overlay_test_sample/
+  histograms_pythia_fullsim_hijing_overlay_pp24_no_data_resonance_cuts.root`) and/or pythia fullsim — show
+  the low-mass SS≈OS shape in the background/combinatoric-dominated region (charge symmetry), and that the
+  near-side soft component is NOT signal. → `/review-investigation` + `/review-plot`. (Connects to R&O
+  "ROOT CAUSE RESOLVED": 40% of low-mass SS pairs ΔR<0.3, peak minv 1.25.)
+
+These gate confidence in the BUILD-phase OS−SS+S+G method; BUILD steps 2–5 (PbPb fitter, acceptance, R_AA
+wiring, systematics) resume after V1/V2.
+
+**V1 LATENT BUG FOUND + FIX (2026-06-24).** The first trkqcut re-process produced **OS=0**, SS halved
+(part1: SS 145852→73911, OS 576516→0). Root cause: the PRE-EXISTING `turn_on_track_charge` code derived
+`m.trk_charge` from `sign(muon_pair_muon{1,2}_trk_pt)`, but `trk_pt` is stored **UNSIGNED** in the skim
+(verified: 0 negative) → trk_charge≡+1 → the consistency cut `trk_charge==charge` rejected EVERY negative
+muon → all OS pairs (and −− SS) gone. This path was NEVER exercised before (flag default false), so no past
+result is affected. **The real fix:** the raw skim DOES have signed `muon_pair_muon{1,2}_trk_charge`
+(`vector<int>`, ±1; EXISTS in `data_pp24_part1.root`) — the combined charge is `sign(muon_pair_muon{1,2}_pt)`
+(no `_charge` branch), the track charge is the `_trk_charge` branch. So `m.trk_charge` must be read from the
+`muon_pair_muon{1,2}_trk_charge` branch, NOT `sign(trk_pt)`. The 12 garbage trkqcut outputs will be
+overwritten after the fix. (Fullsim has the SAME latent bug — `muon_trk_pt` unsigned — but is out of V1 scope;
+note for future.) → fix via `/review-analysis-code`, re-run Condor.
+
+**V1 RESULT — CHARGE MISRECONSTRUCTION RULED OUT (2026-06-24, DONE).** After the trk_charge-branch fix,
+re-processed pp24 with the charge-consistency cut (`turn_on_track_charge=true`, cluster 58, `_trkqcut` output).
+The cut removes ≈0 pairs: trkqcut SS/OS entry counts = nominal `_no_res_cut` to 4 decimals across 5 completed
+parts (OS 831515, SS 210383; OS-kept=SS-kept=1.0000). Direct disagreement rate `sign(muon_pair_muon1_pt) ≠
+muon_pair_muon1_trk_charge` (part1, 5M events): **0.376% over ALL muons** (confirms the two charges ARE
+independent measurements — cut not a no-op) but **0.0058% after quality+|η|<2.4+pt>4 selection** (32/556407).
+⇒ combined-muon charge and ID-track charge agree for **99.994%** of selected muons → charge misreconstruction is
+NEGLIGIBLE → it does NOT cause the low-mass SS peak; OS→SS charge-flip leakage ≈0. (User's expectation confirmed.)
+Note: the per-muon disagreers preferentially fail the other cuts (dP/p etc.), so the pair-level removal is even
+smaller (~exactly 0). The remaining trkqcut Condor parts finish but only reconfirm. The signed-track-charge fix
+is now in the codebase for any future use.
+
+**V1 STATUS (2026-06-24):** suffix code DONE — `/review-analysis-code` PASS iter 1 (log
+`review-analysis-code-20260624-021327-trk-charge-check-pass.md`): `DimuonDataAlgCoreT.c` adds
+`trkqcut_suffix="_trkqcut"` (gated on `turn_on_track_charge`) to BOTH output_file_path + output_hist_file_path
+→ nominal byte-identical when flag false; new `run_pp_24_no_res_cut_trkqcut.{sh,sub}`. **Condor SUBMITTED**
+cluster 57 (12 jobs) re-processing pp24 raw skim → `muon_pairs_pp_2024_part*_2mu4_no_res_cut_trkqcut.root`
+(cut ON). Monitor → hadd → compare low-mass SS minv with vs without trk cut + `hists_cut_acceptance` SS/OS
+`pass_muon_trk_charge` bin. Nominal `_no_res_cut` untouched (baseline = existing `*_template_fit.root` D_SS).
+
+**V2 BACKGROUND MC — CORRECTED (2026-06-24, user).** My earlier "no background MC" was WRONG: I conflated "no
+pre-FILLED background histograms" with "no background sample." The fullsim/overlay reco muon collection IS
+skimmed exactly like data → it contains fake + hadronic-background muons; only the EXISTING histos are
+signal-truth-matched. Starting from RECO muons (not truth-seeded), the truth-match branches classify provenance.
+The current `PythiaFullSimExtras.c` fill is TRUTH-SEEDED (loops `truth_muon_list` pairs, lines 210-224) → never
+pairs fakes/hadronic; the test needs a NEW **reco-seeded** fill.
+- **Provenance classifier (VERIFIED on the actual NTUP, 2026-06-24).** Per reco muon, branches `muon_truth_prob`,
+  `muon_truth_id` (pdgId), `muon_truth_IsPrimary`. NOTE: the `barcode>200k`=Geant4 convention is OVERLAY/HIJING
+  only — in pythia fullsim 0% of matched muons have bc>200k, so use pdgId+IsPrimary instead:
+  * **fake** = `muon_truth_prob ≤ 0.5` (no truth match)
+  * **hadronic** = prob>0.5 AND ( `|muon_truth_id|≠13` [punch-through hadron, e.g. K±=321] OR (`|id|==13` AND
+    `IsPrimary==0`) [π/K decay-in-flight muon] )
+  * **prompt** = prob>0.5 AND `|id|==13` AND `IsPrimary==1`
+- **Breakdown (pTH8–14 file, 20175 reco muons):** prompt 97.8%, fake 1.6%, punch-through 0.6%, decay-in-flight
+  ~0%. ⇒ background exists + is labelable, but ~2% in this DiMu-filtered signal sample → LOW stats for low-mass
+  background PAIRS. Sum all pTH slices first; if still marginal → **POWHEG Run2 pp17 fullsim** (dcache backup; valid
+  for a physics test though NOT for detector-condition procedures like reco-eff/unfolding — pp condition suffices,
+  background seen in both pp & PbPb). Data-magnitude won't be reproduced by signal MC (data SS 40% near-side vs MC
+  2.7%) → use overlay for magnitude; signal-MC tests the PRINCIPLE (charge symmetry) + PROVENANCE.
+- **The test (user, valid):** reco-seeded OS/SS low-mass minv split by provenance → (1) recover the SS low-mass
+  shape [qualitative in signal MC], (2) confirm a genuine background with ≥1 fake/hadronic muon despite passing
+  ALL muon-quality cuts, (3) SS↔OS mirror (charge symmetry → OS−SS valid).
+- **RESULT (2026-06-24, `bkg_mc_provenance.C` on pythia signal fullsim + HIJING overlay; `/review-analysis-code`
+  PASS).** macro: `dimuon_data/plots/template_fitting/bkg_mc_provenance_20260624/`. Check (2) CONFIRMED: genuine
+  fake+hadronic background exists and SURVIVES all muon-quality cuts (signal MC: prompt 99.3%/fake 0.02%/had
+  0.66%; overlay post-selection prompt 96.6%/fake 0.38%/had 3.05% — note the UE's 34.8% raw fakes are mostly
+  removed by medium-quality+dP/p+d0/z0, leaving hadronic-dominated bkg). **Check (3) — the mirror is OPENING-ANGLE
+  DEPENDENT:** overlay background SS/OS ≈ **0.98 at wide-angle/high-mass (minv>4)** [charge-symmetric uncorrelated
+  combinatoric — mirrors ✓] but ≈ **0.20–0.29 at near-side/low-mass (minv<1.5)** [OS-ENHANCED]. Same in signal MC
+  (low-mass bkg SS/OS≈0.29≈k). PHYSICS: the near-side low-mass background = (prompt signal muon + near-side
+  hadronic from the same HF jet) → CORRELATED, OS-enhanced, ≈ the g→QQ̄ G template (k≈0.3); the symmetric
+  combinatoric lives at wide angle. **IMPLICATION:** in MC the near-side low-mass background (analog of the data
+  SS peak) is OS-correlated, NOT charge-symmetric → it does NOT cleanly mirror. This is CONSISTENT with the
+  adopted OS−SS + MC(S+G) method (OS−SS cancels the symmetric part; the OS-enhanced (1−k)·G residual is removed
+  by the MC G template) but COMPLICATES the simple "SS peak mirrors OS" claim — the near-side part does not.
+  **CAVEAT:** these are hard-scatter SIGNAL samples (every event has a prompt muon → near-side bkg biased to
+  prompt+hadronic); data near-side may differ (UE-only could be more symmetric). Robust data charge-symmetry
+  evidence remains T_mix (SS/OS=0.999) — but that is wide-angle/uncorrelated by construction, NOT near-side.
+  **OPEN for user:** whether the data near-side SS peak is truly charge-symmetric is NOT settled by this MC; flags
+  a real consideration for the OS−SS charge-symmetry assumption (possible next looks: fake-fake/UE-only component;
+  min-bias sample; or accept that OS−SS + G template absorbs the residual). Plots pending /review-plot.
+- **dp/p coupling (user):** the hadronic decay-in-flight background IS the Δp/p-fit target (ID-MS kink); this same
+  background MC enables the Δp/p template fit (reco quantities, before unfolding, in the nominal pipeline). Priority:
+  finish the current combinatoric+truth-bkg template fit FIRST; defer the dp/p-vs-RAA ordering decision until after
+  this investigation. Data evidence still ready (D_OS 1.71e4 / D_SS 935; ρ/ω+φ peaks; T_mix SS/OS=0.999).
+
 **AUTONOMOUS IMPLEMENTATION APPROVED & UNDERWAY (2026-06-22).** User approved running
 the full chain to a PRELIMINARY result with placeholder reco-eff + identity unfolding;
 Δp/p deferred (needs π/K MC); start with reco-eff (DONE: verified, no change) & ScrambGen.
