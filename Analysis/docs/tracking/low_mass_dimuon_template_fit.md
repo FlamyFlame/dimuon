@@ -773,7 +773,39 @@ gate condition.** Options for the user: **(A)** refine the mixed-event method (m
 matches the soft data combinatoric) then retry the combined fit; **(B)** switch to **code-set B = MC-only
 separate SS/OS fits** (the pre-agreed fallback — avoids the data-driven combinatoric entirely); **(C)** keep
 the combined fit with a large combinatoric-shape systematic. Recommendation: the T_mix mismatch is the
-immediate blocker; (A) is the natural next try, but (B) is the robust fallback if (A) still struggles. (for the fitting agent — 1D minv templates, Step 4a) ###
+immediate blocker; (A) is the natural next try, but (B) is the robust fallback if (A) still struggles.
+**[SUPERSEDED 2026-06-24 by the T_mix independent verification below — the "T_mix too hard → abandon" reading
+was incomplete; T_mix is valid, the issue is upstream (MC correlated template / near-side).]**
+
+### T_mix VALIDITY — INDEPENDENT VERIFICATION (2026-06-24, two neutrally-prompted reviewers) ###
+Per the user directive (verify T_mix validity WITHOUT my conclusions before abandoning the combined fit):
+- **Reviewer 1 (code correctness, neutral): VERDICT CORRECT — no bug.** Verified on the produced files: 0
+  same-event pairs, no self-pairing, SS/OS sign routing correct (sign1=100% SS, sign2=100% OS, matches the RDF),
+  pair kinematics correct, centrality binning correct (0 cross-interval pairs), yr25 avg_centrality override
+  works, RNG fine, downstream fill correct + distinct output. Non-fatal caveats: ×5 oversampling-with-replacement
+  UNDERSTATES template per-bin errors (matters only if they enter the fit); pp scrambled file unclean-close
+  warning (data intact; re-confirm); cross-part ev_num collisions → harmless false rejections.
+- **Reviewer 2 (physics validity, neutral): T_mix is a VALID strictly-UNCORRELATED estimator, near-side caveat.**
+  Independently reproduced T_mix (1% agreement → genuine method property, not a code artifact). KEY: real
+  same-event SS pairs in 0-4 GeV carry NEAR-SIDE (Δη,Δφ) COLLIMATION (⟨ΔR⟩ 0.375 real vs 0.454 mix) that mixing
+  destroys → mixed pairs pushed HIGHER in mass (minv ∝ opening angle). This fully explains T_mix harder than
+  D_SS (mean 2.63 vs 2.22; mix/data 0.46→1.89; SS shape corr 1-4 GeV = −0.46). Pool ~10% softer (sub-dominant).
+  **R2's crucial interpretation:** if T_mix is the uncorrelated-ONLY component with the correlated near-side
+  (g→QQ̄/FE) in SEPARATE templates, the T_mix–SS mismatch is EXPECTED, not fatal; if T_mix is meant to be all of
+  SS, it's biased.
+
+**SYNTHESIS (orchestrator) — NOT 100% sure the assumption is wrong ⇒ do NOT switch to MC-only yet.** T_mix is
+NOT buggy (R1) and IS a valid uncorrelated combinatoric estimator (R2). My closure fit IS the "T_mix
+uncorrelated + separate MC correlated G" design R2 describes, so T_mix≠D_SS is EXPECTED, not a failure. The fit
+still gave N_C=0/χ²=368 because the data low-mass D_SS (peaks 1.72) is softer than BOTH T_mix (uncorrelated,
+hard) AND the MC G_SS (correlated, peaks 3.64) — NEITHER template is soft enough. ⇒ the real issue is UPSTREAM
+of T_mix: either (a) the MC correlated-HF template G is mismodeled (too hard vs the data's low-mass near-side
+correlated bkg), or (b) a near-side combinatoric component missed by both mixing and the HF templates. This is
+NOT cleanly "SS=C+k·G is wrong," and it would ALSO affect the MC-only fallback (same MC G template). ⇒ per the
+user's "switch to MC-only only if 100% sure," I am NOT — escalated to the user; the next investigation is the
+data-soft-vs-MC-hard correlated-background question, not T_mix.
+
+### TEMPLATE INVENTORY (for the fitting agent — 1D minv templates, Step 4a) ###
 **Files** (Pythia evgen truth, `_no_data_resonance_cuts` = the truth sample has NO
 resonance veto, unlike OS data):
 - 5.36 TeV (nominal): `/usatlas/u/yuhanguo/usatlasdata/pythia_truth_full_sample/pythia_5p36TeV/histograms_pythia_5p36TeV_no_data_resonance_cuts.root`
@@ -979,7 +1011,18 @@ through ALL remaining steps until everything is done and R_AA is FINALIZED. The 
 Keep the tracking-doc protocol (plan before, results after) and the /review-* loops throughout, but do not
 pause to report between steps.**
 
-**▶ RESUMED 2026-06-23 — user decision on the gate-fail: (A) REFINE mixed-event T_mix (pT-class mixing so it
+**▶ USER DIRECTIVE 2026-06-24 — VERIFY T_mix VALIDITY INDEPENDENTLY BEFORE ABANDONING.** Before concluding the
+combined fit must be abandoned, make 100% sure the mixed-event T_mix procedure is VALID (not buggy). Get
+SEPARATE reviewers to verify INDEPENDENTLY — **without being given my assumptions/conclusions** (no "too hard",
+no gate-fail framing) to avoid confirmation bias. Keep ALL records (procedure + evidence of why the assumption
+fails → why we abandon). Only if 100% sure the assumption is wrong → do MC-only OS-only. Track status in this
+doc throughout. **Plan:** (i) spawn ≥2 independent, neutrally-prompted reviewers on the ScrambGen mixing code +
+the T_mix RDF fill + the outputs vs data — "is this mixed-event combinatoric correctly implemented & a valid
+combinatoric estimate? report bugs/concerns + verdict"; (ii) if a reviewer finds a BUG → fix + re-test the
+closure; (iii) if independent reviewers CONFIRM the procedure is valid AND the closure still fails → archive
+the failure (separate documented dir, like the constant-k folder) → switch to MC-only OS-only → proceed to R_AA.
+
+**(prior) RESUMED 2026-06-23 — user decision on the gate-fail: (A) REFINE mixed-event T_mix (pT-class mixing so it
 matches the soft data combinatoric) → RETRY the coupled closure. If the refined combined fit WORKS → proceed
 with the combined fit autonomously to R_AA. If it STILL FAILS → (1) archive the combined-fit-failure results in
 a SEPARATE documented directory (like the constant-k folder) with a doc on validations done + how it fails;
