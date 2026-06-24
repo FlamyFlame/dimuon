@@ -918,16 +918,25 @@ smooth k(m,pT,η) holds). Rename macros `k_validation_5a_{minv,ptEta}.C` → `OS
 (ii) Then the ScrambGen rewrite (below), continuing to R_AA, stopping only if the 5b closure fails.
 
 **REMAINING to the 5b GATE (Task #4, in progress):**
-1. **ScrambGen object-model REWRITE** — the 4 files `ScrambGen/{ScrambGen,ScrambGenPP}.{c,h}` (2024-25) use the
-   retired `class Muon` and do NOT compile. Rewrite to read `MuonObj` single-muon trees and WRITE
-   `muon_pair_tree_sign1/sign2` (`MuonPairObj`), as a pure pair generator (drop its resonance/photoprod vetoes
-   + dR bucketing — cuts move to the RDF signal selection). 20 ctr intervals, per-year, ×5 oversampling
-   (Design Decisions "ScrambGen revival"). → /review-analysis-code. (May need hadded single-muon trees;
-   hadd with the DataAnalysisClasses dictionary loaded — the object branches need it.)
-2. **Run ScrambGen** (Condor) → scrambled pair trees → fill `T_mix` via the RDF → mixed-event combinatoric.
-3. **5b DATA closure** `SS_data ?= C_mixed + k·G_OS` per (pT,η) bin → /review-investigation + /review-plot.
-   **= THE GATE.** PASS → Part 2c (resonance templates → coupled fitter → signal acceptance → wire R_AA)
+1. ✅ **ScrambGen object-model REWRITE DONE** (`c31fb8b`, /review-analysis-code PASS iter 2). Scrambled
+   muon_pairs produced for pbpb 23/24/25 + pp24 (`muon_pairs_*_scrambled.root`); OS minv smooth, no resonance
+   peaks (mixing correct); yr25 avg_centrality bug fixed.
+2. **Fill `T_mix` via the RDF** — a mixed-event mode that reads `muon_pairs_*_scrambled.root` and fills the
+   SAME 0-4 GeV OS+SS minv histos (1D + 2D pair pT/η, PbPb per-ctr) as the T2 D_OS/D_SS, efficiency-weighted
+   (w_reco·w_trig; the 1/L scale is absorbed in the floating N_C). Cleanest: extend `low_mass_template_calc`
+   with a `mixed_event_template` sub-flag (scrambled input + distinct output). → /review-analysis-code.
+3. **5b DATA closure = THE GATE.** Per coarse R_AA (pT,η) bin: (a) charge-symmetry C_OS≈C_SS from T_mix
+   (already SS≈OS globally); (b) the coupled-fit closure — does SS_data ≈ N_C·T_mix + (k·G_OS) hold (fit SS
+   with {T_mix, G_SS,MC}; OS with {S_MC, T_mix, G_OS,MC}; check N_C consistent OS↔SS and N_G,SS ≈ k·N_G,OS).
+   This overlaps the coupled fitter (Step 6). Deliver closure overlays → /review-investigation + /review-plot.
+   PASS → Part 2c (resonance templates §3h → finalize coupled fitter → signal acceptance → wire R_AA)
    autonomously; FAIL → STOP for user (consider code-set B, MC-only separate fits).
+
+**CHECKPOINT 2026-06-23 (ScrambGen done):** All infrastructure for the gate is now in place — data D_OS/D_SS
+(`_no_res_cut`, T2), MC k-validation (5a, favorable), and the mixed-event combinatoric (ScrambGen). The
+remaining gate machinery is the `T_mix` RDF fill (small) + the coupled OS+SS fit that IS the 5b closure test
+(the decision point). Commits this session: 28757cd, 671af99, 53ebd1c, ff6c52d, e3b1c3a, 37c5de6, 06e5a63,
+21547e9, c31fb8b.
 
 **Next (remaining for the gate):**
 1. **(pT,η)-binned truth fill** of the G categories (+ single_b) → /review-analysis-code → then k(m,pT,η)
