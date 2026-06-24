@@ -122,7 +122,8 @@ protected:
     std::vector<float>   *muon_pair_muon1_trk_pt          =nullptr;
     std::vector<float>   *muon_pair_muon1_trk_eta         =nullptr;
     std::vector<float>   *muon_pair_muon1_trk_phi         =nullptr;
-  
+    std::vector<int>     *muon_pair_muon1_trk_charge      =nullptr;
+
     std::vector<int>     *muon_pair_muon2_index       =nullptr;
     std::vector<float>   *muon_pair_muon2_pt          =nullptr;
     std::vector<float>   *muon_pair_muon2_eta         =nullptr;
@@ -133,6 +134,7 @@ protected:
     std::vector<float>   *muon_pair_muon2_trk_pt          =nullptr;
     std::vector<float>   *muon_pair_muon2_trk_eta         =nullptr;
     std::vector<float>   *muon_pair_muon2_trk_phi         =nullptr;
+    std::vector<int>     *muon_pair_muon2_trk_charge      =nullptr;
 
 // --------------------- output file, histograms & trees ---------------------------
 

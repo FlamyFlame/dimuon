@@ -161,6 +161,7 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputBranchesDimu
     fChainRef()->SetBranchAddress("muon_pair_muon1_trk_pt"      , &muon_pair_muon1_trk_pt);
     fChainRef()->SetBranchAddress("muon_pair_muon1_trk_eta"     , &muon_pair_muon1_trk_eta);
     fChainRef()->SetBranchAddress("muon_pair_muon1_trk_phi"     , &muon_pair_muon1_trk_phi);
+    fChainRef()->SetBranchAddress("muon_pair_muon1_trk_charge"  , &muon_pair_muon1_trk_charge);
   
     fChainRef()->SetBranchAddress("muon_pair_muon2_index"       , &muon_pair_muon2_index);
     fChainRef()->SetBranchAddress("muon_pair_muon2_pt"          , &muon_pair_muon2_pt);
@@ -170,6 +171,7 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputBranchesDimu
     fChainRef()->SetBranchAddress("muon_pair_muon2_d0"          , &muon_pair_muon2_d0);
     fChainRef()->SetBranchAddress("muon_pair_muon2_z0"          , &muon_pair_muon2_z0);
     fChainRef()->SetBranchAddress("muon_pair_muon2_trk_pt"      , &muon_pair_muon2_trk_pt);
+    fChainRef()->SetBranchAddress("muon_pair_muon2_trk_charge"  , &muon_pair_muon2_trk_charge);
     fChainRef()->SetBranchAddress("muon_pair_muon2_trk_eta"     , &muon_pair_muon2_trk_eta);
     fChainRef()->SetBranchAddress("muon_pair_muon2_trk_phi"     , &muon_pair_muon2_trk_phi);
     
@@ -296,6 +298,7 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputBranchesDimu
     fChainRef()->SetBranchStatus("muon_pair_muon1_trk_pt"              ,1);
     fChainRef()->SetBranchStatus("muon_pair_muon1_trk_eta"             ,1);
     fChainRef()->SetBranchStatus("muon_pair_muon1_trk_phi"             ,1);
+    fChainRef()->SetBranchStatus("muon_pair_muon1_trk_charge"          ,1);
     fChainRef()->SetBranchStatus("muon_pair_muon1_quality"         ,1);
     fChainRef()->SetBranchStatus("muon_pair_muon1_d0"              ,1);
     fChainRef()->SetBranchStatus("muon_pair_muon1_z0"              ,1);
@@ -307,6 +310,7 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputBranchesDimu
     fChainRef()->SetBranchStatus("muon_pair_muon2_trk_pt"              ,1);
     fChainRef()->SetBranchStatus("muon_pair_muon2_trk_eta"             ,1);
     fChainRef()->SetBranchStatus("muon_pair_muon2_trk_phi"             ,1);
+    fChainRef()->SetBranchStatus("muon_pair_muon2_trk_charge"          ,1);
     fChainRef()->SetBranchStatus("muon_pair_muon2_quality"         ,1);
     fChainRef()->SetBranchStatus("muon_pair_muon2_d0"              ,1);
     fChainRef()->SetBranchStatus("muon_pair_muon2_z0"              ,1);
@@ -421,7 +425,9 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitOutputSettings_Da
         ? ("_mindR_" + (mindR_trig == 0.01 ? std::string("0_01") : std::string("0_02")))
         : "";
     std::string test_suffix = this->is_test_run ? "_test" : "";
-    std::string outfile_ending = run_suffix + file_batch_suffix + trig_suffix + mindR_suffix_output + tight_suffix + resonance_cut_suffix + test_suffix + ".root";
+    // track-charge-consistency check pass: distinct output so nominal pairs are never clobbered
+    std::string trkqcut_suffix = turn_on_track_charge ? "_trkqcut" : "";
+    std::string outfile_ending = run_suffix + file_batch_suffix + trig_suffix + mindR_suffix_output + tight_suffix + resonance_cut_suffix + trkqcut_suffix + test_suffix + ".root";
     output_file_path = data_dir + file_name_base + outfile_ending;
     output_hist_file_path = data_dir + "hists_cut_acceptance" + outfile_ending;
 
@@ -559,8 +565,8 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::FillMuonPair_DataCore
   	mpairRef()->m2.trk_phi     = muon_pair_muon2_trk_phi->at(pair_ind);
 
   	if (turn_on_track_charge){
-  	    mpairRef()->m1.trk_charge  =(muon_pair_muon1_trk_pt ->at(pair_ind) > 0)? 1:-1;//sign of pt stores charge
-  	    mpairRef()->m2.trk_charge  =(muon_pair_muon2_trk_pt ->at(pair_ind) > 0)? 1:-1;//sign of pt stores charge    
+  	    mpairRef()->m1.trk_charge  = muon_pair_muon1_trk_charge->at(pair_ind);//signed ID-track charge branch (trk_pt is unsigned)
+  	    mpairRef()->m2.trk_charge  = muon_pair_muon2_trk_charge->at(pair_ind);//signed ID-track charge branch (trk_pt is unsigned)
   	}else{ // do not turn on track charge: set to nonsense
   	  	mpairRef()->m1.trk_charge  = 0;
   	  	mpairRef()->m2.trk_charge  = 0;
