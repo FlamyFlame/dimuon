@@ -13,15 +13,20 @@ void RDFBasedHistFillingPP::SetIOPathsHook(){
     const std::string pp_base =
         "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/muon_pairs_pp_2024" + base_trig_suffix;
     std::string in_path;
-    if (low_mass_template_calc) { // low-mass template-fit pass -> _no_res_cut ONLY (resonances present)
-        const std::string nores_path = pp_base + "_no_res_cut.root";
-        if (gSystem->AccessPathName(nores_path.c_str())) {
+    if (low_mass_template_calc) { // low-mass template-fit pass
+        // mixed_event_template -> scrambled muon_pairs (ScrambGen mixed-event combinatoric T_mix);
+        // else -> _no_res_cut (data D_OS/D_SS with resonances present).
+        const std::string tmpl_path = mixed_event_template
+            ? pp_base + "_scrambled.root"
+            : pp_base + "_no_res_cut.root";
+        if (gSystem->AccessPathName(tmpl_path.c_str())) {
             throw std::runtime_error(
-                "RDFBasedHistFillingPP: low-mass template-fit _no_res_cut input not found: " + nores_path +
-                " (base_trig_suffix=" + base_trig_suffix + "). The template-fit pass requires the"
-                " _no_res_cut ntuples (resonances present).");
+                "RDFBasedHistFillingPP: low-mass template-fit input not found: " + tmpl_path +
+                " (base_trig_suffix=" + base_trig_suffix + "). " +
+                (mixed_event_template ? "mixed_event_template requires the *_scrambled.root (ScrambGen output)."
+                                      : "the template-fit pass requires the _no_res_cut ntuples (resonances present)."));
         }
-        in_path = nores_path;
+        in_path = tmpl_path;
     } else if (!trigger_effcy_calc) { // pp nominal / crossx (2mu4=mode3, mu4_mu4noL1=mode2) -> V1 ONLY
         // NOMINAL requires V1 _mindR_0_02 (no fallback). The old _res_cut_v2 / _no_res_cut / bare
         // fallback was an OLD-skim crutch (pre-mindR branches) and is removed: a silent fallback to
@@ -517,7 +522,8 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         hist2d_rresultptr_map["h2d_crossx_minv_0_4_vs_pair_pt_log_150_ss_dsigma"] = df_ss_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_4_vs_pair_pt_log_150_ss_dsigma", ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", npt150, ptb150, 50, 0.0, 4.0), "pair_pt", "minv", "crossx_weight_trig_corr");
         hist2d_rresultptr_map["h2d_crossx_minv_0_4_vs_pair_eta_op_dsigma"] = df_op_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_4_vs_pair_eta_op_dsigma", ";#eta^{pair};m_{#mu#mu} [GeV]", 24, -2.4, 2.4, 50, 0.0, 4.0), "pair_eta", "minv", "crossx_weight_trig_corr");
         hist2d_rresultptr_map["h2d_crossx_minv_0_4_vs_pair_eta_ss_dsigma"] = df_ss_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_4_vs_pair_eta_ss_dsigma", ";#eta^{pair};m_{#mu#mu} [GeV]", 24, -2.4, 2.4, 50, 0.0, 4.0), "pair_eta", "minv", "crossx_weight_trig_corr");
-        std::cout << "[PP] FillHistogramsCrossx (low-mass template mode, _no_res_cut) completed" << std::endl;
+        std::cout << "[PP] FillHistogramsCrossx (low-mass template mode, "
+                  << (mixed_event_template ? "_scrambled/mixed-event" : "_no_res_cut") << ") completed" << std::endl;
         return;
     }
 

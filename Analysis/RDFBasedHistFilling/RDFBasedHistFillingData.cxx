@@ -97,6 +97,9 @@ void RDFBasedHistFillingData::InitializeDataCommon(){
     // Low-mass template-fit pass writes to a DISTINCT output so it never overwrites the
     // nominal crossx histograms (it reads _no_res_cut, not V1). See low_mass_template_calc.
     if (low_mass_template_calc) out_file_suffix += "_template_fit";
+    // Mixed-event combinatoric template (T_mix) goes to a further-distinct output so it never
+    // overwrites the _no_res_cut template-fit (D_OS/D_SS) nor the nominal crossx.
+    if (low_mass_template_calc && mixed_event_template) out_file_suffix += "_mixed_event";
 }
 
 void RDFBasedHistFillingData::FillHistograms(){

@@ -184,6 +184,11 @@ enum HistFillingCycle{
     // overwrites the nominal output; cf. the 2026-06-22 output_single_muon_tree incident). Not to be
     // combined with trigger_effcy_calc. See docs/tracking/low_mass_dimuon_template_fit.md.
     bool low_mass_template_calc = false;
+    // PUBLIC sub-flag of low_mass_template_calc: when BOTH are true, read the SCRAMBLED muon_pairs
+    // (ScrambGen mixed-event output, *_scrambled.root) instead of _no_res_cut, and write the
+    // mixed-event combinatoric template T_mix to a distinct *_template_fit_mixed_event output. Same
+    // 0-4 GeV OS+SS minv fill as the data D_OS/D_SS. Must stay public (cling-macro set; cf. incident).
+    bool mixed_event_template = false;
 
     bool save_non_sepr_trg_hists = false; // save trigger efficiency histograms without separation requirement
     bool save_good_accept_trg_hists = false; // save trigger efficiency histograms with good acceptance requirement

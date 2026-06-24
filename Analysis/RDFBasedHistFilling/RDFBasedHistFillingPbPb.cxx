@@ -12,14 +12,20 @@ void RDFBasedHistFillingPbPb::SetIOPathsHook(){
 	if (run_year == 23 || run_year == 24 || run_year == 25){
         std::string base = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/muon_pairs_pbpb_20" + run_year_str + base_trig_suffix;
         std::string in_path;
-        if (low_mass_template_calc) { // low-mass template-fit pass -> _no_res_cut ONLY (resonances present)
-            const std::string nores_path = base + "_no_res_cut.root";
-            if (gSystem->AccessPathName(nores_path.c_str())) {
+        if (low_mass_template_calc) { // low-mass template-fit pass
+            // mixed_event_template -> scrambled muon_pairs (ScrambGen mixed-event combinatoric T_mix);
+            // else -> _no_res_cut (data D_OS/D_SS with resonances present).
+            const std::string tmpl_path = mixed_event_template
+                ? base + "_scrambled.root"
+                : base + "_no_res_cut.root";
+            if (gSystem->AccessPathName(tmpl_path.c_str())) {
                 throw std::runtime_error(
-                    "RDFBasedHistFillingPbPb: low-mass template-fit _no_res_cut input not found: " + nores_path +
-                    " (run_year=20" + run_year_str + "). The template-fit pass requires the _no_res_cut ntuples.");
+                    "RDFBasedHistFillingPbPb: low-mass template-fit input not found: " + tmpl_path +
+                    " (run_year=20" + run_year_str + "). " +
+                    (mixed_event_template ? "mixed_event_template requires the *_scrambled.root (ScrambGen output)."
+                                          : "the template-fit pass requires the _no_res_cut ntuples."));
             }
-            in_path = nores_path;
+            in_path = tmpl_path;
         } else if (mu4_nominal_pbpb_NO_trig_calc) { // nominal / crossx -> V1 ONLY (no fallback; see PP hook)
             const std::string v1_path = base + input_mindR_suffix + ".root";
             if (gSystem->AccessPathName(v1_path.c_str())) {
@@ -51,14 +57,20 @@ void RDFBasedHistFillingPbPb::SetIOPathsHook(){
 	} else if (run_year == 15 || run_year == 18){
         std::string base = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/muon_pairs_pbpb_20" + run_year_str + base_trig_suffix;
         std::string in_path;
-        if (low_mass_template_calc) { // low-mass template-fit pass -> _no_res_cut ONLY (resonances present)
-            const std::string nores_path = base + "_no_res_cut.root";
-            if (gSystem->AccessPathName(nores_path.c_str())) {
+        if (low_mass_template_calc) { // low-mass template-fit pass
+            // mixed_event_template -> scrambled muon_pairs (ScrambGen mixed-event combinatoric T_mix);
+            // else -> _no_res_cut (data D_OS/D_SS with resonances present).
+            const std::string tmpl_path = mixed_event_template
+                ? base + "_scrambled.root"
+                : base + "_no_res_cut.root";
+            if (gSystem->AccessPathName(tmpl_path.c_str())) {
                 throw std::runtime_error(
-                    "RDFBasedHistFillingPbPb: low-mass template-fit _no_res_cut input not found: " + nores_path +
-                    " (run_year=20" + run_year_str + "). The template-fit pass requires the _no_res_cut ntuples.");
+                    "RDFBasedHistFillingPbPb: low-mass template-fit input not found: " + tmpl_path +
+                    " (run_year=20" + run_year_str + "). " +
+                    (mixed_event_template ? "mixed_event_template requires the *_scrambled.root (ScrambGen output)."
+                                          : "the template-fit pass requires the _no_res_cut ntuples."));
             }
-            in_path = nores_path;
+            in_path = tmpl_path;
         } else if (mu4_nominal_pbpb_NO_trig_calc) { // nominal / crossx -> V1 ONLY (no fallback; see PP hook)
             const std::string v1_path = base + input_mindR_suffix + ".root";
             if (gSystem->AccessPathName(v1_path.c_str())) {
@@ -1027,7 +1039,8 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
             const std::string h2eta_ss = "h2d_crossx_minv_0_4_vs_pair_eta_ss_dsigma_" + ctr;
             hist2d_rresultptr_map[h2eta_ss] = df_ss_c.Histo2D(ROOT::RDF::TH2DModel(h2eta_ss.c_str(), ";#eta^{pair};m_{#mu#mu} [GeV]", 24, -2.4, 2.4, 50, 0.0, 4.0), "pair_eta", "minv", "weight_for_dsigma_trig_corr");
         }
-        std::cout << "[PbPb] FillHistogramsCrossx (low-mass template mode, _no_res_cut) completed" << std::endl;
+        std::cout << "[PbPb] FillHistogramsCrossx (low-mass template mode, "
+                  << (mixed_event_template ? "_scrambled/mixed-event" : "_no_res_cut") << ") completed" << std::endl;
         return;
     }
 

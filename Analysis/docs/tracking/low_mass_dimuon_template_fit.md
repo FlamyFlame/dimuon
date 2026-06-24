@@ -624,6 +624,17 @@ selection; the fitter; combinatoric (event-mixing) template; k determination; pl
   - Also: `run_pbpb_2X_nominal.sh` appear INCOMPLETE (don't set `resonance_cut_mode=2`), so
     they do NOT reproduce the crossx inputs — flag for fixing once recipe confirmed.
 
+- 2026-06-23 — **T_mix fill DONE: mixed-event combinatoric template** — `/review-analysis-code` PASS iter 1
+  (log `review-analysis-code-20260623-223706-mixed-event-tmix-fill.md`; all numbers MATCH). Added PUBLIC
+  `mixed_event_template` sub-flag of `low_mass_template_calc`: when both set, SetIOPathsHook reads
+  `muon_pairs_*_scrambled.root` (ScrambGen output) and TriggerModeSettings writes a distinct
+  `*_template_fit_mixed_event.root`; the fill block is UNCHANGED (same 0-4 GeV OS+SS minv 1D+2D, PbPb per-ctr,
+  efficiency-weighted — scrambled weight=1 → lumi·w_reco·w_trig, the 1/L scale absorbed by the floating N_C).
+  New run scripts `run_template_fit_mixed_*.sh`. Ran all 4 → T_mix produced. **Verified:** OS minv SMOOTH, NO
+  resonance peaks (pp J/ψ-ratio 0.99, pbpb23 ctr0_5 1.00 — confirms it read the scrambled input, not _no_res_cut);
+  **SS≈OS** (pp SS/OS=0.999, area-norm shape dev 0.002; pbpb SS/OS≈1.03 per ctr) → **C_OS≈C_SS** (the 5b
+  charge-symmetry input). Nominal + _no_res_cut template outputs UNTOUCHED. Stale "_no_res_cut" cout/run-script
+  labels fixed. **T_mix ready → 5b coupled-fit closure (the gate).**
 - 2026-06-23 — **ScrambGen REWRITTEN to the object model + scrambled muon_pairs produced** —
   `/review-analysis-code` PASS iter 2 (log `review-analysis-code-20260623-202339-scrambgen-objectmodel-rewrite.md`;
   all numbers MATCH). Replaced the 4 old non-compiling `ScrambGen/{ScrambGen,ScrambGenPP}.{c,h}` (retired
@@ -931,6 +942,13 @@ smooth k(m,pT,η) holds). Rename macros `k_validation_5a_{minv,ptEta}.C` → `OS
    This overlaps the coupled fitter (Step 6). Deliver closure overlays → /review-investigation + /review-plot.
    PASS → Part 2c (resonance templates §3h → finalize coupled fitter → signal acceptance → wire R_AA)
    autonomously; FAIL → STOP for user (consider code-set B, MC-only separate fits).
+
+**STANDING DIRECTIVE (user, 2026-06-23): DO NOT STOP for checkpoints any more. Autonomously continue
+through ALL remaining steps until everything is done and R_AA is FINALIZED. The ONLY stop condition is the
+5b closure FAILING (then stop for the user's decision per the gate). Otherwise: T_mix fill → 5b closure →
+[on PASS] resonance templates §3h → coupled fitter → signal acceptance → wire crossx/R_AA → finalize R_AA.
+Keep the tracking-doc protocol (plan before, results after) and the /review-* loops throughout, but do not
+pause to report between steps.**
 
 **CHECKPOINT 2026-06-23 (ScrambGen done):** All infrastructure for the gate is now in place — data D_OS/D_SS
 (`_no_res_cut`, T2), MC k-validation (5a, favorable), and the mixed-event combinatoric (ScrambGen). The
