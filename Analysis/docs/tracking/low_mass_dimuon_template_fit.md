@@ -1035,6 +1035,19 @@ pairs fakes/hadronic; the test needs a NEW **reco-seeded** fill.
   **OPEN for user:** whether the data near-side SS peak is truly charge-symmetric is NOT settled by this MC; flags
   a real consideration for the OS−SS charge-symmetry assumption (possible next looks: fake-fake/UE-only component;
   min-bias sample; or accept that OS−SS + G template absorbs the residual). Plots pending /review-plot.
+- **USER DECISION (2026-06-24): PROBE the near-side charge symmetry further**, with rigorous per-stage documentation
+  (Hypothesis -> Methodology -> Observation -> Verdict[support/challenge/rule out]) tracked here AND saved to a results
+  dir with a clarifying doc. Structured investigation doc = `dimuon_data/plots/template_fitting/bkg_mc_provenance_20260624/SUMMARY.md`.
+  **Stage 1 (DONE)** = the result above (near-side OS-enhanced, confounded by prompt-muon bias of signal samples).
+  **Stage 2 (DONE, /review-analysis-code PASS)** = prompt-content decomposition. RESULT: overlay background = 98%
+  prompt_plus_bkg (real muon + near-side jet hadronic), which CARRIES the OS-enhancement (near-side SS/OS=0.198);
+  the genuinely-combinatoric bkg_bkg is too rare under pair_pt>8 (33 overlay / ~15 signal) → its charge symmetry is
+  STATISTICALLY INCONCLUSIVE. **KEY:** with pair_pt>8 the MC low-mass background is dominated by (real μ + π/K
+  hadronic FAKE) — OS-enhanced (does NOT fully cancel in OS−SS) AND not the g→QQ̄ G template (two real HF muons) →
+  possibly a background the S+G fit doesn't model; this IS the Δp/p fake-muon population (connects low-mass ↔ Δp/p,
+  per user). **Stage 3 options** (need user steer): (3a) relax pair_pt>8 for the bkg_bkg charge-symmetry test
+  (cheap stats); (3b) higher-stat UE/min-bias sample; (3c) characterize the (prompt+fake) background vs G-template /
+  Δp/p; (3d) data-driven near-side composition. **Plots (4 requested)** ready to make from Stage 1+2 → /review-plot.
 - **dp/p coupling (user):** the hadronic decay-in-flight background IS the Δp/p-fit target (ID-MS kink); this same
   background MC enables the Δp/p template fit (reco quantities, before unfolding, in the nominal pipeline). Priority:
   finish the current combinatoric+truth-bkg template fit FIRST; defer the dp/p-vs-RAA ordering decision until after
