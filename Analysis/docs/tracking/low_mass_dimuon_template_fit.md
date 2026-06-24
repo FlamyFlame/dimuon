@@ -605,6 +605,12 @@ selection; the fitter; combinatoric (event-mixing) template; k determination; pl
   - Also: `run_pbpb_2X_nominal.sh` appear INCOMPLETE (don't set `resonance_cut_mode=2`), so
     they do NOT reproduce the crossx inputs — flag for fixing once recipe confirmed.
 
+- 2026-06-23 — **5a folder + code RENAMED (user, descriptive naming).** `k_validation_5a_20260623/` →
+  `OS_to_SS_factor_validation_MC_truth_constant_k_20260623/`; macros `k_validation_5a_{minv,ptEta}.C` →
+  `OS_to_SS_factor_MC_truth_{minv,ptEta}.C` (+ matching function names, OUT paths, header comments, cout tags);
+  `summary.md` retitled + macro refs updated; this doc's references updated. Re-ran both macros → identical plots
+  (k_int=0.307816), old dir removed. Name reflects: MC-truth validation of the OS→SS correlated-bkg factor k
+  (headline: constant/m-independent k FAILS, smooth k(m,pT,η) holds). The data-closure counterpart stays "5b".
 - 2026-06-23 — **T2 DONE: low-mass template-fit data mode (D_OS/D_SS from `_no_res_cut`)** —
   `/review-analysis-code` PASS iter 1 (log `review-analysis-code-20260623-181845-low-mass-template-fit-mode.md`;
   all numbers MATCH). New PUBLIC flag `low_mass_template_calc` (RDFBasedHistFillingData.h) → SetIOPathsHook
@@ -647,7 +653,7 @@ selection; the fitter; combinatoric (event-mixing) template; k determination; pl
 - 2026-06-23 — **Step C / 5a m-dependence DONE (Task #3, partial): k(m) characterised, constant-scalar
   k disproven, robustness driver identified.** `/review-plot` PASS iter 1 (log
   `review-plot-20260623-173509-k-validation-5a-mdep.md`; all numbers independently re-extracted, MATCH).
-  Deliverables saved to `dimuon_data/plots/template_fitting/k_validation_5a_20260623/` (plots/, code/,
+  Deliverables saved to `dimuon_data/plots/template_fitting/OS_to_SS_factor_validation_MC_truth_constant_k_20260623/` (plots/, code/,
   numbers.txt, summary.md — the dedicated non-overwriting folder per user). **Findings:** k_int=0.308;
   **k_bb=0.512 and ~flat in m (the ROBUST piece: B⁰ mixing χ_d + direct/cascade combinatorics)**;
   **k_cc≈0.009 (no charge-flip, as expected)**; one_b_one_c genuinely empty under the signal selection
@@ -847,7 +853,7 @@ Three directives this session (see Design Decisions for each):
 function (not constant scalar); save validation to a dedicated folder; keep code-set (B) MC-only as a
 future possibility (Design Decisions). **Step C / 5a m-dependence DONE** (/review-plot PASS; Progress Log
 2026-06-23): k_bb robust ~0.5, k_cc≈0, k(m) rise = cc̄ dilution f_bb(m); constant-scalar disproven; smooth
-k(m) valid; saved to `dimuon_data/plots/template_fitting/k_validation_5a_20260623/`.
+k(m) valid; saved to `dimuon_data/plots/template_fitting/OS_to_SS_factor_validation_MC_truth_constant_k_20260623/`.
 **USER GO-AHEAD 2026-06-23:** run the FULL chain end-to-end to R_AA with reviews, autonomously,
 stopping ONLY if the 5b k(m,pT,η) closure fails. Binning decided: pair pT = `pair_pt_log_150`
 (=`pT_bins_150`, 15 log bins 8–150 GeV, matches the R_AA pT axis); pair η = `pair_eta` (24 bins).
@@ -866,6 +872,13 @@ read-only verification of the ScrambGen single-muon-production incident fixes (s
   (`single_muon_trees_{pbpb_20YY,pp_2024}_part*_*_mindR_0_02.root`). Incident-safe (distinct filename).
 - ✅ **T2 data refill** (`37c5de6`): `low_mass_template_calc` mode → D_OS/D_SS from `_no_res_cut`
   (`*_template_fit.root`, 1D + 2D pair pT/η, PbPb per-ctr). OS resonances present; nominal untouched. PASS.
+
+**ACTIVE 2026-06-23 (user): (i) RENAME the 5a folder + code to a descriptive name, then (ii) ScrambGen rewrite.**
+(i) `k_validation_5a_20260623/` → `OS_to_SS_factor_validation_MC_truth_constant_k_20260623/` (descriptive: it is the
+MC-truth validation of the OS→SS correlated-background factor k, headline result = constant/m-independent k FAILS,
+smooth k(m,pT,η) holds). Rename macros `k_validation_5a_{minv,ptEta}.C` → `OS_to_SS_factor_MC_truth_{minv,ptEta}.C`
+(+ matching function names + OUT paths); update summary.md + this doc's references; re-run to verify identical plots.
+(ii) Then the ScrambGen rewrite (below), continuing to R_AA, stopping only if the 5b closure fails.
 
 **REMAINING to the 5b GATE (Task #4, in progress):**
 1. **ScrambGen object-model REWRITE** — the 4 files `ScrambGen/{ScrambGen,ScrambGenPP}.{c,h}` (2024-25) use the
