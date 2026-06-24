@@ -744,7 +744,36 @@ OS=sign2, SS=sign1). 50 bins, 0–4 GeV.
   combined fit usable (needs: bb̄-only vs cc̄-dilution decomposition for robustness; (pT,η)
   binning; and the 5b data closure). NOT yet a pass/fail — full 5a investigation pending.
 
-### TEMPLATE INVENTORY (for the fitting agent — 1D minv templates, Step 4a) ###
+### 5b CLOSURE — FIRST ATTEMPT (2026-06-23, pp24) — fit-setup issues, NOT a clean pass/fail ###
+First coupled-fit closure macro (`closure_5b_OS_SS_kfactor_data_20260623/code/closure_5b_pp.C`): separate
+linear-LS fits SS_data=N_C·T̂_mix+N_kG·Ĝ_SS over [1.08,4]; OS_data=N_S·Ŝ+N_C·T̂_mix+N_G·Ĝ_OS over [1.08,4]
+masking J/ψ+ψ′. **Result (integrated):** k_data=N_kG/N_G=0.296±0.010 vs k_MC=0.308 (ratio 0.96 — PROMISING
+on the physics) BUT **N_C came out NEGATIVE** (SS −562, OS −1353; unphysical) and χ²/ndf poor (OS=83). High-pT
+bins erratic/degenerate. **Diagnosis (hypotheses):** (a) the [1.08,4] window removes the low-mass
+combinatoric-dominated region that separates T_mix from G → degeneracy → large-cancellation (negative-N_C)
+solution; (b) SEPARATE OS/SS fits give inconsistent N_C — should be a COUPLED fit with SHARED N_C anchored by
+the clean, WIDE-range SS (SS has no resonances → fit [0.3,4]); (c) OS resonance leakage (smeared J/ψ tail
+below the [2.85,3.3] mask) contaminates → needs wider mask or resonance templates (§3h). ⇒ NOT a closure
+fail (k_data≈k_MC is encouraging); the fit MACHINERY needs development before the gate verdict. → /review-investigation.
+
+### 5b CLOSURE — FINAL VERDICT: the GATE FAILS (2026-06-23, /review-investigation PASS iter 2) ###
+After developing a proper COUPLED OS+SS fit (shared N_C, SS wide clean anchor [0.3,4], OS resonance-masked,
+non-negative yields via NNLS), the closure does NOT close for pp24. **Decisive evidence (shape infeasibility):**
+the data SS combinatoric D_SS peaks at m=**1.72 GeV then FALLS**, while BOTH background templates rise to high
+mass (T_mix peaks 3.96, G_SS peaks 3.64) — **the data SS is SOFTER than both templates** (41/46 bins in [0.3,4]
+lie outside the templates' [min,max] envelope). Therefore NO non-negative combination N_C·T_mix + N_kG·G_SS can
+reproduce D_SS → the NNLS pins N_C=0 with χ²/ndf=368 (unphysical: SS is combinatoric-dominated yet the fit uses
+zero combinatoric). Pearson: corr(D_SS,T_mix)=**0.40** (the mixed-event T_mix genuinely mismatches the data
+combinatoric — it over-populates high mass, because the single-muon mixing pool is harder than the soft muons
+in real low-mass b-decay pairs), corr(T_mix,G_SS)=0.89. Root causes: (1) mixed-event T_mix too hard; (2) data
+softer than both bkg templates ⇒ the combined fit is infeasible as built. Deliverables in
+`dimuon_data/plots/template_fitting/closure_5b_OS_SS_kfactor_data_20260623/` (numbers_pp{,_coupled}.txt;
+DIAGNOSTIC_SS_shapes_degeneracy.png; closure_coupled overlays; macros). **GATE FAIL ⇒ STOPPED per the user's
+gate condition.** Options for the user: **(A)** refine the mixed-event method (mix within pT/η classes so T_mix
+matches the soft data combinatoric) then retry the combined fit; **(B)** switch to **code-set B = MC-only
+separate SS/OS fits** (the pre-agreed fallback — avoids the data-driven combinatoric entirely); **(C)** keep
+the combined fit with a large combinatoric-shape systematic. Recommendation: the T_mix mismatch is the
+immediate blocker; (A) is the natural next try, but (B) is the robust fallback if (A) still struggles. (for the fitting agent — 1D minv templates, Step 4a) ###
 **Files** (Pythia evgen truth, `_no_data_resonance_cuts` = the truth sample has NO
 resonance veto, unlike OS data):
 - 5.36 TeV (nominal): `/usatlas/u/yuhanguo/usatlasdata/pythia_truth_full_sample/pythia_5p36TeV/histograms_pythia_5p36TeV_no_data_resonance_cuts.root`
@@ -949,6 +978,17 @@ through ALL remaining steps until everything is done and R_AA is FINALIZED. The 
 [on PASS] resonance templates §3h → coupled fitter → signal acceptance → wire crossx/R_AA → finalize R_AA.
 Keep the tracking-doc protocol (plan before, results after) and the /review-* loops throughout, but do not
 pause to report between steps.**
+
+**⛔ STOPPED AT THE GATE — 5b CLOSURE FAILED (2026-06-23).** Per the standing directive (only stop condition =
+closure fail) and the Gate-driven-autonomy design decision, the autonomous run halts here for the USER's
+decision. The combined OS+SS template fit does NOT close in data: the SS combinatoric (data) is SOFTER than
+both the mixed-event T_mix (Pearson 0.40 vs data; over-populates high mass) and the MC G_SS — no non-negative
+N_C·T_mix+N_kG·G_SS fits (N_C→0, χ²/ndf=368). Full verdict: R&O "5b CLOSURE — FINAL VERDICT" (/review-investigation
+PASS iter 2). **USER OPTIONS:** (A) refine mixed-event (pT/η-class mixing to soften T_mix) + retry; (B) MC-only
+separate fits = code-set B (pre-agreed fallback); (C) combined + large combinatoric-shape systematic.
+**Everything upstream of the gate is DONE & committed and remains valid** (Part 1; 5a MC-truth k-validation —
+favorable; (pT,η) truth k-fill; single-muon production; T2 data D_OS/D_SS; ScrambGen+T_mix). Acceptance (T3)
+and the R_AA wiring (T7) are NOT started (they were gated on this). Resume once the user picks A/B/C.
 
 **CHECKPOINT 2026-06-23 (ScrambGen done):** All infrastructure for the gate is now in place — data D_OS/D_SS
 (`_no_res_cut`, T2), MC k-validation (5a, favorable), and the mixed-event combinatoric (ScrambGen). The
