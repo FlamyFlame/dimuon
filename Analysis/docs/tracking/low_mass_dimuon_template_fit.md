@@ -357,6 +357,23 @@ selection; the fitter; combinatoric (event-mixing) template; k determination; pl
   a descriptive error if absent** — no silent fallback. The **trigger-efficiency** branch
   (`_res_cut_v2` first) is UNCHANGED (V2 is the correct trig-eff input — see
   `data_analysis.md` resonance-cut convention, memory `project_resonance_cut_modes`).
+- **BACKGROUND METHOD CHANGED: combined OS+SS/k-anchored fit ABANDONED → OS−SS + MC (S+G) fit (2026-06-24,
+  user-approved after the root-cause investigation).** OLD approach (this doc's original §2): coupled OS+SS
+  template fit with the combinatoric from mixed-event T_mix and the correlated-G normalization SS-anchored via
+  k=G_SS/G_OS. NEW approach: **OS−SS** (data-driven, removes the charge-symmetric combinatoric INCLUDING the
+  soft near-side part) **+ a 2-template MC fit `OS−SS = N_S·S + N_G·G_OS`** (+ §3h smeared resonance templates
+  for J/ψ/ψ′ leakage), per coarse R_AA bin; extract N_S. REASON (root-cause investigation, /review-investigation
+  PASS iter 3 + 2 independent T_mix verifications, R&O "ROOT CAUSE RESOLVED"): the SS combinatoric has a large
+  SOFT NEAR-SIDE component (40% of low-mass SS pairs ΔR<0.3, peak minv 1.25, ~15× the MC correlated near-side
+  rate) from within-jet muons (π/K/fakes) that NO template models — event-mixing is uncorrelated→wide, the MC
+  g→QQ̄ is correctly wide-angle→hard. So the combined fit (needing a combinatoric template) cannot close
+  (N_C→0/χ²=368), but OS−SS removes that combinatoric data-drivenly and the residual S+(1−k)·G fits with the two
+  well-modeled, well-separated MC templates (validated: N_S=5710,N_G=1639 positive, G/(S+G)=0.22, χ²/ndf=72).
+  CONSEQUENCE: the ScrambGen/T_mix mixed-event machinery is SUPERSEDED for the nominal background (keep the code,
+  it's correct + may serve a systematic / the C_OS≈C_SS check); §2's k-anchoring is no longer the nominal. The
+  `low_mass_template_calc` _no_res_cut D_OS/D_SS fills + the (pT,η) MC S/G templates REMAIN the inputs (now for
+  OS−SS+S+G). **This supersedes Physics Procedure §2's combined-fit model; the authoritative method is now
+  OS−SS + MC (S+G) + resonance templates.**
 - **Gate-driven autonomy (2026-06-23, user directive 2).** The template-fit mode is built
   end-to-end to produce per-R_AA-bin signal yields wired straight into the R_AA inputs, BUT
   the **k-validation + a closure plot** (Step 5) are delivered as intermediate results and
@@ -1028,6 +1045,21 @@ through ALL remaining steps until everything is done and R_AA is FINALIZED. The 
 [on PASS] resonance templates §3h → coupled fitter → signal acceptance → wire crossx/R_AA → finalize R_AA.
 Keep the tracking-doc protocol (plan before, results after) and the /review-* loops throughout, but do not
 pause to report between steps.**
+
+**▶▶ BUILD PHASE — APPROVED 2026-06-24 (user): OS−SS + MC (S+G) fit → acceptance → R_AA.** Gate resolved
+(root-cause: soft near-side combinatoric → combined fit is the wrong tool; OS−SS+S+G validated). Plan (each
+code step → /review-analysis-code or /review-plot; fits → /review-plot):
+1. **§3h resonance templates** — extract the smeared OS-only J/ψ(3.097)/ψ′(3.686) (+ φ leakage) shapes from the
+   `_no_res_cut` OS data peak regions, to model the leakage into the signal window (the χ²=72 residual).
+2. **OS−SS + (S + G_OS + resonances) FITTER, per coarse R_AA bin** (pp: 3 pT groups; PbPb: per centrality, then
+   pT): non-negative fit, extract N_S per bin. = the validated path made production + per-bin. → /review-plot.
+3. **Signal acceptance** A_sig(pair pT, pair η) from the cutflow denominator (log pT bins; §3f, Design Decisions
+   reco-eff/acceptance boundary) → N_sig = N_S/A_sig.
+4. **Wire into crossx/R_AA** replacing the provisional OS−SS-only (raa_from_rdf_crossx.md §3g): N_sig is the
+   background-subtracted signal yield feeding 1/L (pp) and crossx_factor (PbPb). Rerun R_AA.
+5. **Systematics:** OS−SS charge-symmetry, MC G shape (cc̄:bb̄, FE:GS), resonance-leakage, fit model, fiducial.
+Inputs READY: D_OS/D_SS (`_template_fit`), MC S/G 1D + (pT,η) templates, the validated OS−SS=S+G fit. The
+ScrambGen/T_mix path is SUPERSEDED (code kept for a systematic / the C_OS≈C_SS check).
 
 **▶ USER DIRECTIVE 2026-06-24 — VERIFY T_mix VALIDITY INDEPENDENTLY BEFORE ABANDONING.** Before concluding the
 combined fit must be abandoned, make 100% sure the mixed-event T_mix procedure is VALID (not buggy). Get
