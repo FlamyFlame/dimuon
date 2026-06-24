@@ -979,7 +979,24 @@ through ALL remaining steps until everything is done and R_AA is FINALIZED. The 
 Keep the tracking-doc protocol (plan before, results after) and the /review-* loops throughout, but do not
 pause to report between steps.**
 
-**⛔ STOPPED AT THE GATE — 5b CLOSURE FAILED (2026-06-23).** Per the standing directive (only stop condition =
+**▶ RESUMED 2026-06-23 — user decision on the gate-fail: (A) REFINE mixed-event T_mix (pT-class mixing so it
+matches the soft data combinatoric) → RETRY the coupled closure. If the refined combined fit WORKS → proceed
+with the combined fit autonomously to R_AA. If it STILL FAILS → (1) archive the combined-fit-failure results in
+a SEPARATE documented directory (like the constant-k folder) with a doc on validations done + how it fails;
+(2) switch to MC-only SEPARATE fits (likely OS-ONLY) and proceed with that to R_AA.** Plan: (i) diagnostic —
+compare the single-muon pT pool vs the muon pT in real data pairs (confirm pT-class mixing is the right fix);
+(ii) refine ScrambGen mixing to match the data muon-pT structure → re-fill T_mix; (iii) re-run the coupled
+closure; (iv) branch per the result.
+  - **DIAGNOSTIC RESULT (2026-06-24) — pT-class mixing is CONTRADICTED.** Single-muon pool mean pT = **7.27**
+    GeV (4.2% > 15 GeV); muons in real data SS pairs (signal selection) mean pT = **8.12** GeV (8.7% > 15 GeV).
+    The mixing pool is SOFTER than the data-pair muons, NOT harder. So matching the mixing to the data muon-pT
+    would make T_mix HARDER (worse). ⇒ the T_mix hardness is NOT from the muon-pT pool; it is from the
+    pair-building KINEMATICS (uncorrelated random-Δφ event mixing + the pair_pt>8 selection produce a harder
+    minv than the real same-event combinatoric). Literal pT-class mixing will not fix it. A proper fix needs
+    the mixed pairs to reproduce the data combinatoric's ANGULAR/pair kinematics (more involved, uncertain),
+    OR go to code-set B. Surfaced to the user (the chosen fix is invalidated by the data).
+
+**⛔ (superseded by the RESUMED block above) STOPPED AT THE GATE — 5b CLOSURE FAILED (2026-06-23).** Per the standing directive (only stop condition =
 closure fail) and the Gate-driven-autonomy design decision, the autonomous run halts here for the USER's
 decision. The combined OS+SS template fit does NOT close in data: the SS combinatoric (data) is SOFTER than
 both the mixed-event T_mix (Pearson 0.40 vs data; over-populates high mass) and the MC G_SS — no non-negative
