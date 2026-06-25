@@ -1,6 +1,4 @@
-- Remote cluster (BNL SDCC); run `/usatlas/u/yuhanguo/setup.sh` for ROOT environment
-- No pip install — use what's in the release
-- For C++ class testing, use ROOT ACLiC: `.L MyClass.cxx+`
+<!-- Setup basics (remote cluster, no pip, ACLiC) inherited from parent .claude/CLAUDE.md — not repeated here. -->
 - **Reading PDFs:** the Read tool and WebFetch CANNOT read PDF content here (no poppler; WebFetch returns binary/abstract-only). Use `gs -sDEVICE=txtwrite` to extract text. See `.claude/kb/gotchas/reading_pdfs.md`.
 - Read `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/README.md` and `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/` for analysis context (class hierarchy, pipelines, sample types)
 - For any analysis change: always update and maintain the relevant documentation in those files
@@ -83,6 +81,43 @@ applies, reference the Physics Procedure section and include a concise
 physics reason (not just a code rationale). Verify the new approach is
 consistent with the Physics Procedure. If it contradicts, update the
 procedure first (with user approval).
+
+### Delegated subagent memory
+
+The tracking-doc INVARIANT above binds the **main (orchestrator) agent**.
+Reviewer subagents (/review-*) are stateless: they get everything in the task
+prompt and **return a structured verdict** — no doc writes, low compaction
+risk, nothing to change here. The rule below covers the *other* case:
+delegating a **semi-complex investigation or implementation** (not a review)
+to a subagent that may run long enough to hit its own context limit and
+compact mid-task, silently losing in-flight findings before they ever reach
+the orchestrator.
+
+When you (the orchestrator) delegate such work via the Agent tool:
+
+- **Scratch doc per subagent.** Instruct the subagent to checkpoint to its
+  OWN scratch tracking doc, never the canonical one. Use a distinct path per
+  subagent to avoid write races:
+  `Analysis/docs/tracking/_sub_<task>_<n>.md` (or under the session scratchpad
+  dir). One file per subagent — concurrent subagents MUST NOT share a file.
+- **Append-only, as it works.** The subagent writes its plan before each
+  step and appends findings/results (exact paths, line numbers, names,
+  numbers) after each step — same discipline as the main protocol, so the
+  doc survives the subagent's own compaction. Tell the subagent to re-read
+  its scratch doc first if it detects compaction.
+- **Subagents NEVER run git** and never edit the canonical tracking doc or
+  other shared files (mirrors the kb-build lesson: concurrent `git`/shared-file
+  writes collide on `.git/index.lock` and clobber siblings). The orchestrator
+  owns all shared state.
+- **Merge then clean up.** When the subagent returns, the orchestrator merges
+  its scratch doc into the canonical tracking doc (Progress Log / Accumulated
+  Findings, per the Per-step protocol) and THEN deletes the scratch file. If
+  the subagent died, recover its findings by reading its scratch doc before
+  retrying.
+
+The subagent's returned summary is a convenience, not the source of truth —
+the scratch doc is. Treat anything only in the return text (not in the doc)
+as at risk.
 
 ### Lifecycle
 
