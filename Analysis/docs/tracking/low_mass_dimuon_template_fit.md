@@ -983,6 +983,13 @@ Step 0 quantifies F vs G in the low-mass OS to confirm "fake/hadronic-dominated"
   low-mass combinatoric background F-dominated vs G? Characterize the F minv shape (OS/SS, near-side). → analysis + /review-plot.
 - **D1 — Muon Δp/p TEMPLATES** (real vs fake/hadronic) from fullsim/overlay (truth-labeled `muon_deltaP_overP`),
   inclusive and in the low-mass region; check separation power (fake shifted to positive ρ?) esp. within-jet. → /review-analysis-code + /review-plot.
+  **DONE 2026-06-24 (/review-analysis-code PASS; `dpop_fake_muon_20260624/{code/dpop_templates.C, dpop_templates_*.root, SUMMARY.md}`).**
+  D0 feasibility + D1: real peaks ρ≈0 (mean +0.014), hadronic shifted +0.08-0.09 (43% beyond cut) → fit feasible.
+  **KEY for D4:** within-jet (low-mass-pair) hadronic Δp/p MATCHES inclusive in signal MC (KS=1.00) but is
+  SIGNIFICANTLY SOFTER/less-separable in the OVERLAY (realistic UE: KS=0.000, mean +0.027 vs +0.077 inclusive) ⇒
+  (i) the D2 fit must use the WITHIN-JET template, (ii) weaker within-jet separation ⇒ Δp/p likely UNDER-removes
+  ⇒ a scoped pair-level residual-F template is LIKELY needed (quantify in D4). Caveat: templates pT-hat-unweighted
+  (revisit weighting at D2). **NEXT: D2 muon Δp/p yield fit on data** (needs a relaxed-Δp/p data muon sample).
 - **D2 — Muon Δp/p YIELD FIT (data)**: fit data muon Δp/p = f_real·T_real + f_fake·T_fake per (pT,η) → P_real per muon. (Run 2 HF-muon yield method, reco.) → /review-analysis-code + /review-plot.
 - **D3 — Propagate to pairs**: per-muon P_real → pair weight w=P_real,1·P_real,2 → purified real–real sample. → /review-analysis-code.
 - **D4 — SUFFICIENCY TEST (MC)**: does the propagated Δp/p purity reproduce the truth real–real pair yield? → decides whether a pair-level residual-F template is needed (scoped, no double-subtract). → /review-investigation + /review-plot.
