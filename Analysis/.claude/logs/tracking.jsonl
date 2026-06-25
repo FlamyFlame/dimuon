@@ -95,3 +95,11 @@
 {"event":"end","command":"review-investigation","status":"approved","iterations":2,"timestamp":"2026-06-24T03:16:23Z","criticals":0,"warnings":0,"slug":"5b-closure-coupled-fit-gate"}
 {"event":"start","command":"review-investigation","task":"root cause: data soft vs template hard (dR-vs-minv)","slug":"data-soft-vs-template-hard","timestamp":"2026-06-24T05:20:28Z"}
 {"event":"end","command":"review-investigation","status":"approved","iterations":3,"timestamp":"2026-06-24T05:49:38Z","criticals":0,"warnings":0,"slug":"data-soft-vs-template-hard"}
+{"event":"start","command":"review-analysis-code","task":"trk-charge check pass distinct output","slug":"trk-charge-check-pass","timestamp":"2026-06-24T02:14:23-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-24T02:16:04-04:00","criticals":0,"warnings":0,"slug":"trk-charge-check-pass"}
+{"event":"start","command":"review-analysis-code","task":"bkg-mc-provenance reco-seeded macro","slug":"bkg-mc-provenance","timestamp":"2026-06-24T03:14:34-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-24T03:26:57-04:00","criticals":0,"warnings":0,"slug":"bkg-mc-provenance"}
+{"event":"start","command":"review-analysis-code","task":"trk_charge branch fix","slug":"trk-charge-branch-fix","timestamp":"2026-06-24T03:38:22-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-24T03:41:03-04:00","criticals":0,"warnings":0,"slug":"trk-charge-branch-fix"}
+{"event":"start","command":"review-analysis-code","task":"stage2 prompt-content decomposition","slug":"stage2-prompt-decomp","timestamp":"2026-06-24T13:57:08-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-24T14:05:01-04:00","criticals":0,"warnings":0,"slug":"stage2-prompt-decomp"}

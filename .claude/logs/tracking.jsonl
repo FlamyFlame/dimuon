@@ -53,3 +53,5 @@
 {"event":"end","command":"kb-review","mode":"SINGLE","status":"approved","iterations":2,"timestamp":"2026-06-22T04:25:47Z","slug":"os-ss-charge-structure"}
 {"event":"start","command":"kb-review","mode":"SINGLE","slug":"os-ss-empirical-k","timestamp":"2026-06-22T05:54:06Z"}
 {"event":"end","command":"kb-review","mode":"SINGLE","status":"approved","iterations":1,"timestamp":"2026-06-22T05:56:05Z","slug":"os-ss-empirical-k"}
+{"event":"start","command":"review-analysis-code","task":"ScrambGen object-model rewrite (mixed-event combinatoric template)","slug":"scrambgen-objmodel-rewrite","timestamp":"2026-06-22T06:33:07Z"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-22T06:52:34Z","criticals":0,"warnings":0,"slug":"scrambgen-objmodel-rewrite","note":"pivoted to incident-recovery; scrambgen rewrite deferred"}
