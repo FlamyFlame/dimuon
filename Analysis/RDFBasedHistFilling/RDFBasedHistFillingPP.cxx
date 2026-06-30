@@ -522,6 +522,19 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         hist2d_rresultptr_map["h2d_crossx_minv_0_4_vs_pair_pt_log_150_ss_dsigma"] = df_ss_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_4_vs_pair_pt_log_150_ss_dsigma", ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", npt150, ptb150, 50, 0.0, 4.0), "pair_pt", "minv", "crossx_weight_trig_corr");
         hist2d_rresultptr_map["h2d_crossx_minv_0_4_vs_pair_eta_op_dsigma"] = df_op_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_4_vs_pair_eta_op_dsigma", ";#eta^{pair};m_{#mu#mu} [GeV]", 24, -2.4, 2.4, 50, 0.0, 4.0), "pair_eta", "minv", "crossx_weight_trig_corr");
         hist2d_rresultptr_map["h2d_crossx_minv_0_4_vs_pair_eta_ss_dsigma"] = df_ss_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_4_vs_pair_eta_ss_dsigma", ";#eta^{pair};m_{#mu#mu} [GeV]", 24, -2.4, 2.4, 50, 0.0, 4.0), "pair_eta", "minv", "crossx_weight_trig_corr");
+
+        // NO-PAIR-SELECTION efficiency-corrected 0-4 GeV data dsigma (muon-level selection only,
+        // inherent in the ntuple: pt>4, |eta|<2.4, quality, dp/p). NO pair_pt / q*eta cut. Same
+        // dsigma weight (crossx_weight_trig_corr = 1/L * w_reco * w_trig) as above. For the
+        // bkg_mc_provenance data-vs-fullsim absolute-dsigma comparison with the data fully
+        // efficiency-corrected (low_mass_dimuon_template_fit.md). CAVEAT: 1/eff is only well
+        // defined on the trigger plateau (pair pT >~ 8); for soft muons near the pT>4 threshold
+        // the reco/trig-eff placeholders clamp (eps floored 0.01, pt clamped [4,19]), so the
+        // corrected soft (low-mass) spectrum carries turn-on/clamp artifacts -- approximate there.
+        ROOT::RDF::RNode df_op_nosel = attach_crossx_weight(map_at_checked(df_map, "df_op", "FillHistogramsCrossx PP: df_op (template nosel)"));
+        ROOT::RDF::RNode df_ss_nosel = attach_crossx_weight(map_at_checked(df_map, "df_ss", "FillHistogramsCrossx PP: df_ss (template nosel)"));
+        hist1d_rresultptr_map["h1d_crossx_minv_0_4_op_dsigma_nosel"] = df_op_nosel.Histo1D(ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_op_dsigma_nosel", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [pb GeV^{-1}]", 50, 0.0, 4.0), "minv", "crossx_weight_trig_corr");
+        hist1d_rresultptr_map["h1d_crossx_minv_0_4_ss_dsigma_nosel"] = df_ss_nosel.Histo1D(ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_ss_dsigma_nosel", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [pb GeV^{-1}]", 50, 0.0, 4.0), "minv", "crossx_weight_trig_corr");
         std::cout << "[PP] FillHistogramsCrossx (low-mass template mode, "
                   << (mixed_event_template ? "_scrambled/mixed-event" : "_no_res_cut") << ") completed" << std::endl;
         return;
