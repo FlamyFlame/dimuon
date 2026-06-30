@@ -89,9 +89,22 @@ void PlotMCDataComprSingleKinematics::Run(){
             first_drawn = 0;
         }
 
-        // Pythia scale
+        // Pythia scale to bring the truth Pythia dsigma onto the data [pb] scale.
+        // NOTE (units, 2026-06-30): this 1e6 is the product of TWO factors:
+        //   (i)  NB_TO_PB = 1e3 — the stored MC `weight` is in nb (ATLAS AMI `crossSection`
+        //        is nb, NOT pb — see PythiaAlgCoreT.c AMI-read comment); data here is pb.
+        //   (ii) ~1e3 — a SEPARATE, pre-existing under-normalization of the TRUTH COMBINED
+        //        sample (`histograms_pythia_combined*`): its per-pTHat-slice combine left the
+        //        absolute scale ~1e3 low (stored weights span 0..3.5e6). This is immaterial to
+        //        the analysis (templates are area-normalized, k=G_SS/G_OS is a ratio) and is
+        //        tracked separately (low_mass_dimuon_template_fit.md). It must be fixed at the
+        //        truth-combine step before this hand factor can be reduced to the clean 1e3.
+        // Until the truth combine is fixed, DO NOT change this value — it keeps the known-good
+        // data-vs-Pythia overlay on scale.
+        static const double NB_TO_PB             = 1.0e3;
+        static const double TRUTH_COMBINE_RENORM = 1.0e3;  // pre-existing truth-combine under-norm (see above)
         if (h_exists[2][ksign]) {
-            h[2][ksign]->Scale(pow(10,6));
+            h[2][ksign]->Scale(NB_TO_PB * TRUTH_COMBINE_RENORM);
             if (pythia_scale != 1.) h[2][ksign]->Scale(pythia_scale);
             hist_helper(h[2][ksign], norm_factor[2], norm_unity, signTitles[ksign].c_str(), ytitle);
             l->AddEntry(h[2][ksign], dtTitles[2].c_str(), "lp");

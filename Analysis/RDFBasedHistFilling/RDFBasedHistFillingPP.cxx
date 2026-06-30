@@ -516,8 +516,8 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         ROOT::RDF::RNode df_ss_t = attach_crossx_weight(map_at_checked(df_map, "df_ss", "FillHistogramsCrossx PP: df_ss (template)").Filter(signal_cuts_no_minv));
         const int npt150 = (int)(pms.pT_bins_150.size() - 1);
         const double* ptb150 = pms.pT_bins_150.data();
-        hist1d_rresultptr_map["h1d_crossx_minv_0_4_op_dsigma"] = df_op_t.Histo1D(ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_op_dsigma", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [nb GeV^{-1}]", 50, 0.0, 4.0), "minv", "crossx_weight_trig_corr");
-        hist1d_rresultptr_map["h1d_crossx_minv_0_4_ss_dsigma"] = df_ss_t.Histo1D(ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_ss_dsigma", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [nb GeV^{-1}]", 50, 0.0, 4.0), "minv", "crossx_weight_trig_corr");
+        hist1d_rresultptr_map["h1d_crossx_minv_0_4_op_dsigma"] = df_op_t.Histo1D(ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_op_dsigma", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [pb GeV^{-1}]", 50, 0.0, 4.0), "minv", "crossx_weight_trig_corr");
+        hist1d_rresultptr_map["h1d_crossx_minv_0_4_ss_dsigma"] = df_ss_t.Histo1D(ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_ss_dsigma", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [pb GeV^{-1}]", 50, 0.0, 4.0), "minv", "crossx_weight_trig_corr");
         hist2d_rresultptr_map["h2d_crossx_minv_0_4_vs_pair_pt_log_150_op_dsigma"] = df_op_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_4_vs_pair_pt_log_150_op_dsigma", ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", npt150, ptb150, 50, 0.0, 4.0), "pair_pt", "minv", "crossx_weight_trig_corr");
         hist2d_rresultptr_map["h2d_crossx_minv_0_4_vs_pair_pt_log_150_ss_dsigma"] = df_ss_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_4_vs_pair_pt_log_150_ss_dsigma", ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", npt150, ptb150, 50, 0.0, 4.0), "pair_pt", "minv", "crossx_weight_trig_corr");
         hist2d_rresultptr_map["h2d_crossx_minv_0_4_vs_pair_eta_op_dsigma"] = df_op_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_4_vs_pair_eta_op_dsigma", ";#eta^{pair};m_{#mu#mu} [GeV]", 24, -2.4, 2.4, 50, 0.0, 4.0), "pair_eta", "minv", "crossx_weight_trig_corr");
@@ -671,10 +671,10 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
             map_at_checked(df_map, "df_ss", "FillHistogramsCrossx PP: df_ss (no-minv)").Filter(signal_cuts_no_minv));
 
         hist1d_rresultptr_map["h1d_crossx_minv_0_4_op_dsigma"] = df_op_no_minv.Histo1D(
-            ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_op_dsigma", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [nb GeV^{-1}]", 50, 0.0, 4.0),
+            ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_op_dsigma", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [pb GeV^{-1}]", 50, 0.0, 4.0),
             "minv", "crossx_weight_trig_corr");
         hist1d_rresultptr_map["h1d_crossx_minv_0_4_ss_dsigma"] = df_ss_no_minv.Histo1D(
-            ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_ss_dsigma", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [nb GeV^{-1}]", 50, 0.0, 4.0),
+            ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_ss_dsigma", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [pb GeV^{-1}]", 50, 0.0, 4.0),
             "minv", "crossx_weight_trig_corr");
     }
 

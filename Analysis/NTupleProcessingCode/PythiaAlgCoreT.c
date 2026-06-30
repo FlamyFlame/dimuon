@@ -445,9 +445,15 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputFullsim_PythiaCo
                     }
                 }
                 ami.close();
+                // UNITS: ATLAS AMI `crossSection` is in **nb** (NOT pb), e.g. pp pTH8_14
+                // crossSection=4.816e6 = 4.816 mb for HardQCD:All pTHat 8-14 GeV (sensible in nb,
+                // absurd in pb). So ami_weight (and the per-pair `weight` derived from it below) is
+                // in nb. Consumers comparing an absolute MC dsigma to pp DATA (dsigma=N/L, L in pb^-1)
+                // must convert nb->pb (x1000). The weight unit CANCELS in reco-eff ratios and
+                // area-normalized fit templates, so most uses are unaffected.
                 ami_weight_kn_beam[ikin][ibeam] = crossSection * genFiltEff;
-                std::cout << "  AMI: crossSection=" << crossSection << " pb, genFiltEff=" << genFiltEff
-                          << " -> ami_weight=" << ami_weight_kn_beam[ikin][ibeam] << " pb" << std::endl;
+                std::cout << "  AMI: crossSection=" << crossSection << " nb, genFiltEff=" << genFiltEff
+                          << " -> ami_weight=" << ami_weight_kn_beam[ikin][ibeam] << " nb" << std::endl;
             }
         }
     }
@@ -662,6 +668,7 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook() {
 
                 double nom_ratio = nominal_beam_ratio.at(beam_names.at(ibeam));
                 double ami_w     = ami_weight_kn_beam.at(ikin).at(ibeam);
+                // fullsim_weight_factor is in **nb** (ami_w is nb; see AMI-read comment above).
                 fullsim_weight_factor = (N_beam > 0) ? ami_w * nom_ratio / static_cast<double>(N_beam) : 0.;
 
                 Long64_t N_proc = (this->nevents_max <= 0) ? N_beam
@@ -699,6 +706,7 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook() {
                 Long64_t N_beam = nentries_kn_beam.at(ikin).at(ibeam);
                 if (N_beam == 0) continue;
                 double nom_ratio = nominal_beam_ratio.at(beam_names.at(ibeam));
+                // w_norm (the per-pair `weight`) is in **nb** (ami_weight is nb; see AMI-read comment).
                 double w_norm = ami_weight_kn_beam.at(ikin).at(ibeam) * nom_ratio
                                 / static_cast<double>(N_beam);
                 efficiency = 1.;
