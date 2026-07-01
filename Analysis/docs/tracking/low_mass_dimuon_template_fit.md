@@ -796,6 +796,41 @@ selection; the fitter; combinatoric (event-mixing) template; k determination; pl
   templates truth→fullsim-reco flagged as Remaining Work. Committed as a single commit. NOT git-tracked:
   the refilled `_template_fit.root` data histos (data area).
 
+- 2026-07-01 (2) — **Plot batch (Tasks C/F, D, G) — 3 executor subagents + `/review-plot` loops, all PASS after
+  ≤1 cosmetic amend; scratch docs merged here + deleted.** Data-area plots (not git). Reviewer used the NEW
+  label-semantics rules (committed `aee3ada`).
+  - **bkg_mc_provenance_20260624 (Tasks C+F):** deleted the ONLY Pythia-truth-quantity plot
+    (`data_vs_fullsim_truth_xsec.png`, both plots/ + plots_tight/) and removed its code block. Data-vs-fullsim
+    comparison now uses TRIGGER-ONLY data (the regenerated `h1d_crossx_minv_0_4_{op,ss}_dsigma` — trigger-only
+    after Task A) and applies the signal cuts (pair_pt>8, q·η<2.2) to BOTH data and MC identically (switched
+    data `_nosel`→selected, MC `h_nosel_*`→`h_minv_*_all`); the one no-selection composition (category_stack)
+    is kept but LABELLED "no pair selection" with data+MC both no-sel. Physics reason recorded: fullsim MC is
+    reco → already carries reco-eff, so correcting data for reco-eff would invalidate the comparison. Data/MC
+    (0–4 GeV, selected): medium OS 0.71 / SS 1.12, tight OS 0.79 / SS 1.26 (order-1; reviewer re-derived, MATCH).
+    `/review-plot` PASS after 1 amend (fixed a bare `(OS+SS)` y-title → `(opposite + same sign)` + legend/data
+    overlaps).
+  - **OS_to_SS_factor_..._20260623 (Task D):** fixed all label bugs the Task-H test flagged (bin-number legends
+    → physical pT ranges; `(sign1)/(sign2)` → `(same sign)/(opposite sign)`; `k(m)=SS/OS` → `k(m)=G_{SS}/G_{OS}`;
+    `one_b_one_c` → "one b, one c"). NEW plots via `code/os_ss_shapes_and_kfit_coarse.C` (reads
+    `pms.pair_pt_coarse_bins`/`N_COARSE_PAIR_PT_BINS` from ParamsSet.h, coarse edges snapped to fine
+    `pair_pt_log_150` boundaries, labelled by physical ranges 8.00–14.38 / 14.38–25.84 / 25.84–46.44 /
+    46.44–150 GeV): (A) `shape_overlay_by_coarse_pt_OSandSS.png` (2 subplots OS/SS × 4 coarse-pT lines),
+    (B) `os_vs_ss_shape_per_coarse_pt.png` (4 subplots, OS vs SS per range), (C) `k_of_m_fit_ratio_per_coarse_pt.png`
+    (4 subplots, ratio: top G_SS vs G_OS·k(m) with pol3 k(m) fit, bottom k(m)=G_SS/G_OS). k_int=0.3078; per-coarse-bin
+    k=0.305/0.314/0.331/0.363 (rises with pT, bb̄ hardening). `/review-plot` PASS after 1 amend (2 cosmetic). Old
+    macros backed up to `code_backup_pre_label_fix_20260701/`.
+  - **extended_mass_control_region_20260701 (Task G, NEW dir):** reco m_{μμ} 0–20 GeV, signal cuts, coarse-pT from
+    ParamsSet. 24 PNGs: dσ/dm by origin (flavor {single_b,bb,cc,b+c,resonance,other} + hadronic + fake), pT-int +
+    4 coarse bins, fullsim + overlay; backgrounds-only; mixed-event; a 0–10 zoomed subdir. **Findings (reviewer
+    C1–C4 PASS, numbers MATCH):** single-b SIGNAL dies at m≈4 GeV (pT-independent; frac(m>5)≈0); the CORRELATED
+    bb̄ continuum does NOT die out — dominates 4–20 GeV (bb̄ OS pT8–15 ∫≈155/144/227/301 pb over [4,6]/[6,8]/[8,12]/
+    [12,20]); cc̄ ~4–6× smaller; `one_b_one_c` empty; hadronic flat ~3–10 pb/GeV no peaks; fake low/spiky; mixed-event
+    OS≈SS (charge-symmetric), smooth, peak-free, broad max m≈7–9 GeV. **Proposed control region m∈[6,9] GeV
+    (pair_pt>8):** signal-free, no resonances (above ψ(2S) veto 3.8, below Υ 9.08), at the mixed-event peak —
+    **CAVEAT (correctly stated): the correlated bb̄/cc̄ continuum persists there, so the mixed-event normalization
+    must be fit to DATA in [6,9] with bb̄/cc̄ subtracted or fit simultaneously** (a pure combinatoric CR does not
+    exist in signal MC). `/review-plot` PASS after 1 amend (legend-off-data). SUMMARY.md in the dir.
+
 ## Results & Observations
 
 - 2026-06-24 — **BUILD step 1 DONE: production OS−SS + MC(S+G) fitter (pp), per R_AA pT bin.**
@@ -989,7 +1024,11 @@ The fit must mask the OS data veto windows ([0,1.06],[2.9,3.3],[3.55,3.8]) consi
 
 ## Latest Stage
 
-**▶ SESSION 2026-07-01 — orchestrated multi-task batch (plan written before work per INVARIANT).**
+**✅ SESSION 2026-07-01 — orchestrated multi-task batch COMPLETE.** All 8 tasks done (details in the
+2026-07-01 Progress Log entries + roadmap 2026-07-01 row). Git commits: `a257787` (Task A code+docs),
+`3bfc9cc` (Task B ParamsSet coarse binning), `aee3ada` (Task H review-plot label rules). Data-area plot work
+(Tasks C/F, D, G) is not git-tracked. Every plot batch passed `/review-plot` (updated with the new label rules)
+after ≤1 cosmetic amend. Plan (below) kept for the record.
 User directives this session (orchestrator = main agent; subagents scratch-doc + never git/shared-file per directive 3):
 
 - **Task A (HIGHEST PRIORITY) — CORRECTION-ORDERING REVERSAL.** The minv template fit MUST be
