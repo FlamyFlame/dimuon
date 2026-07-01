@@ -55,3 +55,5 @@
 {"event":"end","command":"kb-review","mode":"SINGLE","status":"approved","iterations":1,"timestamp":"2026-06-22T05:56:05Z","slug":"os-ss-empirical-k"}
 {"event":"start","command":"review-analysis-code","task":"ScrambGen object-model rewrite (mixed-event combinatoric template)","slug":"scrambgen-objmodel-rewrite","timestamp":"2026-06-22T06:33:07Z"}
 {"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-06-22T06:52:34Z","criticals":0,"warnings":0,"slug":"scrambgen-objmodel-rewrite","note":"pivoted to incident-recovery; scrambgen rewrite deferred"}
+{"event":"start","command":"review-analysis-code","task":"Fix nb-pb unit bug in differential-crossx macros","slug":"fullsim-nb-pb-unit-fix","timestamp":"2026-06-30T15:21:04Z"}
+{"event":"end","command":"review-analysis-code","status":"closed_reviewer_stopped","iterations":1,"timestamp":"2026-06-30T15:27:48Z","criticals":0,"warnings":0,"slug":"fullsim-nb-pb-unit-fix"}
