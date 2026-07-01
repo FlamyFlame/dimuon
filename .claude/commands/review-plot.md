@@ -150,6 +150,33 @@ For each item, state PASS or FAIL with specific evidence.
 14. **Efficiency values in expected range**: standard efficiencies in [0, 1]. Inverse-weighted ratios (dR corrections from TH1::Divide with 1/ε weights) can fluctuate above 1 — flag only if far above 1 beyond what statistical error bars explain.
 15. **Turn-on shape qualitatively correct**: pT turn-on should trend increasing (sigmoid-like). Do not require strict monotonic increase — raw unfitted data has statistical fluctuations, especially at high pT. Flag only if overall trend is non-physical.
 
+### Label & legend semantics (physical wording — MANDATORY)
+Legends, axis titles, histogram titles, and textboxes must use PHYSICAL wording, never
+internal or arbitrary code conventions. Inspect EVERY text string drawn on the canvas
+(TLegend entries, axis titles, `SetTitle`, TLatex/TPaveText). Read the producing code to
+see the exact strings.
+16. **No "sign1"/"sign2"; no bare "OS"/"SS" as main text.** Same-sign / opposite-sign
+    dimuon pairs must be written out — "same sign" / "opposite sign"; single muons as
+    "#mu^{+}" / "#mu^{-}". `sign1`, `sign2`, and bare `OS`/`SS` are FORBIDDEN as standalone
+    legend/label/title main text. They are allowed ONLY as **subscripts on a defined
+    symbol** (e.g. `G_{OS}`, `N_{SS}`, `k = G_{SS}/G_{OS}`). Any bare `OS`, `SS`, `sign1`,
+    `sign2` in displayed text → **CRITICAL FAIL** (they are arbitrary tree conventions, not
+    physics; the sign convention itself is checked separately in the Physics checklist).
+17. **Ranges must be physical values with units, never bin numbers.** A range label must
+    state the actual observable interval (e.g. `8 < p_{T}^{pair} < 15 GeV`, `m_{#mu#mu}
+    #in [1.08, 2.9] GeV`), NEVER a bin index/count (`bin 3`, `bins 1-5`, `Xth-Yth bin`,
+    `slice 2`, `pT bins 6-10`). Bin numbering is arbitrary and changes with the binning →
+    **CRITICAL FAIL** if any observable range is labelled by bin index instead of value.
+18. **Arbitrary vs physical wording (general sweep).** Flag any legend/label/textbox wording
+    that reflects an arbitrary implementation choice rather than physics meaning: bin
+    indices, raw tree/branch names (`df_op`, `_ss`, `muon_pair_..._sign2`), internal flags,
+    file suffixes. Replace with the physical meaning. → FAIL.
+19. **Analysis-specific symbols carry their defining equation.** A symbol specific to THIS
+    analysis and not domain-common (e.g. the template-fit ratio `k`) should be accompanied
+    by its defining equation on the plot (e.g. `k(m) = G_{SS}/G_{OS}`), unless the
+    definition is very long. Domain-common quantities (`R_{AA}`, `v_n`, cross-section) need
+    no on-plot definition. Missing definition for an analysis-specific symbol → WARNING.
+
 ### Physics checklist (apply only items relevant to this plot)
 1. Sign convention: OS=sign2/_op, SS=sign1/_ss.
 2. Trigger mode: PbPb23/24/25=single_mu4/mode1, pp24=2mu4/mode3.
@@ -172,6 +199,9 @@ For any numbers reported by the executor:
 - Ratio panels with Y-axis range hiding data points
 - Plots saved to ad-hoc or flat directories instead of designated plot areas
 - New plots for a procedure placed in a different directory from existing plots for the same procedure
+- Legends/labels using `sign1`/`sign2` or bare `OS`/`SS` instead of "same sign"/"opposite sign" (subscripts like `G_{OS}` are fine)
+- Observable ranges labelled by bin number/index (`bins 1-5`, `slice 2`) instead of physical ranges with units
+- An analysis-specific symbol (e.g. `k`) shown without its defining equation on the plot
 
 ## Response format
 
