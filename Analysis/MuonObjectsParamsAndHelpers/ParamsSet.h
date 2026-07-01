@@ -45,7 +45,20 @@ public:
     std::vector<double> pT_bins_60;
     std::vector<double> pT_bins_80;
     std::vector<double> pT_bins_120;
-    std::vector<double> pT_bins_150;
+    std::vector<double> pT_bins_150;  // FINE logarithmic pair-pT binning (15 bins, 8-150 GeV)
+
+    // ---- NOMINAL COARSE pair-pT binning (SINGLE SOURCE OF TRUTH) ----
+    // The coarse pair-pT bins used for the low-mass template fit / R_AA coarse binning and
+    // any coarsely-binned pair-pT plot set. THIS is the only place these values live: read
+    // `pair_pt_coarse_bins` (and `N_COARSE_PAIR_PT_BINS`) from here, never re-invent per plot
+    // so every plot set stays mutually consistent. Both the coarse and the fine-log
+    // (pT_bins_150) pair-pT binnings may be re-optimised for the final analysis — change them
+    // HERE ONLY. Interim (2026-07-01, user): 4 bins 8-15, 15-27, 27-50, 50+ GeV (may shrink to
+    // 3 if stats are poor). The last bin [50, 150] is the "50 GeV+" bin (the analysis pair-pT
+    // range tops near 150; include overflow in it when plotting). If N changes, update BOTH
+    // the edges below and N_COARSE_PAIR_PT_BINS (kept in this one file).
+    static const int N_COARSE_PAIR_PT_BINS = 4;   // = pair_pt_coarse_bins.size() - 1
+    std::vector<double> pair_pt_coarse_bins;      // edges, initialised in the constructor
 	
 	static std::vector<float> pTbins;
 	static std::vector<double> pTHatbins_pythia;
@@ -398,6 +411,11 @@ ParamsSet::ParamsSet(){
     fillLogBinningArray(pT_bins_80,  12, 8.0,  80.0);  // 12 log bins from 8  to 80  GeV
     fillLogBinningArray(pT_bins_120, 15, 8.0, 120.0);  // 15 log bins from 8  to 120 GeV
     fillLogBinningArray(pT_bins_150, 15, 8.0, 150.0);  // 15 log bins from 8  to 150 GeV
+
+    // NOMINAL COARSE pair-pT binning (single source of truth; see the declaration above).
+    // Interim 4 bins: [8,15), [15,27), [27,50), [50,150]="50 GeV+". Keep the edge count
+    // consistent with N_COARSE_PAIR_PT_BINS.
+    pair_pt_coarse_bins = {8.0, 15.0, 27.0, 50.0, 150.0};
 
 
   	// minv cut V1 - cut off all below 1.06GeV
