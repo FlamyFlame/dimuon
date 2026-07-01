@@ -27,11 +27,13 @@ These are the data inputs `D_OS(m)`, `D_SS(m)` of the fit.
 currently used in crossx and R_AA (`raa_from_rdf_crossx.md` task_06). The minv
 template fit here extracts the signal *fraction/yield* per bin; that yield is then
 **acceptance-corrected** and fed into the existing crossx/R_AA normalization. The
-program has three physics stages that must be ordered correctly: (1) Δp/p
-fake-muon removal; (2) origin-blind detector corrections (efficiency + unfolding)
-applied to the *whole mixture* BEFORE the fit; (3) the minv template fit, then
-(4) signal acceptance applied to the signal yield AFTER the fit. See Physics
-Procedure §3e–§3g and §4.
+program has stages that must be ordered correctly (ordering CORRECTED 2026-07-01):
+(1) trigger-efficiency correction (reco) + Δp/p fake-muon removal (reco); (2) the minv
+template fit **at RECO level** on the trigger-corrected reconstructed spectrum, extracting
+N_S; (3) origin-blind detector corrections (reco-eff + unfolding) applied to the
+**extracted signal yield AFTER the fit**; (4) signal acceptance on that corrected yield.
+The fit and all its templates use RECONSTRUCTED quantities (mixed-event = real-data muons;
+fakes have no truth). See Physics Procedure §3 lead, §3e–§3g and §4.
 
 ## Physics Procedure (AUTHORITATIVE)
 
@@ -99,14 +101,26 @@ cancels exactly; a fraction (1−k) of gluon splitting survives and is removed b
 
 ### 3. Step-by-step method
 
-**The two fits live at two DIFFERENT kinematic levels (resolved 2026-06-22, per user):**
+**BOTH fits live at RECO level (CORRECTED 2026-07-01, per user — REVERSES the 2026-06-22
+"minv fit at truth" decision).** The whole template-fit program is performed on
+**RECONSTRUCTED quantities**, AFTER trigger-efficiency correction but BEFORE
+reconstruction-efficiency correction and unfolding. Reco-eff + unfolding (and then signal
+acceptance) are applied to the **extracted signal yield AFTER the fit**, never to the fit
+input (see §3e for the ordering, §3f for acceptance).
 - **Δp/p fake-muon fit → RECO level.** Δp/p = (p_ID − p_MS)/p_ID is the ID-vs-MS
   momentum imbalance — an **intrinsically reconstructed** quantity (no truth analogue),
-  so the fake/real separation is done at reco level, BEFORE unfolding.
-- **Combinatoric + physics (minv) fit → TRUTH level.** The Pythia templates (signal,
-  G, resonances) are **truth-level** objects, so the minv template fit is performed on
-  the **unfolded** data (after efficiency + unfolding bring the data to truth level).
-  This settles the earlier "fit at reco vs truth" question: minv fit at truth.
+  so the fake/real separation is done at reco level.
+- **Combinatoric + physics (minv) fit → RECO level.** Two decisive reasons the minv fit
+  MUST be at reco, not truth: (i) the **mixed-event combinatoric** template is built from
+  **real-data muons** — a reconstructed object with no MC/truth analogue, so it is
+  intrinsically a reco-minv shape; (ii) the **fake/hadronic background has NO truth match**
+  (fakes are unmatched; punch-through/decay-in-flight hadrons have no signal-muon truth), so
+  no truth minv exists for it. A truth-level fit could not represent either background.
+  **Consequence — templates move to RECO:** the signal (S) and gluon-splitting/open-HF (G)
+  MC templates must be **reconstructed minv from Pythia FULLSIM** (reco muon pairs,
+  truth-labelled by category), NOT the truth `minv_zoomin` templates (Step 4a). The φ/J/ψ
+  resonance leakage (§3h) is likewise a reco-smearing effect, naturally represented at reco.
+  This settles the earlier "fit at reco vs truth" question: **minv fit at RECO.**
 
 a. **Data spectra (this cycle):** fill OS and SS `minv` over **0–4 GeV** in the
    single-b kinematic region **without the mass window** — selection
@@ -124,44 +138,49 @@ a. **Data spectra (this cycle):** fill OS and SS `minv` over **0–4 GeV** in th
      MUST be re-filled from the **`_no_res_cut`** ntuples in a SEPARATE template-fit pass
      (see Design Decisions: "Template-fit input = `_no_res_cut`"). The `_no_res_cut`
      May-skim production is running (2026-06-22, Condor clusters 42–45).
-b. **Templates:** Pythia evgen truth `minv_zoomin` (0–4 GeV) per flavor category
-   (`_single_b` = S; `_bb`,`_cc`,`_one_b_one_c` = G; `_resonance(_contaminated)` =
-   J/ψ etc.) and per origin category. Truth = no reco, so compared to
-   efficiency-corrected data (data unfolded back to truth within acceptance).
+b. **Templates (RECO level — CORRECTED 2026-07-01).** The fit is at reco (§3 lead, §3e), so
+   the S and G templates must be **reconstructed `minv` from Pythia FULLSIM** (reco muon
+   pairs, truth-labelled by flavor category: `_single_b` = S; `_bb`,`_cc`,`_one_b_one_c` = G),
+   compared directly to the trigger-corrected reco data — NO unfolding of the data.
+   Rationale: the mixed-event and fake backgrounds are reco-only, so ALL fit components must
+   share the reco frame. **The truth `minv_zoomin` `_sigsel` templates (Step 4a) are for a
+   truth-level fit and are SUPERSEDED for the nominal reco fit** (kept for the k=G_SS/G_OS
+   MC-truth study, which is a ratio and frame-insensitive). Rebuild S/G as fullsim reco
+   templates — see Remaining Work.
 c. **Baby-step fit (later cycle):** assume k≈0 → form `D_OS−D_SS` (removes
    combinatoric), fit `= N_S·T_S + N_G·T_G` (TFractionFitter or binned χ²) over
    0–4 GeV, vetoing the J/ψ window [2.95,3.25]. Extract N_S.
 d. **Refinement (later):** restore k; coupled OS+SS fit with shared C,G and a
    combinatoric template (event-mixing); float/constrain k.
-e. **Correction ordering (origin-blind BEFORE the fit).** The reco+trigger
-   efficiencies and the detector response (bin migration / unfolding) are
-   properties of the ATLAS muon detector/trigger/offline reconstruction; given the
-   pair kinematics they are **independent of pair origin** (the detector cannot
-   know signal vs background). They are applied to the **whole mixture before the
-   fit**. The PRECISE internal order matters because each correction lives in a
-   different kinematic frame (refined 2026-06-22, per user):
-   1. **Trigger efficiency** — evaluated as a function of **RECONSTRUCTED**
-      kinematics (the trigger fires on reco objects). Apply as a per-pair weight at
-      reco level, fill the reco spectrum.
-   2. **Unfolding** (reco→truth, bin migration) — a **spectrum-level** operation
-      (response matrix / iterative Bayes), NOT a per-pair multiplicative weight.
-      Applied to the trigger-corrected reco spectrum.
-   3. **Reconstruction efficiency** — evaluated as a function of **TRUTH**
-      kinematics (the proper 3D pair ε_reco(truth pair pT, η, ΔR) is defined per
-      truth pair), so it is applied **after** unfolding, on the truth spectrum.
-   Then the template fit runs at truth level (sharpest signal mass peak; templates
-   need no detector folding). **Run 2 precedent (HF-muon R_AA, arXiv:2109.00411 /
-   ANA-HION-2019-58 §4.1–4.2):** the ρ and d0 template fits are run on
-   **efficiency-weighted** distributions — efficiency FIRST, then fit → N_corr
-   directly. (The dimuon note is no counter-precedent: its Δp/p was a purity
-   demonstration with no yield subtraction.) **Current-code status (RDF, verified
-   2026-06-22):** trigger weight ✓ at reco; reco-eff applied at **reco** kinematics
-   (placeholder ε₁·ε₂, NOT truth); unfolding ABSENT (`w_unfold ≡ 1.0` identity).
-   The order is therefore not yet implemented — but it is **degenerate now** (both
-   weights are reco-level placeholders multiplied together, no unfolding). The
-   prescribed trig(reco)→unfold→reco(truth) order is a **structural change** to make
-   when (i) real unfolding and (ii) the truth-binned 3D pair ε_reco land (roadmap
-   Q4 / task_05). These corrections are NOT applied after the fit.
+e. **Correction ordering (CORRECTED 2026-07-01, per user — REVERSES the 2026-06-22
+   "eff+unfold BEFORE the fit at truth" ordering).** The template fit runs at **RECO
+   level** on the **trigger-corrected reconstructed spectrum**; reco-eff + unfolding are
+   applied to the **extracted signal yield AFTER the fit**. Ordering:
+   1. **Trigger efficiency** — evaluated as a function of **RECONSTRUCTED** kinematics
+      (the trigger fires on reco objects). Applied as a per-pair weight at reco level →
+      the **trigger-corrected reco spectrum** = the fit input. (Code: template-fit
+      histograms use the TRIGGER-ONLY weight `crossx_weight_trig_only` (pp) /
+      `weight_for_dsigma_trig_only` (PbPb) = 1/L·w_trig, **NO w_reco** — RDF
+      `low_mass_template_calc` block.)
+   2. **Template fit** — performed HERE, at reco, per coarse R_AA bin, with RECO-level MC
+      templates (S, G from Pythia fullsim reco minv; §3b/§3 lead) + mixed-event
+      combinatoric (real-data muons, reco) + §3h resonance leakage templates → extract the
+      signal yield **N_S^fit** (still at reco level).
+   3. **Reconstruction efficiency + unfolding** — applied to **N_S^fit AFTER the fit**, per
+      bin. They are **origin-blind** (properties of the detector, the same function of pair
+      kinematics for signal and background), and the fit is linear, so correcting the
+      extracted signal yield per bin is equivalent to correcting the whole spectrum first —
+      AND it is the only correct order given (i) mixed-event and (ii) fakes have no truth
+      minv (§3 lead). reco-eff = the 3D pair ε_reco (truth-binned; §3f boundary); unfolding
+      = spectrum-level bin migration (response matrix / iterative Bayes), a **structural**
+      operation, not a per-pair weight.
+   4. **Signal acceptance** — applied last, to the corrected signal yield (§3f).
+   **Run 2 precedent (HF-muon R_AA, arXiv:2109.00411 / ANA-HION-2019-58):** the ρ (=Δp/p)
+   template fit is run at **reco** to extract the HF-muon yield, and efficiency corrections
+   are applied to that yield — i.e. **fit at reco → correct the yield after**, exactly this
+   ordering. **Current-code status (RDF, 2026-07-01):** template-fit histograms are now
+   trigger-only at reco (the fit input is correct); reco-eff/unfolding after-fit correction
+   of N_S is future work (needs the real 3D pair ε_reco + unfolding, roadmap Q4/task_05).
 f. **Signal acceptance (origin-specific, AFTER the fit).** A_sig(pair pT, pair η)
    = P(a truth single-b dimuon passes the signal selection), from signal MC truth
    (Pythia/Powheg). It is signal-only, so it is applied to the **extracted signal
@@ -251,9 +270,12 @@ note found >98% purity ⇒ likely a flat/coarse purity factor or demonstration-o
   (truth pair_pt>8, per-muon truth q·η<2.2; **NO ΔR cut**); the ORIGINAL truth
   per-category minv fills are INCLUSIVE (no kinematic cut) — see Results & Observations.
 - k is bb̄-only; do not model g→cc̄ as contributing to SS beyond the lumped approximation.
-- **Do NOT apply efficiency/unfolding after the fit** — they are origin-blind, so
-  they go first, on the whole mixture (§3e). **Do NOT apply signal acceptance to the
-  mixture** — it is signal-only, applied to the fitted signal yield AFTER the fit
+- **Do the minv template fit at RECO level, on the trigger-corrected reconstructed
+  spectrum (§3e, §3 lead).** Do NOT apply reco-eff or unfolding to the fit INPUT — they are
+  applied to the extracted signal yield N_S AFTER the fit. Do NOT fit at truth (the
+  mixed-event and fake backgrounds have no truth minv). The MC templates (S, G) must be
+  RECO minv from Pythia fullsim, NOT truth `minv_zoomin`. **Do NOT apply signal acceptance
+  to the mixture** — it is signal-only, applied to the corrected signal yield AFTER the fit
   (§3f); applying it to a contaminated yield corrects background with a signal factor.
 - **Do NOT leave OS−SS as the final background subtraction** in crossx/R_AA. OS−SS
   cancels combinatoric but leaves `(1−k)·G` (correlated physics bkg); it is retained
@@ -434,6 +456,21 @@ selection; the fitter; combinatoric (event-mixing) template; k determination; pl
   canonical doc; subagents NEVER run git or edit shared files. The orchestrator (this agent)
   merges each scratch doc into this canonical doc's Progress Log on return, THEN deletes the
   scratch file. Reviewer subagents (`/review-*`) are stateless and exempt.
+- **CORRECTION-ORDERING REVERSAL — minv fit at RECO, not truth (2026-07-01, user).** OLD (2026-06-22):
+  the minv template fit is done at TRUTH level, after reco-eff + unfolding bring the data to truth
+  (§3e prescribed trig(reco)→unfold→reco(truth)→fit). NEW: the fit is done at **RECO** level, after
+  trigger-eff but BEFORE reco-eff + unfolding; reco-eff/unfolding correct the extracted signal yield
+  N_S AFTER the fit; then acceptance. PHYSICS REASON (user): the mixed-event combinatoric template uses
+  **real-data muons** (a reconstructed object, no truth analogue) and the fake/hadronic background has
+  **no truth match** — neither can be represented at truth, so the fit MUST be at reco. Consistent with
+  the Run 2 HF-muon Δp/p reco-level yield fit. **Code impact (DONE):** template-fit RDF fills
+  (`low_mass_template_calc` block, PP+PbPb) now use a TRIGGER-ONLY weight (`crossx_weight_trig_only` /
+  `weight_for_dsigma_trig_only` = 1/L·w_trig, dropped w_reco); nominal signal-region crossx/R_AA
+  UNCHANGED (still reco+trig). Bkg_mc_provenance data-vs-Pythia comparison likewise uses trigger-only
+  data (fullsim MC carries the same reco-eff → correcting data for reco-eff would invalidate the
+  comparison). **Template impact (REMAINING):** the S/G MC templates move truth→fullsim reco minv;
+  the truth `_sigsel` templates are kept only for the frame-insensitive k=G_SS/G_OS ratio study.
+  Verified against Physics Procedure §3 lead + §3e (both updated to reco).
 
 ## Implementation Plan
 1. Tracking doc + Physics Procedure (this file). DONE.
@@ -742,6 +779,23 @@ selection; the fitter; combinatoric (event-mixing) template; k determination; pl
   the change only removes the dangerous silent-fallback path. Verified all 4 V1 nominal files exist
   (pp24 589M; pbpb 23/24/25 245/174/492M). Committed to master.
 
+- 2026-07-01 — **CORRECTION-ORDERING REVERSAL: minv template fit moved to RECO level (Task A, user
+  HIGHEST priority).** Reversed the 2026-06-22 "fit at truth after eff+unfold" decision → the fit is at
+  RECO, after trigger-eff but BEFORE reco-eff/unfolding (§3 lead, §3e, §4, Objective, Design Decisions all
+  updated). Physics: mixed-event = real-data muons (reco, no truth); fakes have no truth match. **Code
+  (`/review-analysis-code`-style review PASS, 0 issues):** `RDFBasedHistFillingPP.cxx` +
+  `RDFBasedHistFillingPbPb.cxx` `low_mass_template_calc` blocks now weight the template-fit histograms
+  with a TRIGGER-ONLY dsigma weight — PP `crossx_weight_trig_only = crossx_weight·w_trig`, PbPb
+  `weight_for_dsigma_trig_only = weight·(1/L_year)·w_trig` — dropping w_reco (reco-eff Defines removed from
+  the template lambdas). Nominal signal-region crossx/R_AA UNCHANGED (still `*_trig_corr` = reco+trig).
+  ACLiC-clean both (exit 0). **Reran all 8 template-fit passes** (pp24 + pbpb23/24/25 data, + 4 mixed-event
+  T_mix), all rc=0. Sanity (pp24): entries IDENTICAL to the reco+trig baseline (same pairs) — op 3382719,
+  ss 516004 — while integrals dropped ~0.757× (op 1.713e4→1.296e4, ss 935.4→694.1; op_nosel 1.807e4→1.356e4,
+  ss_nosel 973.8→716.6), i.e. exactly the removed w_reco≥1 inflation (⟨w_reco⟩≈1.32 pp). Docs swept:
+  roadmap (2026-07-01 row + old-ordering row superseded), analysis_overview §6 (reco-level note). S/G MC
+  templates truth→fullsim-reco flagged as Remaining Work. Committed as a single commit. NOT git-tracked:
+  the refilled `_template_fit.root` data histos (data area).
+
 ## Results & Observations
 
 - 2026-06-24 — **BUILD step 1 DONE: production OS−SS + MC(S+G) fitter (pp), per R_AA pT bin.**
@@ -912,6 +966,12 @@ The fit must mask the OS data veto windows ([0,1.06],[2.9,3.3],[3.55,3.8]) consi
   cut**, no minv cut) producing 1D `minv_zoomin` per category, OS+SS.
 
 ## Remaining Work
+- **Rebuild S/G MC templates at RECO level (fullsim reco minv, truth-labelled by category)**
+  to match the reco-level fit (§3b/§3e, 2026-07-01 reversal). The truth `_sigsel` templates are
+  superseded for the nominal fit (kept for the k=G_SS/G_OS ratio only). The bkg_mc_provenance
+  reco-seeded provenance machinery already produces reco-minv category histos — reuse it.
+- **After-fit correction of N_S:** apply reco-eff (3D pair ε_reco) + unfolding to the extracted
+  signal yield per bin, THEN acceptance (§3e steps 3–4). Needs real ε_reco + unfolding (roadmap Q4).
 - Truth templates ALSO binned in (pair pT, pair η) for the k(pT,η) study (check if
   Step 4a output is pT/η-integrated; add a binned fill if so) — §3c, Step 5a.
 - k validation: 5a MC truth k(pT,η,minv) + 5b data closure (SS ?= C+k·G_OS) — the GATE.
@@ -928,6 +988,46 @@ The fit must mask the OS data veto windows ([0,1.06],[2.9,3.3],[3.55,3.8]) consi
   leakage, fit model, fiducial-vs-extrapolated).
 
 ## Latest Stage
+
+**▶ SESSION 2026-07-01 — orchestrated multi-task batch (plan written before work per INVARIANT).**
+User directives this session (orchestrator = main agent; subagents scratch-doc + never git/shared-file per directive 3):
+
+- **Task A (HIGHEST PRIORITY) — CORRECTION-ORDERING REVERSAL.** The minv template fit MUST be
+  done **after trigger-efficiency correction but BEFORE reconstruction-efficiency correction and
+  unfolding, using RECONSTRUCTED quantities** — NOT at truth level after unfold+reco-eff. This
+  REVERSES the earlier §3/§3e decision ("minv fit at truth"). **Physics reasons (user):** (i) the
+  mixed-event combinatoric template uses REAL-DATA muons (reco quantities, no MC/truth); (ii) the
+  fake/hadronic background has NO truth match, so no truth quantities exist for it. New ordering:
+  trigger-eff (reco) → **template fit (reco) → extract N_S** → reco-eff + unfolding → acceptance.
+  Scope: correct pp+pbpb crossx pipeline (template-fit data-input weights = trigger-only, drop
+  w_reco), this doc's Physics Procedure (§3 lead, §3e, negative constraints), and sweep the WHOLE
+  repo for other affected code/docs. **Single git commit.** (Δp/p fake fit was already reco-level;
+  this now makes the minv fit reco-level too — the two fits are now BOTH at reco.)
+- **Task B** — nominal COARSE pair-pT binning [8-15, 15-27, 27-50, 50+] (4 bins, may shrink to 3)
+  into ParamsSet.h as the SINGLE source of truth + `N_COARSE_PAIR_PT_BINS` (or auto-len); comment +
+  memory that coarse binning is read from this file, never re-made-up per plot set. Fine log binning
+  also lives there.
+- **Task C** — bkg_mc_provenance_20260624: delete all pythia-TRUTH-quantity plots; Data/Pythia
+  comparison → correct data by TRIGGER ONLY (not reco), because reco-quantity Pythia fullsim muons
+  carry the same reco-eff (correcting data for reco-eff invalidates the comparison). (Consistent with Task A.)
+- **Task D** — OS_to_SS_factor plots: fix (1) k_of_m_in_pt_slices legend showing BIN NUMBERS → use
+  physical pair-pT ranges; (2) shape_overlay "sign1/2" → "same sign"/"opposite sign". New: OS/SS
+  shape overlays in coarse pT bins (2 layouts); k(m,pair pT) template-fit 4-subplot ratio plots.
+- **Task E** — explain hadronic/fake background-extraction procedure (bkg_mc_provenance); PP vs PbPb;
+  R17618 vs R17662 overlay tag (see sibling `hijing_overlay_truth_barcode_duplicate_investigation.md`).
+- **Task F** — inclusive 0-4 GeV minv plots must ALSO require pair-pT>8 & q·η<2.2 unless stated exception.
+- **Task G** — extended-mass (0-20 GeV reco minv) Pythia dσ by origin (fullsim + overlay), hadronic/fake
+  only, mixed-event minv, alt ranges → select a combinatoric-dominated control region to fix mixed-event norm.
+- **Task H** — /review-plot skill rules: never sign1/sign2, never OS/SS as main text (subscripts OK),
+  ranges never bin numbers, flag arbitrary-vs-physical wordings, analysis vars want equation defs;
+  verify auto-trigger for template-fit plots; test with old OS_to_SS code via executor-review loop.
+
+ORCHESTRATION: 3 read-only Explore agents dispatched (weights/ordering map; plot-macro map;
+ParamsSet binning map). Implementation subagents partitioned by file to avoid concurrency conflicts;
+orchestrator owns git + this doc. `.claude/logs` confirmed tracked-by-convention (56 files; prior
+commit c503ec4) → committing them (fc87300) was correct.
+
+---
 
 **✅ BLOCKER RESOLVED (2026-06-30) — it WAS a unit bug: AMI `crossSection` is in nb, treated as pb → Pythia dσ 1000× too small.**
 FIX (macro-only, per user "fix macro & regenerate first, then suggest systematic cleanup"): `bkg_mc_provenance_20260624/code/fill_weighted_fullsim.C` — `ami_weight()` now returns `xs·eff·NB_TO_PB` (NB_TO_PB=1000.0, nb→pb), so weighted_fullsim_{signal,overlay}.root are in pb; `plot_diff_xsec.C` — panel (b) raw production-weight path ×1000 (nb→pb), data side untouched, on-plot `data/MC` annotation `%.0f`→`%.2f`. Re-ran fill + plots: signal no-sel OS 19.22→1.922e4 (exactly ×1000); **data/MC OS=0.31, SS=0.46 (was 314/459) → SAME ORDER OF MAGNITUDE.** 5 PNGs regenerated (`data_vs_fullsim_{reco,truth}_xsec`, `provenance_stack_xsec`, `survives_quality_cuts_xsec`, `category_stack_vs_data`). MC ends ~2-3× ABOVE data (acceptable order-of-mag; fullsim test-sample normalization caveat + resonances present in both). `/review-analysis-code` loop opened; reviewer subagent stopped by user → loop closed at iter 1 with executor verification (pure ×1000 scaling: no shape/discontinuity change, data untouched). Log `review-analysis-code-20260630-152104-fullsim-nb-pb-unit-fix.md`. NOT git-tracked (data area).

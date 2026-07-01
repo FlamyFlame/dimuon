@@ -488,12 +488,22 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
     // Produces ONLY the 0-4 GeV minv template spectra D_OS/D_SS (1D + 2D vs pair pT/eta)
     // for the low-mass dimuon template fit (docs/tracking/low_mass_dimuon_template_fit.md
     // 3a). Returns early so the signal-region crossx (minv in [1.08,2.9], WRONG from
-    // _no_res_cut because of resonance leakage) is NOT produced. Same selection (signal_cuts
-    // MINUS minv window, NO dR) and dsigma weight as the nominal h1d_crossx_minv_0_4 block.
+    // _no_res_cut because of resonance leakage) is NOT produced. Selection = signal_cuts
+    // MINUS minv window, NO dR. Weight = TRIGGER-ONLY reco-level dsigma (1/L * w_trig, NO
+    // reco-eff): the minv fit runs at reco, BEFORE reco-eff/unfolding (3e ordering reversal).
     if (low_mass_template_calc) {
         const std::string signal_cuts_no_minv =
             "pair_pt > 8 && m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2";
         const double lumi_factor_tmpl = pp_crossx_lumi_factor;
+        // TEMPLATE-FIT DATA INPUT = TRIGGER-ONLY, RECONSTRUCTED LEVEL (correction-ordering
+        // reversal 2026-07-01, low_mass_dimuon_template_fit.md 3e). The minv template fit is
+        // performed at RECO level, AFTER trigger-efficiency correction (the trigger fires on reco
+        // objects) but BEFORE reconstruction-efficiency correction and unfolding. Reco-eff +
+        // unfolding are applied to the EXTRACTED signal yield AFTER the fit (they are properties of
+        // the detector, origin-blind), NOT to the fit input. Rationale: the mixed-event
+        // combinatoric template uses REAL-DATA muons (reco quantities) and the fake/hadronic
+        // background has NO truth match, so the fit lives at reco. Hence weight is trigger-only
+        // (NO w_reco). The nominal signal-region crossx (above, reco+trig) is a SEPARATE object.
         auto attach_crossx_weight = [&](ROOT::RDF::RNode node) -> ROOT::RDF::RNode {
             ROOT::RDF::RNode n = generic_weight_col.empty()
                 ? node
@@ -503,38 +513,35 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
                     .Define("effcy2", [](int q, float pt, float qe){ return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe); }, {"m2.charge","m2.pt","q_eta2"})
                     .Define("effcy_pair", "effcy1 > 0 && effcy2 > 0 ? (double)(effcy1 * effcy2) : -1.0")
                     .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
-                    .Define("effcy_reco1", [](float pt, float qe){ return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe); }, {"m1.pt","q_eta1"})
-                    .Define("effcy_reco2", [](float pt, float qe){ return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe); }, {"m2.pt","q_eta2"})
-                    .Define("effcy_reco_pair", "effcy_reco1 > 0 && effcy_reco2 > 0 ? (double)(effcy_reco1 * effcy_reco2) : -1.0")
-                    .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / (effcy_reco_pair < 0.05 ? 0.05 : effcy_reco_pair) : 1.0")
                 : node;
             return n
                 .Define("crossx_weight", [lumi_factor_tmpl](double weight){ return weight * lumi_factor_tmpl; }, {"weight"})
-                .Define("crossx_weight_trig_corr", "crossx_weight * w_reco * w_trig");
+                .Define("crossx_weight_trig_only", "crossx_weight * w_trig");
         };
         ROOT::RDF::RNode df_op_t = attach_crossx_weight(map_at_checked(df_map, "df_op", "FillHistogramsCrossx PP: df_op (template)").Filter(signal_cuts_no_minv));
         ROOT::RDF::RNode df_ss_t = attach_crossx_weight(map_at_checked(df_map, "df_ss", "FillHistogramsCrossx PP: df_ss (template)").Filter(signal_cuts_no_minv));
         const int npt150 = (int)(pms.pT_bins_150.size() - 1);
         const double* ptb150 = pms.pT_bins_150.data();
-        hist1d_rresultptr_map["h1d_crossx_minv_0_4_op_dsigma"] = df_op_t.Histo1D(ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_op_dsigma", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [pb GeV^{-1}]", 50, 0.0, 4.0), "minv", "crossx_weight_trig_corr");
-        hist1d_rresultptr_map["h1d_crossx_minv_0_4_ss_dsigma"] = df_ss_t.Histo1D(ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_ss_dsigma", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [pb GeV^{-1}]", 50, 0.0, 4.0), "minv", "crossx_weight_trig_corr");
-        hist2d_rresultptr_map["h2d_crossx_minv_0_4_vs_pair_pt_log_150_op_dsigma"] = df_op_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_4_vs_pair_pt_log_150_op_dsigma", ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", npt150, ptb150, 50, 0.0, 4.0), "pair_pt", "minv", "crossx_weight_trig_corr");
-        hist2d_rresultptr_map["h2d_crossx_minv_0_4_vs_pair_pt_log_150_ss_dsigma"] = df_ss_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_4_vs_pair_pt_log_150_ss_dsigma", ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", npt150, ptb150, 50, 0.0, 4.0), "pair_pt", "minv", "crossx_weight_trig_corr");
-        hist2d_rresultptr_map["h2d_crossx_minv_0_4_vs_pair_eta_op_dsigma"] = df_op_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_4_vs_pair_eta_op_dsigma", ";#eta^{pair};m_{#mu#mu} [GeV]", 24, -2.4, 2.4, 50, 0.0, 4.0), "pair_eta", "minv", "crossx_weight_trig_corr");
-        hist2d_rresultptr_map["h2d_crossx_minv_0_4_vs_pair_eta_ss_dsigma"] = df_ss_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_4_vs_pair_eta_ss_dsigma", ";#eta^{pair};m_{#mu#mu} [GeV]", 24, -2.4, 2.4, 50, 0.0, 4.0), "pair_eta", "minv", "crossx_weight_trig_corr");
+        hist1d_rresultptr_map["h1d_crossx_minv_0_4_op_dsigma"] = df_op_t.Histo1D(ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_op_dsigma", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [pb GeV^{-1}]", 50, 0.0, 4.0), "minv", "crossx_weight_trig_only");
+        hist1d_rresultptr_map["h1d_crossx_minv_0_4_ss_dsigma"] = df_ss_t.Histo1D(ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_ss_dsigma", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [pb GeV^{-1}]", 50, 0.0, 4.0), "minv", "crossx_weight_trig_only");
+        hist2d_rresultptr_map["h2d_crossx_minv_0_4_vs_pair_pt_log_150_op_dsigma"] = df_op_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_4_vs_pair_pt_log_150_op_dsigma", ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", npt150, ptb150, 50, 0.0, 4.0), "pair_pt", "minv", "crossx_weight_trig_only");
+        hist2d_rresultptr_map["h2d_crossx_minv_0_4_vs_pair_pt_log_150_ss_dsigma"] = df_ss_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_4_vs_pair_pt_log_150_ss_dsigma", ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", npt150, ptb150, 50, 0.0, 4.0), "pair_pt", "minv", "crossx_weight_trig_only");
+        hist2d_rresultptr_map["h2d_crossx_minv_0_4_vs_pair_eta_op_dsigma"] = df_op_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_4_vs_pair_eta_op_dsigma", ";#eta^{pair};m_{#mu#mu} [GeV]", 24, -2.4, 2.4, 50, 0.0, 4.0), "pair_eta", "minv", "crossx_weight_trig_only");
+        hist2d_rresultptr_map["h2d_crossx_minv_0_4_vs_pair_eta_ss_dsigma"] = df_ss_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_4_vs_pair_eta_ss_dsigma", ";#eta^{pair};m_{#mu#mu} [GeV]", 24, -2.4, 2.4, 50, 0.0, 4.0), "pair_eta", "minv", "crossx_weight_trig_only");
 
-        // NO-PAIR-SELECTION efficiency-corrected 0-4 GeV data dsigma (muon-level selection only,
+        // NO-PAIR-SELECTION trigger-corrected 0-4 GeV data dsigma (muon-level selection only,
         // inherent in the ntuple: pt>4, |eta|<2.4, quality, dp/p). NO pair_pt / q*eta cut. Same
-        // dsigma weight (crossx_weight_trig_corr = 1/L * w_reco * w_trig) as above. For the
-        // bkg_mc_provenance data-vs-fullsim absolute-dsigma comparison with the data fully
-        // efficiency-corrected (low_mass_dimuon_template_fit.md). CAVEAT: 1/eff is only well
-        // defined on the trigger plateau (pair pT >~ 8); for soft muons near the pT>4 threshold
-        // the reco/trig-eff placeholders clamp (eps floored 0.01, pt clamped [4,19]), so the
-        // corrected soft (low-mass) spectrum carries turn-on/clamp artifacts -- approximate there.
+        // TRIGGER-ONLY reco-level weight (crossx_weight_trig_only = 1/L * w_trig, NO reco-eff) as
+        // above, for the bkg_mc_provenance data-vs-fullsim comparison: the Pythia fullsim MC uses
+        // RECONSTRUCTED quantities and therefore already carries the same reconstruction efficiency,
+        // so correcting the data for reco-eff would invalidate the data-vs-MC comparison (2026-07-01).
+        // CAVEAT: 1/eff_trig is only well defined on the trigger plateau (pair pT >~ 8); for soft
+        // muons near the pT>4 threshold the trig-eff placeholder clamps, so the corrected soft
+        // (low-mass) spectrum carries turn-on/clamp artifacts -- approximate there.
         ROOT::RDF::RNode df_op_nosel = attach_crossx_weight(map_at_checked(df_map, "df_op", "FillHistogramsCrossx PP: df_op (template nosel)"));
         ROOT::RDF::RNode df_ss_nosel = attach_crossx_weight(map_at_checked(df_map, "df_ss", "FillHistogramsCrossx PP: df_ss (template nosel)"));
-        hist1d_rresultptr_map["h1d_crossx_minv_0_4_op_dsigma_nosel"] = df_op_nosel.Histo1D(ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_op_dsigma_nosel", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [pb GeV^{-1}]", 50, 0.0, 4.0), "minv", "crossx_weight_trig_corr");
-        hist1d_rresultptr_map["h1d_crossx_minv_0_4_ss_dsigma_nosel"] = df_ss_nosel.Histo1D(ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_ss_dsigma_nosel", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [pb GeV^{-1}]", 50, 0.0, 4.0), "minv", "crossx_weight_trig_corr");
+        hist1d_rresultptr_map["h1d_crossx_minv_0_4_op_dsigma_nosel"] = df_op_nosel.Histo1D(ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_op_dsigma_nosel", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [pb GeV^{-1}]", 50, 0.0, 4.0), "minv", "crossx_weight_trig_only");
+        hist1d_rresultptr_map["h1d_crossx_minv_0_4_ss_dsigma_nosel"] = df_ss_nosel.Histo1D(ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_ss_dsigma_nosel", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [pb GeV^{-1}]", 50, 0.0, 4.0), "minv", "crossx_weight_trig_only");
         std::cout << "[PP] FillHistogramsCrossx (low-mass template mode, "
                   << (mixed_event_template ? "_scrambled/mixed-event" : "_no_res_cut") << ") completed" << std::endl;
         return;

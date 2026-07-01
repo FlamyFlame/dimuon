@@ -995,7 +995,11 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
     // Produces ONLY the per-centrality 0-4 GeV minv template spectra D_OS/D_SS (1D + 2D vs
     // pair pT/eta) for the low-mass dimuon template fit. Returns early so the signal-region
     // crossx (minv in [1.08,2.9], WRONG from _no_res_cut due to resonance leakage) is NOT
-    // produced. Same selection + dsigma weight as the nominal h1d_crossx_minv_0_4 block below.
+    // produced. Selection = signal_cuts MINUS minv window. Weight = TRIGGER-ONLY reco-level
+    // dsigma (1/L_year * w_trig, NO reco-eff): the minv fit runs at RECO, AFTER trigger-eff but
+    // BEFORE reco-eff/unfolding (correction-ordering reversal 2026-07-01,
+    // low_mass_dimuon_template_fit.md 3e). Reco-eff + unfolding are applied to the extracted
+    // signal yield AFTER the fit. The nominal signal-region crossx (below) stays reco+trig.
     if (low_mass_template_calc) {
         const std::string signal_cuts_no_minv =
             "pair_pt > 8 && m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2";
@@ -1008,12 +1012,8 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
                 .Define("effcy2", [](const std::string& cs, int q, float pt, float qe) { return RDFBasedHistFillingData::EvaluateSingleMuonEffcy(cs, q > 0, pt, qe); }, {"ctr_suf", "m2.charge", "m2.pt", "q_eta2"})
                 .Define("effcy_pair", "effcy1 > 0 && effcy2 > 0 ? (double)(effcy1 + effcy2 - effcy1 * effcy2) : -1.0")
                 .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
-                .Define("effcy_reco1", [](int ctr, float pt, float qe) { return ctr < 0 ? 1.0f : RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(ctr, pt, qe); }, {"avg_centrality", "m1.pt", "q_eta1"})
-                .Define("effcy_reco2", [](int ctr, float pt, float qe) { return ctr < 0 ? 1.0f : RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(ctr, pt, qe); }, {"avg_centrality", "m2.pt", "q_eta2"})
-                .Define("effcy_reco_pair", "effcy_reco1 > 0 && effcy_reco2 > 0 ? (double)(effcy_reco1 * effcy_reco2) : -1.0")
-                .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / (effcy_reco_pair < 0.05 ? 0.05 : effcy_reco_pair) : 1.0")
-                .Define("weight_for_dsigma_trig_corr",
-                    [dsigma_lumi_factor](double weight, double w_reco, double w_trig){ return weight * dsigma_lumi_factor * w_reco * w_trig; }, {"weight", "w_reco", "w_trig"});
+                .Define("weight_for_dsigma_trig_only",
+                    [dsigma_lumi_factor](double weight, double w_trig){ return weight * dsigma_lumi_factor * w_trig; }, {"weight", "w_trig"});
         };
         ROOT::RDF::RNode df_op_t = attach_dsigma_weight(map_at_checked(df_map, "df_op", "FillHistogramsCrossx PbPb: df_op (template)").Filter(signal_cuts_no_minv));
         ROOT::RDF::RNode df_ss_t = attach_dsigma_weight(map_at_checked(df_map, "df_ss", "FillHistogramsCrossx PbPb: df_ss (template)").Filter(signal_cuts_no_minv));
@@ -1027,17 +1027,17 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
             ROOT::RDF::RNode df_op_c = df_op_t.Filter(ctr_filter);
             ROOT::RDF::RNode df_ss_c = df_ss_t.Filter(ctr_filter);
             const std::string h_op = "h1d_crossx_minv_0_4_op_dsigma_" + ctr;
-            hist1d_rresultptr_map[h_op] = df_op_c.Histo1D(ROOT::RDF::TH1DModel(h_op.c_str(), ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [nb GeV^{-1}]", 50, 0.0, 4.0), "minv", "weight_for_dsigma_trig_corr");
+            hist1d_rresultptr_map[h_op] = df_op_c.Histo1D(ROOT::RDF::TH1DModel(h_op.c_str(), ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [nb GeV^{-1}]", 50, 0.0, 4.0), "minv", "weight_for_dsigma_trig_only");
             const std::string h_ss = "h1d_crossx_minv_0_4_ss_dsigma_" + ctr;
-            hist1d_rresultptr_map[h_ss] = df_ss_c.Histo1D(ROOT::RDF::TH1DModel(h_ss.c_str(), ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [nb GeV^{-1}]", 50, 0.0, 4.0), "minv", "weight_for_dsigma_trig_corr");
+            hist1d_rresultptr_map[h_ss] = df_ss_c.Histo1D(ROOT::RDF::TH1DModel(h_ss.c_str(), ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [nb GeV^{-1}]", 50, 0.0, 4.0), "minv", "weight_for_dsigma_trig_only");
             const std::string h2pt_op = "h2d_crossx_minv_0_4_vs_pair_pt_log_150_op_dsigma_" + ctr;
-            hist2d_rresultptr_map[h2pt_op] = df_op_c.Histo2D(ROOT::RDF::TH2DModel(h2pt_op.c_str(), ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", npt150, ptb150, 50, 0.0, 4.0), "pair_pt", "minv", "weight_for_dsigma_trig_corr");
+            hist2d_rresultptr_map[h2pt_op] = df_op_c.Histo2D(ROOT::RDF::TH2DModel(h2pt_op.c_str(), ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", npt150, ptb150, 50, 0.0, 4.0), "pair_pt", "minv", "weight_for_dsigma_trig_only");
             const std::string h2pt_ss = "h2d_crossx_minv_0_4_vs_pair_pt_log_150_ss_dsigma_" + ctr;
-            hist2d_rresultptr_map[h2pt_ss] = df_ss_c.Histo2D(ROOT::RDF::TH2DModel(h2pt_ss.c_str(), ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", npt150, ptb150, 50, 0.0, 4.0), "pair_pt", "minv", "weight_for_dsigma_trig_corr");
+            hist2d_rresultptr_map[h2pt_ss] = df_ss_c.Histo2D(ROOT::RDF::TH2DModel(h2pt_ss.c_str(), ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", npt150, ptb150, 50, 0.0, 4.0), "pair_pt", "minv", "weight_for_dsigma_trig_only");
             const std::string h2eta_op = "h2d_crossx_minv_0_4_vs_pair_eta_op_dsigma_" + ctr;
-            hist2d_rresultptr_map[h2eta_op] = df_op_c.Histo2D(ROOT::RDF::TH2DModel(h2eta_op.c_str(), ";#eta^{pair};m_{#mu#mu} [GeV]", 24, -2.4, 2.4, 50, 0.0, 4.0), "pair_eta", "minv", "weight_for_dsigma_trig_corr");
+            hist2d_rresultptr_map[h2eta_op] = df_op_c.Histo2D(ROOT::RDF::TH2DModel(h2eta_op.c_str(), ";#eta^{pair};m_{#mu#mu} [GeV]", 24, -2.4, 2.4, 50, 0.0, 4.0), "pair_eta", "minv", "weight_for_dsigma_trig_only");
             const std::string h2eta_ss = "h2d_crossx_minv_0_4_vs_pair_eta_ss_dsigma_" + ctr;
-            hist2d_rresultptr_map[h2eta_ss] = df_ss_c.Histo2D(ROOT::RDF::TH2DModel(h2eta_ss.c_str(), ";#eta^{pair};m_{#mu#mu} [GeV]", 24, -2.4, 2.4, 50, 0.0, 4.0), "pair_eta", "minv", "weight_for_dsigma_trig_corr");
+            hist2d_rresultptr_map[h2eta_ss] = df_ss_c.Histo2D(ROOT::RDF::TH2DModel(h2eta_ss.c_str(), ";#eta^{pair};m_{#mu#mu} [GeV]", 24, -2.4, 2.4, 50, 0.0, 4.0), "pair_eta", "minv", "weight_for_dsigma_trig_only");
         }
         std::cout << "[PbPb] FillHistogramsCrossx (low-mass template mode, "
                   << (mixed_event_template ? "_scrambled/mixed-event" : "_no_res_cut") << ") completed" << std::endl;

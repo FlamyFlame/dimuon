@@ -163,6 +163,14 @@ for high-p_T efficiency / response. It is not requested for Run 3. (Details:
   significance template fit** (method adapted from the Run 2 note); framework to
   be built.
 
+**Level of the template fits — RECONSTRUCTED.** Both the low-mass minv template fit and
+the Δp/p fake-muon fit are performed on **reconstructed quantities**, after
+trigger-efficiency correction but **before** reconstruction-efficiency correction and
+unfolding; the detector corrections and signal acceptance are applied to the extracted
+signal yield **after** the fit. The mixed-event combinatoric template is built from
+real-data (reconstructed) muons and the fake background has no truth analogue, so the fit
+cannot live at truth. (Detail: `docs/tracking/low_mass_dimuon_template_fit.md` §3.)
+
 **Signal vs background templates (procedure under development — see
 `docs/powheg.md`).** Powheg-HQ truth provides the **NLO-hard** part of the
 spectrum but is **strongly suppressed in low-mass / low-k_T gluon splitting**
