@@ -59,6 +59,16 @@ public:
     // the edges below and N_COARSE_PAIR_PT_BINS (kept in this one file).
     static const int N_COARSE_PAIR_PT_BINS = 4;   // = pair_pt_coarse_bins.size() - 1
     std::vector<double> pair_pt_coarse_bins;      // edges, initialised in the constructor
+
+    // ---- NOMINAL COARSE single-muon pT binning (SINGLE SOURCE OF TRUTH) ----
+    // Coarse binning in SINGLE-MUON pT (GeV), ~half the pair_pt_coarse_bins scale (each muon
+    // carries ~half the pair pT); starts at the pt>4 GeV single-muon cut; last bin open-ended
+    // (spectrum falls steeply). Used for single-muon |d0| / Delta-p/p distributions by
+    // provenance (upfront hadronic/fake background reduction study, docs/tracking/
+    // tf_upfront_bkg_reduction.md). Read from HERE, never re-invent per plot. Change HERE ONLY;
+    // if N changes update BOTH the edges (constructor) and N_COARSE_SINGLE_MU_PT_BINS.
+    static const int N_COARSE_SINGLE_MU_PT_BINS = 4;  // = single_mu_pt_coarse_bins.size() - 1
+    std::vector<double> single_mu_pt_coarse_bins;     // edges, initialised in the constructor
 	
 	static std::vector<float> pTbins;
 	static std::vector<double> pTHatbins_pythia;
@@ -416,6 +426,12 @@ ParamsSet::ParamsSet(){
     // Interim 4 bins: [8,15), [15,27), [27,50), [50,150]="50 GeV+". Keep the edge count
     // consistent with N_COARSE_PAIR_PT_BINS.
     pair_pt_coarse_bins = {8.0, 15.0, 27.0, 50.0, 150.0};
+
+    // NOMINAL COARSE single-muon pT binning (single source of truth; see the declaration above).
+    // 4 bins: [4,8), [8,14), [14,25), [25,100]. ~half the pair_pt_coarse_bins scale; starts at
+    // the pt>4 GeV single-mu cut; last bin open-ended. Keep the edge count consistent with
+    // N_COARSE_SINGLE_MU_PT_BINS.
+    single_mu_pt_coarse_bins = {4.0, 8.0, 14.0, 25.0, 100.0};
 
 
   	// minv cut V1 - cut off all below 1.06GeV
