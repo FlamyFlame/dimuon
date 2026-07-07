@@ -11,11 +11,35 @@
 - **Data/Pythia normalization**: the 300–460× data/MC discrepancy was a **unit bug** — AMI `crossSection` is in **nb**, treated as pb → Pythia dσ 1000× too small. After nb→pb and the missing efficiency-correction of data, data and Pythia fullsim agree to ~O(1) (OS data/MC≈0.9, SS≈1.5). Systematic cleanup done (comments/labels/named-consts, behavior-preserving).
 - **Composition**: with pair_pt>8, the MC low-mass background is dominated by (real μ + within-jet π/K hadronic fake) — OS-enhanced (does NOT fully cancel in OS−SS) and NOT the g→QQ̄ G template. Tight WP suppresses fake ~25–30% / hadronic ~20% but is insufficient; the Δp/p fake-muon program (sub-doc D) is required.
 - **Charge symmetry (V1/V2)**: charge misreconstruction RULED OUT (agreement 99.994% of selected muons). The near-side low-mass background is OS-correlated (does not cleanly mirror); the OS−SS charge-symmetry assumption for the near-side peak is NOT settled by MC — flagged for the user.
-- **Control region**: proposed m∈[6,9] GeV (signal-free, no resonances, at the mixed-event peak) but the correlated bb̄/cc̄ continuum persists there, so the mixed-event normalization must be fit to data with bb̄/cc̄ subtracted/fit simultaneously.
+- **Control region / combinatoric normalization (updated 2026-07-06)**: proposed m∈[6,9] GeV (signal-free, no resonances, at the mixed-event peak) but the correlated bb̄/cc̄ continuum persists there — a pure combinatoric-dominated MASS window does not exist. RESOLUTION (KB `run2_dimuon_backtoback_paper`): the combinatoric is charge-symmetric and **geometrically enhanced ∝ N_coll²**; it CANNOT come from the HIJING overlay (single embedded hard event → the HF×HF-from-different-scatters combinatoric is absent). So fix N_C from the **CHARGE structure of the data** (OS−SS needs none; T_mix by pair-counting / matching same-sign at wide angle), NOT from MC or a mass window. Data-driven evidence (extended-mass THStack + centrality study): central Pb+Pb data sit ~1 order of magnitude above the anchored correlated MC across 4–20 GeV (= the combinatoric the overlay can't make; T_mix reproduces the excess shape), and the same-sign [4,9] GeV yield grows **×19.3 peripheral→central vs ×2.7 for the correlated OS−SS** — the N_coll² vs N_coll signature.
 
 ---
 
 ## Progress Log
+
+- 2026-07-06 — **Combinatoric control-region follow-up: extended-mass 0-20 GeV THStack + centrality-differential
+  cross-check (user physics discussion → build).** KB-grounded (`run2_dimuon_backtoback_paper`: combinatoric =
+  same-sign pedestal, geometrically enhanced in Pb+Pb, event-mixing only a systematic). PHYSICS settled with the
+  user: combinatoric = charge-symmetric UNCORRELATED pairs ∝ N_coll² → NOT obtainable from the HIJING overlay (one
+  embedded hard event; the dominant HF×HF-from-different-hard-scatters combinatoric is absent — only UE-hadronic-
+  involving combinatoric partly present). "Combinatoric" (pair-correlation) ≠ "hadronic" (single-muon origin): a
+  combinatoric pair can be real+real. ⇒ combinatoric is DATA-DRIVEN (same-sign/OS−SS/mixed-event), shows as a data
+  EXCESS over the correlated MC growing toward central; normalize N_C via the charge structure, not MC/a mass window
+  (no clean combinatoric-only mass window — bb̄/cc̄ persists to 20 GeV).
+  - **CODE (committed `3f481ce`, `/review-analysis-code` PASS):** added extended-mass 0-20 GeV (40 bins) DATA +
+    mixed-event histos to the template-fit RDF (`h1d_crossx_minv_0_20_{op,ss}_dsigma[_ctr]` + 2D vs coarse pair-pT,
+    from `pms.pair_pt_coarse_bins`), trigger-only, PP + PbPb per-ctr. Reran all 8 passes; verified (pp OS int 1.69e4;
+    PbPb central ctr0_5 1.07e5 ≫ peripheral ctr50_80 1.73e4).
+  - **PLOTS (`extended_mass_control_region_20260701/thstack/`, `/review-plot` PASS after 1 cosmetic amend; all
+    numbers MATCH):** `thstack_extmass.C` → (1) THStack pp baseline (correlated MC stack + data + T_mix); (2) THStack
+    PbPb-central (overlay stack ANCHORED to central OS data in [1.1,2.85] GeV, factor **×6.07**), data excess =
+    combinatoric; (3) centrality-differential data-driven cross-check. **RESULT:** central Pb+Pb data ~1 order of
+    magnitude above the anchored correlated stack across 4–20 GeV; T_mix reproduces the excess; **same-sign [4,9] GeV
+    yield ×19.34 peripheral→central vs ×2.71 for correlated OS−SS ([1.1,2.85])** → combinatoric ∝ N_coll² vs signal
+    ∝ N_coll. CAVEATS (SUMMARY.md): HF-filtered MC → pp absolute not 1:1; centrality trend is a qualitative relative
+    cross-check (dσ-normalized), not an absolute N_coll² fit; 10-20% bin high (per-ctr norm artifact). IMPLICATION:
+    fix mixed-event N_C from the data charge structure + validate its N_coll² scaling via the data-vs-overlay
+    high-mass excess — not from a mass control region.
 
 - 2026-07-01 (2) — **Plot batch (Tasks C/F, D, G) — 3 executor subagents + `/review-plot` loops, all PASS after
   ≤1 cosmetic amend; scratch docs merged here + deleted.** Data-area plots (not git). Reviewer used the NEW
