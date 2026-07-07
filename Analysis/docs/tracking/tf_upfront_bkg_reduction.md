@@ -172,14 +172,14 @@ the analysis selection (this is a study to decide whether to); the Δp/p yield f
 2. **T1 — WP repo doc (task 1)** — Athena source dig → `Analysis/docs/references/muon_working_points.md`
    (Medium vs Tight requirements, esp. any χ²/normalized-χ² and hit requirements) + a recommendation
    on whether a stricter χ² on top of the WP would help. → `/review-analysis-code` (doc/physics check,
-   quote §1). INDEPENDENT, parallel.
+   quote §1). INDEPENDENT, parallel. **DONE** (commit 80de5a4).
 3. **T2 — single-muon pT binning in ParamsSet.h (task 2/3 prereq, §6)** — determine edges from the
    muon-pT spectrum, add to ParamsSet.h, ACLiC-verify. → `/review-analysis-code` (quote §6).
-   Must precede T3/T4 (shared file).
+   Must precede T3/T4 (shared file). **DONE** (commit cec2416).
 4. **T3 — |d0| plots (task 2, §2/§4/§5)** — new dir `d0_discrimination_<date>/`; 4-way classify,
-   both modes, pT-int + binned, signal + overlay. → `/review-plot` (quote §2,§3,§5).
+   both modes, pT-int + binned, signal + overlay. → `/review-plot` (quote §2,§3,§5). **DONE** (PASS iter 2).
 5. **T4 — Δp/p plots (task 3, §4/§5)** — new dir `dpop_distribution_<date>/`; same matrix. →
-   `/review-plot` (quote §2c,§3,§5). Parallel with T3 after T2.
+   `/review-plot` (quote §2c,§3,§5). Parallel with T3 after T2. **DONE** (PASS iter 2).
 
 ## Progress Log
 - 2026-07-06 — Step 1: doc created (factorized sub-doc E). Physics Procedure established: |d0| &
@@ -213,15 +213,76 @@ the analysis selection (this is a study to decide whether to); the Δp/p yield f
   placeholder. Path: add cuts one variable at a time, validate purity vs real-μ efficiency loss
   against Pythia-fullsim truth. NOT git-committed yet (bundle with the factorization docs commit).
 
+- 2026-07-06 — **T3 (|d0|, task 2) + T4 (Δp/p, task 3) plots BUILT & VALIDATED** (subagents
+  `_sub_d0_plots_1`, `_sub_dpop_plots_1`; reco-seeded standalone macros; 8 PNGs each; SUMMARY.md in
+  each dir). Dirs `dimuon_data/plots/template_fitting/{d0_discrimination_20260706,dpop_distribution_20260706}/`.
+  Both: 4-way provenance (real-HF/real-prompt/hadronic/fake) via truth-parent BFS chain nav, both
+  modes (unity-norm overlay + AMI-weighted nb→pb THStack), pT-int + coarse single-μ-pT-binned,
+  signal + overlay. **/review-plot = the remaining gate** (see Latest Stage).
+  - **CLASSIFICATION BUG (|d0|) found + fixed by orchestrator:** the fill capped the truth-particle
+    count by `min(sizes)` INCLUDING `truth_vtx_*` (a separate ~30%-shorter VERTEX collection) →
+    starved the parent barcode→index map → real-HF muons collapsed into the real-prompt residual.
+    Fix: count over `truth_id/barcode/parents` only; upgraded BOTH macros to a full BFS ancestry
+    chain-walk (any c/b-hadron ancestor ⇒ real-HF; catches b→c→μ and B→J/ψ→μ). Also optimized the
+    Δp/p macro's per-event barcode map to lazy/unordered (identical output, ~5× faster). GOTCHAS
+    (recorded in the SUMMARYs): `truth_parents` needs a runtime `GenerateDictionary` or reads size 0;
+    `truth_vtx_*` is not particle-indexed → displacement validated via reco |d0|.
+- 2026-07-06 — **Doc E FACTORIZATION committed** (`522484e`) + WP doc (`80de5a4`) + single-μ binning
+  (`cec2416`). Plot dirs are data-area (not git-tracked).
+
 ## Results & Observations
-- (pending)
+
+### |d0| discrimination (T3) — real-HF displaced, hadronic/fake at small |d0| (hypothesis confirmed)
+Validation (unweighted, median |d0| [mm]): **signal** real-HF 0.104 (displaced) / real-prompt 0.030
+(at PV) / hadronic 0.045 / fake 0.081; **overlay** hadronic **0.021 (smallest)** / fake 0.039 /
+real-HF 0.066 / real-prompt 0.076. Signal real muons 92% HF (HF-enriched DiMu HardQCD). Readout:
+(1) signal — real-prompt peaks sharply at small |d0|, real-HF displaced (§2 confirmed); (2) overlay
+(realistic UE) — hadronic has the SMALLEST |d0| (π/K decay-in-flight piles at the beamline), real-HF
+displaced ⇒ a lower-|d0| cut removes hadronic/fake preferentially, orthogonal to Δp/p; (3) real-prompt
+small-|d0| peak sharpens with pT (resolution) while real-HF stays broad → separation holds at high pT.
+**CAVEAT:** overlay "real prompt" is 92% residual (light-hadron-parented UE muons, displaced 0.076
+mm), NOT genuine PV-prompt — clean prompt is only in the signal sample. Does not affect
+hadronic-vs-real-HF discrimination.
+
+### Δp/p distribution (T4) — Δp/p is a PARTIAL discriminant; motivates |d0| as complement
+Validation (signal, pT-int): real-HF mean Δp/p +0.014 (symmetric, |d0| 0.206 displaced) / real-prompt
++0.014 (|d0| 0.036 at PV) / hadronic **+0.092 (shifted positive)** / fake +0.021. Hadronic survival
+of the one-sided Δp/p<0.12 cut vs single-μ pT: signal 0.565/0.569/0.603/0.530, overlay
+0.506/0.579/0.614/0.516 across {4-8,8-14,14-25,25-100} GeV. Readout: real muons symmetric at ~0,
+hadronic broad + shifted positive (§2c). ~50–60% of hadronic SURVIVES the cut at ALL pT (only a mild
+boost-consistent rise 4-8→14-25 GeV, non-monotonic, top bin low-stat) while ~94% of real-HF is kept
+⇒ Δp/p is a real but PARTIAL discriminant; a large hadronic contamination evades it at every pT →
+motivates |d0| as an orthogonal complement (T3).
+
+### Combined verdict
+|d0| and Δp/p are orthogonal handles on the hadronic/fake background. Δp/p (already applied) keeps
+~94% signal but leaves ~50-60% hadronic; |d0| catches the surviving hadronic (smallest |d0| in the
+realistic overlay). Working points (T1): Medium does ~no χ² selection; adding `reducedChi2<8` / a
+tighter Δp/p, one variable at a time, is the recommended upfront-tightening path. All three are
+**complementary secondary handles**, not strong standalone cuts — the low-mass hadronic/fake yield is
+modest and the dominant low-mass background is real HF (untouched by these cuts). Any adoption of a
+lower/pT-dependent |d0| cut or stricter χ² is a signal-selection change → `signal_selection_change_impact.md`.
 
 ## Remaining Work
-- T1 WP doc + χ² recommendation; T2 binning; T3 |d0| plots; T4 Δp/p plots.
-- Decision (after plots): adopt a lower |d0| cut / pT-dependent |d0| cut / stricter χ²? →
-  if yes, that is a signal-selection change → `signal_selection_change_impact.md` blast radius.
+- **User decision (the deliverables now inform this):** adopt a lower / pT-dependent |d0| cut,
+  a stricter track-fit χ² (reducedChi2<8), and/or a tighter Δp/p? Evidence: all three are
+  complementary secondary handles (real-HF displaced vs hadronic-at-small-|d0|; Δp/p leaves
+  ~50–60% hadronic; Medium does ~no χ²), NOT strong standalone cuts; dominant low-mass bkg is real
+  HF (untouched). Any adoption is a signal-selection change → `signal_selection_change_impact.md`.
 
 ## Latest Stage
-**2026-07-06 — setup.** Doc E created; dispatching T1 (WP, parallel), T2 (binning, blocks T3/T4),
-then T3+T4 (|d0| ∥ Δp/p) in parallel. Orchestrator owns git + this doc; subagents scratch-doc +
-never git/shared-file (CLAUDE.md subagent procedure).
+**✅ 2026-07-06 — COMPLETE. All tasks done; both plot sets PASS `/review-plot` (iter 2, 0 CRITICAL/
+0 WARNING).** Log `.claude/logs/review-plot-20260706-200246-upfront-bkg-d0-dpop.md`.
+- **T1 (working points)** ✅ — `Analysis/docs/references/muon_working_points.md` (Tight adds χ²<8 +
+  binned ρ′/(q/p)-sig; graded recommendation). Committed `80de5a4`.
+- **T2 (single-μ pT binning)** ✅ — `single_mu_pt_coarse_bins={4,8,14,25,100}` in ParamsSet.h.
+  Committed `cec2416`.
+- **T3 (|d0| plots)** ✅ — `d0_discrimination_20260706/` (8 PNGs + SUMMARY.md). Classification bug
+  (truth_vtx-capped ntr) found+fixed; BFS chain-walk nav. Physics: signal real-prompt small-|d0|,
+  real-HF displaced; overlay hadronic SMALLEST |d0| (0.021 mm) → hypothesis confirmed.
+- **T4 (Δp/p plots)** ✅ — `dpop_distribution_20260706/` (8 PNGs + SUMMARY.md). Δp/p real symmetric,
+  hadronic broad+positive; ~50–60% hadronic survives Δp/p<0.12 at all pT (mild boost rise) → partial
+  discriminant, motivates |d0|.
+- **Doc factorization** ✅ — this is sub-doc E; umbrella + A–D committed `522484e`.
+Plot dirs are data-area (not git). This doc + review log are the git-tracked record.
+**Clear Latest Stage — no active thread; awaiting the user's selection-tightening decision above.**
