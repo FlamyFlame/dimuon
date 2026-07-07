@@ -38,3 +38,13 @@ must use PHYSICAL wording, never internal/arbitrary code conventions:
 - The nominal COARSE and fine-log pair-p_{T} binnings are read from `ParamsSet.h`
   (`pair_pt_coarse_bins` / `N_COARSE_PAIR_PT_BINS`), never re-invented per plot; label the
   resulting bins by their physical p_{T} ranges.
+
+## MC per-event weights (MANDATORY)
+
+Every MC-derived histogram (truth / fullsim / HIJING overlay / POWHEG) MUST be filled with the
+per-event MC weight (generator `weight` / AMI xs·genFiltEff·beam_ratio/N / pT-hat-slice / dσ
+weight), **regardless of normalization — including unit-area / shape-only / "normalized to unity"
+overlays**. Never normalize a raw-count histogram: unweighted MC mixes pT-hat slices by generated
+statistics, not cross-section, giving a distorted shape. Clone the WEIGHTED histogram, then scale
+to unit area. (Enforced as criterion C6 in `physics-results-review.md`; memory
+`feedback_hf_muons_not_prompt`.)

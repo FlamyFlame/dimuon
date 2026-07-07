@@ -131,3 +131,26 @@ single-muon / pythia-truth trees), apply the **NTuple-Processing Provenance** ch
   fraction or yield that swings ×10+ between samples is a red flag for a provenance bug.
 An agent-chosen deviation without explicit user authorization also fails (the rule is
 STOP-AND-ASK).
+
+## C6 — MC per-event weights  *(PLOT and NUMERICAL; MANDATORY for ANY MC-derived histogram/number)*
+
+Every histogram or quantity derived from an MC sample (Pythia truth, Pythia fullsim, HIJING
+overlay, POWHEG — any generator sample) MUST be filled with the **per-event MC weight** (the
+generator `weight`; the AMI cross-section × genFiltEff × beam_ratio / N_slice; the pT-hat-slice
+weight; and/or the analysis dσ / efficiency weight — whichever the procedure defines). This holds
+**regardless of the final normalization**, INCLUDING unit-area / shape-only / "normalized to
+unity" overlays: the shape itself must be the **weighted** shape, because raw (unweighted) counts
+mix pT-hat slices — and different samples — by *generated statistics* rather than cross-section,
+producing a distorted, unphysical shape. (Memory `feedback_hf_muons_not_prompt`: "MC must ALWAYS
+be weighted when plotted — never show unweighted MC mixtures.")
+
+Check, for every MC histogram:
+- The Fill carries the weight — `h->Fill(x, w)`, not `h->Fill(x)`.
+- Unit-normalized / shape plots clone the **weighted** histogram and THEN scale to unit area —
+  never normalize a raw-count ("unw") histogram.
+- Stacks, ratios, and templates are built from weighted histograms.
+
+An MC histogram/plot/number filled without the per-event weight → **CRITICAL FAIL** (physics-results
+failure; do not close with a cosmetic amend — regenerate weighted). **Data** histograms are exempt
+from the *generator* weight (data has none); per-event data weights (prescale, efficiency, 1/L)
+still follow the analysis procedure.
