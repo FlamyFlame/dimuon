@@ -114,3 +114,20 @@ calling command MUST:
 
 A purely cosmetic finding (legend overlap, axis label, directory) does NOT trigger
 C4 — fix it with a normal amend. C4 is for *physics* failures only.
+
+## C5 — NTuple-processing provenance  *(PLOT and NUMERICAL; MANDATORY when the work reads raw NTUPs)*
+
+If the result comes from **standalone code that reads the raw NTUPs** (tree `HeavyIonD3PD`
+or raw skim `*.root`) rather than the ntuple-processing OUTPUT (processed muon_pairs /
+single-muon / pythia-truth trees), apply the **NTuple-Processing Provenance** checklist
+(P1–P4) in `.claude/conventions/ntuple-provenance.md`:
+- Could the processing output (or a new processing mode) have been used instead? If yes → FAIL.
+- Does the standalone procedure reproduce the ntuple-processing procedure EXACTLY (every cut,
+  truth-navigation step — e.g. the generator-block `truth_barcode>200000` cutoff for HIJING
+  overlay — weight, binning, convention), deviating ONLY where the request explicitly asked?
+  Any **unstated divergence** → **CRITICAL FAIL** (physics-results failure; route to
+  investigation like C1–C4, do not close with a cosmetic amend).
+- Sanity-check the standalone result against the processed sample / the sibling sample; a class
+  fraction or yield that swings ×10+ between samples is a red flag for a provenance bug.
+An agent-chosen deviation without explicit user authorization also fails (the rule is
+STOP-AND-ASK).

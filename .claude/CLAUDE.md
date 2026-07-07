@@ -3,6 +3,34 @@
 - Read `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/README.md` and `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/` for analysis context (class hierarchy, pipelines, sample types)
 - For any analysis change: always update and maintain the relevant documentation in those files
 
+## NTuple-Processing Provenance (BLOCKING — for any task that reads analysis data/MC)
+
+Recurring, high-impact failure mode: an agent writes standalone code that reads the **raw
+NTUPs** and silently diverges from the ntuple-processing procedure (a missing cut, a
+truth-navigation step, a weight, a mode flag) → wrong physics that a plot/number review can
+miss. To prevent it, for ANY task that reads analysis data/MC (plots, numbers, templates,
+studies, investigations):
+
+1. **Prefer ntuple-processing OUTPUT.** Use the output of the ntuple processing
+   (`Analysis/NTupleProcessingCode/*` → muon_pairs / single-muon / pythia-truth trees and
+   their derived branches: flavor/origin categories, `from_same_b`, traced HF ancestry, etc.)
+   whenever it can answer the question. If the needed quantity is not produced yet, **add a
+   configuration mode/flag to the ntuple processing and rerun it** (distinct output suffix,
+   never clobber nominal) — this is PREFERRED over re-deriving from raw NTUPs.
+2. **If standalone-from-raw is genuinely unavoidable**, you MUST first READ the relevant
+   ntuple-processing code and reproduce its procedure EXACTLY — every selection cut, truth
+   step (e.g. the generator-block barcode cutoff for HIJING overlay,
+   `PythiaTruthExtras.c` `pythia_only_barcode_cache` = first `truth_barcode>200000`), weight,
+   and convention, identical to nominal. The ONLY settings that may differ are those the
+   request explicitly changes for a stated physics purpose (e.g. loosen Δp/p for a Δp/p
+   distribution). Even then, if only ONE setting changes, prefer (1) — add a flag + rerun.
+3. **STOP AND ASK (hard blocking point).** If the request does not specify whether a given
+   cut/procedure should be mirrored, and you believe a standalone deviation is justified for a
+   physics reason, DO NOT proceed on your own judgment — stop and ask the user first.
+
+Binds the main agent AND every subagent — quote this rule in delegated data/MC-analysis task
+prompts. Reviewers MUST enforce it: see `.claude/conventions/ntuple-provenance.md`.
+
 ## Tracking Documents
 
 **INVARIANT:** For every active tracking doc, every step MUST: (1) write plan to Latest Stage BEFORE work, (2) verify against Physics Procedure, (3) append results to Progress Log AFTER work, with physics motivation where applicable. No exceptions, including after compaction. **First action in any conversation or after compaction MUST be reading all active tracking docs — no code changes, no tool calls (other than Read), no planning until this is done.**
@@ -177,6 +205,7 @@ do not assert from inference what a sibling doc has already established or refut
 
 ## Auto-Dispatch Rules
 
+Before writing/modifying ANY code that reads analysis data/MC, apply the **NTuple-Processing Provenance (BLOCKING)** rule above (prefer ntuple-processing output; if standalone-from-raw, mirror the procedure exactly; if unclear whether to mirror, STOP AND ASK). The `/review-*` reviewers verify provenance per `.claude/conventions/ntuple-provenance.md`.
 When the user asks to create, fix, or modify a plot → invoke `/review-plot`
 When the user asks to write, modify, or fix C++/ROOT/RDF analysis code → invoke `/review-analysis-code`
 When the user asks to investigate a discrepancy, debug, or understand an unexpected result → invoke `/review-investigation`
