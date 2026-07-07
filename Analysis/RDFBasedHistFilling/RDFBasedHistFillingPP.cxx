@@ -529,6 +529,18 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         hist2d_rresultptr_map["h2d_crossx_minv_0_4_vs_pair_eta_op_dsigma"] = df_op_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_4_vs_pair_eta_op_dsigma", ";#eta^{pair};m_{#mu#mu} [GeV]", 24, -2.4, 2.4, 50, 0.0, 4.0), "pair_eta", "minv", "crossx_weight_trig_only");
         hist2d_rresultptr_map["h2d_crossx_minv_0_4_vs_pair_eta_ss_dsigma"] = df_ss_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_4_vs_pair_eta_ss_dsigma", ";#eta^{pair};m_{#mu#mu} [GeV]", 24, -2.4, 2.4, 50, 0.0, 4.0), "pair_eta", "minv", "crossx_weight_trig_only");
 
+        // EXTENDED-MASS 0-20 GeV (40 bins, matching the extended_mass_control_region MC by-origin
+        // histos) for the THStack data-vs-MC + control-region study: 1D pair-pT-integrated (pair_pt>8)
+        // and 2D vs the NOMINAL COARSE pair-pT bins (pms.pair_pt_coarse_bins). Same signal_cuts_no_minv
+        // selection + trigger-only reco-level weight. In mixed_event_template mode these become the
+        // extended mixed-event combinatoric T_mix (from the scrambled input).
+        const int    nptc  = ParamsSet::N_COARSE_PAIR_PT_BINS;
+        const double* ptc  = pms.pair_pt_coarse_bins.data();
+        hist1d_rresultptr_map["h1d_crossx_minv_0_20_op_dsigma"] = df_op_t.Histo1D(ROOT::RDF::TH1DModel("h1d_crossx_minv_0_20_op_dsigma", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [pb GeV^{-1}]", 40, 0.0, 20.0), "minv", "crossx_weight_trig_only");
+        hist1d_rresultptr_map["h1d_crossx_minv_0_20_ss_dsigma"] = df_ss_t.Histo1D(ROOT::RDF::TH1DModel("h1d_crossx_minv_0_20_ss_dsigma", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [pb GeV^{-1}]", 40, 0.0, 20.0), "minv", "crossx_weight_trig_only");
+        hist2d_rresultptr_map["h2d_crossx_minv_0_20_vs_pair_pt_coarse_op_dsigma"] = df_op_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_20_vs_pair_pt_coarse_op_dsigma", ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", nptc, ptc, 40, 0.0, 20.0), "pair_pt", "minv", "crossx_weight_trig_only");
+        hist2d_rresultptr_map["h2d_crossx_minv_0_20_vs_pair_pt_coarse_ss_dsigma"] = df_ss_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_20_vs_pair_pt_coarse_ss_dsigma", ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", nptc, ptc, 40, 0.0, 20.0), "pair_pt", "minv", "crossx_weight_trig_only");
+
         // NO-PAIR-SELECTION trigger-corrected 0-4 GeV data dsigma (muon-level selection only,
         // inherent in the ntuple: pt>4, |eta|<2.4, quality, dp/p). NO pair_pt / q*eta cut. Same
         // TRIGGER-ONLY reco-level weight (crossx_weight_trig_only = 1/L * w_trig, NO reco-eff) as

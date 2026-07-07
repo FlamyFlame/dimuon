@@ -1038,6 +1038,19 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
             hist2d_rresultptr_map[h2eta_op] = df_op_c.Histo2D(ROOT::RDF::TH2DModel(h2eta_op.c_str(), ";#eta^{pair};m_{#mu#mu} [GeV]", 24, -2.4, 2.4, 50, 0.0, 4.0), "pair_eta", "minv", "weight_for_dsigma_trig_only");
             const std::string h2eta_ss = "h2d_crossx_minv_0_4_vs_pair_eta_ss_dsigma_" + ctr;
             hist2d_rresultptr_map[h2eta_ss] = df_ss_c.Histo2D(ROOT::RDF::TH2DModel(h2eta_ss.c_str(), ";#eta^{pair};m_{#mu#mu} [GeV]", 24, -2.4, 2.4, 50, 0.0, 4.0), "pair_eta", "minv", "weight_for_dsigma_trig_only");
+            // EXTENDED-MASS 0-20 GeV (40 bins, matching the extended_mass_control_region MC), per
+            // centrality: 1D pair-pT-integrated + 2D vs the nominal coarse pair-pT bins, for the
+            // THStack data-vs-overlay + control-region study (mixed_event mode -> extended T_mix).
+            const int    nptc = ParamsSet::N_COARSE_PAIR_PT_BINS;
+            const double* ptc = pms.pair_pt_coarse_bins.data();
+            const std::string h20_op = "h1d_crossx_minv_0_20_op_dsigma_" + ctr;
+            hist1d_rresultptr_map[h20_op] = df_op_c.Histo1D(ROOT::RDF::TH1DModel(h20_op.c_str(), ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [nb GeV^{-1}]", 40, 0.0, 20.0), "minv", "weight_for_dsigma_trig_only");
+            const std::string h20_ss = "h1d_crossx_minv_0_20_ss_dsigma_" + ctr;
+            hist1d_rresultptr_map[h20_ss] = df_ss_c.Histo1D(ROOT::RDF::TH1DModel(h20_ss.c_str(), ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [nb GeV^{-1}]", 40, 0.0, 20.0), "minv", "weight_for_dsigma_trig_only");
+            const std::string h2c_op = "h2d_crossx_minv_0_20_vs_pair_pt_coarse_op_dsigma_" + ctr;
+            hist2d_rresultptr_map[h2c_op] = df_op_c.Histo2D(ROOT::RDF::TH2DModel(h2c_op.c_str(), ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", nptc, ptc, 40, 0.0, 20.0), "pair_pt", "minv", "weight_for_dsigma_trig_only");
+            const std::string h2c_ss = "h2d_crossx_minv_0_20_vs_pair_pt_coarse_ss_dsigma_" + ctr;
+            hist2d_rresultptr_map[h2c_ss] = df_ss_c.Histo2D(ROOT::RDF::TH2DModel(h2c_ss.c_str(), ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", nptc, ptc, 40, 0.0, 20.0), "pair_pt", "minv", "weight_for_dsigma_trig_only");
         }
         std::cout << "[PbPb] FillHistogramsCrossx (low-mass template mode, "
                   << (mixed_event_template ? "_scrambled/mixed-event" : "_no_res_cut") << ") completed" << std::endl;
