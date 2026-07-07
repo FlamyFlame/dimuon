@@ -230,6 +230,32 @@ the analysis selection (this is a study to decide whether to); the Δp/p yield f
 - 2026-07-06 — **Doc E FACTORIZATION committed** (`522484e`) + WP doc (`80de5a4`) + single-μ binning
   (`cec2416`). Plot dirs are data-area (not git-tracked).
 
+- 2026-07-07 — **CERTIFIED presentation-ready** (`/review-plot` PASS, log
+  `review-plot-20260707-120911-upfront-d0-dpop-certify.md`; 0 CRITICAL/0 WARNING; C1–C6 incl. C5
+  provenance + C6 MC-weight). Round of user-driven corrections, all applied to BOTH macros +
+  regenerated + re-reviewed:
+  1. **Overlay classification — INDEX gate.** The generator-block *barcode* cutoff (for the parent
+     map) recovered overlay real-HF 5%→~90%, but ~1724 overlay muons with `muon_truth_index≥lim`
+     (matched to the HIJING/Geant4 block; stored `muon_truth_barcode≤200000` but index out of block —
+     an overlay index/barcode inconsistency) were still mis-labelled "real-prompt residual". Fix: a
+     real muon now REQUIRES `muon_truth_index∈[0,lim)` (matched INTO the Pythia-signal block); else →
+     hadronic/background. Overlay real now 91.7% HF, **0 unresolved**, real-prompt 6167 (med |d0| 0.017,
+     smallest), hadronic 2390→4114. Gate is in the COMMON path (applied to pp24 too; a no-op there —
+     pp24 real counts unchanged, 0 unresolved). [[reference_muon_truth_provenance_nav]] updated.
+  2. **Per-event MC weights on BOTH modes.** dpop mode-1 (unit-normalized) had used RAW counts →
+     fixed to the weighted histos (d0 mode-1 already weighted). Violated the standing rule (memory
+     `feedback_hf_muons_not_prompt`); enforcement added as **criterion C6** in
+     `conventions/physics-results-review.md` (read by /review-plot AND /review-analysis-code),
+     committed `b2e983d`.
+  3. **Recolor** red/blue/kGreen+2/magenta; **combined 3-way** variant (`combined/` subdir);
+     **descriptive sample labels/filenames** `fullsim_pp24` / `hijing_overlay` (on-plot "pythia
+     fullsim, pp24" / "pythia fullsim, hijing overlay, Pb+Pb23"); **Δp/p cut-line label** fixed
+     (reads "Δp/p = 0.12" at the top strip, not clipped/buried).
+  Non-blocking INFO left as-is (legible): d0 top subtitle grazes the top frame; dpop 2×2 sample-label
+  leading char grazes the pad-left margin. **FOLLOW-UP:** `bkg_mc_provenance_20260624` uses the SAME
+  classifier and lacks the index gate → its overlay real/prompt is inflated (HIJING UE counted as
+  real); apply the same index gate there if its overlay composition is used quantitatively.
+
 ## Results & Observations
 
 ### |d0| discrimination (T3) — real-HF displaced, hadronic/fake at small |d0| (hypothesis confirmed)
@@ -273,10 +299,22 @@ lower/pT-dependent |d0| cut or stricter χ² is a signal-selection change → `s
   HF (untouched). Any adoption is a signal-selection change → `signal_selection_change_impact.md`.
 
 ## Latest Stage
-**✅ 2026-07-07 — COMPLETE (overlay fix + recolor + combined variant; FINAL `/review-plot` PASS).**
+**✅ 2026-07-07 — CERTIFIED PRESENTATION-READY.** Final `/review-plot` PASS (log
+`review-plot-20260707-120911-upfront-d0-dpop-certify.md`, iter 2, 0 CRITICAL/0 WARNING; C1–C6 incl.
+C5 provenance + C6 MC-weight). All 32 panels (both variables × 4-way primary + combined 3-way ×
+signal + overlay) correct; both SUMMARYs match the run logs. Fixes this round: INDEX gate for "real"
+(`muon_truth_index∈[0,lim)`; overlay real 91.7% HF / 0 unresolved; pp24 no-op), per-event MC weights
+on BOTH modes (dpop mode-1 fixed; C6 enforcement added `b2e983d`), recolor red/blue/kGreen+2/magenta,
+combined 3-way variant, descriptive sample labels/filenames (`fullsim_pp24`/`hijing_overlay`), Δp/p
+cut-line label fixed. **Remaining:** (a) user's selection-tightening decision (Remaining Work); (b)
+2 non-blocking INFO cosmetics (d0 subtitle / dpop 2×2 label graze frame edges); (c) apply the index
+gate to `bkg_mc_provenance_20260624` (shares the flaw). Plot dirs are data-area (not git).
+
+---
+**(superseded) ✅ 2026-07-07 — earlier PASS (before the index-gate + MC-weight round).**
 Log `.claude/logs/review-plot-20260707-004523-upfront-bkg-d0-dpop-final.md` (iter 1, 0 CRITICAL/0
 WARNING; provenance C5 + overlay-HF-recovery critical checks PASS; all numbers verified). Three
-corrections this session, all applied to BOTH macros + regenerated + re-reviewed:
+corrections that session, all applied to BOTH macros + regenerated + re-reviewed:
 1. **OVERLAY provenance bug fixed.** Pre-fix overlay had real-HF ~5% + a huge fake "real-prompt
    residual" — an artifact of the HIJING-overlay **barcode duplication** (dups every event; Geant4/
    HIJING at barcode>200000). My standalone macros re-traced truth parents over the FULL merged truth
