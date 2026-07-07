@@ -233,16 +233,18 @@ the analysis selection (this is a study to decide whether to); the Δp/p yield f
 ## Results & Observations
 
 ### |d0| discrimination (T3) — real-HF displaced, hadronic/fake at small |d0| (hypothesis confirmed)
-Validation (unweighted, median |d0| [mm]): **signal** real-HF 0.104 (displaced) / real-prompt 0.030
-(at PV) / hadronic 0.045 / fake 0.081; **overlay** hadronic **0.021 (smallest)** / fake 0.039 /
-real-HF 0.066 / real-prompt 0.076. Signal real muons 92% HF (HF-enriched DiMu HardQCD). Readout:
-(1) signal — real-prompt peaks sharply at small |d0|, real-HF displaced (§2 confirmed); (2) overlay
-(realistic UE) — hadronic has the SMALLEST |d0| (π/K decay-in-flight piles at the beamline), real-HF
-displaced ⇒ a lower-|d0| cut removes hadronic/fake preferentially, orthogonal to Δp/p; (3) real-prompt
-small-|d0| peak sharpens with pT (resolution) while real-HF stays broad → separation holds at high pT.
-**CAVEAT:** overlay "real prompt" is 92% residual (light-hadron-parented UE muons, displaced 0.076
-mm), NOT genuine PV-prompt — clean prompt is only in the signal sample. Does not affect
-hadronic-vs-real-HF discrimination.
+Validation (unweighted, median |d0| [mm]; overlay AFTER the 2026-07-07 barcode-cutoff fix):
+**signal** real-HF 0.104 (displaced) / real-prompt 0.030 (at PV) / hadronic 0.045 / fake 0.081 —
+92% real-HF; **overlay** hadronic **0.021 (smallest)** / real-prompt 0.020 (at PV) / fake 0.039 /
+real-HF 0.088 (displaced) — 90% real-HF (7.6% residual, 2.3% unresolved). Overlay composition now
+MATCHES signal (HIJING adds hadronic/fake but does NOT kill HF or make prompt). Readout: (1) signal
+& overlay — real-prompt peaks sharply at small |d0|, hadronic smallest, real-HF displaced (§2
+confirmed); (2) a lower-|d0| cut removes hadronic/fake/prompt preferentially, orthogonal to Δp/p;
+(3) real-prompt small-|d0| peak sharpens with pT (resolution) while real-HF stays broad → separation
+holds at high pT. **ROOT-CAUSE (corrected):** the earlier overlay "real-HF 5%, 92% real-prompt
+residual" was a barcode-duplication artifact (map built over the full merged truth record without
+the generator-block cutoff), NOT physics — fixed by restricting map+trace to [0,lim), lim=first
+truth_barcode>200000 (overlay HF 5%→90%). See Latest Stage + [[reference_muon_truth_provenance_nav]].
 
 ### Δp/p distribution (T4) — Δp/p is a PARTIAL discriminant; motivates |d0| as complement
 Validation (signal, pT-int): real-HF mean Δp/p +0.014 (symmetric, |d0| 0.206 displaced) / real-prompt
@@ -271,8 +273,36 @@ lower/pT-dependent |d0| cut or stricter χ² is a signal-selection change → `s
   HF (untouched). Any adoption is a signal-selection change → `signal_selection_change_impact.md`.
 
 ## Latest Stage
-**✅ 2026-07-06 — COMPLETE. All tasks done; both plot sets PASS `/review-plot` (iter 2, 0 CRITICAL/
-0 WARNING).** Log `.claude/logs/review-plot-20260706-200246-upfront-bkg-d0-dpop.md`.
+**✅ 2026-07-07 — COMPLETE (overlay fix + recolor + combined variant; FINAL `/review-plot` PASS).**
+Log `.claude/logs/review-plot-20260707-004523-upfront-bkg-d0-dpop-final.md` (iter 1, 0 CRITICAL/0
+WARNING; provenance C5 + overlay-HF-recovery critical checks PASS; all numbers verified). Three
+corrections this session, all applied to BOTH macros + regenerated + re-reviewed:
+1. **OVERLAY provenance bug fixed.** Pre-fix overlay had real-HF ~5% + a huge fake "real-prompt
+   residual" — an artifact of the HIJING-overlay **barcode duplication** (dups every event; Geant4/
+   HIJING at barcode>200000). My standalone macros re-traced truth parents over the FULL merged truth
+   record WITHOUT the generator-block cutoff → signal-HF muons' parents mis-mapped to colliding light
+   hadrons. NOT a sample problem, NOT the mechanism failing: the cutoff (`PythiaTruthExtras.c:357`
+   `pythia_only_barcode_cache` = first barcode>200000) lives only in the PAIR MC path; single-muon
+   trees carry no MC truth origin, so a per-muon standalone macro must replicate it. Fix: build the
+   barcode→index map + BFS trace only over `[0,lim)`, lim=first barcode>200000 → **overlay real-HF
+   5%→90%** (matches signal 92%; displaced med 0.088 mm). No-op for signal. This is the case that
+   motivated the new BLOCKING NTuple-Processing-Provenance rule (CLAUDE.md + `conventions/ntuple-
+   provenance.md` + physics-results-review C5), committed `732b898`.
+2. **Recolor** — 4 classes red / blue / kGreen+2 / magenta (real HF / real prompt / hadronic / fake).
+3. **Combined 3-way variant added** (`combined/` subdir in each plot dir): real (HF+prompt) /
+   hadronic / fake — user-requested supplementary purity view; 4-way stays primary. Composition of
+   "real prompt" (the merged-in part): ~6–9% of real muons, dominated by light-meson resonances
+   (ρ/ω/φ/η/η'→µµ) + quarkonium (J/ψ/ψ'/Υ) — all prompt (small |d0|) and downstream-separated in the
+   minv fit as resonance peaks (veto / §3h templates), NOT part of the single-b S+G continuum.
+
+**Tasks complete:** T1 WP doc, T2 binning, T3 |d0| (4-way + combined), T4 Δp/p (4-way + combined),
+all `/review-plot` PASS. Plot dirs are data-area (not git). Awaiting the user's selection-tightening
+decision (Remaining Work).
+
+---
+
+**✅ 2026-07-06 — (superseded by the reopen above for overlay) both plot sets PASSED `/review-plot`
+(iter 2, 0 CRITICAL/0 WARNING).** Log `.claude/logs/review-plot-20260706-200246-upfront-bkg-d0-dpop.md`.
 - **T1 (working points)** ✅ — `Analysis/docs/references/muon_working_points.md` (Tight adds χ²<8 +
   binned ρ′/(q/p)-sig; graded recommendation). Committed `80de5a4`.
 - **T2 (single-μ pT binning)** ✅ — `single_mu_pt_coarse_bins={4,8,14,25,100}` in ParamsSet.h.
