@@ -136,9 +136,11 @@ confirmed.**
 7. **MCP recommendations for Run 3 HI muons** (scale factors, reco-eff
    uncertainties): which release/recommendation applies, or do we go
    fully MC-driven?
-8. **Muon working point for the note's nominal** (Run 2 used Tight with
-   Medium as systematic; current RDF code fills medium & tight — which
-   is nominal here?).
+8. **Muon working point for the note's nominal** — RESOLVED 2026-07-07: **nominal = TIGHT**,
+   Medium as the systematic (like Run 2). Implementation: `docs/tracking/tight_wp_default_change.md`.
+   **WP systematic reference (READ THIS for the WP uncertainty term): `docs/muon_wp_registry.md`** —
+   the living registry of every site where the Medium/Tight choice is applied (result-affecting knobs
+   vs cosmetic labels) and the switch-to-Medium procedure; kept updated as the analysis grows.
 9. **Scope of the note:** crossx + R_AA only, or also Δφ away-side
    correlation widths (Run 2 style)? This decides whether the Δφ-fit
    machinery (flow-modulated Lorentzian fits) must be ported/written.
