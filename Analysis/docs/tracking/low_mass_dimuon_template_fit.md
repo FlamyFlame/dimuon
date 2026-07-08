@@ -310,6 +310,22 @@ note found >98% purity ⇒ likely a flat/coarse purity factor or demonstration-o
 - k and the combinatoric charge symmetry (C_OS ≈ C_SS) MUST be validated in MC before
   the coupled OS+SS fit is trusted; if k fails, fall back to pure-MC templates and
   carry the full g→QQ̄ theory uncertainty.
+- **HIJING muons ARE real muons — NEVER classify them as hadronic/fake background (general
+  rule for all HIJING/PbPb-condition truth work).** In the fullsim HIJING overlay (and PbPb
+  conditions generally), HIJING simulates hard scatterings too → it produces single-B signal,
+  open-HF, prompt (light meson / quarkonium / QED γ*), and combinatoric muons, exactly like
+  Pythia. So a truth-matched PRIMARY muon (`prob>0.5 & |truth_id|==13 & IsPrimary==1`) from the
+  HIJING underlying event is REAL, not background. The reco-muon provenance classifier's
+  real/hadronic/fake axis MUST depend ONLY on `(muon_truth_prob, |muon_truth_id|,
+  muon_truth_IsPrimary)` — NEVER on Pythia-signal-block membership (`muon_truth_index`/barcode).
+  We restrict to Pythia-only truth for reco-eff/detector-response and for the open-HF TEMPLATE
+  backgrounds ONLY because the Pythia-AMI slice weights don't apply to HIJING (mixing generators
+  for HF ancestry would need a full truth-history-tracing rewrite) — NOT because HIJING muons
+  aren't real. A 2026-07-07 "index gate" (`real ⇒ index∈[0,lim)`) violated this and was reverted;
+  untraceable HIJING reals get their own **"real (untraced HIJING)"** class, still counted as real.
+  The `[0,lim)` generator-block cutoff is allowed ONLY for the HF-vs-prompt parent-map trace
+  (barcode-duplication fix), never as a real-vs-hadronic gate. See sub-doc E Latest Stage +
+  [[reference_muon_truth_provenance_nav]].
 
 ## Context
 - pp crossx fill: `RDFBasedHistFillingPP.cxx` — `signal_cuts` (L382), OS weighted

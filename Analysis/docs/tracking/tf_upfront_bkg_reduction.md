@@ -256,6 +256,66 @@ the analysis selection (this is a study to decide whether to); the Δp/p yield f
   classifier and lacks the index gate → its overlay real/prompt is inflated (HIJING UE counted as
   real); apply the same index gate there if its overlay composition is used quantitatively.
 
+- 2026-07-07 — **[SUPERSEDED — the index gate was a MISTAKE, REVERTED same day; see the INDEX-GATE
+  REVERT entry below. This entry is kept as history only.]** **FOLLOW-UP DONE: index gate applied to
+  `bkg_mc_provenance_20260624`** (subagent
+  `_sub_bkgprov_indexgate_1`, merged+deleted). The same Pythia-signal-block **index gate** was added
+  to BOTH classifiers there — `bkg_mc_provenance.C` and `fill_weighted_fullsim.C` (read
+  `muon_truth_index`/`muon_truth_barcode`/`truth_barcode`; per-event `lim`=first `truth_barcode>200000`;
+  gate `ti<0 || ti>=lim || tbc>200000 → hadronic`, placed AFTER the fake test, BEFORE the prompt test).
+  Backup first → `backup_pre_indexgate_20260707/` (plots 6, plots_tight 12, 8 .root, code). Recompiled,
+  reran all fills + regenerated all plots (medium `plots/` now 12 PNG — full 3-plotter regen added the
+  make_plots/weighted-meeting outputs that pre-fix had only 6 of; `plots_tight/` 12 PNG).
+  **No-op / shift verification (backup vs new histogram integrals):**
+  - **SIGNAL (pp24), all 4 files (prov med/tight, wfill med/tight): EVERY histogram Δ = 0 — EXACT no-op.**
+  - OVERLAY: real drops / hadronic rises by identical amount; fake & totals UNCHANGED (gate is after the
+    fake test): prov MED op prompt −50/had +50, ss −49/+49; prov TGT op −45/+45, ss −47/+47; wfill MED op
+    real −11.15/had +11.15, ss −13.67/+13.67; wfill TGT op −10.40/+10.40, ss −13.26/+13.26. Single-muon
+    overlay medium: prompt 96.57%→94.37%, hadronic 3.05%→5.25% (1724 real→had); pairs-overlay totals
+    unchanged (19903). A separate read-only agent is diffing backup-vs-new PLOTS (esp. `data_vs_fullsim_*`,
+    which must stay identical — no HIJING there) to confirm no adverse effect on the data-vs-fullsim view.
+  Sibling `tf_bkg_composition_normalization.md` (C) updated to note its overlay real/prompt numbers were
+  inflated by the same missing gate (now fixed). [[reference_muon_truth_provenance_nav]].
+
+- 2026-07-07 — **INDEX-GATE REVERT, step 1 (investigation) DONE.** Diagnostic
+  (`scratchpad/diag_untraced.C`, overlay, mirrors d0 selection+lim EXACTLY, correct real def no gate):
+  fake=299 hadronic=2390 **real=75659** (traced idx∈[0,lim)=73935; **untraced idx<0||≥lim=1724 =
+  2.28% of real**; idx<0=3, idx≥lim=1721). ALL 1724 untraced reals: `truth_id=±13`, `IsPrimary=1`,
+  `muon_truth_barcode≤200000` (1473 ≤47k, 251 (47k,200k], **0 >200k** → none Geant4). Their
+  `muon_truth_index` is 8k–69k ≫ `lim`(~400–1400): the truth array is NOT barcode-sorted; `[0,lim)`
+  captures the embedded **Pythia-signal** block, and HIJING underlying-event **generator primary
+  muons** (bc 1–47k) sit at high array positions → untraceable within `[0,lim)`. 58/1724 have
+  `bcInGenBlock=1` = barcode-duplication cases (why the `[0,lim)` parent-map cutoff is mandatory).
+  **⇒ CONFIRMED: the untraced reals are HIJING primary muons (real), NOT Geant4/hadronic** — validates
+  the user's correction and the label **"real (untraced HIJING)"**. Signal (pp24) untraced≈0 (no HIJING
+  UE dumping high-index generator muons; consistent with the earlier EXACT signal no-op).
+
+- 2026-07-07 — **INDEX-GATE REVERT IMPLEMENTED + regenerated + /review-analysis-code PASS**
+  (log `review-analysis-code-20260707-202032-index-gate-revert-5class.md`, iter 1, 0 CRIT/0 WARN;
+  C5 provenance + C6 weights verified). Changes:
+  - **d0_discrimination.C + dpop_dist.C(+plot_dpop_dist.C):** removed the index-gate line; restored the
+    correct hadronic def (`prob>0.5 & (|id|≠13 || IsPrimary==0)`); KEPT the `[0,lim)` parent-map cutoff
+    (HF/prompt sub-split only); added a 5th overlay-only class **"real (untraced HIJING)"** (real muons
+    with `muon_truth_index<0||≥lim`), color kOrange+1. Reordered classes 0=realHF 1=realprompt
+    2=realuntracedHIJING 3=hadronic 4=fake (reals contiguous at stack bottom); combined 3-way "real (all)"
+    = 0+1+2.
+  - **bkg_mc_provenance.C + fill_weighted_fullsim.C:** restored VERBATIM from `backup_pre_indexgate_20260707/`
+    (3-way real/fake/hadronic, no index gate).
+  - **Regenerated outputs (all confirmed):** d0 16 PNG, dpop 16 PNG, bkg 12+12 PNG.
+    - **d0 overlay:** real HF 67768 (med|d0| 0.088) / real prompt 6167 (0.017) / **real (untraced HIJING)
+      1724 (0.057)** / hadronic **2390** (0.021, smallest) / fake 299. real total 75659 = 67768+6167+1724.
+      Hadronic back to 2390 (the index gate had wrongly inflated it to 4114). **Signal (pp24): 0 untraced
+      HIJING** (no-op).
+    - **dpop overlay** (no Δp/p cut → looser): real (untraced HIJING) pT-int N=2031 (>d0's 1724 as expected),
+      med|d0| 0.084, Δp/p mean +0.035 (between real +0.014 and hadronic +0.09); signal 0.
+    - **bkg overlay back to ORIGINAL:** prompt(=real) **75659 (96.57%)** / fake 299 (0.38%) / hadronic
+      **2390 (3.05%)** — HIJING muons counted as real again (was 94.37%/5.25% under the gate). Signal
+      prompt 362217 (99.32%) / hadronic 2408 (0.66%) unchanged. bkg "prompt" total 75659 == d0 real total ✓.
+  - **Docs/memory corrected:** umbrella doc §4 (HIJING-muons-are-real general rule), sub-doc C note revised
+    (index gate was a mistake, reverted; overlay numbers stand), memory `reference_muon_truth_provenance_nav`
+    rewritten. Physics: the untraced-HIJING |d0| (0.057) sits between prompt (PV) and HF (displaced) → a mix
+    of HIJING open-HF + prompt, as expected for real UE muons.
+
 ## Results & Observations
 
 ### |d0| discrimination (T3) — real-HF displaced, hadronic/fake at small |d0| (hypothesis confirmed)
@@ -299,16 +359,69 @@ lower/pT-dependent |d0| cut or stricter χ² is a signal-selection change → `s
   HF (untouched). Any adoption is a signal-selection change → `signal_selection_change_impact.md`.
 
 ## Latest Stage
-**✅ 2026-07-07 — CERTIFIED PRESENTATION-READY.** Final `/review-plot` PASS (log
+**✅ 2026-07-07 — INDEX-GATE REVERT COMPLETE & CERTIFIED.** Both reviewer loops PASS (0 CRIT/0 WARN):
+`/review-analysis-code` (log `review-analysis-code-20260707-202032-index-gate-revert-5class.md`) +
+`/review-plot` (log `review-plot-20260707-203156-index-gate-revert-5class.md`). The wrong index gate is
+removed from all classifiers; correct definition restored (HIJING muons ARE real); new overlay-only class
+**"real (untraced HIJING)"** added (orange) in d0/dpop; bkg classifiers restored from backup. Regenerated:
+d0 16 PNG, dpop 16 PNG, bkg 12+12 PNG. Overlay: real(untraced HIJING)=1724 (d0) / 2031 (dpop, no Δp/p cut),
+hadronic back to 2390 (3.05%), real total 75659 (==bkg prompt). Signal pp24: 0 untraced (no-op). Docs +
+memory `reference_muon_truth_provenance_nav` + umbrella §4 (HIJING-real general rule) corrected. Plot dirs
+are data-area (not git). **Remaining:** only the user's selection-tightening decision (see Remaining Work) —
+the study deliverables are final. **Clear Latest Stage after commit.**
+
+Reference (the reverted mistake, for history):
+**🔴 2026-07-07 — REOPENED: the INDEX GATE was a PHYSICS MISTAKE; reverting.** User correction:
+**HIJING muons ARE real muons** (HIJING simulates hard scatterings too → single-B signal, open-HF,
+prompt light-meson/quarkonium/QED, and combinatoric — like Pythia). The **original** definition
+`hadronic = prob>0.5 & (|id|≠13 || IsPrimary==0)`, `real = prob>0.5 & |id|==13 & IsPrimary==1` is
+CORRECT; requiring "real" to be matched into the Pythia-signal block (the index gate) is WRONG.
+Reason we use Pythia-only truth for reco-eff/detector-response and for the open-HF template
+backgrounds is **event weights** (Pythia-AMI weights don't apply to HIJING; mixing generators for HF
+would need a full truth-history rewrite), NOT because HIJING muons aren't real. This is a general
+rule for HIJING/PbPb-condition work (documented in the umbrella doc).
+
+**Two distinct barcode mechanisms — separate them:**
+- **① Index gate (`m_ti<0 || m_ti>=lim || m_tbc>200000` → hadronic): the MISTAKE → REMOVE.**
+  `d0_discrimination.C:186`, `dpop_dist.C:181`, and inside `classify()` in `bkg_mc_provenance.C` +
+  `fill_weighted_fullsim.C`. Removing it restores the correct real/hadronic/fake axis (HIJING
+  primaries → real; Geant4 secondaries |id|==13 & IsPrimary==0 → still hadronic ✓).
+- **② Parent-map barcode cutoff (`lim`=first bc>200000; map+BFS trace over `[0,lim)`): a SEPARATE,
+  LEGITIMATE fix → KEEP.** Only fixes the HF-vs-prompt sub-split of already-real muons (barcode-
+  duplication artifact, real-HF 5%→92%); does NOT touch real/hadronic. Aligns with "trace HF via
+  Pythia truth only". Reverting would reintroduce the artifact.
+
+**Plan (reviewer-gated):**
+1. **Investigate** what the overlay index≥lim "untraced real" muons are (confirm HIJING per user's
+   conditional label). Small diagnostic macro on the overlay NTUP mirroring the exact selection.
+2. **d0_discrimination.C + dpop_dist.C**: delete the index-gate line; KEEP the parent-map cutoff;
+   add a 5th overlay-only category **"real (untraced HIJING)"** (index<0 || index≥lim real muons;
+   empty for signal since lim=ntr). → `/review-analysis-code` (quote this stage + §3).
+3. **bkg_mc_provenance.C + fill_weighted_fullsim.C**: restore from `backup_pre_indexgate_20260707/`
+   (100%-clean undo — no HF/prompt split there). Recompile, rerun fills, regen plots.
+4. **Regenerate** d0/dpop plots → `/review-plot`. Verify signal identical (no-op), overlay real rises.
+5. **Correct docs+memory**: doc E Progress Log/this stage, the sub-doc C note added during the
+   scratch merge (currently describes the index gate as a fix — WRONG), memory
+   `reference_muon_truth_provenance_nav`, and add the HIJING-real physics to the umbrella doc.
+
+Data-file note (unrelated): `bkg_mc_provenance` `data_dos_dss_overlay.png` changed ~0.73× only because
+its input `histograms_real_pairs_pp_2024_..._template_fit.root` was refreshed 2026-07-07 01:02 (backup
+plot 2026-06-25) — a legit data update, not the classifier.
+
+---
+**(superseded — was CERTIFIED, now reopened for the index-gate revert) ✅ 2026-07-07.** Final `/review-plot` PASS (log
 `review-plot-20260707-120911-upfront-d0-dpop-certify.md`, iter 2, 0 CRITICAL/0 WARNING; C1–C6 incl.
 C5 provenance + C6 MC-weight). All 32 panels (both variables × 4-way primary + combined 3-way ×
 signal + overlay) correct; both SUMMARYs match the run logs. Fixes this round: INDEX gate for "real"
 (`muon_truth_index∈[0,lim)`; overlay real 91.7% HF / 0 unresolved; pp24 no-op), per-event MC weights
 on BOTH modes (dpop mode-1 fixed; C6 enforcement added `b2e983d`), recolor red/blue/kGreen+2/magenta,
 combined 3-way variant, descriptive sample labels/filenames (`fullsim_pp24`/`hijing_overlay`), Δp/p
-cut-line label fixed. **Remaining:** (a) user's selection-tightening decision (Remaining Work); (b)
-2 non-blocking INFO cosmetics (d0 subtitle / dpop 2×2 label graze frame edges); (c) apply the index
-gate to `bkg_mc_provenance_20260624` (shares the flaw). Plot dirs are data-area (not git).
+cut-line label fixed. **Remaining:** (a) user's selection-tightening decision (Remaining Work). (b)✅ cosmetics resolved
+(d0 subtitle moved to a centered top-margin title; dpop labels nudged in — both re-plotted &
+verified). (c)✅ index gate applied to `bkg_mc_provenance_20260624` (2026-07-07 Progress Log): both
+classifiers gated, signal EXACT no-op, overlay real→hadronic (prompt 96.57%→94.37%, had 3.05%→5.25%);
+backup in `backup_pre_indexgate_20260707/`; a read-only agent is diffing backup-vs-new plots to
+confirm no adverse effect on the data-vs-fullsim view. Plot dirs are data-area (not git).
 
 ---
 **(superseded) ✅ 2026-07-07 — earlier PASS (before the index-gate + MC-weight round).**

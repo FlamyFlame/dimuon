@@ -210,7 +210,21 @@ pairs fakes/hadronic; the test needs a NEW **reco-seeded** fill.
   0.66%; overlay post-selection prompt 96.6%/fake 0.38%/had 3.05% — note the UE's 34.8% raw fakes are mostly
   removed by medium-quality+dP/p+d0/z0, leaving hadronic-dominated bkg). **Check (3) — the mirror is OPENING-ANGLE
   DEPENDENT:** overlay background SS/OS ≈ **0.98 at wide-angle/high-mass (minv>4)** [charge-symmetric uncorrelated
-  combinatoric — mirrors ✓] but ≈ **0.20–0.29 at near-side/low-mass (minv<1.5)** [OS-ENHANCED]. Same in signal MC
+  combinatoric — mirrors ✓]
+
+  > **NOTE (2026-07-07 — index gate tried then REVERTED; numbers here are CORRECT as written).** A brief
+  > 2026-07-07 experiment added a Pythia-signal-block "index gate" (`real ⇒ muon_truth_index∈[0,lim)`) to these
+  > classifiers, which would have moved overlay single-muon medium to prompt 96.57%→94.37%, hadronic
+  > 3.05%→5.25% (1724 muons). That gate was a **PHYSICS MISTAKE and was REVERTED**: HIJING underlying-event
+  > primary muons ARE real muons (HIJING has hard scatterings too), not hadronic background — we use Pythia-only
+  > truth elsewhere for WEIGHT reasons, not because HIJING muons aren't real. So the overlay `prompt 96.6%/had
+  > 3.05%` split above STANDS (original, correct definition `hadronic = prob>0.5 & (|id|≠13 || IsPrimary==0)`).
+  > `bkg_mc_provenance.C` + `fill_weighted_fullsim.C` were restored from `backup_pre_indexgate_20260707/`.
+  > (Caveat unchanged: this classifier calls the real bin "prompt" — a pre-existing mislabel per
+  > [[feedback_hf_muons_not_prompt]]; the real muons are dominantly HF, not prompt.) See
+  > `tf_upfront_bkg_reduction.md` Latest Stage 2026-07-07 and [[reference_muon_truth_provenance_nav]].
+
+  ...but ≈ **0.20–0.29 at near-side/low-mass (minv<1.5)** [OS-ENHANCED]. Same in signal MC
   (low-mass bkg SS/OS≈0.29≈k). PHYSICS: the near-side low-mass background = (prompt signal muon + near-side
   hadronic from the same HF jet) → CORRELATED, OS-enhanced, ≈ the g→QQ̄ G template (k≈0.3); the symmetric
   combinatoric lives at wide angle. **IMPLICATION:** in MC the near-side low-mass background (analog of the data
