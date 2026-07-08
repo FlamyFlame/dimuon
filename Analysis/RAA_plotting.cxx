@@ -382,7 +382,7 @@ void RAAPlotting::RunPlotting(){
 		l->AddEntry("", legend_pbpb_label.c_str(), "");
 		l->AddEntry("", legend_pp_label.c_str(), "");
 		l->AddEntry("","m_{#mu#mu}#in(1.08,2.9), p_{T}^{pair}>8 GeV","");
-		l->AddEntry("","OS #minus SS subtracted","");
+		l->AddEntry("","OS #minus SS subtracted, tight WP","");
 		l->AddEntry("","reco-eff + T_{AA}: PLACEHOLDERS","");
 	    
 

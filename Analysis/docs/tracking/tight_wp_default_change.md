@@ -199,7 +199,39 @@ stop until done+reviewed+correct). Keep Medium reachable everywhere (WP systemat
   nominal. Medium systematic = `_medium_wp` suffix (plumbing = remaining item). PP+PbPb RDF compile clean.
   Scratch docs `_sub_wpA/_sub_wpB` merged here → will delete.
 
+- 2026-07-08 — **WP CODE COMMITTED `11b0748`** after `/review-analysis-code` PASS (iter 2, 0 crit/0
+  warn; log `review-analysis-code-20260708-010455-tight-wp-default.md`). Iter-1 WARNING (medium trig-eff
+  suffix clobber) FIXED: `Data.cxx:106 if(!isTight)` + `OpenEffcyPtFitFile` WP-suffixed fit/hist paths
+  (PP+PbPb). Nominal tight byte-identical; medium round-trip non-clobber. 23 files.
+- 2026-07-08 — **S2.6 TIGHT RERUN CHAIN LAUNCHED** (bg `rerun_tight_chain.sh`): reco-eff placeholder →
+  trig-eff pp+PbPb (tight tag-and-probe graphs + turn-on fits) → crossx pp + PbPb 23/24/25 (all nominal
+  tight, unsuffixed). Gate-checked: no script overrides isTight (default true=tight); trig-eff pipelines
+  call the fitter with no arg (→ "" nominal). Monitoring for step completions/failures. THEN: R_AA +
+  crossx plots → /review-plot (physics C1–C7). pp-tight reco-eff GAP surfaced to user (interim in place).
+
+- 2026-07-08 — **S2.6 TIGHT RERUN CHAIN COMPLETE** (all 7 steps exit 0). Outputs verified fresh+non-empty:
+  reco-eff placeholder (65 tight + 65 medium keys); trig-eff tight turn-on fits pp + PbPb 23/24/25;
+  crossx tight histos pp_2024 (676KB) + pbpb 23/24/25 (3.3–4.3MB). **Crossx + R_AA plots produced**
+  (`plots/single_b_analysis/{pp24,pbpb_23_24_25_combined,RAA}/`). R_AA physically sensible: O(0.3–1.5),
+  rises with pair_pt, central (0–5%) most suppressed → peripheral near 1 (correct centrality ordering);
+  plots honestly label "reco-eff + T_AA: PLACEHOLDERS". → final `/review-plot` (physics C1–C7) in progress.
+
+- 2026-07-08 — **✅ Medium→Tight DEFAULT WP CHANGE COMPLETE & CERTIFIED.** Final `/review-plot` PASS
+  (iter 2, 0 crit/0 warn; log `review-plot-20260708-075026-tight-wp-crossx-raa.md`). Reviewer caught the
+  R_AA staleness (R_AA is a SEPARATE `RAA_plotting.cxx`, not the crossx plotter) → regenerated fresh from
+  the tight inputs + added "tight WP" label → PASS. Full tight chain done: code (`11b0748`) → reco-eff
+  Tight placeholder → tight trig-eff turn-on (pp+PbPb) → tight crossx (pp + PbPb 23/24/25) → tight R_AA.
+  All physically sane + self-consistent. Registry marked implemented.
+
 ## Latest Stage
+**✅ WP-DEFAULT CHANGE COMPLETE (Tight is now nominal, verified end-to-end).** Remaining follow-ups
+(NOT blocking the default change): (1) **pp-tight reco-eff decision** — interim=Medium Fig.31 vs
+peripheral-PbPb-tight proxy (user); (2) the Medium-WP SYSTEMATIC evaluation run (plumbing in place,
+`_medium_wp` non-clobbering) — belongs to the systematics task (roadmap task_08). Keep this doc active
+until (1) is decided; then it can close. Code done+committed (11b0748);
+study plots done (S2.1). Rerun chain (7 steps) in flight → then R_AA/plots + /review-plot + registry
+mark-done. Open user decision: pp-tight reco-eff (interim=Medium Fig.31 vs peripheral-PbPb-tight fallback).
+Superseded workstream notes below.
 **Stage 2 EXECUTING (autonomous) — workstreams in flight:**
 - S2.1 study plots: d0 + dpop regenerating BOTH WPs (tight→`plots/`, medium→`plots_medium/`); `useTight`
   config var added (default TIGHT), compiles clean. → verify + /review-plot.

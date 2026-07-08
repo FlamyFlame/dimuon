@@ -1,7 +1,10 @@
 # Muon Working-Point (WP) Registry — where the Medium/Tight choice lives
 
-**Status:** LIVING reference. **Default WP: TIGHT** (changed from Medium 2026-07-07; see
-`docs/tracking/tight_wp_default_change.md`). **Purpose:** single place listing every site where the
+**Status:** LIVING reference. **Default WP: TIGHT** — IMPLEMENTED & RERUN 2026-07-08 (changed from
+Medium; code committed `11b0748`, `/review-analysis-code` PASS; tight trig-eff turn-on + tight reco-eff
++ tight crossx/R_AA regenerated and `/review-plot` PASS; see `docs/tracking/tight_wp_default_change.md`).
+**One open item:** pp-tight reco-eff has no source → INTERIM reuse of Medium Fig.31 (labeled); real
+options = keep interim OR peripheral-PbPb-tight proxy (user decision; §4). **Purpose:** single place listing every site where the
 muon quality WP is chosen/applied/labeled, so the **WP systematic uncertainty** can be evaluated by
 switching Tight→Medium and quantifying the shift in the final result. **Maintenance:** update this
 table whenever a new WP-sensitive place is added as the analysis is completed.
