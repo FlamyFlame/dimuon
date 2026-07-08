@@ -154,3 +154,24 @@ An MC histogram/plot/number filled without the per-event weight → **CRITICAL F
 failure; do not close with a cosmetic amend — regenerate weighted). **Data** histograms are exempt
 from the *generator* weight (data has none); per-event data weights (prescale, efficiency, 1/L)
 still follow the analysis procedure.
+
+## C7 — THStack presentation: LINEAR y-axis + magnitude ordering  *(PLOT; MANDATORY for any stacked-composition plot)*
+
+A `THStack` communicates "parts of a whole" — component value = band THICKNESS, total = sum of
+bands. Two requirements; violating either visually distorts the contributions:
+
+- **LINEAR y-axis.** On log-y equal distance = equal ratio, not equal amount, so a band's apparent
+  thickness depends on where in the stack it sits (`log(1+Δ/B)` shrinks as the base B grows), the
+  per-component fraction becomes unreadable, and reordering the same data changes every band's
+  apparent size. A THStack drawn with `SetLogy()` / `gPad->SetLogy(1)` → **CRITICAL FAIL**. (Log y
+  is fine for non-stacked line/marker overlays comparing shapes.)
+- **Ordering: small/flat at BOTTOM, most-abundant (largest integral) / steepest-peak at TOP.** A
+  band rides on the cumulative sum below it; a small/flat contribution stacked ON TOP of a steep
+  peak is dragged into that peak's shape. Stack order must be by integral ascending (smallest at
+  the bottom). A stack with a large/steep-peaked component below smaller/flatter ones (so the small
+  ones ride the peak) → **WARNING** (shape-distorting; CRITICAL if it makes a component's true
+  shape/level unreadable).
+
+Check: read the plotting code — the THStack's pad has NO `SetLogy`, and the `Add()` sequence is
+integral-ascending (or explicitly small→large). Legend order should match the visual top→bottom.
+(Memory `feedback_thstack_linear_and_ordering`; convention `atlas-plotting.md` "Stacked histograms".)

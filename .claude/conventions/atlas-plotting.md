@@ -48,3 +48,27 @@ overlays**. Never normalize a raw-count histogram: unweighted MC mixes pT-hat sl
 statistics, not cross-section, giving a distorted shape. Clone the WEIGHTED histogram, then scale
 to unit area. (Enforced as criterion C6 in `physics-results-review.md`; memory
 `feedback_hf_muons_not_prompt`.)
+
+## Stacked histograms (THStack) — LINEAR y + magnitude ordering (MANDATORY)
+
+A `THStack` shows composition as "parts of a whole": each component is the vertical THICKNESS
+of its band and the reader adds bands to the total. Two hard rules preserve that reading:
+
+- **LINEAR y-axis — never log.** On a linear axis equal vertical distance = equal amount, so a
+  band's thickness is faithfully proportional to its contribution and its fraction of the total
+  is readable by eye. On a **log** axis equal distance = equal *ratio*: a contribution Δ stacked
+  on a running base B spans `log(1+Δ/B)`, which shrinks as B grows — so the same Δ looks tall at
+  the bottom and invisible on top of a large base, the "sum of bands = total" reading breaks, and
+  reordering the same components makes identical data look completely different. (Log y is for
+  line/marker OVERLAYS comparing shapes — NOT for stacks.)
+- **Order small/flat at the BOTTOM, most-abundant (largest integral) / steepest-peak at the TOP.**
+  A band's bottom edge is the cumulative sum beneath it, so its drawn shape rides on that baseline.
+  A small/flat component placed ON TOP of a tall steep peak is dragged into the peak's shape (looks
+  peaked when it isn't). Put flat/small at the bottom (baseline ≈0 → true shape) and the big/steep
+  peak on top (rides a nearly-flat base, undistorted; nothing above it to distort). Implement by
+  sorting the `Add()` order by histogram **integral ascending** (smallest first = bottom); build
+  the legend to match the visual top→bottom.
+
+(Memory `feedback_thstack_linear_and_ordering`. This is the stack exception to
+`feedback_log_scale_plots`, which otherwise wants log y for wide-dynamic-range 1D distributions.
+Enforced as criterion C7 in `physics-results-review.md`.)
