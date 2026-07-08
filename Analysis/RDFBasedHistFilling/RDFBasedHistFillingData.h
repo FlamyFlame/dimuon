@@ -151,7 +151,10 @@ protected:
     // TGraphs (HF R_AA Fig.31). This is a temporary stand-in until the proper 3D
     // pair efficiency exists (task_05).
     // See docs/tracking/reco_eff_placeholder_run2.md.
-    static void             OpenRecoEffPlaceholderFile();
+    // use_tight selects the WP-matched reco-eff placeholder keys (tf1_reco_eff_{wp}_pbpb_*,
+    // gr_reco_eff_{wp}_pp_*). NOMINAL = tight (must match the DATA crossx WP; a Tight-selected
+    // spectrum MUST get the Tight reco-eff, never the Medium one). See docs/muon_wp_registry.md §4.
+    static void             OpenRecoEffPlaceholderFile(bool use_tight = true);
     // centrality < 0 => pp (barrel/endcap by |q_eta|); otherwise PbPb (F.2 ctr interval).
     static float            EvaluateSingleMuonRecoEffPlaceholder(int centrality, float pt, float q_eta);
 
@@ -173,7 +176,12 @@ enum HistFillingCycle{
     bool useMu4NoL1Leg = true;  // if true, require the probe muon to pass the mu4noL1 (unseeded) leg for _mu4_mu4noL1 filters
     double mindR_trig = 0.02;   // > 0: search input files with _mindR_X_XX suffix; <= 0: use old input files (no suffix)
     bool isScram = false;
-    bool isTight = false;
+    bool isTight = true;  // NOMINAL muon working point = TIGHT (2026-07-07). When true, the DATA
+                          // crossx path applies Filter("pair_pass_tight") to df_op/df_ss and the
+                          // Tight reco-eff placeholder keys are used. Set false to recover Medium
+                          // (WP systematic; routed to a distinct _medium_wp output so it never
+                          // clobbers the Tight nominal). Only the quality bit (8 Medium -> 16 Tight)
+                          // differs. See docs/muon_wp_registry.md §3-4.
     bool doTrigEffcy = true; // default true; derived from trigger_effcy_calc in TriggerModeSettings()
     bool mu4_nominal_pbpb_NO_trig_calc = false; // PbPb nominal pipeline: use mu4 trigger for event selection only (no trig effcy derivation)
     // PUBLIC (set from run_template_fit_* macros). Low-mass dimuon TEMPLATE-FIT pass: read the

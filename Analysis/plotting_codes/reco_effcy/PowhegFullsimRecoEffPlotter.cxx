@@ -27,7 +27,7 @@
 class PowhegFullsimRecoEffPlotter {
 public:
 
-    PowhegFullsimRecoEffPlotter(int run_year_input, bool tight_WP_input = false, bool require_signal_cuts_input = false)
+    PowhegFullsimRecoEffPlotter(int run_year_input, bool tight_WP_input = true /* NOMINAL WP = Tight; pass false for Medium */, bool require_signal_cuts_input = false)
     :   run_year(run_year_input % 2000),
         tight_WP(tight_WP_input),
         require_signal_cuts(require_signal_cuts_input)
@@ -36,7 +36,7 @@ public:
     }
 
     PowhegFullsimRecoEffPlotter()
-    : PowhegFullsimRecoEffPlotter(17, false, false){}
+    : PowhegFullsimRecoEffPlotter(17, true, false){} /* NOMINAL WP = Tight */
 
     ~PowhegFullsimRecoEffPlotter() {
         if (infile_unmixed) {

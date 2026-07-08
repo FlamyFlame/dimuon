@@ -14,7 +14,11 @@ static std::map<std::string, TH2D*> s_effcy_2D_hist_map;
 // Run 2 single-muon reco-efficiency PLACEHOLDER graphs (see header).
 static TFile* s_reco_eff_ph_file = nullptr;
 static std::map<std::string, TGraph*> s_reco_eff_ph_map;       // pp barrel/endcap (digitized points)
-static std::map<std::string, TF1*>    s_reco_eff_ph_tf1_map;   // PbPb per (ctr, q*eta): colleague's Run 2 Medium fit
+static std::map<std::string, TF1*>    s_reco_eff_ph_tf1_map;   // PbPb per (ctr, q*eta): colleague's Run 2 fit
+// Muon WP for the reco-eff placeholder lookup: NOMINAL = tight (set in OpenRecoEffPlaceholderFile
+// from the caller's isTight). Selects tf1_reco_eff_{tight,medium}_pbpb_* / gr_reco_eff_{...}_pp_*.
+// MUST match the DATA crossx WP: a Tight-selected spectrum must get the Tight reco-eff correction.
+static bool s_reco_eff_use_tight = true;
 
 RDFBasedHistFillingData::RDFBasedHistFillingData(int run_year_input, bool isForSoumya_input)
 : run_year (run_year_input), isForSoumya (isForSoumya_input){
@@ -29,7 +33,7 @@ RDFBasedHistFillingData::RDFBasedHistFillingData(int run_year_input, bool isForS
 
     std::cout << "The following public variable(s) **SHOULD** be checked:" << std::endl;
     std::cout << "--> isScram: [BOOL] default false" << std::endl;
-    std::cout << "--> isTight: [BOOL] default false" << std::endl;
+    std::cout << "--> isTight: [BOOL] default true (NOMINAL muon WP = Tight; set false for Medium systematic)" << std::endl;
     std::cout << "--> output_generic_hists: [BOOL] default false" << std::endl;
     std::cout << "--> save_non_sepr_trg_hists: [BOOL] default false" << std::endl;
     std::cout << "--> save_good_accept_trg_hists: [BOOL] default false" << std::endl;
@@ -94,6 +98,14 @@ void RDFBasedHistFillingData::InitializeDataCommon(){
     out_file_suffix = trig_suffix + isForSoumya_suffix + qEtaBin_suffix;
     if (save_non_sepr_trg_hists) out_file_suffix += "_w_nonsepr";
     if (save_good_accept_trg_hists) out_file_suffix += "_w_good_accept";
+    // Muon working-point (WP) routing for the DATA crossx spectrum: NOMINAL = Tight
+    // (isTight=true) keeps the un-suffixed nominal filename that downstream crossx plots
+    // read; the Medium WP-systematic variant gets a DISTINCT _medium_wp output so the two
+    // never clobber each other. Applied to EVERY Medium run (crossx AND trigger-eff graph
+    // output AND template-fit) so a Medium systematic run never overwrites the Tight nominal
+    // (the trig-eff graph file must be WP-suffixed too, else Medium clobbers the Tight turn-on
+    // graphs). See docs/muon_wp_registry.md §3/§5. Nominal Tight stays unsuffixed.
+    if (!isTight) out_file_suffix += "_medium_wp";
     // Low-mass template-fit pass writes to a DISTINCT output so it never overwrites the
     // nominal crossx histograms (it reads _no_res_cut, not V1). See low_mass_template_calc.
     if (low_mass_template_calc) out_file_suffix += "_template_fit";
@@ -644,7 +656,10 @@ float RDFBasedHistFillingData::EvaluateSingleMuonEffcy(const std::string& ctr_su
 // Pythia fullsim (pp) + HIJING overlay (PbPb) samples land (task_05, roadmap Q4).
 // See docs/tracking/reco_eff_placeholder_run2.md.
 // =============================================================================
-void RDFBasedHistFillingData::OpenRecoEffPlaceholderFile() {
+void RDFBasedHistFillingData::OpenRecoEffPlaceholderFile(bool use_tight) {
+    s_reco_eff_use_tight = use_tight;  // WP for the key lookup (nominal tight); must match the crossx WP
+    std::cout << "OpenRecoEffPlaceholderFile: reco-eff WP = "
+              << (s_reco_eff_use_tight ? "TIGHT" : "MEDIUM") << std::endl;
     if (!s_reco_eff_ph_map.empty() || !s_reco_eff_ph_tf1_map.empty()) {
         std::cout << "OpenRecoEffPlaceholderFile: reco-eff placeholder already loaded ("
                   << s_reco_eff_ph_tf1_map.size() << " PbPb TF1s, "
@@ -691,12 +706,16 @@ float RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(int centrali
     if (x < 4.0)  x = 4.0;
     if (x > 19.0) x = 19.0;
 
+    // WP-matched key prefix (nominal tight). The placeholder file carries BOTH key sets;
+    // pick the one matching the crossx WP (a Tight spectrum must use the Tight reco-eff).
+    const std::string wp = s_reco_eff_use_tight ? "tight" : "medium";
+
     double val;
     if (centrality < 0) {
         // pp: barrel (|q*eta|<1.05) vs endcap, no centrality (HF R_AA Fig.31).
         // Digitized points -> TGraph linear interpolation.
-        const std::string key = (std::fabs(q_eta) < 1.05f) ? "gr_reco_eff_medium_pp_barrel"
-                                                            : "gr_reco_eff_medium_pp_endcap";
+        const std::string key = (std::fabs(q_eta) < 1.05f) ? ("gr_reco_eff_" + wp + "_pp_barrel")
+                                                            : ("gr_reco_eff_" + wp + "_pp_endcap");
         auto it = s_reco_eff_ph_map.find(key);
         if (it == s_reco_eff_ph_map.end()) return -1.0f;
         val = it->second->Eval(x);
@@ -712,7 +731,7 @@ float RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(int centrali
         else if (centrality <  60) { lo = 50; hi = 60; }
         const std::string qeta_suf = FindBinReturnStr(q_eta, cfg.q_eta_proj_ranges_coarse_incl_gap_run2);
         if (qeta_suf.empty()) return -1.0f;
-        const std::string key = "tf1_reco_eff_medium_pbpb_ctr" + std::to_string(lo) + "_" + std::to_string(hi)
+        const std::string key = "tf1_reco_eff_" + wp + "_pbpb_ctr" + std::to_string(lo) + "_" + std::to_string(hi)
                               + "_q_eta_" + qeta_suf;
         auto it = s_reco_eff_ph_tf1_map.find(key);
         if (it == s_reco_eff_ph_tf1_map.end()) return -1.0f;

@@ -558,7 +558,7 @@ void TrigEffPlotterPbPb::plotSingleMuEffCtrDep()
                 ystart = 0.4;
             }
             latex.DrawLatex(xstart, ystart, ("Pb+Pb 2023, " + target_dimuon_trigger_to_single_muon_map[num_trg]).c_str());
-            latex.DrawLatex(xstart, ystart - 0.06, ("Medium #mu, " + pT_labels_for_ctr_dep[i]).c_str());
+            latex.DrawLatex(xstart, ystart - 0.06, (wp_label + ", " + pT_labels_for_ctr_dep[i]).c_str());
             latex.DrawLatex(xstart, ystart - 0.12, "-0.5 <= #eta < 0.5");
         }
 

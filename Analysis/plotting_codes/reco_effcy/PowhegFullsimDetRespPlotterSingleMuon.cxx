@@ -21,7 +21,7 @@
 class PowhegFullsimDetRespPlotterSingleMuon {
 public:
 
-    PowhegFullsimDetRespPlotterSingleMuon(int run_year_input, bool tight_WP_input = false)
+    PowhegFullsimDetRespPlotterSingleMuon(int run_year_input, bool tight_WP_input = true /* NOMINAL WP = Tight; pass false for Medium */)
     :   run_year(run_year_input % 2000),
         tight_WP(tight_WP_input)
     {

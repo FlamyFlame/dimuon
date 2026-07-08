@@ -11,7 +11,7 @@ class SingleBCrossxPlotterPbPbCombined : public SingleBCrossxPlotterBase {
     std::map<std::string,TH1*> hist_cache_;  // owned combined histograms
 
     std::string label_line1_;  // e.g. "Pb+Pb 2023, 2024 combined"
-    std::string label_line2_;  // "medium WP"
+    std::string label_line2_;  // "tight WP"
     std::string label_line3_;  // e.g. "mu4 (2023), mu4 (2024)"
 
     std::vector<std::string> ctr_candidates_{"ctr0_5","ctr5_10","ctr10_20","ctr20_30","ctr30_50","ctr50_80","ctr50_100"};
@@ -27,7 +27,7 @@ class SingleBCrossxPlotterPbPbCombined : public SingleBCrossxPlotterBase {
                             + " (20" + std::to_string(yr) + ")";
         }
         label_line1_ = "Pb+Pb " + yrs_str + " combined";
-        label_line2_ = "medium WP";
+        label_line2_ = "tight WP";
     }
 
     std::string OutDirName() const {

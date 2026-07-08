@@ -637,7 +637,7 @@ enum OtherFlags{
 
 //-----------------------------------------------------------------------------------------------------
 struct Cuts{
-  int m_quality_cut   =QualityCut  ::MEDIUM       ;
+  int m_quality_cut   =QualityCut  ::TIGHT        ;// default WP changed Medium->Tight 2026-07-07 (docs/tracking/tight_wp_default_change.md)
   int m_pt_cut        =PTCut       ::PT4PLUS_4PLUS;
   int m_momimbsig_cut =MomImbSigCut::NOSIGCUT     ;
   int m_data_type     =DataType    ::PbPbAll      ;

@@ -25,7 +25,7 @@
 class PythiaFullsimRecoEffPlotterBase {
 public:
 
-    PythiaFullsimRecoEffPlotterBase(bool tight_WP_input = false, bool require_signal_cuts_input = false)
+    PythiaFullsimRecoEffPlotterBase(bool tight_WP_input = true /* NOMINAL WP = Tight; pass false for Medium */, bool require_signal_cuts_input = false)
     : tight_WP(tight_WP_input), require_signal_cuts(require_signal_cuts_input){}
 
     virtual ~PythiaFullsimRecoEffPlotterBase(){
@@ -617,7 +617,7 @@ protected:
 // ---------- PP child ----------
 class PythiaFullsimRecoEffPlotter : public PythiaFullsimRecoEffPlotterBase {
 public:
-    PythiaFullsimRecoEffPlotter(bool tight_WP_input = false, bool require_signal_cuts_input = false)
+    PythiaFullsimRecoEffPlotter(bool tight_WP_input = true /* NOMINAL WP = Tight; pass false for Medium */, bool require_signal_cuts_input = false)
     : PythiaFullsimRecoEffPlotterBase(tight_WP_input, require_signal_cuts_input){}
     ~PythiaFullsimRecoEffPlotter() override {}
 
@@ -644,7 +644,7 @@ public:
 
     PythiaFullsimRecoEffPlotterOverlay(
         FullSimSampleType sample_type = FullSimSampleType::hijing,
-        bool tight_WP_input = false,
+        bool tight_WP_input = true /* NOMINAL WP = Tight; pass false for Medium */,
         bool require_signal_cuts_input = false)
     : PythiaFullsimRecoEffPlotterBase(tight_WP_input, require_signal_cuts_input)
     , fullsim_sample_type(sample_type)

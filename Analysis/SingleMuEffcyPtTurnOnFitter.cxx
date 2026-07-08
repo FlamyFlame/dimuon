@@ -58,6 +58,14 @@ public:
     bool debug_mode = false;
     bool isBNL = true;
 
+    // Muon working-point selector for the trigger turn-on. Default = TIGHT (nominal WP as of
+    // 2026-07-07; docs/tracking/tight_wp_default_change.md). The WP is NOT applied in this fitter:
+    // it is applied UPSTREAM in the RDF hist-filling that produces the input q*eta trigger-eff
+    // graphs (probe/pair tight selection). This suffix is inserted into BOTH the input-graph
+    // filename and the output fit filename + PNG dir, so it MUST match the suffix the hist-filling
+    // writes on the graph file. Medium (legacy, unsuffixed graph/fit files) = "".
+    std::string wp_suffix = "";
+
     enum FittingMode {
         erf_plus_log,
         fermi_plus_log,
@@ -127,7 +135,7 @@ protected:
             fitting_outdir = "trg_effcy_pT_fitting_to_erf_plus_log/";
         }
 
-        outfile_name = data_dir + fitting_outdir + "single_mu_effcy_pT_fit.root";
+        outfile_name = data_dir + fitting_outdir + "single_mu_effcy_pT_fit" + wp_suffix + ".root";
         makeDirIfNeeded(data_dir + fitting_outdir);
         if (!plot_outdir.empty()) makeDirIfNeeded(plot_outdir);
 
@@ -389,9 +397,9 @@ protected:
         std::string base = isBNL ? "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/"
                                  : "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/";
         data_dir = base + "pp_2024/";
-        infile_name = data_dir + "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin.root";
+        infile_name = data_dir + "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin" + wp_suffix + ".root";
         h2d_ref_name = "h_pt2nd_vs_q_eta2nd_sign1_mu4";
-        plot_outdir = base + "plots/pp_trigger_efficiency/mu4/pT_fitting/pp24";
+        plot_outdir = base + "plots/pp_trigger_efficiency/mu4/pT_fitting/pp24" + wp_suffix;
     }
 };
 
@@ -424,9 +432,9 @@ protected:
         std::string base = isBNL ? "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/"
                                  : "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/";
         data_dir = base + "pbpb_20" + yr + "/";
-        infile_name = data_dir + "histograms_real_pairs_pbpb_20" + yr + "_single_mu4_fine_q_eta_bin.root";
+        infile_name = data_dir + "histograms_real_pairs_pbpb_20" + yr + "_single_mu4_fine_q_eta_bin" + wp_suffix + ".root";
         h2d_ref_name = "h_pt2nd_vs_q_eta2nd_ctr0_5_sign1_mu4";
-        plot_outdir = base + "plots/pbpb_trigger_efficiency/mu4/pT_fitting/pbpb" + yr;
+        plot_outdir = base + "plots/pbpb_trigger_efficiency/mu4/pT_fitting/pbpb" + yr + wp_suffix;
     }
 
     std::vector<std::string> centralitySuffixes() const override {
@@ -437,15 +445,20 @@ protected:
 // ------------------------------------------------------------
 // ROOT entry points (like your originals)
 // ------------------------------------------------------------
-void single_muon_trig_effcy_pT_fitting() {
+// wp_suffix: "" (nominal = TIGHT, default — unsuffixed filenames, matches the crossx convention) or
+// "_medium_wp" (Medium systematic). Must match the suffix the RDF
+// hist-filling writes on the input q*eta trigger-eff graph file.
+void single_muon_trig_effcy_pT_fitting(const std::string& wp_suffix = "") {
     auto* fitter = new SingleMuEffcyPtTurnOnFitterPP();
+    fitter->wp_suffix = wp_suffix;
     fitter->fitting_mode = SingleMuEffcyPtTurnOnFitterBase::erf_plus_log;
     fitter->Run();
     delete fitter;
 }
 
-void single_muon_trig_effcy_pT_fitting_PbPb(int year = 25) {
+void single_muon_trig_effcy_pT_fitting_PbPb(int year = 25, const std::string& wp_suffix = "") {
     auto* fitter = new SingleMuEffcyPtTurnOnFitterPbPb(year);
+    fitter->wp_suffix = wp_suffix;
     fitter->fitting_mode = SingleMuEffcyPtTurnOnFitterBase::fermi_plus_log;
     fitter->Run();
     delete fitter;

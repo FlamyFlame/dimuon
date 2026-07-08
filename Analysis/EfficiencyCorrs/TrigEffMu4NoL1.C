@@ -124,7 +124,7 @@ class TrigEffMu4NoL1
   TH1D *h_mon_npair,*h_mon_cent,*h_cut_flow; //New
 
   TFile *m_OutFile=nullptr;
-  int m_quality=Bins::QualityCut::MEDIUM;
+  int m_quality=Bins::QualityCut::TIGHT;// default WP Medium->Tight 2026-07-07
   int m_cutflags=NoCuts;
   std::vector<TCanvas*> m_can_vec;
 
@@ -137,7 +137,7 @@ class TrigEffMu4NoL1
   int  GetCentBin(int centrality);
 
   public:
-  TrigEffMu4NoL1(int read_flag=0,int quality=Bins::QualityCut::MEDIUM,int cutflags=NoCuts);
+  TrigEffMu4NoL1(int read_flag=0,int quality=Bins::QualityCut::TIGHT,int cutflags=NoCuts);// default WP Medium->Tight 2026-07-07
 
   float GetTriggerEfficiency    (int itrig, float eta, float pt, float charge, int cent_percentile);
   float CentMultiplier          (int itrig,            float pt,               int cent_percentile);

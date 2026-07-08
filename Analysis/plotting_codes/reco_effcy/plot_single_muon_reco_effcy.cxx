@@ -50,12 +50,17 @@ static const int colors[] = {kBlack, kRed+1, kBlue+1, kGreen+2, kMagenta+1,
 
 void plot_single_muon_reco_effcy(
     const std::string& mode = "pp",
-    const std::string& ctr_binning_version = "default")
+    const std::string& ctr_binning_version = "default",
+    bool useTight = true)  // NOMINAL muon WP = Tight (2026-07-07). false -> Medium (distinct output).
 {
     gROOT->SetBatch(kTRUE);
     gStyle->SetOptStat(0);
 
     const bool is_overlay = (mode == "overlay");
+
+    // Muon working-point selection. Only the quality bit differs; every other cut is unchanged.
+    const std::string wp_filter = useTight ? "pass_tight" : "pass_medium";
+    const std::string wp_label  = useTight ? "tight"      : "medium";
 
     std::string data_dir, plot_dir_base, input_file, sample_label;
     if (is_overlay) {
@@ -104,6 +109,8 @@ void plot_single_muon_reco_effcy(
 
     ROOT::RDF::RNode df_with_ctr = df_base;
 
+    // Route Medium (systematic) to a distinct subdir so it never clobbers the Tight nominal.
+    if (!useTight) plot_dir_base += "medium_wp/";
     gSystem->mkdir(plot_dir_base.c_str(), kTRUE);
 
     for (const auto& ctr : ctr_bins) {
@@ -128,7 +135,7 @@ void plot_single_muon_reco_effcy(
 
             auto h_denom = df_qeta.Histo1D(
                 {"h_denom", "", nPtBins, pt_edges.data()}, "truth_pt", "ev_weight");
-            auto h_num = df_qeta.Filter("pass_medium").Histo1D(
+            auto h_num = df_qeta.Filter(wp_filter).Histo1D(
                 {"h_num", "", nPtBins, pt_edges.data()}, "truth_pt", "ev_weight");
 
             TH1D* hd = (TH1D*)h_denom->Clone(("h_denom_" + tag).c_str());
@@ -166,7 +173,7 @@ void plot_single_muon_reco_effcy(
         h_frame->SetMinimum(ymin);
         h_frame->SetMaximum(ymax);
         h_frame->GetXaxis()->SetTitle("Truth p_{T} [GeV]");
-        h_frame->GetYaxis()->SetTitle("Single-muon reco efficiency (medium WP)");
+        h_frame->GetYaxis()->SetTitle(("Single-muon reco efficiency (" + wp_label + " WP)").c_str());
         h_frame->GetXaxis()->SetTitleSize(0.045);
         h_frame->GetYaxis()->SetTitleSize(0.045);
         h_frame->GetXaxis()->SetLabelSize(0.038);
@@ -276,7 +283,7 @@ void plot_single_muon_reco_effcy(
         {
             auto h_denom_int = df_ctr.Histo1D(
                 {"h_denom_int", "", nPtBins, pt_edges.data()}, "truth_pt", "ev_weight");
-            auto h_num_int = df_ctr.Filter("pass_medium").Histo1D(
+            auto h_num_int = df_ctr.Filter(wp_filter).Histo1D(
                 {"h_num_int", "", nPtBins, pt_edges.data()}, "truth_pt", "ev_weight");
 
             TH1D* hd_int = (TH1D*)h_denom_int->Clone(("h_denom_int_" + ctr.suffix).c_str());
@@ -314,7 +321,7 @@ void plot_single_muon_reco_effcy(
             h_frame_int->SetMinimum(0.0);
             h_frame_int->SetMaximum(1.15);
             h_frame_int->GetXaxis()->SetTitle("Truth p_{T} [GeV]");
-            h_frame_int->GetYaxis()->SetTitle("Single-muon reco efficiency (medium WP)");
+            h_frame_int->GetYaxis()->SetTitle(("Single-muon reco efficiency (" + wp_label + " WP)").c_str());
             h_frame_int->GetXaxis()->SetTitleSize(0.045);
             h_frame_int->GetYaxis()->SetTitleSize(0.045);
             h_frame_int->GetXaxis()->SetLabelSize(0.038);

@@ -304,6 +304,10 @@ void RDFBasedHistFillingPbPb::FillHistogramsDimuTrigGivenMu4(){
 	       	std::string df_name = "df" + pair_sign; // e.g, df_ss_mu1passmu4
 			ROOT::RDF::RNode& node = map_at_checked(df_map, df_name, Form("FillHistogramsDimuTrigGivenMu4: df_map.at(%s)", df_name.c_str()));
 
+			// WP config var: nominal = TIGHT — measure the trigger turn-on on TIGHT tag+probe pairs
+			// (matches the tight signal selection); Medium (systematic, isTight=false) uses all medium pairs.
+			if (isTight) { df_map.at(df_name) = df_map.at(df_name).Filter("pair_pass_tight", "tight_tag_and_probe"); }
+
 	       	for (auto mu4sel : {"_mu1passmu4", "_mu2passmu4"}){ // mu4 selection
 	           	std::string df_name = "df" + pair_sign + mu4sel; // e.g, df_ss_mu1passmu4
 
@@ -659,7 +663,8 @@ void RDFBasedHistFillingPbPb::OpenEffcyPtFitFile() {
     std::string yr = std::to_string(run_year);
     std::string base_dir = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + yr;
 
-    std::string fit_path = base_dir + "/trg_effcy_pT_fitting_to_fermi_plus_log/single_mu_effcy_pT_fit.root";
+    std::string wpsuf = isTight ? "" : "_medium_wp";   // WP-matched trig-eff fit (nominal tight unsuffixed)
+    std::string fit_path = base_dir + "/trg_effcy_pT_fitting_to_fermi_plus_log/single_mu_effcy_pT_fit" + wpsuf + ".root";
     s_effcy_pT_fit_file = TFile::Open(fit_path.c_str(), "READ");
     if (!s_effcy_pT_fit_file || s_effcy_pT_fit_file->IsZombie()) {
         std::cerr << "OpenEffcyPtFitFile: FAILED to open " << fit_path << std::endl;
@@ -675,7 +680,7 @@ void RDFBasedHistFillingPbPb::OpenEffcyPtFitFile() {
     }
     std::cout << "OpenEffcyPtFitFile: loaded " << s_effcy_pT_fit_map.size() << " TF1s from " << fit_path << std::endl;
 
-    std::string hist_path = base_dir + "/histograms_real_pairs_pbpb_20" + yr + "_single_mu4_fine_q_eta_bin.root";
+    std::string hist_path = base_dir + "/histograms_real_pairs_pbpb_20" + yr + "_single_mu4_fine_q_eta_bin" + wpsuf + ".root";
     s_effcy_2D_hist_file = TFile::Open(hist_path.c_str(), "READ");
     if (!s_effcy_2D_hist_file || s_effcy_2D_hist_file->IsZombie()) {
         std::cerr << "OpenEffcyPtFitFile: FAILED to open 2D hist file " << hist_path << std::endl;
@@ -943,9 +948,21 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
     std::cout << "[PbPb] FillHistogramsCrossx: opposite-sign only, signal cuts, centrality-aware weighted crossx histograms" << std::endl;
 
     OpenEffcyPtFitFile();
-    OpenRecoEffPlaceholderFile();  // Run 2 reco-eff PLACEHOLDER (eps1*eps2 proxy, per-centrality)
+    OpenRecoEffPlaceholderFile(isTight);  // Run 2 reco-eff PLACEHOLDER (eps1*eps2 proxy, per-centrality; WP-matched keys)
 
     const std::string signal_cuts = "minv > 1.08 && minv < 2.9 && pair_pt > 8 && m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2";
+
+    // --- Muon working-point (WP) selection for the DATA crossx spectrum ---
+    // NOMINAL WP = TIGHT (isTight=true). Tight ⊂ Medium and the pair-level Tight flag
+    // (both muons quality&16) is already serialized in the data pair tree, so we select it
+    // here with a Filter -- NO ntuple reprocessing. Setting isTight=false recovers the Medium
+    // spectrum (WP systematic; distinct _medium_wp output). Applied to BOTH df_op and df_ss so
+    // every downstream crossx pull inherits it; only the quality bit (8->16) changes.
+    // (docs/muon_wp_registry.md §3; tight_wp_default_change.md S2.3)
+    if (isTight) {
+        df_map.at("df_op") = map_at_checked(df_map, "df_op", "FillHistogramsCrossx PbPb: df_op (tight WP)").Filter("pair_pass_tight");
+        df_map.at("df_ss") = map_at_checked(df_map, "df_ss", "FillHistogramsCrossx PbPb: df_ss (tight WP)").Filter("pair_pass_tight");
+    }
 
     ROOT::RDF::RNode df_op_base = map_at_checked(df_map, "df_op", "FillHistogramsCrossx PbPb: df_op");
     ROOT::RDF::RNode df_single_b_crossx = df_op_base.Filter(signal_cuts);

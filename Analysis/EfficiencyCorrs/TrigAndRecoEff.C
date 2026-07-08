@@ -10,7 +10,7 @@ vector<float>   *muon_eff_SF_tight        =nullptr;
 
 
 int m_data_type    =Bins::DataType  ::PbPbAll; // see the enums in Bins.h - set to reflect the data type etc. I'm using
-int m_quality_cut  =Bins::QualityCut::MEDIUM ;
+int m_quality_cut  =Bins::QualityCut::TIGHT  ;// default WP Medium->Tight 2026-07-07
 const int m_eff_cor=Bins::EffCor    ::COR    ;
 
 //in main code

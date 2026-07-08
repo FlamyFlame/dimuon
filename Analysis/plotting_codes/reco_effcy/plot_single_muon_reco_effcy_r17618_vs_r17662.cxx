@@ -28,8 +28,13 @@ namespace {
     const std::string R17662 =
         "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/r17662_run/"
         "muon_pairs_pythia_fullsim_hijing_overlay_pp24_no_data_resonance_cuts_r17662_TRUEnodr.root";
-    const std::string OUTDIR =
+    std::string OUTDIR =
         "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/plots/r17618_vs_r17662_comparison/";
+
+    // Muon working point (NOMINAL = Tight; set by the entry function). Only the quality bit
+    // differs. make_eff() and the axis titles read these. Medium routes to a distinct outdir.
+    std::string wp_filter = "pass_tight";
+    std::string wp_label  = "tight";
 
     // Single-muon reco efficiency vs truth pT for one file, centrality [clo,chi),
     // and optional q*eta window (integrated=true ignores qeta). Same low-stat
@@ -44,7 +49,7 @@ namespace {
             dq = d.Filter([qlo, qhi](float qe){ return qe >= qlo && qe < qhi; }, {"q_eta"});
 
         auto h_denom = dq.Histo1D({"h_denom", "", nPtBins, pt_edges.data()}, "truth_pt", "ev_weight");
-        auto h_num   = dq.Filter("pass_medium").Histo1D({"h_num", "", nPtBins, pt_edges.data()}, "truth_pt", "ev_weight");
+        auto h_num   = dq.Filter(wp_filter).Histo1D({"h_num", "", nPtBins, pt_edges.data()}, "truth_pt", "ev_weight");
 
         TH1D* hd = (TH1D*)h_denom->Clone((std::string(name) + "_d").c_str());
         TH1D* hn = (TH1D*)h_num->Clone((std::string(name) + "_n").c_str());
@@ -74,7 +79,7 @@ namespace {
         TH1D* f = new TH1D(name, "", nPtBins, pt_edges.data());
         f->SetMinimum(0.0); f->SetMaximum(1.15);
         f->GetXaxis()->SetTitle("Truth p_{T} [GeV]");
-        f->GetYaxis()->SetTitle("Single-muon reco efficiency (medium)");
+        f->GetYaxis()->SetTitle(("Single-muon reco efficiency (" + wp_label + ")").c_str());
         f->GetXaxis()->SetTitleSize(titsize); f->GetYaxis()->SetTitleSize(titsize);
         f->GetXaxis()->SetLabelSize(labsize); f->GetYaxis()->SetLabelSize(labsize);
         f->GetXaxis()->SetMoreLogLabels(true); f->GetXaxis()->SetNoExponent(true);
@@ -82,9 +87,13 @@ namespace {
     }
 }
 
-void plot_single_muon_reco_effcy_r17618_vs_r17662() {
+void plot_single_muon_reco_effcy_r17618_vs_r17662(bool useTight = true) {
     gROOT->SetBatch(kTRUE);
     gStyle->SetOptStat(0);
+    // NOMINAL muon WP = Tight; pass false for Medium (routed to a distinct subdir).
+    wp_filter = useTight ? "pass_tight" : "pass_medium";
+    wp_label  = useTight ? "tight"      : "medium";
+    if (!useTight) OUTDIR += "medium_wp/";
     gSystem->mkdir(OUTDIR.c_str(), kTRUE);
 
     static const CommonEffcyConfig ecfg;
@@ -150,7 +159,7 @@ void plot_single_muon_reco_effcy_r17618_vs_r17662() {
                 gPad->SetTopMargin(0.06); gPad->SetRightMargin(0.04);
 
                 TH1D* hf = make_frame(("fsub_" + ctr.suffix + "_q" + std::to_string(iq)).c_str(), 0.055, 0.048);
-                hf->GetYaxis()->SetTitle("#varepsilon_{reco} (medium)");
+                hf->GetYaxis()->SetTitle(("#varepsilon_{reco} (" + wp_label + ")").c_str());
                 hf->GetXaxis()->SetTitleOffset(1.1); hf->GetYaxis()->SetTitleOffset(1.2);
                 hf->Draw();
                 frames.push_back(hf);

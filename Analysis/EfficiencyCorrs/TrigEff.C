@@ -545,7 +545,7 @@ void TrigEff::Plot2DEff(int itype,int itrig){
 
 
 //Compare the Trigger Effs between different datasets
-void PlotEffCompare(int quality_cut=Bins::QualityCut::MEDIUM,int icase=0,int itype=TrigEff::RERUN){
+void PlotEffCompare(int quality_cut=Bins::QualityCut::TIGHT,int icase=0,int itype=TrigEff::RERUN){// default WP Medium->Tight 2026-07-07
   
   vector<int>  data_types={Bins::DataType::PbPbAll,Bins::DataType::pp2017,Bins::DataType::pp2017_13TeV};
   if(icase==1) data_types={Bins::DataType::pp2017,Bins::DataType::pp2017_MB,Bins::DataType::pp2017_HMT};

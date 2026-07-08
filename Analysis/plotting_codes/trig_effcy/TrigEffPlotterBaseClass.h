@@ -56,6 +56,11 @@ public:
     bool debug_mode = false;
     bool isBNL = true;
 
+    // Muon working-point LABEL for on-plot text. Default = Tight (nominal WP as of 2026-07-07;
+    // docs/tracking/tight_wp_default_change.md). Cosmetic only: this plotter applies NO WP filter —
+    // the WP is inherited from the input trees. Set to "Medium #mu" when plotting Medium-WP inputs.
+    std::string wp_label = "Tight #mu";
+
     enum class SignalDrawingMode { Signed, Signal, OpAndSignal };
 
     using StrVec     = std::vector<std::string>;

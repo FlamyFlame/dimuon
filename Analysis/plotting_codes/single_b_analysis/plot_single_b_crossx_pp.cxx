@@ -25,12 +25,12 @@ public:
                    "d^{2}#sigma/dp_{T}d#DeltaR [pb GeV^{-1}]");
         DrawPairPtByEtaWithDrLines(
             "h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts",
-            "PP 2024, medium WP", trig_label_pp,
+            "PP 2024, tight WP", trig_label_pp,
             "pp24_crossx_pair_pt_in_eta_subplots_dr_lines.png",
             "d#sigma/dp_{T} [pb GeV^{-1}]");
         DrawPairPtByEta(
             "h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts",
-            "PP 2024, medium WP", trig_label_pp,
+            "PP 2024, tight WP", trig_label_pp,
             "pp24_crossx_pair_pt_in_eta_subplots.png",
             "d#sigma/dp_{T} [pb GeV^{-1}]");
 
@@ -42,12 +42,12 @@ public:
                        "d^{2}#sigma/dp_{T}d#eta [pb GeV^{-1}]");
             DrawPairPtByEtaWithDrLines(
                 "h3d_crossx_dr_vs_pair_eta_vs_pt_150_w_signal_cuts",
-                "PP 2024, medium WP", trig_label_pp,
+                "PP 2024, tight WP", trig_label_pp,
                 "pp24_crossx_pair_pt_in_eta_subplots_dr_lines.png",
                 "d#sigma/dp_{T} [pb GeV^{-1}]");
             DrawPairPtByEta(
                 "h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts",
-                "PP 2024, medium WP", trig_label_pp,
+                "PP 2024, tight WP", trig_label_pp,
                 "pp24_crossx_pair_pt_in_eta_subplots.png",
                 "d#sigma/dp_{T} [pb GeV^{-1}]");
             output_dir = base_out;
