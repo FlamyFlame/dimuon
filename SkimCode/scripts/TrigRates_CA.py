@@ -95,6 +95,23 @@ if (do_hi2023 or do_hi2024 or do_hi2025 or do_pp2024 or do_pp_MC_fullsim_24):
 is_MC = do_pp_MC_fullsim_17 or do_pp_MC_fullsim_24
 # ------------------------------------------------------------
 
+# ------------------------------------------------------------
+# Trigger simulation availability.
+#
+# The Run-3 fullsim AODs are reconstructed with AMI reco tag r16578 (pp24 conditions),
+# whose steering is "doRDO_TRIG" "doTRIGtoALL": the trigger is simulated before
+# reconstruction and the full trigger EDM is written to the AOD (xTrigDecision,
+# TrigConfKeys, HLTNav_Summary_AODSlimmed, HLT_MuonsCB_RoI, HLT_MuonsCB_FS, LVL1*).
+# HLT menu PhysicsP1_pp_lowMu_run3_v1; mu4 / 2mu4 / mu4_mu4noL1 all unprescaled.
+#
+# Legacy Run-2 fullsim (do_pp_MC_fullsim_17) and the EvGen/truth-only skims
+# (TruthTrigRates.py) have no trigger content.
+mc_has_trigger_sim = do_pp_MC_fullsim_24
+
+# Trigger processing runs for data, and for MC that carries trigger simulation.
+use_trigger = (not is_MC) or mc_has_trigger_sim
+# ------------------------------------------------------------
+
 
 # CA config here is intended for modern Run-3-style configurations
 if not (do_hi2023 or do_hi2024 or do_hi2025 or do_pp2024 or do_pp_MC_fullsim_24):
@@ -164,6 +181,17 @@ elif do_pp2024:
 elif do_pp_MC_fullsim_24:
 	dataSource = 'geant4'
 	InputFile = "/eos/user/y/yuhang/data/mc_powheg_fullsim/example_fullsim_AOD_files/AOD.36949837._016835.pool.root.1"
+	# Same chain lists as the pp2024 data mode: the simulated HLT menu
+	# (PhysicsP1_pp_lowMu_run3_v1) contains all of them, so MC and data trigger
+	# branches line up one-to-one.  2mu4 is the pp analysis trigger.
+	Muon_triggers = ["HLT_mu4_L1MU3V",
+									 "HLT_mu6_L1MU3V",
+									 "HLT_mu8_L1MU5VF",
+									 "HLT_mu10_L1MU8F",
+									 "HLT_mu12_L1MU8F",
+									 "HLT_mu15_L1MU8F",
+									 "HLT_mu15_L1MU14FCH"]
+	DiMuon_triggers = ["HLT_2mu3_L12MU3V", "HLT_2mu4_L12MU3V", "HLT_mu4_mu6_L12MU3V", "HLT_mu4_mu4noL1_L1MU3V"]
 else:
 	print("*"*50, "\nUnknown Dataset\n", "*"*50)
 	exit()
@@ -185,7 +213,11 @@ def build_cfg(evt_max=1000):
 	cfg = MainServicesCfg(flags)
 	cfg.merge(PoolReadCfg(flags))
 
-	cfg.addService(CompFactory.THistSvc(Output=["MYSTREAM DATAFILE='myfile.root' OPT='RECREATE'"]))
+	# Output filename from TRIGRATES_OUTPUT_FILE (set in grid_sub.sh alongside
+	# pathena --extOutFile), so each sample produces a descriptive per-dataset name.
+	# Defaults to myfile.root, which is what the data run dirs use.
+	_out_file = os.environ.get("TRIGRATES_OUTPUT_FILE", "myfile.root")
+	cfg.addService(CompFactory.THistSvc(Output=["MYSTREAM DATAFILE='%s' OPT='RECREATE'" % _out_file]))
 
 	trk_sel_cls = CompFactory.getComp("InDet::InDetTrackSelectionTool")
 	grl_cls = CompFactory.getComp("GoodRunsListSelectionTool")
@@ -226,7 +258,7 @@ def build_cfg(evt_max=1000):
 	cfg.addPublicTool(grl_tool)
 
 	trig_match_tool = None
-	if not is_MC:
+	if use_trigger:
 		tdt = cfg.getPrimaryAndMerge(TrigDecisionToolCfg(flags))
 		trig_match_tool = match_cls("MyTriggerMatchTool", TrigDecisionTool=tdt)
 		cfg.addPublicTool(trig_match_tool)
@@ -239,7 +271,7 @@ def build_cfg(evt_max=1000):
 	alg.TrackSelectionTool_HILoose = trk_hiloose
 	alg.TrackSelectionTool_HITight = trk_hitight
 	alg.MuonSelectionTool = mu_sel
-	if not is_MC:
+	if use_trigger:
 		alg.TriggerMatchTool = trig_match_tool
 
 	alg.GRLTool = grl_tool
@@ -251,9 +283,14 @@ def build_cfg(evt_max=1000):
 	alg.RunYear = RunYear
 	alg.IsEvgen = False
 	alg.UseGRL = True
-	alg.StoreAllEvents = False
-	alg.UseTrigger = (not is_MC)
-	alg.StoreL1Decision = (not is_MC)
+	# StoreAllEvents=False makes TrigRates DROP any event that fails the OR of all
+	# configured chains (TrigRates.cxx:305).  That is the intended data skim, but it
+	# would trigger-bias the MC: the reco-efficiency denominator and the MC trigger
+	# efficiency both need every event, with the decision merely RECORDED.
+	# So for trigger-simulated MC we keep all events; data keeps the trigger-OR skim.
+	alg.StoreAllEvents = (is_MC and mc_has_trigger_sim)
+	alg.UseTrigger = use_trigger
+	alg.StoreL1Decision = use_trigger
 	alg.TriggerChains = "|".join(MinBias_triggers)
 	alg.MuonTriggerChains = "|".join(Muon_triggers)
 	alg.DiMuonTriggerChains = "|".join(DiMuon_triggers)
@@ -266,7 +303,7 @@ def build_cfg(evt_max=1000):
 	alg.StorePixTracks = 0
 	alg.MaxZvtx = 250
 	alg.StoreVtx = True
-	alg.StoreL1TE = (not is_MC)
+	alg.StoreL1TE = use_trigger
 	alg.StoreMuonTruth = is_MC
 	alg.StoreSingleMuon = True
 	alg.StoreAcoplanarMuon = True
@@ -280,10 +317,15 @@ def build_cfg(evt_max=1000):
 	alg.IsZdcCalib = False
 	alg.StoreZdc = 1 if is_HION else 0   # 1=basic ZDC (energy/time/status/PreSampleAmp); add 2 for RPD centroid data
 	alg.ZdcAuxSuffix = ""
-	if do_hi2023 or do_hi2024 or do_hi2025 or do_pp2024:
+	# HLT muon containers exist wherever the trigger ran — in data, and in the
+	# Run-3 fullsim MC (doRDO_TRIG/doTRIGtoALL).  TrigRates::ProcessMuons hard-fails
+	# if the key is set but the container is absent, so gate on use_trigger.
+	if use_trigger:
 		alg.HLTMuonsKey = "HLT_MuonsCB_RoI"
+		alg.HLTMuonsFSKey = "HLT_MuonsCB_FS"
 	else:
 		alg.HLTMuonsKey = ""
+		alg.HLTMuonsFSKey = ""
 
 	cfg.addEventAlgo(alg)
 	return cfg

@@ -7,7 +7,8 @@
 #   ./grid_monitor.sh may2026_skim.txt                # data mode (default)
 #   ./grid_monitor.sh -i 15 may2026_skim.txt          # poll every 15 min when idle
 #   ./grid_monitor.sh 50267206 50267236 50267371       # task IDs directly
-#   ./grid_monitor.sh --mode overlay 50774658 50774690 # MC overlay mode
+#   ./grid_monitor.sh --mode overlay 50774658 50774690 # MC HIJING-overlay mode
+#   ./grid_monitor.sh --mode fullsim_pp 51234567 ...    # MC pp24-fullsim mode
 #
 # Multi-node: run the same command on each node (e.g. one tmux pane per node).
 # Each instance claims one task at a time; flock prevents double-claiming.
@@ -29,7 +30,9 @@ HADD_CHUNK_MAX_FILES=100  # max files per chunk in chunked fallback
 BIGPANDA_URL="https://bigpanda.cern.ch/task"
 MIN_SUCCESS_PCT=90
 MY_HOSTNAME=$(hostname -s)
-MODE="data"  # "data" or "overlay"
+MODE="data"  # "data", "overlay", or "fullsim_pp"
+# MC modes write NTUPs flat into DATA_BASE (no partN subdirs, no code auto-update).
+IS_MC_FLAT=0
 
 # Mode-dependent defaults are applied after argument parsing (see apply_mode_config).
 ANALYSIS_CODE_DIR="/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/NTupleProcessingCode"
@@ -44,9 +47,15 @@ apply_mode_config() {
 		overlay)
 			DATA_BASE="/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample"
 			RECORD_FILE="${DATA_BASE}/merging-record.txt"
+			IS_MC_FLAT=1
+			;;
+		fullsim_pp)
+			DATA_BASE="/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample"
+			RECORD_FILE="${DATA_BASE}/merging-record.txt"
+			IS_MC_FLAT=1
 			;;
 		*)
-			echo "ERROR: unknown mode '$MODE'. Use 'data' or 'overlay'." >&2; exit 1 ;;
+			echo "ERROR: unknown mode '$MODE'. Use 'data', 'overlay' or 'fullsim_pp'." >&2; exit 1 ;;
 	esac
 	LOG_DIR="${DATA_BASE}"
 	STATUS_LOG="${LOG_DIR}/grid_monitor_status.log"
@@ -85,7 +94,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ ${#TASK_IDS[@]} -eq 0 ]]; then
-	echo "ERROR: no task IDs provided. Usage: $0 [--mode data|overlay] [-i POLL_MINUTES] FILE_OR_TASKIDS..." >&2
+	echo "ERROR: no task IDs provided. Usage: $0 [--mode data|overlay|fullsim_pp] [-i POLL_MINUTES] FILE_OR_TASKIDS..." >&2
 	exit 1
 fi
 
@@ -150,8 +159,9 @@ set_task_state_if() {
 map_outds() {
 	local outds="$1"
 
-	if [[ "$MODE" == "overlay" ]]; then
+	if [[ "$IS_MC_FLAT" == 1 ]]; then
 		# user.yuhang.NTUP.Pythia_5p36TeV_pp_hQCD_DiMu_pTH8_14.FullSimHIJINGOverlayPP24.June2026.v1._EXT0
+		# user.yuhang.NTUP.Pythia_5p36TeV_nn_hQCD_DiMu_pTH8_14.FullSimPP24.July2026.v1._EXT0
 		# → dir="." (flat, DATA_BASE is the target), output_name from the NTUP filename pattern
 		local sample
 		sample=$(echo "$outds" | sed -n 's/.*NTUP\.\(Pythia_5p36TeV_[^.]*\)\.\(FullSim[^.]*\)\..*/\1.\2.NTUP/p')
@@ -310,7 +320,7 @@ recursive_hadd() {
 # Returns: EXTRAS_FILE SUB_FILE RUN_YEAR_KEY
 get_code_update_info() {
 	local target_subdir="$1"
-	[[ "$MODE" == "overlay" ]] && { echo ""; return; }
+	[[ "$IS_MC_FLAT" == 1 ]] && { echo ""; return; }
 	case "$target_subdir" in
 		pp_2024)   echo "$ANALYSIS_CODE_DIR/PPExtras.c   $ANALYSIS_CODE_DIR/run_pp_24.sub   24" ;;
 		pbpb_2023) echo "$ANALYSIS_CODE_DIR/PbPbExtras.c $ANALYSIS_CODE_DIR/run_pbpb_23.sub 23" ;;
@@ -551,8 +561,8 @@ process_task() {
 		# Single-file merge failed — chunked fallback (data mode only)
 		rm -f "$output_file"
 
-		if [[ "$MODE" == "overlay" ]]; then
-			log_error "task $tid: recursive hadd failed for overlay (${#roots[@]} files). Manual intervention needed."
+		if [[ "$IS_MC_FLAT" == 1 ]]; then
+			log_error "task $tid: recursive hadd failed for MC mode '$MODE' (${#roots[@]} files). Manual intervention needed."
 			return 1
 		fi
 

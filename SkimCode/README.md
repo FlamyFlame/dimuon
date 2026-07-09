@@ -77,13 +77,29 @@ Supported modes:
 | `hi2024`                   | 2024  | data24_hi Pb+Pb                       | data      | HI2024_50ns                          | yes      | yes         |
 | `hi2025`                   | 2025  | data25_hi Pb+Pb                       | data      | HI2025_50ns                          | yes      | yes         |
 | `pp2024`                   | 2024  | data24_5p36TeV pp reference           | data      | 2024ppRef_25ns                       | yes      | no          |
-| `ppmcfullsim2024`          | –     | Pythia8 pp fullsim MC                 | geant4    | (none)                               | off      | no          |
-| `ppmcfullsim_hioverlay24`* | 2024  | Pythia8 pp fullsim + HIJING overlay   | geant4    | (none)                               | off      | **off** — overlay AOD has no ZDC |
+| `ppmcfullsim2024`          | –     | Pythia8 pp fullsim MC                 | geant4    | (none)                               | **yes**† | no          |
+| `ppmcfullsim_hioverlay24`* | 2024  | Pythia8 pp fullsim + HIJING overlay   | geant4    | (none)                               | **yes**† | **off** — overlay AOD has no ZDC |
 
 *Lives in `run_pythia_fullsim_HIJING_overlay/TrigRates_CA.py`, not in
 `scripts/TrigRates_CA.py`. Uses a specialized config that adds the overlay run
 mode and an environment-driven output filename (`TRIGRATES_OUTPUT_FILE`,
 see below). Keep in mind when syncing from `scripts/`.
+
+†**Trigger is ON for Run-3 fullsim MC since the July 2026 skim.** The reco tags
+r16578 (pp24 conditions), r17618 and r17662 (HIJING overlay) all carry the AMI
+steering `"doRDO_TRIG" "doTRIGtoALL"`, so the trigger was simulated before
+reconstruction and the trigger EDM is present in the AOD. The configs gate trigger
+on `mc_has_trigger_sim` / `use_trigger`, **not** on `is_MC`. Simulated HLT menus:
+`PhysicsP1_pp_lowMu_run3_v1` (pp fullsim) and `Dev_HI_run3_v1` (overlay); `mu4`,
+`2mu4` and `mu4_mu4noL1` are unprescaled in both. Legacy Run-2 fullsim
+(`do_pp_MC_fullsim_17`) and the EvGen/truth-only skims keep trigger OFF.
+
+**MC keeps every event.** `alg.StoreAllEvents = (is_MC and mc_has_trigger_sim)`.
+With `StoreAllEvents=False`, `TrigRates::execute` (`TrigRates.cxx:305`) drops any
+event failing the OR of all configured chains — correct for the data skim, but it
+would trigger-bias the MC and destroy the reco-efficiency and MC trigger-efficiency
+denominators. In MC the decision is only *recorded*; any trigger requirement is a
+downstream (NTupleProcessing/RDF) choice.
 
 Centrality calibration (`Module_EventShape.cxx`, as of 2026-04): Run-3 years
 2023/24/25/26 all map to the PbPb2023 FCal-ET thresholds. Update the switch
@@ -217,9 +233,13 @@ Flag `& 1` always writes `RunNumber / lbn / bcid / eventNumber / (Act|Avg)IntPer
   PanDA assumes local staging (~490 GB scratch/job for 60 × ~8 GB files) and
   no site qualifies. `MAX` enables XRootD remote-read brokerage; only
   output + workdir disk is required (~50 GB).
-- **`HLT_MuonsCB_RoI` / `HLT_MuonsCB_FS` keys are data-only.** For MC modes
-  the HLT muon container keys are left empty; setting them on a MC AOD
-  causes retrieval failures.
+- **`HLT_MuonsCB_RoI` is required whenever `UseTrigger` is on.**
+  `TrigRates::ProcessMuons` (`TrigRates.cxx:1159`) hard-fails if the key is set
+  but the container is absent, so the key is gated on `use_trigger`, not on
+  `is_MC`. The Run-3 fullsim/overlay AODs (r16578 / r17618 / r17662) *do* contain
+  `HLT_MuonsCB_RoI` and `HLT_MuonsCB_FS` — the old "data-only" note applied to MC
+  produced before trigger simulation was enabled. (`HLTMuonsFSKey` is a dead
+  property: `Module_TrigMuonMatching.cxx:256` hardcodes the `HLT_MuonsCB_FS` string.)
 - **`asetup` must run in the same shell that later calls `athena.py`.**
   Piping its output (e.g. `source foo.sh | tail -3`) puts `source` in a
   subshell — env changes never reach the caller. Use
@@ -286,6 +306,11 @@ lines and decoration are ignored, so `may2026_skim.txt` works directly.
 | `grid_monitor_state.txt`  | Persistent state (pending/completed/failed per task); survives script restart |
 | `data-merging-record.txt` | Merged-file bookkeeping (appended by the script) |
 
+**Modes** (`--mode`): `data` (default), `overlay` (HIJING-overlay MC), and
+`fullsim_pp` (pp24-fullsim MC). The two MC modes write NTUPs flat into their
+`DATA_BASE` (no `partN` subdirectories) and skip the chunked-hadd fallback and the
+NTupleProcessing code auto-update; internally they share the `IS_MC_FLAT` flag.
+
 **outDS → directory mapping** (automatic):
 
 | outDS pattern | Target directory | Output name |
@@ -294,6 +319,12 @@ lines and decoration are ignored, so `may2026_skim.txt` works directly.
 | `PbPb2024data...partN._EXT0` | `pbpb_2024/` | `data_pbpb24_partN.root` |
 | `PbPb2025data...partN._EXT0` | `pbpb_2025/` | `data_pbpb25_partN.root` |
 | `pp2024data...partN._EXT0`   | `pp_2024/`   | `data_pp24_partN.root`   |
+| `NTUP.Pythia_5p36TeV_<s>.FullSimPP24...._EXT0` | `pythia_fullsim_test_sample/` | `Pythia_5p36TeV_<s>.FullSimPP24.NTUP.root` |
+| `NTUP.Pythia_5p36TeV_<s>.FullSimHIJINGOverlayPP24...._EXT0` | `pythia_fullsim_hijing_overlay_test_sample/` | `Pythia_5p36TeV_<s>.FullSimHIJINGOverlayPP24.NTUP.root` |
+
+The pp24-fullsim family is submitted from **`run_pythia_fullsim/grid_sub.sh`**
+(24 DSIDs = 4 isospin beams {pp,pn,np,nn} × 6 pTHat slices, 802758–802781, reco tag
+r16578). Monitor it with `grid_monitor.sh --mode fullsim_pp <task ids>`.
 
 **VOMS proxy:** The script checks proxy validity before each download.
 If expired, it logs a message and skips the download (retries next cycle).
