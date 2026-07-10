@@ -524,6 +524,16 @@ hadd, validation; bookkeeping (merging records, SkimCode README, this doc, roadm
     exactly the quantity that must NOT be taken from MC in absolute terms, and it is the
     systematic to carry on the MC-based ΔR correction.
 
+- 2026-07-10 — **R2 data-side menu names VERIFIED (and corrected).** User asked where the
+  PbPb-data menu claim came from; it had been asserted without a file check. Read
+  `TriggerMenuJson_{HLT,L1,HLTPS}` from the local PbPb23 test AOD
+  (`dimuon_data/test_aod/data23_hi/AOD.41716150._000001.pool.root.1`, run 462240,
+  physics_HardProbes; AthAnalysis env + `xAOD::MakeTransientMetaTree`): data HLT menu =
+  `PhysicsP1_HI_run3_v1` (R2 had wrongly said `Physics_HI_run3_v1`, which is the data **L1**
+  menu name), HLT PS sets `Physics_HI_{2e-05,1.6e-05}e32_880b`. R2 updated. The substantive
+  systematic note stands: overlay MC simulates a Dev menu + validation prescales; data runs a
+  PhysicsP1 menu + physics prescales.
+
 ## Results & Observations
 
 *(organized, mutable)*
@@ -560,8 +570,14 @@ trigger decisions and matching; it does not apply a trigger cut."
 
 ### R2. Trigger menus differ between MC and data (note for systematics)
 - pp fullsim r16578 → HLT `PhysicsP1_pp_lowMu_run3_v1`; pp24 data → the pp-reference physics menu.
-- overlay r17618/r17662 → HLT **`Dev_HI_run3_v1`** (a *development* menu) with the
-  `..._TriggerValidation_prescale` prescale set; PbPb data → `Physics_HI_run3_v1`.
+- overlay r17618/r17662 → HLT **`Dev_HI_run3_v1`** (a *development* menu), L1 `MC_HI_run3_v1`,
+  prescale set `Dev_HI_run3_v1_TriggerValidation_prescale`; PbPb23 data → HLT
+  **`PhysicsP1_HI_run3_v1`**, L1 `Physics_HI_run3_v1`, HLT prescale sets
+  `Physics_HI_{2e-05,1.6e-05}e32_880b`. *(Data side verified 2026-07-10 by reading
+  `MetaData` `TriggerMenuJson_{HLT,L1,HLTPS}` from the local test AOD
+  `dimuon_data/test_aod/data23_hi/AOD.41716150._000001.pool.root.1`, run 462240
+  physics_HardProbes — an earlier version of this entry asserted the data HLT menu was
+  `Physics_HI_run3_v1` without a file check; that is actually the data L1 menu name.)*
 The `mu4`/`2mu4`/`mu4_mu4noL1` chain *definitions* are the same and all run **unprescaled**
 (PS=1) in MC, but the Dev-vs-Physics menu difference should be recorded as a possible
 trigger-efficiency systematic when the MC-based ΔR correction is derived.
