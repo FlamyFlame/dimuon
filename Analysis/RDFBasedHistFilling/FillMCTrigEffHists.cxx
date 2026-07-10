@@ -255,43 +255,49 @@ struct MCEffEvaluator {
 
 // ---------- per-leg aliases on a pair tree ----------
 // Pair structs have no dictionary: use leaf-style columns. Dotted names need Alias before JIT.
-ROOT::RDF::RNode AliasLeg(ROOT::RDF::RNode node, int leg) {
+ROOT::RDF::RNode AliasLeg(ROOT::RDF::RNode node, int leg, const std::string& wp_col) {
     const std::string m = (leg == 1) ? "m1." : "m2.";  // this leg
     const std::string o = (leg == 1) ? "m2." : "m1.";  // partner leg
-    return node.Alias("lg_pt",         m + "pt")
-               .Alias("lg_eta",        m + "eta")
-               .Alias("lg_charge",     m + "charge")
-               .Alias("lg_pass_tight", m + "pass_tight")
-               .Alias("lg_passmu4",    m + "passmu4")
-               .Alias("ot_pt",         o + "pt")
-               .Alias("ot_eta",        o + "eta")
-               .Alias("ot_pass_tight", o + "pass_tight");
+    return node.Alias("lg_pt",      m + "pt")
+               .Alias("lg_eta",     m + "eta")
+               .Alias("lg_charge",  m + "charge")
+               .Alias("lg_wp",      m + wp_col)
+               .Alias("lg_passmu4", m + "passmu4")
+               .Alias("ot_pt",      o + "pt")
+               .Alias("ot_eta",     o + "eta")
+               .Alias("ot_wp",      o + wp_col);
 }
 
 } // namespace MCTrigEff
 
 // =============================================================================
-void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false) {
+void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
+                        bool use_tight_wp = true) {
     using namespace MCTrigEff;
 
     const SampleConfig cfg = GetSampleConfig(sample);
     const Binnings bins = MakeBinnings();
+    // WP config (registry: Analysis/docs/muon_wp_registry.md): TIGHT nominal, Medium
+    // reachable for the WP systematic. Medium outputs carry the _medium_wp suffix.
+    const std::string wp_col = use_tight_wp ? "pass_tight" : "pass_medium";
+    const std::string wp_suf = use_tight_wp ? "" : "_medium_wp";
 
     std::cout << "FillMCTrigEffHists: sample=" << sample << " (" << cfg.label << ")"
-              << ", do_step3=" << do_step3 << std::endl;
+              << ", do_step3=" << do_step3 << ", WP=" << (use_tight_wp ? "tight" : "medium")
+              << std::endl;
     std::cout << "  pair file:    " << cfg.pair_file << std::endl;
     std::cout << "  singles file: " << cfg.singles_file << std::endl;
 
-    // common selection = data-side muon definition (Tight nominal WP + fiducial)
-    const std::string sel_single = "pass_tight && pt > 4 && fabs(eta) < 2.4";
+    // common selection = data-side muon definition (nominal WP + fiducial)
+    const std::string sel_single = wp_col + " && pt > 4 && fabs(eta) < 2.4";
     // overlay: 0-5% centrality only (doc D2; test sample is b=0-5 fm)
     const std::string sel_single_full = cfg.is_overlay
         ? sel_single + " && ev_centrality >= 0 && ev_centrality < 5"
         : sel_single;
 
     const std::string sel_pair_legs =
-        "lg_pass_tight && lg_pt > 4 && fabs(lg_eta) < 2.4 && "
-        "ot_pass_tight && ot_pt > 4 && fabs(ot_eta) < 2.4";
+        "lg_wp && lg_pt > 4 && fabs(lg_eta) < 2.4 && "
+        "ot_wp && ot_pt > 4 && fabs(ot_eta) < 2.4";
     const std::string sel_pair_full = cfg.is_overlay
         ? sel_pair_legs + " && avg_centrality >= 0 && avg_centrality < 5"
         : sel_pair_legs;
@@ -360,7 +366,7 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false)
         for (const auto& tree : pair_trees) {
             rdf_store.emplace_back(std::make_unique<ROOT::RDataFrame>(tree, cfg.pair_file));
             for (int leg = 1; leg <= 2; ++leg) {
-                ROOT::RDF::RNode dl = AliasLeg(*rdf_store.back(), leg);
+                ROOT::RDF::RNode dl = AliasLeg(*rdf_store.back(), leg, wp_col);
                 dl = dl.Define("lg_q_eta", "(float)(lg_charge * lg_eta)")
                        .Filter(sel_pair_full, tree + Form(" leg%d selection", leg));
 
@@ -396,7 +402,7 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false)
         // (C) Step 3 (§3.3): inverse-weighted ε_ΔR inputs
         // =====================================================================
         evaluator = new MCEffEvaluator();  // heap: must outlive the lazy RDF loops
-        evaluator->LoadFits(cfg.dir + "single_mu_effcy_pT_fit_mc.root");
+        evaluator->LoadFits(cfg.dir + "single_mu_effcy_pT_fit_mc" + wp_suf + ".root");
 
         // pp: pair fires 2mu4; overlay (PbPb cross term): both legs mu4-matched
         const std::string trig_cond = cfg.is_overlay ? "m1_passmu4 && m2_passmu4" : "pass2mu4";
@@ -405,12 +411,12 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false)
             rdf_store.emplace_back(std::make_unique<ROOT::RDataFrame>(tree, cfg.pair_file));
             ROOT::RDF::RNode dp = *rdf_store.back();
             dp = dp.Alias("m1_pt", "m1.pt").Alias("m1_eta", "m1.eta").Alias("m1_charge", "m1.charge")
-                   .Alias("m1_pass_tight", "m1.pass_tight").Alias("m1_passmu4", "m1.passmu4")
+                   .Alias("m1_wp", "m1." + wp_col).Alias("m1_passmu4", "m1.passmu4")
                    .Alias("m2_pt", "m2.pt").Alias("m2_eta", "m2.eta").Alias("m2_charge", "m2.charge")
-                   .Alias("m2_pass_tight", "m2.pass_tight").Alias("m2_passmu4", "m2.passmu4");
+                   .Alias("m2_wp", "m2." + wp_col).Alias("m2_passmu4", "m2.passmu4");
 
-            std::string sel = "m1_pass_tight && m1_pt > 4 && fabs(m1_eta) < 2.4 && "
-                              "m2_pass_tight && m2_pt > 4 && fabs(m2_eta) < 2.4";
+            std::string sel = "m1_wp && m1_pt > 4 && fabs(m1_eta) < 2.4 && "
+                              "m2_wp && m2_pt > 4 && fabs(m2_eta) < 2.4";
             if (cfg.is_overlay) sel += " && avg_centrality >= 0 && avg_centrality < 5";
             dp = dp.Filter(sel, tree + " step3 selection");
 
@@ -452,7 +458,7 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false)
     if (evaluator) evaluator->PrintStats(cfg.label);
 
     // ---------- write ----------
-    const std::string out_name = cfg.dir + "mc_trig_eff_hists_" + cfg.label +
+    const std::string out_name = cfg.dir + "mc_trig_eff_hists_" + cfg.label + wp_suf +
                                  (do_step3 ? "_step3.root" : ".root");
     TFile fout(out_name.c_str(), "RECREATE");
     if (fout.IsZombie()) throw std::runtime_error("FillMCTrigEffHists: cannot open output " + out_name);

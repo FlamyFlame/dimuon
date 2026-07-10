@@ -92,7 +92,7 @@ TF1* FitTurnOn(TGraphAsymmErrors* g, FittingMode mode, const std::string& fname,
 } // namespace MCSinglesFit
 
 // =============================================================================
-void FitMCSinglesEffcy(const std::string& sample = "pp") {
+void FitMCSinglesEffcy(const std::string& sample = "pp", bool use_tight_wp = true) {
     using namespace MCSinglesFit;
 
     std::string dir, label;
@@ -110,8 +110,10 @@ void FitMCSinglesEffcy(const std::string& sample = "pp") {
         return;
     }
 
-    const std::string infile_name = dir + "mc_trig_eff_hists_" + label + ".root";
-    const std::string outfile_name = dir + "single_mu_effcy_pT_fit_mc.root";
+    // WP config (registry: Analysis/docs/muon_wp_registry.md): TIGHT nominal unsuffixed
+    const std::string wp_suf = use_tight_wp ? "" : "_medium_wp";
+    const std::string infile_name = dir + "mc_trig_eff_hists_" + label + wp_suf + ".root";
+    const std::string outfile_name = dir + "single_mu_effcy_pT_fit_mc" + wp_suf + ".root";
     const std::string plot_dir = dir + "mc_trig_eff_fit_plots/";
     gSystem->mkdir(plot_dir.c_str(), kTRUE);
 
