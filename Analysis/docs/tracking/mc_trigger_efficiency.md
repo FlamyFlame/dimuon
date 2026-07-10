@@ -210,8 +210,10 @@ completion and re-run the (cheap) downstream stages when all 24 are in. Not high
    propagating per-muon mu4 matching + pair-level 2mu4 decisions into the fullsim
    muon-pair and single-muon trees, `_mc_trig` output suffix. `/review-analysis-code`
    **PASS iter 1** (0 CRITICAL / 0 WARNING, 5 INFO; provenance 359/359 bit-exact vs raw).
-3. [ ] **Run NTP** over pp fullsim (available slices, D3) → MC pair/single-muon trees with
-   trigger info.
+3. [x] **Run NTP** (full stats, 2026-07-10, both samples): pp pairs SS 41 096 / OS 152 219
+   (kin-sum == global ⇒ double-fill fix verified at full stats), pp singles 455 440;
+   overlay pairs SS 10 636 / OS 39 211, overlay singles 95 410. Old `pp_pTH8_14` skipped
+   (D3). Outputs `*_mc_trig*.root` in the two sample dirs.
 4. [ ] **Step 1 (§3.1) pp:** RDF filling + MC singles ε(pT, q·η) per charge; overlay vs pp24
    data tag-and-probe (pT/η/φ 1D, μ⁺ left | μ⁻ right; pT in q·η bins). `/review-analysis-code`
    + `/review-plot`.
@@ -225,7 +227,7 @@ completion and re-run the (cheap) downstream stages when all 24 are in. Not high
 
 ## Progress Log
 
-*(append-only)*
+*(append-only; newest entries at the END)*
 
 - 2026-07-10 — Doc created. Physics Procedure written from user specification + inheritance
   from `mu4_trig_effcy_implementation.md` (equations, §3c cross-term, D9) and
@@ -266,6 +268,74 @@ completion and re-run the (cheap) downstream stages when all 24 are in. Not high
   0.564/0.723/0.855/0.882/0.871 (plateau ~0.87–0.88, Run-2-consistent). Overlay: 733
   both-reco pairs, avg centrality 2.06% (D2 confirmed). Provenance: 359/359 pairs bit-exact
   vs raw NTUP; C6 weight = σ·ε_filt·isospin/N exact.
+
+- 2026-07-10 — **Step 3 (full NTP runs) DONE.** 4 sequential runs, all rc=0: pp pairs
+  (SS 41 096, OS 152 219; kin-tree sum == global tree ⇒ the imported double-fill fix
+  verified at full stats), pp singles (455 440 reco-matched muons), overlay pairs
+  (SS 10 636, OS 39 211 — exactly the previously-halved kin-sum count), overlay singles
+  (95 410). Old `pp_pTH8_14` skipped per D3. The single-muon-mode "cut-acceptance ZERO
+  bin" caught-error is pre-existing (pair histograms unused in that mode).
+
+- 2026-07-10 — **Step 4 MC side DONE (delegated executor; merged from `_sub_mctrig_mc_side.md`).**
+  New `RDFBasedHistFilling/FillMCTrigEffHists.cxx` (`FillMCTrigEffHists(sample, do_step3)`;
+  Step-1 singles + Step-2 ΔR-binned pair-leg hists → `mc_trig_eff_hists_<label>.root`, Step-3
+  → separate `..._step3.root`) and `RDFBasedHistFilling/FitMCSinglesEffcy.cxx` (MC turn-on
+  fits mirroring SingleMuEffcyPtTurnOnFitter exactly: pp erf+log / overlay fermi+log, "QR",
+  [4,60], BayesDivide graphs; TF1 keys `f_mc_pt_vs_q_eta_<muplus|muminus>_<lo>_TO_<hi>` +
+  fallback ratio TH2D, in `<dir>/single_mu_effcy_pT_fit_mc.root`). Data binning conventions
+  replicated exactly (pt2nd = pT_bins_8+pT_bins_60 incl. the zero-width duplicated-8.0 edge;
+  q·η = eta_bins_trig_effcy 171 bins; φ 128; pair_pt = pT_bins_120). All MC-weighted; overlay
+  restricted to 0–5% (D2). **Headline numbers (full stats):**
+  - §3.1 P(mu4|Tight+fiducial): pp μ⁺/μ⁻ 0.786/0.776 integrated, turn-on 0.62–0.65 → plateau
+    0.90–0.91; overlay 0.629/0.627 → plateau 0.81–0.84.
+  - Fits: 40/40 converged (status 0), χ²/ndf ~20–53/36.
+  - **§3.3 ε_ΔR plateau (dR∈[1,3] avg): pp 0.963 (≈1 within 4% ✓); overlay 0.864** (~14% low —
+    low stats + D1-expected overlay degradation). Small ΔR: pp 2mu4 SUPPRESSION 0.77–0.84 below
+    0.2 recovering by ~0.35 (two distinct L1 RoIs required → merging kills 2mu4); overlay mu4
+    cross-term ENHANCEMENT 1.95/1.43/1.31/1.05 in [0,0.05)/…/[0.15,0.2) (one RoI can match both
+    offline muons → both legs flagged), statistically weak. Nothing tuned.
+  - ε-evaluation bookkeeping: TF1 clamp[4,60]+floor 0.02 fired 0.053% (pp) / 0.27% (overlay);
+    ~18% of legs in q·η gap regions use the unfitted 2D-ratio fallback (mirrors data
+    EvaluateSingleMuonEffcyPtFitted).
+  Note: the global pair trees are no longer double-filled (kin-sum == global verified, step 3),
+  so the scratch doc's residual double-fill caveat is obsolete — ratios were immune either way.
+
+- 2026-07-10 — **Step 4 data side DONE (delegated executor; merged from `_sub_mctrig_data_side.md`).**
+  Probe 1D histograms added to the P2 tag-and-probe filling: `pt2nd`/`eta2nd`/`phi2nd`/`q_eta2nd`
+  APPENDED to `single_muon_trig_effcy_var1Ds` (`RDFBasedHistFillingData.h:38` — note the `={}`
+  at Data.cxx:62 is the isForSoumya branch, not the nominal default); `eta2nd_bins` registered
+  (48 uniform [-2.4,2.4]; per-ctr PbPb variants 48/48/48/48/24/12); `eta2nd` entries added to
+  var1D_pp.json + var1D_pbpb.json. P2 regenerated for pp24 + pbpb23 (backups `*.bak_20260710`).
+  **Validation:** graph name sets identical to backups (60 pp / 540 pbpb) with bitwise-identical
+  spot-checked values; 2D integrals exactly equal (pp `h_pt2nd_vs_q_eta2nd_mu4_sepr` 1 021 432;
+  pbpb `_ctr0_5_sign1_mu4_sepr` 184 180); added keys exclusively the probe 1Ds (48 pp / 240
+  pbpb). Integrated P(2mu4 | mu4-tag, sepr): **pp24 sign1 0.6836, pbpb23 ctr0_5 sign1 0.5040**.
+
+- 2026-07-10 — **Step 4 review (/review-analysis-code, 2 reviewer subagents).** Data side:
+  **PASS iter 1** (0C/0W/2 INFO) — content preservation verified exhaustively (all 252 pp +
+  1672 pbpb pre-existing objects bitwise identical to backups incl. Sumw2 and graph error
+  arrays); all numbers reproduced; new probe-η/φ efficiencies show the expected L1 structure
+  (η≈0 crack, |η|≈1.1–1.2 transition, feet dips, 16-sector φ modulation). MC side: **FAIL
+  iter 1 (1 WARNING, 5 INFO) → amended → see next entry.** All MC numbers reproduced to 6
+  digits; §4 constraints, D2, C5, C6, fit-mirror exactness all verified. Corrections from
+  the review: (a) the q·η axis is **184** bins (not 171 as previously logged; the bit-exact
+  match to the data histogram edges is what matters and holds); (b) pp fit χ²/ndf range is
+  20.1–**56.9**/36 (worst bin `muplus_minus2_40_TO_minus2_00`), still acceptable.
+- 2026-07-10 — **WARNING resolved: overlay ε_ΔR^cross plateau 0.864 is a flat SYSTEMATIC
+  offset, not low statistics.** Reviewer's per-bin check: all 8 bins in dR∈[1,3] sit below 1
+  (0.82–0.96), offset ≈3–4σ even with conservative errors. Per §3.3 diagnostic (2) this is
+  per-leg fit/parameterization quality (fermi+log residuals in the turn-on where the pairs
+  live; φ/occupancy structure absent from the (pT, q·η) parameterization) — pre-registered
+  by the Physics Procedure as a plateau-offset metric, so no C4 investigation. **Consequence
+  recorded: ε_ΔR^cross must be PLATEAU-NORMALIZED (shape relative to the large-ΔR plateau)
+  — or the per-leg parameterization improved — before it dresses the PbPb union cross term.**
+  pp needs the same treatment in principle (plateau 0.963, a 4% offset).
+  **INFO-6 verified (orchestrator):** the overlay small-ΔR enhancement is NOT a floor
+  artifact — recomputed with floor 0.02→0.10 and with floored pairs dropped entirely:
+  [0,0.05) 1.952→1.900/1.934, [0.05,0.1) 1.434→1.337/1.360, plateau unchanged (0.864→0.861/
+  0.863). Relative to plateau, ε_ΔR^cross(dR<0.05)/plateau ≈ 2.2. INFO code fixes applied
+  (output-TFile zombie checks; MCEffEvaluator throws on missing efficiency source instead of
+  silently flooring; SS+OS summing intent commented); both macros recompile clean.
 
 ## Results & Observations
 
@@ -361,26 +431,15 @@ define+filter pattern to mirror at `RDFBasedHistFillingPythiaFullsim.cxx:128-139
 
 ## Latest Stage
 
-**2026-07-10 — Discovery DONE (R1, R2). Starting Implementation Plan step 2: NTP trigger
-extension, via /review-analysis-code.** Design (per §3.1–§3.3, §4, R1, R2):
-- New public flag `store_mc_trigger` (default false) on the fullsim NTP core; runners set it
-  together with `extra_output_suffix="_mc_trig"` → outputs
-  `muon_pairs_pythia_fullsim_<label>_no_data_resonance_cuts_mc_trig.root` etc. Nominal
-  outputs untouched.
-- Bind (gated, per file): `muon_b_HLT_mu4_L1MU3V` (bare = mindR 0.02, data-mirror),
-  `dimuon_b_HLT_2mu4_L12MU3V_0_02`, `muon_pair_muon{1,2}_index`, event-level
-  `b_HLT_mu4_L1MU3V` / `b_HLT_2mu4_L12MU3V`. If a file lacks the branches (old trigger-off
-  NTUP, e.g. in-flight pp_pTH8_14) → SKIP the file with a loud printout (R2; never
-  default-false).
-- `fill_reco_quantities`: keep the reco index (new `reco_ind` field, default −1, on
-  the fullsim muon extra) and set `m.passmu4 = muon_b_HLT_mu4->at(reco_ind)`. NO mu6/mu8
-  OR-ing (data D7 disabled them).
-- Pair-level: mix `PairDataExtras` (or minimal equivalent) into the fullsim pair structs;
-  per event build (i<j reco-index)→skim-pair-index map from `muon_pair_muon{1,2}_index`;
-  set `pass2mu4` from `dimuon_b_HLT_2mu4_L12MU3V_0_02` when both legs reco-matched;
-  `passSeparated = dr>0.8` computed.
-- Single-muon-tree mode + `store_mc_trigger`: fill per truth muon that is RECO-matched
-  (gate on reco pT>3 loose; exact fiducial pT>4,|η|<2.4 applied later in RDF on reco
-  quantities) so the Step-1 denominator is an offline-reco-muon condition, not a truth one
-  (turn-on region must not be sculpted by a truth-pT gate).
-Then: NTP runs (pair + single-muon, pp first), RDF + fits + plots per plan steps 4–7.
+**2026-07-10 — Step 4 (Step-1 measurement inputs) IN PROGRESS, delegated to two parallel
+subagents** (scratch docs `_sub_mctrig_mc_side.md`, `_sub_mctrig_data_side.md`; orchestrator
+owns git + this doc):
+- **MC side:** weighted Step-1/2/3 histogram filling from the `_mc_trig` NTP outputs
+  (singles: per-charge pt/eta/phi 1D + q·η×pT 2D, Tight+fiducial, overlay restricted to
+  0–5% centrality per D2; pairs: ΔR-binned singles hists + Step-3 dR num/denom) + MC
+  turn-on fits (same functional forms as data nominal: pp erf+log, PbPb fermi+log; TF1
+  out-of-range clamp per `pp_trig_eff_highpt_jump` lesson).
+- **Data side:** add probe `pt2nd`/`eta2nd`/`phi2nd` 1D variables to the P2 trig-eff
+  filling (empty `single_muon_trig_effcy_var1Ds` hook, RDFBasedHistFillingData.cxx:62),
+  back up + regenerate `histograms_real_pairs_{pp_2024,pbpb_2023}_single_mu4_fine_q_eta_bin.root`.
+Then: /review-analysis-code on both, then Step-1 comparison plots (/review-plot).
