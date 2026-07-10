@@ -38,6 +38,8 @@ struct MuonMCTruthKinExtra {
 struct MuonFullsimExtra {
     bool pass_medium{};
     bool reco_match{}; // matched with a reco muon with prob > 0.5
+    int  reco_ind{-1}; // index of the matched reco muon in the raw-NTUP muon block (-1 = unmatched);
+                       // needed to look up per-muon and per-pair trigger-matching branches
 };
 
 struct MuonPythiaExtra {

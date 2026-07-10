@@ -489,6 +489,7 @@ template <class PairT, class MuonT, class Derived, class... Extras>
 void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::OutputTreePathHook() {
     std::string apply_suffix = turn_data_resonance_cuts_on ? "_with_data_resonance_cuts" : "_no_data_resonance_cuts";
     std::string local_suffix = getUseLocal() ? "_local_batch" : "";
+    std::string trig_suffix  = store_mc_trigger ? "_mc_trig" : ""; // never clobber nominal outputs
 
     std::string output_dir;
     if (is_fullsim || is_fullsim_overlay) {
@@ -500,13 +501,14 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::OutputTreePathHook() {
         output_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_truth_full_sample/" + ecom_subdir + "/";
     }
 
-    this->output_file_path = output_dir + outfile_name + apply_suffix + local_suffix + this->extra_output_suffix + ".root";
+    this->output_file_path = output_dir + outfile_name + apply_suffix + local_suffix + trig_suffix + this->extra_output_suffix + ".root";
 }
 
 template <class PairT, class MuonT, class Derived, class... Extras>
 void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::OutputHistPathHook() {
     std::string apply_suffix = turn_data_resonance_cuts_on ? "_with_data_resonance_cuts" : "_no_data_resonance_cuts";
     std::string local_suffix = getUseLocal() ? "_local_batch" : "";
+    std::string trig_suffix  = store_mc_trigger ? "_mc_trig" : ""; // never clobber nominal outputs
 
     std::string output_dir;
     if (is_fullsim || is_fullsim_overlay) {
@@ -518,7 +520,7 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::OutputHistPathHook() {
         output_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_truth_full_sample/" + ecom_subdir + "/";
     }
 
-    this->output_hist_file_path = output_dir + outhistfile_name + apply_suffix + local_suffix + this->extra_output_suffix + ".root";
+    this->output_hist_file_path = output_dir + outhistfile_name + apply_suffix + local_suffix + trig_suffix + this->extra_output_suffix + ".root";
 }
 
 // ---------------------------------------------------------------------------

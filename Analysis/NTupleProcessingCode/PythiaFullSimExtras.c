@@ -27,6 +27,67 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::InitInputExtra(){
     for (int ikin = 0; ikin < self().nKinRanges; ikin++)
         for (int ibeam = 0; ibeam < self().nBeamTypes; ibeam++)
             bind_reco(self().evChains_kn_beam[ikin][ibeam]);
+
+    if (self().store_mc_trigger) {
+        // Trigger propagation mode: bind the trigger branches on every chain.
+        // A file without them is an old trigger-off skim (e.g. a slice whose _July2026
+        // grid job has not landed yet): DROP it entirely. Default-filling passmu4=false
+        // for its muons would enter the denominators with an impossible numerator and
+        // bias every efficiency built downstream.
+        auto bind_trigger = [&](TChain* ch) -> bool {
+            if (!ch) return true; // nothing to do
+            // The presence check below inspects one file; the per-chain skip equals a
+            // per-file skip ONLY while InitInputFullsim builds one-file chains. Guard
+            // that assumption: a mixed multi-file chain would silently carry stale
+            // trigger values across the file boundary (the exact bias this mode forbids).
+            if (ch->GetListOfFiles()->GetEntries() != 1)
+                throw std::runtime_error("store_mc_trigger: expected one file per fullsim chain; "
+                                         "re-implement the trigger-branch check per file");
+            if (!ch->GetBranch("muon_b_HLT_mu4_L1MU3V")) return false;
+            enable_and_bind(ch, "muon_b_HLT_mu4_L1MU3V"        , &muon_b_HLT_mu4);
+            enable_and_bind(ch, "dimuon_b_HLT_2mu4_L12MU3V_0_02", &dimuon_b_2mu4_mindR);
+            enable_and_bind(ch, "muon_pair_muon1_index"         , &muon_pair_muon1_index);
+            enable_and_bind(ch, "muon_pair_muon2_index"         , &muon_pair_muon2_index);
+            enable_and_bind(ch, "b_HLT_mu4_L1MU3V"              , &b_HLT_mu4);
+            enable_and_bind(ch, "b_HLT_2mu4_L12MU3V"            , &b_HLT_2mu4);
+            return true;
+        };
+
+        for (int ikin = 0; ikin < self().nKinRanges; ikin++) {
+            for (int ibeam = 0; ibeam < self().nBeamTypes; ibeam++) {
+                TChain*& ch = self().evChains_kn_beam[ikin][ibeam];
+                if (!ch) continue;
+                if (!bind_trigger(ch)) {
+                    const char* fname = ch->GetListOfFiles()->GetEntries() > 0
+                        ? ch->GetListOfFiles()->At(0)->GetTitle() : "(unknown file)";
+                    std::cerr << "==============================================================\n"
+                              << "store_mc_trigger: NO trigger branches in\n  "
+                              << fname << "\n"
+                              << "  (old trigger-off skim) -> SKIPPING this file entirely.\n"
+                              << "  Re-run when its _July2026 re-skim lands.\n"
+                              << "==============================================================" << std::endl;
+                    self().nentries_kn_sum[ikin] -= self().nentries_kn_beam[ikin][ibeam];
+                    self().nentries_kn_beam[ikin][ibeam] = 0;
+                    delete ch;
+                    ch = nullptr;
+                }
+            }
+        }
+    }
+}
+
+template <class PairT, class MuonT, class Derived>
+bool PythiaFullSimExtras<PairT, MuonT, Derived>::LookupPairPass2mu4(int reco_ind_a, int reco_ind_b){
+    if (reco_ind_a < 0 || reco_ind_b < 0) return false; // a leg without a reco muon has no trigger info
+    const int i = std::min(reco_ind_a, reco_ind_b); // skim pair block is filled with i < j
+    const int j = std::max(reco_ind_a, reco_ind_b);
+    for (size_t k = 0; k < muon_pair_muon1_index->size(); k++){
+        if (muon_pair_muon1_index->at(k) == i && muon_pair_muon2_index->at(k) == j)
+            return dimuon_b_2mu4_mindR->at(k);
+    }
+    throw std::runtime_error(Form(
+        "LookupPairPass2mu4: reco pair (%d,%d) not found in the skim dimuon block (%zu pairs)"
+        " -- raw-NTUP pair block inconsistent with muon block", i, j, muon_pair_muon1_index->size()));
 }
 
 template <class PairT, class MuonT, class Derived>
@@ -77,6 +138,13 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::CheckBranchPtrsExtra(){
     require(truth_muon_phi,     "truth_muon_phi");
     require(truth_muon_ch,      "truth_muon_ch");
     require(self().truth_muon_barcode, "truth_muon_barcode (core)");
+
+    if (self().store_mc_trigger){
+        require(muon_b_HLT_mu4,        "muon_b_HLT_mu4_L1MU3V (store_mc_trigger)");
+        require(dimuon_b_2mu4_mindR,   "dimuon_b_HLT_2mu4_L12MU3V_0_02 (store_mc_trigger)");
+        require(muon_pair_muon1_index, "muon_pair_muon1_index (store_mc_trigger)");
+        require(muon_pair_muon2_index, "muon_pair_muon2_index (store_mc_trigger)");
+    }
 }
 
 template <class PairT, class MuonT, class Derived>
@@ -135,6 +203,13 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
 
         m.pass_medium = PassMuonMediumCuts(m);
         m.pass_tight  = (m.pass_medium && (m.quality & 16));
+
+        m.reco_ind = reco_ind;
+        if (self().store_mc_trigger)
+            // per-muon mu4 match, indexed by the raw-NTUP reco index (data-mirror,
+            // DimuonDataAlgCoreT: m.passmu4 = muon_b_HLT_mu4->at(m.ind)).
+            // NO mu6/mu8 OR-ing: support triggers are disabled everywhere (data D7).
+            m.passmu4 = muon_b_HLT_mu4->at(reco_ind);
     };
 
     // ---- Truth-to-reco matching: exclusive (one reco muon per truth muon) ----
@@ -213,7 +288,16 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
         }
 
         if (self().output_single_muon_tree){
-            if (cur_muon.truth_pt > 4.0 && fabs(cur_muon.truth_eta) < 2.4){
+            // Nominal: truth-fiducial gate (reco-efficiency denominator = truth muons).
+            // store_mc_trigger: RECO-based gate — the Step-1 trigger-efficiency
+            // denominator is "offline reconstructed muon"; a truth-pT gate would sculpt
+            // the reco-pT turn-on near threshold. Loose here (pT > 3, |eta| < 2.6);
+            // the exact fiducial (pT > 4, |eta| < 2.4) + WP is applied downstream in RDF
+            // on reco quantities. (mc_trigger_efficiency.md §3.1)
+            const bool keep = self().store_mc_trigger
+                ? (cur_muon.reco_match && cur_muon.pt > 3.0 && fabs(cur_muon.eta) < 2.6)
+                : (cur_muon.truth_pt > 4.0 && fabs(cur_muon.truth_eta) < 2.4);
+            if (keep){
                 self().muon_raw_ptr = &cur_muon;
                 self().FillSingleMuonTree();
             }
@@ -237,6 +321,11 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
             self().mpairRef()->weight  = event_weight;
             self().mpairRef()->crossx  = event_weight;
 
+            if (self().store_mc_trigger){
+                self().mpairRef()->ev_pass_mu4  = b_HLT_mu4;  // event-level decisions, no reco requirement
+                self().mpairRef()->ev_pass_2mu4 = b_HLT_2mu4;
+            }
+
             self().mpairRef()->m1 = truth_muon_list.at(i);
             self().mpairRef()->m2 = truth_muon_list.at(j);
 
@@ -256,6 +345,9 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
                 ResonanceTaggingTruth();
                 self().mpairRef()->pair_pass_medium = (self().mpairRef()->m1.pass_medium && self().mpairRef()->m2.pass_medium);
                 self().mpairRef()->pair_pass_tight  = (self().mpairRef()->m1.pass_tight  && self().mpairRef()->m2.pass_tight);
+                if (self().store_mc_trigger)
+                    self().mpairRef()->pass2mu4 =
+                        LookupPairPass2mu4(self().mpairRef()->m1.reco_ind, self().mpairRef()->m2.reco_ind);
             } else {
                 self().mpairRef()->pair_pass_medium = false;
                 self().mpairRef()->pair_pass_tight  = false;

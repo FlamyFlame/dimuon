@@ -256,6 +256,13 @@ public:
     bool turn_data_resonance_cuts_on = false;
     bool fill_kn_trees_fullsim = false;  // set true to bin fullsim pairs into per-kn trees
     std::string fullsim_input_dir_override;  // if non-empty, replaces computed fullsim_input_dir
+    // Propagate trigger decisions/matching from the trigger-enabled MC skims (_July2026)
+    // into the output trees (m1/m2.passmu4, pair pass2mu4). Adds "_mc_trig" to the output
+    // file name so nominal outputs are never clobbered. Input files that lack the trigger
+    // branches (old trigger-off skims) are skipped entirely — never default-filled, which
+    // would bias any efficiency built from the output. See
+    // docs/tracking/mc_trigger_efficiency.md (Physics Procedure + R1/R2).
+    bool store_mc_trigger = false;
 
     explicit PythiaAlgCoreT(int batch_num_input, bool useLocal_input = false)
         : batch_num(batch_num_input)

@@ -29,6 +29,22 @@ protected:
     std::vector<float>*  muon_truth_prob    = nullptr;
     std::vector<int>*    muon_truth_barcode = nullptr;
 
+    // trigger branches (bound only when store_mc_trigger; Run-3 chain names — the
+    // trigger-enabled MC skims are Run-3 only). Mirrors DimuonDataAlgCoreT: per-muon
+    // match = bare branch name (= mindR 0.02 nominal), pair-level 2mu4 = the
+    // order-insensitive "_0_02" mindR branch, indexed by the skim's (i<j) pair block.
+    std::vector<bool>*   muon_b_HLT_mu4        = nullptr; // muon_b_HLT_mu4_L1MU3V
+    std::vector<bool>*   dimuon_b_2mu4_mindR   = nullptr; // dimuon_b_HLT_2mu4_L12MU3V_0_02
+    std::vector<int>*    muon_pair_muon1_index = nullptr;
+    std::vector<int>*    muon_pair_muon2_index = nullptr;
+    Bool_t               b_HLT_mu4  {};                   // event-level decisions (diagnostics)
+    Bool_t               b_HLT_2mu4 {};
+
+    // Look up the skim's pair index for two raw-NTUP reco-muon indices and return the
+    // pair-level 2mu4 match decision. Throws if the pair is not in the skim block
+    // (must not happen for two valid reco indices — fail fast rather than bias).
+    bool LookupPairPass2mu4(int reco_ind_a, int reco_ind_b);
+
     // truth muon quantities (from truth_muon_* branches)
     std::vector<float>*  truth_muon_pt  = nullptr;
     std::vector<float>*  truth_muon_eta = nullptr;

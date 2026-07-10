@@ -80,6 +80,7 @@ struct MuonPairPythiaFullSimWTruth
   , PairPythiaTruthExtras<MuonPairPythiaFullSimWTruth>
   , PairRecoExtras<MuonPairPythiaFullSimWTruth>
   , PairFullSimExtras<MuonPairPythiaFullSimWTruth>
+  , PairMCTrigExtras<MuonPairPythiaFullSimWTruth>
 {};
 
 struct MuonPairPythiaFullSimOverlayNoTruth
@@ -102,6 +103,7 @@ struct MuonPairPythiaFullSimOverlayWTruth
   , PairRecoExtras<MuonPairPythiaFullSimOverlayWTruth>
   , PairFullSimExtras<MuonPairPythiaFullSimOverlayWTruth>
   , PairPbPbExtras<MuonPairPythiaFullSimOverlayWTruth>
+  , PairMCTrigExtras<MuonPairPythiaFullSimOverlayWTruth>
 {
     void PairValueCalcHook() {
         this->PairPbPbExtras<MuonPairPythiaFullSimOverlayWTruth>::PairValueCalcPbPb(); // compute avg_centrality
