@@ -214,16 +214,16 @@ completion and re-run the (cheap) downstream stages when all 24 are in. Not high
    (kin-sum == global ⇒ double-fill fix verified at full stats), pp singles 455 440;
    overlay pairs SS 10 636 / OS 39 211, overlay singles 95 410. Old `pp_pTH8_14` skipped
    (D3). Outputs `*_mc_trig*.root` in the two sample dirs.
-4. [ ] **Step 1 (§3.1) pp:** RDF filling + MC singles ε(pT, q·η) per charge; overlay vs pp24
-   data tag-and-probe (pT/η/φ 1D, μ⁺ left | μ⁻ right; pT in q·η bins). `/review-analysis-code`
-   + `/review-plot`.
-5. [ ] **Step 2 (§3.2) pp:** ΔR-binned singles efficiency, 3 ΔR bins overlaid (pT, q·η,
-   pT in q·η bins). `/review-plot`.
-6. [ ] **Step 3 (§3.3) pp:** inverse-weighted ε_ΔR^2mu4(ΔR); plateau existence + plateau=1
-   checks. `/review-plot`.
-7. [ ] **Repeat 3–6 for HIJING overlay** (mu4 numerators; cross-term ε_ΔR^cross), comparing
-   only to PbPb23 data 0–5% (D2).
-8. [ ] **Bookkeeping:** roadmap Q4, INDEX scope, docs; merge branch.
+4. [x] **Step 1 (§3.1):** MC singles ε vs data tag-and-probe, both samples
+   (/review-analysis-code PASS iter 2; /review-plot PASS iter 2).
+5. [x] **Step 2 (§3.2):** ΔR-binned singles factorization check, both samples (same reviews).
+6. [x] **Step 3 (§3.3):** ε_ΔR^2mu4 (pp, plateau 0.963≈1 ✓, small-ΔR suppression) and
+   ε_ΔR^cross (overlay, plateau 0.864 flat systematic → plateau-normalize before use,
+   small-ΔR enhancement ~2.2× rel. plateau).
+7. [x] **Overlay chain** delivered together with pp in steps 4–6 (D2 restriction applied).
+8. [x] **Bookkeeping:** roadmap Q4 row updated (measured; preconditions for application
+   listed); INDEX scope updated; branch `mc-trigger-efficiency` left UNMERGED for user
+   review (user requested a dedicated branch).
 
 ## Progress Log
 
@@ -337,6 +337,22 @@ completion and re-run the (cheap) downstream stages when all 24 are in. Not high
   (output-TFile zombie checks; MCEffEvaluator throws on missing efficiency source instead of
   silently flooring; SS+OS summing intent commented); both macros recompile clean.
 
+- 2026-07-10 — **Steps 4–7 plots DONE, /review-plot APPROVED iter 2** (log
+  `.claude/logs/review-plot-20260710-034514-mc-trig-eff-plots.md`; executor scratch
+  `_sub_mctrig_plots.md` merged here, then deleted). Macro
+  `plotting_codes/trig_effcy/mc_based/plot_mc_trig_eff.cxx` (`plot_mc_trig_eff(sample,
+  use_tight_wp=true)`); 24 PNGs under
+  `~/usatlasdata/dimuon_data/plots/{pp,pbpb}_trigger_efficiency/mc_based/{step1_singles_data_mc,step2_dr_binned_singles,step3_dr_correction}/`.
+  Data sign mapping verified in code: **sign1 = μ⁺, sign2 = μ⁻** (RDFBasedHistFillingPP.cxx:168,
+  SingleMuEffcyPtTurnOnFitter.cxx:153-154). Reviewer independently re-derived both plateaus
+  (0.9621±0.0123 / 0.8629±0.0317) and the MC/data ratio points (pp foot 1.207, plateau 1.110 —
+  the expected L1 over-efficiency, flat ⇒ benign for the ΔR ratio); C3: pp data plateau ~0.81 /
+  PbPb 0–5% ~0.75 consistent with Run 2 mu4; pp small-ΔR suppression recovery by ΔR≈0.3–0.35
+  qualitatively matches the Run 2 ρ_ΔR close-by correction; the overlay union cross-term
+  enhancement has no Run 2 analog (UNVERIFIED, neutral). Iter-1 WARNINGs were cosmetic
+  (clipped legend/headline on overlay canvases) — fixed, all 24 regenerated, content unchanged.
+  INFO for full-stat rerun: extreme-ΔR tail bins (ΔR>4) are 1.5–2.4σ fluctuations; recheck then.
+
 ## Results & Observations
 
 ### R1. NTP discovery (2026-07-10, Explore agent + orchestrator check)
@@ -431,15 +447,11 @@ define+filter pattern to mirror at `RDFBasedHistFillingPythiaFullsim.cxx:128-139
 
 ## Latest Stage
 
-**2026-07-10 — Step 4 (Step-1 measurement inputs) IN PROGRESS, delegated to two parallel
-subagents** (scratch docs `_sub_mctrig_mc_side.md`, `_sub_mctrig_data_side.md`; orchestrator
-owns git + this doc):
-- **MC side:** weighted Step-1/2/3 histogram filling from the `_mc_trig` NTP outputs
-  (singles: per-charge pt/eta/phi 1D + q·η×pT 2D, Tight+fiducial, overlay restricted to
-  0–5% centrality per D2; pairs: ΔR-binned singles hists + Step-3 dR num/denom) + MC
-  turn-on fits (same functional forms as data nominal: pp erf+log, PbPb fermi+log; TF1
-  out-of-range clamp per `pp_trig_eff_highpt_jump` lesson).
-- **Data side:** add probe `pt2nd`/`eta2nd`/`phi2nd` 1D variables to the P2 trig-eff
-  filling (empty `single_muon_trig_effcy_var1Ds` hook, RDFBasedHistFillingData.cxx:62),
-  back up + regenerate `histograms_real_pairs_{pp_2024,pbpb_2023}_single_mu4_fine_q_eta_bin.root`.
-Then: /review-analysis-code on both, then Step-1 comparison plots (/review-plot).
+**2026-07-10 — Implementation Plan steps 1–8 COMPLETE on branch `mc-trigger-efficiency`
+(unmerged, awaiting user).** All three measurements delivered and reviewed for both samples
+(pp primary per D1; overlay vs PbPb23 data 0–5% per D2). Deliverable status: ε_ΔR is
+MEASURED but NOT yet applied to crossx — preconditions: (1) plateau normalization
+(overlay 0.864 flat systematic; pp 0.963), (2) full-statistics MC rerun, (3) the
+in-flight `pp_pTH8_14` slice (D3; check `mc_trigger_info_skim.md`). Rerunning when
+samples land is cheap: NTP `run_pythia_fullsim*_mc_trig.sh` → `FillMCTrigEffHists` →
+`FitMCSinglesEffcy` → `FillMCTrigEffHists(do_step3)` → `plot_mc_trig_eff`.
