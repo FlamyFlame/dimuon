@@ -135,8 +135,58 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
 
         m.pass_medium = PassMuonMediumCuts(m);
         m.pass_tight  = (m.pass_medium && (m.quality & 16));
-        reco_claimed[reco_ind] = true;
     };
+
+    // ---- Truth-to-reco matching: exclusive (one reco muon per truth muon) ----
+    // Two passes, so that the result does not depend on truth-muon ordering:
+    //   pass 1: barcode matching for every truth muon, claiming its reco muon;
+    //   pass 2: dR fallback (if enabled) over the reco muons still unclaimed.
+    // A single pass would let an early truth muon's dR fallback steal the reco muon
+    // that a later truth muon barcode-matches: both legs of a collinear pair then
+    // carry the same reco muon and the pair reconstructs at exactly minv = 2*m_mu.
+    std::vector<int> truth_to_reco(n_pythia_truth_muons, -1);
+
+    for (int truth_ind = 0; truth_ind < n_pythia_truth_muons; truth_ind++){
+        int truth_bar = self().truth_muon_barcode->at(truth_ind);
+        for (int list_pos = 0; list_pos < (int)real_muon_truth_barcode_list.size(); list_pos++){
+            if (real_muon_truth_barcode_list[list_pos] != truth_bar) continue;
+            int reco_ind = real_muon_orig_index[list_pos];
+            if (reco_claimed[reco_ind]) continue; // already taken by another truth muon
+            truth_to_reco[truth_ind] = reco_ind;
+            reco_claimed[reco_ind]   = true;
+            break;
+        }
+    }
+
+    if (self().use_dr_fallback){
+        // ad-hoc dR fallback (default OFF): only for the barcode-collision r17618
+        // sample, where the collision puts wrong truth decorations on reco muons;
+        // find the closest reco muon not claimed by any barcode match above.
+        constexpr double dR_threshold = 0.05;
+        for (int truth_ind = 0; truth_ind < n_pythia_truth_muons; truth_ind++){
+            if (truth_to_reco[truth_ind] >= 0) continue;
+            double truth_eta = truth_muon_eta->at(truth_ind);
+            double truth_phi = truth_muon_phi->at(truth_ind);
+            double best_dR = dR_threshold;
+            int best_ind = -1;
+            for (int ri = 0; ri < n_reco; ri++){
+                if (reco_claimed[ri]) continue;
+                double deta = truth_eta - muon_eta->at(ri);
+                double dphi = truth_phi - muon_phi->at(ri);
+                if (dphi >  M_PI) dphi -= 2.0 * M_PI;
+                if (dphi < -M_PI) dphi += 2.0 * M_PI;
+                double dR = std::sqrt(deta * deta + dphi * dphi);
+                if (dR < best_dR){
+                    best_dR = dR;
+                    best_ind = ri;
+                }
+            }
+            if (best_ind >= 0){
+                truth_to_reco[truth_ind] = best_ind;
+                reco_claimed[best_ind]   = true;
+            }
+        }
+    }
 
     for (int truth_ind = 0; truth_ind < n_pythia_truth_muons; truth_ind++){
         muon_t cur_muon;
@@ -150,41 +200,8 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
         cur_muon.truth_charge = truth_muon_ch->at(truth_ind);
         cur_muon.truth_bar    = self().truth_muon_barcode->at(truth_ind);
 
-        // Truth-to-reco matching via barcode
-        auto it = std::find(real_muon_truth_barcode_list.begin(),
-                            real_muon_truth_barcode_list.end(),
-                            cur_muon.truth_bar);
-
-        if (it != real_muon_truth_barcode_list.end()){
-            int list_pos = std::distance(real_muon_truth_barcode_list.begin(), it);
-            int reco_ind = real_muon_orig_index[list_pos];
-            fill_reco_quantities(cur_muon, reco_ind);
-        } else if (self().use_dr_fallback) {
-            // ad-hoc dR fallback (default OFF): only for the barcode-collision
-            // r17618 sample, where the collision puts wrong truth decorations on
-            // reco muons; find the closest unclaimed reco muon
-            constexpr double dR_threshold = 0.05;
-            double best_dR = dR_threshold;
-            int best_ind = -1;
-            for (int ri = 0; ri < n_reco; ri++){
-                if (reco_claimed[ri]) continue;
-                double deta = cur_muon.truth_eta - muon_eta->at(ri);
-                double dphi = cur_muon.truth_phi - muon_phi->at(ri);
-                if (dphi >  M_PI) dphi -= 2.0 * M_PI;
-                if (dphi < -M_PI) dphi += 2.0 * M_PI;
-                double dR = std::sqrt(deta * deta + dphi * dphi);
-                if (dR < best_dR){
-                    best_dR = dR;
-                    best_ind = ri;
-                }
-            }
-            if (best_ind >= 0){
-                fill_reco_quantities(cur_muon, best_ind);
-            } else {
-                cur_muon.reco_match  = false;
-                cur_muon.pass_medium = false;
-                cur_muon.pass_tight  = false;
-            }
+        if (truth_to_reco[truth_ind] >= 0){
+            fill_reco_quantities(cur_muon, truth_to_reco[truth_ind]);
         } else {
             cur_muon.reco_match  = false;
             cur_muon.pass_medium = false;

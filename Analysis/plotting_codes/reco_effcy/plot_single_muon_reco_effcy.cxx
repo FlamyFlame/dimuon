@@ -65,8 +65,8 @@ void plot_single_muon_reco_effcy(
     std::string data_dir, plot_dir_base, input_file, sample_label;
     if (is_overlay) {
         data_dir   = FullSimSampleInputDir(FullSimSampleType::hijing);
-        input_file = data_dir + "muon_pairs_pythia_fullsim_hijing_overlay_pp24_no_data_resonance_cuts_single_muon.root";
-        plot_dir_base = data_dir + "plots/hijing_overlay_pp24_single_muon_reco_effcy/";
+        input_file = data_dir + "muon_pairs_pythia_fullsim_hijing_overlay_pbpb23_no_data_resonance_cuts_single_muon.root";
+        plot_dir_base = data_dir + "plots/hijing_overlay_pbpb23_single_muon_reco_effcy/";
         sample_label = "Pythia fullsim HIJING overlay";
     } else {
         data_dir   = FullSimSampleInputDir(FullSimSampleType::pp);

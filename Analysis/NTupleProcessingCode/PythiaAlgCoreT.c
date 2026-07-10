@@ -638,6 +638,17 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::FillMuonPairTreePythia(in
     if (this->muonPairOutTree[nsign])
         this->muonPairOutTree[nsign]->Fill();
 
+    FillMuonPairTreeKinRangePythia(nkin);
+}
+
+template <class PairT, class MuonT, class Derived, class... Extras>
+void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::FillMuonPairTreeKinRangePythia(int nkin) {
+    auto* p = mpairRef().get();
+    if (!p) return;
+    this->mpair_raw_ptr = p;
+
+    int nsign = p->truth_same_sign ? 0 : 1;
+
     // Fill kinematic-range-binned tree
     if (nkin >= 0 && nkin < (int)muonPairOutTreeKinRange.size() &&
         nsign < (int)muonPairOutTreeKinRange.at(nkin).size() &&

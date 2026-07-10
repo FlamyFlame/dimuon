@@ -24,10 +24,10 @@ namespace {
 
     const std::string R17618 =
         "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/"
-        "muon_pairs_pythia_fullsim_hijing_overlay_pp24_no_data_resonance_cuts_single_muon.root";
+        "muon_pairs_pythia_fullsim_hijing_overlay_pbpb23_no_data_resonance_cuts_single_muon.root";
     const std::string R17662 =
         "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/r17662_run/"
-        "muon_pairs_pythia_fullsim_hijing_overlay_pp24_no_data_resonance_cuts_r17662_TRUEnodr.root";
+        "muon_pairs_pythia_fullsim_hijing_overlay_pbpb23_no_data_resonance_cuts_r17662_TRUEnodr.root";
     std::string OUTDIR =
         "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/plots/r17618_vs_r17662_comparison/";
 

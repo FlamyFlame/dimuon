@@ -162,7 +162,8 @@ protected:
 
     void FillMuonPair_PythiaCore(int pair_ind);
     bool PassCuts_PythiaCore();
-    void FillMuonPairTreePythia(int nkin);
+    void FillMuonPairTreePythia(int nkin);        // global pair tree + kn tree
+    void FillMuonPairTreeKinRangePythia(int nkin); // kn tree only
     void HistAdjust_PythiaCore() {}
     void Finalize_PythiaCore();
 
@@ -303,8 +304,11 @@ public:
     void FillMuonPairHook(int pair_ind) {
         FillMuonPair_PythiaCore(pair_ind);
     }
+    // Called from DimuonAlgCoreT::FillMuonPairTree(), which has ALREADY filled the
+    // global pair tree -- so only the kinematic-range tree is filled here.  (The
+    // Pythia truth path bypasses this hook and calls FillMuonPairTreePythia directly.)
     void FillMuonPairTreeHook() {
-        FillMuonPairTreePythia(current_ikin);
+        FillMuonPairTreeKinRangePythia(current_ikin);
     }
     void HistAdjustHook() {
         HistAdjust_PythiaCore();

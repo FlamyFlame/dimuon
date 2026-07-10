@@ -21,7 +21,7 @@
 
 static const std::string kInputFile =
     "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/"
-    "muon_pairs_pythia_fullsim_hijing_overlay_pp24_no_data_resonance_cuts.root";
+    "muon_pairs_pythia_fullsim_hijing_overlay_pbpb23_no_data_resonance_cuts.root";
 static const std::string kOutputDir =
     "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/plots/";
 

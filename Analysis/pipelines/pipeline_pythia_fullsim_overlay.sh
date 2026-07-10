@@ -218,7 +218,7 @@ wait_for_cluster_completion() {
 case "$MODE" in
     hijing)
         CPP_ENUM="hijing"
-        LABEL="hijing_overlay_pp24"
+        LABEL="hijing_overlay_pbpb23"
         BASE_DIR="/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample"
         ;;
     zmumu)
