@@ -18,8 +18,9 @@ allok=True
 for b in BEAMS:
     for s in SL:
         base=f"Pythia_5p36TeV_{b}_hQCD_DiMu_{s}.FullSimPP24.NTUP"
-        pnew, pbak = D+base+".root", D+base+".bak_20260709.root"
-        if not os.path.exists(pbak): continue
+        pnew = D+base+".root"
+        pbak = next((D+base+f".bak_{d}.root" for d in ("20260709","20260710") if os.path.exists(D+base+f".bak_{d}.root")), None)
+        if pbak is None: continue
         fn=ROOT.TFile.Open(pnew); tn=fn.Get("HeavyIonD3PD")
         fb=ROOT.TFile.Open(pbak); tb=fb.Get("HeavyIonD3PD")
         Nn,Nb=tn.GetEntries(),tb.GetEntries()
