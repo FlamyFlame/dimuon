@@ -204,15 +204,12 @@ completion and re-run the (cheap) downstream stages when all 24 are in. Not high
 
 *Work on dedicated git branch. pp first (D1), then PbPb overlay.*
 
-1. [ ] **Discovery:** trigger-branch inventory in the new NTUPs; NTupleProcessingCode fullsim
-   path (where pair/single-muon trees are filled, whether trigger fields exist in the structs);
-   data-derived tag-and-probe outputs (pp24 + pbpb23 0–5%) to overlay against; pp `_July2026`
-   completion status.
-2. [ ] **NTuple-processing extension** (per provenance rule): a config mode/flag that
-   propagates per-muon mu4 matching + pair-level 2mu4/per-leg decisions from the raw NTUPs
-   into the muon-pair (and if needed single-muon) trees for the fullsim/overlay MC modes,
-   distinct output suffix, never clobbering nominal. `/review-analysis-code` with §3.1–§3.3 +
-   §4 in the task prompt.
+1. [x] **Discovery** (results in R1/R2): trigger-branch inventory; NTP fullsim path; data
+   tag-and-probe outputs (pp24 + pbpb23 0–5%); pp `_July2026` completion (23/24).
+2. [x] **NTuple-processing extension** (per provenance rule): `store_mc_trigger` flag
+   propagating per-muon mu4 matching + pair-level 2mu4 decisions into the fullsim
+   muon-pair and single-muon trees, `_mc_trig` output suffix. `/review-analysis-code`
+   **PASS iter 1** (0 CRITICAL / 0 WARNING, 5 INFO; provenance 359/359 bit-exact vs raw).
 3. [ ] **Run NTP** over pp fullsim (available slices, D3) → MC pair/single-muon trees with
    trigger info.
 4. [ ] **Step 1 (§3.1) pp:** RDF filling + MC singles ε(pT, q·η) per charge; overlay vs pp24
@@ -246,10 +243,115 @@ completion and re-run the (cheap) downstream stages when all 24 are in. Not high
   (dedupe or use kin trees if absolute denominators matter — they don't for efficiencies,
   numerator and denominator double alike). Naming: this doc's overlay outputs adopt
   whatever `FullSimSampleType.h` provides at run time; coordinate at merge.
+- 2026-07-10 — **Step 2 (NTP trigger extension) DONE, /review-analysis-code PASS iter 1**
+  (log `.claude/logs/review-analysis-code-20260710-010710-ntp-mc-trigger-propagation.md`).
+  Code: `store_mc_trigger` public flag (`PythiaAlgCoreT.h`); `_mc_trig` output suffix
+  (OutputTreePathHook/OutputHistPathHook); trigger binds + per-file skip-if-absent
+  (`PythiaFullSimExtras.c::InitInputExtra`, one-file-per-chain asserted); per-muon
+  `m.passmu4 = muon_b_HLT_mu4_L1MU3V[reco_ind]` (bare branch = mindR 0.02 data-mirror, NO
+  mu6/mu8); new `MuonFullsimExtra::reco_ind`; new `PairMCTrigExtras{pass2mu4, ev_pass_mu4,
+  ev_pass_2mu4}` on both fullsim pair structs (**ROOT gotcha: a single-member base class is
+  not member-split into named leaves — keep ≥2 members**); pair lookup via the skim's (i<j)
+  `muon_pair_muon{1,2}_index` block, fail-fast throw; single-muon tree gate in trigger mode
+  = reco-based (reco_match && pt>3 && |η|<2.6; exact fiducial in RDF) so the Step-1
+  denominator is an offline-reco condition (truth gate would sculpt the turn-on). 4 runners
+  `run_pythia_fullsim{,_overlay}{,_single_muon}_mc_trig.sh`.
+  **Design note (reviewer INFO-2):** `passSeparated` NOT added to the pair struct — `dr` is
+  already stored and §3.2/§3.3 bin ΔR directly (0–0.2/0.2–1.0/1.0+), so RDF defines it when
+  needed.
+  Smoke tests (300 ev/file): pp — old trigger-off `pp_pTH8_14` skipped loudly; OS pairs
+  both-reco 4379, both-legs-mu4 2732, pass2mu4 2406 (the 2406<2732 gap = the pair-level
+  correlation we will measure); ALL subset relations exact (2mu4⊆both, match⊆ev_mu4,
+  ev_2mu4⊆ev_mu4: 0 violations). Singles: 13674 entries all reco-matched; unweighted turn-on
+  0.564/0.723/0.855/0.882/0.871 (plateau ~0.87–0.88, Run-2-consistent). Overlay: 733
+  both-reco pairs, avg centrality 2.06% (D2 confirmed). Provenance: 359/359 pairs bit-exact
+  vs raw NTUP; C6 weight = σ·ε_filt·isospin/N exact.
 
 ## Results & Observations
 
-*(organized, mutable — empty)*
+### R1. NTP discovery (2026-07-10, Explore agent + orchestrator check)
+
+**Chain:** `PythiaFullSimAnalysis` / `PythiaFullSimOverlayAnalysis`
+(`NTupleProcessingCode/PythiaAnalysisClasses.h:37-85`) → `PythiaAlgCoreT` → `DimuonAlgCoreT`,
+with `PythiaFullSimExtras` (reco-truth matching, `ProcessEventFullsim`) and, for overlay,
+`PythiaFullSimOverlayExtras`. Runners `run_pythia_fullsim*.sh`, `run_pythia_fullsim_overlay*.sh`.
+Output naming: `muon_pairs_pythia_fullsim_<label>` + `_no/with_data_resonance_cuts` +
+`extra_output_suffix` (`PythiaAlgCoreT.c:488-504`); labels per `FullSimSampleType.h:54-62`
+(pp=`pp24`, hijing=`hijing_overlay_pbpb23` — naming fix already in working tree).
+
+**Trigger-field status:**
+- Leg structs (`Muon.h:16-17`) ALREADY have `passmu4`/`passmu4noL1` — never filled in fullsim.
+- Pair-level trigger fields (`pass2mu4`, `passmu4mu4noL1`, `passSeparated`, …) live in
+  `PairDataExtras` (`MuonPairReco.h:5-14`) which is NOT a base of the fullsim pair structs
+  (`MuonPairPythia.h:76-109`) — must be mixed in.
+- `PythiaFullSimExtras::InitInputExtra` (`.c:5-30`) binds no trigger branches today.
+- Reco index: `fill_reco_quantities` sets `cur_muon.ind = truth_ind`
+  (`PythiaFullSimExtras.c:193`); the reco index `truth_to_reco[truth_ind]` is discarded —
+  must be kept to index `muon_b_HLT_*` (data path indexes by reco ind,
+  `DimuonDataAlgCoreT.c:740-746`).
+
+**Data procedure to mirror (`DimuonDataAlgCoreT.c`):** Run-3 branch names — event
+`b_HLT_mu4_L1MU3V`; per-muon `muon_b_HLT_mu4_L1MU3V` (mindR 0.02 default = bare name,
+`_0_01` variant; `.c:178-200`); pair `dimuon_b_HLT_2mu4_L12MU3V_0_02` (order-insensitive,
+indexed by NTUP pair index; `.c:214-228`); mu4_mu4noL1 3-tier incl. per-leg
+`_mu{1,2}passLeg{1,2}_dR_0_02` (`.c:230-267`). mu6/mu8 force-disabled (D7, `.c:65-66`).
+`passSeparated = dr>0.8` computed, not read.
+
+**Pair-index bridge (orchestrator, `SkimCode .../TrigRates.cxx:1494-1506`):** the skim fills
+dimuon branches over all (i<j) reco-muon combinations and stores
+`muon_pair_muon1_index`/`muon_pair_muon2_index`. So fullsim can map its two matched reco
+indices → skim pair index per event and read `dimuon_b_*` directly. Pairs with an
+unreconstructed leg have no trigger info — irrelevant, all measurements condition on
+offline reco muons.
+
+**Single-muon tree:** fullsim already supports `output_single_muon_tree`
+(`PythiaFullSimExtras.c:215-225`, truth-level fiducial gate pT>4, |η|<2.4; runners
+`run_pythia_fullsim{,_overlay}_single_muon.sh`, suffix `_single_muon`).
+
+**Weights:** pair `weight`==`crossx`== per-(slice×beam) `fullsim_weight_factor`
+(σ·ε_filt·isospin/N, `PythiaAlgCoreT.c:683`); isospin 4:6:6:9 baked in, overlay pp-beam only.
+
+**Double-fill hazard (sibling doc):** global fullsim pair trees `muon_pair_tree_sign{1,2}`
+are filled 2× (`PythiaFullSimExtras.c:315`); kin trees correct. RDF fullsim readers use the
+GLOBAL trees (`RDFBasedHistFillingBaseClass.h:82-83`). Efficiency ratios are immune
+(numerator & denominator double alike), but do not read absolute yields from the global tree.
+
+**RDF slot-in:** `RDFBasedHistFillingPythiaFullsim.cxx` (pp, input path `.cxx:15-17`) /
+`...FullsimOverlay.cxx` (`SetIOPathsHook` `.cxx:19-30`, `extra_suffix` already threaded);
+define+filter pattern to mirror at `RDFBasedHistFillingPythiaFullsim.cxx:128-139`.
+
+### R2. Sample + data-reference discovery (2026-07-10, Explore agent)
+
+**MC NTUPs (tree `HeavyIonD3PD`, 10 000 entries each):**
+- pp `_July2026`: **23/24 done**; ONLY `pp_pTH8_14` (task 51360141) still running — its local
+  file is still the Apr 13 trigger-off version (140 branches, no `.bak`). New files: 260
+  branches, Jul 9. → trigger-mode NTP must SKIP files lacking trigger branches (loud log),
+  never default-fill false (would bias ε). Rerun when the 24th lands (D3).
+- Overlay: all present (224 branches; adds HI `_VTE50` chains; lacks pp's mu10-15 ladder).
+- Per-muon matching: `muon_b_HLT_<chain>` `vector<bool>`, same length as `muon_pt`; variants
+  `_0_01`, `_V2`, `_V3`; nominal mindR 0.02 = BARE name (mirrors data). Pair-level:
+  `dimuon_b_HLT_2mu4_L12MU3V_0_02` + per-leg `_mu{1,2}passLeg{1,2}_dR_0_02`.
+- `muon_charge` does NOT exist — `muon_trk_charge` (existing fullsim code already handles
+  charge; only trigger branches are new reads).
+- Sanity: `b_HLT_mu4_L1MU3V` overlay pTH8_14 78.3%, pp pTH14_24 86.4% ✓.
+
+**Data references to overlay against:**
+- TF1 turn-on fits: `~/usatlasdata/dimuon_data/pp_2024/trg_effcy_pT_fitting_to_*/single_mu_effcy_pT_fit.root`
+  (also pbpb_2023 analog; several fit-mode subdirs — confirm nominal mode from pipeline
+  before use). Key pattern: `f_pt2nd_vs_q_eta2nd[_ctr0_5]_sign{1,2}_2mu4_sepr_py_<lo>_TO_<hi>_divided`.
+  pbpb23 has all 6 centrality tokens incl. required `ctr0_5`. NO TH2D fallback objects in
+  either file (contrary to mu4-doc-era expectations).
+- Tag-and-probe graphs: `histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin.root` (60
+  TGraphAsymmErrors) / `..._pbpb_2023_...` (540). **Graphs exist ONLY vs pT in q·η bins** —
+  no 1D eta/phi efficiency graphs anywhere ⇒ Step 1's eta/phi data-MC overlay requires
+  adding probe-eta/phi num+denom hists to the data P2 filling and rerunning P2 for pp24 +
+  pbpb23 (cheap; data ntuples on disk).
+- Fine q·η binning: `RDFBasedHistFilling/CommonEffcyConfig.h:15-26`
+  `q_eta_proj_ranges_fine_excl_gap`, 10 bins
+  {-2.4,-2.0}{-2.0,-1.6}{-1.6,-1.3}{-0.9,-0.5}{-0.5,-0.1}{0.1,0.5}{0.5,1.0}{1.3,1.6}{1.6,2.0}{2.0,2.2}.
+- Plot roots: `~/usatlasdata/dimuon_data/plots/{pp,pbpb}_trigger_efficiency/` (mu4/,
+  mu4_mu4noL1/ subdirs; per-year leaf dirs like `pT_fitting/pp24<wp_suffix>`). MC study dirs
+  will follow this convention: one directory per step per sample family.
 
 ## Remaining Work
 
@@ -259,8 +361,26 @@ completion and re-run the (cheap) downstream stages when all 24 are in. Not high
 
 ## Latest Stage
 
-**2026-07-10 — Starting Implementation Plan step 1 (Discovery) on branch
-`mc-trigger-efficiency`.** Plan: parallel read-only discovery of (a) NTupleProcessingCode
-fullsim path + pair/single-muon tree structs, (b) NTUP trigger-branch inventory + pp skim
-completion + data tag-and-probe output locations (pp24, pbpb23 0–5%). Then NTP extension
-(step 2) per §4 provenance constraint.
+**2026-07-10 — Discovery DONE (R1, R2). Starting Implementation Plan step 2: NTP trigger
+extension, via /review-analysis-code.** Design (per §3.1–§3.3, §4, R1, R2):
+- New public flag `store_mc_trigger` (default false) on the fullsim NTP core; runners set it
+  together with `extra_output_suffix="_mc_trig"` → outputs
+  `muon_pairs_pythia_fullsim_<label>_no_data_resonance_cuts_mc_trig.root` etc. Nominal
+  outputs untouched.
+- Bind (gated, per file): `muon_b_HLT_mu4_L1MU3V` (bare = mindR 0.02, data-mirror),
+  `dimuon_b_HLT_2mu4_L12MU3V_0_02`, `muon_pair_muon{1,2}_index`, event-level
+  `b_HLT_mu4_L1MU3V` / `b_HLT_2mu4_L12MU3V`. If a file lacks the branches (old trigger-off
+  NTUP, e.g. in-flight pp_pTH8_14) → SKIP the file with a loud printout (R2; never
+  default-false).
+- `fill_reco_quantities`: keep the reco index (new `reco_ind` field, default −1, on
+  the fullsim muon extra) and set `m.passmu4 = muon_b_HLT_mu4->at(reco_ind)`. NO mu6/mu8
+  OR-ing (data D7 disabled them).
+- Pair-level: mix `PairDataExtras` (or minimal equivalent) into the fullsim pair structs;
+  per event build (i<j reco-index)→skim-pair-index map from `muon_pair_muon{1,2}_index`;
+  set `pass2mu4` from `dimuon_b_HLT_2mu4_L12MU3V_0_02` when both legs reco-matched;
+  `passSeparated = dr>0.8` computed.
+- Single-muon-tree mode + `store_mc_trigger`: fill per truth muon that is RECO-matched
+  (gate on reco pT>3 loose; exact fiducial pT>4,|η|<2.4 applied later in RDF on reco
+  quantities) so the Step-1 denominator is an offline-reco-muon condition, not a truth one
+  (turn-on region must not be sculpted by a truth-pT gate).
+Then: NTP runs (pair + single-muon, pp first), RDF + fits + plots per plan steps 4–7.
