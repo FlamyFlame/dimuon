@@ -18,11 +18,25 @@ condition that isn't met. Be concise — this is housekeeping, not a new task.
 
 ### 1a. Tracking docs
 
-Read the Active Tracking Docs list in CLAUDE.md. For each active doc:
-- If this session's work touched that doc's topic: update Progress Log,
-  mark completed steps, update Remaining Work and Latest Stage.
-- If the task is fully complete: write final summary, clear Latest Stage,
-  remove from Active Tracking Docs in CLAUDE.md.
+Read `Analysis/docs/tracking/INDEX.md`. For each doc this session's work
+touched:
+- Update Progress Log, mark completed steps, update Remaining Work and
+  Latest Stage.
+- **Bump `Updated`** in INDEX.md to today's date, and re-sort so the doc sits
+  newest-first within its section.
+- **Re-read the doc's INDEX scope line against what the doc now says.** If the
+  work pushed the doc beyond what the line describes — a new sub-thread, a
+  changed method, a conclusion that reverses the original objective — rewrite
+  the scope line. A stale scope hides the doc from every future triage, so
+  this is not optional bookkeeping.
+- If the task is fully complete: write final summary, clear Latest Stage, move
+  the row from **Active** to **Closed** in INDEX.md, and rewrite its scope to
+  describe what the doc *concluded*, not what it set out to do. Never delete
+  the file. If it is finished-for-now but blocked on external inputs, mark it
+  **PARKED** in the scope line and say what unblocks it.
+
+If the session touched several docs, or you are unsure whether the scopes
+still hold, run `/check-tracking-index` instead of doing this by hand.
 
 ### 1b. Repo docs
 
@@ -62,7 +76,8 @@ Read the full CLAUDE.md. Check for:
 2. **Redundancy**: Are there rules that say the same thing in different
    words? If so, merge them.
 3. **Staleness**: Are there references to things that no longer exist
-   (removed files, old conventions, completed tracking docs still listed)?
+   (removed files, old conventions)? Tracking-doc status/scope staleness is
+   `/check-tracking-index`'s job, not CLAUDE.md's — CLAUDE.md holds no doc list.
 4. **Conciseness**: Can any verbose section be shortened without losing
    meaning? Aim for the shortest phrasing that a model will still follow.
 
