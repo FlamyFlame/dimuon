@@ -457,6 +457,73 @@ hadd, validation; bookkeeping (merging records, SkimCode README, this doc, roadm
   MC supplies only the ΔR *correlation* correction, which is a ratio in which a per-leg
   efficiency normalization largely cancels. The residual is a systematic to quantify, not a bug.
 
+- 2026-07-10 — **Step 8e: comparison REDONE with the EXACT NTuple-processing single-muon
+  selection (user request). Supersedes the 8d numbers.**
+
+  ⚠ **BUG IN THE 8d NUMBERS (mine, now fixed): `muon_pt` in the NTUP is SIGNED — the charge is
+  carried in the sign** (`PythiaFullSimExtras.c:117` `m.pt = fabs(muon_pt->at(i))/1000`,
+  `m.charge = (muon_pt->at(i) > 0)`). The 8d cut `muon_pt>4000` therefore kept only
+  **positive-charge** muons, i.e. it was silently a same-sign-(++) dimuon selection.
+  Verified: MC 10 142 muons with `muon_pt<0` vs 10 044 with `>0`; data 939 513 vs 985 264.
+  **All 8d fiducial/turn-on numbers are void.** Use the table below.
+  (`muon_trk_pt` is unsigned; `muon_pair_muon{1,2}_pt` is signed.)
+
+  **Mirrored selection** — `DimuonDataAlgCoreT::PassCuts_DataCore` (data, `requireTight=true`)
+  and `PythiaFullSimExtras::PassMuonMediumCuts` + `pass_tight` (MC), applied per muon:
+  `quality & 305 == 305` (1 combined | 16 Tight | 32 IDCuts | 256 MuonCuts) · `|η| ≤ 2.4` ·
+  `|pT|/1000 ≥ 4 GeV` · `|Δp/p| ≤ 0.12` · `|d0| < 2 mm` · `|z0·sinθ| < 2 mm`
+  (`ParamsSet.h:370,375,376`; `turn_on_track_charge=false` in all three Extras headers).
+  Event requires ≥2 such muons. Verified `muon_pair_muon{1,2}_*` == flat `muon_*` at
+  `muon_pair_muonN_index` (0 mismatches / 3152 pairs), so the flat vectors are a faithful proxy.
+
+  **Two code asymmetries found between the data and MC processing (both checked, both benign):**
+  1. **Tight bitmask.** data `1|16|32|256` = 305; MC `pass_medium && (q&16)` = `1|8|16|32|256`
+     = 313. **Equivalent:** `TrigRates.cxx:1196-1197` sets bit 8 for `quality<=Medium` and bit 16
+     for `quality<=Tight`, and Tight ⊂ Medium ⇒ bit16 ⟹ bit8. Measured: **0** muons with bit16
+     and not bit8, out of 13 874 (MC) and 1 576 769 (data).
+  2. **Δp/p `fabs`.** data `fabs(dP_overP) > 0.12` → reject; **MC `dP_overP > 0.12` → reject
+     (no `fabs`)** — MC keeps muons with `Δp/p < −0.12`. Affects 0.66% of otherwise-tight MC
+     muons and 1.30% of data muons. Ran BOTH definitions applied to both samples: results agree
+     to the 3rd decimal (integrated MC/data 1.23 either way). **Flagged as a probable bug in
+     `PythiaFullSimExtras.c:41` (and `PowhegFullSimExtras`), not affecting this comparison.**
+
+  **Result** (MC = isospin-weighted 6:6:9 over the complete `pn`,`np`,`nn` beams — the `pp` beam
+  was still re-skimming; cross-section-weighted within each beam; data = pp24, 603 M events,
+  8 907 591 events with ≥2 selected muons, 1 325 245 mu4-fired):
+
+  | sublead μ pT [GeV] | f(2mu4\|mu4) MC | data | MC/data | f(noL1\|mu4) MC | data | MC/data |
+  |---|---|---|---|---|---|---|
+  | 4–5   | 0.5236 | 0.4199 | 1.25 | 0.8695 | 0.8514 | 1.02 |
+  | 5–6   | 0.6920 | 0.5703 | 1.21 | 0.9466 | 0.9291 | 1.02 |
+  | 6–8   | 0.7602 | 0.6406 | 1.19 | 0.9699 | 0.9554 | 1.02 |
+  | 8–10  | 0.7822 | 0.6572 | 1.19 | 0.9753 | 0.9645 | 1.01 |
+  | 10–15 | 0.7702 | 0.6513 | 1.18 | 0.9756 | 0.9662 | 1.01 |
+  | 15–25 | 0.7078 | 0.6544 | 1.08 | 0.9728 | 0.9708 | 1.00 |
+  | 25–50 | 0.5740 | 0.6882 | 0.83 | 0.9314 | 0.9812 | 0.95 |
+  | **integrated** | **0.6240** | **0.5075** | **1.23** | **0.9134** | **0.8946** | **1.02** |
+
+  MC per-beam integrated f(2mu4|mu4): pn 0.6235, np 0.6218, nn 0.6257 (spread <0.7% ⇒ still
+  isospin-blind under the full selection).
+
+  **Physics reading (cleaner than 8d, and it corrects 8d's interpretation):**
+  - `f(mu4_mu4noL1 | mu4)` **cannot test L1**: `HLT_mu4_mu4noL1_L1MU3V` and `HLT_mu4_L1MU3V`
+    seed the **same** `L1_MU3V` item, so the single L1 RoI is required in both numerator and
+    denominator and cancels exactly. Observed MC/data = **1.02**, i.e. consistent with 1 — the
+    HLT full-scan second leg is well modelled. (The 8d claim that this probes "one L1 leg"
+    was wrong.)
+  - `f(2mu4 | mu4)` isolates the **second muon leg**: `L1_2MU3V` needs a *second* L1 RoI on top
+    of the denominator's one, plus a second HLT leg. Observed MC/data = **1.18–1.25** across the
+    turn-on and plateau ⇒ **MC over-estimates the second-leg (L1 RoI × HLT) efficiency by
+    ~20%.** This is the classic missing RPC/TGC chamber inefficiency in L1 muon simulation.
+  - The 25–50 GeV bin flips to 0.83, but that bin has the least MC weight (high-pTHat slices
+    carry `w ≈ 0.21 nb` vs `≈ 24–32 nb` at low pTHat) — **treat as MC statistics, not a trend**,
+    pending the `pp` beam and a proper uncertainty.
+  - **Consequence for the analysis: benign but quantified.** ε_trig is measured *from data*; MC
+    supplies only the **ΔR correlation** correction, i.e. a *ratio* of two-leg efficiencies in
+    which a per-leg normalisation largely cancels. The ~20% second-leg over-efficiency is
+    exactly the quantity that must NOT be taken from MC in absolute terms, and it is the
+    systematic to carry on the MC-based ΔR correction.
+
 ## Results & Observations
 
 *(organized, mutable)*
@@ -565,9 +632,29 @@ Trigger is now ON by default for all Run-3 fullsim/overlay MC (code `434de17`,
 `/review-analysis-code` PASS). The one real trap — `StoreAllEvents=False` silently converting
 the MC skim into a trigger-OR-filtered sample — was caught, escalated, and fixed (R1b).
 
-**Next action when the grid finishes:** run Step 8 (sanity check: every NTUP must have 10 000
-entries and non-empty `b_HLT_*`), let `grid_monitor` update both `merging-record.txt` files,
-then mark the roadmap Q4 prerequisite ("unbiased trigger decision in MC") satisfied.
+**PAUSE POINT 2026-07-10.** Overlay 7/7 complete + validated. pp fullsim **23/24** downloaded &
+validated (10 000 entries each); **only task `51360141` (pp beam, pTH8_14) is still running on
+the grid at 0%**. Step 8 sanity checks (a)–(e) all done and committed.
+
+**To resume:**
+1. `ps -eo cmd | grep grid_monitor` — one `--mode fullsim_pp` instance should still be polling
+   task `51360141` (launched with `nohup`, survives the shell). If it died:
+   `cd SkimCode/scripts && ./grid_monitor.sh --mode fullsim_pp -i 10 51360141`
+2. When it lands: confirm 10 000 entries + trigger branches, then re-run the Step-8e comparison
+   **including the `pp` beam** so the isospin 4:6:6:9 combination is complete
+   (scripts kept: `/tmp/claude-101379/{sel.h,sel_mc.py,sel_data.py}`; note `/tmp` may be wiped —
+   the selection is fully specified in the 8e Progress-Log entry above and can be rebuilt).
+3. Then: mark roadmap Q4 prerequisite ("unbiased trigger decision in MC") satisfied; update
+   `merging-record.txt` bookkeeping (auto by grid_monitor); consider moving the now-superseded
+   `.bak_20260709.root` files (84 GiB overlay + ~9 GiB pp) to pnfs — **safe now**, every
+   canonical file exists (but re-verify per `project_grid_monitor_bak_rename`).
+4. Open follow-up (separate task): fix the missing `fabs` on `Δp/p` in
+   `PythiaFullSimExtras.c:41` / `PowhegFullSimExtras` so MC matches
+   `DimuonDataAlgCoreT.c:597`. Affects 0.66% of tight MC muons; does not change any result here.
+
+**Next physics action (unblocked):** derive the MC-based ΔR trigger-correlation correction from
+`dimuon_b_HLT_2mu4_L12MU3V_mu{1,2}passLeg{1,2}_dR_*`, carrying the ~20% second-leg MC
+over-efficiency (Step 8e) as a systematic on the correction.
 
 Monitor state files:
 `~/usatlasdata/pythia_fullsim_test_sample/grid_monitor_{status.log,state.txt}` and
