@@ -52,6 +52,57 @@ Create a tracking doc when: (a) investigating an unknown root cause with
 multiple hypotheses, or (b) the user requests documentation for a new
 analysis or major rework spanning many editing cycles.
 
+### Autonomy Contract (write early; survives compaction; prevents false early-stop)
+
+**Trigger:** the user asks to run a task autonomously to completion ("until it's
+fully done", "until the bug is truly gone", "produce all the final plots/numbers").
+Such a request is itself a reason to have a tracking doc (case (b) above) — if none
+exists, create one.
+
+**As one of the FIRST steps** — after Doc triage / reading the relevant tracking
+doc(s), *before* detailed planning — write a pinned **Autonomy Contract** block at
+the top of the doc (right after Objective), with exactly these three fields:
+
+```markdown
+## Autonomy Contract (ACTIVE — re-read on every compaction)
+- Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a
+  plan, a passing small test, or one pipeline stage is NOT a stopping point.
+- Done = <concrete final outputs / acceptance checks, derived from the request>
+- Stop-and-ask = ANY physics-results-bending ambiguity (no fixed list; use judgment;
+  when unsure whether an ambiguity is blocking, treat it as blocking → AskUserQuestion).
+```
+
+Rules governing the block:
+- **Agent fills `Done` itself** from the request — the requested deliverables are
+  usually stated clearly (e.g. "3 steps each producing a plot set" → Done = those 3
+  plot sets regenerated at their paths). This is how a post-compaction agent knows it
+  is *not yet* done.
+- **No pre-enumerated ambiguity list — copy the `Stop-and-ask` line VERBATIM.** Only
+  `Done` is task-specific (angle-bracket placeholder); the `Stop-and-ask` line is fixed
+  literal text — do NOT specialize it into a concrete list of anticipated ambiguities.
+  Two reasons: (1) at this early write-time your knowledge of the task is limited and
+  most real ambiguities surface only mid-task, so any list you write now is guessing;
+  (2) a fixed list would both miss the task-specific points (usually the very ones not
+  foreseen in the original request) and license reckless push-through on anything
+  off-list. The stop-condition stays a runtime judgment call, biased toward stopping.
+- **If you cannot pin `Done`** from the request, or you already see an ambiguity of
+  unclear blocking-status at this initial stage → **STOP and ask before doing any
+  work.** Ambiguities that instead surface later (during planning/implementation,
+  after exploration) → stop and `AskUserQuestion` exactly as agents already do well;
+  record the resolution and, if it moves the target, update `Done`.
+- **Investigation `Done` includes the fix and its blast radius** — but *conditionally*:
+  apply the fix only if confident (tests confirm it removes the root cause rather than
+  masking it, and changes nothing else), then regenerate **every** result the fix
+  affects (rerun affected pipelines; see `signal_selection_change_impact.md`). If you
+  cannot resolve the issue, or are unsure the proposed fix is correct, that is itself a
+  blocking ambiguity → STOP and ask; proceed-to-done does NOT apply.
+- **On compaction:** the block is re-read as part of Doc triage (see Lifecycle);
+  resume from the first unmet `Done` item — do not restart with a fresh confirmation.
+- **Completion clears it:** when Done is met, mark the block `DONE` (or delete it)
+  alongside the normal Completion step.
+- **Delegated autonomous work:** put the same Mandate/Done/Stop-and-ask in the
+  subagent's scratch doc *and* its task prompt (per §Delegated subagent memory).
+
 ### Document structure
 
 **Start:** Create `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/<name>.md`. Register it in the
@@ -170,9 +221,11 @@ as at risk.
 resuming after any context compression, run **Doc triage** (above). Scope it
 from the current request; after compaction, from the task described in the
 summary. Then re-read the Per-step protocol and INVARIANT above. For
-implementation docs, re-read the Physics Procedure section first. The doc is
-ground truth — if conversation history or compaction summaries conflict, trust
-the doc.
+implementation docs, re-read the Physics Procedure section first. **If the doc
+has an ACTIVE Autonomy Contract, re-read it and resume from the first unmet
+`Done` item — an autonomous task is not finished until Done is met; a compaction
+is not a reason to stop and re-confirm.** The doc is ground truth — if
+conversation history or compaction summaries conflict, trust the doc.
 
 **How to detect compaction:** If you cannot recall reading the tracking
 doc's full text in this conversation (i.e., there is no Read tool call
