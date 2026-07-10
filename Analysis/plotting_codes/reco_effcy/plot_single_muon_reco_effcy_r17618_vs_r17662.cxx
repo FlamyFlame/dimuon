@@ -1,10 +1,13 @@
-// Overlay R17662 (signal-truth-only) on R17618 (collision sample, +dR fix) for the
-// single-muon reconstruction efficiency, for the 0-5% and 5-10% centrality bins.
+// Overlay R17662 (signal-truth-only, no barcode collision) on R17618 (full HIJING
+// truth, has the Pythia/HIJING barcode collision) for the single-muon reconstruction
+// efficiency, 0-5% and 5-10% centrality. BOTH samples use the SAME pure prob>0.5
+// barcode matching (the ad-hoc dR fallback was deleted 2026-07-10) and the SAME
+// pT-hat slice (pTH8_14 / kin0), so the comparison is clean: any R17618<R17662 deficit
+// is a genuine reconstruction-efficiency UNDERESTIMATE from the barcode collision.
 // Two plot types per centrality: q-eta-integrated, and q-eta-binned (3x3 subplots).
-// Efficiency = pass_medium / all fiducial truth muons vs truth pT (weighted, binomial
-// errors), modelled on plot_single_muon_reco_effcy.cxx. Sample comparison: the
-// single-muon ε is expected to agree within stats in the turn-on region (R17662 is
-// pTH8_14 only, so it has no plateau stats above ~15 GeV).
+// Efficiency = pass_{WP} / all fiducial truth muons vs truth pT (weighted, binomial
+// errors), modelled on plot_single_muon_reco_effcy.cxx. R17662 is pTH8_14 only -> no
+// plateau stats above ~15 GeV.
 #include <TFile.h>
 #include <TH1D.h>
 #include <TCanvas.h>
@@ -22,12 +25,14 @@ namespace {
     const std::vector<double> pt_edges = {4, 5, 6, 7, 8, 10, 12, 15, 20, 30, 50, 80, 120};
     const int nPtBins = (int)pt_edges.size() - 1;
 
+    // Both pure prob>0.5, pTH8_14 (kin0). R17618 uses only the kin0 slice so the
+    // pT-hat mix matches R17662 exactly (fair comparison of the same muon population).
     const std::string R17618 =
-        "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/"
-        "muon_pairs_pythia_fullsim_hijing_overlay_pbpb23_no_data_resonance_cuts_single_muon.root";
+        "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/r17618_kin0_run/"
+        "muon_pairs_pythia_fullsim_hijing_overlay_pbpb23_no_data_resonance_cuts_r17618kin0_single_muon.root";
     const std::string R17662 =
         "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/r17662_run/"
-        "muon_pairs_pythia_fullsim_hijing_overlay_pbpb23_no_data_resonance_cuts_r17662_TRUEnodr.root";
+        "muon_pairs_pythia_fullsim_hijing_overlay_pbpb23_no_data_resonance_cuts_r17662_single_muon.root";
     std::string OUTDIR =
         "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/plots/r17618_vs_r17662_comparison/";
 
@@ -121,8 +126,8 @@ void plot_single_muon_reco_effcy_r17618_vs_r17662(bool useTight = true) {
 
             TLegend leg(0.45, 0.16, 0.90, 0.30);
             leg.SetBorderSize(0); leg.SetFillStyle(0); leg.SetTextSize(0.032);
-            leg.AddEntry(e618, "R17618 (+dR fix)", "lpe");
-            leg.AddEntry(e662, "R17662 (signal-only, no dR)", "lpe");
+            leg.AddEntry(e618, "R17618 (full HIJING truth)", "lpe");
+            leg.AddEntry(e662, "R17662 (signal-only truth)", "lpe");
             leg.Draw("SAME");
 
             TLatex lat; lat.SetNDC();
@@ -175,8 +180,8 @@ void plot_single_muon_reco_effcy_r17618_vs_r17662(bool useTight = true) {
                 if (iq == 0) {
                     TLegend* leg = new TLegend(0.30, 0.13, 0.97, 0.34);
                     leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.050);
-                    leg->AddEntry(e618, "R17618 (+dR fix)", "lpe");
-                    leg->AddEntry(e662, "R17662 (signal-only, no dR)", "lpe");
+                    leg->AddEntry(e618, "R17618 (full HIJING truth)", "lpe");
+                    leg->AddEntry(e662, "R17662 (signal-only truth)", "lpe");
                     leg->Draw("SAME");
                 }
             }
