@@ -316,6 +316,70 @@ hadd, validation; bookkeeping (merging records, SkimCode README, this doc, roadm
   `grid_monitor.sh --mode overlay -i 10 <7 ids>` (both running; download → hadd → validate →
   append to each family's `merging-record.txt`).
 
+- 2026-07-09 19:25 — **First task landed & Step-8 sanity check PASSES on it.**
+  Task `51360178` (overlay r17662, pTH8_14) validated OK — **10 000 entries**, i.e. *identical*
+  to the trigger-off NTUP ⇒ the `StoreAllEvents` fix reached the grid job (a trigger-OR-filtered
+  output would have been ~7–8k). `grid_monitor` renamed the old file to
+  `...FullSimHIJINGOverlayPP24_r17662.NTUP.bak_20260709.root` (June-11 file preserved).
+
+  | | entries | branches | trigger branches |
+  |---|---|---|---|
+  | old (trigger-off, Jun 11) | 10 000 | 143 | 0 |
+  | new (trigger-on, Jul 9) | 10 000 | 224 | 76 |
+
+  Full-stat trigger rates: `mu4` 7838/10000 (78.4%), `mu4_mu4noL1` 5258 (52.6%),
+  `2mu4` 2959 (29.6%) — ordering `mu4 > mu4_mu4noL1 > 2mu4` holds and the values track the
+  100-event test (75/41/27%). Per-leg matching is populated:
+  `dimuon_b_HLT_2mu4_L12MU3V_mu1passLeg1_dR_0_02` has ≥1 matched muon in 2557 events
+  (≤ the 2959 that fire 2mu4, as it must be). **The ΔR trigger-correlation ingredient is real.**
+
+- 2026-07-09 — **STORAGE INCIDENT during Step 6 download: GPFS quota exhausted → 2 tasks
+  falsely "failed".** `usatlast3-data` hit its soft limit with the grace period **expired**
+  (`used 3223186944 ≥ soft 3221225472` blocks), so GPFS refused new writes. `rucio download`
+  then failed for tasks `51360153` and `51360174` — every protocol/RSE failed in <1 s, the
+  signature of a local write refusal, not a transfer problem. The grid tasks themselves were
+  fine.
+  - **Danger discovered:** `grid_monitor` renames the old NTUP → `.bak_YYYYMMDD.root` **before**
+    downloading. For those two slices the rename succeeded and the download did not, leaving
+    `pTH8_14` and `pTH125_300` with **no canonical NTUP** and the `.bak` as the *only* copy.
+    ⇒ Never move/delete a `.bak_*` until its canonical replacement has landed.
+  - **Response:** stopped both monitors (so healthy tasks stopped being marked failed), reset
+    the two tasks `failed`→`pending`, freed space, restarted the monitors on the outstanding IDs.
+  - **Space freed (user ran the deletes; agent `rm` on `usatlasdata` is permission-blocked):**
+    (1) `aod_trigger_check/` — the AODs downloaded for the Step-3 file check (28 G blocks);
+    (2) **`backup_wrong_vtx_z/` moved to pnfs** — the 6 obsolete r17044 wrong-beamspot-z NTUPs
+    (`hijing_overlay_r17618_grid_reprocessing.md`), 132 GiB real. Copied to
+    `/pnfs/usatlas.bnl.gov/users/yuhanguo/pythia_fullsim_hijing_overlay_test_sample/backup_wrong_vtx_z/`
+    (= `~/dcachearea/...`), each file size-verified **and** re-opened in ROOT (all 6 → 10 000
+    entries) before the source was removed; (3) the leftover `user.yuhang.NTUP.*_EXT0` partial
+    download dir. Quota 99% → 90.3% real (1.35/1.50 TiB).
+  - **Quota accounting note (confirms memory `reference_storage_quota`):** `mmlsquota` and
+    `du -sh` report GPFS **allocated blocks = 2× real bytes** (data replication). `du -sb`
+    reports real bytes. So the mmlsquota numbers MUST be halved: usable = 1.50 TiB, not 3.0 TiB.
+  - **Disk census (real bytes):** `dimuon_data` 995 G (pp_2024 476 G, pbpb_2025 253 G,
+    pbpb_2023 131 G, pbpb_2024 104 G) · overlay test sample 311 G · `pythia_private_sample`
+    119 G · `powheg_full_sample` 57 G · `pythia_truth_full_sample` 31 G · `pythia_fullsim_test_sample`
+    7.4 G. **The overlay NTUPs are 21 GiB per 10 000 events** because r17618 keeps the FULL
+    HIJING truth record; the r17662 signal-only-truth equivalent is 333 MB (×65 smaller).
+    Relevant if overlay statistics ever grow.
+
+- 2026-07-09 — **✅ OVERLAY FAMILY COMPLETE & VALIDATED (7/7 tasks).** All six r17618 slices +
+  r17662: **10 000 entries each** (= the trigger-off originals ⇒ no trigger bias) and **76
+  trigger branches** each. Trigger rates rise **monotonically with pT-hat**, and the ordering
+  `mu4 > mu4_mu4noL1 > 2mu4` holds in every slice:
+
+  | slice | mu4 | mu4_mu4noL1 | 2mu4 |
+  |---|---|---|---|
+  | pTH8_14 | 7833 | 5234 | 2943 |
+  | pTH14_24 | 8559 | 6238 | 3838 |
+  | pTH24_40 | 8895 | 6838 | 4639 |
+  | pTH40_70 | 9202 | 7404 | 5144 |
+  | pTH70_125 | 9346 | 7739 | 5629 |
+  | pTH125_300 | 9371 | 7996 | 5618 |
+
+  Harder scatters → stiffer muons → higher trigger rates. This is a physics-level validation,
+  not just a plumbing check.
+
 ## Results & Observations
 
 *(organized, mutable)*
