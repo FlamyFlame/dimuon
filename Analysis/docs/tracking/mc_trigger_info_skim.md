@@ -380,6 +380,83 @@ hadd, validation; bookkeeping (merging records, SkimCode README, this doc, roadm
   Harder scatters → stiffer muons → higher trigger rates. This is a physics-level validation,
   not just a plumbing check.
 
+- 2026-07-09 — **Step 8 SANITY CHECKS on the downloaded pp-fullsim files (user-requested).**
+
+  **(8a) Re-skim identical to backup outside trigger branches — PASS (22/22 file pairs).**
+  ⚠ *Method trap:* a first, positional (event-index) comparison reported huge differences in
+  round multiples of 2000. Root cause: each NTUP is `hadd`ed from 5 grid jobs × 2000 events and
+  the **chunk order differs between skims**. The *sets* of `eventNumber` are identical
+  (10 000 = 10 000, zero one-sided). Re-run keyed on `eventNumber`: **every one of
+  `muon_pt`, `muon_eta`, `muon_quality`, `muon_trk_pt`, `muon_d0`, `muon_truth_pt`,
+  `truth_muon_pt` is bit-identical for all 10 000 events in all 22 pairs.** ⇒ enabling the
+  trigger added branches and changed nothing else. (Always key MC-vs-MC comparisons on
+  `eventNumber`, never on entry index.)
+
+  **(8b) Cross-section-weighted trigger fractions, per isospin beam.** Complete beams `nn`,
+  `np`, `pn` (6/6 pTHat slices each; `pp` was 4/6 at the time). Weight per event
+  `w_s = σ_s·ε_filt,s / N_s` (AMI, from the processing run log; `pp pTH40_70` cross-checked
+  against AMI directly).
+  `f(X|mu4) = Σ_s w_s·n_{X∧mu4,s} / Σ_s w_s·n_{mu4,s}`
+
+  | beam | f(2mu4 \| mu4) | f(mu4_mu4noL1 \| mu4) |
+  |---|---|---|
+  | nn | 0.4545 | 0.7203 |
+  | np | 0.4557 | 0.7233 |
+  | pn | 0.4552 | 0.7276 |
+
+  Beams agree to <1% ⇒ the trigger response is isospin-blind, as it must be. Both fractions
+  rise monotonically with pTHat. **In MC, `2mu4 ⊆ mu4` and `mu4_mu4noL1 ⊆ mu4` EXACTLY** (zero
+  events fire the dimuon chain without mu4) — a strong internal-consistency check.
+
+  **(8c) Data comparison (pp24, 603 M events) — and the prescale structure it reveals.**
+  In DATA the subset relation FAILS, and that is the prescale:
+  - `N(2mu4)/N(2mu4∧mu4) = 11 292 618 / 1 212 963 = 9.310` — 2mu4 is unprescaled and seeds a
+    *different* L1 item (`L1_2MU3V`), so this measures the **total** mu4 prescale.
+  - `N(noL1)/N(noL1∧mu4) = 13 985 355 / 5 403 586 = 2.588` — `mu4_mu4noL1` shares the
+    `L1_MU3V` seed, so the L1 draw is common and this measures the **HLT-only** mu4 prescale.
+  - ⇒ implied `PS(L1_MU3V) = 9.310/2.588 = 3.597`.
+
+  Independent bookkeeping (`IntNotes/data/luminosity/pp_2024/*.csv`, `LAr Corrected` ÷
+  `Prescale Corrected`): `PS(mu4)=9.283`, `PS(2mu4)=1.000`, `PS(mu4_mu4noL1)=3.657`.
+  **Agreement: 0.3% on the total mu4 prescale, 1.6% on the L1_MU3V prescale.** Two completely
+  independent sources (event counts vs lumi bookkeeping) — and it proves the conditional ratios
+  `f(X|mu4)` are **prescale-free** (the mu4 prescale cancels between numerator and denominator;
+  for noL1 the shared L1 draw cancels too, and its HLT prescale is 1).
+
+  **(8d) MC vs data — the comparison only works at fixed muon quality.** Inclusive fractions are
+  meaningless across samples (MC is DiMu-filtered; data mu4 is dominated by single muons):
+  MC 0.455 vs data 0.0041. Requiring ≥2 fiducial reco muons (`pT>4 GeV`, `|η|<2.4`) is NOT
+  enough either (MC/data = 13.0). **The driver is muon quality.** Requiring both muons **Tight**
+  (`quality & 305 == 305`) — the analysis nominal WP — collapses the discrepancy, differentially
+  in sub-leading-muon pT:
+
+  | sublead μ pT [GeV] | f(2mu4\|mu4) MC | data | MC/data | f(noL1\|mu4) MC | data | MC/data |
+  |---|---|---|---|---|---|---|
+  | 4–5   | 0.549 | 0.380 | 1.44 | 0.874 | 0.792 | 1.10 |
+  | 5–6   | 0.696 | 0.530 | 1.31 | 0.953 | 0.887 | 1.07 |
+  | 6–8   | 0.769 | 0.620 | 1.24 | 0.978 | 0.946 | 1.03 |
+  | 8–10  | 0.832 | 0.661 | 1.26 | 0.994 | 0.965 | 1.03 |
+  | 10–15 | 0.820 | 0.662 | 1.24 | 0.986 | 0.973 | 1.01 |
+  | 15–25 | 0.702 | 0.701 | 1.00 | 0.942 | 0.979 | 0.96 |
+  | 25–50 | 0.788 | 0.635 | 1.24 | 0.947 | 0.981 | 0.97 |
+  | **integrated** | **0.638** | **0.459** | **1.39** | **0.918** | **0.842** | **1.09** |
+
+  Only **250 517** of the 4 068 784 data "≥2 fiducial muon, mu4-fired" events survive the Tight
+  requirement (6%) — i.e. **94% of the loose data dimuon sample has a non-tight second muon**
+  that never produces a trigger object. MC (DiMu-filtered, two real muons) has almost none.
+  This independently corroborates the Medium→Tight WP default (`tight_wp_default_change.md`).
+
+  **Physics reading of the residual (this is the important part):** after the Tight requirement,
+  **2mu4 (needs TWO L1 muon RoIs) has MC/data ≈ 1.24–1.44**, while **mu4_mu4noL1 (needs only ONE
+  L1 RoI, the second leg is full-scan) has MC/data ≈ 0.96–1.10**. A per-leg L1 muon efficiency
+  ratio `r = ε_L1^MC/ε_L1^data ≈ 1.13` reproduces BOTH: `r² ≈ 1.28` (2mu4) and `r ≈ 1.13` →
+  ~1.0–1.1 (noL1). That is the known MC over-efficiency of the L1 muon trigger (simulation lacks
+  real RPC/TGC chamber inefficiency), and the discrepancy is largest in the turn-on
+  (4–5 GeV: 1.44) and vanishes on the plateau (15–25 GeV: 1.00) — exactly the expected shape.
+  **Consequence for this analysis:** benign. The trigger efficiency is measured *from data*;
+  MC supplies only the ΔR *correlation* correction, which is a ratio in which a per-leg
+  efficiency normalization largely cancels. The residual is a systematic to quantify, not a bug.
+
 ## Results & Observations
 
 *(organized, mutable)*
