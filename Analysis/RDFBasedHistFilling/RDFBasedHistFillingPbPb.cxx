@@ -200,6 +200,17 @@ void RDFBasedHistFillingPbPb::BuildHistBinningMapPbPbExtra(){
 	    }
 
 	    hist_binning_map["phi2nd_bins" + ctr] = phi2nd_bins;
+
+	    // ------- ctr-dep eta binning for single-muon trigger efficiency (probe eta 1D, uniform) -------
+
+	    int neta2nd_bins = 48 / ctr_rebin_factor; // rebin factors {1,1,1,1,2,4} all divide 48
+
+	    std::vector<double> eta2nd_bins(neta2nd_bins + 1);
+	    for (int i = 0; i <= neta2nd_bins; ++i) {
+	        eta2nd_bins[i] = -2.4 + 4.8 * (static_cast<double>(i) / neta2nd_bins);
+	    }
+
+	    hist_binning_map["eta2nd_bins" + ctr] = eta2nd_bins;
 	}
 }
 
