@@ -33,7 +33,20 @@ prompts. Reviewers MUST enforce it: see `.claude/conventions/ntuple-provenance.m
 
 ## Tracking Documents
 
-**INVARIANT:** For every active tracking doc, every step MUST: (1) write plan to Latest Stage BEFORE work, (2) verify against Physics Procedure, (3) append results to Progress Log AFTER work, with physics motivation where applicable. No exceptions, including after compaction. **First action in any conversation or after compaction MUST be reading all active tracking docs — no code changes, no tool calls (other than Read), no planning until this is done.**
+**INVARIANT:** For every in-scope tracking doc, every step MUST: (1) write plan to Latest Stage BEFORE work, (2) verify against Physics Procedure, (3) append results to Progress Log AFTER work, with physics motivation where applicable. No exceptions, including after compaction.
+
+**Doc triage — first action in any new conversation and after every compaction, before any non-Read tool call, planning, or code change:**
+
+1. Read `Analysis/docs/tracking/INDEX.md` — one line per doc: status + scope.
+2. Read fully every ACTIVE doc whose scope overlaps the request; usually 1–2. Read a CLOSED doc only if its scope clearly bears on the request — closed docs settle past questions, they do not govern current work.
+3. When ambiguous, or the request is broad ("what's the analysis status?"), read it. Reading is cheap; contradicting a Physics Procedure is not.
+4. Read nothing if the request is not analysis work (CLAUDE.md/meta questions, plugin or skill work, environment setup).
+5. If the task later moves **outside** the scope of the docs you read — a new topic, a different pipeline, a different measurement — re-read INDEX.md and triage again before working on it.
+6. State the triage in one line in your first message: which docs you read, and which **ACTIVE** docs you skipped.
+
+**Scope accuracy:** INDEX.md scopes are the *only* thing triage sees. If a doc's content grows past what its scope line describes, rewrite that line (and bump `Updated`) in the same step that grows the doc. A stale scope silently hides the doc from every future conversation.
+
+For the `low_mass_dimuon_template_fit.md` umbrella (62 kB): read its Physics Procedure + index sections, then only the sub-doc (A–E) that owns your thread.
 
 Create a tracking doc when: (a) investigating an unknown root cause with
 multiple hypotheses, or (b) the user requests documentation for a new
@@ -41,8 +54,9 @@ analysis or major rework spanning many editing cycles.
 
 ### Document structure
 
-**Start:** Create `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/<name>.md`. Register in Active Tracking
-Docs below. Structure depends on mode:
+**Start:** Create `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/<name>.md`. Register it in the
+**Active** section of `Analysis/docs/tracking/INDEX.md` (top of the section) with a one-line
+scope. Structure depends on mode:
 - *Investigation:* Objective, Context, Sub-steps, Accumulated Findings
   (append-only), Ruled Out (append-only), Latest Stage.
 - *Implementation:* Objective, **Physics Procedure** (REQUIRED — see below),
@@ -102,6 +116,9 @@ contradicts it, flag to the user before proceeding. Contents:
   names, numbers.
 - For investigations: add ruled-out approaches to Ruled Out with reason.
 - For implementations: mark step done and update Remaining Work.
+- Bump the doc's `Updated` date in `Analysis/docs/tracking/INDEX.md`. If the work
+  pushed the doc beyond what its INDEX scope line describes, rewrite that scope
+  line now — a stale scope hides the doc from every future triage.
 
 **Design changes (implementation):** Record old approach, new approach, and
 reason in Design Decisions before proceeding. When a physics motivation
@@ -149,12 +166,13 @@ as at risk.
 
 ### Lifecycle
 
-**Continuity (CRITICAL):** At the start of every new conversation, and
-before resuming after any context compression, check Active Tracking Docs.
-If any exist, Read each fully before doing anything else — then re-read
-the Per-step protocol and INVARIANT above. For implementation docs,
-re-read the Physics Procedure section first. The doc is ground truth — if
-conversation history or compaction summaries conflict, trust the doc.
+**Continuity (CRITICAL):** At the start of every new conversation, and before
+resuming after any context compression, run **Doc triage** (above). Scope it
+from the current request; after compaction, from the task described in the
+summary. Then re-read the Per-step protocol and INVARIANT above. For
+implementation docs, re-read the Physics Procedure section first. The doc is
+ground truth — if conversation history or compaction summaries conflict, trust
+the doc.
 
 **How to detect compaction:** If you cannot recall reading the tracking
 doc's full text in this conversation (i.e., there is no Read tool call
@@ -162,8 +180,12 @@ for it in your visible history), treat it as a compaction event and
 re-read before proceeding. When in doubt, re-read — reading the doc is
 cheap, skipping it risks contradicting the Physics Procedure.
 
-**Completion:** Write final summary, clear Latest Stage, remove from Active
-Tracking Docs.
+**Completion:** Write final summary, clear Latest Stage, move the doc from the
+**Active** to the **Closed** section of `Analysis/docs/tracking/INDEX.md`, and
+make its scope line describe what the doc *concluded* (not what it set out to
+do) — that line is all a future conversation will see. Never delete the file.
+A doc that is finished-for-now but awaiting external inputs is **PARKED**: keep
+it in Closed, say so in the scope line, and note what unblocks it.
 
 **Never:** Keep findings/progress only in conversation (write to doc before
 next action); start a step without writing plan to doc first; declare
@@ -197,11 +219,11 @@ KB entries before answering. Do not answer a physics question from memory when
 a KB entry covers it — give physically grounded, reference-backed answers.
 
 **Cross-reference other tracking docs.** Before making a factual statement on a
-topic that is NOT the subject of the current tracking doc, search for and
-cross-reference other existing tracking docs in `Analysis/docs/tracking/` —
-including CLOSED ones (those removed from "Active Tracking Docs"). They are not
-deleted and often already settled the question. Cite the doc you relied on, and
-do not assert from inference what a sibling doc has already established or refuted.
+topic that is NOT the subject of the current tracking doc, consult
+`Analysis/docs/tracking/INDEX.md` and cross-reference the sibling docs whose scope
+covers it — **including CLOSED ones**. They are never deleted and often already
+settled the question. Cite the doc you relied on, and do not assert from inference
+what a sibling doc has already established or refuted.
 
 ## Auto-Dispatch Rules
 
@@ -221,27 +243,11 @@ When the user asks to run, execute, or steer a pipeline, or wants autonomous end
 When the user asks to summarize a paper/source into the knowledge base, add references to the KB, or build/reorganize the KB → invoke `/kb-build` (criteria: `.claude/kb/KB_BUILDING_GUIDE.md`)
 When the user asks to review, audit, or validate the knowledge base or a KB entry → invoke `/kb-review`
 
-## Active Tracking Docs
+## Tracking Doc Index
 
-- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/analysis_status_summary.md` — Current analysis status: which steps updated with May 2026 skim
-- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/analysis_roadmap_2026_06.md` — Analysis roadmap (2026-06-10): IntNote readiness, missing inputs, full chain with dummies; task files in Analysis/docs/roadmap_tasks/
-- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/academic_writing_workflow.md` — Academic writing production chain (rigor + auto-sync): building the G1–G7 gates, new commands/agents, ARS-not-installed decision, copy-based figure sync
-- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/low_mass_dimuon_template_fit.md` — **UMBRELLA + authoritative Physics Procedure + INDEX** for the low-mass (0–4 GeV) background-subtraction program that REPLACES provisional OS−SS in crossx/R_AA. FACTORIZED 2026-07-06 into 5 sub-docs (A–E below); read this first for the physics + index, then the sub-doc owning your thread. Nominal method = OS−SS + MC(S+G) fit + §3h resonance templates (combined-fit/k abandoned).
-  - `…/tf_nominal_fit_build.md` (**A**) — CURRENT NOMINAL method + fit build: OS−SS + MC(S+G) + resonance templates, reco-level correction ordering, signal acceptance, wire N_sig into crossx/R_AA. LIVE fitter→R_AA status.
-  - `…/tf_k_factor_mixed_event.md` (**B**) — OS→SS factor k (5a/5b), mixed-event/ScrambGen T_mix, the ABANDONED combined OS+SS fit (kept as systematic/history).
-  - `…/tf_bkg_composition_normalization.md` (**C**) — bkg composition, data/Pythia normalization (nb→pb unit fix), provenance classifier, tight-vs-medium WP, extended-mass control region, V1 charge / V2 near-side charge-symmetry checks.
-  - `…/tf_dpop_fake_muon_program.md` (**D**) — Δp/p fake-muon FIT-AND-SUBTRACT yield program (D0–D5).
-  - `…/tf_upfront_bkg_reduction.md` (**E**) — ACTIVE (2026-07-06): reduce hadronic/fake UPFRONT by tighter selection instead of fitting — muon working points (χ² recommendation; `Analysis/docs/references/muon_working_points.md`), |d0| discrimination, Δp/p distribution (4-way real-HF/real-prompt/hadronic/fake).
-- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/raa_from_rdf_crossx.md` — task_06 R_AA from RDF crossx. REOPENED 2026-06-19: PbPb 2024 lumi corrected 1.59663→0.85112 nb⁻¹ (old GRL didn't exclude runs <489703; events already correct, lumi-only fix; combined R_AA ×1.17) + R_AA equation rewritten to common notation (n_AA raw yield, explicit 1/N_evt) + y-title relabel.
-- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/tight_wp_default_change.md` — Medium→TIGHT default muon WP (pp & PbPb, all pipelines) — DONE & CERTIFIED 2026-07-08 (code `11b0748`; tight trig-eff turn-on + tight reco-eff + tight crossx/R_AA reruns; both reviewers PASS). WP-site registry = `Analysis/docs/muon_wp_registry.md` (systematic reference, from roadmap). One open item: pp-tight reco-eff (interim=Medium Fig.31 vs peripheral-PbPb-tight — user decision). Medium-WP systematic run = future (roadmap task_08).
-- `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/tracking/mc_trigger_info_skim.md` — Trigger simulation in Run-3 fullsim MC (pp24 fullsim r16578 + HIJING overlay r17618/r17662): AMI + file verification, enable trigger in SkimCode for all Run-3 fullsim/overlay MC, re-skim `_July2026`. Unblocks the MC-based ΔR trigger-correlation correction (roadmap Q4).
-<!-- COMPLETED (2026-06-16), do NOT auto-load:
-- Analysis/docs/tracking/reco_eff_placeholder_run2.md — Reco-eff placeholder (F.2 PbPb + HF R_AA Fig.31 pp); ε₁·ε₂ proxy in nominal crossx + R_AA. Follow-ups Q1+Q2 DONE 2026-06-16: Q1 PbPb genuine differential cross-section dσ/dp_T=1/L·dN (nb/GeV, differential_crossx dir; T_AA-weighted kept as R_AA input); Q2 reco folded into pp generic weight (generic_weight_col=w_reco_trig) so MC-data comparison reflects reco + INVARIANT: rerun MC-data comparison after any pp eff/det-resp/unfolding change. CLOSED. Follow-up: pt_150 differential crossx; proper 3D pair ε_reco when MC lands. -->
-
-<!-- COMPLETED (2026-06-15), do NOT auto-load:
-- Analysis/docs/tracking/kb_building.md — KB-building system (4 steps ALL DONE): /kb-build + /kb-review + GUIDE built; 12-source bulk build done & review-validated. Further sources via /kb-build ADD mode. -->
-
-
-<!-- PARKED (2026-06-12), reopen when inputs ready — do NOT auto-load, but DO consult per the "Cross-reference other tracking docs" rule:
-- Analysis/docs/tracking/hijing_overlay_reco_effcy_investigation.md — HIJING overlay reco efficiency: RESOLVED (deficit is PHYSICAL, method/sample-independent; dR fallback default-off); awaiting full ~10M-event signal-truth-only sample (≥2 months). -->
+All tracking docs — ACTIVE and CLOSED — are registered with a one-line scope in
+**`Analysis/docs/tracking/INDEX.md`**. Doc triage (see §Tracking Documents) reads
+that file first and pulls only the docs whose scope overlaps the request. Do not
+maintain a duplicate list here; INDEX.md is the single source of truth for both
+status and scope.
 
