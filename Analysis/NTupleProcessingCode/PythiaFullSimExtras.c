@@ -212,13 +212,21 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
             m.passmu4 = muon_b_HLT_mu4->at(reco_ind);
     };
 
-    // ---- Truth-to-reco matching: exclusive (one reco muon per truth muon) ----
-    // Two passes, so that the result does not depend on truth-muon ordering:
-    //   pass 1: barcode matching for every truth muon, claiming its reco muon;
-    //   pass 2: dR fallback (if enabled) over the reco muons still unclaimed.
-    // A single pass would let an early truth muon's dR fallback steal the reco muon
-    // that a later truth muon barcode-matches: both legs of a collinear pair then
-    // carry the same reco muon and the pair reconstructs at exactly minv = 2*m_mu.
+    // ---- Truth-to-reco matching: barcode only, exclusive (one reco muon per truth) ----
+    // ATLAS-standard MC matching for reconstruction efficiency (Run 2 dimuon note
+    // ATL-COM-PHYS-2021-1094): a truth muon is "reconstructed" iff a reco muon carries
+    // its truth barcode with truthMatchProbability > 0.5. That is the SOLE criterion.
+    //
+    // No geometric ΔR fallback. A ΔR<0.05-to-nearest-reco fallback (removed 2026-07-10)
+    // is ALWAYS wrong here: it recovers genuine physical losses (over-estimating the
+    // efficiency), it has no data analog, and — because the correction is applied to
+    // data — it would inflate the corrected yield precisely for collinear (ΔR<0.05)
+    // pairs. Geometric matching is a distinct alternative method (sensitive to real
+    // ΔR<0.05 pairs), never a fallback bolted onto barcode matching.
+    //
+    // The `reco_claimed` exclusivity guard keeps a reco muon from being assigned to two
+    // truth muons (possible only if two truth muons or two prob>0.5 reco muons share a
+    // barcode — rare); it makes the assignment order-independent.
     std::vector<int> truth_to_reco(n_pythia_truth_muons, -1);
 
     for (int truth_ind = 0; truth_ind < n_pythia_truth_muons; truth_ind++){
@@ -230,36 +238,6 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
             truth_to_reco[truth_ind] = reco_ind;
             reco_claimed[reco_ind]   = true;
             break;
-        }
-    }
-
-    if (self().use_dr_fallback){
-        // ad-hoc dR fallback (default OFF): only for the barcode-collision r17618
-        // sample, where the collision puts wrong truth decorations on reco muons;
-        // find the closest reco muon not claimed by any barcode match above.
-        constexpr double dR_threshold = 0.05;
-        for (int truth_ind = 0; truth_ind < n_pythia_truth_muons; truth_ind++){
-            if (truth_to_reco[truth_ind] >= 0) continue;
-            double truth_eta = truth_muon_eta->at(truth_ind);
-            double truth_phi = truth_muon_phi->at(truth_ind);
-            double best_dR = dR_threshold;
-            int best_ind = -1;
-            for (int ri = 0; ri < n_reco; ri++){
-                if (reco_claimed[ri]) continue;
-                double deta = truth_eta - muon_eta->at(ri);
-                double dphi = truth_phi - muon_phi->at(ri);
-                if (dphi >  M_PI) dphi -= 2.0 * M_PI;
-                if (dphi < -M_PI) dphi += 2.0 * M_PI;
-                double dR = std::sqrt(deta * deta + dphi * dphi);
-                if (dR < best_dR){
-                    best_dR = dR;
-                    best_ind = ri;
-                }
-            }
-            if (best_ind >= 0){
-                truth_to_reco[truth_ind] = best_ind;
-                reco_claimed[best_ind]   = true;
-            }
         }
     }
 
