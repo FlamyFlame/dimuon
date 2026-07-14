@@ -33,10 +33,12 @@
 #include <TLegend.h>
 #include <TLatex.h>
 #include <TLine.h>
+#include <TArrow.h>
 #include <TStyle.h>
 #include <TSystem.h>
 #include <TROOT.h>
 
+#include <cctype>
 #include <cmath>
 #include <iostream>
 #include <map>
@@ -86,18 +88,104 @@ void StyleGraph(TGraphAsymmErrors* g, Color_t col, Style_t marker,
     g->SetLineStyle(ls);
 }
 
+// suppress_xlabels: for the MAIN pad of a split (main+ratio) canvas -- the ratio pad below
+// carries the x axis, and leaving the main pad's x labels on renders them chopped in half
+// against its 2% bottom margin.
 TH1* DrawEffFrame(double xlo, double xhi, const std::string& xtitle,
                   double ylo = 0.0, double yhi = 1.1,
-                  const std::string& ytitle = "efficiency")
+                  const std::string& ytitle = "efficiency",
+                  bool suppress_xlabels = false)
 {
     TH1* frame = gPad->DrawFrame(xlo, ylo, xhi, yhi);
+    if (gPad->GetLogx()) { frame->GetXaxis()->SetMoreLogLabels(); frame->GetXaxis()->SetNoExponent(); }
     frame->GetXaxis()->SetTitle(xtitle.c_str());
     frame->GetYaxis()->SetTitle(ytitle.c_str());
-    frame->GetXaxis()->SetTitleSize(0.05);
+    frame->GetXaxis()->SetTitleSize(suppress_xlabels ? 0.0 : 0.05);
     frame->GetYaxis()->SetTitleSize(0.05);
-    frame->GetXaxis()->SetLabelSize(0.045);
+    frame->GetXaxis()->SetLabelSize(suppress_xlabels ? 0.0 : 0.045);
     frame->GetYaxis()->SetLabelSize(0.045);
     return frame;
+}
+
+// ---- ratio panels (review criterion R3) --------------------------------------------
+// Step 1 overlays MC on a DATA reference and Step 2 overlays three DeltaR series that are
+// EXPECTED TO AGREE (the §3.2 factorization cross-check) -- in both cases the ratio IS the
+// measurement, so every such canvas carries a bottom ratio pad.
+
+// Split the CURRENT pad into a main pad (top) and a ratio pad (bottom). Returns {main, ratio}.
+// Both pads are drawn; caller cd()s into them.
+std::pair<TPad*, TPad*> SplitPadForRatio(const std::string& tag, bool logx,
+                                         double split = 0.32)
+{
+    TPad* host = (TPad*)gPad;
+    host->cd();
+    auto* pmain = new TPad(("pm_" + tag).c_str(), "", 0., split, 1., 1.);
+    auto* prat  = new TPad(("pr_" + tag).c_str(), "", 0., 0.,    1., split);
+    pmain->SetTopMargin(0.06);
+    pmain->SetBottomMargin(0.02);
+    pmain->SetLeftMargin(0.14);
+    prat->SetTopMargin(0.03);
+    prat->SetBottomMargin(0.35);
+    prat->SetLeftMargin(0.14);
+    if (logx) { pmain->SetLogx(); prat->SetLogx(); }
+    pmain->Draw();
+    prat->Draw();
+    return {pmain, prat};
+}
+
+// Frame for a ratio pad: labels/titles scaled up by 1/split so they match the main pad.
+TH1* DrawRatioFrame(double xlo, double xhi, const std::string& xtitle,
+                    const std::string& ytitle, double ylo, double yhi,
+                    double split = 0.32)
+{
+    const double s = 1.0 / split;
+    TH1* fr = gPad->DrawFrame(xlo, ylo, xhi, yhi);
+    if (gPad->GetLogx()) { fr->GetXaxis()->SetMoreLogLabels(); fr->GetXaxis()->SetNoExponent(); }
+    fr->GetXaxis()->SetTitle(xtitle.c_str());
+    fr->GetYaxis()->SetTitle(ytitle.c_str());
+    fr->GetXaxis()->SetTitleSize(0.05 * s);
+    fr->GetYaxis()->SetTitleSize(0.05 * s);
+    fr->GetXaxis()->SetLabelSize(0.045 * s);
+    fr->GetYaxis()->SetLabelSize(0.045 * s);
+    fr->GetYaxis()->SetTitleOffset(0.42);
+    fr->GetXaxis()->SetTitleOffset(1.05);
+    fr->GetYaxis()->SetNdivisions(505);
+    auto* l = new TLine(xlo, 1.0, xhi, 1.0);
+    l->SetLineStyle(2);
+    l->SetLineColor(kGray + 2);
+    l->Draw("same");
+    return fr;
+}
+
+// Point-by-point ratio of two efficiency graphs sampled on the SAME x binning.
+// Skipped points: (a) x values disagree between the two graphs (a guard against ever
+// dividing misaligned axes); (b) denominator <= 0 -- this is what removes the degenerate
+// zero-width 8.0 GeV pT point, whose content is exactly 0 in both samples, so it is never
+// divided nor double-counted; (c) numerator <= 0 -- a genuinely-zero efficiency is dropped
+// rather than plotted at 0. (c) never fires on these samples (no MC bin has zero
+// efficiency inside the fiducial region); if it ever did, the point would go missing from
+// the ratio pad while remaining visible in the main pad above it.
+// Errors: relative errors in quadrature, symmetrized -- adequate for a ratio pad.
+TGraphAsymmErrors* DivideGraphClean(TGraphAsymmErrors* gn, TGraphAsymmErrors* gd)
+{
+    auto* gr = new TGraphAsymmErrors();
+    int k = 0;
+    const int n = std::min(gn->GetN(), gd->GetN());
+    for (int i = 0; i < n; ++i) {
+        double xn, yn, xd, yd;
+        gn->GetPoint(i, xn, yn);
+        gd->GetPoint(i, xd, yd);
+        if (std::fabs(xn - xd) > 1e-6 * std::max(1.0, std::fabs(xd))) continue;  // axes disagree
+        if (yd <= 0. || yn <= 0.) continue;
+        const double en = 0.5 * (gn->GetErrorYhigh(i) + gn->GetErrorYlow(i));
+        const double ed = 0.5 * (gd->GetErrorYhigh(i) + gd->GetErrorYlow(i));
+        const double r  = yn / yd;
+        const double er = r * std::sqrt((en / yn) * (en / yn) + (ed / yd) * (ed / yd));
+        gr->SetPoint(k, xn, r);
+        gr->SetPointError(k, gn->GetErrorXlow(i), gn->GetErrorXhigh(i), er, er);
+        ++k;
+    }
+    return gr;
 }
 
 void DrawUnityLine(double xlo, double xhi)
@@ -181,24 +269,59 @@ const std::vector<std::pair<double,double>> kQEtaRange = {
 // ---- Step-2 coarse binning (SampleCfg::step2_coarse) -------------------------------
 // Step 2 asks ONE question: at FIXED (pT, q.eta), do the three DeltaR series agree?
 // That needs bins with enough entries to separate the series, not the fine resolution of
-// the Step-1 turn-on fit. These coarse edges are a strict SUBSET of the native axes
-// (required by TH1::Rebin), keep the turn-on region finely enough sampled to see its
-// shape, and merge the sparse high-pT tail:
-//   pT   : subset of pT_bins_8+pT_bins_60 (native 41 bins, incl. the zero-width 8.0 edge)
-//   q.eta: uniform 0.2, every edge present in the native 184-bin axis
-const std::vector<double> kStep2CoarsePt =
+// the Step-1 turn-on fit. So merge the native bins into coarse ones that still sample the
+// turn-on and collapse the sparse high-pT tail.
+//
+// TH1::Rebin REQUIRES every new edge to coincide with an existing one. A rounded literal
+// (5.1 for the native 5.09824) does NOT coincide: ROOT then prints "Bin edge ... does not
+// match ... Result can be inconsistent" and groups by bin CENTRE, which can split a native
+// bin. So the requested values below are only TARGETS -- SnapToAxis() replaces each with
+// the nearest actual edge of the histogram being rebinned, and THROWS if none is close.
+// Nothing downstream ever sees a rounded edge.
+const std::vector<double> kStep2CoarsePtTarget =
     {4.0, 5.1, 6.5, 8.0, 10.8, 16.2, 26.8, 60.0};
-std::vector<double> Step2CoarseQEta()
+std::vector<double> Step2CoarseQEtaTarget()   // uniform 0.2 (exact edges of the 184-bin axis)
 {
     std::vector<double> e;
     for (int i = 0; i <= 24; ++i) e.push_back(-2.4 + 0.2 * i);
     return e;
 }
 
-// Rebin to the given edges (a clone; the input file histogram is never modified).
-// Rebinning num and denom identically preserves num <= denom, so BayesEff stays valid.
-TH1* RebinTo(TH1* h, const std::vector<double>& edges, const std::string& name)
+// Snap each target to the nearest EXACT edge of h's x-axis. Throws if the nearest edge is
+// further than tol_rel (relative), i.e. if the requested binning is not achievable -- that
+// is a coding error, never something to paper over with an inconsistent rebin.
+std::vector<double> SnapToAxis(const TH1* h, const std::vector<double>& targets,
+                               double tol_rel = 0.05)
 {
+    const TAxis* ax = h->GetXaxis();
+    std::vector<double> out;
+    for (double t : targets) {
+        double best = 0.;
+        double bestd = 1e300;
+        for (int i = 1; i <= ax->GetNbins() + 1; ++i) {
+            const double e = ax->GetBinLowEdge(i);
+            const double d = std::fabs(e - t);
+            if (d < bestd) { bestd = d; best = e; }
+        }
+        const double scale = std::max(1.0, std::fabs(t));
+        if (bestd > tol_rel * scale)
+            throw std::runtime_error(Form("SnapToAxis: no axis edge near %.4g on '%s' "
+                                          "(nearest %.4g)", t, h->GetName(), best));
+        if (!out.empty() && best <= out.back())
+            throw std::runtime_error(Form("SnapToAxis: edges collapsed at %.4g on '%s' "
+                                          "(coarse binning finer than the native axis)",
+                                          t, h->GetName()));
+        out.push_back(best);
+    }
+    return out;
+}
+
+// Rebin to the given TARGET edges (snapped to the native axis first). Returns a clone; the
+// input file histogram is never modified. Rebinning num and denom identically preserves
+// num <= denom, so the Bayes divide stays valid.
+TH1* RebinTo(TH1* h, const std::vector<double>& targets, const std::string& name)
+{
+    const std::vector<double> edges = SnapToAxis(h, targets);
     return h->Rebin(static_cast<int>(edges.size()) - 1, name.c_str(), edges.data());
 }
 
@@ -213,14 +336,40 @@ const Color_t kMCColor   = kRed + 1;
 const Color_t kDataColor = kBlack;
 
 // Step-3 plateau window: well-separated muons must decorrelate, so eps_dR is flat here
-// (§3.3 diagnostic 1). [1,4] rather than [1,3] -- the extra decade of separation is still
-// plateau and the overlay needs every pair it can get.
+// (§3.3 diagnostic 1). [1,4] rather than [1,3] -- the extra separation is still plateau,
+// and the overlay needs every pair it can get.
 const double kPlateauLo = 1.0;
 const double kPlateauHi = 4.0;
+
+// The overlay headline ("HIJING overlay Pb+Pb23 cond., 0-5%, Tight muons, #mu^{+}") is ~2x
+// the length of the pp one and clipped at the pad edge -- taking the charge with it, which
+// is the one thing the reader cannot afford to lose. Scale the text down for long strings
+// instead of hard-coding a size per call site.
+// Count RENDERED glyphs, not raw characters: "#mu^{+}" is 7 characters but one glyph, so
+// scaling on text.size() over-shrinks any headline carrying LaTeX markup.
+size_t GlyphLength(const std::string& s)
+{
+    size_t n = 0;
+    for (size_t i = 0; i < s.size(); ++i) {
+        if (s[i] == '{' || s[i] == '}' || s[i] == '^' || s[i] == '_') continue;
+        if (s[i] == '#') {                       // a control word: #mu, #DeltaR, ... = 1 glyph
+            ++i;
+            while (i < s.size() && std::isalpha(static_cast<unsigned char>(s[i]))) ++i;
+            --i;
+        }
+        ++n;
+    }
+    return n;
+}
 
 void DrawHeadline(const std::string& text, double x = 0.12, double y = 0.955,
                   double size = 0.038)
 {
+    constexpr size_t kFitsAt = 34;      // glyphs that fit at the nominal size
+    const size_t len = GlyphLength(text);
+    if (len > kFitsAt)
+        size *= static_cast<double>(kFitsAt) / static_cast<double>(len);
+    size = std::max(size, 0.030);       // floor: below this the charge superscript is illegible
     TLatex tl;
     tl.SetNDC();
     tl.SetTextSize(size);
@@ -290,13 +439,11 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         {"phi", "phi2nd", "#phi",       -M_PI, M_PI, false}};
 
     for (const auto& v : vars) {
-        TCanvas c(("c_step1_" + v.mc).c_str(), "", 1400, 600);
+        TCanvas c(("c_step1_" + v.mc).c_str(), "", 1400, 800);
         c.Divide(2, 1);
         for (int ic = 0; ic < 2; ++ic) {
             c.cd(ic + 1);
-            gPad->SetLeftMargin(0.12);
-            gPad->SetBottomMargin(0.12);
-            if (v.logx) gPad->SetLogx();
+            auto pads = SplitPadForRatio("s1_" + v.mc + "_" + std::to_string(ic), v.logx);
 
             TH1D* mnum = GetObj<TH1D>(fmc, "h_mc_" + v.mc + "_num_"   + kCharges[ic]);
             TH1D* mden = GetObj<TH1D>(fmc, "h_mc_" + v.mc + "_denom_" + kCharges[ic]);
@@ -308,21 +455,31 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             StyleGraph(gmc, kMCColor, 21);
             StyleGraph(gda, kDataColor, 20);
 
-            DrawEffFrame(v.xlo, v.xhi, v.xtitle);
+            pads.first->cd();
+            DrawEffFrame(v.xlo, v.xhi, "", 0.0, 1.1, "efficiency", true);
             DrawUnityLine(v.xlo, v.xhi);
             gda->Draw("PZ same");
             gmc->Draw("PZ same");
 
-            DrawHeadline(headline + ", " + kChargeTex[ic]);
+            DrawHeadline(headline + ", " + kChargeTex[ic], 0.14, 0.955, 0.05);
             // wide box + smaller text: the overlay data label ("... T&P P(2mu4 | mu4 tag,
             // DR>0.8)") is long and must not clip at the pad edge (plot review iter 1)
-            auto* leg = new TLegend(0.18, 0.16, 0.93, 0.32);
+            auto* leg = new TLegend(0.18, 0.10, 0.93, 0.30);
             leg->SetBorderSize(0);
             leg->SetFillStyle(0);
-            leg->SetTextSize(0.027);
+            leg->SetTextSize(0.036);
             leg->AddEntry(gmc, mc_leg.c_str(), "lp");
             leg->AddEntry(gda, data_leg.c_str(), "lp");
             leg->Draw();
+
+            // R3 ratio pad: data is the reference, so MC/data is the quantity of interest
+            // (a flat offset = the known L1 over-efficiency; structure = something else).
+            pads.second->cd();
+            DrawRatioFrame(v.xlo, v.xhi, v.xtitle, "MC / data", 0.5, 2.2);
+            auto* grat = DivideGraphClean(gmc, gda);
+            StyleGraph(grat, kMCColor, 21, 0.9);
+            grat->Draw("PZ same");
+            c.cd(ic + 1);
 
             // record MC/data ratio magnitudes (turn-on + plateau) from the pt hists
             if (v.mc == "pt") {
@@ -344,13 +501,11 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
 
     // --- pT in q.eta bins: per charge, 3x4 grid (10 bins + legend pad) ---
     for (int ic = 0; ic < 2; ++ic) {
-        TCanvas c(("c_step1_qeta_" + kCharges[ic]).c_str(), "", 1500, 1800);
+        TCanvas c(("c_step1_qeta_" + kCharges[ic]).c_str(), "", 1500, 2100);
         c.Divide(3, 4);  // ncols=3, nrows=4 (nrows >= ncols)
         for (size_t iq = 0; iq < kQEtaSuffix.size(); ++iq) {
             c.cd(static_cast<int>(iq) + 1);
-            gPad->SetLeftMargin(0.13);
-            gPad->SetBottomMargin(0.12);
-            gPad->SetLogx();
+            auto pads = SplitPadForRatio("s1q_" + kCharges[ic] + "_" + std::to_string(iq), true);
 
             auto* gmc = GetObj<TGraphAsymmErrors>(ffit,
                 "g_mc_pt_vs_q_eta_" + kCharges[ic] + "_" + kQEtaSuffix[iq]);
@@ -365,7 +520,9 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             StyleGraph(gmc, kMCColor, 21, 0.7);
             StyleGraph(gda, kDataColor, 20, 0.7);
 
-            DrawEffFrame(4.0, 60.0, "p_{T} [GeV]");
+            pads.first->cd();
+            gPad->SetLogx();
+            DrawEffFrame(4.0, 60.0, "", 0.0, 1.1, "efficiency", true);
             DrawUnityLine(4.0, 60.0);
             auto* fdraw = (TF1*)fmy->Clone();
             fdraw->SetLineColor(kMCColor);
@@ -376,10 +533,20 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
 
             TLatex tl;
             tl.SetNDC();
-            tl.SetTextSize(0.055);
+            tl.SetTextSize(0.075);
             tl.SetTextFont(42);
-            tl.DrawLatex(0.35, 0.24, Form("%.1f < q#upoint#eta < %.1f",
+            tl.DrawLatex(0.30, 0.12, Form("%.1f < q#upoint#eta < %.1f",
                                           kQEtaRange[iq].first, kQEtaRange[iq].second));
+
+            // R3 ratio pad: MC / data per q.eta bin. This is where the (-2.4,-2.0) low-pT
+            // discrepancy lives -- the ratio makes it quantitative instead of eyeballed.
+            pads.second->cd();
+            gPad->SetLogx();
+            DrawRatioFrame(4.0, 60.0, "p_{T} [GeV]", "MC / data", 0.5, 2.6);
+            auto* grat = DivideGraphClean(gmc, gda);
+            StyleGraph(grat, kMCColor, 21, 0.7);
+            grat->Draw("PZ same");
+            c.cd(static_cast<int>(iq) + 1);
         }
         // legend / label pad
         c.cd(11);
@@ -416,21 +583,20 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         {"q_eta", "q#upoint#eta", -2.4,  2.4, false}};
 
     for (const auto& v : pvars) {
-        TCanvas c(("c_step2_" + v.tag).c_str(), "", 1400, 600);
+        TCanvas c(("c_step2_" + v.tag).c_str(), "", 1400, 800);
         c.Divide(2, 1);
         for (int ic = 0; ic < 2; ++ic) {
             c.cd(ic + 1);
-            gPad->SetLeftMargin(0.12);
-            gPad->SetBottomMargin(0.12);
-            if (v.logx) gPad->SetLogx();
+            auto pads = SplitPadForRatio("s2_" + v.tag + "_" + std::to_string(ic), v.logx);
+            pads.first->cd();
 
-            DrawEffFrame(v.xlo, v.xhi, v.xtitle);
+            DrawEffFrame(v.xlo, v.xhi, "", 0.0, 1.1, "efficiency", true);
             DrawUnityLine(v.xlo, v.xhi);
 
             // coarse edges for this variable (empty => keep the native binning)
             const std::vector<double> cedges =
                 !cfg.step2_coarse ? std::vector<double>{}
-                : (v.tag == "pt" ? kStep2CoarsePt : Step2CoarseQEta());
+                : (v.tag == "pt" ? kStep2CoarsePtTarget : Step2CoarseQEtaTarget());
             auto Coarsen = [&](TH1* h, const std::string& nm) -> TH1* {
                 return cedges.empty() ? h : RebinTo(h, cedges, nm);
             };
@@ -454,13 +620,14 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             StyleGraph(gref, kBlack, 1, 0.4, 1);
             gref->Draw("LX same");   // thin black reference line, no error bars
 
-            auto* leg = new TLegend(0.38, 0.16, 0.92, 0.38);
+            auto* leg = new TLegend(0.38, 0.10, 0.92, 0.36);
             leg->SetBorderSize(0);
             // semi-opaque backing: this legend can sit inside a dense error-bar cloud
             // on the low-stats overlay q.eta panel (plot review iter 1, INFO)
             leg->SetFillColorAlpha(kWhite, 0.75);
             leg->SetFillStyle(1001);
-            leg->SetTextSize(0.034);
+            leg->SetTextSize(0.042);
+            std::vector<TGraphAsymmErrors*> gdr;
             for (size_t id = 0; id < kDrSuffix.size(); ++id) {
                 TH1* n = GetObj<TH1D>(fmc, "h_mc_pair_" + v.tag + "_num_"   +
                                             kCharges[ic] + "_" + kDrSuffix[id]);
@@ -472,25 +639,38 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 StyleGraph(g, kDrColor[id], kDrMarker[id], 0.8);
                 g->Draw("PZ same");
                 leg->AddEntry(g, kDrTex[id].c_str(), "lp");
+                gdr.push_back(g);
             }
             leg->AddEntry(gref, leg_incl.c_str(), "l");
             leg->Draw();
-            DrawHeadline(headline + ", " + kChargeTex[ic]);
+            DrawHeadline(headline + ", " + kChargeTex[ic], 0.14, 0.955, 0.05);
+
+            // R3 ratio pad: §3.2 asks whether the three DeltaR series AGREE at fixed
+            // kinematics. Ratio to the isolated (DeltaR >= 1.0) series = that test.
+            pads.second->cd();
+            DrawRatioFrame(v.xlo, v.xhi, v.xtitle, "/ #DeltaR #geq 1", 0.4, 1.9);
+            for (size_t id = 0; id + 1 < gdr.size(); ++id) {
+                auto* g = DivideGraphClean(gdr[id], gdr.back());
+                StyleGraph(g, kDrColor[id], kDrMarker[id], 0.8);
+                g->Draw("PZ same");
+            }
+            c.cd(ic + 1);
         }
         SaveCanvas(c, dir2 + "step2_eff_" + v.tag + "_dr_bins" + wp_suf + ".png");
     }
 
     // --- pT in q.eta bins per charge, 3 DeltaR lines per pad --------
     for (int ic = 0; ic < 2; ++ic) {
-        TCanvas c(("c_step2_qeta_" + kCharges[ic]).c_str(), "", 1500, 1800);
+        TCanvas c(("c_step2_qeta_" + kCharges[ic]).c_str(), "", 1500, 2100);
         c.Divide(3, 4);
         for (size_t iq = 0; iq < kQEtaSuffix.size(); ++iq) {
             c.cd(static_cast<int>(iq) + 1);
-            gPad->SetLeftMargin(0.13);
-            gPad->SetBottomMargin(0.12);
+            auto pads = SplitPadForRatio("s2q_" + kCharges[ic] + "_" + std::to_string(iq), true);
+            pads.first->cd();
             gPad->SetLogx();
-            DrawEffFrame(4.0, 60.0, "p_{T} [GeV]");
+            DrawEffFrame(4.0, 60.0, "", 0.0, 1.1, "efficiency", true);
             DrawUnityLine(4.0, 60.0);
+            std::vector<TGraphAsymmErrors*> gdr;
             for (size_t id = 0; id < kDrSuffix.size(); ++id) {
                 TH2D* h2n = GetObj<TH2D>(fmc, "h_mc_pair_pt_vs_q_eta_num_" +
                                               kCharges[ic] + "_" + kDrSuffix[id]);
@@ -501,19 +681,32 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 TH1* n = h2n->ProjectionY(Form("py_n_%d_%zu_%zu", ic, iq, id), blo, bhi);
                 TH1* d = h2d->ProjectionY(Form("py_d_%d_%zu_%zu", ic, iq, id), blo, bhi);
                 if (cfg.step2_coarse) {
-                    n = RebinTo(n, kStep2CoarsePt, Form("rb_qn_%d_%zu_%zu", ic, iq, id));
-                    d = RebinTo(d, kStep2CoarsePt, Form("rb_qd_%d_%zu_%zu", ic, iq, id));
+                    n = RebinTo(n, kStep2CoarsePtTarget, Form("rb_qn_%d_%zu_%zu", ic, iq, id));
+                    d = RebinTo(d, kStep2CoarsePtTarget, Form("rb_qd_%d_%zu_%zu", ic, iq, id));
                 }
                 auto* g = BayesEff(n, d);
                 StyleGraph(g, kDrColor[id], kDrMarker[id], 0.7);
                 g->Draw("PZ same");
+                gdr.push_back(g);
             }
             TLatex tl;
             tl.SetNDC();
-            tl.SetTextSize(0.055);
+            tl.SetTextSize(0.075);
             tl.SetTextFont(42);
-            tl.DrawLatex(0.35, 0.24, Form("%.1f < q#upoint#eta < %.1f",
+            tl.DrawLatex(0.30, 0.12, Form("%.1f < q#upoint#eta < %.1f",
                                           kQEtaRange[iq].first, kQEtaRange[iq].second));
+
+            // R3 ratio pad: the §3.2 factorization test = do the close-pair series agree
+            // with the isolated (DeltaR >= 1.0) one at fixed kinematics?
+            pads.second->cd();
+            gPad->SetLogx();
+            DrawRatioFrame(4.0, 60.0, "p_{T} [GeV]", "/ #DeltaR #geq 1", 0.4, 1.9);
+            for (size_t id = 0; id + 1 < gdr.size(); ++id) {
+                auto* g = DivideGraphClean(gdr[id], gdr.back());
+                StyleGraph(g, kDrColor[id], kDrMarker[id], 0.7);
+                g->Draw("PZ same");
+            }
+            c.cd(static_cast<int>(iq) + 1);
         }
         c.cd(11);
         DrawHeadline(headline + ", " + kChargeTex[ic], 0.02, 0.88, 0.048); // 0.048: long overlay headline + charge must fit (review iter 1)
@@ -564,7 +757,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         DrawEffFrame(xlo, xhi, "#DeltaR", 0.0, ymax, cfg.eps_dr_text);
         DrawUnityLine(xlo, xhi);
 
-        // fitted plateau line: solid over the fit window [1,3] where in range,
+        // fitted plateau line: solid over the plateau window [kPlateauLo,kPlateauHi] where in range,
         // dotted across the pad otherwise (zoom canvas)
         if (plateau_in_range) {
             auto* lp = new TLine(kPlateauLo, plateau.first, kPlateauHi, plateau.first);
@@ -630,7 +823,12 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             for (int i = 1; i <= r->GetNbinsX(); ++i)
                 ymax = std::max(ymax, r->GetBinContent(i) + r->GetBinError(i));
         }
-        ymax = std::max(1.15, 1.15 * ymax);
+        // CAP the auto-range: max+error is set by the noisiest high-pair-pT bin (the overlay
+        // has one at 6.4 +- 5.5), which would squeeze all four series -- and the small-DeltaR
+        // structure this panel exists to show -- into the bottom sliver of the pad.
+        // A cap hides points, so every point pushed off-scale is MARKED with an up-arrow and
+        // listed on the canvas: silently dropping data from a physics figure is not allowed.
+        ymax = std::min(std::max(1.15, 1.15 * ymax), 3.0);
         DrawEffFrame(0.0, 1.0, "#DeltaR", 0.0, ymax, cfg.eps_dr_text);
         DrawUnityLine(0.0, 1.0);
 
@@ -638,6 +836,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         leg->SetBorderSize(0);
         leg->SetFillStyle(0);
         leg->SetTextSize(0.03);
+        std::vector<std::string> offscale;
         for (size_t is = 0; is < ratios.size(); ++is) {
             ratios[is]->SetMarkerStyle(smark[is]);
             ratios[is]->SetMarkerColor(scol[is]);
@@ -645,9 +844,34 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             ratios[is]->SetLineWidth(2);
             ratios[is]->Draw("E1 same");
             leg->AddEntry(ratios[is], slabels[is].c_str(), "lp");
+
+            // mark every point whose CENTRAL VALUE is above the capped frame
+            for (int i = 1; i <= ratios[is]->GetNbinsX(); ++i) {
+                const double v = ratios[is]->GetBinContent(i);
+                if (v <= ymax) continue;
+                const double x = ratios[is]->GetBinCenter(i);
+                auto* ar = new TArrow(x, ymax * 0.88, x, ymax * 0.985, 0.012, "|>");
+                ar->SetLineColor(scol[is]);
+                ar->SetFillColor(scol[is]);
+                ar->SetLineWidth(2);
+                ar->Draw();
+                offscale.push_back(Form("#DeltaR=%.2f: %.1f #pm %.1f", x, v,
+                                        ratios[is]->GetBinError(i)));
+            }
         }
         leg->Draw();
         DrawHeadline(headline);
+        if (!offscale.empty()) {
+            TLatex note;
+            note.SetNDC();
+            note.SetTextFont(42);
+            note.SetTextSize(0.026);
+            note.SetTextColor(kGray + 3);
+            std::string txt = "above scale (arrows): ";
+            for (size_t i = 0; i < offscale.size(); ++i)
+                txt += (i ? ", " : "") + offscale[i];
+            note.DrawLatex(0.16, 0.86, txt.c_str());
+        }
         SaveCanvas(c, dir3 + "step3_eps_dr_zoom_pair_pt_slices" + wp_suf + ".png");
     }
 

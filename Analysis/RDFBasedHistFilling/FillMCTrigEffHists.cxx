@@ -487,17 +487,17 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
                       << " | pt 20-60: " << eff_range(20, 60) << std::endl;
         }
     } else {
-        // eps_dR ratio diagnostics: plateau at large dR (avg over [1,3]) + small-dR values
+        // eps_dR ratio diagnostics: plateau at large dR (avg over [1,4] -- same window as the published plateau in plot_mc_trig_eff.cxx) + small-dR values
         TH1D* hn = hists1D.at("h_mc_dr_full_num");
         TH1D* hd = hists1D.at("h_mc_dr_full_denom");
         double sn = 0, sd = 0;
         for (int i = 1; i <= hd->GetNbinsX(); ++i) {
             const double c = hd->GetBinCenter(i);
-            if (c >= 1.0 && c <= 3.0) { sn += hn->GetBinContent(i); sd += hd->GetBinContent(i); }
+            if (c >= 1.0 && c <= 4.0) { sn += hn->GetBinContent(i); sd += hd->GetBinContent(i); }
         }
         std::cout << "\n===== Step-3 sanity: eps_dR = num/denom, sample=" << cfg.label
                   << " =====" << std::endl;
-        std::cout << "  large-dR average (dR in [1,3], weighted): "
+        std::cout << "  large-dR average (dR in [1,4], weighted): "
                   << (sd > 0 ? sn / sd : -1) << std::endl;
         TH1D* hzn = hists1D.at("h_mc_dr_zoom_num");
         TH1D* hzd = hists1D.at("h_mc_dr_zoom_denom");
