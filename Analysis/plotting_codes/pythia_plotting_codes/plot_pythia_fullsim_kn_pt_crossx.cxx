@@ -9,6 +9,36 @@
 // applied anywhere below, so dsigma/dpT is in **nb/GeV**. The axis was previously labelled
 // [ub/GeV] -- a 1000x mislabel. Comparing to pp DATA (dsigma = N/L, L in pb^-1) needs nb->pb, x1000.
 
+#include "../../MuonObjectsParamsAndHelpers/FullSimSampleType.h"
+
+// ============================ CONFIG ============================
+// g_is_test_sample : which pp24-fullsim production to read.
+//   true  = TEST sample -- 4 isospin beams (produced that way BY MISTAKE), so its absolute sigma
+//           carries the Pb 4:6:6:9 isospin AVERAGE and is NOT a physical pp cross-section.
+//   false = FULL sample -- pp beam only, isospin weight 1 => an HONEST pp cross-section.
+//           Files end in "_full"; plots go to that sample's own plots/ dir (no clobber).
+//   One switch -- it also fixes the isospin treatment upstream (FullSimSampleType.h).
+// g_use_tight_wp : NOMINAL muon WP is TIGHT (feedback_plots_wp_config_var, muon_wp_registry.md).
+//   This macro previously HARD-CODED Medium while every other pp-fullsim stage used Tight.
+static bool g_is_test_sample = true;
+static bool g_use_tight_wp   = true;
+
+static std::string SampleSuffix() { return g_is_test_sample ? "" : "_full"; }
+static std::string SampleDir()    { return FullSimSampleInputDir(FullSimSampleType::pp, g_is_test_sample); }
+static std::string InputFile()    { return SampleDir() + "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts"
+                                           + SampleSuffix() + ".root"; }
+static std::string OutputDir()    { return SampleDir() + "plots/"; }
+static std::string PairWPFilter() { return g_use_tight_wp ? "pair_pass_tight" : "pair_pass_medium"; }
+
+// STATISTICAL-FORECAST factors N_full/N_test. Meaningful ONLY on the TEST sample, where they answer
+// "what will the error bar be once the full sample exists" (they are applied to SetBinError ONLY;
+// central values are untouched). On the FULL sample the histogram errors ALREADY reflect the real
+// statistics, so dividing by sqrt(sf) again would understate them a SECOND time -- by a further
+// 7.1x / 9.5x / 7.7x / 5.5x / 2.8x, SLICE-DEPENDENTLY (cancels nowhere) -- while the cross-section
+// curve still looked perfect. A SILENT error. Hence the forecast is a NO-OP on the full sample.
+static double ForecastScale(double sf_test) { return g_is_test_sample ? sf_test : 1.0; }
+// ================================================================
+
 #include <ROOT/RDataFrame.hxx>
 #include <ROOT/RDF/InterfaceUtils.hxx>
 #include <TCanvas.h>
@@ -26,11 +56,8 @@
 
 void plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix) {
 
-    const std::string input_file =
-        "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/"
-        "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts.root";
-    const std::string output_dir =
-        "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/plots/";
+    const std::string input_file = InputFile();
+    const std::string output_dir = OutputDir();
     gSystem->mkdir(output_dir.c_str(), true);
 
     // kn ranges
@@ -61,7 +88,7 @@ void plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix) {
     };
     const std::array<std::string, 2> filter_strs = {
         "from_same_b",
-        "from_same_b && pair_pass_medium"
+        ("from_same_b && " + PairWPFilter())
     };
     const std::array<std::string, 2> out_names   = {
         "truth_pair_pt_kn" + suffix, "reco_pair_pt_kn" + suffix
@@ -142,20 +169,24 @@ void plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix) {
         lat1.SetNDC();
         lat1.SetTextSize(0.038);
         const std::string label = (ivar == 0) ? "truth p_{T}^{pair}" : "reco p_{T}^{pair}";
-        // HONESTY (key physics observable): this reads the pp24 TEST sample, which was produced
-        // with 4 isospin beams BY MISTAKE and is therefore combined with the Pb 4:6:6:9 isospin
-        // AVERAGE. A pp-conditions sample simulates pp collisions and has nothing to
-        // isospin-average, so this absolute sigma is NOT a physical pp cross-section -- say so on
-        // the plot. The honest pp sigma comes from the FULL sample (pp beam only, weight 1).
-        lat1.DrawLatex(0.17, 0.92, ("Pythia fullsim pp24 TEST sample, single-b signal, " + label).c_str());
-        TLatex lat_warn;
-        lat_warn.SetNDC();
-        lat_warn.SetTextSize(0.026);
-        lat_warn.SetTextColor(kRed + 1);
-        // Bottom-left: the spectrum falls away from this corner, so it clears both the curves
-        // and the legend (at 0.92 it collided with the legend and was clipped).
-        lat_warn.DrawLatex(0.20, 0.235, "Pb isospin avg (4:6:6:9) applied to a pp sample");
-        lat_warn.DrawLatex(0.20, 0.200, "#Rightarrow NOT a physical pp #sigma");
+        // HONESTY (key physics observable). The TEST sample carries the Pb 4:6:6:9 isospin AVERAGE
+        // (it was produced with 4 beams by mistake), so its absolute sigma is NOT a physical pp
+        // cross-section -- say so. The FULL sample is pp-beam-only with isospin weight 1, so its
+        // sigma IS an honest pp cross-section and the warning must NOT be printed (it would be a
+        // FALSE warning).
+        lat1.DrawLatex(0.17, 0.92, (std::string("Pythia fullsim pp24 ")
+            + (g_is_test_sample ? "TEST sample" : "FULL sample")
+            + ", single-b signal, " + label).c_str());
+        if (g_is_test_sample) {
+            TLatex lat_warn;
+            lat_warn.SetNDC();
+            lat_warn.SetTextSize(0.026);
+            lat_warn.SetTextColor(kRed + 1);
+            // Bottom-left: the spectrum falls away from this corner, so it clears both the curves
+            // and the legend (at 0.92 it collided with the legend and was clipped).
+            lat_warn.DrawLatex(0.20, 0.235, "Pb isospin avg (4:6:6:9) applied to a pp sample");
+            lat_warn.DrawLatex(0.20, 0.200, "#Rightarrow NOT a physical pp #sigma");
+        }
 
         // THStack on LOG y -- the WIDE-DYNAMIC-RANGE EXCEPTION (.claude/conventions/atlas-plotting.md
         // "Stacked histograms"; criterion C7 of physics-results-review.md). A THStack defaults to a
@@ -198,15 +229,19 @@ void plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix) {
         TLatex lat2;
         lat2.SetNDC();
         lat2.SetTextSize(0.038);
-        lat2.DrawLatex(0.17, 0.92, ("Pythia fullsim pp24 TEST sample, single-b signal, " + label).c_str());
-        TLatex lat2_warn;
-        lat2_warn.SetNDC();
-        lat2_warn.SetTextSize(0.026);
-        lat2_warn.SetTextColor(kRed + 1);
-        // On the STACK panel the bands fill the bottom-left, so the warning goes just under the
-        // title, left of the legend, where the stack has not yet risen.
-        lat2_warn.DrawLatex(0.20, 0.865, "Pb isospin avg (4:6:6:9) applied to a pp sample");
-        lat2_warn.DrawLatex(0.20, 0.830, "#Rightarrow NOT a physical pp #sigma");
+        lat2.DrawLatex(0.17, 0.92, (std::string("Pythia fullsim pp24 ")
+            + (g_is_test_sample ? "TEST sample" : "FULL sample")
+            + ", single-b signal, " + label).c_str());
+        if (g_is_test_sample) {
+            TLatex lat2_warn;
+            lat2_warn.SetNDC();
+            lat2_warn.SetTextSize(0.026);
+            lat2_warn.SetTextColor(kRed + 1);
+            // On the STACK panel the bands fill the bottom-left, so the warning goes just under the
+            // title, left of the legend, where the stack has not yet risen.
+            lat2_warn.DrawLatex(0.20, 0.865, "Pb isospin avg (4:6:6:9) applied to a pp sample");
+            lat2_warn.DrawLatex(0.20, 0.830, "#Rightarrow NOT a physical pp #sigma");
+        }
 
         c->SaveAs((output_dir + outname + ".png").c_str());
 
@@ -221,11 +256,8 @@ void plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix) {
 void plot_stat_error_forecast(int nbins_arg, double xmax_arg, const std::string& suffix,
                                const std::string& subdir = "", double sf_kn5 = 8.) {
 
-    const std::string input_file =
-        "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/"
-        "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts.root";
-    const std::string output_dir =
-        "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/plots/";
+    const std::string input_file = InputFile();
+    const std::string output_dir = OutputDir();
     gSystem->mkdir((output_dir + subdir).c_str(), true);
 
     const int nkn = 6;
@@ -255,7 +287,7 @@ void plot_stat_error_forecast(int nbins_arg, double xmax_arg, const std::string&
     };
     const std::array<std::string, 2> filter_strs = {
         "from_same_b",
-        "from_same_b && pair_pass_medium"
+        ("from_same_b && " + PairWPFilter())
     };
     const std::array<std::string, 2> label_strs  = {
         "truth p_{T}^{pair}", "reco p_{T}^{pair}"
@@ -285,7 +317,7 @@ void plot_stat_error_forecast(int nbins_arg, double xmax_arg, const std::string&
             hists[ikn]->SetDirectory(nullptr);
             hists[ikn]->Scale(1., "width");
             for (int ib = 1; ib <= hists[ikn]->GetNbinsX(); ib++)
-                hists[ikn]->SetBinError(ib, hists[ikn]->GetBinError(ib) / std::sqrt(scale_factors[ikn]));
+                hists[ikn]->SetBinError(ib, hists[ikn]->GetBinError(ib) / std::sqrt(ForecastScale(scale_factors[ikn])));
 
             hists[ikn]->SetLineColor(colors[ikn]);
             hists[ikn]->SetMarkerColor(colors[ikn]);
@@ -359,20 +391,24 @@ void plot_stat_error_forecast(int nbins_arg, double xmax_arg, const std::string&
             leg1->AddEntry(hists[ikn], kn_labels[ikn].c_str(), "lep");
         leg1->Draw();
         TLatex lat1; lat1.SetNDC(); lat1.SetTextSize(0.038);
-        // HONESTY (key physics observable): this reads the pp24 TEST sample, which was produced
-        // with 4 isospin beams BY MISTAKE and is therefore combined with the Pb 4:6:6:9 isospin
-        // AVERAGE. A pp-conditions sample simulates pp collisions and has nothing to
-        // isospin-average, so this absolute sigma is NOT a physical pp cross-section -- say so on
-        // the plot. The honest pp sigma comes from the FULL sample (pp beam only, weight 1).
-        lat1.DrawLatex(0.17, 0.92, ("Pythia fullsim pp24 TEST sample, single-b signal, " + label).c_str());
-        TLatex lat_warn;
-        lat_warn.SetNDC();
-        lat_warn.SetTextSize(0.026);
-        lat_warn.SetTextColor(kRed + 1);
-        // Bottom-left: the spectrum falls away from this corner, so it clears both the curves
-        // and the legend (at 0.92 it collided with the legend and was clipped).
-        lat_warn.DrawLatex(0.20, 0.235, "Pb isospin avg (4:6:6:9) applied to a pp sample");
-        lat_warn.DrawLatex(0.20, 0.200, "#Rightarrow NOT a physical pp #sigma");
+        // HONESTY (key physics observable). The TEST sample carries the Pb 4:6:6:9 isospin AVERAGE
+        // (it was produced with 4 beams by mistake), so its absolute sigma is NOT a physical pp
+        // cross-section -- say so. The FULL sample is pp-beam-only with isospin weight 1, so its
+        // sigma IS an honest pp cross-section and the warning must NOT be printed (it would be a
+        // FALSE warning).
+        lat1.DrawLatex(0.17, 0.92, (std::string("Pythia fullsim pp24 ")
+            + (g_is_test_sample ? "TEST sample" : "FULL sample")
+            + ", single-b signal, " + label).c_str());
+        if (g_is_test_sample) {
+            TLatex lat_warn;
+            lat_warn.SetNDC();
+            lat_warn.SetTextSize(0.026);
+            lat_warn.SetTextColor(kRed + 1);
+            // Bottom-left: the spectrum falls away from this corner, so it clears both the curves
+            // and the legend (at 0.92 it collided with the legend and was clipped).
+            lat_warn.DrawLatex(0.20, 0.235, "Pb isospin avg (4:6:6:9) applied to a pp sample");
+            lat_warn.DrawLatex(0.20, 0.200, "#Rightarrow NOT a physical pp #sigma");
+        }
 
         // --- Right: full-sample stat uncertainty ---
         c->cd(2);
@@ -416,11 +452,8 @@ void plot_stat_error_forecast(int nbins_arg, double xmax_arg, const std::string&
 void plot_err_fraction_map(int nbins_arg, double xmax_arg, const std::string& suffix,
                             const std::string& subdir = "", double sf_kn5 = 8.) {
 
-    const std::string input_file =
-        "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/"
-        "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts.root";
-    const std::string output_dir =
-        "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/plots/";
+    const std::string input_file = InputFile();
+    const std::string output_dir = OutputDir();
     gSystem->mkdir((output_dir + subdir).c_str(), true);
 
     const int nkn = 6;
@@ -453,7 +486,7 @@ void plot_err_fraction_map(int nbins_arg, double xmax_arg, const std::string& su
     };
     const std::array<std::string, 2> filter_strs = {
         "from_same_b",
-        "from_same_b && pair_pass_medium"
+        ("from_same_b && " + PairWPFilter())
     };
     const std::array<std::string, 2> label_strs  = {
         "truth p_{T}^{pair}", "reco p_{T}^{pair}"
@@ -484,7 +517,7 @@ void plot_err_fraction_map(int nbins_arg, double xmax_arg, const std::string& su
             hists[ikn]->SetDirectory(nullptr);
             hists[ikn]->Scale(1., "width");
             for (int ib = 1; ib <= hists[ikn]->GetNbinsX(); ib++)
-                hists[ikn]->SetBinError(ib, hists[ikn]->GetBinError(ib) / std::sqrt(scale_factors[ikn]));
+                hists[ikn]->SetBinError(ib, hists[ikn]->GetBinError(ib) / std::sqrt(ForecastScale(scale_factors[ikn])));
 
             hists[ikn]->SetLineColor(colors[ikn]);
             hists[ikn]->SetMarkerColor(colors[ikn]);
@@ -551,20 +584,24 @@ void plot_err_fraction_map(int nbins_arg, double xmax_arg, const std::string& su
             leg1->AddEntry(hists[ikn], kn_labels[ikn].c_str(), "lep");
         leg1->Draw();
         TLatex lat1; lat1.SetNDC(); lat1.SetTextSize(0.038);
-        // HONESTY (key physics observable): this reads the pp24 TEST sample, which was produced
-        // with 4 isospin beams BY MISTAKE and is therefore combined with the Pb 4:6:6:9 isospin
-        // AVERAGE. A pp-conditions sample simulates pp collisions and has nothing to
-        // isospin-average, so this absolute sigma is NOT a physical pp cross-section -- say so on
-        // the plot. The honest pp sigma comes from the FULL sample (pp beam only, weight 1).
-        lat1.DrawLatex(0.17, 0.92, ("Pythia fullsim pp24 TEST sample, single-b signal, " + label).c_str());
-        TLatex lat_warn;
-        lat_warn.SetNDC();
-        lat_warn.SetTextSize(0.026);
-        lat_warn.SetTextColor(kRed + 1);
-        // Bottom-left: the spectrum falls away from this corner, so it clears both the curves
-        // and the legend (at 0.92 it collided with the legend and was clipped).
-        lat_warn.DrawLatex(0.20, 0.235, "Pb isospin avg (4:6:6:9) applied to a pp sample");
-        lat_warn.DrawLatex(0.20, 0.200, "#Rightarrow NOT a physical pp #sigma");
+        // HONESTY (key physics observable). The TEST sample carries the Pb 4:6:6:9 isospin AVERAGE
+        // (it was produced with 4 beams by mistake), so its absolute sigma is NOT a physical pp
+        // cross-section -- say so. The FULL sample is pp-beam-only with isospin weight 1, so its
+        // sigma IS an honest pp cross-section and the warning must NOT be printed (it would be a
+        // FALSE warning).
+        lat1.DrawLatex(0.17, 0.92, (std::string("Pythia fullsim pp24 ")
+            + (g_is_test_sample ? "TEST sample" : "FULL sample")
+            + ", single-b signal, " + label).c_str());
+        if (g_is_test_sample) {
+            TLatex lat_warn;
+            lat_warn.SetNDC();
+            lat_warn.SetTextSize(0.026);
+            lat_warn.SetTextColor(kRed + 1);
+            // Bottom-left: the spectrum falls away from this corner, so it clears both the curves
+            // and the legend (at 0.92 it collided with the legend and was clipped).
+            lat_warn.DrawLatex(0.20, 0.235, "Pb isospin avg (4:6:6:9) applied to a pp sample");
+            lat_warn.DrawLatex(0.20, 0.200, "#Rightarrow NOT a physical pp #sigma");
+        }
 
         // --- Right: fraction map ---
         c->cd(2);
@@ -604,11 +641,8 @@ void plot_err_fraction_map(int nbins_arg, double xmax_arg, const std::string& su
 void plot_err_ratio_map(int nbins_arg, double xmax_arg, const std::string& suffix,
                          const std::string& subdir = "", double sf_kn5 = 8.) {
 
-    const std::string input_file =
-        "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/"
-        "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts.root";
-    const std::string output_dir =
-        "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/plots/";
+    const std::string input_file = InputFile();
+    const std::string output_dir = OutputDir();
     gSystem->mkdir((output_dir + subdir).c_str(), true);
 
     const int nkn = 6;
@@ -641,7 +675,7 @@ void plot_err_ratio_map(int nbins_arg, double xmax_arg, const std::string& suffi
     };
     const std::array<std::string, 2> filter_strs = {
         "from_same_b",
-        "from_same_b && pair_pass_medium"
+        ("from_same_b && " + PairWPFilter())
     };
     const std::array<std::string, 2> label_strs  = {
         "truth p_{T}^{pair}", "reco p_{T}^{pair}"
@@ -672,7 +706,7 @@ void plot_err_ratio_map(int nbins_arg, double xmax_arg, const std::string& suffi
             hists[ikn]->SetDirectory(nullptr);
             hists[ikn]->Scale(1., "width");
             for (int ib = 1; ib <= hists[ikn]->GetNbinsX(); ib++)
-                hists[ikn]->SetBinError(ib, hists[ikn]->GetBinError(ib) / std::sqrt(scale_factors[ikn]));
+                hists[ikn]->SetBinError(ib, hists[ikn]->GetBinError(ib) / std::sqrt(ForecastScale(scale_factors[ikn])));
 
             hists[ikn]->SetLineColor(colors[ikn]);
             hists[ikn]->SetMarkerColor(colors[ikn]);
@@ -744,20 +778,24 @@ void plot_err_ratio_map(int nbins_arg, double xmax_arg, const std::string& suffi
             leg1->AddEntry(hists[ikn], kn_labels[ikn].c_str(), "lep");
         leg1->Draw();
         TLatex lat1; lat1.SetNDC(); lat1.SetTextSize(0.038);
-        // HONESTY (key physics observable): this reads the pp24 TEST sample, which was produced
-        // with 4 isospin beams BY MISTAKE and is therefore combined with the Pb 4:6:6:9 isospin
-        // AVERAGE. A pp-conditions sample simulates pp collisions and has nothing to
-        // isospin-average, so this absolute sigma is NOT a physical pp cross-section -- say so on
-        // the plot. The honest pp sigma comes from the FULL sample (pp beam only, weight 1).
-        lat1.DrawLatex(0.17, 0.92, ("Pythia fullsim pp24 TEST sample, single-b signal, " + label).c_str());
-        TLatex lat_warn;
-        lat_warn.SetNDC();
-        lat_warn.SetTextSize(0.026);
-        lat_warn.SetTextColor(kRed + 1);
-        // Bottom-left: the spectrum falls away from this corner, so it clears both the curves
-        // and the legend (at 0.92 it collided with the legend and was clipped).
-        lat_warn.DrawLatex(0.20, 0.235, "Pb isospin avg (4:6:6:9) applied to a pp sample");
-        lat_warn.DrawLatex(0.20, 0.200, "#Rightarrow NOT a physical pp #sigma");
+        // HONESTY (key physics observable). The TEST sample carries the Pb 4:6:6:9 isospin AVERAGE
+        // (it was produced with 4 beams by mistake), so its absolute sigma is NOT a physical pp
+        // cross-section -- say so. The FULL sample is pp-beam-only with isospin weight 1, so its
+        // sigma IS an honest pp cross-section and the warning must NOT be printed (it would be a
+        // FALSE warning).
+        lat1.DrawLatex(0.17, 0.92, (std::string("Pythia fullsim pp24 ")
+            + (g_is_test_sample ? "TEST sample" : "FULL sample")
+            + ", single-b signal, " + label).c_str());
+        if (g_is_test_sample) {
+            TLatex lat_warn;
+            lat_warn.SetNDC();
+            lat_warn.SetTextSize(0.026);
+            lat_warn.SetTextColor(kRed + 1);
+            // Bottom-left: the spectrum falls away from this corner, so it clears both the curves
+            // and the legend (at 0.92 it collided with the legend and was clipped).
+            lat_warn.DrawLatex(0.20, 0.235, "Pb isospin avg (4:6:6:9) applied to a pp sample");
+            lat_warn.DrawLatex(0.20, 0.200, "#Rightarrow NOT a physical pp #sigma");
+        }
 
         // --- Right: double-ratio color map ---
         c->cd(2);

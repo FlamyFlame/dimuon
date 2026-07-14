@@ -28,6 +28,8 @@ cd "$(dirname "$0")"
 
 FARM_DIR="/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample/"
 AMI_DIR="${FARM_DIR}ami_info/"
+# Smoke test: NEVENTS_MAX=2000 ./this_script.sh   (-1 = all events, the default)
+NEVENTS_MAX="${NEVENTS_MAX:--1}"
 
 if ! ls "${FARM_DIR}"Pythia_5p36TeV_pp_hQCD_DiMu_pTH*.FullSimPP24.NTUP.part*.root >/dev/null 2>&1; then
     echo "ERROR: no symlink farm in ${FARM_DIR}"
@@ -50,6 +52,7 @@ root -b -l << EOF
 	py.expected_ami_dsids         = {803015, 803016, 803017, 803018, 803019, 803020};
 	py.extra_output_suffix        = "_full";
 	py.fill_kn_trees_fullsim      = true;
+	py.nevents_max                = ${NEVENTS_MAX};
 	py.Run();
 	.q;
 EOF

@@ -108,9 +108,16 @@ protected:
         }
     }
 
+    // Sample suffix on the hist file. MUST match what RDFBasedHistFillingPythiaFullsim writes
+    // (`sample_suffix = is_test_sample ? "" : "_full"`, RDFBasedHistFillingPythiaFullsim.cxx).
+    // Without this the base built the TEST filename while GetDataDir() pointed at the FULL
+    // directory -> TFile::Open fails (and, if a stale file were ever copied there, it would
+    // silently plot the WRONG sample).
+    virtual std::string GetSampleSuffix() const { return is_test_sample ? "" : "_full"; }
+
     virtual std::string GetInputFilePath() const {
         return GetDataDir() + "histograms_pythia_fullsim_"
-            + GetPlotDirPrefix() + "_no_data_resonance_cuts.root";
+            + GetPlotDirPrefix() + "_no_data_resonance_cuts" + GetSampleSuffix() + ".root";
     }
 
     bool Initialize(){

@@ -51,7 +51,12 @@ static const int colors[] = {kBlack, kRed+1, kBlue+1, kGreen+2, kMagenta+1,
 void plot_single_muon_reco_effcy(
     const std::string& mode = "pp",
     const std::string& ctr_binning_version = "default",
-    bool useTight = true)  // NOMINAL muon WP = Tight (2026-07-07). false -> Medium (distinct output).
+    bool useTight = true,   // NOMINAL muon WP = Tight (2026-07-07). false -> Medium (distinct output).
+    // Which fullsim production to read. TRUE = the small TEST sample; FALSE = the FULL production
+    // (files end in "_full"; plots go to that sample's own plots/ dir, so no clobber).
+    // The SAME switch fixes the isospin treatment upstream (FullSimSampleType.h) -- one switch,
+    // input path and isospin weight cannot drift apart.
+    bool is_test_sample = true)
 {
     gROOT->SetBatch(kTRUE);
     gStyle->SetOptStat(0);
@@ -59,24 +64,26 @@ void plot_single_muon_reco_effcy(
     const bool is_overlay = (mode == "overlay");
 
     // Muon working-point selection. Only the quality bit differs; every other cut is unchanged.
-    // Which fullsim production to read (TRUE = TEST sample = the only one with NTP output today).
-    // Also fixes the isospin treatment upstream (FullSimSampleType.h) -- one switch, cannot drift.
-    const bool is_test_sample = true;
-
     const std::string wp_filter = useTight ? "pass_tight" : "pass_medium";
     const std::string wp_label  = useTight ? "tight"      : "medium";
+
+    // SUFFIX RULE: "_full" is always the LAST suffix on a full-sample product, so consumers just
+    // append it (see the run scripts run_pythia_fullsim_*_full_sample.sh).
+    const std::string sample_suffix = is_test_sample ? "" : "_full";
 
     std::string data_dir, plot_dir_base, input_file, sample_label;
     if (is_overlay) {
         data_dir   = FullSimSampleInputDir(FullSimSampleType::hijing, is_test_sample);
-        input_file = data_dir + "muon_pairs_pythia_fullsim_hijing_overlay_pbpb23_no_data_resonance_cuts_single_muon.root";
+        input_file = data_dir + "muon_pairs_pythia_fullsim_hijing_overlay_pbpb23_no_data_resonance_cuts_single_muon"
+                   + sample_suffix + ".root";
         plot_dir_base = data_dir + "plots/hijing_overlay_pbpb23_single_muon_reco_effcy/";
         sample_label = "Pythia fullsim HIJING overlay";
     } else {
         data_dir   = FullSimSampleInputDir(FullSimSampleType::pp, is_test_sample);
-        input_file = data_dir + "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_single_muon.root";
+        input_file = data_dir + "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_single_muon"
+                   + sample_suffix + ".root";
         plot_dir_base = data_dir + "plots/pp24_single_muon_reco_effcy/";
-        sample_label = "Pythia fullsim pp24";
+        sample_label = is_test_sample ? "Pythia fullsim pp24 (TEST)" : "Pythia fullsim pp24 (FULL)";
     }
 
     TFile* f = TFile::Open(input_file.c_str(), "READ");
