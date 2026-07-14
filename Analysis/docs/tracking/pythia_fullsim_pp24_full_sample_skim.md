@@ -434,6 +434,35 @@ Single-slice **diagnostic** runs (the r-tag dirs hold `pTH8_14` alone) opt out w
   - Backup of the pre-rerun overlay NTP kept:
     `muon_pairs_...pbpb23_no_data_resonance_cuts.bak_pre_isospin_fix_20260714.root`.
 
+- 2026-07-14 — **LGD farm LIVE for the first slices — the read-from-LGD architecture (D1) WORKS.**
+  `fullsim_pp24_full_to_lgd.sh` running detached. Grid: 3/6 tasks `done` with **zero failed files**
+  (pTH8_14 203/203, pTH24_40 240/240, pTH40_70 120/120); the other 3 still scouting/running.
+  Rules created (persisted in `pythia_fullsim_full_sample/lgd_rules.txt`) and **replication was
+  fast, not the feared 1–12 h** (BNL→BNL is local):
+
+  | slice | rule | parts | entries read **through the symlink farm** |
+  |---|---|---|---|
+  | pTH24_40 | `d2fa6f50473f4c37…` | 17 | **2 399 995** |
+  | pTH40_70 | `450f1755c68a45bd…` | 12 | **1 199 997** |
+  | pTH8_14 | `33bd318b47dd4bd2…` | — | replicating |
+
+  ⇒ ROOT reads the unmerged grid outputs through the pnfs symlink farm exactly as designed; nothing
+  is hadded onto GPFS.
+
+- 2026-07-14 — **⚠ Small event deficit in the skim: ~2–3 events lost per MILLION (2e-6).**
+  pTH24_40: NTUP 2 399 995 vs AOD 2 400 000 (**−5**). pTH40_70: 1 199 997 vs 1 200 000 (**−3**).
+  **Not a grid failure** — BigPanDA reports 240/240 and 120/120 files finished, `nfilesfailed=0`,
+  `neventsTot` = the full 2.4 M / 1.2 M. So the events are dropped **inside the skim**, despite
+  `StoreAllEvents=True`; most likely a handful of events taking an early return in `TrigRates.cxx`
+  (e.g. no primary vertex). **Not root-caused.**
+  **Why the test sample never showed it:** at 10 000 events the expected loss is 0.02 events — the
+  10 000/10 000 match in `mc_trigger_info_skim.md` is fully consistent with a 2e-6 rate.
+  **Physics impact: negligible, and it does not bias.** `N_beam` is measured from the files
+  actually chained, so `w = σ·ε_filt / N_stored` stays self-consistent, and the dropped events are
+  an unbiased subset. 2e-6 is orders of magnitude below any systematic here. **Recorded, not
+  chased.** Revisit only if a slice ever shows a loss ≫ 1e-5 (that would indicate a real problem,
+  e.g. a truncated/failed merge, not this).
+
 ## Results & Observations
 
 ### R1. Disk census of `~/usatlasdata` (real bytes, `du -sb`)
