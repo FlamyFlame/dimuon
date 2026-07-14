@@ -108,6 +108,26 @@ void DrawUnityLine(double xlo, double xhi)
     l->Draw("same");
 }
 
+// SF-ratio graph from TH1::Divide output, dropping bins with no denominator content
+// or zero width (the duplicated-8.0-edge bin of the data pt binning; BayesDivide skips
+// those automatically, TGraphAsymmErrors(hist) does not).
+TGraphAsymmErrors* DivideGraphClean(TH1D* num, TH1D* den)
+{
+    auto* h = static_cast<TH1D*>(num->Clone());
+    h->Divide(num, den, 1.0, 1.0);
+    auto* g = new TGraphAsymmErrors();
+    int ip = 0;
+    for (int b = 1; b <= h->GetNbinsX(); ++b) {
+        if (den->GetBinContent(b) <= 0 || h->GetXaxis()->GetBinWidth(b) <= 0) continue;
+        g->SetPoint(ip, h->GetXaxis()->GetBinCenter(b), h->GetBinContent(b));
+        g->SetPointError(ip, h->GetXaxis()->GetBinWidth(b)/2, h->GetXaxis()->GetBinWidth(b)/2,
+                         h->GetBinError(b), h->GetBinError(b));
+        ++ip;
+    }
+    delete h;
+    return g;
+}
+
 void SaveCanvas(TCanvas& c, const std::string& path)
 {
     c.SaveAs(path.c_str());
@@ -364,6 +384,143 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         note.DrawLatex(0.02, 0.30, "Data: T&P P(2mu4 | mu4 tag, #DeltaR>0.8 pairs);");
         note.DrawLatex(0.02, 0.22, "MC: direct conditional, no T&P");
         SaveCanvas(c, dir1 + "step1_eff_pt_in_q_eta_bins_" + kCharges[ic] + wp_suf + ".png");
+    }
+
+    // ================================================================
+    // Step 1-SF variant: data vs MC vs MC x SF (reco/ID WP scale factors)
+    // SF from the skim MuonEfficiencyScaleFactors tools, WP-matched; the SF
+    // maps start at pT = 5 GeV, below which the NTP sets SF = 1 (uncorrected).
+    // ================================================================
+    if (fmc->Get(("h_mc_pt_num_sf_muplus")) != nullptr) {
+        const std::string dir1sf = cfg.out_base + "step1_singles_data_mc_sf/";
+        gSystem->mkdir(dir1sf.c_str(), kTRUE);
+        const Color_t kSFColor = kBlue + 1;
+        const std::string sf_leg = "MC #times SF (reco/ID " +
+            std::string(use_tight_wp ? "Tight" : "Medium") + "-WP scale factor)";
+        const char* sf_note = "SF maps start at p_{T} = 5 GeV; below, SF = 1 (uncorrected)";
+
+        std::cout << "\n===== Step 1-SF (" << sample << ", " << wp_text << ") =====\n";
+
+        for (const auto& v : vars) {
+            TCanvas c(("c_step1sf_" + v.mc).c_str(), "", 1400, 600);
+            c.Divide(2, 1);
+            for (int ic = 0; ic < 2; ++ic) {
+                c.cd(ic + 1);
+                gPad->SetLeftMargin(0.12);
+                gPad->SetBottomMargin(0.12);
+                if (v.logx) gPad->SetLogx();
+
+                TH1D* mnum  = GetObj<TH1D>(fmc, "h_mc_" + v.mc + "_num_"    + kCharges[ic]);
+                TH1D* msfnum= GetObj<TH1D>(fmc, "h_mc_" + v.mc + "_num_sf_" + kCharges[ic]);
+                TH1D* mden  = GetObj<TH1D>(fmc, "h_mc_" + v.mc + "_denom_"  + kCharges[ic]);
+                TH1D* dnum  = GetObj<TH1D>(fdata, "h_" + v.data + cfg.ctr + "_" + kDataSigns[ic] + "_2mu4_sepr");
+                TH1D* dden  = GetObj<TH1D>(fdata, "h_" + v.data + cfg.ctr + "_" + kDataSigns[ic] + "_mu4_sepr");
+
+                auto* gmc = BayesEff(mnum, mden);
+                auto* gda = BayesEff(dnum, dden);
+                // SF-weighted numerator (weights < 1): TH1::Divide with error propagation,
+                // not Bayes (same reasoning as the step-3 inverse-weighted ratio)
+                auto* gsf = DivideGraphClean(msfnum, mden);
+                StyleGraph(gmc, kMCColor, 21);
+                StyleGraph(gsf, kSFColor, 22);
+                StyleGraph(gda, kDataColor, 20);
+
+                DrawEffFrame(v.xlo, v.xhi, v.xtitle);
+                DrawUnityLine(v.xlo, v.xhi);
+                gda->Draw("PZ same");
+                gmc->Draw("PZ same");
+                gsf->Draw("PZ same");
+
+                DrawHeadline(headline + ", " + kChargeTex[ic]);
+                auto* leg = new TLegend(0.18, 0.14, 0.93, 0.34);
+                leg->SetBorderSize(0);
+                leg->SetFillStyle(0);
+                leg->SetTextSize(0.025);
+                leg->AddEntry(gmc, mc_leg.c_str(), "lp");
+                leg->AddEntry(gsf, sf_leg.c_str(), "lp");
+                leg->AddEntry(gda, data_leg.c_str(), "lp");
+                leg->Draw();
+                TLatex tn; tn.SetNDC(); tn.SetTextSize(0.022); tn.SetTextFont(42);
+                tn.DrawLatex(0.18, 0.355, sf_note);
+
+                if (v.mc == "pt") {
+                    std::cout << "  " << kCharges[ic] << " (MC x SF)/data eff ratio vs pT:\n";
+                    for (double pt : {4.3, 5.5, 7.0, 10.0, 20.0, 40.0}) {
+                        const int bm = mden->FindBin(pt);
+                        const int bd = dden->FindBin(pt);
+                        const double es = mden->GetBinContent(bm) > 0
+                            ? msfnum->GetBinContent(bm) / mden->GetBinContent(bm) : 0.;
+                        const double ed = dden->GetBinContent(bd) > 0
+                            ? dnum->GetBinContent(bd) / dden->GetBinContent(bd) : 0.;
+                        printf("    pT=%5.1f  MCxSF=%.4f  data=%.4f  ratio=%.3f\n",
+                               pt, es, ed, ed > 0 ? es / ed : 0.);
+                    }
+                }
+            }
+            SaveCanvas(c, dir1sf + "step1_eff_" + v.mc + "_sf" + wp_suf + ".png");
+        }
+
+        // --- pT in q.eta bins, SF variant ---
+        for (int ic = 0; ic < 2; ++ic) {
+            TH2D* h2num  = GetObj<TH2D>(fmc, "h_mc_pt_vs_q_eta_num_"    + kCharges[ic]);
+            TH2D* h2sf   = GetObj<TH2D>(fmc, "h_mc_pt_vs_q_eta_num_sf_" + kCharges[ic]);
+            TH2D* h2den  = GetObj<TH2D>(fmc, "h_mc_pt_vs_q_eta_denom_"  + kCharges[ic]);
+            TCanvas c(("c_step1sf_qeta_" + kCharges[ic]).c_str(), "", 1500, 1800);
+            c.Divide(3, 4);
+            for (size_t iq = 0; iq < kQEtaSuffix.size(); ++iq) {
+                c.cd(static_cast<int>(iq) + 1);
+                gPad->SetLeftMargin(0.13);
+                gPad->SetBottomMargin(0.12);
+                gPad->SetLogx();
+
+                const int b1 = h2den->GetXaxis()->FindBin(kQEtaRange[iq].first  + 1e-6);
+                const int b2 = h2den->GetXaxis()->FindBin(kQEtaRange[iq].second - 1e-6);
+                TH1D* pn  = h2num->ProjectionY(Form("pn_%s_%zu",  kCharges[ic].c_str(), iq), b1, b2, "e");
+                TH1D* ps  = h2sf ->ProjectionY(Form("ps_%s_%zu",  kCharges[ic].c_str(), iq), b1, b2, "e");
+                TH1D* pd  = h2den->ProjectionY(Form("pd_%s_%zu",  kCharges[ic].c_str(), iq), b1, b2, "e");
+
+                auto* gmc = BayesEff(pn, pd);
+                auto* gsf = DivideGraphClean(ps, pd);
+                auto* gda = GetObj<TGraphAsymmErrors>(fdata,
+                    "g_pt2nd_vs_q_eta2nd" + cfg.ctr + "_" + kDataSigns[ic] +
+                    "_2mu4_sepr_py_" + kQEtaSuffix[iq] + "_divided");
+                gda = (TGraphAsymmErrors*)gda->Clone();
+                StyleGraph(gmc, kMCColor, 21, 0.7);
+                StyleGraph(gsf, kSFColor, 22, 0.7);
+                StyleGraph(gda, kDataColor, 20, 0.7);
+
+                DrawEffFrame(4.0, 60.0, "p_{T} [GeV]");
+                DrawUnityLine(4.0, 60.0);
+                gda->Draw("PZ same");
+                gmc->Draw("PZ same");
+                gsf->Draw("PZ same");
+
+                TLatex tl;
+                tl.SetNDC(); tl.SetTextSize(0.055); tl.SetTextFont(42);
+                tl.DrawLatex(0.35, 0.24, Form("%.1f < q#upoint#eta < %.1f",
+                                              kQEtaRange[iq].first, kQEtaRange[iq].second));
+            }
+            c.cd(11);
+            DrawHeadline(headline + ", " + kChargeTex[ic], 0.02, 0.88, 0.048);
+            auto* leg = new TLegend(0.02, 0.42, 0.98, 0.80);
+            leg->SetBorderSize(0);
+            leg->SetFillStyle(0);
+            leg->SetTextSize(0.045);
+            auto* gm = new TGraphAsymmErrors(); StyleGraph(gm, kMCColor, 21);
+            auto* gs = new TGraphAsymmErrors(); StyleGraph(gs, kSFColor, 22);
+            auto* gd = new TGraphAsymmErrors(); StyleGraph(gd, kDataColor, 20);
+            leg->AddEntry(gm, mc_leg.c_str(), "lp");
+            leg->AddEntry(gs, sf_leg.c_str(), "lp");
+            leg->AddEntry(gd, (cfg.data_text + " tag&probe").c_str(), "lp");
+            leg->Draw();
+            TLatex note;
+            note.SetNDC(); note.SetTextSize(0.04); note.SetTextFont(42);
+            note.DrawLatex(0.02, 0.30, sf_note);
+            SaveCanvas(c, dir1sf + "step1_eff_pt_in_q_eta_bins_" + kCharges[ic] + "_sf" + wp_suf + ".png");
+        }
+    } else {
+        std::cout << "plot_mc_trig_eff: no h_mc_*_num_sf_* hists in MC file - skipping Step 1-SF"
+                  << " (rerun FillMCTrigEffHists on SF-enabled NTP output)" << std::endl;
     }
 
     // ================================================================
