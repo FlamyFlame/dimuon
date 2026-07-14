@@ -35,6 +35,30 @@ every mistake it already solved.
    given cut/procedure should be mirrored, and you think a standalone deviation is justified
    for a physics reason, do NOT decide unilaterally — ask the user before writing the code.
 
+## AMI weights (BLOCKING — a distinct, non-cancelling failure mode)
+
+**Any new MC dataset needs its OWN AMI weights, fetched from `pyami` before any analysis runs on
+it.** Never reuse another production's. Full rule + per-DSID registry: `Analysis/docs/ami_weights.md`.
+
+The trap: AMI info files are keyed by **beam + slice ONLY**, so the filename is identical across
+productions. Swap the dataset, leave the old `ami_info/` in place, and everything runs and every
+number is wrong — silently.
+
+**Why it is worse than the isospin-weight class of bug:** an AMI error is **slice-dependent**, so
+it reweights the pT-hat mixture and cancels **NOWHERE** — not in the MC trigger efficiency (a
+σ-weighted average over slices), not in any cross-section. A *slice-independent* factor cancels in
+every efficiency/response ratio. (Measured for pp24: FULL/TEST σ·ε_filt ratio spans 0.879–1.545.)
+
+Reviewers MUST check:
+- Does the run declare `expected_ami_dsids` (and `ami_info_dir_override` where the sample has its
+  own AMI dir)? `PythiaAlgCoreT` throws on a `datasetNumber` mismatch — a run with no declared
+  DSIDs has **no guard**.
+- Does `isTestSample` match the sample actually being read? It drives input dir **and** AMI dir.
+- If a new MC dataset was adopted, are its σ / genFiltEff in `Analysis/docs/ami_weights.md`, with
+  the verification date?
+- If an AMI weight changed, was the FULL blast radius rerun (NTuple processing → hist filling →
+  every weighted plot, incl. MC trig-eff), not just the absolute cross-sections?
+
 ## Reviewer checklist (apply in `/review-analysis-code`, `/review-plot`, `/review-investigation`)
 
 When the work under review is standalone code reading raw NTUPs (tree `HeavyIonD3PD` or raw

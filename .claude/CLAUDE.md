@@ -3,6 +3,31 @@
 - Read `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/README.md` and `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/` for analysis context (class hierarchy, pipelines, sample types)
 - For any analysis change: always update and maintain the relevant documentation in those files
 
+## AMI Weights (BLOCKING — for ANY new MC dataset)
+
+**AMI weights are a HARD BLOCK on every MC dataset.** When you move to a NEW MC dataset — test →
+full sample, a new overlay, a different generator, a new production tag, ANY new DSID — you MUST
+fetch that dataset's OWN AMI weights (`lsetup pyami`; `ami show dataset info <dataset>`) BEFORE
+running any analysis on it. **NEVER reuse the previous dataset's weights.**
+
+Why this is a hard block and not a nicety: the AMI info files are named by **beam + pT-hat slice
+ONLY**, so the filename is **byte-identical between productions**. Point the code at a new dataset
+with the old `ami_info/` still in place and every file opens, every number comes out, and every one
+is wrong — **no crash, no warning**. And it does **NOT cancel**: a wrong σ·ε_filt is
+**slice-dependent**, so it reweights the pT-hat mixture and survives every ratio (the MC trigger
+efficiency is a σ-weighted average over slices). Measured for pp24: the FULL/TEST ratio of σ·ε_filt
+spans **0.879–1.545** across slices. **A silent failure that propagates to final results.**
+
+Contrast: a *slice-independent* factor (e.g. the isospin weight) cancels in reco-eff, det-response
+and MC trig-eff, and only moves absolute normalizations. An AMI error cancels **nowhere**.
+
+**Authoritative registry + the full rule + the per-DSID numbers: `Analysis/docs/ami_weights.md`
+(MUST-READ before adopting any new MC dataset).** Code guard: `PythiaAlgCoreT` parses
+`datasetNumber` from each AMI file and **THROWS** unless it is in `expected_ami_dsids`; every run
+script declares its DSIDs, and the `isTestSample` switch drives input dir + AMI dir together so
+they cannot come from different productions. A missing AMI file is fatal (it used to leave
+`ami_weight = 0` — a silently zero-weighted pT-hat slice).
+
 ## NTuple-Processing Provenance (BLOCKING — for any task that reads analysis data/MC)
 
 Recurring, high-impact failure mode: an agent writes standalone code that reads the **raw
@@ -249,6 +274,7 @@ code that contradicts the Physics Procedure without user approval.
 
 Before working on any task, check these existing docs:
 - **High-level analysis overview (objective, observables, physics methodology, sample roles): `Analysis/docs/analysis_overview.md`** — the stable conceptual ground truth for implementation and academic writing (no status; status lives in the roadmap).
+- **MC AMI weight registry (BLOCKING): `Analysis/docs/ami_weights.md`** — **MUST-READ before adopting ANY new MC dataset** (test→full, new overlay, new generator, new production tag). Holds the rule (never reuse another production's weights — it is a silent, non-cancelling failure), the per-DSID σ / genFiltEff / σ·ε_filt tables, the code guard (`expected_ami_dsids`), and the rerun blast radius.
 - **Signal-selection change impact / rerun map: `Analysis/docs/signal_selection_change_impact.md`** — **MUST-READ before adding, removing, or changing the value of ANY single-b signal-selection cut (minv, pair pT, q·η, ΔR, …), including selection systematics.** It enumerates the full recompile→rerun-hist-filling→replot blast radius (which code, which outputs go stale, what stays unchanged). The signal region itself is defined in `analysis_overview.md` §2.
 - **Academic writing production chain (rigor + auto-sync gates G1–G7): `Analysis/docs/academic_writing_workflow.md`** — ground-truth spec that `/review-note`, `/review-paper`, `/verify-citations`, `/sync-note-figures`, `/check-note-sync`, `/compile-note` enforce on EVERY writing task (even one section). Reference material: `Analysis/docs/references/academic_research_skills_summary.md` (why the ARS plugin is NOT installed) + `ppg12_claude_summary.md`.
 - **Knowledge base — index of physics references: `.claude/kb/index.md`** — the curated literature/physics reference library, NOT just analysis bookkeeping. It holds: the two highest-priority Run 2 reference analyses ours derives from (HF-muon R_AA/v_n note+paper; back-to-back dimuon note+Letter), heavy-ion physics (especially heavy-flavor background), ATLAS muon detector (reco + trigger), centrality (ATLAS 2023 + Glauber), plus analysis bookkeeping (decisions, samples, variables, gotchas). **Consult the index for EVERY physics question/task/investigation/decision** — see the required-use rule below.
