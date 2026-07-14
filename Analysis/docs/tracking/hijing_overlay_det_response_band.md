@@ -337,6 +337,67 @@ follows shared barcodes into HIJING territory — which is the separate "others"
 that `pythia_only_barcode_cache` already handles.  The single reco→truth-muon link used for
 efficiency is immune.)
 
+### Step 8 (2026-07-13): CORRECTION — the two r-tags are DIFFERENT digi+reco passes; the
+### user's spurious-HIJING-match hypothesis is RULED OUT; both samples are physically valid
+
+**RETRACTION of a Step-7 claim.**  Step 7 asserted the two r-tags have "identical reco
+muons ⇒ a perfectly controlled test".  **That was WRONG and is retracted.**  Verified:
+
+| check (400 shared events) | result |
+|---|---|
+| eventNumber unique & shared | 10000/10000, **100 % overlap** ✔ |
+| Pythia **truth** muons identical | ✔ |
+| **FCal_Et** (⇒ same overlaid HIJING event) | **400/400 bit-identical** ✔ |
+| **reco muon collection identical** | **0/400** ✘ — counts differ (9 vs 10, 3 vs 4 …) |
+
+**Why:** the AMI diff between the r-tags is a SINGLE field — `digiSteeringConf:
+StandardSignalOnlyTruth` (r17662).  Same Athena 24.0.58, same `OFLCOND-MC23-SDR-RUN3-05`,
+same `ATLAS-R3S-2021-03-02-00`, same HIJING overlay input, same beamspot postExec.
+`digiSteeringConf` is a **digitisation** steering option (not a pure "write less truth"
+flag): it changes the digi algorithm sequence and thereby the **tracking-detector RNG
+stream**.  So r17618 and r17662 are **two different digitisation+reco passes of the same
+generated events** — each deterministic, but not the same computation.  (The calorimeter
+stream was unaffected — hence bit-identical FCal_Et — a neat internal check that this is
+RNG-level, not physics-level.)
+
+**Is anything PHYSICAL different?  NO — verified:**
+| observable | r17618 | r17662 | compatibility |
+|---|---|---|---|
+| FCal_Et (occupancy) | 4.4332 TeV | 4.4332 TeV | KS p = **1.000** |
+| ⟨N reco muons⟩/event | 4.559 | 4.569 | KS p = 0.94 |
+| **detector response** (p_T^reco−p_T^truth)/p_T^truth | mean −0.00136, **RMS 0.03624** | mean −0.00117, **RMS 0.03633** | **KS p = 0.75**, χ² p = 0.9997 |
+
+⇒ Same occupancy, same multiplicity, **same momentum resolution (RMS agree to 0.25 %)**.
+**BOTH r-tags give correct reconstruction efficiencies AND correct detector response** for
+the final measurement.  They are two independent statistical realisations of the same
+physics.  Consequence: they are **NOT interchangeable event-by-event** — a per-muon
+reco_match/pass_WP difference between them is EXPECTED, not a bug.  The residual ~0.2-0.5 %
+efficiency difference is fully accounted for by (a) the two reco realisations and (b) 6
+muons of ~12 900 flipping across the prob>0.5 threshold (truthMatchProbability shifts
+because r17662 has no HIJING truth to attribute hits to; mean |Δprob| = 0.018).
+
+**User's hypothesis — spurious HIJING barcode match (would make r17618 OVERestimate) —
+RULED OUT by direct measurement (tested WITHIN r17618 alone, so no cross-sample matching
+is needed):** a Pythia truth muon spuriously matched to a HIJING muon's track would land
+far away in ΔR.
+```
+r17618: 12913 barcode+prob>0.5 matches | ΔR(truth, matched reco) > 0.05 : 0 (0.000 %) | worst ΔR = 0.022
+r17662: 12917 matches                  | ΔR > 0.05 : 0 (0.000 %) | worst ΔR = 0.023
+```
+**Every match sits within ΔR < 0.022 of its own truth muon** — not one match to a distant
+HIJING muon.  The real muon's own hits always win the prob>0.5 association over a
+barcode-colliding HIJING particle.
+
+**Latent trap noted (not currently biting):** `GetNPythiaTruthMuons` falls back to
+returning ALL truth muons when an event has no truth particle with barcode > 200000.  It
+fires in **117/10000 r17662 events** and **0 r17618 events**.  Harmless today (r17662 has
+no HIJING truth to leak in), but in a HIJING-truth sample it would silently pull HIJING
+muons into the Pythia truth-muon list.  Worth hardening.
+
+**Net: the Step-7 conclusion STANDS, but its basis is corrected** — r17618 has no
+reco-efficiency bias because (a) the spurious-match mechanism demonstrably does not occur
+and (b) the two reco passes agree statistically, NOT because the reco was identical.
+
 **VERDICT (Autonomy Contract Done item 3): NO genuine reconstruction-efficiency
 underestimate in r17618 from the barcode collision.**  r17618 ε = r17662 ε to <0.5 %
 (single-muon AND pair, both centralities, both WPs), confirmed independently at the
