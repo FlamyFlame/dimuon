@@ -353,6 +353,26 @@ completion and re-run the (cheap) downstream stages when all 24 are in. Not high
   (clipped legend/headline on overlay canvases) — fixed, all 24 regenerated, content unchanged.
   INFO for full-stat rerun: extreme-ΔR tail bins (ΔR>4) are 1.5–2.4σ fluctuations; recheck then.
 
+- 2026-07-10 — **Step 9 (Step-1 SF variant) EXECUTED** (reviews in flight). Old step1 plots
+  backed up (`*.bak_20260710_noSF`). NTP now propagates `muon_eff_SF_medium/tight` →
+  `MuonFullsimExtra::eff_sf_{medium,tight}` (unfilled ≤0 → 1, counted); all 4 productions
+  rerun. **SF fill fractions:** unfilled = EXACTLY the pT < 5 GeV muons (100% below, 0%
+  above — official SF-map validity boundary; flat in η). Within the Step-1 Tight+fiducial
+  selection: pp 22.68% (μ⁺) / 22.71% (μ⁻); overlay 23.18% / 23.25%. Filled SF_tight mean
+  0.961 (pp) / 0.958 (overlay). `FillMCTrigEffHists`: SF-weighted Step-1 numerators
+  (`h_mc_*_num_sf_<chg>`, w_sf = ev_weight × active-WP SF). New plots
+  `step1_singles_data_mc_sf/` (5/sample: data vs MC vs MC×SF, SF-boundary note on canvas;
+  zero-width-8-GeV bin skipped via DivideGraphClean).
+  **Agreement check (MC×SF)/data at plateau:** pp μ⁺ 1.206 (4.3 GeV, uncorrected by
+  construction) / 1.058 (5.5) / 1.075 (10) / 1.079 (20) / 1.081 (40) — the ~0.96 reco/ID SF
+  closes about HALF of the ~10–11% no-SF offset; a flat ~6–8% excess REMAINS above 5 GeV.
+  Overlay: 1.185 (4.3) / 1.001 (5.5) / 1.014 (7) / 1.048 (10) / 1.096 (20) / 0.805 (40,
+  low-stat) — near-agreement at low pT, residual growing with pT. Physics reading: the
+  reco/ID WP scale factor corrects the WP-selection efficiency difference, NOT the L1
+  trigger simulation excess — the residual is the genuine trigger-simulation over-efficiency
+  (skim doc §8d), which is exactly what stays data-driven in the analysis (ε^nc from data;
+  MC contributes only the ΔR ratio, where a flat excess cancels).
+
 ## Results & Observations
 
 ### R1. NTP discovery (2026-07-10, Explore agent + orchestrator check)
@@ -447,11 +467,9 @@ define+filter pattern to mirror at `RDFBasedHistFillingPythiaFullsim.cxx:128-139
 
 ## Latest Stage
 
-**2026-07-10 — Implementation Plan steps 1–8 COMPLETE on branch `mc-trigger-efficiency`
-(unmerged, awaiting user).** All three measurements delivered and reviewed for both samples
-(pp primary per D1; overlay vs PbPb23 data 0–5% per D2). Deliverable status: ε_ΔR is
-MEASURED but NOT yet applied to crossx — preconditions: (1) plateau normalization
-(overlay 0.864 flat systematic; pp 0.963), (2) full-statistics MC rerun, (3) the
-in-flight `pp_pTH8_14` slice (D3; check `mc_trigger_info_skim.md`). Rerunning when
-samples land is cheap: NTP `run_pythia_fullsim*_mc_trig.sh` → `FillMCTrigEffHists` →
-`FitMCSinglesEffcy` → `FillMCTrigEffHists(do_step3)` → `plot_mc_trig_eff`.
+**2026-07-13 — Step 9 (Step-1 SF variant) COMPLETE & REVIEWED** (/review-analysis-code
+PASS iter 1, /review-plot PASS iter 1; both with full independent numerical reproduction).
+Branch `mc-trigger-efficiency` still unmerged, awaiting user. Standing preconditions for
+applying ε_ΔR to crossx unchanged: plateau normalization + full-stat MC + `pp_pTH8_14`
+slice. The SF study's conclusion (reco/ID SF closes ~half the pp trigger-eff offset; flat
+~6-8% L1-simulation excess remains) reinforces keeping ε^nc data-driven.
