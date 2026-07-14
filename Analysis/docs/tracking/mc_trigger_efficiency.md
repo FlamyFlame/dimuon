@@ -21,9 +21,24 @@ HIJING overlay r17618 `_July2026`) to deliver the MC-based trigger-efficiency pr
    weighting on an unbiased (no-trigger-requirement) MC pair sample. This is the analysis
    deliverable that replaces the current dummy ε_ΔR ≡ 1 (roadmap Q4).
 
-## Autonomy Contract (DONE 2026-07-14 — items 0–4 complete; item 5 (merge) HELD by user decision)
+## Autonomy Contract (round 2 — DONE 2026-07-14; A–D all met, both reviews PASS)
 - Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a
   plan, a passing small test, or one pipeline stage is NOT a stopping point.
+- Done = **(A)** the MC trigger-efficiency muon sample is RECO-SEEDED and TRUTH-MATCHED-REAL
+  (`prob>0.5 & |muon_truth_id|==13 & muon_truth_IsPrimary==1`; §3.0 below), replacing the
+  truth-seeded Pythia-block loop, for BOTH the single-muon tree and the pair trees (pairs =
+  all (i<j) combinations of selected reco muons), in `store_mc_trigger` mode only.
+  **(B)** MC offline muons pass EXACTLY the data generic muon cuts (incl. the `fabs(dP/P)`
+  fix); every residual data/MC difference enumerated and justified in D5.
+  **(C)** BOTH working points produced end-to-end for BOTH samples — Medium-for-both and
+  Tight-for-both — for Steps 1, 2 AND 3 (MC *and* the data reference; data Medium T&P via
+  `isTight=false` → `_medium_wp`). 4 plot sets total.
+  **(D)** All pp (all 24 beam×slice configs) + PbPb overlay test-sample results regenerated
+  and verified correct; /review-analysis-code + /review-plot passed; docs + git updated.
+- Stop-and-ask = ANY physics-results-bending ambiguity (no fixed list; use judgment;
+  when unsure whether an ambiguity is blocking, treat it as blocking → AskUserQuestion).
+
+## Autonomy Contract — round 1 (DONE 2026-07-14; retained for the record)
 - Done = (0) Step-9 SF variant fully removed: `step1_singles_data_mc_sf/` + the
   `*.bak_20260710_noSF` backups deleted, SF code reverted out of
   `plot_mc_trig_eff.cxx` and out of the `FillMCTrigEffHists` numerators (NTP tree
@@ -80,6 +95,53 @@ assumptions this doc measures/tests: (i) the singles terms ε₁, ε₂ carry **
 cross term); (ii) the correlation is a function of ΔR alone (checked via kinematic binning).
 
 ### 3. Step-by-step method
+
+#### §3.0 The MC muon sample (AUTHORITATIVE — added 2026-07-14 by user instruction)
+
+Every MC muon entering Steps 1–3 (singles AND pair legs) is defined as follows. This
+**replaces** the previous truth-seeded construction (which looped over the Pythia
+truth-muon block and kept those with a reco match).
+
+**(a) RECO-SEEDED.** Start from the **reconstructed (offline) muon collection**, exactly as
+data does. Never from the truth-muon list — a truth-seeded loop makes the denominator a
+truth object with reco decorations, and (in the overlay) silently discards every real muon
+that is not in the Pythia signal block.
+
+**(b) TRUTH-MATCHED REAL.** Keep a reco muon only if it is a **real** muon:
+`muon_truth_prob > 0.5 && |muon_truth_id| == 13 && muon_truth_IsPrimary == 1`
+— the reco-muon provenance classifier's real/hadronic/fake axis, identical to the
+template-fit definition (`low_mass_dimuon_template_fit.md` §"HIJING muons ARE real",
+`tf_upfront_bkg_reduction.md`). This removes **fake** (`prob ≤ 0.5`) and **hadronic**
+(`|id| ≠ 13` punch-through, or `id = ±13 & IsPrimary = 0` decay-in-flight) muons, which
+otherwise contaminate the sample **precisely in the regions of interest — low pT and low
+ΔR** — and which have (near-)zero trigger probability, biasing ε and the ΔR correlation low.
+- **The axis is `(prob, |id|, IsPrimary)` ONLY — NEVER Pythia-signal-block membership**
+  (`muon_truth_index`/barcode). ⇒ in the HIJING overlay, **real HIJING muons ARE kept**:
+  HIJING simulates hard scattering too, so a truth-matched primary muon from the HIJING
+  underlying event is a real muon, and the trigger fires on it exactly as on a Pythia one.
+  (The "Pythia-only truth" restriction used for reco-eff / detector-response exists *only*
+  because the Pythia AMI slice weights do not apply to HIJING — irrelevant here, because a
+  trigger efficiency is a per-event RATIO in which the event weight cancels.)
+
+**(c) EXACTLY THE DATA GENERIC MUON CUTS** (`DimuonDataAlgCoreT::PassCuts_DataCore`) — the
+*generic* muon selection, NOT the signal selection:
+`quality&1` (combined) · WP bit (`&16` Tight / `&8` Medium) · `quality&32` (IDCuts) ·
+`quality&256` (MuonCuts) · `|η| < 2.4` · `pT > 4 GeV` · `|Δp/p| < 0.12` · `|d0| < 2 mm` ·
+`|z0 sinθ| < 2 mm` · (track-charge agreement only if `turn_on_track_charge`, which is
+`false` on both sides).
+**No signal-selection cut is applied** (no pair-pT, no q·η, no ΔR, no m_μμ, no resonance
+veto) — those define the measurement, not the muon.
+
+**(d) BOTH WORKING POINTS.** Steps 1–3 are produced for **Medium-for-both** and
+**Tight-for-both** (MC *and* the data reference at the same WP). The WP must never be mixed
+across the data/MC comparison, and the ΔR-correlation procedure (Steps 2–3) must be shown
+valid at both.
+
+**Known, accepted asymmetry (not a bug):** the data denominator cannot be truth-matched, so
+it still contains fakes/hadronic muons (~zero trigger efficiency), which dilute ε_data at low
+pT. The MC/data ratio of Step 1 is therefore NOT a pure trigger comparison; the contamination
+fractions are reported so it can be interpreted. This does not affect the deliverable, which
+is the MC-internal ΔR **ratio** (Steps 2–3).
 
 #### §3.1 MC single-muon mu4 efficiency + data comparison
 
@@ -233,6 +295,42 @@ centrality bins, use PbPb 2024 conditions, and the data-overlay will cover year-
 completed slices (weights are per-slice, so a missing slice biases nothing at fixed pTHat;
 it only thins statistics in its pT range). Check `mc_trigger_info_skim.md` later for
 completion and re-run the (cheap) downstream stages when all 24 are in. Not highest priority.
+
+### D4: Reco-seeded + truth-matched-real MC muons; real HIJING muons INCLUDED (2026-07-14, user)
+**Physics:** see §3.0. The old truth-seeded loop (a) made the denominator a truth object, and
+(b) in the overlay discarded every real muon outside the Pythia signal block. Fakes and
+hadronic muons have ~zero trigger probability and cluster at low pT / low ΔR — exactly the
+regions the ΔR correction is measured in — so leaving them in biases ε and the correlation low;
+conversely, dropping real HIJING muons throws away real, triggerable muons that data contains.
+**Decision:** reco-seeded, `prob>0.5 & |id|==13 & IsPrimary==1`, no index gate. Applies to the
+single-muon tree AND the pair trees (pairs = all (i<j) combinations of the selected reco muons,
+so overlay pairs may be Pythia×Pythia, Pythia×HIJING or HIJING×HIJING — as in data).
+**Scope guard:** `store_mc_trigger` mode ONLY. The nominal fullsim path (reco-eff,
+detector-response, template-fit MC) keeps its truth-seeded Pythia-only construction, which is
+correct for *those* measurements (a reco-efficiency denominator MUST be a truth muon, and the
+Pythia AMI slice weights do not apply to HIJING).
+
+### D5: MC generic muon cuts must mirror data EXACTLY — the `fabs(Δp/p)` bug (2026-07-14, user)
+**Found:** `PythiaFullSimExtras::PassMuonMediumCuts` had `if (muon.dP_overP > thrsh)` while data
+has `if (fabs(...) > thrsh)`. `muon_deltaP_overP` is **signed** (41% of reco muons are negative;
+**2.6% sit below −0.12**), so MC was ACCEPTING muons that data REJECTS. Fixed to `fabs`.
+**Full cut-by-cut audit vs `PassCuts_DataCore` (the only differences found):**
+| cut | data | MC (before) | action |
+|---|---|---|---|
+| `quality&1,&32,&256`, WP bit, `\|η\|<2.4`, `pT>4`, d0/z0 | ✓ | ✓ identical | — |
+| `\|Δp/p\| < 0.12` | `fabs()` | **no `fabs`** | **FIXED** |
+| track-charge agreement | `turn_on_track_charge=false` | `false` | consistent (both off) |
+| Tight WP | `&1,&16,&32,&256` | `pass_medium && &16` (⊃ `&8`) | equivalent — quality bits are cumulative (`getQuality()` Tight=0 < Medium=1, so a Tight muon sets BOTH `&8` and `&16`) |
+| WP application | on the PAIR (`m1.q & m2.q & bit`) | per muon | equivalent for pairs |
+**Blast radius of the `fabs` fix (FLAGGED, not rerun here):** `PassMuonMediumCuts` is shared by
+the whole Pythia-fullsim path, so **reco-efficiency, detector-response and template-fit MC
+results are now stale** by ~2.6% of reco muons. Out of scope for this task (trigger efficiency);
+must be rerun before those are used. `PowhegFullSimExtras.c:25` carries the SAME bug — left
+alone (POWHEG fullsim is obsolete, `project_mc_sample_roles`), noted here so it is not lost.
+**NOT applied to MC:** the PbPb *event*-level selection (ZDC/FCal/pileup). That is an event
+cut, not a generic muon cut; the overlay is by construction a hadronic PbPb sample, and MC
+efficiency derivation does not apply data's event cleaning. Overlay stays restricted to 0–5%
+centrality (D2).
 
 ## Implementation Plan
 
@@ -566,6 +664,111 @@ completion and re-run the (cheap) downstream stages when all 24 are in. Not high
   (MC/data) and Step-2 (/ΔR≥1) canvas** — this is what made the anomaly quantitative rather
   than eyeballed. All 24 PNGs regenerated; both plateaus unchanged by all of it.
 
+- 2026-07-14 (round 2) — **T1 (NTP) DONE.** `PythiaFullSimExtras`: new
+  `ProcessEventFullsimMCTrig()` (reco-seeded loop, `store_mc_trigger` ONLY — the nominal
+  truth-seeded path is untouched, D4 scope guard) + `IsRealRecoMuon()` (the §3.0(b) axis) +
+  `FillRecoQuantities()` (the lambda extracted to a member function so the two loops share ONE
+  reco-muon definition and cannot drift). Bound `muon_truth_{id,IsPrimary,pt,eta,phi,charge}`.
+  **`fabs(Δp/p)` FIXED** (D5). Pairs are now all (i<j) combinations of the selected real reco
+  muons; **the truth fiducial gate on pairs (`PassCuts_PythiaCore`: truth pT>4, |η|<2.4) is GONE**
+  — it was sculpting the reco-pT turn-on. `PerformTruthPairAnalysisHook` deliberately not called
+  in trigger mode (it traces the PYTHIA parent map, undefined for HIJING muons; trigger
+  efficiency needs no truth ancestry). New end-of-run provenance report.
+  **R6 — Reco-muon provenance (full test samples, ALL reco muons, before fiducial/WP):**
+  | sample | reco muons | REAL (kept) | fake | hadronic |
+  |---|---|---|---|---|
+  | pp24 fullsim | 522 522 | **477 135 (91.3%)** | 9 005 (1.7%) | 36 382 (7.0%) |
+  | HIJING overlay (all centralities) | 11 321 (400-ev smoke) | **35.9%** | 33.8% | 30.3% |
+  - **pp cross-check (important):** REAL = **477 135** is EXACTLY the old truth-seeded
+    reco-matched count ⇒ for pp the old Pythia-barcode match and the new real-muon match select
+    the **identical muon sample**. So pp's changes come only from the `fabs` fix and the removal
+    of the truth fiducial gate on pairs — NOT from the muon definition.
+  - **The overlay is the real story:** in central Pb+Pb the reco muon collection is only **~36%
+    real** — **64% fake + hadronic**. Reco-seeding WITHOUT the truth match would have put that
+    64% (near-zero trigger probability, concentrated at low pT / low ΔR) straight into the
+    denominator and destroyed ε and the ΔR correlation. The old code escaped this only by being
+    truth-seeded, at the price of discarding real HIJING muons.
+- 2026-07-14 (round 2) — **T2 (Medium-WP DATA reference): pp24 DONE** (`isTight=false` →
+  `histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin_medium_wp.root`, 20 MB). **pbpb23
+  FAILED (OOM)** — the node has 23 GB / 8 cores and RDF ran `EnableImplicitMT(8)` on the large
+  PbPb data alongside the NTP job → killed (rc=9, 448-byte stub). Retrying serially with fewer
+  threads. No data re-skim or NTuple reprocessing was needed: the data pair trees are Medium
+  supersets carrying a per-pair Tight flag.
+- 2026-07-14 (round 2) — **T3:** `plot_mc_trig_eff` now selects the **WP-matched data file**
+  (`MakeCfg(sample, use_tight_wp)` → `_medium_wp`). It previously hardcoded the Tight data path,
+  so a Medium run would have silently compared Medium MC against **Tight data**.
+
+- 2026-07-14 (round 2) — **T4 DONE: all four result sets regenerated** (2 samples × 2 WPs;
+  pp = all 24 beam×slice configs). PbPb Medium data reference succeeded on retry (the OOM was
+  RDF `EnableImplicitMT(8)` on a 23 GB / 8-core node next to the NTP job; rerun serially with
+  3 threads → 53 MB, rc=0). 48 PNGs (12 per sample per WP).
+  **R7 — headline numbers (round 2):**
+  | quantity | Tight | Medium |
+  |---|---|---|
+  | pp ε_ΔR^2mu4 plateau (ΔR∈[1,4]) | **0.9583 ± 0.0095** | **0.9589 ± 0.0091** |
+  | overlay ε_ΔR^cross plateau | **0.8426 ± 0.0234** | **0.8407 ± 0.0224** |
+  | pp Step-1 MC/data (μ⁺, plateau) | ~1.11 | ~1.11 |
+  | overlay Step-1 MC/data (μ⁺) | 1.22 (4.3 GeV) → 1.06–1.12 | 1.24 → 1.06–1.13 |
+  - **The ΔR correction is WP-STABLE**: pp and overlay plateaus agree between Medium and Tight
+    well within errors ⇒ §3.0(d) satisfied, the correlation procedure is valid at both WPs.
+  - **ε_ΔR is essentially UNCHANGED by the whole round-2 rework** (pp 0.9588 → 0.9583). This is
+    exactly what §3.3's self-consistency argument predicts: ε_ΔR is defined relative to ε₁ε₂
+    using the MC's *own* Step-1 fits, so a per-leg change (muon definition, `fabs` cut) cancels
+    in the ratio. The deliverable was robust; the Step-1 *validation* is what needed the fix.
+  - Tree sizes: pp singles **475 108** (bit-identical to round 1 ⇒ pp muon sample unchanged, as
+    predicted by the 477 135 = old-count cross-check); pp pairs SS 53 964 / OS 192 530 (+26–31%
+    — the removed truth fiducial gate); overlay singles 95 389 → **99 763** (+4.6%, the real
+    HIJING muons); overlay pairs SS 14 176 / OS 37 168.
+
+- 2026-07-14 (round 2) — **⚠ KEY VALIDATION: the R4 small-ΔR singles enhancement SURVIVES the
+  truth-match fix ⇒ it is NOT fake/hadronic contamination.** This was the central risk: fakes
+  and hadronic muons have ~zero trigger probability and cluster at low pT AND low ΔR, so they
+  could in principle have *manufactured* the ΔR-dependent singles effect that R4 reports (and
+  which threatens the PbPb union weight). With the sample now **reco-seeded and truth-matched
+  real** — i.e. with 64% of the overlay's reco muons (34% fake + 30% hadronic) REMOVED — the
+  Step-2 ΔR<0.2 series still sits **~1.2–1.35× above the ΔR≥1 reference at low pT**, in both
+  samples and at BOTH working points. The §2 assumption-(i) violation is therefore **genuine
+  close-by L1 trigger correlation**, confirmed on a clean real-muon sample. (Contamination
+  would also have pushed ε *down* at small ΔR, i.e. the opposite sign to what is observed.)
+  ⇒ Remaining Work item 1 (the PbPb union-weight decision) STANDS and is now better founded.
+
+- 2026-07-14 (round 2) — **T5 DONE: both reviews PASS.**
+  **/review-analysis-code — PASS at iteration 2.** Iter-1 caught one genuine **silent trap**:
+  the reco-seeded pair loop deliberately skips `PerformTruthPairAnalysisHook`, leaving the
+  truth-ancestry branches at `Clear()` defaults — but `pair_origin_analysis_skipped` also
+  defaulted to `false`, i.e. asserting *"the origin analysis ran"*, and `parent_group == 0` is
+  a LEGITIMATE category (the hook's failure sentinel is −10). A future consumer would have read
+  a valid-looking all-zeros ancestry block and believed it. Fixed: the flag is now set `true`
+  explicitly (verified 100% of pairs in all four `_mc_trig` pair trees). Also removed three
+  now-unreachable `store_mc_trigger` branches from the nominal loop, and `require()`d the six
+  new truth branches. **The flag fix moved NO physics** — all four plateaus bit-identical.
+  **Reviewer verification (stronger than counts — SET equality, event by event):**
+  - **pp: `REAL \ OLD = 0` AND `OLD \ REAL = 0`** — the old Pythia-barcode match and the new
+    real-muon match select the **identical 477 135 reco muons**. Provably coextensive in pp: with
+    no HIJING block, every truth-matched *primary* muon necessarily carries a Pythia-block
+    barcode, and every fake/hadronic muon does not. So the old code was *already* rejecting all
+    9 005 fakes and 36 382 hadronic muons in pp.
+  - **overlay: `OLD \ REAL = 0` (strict subset) but `REAL \ OLD = 6 822`** — the old truth-seeded
+    loop never admitted a fake or hadronic muon, but it was **discarding 6 822 real HIJING
+    muons** (+7.1% of the real sample). This is exactly the D4 failure mode, and it can only
+    occur where a real primary muon lives outside the signal generator block — i.e. only in the
+    overlay. **D4 confirmed by measurement.**
+  - D4 scope guard verified airtight: `FillRecoQuantities` is a character-for-character
+    extraction of the old lambda; the nominal path is byte-equivalent to HEAD except the
+    intentional `fabs` fix; `IsRealRecoMuon` has no index/barcode gate; pairs carry no truth
+    fiducial cut (tree counts equal Σ C(n_real,2) exactly); `dr` is reco ΔR; C5/C6 clean.
+  **/review-plot — PASS at iteration 3.** Iter-1: 4 cosmetic WARNINGs (Step-3 off-scale note
+  colliding with the legend; Step-2 legend fill washing out endcap data; ratio-pad points
+  clipped without indication; a stale comment inviting a re-hardcoded Tight data path). Iter-2
+  caught a **real defect I had introduced**: `DivideGraphClean` paired numerator/denominator
+  **by index**, but `TGraphAsymmErrors::Divide` SKIPS empty-denominator bins, so indices shift
+  and the x-guard then silently dropped every later point — **12 computable ratio points lost
+  per WP in pp**; and the `yn<=0` skip discarded genuine ratio-0 points. Fixed by matching on
+  the x value; ratio-0 points are now emitted and down-arrowed. Reviewer re-verified by
+  exhaustive **set equality** against an independent derivation: **3703/3703 (pp) and
+  1608/1608 (overlay) ratio points present, 0 missing**, no duplicate-x mis-pairing, every
+  off-frame point arrowed in both directions.
+
 ## Results & Observations
 
 ### R1. NTP discovery (2026-07-10, Explore agent + orchestrator check)
@@ -760,7 +963,43 @@ plateau-normalized comparison), but it is a real asymmetry in the Step-1 validat
 
 ## Latest Stage
 
-**2026-07-14 — Steps S10–S15 ALL COMPLETE. Branch merged to master (`8edc4fb`).**
+**2026-07-14 (round 2) — COMPLETE. Reco-seeded truth-matched-real muons + both WPs; both
+reviews PASS (/review-analysis-code iter 2, /review-plot iter 3).** Four result sets delivered
+({pp, overlay} × {Tight, Medium}), 48 PNGs. Headlines: ε_ΔR^2mu4 = 0.9583 ± 0.0095 (T) /
+0.9589 ± 0.0091 (M); ε_ΔR^cross = 0.8426 ± 0.0234 (T) / 0.8407 ± 0.0224 (M) — **WP-independent**
+(pp χ²/ndf 0.01, overlay 0.03), so the correlation procedure is valid at both WPs.
+**Two things carry forward:**
+1. **(unchanged, still the open user decision)** the §2 assumption-(i) violation — the singles
+   efficiency IS ΔR-dependent, so the **PbPb mu4 UNION** weight is at risk (pp/2mu4 product form
+   is safe). Round 2 *strengthened* this: the small-ΔR enhancement survives on a truth-matched
+   REAL-muon sample, so it is genuine L1 correlation, not fake/hadronic contamination.
+2. **NEW blast radius (D5):** the `fabs(Δp/p)` fix is in shared fullsim code ⇒ **reco-efficiency,
+   detector-response and template-fit MC are now STALE** (~2.6% of reco muons). Not rerun here
+   (out of scope); must be rerun before those results are used. `PowhegFullSimExtras.c:25`
+   carries the same bug (POWHEG fullsim obsolete — left, noted).
+
+---
+
+**Original round-2 PLAN (written before work), per §3.0 / D4 / D5:**
+- **T1 — NTP (`store_mc_trigger` only).** Bind `muon_truth_id`, `muon_truth_IsPrimary`. Add
+  `IsRealRecoMuon(reco_ind)`. Rebuild the muon list RECO-SEEDED over real muons; build pair
+  trees from all (i<j) selected reco muons (not Pythia truth pairs). Fix the `fabs(Δp/p)` bug
+  (D5). Report fake/hadronic/real fractions + how many real HIJING muons are gained.
+  → /review-analysis-code (include §3.0 + D4 + D5 in the prompt).
+- **T2 — Data Medium reference.** Rerun the data T&P (P2) + trig-eff fit with `isTight=false`
+  for pp24 + pbpb23 → `*_medium_wp` outputs. (No data re-skim: the data trees are Medium
+  supersets carrying a per-pair Tight flag.)
+- **T3 — RDF/fit/plot both-WP wiring.** `FillMCTrigEffHists` / `FitMCSinglesEffcy` already take
+  `use_tight_wp`; `plot_mc_trig_eff` must pick the **WP-matched data file** (`_medium_wp`) —
+  currently it hardcodes the Tight data path. 
+- **T4 — Rerun everything:** NTP ×4 (pp = all 24 beam×slice configs; overlay), then
+  Fill→Fit→Step3→Plot for **2 samples × 2 WPs** = 4 full result sets.
+- **T5 — Verify + review + docs + git.** /review-plot on the 4 plot sets; confirm the ΔR
+  correlation procedure (Steps 2–3) is valid at BOTH WPs.
+
+---
+
+**2026-07-14 (round 1) — Steps S10–S15 ALL COMPLETE. Branch merged to master (`8edc4fb`).**
 All six requested items done and reviewed (/review-plot APPROVED iter 3; the q·η investigation
 returned NOT-a-code-bug with a KB-grounded evidence chain; merge verified bit-identical against
 the committed runners). **One thing now sits with the user and blocks nothing else: the §2
