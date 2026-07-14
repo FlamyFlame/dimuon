@@ -140,6 +140,39 @@ For each item, state PASS or FAIL with specific evidence.
 8. **Directory structure clear**: subdirectories organized by physics topic; no flat dump of many PNGs. If "Directory structure context" above specifies a user-requested layout, verify it is implemented exactly.
 9. **Related plots co-located**: if existing plots for the same physics procedure live elsewhere, verify both old and new plotting code are updated to use a common parent directory.
 
+### Axis range, binning & ratio (MANDATORY — check on EVERY plot)
+These are the three checks a label-only review misses. Apply them to every panel.
+
+R1. **Axis range must fit the data.** The plotted data must occupy most of each axis
+    range. FAIL if either:
+    - the drawn points/curve occupy only a small fraction of the axis (e.g. an x-axis to
+      100 GeV when the sample has no entries above 20 GeV — the data is squeezed into a
+      corner and the rest of the axis is dead space); or
+    - a large fraction of the entries falls in the **underflow/overflow** (i.e. the range
+      is too narrow and is hiding data).
+    Read the producing code for the axis limits AND the source histogram/tree to see where
+    the entries actually are. State the data's actual span vs the axis span. A range that
+    strands the data in ≲ half the axis, or that overflows a significant fraction of
+    entries, → **FAIL** (WARNING; CRITICAL if it materially misleads).
+
+R2. **Log axis ⇔ log binning consistency (variable axes).** For any axis showing a
+    *variable* (x in 1D; x and y in 2D — not the z/colour axis, not a pure count axis):
+    if the axis is drawn with log scale (`SetLogx`/`SetLogy`), the **binning of that axis
+    must also be log-spaced** (geometric edges), and conversely uniformly-spaced bins must
+    not be drawn on a log axis without justification. Mismatched log-axis/linear-bins makes
+    bin widths visually deceptive. Check the bin edges in the producing code against the
+    `SetLog*` calls. Mismatch → **FAIL**. (Cross-ref `feedback_log_scale_plots`: log-binned
+    variables must use a log axis; this is the converse requirement.)
+
+R3. **Ratio panel required when a ratio is meaningful.** If two (or three) curves share a
+    canvas (or a subplot) and their ratio is clearly informative — e.g. they are *expected
+    to agree within errors* (sample-vs-sample cross-checks, closure tests), or one is a
+    clear **reference** for the others (data/MC in a template-fit result, corrected vs
+    uncorrected, nominal vs variation) — then the plot **must** include a ratio panel
+    (typically bottom pad, with a line at 1). Absence of a ratio panel in such a case →
+    **FAIL**. Do NOT demand a ratio for curves that are not meant to be compared pointwise
+    (e.g. several independent physics categories stacked or overlaid for shape only).
+
 ### Fitting checks (apply when plots include fits)
 10. **Fit overlay visible**: fit curve drawn on data, visually distinguishable (different color/style).
 11. **Fit follows data**: no wild divergence or large systematic residual pattern. Do NOT fail on moderate scatter — goodness-of-fit depends on statistics and model choice.

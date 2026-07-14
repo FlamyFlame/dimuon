@@ -83,6 +83,12 @@ sites (marked ⚠) move the number; **cosmetic** sites (labels) do not but must 
 - Active PbPb pipeline `plotting_codes/trig_effcy/TrigEffPlotterPbPb.cxx:561` applies **no WP filter**
   (implicit medium via input trees); label hardcodes `"Medium #mu"`.
 
+**MC-based trigger efficiency (2026-07-10, `mc_trigger_efficiency.md`):**
+- `RDFBasedHistFilling/FillMCTrigEffHists.cxx` — `use_tight_wp` arg (default **TIGHT**); Medium
+  outputs suffixed `_medium_wp`. Selection column `pass_tight`/`pass_medium` on the `_mc_trig` trees.
+- `RDFBasedHistFilling/FitMCSinglesEffcy.cxx` — `use_tight_wp` arg (default **TIGHT**), matching
+  input/output `_medium_wp` suffixes.
+
 ### 6. Plotting labels — cosmetic (must stay consistent; will go stale)
 `plot_single_b_crossx_pp.cxx:28,33,45,50`; `plot_single_b_crossx_pbpb.cxx:14,30`;
 `plot_single_muon_reco_effcy.cxx:169,229,317`; `plot_reco_distr_singleb_vs_op_pp24.C:16,88,89,120,121`;

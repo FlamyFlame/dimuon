@@ -1,5 +1,6 @@
 #include "RDFBasedHistFillingPythia.cxx"
 #include "../Utilities/GeneralUtils.h"
+#include "../MuonObjectsParamsAndHelpers/FullSimSampleType.h"
 #include <cmath>
 #include <iomanip>
 #include <limits>
@@ -7,14 +8,21 @@
 #include <sstream>
 
 void RDFBasedHistFillingPythiaFullsim::SetIOPathsHook(){
-    const std::string data_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/";
+    // is_test_sample selects which fullsim production's NTuple-processing output to read, and
+    // MUST match the isTestSample used to produce it (PythiaAlgCoreT.h / FullSimSampleType.h):
+    //   true  -> pp24 TEST sample  (4 isospin beams; its cross-section carries the Pb 4:6:6:9
+    //            average and is therefore NOT a physical pp cross-section -- label it honestly)
+    //   false -> pp FULL sample    (pp beam only, isospin weight 1; suffix "_full")
+    // TRUE today because only the TEST sample has NTP output; flip when the FULL sample lands.
+    const std::string data_dir = FullSimSampleInputDir(FullSimSampleType::pp, is_test_sample);
+    const std::string sample_suffix = is_test_sample ? "" : "_full";
     const std::string cut_suffix = with_data_resonance_cuts
         ? "_with_data_resonance_cuts"
         : "_no_data_resonance_cuts";
 
     input_files.clear();
-    input_files.push_back(data_dir + "muon_pairs_pythia_fullsim_pp24" + cut_suffix + ".root");
-    output_file  = data_dir + "histograms_pythia_fullsim_pp24" + cut_suffix + ".root";
+    input_files.push_back(data_dir + "muon_pairs_pythia_fullsim_pp24" + cut_suffix + sample_suffix + ".root");
+    output_file  = data_dir + "histograms_pythia_fullsim_pp24" + cut_suffix + sample_suffix + ".root";
     infile_var1D_json = "var1D_pythia_fullsim.json";
 }
 

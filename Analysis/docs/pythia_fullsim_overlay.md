@@ -204,6 +204,10 @@ cd NTupleProcessingCode
 root -b -l <<'EOF'
 .L PythiaAnalysisClasses.h
 PythiaFullSimOverlayAnalysis py(FullSimSampleType::hijing);
+// ISOSPIN: the HIJING overlay simulates Pb+Pb, whose nucleons are a p/n mix -> all FOUR
+// isospin beams {pp,pn,np,nn} combined 4:6:6:9. That is the DEFAULT. The overlay TEST
+// sample on disk has ONLY the pp beam, so a run over it must opt out explicitly:
+py.setIsospinBeams(false);         // TEST sample only -- OMIT for the 4-beam full sample
 py.fill_kn_trees_fullsim = true;
 py.Run();
 .q

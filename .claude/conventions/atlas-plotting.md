@@ -69,6 +69,50 @@ of its band and the reader adds bands to the total. Two hard rules preserve that
   sorting the `Add()` order by histogram **integral ascending** (smallest first = bottom); build
   the legend to match the visual top→bottom.
 
-(Memory `feedback_thstack_linear_and_ordering`. This is the stack exception to
-`feedback_log_scale_plots`, which otherwise wants log y for wide-dynamic-range 1D distributions.
-Enforced as criterion C7 in `physics-results-review.md`.)
+### The wide-dynamic-range EXCEPTION (log y is allowed, and sometimes required)
+
+**LINEAR is the default and the requirement. But linear is not a suicide pact:** when the stacked
+components span so many decades that a linear axis renders the plot *unreadable* — every band except
+the largest collapses onto the axis and carries no information at all — a **log y-axis is
+permitted**, because an unreadable plot communicates nothing, which is strictly worse than a
+distorted-but-legible one.
+
+Rule of thumb: **≳3 decades of dynamic range** across the stacked components or across the x-range.
+The canonical case is a steeply falling spectrum, e.g. the Pythia fullsim dσ/dp_T-per-pT-hat-slice
+crossx stacks (`plot_pythia_fullsim{,_overlay}_kn_pt_crossx.cxx`), which span ~5 decades: on a
+linear axis only the lowest-p_T bins are visible and the entire high-p_T tail — the physics of
+interest — is a flat line on zero.
+
+If you take the exception you MUST:
+- **Say so on the plot or in the code** — a one-line comment stating the dynamic range and that
+  linear was rejected as unreadable. An undocumented `SetLogy()` on a stack is still a FAIL.
+- **Keep the magnitude ordering rule** (below) — it is independent of the axis and still applies.
+- **Understand what you gave up:** on log y the band thickness is no longer proportional to the
+  contribution, so the "parts of a whole" reading is gone. If the POINT of the plot is the
+  composition/fraction, use linear and restrict the x-range (or plot fractions/ratios instead) —
+  do NOT reach for log to dodge a hard plot.
+
+(Memory `feedback_thstack_linear_and_ordering`. Linear-stack is the exception to
+`feedback_log_scale_plots`, which otherwise wants log y for wide-dynamic-range 1D distributions;
+this section is the exception-to-the-exception. Enforced as criterion C7 in
+`physics-results-review.md`.)
+
+## Axis range, binning & ratio panels (enforced as R1–R3 in `/review-plot`)
+
+**R1 — the axis range must fit the data.** The data must occupy most of the axis. Do not
+draw an axis far beyond where the sample has entries (e.g. muon p_T to 100 GeV when the
+pT-hat slice dies out at 20 GeV — the points end up squeezed into a corner), and do not
+choose a range so narrow that a significant fraction of entries lands in the
+underflow/overflow. Pick the range from where the entries actually are.
+
+**R2 — log axis ⇔ log binning.** For a *variable* axis (x in 1D; x and y in 2D), if the
+axis is drawn log (`SetLogx`/`SetLogy`) then that axis's **binning must be log-spaced**
+(geometric edges, e.g. `edges[i] = lo * pow(hi/lo, i/nb)`), and vice versa. Uniform bins
+under a log axis make bin widths visually deceptive. (This is the converse of
+`feedback_log_scale_plots`, which requires a log axis for log-binned variables.)
+
+**R3 — put the ratio on the plot when the ratio is the point.** If two/three curves share a
+canvas and their ratio is informative — they are expected to agree within errors
+(sample-vs-sample cross-checks, closure tests), or one is a reference for the others
+(data/MC, corrected vs uncorrected, nominal vs variation) — the figure MUST carry a ratio
+panel (bottom pad, dashed line at 1). Not required for curves merely overlaid for shape.

@@ -13,6 +13,11 @@ lsetup "views LCG_107a_ATLAS_2 x86_64-el9-gcc13-opt"
 root -b -l << EOF
 	.L PythiaAnalysisClasses.h
 	PythiaFullSimAnalysis py(0, (bool)0, (bool)1);
+	// Reads the TEST sample; pp_only=true forces the pp beam alone (weight 1) as a
+	// cross-check against that sample's nominal 4-beam isospin average.
+	py.isTestSample = true;
+	// AMI PROVENANCE: declare the TEST sample's pp-beam DSIDs (see PythiaAlgCoreT.h).
+	py.expected_ami_dsids = {802776, 802777, 802778, 802779, 802780, 802781};
 	py.fill_kn_trees_fullsim = true;
 	py.Run();
 	.q;

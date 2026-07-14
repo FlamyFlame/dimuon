@@ -14,12 +14,19 @@ inline std::string FullSimSampleSuffix(FullSimSampleType t) {
     throw std::runtime_error("FullSimSampleSuffix: unknown type");
 }
 
-inline std::string FullSimSampleInputDir(FullSimSampleType t) {
+// Input directory. `is_test_sample` selects the small TEST sample vs the FULL production.
+// It is the SAME switch that selects the isospin treatment (FullSimSampleUsesFourBeams below)
+// -- deliberately one flag, so the input path and the isospin weight can never disagree.
+inline std::string FullSimSampleInputDir(FullSimSampleType t, bool is_test_sample) {
     switch (t) {
     case FullSimSampleType::pp:
-        return "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/";
+        return is_test_sample
+            ? "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/"
+            : "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample/";
     case FullSimSampleType::hijing:
-        return "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/";
+        return is_test_sample
+            ? "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/"
+            : "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_full_sample/";
     case FullSimSampleType::zmumu:
         return "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_zmumu_overlay_test_sample/";
     case FullSimSampleType::data:
@@ -28,6 +35,31 @@ inline std::string FullSimSampleInputDir(FullSimSampleType t) {
     throw std::runtime_error("FullSimSampleInputDir: unknown type");
 }
 
+inline bool FullSimSampleIsOverlay(FullSimSampleType t) {
+    return t != FullSimSampleType::pp;
+}
+
+// ISOSPIN CONTENT OF THE SIMULATED COLLISION SYSTEM -- the single rule, in one place.
+//
+//   pp CONDITIONS fullsim simulates pp COLLISIONS
+//       -> ONE beam (pp), isospin weight 1. There is nothing to isospin-average.
+//   PbPb CONDITIONS HIJING overlay simulates Pb+Pb, whose nucleons are a p/n mix
+//       -> FOUR beams {pp,pn,np,nn}, combined with the Pb ratio 4:6:6:9 (Z=82, N=126).
+//
+// The two TEST samples are exceptions in OPPOSITE directions -- they are what happens to
+// exist on disk, not what the physics wants:
+//   pp24 TEST sample        : produced with 4 isospin beams BY MISTAKE  -> 4 beams
+//   HIJING overlay TEST smp : only the pp beam was produced             -> 1 beam
+// so the exception is exactly "is this a test sample?", and the rule collapses to a XOR:
+inline bool FullSimSampleUsesFourBeams(FullSimSampleType t, bool is_test_sample) {
+    return FullSimSampleIsOverlay(t) != is_test_sample;
+}
+
+// NTUP file tag.  Frozen: it is baked into the skimmed NTUP file names on disk and
+// into the grid output-dataset names (SkimCode/run_pythia_fullsim_HIJING_overlay/
+// grid_sub*.sh).  "PP24" here is a legacy misnomer for the HIJING overlay -- the
+// overlay is Pb+Pb (see FullSimSampleLabel) -- but renaming it would orphan the
+// existing NTUPs and grid datasets.
 inline std::string FullSimSampleFileTag(FullSimSampleType t) {
     switch (t) {
     case FullSimSampleType::pp:     return "FullSimPP24";
@@ -38,14 +70,14 @@ inline std::string FullSimSampleFileTag(FullSimSampleType t) {
     throw std::runtime_error("FullSimSampleFileTag: unknown type");
 }
 
-inline bool FullSimSampleIsOverlay(FullSimSampleType t) {
-    return t != FullSimSampleType::pp;
-}
-
+// Output-file / plot-directory label.  The HIJING overlay simulates Pb+Pb collisions,
+// never pp: the test sample (r17618 / r17662) is reconstructed with Pb+Pb 2023
+// conditions (ConditionsRunNumber=460000), and the full sample now in production will
+// use Pb+Pb 2024 conditions -> it will be labelled "hijing_overlay_pbpb24".
 inline std::string FullSimSampleLabel(FullSimSampleType t) {
     switch (t) {
     case FullSimSampleType::pp:     return "pp24";
-    case FullSimSampleType::hijing: return "hijing_overlay_pp24";
+    case FullSimSampleType::hijing: return "hijing_overlay_pbpb23";
     case FullSimSampleType::zmumu:  return "zmumu_overlay_pp24";
     case FullSimSampleType::data:   return "data_overlay_pp24";
     }
@@ -55,7 +87,7 @@ inline std::string FullSimSampleLabel(FullSimSampleType t) {
 inline std::string FullSimSamplePlotDir(FullSimSampleType t) {
     switch (t) {
     case FullSimSampleType::pp:     return "pp24";
-    case FullSimSampleType::hijing: return "hijing_overlay_pp24";
+    case FullSimSampleType::hijing: return "hijing_overlay_pbpb23";
     case FullSimSampleType::zmumu:  return "zmumu_overlay_pp24";
     case FullSimSampleType::data:   return "data_overlay_pp24";
     }

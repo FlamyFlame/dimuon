@@ -8,7 +8,8 @@
 #   ./grid_monitor.sh -i 15 may2026_skim.txt          # poll every 15 min when idle
 #   ./grid_monitor.sh 50267206 50267236 50267371       # task IDs directly
 #   ./grid_monitor.sh --mode overlay 50774658 50774690 # MC HIJING-overlay mode
-#   ./grid_monitor.sh --mode fullsim_pp 51234567 ...    # MC pp24-fullsim mode
+#   ./grid_monitor.sh --mode fullsim_pp 51234567 ...    # MC pp24-fullsim TEST sample
+#   ./grid_monitor.sh --mode fullsim_pp_full 51234567 ...  # MC pp24-fullsim FULL sample
 #
 # Multi-node: run the same command on each node (e.g. one tmux pane per node).
 # Each instance claims one task at a time; flock prevents double-claiming.
@@ -54,8 +55,15 @@ apply_mode_config() {
 			RECORD_FILE="${DATA_BASE}/merging-record.txt"
 			IS_MC_FLAT=1
 			;;
+		fullsim_pp_full)
+			# pp24-fullsim FULL sample (_pdf production, DSIDs 803015-803020).
+			# Same NTUP basenames as the test sample — different directory.
+			DATA_BASE="/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample"
+			RECORD_FILE="${DATA_BASE}/merging-record.txt"
+			IS_MC_FLAT=1
+			;;
 		*)
-			echo "ERROR: unknown mode '$MODE'. Use 'data', 'overlay' or 'fullsim_pp'." >&2; exit 1 ;;
+			echo "ERROR: unknown mode '$MODE'. Use 'data', 'overlay', 'fullsim_pp' or 'fullsim_pp_full'." >&2; exit 1 ;;
 	esac
 	LOG_DIR="${DATA_BASE}"
 	STATUS_LOG="${LOG_DIR}/grid_monitor_status.log"
@@ -94,7 +102,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ ${#TASK_IDS[@]} -eq 0 ]]; then
-	echo "ERROR: no task IDs provided. Usage: $0 [--mode data|overlay|fullsim_pp] [-i POLL_MINUTES] FILE_OR_TASKIDS..." >&2
+	echo "ERROR: no task IDs provided. Usage: $0 [--mode data|overlay|fullsim_pp|fullsim_pp_full] [-i POLL_MINUTES] FILE_OR_TASKIDS..." >&2
 	exit 1
 fi
 

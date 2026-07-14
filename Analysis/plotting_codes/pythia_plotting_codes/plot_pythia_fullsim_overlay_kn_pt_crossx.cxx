@@ -4,6 +4,11 @@
 // Selection: muon_pair_tree_kin*_sign2 with from_same_b.
 // Two plots: truth_pair_pt and reco pair_pt (pair_pass_medium additionally required).
 
+// UNITS (do not "fix" this back): the per-pair `weight` is sigma*genFiltEff*r_isospin/N_beam
+// with the AMI cross-section in **nb** (Analysis/docs/ami_weights.md). No unit conversion is
+// applied anywhere below, so dsigma/dpT is in **nb/GeV**. The axis was previously labelled
+// [ub/GeV] -- a 1000x mislabel. Comparing to pp DATA (dsigma = N/L, L in pb^-1) needs nb->pb, x1000.
+
 #include <ROOT/RDataFrame.hxx>
 #include <ROOT/RDF/InterfaceUtils.hxx>
 #include <TCanvas.h>
@@ -21,7 +26,7 @@
 
 static const std::string kInputFile =
     "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/"
-    "muon_pairs_pythia_fullsim_hijing_overlay_pp24_no_data_resonance_cuts.root";
+    "muon_pairs_pythia_fullsim_hijing_overlay_pbpb23_no_data_resonance_cuts.root";
 static const std::string kOutputDir =
     "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/plots/";
 
@@ -112,7 +117,7 @@ void overlay_plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix
         for (int ikn = 0; ikn < kNkn; ikn++) {
             auto* h = hists[ikn];
             h->GetXaxis()->SetTitle(kVarTitles[ivar].c_str());
-            h->GetYaxis()->SetTitle("d#sigma/dp_{T} [#mub/GeV]");
+            h->GetYaxis()->SetTitle("d#sigma/dp_{T} [nb/GeV]");
             h->GetXaxis()->SetRangeUser(8., xmax_arg);
             h->GetYaxis()->SetRangeUser(ymin * 0.3, ymax * 5.);
             h->GetXaxis()->SetTitleSize(0.05); h->GetYaxis()->SetTitleSize(0.05);
@@ -125,16 +130,25 @@ void overlay_plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix
             leg1->AddEntry(hists[ikn], kKnLabels[ikn].c_str(), "lep");
         leg1->Draw();
         TLatex lat1; lat1.SetNDC(); lat1.SetTextSize(0.038);
-        lat1.DrawLatex(0.17, 0.92, ("Pythia fullsim hijing overlay pp24, single-b, " + kLabels[ivar]).c_str());
+        lat1.DrawLatex(0.17, 0.92, ("Pythia fullsim HIJING overlay (Pb+Pb 2023), single-b, " + kLabels[ivar]).c_str());
 
         c->cd(2);
         gPad->SetLeftMargin(0.16); gPad->SetRightMargin(0.05);
         gPad->SetBottomMargin(0.14); gPad->SetLogx(); gPad->SetLogy();
+        // THStack on LOG y -- the WIDE-DYNAMIC-RANGE EXCEPTION (.claude/conventions/atlas-plotting.md
+        // "Stacked histograms"; criterion C7 of physics-results-review.md). A THStack defaults to a
+        // LINEAR y-axis, because a band's THICKNESS should be proportional to its contribution.
+        // Deliberately overridden here: dsigma/dpT per pT-hat slice spans ~5 DECADES, so on a linear axis
+        // every slice but the lowest collapses onto zero and the whole high-pT tail -- the physics of
+        // interest -- becomes an invisible flat line. Unreadable is worse than distorted.
+        // Consequence accepted: on log y the band thickness is NOT proportional to the contribution, so
+        // this stack must NOT be read as "parts of a whole"/fractions -- use the left (marker) panel for
+        // per-slice values. The magnitude-ordering rule is axis-independent and still applies.
         THStack* hs = new THStack(("hs_" + out_names[ivar]).c_str(), "");
         for (int ikn = 0; ikn < kNkn; ikn++) hs->Add(hists[ikn]);
         hs->Draw("hist");
         hs->GetXaxis()->SetTitle(kVarTitles[ivar].c_str());
-        hs->GetYaxis()->SetTitle("d#sigma/dp_{T} [#mub/GeV]");
+        hs->GetYaxis()->SetTitle("d#sigma/dp_{T} [nb/GeV]");
         hs->GetXaxis()->SetRangeUser(8., xmax_arg);
         hs->GetXaxis()->SetTitleSize(0.05); hs->GetYaxis()->SetTitleSize(0.05);
         hs->GetXaxis()->SetTitleOffset(1.1); hs->GetYaxis()->SetTitleOffset(1.5);
@@ -144,7 +158,7 @@ void overlay_plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix
             leg2->AddEntry(hists[ikn], kKnLabels[ikn].c_str(), "f");
         leg2->Draw();
         TLatex lat2; lat2.SetNDC(); lat2.SetTextSize(0.038);
-        lat2.DrawLatex(0.17, 0.92, ("Pythia fullsim hijing overlay pp24, single-b, " + kLabels[ivar]).c_str());
+        lat2.DrawLatex(0.17, 0.92, ("Pythia fullsim HIJING overlay (Pb+Pb 2023), single-b, " + kLabels[ivar]).c_str());
 
         c->SaveAs((kOutputDir + out_names[ivar] + ".png").c_str());
         for (auto* h : hists) delete h;
@@ -220,7 +234,7 @@ void overlay_plot_stat_error_forecast(int nbins_arg, double xmax_arg, const std:
         for (int ikn = 0; ikn < kNkn; ikn++) {
             auto* h = hists[ikn];
             h->GetXaxis()->SetTitle(kVarTitles[ivar].c_str());
-            h->GetYaxis()->SetTitle("d#sigma/dp_{T} [#mub/GeV]");
+            h->GetYaxis()->SetTitle("d#sigma/dp_{T} [nb/GeV]");
             h->GetXaxis()->SetRangeUser(8., xmax_arg);
             h->GetYaxis()->SetRangeUser(ymin_d * 0.3, ymax_d * 5.);
             h->GetXaxis()->SetTitleSize(0.05); h->GetYaxis()->SetTitleSize(0.05);
@@ -233,7 +247,7 @@ void overlay_plot_stat_error_forecast(int nbins_arg, double xmax_arg, const std:
             leg1->AddEntry(hists[ikn], kKnLabels[ikn].c_str(), "lep");
         leg1->Draw();
         TLatex lat1; lat1.SetNDC(); lat1.SetTextSize(0.038);
-        lat1.DrawLatex(0.17, 0.92, ("Pythia fullsim hijing overlay pp24, single-b, " + kLabels[ivar]).c_str());
+        lat1.DrawLatex(0.17, 0.92, ("Pythia fullsim HIJING overlay (Pb+Pb 2023), single-b, " + kLabels[ivar]).c_str());
 
         c->cd(2);
         gPad->SetLeftMargin(0.16); gPad->SetRightMargin(0.05);
@@ -326,7 +340,7 @@ void overlay_plot_err_fraction_map(int nbins_arg, double xmax_arg, const std::st
         for (int ikn = 0; ikn < kNkn; ikn++) {
             auto* h = hists[ikn];
             h->GetXaxis()->SetTitle(kVarTitles[ivar].c_str());
-            h->GetYaxis()->SetTitle("d#sigma/dp_{T} [#mub/GeV]");
+            h->GetYaxis()->SetTitle("d#sigma/dp_{T} [nb/GeV]");
             h->GetXaxis()->SetRangeUser(8., xmax_arg);
             h->GetYaxis()->SetRangeUser(ymin_d * 0.3, ymax_d * 5.);
             h->GetXaxis()->SetTitleSize(0.05); h->GetYaxis()->SetTitleSize(0.05);
@@ -339,7 +353,7 @@ void overlay_plot_err_fraction_map(int nbins_arg, double xmax_arg, const std::st
             leg1->AddEntry(hists[ikn], kKnLabels[ikn].c_str(), "lep");
         leg1->Draw();
         TLatex lat1; lat1.SetNDC(); lat1.SetTextSize(0.038);
-        lat1.DrawLatex(0.17, 0.92, ("Pythia fullsim hijing overlay pp24, single-b, " + kLabels[ivar]).c_str());
+        lat1.DrawLatex(0.17, 0.92, ("Pythia fullsim HIJING overlay (Pb+Pb 2023), single-b, " + kLabels[ivar]).c_str());
 
         c->cd(2);
         gPad->SetLeftMargin(0.14); gPad->SetRightMargin(0.16);
@@ -434,7 +448,7 @@ void overlay_plot_err_ratio_map(int nbins_arg, double xmax_arg, const std::strin
         for (int ikn = 0; ikn < kNkn; ikn++) {
             auto* h = hists[ikn];
             h->GetXaxis()->SetTitle(kVarTitles[ivar].c_str());
-            h->GetYaxis()->SetTitle("d#sigma/dp_{T} [#mub/GeV]");
+            h->GetYaxis()->SetTitle("d#sigma/dp_{T} [nb/GeV]");
             h->GetXaxis()->SetRangeUser(8., xmax_arg);
             h->GetYaxis()->SetRangeUser(ymin_d * 0.3, ymax_d * 5.);
             h->GetXaxis()->SetTitleSize(0.05); h->GetYaxis()->SetTitleSize(0.05);
@@ -447,7 +461,7 @@ void overlay_plot_err_ratio_map(int nbins_arg, double xmax_arg, const std::strin
             leg1->AddEntry(hists[ikn], kKnLabels[ikn].c_str(), "lep");
         leg1->Draw();
         TLatex lat1; lat1.SetNDC(); lat1.SetTextSize(0.038);
-        lat1.DrawLatex(0.17, 0.92, ("Pythia fullsim hijing overlay pp24, single-b, " + kLabels[ivar]).c_str());
+        lat1.DrawLatex(0.17, 0.92, ("Pythia fullsim HIJING overlay (Pb+Pb 2023), single-b, " + kLabels[ivar]).c_str());
 
         c->cd(2);
         gPad->SetLeftMargin(0.14); gPad->SetRightMargin(0.16);

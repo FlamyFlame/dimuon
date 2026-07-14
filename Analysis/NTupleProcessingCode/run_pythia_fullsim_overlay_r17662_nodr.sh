@@ -1,12 +1,8 @@
 #!/bin/bash
 # r17662 (signal-only-truth) overlay NTP, pTH8_14, FULL 10k events.
-# Runs the DEFAULT procedure: pure prob>0.5 barcode matching, NO ad-hoc dR
-# fallback (use_dr_fallback defaults false).  To enable the dR fallback (only
-# meaningful for the barcode-collision r17618 sample), set py.use_dr_fallback=true.
-#
-# NOTE: do NOT try to control the dR fallback via pythia_only_barcode_cache —
-# InitParamsExtra() re-sets it to true inside Run(), overriding any script value;
-# and it only gates the ancestor-tracing cache, not the dR fallback.
+# Runs the standard procedure: pure prob>0.5 barcode truth->reco matching (the ad-hoc
+# dR<0.05 fallback was deleted 2026-07-10 — it over-estimated the reco efficiency for
+# ΔR<0.05 pairs; see hijing_overlay_det_response_band.md).
 #
 # Input: r17662_run/ contains a symlink of the r17662 NTUP under the expected
 #   FullSimHIJINGOverlayPP24 name; the other 5 pT slices are absent (skipped).
@@ -31,11 +27,19 @@ root -b -l << EOF
 	.L PythiaAnalysisClasses.h+
 
 	PythiaFullSimOverlayAnalysis py(FullSimSampleType::hijing);
+	// TEST sample: reads the overlay test sample AND uses the pp beam only (only beam produced).
+	// ONE switch -- it also selects the input dir. See FullSimSampleType.h.
+	py.isTestSample = true;
+	// AMI PROVENANCE: the overlay is built on the pp-beam evgen DSIDs. AMI files are keyed by
+	// beam+slice only, so declare them; InitInputFullsim throws if another production is read.
+	py.expected_ami_dsids = {802776, 802777, 802778, 802779, 802780, 802781};
+	// Single-slice DIAGNOSTIC run: these input dirs hold pTH8_14 ONLY. Every output is a
+	// ratio, so a missing slice is intentional and harmless here.
+	py.allow_missing_slices = true;
 	py.fullsim_input_dir_override = "${INDIR}";
 	py.fill_kn_trees_fullsim = true;
 	py.output_single_muon_tree = ${SINGLE};
 	py.extra_output_suffix = "${SUFFIX}";
-	// DEFAULT: use_dr_fallback=false (no dR), use_geometric_matching not set -> pure prob>0.5
 	py.Run();
 
 	.q;

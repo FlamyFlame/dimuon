@@ -35,7 +35,9 @@ protected:
     std::map<std::string, TGraphAsymmErrors*> graph_map;
     std::vector<std::string> graphs_to_not_write {};
 
-    std::vector<std::string> single_muon_trig_effcy_var1Ds = {"Deta", "Deta_zoomin", "Dphi", "Dphi_zoomin", "DR", "DR_zoomin", "DR_0_2", "minv_zoomin", "pair_pt_log"};
+    // pt2nd/eta2nd/phi2nd/q_eta2nd: probe-muon 1D num/denom hists for the data-vs-MC
+    // singles-efficiency comparison (mc_trigger_efficiency.md §3.1)
+    std::vector<std::string> single_muon_trig_effcy_var1Ds = {"Deta", "Deta_zoomin", "Dphi", "Dphi_zoomin", "DR", "DR_zoomin", "DR_0_2", "minv_zoomin", "pair_pt_log", "pt2nd", "eta2nd", "phi2nd", "q_eta2nd"};
     std::vector<std::array<std::string, 2>> single_muon_trig_effcy_var2Ds = {{"phi2nd","pt2nd"}, {"q_eta2nd","pt2nd"}, {"q_eta2nd","phi2nd"}, {"pt2nd", "DR_zoomin"}, {"pair_pt_log", "DR_zoomin"}};
     std::vector<std::array<std::string, 3>> single_muon_trig_effcy_var3Ds = {{"phi2nd","q_eta2nd","pt2nd"}};
 

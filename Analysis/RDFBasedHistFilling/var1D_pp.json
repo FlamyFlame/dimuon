@@ -77,6 +77,12 @@
             "binning": "pT_bins_single_muon"
         },
         {
+            "hist_name": "eta2nd",
+            "var_name": "eta2nd",
+            "title": "#eta_{2nd}",
+            "binning": "eta2nd_bins"
+        },
+        {
             "hist_name": "phi2nd",
             "var_name": "phi2nd",
             "title": "#phi_{2nd}",

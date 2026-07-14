@@ -39,7 +39,12 @@ protected:
     FullSimSampleType fullsim_sample_type = FullSimSampleType::pp;
     bool perform_truth = true;
     bool useLocal = false;
-    bool only_pp_isospin = false;
+    bool only_pp_isospin = false;   // TRUTH path only (InitInputCentrProd)
+
+    // Escape hatch only. -1 = derive from (sample type, isTestSample) -- the correct behaviour.
+    // 0 = force pp-beam only | 1 = force 4 beams. Do NOT use to paper over a wrong isTestSample.
+    // (isTestSample itself is PUBLIC -- see the config section below.)
+    int isospin_beams_override = -1;
 
     int batch_num = 0;
     int kn_batch = 0;
@@ -134,6 +139,7 @@ protected:
     void setIsFullsim(bool v) { is_fullsim = v; }
     void setIsFullsimOverlay(bool v) { is_fullsim_overlay = v; }
     void setFullSimSampleType(FullSimSampleType t) { fullsim_sample_type = t; }
+
     void setPerformTruth(bool v) { perform_truth = v; }
     void setUseLocal(bool v) { useLocal = v; }
 
@@ -162,7 +168,8 @@ protected:
 
     void FillMuonPair_PythiaCore(int pair_ind);
     bool PassCuts_PythiaCore();
-    void FillMuonPairTreePythia(int nkin);
+    void FillMuonPairTreePythia(int nkin);        // global pair tree + kn tree
+    void FillMuonPairTreeKinRangePythia(int nkin); // kn tree only
     void HistAdjust_PythiaCore() {}
     void Finalize_PythiaCore();
 
@@ -252,9 +259,57 @@ public:
     int GetKnBatch() const { return kn_batch; }
     void SetKnBatch(int kn) { kn_batch = kn; }
 
+    // Beam content of a fullsim run. Derived from (sample type, isTestSample) -- ONE switch,
+    // so the input path and the isospin weight cannot drift apart. See FullSimSampleType.h.
+    bool UseFourIsospinBeams() const {
+        if (isospin_beams_override >= 0) return isospin_beams_override == 1;  // escape hatch
+        return FullSimSampleUsesFourBeams(fullsim_sample_type, isTestSample);
+    }
+    void setIsospinBeams(bool four_beams) { isospin_beams_override = four_beams ? 1 : 0; }
+
     bool turn_data_resonance_cuts_on = false;
     bool fill_kn_trees_fullsim = false;  // set true to bin fullsim pairs into per-kn trees
     std::string fullsim_input_dir_override;  // if non-empty, replaces computed fullsim_input_dir
+
+    // ---- THE fullsim sample switch: TEST sample vs FULL production ----
+    // ONE flag drives the input directory, the AMI cross-section directory, AND the isospin
+    // treatment, so they can never disagree. The authoritative rule lives in FullSimSampleType.h
+    // (FullSimSampleInputDir / FullSimSampleUsesFourBeams):
+    //   isTestSample = false (DEFAULT) = the FULL production -- the physics sample
+    //       pp conditions  -> pp full sample,      pp beam only, isospin weight 1
+    //       HIJING overlay -> overlay full sample, 4 beams,      Pb ratio 4:6:6:9
+    //   isTestSample = true            = the small TEST sample
+    //       pp conditions  -> pp24 test sample,    4 beams (produced that way BY MISTAKE)
+    //       HIJING overlay -> overlay test sample, pp beam only (only beam produced)
+    // Default false because the full production is the physics sample; a test-sample run must
+    // declare itself. NOTE: a cross-section from the 4-beam pp24 TEST sample carries the Pb
+    // isospin average and is therefore NOT a physical pp cross-section -- label it honestly.
+    bool isTestSample = false;
+
+    // DIAGNOSTIC ONLY (default false = strict). When true, a missing pT-hat slice is a
+    // warning instead of a fatal error. Required for single-slice studies (e.g. the r17662
+    // signal-only-truth sample, which exists ONLY for pTH8_14). NEVER set this for a
+    // cross-section-weighted production run: a missing slice biases the sigma-weighted
+    // combination (which is exactly what the strict check exists to prevent).
+    bool allow_missing_slices = false;
+
+    // ---- AMI provenance (BLOCKING; see InitInputFullsim) ----
+    // AMI files are named by BEAM+SLICE only, so they do NOT identify the production. The pp24
+    // TEST sample (802758-802781) and the pp24 FULL "_pdf" sample (803015-803020) have different,
+    // slice-dependent cross-sections, so reading the wrong one silently corrupts every
+    // sigma-weighted quantity (and does NOT cancel in ratios).
+    //   ami_info_dir_override : if non-empty, replaces <py_dir>/ami_info/
+    //   expected_ami_dsids    : if non-empty, the datasetNumber in each AMI file MUST be in this
+    //                           list, else InitInputFullsim throws.
+    std::string ami_info_dir_override;
+    std::vector<int> expected_ami_dsids;
+    // Propagate trigger decisions/matching from the trigger-enabled MC skims (_July2026)
+    // into the output trees (m1/m2.passmu4, pair pass2mu4). Adds "_mc_trig" to the output
+    // file name so nominal outputs are never clobbered. Input files that lack the trigger
+    // branches (old trigger-off skims) are skipped entirely — never default-filled, which
+    // would bias any efficiency built from the output. See
+    // docs/tracking/mc_trigger_efficiency.md (Physics Procedure + R1/R2).
+    bool store_mc_trigger = false;
 
     explicit PythiaAlgCoreT(int batch_num_input, bool useLocal_input = false)
         : batch_num(batch_num_input)
@@ -303,8 +358,11 @@ public:
     void FillMuonPairHook(int pair_ind) {
         FillMuonPair_PythiaCore(pair_ind);
     }
+    // Called from DimuonAlgCoreT::FillMuonPairTree(), which has ALREADY filled the
+    // global pair tree -- so only the kinematic-range tree is filled here.  (The
+    // Pythia truth path bypasses this hook and calls FillMuonPairTreePythia directly.)
     void FillMuonPairTreeHook() {
-        FillMuonPairTreePythia(current_ikin);
+        FillMuonPairTreeKinRangePythia(current_ikin);
     }
     void HistAdjustHook() {
         HistAdjust_PythiaCore();

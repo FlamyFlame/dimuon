@@ -38,6 +38,13 @@ struct MuonMCTruthKinExtra {
 struct MuonFullsimExtra {
     bool pass_medium{};
     bool reco_match{}; // matched with a reco muon with prob > 0.5
+    int  reco_ind{-1}; // index of the matched reco muon in the raw-NTUP muon block (-1 = unmatched);
+                       // needed to look up per-muon and per-pair trigger-matching branches
+    // reco/ID efficiency scale factors (skim MuonEfficiencyScaleFactors tools, WP-dependent;
+    // the skim fills them only for muons passing that WP, <=0 otherwise). Unfilled -> 1
+    // (counted in the NTP printout). Filled only in store_mc_trigger mode; default 1.
+    float eff_sf_medium{1.f};
+    float eff_sf_tight{1.f};
 };
 
 struct MuonPythiaExtra {

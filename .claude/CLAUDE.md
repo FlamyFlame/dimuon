@@ -3,6 +3,31 @@
 - Read `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/README.md` and `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/` for analysis context (class hierarchy, pipelines, sample types)
 - For any analysis change: always update and maintain the relevant documentation in those files
 
+## AMI Weights (BLOCKING — for ANY new MC dataset)
+
+**AMI weights are a HARD BLOCK on every MC dataset.** When you move to a NEW MC dataset — test →
+full sample, a new overlay, a different generator, a new production tag, ANY new DSID — you MUST
+fetch that dataset's OWN AMI weights (`lsetup pyami`; `ami show dataset info <dataset>`) BEFORE
+running any analysis on it. **NEVER reuse the previous dataset's weights.**
+
+Why this is a hard block and not a nicety: the AMI info files are named by **beam + pT-hat slice
+ONLY**, so the filename is **byte-identical between productions**. Point the code at a new dataset
+with the old `ami_info/` still in place and every file opens, every number comes out, and every one
+is wrong — **no crash, no warning**. And it does **NOT cancel**: a wrong σ·ε_filt is
+**slice-dependent**, so it reweights the pT-hat mixture and survives every ratio (the MC trigger
+efficiency is a σ-weighted average over slices). Measured for pp24: the FULL/TEST ratio of σ·ε_filt
+spans **0.879–1.545** across slices. **A silent failure that propagates to final results.**
+
+Contrast: a *slice-independent* factor (e.g. the isospin weight) cancels in reco-eff, det-response
+and MC trig-eff, and only moves absolute normalizations. An AMI error cancels **nowhere**.
+
+**Authoritative registry + the full rule + the per-DSID numbers: `Analysis/docs/ami_weights.md`
+(MUST-READ before adopting any new MC dataset).** Code guard: `PythiaAlgCoreT` parses
+`datasetNumber` from each AMI file and **THROWS** unless it is in `expected_ami_dsids`; every run
+script declares its DSIDs, and the `isTestSample` switch drives input dir + AMI dir together so
+they cannot come from different productions. A missing AMI file is fatal (it used to leave
+`ami_weight = 0` — a silently zero-weighted pT-hat slice).
+
 ## NTuple-Processing Provenance (BLOCKING — for any task that reads analysis data/MC)
 
 Recurring, high-impact failure mode: an agent writes standalone code that reads the **raw
@@ -51,6 +76,57 @@ For the `low_mass_dimuon_template_fit.md` umbrella (62 kB): read its Physics Pro
 Create a tracking doc when: (a) investigating an unknown root cause with
 multiple hypotheses, or (b) the user requests documentation for a new
 analysis or major rework spanning many editing cycles.
+
+### Autonomy Contract (write early; survives compaction; prevents false early-stop)
+
+**Trigger:** the user asks to run a task autonomously to completion ("until it's
+fully done", "until the bug is truly gone", "produce all the final plots/numbers").
+Such a request is itself a reason to have a tracking doc (case (b) above) — if none
+exists, create one.
+
+**As one of the FIRST steps** — after Doc triage / reading the relevant tracking
+doc(s), *before* detailed planning — write a pinned **Autonomy Contract** block at
+the top of the doc (right after Objective), with exactly these three fields:
+
+```markdown
+## Autonomy Contract (ACTIVE — re-read on every compaction)
+- Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a
+  plan, a passing small test, or one pipeline stage is NOT a stopping point.
+- Done = <concrete final outputs / acceptance checks, derived from the request>
+- Stop-and-ask = ANY physics-results-bending ambiguity (no fixed list; use judgment;
+  when unsure whether an ambiguity is blocking, treat it as blocking → AskUserQuestion).
+```
+
+Rules governing the block:
+- **Agent fills `Done` itself** from the request — the requested deliverables are
+  usually stated clearly (e.g. "3 steps each producing a plot set" → Done = those 3
+  plot sets regenerated at their paths). This is how a post-compaction agent knows it
+  is *not yet* done.
+- **No pre-enumerated ambiguity list — copy the `Stop-and-ask` line VERBATIM.** Only
+  `Done` is task-specific (angle-bracket placeholder); the `Stop-and-ask` line is fixed
+  literal text — do NOT specialize it into a concrete list of anticipated ambiguities.
+  Two reasons: (1) at this early write-time your knowledge of the task is limited and
+  most real ambiguities surface only mid-task, so any list you write now is guessing;
+  (2) a fixed list would both miss the task-specific points (usually the very ones not
+  foreseen in the original request) and license reckless push-through on anything
+  off-list. The stop-condition stays a runtime judgment call, biased toward stopping.
+- **If you cannot pin `Done`** from the request, or you already see an ambiguity of
+  unclear blocking-status at this initial stage → **STOP and ask before doing any
+  work.** Ambiguities that instead surface later (during planning/implementation,
+  after exploration) → stop and `AskUserQuestion` exactly as agents already do well;
+  record the resolution and, if it moves the target, update `Done`.
+- **Investigation `Done` includes the fix and its blast radius** — but *conditionally*:
+  apply the fix only if confident (tests confirm it removes the root cause rather than
+  masking it, and changes nothing else), then regenerate **every** result the fix
+  affects (rerun affected pipelines; see `signal_selection_change_impact.md`). If you
+  cannot resolve the issue, or are unsure the proposed fix is correct, that is itself a
+  blocking ambiguity → STOP and ask; proceed-to-done does NOT apply.
+- **On compaction:** the block is re-read as part of Doc triage (see Lifecycle);
+  resume from the first unmet `Done` item — do not restart with a fresh confirmation.
+- **Completion clears it:** when Done is met, mark the block `DONE` (or delete it)
+  alongside the normal Completion step.
+- **Delegated autonomous work:** put the same Mandate/Done/Stop-and-ask in the
+  subagent's scratch doc *and* its task prompt (per §Delegated subagent memory).
 
 ### Document structure
 
@@ -170,9 +246,11 @@ as at risk.
 resuming after any context compression, run **Doc triage** (above). Scope it
 from the current request; after compaction, from the task described in the
 summary. Then re-read the Per-step protocol and INVARIANT above. For
-implementation docs, re-read the Physics Procedure section first. The doc is
-ground truth — if conversation history or compaction summaries conflict, trust
-the doc.
+implementation docs, re-read the Physics Procedure section first. **If the doc
+has an ACTIVE Autonomy Contract, re-read it and resume from the first unmet
+`Done` item — an autonomous task is not finished until Done is met; a compaction
+is not a reason to stop and re-confirm.** The doc is ground truth — if
+conversation history or compaction summaries conflict, trust the doc.
 
 **How to detect compaction:** If you cannot recall reading the tracking
 doc's full text in this conversation (i.e., there is no Read tool call
@@ -196,6 +274,7 @@ code that contradicts the Physics Procedure without user approval.
 
 Before working on any task, check these existing docs:
 - **High-level analysis overview (objective, observables, physics methodology, sample roles): `Analysis/docs/analysis_overview.md`** — the stable conceptual ground truth for implementation and academic writing (no status; status lives in the roadmap).
+- **MC AMI weight registry (BLOCKING): `Analysis/docs/ami_weights.md`** — **MUST-READ before adopting ANY new MC dataset** (test→full, new overlay, new generator, new production tag). Holds the rule (never reuse another production's weights — it is a silent, non-cancelling failure), the per-DSID σ / genFiltEff / σ·ε_filt tables, the code guard (`expected_ami_dsids`), and the rerun blast radius.
 - **Signal-selection change impact / rerun map: `Analysis/docs/signal_selection_change_impact.md`** — **MUST-READ before adding, removing, or changing the value of ANY single-b signal-selection cut (minv, pair pT, q·η, ΔR, …), including selection systematics.** It enumerates the full recompile→rerun-hist-filling→replot blast radius (which code, which outputs go stale, what stays unchanged). The signal region itself is defined in `analysis_overview.md` §2.
 - **Academic writing production chain (rigor + auto-sync gates G1–G7): `Analysis/docs/academic_writing_workflow.md`** — ground-truth spec that `/review-note`, `/review-paper`, `/verify-citations`, `/sync-note-figures`, `/check-note-sync`, `/compile-note` enforce on EVERY writing task (even one section). Reference material: `Analysis/docs/references/academic_research_skills_summary.md` (why the ARS plugin is NOT installed) + `ppg12_claude_summary.md`.
 - **Knowledge base — index of physics references: `.claude/kb/index.md`** — the curated literature/physics reference library, NOT just analysis bookkeeping. It holds: the two highest-priority Run 2 reference analyses ours derives from (HF-muon R_AA/v_n note+paper; back-to-back dimuon note+Letter), heavy-ion physics (especially heavy-flavor background), ATLAS muon detector (reco + trigger), centrality (ATLAS 2023 + Glauber), plus analysis bookkeeping (decisions, samples, variables, gotchas). **Consult the index for EVERY physics question/task/investigation/decision** — see the required-use rule below.

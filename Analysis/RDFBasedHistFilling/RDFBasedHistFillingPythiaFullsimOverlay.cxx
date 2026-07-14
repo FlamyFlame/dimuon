@@ -15,9 +15,20 @@ class RDFBasedHistFillingPythiaFullsimOverlay
     friend class PbPbBaseClass<RDFBasedHistFillingPythiaFullsimOverlay>;
     int RunYear() const { return 24; }
 
+public:
+    // Which fullsim production to read. TRUE = the small TEST sample (the only one with
+    // NTuple-processing output today); FALSE = the FULL production. The SAME switch fixes the
+    // isospin treatment upstream (FullSimSampleType.h) so the two cannot disagree.
+    bool is_test_sample = true;
+
+protected:
+
 protected:
     void SetIOPathsHook() override {
-        const std::string data_dir = FullSimSampleInputDir(fullsim_sample_type);
+        // is_test_sample: which fullsim production to read. TRUE today because only the TEST
+        // sample has NTuple-processing output; flip to false when the FULL sample lands.
+        // It also fixes the isospin treatment upstream (FullSimSampleType.h) -- one switch.
+        const std::string data_dir = FullSimSampleInputDir(fullsim_sample_type, is_test_sample);
         const std::string label    = FullSimSampleLabel(fullsim_sample_type);
         const std::string cut_suffix = with_data_resonance_cuts
             ? "_with_data_resonance_cuts"

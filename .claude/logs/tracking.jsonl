@@ -59,3 +59,25 @@
 {"event":"end","command":"review-analysis-code","status":"closed_reviewer_stopped","iterations":1,"timestamp":"2026-06-30T15:27:48Z","criticals":0,"warnings":0,"slug":"fullsim-nb-pb-unit-fix"}
 {"event":"start","command":"review-analysis-code","task":"Enable trigger info in Run-3 fullsim MC skims","slug":"mc-trigger-info-skim","timestamp":"2026-07-09T22:37:36Z"}
 {"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-07-09T22:45:52Z","criticals":0,"warnings":0,"slug":"mc-trigger-info-skim"}
+{"event":"start","command":"review-plugin","task":"Review check-tracking-index.md (new) + wrap-up.md (modified) after replacing read-all-tracking-docs with scope-based Doc triage over INDEX.md","slug":"tracking-index-command","timestamp":"2026-07-10T04:10:59Z"}
+{"event":"end","command":"review-plugin","status":"approved","iterations":4,"timestamp":"2026-07-10T04:31:00Z","criticals":0,"warnings":0,"slug":"tracking-index-command"}
+{"event":"start","command":"review-analysis-code","task":"fix hijing overlay det-response 2*m_mu band + fullsim pair-tree double fill + hijing_overlay_pp24 -> pbpb23 rename","slug":"hijing-overlay-det-response","timestamp":"2026-07-10T00:41:00-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-07-10T00:52:00-04:00","criticals":0,"warnings":0,"slug":"hijing-overlay-det-response"}
+{"event":"start","command":"review-analysis-code","task":"NTP MC trigger propagation (mc_trigger_efficiency.md step 2)","slug":"ntp-mc-trigger-propagation","timestamp":"2026-07-10T01:07:10-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-07-10T01:50:39-04:00","criticals":0,"warnings":0,"slug":"ntp-mc-trigger-propagation"}
+{"event":"start","command":"review-analysis-code","task":"Step-4 measurement inputs (MC filling+fits, data P2 probe vars)","slug":"step4-mc-data-inputs","timestamp":"2026-07-10T03:03:11-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":2,"timestamp":"2026-07-10T03:25:04-04:00","criticals":0,"warnings":0,"slug":"step4-mc-data-inputs"}
+{"event":"start","command":"review-plot","task":"Review 24 MC-based trigger-efficiency plots (steps 3.1-3.3)","slug":"mc-trig-eff-plots","timestamp":"2026-07-10T03:45:14-04:00"}
+{"event":"end","command":"review-plot","status":"approved","iterations":2,"timestamp":"2026-07-10T15:23:38-04:00","criticals":0,"warnings":0,"slug":"mc-trig-eff-plots"}
+{"event":"start","command":"review-analysis-code","task":"delete dR<0.05 truth->reco fallback (use_dr_fallback) — keep pure prob>0.5 exclusive barcode matching","slug":"delete-dr-fallback","timestamp":"2026-07-10T18:43:12-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-07-10T18:45:21-04:00","criticals":0,"warnings":0,"slug":"delete-dr-fallback"}
+{"event":"start","command":"review-plot","task":"r17618-vs-r17662 reco-eff comparison plots (single-muon+pair)","slug":"r17618-vs-r17662-recoeff","timestamp":"2026-07-10T19:03:46-04:00"}
+{"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-07-10T19:07:00-04:00","criticals":0,"warnings":0,"slug":"r17618-vs-r17662-recoeff"}
+{"event":"end","command":"review-plot","status":"approved","iterations":3,"timestamp":"2026-07-13T22:48:44-04:00","criticals":0,"warnings":0,"slug":"r17618-vs-r17662-recoeff-v2"}
+{"event":"start","command":"review-analysis-code","slug":"fullsim-parts-isospin","timestamp":"2026-07-13T23:43:23-04:00"}
+{"event":"start","command":"review-analysis-code","task":"Step-9 SF variant","slug":"sf-step1-variant","timestamp":"2026-07-13T23:44:12-04:00"}
+{"event":"start","command":"review-plot","task":"Step-9 SF variant","slug":"sf-step1-variant","timestamp":"2026-07-13T23:44:12-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-07-13T23:52:16-04:00","criticals":0,"warnings":0,"slug":"sf-step1-variant"}
+{"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-07-13T23:52:16-04:00","criticals":0,"warnings":0,"slug":"sf-step1-variant"}
+{"event":"start","command":"review-plot","task":"S12 MC trig-eff plot changes: overlay step-2 coarse rebin, step-3 plateau [1,4], last-slice color; regenerated plots both samples","slug":"mc-trig-eff-s12-rebin-ratio","timestamp":"2026-07-14T02:28:30-04:00"}
+{"event":"end","command":"review-plot","status":"approved","iterations":3,"timestamp":"2026-07-14T03:02:39-04:00","criticals":0,"warnings":0,"slug":"mc-trig-eff-s12-rebin-ratio"}

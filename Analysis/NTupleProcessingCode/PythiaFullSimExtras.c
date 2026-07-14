@@ -27,6 +27,88 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::InitInputExtra(){
     for (int ikin = 0; ikin < self().nKinRanges; ikin++)
         for (int ibeam = 0; ibeam < self().nBeamTypes; ibeam++)
             bind_reco(self().evChains_kn_beam[ikin][ibeam]);
+
+    if (self().store_mc_trigger) {
+        // Trigger propagation mode: bind the trigger branches on every chain.
+        // A file without them is an old trigger-off skim (e.g. a slice whose _July2026
+        // grid job has not landed yet): DROP it entirely. Default-filling passmu4=false
+        // for its muons would enter the denominators with an impossible numerator and
+        // bias every efficiency built downstream.
+        auto bind_trigger = [&](TChain* ch) -> bool {
+            if (!ch) return true; // nothing to do
+            // The presence check below inspects one file; the per-chain skip equals a
+            // per-file skip ONLY while InitInputFullsim builds one-file chains. Guard
+            // that assumption: a mixed multi-file chain would silently carry stale
+            // trigger values across the file boundary (the exact bias this mode forbids).
+            if (ch->GetListOfFiles()->GetEntries() != 1)
+                throw std::runtime_error("store_mc_trigger: expected one file per fullsim chain; "
+                                         "re-implement the trigger-branch check per file");
+            if (!ch->GetBranch("muon_b_HLT_mu4_L1MU3V")) return false;
+            enable_and_bind(ch, "muon_b_HLT_mu4_L1MU3V"        , &muon_b_HLT_mu4);
+            enable_and_bind(ch, "dimuon_b_HLT_2mu4_L12MU3V_0_02", &dimuon_b_2mu4_mindR);
+            enable_and_bind(ch, "muon_pair_muon1_index"         , &muon_pair_muon1_index);
+            enable_and_bind(ch, "muon_pair_muon2_index"         , &muon_pair_muon2_index);
+            enable_and_bind(ch, "b_HLT_mu4_L1MU3V"              , &b_HLT_mu4);
+            enable_and_bind(ch, "b_HLT_2mu4_L12MU3V"            , &b_HLT_2mu4);
+            // reco/ID SFs ship with the same trigger-enabled skim; missing = config error
+            if (!ch->GetBranch("muon_eff_SF_medium") || !ch->GetBranch("muon_eff_SF_tight"))
+                throw std::runtime_error("store_mc_trigger: trigger branches present but "
+                                         "muon_eff_SF_{medium,tight} missing - unexpected skim content");
+            enable_and_bind(ch, "muon_eff_SF_medium", &muon_eff_SF_medium);
+            enable_and_bind(ch, "muon_eff_SF_tight" , &muon_eff_SF_tight);
+            return true;
+        };
+
+        for (int ikin = 0; ikin < self().nKinRanges; ikin++) {
+            for (int ibeam = 0; ibeam < self().nBeamTypes; ibeam++) {
+                TChain*& ch = self().evChains_kn_beam[ikin][ibeam];
+                if (!ch) continue;
+                if (!bind_trigger(ch)) {
+                    const char* fname = ch->GetListOfFiles()->GetEntries() > 0
+                        ? ch->GetListOfFiles()->At(0)->GetTitle() : "(unknown file)";
+                    std::cerr << "==============================================================\n"
+                              << "store_mc_trigger: NO trigger branches in\n  "
+                              << fname << "\n"
+                              << "  (old trigger-off skim) -> SKIPPING this file entirely.\n"
+                              << "  Re-run when its _July2026 re-skim lands.\n"
+                              << "==============================================================" << std::endl;
+                    self().nentries_kn_sum[ikin] -= self().nentries_kn_beam[ikin][ibeam];
+                    self().nentries_kn_beam[ikin][ibeam] = 0;
+                    delete ch;
+                    ch = nullptr;
+                }
+            }
+        }
+    }
+}
+
+template <class PairT, class MuonT, class Derived>
+void PythiaFullSimExtras<PairT, MuonT, Derived>::FinalizeExtra(){
+    if (!self().store_mc_trigger || n_sf_recomatched == 0) return;
+    auto pct = [](long long a, long long b){ return b > 0 ? 100.0 * a / b : 0.0; };
+    std::cout << "SF fill report (store_mc_trigger): " << n_sf_recomatched << " reco-matched muons\n"
+              << "  SF_medium unfilled (<=0, set to 1): " << n_sf_med_unfilled
+              << " (" << pct(n_sf_med_unfilled, n_sf_recomatched) << "% of reco-matched); "
+              << "among pass_medium muons: " << n_sf_med_unfilled_wp << "/" << n_sf_med_wp
+              << " (" << pct(n_sf_med_unfilled_wp, n_sf_med_wp) << "%)\n"
+              << "  SF_tight  unfilled (<=0, set to 1): " << n_sf_tgt_unfilled
+              << " (" << pct(n_sf_tgt_unfilled, n_sf_recomatched) << "% of reco-matched); "
+              << "among pass_tight muons: " << n_sf_tgt_unfilled_wp << "/" << n_sf_tgt_wp
+              << " (" << pct(n_sf_tgt_unfilled_wp, n_sf_tgt_wp) << "%)" << std::endl;
+}
+
+template <class PairT, class MuonT, class Derived>
+bool PythiaFullSimExtras<PairT, MuonT, Derived>::LookupPairPass2mu4(int reco_ind_a, int reco_ind_b){
+    if (reco_ind_a < 0 || reco_ind_b < 0) return false; // a leg without a reco muon has no trigger info
+    const int i = std::min(reco_ind_a, reco_ind_b); // skim pair block is filled with i < j
+    const int j = std::max(reco_ind_a, reco_ind_b);
+    for (size_t k = 0; k < muon_pair_muon1_index->size(); k++){
+        if (muon_pair_muon1_index->at(k) == i && muon_pair_muon2_index->at(k) == j)
+            return dimuon_b_2mu4_mindR->at(k);
+    }
+    throw std::runtime_error(Form(
+        "LookupPairPass2mu4: reco pair (%d,%d) not found in the skim dimuon block (%zu pairs)"
+        " -- raw-NTUP pair block inconsistent with muon block", i, j, muon_pair_muon1_index->size()));
 }
 
 template <class PairT, class MuonT, class Derived>
@@ -77,6 +159,13 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::CheckBranchPtrsExtra(){
     require(truth_muon_phi,     "truth_muon_phi");
     require(truth_muon_ch,      "truth_muon_ch");
     require(self().truth_muon_barcode, "truth_muon_barcode (core)");
+
+    if (self().store_mc_trigger){
+        require(muon_b_HLT_mu4,        "muon_b_HLT_mu4_L1MU3V (store_mc_trigger)");
+        require(dimuon_b_2mu4_mindR,   "dimuon_b_HLT_2mu4_L12MU3V_0_02 (store_mc_trigger)");
+        require(muon_pair_muon1_index, "muon_pair_muon1_index (store_mc_trigger)");
+        require(muon_pair_muon2_index, "muon_pair_muon2_index (store_mc_trigger)");
+    }
 }
 
 template <class PairT, class MuonT, class Derived>
@@ -135,8 +224,56 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
 
         m.pass_medium = PassMuonMediumCuts(m);
         m.pass_tight  = (m.pass_medium && (m.quality & 16));
-        reco_claimed[reco_ind] = true;
+
+        m.reco_ind = reco_ind;
+        if (self().store_mc_trigger){
+            // per-muon mu4 match, indexed by the raw-NTUP reco index (data-mirror,
+            // DimuonDataAlgCoreT: m.passmu4 = muon_b_HLT_mu4->at(m.ind)).
+            // NO mu6/mu8 OR-ing: support triggers are disabled everywhere (data D7).
+            m.passmu4 = muon_b_HLT_mu4->at(reco_ind);
+
+            // reco/ID SFs: the skim fills them only for WP-passing muons (<=0 otherwise).
+            // Unfilled -> 1 (neutral weight), counted for the fill-fraction report.
+            ++n_sf_recomatched;
+            const float sf_m = muon_eff_SF_medium->at(reco_ind);
+            const float sf_t = muon_eff_SF_tight ->at(reco_ind);
+            if (m.pass_medium) ++n_sf_med_wp;
+            if (m.pass_tight)  ++n_sf_tgt_wp;
+            if (sf_m > 0.f) m.eff_sf_medium = sf_m;
+            else { m.eff_sf_medium = 1.f; ++n_sf_med_unfilled; if (m.pass_medium) ++n_sf_med_unfilled_wp; }
+            if (sf_t > 0.f) m.eff_sf_tight = sf_t;
+            else { m.eff_sf_tight = 1.f; ++n_sf_tgt_unfilled; if (m.pass_tight) ++n_sf_tgt_unfilled_wp; }
+        }
     };
+
+    // ---- Truth-to-reco matching: barcode only, exclusive (one reco muon per truth) ----
+    // ATLAS-standard MC matching for reconstruction efficiency (Run 2 dimuon note
+    // ATL-COM-PHYS-2021-1094): a truth muon is "reconstructed" iff a reco muon carries
+    // its truth barcode with truthMatchProbability > 0.5. That is the SOLE criterion.
+    //
+    // No geometric ΔR fallback. A ΔR<0.05-to-nearest-reco fallback (removed 2026-07-10)
+    // is ALWAYS wrong here: it recovers genuine physical losses (over-estimating the
+    // efficiency), it has no data analog, and — because the correction is applied to
+    // data — it would inflate the corrected yield precisely for collinear (ΔR<0.05)
+    // pairs. Geometric matching is a distinct alternative method (sensitive to real
+    // ΔR<0.05 pairs), never a fallback bolted onto barcode matching.
+    //
+    // The `reco_claimed` exclusivity guard keeps a reco muon from being assigned to two
+    // truth muons (possible only if two truth muons or two prob>0.5 reco muons share a
+    // barcode — rare); it makes the assignment order-independent.
+    std::vector<int> truth_to_reco(n_pythia_truth_muons, -1);
+
+    for (int truth_ind = 0; truth_ind < n_pythia_truth_muons; truth_ind++){
+        int truth_bar = self().truth_muon_barcode->at(truth_ind);
+        for (int list_pos = 0; list_pos < (int)real_muon_truth_barcode_list.size(); list_pos++){
+            if (real_muon_truth_barcode_list[list_pos] != truth_bar) continue;
+            int reco_ind = real_muon_orig_index[list_pos];
+            if (reco_claimed[reco_ind]) continue; // already taken by another truth muon
+            truth_to_reco[truth_ind] = reco_ind;
+            reco_claimed[reco_ind]   = true;
+            break;
+        }
+    }
 
     for (int truth_ind = 0; truth_ind < n_pythia_truth_muons; truth_ind++){
         muon_t cur_muon;
@@ -150,41 +287,8 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
         cur_muon.truth_charge = truth_muon_ch->at(truth_ind);
         cur_muon.truth_bar    = self().truth_muon_barcode->at(truth_ind);
 
-        // Truth-to-reco matching via barcode
-        auto it = std::find(real_muon_truth_barcode_list.begin(),
-                            real_muon_truth_barcode_list.end(),
-                            cur_muon.truth_bar);
-
-        if (it != real_muon_truth_barcode_list.end()){
-            int list_pos = std::distance(real_muon_truth_barcode_list.begin(), it);
-            int reco_ind = real_muon_orig_index[list_pos];
-            fill_reco_quantities(cur_muon, reco_ind);
-        } else if (self().use_dr_fallback) {
-            // ad-hoc dR fallback (default OFF): only for the barcode-collision
-            // r17618 sample, where the collision puts wrong truth decorations on
-            // reco muons; find the closest unclaimed reco muon
-            constexpr double dR_threshold = 0.05;
-            double best_dR = dR_threshold;
-            int best_ind = -1;
-            for (int ri = 0; ri < n_reco; ri++){
-                if (reco_claimed[ri]) continue;
-                double deta = cur_muon.truth_eta - muon_eta->at(ri);
-                double dphi = cur_muon.truth_phi - muon_phi->at(ri);
-                if (dphi >  M_PI) dphi -= 2.0 * M_PI;
-                if (dphi < -M_PI) dphi += 2.0 * M_PI;
-                double dR = std::sqrt(deta * deta + dphi * dphi);
-                if (dR < best_dR){
-                    best_dR = dR;
-                    best_ind = ri;
-                }
-            }
-            if (best_ind >= 0){
-                fill_reco_quantities(cur_muon, best_ind);
-            } else {
-                cur_muon.reco_match  = false;
-                cur_muon.pass_medium = false;
-                cur_muon.pass_tight  = false;
-            }
+        if (truth_to_reco[truth_ind] >= 0){
+            fill_reco_quantities(cur_muon, truth_to_reco[truth_ind]);
         } else {
             cur_muon.reco_match  = false;
             cur_muon.pass_medium = false;
@@ -196,7 +300,16 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
         }
 
         if (self().output_single_muon_tree){
-            if (cur_muon.truth_pt > 4.0 && fabs(cur_muon.truth_eta) < 2.4){
+            // Nominal: truth-fiducial gate (reco-efficiency denominator = truth muons).
+            // store_mc_trigger: RECO-based gate — the Step-1 trigger-efficiency
+            // denominator is "offline reconstructed muon"; a truth-pT gate would sculpt
+            // the reco-pT turn-on near threshold. Loose here (pT > 3, |eta| < 2.6);
+            // the exact fiducial (pT > 4, |eta| < 2.4) + WP is applied downstream in RDF
+            // on reco quantities. (mc_trigger_efficiency.md §3.1)
+            const bool keep = self().store_mc_trigger
+                ? (cur_muon.reco_match && cur_muon.pt > 3.0 && fabs(cur_muon.eta) < 2.6)
+                : (cur_muon.truth_pt > 4.0 && fabs(cur_muon.truth_eta) < 2.4);
+            if (keep){
                 self().muon_raw_ptr = &cur_muon;
                 self().FillSingleMuonTree();
             }
@@ -220,6 +333,11 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
             self().mpairRef()->weight  = event_weight;
             self().mpairRef()->crossx  = event_weight;
 
+            if (self().store_mc_trigger){
+                self().mpairRef()->ev_pass_mu4  = b_HLT_mu4;  // event-level decisions, no reco requirement
+                self().mpairRef()->ev_pass_2mu4 = b_HLT_2mu4;
+            }
+
             self().mpairRef()->m1 = truth_muon_list.at(i);
             self().mpairRef()->m2 = truth_muon_list.at(j);
 
@@ -239,6 +357,9 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
                 ResonanceTaggingTruth();
                 self().mpairRef()->pair_pass_medium = (self().mpairRef()->m1.pass_medium && self().mpairRef()->m2.pass_medium);
                 self().mpairRef()->pair_pass_tight  = (self().mpairRef()->m1.pass_tight  && self().mpairRef()->m2.pass_tight);
+                if (self().store_mc_trigger)
+                    self().mpairRef()->pass2mu4 =
+                        LookupPairPass2mu4(self().mpairRef()->m1.reco_ind, self().mpairRef()->m2.reco_ind);
             } else {
                 self().mpairRef()->pair_pass_medium = false;
                 self().mpairRef()->pair_pass_tight  = false;

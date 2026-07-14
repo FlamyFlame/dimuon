@@ -45,6 +45,14 @@ class PythiaFullSimAnalysis
   , public PythiaTruthExtras<MuonPairPythiaFullSimWTruth, PythiaFullSimAnalysis>
 {
 public:
+    // Sample + isospin are BOTH driven by `isTestSample` (default false = the FULL production;
+    // see PythiaAlgCoreT.h and FullSimSampleType.h). Do NOT force the isospin here -- that would
+    // override the isTestSample-derived default and silently give the 4-beam TEST sample a
+    // pp-only weight.
+    //   isTestSample=false -> pp full sample, pp beam only, isospin weight 1   (the physics case)
+    //   isTestSample=true  -> pp24 test sample, 4 beams, Pb ratio 4:6:6:9      (produced by mistake)
+    // `pp_only` = force the pp beam alone regardless (the legacy pp-only cross-check on the
+    // 4-beam TEST sample); it also tags the output "_pp_only".
     PythiaFullSimAnalysis(int batch_num_input = 0, bool use_local = false, bool pp_only = false)
         : PythiaAlgCoreT(batch_num_input, use_local)
     {
@@ -53,7 +61,7 @@ public:
         this->run_year = 24;
         this->fullsim_sample_type = FullSimSampleType::pp;
         if (pp_only) {
-            this->only_pp_isospin = true;
+            this->setIsospinBeams(false);   // escape hatch: pp beam alone, weight 1
             this->extra_output_suffix = "_pp_only";
         }
     }
@@ -73,6 +81,11 @@ class PythiaFullSimOverlayAnalysis
   , public PythiaTruthExtras<MuonPairPythiaFullSimOverlayWTruth, PythiaFullSimOverlayAnalysis>
 {
 public:
+    // Beam content: the HIJING overlay simulates Pb+Pb, whose nucleons are a p/n mix, so
+    // the 4 isospin beams {pp,pn,np,nn} combined with the Pb ratio 4:6:6:9 are the
+    // DEFAULT (inherited from FullSimSampleIsOverlay).  The overlay TEST sample on disk
+    // has ONLY the pp beam, so runs over it must opt out with setIsospinBeams(false);
+    // the 4-beam overlay FULL sample now in production uses the default.
     PythiaFullSimOverlayAnalysis(FullSimSampleType sample_type = FullSimSampleType::hijing,
                                  int batch_num_input = 0, bool use_local = false)
         : PythiaAlgCoreT(batch_num_input, use_local)

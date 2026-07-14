@@ -56,3 +56,16 @@ struct PairFullSimExtras {
     bool pair_pass_resonance_reco{};
     bool pair_pass_resonance_truth{};
 };
+
+// Pair-level trigger decisions propagated from the raw-NTUP trigger blocks
+// (filled only in store_mc_trigger mode; default false otherwise). The per-leg mu4
+// decisions live on the muons (m1.passmu4 / m2.passmu4, MuonRecoExtra).
+// NOTE: keep >= 2 data members — ROOT does not member-split a single-member base
+// class into named leaves (the branch gets one leaf named after the base, which
+// RDataFrame cannot address by member name).
+template <class Derived>
+struct PairMCTrigExtras {
+    bool pass2mu4{};    // order-insensitive dimuon_b_HLT_2mu4_L12MU3V match (mindR 0.02, data-mirror)
+    bool ev_pass_mu4{}; // event-level b_HLT_mu4_L1MU3V decision (diagnostics: mu4 superset checks)
+    bool ev_pass_2mu4{};// event-level b_HLT_2mu4_L12MU3V decision (diagnostics: 2mu4 vs per-pair match)
+};

@@ -1216,7 +1216,38 @@ verifying the FULL signal-truth-only sample (all 6 pThat slices) — see watch-l
 
 ## Latest Stage
 
-**PARKED 2026-06-12 — removed from Active Tracking Docs.**  Root causes resolved
+**CLOSED 2026-07-14.**  All open items are settled; nothing here awaits external input.
+
+### Closing note (2026-07-14) — the two open threads are RESOLVED in `hijing_overlay_det_response_band.md`
+
+1. **The ΔR<0.05 fallback introduced here as the "Bug #2 fix" was DELETED entirely
+   (2026-07-10).**  It grabs the nearest reco muon to a barcode-unmatched truth muon with NO
+   prob/quality requirement, so it **always OVERESTIMATES the pair reconstruction efficiency
+   for ΔR<0.05 pairs** — it recovers genuine physical losses that also exist in data, it has
+   no data analog, and the reco/trigger-efficiency correction is applied TO data.  Geometric
+   ΔR matching is a *distinct alternative method*, never a valid fallback bolted onto barcode
+   matching.  **Production matching is now pure `prob>0.5` exclusive barcode (ATLAS/Run-2
+   dimuon-note standard).  Do NOT re-introduce a ΔR or geometric fallback.**
+
+2. **The r17618-vs-r17662 question (this doc's Step-25 watch-list) is CLOSED.**  The two
+   r-tags are the SAME 10 000 events (100% eventNumber overlap) but two DIFFERENT
+   digitisation+reco passes (`digiSteeringConf: StandardSignalOnlyTruth` shifts the tracking
+   RNG stream); nothing physical differs (FCal_Et bit-identical; detector response KS p=0.75)
+   ⇒ both give correct reco efficiency and detector response.  The Pythia/HIJING barcode
+   collision causes **NO** reco-efficiency bias (the suspected spurious-HIJING-match is ruled
+   out: all 12913 matches lie within ΔR<0.022 of their own truth muon).  **r17618 is SAFE for
+   the full sample.**
+
+3. **A real bug WAS found in the Pythia truth index guard** (this doc's Bug #3 fix): the
+   `first barcode>200000` bound leaks the whole HIJING generator block in the ~1.2% of events
+   where the Pythia Geant4 block is empty.  Fixed by also detecting the barcode restart;
+   closure vs r17662 is now exact.
+
+The residual ~14%-below-pp efficiency deficit remains PHYSICAL, as concluded below.
+
+---
+
+**(historical) PARKED 2026-06-12 — removed from Active Tracking Docs.**  Root causes resolved
 (see below); the only remaining work is producing & verifying the FULL
 signal-truth-only overlay sample (~10M events), not expected for ≥2 months.
 **Reopen then.**  On reopen, FIRST read this doc + `hijing_overlay_truth_barcode_duplicate_investigation.md`
