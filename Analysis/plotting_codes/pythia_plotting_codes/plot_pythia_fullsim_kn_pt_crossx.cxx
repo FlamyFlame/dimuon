@@ -157,6 +157,15 @@ void plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix) {
         lat_warn.DrawLatex(0.20, 0.235, "Pb isospin avg (4:6:6:9) applied to a pp sample");
         lat_warn.DrawLatex(0.20, 0.200, "#Rightarrow NOT a physical pp #sigma");
 
+        // THStack on LOG y -- the WIDE-DYNAMIC-RANGE EXCEPTION (.claude/conventions/atlas-plotting.md
+        // "Stacked histograms"; criterion C7 of physics-results-review.md). A THStack defaults to a
+        // LINEAR y-axis, because a band's THICKNESS should be proportional to its contribution.
+        // Deliberately overridden here: dsigma/dpT per pT-hat slice spans ~5 DECADES, so on a linear axis
+        // every slice but the lowest collapses onto zero and the whole high-pT tail -- the physics of
+        // interest -- becomes an invisible flat line. Unreadable is worse than distorted.
+        // Consequence accepted: on log y the band thickness is NOT proportional to the contribution, so
+        // this stack must NOT be read as "parts of a whole"/fractions -- use the left (marker) panel for
+        // per-slice values. The magnitude-ordering rule is axis-independent and still applies.
         // --- Right: stack ---
         c->cd(2);
         gPad->SetLeftMargin(0.16);

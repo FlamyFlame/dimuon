@@ -69,9 +69,33 @@ of its band and the reader adds bands to the total. Two hard rules preserve that
   sorting the `Add()` order by histogram **integral ascending** (smallest first = bottom); build
   the legend to match the visual top→bottom.
 
-(Memory `feedback_thstack_linear_and_ordering`. This is the stack exception to
-`feedback_log_scale_plots`, which otherwise wants log y for wide-dynamic-range 1D distributions.
-Enforced as criterion C7 in `physics-results-review.md`.)
+### The wide-dynamic-range EXCEPTION (log y is allowed, and sometimes required)
+
+**LINEAR is the default and the requirement. But linear is not a suicide pact:** when the stacked
+components span so many decades that a linear axis renders the plot *unreadable* — every band except
+the largest collapses onto the axis and carries no information at all — a **log y-axis is
+permitted**, because an unreadable plot communicates nothing, which is strictly worse than a
+distorted-but-legible one.
+
+Rule of thumb: **≳3 decades of dynamic range** across the stacked components or across the x-range.
+The canonical case is a steeply falling spectrum, e.g. the Pythia fullsim dσ/dp_T-per-pT-hat-slice
+crossx stacks (`plot_pythia_fullsim{,_overlay}_kn_pt_crossx.cxx`), which span ~5 decades: on a
+linear axis only the lowest-p_T bins are visible and the entire high-p_T tail — the physics of
+interest — is a flat line on zero.
+
+If you take the exception you MUST:
+- **Say so on the plot or in the code** — a one-line comment stating the dynamic range and that
+  linear was rejected as unreadable. An undocumented `SetLogy()` on a stack is still a FAIL.
+- **Keep the magnitude ordering rule** (below) — it is independent of the axis and still applies.
+- **Understand what you gave up:** on log y the band thickness is no longer proportional to the
+  contribution, so the "parts of a whole" reading is gone. If the POINT of the plot is the
+  composition/fraction, use linear and restrict the x-range (or plot fractions/ratios instead) —
+  do NOT reach for log to dodge a hard plot.
+
+(Memory `feedback_thstack_linear_and_ordering`. Linear-stack is the exception to
+`feedback_log_scale_plots`, which otherwise wants log y for wide-dynamic-range 1D distributions;
+this section is the exception-to-the-exception. Enforced as criterion C7 in
+`physics-results-review.md`.)
 
 ## Axis range, binning & ratio panels (enforced as R1–R3 in `/review-plot`)
 

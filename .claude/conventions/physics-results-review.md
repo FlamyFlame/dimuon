@@ -160,11 +160,28 @@ still follow the analysis procedure.
 A `THStack` communicates "parts of a whole" — component value = band THICKNESS, total = sum of
 bands. Two requirements; violating either visually distorts the contributions:
 
-- **LINEAR y-axis.** On log-y equal distance = equal ratio, not equal amount, so a band's apparent
-  thickness depends on where in the stack it sits (`log(1+Δ/B)` shrinks as the base B grows), the
-  per-component fraction becomes unreadable, and reordering the same data changes every band's
-  apparent size. A THStack drawn with `SetLogy()` / `gPad->SetLogy(1)` → **CRITICAL FAIL**. (Log y
-  is fine for non-stacked line/marker overlays comparing shapes.)
+- **LINEAR y-axis — with ONE documented exception.** On log-y equal distance = equal ratio, not
+  equal amount, so a band's apparent thickness depends on where in the stack it sits
+  (`log(1+Δ/B)` shrinks as the base B grows), the per-component fraction becomes unreadable, and
+  reordering the same data changes every band's apparent size. A THStack drawn with `SetLogy()` /
+  `gPad->SetLogy(1)` → **CRITICAL FAIL**… *unless* the wide-dynamic-range exception applies.
+  (Log y is fine for non-stacked line/marker overlays comparing shapes.)
+
+  **EXCEPTION — linear would be unreadable.** When the stack spans **≳3 decades**, a linear axis
+  collapses every band but the largest onto zero and the plot conveys nothing; log y is then
+  **permitted**, because unreadable is worse than distorted. Canonical case: steeply-falling
+  dσ/dp_T-per-pT-hat-slice crossx stacks (~5 decades, e.g.
+  `plot_pythia_fullsim{,_overlay}_kn_pt_crossx.cxx`). To take it, the code/plot MUST **document**
+  that linear was rejected as unreadable and state the dynamic range. Reviewer decision table:
+
+  | stack on log y | code documents the wide-range exception? | dynamic range ≳3 decades? | verdict |
+  |---|---|---|---|
+  | yes | yes | yes | **PASS** |
+  | yes | no | (either) | **CRITICAL FAIL** (undocumented `SetLogy` on a stack) |
+  | yes | yes | no (< ~3 decades) | **CRITICAL FAIL** — linear was readable; log was a dodge |
+
+  Do NOT accept log as a way to avoid a hard plot: if the plot's POINT is the composition/fraction,
+  linear + a restricted x-range (or plotting fractions/ratios) is the correct answer.
 - **Ordering: small/flat at BOTTOM, most-abundant (largest integral) / steepest-peak at TOP.** A
   band rides on the cumulative sum below it; a small/flat contribution stacked ON TOP of a steep
   peak is dragged into that peak's shape. Stack order must be by integral ascending (smallest at
