@@ -732,10 +732,14 @@ plateau-normalized comparison), but it is a real asymmetry in the Step-1 validat
    ε_single(ΔR)/ε_single(ΔR>1) on the linear terms; alternative: reformulate the union weight).
    The Physics Procedure §2 is deliberately NOT edited pending that decision. **pp/2mu4 is
    unaffected and can proceed.**
-2. **Merge of branch `mc-trigger-efficiency` → master is HELD** (user, 2026-07-14) until the
-   sibling session commits its `isTestSample`/isospin refactor: commit `8c917b4` changed the
-   pp isospin default without its companion runner fix, so the committed pp runners silently
-   drop 3/4 of the pp statistics (S11).
+2. ~~Merge held~~ — **DONE 2026-07-14, merge commit `8edc4fb`** (46 commits, no conflicts).
+   The gate cleared when the sibling session committed its `isTestSample` refactor, which ties
+   the fullsim input dir to its isospin treatment in ONE switch and thereby fixes the latent
+   bug (`FullSimSampleUsesFourBeams(pp, is_test=true)` → 4 beams, as the pp24 test sample
+   requires). **Verified before merging:** the committed runners reproduce this session's
+   results BIT-IDENTICALLY (475 108 tree entries; anomaly-bin 8136 denom / 7289 num; all 6
+   per-slice w_factors equal), and the plot macro rebuilds and reproduces the pp plateau
+   (0.9588 ± 0.0094) from master. Follow-up work continues from master.
 
 **Open questions / follow-ups:**
 3. **One question for the trigger group** (the only thing standing between us and the
@@ -756,13 +760,17 @@ plateau-normalized comparison), but it is a real asymmetry in the Step-1 validat
 
 ## Latest Stage
 
-**2026-07-14 — Steps S10–S15 COMPLETE except the merge (S15), which is HELD by user decision.**
-Items 0, 1, 2, 3a, 3b, 4 all done and reviewed (/review-plot APPROVED iter 3; the q·η
-investigation returned NOT-a-code-bug with a KB-grounded evidence chain). Two things now sit
-with the user: (a) **the §2 assumption-(i) violation** — the singles efficiency IS ΔR-dependent
-(R4), which puts the **PbPb union** weight at risk while leaving **pp/2mu4 safe**; (b) the
-**merge**, held until the sibling session commits its runner/isospin refactor (S11). See
-Remaining Work items 1–2. Everything else regenerated and consistent.
+**2026-07-14 — Steps S10–S15 ALL COMPLETE. Branch merged to master (`8edc4fb`).**
+All six requested items done and reviewed (/review-plot APPROVED iter 3; the q·η investigation
+returned NOT-a-code-bug with a KB-grounded evidence chain; merge verified bit-identical against
+the committed runners). **One thing now sits with the user and blocks nothing else: the §2
+assumption-(i) violation** — the singles efficiency IS ΔR-dependent (R4), which puts the
+**PbPb mu4 union** weight at risk while leaving **pp/2mu4 safe by construction**. The Physics
+Procedure §2 is deliberately unedited pending that decision (Remaining Work item 1).
+
+**Next actionable step (pp, unblocked):** plateau-normalize ε_ΔR^2mu4 (0.9588 ± 0.0094) and
+wire it into the pp crossx weight — roadmap Q4. The PbPb side should wait for the item-1
+decision.
 
 ---
 
