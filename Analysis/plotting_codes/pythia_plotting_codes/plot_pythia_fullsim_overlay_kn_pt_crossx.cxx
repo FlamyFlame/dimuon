@@ -125,7 +125,7 @@ void overlay_plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix
             leg1->AddEntry(hists[ikn], kKnLabels[ikn].c_str(), "lep");
         leg1->Draw();
         TLatex lat1; lat1.SetNDC(); lat1.SetTextSize(0.038);
-        lat1.DrawLatex(0.17, 0.92, ("Pythia fullsim hijing overlay pp24, single-b, " + kLabels[ivar]).c_str());
+        lat1.DrawLatex(0.17, 0.92, ("Pythia fullsim HIJING overlay (Pb+Pb 2023), single-b, " + kLabels[ivar]).c_str());
 
         c->cd(2);
         gPad->SetLeftMargin(0.16); gPad->SetRightMargin(0.05);
@@ -144,7 +144,7 @@ void overlay_plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix
             leg2->AddEntry(hists[ikn], kKnLabels[ikn].c_str(), "f");
         leg2->Draw();
         TLatex lat2; lat2.SetNDC(); lat2.SetTextSize(0.038);
-        lat2.DrawLatex(0.17, 0.92, ("Pythia fullsim hijing overlay pp24, single-b, " + kLabels[ivar]).c_str());
+        lat2.DrawLatex(0.17, 0.92, ("Pythia fullsim HIJING overlay (Pb+Pb 2023), single-b, " + kLabels[ivar]).c_str());
 
         c->SaveAs((kOutputDir + out_names[ivar] + ".png").c_str());
         for (auto* h : hists) delete h;
@@ -233,7 +233,7 @@ void overlay_plot_stat_error_forecast(int nbins_arg, double xmax_arg, const std:
             leg1->AddEntry(hists[ikn], kKnLabels[ikn].c_str(), "lep");
         leg1->Draw();
         TLatex lat1; lat1.SetNDC(); lat1.SetTextSize(0.038);
-        lat1.DrawLatex(0.17, 0.92, ("Pythia fullsim hijing overlay pp24, single-b, " + kLabels[ivar]).c_str());
+        lat1.DrawLatex(0.17, 0.92, ("Pythia fullsim HIJING overlay (Pb+Pb 2023), single-b, " + kLabels[ivar]).c_str());
 
         c->cd(2);
         gPad->SetLeftMargin(0.16); gPad->SetRightMargin(0.05);
@@ -339,7 +339,7 @@ void overlay_plot_err_fraction_map(int nbins_arg, double xmax_arg, const std::st
             leg1->AddEntry(hists[ikn], kKnLabels[ikn].c_str(), "lep");
         leg1->Draw();
         TLatex lat1; lat1.SetNDC(); lat1.SetTextSize(0.038);
-        lat1.DrawLatex(0.17, 0.92, ("Pythia fullsim hijing overlay pp24, single-b, " + kLabels[ivar]).c_str());
+        lat1.DrawLatex(0.17, 0.92, ("Pythia fullsim HIJING overlay (Pb+Pb 2023), single-b, " + kLabels[ivar]).c_str());
 
         c->cd(2);
         gPad->SetLeftMargin(0.14); gPad->SetRightMargin(0.16);
@@ -447,7 +447,7 @@ void overlay_plot_err_ratio_map(int nbins_arg, double xmax_arg, const std::strin
             leg1->AddEntry(hists[ikn], kKnLabels[ikn].c_str(), "lep");
         leg1->Draw();
         TLatex lat1; lat1.SetNDC(); lat1.SetTextSize(0.038);
-        lat1.DrawLatex(0.17, 0.92, ("Pythia fullsim hijing overlay pp24, single-b, " + kLabels[ivar]).c_str());
+        lat1.DrawLatex(0.17, 0.92, ("Pythia fullsim HIJING overlay (Pb+Pb 2023), single-b, " + kLabels[ivar]).c_str());
 
         c->cd(2);
         gPad->SetLeftMargin(0.14); gPad->SetRightMargin(0.16);
