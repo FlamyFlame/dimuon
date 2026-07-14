@@ -39,7 +39,23 @@ protected:
     FullSimSampleType fullsim_sample_type = FullSimSampleType::pp;
     bool perform_truth = true;
     bool useLocal = false;
-    bool only_pp_isospin = false;
+    bool only_pp_isospin = false;   // TRUTH path only (InitInputCentrProd)
+
+    // ---- Isospin content of the SIMULATED COLLISION SYSTEM (fullsim paths) ----
+    // The beam content must match the system the sample simulates:
+    //   pp CONDITIONS fullsim (FullSimSampleType::pp) simulates pp collisions
+    //     -> ONE beam (pp), and the isospin weight is 1 (there is nothing to average).
+    //   PbPb CONDITIONS HIJING overlay simulates Pb+Pb, whose nucleons are a p/n mix
+    //     -> FOUR beams {pp,pn,np,nn}, combined with the Pb ratio 4:6:6:9.
+    // The TEST samples are exceptions in BOTH directions -- they are what happens to
+    // exist on disk, not what the physics wants:
+    //   pp24 test sample        = 4 beams (a production mistake; kept so the existing
+    //                             test-sample results stay reproducible)
+    //   HIJING overlay test smp = pp beam only (the 4-beam overlay full sample is in
+    //                             production)
+    // so each run must be able to override the sample-type default.
+    // -1 = use the sample-type default | 0 = force pp-beam only | 1 = force 4 beams
+    int isospin_beams_override = -1;
 
     int batch_num = 0;
     int kn_batch = 0;
@@ -134,6 +150,7 @@ protected:
     void setIsFullsim(bool v) { is_fullsim = v; }
     void setIsFullsimOverlay(bool v) { is_fullsim_overlay = v; }
     void setFullSimSampleType(FullSimSampleType t) { fullsim_sample_type = t; }
+
     void setPerformTruth(bool v) { perform_truth = v; }
     void setUseLocal(bool v) { useLocal = v; }
 
@@ -253,9 +270,38 @@ public:
     int GetKnBatch() const { return kn_batch; }
     void SetKnBatch(int kn) { kn_batch = kn; }
 
+    // Beam content of a fullsim run (see isospin_beams_override above).
+    // Default: the HIJING overlay simulates Pb+Pb -> 4 isospin beams (4:6:6:9);
+    // pp-conditions fullsim simulates pp -> the pp beam alone, isospin weight 1.
+    // Public so a run script can override it for the two test samples, which are
+    // exceptions in both directions.
+    bool UseFourIsospinBeams() const {
+        if (isospin_beams_override >= 0) return isospin_beams_override == 1;
+        return FullSimSampleIsOverlay(fullsim_sample_type);
+    }
+    void setIsospinBeams(bool four_beams) { isospin_beams_override = four_beams ? 1 : 0; }
+
     bool turn_data_resonance_cuts_on = false;
     bool fill_kn_trees_fullsim = false;  // set true to bin fullsim pairs into per-kn trees
     std::string fullsim_input_dir_override;  // if non-empty, replaces computed fullsim_input_dir
+
+    // DIAGNOSTIC ONLY (default false = strict). When true, a missing pT-hat slice is a
+    // warning instead of a fatal error. Required for single-slice studies (e.g. the r17662
+    // signal-only-truth sample, which exists ONLY for pTH8_14). NEVER set this for a
+    // cross-section-weighted production run: a missing slice biases the sigma-weighted
+    // combination (which is exactly what the strict check exists to prevent).
+    bool allow_missing_slices = false;
+
+    // ---- AMI provenance (BLOCKING; see InitInputFullsim) ----
+    // AMI files are named by BEAM+SLICE only, so they do NOT identify the production. The pp24
+    // TEST sample (802758-802781) and the pp24 FULL "_pdf" sample (803015-803020) have different,
+    // slice-dependent cross-sections, so reading the wrong one silently corrupts every
+    // sigma-weighted quantity (and does NOT cancel in ratios).
+    //   ami_info_dir_override : if non-empty, replaces <py_dir>/ami_info/
+    //   expected_ami_dsids    : if non-empty, the datasetNumber in each AMI file MUST be in this
+    //                           list, else InitInputFullsim throws.
+    std::string ami_info_dir_override;
+    std::vector<int> expected_ami_dsids;
     // Propagate trigger decisions/matching from the trigger-enabled MC skims (_July2026)
     // into the output trees (m1/m2.passmu4, pair pass2mu4). Adds "_mc_trig" to the output
     // file name so nominal outputs are never clobbered. Input files that lack the trigger

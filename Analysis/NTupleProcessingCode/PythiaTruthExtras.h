@@ -44,18 +44,41 @@ public:
     int debug_print_history_nevents    = 0;  // print full muon history for first N events
     int debug_print_bhadron_id_nevents = 0;  // print m_eldest_bhadron_barcode truth_id for first N events
 
+    // ---- Pythia truth index guard ----------------------------------------------------
+    // Number of PYTHIA (signal-generator) truth muons, used to bound the truth-muon list
+    // so that HIJING-overlay truth muons never enter the analysis (they would contaminate
+    // the reco-efficiency denominator and the truth-pair/origin analysis).
+    //
+    // The merged TruthParticles container is laid out as contiguous blocks:
+    //     [Pythia generator][Pythia Geant4][HIJING generator][HIJING Geant4]
+    // Geant4 particles carry barcode > 200000; each GENERATOR block numbers its barcodes
+    // from 1 upward. So the Pythia block ends at the first index that is EITHER
+    //   (a) a Geant4 particle (barcode > 200000), OR
+    //   (b) a barcode RESTART (barcode < previous barcode) -> the HIJING block begins.
+    //
+    // Condition (b) is essential: in ~1.2% of overlay events the Pythia Geant4 block is
+    // EMPTY, so the container is [Pythia][HIJING][HIJING Geant4] and criterion (a) alone
+    // lands on the *HIJING* Geant4 block, swallowing the whole HIJING generator block.
+    // (Measured on r17618 pTH8_14: 117/10000 events, 643 HIJING truth muons admitted, 4 of
+    // them fiducial. With (b) the fiducial Pythia truth-muon count becomes 15800, exactly
+    // matching the collision-free r17662 reference.)
+    //
+    // Non-overlay samples (pp fullsim): generator barcodes increase monotonically and the
+    // Geant4 block follows, so (b) never fires and the result is unchanged.
     int GetNPythiaTruthMuons(size_t n_truth_muons) const {
         if (!truth_barcode || !truth_id || !truth_status)
             return static_cast<int>(n_truth_muons);
+
         int n_pythia_truth = static_cast<int>(truth_barcode->size());
         for (size_t i = 0; i < truth_barcode->size(); ++i) {
-            if (truth_barcode->at(i) > 200000) {
+            if (truth_barcode->at(i) > 200000 ||                       // (a) Geant4 block
+                (i > 0 && truth_barcode->at(i) < truth_barcode->at(i - 1))) { // (b) barcode restart
                 n_pythia_truth = static_cast<int>(i);
                 break;
             }
         }
-        if (n_pythia_truth >= static_cast<int>(truth_barcode->size()))
-            return static_cast<int>(n_truth_muons);
+        // No boundary at all => the container holds only the signal generator block; every
+        // truth muon in it is Pythia. (Counting below is then equivalent to n_truth_muons.)
         int count = 0;
         for (int i = 0; i < n_pythia_truth; ++i) {
             if (truth_status->at(i) == 1 && abs(truth_id->at(i)) == 13)

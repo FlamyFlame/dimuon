@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <fstream>
 #include <sstream>
+#include <algorithm>   // std::find (AMI DSID provenance check)
 #include <ctime>
 
 // ---------------------------------------------------------------------------
@@ -379,32 +380,78 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputFullsim_PythiaCo
     }
 
     const std::string file_tag = FullSimSampleFileTag(fullsim_sample_type);
-    const bool overlay_only_pp = FullSimSampleIsOverlay(fullsim_sample_type) || only_pp_isospin;
+    // Beam content follows the SIMULATED SYSTEM, not the file layout: pp-conditions
+    // fullsim = pp collisions = the pp beam alone; the HIJING overlay = Pb+Pb = the 4
+    // isospin beams.  Overridable per run for the two test samples (PythiaAlgCoreT.h).
+    const bool four_beams = UseFourIsospinBeams();
+    std::cout << "InitInputFullsim: " << (four_beams ? "4 isospin beams {pp,pn,np,nn}"
+                                                     : "pp beam only (isospin weight 1)")
+              << std::endl;
 
     for (int ikin = 0; ikin < nKinRanges; ikin++) {
         int kin_lo = static_cast<int>(kinRanges.at(ikin));
         int kin_hi = static_cast<int>(kinRanges.at(ikin + 1));
 
         for (int ibeam = 0; ibeam < nBeamTypes; ibeam++) {
-            if (overlay_only_pp && ibeam != 0) continue;
+            if (!four_beams && ibeam != 0) continue;
 
-            std::string fname = fullsim_input_dir
+            const std::string fbase = fullsim_input_dir
                 + "Pythia_5p36TeV_" + beam_names.at(ibeam)
                 + "_hQCD_DiMu_pTH" + std::to_string(kin_lo) + "_" + std::to_string(kin_hi)
-                + "." + file_tag + ".NTUP.root";
+                + "." + file_tag + ".NTUP";
+
+            // A slice is EITHER one hadded file (the test sample, and any locally downloaded
+            // slice) OR the N unmerged grid outputs of the full sample, exposed as a
+            // LOCALGROUPDISK symlink farm ".NTUP.partNN.root" -- the ~280 GB full sample is
+            // never hadded onto GPFS (tracking doc pythia_fullsim_pp24_full_sample_skim.md,
+            // Design Decision D1).
+            // The two forms are MUTUALLY EXCLUSIVE: if both are present we THROW (below)
+            // rather than pick one, because a stale hadded file silently shadowing a farm
+            // would give a wrong N_beam with an unchanged sigma -> wrong normalization.
+            const std::string fname = fbase + ".root";
+            const std::string fparts = fbase + ".part*.root";
 
             std::ifstream fin(fname);
-            if (!fin.good()) {
-                std::cout << "InitInputFullsim: missing file (skip): " << fname << std::endl;
-                continue;
-            }
+            const bool have_single = fin.good();
             fin.close();
 
+            // Ambiguous input is never intentional: a stale local hadded file would silently
+            // SHADOW a (possibly more complete) farm, and N_beam would then be wrong while
+            // sigma stayed the same -> wrong normalization, no error. Refuse instead.
+            if (have_single) {
+                TChain probe("HeavyIonD3PD");
+                if (probe.Add(fparts.c_str()) > 0)
+                    throw std::runtime_error("InitInputFullsim: AMBIGUOUS input for pTH"
+                        + std::to_string(kin_lo) + "_" + std::to_string(kin_hi) + " beam "
+                        + beam_names.at(ibeam) + ": BOTH the hadded '" + fname
+                        + "' and the multi-part '" + fparts + "' exist. Remove one -- silently "
+                          "preferring either risks a wrong event count N_beam in the "
+                          "cross-section weight sigma*eff/N_beam.");
+            }
+
             TChain* ch = new TChain("HeavyIonD3PD", "HeavyIonD3PD");
-            int add_ret = ch->Add(fname.c_str());
+            // TChain::Add expands the glob and returns the number of files matched.
+            const int add_ret = have_single ? ch->Add(fname.c_str())
+                                            : ch->Add(fparts.c_str());
             if (add_ret <= 0) {
-                std::cerr << "InitInputFullsim: failed to add: " << fname << std::endl;
                 delete ch;
+                // The pp beam is ALWAYS required. Silently dropping it would remove an entire
+                // pT-hat slice from a sigma-weighted combination -- a BIAS, not just a
+                // statistics loss (a partial farm is self-correcting, since N_beam is measured
+                // from the files actually chained; a missing slice is not).
+                if (ibeam == 0 && !allow_missing_slices)
+                    throw std::runtime_error("InitInputFullsim: NO input for pTH"
+                        + std::to_string(kin_lo) + "_" + std::to_string(kin_hi)
+                        + " beam pp -- looked for '" + fname + "' and '" + fparts
+                        + "'. Refusing to run: a missing pT-hat slice biases the "
+                          "cross-section-weighted combination. (Symlink farm unreachable?)");
+                if (ibeam == 0)
+                    std::cout << "InitInputFullsim: WARNING - missing pT-hat slice pTH"
+                              << kin_lo << "_" << kin_hi << " beam pp, SKIPPED "
+                              << "(allow_missing_slices=true; diagnostic run only -- any "
+                              << "cross-section-weighted result from this run is BIASED)" << std::endl;
+                else
+                    std::cout << "InitInputFullsim: no input (skip): " << fparts << std::endl;
                 continue;
             }
             ch->SetMakeClass(1);
@@ -419,17 +466,38 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputFullsim_PythiaCo
             ch->SetBranchStatus("truth_muon_barcode", 1);
             ch->SetBranchAddress("truth_muon_barcode", &truth_muon_barcode);
 
-            std::cout << "Loaded " << nent << " events from " << fname << std::endl;
+            if (nent == 0)
+                throw std::runtime_error("InitInputFullsim: 0 entries for pTH"
+                    + std::to_string(kin_lo) + "_" + std::to_string(kin_hi) + " beam "
+                    + beam_names.at(ibeam) + " -- input is present but unreadable. Refusing to "
+                    "run: a silently-dropped pT-hat slice biases the sigma-weighted combination.");
 
-            // AMI weight for this kn/beam
-            std::string ami_path = py_dir + "ami_info/ami_info_mc23_5p36TeV_Py8EG_A14_"
+            std::cout << "Loaded " << nent << " events from "
+                      << (have_single ? fname : fparts)
+                      << " (" << add_ret << " file" << (add_ret == 1 ? "" : "s") << ")" << std::endl;
+
+            // ---- AMI weight for this kn/beam ----
+            // PROVENANCE (BLOCKING): the AMI file name is keyed by BEAM+SLICE only, so it does
+            // NOT distinguish productions. The pp24 TEST sample (DSIDs 802758-802781) and the
+            // pp24 FULL "_pdf" sample (803015-803020) have DIFFERENT cross-sections -- e.g.
+            // pTH8_14: 23.78 nb (802781) vs 36.74 nb (803020), a 55% difference, and the
+            // difference VARIES BY SLICE, so it does NOT cancel in any ratio. Reading the wrong
+            // production's AMI would silently corrupt every sigma-weighted quantity.
+            // => the AMI dir is overridable per sample, and the DSID in the file is CHECKED.
+            const std::string ami_dir = ami_info_dir_override.empty()
+                ? (py_dir + "ami_info/") : ami_info_dir_override;
+            std::string ami_path = ami_dir + "ami_info_mc23_5p36TeV_Py8EG_A14_"
                 + beam_names.at(ibeam)
                 + "_hQCD_DiMu_pTH" + std::to_string(kin_lo) + "_" + std::to_string(kin_hi) + ".txt";
             std::ifstream ami(ami_path);
             if (!ami.good()) {
-                std::cerr << "InitInputFullsim: WARNING - missing AMI file: " << ami_path << std::endl;
+                // Fatal, not a warning: a missing AMI file left ami_weight = 0, which silently
+                // gives this pT-hat slice ZERO weight in every weighted quantity.
+                throw std::runtime_error("InitInputFullsim: missing AMI file: " + ami_path
+                    + " -- refusing to run with a zero-weight pT-hat slice.");
             } else {
                 double crossSection = 0., genFiltEff = 0.;
+                int datasetNumber = -1;
                 std::string line;
                 while (std::getline(ami, line)) {
                     if (line.find("crossSection") != std::string::npos) {
@@ -444,7 +512,30 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputFullsim_PythiaCo
                         if (c != std::string::npos) { std::istringstream(line.substr(c+1)) >> genFiltEff; break; }
                     }
                 }
+                ami.close(); ami.open(ami_path);
+                while (std::getline(ami, line)) {
+                    if (line.find("datasetNumber") != std::string::npos) {
+                        size_t c = line.find(':');
+                        if (c != std::string::npos) { std::istringstream(line.substr(c+1)) >> datasetNumber; break; }
+                    }
+                }
                 ami.close();
+
+                if (!expected_ami_dsids.empty()
+                    && std::find(expected_ami_dsids.begin(), expected_ami_dsids.end(), datasetNumber)
+                       == expected_ami_dsids.end()) {
+                    std::ostringstream oss;
+                    oss << "InitInputFullsim: AMI PROVENANCE MISMATCH for pTH" << kin_lo << "_" << kin_hi
+                        << " beam " << beam_names.at(ibeam) << ": " << ami_path
+                        << " has datasetNumber=" << datasetNumber
+                        << ", which is NOT in the expected DSID list for this sample {";
+                    for (size_t q = 0; q < expected_ami_dsids.size(); ++q)
+                        oss << (q ? "," : "") << expected_ami_dsids[q];
+                    oss << "}. You are about to weight this sample with ANOTHER production's "
+                           "cross-section. Set ami_info_dir_override to this sample's AMI directory.";
+                    throw std::runtime_error(oss.str());
+                }
+                std::cout << "  AMI DSID=" << datasetNumber << " (" << ami_path << ")" << std::endl;
                 // UNITS: ATLAS AMI `crossSection` is in **nb** (NOT pb), e.g. pp pTH8_14
                 // crossSection=4.816e6 = 4.816 mb for HardQCD:All pTHat 8-14 GeV (sensible in nb,
                 // absurd in pb). So ami_weight (and the per-pair `weight` derived from it below) is
@@ -458,10 +549,36 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputFullsim_PythiaCo
         }
     }
 
-    nominal_beam_ratio["pp"] = 4./25.;
-    nominal_beam_ratio["pn"] = 6./25.;
-    nominal_beam_ratio["np"] = 6./25.;
-    nominal_beam_ratio["nn"] = 9./25.;
+    // Isospin weight.  4:6:6:9 is the ISOSPIN CONTENT OF A Pb NUCLEUS (Z=82, N=126):
+    // it exists to combine the four {pp,pn,np,nn} beams into a Pb+Pb collision.  It is
+    // therefore meaningful ONLY when all four beams are read.  When the sample is read
+    // as a single pp beam -- i.e. the pp-conditions fullsim, which simulates genuine pp
+    // collisions and has nothing to isospin-average -- the weight is 1.
+    //
+    // Applying 4/25 to a single-beam sample (the previous behaviour) is a SLICE-INDEPENDENT
+    // factor, and THAT -- not the absence of a weight -- is why it cancels in every ratio.
+    // Be precise here, because the distinction is load-bearing:
+    //   * reco-eff and detector-response hists ARE weighted. An empty weight *specifier*
+    //     resolves to the `weight` COLUMN (RDFBasedHistFillingPythia.cxx:9 maps "" ->
+    //     "weight"), so `make_pair(filter, "")` is weighted, not unweighted.
+    //   * The MC trigger efficiency likewise carries `weight` in BOTH numerator and
+    //     denominator (FillMCTrigEffHists.cxx:341, and the step-3 weight/(eps1*eps2)).
+    // A factor that is the same in numerator and denominator AND the same for every pT-hat
+    // slice therefore drops out of any efficiency/response ratio.
+    // It does NOT cancel in an ABSOLUTE cross-section, where 4/25 = 0.16 was simply wrong.
+    // NOTE the corollary: an error in the per-slice AMI cross-section is NOT slice-independent
+    // and so does NOT cancel anywhere -- hence the DSID provenance guard above.
+    if (UseFourIsospinBeams()) {
+        nominal_beam_ratio["pp"] = 4./25.;
+        nominal_beam_ratio["pn"] = 6./25.;
+        nominal_beam_ratio["np"] = 6./25.;
+        nominal_beam_ratio["nn"] = 9./25.;
+    } else {
+        nominal_beam_ratio["pp"] = 1.0;
+        nominal_beam_ratio["pn"] = 0.0;
+        nominal_beam_ratio["np"] = 0.0;
+        nominal_beam_ratio["nn"] = 0.0;
+    }
 }
 
 // ---------------------------------------------------------------------------
