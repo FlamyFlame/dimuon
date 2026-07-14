@@ -3,7 +3,7 @@
 **Mode:** Investigation (with a code fix + rerun).
 **Opened:** 2026-07-10.  **Branch:** `mc-trigger-efficiency` (see Branch note — entangled).
 
-## Autonomy Contract (DONE 2026-07-10 — all three Done items met)
+## Autonomy Contract (DONE — all Done items met; doc CLOSED 2026-07-14)
 - Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a
   plan, a passing small test, or one pipeline stage is NOT a stopping point.
 - Done =
@@ -398,6 +398,56 @@ muons into the Pythia truth-muon list.  Worth hardening.
 reco-efficiency bias because (a) the spurious-match mechanism demonstrably does not occur
 and (b) the two reco passes agree statistically, NOT because the reco was identical.
 
+### Step 9 (2026-07-14): Pythia-truth-index-guard CLOSURE TEST — found & fixed a real leak
+
+**The test (user-requested).** Since r17618 and r17662 are the SAME 10 000 events with the
+SAME Pythia truth, every Pythia truth muon PAIR must get the identical
+flavor / origin / m1,m2 parent_group / from_same_b after ntuple processing.  Any difference
+means the **Pythia truth index guard** (`GetNPythiaTruthMuons`) leaked HIJING truth.  This is
+the sharpest possible closure test of the guard.  (NTP `ev_num` is the *entry index* and the
+two NTUPs have DIFFERENT event ordering ⇒ pairs must be keyed on
+`(eventNumber, truth-barcode pair)`, mapping ev_num→eventNumber via the raw NTUPs.)
+
+**Result BEFORE the fix:** 0 mismatches on every matched pair (6271) — but r17618 had
+**6 EXTRA pairs** (2 SS + 4 OS) and **4 extra fiducial truth muons** (15804 vs 15800).
+
+**ROOT CAUSE — a genuine bug in the guard.**  The container is
+`[Pythia gen][Pythia Geant4][HIJING gen][HIJING Geant4]`, and the guard bounded the Pythia
+block at *the first barcode > 200000* (the Geant4 marker).  **In 117/10000 events (1.17 %)
+the Pythia Geant4 block is EMPTY**, so the layout is `[Pythia gen][HIJING gen][HIJING Geant4]`
+and that criterion lands on the **HIJING** Geant4 block — swallowing the entire HIJING
+generator block.  Measured leak: **643 HIJING truth muons** admitted into the Pythia list,
+**4 of them fiducial** (0.013 % of the 15804 denominator), producing the 6 spurious pairs
+(e.g. ev 20245: Pythia bc 233 paired with **HIJING** bc 9562, pT 4.4, η −1.25).  This is also
+why r17618's reco_match sat slightly BELOW r17662's (0.8102 vs 0.8117) — leaked HIJING muons
+sit in the denominator and essentially never reco-match.
+(Same root cause as the previously-logged "fallback" trap: both are the *missing Geant4
+block* case.  In r17662 those same 117 events trigger the no-boundary fallback, which is
+harmless there because there is no HIJING truth to leak.)
+
+**FIX** (`PythiaTruthExtras.h::GetNPythiaTruthMuons`): the Pythia block ends at the first
+index that is EITHER (a) a Geant4 particle (barcode > 200000) **OR (b) a barcode RESTART**
+(`barcode[i] < barcode[i-1]`) — each generator block numbers its barcodes from 1, so the
+restart marks where HIJING begins.  Non-overlay samples (pp fullsim) have monotonically
+increasing generator barcodes followed by Geant4, so (b) never fires ⇒ **pp is unchanged**.
+
+**Result AFTER the fix — PERFECT CLOSURE:**
+| | r17618 | r17662 | extras |
+|---|---|---|---|
+| same-sign pairs | **1107** | **1107** | **0** (was 2) |
+| opposite-sign pairs | **5164** | **5164** | **0** (was 4) |
+| fiducial truth muons | **15800** | **15800** | **0** (was +4) |
+| flavor / origin / parent_group / from_same_b / skipped mismatches | **0** | **0** | — |
+
+Every Pythia truth muon and every truth pair now carries **identical** flavor, origin, parent
+groups and `from_same_b` in both r-tags.  **The Pythia truth index guard is now validated
+exactly**, and the HIJING-truth leak is closed.
+
+**Also added:** `PythiaAlgCoreT::allow_missing_slices` (default **false** = strict).  The
+strict "refusing to run on a missing pT-hat slice" check (correct for σ-weighted production)
+made single-slice diagnostics impossible — notably r17662, which exists ONLY for pTH8_14.
+The flag downgrades it to a loud warning for diagnostic runs; production behaviour unchanged.
+
 **VERDICT (Autonomy Contract Done item 3): NO genuine reconstruction-efficiency
 underestimate in r17618 from the barcode collision.**  r17618 ε = r17662 ε to <0.5 %
 (single-muon AND pair, both centralities, both WPs), confirmed independently at the
@@ -422,53 +472,34 @@ would wipe the fix from the working files.  The two efforts are entangled and mu
 merged to master together (or the det-response commit cherry-picked out).  **Flagged to
 the user.**
 
-## Latest Stage
+## Final Summary (CLOSED 2026-07-14)
 
-**2026-07-10 (session 2) — ALL THREE AUTONOMY-CONTRACT DONE ITEMS MET.**
-1. **dR fallback DELETED** (Step 6) — `use_dr_fallback` + branch removed; matching is pure
-   prob>0.5 exclusive barcode.  `/review-analysis-code` PASS.  Committed
-   `fix(ntp): delete the dR<0.05 truth->reco fallback…`.
-2. **Production r17618 rerun** (cluster 822, fallback-free code) — completed; det-response
-   plots regenerated under `hijing_overlay_pbpb23`; `minv_zoomin_response_matrix_ctr0_5`
-   clean diagonal (0 pairs at 2·m_μ), single-fill intact (global sign2 = Σ kn = 39 211).
-3. **r17618-vs-r17662 clean reco-eff comparison** (Step 7) — VERDICT: **NO underestimate**.
-   r17618 ε = r17662 ε to <0.5 % (single-muon + pair, both centralities, both WPs, incl
-   ΔR<0.1); confirmed independently at the raw-NTUP per-muon level (barcode collision only
-   relabels already-failed muons, never breaks the reco→truth-muon link).  Plots in
-   `plots/r17618_vs_r17662_comparison/` (`/review-plot` PASS).  **r17618 SAFE for the full
-   sample.**  Committed `feat(plot): clean r17618-vs-r17662 reco-eff comparison…`.
+1. **Naming** — `hijing_overlay_pp24` → `hijing_overlay_pbpb23` (HIJING overlay is Pb+Pb,
+   never pp); all plot dirs migrated, stale pp24 dirs removed; NTUP file tag frozen.
+2. **The 2·m_μ band** — root cause: the ΔR<0.05 fallback + a non-exclusive barcode path let
+   two truth muons of a collinear pair claim the SAME reco muon. Fixed (exclusive matching),
+   then the **ΔR fallback was DELETED entirely** (it always overestimates the pair reco
+   efficiency for ΔR<0.05 pairs). Matching is now pure prob>0.5 exclusive barcode.
+   Second bug fixed: the fullsim global pair tree was double-filled.
+3. **r17618 vs r17662** — the two r-tags are the SAME 10 000 events but TWO DIFFERENT
+   digitisation+reco passes (`digiSteeringConf: StandardSignalOnlyTruth` shifts the tracking
+   RNG stream). Nothing physical differs (FCal_Et bit-identical; detector response KS p=0.75,
+   RMS agree to 0.25%) ⇒ **both give correct reco efficiency and detector response**.
+   The barcode collision causes **no** reco-efficiency underestimate, and the suspected
+   spurious-HIJING-match mechanism is **ruled out** (all 12913 matches within ΔR<0.022).
+4. **Pythia truth index guard** — the closure test (identical truth ⇒ identical
+   flavor/origin/parent-group for every pair) exposed a **real leak**: in 1.17% of events the
+   Pythia Geant4 block is empty, so the "first barcode>200000" bound swallowed the HIJING
+   generator block (643 HIJING muons; 4 fiducial; 6 spurious pairs). **Fixed** by also
+   detecting the barcode restart. Now **perfect closure**: 1107=1107 SS, 5164=5164 OS,
+   15800=15800 fiducial truth muons, **zero** flavor/origin/parent-group/from_same_b
+   mismatches. **⇒ r17618 is SAFE for the full sample** (keeps HIJING truth for
+   hadronic-vs-fake separation, at no cost in efficiency or response).
 
-**Remaining action (needs the user): the merge** — the whole det-response + fallback-delete
-+ comparison work lives on branch `mc-trigger-efficiency`, entangled with the unrelated
-MC-trigger feature (see Branch note).  Merge the branch to master as a whole once that
-feature lands, or cherry-pick the det-response commits.  Nothing else outstanding.
+**Remaining (user decision):** the merge. All of this lives on branch `mc-trigger-efficiency`,
+entangled with the unrelated MC-trigger feature (see Branch note).
 
-Intermediate comparison artifacts kept as evidence: `r17618_kin0_run/`, `r17662_run/`
-NTP+hist outputs, and the two symlinked pair hist files in the main dir.
-
----
-_prior session-2 progress (superseded by the above):_
-dR fallback DELETED (Step 6, reviewed PASS); comparison + production reruns launched.
-
----
-
-### (prior) 2026-07-10 session 1 — BOTH ORIGINAL ISSUES RESOLVED.**
-- Issue 1 (naming): `hijing_overlay_pp24` → `hijing_overlay_pbpb23` across code + 4
-  consumers; `…FileTag` frozen.  DONE.
-- Issue 2 (band): root cause = non-exclusive ΔR-fallback truth→reco matching (two truth
-  muons of a collinear pair assigned the same reco muon → minv = 2m_μ).  Fixed by
-  two-pass exclusive matching.  Second bug found + fixed: fullsim global pair tree
-  double-filled.  `/review-analysis-code` PASS.  Validated: (a) production full-pipeline
-  rerun (cluster 821) → clean diagonal response matrix, band gone, double-fill fixed
-  (global=Σkn=39 211); (b) fallback-ON isolation (new code) → 0 clashes (was 150);
-  (c) r17662 mirror → 11 fallback clashes with no barcode collision ⇒ band is
-  sample-independent, purely the fallback bug.
-
-**Only remaining action (needs the user): the merge.**  The fix lives on branch
-`mc-trigger-efficiency` (commit `0fdc33a` + working tree), entangled with the unrelated
-MC-trigger-propagation feature (see "Branch note").  Decide: merge `mc-trigger-efficiency`
-to master as a whole once that feature is also done, or cherry-pick `0fdc33a` (+ the two
-follow-up edits in this session's working tree) onto master now as a standalone
-det-response fix.  Nothing else outstanding.
-
-Test artifacts (`drfallback_test_run/`) cleaned up.
+**Downstream note:** the guard fix changes the overlay reco-efficiency denominator by 0.013%
+(4 of 15804 fiducial truth muons) and removes 6 of 6277 truth pairs. Negligible, but the
+overlay reco-eff / det-response outputs were produced with the pre-fix guard; regenerate them
+when the full sample lands.

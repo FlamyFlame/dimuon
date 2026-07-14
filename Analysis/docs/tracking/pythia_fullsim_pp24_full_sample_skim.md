@@ -161,7 +161,51 @@ isospin weight, `FullSimSampleType.h` wiring) — a follow-up; the HIJING-overla
 
 ## Design Decisions
 
-*(to be filled as work proceeds)*
+### D1 (2026-07-13). The 6 full-sample NTUPs live on LOCALGROUPDISK, not on GPFS.
+
+**Old approach (Steps 1–5 as originally planned):** `grid_monitor --mode fullsim_pp_full`
+downloads each task, hadds it into one canonical NTUP per slice on GPFS, validates entry counts.
+
+**New approach (USER DECISION 2026-07-13):** replicate the 6 grid output datasets **directly to
+`BNL-OSG2_LOCALGROUPDISK`** (`rucio add-rule` — no resubmission needed, the outputs already exist
+on the grid), build a **symlink farm**, and point the NTuple processing at the farm. **Download
+only ONE small slice locally** — `pTH70_125` (~11 GB) — as a dev/test sample.
+
+**Reason (two, both decisive):**
+1. **Space.** The measured NTUP size is **30.6 kB/event** (task 51419511: 36.723 GB for 1.2 M
+   events), not the ~18 kB/event extrapolated from the 10 k-event test-sample files. The 6 slices
+   therefore total **≈ 280 GB**, not ~180 GB. The LGD migration frees ~292 GB — downloading would
+   consume essentially all of it and put us straight back at the quota wall.
+2. **The overlay sample forces this architecture anyway.** r17618 overlay NTUPs are 22 GB per
+   10 000 events; a full overlay sample (~10 M events) would skim to **~20 TB**, an order of
+   magnitude beyond the entire GPFS quota. There is no version of the future in which that sample
+   lives on GPFS. Build the read-from-LGD path now, on the smaller sample, where it is cheap to
+   get right.
+
+**Why this is cheap — three things already exist in the code:**
+- `fullsim_input_dir_override` (`PythiaAlgCoreT.h:258`, used at `PythiaAlgCoreT.c:27-28`) ⇒
+  pointing the reader at the farm needs **no code change**, just a constructor argument.
+- Reading ROOT over the dCache/pnfs POSIX mount is **already proven in this analysis**:
+  `PythiaAlgCoreT.c:50` has a `pythia_pnfs_dir` branch behind `getUseLocal()`, and the June-2026
+  migration (`localgroupdisk_migration.md`) moved 1.4 TB — including `dimuon_data` — to LGD and
+  repointed `~/dcachearea`.
+- `only_pp_isospin` (`PythiaAlgCoreT.c:382-389`) already exists ⇒ the pp-beam-only full sample is
+  supported without new flags. (The AMI cross-sections for DSIDs 803015–803020 still must be
+  re-read; see §1.)
+
+**The ONE code change required.** `PythiaAlgCoreT.c:391-404` (`InitInputFullsim`) assumes
+**exactly one file per (slice, beam)**: it builds the literal name
+`Pythia_5p36TeV_<beam>_hQCD_DiMu_pTH<lo>_<hi>.FullSimPP24.NTUP.root`, tests it with
+`std::ifstream::good()`, then `ch->Add(fname)`. Each grid task emits **12 files** (measured on
+803018), and with no local download there is no hadd to collapse them into one. Fix: the reader is
+**already a `TChain`**, so name the farm symlinks `...NTUP.part01.root`, `...part02.root`, … and
+switch to `ch->Add(dir + "...NTUP.part*.root")` (`TChain::Add` accepts globs), replacing the
+`ifstream` existence test with a glob-count test. Small, local, and must go through
+`/review-analysis-code` (it changes how MC input is assembled — a provenance-critical path).
+
+**Accepted cost:** every NTuple-processing pass streams ~280 GB over dCache rather than GPFS, so
+each pass is slower. Judged worth it against a permanently-clear quota and the 20 TB overlay
+problem. The local `pTH70_125` slice exists so that iteration/debugging does not pay that cost.
 
 ## Implementation Plan
 

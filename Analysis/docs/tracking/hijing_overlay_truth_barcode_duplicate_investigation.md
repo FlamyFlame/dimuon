@@ -157,6 +157,18 @@ Output location:
 - Full-AOD re-skim: 1000 events each. r17618=2.1 GB, r17662=17 MB,
   r17663=16 MB. No common eventNumbers across any pair of files (different
   EVNT inputs).
+  > **⚠ CORRECTED 2026-07-13 — this statement is WRONG for r17618 vs r17662.**
+  > It was drawn from those early *local, partial* skims, which read different
+  > FILE SUBSETS of the datasets. On the **full grid skims (10 000 events each)**
+  > r17618 and r17662 share **100 % of their eventNumbers** (10 000/10 000, all
+  > unique) and carry **identical Pythia truth** and the **identical overlaid
+  > HIJING event** (FCal_Et is bit-identical per event). They are the SAME
+  > generated events — r17662 is a re-reconstruction of them with HIJING truth
+  > stripped. What DOES differ is the digitisation+reco pass (`digiSteeringConf:
+  > StandardSignalOnlyTruth` is the only AMI difference; it shifts the
+  > tracking-detector RNG stream), so the reco muon collections differ — but
+  > nothing physical does. See `hijing_overlay_det_response_band.md` Step 8/9.
+  > **Consequence: per-event r17618↔r17662 comparisons ARE possible and were done.**
 
 ### Step 2: Truth tracing & category comparison (2026-06-04)
 
@@ -308,6 +320,11 @@ The remaining SS discrepancy comes from the higher pair count in r17618
 1. **Different EVNT inputs confirmed:** r17662 eventNumbers start at
    2601,2646,2640,... while r17663 starts at 1,7,11,...  These are
    different MC draws → statistical fluctuations are expected.
+   > **⚠ SCOPE NOTE (2026-07-13):** this holds for the *r17662-vs-r17663*
+   > comparison as made here (early partial local skims). It must NOT be
+   > generalised to **r17618 vs r17662**, which on the full grid skims are the
+   > SAME 10 000 events (100 % eventNumber overlap) — see the correction at
+   > Step 1 and `hijing_overlay_det_response_band.md` Step 8/9.
 
 2. **No barcode duplication in either:** r17662 has 0 duplicates (331
    truth particles/event, bc 1..319 + Geant4 bc > 200k).  r17663 also
