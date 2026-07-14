@@ -21,6 +21,29 @@ HIJING overlay r17618 `_July2026`) to deliver the MC-based trigger-efficiency pr
    weighting on an unbiased (no-trigger-requirement) MC pair sample. This is the analysis
    deliverable that replaces the current dummy ε_ΔR ≡ 1 (roadmap Q4).
 
+## Autonomy Contract (ACTIVE — re-read on every compaction)
+- Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a
+  plan, a passing small test, or one pipeline stage is NOT a stopping point.
+- Done = (0) Step-9 SF variant fully removed: `step1_singles_data_mc_sf/` + the
+  `*.bak_20260710_noSF` backups deleted, SF code reverted out of
+  `plot_mc_trig_eff.cxx` and out of the `FillMCTrigEffHists` numerators (NTP tree
+  propagation of `eff_sf_*` KEPT), SF entries struck from this doc.
+  (1) ALL MC trig-eff outputs (pp24 + overlay), Steps 1–3, regenerated on top of
+  `bda241a` (ΔR<0.05 truth→reco fallback deleted) + `8c917b4` (Pythia truth-index
+  guard): NTP ×4 → FillMCTrigEffHists → FitMCSinglesEffcy → step3 → all plots;
+  with a written statement of whether/how each fix moved pp and overlay.
+  (2) Evidence-based answers to the two pp Step-2 anomalies (q·η∈(−2.4,−2) low-pT
+  MC≫data shape mismatch; the ΔR<0.2 low-pT excess in q·η∈(2,2.2), μ⁺) — code bug
+  vs genuine L1 over-efficiency, resolved either way.
+  (3) Overlay Step-1 q·η∈(−2.4,−2) low-pT MC<data checked on the rerun outputs;
+  overlay Step-2 plots rebinned coarser.
+  (4) Step-3 plots: last pair-pT bin (40–120) recolored away from the dark red/blue;
+  plateau estimated over ΔR ∈ [1,4].
+  (5) Branch `mc-trigger-efficiency` reviewed and merged to master; follow-ups continue
+  from master.
+- Stop-and-ask = ANY physics-results-bending ambiguity (no fixed list; use judgment;
+  when unsure whether an ambiguity is blocking, treat it as blocking → AskUserQuestion).
+
 ## Physics Procedure (AUTHORITATIVE)
 
 ### 1. Motivation
@@ -490,9 +513,42 @@ define+filter pattern to mirror at `RDFBasedHistFillingPythiaFullsim.cxx:128-139
 
 ## Latest Stage
 
-**2026-07-13 — Step 9 (Step-1 SF variant) COMPLETE & REVIEWED** (/review-analysis-code
-PASS iter 1, /review-plot PASS iter 1; both with full independent numerical reproduction).
-Branch `mc-trigger-efficiency` still unmerged, awaiting user. Standing preconditions for
-applying ε_ΔR to crossx unchanged: plateau normalization + full-stat MC + `pp_pTH8_14`
-slice. The SF study's conclusion (reco/ID SF closes ~half the pp trigger-eff offset; flat
-~6-8% L1-simulation excess remains) reinforces keeping ε^nc data-driven.
+**2026-07-14 — Steps 10–15 (user request, 6 items). PLAN (written before work):**
+
+- **S10 (item 0) — remove the Step-9 SF variant.** User: Step 1 is MC vs data, no SF
+  factor. Delete `step1_singles_data_mc_sf/` (both samples) and the
+  `step1_singles_data_mc.bak_20260710_noSF` backups; revert the SF blocks from
+  `plot_mc_trig_eff.cxx` (364200c) and the SF-weighted numerators + SF fill-report from
+  `FillMCTrigEffHists.cxx` (the RDF half of 123a6ff); strike the SF entries from this doc.
+  **KEEP** the NTP half of 123a6ff (`muon_eff_SF_{medium,tight}` →
+  `MuonFullsimExtra::eff_sf_*`): those are genuine reco/ID WP scale factors and are a
+  reco-efficiency-systematics ingredient — they are simply not a trigger observable.
+- **S11 (item 1) — staleness audit + full rerun.** Established: the `_mc_trig` NTP trees
+  (07-13 22:58–23:20) postdate `bda241a` but PREDATE `8c917b4` (07-14 00:10); the Step-3
+  hists (`*_step3.root`, 07-10 03:00) predate BOTH. So every stage is rerun for BOTH
+  samples: NTP ×4 → `FillMCTrigEffHists` → `FitMCSinglesEffcy` → `FillMCTrigEffHists`
+  (do_step3) → `plot_mc_trig_eff`. Expected impact — `bda241a` touches
+  `PythiaFullSimExtras.c` truth→reco matching, which BOTH samples use, and the Step-1/2
+  denominator is the reco-matched-muon gate ⇒ can move pp too (the production default
+  already had the fallback OFF, so the expectation is *no change*; verify, don't assume).
+  `8c917b4` is HIJING-specific by construction (the barcode-restart criterion cannot fire
+  on pp's monotonic generator block) ⇒ overlay-only; it removes 643 HIJING truth muons
+  that had leaked into the Pythia truth list, which contaminated the reco-matched
+  denominator ⇒ overlay Step-1/2 efficiencies may rise slightly. Both to be measured,
+  not asserted. Working-tree note: the sibling session's uncommitted isospin/AMI edits are
+  behaviour-preserving for these two test samples (pp keeps 4 beams, overlay keeps pp-beam
+  only) and add an AMI-DSID provenance guard — weights unchanged.
+- **S12 (item 3b + 4) — plot changes.** Overlay Step-2: coarser x-binning (statistics too
+  thin for the current pT/q·η bins). Step-3: recolor the last pair-pT bin (40–120) to
+  gray/kMagenta (currently confusable with the dark red/blue); plateau estimate over
+  ΔR ∈ [1,4] (was [1,3]). → /review-plot.
+- **S13 (item 2) — pp Step-2 anomalies** (investigate on the RERUN plots): (a) q·η ∈
+  (−2.4,−2), pT 4–6 GeV: MC ≫ data with a different shape, both charges; (b) q·η ∈ (2,2.2),
+  μ⁺, pT 4–6 GeV: ΔR<0.2 clearly above the other two ΔR slices (present but much smaller
+  elsewhere). Code bug vs genuine L1 over-efficiency. → /review-investigation.
+- **S14 (item 3a) — overlay Step-1** q·η ∈ (−2.4,−2), pT 4–6 GeV: MC < data (the opposite
+  sign to everywhere else). Real or artifact — check on the rerun.
+- **S15 (item 5)** — review + merge `mc-trigger-efficiency` → master; continue from master.
+
+Standing preconditions for applying ε_ΔR to crossx unchanged: plateau normalization +
+full-stat MC + the `pp_pTH8_14` slice.
