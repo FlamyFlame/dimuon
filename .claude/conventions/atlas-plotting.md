@@ -72,3 +72,23 @@ of its band and the reader adds bands to the total. Two hard rules preserve that
 (Memory `feedback_thstack_linear_and_ordering`. This is the stack exception to
 `feedback_log_scale_plots`, which otherwise wants log y for wide-dynamic-range 1D distributions.
 Enforced as criterion C7 in `physics-results-review.md`.)
+
+## Axis range, binning & ratio panels (enforced as R1–R3 in `/review-plot`)
+
+**R1 — the axis range must fit the data.** The data must occupy most of the axis. Do not
+draw an axis far beyond where the sample has entries (e.g. muon p_T to 100 GeV when the
+pT-hat slice dies out at 20 GeV — the points end up squeezed into a corner), and do not
+choose a range so narrow that a significant fraction of entries lands in the
+underflow/overflow. Pick the range from where the entries actually are.
+
+**R2 — log axis ⇔ log binning.** For a *variable* axis (x in 1D; x and y in 2D), if the
+axis is drawn log (`SetLogx`/`SetLogy`) then that axis's **binning must be log-spaced**
+(geometric edges, e.g. `edges[i] = lo * pow(hi/lo, i/nb)`), and vice versa. Uniform bins
+under a log axis make bin widths visually deceptive. (This is the converse of
+`feedback_log_scale_plots`, which requires a log axis for log-binned variables.)
+
+**R3 — put the ratio on the plot when the ratio is the point.** If two/three curves share a
+canvas and their ratio is informative — they are expected to agree within errors
+(sample-vs-sample cross-checks, closure tests), or one is a reference for the others
+(data/MC, corrected vs uncorrected, nominal vs variation) — the figure MUST carry a ratio
+panel (bottom pad, dashed line at 1). Not required for curves merely overlaid for shape.
