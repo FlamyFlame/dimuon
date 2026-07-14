@@ -532,18 +532,58 @@ of a forecast. (Plus the right-panel stack, and the `err_fraction` / `err_ratio`
    the code defaults to **Tight** (`PythiaFullsimRecoEffPlotter.cxx:28,627`). §1 line anchors drifted.
    The crossx macro is **absent from the registry** despite hard-coding a WP on a key observable.
 
-### III.2 Plan (after the grid jobs land + the farm is complete)
+### III.2 USER DECISIONS (2026-07-14)
 
-1. Fix blockers 1–5 (+8) — add the 3 NTP scripts; add a sample knob to the MC-trig-eff chain;
-   parameterize the crossx macro; fix the `_full` filename bug; WP → configurable, default Tight.
-2. **Smoke test** each stage with `nevents_max` small, on the farm, before the full run.
-3. **Back up** anything that would be overwritten (the full sample writes `_full`-suffixed files and
-   into `pythia_fullsim_full_sample/`, so clobbering should NOT occur — verify per stage).
-4. Full run: NTP ×4 → RDF hists → reco-eff + det-resp → single-muon reco-eff → MC trig-eff chain →
-   crossx + statistics plot + kn table.
-5. Write `pipelines/pipeline_pythia_fullsim_pp.sh` (none exists) so this is reproducible.
-6. Update `muon_wp_registry.md` (blocker 9) and `docs/pythia_fullsim_pp.md`.
-7. `/review-analysis-code` on the code changes; `/review-plot` on the regenerated plots.
+- **Scope = produce + validate the plots ONLY.** Do **NOT** wire the full-sample results into
+  crossx/R_AA: the pp reco-eff stays the Run-2 placeholder (`project_pp_reco_eff_placeholder`) and
+  ε_ΔR stays the ≡1 dummy until the user has seen the new plots. Keeps the blast radius small.
+- **⚠ CONCURRENCY — a SIBLING SESSION owns the MC-trig-eff chain right now.**
+  `mc_trigger_efficiency.md` is being actively edited (mtime 2026-07-14 03:04); it has already
+  rerun both samples on all 24 pp slices and has an **open physics decision** (§2 assumption (i)
+  VIOLATED — the single-muon efficiency IS ΔR-dependent; pp/2mu4 product SAFE, **PbPb mu4 UNION
+  weight AT RISK**). Its merge is HELD.
+  ⇒ **Do NOT run the MC-trig-eff chain, and do NOT edit `FillMCTrigEffHists.cxx` /
+  `FitMCSinglesEffcy.cxx` / `plot_mc_trig_eff.cxx`, until that session has committed.** Those are
+  its files; concurrent writes clobber.
+  **After the sibling lands AND all grid jobs finish:** back up the TEST-sample MC-trig-eff plots,
+  then remake them from the FULL sample.
+- **Stale-warning CORRECTED:** the `INDEX.md` note that *"`8c917b4` changed the pp isospin default
+  without its companion runner fix ⇒ committed pp runners silently drop 3/4 of pp stats"* was true
+  at `8c917b4` but is **STALE at HEAD**. Verified 2026-07-14: all four pp TEST runners set
+  `isTestSample = true` (⇒ 4 beams), added in `216f750`/`1b927d2`, which land *after* `8c917b4`.
+  No statistics loss at HEAD. (Also confirmed by a compiled test: pp + `isTestSample=true` →
+  `four_beams=1`.)
+- **Everything else: proceed.** Fix the silent failures, add config variables, add the missing NTP
+  scripts, and write a **pp-fullsim pipeline** (with the MC-trig-eff stage present but
+  **switchable off**, default OFF until the sibling lands). Only genuinely
+  physics-ambiguous items get escalated.
+
+## Autonomy Contract (ACTIVE — re-read on every compaction) — TASK III
+- Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a plan, a passing
+  smoke test, or one pipeline stage is NOT a stopping point.
+- Done =
+  1. Blockers 1,2,3,5,6,7,8,9 fixed (NOT 4 — that is the sibling's file; deferred).
+  2. 3 new full-sample NTP run scripts (`_single_muon`, `_mc_trig`, `_mc_trig_single_muon`).
+  3. Every pp-fullsim stage/plot parameterized so it can read EITHER sample (no hard-coded
+     test-sample paths), with a WP config var defaulting to TIGHT.
+  4. `pipelines/pipeline_pythia_fullsim_pp.sh` written (MC-trig-eff stage switchable, default OFF).
+  5. Smoke test of each stage on the farm before the full run.
+  6. FULL-sample run: NTP → RDF hists → reco-eff + det-response + single-muon reco-eff →
+     crossx/statistics plots + kn table. **Back up anything that would be overwritten.**
+  7. `/review-analysis-code` on the code; `/review-plot` on the regenerated plots.
+  8. `muon_wp_registry.md` + `docs/pythia_fullsim_pp.md` updated.
+  9. **AFTER the sibling session commits AND all 6 grid tasks finish:** back up the TEST-sample
+     MC-trig-eff plots and remake them from the FULL sample (blocker 4 + the MC-trig-eff run).
+- Stop-and-ask = ANY physics-results-bending ambiguity (no fixed list; use judgment;
+  when unsure whether an ambiguity is blocking, treat it as blocking → AskUserQuestion).
+
+### III.3 Plan
+
+1. **Code prep (no data needed — do NOW, in parallel with the grid):** blockers 1,2,3,5,6,7,8;
+   the 3 NTP scripts; the pipeline; the WP config var; registry/doc updates.
+2. **Smoke test** each stage on the farm with a small `nevents_max`.
+3. **Full run** once the grid + farm are complete (back up first where a clobber is possible).
+4. **MC-trig-eff (LAST):** only after the sibling session commits — blocker 4 + rerun + backup.
 
 ## Results & Observations
 
