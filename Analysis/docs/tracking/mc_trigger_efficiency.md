@@ -21,7 +21,7 @@ HIJING overlay r17618 `_July2026`) to deliver the MC-based trigger-efficiency pr
    weighting on an unbiased (no-trigger-requirement) MC pair sample. This is the analysis
    deliverable that replaces the current dummy ε_ΔR ≡ 1 (roadmap Q4).
 
-## Autonomy Contract (ACTIVE — re-read on every compaction)
+## Autonomy Contract (DONE 2026-07-14 — items 0–4 complete; item 5 (merge) HELD by user decision)
 - Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a
   plan, a passing small test, or one pipeline stage is NOT a stopping point.
 - Done = (0) Step-9 SF variant fully removed: `step1_singles_data_mc_sf/` + the
@@ -154,12 +154,19 @@ cross term); (ii) the correlation is a function of ΔR alone (checked via kinema
 - This differs from **mu4_mu4noL1**: no requirement on the other muon anywhere in the singles
   efficiency (§3.1, §3.2).
 - MC is always weighted (per-slice σ·ε_filt/N; pp isospin 4:6:6:9).
-- **Menu caveat (systematic, not a bug):** overlay MC uses HLT menu `Dev_HI_run3_v1`
-  (L1 `MC_HI_run3_v1`, TriggerValidation prescale set, all relevant chains PS=1) vs PbPb23
-  data HLT `PhysicsP1_HI_run3_v1` (L1 `Physics_HI_run3_v1`, physics prescale sets) — data
-  side verified 2026-07-10 from the local test AOD run 462240 (mc_trigger_info_skim.md R2).
-  pp fullsim uses `PhysicsP1_pp_lowMu_run3_v1`. Record as a possible systematic on the ΔR
-  correction.
+- **Menu caveat — RESOLVED 2026-07-14 (trigger convener), NOT a systematic.** Overlay MC uses
+  HLT menu `Dev_HI_run3_v1` (L1 `MC_HI_run3_v1`, TriggerValidation prescale set, all relevant
+  chains PS=1) vs PbPb23 data HLT `PhysicsP1_HI_run3_v1` (L1 `Physics_HI_run3_v1`, physics
+  prescale sets) — data side verified 2026-07-10 from the local test AOD run 462240
+  (mc_trigger_info_skim.md R2); pp fullsim uses `PhysicsP1_pp_lowMu_run3_v1`.
+  **Convener response:** `Dev_HI_run3_v1` is a SUPERSET of `PhysicsP1_HI_run3_v1` — it
+  contains every physics chain of the PhysicsP1 menu plus additional development chains.
+  The development chains neither affect our chains (mu4 / 2mu4 / mu4_mu4noL1, which are the
+  same chains with the same definitions in both menus) nor are they skimmed. **Using the Dev
+  menu in MC is therefore fine: no menu systematic on the ΔR correction, and no menu-driven
+  penalty on the overlay-vs-data comparison.** (This does NOT touch the separate, real
+  MC-vs-data L1 *simulation* over-efficiency of §8d — that is a detector-simulation effect,
+  not a menu effect, and it remains the reason ε^nc stays data-driven.)
 
 ## Context (condensed from siblings)
 
@@ -199,11 +206,15 @@ the correction is validated); the full-statistics MC productions (rerun when the
 
 ### D1: pp is the primary tester; PbPb (overlay) is implemented+run but secondary (2026-07-10, user)
 **Physics:** Two known limitations degrade the overlay-vs-data comparison quality:
-(a) the overlay MC simulates the `Dev_HI_run3_v1` HLT menu with validation prescales while
-PbPb23 data ran `PhysicsP1_HI_run3_v1` with physics prescales (verified from files, skim doc
-R2); (b) the overlay TEST sample was produced with a single fixed vertex position instead of
-the Gaussian sampling over 4 positions used in data-like production — vertex-z affects muon
-trajectories through the trigger geometry. pp fullsim has neither issue at this severity.
+~~(a) the overlay MC simulates the `Dev_HI_run3_v1` HLT menu with validation prescales while
+PbPb23 data ran `PhysicsP1_HI_run3_v1` with physics prescales~~ — **(a) WITHDRAWN 2026-07-14:
+the trigger convener confirms `Dev_HI_run3_v1` ⊃ `PhysicsP1_HI_run3_v1` (same physics chains,
+plus dev chains that we neither use nor skim), so the menu difference is a non-issue** (see
+§4 Menu caveat); (b) the overlay TEST sample was produced with a single fixed vertex position
+instead of the Gaussian sampling over 4 positions used in data-like production — vertex-z
+affects muon trajectories through the trigger geometry. **D1 still stands on (b) alone**
+(plus the overlay's ~4× smaller statistics and the D2 centrality restriction), but the
+overlay-vs-data comparison is one systematic *less* degraded than originally recorded.
 **Decision:** validate the procedure and the MC trigger simulation primarily on pp
 (pp24 fullsim vs pp24 data); run the full HI chain too, but interpret slightly larger MC-data
 differences there as expected, not as failures of the method.
@@ -419,6 +430,142 @@ completion and re-run the (cheap) downstream stages when all 24 are in. Not high
   Awaiting user decision: keep the Step-9 outputs as a documented reco-SF systematics
   ingredient, or remove them.
 
+- 2026-07-14 — **Trigger-menu caveat RESOLVED by the trigger convener (user relayed): no
+  systematic.** The MC/data HLT-menu difference flagged on 2026-07-10 (`Dev_HI_run3_v1` in
+  overlay MC vs `PhysicsP1_HI_run3_v1` in PbPb23 data) is not a physics difference:
+  `Dev_HI_run3_v1` **includes all physics chains of `PhysicsP1_HI_run3_v1`** and adds
+  development chains on top. The extra chains do not affect our chains and are not skimmed.
+  ⇒ §4 "Menu caveat" rewritten from "record as a possible systematic" to RESOLVED; D1's
+  reason (a) WITHDRAWN (D1 still holds on the fixed-vertex-z reason (b) + overlay statistics
+  + D2). **Unchanged:** the MC L1 *simulation* over-efficiency (skim doc §8d) — a
+  detector-simulation effect, not a menu effect — so ε^nc stays data-driven and MC still
+  contributes only the ΔR ratio.
+
+- 2026-07-14 — **S10 (item 0) DONE: Step-9 SF variant REMOVED.** Plot dirs
+  `step1_singles_data_mc_sf/` (both samples) and the `*.bak_20260710_noSF` backups deleted;
+  `plot_mc_trig_eff.cxx` SF blocks reverted (364200c) and the SF-weighted Step-1 numerators +
+  SF fill report reverted out of `FillMCTrigEffHists.cxx` (RDF half of 123a6ff) — commit
+  `6d30f7e`. Step 1 is data vs MC, no SF factor. **KEPT:** the NTP propagation of
+  `muon_eff_SF_{medium,tight}` → `MuonFullsimExtra::eff_sf_*` (genuine reco/ID WP SFs; an
+  ingredient for the reco-efficiency systematic, simply not a trigger observable). The SF
+  fill report still prints from NTP (22.7% of Tight muons unfilled = exactly pT<5 GeV).
+
+- 2026-07-14 — **S11 (item 1) DONE: staleness audit + full rerun of BOTH samples.**
+  **Audit:** the `_mc_trig` NTP trees (07-13 22:58–23:20) postdated `bda241a` but PREDATED
+  `8c917b4` (07-14 00:10); the Step-3 hists (`*_step3.root`, 07-10 03:00) predated BOTH.
+  ⇒ the PbPb (and pp) plots were NOT run with the fixes. Everything regenerated.
+  **Isolation (IMPORTANT):** a sibling session is *actively* refactoring `PythiaAlgCoreT.{h,c}`
+  + every `run_*.sh` in the shared tree (→ a single `isTestSample` switch). My first rerun
+  compiled a half-edited tree and 3 of 4 NTP runs threw (`'isTestSample' is a protected
+  member`, then a lookup in the FULL-sample dir). **ROOT exits 0 even when a macro throws —
+  the wrapper's rc=0 was a lie; every stage is now log-grepped for errors.** Rerun redone from
+  an isolated `git worktree` pinned to the committed branch tip → immune to the live edits.
+  **LATENT BUG FOUND on the branch:** `8c917b4` changed the pp-fullsim isospin default to
+  pp-beam-only, but its companion runner fix (`py.setIsospinBeams(true)`, restoring the
+  4-beam test-sample behaviour) is still UNCOMMITTED in the sibling's tree ⇒ running the
+  *committed* pp runners silently drops 3/4 of the pp statistics (119 209 vs 477 135 muons).
+  Reran pp with 4 beams restored (user-confirmed: the isospin mix cannot bias a
+  detector-response ratio at fixed (pT, q·η) — it only adds statistics). **Merge is held until
+  the sibling commits** (user decision, 2026-07-14).
+  **`pp_pTH8_14` (D3) IS IN:** the slice landed 07-10 trigger-enabled (260 branches) ⇒ all 24
+  pp beam×slice files processed for the first time; **D3 is now LIFTED.**
+  **Impact of the two fixes — measured, not asserted:**
+  - `bda241a` (ΔR<0.05 fallback deleted): touches `PythiaFullSimExtras.c`, used by BOTH
+    samples, but the production default already had the fallback OFF ⇒ **no change to either**.
+  - `8c917b4` (truth-index guard): HIJING-specific by construction (the barcode-restart
+    criterion cannot fire on pp's monotonic generator block) ⇒ **pp unchanged**; overlay
+    singles 95 410 → 95 797 (+0.4%, the leaked HIJING truth muons removed from the
+    reco-matched denominator).
+  - pp singles 455 440 → **477 135** (+4.8%) — this is the `pp_pTH8_14` slice, NOT the fixes.
+  **New headline numbers (full stats, both fixes in):**
+  - pp ε_ΔR^2mu4 plateau (ΔR∈[1,4]) = **0.9588 ± 0.0094** (was 0.963 over [1,3]).
+  - overlay ε_ΔR^cross plateau (ΔR∈[1,4]) = **0.8776 ± 0.0257** (was 0.864 over [1,3]).
+    Still ~12% below 1 ⇒ **plateau normalization is still required** before it dresses the
+    PbPb union cross term (unchanged conclusion).
+  - pp Step-1 MC/data: 1.21 (4.3 GeV) → **flat ~1.11** above the turn-on, both charges — the
+    expected, benign L1 over-efficiency (cancels in the ΔR ratio).
+  - ε-evaluation bookkeeping: pp 17.6% gap-q·η 2D fallbacks, 0.048% floor firings; overlay
+    18.6% / 0.27%.
+
+- 2026-07-14 — **S12 (items 3b + 4) DONE, commit `d8235e1`.** Step-2 (overlay only): coarse
+  rebinning to a strict SUBSET of the native edges (pT → 7 bins {4, 5.1, 6.5, 8, 10.8, 16.2,
+  26.8, 60}; q·η → uniform 0.2) — the 0-5% pair sample on the native 41×184-bin axes was an
+  unreadable error-bar forest. pp keeps the fine axes (~4× the pairs). **Physics now legible:
+  the three ΔR series overlap within errors in essentially every q·η bin ⇒ the §3.2
+  factorization assumption holds at the singles level for the overlay too.** Step-3: plateau
+  window [1,3] → **[1,4]**; last pair-pT slice (40–120 GeV) `kMagenta+2` → `kMagenta` (the
+  darkened shade read as a third dark red/blue against kRed+1 / kBlue+1).
+
+- 2026-07-14 — **S13 + S14 (items 2 + 3a) DONE — q·η anomalies root-caused (delegated
+  investigation; merged from `_sub_mctrig_qeta_anomaly.md`, then deleted). VERDICT: NOT a code
+  bug.** Full evidence in R3/R4 below. Three headlines:
+  1. **My "MC/data = 2.1" was wrong** — it compared MC's pT 4–6 *average* against the data
+     *graph's first point* (pT ≈ 4.1 GeV). Correctly pT-matched: data(4–6) = 0.600,
+     **MC/data = 1.50**; 1.04 at 6–8; **1.01 at 8–15**. Data stats are excellent
+     (18 276 probes) ⇒ no data-side bias.
+  2. **The MC/data offset is BARREL-only, not flat-global.** Plateau ratio: barrel
+     (|q·η|<1.0) **1.18–1.26**; endcap (|q·η|>1.3) **1.01–1.03**. The doc's "known 10–15%
+     per-leg L1 over-efficiency" is really a ~20% *barrel* effect — KB
+     `atlas_run3_muon_performance.md` §B/§C: the barrel L1 is simulated with an optimistic
+     lower-bound chamber efficiency; real barrel RPC L1 is degraded by gas-distribution leaks.
+  3. The **only** genuine anomaly is a **turn-on-SHAPE failure confined to |η| > 2.0,
+     pT < 6 GeV**, where the pp24 fullsim L1 is already *saturated* (0.889 at pT 4.0–4.5 vs
+     0.450 in data). Not migration (ε vs truth pT identical, ⟨truth/reco⟩ = 1.0010); φ-flat;
+     Medium WP and unweighted alike; present in all 24 slices; absent in the overlay (same
+     code) ⇒ the discriminant is the **conditions / L1-muon (TGC) configuration** of r16578
+     (pp24) vs r17618 (PbPb23), NOT the menu (convener) and NOT the code (5 independent kills,
+     incl. the per-muon flag agreeing to <0.4% with the independently-read pair-level branch,
+     `2mu4 && !(both legs mu4) = 0` exactly).
+  **Item 3a answered:** the overlay's MC < data in that bin is the *same* forward-endcap
+  turn-on story with the opposite sign — the two MC productions disagree with each other and
+  each with its own data in that bin, while both match their data at the plateau to ~1–2%.
+  **KB LIMIT (stated, not papered over):** the KB does not document the Run-3 endcap L1
+  NSW/inner-station coincidence or its MC modelling, so the *microscopic* cause is NOT
+  asserted. One open question for the trigger group (see Remaining Work).
+
+- 2026-07-14 — **⚠ PHYSICS-PROCEDURE CONSEQUENCE (needs user decision): assumption (i) of §2
+  is VIOLATED for the PbPb union weight.** The item-2 Step-2 "ΔR<0.2 excess" is NOT a
+  q·η(2.0,2.2) peculiarity — it is a **ΔR-dependent SATURATION of the single-muon efficiency**
+  (R4). §2 assumes "the singles terms ε₁, ε₂ carry **no** ΔR dependence — critical for the
+  PbPb union formula, whose linear terms cannot be absorbed into the cross term." Measured
+  violation at pT 4–6: **ε(ΔR<0.12)/ε(ΔR>1) = 1.20 (pp) / 1.34 (overlay)** inclusive, up to
+  **1.9–2.1** in forward q·η bins.
+  - **pp / 2mu4 (product form) — SAFE.** ε_ΔR^2mu4 is *defined* relative to ε₁ε₂ using the
+    MC's own Step-1 fits, so it absorbs the singles enhancement by construction, and any
+    per-leg normalization error cancels exactly in that ratio (§3.3 self-consistency). The pp
+    deliverable is unaffected — including by the forward-saturation anomaly above.
+  - **PbPb / mu4 (union form) — AT RISK.** In `P = ε₁ + ε₂ − ε₁ε₂·ε_ΔR^cross`, the **linear**
+    ε₁, ε₂ are the data-derived ε^nc, measured at ΔR > 0.8 and applied ΔR-independently. The
+    true single-leg efficiency is up to ~34% higher (inclusive) at ΔR < 0.12, and that error
+    **cannot** be absorbed by ε_ΔR^cross. **Proposed (NOT yet implemented — awaiting user):**
+    carry ε_single(ΔR)/ε_single(ΔR>1) — a *ratio*, in which the L1 normalization offset
+    largely cancels — as a ΔR-dependent correction on the union's linear terms, or reformulate
+    the union weight. Per the tracking-doc rules the Physics Procedure is NOT changed without
+    user approval, so §2 is left as-is and this is flagged.
+  - **Also refines the Step-3 note:** the overlay small-ΔR cross-term enhancement (1.95) was
+    attributed to "one L1 RoI matching both offline muons". That is now shown to be wrong: the
+    enhancement is flat out to ΔR ≈ 0.12, which is **4× the 0.02 matching cone**, so a shared
+    HLT object could only double-flag ΔR < 0.04. It is genuine L1 hit-sharing / close-by
+    recovery, not double-matching (85% both-legs-fire at ΔR<0.2 vs 37% expected for
+    independent legs). KB-coherent: Run-2 ρ_ΔR is the *inefficiency of resolving two
+    overlapping RoIs at L1* (and official J/ψ T&P rejects ΔR<0.2 for exactly this), while
+    Run-3 added RPC close-by di-muon recovery + an inside-out HLT algorithm ⇒ single-leg match
+    ENHANCED, 2-resolved-RoI 2mu4 SUPPRESSED — precisely the two signs measured.
+
+- 2026-07-14 — **S12 plots re-reviewed: /review-plot APPROVED at iteration 3** (log
+  `.claude/logs/review-plot-20260714-022830-mc-trig-eff-s12-rebin-ratio.md`). Iter-1 FAIL
+  caught a real defect in my coarse rebinning: the pT edges were **rounded literals**
+  ({4, 5.1, 6.5, …}) that do not coincide with the native 41-bin variable axis, so
+  `TH1::Rebin` was printing "bin edge does not match … result can be inconsistent" and
+  grouping by bin centre. Fixed with a `SnapToAxis()` that snaps each target to the nearest
+  EXACT native edge and **throws** otherwise; reviewer verified zero ROOT warnings, exact
+  content conservation, and num ≤ denom in every coarse bin. Iter-2 FAIL caught a regression
+  from my own y-range cap (two overlay Step-3 points pushed off-frame **unmarked**) → every
+  off-scale point now carries an up-arrow and is listed on the canvas. **Also added (criterion
+  R3, which post-dates the last review of these plots): ratio panels on every Step-1
+  (MC/data) and Step-2 (/ΔR≥1) canvas** — this is what made the anomaly quantitative rather
+  than eyeballed. All 24 PNGs regenerated; both plateaus unchanged by all of it.
+
 ## Results & Observations
 
 ### R1. NTP discovery (2026-07-10, Explore agent + orchestrator check)
@@ -505,15 +652,121 @@ define+filter pattern to mirror at `RDFBasedHistFillingPythiaFullsim.cxx:128-139
   mu4_mu4noL1/ subdirs; per-year leaf dirs like `pT_fitting/pp24<wp_suffix>`). MC study dirs
   will follow this convention: one directory per step per sample family.
 
+### R3. MC-vs-data Step-1 structure: barrel offset vs forward turn-on saturation (2026-07-14)
+
+pp24, charge-averaged, MC (singles tree) / DATA (2D cell integrals over the SAME pT window):
+
+| q·η bin | MC 4–6 | DATA 4–6 | ratio | **plateau ratio (8–15)** | turn-on excess = r(4–6)/r(8–15) |
+|---|---|---|---|---|---|
+| (−2.4,−2.0) | 0.899 | 0.600 | 1.50 | **1.01** | **1.49** |
+| (−2.0,−1.6) | 0.916 | 0.842 | 1.09 | **1.03** | 1.06 |
+| (−1.6,−1.3) | 0.734 | 0.754 | 0.97 | **1.01** | 0.96 |
+| (−0.9,−0.5) | 0.810 | 0.643 | 1.26 | **1.23** | 1.02 |
+| (−0.5,−0.1) | 0.850 | 0.684 | 1.24 | **1.22** | 1.02 |
+| ( 0.1, 0.5) | 0.773 | 0.632 | 1.22 | **1.21** | 1.01 |
+| ( 0.5, 1.0) | 0.599 | 0.529 | 1.13 | **1.18** | 0.96 |
+| ( 1.3, 1.6) | 0.475 | 0.465 | 1.02 | **1.01** | 1.01 |
+| ( 1.6, 2.0) | 0.659 | 0.609 | 1.08 | **1.02** | 1.06 |
+| ( 2.0, 2.2) | 0.507 | 0.366 | 1.38 | **1.02** | **1.35** |
+
+Two cleanly separated effects: (1) a **barrel-only** flat ~1.18–1.26 plateau offset
+(KB-explained: optimistic barrel-RPC L1 simulation); (2) a **turn-on-width excess confined to
+|q·η| > 2.0** (1.49 / 1.35) — everywhere else the turn-on excess is 0.96–1.06.
+
+Forward turn-on, pp q·η ∈ (−2.4,−2.0): MC is already **at plateau in its first pT bin**
+(0.8888 ± 0.0059 at 4.0–4.5) while data rises 0.450 → 0.924; plateaus agree to 1%. KB Run-2 §9
+says the *endcap* turn-on should be BROAD (barrel is the steeper one) ⇒ the saturated MC curve
+is the unphysical one. The overlay in the same bin turns on normally (0.355 → 0.856) and sits
+*below* its data at low pT — opposite sign, same root cause (item 3a).
+
+### R4. ΔR-dependent saturation of the SINGLE-muon efficiency (2026-07-14) — the §2 assumption-(i) violation
+
+pp24, pT 4–6, Tight, per fine q·η bin — ε(ΔR<0.12) vs ε(ΔR>1.0):
+
+| q·η | ε(ΔR<0.12) | ε(ΔR>1) | close/iso |
+|---|---|---|---|
+| (−2.4,−2.0) | 0.928 ± 0.012 | 0.905 | 1.03 |
+| (−1.6,−1.3) | 0.824 ± 0.016 | 0.730 | 1.13 |
+| ( 0.5, 1.0) | 0.697 ± 0.015 | 0.602 | 1.16 |
+| ( 1.3, 1.6) | 0.769 ± 0.018 | 0.465 | 1.65 |
+| ( 1.6, 2.0) | 0.931 ± 0.010 | 0.661 | 1.41 |
+| ( 2.0, 2.2) | 0.928 ± 0.016 | 0.488 | **1.90** |
+| **ALL** | **0.828 ± 0.004** | **0.689 ± 0.002** | **1.202** |
+
+Overlay (0–5%): ALL ε(ΔR<0.12) = 0.684 ± 0.014 vs ε(ΔR>1) = 0.512 ± 0.006 → **1.337**;
+per-bin up to **2.08** in (2.0,2.2).
+
+**SATURATION, not a q·η peculiarity:** ε(ΔR<0.12) lands at ~0.85–0.94 in *every* q·η bin,
+nearly independent of the isolated-muon efficiency (0.47–0.93). The apparent "excess" is just
+(saturation − ε_isolated), largest where ε_isolated is smallest — which is why it looks huge in
+(2.0,2.2) (ε_iso = 0.49, the smallest) and vanishes in (−2.4,−2.0) (ε_iso = 0.90, already
+saturated). **R3 and R4 are two faces of the same MC behaviour.**
+
+**Not double-matching.** Fine ΔR scan (pp, q·η 1.6–2.2, pT 4–6): 0.935 (ΔR<0.04) / 0.955
+(0.04–0.08) / 0.907 (0.08–0.12) / 0.780 (0.12–0.20) / 0.611 (0.20–1.0) / 0.608 (>1.0). The
+per-muon matching cone is ΔR < 0.02, so a shared HLT object could only double-flag ΔR < 0.04 —
+yet the enhancement is flat and full out to ΔR ≈ 0.12. Correlation at ΔR<0.2 (forward legs,
+N=320): both legs fire **85.0%**, exactly one 12.2% — vs 37% / 48% expected for independent
+legs at ε = 0.61. ⇒ the HLT genuinely reconstructs both close muons.
+
+### R5. Bookkeeping correction (2026-07-14)
+
+The NTP "reco-matched muons" counter (477 135 pp / 95 797 overlay) is **not** the single-muon
+TREE entry count (**475 108** pp / **95 389** overlay) — the tree applies a further
+`pt>3 && |η|<2.6` gate. Earlier Progress-Log entries quoting 455 440 / 95 410 etc. are the
+same class of counter; when quoting statistics, state which one. All physics numbers in this
+doc reproduce from the trees (independently verified by the /review-plot reviewer).
+
+**Step-1 comparison asymmetry worth quantifying before the MC/data ratio is quoted in the
+note:** the MC single-muon tree denominator contains only **reco-matched (real)** muons
+(`PythiaFullSimExtras.c:309-311`), while the data T&P denominator contains **all** offline
+muons including fakes (~zero trigger efficiency), which dilutes ε_data at low pT. This inflates
+MC/data at low pT *everywhere*; it cannot explain the |η|>2.0 localization (which survives a
+plateau-normalized comparison), but it is a real asymmetry in the Step-1 validation.
+
 ## Remaining Work
 
-- Implementation Plan steps 1–8 (pp first, then overlay).
-- Later: re-run downstream when the 2 in-flight pp slices land (D3) and when the full-stat
-  productions arrive (all-centrality PbPb24-conditions overlay; lifts D2).
+**Blocking / needs user decision:**
+1. **The §2 assumption-(i) violation (R4)** — decide how the PbPb **union** weight handles the
+   ΔR-dependent singles efficiency (proposed: a ΔR-dependent ratio correction
+   ε_single(ΔR)/ε_single(ΔR>1) on the linear terms; alternative: reformulate the union weight).
+   The Physics Procedure §2 is deliberately NOT edited pending that decision. **pp/2mu4 is
+   unaffected and can proceed.**
+2. **Merge of branch `mc-trigger-efficiency` → master is HELD** (user, 2026-07-14) until the
+   sibling session commits its `isTestSample`/isospin refactor: commit `8c917b4` changed the
+   pp isospin default without its companion runner fix, so the committed pp runners silently
+   drop 3/4 of the pp statistics (S11).
+
+**Open questions / follow-ups:**
+3. **One question for the trigger group** (the only thing standing between us and the
+   microscopic cause of R3): which L1-muon **endcap** configuration (inner/NSW coincidence,
+   TGC coincidence-window LUTs) do the **r16578** (pp24-conditions) and **r17618**
+   (PbPb23-conditions) simulations use, and is the pp low-μ endcap coincidence applied in data
+   but not in that MC?
+4. **Double-matching cross-check for R4** (would close it outright): propagate the tighter-cone
+   per-muon branch `muon_b_HLT_mu4_L1MU3V_0_01` (and/or `_V2`/`_V3`) via an NTP flag with a
+   distinct output suffix (provenance rule). If ε(ΔR<0.12) is unchanged, double-matching is
+   excluded.
+5. **Quantify the Step-1 denominator asymmetry** (MC = real muons only; data = includes fakes)
+   before quoting the Step-1 MC/data ratio as a number in the note (R5).
+6. **Plateau-normalize ε_ΔR** before it is applied to crossx (unchanged precondition); pp
+   plateau 0.9588 ± 0.0094, overlay 0.8776 ± 0.0257.
+7. Re-run downstream when the full-stat productions arrive (all-centrality PbPb24-conditions
+   overlay; lifts D2). **D3 is now LIFTED** — all 24 pp slices are in.
 
 ## Latest Stage
 
-**2026-07-14 — Steps 10–15 (user request, 6 items). PLAN (written before work):**
+**2026-07-14 — Steps S10–S15 COMPLETE except the merge (S15), which is HELD by user decision.**
+Items 0, 1, 2, 3a, 3b, 4 all done and reviewed (/review-plot APPROVED iter 3; the q·η
+investigation returned NOT-a-code-bug with a KB-grounded evidence chain). Two things now sit
+with the user: (a) **the §2 assumption-(i) violation** — the singles efficiency IS ΔR-dependent
+(R4), which puts the **PbPb union** weight at risk while leaving **pp/2mu4 safe**; (b) the
+**merge**, held until the sibling session commits its runner/isospin refactor (S11). See
+Remaining Work items 1–2. Everything else regenerated and consistent.
+
+---
+
+**Original PLAN (written before work, retained for the record):**
 
 - **S10 (item 0) — remove the Step-9 SF variant.** User: Step 1 is MC vs data, no SF
   factor. Delete `step1_singles_data_mc_sf/` (both samples) and the
