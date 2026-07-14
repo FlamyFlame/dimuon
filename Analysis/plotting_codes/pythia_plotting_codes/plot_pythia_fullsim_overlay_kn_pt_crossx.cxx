@@ -4,6 +4,11 @@
 // Selection: muon_pair_tree_kin*_sign2 with from_same_b.
 // Two plots: truth_pair_pt and reco pair_pt (pair_pass_medium additionally required).
 
+// UNITS (do not "fix" this back): the per-pair `weight` is sigma*genFiltEff*r_isospin/N_beam
+// with the AMI cross-section in **nb** (Analysis/docs/ami_weights.md). No unit conversion is
+// applied anywhere below, so dsigma/dpT is in **nb/GeV**. The axis was previously labelled
+// [ub/GeV] -- a 1000x mislabel. Comparing to pp DATA (dsigma = N/L, L in pb^-1) needs nb->pb, x1000.
+
 #include <ROOT/RDataFrame.hxx>
 #include <ROOT/RDF/InterfaceUtils.hxx>
 #include <TCanvas.h>
@@ -112,7 +117,7 @@ void overlay_plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix
         for (int ikn = 0; ikn < kNkn; ikn++) {
             auto* h = hists[ikn];
             h->GetXaxis()->SetTitle(kVarTitles[ivar].c_str());
-            h->GetYaxis()->SetTitle("d#sigma/dp_{T} [#mub/GeV]");
+            h->GetYaxis()->SetTitle("d#sigma/dp_{T} [nb/GeV]");
             h->GetXaxis()->SetRangeUser(8., xmax_arg);
             h->GetYaxis()->SetRangeUser(ymin * 0.3, ymax * 5.);
             h->GetXaxis()->SetTitleSize(0.05); h->GetYaxis()->SetTitleSize(0.05);
@@ -134,7 +139,7 @@ void overlay_plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix
         for (int ikn = 0; ikn < kNkn; ikn++) hs->Add(hists[ikn]);
         hs->Draw("hist");
         hs->GetXaxis()->SetTitle(kVarTitles[ivar].c_str());
-        hs->GetYaxis()->SetTitle("d#sigma/dp_{T} [#mub/GeV]");
+        hs->GetYaxis()->SetTitle("d#sigma/dp_{T} [nb/GeV]");
         hs->GetXaxis()->SetRangeUser(8., xmax_arg);
         hs->GetXaxis()->SetTitleSize(0.05); hs->GetYaxis()->SetTitleSize(0.05);
         hs->GetXaxis()->SetTitleOffset(1.1); hs->GetYaxis()->SetTitleOffset(1.5);
@@ -220,7 +225,7 @@ void overlay_plot_stat_error_forecast(int nbins_arg, double xmax_arg, const std:
         for (int ikn = 0; ikn < kNkn; ikn++) {
             auto* h = hists[ikn];
             h->GetXaxis()->SetTitle(kVarTitles[ivar].c_str());
-            h->GetYaxis()->SetTitle("d#sigma/dp_{T} [#mub/GeV]");
+            h->GetYaxis()->SetTitle("d#sigma/dp_{T} [nb/GeV]");
             h->GetXaxis()->SetRangeUser(8., xmax_arg);
             h->GetYaxis()->SetRangeUser(ymin_d * 0.3, ymax_d * 5.);
             h->GetXaxis()->SetTitleSize(0.05); h->GetYaxis()->SetTitleSize(0.05);
@@ -326,7 +331,7 @@ void overlay_plot_err_fraction_map(int nbins_arg, double xmax_arg, const std::st
         for (int ikn = 0; ikn < kNkn; ikn++) {
             auto* h = hists[ikn];
             h->GetXaxis()->SetTitle(kVarTitles[ivar].c_str());
-            h->GetYaxis()->SetTitle("d#sigma/dp_{T} [#mub/GeV]");
+            h->GetYaxis()->SetTitle("d#sigma/dp_{T} [nb/GeV]");
             h->GetXaxis()->SetRangeUser(8., xmax_arg);
             h->GetYaxis()->SetRangeUser(ymin_d * 0.3, ymax_d * 5.);
             h->GetXaxis()->SetTitleSize(0.05); h->GetYaxis()->SetTitleSize(0.05);
@@ -434,7 +439,7 @@ void overlay_plot_err_ratio_map(int nbins_arg, double xmax_arg, const std::strin
         for (int ikn = 0; ikn < kNkn; ikn++) {
             auto* h = hists[ikn];
             h->GetXaxis()->SetTitle(kVarTitles[ivar].c_str());
-            h->GetYaxis()->SetTitle("d#sigma/dp_{T} [#mub/GeV]");
+            h->GetYaxis()->SetTitle("d#sigma/dp_{T} [nb/GeV]");
             h->GetXaxis()->SetRangeUser(8., xmax_arg);
             h->GetYaxis()->SetRangeUser(ymin_d * 0.3, ymax_d * 5.);
             h->GetXaxis()->SetTitleSize(0.05); h->GetYaxis()->SetTitleSize(0.05);
