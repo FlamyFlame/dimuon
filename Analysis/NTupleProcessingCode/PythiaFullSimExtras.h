@@ -40,6 +40,16 @@ protected:
     Bool_t               b_HLT_mu4  {};                   // event-level decisions (diagnostics)
     Bool_t               b_HLT_2mu4 {};
 
+    // reco/ID efficiency SFs (skim tools; filled only for WP-passing muons, <=0 otherwise)
+    std::vector<float>*  muon_eff_SF_medium    = nullptr;
+    std::vector<float>*  muon_eff_SF_tight     = nullptr;
+    // unfilled-SF bookkeeping: [0]=reco-matched muons, [1]=SF_medium<=0 (of which pass_medium),
+    // [2]=SF_tight<=0 (of which pass_tight); split so the WP-passing fraction is exact
+    long long n_sf_recomatched   = 0;
+    long long n_sf_med_unfilled  = 0, n_sf_med_unfilled_wp  = 0, n_sf_med_wp  = 0;
+    long long n_sf_tgt_unfilled  = 0, n_sf_tgt_unfilled_wp  = 0, n_sf_tgt_wp  = 0;
+    void FinalizeExtra();
+
     // Look up the skim's pair index for two raw-NTUP reco-muon indices and return the
     // pair-level 2mu4 match decision. Throws if the pair is not in the skim block
     // (must not happen for two valid reco indices — fail fast rather than bias).

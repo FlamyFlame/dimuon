@@ -50,6 +50,12 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::InitInputExtra(){
             enable_and_bind(ch, "muon_pair_muon2_index"         , &muon_pair_muon2_index);
             enable_and_bind(ch, "b_HLT_mu4_L1MU3V"              , &b_HLT_mu4);
             enable_and_bind(ch, "b_HLT_2mu4_L12MU3V"            , &b_HLT_2mu4);
+            // reco/ID SFs ship with the same trigger-enabled skim; missing = config error
+            if (!ch->GetBranch("muon_eff_SF_medium") || !ch->GetBranch("muon_eff_SF_tight"))
+                throw std::runtime_error("store_mc_trigger: trigger branches present but "
+                                         "muon_eff_SF_{medium,tight} missing - unexpected skim content");
+            enable_and_bind(ch, "muon_eff_SF_medium", &muon_eff_SF_medium);
+            enable_and_bind(ch, "muon_eff_SF_tight" , &muon_eff_SF_tight);
             return true;
         };
 
@@ -74,6 +80,21 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::InitInputExtra(){
             }
         }
     }
+}
+
+template <class PairT, class MuonT, class Derived>
+void PythiaFullSimExtras<PairT, MuonT, Derived>::FinalizeExtra(){
+    if (!self().store_mc_trigger || n_sf_recomatched == 0) return;
+    auto pct = [](long long a, long long b){ return b > 0 ? 100.0 * a / b : 0.0; };
+    std::cout << "SF fill report (store_mc_trigger): " << n_sf_recomatched << " reco-matched muons\n"
+              << "  SF_medium unfilled (<=0, set to 1): " << n_sf_med_unfilled
+              << " (" << pct(n_sf_med_unfilled, n_sf_recomatched) << "% of reco-matched); "
+              << "among pass_medium muons: " << n_sf_med_unfilled_wp << "/" << n_sf_med_wp
+              << " (" << pct(n_sf_med_unfilled_wp, n_sf_med_wp) << "%)\n"
+              << "  SF_tight  unfilled (<=0, set to 1): " << n_sf_tgt_unfilled
+              << " (" << pct(n_sf_tgt_unfilled, n_sf_recomatched) << "% of reco-matched); "
+              << "among pass_tight muons: " << n_sf_tgt_unfilled_wp << "/" << n_sf_tgt_wp
+              << " (" << pct(n_sf_tgt_unfilled_wp, n_sf_tgt_wp) << "%)" << std::endl;
 }
 
 template <class PairT, class MuonT, class Derived>
@@ -205,11 +226,24 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
         m.pass_tight  = (m.pass_medium && (m.quality & 16));
 
         m.reco_ind = reco_ind;
-        if (self().store_mc_trigger)
+        if (self().store_mc_trigger){
             // per-muon mu4 match, indexed by the raw-NTUP reco index (data-mirror,
             // DimuonDataAlgCoreT: m.passmu4 = muon_b_HLT_mu4->at(m.ind)).
             // NO mu6/mu8 OR-ing: support triggers are disabled everywhere (data D7).
             m.passmu4 = muon_b_HLT_mu4->at(reco_ind);
+
+            // reco/ID SFs: the skim fills them only for WP-passing muons (<=0 otherwise).
+            // Unfilled -> 1 (neutral weight), counted for the fill-fraction report.
+            ++n_sf_recomatched;
+            const float sf_m = muon_eff_SF_medium->at(reco_ind);
+            const float sf_t = muon_eff_SF_tight ->at(reco_ind);
+            if (m.pass_medium) ++n_sf_med_wp;
+            if (m.pass_tight)  ++n_sf_tgt_wp;
+            if (sf_m > 0.f) m.eff_sf_medium = sf_m;
+            else { m.eff_sf_medium = 1.f; ++n_sf_med_unfilled; if (m.pass_medium) ++n_sf_med_unfilled_wp; }
+            if (sf_t > 0.f) m.eff_sf_tight = sf_t;
+            else { m.eff_sf_tight = 1.f; ++n_sf_tgt_unfilled; if (m.pass_tight) ++n_sf_tgt_unfilled_wp; }
+        }
     };
 
     // ---- Truth-to-reco matching: barcode only, exclusive (one reco muon per truth) ----

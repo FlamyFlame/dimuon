@@ -321,6 +321,9 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
 
     // keep dataframes alive until merge
     std::vector<std::unique_ptr<ROOT::RDataFrame>> rdf_store;
+    // (charge, N selected, N with SF exactly 1 == unfilled) for the Step-1 SF report
+    std::vector<std::tuple<std::string, ROOT::RDF::RResultPtr<ULong64_t>,
+                           ROOT::RDF::RResultPtr<ULong64_t>>> acc_sf_counts;
 
     int booking_id = 0;
     auto uniq = [&booking_id](const std::string& base) {
@@ -333,12 +336,22 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
         // =====================================================================
         rdf_store.emplace_back(std::make_unique<ROOT::RDataFrame>("muon_tree", cfg.singles_file));
         ROOT::RDF::RNode ds = *rdf_store.back();
+        const std::string sf_col = use_tight_wp ? "eff_sf_tight" : "eff_sf_medium";
         ds = ds.Define("q_eta", "(float)(charge * eta)")
                .Define("w", "(double)ev_weight")
+               // MC x SF numerator weight: per-muon reco/ID SF of the active WP.
+               // NTP sets SF=1 where the skim left it unfilled (SF maps start at pT=5 GeV,
+               // so 4-5 GeV is uncorrected by construction; percentages in the NTP report).
+               .Define("w_sf", "(double)(ev_weight * " + sf_col + ")")
                .Filter(sel_single_full, "singles selection");
 
         for (const auto& [chg, chg_cut] : charges) {
             auto dc = ds.Filter(chg == "muplus" ? "charge > 0" : "charge < 0", chg);
+            // fraction of selected muons with SF exactly 1 (== unfilled, up to the
+            // measure-zero chance of a genuine SF=1.0) -- reported per charge
+            auto n_sel = dc.Count();
+            auto n_sf1 = dc.Filter(sf_col + " == 1.0f").Count();
+            acc_sf_counts.emplace_back(chg, std::move(n_sel), std::move(n_sf1));
             auto book_singles = [&](ROOT::RDF::RNode node, const std::string& nd) {
                 acc1D.add("h_mc_pt_" + nd + "_" + chg,
                     node.Histo1D({uniq("h_mc_pt_" + nd + "_" + chg).c_str(), ";p_{T} [GeV];entries",
@@ -358,6 +371,25 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
             };
             book_singles(dc, "denom");                                       // NO trigger requirement (§4)
             book_singles(dc.Filter("passmu4", chg + " mu4"), "num");         // muon's OWN mu4 match
+            // MC x SF variant: same numerator condition, weight w -> w_sf. Ratio to the
+            // (unchanged) denominator gives <SF * pass> / <1> = the SF-scaled efficiency.
+            {
+                auto num_sf = dc.Filter("passmu4", chg + " mu4 (sf)");
+                acc1D.add("h_mc_pt_num_sf_" + chg,
+                    num_sf.Histo1D({uniq("h_mc_pt_num_sf_" + chg).c_str(), ";p_{T} [GeV];entries",
+                                    static_cast<int>(bins.pt.size()) - 1, bins.pt.data()}, "pt", "w_sf"));
+                acc1D.add("h_mc_eta_num_sf_" + chg,
+                    num_sf.Histo1D({uniq("h_mc_eta_num_sf_" + chg).c_str(), ";#eta;entries",
+                                    static_cast<int>(bins.eta.size()) - 1, bins.eta.data()}, "eta", "w_sf"));
+                acc1D.add("h_mc_phi_num_sf_" + chg,
+                    num_sf.Histo1D({uniq("h_mc_phi_num_sf_" + chg).c_str(), ";#phi;entries",
+                                    static_cast<int>(bins.phi.size()) - 1, bins.phi.data()}, "phi", "w_sf"));
+                acc2D.add("h_mc_pt_vs_q_eta_num_sf_" + chg,
+                    num_sf.Histo2D({uniq("h_mc_pt_vs_q_eta_num_sf_" + chg).c_str(), ";q#eta;p_{T} [GeV]",
+                                    static_cast<int>(bins.q_eta.size()) - 1, bins.q_eta.data(),
+                                    static_cast<int>(bins.pt.size()) - 1, bins.pt.data()},
+                                   "q_eta", "pt", "w_sf"));
+            }
         }
 
         // =====================================================================
@@ -470,6 +502,15 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
 
     // ---------- sanity printout ----------
     if (!do_step3) {
+        std::cout << "\n===== Step-1 SF fill report (selected muons; SF==1 <=> unfilled, set to 1"
+                  << " by NTP; SF maps start at pT=5 GeV) =====" << std::endl;
+        for (auto& [chg, n_sel, n_sf1] : acc_sf_counts) {
+            const double f = n_sel.GetValue() > 0
+                ? 100.0 * n_sf1.GetValue() / n_sel.GetValue() : 0.0;
+            std::cout << "  " << chg << ": " << n_sf1.GetValue() << " / " << n_sel.GetValue()
+                      << " selected muons with SF==1 (" << f << "%)" << std::endl;
+        }
+
         std::cout << "\n===== Step-1 sanity: weighted P(mu4 | selection), sample=" << cfg.label
                   << " =====" << std::endl;
         for (const auto& chg : {std::string("muplus"), std::string("muminus")}) {
