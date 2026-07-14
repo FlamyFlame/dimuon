@@ -26,7 +26,17 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_PythiaCore() {
         kinRanges  = {8.f, 14.f, 24.f, 40.f, 70.f, 125.f, 300.f};
         py_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_truth_full_sample/pythia_5p36TeV/";
         fullsim_input_dir = fullsim_input_dir_override.empty()
-            ? FullSimSampleInputDir(fullsim_sample_type) : fullsim_input_dir_override;
+            ? FullSimSampleInputDir(fullsim_sample_type, isTestSample) : fullsim_input_dir_override;
+        // AMI: the TEST sample's cross-sections live with the truth production (py_dir); the FULL
+        // sample ships its OWN ami_info/ (different DSIDs => different sigma*eff, slice-dependent).
+        // Driven by the SAME isTestSample switch, so the input files and their cross-sections
+        // cannot come from different productions.
+        if (ami_info_dir_override.empty())
+            ami_info_dir_override = isTestSample ? (py_dir + "ami_info/")
+                                                 : (fullsim_input_dir + "ami_info/");
+        std::cout << "PythiaAlgCoreT: fullsim sample = " << (isTestSample ? "TEST" : "FULL")
+                  << ", input_dir=" << fullsim_input_dir
+                  << ", ami_dir=" << ami_info_dir_override << std::endl;
         const std::string label = FullSimSampleLabel(fullsim_sample_type);
         outfile_name     = "muon_pairs_pythia_fullsim_" + label;
         outhistfile_name = "hists_pythia_ntuple_processing_fullsim_" + label;

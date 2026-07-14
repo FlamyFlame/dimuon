@@ -59,17 +59,21 @@ void plot_single_muon_reco_effcy(
     const bool is_overlay = (mode == "overlay");
 
     // Muon working-point selection. Only the quality bit differs; every other cut is unchanged.
+    // Which fullsim production to read (TRUE = TEST sample = the only one with NTP output today).
+    // Also fixes the isospin treatment upstream (FullSimSampleType.h) -- one switch, cannot drift.
+    const bool is_test_sample = true;
+
     const std::string wp_filter = useTight ? "pass_tight" : "pass_medium";
     const std::string wp_label  = useTight ? "tight"      : "medium";
 
     std::string data_dir, plot_dir_base, input_file, sample_label;
     if (is_overlay) {
-        data_dir   = FullSimSampleInputDir(FullSimSampleType::hijing);
+        data_dir   = FullSimSampleInputDir(FullSimSampleType::hijing, is_test_sample);
         input_file = data_dir + "muon_pairs_pythia_fullsim_hijing_overlay_pbpb23_no_data_resonance_cuts_single_muon.root";
         plot_dir_base = data_dir + "plots/hijing_overlay_pbpb23_single_muon_reco_effcy/";
         sample_label = "Pythia fullsim HIJING overlay";
     } else {
-        data_dir   = FullSimSampleInputDir(FullSimSampleType::pp);
+        data_dir   = FullSimSampleInputDir(FullSimSampleType::pp, is_test_sample);
         input_file = data_dir + "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_single_muon.root";
         plot_dir_base = data_dir + "plots/pp24_single_muon_reco_effcy/";
         sample_label = "Pythia fullsim pp24";

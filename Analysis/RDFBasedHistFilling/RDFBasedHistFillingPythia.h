@@ -105,6 +105,14 @@ public:
 };
 
 class RDFBasedHistFillingPythiaFullsim : public virtual RDFBasedHistFillingPythia {
+public:
+    // Which fullsim production's NTuple-processing output to read. MUST match the isTestSample
+    // used to produce it (PythiaAlgCoreT.h). TRUE today because only the TEST sample has NTP
+    // output; flip to false once the FULL sample lands (it writes the "_full" suffix).
+    // The TEST sample's 4-beam combination carries the Pb 4:6:6:9 isospin average, so any
+    // cross-section from it is NOT a physical pp cross-section -- label it honestly.
+    bool is_test_sample = true;
+
 protected:
     // --- filter levels ---
     std::vector<std::vector<std::string>> levels_reco_effcy_filters;

@@ -40,6 +40,13 @@ public:
     double min_denom_neff = 10.0;
     std::string extra_tag = ""; // appended to histogram filename and plot dir name
 
+public:
+    // Which fullsim production to read. TRUE = the small TEST sample -- the only one with
+    // NTuple-processing output today; flip to false when the FULL sample lands. The SAME switch
+    // fixes the isospin treatment upstream (FullSimSampleType.h), so input path and isospin
+    // weight cannot drift apart.
+    bool is_test_sample = true;
+
 protected:
     bool tight_WP;
     bool require_signal_cuts;
@@ -623,7 +630,7 @@ public:
 
 protected:
     std::string GetDataDir() const override {
-        return FullSimSampleInputDir(FullSimSampleType::pp);
+        return FullSimSampleInputDir(FullSimSampleType::pp, is_test_sample);
     }
     std::string GetPlotDirPrefix() const override {
         return FullSimSamplePlotDir(FullSimSampleType::pp);
@@ -663,7 +670,7 @@ public:
 
 protected:
     std::string GetDataDir() const override {
-        return FullSimSampleInputDir(fullsim_sample_type);
+        return FullSimSampleInputDir(fullsim_sample_type, is_test_sample);
     }
     std::string GetPlotDirPrefix() const override {
         return FullSimSamplePlotDir(fullsim_sample_type);

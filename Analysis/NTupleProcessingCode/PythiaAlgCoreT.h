@@ -41,20 +41,9 @@ protected:
     bool useLocal = false;
     bool only_pp_isospin = false;   // TRUTH path only (InitInputCentrProd)
 
-    // ---- Isospin content of the SIMULATED COLLISION SYSTEM (fullsim paths) ----
-    // The beam content must match the system the sample simulates:
-    //   pp CONDITIONS fullsim (FullSimSampleType::pp) simulates pp collisions
-    //     -> ONE beam (pp), and the isospin weight is 1 (there is nothing to average).
-    //   PbPb CONDITIONS HIJING overlay simulates Pb+Pb, whose nucleons are a p/n mix
-    //     -> FOUR beams {pp,pn,np,nn}, combined with the Pb ratio 4:6:6:9.
-    // The TEST samples are exceptions in BOTH directions -- they are what happens to
-    // exist on disk, not what the physics wants:
-    //   pp24 test sample        = 4 beams (a production mistake; kept so the existing
-    //                             test-sample results stay reproducible)
-    //   HIJING overlay test smp = pp beam only (the 4-beam overlay full sample is in
-    //                             production)
-    // so each run must be able to override the sample-type default.
-    // -1 = use the sample-type default | 0 = force pp-beam only | 1 = force 4 beams
+    // Escape hatch only. -1 = derive from (sample type, isTestSample) -- the correct behaviour.
+    // 0 = force pp-beam only | 1 = force 4 beams. Do NOT use to paper over a wrong isTestSample.
+    // (isTestSample itself is PUBLIC -- see the config section below.)
     int isospin_beams_override = -1;
 
     int batch_num = 0;
@@ -270,20 +259,32 @@ public:
     int GetKnBatch() const { return kn_batch; }
     void SetKnBatch(int kn) { kn_batch = kn; }
 
-    // Beam content of a fullsim run (see isospin_beams_override above).
-    // Default: the HIJING overlay simulates Pb+Pb -> 4 isospin beams (4:6:6:9);
-    // pp-conditions fullsim simulates pp -> the pp beam alone, isospin weight 1.
-    // Public so a run script can override it for the two test samples, which are
-    // exceptions in both directions.
+    // Beam content of a fullsim run. Derived from (sample type, isTestSample) -- ONE switch,
+    // so the input path and the isospin weight cannot drift apart. See FullSimSampleType.h.
     bool UseFourIsospinBeams() const {
-        if (isospin_beams_override >= 0) return isospin_beams_override == 1;
-        return FullSimSampleIsOverlay(fullsim_sample_type);
+        if (isospin_beams_override >= 0) return isospin_beams_override == 1;  // escape hatch
+        return FullSimSampleUsesFourBeams(fullsim_sample_type, isTestSample);
     }
     void setIsospinBeams(bool four_beams) { isospin_beams_override = four_beams ? 1 : 0; }
 
     bool turn_data_resonance_cuts_on = false;
     bool fill_kn_trees_fullsim = false;  // set true to bin fullsim pairs into per-kn trees
     std::string fullsim_input_dir_override;  // if non-empty, replaces computed fullsim_input_dir
+
+    // ---- THE fullsim sample switch: TEST sample vs FULL production ----
+    // ONE flag drives the input directory, the AMI cross-section directory, AND the isospin
+    // treatment, so they can never disagree. The authoritative rule lives in FullSimSampleType.h
+    // (FullSimSampleInputDir / FullSimSampleUsesFourBeams):
+    //   isTestSample = false (DEFAULT) = the FULL production -- the physics sample
+    //       pp conditions  -> pp full sample,      pp beam only, isospin weight 1
+    //       HIJING overlay -> overlay full sample, 4 beams,      Pb ratio 4:6:6:9
+    //   isTestSample = true            = the small TEST sample
+    //       pp conditions  -> pp24 test sample,    4 beams (produced that way BY MISTAKE)
+    //       HIJING overlay -> overlay test sample, pp beam only (only beam produced)
+    // Default false because the full production is the physics sample; a test-sample run must
+    // declare itself. NOTE: a cross-section from the 4-beam pp24 TEST sample carries the Pb
+    // isospin average and is therefore NOT a physical pp cross-section -- label it honestly.
+    bool isTestSample = false;
 
     // DIAGNOSTIC ONLY (default false = strict). When true, a missing pT-hat slice is a
     // warning instead of a fatal error. Required for single-slice studies (e.g. the r17662
