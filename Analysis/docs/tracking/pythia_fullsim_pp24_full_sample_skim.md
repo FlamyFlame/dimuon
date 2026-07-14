@@ -395,6 +395,45 @@ self-correcting because `N_beam` is measured from the files actually chained); z
 Single-slice **diagnostic** runs (the r-tag dirs hold `pTH8_14` alone) opt out with
 `allow_missing_slices = true`.
 
+- 2026-07-14 — **AMI weights fetched + verified; the rule written into permanent space (user request).**
+  `pyami` re-queried for **all 24** test DSIDs (802758–802781) **and all 6** full-sample DSIDs
+  (803015–803020): **zero drift** vs what is on disk. New authoritative registry
+  **`Analysis/docs/ami_weights.md`** (per-DSID σ, genFiltEff, σ·ε_filt; the rule; the code guard;
+  the rerun blast radius). **BLOCKING rule added to `.claude/CLAUDE.md`** and to
+  `.claude/conventions/ntuple-provenance.md` (reviewer enforcement). Commit `be9b77a`.
+  > **THE RULE:** AMI weights are a HARD BLOCK on every MC dataset. Moving to a NEW dataset
+  > (test→full, new overlay, new generator, new tag, any new DSID) ⇒ fetch that dataset's OWN AMI
+  > weights from `pyami` FIRST. **NEVER reuse the old ones — it is a silent failure that
+  > propagates to final results.**
+  Why silent: AMI files are keyed by **beam+slice only**, so the filename is byte-identical across
+  productions — swap the dataset, leave the old `ami_info/` in place, and everything runs and every
+  number is wrong. Why it cancels nowhere: the error is **slice-dependent** (pp24 FULL/TEST σ·ε
+  ratio spans **0.879–1.545**), so it reweights the pT-hat mixture and survives every ratio,
+  including the MC trigger efficiency (a σ-weighted average over slices).
+
+- 2026-07-14 — **Overlay crossx rerun (minimal) + TWO honesty bugs found and fixed. Commit `92d9f06`.**
+  - **NTuple processing did NOT need a rerun.** The on-disk overlay NTP output (mtime 07-14 01:17)
+    was verified against the AMI table for **all 6 slices**: mean `weight` = σ·ε/N_beam with
+    isospin ratio **1.0000** in every slice ⇒ it is already the post-fix (D2) output. Only the
+    **plot** was stale. (This is the "only rerun what is needed" answer.)
+  - ⚠ **BUG 1 — the y-axis was mislabelled by 1000×.** Both crossx plots printed
+    `d#sigma/dp_{T} [#mub/GeV]` while applying **no unit conversion anywhere**. The weight carries
+    the AMI cross-section in **nb**, so the values are **nb/GeV**. Verified numerically: overlay
+    single-b total σ = **13.12 nb** (kin0 1.741, kin1 4.867, kin2 4.163, kin3 1.886, kin4 0.413,
+    kin5 0.049 nb), and the plotted kin0 integral matches **1.74 nb**, not 1.74 μb. Axis corrected
+    to **[nb/GeV]** on both plots (values unchanged) + a "do not fix this back" units comment.
+  - ⚠ **BUG 2 — the pp crossx plot was not honest** (USER: *"ANY crossx plot must be honest — this
+    is a key physics observable"*). It reads the pp24 **TEST** sample, which was produced with 4
+    isospin beams **by mistake** and is therefore combined with the **Pb 4:6:6:9 isospin average**.
+    A pp-conditions sample has nothing to isospin-average ⇒ that absolute σ is **NOT a physical pp
+    cross-section**. Both panels now carry an explicit red caption saying so. The honest pp σ will
+    come from the FULL sample (pp beam only, weight 1).
+  - Regenerated: 16 overlay plots (`.../pythia_fullsim_hijing_overlay_test_sample/plots/`) + 12 pp
+    plots (`.../pythia_fullsim_test_sample/plots/`), all `rc=0`. Shape check: smoothly falling
+    dσ/dp_T, each pT-hat slice peaking in its own range — physically sane.
+  - Backup of the pre-rerun overlay NTP kept:
+    `muon_pairs_...pbpb23_no_data_resonance_cuts.bak_pre_isospin_fix_20260714.root`.
+
 ## Results & Observations
 
 ### R1. Disk census of `~/usatlasdata` (real bytes, `du -sb`)
@@ -440,12 +479,10 @@ tmux new -s farm  ; ~/workarea/dimuon_codes/SkimCode/scripts/fullsim_pp24_full_t
 3. **Then:** `run_pythia_fullsim_full_sample.sh` (needs the farm).
 
 **Open items (NOT done):**
-- **Overlay NTP rerun + `plot_pythia_fullsim_overlay_kn_pt_crossx.cxx` replot** — the 4/25→1 fix
-  makes the overlay `weight` branch 6.25× different ⇒ its absolute crossx is STALE (D2). The pp
-  test-sample outputs are UNCHANGED and need no rerun.
-- **Crossx-plot honesty labelling (USER: "ANY crossx plot must be honest")** — a σ from the 4-beam
-  pp24 TEST sample carries the Pb isospin average and is NOT a physical pp cross-section. Label it
-  (and `pythia_fullsim_pp.md`) accordingly.
+- [x] ~~Overlay NTP rerun + overlay crossx replot~~ **DONE 2026-07-14** (`92d9f06`). NTP needed no
+  rerun — verified already post-fix; only the plot was stale. Two honesty bugs fixed along the way
+  (1000× ub/nb axis mislabel; pp plot now says it is NOT a physical pp σ).
+- [x] ~~AMI weights + the hard rule~~ **DONE 2026-07-14** (`be9b77a`) — `Analysis/docs/ami_weights.md`.
 - **`docs/pythia_fullsim_pp.md`: add a FULL-sample section** (farm, the `isTestSample` switch, the
   AMI dir + DSIDs, the `_full` output suffix).
 - **Downstream `is_test_sample` defaults:** the NTuple-processing `isTestSample` defaults to
