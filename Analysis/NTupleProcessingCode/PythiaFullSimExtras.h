@@ -29,6 +29,23 @@ protected:
     std::vector<float>*  muon_truth_prob    = nullptr;
     std::vector<int>*    muon_truth_barcode = nullptr;
 
+    // Per-RECO-muon truth provenance + truth kinematics (bound only in store_mc_trigger mode).
+    // These are the branches the reco-muon provenance classifier is built on (§3.0/D4):
+    //   real     = prob > 0.5 && |muon_truth_id| == 13 && muon_truth_IsPrimary
+    //   fake     = prob <= 0.5
+    //   hadronic = |id| != 13 (punch-through) OR (|id| == 13 && !IsPrimary) (decay-in-flight)
+    // The axis is (prob, |id|, IsPrimary) ONLY -- NEVER Pythia-signal-block membership, so a
+    // real HIJING muon in the overlay is REAL (low_mass_dimuon_template_fit.md).
+    std::vector<int>*    muon_truth_id        = nullptr;
+    std::vector<bool>*   muon_truth_IsPrimary = nullptr;
+    std::vector<float>*  muon_truth_pt        = nullptr;
+    std::vector<float>*  muon_truth_eta       = nullptr;
+    std::vector<float>*  muon_truth_phi       = nullptr;
+    std::vector<int>*    muon_truth_charge    = nullptr;
+
+    // provenance bookkeeping (store_mc_trigger; reported at end of run)
+    long long n_prov_reco = 0, n_prov_real = 0, n_prov_fake = 0, n_prov_hadronic = 0;
+
     // trigger branches (bound only when store_mc_trigger; Run-3 chain names — the
     // trigger-enabled MC skims are Run-3 only). Mirrors DimuonDataAlgCoreT: per-muon
     // match = bare branch name (= mindR 0.02 nominal), pair-level 2mu4 = the
@@ -90,6 +107,19 @@ protected:
         self().setIsFullsim(true);
     }
     void ProcessEventFullsim(int ev_num);
+
+    // store_mc_trigger ONLY (§3.0/D4): a RECO-SEEDED event loop over truth-matched REAL
+    // muons, replacing the nominal truth-seeded Pythia-block loop. Kept as a separate
+    // function so the nominal fullsim path (reco-efficiency, detector response,
+    // template-fit MC) -- where a truth-seeded, Pythia-only denominator is the CORRECT
+    // construction -- is byte-for-byte untouched.
+    void ProcessEventFullsimMCTrig(int ev_num);
+
+    // The real/hadronic/fake axis, on the RECO muon at index reco_ind.
+    bool IsRealRecoMuon(int reco_ind);
+
+    // The ONE definition of a reco muon's offline quantities + WP flags (shared by both loops).
+    void FillRecoQuantities(muon_t& m, int reco_ind);
     void CheckBranchPtrsExtra();
     bool PassMuonMediumCuts(const muon_t& muon);
 
