@@ -7,7 +7,7 @@
 //                  3 DeltaR bins overlaid + Step-1 inclusive reference.
 //   Step 3 (§3.3): eps_dR(dR) = inverse-weighted num / unweighted denom (TH1::Divide with
 //                  error propagation -- weights > 1 make Bayes invalid, same convention as
-//                  the data cross-term), plateau = weighted mean over dR in [1,3].
+//                  the data cross-term), plateau = weighted mean over dR in [1,4].
 //
 // One macro for both samples:
 //   plot_mc_trig_eff("pp")      : Pythia8 pp24 fullsim  vs pp24 data       -> eps_dR^2mu4
@@ -125,6 +125,7 @@ struct SampleCfg {
     std::string sample_text;   // canvas headline (without WP)
     std::string data_text;     // data legend entry
     std::string eps_dr_text;   // eps_DR symbol for step 3
+    bool step2_coarse;         // rebin the Step-2 DeltaR-comparison panels (see below)
 };
 
 SampleCfg MakeCfg(const std::string& sample)
@@ -141,6 +142,7 @@ SampleCfg MakeCfg(const std::string& sample)
         c.sample_text = "Pythia8 pp24 fullsim";
         c.data_text   = "pp24 data";
         c.eps_dr_text = "#varepsilon_{#DeltaR}^{2mu4}";
+        c.step2_coarse = false;  // pp has ~4x the pair statistics: the fine axes are readable
     } else if (sample == "overlay") {
         c.mc_dir      = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/";
         c.mc_label    = "hijing_overlay_pbpb23";
@@ -152,6 +154,10 @@ SampleCfg MakeCfg(const std::string& sample)
         c.sample_text = "HIJING overlay Pb+Pb23 cond., 0-5%";
         c.data_text   = "Pb+Pb23 data 0-5%";
         c.eps_dr_text = "#varepsilon_{#DeltaR}^{cross}";
+        // The overlay pair sample (0-5% only) is ~4x thinner than pp; on the native
+        // 41-bin pT / 184-bin q.eta axes the three DeltaR series are an unreadable
+        // error-bar forest and the comparison the panel exists for cannot be made.
+        c.step2_coarse = true;
     } else {
         throw std::runtime_error("plot_mc_trig_eff: sample must be 'pp' or 'overlay', got " + sample);
     }
@@ -172,6 +178,30 @@ const std::vector<std::pair<double,double>> kQEtaRange = {
     {-2.4,-2.0},{-2.0,-1.6},{-1.6,-1.3},{-0.9,-0.5},{-0.5,-0.1},
     { 0.1, 0.5},{ 0.5, 1.0},{ 1.3, 1.6},{ 1.6, 2.0},{ 2.0, 2.2}};
 
+// ---- Step-2 coarse binning (SampleCfg::step2_coarse) -------------------------------
+// Step 2 asks ONE question: at FIXED (pT, q.eta), do the three DeltaR series agree?
+// That needs bins with enough entries to separate the series, not the fine resolution of
+// the Step-1 turn-on fit. These coarse edges are a strict SUBSET of the native axes
+// (required by TH1::Rebin), keep the turn-on region finely enough sampled to see its
+// shape, and merge the sparse high-pT tail:
+//   pT   : subset of pT_bins_8+pT_bins_60 (native 41 bins, incl. the zero-width 8.0 edge)
+//   q.eta: uniform 0.2, every edge present in the native 184-bin axis
+const std::vector<double> kStep2CoarsePt =
+    {4.0, 5.1, 6.5, 8.0, 10.8, 16.2, 26.8, 60.0};
+std::vector<double> Step2CoarseQEta()
+{
+    std::vector<double> e;
+    for (int i = 0; i <= 24; ++i) e.push_back(-2.4 + 0.2 * i);
+    return e;
+}
+
+// Rebin to the given edges (a clone; the input file histogram is never modified).
+// Rebinning num and denom identically preserves num <= denom, so BayesEff stays valid.
+TH1* RebinTo(TH1* h, const std::vector<double>& edges, const std::string& name)
+{
+    return h->Rebin(static_cast<int>(edges.size()) - 1, name.c_str(), edges.data());
+}
+
 // DeltaR bins of Step 2
 const std::vector<std::string> kDrSuffix = {"dr0_0_2", "dr0_2_1_0", "dr1_0_inf"};
 const std::vector<std::string> kDrTex    = {"#DeltaR < 0.2", "0.2 #leq #DeltaR < 1.0",
@@ -181,6 +211,12 @@ const std::vector<Style_t>     kDrMarker = {20, 21, 22};
 
 const Color_t kMCColor   = kRed + 1;
 const Color_t kDataColor = kBlack;
+
+// Step-3 plateau window: well-separated muons must decorrelate, so eps_dR is flat here
+// (§3.3 diagnostic 1). [1,4] rather than [1,3] -- the extra decade of separation is still
+// plateau and the overlay needs every pair it can get.
+const double kPlateauLo = 1.0;
+const double kPlateauHi = 4.0;
 
 void DrawHeadline(const std::string& text, double x = 0.12, double y = 0.955,
                   double size = 0.038)
@@ -391,6 +427,14 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             DrawEffFrame(v.xlo, v.xhi, v.xtitle);
             DrawUnityLine(v.xlo, v.xhi);
 
+            // coarse edges for this variable (empty => keep the native binning)
+            const std::vector<double> cedges =
+                !cfg.step2_coarse ? std::vector<double>{}
+                : (v.tag == "pt" ? kStep2CoarsePt : Step2CoarseQEta());
+            auto Coarsen = [&](TH1* h, const std::string& nm) -> TH1* {
+                return cedges.empty() ? h : RebinTo(h, cedges, nm);
+            };
+
             // Step-1 inclusive singles reference (thin black). No 1D q.eta singles hist
             // exists -> project the singles 2D (x = q.eta) over all pT.
             TH1* rnum = nullptr;
@@ -404,6 +448,8 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 rnum = h2n->ProjectionX(Form("px_num_%s_%d", v.tag.c_str(), ic));
                 rden = h2d->ProjectionX(Form("px_den_%s_%d", v.tag.c_str(), ic));
             }
+            rnum = Coarsen(rnum, Form("rb_ref_n_%s_%d", v.tag.c_str(), ic));
+            rden = Coarsen(rden, Form("rb_ref_d_%s_%d", v.tag.c_str(), ic));
             auto* gref = BayesEff(rnum, rden);
             StyleGraph(gref, kBlack, 1, 0.4, 1);
             gref->Draw("LX same");   // thin black reference line, no error bars
@@ -416,10 +462,12 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             leg->SetFillStyle(1001);
             leg->SetTextSize(0.034);
             for (size_t id = 0; id < kDrSuffix.size(); ++id) {
-                TH1D* n = GetObj<TH1D>(fmc, "h_mc_pair_" + v.tag + "_num_"   +
+                TH1* n = GetObj<TH1D>(fmc, "h_mc_pair_" + v.tag + "_num_"   +
                                             kCharges[ic] + "_" + kDrSuffix[id]);
-                TH1D* d = GetObj<TH1D>(fmc, "h_mc_pair_" + v.tag + "_denom_" +
+                TH1* d = GetObj<TH1D>(fmc, "h_mc_pair_" + v.tag + "_denom_" +
                                             kCharges[ic] + "_" + kDrSuffix[id]);
+                n = Coarsen(n, Form("rb_n_%s_%d_%zu", v.tag.c_str(), ic, id));
+                d = Coarsen(d, Form("rb_d_%s_%d_%zu", v.tag.c_str(), ic, id));
                 auto* g = BayesEff(n, d);
                 StyleGraph(g, kDrColor[id], kDrMarker[id], 0.8);
                 g->Draw("PZ same");
@@ -450,8 +498,12 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                                               kCharges[ic] + "_" + kDrSuffix[id]);
                 const int blo = h2n->GetXaxis()->FindBin(kQEtaRange[iq].first  + 1e-6);
                 const int bhi = h2n->GetXaxis()->FindBin(kQEtaRange[iq].second - 1e-6);
-                TH1D* n = h2n->ProjectionY(Form("py_n_%d_%zu_%zu", ic, iq, id), blo, bhi);
-                TH1D* d = h2d->ProjectionY(Form("py_d_%d_%zu_%zu", ic, iq, id), blo, bhi);
+                TH1* n = h2n->ProjectionY(Form("py_n_%d_%zu_%zu", ic, iq, id), blo, bhi);
+                TH1* d = h2d->ProjectionY(Form("py_d_%d_%zu_%zu", ic, iq, id), blo, bhi);
+                if (cfg.step2_coarse) {
+                    n = RebinTo(n, kStep2CoarsePt, Form("rb_qn_%d_%zu_%zu", ic, iq, id));
+                    d = RebinTo(d, kStep2CoarsePt, Form("rb_qd_%d_%zu_%zu", ic, iq, id));
+                }
                 auto* g = BayesEff(n, d);
                 StyleGraph(g, kDrColor[id], kDrMarker[id], 0.7);
                 g->Draw("PZ same");
@@ -496,9 +548,9 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
     TH1D* r_zoom = MakeRatio("zoom");
     TH1D* r_full = MakeRatio("full");
 
-    const auto plateau = PlateauWeightedMean(r_full, 1.0, 3.0);
-    printf("  %s plateau (weighted mean, dR in [1,3]): %.4f +- %.4f\n",
-           sample.c_str(), plateau.first, plateau.second);
+    const auto plateau = PlateauWeightedMean(r_full, kPlateauLo, kPlateauHi);
+    printf("  %s plateau (weighted mean, dR in [%.0f,%.0f]): %.4f +- %.4f\n",
+           sample.c_str(), kPlateauLo, kPlateauHi, plateau.first, plateau.second);
 
     auto DrawStep3 = [&](TH1D* r, double xlo, double xhi, const std::string& png,
                          bool plateau_in_range) {
@@ -515,7 +567,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         // fitted plateau line: solid over the fit window [1,3] where in range,
         // dotted across the pad otherwise (zoom canvas)
         if (plateau_in_range) {
-            auto* lp = new TLine(1.0, plateau.first, 3.0, plateau.first);
+            auto* lp = new TLine(kPlateauLo, plateau.first, kPlateauHi, plateau.first);
             lp->SetLineColor(kBlue + 1);
             lp->SetLineWidth(3);
             lp->Draw("same");
@@ -538,8 +590,8 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         tl.SetNDC();
         tl.SetTextFont(42);
         tl.SetTextSize(0.035);
-        tl.DrawLatex(0.40, 0.86, Form("plateau #LT#DeltaR#in[1,3]#GT = %.3f #pm %.3f",
-                                      plateau.first, plateau.second));
+        tl.DrawLatex(0.40, 0.86, Form("plateau #LT#DeltaR#in[%.0f,%.0f]#GT = %.3f #pm %.3f",
+                                      kPlateauLo, kPlateauHi, plateau.first, plateau.second));
         tl.DrawLatex(0.40, 0.80, (cfg.eps_dr_text +
             " = P(trig | #DeltaR) / (#varepsilon_{1}#varepsilon_{2}), MC #varepsilon in weights").c_str());
         SaveCanvas(c, dir3 + png + wp_suf + ".png");
@@ -553,7 +605,9 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         TH2D* h2d = GetObj<TH2D>(fmc3, "h_mc_dr_zoom_vs_pair_pt_denom");
         // slice edges aligned to the pair-pT axis bin edges (F2)
         const std::vector<std::pair<int,int>> ybins = {{1,3},{4,6},{7,9},{10,15}};
-        const std::vector<Color_t> scol   = {kRed + 1, kBlue + 1, kGreen + 2, kMagenta + 2};
+        // last slice: bright kMagenta, NOT kMagenta+2 -- the darkened shade reads as another
+        // dark red/blue against kRed+1 / kBlue+1 and the series cannot be told apart
+        const std::vector<Color_t> scol   = {kRed + 1, kBlue + 1, kGreen + 2, kMagenta};
         const std::vector<Style_t> smark  = {20, 21, 22, 23};
 
         TCanvas c("c_step3_ptslices", "", 900, 700);
