@@ -322,6 +322,79 @@ problem. The local `pTH70_125` slice exists so that iteration/debugging does not
   NTUP to `.bak`. Launch the monitor only once the migration has freed the space
   (target: ≥250 GB headroom).
 
+### D2 (2026-07-13/14). Isospin: `isTestSample` is the single switch. **A REAL BUG WAS FOUND.**
+
+**USER-SUPPLIED PHYSICS RULE (authoritative):**
+- **pp-CONDITIONS fullsim simulates pp COLLISIONS** ⇒ **ONE** isospin beam (pp), isospin weight
+  **1**. There is nothing to isospin-average. The pp24 **TEST** sample having 4 beams was a
+  **PRODUCTION MISTAKE**; the FULL `_pdf` sample correctly has only the pp beam.
+- **PbPb-CONDITIONS HIJING overlay simulates Pb+Pb**, whose nucleons are a p/n mix ⇒ **FOUR**
+  beams {pp,pn,np,nn} combined with the Pb ratio **4:6:6:9** (Z=82, N=126 ⇒ (2:3)⊗(2:3), Σ=25/25).
+- The two TEST samples are exceptions in **opposite** directions ⇒ the rule collapses to a XOR:
+  `four_beams = FullSimSampleIsOverlay(t) != isTestSample` (`FullSimSampleType.h`).
+
+**Implementation:** ONE public switch `isTestSample` (`PythiaAlgCoreT.h`, **default `false` = the
+FULL production**) drives **input dir + AMI cross-section dir + isospin treatment** together, so
+they can never disagree. `setIsospinBeams()` remains only as an escape hatch (used by the
+`pp_only` cross-check). All 13 run scripts declare `isTestSample`; the full-sample script sets
+nothing (the default IS the full sample). Verified by compiled test macro — all 5 cases correct.
+
+**THE BUG (pre-existing, now fixed):** `fullsim_weight_factor = ami_w * nom_ratio / N_beam`
+(`PythiaAlgCoreT.c`) used `nominal_beam_ratio["pp"] = 4/25` **even when only the pp beam was
+read** — which was EVERY overlay run (`FullSimSampleIsOverlay` forced pp-only) and every
+`pp_only` run. A spurious factor **4/25 = 0.16**.
+- **Where it CANCELS (and why):** it is **slice-independent**, and it sits in **both numerator and
+  denominator**. ⇒ reco efficiency, detector response, MC trigger efficiency (all steps),
+  area-normalized templates: **unaffected**.
+- ⚠ **Correction to an earlier claim in this doc/session:** reco-eff and det-response are **NOT
+  filled unweighted**. An empty weight *specifier* resolves to the `weight` **column**
+  (`RDFBasedHistFillingPythia.cxx:9` maps `""` → `"weight"`). They ARE weighted; the factor
+  cancels because it is slice-independent, not because it is absent. **This distinction is
+  load-bearing:** an AMI cross-section error is *slice-dependent* and therefore cancels
+  **nowhere**.
+- **Where it does NOT cancel:** any **absolute cross-section**. Overlay NTP outputs and
+  `plot_pythia_fullsim_overlay_kn_pt_crossx.cxx` are **6.25× low and STALE** ⇒ **rerun pending**
+  (see Remaining Work).
+- The pp24 **test**-sample outputs are **UNCHANGED** (4 beams + 4:6:6:9 before and after), so
+  `plot_pythia_fullsim_kn_pt_crossx.cxx` does **not** need a rerun for this fix.
+
+**USER DECISION (2026-07-14): "ANY crossx plot must be honest — this is a key physics
+observable."** A cross-section from the 4-beam pp24 **TEST** sample carries the **Pb isospin
+average** and is therefore **NOT a physical pp cross-section**. It must be labelled as such.
+The honest absolute pp σ comes from the FULL sample (pp-only, weight 1). **Plot labelling is
+still TODO** (see Remaining Work).
+
+### D3 (2026-07-14). AMI provenance guard — **the landmine the reviewer caught.**
+
+AMI files are named by **beam + slice ONLY**, so they do **not** identify the production. The
+default AMI dir is the *truth* sample's `ami_info/`, holding DSIDs **802758–802781**. The full
+sample is **803015–803020** with **different, slice-dependent** cross-sections:
+
+| slice | TEST σ·ε_filt (nb) | FULL σ·ε_filt (nb) | ratio |
+|---|---|---|---|
+| pTH8_14 | 23.78 (802781) | **36.7432** (803020) | **1.55** |
+| pTH14_24 | 31.89 | **35.6365** (803016) | 1.12 |
+| pTH24_40 | 19.34 | **18.5418** (803017) | 0.96 |
+| pTH40_70 | — | **6.9018** (803018) | — |
+| pTH70_125 | — | **1.4588** (803019) | — |
+| pTH125_300 | — | **0.1978** (803015) | — |
+
+The ratio spans **0.96–1.55** ⇒ it is **slice-dependent** ⇒ it does **NOT cancel in any ratio**.
+Running the full sample against the old AMI would have silently corrupted the MC trigger
+efficiency **and** every cross-section, with **no error message** (the file exists under the
+right name).
+**Fixed:** AMI written to `~/usatlasdata/pythia_fullsim_full_sample/ami_info/`; new
+`ami_info_dir_override` + `expected_ami_dsids`; `InitInputFullsim` parses `datasetNumber` and
+**THROWS** on mismatch. **Guard proven to fire** (pointed at the test sample while declaring the
+full-sample DSIDs → threw `AMI PROVENANCE MISMATCH`). All 13 run scripts now declare their DSIDs.
+
+Also made **fatal** (were silent): ambiguous input (a hadded file *and* `.part*` for one slice —
+a stale local file would shadow the farm and give a wrong `N_beam` with an unchanged σ); a
+**missing pT-hat slice** (biases the σ-weighted combination — unlike a *partial* farm, which is
+self-correcting because `N_beam` is measured from the files actually chained); zero entries.
+Single-slice **diagnostic** runs (the r-tag dirs hold `pTH8_14` alone) opt out with
+`allow_missing_slices = true`.
+
 ## Results & Observations
 
 ### R1. Disk census of `~/usatlasdata` (real bytes, `du -sb`)
@@ -349,10 +422,51 @@ be resolved (truth slimming in the skim, or r17662-style truth) before that samp
 
 ## Remaining Work
 
-Everything in the Implementation Plan.
+**RESUME HERE (2026-07-14). Two things run in tmux with NO Claude session needed:**
+
+```bash
+tmux new -s lgd   ; bash ~/usatlasdata/lgd_migration/lgd_migration_resume.sh
+tmux new -s farm  ; ~/workarea/dimuon_codes/SkimCode/scripts/fullsim_pp24_full_to_lgd.sh
+```
+
+1. **Finish the LGD migration** (~160 GB still to free). All 292 GB is ON LOCALGROUPDISK (5 rules
+   `State: OK`); only group A was deleted (132.8 GB freed). The subagent stopped deleting because
+   the LGD **POSIX door wedged** after the 14.7k-file write burst (ROOT readers in D-state;
+   `stat` and **xrootd** both fine ⇒ transient, NOT data loss). All B/B2/C/D sources are intact
+   on disk. Durable state (rule IDs, the irreplaceable `local|pnfs` maps): `~/usatlasdata/lgd_migration/`.
+   The resume script probes the door first and **deletes nothing** while it is sick.
+2. **`fullsim_pp24_full_to_lgd.sh`** — grid task done → `rucio add-rule` to LGD → symlink farm
+   (`...NTUP.partNN.root`) → verify → optional dev slice. Idempotent; `--status` to inspect.
+3. **Then:** `run_pythia_fullsim_full_sample.sh` (needs the farm).
+
+**Open items (NOT done):**
+- **Overlay NTP rerun + `plot_pythia_fullsim_overlay_kn_pt_crossx.cxx` replot** — the 4/25→1 fix
+  makes the overlay `weight` branch 6.25× different ⇒ its absolute crossx is STALE (D2). The pp
+  test-sample outputs are UNCHANGED and need no rerun.
+- **Crossx-plot honesty labelling (USER: "ANY crossx plot must be honest")** — a σ from the 4-beam
+  pp24 TEST sample carries the Pb isospin average and is NOT a physical pp cross-section. Label it
+  (and `pythia_fullsim_pp.md`) accordingly.
+- **`docs/pythia_fullsim_pp.md`: add a FULL-sample section** (farm, the `isTestSample` switch, the
+  AMI dir + DSIDs, the `_full` output suffix).
+- **Downstream `is_test_sample` defaults:** the NTuple-processing `isTestSample` defaults to
+  **false** (full sample) as requested, but the *consumers* (`RDFBasedHistFillingPythiaFullsim`,
+  `PythiaFullsimRecoEffPlotter`, `plot_single_muon_reco_effcy`,
+  `RDFBasedHistFillingPythiaFullsimOverlay`) default to **`is_test_sample = true`**, because only
+  the TEST sample has NTP output today. **Flip them when the full sample lands.** Flagged to the
+  user.
+- **Review loop: iteration 2 returned FAIL** (2 CRITICAL + 4 WARNING, all now fixed + verified;
+  the reruns above are the outstanding WARNING). A 3rd `/review-analysis-code` pass is owed.
+- Truth path (`InitInputCentrProd`) intentionally keeps 4:6:6:9 — it is a genuinely 4-beam
+  Pb-intent sample. Left as-is; noted so a future agent does not "fix" it.
 
 ## Latest Stage
 
-**Step 1 (storage census) — census DONE, candidate list being prepared for the user.**
-Next, in parallel: Step 2 (run-dir reorganisation) and Step 3 (local test run) — neither needs
-much disk if the test AOD is staged outside the `usatlast3-data` fileset.
+**Steps 1–5 DONE.** Storage census + user-approved migration (all 292 GB on LGD, 132.8 GB freed so
+far, resume script written). Run-dir reorg done. Local test run PASSED every content check. All 6
+grid tasks submitted (**51419497/500/506/511/515/520**); `51419497` and `51419511` already
+`done` with zero failures. Design pivoted (D1) to **LGD-only, no 280 GB download**. Code:
+multi-part farm reader + `isTestSample` isospin switch + AMI provenance guard, all compiled and
+verified; 3 commits (`216f750`, `1b927d2`, `6af24dd`).
+
+**Next:** run the two tmux scripts above (migration finish + farm build), then the overlay rerun
+and the crossx-plot honesty labelling.
