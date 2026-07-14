@@ -373,6 +373,29 @@ completion and re-run the (cheap) downstream stages when all 24 are in. Not high
   (skim doc §8d), which is exactly what stays data-driven in the analysis (ε^nc from data;
   MC contributes only the ΔR ratio, where a flat excess cancels).
 
+- 2026-07-13 — **CORRECTION (user query): the Step-9 SF branches are RECO/ID WP scale
+  factors, NOT trigger SFs — the MC×SF vs data-trigger-efficiency comparison is INVALID as
+  a trigger-agreement test.** Verified in the skim: `TrigRates.h:447-449` =
+  `ToolHandle<CP::IMuonEfficiencyScaleFactors>`; `TrigRates_CA.py:242-253` =
+  `MuonEfficiencyCorrectionsCfg(WorkingPoint="Medium"/"Tight",
+  CalibrationRelease="250418_Preliminary_r24run3")` — the MCP muon reco/ID efficiency SF
+  tool. NO `MuonTriggerScaleFactors` tool exists anywhere in the skim. Both the data T&P
+  and the MC Step-1 efficiencies CONDITION on an offline reconstructed Tight muon, so the
+  reco/ID efficiency cancels out of both conditionals: multiplying the MC trigger
+  efficiency by the reco SF (~0.96) injects an unrelated factor, and the apparent
+  "half-gap closure" logged in the Step-9 entry is numerical coincidence, NOT a partial
+  trigger correction — that interpretation is RETRACTED. Plots/hists kept as a record
+  (they are labeled "reco/ID Tight-WP scale factor", so not mislabeled); do not use them
+  as a trigger-agreement test. **Official Run-3 trigger SFs for our chains do not exist**
+  (KB: `atlas_run3_muon_performance.md` — no Run-3 HI/low-mu muon performance
+  recommendations; `atlas_run2_muon_trigger.md` — central trigger SFs are Z/J/ψ T&P for
+  the standard pp menus): our menus are `PhysicsP1_pp_lowMu_run3_v1` /
+  `PhysicsP1_HI_run3_v1` (verified from files, skim doc R2) and mu4/2mu4 there have no
+  central SF product — which is exactly why ε_trig is measured from data T&P in this
+  analysis; the Step-1 data/MC ratio is itself the analysis's own effective trigger SF.
+  Awaiting user decision: keep the Step-9 outputs as a documented reco-SF systematics
+  ingredient, or remove them.
+
 ## Results & Observations
 
 ### R1. NTP discovery (2026-07-10, Explore agent + orchestrator check)
