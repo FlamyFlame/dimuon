@@ -463,6 +463,88 @@ Single-slice **diagnostic** runs (the r-tag dirs hold `pTH8_14` alone) opt out w
   chased.** Revisit only if a slice ever shows a loss ≫ 1e-5 (that would indicate a real problem,
   e.g. a truncated/failed merge, not this).
 
+---
+
+## TASK III (added 2026-07-14) — push the FULL sample through the whole pp-fullsim chain
+
+**Request:** after the grid jobs finish, run the pp24-fullsim FULL sample through the entire pp
+fullsim chain (smoke-test first; back up anything that would be overwritten) and reproduce every pp
+fullsim plot — **reco efficiency, detector response, the new MC-based trigger efficiency** — plus a
+**statistics plot: pair-pT differential crossx for each pT-hat slice on one canvas**.
+
+### III.0 Code exploration (DONE 2026-07-14) — the chain, and what is missing
+
+**The chain** (there is **NO pp-fullsim pipeline script**; the overlay one,
+`pipelines/pipeline_pythia_fullsim_overlay.sh`, is the template):
+
+| stage | code | note |
+|---|---|---|
+| NTP nominal | `run_pythia_fullsim_full_sample.sh` | **exists** ✅ → `..._no_data_resonance_cuts_full.root` |
+| NTP `_single_muon` | — | ❌ **MISSING for full sample** |
+| NTP `_mc_trig` | — | ❌ **MISSING** |
+| NTP `_mc_trig_single_muon` | — | ❌ **MISSING** |
+| RDF hists | `RDFBasedHistFillingPythiaFullsim` | needs `is_test_sample=false` |
+| reco-eff + det-response | `PythiaFullsimRecoEffPlotter` + `plot_reco_effcy_pythia_fullsim_pp24.cxx` | needs `is_test_sample=false` |
+| single-muon reco-eff | `plot_single_muon_reco_effcy.cxx` | needs the `_single_muon` NTP |
+| MC trig-eff | `FillMCTrigEffHists` → `FitMCSinglesEffcy` → `FillMCTrigEffHists(step3)` → `plot_mc_trig_eff.cxx` | **dir HARD-CODED to test sample**; no knob |
+| crossx per pT-hat slice | `plot_pythia_fullsim_kn_pt_crossx.cxx` | **paths hard-coded**; see below |
+| kn contributor table | `make_kn_contributor_table.cxx` | hard-coded paths |
+| reco distr single-b vs OS | `plot_reco_distr_singleb_vs_op_pp24.C` | hard-coded paths |
+
+**⚠ The user's "statistics plot" ALREADY EXISTS** — it is the LEFT panel of
+`plot_pythia_fullsim_kn_pt_crossx.cxx` (`plot_impl`): dσ/dp_T markers, one colour per pT-hat slice,
+all on one canvas. What is new with the full sample is that its **error bars become real** instead
+of a forecast. (Plus the right-panel stack, and the `err_fraction` / `err_ratio` diagnostics.)
+
+### III.1 BLOCKERS found by the exploration (must be fixed before any full-sample run)
+
+1. **3 NTP run scripts missing** for the full sample (`_single_muon`, `_mc_trig`,
+   `_mc_trig_single_muon`). Without them the full sample produces **no MC-trigger-efficiency inputs
+   at all** and no single-muon tree.
+2. **`RDFBasedHistFillingPythia.h:114` `is_test_sample = true`** (default) — must be set false, else
+   the RDF stage silently reads the TEST sample.
+3. **`PythiaFullsimRecoEffPlotter.cxx:111-114` filename bug:** the base `GetInputFilePath()` builds
+   `histograms_..._no_data_resonance_cuts.root` **without the `_full` suffix**, while the RDF filler
+   writes `..._full.root`. Flipping `is_test_sample=false` changes the *directory* but not the
+   *filename* ⇒ open fails (or silently picks a stale file).
+4. **`FillMCTrigEffHists.cxx:71-74`, `FitMCSinglesEffcy.cxx:101`, `plot_mc_trig_eff.cxx:211`** —
+   the sample dir is a **hard-coded string** to `pythia_fullsim_test_sample/`. No knob exists; one
+   must be added.
+5. **`plot_pythia_fullsim_kn_pt_crossx.cxx`** — input + output paths hard-coded to the test sample
+   in 4 functions.
+6. ⚠ **`kScaleFactors` / `scale_factors` would DOUBLE-COUNT the statistics.** They are
+   `N_full/N_test` forecast factors applied as `SetBinError(err/sqrt(sf))` (`:288`, `:487`, `:675`;
+   overlay `:195`, `:306`, `:407`). **Central values are untouched** (no `SetBinContent`), so with
+   the real full sample the *error bars* would be divided by √sf a SECOND time — understated by a
+   further **7.1× / 9.5× / 7.7× / 5.5× / 2.8×** (kn0–kn4), **slice-dependently** ⇒ does not cancel,
+   and it fails **silently** (the σ curve still looks right). The `err_fraction` / `err_ratio`
+   "which slice is the statistical bottleneck" maps would rank slices by a fictitious ratio.
+   ⇒ **Delete the forecast factors** (keep the functions — they are genuinely useful once fed real
+   errors).
+7. **The honesty caption must be REMOVED for the full sample.** `plot_pythia_fullsim_kn_pt_crossx`
+   currently prints *"TEST sample … Pb isospin avg (4:6:6:9) … NOT a physical pp σ"*. On the FULL
+   sample (pp beam only, isospin weight 1) that warning becomes **false** — the full-sample σ IS a
+   physical pp cross-section.
+8. **WP: the crossx macro hard-codes `pair_pass_medium`** (`:64, 258, 456, 644`) while the analysis
+   nominal is **TIGHT** and every other pp-fullsim stage already defaults to Tight. Violates
+   `feedback_plots_wp_config_var` / `muon_wp_registry.md`.
+9. **`docs/muon_wp_registry.md` is STALE:** §4 claims the reco-eff plotters default to *Medium*;
+   the code defaults to **Tight** (`PythiaFullsimRecoEffPlotter.cxx:28,627`). §1 line anchors drifted.
+   The crossx macro is **absent from the registry** despite hard-coding a WP on a key observable.
+
+### III.2 Plan (after the grid jobs land + the farm is complete)
+
+1. Fix blockers 1–5 (+8) — add the 3 NTP scripts; add a sample knob to the MC-trig-eff chain;
+   parameterize the crossx macro; fix the `_full` filename bug; WP → configurable, default Tight.
+2. **Smoke test** each stage with `nevents_max` small, on the farm, before the full run.
+3. **Back up** anything that would be overwritten (the full sample writes `_full`-suffixed files and
+   into `pythia_fullsim_full_sample/`, so clobbering should NOT occur — verify per stage).
+4. Full run: NTP ×4 → RDF hists → reco-eff + det-resp → single-muon reco-eff → MC trig-eff chain →
+   crossx + statistics plot + kn table.
+5. Write `pipelines/pipeline_pythia_fullsim_pp.sh` (none exists) so this is reproducible.
+6. Update `muon_wp_registry.md` (blocker 9) and `docs/pythia_fullsim_pp.md`.
+7. `/review-analysis-code` on the code changes; `/review-plot` on the regenerated plots.
+
 ## Results & Observations
 
 ### R1. Disk census of `~/usatlasdata` (real bytes, `du -sb`)
