@@ -60,6 +60,10 @@ cd NTupleProcessingCode
 root -b -l <<'EOF'
 .L PythiaAnalysisClasses.h
 PythiaFullSimAnalysis py;
+// ISOSPIN: pp CONDITIONS simulate pp collisions -> the pp beam alone, isospin weight 1.
+// That is the DEFAULT. The pp24 TEST sample was produced with 4 isospin beams by MISTAKE,
+// so a run over the TEST sample must opt back in explicitly:
+py.setIsospinBeams(true);          // TEST sample only -- OMIT for the full sample
 py.fill_kn_trees_fullsim = true;
 py.Run();
 .q
