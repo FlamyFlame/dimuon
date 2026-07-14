@@ -14,7 +14,9 @@
 //   plot_mc_trig_eff("overlay") : HIJING overlay PbPb23 vs PbPb23 data 0-5% (D2) -> eps_dR^cross
 //
 // WP config (registry: Analysis/docs/muon_wp_registry.md): use_tight_wp default TRUE (Tight
-// nominal, unsuffixed inputs); false selects the _medium_wp MC input files + label text.
+// nominal, unsuffixed inputs); false selects the _medium_wp MC inputs AND the WP-matched
+// _medium_wp DATA tag-and-probe file (+ label text). MC and data are never compared across
+// working points.
 //
 // Data sign convention (evidence in docs/tracking/_sub_mctrig_plots.md F3):
 //   sign1 = mu+ (RDFBasedHistFillingPP.cxx:168 Filter("charge2nd > 0");
@@ -157,35 +159,77 @@ TH1* DrawRatioFrame(double xlo, double xhi, const std::string& xtitle,
     return fr;
 }
 
-// Point-by-point ratio of two efficiency graphs sampled on the SAME x binning.
-// Skipped points: (a) x values disagree between the two graphs (a guard against ever
-// dividing misaligned axes); (b) denominator <= 0 -- this is what removes the degenerate
-// zero-width 8.0 GeV pT point, whose content is exactly 0 in both samples, so it is never
-// divided nor double-counted; (c) numerator <= 0 -- a genuinely-zero efficiency is dropped
-// rather than plotted at 0. (c) never fires on these samples (no MC bin has zero
-// efficiency inside the fiducial region); if it ever did, the point would go missing from
-// the ratio pad while remaining visible in the main pad above it.
+// Point-by-point ratio of two efficiency graphs.
+//
+// MATCH BY X, NOT BY INDEX. TGraphAsymmErrors::Divide SKIPS bins with an empty denominator,
+// so the numerator and denominator graphs do NOT share an index->bin mapping: one skipped
+// bin shifts every later index. An index-paired loop then either divides mismatched bins or
+// (with an x-guard) silently DROPS every point after the first skip -- which cost 12 real
+// ratio points per working point in pp. Pairing on the x value is immune to this.
+//
+// The ONLY point excluded is one whose DENOMINATOR is zero: the ratio is then genuinely
+// undefined. (The degenerate zero-width 8.0 GeV pT bin never reaches this guard --
+// TGraphAsymmErrors::Divide already drops it upstream.) A zero NUMERATOR with a nonzero
+// denominator is a real measurement of ratio 0
+// and IS emitted, so the caller's MarkOffScale() gives it a down-arrow instead of letting it
+// vanish. (It does fire: e.g. pp mu-, 0.2<=dR<1.0 at q.eta=2.39.)
+//
 // Errors: relative errors in quadrature, symmetrized -- adequate for a ratio pad.
 TGraphAsymmErrors* DivideGraphClean(TGraphAsymmErrors* gn, TGraphAsymmErrors* gd)
 {
     auto* gr = new TGraphAsymmErrors();
     int k = 0;
-    const int n = std::min(gn->GetN(), gd->GetN());
-    for (int i = 0; i < n; ++i) {
-        double xn, yn, xd, yd;
+    for (int i = 0; i < gn->GetN(); ++i) {
+        double xn, yn;
         gn->GetPoint(i, xn, yn);
-        gd->GetPoint(i, xd, yd);
-        if (std::fabs(xn - xd) > 1e-6 * std::max(1.0, std::fabs(xd))) continue;  // axes disagree
-        if (yd <= 0. || yn <= 0.) continue;
+
+        // find the denominator point at the same x
+        int j = -1;
+        for (int m = 0; m < gd->GetN(); ++m) {
+            double xd, yd;
+            gd->GetPoint(m, xd, yd);
+            if (std::fabs(xn - xd) <= 1e-6 * std::max(1.0, std::fabs(xd))) { j = m; break; }
+        }
+        if (j < 0) continue;                       // no denominator bin at this x
+
+        double xd, yd;
+        gd->GetPoint(j, xd, yd);
+        if (yd <= 0.) continue;                    // ratio undefined
+
         const double en = 0.5 * (gn->GetErrorYhigh(i) + gn->GetErrorYlow(i));
-        const double ed = 0.5 * (gd->GetErrorYhigh(i) + gd->GetErrorYlow(i));
+        const double ed = 0.5 * (gd->GetErrorYhigh(j) + gd->GetErrorYlow(j));
         const double r  = yn / yd;
-        const double er = r * std::sqrt((en / yn) * (en / yn) + (ed / yd) * (ed / yd));
+        // relative error of the numerator is undefined at yn == 0; use the denominator's
+        // alone (the point is at r = 0 and only needs to be visible, not precise).
+        const double rel_n = (yn > 0.) ? (en / yn) : 0.;
+        const double er = (yn > 0.) ? r * std::sqrt(rel_n * rel_n + (ed / yd) * (ed / yd))
+                                    : en / yd;
         gr->SetPoint(k, xn, r);
         gr->SetPointError(k, gn->GetErrorXlow(i), gn->GetErrorXhigh(i), er, er);
         ++k;
     }
     return gr;
+}
+
+// A zoomed ratio frame hides points that fall outside it. Mark every such point with an
+// arrow at the frame edge, so a clipped point can never be mistaken for a missing one --
+// the same rule the Step-3 slice panel follows. (Points whose CENTRAL value is off-scale;
+// an error bar running past the frame with the central value inside is fine.)
+void MarkOffScale(TGraphAsymmErrors* g, double ylo, double yhi, Color_t col)
+{
+    for (int i = 0; i < g->GetN(); ++i) {
+        double x, y;
+        g->GetPoint(i, x, y);
+        if (y <= yhi && y >= ylo) continue;
+        const bool up  = (y > yhi);
+        const double y0 = up ? ylo + 0.88 * (yhi - ylo) : ylo + 0.12 * (yhi - ylo);
+        const double y1 = up ? ylo + 0.98 * (yhi - ylo) : ylo + 0.02 * (yhi - ylo);
+        auto* ar = new TArrow(x, y0, x, y1, 0.010, "|>");
+        ar->SetLineColor(col);
+        ar->SetFillColor(col);
+        ar->SetLineWidth(2);
+        ar->Draw();
+    }
 }
 
 void DrawUnityLine(double xlo, double xhi)
@@ -216,14 +260,21 @@ struct SampleCfg {
     bool step2_coarse;         // rebin the Step-2 DeltaR-comparison panels (see below)
 };
 
-SampleCfg MakeCfg(const std::string& sample)
+// The DATA reference must be at the SAME working point as the MC (§3.0(d)): the data
+// tag-and-probe hist file carries the WP in its name (`_medium_wp` when the data RDF ran
+// with isTight=false; unsuffixed = Tight nominal). Comparing Medium MC against the Tight
+// data file -- which is what a hardcoded path would silently do -- is meaningless.
+SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
 {
+    const std::string data_wp = use_tight_wp ? "" : "_medium_wp";
+
     SampleCfg c;
     if (sample == "pp") {
         c.mc_dir      = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/";
         c.mc_label    = "pp24";
         c.data_file   = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"
-                        "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin.root";
+                        "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin"
+                        + data_wp + ".root";
         c.ctr         = "";
         c.out_base    = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
                         "pp_trigger_efficiency/mc_based/";
@@ -235,7 +286,8 @@ SampleCfg MakeCfg(const std::string& sample)
         c.mc_dir      = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/";
         c.mc_label    = "hijing_overlay_pbpb23";
         c.data_file   = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2023/"
-                        "histograms_real_pairs_pbpb_2023_single_mu4_fine_q_eta_bin.root";
+                        "histograms_real_pairs_pbpb_2023_single_mu4_fine_q_eta_bin"
+                        + data_wp + ".root";
         c.ctr         = "_ctr0_5";   // D2: overlay compares ONLY to PbPb23 data 0-5%
         c.out_base    = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
                         "pbpb_trigger_efficiency/mc_based/";
@@ -406,10 +458,12 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
     gStyle->SetOptTitle(0);
     gErrorIgnoreLevel = kWarning;
 
-    const SampleCfg cfg = MakeCfg(sample);
+    const SampleCfg cfg = MakeCfg(sample, use_tight_wp);
 
     // WP config (registry: Analysis/docs/muon_wp_registry.md): Tight nominal unsuffixed;
-    // Medium MC inputs carry _medium_wp. Data tag-and-probe files exist for Tight only.
+    // Medium inputs carry _medium_wp. BOTH the MC inputs AND the data tag-and-probe file are
+    // WP-keyed (see MakeCfg) -- the data Medium reference is produced by running the data RDF
+    // with isTight=false. Never compare across working points.
     const std::string wp_suf  = use_tight_wp ? "" : "_medium_wp";
     const std::string wp_text = use_tight_wp ? "Tight muons" : "Medium muons";
     const std::string headline = cfg.sample_text + ", " + wp_text;
@@ -479,6 +533,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             auto* grat = DivideGraphClean(gmc, gda);
             StyleGraph(grat, kMCColor, 21, 0.9);
             grat->Draw("PZ same");
+            MarkOffScale(grat, 0.5, 2.2, kMCColor);
             c.cd(ic + 1);
 
             // record MC/data ratio magnitudes (turn-on + plateau) from the pt hists
@@ -546,6 +601,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             auto* grat = DivideGraphClean(gmc, gda);
             StyleGraph(grat, kMCColor, 21, 0.7);
             grat->Draw("PZ same");
+            MarkOffScale(grat, 0.5, 2.6, kMCColor);
             c.cd(static_cast<int>(iq) + 1);
         }
         // legend / label pad
@@ -618,15 +674,16 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             rden = Coarsen(rden, Form("rb_ref_d_%s_%d", v.tag.c_str(), ic));
             auto* gref = BayesEff(rnum, rden);
             StyleGraph(gref, kBlack, 1, 0.4, 1);
-            gref->Draw("LX same");   // thin black reference line, no error bars
 
             auto* leg = new TLegend(0.38, 0.10, 0.92, 0.36);
             leg->SetBorderSize(0);
-            // semi-opaque backing: this legend can sit inside a dense error-bar cloud
-            // on the low-stats overlay q.eta panel (plot review iter 1, INFO)
+            // Semi-opaque backing so the legend stays readable inside a dense error-bar
+            // cloud -- but it is drawn FIRST, BEFORE the data, so the fill can never wash
+            // out real points (it did, in the endcap of the q.eta panels: review iter 1).
             leg->SetFillColorAlpha(kWhite, 0.75);
             leg->SetFillStyle(1001);
             leg->SetTextSize(0.042);
+
             std::vector<TGraphAsymmErrors*> gdr;
             for (size_t id = 0; id < kDrSuffix.size(); ++id) {
                 TH1* n = GetObj<TH1D>(fmc, "h_mc_pair_" + v.tag + "_num_"   +
@@ -637,12 +694,13 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 d = Coarsen(d, Form("rb_d_%s_%d_%zu", v.tag.c_str(), ic, id));
                 auto* g = BayesEff(n, d);
                 StyleGraph(g, kDrColor[id], kDrMarker[id], 0.8);
-                g->Draw("PZ same");
                 leg->AddEntry(g, kDrTex[id].c_str(), "lp");
                 gdr.push_back(g);
             }
             leg->AddEntry(gref, leg_incl.c_str(), "l");
-            leg->Draw();
+            leg->Draw();                       // legend first ...
+            gref->Draw("LX same");             // ... then the data on top of it
+            for (auto* g : gdr) g->Draw("PZ same");
             DrawHeadline(headline + ", " + kChargeTex[ic], 0.14, 0.955, 0.05);
 
             // R3 ratio pad: §3.2 asks whether the three DeltaR series AGREE at fixed
@@ -653,6 +711,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 auto* g = DivideGraphClean(gdr[id], gdr.back());
                 StyleGraph(g, kDrColor[id], kDrMarker[id], 0.8);
                 g->Draw("PZ same");
+                MarkOffScale(g, 0.4, 1.9, kDrColor[id]);
             }
             c.cd(ic + 1);
         }
@@ -705,6 +764,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 auto* g = DivideGraphClean(gdr[id], gdr.back());
                 StyleGraph(g, kDrColor[id], kDrMarker[id], 0.7);
                 g->Draw("PZ same");
+                MarkOffScale(g, 0.4, 1.9, kDrColor[id]);
             }
             c.cd(static_cast<int>(iq) + 1);
         }
@@ -862,15 +922,22 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         leg->Draw();
         DrawHeadline(headline);
         if (!offscale.empty()) {
+            // BELOW the legend (which occupies y 0.68-0.88): the note used to be drawn at
+            // y=0.86, straight through the legend box, making both unreadable -- and this
+            // note is precisely what keeps the y-cap honest. Wrapped 2 entries per line.
             TLatex note;
             note.SetNDC();
             note.SetTextFont(42);
             note.SetTextSize(0.026);
             note.SetTextColor(kGray + 3);
-            std::string txt = "above scale (arrows): ";
-            for (size_t i = 0; i < offscale.size(); ++i)
-                txt += (i ? ", " : "") + offscale[i];
-            note.DrawLatex(0.16, 0.86, txt.c_str());
+            double y = 0.63;
+            for (size_t i = 0; i < offscale.size(); i += 2) {
+                std::string txt = (i == 0) ? "above scale (arrows): " : "  ";
+                txt += offscale[i];
+                if (i + 1 < offscale.size()) txt += ", " + offscale[i + 1];
+                note.DrawLatex(0.45, y, txt.c_str());
+                y -= 0.035;
+            }
         }
         SaveCanvas(c, dir3 + "step3_eps_dr_zoom_pair_pt_slices" + wp_suf + ".png");
     }
