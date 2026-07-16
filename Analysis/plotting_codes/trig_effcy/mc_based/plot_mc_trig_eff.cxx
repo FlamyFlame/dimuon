@@ -473,9 +473,12 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
     TFile* ffit  = OpenFile(cfg.mc_dir + "single_mu_effcy_pT_fit_mc" + wp_suf + ".root");
     TFile* fdata = OpenFile(cfg.data_file);
 
-    const std::string dir1 = cfg.out_base + "step1_singles_data_mc/";
-    const std::string dir2 = cfg.out_base + "step2_dr_binned_singles/";
-    const std::string dir3 = cfg.out_base + "step3_dr_correction/";
+    // Medium-WP plots go into a medium/ SUBDIRECTORY of each step dir (same filenames as
+    // Tight); Tight (nominal) stays in the step dir root (user request, 2026-07-16).
+    const std::string wp_dir = use_tight_wp ? "" : "medium/";
+    const std::string dir1 = cfg.out_base + "step1_singles_data_mc/"  + wp_dir;
+    const std::string dir2 = cfg.out_base + "step2_dr_binned_singles/" + wp_dir;
+    const std::string dir3 = cfg.out_base + "step3_dr_correction/"     + wp_dir;
     for (const auto& d : {dir1, dir2, dir3}) gSystem->mkdir(d.c_str(), kTRUE);
 
     const std::string mc_leg   = "MC direct P(mu4 | reco #mu)";
@@ -551,7 +554,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 }
             }
         }
-        SaveCanvas(c, dir1 + "step1_eff_" + v.mc + wp_suf + ".png");
+        SaveCanvas(c, dir1 + "step1_eff_" + v.mc + ".png");
     }
 
     // --- pT in q.eta bins: per charge, 3x4 grid (10 bins + legend pad) ---
@@ -622,7 +625,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         note.SetTextFont(42);
         note.DrawLatex(0.02, 0.30, "Data: T&P P(2mu4 | mu4 tag, #DeltaR>0.8 pairs);");
         note.DrawLatex(0.02, 0.22, "MC: direct conditional, no T&P");
-        SaveCanvas(c, dir1 + "step1_eff_pt_in_q_eta_bins_" + kCharges[ic] + wp_suf + ".png");
+        SaveCanvas(c, dir1 + "step1_eff_pt_in_q_eta_bins_" + kCharges[ic] + ".png");
     }
 
     // ================================================================
@@ -715,7 +718,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             }
             c.cd(ic + 1);
         }
-        SaveCanvas(c, dir2 + "step2_eff_" + v.tag + "_dr_bins" + wp_suf + ".png");
+        SaveCanvas(c, dir2 + "step2_eff_" + v.tag + "_dr_bins.png");
     }
 
     // --- pT in q.eta bins per charge, 3 DeltaR lines per pad --------
@@ -781,7 +784,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         }
         leg->Draw();
         SaveCanvas(c, dir2 + "step2_eff_pt_in_q_eta_bins_" + kCharges[ic] +
-                          "_dr_bins" + wp_suf + ".png");
+                          "_dr_bins.png");
     }
 
     // ================================================================
@@ -847,7 +850,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                                       kPlateauLo, kPlateauHi, plateau.first, plateau.second));
         tl.DrawLatex(0.40, 0.80, (cfg.eps_dr_text +
             " = P(trig | #DeltaR) / (#varepsilon_{1}#varepsilon_{2}), MC #varepsilon in weights").c_str());
-        SaveCanvas(c, dir3 + png + wp_suf + ".png");
+        SaveCanvas(c, dir3 + png + ".png");
     };
     DrawStep3(r_zoom, 0.0, 1.0,  "step3_eps_dr_zoom", false);
     DrawStep3(r_full, 0.0, 5.75, "step3_eps_dr_full", true);
@@ -939,7 +942,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 y -= 0.035;
             }
         }
-        SaveCanvas(c, dir3 + "step3_eps_dr_zoom_pair_pt_slices" + wp_suf + ".png");
+        SaveCanvas(c, dir3 + "step3_eps_dr_zoom_pair_pt_slices.png");
     }
 
     fmc->Close(); fmc3->Close(); ffit->Close(); fdata->Close();
