@@ -596,7 +596,9 @@ bool DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::PassCuts_DataCore(boo
 	if (mpairRef()->m1.pt < 4 || mpairRef()->m2.pt < 4) return false;
 	h_cutAcceptanceRef()[mpairRef()->m1.charge != mpairRef()->m2.charge]->Fill(static_cast<int>(CutsCommon::pass_muon_pt) + 0.5, mpairRef()->weight);
 	
-	if( fabs(mpairRef()->m1.dP_overP) > pms.deltaP_overP_thrsh || fabs(mpairRef()->m2.dP_overP) > pms.deltaP_overP_thrsh ) return false;
+	// ONE-SIDED cut by definition (user, 2026-07-16): dP/P < thrsh; the negative tail is kept.
+	// The historical fabs() (present since the 2022 initial commit) was WRONG.
+	if( mpairRef()->m1.dP_overP > pms.deltaP_overP_thrsh || mpairRef()->m2.dP_overP > pms.deltaP_overP_thrsh ) return false;
 	h_cutAcceptanceRef()[mpairRef()->m1.charge != mpairRef()->m2.charge]->Fill(static_cast<int>(CutsCommon::pass_muon_dP_overP) + 0.5, mpairRef()->weight);
 	
 	//cut on d0 & z0 sin(theta)

@@ -153,11 +153,11 @@ bool PythiaFullSimExtras<PairT, MuonT, Derived>::PassMuonMediumCuts(const muon_t
     if (fabs(muon.eta) > 2.4) return false;
     if (muon.pt < 4) return false;
 
-    // fabs: muon_deltaP_overP is SIGNED (41% of reco muons are negative; 2.6% below -0.12).
-    // Data cuts on |dP/P| (DimuonDataAlgCoreT::PassCuts_DataCore); without the fabs, MC was
-    // ACCEPTING the large-negative tail that data REJECTS -- a direct data/MC mismatch in the
-    // generic muon selection (fixed 2026-07-14, D5).
-    if (fabs(muon.dP_overP) > self().pmsRef().deltaP_overP_thrsh) return false;
+    // ONE-SIDED cut by definition (user, 2026-07-16): dP/P < thrsh; the negative tail
+    // (41% of reco muons negative, 2.6% below -0.12) is KEPT. Matches the corrected data
+    // cut (DimuonDataAlgCoreT::PassCuts_DataCore). The 2026-07-14 D5 change that copied
+    // data's historical fabs() into MC is REVERTED -- the fabs was the bug, on both sides.
+    if (muon.dP_overP > self().pmsRef().deltaP_overP_thrsh) return false;
 
     if (!self().disable_ip_cut) {
         double z0sinTheta = fabs(muon.z0 * sin(2.0*atan(exp(-muon.eta))));
