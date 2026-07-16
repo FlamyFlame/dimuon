@@ -81,3 +81,7 @@
 {"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-07-13T23:52:16-04:00","criticals":0,"warnings":0,"slug":"sf-step1-variant"}
 {"event":"start","command":"review-plot","task":"S12 MC trig-eff plot changes: overlay step-2 coarse rebin, step-3 plateau [1,4], last-slice color; regenerated plots both samples","slug":"mc-trig-eff-s12-rebin-ratio","timestamp":"2026-07-14T02:28:30-04:00"}
 {"event":"end","command":"review-plot","status":"approved","iterations":3,"timestamp":"2026-07-14T03:02:39-04:00","criticals":0,"warnings":0,"slug":"mc-trig-eff-s12-rebin-ratio"}
+{"event":"start","command":"review-analysis-code","task":"dp/p one-sided fix + medium WP subdir layout","slug":"dpop-one-sided-wp-subdir","timestamp":"2026-07-16T18:03:12-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":3,"timestamp":"2026-07-16T18:20:48-04:00","criticals":0,"warnings":0,"slug":"dpop-one-sided-wp-subdir"}
+{"event":"start","command":"review-plot","task":"round-3 MC trig-eff plot sets: one-sided dp/p inputs + medium/ subdir layout","slug":"mc-trig-eff-round3-wp-subdir","timestamp":"2026-07-16T18:21:30-04:00"}
+{"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-07-16T18:25:16-04:00","criticals":0,"warnings":0,"slug":"mc-trig-eff-round3-wp-subdir"}

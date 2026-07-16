@@ -29,7 +29,8 @@ HIJING overlay r17618 `_July2026`) to deliver the MC-based trigger-efficiency pr
   truth-seeded Pythia-block loop, for BOTH the single-muon tree and the pair trees (pairs =
   all (i<j) combinations of selected reco muons), in `store_mc_trigger` mode only.
   **(B)** MC offline muons pass EXACTLY the data generic muon cuts (incl. the `fabs(dP/P)`
-  fix); every residual data/MC difference enumerated and justified in D5.
+  change — *historical note: that fabs was itself reversed 2026-07-16, the cut is ONE-SIDED
+  on both sides now; see D5 reversal*); every residual data/MC difference enumerated in D5.
   **(C)** BOTH working points produced end-to-end for BOTH samples — Medium-for-both and
   Tight-for-both — for Steps 1, 2 AND 3 (MC *and* the data reference; data Medium T&P via
   `isTight=false` → `_medium_wp`). 4 plot sets total.
@@ -126,7 +127,9 @@ otherwise contaminate the sample **precisely in the regions of interest — low 
 **(c) EXACTLY THE DATA GENERIC MUON CUTS** (`DimuonDataAlgCoreT::PassCuts_DataCore`) — the
 *generic* muon selection, NOT the signal selection:
 `quality&1` (combined) · WP bit (`&16` Tight / `&8` Medium) · `quality&32` (IDCuts) ·
-`quality&256` (MuonCuts) · `|η| < 2.4` · `pT > 4 GeV` · `|Δp/p| < 0.12` · `|d0| < 2 mm` ·
+`quality&256` (MuonCuts) · `|η| < 2.4` · `pT > 4 GeV` · `Δp/p < 0.12` (**ONE-SIDED** — the
+negative tail is kept; user definition 2026-07-16, corrected from the historical `fabs`, see
+D5 reversal) · `|d0| < 2 mm` ·
 `|z0 sinθ| < 2 mm` · (track-charge agreement only if `turn_on_track_charge`, which is
 `false` on both sides).
 **No signal-selection cut is applied** (no pair-pT, no q·η, no ΔR, no m_μμ, no resonance
@@ -322,7 +325,16 @@ has `if (fabs(...) > thrsh)`. `muon_deltaP_overP` is **signed** (41% of reco muo
 | track-charge agreement | `turn_on_track_charge=false` | `false` | consistent (both off) |
 | Tight WP | `&1,&16,&32,&256` | `pass_medium && &16` (⊃ `&8`) | equivalent — quality bits are cumulative (`getQuality()` Tight=0 < Medium=1, so a Tight muon sets BOTH `&8` and `&16`) |
 | WP application | on the PAIR (`m1.q & m2.q & bit`) | per muon | equivalent for pairs |
-**Blast radius of the `fabs` fix (FLAGGED, not rerun here):** `PassMuonMediumCuts` is shared by
+**⚠ D5 dP/P PART REVERSED (2026-07-16, user):** the dP/P cut is ONE-SIDED by definition
+(`dp/p < thrsh`; the negative tail is KEPT) — for data AND MC. Data's `fabs` dated from the
+repo's initial commit (2022-11-02) and was always wrong; MC was right all along, and the
+round-2 change below copied data's bug into MC. Fixed both ways in `71fcf1c`:
+`DimuonDataAlgCoreT.c:599` and `PythiaFullSimExtras.c:160` are now one-sided. The blast
+radius below now applies to the DATA side (all data NTP outputs stale); per user decision
+(2026-07-16) only the trig-eff data references (pp24 + pbpb23, both WPs) are rerun now, the
+full data cascade is scheduled separately. The rest of D5 (cut-by-cut audit) stands.
+**Blast radius of the round-2 `fabs` change (superseded by the above — the MC-side rerun
+happened in round 3 as the REVERT):** `PassMuonMediumCuts` is shared by
 the whole Pythia-fullsim path, so **reco-efficiency, detector-response and template-fit MC
 results are now stale** by ~2.6% of reco muons. Out of scope for this task (trigger efficiency);
 must be rerun before those are used. `PowhegFullSimExtras.c:25` carries the SAME bug — left
@@ -769,6 +781,52 @@ centrality (D2).
   1608/1608 (overlay) ratio points present, 0 missing**, no duplicate-x mis-pairing, every
   off-frame point arrowed in both directions.
 
+- 2026-07-16 (round 3) — **U1 DONE (code): dP/P cut polarity corrected — ONE-SIDED everywhere**
+  (commit `71fcf1c`). Archaeology: data's `fabs` present since the initial commit `eac35a3`
+  (2022-11-02, `MuonNTupleFirstPass.C:28`) — never one-sided, no recent regression; MC was
+  one-sided until round-2 D5 (`221f49a`) copied the data bug in. Fixed:
+  `DimuonDataAlgCoreT.c:599` + `PythiaFullSimExtras.c:160` (Powheg was already one-sided; no
+  other cut site in RDF/plotting layers — grepped). D5 annotated (dP/P part REVERSED).
+  User decision on data blast radius: **rerun trig-eff data references only now** (pp24 +
+  pbpb23, both WPs); full data cascade (all years nominal NTP, crossx, template fits)
+  scheduled separately — tracked in Remaining Work.
+- 2026-07-16 (round 3) — **U5 DONE: Tight/Medium WP wiring verified — NO BUG** (delegated;
+  merged from `_sub_wp_verify.md`, then deleted). All code sites WP-keyed correctly
+  (`FillMCTrigEffHists.cxx:282-283` wp_col pass_tight/pass_medium through singles, both pair
+  legs, and Step-3; `FitMCSinglesEffcy.cxx:114-116`; `plot_mc_trig_eff.cxx:269,467` WP-matched
+  data file; NTP `PythiaFullSimExtras.c:245-246` pass_medium=PassMuonMediumCuts,
+  pass_tight=pass_medium&&(quality&16); data side `RDFBasedHistFillingData.cxx:108` +
+  `.Filter("pair_pass_tight")` PP.cxx:149/PbPb.cxx:320). Files: all 8 Tight/Medium pairs differ
+  at byte level; **all 1932 compared TH1s differ, 0 bit-identical**; Medium ⊇ Tight everywhere
+  (e.g. pp `h_mc_pt_denom_muplus` 172 862 vs 180 829; pbpb data `h_pt2nd_ctr0_5_sign1_mu4_sepr`
+  184 197 vs 208 285). **Why plots look identical: 94–95% (MC) / 88–90% (data) of Medium muons
+  are also Tight, and the mu4 response is nearly WP-blind — per-pT-bin |ε_T − ε_M| = 0.001–0.011
+  absolute (pp MC 0.7844 vs 0.7766; pbpb data 0.5040 vs 0.4937) — invisible at plot scale; the
+  Step-3 ratio cancels even that.** Near-identical plots are the physically expected outcome.
+- 2026-07-16 (round 3) — **U3(b) DONE: forward-endcap anomaly investigated (delegated; merged
+  from `_sub_mctrig_fwd_l1_invest.md`, then deleted). VERDICT: NOT a code bug — a
+  production-configuration issue in the pp24 r16578 L1 endcap trigger simulation (~95%
+  confidence).** Full evidence in **R8** below: AMI tag chains fetched and compared (4 candidate
+  discriminants flip together between r16578 and r17618); matching-variant, vertex-z and
+  side/charge hypotheses all KILLED on the NTUPs; the saturation is already present at the
+  **L1-item level** (L1_MU3V ≈ 0.95 where data's full chain = 0.60). r17663 (no-overlay clone of
+  r17618) verified in AMI/rucio as the single-variable discriminator; one cheap grid skim —
+  proposed to user, not submitted. Trigger-group question drafted (R8).
+
+- 2026-07-16 (round 3) — **U1/U4 rerun DONE: everything regenerated on the one-sided dp/p cut**
+  (results in R7b + R9). MC: NTP ×4 → RDF Fill/Fit/Step3 ×(2 samples × 2 WPs) → 4 plot sets,
+  all rc=0, logs grepped. Data (user-approved scope): `pipeline_pp_trig_eff.sh` +
+  `pipeline_pbpb_trig_eff.sh` (YEARS=23, 3 RDF threads) full reruns incl. condor NTP, T&P,
+  turn-on fits, validation; Medium T&P refills (`isTight=false`) for pp24 + pbpb23. Plot
+  layout: Medium → `step*/medium/` subdirs (U4), old `*_medium_wp.png` removed, 48 fresh PNGs.
+  **/review-analysis-code: code + numerics + C1–C3 passed at iteration 1; documentation
+  amendments reviewed in further iterations — final verdict recorded in the review log**
+  (iter-1 WARNINGs: my overlay Tight/Medium plateau attribution was swapped in the report —
+  corrected in R9, files/plots were always right; §3.0(c) + round-2 Done(B) updated to the
+  one-sided definition; iter-2 WARNING: stale round-1 plateaus in Remaining Work item 6 —
+  updated to R9). Fit status-1 note: R7b.
+  Log: `.claude/logs/review-analysis-code-20260716-180312-dpop-one-sided-wp-subdir.md`.
+
 ## Results & Observations
 
 ### R1. NTP discovery (2026-07-10, Explore agent + orchestrator check)
@@ -927,6 +985,109 @@ muons including fakes (~zero trigger efficiency), which dilutes ε_data at low p
 MC/data at low pT *everywhere*; it cannot explain the |η|>2.0 localization (which survives a
 plateau-normalized comparison), but it is a real asymmetry in the Step-1 validation.
 
+### R7b. Round-3 MC rerun bookkeeping (2026-07-16)
+
+- NTP ×4 rc=0, log-grepped clean. Provenance counters unchanged (pp REAL 477 135 — the dp/p
+  cut acts downstream of the provenance report). Tree entry counts unchanged (pp singles
+  475 108, overlay 99 763): the trigger-mode tree gate is `reco_match && pt>3 && |η|<2.6` (R5);
+  the generic cuts incl. dp/p live in the stored `pass_tight`/`pass_medium` booleans, so the
+  one-sided revert changes branch VALUES, not entry counts.
+- RDF chain (Fill→Fit→Step3, 2 samples × 2 WPs) rc=0. One fit now returns **status 1**:
+  `f_mc_pt_vs_q_eta_muplus_minus2_40_TO_minus2_00` (pp Tight, χ²/ndf 58.4/36) — this is
+  exactly the R3/R8 anomalous SATURATED bin (flat ≈0.9, no turn-on shape ⇒ degenerate erf
+  parameters; it was already the worst bin in rounds 1–2 at χ²/ndf 56.9). The curve is
+  numerically indistinguishable from round-2's status-0 fit (Eval differs <0.001 at
+  4.5–55 GeV) ⇒ benign, accepted with this note; the bin's absolute MC turn-on is invalidated
+  by R8 anyway.
+
+### R8. Forward-endcap L1 anomaly: production-configuration origin (2026-07-16, round 3, delegated investigation)
+
+**The question (user):** same bin (q·η∈(−2.4,−2), pT 4–6) — pp24 fullsim MC ≫ data with a
+saturated ~0.9 flat "turn-on" (data rises 0.45→0.92), while the HIJING overlay (PbPb23, 0–5%)
+is BELOW its data. Opposite signs cannot be a physical pp-vs-PbPb difference (Run-2: HI ≈ pp,
+KB `atlas_run2_muon_trigger.md`). Code bug or simulation issue?
+
+**AMI tag chains (fetched via pyami, both verified reasonable for their campaigns):**
+| item | pp24 test `e8599_s4521_s4483_r16578` | overlay test `e8599_s4614_r17618_r15970` |
+|---|---|---|
+| sim | AthSimulation 24.0.90, FullG4MT_QS | Athena 23.0.56, FullG4MT_QS, **fixed vtx (−0.6,−0.4,−3.3), zero smear** |
+| recon release | Athena **24.0.95** | Athena **24.0.58** |
+| conditions tag | **OFLCOND-MC23-SDR-RUN3-09** | **OFLCOND-MC23-SDR-RUN3-05** |
+| conditions run | autoConfig, runNumber=**801170** | forced ConditionsRunNumber=**460000** |
+| overlay | pp pileup (Py8+Epos minbias) | HIJING PbPb UCC ip 0–5 |
+| L1 / HLT menu | `Physics_HI_run3_v1` / `PhysicsP1_pp_lowMu_run3_v1` | `MC_HI_run3_v1` / `Dev_HI_run3_v1` |
+
+Same evgen (e8599, Py8.308), same geometry (ATLAS-R3S-2021-03-02-00). The four candidate
+discriminants (release, conditions tag, conditions run number, L1 menu) **all flip together**.
+
+**Hypotheses killed on the NTUPs (NTP conventions mirrored exactly, AMI-weighted, pT 4–6):**
+1. *Matching artifact:* `_0_01` and `_V3` identical to the bare 0.02 match to the 4th decimal
+   in every bin, both samples (`_V2` is a dead R21-only branch, always false in R25 skims —
+   `TrigRates.cxx:1345-1365`).
+2. *Vertex-z:* pp bin-A ε flat (0.889–0.921) across vz∈[−60,60] mm; overlay fixed-z (rms 0)
+   confirmed — irrelevant, the pp saturation exists at every vz including vz≈−3.3.
+3. *Single-side hardware:* μ⁺ side C 0.9003 vs μ⁻ side A 0.8967 — sides identical. The
+   organizing variable is **q·η (bending direction)**: forward q·η<0 = 0.90 vs q·η>0 = 0.51
+   (2.0–2.2) / **0.23 (2.2–2.4)** — MC hugely exaggerates a mild charge×bending asymmetry that
+   data also shows (0.600 vs 0.366, R3).
+4. **L1 isolated (decisive):** in single-selected-muon pp events, the L1_MU3V item alone is
+   ~saturated — L1TBP = 0.968 (loose) / 0.949 (strict) in bin A at pT 4–6, where data's full
+   chain is 0.60 ⇒ the over-efficiency is dominantly **L1-level**, HLT nearly fully efficient
+   on top. (Overlay L1TBP ≈ 0.98 everywhere from PbPb ambient activity — uninformative there.)
+   Overlay per-muon ε in the same bin = 0.505 vs pp 0.899 under identical skim + NTP code.
+
+**VERDICT: NOT a code bug — the pp24 r16578 trigger simulation applies a looser endcap L1
+configuration than both 2024 pp data and the HI-conditions simulation (~95% confidence).**
+KB limit stated: the KB does not document the Run-3 endcap L1 inner-station (NSW/EI/Tile)
+coincidence or TGC coincidence-window LUT configuration in MC — hence a question, not an
+assertion. Analysis impact unchanged: ε^nc stays data-driven, ε_ΔR is self-normalized; only
+the Step-1 absolute forward turn-on validation is invalidated (+ caution for forward small-ΔR).
+
+**r17663 contingency (user-suggested; VERIFIED in AMI/rucio, NOT submitted):**
+`mc23_5p36TeV.802781.Py8EG_A14_pp_hQCD_DiMu_pTH8_14.merge.AOD.e8599_s4614_r17663_r15970`
+(tid50446417, 10 files/10 000 ev/5.0 GB, VALID) = r17618 minus HIJING (PileUp=False), all four
+candidate discriminants identical to r17618; identical evgen 802781 ⇒ same AMI weight, none
+new needed. Processing = ONE cheap grid skim (clone `grid_sub_r17662_signalonly.sh` →
+`_r17663` suffix, mode `ppmcfullsim_hioverlay24`) + the diagnostic battery. **Outcome tree
+(bin A, pT 4–6):** ε≈0.9 (pp-like) ⇒ NOT the r-tag conditions — deeper L1-simulation issue
+common to quiet MC; ε≈0.5 (overlay-like) ⇒ cause IS the r16578 conditions/config — pins the
+trigger-group question, HIJING occupancy exonerated.
+
+**Draft question for the trigger group:**
+> In our mc23_5p36TeV 5.36 TeV productions we see opposite-sign data/MC L1 muon endcap
+> behaviour between two reco tags. pp-reference fullsim **r16578** (DSIDs 802758–802781,
+> `e8599_s4521_s4483_r16578`; Athena 24.0.95; OFLCOND-MC23-SDR-RUN3-09; autoConfiguration,
+> runNumber=801170; L1 `Physics_HI_run3_v1`, HLT `PhysicsP1_pp_lowMu_run3_v1` via
+> Campaigns.MC23ppReferenceRun2024): per-muon HLT_mu4_L1MU3V efficiency for offline Tight
+> muons with |q·η|∈(2.0,2.4), pT 4–6 GeV is ~0.90 and FLAT (the L1_MU3V item alone ~0.95),
+> while 2024 pp 5.36 TeV data shows a turn-on from ~0.45; the excess is confined to |η|>2.0
+> and strongly q·η-asymmetric (negative q·η saturated, positive q·η suppressed). The
+> HI-conditions counterpart **r17618/r17663** (`e8599_s4614_r17618_r15970`; Athena 24.0.58;
+> OFLCOND-MC23-SDR-RUN3-05; ConditionsRunNumber=460000; L1 `MC_HI_run3_v1`, HLT
+> `Dev_HI_run3_v1`) shows a normal turn-on in the same bin.
+> (1) Which endcap L1 (TGC Sector Logic) configuration does the r16578 trigger simulation
+> apply — the big-wheel coincidence-window LUTs and the inner-station coincidence
+> (NSW / EI / Tile) — and is the NSW coincidence ENABLED there?
+> (2) Is that the configuration applied online in the 2024 5.36 TeV pp reference run, and if
+> not, which CW/coincidence set was?
+> (3) Which of {Athena release 24.0.95 vs 24.0.58, conditions tag RUN3-09 vs RUN3-05,
+> conditions run number 801170 vs 460000, L1 menu Physics_HI_run3_v1 vs MC_HI_run3_v1} drives
+> the TGC/NSW coincidence configuration difference between these tags?
+
+### R9. Round-3 headline numbers (2026-07-16, one-sided dp/p everywhere; ALL results current)
+
+| quantity (ΔR∈[1,4] plateau) | Tight | Medium | round-2 (T / M) |
+|---|---|---|---|
+| pp ε_ΔR^2mu4 | **0.9569 ± 0.0094** | **0.9576 ± 0.0090** | 0.9583 / 0.9589 |
+| overlay ε_ΔR^cross | **0.8429 ± 0.0232** | **0.8352 ± 0.0219** | 0.8426 / 0.8407 |
+
+All shifts ≪ 1σ (pp −0.0014 both WPs; overlay +0.0003 T / −0.0055 M), consistent with the
+~2.6% re-admitted negative-tail muons; Tight/Medium remain compatible (WP-independence holds).
+Data T&P yields moved UP ×1.025–1.043 (reviewer-verified vs the pre-fix snapshot), the
+expected sign and size. Data references now carry the one-sided cut (pp24 + pbpb23 pipelines
++ Medium refills rerun); 48 PNGs regenerated — **Tight in the step dirs, Medium in
+`step*/medium/` subdirs** (same filenames).
+
 ## Remaining Work
 
 **Blocking / needs user decision:**
@@ -945,23 +1106,74 @@ plateau-normalized comparison), but it is a real asymmetry in the Step-1 validat
    (0.9588 ± 0.0094) from master. Follow-up work continues from master.
 
 **Open questions / follow-ups:**
-3. **One question for the trigger group** (the only thing standing between us and the
-   microscopic cause of R3): which L1-muon **endcap** configuration (inner/NSW coincidence,
-   TGC coincidence-window LUTs) do the **r16578** (pp24-conditions) and **r17618**
-   (PbPb23-conditions) simulations use, and is the pp low-μ endcap coincidence applied in data
-   but not in that MC?
-4. **Double-matching cross-check for R4** (would close it outright): propagate the tighter-cone
-   per-muon branch `muon_b_HLT_mu4_L1MU3V_0_01` (and/or `_V2`/`_V3`) via an NTP flag with a
-   distinct output suffix (provenance rule). If ε(ΔR<0.12) is unchanged, double-matching is
-   excluded.
+2b. **FUTURE TODO (user, 2026-07-16, not urgent — PbPb-only, qualitatively similar either way):
+   decide whether real HIJING muons stay INCLUDED in the MC trig-eff muon sample.** Current
+   choice (D4/§3.0) includes them (like the template-fit real/hadronic/fake axis); the
+   alternative excludes them (consistent with reco-efficiency's Pythia-only construction).
+   Affects only the overlay (pp provably identical either way — set-equality check, T5).
+3. **Trigger-group question — now fully drafted with tags + config keys (R8).** Send it; in
+   parallel the **r17663 no-overlay skim** (one cheap grid job, R8 outcome tree) is the single
+   most incisive discriminator — awaiting user go-ahead to submit.
+3b. **Full data-side dp/p cascade (U1 blast radius):** all data NTP outputs (pp24 nominal +
+   pbpb23/24/25 nominal & trig-eff) and downstream (crossx, R_AA, template fits) still carry
+   the old `fabs(dp/p)`; only the pp24+pbpb23 trig-eff references are being rerun in round 3
+   (user decision 2026-07-16). Schedule the rest as one batch.
+4. **Double-matching cross-check for R4 — DONE incidentally in R8** (2026-07-16): `_0_01` and
+   `_V3` per-muon matches are identical to the bare 0.02 match to the 4th decimal in every
+   bin, both samples ⇒ double-matching excluded outright (no NTP flag needed; checked at the
+   raw-NTUP level with NTP conventions mirrored).
 5. **Quantify the Step-1 denominator asymmetry** (MC = real muons only; data = includes fakes)
    before quoting the Step-1 MC/data ratio as a number in the note (R5).
-6. **Plateau-normalize ε_ΔR** before it is applied to crossx (unchanged precondition); pp
-   plateau 0.9588 ± 0.0094, overlay 0.8776 ± 0.0257.
+6. **Plateau-normalize ε_ΔR** before it is applied to crossx (unchanged precondition);
+   current values = **R9** (round 3, Tight): pp 0.9569 ± 0.0094, overlay 0.8429 ± 0.0232.
 7. Re-run downstream when the full-stat productions arrive (all-centrality PbPb24-conditions
    overlay; lifts D2). **D3 is now LIFTED** — all 24 pp slices are in.
 
 ## Latest Stage
+
+**2026-07-16 (round 3) — COMPLETE (except two user decisions pending).** All 5 items done:
+U1 one-sided dp/p fixed everywhere + full trig-eff rerun (MC both samples/WPs + data pp24 &
+pbpb23 refs incl. Medium refills; R9 headline table); U2 answered (truth fiducial gate =
+`PassCuts_PythiaCore`, removed in `store_mc_trigger` only; `require_signal_cuts` untouched);
+U3(a) HIJING-inclusion TODO recorded (Remaining Work 2b), U3(b) forward anomaly root-caused
+to pp r16578 L1 endcap production config (R8; trigger-group question drafted); U4 Medium →
+`medium/` subdirs (48 PNGs); U5 WP wiring verified NO BUG (plots identical because the mu4
+response is nearly WP-blind — 94–95%/88–90% Tight∩Medium overlap, |Δε| ≤ 0.011).
+Reviews: /review-analysis-code APPROVED iter 3; /review-plot APPROVED iter 1.
+**Awaiting user:** (i) submit the r17663 no-overlay skim? (ii) send the R8 trigger-group
+question? Plus the standing items: §2 assumption-(i) union-weight decision (Remaining Work 1)
+and the full data-side dp/p cascade (Remaining Work 3b).
+
+---
+
+**Original round-3 plan (written before work):**
+
+- **U1 — dp/p cut polarity (user: `fabs` IS WRONG; the cut is ONE-SIDED, `dp/p < thrsh`, data AND MC).**
+  Archaeology DONE: data has used `fabs` since the repo's initial commit (`eac35a3`, 2022-11-02,
+  `MuonNTupleFirstPass.C:28`) through every restructure to `DimuonDataAlgCoreT.c:599` — no recent
+  commit introduced it; it was always wrong. MC was one-sided all along until round-2 D5
+  (`221f49a`) copied data's `fabs` into `PythiaFullSimExtras.c:160`. Fix: one-sided in BOTH
+  `DimuonDataAlgCoreT.c:599` and `PythiaFullSimExtras.c:160`; rewrite D5 (the "fix" direction
+  reverses: data moves to MC's convention). `PowhegFullSimExtras.c:39` already one-sided.
+  Blast radius: DATA-side generic muon cut change ⇒ every data NTP output (pp24 + pbpb23/24/25)
+  and everything downstream (T&P, fits, crossx, template fits) is stale — rerun scope needs a
+  user decision; MC trig-eff chain rerun is local/cheap and proceeds now.
+- **U2 — explain the removed "truth fiducial gate" (answer only, no code change):** the old
+  trigger-mode pair path passed pairs through `PassCuts_PythiaCore` (`PythiaAlgCoreT.c:741`,
+  TRUTH pT>4 & truth |η|<2.4 on both legs); removed ONLY inside `store_mc_trigger`
+  (`ProcessEventFullsimMCTrig`); nominal fullsim path untouched; the RDF-level
+  `require_signal_cuts` reco-eff mode is a different layer, NOT touched.
+- **U3 — (a) future-TODO: decide HIJING-muon inclusion for MC trig-eff (template-fit-like
+  include vs reco-eff-like exclude); (b) DELEGATED /review-investigation: pp Step-1 forward
+  bin (q·η −2.4..−2, pT 4–6) MC≫data flat-at-~0.9 vs overlay SAME bin MC<data — code bug vs
+  simulation; includes AMI-tag comparison (pp e8599_s4162?_r16578 vs overlay e8599_s4614_r17618
+  — verify actual tags) and the r17663 no-overlay 10k sample as contingency.
+- **U4 — plots: Medium WP → `medium/` subdirectory per step** (currently `_medium_wp` filename
+  suffix in the same dir).
+- **U5 — DELEGATED verification: are the Tight plots actually Tight** (pp + PbPb; code path +
+  input-file histogram bin contents; user observes Tight ≈ Medium visually).
+
+---
 
 **2026-07-14 (round 2) — COMPLETE. Reco-seeded truth-matched-real muons + both WPs; both
 reviews PASS (/review-analysis-code iter 2, /review-plot iter 3).** Four result sets delivered
