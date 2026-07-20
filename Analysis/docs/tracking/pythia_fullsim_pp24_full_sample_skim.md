@@ -635,6 +635,22 @@ r17663 no-overlay results.** Proceed autonomously; stop on ambiguity.
   - **Still to do:** medium-WP pass (Stages 7–10, NTP/RDF are WP-agnostic → skip); `/review-plot`
     on the regenerated plots; `muon_wp_registry.md` + `docs/pythia_fullsim_pp.md` updates.
 
+- 2026-07-20 — **CONCURRENCY (user-confirmed intentional): a parallel r17663 session is live.**
+  PID 2654515 (`claude --resume`) is NOT stopped — it edited `plot_mc_trig_eff.cxx` at 18:35,
+  adding an r17663 comparison overlay (HIJING r17618 on the r17663 step-1 panels). **User
+  directive: it is intentional r17663 work, and r17663 must not affect pp.** Verified:
+  - it touched ONLY `plot_mc_trig_eff.cxx` (my `FillMCTrigEffHists`/`FitMCSinglesEffcy` pp_full
+    versions are untouched);
+  - the edit only adds a `noovl`-only `cmp_fit_file` path (guarded `if(fcmp)`), so for
+    `pp`/`pp_full` (`cmp_fit_file` empty → `fcmp=nullptr`) the new code is skipped;
+  - the `pp_full` block is **byte-identical** to my committed `a4462db`; the file compiles.
+  **Insulation:** my pp_full trig-eff code is committed clean (`a4462db`). The only residual risk
+  is compile-time coupling — if that session leaves the file non-compiling at the instant the
+  production run's Stage 10 compiles it, the plot step fails. Recovery is cheap: `git checkout
+  a4462db -- plot_mc_trig_eff.cxx` (or its committed blob) and re-run only Stage 10d (the
+  mc_trig NTP + hists + fits from 10a–c persist). Do NOT commit the r17663 WIP — the parallel
+  session owns it.
+
 ## Results & Observations
 
 ### R1. Disk census of `~/usatlasdata` (real bytes, `du -sb`)
