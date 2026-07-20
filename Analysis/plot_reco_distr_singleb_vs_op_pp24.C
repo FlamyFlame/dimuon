@@ -1,19 +1,26 @@
+#include "MuonObjectsParamsAndHelpers/FullSimSampleType.h"
 // plot_reco_distr_singleb_vs_op_pp24.C
 // 2×2 canvas: reco pair_pt (top row) + minv (bottom row)
 //   left  col: truth single-b pairs passing medium WP  (from_same_b && pair_pass_medium)
 //   right col: all op-sign pairs passing medium WP     (pair_pass_medium, reco-only, like data)
 // Drawn with error bars; y-axis = estimated cross-section [pb / bin-width].
 
-void plot_reco_distr_singleb_vs_op_pp24(){
+void plot_reco_distr_singleb_vs_op_pp24(bool is_test_sample = true, bool tight_WP = true){
     gROOT->SetBatch(kTRUE);
 
     // Load struct dict (needed for MuonPairObj.xxx sub-branch access in TTree::Draw)
     gROOT->ProcessLine(".L /gpfs/mnt/atlasgpfs01/usatlas/workarea/yuhanguo/dimuon_codes/Analysis/NTupleProcessingCode/PythiaAnalysisClasses.h+");
 
-    const char* fpath  = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/"
-                         "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts.root";
-    const char* outdir = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/plots/"
-                         "pp24_reco_effcy_plots/medium/distr/";
+    // is_test_sample: true = TEST sample; false = FULL production (files end in "_full").
+    // Plots land in that sample's own plots/ dir, so the two sets never clobber each other.
+    const std::string sample_dir    = FullSimSampleInputDir(FullSimSampleType::pp, is_test_sample);
+    const std::string sample_suffix = is_test_sample ? "" : "_full";
+    const std::string wp_dir        = tight_WP ? "tight" : "medium";
+    const std::string fpath_s  = sample_dir + "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts"
+                                 + sample_suffix + ".root";
+    const std::string outdir_s = sample_dir + "plots/pp24_reco_effcy_plots/" + wp_dir + "/distr/";
+    const char* fpath  = fpath_s.c_str();
+    const char* outdir = outdir_s.c_str();
 
     TFile* f = TFile::Open(fpath, "READ");
     if (!f || f->IsZombie()){ printf("ERROR: cannot open %s\n", fpath); return; }

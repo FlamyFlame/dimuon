@@ -2,6 +2,7 @@
 // ranked by cross-section, with their crossx% and full-sample error fraction%.
 // Outputs a Markdown file. Runs for truth and reco pair pT, both binnings.
 
+#include "../../MuonObjectsParamsAndHelpers/FullSimSampleType.h"  // FullSimSampleInputDir
 #include <ROOT/RDataFrame.hxx>
 #include <TH1D.h>
 #include <cmath>
@@ -68,14 +69,17 @@ void write_table(std::ofstream& out,
     out << "\n";
 }
 
-void make_kn_contributor_table() {
+// is_test_sample: true = TEST sample (4 isospin beams); false = FULL production (pp beam only,
+// isospin weight 1; files end in "_full"). One switch -- it also selects the isospin treatment
+// upstream (FullSimSampleType.h), so path and weighting cannot drift apart.
+void make_kn_contributor_table(bool is_test_sample = true) {
 
+    const std::string sample_dir    = FullSimSampleInputDir(FullSimSampleType::pp, is_test_sample);
+    const std::string sample_suffix = is_test_sample ? "" : "_full";
     const std::string input_file =
-        "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/"
-        "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts.root";
+        sample_dir + "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts" + sample_suffix + ".root";
     const std::string output_md =
-        "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/plots/"
-        "kn_contributor_table.md";
+        sample_dir + "plots/kn_contributor_table" + sample_suffix + ".md";
 
     const int nkn = 6;
     const std::array<std::string, nkn> kn_names = {
