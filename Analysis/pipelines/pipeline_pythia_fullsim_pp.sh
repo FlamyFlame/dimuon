@@ -35,12 +35,11 @@ set -Eeuo pipefail
 #   SMOKE_NEVENTS=2000     # events per (slice,beam) chain when --dry-run
 #   SKIP_NTP=0 SKIP_RDF=0 SKIP_PLOTS=0
 #
-# ⚠ WHY MC-TRIG-EFF IS OFF BY DEFAULT (2026-07-14): the MC-trigger-efficiency chain
-# (FillMCTrigEffHists / FitMCSinglesEffcy / plot_mc_trig_eff) is owned by a concurrently-running
-# effort tracked in docs/tracking/mc_trigger_efficiency.md, which has an OPEN physics decision (the
-# single-muon efficiency is DeltaR-dependent => the PbPb mu4 UNION weight is at risk) and whose
-# sample directory is still hard-coded to the TEST sample. Turn this on only once that work has
-# landed and the chain has been given a sample knob.
+# MC-TRIG-EFF (Stage 3 + Stage 10) is OFF by default: it is a heavier, separate deliverable and
+# its final plots OVERWRITE the canonical pp_trigger_efficiency/mc_based/ dir (the pipeline backs
+# that dir up first). The chain was given a pp_full sample knob (2026-07-20); the PbPb-union-weight
+# physics question in docs/tracking/mc_trigger_efficiency.md is PbPb-only and does not affect pp
+# (pp uses the 2mu4 PRODUCT weight). Enable with ENABLE_MC_TRIG_EFF=1.
 # ==========================================================================================
 
 SAMPLE="${1:-}"
@@ -240,35 +239,84 @@ else
 .q
 ROOTEOF
 
-    log "[Stage 8] single-muon reco efficiency"
+    log "[Stage 8] single-muon reco efficiency + reco distributions"
     root -l -b <<ROOTEOF || fail "single-muon reco-eff plotting failed"
 .L plot_single_muon_reco_effcy.cxx+
 plot_single_muon_reco_effcy("pp", "default", ${TIGHT_CPP}, ${IS_TEST_CPP});
 .q
 ROOTEOF
     popd >/dev/null
+    # reco-distr macro is a .C run INTERPRETED (not ACLiC); it lives at the Analysis root.
+    pushd "${ANALYSIS_DIR}" >/dev/null
+    root -l -b -q "plot_reco_distr_singleb_vs_op_pp24.C(${IS_TEST_CPP}, ${TIGHT_CPP})" \
+        || fail "reco-distr plotting failed"
+    popd >/dev/null
 
     log "[Stage 9] differential crossx per pT-hat slice + kn contributor table"
     pushd "${PY_PLOT_DIR}" >/dev/null
     root -l -b <<ROOTEOF || fail "crossx plotting failed"
 .L plot_pythia_fullsim_kn_pt_crossx.cxx+
-g_is_test_sample = ${IS_TEST_CPP};
-g_use_tight_wp   = ${TIGHT_CPP};
-plot_pythia_fullsim_kn_pt_crossx();
+plot_pythia_fullsim_kn_pt_crossx(${IS_TEST_CPP}, ${TIGHT_CPP});
+.q
+ROOTEOF
+    root -l -b <<ROOTEOF || fail "kn contributor table failed"
+.L make_kn_contributor_table.cxx+
+make_kn_contributor_table(${IS_TEST_CPP});
 .q
 ROOTEOF
     popd >/dev/null
 fi
 
 # --- Stage 10: MC-based trigger efficiency (OPTIONAL) -------------------------------------
+# Chain: FillMCTrigEffHists(step1) -> FitMCSinglesEffcy -> FillMCTrigEffHists(do_step3) ->
+# plot_mc_trig_eff. Intermediate hists/fits carry the sample label (pp24_full) so they never
+# clobber the TEST-sample ones; the FINAL plots go to the canonical
+# dimuon_data/plots/pp_trigger_efficiency/mc_based/ (the full sample SUPERSEDES the test-sample
+# deliverable) -- so that directory is BACKED UP first.
+# Overlay / r17663 trig-eff are NOT touched (this pipeline is pp only).
 if (( ENABLE_MC_TRIG_EFF )); then
     log "[Stage 10] MC-based trigger efficiency chain"
-    fail "Stage 10 is not wired yet: FillMCTrigEffHists / FitMCSinglesEffcy / plot_mc_trig_eff still
-          hard-code the TEST-sample directory and have no sample knob. That chain is owned by the
-          concurrent effort in docs/tracking/mc_trigger_efficiency.md (open physics decision). Add
-          the sample knob once that work lands, then enable this stage."
+    if [[ "$SAMPLE" == "full" ]]; then TRIG_SAMPLE="pp_full"; else TRIG_SAMPLE="pp"; fi
+
+    PP_TRIG_PLOTS="${DATA_ROOT}/dimuon_data/plots/pp_trigger_efficiency/mc_based"
+    if [[ "$SAMPLE" == "full" && -d "$PP_TRIG_PLOTS" ]]; then
+        bak="${PP_TRIG_PLOTS}.bak_testsample_$(date +%Y%m%d_%H%M%S)"
+        cp -a "$PP_TRIG_PLOTS" "$bak"
+        log "  backed up TEST-sample pp trig-eff plots -> $(basename "$bak")"
+    fi
+
+    pushd "${RDF_DIR}" >/dev/null
+    log "  [10a] FillMCTrigEffHists step1 (${TRIG_SAMPLE}, WP=$([[ $USE_TIGHT_WP == 1 ]] && echo tight || echo medium))"
+    root -l -b <<ROOTEOF || fail "FillMCTrigEffHists step1 failed"
+.L FillMCTrigEffHists.cxx+
+FillMCTrigEffHists("${TRIG_SAMPLE}", false, ${TIGHT_CPP});
+.q
+ROOTEOF
+    log "  [10b] FitMCSinglesEffcy (${TRIG_SAMPLE})"
+    root -l -b <<ROOTEOF || fail "FitMCSinglesEffcy failed"
+.L FitMCSinglesEffcy.cxx+
+FitMCSinglesEffcy("${TRIG_SAMPLE}", ${TIGHT_CPP});
+.q
+ROOTEOF
+    log "  [10c] FillMCTrigEffHists step3 (ε_ΔR inputs)"
+    root -l -b <<ROOTEOF || fail "FillMCTrigEffHists step3 failed"
+.L FillMCTrigEffHists.cxx+
+FillMCTrigEffHists("${TRIG_SAMPLE}", true, ${TIGHT_CPP});
+.q
+ROOTEOF
+    popd >/dev/null
+
+    log "  [10d] plot_mc_trig_eff (${TRIG_SAMPLE})"
+    pushd "${ANALYSIS_DIR}/plotting_codes/trig_effcy/mc_based" >/dev/null
+    root -l -b <<ROOTEOF || fail "plot_mc_trig_eff failed"
+.L plot_mc_trig_eff.cxx+
+plot_mc_trig_eff("${TRIG_SAMPLE}", ${TIGHT_CPP});
+.q
+ROOTEOF
+    popd >/dev/null
+    log "[Stage 10] MC trig-eff done -> ${PP_TRIG_PLOTS}"
 else
-    log "[Stage 10] SKIPPED — MC trig-eff disabled (see the header note)"
+    log "[Stage 10] SKIPPED — MC trig-eff disabled (ENABLE_MC_TRIG_EFF=0; see the header note)"
 fi
 
 log "══════════ DONE — SAMPLE=${SAMPLE} ══════════"

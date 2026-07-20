@@ -20,8 +20,11 @@
 //   One switch -- it also fixes the isospin treatment upstream (FullSimSampleType.h).
 // g_use_tight_wp : NOMINAL muon WP is TIGHT (feedback_plots_wp_config_var, muon_wp_registry.md).
 //   This macro previously HARD-CODED Medium while every other pp-fullsim stage used Tight.
-static bool g_is_test_sample = true;
-static bool g_use_tight_wp   = true;
+// NOT `static`: ACLiC-compiled internal-linkage globals are invisible to the ROOT interpreter,
+// so a caller could not override them and every run silently used the defaults. The entry point
+// below takes them as arguments and sets these.
+bool g_is_test_sample = true;
+bool g_use_tight_wp   = true;
 
 static std::string SampleSuffix() { return g_is_test_sample ? "" : "_full"; }
 static std::string SampleDir()    { return FullSimSampleInputDir(FullSimSampleType::pp, g_is_test_sample); }
@@ -847,7 +850,12 @@ void replot_scale_forecast() {
     plot_err_ratio_map(25, 150., "_150GeV", "old_scales/", 1.);
 }
 
-void plot_pythia_fullsim_kn_pt_crossx() {
+// Args (NOT interpreter-global assignment — see the g_* note): is_test_sample selects TEST vs
+// FULL production (input dir, "_full" suffix, honesty caption, forecast-factor no-op);
+// use_tight_wp selects the pair WP (nominal TIGHT).
+void plot_pythia_fullsim_kn_pt_crossx(bool is_test_sample = true, bool use_tight_wp = true) {
+    g_is_test_sample = is_test_sample;
+    g_use_tight_wp   = use_tight_wp;
     gStyle->SetOptStat(0);
     gStyle->SetOptTitle(0);
     plot_impl(20, 120., "");
