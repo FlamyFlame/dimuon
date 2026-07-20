@@ -21,6 +21,26 @@ HIJING overlay r17618 `_July2026`) to deliver the MC-based trigger-efficiency pr
    weighting on an unbiased (no-trigger-requirement) MC pair sample. This is the analysis
    deliverable that replaces the current dummy ε_ΔR ≡ 1 (roadmap Q4).
 
+## Autonomy Contract (round 4 — **DONE 2026-07-20**; retained for the record)
+**Every Done item met:** skim submitted (jediTaskID 51600634) and completed; full chain run
+(NTP ×2 → Fill/Fit/Step3 × 2 WPs → 24 PNGs) into a fully separate identity — the pp24 and
+overlay outputs and their 48 PNGs are byte-untouched (verified); R10 verdict written;
+/review-analysis-code and /review-plot both PASS. **Do NOT re-run the chain.**
+- Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a
+  plan, a passing small test, or one pipeline stage is NOT a stopping point.
+- Done = the **r17663 no-overlay sample** (`mc23_5p36TeV.802781...e8599_s4614_r17663_r15970`,
+  10 k events) is skimmed on the grid (trigger-enabled, HI menu — the R8 F4 plan), downloaded,
+  and pushed through the **full chain to plots**: NTP `store_mc_trigger` → `FillMCTrigEffHists`
+  → `FitMCSinglesEffcy` → Step-3 → plot set. **HARD CONSTRAINT (user): separate output file
+  names and a separate plot directory — NOTHING existing may be overwritten** (r17663 gets its
+  own sample identity: own input dir, own label/suffix, own plot dir; the pp24 and overlay
+  outputs and their 48 PNGs stay untouched). Plus: the **R8 outcome-tree verdict answered** —
+  ε in bin A (q·η∈(−2.4,−2), pT 4–6, per-muon mu4 match): ≈0.9 pp-like ⇒ NOT the r-tag
+  conditions; ≈0.5 overlay-like ⇒ cause IS the r16578 config — written into the doc (R10) with
+  the consequence for the trigger-group question; reviews passed; docs + git updated.
+- Stop-and-ask = ANY physics-results-bending ambiguity (no fixed list; use judgment;
+  when unsure whether an ambiguity is blocking, treat it as blocking → AskUserQuestion).
+
 ## Autonomy Contract (round 2 — DONE 2026-07-14; A–D all met, both reviews PASS)
 - Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a
   plan, a passing small test, or one pipeline stage is NOT a stopping point.
@@ -812,6 +832,10 @@ centrality (D2).
   **L1-item level** (L1_MU3V ≈ 0.95 where data's full chain = 0.60). r17663 (no-overlay clone of
   r17618) verified in AMI/rucio as the single-variable discriminator; one cheap grid skim —
   proposed to user, not submitted. Trigger-group question drafted (R8).
+  *(→ PARTLY SUPERSEDED by R10, 2026-07-20: the "r16578 production configuration" conclusion
+  STANDS and is now confirmed by r17663, but the localization to **L1** is WITHDRAWN. The
+  L1_MU3V ≈ 0.95 measurement itself stands; the inference "⇒ the deficit is at L1" does not —
+  R10 measures L1_MU3V ≈ 0.96 in r17663 alongside a chain match of only 0.560.)*
 
 - 2026-07-16 (round 3) — **U1/U4 rerun DONE: everything regenerated on the one-sided dp/p cut**
   (results in R7b + R9). MC: NTP ×4 → RDF Fill/Fit/Step3 ×(2 samples × 2 WPs) → 4 plot sets,
@@ -1030,14 +1054,24 @@ discriminants (release, conditions tag, conditions run number, L1 menu) **all fl
    organizing variable is **q·η (bending direction)**: forward q·η<0 = 0.90 vs q·η>0 = 0.51
    (2.0–2.2) / **0.23 (2.2–2.4)** — MC hugely exaggerates a mild charge×bending asymmetry that
    data also shows (0.600 vs 0.366, R3).
-4. **L1 isolated (decisive):** in single-selected-muon pp events, the L1_MU3V item alone is
+4. **L1 isolated (⚠ "decisive" HEDGED 2026-07-20 — see R10):** in single-selected-muon pp events, the L1_MU3V item alone is
    ~saturated — L1TBP = 0.968 (loose) / 0.949 (strict) in bin A at pT 4–6, where data's full
    chain is 0.60 ⇒ the over-efficiency is dominantly **L1-level**, HLT nearly fully efficient
    on top. (Overlay L1TBP ≈ 0.98 everywhere from PbPb ambient activity — uninformative there.)
    Overlay per-muon ε in the same bin = 0.505 vs pp 0.899 under identical skim + NTP code.
+   **⚠ ADDENDUM 2026-07-20 (R10):** the inference "L1 item saturated ⇒ HLT nearly fully
+   efficient on top" is NOT safe. R10 measures, in this same bin, an L1_MU3V item at ~0.96 in
+   r17663 *alongside* a per-muon chain match of only 0.560 — a direct counterexample to that
+   step. R8's evidence is MC-vs-data and R10's is MC-vs-MC, so this is a tension rather than a
+   refutation, but item 4 is no longer "decisive" and the L1 attribution below must be read
+   through R10's correction.
 
-**VERDICT: NOT a code bug — the pp24 r16578 trigger simulation applies a looser endcap L1
-configuration than both 2024 pp data and the HI-conditions simulation (~95% confidence).**
+**VERDICT: NOT a code bug — a production-configuration difference of the pp24 r16578 tag
+relative to both 2024 pp data and the HI-conditions simulation (~95% confidence).**
+**⚠ the words "endcap L1 configuration" in the original wording of this verdict OVERSTATE the
+localization — see R10:** the effect is endcap-specific and confined to pT ≲ 6 GeV, but our
+observables cannot separate the L1 threshold/coincidence from the HLT hypo or the chain
+matching. Read this verdict as "the r16578 tag's trigger configuration", step unlocalized.
 KB limit stated: the KB does not document the Run-3 endcap L1 inner-station (NSW/EI/Tile)
 coincidence or TGC coincidence-window LUT configuration in MC — hence a question, not an
 assertion. Analysis impact unchanged: ε^nc stays data-driven, ε_ΔR is self-normalized; only
@@ -1052,6 +1086,10 @@ new needed. Processing = ONE cheap grid skim (clone `grid_sub_r17662_signalonly.
 (bin A, pT 4–6):** ε≈0.9 (pp-like) ⇒ NOT the r-tag conditions — deeper L1-simulation issue
 common to quiet MC; ε≈0.5 (overlay-like) ⇒ cause IS the r16578 conditions/config — pins the
 trigger-group question, HIJING occupancy exonerated.
+**→ REALIZED 2026-07-20: the second branch fired (ε = 0.5672 ± 0.0202). See R10 — with two
+refinements to this pre-registered wording: occupancy is exonerated as the DOMINANT cause,
+not as a contributor at all (it is the whole of the barrel deficit, and a 2.7σ residual
+remains in bin A), and the question is pinned to the r16578 CONFIGURATION but NOT to L1.**
 
 **Draft question for the trigger group:**
 > In our mc23_5p36TeV 5.36 TeV productions we see opposite-sign data/MC L1 muon endcap
@@ -1065,6 +1103,10 @@ trigger-group question, HIJING occupancy exonerated.
 > HI-conditions counterpart **r17618/r17663** (`e8599_s4614_r17618_r15970`; Athena 24.0.58;
 > OFLCOND-MC23-SDR-RUN3-05; ConditionsRunNumber=460000; L1 `MC_HI_run3_v1`, HLT
 > `Dev_HI_run3_v1`) shows a normal turn-on in the same bin.
+> *(⚠ 2026-07-20: before sending, widen this per R10 / Remaining Work 3 — ask which STEP
+> (L1 threshold-coincidence vs HLT hypo vs chain matching) differs, rather than presupposing
+> L1; note that an RoI-seeded HLT CB muon is already reconstructed in ~90% of the failing
+> cases, and that r17663 shows the discriminant is the r16578 configuration, not occupancy.)*
 > (1) Which endcap L1 (TGC Sector Logic) configuration does the r16578 trigger simulation
 > apply — the big-wheel coincidence-window LUTs and the inner-station coincidence
 > (NSW / EI / Tile) — and is the NSW coincidence ENABLED there?
@@ -1073,6 +1115,93 @@ trigger-group question, HIJING occupancy exonerated.
 > (3) Which of {Athena release 24.0.95 vs 24.0.58, conditions tag RUN3-09 vs RUN3-05,
 > conditions run number 801170 vs 460000, L1 menu Physics_HI_run3_v1 vs MC_HI_run3_v1} drives
 > the TGC/NSW coincidence configuration difference between these tags?
+
+### R10. r17663 no-overlay VERDICT (2026-07-20, round 4) — the R8 outcome tree is RESOLVED
+
+**The discriminator fired: r17663 is OVERLAY-LIKE ⇒ the DOMINANT cause of the forward anomaly
+is the r16578 tag's conditions/configuration, NOT HIJING occupancy.** ("Dominant", not "sole":
+occupancy is real and large elsewhere — it is the whole of the overlay's *barrel* deficit
+(0.859 → 0.670) — and r17663 sits 2.7σ *above* the overlay in the forward bin, a residual
+consistent with a sub-dominant occupancy component riding on top of the configuration effect.)
+
+Sample: `mc23_5p36TeV.802781...e8599_s4614_r17663_r15970`, skimmed as jediTaskID 51600634
+(9 995 events, 224 branches, trigger present), full chain run into its own identity
+(`r17663_no_overlay`). All stages rc=0; the one caught runtime message in the NTP logs
+("first bin of the same-sign cut-acceptance histogram has ZERO bin content ... return without
+normalizing") is the pre-existing, benign `store_mc_trigger` case — the cut-acceptance path is
+bypassed in trigger mode — and appears identically in the pp24 and overlay runs. Provenance confirms it is a QUIET sample: **92.2% of reco muons are
+real** (6.9% fake, 0.8% hadronic) — essentially pp24's 91.3%, nothing like the overlay's 36%.
+
+**Per-muon mu4 efficiency (Step-1 hists, charge-summed, MC-weighted):**
+
+| q·η bin | pT | **r17663 (no ovl, HI cond.)** | pp24 fullsim (r16578) | HIJING overlay (r17618) |
+|---|---|---|---|---|
+| **A (−2.4,−2.0)** | **4–6** | **0.5672 ± 0.0202** | **0.8977 ± 0.0039** | **0.4997 ± 0.0144** |
+| A (−2.4,−2.0) | 8–15 | 0.9020 ± 0.0416 | 0.9236 ± 0.0059 | 0.8253 ± 0.0190 |
+| B (2.0,2.2) | 4–6 | 0.3831 ± 0.0277 | 0.5114 ± 0.0089 | 0.3662 ± 0.0200 |
+| BAR (−0.5,−0.1) | 4–6 | 0.8590 ± 0.0124 | 0.8503 ± 0.0038 | 0.6700 ± 0.0113 |
+
+In the anomalous forward bin r17663 sits **16.1σ from pp24 and 2.7σ from the overlay**
+(both errors added in quadrature: 0.3305/0.0206 and 0.0675/0.0248) — it
+reproduces the overlay's turn-on, NOT pp24's saturation. Per the R8 outcome tree this pins the
+cause to the r16578-vs-r17618/r17663 difference (Athena 24.0.95 vs 24.0.58 / RUN3-09 vs -05 /
+conditions run 801170 vs 460000 / L1 `Physics_HI_run3_v1` vs `MC_HI_run3_v1`), all of which
+r17663 shares with r17618.
+
+**Supporting observables — and an explicit limit on what they localize.** Two further
+per-muon quantities, and the barrel as a control:
+
+| observable (bin A, pT 4–6) | pp24 | r17663 | overlay |
+|---|---|---|---|
+| RoI-seeded HLT CB muon near the offline muon (`muon_match_mu4roi`, ΔR<0.1, pT>4) | 0.908 | **0.902** | 0.727 |
+| mu4 chain per-muon match (`muon_b_HLT_mu4_L1MU3V`, ΔR<0.02) | 0.898 | **0.560** | 0.505 |
+| barrel (−0.5,−0.1) chain match | 0.850 | **0.858** | 0.670 |
+
+**Barrel control (solid):** r17663 agrees with pp24 (0.67σ) and is far from the overlay
+(11.3σ) ⇒ the overlay's barrel deficit is HIJING **occupancy**, and there is **no conditions
+effect in the barrel**. The r16578-vs-r17618/r17663 effect is ENDCAP-specific.
+
+**⚠ WHAT THIS DOES *NOT* SHOW (corrected 2026-07-20 after /review-analysis-code CRITICAL).**
+An earlier draft of this section read the `muon_match_mu4roi` row as "HLT muon reconstruction,
+independent of L1" and concluded the deficit "is at the L1/RoI step ⇒ an endcap L1 coincidence
+configuration difference". **That inference is backwards and is withdrawn.**
+`HLT_MuonsCB_RoI` (`SkimCode .../TrigRates.cxx:95`, comment at `:1563`) is the **RoI-SEEDED**
+HLT container — HLT RoI reconstruction only runs *inside an L1 muon RoI*. So r17663's 0.902
+means an L1 RoI **was** present and an HLT CB muon **was** reconstructed there ~90% of the
+time, which is evidence *against* an L1-RoI deficit, not for one. The ~44% that fail the chain
+match are therefore **predominantly downstream of a successfully reconstructed RoI-seeded HLT
+CB muon** — at least **77%** of them, from the marginals alone (chain-fail 0.440, no-RoI-muon
+0.098 ⇒ failures-with-an-RoI-muon ≥ 0.342; the two are marginals with *different* cones,
+0.02 vs 0.1, and the joint distribution was not measured, so this is a bound, not an equality).
+The candidates are then the chain hypo decision, the chain's L1 threshold/quality requirement,
+or the tighter ΔR<0.02 chain match — and our observables **cannot separate L1 from the HLT
+hypo**. Two more reasons not to
+localize it: (i) event-level `L1_MU3V` TBP is ~0.96 in r17663 as in pp24 (though this sample is
+DiMu-filtered, so the *event* item can fire on the OTHER muon and is not a per-muon
+discriminator either way); (ii) the split is not clean outside bin A — in bin B (2.0,2.2) the
+RoI match is *also* depressed in r17663 (0.543 vs pp24 0.595) while the chain match falls
+further (0.378 vs 0.507), so "RoI = occupancy only" does not hold generally.
+**The KB has no coverage of Run-3 endcap L1 MC configuration, so no microscopic mechanism is
+asserted here** — that is the question for the trigger group, not our answer.
+**Slice-mixture is not a confounder:** r17663 is single-slice (pTH8_14) while pp24 is 24
+beam×slice configs, but round 1 already established the pp saturation is **present in all 24
+slices**, so it is not a pT-hat-mixture artifact; and at fixed (pT, q·η) the L1 response is a
+detector-configuration effect.
+
+**Consequence for the trigger-group question (R8):** question (3) is now ANSWERED by
+elimination on our side — the discriminant is the r16578 tag's **configuration**, not the
+environment (HIJING occupancy) — so the question narrows to (1)+(2), and should be **widened
+from "which L1 endcap configuration" to "which step"**: we can say the effect is
+endcap-specific, confined to pT ≲ 6 GeV, and present with an RoI-seeded HLT CB muon already
+reconstructed at the muon — but we CANNOT say whether it is the L1 threshold/coincidence, the
+HLT hypo, or the chain matching. Ask them where it is; do not tell them.
+
+**Analysis impact: UNCHANGED.** ε^nc stays data-driven and ε_ΔR is a self-normalized MC ratio,
+so no deliverable moves; what this closes is the *interpretation* of the Step-1 forward
+validation. r17663's own ε_ΔR plateau (ΔR∈[1,4]) = **0.8534 ± 0.0355** (Tight) /
+0.8535 ± 0.0331 (Medium) — low-statistics, single slice; recorded, not used.
+(WP attribution verified per-log and against the canvases + an independent recomputation
+from `h_mc_dr_full_num/denom` — a first pass had the two WPs swapped.)
 
 ### R9. Round-3 headline numbers (2026-07-16, one-sided dp/p everywhere; ALL results current)
 
@@ -1111,13 +1240,24 @@ expected sign and size. Data references now carry the one-sided cut (pp24 + pbpb
    choice (D4/§3.0) includes them (like the template-fit real/hadronic/fake axis); the
    alternative excludes them (consistent with reco-efficiency's Pythia-only construction).
    Affects only the overlay (pp provably identical either way — set-equality check, T5).
-3. **Trigger-group question — now fully drafted with tags + config keys (R8).** Send it; in
-   parallel the **r17663 no-overlay skim** (one cheap grid job, R8 outcome tree) is the single
-   most incisive discriminator — awaiting user go-ahead to submit.
+3. **Trigger-group question — ready to send, now SHARPENED by the r17663 result (R10).**
+   The r17663 skim was run (2026-07-20) and **resolved the outcome tree: the dominant cause is
+   the r16578 configuration, not HIJING occupancy**; its part (3) is answered by elimination.
+   Include the R10 evidence *as corrected there*: the effect is **endcap-specific** (the barrel
+   is clean), confined to **pT ≲ 6 GeV**, and present even though an **RoI-seeded HLT CB muon is
+   already reconstructed** at the offline muon in ~90% of cases — but **the failing step is NOT
+   localized** (our observables cannot separate the L1 threshold/coincidence from the HLT hypo
+   or the chain matching). Ask them where it is; do not assert L1. Only the sending remains —
+   it needs the user.
 3b. **Full data-side dp/p cascade (U1 blast radius):** all data NTP outputs (pp24 nominal +
    pbpb23/24/25 nominal & trig-eff) and downstream (crossx, R_AA, template fits) still carry
    the old `fabs(dp/p)`; only the pp24+pbpb23 trig-eff references are being rerun in round 3
    (user decision 2026-07-16). Schedule the rest as one batch.
+3c. **Minor hardening (INFO from the round-4 review):** `FitMCSinglesEffcy` writes
+   `single_mu_effcy_pT_fit_mc[_medium_wp].root` with a basename that is IDENTICAL across pp24,
+   overlay and noovl — only the directory separates them. Nothing was clobbered (dirs verified
+   distinct), but it is the one place in the new wiring where a wrong `dir` would silently
+   overwrite a sibling instead of erroring. Append `cfg.label` when that file is next touched.
 4. **Double-matching cross-check for R4 — DONE incidentally in R8** (2026-07-16): `_0_01` and
    `_V3` per-muon matches are identical to the bare 0.02 match to the 4th decimal in every
    bin, both samples ⇒ double-matching excluded outright (no NTP flag needed; checked at the
@@ -1130,6 +1270,31 @@ expected sign and size. Data references now carry the one-sided cut (pp24 + pbpb
    overlay; lifts D2). **D3 is now LIFTED** — all 24 pp slices are in.
 
 ## Latest Stage
+
+**2026-07-20 (round 4) — COMPLETE. r17663 no-overlay discriminator: submitted, run
+end-to-end, verdict delivered (R10); both reviews PASS.**
+- Grid skim jediTaskID **51600634** → 9 995 events, trigger present. Full chain run: NTP ×2 →
+  Fill/Fit/Step3 × 2 WPs → **24 PNGs** in `plots/r17663_no_overlay_trigger_efficiency/mc_based/`
+  (Tight in step dirs, Medium in `medium/`). **Separation verified: ZERO files under
+  `pp_trigger_efficiency/` or `pbpb_trigger_efficiency/` modified.** New sample identity
+  (`FullSimSampleType::noovl`) committed in `9916bb4`.
+- **RESULT (R10): r17663 is OVERLAY-LIKE** — bin A (q·η∈(−2.4,−2), pT 4–6) ε = 0.5672 ± 0.0202
+  vs pp24 0.8977 ± 0.0039 (16.1σ) and overlay 0.4997 ± 0.0144 (2.7σ) ⇒ **the dominant cause of
+  the forward anomaly is the r16578 tag's trigger CONFIGURATION, not HIJING occupancy**; the
+  barrel control (r17663 vs pp24 0.67σ, vs overlay 11.3σ) shows the overlay's barrel deficit IS
+  occupancy and that the configuration effect is endcap-specific.
+- **The failing step is deliberately NOT localized** (R10's "WHAT THIS DOES NOT SHOW"): an
+  earlier draft blamed L1, which was backwards — `HLT_MuonsCB_RoI` is RoI-SEEDED, so r17663's
+  0.902 argues *against* an L1-RoI deficit. R8's item-4 "decisive" and its verdict wording were
+  hedged accordingly.
+- Reviews: **/review-analysis-code PASS iter 4** (iter-1 CRITICAL = the L1 overclaim; iter-2/3
+  WARNINGs = the claim surviving in Remaining Work, an unhedged "is downstream" → ≥77% bound,
+  a stale Latest Stage, R8 internal inconsistency — all fixed). **/review-plot PASS iter 2**
+  (iter-1 WARNING = a Tight/Medium plateau label swap in the doc; plots were always correct).
+- **Carries forward (needs the user):** send the trigger-group question — now narrowed to the
+  r16578 configuration and widened from "which L1 config" to "which STEP" (Remaining Work 3).
+
+---
 
 **2026-07-16 (round 3) — COMPLETE (except two user decisions pending).** All 5 items done:
 U1 one-sided dp/p fixed everywhere + full trig-eff rerun (MC both samples/WPs + data pp24 &
