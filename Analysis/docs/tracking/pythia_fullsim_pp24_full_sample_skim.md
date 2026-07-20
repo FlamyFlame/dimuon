@@ -558,7 +558,28 @@ of a forecast. (Plus the right-panel stack, and the `err_fraction` / `err_ratio`
   **switchable off**, default OFF until the sibling lands). Only genuinely
   physics-ambiguous items get escalated.
 
-## Autonomy Contract (ACTIVE — re-read on every compaction) — TASK III
+## Autonomy Contract (ACTIVE — re-read on every compaction) — TASK III (RE-SCOPED 2026-07-20)
+
+**Context at re-scope:** the concurrent `mc_trigger_efficiency` session has **merged to master**
+(`8edc4fb`) and been stopped; the farm is **COMPLETE (all 6 slices, 9 869 980 events)**. The user
+now directs: **(1) reproduce ALL non-trigger-efficiency pp-fullsim results on the full sample;
+(2) back up the pp trigger-efficiency results made from the TEST sample and reproduce them from the
+FULL sample.** Explicit negative constraint: **do NOT touch the PbPb (overlay) results or the
+r17663 no-overlay results.** Proceed autonomously; stop on ambiguity.
+- Done =
+  1. **Non-trig-eff (task 1):** full-sample NTP (nominal + single_muon) → RDF hists → reco-eff +
+     detector-response + single-muon reco-eff + crossx/statistics + kn table + reco-distr, all
+     regenerated from the FULL sample; `/review-plot`.
+  2. **pp trig-eff (task 2):** add a pp-FULL-sample option to the MC-trig-eff chain
+     (`FillMCTrigEffHists`/`FitMCSinglesEffcy`/`plot_mc_trig_eff`) WITHOUT changing the overlay or
+     r17663 configs; run the 2 full-sample `_mc_trig` NTP scripts; **back up the TEST-sample pp
+     trig-eff plots**; reproduce from the FULL sample; `/review-plot`.
+  3. Orphaned WIP from the stopped session committed; `muon_wp_registry.md` +
+     `docs/pythia_fullsim_pp.md` updated; `/review-analysis-code` on the code.
+- Stop-and-ask = ANY physics-results-bending ambiguity (no fixed list; use judgment;
+  when unsure whether an ambiguity is blocking, treat it as blocking → AskUserQuestion).
+
+## Autonomy Contract (SUPERSEDED 2026-07-20 — original Task III below, kept for the record)
 - Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a plan, a passing
   smoke test, or one pipeline stage is NOT a stopping point.
 - Done =
@@ -584,6 +605,35 @@ of a forecast. (Plus the right-panel stack, and the `err_fraction` / `err_ratio`
 2. **Smoke test** each stage on the farm with a small `nevents_max`.
 3. **Full run** once the grid + farm are complete (back up first where a clobber is possible).
 4. **MC-trig-eff (LAST):** only after the sibling session commits — blocker 4 + rerun + backup.
+
+- 2026-07-20 — **TASK III execution (re-scoped): non-trig-eff chain + pp trig-eff on the FULL sample.**
+  Context: sibling `mc_trigger_efficiency` MERGED to master (`8edc4fb`) and stopped; farm COMPLETE
+  (6/6 slices, **9 869 980** events). Committed work:
+  - `c700b0c` — finished the 3 orphaned plot-macro parameterizations left by the stopped session
+    (reco-eff driver, kn table, reco-distr); fixed two it left broken (missing
+    `FullSimSampleType.h` include; `.C` is interpreted not ACLiC).
+  - `a4462db` — **`pp_full` sample knob** added to the MC-trig-eff chain (`FillMCTrigEffHists`,
+    `FitMCSinglesEffcy`, `plot_mc_trig_eff`): same physics as `pp` (2mu4 PRODUCT weight, same pp24
+    data reference), reads `_full` intermediate hists (label `pp24_full`), writes final plots to
+    the canonical `pp_trigger_efficiency/mc_based/`. Overlay + r17663 configs untouched.
+    Also **`set -e`/`set -u` hardening** of the pipeline (ALRB setup and ROOT both exit non-zero
+    under `set -Eeuo pipefail` and were killing it silently — the same trap as the migration script).
+  - `e01e374` — **BUG the smoke test caught:** the crossx macro's `g_is_test_sample`/`g_use_tight_wp`
+    were `static` (internal linkage) ⇒ the ACLiC-compiled globals were INVISIBLE to the ROOT
+    interpreter, so the pipeline's `g_is_test_sample=false` silently no-op'd and the FULL-sample
+    crossx wrote to the TEST dir with the TEST caption. Fixed: dropped `static` + entry-point args.
+    Pipeline: Stage 9 now actually runs `make_kn_contributor_table` (was logged, never invoked);
+    Stage 8 adds reco-distr; **Stage 10 fully wired** for pp_full.
+  - **Pipeline `pipelines/pipeline_pythia_fullsim_pp.sh`** (NEW) validated end-to-end by a
+    2000-event smoke test: Stages 0–9 all ✅ (preflight → NTP×2 → validate → RDF → validate →
+    reco-eff/det-resp → single-mu → crossx/kn). All 3 trig-eff files compile with the pp_full edits.
+  - **Test-sample pp trig-eff plots backed up** → `pp_trigger_efficiency/mc_based_TESTSAMPLE_backup_20260720`
+    (24 pngs) before any full-sample overwrite (user requirement).
+  - **Full production run LAUNCHED** (detached, `USE_TIGHT_WP=1 ENABLE_MC_TRIG_EFF=1`): task 1
+    (non-trig-eff, Stages 1–9) + task 2 (trig-eff, Stage 10) in one pass. Log
+    `pythia_fullsim_full_sample/pipeline_run_tight_20260720_181419.log`.
+  - **Still to do:** medium-WP pass (Stages 7–10, NTP/RDF are WP-agnostic → skip); `/review-plot`
+    on the regenerated plots; `muon_wp_registry.md` + `docs/pythia_fullsim_pp.md` updates.
 
 ## Results & Observations
 

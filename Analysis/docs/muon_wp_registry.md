@@ -66,11 +66,14 @@ sites (marked ⚠) move the number; **cosmetic** sites (labels) do not but must 
   ⇒ **Tight default REQUIRES rebuilding the placeholder from `_tight.root` + switching these keys** —
   else a Tight-selected spectrum gets a mismatched Medium reco-eff correction.
 - PbPb: `EfficiencyCorrs/NoOverlayMC.C/.h:126,720-726,870` (default MEDIUM).
-- Reco-eff plotters (have a `tight_WP` flag, default false=medium; drivers default medium):
-  `PythiaFullsimRecoEffPlotter.cxx:28-29,110,131,146`, `PowhegFullsimRecoEffPlotter.cxx:30-32,175,...`,
-  `PowhegFullsimDetRespPlotterSingleMuon.cxx:24-26,86,...`.
-- **HARDCODED medium (needs a WP config var):** `plotting_codes/reco_effcy/plot_single_muon_reco_effcy.cxx`
-  (`Filter("pass_medium")` `:131`, y-title `:169,229,317`) and `..._r17618_vs_r17662.cxx`.
+- Reco-eff plotters have a `tight_WP` flag. **`PythiaFullsimRecoEffPlotter` DEFAULTS TIGHT**
+  (`tight_WP_input = true`, base ctor + pp child ctor; driver `plot_reco_effcy_pythia_fullsim_pp24.cxx`
+  takes that default) — the "default false=medium" claim here was STALE (corrected 2026-07-20).
+  It also carries `is_test_sample` (default true = TEST; false = FULL production, reads the `_full`
+  hist via `GetSampleSuffix()`). Powheg plotters: `PowhegFullsimRecoEffPlotter.cxx`,
+  `PowhegFullsimDetRespPlotterSingleMuon.cxx` (verify their defaults if reused).
+- `plot_single_muon_reco_effcy.cxx` — **now HAS a WP config var** (`useTight` arg, default TIGHT;
+  `pass_tight`/`pass_medium`) plus an `is_test_sample` arg. (Was hardcoded Medium; fixed.)
 - Legacy JPsi path: `EfficiencyCorrs/Bins.h:480-522` (`Reco_Medium/Tight_JPsi.root`; files absent).
 
 ### 5. Trigger-efficiency ⚠ (framework supports both, default MEDIUM; active pipeline = implicit medium)
@@ -88,6 +91,15 @@ sites (marked ⚠) move the number; **cosmetic** sites (labels) do not but must 
   outputs suffixed `_medium_wp`. Selection column `pass_tight`/`pass_medium` on the `_mc_trig` trees.
 - `RDFBasedHistFilling/FitMCSinglesEffcy.cxx` — `use_tight_wp` arg (default **TIGHT**), matching
   input/output `_medium_wp` suffixes.
+- `plotting_codes/trig_effcy/mc_based/plot_mc_trig_eff.cxx` — `use_tight_wp` arg (default **TIGHT**).
+- All three MC-trig-eff files gained a `pp_full` sample (2026-07-20): pp24 FULL production, same
+  WP semantics; intermediate hists/fits labelled `pp24_full`.
+
+**Pythia-fullsim crossx (2026-07-20):** `plotting_codes/pythia_plotting_codes/plot_pythia_fullsim_kn_pt_crossx.cxx`
+— **`g_use_tight_wp` config var, default TIGHT** (was HARD-CODED to `pair_pass_medium` in 4 places
+while every other pp-fullsim stage used Tight; now `plot_pythia_fullsim_kn_pt_crossx(is_test_sample,
+use_tight_wp)`). Its overlay twin `plot_pythia_fullsim_overlay_kn_pt_crossx.cxx` still hard-codes
+Medium (PbPb overlay; out of scope for the pp work — flag for the overlay owner).
 
 ### 6. Plotting labels — cosmetic (must stay consistent; will go stale)
 `plot_single_b_crossx_pp.cxx:28,33,45,50`; `plot_single_b_crossx_pbpb.cxx:14,30`;

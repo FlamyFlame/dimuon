@@ -48,9 +48,35 @@ PythiaFullsimRecoEffPlotter
 
 The pp fullsim has no centrality binning (no `PbPbBaseClass`). Histograms are inclusive only.
 
-## Pipeline (manual, no automated script yet)
+## Pipeline: `pipelines/pipeline_pythia_fullsim_pp.sh` (2026-07-20)
 
-There is no automated pipeline script for pp fullsim. The test sample is small enough to run interactively. When full samples become available, a Condor-based pipeline analogous to the overlay one should be created.
+End-to-end pp-fullsim pipeline for BOTH samples, selected by one argument:
+
+```bash
+# FULL production (the "_pdf" sample 803015-803020, read from the LOCALGROUPDISK farm):
+./pipelines/pipeline_pythia_fullsim_pp.sh full
+# TEST sample:
+./pipelines/pipeline_pythia_fullsim_pp.sh test
+# smoke test (tiny nevents_max, exercises every stage):
+SMOKE_NEVENTS=2000 ./pipelines/pipeline_pythia_fullsim_pp.sh full --dry-run
+# with the MC-based trigger efficiency (Stage 3 + Stage 10):
+ENABLE_MC_TRIG_EFF=1 ./pipelines/pipeline_pythia_fullsim_pp.sh full
+```
+
+Stages: 0 preflight (FULL: all 6 farm slices + 6 AMI files, else FATAL) → 1–3 NTP (nominal,
+single-muon, +MC-trigger variants if enabled) → 4 validate → 5 RDF hists → 6 validate → 7 reco-eff
++ det-response → 8 single-muon reco-eff + reco-distr → 9 crossx per pT-hat slice + kn table →
+10 MC trig-eff (optional). Env: `USE_TIGHT_WP` (default 1=Tight), `ENABLE_MC_TRIG_EFF` (default 0),
+`SKIP_NTP`/`SKIP_RDF`/`SKIP_PLOTS`.
+
+**THE sample switch is `full`/`test`** — it drives the input dir, the AMI cross-section dir, the
+isospin treatment (`FullSimSampleType.h`) AND the `_full` output suffix, so they cannot drift. The
+FULL sample is pp-beam-only with isospin weight 1 (an HONEST pp cross-section); the TEST sample has
+4 isospin beams (a production mistake) and its absolute σ carries the Pb 4:6:6:9 average — NOT a
+physical pp σ, and the crossx plot says so. See `docs/tracking/pythia_fullsim_pp24_full_sample_skim.md`
+and `docs/ami_weights.md`.
+
+### Manual stages (the pipeline just orchestrates these)
 
 ### Stage 1: NTuple processing
 
