@@ -91,20 +91,29 @@ fail() { echo "[$(ts)] FATAL: $*" >&2; exit 1; }
 
 setup_root() {
     export ATLAS_LOCAL_ROOT_BASE=/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase
-    set +u
+    # ALRB / atlasLocalSetup.sh is NOT `set -e`/`set -u` safe: under either it aborts the whole
+    # pipeline *silently* inside the setup (it even prints "Warning: -e is set ... may cause
+    # issues"). Relax both across the setup, then restore the pipeline's strict flags.
+    set +eu
     source "$ATLAS_LOCAL_ROOT_BASE/user/atlasLocalSetup.sh" --quiet
     lsetup "views LCG_107a_ATLAS_2 x86_64-el9-gcc13-opt"
-    set -u
+    set -eu
+    command -v root >/dev/null || fail "ROOT not on PATH after lsetup"
 }
 
-# entries in a named tree (0 if missing) -- the validation primitive
+# entries in a named tree (0 if missing) -- the validation primitive.
+# ROOT frequently exits non-zero even on success; under `set -e`+`pipefail` that would kill a
+# `var=$(tree_entries ...)` assignment SILENTLY (the `|| fail` sits on the next line). So the
+# function swallows ROOT's exit status and always returns a number on stdout, exit 0.
 tree_entries() {  # $1=file $2=tree
-    root -l -b -q -e "
+    local n
+    n=$(root -l -b -q -e "
         TFile* f = TFile::Open(\"$1\");
         if (!f || f->IsZombie()) { printf(\"ENT 0\n\"); return; }
         TTree* t = (TTree*)f->Get(\"$2\");
         printf(\"ENT %lld\n\", t ? t->GetEntries() : 0LL);
-    " 2>/dev/null | grep -oP 'ENT \K[0-9]+' | tail -1
+    " 2>/dev/null | grep -oP 'ENT \K[0-9]+' | tail -1 || true)
+    echo "${n:-0}"
 }
 
 log "══════════ pp24 Pythia fullsim pipeline — SAMPLE=${SAMPLE} ══════════"
@@ -183,7 +192,7 @@ fi
 log "[Stage 4] validating NTP output"
 [[ -f "${PAIR_FILE}" ]]   || fail "missing ${PAIR_FILE}"
 [[ -f "${SINGLE_FILE}" ]] || fail "missing ${SINGLE_FILE}"
-n_pair=$(tree_entries "${PAIR_FILE}" "muon_pair_tree_kin0_sign2")
+n_pair=$(tree_entries "${PAIR_FILE}" "muon_pair_tree_kin0_sign2") || n_pair=0
 [[ "${n_pair:-0}" -gt 0 ]] || fail "muon_pair_tree_kin0_sign2 is EMPTY in ${PAIR_FILE}"
 log "  pair tree kin0_sign2: ${n_pair} entries  ✅"
 
@@ -209,7 +218,7 @@ fi
 # --- Stage 6: validate histogram output ---------------------------------------------------
 log "[Stage 6] validating histogram output"
 [[ -f "${HIST_FILE}" ]] || fail "missing ${HIST_FILE}"
-nkeys=$(root -l -b -q -e "TFile* f=TFile::Open(\"${HIST_FILE}\"); printf(\"NK %d\n\", f&&!f->IsZombie()? f->GetListOfKeys()->GetSize():0);" 2>/dev/null | grep -oP 'NK \K[0-9]+' | tail -1)
+nkeys=$(root -l -b -q -e "TFile* f=TFile::Open(\"${HIST_FILE}\"); printf(\"NK %d\n\", f&&!f->IsZombie()? f->GetListOfKeys()->GetSize():0);" 2>/dev/null | grep -oP 'NK \K[0-9]+' | tail -1 || true); nkeys=${nkeys:-0}
 [[ "${nkeys:-0}" -gt 0 ]] || fail "${HIST_FILE} has no keys"
 log "  ${nkeys} histogram keys  ✅"
 

@@ -73,6 +73,16 @@ SampleConfig GetSampleConfig(const std::string& sample) {
         cfg.pair_file    = cfg.dir + "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_mc_trig.root";
         cfg.singles_file = cfg.dir + "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_mc_trig_single_muon.root";
         cfg.is_overlay = false;
+    } else if (sample == "pp_full") {
+        // pp24 FULL sample (the "_pdf" production, 803015-803020): identical physics to "pp"
+        // (pp collisions, 2mu4 pair decision, no centrality) -- ONLY the input files differ.
+        // Files end in "_full"; the "_full" label keeps its outputs (hists + plots) in their own
+        // names/dirs, so they never clobber the TEST-sample trigger-efficiency results.
+        cfg.dir   = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample/";
+        cfg.label = "pp24_full";
+        cfg.pair_file    = cfg.dir + "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_mc_trig_full.root";
+        cfg.singles_file = cfg.dir + "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_mc_trig_single_muon_full.root";
+        cfg.is_overlay = false;
     } else if (sample == "overlay") {
         cfg.dir   = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/";
         cfg.label = "hijing_overlay_pbpb23";
@@ -90,8 +100,8 @@ SampleConfig GetSampleConfig(const std::string& sample) {
         cfg.singles_file = cfg.dir + "muon_pairs_pythia_fullsim_r17663_no_overlay_no_data_resonance_cuts_mc_trig_single_muon.root";
         cfg.is_overlay = false;
     } else {
-        throw std::invalid_argument("FillMCTrigEffHists: sample must be \"pp\", \"overlay\" or "
-                                    "\"noovl\", got " + sample);
+        throw std::invalid_argument("FillMCTrigEffHists: sample must be \"pp\", \"pp_full\", "
+                                    "\"overlay\" or \"noovl\", got " + sample);
     }
     return cfg;
 }

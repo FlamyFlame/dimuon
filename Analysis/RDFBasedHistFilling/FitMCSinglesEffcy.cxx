@@ -101,6 +101,12 @@ void FitMCSinglesEffcy(const std::string& sample = "pp", bool use_tight_wp = tru
         dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/";
         label = "pp24";
         mode = erf_plus_log;    // data pp nominal
+    } else if (sample == "pp_full") {
+        // pp24 FULL sample: identical fit to "pp" (same pp turn-on shape); only the input dir
+        // and the "pp24_full" label differ, so its outputs never clobber the TEST-sample fits.
+        dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample/";
+        label = "pp24_full";
+        mode = erf_plus_log;
     } else if (sample == "overlay") {
         dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/";
         label = "hijing_overlay_pbpb23";
@@ -114,8 +120,8 @@ void FitMCSinglesEffcy(const std::string& sample = "pp", bool use_tight_wp = tru
         label = "r17663_no_overlay";
         mode = erf_plus_log;
     } else {
-        std::cerr << "FitMCSinglesEffcy: sample must be \"pp\", \"overlay\" or \"noovl\", got "
-                  << sample << std::endl;
+        std::cerr << "FitMCSinglesEffcy: sample must be \"pp\", \"pp_full\", \"overlay\" or "
+                     "\"noovl\", got " << sample << std::endl;
         return;
     }
 

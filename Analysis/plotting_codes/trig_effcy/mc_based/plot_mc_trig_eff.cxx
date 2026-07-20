@@ -282,6 +282,25 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
         c.data_text   = "pp24 data";
         c.eps_dr_text = "#varepsilon_{#DeltaR}^{2mu4}";
         c.step2_coarse = false;  // pp has ~4x the pair statistics: the fine axes are readable
+    } else if (sample == "pp_full") {
+        // pp24 FULL sample. Physics identical to "pp" -- SAME pp24 data reference, SAME
+        // 2mu4 product weighting, SAME plot LOCATION (this is the canonical pp trig-eff
+        // deliverable, which the full sample now supersedes -- back up the TEST-sample plots
+        // first, done by the pipeline / the run wrapper). ONLY the MC inputs differ:
+        // mc_dir = full-sample dir, mc_label = "pp24_full" (reads the _full intermediate hists,
+        // so the hists/fits never clobber the TEST ones).
+        c.mc_dir      = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample/";
+        c.mc_label    = "pp24_full";
+        c.data_file   = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"
+                        "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin"
+                        + data_wp + ".root";
+        c.ctr         = "";
+        c.out_base    = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
+                        "pp_trigger_efficiency/mc_based/";
+        c.sample_text = "Pythia8 pp24 fullsim (FULL sample)";
+        c.data_text   = "pp24 data";
+        c.eps_dr_text = "#varepsilon_{#DeltaR}^{2mu4}";
+        c.step2_coarse = false;  // the full sample has far MORE pair statistics than the test
     } else if (sample == "overlay") {
         c.mc_dir      = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/";
         c.mc_label    = "hijing_overlay_pbpb23";
@@ -323,8 +342,8 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
         // for the same readability reason as the overlay.
         c.step2_coarse = true;
     } else {
-        throw std::runtime_error("plot_mc_trig_eff: sample must be 'pp', 'overlay' or 'noovl', got "
-                                 + sample);
+        throw std::runtime_error("plot_mc_trig_eff: sample must be 'pp', 'pp_full', 'overlay' or "
+                                 "'noovl', got " + sample);
     }
     return c;
 }
