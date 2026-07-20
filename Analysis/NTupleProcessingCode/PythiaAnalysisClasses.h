@@ -53,13 +53,22 @@ public:
     //   isTestSample=true  -> pp24 test sample, 4 beams, Pb ratio 4:6:6:9      (produced by mistake)
     // `pp_only` = force the pp beam alone regardless (the legacy pp-only cross-check on the
     // 4-beam TEST sample); it also tags the output "_pp_only".
-    PythiaFullSimAnalysis(int batch_num_input = 0, bool use_local = false, bool pp_only = false)
+    // `sample_type` is pp for the nominal pp24 fullsim. The ONLY other admissible value is
+    // FullSimSampleType::noovl (the r17663 no-overlay diagnostic): it has no overlaid event,
+    // so it needs the pp class (no overlay Extras, no centrality) while carrying its own
+    // input dir / file tag / label. Overlay samples must use PythiaFullSimOverlayAnalysis.
+    PythiaFullSimAnalysis(int batch_num_input = 0, bool use_local = false, bool pp_only = false,
+                          FullSimSampleType sample_type = FullSimSampleType::pp)
         : PythiaAlgCoreT(batch_num_input, use_local)
     {
+        if (FullSimSampleIsOverlay(sample_type))
+            throw std::runtime_error("PythiaFullSimAnalysis: sample_type is an OVERLAY sample "
+                "-- use PythiaFullSimOverlayAnalysis (it needs the overlay Extras: centrality, "
+                "FCal, HIJING truth).");
         this->isPrivate = false;
         this->E_COM = 5.36;
         this->run_year = 24;
-        this->fullsim_sample_type = FullSimSampleType::pp;
+        this->fullsim_sample_type = sample_type;
         if (pp_only) {
             this->setIsospinBeams(false);   // escape hatch: pp beam alone, weight 1
             this->extra_output_suffix = "_pp_only";

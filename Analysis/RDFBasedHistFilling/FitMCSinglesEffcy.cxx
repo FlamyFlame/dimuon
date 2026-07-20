@@ -105,8 +105,17 @@ void FitMCSinglesEffcy(const std::string& sample = "pp", bool use_tight_wp = tru
         dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/";
         label = "hijing_overlay_pbpb23";
         mode = fermi_plus_log;  // data PbPb nominal
+    } else if (sample == "noovl") {
+        // r17663 NO-OVERLAY diagnostic (R8, round 4): pp COLLISIONS -> the pp fit mode.
+        // The comparison this sample exists for is against pp24 fullsim, so it must be
+        // fitted with the same functional form; the reco conditions being PbPb-like does
+        // not change the shape of a pp turn-on.
+        dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_no_overlay_test_sample/";
+        label = "r17663_no_overlay";
+        mode = erf_plus_log;
     } else {
-        std::cerr << "FitMCSinglesEffcy: sample must be \"pp\" or \"overlay\", got " << sample << std::endl;
+        std::cerr << "FitMCSinglesEffcy: sample must be \"pp\", \"overlay\" or \"noovl\", got "
+                  << sample << std::endl;
         return;
     }
 

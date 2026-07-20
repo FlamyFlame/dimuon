@@ -298,8 +298,33 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
         // 41-bin pT / 184-bin q.eta axes the three DeltaR series are an unreadable
         // error-bar forest and the comparison the panel exists for cannot be made.
         c.step2_coarse = true;
+    } else if (sample == "noovl") {
+        // r17663 NO-OVERLAY diagnostic (R8, round 4). Its own plot root -- the pp24 and
+        // overlay plot sets are NOT touched.
+        //
+        // DATA REFERENCE = pp24 data, deliberately: r17663 simulates pp COLLISIONS with no
+        // overlaid event, so the pp data turn-on is the like-for-like measurement (the same
+        // reference the pp24 fullsim is validated against, which is what makes the two MC
+        // curves directly comparable). Its RECO CONDITIONS are PbPb23-like, which is exactly
+        // the variable under test -- so the data curve here is CONTEXT, not the deliverable:
+        // the deliverable is the MC-vs-MC comparison of the forward bin (R8 outcome tree).
+        c.mc_dir      = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_no_overlay_test_sample/";
+        c.mc_label    = "r17663_no_overlay";
+        c.data_file   = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"
+                        "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin"
+                        + data_wp + ".root";
+        c.ctr         = "";          // no centrality: there is no overlaid event
+        c.out_base    = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
+                        "r17663_no_overlay_trigger_efficiency/mc_based/";
+        c.sample_text = "Pythia8 pp, r17663 (HI cond., no overlay)";
+        c.data_text   = "pp24 data";
+        c.eps_dr_text = "#varepsilon_{#DeltaR}^{2mu4}";
+        // Single 10k-event slice: statistics are thinner than pp24 -> coarse Step-2 axes,
+        // for the same readability reason as the overlay.
+        c.step2_coarse = true;
     } else {
-        throw std::runtime_error("plot_mc_trig_eff: sample must be 'pp' or 'overlay', got " + sample);
+        throw std::runtime_error("plot_mc_trig_eff: sample must be 'pp', 'overlay' or 'noovl', got "
+                                 + sample);
     }
     return c;
 }

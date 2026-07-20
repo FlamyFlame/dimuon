@@ -79,8 +79,19 @@ SampleConfig GetSampleConfig(const std::string& sample) {
         cfg.pair_file    = cfg.dir + "muon_pairs_pythia_fullsim_hijing_overlay_pbpb23_no_data_resonance_cuts_mc_trig.root";
         cfg.singles_file = cfg.dir + "muon_pairs_pythia_fullsim_hijing_overlay_pbpb23_no_data_resonance_cuts_mc_trig_single_muon.root";
         cfg.is_overlay = true;
+    } else if (sample == "noovl") {
+        // r17663 NO-OVERLAY diagnostic (mc_trigger_efficiency.md R8, round 4): pp collisions
+        // reconstructed with the overlay's PbPb23-conditions pass, but with NO overlaid event.
+        // is_overlay=false: there is no centrality (no HIJING) -> no 0-5% restriction, and the
+        // trigger condition is the pp-style 2mu4 pair decision, as for any quiet pp event.
+        cfg.dir   = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_no_overlay_test_sample/";
+        cfg.label = "r17663_no_overlay";
+        cfg.pair_file    = cfg.dir + "muon_pairs_pythia_fullsim_r17663_no_overlay_no_data_resonance_cuts_mc_trig.root";
+        cfg.singles_file = cfg.dir + "muon_pairs_pythia_fullsim_r17663_no_overlay_no_data_resonance_cuts_mc_trig_single_muon.root";
+        cfg.is_overlay = false;
     } else {
-        throw std::invalid_argument("FillMCTrigEffHists: sample must be \"pp\" or \"overlay\", got " + sample);
+        throw std::invalid_argument("FillMCTrigEffHists: sample must be \"pp\", \"overlay\" or "
+                                    "\"noovl\", got " + sample);
     }
     return cfg;
 }
