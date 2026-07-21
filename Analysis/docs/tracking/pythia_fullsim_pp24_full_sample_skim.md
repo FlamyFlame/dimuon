@@ -675,6 +675,26 @@ r17663 no-overlay results.** Proceed autonomously; stop on ambiguity.
   existence). TODO: harden the NTP run scripts + the pipeline's post-NTP validation to detect a
   missing/empty mc_trig NTP.
 
+- 2026-07-21 — **TASK 1 (non-trig-eff) COMPLETE + VALIDATED on the FULL sample (Tight WP).**
+  47 plots in `pythia_fullsim_full_sample/plots/`. Physics sanity (visual, C1–C3):
+  - **crossx / statistics plot** (`reco_pair_pt_kn.png`, `truth_pair_pt_kn.png`): honest FULL-sample
+    dσ/dp_T in **nb/GeV**, title says "FULL sample", the "NOT a physical pp σ" caption correctly
+    OMITTED (pp-only, weight 1). Each pT-hat slice peaks in its own range, smoothly falling ~6
+    decades; error bars far tighter than the test sample. Reco panel uses **Tight** (the WP fix).
+  - **single-muon reco eff** (`single_muon_reco_effcy_vs_pt.png`): clean turn-on to a 0.90–0.95
+    plateau by ~20 GeV; central |q·η|<0.5 bin correctly lower (~0.86, barrel crack); tight errors
+    (plateau 0.9245±0.0006 at pT[20,30]). Titled "(FULL)", "tight WP".
+  - **detector response** (`pair_pt_response_matrix_tightWP.png`): strong diagonal, modest
+    resolution smearing, NO anomalous band (pp; the overlay 2·m_μ band is a closed, overlay-only
+    issue). 
+  ⇒ full-statistics improvement evident throughout. Task 1 physics is sound.
+- 2026-07-21 — **TASK 2 (trig-eff) re-run in progress** (`run_pp_fullsim_trigeff_fullsample.sh`,
+  detached, survived a session restart). Step [1] mc_trig pair NTP DONE + validated (1 652 223
+  entries, 4.5 GB — the store_mc_trigger fix works on the full farm). Step [2] mc_trig single-muon
+  NTP streaming; then Stage 10 (Fill→Fit→Fill-step3→`plot_mc_trig_eff` for pp_full).
+  **Remaining after this:** the Medium-WP pass (reco-eff + trig-eff systematic variant; NTP/RDF are
+  WP-agnostic so it skips them), and `/review-plot` sign-off.
+
 ## Results & Observations
 
 ### R1. Disk census of `~/usatlasdata` (real bytes, `du -sb`)
