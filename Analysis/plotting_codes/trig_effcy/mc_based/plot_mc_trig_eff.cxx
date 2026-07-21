@@ -258,6 +258,23 @@ struct SampleCfg {
     std::string data_text;     // data legend entry
     std::string eps_dr_text;   // eps_DR symbol for step 3
     bool step2_coarse;         // rebin the Step-2 DeltaR-comparison panels (see below)
+
+    // OPTIONAL second MC sample, overlaid on the Step-1 q.eta-binned panels ONLY, as
+    // points with NO fit curve. Used by "noovl" to put the HIJING overlay (r17618) beside
+    // r17663 -- that MC-vs-MC comparison IS the deliverable of the r17663 study (R10).
+    // Empty cmp_fit_file => no third series (pp and overlay keep their two-series panels
+    // exactly as reviewed).
+    std::string cmp_fit_file;  // file holding g_mc_pt_vs_q_eta_<charge>_<qeta> for the comparison MC
+    std::string cmp_text;      // legend entry
+
+    // OPTIONAL: on the Step-1 q.eta-binned panels ONLY, replace the black DATA tag-and-probe
+    // series with a black MC series (points, no fit) from this fit file's
+    // g_mc_pt_vs_q_eta_<charge>_<qeta> graphs. Used by "noovl" to make the panel a pure
+    // MC-vs-MC-vs-MC comparison (r17663 vs pp24-conditions vs HIJING-overlay). When set, the
+    // q.eta-panel ratio pad becomes <this sample MC> / <black MC> and the headline/legend say
+    // so. Empty => the black series is the data T&P reference, exactly as pp/overlay use it.
+    std::string qeta_black_mc_file;  // pp24 fullsim MC fit file for the black series
+    std::string qeta_black_mc_text;  // legend entry for the black MC series
 };
 
 // The DATA reference must be at the SAME working point as the MC (§3.0(d)): the data
@@ -341,6 +358,27 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
         // Single 10k-event slice: statistics are thinner than pp24 -> coarse Step-2 axes,
         // for the same readability reason as the overlay.
         c.step2_coarse = true;
+        // Third series on the Step-1 q.eta panels: the HIJING overlay (r17618). r17663 vs
+        // r17618 is the MC-vs-MC comparison the sample exists for -- r17663 differs from
+        // r17618 ONLY by the absence of HIJING, so the two curves together separate
+        // "occupancy" from "r16578 configuration" (R10). Points only, NO fit: the overlay's
+        // own turn-on fit belongs to its own plot set (and its fit mode is fermi+log, not
+        // the erf+log used here) -- drawing it would invite a fit-quality reading of a
+        // curve that is here purely as a reference sample.
+        c.cmp_fit_file = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/"
+                         "single_mu_effcy_pT_fit_mc" + std::string(use_tight_wp ? "" : "_medium_wp")
+                       + ".root";
+        c.cmp_text     = "MC Pb+Pb23 cond., WITH HIJING overlay (r17618)";
+        // Black series on the q.eta panels = pp24-CONDITIONS fullsim MC (FULL sample), NOT
+        // pp data: the r17663 study is an MC-vs-MC comparison of reco-tag CONFIGURATIONS, so
+        // all three curves are MC (red = Pb+Pb23 cond. no overlay; black = pp24 cond.;
+        // blue = Pb+Pb23 cond. with HIJING overlay). Full sample chosen for statistics.
+        // FitMCSinglesEffcy writes the unqualified basename, distinguished here only by the
+        // full_sample directory (Remaining Work 3c).
+        c.qeta_black_mc_file = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample/"
+                               "single_mu_effcy_pT_fit_mc"
+                             + std::string(use_tight_wp ? "" : "_medium_wp") + ".root";
+        c.qeta_black_mc_text = "MC pp24 cond. (fullsim, full sample)";
     } else {
         throw std::runtime_error("plot_mc_trig_eff: sample must be 'pp', 'pp_full', 'overlay' or "
                                  "'noovl', got " + sample);
@@ -430,6 +468,8 @@ const std::vector<Style_t>     kDrMarker = {20, 21, 22};
 
 const Color_t kMCColor   = kRed + 1;
 const Color_t kDataColor = kBlack;
+// optional comparison MC (SampleCfg::cmp_fit_file) -- blue, distinct from both
+const Color_t kCmpColor  = kBlue + 1;
 
 // Step-3 plateau window: well-separated muons must decorrelate, so eps_dR is flat here
 // (§3.3 diagnostic 1). [1,4] rather than [1,3] -- the extra separation is still plateau,
@@ -602,6 +642,12 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
     }
 
     // --- pT in q.eta bins: per charge, 3x4 grid (10 bins + legend pad) ---
+    // Optional comparison-MC file (cfg.cmp_fit_file, "noovl" only) -- opened once.
+    TFile* fcmp = cfg.cmp_fit_file.empty() ? nullptr : OpenFile(cfg.cmp_fit_file);
+    // Optional black-series-as-MC file (cfg.qeta_black_mc_file, "noovl" only): replaces the
+    // data T&P black series on the q.eta panels with pp24-conditions MC.
+    TFile* fblackmc = cfg.qeta_black_mc_file.empty() ? nullptr : OpenFile(cfg.qeta_black_mc_file);
+    const bool qeta_all_mc = (fblackmc != nullptr);
     for (int ic = 0; ic < 2; ++ic) {
         TCanvas c(("c_step1_qeta_" + kCharges[ic]).c_str(), "", 1500, 2100);
         c.Divide(3, 4);  // ncols=3, nrows=4 (nrows >= ncols)
@@ -613,12 +659,19 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 "g_mc_pt_vs_q_eta_" + kCharges[ic] + "_" + kQEtaSuffix[iq]);
             auto* fmy = GetObj<TF1>(ffit,
                 "f_mc_pt_vs_q_eta_" + kCharges[ic] + "_" + kQEtaSuffix[iq]);
-            auto* gda = GetObj<TGraphAsymmErrors>(fdata,
-                "g_pt2nd_vs_q_eta2nd" + cfg.ctr + "_" + kDataSigns[ic] +
-                "_2mu4_sepr_py_" + kQEtaSuffix[iq] + "_divided");
+            // Black series: pp24-conditions MC (qeta_all_mc) OR data tag-and-probe.
+            auto* gda = qeta_all_mc
+                ? (TGraphAsymmErrors*)GetObj<TGraphAsymmErrors>(fblackmc,
+                      "g_mc_pt_vs_q_eta_" + kCharges[ic] + "_" + kQEtaSuffix[iq])
+                : GetObj<TGraphAsymmErrors>(fdata,
+                      "g_pt2nd_vs_q_eta2nd" + cfg.ctr + "_" + kDataSigns[ic] +
+                      "_2mu4_sepr_py_" + kQEtaSuffix[iq] + "_divided");
 
             gmc = (TGraphAsymmErrors*)gmc->Clone();
             gda = (TGraphAsymmErrors*)gda->Clone();
+            // Strip the black graph's stored fit when it is MC (same TF1-auto-draw trap as the
+            // comparison series): the black MC is shown as POINTS ONLY, no curve.
+            if (qeta_all_mc) gda->GetListOfFunctions()->Clear();
             StyleGraph(gmc, kMCColor, 21, 0.7);
             StyleGraph(gda, kDataColor, 20, 0.7);
 
@@ -631,6 +684,20 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             fdraw->SetLineWidth(1);
             fdraw->Draw("same");
             gda->Draw("PZ same");
+            // Comparison MC (no fit) UNDER the nominal MC, so the sample this plot set
+            // belongs to stays on top and unobscured.
+            if (fcmp) {
+                auto* gcmp = (TGraphAsymmErrors*)GetObj<TGraphAsymmErrors>(fcmp,
+                    "g_mc_pt_vs_q_eta_" + kCharges[ic] + "_" + kQEtaSuffix[iq])->Clone();
+                // MUST strip the stored fit: FitMCSinglesEffcy writes these graphs AFTER
+                // TGraph::Fit, so each carries its TF1 in its function list and ROOT draws
+                // it automatically with "PZ same" -- silently adding a SECOND red curve
+                // (FitMCSinglesEffcy sets the fit line red) that is neither requested nor
+                // this sample's fit. The comparison sample is shown as POINTS ONLY.
+                gcmp->GetListOfFunctions()->Clear();
+                StyleGraph(gcmp, kCmpColor, 22, 0.7);
+                gcmp->Draw("PZ same");
+            }
             gmc->Draw("PZ same");
 
             TLatex tl;
@@ -640,11 +707,14 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             tl.DrawLatex(0.30, 0.12, Form("%.1f < q#upoint#eta < %.1f",
                                           kQEtaRange[iq].first, kQEtaRange[iq].second));
 
-            // R3 ratio pad: MC / data per q.eta bin. This is where the (-2.4,-2.0) low-pT
-            // discrepancy lives -- the ratio makes it quantitative instead of eyeballed.
+            // R3 ratio pad: this-sample-MC / (black series) per q.eta bin. This is where the
+            // (-2.4,-2.0) low-pT discrepancy lives -- the ratio makes it quantitative. When
+            // the black series is pp24 MC (qeta_all_mc) the ratio IS the R10 MC-vs-MC
+            // comparison (r17663 / pp24 cond.); otherwise it is the usual MC/data.
             pads.second->cd();
             gPad->SetLogx();
-            DrawRatioFrame(4.0, 60.0, "p_{T} [GeV]", "MC / data", 0.5, 2.6);
+            DrawRatioFrame(4.0, 60.0, "p_{T} [GeV]",
+                           qeta_all_mc ? "r17663 / pp24" : "MC / data", 0.5, 2.6);
             auto* grat = DivideGraphClean(gmc, gda);
             StyleGraph(grat, kMCColor, 21, 0.7);
             grat->Draw("PZ same");
@@ -654,21 +724,55 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         // legend / label pad
         c.cd(11);
         DrawHeadline(headline + ", " + kChargeTex[ic], 0.02, 0.88, 0.048);
-        auto* leg = new TLegend(0.02, 0.45, 0.98, 0.80);
-        leg->SetBorderSize(0);
-        leg->SetFillStyle(0);
-        leg->SetTextSize(0.05);
         auto* gm = new TGraphAsymmErrors(); StyleGraph(gm, kMCColor, 21);
         auto* gd = new TGraphAsymmErrors(); StyleGraph(gd, kDataColor, 20);
-        leg->AddEntry(gm, (mc_leg + " (+ fit)").c_str(), "lp");
-        leg->AddEntry(gd, (cfg.data_text + " tag&probe").c_str(), "lp");
-        leg->Draw();
-        TLatex note;
-        note.SetNDC();
-        note.SetTextSize(0.045);
-        note.SetTextFont(42);
-        note.DrawLatex(0.02, 0.30, "Data: T&P P(2mu4 | mu4 tag, #DeltaR>0.8 pairs);");
-        note.DrawLatex(0.02, 0.22, "MC: direct conditional, no T&P");
+        if (qeta_all_mc) {
+            // Three-way MC comparison (noovl): the legend spells out the reco-tag CONFIGURATION
+            // that distinguishes the three curves, per user request. Smaller text so the full
+            // labels are not clipped at the legend-pad width.
+            // Colour -> reco-tag CONFIGURATION (user's exact wording). r-tag names are dropped
+            // from the legend text (they clip at the pad width) and given in the note below;
+            // SetMargin trims the symbol column so the full condition strings fit.
+            auto* leg = new TLegend(0.02, 0.50, 0.98, 0.74);
+            leg->SetBorderSize(0);
+            leg->SetFillStyle(0);
+            leg->SetTextSize(0.037);
+            leg->SetMargin(0.12);
+            leg->AddEntry(gm, "MC Pb+Pb23 cond., no HIJING overlay (+fit)", "lp");
+            leg->AddEntry(gd, "MC pp24 conditions (fullsim, full sample)", "lp");
+            if (fcmp) {
+                auto* gc = new TGraphAsymmErrors(); StyleGraph(gc, kCmpColor, 22);
+                leg->AddEntry(gc, "MC Pb+Pb23 cond., with HIJING overlay", "lp");
+            }
+            leg->Draw();
+            TLatex note;
+            note.SetNDC();
+            note.SetTextSize(0.036);
+            note.SetTextFont(42);
+            note.DrawLatex(0.02, 0.42, "All three: MC direct P(mu4 | reco #mu), no tag-and-probe.");
+            note.DrawLatex(0.02, 0.34, "red = r17663 (no overlay), blue = r17618 (with overlay):");
+            note.DrawLatex(0.02, 0.28, "SAME reco tag family, differ ONLY by the HIJING overlay.");
+            note.DrawLatex(0.02, 0.18, "Ratio pad: r17663 / pp24-cond. MC (both #mu^{#pm} summed");
+            note.DrawLatex(0.02, 0.12, "into the panel's q#upoint#eta bin).");
+        } else {
+            auto* leg = new TLegend(0.02, 0.45, 0.98, 0.80);
+            leg->SetBorderSize(0);
+            leg->SetFillStyle(0);
+            leg->SetTextSize(0.05);
+            leg->AddEntry(gm, (mc_leg + " (+ fit)").c_str(), "lp");
+            leg->AddEntry(gd, (cfg.data_text + " tag&probe").c_str(), "lp");
+            if (fcmp) {
+                auto* gc = new TGraphAsymmErrors(); StyleGraph(gc, kCmpColor, 22);
+                leg->AddEntry(gc, (cfg.cmp_text + ", no fit").c_str(), "lp");
+            }
+            leg->Draw();
+            TLatex note;
+            note.SetNDC();
+            note.SetTextSize(0.045);
+            note.SetTextFont(42);
+            note.DrawLatex(0.02, 0.30, "Data: T&P P(2mu4 | mu4 tag, #DeltaR>0.8 pairs);");
+            note.DrawLatex(0.02, 0.22, "MC: direct conditional, no T&P");
+        }
         SaveCanvas(c, dir1 + "step1_eff_pt_in_q_eta_bins_" + kCharges[ic] + ".png");
     }
 

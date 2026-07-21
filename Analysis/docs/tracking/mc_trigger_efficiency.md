@@ -1132,6 +1132,18 @@ normalizing") is the pre-existing, benign `store_mc_trigger` case — the cut-ac
 bypassed in trigger mode — and appears identically in the pp24 and overlay runs. Provenance confirms it is a QUIET sample: **92.2% of reco muons are
 real** (6.9% fake, 0.8% hadronic) — essentially pp24's 91.3%, nothing like the overlay's 36%.
 
+**Three-way MC visualization (2026-07-21, user request):** the r17663 Step-1 q·η-bin panels
+(`step1_eff_pt_in_q_eta_bins_mu{plus,minus}.png`, both WPs) were reworked into a pure
+MC-vs-MC-vs-MC comparison — **red = r17663 (Pb+Pb23 cond., no overlay, + fit); black = pp24
+conditions fullsim MC (FULL sample; replaces the pp24 *data* T&P that was there before);
+blue = r17618 (Pb+Pb23 cond., with HIJING overlay), no fit.** The ratio pad is now
+**r17663 / pp24-cond. MC** (= the R10 comparison, visualized). The pp24-cond. black uses the
+FULL sample: bin-A pT4–6 ε = **0.8954** (test sample 0.8977 — consistent to 0.3%), so the
+saturated-black-vs-turning-on-red-and-blue picture is unchanged. (The pp-full **Medium** fit
+did not exist — the sibling pp-full session had produced only Tight — so it was produced here
+from the sibling's complete/stable pp-full trees; new files, nothing clobbered.) Only these 4
+PNGs changed; the pp24 and overlay plot sets are untouched. `/review-plot` PASS (below).
+
 **Per-muon mu4 efficiency (Step-1 hists, charge-summed, MC-weighted):**
 
 | q·η bin | pT | **r17663 (no ovl, HI cond.)** | pp24 fullsim (r16578) | HIJING overlay (r17618) |
