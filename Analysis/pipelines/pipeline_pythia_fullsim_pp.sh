@@ -195,6 +195,17 @@ n_pair=$(tree_entries "${PAIR_FILE}" "muon_pair_tree_kin0_sign2") || n_pair=0
 [[ "${n_pair:-0}" -gt 0 ]] || fail "muon_pair_tree_kin0_sign2 is EMPTY in ${PAIR_FILE}"
 log "  pair tree kin0_sign2: ${n_pair} entries  ✅"
 
+# If MC trig-eff is on, VALIDATE the mc_trig NTP too. A ROOT stage that THROWS still exits 0, so
+# the NTP script's `|| fail` misses it (this is exactly how the store_mc_trigger multi-file bug
+# silently skipped the mc_trig NTP on 2026-07-20). Check the artefact, not the exit code.
+if (( ENABLE_MC_TRIG_EFF )); then
+    MCTRIG_PAIR="${SAMPLE_DIR}/muon_pairs_pythia_fullsim_pp24${CUT}_mc_trig${SFX}.root"
+    [[ -f "$MCTRIG_PAIR" ]] || fail "mc_trig NTP missing: ${MCTRIG_PAIR} — Stage 3 likely threw but exited 0 (ROOT swallows C++ exceptions). Check the log for 'Runtime error'/'store_mc_trigger'."
+    n_mct=$(tree_entries "$MCTRIG_PAIR" "muon_pair_tree_kin0_sign2") || n_mct=0
+    [[ "${n_mct:-0}" -gt 0 ]] || fail "mc_trig NTP ${MCTRIG_PAIR} is EMPTY (Stage 3 silent throw)."
+    log "  mc_trig pair tree kin0_sign2: ${n_mct} entries  ✅"
+fi
+
 # --- Stage 5: RDF histogram filling -------------------------------------------------------
 if (( SKIP_RDF )); then
     log "[Stage 5] SKIPPED (SKIP_RDF=1)"
