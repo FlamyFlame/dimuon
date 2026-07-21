@@ -51,14 +51,32 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::InitInputExtra(){
         // bias every efficiency built downstream.
         auto bind_trigger = [&](TChain* ch) -> bool {
             if (!ch) return true; // nothing to do
-            // The presence check below inspects one file; the per-chain skip equals a
-            // per-file skip ONLY while InitInputFullsim builds one-file chains. Guard
-            // that assumption: a mixed multi-file chain would silently carry stale
-            // trigger values across the file boundary (the exact bias this mode forbids).
-            if (ch->GetListOfFiles()->GetEntries() != 1)
-                throw std::runtime_error("store_mc_trigger: expected one file per fullsim chain; "
-                                         "re-implement the trigger-branch check per file");
-            if (!ch->GetBranch("muon_b_HLT_mu4_L1MU3V")) return false;
+            // Trigger-branch presence must be checked PER FILE: the full-sample farm gives
+            // MULTI-FILE chains (one TChain per pT-hat slice globs the 12-25 unmerged grid
+            // parts), while the test sample gives one hadded file per chain. All parts of a
+            // full-sample slice come from the SAME trigger-enabled grid task, so they are
+            // uniform -- but verify it rather than assume:
+            //   all files have the branch -> bind (return true)
+            //   no file has it            -> old trigger-off skim -> DROP (return false)
+            //   MIXED                     -> real hazard: stale trigger values would cross a
+            //                                file boundary (the exact bias this mode forbids) -> throw.
+            TObjArray* files = ch->GetListOfFiles();
+            int n_with = 0, n_without = 0;
+            for (int i = 0; i < files->GetEntries(); ++i) {
+                const char* fn = files->At(i)->GetTitle();
+                TFile* f = TFile::Open(fn, "READ");
+                if (!f || f->IsZombie())
+                    throw std::runtime_error("store_mc_trigger: cannot open chain file "
+                                             + std::string(fn));
+                TTree* t = dynamic_cast<TTree*>(f->Get(ch->GetName()));
+                (t && t->GetBranch("muon_b_HLT_mu4_L1MU3V") ? n_with : n_without)++;
+                delete f;
+            }
+            if (n_with > 0 && n_without > 0)
+                throw std::runtime_error("store_mc_trigger: MIXED trigger-on/off files in one chain ("
+                    + std::to_string(n_with) + " on, " + std::to_string(n_without)
+                    + " off) -- stale trigger values would cross the file boundary");
+            if (n_with == 0) return false;  // uniformly trigger-off -> caller drops the chain
             enable_and_bind(ch, "muon_b_HLT_mu4_L1MU3V"        , &muon_b_HLT_mu4);
             enable_and_bind(ch, "dimuon_b_HLT_2mu4_L12MU3V_0_02", &dimuon_b_2mu4_mindR);
             enable_and_bind(ch, "muon_pair_muon1_index"         , &muon_pair_muon1_index);
