@@ -651,6 +651,30 @@ r17663 no-overlay results.** Proceed autonomously; stop on ambiguity.
   mc_trig NTP + hists + fits from 10a–c persist). Do NOT commit the r17663 WIP — the parallel
   session owns it.
 
+- 2026-07-20 — **BUG in the production run (task 2 blocker, FIXED `31c2724`): `store_mc_trigger`
+  vs the multi-file farm.** Stage 3 (the two mc_trig NTP passes) THREW
+  `store_mc_trigger: expected one file per fullsim chain` — the trigger-branch presence check in
+  `PythiaFullSimExtras.c` inspected one file and guarded against multi-file chains, but the LGD
+  farm gives each pT-hat slice a 12–25-part TChain. **ROOT exits 0 on the swallowed C++ exception,
+  so the pipeline `|| fail` did NOT catch it** and the run continued WITHOUT the mc_trig NTP
+  (Stage 3 finished in 77 s — impossible for two full passes; that was the tell).
+  Fix: per-file trigger-branch check requiring uniformity (all parts of a full-sample slice come
+  from the same trigger-enabled grid task ⇒ uniform); all-with → bind, all-without → drop
+  (trigger-off skim), MIXED → throw. Recompiles clean.
+  **Consequence:** task 1 (non-trig-eff, Stages 1–9) is UNAFFECTED and completed. Task 2 needs a
+  re-run of the 2 mc_trig NTP passes + Stage 10. **RE-RUN PLAN (run the mc_trig NTP DIRECTLY, not
+  the whole pipeline, to avoid redoing the nominal+single NTP already done):**
+  ```
+  cd NTupleProcessingCode
+  bash run_pythia_fullsim_mc_trig_full_sample.sh              # ~2-3h streaming
+  bash run_pythia_fullsim_single_muon_mc_trig_full_sample.sh  # ~2-3h streaming
+  # then Stage 10 for pp_full (Fill step1 -> Fit -> Fill step3 -> plot_mc_trig_eff)
+  ```
+  **Lesson for the pipeline:** a ROOT stage that throws but exits 0 slips past `|| fail`. The NTP
+  scripts should propagate ROOT exceptions as a non-zero exit (e.g. wrap the `.q` / check output
+  existence). TODO: harden the NTP run scripts + the pipeline's post-NTP validation to detect a
+  missing/empty mc_trig NTP.
+
 ## Results & Observations
 
 ### R1. Disk census of `~/usatlasdata` (real bytes, `du -sb`)
