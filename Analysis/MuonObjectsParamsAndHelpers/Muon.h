@@ -37,6 +37,12 @@ struct MuonMCTruthKinExtra {
 
 struct MuonFullsimExtra {
     bool pass_medium{};
+    // Per-muon L1 leg for the MC trigger-efficiency L1/HLT split (mc_trigger_efficiency.md
+    // round-5 change #3): true iff the offline muon matched an L1_MU3V muon RoI
+    // (skim branch muon_match_L1MU3V). Filled only in store_mc_trigger mode, and only when
+    // the skim carries the branch (re-skimmed NTUPs); default false otherwise. Prescale-free.
+    // eff(L1) = P[pass_l1 | offline]; eff(HLT|L1) = P[passmu4 (full chain) | pass_l1].
+    bool pass_l1{};
     bool reco_match{}; // matched with a reco muon with prob > 0.5
     int  reco_ind{-1}; // index of the matched reco muon in the raw-NTUP muon block (-1 = unmatched);
                        // needed to look up per-muon and per-pair trigger-matching branches

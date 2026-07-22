@@ -29,26 +29,12 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::InitInputExtra(){
             bind_reco(self().evChains_kn_beam[ikin][ibeam]);
 
     if (self().store_mc_trigger) {
-        // §3.0/D4: the MC trigger-efficiency muon sample is RECO-SEEDED and TRUTH-MATCHED-REAL,
-        // so bind the per-reco-muon truth provenance + truth kinematics on every chain.
-        auto bind_truth_prov = [&](TChain* ch) {
-            if (!ch) return;
-            enable_and_bind(ch, "muon_truth_id"       , &muon_truth_id);
-            enable_and_bind(ch, "muon_truth_IsPrimary", &muon_truth_IsPrimary);
-            enable_and_bind(ch, "muon_truth_pt"       , &muon_truth_pt);
-            enable_and_bind(ch, "muon_truth_eta"      , &muon_truth_eta);
-            enable_and_bind(ch, "muon_truth_phi"      , &muon_truth_phi);
-            enable_and_bind(ch, "muon_truth_charge"   , &muon_truth_charge);
-        };
-        for (int ikin = 0; ikin < self().nKinRanges; ikin++)
-            for (int ibeam = 0; ibeam < self().nBeamTypes; ibeam++)
-                bind_truth_prov(self().evChains_kn_beam[ikin][ibeam]);
-
         // Trigger propagation mode: bind the trigger branches on every chain.
         // A file without them is an old trigger-off skim (e.g. a slice whose _July2026
         // grid job has not landed yet): DROP it entirely. Default-filling passmu4=false
         // for its muons would enter the denominators with an impossible numerator and
         // bias every efficiency built downstream.
+        bool l1_presence_seen = false;  // round-5 #3: first bound chain fixes has_l1_match
         auto bind_trigger = [&](TChain* ch) -> bool {
             if (!ch) return true; // nothing to do
             // Trigger-branch presence must be checked PER FILE: the full-sample farm gives
@@ -62,6 +48,7 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::InitInputExtra(){
             //                                file boundary (the exact bias this mode forbids) -> throw.
             TObjArray* files = ch->GetListOfFiles();
             int n_with = 0, n_without = 0;
+            int n_l1_with = 0, n_l1_without = 0;   // round-5 #3: per-muon L1_MU3V match branch
             for (int i = 0; i < files->GetEntries(); ++i) {
                 const char* fn = files->At(i)->GetTitle();
                 TFile* f = TFile::Open(fn, "READ");
@@ -70,6 +57,7 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::InitInputExtra(){
                                              + std::string(fn));
                 TTree* t = dynamic_cast<TTree*>(f->Get(ch->GetName()));
                 (t && t->GetBranch("muon_b_HLT_mu4_L1MU3V") ? n_with : n_without)++;
+                (t && t->GetBranch("muon_match_L1MU3V")     ? n_l1_with : n_l1_without)++;
                 delete f;
             }
             if (n_with > 0 && n_without > 0)
@@ -77,6 +65,18 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::InitInputExtra(){
                     + std::to_string(n_with) + " on, " + std::to_string(n_without)
                     + " off) -- stale trigger values would cross the file boundary");
             if (n_with == 0) return false;  // uniformly trigger-off -> caller drops the chain
+            // round-5 #3: the per-muon L1_MU3V RoI match exists only in RE-SKIMMED NTUPs. Same
+            // uniformity rule as the chain branch: all-present -> bind; all-absent -> the L1/HLT
+            // Step-2 split is unavailable (pre-reskim); MIXED -> throw (stale L1 across a boundary).
+            if (n_l1_with > 0 && n_l1_without > 0)
+                throw std::runtime_error("store_mc_trigger: MIXED muon_match_L1MU3V present/absent in "
+                    "one chain (" + std::to_string(n_l1_with) + "/" + std::to_string(n_l1_without) + ")");
+            const bool this_chain_l1 = (n_l1_with > 0);
+            if (!l1_presence_seen) { has_l1_match = this_chain_l1; l1_presence_seen = true; }
+            else if (has_l1_match != this_chain_l1)
+                throw std::runtime_error("store_mc_trigger: muon_match_L1MU3V present in some chains "
+                    "but not others -- re-skim all slices together");
+            if (this_chain_l1) enable_and_bind(ch, "muon_match_L1MU3V", &muon_match_L1MU3V);
             enable_and_bind(ch, "muon_b_HLT_mu4_L1MU3V"        , &muon_b_HLT_mu4);
             enable_and_bind(ch, "dimuon_b_HLT_2mu4_L12MU3V_0_02", &dimuon_b_2mu4_mindR);
             enable_and_bind(ch, "muon_pair_muon1_index"         , &muon_pair_muon1_index);
@@ -112,6 +112,15 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::InitInputExtra(){
                 }
             }
         }
+        // round-5 #3: warn loudly if the per-muon L1 match is absent (pre-reskim NTUP). The
+        // run still produces the full-chain Step-1/2/3 outputs; only the L1/HLT Step-2 split
+        // (mc_trigger_efficiency.md change #3) is invalid until the re-skim lands.
+        if (!has_l1_match)
+            std::cerr << "==============================================================\n"
+                      << "store_mc_trigger: muon_match_L1MU3V ABSENT (pre-reskim NTUP).\n"
+                      << "  pass_l1 defaults to false -> the L1 / (HLT|L1) Step-2 split is\n"
+                      << "  INVALID for this run. Re-skim with the L1 branch for change #3.\n"
+                      << "==============================================================" << std::endl;
     }
 }
 
@@ -119,22 +128,6 @@ template <class PairT, class MuonT, class Derived>
 void PythiaFullSimExtras<PairT, MuonT, Derived>::FinalizeExtra(){
     if (!self().store_mc_trigger || n_sf_recomatched == 0) return;
     auto pct = [](long long a, long long b){ return b > 0 ? 100.0 * a / b : 0.0; };
-
-    // Provenance report (§3.0/D4): what the truth-match requirement removed. Fakes and
-    // hadronic muons have ~zero trigger probability and cluster at low pT / low dR --
-    // exactly where the dR correction is measured -- so this fraction is the size of the
-    // contamination the old (implicitly truth-seeded) sample would have carried if it had
-    // been reco-seeded without the cut.
-    std::cout << "\n===== Reco-muon provenance (store_mc_trigger; ALL reco muons, before "
-              << "fiducial/WP cuts) =====\n"
-              << "  reco muons examined : " << n_prov_reco << "\n"
-              << "  REAL     (prob>0.5, |id|==13, IsPrimary) : " << n_prov_real
-              << " (" << pct(n_prov_real, n_prov_reco) << "%)  <- KEPT\n"
-              << "  fake     (prob<=0.5)                     : " << n_prov_fake
-              << " (" << pct(n_prov_fake, n_prov_reco) << "%)  <- rejected\n"
-              << "  hadronic (|id|!=13, or id==13 & !primary): " << n_prov_hadronic
-              << " (" << pct(n_prov_hadronic, n_prov_reco) << "%)  <- rejected"
-              << std::endl;
 
     std::cout << "SF fill report (store_mc_trigger): " << n_sf_recomatched << " reco-matched muons\n"
               << "  SF_medium unfilled (<=0, set to 1): " << n_sf_med_unfilled
@@ -219,20 +212,14 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::CheckBranchPtrsExtra(){
         require(dimuon_b_2mu4_mindR,   "dimuon_b_HLT_2mu4_L12MU3V_0_02 (store_mc_trigger)");
         require(muon_pair_muon1_index, "muon_pair_muon1_index (store_mc_trigger)");
         require(muon_pair_muon2_index, "muon_pair_muon2_index (store_mc_trigger)");
-        // the reco-muon provenance axis (§3.0(b)) + the per-reco-muon truth kinematics
-        require(muon_truth_id,        "muon_truth_id (store_mc_trigger)");
-        require(muon_truth_IsPrimary, "muon_truth_IsPrimary (store_mc_trigger)");
-        require(muon_truth_pt,        "muon_truth_pt (store_mc_trigger)");
-        require(muon_truth_eta,       "muon_truth_eta (store_mc_trigger)");
-        require(muon_truth_phi,       "muon_truth_phi (store_mc_trigger)");
-        require(muon_truth_charge,    "muon_truth_charge (store_mc_trigger)");
+        // muon_match_L1MU3V (round-5 #3) is OPTIONAL -- present only in re-skimmed NTUPs;
+        // has_l1_match records its presence (a loud warning fires in InitInputExtra if absent).
     }
 }
 
 // ---------------------------------------------------------------------------
 // FillRecoQuantities -- the ONE definition of a reco muon's offline quantities and WP
-// flags. Shared by both event loops (nominal truth-seeded and store_mc_trigger
-// reco-seeded) so the two can never drift apart.
+// flags, used wherever a truth muon is matched to a reco muon (nominal + store_mc_trigger).
 // ---------------------------------------------------------------------------
 template <class PairT, class MuonT, class Derived>
 void PythiaFullSimExtras<PairT, MuonT, Derived>::FillRecoQuantities(muon_t& m, int reco_ind){
@@ -270,6 +257,11 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::FillRecoQuantities(muon_t& m, i
         // NO mu6/mu8 OR-ing: support triggers are disabled everywhere (data D7).
         m.passmu4 = muon_b_HLT_mu4->at(reco_ind);
 
+        // per-muon L1_MU3V RoI match (round-5 #3); present only in re-skimmed NTUPs.
+        // pass_l1 is the L1 leg of the Step-2 L1/HLT split: eff(L1)=P[pass_l1|offline],
+        // eff(HLT|L1)=P[passmu4|pass_l1]. Prescale-free. Absent -> false (warned in Init).
+        m.pass_l1 = has_l1_match ? muon_match_L1MU3V->at(reco_ind) : false;
+
         // reco/ID SFs: the skim fills them only for WP-passing muons (<=0 otherwise).
         // Unfilled -> 1 (neutral weight), counted for the fill-fraction report.
         ++n_sf_recomatched;
@@ -284,137 +276,17 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::FillRecoQuantities(muon_t& m, i
     }
 }
 
-// ---------------------------------------------------------------------------
-// IsRealRecoMuon -- the real/hadronic/fake axis (§3.0(b), D4).
-//   real     = prob > 0.5 && |muon_truth_id| == 13 && muon_truth_IsPrimary
-//   fake     = prob <= 0.5                        (no truth match)
-//   hadronic = |id| != 13 (punch-through)  OR  (|id| == 13 && !IsPrimary) (decay-in-flight)
-// Depends ONLY on (prob, |id|, IsPrimary) -- NEVER on Pythia-signal-block membership, so a
-// truth-matched primary muon from the HIJING underlying event is REAL and is KEPT.
-// ---------------------------------------------------------------------------
-template <class PairT, class MuonT, class Derived>
-bool PythiaFullSimExtras<PairT, MuonT, Derived>::IsRealRecoMuon(int reco_ind){
-    ++n_prov_reco;
-    if (muon_truth_prob->at(reco_ind) <= truth_match_prob_thrsh) { ++n_prov_fake; return false; }
-    const bool is_mu      = (std::abs(muon_truth_id->at(reco_ind)) == 13);
-    const bool is_primary = muon_truth_IsPrimary->at(reco_ind);
-    if (!is_mu || !is_primary) { ++n_prov_hadronic; return false; }
-    ++n_prov_real;
-    return true;
-}
-
-// ---------------------------------------------------------------------------
-// ProcessEventFullsimMCTrig -- store_mc_trigger event loop (§3.0, D4).
-// RECO-SEEDED over truth-matched REAL muons, mirroring data's construction. Pairs are all
-// (i<j) combinations of the selected reco muons -- NOT Pythia truth pairs -- so in the
-// overlay a pair may be Pythia x Pythia, Pythia x HIJING or HIJING x HIJING, exactly as in
-// data. No truth fiducial cut (it would sculpt the reco-pT turn-on) and no signal selection.
-// ---------------------------------------------------------------------------
-template <class PairT, class MuonT, class Derived>
-void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsimMCTrig(int ev_num){
-
-    const float event_weight = static_cast<float>(self().fullsim_weight_factor);
-    const int   n_reco       = (int)muon_pt->size();
-
-    if ((int)muon_truth_prob->size() != n_reco || (int)muon_truth_id->size() != n_reco ||
-        (int)muon_truth_IsPrimary->size() != n_reco)
-        throw std::runtime_error("ProcessEventFullsimMCTrig: muon truth-provenance branches "
-                                 "are not the same length as the reco-muon collection");
-
-    // ---- Select REAL reco muons ----
-    std::vector<muon_t> reco_muon_list;
-    for (int ri = 0; ri < n_reco; ri++){
-        if (!IsRealRecoMuon(ri)) continue;
-
-        muon_t m;
-        m.ind       = ri;             // reco index (data-mirror: data indexes by reco ind)
-        m.ev_num    = ev_num;
-        m.ev_weight = event_weight;
-
-        // truth kinematics of the matched truth muon (per-reco-muon branches)
-        m.truth_pt     = fabs(muon_truth_pt->at(ri)) / 1000.0f;
-        m.truth_eta    = muon_truth_eta->at(ri);
-        m.truth_phi    = muon_truth_phi->at(ri);
-        m.truth_charge = muon_truth_charge->at(ri);
-        m.truth_bar    = muon_truth_barcode->at(ri);
-
-        FillRecoQuantities(m, ri);
-
-        if constexpr (requires { self().FillMuonOverlay(m); }) self().FillMuonOverlay(m);
-
-        reco_muon_list.push_back(std::move(m));
-    }
-
-    // ---- Single-muon tree ----
-    if (self().output_single_muon_tree){
-        for (auto& m : reco_muon_list){
-            // Loose gate only; the exact fiducial (pT>4, |eta|<2.4) + WP is applied
-            // downstream in RDF on RECO quantities (§3.1). A truth-pT gate would sculpt
-            // the reco-pT turn-on near threshold.
-            if (m.pt > 3.0 && fabs(m.eta) < 2.6){
-                self().muon_raw_ptr = &m;
-                self().FillSingleMuonTree();
-            }
-        }
-        return;
-    }
-
-    // ---- Pair trees: every (i<j) combination of the selected REAL reco muons ----
-    for (int i = 0; i < (int)reco_muon_list.size() - 1; i++){
-        for (int j = i + 1; j < (int)reco_muon_list.size(); j++){
-            if (self().mpairRef()) self().mpairRef()->Clear();
-            else self().mpairRef() = std::make_shared<pair_t>();
-
-            auto* p  = self().mpairRef().get();
-            p->weight = event_weight;
-            p->crossx = event_weight;
-
-            p->ev_pass_mu4  = b_HLT_mu4;    // event-level decisions (diagnostics only)
-            p->ev_pass_2mu4 = b_HLT_2mu4;
-
-            p->m1 = reco_muon_list.at(i);
-            p->m2 = reco_muon_list.at(j);
-
-            p->Update();  // pair kinematics (reco + truth)
-
-            if constexpr (requires { self().FillPairOverlay(); }) self().FillPairOverlay();
-
-            p->pair_pass_medium = (p->m1.pass_medium && p->m2.pass_medium);
-            p->pair_pass_tight  = (p->m1.pass_tight  && p->m2.pass_tight);
-            p->pass2mu4         = LookupPairPass2mu4(p->m1.reco_ind, p->m2.reco_ind);
-
-            // No resonance veto in trigger mode (outputs are the _no_data_resonance_cuts
-            // set): the trigger efficiency must not depend on the resonance selection.
-            p->pair_pass_resonance_reco       = true;
-            p->pair_pass_resonance_truth      = true;
-            p->pair_pass_medium_and_resonance = p->pair_pass_medium;
-            p->pair_pass_tight_and_resonance  = p->pair_pass_tight;
-
-            // NOTE: PerformTruthPairAnalysisHook (HF ancestry / flavor / from_same_b) is
-            // deliberately NOT called. It traces the PYTHIA parent map, which is undefined
-            // for HIJING muons; and the trigger efficiency needs no truth ancestry.
-            //
-            // The truth-ancestry branches therefore stay at their Clear() defaults. Say so
-            // IN THE TREE: `pair_origin_analysis_skipped` is only ever written by the hook,
-            // so leaving it at its default `false` would assert "the origin analysis ran"
-            // -- and `m1_parent_group == 0` is a LEGITIMATE category (the hook's failure
-            // sentinel is -10), so a future consumer would read a valid-looking all-zeros
-            // ancestry block and believe it. Mark it explicitly.
-            p->pair_origin_analysis_skipped = true;
-
-            self().FillMuonPairTree();
-        }
-    }
-}
-
 template <class PairT, class MuonT, class Derived>
 void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num){
 
-    // store_mc_trigger uses a completely different (reco-seeded) event loop -- §3.0/D4.
-    if (self().store_mc_trigger){
-        ProcessEventFullsimMCTrig(ev_num);
-        return;
-    }
+    // TRUTH-SEEDED, Pythia-ONLY, for BOTH nominal and store_mc_trigger (round-5 change #1;
+    // reverts the 2026-07-14 reco-seeded ProcessEventFullsimMCTrig). store_mc_trigger differs
+    // only by: the per-pair event-level + 2mu4 trigger fields, the per-muon passmu4/pass_l1
+    // (set in FillRecoQuantities), and the RECO-loose single-muon gate (no truth-pT gate on
+    // the turn-on). The muon SAMPLE is identical to nominal -> in the overlay only Pythia-truth
+    // muons enter, HIJING muons are excluded (they carry a different event weight; HIJING is a
+    // template-fit background only). For pp there is no HIJING, so this is the same sample the
+    // reco-seeded version selected (set-equality, mc_trigger_efficiency.md T5).
 
     // ---- Build list of "real" reco muon truth barcodes (prob > threshold) ----
     std::vector<int> real_muon_truth_barcode_list;
@@ -502,11 +374,16 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
         }
 
         if (self().output_single_muon_tree){
-            // Truth-fiducial gate: this is the NOMINAL path, whose single-muon tree is the
-            // reco-EFFICIENCY denominator, and that denominator must be a truth muon.
-            // (store_mc_trigger never reaches here -- ProcessEventFullsim dispatches to
-            // ProcessEventFullsimMCTrig, which gates on RECO quantities instead.)
-            if (cur_muon.truth_pt > 4.0 && fabs(cur_muon.truth_eta) < 2.4){
+            // Nominal: truth-fiducial gate (the reco-EFFICIENCY denominator must be a truth muon).
+            // store_mc_trigger: RECO-based gate -- the Step-1 trigger-efficiency denominator is
+            // "offline reconstructed muon"; a truth-pT gate would sculpt the reco-pT turn-on near
+            // threshold. Loose here (pT>3, |eta|<2.6); the exact fiducial (pT>4, |eta|<2.4) + WP
+            // is applied downstream in RDF on reco quantities (§3.1). Still Pythia-truth-SEEDED,
+            // so HIJING muons never enter (change #1).
+            const bool keep = self().store_mc_trigger
+                ? (cur_muon.reco_match && cur_muon.pt > 3.0 && fabs(cur_muon.eta) < 2.6)
+                : (cur_muon.truth_pt > 4.0 && fabs(cur_muon.truth_eta) < 2.4);
+            if (keep){
                 self().muon_raw_ptr = &cur_muon;
                 self().FillSingleMuonTree();
             }
@@ -530,6 +407,11 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
             self().mpairRef()->weight  = event_weight;
             self().mpairRef()->crossx  = event_weight;
 
+            if (self().store_mc_trigger){
+                self().mpairRef()->ev_pass_mu4  = b_HLT_mu4;  // event-level decisions (diagnostics)
+                self().mpairRef()->ev_pass_2mu4 = b_HLT_2mu4;
+            }
+
             self().mpairRef()->m1 = truth_muon_list.at(i);
             self().mpairRef()->m2 = truth_muon_list.at(j);
 
@@ -549,6 +431,9 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
                 ResonanceTaggingTruth();
                 self().mpairRef()->pair_pass_medium = (self().mpairRef()->m1.pass_medium && self().mpairRef()->m2.pass_medium);
                 self().mpairRef()->pair_pass_tight  = (self().mpairRef()->m1.pass_tight  && self().mpairRef()->m2.pass_tight);
+                if (self().store_mc_trigger)
+                    self().mpairRef()->pass2mu4 =
+                        LookupPairPass2mu4(self().mpairRef()->m1.reco_ind, self().mpairRef()->m2.reco_ind);
             } else {
                 self().mpairRef()->pair_pass_medium = false;
                 self().mpairRef()->pair_pass_tight  = false;

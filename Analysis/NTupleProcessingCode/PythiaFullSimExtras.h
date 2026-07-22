@@ -29,28 +29,14 @@ protected:
     std::vector<float>*  muon_truth_prob    = nullptr;
     std::vector<int>*    muon_truth_barcode = nullptr;
 
-    // Per-RECO-muon truth provenance + truth kinematics (bound only in store_mc_trigger mode).
-    // These are the branches the reco-muon provenance classifier is built on (§3.0/D4):
-    //   real     = prob > 0.5 && |muon_truth_id| == 13 && muon_truth_IsPrimary
-    //   fake     = prob <= 0.5
-    //   hadronic = |id| != 13 (punch-through) OR (|id| == 13 && !IsPrimary) (decay-in-flight)
-    // The axis is (prob, |id|, IsPrimary) ONLY -- NEVER Pythia-signal-block membership, so a
-    // real HIJING muon in the overlay is REAL (low_mass_dimuon_template_fit.md).
-    std::vector<int>*    muon_truth_id        = nullptr;
-    std::vector<bool>*   muon_truth_IsPrimary = nullptr;
-    std::vector<float>*  muon_truth_pt        = nullptr;
-    std::vector<float>*  muon_truth_eta       = nullptr;
-    std::vector<float>*  muon_truth_phi       = nullptr;
-    std::vector<int>*    muon_truth_charge    = nullptr;
-
-    // provenance bookkeeping (store_mc_trigger; reported at end of run)
-    long long n_prov_reco = 0, n_prov_real = 0, n_prov_fake = 0, n_prov_hadronic = 0;
-
     // trigger branches (bound only when store_mc_trigger; Run-3 chain names — the
     // trigger-enabled MC skims are Run-3 only). Mirrors DimuonDataAlgCoreT: per-muon
     // match = bare branch name (= mindR 0.02 nominal), pair-level 2mu4 = the
     // order-insensitive "_0_02" mindR branch, indexed by the skim's (i<j) pair block.
-    std::vector<bool>*   muon_b_HLT_mu4        = nullptr; // muon_b_HLT_mu4_L1MU3V
+    std::vector<bool>*   muon_b_HLT_mu4        = nullptr; // muon_b_HLT_mu4_L1MU3V (full chain)
+    std::vector<bool>*   muon_match_L1MU3V     = nullptr; // per-muon L1_MU3V RoI match (round-5 #3);
+                                                          // only in RE-SKIMMED NTUPs, else nullptr
+    bool                 has_l1_match = false;            // muon_match_L1MU3V present in the input
     std::vector<bool>*   dimuon_b_2mu4_mindR   = nullptr; // dimuon_b_HLT_2mu4_L12MU3V_0_02
     std::vector<int>*    muon_pair_muon1_index = nullptr;
     std::vector<int>*    muon_pair_muon2_index = nullptr;
@@ -106,19 +92,17 @@ protected:
     void InitParamsExtra(){
         self().setIsFullsim(true);
     }
+    // Truth-seeded, Pythia-ONLY event loop. Nominal fullsim (reco-eff, det-response,
+    // template-fit MC) AND store_mc_trigger (MC trigger efficiency) BOTH use it: only
+    // Pythia-truth muons matched to a reco muon may enter, so in the HIJING overlay the
+    // real HIJING muons are excluded (they carry a different event weight than Pythia and
+    // belong only to the template-fit background). store_mc_trigger differs only by the
+    // per-muon/per-pair trigger fields, the RECO-loose single-muon gate, and no truth-pT gate
+    // on the singles turn-on. (mc_trigger_efficiency.md round-5 change #1: this REVERTS the
+    // 2026-07-14 reco-seeded ProcessEventFullsimMCTrig / IsRealRecoMuon, now deleted.)
     void ProcessEventFullsim(int ev_num);
 
-    // store_mc_trigger ONLY (§3.0/D4): a RECO-SEEDED event loop over truth-matched REAL
-    // muons, replacing the nominal truth-seeded Pythia-block loop. Kept as a separate
-    // function so the nominal fullsim path (reco-efficiency, detector response,
-    // template-fit MC) -- where a truth-seeded, Pythia-only denominator is the CORRECT
-    // construction -- is byte-for-byte untouched.
-    void ProcessEventFullsimMCTrig(int ev_num);
-
-    // The real/hadronic/fake axis, on the RECO muon at index reco_ind.
-    bool IsRealRecoMuon(int reco_ind);
-
-    // The ONE definition of a reco muon's offline quantities + WP flags (shared by both loops).
+    // The ONE definition of a reco muon's offline quantities + WP flags.
     void FillRecoQuantities(muon_t& m, int reco_ind);
     void CheckBranchPtrsExtra();
     bool PassMuonMediumCuts(const muon_t& muon);
