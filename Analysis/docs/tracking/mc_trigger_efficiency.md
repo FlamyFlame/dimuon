@@ -21,7 +21,15 @@ HIJING overlay r17618 `_July2026`) to deliver the MC-based trigger-efficiency pr
    weighting on an unbiased (no-trigger-requirement) MC pair sample. This is the analysis
    deliverable that replaces the current dummy ε_ΔR ≡ 1 (roadmap Q4).
 
-## Autonomy Contract (round 5 — ACTIVE; re-read on every compaction)
+## Autonomy Contract (round 5 — **DONE 2026-07-22**; all 4 changes delivered + both reviews PASS)
+**Every Done item met.** All 4 user changes applied + validated on all 3 samples (pp FULL,
+overlay, r17663) × 2 WPs; grid re-skimmed all 3 (13 tasks, the L1 branch); /review-analysis-code
+PASS (iter 1) and /review-plot PASS (iter 4); committed (`dea8c26`..`ec8ef7d`). Headlines:
+pp ε_ΔR^2mu4 0.9855/0.9875, overlay ε_ΔR^cross 0.8795/0.8697; #1 overlay HIJING excluded
+(99763→95389); #3 eff(L1)≥eff(chain), eff(HLT\|L1)≤1; #4 pp pair-η plateau ~0.97–1.00 (validates
+the plateau→1 normalization). Retained below for the record.
+
+## Autonomy Contract (round 5 — superseded header above; original text)
 - Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a
   plan, a passing small test, or one pipeline stage is NOT a stopping point.
 - Done = the four user changes below, applied + validated, with ALL trigger-efficiency plots
@@ -1459,7 +1467,22 @@ expected sign and size. Data references now carry the one-sided cut (pp24 + pbpb
 
 ## Latest Stage
 
-**2026-07-22 (round 5) — GRID RE-SKIM COMPLETE (13/13 done), download/farm IN PROGRESS.**
+**2026-07-22 (round 5) — COMPLETE. All 4 user changes delivered + validated + committed; both
+reviews PASS.** #1 truth-seed revert (overlay HIJING excluded 99763→95389; pp no-op), #2 q·η
+(−2.4,−2.0) split (11 bins, MC + data T&P), #3 Step-2 L1/HLT split via a re-skim (new per-muon
+`muon_match_L1MU3V`; eff(L1)≥eff(chain), eff(HLT\|L1)≤1, closure ~0.95–0.98), #4 Step-3 pair-η
+panels + plateau/fluctuation tables (pp plateau ~0.97–1.00 validates plateau→1). All 3 samples
+grid-re-skimmed (13 tasks) → pp-full LGD farm v2 + overlay/r17663 download → re-NTP (truth-seeded+L1)
+→ Fill/Fit/plot ×3×2WP → noovl three-way plot. /review-analysis-code PASS (`review-...-round5...md`);
+/review-plot PASS iter 4 (pair-η super-title placement fixed). Commits `dea8c26`..`ec8ef7d` +
+`fullsim_pp24_full_to_lgd.sh`→v2. **Carry-over (NOT round-5, pre-existing): §2 union-weight decision
+(Remaining Work 1), trigger-group question send (RW 3), full data-side dp/p cascade (RW 3b);
+plateau-normalize ε_ΔR before crossx (RW 6); crossx now also stale on the q·η-split forward-bin
+trig-eff weight (#2 blast radius).**
+
+---
+
+**2026-07-22 (round 5, earlier) — GRID RE-SKIM COMPLETE (13/13 done), download/farm was IN PROGRESS.**
 - All 13 grid re-skim tasks **succeeded** (verified via BigPanDA; poller exited 12:45). r17663 already
   downloaded + through NTP/Fill/Fit (dry-run; only its plot pending, needs pp_full+overlay 11-bin fits).
 - **Download/farm launched (background):** pp-full LGD farm `fullsim_pp24_full_to_lgd.sh --no-devslice`
