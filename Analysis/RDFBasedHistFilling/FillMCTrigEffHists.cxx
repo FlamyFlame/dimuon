@@ -44,6 +44,7 @@
 #include <TF1.h>
 #include <TH1D.h>
 #include <TH2D.h>
+#include <TH3D.h>
 #include <TKey.h>
 #include <TString.h>
 #include <ROOT/RDataFrame.hxx>
@@ -115,7 +116,23 @@ struct Binnings {
     std::vector<double> pair_pt;   // pT_bins_120 (15 log bins 8-120)
     std::vector<double> dr_zoom;   // 20 uniform [0, 1]
     std::vector<double> dr_full;   // 23 uniform [0, 5.75]
+    // Step-3 pair-eta dependence (round-5 #4): coarse pair-pT (ParamsSet::pair_pt_coarse_bins,
+    // the crossx binning) x coarse pair-eta (CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap).
+    std::vector<double> pair_pt_coarse;
+    std::vector<double> pair_eta_coarse;
 };
+
+// Contiguous (lo,hi) ranges -> bin edges. Throws if the ranges are not contiguous.
+inline std::vector<double> RangesToEdges(const QEtaBinning& ranges) {
+    std::vector<double> e;
+    for (size_t i = 0; i < ranges.size(); ++i) {
+        if (i == 0) e.push_back(ranges[i].first);
+        else if (std::fabs(ranges[i].first - ranges[i - 1].second) > 1e-6)
+            throw std::runtime_error("RangesToEdges: non-contiguous ranges");
+        e.push_back(ranges[i].second);
+    }
+    return e;
+}
 
 Binnings MakeBinnings() {
     ParamsSet pms;
@@ -144,6 +161,11 @@ Binnings MakeBinnings() {
     for (int i = 0; i <= 20; ++i) b.dr_zoom[i] = i * (1.0 / 20);
     b.dr_full.resize(24);
     for (int i = 0; i <= 23; ++i) b.dr_full[i] = i * (5.75 / 23);
+
+    // round-5 #4: coarse pair-pT (crossx) x coarse pair-eta (crossx pair_eta bins)
+    b.pair_pt_coarse = pms.pair_pt_coarse_bins;                 // {8,15,27,50,150}
+    static const CommonEffcyConfig cfg{};
+    b.pair_eta_coarse = RangesToEdges(cfg.pair_eta_proj_ranges_coarse_incl_gap); // 9 bins over [-2.4,2.4]
 
     return b;
 }
@@ -283,7 +305,8 @@ ROOT::RDF::RNode AliasLeg(ROOT::RDF::RNode node, int leg, const std::string& wp_
                .Alias("lg_eta",     m + "eta")
                .Alias("lg_charge",  m + "charge")
                .Alias("lg_wp",      m + wp_col)
-               .Alias("lg_passmu4", m + "passmu4")
+               .Alias("lg_passmu4", m + "passmu4")   // full mu4 chain (L1 && HLT)
+               .Alias("lg_pass_l1", m + "pass_l1")   // L1_MU3V RoI match (round-5 #3)
                .Alias("ot_pt",      o + "pt")
                .Alias("ot_eta",     o + "eta")
                .Alias("ot_wp",      o + wp_col);
@@ -337,6 +360,7 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
 
     HistAccumulator<TH1D> acc1D;
     HistAccumulator<TH2D> acc2D;
+    HistAccumulator<TH3D> acc3D;   // Step-3 pair-eta dependence (round-5 #4)
 
     MCEffEvaluator* evaluator = nullptr;  // Step-3 only
 
@@ -378,7 +402,10 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
                                  "q_eta", "pt", "w"));
             };
             book_singles(dc, "denom");                                       // NO trigger requirement (§4)
-            book_singles(dc.Filter("passmu4", chg + " mu4"), "num");         // muon's OWN mu4 match
+            book_singles(dc.Filter("passmu4", chg + " mu4"), "num");         // full mu4 chain
+            // L1/HLT split reference (round-5 #3), for the Step-2 inclusive-singles line:
+            book_singles(dc.Filter("pass_l1", chg + " L1"), "numl1");        // L1_MU3V RoI
+            book_singles(dc.Filter("passmu4 && pass_l1", chg + " HLT|L1"), "numhlt");
         }
 
         // =====================================================================
@@ -412,8 +439,17 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
                                               static_cast<int>(bins.pt.size()) - 1, bins.pt.data()},
                                              "lg_q_eta", "lg_pt", "weight"));
                         };
-                        book_leg(dd, "denom");                                    // NO trigger requirement (§4)
-                        book_leg(dd.Filter("lg_passmu4", drb + " leg mu4"), "num"); // leg's OWN mu4 match
+                        // Step-2 L1/HLT split (round-5 #3). Three per-leg efficiencies:
+                        //   full mu4 chain : num / denom          (current)
+                        //   L1            : numl1 / denom         = P[L1 RoI | offline]
+                        //   HLT | L1      : numhlt / numl1        = P[full chain | L1 RoI]
+                        // so eff(chain) = eff(L1) * eff(HLT|L1). numhlt = chain && L1 keeps it
+                        // <= numl1 even if the ΔR windows let a chain match miss its L1 RoI.
+                        // pass_l1 is 0 on pre-reskim NTUPs -> the L1/HLT hists are empty then.
+                        book_leg(dd, "denom");                                       // NO trigger req (§4)
+                        book_leg(dd.Filter("lg_passmu4", drb + " leg mu4"), "num");  // full mu4 chain
+                        book_leg(dd.Filter("lg_pass_l1", drb + " leg L1"), "numl1"); // L1_MU3V RoI
+                        book_leg(dd.Filter("lg_passmu4 && lg_pass_l1", drb + " leg HLT|L1"), "numhlt");
                     }
                 }
             }
@@ -456,6 +492,22 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
                                   static_cast<int>(bins.dr_zoom.size()) - 1, bins.dr_zoom.data(),
                                   static_cast<int>(bins.pair_pt.size()) - 1, bins.pair_pt.data()},
                                  "dr", "pair_pt", wcol));
+                // round-5 #4: dR x coarse pair-pT x coarse pair-eta, for the pair-eta dependence
+                // of eps_dR. Zoom and full dR ranges; projected per (pair pT, pair eta) cell.
+                acc3D.add("h_mc_dr_zoom_vs_pt_eta_" + nd,
+                    node.Histo3D({uniq("h_mc_dr_zoom_vs_pt_eta_" + nd).c_str(),
+                                  ";#DeltaR;p_{T}^{pair} [GeV];#eta^{pair}",
+                                  static_cast<int>(bins.dr_zoom.size()) - 1, bins.dr_zoom.data(),
+                                  static_cast<int>(bins.pair_pt_coarse.size()) - 1, bins.pair_pt_coarse.data(),
+                                  static_cast<int>(bins.pair_eta_coarse.size()) - 1, bins.pair_eta_coarse.data()},
+                                 "dr", "pair_pt", "pair_eta", wcol));
+                acc3D.add("h_mc_dr_full_vs_pt_eta_" + nd,
+                    node.Histo3D({uniq("h_mc_dr_full_vs_pt_eta_" + nd).c_str(),
+                                  ";#DeltaR;p_{T}^{pair} [GeV];#eta^{pair}",
+                                  static_cast<int>(bins.dr_full.size()) - 1, bins.dr_full.data(),
+                                  static_cast<int>(bins.pair_pt_coarse.size()) - 1, bins.pair_pt_coarse.data(),
+                                  static_cast<int>(bins.pair_eta_coarse.size()) - 1, bins.pair_eta_coarse.data()},
+                                 "dr", "pair_pt", "pair_eta", wcol));
             };
 
             // denominator: ALL selected pairs, no trigger requirement (§4), weight = MC weight
@@ -475,6 +527,7 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
     // ---------- trigger loops + merge ----------
     auto hists1D = acc1D.merge();
     auto hists2D = acc2D.merge();
+    auto hists3D = acc3D.merge();
 
     if (evaluator) evaluator->PrintStats(cfg.label);
 
@@ -485,9 +538,10 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
     if (fout.IsZombie()) throw std::runtime_error("FillMCTrigEffHists: cannot open output " + out_name);
     for (auto& kv : hists1D) kv.second->Write(kv.first.c_str());
     for (auto& kv : hists2D) kv.second->Write(kv.first.c_str());
+    for (auto& kv : hists3D) kv.second->Write(kv.first.c_str());
     fout.Close();
     std::cout << "FillMCTrigEffHists: wrote " << hists1D.size() << " TH1D + "
-              << hists2D.size() << " TH2D to " << out_name << std::endl;
+              << hists2D.size() << " TH2D + " << hists3D.size() << " TH3D to " << out_name << std::endl;
 
     // ---------- sanity printout ----------
     if (!do_step3) {

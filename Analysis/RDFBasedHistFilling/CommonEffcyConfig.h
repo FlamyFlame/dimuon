@@ -13,7 +13,11 @@ struct CommonEffcyConfig {
     // fitting using q×eta bins. Do NOT use these for pair eta binning.
 
     QEtaBinning q_eta_proj_ranges_fine_excl_gap = { // Run 3; -2.4 <= q*eta < 2.2 (one-sided), gap excluded
-        {-2.4f, -2.0f},
+        // (-2.4,-2.0) split into two (round-5 change #2): the forward-endcap anomaly
+        // (mc_trigger_efficiency.md R3/R8/R10) has q*eta sub-structure inside this wide bin.
+        // The fine 2D trig-eff axis (makeEtaTrigEffcyBinning) already has an edge at -2.2.
+        {-2.4f, -2.2f},
+        {-2.2f, -2.0f},
         {-2.0f, -1.6f},
         {-1.6f, -1.3f},
         {-0.9f, -0.5f},

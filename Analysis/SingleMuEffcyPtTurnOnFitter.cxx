@@ -42,8 +42,11 @@ protected:
 
     std::vector<std::string> musigns = {"sign1", "sign2"};
 
+    // MUST match CommonEffcyConfig::q_eta_proj_ranges_fine_excl_gap (Run 3). The forward
+    // (-2.4,-2.0) bin is split into (-2.4,-2.2)+(-2.2,-2.0) (round-5 change #2).
     std::vector<std::string> q_eta_bins_for_pT_trg_effcy_graphs = {
-        "minus2_40_TO_minus2_00", "minus2_00_TO_minus1_60", "minus1_60_TO_minus1_30", "minus0_90_TO_minus0_50",
+        "minus2_40_TO_minus2_20", "minus2_20_TO_minus2_00",
+        "minus2_00_TO_minus1_60", "minus1_60_TO_minus1_30", "minus0_90_TO_minus0_50",
         "minus0_50_TO_minus0_10", "0_10_TO_0_50", "0_50_TO_1_00", "1_30_TO_1_60", "1_60_TO_2_00", "2_00_TO_2_20"
     };
 
