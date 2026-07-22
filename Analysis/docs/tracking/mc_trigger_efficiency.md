@@ -21,6 +21,44 @@ HIJING overlay r17618 `_July2026`) to deliver the MC-based trigger-efficiency pr
    weighting on an unbiased (no-trigger-requirement) MC pair sample. This is the analysis
    deliverable that replaces the current dummy ε_ΔR ≡ 1 (roadmap Q4).
 
+## Autonomy Contract (round 5 — ACTIVE; re-read on every compaction)
+- Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a
+  plan, a passing small test, or one pipeline stage is NOT a stopping point.
+- Done = the four user changes below, applied + validated, with ALL trigger-efficiency plots
+  regenerated for pp (**FULL sample**), overlay, and r17663 (both WPs); reviews PASS.
+  1. **Muon sample REVERTED to TRUTH-SEEDED Pythia-only** (undo round-2 D4/§3.0 reco-seeding).
+     Physics (user): the reco-seeded overlay sample admits real HIJING muons, but Pythia and
+     HIJING carry different event weights, so — exactly as for reco-eff / detector-response —
+     only Pythia-truth muons (matched to reco + passing a WP) may enter the trigger-efficiency
+     sample; HIJING is for template fits (hadronic/fake background) ONLY. Restore the
+     pre-round-2 (`221f49a^`) unified truth-seeded `ProcessEventFullsim` + its `store_mc_trigger`
+     conditionals; DELETE the reco-seeded `ProcessEventFullsimMCTrig` + `IsRealRecoMuon`; KEEP
+     one-sided dp/p (`71fcf1c`) + the multi-file LGD-farm trigger check (`31c2724`). pp result
+     identical (set-equality, T5); overlay/r17663 drop HIJING muons. Rewrite §3.0/D4. NTP re-run.
+  2. **q·η fine bin (−2.4,−2.0) split → (−2.4,−2.2) + (−2.2,−2.0)** (Run-3
+     `q_eta_proj_ranges_fine_excl_gap`). Edit `CommonEffcyConfig.h:16` + the 3 hardcoded lists
+     (`SingleMuEffcyPtTurnOnFitter.cxx:45-48`, `plot_mc_trig_eff.cxx:395-401`; legend pad 11→12,
+     10→11 bins). Regenerate MC fits AND data T&P (pp24+pbpb23, both WPs — RDF Stage-5 refill +
+     Stage-6 refit, `SKIP_CONDOR`) + all comparison plots. The fine 2D q·η axis already has an
+     edge at −2.2 (aligns exactly). Crossx would drift → OUT OF SCOPE, noted (Remaining Work).
+  3. **Step-2 split into L1 / HLT / full-chain** — user decision (2026-07-21): **RE-SKIM** (no
+     per-muon L1 branch exists). Add a per-muon `muon_match_L1MU3V` (offline↔L1 muon-RoI ≥ MU3V,
+     prescale-free) branch to the skim, analogous to the existing `muon_match_mu4roi`; re-run
+     grid skims for pp-full (6 DSIDs 803015–020) + overlay (802776–781) + r17663 (802781);
+     re-farm pp-full to LGD; re-NTP. Step-2 plots: **P[muon fires L1 | offline μ ∧ other μ in
+     ΔR bin]**, **P[muon fires HLT | fires L1 ∧ …]**, and the current **P[full mu4 chain | …]**,
+     each in its OWN subdirectory. No L1 nor HLT prescale in any efficiency.
+  4. **Step-3 pair-η dependence**: 2 plots (each subplot = a pair-η bin from the crossx
+     `pair_eta_proj_ranges_coarse_incl_gap`; each line = a coarse pair-pT bin; one zoom-ΔR range,
+     one full-ΔR range) + a **large-ΔR-plateau table** over all (pair pT, pair η) bins + a
+     **plateau-fluctuation table** (std-dev / error-of-mean, whichever is the right measure).
+     Physics: quantify the plateau's deviation from 1 and its pair-pT / pair-η dependence to
+     validate the manual plateau→1 normalization and size its systematic. `pair_eta` is an
+     existing reco column (`MuonPairReco.h:19`) → no NTP change for #4.
+- Stop-and-ask = ANY physics-results-bending ambiguity (no fixed list; use judgment;
+  when unsure whether an ambiguity is blocking, treat it as blocking → AskUserQuestion).
+- Resolved at start (2026-07-21): #3 clean L1/HLT split needs a re-skim — user chose RE-SKIM.
+
 ## Autonomy Contract (round 4 — **DONE 2026-07-20**; retained for the record)
 **Every Done item met:** skim submitted (jediTaskID 51600634) and completed; full chain run
 (NTP ×2 → Fill/Fit/Step3 × 2 WPs → 24 PNGs) into a fully separate identity — the pp24 and
@@ -851,6 +889,144 @@ centrality (D2).
   updated to R9). Fit status-1 note: R7b.
   Log: `.claude/logs/review-analysis-code-20260716-180312-dpop-one-sided-wp-subdir.md`.
 
+- 2026-07-21 (round 5) — **START. Four user changes (see round-5 Autonomy Contract).**
+  Doc triage + INDEX read; full doc re-read; sibling `pythia_fullsim_pp24_full_sample_skim.md`
+  read (pp FULL-sample trig-eff infra: `pp_full` knob, LGD farm, plots in canonical
+  `pp_trigger_efficiency/mc_based/`, TEST backup `mc_based_TESTSAMPLE_backup_20260720`).
+  Verified NO concurrent session: sibling pp-full trig-eff DONE (Tight Jul 21 01:02 plateau
+  0.9882±0.0012; Medium Jul 21 12:20 0.9875±0.0012), no active processes ⇒ I own all files.
+  **Investigations (2 subagents):** (a) SkimCode has NO per-muon L1-RoI match branch — only
+  `muon_b_HLT_mu4_L1MU3V` (full chain, per-muon) + `muon_match_mu4roi` (RoI-seeded HLT-CB,
+  ΔR<0.1, per-muon) + event-level `b_HLT_mu4_L1MU3V_L1TBP`. Clean L1/HLT split ⇒ RE-SKIM
+  (add `muon_match_L1MU3V`). **User chose RE-SKIM.** (b) #2 data side = cheap RDF re-fill
+  (fine 2D q·η axis already has a −2.2 edge) via Stage-5/6 SKIP_CONDOR; MC fits auto-follow
+  `CommonEffcyConfig`; 3 hardcoded q·η lists to edit; crossx would drift (out of scope). Run
+  mechanics + all mc_trig NTUP input paths confirmed present.
+  **Plan:** (Phase A, long pole) SkimCode `muon_match_L1MU3V` + local test + `/review-analysis-code`
+  → grid re-skim all 3 samples → re-farm pp-full → re-NTP. (Phase B, parallel, no grid dep)
+  #1 truth-seed revert (NTP), #2 q·η split (config+fitter+plot+data), #4 step-3 pair-η
+  (Fill+plot+tables), #3 Fill/plot L1-HLT booking — coded + tested on existing NTUPs where
+  possible. (Phase C) full chain ×3 samples ×2 WPs → plots → reviews.
+
+- 2026-07-21 (round 5) — **Phase B (code) DONE + compiles; Phase A skim L1 branch DONE + validated.**
+  **Code (all four changes written, ACLiC/NTP compile clean):**
+  - #1 (truth-seed revert): `PythiaFullSimExtras.{c,h}` — deleted the reco-seeded
+    `ProcessEventFullsimMCTrig` + `IsRealRecoMuon` + the provenance report; `ProcessEventFullsim`
+    is again the UNIFIED truth-seeded loop with `store_mc_trigger` conditionals (single-muon
+    reco-loose gate, pair `ev_pass_*` + `pass2mu4`); kept one-sided dp/p + the multi-file farm
+    check; `Muon.h` `MuonFullsimExtra` gained `bool pass_l1`. Overlay uses the same base loop
+    (`CallInitInput<E>` calls each mixin) ⇒ change #1 excludes HIJING muons there.
+  - #2 (q·η split (−2.4,−2.0)→(−2.4,−2.2)+(−2.2,−2.0)): `CommonEffcyConfig.h:16`,
+    `SingleMuEffcyPtTurnOnFitter.cxx:45-49`, `plot_mc_trig_eff.cxx` kQEtaSuffix/kQEtaRange (11
+    bins) + legend pad 11→12. Fitter/MCEffEvaluator auto-follow the config.
+  - #3 (Step-2 L1/HLT split): NTP propagates `muon_match_L1MU3V`→`m.pass_l1` (bind-if-present,
+    loud warning + throw-on-mixed); `FillMCTrigEffHists` books `numl1`(=pass_l1) and
+    `numhlt`(=passmu4&&pass_l1) for Step-1 singles AND Step-2 legs; `plot_mc_trig_eff` Step-2 now
+    loops 3 stages into subdirs `step2_dr_binned_singles/{full_chain,L1,HLT}/` (numk/denk pick
+    the hist infix; eff(chain)=eff(L1)·eff(HLT|L1); numhlt=chain&&L1 keeps eff≤1).
+  - #4 (Step-3 pair-η): `FillMCTrigEffHists` books TH3D `h_mc_dr_{zoom,full}_vs_pt_eta_{num,denom}`
+    (dR × coarse pair-pT `pair_pt_coarse_bins` × coarse pair-η `pair_eta_proj_ranges_coarse_incl_gap`);
+    `plot_mc_trig_eff` adds `step3_eps_dr_{zoom,full}_pair_eta_pt.png` (subplot=pair-η, line=pair-pT)
+    + two tables `step3_plateau_pair_eta_pt.txt` / `step3_plateau_fluctuation_pair_eta_pt.txt`
+    (plateau mean±stat-err over ΔR∈[1,4] per (pT,η) cell; fluctuation = stat err + weighted RMS
+    scatter). `pair_eta` is an existing reco column → no NTP change for #4.
+  **Skim L1 branch (delegated, `_sub_skim_l1branch.md`, then merged here):** added per-muon
+  `muon_match_L1MU3V` (vector<bool>) to `SkimCode .../TrigRates.{cxx,h}` mirroring
+  `muon_match_mu4roi`: retrieve `LVL1MuonRoIs` (xAOD::MuonRoIContainer), match offline↔RoI ΔR<0.2,
+  prescale-free. **KEY FINDING: `MuonRoI::thrValue()` is in GeV not MeV** (header comment wrong);
+  MU3V is the lowest L1 muon threshold so EVERY in-time L1 muon RoI passes it ⇒ match any RoI
+  (no thr cut). **Validated (300 evt): closure P[L1|chain]=0.979** (≥0.9 ✓), true fractions
+  L1 0.763 > mu4roi 0.719 > chain 0.681 (L1 loosest → highest, correct), branch superset +1,
+  length-invariant 0/300 mismatches, clean build exit 0. INFO (accepted, matches mu4roi template):
+  dφ has no 2π wrap (~3% φ=±π strip; folded into closure). Files: TrigRates.h:280,326;
+  TrigRates.cxx:15,98,926,1041,1162-1167,1431-1447.
+  **Next:** /review-analysis-code (skim gates the grid); submit grid re-skim (pp-full 6 DSIDs +
+  overlay + r17663) with the L1 branch; re-farm pp-full to LGD; re-NTP (truth-seeded + L1);
+  full chain ×3 samples ×2 WPs; data-side #2 re-fill (pp24+pbpb23, Stage-5/6 SKIP_CONDOR); /review-plot.
+
+- 2026-07-21 (round 5) — **Data-side #2 re-fill DONE + validated** (delegated; `_sub_data_refill.md`).
+  All 4 DATA T&P sets regenerated via the RDF class + fitter entry points directly (NOT the full
+  pipeline — the combined `muon_pairs` NTUPs were current, so re-ran only Stage-5 fill + Stage-6 fit,
+  reading existing NTUPs; no re-hadd, no condor, no re-skim; 3 threads, no OOM):
+  - pp24 Tight/Medium: `RDFBasedHillingPP pp(24); pp.trigger_mode=1; pp.isTight=T/F; pp.Run();`
+    → `single_muon_trig_effcy_pT_fitting("" / "_medium_wp")`.
+  - pbpb23 Tight/Medium: `RDFBasedHistFillingPbPb pbpb(23); pbpb.isTight=T/F; pbpb.Run();`
+    → `single_muon_trig_effcy_pT_fitting_PbPb(23,"" / "_medium_wp")`.
+  `isTight` is the WP switch (false → `_medium_wp` filenames; the 2 Medium fit files were NEW).
+  **11-bin split confirmed** in every fit file: pp24 44 TF1s each (11 q·η × 2 trig × 2 sign), pbpb23
+  264 each (× 6 ctr); new `minus2_40_TO_minus2_20` + `minus2_20_TO_minus2_00` present, old
+  `minus2_40_TO_minus2_00` = 0. **Sanity (pp24 μ⁺ Tight 2mu4 data): forward (−2.4,−2.2)=0.785 <
+  (−2.2,−2.0)=0.854** — the split separates the lower-eff more-forward slice ⇒ the forward region
+  DOES have q·η sub-structure (change #2 motivation confirmed on data). 6 pre-split files backed up
+  `.bak_pre_qeta_split_20260721`. **Crossx now stale on the forward-bin trig-eff weight (out of scope, noted).**
+
+- 2026-07-21 (round 5) — **r17663 dry-run: all 4 code changes VALIDATED at runtime (NTP/Fill/Fit/hist);
+  one plot ORDERING dependency found (not a bug)** (delegated; `_sub_r17663_chain.md`). r17663 v2 NTUP
+  downloaded (`grid_monitor.sh --mode no_overlay 51643610`, 9995 entries, `muon_match_L1MU3V` PRESENT).
+  Re-NTP (truth-seeded + L1) rc=0: SF report present, **reco-provenance report GONE** (#1 confirmed),
+  no L1-absent warning (`has_l1_match=true`). Fill/Fit rc=0: **#2** 22 fits/WP incl. both new forward
+  bins; **#3** numl1/numhlt non-empty, muplus dr≥1: eff(L1)=0.721 ≥ eff(chain)=0.700,
+  eff(HLT\|L1)=0.914 (≤1), eff(L1)·eff(HLT\|L1)=0.659≈0.700 (~4% ΔR-window gap, as designed);
+  **#4** 4 TH3D populated. ε_dR plateau (ΔR∈[1,4]) 0.871 (T)/0.871 (M) (round-4 was 0.853, consistent).
+  **⚠ ORDERING CONSTRAINT (record for post-compaction): `plot_mc_trig_eff("noovl")` throws
+  (missing `g_mc_pt_vs_q_eta_*_minus2_40_TO_minus2_20`) because its comparison series
+  (`qeta_black_mc_file`=pp_full fit, `cmp_fit_file`=overlay fit) are still round-4 10-bin.** ⇒ the
+  noovl plot MUST run LAST, AFTER pp_full + overlay are processed with round-5 (their `single_mu_effcy_pT_fit_mc{,_medium_wp}.root` become 11-bin). "pp"/"pp_full"/"overlay" plots have NO
+  comparison series (empty cmp_fit_file) ⇒ self-contained, no cross-dependency. **Processing order:
+  overlay + pp_full (any order) → re-run plot_mc_trig_eff("noovl",{T,M}) → /review-plot.** r17663's
+  NTP+Fill+Fit outputs (incl. its own 11-bin fit) are DONE and on disk; only its final plot is pending.
+
+- 2026-07-22 (round 5) — **Grid re-skim DONE (13/13); download/farm DONE; re-NTP IN PROGRESS.**
+  Overlay: 6 v2 NTUPs downloaded+verified (10000 ent + `muon_match_L1MU3V` each), 132.5 GB reclaimed
+  (v1 `.bak_20260722` deleted post-verify). pp-full LGD **farm rebuilt for v2** (75 symlinks,
+  15/25/17/12/3/3 parts; `fullsim_pp24_full_to_lgd.sh` edited to v2 task IDs + VER_TAG; stale v1
+  symlinks removed first; verified reads v2 with has_L1=1, 150000 ent/part). **Now running:**
+  pp-full re-NTP (`ppfull_rentp.sh`: both mc_trig scripts over the farm, ~2-3 h, truth-seeded+L1);
+  overlay chain (subagent, NTP slice ~3/6 → then Fill/Fit/plot ×2WP). r17663 chain done except its
+  final plot. **Next:** pp-full Fill/Fit/plot ×2WP → noovl plot ×2WP (needs pp_full+overlay 11-bin
+  fits) → /review-plot on all 3 samples.
+
+- 2026-07-22 (round 5) — **OVERLAY chain DONE + validated (both WPs).** Re-NTP truth-seeded+L1:
+  **#1 CONFIRMED** — single-muon tree **95389** (down from reco-seeded 99763; the ~4374 real HIJING
+  muons now EXCLUDED). Full chain rc=0, all 4 changes produced outputs:
+  - #2: 22 fits/WP (11 q·η bins), 0 failed.
+  - #3: `step2_dr_binned_singles/{full_chain,L1,HLT}/` all populated. **μ⁺ ΔR≥1: eff(L1)=0.788 ≥
+    eff(chain)=0.644, eff(HLT|L1)=0.795 (≤1), L1·(HLT|L1)=0.627 ≈ chain 0.644** (~2.6% ΔR-window
+    gap) — L1/HLT decomposition sound. Medium consistent.
+  - #4: `step3_eps_dr_{zoom,full}_pair_eta_pt.png` + plateau/fluctuation tables (VERY noisy — overlay
+    60k ev, 0–5% only → sparse (pT,η) cells; only pp-full will populate them well).
+  - **ε_ΔR^cross plateau (ΔR[1,4]): Tight 0.8795 / Medium 0.8697** (shifted UP from reco-seeded
+    round-3 0.8429/0.8352 — a real consequence of #1: the pair sample is now Pythia-only). Plateau
+    normalization still required before it dresses the PbPb union cross term.
+
+- 2026-07-22 (round 5) — **pp-full re-NTP DONE (truth-seeded+L1), final processing running.**
+  Re-NTP over the LGD farm (9.87M events) rc=0 both scripts: SF report 19.65M reco-matched muons,
+  no reco-provenance report (truth-seeded), no L1-ABSENT warning (L1 bound); outputs 4.6 GB pairs /
+  1.0 GB singles. For pp truth-seed=reco-seed (no HIJING) ⇒ change #1 is a no-op for pp (as
+  expected). **Now running (`ppfull_noovl_fullchain.sh`):** pp_full Fill/Fit/plot ×2WP → then
+  plot_mc_trig_eff("noovl",×2WP) (pp_full+overlay 11-bin fits now exist, resolving the dry-run
+  ordering blocker) → completes ALL 3 samples' plots → then /review-plot.
+
+- 2026-07-22 (round 5) — **ALL 3 SAMPLES' PLOTS DONE (both WPs); noovl three-way plot resolved.**
+  pp_full full chain rc=0: Step-1 P(mu4) μ⁺ 0.772 (T)/0.761 (M); 22 fits/WP; L1/HLT + pair-η all
+  produced. noovl plot now COMPLETES (pp_full+overlay 11-bin fits exist → the dry-run ordering
+  blocker cleared); its three-way q·η panels + L1/HLT subdirs produced, both WPs.
+  **Headline deliverables (round 5):**
+  | quantity (ΔR∈[1,4]) | pp FULL (T/M) | overlay (T/M) | r17663 (T/M) |
+  |---|---|---|---|
+  | ε_ΔR^2mu4 / ^cross plateau | 0.9855 / 0.9875 | 0.8795 / 0.8697 | (low-stat, recorded) |
+  - **#3 L1/HLT (μ⁺, ΔR≥1):** pp eff(L1)=0.775 ≥ eff(chain)=0.771, eff(HLT|L1)=0.948 (≤1);
+    overlay eff(L1)=0.788 ≥ eff(chain)=0.644, eff(HLT|L1)=0.795. Product ≤ eff(chain) by
+    construction (numhlt=chain∧L1); gap = 1−P[L1|chain] (~5% pp, ~3% overlay, ΔR-window).
+  - **#4 pp-full pair-η PLATEAU table (the well-populated deliverable):** plateau **~0.97–1.00** for
+    low-pair-pT cells across all pair-η; deviation from 1 ~1–3%, comparable to the per-cell RMS
+    scatter ⇒ **the manual plateau→1 normalization is validated and the systematic sized**; mild
+    pair-pT dependence (larger at high pT), mild pair-η dependence. Tables at
+    `pp_trigger_efficiency/mc_based/step3_dr_correction/step3_plateau{,_fluctuation}_pair_eta_pt.txt`.
+  - **#1:** pp truth-seed=reco-seed (no-op); overlay HIJING excluded (singles 99763→95389).
+  - **#2:** 11 q·η bins (both new forward bins) in all fits/panels, all samples.
+  **Remaining: /review-plot on all 3 samples → commit → done.**
+
 ## Results & Observations
 
 ### R1. NTP discovery (2026-07-10, Explore agent + orchestrator check)
@@ -1282,6 +1458,58 @@ expected sign and size. Data references now carry the one-sided cut (pp24 + pbpb
    overlay; lifts D2). **D3 is now LIFTED** — all 24 pp slices are in.
 
 ## Latest Stage
+
+**2026-07-22 (round 5) — GRID RE-SKIM COMPLETE (13/13 done), download/farm IN PROGRESS.**
+- All 13 grid re-skim tasks **succeeded** (verified via BigPanDA; poller exited 12:45). r17663 already
+  downloaded + through NTP/Fill/Fit (dry-run; only its plot pending, needs pp_full+overlay 11-bin fits).
+- **Download/farm launched (background):** pp-full LGD farm `fullsim_pp24_full_to_lgd.sh --no-devslice`
+  (edited to v2: TASKS→51643327.. + `outds_for` VER_TAG v2; 75 stale v1 symlinks removed first,
+  record backed up) → rucio add-rule the 6 v2 datasets to LGD + rebuild the symlink farm the NTP
+  globs. overlay `grid_monitor.sh --mode overlay <6 v2 ids>` → 132 GB download+hadd (renames v1→.bak;
+  DELETE the .bak after verify to reclaim ~132 GB; quota headroom ~175 GB soft was checked).
+- **Overlay DONE downloading + verified (14:08):** all 6 v2 NTUPs 10000 entries + `muon_match_L1MU3V`
+  present; **132.5 GB reclaimed** (deleted the 6 v1 `.bak_20260722` after verify). Overlay chain
+  (re-NTP truth-seeded+L1 → Fill/Fit/plot ×2WP) delegated + running. **pp-full farm building**
+  (v2 LGD rules replicate fast BNL→BNL; pTH14_24 already 25 symlinks).
+- **Then:** pp_full re-NTP+full chain when farm done → re-run plot_mc_trig_eff("noovl",{T,M})
+  (needs pp_full+overlay 11-bin fits) → /review-plot on all 3 samples.
+
+**2026-07-21 (round 5) — Phase A/B (code + skim + submit + data-refill + dry-run). Four user changes
+(#1 truth-seed revert, #2 q·η split, #3 Step-2 L1/HLT split via re-skim, #4 Step-3 pair-η).**
+- **Phase B (all code) DONE + compiles clean + /review-analysis-code PASS iter 1** (0C/0W/1 INFO;
+  log `review-analysis-code-20260721-214317-round5-mc-trig-eff.md`). The one INFO (L1-match φ has
+  no 2π wrap, mirroring `muon_match_mu4roi`) was FIXED in the skim (φ folded into (−π,π]) since the
+  L1 match is compared against the wrapping TDT chain match.
+- **Phase A (grid re-skim for the L1 branch) SUBMITTED.** Skim rebuilt with `muon_match_L1MU3V`
+  (φ-fix pp closure 0.9786→**0.9829**; HI test PASSED — `LVL1MuonRoIs` present in the r17618
+  overlay AOD, no CHECK failure). **jediTaskIDs:**
+  - **pp-full** `FullJuly2026.v2` (6 DSIDs 803015-020): **51643327, 51643336, 51643344, 51643353,
+    51643363, 51643375**.
+  - **overlay** `July2026.v2` (6 DSIDs 802776-781, r17618): 51643516, 51643528, 51643539,
+    51643567, 51643586, 51643596.
+  - **r17663** `July2026.v2` (802781 r17663): **51643610**.
+  All 13 rc=0, zero errors. HI validation: P[L1\|chain]=0.948 (overlay) / 0.983 (pp), ordering
+  L1>mu4roi>chain holds; lower absolute HI fractions expected (busier Dev_HI + occupancy).
+  **IN FLIGHT (2026-07-21 ~22:20):** (a) grid task poller running (`/tmp/claude-101379/round5_task_poll.sh`,
+  BigPanDA API, 13 tasks, re-invokes on all-terminal); (b) data-side #2 re-fill delegated + running
+  (pp24+pbpb23 T&P graphs/fits, both WPs, 11-bin q·η split, Stage-5/6 SKIP_CONDOR, ≤3 threads,
+  backs up 10-bin outputs to `.bak_pre_qeta_split_20260721`).
+  **REMAINING when grid done:** re-farm pp-full to LGD (v2 datasets; the farm/NTP glob points at
+  `pythia_fullsim_full_sample/`; watch quota — overlay download is ~132 GB) + download/hadd
+  overlay (into `..._hijing_overlay_test_sample/`, `grid_monitor.sh --mode overlay <6 ids>`) +
+  r17663 (`--mode no_overlay 51643610`) → re-NTP the mc_trig scripts (truth-seeded + L1) for all 3
+  samples → Fill→Fit→Fill(step3)→plot_mc_trig_eff ×{pp_full,overlay,noovl}×{Tight,Medium} →
+  /review-plot. **pp plots use the FULL sample.** The mc_trig NTP now REQUIRES nothing new but
+  the L1 branch is bind-if-present (a v1 NTUP would warn + give empty L1/HLT hists).
+  **STORAGE (checked 2026-07-21): data-fileset headroom ~175 GB to soft / ~445 GB to hard (halved).
+  Overlay v2 download ~132 GB fits — rename v1→.bak (free), download v2, verify, then DELETE v1.bak
+  promptly (per grid_monitor .bak rule). pp-full → LGD farm (no GPFS).** r17663 already downloaded
+  (166.9 MB, done). **PROCESSING ORDER (from the dry-run): overlay + pp_full first → noovl plot LAST
+  (its comparison series needs their 11-bin fits) → /review-plot.**
+- Blast radius noted (out of scope, Remaining Work): #2 shifts the data single-muon trig-eff fits
+  → crossx would need a rerun to stay consistent.
+
+---
 
 **2026-07-20 (round 4) — COMPLETE. r17663 no-overlay discriminator: submitted, run
 end-to-end, verdict delivered (R10); both reviews PASS.**
