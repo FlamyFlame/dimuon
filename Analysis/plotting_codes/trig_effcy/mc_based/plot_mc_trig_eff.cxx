@@ -40,8 +40,12 @@
 #include <TSystem.h>
 #include <TROOT.h>
 
+#include <TH3D.h>
+
 #include <cctype>
 #include <cmath>
+#include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -391,13 +395,15 @@ const std::vector<std::string> kCharges     = {"muplus", "muminus"};
 const std::vector<std::string> kDataSigns   = {"sign1", "sign2"};
 const std::vector<std::string> kChargeTex   = {"#mu^{+}", "#mu^{-}"};
 
-// fine q.eta bins (CommonEffcyConfig.h q_eta_proj_ranges_fine_excl_gap)
+// fine q.eta bins (CommonEffcyConfig.h q_eta_proj_ranges_fine_excl_gap). The forward
+// (-2.4,-2.0) bin is split into (-2.4,-2.2)+(-2.2,-2.0) (round-5 change #2) -> 11 bins.
 const std::vector<std::string> kQEtaSuffix = {
-    "minus2_40_TO_minus2_00", "minus2_00_TO_minus1_60", "minus1_60_TO_minus1_30",
+    "minus2_40_TO_minus2_20", "minus2_20_TO_minus2_00",
+    "minus2_00_TO_minus1_60", "minus1_60_TO_minus1_30",
     "minus0_90_TO_minus0_50", "minus0_50_TO_minus0_10", "0_10_TO_0_50",
     "0_50_TO_1_00", "1_30_TO_1_60", "1_60_TO_2_00", "2_00_TO_2_20"};
 const std::vector<std::pair<double,double>> kQEtaRange = {
-    {-2.4,-2.0},{-2.0,-1.6},{-1.6,-1.3},{-0.9,-0.5},{-0.5,-0.1},
+    {-2.4,-2.2},{-2.2,-2.0},{-2.0,-1.6},{-1.6,-1.3},{-0.9,-0.5},{-0.5,-0.1},
     { 0.1, 0.5},{ 0.5, 1.0},{ 1.3, 1.6},{ 1.6, 2.0},{ 2.0, 2.2}};
 
 // ---- Step-2 coarse binning (SampleCfg::step2_coarse) -------------------------------
@@ -561,9 +567,11 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
     // Tight); Tight (nominal) stays in the step dir root (user request, 2026-07-16).
     const std::string wp_dir = use_tight_wp ? "" : "medium/";
     const std::string dir1 = cfg.out_base + "step1_singles_data_mc/"  + wp_dir;
-    const std::string dir2 = cfg.out_base + "step2_dr_binned_singles/" + wp_dir;
+    // Step-2 is produced 3x (round-5 #3): the L1, HLT|L1 and full-chain efficiencies each go
+    // into their OWN subdirectory of step2_dr_binned_singles/ (built inside the stage loop).
+    const std::string dir2_base = cfg.out_base + "step2_dr_binned_singles/";
     const std::string dir3 = cfg.out_base + "step3_dr_correction/"     + wp_dir;
-    for (const auto& d : {dir1, dir2, dir3}) gSystem->mkdir(d.c_str(), kTRUE);
+    for (const auto& d : {dir1, dir3}) gSystem->mkdir(d.c_str(), kTRUE);
 
     const std::string mc_leg   = "MC direct P(mu4 | reco #mu)";
     const std::string data_leg = cfg.data_text + " T&P P(2mu4 | mu4 tag, #DeltaR>0.8)";
@@ -722,7 +730,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             c.cd(static_cast<int>(iq) + 1);
         }
         // legend / label pad
-        c.cd(11);
+        c.cd(12);  // legend/label pad: 11 q.eta bins now fill pads 1-11 (round-5 #2)
         DrawHeadline(headline + ", " + kChargeTex[ic], 0.02, 0.88, 0.048);
         auto* gm = new TGraphAsymmErrors(); StyleGraph(gm, kMCColor, 21);
         auto* gd = new TGraphAsymmErrors(); StyleGraph(gd, kDataColor, 20);
@@ -789,6 +797,23 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         {"pt",    "p_{T} [GeV]",   4.0, 60.0, true},
         {"q_eta", "q#upoint#eta", -2.4,  2.4, false}};
 
+    // round-5 #3: produce Step-2 THREE times -- the L1 leg, the HLT|L1 leg, and the full mu4
+    // chain -- each into its own subdirectory. (numk/denk) pick the numerator/denominator hist
+    // infix: full_chain = num/denom, L1 = numl1/denom, HLT|L1 = numhlt/numl1, so
+    // eff(chain) = eff(L1) * eff(HLT|L1). The L1/HLT hists are empty on pre-reskim NTUPs (no
+    // per-muon L1 branch) -> those subdirs are only meaningful after the re-skim.
+    struct Step2Stage { std::string sub, numk, denk, eff; };
+    const std::vector<Step2Stage> step2_stages = {
+        {"full_chain", "num",    "denom", "P(full mu4 chain | reco #mu)"},
+        {"L1",         "numl1",  "denom", "P(L1 MU3V | reco #mu)"},
+        {"HLT",        "numhlt", "numl1", "P(HLT | fires L1, reco #mu)"}};
+    for (const auto& st : step2_stages) {
+      const std::string dir2 = dir2_base + st.sub + "/" + wp_dir;
+      gSystem->mkdir(dir2.c_str(), kTRUE);
+      const std::string NUMK = st.numk, DENK = st.denk;
+      const std::string stage_tag = " [" + st.sub + "]";
+      std::cout << "  -- Step-2 stage: " << st.sub << " (" << st.eff << ")\n";
+
     for (const auto& v : pvars) {
         TCanvas c(("c_step2_" + v.tag).c_str(), "", 1400, 800);
         c.Divide(2, 1);
@@ -813,11 +838,11 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             TH1* rnum = nullptr;
             TH1* rden = nullptr;
             if (v.tag == "pt") {
-                rnum = GetObj<TH1D>(fmc, "h_mc_pt_num_"   + kCharges[ic]);
-                rden = GetObj<TH1D>(fmc, "h_mc_pt_denom_" + kCharges[ic]);
+                rnum = GetObj<TH1D>(fmc, "h_mc_pt_" + NUMK + "_" + kCharges[ic]);
+                rden = GetObj<TH1D>(fmc, "h_mc_pt_" + DENK + "_" + kCharges[ic]);
             } else {
-                TH2D* h2n = GetObj<TH2D>(fmc, "h_mc_pt_vs_q_eta_num_"   + kCharges[ic]);
-                TH2D* h2d = GetObj<TH2D>(fmc, "h_mc_pt_vs_q_eta_denom_" + kCharges[ic]);
+                TH2D* h2n = GetObj<TH2D>(fmc, "h_mc_pt_vs_q_eta_" + NUMK + "_" + kCharges[ic]);
+                TH2D* h2d = GetObj<TH2D>(fmc, "h_mc_pt_vs_q_eta_" + DENK + "_" + kCharges[ic]);
                 rnum = h2n->ProjectionX(Form("px_num_%s_%d", v.tag.c_str(), ic));
                 rden = h2d->ProjectionX(Form("px_den_%s_%d", v.tag.c_str(), ic));
             }
@@ -837,9 +862,9 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
 
             std::vector<TGraphAsymmErrors*> gdr;
             for (size_t id = 0; id < kDrSuffix.size(); ++id) {
-                TH1* n = GetObj<TH1D>(fmc, "h_mc_pair_" + v.tag + "_num_"   +
+                TH1* n = GetObj<TH1D>(fmc, "h_mc_pair_" + v.tag + "_" + NUMK + "_" +
                                             kCharges[ic] + "_" + kDrSuffix[id]);
-                TH1* d = GetObj<TH1D>(fmc, "h_mc_pair_" + v.tag + "_denom_" +
+                TH1* d = GetObj<TH1D>(fmc, "h_mc_pair_" + v.tag + "_" + DENK + "_" +
                                             kCharges[ic] + "_" + kDrSuffix[id]);
                 n = Coarsen(n, Form("rb_n_%s_%d_%zu", v.tag.c_str(), ic, id));
                 d = Coarsen(d, Form("rb_d_%s_%d_%zu", v.tag.c_str(), ic, id));
@@ -849,10 +874,11 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 gdr.push_back(g);
             }
             leg->AddEntry(gref, leg_incl.c_str(), "l");
+            leg->SetHeader(st.eff.c_str());    // which efficiency this stage plots (round-5 #3)
             leg->Draw();                       // legend first ...
             gref->Draw("LX same");             // ... then the data on top of it
             for (auto* g : gdr) g->Draw("PZ same");
-            DrawHeadline(headline + ", " + kChargeTex[ic], 0.14, 0.955, 0.05);
+            DrawHeadline(headline + ", " + kChargeTex[ic] + stage_tag, 0.14, 0.955, 0.05);
 
             // R3 ratio pad: §3.2 asks whether the three DeltaR series AGREE at fixed
             // kinematics. Ratio to the isolated (DeltaR >= 1.0) series = that test.
@@ -882,9 +908,9 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             DrawUnityLine(4.0, 60.0);
             std::vector<TGraphAsymmErrors*> gdr;
             for (size_t id = 0; id < kDrSuffix.size(); ++id) {
-                TH2D* h2n = GetObj<TH2D>(fmc, "h_mc_pair_pt_vs_q_eta_num_" +
+                TH2D* h2n = GetObj<TH2D>(fmc, "h_mc_pair_pt_vs_q_eta_" + NUMK + "_" +
                                               kCharges[ic] + "_" + kDrSuffix[id]);
-                TH2D* h2d = GetObj<TH2D>(fmc, "h_mc_pair_pt_vs_q_eta_denom_" +
+                TH2D* h2d = GetObj<TH2D>(fmc, "h_mc_pair_pt_vs_q_eta_" + DENK + "_" +
                                               kCharges[ic] + "_" + kDrSuffix[id]);
                 const int blo = h2n->GetXaxis()->FindBin(kQEtaRange[iq].first  + 1e-6);
                 const int bhi = h2n->GetXaxis()->FindBin(kQEtaRange[iq].second - 1e-6);
@@ -919,12 +945,13 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             }
             c.cd(static_cast<int>(iq) + 1);
         }
-        c.cd(11);
-        DrawHeadline(headline + ", " + kChargeTex[ic], 0.02, 0.88, 0.048); // 0.048: long overlay headline + charge must fit (review iter 1)
+        c.cd(12);  // legend/label pad: 11 q.eta bins now fill pads 1-11 (round-5 #2)
+        DrawHeadline(headline + ", " + kChargeTex[ic] + stage_tag, 0.02, 0.88, 0.048); // 0.048: long overlay headline + charge must fit (review iter 1)
         auto* leg = new TLegend(0.05, 0.35, 0.95, 0.80);
         leg->SetBorderSize(0);
         leg->SetFillStyle(0);
         leg->SetTextSize(0.06);
+        leg->SetHeader(st.eff.c_str());   // which efficiency this stage plots (round-5 #3)
         for (size_t id = 0; id < kDrSuffix.size(); ++id) {
             auto* g = new TGraphAsymmErrors();
             StyleGraph(g, kDrColor[id], kDrMarker[id]);
@@ -934,6 +961,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         SaveCanvas(c, dir2 + "step2_eff_pt_in_q_eta_bins_" + kCharges[ic] +
                           "_dr_bins.png");
     }
+    }  // end round-5 #3 Step-2 stage loop (full_chain / L1 / HLT)
 
     // ================================================================
     // Step 3 (§3.3): eps_dR(dR) = inverse-weighted num / denom
@@ -1091,6 +1119,184 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             }
         }
         SaveCanvas(c, dir3 + "step3_eps_dr_zoom_pair_pt_slices.png");
+    }
+
+    // ================================================================
+    // Step 3 pair-eta dependence (round-5 #4): eps_dR(dR) in (pair pT, pair eta) cells.
+    //   - two panel plots (zoom + full dR): each subplot = a pair-eta bin, each line = a
+    //     pair-pT bin.
+    //   - two tables: the large-dR plateau per (pair pT, pair eta) cell, and its fluctuation
+    //     (weighted-mean stat error + weighted RMS scatter of the plateau-window bins).
+    // Motivation: a plateau != 1 is manually normalized to 1 and the deviation is absorbed
+    // into a systematic; quantify the deviation and its pair-pT / pair-eta dependence to
+    // validate that and size the systematic.
+    // ================================================================
+    std::cout << "\n===== Step 3 pair-eta dependence (" << sample << ", " << wp_text << ") =====\n";
+    {
+        TH3D* h3zn = GetObj<TH3D>(fmc3, "h_mc_dr_zoom_vs_pt_eta_num");
+        TH3D* h3zd = GetObj<TH3D>(fmc3, "h_mc_dr_zoom_vs_pt_eta_denom");
+        TH3D* h3fn = GetObj<TH3D>(fmc3, "h_mc_dr_full_vs_pt_eta_num");
+        TH3D* h3fd = GetObj<TH3D>(fmc3, "h_mc_dr_full_vs_pt_eta_denom");
+
+        const int npt  = h3fn->GetYaxis()->GetNbins();  // coarse pair-pT (crossx)
+        const int neta = h3fn->GetZaxis()->GetNbins();  // coarse pair-eta (crossx)
+
+        auto pt_label  = [&](int iy){ return std::string(Form("%.0f < p_{T}^{pair} < %.0f GeV",
+            h3fn->GetYaxis()->GetBinLowEdge(iy), h3fn->GetYaxis()->GetBinUpEdge(iy))); };
+        auto eta_label = [&](int iz){ return std::string(Form("%.1f < #eta^{pair} < %.1f",
+            h3fn->GetZaxis()->GetBinLowEdge(iz), h3fn->GetZaxis()->GetBinUpEdge(iz))); };
+
+        // eps_dR(dR) for one (pt bin iy, eta bin iz) cell (inverse weights -> TH1::Divide)
+        auto cell_ratio = [](TH3D* hn, TH3D* hd, int iy, int iz, const char* nm) -> TH1D* {
+            TH1D* n = hn->ProjectionX(Form("%s_n", nm), iy, iy, iz, iz, "e");
+            TH1D* d = hd->ProjectionX(Form("%s_d", nm), iy, iy, iz, iz, "e");
+            auto* r = (TH1D*)n->Clone(nm);
+            r->SetDirectory(nullptr);
+            r->Divide(d);
+            delete n; delete d;
+            return r;
+        };
+
+        const std::vector<Color_t> ptcol  = {kRed + 1, kBlue + 1, kGreen + 2, kMagenta};
+        const std::vector<Style_t> ptmark = {20, 21, 22, 23};
+
+        // ---- two panel plots (zoom + full dR) ----
+        struct Rng { TH3D* n; TH3D* d; std::string tag; double xhi; };
+        const std::vector<Rng> rngs = {{h3zn, h3zd, "zoom", 1.0}, {h3fn, h3fd, "full", 5.75}};
+        // subplot grid: nrows >= ncols, nrows ~ sqrt(neta) (feedback_subplot_layout)
+        const int ncol = (int)std::ceil(std::sqrt((double)neta));
+        const int nrow = (int)std::ceil((double)neta / ncol);
+        for (const auto& R : rngs) {
+            TCanvas c(("c_s3_pteta_" + R.tag).c_str(), "", 500 * ncol, 450 * nrow);
+            c.Divide(ncol, nrow);
+            for (int iz = 1; iz <= neta; ++iz) {
+                c.cd(iz);
+                gPad->SetLeftMargin(0.14); gPad->SetBottomMargin(0.13);
+                std::vector<TH1D*> rs;
+                double ymax = 0.;
+                for (int iy = 1; iy <= npt; ++iy) {
+                    TH1D* r = cell_ratio(R.n, R.d, iy, iz,
+                                         Form("s3pe_%s_%s_%d_%d", sample.c_str(), R.tag.c_str(), iy, iz));
+                    rs.push_back(r);
+                    for (int i = 1; i <= r->GetNbinsX(); ++i)
+                        ymax = std::max(ymax, r->GetBinContent(i) + r->GetBinError(i));
+                }
+                ymax = std::min(std::max(1.15, 1.15 * ymax), 3.0);   // cap; off-scale points arrowed
+                DrawEffFrame(0.0, R.xhi, "#DeltaR", 0.0, ymax, cfg.eps_dr_text);
+                DrawUnityLine(0.0, R.xhi);
+                for (int iy = 0; iy < npt; ++iy) {
+                    TH1D* r = rs[iy];
+                    r->SetMarkerStyle(ptmark[iy % ptmark.size()]);
+                    r->SetMarkerColor(ptcol[iy % ptcol.size()]);
+                    r->SetLineColor(ptcol[iy % ptcol.size()]);
+                    r->SetLineWidth(2);
+                    r->Draw("E1 same");
+                    for (int i = 1; i <= r->GetNbinsX(); ++i) {
+                        if (r->GetBinContent(i) <= ymax) continue;
+                        auto* ar = new TArrow(r->GetBinCenter(i), ymax * 0.88,
+                                              r->GetBinCenter(i), ymax * 0.985, 0.008, "|>");
+                        ar->SetLineColor(ptcol[iy % ptcol.size()]);
+                        ar->SetFillColor(ptcol[iy % ptcol.size()]);
+                        ar->Draw();
+                    }
+                }
+                // eta-bin label INSIDE the frame top-left (was in the top margin at y=0.94,
+                // where it collided with the canvas super-title on the top pad row -- review WARNING).
+                TLatex tl; tl.SetNDC(); tl.SetTextFont(42); tl.SetTextSize(0.050);
+                tl.DrawLatex(0.17, 0.86, eta_label(iz).c_str());
+                if (iz == 1) {   // pair-pT-bin legend, once
+                    auto* leg = new TLegend(0.42, 0.66, 0.92, 0.90);
+                    leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.040);
+                    for (int iy = 0; iy < npt; ++iy) leg->AddEntry(rs[iy], pt_label(iy + 1).c_str(), "lp");
+                    leg->Draw();
+                }
+            }
+            c.cd(0);
+            // Super-title in the empty top strip. Use a RAW TLatex (NOT DrawHeadline, which floors
+            // the size at 0.030 -> the long title then overflows the right edge; review WARNING).
+            // At 0.016 the longest title (r17663 medium/zoom) fits the 1500px width, and baseline
+            // 0.978 + ~0.016 height < 1.0 clears the top edge; it sits above the in-frame eta labels.
+            TLatex st; st.SetNDC(); st.SetTextFont(42); st.SetTextSize(0.016);
+            st.DrawLatex(0.03, 0.978, (headline + "  --  " + R.tag + " #DeltaR, " + cfg.eps_dr_text +
+                         " in (p_{T}^{pair}, #eta^{pair}) cells").c_str());
+            SaveCanvas(c, dir3 + "step3_eps_dr_" + R.tag + "_pair_eta_pt.png");
+        }
+
+        // ---- tables (full-dR 3D, plateau window [kPlateauLo, kPlateauHi]) ----
+        struct Plat { double mean, err, rms; int nb; };
+        auto cell_plateau = [&](int iy, int iz) -> Plat {
+            TH1D* r = cell_ratio(h3fn, h3fd, iy, iz, Form("plat_%s_%d_%d", sample.c_str(), iy, iz));
+            double sw = 0, swv = 0;
+            std::vector<std::pair<double,double>> vw;  // (value, weight)
+            for (int i = 1; i <= r->GetNbinsX(); ++i) {
+                const double xc = r->GetBinCenter(i);
+                if (xc < kPlateauLo || xc > kPlateauHi) continue;
+                const double v = r->GetBinContent(i), e = r->GetBinError(i);
+                if (e <= 0. || v == 0.) continue;
+                const double w = 1. / (e * e); sw += w; swv += w * v; vw.push_back({v, w});
+            }
+            delete r;
+            if (sw <= 0.) return Plat{ -1, -1, -1, 0 };
+            const double mean = swv / sw, err = std::sqrt(1. / sw);
+            double swd = 0; for (auto& p : vw) swd += p.second * (p.first - mean) * (p.first - mean);
+            const double rms = std::sqrt(swd / sw);      // weighted RMS scatter about the mean
+            return Plat{ mean, err, rms, (int)vw.size() };
+        };
+
+        std::vector<std::vector<Plat>> P(npt, std::vector<Plat>(neta));
+        for (int iy = 1; iy <= npt; ++iy)
+            for (int iz = 1; iz <= neta; ++iz) P[iy - 1][iz - 1] = cell_plateau(iy, iz);
+
+        // Table A: plateau value +- stat error ; Table B: fluctuation (stat err + RMS scatter)
+        auto eta_hdr = [&](int iz){ return Form("[%.1f,%.1f)",
+            h3fn->GetZaxis()->GetBinLowEdge(iz), h3fn->GetZaxis()->GetBinUpEdge(iz)); };
+        auto pt_hdr  = [&](int iy){ return Form("pTpair[%.0f,%.0f)",
+            h3fn->GetYaxis()->GetBinLowEdge(iy), h3fn->GetYaxis()->GetBinUpEdge(iy)); };
+
+        auto write_table_A = [&](std::ostream& os){
+            os << "# Step-3 large-dR plateau eps_dR (weighted mean over dR in ["
+               << kPlateauLo << "," << kPlateauHi << "]) per (pair pT, pair eta) cell.\n";
+            os << "# sample=" << sample << "  WP=" << wp_text << "  " << cfg.sample_text << "\n";
+            os << "# value = plateau +- stat_error   (a value != 1 is the manual-normalization"
+                  " correction; the plateau is normalized to 1 and |value-1| feeds the systematic)\n";
+            os << std::left << std::setw(20) << "pair-eta \\ pair-pT";
+            for (int iy = 1; iy <= npt; ++iy) os << std::setw(20) << pt_hdr(iy);
+            os << "\n";
+            for (int iz = 1; iz <= neta; ++iz) {
+                os << std::left << std::setw(20) << eta_hdr(iz);
+                for (int iy = 1; iy <= npt; ++iy) {
+                    const Plat& p = P[iy - 1][iz - 1];
+                    os << std::setw(20) << (p.nb > 0 ? Form("%.4f+-%.4f", p.mean, p.err) : "--");
+                }
+                os << "\n";
+            }
+        };
+        auto write_table_B = [&](std::ostream& os){
+            os << "# Step-3 plateau FLUCTUATION per (pair pT, pair eta) cell (dR in ["
+               << kPlateauLo << "," << kPlateauHi << "]).\n";
+            os << "# sample=" << sample << "  WP=" << wp_text << "\n";
+            os << "# each cell = stat_err(mean) / rms_scatter (weighted RMS of the plateau-window"
+                  " bins about their mean) / n_bins.\n";
+            os << "# rms_scatter measures how flat/noisy the plateau is; compare |mean-1| to it +"
+                  " stat_err to judge whether the deviation is significant (systematic size).\n";
+            os << std::left << std::setw(24) << "pair-eta \\ pair-pT";
+            for (int iy = 1; iy <= npt; ++iy) os << std::setw(24) << pt_hdr(iy);
+            os << "\n";
+            for (int iz = 1; iz <= neta; ++iz) {
+                os << std::left << std::setw(24) << eta_hdr(iz);
+                for (int iy = 1; iy <= npt; ++iy) {
+                    const Plat& p = P[iy - 1][iz - 1];
+                    os << std::setw(24) << (p.nb > 0 ? Form("%.4f/%.4f/%d", p.err, p.rms, p.nb) : "--");
+                }
+                os << "\n";
+            }
+        };
+        write_table_A(std::cout);
+        write_table_B(std::cout);
+        { std::ofstream ofa(dir3 + "step3_plateau_pair_eta_pt.txt");           write_table_A(ofa); }
+        { std::ofstream ofb(dir3 + "step3_plateau_fluctuation_pair_eta_pt.txt"); write_table_B(ofb); }
+        std::cout << "  wrote " << dir3 << "step3_plateau_pair_eta_pt.txt + "
+                  << "step3_plateau_fluctuation_pair_eta_pt.txt\n";
     }
 
     fmc->Close(); fmc3->Close(); ffit->Close(); fdata->Close();
