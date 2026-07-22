@@ -277,6 +277,7 @@ private:
   #if defined(HF_IS_R25)
    std::vector<bool > m_muon_match_mu4roi;
    std::vector<bool > m_muon_match_mu6roi;
+   std::vector<bool > m_muon_match_L1MU3V; // per-muon L1 muon-RoI (>=MU3V) geometric match, prescale-free
   #endif
    
    std::vector<float> m_truth_muon_pt  ;
@@ -322,6 +323,7 @@ private:
    std::string m_muons_key;
    std::string m_hlt_muons_key;
    std::string m_hlt_muons_fs_key;
+   std::string m_l1_muon_roi_key; // L1 muon RoI container (xAOD::MuonRoIContainer, "LVL1MuonRoIs")
    bool m_store_single_muon;
    bool m_store_acoplanar_muon;
    bool m_store_dimuon_perleg;   // save per-leg branch vectors (default false)

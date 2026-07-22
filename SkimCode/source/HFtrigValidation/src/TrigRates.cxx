@@ -12,6 +12,7 @@
 #include "xAODEventInfo/EventInfo.h"
 #include "xAODTracking/VertexContainer.h"
 #include "xAODTrigger/EnergySumRoI.h"
+#include "xAODTrigger/MuonRoIContainer.h"
 #include "xAODMissingET/MissingETContainer.h"
 #include "xAODTruth/TruthVertexContainer.h"
 #include "xAODForward/ZdcModuleContainer.h"
@@ -94,6 +95,7 @@ TrigRates::TrigRates(const std::string& name, ISvcLocator* pSvcLocator)
   declareProperty("METContainerKey"       ,  m_met_container_key           ="MET_Calo"           );
   declareProperty("HLTMuonsKey"           ,  m_hlt_muons_key               ="HLT_MuonsCB_RoI"    );
   declareProperty("HLTMuonsFSKey"         ,  m_hlt_muons_fs_key            ="HLT_MuonsCB_FS"     );
+  declareProperty("L1MuonRoIKey"          ,  m_l1_muon_roi_key             ="LVL1MuonRoIs"       );
 
   declareProperty("StoreEventInfo"        ,  m_store_EventInfo             =1             );//bitflag
   declareProperty("StoreTracks"           ,  m_store_tracks                =1             );//bitmap
@@ -921,6 +923,7 @@ void TrigRates::InitMuons(TTree *l_OutTree){
     if(m_use_trigger){
       l_OutTree->Branch("muon_match_mu4roi",&m_muon_match_mu4roi);
       l_OutTree->Branch("muon_match_mu6roi",&m_muon_match_mu6roi);
+      l_OutTree->Branch("muon_match_L1MU3V",&m_muon_match_L1MU3V);
     }
     #endif
 
@@ -1035,6 +1038,7 @@ void TrigRates::ClearMuons()
   #if defined(HF_IS_R25)
    m_muon_match_mu4roi.clear();
    m_muon_match_mu6roi.clear();
+   m_muon_match_L1MU3V.clear();
    #endif
 
    m_muon_pt          .clear();
@@ -1155,9 +1159,12 @@ StatusCode TrigRates::ProcessMuons(){
 
   #ifdef HF_IS_R25
   const xAOD::MuonContainer *l_muons_trig_roi = nullptr;
+  const xAOD::MuonRoIContainer *l_l1_muon_roi = nullptr;
   if(m_use_trigger){
     CHECK(evtStore()->retrieve(l_muons_trig_roi, m_hlt_muons_key));
     // Per-leg matching uses TDT navigation internally; no FS container retrieve needed.
+    // In-time L1 muon RoIs for the per-muon L1_MU3V geometric match (prescale-free).
+    CHECK(evtStore()->retrieve(l_l1_muon_roi, m_l1_muon_roi_key));
   }
   #endif
 
@@ -1420,6 +1427,30 @@ StatusCode TrigRates::ProcessMuons(){
        }
        m_muon_match_mu4roi.push_back(match_mu4roi);
        m_muon_match_mu6roi.push_back(match_mu6roi);
+
+       // Per-muon L1 muon-RoI match at the L1_MU3V seed level (prescale-free).
+       // MU3V is the LOWEST L1 muon threshold in the Run-3 menu (it seeds
+       // HLT_mu4). Every entry in LVL1MuonRoIs records the HIGHEST threshold it
+       // passed (thrName MU3V/MU5VF/MU8VF/... , thrValue in GeV) and implicitly
+       // passes all lower thresholds, so ANY in-time L1 muon RoI satisfies the
+       // L1_MU3V seed. We therefore match the offline muon to any L1 muon RoI
+       // (no thrValue/thrNumber cut, which are menu/encoding-dependent) within
+       // a coarse dR<0.2 window (L1 RoI granularity ~0.1). Prescale-free: an
+       // RoI geometric match is before-prescale, no prescale weight applied.
+       bool match_L1MU3V=false;
+       for(auto l1roi:*l_l1_muon_roi){
+         float eta_=l1roi->eta();
+         float phi_=l1roi->phi();
+         // fold dphi into (-pi,pi] so an offline muon at phi~+pi and an RoI at phi~-pi are
+         // not spuriously separated by ~2pi (would fake a miss in the phi=+-pi strip). This
+         // L1 match is compared against the TDT chain match (which wraps), so it must wrap too.
+         float dphi=phi_precorr-phi_;
+         while(dphi> M_PI) dphi-=2.0*M_PI;
+         while(dphi<-M_PI) dphi+=2.0*M_PI;
+         float dr2=pow(eta_precorr-eta_,2.0) + dphi*dphi;
+         if(dr2<0.04){ match_L1MU3V=true; break; } // dR<0.2
+       }
+       m_muon_match_L1MU3V.push_back(match_L1MU3V);
      }
     #endif
 
