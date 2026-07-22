@@ -39,14 +39,14 @@ POLL_MIN=10
 # The dev slice kept on GPFS: smallest slice, ~11 GB.  Everything else = LGD only.
 DEV_SLICE="pTH70_125"
 
-# jediTaskID  slice   (submitted 2026-07-13, VER_TAG=FullJuly2026.v1)
+# jediTaskID  slice   (RE-SKIM 2026-07-21 with the muon_match_L1MU3V branch, VER_TAG=FullJuly2026.v2)
 TASKS=(
-  "51419497 pTH8_14"
-  "51419500 pTH14_24"
-  "51419506 pTH24_40"
-  "51419511 pTH40_70"
-  "51419515 pTH70_125"
-  "51419520 pTH125_300"
+  "51643327 pTH8_14"
+  "51643336 pTH14_24"
+  "51643344 pTH24_40"
+  "51643353 pTH40_70"
+  "51643363 pTH70_125"
+  "51643375 pTH125_300"
 )
 
 DO_DEVSLICE=1
@@ -64,7 +64,7 @@ ts()  { date "+%Y-%m-%d %H:%M:%S"; }
 log() { echo "[$(ts)] $*" | tee -a "$LOG"; }
 
 outds_for() {  # slice -> output dataset name
-  echo "${SCOPE}.NTUP.Pythia_5p36TeV_pp_hQCD_DiMu_$1.FullSimPP24.FullJuly2026.v1._EXT0"
+  echo "${SCOPE}.NTUP.Pythia_5p36TeV_pp_hQCD_DiMu_$1.FullSimPP24.FullJuly2026.v2._EXT0"
 }
 
 # ------------------------------------------------------------------ environment
