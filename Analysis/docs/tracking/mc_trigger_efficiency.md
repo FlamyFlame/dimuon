@@ -1599,6 +1599,23 @@ ours descends from. **They differ, and neither reweights MC events.**
 - (The v_n note HION-2019-11 has no efficiency section at all — the EP flow observable is
   self-normalizing.)
 
+**(c) Closure tests: NEITHER analysis closure-tests its efficiencies.**
+- HF-muon note: the word "closure" does not occur. Validation = the data/MC efficiency overlay
+  that *defines* the SF (Fig. 27) + re-running the analysis under efficiency variations (§5.1.2,
+  Figs. 39–40, a systematic, not a closure).
+- Dimuon note: `McClosure.tex` exists but the section is renamed *"MC comparisons between truth
+  and reconstructed quantities"* — truth-match probability and reco−truth pT/η/φ residuals only,
+  no efficiency applied. Their real check is **data-internal**: ε_mu4 from the MinBias stream
+  vs from the HardProbes stream agree, which validates both the HP method and the 2mu4
+  factorization `Prob(mu4(b)) = Prob(2mu4(a,b)|mu4(a))`. **That check is inclusive in ΔR and
+  therefore blind to exactly the correlation this doc measures.** Plus a ⟨w⟩≈2.3–2.4 sanity plot.
+- HION-2020-10 has one genuine closure test, but of the **unfolding** (§3.10.2, Fig. 59: split MC,
+  unfold one half with the other's response, converges by iteration 5) — not of the efficiencies.
+- Structural reason the trigger side could not be closure-tested in Run 2: their overlay MC has
+  **no trigger simulation** (R_AA note §4.5.2). That constraint is exactly what the `_July2026`
+  skims removed for us (`mc_trigger_info_skim.md`), so an MC trigger closure is available to this
+  analysis and was not available to them.
+
 **Bearing on this doc.** Our design (§1–§2) — data-derived ε^nc, MC used only for the ΔR
 **ratios** — is a third pattern, and is the conservative one: it never imports an MC absolute
 normalization, so the known per-leg MC L1 over-efficiency (≈1.13, barrel-only ~1.2 per R3)
