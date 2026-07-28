@@ -12,6 +12,10 @@
 //                  (per leg; ΔR bins 0–0.2 / 0.2–1.0 / 1.0+).
 //   Step 3 (§3.3): inverse-weighted ε_ΔR inputs (do_step3=true; requires the MC
 //                  turn-on fits from FitMCSinglesEffcy.cxx).
+//   Step 4 (§3.4): inverse-weighted SINGLE-LEG ε_single(ΔR) inputs (do_step4=true; also
+//                  requires the MC turn-on fits). Leg-level analog of Step 3 -> the ΔR
+//                  correction on the PbPb union LINEAR terms. NOT needed for pp (2mu4
+//                  product); pp runs only to validate the machinery on the full sample.
 //
 // Selection mirrors the data-side muon definition: Tight WP (analysis nominal),
 // pT > 4 GeV, |η| < 2.4. Overlay restricted to 0–5% centrality (doc D2).
@@ -25,10 +29,12 @@
 //
 // Usage (from Analysis/RDFBasedHistFilling/):
 //   root -b -l -q 'FillMCTrigEffHists.cxx+("pp")'
-//   root -b -l -q 'FillMCTrigEffHists.cxx+("overlay", true)'   // Step 3
+//   root -b -l -q 'FillMCTrigEffHists.cxx+("overlay", true)'              // Step 3
+//   root -b -l -q 'FillMCTrigEffHists.cxx+("overlay", false, true, true)' // Step 4
 //
 // Output: <sample dir>/mc_trig_eff_hists_<pp24|hijing_overlay_pbpb23>.root
-//         (do_step3=true writes a SEPARATE ..._step3.root, never touches the above)
+//         (do_step3=true writes a SEPARATE ..._step3.root; do_step4=true a SEPARATE
+//          ..._step4.root; neither touches the Step-1/2 file)
 // =============================================================================
 
 #include <cmath>
@@ -316,8 +322,12 @@ ROOT::RDF::RNode AliasLeg(ROOT::RDF::RNode node, int leg, const std::string& wp_
 
 // =============================================================================
 void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
-                        bool use_tight_wp = true) {
+                        bool use_tight_wp = true, bool do_step4 = false) {
     using namespace MCTrigEff;
+
+    if (do_step3 && do_step4)
+        throw std::invalid_argument("FillMCTrigEffHists: do_step3 and do_step4 are mutually "
+                                    "exclusive (each writes its own output file)");
 
     const SampleConfig cfg = GetSampleConfig(sample);
     const Binnings bins = MakeBinnings();
@@ -327,7 +337,8 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
     const std::string wp_suf = use_tight_wp ? "" : "_medium_wp";
 
     std::cout << "FillMCTrigEffHists: sample=" << sample << " (" << cfg.label << ")"
-              << ", do_step3=" << do_step3 << ", WP=" << (use_tight_wp ? "tight" : "medium")
+              << ", do_step3=" << do_step3 << ", do_step4=" << do_step4
+              << ", WP=" << (use_tight_wp ? "tight" : "medium")
               << std::endl;
     std::cout << "  pair file:    " << cfg.pair_file << std::endl;
     std::cout << "  singles file: " << cfg.singles_file << std::endl;
@@ -360,9 +371,9 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
 
     HistAccumulator<TH1D> acc1D;
     HistAccumulator<TH2D> acc2D;
-    HistAccumulator<TH3D> acc3D;   // Step-3 pair-eta dependence (round-5 #4)
+    HistAccumulator<TH3D> acc3D;   // Step-3/4 pair-eta dependence (round-5 #4 / round-6 §3.4)
 
-    MCEffEvaluator* evaluator = nullptr;  // Step-3 only
+    MCEffEvaluator* evaluator = nullptr;  // Step-3/4 only (inverse-weight ε source)
 
     // keep dataframes alive until merge
     std::vector<std::unique_ptr<ROOT::RDataFrame>> rdf_store;
@@ -372,7 +383,67 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
         return base + "__b" + std::to_string(booking_id++);
     };
 
-    if (!do_step3) {
+    if (do_step4) {
+        // =====================================================================
+        // (D) Step 4 (§3.4): single-leg ΔR correction ε_single(ΔR) via inverse weighting.
+        //     Leg-level analog of Step 3: numerator = the leg's OWN mu4 match weighted
+        //     1/ε_MC(pT,q·η); denominator = ALL selected legs (MC weight, no trigger req §4).
+        //     Ratio vs ΔR = ε_single(ΔR); plateau-normalized downstream -> ε_ΔR^single(ΔR),
+        //     which dresses the PbPb union LINEAR terms (§2). NOT needed for pp (2mu4 product
+        //     absorbs the single-leg ΔR into ε_ΔR^2mu4) -- pp runs only to validate the
+        //     machinery on the FULL sample. Both legs of a pair are probes (role-swap) and
+        //     SS+OS are summed, exactly as Step 2/3. Selection = both legs pass the analysis
+        //     muon definition (partner is the "other reco muon" that defines ΔR, §3.2/§3.4).
+        // =====================================================================
+        evaluator = new MCEffEvaluator();  // heap: must outlive the lazy RDF loops
+        evaluator->LoadFits(cfg.dir + "single_mu_effcy_pT_fit_mc" + wp_suf + ".root");
+
+        for (const auto& tree : pair_trees) {
+            rdf_store.emplace_back(std::make_unique<ROOT::RDataFrame>(tree, cfg.pair_file));
+            for (int leg = 1; leg <= 2; ++leg) {
+                ROOT::RDF::RNode dl = AliasLeg(*rdf_store.back(), leg, wp_col);
+                dl = dl.Filter(sel_pair_full, tree + Form(" step4 leg%d selection", leg));
+
+                auto book_step4 = [&](ROOT::RDF::RNode node, const std::string& nd,
+                                      const std::string& wcol) {
+                    acc1D.add("h_mc_single_dr_zoom_" + nd,
+                        node.Histo1D({uniq("h_mc_single_dr_zoom_" + nd).c_str(), ";#DeltaR;entries",
+                                      static_cast<int>(bins.dr_zoom.size()) - 1, bins.dr_zoom.data()},
+                                     "dr", wcol));
+                    acc1D.add("h_mc_single_dr_full_" + nd,
+                        node.Histo1D({uniq("h_mc_single_dr_full_" + nd).c_str(), ";#DeltaR;entries",
+                                      static_cast<int>(bins.dr_full.size()) - 1, bins.dr_full.data()},
+                                     "dr", wcol));
+                    // pair-pT x pair-eta breakdown (plateau-stability systematic, mirrors Step 3 #4)
+                    acc3D.add("h_mc_single_dr_zoom_vs_pt_eta_" + nd,
+                        node.Histo3D({uniq("h_mc_single_dr_zoom_vs_pt_eta_" + nd).c_str(),
+                                      ";#DeltaR;p_{T}^{pair} [GeV];#eta^{pair}",
+                                      static_cast<int>(bins.dr_zoom.size()) - 1, bins.dr_zoom.data(),
+                                      static_cast<int>(bins.pair_pt_coarse.size()) - 1, bins.pair_pt_coarse.data(),
+                                      static_cast<int>(bins.pair_eta_coarse.size()) - 1, bins.pair_eta_coarse.data()},
+                                     "dr", "pair_pt", "pair_eta", wcol));
+                    acc3D.add("h_mc_single_dr_full_vs_pt_eta_" + nd,
+                        node.Histo3D({uniq("h_mc_single_dr_full_vs_pt_eta_" + nd).c_str(),
+                                      ";#DeltaR;p_{T}^{pair} [GeV];#eta^{pair}",
+                                      static_cast<int>(bins.dr_full.size()) - 1, bins.dr_full.data(),
+                                      static_cast<int>(bins.pair_pt_coarse.size()) - 1, bins.pair_pt_coarse.data(),
+                                      static_cast<int>(bins.pair_eta_coarse.size()) - 1, bins.pair_eta_coarse.data()},
+                                     "dr", "pair_pt", "pair_eta", wcol));
+                };
+
+                // denominator: ALL selected legs, no trigger requirement (§4), MC weight
+                book_step4(dl, "denom", "weight");
+
+                // numerator: leg's own mu4 match, weight = MC weight / ε_MC(pT_leg, q·η_leg) (§3.4)
+                auto dn = dl.Filter("lg_passmu4", tree + Form(" step4 leg%d mu4", leg))
+                            .Define("eps_lg",
+                                    [ev = evaluator](float pt, float eta, int q) { return ev->Eval(pt, eta, q); },
+                                    {"lg_pt", "lg_eta", "lg_charge"})
+                            .Define("w_inv_single", "weight / eps_lg");
+                book_step4(dn, "num", "w_inv_single");
+            }
+        }
+    } else if (!do_step3) {
         // =====================================================================
         // (A) Step 1 (§3.1): singles tree, per charge, denom/num
         // =====================================================================
@@ -533,7 +604,7 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
 
     // ---------- write ----------
     const std::string out_name = cfg.dir + "mc_trig_eff_hists_" + cfg.label + wp_suf +
-                                 (do_step3 ? "_step3.root" : ".root");
+                                 (do_step4 ? "_step4.root" : do_step3 ? "_step3.root" : ".root");
     TFile fout(out_name.c_str(), "RECREATE");
     if (fout.IsZombie()) throw std::runtime_error("FillMCTrigEffHists: cannot open output " + out_name);
     for (auto& kv : hists1D) kv.second->Write(kv.first.c_str());
@@ -544,7 +615,35 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
               << hists2D.size() << " TH2D + " << hists3D.size() << " TH3D to " << out_name << std::endl;
 
     // ---------- sanity printout ----------
-    if (!do_step3) {
+    auto PrintDrRatio = [&](const std::string& base, const std::string& tag) {
+        // eps(dR) = num/denom: large-dR plateau (weighted avg over [1,4], the published window)
+        // + small-dR values from the zoom hist.
+        TH1D* hn = hists1D.at("h_mc_" + base + "_dr_full_num");
+        TH1D* hd = hists1D.at("h_mc_" + base + "_dr_full_denom");
+        double sn = 0, sd = 0;
+        for (int i = 1; i <= hd->GetNbinsX(); ++i) {
+            const double c = hd->GetBinCenter(i);
+            if (c >= 1.0 && c <= 4.0) { sn += hn->GetBinContent(i); sd += hd->GetBinContent(i); }
+        }
+        std::cout << "\n===== " << tag << " sanity: eps_dR = num/denom, sample=" << cfg.label
+                  << " =====" << std::endl;
+        std::cout << "  large-dR average (dR in [1,4], weighted): "
+                  << (sd > 0 ? sn / sd : -1) << std::endl;
+        TH1D* hzn = hists1D.at("h_mc_" + base + "_dr_zoom_num");
+        TH1D* hzd = hists1D.at("h_mc_" + base + "_dr_zoom_denom");
+        for (int i = 1; i <= hzd->GetNbinsX(); ++i) {
+            const double d = hzd->GetBinContent(i);
+            std::cout << "  dR [" << hzd->GetBinLowEdge(i) << ", " << hzd->GetBinLowEdge(i + 1)
+                      << "): eps_dR = " << (d > 0 ? hzn->GetBinContent(i) / d : -1)
+                      << "  (denom w = " << d << ")" << std::endl;
+        }
+    };
+
+    if (do_step4) {
+        // Step-4: single-leg ε_single(dR). plateau ~1 (both samples, up to fit offset) validates
+        // the machinery; the small-dR RISE is R4's saturation (pp ~1.20, overlay ~1.34 vs plateau).
+        PrintDrRatio("single", "Step-4");
+    } else if (!do_step3) {
         std::cout << "\n===== Step-1 sanity: weighted P(mu4 | selection), sample=" << cfg.label
                   << " =====" << std::endl;
         for (const auto& chg : {std::string("muplus"), std::string("muminus")}) {

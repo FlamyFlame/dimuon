@@ -1299,6 +1299,283 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                   << "step3_plateau_fluctuation_pair_eta_pt.txt\n";
     }
 
+    // ================================================================
+    // Step 4 (§3.4): single-leg ΔR correction ε_single(ΔR) = inverse-weighted num / denom.
+    //   Leg-level analog of Step 3. Deliverable for the PbPb UNION linear terms (overlay);
+    //   for pp it is a VALIDATION only (2mu4 product absorbs the single-leg ΔR into ε_ΔR^2mu4)
+    //   -- annotated on the pp panels. Graceful skip if _step4.root is absent.
+    // ================================================================
+    {
+        const std::string step4_path =
+            cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label + wp_suf + "_step4.root";
+        TFile* fmc4 = TFile::Open(step4_path.c_str(), "READ");
+        if (!fmc4 || fmc4->IsZombie()) {
+            std::cout << "\n[Step 4] no " << step4_path << " -- skipping single-leg ΔR plots "
+                      << "(run FillMCTrigEffHists do_step4=true first).\n";
+        } else {
+            std::cout << "\n===== Step 4 (" << sample << ", " << wp_text << ") =====\n";
+            const std::string dir4 = cfg.out_base + "step4_dr_correction_singles/" + wp_dir;
+            gSystem->mkdir(dir4.c_str(), kTRUE);
+            const std::string eps_single_text = "#varepsilon_{#DeltaR}^{single}";
+            const bool is_deliverable = (sample == "overlay");   // PbPb union; else validation
+            const std::string val_note = is_deliverable
+                ? std::string("dresses the union linear terms (#varepsilon_{1}+#varepsilon_{2})")
+                : std::string("VALIDATION only -- NOT applied to pp 2mu4");
+
+            auto MakeRatio4 = [&](const std::string& tag) -> TH1D* {
+                TH1D* num = GetObj<TH1D>(fmc4, "h_mc_single_dr_" + tag + "_num");
+                TH1D* den = GetObj<TH1D>(fmc4, "h_mc_single_dr_" + tag + "_denom");
+                auto* r = (TH1D*)num->Clone(("r_single_dr_" + tag).c_str());
+                r->SetDirectory(nullptr);
+                r->Divide(den);
+                return r;
+            };
+            TH1D* r4_zoom = MakeRatio4("zoom");
+            TH1D* r4_full = MakeRatio4("full");
+
+            const auto plat4 = PlateauWeightedMean(r4_full, kPlateauLo, kPlateauHi);
+            printf("  %s single-leg plateau (weighted mean, dR in [%.0f,%.0f]): %.4f +- %.4f\n",
+                   sample.c_str(), kPlateauLo, kPlateauHi, plat4.first, plat4.second);
+
+            auto DrawStep4 = [&](TH1D* r, double xlo, double xhi, const std::string& png,
+                                 bool plateau_in_range) {
+                TCanvas c(("c_" + png).c_str(), "", 900, 700);
+                gPad->SetLeftMargin(0.12);
+                gPad->SetBottomMargin(0.12);
+                double ymax = 0.;
+                for (int i = 1; i <= r->GetNbinsX(); ++i)
+                    ymax = std::max(ymax, r->GetBinContent(i) + r->GetBinError(i));
+                ymax = std::max(1.15, 1.15 * ymax);
+                DrawEffFrame(xlo, xhi, "#DeltaR", 0.0, ymax, eps_single_text);
+                DrawUnityLine(xlo, xhi);
+                if (plateau_in_range) {
+                    auto* lp = new TLine(kPlateauLo, plat4.first, kPlateauHi, plat4.first);
+                    lp->SetLineColor(kBlue + 1); lp->SetLineWidth(3); lp->Draw("same");
+                } else {
+                    auto* lp = new TLine(xlo, plat4.first, xhi, plat4.first);
+                    lp->SetLineColor(kBlue + 1); lp->SetLineWidth(2); lp->SetLineStyle(3);
+                    lp->Draw("same");
+                }
+                r->SetMarkerStyle(20);
+                r->SetMarkerColor(kMCColor);
+                r->SetLineColor(kMCColor);
+                r->SetLineWidth(2);
+                r->Draw("E1 same");
+                DrawHeadline(headline);
+                TLatex tl; tl.SetNDC(); tl.SetTextFont(42); tl.SetTextSize(0.035);
+                tl.DrawLatex(0.40, 0.86, Form("plateau #LT#DeltaR#in[%.0f,%.0f]#GT = %.3f #pm %.3f",
+                                              kPlateauLo, kPlateauHi, plat4.first, plat4.second));
+                tl.DrawLatex(0.40, 0.80, (eps_single_text +
+                    " = P(#mu fires | #DeltaR) / #varepsilon(p_{T},q#eta), MC #varepsilon in weights").c_str());
+                tl.SetTextSize(0.030);
+                tl.SetTextColor(is_deliverable ? (kGray + 3) : (kRed + 2));
+                tl.DrawLatex(0.40, 0.74, val_note.c_str());
+                SaveCanvas(c, dir4 + png + ".png");
+            };
+            DrawStep4(r4_zoom, 0.0, 1.0,  "step4_eps_dr_single_zoom", false);
+            DrawStep4(r4_full, 0.0, 5.75, "step4_eps_dr_single_full", true);
+
+            // ---- pair-eta x pair-pT breakdown from the 3D (plateau-stability systematic) ----
+            TH3D* h3zn = GetObj<TH3D>(fmc4, "h_mc_single_dr_zoom_vs_pt_eta_num");
+            TH3D* h3zd = GetObj<TH3D>(fmc4, "h_mc_single_dr_zoom_vs_pt_eta_denom");
+            TH3D* h3fn = GetObj<TH3D>(fmc4, "h_mc_single_dr_full_vs_pt_eta_num");
+            TH3D* h3fd = GetObj<TH3D>(fmc4, "h_mc_single_dr_full_vs_pt_eta_denom");
+            const int npt  = h3fn->GetYaxis()->GetNbins();
+            const int neta = h3fn->GetZaxis()->GetNbins();
+            auto pt_label  = [&](int iy){ return std::string(Form("%.0f < p_{T}^{pair} < %.0f GeV",
+                h3fn->GetYaxis()->GetBinLowEdge(iy), h3fn->GetYaxis()->GetBinUpEdge(iy))); };
+            auto eta_label = [&](int iz){ return std::string(Form("%.1f < #eta^{pair} < %.1f",
+                h3fn->GetZaxis()->GetBinLowEdge(iz), h3fn->GetZaxis()->GetBinUpEdge(iz))); };
+            // eps_single(dR) for one cell; iz=0 => integrate over ALL eta (pair-pT slice)
+            auto cell_ratio = [](TH3D* hn, TH3D* hd, int iy, int iz, int neta_all,
+                                 const char* nm) -> TH1D* {
+                const int zlo = (iz == 0) ? 1 : iz, zhi = (iz == 0) ? neta_all : iz;
+                TH1D* n = hn->ProjectionX(Form("%s_n", nm), iy, iy, zlo, zhi, "e");
+                TH1D* d = hd->ProjectionX(Form("%s_d", nm), iy, iy, zlo, zhi, "e");
+                auto* r = (TH1D*)n->Clone(nm);
+                r->SetDirectory(nullptr);
+                r->Divide(d);
+                delete n; delete d;
+                return r;
+            };
+            const std::vector<Color_t> ptcol  = {kRed + 1, kBlue + 1, kGreen + 2, kMagenta};
+            const std::vector<Style_t> ptmark = {20, 21, 22, 23};
+
+            // pair-pT slices (integrate eta): zoom dR
+            {
+                TCanvas c("c_step4_ptslices", "", 900, 700);
+                gPad->SetLeftMargin(0.12); gPad->SetBottomMargin(0.12);
+                std::vector<TH1D*> rs; double ymax = 0.;
+                for (int iy = 1; iy <= npt; ++iy) {
+                    TH1D* r = cell_ratio(h3zn, h3zd, iy, 0, neta,
+                                         Form("s4pt_%s_%d", sample.c_str(), iy));
+                    rs.push_back(r);
+                    for (int i = 1; i <= r->GetNbinsX(); ++i)
+                        ymax = std::max(ymax, r->GetBinContent(i) + r->GetBinError(i));
+                }
+                ymax = std::min(std::max(1.15, 1.15 * ymax), 3.0);
+                DrawEffFrame(0.0, 1.0, "#DeltaR", 0.0, ymax, eps_single_text);
+                DrawUnityLine(0.0, 1.0);
+                auto* leg = new TLegend(0.45, 0.68, 0.92, 0.88);
+                leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.03);
+                std::vector<std::string> offscale;
+                for (int iy = 0; iy < npt; ++iy) {
+                    rs[iy]->SetMarkerStyle(ptmark[iy % ptmark.size()]);
+                    rs[iy]->SetMarkerColor(ptcol[iy % ptcol.size()]);
+                    rs[iy]->SetLineColor(ptcol[iy % ptcol.size()]);
+                    rs[iy]->SetLineWidth(2);
+                    rs[iy]->Draw("E1 same");
+                    leg->AddEntry(rs[iy], pt_label(iy + 1).c_str(), "lp");
+                    for (int i = 1; i <= rs[iy]->GetNbinsX(); ++i) {
+                        if (rs[iy]->GetBinContent(i) <= ymax) continue;
+                        auto* ar = new TArrow(rs[iy]->GetBinCenter(i), ymax * 0.88,
+                                              rs[iy]->GetBinCenter(i), ymax * 0.985, 0.012, "|>");
+                        ar->SetLineColor(ptcol[iy % ptcol.size()]);
+                        ar->SetFillColor(ptcol[iy % ptcol.size()]); ar->Draw();
+                        offscale.push_back(Form("#DeltaR=%.2f: %.1f #pm %.1f", rs[iy]->GetBinCenter(i),
+                                                rs[iy]->GetBinContent(i), rs[iy]->GetBinError(i)));
+                    }
+                }
+                leg->Draw();
+                DrawHeadline(headline);
+                if (!offscale.empty()) {
+                    TLatex note; note.SetNDC(); note.SetTextFont(42); note.SetTextSize(0.026);
+                    note.SetTextColor(kGray + 3);
+                    double y = 0.63;
+                    for (size_t i = 0; i < offscale.size(); i += 2) {
+                        std::string txt = (i == 0) ? "above scale (arrows): " : "  ";
+                        txt += offscale[i];
+                        if (i + 1 < offscale.size()) txt += ", " + offscale[i + 1];
+                        note.DrawLatex(0.45, y, txt.c_str()); y -= 0.035;
+                    }
+                }
+                SaveCanvas(c, dir4 + "step4_eps_dr_single_zoom_pair_pt_slices.png");
+            }
+
+            // pair-eta panels (each subplot = eta bin, each line = pair-pT bin), zoom + full
+            struct Rng { TH3D* n; TH3D* d; std::string tag; double xhi; };
+            const std::vector<Rng> rngs = {{h3zn, h3zd, "zoom", 1.0}, {h3fn, h3fd, "full", 5.75}};
+            const int ncol = (int)std::ceil(std::sqrt((double)neta));
+            const int nrow = (int)std::ceil((double)neta / ncol);
+            for (const auto& R : rngs) {
+                TCanvas c(("c_s4_pteta_" + R.tag).c_str(), "", 500 * ncol, 450 * nrow);
+                c.Divide(ncol, nrow);
+                for (int iz = 1; iz <= neta; ++iz) {
+                    c.cd(iz);
+                    gPad->SetLeftMargin(0.14); gPad->SetBottomMargin(0.13);
+                    std::vector<TH1D*> rs; double ymax = 0.;
+                    for (int iy = 1; iy <= npt; ++iy) {
+                        TH1D* r = cell_ratio(R.n, R.d, iy, iz, neta,
+                                             Form("s4pe_%s_%s_%d_%d", sample.c_str(), R.tag.c_str(), iy, iz));
+                        rs.push_back(r);
+                        for (int i = 1; i <= r->GetNbinsX(); ++i)
+                            ymax = std::max(ymax, r->GetBinContent(i) + r->GetBinError(i));
+                    }
+                    ymax = std::min(std::max(1.15, 1.15 * ymax), 3.0);
+                    DrawEffFrame(0.0, R.xhi, "#DeltaR", 0.0, ymax, eps_single_text);
+                    DrawUnityLine(0.0, R.xhi);
+                    for (int iy = 0; iy < npt; ++iy) {
+                        TH1D* r = rs[iy];
+                        r->SetMarkerStyle(ptmark[iy % ptmark.size()]);
+                        r->SetMarkerColor(ptcol[iy % ptcol.size()]);
+                        r->SetLineColor(ptcol[iy % ptcol.size()]);
+                        r->SetLineWidth(2);
+                        r->Draw("E1 same");
+                        for (int i = 1; i <= r->GetNbinsX(); ++i) {
+                            if (r->GetBinContent(i) <= ymax) continue;
+                            auto* ar = new TArrow(r->GetBinCenter(i), ymax * 0.88,
+                                                  r->GetBinCenter(i), ymax * 0.985, 0.008, "|>");
+                            ar->SetLineColor(ptcol[iy % ptcol.size()]);
+                            ar->SetFillColor(ptcol[iy % ptcol.size()]); ar->Draw();
+                        }
+                    }
+                    TLatex tl; tl.SetNDC(); tl.SetTextFont(42); tl.SetTextSize(0.050);
+                    tl.DrawLatex(0.17, 0.86, eta_label(iz).c_str());
+                    if (iz == 1) {
+                        auto* leg = new TLegend(0.42, 0.66, 0.92, 0.90);
+                        leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.040);
+                        for (int iy = 0; iy < npt; ++iy) leg->AddEntry(rs[iy], pt_label(iy + 1).c_str(), "lp");
+                        leg->Draw();
+                    }
+                }
+                c.cd(0);
+                TLatex st; st.SetNDC(); st.SetTextFont(42); st.SetTextSize(0.016);
+                st.DrawLatex(0.03, 0.978, (headline + "  --  " + R.tag + " #DeltaR, " + eps_single_text +
+                             " in (p_{T}^{pair}, #eta^{pair}) cells").c_str());
+                SaveCanvas(c, dir4 + "step4_eps_dr_single_" + R.tag + "_pair_eta_pt.png");
+            }
+
+            // ---- plateau + fluctuation tables (full-dR 3D, window [kPlateauLo,kPlateauHi]) ----
+            struct Plat { double mean, err, rms; int nb; };
+            auto cell_plateau = [&](int iy, int iz) -> Plat {
+                TH1D* r = cell_ratio(h3fn, h3fd, iy, iz, neta,
+                                     Form("s4plat_%s_%d_%d", sample.c_str(), iy, iz));
+                double sw = 0, swv = 0; std::vector<std::pair<double,double>> vw;
+                for (int i = 1; i <= r->GetNbinsX(); ++i) {
+                    const double xc = r->GetBinCenter(i);
+                    if (xc < kPlateauLo || xc > kPlateauHi) continue;
+                    const double v = r->GetBinContent(i), e = r->GetBinError(i);
+                    if (e <= 0. || v == 0.) continue;
+                    const double w = 1. / (e * e); sw += w; swv += w * v; vw.push_back({v, w});
+                }
+                delete r;
+                if (sw <= 0.) return Plat{ -1, -1, -1, 0 };
+                const double mean = swv / sw, err = std::sqrt(1. / sw);
+                double swd = 0; for (auto& p : vw) swd += p.second * (p.first - mean) * (p.first - mean);
+                return Plat{ mean, err, std::sqrt(swd / sw), (int)vw.size() };
+            };
+            std::vector<std::vector<Plat>> P(npt, std::vector<Plat>(neta));
+            for (int iy = 1; iy <= npt; ++iy)
+                for (int iz = 1; iz <= neta; ++iz) P[iy - 1][iz - 1] = cell_plateau(iy, iz);
+            auto eta_hdr = [&](int iz){ return Form("[%.1f,%.1f)",
+                h3fn->GetZaxis()->GetBinLowEdge(iz), h3fn->GetZaxis()->GetBinUpEdge(iz)); };
+            auto pt_hdr  = [&](int iy){ return Form("pTpair[%.0f,%.0f)",
+                h3fn->GetYaxis()->GetBinLowEdge(iy), h3fn->GetYaxis()->GetBinUpEdge(iy)); };
+            auto write_table_A = [&](std::ostream& os){
+                os << "# Step-4 large-dR plateau eps_single (weighted mean over dR in ["
+                   << kPlateauLo << "," << kPlateauHi << "]) per (pair pT, pair eta) cell.\n";
+                os << "# sample=" << sample << "  WP=" << wp_text << "  " << cfg.sample_text << "\n";
+                os << "# " << (is_deliverable ? "PbPb DELIVERABLE (dresses union linear terms)"
+                                              : "pp VALIDATION only -- NOT applied to pp 2mu4") << "\n";
+                os << "# value = plateau +- stat_error (normalized to 1; |value-1| feeds the systematic)\n";
+                os << std::left << std::setw(20) << "pair-eta \\ pair-pT";
+                for (int iy = 1; iy <= npt; ++iy) os << std::setw(20) << pt_hdr(iy);
+                os << "\n";
+                for (int iz = 1; iz <= neta; ++iz) {
+                    os << std::left << std::setw(20) << eta_hdr(iz);
+                    for (int iy = 1; iy <= npt; ++iy) {
+                        const Plat& p = P[iy - 1][iz - 1];
+                        os << std::setw(20) << (p.nb > 0 ? Form("%.4f+-%.4f", p.mean, p.err) : "--");
+                    }
+                    os << "\n";
+                }
+            };
+            auto write_table_B = [&](std::ostream& os){
+                os << "# Step-4 plateau FLUCTUATION per (pair pT, pair eta) cell (dR in ["
+                   << kPlateauLo << "," << kPlateauHi << "]).\n";
+                os << "# sample=" << sample << "  WP=" << wp_text << "\n";
+                os << "# each cell = stat_err(mean) / rms_scatter / n_bins.\n";
+                os << std::left << std::setw(24) << "pair-eta \\ pair-pT";
+                for (int iy = 1; iy <= npt; ++iy) os << std::setw(24) << pt_hdr(iy);
+                os << "\n";
+                for (int iz = 1; iz <= neta; ++iz) {
+                    os << std::left << std::setw(24) << eta_hdr(iz);
+                    for (int iy = 1; iy <= npt; ++iy) {
+                        const Plat& p = P[iy - 1][iz - 1];
+                        os << std::setw(24) << (p.nb > 0 ? Form("%.4f/%.4f/%d", p.err, p.rms, p.nb) : "--");
+                    }
+                    os << "\n";
+                }
+            };
+            write_table_A(std::cout);
+            { std::ofstream ofa(dir4 + "step4_plateau_pair_eta_pt.txt");             write_table_A(ofa); }
+            { std::ofstream ofb(dir4 + "step4_plateau_fluctuation_pair_eta_pt.txt"); write_table_B(ofb); }
+            std::cout << "  wrote " << dir4 << "step4_plateau_pair_eta_pt.txt + "
+                      << "step4_plateau_fluctuation_pair_eta_pt.txt\n";
+            fmc4->Close();
+        }
+    }
+
     fmc->Close(); fmc3->Close(); ffit->Close(); fdata->Close();
     std::cout << "\nplot_mc_trig_eff(" << sample << ") done.\n";
 }
