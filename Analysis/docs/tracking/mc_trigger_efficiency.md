@@ -21,6 +21,32 @@ HIJING overlay r17618 `_July2026`) to deliver the MC-based trigger-efficiency pr
    weighting on an unbiased (no-trigger-requirement) MC pair sample. This is the analysis
    deliverable that replaces the current dummy ε_ΔR ≡ 1 (roadmap Q4).
 
+## Autonomy Contract (round 6 — **DONE 2026-07-28**; Step 4 delivered + both reviews PASS)
+**Every Done item met.** §2 reformulated + §3.4 written; `do_step4` in FillMCTrigEffHists +
+Step-4 block in plot_mc_trig_eff (new `step4_dr_correction_singles/` dir, step1/2/3 untouched);
+overlay + pp_full × {T,M} run + verified (pp plateau 0.993≈1 validates; overlay small-ΔR rise
+reproduces R4 1.34); /review-analysis-code PASS iter 1 + /review-plot PASS iter 1; Remaining Work 1
+RESOLVED. Committed. Retained below for the record.
+
+## Autonomy Contract (round 6 — superseded header above; original text)
+- Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a plan, a
+  passing small test, or one pipeline stage is NOT a stopping point.
+- Done = **Step 4** delivered: the single-leg ΔR correction `ε_ΔR^single(ΔR) =
+  ε_single(ΔR)/ε_single(ΔR>1)` measured by leg-level inverse weighting (§3.4), for
+  **overlay (PbPb — the deliverable)** and **pp_full (validation only — NOT physically needed
+  for pp; make this explicit in the doc)**, at **both WPs** (Tight + Medium). Concretely:
+  (1) `do_step4` mode in `FillMCTrigEffHists.cxx` writing `..._step4.root`; (2) a Step-4
+  rendering block in `plot_mc_trig_eff.cxx` (ε_single(ΔR) zoom+full + plateau-normalization +
+  pair-pT / pair-η breakdown) → a NEW `step4_dr_correction_singles/` plot dir, nothing existing
+  overwritten; (3) §2 union reformulation + §3.4 written (DONE); (4) /review-analysis-code PASS +
+  /review-plot PASS; (5) chain run for overlay + pp_full × 2 WP, outputs verified (pp plateau ≈ 1
+  validates the machinery; overlay ε_single(ΔR) rises at small ΔR consistent with R4's saturation
+  1.20/1.34); (6) doc Progress Log + INDEX updated; committed.
+- Stop-and-ask = ANY physics-results-bending ambiguity (no fixed list; use judgment; when unsure
+  whether an ambiguity is blocking, treat it as blocking → AskUserQuestion).
+- Resolved at start (2026-07-28, user): the RW-1 union-weight form is the `ε_ΔR^single·(ε₁+ε₂)`
+  reformulation (§2 note); pp derived for validation and flagged not-needed-for-pp.
+
 ## Autonomy Contract (round 5 — **DONE 2026-07-22**; all 4 changes delivered + both reviews PASS)
 **Every Done item met.** All 4 user changes applied + validated on all 3 samples (pp FULL,
 overlay, r17663) × 2 WPs; grid re-skimmed all 3 (13 tasks, the L1 branch); /review-analysis-code
@@ -147,19 +173,41 @@ below is a *validation*, not a replacement.
 
 ### 2. Top-level equations
 
-Per-pair trigger probability (inherited from mu4_trig_effcy_implementation.md):
+Per-pair trigger probability (inherited from mu4_trig_effcy_implementation.md, with the
+single-leg ΔR correction added 2026-07-28 — see the note below):
 
 - **PbPb, mu4 (union — at least one muon fires):**
-  `P(pair | ΔR) = ε₁ + ε₂ − ε₁·ε₂·ε_ΔR^cross(ΔR)`
-  where `ε_ΔR^cross(ΔR) = P(both fire | ΔR) / (ε₁ ε₂)` is the cross-term correction.
+  `P(pair | ΔR) = ε_ΔR^single(ΔR)·(ε₁ + ε₂) − ε₁·ε₂·ε_ΔR^cross(ΔR)`
+  where
+  - `ε_ΔR^single(ΔR) = ε_single(ΔR) / ε_single(ΔR>1)` is the ΔR correction on the single-leg
+    (marginal) trigger probability — the deliverable of **Step 4 (§3.4)**, plateau-normalized so
+    it is 1 for well-separated muons; and
+  - `ε_ΔR^cross(ΔR) = P(both fire | ΔR) / (ε₁ ε₂)` is the joint (cross-term) correction — **Step 3
+    (§3.3)**.
+
+  By inclusion–exclusion the union needs both the corrected **marginals** (each leg dressed by
+  `ε_ΔR^single`) and the corrected **joint** (`ε_ΔR^cross`); the two are measured independently
+  (single-leg vs both-legs), so there is no double counting.
 - **pp24, 2mu4 (product — both legs fire):**
   `P(pair | ΔR) = ε₁ · ε₂ · ε_ΔR^2mu4(ΔR)`
-  — the 2mu4 correction IS the cross-term; no inclusion-exclusion.
+  — the 2mu4 correction IS the cross-term; no inclusion-exclusion. **The single-leg ΔR
+  dependence is fully absorbed into ε_ΔR^2mu4**, so `ε_ΔR^single` is NOT needed for pp (Step 4 is
+  run on pp only to validate the procedure on the FULL sample's statistics; see §3.4).
 
-with εᵢ = ε^nc(pTᵢ, q·ηᵢ), the single-muon mu4 efficiency of an isolated muon. The two
-assumptions this doc measures/tests: (i) the singles terms ε₁, ε₂ carry **no** ΔR dependence
-(Step 2 — critical for the PbPb union formula, whose linear terms cannot be absorbed into the
-cross term); (ii) the correlation is a function of ΔR alone (checked via kinematic binning).
+with εᵢ = ε^nc(pTᵢ, q·ηᵢ), the **data-derived** single-muon mu4 efficiency of an isolated muon
+(measured at ΔR > 0.8, i.e. already the ΔR>1 / plateau value, so the linear terms reduce to εᵢ
+at large ΔR as required). MC supplies only the ΔR **ratios** ε_ΔR^single and ε_ΔR^cross — the
+per-leg L1 over-efficiency cancels in each (§1, §4). The two assumptions this doc
+measures/tests: (i) ~~the singles terms ε₁, ε₂ carry **no** ΔR dependence~~ **VIOLATED (R4) and
+now CORRECTED**: the singles ARE ΔR-dependent, so the union's linear terms are dressed by
+`ε_ΔR^single(ΔR)` (Step 4) rather than assumed flat; (ii) the correlation is a function of ΔR
+alone (checked via kinematic binning).
+
+**Decision note (2026-07-28, user — resolves Remaining Work 1).** The RW-1 union-weight
+question is settled in favour of the "ΔR-dependent ratio correction on the linear terms" option:
+`ε_ΔR^single(ΔR) = ε_single(ΔR)/ε_single(ΔR>1)`, measured by inverse weighting exactly as Step 3
+measures ε_ΔR^cross but at the single-leg level (§3.4). The union weight is reformulated as
+above; pp/2mu4 is unchanged.
 
 ### 3. Step-by-step method
 
@@ -272,6 +320,46 @@ is the MC-internal ΔR **ratio** (Steps 2–3).
 - **Application:** ε_ΔR multiplies ε₁ε₂ in the pp 2mu4 weight, and dresses the ε₁ε₂ cross
   term in the PbPb union weight (both data-derived ε's unchanged).
 
+#### §3.4 Single-leg ΔR correction via inverse weighting (Step 4 — the PbPb union linear-term deliverable)
+
+**Added 2026-07-28 (user), resolving Remaining Work 1 / the §2 assumption-(i) violation (R4).**
+Step 2 (§3.2) / R4 established that the single-muon efficiency itself depends on ΔR (saturation
+at small ΔR: ε(ΔR<0.12)/ε(ΔR>1) ≈ 1.20 pp / 1.34 overlay, up to ~1.9–2.1 forward). The **pp
+2mu4 product absorbs this into ε_ΔR^2mu4, but the PbPb union linear terms do not** — they need
+their own ΔR correction. Step 4 measures it as a continuous, kinematics-divided-out curve.
+
+- **What it measures:** `ε_single(ΔR)` = P(a muon fires the full mu4 chain | it is a leg of an
+  offline reco pair at separation ΔR), with the leg's (pT, q·η) kinematic dependence divided
+  out; plateau-normalized → `ε_ΔR^single(ΔR) = ε_single(ΔR)/ε_single(ΔR>1)`. This dresses the
+  union's linear terms (§2).
+- **Method (inverse weighting — the leg-level analog of §3.3):**
+  - **Object:** each muon **leg** of every MC reco pair (role-swap: both legs of a pair are
+    probes; SS + OS trees summed — the trigger response is a per-muon detector property, blind to
+    the pair charge product), binned by the **pair ΔR** (fine bins, as Step 3).
+  - **Denominator:** all selected legs, unit weight × MC event weight. **NO trigger requirement
+    on the leg or on its partner** — the partner only defines ΔR (§4; identical to §3.2).
+  - **Numerator:** legs whose **own** per-muon mu4 match fires (never the event-level chain,
+    never the partner's decision), each weighted `1/ε_MC(pTleg, q·ηleg)` with ε_MC the **MC-derived**
+    §3.1 fit, TF1-Eval'd continuously (clamp to fit range, floor, cap — as §3.3).
+  - **Ratio vs ΔR = ε_single(ΔR)**; plateau-normalize over ΔR∈[1,4] → ε_ΔR^single(ΔR).
+- **Why MC ε in the weights / plateau = 1 by construction:** same self-consistency as §3.3. If
+  the single efficiency had no ΔR dependence (ε_single(ΔR)=ε_MC(pT,q·η)), then in each ΔR bin
+  Σ_num 1/ε_MC ≈ Σ_den ε_MC/ε_MC = N → ratio = 1 at every ΔR. A large-ΔR plateau ≠ 1 is a fit-quality
+  offset, normalized away; the physical content is the small-ΔR rise (R4's saturation, continuous).
+- **Why inverse weighting and not R4's raw ΔR-binned ε:** small-ΔR pairs are kinematically
+  special (boosted, higher pair pT → different (pT, η) mix than isolated muons); weighting by
+  1/ε_MC(pT,q·η) divides out that kinematic shift, leaving pure ΔR — the continuous version of
+  R4's coarse (pT, q·η) table, and the §3.2 "kinematic binning is essential" concern handled
+  exactly.
+- **Numerator = the full mu4 chain** (what the union weight uses). No inverse-weighted L1/HLT
+  split here (it would need L1-only ε fits, which do not exist); Step 2's L1/HLT split (round-5
+  #3) already shows the L1-RoI-merging mechanism qualitatively.
+- **Diagnostics (mirror §3.3):** large-ΔR plateau (must flatten; offset from 1 sizes the
+  normalization systematic), and the plateau's stability across (pair pT, pair η) cells.
+- **Sample scope:** the deliverable is the **overlay** (PbPb, union). **pp is run only to
+  VALIDATE the machinery on the FULL-sample statistics** (full HIJING-overlay stats not yet
+  available); Step 4 results are physically NOT needed for pp (2mu4 product — see §2). Both WPs.
+
 ### 4. Negative constraints
 
 - **NO trigger requirement on any denominator** (the whole point of the MC sample; D9 lesson).
@@ -279,6 +367,10 @@ is the MC-internal ΔR **ratio** (Steps 2–3).
 - **Do NOT replace the data-derived ε^nc in the analysis with ε_MC.** MC contributes the ΔR
   correlation ratio only; §3.1 is validation.
 - **Do NOT weight §3.3 numerators with data-derived ε^nc** (breaks the plateau=1 diagnostic).
+- **Step 4 (§3.4):** the per-leg numerator uses that leg's OWN mu4 match, never the event-level
+  or partner decision; NO trigger requirement on the partner (it only defines ΔR). Weight with
+  MC-derived ε_MC (same reason as §3.3). **Do NOT apply ε_ΔR^single to the pp 2mu4 weight** —
+  it would double-count the single-leg ΔR effect already inside ε_ΔR^2mu4.
 - **Do NOT read raw NTUPs standalone** — consume/extend ntuple-processing output per the
   provenance rule (new trigger branches → propagate via a processing mode/flag, distinct
   output suffix).
@@ -434,6 +526,17 @@ centrality (D2).
 8. [x] **Bookkeeping:** roadmap Q4 row updated (measured; preconditions for application
    listed); INDEX scope updated; branch `mc-trigger-efficiency` left UNMERGED for user
    review (user requested a dedicated branch).
+
+### Round 6 (2026-07-28) — Step 4: single-leg ΔR correction ε_ΔR^single (§3.4)
+
+9.  [x] **§2 reformulation + §3.4** written (Physics Procedure): union linear terms dressed by
+    ε_ΔR^single; pp unchanged; Step-4 method = leg-level inverse weighting.
+10. [x] **`do_step4` mode in `FillMCTrigEffHists.cxx`** — done; /review-analysis-code PASS iter 1.
+11. [x] **Step-4 rendering block in `plot_mc_trig_eff.cxx`** → new `step4_dr_correction_singles/`
+    dir; /review-plot PASS iter 1.
+12. [x] **Run** step4 + plot for overlay + pp_full × {Tight, Medium} — done. pp plateau 0.993≈1
+    (machinery valid); overlay small-ΔR rise reproduces R4 (1.20/1.34). Both reviews PASS. **Step 4
+    NOT needed for pp (validation only).** Commit pending in this step.
 
 ## Progress Log
 
@@ -1035,6 +1138,53 @@ centrality (D2).
   - **#2:** 11 q·η bins (both new forward bins) in all fits/panels, all samples.
   **Remaining: /review-plot on all 3 samples → commit → done.**
 
+- 2026-07-28 (round 6) — **Step 4 (§3.4): single-leg ΔR correction ε_ΔR^single — CODE + FILLS DONE;
+  /review-analysis-code PASS iter 1.** Resolves Remaining Work 1 (§2 union reformulated to
+  `ε_ΔR^single·(ε₁+ε₂) − ε₁ε₂·ε_ΔR^cross`).
+  - **Code:** `do_step4` mode in `FillMCTrigEffHists.cxx` (4th param, mutually exclusive with
+    do_step3; leg-level inverse weighting — denom = all selected legs [MC weight]; num = leg's OWN
+    `lg_passmu4` weighted `weight/ε_MC(pT,q·η)`; role-swap + SS/OS summed; writes a separate
+    `..._step4.root` with `h_mc_single_dr_{zoom,full}[_vs_pt_eta]_{num,denom}`). Step-4 rendering
+    block in `plot_mc_trig_eff.cxx` → new `step4_dr_correction_singles/` dir (ε_single(ΔR) zoom+full
+    with plateau line + pair-pT slices + pair-η panels + plateau/fluctuation tables). Both ACLiC clean.
+  - **/review-analysis-code PASS iter 1** (2 INFO, both applied; log
+    `review-analysis-code-20260728-150308-mc-trig-eff-step4-singles.md`): exact single-leg analog of
+    step3, single ε factor (not ε₁ε₂), no trigger req on denom/partner, MC-derived ε in weights,
+    provenance clean; overlay numbers verified <0.1%.
+  - **Fills (both WPs; inputs = round-5 §3.1 fits + pair trees, NO re-skim/NTP/fit):**
+    | ε_single plateau (ΔR∈[1,4]) | small-ΔR rise ε(<0.05)/(0.05,0.1) |
+    |---|---|
+    | **pp_full T 0.9930 / M 0.9942** | 1.282 / 1.213 (T) |
+    | **overlay T 0.9513 / M 0.9435** | 1.359 / 1.165 (T) |
+    **VALIDATION (§3.4): pp FULL-sample plateau = 0.993 ≈ 1** — the inverse-weighting is
+    self-consistent (plateau=1 by construction with good fits + high stats); the overlay's 0.951 is
+    the test-sample fit-quality offset (plateau-normalized away downstream, like ε_ΔR^cross). Small-ΔR
+    rise: pp plateau-normalized ≈ 1.29 first bin, ~1.2 over [0,0.12] = **R4's pp 1.20**; overlay ≈ 1.43
+    first bin, ~1.29 over [0,0.12] = **R4's overlay 1.34** ⇒ the continuous inverse-weighted curve
+    reproduces R4's coarse saturation. WP-consistent (like ε_ΔR^cross). **pp is validation only — NOT
+    applied to pp 2mu4 (§2).** Remaining: plots verify + /review-plot → commit.
+
+- 2026-07-28 (round 6) — **Step 4 PLOTS DONE + /review-plot PASS iter 1 → ROUND 6 COMPLETE.**
+  New `step4_dr_correction_singles/` plot dir (Tight root + `medium/` subdir) for overlay
+  (`pbpb_trigger_efficiency/mc_based/`) + pp_full (`pp_trigger_efficiency/mc_based/`); 5 PNGs + 2
+  tables × 4 dirs. step1/2/3 dirs byte-untouched (verified mtimes). Plot plateaus (1D deliverable):
+  overlay **0.9508±0.0162 (T) / 0.9433±0.0153 (M)**; pp_full **0.9930±0.0008 (T) / 0.9942±0.0007 (M)**.
+  - **pp_full per-cell plateau table = the validation:** every (pair-pT,pair-η) cell 0.94–1.01 (most
+    0.98–1.00, tightest at low pT / central η; a few low-stat forward/high-pT corners 0.94±0.06–0.12,
+    all within ~1σ of 1) ⇒ inverse-weighting is **kinematics-independent, plateau=1 everywhere, no
+    per-cell bug**. Overlay per-cell table + pair-η panels are noisy (test sample, 36 cells, 0–5% only)
+    — honest low-stat scatter with error bars + off-scale arrows, NOT a bug; the robust deliverable is
+    the 1D plateau. Full overlay production (RW7) will populate the cells.
+  - pp plots annotated red "VALIDATION only -- NOT applied to pp 2mu4"; overlay gray "dresses the
+    union linear terms (ε₁+ε₂)". (pp note was shortened after an initial right-edge clip; re-verified.)
+  - **/review-analysis-code PASS iter 1** (2 INFO applied) + **/review-plot PASS iter 1** (1 INFO, no
+    fix; all plateau/small-ΔR numbers verified MATCH, C1/C2/C3 clean). Logs:
+    `review-analysis-code-20260728-150308-mc-trig-eff-step4-singles.md`,
+    `review-plot-20260728-152100-mc-trig-step4-singles-plots.md`.
+  - **Remaining Work 1 (§2 union-weight decision) RESOLVED:** union reformulated
+    `P = ε_ΔR^single(ΔR)·(ε₁+ε₂) − ε₁ε₂·ε_ΔR^cross(ΔR)`; ε_ΔR^single delivered (plateau-normalize like
+    ε_ΔR^cross before wiring into crossx — RW6 unchanged). pp/2mu4 untouched. Next: commit.
+
 ## Results & Observations
 
 ### R1. NTP discovery (2026-07-10, Explore agent + orchestrator check)
@@ -1416,11 +1566,14 @@ expected sign and size. Data references now carry the one-sided cut (pp24 + pbpb
 ## Remaining Work
 
 **Blocking / needs user decision:**
-1. **The §2 assumption-(i) violation (R4)** — decide how the PbPb **union** weight handles the
-   ΔR-dependent singles efficiency (proposed: a ΔR-dependent ratio correction
-   ε_single(ΔR)/ε_single(ΔR>1) on the linear terms; alternative: reformulate the union weight).
-   The Physics Procedure §2 is deliberately NOT edited pending that decision. **pp/2mu4 is
-   unaffected and can proceed.**
+1. ~~The §2 assumption-(i) violation (R4)~~ **RESOLVED 2026-07-28 (round 6, user).** The PbPb union
+   weight now dresses its linear terms with a ΔR-dependent ratio correction
+   `ε_ΔR^single(ΔR)=ε_single(ΔR)/ε_single(ΔR>1)`, measured by leg-level inverse weighting
+   (**Step 4 / §3.4**). §2 reformulated to `P = ε_ΔR^single·(ε₁+ε₂) − ε₁ε₂·ε_ΔR^cross`. Delivered for
+   overlay (T 0.951 / M 0.943 plateau, small-ΔR rise → R4's 1.34); pp_full ran as validation (plateau
+   0.993 ≈ 1, per-cell 0.94–1.01 ⇒ machinery self-consistent) and is **NOT applied to pp** (2mu4
+   product absorbs it). Like ε_ΔR^cross, **plateau-normalize ε_ΔR^single before wiring into the PbPb
+   crossx union weight (RW 6)** — that application step is the remaining downstream work.
 2. ~~Merge held~~ — **DONE 2026-07-14, merge commit `8edc4fb`** (46 commits, no conflicts).
    The gate cleared when the sibling session committed its `isTestSample` refactor, which ties
    the fullsim input dir to its isospin treatment in ONE switch and thereby fixes the latent
@@ -1462,10 +1615,25 @@ expected sign and size. Data references now carry the one-sided cut (pp24 + pbpb
    before quoting the Step-1 MC/data ratio as a number in the note (R5).
 6. **Plateau-normalize ε_ΔR** before it is applied to crossx (unchanged precondition);
    current values = **R9** (round 3, Tight): pp 0.9569 ± 0.0094, overlay 0.8429 ± 0.0232.
+   **Applies equally to the round-6 ε_ΔR^single** (overlay plateau 0.951 T / 0.943 M) — divide by the
+   large-ΔR plateau so ε_ΔR^single(ΔR>1)=1 before it dresses the PbPb union linear terms (§2).
 7. Re-run downstream when the full-stat productions arrive (all-centrality PbPb24-conditions
    overlay; lifts D2). **D3 is now LIFTED** — all 24 pp slices are in.
 
 ## Latest Stage
+
+**2026-07-28 (round 6) — COMPLETE. Step 4: single-leg ΔR correction ε_ΔR^single (§3.4) delivered;
+Remaining Work 1 RESOLVED; both reviews PASS.** §2 union reformulated
+(`P = ε_ΔR^single(ΔR)·(ε₁+ε₂) − ε₁ε₂·ε_ΔR^cross(ΔR)`); §3.4 = leg-level inverse weighting
+(num = leg's own mu4 match ÷ ε_MC, denom = all legs, role-swap + SS/OS). `do_step4` in
+FillMCTrigEffHists + Step-4 block in plot_mc_trig_eff → new `step4_dr_correction_singles/` dir
+(step1/2/3 untouched), both WPs. **Deliverable (overlay/PbPb): plateau 0.951 T / 0.943 M, small-ΔR
+rise → R4's 1.34. Validation (pp_full, full stats, NOT applied to pp): plateau 0.993 ≈ 1, per-cell
+0.94–1.01 ⇒ inverse-weighting self-consistent.** /review-analysis-code PASS iter 1 + /review-plot
+PASS iter 1 (all numbers MATCH, C1/C2/C3 clean). **Downstream remaining (RW6): plateau-normalize
+ε_ΔR^single, then wire it into the PbPb crossx union weight** (application step, separate task).
+
+---
 
 **2026-07-22 (round 5) — COMPLETE. All 4 user changes delivered + validated + committed; both
 reviews PASS.** #1 truth-seed revert (overlay HIJING excluded 99763→95389; pp no-op), #2 q·η
