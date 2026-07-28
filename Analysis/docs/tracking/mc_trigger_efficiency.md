@@ -1563,6 +1563,51 @@ expected sign and size. Data references now carry the one-sided cut (pp24 + pbpb
 + Medium refills rerun); 48 PNGs regenerated — **Tight in the step dirs, Medium in
 `step*/medium/` subdirs** (same filenames).
 
+### R11. Run 2 precedent: how the two reference analyses derive ε_trig (2026-07-28, literature)
+
+Answers the question "data-driven, MC, or MC-corrected-to-data?" for the two Run 2 analyses
+ours descends from. **They differ, and neither reweights MC events.**
+
+**(a) HF-muon R_AA (ANA-HION-2019-58-INT1 §4.5) — MC central value × data scale factor.**
+- pp (Eqs. 15–16): `ε_trig^pp(pT,η) = ε_mu4^MC(pT,η) · SF_trig^pp(pT,η)`, with
+  `SF = ε_mu4^pp,data / ε_mu4^MC`. Central value from **Υ(nS)→μμ Pythia8 simulation**, binned
+  finely in (pT, q·η) to capture kinematic structure (Fig. 26); SF from **J/ψ→μμ tag-and-probe
+  in pp data**, binned **coarsely** (detector geometry) to damp the statistical fluctuations of
+  the data measurement (Figs. 27, 38). This split (fine MC shape, coarse data normalization) is
+  the stated *reason* for the hybrid.
+- Pb+Pb (Eqs. 17–18): `ε_trig^PbPb = ε_mu4^MC · SF_trig^pp · A_trig(pT,η,ΣE_T^FCal,year)`, with
+  the extra term **purely data-driven**, `A_trig = ε_mu4^PbPb,data / ε_mu4^pp,data` (same J/ψ T&P),
+  Fermi-fitted to smooth bin-to-bin fluctuations; its 68% CI is the systematic. The note's
+  explicit reason for not getting the PbPb SF from MC: *"As trigger simulation is not available
+  in data overlay, the trigger efficiency scale factor in Pb+Pb cannot be determined by comparing
+  Pb+Pb data and data overlay"* (§4.5.2, l. 519–520).
+- Systematics (§5.1.2) are assigned to the **SF** (signal/background fit model, ΔR(HLT,offline)
+  0.01→0.02, tag quality Medium→Tight, overlap removal) and to the A_trig fit — not to ε_MC itself.
+- Note the inversion vs their reco eff, which is **data-driven** (MCP 13 TeV T&P map applied
+  directly, §4.6.1 Fig. 30; PbPb ID eff from PbPb J/ψ T&P, Eq. 20).
+
+**(b) Back-to-back dimuon (ATL-COM-PHYS-2021-1094 `Corrections.tex`; identical to HION-2020-10
+§3.2.1) — 100% data-driven, no MC anywhere in ε_trig.**
+- ε_mu4 from the **MinBias stream**: fraction of offline muons with an HLT muon (RoI) within
+  ΔR<0.1, vs (pT, q·η); Fermi+linear fit for pT>8 GeV, raw data-point interpolation below.
+- ε_mu4noL1 and ε_(mu4∩mu4noL1) from the **HardProbes single-muon stream** by tag-and-probe on the
+  second muon of a pair whose first muon fired mu4/mu6/mu8.
+- Centrality dependence as a multiplicative data-measured `CentDep(pT, centrality)` factor.
+- The factorization `ε(2mu4)=ε_mu4(a)·ε_mu4(b)` is validated **in data** (HP-stream ε_mu4 vs
+  MinBias ε_mu4, Fig. `can_eff1D_Mu4_RefAll`), not against MC. MC (STARlight+HIJING overlay)
+  enters only the **reco** efficiency, plus MCP scale factors.
+- (The v_n note HION-2019-11 has no efficiency section at all — the EP flow observable is
+  self-normalizing.)
+
+**Bearing on this doc.** Our design (§1–§2) — data-derived ε^nc, MC used only for the ΔR
+**ratios** — is a third pattern, and is the conservative one: it never imports an MC absolute
+normalization, so the known per-leg MC L1 over-efficiency (≈1.13, barrel-only ~1.2 per R3)
+cancels. The HF-muon precedent shows the alternative (MC absolute value dressed by a coarse
+data/MC SF) is an accepted ATLAS practice if we ever want MC's fine (pT,q·η) granularity; the
+dimuon precedent shows a fully data-driven ε_trig is also accepted. **Neither analysis reweights
+MC events to force MC/data efficiency agreement** — the correction is always a multiplicative
+factor on the efficiency map applied to *data* yields.
+
 ## Remaining Work
 
 **Blocking / needs user decision:**
