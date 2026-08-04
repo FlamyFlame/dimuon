@@ -1041,11 +1041,36 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             gSystem->mkdir(dirs.c_str(), kTRUE);
 
             struct Var { std::string key, tex; Color_t col; Style_t mk; };
-            const std::vector<Var> vars = {
+            std::vector<Var> vars = {
                 {"orig", "original MC (round-7 selection)",       kBlack,     20},
                 {"vtx",  "+ 1 reconstructed vertex",              kBlue + 1,  21},
                 {"ptm",  "+ |#Deltap_{T}|/p_{T}^{truth} < thr",   kGreen + 2, 22},
                 {"both", "+ both",                                kRed + 1,   23}};
+
+            // A variant with an EMPTY denominator is not a measurement of zero -- it means the
+            // requirement selected nothing in this sample. Drop those series and say so on the
+            // canvas instead of drawing empty graphs. (Note the DIFFERENT, benign case: in the
+            // HIJING overlay every event has exactly one track-bearing vertex, so the `vtx`
+            // variant is identical to `orig` rather than empty -- a no-op, not a failure.)
+            std::vector<std::string> dropped;
+            {
+                std::vector<Var> keep;
+                for (const auto& v : vars) {
+                    double d = 0;
+                    for (const auto& chg : kCharges)
+                        d += GetObj<TH1D>(fsan, "h_sanity_pt_denom_" + chg + "_" + v.key)->Integral();
+                    if (d > 0) keep.push_back(v);
+                    else { dropped.push_back(v.key);
+                           std::cout << "  [sanity] variant '" << v.key
+                                     << "' has an EMPTY denominator -> requirement inapplicable "
+                                        "to this sample; series dropped\n"; }
+                }
+                vars = keep;
+            }
+            const std::string drop_note = dropped.empty() ? std::string()
+                : ("inapplicable to this sample (empty): " +
+                   [&]{ std::string s; for (size_t i = 0; i < dropped.size(); ++i)
+                        s += (i ? ", " : "") + dropped[i]; return s; }());
 
             auto eff_of = [&](const std::string& base, const std::string& chg,
                               const std::string& v) -> TGraphAsymmErrors* {
@@ -1094,6 +1119,11 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                     }
                 }
                 DrawHeadline(headline + "  --  Step-1 sanity check");
+                if (!drop_note.empty()) {
+                    c.cd(0);
+                    TLatex nt; nt.SetNDC(); nt.SetTextFont(42); nt.SetTextSize(0.022);
+                    nt.SetTextColor(kGray + 3); nt.DrawLatex(0.06, 0.015, drop_note.c_str());
+                }
                 SaveCanvas(c, dirs + "sanity_eff_" + O.base + ".png");
             }
 
@@ -1132,6 +1162,11 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                     }
                 }
                 DrawHeadline(headline + "  --  Step-1 sanity, " + kChargeTex[ic]);
+                if (!drop_note.empty()) {
+                    c.cd(0);
+                    TLatex nt; nt.SetNDC(); nt.SetTextFont(42); nt.SetTextSize(0.014);
+                    nt.SetTextColor(kGray + 3); nt.DrawLatex(0.04, 0.008, drop_note.c_str());
+                }
                 SaveCanvas(c, dirs + "sanity_eff_pt_in_q_eta_bins_" + kCharges[ic] + ".png");
             }
 
@@ -1140,6 +1175,11 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 std::ofstream os(dirs + "sanity_pass_fractions.txt");
                 os << "# Step-1 sanity check (mc_trigger_efficiency.md §3.5)\n";
                 os << "# sample=" << sample << "  WP=" << wp_text << "  " << cfg.sample_text << "\n";
+                if (!drop_note.empty())
+                    os << "# NOTE: " << drop_note
+                       << "  (an empty denominator means the requirement cannot be applied to this\n"
+                          "#       sample -- e.g. the HIJING overlay reconstructs no track-bearing\n"
+                          "#       primary vertex at all -- NOT that the efficiency is zero)\n";
                 os << "# Fraction of the round-7-selected MC muons passing each extra requirement\n";
                 os << "# (weighted by the MC event weight, and raw), plus the integrated eps(mu4).\n\n";
                 const double wall = GetObj<TH1D>(fsan, "h_sanity_count_orig")->Integral();

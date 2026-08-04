@@ -55,9 +55,12 @@ struct MuonFullsimExtra {
     // mc_trigger_efficiency.md §3.5 sanity check): count of `vtx_ntrk >= 2` entries in the
     // skim's PrimaryVertices dump. The skim stores the container unfiltered, so it always
     // ALSO contains exactly one dummy beamspot vertex with ntrk = 0, which is NOT counted.
-    // n_vtx == 1 selects pile-up-free events (pp24 fullsim: ~14.5% of events; the HIJING
-    // overlay reconstructs NO track-based vertex at all, so n_vtx == 0 there and the
-    // requirement is inapplicable). Filled only in store_mc_trigger mode; -1 otherwise.
+    // n_vtx == 1 selects pile-up-free events. Measured on the raw NTUPs: pp24 fullsim has
+    // genuine pile-up -- N(track-bearing vtx) = 1:5.0%, 2:14.7%, 3:21.8%, 4:22.7%, 5:17.1%,
+    // 6:10.3%, 7:5.2%, 8:2.1% -- while the HIJING overlay (and r17663) have exactly ONE
+    // track-bearing vertex in 100% of events, so the requirement is automatically satisfied
+    // there (a no-op, for the correct physical reason: the overlay has no pile-up).
+    // Filled only in store_mc_trigger mode; -1 otherwise.
     int n_vtx{-1};
 };
 

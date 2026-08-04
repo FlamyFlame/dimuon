@@ -467,9 +467,13 @@ muons that the d0/z0 cuts did not remove.
   **`pT > 7 GeV || q·η > −2`** (i.e. rejecting only muons that are *simultaneously* low-pT and
   forward-negative; both legs of a pair must satisfy it). If instead the plateau develops a
   data-like turn-on, the anomaly is an artefact of those muons and no selection change is needed.
-- **Sample scope.** pp24 (the sample where MC ≫ data) is the decisive test. Requirement 1 is
-  **inapplicable to the HIJING overlay**: its reconstruction produces no track-based primary
-  vertex at all (`n_vtx == 0` in every event), so only requirement 2 is meaningful there.
+- **Sample scope.** pp24 (the sample where MC ≫ data) is the decisive test — it is the only one
+  of the three that has pile-up. Measured N(track-bearing vertices) per event:
+  **pp24 fullsim** 1:5.0%, 2:14.7%, 3:21.8%, 4:22.7%, 5:17.1%, 6:10.3%, 7:5.2%, 8:2.1% (mean ≈ 4);
+  **HIJING overlay r17618 and r17663** exactly ONE in 100% of events. So requirement 1 costs pp
+  95% of its statistics (13.6 M → ~0.7 M muons, still ample) and is a **no-op** on the overlay —
+  automatically satisfied, for the correct physical reason (no pile-up), not for lack of
+  information. Only requirement 2 discriminates on the overlay.
 
 ### 4. Negative constraints
 

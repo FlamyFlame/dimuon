@@ -804,7 +804,7 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
         const double w_all = frac("orig", "h_sanity_count_"), n_all = frac("orig", "h_sanity_rawcount_");
         std::cout << "\n===== Step-1 SANITY CHECK pass fractions, sample=" << cfg.label
                   << " (WP=" << (use_tight_wp ? "tight" : "medium") << ") =====" << std::endl;
-        std::cout << "  requirement                          weighted%%    raw%%      raw N" << std::endl;
+        std::cout << "  requirement                          weighted%    raw%      raw N" << std::endl;
         for (const char* v : {"orig", "vtx", "ptm", "both"}) {
             const double wv = frac(v, "h_sanity_count_"), nv = frac(v, "h_sanity_rawcount_");
             std::cout << "  " << std::setw(34) << std::left
