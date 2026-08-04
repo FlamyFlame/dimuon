@@ -1923,6 +1923,74 @@ NTuple-processing re-run was needed** for it.
 
 ## Latest Stage
 
+**2026-08-03 (round 7) — PAUSED mid-round at user request (tmux restart). RESUME HERE.**
+Commits `f990173`..`b3b2a99` on master; working tree clean at the pause.
+
+**DONE (committed):**
+1. **Truth fiducial default** (§3.0c'), full product set regenerated — contract item 1. ✅
+2. **ΔR-correction error bars fixed** (R12) — contract item 4 answered. ✅
+3. **§3.5 sanity check** — `n_vtx` NTP propagation (both NTP passes re-run, entry counts
+   identical: pp 19 563 129, overlay 95 389), `do_sanity` fill mode + plot block, run for
+   pp_full / overlay / noovl × both WPs. **VERDICT: the forward anomaly is REAL** — see R14
+   below. Contract item 2 ✅ except the sanity PNGs, which are not yet rendered (the plot macro
+   was locked by the parallel fit task).
+4. **Forward low-pT veto** `pT > 7 || q·η > −2` applied to Steps 2/3/4 and all fills re-run —
+   contract item 3. ✅ (plots not yet re-rendered)
+5. **`docs/systematic_uncertainties.md`** created — contract item 7. ✅
+6. **MC-closure test written as Remaining Work 8**, NOT executed — contract item 8. ✅
+7. **ΔR-correction fit stage delivered** (delegated): plateau ROOT file written by the measuring
+   step, guard, fits, plots, driver — contract item 6. Files committed EXCEPT the
+   `plot_mc_trig_eff.cxx` hunks (see below).
+
+**REMAINING — pick up in this order:**
+- **(a) MERGE `plot_mc_trig_eff.cxx`.** The fit task's version is staged at
+  `/tmp/plot_mc_trig_eff_FROM_T5.cxx`; its six hunks (which write
+  `<mc_dir>/dr_correction_plateaus_<label>[_medium_wp].root` from the Step-3/Step-4 blocks) are
+  listed verbatim in `docs/tracking/_sub_drfit_1.md`. They must be merged into the committed
+  version, which additionally carries the Step-1 sanity block. **Do not overwrite; do not
+  `git merge` the worktree branch — its base commit is stale.**
+- **(b) Re-render all plots** (`pipelines/run_mc_trigeff_round7.sh`, plot stage) so the sanity
+  PNGs and the post-veto Step-2/3/4 PNGs exist, then re-run
+  `pipelines/run_dr_correction_fits.sh` on the post-veto inputs.
+- **(c) ⚠ USER DECISION — the full-sample plateau guard FAILS.** `|plateau − 1| > 0.1` in three
+  pp_full cells, all in the top pair-pT bin (50–150 GeV): Step 3 η_pair[1.0,1.5) = 0.8597 ±
+  0.0346 (worst) and η_pair[2.0,2.4) = 1.1082 ± 0.0119; Step 4 η_pair[0.5,1.0) = 0.8954 ±
+  0.0091. The guard behaves exactly as specified (throws); what to DO about those cells is a
+  physics decision. Note these values predate the veto refill and must be re-measured first.
+- **(d) The corrected-MC study (contract item 5) was still running when the session paused** —
+  agent worktree `.claude/worktrees/agent-a3b219f0e24ce140d`, scratch doc
+  `Analysis/docs/tracking/_sub_corrmc_1.md` inside it. Recover its findings from that scratch
+  doc before re-launching; do not assume it finished.
+- **(e)** Then `/review-analysis-code` + `/review-plot`, `/wrap-up`, final summary.
+
+### R14. Sanity-check VERDICT: the forward MC anomaly is REAL (2026-08-03, round 7)
+
+pp24 FULL, Tight, μ⁺+μ⁻ summed, ε(mu4) per variant (`orig` = round-7 selection,
+`vtx` = +1 reconstructed vertex, `ptm` = +|ΔpT|/pT^truth < 0.10, `both` = +both):
+
+| q·η bin | pT 4–4.5 | 4.5–5 | 5–6 | 6–8 | 8–15 | 15–60 |
+|---|---|---|---|---|---|---|
+| (−2.4,−2.2) orig → both | 0.9013 → 0.9021 | 0.9095 → 0.9108 | 0.876 → 0.871 | 0.865 → 0.859 | 0.909 → 0.908 | 0.922 → 0.917 |
+| (−2.2,−2.0) orig → both | 0.8971 → 0.8993 | 0.9113 → 0.9078 | 0.902 → 0.900 | 0.916 → 0.917 | 0.949 → 0.950 | 0.951 → 0.953 |
+| (−2.0,−1.6) orig → both | 0.9011 → 0.9020 | 0.9264 → 0.9269 | 0.942 → 0.941 | 0.958 → 0.958 | 0.967 → 0.969 | 0.966 → 0.969 |
+| **(+2.0,+2.2)** orig → both | **0.2610 → 0.2694** | 0.4818 → 0.4945 | 0.722 → 0.733 | 0.864 → 0.877 | 0.930 → 0.930 | 0.948 → 0.940 |
+
+**Both split forward-negative bins are flat at ≈0.90 from the very first pT bin — no turn-on at
+all — and neither extra requirement moves them by more than 0.006** (data in the same region
+rises 0.45 → 0.92). The **mirror bin (+2.0,+2.2) in the same events shows a textbook turn-on
+0.26 → 0.95**, which rules out any global reconstruction or selection artefact. ⇒ Neither
+pile-up muons nor badly measured muons explain it; the anomaly is a genuine property of the
+r16578 trigger configuration (consistent with R8/R10) ⇒ the §3.5 decision rule fires and the
+forward low-pT veto is applied to Steps 2–4.
+
+Pass fractions (pp24 FULL, Tight): `n_vtx == 1` keeps **5.65%** weighted (758 883 raw muons —
+ample); `|ΔpT|/pT^truth < 0.10` keeps **99.82%**; both **5.64%**. Integrated ε moves only
+0.7759 → 0.7737 (μ⁺). Overlay and noovl: the vertex requirement is a **no-op** (they have
+exactly one track-bearing vertex in 100% of events — no pile-up) and the pT match keeps 99.8%,
+changing ε by 0.0002.
+
+---
+
 **2026-07-28 (round 6) — COMPLETE. Step 4: single-leg ΔR correction ε_ΔR^single (§3.4) delivered;
 Remaining Work 1 RESOLVED; both reviews PASS.** §2 union reformulated
 (`P = ε_ΔR^single(ΔR)·(ε₁+ε₂) − ε₁ε₂·ε_ΔR^cross(ΔR)`); §3.4 = leg-level inverse weighting
