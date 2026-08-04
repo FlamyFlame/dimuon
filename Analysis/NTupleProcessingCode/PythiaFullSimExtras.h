@@ -43,6 +43,13 @@ protected:
     Bool_t               b_HLT_mu4  {};                   // event-level decisions (diagnostics)
     Bool_t               b_HLT_2mu4 {};
 
+    // Reconstructed primary vertices (round 7, single-vertex sanity check). The skim dumps the
+    // whole PrimaryVertices container unfiltered, so it ALWAYS contains one dummy beamspot
+    // vertex with ntrk = 0 -- count only vtx_ntrk >= 2 (see Muon.h MuonFullsimExtra::n_vtx).
+    // Bound only in store_mc_trigger mode; a skim without the branch leaves n_vtx = -1.
+    std::vector<int>*    vtx_ntrk    = nullptr;
+    bool                 has_vtx_ntrk = false;
+
     // reco/ID efficiency SFs (skim tools; filled only for WP-passing muons, <=0 otherwise)
     std::vector<float>*  muon_eff_SF_medium    = nullptr;
     std::vector<float>*  muon_eff_SF_tight     = nullptr;

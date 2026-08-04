@@ -51,6 +51,14 @@ struct MuonFullsimExtra {
     // (counted in the NTP printout). Filled only in store_mc_trigger mode; default 1.
     float eff_sf_medium{1.f};
     float eff_sf_tight{1.f};
+    // Number of RECONSTRUCTED, TRACK-BEARING primary vertices in the event (round 7,
+    // mc_trigger_efficiency.md §3.5 sanity check): count of `vtx_ntrk >= 2` entries in the
+    // skim's PrimaryVertices dump. The skim stores the container unfiltered, so it always
+    // ALSO contains exactly one dummy beamspot vertex with ntrk = 0, which is NOT counted.
+    // n_vtx == 1 selects pile-up-free events (pp24 fullsim: ~14.5% of events; the HIJING
+    // overlay reconstructs NO track-based vertex at all, so n_vtx == 0 there and the
+    // requirement is inapplicable). Filled only in store_mc_trigger mode; -1 otherwise.
+    int n_vtx{-1};
 };
 
 struct MuonPythiaExtra {

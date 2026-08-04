@@ -89,6 +89,14 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::InitInputExtra(){
                                          "muon_eff_SF_{medium,tight} missing - unexpected skim content");
             enable_and_bind(ch, "muon_eff_SF_medium", &muon_eff_SF_medium);
             enable_and_bind(ch, "muon_eff_SF_tight" , &muon_eff_SF_tight);
+            // round-7 single-vertex sanity check: reconstructed primary vertices. Optional --
+            // absent only in a skim older than the vertex dump; then n_vtx stays -1 and the
+            // requirement is simply unavailable (never silently 0, which would look like
+            // "no pile-up" and pass a `n_vtx == 1`-style cut vacuously).
+            if (ch->GetBranch("vtx_ntrk")) {
+                enable_and_bind(ch, "vtx_ntrk", &vtx_ntrk);
+                has_vtx_ntrk = true;
+            }
             return true;
         };
 
@@ -261,6 +269,17 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::FillRecoQuantities(muon_t& m, i
         // pass_l1 is the L1 leg of the Step-2 L1/HLT split: eff(L1)=P[pass_l1|offline],
         // eff(HLT|L1)=P[passmu4|pass_l1]. Prescale-free. Absent -> false (warned in Init).
         m.pass_l1 = has_l1_match ? muon_match_L1MU3V->at(reco_ind) : false;
+
+        // round-7: number of reconstructed TRACK-BEARING primary vertices in this event.
+        // The skim dumps PrimaryVertices unfiltered, so exactly one dummy beamspot vertex
+        // (ntrk = 0) is always present and must NOT be counted -- hence the ntrk >= 2 gate.
+        // Event-level quantity, stored per muon so the RDF stage can cut on it directly.
+        // Branch absent -> stays -1 (never 0, which would fake a pile-up-free event).
+        if (has_vtx_ntrk) {
+            int nv = 0;
+            for (int ntrk : *vtx_ntrk) if (ntrk >= 2) ++nv;
+            m.n_vtx = nv;
+        }
 
         // reco/ID SFs: the skim fills them only for WP-passing muons (<=0 otherwise).
         // Unfilled -> 1 (neutral weight), counted for the fill-fraction report.
