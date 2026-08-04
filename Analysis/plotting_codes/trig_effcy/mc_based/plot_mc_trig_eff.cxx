@@ -5,9 +5,15 @@
 //                  P[2mu4 | mu4-tag, DeltaR>0.8] (the data eps^nc estimate), per charge.
 //   Step 2 (§3.2): DeltaR-binned MC singles efficiency (factorization cross-check),
 //                  3 DeltaR bins overlaid + Step-1 inclusive reference.
-//   Step 3 (§3.3): eps_dR(dR) = inverse-weighted num / unweighted denom (TH1::Divide with
-//                  error propagation -- weights > 1 make Bayes invalid, same convention as
-//                  the data cross-term), plateau = weighted mean over dR in [1,4].
+//   Step 3 (§3.3): eps_dR(dR) = inverse-weighted num / unweighted denom; plateau = weighted
+//                  mean over dR in [1,4].
+//   Step 4 (§3.4): eps_single(dR), the leg-level analog.
+//
+// ERROR BARS on the Step-3/Step-4 ratios (round 7): the numerator is a re-weighted SUBSET of
+// the denominator, so TH1::Divide's independent propagation over-states them by
+// sqrt((1+eps)/(1-eps)) = 1.5-3.2x. They now use the conditional (binomial-correct) form of
+// SetConditionalRatioErrors() below, fed by the errA/errB (+ Step-4 covP/covQ) histograms
+// booked in FillMCTrigEffHists.cxx. Central values are unchanged.
 //
 // One macro for both samples:
 //   plot_mc_trig_eff("pp")      : Pythia8 pp24 fullsim  vs pp24 data       -> eps_dR^2mu4
@@ -161,6 +167,54 @@ TH1* DrawRatioFrame(double xlo, double xhi, const std::string& xtitle,
     l->SetLineColor(kGray + 2);
     l->Draw("same");
     return fr;
+}
+
+// =============================================================================
+// CONDITIONAL (binomial-correct) ERROR ON AN INVERSE-WEIGHTED EFFICIENCY RATIO  (round 7)
+//
+// R(dR) = N/D with D = sum_all w  and  N = sum_fired w/eps  is an EFFICIENCY: the numerator
+// is a re-weighted SUBSET of the denominator. `TH1::Divide` without option "B" propagates
+//     e_R = R sqrt((e_N/N)^2 + (e_D/D)^2)
+// which assumes num and den are INDEPENDENT. They are not, and the resulting bars are too
+// long by ~sqrt((1+eps)/(1-eps)) -- 1.5x to 3.2x here, worst in the highest pair-pT bin where
+// eps is largest. Symptom: chi2/ndf of a constant fit over the plateau ~0.25 instead of ~1.
+//
+// Conditioning on the MC sample (D fixed; only the Bernoulli trigger decisions fluctuate),
+//     Var(N) = sum_i a_i^2 p_i (1-p_i) + 2 sum_pairs a_1 a_2 (p_12 - p_1 p_2),  a_i = w_i/eps_i
+// estimated from the histograms booked in FillMCTrigEffHists.cxx as
+//     Var = A - R*B  (+ covP - R^2*covQ  for Step 4, where both legs of a pair share a dR bin)
+//     e_R = sqrt(Var)/D
+// Unweighted limit (w=1, eps=1): A=B=N -> Var = N(1-R) -> e_R = sqrt(R(1-R)/D), as it must be.
+// covP/covQ are absent for Step 3 (one entry = one pair = one Bernoulli trial) -> pass nullptr.
+// =============================================================================
+void SetConditionalRatioErrors(TH1D* r, const TH1D* den, const TH1D* A, const TH1D* B,
+                               const TH1D* covP = nullptr, const TH1D* covQ = nullptr)
+{
+    for (int i = 1; i <= r->GetNbinsX(); ++i) {
+        const double D = den->GetBinContent(i);
+        if (D <= 0.) { r->SetBinError(i, 0.); continue; }
+        const double R  = r->GetBinContent(i);
+        const double a  = A->GetBinContent(i), b = B->GetBinContent(i);
+        const double cp = covP ? covP->GetBinContent(i) : 0.;
+        const double cq = covQ ? covQ->GetBinContent(i) : 0.;
+        double var = a - R * b + cp - R * R * cq;
+
+        // BOUNDARY CASE. When every effective entry in the bin fired (p_i -> 1) the conditional
+        // binomial variance genuinely vanishes -- the k=n binomial artefact -- and `var` comes
+        // out as 0, slightly negative, or a catastrophic cancellation of terms many orders of
+        // magnitude larger (seen in the near-empty high-pair-pT cells of the 10k-event overlay
+        // TEST sample: A=1.1e-06 vs var=1e-22). A ~0 error is NOT safe: the plateau weighted
+        // mean weights by 1/e^2, so such a bin would either be dropped (e=0) or completely
+        // dominate the mean (e=1e-7). Detect it by comparing var with the SCALE of the terms
+        // that built it, and fall back to the "1/n rule" (the 68% bound for k=n) with the
+        // effective denominator count n_eff = (D/e_D)^2, e_D = sqrt(sum w^2) from Sumw2.
+        const double scale = a + R * b + std::fabs(cp) + R * R * cq;
+        if (var > 1e-6 * scale) { r->SetBinError(i, std::sqrt(var) / D); continue; }
+
+        const double eD = den->GetBinError(i);
+        const double neff = (eD > 0.) ? (D / eD) * (D / eD) : 1.0;
+        r->SetBinError(i, (neff > 0.) ? R / neff : 0.);
+    }
 }
 
 // Point-by-point ratio of two efficiency graphs.
@@ -964,17 +1018,196 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
     }  // end round-5 #3 Step-2 stage loop (full_chain / L1 / HLT)
 
     // ================================================================
+    // Step-1 SANITY CHECK (§3.5, round 7): is the MC >> data forward single-muon efficiency
+    // caused by "bad" muons/events rather than by the simulation?
+    //   variant orig = the round-7 nominal selection
+    //           vtx  = + exactly ONE reconstructed track-bearing primary vertex (no pile-up)
+    //           ptm  = + |truth pT - reco pT| / truth pT < threshold (no badly measured muons)
+    //           both = + both
+    // The overlay is compared to the ORIGINAL MC, never to data: neither extra requirement has
+    // a data analogue (data has no truth, and the vertex requirement would change the event
+    // sample rather than the muon selection). Graceful skip if the _sanity.root is absent.
+    // ================================================================
+    {
+        const std::string sanity_path =
+            cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label + wp_suf + "_sanity.root";
+        TFile* fsan = TFile::Open(sanity_path.c_str(), "READ");
+        if (!fsan || fsan->IsZombie()) {
+            std::cout << "\n[Step-1 sanity] no " << sanity_path
+                      << " -- skipping (run FillMCTrigEffHists do_sanity=true first).\n";
+        } else {
+            std::cout << "\n===== Step-1 SANITY CHECK (" << sample << ", " << wp_text << ") =====\n";
+            const std::string dirs = cfg.out_base + "step1_sanity_check/" + wp_dir;
+            gSystem->mkdir(dirs.c_str(), kTRUE);
+
+            struct Var { std::string key, tex; Color_t col; Style_t mk; };
+            const std::vector<Var> vars = {
+                {"orig", "original MC (round-7 selection)",       kBlack,     20},
+                {"vtx",  "+ 1 reconstructed vertex",              kBlue + 1,  21},
+                {"ptm",  "+ |#Deltap_{T}|/p_{T}^{truth} < thr",   kGreen + 2, 22},
+                {"both", "+ both",                                kRed + 1,   23}};
+
+            auto eff_of = [&](const std::string& base, const std::string& chg,
+                              const std::string& v) -> TGraphAsymmErrors* {
+                TH1D* n = GetObj<TH1D>(fsan, "h_sanity_" + base + "_num_"   + chg + "_" + v);
+                TH1D* d = GetObj<TH1D>(fsan, "h_sanity_" + base + "_denom_" + chg + "_" + v);
+                return BayesEff(n, d);
+            };
+
+            // ---- (a) eff vs pT and vs q.eta, one pad per charge, ratio pad vs `orig` ----
+            struct Obs { std::string base, xt; double xlo, xhi; bool logx; };
+            const std::vector<Obs> obs = {{"pt", "p_{T} [GeV]", 4.0, 60.0, true},
+                                          {"q_eta", "q#eta", -2.4, 2.4, false}};
+            for (const auto& O : obs) {
+                TCanvas c(("c_sanity_" + O.base).c_str(), "", 1500, 700);
+                c.Divide(2, 1);
+                for (int ic = 0; ic < 2; ++ic) {
+                    c.cd(ic + 1);
+                    auto pads = SplitPadForRatio("san_" + O.base + "_" + kCharges[ic], O.logx);
+                    std::vector<TGraphAsymmErrors*> gs;
+                    for (const auto& v : vars) {
+                        auto* g = eff_of(O.base, kCharges[ic], v.key);
+                        StyleGraph(g, v.col, v.mk, 0.8);
+                        gs.push_back(g);
+                    }
+                    pads.first->cd();
+                    if (O.logx) gPad->SetLogx();
+                    DrawEffFrame(O.xlo, O.xhi, "", 0.0, 1.1, "efficiency", true);
+                    DrawUnityLine(O.xlo, O.xhi);
+                    for (auto* g : gs) g->Draw("PZ same");
+                    auto* leg = new TLegend(0.40, 0.15, 0.93, 0.42);
+                    leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.032);
+                    for (size_t i = 0; i < vars.size(); ++i)
+                        leg->AddEntry(gs[i], vars[i].tex.c_str(), "lp");
+                    leg->Draw();
+                    TLatex tl; tl.SetNDC(); tl.SetTextFont(42); tl.SetTextSize(0.045);
+                    tl.DrawLatex(0.18, 0.88, kChargeTex[ic].c_str());
+
+                    pads.second->cd();
+                    if (O.logx) gPad->SetLogx();
+                    DrawEffFrame(O.xlo, O.xhi, O.xt, 0.90, 1.10, "variant / original");
+                    DrawUnityLine(O.xlo, O.xhi);
+                    for (size_t i = 1; i < gs.size(); ++i) {   // skip `orig` (ratio 1 by construction)
+                        auto* gr = DivideGraphClean(gs[i], gs[0]);
+                        StyleGraph(gr, vars[i].col, vars[i].mk, 0.8);
+                        gr->Draw("PZ same");
+                    }
+                }
+                DrawHeadline(headline + "  --  Step-1 sanity check");
+                SaveCanvas(c, dirs + "sanity_eff_" + O.base + ".png");
+            }
+
+            // ---- (b) pT turn-on per fine q.eta bin (the forward bins are the whole point) ----
+            for (int ic = 0; ic < 2; ++ic) {
+                TCanvas c(("c_sanity_qeta_" + kCharges[ic]).c_str(), "", 1500, 2100);
+                c.Divide(3, 4);
+                for (size_t iq = 0; iq < kQEtaSuffix.size(); ++iq) {
+                    c.cd(static_cast<int>(iq) + 1);
+                    gPad->SetLeftMargin(0.14); gPad->SetBottomMargin(0.13); gPad->SetLogx();
+                    DrawEffFrame(4.0, 60.0, "p_{T} [GeV]", 0.0, 1.15);
+                    DrawUnityLine(4.0, 60.0);
+                    std::vector<TGraphAsymmErrors*> gs;
+                    for (const auto& v : vars) {
+                        TH2D* h2n = GetObj<TH2D>(fsan, "h_sanity_pt_vs_q_eta_num_"   + kCharges[ic] + "_" + v.key);
+                        TH2D* h2d = GetObj<TH2D>(fsan, "h_sanity_pt_vs_q_eta_denom_" + kCharges[ic] + "_" + v.key);
+                        const int b1 = h2n->GetXaxis()->FindBin(kQEtaRange[iq].first  + 1e-6);
+                        const int b2 = h2n->GetXaxis()->FindBin(kQEtaRange[iq].second - 1e-6);
+                        TH1D* n = h2n->ProjectionY(Form("san_n_%d_%zu_%s", ic, iq, v.key.c_str()), b1, b2);
+                        TH1D* d = h2d->ProjectionY(Form("san_d_%d_%zu_%s", ic, iq, v.key.c_str()), b1, b2);
+                        auto* g = BayesEff(n, d);
+                        StyleGraph(g, v.col, v.mk, 0.7);
+                        g->Draw("PZ same");
+                        gs.push_back(g);
+                        delete n; delete d;
+                    }
+                    TLatex tl; tl.SetNDC(); tl.SetTextFont(42); tl.SetTextSize(0.050);
+                    tl.DrawLatex(0.20, 0.90, Form("%.2f < q#eta < %.2f",
+                                                  kQEtaRange[iq].first, kQEtaRange[iq].second));
+                    if (iq == 0) {
+                        auto* leg = new TLegend(0.30, 0.14, 0.95, 0.40);
+                        leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.040);
+                        for (size_t i = 0; i < vars.size(); ++i)
+                            leg->AddEntry(gs[i], vars[i].tex.c_str(), "lp");
+                        leg->Draw();
+                    }
+                }
+                DrawHeadline(headline + "  --  Step-1 sanity, " + kChargeTex[ic]);
+                SaveCanvas(c, dirs + "sanity_eff_pt_in_q_eta_bins_" + kCharges[ic] + ".png");
+            }
+
+            // ---- (c) pass fractions + the forward-bin verdict numbers, as a table ----
+            {
+                std::ofstream os(dirs + "sanity_pass_fractions.txt");
+                os << "# Step-1 sanity check (mc_trigger_efficiency.md §3.5)\n";
+                os << "# sample=" << sample << "  WP=" << wp_text << "  " << cfg.sample_text << "\n";
+                os << "# Fraction of the round-7-selected MC muons passing each extra requirement\n";
+                os << "# (weighted by the MC event weight, and raw), plus the integrated eps(mu4).\n\n";
+                const double wall = GetObj<TH1D>(fsan, "h_sanity_count_orig")->Integral();
+                const double nall = GetObj<TH1D>(fsan, "h_sanity_rawcount_orig")->Integral();
+                os << std::left << std::setw(34) << "requirement" << std::setw(14) << "weighted %"
+                   << std::setw(14) << "raw %" << std::setw(16) << "raw N"
+                   << std::setw(12) << "eps(mu+)" << std::setw(12) << "eps(mu-)" << "\n";
+                for (const auto& v : vars) {
+                    const double wv = GetObj<TH1D>(fsan, "h_sanity_count_"    + v.key)->Integral();
+                    const double nv = GetObj<TH1D>(fsan, "h_sanity_rawcount_" + v.key)->Integral();
+                    auto eff = [&](const std::string& chg) {
+                        TH1D* n = GetObj<TH1D>(fsan, "h_sanity_pt_num_"   + chg + "_" + v.key);
+                        TH1D* d = GetObj<TH1D>(fsan, "h_sanity_pt_denom_" + chg + "_" + v.key);
+                        return d->Integral() > 0 ? n->Integral() / d->Integral() : -1.0;
+                    };
+                    os << std::left << std::setw(34) << v.key
+                       << std::setw(14) << Form("%.4f", wall > 0 ? 100 * wv / wall : -1.)
+                       << std::setw(14) << Form("%.4f", nall > 0 ? 100 * nv / nall : -1.)
+                       << std::setw(16) << Form("%.0f", nv)
+                       << std::setw(12) << Form("%.4f", eff("muplus"))
+                       << std::setw(12) << Form("%.4f", eff("muminus")) << "\n";
+                }
+                os << "\n# eps(mu4) in the two split forward q.eta bins, pT 4-6 GeV "
+                      "(the bins where MC >> data):\n";
+                os << std::left << std::setw(28) << "q.eta bin";
+                for (const auto& v : vars) os << std::setw(22) << v.key;
+                os << "\n";
+                for (int iq = 0; iq < 2; ++iq) {          // (-2.4,-2.2) and (-2.2,-2.0)
+                    os << std::left << std::setw(28)
+                       << Form("[%.1f,%.1f) mu+/mu-", kQEtaRange[iq].first, kQEtaRange[iq].second);
+                    for (const auto& v : vars) {
+                        double nn = 0, dd = 0;
+                        for (int ic = 0; ic < 2; ++ic) {
+                            TH2D* h2n = GetObj<TH2D>(fsan, "h_sanity_pt_vs_q_eta_num_"   + kCharges[ic] + "_" + v.key);
+                            TH2D* h2d = GetObj<TH2D>(fsan, "h_sanity_pt_vs_q_eta_denom_" + kCharges[ic] + "_" + v.key);
+                            const int b1 = h2n->GetXaxis()->FindBin(kQEtaRange[iq].first  + 1e-6);
+                            const int b2 = h2n->GetXaxis()->FindBin(kQEtaRange[iq].second - 1e-6);
+                            const int p1 = h2n->GetYaxis()->FindBin(4.0 + 1e-6);
+                            const int p2 = h2n->GetYaxis()->FindBin(6.0 - 1e-6);
+                            nn += h2n->Integral(b1, b2, p1, p2);
+                            dd += h2d->Integral(b1, b2, p1, p2);
+                        }
+                        os << std::setw(22) << Form("%.4f", dd > 0 ? nn / dd : -1.);
+                    }
+                    os << "\n";
+                }
+                std::cout << "  wrote " << dirs << "sanity_pass_fractions.txt\n";
+            }
+            fsan->Close();
+        }
+    }
+
+    // ================================================================
     // Step 3 (§3.3): eps_dR(dR) = inverse-weighted num / denom
     // ================================================================
     std::cout << "\n===== Step 3 (" << sample << ", " << wp_text << ") =====\n";
 
-    // ratios with TH1::Divide error propagation (inverse weights > 1 -> Bayes invalid)
+    // Central value = num/denom; ERROR = the conditional (binomial-correct) form, NOT
+    // TH1::Divide's independent propagation (see SetConditionalRatioErrors).
     auto MakeRatio = [&](const std::string& tag) -> TH1D* {
         TH1D* num = GetObj<TH1D>(fmc3, "h_mc_dr_" + tag + "_num");
         TH1D* den = GetObj<TH1D>(fmc3, "h_mc_dr_" + tag + "_denom");
+        TH1D* eA  = GetObj<TH1D>(fmc3, "h_mc_dr_" + tag + "_errA");
+        TH1D* eB  = GetObj<TH1D>(fmc3, "h_mc_dr_" + tag + "_errB");
         auto* r = (TH1D*)num->Clone(("r_dr_" + tag).c_str());
         r->SetDirectory(nullptr);
         r->Divide(den);
+        SetConditionalRatioErrors(r, den, eA, eB);
         return r;
     };
     TH1D* r_zoom = MakeRatio("zoom");
@@ -1035,6 +1268,8 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
     {
         TH2D* h2n = GetObj<TH2D>(fmc3, "h_mc_dr_zoom_vs_pair_pt_num");
         TH2D* h2d = GetObj<TH2D>(fmc3, "h_mc_dr_zoom_vs_pair_pt_denom");
+        TH2D* h2A = GetObj<TH2D>(fmc3, "h_mc_dr_zoom_vs_pair_pt_errA");
+        TH2D* h2B = GetObj<TH2D>(fmc3, "h_mc_dr_zoom_vs_pair_pt_errB");
         // slice edges aligned to the pair-pT axis bin edges (F2)
         const std::vector<std::pair<int,int>> ybins = {{1,3},{4,6},{7,9},{10,15}};
         // last slice: bright kMagenta, NOT kMagenta+2 -- the darkened shade reads as another
@@ -1052,9 +1287,13 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         for (size_t is = 0; is < ybins.size(); ++is) {
             TH1D* n = h2n->ProjectionX(Form("s3_n_%zu", is), ybins[is].first, ybins[is].second);
             TH1D* d = h2d->ProjectionX(Form("s3_d_%zu", is), ybins[is].first, ybins[is].second);
+            TH1D* a = h2A->ProjectionX(Form("s3_a_%zu", is), ybins[is].first, ybins[is].second);
+            TH1D* b = h2B->ProjectionX(Form("s3_b_%zu", is), ybins[is].first, ybins[is].second);
             auto* r = (TH1D*)n->Clone(Form("s3_r_%zu", is));
             r->SetDirectory(nullptr);
             r->Divide(d);
+            SetConditionalRatioErrors(r, d, a, b);
+            delete a; delete b;
             ratios.push_back(r);
             const double plo = h2n->GetYaxis()->GetBinLowEdge(ybins[is].first);
             const double phi = h2n->GetYaxis()->GetBinUpEdge(ybins[is].second);
@@ -1137,6 +1376,10 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         TH3D* h3zd = GetObj<TH3D>(fmc3, "h_mc_dr_zoom_vs_pt_eta_denom");
         TH3D* h3fn = GetObj<TH3D>(fmc3, "h_mc_dr_full_vs_pt_eta_num");
         TH3D* h3fd = GetObj<TH3D>(fmc3, "h_mc_dr_full_vs_pt_eta_denom");
+        TH3D* h3zA = GetObj<TH3D>(fmc3, "h_mc_dr_zoom_vs_pt_eta_errA");
+        TH3D* h3zB = GetObj<TH3D>(fmc3, "h_mc_dr_zoom_vs_pt_eta_errB");
+        TH3D* h3fA = GetObj<TH3D>(fmc3, "h_mc_dr_full_vs_pt_eta_errA");
+        TH3D* h3fB = GetObj<TH3D>(fmc3, "h_mc_dr_full_vs_pt_eta_errB");
 
         const int npt  = h3fn->GetYaxis()->GetNbins();  // coarse pair-pT (crossx)
         const int neta = h3fn->GetZaxis()->GetNbins();  // coarse pair-eta (crossx)
@@ -1146,14 +1389,19 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         auto eta_label = [&](int iz){ return std::string(Form("%.1f < #eta^{pair} < %.1f",
             h3fn->GetZaxis()->GetBinLowEdge(iz), h3fn->GetZaxis()->GetBinUpEdge(iz))); };
 
-        // eps_dR(dR) for one (pt bin iy, eta bin iz) cell (inverse weights -> TH1::Divide)
-        auto cell_ratio = [](TH3D* hn, TH3D* hd, int iy, int iz, const char* nm) -> TH1D* {
+        // eps_dR(dR) for one (pt bin iy, eta bin iz) cell. Central value = num/denom;
+        // ERROR = conditional/binomial-correct form (SetConditionalRatioErrors).
+        auto cell_ratio = [](TH3D* hn, TH3D* hd, TH3D* ha, TH3D* hb,
+                             int iy, int iz, const char* nm) -> TH1D* {
             TH1D* n = hn->ProjectionX(Form("%s_n", nm), iy, iy, iz, iz, "e");
             TH1D* d = hd->ProjectionX(Form("%s_d", nm), iy, iy, iz, iz, "e");
+            TH1D* a = ha->ProjectionX(Form("%s_a", nm), iy, iy, iz, iz, "e");
+            TH1D* b = hb->ProjectionX(Form("%s_b", nm), iy, iy, iz, iz, "e");
             auto* r = (TH1D*)n->Clone(nm);
             r->SetDirectory(nullptr);
             r->Divide(d);
-            delete n; delete d;
+            SetConditionalRatioErrors(r, d, a, b);
+            delete n; delete d; delete a; delete b;
             return r;
         };
 
@@ -1161,8 +1409,9 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         const std::vector<Style_t> ptmark = {20, 21, 22, 23};
 
         // ---- two panel plots (zoom + full dR) ----
-        struct Rng { TH3D* n; TH3D* d; std::string tag; double xhi; };
-        const std::vector<Rng> rngs = {{h3zn, h3zd, "zoom", 1.0}, {h3fn, h3fd, "full", 5.75}};
+        struct Rng { TH3D* n; TH3D* d; TH3D* a; TH3D* b; std::string tag; double xhi; };
+        const std::vector<Rng> rngs = {{h3zn, h3zd, h3zA, h3zB, "zoom", 1.0},
+                                       {h3fn, h3fd, h3fA, h3fB, "full", 5.75}};
         // subplot grid: nrows >= ncols, nrows ~ sqrt(neta) (feedback_subplot_layout)
         const int ncol = (int)std::ceil(std::sqrt((double)neta));
         const int nrow = (int)std::ceil((double)neta / ncol);
@@ -1175,7 +1424,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 std::vector<TH1D*> rs;
                 double ymax = 0.;
                 for (int iy = 1; iy <= npt; ++iy) {
-                    TH1D* r = cell_ratio(R.n, R.d, iy, iz,
+                    TH1D* r = cell_ratio(R.n, R.d, R.a, R.b, iy, iz,
                                          Form("s3pe_%s_%s_%d_%d", sample.c_str(), R.tag.c_str(), iy, iz));
                     rs.push_back(r);
                     for (int i = 1; i <= r->GetNbinsX(); ++i)
@@ -1225,7 +1474,8 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         // ---- tables (full-dR 3D, plateau window [kPlateauLo, kPlateauHi]) ----
         struct Plat { double mean, err, rms; int nb; };
         auto cell_plateau = [&](int iy, int iz) -> Plat {
-            TH1D* r = cell_ratio(h3fn, h3fd, iy, iz, Form("plat_%s_%d_%d", sample.c_str(), iy, iz));
+            TH1D* r = cell_ratio(h3fn, h3fd, h3fA, h3fB, iy, iz,
+                                 Form("plat_%s_%d_%d", sample.c_str(), iy, iz));
             double sw = 0, swv = 0;
             std::vector<std::pair<double,double>> vw;  // (value, weight)
             for (int i = 1; i <= r->GetNbinsX(); ++i) {
@@ -1322,12 +1572,20 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 ? std::string("dresses the union linear terms (#varepsilon_{1}+#varepsilon_{2})")
                 : std::string("VALIDATION only -- NOT applied to pp 2mu4");
 
+            // Central value = num/denom; ERROR = conditional/binomial-correct form INCLUDING the
+            // leg-leg covariance (both legs of a pair share a dR bin and their trigger decisions
+            // are correlated -- that correlation is what Step 3 measures).
             auto MakeRatio4 = [&](const std::string& tag) -> TH1D* {
                 TH1D* num = GetObj<TH1D>(fmc4, "h_mc_single_dr_" + tag + "_num");
                 TH1D* den = GetObj<TH1D>(fmc4, "h_mc_single_dr_" + tag + "_denom");
+                TH1D* eA  = GetObj<TH1D>(fmc4, "h_mc_single_dr_" + tag + "_errA");
+                TH1D* eB  = GetObj<TH1D>(fmc4, "h_mc_single_dr_" + tag + "_errB");
+                TH1D* cP  = GetObj<TH1D>(fmc4, "h_mc_single_dr_" + tag + "_covP");
+                TH1D* cQ  = GetObj<TH1D>(fmc4, "h_mc_single_dr_" + tag + "_covQ");
                 auto* r = (TH1D*)num->Clone(("r_single_dr_" + tag).c_str());
                 r->SetDirectory(nullptr);
                 r->Divide(den);
+                SetConditionalRatioErrors(r, den, eA, eB, cP, cQ);
                 return r;
             };
             TH1D* r4_zoom = MakeRatio4("zoom");
@@ -1380,6 +1638,14 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             TH3D* h3zd = GetObj<TH3D>(fmc4, "h_mc_single_dr_zoom_vs_pt_eta_denom");
             TH3D* h3fn = GetObj<TH3D>(fmc4, "h_mc_single_dr_full_vs_pt_eta_num");
             TH3D* h3fd = GetObj<TH3D>(fmc4, "h_mc_single_dr_full_vs_pt_eta_denom");
+            TH3D* h3zA = GetObj<TH3D>(fmc4, "h_mc_single_dr_zoom_vs_pt_eta_errA");
+            TH3D* h3zB = GetObj<TH3D>(fmc4, "h_mc_single_dr_zoom_vs_pt_eta_errB");
+            TH3D* h3zP = GetObj<TH3D>(fmc4, "h_mc_single_dr_zoom_vs_pt_eta_covP");
+            TH3D* h3zQ = GetObj<TH3D>(fmc4, "h_mc_single_dr_zoom_vs_pt_eta_covQ");
+            TH3D* h3fA = GetObj<TH3D>(fmc4, "h_mc_single_dr_full_vs_pt_eta_errA");
+            TH3D* h3fB = GetObj<TH3D>(fmc4, "h_mc_single_dr_full_vs_pt_eta_errB");
+            TH3D* h3fP = GetObj<TH3D>(fmc4, "h_mc_single_dr_full_vs_pt_eta_covP");
+            TH3D* h3fQ = GetObj<TH3D>(fmc4, "h_mc_single_dr_full_vs_pt_eta_covQ");
             const int npt  = h3fn->GetYaxis()->GetNbins();
             const int neta = h3fn->GetZaxis()->GetNbins();
             auto pt_label  = [&](int iy){ return std::string(Form("%.0f < p_{T}^{pair} < %.0f GeV",
@@ -1387,15 +1653,20 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             auto eta_label = [&](int iz){ return std::string(Form("%.1f < #eta^{pair} < %.1f",
                 h3fn->GetZaxis()->GetBinLowEdge(iz), h3fn->GetZaxis()->GetBinUpEdge(iz))); };
             // eps_single(dR) for one cell; iz=0 => integrate over ALL eta (pair-pT slice)
-            auto cell_ratio = [](TH3D* hn, TH3D* hd, int iy, int iz, int neta_all,
-                                 const char* nm) -> TH1D* {
+            auto cell_ratio = [](TH3D* hn, TH3D* hd, TH3D* ha, TH3D* hb, TH3D* hp, TH3D* hq,
+                                 int iy, int iz, int neta_all, const char* nm) -> TH1D* {
                 const int zlo = (iz == 0) ? 1 : iz, zhi = (iz == 0) ? neta_all : iz;
                 TH1D* n = hn->ProjectionX(Form("%s_n", nm), iy, iy, zlo, zhi, "e");
                 TH1D* d = hd->ProjectionX(Form("%s_d", nm), iy, iy, zlo, zhi, "e");
+                TH1D* a = ha->ProjectionX(Form("%s_a", nm), iy, iy, zlo, zhi, "e");
+                TH1D* b = hb->ProjectionX(Form("%s_b", nm), iy, iy, zlo, zhi, "e");
+                TH1D* p = hp->ProjectionX(Form("%s_p", nm), iy, iy, zlo, zhi, "e");
+                TH1D* q = hq->ProjectionX(Form("%s_q", nm), iy, iy, zlo, zhi, "e");
                 auto* r = (TH1D*)n->Clone(nm);
                 r->SetDirectory(nullptr);
                 r->Divide(d);
-                delete n; delete d;
+                SetConditionalRatioErrors(r, d, a, b, p, q);
+                delete n; delete d; delete a; delete b; delete p; delete q;
                 return r;
             };
             const std::vector<Color_t> ptcol  = {kRed + 1, kBlue + 1, kGreen + 2, kMagenta};
@@ -1407,7 +1678,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 gPad->SetLeftMargin(0.12); gPad->SetBottomMargin(0.12);
                 std::vector<TH1D*> rs; double ymax = 0.;
                 for (int iy = 1; iy <= npt; ++iy) {
-                    TH1D* r = cell_ratio(h3zn, h3zd, iy, 0, neta,
+                    TH1D* r = cell_ratio(h3zn, h3zd, h3zA, h3zB, h3zP, h3zQ, iy, 0, neta,
                                          Form("s4pt_%s_%d", sample.c_str(), iy));
                     rs.push_back(r);
                     for (int i = 1; i <= r->GetNbinsX(); ++i)
@@ -1453,8 +1724,9 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             }
 
             // pair-eta panels (each subplot = eta bin, each line = pair-pT bin), zoom + full
-            struct Rng { TH3D* n; TH3D* d; std::string tag; double xhi; };
-            const std::vector<Rng> rngs = {{h3zn, h3zd, "zoom", 1.0}, {h3fn, h3fd, "full", 5.75}};
+            struct Rng { TH3D* n; TH3D* d; TH3D* a; TH3D* b; TH3D* p; TH3D* q; std::string tag; double xhi; };
+            const std::vector<Rng> rngs = {{h3zn, h3zd, h3zA, h3zB, h3zP, h3zQ, "zoom", 1.0},
+                                          {h3fn, h3fd, h3fA, h3fB, h3fP, h3fQ, "full", 5.75}};
             const int ncol = (int)std::ceil(std::sqrt((double)neta));
             const int nrow = (int)std::ceil((double)neta / ncol);
             for (const auto& R : rngs) {
@@ -1465,7 +1737,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                     gPad->SetLeftMargin(0.14); gPad->SetBottomMargin(0.13);
                     std::vector<TH1D*> rs; double ymax = 0.;
                     for (int iy = 1; iy <= npt; ++iy) {
-                        TH1D* r = cell_ratio(R.n, R.d, iy, iz, neta,
+                        TH1D* r = cell_ratio(R.n, R.d, R.a, R.b, R.p, R.q, iy, iz, neta,
                                              Form("s4pe_%s_%s_%d_%d", sample.c_str(), R.tag.c_str(), iy, iz));
                         rs.push_back(r);
                         for (int i = 1; i <= r->GetNbinsX(); ++i)
@@ -1508,7 +1780,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             // ---- plateau + fluctuation tables (full-dR 3D, window [kPlateauLo,kPlateauHi]) ----
             struct Plat { double mean, err, rms; int nb; };
             auto cell_plateau = [&](int iy, int iz) -> Plat {
-                TH1D* r = cell_ratio(h3fn, h3fd, iy, iz, neta,
+                TH1D* r = cell_ratio(h3fn, h3fd, h3fA, h3fB, h3fP, h3fQ, iy, iz, neta,
                                      Form("s4plat_%s_%d_%d", sample.c_str(), iy, iz));
                 double sw = 0, swv = 0; std::vector<std::pair<double,double>> vw;
                 for (int i = 1; i <= r->GetNbinsX(); ++i) {

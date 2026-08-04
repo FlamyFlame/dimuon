@@ -19,6 +19,16 @@
 //
 // Selection mirrors the data-side muon definition: Tight WP (analysis nominal),
 // pT > 4 GeV, |η| < 2.4. Overlay restricted to 0–5% centrality (doc D2).
+//
+// TRUTH FIDUCIAL (round 7, user 2026-08-03 -- DEFAULT for every sample and every step):
+// on top of the data-like RECO cuts, each MC muon must also satisfy
+//     truth pT > 4 GeV  &&  |truth η| < 2.4
+// (§3.0(c'), kTruthFiducial* below). Because the sample is truth-SEEDED (round-5 #1), every
+// selected muon has a truth partner, so this is a well-defined cut on the muon itself. It
+// removes muons that enter the reco fiducial region ONLY through mismeasurement (truth below
+// threshold / outside acceptance) -- exactly the "bad muon" population the round-7 sanity
+// check targets. It has NO data analogue: the data denominator cannot be truth-gated, so the
+// Step-1 MC/data comparison acquires one more MC-only selection (documented asymmetry, §3.0).
 // Binnings reuse the DATA conventions:
 //   pt   : "pT_bins_single_muon" = pT_bins_8 + pT_bins_60 (RDFBasedHistFillingData.cxx:286-290)
 //   q·η  : "eta_bins_trig_effcy" = ParamsSet::makeEtaTrigEffcyBinning(1) (ibid:294)
@@ -37,7 +47,9 @@
 //          ..._step4.root; neither touches the Step-1/2 file)
 // =============================================================================
 
+#include <algorithm>
 #include <cmath>
+#include <iomanip>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -313,21 +325,28 @@ ROOT::RDF::RNode AliasLeg(ROOT::RDF::RNode node, int leg, const std::string& wp_
                .Alias("lg_wp",      m + wp_col)
                .Alias("lg_passmu4", m + "passmu4")   // full mu4 chain (L1 && HLT)
                .Alias("lg_pass_l1", m + "pass_l1")   // L1_MU3V RoI match (round-5 #3)
+               .Alias("lg_truth_pt",  m + "truth_pt")   // truth fiducial (round 7)
+               .Alias("lg_truth_eta", m + "truth_eta")
                .Alias("ot_pt",      o + "pt")
                .Alias("ot_eta",     o + "eta")
-               .Alias("ot_wp",      o + wp_col);
+               .Alias("ot_wp",      o + wp_col)
+               .Alias("ot_charge",  o + "charge")     // Step-4 leg-leg covariance term
+               .Alias("ot_passmu4", o + "passmu4")    // Step-4 leg-leg covariance term
+               .Alias("ot_truth_pt",  o + "truth_pt")
+               .Alias("ot_truth_eta", o + "truth_eta");
 }
 
 } // namespace MCTrigEff
 
 // =============================================================================
 void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
-                        bool use_tight_wp = true, bool do_step4 = false) {
+                        bool use_tight_wp = true, bool do_step4 = false,
+                        bool do_sanity = false) {
     using namespace MCTrigEff;
 
-    if (do_step3 && do_step4)
-        throw std::invalid_argument("FillMCTrigEffHists: do_step3 and do_step4 are mutually "
-                                    "exclusive (each writes its own output file)");
+    if ((int)do_step3 + (int)do_step4 + (int)do_sanity > 1)
+        throw std::invalid_argument("FillMCTrigEffHists: do_step3, do_step4 and do_sanity are "
+                                    "mutually exclusive (each writes its own output file)");
 
     const SampleConfig cfg = GetSampleConfig(sample);
     const Binnings bins = MakeBinnings();
@@ -343,8 +362,22 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
     std::cout << "  pair file:    " << cfg.pair_file << std::endl;
     std::cout << "  singles file: " << cfg.singles_file << std::endl;
 
-    // common selection = data-side muon definition (nominal WP + fiducial)
-    const std::string sel_single = wp_col + " && pt > 4 && fabs(eta) < 2.4";
+    // TRUTH FIDUCIAL (round 7, DEFAULT -- see header). Applied on TOP of the data-like reco
+    // cuts, to the muon itself and, for pairs, to BOTH legs (the pair is two muons that each
+    // satisfy the analysis muon definition). Column names differ per tree: bare on the
+    // single-muon tree, lg_/ot_ aliases on the pair trees, m1_/m2_ aliases in Step 3.
+    const std::string kTruthFidSingle = "truth_pt > 4 && fabs(truth_eta) < 2.4";
+    const std::string kTruthFidLeg    = "lg_truth_pt > 4 && fabs(lg_truth_eta) < 2.4 && "
+                                        "ot_truth_pt > 4 && fabs(ot_truth_eta) < 2.4";
+    const std::string kTruthFidPair   = "m1_truth_pt > 4 && fabs(m1_truth_eta) < 2.4 && "
+                                        "m2_truth_pt > 4 && fabs(m2_truth_eta) < 2.4";
+
+    // Truth-reco pT-match threshold for the round-7 SANITY CHECK (do_sanity only; it is NOT
+    // part of the nominal selection). Value + justification: mc_trigger_efficiency.md §3.5.
+    const double kPtMatchThr = 0.10;
+
+    // common selection = data-side muon definition (nominal WP + fiducial) + truth fiducial
+    const std::string sel_single = wp_col + " && pt > 4 && fabs(eta) < 2.4 && " + kTruthFidSingle;
     // overlay: 0-5% centrality only (doc D2; test sample is b=0-5 fm)
     const std::string sel_single_full = cfg.is_overlay
         ? sel_single + " && ev_centrality >= 0 && ev_centrality < 5"
@@ -352,7 +385,7 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
 
     const std::string sel_pair_legs =
         "lg_wp && lg_pt > 4 && fabs(lg_eta) < 2.4 && "
-        "ot_wp && ot_pt > 4 && fabs(ot_eta) < 2.4";
+        "ot_wp && ot_pt > 4 && fabs(ot_eta) < 2.4 && " + kTruthFidLeg;
     const std::string sel_pair_full = cfg.is_overlay
         ? sel_pair_legs + " && avg_centrality >= 0 && avg_centrality < 5"
         : sel_pair_legs;
@@ -383,7 +416,83 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
         return base + "__b" + std::to_string(booking_id++);
     };
 
-    if (do_step4) {
+    if (do_sanity) {
+        // =====================================================================
+        // (S) SANITY CHECK (§3.5, round 7): is the MC >> data single-muon efficiency in the
+        //     forward q·η bins caused by "bad" muons/events rather than by the simulation?
+        //     Two extra requirements are imposed on the Step-1 sample, separately and together:
+        //       (1) ONE-VERTEX events (n_vtx == 1): removes any residual pile-up muon that the
+        //           d0 / z0 cuts did not kill. The count is of TRACK-BEARING vertices, so the
+        //           skim's dummy beamspot vertex is excluded (NTP: MuonFullsimExtra::n_vtx).
+        //           n_vtx < 0 means the skim carried no vertex branch -> the variant is invalid
+        //           and is left EMPTY rather than silently passing everything.
+        //       (2) TRUTH-RECO pT MATCH |truth_pT - pT| / truth_pT < kPtMatchThr: removes badly
+        //           mismeasured muons while keeping essentially all well-measured ones.
+        //     Everything is booked in ONE file so the four variants are guaranteed to come from
+        //     the same event loop; the comparison overlay is variant-vs-variant (NOT vs data --
+        //     data has neither truth nor an equivalent vertex requirement).
+        // =====================================================================
+        rdf_store.emplace_back(std::make_unique<ROOT::RDataFrame>("muon_tree", cfg.singles_file));
+        ROOT::RDF::RNode ds = *rdf_store.back();
+        {   // n_vtx is REQUIRED here. Without it the `n_vtx == 1` filter cannot be built, and
+            // silently dropping the requirement would turn the sanity check into a no-op that
+            // looks like it passed. Fail loudly instead.
+            const auto cols = ds.GetColumnNames();
+            if (std::find(cols.begin(), cols.end(), "n_vtx") == cols.end())
+                throw std::runtime_error(
+                    "FillMCTrigEffHists(do_sanity): the single-muon tree " + cfg.singles_file +
+                    " has no n_vtx branch. Re-run the store_mc_trigger single-muon NTP with the "
+                    "round-7 vertex propagation (PythiaFullSimExtras: vtx_ntrk -> n_vtx).");
+        }
+        ds = ds.Define("q_eta", "(float)(charge * eta)")
+               .Define("w", "(double)ev_weight")
+               .Define("one", "0.5")   // dummy fill value for the pass-fraction counters
+               .Define("pt_match", "fabs(truth_pt - pt) / truth_pt")
+               .Filter(sel_single_full, "singles selection");
+
+        const std::string cut_vtx = "n_vtx == 1";
+        const std::string cut_ptm = "pt_match < " + std::to_string(kPtMatchThr);
+        const std::vector<std::pair<std::string, std::string>> variants = {
+            {"orig", "true"},
+            {"vtx",  cut_vtx},
+            {"ptm",  cut_ptm},
+            {"both", cut_vtx + " && " + cut_ptm}
+        };
+
+        for (const auto& [vname, vcut] : variants) {
+            auto dv = ds.Filter(vcut, "variant " + vname);
+            for (const auto& [chg, chg_cut] : charges) {
+                auto dc = dv.Filter(chg == "muplus" ? "charge > 0" : "charge < 0", chg);
+                auto book = [&](ROOT::RDF::RNode node, const std::string& nd) {
+                    const std::string s = nd + "_" + chg + "_" + vname;
+                    acc1D.add("h_sanity_pt_" + s,
+                        node.Histo1D({uniq("h_sanity_pt_" + s).c_str(), ";p_{T} [GeV];entries",
+                                      static_cast<int>(bins.pt.size()) - 1, bins.pt.data()}, "pt", "w"));
+                    acc1D.add("h_sanity_q_eta_" + s,
+                        node.Histo1D({uniq("h_sanity_q_eta_" + s).c_str(), ";q#eta;entries",
+                                      static_cast<int>(bins.q_eta.size()) - 1, bins.q_eta.data()},
+                                     "q_eta", "w"));
+                    acc2D.add("h_sanity_pt_vs_q_eta_" + s,
+                        node.Histo2D({uniq("h_sanity_pt_vs_q_eta_" + s).c_str(), ";q#eta;p_{T} [GeV]",
+                                      static_cast<int>(bins.q_eta.size()) - 1, bins.q_eta.data(),
+                                      static_cast<int>(bins.pt.size()) - 1, bins.pt.data()},
+                                     "q_eta", "pt", "w"));
+                };
+                book(dc, "denom");                                  // NO trigger requirement (§4)
+                book(dc.Filter("passmu4", chg + " mu4 " + vname), "num");
+            }
+            // pass fractions (weighted and raw) -- reported for the contract's "percentage of
+            // MC muons passing each requirement"
+            acc1D.add("h_sanity_count_" + vname,
+                ds.Filter(vcut, "count " + vname)
+                  .Histo1D({uniq("h_sanity_count_" + vname).c_str(), ";;entries", 1, 0., 1.},
+                           "one", "w"));
+            acc1D.add("h_sanity_rawcount_" + vname,
+                ds.Filter(vcut, "rawcount " + vname)
+                  .Histo1D({uniq("h_sanity_rawcount_" + vname).c_str(), ";;entries", 1, 0., 1.},
+                           "one"));
+        }
+    } else if (do_step4) {
         // =====================================================================
         // (D) Step 4 (§3.4): single-leg ΔR correction ε_single(ΔR) via inverse weighting.
         //     Leg-level analog of Step 3: numerator = the leg's OWN mu4 match weighted
@@ -441,6 +550,40 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
                                     {"lg_pt", "lg_eta", "lg_charge"})
                             .Define("w_inv_single", "weight / eps_lg");
                 book_step4(dn, "num", "w_inv_single");
+
+                // ---- CONDITIONAL (binomial-correct) ERROR TERMS (round 7) -------------------
+                // The numerator is a re-weighted SUBSET of the denominator, so propagating
+                // e_R = R sqrt((e_N/N)^2 + (e_D/D)^2) -- which assumes independence -- is wrong
+                // and over-states the error by sqrt((1+eps)/(1-eps)) (2-3x here). Conditioning on
+                // the MC sample (D fixed; only the Bernoulli trigger decisions t_i fluctuate),
+                //     N = sum_i t_i a_i ,  a_i = w_i/eps_i ,  P(t_i=1) = p_i = eps_i * R
+                //     Var(N) = sum_i a_i^2 p_i(1-p_i)  +  cross terms between the two legs of a pair
+                // The diagonal part is estimated from the FIRED legs as
+                //     sum_fired a_i^2 (1-p_i) = A - R*B ,   A = sum w^2/eps^2 , B = sum w^2/eps
+                // Both legs of a pair land in the SAME dR bin and their trigger decisions are
+                // correlated (that correlation is exactly what Step 3 measures), so the cross term
+                //     2 sum_pairs a_1 a_2 (p_12 - p_1 p_2) = covP - R^2 * covQ
+                //     covP = sum_{both fired} 2 w^2/(eps_1 eps_2)   (estimates 2 sum a1 a2 p_12)
+                //     covQ = sum_{all pairs}  2 w^2                 (2 sum a1a2 p1p2 = 2 R^2 sum w^2)
+                // is booked once per pair (leg == 1). Then Var = A - R*B + covP - R^2*covQ and
+                // e_R = sqrt(Var)/D, evaluated bin-by-bin in plot_mc_trig_eff.cxx.
+                auto dnerr = dn.Define("w_errA_single", "weight*weight/(eps_lg*eps_lg)")
+                               .Define("w_errB_single", "weight*weight/eps_lg");
+                book_step4(dnerr, "errA", "w_errA_single");
+                book_step4(dnerr, "errB", "w_errB_single");
+
+                if (leg == 1) {   // pair-level terms: book ONCE per pair, not once per leg
+                    ROOT::RDF::RNode dc = dl.Define("eps_l1",
+                            [ev = evaluator](float pt, float eta, int q) { return ev->Eval(pt, eta, q); },
+                            {"lg_pt", "lg_eta", "lg_charge"})
+                        .Define("eps_l2",
+                            [ev = evaluator](float pt, float eta, int q) { return ev->Eval(pt, eta, q); },
+                            {"ot_pt", "ot_eta", "ot_charge"});
+                    book_step4(dc.Filter("lg_passmu4 && ot_passmu4", tree + " step4 both legs mu4")
+                                 .Define("w_covP", "2.0*weight*weight/(eps_l1*eps_l2)"),
+                               "covP", "w_covP");
+                    book_step4(dc.Define("w_covQ", "2.0*weight*weight"), "covQ", "w_covQ");
+                }
             }
         }
     } else if (!do_step3) {
@@ -540,11 +683,13 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
             ROOT::RDF::RNode dp = *rdf_store.back();
             dp = dp.Alias("m1_pt", "m1.pt").Alias("m1_eta", "m1.eta").Alias("m1_charge", "m1.charge")
                    .Alias("m1_wp", "m1." + wp_col).Alias("m1_passmu4", "m1.passmu4")
+                   .Alias("m1_truth_pt", "m1.truth_pt").Alias("m1_truth_eta", "m1.truth_eta")
                    .Alias("m2_pt", "m2.pt").Alias("m2_eta", "m2.eta").Alias("m2_charge", "m2.charge")
-                   .Alias("m2_wp", "m2." + wp_col).Alias("m2_passmu4", "m2.passmu4");
+                   .Alias("m2_wp", "m2." + wp_col).Alias("m2_passmu4", "m2.passmu4")
+                   .Alias("m2_truth_pt", "m2.truth_pt").Alias("m2_truth_eta", "m2.truth_eta");
 
             std::string sel = "m1_wp && m1_pt > 4 && fabs(m1_eta) < 2.4 && "
-                              "m2_wp && m2_pt > 4 && fabs(m2_eta) < 2.4";
+                              "m2_wp && m2_pt > 4 && fabs(m2_eta) < 2.4 && " + kTruthFidPair;
             if (cfg.is_overlay) sel += " && avg_centrality >= 0 && avg_centrality < 5";
             dp = dp.Filter(sel, tree + " step3 selection");
 
@@ -592,6 +737,17 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
                                 {"m2_pt", "m2_eta", "m2_charge"})
                         .Define("w_inv", "weight / (eps1 * eps2)");
             book_step3(dn, "num", "w_inv");
+
+            // CONDITIONAL (binomial-correct) ERROR TERMS (round 7) -- see the Step-4 block for
+            // the derivation. Here each entry is one PAIR (a single Bernoulli trial with
+            // p = eps_1 eps_2 R), so only the diagonal part exists: Var = A - R*B, with
+            // A = sum_fired w^2/(eps1 eps2)^2 and B = sum_fired w^2/(eps1 eps2), and
+            // e_R = sqrt(Var)/D. (Pairs sharing a leg -- events with >2 selected muons -- are a
+            // residual, sub-leading correlation that is NOT modelled; see the tracking doc.)
+            auto dnerr = dn.Define("w_errA", "weight*weight/((eps1*eps2)*(eps1*eps2))")
+                           .Define("w_errB", "weight*weight/(eps1*eps2)");
+            book_step3(dnerr, "errA", "w_errA");
+            book_step3(dnerr, "errB", "w_errB");
         }
     }
 
@@ -604,7 +760,8 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
 
     // ---------- write ----------
     const std::string out_name = cfg.dir + "mc_trig_eff_hists_" + cfg.label + wp_suf +
-                                 (do_step4 ? "_step4.root" : do_step3 ? "_step3.root" : ".root");
+                                 (do_sanity ? "_sanity.root" : do_step4 ? "_step4.root"
+                                  : do_step3 ? "_step3.root" : ".root");
     TFile fout(out_name.c_str(), "RECREATE");
     if (fout.IsZombie()) throw std::runtime_error("FillMCTrigEffHists: cannot open output " + out_name);
     for (auto& kv : hists1D) kv.second->Write(kv.first.c_str());
@@ -639,7 +796,36 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
         }
     };
 
-    if (do_step4) {
+    if (do_sanity) {
+        // Sanity check: report the pass fraction of each requirement (contract item 2).
+        auto frac = [&](const std::string& v, const char* base) {
+            return hists1D.at(std::string(base) + v)->Integral();
+        };
+        const double w_all = frac("orig", "h_sanity_count_"), n_all = frac("orig", "h_sanity_rawcount_");
+        std::cout << "\n===== Step-1 SANITY CHECK pass fractions, sample=" << cfg.label
+                  << " (WP=" << (use_tight_wp ? "tight" : "medium") << ") =====" << std::endl;
+        std::cout << "  requirement                          weighted%%    raw%%      raw N" << std::endl;
+        for (const char* v : {"orig", "vtx", "ptm", "both"}) {
+            const double wv = frac(v, "h_sanity_count_"), nv = frac(v, "h_sanity_rawcount_");
+            std::cout << "  " << std::setw(34) << std::left
+                      << (std::string(v) == "orig" ? "baseline (round-7 selection)"
+                        : std::string(v) == "vtx"  ? "+ n_vtx == 1"
+                        : std::string(v) == "ptm"  ? "+ |dpT|/truth_pT < thr"
+                                                   : "+ both")
+                      << "  " << (w_all > 0 ? 100.0 * wv / w_all : -1.0)
+                      << "     " << (n_all > 0 ? 100.0 * nv / n_all : -1.0)
+                      << "     " << nv << std::endl;
+        }
+        std::cout << "  (threshold = " << kPtMatchThr << ")" << std::endl;
+        auto eff = [&](const std::string& v, const std::string& chg) {
+            TH1D* hn = hists1D.at("h_sanity_pt_num_" + chg + "_" + v);
+            TH1D* hd = hists1D.at("h_sanity_pt_denom_" + chg + "_" + v);
+            return hd->Integral() > 0 ? hn->Integral() / hd->Integral() : -1.0;
+        };
+        for (const char* v : {"orig", "vtx", "ptm", "both"})
+            std::cout << "  eps(mu4) " << std::setw(6) << std::left << v
+                      << " : mu+ " << eff(v, "muplus") << " , mu- " << eff(v, "muminus") << std::endl;
+    } else if (do_step4) {
         // Step-4: single-leg ε_single(dR). plateau ~1 (both samples, up to fit offset) validates
         // the machinery; the small-dR RISE is R4's saturation (pp ~1.20, overlay ~1.34 vs plateau).
         PrintDrRatio("single", "Step-4");
