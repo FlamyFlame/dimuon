@@ -3,6 +3,36 @@
 - Read `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/README.md` and `/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis/docs/` for analysis context (class hierarchy, pipelines, sample types)
 - For any analysis change: always update and maintain the relevant documentation in those files
 
+## Binnings (BLOCKING — pair pT and pair η above all)
+
+**A binning is NEVER changed, and NEVER re-invented per plot, without the user's explicit
+instruction.** This is a hard rule, on the same footing as the AMI rule below, because a binning
+mismatch is silent: every plot renders, every number comes out, and two plot sets that look like
+they describe the same cells describe different ones.
+
+1. **Single source of truth.** Pair-pT comes from `ParamsSet::pair_pt_coarse_bins`
+   (+ `N_COARSE_PAIR_PT_BINS`); pair-η from
+   `CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap`; single-muon pT from
+   `ParamsSet::single_mu_pt_coarse_bins`. **Read them from there. Never retype the edge values
+   into a plot macro, a slice-index list, or a comment.**
+2. **1D, 2D and 3D views of the same quantity MUST use the SAME binning.** Deriving a 1D
+   "slices" panel by grouping a *different, finer* axis is exactly the failure this rule exists
+   to prevent: it produced two coexisting pair-pT binnings in the MC trigger-efficiency plots
+   (a fine-axis grouping 8/13.75/23.63/40.62/120 in the Step-3 slices panel vs the ParamsSet
+   coarse 8/15/27/50/150 in the pair-η panels, plateau tables and Step 4) that ran side by side
+   from 2026-07-22 to 2026-08-04 and made the plateau tables describe different cells than the
+   panel next to them. Project the SAME histogram instead.
+3. **Changing a canonical binning is a user decision with a rerun blast radius.** Consumers of
+   `pair_pt_coarse_bins` include the crossx hist filling (`RDFBasedHistFillingPP.cxx`,
+   `RDFBasedHistFillingPbPb.cxx`), so a change invalidates crossx outputs — see
+   `Analysis/docs/signal_selection_change_impact.md`. State the blast radius, get approval, then
+   rerun everything affected.
+4. **Special variants are opt-in and suffixed**, never a silent second default — e.g.
+   `pair_pt_coarse_bins_pt150` = {8,15,27,50,150} for plot sets that deliberately want the axis
+   to run to 150 GeV. Everything else reads the canonical vector.
+5. **Label by physical ranges**, and check the label against the axis it was drawn from: if the
+   text and the binning ever disagree, one of them is a bug — find out which before proceeding.
+
 ## AMI Weights (BLOCKING — for ANY new MC dataset)
 
 **AMI weights are a HARD BLOCK on every MC dataset.** When you move to a NEW MC dataset — test →

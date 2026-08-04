@@ -34,6 +34,7 @@
 #include <TH1D.h>
 #include <TH3D.h>
 
+#include <algorithm>
 #include <cmath>
 
 inline void SetConditionalRatioErrors(TH1D* r, const TH1D* den, const TH1D* A, const TH1D* B,
@@ -60,9 +61,13 @@ inline void SetConditionalRatioErrors(TH1D* r, const TH1D* den, const TH1D* A, c
         const double scale = a + R * b + std::fabs(cp) + R * R * cq;
         if (var > 1e-6 * scale) { r->SetBinError(i, std::sqrt(var) / D); continue; }
 
+        // BOTH binomial boundaries: k = n gives err ~ R/n_eff, k = 0 gives err ~ 1/n_eff.
+        // Using R/n_eff alone returns EXACTLY 0 when R = 0 (denominator > 0, nothing fired),
+        // and both consumers drop zero-error points -- silently deleting a genuine
+        // zero-efficiency dR bin from the fit and the plot. max(R,1) covers both.
         const double eD = den->GetBinError(i);
         const double neff = (eD > 0.) ? (D / eD) * (D / eD) : 1.0;
-        r->SetBinError(i, (neff > 0.) ? R / neff : 0.);
+        r->SetBinError(i, (neff > 0.) ? std::max(R, 1.0) / neff : 0.);
     }
 }
 

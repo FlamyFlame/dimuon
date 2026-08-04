@@ -680,19 +680,19 @@ void plot_mc_trig_eff_corrected(const std::string& sample = "pp_full", bool use_
         auto* leg = new TLegend(0.02, 0.56, 0.98, 0.86);
         leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.042);
         leg->AddEntry(lgd, (cfg.data_text + " T&P (+ fit, dashed)").c_str(), "lp");
-        leg->AddEntry(lgc, "corrected MC (+ its own fit, solid)", "lp");
-        leg->AddEntry(lgo, "original MC (points only)", "lp");
+        leg->AddEntry(lgc, "corrected MC", "lp");
+        leg->AddEntry(lgo, "original MC", "lp");
         leg->Draw();
         TLatex note;
         note.SetNDC(); note.SetTextSize(0.038); note.SetTextFont(42);
-        note.DrawLatex(0.02, 0.48, "Corrected MC: every FIRED muon weighted by");
+        note.DrawLatex(0.02, 0.48, "");
         note.DrawLatex(0.02, 0.42, "SF(p_{T},q#upoint#eta) = #varepsilon_{data}/#varepsilon_{MC}"
                                    " (denominator untouched)");
-        note.DrawLatex(0.02, 0.34, "#Rightarrow #varepsilon_{corr} = #varepsilon_{MC}"
+        note.DrawLatex(0.02, 0.34, ""
                                    "#LTSF#GT #approx #varepsilon_{data}.");
-        note.DrawLatex(0.02, 0.26, "Ratio pad: MC / data, both series.");
-        note.DrawLatex(0.02, 0.18, "Residual #ne 0 comes from fit quality, binning");
-        note.DrawLatex(0.02, 0.12, "and the #varepsilon floor/cap + q#upoint#eta-gap fallbacks.");
+        // (no explanatory prose: the ratio pad is labelled by its own y-axis title)
+        note.DrawLatex(0.02, 0.18, "");
+        note.DrawLatex(0.02, 0.12, "");
         SaveCanvas(c, dir1 + "step1_corrected_eff_pt_in_q_eta_bins_" + kCharges[ic] + ".png");
     }
 

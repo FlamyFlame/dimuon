@@ -90,6 +90,12 @@ chain(){   # $1=sample $2=wp
         echo "=== $s / $wp : step4 ==="
         ( cd "$RDF_DIR" && root -l -b -q "FillMCTrigEffHists.cxx+(\"$s\", false, $cpp, true)" )
         val_file "$out/mc_trig_eff_hists_${lbl}${suf}_step4.root"
+        # Step-1 SANITY CHECK (Physics Procedure 3.5). Without this stage a clean regeneration
+        # would silently produce no sanity plots at all: the plot macro skips the block with a
+        # note when the _sanity.root is absent, so its absence is NOT an error anywhere else.
+        echo "=== $s / $wp : sanity ==="
+        ( cd "$RDF_DIR" && root -l -b -q "FillMCTrigEffHists.cxx+(\"$s\", false, $cpp, false, true)" )
+        val_file "$out/mc_trig_eff_hists_${lbl}${suf}_sanity.root"
         echo "=== $s / $wp : CHAIN OK ==="
     } >"$lg" 2>&1
 }
@@ -115,6 +121,8 @@ for wp in $WPS; do
         ( cd "$PLOT_DIR" && root -l -b -q "plot_mc_trig_eff.cxx+(\"$s\", $cpp)" ) \
             >"$LOG_DIR/plot_${s}_${wp}.log" 2>&1 || fail "plot $s/$wp failed"
         grep -q "done\." "$LOG_DIR/plot_${s}_${wp}.log" || fail "plot $s/$wp did not reach the end"
+        grep -q "SANITY CHECK" "$LOG_DIR/plot_${s}_${wp}.log" \
+            || fail "plot $s/$wp produced no Step-1 sanity block (missing _sanity.root?)"
     done
 done
 

@@ -1927,6 +1927,64 @@ the nominal one exactly — verified bin-by-bin, worst relative difference **4.6
 half-written input NTP file, and a mid-task selection change), each of which would otherwise have
 been reported as physics.
 
+### R17. TWO COEXISTING pair-pT BINNINGS — found and eliminated (2026-08-04, user)
+
+**The user spotted, from the plot text, that the pair-pT ranges in the Step-3 slices panel
+(40.6–120 GeV) did not match those in the plateau tables (50–150 GeV).** They did not: two
+pair-pT binnings had been running side by side inside the same plot directory.
+
+**History (git, not inference):**
+| what | when | binning |
+|---|---|---|
+| `ParamsSet::pair_pt_coarse_bins` created (`3bfc9cc`, "single source of truth") | 2026-07-01 | `{8, 15, 27, 50, 150}` — **only version in history; never edited** |
+| MC trig-eff Step-3 slices panel + its fine 2D (`3e6f75e`, `3c2c846`) | 2026-07-10 | `pT_bins_120` grouped → 8–13.75 / 13.75–23.63 / 23.63–40.62 / 40.62–120 |
+| Coarse 3D enters the fill (`68be85c` round-5 #4; `8c9b674` Step 4) | 2026-07-22 / 07-28 | `{8, 15, 27, 50, 150}` |
+
+So **nothing ever changed a binning** — the split was created on 2026-07-22 when the pair-η
+panels and plateau tables were added reading `ParamsSet`, while the older slices panel kept its
+own grouping. From then until 2026-08-04 the plateau tables and the panel beside them described
+**different cells**. Every plot rendered and every number came out: a silent failure.
+The user had also previously asked for `pair_pt_coarse_bins` to be
+`{8, 13.8, 23.6, 40.6, 120}`; **that was never carried out** (git shows one version only).
+
+**Resolution (user, 2026-08-04):**
+- `ParamsSet::pair_pt_coarse_bins` is now the **pT_bins_120 group edges
+  `{8, 13.7502, 23.6334, 40.6205, 120}`**, *derived* from `pT_bins_120` (indices 0/3/6/9/15) in
+  the constructor rather than retyped, so the coarse and fine axes cannot drift apart. pp data
+  barely reaches beyond 120 GeV, so 120 is the physical top of the axis.
+- `ParamsSet::pair_pt_coarse_bins_pt150 = {8, 15, 27, 50, 150}` survives as an **opt-in** variant.
+- The inconsistent fine 2D `h_mc_dr_zoom_vs_pair_pt_*` is **deleted**; every pair-pT view
+  (Step-3 slices, Step-3/4 pair-η panels, plateau tables, fits) now projects the **same 3D**.
+- ⚠ **Blast radius, NOT yet rerun:** `pair_pt_coarse_bins` is also read by the crossx hist filling
+  (`RDFBasedHistFillingPP.cxx:555`, `RDFBasedHistFillingPbPb.cxx:1072`), so **crossx outputs are
+  now stale**. Awaiting a user decision: rerun crossx on the canonical binning, or pin those two
+  call sites to `_pt150`.
+- Rule recorded in `.claude/CLAUDE.md` §Binnings (BLOCKING) and in `.claude/conventions/
+  atlas-plotting.md`.
+
+**Effect on the results.** The inclusive numbers are unchanged (the inclusive cell integrates
+over pair-pT): pp_full Step 3 = 0.9723 ± 0.0008, Step 4 = 0.9862 ± 0.0004 (Tight); the fit-method
+χ²/ndf ranking of R15 is unchanged. The **per-cell** picture improves — on the canonical binning
+**no pp24 cell fails** the 0.15 tier (two are flagged in the 0.10–0.15 band, both Step 3 in the
+top pair-pT bin: η_pair[−2.4,−2.0) = 1.1490 ± 0.0105 and η_pair[1.0,1.5) = 0.8648 ± 0.0277;
+Step 4 has none), and `h_stepN_fit_ok = 0` marks **0** pp24 cells vs **31/36** (Step 3) and
+**13/36** (Step 4) overlay cells.
+
+### R18. Publication standard for the plots (2026-08-04, user)
+
+Two standing rules, now enforced by `/review-plot` (`.claude/conventions/atlas-plotting.md`
+criteria **P1** and **P2**):
+- **P1 — no illustrative text on a plot.** Anything a physics professor being shown the figure
+  should not see must not be drawn on it: explanatory/tutorial sentences, pointers to files or
+  code ("see fit_report.txt", ROOT/histogram names, internal mode identifiers such as
+  `polyu_fixedRp` or `do_step4`), drawing asides ("(points only)", "(read back)"), hedging prose.
+  **If a number is worth showing, draw the number.** That material belongs in this doc and in the
+  summary to the user. All such text was removed from the three MC trig-eff plot macros.
+- **P2 — a fit must always carry its exact equation**, placed above the parameter values with the
+  same symbols and any auxiliary variable defined; the legend entry is simply `fit`; internal
+  method names never appear on the canvas; fixed parameters are marked `(fixed)` rather than
+  printed as `± 0`.
+
 ## Remaining Work
 
 **Blocking / needs user decision:**

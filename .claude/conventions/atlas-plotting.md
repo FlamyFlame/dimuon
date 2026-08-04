@@ -37,7 +37,56 @@ must use PHYSICAL wording, never internal/arbitrary code conventions:
   (`R_{AA}`, `v_n`, cross-section) need no on-plot definition.
 - The nominal COARSE and fine-log pair-p_{T} binnings are read from `ParamsSet.h`
   (`pair_pt_coarse_bins` / `N_COARSE_PAIR_PT_BINS`), never re-invented per plot; label the
-  resulting bins by their physical p_{T} ranges.
+  resulting bins by their physical p_{T} ranges. **1D, 2D and 3D views of the same quantity
+  MUST share one binning** — never build a 1D "slices" panel by regrouping a different, finer
+  axis (see `.claude/CLAUDE.md` §Binnings).
+
+## Publication standard: NO illustrative text on a plot (MANDATORY — `/review-plot` P1)
+
+**A plot is presented to a physics audience. Anything you would not want a physics professor
+to read off the figure must not be drawn on it.** The audience cannot see the code, the
+tracking doc, or any .txt output, so a plot must stand alone and must contain only what a
+published figure would.
+
+**FAIL the plot if the canvas carries any of:**
+- **Explanatory / tutorial sentences** about method or intent — "All three: MC direct
+  P(mu4 | reco mu), no tag-and-probe.", "Ratio pad: MC / data, both series.",
+  "SAME reco tag family, differ ONLY by the HIJING overlay.", "Residual != 0 comes from fit
+  quality, binning ...". The ratio pad is labelled by its own axis title; the series are
+  identified by the legend. Rationale belongs in the tracking doc.
+- **Pointers to files, code or internal artefacts** — "see fit_report.txt", "(see the macro)",
+  a ROOT file or histogram name, a method/mode identifier that exists only in the source
+  (`polyu_fixedRp`, `sf_closure`, `do_step4`). If a number is worth showing, **draw the
+  number**, never a pointer to where it lives.
+- **Drawing/implementation asides** in legend entries — "(points only)", "(+ fit, dashed)",
+  "(read back)", "measured, / plateau".
+- **Apologetic or hedging prose** — "no plateau in this cell -- no fit",
+  "(chi2/ndf undefined -- it passes through every point)". State the fact tersely ("no fit")
+  or draw nothing.
+
+Legitimate on-canvas text: axis titles with units, the legend (physical series names), the
+sample/working-point headline, physical bin ranges, defining equations, fitted parameter
+values with uncertainties, chi2/ndf **as a number**, and a terse record of any point pushed
+off scale by an axis cap (dropping data silently is worse).
+
+## Fits: the EQUATION is mandatory (MANDATORY — `/review-plot` P2)
+
+**Any fitted or interpolated curve drawn on a plot must be accompanied by its exact equation**,
+placed with (and above) the fitted parameter values, so the audience knows what was fitted and
+what each parameter means.
+
+- **FAIL** on abstract or abbreviated identifiers standing in for the function: a legend entry
+  or annotation saying `powerlaw_floatRp fit`, `polyu_fixedRp`, `erf+log`, `Fermi fit` with no
+  formula. Internal method names must not appear on the canvas at all.
+- The legend entry for the curve is simply **`fit`** (or `fit` plus a physical qualifier when
+  several fits are overlaid, e.g. `fit, corrected MC`).
+- Write the equation in ROOT LaTeX with the SAME parameter symbols used in the value list, and
+  define any auxiliary variable, e.g.
+  `f(#DeltaR) = 1 + u^{2}(a_{2} + a_{3}u + a_{4}u^{2})` with `u #equiv max(0, 1 - #DeltaR/R_{p})`.
+- Bare parameter names (`A`, `n`, `p`, `R_{p}`, `a_{2}`) are meaningless without the equation —
+  they are acceptable **only** next to it.
+- Fixed parameters should be identifiable as fixed (no uncertainty, or marked), so a reader does
+  not mistake a constraint for a measurement.
 
 ## MC per-event weights (MANDATORY)
 

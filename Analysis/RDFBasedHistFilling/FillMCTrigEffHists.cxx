@@ -202,7 +202,6 @@ struct Binnings {
     std::vector<double> q_eta;     // eta_bins_trig_effcy
     std::vector<double> phi;       // 128 uniform [-pi, pi]
     std::vector<double> eta;       // 48 uniform [-2.4, 2.4]
-    std::vector<double> pair_pt;   // pT_bins_120 (15 log bins 8-120)
     std::vector<double> dr_zoom;   // 20 uniform [0, 1]
     std::vector<double> dr_full;   // 23 uniform [0, 5.75]
     // Step-3 pair-eta dependence (round-5 #4): coarse pair-pT (ParamsSet::pair_pt_coarse_bins,
@@ -244,7 +243,6 @@ Binnings MakeBinnings() {
     for (int i = 0; i <= neta; ++i)
         b.eta[i] = -2.4 + 4.8 * (static_cast<double>(i) / neta);
 
-    b.pair_pt = pms.pT_bins_120;
 
     b.dr_zoom.resize(21);
     for (int i = 0; i <= 20; ++i) b.dr_zoom[i] = i * (1.0 / 20);
@@ -252,7 +250,7 @@ Binnings MakeBinnings() {
     for (int i = 0; i <= 23; ++i) b.dr_full[i] = i * (5.75 / 23);
 
     // round-5 #4: coarse pair-pT (crossx) x coarse pair-eta (crossx pair_eta bins)
-    b.pair_pt_coarse = pms.pair_pt_coarse_bins;                 // {8,15,27,50,150}
+    b.pair_pt_coarse = pms.pair_pt_coarse_bins;   // CANONICAL (ParamsSet, single source)
     static const CommonEffcyConfig cfg{};
     b.pair_eta_coarse = RangesToEdges(cfg.pair_eta_proj_ranges_coarse_incl_gap); // 9 bins over [-2.4,2.4]
 
@@ -1072,12 +1070,13 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
                     node.Histo1D({uniq("h_mc_dr_full_" + nd).c_str(), ";#DeltaR;entries",
                                   static_cast<int>(bins.dr_full.size()) - 1, bins.dr_full.data()},
                                  "dr", wcol));
-                acc2D.add("h_mc_dr_zoom_vs_pair_pt_" + nd,
-                    node.Histo2D({uniq("h_mc_dr_zoom_vs_pair_pt_" + nd).c_str(),
-                                  ";#DeltaR;p_{T}^{pair} [GeV]",
-                                  static_cast<int>(bins.dr_zoom.size()) - 1, bins.dr_zoom.data(),
-                                  static_cast<int>(bins.pair_pt.size()) - 1, bins.pair_pt.data()},
-                                 "dr", "pair_pt", wcol));
+                // NOTE (round 7): the separate dR x FINE-pair-pT 2D that used to live here was
+                // REMOVED. It was binned on pT_bins_120 (15 log bins 8-120) and the Step-3
+                // pair-pT slices panel grouped it as 8-13.8/13.8-23.6/23.6-40.6/40.6-120 --
+                // a SECOND, inconsistent pair-pT binning alongside the coarse
+                // canonical ParamsSet::pair_pt_coarse_bins used by the 3D below (and by
+                // Step 4, and by crossx). Every pair-pT view now projects the SAME 3D, so 1D/2D/3D
+                // cannot disagree. Single source of truth: ParamsSet.h (see CLAUDE.md).
                 // round-5 #4: dR x coarse pair-pT x coarse pair-eta, for the pair-eta dependence
                 // of eps_dR. Zoom and full dR ranges; projected per (pair pT, pair eta) cell.
                 acc3D.add("h_mc_dr_zoom_vs_pt_eta_" + nd,

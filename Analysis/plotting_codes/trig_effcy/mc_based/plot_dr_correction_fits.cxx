@@ -64,6 +64,30 @@ constexpr double kFitHi   = 1.0;    // fit domain upper edge (must match fit_dr_
 constexpr double kYcapHi  = 3.0;    // hard cap on the auto y range; off-scale points are arrowed
 constexpr double kYcapLo  = 0.0;
 
+// Human-readable LaTeX form of each fitted function, drawn ABOVE the parameter values so the
+// reader never has to know what "polyu_fixedRp" or a bare "A"/"n"/"R_{p}" means. These MUST stay
+// in step with the TFormula strings in fit_dr_corrections.cxx::MakeMethodCfg.
+//   powerlaw_fixedRp / powerlaw_floatRp : 1+[0]*pow(max(0,1-x/[2]),[1])
+//   expo                                : 1+[0]*exp(-pow(x/[1],[2]))
+//   polyu_fixedRp                       : 1+u^2*([0]+[1]*u+[2]*u^2), u = max(0,1-x/[3])
+//   interp                              : linear interpolation, 1 above Rp
+// Returns {formula line, definition line} -- the second may be empty.
+inline std::pair<std::string, std::string> MethodFormulaTex(const std::string& method)
+{
+    if (method == "powerlaw_fixedRp" || method == "powerlaw_floatRp")
+        return {"f(#DeltaR) = 1 + A #upoint u^{n}",
+                "u #equiv max(0, 1 - #DeltaR/R_{p})"};
+    if (method == "expo")
+        return {"f(#DeltaR) = 1 + A #upoint exp[-(#DeltaR/#lambda)^{p}]", ""};
+    if (method == "polyu_fixedRp")
+        return {"f(#DeltaR) = 1 + u^{2}(a_{2} + a_{3}u + a_{4}u^{2})",
+                "u #equiv max(0, 1 - #DeltaR/R_{p})"};
+    if (method == "interp")
+        return {"f(#DeltaR) = linear interpolation of the points",
+                "f = 1 for #DeltaR #geq R_{p}"};
+    return {"", ""};
+}
+
 template <typename T>
 T* GetObj(TFile* f, const std::string& name)
 {
@@ -214,7 +238,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
 
         if (plateau <= 0.) {
             TLatex t; t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.05);
-            t.DrawLatex(0.20, 0.55, "no plateau in this cell -- no fit");
+            t.DrawLatex(0.20, 0.55, "no fit");
             return;
         }
 
@@ -264,26 +288,46 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         // y=0.32 on the left and ran off the bottom of the frame, through the axis labels.)
         t.SetTextSize(0.033);
         double ty = 0.50;
+        // The FORMULA first: parameter names alone ("A", "n", "R_{p}") are meaningless to a
+        // reader who has not read the fitter source.
+        {
+            const auto ftex = MethodFormulaTex(method);
+            if (!ftex.first.empty()) {
+                t.SetTextSize(0.029);
+                t.DrawLatex(0.52, ty, ftex.first.c_str());
+                ty -= 0.045;
+                if (!ftex.second.empty()) {
+                    t.DrawLatex(0.52, ty, ftex.second.c_str());
+                    ty -= 0.045;
+                }
+                t.SetTextSize(0.033);
+            }
+        }
         t.DrawLatex(0.52, ty, Form("plateau = %.4f", plateau));
         ty -= 0.052;
         if (F.f) {
             for (int ip = 0; ip < F.f->GetNpar(); ++ip) {
-                t.DrawLatex(0.52, ty, Form("%s = %.3g #pm %.2g", F.f->GetParName(ip),
-                                           F.f->GetParameter(ip), F.f->GetParError(ip)));
+                // A parameter that was FIXED in the fit has zero error; printing "0.5 +- 0"
+                // reads as an infinitely precise measurement. Mark it as fixed instead.
+                double plo = 0., phi = 0.;
+                F.f->GetParLimits(ip, plo, phi);
+                const bool fixed = (F.f->GetParError(ip) == 0.) || (plo == phi && plo != 0.);
+                t.DrawLatex(0.52, ty, fixed
+                    ? Form("%s = %.3g (fixed)", F.f->GetParName(ip), F.f->GetParameter(ip))
+                    : Form("%s = %.3g #pm %.2g", F.f->GetParName(ip),
+                           F.f->GetParameter(ip), F.f->GetParError(ip)));
                 ty -= 0.052;
             }
-        } else if (F.g) {
-            t.DrawLatex(0.52, ty, "interpolation: no free parameters");
-            ty -= 0.052;
-            t.DrawLatex(0.52, ty, "(#chi^{2}/ndf undefined -- it passes");
-            ty -= 0.052;
-            t.DrawLatex(0.52, ty, " through every point)");
-            ty -= 0.052;
         }
-        const double c = (iy == 0 && iz == 0) ? -1. : hchi->GetBinContent(iy, iz);
-        if (F.f) t.DrawLatex(0.52, ty, (iy == 0 && iz == 0)
-                                        ? "#chi^{2}/ndf: see fit_report.txt"
-                                        : Form("#chi^{2}/ndf = %.2f", c));
+        // chi2/ndf ALWAYS as a number. The inclusive cell has no entry in the per-cell TH2D, so
+        // take it from the TF1 itself (TF1 persists its chi2 and ndf), never a pointer to a file:
+        // the audience sees only the plot.
+        if (F.f) {
+            const double c = (iy == 0 && iz == 0)
+                ? (F.f->GetNDF() > 0 ? F.f->GetChisquare() / F.f->GetNDF() : -1.)
+                : hchi->GetBinContent(iy, iz);
+            if (c >= 0.) t.DrawLatex(0.52, ty, Form("#chi^{2}/ndf = %.2f", c));
+        }
         // `g` is intentionally NOT deleted: ~TGraph removes the object from every pad that
         // draws it, so deleting it here silently erased all the black points from the canvas.
     };
@@ -330,25 +374,24 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
                 auto* gf = new TGraph(); gf->SetLineColor(kRed + 1); gf->SetLineWidth(2);
                 auto* leg = new TLegend(0.45, 0.78, 0.96, 0.90);
                 leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.036);
-                leg->AddEntry(gd, "measured, / plateau", "lp");
-                leg->AddEntry(gf, (method + " fit (read back)").c_str(), "l");
+                leg->AddEntry(gd, "measured / plateau", "lp");
+                leg->AddEntry(gf, "fit", "l");
                 leg->Draw();
             }
         }
         c.cd(0);
         TLatex st; st.SetNDC(); st.SetTextFont(42); st.SetTextSize(0.019);
         st.DrawLatex(0.02, 0.982,
-            Form("%s, %s  --  Step %d %s / plateau, %s fit,  %.0f < p_{T}^{pair} < %.0f GeV",
+            Form("%s, %s  --  Step %d %s / plateau,  %.0f < p_{T}^{pair} < %.0f GeV",
                  cfg.sample_text.c_str(), wp_text.c_str(), step, quantity_tex.c_str(),
-                 method.c_str(), hplat->GetXaxis()->GetBinLowEdge(iy),
+                 hplat->GetXaxis()->GetBinLowEdge(iy),
                  hplat->GetXaxis()->GetBinUpEdge(iy)));
         TLatex n; n.SetNDC(); n.SetTextFont(42); n.SetTextSize(0.0135);
         n.SetTextColor(kGray + 3);
-        std::string sub = Form("fitted over #DeltaR < %.1f; the #DeltaR > 1 points are the "
-                               "plateau-window bins themselves (normalization check, not fit "
-                               "input)", kFitHi);
+        // Formal statement of the fit range only -- no explanatory prose on a physics figure.
+        std::string sub = Form("fit range: #DeltaR < %.1f", kFitHi);
         if (!offscale.empty()) {
-            sub += "   |   off scale (arrows): ";
+            sub += "   |   off scale: ";
             for (size_t i = 0; i < offscale.size() && i < 6; ++i)
                 sub += offscale[i] + std::string(i + 1 < offscale.size() && i < 5 ? ", " : "");
             if (offscale.size() > 6) sub += Form(", ... (%zu total)", offscale.size());
@@ -384,15 +427,17 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         // but still above the plateau points, which sit at y = 1.
         auto* leg = new TLegend(0.45, 0.69, 0.95, 0.81);
         leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.032);
-        leg->AddEntry(gd, "measured, / plateau", "lp");
-        leg->AddEntry(gf, (method + " fit (read back)").c_str(), "l");
+        leg->AddEntry(gd, "measured / plateau", "lp");
+        leg->AddEntry(gf, "fit", "l");
         leg->Draw();
         // 0.024, not 0.030: the longest headline (overlay + Medium + `powerlaw_fixedRp`) ran off
         // the right edge of the 900 px canvas and lost the method name.
         TLatex st; st.SetNDC(); st.SetTextFont(42); st.SetTextSize(0.024);
-        st.DrawLatex(0.06, 0.960, Form("%s, %s  --  Step %d %s (inclusive), %s",
+        // No internal method name on the canvas -- the equation in the annotation box identifies
+        // the fitted function to the audience (the method name only tags the output directory).
+        st.DrawLatex(0.06, 0.960, Form("%s, %s  --  Step %d %s (inclusive)",
                                        cfg.sample_text.c_str(), wp_text.c_str(), step,
-                                       quantity_tex.c_str(), method.c_str()));
+                                       quantity_tex.c_str()));
         const std::string png = odir + tag + "_dr_fit_" + method + "_inclusive.png";
         c.SaveAs(png.c_str());
         std::cout << "  wrote " << png << "\n";

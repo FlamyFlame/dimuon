@@ -847,15 +847,9 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 leg->AddEntry(gc, "MC Pb+Pb23 cond., with HIJING overlay", "lp");
             }
             leg->Draw();
-            TLatex note;
-            note.SetNDC();
-            note.SetTextSize(0.036);
-            note.SetTextFont(42);
-            note.DrawLatex(0.02, 0.42, "All three: MC direct P(mu4 | reco #mu), no tag-and-probe.");
-            note.DrawLatex(0.02, 0.34, "red = r17663 (no overlay), blue = r17618 (with overlay):");
-            note.DrawLatex(0.02, 0.28, "SAME reco tag family, differ ONLY by the HIJING overlay.");
-            note.DrawLatex(0.02, 0.18, "Ratio pad: r17663 / pp24-cond. MC (both #mu^{#pm} summed");
-            note.DrawLatex(0.02, 0.12, "into the panel's q#upoint#eta bin).");
+            // No explanatory prose on the canvas: the three samples are identified by the
+            // legend, and the ratio pad by its own y-axis title. What the samples mean and why
+            // they are compared belongs in the tracking doc, not in front of the audience.
         } else {
             auto* leg = new TLegend(0.02, 0.45, 0.98, 0.80);
             leg->SetBorderSize(0);
@@ -873,7 +867,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             note.SetTextSize(0.045);
             note.SetTextFont(42);
             note.DrawLatex(0.02, 0.30, "Data: T&P P(2mu4 | mu4 tag, #DeltaR>0.8 pairs);");
-            note.DrawLatex(0.02, 0.22, "MC: direct conditional, no T&P");
+            note.DrawLatex(0.02, 0.22, "MC");
         }
         SaveCanvas(c, dir1 + "step1_eff_pt_in_q_eta_bins_" + kCharges[ic] + ".png");
     }
@@ -1344,14 +1338,20 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
     DrawStep3(r_zoom, 0.0, 1.0,  "step3_eps_dr_zoom", false);
     DrawStep3(r_full, 0.0, 5.75, "step3_eps_dr_full", true);
 
-    // --- pair-pT-binned zoom ratio (4 slices of the pT_bins_120 axis) ---
+    // --- pair-pT-binned zoom ratio, one series per COARSE pair-pT bin ---
+    // Round 7: this panel used to slice a SEPARATE dR x fine-pair-pT 2D (pT_bins_120, grouped
+    // 8-13.8/13.8-23.6/23.6-40.6/40.6-120) -- a second pair-pT binning inconsistent with the
+    // canonical ParamsSet::pair_pt_coarse_bins used by the pair-eta panels, the
+    // plateau tables, Step 4 and crossx. It now projects the SAME 3D as everything else,
+    // integrating over ALL pair-eta, so 1D/2D/3D cannot disagree (see CLAUDE.md: pair-pT and
+    // pair-eta binnings come from ParamsSet.h and are never re-invented per plot).
     {
-        TH2D* h2n = GetObj<TH2D>(fmc3, "h_mc_dr_zoom_vs_pair_pt_num");
-        TH2D* h2d = GetObj<TH2D>(fmc3, "h_mc_dr_zoom_vs_pair_pt_denom");
-        TH2D* h2A = GetObj<TH2D>(fmc3, "h_mc_dr_zoom_vs_pair_pt_errA");
-        TH2D* h2B = GetObj<TH2D>(fmc3, "h_mc_dr_zoom_vs_pair_pt_errB");
-        // slice edges aligned to the pair-pT axis bin edges (F2)
-        const std::vector<std::pair<int,int>> ybins = {{1,3},{4,6},{7,9},{10,15}};
+        TH3D* h3zn_s = GetObj<TH3D>(fmc3, "h_mc_dr_zoom_vs_pt_eta_num");
+        TH3D* h3zd_s = GetObj<TH3D>(fmc3, "h_mc_dr_zoom_vs_pt_eta_denom");
+        TH3D* h3zA_s = GetObj<TH3D>(fmc3, "h_mc_dr_zoom_vs_pt_eta_errA");
+        TH3D* h3zB_s = GetObj<TH3D>(fmc3, "h_mc_dr_zoom_vs_pt_eta_errB");
+        const int npt_s  = h3zn_s->GetYaxis()->GetNbins();
+        const int neta_s = h3zn_s->GetZaxis()->GetNbins();
         // last slice: bright kMagenta, NOT kMagenta+2 -- the darkened shade reads as another
         // dark red/blue against kRed+1 / kBlue+1 and the series cannot be told apart
         const std::vector<Color_t> scol   = {kRed + 1, kBlue + 1, kGreen + 2, kMagenta};
@@ -1364,20 +1364,20 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         std::vector<TH1D*> ratios;
         std::vector<std::string> slabels;
         double ymax = 0.;
-        for (size_t is = 0; is < ybins.size(); ++is) {
-            TH1D* n = h2n->ProjectionX(Form("s3_n_%zu", is), ybins[is].first, ybins[is].second);
-            TH1D* d = h2d->ProjectionX(Form("s3_d_%zu", is), ybins[is].first, ybins[is].second);
-            TH1D* a = h2A->ProjectionX(Form("s3_a_%zu", is), ybins[is].first, ybins[is].second);
-            TH1D* b = h2B->ProjectionX(Form("s3_b_%zu", is), ybins[is].first, ybins[is].second);
-            auto* r = (TH1D*)n->Clone(Form("s3_r_%zu", is));
+        for (int iy = 1; iy <= npt_s; ++iy) {
+            TH1D* n = h3zn_s->ProjectionX(Form("s3_n_%d", iy), iy, iy, 1, neta_s, "e");
+            TH1D* d = h3zd_s->ProjectionX(Form("s3_d_%d", iy), iy, iy, 1, neta_s, "e");
+            TH1D* a = h3zA_s->ProjectionX(Form("s3_a_%d", iy), iy, iy, 1, neta_s, "e");
+            TH1D* b = h3zB_s->ProjectionX(Form("s3_b_%d", iy), iy, iy, 1, neta_s, "e");
+            auto* r = (TH1D*)n->Clone(Form("s3_r_%d", iy));
             r->SetDirectory(nullptr);
             r->Divide(d);
             SetConditionalRatioErrors(r, d, a, b);
             delete a; delete b;
             ratios.push_back(r);
-            const double plo = h2n->GetYaxis()->GetBinLowEdge(ybins[is].first);
-            const double phi = h2n->GetYaxis()->GetBinUpEdge(ybins[is].second);
-            slabels.push_back(Form("%.1f < p_{T}^{pair} < %.1f GeV", plo, phi));
+            const double plo = h3zn_s->GetYaxis()->GetBinLowEdge(iy);
+            const double phi = h3zn_s->GetYaxis()->GetBinUpEdge(iy);
+            slabels.push_back(Form("%.0f < p_{T}^{pair} < %.0f GeV", plo, phi));
             for (int i = 1; i <= r->GetNbinsX(); ++i)
                 ymax = std::max(ymax, r->GetBinContent(i) + r->GetBinError(i));
         }
@@ -1471,12 +1471,14 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
 
         // eps_dR(dR) for one (pt bin iy, eta bin iz) cell. Central value = num/denom;
         // ERROR = conditional/binomial-correct form (SetConditionalRatioErrors).
+        // iz == 0 => integrate over ALL pair-eta (the pair-pT slices view), exactly as Step 4.
         auto cell_ratio = [](TH3D* hn, TH3D* hd, TH3D* ha, TH3D* hb,
-                             int iy, int iz, const char* nm) -> TH1D* {
-            TH1D* n = hn->ProjectionX(Form("%s_n", nm), iy, iy, iz, iz, "e");
-            TH1D* d = hd->ProjectionX(Form("%s_d", nm), iy, iy, iz, iz, "e");
-            TH1D* a = ha->ProjectionX(Form("%s_a", nm), iy, iy, iz, iz, "e");
-            TH1D* b = hb->ProjectionX(Form("%s_b", nm), iy, iy, iz, iz, "e");
+                             int iy, int iz, int neta_all, const char* nm) -> TH1D* {
+            const int zlo = (iz == 0) ? 1 : iz, zhi = (iz == 0) ? neta_all : iz;
+            TH1D* n = hn->ProjectionX(Form("%s_n", nm), iy, iy, zlo, zhi, "e");
+            TH1D* d = hd->ProjectionX(Form("%s_d", nm), iy, iy, zlo, zhi, "e");
+            TH1D* a = ha->ProjectionX(Form("%s_a", nm), iy, iy, zlo, zhi, "e");
+            TH1D* b = hb->ProjectionX(Form("%s_b", nm), iy, iy, zlo, zhi, "e");
             auto* r = (TH1D*)n->Clone(nm);
             r->SetDirectory(nullptr);
             r->Divide(d);
@@ -1504,7 +1506,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 std::vector<TH1D*> rs;
                 double ymax = 0.;
                 for (int iy = 1; iy <= npt; ++iy) {
-                    TH1D* r = cell_ratio(R.n, R.d, R.a, R.b, iy, iz,
+                    TH1D* r = cell_ratio(R.n, R.d, R.a, R.b, iy, iz, neta,
                                          Form("s3pe_%s_%s_%d_%d", sample.c_str(), R.tag.c_str(), iy, iz));
                     rs.push_back(r);
                     for (int i = 1; i <= r->GetNbinsX(); ++i)
@@ -1554,7 +1556,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         // ---- tables (full-dR 3D, plateau window [kPlateauLo, kPlateauHi]) ----
         using Plat = PlateauCell;   // shared with the ROOT-file writer below
         auto cell_plateau = [&](int iy, int iz) -> Plat {
-            TH1D* r = cell_ratio(h3fn, h3fd, h3fA, h3fB, iy, iz,
+            TH1D* r = cell_ratio(h3fn, h3fd, h3fA, h3fB, iy, iz, neta,
                                  Form("plat_%s_%d_%d", sample.c_str(), iy, iz));
             double sw = 0, swv = 0;
             std::vector<std::pair<double,double>> vw;  // (value, weight)

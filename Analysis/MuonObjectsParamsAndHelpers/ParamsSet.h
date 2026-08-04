@@ -53,12 +53,21 @@ public:
     // `pair_pt_coarse_bins` (and `N_COARSE_PAIR_PT_BINS`) from here, never re-invent per plot
     // so every plot set stays mutually consistent. Both the coarse and the fine-log
     // (pT_bins_150) pair-pT binnings may be re-optimised for the final analysis — change them
-    // HERE ONLY. Interim (2026-07-01, user): 4 bins 8-15, 15-27, 27-50, 50+ GeV (may shrink to
-    // 3 if stats are poor). The last bin [50, 150] is the "50 GeV+" bin (the analysis pair-pT
-    // range tops near 150; include overflow in it when plotting). If N changes, update BOTH
-    // the edges below and N_COARSE_PAIR_PT_BINS (kept in this one file).
+    // HERE ONLY.
+    // 2026-08-04 (user): the CANONICAL edges are the pT_bins_120 GROUP edges
+    // {8, 13.75, 23.63, 40.62, 120} -- the binning the MC trigger-efficiency pair-pT views have
+    // always displayed. pp data barely reaches beyond 120 GeV, so 120 is the physical top of the
+    // axis. They are DERIVED from pT_bins_120 in the constructor, never retyped, so the two can
+    // never drift apart. The previous {8,15,27,50,150} edges are NOT deleted -- they move to
+    // `pair_pt_coarse_bins_pt150`, an OPT-IN special setting.
+    // (History: introduced 2026-07-01 as {8,15,27,50,150} and never changed until now.)
+    // If N changes, update BOTH the edges below and N_COARSE_PAIR_PT_BINS (kept in this file).
     static const int N_COARSE_PAIR_PT_BINS = 4;   // = pair_pt_coarse_bins.size() - 1
-    std::vector<double> pair_pt_coarse_bins;      // edges, initialised in the constructor
+    std::vector<double> pair_pt_coarse_bins;      // CANONICAL edges, set in the constructor
+    // SPECIAL (opt-in) variant, NOT the canonical binning: the old 8/15/27/50/150 edges, kept
+    // for any plot set that deliberately wants the pair-pT axis to run to 150 GeV. Read this
+    // ONLY where that is intended; everything else must read `pair_pt_coarse_bins`.
+    std::vector<double> pair_pt_coarse_bins_pt150;
 
     // ---- NOMINAL COARSE single-muon pT binning (SINGLE SOURCE OF TRUTH) ----
     // Coarse binning in SINGLE-MUON pT (GeV), ~half the pair_pt_coarse_bins scale (each muon
@@ -423,9 +432,14 @@ ParamsSet::ParamsSet(){
     fillLogBinningArray(pT_bins_150, 15, 8.0, 150.0);  // 15 log bins from 8  to 150 GeV
 
     // NOMINAL COARSE pair-pT binning (single source of truth; see the declaration above).
-    // Interim 4 bins: [8,15), [15,27), [27,50), [50,150]="50 GeV+". Keep the edge count
-    // consistent with N_COARSE_PAIR_PT_BINS.
-    pair_pt_coarse_bins = {8.0, 15.0, 27.0, 50.0, 150.0};
+    // CANONICAL = the pT_bins_120 group edges (indices 0, 3, 6, 9, 15), i.e. 4 bins
+    // [8, 13.75), [13.75, 23.63), [23.63, 40.62), [40.62, 120]. DERIVED from pT_bins_120 (filled
+    // just above) so a change to the fine log axis can never silently desynchronise the coarse
+    // one. Keep the edge count consistent with N_COARSE_PAIR_PT_BINS.
+    pair_pt_coarse_bins = {pT_bins_120.at(0), pT_bins_120.at(3),  pT_bins_120.at(6),
+                           pT_bins_120.at(9), pT_bins_120.at(15)};
+    // Opt-in special variant running to 150 GeV (the pre-2026-08-04 canonical edges).
+    pair_pt_coarse_bins_pt150 = {8.0, 15.0, 27.0, 50.0, 150.0};
 
     // NOMINAL COARSE single-muon pT binning (single source of truth; see the declaration above).
     // 4 bins: [4,8), [8,14), [14,25), [25,100]. ~half the pair_pt_coarse_bins scale; starts at

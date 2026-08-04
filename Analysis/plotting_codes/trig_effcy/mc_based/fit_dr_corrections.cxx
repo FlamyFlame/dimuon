@@ -26,8 +26,9 @@
 //
 // FULL-SAMPLE GUARD
 //   For a FULL production (`DrCorrSample::is_full_sample`, currently only pp_full) the
-//   inverse-weighting closure must hold cell by cell, so |plateau - 1| > 0.1 anywhere is a
-//   FAILURE: this macro lists every offending cell and THROWS. A 10 000-event TEST sample
+//   inverse-weighting closure must hold cell by cell. TWO TIERS: |plateau - 1| > 0.10 is
+//   FLAGGED (reported loudly, not fatal); |plateau - 1| > 0.15 is a FAILURE and this macro
+//   lists every offending cell and THROWS. A 10 000-event TEST sample
 //   (HIJING overlay, r17663) is exempt -- its high-pair-pT cells are noise-dominated -- but its
 //   offending cells are still REPORTED. FULL-vs-TEST comes from the sample identity in
 //   dr_correction_sample_cfg.h, never from a list of measured numbers.
@@ -103,8 +104,15 @@ constexpr double kFitHi = 1.0;
 // Generous stored range (see the read-back trap in the header comment).
 constexpr double kTF1RangeHi = 10.0;
 
-// Guard threshold on |plateau - 1| for a FULL sample.
-constexpr double kPlateauGuardTol = 0.1;
+// Guard thresholds on |plateau - 1| for a FULL sample (user decision 2026-08-04, two-tier):
+//   > kPlateauFlagTol  -> FLAGGED: listed loudly in the report and on stdout, but NOT fatal.
+//   > kPlateauGuardTol -> FAILURE: the macro throws.
+// The 0.10 tier is deliberately loose already; 0.15 is the "this cell is not usable" line. The
+// gap between them is the band where the inverse-weighting closure is imperfect but the cell is
+// still normalizable -- those cells carry |plateau-1| as a systematic
+// (docs/systematic_uncertainties.md §1a).
+constexpr double kPlateauGuardTol = 0.15;
+constexpr double kPlateauFlagTol  = 0.10;
 
 namespace {
 
@@ -245,7 +253,7 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     const int neta = hplat->GetNbinsY();
 
     // ---------------------------------------------------------------- 2. the guard
-    std::vector<std::string> violations, unmeasured;
+    std::vector<std::string> violations, flagged, unmeasured;
     for (int iy = 1; iy <= npt; ++iy) {
         for (int iz = 1; iz <= neta; ++iz) {
             const double v = hplat->GetBinContent(iy, iz);
@@ -259,9 +267,13 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                 unmeasured.push_back(cell);
                 continue;
             }
-            if (std::fabs(v - 1.0) > kPlateauGuardTol)
+            const double dev = std::fabs(v - 1.0);
+            if (dev > kPlateauGuardTol)
                 violations.push_back(Form("%s : plateau = %.4f +- %.4f  (|plateau-1| = %.4f)",
-                                          cell, v, e, std::fabs(v - 1.0)));
+                                          cell, v, e, dev));
+            else if (dev > kPlateauFlagTol)
+                flagged.push_back(Form("%s : plateau = %.4f +- %.4f  (|plateau-1| = %.4f)",
+                                       cell, v, e, dev));
         }
     }
     {
@@ -274,11 +286,17 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
            << " production)  WP=" << wp_text << "\n"
            << "# source: " << plateau_path << "\n"
            << "# rule: a FULL production must satisfy |plateau-1| <= " << kPlateauGuardTol
-           << " in EVERY (pair pT, pair eta) cell; a TEST sample is exempt but still reported.\n"
+           << " in EVERY (pair pT, pair eta) cell (FATAL above that); cells with |plateau-1| > "
+           << kPlateauFlagTol << " are FLAGGED but allowed, and carry |plateau-1| as a\n"
+              "#       systematic (docs/systematic_uncertainties.md 1a). A TEST sample is exempt"
+              " from the fatal tier but still reported.\n"
            << "# inclusive plateau = " << Form("%.4f +- %.4f", plat_incl, plat_incl_err) << "\n\n";
         os << "unmeasurable cells (no dR bin in the plateau window): " << unmeasured.size() << "\n";
         for (const auto& u : unmeasured) os << "  " << u << "\n";
-        os << "\ncells with |plateau-1| > " << kPlateauGuardTol << " : " << violations.size()
+        os << "\nFLAGGED cells (" << kPlateauFlagTol << " < |plateau-1| <= " << kPlateauGuardTol
+           << ", allowed, carry a systematic) : " << flagged.size() << "\n";
+        for (const auto& f : flagged) os << "  " << f << "\n";
+        os << "\nFAILING cells (|plateau-1| > " << kPlateauGuardTol << ") : " << violations.size()
            << "\n";
         for (const auto& v : violations) os << "  " << v << "\n";
         os << "\nverdict: " << (violations.empty() ? "PASS"
@@ -286,6 +304,12 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                                                                          : "reported, exempt (TEST sample)"))
            << "\n";
         std::cout << "  wrote " << gdir << "plateau_guard_report.txt\n";
+    }
+    if (!flagged.empty()) {
+        std::cout << "  ~~ FLAGGED: " << flagged.size() << " cell(s) with "
+                  << kPlateauFlagTol << " < |plateau-1| <= " << kPlateauGuardTol
+                  << " (allowed; each carries |plateau-1| as a systematic):\n";
+        for (const auto& f : flagged) std::cout << "     " << f << "\n";
     }
     if (!violations.empty()) {
         std::cout << "  !! " << violations.size() << " cell(s) with |plateau-1| > "
@@ -311,7 +335,8 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     } else if (!cfg.is_full_sample && !violations.empty()) {
         std::cout << "  (TEST sample -> guard NOT enforced; the cells above are reported only.)\n";
     } else {
-        std::cout << "  plateau guard PASSED (all |plateau-1| <= " << kPlateauGuardTol << ").\n";
+        std::cout << "  plateau guard PASSED (all |plateau-1| <= " << kPlateauGuardTol
+                  << (flagged.empty() ? "" : "; see the FLAGGED cells above") << ").\n";
     }
 
     // ---------------------------------------------------------------- 3. input histograms
@@ -399,6 +424,8 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     // sane (|plateau-1| <= the guard tolerance), and the INCLUSIVE cell -- which is the only
     // statistically meaningful curve for a 10k-event sample anyway.
     std::vector<double> chi2_all, chi2_sane;
+    int n_unusable = 0;   // cells persisted with fit_ok = 0 (fit failed / plateau outside the
+                          // guard tolerance / correction not > 0 over [0, Rp])
     double chi2_incl = -1.;
 
     // iy/iz = 0 is the inclusive cell, fitted first.
@@ -537,8 +564,23 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
             f->Write();
             g->Write();
 
+            // USABILITY, not just "the fitter returned": a cell is usable only if the fit
+            // converged AND its plateau is inside the guard tolerance AND the resulting
+            // correction is physical (a trigger-probability correction can never be <= 0) over
+            // the whole fitted range. Without the last two conditions the overlay persisted
+            // cells with f(0) = -1.005 / -0.559 carrying fit_ok = 1, i.e. a NEGATIVE trigger
+            // correction advertised as good -- the class of trap pp_trig_eff_highpt_jump.md
+            // records. Consumers must require h_stepN_fit_ok == 1.
+            bool physical = true;
+            for (int k = 0; k <= 200; ++k) {
+                const double x = kFitLo + (S.flat_onset - kFitLo) * k / 200.0;
+                if (f->Eval(x) <= 0.) { physical = false; break; }
+            }
+            const bool usable = ok && physical
+                             && std::fabs(plateau - 1.0) <= kPlateauGuardTol;
+            if (!usable && !inclusive) ++n_unusable;
             if (!inclusive) {
-                hstat->SetBinContent(iy, iz, ok ? 1. : 0.);
+                hstat->SetBinContent(iy, iz, usable ? 1. : 0.);
                 hchi ->SetBinContent(iy, iz, chi2ndf);
                 for (int ip = 0; ip < M.npar && ip < 4; ++ip) {
                     hpar[ip]->SetBinContent(iy, iz, f->GetParameter(ip));
@@ -551,7 +593,7 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                 if (inclusive) chi2_incl = chi2ndf;
                 else {
                     chi2_all.push_back(chi2ndf);
-                    if (std::fabs(plateau - 1.0) <= kPlateauGuardTol) chi2_sane.push_back(chi2ndf);
+                    if (std::fabs(plateau - 1.0) <= kPlateauFlagTol) chi2_sane.push_back(chi2ndf);
                 }
             }
 
@@ -612,7 +654,10 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     rep << "\n# chi2/ndf, INCLUSIVE cell (the only statistically meaningful curve for a 10k-event"
            " TEST sample) = " << line_incl << "\n"
         << "# chi2/ndf over all converged cells:            " << line_all << "\n"
-        << "# chi2/ndf over cells with |plateau-1| <= " << kPlateauGuardTol << ": "
+        << "# cells marked UNUSABLE (h_stepN_fit_ok = 0: fit failed, |plateau-1| > "
+        << kPlateauGuardTol << ", or the correction is not > 0 over [0, Rp]): " << n_unusable
+        << "  -- consumers MUST require fit_ok == 1\n"
+        << "# chi2/ndf over cells with |plateau-1| <= " << kPlateauFlagTol << ": "
         << line_sane << "\n"
         << "# (cells whose plateau is far from 1 have too few dR-in-[1,4] pairs to define one;"
            " normalizing by such a plateau inflates chi2 without saying anything about the fit"

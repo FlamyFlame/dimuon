@@ -51,27 +51,41 @@ offset that was normalized away is taken as a systematic on the correction.
 - **Narrative + current values:** `docs/tracking/mc_trigger_efficiency.md` (R9, R12, R13 and
   Remaining Work 6).
 
-**Guard.** For any **FULL** sample, `|plateau − 1| > 0.1` in any (pair pT, pair η) cell is a
-hard error: the fit stage throws and exits. The HIJING overlay and the r17663 no-overlay sample
+**Guard (TWO TIERS, user 2026-08-04).** For any **FULL** sample the fit stage
+(`fit_dr_corrections.cxx`) classifies every (pair pT, pair η) cell:
+`|plateau − 1| > 0.10` → **FLAGGED** (reported loudly in `plateau_guard_report.txt` and on
+stdout, allowed, and the cell carries `|plateau − 1|` as a systematic);
+`|plateau − 1| > 0.15` → **FAILURE**, the stage throws and exits. The 0.10 tier is already a
+deliberately loose closure requirement; 0.15 is the "this cell is not usable" line.
+A cell is additionally marked **unusable** (`h_stepN_fit_ok = 0`) if its fit did not converge or
+if the fitted correction is not positive over the whole fitted range — **consumers must require
+`fit_ok == 1`**. The HIJING overlay and the r17663 no-overlay sample
 are 10 000-event **TEST** samples whose high-pair-pT cells are noise-dominated, so they are
 exempt from the guard (their offending cells are reported, not fatal). The guard lifts to the
 overlay once the full-statistics PbPb production lands.
 
-**⚠ TWO pp24 CELLS CURRENTLY FAIL THE GUARD — ACCEPTED AND NORMALIZED (user decision
-2026-08-04), size to be carried as a systematic.** After the forward low-pT veto, 34 of the 36
-pp24 (pair pT × pair η) cells have plateaus within 7% of 1; two do not, both in the top
-pair-pT bin:
+**⚠ TWO pp24 CELLS ARE FLAGGED (0.10 < |plateau−1| ≤ 0.15) — accepted and normalized (user
+decision 2026-08-04); NONE fails.** Numbers below are on the CANONICAL pair-pT binning
+{8, 13.75, 23.63, 40.62, 120} (see `.claude/CLAUDE.md` §Binnings; the pre-2026-08-04 numbers were
+measured on the retired {8,15,27,50,150} edges and are superseded). 34 of the 36 pp24
+(pair pT × pair η) cells have plateaus within 7% of 1; two are flagged, both **Step 3** in the
+top pair-pT bin, and **Step 4 has none**:
 
 | step | cell | plateau | deviation from 1 |
 |---|---|---|---|
-| 3 | pT_pair[50,150) × η_pair[1.0,1.5) | 0.8573 ± 0.0350 | 4.1σ, \|Δ\| = 0.143 |
-| 4 | pT_pair[50,150) × η_pair[0.5,1.0) | 0.8955 ± 0.0092 | 11.4σ, \|Δ\| = 0.105 |
+| 3 | pT_pair[41,120) × η_pair[−2.4,−2.0) | 1.1490 ± 0.0105 | 14.2σ, \|Δ\| = 0.149 |
+| 3 | pT_pair[41,120) × η_pair[1.0,1.5) | 0.8648 ± 0.0277 | 4.9σ, \|Δ\| = 0.135 |
 
-Neighbouring cells in the same pair-pT row are 0.96–1.02, so these are isolated outliers rather
-than a trend, and the Step-4 one has small errors — it is **not** a statistical artefact: the
-inverse weighting genuinely fails to close there by ~10%. **Decision: normalize each cell by its
-own measured plateau as usual and carry `|plateau − 1|` in these two cells as a systematic on the
-ΔR correction.** The guard stays in place and still reports loudly.
+Neighbouring cells in the same pair-pT row are 0.95–1.00, so these are isolated outliers rather
+than a trend, and neither is a statistical artefact. **Decision: normalize each cell by its own
+measured plateau as usual and carry `|plateau − 1|` in these two cells as a systematic on the
+ΔR correction.** The guard stays in place and reports loudly.
+
+**Unusable cells (`h_stepN_fit_ok = 0`).** pp24: **0** for both steps — every cell is usable.
+HIJING overlay: **31 of 36** (Step 3) and **13 of 36** (Step 4) — with 10 000 events the per-cell
+plateaus are not measurable, so **only the inclusive overlay correction is usable today**
+(inclusive plateau 0.8681 ± 0.0189 Step 3, 0.9476 ± 0.0088 Step 4, Tight). Per-cell PbPb
+corrections need the full-statistics overlay.
 
 **Open lead on the cause (NOT yet demonstrated):** the MC single-muon turn-on TF1s are fitted
 only over `pT ∈ [4, 60] GeV` and the evaluator clamps above 60 GeV. In a 50–150 GeV *pair* pT bin
