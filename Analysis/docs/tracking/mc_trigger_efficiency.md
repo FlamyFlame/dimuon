@@ -21,6 +21,50 @@ HIJING overlay r17618 `_July2026`) to deliver the MC-based trigger-efficiency pr
    weighting on an unbiased (no-trigger-requirement) MC pair sample. This is the analysis
    deliverable that replaces the current dummy ε_ΔR ≡ 1 (roadmap Q4).
 
+## Autonomy Contract (round 7 — ACTIVE, opened 2026-08-03; re-read on every compaction)
+- Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a plan, a
+  passing small test, or one pipeline stage is NOT a stopping point.
+- Done = all of the following, in this order (item 1 lands BEFORE any other):
+  1. **Truth fiducial as DEFAULT**: `truth_pt > 4 && |truth_eta| < 2.4` is part of the MC
+     trig-eff sample selection for **every** sample (pp_full, overlay, noovl) and **every**
+     step (1–4), and **all** MC trig-eff plots are regenerated on it (both WPs).
+  2. **Sanity-check Step-1 plot set** in its OWN subdirectory, with two extra requirements —
+     (i) the event has exactly ONE reconstructed (track-bearing) primary vertex, (ii) the muon
+     passes `|truth_pt − reco_pt| / truth_pt < THRESHOLD` with THRESHOLD fixed by me and the
+     choice justified — overlaid against the **original MC** (NOT data), plus the reported
+     **percentage of MC muons passing each requirement** (and both).
+  3. **Conditional**: if after (2) the MC still shows a saturated ≈1 plateau (no data-like
+     turn-on) in q·η ∈ (−2.4,−2.0) — i.e. the anomaly is REAL and not a bad-muon artefact —
+     then Steps **2, 3 and 4** are remade with the single-muon requirement
+     **`pT > 7 GeV || q·η > −2`**, i.e. rejecting ONLY muons that are simultaneously
+     `pT < 7 GeV` **and** `q·η < −2`. *(User correction 2026-08-03: the earlier "q·η > −2 for
+     all pT" form was wrong — the anomaly is confined to the low-pT turn-on, so only the
+     low-pT forward corner is removed; high-pT forward muons are kept.)* A pair is kept only
+     if BOTH legs satisfy it, as for every other muon-level requirement.
+  4. **ΔR-correction error bars explained**: exact formula (file:line), bug / not-a-bug verdict
+     with quantitative evidence, and — if not a bug — why the errors exceed the bin-to-bin
+     scatter (highest pair-pT bin 40.6–120 GeV).
+  5. **Corrected-MC study**: per-muon weight `SF = ε_data/ε_MC(pT, q·η)`; (a) Step-1 replotted
+     with corrected-MC vs data **and the corrected MC fitted**; (b) Step 3 and Step 4 replotted
+     as **1 PNG per pair-pT bin, 1 subplot per pair-η bin**, original-MC vs corrected-MC overlaid.
+  6. **ΔR-correction fits**: the large-ΔR plateau per (pair pT, pair η) cell is written to a
+     **ROOT file** by the step that measures it and **read back** by the fit stage in one
+     integrated flow — never hardcoded, never read from a .md/.txt. For any **FULL** sample
+     (the HIJING overlay is a TEST sample ⇒ exempt) `|plateau − 1| > 0.1` in any cell **throws
+     and exits**. Then fit/interpolate the plateau-normalized corrections (Step 4 flat for
+     ΔR ≳ 0.3, Step 3 flat for ΔR ≳ 0.5); plots = absolute values (black) + fitted function
+     (red), 1 PNG per pair-pT bin, 1 subplot per pair-η bin, one subdirectory per fit
+     function / method.
+  7. A **dedicated systematic-uncertainty document** exists and points to this doc / the
+     plateau ROOT file for the large-ΔR plateau.
+  8. **MC closure written as the next TODO** in this doc — NOT executed (user will check the
+     above first).
+  9. `/wrap-up` run (docs + git + `.claude` review, incl. whether the CLAUDE.md orchestrator
+     instructions need updating), and a final summary listing every new plot path and
+     subdirectory breakdown plus the items needing human judgement.
+- Stop-and-ask = ANY physics-results-bending ambiguity (no fixed list; use judgment; when unsure
+  whether an ambiguity is blocking, treat it as blocking → AskUserQuestion).
+
 ## Autonomy Contract (round 6 — **DONE 2026-07-28**; Step 4 delivered + both reviews PASS)
 **Every Done item met.** §2 reformulated + §3.4 written; `do_step4` in FillMCTrigEffHists +
 Step-4 block in plot_mc_trig_eff (new `step4_dr_correction_singles/` dir, step1/2/3 untouched);
@@ -249,6 +293,22 @@ D5 reversal) · `|d0| < 2 mm` ·
 **No signal-selection cut is applied** (no pair-pT, no q·η, no ΔR, no m_μμ, no resonance
 veto) — those define the measurement, not the muon.
 
+**(c') TRUTH FIDUCIAL (added 2026-08-03 by user instruction — DEFAULT for every sample and
+every step).** On top of (c), each MC muon must also satisfy
+`truth pT > 4 GeV` and `|truth η| < 2.4`.
+Because the sample is truth-SEEDED (round-5 change #1), every selected muon has a truth partner,
+so this is a well-defined cut on the muon itself; for pairs it is required of **both legs**. Its
+purpose is to remove muons that enter the reco fiducial region *only* through mismeasurement —
+truth momentum below threshold, or truth direction outside acceptance — which is the same "bad
+muon" population §3.5 probes. Implemented at the RDF stage (`FillMCTrigEffHists.cxx`), since
+`truth_pt`/`truth_eta` are already stored on both trees.
+- **It has NO data analogue** — the data tag-and-probe denominator cannot be truth-gated. The
+  Step-1 MC/data comparison therefore carries one more MC-only selection than data does; this is
+  a second, deliberate instance of the asymmetry noted at the end of this section. It does **not**
+  affect the deliverables, which are MC-internal ΔR ratios.
+- Measured impact (pp24 FULL, Tight): keeps 98.49% of the weighted reco-selected sample,
+  ε(mu4) 0.7682 → 0.7722 (R13).
+
 **(d) BOTH WORKING POINTS.** Steps 1–3 are produced for **Medium-for-both** and
 **Tight-for-both** (MC *and* the data reference at the same WP). The WP must never be mixed
 across the data/MC comparison, and the ΔR-correlation procedure (Steps 2–3) must be shown
@@ -359,6 +419,57 @@ their own ΔR correction. Step 4 measures it as a continuous, kinematics-divided
 - **Sample scope:** the deliverable is the **overlay** (PbPb, union). **pp is run only to
   VALIDATE the machinery on the FULL-sample statistics** (full HIJING-overlay stats not yet
   available); Step 4 results are physically NOT needed for pp (2mu4 product — see §2). Both WPs.
+
+#### §3.5 Step-1 SANITY CHECK: is the forward MC≫data efficiency a "bad muon/event" artefact?
+
+**Added 2026-08-03 (user).** R3/R8/R10 established that in the forward endcap
+(`q·η ∈ (−2.4,−2.0)`, `pT ≲ 6 GeV`) the pp24 fullsim MC single-muon efficiency is far above data
+and *saturated* — flat at ~0.9 with no data-like turn-on — and that this tracks the r16578
+production **configuration**. Round-5 change #2 split that bin into (−2.4,−2.2) + (−2.2,−2.0) and
+the behaviour is present in **both** halves. Before accepting it as a genuine simulation problem,
+rule out the mundane explanation: that it is driven by badly reconstructed muons or by pile-up
+muons that the d0/z0 cuts did not remove.
+
+- **What it measures:** the Step-1 efficiency ε_MC(pT, q·η) recomputed on sub-samples defined by
+  two extra requirements, imposed separately and together:
+  1. **One-vertex events** — exactly ONE reconstructed, **track-bearing** primary vertex
+     (`n_vtx == 1`, counting only vertices with `vtx_ntrk ≥ 2`). This removes any residual
+     pile-up muon. The skim dumps `PrimaryVertices` unfiltered, so every event also carries one
+     dummy beamspot vertex with `ntrk = 0`; counting it would make `n_vtx == 1` true for every
+     event and the requirement vacuous.
+  2. **Truth-reco pT match** — `|truth pT − reco pT| / truth pT < 0.10`. This removes badly
+     mismeasured muons while keeping essentially all well-measured ones (threshold justification
+     below).
+- **Comparison target: the ORIGINAL MC, never data.** Neither requirement has a data analogue
+  (data has no truth; and the vertex requirement changes the *event* sample rather than the muon
+  selection). Overlaying against data would confound the question being asked.
+- **Threshold choice (0.10), from the pp24 FULL sample after the §3.0(c') truth fiducial:**
+  the `|ΔpT|/pT^truth` distribution has median 0.0144, 90% 0.0390, 95% 0.0489, 99% 0.0721,
+  99.9% 0.1101; by region, |η| < 1.05 → 99% at 0.0537, 1.05–2.0 → 0.0779, |η| > 2.0 → 0.0904, so
+  a single global threshold is not unfair to the forward region. Scan of candidate values:
+
+  | thr | keeps (weighted) | ε(kept) | ε(rejected) | rejected |
+  |---|---|---|---|---|
+  | 0.05 | 95.36% | 0.7729 | 0.7581 | 4.64% |
+  | **0.10** | **99.82%** | **0.7723** | **0.7311** | **0.18%** |
+  | 0.15 | 99.98% | 0.7722 | 0.7209 | 0.02% |
+  | 0.20 | 100.00% | 0.7722 | 0.7474 | 0.004% |
+
+  0.05 cuts 4.6% of the sample while the rejected muons are barely worse than average (0.758 vs
+  0.773) — it is eating the resolution core. 0.10 sits at ≈5σ of the core resolution: it keeps
+  99.8% of the muons yet isolates a population with visibly degraded trigger efficiency
+  (0.731 vs 0.772). Beyond 0.15 the rejected sample is too small to be informative. **0.10 is the
+  smallest threshold that is clearly outside the resolution core** — good enough for a sanity
+  check, which is all that is required.
+- **Interpretation / decision rule.** If the saturated ≈1 plateau in `q·η ∈ (−2.4,−2.0)` SURVIVES
+  both requirements, the anomaly is not a bad-muon or pile-up artefact and is treated as a real
+  simulation problem ⇒ the affected muons are removed from Steps 2–4 by requiring
+  **`pT > 7 GeV || q·η > −2`** (i.e. rejecting only muons that are *simultaneously* low-pT and
+  forward-negative; both legs of a pair must satisfy it). If instead the plateau develops a
+  data-like turn-on, the anomaly is an artefact of those muons and no selection change is needed.
+- **Sample scope.** pp24 (the sample where MC ≫ data) is the decisive test. Requirement 1 is
+  **inapplicable to the HIJING overlay**: its reconstruction produces no track-based primary
+  vertex at all (`n_vtx == 0` in every event), so only requirement 2 is meaningful there.
 
 ### 4. Negative constraints
 
@@ -1625,6 +1736,90 @@ dimuon precedent shows a fully data-driven ε_trig is also accepted. **Neither a
 MC events to force MC/data efficiency agreement** — the correction is always a multiplicative
 factor on the efficiency map applied to *data* yields.
 
+### R12. ΔR-correction error bars: over-stated by 1.5–3.2× (2026-08-03, round 7) — FIXED
+
+**User question:** "How are the error bars for the ΔR corrections determined? For the highest
+pair-pT bin (40.6–120 GeV) they are quite large — understandable from statistics — but the
+bin-to-bin variations don't look large enough to be compatible with them. Is this a bug?"
+
+**Answer: YES, it was a bug — in the UNCERTAINTY only. Central values were never affected.**
+
+**(a) What the code did.** `FillMCTrigEffHists.cxx` books the denominator with weight `w` (the MC
+event weight) and the numerator with `w/ε` (Step 3: `w/(ε₁ε₂)`), Sumw2 on, so per ΔR bin
+`D = Σw, e_D = √(Σw²)` and `N = Σ_fired w/ε, e_N = √(Σ_fired w²/ε²)`. The ratio was then a plain,
+option-less `TH1::Divide` (5 sites: `plot_mc_trig_eff.cxx:977, 1057, 1155` Step 3 and `1330, 1397`
+Step 4, pre-round-7 numbering), i.e.
+`e_R = R·√((e_N/N)² + (e_D/D)²)` — verified against the file contents to 3.6e-16.
+
+**(b) Why it is wrong.** That formula assumes the numerator and denominator are INDEPENDENT. They
+are not: the numerator is a re-weighted **subset** of the denominator. Conditioning on the MC
+sample (D fixed, only the Bernoulli trigger decisions fluctuate) gives
+`Var(N) = Σ a_i² p_i(1−p_i)`, `a_i = w_i/ε_i`, `p_i = ε_i·R`, so the code over-states the error by
+exactly `√((1+ε)/(1−ε))`. The old comment ("inverse weights > 1 → Bayes invalid") is only half
+right: it correctly rules out the *Bayesian* `TGraphAsymmErrors::Divide`, but not the correlated
+propagation.
+
+**(c) Evidence.** The measured `e_code/e_correct` matches `√((1+ε)/(1−ε))` to 1–2% in **12/12**
+cases (pp_full + overlay × Step 3/4 × 4 pair-pT bins). χ²/ndf of a constant fit over flat
+windows: **mean 0.25 with the code errors, 1.0 with the corrected ones** — the smoking gun.
+Worst case pp_full Step 4, pT_pair 50–150: **3.22×** over-stated. Internal consistency:
+ε_eff(Step 3) ≈ ε_eff(Step 4)² (0.826² = 0.682 vs 0.701), as required for a pair vs a leg.
+Ruled out as causes: MC event-weight spread (N_eff/N_raw = 0.863 over the whole pp_full pair
+tree — costs only 14% and inflates the true scatter as much as the quoted error), 1/ε weight
+spread (N_eff,num ≈ 0.73 N_eff,den), shared events between ΔR bins (none — each pair fills
+exactly one bin), rebinning/smoothing (none).
+
+**(d) Why it is worst in the 40.6–120 GeV bin** — two compounding effects: ε rises with pair pT
+along the mu4 turn-on (ε_leg 0.69→0.83, ε_pair 0.48→0.70), so the inflation factor itself grows
+1.7→3.2; and N_eff is smallest there, so the (already inflated) error is largest.
+
+**(e) Fix applied (round 7).** The fill books, on the numerator node, `errA = Σ w²/ε²` and
+`errB = Σ w²/ε`; the ratio error is then `√(A − R·B)/D`. For **Step 4** the two legs of a pair
+land in the SAME ΔR bin and their trigger decisions are correlated (that correlation is what
+Step 3 measures), so the exact cross term is booked too — once per pair, at `leg == 1`:
+`covP = Σ_{both fired} 2w²/(ε₁ε₂)`, `covQ = Σ_{all pairs} 2w²`, giving
+`Var = A − R·B + covP − R²·covQ`. Unweighted limit: A = B = N ⇒ `e_R = √(R(1−R)/D)`, the textbook
+binomial, as it must be. Consumed by `SetConditionalRatioErrors()` in `plot_mc_trig_eff.cxx`.
+- **Boundary guard.** When every effective entry in a bin fired, the conditional variance
+  genuinely vanishes (the k = n binomial artefact) and `var` comes out 0, slightly negative, or a
+  catastrophic cancellation of terms orders of magnitude larger (observed in the near-empty
+  high-pair-pT cells of the 10 k-event overlay: A = 1.1e-06 vs var = 1e-22, which produced a
+  bogus `25.56 ± 0.0000` plateau cell). Detected by comparing `var` with the SCALE of its terms
+  and replaced by the "1/n rule" with the effective denominator count `n_eff = (D/e_D)²`.
+- **Measured effect** (Tight): pp_full Step 3 ±0.0012 → **±0.0008**, Step 4 ±0.0008 → **±0.0004**;
+  overlay Step 3 ±0.0256 → **±0.0183**, Step 4 ±0.0162 → **±0.0085**. Central values unchanged.
+
+**(f) PHYSICS CONSEQUENCE — the plateau offset is now significant.** The normalization systematic
+is sized by comparing |plateau − 1| with its stat error. With the old errors pp_full Step 4,
+pT_pair 50–150 read 0.9846 ± 0.0209 (0.7σ from 1, "consistent"); with the correct error it is
+0.9840 ± 0.0065 (**2.5σ**). Inclusively, pp_full Step 4 is now 0.9911 ± 0.0004 — **22σ from 1**.
+The plateau≠1 offset is therefore a REAL effect to be normalized away and assigned a systematic,
+not a statistical fluctuation. **This enlarges the plateau-normalization systematic and it must
+be re-derived** (RW 6).
+
+### R13. Truth fiducial as the default sample selection (2026-08-03, round 7, user)
+
+`truth pT > 4 GeV && |truth η| < 2.4` is now applied to every MC muon in Steps 1–4, all samples,
+on top of the data-like reco cuts (both legs for pairs). Implemented purely at the RDF stage —
+`truth_pt`/`truth_eta` were already stored on both the single-muon and pair trees — so **no
+NTuple-processing re-run was needed** for it.
+- **Impact (pp24 FULL, Tight):** keeps **98.49%** of the weighted reco-selected sample;
+  integrated ε(mu4) 0.7682 → **0.7722**. 13 649 705 selected muons remain.
+- **Headline shifts** (Tight / Medium), vs the round-6 values:
+  | quantity (ΔR∈[1,4] plateau) | round 6 | round 7 (truth fiducial + correct errors) |
+  |---|---|---|
+  | pp_full ε_ΔR^2mu4 | 0.9855 / 0.9875 | **0.9817 ± 0.0008 / 0.9826 ± 0.0008** |
+  | pp_full ε_ΔR^single | 0.993 / 0.994 | **0.9911 ± 0.0004 / 0.9918 ± 0.0003** |
+  | overlay ε_ΔR^cross | 0.8795 / 0.8697 | **0.8734 ± 0.0183 / 0.8614 ± 0.0176** |
+  | overlay ε_ΔR^single | 0.951 / 0.943 | **0.9488 ± 0.0085 / 0.9399 ± 0.0082** |
+  | noovl ε_ΔR^cross / ε_ΔR^single | — | 0.8521 ± 0.0237 / 0.9258 ± 0.0113 (Tight) |
+  All shifts are small (≤0.006) — the truth fiducial removes a 1.5% population, it does not
+  reshape the correction.
+- **DOCUMENTED ASYMMETRY (needs human awareness):** the cut has **no data analogue** — the data
+  tag-and-probe denominator cannot be truth-gated. The Step-1 MC/data comparison therefore
+  carries one more MC-only selection than before. It does not affect the deliverables (the ΔR
+  **ratios**, which are MC-internal), but any quoted Step-1 MC/data ratio must state it (cf. R5).
+
 ## Remaining Work
 
 **Blocking / needs user decision:**
@@ -1681,6 +1876,46 @@ factor on the efficiency map applied to *data* yields.
    large-ΔR plateau so ε_ΔR^single(ΔR>1)=1 before it dresses the PbPb union linear terms (§2).
 7. Re-run downstream when the full-stat productions arrive (all-centrality PbPb24-conditions
    overlay; lifts D2). **D3 is now LIFTED** — all 24 pp slices are in.
+
+8. **★ NEXT TO-DO — MC CLOSURE TEST (round 8). Written 2026-08-03; deliberately NOT executed:
+   the user will first check the round-7 results (the corrected-MC study and the ΔR-correction
+   fits), because the closure design depends on both.**
+
+   **What it is.** The MC sample is the only place where BOTH the unbiased denominator (every
+   event stored, `StoreAllEvents`) and the per-muon trigger decision exist. So the whole
+   correction chain can be closed on itself: take the **triggered** MC pairs, apply the analysis's
+   per-pair trigger weight, and check that the result reproduces the **all-pairs** (no trigger
+   requirement) MC yield — differentially, not just inclusively.
+   - pp / 2mu4: `w = 1 / (ε₁ ε₂ · ε_ΔR^2mu4(ΔR))`, numerator condition = pair passes 2mu4.
+   - PbPb / mu4 union: `w = 1 / (ε_ΔR^single(ΔR)·(ε₁+ε₂) − ε₁ε₂·ε_ΔR^cross(ΔR))` (§2),
+     numerator condition = at least one leg mu4-matched.
+   Closure variable = (weighted triggered yield) / (all-pairs yield), which must be **1** within
+   uncertainties in every bin. Bin it in **ΔR, pair pT and pair η** — the inclusive ratio can
+   close by construction while the differential one does not, and it is the differential
+   behaviour that the correction is for. This test was **not available to either Run 2 reference
+   analysis** (their overlay MC had no trigger simulation — R11), so there is no precedent to
+   inherit; it is a genuine addition.
+
+   **Two design choices that ROUND 7 MUST SETTLE FIRST (hence the wait):**
+   (a) *Which ε goes in the weight.* Using the MC ε_MC with the MC-derived ΔR corrections is
+   self-consistent and should close trivially — a code check, not a physics check. The physics
+   question is whether the chain still closes when the **data-derived** ε^nc is used with the
+   MC-derived ΔR corrections, i.e. the configuration the analysis actually applies. The
+   corrected-MC study (contract item 5 / RW 9) decides how meaningful that variant is: if
+   correcting the MC to the data efficiency provably leaves the ΔR corrections unchanged, the
+   data-ε closure test is the right one and is not circular.
+   (b) *Fitted vs binned ΔR correction.* Closure should use the **fitted/interpolated**,
+   plateau-normalized corrections (contract item 6) — that is what the analysis will apply — so
+   the test also validates the fit, not just the binned ratios. Which functional form is nominal
+   is decided by item 6.
+
+   **Acceptance:** closure consistent with 1 within the (round-7, conditional) errors in every
+   (ΔR, pair pT, pair η) bin with meaningful statistics; any structured deviation is a systematic
+   on the trigger correction and goes into `docs/systematic_uncertainties.md` §1a.
+
+9. **Corrected-MC study (contract item 5, round 7)** — whether re-weighting each MC muon by
+   `SF = ε_data/ε_MC(pT, q·η)` changes the ΔR correction terms. Feeds MC-closure design choice
+   (a) above.
 
 ## Latest Stage
 
