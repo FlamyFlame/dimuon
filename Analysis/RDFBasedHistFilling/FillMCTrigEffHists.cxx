@@ -29,6 +29,12 @@
 // threshold / outside acceptance) -- exactly the "bad muon" population the round-7 sanity
 // check targets. It has NO data analogue: the data denominator cannot be truth-gated, so the
 // Step-1 MC/data comparison acquires one more MC-only selection (documented asymmetry, §3.0).
+//
+// FORWARD LOW-pT VETO (round 7, user; §3.5 decision rule -- STEPS 2/3/4 ONLY): a muon is
+// rejected iff it is SIMULTANEOUSLY pT < 7 GeV AND q·η < -2. The §3.5 sanity check ruled out
+// "bad muons" as the cause of the saturated forward-negative MC turn-on, so those muons are
+// removed from the ΔR-correlation measurement. Step 1 and the sanity check keep the full
+// acceptance -- the anomaly must stay visible there. See kVetoFwdLowPt below.
 // Binnings reuse the DATA conventions:
 //   pt   : "pT_bins_single_muon" = pT_bins_8 + pT_bins_60 (RDFBasedHistFillingData.cxx:286-290)
 //   q·η  : "eta_bins_trig_effcy" = ParamsSet::makeEtaTrigEffcyBinning(1) (ibid:294)
@@ -376,6 +382,29 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
     // part of the nominal selection). Value + justification: mc_trigger_efficiency.md §3.5.
     const double kPtMatchThr = 0.10;
 
+    // FORWARD LOW-pT VETO (round 7, user; §3.5 decision rule). The §3.5 sanity check RULED OUT
+    // "bad muons" as the cause of the saturated forward-negative MC turn-on: in q·η ∈ (−2.4,−2.0)
+    // the MC efficiency is flat at ~0.90 from the very first pT bin (data rises 0.45 → 0.92), and
+    // requiring one reconstructed vertex and |ΔpT|/pT^truth < 0.10 moves it by ≤ 0.006 — while the
+    // MIRROR bin q·η ∈ (2.0,2.2) in the same sample shows a perfectly normal turn-on 0.26 → 0.95.
+    // The anomaly is therefore a real property of the r16578 trigger configuration (R8/R10), so
+    // the affected muons are REMOVED from the ΔR-correlation measurement.
+    //
+    // The veto is ASYMMETRIC and applies ONLY to the low-pT forward-negative corner: a muon is
+    // rejected iff it is SIMULTANEOUSLY pT < 7 GeV AND q·η < −2. High-pT forward muons are kept
+    // (the saturation is a turn-on-region effect), and the positive-q·η side is untouched.
+    //
+    // SCOPE: Steps 2, 3 and 4 (the ΔR-correlation measurement) ONLY. Step 1 keeps the full
+    // acceptance -- it is the ε_MC(pT,q·η) map plus the data/MC validation, and the anomalous
+    // region must stay visible there. The sanity check (do_sanity) is likewise unvetoed: vetoing
+    // it would erase the very effect it exists to display. A PAIR is kept only if BOTH legs pass.
+    const bool kVetoFwdLowPt = true;
+    const std::string kFwdVetoSingle = "(pt > 7 || charge * eta > -2)";
+    const std::string kFwdVetoLeg    = "(lg_pt > 7 || lg_charge * lg_eta > -2) && "
+                                       "(ot_pt > 7 || ot_charge * ot_eta > -2)";
+    const std::string kFwdVetoPair   = "(m1_pt > 7 || m1_charge * m1_eta > -2) && "
+                                       "(m2_pt > 7 || m2_charge * m2_eta > -2)";
+
     // common selection = data-side muon definition (nominal WP + fiducial) + truth fiducial
     const std::string sel_single = wp_col + " && pt > 4 && fabs(eta) < 2.4 && " + kTruthFidSingle;
     // overlay: 0-5% centrality only (doc D2; test sample is b=0-5 fm)
@@ -383,9 +412,11 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
         ? sel_single + " && ev_centrality >= 0 && ev_centrality < 5"
         : sel_single;
 
+    // Steps 2 and 4 (both legs must pass the analysis muon definition + the forward low-pT veto)
     const std::string sel_pair_legs =
         "lg_wp && lg_pt > 4 && fabs(lg_eta) < 2.4 && "
-        "ot_wp && ot_pt > 4 && fabs(ot_eta) < 2.4 && " + kTruthFidLeg;
+        "ot_wp && ot_pt > 4 && fabs(ot_eta) < 2.4 && " + kTruthFidLeg +
+        (kVetoFwdLowPt ? " && " + kFwdVetoLeg : std::string());
     const std::string sel_pair_full = cfg.is_overlay
         ? sel_pair_legs + " && avg_centrality >= 0 && avg_centrality < 5"
         : sel_pair_legs;
@@ -690,6 +721,7 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
 
             std::string sel = "m1_wp && m1_pt > 4 && fabs(m1_eta) < 2.4 && "
                               "m2_wp && m2_pt > 4 && fabs(m2_eta) < 2.4 && " + kTruthFidPair;
+            if (kVetoFwdLowPt) sel += " && " + kFwdVetoPair;   // Step 3 (round-7 forward veto)
             if (cfg.is_overlay) sel += " && avg_centrality >= 0 && avg_centrality < 5";
             dp = dp.Filter(sel, tree + " step3 selection");
 
