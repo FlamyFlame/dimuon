@@ -183,3 +183,101 @@ PASS. Uncommitted — awaiting user go-ahead to commit.
 ## Latest Stage
 *(cleared — continuous-function root-cause fix COMPLETE; chain rerun verified;
 chain-wide audit clean. Uncommitted.)*
+
+---
+
+## REOPENED 2026-08-04 — the OTHER branch: `w_trig = 0` silently DROPS gap-η pairs
+
+**Status: ROOT CAUSE FOUND AND VERIFIED. FIX NOT APPLIED — BLOCKED ON A USER DECISION**
+(same posture as the original 2026-06-20 close). Found by `/review-plot` while reviewing an
+unrelated plotting change (the crossx common log-y range, `raa_from_rdf_crossx.md`
+2026-08-04) — that change removed a `SetMinimum(ymax*1e-5)` floor which had been **hiding
+the affected high-pT bins**, so the defect became visible for the first time.
+
+### This is NOT the bug this doc closed on 2026-06-21
+Same lookup, opposite branch and opposite sign:
+
+| | closed 2026-06-21 | NEW 2026-08-04 |
+|---|---|---|
+| branch | fitted-TF1 `Eval` out of [4,60] range | the `return -1.0f` "no efficiency available" sentinel |
+| effect on ε | 0 → floored to 0.01 | undefined |
+| effect on weight | `w_trig` BLOWS UP (×100–10⁴) | `w_trig = 0` — pair **silently dropped** |
+| symptom | corrected/raw jumps UP ×13–88 above ~58 GeV | corrected/raw falls BELOW 1, down to 0.37 (pp) and exactly 0 (PbPb) |
+| status | FIXED (TFormula persistence + exact-pt Eval), verified | **LIVE** |
+
+### Observation (independently reproduced twice: reviewer + executor)
+`corrected / uncorrected` per (pair pT, pair η) from
+`histograms_real_pairs_pp_2024_2mu4_nominal.root`
+(`h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts` ÷ `..._no_trig_corr`).
+A 1/ε correction **cannot** be < 1. pp24 — 7 of 132 bins are:
+
+| pair pT [GeV] | η^pair ≈ −1.2 | η^pair ≈ +1.2 | all other η panels |
+|---|---|---|---|
+| 49–58  | 1.20 | **0.97** | 1.27–2.01 |
+| 58–70  | **0.71** | **0.87** | 1.21–1.71 |
+| 70–84  | **0.50** | **0.69** | 1.19–1.77 |
+| 84–100 | **0.37** | **0.94** | 1.13–2.00 |
+
+Symmetric in ±η, common onset ~50 GeV, monotone decline ⇒ systematic, not statistical.
+PbPb is worse and reaches **exactly 0**: `no_trig_corr`→corrected 8/119 (2023), 6/116
+(2024), 7/122 (2025); `reco`→`reco×trig` 38/129, 35/123, 24/129.
+
+### Mechanism (traced to source)
+`RDFBasedHistFillingData.cxx:625-655` `EvaluateSingleMuonEffcyPtFitted` returns **−1.0f**
+when BOTH:
+1. the muon's q·η falls in a **gap** of `q_eta_proj_ranges_fine_excl_gap`
+   (`CommonEffcyConfig.h:15-30`; excluded windows q·η ∈ [−1.3,−0.9], [−0.1,0.1], [1.0,1.3])
+   ⇒ no fitted turn-on TF1 exists, so it takes the 2D-histogram fallback; **and**
+2. the 2D fallback bin is empty (`content <= 0.01`) — which is exactly what happens at
+   **high pT**, where the 2D efficiency map runs out of statistics.
+
+That −1.0 then propagates through, identically in pp and PbPb:
+```
+effcy_pair = (effcy1 > 0 && effcy2 > 0) ? effcy1*effcy2 : -1.0
+w_trig     = effcy_pair > 0 ? 1.0/effcy_pair : 0.0        // <-- pair silently dropped
+```
+Sites: `RDFBasedHistFillingPP.cxx:377-378, 459-460, 532-533, 627-628, 701-702`;
+`RDFBasedHistFillingPbPb.cxx:995, 1041, 1154, 1340`.
+Pair η ∈ [1.0,1.5] is precisely where one muon most often lands in the [1.0,1.3] q·η gap —
+mechanism and observation agree on both sides.
+
+### Blast radius
+Not confined to the sanity plots: the **nominal** crossx histograms are filled with the same
+`crossx_weight_trig_corr`, so `pp24_crossx_pair_pt_in_eta_subplots.png` loses up to ~63% of
+its cross-section in the η ∈ [−1.5,−1.0] high-pT bins, and R_AA inherits it through both
+numerator and denominator. Fixing it requires a crossx refill for pp + PbPb 23/24/25 and a
+full replot (see `signal_selection_change_impact.md`).
+
+### Candidate fixes — USER DECISION REQUIRED (they differ in physics, not just in code)
+- **(a)** evaluate gap muons with the **nearest fitted q·η bin's** turn-on (cheapest;
+  assumes the turn-on varies slowly across the gap edge — it may not, the gap exists
+  because the detector response changes there).
+- **(b)** coarsen / extend the **2D fallback map** so high-pT gap bins are populated
+  (keeps a measured number, costs resolution in q·η).
+- **(c)** keep dropping the pair, but drop it from the **uncorrected histogram too**, so
+  numerator and denominator see the same pairs (consistent, but redefines the acceptance).
+- **(d)** **exclude the q·η gap from the fiducial region** entirely and state it in the note
+  (cleanest physically, reduces acceptance).
+No approach is applied. Per `.claude/CLAUDE.md` (STOP AND ASK on physics-results-bending
+ambiguity) and the precedent of this doc's first close, the choice is the user's.
+
+### ⚠ DIRECTLY COUPLED TO `muon_gap_cuts_acceptance.md` (ACTIVE, same day)
+That doc is *decision support for exactly this region*: it is gathering the single-muon q·η
+spectrum so the user can finalise a **detector-gap fiducial cut + acceptance efficiency
+ε_acc**, and it already inventories the three coexisting gap definitions — noting that the
+`CommonEffcyConfig::q_eta_proj_ranges_fine_excl_gap` holes "only trigger a 2D trig-eff
+fallback".
+
+**This doc supplies the missing consequence of that fallback:** when the 2D fallback bin is
+EMPTY — which is the norm at high pT — the pair is not merely approximated, it is **dropped
+with weight 0**, silently biasing the corrected crossx DOWN by up to ~63% in the affected
+cells. That is concrete quantitative evidence in favour of option (d) (a fiducial gap cut
+compensated by ε_acc) over patching the efficiency inside the gap, and it should be weighed
+in the user's cut decision. Whichever way it goes, the `w_trig = 0` drop path must stop
+being silent: a pair with no defined efficiency should be counted and reported, never
+vanish. (Cross-referenced, not edited, since that doc is owned by a concurrent session.)
+
+### Latest Stage
+*(BLOCKED — awaiting the user's choice among (a)–(d); then: fix →
+`/review-analysis-code` → refill crossx pp + PbPb 23/24/25 → replot crossx + R_AA +
+sanity → `/review-plot`.)*
