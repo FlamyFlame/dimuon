@@ -1957,10 +1957,20 @@ Commits `f990173`..`b3b2a99` on master; working tree clean at the pause.
   0.0346 (worst) and η_pair[2.0,2.4) = 1.1082 ± 0.0119; Step 4 η_pair[0.5,1.0) = 0.8954 ±
   0.0091. The guard behaves exactly as specified (throws); what to DO about those cells is a
   physics decision. Note these values predate the veto refill and must be re-measured first.
-- **(d) The corrected-MC study (contract item 5) was still running when the session paused** —
-  agent worktree `.claude/worktrees/agent-a3b219f0e24ce140d`, scratch doc
-  `Analysis/docs/tracking/_sub_corrmc_1.md` inside it. Recover its findings from that scratch
-  doc before re-launching; do not assume it finished.
+- **(d) The corrected-MC study (contract item 5) was still running when the session paused** and
+  was killed by the restart. **Its work is SAFE — staged into master by `8b5d269`, do not go
+  looking in the worktree:**
+  - `docs/tracking/_sub_corrmc_1.md` — its scratch doc, the source of truth for its findings.
+    **Read this first**; do not assume the run finished.
+  - `plotting_codes/trig_effcy/mc_based/plot_mc_trig_eff_corrected.cxx` and
+    `pipelines/run_mc_trigeff_corrected.sh` — usable as-is.
+  - `docs/tracking/_staged_corrmc/{FillMCTrigEffHists.cxx,FitMCSinglesEffcy.cxx}.t4` — its
+    versions of the two SHARED files. They are master@`3be0c5a` + its corrected-mode edits, so
+    they LACK the forward veto and the vertex-comment fix. **3-way merge them; never copy over.**
+  - Its ROOT outputs already exist on disk: `mc_trig_eff_hists_pp24_full[_medium_wp]_corrected*`
+    (incl. `_step3`, `_step4` and a `_sfclosure` variant), `single_mu_effcy_pT_fit_mc_corrected*`,
+    and the six `step{1,3,4}_corrected_mc/` plot directories under both trigger-efficiency plot
+    roots. **They were produced BEFORE the forward veto landed ⇒ stale; regenerate.**
 - **(e)** Then `/review-analysis-code` + `/review-plot`, `/wrap-up`, final summary.
 
 ### R14. Sanity-check VERDICT: the forward MC anomaly is REAL (2026-08-03, round 7)
