@@ -1880,9 +1880,12 @@ Flat-beyond-R_p audit (the §-requirement that Step 4 is flat for ΔR ≳ 0.3 an
 - χ²/ndf, inclusive cell (Tight): `expo` pp 7.80 (S3) / 15.39 (S4), overlay 1.355 / 1.231;
   `polyu_fixedRp` pp 5.90 / 25.17, overlay 1.343 / 1.205. On pp no 3–4-parameter form reaches
   ≈1 (see the caveat below); on the overlay everything is ≈1.1–1.4.
-- ⚠ **Stale on disk:** the `step{3,4}_dr_fit/powerlaw_fixedRp/` and `powerlaw_floatRp/`
-  directories and their `dr_correction_fits_*powerlaw*.root` files are from the rejected methods
-  and were NOT removed (deletion declined). Do not consume them.
+- **Rejected-method outputs REMOVED (2026-08-04, by the user):** the
+  `step{3,4}_dr_fit/powerlaw_{fixedRp,floatRp}/` directories (8 dirs, 89 MB) and their 16
+  `dr_correction_fits_*powerlaw*.root` files are gone; verified that only `expo`,
+  `polyu_fixedRp` and `interp` survive (24 fit ROOT files, 6 plateau files intact). Regenerable
+  if ever needed via
+  `METHODS="powerlaw_fixedRp powerlaw_floatRp" SKIP_MEASURE=1 bash pipelines/run_dr_correction_fits.sh`.
 
 **Persistence verified.** All functions are **TFormula-string** TF1s (never C++ lambdas): re-read
 in a *fresh* ROOT session with no macro loaded, `f(0)=1.0361`, `f(0.5)=f(10)=f(50)=1.0` — nothing

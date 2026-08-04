@@ -227,7 +227,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         gPad->SetLeftMargin(0.14);
         gPad->SetBottomMargin(0.14);
         TH1* fr = gPad->DrawFrame(0.0, ylo, kXhi, yhi);
-        fr->GetXaxis()->SetTitle("#DeltaR(#mu_{1}, #mu_{2})   [dimensionless]");
+        fr->GetXaxis()->SetTitle("#DeltaR(#mu_{1}, #mu_{2})");
         fr->GetYaxis()->SetTitle((quantity_tex + " / plateau").c_str());
         fr->GetXaxis()->SetTitleSize(0.050);
         fr->GetYaxis()->SetTitleSize(0.050);
@@ -374,16 +374,18 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
                 auto* gf = new TGraph(); gf->SetLineColor(kRed + 1); gf->SetLineWidth(2);
                 auto* leg = new TLegend(0.45, 0.78, 0.96, 0.90);
                 leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.036);
-                leg->AddEntry(gd, "measured / plateau", "lp");
+                leg->AddEntry(gd, "measurement", "lp");
                 leg->AddEntry(gf, "fit", "l");
                 leg->Draw();
             }
         }
         c.cd(0);
         TLatex st; st.SetNDC(); st.SetTextFont(42); st.SetTextSize(0.019);
+        // No "Step %d": the step number is an internal pipeline index. The quantity itself
+        // (eps_dR^2mu4 / eps_dR^single) already identifies what is drawn.
         st.DrawLatex(0.02, 0.982,
-            Form("%s, %s  --  Step %d %s / plateau,  %.0f < p_{T}^{pair} < %.0f GeV",
-                 cfg.sample_text.c_str(), wp_text.c_str(), step, quantity_tex.c_str(),
+            Form("%s, %s,  %s / plateau,  %.0f < p_{T}^{pair} < %.0f GeV",
+                 cfg.sample_text.c_str(), wp_text.c_str(), quantity_tex.c_str(),
                  hplat->GetXaxis()->GetBinLowEdge(iy),
                  hplat->GetXaxis()->GetBinUpEdge(iy)));
         TLatex n; n.SetNDC(); n.SetTextFont(42); n.SetTextSize(0.0135);
@@ -427,7 +429,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         // but still above the plateau points, which sit at y = 1.
         auto* leg = new TLegend(0.45, 0.69, 0.95, 0.81);
         leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.032);
-        leg->AddEntry(gd, "measured / plateau", "lp");
+        leg->AddEntry(gd, "measurement", "lp");
         leg->AddEntry(gf, "fit", "l");
         leg->Draw();
         // 0.024, not 0.030: the longest headline (overlay + Medium + `powerlaw_fixedRp`) ran off
@@ -435,8 +437,8 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         TLatex st; st.SetNDC(); st.SetTextFont(42); st.SetTextSize(0.024);
         // No internal method name on the canvas -- the equation in the annotation box identifies
         // the fitted function to the audience (the method name only tags the output directory).
-        st.DrawLatex(0.06, 0.960, Form("%s, %s  --  Step %d %s (inclusive)",
-                                       cfg.sample_text.c_str(), wp_text.c_str(), step,
+        st.DrawLatex(0.06, 0.960, Form("%s, %s,  %s / plateau",
+                                       cfg.sample_text.c_str(), wp_text.c_str(),
                                        quantity_tex.c_str()));
         const std::string png = odir + tag + "_dr_fit_" + method + "_inclusive.png";
         c.SaveAs(png.c_str());

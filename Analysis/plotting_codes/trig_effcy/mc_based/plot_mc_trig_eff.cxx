@@ -670,8 +670,12 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
     const std::string dir3 = cfg.out_base + "step3_dr_correction/"     + wp_dir;
     for (const auto& d : {dir1, dir3}) gSystem->mkdir(d.c_str(), kTRUE);
 
-    const std::string mc_leg   = "MC direct P(mu4 | reco #mu)";
-    const std::string data_leg = cfg.data_text + " T&P P(2mu4 | mu4 tag, #DeltaR>0.8)";
+    // The two series are DIFFERENT estimators of the same efficiency, so each legend entry
+    // states its own conditional probability in full (user decision 2026-08-04). No
+    // abbreviations the audience has to decode ("T&P") and no drawing asides ("+ fit").
+    const std::string mc_leg   = "MC, P(mu4 | reconstructed #mu)";
+    const std::string data_leg = cfg.data_text +
+                                 ", tag-and-probe P(2mu4 | mu4 tag, #DeltaR > 0.8)";
 
     // ================================================================
     // Step 1 (§3.1): data vs MC singles efficiency
@@ -819,7 +823,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             pads.second->cd();
             gPad->SetLogx();
             DrawRatioFrame(4.0, 60.0, "p_{T} [GeV]",
-                           qeta_all_mc ? "r17663 / pp24" : "MC / data", 0.5, 2.6);
+                           qeta_all_mc ? "no overlay / pp cond." : "MC / data", 0.5, 2.6);
             auto* grat = DivideGraphClean(gmc, gda);
             StyleGraph(grat, kMCColor, 21, 0.7);
             grat->Draw("PZ same");
@@ -841,36 +845,35 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             auto* leg = new TLegend(0.02, 0.50, 0.98, 0.74);
             leg->SetBorderSize(0);
             leg->SetFillStyle(0);
-            leg->SetTextSize(0.037);
+            leg->SetTextSize(0.030);
             leg->SetMargin(0.12);
-            leg->AddEntry(gm, "MC Pb+Pb23 cond., no HIJING overlay (+fit)", "lp");
-            leg->AddEntry(gd, "MC pp24 conditions (fullsim, full sample)", "lp");
+            leg->AddEntry(gm, "MC, Pb+Pb 2023 conditions, no overlay", "lp");
+            leg->AddEntry(gd, "MC, pp 2024 conditions", "lp");
             if (fcmp) {
                 auto* gc = new TGraphAsymmErrors(); StyleGraph(gc, kCmpColor, 22);
-                leg->AddEntry(gc, "MC Pb+Pb23 cond., with HIJING overlay", "lp");
+                leg->AddEntry(gc, "MC, Pb+Pb 2023 conditions, with HIJING overlay", "lp");
             }
             leg->Draw();
             // No explanatory prose on the canvas: the three samples are identified by the
             // legend, and the ratio pad by its own y-axis title. What the samples mean and why
             // they are compared belongs in the tracking doc, not in front of the audience.
         } else {
+            // Each entry carries its OWN definition, so no separate explanatory block is needed
+            // (0.034, not 0.05: the full conditional probabilities must fit the pad width).
             auto* leg = new TLegend(0.02, 0.45, 0.98, 0.80);
             leg->SetBorderSize(0);
             leg->SetFillStyle(0);
-            leg->SetTextSize(0.05);
-            leg->AddEntry(gm, (mc_leg + " (+ fit)").c_str(), "lp");
-            leg->AddEntry(gd, (cfg.data_text + " tag&probe").c_str(), "lp");
+            // 0.026 + a trimmed symbol column: the data entry is ~50 glyphs and was clipped at
+            // the pad edge, cutting off the end of its DeltaR condition.
+            leg->SetTextSize(0.026);
+            leg->SetMargin(0.12);
+            leg->AddEntry(gm, mc_leg.c_str(), "lp");
+            leg->AddEntry(gd, data_leg.c_str(), "lp");
             if (fcmp) {
                 auto* gc = new TGraphAsymmErrors(); StyleGraph(gc, kCmpColor, 22);
-                leg->AddEntry(gc, (cfg.cmp_text + ", no fit").c_str(), "lp");
+                leg->AddEntry(gc, cfg.cmp_text.c_str(), "lp");
             }
             leg->Draw();
-            TLatex note;
-            note.SetNDC();
-            note.SetTextSize(0.045);
-            note.SetTextFont(42);
-            note.DrawLatex(0.02, 0.30, "Data: T&P P(2mu4 | mu4 tag, #DeltaR>0.8 pairs);");
-            note.DrawLatex(0.02, 0.22, "MC");
         }
         SaveCanvas(c, dir1 + "step1_eff_pt_in_q_eta_bins_" + kCharges[ic] + ".png");
     }
@@ -880,7 +883,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
     // ================================================================
     std::cout << "\n===== Step 2 (" << sample << ", " << wp_text << ") =====\n";
 
-    const std::string leg_incl = "inclusive singles (Step 1)";
+    const std::string leg_incl = "all #DeltaR";
 
     // --- 1D pt and 1D q.eta, 2-pad canvases (mu+ | mu-) -------------
     struct PairVar { std::string tag, xtitle; double xlo, xhi; bool logx; };
@@ -893,16 +896,17 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
     // infix: full_chain = num/denom, L1 = numl1/denom, HLT|L1 = numhlt/numl1, so
     // eff(chain) = eff(L1) * eff(HLT|L1). The L1/HLT hists are empty on pre-reskim NTUPs (no
     // per-muon L1 branch) -> those subdirs are only meaningful after the re-skim.
+    // `sub` names the output SUBDIRECTORY only; what the audience sees is `eff`, the efficiency
+    // itself, drawn as the legend header. The subdirectory token is never put on a canvas.
     struct Step2Stage { std::string sub, numk, denk, eff; };
     const std::vector<Step2Stage> step2_stages = {
-        {"full_chain", "num",    "denom", "P(full mu4 chain | reco #mu)"},
-        {"L1",         "numl1",  "denom", "P(L1 MU3V | reco #mu)"},
-        {"HLT",        "numhlt", "numl1", "P(HLT | fires L1, reco #mu)"}};
+        {"full_chain", "num",    "denom", "P(mu4 | reconstructed #mu)"},
+        {"L1",         "numl1",  "denom", "P(L1 MU3V | reconstructed #mu)"},
+        {"HLT",        "numhlt", "numl1", "P(mu4 HLT | L1 MU3V, reconstructed #mu)"}};
     for (const auto& st : step2_stages) {
       const std::string dir2 = dir2_base + st.sub + "/" + wp_dir;
       gSystem->mkdir(dir2.c_str(), kTRUE);
       const std::string NUMK = st.numk, DENK = st.denk;
-      const std::string stage_tag = " [" + st.sub + "]";
       std::cout << "  -- Step-2 stage: " << st.sub << " (" << st.eff << ")\n";
 
     for (const auto& v : pvars) {
@@ -947,7 +951,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             // Semi-opaque backing so the legend stays readable inside a dense error-bar
             // cloud -- but it is drawn FIRST, BEFORE the data, so the fill can never wash
             // out real points (it did, in the endcap of the q.eta panels: review iter 1).
-            leg->SetFillColorAlpha(kWhite, 0.75);
+            leg->SetFillColor(kWhite);   // SOLID: alpha does not render in batch PNG
             leg->SetFillStyle(1001);
             leg->SetTextSize(0.042);
 
@@ -969,7 +973,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             leg->Draw();                       // legend first ...
             gref->Draw("LX same");             // ... then the data on top of it
             for (auto* g : gdr) g->Draw("PZ same");
-            DrawHeadline(headline + ", " + kChargeTex[ic] + stage_tag, 0.14, 0.955, 0.05);
+            DrawHeadline(headline + ", " + kChargeTex[ic], 0.14, 0.955, 0.05);
 
             // R3 ratio pad: §3.2 asks whether the three DeltaR series AGREE at fixed
             // kinematics. Ratio to the isolated (DeltaR >= 1.0) series = that test.
@@ -1037,7 +1041,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             c.cd(static_cast<int>(iq) + 1);
         }
         c.cd(12);  // legend/label pad: 11 q.eta bins now fill pads 1-11 (round-5 #2)
-        DrawHeadline(headline + ", " + kChargeTex[ic] + stage_tag, 0.02, 0.88, 0.048); // 0.048: long overlay headline + charge must fit (review iter 1)
+        DrawHeadline(headline + ", " + kChargeTex[ic], 0.02, 0.88, 0.048); // 0.048: long overlay headline + charge must fit (review iter 1)
         auto* leg = new TLegend(0.05, 0.35, 0.95, 0.80);
         leg->SetBorderSize(0);
         leg->SetFillStyle(0);
@@ -1077,12 +1081,16 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             const std::string dirs = cfg.out_base + "step1_sanity_check/" + wp_dir;
             gSystem->mkdir(dirs.c_str(), kTRUE);
 
+            // `key` is the internal variant token (histogram names only); `tex` is what the
+            // audience reads and must state the requirement IN FULL, including the numerical
+            // threshold -- taken from the shared header, never retyped.
             struct Var { std::string key, tex; Color_t col; Style_t mk; };
             std::vector<Var> vars = {
-                {"orig", "original MC (round-7 selection)",       kBlack,     20},
-                {"vtx",  "+ 1 reconstructed vertex",              kBlue + 1,  21},
-                {"ptm",  "+ |#Deltap_{T}|/p_{T}^{truth} < thr",   kGreen + 2, 22},
-                {"both", "+ both",                                kRed + 1,   23}};
+                {"orig", "nominal muon selection",                          kBlack,     20},
+                {"vtx",  "+ exactly 1 reconstructed vertex",                kBlue + 1,  21},
+                {"ptm",  Form("+ |#Deltap_{T}|/p_{T}^{truth} < %.2f",
+                              kSanityPtMatchThr),                           kGreen + 2, 22},
+                {"both", "+ both requirements",                             kRed + 1,   23}};
 
             // A variant with an EMPTY denominator is not a measurement of zero -- it means the
             // requirement selected nothing in this sample. Drop those series and say so on the
@@ -1097,7 +1105,9 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                     for (const auto& chg : kCharges)
                         d += GetObj<TH1D>(fsan, "h_sanity_pt_denom_" + chg + "_" + v.key)->Integral();
                     if (d > 0) keep.push_back(v);
-                    else { dropped.push_back(v.key);
+                    else { // record the READABLE requirement, not the internal variant token:
+                           // "vtx"/"ptm" mean nothing to the audience. Strip the leading "+ ".
+                           dropped.push_back(v.tex.rfind("+ ", 0) == 0 ? v.tex.substr(2) : v.tex);
                            std::cout << "  [sanity] variant '" << v.key
                                      << "' has an EMPTY denominator -> requirement inapplicable "
                                         "to this sample; series dropped\n"; }
@@ -1105,9 +1115,9 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 vars = keep;
             }
             const std::string drop_note = dropped.empty() ? std::string()
-                : ("inapplicable to this sample (empty): " +
+                : ("no muon in this sample satisfies: " +
                    [&]{ std::string s; for (size_t i = 0; i < dropped.size(); ++i)
-                        s += (i ? ", " : "") + dropped[i]; return s; }());
+                        s += (i ? "; " : "") + dropped[i]; return s; }());
 
             auto eff_of = [&](const std::string& base, const std::string& chg,
                               const std::string& v) -> TGraphAsymmErrors* {
@@ -1119,7 +1129,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             // ---- (a) eff vs pT and vs q.eta, one pad per charge, ratio pad vs `orig` ----
             struct Obs { std::string base, xt; double xlo, xhi; bool logx; };
             const std::vector<Obs> obs = {{"pt", "p_{T} [GeV]", 4.0, 60.0, true},
-                                          {"q_eta", "q#eta", -2.4, 2.4, false}};
+                                          {"q_eta", "q#upoint#eta", -2.4, 2.4, false}};
             for (const auto& O : obs) {
                 TCanvas c(("c_sanity_" + O.base).c_str(), "", 1500, 700);
                 c.Divide(2, 1);
@@ -1147,7 +1157,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
 
                     pads.second->cd();
                     if (O.logx) gPad->SetLogx();
-                    DrawEffFrame(O.xlo, O.xhi, O.xt, 0.90, 1.10, "variant / original");
+                    DrawEffFrame(O.xlo, O.xhi, O.xt, 0.90, 1.10, "requirement / nominal");
                     DrawUnityLine(O.xlo, O.xhi);
                     for (size_t i = 1; i < gs.size(); ++i) {   // skip `orig` (ratio 1 by construction)
                         auto* gr = DivideGraphClean(gs[i], gs[0]);
@@ -1155,9 +1165,12 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                         gr->Draw("PZ same");
                     }
                 }
-                DrawHeadline(headline + "  --  Step-1 sanity check");
+                // c.cd(0) FIRST: the loop above leaves gPad pointing at the RATIO sub-pad of the
+                // second charge, so the headline used to be drawn inside it -- rendered tiny and
+                // overlapping the ratio axis labels on every sanity canvas.
+                c.cd(0);
+                DrawHeadline(headline);
                 if (!drop_note.empty()) {
-                    c.cd(0);
                     TLatex nt; nt.SetNDC(); nt.SetTextFont(42); nt.SetTextSize(0.022);
                     nt.SetTextColor(kGray + 3); nt.DrawLatex(0.06, 0.015, drop_note.c_str());
                 }
@@ -1188,7 +1201,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                         delete n; delete d;
                     }
                     TLatex tl; tl.SetNDC(); tl.SetTextFont(42); tl.SetTextSize(0.050);
-                    tl.DrawLatex(0.20, 0.90, Form("%.2f < q#eta < %.2f",
+                    tl.DrawLatex(0.20, 0.90, Form("%.2f < q#upoint#eta < %.2f",
                                                   kQEtaRange[iq].first, kQEtaRange[iq].second));
                     if (iq == 0) {
                         auto* leg = new TLegend(0.30, 0.14, 0.95, 0.40);
@@ -1198,9 +1211,9 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                         leg->Draw();
                     }
                 }
-                DrawHeadline(headline + "  --  Step-1 sanity, " + kChargeTex[ic]);
+                c.cd(0);                       // same sub-pad trap as the (a) canvases above
+                DrawHeadline(headline + ", " + kChargeTex[ic]);
                 if (!drop_note.empty()) {
-                    c.cd(0);
                     TLatex nt; nt.SetNDC(); nt.SetTextFont(42); nt.SetTextSize(0.014);
                     nt.SetTextColor(kGray + 3); nt.DrawLatex(0.04, 0.008, drop_note.c_str());
                 }
@@ -1308,18 +1321,18 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
 
         // fitted plateau line: solid over the plateau window [kPlateauLo,kPlateauHi] where in range,
         // dotted across the pad otherwise (zoom canvas)
+        TLine* plateau_line = nullptr;
         if (plateau_in_range) {
-            auto* lp = new TLine(kPlateauLo, plateau.first, kPlateauHi, plateau.first);
-            lp->SetLineColor(kBlue + 1);
-            lp->SetLineWidth(3);
-            lp->Draw("same");
+            plateau_line = new TLine(kPlateauLo, plateau.first, kPlateauHi, plateau.first);
+            plateau_line->SetLineColor(kBlue + 1);
+            plateau_line->SetLineWidth(3);
         } else {
-            auto* lp = new TLine(xlo, plateau.first, xhi, plateau.first);
-            lp->SetLineColor(kBlue + 1);
-            lp->SetLineWidth(2);
-            lp->SetLineStyle(3);
-            lp->Draw("same");
+            plateau_line = new TLine(xlo, plateau.first, xhi, plateau.first);
+            plateau_line->SetLineColor(kBlue + 1);
+            plateau_line->SetLineWidth(2);
+            plateau_line->SetLineStyle(3);
         }
+        plateau_line->Draw("same");
 
         r->SetMarkerStyle(20);
         r->SetMarkerColor(kMCColor);
@@ -1327,15 +1340,27 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         r->SetLineWidth(2);
         r->Draw("E1 same");
 
+        // Two things are drawn (measurement + fitted plateau level), so both are named.
+        auto* leg3 = new TLegend(0.42, 0.40, 0.90, 0.52);
+        leg3->SetBorderSize(0); leg3->SetFillStyle(0); leg3->SetTextSize(0.033);
+        leg3->AddEntry(r, "measurement", "lp");
+        leg3->AddEntry(plateau_line, "plateau", "l");
+        leg3->Draw();
+
         DrawHeadline(headline);
+        // Defining equation + plateau value in the EMPTY lower-right quadrant: the correction
+        // sits at ~1 across the pad, so anything written at the top runs through the points and
+        // the plateau line (it did). No implementation asides -- the equation IS the definition.
         TLatex tl;
         tl.SetNDC();
         tl.SetTextFont(42);
         tl.SetTextSize(0.035);
-        tl.DrawLatex(0.40, 0.86, Form("plateau #LT#DeltaR#in[%.0f,%.0f]#GT = %.3f #pm %.3f",
+        tl.DrawLatex(0.42, 0.32, (cfg.eps_dr_text +
+            " = P(both #mu fire | #DeltaR) / (#varepsilon_{1}#varepsilon_{2})").c_str());
+        // %.4f, not %.3f: the pp full-sample error is 4e-4 and printed as "#pm 0.000", which
+        // reads as a zero uncertainty.
+        tl.DrawLatex(0.42, 0.25, Form("plateau #LT#DeltaR#in[%.0f,%.0f]#GT = %.4f #pm %.4f",
                                       kPlateauLo, kPlateauHi, plateau.first, plateau.second));
-        tl.DrawLatex(0.40, 0.80, (cfg.eps_dr_text +
-            " = P(trig | #DeltaR) / (#varepsilon_{1}#varepsilon_{2}), MC #varepsilon in weights").c_str());
         SaveCanvas(c, dir3 + png + ".png");
     };
     DrawStep3(r_zoom, 0.0, 1.0,  "step3_eps_dr_zoom", false);
@@ -1363,6 +1388,11 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         TCanvas c("c_step3_ptslices", "", 900, 700);
         gPad->SetLeftMargin(0.12);
         gPad->SetBottomMargin(0.12);
+        // Reserved strip ABOVE the frame for the legend. In the overlay the four series fill the
+        // whole pad, so every in-frame position lands on data -- and a white legend backing is
+        // invisible against the white frame, it only hides the points behind it. Giving the
+        // legend its own space outside the frame is the only placement that can never collide.
+        gPad->SetTopMargin(0.22);
 
         std::vector<TH1D*> ratios;
         std::vector<std::string> slabels;
@@ -1393,18 +1423,22 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         DrawEffFrame(0.0, 1.0, "#DeltaR", 0.0, ymax, cfg.eps_dr_text);
         DrawUnityLine(0.0, 1.0);
 
-        auto* leg = new TLegend(0.45, 0.68, 0.92, 0.88);
+        auto* leg = new TLegend(0.13, 0.79, 0.97, 0.925);   // in the reserved top strip
+        leg->SetNColumns(2);
         leg->SetBorderSize(0);
         leg->SetFillStyle(0);
-        leg->SetTextSize(0.03);
-        std::vector<std::string> offscale;
+        leg->SetTextSize(0.032);
         for (size_t is = 0; is < ratios.size(); ++is) {
             ratios[is]->SetMarkerStyle(smark[is]);
             ratios[is]->SetMarkerColor(scol[is]);
             ratios[is]->SetLineColor(scol[is]);
             ratios[is]->SetLineWidth(2);
-            ratios[is]->Draw("E1 same");
             leg->AddEntry(ratios[is], slabels[is].c_str(), "lp");
+        }
+        leg->Draw();                       // legend first ...
+        std::vector<std::string> offscale;
+        for (size_t is = 0; is < ratios.size(); ++is) {
+            ratios[is]->Draw("E1 same");   // ... then the data on top of it
 
             // mark every point whose CENTRAL VALUE is above the capped frame
             for (int i = 1; i <= ratios[is]->GetNbinsX(); ++i) {
@@ -1420,18 +1454,16 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                                         ratios[is]->GetBinError(i)));
             }
         }
-        leg->Draw();
-        DrawHeadline(headline);
+        DrawHeadline(headline, 0.12, 0.965);
         if (!offscale.empty()) {
-            // BELOW the legend (which occupies y 0.68-0.88): the note used to be drawn at
-            // y=0.86, straight through the legend box, making both unreadable -- and this
-            // note is precisely what keeps the y-cap honest. Wrapped 2 entries per line.
+            // Inside the frame, below the legend strip: this note is what keeps the y-cap
+            // honest, so it must stay legible. 2 entries per line.
             TLatex note;
             note.SetNDC();
             note.SetTextFont(42);
             note.SetTextSize(0.026);
             note.SetTextColor(kGray + 3);
-            double y = 0.63;
+            double y = 0.72;
             for (size_t i = 0; i < offscale.size(); i += 2) {
                 std::string txt = (i == 0) ? "above scale (arrows): " : "  ";
                 txt += offscale[i];
@@ -1503,6 +1535,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         for (const auto& R : rngs) {
             TCanvas c(("c_s3_pteta_" + R.tag).c_str(), "", 500 * ncol, 450 * nrow);
             c.Divide(ncol, nrow);
+            std::vector<TH1D*> rs_leg;   // series of the first panel, used for the canvas legend
             for (int iz = 1; iz <= neta; ++iz) {
                 c.cd(iz);
                 gPad->SetLeftMargin(0.14); gPad->SetBottomMargin(0.13);
@@ -1519,11 +1552,14 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 DrawEffFrame(0.0, R.xhi, "#DeltaR", 0.0, ymax, cfg.eps_dr_text);
                 DrawUnityLine(0.0, R.xhi);
                 for (int iy = 0; iy < npt; ++iy) {
+                    rs[iy]->SetMarkerStyle(ptmark[iy % ptmark.size()]);
+                    rs[iy]->SetMarkerColor(ptcol[iy % ptcol.size()]);
+                    rs[iy]->SetLineColor(ptcol[iy % ptcol.size()]);
+                    rs[iy]->SetLineWidth(2);
+                }
+                if (iz == 1) rs_leg = rs;    // legend goes in the canvas top strip, see below
+                for (int iy = 0; iy < npt; ++iy) {
                     TH1D* r = rs[iy];
-                    r->SetMarkerStyle(ptmark[iy % ptmark.size()]);
-                    r->SetMarkerColor(ptcol[iy % ptcol.size()]);
-                    r->SetLineColor(ptcol[iy % ptcol.size()]);
-                    r->SetLineWidth(2);
                     r->Draw("E1 same");
                     for (int i = 1; i <= r->GetNbinsX(); ++i) {
                         if (r->GetBinContent(i) <= ymax) continue;
@@ -1538,21 +1574,27 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 // where it collided with the canvas super-title on the top pad row -- review WARNING).
                 TLatex tl; tl.SetNDC(); tl.SetTextFont(42); tl.SetTextSize(0.050);
                 tl.DrawLatex(0.17, 0.86, eta_label(iz).c_str());
-                if (iz == 1) {   // pair-pT-bin legend, once
-                    auto* leg = new TLegend(0.42, 0.66, 0.92, 0.90);
-                    leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.040);
-                    for (int iy = 0; iy < npt; ++iy) leg->AddEntry(rs[iy], pt_label(iy + 1).c_str(), "lp");
-                    leg->Draw();
-                }
             }
             c.cd(0);
             // Super-title in the empty top strip. Use a RAW TLatex (NOT DrawHeadline, which floors
             // the size at 0.030 -> the long title then overflows the right edge; review WARNING).
             // At 0.016 the longest title (r17663 medium/zoom) fits the 1500px width, and baseline
             // 0.978 + ~0.016 height < 1.0 clears the top edge; it sits above the in-frame eta labels.
+            // No `R.tag` ("zoom"/"full") on the canvas: which DeltaR range is shown is visible
+            // on the axis, and the token is an internal name for two output files.
             TLatex st; st.SetNDC(); st.SetTextFont(42); st.SetTextSize(0.016);
-            st.DrawLatex(0.03, 0.978, (headline + "  --  " + R.tag + " #DeltaR, " + cfg.eps_dr_text +
+            st.DrawLatex(0.03, 0.988, (headline + ",  " + cfg.eps_dr_text +
                          " in (p_{T}^{pair}, #eta^{pair}) cells").c_str());
+            // ONE legend for the whole canvas, in the empty strip under the super-title: in a
+            // panel the series cover the frame, so an in-panel legend always sits on data.
+            if (!rs_leg.empty()) {
+                auto* leg = new TLegend(0.03, 0.955, 0.97, 0.982);
+                leg->SetNColumns(npt);
+                leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.014);
+                for (int iy = 0; iy < npt; ++iy)
+                    leg->AddEntry(rs_leg[iy], pt_label(iy + 1).c_str(), "lp");
+                leg->Draw();
+            }
             SaveCanvas(c, dir3 + "step3_eps_dr_" + R.tag + "_pair_eta_pt.png");
         }
 
@@ -1657,10 +1699,13 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             const std::string dir4 = cfg.out_base + "step4_dr_correction_singles/" + wp_dir;
             gSystem->mkdir(dir4.c_str(), kTRUE);
             const std::string eps_single_text = "#varepsilon_{#DeltaR}^{single}";
+            // Used ONLY in the .txt tables below (a working document, where the downstream role
+            // is exactly the context a reader needs) -- never on a canvas.
             const bool is_deliverable = (sample == "overlay");   // PbPb union; else validation
-            const std::string val_note = is_deliverable
-                ? std::string("dresses the union linear terms (#varepsilon_{1}+#varepsilon_{2})")
-                : std::string("VALIDATION only -- NOT applied to pp 2mu4");
+            // NO downstream-usage note on the canvas (user decision 2026-08-04): whether this
+            // curve is applied to the PbPb union or kept as a pp validation is an analysis
+            // decision recorded in mc_trigger_efficiency.md, not a property of the measurement
+            // the figure shows.
 
             // Central value = num/denom; ERROR = conditional/binomial-correct form INCLUDING the
             // leg-leg covariance (both legs of a pair share a dR bin and their trigger decisions
@@ -1696,28 +1741,33 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 ymax = std::max(1.15, 1.15 * ymax);
                 DrawEffFrame(xlo, xhi, "#DeltaR", 0.0, ymax, eps_single_text);
                 DrawUnityLine(xlo, xhi);
+                TLine* plateau_line = nullptr;
                 if (plateau_in_range) {
-                    auto* lp = new TLine(kPlateauLo, plat4.first, kPlateauHi, plat4.first);
-                    lp->SetLineColor(kBlue + 1); lp->SetLineWidth(3); lp->Draw("same");
+                    plateau_line = new TLine(kPlateauLo, plat4.first, kPlateauHi, plat4.first);
+                    plateau_line->SetLineColor(kBlue + 1); plateau_line->SetLineWidth(3);
                 } else {
-                    auto* lp = new TLine(xlo, plat4.first, xhi, plat4.first);
-                    lp->SetLineColor(kBlue + 1); lp->SetLineWidth(2); lp->SetLineStyle(3);
-                    lp->Draw("same");
+                    plateau_line = new TLine(xlo, plat4.first, xhi, plat4.first);
+                    plateau_line->SetLineColor(kBlue + 1); plateau_line->SetLineWidth(2);
+                    plateau_line->SetLineStyle(3);
                 }
+                plateau_line->Draw("same");
                 r->SetMarkerStyle(20);
                 r->SetMarkerColor(kMCColor);
                 r->SetLineColor(kMCColor);
                 r->SetLineWidth(2);
                 r->Draw("E1 same");
+                auto* leg4 = new TLegend(0.42, 0.40, 0.90, 0.52);
+                leg4->SetBorderSize(0); leg4->SetFillStyle(0); leg4->SetTextSize(0.033);
+                leg4->AddEntry(r, "measurement", "lp");
+                leg4->AddEntry(plateau_line, "plateau", "l");
+                leg4->Draw();
                 DrawHeadline(headline);
+                // Same placement rule as Step 3: annotation in the empty lower-right quadrant.
                 TLatex tl; tl.SetNDC(); tl.SetTextFont(42); tl.SetTextSize(0.035);
-                tl.DrawLatex(0.40, 0.86, Form("plateau #LT#DeltaR#in[%.0f,%.0f]#GT = %.3f #pm %.3f",
+                tl.DrawLatex(0.42, 0.32, (eps_single_text +
+                    " = P(#mu fires mu4 | #DeltaR) / #varepsilon(p_{T}, q#upoint#eta)").c_str());
+                tl.DrawLatex(0.42, 0.25, Form("plateau #LT#DeltaR#in[%.0f,%.0f]#GT = %.4f #pm %.4f",
                                               kPlateauLo, kPlateauHi, plat4.first, plat4.second));
-                tl.DrawLatex(0.40, 0.80, (eps_single_text +
-                    " = P(#mu fires | #DeltaR) / #varepsilon(p_{T},q#eta), MC #varepsilon in weights").c_str());
-                tl.SetTextSize(0.030);
-                tl.SetTextColor(is_deliverable ? (kGray + 3) : (kRed + 2));
-                tl.DrawLatex(0.40, 0.74, val_note.c_str());
                 SaveCanvas(c, dir4 + png + ".png");
             };
             DrawStep4(r4_zoom, 0.0, 1.0,  "step4_eps_dr_single_zoom", false);
@@ -1766,6 +1816,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             {
                 TCanvas c("c_step4_ptslices", "", 900, 700);
                 gPad->SetLeftMargin(0.12); gPad->SetBottomMargin(0.12);
+                gPad->SetTopMargin(0.22);   // reserved legend strip, as in Step 3
                 std::vector<TH1D*> rs; double ymax = 0.;
                 for (int iy = 1; iy <= npt; ++iy) {
                     TH1D* r = cell_ratio(h3zn, h3zd, h3zA, h3zB, h3zP, h3zQ, iy, 0, neta,
@@ -1777,16 +1828,22 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 ymax = std::min(std::max(1.15, 1.15 * ymax), 3.0);
                 DrawEffFrame(0.0, 1.0, "#DeltaR", 0.0, ymax, eps_single_text);
                 DrawUnityLine(0.0, 1.0);
-                auto* leg = new TLegend(0.45, 0.68, 0.92, 0.88);
-                leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.03);
-                std::vector<std::string> offscale;
+                auto* leg = new TLegend(0.13, 0.79, 0.97, 0.925);
+                leg->SetNColumns(2);
+                leg->SetBorderSize(0);
+                leg->SetFillStyle(0);
+                leg->SetTextSize(0.032);
                 for (int iy = 0; iy < npt; ++iy) {
                     rs[iy]->SetMarkerStyle(ptmark[iy % ptmark.size()]);
                     rs[iy]->SetMarkerColor(ptcol[iy % ptcol.size()]);
                     rs[iy]->SetLineColor(ptcol[iy % ptcol.size()]);
                     rs[iy]->SetLineWidth(2);
-                    rs[iy]->Draw("E1 same");
                     leg->AddEntry(rs[iy], pt_label(iy + 1).c_str(), "lp");
+                }
+                leg->Draw();
+                std::vector<std::string> offscale;
+                for (int iy = 0; iy < npt; ++iy) {
+                    rs[iy]->Draw("E1 same");
                     for (int i = 1; i <= rs[iy]->GetNbinsX(); ++i) {
                         if (rs[iy]->GetBinContent(i) <= ymax) continue;
                         auto* ar = new TArrow(rs[iy]->GetBinCenter(i), ymax * 0.88,
@@ -1797,12 +1854,11 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                                                 rs[iy]->GetBinContent(i), rs[iy]->GetBinError(i)));
                     }
                 }
-                leg->Draw();
-                DrawHeadline(headline);
+                DrawHeadline(headline, 0.12, 0.965);
                 if (!offscale.empty()) {
                     TLatex note; note.SetNDC(); note.SetTextFont(42); note.SetTextSize(0.026);
                     note.SetTextColor(kGray + 3);
-                    double y = 0.63;
+                    double y = 0.72;   // inside the frame, below the legend strip
                     for (size_t i = 0; i < offscale.size(); i += 2) {
                         std::string txt = (i == 0) ? "above scale (arrows): " : "  ";
                         txt += offscale[i];
@@ -1822,6 +1878,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             for (const auto& R : rngs) {
                 TCanvas c(("c_s4_pteta_" + R.tag).c_str(), "", 500 * ncol, 450 * nrow);
                 c.Divide(ncol, nrow);
+                std::vector<TH1D*> rs_leg;   // first panel's series -> canvas-level legend
                 for (int iz = 1; iz <= neta; ++iz) {
                     c.cd(iz);
                     gPad->SetLeftMargin(0.14); gPad->SetBottomMargin(0.13);
@@ -1837,11 +1894,14 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                     DrawEffFrame(0.0, R.xhi, "#DeltaR", 0.0, ymax, eps_single_text);
                     DrawUnityLine(0.0, R.xhi);
                     for (int iy = 0; iy < npt; ++iy) {
+                        rs[iy]->SetMarkerStyle(ptmark[iy % ptmark.size()]);
+                        rs[iy]->SetMarkerColor(ptcol[iy % ptcol.size()]);
+                        rs[iy]->SetLineColor(ptcol[iy % ptcol.size()]);
+                        rs[iy]->SetLineWidth(2);
+                    }
+                    if (iz == 1) rs_leg = rs;
+                    for (int iy = 0; iy < npt; ++iy) {
                         TH1D* r = rs[iy];
-                        r->SetMarkerStyle(ptmark[iy % ptmark.size()]);
-                        r->SetMarkerColor(ptcol[iy % ptcol.size()]);
-                        r->SetLineColor(ptcol[iy % ptcol.size()]);
-                        r->SetLineWidth(2);
                         r->Draw("E1 same");
                         for (int i = 1; i <= r->GetNbinsX(); ++i) {
                             if (r->GetBinContent(i) <= ymax) continue;
@@ -1853,17 +1913,19 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                     }
                     TLatex tl; tl.SetNDC(); tl.SetTextFont(42); tl.SetTextSize(0.050);
                     tl.DrawLatex(0.17, 0.86, eta_label(iz).c_str());
-                    if (iz == 1) {
-                        auto* leg = new TLegend(0.42, 0.66, 0.92, 0.90);
-                        leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.040);
-                        for (int iy = 0; iy < npt; ++iy) leg->AddEntry(rs[iy], pt_label(iy + 1).c_str(), "lp");
-                        leg->Draw();
-                    }
                 }
                 c.cd(0);
                 TLatex st; st.SetNDC(); st.SetTextFont(42); st.SetTextSize(0.016);
-                st.DrawLatex(0.03, 0.978, (headline + "  --  " + R.tag + " #DeltaR, " + eps_single_text +
+                st.DrawLatex(0.03, 0.988, (headline + ",  " + eps_single_text +
                              " in (p_{T}^{pair}, #eta^{pair}) cells").c_str());
+                if (!rs_leg.empty()) {   // canvas-level legend, as in Step 3
+                    auto* leg = new TLegend(0.03, 0.955, 0.97, 0.982);
+                    leg->SetNColumns(npt);
+                    leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.014);
+                    for (int iy = 0; iy < npt; ++iy)
+                        leg->AddEntry(rs_leg[iy], pt_label(iy + 1).c_str(), "lp");
+                    leg->Draw();
+                }
                 SaveCanvas(c, dir4 + "step4_eps_dr_single_" + R.tag + "_pair_eta_pt.png");
             }
 

@@ -77,6 +77,12 @@
 #include <string>
 #include <vector>
 
+// Canvas headline + eps_dR symbol come from the SHARED sample table, the same one
+// plot_mc_trig_eff.cxx and the fit stage read. They used to be duplicated here, and the
+// duplicate went stale the moment the headlines were rewritten -- two plot sets of the same
+// sample then carried two different sample identities.
+#include "dr_correction_sample_cfg.h"
+
 namespace {
 
 // ================================================================= generic helpers
@@ -362,7 +368,11 @@ struct SampleCfg {
 SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
 {
     const std::string wp = use_tight_wp ? "" : "_medium_wp";
+    // Sample IDENTITY (headline + eps_dR symbol) from the shared table -- never retyped here.
+    const DrCorrSample id = GetDrCorrSample(sample);
     SampleCfg c;
+    c.sample_text = id.sample_text;
+    c.eps_dr_text = id.eps_dr_text;
     if (sample == "pp_full" || sample == "pp") {
         const bool full = (sample == "pp_full");
         c.mc_dir   = full ? "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample/"
@@ -375,9 +385,7 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
         c.ctr         = "";
         c.out_base    = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
                         "pp_trigger_efficiency/mc_based/";
-        c.sample_text = full ? "Pythia8 pp24 fullsim (FULL sample)" : "Pythia8 pp24 fullsim";
-        c.data_text   = "pp24 data";
-        c.eps_dr_text = "#varepsilon_{#DeltaR}^{2mu4}";
+        c.data_text   = "pp 2024 data";
     } else if (sample == "overlay") {
         c.mc_dir   = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/";
         c.mc_label = "hijing_overlay_pbpb23";
@@ -388,9 +396,7 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
         c.ctr         = "_ctr0_5";   // D2: the overlay compares ONLY to PbPb23 data 0-5%
         c.out_base    = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
                         "pbpb_trigger_efficiency/mc_based/";
-        c.sample_text = "HIJING overlay Pb+Pb23 cond., 0-5%";
-        c.data_text   = "Pb+Pb23 data 0-5%";
-        c.eps_dr_text = "#varepsilon_{#DeltaR}^{cross}";
+        c.data_text   = "Pb+Pb 2023 data, 0-5%";
     } else if (sample == "noovl") {
         c.mc_dir   = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_no_overlay_test_sample/";
         c.mc_label = "r17663_no_overlay";
@@ -401,9 +407,7 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
         c.ctr         = "";
         c.out_base    = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
                         "r17663_no_overlay_trigger_efficiency/mc_based/";
-        c.sample_text = "Pythia8 pp, r17663 (HI cond., no overlay)";
-        c.data_text   = "pp24 data";
-        c.eps_dr_text = "#varepsilon_{#DeltaR}^{2mu4}";
+        c.data_text   = "pp 2024 data";
     } else {
         throw std::runtime_error("plot_mc_trig_eff_corrected: sample must be 'pp', 'pp_full', "
                                  "'overlay' or 'noovl', got " + sample);
@@ -504,9 +508,13 @@ void plot_mc_trig_eff_corrected(const std::string& sample = "pp_full", bool use_
     const std::string dir4 = cfg.out_base + "step4_corrected_mc/" + wp_dir;
     for (const auto& d : {dir1, dir3, dir4}) gSystem->mkdir(d.c_str(), kTRUE);
 
-    const std::string corr_leg = "corrected MC (#times #varepsilon_{data}/#varepsilon_{MC})";
-    const std::string orig_leg = "original MC, P(mu4 | reco #mu)";
-    const std::string data_leg = cfg.data_text + " T&P P(2mu4 | mu4 tag, #DeltaR>0.8)";
+    // Every entry says WHAT it is, with no abbreviation the audience must decode and no
+    // drawing asides ("+ fit, dashed"): the correction factor is written out in full, and the
+    // two estimators keep their conditional probabilities (mc_trigger_efficiency.md §3.1).
+    const std::string corr_leg = "MC #times #varepsilon_{data}/#varepsilon_{MC}(p_{T}, q#upoint#eta)";
+    const std::string orig_leg = "uncorrected MC, P(mu4 | reconstructed #mu)";
+    const std::string data_leg = cfg.data_text +
+                                 ", tag-and-probe P(2mu4 | mu4 tag, #DeltaR > 0.8)";
 
     // ==================================================================================
     // Q1 / Step 1: does the corrected MC reproduce the DATA single-muon efficiency?
@@ -678,21 +686,17 @@ void plot_mc_trig_eff_corrected(const std::string& sample = "pp_full", bool use_
         auto* lgo = new TGraphAsymmErrors(); StyleGraph(lgo, kOrigColor, 22);
         auto* lgd = new TGraphAsymmErrors(); StyleGraph(lgd, kDataColor, 20);
         auto* leg = new TLegend(0.02, 0.56, 0.98, 0.86);
-        leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.042);
-        leg->AddEntry(lgd, (cfg.data_text + " T&P (+ fit, dashed)").c_str(), "lp");
-        leg->AddEntry(lgc, "corrected MC", "lp");
-        leg->AddEntry(lgo, "original MC", "lp");
+        // 0.026 + trimmed symbol column: the full definitions are ~50 glyphs and would clip at
+        // the legend-pad edge, truncating the DeltaR condition of the data entry.
+        leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.026);
+        leg->SetMargin(0.12);
+        leg->AddEntry(lgd, data_leg.c_str(), "lp");
+        leg->AddEntry(lgc, corr_leg.c_str(), "lp");
+        leg->AddEntry(lgo, orig_leg.c_str(), "lp");
         leg->Draw();
-        TLatex note;
-        note.SetNDC(); note.SetTextSize(0.038); note.SetTextFont(42);
-        note.DrawLatex(0.02, 0.48, "");
-        note.DrawLatex(0.02, 0.42, "SF(p_{T},q#upoint#eta) = #varepsilon_{data}/#varepsilon_{MC}"
-                                   " (denominator untouched)");
-        note.DrawLatex(0.02, 0.34, ""
-                                   "#LTSF#GT #approx #varepsilon_{data}.");
-        // (no explanatory prose: the ratio pad is labelled by its own y-axis title)
-        note.DrawLatex(0.02, 0.18, "");
-        note.DrawLatex(0.02, 0.12, "");
+        // The legend carries the full definition of each series, so nothing else is drawn here.
+        // (The previous version left a row of empty DrawLatex calls and the half-sentence
+        // "#LTSF#GT #approx #varepsilon_{data}." stranded on the canvas.)
         SaveCanvas(c, dir1 + "step1_corrected_eff_pt_in_q_eta_bins_" + kCharges[ic] + ".png");
     }
 
@@ -898,8 +902,10 @@ void plot_mc_trig_eff_corrected(const std::string& sample = "pp_full", bool use_
                     if (iz == 1) {
                         auto* leg = new TLegend(0.40, 0.62, 0.95, 0.86);
                         leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.045);
-                        leg->AddEntry(ro, "original MC", "lp");
-                        leg->AddEntry(rc, "corrected MC", "lp");
+                        leg->AddEntry(ro, "uncorrected MC", "lp");
+                        leg->AddEntry(rc,
+                            "MC #times #varepsilon_{data}/#varepsilon_{MC}(p_{T}, q#upoint#eta)",
+                            "lp");
                         leg->Draw();
                     }
 
@@ -931,7 +937,8 @@ void plot_mc_trig_eff_corrected(const std::string& sample = "pp_full", bool use_
                     double ylim = std::max(1.0, 1.25 * maxpull);
                     ylim = std::min(ylim, 5.0);
                     DrawRatioFrame(0.0, R.xhi, "#DeltaR",
-                                   "#frac{corr - orig}{#sigma_{orig}}", -ylim, ylim, 0.0, 0.34);
+                                   "#frac{corrected #minus uncorrected}{#sigma_{uncorrected}}",
+                                   -ylim, ylim, 0.0, 0.34);
                     pull->SetMarkerStyle(20);
                     pull->SetMarkerColor(kGreen + 2);
                     pull->SetLineColor(kGreen + 2);
@@ -955,10 +962,12 @@ void plot_mc_trig_eff_corrected(const std::string& sample = "pp_full", bool use_
                     c.cd(iz);
                 }
                 c.cd(0);
+                // Neither the internal step key nor the "zoom"/"full" file token goes on the
+                // canvas, and the panel layout describes itself -- the quantity, the pair-pT
+                // cell and the two series (legend) are what the reader needs.
                 TLatex st; st.SetNDC(); st.SetTextFont(42); st.SetTextSize(0.014);
-                st.DrawLatex(0.02, 0.982, (headline + "  --  " + S.key + ", " + R.tag +
-                             " #DeltaR, " + pt_label(iy) +
-                             "  --  original vs SF-corrected MC, one panel per #eta^{pair} bin").c_str());
+                st.DrawLatex(0.02, 0.982, (headline + ",  " + S.ytitle + ",  " +
+                                           pt_label(iy)).c_str());
                 SaveCanvas(c, S.dir + S.key + "_corr_vs_orig_" + R.tag + "_pairpt" +
                                std::to_string(iy) + ".png");
             }
