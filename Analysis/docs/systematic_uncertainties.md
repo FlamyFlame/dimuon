@@ -57,6 +57,30 @@ are 10 000-event **TEST** samples whose high-pair-pT cells are noise-dominated, 
 exempt from the guard (their offending cells are reported, not fatal). The guard lifts to the
 overlay once the full-statistics PbPb production lands.
 
+**⚠ TWO pp24 CELLS CURRENTLY FAIL THE GUARD — ACCEPTED AND NORMALIZED (user decision
+2026-08-04), size to be carried as a systematic.** After the forward low-pT veto, 34 of the 36
+pp24 (pair pT × pair η) cells have plateaus within 7% of 1; two do not, both in the top
+pair-pT bin:
+
+| step | cell | plateau | deviation from 1 |
+|---|---|---|---|
+| 3 | pT_pair[50,150) × η_pair[1.0,1.5) | 0.8573 ± 0.0350 | 4.1σ, \|Δ\| = 0.143 |
+| 4 | pT_pair[50,150) × η_pair[0.5,1.0) | 0.8955 ± 0.0092 | 11.4σ, \|Δ\| = 0.105 |
+
+Neighbouring cells in the same pair-pT row are 0.96–1.02, so these are isolated outliers rather
+than a trend, and the Step-4 one has small errors — it is **not** a statistical artefact: the
+inverse weighting genuinely fails to close there by ~10%. **Decision: normalize each cell by its
+own measured plateau as usual and carry `|plateau − 1|` in these two cells as a systematic on the
+ΔR correction.** The guard stays in place and still reports loudly.
+
+**Open lead on the cause (NOT yet demonstrated):** the MC single-muon turn-on TF1s are fitted
+only over `pT ∈ [4, 60] GeV` and the evaluator clamps above 60 GeV. In a 50–150 GeV *pair* pT bin
+a large fraction of legs exceed 60 GeV, so their ε is a clamped extrapolation rather than a
+measurement — the same family as the out-of-range TF1 trap in
+`docs/tracking/pp_trig_eff_highpt_jump.md`. **Caveat: the sign does not obviously match** — a
+clamp that under-estimates ε at high pT biases the inverse-weighted ratio *high*, while these
+cells sit *low*. Extending the turn-on fits above 60 GeV and re-measuring would settle it.
+
 **⚠ Size must be RE-DERIVED (2026-08-03).** Round 7 corrected the statistical errors on these
 corrections: they had been over-stated by 1.5–3.2× by an independent-error `TH1::Divide` on a
 ratio whose numerator is a subset of its denominator (`mc_trigger_efficiency.md` R12). With the

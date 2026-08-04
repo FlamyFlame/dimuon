@@ -1824,6 +1824,109 @@ NTuple-processing re-run was needed** for it.
   carries one more MC-only selection than before. It does not affect the deliverables (the ΔR
   **ratios**, which are MC-internal), but any quoted Step-1 MC/data ratio must state it (cf. R5).
 
+### R15. ΔR-correction fits + plateau ROOT file (2026-08-04, round 7, delegated)
+
+**Integrated flow, no hardcoded plateaus.** The Step-3/Step-4 blocks of `plot_mc_trig_eff.cxx`
+now write `<mc_dir>/dr_correction_plateaus_<label>[_medium_wp].root` (Step 3 RECREATE, Step 4
+UPDATE): per step, TH2Ds of plateau value / stat error / weighted RMS / n_bins over
+(pair pT × pair η) with **axes cloned from the source TH3D**, a 1-bin inclusive plateau, and a
+`prov_stepN` TNamed provenance stamp. `fit_dr_corrections.cxx` reads that file — never a
+.txt/.md — checks the axis edges *and* the provenance stamp (all samples share a binning, so
+only the stamp can catch a cross-sample mix-up), warns if the plateau file is older than the
+histograms, runs the guard, divides each cell by **its own** plateau, and fits. Driver:
+`pipelines/run_dr_correction_fits.sh` (knobs `SAMPLES WPS STEPS METHODS SKIP_MEASURE SKIP_FIT
+STRICT_GUARD`; exit 3 = artefact failure, 2 = guard failure).
+
+**Guard outcome — see `docs/systematic_uncertainties.md` §1a.** Post-veto, two pp24 cells exceed
+`|plateau−1| > 0.1`, both in pT_pair[50,150): Step 3 × η_pair[1.0,1.5) = 0.8573 ± 0.0350 and
+Step 4 × η_pair[0.5,1.0) = 0.8955 ± 0.0092. **User decision 2026-08-04: accept and normalize;
+carry |plateau−1| there as a systematic.** (Pre-veto there were three; the η_pair[2.0,2.4)
+failure was removed by the forward veto.)
+
+**Fit functions tried** (inclusive cell, Tight, χ²/ndf with the round-7 conditional errors):
+
+| | polyu_fixedRp | powerlaw_fixedRp | powerlaw_floatRp | expo | interp |
+|---|---|---|---|---|---|
+| pp_full step3 | **5.89** | 18.31 | 11.70 | 7.79 | exact |
+| pp_full step4 | 25.18 | 47.07 | **15.68** | 15.39 | exact |
+| overlay step3 | 1.343 | **1.272** | 1.319 | 1.355 | exact |
+| overlay step4 | 1.205 | **1.138** | 1.205 | 1.231 | exact |
+
+Flat-beyond-R_p audit (the §-requirement that Step 4 is flat for ΔR ≳ 0.3 and Step 3 for
+ΔR ≳ 0.5): `polyu_fixedRp`, `powerlaw_fixedRp`, `interp` → **0 violations, worst |f−1| = 0**
+(exact by construction); `powerlaw_floatRp` → violations with worst |f−1| ≈ 0.10–0.13; `expo`
+→ many violations, worst 0.112 (pp) / 16.6 (overlay) — it never returns to 1.
+
+**Recommendation:** nominal `polyu_fixedRp`, `f = 1 + u²(a₂+a₃u+a₄u²)` with
+`u = max(0, 1−ΔR/R_p)` — exactly 1 and C¹ beyond R_p, and the only parametric form that
+reproduces the measured non-monotonic small-ΔR shape. Systematic variant `powerlaw_fixedRp`.
+**Reject `expo` and `powerlaw_floatRp`: they violate the required flatness.**
+- ⚠ **Honest caveat:** on the pp FULL sample **no** 2–4-parameter form reaches χ²/ndf ≈ 1 — with
+  per-mille errors the data resolve real structure the smooth forms cannot follow (this is the
+  same residual ~0.5% non-flatness of the "plateau" noted in R12(f)). `interp` is exact by
+  construction and may be the better choice for pp; on the overlay every method gives ≈1.1–1.4.
+  **A human should pick between `polyu_fixedRp` and `interp` for pp.**
+
+**Persistence verified.** All functions are **TFormula-string** TF1s (never C++ lambdas): re-read
+in a *fresh* ROOT session with no macro loaded, `f(0)=1.0361`, `f(0.5)=f(10)=f(50)=1.0` — nothing
+collapses to 0 outside the fit range (the `project_tf1_eval_out_of_range` trap). 0 persistence
+failures across all files. Consumers must still clamp at the point of use.
+
+**Physics worth a human's eye:** the small-ΔR correction has **opposite sign** in the two
+systems — pp `ε_ΔR^2mu4` **dips to ≈0.81** (2mu4 needs two L1 RoIs and close muons share one)
+while overlay `ε_ΔR^cross` **rises to 2.22 ± 0.19** (mu4 cross term). Do not assume one sign.
+
+**⚠ Overlay per-cell plateaus are NOT measurable today:** 33 of 36 overlay Step-3 cells have
+|plateau−1| > 0.1, spanning 0.04 to 16.1 — 10 000 events give too few pairs per (pair pT, pair η)
+cell in ΔR ∈ [1,4]. **Only the inclusive overlay curve is usable** (plateau 0.8681 ± 0.0189);
+per-cell PbPb corrections need the full-statistics overlay (RW 7).
+
+### R16. Corrected-MC study: does correcting MC to data change the ΔR corrections? (2026-08-04)
+
+`SF(pT, q·η) = ε_data/ε_MC` from the fitted TF1s, evaluated continuously; **every MC muon that
+FIRED carries the extra weight SF, the denominator is untouched**, so
+`ε_corr = Σ_fired w·SF / Σ_all w ≈ ε_data`. Step 3/4 corrected numerator weight `w·SF/ε_corr`
+with ε_corr from the **corrected** fit file (self-consistency).
+
+**Q1 — do the two methods give the same single-muon efficiency?** Corrected MC reproduces the
+data turn-on to **mean |⟨ε_corr/ε_data⟩ − 1| = 0.51% (pp24 FULL)** and **5.6% (overlay)**. Worst
+point: 0.69 at pT = 4 GeV in q·η ∈ (−2.4,−2.2) μ⁻ (pp) — i.e. exactly the anomalous
+forward-negative turn-on where ε_MC is saturated and SF is extreme, the region the forward veto
+now removes from Steps 2–4.
+
+**Q2 — does correcting the MC change the correction terms?** **No, to the precision that
+matters.** Algebraically it should not: if ε_corr were exactly ε_data then `SF/ε_corr = 1/ε_MC`,
+the original weight, and the corrections would be identical bin-by-bin. Measured
+(pull = (corr−orig)/σ_orig, σ_orig the conditional error; the two series share the same events
+so a quadrature error would be meaningless):
+
+| sample | Step 3 max \| mean per-cell median | Step 4 max \| mean per-cell median |
+|---|---|---|
+| pp_full | 3.20σ \| **0.047σ** | 3.49σ \| **0.049σ** |
+| overlay | 28.1σ \| **0.184σ** | 51.6σ \| **0.210σ** |
+
+⇒ typical displacement is a few hundredths of a σ. The isolated large pulls are all in the
+noise-dominated overlay cells (the same ones whose plateaus swing 0.04–16.1) where the
+conditional error collapses at the k=n boundary, so a tiny difference becomes a huge pull — an
+artefact of a vanishing denominator, not physics. **This validates the nominal procedure: the ΔR
+correction is insensitive to the overall single-muon efficiency normalization and therefore
+transfers from the MC world to the data world.**
+
+**Two real bugs found and fixed inside the new corrected code path** (they never touched the
+nominal path): (i) `TGraphAsymmErrors::BayesDivide` is undefined when the corrected numerator
+exceeds the denominator (SF > 1) — it returns an EMPTY graph, and `TGraph::Fit` on an empty graph
+is a **no-op that still returns status 0**, leaving the TF1 at its initial parameters (a silent,
+badly wrong turn-on of 0.4500 at pT = 4). Replaced by an explicit conditional-error estimator, and
+the fitter now counts `Npts == 0` / `ndf <= 0` as FAILED. (ii) An `eff = 0 ± 0` point (denominator
+> 0, no fired muons) is infinitely constraining and gave χ²/ndf = 30627; the "1/n rule" now covers
+**both** binomial boundaries.
+
+**Validation:** an `sf_closure` mode forces SF ≡ 1, under which the corrected chain must reproduce
+the nominal one exactly — verified bin-by-bin, worst relative difference **4.6e-16** (Step 3) /
+**3.9e-15** (Step 4). That closure also caught two live concurrency hazards during the work (a
+half-written input NTP file, and a mid-task selection change), each of which would otherwise have
+been reported as physics.
+
 ## Remaining Work
 
 **Blocking / needs user decision:**
