@@ -1857,15 +1857,32 @@ Flat-beyond-R_p audit (the §-requirement that Step 4 is flat for ΔR ≳ 0.3 an
 (exact by construction); `powerlaw_floatRp` → violations with worst |f−1| ≈ 0.10–0.13; `expo`
 → many violations, worst 0.112 (pp) / 16.6 (overlay) — it never returns to 1.
 
-**Recommendation:** nominal `polyu_fixedRp`, `f = 1 + u²(a₂+a₃u+a₄u²)` with
-`u = max(0, 1−ΔR/R_p)` — exactly 1 and C¹ beyond R_p, and the only parametric form that
-reproduces the measured non-monotonic small-ΔR shape. Systematic variant `powerlaw_fixedRp`.
-**Reject `expo` and `powerlaw_floatRp`: they violate the required flatness.**
-- ⚠ **Honest caveat:** on the pp FULL sample **no** 2–4-parameter form reaches χ²/ndf ≈ 1 — with
-  per-mille errors the data resolve real structure the smooth forms cannot follow (this is the
-  same residual ~0.5% non-flatness of the "plateau" noted in R12(f)). `interp` is exact by
-  construction and may be the better choice for pp; on the overlay every method gives ≈1.1–1.4.
-  **A human should pick between `polyu_fixedRp` and `interp` for pp.**
+**Recommendation (REVISED 2026-08-04 by the user — supersedes the first pass):**
+**nominal `expo`**, `f(ΔR) = 1 + A·exp[−(ΔR/λ)^p]`; **backup `polyu_fixedRp`**; cross-check
+`interp`. **The two power laws are DROPPED.**
+- **Why the power laws are out — they are NOT SMOOTH.** `f = 1 + A·u^n` is continuous in *value*
+  at R_p but its slope `−A n u^(n−1)/R_p` **diverges for n < 1** — a cusp. The fitted n rails to
+  its lower limit 0.2 in a large fraction of cells: pp Step 3 **11/37**, Step 4 9/37; overlay
+  Step 3 **19/37**, Step 4 17/37. That is the typical case, not an edge case. *(The first pass
+  passed them on a "flat beyond R_p" audit that only checked the VALUE beyond R_p, never the
+  SLOPE — the audit missed exactly this.)*
+- **Why `expo` is back in, as nominal.** It is smooth everywhere and → 1 asymptotically. It was
+  first rejected for not being *exactly* 1 beyond R_p; **that was wrong** — "flat for ΔR ≳ 0.5"
+  is an ESTIMATE, not a strict bound, and a cell whose behaviour departs wildly from it is
+  something to investigate, not grounds to reject the functional form. Measured residual
+  |f−1| at ΔR = 1 over pp cells: **median 0.0000, 75th pct 0.0000, 90th pct 0.0143 (Step 3) /
+  0.0000 (Step 4)**, max 0.2051 / 0.0332 in one or two outlier cells. The large overlay
+  residuals (75th pct 0.94) sit in cells already marked `fit_ok = 0`.
+- **Why `polyu_fixedRp` is only the backup.** It is C¹ at R_p by construction and follows the
+  non-monotonic small-ΔR shape, but its higher-order terms can equally absorb shapes that are
+  **procedure artefacts rather than physics** — so it serves as the cross-check on `expo`, not
+  the default.
+- χ²/ndf, inclusive cell (Tight): `expo` pp 7.80 (S3) / 15.39 (S4), overlay 1.355 / 1.231;
+  `polyu_fixedRp` pp 5.90 / 25.17, overlay 1.343 / 1.205. On pp no 3–4-parameter form reaches
+  ≈1 (see the caveat below); on the overlay everything is ≈1.1–1.4.
+- ⚠ **Stale on disk:** the `step{3,4}_dr_fit/powerlaw_fixedRp/` and `powerlaw_floatRp/`
+  directories and their `dr_correction_fits_*powerlaw*.root` files are from the rejected methods
+  and were NOT removed (deletion declined). Do not consume them.
 
 **Persistence verified.** All functions are **TFormula-string** TF1s (never C++ lambdas): re-read
 in a *fresh* ROOT session with no macro loaded, `f(0)=1.0361`, `f(0.5)=f(10)=f(50)=1.0` — nothing
@@ -2083,6 +2100,50 @@ criteria **P1** and **P2**):
    (a) above.
 
 ## Latest Stage
+
+**2026-08-04 (round 8) — IN PROGRESS: on-canvas TEXT & LEGEND cleanup of the whole MC
+trig-eff plot set (publication standard).**
+
+*Plan, written before the work (per-step protocol).* User request: no code-/task-specific
+tokens and no unexplained abbreviations anywhere on a canvas; every number the audience needs
+must be ON the plot (or deleted); never point the audience at a file/document. Four user
+decisions taken up-front (AskUserQuestion, 2026-08-04):
+- **D-T1** headline = physical sample identity **plus collision energy** (`#sqrt{s} = 5.36 TeV`
+  pp, `#sqrt{s_{NN}} = 5.36 TeV` Pb+Pb); production bookkeeping (`fullsim`, `(FULL sample)`)
+  dropped.
+- **D-T2** the Step-4 usage notes (`VALIDATION only -- NOT applied to pp 2mu4`, `dresses the
+  union linear terms`) are **removed** — how a result is consumed belongs in this doc.
+- **D-T3** the r17663 diagnostic set is cleaned like the deliverables, but **keeps the r-tag in
+  the headline** for traceability; series/ratio labels become physical configurations.
+- **D-T4** Step-1 keeps the conditional-probability notation (the MC and data estimators
+  genuinely differ); only `T&P` → `tag-and-probe` and the drawing asides go.
+
+Edits (text/legend only — no physics, no binning, no selection change):
+1. `dr_correction_sample_cfg.h` — `sample_text` per D-T1/D-T3 (one edit, all three macros).
+2. `plot_mc_trig_eff.cxx` — sanity variant labels (`round-7 selection`, `thr`, `vtx`/`ptm`
+   drop-note keys), Step-2 `[full_chain]`/`[L1]`/`[HLT]` tags + stage efficiency strings,
+   `inclusive singles (Step 1)`, `MC #varepsilon in weights`, `(+ fit)` / `, no fit` asides,
+   `r17663 / pp24` ratio title, Step-3/4 super-title `zoom`/`full` tags, D-T2 note removal.
+   Plus two real rendering bugs found in the audit: the Step-1-sanity headline is drawn into
+   the last sub-pad (garbled over the ratio pad) — needs `c.cd(0)`; and the Step-3/4 pair-pT
+   slice legend sits on top of the data — move into the empty lower-right quadrant.
+3. `plot_dr_correction_fits.cxx` — `[dimensionless]`, `Step %d`, `measured / plateau`.
+4. `plot_mc_trig_eff_corrected.cxx` — `SF-corrected`, `corr - orig / #sigma_{orig}`,
+   `one panel per #eta^{pair} bin` prose, leftover empty/half `DrawLatex` fragments
+   (`MC`, `#LTSF#GT #approx #varepsilon_{data}.`).
+5. New `Analysis/Utilities/MCTrigEffSanityCfg.h` — single source of truth for the sanity
+   `|#Deltap_{T}|/p_{T}^{truth}` threshold (0.10), included by BOTH `FillMCTrigEffHists.cxx`
+   and the plot macro, so the number printed on the canvas can never drift from the cut applied.
+6. Regenerate (plot stages only, no refill): `plot_mc_trig_eff` × {pp_full, overlay, noovl} ×
+   {Tight, Medium}; `run_dr_correction_fits.sh SKIP_MEASURE=1 SKIP_FIT=1`;
+   `run_mc_trigeff_corrected.sh STAGES=plots`.
+7. Fold the new criteria into `.claude/conventions/atlas-plotting.md` + `plot-reviewer.md`
+   (user asked for this explicitly) and into auto-memory; then `/review-plot`.
+
+*Verified against the Physics Procedure:* nothing here changes §3.0–§3.5 — the definitions
+drawn on the canvases are being made to MATCH §3.1/§3.3/§3.4 wording, not to differ from it.
+
+---
 
 **2026-08-03 (round 7) — PAUSED mid-round at user request (tmux restart). RESUME HERE.**
 Commits `f990173`..`b3b2a99` on master; working tree clean at the pause.

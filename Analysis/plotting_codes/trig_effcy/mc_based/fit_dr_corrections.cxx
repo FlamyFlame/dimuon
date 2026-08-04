@@ -149,12 +149,28 @@ MethodCfg MakeMethodCfg(const std::string& m)
 {
     // TFormula strings ONLY (never a C++ lambda) so the TF1s survive write/read -- see the
     // read-back trap in the header comment.
-    if (m == "powerlaw_fixedRp")   // f = 1 + A u^n ,          Rp fixed
+    // ---- REJECTED (user 2026-08-04): the two power laws are NOT SMOOTH ----------------------
+    // f = 1 + A u^n with u = max(0, 1 - dR/Rp) is continuous in VALUE at Rp but its slope is
+    // -A n u^(n-1)/Rp, which DIVERGES for n < 1 -- a cusp. The fitted n rails to its lower limit
+    // 0.2 in a large fraction of cells (pp step3 11/37, step4 9/37; overlay step3 19/37,
+    // step4 17/37), so this is the typical case, not an edge case. Retained only so an old
+    // output can be reproduced; NOT in the driver's default METHODS list.
+    if (m == "powerlaw_fixedRp")   // f = 1 + A u^n ,          Rp fixed        -- REJECTED
         return {m, "1+[0]*TMath::Power(TMath::Max(0.,1.-x/[2]),[1])", 3, 2, false};
-    if (m == "powerlaw_floatRp")   // f = 1 + A u^n ,          Rp free in a small window
+    if (m == "powerlaw_floatRp")   // f = 1 + A u^n ,          Rp free         -- REJECTED
         return {m, "1+[0]*TMath::Power(TMath::Max(0.,1.-x/[2]),[1])", 3, 3, true};
-    if (m == "expo")               // f = 1 + A exp(-(dR/lambda)^p) -- smooth, 1 asymptotically
+    // ---- NOMINAL (user 2026-08-04) ----------------------------------------------------------
+    // Smooth everywhere and -> 1 as dR -> infinity. It approaches 1 ASYMPTOTICALLY rather than
+    // reaching it exactly at Rp; that is fine -- "flat for dR >~ 0.5" is an ESTIMATE, not a
+    // strict bound. Measured residual |f-1| at dR = 1 over pp cells: median 0.0000, 90th pct
+    // 0.0143 (step3) / 0.0000 (step4); the large overlay residuals sit in cells already marked
+    // fit_ok = 0. Preferred over polyu because it has no high-order polynomial terms that could
+    // fit procedure artefacts rather than real shape.
+    if (m == "expo")               // f = 1 + A exp(-(dR/lambda)^p) -- NOMINAL
         return {m, "1+[0]*TMath::Exp(-TMath::Power(x/[1],[2]))", 3, 3, false};
+    // BACKUP: C^1 at Rp by construction and flexible enough for a non-monotonic small-dR shape,
+    // but the higher-order terms can also absorb shapes that are procedure artefacts rather than
+    // physics -- which is why `expo` is nominal and this is the cross-check.
     if (m == "polyu_fixedRp")      // f = 1 + a2 u^2 + a3 u^3 + a4 u^4 -- C^1 at Rp (value AND
                                    // slope -> 0), and flexible enough for a non-monotonic
                                    // small-dR shape, which the single power law cannot do

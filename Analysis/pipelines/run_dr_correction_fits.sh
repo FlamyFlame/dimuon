@@ -46,7 +46,12 @@ MC_PLOT_DIR="${ANALYSIS_DIR}/plotting_codes/trig_effcy/mc_based"
 SAMPLES="${SAMPLES:-pp_full overlay}"
 WPS="${WPS:-tight medium}"
 STEPS="${STEPS:-3 4}"
-METHODS="${METHODS:-powerlaw_fixedRp powerlaw_floatRp expo polyu_fixedRp interp}"
+# Default methods (user 2026-08-04): NOMINAL `expo`, BACKUP `polyu_fixedRp`, cross-check
+# `interp`. The two power laws are DROPPED -- see MakeMethodCfg in fit_dr_corrections.cxx: the
+# fitted exponent n rails to its lower limit 0.2 in many cells and n < 1 gives an INFINITE slope
+# at Rp (a visible cusp), so they are not smooth. They remain constructible for reproducing old
+# outputs, but nothing produces them by default.
+METHODS="${METHODS:-expo polyu_fixedRp interp}"
 SKIP_MEASURE="${SKIP_MEASURE:-0}"
 SKIP_FIT="${SKIP_FIT:-0}"
 STRICT_GUARD="${STRICT_GUARD:-0}"

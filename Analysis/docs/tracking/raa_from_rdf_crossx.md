@@ -409,3 +409,97 @@ review-plot-20260619-231947-pbpb-2023-lumi-crossx-raa.md.
 *(cleared — 2023 lumi GRL correction + two-b-hadron-run subtraction COMPLETE; both
 review loops PASS. Changes uncommitted, awaiting user go-ahead to commit — same
 batch as the 2024 lumi correction + R_AA notation rework above.)*
+
+---
+
+## REOPENED 2026-08-04 — crossx subplot log-y range: one common scale, no cropped points
+
+**Trigger (user):** the `_pt_150` crossx plots appear to stop short of the
+highest pair-pT bins, while the nominal (pT_bins_120) plots suggest data survive
+out there. Hypothesis to test: the log y-axis does not reach low enough and is
+cropping the last points. Requirement: **keep every real data point, however bad
+its error bar** — that is what defines how far in pair pT the measurement reaches.
+
+### Findings
+
+**F1 — The `_pt_150` plots were STALE, not cropped. This was the whole of the
+reported symptom.** Neither `pipeline_pp_crossx.sh` (Stage 6) nor
+`pipeline_pbpb_crossx.sh` (Stage 6) nor `run_all_crossx.sh` ever passed
+`use_pt_bins_150=true`; the plot macros default it to `false`. The `_pt_150`
+directories were therefore orphaned outputs, only ever written by a manual
+invocation: `pp24_pt_150/` was last written **2026-04-17** (still the Medium-WP
+era) and `pbpb_23_24_25_combined_pt_150/` **2026-06-19**, against nominal dirs
+refreshed 2026-07-08. Regenerating them from the current histograms restores the
+high-pT points immediately, with no axis change at all.
+
+**F2 — ROOT's default log-y autoscale does NOT crop markers.** Measured on the
+current pp24 file, over both the pT_bins_120 and pT_bins_150 histograms, all 9
+pair-η panels, for `DrawPairPtByEta` and `DrawPairPtByEtaWithDrLines`: the painted
+axis floor sits at ~0.3 × the smallest positive bin content in every panel;
+**0 points cropped in 36/36 panel-cases.** The original hypothesis is refuted for
+these two routines. (Error BARS are clipped at the frame — unavoidable, since at
+one pair per bin the Poisson error reaches ~0, which no log axis can contain.)
+
+**F3 — But a hard-coded floor DOES crop, in the two auxiliary crossx macros.**
+`plot_crossx_reco_eff_stages.C:175` and `plot_crossx_trig_corr_sanity.C:147` both
+set `SetMinimum(ymax * 1e-5)` per panel. The pp24 crossx spectra span
+max/min ≈ 2.3e5 **within a single pair-η panel**, so this floor deleted the last
+two-to-three points of the high-|η| panels (e.g. η ∈ [−2.0,−1.5]: points at
+5.2e-4, 2.9e-4, 1.5e-4 pb/GeV all sat below a floor of 1.5e-3). Real cropping,
+just not in the plots the report started from.
+
+**F4 — Latent version of the same bug in `DrawPairPtByEtaWithDrLines`.** The pad
+frame is defined by the first-drawn histogram (ΔR ∈ [0,0.2]) only; a lower point
+on any of the three overlaid ΔR curves could be drawn off-frame. It happens not
+to bite on the current data (F2), but nothing prevented it.
+
+**F5 — Every panel had its own scale.** ROOT autoscales per pad, so two adjacent
+pair-η panels put different values at the same height — the panels could not be
+compared by eye.
+
+### Changes
+
+- **NEW `Utilities/CommonLogYRange.h`** — single source for the convention.
+  `ApplyCommonLogYRange(hists, ceil_pad=1.45)` scans EVERY histogram of EVERY
+  panel of one PNG, then gives them all the same range: floor = (smallest
+  positive bin content over all panels) / 3, ceiling = (largest) × `ceil_pad`.
+  Derived from the data, never a fixed ratio to the maximum, so no point can
+  fall off the bottom. Floor uses bin CONTENT, not the lower error-bar end
+  (rationale in the header).
+- **`SingleBCrossxPlotterBase.cxx`** — `DrawPairPtByEta` and
+  `DrawPairPtByEtaWithDrLines` restructured into two passes: build all
+  projections → compute the common range → draw. Fixes F4 and F5 for pp and
+  Pb+Pb at once (both plotters share this base).
+- **`plot_crossx_reco_eff_stages.C`, `plot_crossx_trig_corr_sanity.C`** — the
+  `ymax * 1e-5` floors replaced by the shared helper (`ceil_pad = 3.0` to keep
+  the taller legends clear). Fixes F3.
+- **`plot_crossx_trig_corr_sanity.C` — PRE-EXISTING BREAKAGE FIXED.** The macro
+  called `DatasetTriggerMap::Get(yr, <int>)`, an API that no longer exists, and
+  never included `DatasetTriggerMap.h`; it failed to compile on master, so
+  **Stage 7 of both crossx pipelines has been a silent no-op** (ROOT exits 0 on a
+  macro compile error, so `set -e` never caught it). Now
+  `GetTrigger(yr, "pp"/"PbPb")` + the include; the macro runs and writes both PNGs.
+- **`pipeline_pp_crossx.sh`, `pipeline_pbpb_crossx.sh`, `run_all_crossx.sh`** —
+  Stage 6 now calls the plotters with `use_pt_bins_150=true`, so the `_pt_150`
+  dirs are refreshed in the same run as the nominal ones and cannot drift again
+  (root cause of F1). This does NOT change any binning: `pT_bins_150` is the
+  opt-in variant per `.claude/CLAUDE.md` §Binnings 4, and the nominal plots still
+  use `pT_bins_120` / `pair_pt_coarse_bins`.
+
+### Results
+
+All 98 crossx PNGs regenerated 2026-08-04 (histograms untouched — plotting-only
+change; no RDF refill needed):
+`pp24/` (5), `pp24_pt_150/` (3), `pbpb_23_24_25_combined/` (66),
+`pbpb_23_24_25_combined_pt_150/` (24), plus the 4 in `plots/sanity_check_crossx/`.
+
+- pp24 `_pt_150` now reaches the 123.4–150 GeV bin, populated in 4 of 9 pair-η
+  panels (η ∈ [−2.0,−1.5] 1.11e-4, [−0.5,0.5] 2.90e-4, [1.0,1.5] 1.05e-4,
+  [1.5,2.0] 1.05e-4 pb/GeV) — single-pair bins, error bar ≈ value, exactly the
+  "how far do we reach" points the user asked to preserve.
+- Every subplot in a given PNG now shares one log-y range (pp24 `_pt_150`:
+  3.5e-5 … 3e2 pb/GeV; PbPb 0–5% counts: 1.5e-2 … 1.5e3 GeV⁻¹).
+
+### Latest Stage
+*(cleared — common log-y range implemented, pre-existing Stage-7 breakage fixed,
+all crossx plots regenerated.)*

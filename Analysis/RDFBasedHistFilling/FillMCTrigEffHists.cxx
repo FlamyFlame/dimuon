@@ -92,6 +92,8 @@
 using namespace std;
 
 #include "../MuonObjectsParamsAndHelpers/ParamsSet.h"
+// Shared with plot_mc_trig_eff.cxx, which PRINTS this threshold on the sanity-check canvases.
+#include "../Utilities/MCTrigEffSanityCfg.h"
 #include "../Utilities/proj_range_to_suffix.cxx"
 #include "CommonEffcyConfig.h"
 
@@ -617,7 +619,9 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
 
     // Truth-reco pT-match threshold for the round-7 SANITY CHECK (do_sanity only; it is NOT
     // part of the nominal selection). Value + justification: mc_trigger_efficiency.md §3.5.
-    const double kPtMatchThr = 0.10;
+    // Defined in ../Utilities/MCTrigEffSanityCfg.h because the plot macro draws the NUMBER on
+    // the canvas -- one definition, so the drawn value cannot drift from the applied cut.
+    const double kPtMatchThr = kSanityPtMatchThr;
 
     // FORWARD LOW-pT VETO (round 7, user; §3.5 decision rule). The §3.5 sanity check RULED OUT
     // "bad muons" as the cause of the saturated forward-negative MC turn-on: in q·η ∈ (−2.4,−2.0)

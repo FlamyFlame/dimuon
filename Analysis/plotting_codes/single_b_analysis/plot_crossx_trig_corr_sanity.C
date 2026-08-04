@@ -13,6 +13,8 @@
 #include "TSystem.h"
 
 #include "../../RDFBasedHistFilling/CommonEffcyConfig.h"
+#include "../../MuonObjectsParamsAndHelpers/DatasetTriggerMap.h"
+#include "../../Utilities/CommonLogYRange.h"
 
 void plot_crossx_trig_corr_sanity() {
     gStyle->SetOptStat(0);
@@ -52,14 +54,14 @@ void plot_crossx_trig_corr_sanity() {
             std::vector<std::string> candidates;
             if (spec.is_pp) {
                 std::string base = dir + "/histograms_real_pairs_pp_20" + std::to_string(yr);
-                const std::string trig = DatasetTriggerMap::Get(yr, 3);
+                const std::string trig = DatasetTriggerMap::GetTrigger(yr, "pp");
                 candidates = {
                     base + "_" + trig + "_nominal.root",
                     base + "_" + trig + "_coarse_q_eta_bin.root",
                 };
             } else {
                 std::string base = dir + "/histograms_real_pairs_pbpb_20" + std::to_string(yr);
-                const std::string trig = DatasetTriggerMap::Get(yr, 1);
+                const std::string trig = DatasetTriggerMap::GetTrigger(yr, "PbPb");
                 candidates = {
                     base + "_" + trig + "_no_trg_plots_nominal.root",
                     base + "_" + trig + "_no_trg_plots_coarse_q_eta_bin.root",
@@ -110,14 +112,12 @@ void plot_crossx_trig_corr_sanity() {
         c.Divide(ncol, nrow);
 
         std::vector<TH1D*> trash;
+        std::vector<TH1D*> panel_corr(eta_bins.size(), nullptr);
+        std::vector<TH1D*> panel_raw (eta_bins.size(), nullptr);
 
+        // PASS 1 — build every panel's two curves WITHOUT drawing, so the common
+        // log-y range can be derived from all of them (Utilities/CommonLogYRange.h).
         for (size_t ieta = 0; ieta < eta_bins.size(); ++ieta) {
-            c.cd((int)ieta + 1);
-            gPad->SetLogx();
-            gPad->SetLogy();
-            gPad->SetLeftMargin(0.16);
-            gPad->SetBottomMargin(0.13);
-
             const auto& eb = eta_bins[ieta];
             int y1 = h2_corr->GetYaxis()->FindBin(eb.first  + 1e-6);
             int y2 = h2_corr->GetYaxis()->FindBin(eb.second - 1e-6);
@@ -142,9 +142,6 @@ void plot_crossx_trig_corr_sanity() {
             hp_corr->SetMarkerSize(0.8);
             hp_corr->SetLineWidth(2);
 
-            double ymax = std::max(hp_corr->GetMaximum(), hp_raw->GetMaximum());
-            hp_corr->SetMaximum(ymax * 3.0);
-            hp_corr->SetMinimum(ymax * 1e-5);
             hp_corr->GetXaxis()->SetTitle("p_{T}^{pair} [GeV]");
             hp_corr->GetYaxis()->SetTitle("d#sigma/dp_{T} [pb GeV^{-1}]");
             hp_corr->GetXaxis()->SetTitleSize(0.06);
@@ -153,10 +150,46 @@ void plot_crossx_trig_corr_sanity() {
             hp_corr->GetYaxis()->SetLabelSize(0.05);
             hp_corr->GetYaxis()->SetTitleOffset(1.45);
             hp_corr->SetTitle("");
+
+            panel_corr[ieta] = hp_corr;
+            panel_raw[ieta]  = hp_raw;
+            trash.push_back(hp_corr);
+            trash.push_back(hp_raw);
+        }
+
+        // ONE log-y scale for the whole PNG, low enough to keep every non-empty
+        // point of every panel and BOTH curves inside the frame. The previous
+        // fixed floor (ymax * 1e-5) cropped the highest-pair-pT points, whose
+        // spread below the panel maximum exceeds 1e5.
+        {
+            std::vector<TH1*> flat;
+            for (TH1D* h : panel_corr) if (h) flat.push_back(h);
+            for (TH1D* h : panel_raw)  if (h) flat.push_back(h);
+            ApplyCommonLogYRange(flat, 3.0);  // a little headroom above the highest point
+        }
+
+        // PASS 2 — draw.
+        for (size_t ieta = 0; ieta < eta_bins.size(); ++ieta) {
+            if (!panel_corr[ieta]) continue;
+            c.cd((int)ieta + 1);
+            gPad->SetLogx();
+            gPad->SetLogy();
+            gPad->SetLeftMargin(0.16);
+            gPad->SetBottomMargin(0.13);
+
+            const auto& eb = eta_bins[ieta];
+            TH1D* hp_corr = panel_corr[ieta];
+            TH1D* hp_raw  = panel_raw[ieta];
             hp_corr->Draw("E1");
             hp_raw->Draw("E1 same");
 
-            TLegend* leg = new TLegend(0.42, 0.68, 0.93, 0.92);
+            // Lower-LEFT: this legend carries marker samples, so it must not sit over the
+            // curve. On a steeply falling spectrum the low-pT (left) end is at the TOP of
+            // the frame and the low values are at high pT (right), so the lower-left corner
+            // is the one region guaranteed empty in every panel. (At the old per-panel
+            // ymax*1e-5 floor the top-right box was nearly clear; with the common ~7-decade
+            // frame every point moves up in NDC and the top box lands on the data.)
+            TLegend* leg = new TLegend(0.19, 0.14, 0.62, 0.36);
             leg->SetBorderSize(0);
             leg->SetFillStyle(0);
             leg->SetTextSize(0.042);
@@ -164,9 +197,6 @@ void plot_crossx_trig_corr_sanity() {
             leg->AddEntry(hp_raw,  "Raw (no trig corr)", "lpe");
             leg->AddEntry(hp_corr, "No-corr trig eff", "lpe");
             leg->Draw();
-
-            trash.push_back(hp_corr);
-            trash.push_back(hp_raw);
         }
 
         std::string safe_label = spec.label;

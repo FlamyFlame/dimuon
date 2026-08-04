@@ -280,9 +280,15 @@ rdf_out="$(get_rdf_output)"
 validate_files_or_fail "RDF crossx pp24" "$rdf_out"
 
 # ------ Stage 6: Crossx plotting ------
-log "Running crossx plotting for PP 2024"
+# use_pt_bins_150=true also refreshes the opt-in pp24_pt_150/ variant. It is NOT
+# a second binning of the nominal result (see .claude/CLAUDE.md §Binnings): it is
+# the pT_bins_150 axis, plotted so the reach of the data above 120 GeV is visible.
+# It must be regenerated in the SAME run as the nominal, or the two directories
+# drift apart — they did, from 2026-04-17 to 2026-08-04, because this stage only
+# ever called the default (false).
+log "Running crossx plotting for PP 2024 (nominal + pt_150 variant)"
 pushd "$PLOT_DIR" >/dev/null
-root -l -b -q 'plot_single_b_crossx_pp.cxx()'
+root -l -b -q 'plot_single_b_crossx_pp.cxx(24,"",true)'
 popd >/dev/null
 
 # ------ Stage 7: Trigger efficiency correction sanity check ------

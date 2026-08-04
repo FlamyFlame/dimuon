@@ -32,6 +32,7 @@
 #include "TSystem.h"
 
 #include "../../RDFBasedHistFilling/CommonEffcyConfig.h"
+#include "../../Utilities/CommonLogYRange.h"
 #include "../../Utilities/PbPbSampledLumi.h"
 
 void plot_crossx_reco_eff_stages() {
@@ -147,18 +148,16 @@ void plot_crossx_reco_eff_stages() {
         TCanvas c("c_reco_stages", (spec.label + " reco-eff stages").c_str(), 400*ncol, 350*nrow);
         c.Divide(ncol, nrow);
         std::vector<TH1D*> trash;
+        std::vector<std::vector<TH1D*>> panels(eta_bins.size());
 
+        // PASS 1 — build every panel's stage curves WITHOUT drawing, so the common
+        // log-y range can be derived from all of them (Utilities/CommonLogYRange.h).
         for (size_t ieta = 0; ieta < eta_bins.size(); ++ieta) {
-            c.cd((int)ieta + 1);
-            gPad->SetLogx(); gPad->SetLogy();
-            gPad->SetLeftMargin(0.16); gPad->SetBottomMargin(0.13);
-
             const auto& eb = eta_bins[ieta];
             int y1 = h2[0]->GetYaxis()->FindBin(eb.first  + 1e-6);
             int y2 = h2[0]->GetYaxis()->FindBin(eb.second - 1e-6);
 
             std::vector<TH1D*> hp(stages.size(), nullptr);
-            double ymax = 0;
             for (size_t s = 0; s < stages.size(); ++s) {
                 hp[s] = h2[s]->ProjectionX(Form("st%zu_%zu_%d", s, ieta, rand()), y1, y2, "e");
                 hp[s]->SetDirectory(nullptr);
@@ -168,21 +167,48 @@ void plot_crossx_reco_eff_stages() {
                 hp[s]->SetMarkerStyle(stages[s].marker);
                 hp[s]->SetMarkerSize(0.8);
                 hp[s]->SetLineWidth(s == 0 ? 1 : 2);
-                ymax = std::max(ymax, hp[s]->GetMaximum());
                 trash.push_back(hp[s]);
             }
-            hp[0]->SetMaximum(ymax * 3.0);
-            hp[0]->SetMinimum(ymax * 1e-5);
             hp[0]->GetXaxis()->SetTitle("p_{T}^{pair} [GeV]");
             hp[0]->GetYaxis()->SetTitle(spec.y_title.c_str());
             hp[0]->GetXaxis()->SetTitleSize(0.06); hp[0]->GetYaxis()->SetTitleSize(0.06);
             hp[0]->GetXaxis()->SetLabelSize(0.05); hp[0]->GetYaxis()->SetLabelSize(0.05);
             hp[0]->GetYaxis()->SetTitleOffset(1.45);
             hp[0]->SetTitle("");
+            panels[ieta] = hp;
+        }
+
+        // ONE log-y scale for the whole PNG, low enough to keep every non-empty
+        // point of every panel and every correction stage inside the frame. The
+        // previous fixed floor (ymax * 1e-5) cropped the highest-pair-pT points,
+        // whose spread below the panel maximum exceeds 1e5.
+        {
+            std::vector<TH1*> flat;
+            for (const auto& hp : panels)
+                for (TH1D* h : hp) if (h) flat.push_back(h);
+            ApplyCommonLogYRange(flat, 3.0);  // a little headroom above the highest point
+        }
+
+        // PASS 2 — draw.
+        for (size_t ieta = 0; ieta < eta_bins.size(); ++ieta) {
+            auto& hp = panels[ieta];
+            if (hp.empty() || !hp[0]) continue;
+
+            c.cd((int)ieta + 1);
+            gPad->SetLogx(); gPad->SetLogy();
+            gPad->SetLeftMargin(0.16); gPad->SetBottomMargin(0.13);
+
+            const auto& eb = eta_bins[ieta];
             hp[0]->Draw("E1");
             for (size_t s = 1; s < stages.size(); ++s) hp[s]->Draw("E1 same");
 
-            TLegend* leg = new TLegend(0.40, 0.66, 0.95, 0.92);
+            // Lower-LEFT: this legend carries marker samples, so it must not sit over the
+            // curves. On a steeply falling spectrum the low-pT (left) end is at the TOP of
+            // the frame and the low values are at high pT (right), so the lower-left corner
+            // is the one region guaranteed empty in every panel. (At the old per-panel
+            // ymax*1e-5 floor the top box was nearly clear; with the common ~7-decade frame
+            // every point moves up in NDC and the top box lands on the data.)
+            TLegend* leg = new TLegend(0.19, 0.14, 0.66, 0.40);
             leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.040);
             leg->AddEntry((TObject*)0, Form("#eta^{pair} #in [%.1f, %.1f]", eb.first, eb.second), "");
             for (size_t s = 0; s < stages.size(); ++s) leg->AddEntry(hp[s], stages[s].label.c_str(), "lpe");

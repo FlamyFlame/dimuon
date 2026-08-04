@@ -18,6 +18,7 @@
 
 #include "../helper_functions.c"
 #include "../../RDFBasedHistFilling/CommonEffcyConfig.h"
+#include "../../Utilities/CommonLogYRange.h"
 #include "../../Utilities/proj_range_to_suffix.cxx"
 #include "../../MuonObjectsParamsAndHelpers/DatasetTriggerMap.h"
 #include "../../MuonObjectsParamsAndHelpers/PPBaseClass.h"
@@ -175,18 +176,14 @@ protected:
         std::vector<TLegend*> all_legends;
         all_legends.reserve(q_eta_bins.size());
 
+        // PASS 1 — build every projection of every panel WITHOUT drawing, so the
+        // common log-y range can be derived from all of them before the first
+        // frame is painted (see Utilities/CommonLogYRange.h).
         for (size_t ieta = 0; ieta < q_eta_bins.size(); ++ieta) {
-            c.cd(static_cast<int>(ieta) + 1);
-            gPad->SetLogx();
-            gPad->SetLogy();
-            gPad->SetLeftMargin(0.16);
-            gPad->SetBottomMargin(0.13);
-
             const auto& eta_bin = q_eta_bins.at(ieta);
             const int y1 = h3->GetYaxis()->FindBin(eta_bin.first + 1e-6);
             const int y2 = h3->GetYaxis()->FindBin(eta_bin.second - 1e-6);
 
-            double max_y = 0.0;
             std::vector<TH1D*> lines;
             lines.reserve(dr_bins.size());
 
@@ -213,13 +210,37 @@ protected:
                 hp->GetYaxis()->SetTitleOffset(1.45);
                 hp->SetTitle("");
 
-                max_y = std::max(max_y, hp->GetMaximum());
                 lines.push_back(hp);
             }
 
+            all_lines.at(ieta) = std::move(lines);
+        }
+
+        // ONE log-y scale for the whole PNG, low enough to keep every non-empty
+        // point of every panel AND every dR curve inside the frame. The scan must
+        // cover all curves, not just the first-drawn one: the pad's frame is
+        // defined by the first histogram, so a lower point on an overlaid dR
+        // curve would otherwise be silently drawn off-frame.
+        {
+            std::vector<TH1*> flat;
+            for (const auto& lines : all_lines)
+                for (TH1D* h : lines) flat.push_back(h);
+            ApplyCommonLogYRange(flat);
+        }
+
+        // PASS 2 — draw.
+        for (size_t ieta = 0; ieta < q_eta_bins.size(); ++ieta) {
+            auto& lines = all_lines.at(ieta);
             if (lines.empty()) continue;
 
-            lines.at(0)->SetMaximum(max_y * 1.45);
+            c.cd(static_cast<int>(ieta) + 1);
+            gPad->SetLogx();
+            gPad->SetLogy();
+            gPad->SetLeftMargin(0.16);
+            gPad->SetBottomMargin(0.13);
+
+            const auto& eta_bin = q_eta_bins.at(ieta);
+
             lines.at(0)->Draw("E1");
             for (size_t il = 1; il < lines.size(); ++il) {
                 lines.at(il)->Draw("E1 SAME");
@@ -251,8 +272,6 @@ protected:
             }
             leg_dr->Draw();
             all_legends.push_back(leg_dr);
-
-            all_lines.at(ieta) = std::move(lines);
         }
 
         std::string full_path = output_dir + "/" + png_name;
@@ -295,13 +314,9 @@ protected:
         std::vector<TLegend*> all_legends;
         all_legends.reserve(q_eta_bins.size());
 
+        // PASS 1 — build every panel's projection WITHOUT drawing, so the common
+        // log-y range can be derived from all panels (Utilities/CommonLogYRange.h).
         for (size_t ieta = 0; ieta < q_eta_bins.size(); ++ieta) {
-            c.cd(static_cast<int>(ieta) + 1);
-            gPad->SetLogx();
-            gPad->SetLogy();
-            gPad->SetLeftMargin(0.16);
-            gPad->SetBottomMargin(0.13);
-
             const auto& eta_bin = q_eta_bins.at(ieta);
             const int y1 = h2->GetYaxis()->FindBin(eta_bin.first  + 1e-6);
             const int y2 = h2->GetYaxis()->FindBin(eta_bin.second - 1e-6);
@@ -325,8 +340,23 @@ protected:
             hp->GetYaxis()->SetTitleOffset(1.45);
             hp->SetTitle("");
 
-            if (hp->GetMaximum() > 0) hp->SetMaximum(hp->GetMaximum() * 1.45);
-            hp->Draw("E1");
+            all_hists.push_back(hp);
+        }
+
+        // ONE log-y scale for the whole PNG, low enough to keep every non-empty
+        // point of every panel inside the frame.
+        ApplyCommonLogYRange(std::vector<TH1*>(all_hists.begin(), all_hists.end()));
+
+        // PASS 2 — draw.
+        for (size_t ieta = 0; ieta < all_hists.size(); ++ieta) {
+            c.cd(static_cast<int>(ieta) + 1);
+            gPad->SetLogx();
+            gPad->SetLogy();
+            gPad->SetLeftMargin(0.16);
+            gPad->SetBottomMargin(0.13);
+
+            const auto& eta_bin = q_eta_bins.at(ieta);
+            all_hists.at(ieta)->Draw("E1");
 
             TLegend* leg = new TLegend(0.60, 0.70, 0.93, 0.90);
             leg->SetBorderSize(0);
@@ -339,7 +369,6 @@ protected:
             leg->AddEntry((TObject*)0, Form("#eta^{pair} #in [%.1f, %.1f]", eta_bin.first, eta_bin.second), "");
             leg->Draw();
             all_legends.push_back(leg);
-            all_hists.push_back(hp);
         }
 
         std::string full_path = output_dir + "/" + png_name;

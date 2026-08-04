@@ -44,7 +44,11 @@ inline DrCorrSample GetDrCorrSample(const std::string& key)
         s.mc_label       = "pp24";
         s.out_base       = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
                            "pp_trigger_efficiency/mc_based/";
-        s.sample_text    = "Pythia8 pp24 fullsim";
+        // Canvas headlines carry the PHYSICAL sample identity only (beam, energy, run
+        // conditions) -- production bookkeeping ("fullsim", "FULL sample", r-tags) means
+        // nothing to a physics audience and is kept in this doc / the file names instead.
+        // The only exception is the r17663 diagnostic below, whose whole point IS the tag.
+        s.sample_text    = "Pythia8 pp, #sqrt{s} = 5.36 TeV (2024 conditions)";
         s.eps_dr_text    = "#varepsilon_{#DeltaR}^{2mu4}";
         s.is_full_sample = false;
     } else if (key == "pp_full") {
@@ -52,7 +56,9 @@ inline DrCorrSample GetDrCorrSample(const std::string& key)
         s.mc_label       = "pp24_full";
         s.out_base       = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
                            "pp_trigger_efficiency/mc_based/";
-        s.sample_text    = "Pythia8 pp24 fullsim (FULL sample)";
+        // Same PHYSICS as the "pp" test sample above, hence the same headline: the test/full
+        // distinction is a production fact, not a property the reader of the figure can act on.
+        s.sample_text    = "Pythia8 pp, #sqrt{s} = 5.36 TeV (2024 conditions)";
         s.eps_dr_text    = "#varepsilon_{#DeltaR}^{2mu4}";
         s.is_full_sample = true;    // the only FULL production so far
     } else if (key == "overlay") {
@@ -61,7 +67,8 @@ inline DrCorrSample GetDrCorrSample(const std::string& key)
         s.mc_label       = "hijing_overlay_pbpb23";
         s.out_base       = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
                            "pbpb_trigger_efficiency/mc_based/";
-        s.sample_text    = "HIJING overlay Pb+Pb23 cond., 0-5%";
+        s.sample_text    = "Pythia8 + HIJING overlay, Pb+Pb #sqrt{s_{NN}} = 5.36 TeV, "
+                           "0-5% (2023 conditions)";
         s.eps_dr_text    = "#varepsilon_{#DeltaR}^{cross}";
         s.is_full_sample = false;   // 10 000-event TEST sample
     } else if (key == "noovl") {
@@ -70,7 +77,11 @@ inline DrCorrSample GetDrCorrSample(const std::string& key)
         s.mc_label       = "r17663_no_overlay";
         s.out_base       = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
                            "r17663_no_overlay_trigger_efficiency/mc_based/";
-        s.sample_text    = "Pythia8 pp, r17663 (HI cond., no overlay)";
+        // The ONE headline that keeps a production tag (user decision 2026-08-04): this plot set
+        // exists to compare reconstruction CONFIGURATIONS, so the tag is the subject of the
+        // figure rather than bookkeeping. The series labels are still physical.
+        s.sample_text    = "Pythia8 pp, #sqrt{s} = 5.36 TeV, Pb+Pb reconstruction conditions, "
+                           "no overlay (r17663)";
         s.eps_dr_text    = "#varepsilon_{#DeltaR}^{2mu4}";
         s.is_full_sample = false;   // 10 000-event TEST sample
     } else {

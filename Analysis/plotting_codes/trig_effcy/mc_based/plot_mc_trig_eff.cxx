@@ -56,6 +56,9 @@
 // The round-7 conditional ratio error + the (pair pT, pair eta) cell projection, shared with
 // the fit stage so both use the identical error definition.
 #include "dr_correction_ratio.h"
+// The Step-1 sanity-check pT-match threshold, shared with FillMCTrigEffHists.cxx (which APPLIES
+// it) so the value DRAWN on the canvas is the value that was cut on.
+#include "../../../Utilities/MCTrigEffSanityCfg.h"
 
 #include <cctype>
 #include <cmath>
@@ -326,7 +329,7 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
                         "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin"
                         + data_wp + ".root";
         c.ctr         = "";
-        c.data_text   = "pp24 data";
+        c.data_text   = "pp 2024 data";
         c.step2_coarse = false;  // pp has ~4x the pair statistics: the fine axes are readable
     } else if (sample == "pp_full") {
         // pp24 FULL sample. Physics identical to "pp" -- SAME pp24 data reference, SAME
@@ -339,14 +342,14 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
                         "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin"
                         + data_wp + ".root";
         c.ctr         = "";
-        c.data_text   = "pp24 data";
+        c.data_text   = "pp 2024 data";
         c.step2_coarse = false;  // the full sample has far MORE pair statistics than the test
     } else if (sample == "overlay") {
         c.data_file   = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2023/"
                         "histograms_real_pairs_pbpb_2023_single_mu4_fine_q_eta_bin"
                         + data_wp + ".root";
         c.ctr         = "_ctr0_5";   // D2: overlay compares ONLY to PbPb23 data 0-5%
-        c.data_text   = "Pb+Pb23 data 0-5%";
+        c.data_text   = "Pb+Pb 2023 data, 0-5%";
         // The overlay pair sample (0-5% only) is ~4x thinner than pp; on the native
         // 41-bin pT / 184-bin q.eta axes the three DeltaR series are an unreadable
         // error-bar forest and the comparison the panel exists for cannot be made.
@@ -365,7 +368,7 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
                         "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin"
                         + data_wp + ".root";
         c.ctr         = "";          // no centrality: there is no overlaid event
-        c.data_text   = "pp24 data";
+        c.data_text   = "pp 2024 data";
         // Single 10k-event slice: statistics are thinner than pp24 -> coarse Step-2 axes,
         // for the same readability reason as the overlay.
         c.step2_coarse = true;
@@ -379,7 +382,7 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
         c.cmp_fit_file = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/"
                          "single_mu_effcy_pT_fit_mc" + std::string(use_tight_wp ? "" : "_medium_wp")
                        + ".root";
-        c.cmp_text     = "MC Pb+Pb23 cond., WITH HIJING overlay (r17618)";
+        c.cmp_text     = "MC, Pb+Pb 2023 conditions, with HIJING overlay";
         // Black series on the q.eta panels = pp24-CONDITIONS fullsim MC (FULL sample), NOT
         // pp data: the r17663 study is an MC-vs-MC comparison of reco-tag CONFIGURATIONS, so
         // all three curves are MC (red = Pb+Pb23 cond. no overlay; black = pp24 cond.;
@@ -389,7 +392,7 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
         c.qeta_black_mc_file = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample/"
                                "single_mu_effcy_pT_fit_mc"
                              + std::string(use_tight_wp ? "" : "_medium_wp") + ".root";
-        c.qeta_black_mc_text = "MC pp24 cond. (fullsim, full sample)";
+        c.qeta_black_mc_text = "MC, pp 2024 conditions";
     } else {
         throw std::runtime_error("plot_mc_trig_eff: sample must be 'pp', 'pp_full', 'overlay' or "
                                  "'noovl', got " + sample);

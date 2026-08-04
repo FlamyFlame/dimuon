@@ -28,9 +28,10 @@ run_and_log "RDF crossx pbpb24" "cd '${RDF_DIR}' && bash run_crossx_hist_filling
 run_and_log "RDF crossx pbpb25" "cd '${RDF_DIR}' && bash run_crossx_hist_filling_pbpb25.sh"
 run_and_log "RDF crossx pp24" "cd '${RDF_DIR}' && bash test_crossx_pp24.sh"
 
-# 2) Plot
-run_and_log "Plot crossx pp24" "cd '${ANALYSIS_DIR}' && root -l -b -q 'plotting_codes/single_b_analysis/plot_single_b_crossx_pp.cxx'"
-run_and_log "Plot crossx pbpb combined" "cd '${ANALYSIS_DIR}' && root -l -b -q 'plotting_codes/single_b_analysis/plot_single_b_crossx_pbpb.cxx'"
+# 2) Plot  (use_pt_bins_150=true: the *_pt_150 dirs must be refreshed in the SAME
+#    run as the nominal ones, else they silently go stale — they did for months.)
+run_and_log "Plot crossx pp24" "cd '${ANALYSIS_DIR}' && root -l -b -q 'plotting_codes/single_b_analysis/plot_single_b_crossx_pp.cxx(24,\"\",true)'"
+run_and_log "Plot crossx pbpb combined" "cd '${ANALYSIS_DIR}' && root -l -b -q 'plotting_codes/single_b_analysis/plot_single_b_crossx_pbpb.cxx(true)'"
 
 # 3) Validate png outputs are non-empty
 validate_png() {
