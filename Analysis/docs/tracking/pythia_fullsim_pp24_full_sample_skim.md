@@ -558,7 +558,29 @@ of a forecast. (Plus the right-panel stack, and the `err_fraction` / `err_ratio`
   **switchable off**, default OFF until the sibling lands). Only genuinely
   physics-ambiguous items get escalated.
 
-## Autonomy Contract (ACTIVE — re-read on every compaction) — TASK III (RE-SCOPED 2026-07-20)
+## Autonomy Contract — TASK III **DONE 2026-07-21** (both tasks, both WPs, validated)
+
+**COMPLETE.** All pp24-fullsim results reproduced on the FULL sample (9.87 M events) at BOTH
+working points and physics-validated:
+- **Task 1 (non-trig-eff):** reco efficiency, detector response, single-muon reco efficiency,
+  reco distributions, differential crossx per pT-hat slice (the "statistics" plot) + kn table —
+  Tight (47 plots) + Medium (reco-eff 25, det-resp 6, single-mu 3). Crossx/kn/reco-distr are
+  single-WP nominal (Tight) by design (no tight/medium output separation).
+- **Task 2 (trig-eff):** MC-based trigger efficiency (step1 singles data/MC, step2 ΔR-binned incl.
+  L1/HLT/full_chain, step3 ε_ΔR, step4 singles ε_ΔR) — Tight + Medium. ε_ΔR^2mu4 plateau
+  0.988±0.001 (Tight) / 0.9875±0.0012 (Medium), ≈1 with the expected small-ΔR suppression.
+  Test-sample plots backed up first (`mc_based_TESTSAMPLE_backup_20260720` + timestamped `.bak`s).
+- **Bug found + fixed mid-run:** `store_mc_trigger` threw on the multi-file farm (ROOT exits 0 on
+  the swallowed throw ⇒ silently skipped the mc_trig NTP); fixed with a per-file trigger-branch
+  uniformity check (`31c2724`), pipeline Stage-4 now validates the mc_trig NTP.
+- **Not adopted into crossx/R_AA** (per the scope decision): pp reco-eff stays the Run-2
+  placeholder, ε_ΔR stays the ≡1 dummy until the user reviews these plots.
+- **Concurrency:** the parallel r17663 session's edits to `plot_mc_trig_eff.cxx` were insulated
+  (pp_full block byte-identical; r17663 code path is `noovl`-only). Its WIP left uncommitted for it.
+
+Commits: `c700b0c a4462db e01e374 dcbc434 31c2724 206f127 e3cfbef` (+ doc commits).
+
+## Autonomy Contract (SUPERSEDED — TASK III RE-SCOPED 2026-07-20; see DONE block above)
 
 **Context at re-scope:** the concurrent `mc_trigger_efficiency` session has **merged to master**
 (`8edc4fb`) and been stopped; the farm is **COMPLETE (all 6 slices, 9 869 980 events)**. The user
