@@ -22,13 +22,21 @@
 // PNGs  : <sample dir>/mc_trig_eff_fit_plots/mc_trg_effcy_pT_fitting_<label>_<mu+|mu->.png
 //         (one canvas per charge, all 10 fine q·η pads, log-x — data fitter layout)
 //
+// CORRECTED-MC study (corrected_mc = true): identical fit applied to the SF-corrected Step-1
+// hists (mc_trig_eff_hists_<label><wp>_corrected.root) -> single_mu_effcy_pT_fit_mc_corrected<wp>.root.
+// Object names inside the file are unchanged, so MCEffEvaluator loads ε_corr unmodified.
+//
 // Usage (from Analysis/RDFBasedHistFilling/):
 //   root -b -l -q 'FitMCSinglesEffcy.cxx+("pp")'
 //   root -b -l -q 'FitMCSinglesEffcy.cxx+("overlay")'
+//   root -b -l -q 'FitMCSinglesEffcy.cxx+("pp_full", true, true)'   // corrected MC
 // =============================================================================
 
+#include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -89,11 +97,70 @@ TF1* FitTurnOn(TGraphAsymmErrors* g, FittingMode mode, const std::string& fname,
     return fTurnOn;
 }
 
+// ---------------------------------------------------------------------------------------------
+// CORRECTED-MC efficiency graph (corrected_mc only).
+//
+// WHY NOT BayesDivide: the corrected numerator is the SF-re-weighted subset
+// N = sum_fired w*SF, which EXCEEDS the denominator D = sum_all w in any bin where SF > 1.
+// TGraphAsymmErrors::BayesDivide then rejects the pair ("passed TEfficiency objects do not have
+// consistent bin contents") and returns an EMPTY graph -- and TGraph::Fit on an empty graph
+// leaves the TF1 at its INITIAL parameters while still reporting status 0. That is a silent,
+// badly wrong turn-on (seen at 3+ q.eta bins of the overlay before this was fixed), so the
+// corrected graph is built explicitly instead.
+//
+// Central value: eff = N/D, exactly the estimator under study (eps_corr = eps_MC*<SF>).
+// Error: the CONDITIONAL (binomial-correct) form, Var(N) = A - B with
+//        A = sum_fired (w*SF)^2 and B = sum_fired (w*SF)^2 * eps_MC (booked by
+//        FillMCTrigEffHists in corrected mode), e_eff = sqrt(A-B)/D.
+//        BOTH binomial boundary cases (A-B <= 0 within round-off) get the "1/n rule" on the
+//        effective denominator count n_eff = (D/e_D)^2:
+//          k = n  (every effective entry fired) -> eff ~ 1, e ~ 1/n_eff;
+//          k = 0  (none fired: A = B = 0)       -> eff = 0, e ~ 1/n_eff.
+//        The k = 0 case is why the error is max(eff, 1)/n_eff and not eff/n_eff: an
+//        eff = 0 +- 0 point is infinitely constraining and DESTROYS the fit -- it produced
+//        chi2/ndf = 30627/30 and an unphysical eps(30 GeV) = 1.40 in pp_full q.eta [1.3,1.6) mu+
+//        before this was fixed. (BayesDivide gives such a point a proper Bayesian upper error,
+//        which is why the nominal path never saw this.)
+// Zero-width bins (the data binning's duplicated 8.0 GeV edge) and empty denominators are skipped,
+// exactly as BayesDivide drops them in the nominal path.
+TGraphAsymmErrors* CorrectedEffGraph(const TH1* num, const TH1* den,
+                                     const TH1* A, const TH1* B)
+{
+    auto* g = new TGraphAsymmErrors();
+    int k = 0;
+    for (int i = 1; i <= den->GetNbinsX(); ++i) {
+        const double D = den->GetBinContent(i);
+        const double bw = den->GetBinWidth(i);
+        if (D <= 0. || bw <= 0.) continue;
+        const double N = num->GetBinContent(i);
+        const double a = A->GetBinContent(i), b = B->GetBinContent(i);
+        double var = a - b;
+        double e;
+        if (var > 1e-6 * (a + b)) {
+            e = std::sqrt(var) / D;
+        } else {
+            const double eD = den->GetBinError(i);
+            const double neff = (eD > 0.) ? (D / eD) * (D / eD) : 1.0;
+            e = (neff > 0.) ? std::max(N / D, 1.0) / neff : 0.;
+        }
+        g->SetPoint(k, den->GetBinCenter(i), N / D);
+        g->SetPointError(k, 0.5 * bw, 0.5 * bw, e, e);
+        ++k;
+    }
+    return g;
+}
+
 } // namespace MCSinglesFit
 
 // =============================================================================
-void FitMCSinglesEffcy(const std::string& sample = "pp", bool use_tight_wp = true) {
+void FitMCSinglesEffcy(const std::string& sample = "pp", bool use_tight_wp = true,
+                       bool corrected_mc = false, bool sf_closure = false) {
     using namespace MCSinglesFit;
+    if (sf_closure && !corrected_mc) {
+        std::cerr << "FitMCSinglesEffcy: sf_closure is a mode OF the corrected-MC path; "
+                     "it needs corrected_mc = true" << std::endl;
+        return;
+    }
 
     std::string dir, label;
     FittingMode mode;
@@ -127,13 +194,25 @@ void FitMCSinglesEffcy(const std::string& sample = "pp", bool use_tight_wp = tru
 
     // WP config (registry: Analysis/docs/muon_wp_registry.md): TIGHT nominal unsuffixed
     const std::string wp_suf = use_tight_wp ? "" : "_medium_wp";
-    const std::string infile_name = dir + "mc_trig_eff_hists_" + label + wp_suf + ".root";
-    const std::string outfile_name = dir + "single_mu_effcy_pT_fit_mc" + wp_suf + ".root";
+    // CORRECTED-MC study (mc_trigger_efficiency.md round-7 contract item 5): fit the turn-ons of
+    // the SF-corrected MC (numerator weighted by ε_data/ε_MC) with the SAME functional form,
+    // parameter init/limits and fit options as the nominal MC, so the corrected and the nominal
+    // fits differ ONLY by the corrected numerator. The OBJECT names inside the file are
+    // deliberately UNCHANGED (f_mc_pt_vs_q_eta_*, g_mc_pt_vs_q_eta_*, h_mc_pt_vs_q_eta_ratio_*)
+    // so that MCEffEvaluator can load ε_corr with no special casing; only the FILE name differs,
+    // which is what keeps the nominal fit file from ever being overwritten.
+    // sf_closure: the SF ≡ 1 closure variant of the corrected chain (see FillMCTrigEffHists).
+    const std::string corr_suf = corrected_mc ? (sf_closure ? "_corrected_sfclosure" : "_corrected")
+                                              : "";
+    const std::string infile_name  = dir + "mc_trig_eff_hists_" + label + wp_suf + corr_suf + ".root";
+    const std::string outfile_name = dir + "single_mu_effcy_pT_fit_mc" + corr_suf + wp_suf + ".root";
     const std::string plot_dir = dir + "mc_trig_eff_fit_plots/";
     gSystem->mkdir(plot_dir.c_str(), kTRUE);
 
     std::cout << "FitMCSinglesEffcy: sample=" << sample << " (" << label << "), mode="
-              << (mode == erf_plus_log ? "erf_plus_log" : "fermi_plus_log") << std::endl;
+              << (mode == erf_plus_log ? "erf_plus_log" : "fermi_plus_log")
+              << ", corrected_mc=" << corrected_mc << std::endl;
+    std::cout << "  in : " << infile_name << "\n  out: " << outfile_name << std::endl;
 
     TFile* fin = TFile::Open(infile_name.c_str(), "READ");
     if (!fin || fin->IsZombie()) {
@@ -157,6 +236,22 @@ void FitMCSinglesEffcy(const std::string& sample = "pp", bool use_tight_wp = tru
         if (!h_num || !h_den) {
             std::cerr << "FitMCSinglesEffcy: missing 2D hists for " << chg << " in " << infile_name << std::endl;
             continue;
+        }
+        // corrected mode: the conditional-error terms of the corrected numerator (see
+        // CorrectedEffGraph). Their absence is FATAL, not a reason to fall back to BayesDivide --
+        // that path is undefined for a re-weighted numerator and fails silently.
+        TH2D* h_A = nullptr;
+        TH2D* h_B = nullptr;
+        if (corrected_mc) {
+            h_A = dynamic_cast<TH2D*>(fin->Get(("h_mc_pt_vs_q_eta_errA_" + chg).c_str()));
+            h_B = dynamic_cast<TH2D*>(fin->Get(("h_mc_pt_vs_q_eta_errB_" + chg).c_str()));
+            if (!h_A || !h_B) {
+                std::cerr << "FitMCSinglesEffcy: corrected mode needs h_mc_pt_vs_q_eta_errA/errB_"
+                          << chg << " in " << infile_name
+                          << " -- rerun FillMCTrigEffHists with corrected_mc = true" << std::endl;
+                fout->Close(); fin->Close();
+                return;
+            }
         }
 
         // unfitted 2D ratio fallback (gap q·η regions in Step 3)
@@ -189,8 +284,22 @@ void FitMCSinglesEffcy(const std::string& sample = "pp", bool use_tight_wp = tru
             std::unique_ptr<TH1D> h_den1D(h_den->ProjectionY(
                 Form("%s_py_%s", h_den->GetName(), q_eta_suffix.c_str()), bin_first, bin_last, "e"));
 
-            auto* g = new TGraphAsymmErrors();
-            g->BayesDivide(h_num1D.get(), h_den1D.get());
+            // Graph builder. NOMINAL -- and the SF ≡ 1 CLOSURE, whose numerator is bit-identical
+            // to the nominal one so num <= denom is guaranteed -- use BayesDivide, so that the
+            // closure exercises exactly the nominal estimator and its Step-3/4 output must
+            // reproduce the nominal output bin-by-bin. Only the genuine corrected numerator needs
+            // CorrectedEffGraph (see its header).
+            TGraphAsymmErrors* g = nullptr;
+            if (!corrected_mc || sf_closure) {
+                g = new TGraphAsymmErrors();
+                g->BayesDivide(h_num1D.get(), h_den1D.get());
+            } else {
+                std::unique_ptr<TH1D> h_A1D(h_A->ProjectionY(
+                    Form("%s_py_%s", h_A->GetName(), q_eta_suffix.c_str()), bin_first, bin_last, "e"));
+                std::unique_ptr<TH1D> h_B1D(h_B->ProjectionY(
+                    Form("%s_py_%s", h_B->GetName(), q_eta_suffix.c_str()), bin_first, bin_last, "e"));
+                g = CorrectedEffGraph(h_num1D.get(), h_den1D.get(), h_A1D.get(), h_B1D.get());
+            }
             g->SetName(("g_mc_pt_vs_q_eta_" + chg + "_" + q_eta_suffix).c_str());
 
             int fit_status = -1;
@@ -198,11 +307,17 @@ void FitMCSinglesEffcy(const std::string& sample = "pp", bool use_tight_wp = tru
             ++n_fits;
             const double plateau_val = fit->Eval(30.0);
             std::cout << "  " << fit->GetName() << ": status=" << fit_status
+                      << ", Npts=" << g->GetN()
                       << ", chi2/ndf=" << fit->GetChisquare() << "/" << fit->GetNDF()
                       << ", eps(30 GeV)=" << plateau_val << std::endl;
-            if (fit_status != 0) {
+            // An EMPTY graph makes TGraph::Fit a no-op that still returns status 0 and leaves the
+            // TF1 at its initial parameters -- exactly the silent failure this fitter must never
+            // ship. Treat "no points" and "no degrees of freedom" as fit failures.
+            if (fit_status != 0 || g->GetN() == 0 || fit->GetNDF() <= 0) {
                 ++n_failed;
-                std::cerr << "  WARNING: fit FAILED (status " << fit_status << "): " << fit->GetName() << std::endl;
+                std::cerr << "  WARNING: fit FAILED (status " << fit_status << ", Npts="
+                          << g->GetN() << ", ndf=" << fit->GetNDF() << "): "
+                          << fit->GetName() << std::endl;
             }
 
             fout->cd();
@@ -235,7 +350,12 @@ void FitMCSinglesEffcy(const std::string& sample = "pp", bool use_tight_wp = tru
             ++idx;
         }
 
-        c->SaveAs(Form("%smc_trg_effcy_pT_fitting_%s_%s.png", plot_dir.c_str(), label.c_str(), chg_label.c_str()));
+        // NOMINAL png name left byte-identical (no WP token -- a pre-existing quirk: the Medium
+        // run overwrites the Tight png). The CORRECTED pngs carry BOTH tokens so that they
+        // neither clobber the nominal ones nor each other across working points.
+        const std::string png_tag = corrected_mc ? (corr_suf + wp_suf) : std::string("");
+        c->SaveAs(Form("%smc_trg_effcy_pT_fitting_%s%s_%s.png", plot_dir.c_str(), label.c_str(),
+                       png_tag.c_str(), chg_label.c_str()));
     }
 
     fout->Close();

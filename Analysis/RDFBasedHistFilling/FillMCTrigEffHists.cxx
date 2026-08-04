@@ -43,14 +43,30 @@
 //   pair pT : "pair_pt_log" = pT_bins_120, 15 log bins 8–120 (var1D_pp.json:102-106)
 // MC is ALWAYS weighted: ev_weight (singles) / weight (pairs).
 //
+// CORRECTED-MC STUDY (round-7 contract item 5, `corrected_mc = true` -- the LAST argument):
+// every MC muon that FIRES the trigger carries an extra per-muon weight
+//     SF(pT, q·η) = ε_data(pT, q·η) / ε_MC(pT, q·η)
+// evaluated CONTINUOUSLY from the two sets of fitted turn-ons (never resample-to-nearest); the
+// DENOMINATOR is untouched, so num/denom = ε_MC·<SF> ≈ ε_data. It answers: (1) does correcting
+// the MC to the data single-muon efficiency give the same single-muon efficiency as using the
+// data-derived ε directly (Step 1)? (2) does it change the ΔR CORRECTIONS (Steps 3/4)? In
+// corrected mode Steps 3/4 divide by ε_corr from `single_mu_effcy_pT_fit_mc_corrected*.root`
+// (the fit to the CORRECTED turn-ons -- §3.3/§3.4 self-consistency), so that if ε_corr were
+// exactly ε_data the numerator weight SF/ε_corr would be the ORIGINAL 1/ε_MC and the ΔR
+// corrections would be identical bin-by-bin. Corrected mode skips Step 2 and the L1/HLT
+// numerators (no data L1-only reference exists to correct to). Nothing nominal is overwritten:
+// every corrected artefact carries "_corrected" in its file name.
+//
 // Usage (from Analysis/RDFBasedHistFilling/):
 //   root -b -l -q 'FillMCTrigEffHists.cxx+("pp")'
 //   root -b -l -q 'FillMCTrigEffHists.cxx+("overlay", true)'              // Step 3
 //   root -b -l -q 'FillMCTrigEffHists.cxx+("overlay", false, true, true)' // Step 4
+//   root -b -l -q 'FillMCTrigEffHists.cxx+("pp_full", false, true, false, false, true)' // corrected Step 1
 //
 // Output: <sample dir>/mc_trig_eff_hists_<pp24|hijing_overlay_pbpb23>.root
 //         (do_step3=true writes a SEPARATE ..._step3.root; do_step4=true a SEPARATE
-//          ..._step4.root; neither touches the Step-1/2 file)
+//          ..._step4.root; neither touches the Step-1/2 file; corrected_mc=true inserts
+//          "_corrected" before that suffix)
 // =============================================================================
 
 #include <algorithm>
@@ -88,7 +104,42 @@ struct SampleConfig {
     std::string pair_file;
     std::string singles_file;
     bool is_overlay = false;  // overlay => 0-5% centrality restriction (doc D2) + mu4-cross-term numerator
+
+    // ---- DATA tag-and-probe reference, for the CORRECTED-MC study only (corrected_mc=true) ----
+    // Paths mirror the analysis's own data-side loader EXACTLY:
+    //   pp   : RDFBasedHistFillingPP.cxx:306/323      (erf_plus_log fit dir)
+    //   PbPb : RDFBasedHistFillingPbPb.cxx:678/694    (fermi_plus_log fit dir)
+    // {WP} is replaced by "" (Tight, nominal) or "_medium_wp" at run time -- the data reference
+    // MUST be at the SAME working point as the MC (§3.0(d)).
+    std::string data_fit_file_tmpl;   // TF1s  f_pt2nd_vs_q_eta2nd<ctr>_<sign>_2mu4_sepr_py_<qeta>_divided
+    std::string data_hist_file_tmpl;  // TH2Ds h_pt2nd_vs_q_eta2nd<ctr>_<sign>_2mu4_sepr_divided (gap fallback)
+    std::string data_ctr;             // "" (pp) or "_ctr0_5" (overlay, doc D2)
 };
+
+// Data tag-and-probe reference paths (corrected-MC study). pp24 data is the reference for every
+// pp-collision sample (pp, pp_full, noovl); PbPb23 data 0-5% for the HIJING overlay (doc D2).
+namespace {
+const std::string kDataPPFitTmpl =
+    "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/trg_effcy_pT_fitting_to_erf_plus_log/"
+    "single_mu_effcy_pT_fit{WP}.root";
+const std::string kDataPPHistTmpl =
+    "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"
+    "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin{WP}.root";
+const std::string kDataPbPbFitTmpl =
+    "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2023/trg_effcy_pT_fitting_to_fermi_plus_log/"
+    "single_mu_effcy_pT_fit{WP}.root";
+const std::string kDataPbPbHistTmpl =
+    "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2023/"
+    "histograms_real_pairs_pbpb_2023_single_mu4_fine_q_eta_bin{WP}.root";
+
+std::string SubstWP(std::string s, const std::string& wp_suf) {
+    const std::string tok = "{WP}";
+    const size_t p = s.find(tok);
+    if (p == std::string::npos)
+        throw std::runtime_error("SubstWP: no {WP} placeholder in " + s);
+    return s.replace(p, tok.size(), wp_suf);
+}
+} // anonymous namespace
 
 SampleConfig GetSampleConfig(const std::string& sample) {
     SampleConfig cfg;
@@ -127,6 +178,20 @@ SampleConfig GetSampleConfig(const std::string& sample) {
     } else {
         throw std::invalid_argument("FillMCTrigEffHists: sample must be \"pp\", \"pp_full\", "
                                     "\"overlay\" or \"noovl\", got " + sample);
+    }
+
+    // DATA tag-and-probe reference (corrected-MC study only). The overlay is compared to PbPb23
+    // data restricted to 0-5% centrality (doc D2 -- the same restriction its own MC selection
+    // carries); every pp-collision sample uses the pp24 data reference (identical choice to
+    // plot_mc_trig_eff.cxx MakeCfg, incl. "noovl", which simulates pp collisions).
+    if (cfg.is_overlay) {
+        cfg.data_fit_file_tmpl  = kDataPbPbFitTmpl;
+        cfg.data_hist_file_tmpl = kDataPbPbHistTmpl;
+        cfg.data_ctr            = "_ctr0_5";
+    } else {
+        cfg.data_fit_file_tmpl  = kDataPPFitTmpl;
+        cfg.data_hist_file_tmpl = kDataPPHistTmpl;
+        cfg.data_ctr            = "";
     }
     return cfg;
 }
@@ -320,6 +385,155 @@ struct MCEffEvaluator {
     }
 };
 
+// ---------- DATA single-muon efficiency evaluation (CORRECTED-MC study only) ----------
+// ε_data(pT, q·η) from the data tag-and-probe turn-on fits -- the SAME objects the analysis
+// itself uses (RDFBasedHistFillingData.cxx:625-655 EvaluateSingleMuonEffcyPtFitted), looked up
+// with the SAME per-(charge, fine q·η bin) key and the SAME unfitted-2D gap fallback:
+//     TF1  f_pt2nd_vs_q_eta2nd<ctr>_<sign1|sign2>_2mu4_sepr_py_<qeta>_divided
+//     TH2D h_pt2nd_vs_q_eta2nd<ctr>_<sign1|sign2>_2mu4_sepr_divided   (x = q·η, y = pT)
+// with sign1 = μ⁺, sign2 = μ⁻ (data sign convention, mc_trigger_efficiency.md / _sub_mctrig_plots F3).
+// Guards are MCEffEvaluator's, NOT the data class's: clamp the evaluation pT into the fit's
+// [xmin, xmax] (a compiled TF1 read back from a file returns 0 outside its range -- the
+// pp_trig_eff_highpt_jump lesson), cap at 1, floor at 0.02 (counted). Using the SAME guards on
+// both sides is what makes SF = ε_data/ε_MC well behaved.
+struct DataEffEvaluator {
+    std::map<std::string, TF1*> tf1_map;
+    std::map<std::string, TH2D*> ratio_map;
+    std::string ctr;                   // "" or "_ctr0_5"
+    CommonEffcyConfig cfg{};
+    long long n_floor = 0, n_fallback = 0, n_eval = 0;
+
+    void Load(const std::string& fit_file, const std::string& hist_file, const std::string& ctr_suffix) {
+        ctr = ctr_suffix;
+        TFile* ff = TFile::Open(fit_file.c_str(), "READ");
+        if (!ff || ff->IsZombie())
+            throw std::runtime_error("DataEffEvaluator: cannot open data fit file " + fit_file);
+        TIter next(ff->GetListOfKeys());
+        TKey* key;
+        while ((key = static_cast<TKey*>(next())))
+            if (std::string(key->GetClassName()) == "TF1")
+                tf1_map[key->GetName()] = static_cast<TF1*>(key->ReadObj());
+
+        TFile* fh = TFile::Open(hist_file.c_str(), "READ");
+        if (!fh || fh->IsZombie())
+            throw std::runtime_error("DataEffEvaluator: cannot open data hist file " + hist_file);
+        TIter nexth(fh->GetListOfKeys());
+        while ((key = static_cast<TKey*>(nexth()))) {
+            const std::string nm = key->GetName();
+            if (std::string(key->GetClassName()) == "TH2D" &&
+                nm.rfind("h_pt2nd_vs_q_eta2nd", 0) == 0 &&
+                nm.size() > 8 && nm.compare(nm.size() - 8, 8, "_divided") == 0) {
+                TH2D* h = static_cast<TH2D*>(key->ReadObj());
+                h->SetDirectory(nullptr);
+                ratio_map[nm] = h;
+            }
+        }
+        std::cout << "DataEffEvaluator: loaded " << tf1_map.size() << " TF1s from " << fit_file
+                  << " + " << ratio_map.size() << " 2D fallbacks from " << hist_file
+                  << " (ctr=\"" << ctr << "\")" << std::endl;
+        if (tf1_map.empty())
+            throw std::runtime_error("DataEffEvaluator: no TF1s in " + fit_file);
+    }
+
+    std::string FindQEtaSuffix(float q_eta) const {
+        for (const auto& range : cfg.q_eta_proj_ranges_fine_excl_gap)
+            if (q_eta >= range.first && q_eta < range.second) return pairToSuffix(range);
+        return "";
+    }
+
+    double Eval(float pt, float eta, int charge) {
+        ++n_eval;
+        const std::string sign = (charge > 0) ? "_sign1" : "_sign2";   // sign1 = mu+, sign2 = mu-
+        const float q_eta = charge * eta;
+        const std::string q_eta_suffix = FindQEtaSuffix(q_eta);
+
+        double val = -1.0;
+        if (!q_eta_suffix.empty()) {
+            auto it = tf1_map.find("f_pt2nd_vs_q_eta2nd" + ctr + sign + "_2mu4_sepr_py_" +
+                                   q_eta_suffix + "_divided");
+            if (it != tf1_map.end()) {
+                const double x = std::min(std::max(static_cast<double>(pt), it->second->GetXmin()),
+                                          it->second->GetXmax());
+                val = it->second->Eval(x);
+            }
+        }
+        if (val < 0.0) {
+            ++n_fallback;
+            auto it2d = ratio_map.find("h_pt2nd_vs_q_eta2nd" + ctr + sign + "_2mu4_sepr_divided");
+            if (it2d != ratio_map.end()) {
+                TH2D* h = it2d->second;
+                const double x = std::min(std::max(static_cast<double>(q_eta),
+                                                   h->GetXaxis()->GetXmin() + 1e-6),
+                                          h->GetXaxis()->GetXmax() - 1e-6);
+                const double y = std::min(std::max(static_cast<double>(pt),
+                                                   h->GetYaxis()->GetXmin() + 1e-6),
+                                          h->GetYaxis()->GetXmax() - 1e-6);
+                val = h->GetBinContent(h->FindBin(x, y));
+            }
+        }
+        if (val < 0.0)
+            throw std::runtime_error("DataEffEvaluator: no efficiency source for" + sign +
+                                     Form(" q_eta=%.3f pt=%.2f", q_eta, pt));
+        if (val > 1.0) val = 1.0;
+        if (val < 0.02) { val = 0.02; ++n_floor; }
+        return val;
+    }
+
+    void PrintStats(const std::string& tag) const {
+        std::cout << "DataEffEvaluator [" << tag << "]: " << n_eval << " evaluations, "
+                  << n_fallback << " gap-q_eta 2D fallbacks ("
+                  << (n_eval ? 100.0 * n_fallback / n_eval : 0.0) << "%), "
+                  << n_floor << " floor(0.02) firings ("
+                  << (n_eval ? 100.0 * n_floor / n_eval : 0.0) << "%)" << std::endl;
+    }
+};
+
+// ---------- per-muon data/MC scale factor SF = ε_data / ε_MC (CORRECTED-MC study) ----------
+// Both efficiencies are evaluated CONTINUOUSLY from the fitted TF1s at the muon's EXACT
+// (pT, q·η) -- never resample-to-nearest. Because each ε is already capped at 1 and floored at
+// 0.02, SF is mathematically confined to [0.02, 50]; the extra cap below is a pathology guard,
+// not a physics choice, and every firing is counted and printed (a large SF can only come from
+// a fit that has gone wrong, and would silently distort the corrected efficiency).
+struct SFEvaluator {
+    MCEffEvaluator*   mc   = nullptr;
+    DataEffEvaluator* data = nullptr;
+    double sf_max = 20.0, sf_min = 0.01;
+    // CLOSURE mode (sf_closure): force SF ≡ 1. The corrected chain then degenerates to the
+    // NOMINAL one (ε_corr = fit to the untouched turn-ons = ε_MC, numerator weight
+    // SF/ε_corr = 1/ε_MC), so its Step-3/Step-4 output must reproduce the nominal output
+    // bin-by-bin. That is the end-to-end closure test of the corrected-mode code path -- and it
+    // is the only way to run it WITHOUT overwriting any nominal artefact (its files carry the
+    // "_corrected_sfclosure" tag).
+    bool force_unity = false;
+    long long n_eval = 0, n_cap_hi = 0, n_cap_lo = 0;
+    double sum = 0., sum2 = 0., min_seen = 1e300, max_seen = -1e300;
+
+    double Eval(float pt, float eta, int charge) {
+        const double e_mc = mc->Eval(pt, eta, charge);
+        const double e_da = data->Eval(pt, eta, charge);
+        double sf = force_unity ? 1.0 : e_da / e_mc;
+        ++n_eval;
+        min_seen = std::min(min_seen, sf);
+        max_seen = std::max(max_seen, sf);
+        if (sf > sf_max) { sf = sf_max; ++n_cap_hi; }
+        if (sf < sf_min) { sf = sf_min; ++n_cap_lo; }
+        sum += sf; sum2 += sf * sf;
+        return sf;
+    }
+
+    void PrintStats(const std::string& tag) const {
+        const double m = n_eval ? sum / n_eval : 0.;
+        const double v = n_eval ? std::max(0., sum2 / n_eval - m * m) : 0.;
+        std::cout << "SFEvaluator [" << tag << "]: " << n_eval << " evaluations, "
+                  << "<SF> = " << m << " +- " << std::sqrt(v)
+                  << ", range [" << min_seen << ", " << max_seen << "], "
+                  << n_cap_hi << " capped at " << sf_max << " ("
+                  << (n_eval ? 100.0 * n_cap_hi / n_eval : 0.0) << "%), "
+                  << n_cap_lo << " floored at " << sf_min << " ("
+                  << (n_eval ? 100.0 * n_cap_lo / n_eval : 0.0) << "%)" << std::endl;
+    }
+};
+
 // ---------- per-leg aliases on a pair tree ----------
 // Pair structs have no dictionary: use leaf-style columns. Dotted names need Alias before JIT.
 ROOT::RDF::RNode AliasLeg(ROOT::RDF::RNode node, int leg, const std::string& wp_col) {
@@ -347,12 +561,19 @@ ROOT::RDF::RNode AliasLeg(ROOT::RDF::RNode node, int leg, const std::string& wp_
 // =============================================================================
 void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
                         bool use_tight_wp = true, bool do_step4 = false,
-                        bool do_sanity = false) {
+                        bool do_sanity = false, bool corrected_mc = false,
+                        bool sf_closure = false) {
     using namespace MCTrigEff;
 
     if ((int)do_step3 + (int)do_step4 + (int)do_sanity > 1)
         throw std::invalid_argument("FillMCTrigEffHists: do_step3, do_step4 and do_sanity are "
                                     "mutually exclusive (each writes its own output file)");
+    if (corrected_mc && do_sanity)
+        throw std::invalid_argument("FillMCTrigEffHists: corrected_mc is not defined for the "
+                                    "sanity mode (§3.5 compares MC variants, not MC to data)");
+    if (sf_closure && !corrected_mc)
+        throw std::invalid_argument("FillMCTrigEffHists: sf_closure is a mode OF the corrected-MC "
+                                    "path (SF forced to 1); it needs corrected_mc = true");
 
     const SampleConfig cfg = GetSampleConfig(sample);
     const Binnings bins = MakeBinnings();
@@ -361,9 +582,27 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
     const std::string wp_col = use_tight_wp ? "pass_tight" : "pass_medium";
     const std::string wp_suf = use_tight_wp ? "" : "_medium_wp";
 
+    // CORRECTED-MC study (mc_trigger_efficiency.md round-7 contract item 5). Every MC muon that
+    // FIRES the trigger carries the extra per-muon weight SF = ε_data/ε_MC(pT, q·η); the
+    // DENOMINATOR is untouched. Then ε_corr = Σ_fired w·SF / Σ_all w = ε_MC·<SF> ≈ ε_data, i.e.
+    // the corrected MC reproduces the DATA single-muon efficiency. It answers two questions:
+    //   (1) do "data-driven ε + MC ΔR ratios" and "MC corrected to data" give the same
+    //       single-muon efficiency?  (Step 1 with corrected numerator, vs data.)
+    //   (2) does correcting the MC change the ΔR CORRECTIONS?  (Steps 3/4 with numerator weight
+    //       w·SF/ε_corr, ε_corr from the fit to the CORRECTED turn-ons -- self-consistency, the
+    //       §3.3/§3.4 requirement that the inverse weight uses the efficiency of the sample being
+    //       inverse-weighted.) If ε_corr were exactly ε_data then SF/ε_corr = 1/ε_MC, the ORIGINAL
+    //       weight, and the ΔR corrections would be identical bin-by-bin -- the validity statement
+    //       that the ΔR correction is insensitive to the single-muon normalisation and therefore
+    //       transfers from the MC world to the data world.
+    // Every corrected artefact carries "_corrected" in its file name; NOTHING nominal is touched.
+    const std::string corr_suf = corrected_mc ? (sf_closure ? "_corrected_sfclosure" : "_corrected")
+                                              : "";
+
     std::cout << "FillMCTrigEffHists: sample=" << sample << " (" << cfg.label << ")"
               << ", do_step3=" << do_step3 << ", do_step4=" << do_step4
               << ", WP=" << (use_tight_wp ? "tight" : "medium")
+              << ", corrected_mc=" << corrected_mc
               << std::endl;
     std::cout << "  pair file:    " << cfg.pair_file << std::endl;
     std::cout << "  singles file: " << cfg.singles_file << std::endl;
@@ -385,7 +624,7 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
     // FORWARD LOW-pT VETO (round 7, user; §3.5 decision rule). The §3.5 sanity check RULED OUT
     // "bad muons" as the cause of the saturated forward-negative MC turn-on: in q·η ∈ (−2.4,−2.0)
     // the MC efficiency is flat at ~0.90 from the very first pT bin (data rises 0.45 → 0.92), and
-    // requiring one reconstructed vertex and |ΔpT|/pT^truth < 0.10 moves it by ≤ 0.006 — while the
+    // requiring one reconstructed vertex and |ΔpT|/pT^truth < 0.10 moves it by ≤ 0.006 -- while the
     // MIRROR bin q·η ∈ (2.0,2.2) in the same sample shows a perfectly normal turn-on 0.26 → 0.95.
     // The anomaly is therefore a real property of the r16578 trigger configuration (R8/R10), so
     // the affected muons are REMOVED from the ΔR-correlation measurement.
@@ -398,12 +637,15 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
     // acceptance -- it is the ε_MC(pT,q·η) map plus the data/MC validation, and the anomalous
     // region must stay visible there. The sanity check (do_sanity) is likewise unvetoed: vetoing
     // it would erase the very effect it exists to display. A PAIR is kept only if BOTH legs pass.
+    // (Kept byte-identical to the nominal macro: the corrected-MC study is only meaningful if the
+    //  corrected and the original ΔR corrections are measured on EXACTLY the same sample.)
     const bool kVetoFwdLowPt = true;
     const std::string kFwdVetoSingle = "(pt > 7 || charge * eta > -2)";
     const std::string kFwdVetoLeg    = "(lg_pt > 7 || lg_charge * lg_eta > -2) && "
                                        "(ot_pt > 7 || ot_charge * ot_eta > -2)";
     const std::string kFwdVetoPair   = "(m1_pt > 7 || m1_charge * m1_eta > -2) && "
                                        "(m2_pt > 7 || m2_charge * m2_eta > -2)";
+    (void)kFwdVetoSingle;   // defined for symmetry with the nominal macro; Step 1 is UNvetoed
 
     // common selection = data-side muon definition (nominal WP + fiducial) + truth fiducial
     const std::string sel_single = wp_col + " && pt > 4 && fabs(eta) < 2.4 && " + kTruthFidSingle;
@@ -438,6 +680,28 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
     HistAccumulator<TH3D> acc3D;   // Step-3/4 pair-eta dependence (round-5 #4 / round-6 §3.4)
 
     MCEffEvaluator* evaluator = nullptr;  // Step-3/4 only (inverse-weight ε source)
+
+    // ---- corrected-MC machinery (heap: must outlive the LAZY RDF loops) ----
+    // sf_eval : SF = ε_data/ε_MC, applied to every FIRED muon (Steps 1, 3, 4)
+    // mc_eval_nom : the NOMINAL MC ε -- it is the Bernoulli probability that governs the
+    //               conditional error terms (SF is an analysis weight, it does NOT change the
+    //               probability that the trigger fired), so errB/covQ use it in BOTH modes.
+    // `evaluator`  : the ε that the numerator is inverse-weighted BY -- nominal ε_MC in nominal
+    //               mode, ε_corr (fit to the corrected turn-ons) in corrected mode.
+    SFEvaluator*      sf_eval     = nullptr;
+    MCEffEvaluator*   mc_eval_nom = nullptr;
+    DataEffEvaluator* data_eval   = nullptr;
+    if (corrected_mc) {
+        mc_eval_nom = new MCEffEvaluator();
+        mc_eval_nom->LoadFits(cfg.dir + "single_mu_effcy_pT_fit_mc" + wp_suf + ".root");
+        data_eval = new DataEffEvaluator();
+        data_eval->Load(SubstWP(cfg.data_fit_file_tmpl, wp_suf),
+                        SubstWP(cfg.data_hist_file_tmpl, wp_suf), cfg.data_ctr);
+        sf_eval = new SFEvaluator();
+        sf_eval->mc = mc_eval_nom;
+        sf_eval->data = data_eval;
+        sf_eval->force_unity = sf_closure;
+    }
 
     // keep dataframes alive until merge
     std::vector<std::unique_ptr<ROOT::RDataFrame>> rdf_store;
@@ -535,8 +799,11 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
         //     SS+OS are summed, exactly as Step 2/3. Selection = both legs pass the analysis
         //     muon definition (partner is the "other reco muon" that defines ΔR, §3.2/§3.4).
         // =====================================================================
+        // Inverse-weight ε source. NOMINAL: the §3.1 MC turn-on fits. CORRECTED: the fits to the
+        // CORRECTED turn-ons (§3.3/§3.4 require the inverse weight to use the efficiency OF THE
+        // SAMPLE BEING INVERSE-WEIGHTED, and the sample being weighted here is the corrected one).
         evaluator = new MCEffEvaluator();  // heap: must outlive the lazy RDF loops
-        evaluator->LoadFits(cfg.dir + "single_mu_effcy_pT_fit_mc" + wp_suf + ".root");
+        evaluator->LoadFits(cfg.dir + "single_mu_effcy_pT_fit_mc" + corr_suf + wp_suf + ".root");
 
         for (const auto& tree : pair_trees) {
             rdf_store.emplace_back(std::make_unique<ROOT::RDataFrame>(tree, cfg.pair_file));
@@ -571,15 +838,39 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
                                      "dr", "pair_pt", "pair_eta", wcol));
                 };
 
+                // Per-leg efficiency columns. `eps_*` = the ε the numerator is DIVIDED BY (nominal
+                // ε_MC, or ε_corr in corrected mode); `sf_*` = the data/MC scale factor carried by
+                // every FIRED muon (identically 1 in nominal mode); `epsn_*` = the NOMINAL MC ε,
+                // which is the Bernoulli probability the conditional error terms need in BOTH
+                // modes (SF re-weights, it does not change whether the trigger fired).
+                auto add_leg_eps = [&](ROOT::RDF::RNode n, const std::string& tag,
+                                       const std::string& cpt, const std::string& ceta,
+                                       const std::string& cq) {
+                    n = n.Define("eps_" + tag,
+                                 [ev = evaluator](float pt, float eta, int q) { return ev->Eval(pt, eta, q); },
+                                 {cpt, ceta, cq});
+                    if (corrected_mc) {
+                        n = n.Define("sf_" + tag,
+                                     [ev = sf_eval](float pt, float eta, int q) { return ev->Eval(pt, eta, q); },
+                                     {cpt, ceta, cq})
+                             .Define("epsn_" + tag,
+                                     [ev = mc_eval_nom](float pt, float eta, int q) { return ev->Eval(pt, eta, q); },
+                                     {cpt, ceta, cq});
+                    } else {
+                        n = n.Define("sf_" + tag, "1.0").Define("epsn_" + tag, "eps_" + tag);
+                    }
+                    return n;
+                };
+
                 // denominator: ALL selected legs, no trigger requirement (§4), MC weight
                 book_step4(dl, "denom", "weight");
 
-                // numerator: leg's own mu4 match, weight = MC weight / ε_MC(pT_leg, q·η_leg) (§3.4)
-                auto dn = dl.Filter("lg_passmu4", tree + Form(" step4 leg%d mu4", leg))
-                            .Define("eps_lg",
-                                    [ev = evaluator](float pt, float eta, int q) { return ev->Eval(pt, eta, q); },
-                                    {"lg_pt", "lg_eta", "lg_charge"})
-                            .Define("w_inv_single", "weight / eps_lg");
+                // numerator: leg's own mu4 match, weight a = MC weight * SF / ε(pT_leg, q·η_leg)
+                // (§3.4; SF ≡ 1 nominal, so this is the unchanged `weight / eps_lg`)
+                ROOT::RDF::RNode dn =
+                    add_leg_eps(dl.Filter("lg_passmu4", tree + Form(" step4 leg%d mu4", leg)),
+                                "lg", "lg_pt", "lg_eta", "lg_charge")
+                        .Define("w_inv_single", "weight * sf_lg / eps_lg");
                 book_step4(dn, "num", "w_inv_single");
 
                 // ---- CONDITIONAL (binomial-correct) ERROR TERMS (round 7) -------------------
@@ -597,23 +888,30 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
                 //     covP = sum_{both fired} 2 w^2/(eps_1 eps_2)   (estimates 2 sum a1 a2 p_12)
                 //     covQ = sum_{all pairs}  2 w^2                 (2 sum a1a2 p1p2 = 2 R^2 sum w^2)
                 // is booked once per pair (leg == 1). Then Var = A - R*B + covP - R^2*covQ and
-                // e_R = sqrt(Var)/D, evaluated bin-by-bin in plot_mc_trig_eff.cxx.
-                auto dnerr = dn.Define("w_errA_single", "weight*weight/(eps_lg*eps_lg)")
-                               .Define("w_errB_single", "weight*weight/eps_lg");
+                // e_R = sqrt(Var)/D, evaluated bin-by-bin in the plot macro.
+                //
+                // CORRECTED-MC generalization (round-7 contract item 5). With the numerator weight
+                // a_i = w_i*SF_i/eps_corr,i and the trigger probability STILL governed by the
+                // nominal MC efficiency, p_i = epsn_i*R, the same algebra gives
+                //     A = sum_fired a_i^2 ,   B = sum_fired a_i^2 * epsn_i
+                //     covP = sum_{both fired} 2 a_1 a_2 ,  covQ = sum_all 2 a_1 a_2 epsn_1 epsn_2
+                // which reduce EXACTLY to the nominal expressions when SF = 1 and eps = epsn.
+                auto dnerr = dn.Define("w_errA_single", "w_inv_single*w_inv_single")
+                               .Define("w_errB_single", "w_inv_single*w_inv_single*epsn_lg");
                 book_step4(dnerr, "errA", "w_errA_single");
                 book_step4(dnerr, "errB", "w_errB_single");
 
                 if (leg == 1) {   // pair-level terms: book ONCE per pair, not once per leg
-                    ROOT::RDF::RNode dc = dl.Define("eps_l1",
-                            [ev = evaluator](float pt, float eta, int q) { return ev->Eval(pt, eta, q); },
-                            {"lg_pt", "lg_eta", "lg_charge"})
-                        .Define("eps_l2",
-                            [ev = evaluator](float pt, float eta, int q) { return ev->Eval(pt, eta, q); },
-                            {"ot_pt", "ot_eta", "ot_charge"});
+                    ROOT::RDF::RNode dc =
+                        add_leg_eps(add_leg_eps(dl, "l1", "lg_pt", "lg_eta", "lg_charge"),
+                                    "l2", "ot_pt", "ot_eta", "ot_charge")
+                            .Define("a_l1", "weight * sf_l1 / eps_l1")
+                            .Define("a_l2", "weight * sf_l2 / eps_l2");
                     book_step4(dc.Filter("lg_passmu4 && ot_passmu4", tree + " step4 both legs mu4")
-                                 .Define("w_covP", "2.0*weight*weight/(eps_l1*eps_l2)"),
+                                 .Define("w_covP", "2.0*a_l1*a_l2"),
                                "covP", "w_covP");
-                    book_step4(dc.Define("w_covQ", "2.0*weight*weight"), "covQ", "w_covQ");
+                    book_step4(dc.Define("w_covQ", "2.0*a_l1*a_l2*epsn_l1*epsn_l2"),
+                               "covQ", "w_covQ");
                 }
             }
         }
@@ -629,34 +927,72 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
 
         for (const auto& [chg, chg_cut] : charges) {
             auto dc = ds.Filter(chg == "muplus" ? "charge > 0" : "charge < 0", chg);
-            auto book_singles = [&](ROOT::RDF::RNode node, const std::string& nd) {
+            auto book_singles = [&](ROOT::RDF::RNode node, const std::string& nd,
+                                    const std::string& wcol) {
                 acc1D.add("h_mc_pt_" + nd + "_" + chg,
                     node.Histo1D({uniq("h_mc_pt_" + nd + "_" + chg).c_str(), ";p_{T} [GeV];entries",
-                                  static_cast<int>(bins.pt.size()) - 1, bins.pt.data()}, "pt", "w"));
+                                  static_cast<int>(bins.pt.size()) - 1, bins.pt.data()}, "pt", wcol));
                 acc1D.add("h_mc_eta_" + nd + "_" + chg,
                     node.Histo1D({uniq("h_mc_eta_" + nd + "_" + chg).c_str(), ";#eta;entries",
-                                  static_cast<int>(bins.eta.size()) - 1, bins.eta.data()}, "eta", "w"));
+                                  static_cast<int>(bins.eta.size()) - 1, bins.eta.data()}, "eta", wcol));
                 acc1D.add("h_mc_phi_" + nd + "_" + chg,
                     node.Histo1D({uniq("h_mc_phi_" + nd + "_" + chg).c_str(), ";#phi;entries",
-                                  static_cast<int>(bins.phi.size()) - 1, bins.phi.data()}, "phi", "w"));
+                                  static_cast<int>(bins.phi.size()) - 1, bins.phi.data()}, "phi", wcol));
                 acc2D.add("h_mc_pt_vs_q_eta_" + nd + "_" + chg,
                     node.Histo2D({uniq("h_mc_pt_vs_q_eta_" + nd + "_" + chg).c_str(),
                                   ";q#eta;p_{T} [GeV]",
                                   static_cast<int>(bins.q_eta.size()) - 1, bins.q_eta.data(),
                                   static_cast<int>(bins.pt.size()) - 1, bins.pt.data()},
-                                 "q_eta", "pt", "w"));
+                                 "q_eta", "pt", wcol));
             };
-            book_singles(dc, "denom");                                       // NO trigger requirement (§4)
-            book_singles(dc.Filter("passmu4", chg + " mu4"), "num");         // full mu4 chain
-            // L1/HLT split reference (round-5 #3), for the Step-2 inclusive-singles line:
-            book_singles(dc.Filter("pass_l1", chg + " L1"), "numl1");        // L1_MU3V RoI
-            book_singles(dc.Filter("passmu4 && pass_l1", chg + " HLT|L1"), "numhlt");
+            book_singles(dc, "denom", "w");                          // NO trigger requirement (§4)
+            if (!corrected_mc) {
+                book_singles(dc.Filter("passmu4", chg + " mu4"), "num", "w");   // full mu4 chain
+                // L1/HLT split reference (round-5 #3), for the Step-2 inclusive-singles line:
+                book_singles(dc.Filter("pass_l1", chg + " L1"), "numl1", "w");  // L1_MU3V RoI
+                book_singles(dc.Filter("passmu4 && pass_l1", chg + " HLT|L1"), "numhlt", "w");
+            } else {
+                // CORRECTED MC: the numerator (and ONLY the numerator) carries the per-muon
+                // SF = ε_data/ε_MC, so num/denom = ε_MC·<SF> ≈ ε_data. No L1-only / HLT|L1
+                // corrected variants: SF is defined for the FULL mu4 chain (the data tag-and-probe
+                // measures the chain), and there is no data L1-only reference to correct to.
+                auto dnum = dc.Filter("passmu4", chg + " mu4")
+                              .Define("sf", [ev = sf_eval](float pt, float eta, int q)
+                                              { return ev->Eval(pt, eta, q); },
+                                      {"pt", "eta", "charge"})
+                              .Define("epsn", [ev = mc_eval_nom](float pt, float eta, int q)
+                                                { return ev->Eval(pt, eta, q); },
+                                      {"pt", "eta", "charge"})
+                              .Define("w_sf", "w * sf");
+                book_singles(dnum, "num", "w_sf");
+                // CONDITIONAL (binomial-correct) ERROR TERMS for the CORRECTED Step-1 efficiency.
+                // The corrected numerator is a RE-WEIGHTED SUBSET of the denominator, and -- unlike
+                // the nominal one -- it can EXCEED the denominator in a bin where SF > 1, so a
+                // Bayesian/binomial divide is not even defined (TGraphAsymmErrors::BayesDivide
+                // rejects the pair and returns an EMPTY graph, which the fitter would then "fit"
+                // to its initial parameters: a silent, badly wrong turn-on). With
+                //     N = sum_i t_i a_i ,  a_i = w_i*SF_i ,  P(t_i = 1) = p_i = eps_MC,i
+                //     Var(N) = sum a_i^2 p_i (1-p_i)  ->  estimated from the FIRED muons as
+                //     A - B ,  A = sum_fired (w*SF)^2 ,  B = sum_fired (w*SF)^2 * eps_MC
+                // and e_eff = sqrt(A-B)/D. (Unweighted limit w=SF=1, eps=eff: A-B = D*eff*(1-eff),
+                // the binomial variance, as it must be.) No R factor here -- unlike Steps 3/4 the
+                // per-muon trigger probability IS eps_MC, with no dR-correlation factor on top.
+                auto dnerr = dnum.Define("w_errA1", "w_sf * w_sf")
+                                 .Define("w_errB1", "w_sf * w_sf * epsn");
+                book_singles(dnerr, "errA", "w_errA1");
+                book_singles(dnerr, "errB", "w_errB1");
+            }
         }
 
         // =====================================================================
         // (B) Step 2 (§3.2): pair trees, per leg / charge / dR bin, denom/num
+        // SKIPPED in corrected mode: Step 2 is the ΔR-binned factorization cross-check, it is not
+        // part of the corrected-MC study, and filling it here would put unweighted Step-2 hists
+        // into a file whose name says "corrected".
         // =====================================================================
-        for (const auto& tree : pair_trees) {
+        const std::vector<std::string> step2_trees =
+            corrected_mc ? std::vector<std::string>{} : pair_trees;
+        for (const auto& tree : step2_trees) {
             rdf_store.emplace_back(std::make_unique<ROOT::RDataFrame>(tree, cfg.pair_file));
             for (int leg = 1; leg <= 2; ++leg) {
                 ROOT::RDF::RNode dl = AliasLeg(*rdf_store.back(), leg, wp_col);
@@ -703,8 +1039,10 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
         // =====================================================================
         // (C) Step 3 (§3.3): inverse-weighted ε_ΔR inputs
         // =====================================================================
+        // Inverse-weight ε source: nominal ε_MC, or ε_corr (fits to the CORRECTED turn-ons) in
+        // corrected mode -- §3.3 requires the ε of the sample being inverse-weighted.
         evaluator = new MCEffEvaluator();  // heap: must outlive the lazy RDF loops
-        evaluator->LoadFits(cfg.dir + "single_mu_effcy_pT_fit_mc" + wp_suf + ".root");
+        evaluator->LoadFits(cfg.dir + "single_mu_effcy_pT_fit_mc" + corr_suf + wp_suf + ".root");
 
         // pp: pair fires 2mu4; overlay (PbPb cross term): both legs mu4-matched
         const std::string trig_cond = cfg.is_overlay ? "m1_passmu4 && m2_passmu4" : "pass2mu4";
@@ -761,13 +1099,33 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
             // denominator: ALL selected pairs, no trigger requirement (§4), weight = MC weight
             book_step3(dp, "denom", "weight");
 
-            // numerator: trigger condition, weight = MC weight / (eps1 * eps2), eps = MC fits (§3.3)
-            auto dn = dp.Filter(trig_cond, tree + " step3 trigger")
-                        .Define("eps1", [ev = evaluator](float pt, float eta, int q) { return ev->Eval(pt, eta, q); },
-                                {"m1_pt", "m1_eta", "m1_charge"})
-                        .Define("eps2", [ev = evaluator](float pt, float eta, int q) { return ev->Eval(pt, eta, q); },
-                                {"m2_pt", "m2_eta", "m2_charge"})
-                        .Define("w_inv", "weight / (eps1 * eps2)");
+            // numerator: trigger condition, weight = MC weight * SF1*SF2 / (eps1 * eps2)
+            //   nominal   : SF ≡ 1, eps = the §3.1 MC fits           -> weight / (eps1 eps2) (§3.3)
+            //   corrected : SF = ε_data/ε_MC per muon, eps = ε_corr  -> the corrected-MC study.
+            // `epsn*` is the NOMINAL MC ε (the Bernoulli probability) used by the error terms.
+            auto add_pair_eps = [&](ROOT::RDF::RNode n, const std::string& tag,
+                                    const std::string& cpt, const std::string& ceta,
+                                    const std::string& cq) {
+                n = n.Define("eps" + tag,
+                             [ev = evaluator](float pt, float eta, int q) { return ev->Eval(pt, eta, q); },
+                             {cpt, ceta, cq});
+                if (corrected_mc) {
+                    n = n.Define("sf" + tag,
+                                 [ev = sf_eval](float pt, float eta, int q) { return ev->Eval(pt, eta, q); },
+                                 {cpt, ceta, cq})
+                         .Define("epsn" + tag,
+                                 [ev = mc_eval_nom](float pt, float eta, int q) { return ev->Eval(pt, eta, q); },
+                                 {cpt, ceta, cq});
+                } else {
+                    n = n.Define("sf" + tag, "1.0").Define("epsn" + tag, "eps" + tag);
+                }
+                return n;
+            };
+            ROOT::RDF::RNode dn =
+                add_pair_eps(add_pair_eps(dp.Filter(trig_cond, tree + " step3 trigger"),
+                                          "1", "m1_pt", "m1_eta", "m1_charge"),
+                             "2", "m2_pt", "m2_eta", "m2_charge")
+                    .Define("w_inv", "weight * sf1 * sf2 / (eps1 * eps2)");
             book_step3(dn, "num", "w_inv");
 
             // CONDITIONAL (binomial-correct) ERROR TERMS (round 7) -- see the Step-4 block for
@@ -776,8 +1134,10 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
             // A = sum_fired w^2/(eps1 eps2)^2 and B = sum_fired w^2/(eps1 eps2), and
             // e_R = sqrt(Var)/D. (Pairs sharing a leg -- events with >2 selected muons -- are a
             // residual, sub-leading correlation that is NOT modelled; see the tracking doc.)
-            auto dnerr = dn.Define("w_errA", "weight*weight/((eps1*eps2)*(eps1*eps2))")
-                           .Define("w_errB", "weight*weight/(eps1*eps2)");
+            // (CORRECTED mode: A = sum_fired a^2, B = sum_fired a^2 * epsn1*epsn2 with
+            //  a = w*SF1*SF2/(eps1 eps2) -- reduces EXACTLY to the nominal forms when SF = 1.)
+            auto dnerr = dn.Define("w_errA", "w_inv*w_inv")
+                           .Define("w_errB", "w_inv*w_inv*epsn1*epsn2");
             book_step3(dnerr, "errA", "w_errA");
             book_step3(dnerr, "errB", "w_errB");
         }
@@ -788,10 +1148,17 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
     auto hists2D = acc2D.merge();
     auto hists3D = acc3D.merge();
 
-    if (evaluator) evaluator->PrintStats(cfg.label);
+    if (evaluator) evaluator->PrintStats(cfg.label + (corrected_mc ? " eps_corr" : " eps_MC"));
+    // Guard statistics of the corrected-MC study: how often the ε floors / the q·η-gap 2D
+    // fallback / the SF pathology cap fired. These are the ONLY sources (besides fit quality)
+    // of a residual difference between the corrected and the original ΔR corrections, so they
+    // must be reported, not silently absorbed.
+    if (mc_eval_nom) mc_eval_nom->PrintStats(cfg.label + " eps_MC(nominal)");
+    if (data_eval)   data_eval->PrintStats(cfg.label + " eps_data");
+    if (sf_eval)     sf_eval->PrintStats(cfg.label);
 
     // ---------- write ----------
-    const std::string out_name = cfg.dir + "mc_trig_eff_hists_" + cfg.label + wp_suf +
+    const std::string out_name = cfg.dir + "mc_trig_eff_hists_" + cfg.label + wp_suf + corr_suf +
                                  (do_sanity ? "_sanity.root" : do_step4 ? "_step4.root"
                                   : do_step3 ? "_step3.root" : ".root");
     TFile fout(out_name.c_str(), "RECREATE");

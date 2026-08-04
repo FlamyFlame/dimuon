@@ -44,9 +44,18 @@
 #include <TArrow.h>
 #include <TStyle.h>
 #include <TSystem.h>
+#include <TNamed.h>
 #include <TROOT.h>
 
 #include <TH3D.h>
+
+// Sample identity (input dir, file label, plot root, headline, eps symbol, FULL-vs-TEST flag)
+// and the names of the plateau / fit ROOT files. Shared with fit_dr_corrections.cxx and
+// plot_dr_correction_fits.cxx so the measurement and the fit can never drift apart.
+#include "dr_correction_sample_cfg.h"
+// The round-7 conditional ratio error + the (pair pT, pair eta) cell projection, shared with
+// the fit stage so both use the identical error definition.
+#include "dr_correction_ratio.h"
 
 #include <cctype>
 #include <cmath>
@@ -169,53 +178,9 @@ TH1* DrawRatioFrame(double xlo, double xhi, const std::string& xtitle,
     return fr;
 }
 
-// =============================================================================
-// CONDITIONAL (binomial-correct) ERROR ON AN INVERSE-WEIGHTED EFFICIENCY RATIO  (round 7)
-//
-// R(dR) = N/D with D = sum_all w  and  N = sum_fired w/eps  is an EFFICIENCY: the numerator
-// is a re-weighted SUBSET of the denominator. `TH1::Divide` without option "B" propagates
-//     e_R = R sqrt((e_N/N)^2 + (e_D/D)^2)
-// which assumes num and den are INDEPENDENT. They are not, and the resulting bars are too
-// long by ~sqrt((1+eps)/(1-eps)) -- 1.5x to 3.2x here, worst in the highest pair-pT bin where
-// eps is largest. Symptom: chi2/ndf of a constant fit over the plateau ~0.25 instead of ~1.
-//
-// Conditioning on the MC sample (D fixed; only the Bernoulli trigger decisions fluctuate),
-//     Var(N) = sum_i a_i^2 p_i (1-p_i) + 2 sum_pairs a_1 a_2 (p_12 - p_1 p_2),  a_i = w_i/eps_i
-// estimated from the histograms booked in FillMCTrigEffHists.cxx as
-//     Var = A - R*B  (+ covP - R^2*covQ  for Step 4, where both legs of a pair share a dR bin)
-//     e_R = sqrt(Var)/D
-// Unweighted limit (w=1, eps=1): A=B=N -> Var = N(1-R) -> e_R = sqrt(R(1-R)/D), as it must be.
-// covP/covQ are absent for Step 3 (one entry = one pair = one Bernoulli trial) -> pass nullptr.
-// =============================================================================
-void SetConditionalRatioErrors(TH1D* r, const TH1D* den, const TH1D* A, const TH1D* B,
-                               const TH1D* covP = nullptr, const TH1D* covQ = nullptr)
-{
-    for (int i = 1; i <= r->GetNbinsX(); ++i) {
-        const double D = den->GetBinContent(i);
-        if (D <= 0.) { r->SetBinError(i, 0.); continue; }
-        const double R  = r->GetBinContent(i);
-        const double a  = A->GetBinContent(i), b = B->GetBinContent(i);
-        const double cp = covP ? covP->GetBinContent(i) : 0.;
-        const double cq = covQ ? covQ->GetBinContent(i) : 0.;
-        double var = a - R * b + cp - R * R * cq;
-
-        // BOUNDARY CASE. When every effective entry in the bin fired (p_i -> 1) the conditional
-        // binomial variance genuinely vanishes -- the k=n binomial artefact -- and `var` comes
-        // out as 0, slightly negative, or a catastrophic cancellation of terms many orders of
-        // magnitude larger (seen in the near-empty high-pair-pT cells of the 10k-event overlay
-        // TEST sample: A=1.1e-06 vs var=1e-22). A ~0 error is NOT safe: the plateau weighted
-        // mean weights by 1/e^2, so such a bin would either be dropped (e=0) or completely
-        // dominate the mean (e=1e-7). Detect it by comparing var with the SCALE of the terms
-        // that built it, and fall back to the "1/n rule" (the 68% bound for k=n) with the
-        // effective denominator count n_eff = (D/e_D)^2, e_D = sqrt(sum w^2) from Sumw2.
-        const double scale = a + R * b + std::fabs(cp) + R * R * cq;
-        if (var > 1e-6 * scale) { r->SetBinError(i, std::sqrt(var) / D); continue; }
-
-        const double eD = den->GetBinError(i);
-        const double neff = (eD > 0.) ? (D / eD) * (D / eD) : 1.0;
-        r->SetBinError(i, (neff > 0.) ? R / neff : 0.);
-    }
-}
+// The conditional (binomial-correct) ratio error of round 7 now lives in
+// dr_correction_ratio.h (included above), so the fit stage judges chi2/ndf with exactly the
+// same errors these plots show.
 
 // Point-by-point ratio of two efficiency graphs.
 //
@@ -343,19 +308,25 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
 {
     const std::string data_wp = use_tight_wp ? "" : "_medium_wp";
 
+    // Sample IDENTITY (mc_dir / mc_label / out_base / sample_text / eps_dr_text) comes from the
+    // shared table in dr_correction_sample_cfg.h -- the same table the fit stage reads, so a
+    // path or label can never drift between the step that MEASURES the plateau and the step
+    // that CONSUMES it. Everything below is plot-macro-specific and stays here.
+    const DrCorrSample id = GetDrCorrSample(sample);
+
     SampleCfg c;
+    c.mc_dir      = id.mc_dir;
+    c.mc_label    = id.mc_label;
+    c.out_base    = id.out_base;
+    c.sample_text = id.sample_text;
+    c.eps_dr_text = id.eps_dr_text;
+
     if (sample == "pp") {
-        c.mc_dir      = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/";
-        c.mc_label    = "pp24";
         c.data_file   = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"
                         "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin"
                         + data_wp + ".root";
         c.ctr         = "";
-        c.out_base    = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
-                        "pp_trigger_efficiency/mc_based/";
-        c.sample_text = "Pythia8 pp24 fullsim";
         c.data_text   = "pp24 data";
-        c.eps_dr_text = "#varepsilon_{#DeltaR}^{2mu4}";
         c.step2_coarse = false;  // pp has ~4x the pair statistics: the fine axes are readable
     } else if (sample == "pp_full") {
         // pp24 FULL sample. Physics identical to "pp" -- SAME pp24 data reference, SAME
@@ -364,30 +335,18 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
         // first, done by the pipeline / the run wrapper). ONLY the MC inputs differ:
         // mc_dir = full-sample dir, mc_label = "pp24_full" (reads the _full intermediate hists,
         // so the hists/fits never clobber the TEST ones).
-        c.mc_dir      = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample/";
-        c.mc_label    = "pp24_full";
         c.data_file   = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"
                         "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin"
                         + data_wp + ".root";
         c.ctr         = "";
-        c.out_base    = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
-                        "pp_trigger_efficiency/mc_based/";
-        c.sample_text = "Pythia8 pp24 fullsim (FULL sample)";
         c.data_text   = "pp24 data";
-        c.eps_dr_text = "#varepsilon_{#DeltaR}^{2mu4}";
         c.step2_coarse = false;  // the full sample has far MORE pair statistics than the test
     } else if (sample == "overlay") {
-        c.mc_dir      = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/";
-        c.mc_label    = "hijing_overlay_pbpb23";
         c.data_file   = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2023/"
                         "histograms_real_pairs_pbpb_2023_single_mu4_fine_q_eta_bin"
                         + data_wp + ".root";
         c.ctr         = "_ctr0_5";   // D2: overlay compares ONLY to PbPb23 data 0-5%
-        c.out_base    = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
-                        "pbpb_trigger_efficiency/mc_based/";
-        c.sample_text = "HIJING overlay Pb+Pb23 cond., 0-5%";
         c.data_text   = "Pb+Pb23 data 0-5%";
-        c.eps_dr_text = "#varepsilon_{#DeltaR}^{cross}";
         // The overlay pair sample (0-5% only) is ~4x thinner than pp; on the native
         // 41-bin pT / 184-bin q.eta axes the three DeltaR series are an unreadable
         // error-bar forest and the comparison the panel exists for cannot be made.
@@ -402,17 +361,11 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
         // curves directly comparable). Its RECO CONDITIONS are PbPb23-like, which is exactly
         // the variable under test -- so the data curve here is CONTEXT, not the deliverable:
         // the deliverable is the MC-vs-MC comparison of the forward bin (R8 outcome tree).
-        c.mc_dir      = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_no_overlay_test_sample/";
-        c.mc_label    = "r17663_no_overlay";
         c.data_file   = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"
                         "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin"
                         + data_wp + ".root";
         c.ctr         = "";          // no centrality: there is no overlaid event
-        c.out_base    = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
-                        "r17663_no_overlay_trigger_efficiency/mc_based/";
-        c.sample_text = "Pythia8 pp, r17663 (HI cond., no overlay)";
         c.data_text   = "pp24 data";
-        c.eps_dr_text = "#varepsilon_{#DeltaR}^{2mu4}";
         // Single 10k-event slice: statistics are thinner than pp24 -> coarse Step-2 axes,
         // for the same readability reason as the overlay.
         c.step2_coarse = true;
@@ -591,6 +544,90 @@ std::pair<double,double> PlateauWeightedMean(TH1* ratio, double xlo, double xhi)
     return {sumwv / sumw, std::sqrt(1. / sumw)};
 }
 
+// ================================================================================
+// MACHINE-READABLE PLATEAU OUTPUT (round 7)
+//
+// The large-dR plateau of eps_dR (Step 3) and eps_single (Step 4) is MEASURED here, per
+// (pair pT, pair eta) cell, and CONSUMED by the fit stage (fit_dr_corrections.cxx), which
+// divides each cell's dR curve by it before fitting. It therefore has to travel as DATA:
+// written to a ROOT file by the step that measures it, read back by the step that uses it.
+// The human-readable .txt tables beside the plots stay, but no code may ever parse them --
+// a number retyped out of a table (or out of a tracking .md) is a silent-wrong-result waiting
+// to happen the next time the chain is re-run.
+//
+// The 2D maps clone their axes from the source TH3D, so the consumer's (pair pT, pair eta)
+// cell indexing is identical to the producer's by construction, not by convention.
+// ================================================================================
+struct PlateauCell { double mean, err, rms; int nb; };
+
+TH2D* BookPlateauMap(const TH3D* src, const std::string& name, const std::string& ztitle)
+{
+    const TAxis* ay = src->GetYaxis();   // pair pT
+    const TAxis* az = src->GetZaxis();   // pair eta
+    const int nx = ay->GetNbins(), ny = az->GetNbins();
+    std::vector<double> xe(nx + 1), ye(ny + 1);
+    for (int i = 0; i < nx; ++i) xe[i] = ay->GetBinLowEdge(i + 1);
+    xe[nx] = ay->GetBinUpEdge(nx);
+    for (int i = 0; i < ny; ++i) ye[i] = az->GetBinLowEdge(i + 1);
+    ye[ny] = az->GetBinUpEdge(ny);
+    auto* h = new TH2D(name.c_str(),
+                       (";p_{T}^{pair} [GeV];#eta^{pair};" + ztitle).c_str(),
+                       nx, xe.data(), ny, ye.data());
+    h->SetDirectory(nullptr);
+    return h;
+}
+
+// P is indexed [iy-1][iz-1] exactly as the tables build it (iy = pair-pT bin, iz = pair-eta bin).
+void WritePlateauRootFile(const std::string& path, bool recreate, int step, const TH3D* src,
+                          const std::vector<std::vector<PlateauCell>>& P,
+                          double incl_mean, double incl_err,
+                          const std::string& sample, const std::string& wp_text,
+                          const std::string& quantity)
+{
+    const std::string tag = "step" + std::to_string(step);
+    TDirectory* prev = gDirectory;   // restored below: the caller keeps reading its input files
+    TFile* f = TFile::Open(path.c_str(), recreate ? "RECREATE" : "UPDATE");
+    if (!f || f->IsZombie())
+        throw std::runtime_error("WritePlateauRootFile: cannot open " + path + " for writing");
+    f->cd();
+
+    TH2D* hval = BookPlateauMap(src, "h_" + tag + "_plateau",       quantity + " plateau");
+    TH2D* herr = BookPlateauMap(src, "h_" + tag + "_plateau_err",   "stat. error on the plateau");
+    TH2D* hrms = BookPlateauMap(src, "h_" + tag + "_plateau_rms",   "weighted RMS scatter");
+    TH2D* hnb  = BookPlateauMap(src, "h_" + tag + "_plateau_nbins", "n #DeltaR bins in the window");
+    const int npt = (int)P.size(), neta = npt ? (int)P[0].size() : 0;
+    for (int iy = 1; iy <= npt; ++iy) {
+        for (int iz = 1; iz <= neta; ++iz) {
+            const PlateauCell& p = P[iy - 1][iz - 1];
+            // An unmeasurable cell (no usable dR bin in the window) is written as 0 with 0
+            // error; the consumer MUST treat plateau <= 0 as "no plateau", never as a divisor.
+            hval->SetBinContent(iy, iz, p.nb > 0 ? p.mean : 0.);
+            hval->SetBinError  (iy, iz, p.nb > 0 ? p.err  : 0.);
+            herr->SetBinContent(iy, iz, p.nb > 0 ? p.err  : 0.);
+            hrms->SetBinContent(iy, iz, p.nb > 0 ? p.rms  : 0.);
+            hnb ->SetBinContent(iy, iz, p.nb);
+        }
+    }
+    // Inclusive (all cells) plateau, as a 1-bin histogram: value +- stat error.
+    auto* hincl = new TH1D(("h_" + tag + "_plateau_inclusive").c_str(),
+                           (";;" + quantity + " plateau (inclusive)").c_str(), 1, 0., 1.);
+    hincl->SetDirectory(nullptr);
+    hincl->SetBinContent(1, incl_mean);
+    hincl->SetBinError(1, incl_err);
+
+    for (TH1* h : {(TH1*)hval, (TH1*)herr, (TH1*)hrms, (TH1*)hnb, (TH1*)hincl}) h->Write();
+
+    // Provenance, so a stale file can be recognised without guessing.
+    TNamed(("prov_" + tag).c_str(),
+           Form("sample=%s; WP=%s; quantity=%s; plateau window dR in [%.2f,%.2f]; "
+                "source=plot_mc_trig_eff.cxx", sample.c_str(), wp_text.c_str(),
+                quantity.c_str(), kPlateauLo, kPlateauHi)).Write();
+    f->Close();
+    if (prev) prev->cd();
+    std::cout << "  wrote plateau map " << tag << " -> " << path << std::endl;
+    delete hval; delete herr; delete hrms; delete hnb; delete hincl;
+}
+
 } // namespace
 
 // ================================================================= main
@@ -603,6 +640,9 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
     gErrorIgnoreLevel = kWarning;
 
     const SampleCfg cfg = MakeCfg(sample, use_tight_wp);
+    // Shared sample identity -- used here only to name the plateau ROOT file that the fit stage
+    // reads back (dr_correction_sample_cfg.h).
+    const DrCorrSample id = GetDrCorrSample(sample);
 
     // WP config (registry: Analysis/docs/muon_wp_registry.md): Tight nominal unsuffixed;
     // Medium inputs carry _medium_wp. BOTH the MC inputs AND the data tag-and-probe file are
@@ -1512,7 +1552,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         }
 
         // ---- tables (full-dR 3D, plateau window [kPlateauLo, kPlateauHi]) ----
-        struct Plat { double mean, err, rms; int nb; };
+        using Plat = PlateauCell;   // shared with the ROOT-file writer below
         auto cell_plateau = [&](int iy, int iz) -> Plat {
             TH1D* r = cell_ratio(h3fn, h3fd, h3fA, h3fB, iy, iz,
                                  Form("plat_%s_%d_%d", sample.c_str(), iy, iz));
@@ -1587,6 +1627,11 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         { std::ofstream ofb(dir3 + "step3_plateau_fluctuation_pair_eta_pt.txt"); write_table_B(ofb); }
         std::cout << "  wrote " << dir3 << "step3_plateau_pair_eta_pt.txt + "
                   << "step3_plateau_fluctuation_pair_eta_pt.txt\n";
+
+        // Same numbers, machine-readable, for fit_dr_corrections.cxx. RECREATE: Step 3 always
+        // runs, so it owns the file and Step 4 appends to it below.
+        WritePlateauRootFile(DrCorrPlateauFile(id, use_tight_wp), /*recreate=*/true, 3, h3fn, P,
+                             plateau.first, plateau.second, sample, wp_text, "eps_dR");
     }
 
     // ================================================================
@@ -1818,7 +1863,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             }
 
             // ---- plateau + fluctuation tables (full-dR 3D, window [kPlateauLo,kPlateauHi]) ----
-            struct Plat { double mean, err, rms; int nb; };
+            using Plat = PlateauCell;   // shared with the ROOT-file writer below
             auto cell_plateau = [&](int iy, int iz) -> Plat {
                 TH1D* r = cell_ratio(h3fn, h3fd, h3fA, h3fB, h3fP, h3fQ, iy, iz, neta,
                                      Form("s4plat_%s_%d_%d", sample.c_str(), iy, iz));
@@ -1884,6 +1929,12 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             { std::ofstream ofb(dir4 + "step4_plateau_fluctuation_pair_eta_pt.txt"); write_table_B(ofb); }
             std::cout << "  wrote " << dir4 << "step4_plateau_pair_eta_pt.txt + "
                       << "step4_plateau_fluctuation_pair_eta_pt.txt\n";
+
+            // Machine-readable copy for fit_dr_corrections.cxx. UPDATE, not RECREATE: Step 3
+            // created the file earlier in this same run and its maps must survive.
+            WritePlateauRootFile(DrCorrPlateauFile(id, use_tight_wp), /*recreate=*/false, 4,
+                                 h3fn, P, plat4.first, plat4.second, sample, wp_text,
+                                 "eps_single");
             fmc4->Close();
         }
     }
