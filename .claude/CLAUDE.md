@@ -270,6 +270,28 @@ The subagent's returned summary is a convenience, not the source of truth —
 the scratch doc is. Treat anything only in the return text (not in the doc)
 as at risk.
 
+### Parallel delegation: isolation & merge (orchestrator-only)
+
+Two conflict surfaces; decide both before launching parallel writers.
+
+1. **Source (git-visible).** Read-only subagents → no isolation. Writers → give each disjoint
+   owned paths in its task prompt ("edit ONLY <paths>"); keep shared files (ParamsSet.h,
+   CLAUDE.md, INDEX.md, canonical tracking docs, pipelines) for yourself. If the sets overlap or
+   can't be predicted → one **git worktree** per subagent (`Agent(isolation: "worktree")`), each
+   on its own branch. Not plain branches: subagents share one working directory, so `checkout -b`
+   isolates nothing. A worktree is a different path — scratch docs go to the session scratchpad
+   or the main checkout, and the subagent commits before returning, or its work dies with it.
+2. **Outputs (git-INVISIBLE, the dangerous one).** `.gitignore` drops `*.root *.png *.pdf`, and
+   outputs go to absolute paths outside the repo. Branches/worktrees isolate NOTHING here:
+   parallel writers to the same plot/ROOT path clobber each other silently and no merge can catch
+   it. Distinct output dir/suffix per writer, or don't parallelize.
+
+**Merge — orchestrator only.** One branch at a time, `--no-ff`, never `-X ours/theirs`. Any
+conflict whose resolution could change physics (cut, binning, weight, fit range, sample/path) is
+STOP-AND-ASK; the BLOCKING rules govern resolutions as they do edits. The merged state is untested
+even if each branch passed alone → recompile + rerun affected checks in the main checkout before
+reporting done. Then `git worktree remove` each worktree.
+
 ### Lifecycle
 
 **Continuity (CRITICAL):** At the start of every new conversation, and before
