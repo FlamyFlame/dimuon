@@ -53,12 +53,16 @@
 // and the names of the plateau / fit ROOT files. Shared with fit_dr_corrections.cxx and
 // plot_dr_correction_fits.cxx so the measurement and the fit can never drift apart.
 #include "dr_correction_sample_cfg.h"
+#include "../../../RDFBasedHistFilling/CommonEffcyConfig.h"
+#include "../../../Utilities/proj_range_to_suffix.cxx"
 // The round-7 conditional ratio error + the (pair pT, pair eta) cell projection, shared with
 // the fit stage so both use the identical error definition.
 #include "dr_correction_ratio.h"
 // The Step-1 sanity-check pT-match threshold, shared with FillMCTrigEffHists.cxx (which APPLIES
 // it) so the value DRAWN on the canvas is the value that was cut on.
 #include "../../../Utilities/MCTrigEffSanityCfg.h"
+#include "../../../Utilities/MCTrigEffPlateauWindow.h"
+#include "../../../Utilities/MCTrigEffPairPtBinning.h"
 
 #include <cctype>
 #include <cmath>
@@ -315,7 +319,7 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
     // shared table in dr_correction_sample_cfg.h -- the same table the fit stage reads, so a
     // path or label can never drift between the step that MEASURES the plateau and the step
     // that CONSUMES it. Everything below is plot-macro-specific and stays here.
-    const DrCorrSample id = GetDrCorrSample(sample);
+    const DrCorrSample id = GetDrCorrSample(sample, use_tight_wp);
 
     SampleCfg c;
     c.mc_dir      = id.mc_dir;
@@ -326,7 +330,7 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
 
     if (sample == "pp") {
         c.data_file   = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"
-                        "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin"
+                        "histograms_real_pairs_pp_2024_single_mu4_coarse_q_eta_bin_qeta_fid"
                         + data_wp + ".root";
         c.ctr         = "";
         c.data_text   = "pp 2024 data";
@@ -339,14 +343,14 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
         // mc_dir = full-sample dir, mc_label = "pp24_full" (reads the _full intermediate hists,
         // so the hists/fits never clobber the TEST ones).
         c.data_file   = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"
-                        "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin"
+                        "histograms_real_pairs_pp_2024_single_mu4_coarse_q_eta_bin_qeta_fid"
                         + data_wp + ".root";
         c.ctr         = "";
         c.data_text   = "pp 2024 data";
         c.step2_coarse = false;  // the full sample has far MORE pair statistics than the test
     } else if (sample == "overlay") {
         c.data_file   = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2023/"
-                        "histograms_real_pairs_pbpb_2023_single_mu4_fine_q_eta_bin"
+                        "histograms_real_pairs_pbpb_2023_single_mu4_coarse_q_eta_bin_qeta_fid"
                         + data_wp + ".root";
         c.ctr         = "_ctr0_5";   // D2: overlay compares ONLY to PbPb23 data 0-5%
         c.data_text   = "Pb+Pb 2023 data, 0-5%";
@@ -365,7 +369,7 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
         // the variable under test -- so the data curve here is CONTEXT, not the deliverable:
         // the deliverable is the MC-vs-MC comparison of the forward bin (R8 outcome tree).
         c.data_file   = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"
-                        "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin"
+                        "histograms_real_pairs_pp_2024_single_mu4_coarse_q_eta_bin_qeta_fid"
                         + data_wp + ".root";
         c.ctr         = "";          // no centrality: there is no overlaid event
         c.data_text   = "pp 2024 data";
@@ -405,16 +409,24 @@ const std::vector<std::string> kCharges     = {"muplus", "muminus"};
 const std::vector<std::string> kDataSigns   = {"sign1", "sign2"};
 const std::vector<std::string> kChargeTex   = {"#mu^{+}", "#mu^{-}"};
 
-// fine q.eta bins (CommonEffcyConfig.h q_eta_proj_ranges_fine_excl_gap). The forward
-// (-2.4,-2.0) bin is split into (-2.4,-2.2)+(-2.2,-2.0) (round-5 change #2) -> 11 bins.
-const std::vector<std::string> kQEtaSuffix = {
-    "minus2_40_TO_minus2_20", "minus2_20_TO_minus2_00",
-    "minus2_00_TO_minus1_60", "minus1_60_TO_minus1_30",
-    "minus0_90_TO_minus0_50", "minus0_50_TO_minus0_10", "0_10_TO_0_50",
-    "0_50_TO_1_00", "1_30_TO_1_60", "1_60_TO_2_00", "2_00_TO_2_20"};
-const std::vector<std::pair<double,double>> kQEtaRange = {
-    {-2.4,-2.2},{-2.2,-2.0},{-2.0,-1.6},{-1.6,-1.3},{-0.9,-0.5},{-0.5,-0.1},
-    { 0.1, 0.5},{ 0.5, 1.0},{ 1.3, 1.6},{ 1.6, 2.0},{ 2.0, 2.2}};
+// q.eta bins -- DERIVED from CommonEffcyConfig, never retyped. Two hand-maintained copies used
+// to live here (a suffix list and a numeric list) and they are exactly the kind of duplicate the
+// binning rule exists to prevent: they had to be edited in lockstep with the fitter's own third
+// copy every time the binning moved. Since round 8 the NOMINAL binning is the CONTIGUOUS COARSE
+// one (gaps included), so there are no unfitted holes.
+const std::vector<std::pair<double,double>>& kQEtaRangeF = [] () -> const std::vector<std::pair<double,double>>& {
+    static std::vector<std::pair<double,double>> v;
+    static const CommonEffcyConfig cfg{};
+    if (v.empty()) for (const auto& r : cfg.q_eta_proj_ranges_coarse_incl_gap) v.emplace_back(r.first, r.second);
+    return v;
+}();
+const std::vector<std::pair<double,double>>& kQEtaRange = kQEtaRangeF;
+const std::vector<std::string> kQEtaSuffix = [] {
+    static const CommonEffcyConfig cfg{};
+    std::vector<std::string> v;
+    for (const auto& r : cfg.q_eta_proj_ranges_coarse_incl_gap) v.push_back(pairToSuffix(r));
+    return v;
+}();
 
 // ---- Step-2 coarse binning (SampleCfg::step2_coarse) -------------------------------
 // Step 2 asks ONE question: at FIXED (pT, q.eta), do the three DeltaR series agree?
@@ -487,11 +499,14 @@ const Color_t kDataColor = kBlack;
 // optional comparison MC (SampleCfg::cmp_fit_file) -- blue, distinct from both
 const Color_t kCmpColor  = kBlue + 1;
 
-// Step-3 plateau window: well-separated muons must decorrelate, so eps_dR is flat here
-// (§3.3 diagnostic 1). [1,4] rather than [1,3] -- the extra separation is still plateau,
-// and the overlay needs every pair it can get.
-const double kPlateauLo = 1.0;
-const double kPlateauHi = 4.0;
+// Plateau window + its systematic variation: SINGLE SOURCE OF TRUTH in
+// Analysis/Utilities/MCTrigEffPlateauWindow.h (that header carries the full physics
+// justification for both edges). Never retype the edges here -- three separate copies of them
+// silently kept the old values when the window changed on 2026-08-04.
+const double kPlateauLo     = MCTrigEffPlateau::kLo;
+const double kPlateauHi     = MCTrigEffPlateau::kHi;
+const double kPlateauSystLo = MCTrigEffPlateau::kSystLo;
+const double kPlateauSystHi = MCTrigEffPlateau::kSystHi;
 
 // The overlay headline ("HIJING overlay Pb+Pb23 cond., 0-5%, Tight muons, #mu^{+}") is ~2x
 // the length of the pp one and clipped at the pad edge -- taking the charge with it, which
@@ -561,7 +576,10 @@ std::pair<double,double> PlateauWeightedMean(TH1* ratio, double xlo, double xhi)
 // The 2D maps clone their axes from the source TH3D, so the consumer's (pair pT, pair eta)
 // cell indexing is identical to the producer's by construction, not by convention.
 // ================================================================================
-struct PlateauCell { double mean, err, rms; int nb; };
+// `syst` = |mean - mean(retired [1,4] window)|, the plateau-window normalization systematic.
+// It is < 0 when the alternative window has no usable dR bin, i.e. "not evaluable" -- the
+// consumer must not silently read that as zero uncertainty.
+struct PlateauCell { double mean, err, rms; int nb; double syst = -1.; };
 
 TH2D* BookPlateauMap(const TH3D* src, const std::string& name, const std::string& ztitle)
 {
@@ -583,7 +601,7 @@ TH2D* BookPlateauMap(const TH3D* src, const std::string& name, const std::string
 // P is indexed [iy-1][iz-1] exactly as the tables build it (iy = pair-pT bin, iz = pair-eta bin).
 void WritePlateauRootFile(const std::string& path, bool recreate, int step, const TH3D* src,
                           const std::vector<std::vector<PlateauCell>>& P,
-                          double incl_mean, double incl_err,
+                          double incl_mean, double incl_err, double incl_syst,
                           const std::string& sample, const std::string& wp_text,
                           const std::string& quantity)
 {
@@ -598,6 +616,9 @@ void WritePlateauRootFile(const std::string& path, bool recreate, int step, cons
     TH2D* herr = BookPlateauMap(src, "h_" + tag + "_plateau_err",   "stat. error on the plateau");
     TH2D* hrms = BookPlateauMap(src, "h_" + tag + "_plateau_rms",   "weighted RMS scatter");
     TH2D* hnb  = BookPlateauMap(src, "h_" + tag + "_plateau_nbins", "n #DeltaR bins in the window");
+    TH2D* hsys = BookPlateauMap(src, "h_" + tag + "_plateau_syst",
+                                Form("plateau-window systematic |p_{[%g,%g]} - p_{[%g,%g]}|",
+                                     kPlateauLo, kPlateauHi, kPlateauSystLo, kPlateauSystHi));
     const int npt = (int)P.size(), neta = npt ? (int)P[0].size() : 0;
     for (int iy = 1; iy <= npt; ++iy) {
         for (int iz = 1; iz <= neta; ++iz) {
@@ -609,6 +630,8 @@ void WritePlateauRootFile(const std::string& path, bool recreate, int step, cons
             herr->SetBinContent(iy, iz, p.nb > 0 ? p.err  : 0.);
             hrms->SetBinContent(iy, iz, p.nb > 0 ? p.rms  : 0.);
             hnb ->SetBinContent(iy, iz, p.nb);
+            // -1 = not evaluable (the alternative window had no usable bin), distinct from 0.
+            hsys->SetBinContent(iy, iz, p.nb > 0 ? p.syst : -1.);
         }
     }
     // Inclusive (all cells) plateau, as a 1-bin histogram: value +- stat error.
@@ -617,18 +640,26 @@ void WritePlateauRootFile(const std::string& path, bool recreate, int step, cons
     hincl->SetDirectory(nullptr);
     hincl->SetBinContent(1, incl_mean);
     hincl->SetBinError(1, incl_err);
+    auto* hisys = new TH1D(("h_" + tag + "_plateau_syst_inclusive").c_str(),
+                           (";;" + quantity + " plateau-window systematic (inclusive)").c_str(),
+                           1, 0., 1.);
+    hisys->SetDirectory(nullptr);
+    hisys->SetBinContent(1, incl_syst);
 
-    for (TH1* h : {(TH1*)hval, (TH1*)herr, (TH1*)hrms, (TH1*)hnb, (TH1*)hincl}) h->Write();
+    for (TH1* h : {(TH1*)hval, (TH1*)herr, (TH1*)hrms, (TH1*)hnb, (TH1*)hsys,
+                   (TH1*)hincl, (TH1*)hisys}) h->Write();
 
     // Provenance, so a stale file can be recognised without guessing.
     TNamed(("prov_" + tag).c_str(),
            Form("sample=%s; WP=%s; quantity=%s; plateau window dR in [%.2f,%.2f]; "
-                "source=plot_mc_trig_eff.cxx", sample.c_str(), wp_text.c_str(),
-                quantity.c_str(), kPlateauLo, kPlateauHi)).Write();
+                "systematic window dR in [%.2f,%.2f]; source=plot_mc_trig_eff.cxx",
+                sample.c_str(), wp_text.c_str(), quantity.c_str(),
+                kPlateauLo, kPlateauHi, kPlateauSystLo, kPlateauSystHi)).Write();
     f->Close();
     if (prev) prev->cd();
     std::cout << "  wrote plateau map " << tag << " -> " << path << std::endl;
-    delete hval; delete herr; delete hrms; delete hnb; delete hincl;
+    delete hval; delete herr; delete hrms; delete hnb; delete hsys;
+    delete hincl; delete hisys;
 }
 
 } // namespace
@@ -645,7 +676,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
     const SampleCfg cfg = MakeCfg(sample, use_tight_wp);
     // Shared sample identity -- used here only to name the plateau ROOT file that the fit stage
     // reads back (dr_correction_sample_cfg.h).
-    const DrCorrSample id = GetDrCorrSample(sample);
+    const DrCorrSample id = GetDrCorrSample(sample, use_tight_wp);
 
     // WP config (registry: Analysis/docs/muon_wp_registry.md): Tight nominal unsuffixed;
     // Medium inputs carry _medium_wp. BOTH the MC inputs AND the data tag-and-probe file are
@@ -656,18 +687,23 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
     const std::string headline = cfg.sample_text + ", " + wp_text;
 
     TFile* fmc   = OpenFile(cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label + wp_suf + ".root");
-    TFile* fmc3  = OpenFile(cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label + wp_suf + "_step3.root");
+    TFile* fmc3  = OpenFile(cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label + wp_suf
+                          + MCTrigEffPairPt::FileSuffix() + "_step3.root");
     TFile* ffit  = OpenFile(cfg.mc_dir + "single_mu_effcy_pT_fit_mc" + wp_suf + ".root");
     TFile* fdata = OpenFile(cfg.data_file);
 
     // Medium-WP plots go into a medium/ SUBDIRECTORY of each step dir (same filenames as
     // Tight); Tight (nominal) stays in the step dir root (user request, 2026-07-16).
-    const std::string wp_dir = use_tight_wp ? "" : "medium/";
+    // The working point is in the TOP-LEVEL tree now (out_base = mc_based{_pt4bin}{_medium},
+    // dr_correction_sample_cfg.h::DrCorrOutTag), so there is no per-step medium/ subdirectory.
+    // This local copy kept creating one, leaving mc_based_medium/step3_dr_correction/medium/ --
+    // the half-migrated layout the user asked to be rid of.
+    const std::string wp_dir = "";
     const std::string dir1 = cfg.out_base + "step1_singles_data_mc/"  + wp_dir;
     // Step-2 is produced 3x (round-5 #3): the L1, HLT|L1 and full-chain efficiencies each go
     // into their OWN subdirectory of step2_dr_binned_singles/ (built inside the stage loop).
     const std::string dir2_base = cfg.out_base + "step2_dr_binned_singles/";
-    const std::string dir3 = cfg.out_base + "step3_dr_correction/"     + wp_dir;
+    const std::string dir3 = cfg.out_base + "step3_dr_correction/" + wp_dir;
     for (const auto& d : {dir1, dir3}) gSystem->mkdir(d.c_str(), kTRUE);
 
     // The two series are DIFFERENT estimators of the same efficiency, so each legend entry
@@ -831,7 +867,10 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             c.cd(static_cast<int>(iq) + 1);
         }
         // legend / label pad
-        c.cd(12);  // legend/label pad: 11 q.eta bins now fill pads 1-11 (round-5 #2)
+        // legend/label pad = the first pad AFTER the q.eta panels. Derived, never hardcoded:
+        // the bin count changed 11 -> 10 in round 8 and a literal 12 would have drawn the
+        // legend into an occupied panel.
+        c.cd(static_cast<int>(kQEtaSuffix.size()) + 1);
         DrawHeadline(headline + ", " + kChargeTex[ic], 0.02, 0.88, 0.048);
         auto* gm = new TGraphAsymmErrors(); StyleGraph(gm, kMCColor, 21);
         auto* gd = new TGraphAsymmErrors(); StyleGraph(gd, kDataColor, 20);
@@ -978,7 +1017,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             // R3 ratio pad: §3.2 asks whether the three DeltaR series AGREE at fixed
             // kinematics. Ratio to the isolated (DeltaR >= 1.0) series = that test.
             pads.second->cd();
-            DrawRatioFrame(v.xlo, v.xhi, v.xtitle, "/ #DeltaR #geq 1", 0.4, 1.9);
+            DrawRatioFrame(v.xlo, v.xhi, v.xtitle, "ratio to #DeltaR #geq 1", 0.4, 1.9);
             for (size_t id = 0; id + 1 < gdr.size(); ++id) {
                 auto* g = DivideGraphClean(gdr[id], gdr.back());
                 StyleGraph(g, kDrColor[id], kDrMarker[id], 0.8);
@@ -1031,7 +1070,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             // with the isolated (DeltaR >= 1.0) one at fixed kinematics?
             pads.second->cd();
             gPad->SetLogx();
-            DrawRatioFrame(4.0, 60.0, "p_{T} [GeV]", "/ #DeltaR #geq 1", 0.4, 1.9);
+            DrawRatioFrame(4.0, 60.0, "p_{T} [GeV]", "ratio to #DeltaR #geq 1", 0.4, 1.9);
             for (size_t id = 0; id + 1 < gdr.size(); ++id) {
                 auto* g = DivideGraphClean(gdr[id], gdr.back());
                 StyleGraph(g, kDrColor[id], kDrMarker[id], 0.7);
@@ -1040,7 +1079,10 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             }
             c.cd(static_cast<int>(iq) + 1);
         }
-        c.cd(12);  // legend/label pad: 11 q.eta bins now fill pads 1-11 (round-5 #2)
+        // legend/label pad = the first pad AFTER the q.eta panels. Derived, never hardcoded:
+        // the bin count changed 11 -> 10 in round 8 and a literal 12 would have drawn the
+        // legend into an occupied panel.
+        c.cd(static_cast<int>(kQEtaSuffix.size()) + 1);
         DrawHeadline(headline + ", " + kChargeTex[ic], 0.02, 0.88, 0.048); // 0.048: long overlay headline + charge must fit (review iter 1)
         auto* leg = new TLegend(0.05, 0.35, 0.95, 0.80);
         leg->SetBorderSize(0);
@@ -1212,7 +1254,11 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                     }
                 }
                 c.cd(0);                       // same sub-pad trap as the (a) canvases above
-                DrawHeadline(headline + ", " + kChargeTex[ic]);
+                // RAW TLatex, not DrawHeadline: on the CANVAS the text size is a fraction of the
+                // 2100 px canvas height, and DrawHeadline's 0.030 floor (meant for a pad) would
+                // render an 60 px headline that runs off the right edge.
+                TLatex hl; hl.SetNDC(); hl.SetTextFont(42); hl.SetTextSize(0.012);
+                hl.DrawLatex(0.02, 0.988, (headline + ", " + kChargeTex[ic]).c_str());
                 if (!drop_note.empty()) {
                     TLatex nt; nt.SetNDC(); nt.SetTextFont(42); nt.SetTextSize(0.014);
                     nt.SetTextColor(kGray + 3); nt.DrawLatex(0.04, 0.008, drop_note.c_str());
@@ -1304,8 +1350,12 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
     TH1D* r_full = MakeRatio("full");
 
     const auto plateau = PlateauWeightedMean(r_full, kPlateauLo, kPlateauHi);
-    printf("  %s plateau (weighted mean, dR in [%.0f,%.0f]): %.4f +- %.4f\n",
-           sample.c_str(), kPlateauLo, kPlateauHi, plateau.first, plateau.second);
+    const auto plateau_alt = PlateauWeightedMean(r_full, kPlateauSystLo, kPlateauSystHi);
+    const double plateau_syst = std::fabs(plateau.first - plateau_alt.first);
+    printf("  %s plateau (weighted mean, dR in [%.0f,%.0f]): %.4f +- %.4f"
+           "   [window syst vs dR in [%.0f,%.0f] = %.4f]\n",
+           sample.c_str(), kPlateauLo, kPlateauHi, plateau.first, plateau.second,
+           kPlateauSystLo, kPlateauSystHi, plateau_syst);
 
     auto DrawStep3 = [&](TH1D* r, double xlo, double xhi, const std::string& png,
                          bool plateau_in_range) {
@@ -1359,7 +1409,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             " = P(both #mu fire | #DeltaR) / (#varepsilon_{1}#varepsilon_{2})").c_str());
         // %.4f, not %.3f: the pp full-sample error is 4e-4 and printed as "#pm 0.000", which
         // reads as a zero uncertainty.
-        tl.DrawLatex(0.42, 0.25, Form("plateau #LT#DeltaR#in[%.0f,%.0f]#GT = %.4f #pm %.4f",
+        tl.DrawLatex(0.42, 0.25, Form("plateau #LT#DeltaR#in[%g,%g]#GT = %.4f #pm %.4f",
                                       kPlateauLo, kPlateauHi, plateau.first, plateau.second));
         SaveCanvas(c, dir3 + png + ".png");
     };
@@ -1382,21 +1432,16 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         const int neta_s = h3zn_s->GetZaxis()->GetNbins();
         // last slice: bright kMagenta, NOT kMagenta+2 -- the darkened shade reads as another
         // dark red/blue against kRed+1 / kBlue+1 and the series cannot be told apart
-        const std::vector<Color_t> scol   = {kRed + 1, kBlue + 1, kGreen + 2, kMagenta};
-        const std::vector<Style_t> smark  = {20, 21, 22, 23};
-
-        TCanvas c("c_step3_ptslices", "", 900, 700);
-        gPad->SetLeftMargin(0.12);
-        gPad->SetBottomMargin(0.12);
-        // Reserved strip ABOVE the frame for the legend. In the overlay the four series fill the
-        // whole pad, so every in-frame position lands on data -- and a white legend backing is
-        // invisible against the white frame, it only hides the points behind it. Giving the
-        // legend its own space outside the frame is the only placement that can never collide.
-        gPad->SetTopMargin(0.22);
+        // 8 pair-pT bins since round 8: these are indexed by pair-pT bin BELOW WITHOUT a
+        // modulo, so a 4-entry palette was an out-of-bounds read (undefined behaviour), not
+        // just a colour clash. One distinct colour+marker per bin, and the indexing is
+        // guarded with % anyway so a future bin-count change cannot resurrect the bug.
+        const std::vector<Color_t> scol   = {kRed + 1, kBlue + 1, kGreen + 2, kMagenta,
+                                            kOrange + 7, kCyan + 2, kViolet + 1, kBlack};
+        const std::vector<Style_t> smark  = {20, 21, 22, 23, 33, 34, 29, 24};
 
         std::vector<TH1D*> ratios;
         std::vector<std::string> slabels;
-        double ymax = 0.;
         for (int iy = 1; iy <= npt_s; ++iy) {
             TH1D* n = h3zn_s->ProjectionX(Form("s3_n_%d", iy), iy, iy, 1, neta_s, "e");
             TH1D* d = h3zd_s->ProjectionX(Form("s3_d_%d", iy), iy, iy, 1, neta_s, "e");
@@ -1410,69 +1455,85 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             ratios.push_back(r);
             const double plo = h3zn_s->GetYaxis()->GetBinLowEdge(iy);
             const double phi = h3zn_s->GetYaxis()->GetBinUpEdge(iy);
-            slabels.push_back(Form("%.0f < p_{T}^{pair} < %.0f GeV", plo, phi));
-            for (int i = 1; i <= r->GetNbinsX(); ++i)
-                ymax = std::max(ymax, r->GetBinContent(i) + r->GetBinError(i));
+            slabels.push_back(Form("%.1f < p_{T}^{pair} < %.1f GeV", plo, phi));
         }
-        // CAP the auto-range: max+error is set by the noisiest high-pair-pT bin (the overlay
-        // has one at 6.4 +- 5.5), which would squeeze all four series -- and the small-DeltaR
-        // structure this panel exists to show -- into the bottom sliver of the pad.
-        // A cap hides points, so every point pushed off-scale is MARKED with an up-arrow and
-        // listed on the canvas: silently dropping data from a physics figure is not allowed.
-        ymax = std::min(std::max(1.15, 1.15 * ymax), 3.0);
-        DrawEffFrame(0.0, 1.0, "#DeltaR", 0.0, ymax, cfg.eps_dr_text);
-        DrawUnityLine(0.0, 1.0);
+        
+        // ---- SPLIT INTO TWO PNGs (round 8, user) -------------------------------------------
+        // With 8 pair-pT bins, overlaying every series in one pad is unreadable -- the curves sit
+        // on top of each other and the small-DeltaR structure the panel exists to show is lost.
+        // Draw the LOWER half of the pair-pT bins in one file and the UPPER half in another.
+        // The y-range is computed PER HALF so each file is scaled to the data it actually shows.
+        const int nhalf = (npt_s + 1) / 2;
+        for (int half = 0; half < 2; ++half) {
+            const int is_lo = half * nhalf;
+            const int is_hi = std::min(npt_s, (half + 1) * nhalf);
+            if (is_lo >= is_hi) continue;
 
-        auto* leg = new TLegend(0.13, 0.79, 0.97, 0.925);   // in the reserved top strip
-        leg->SetNColumns(2);
-        leg->SetBorderSize(0);
-        leg->SetFillStyle(0);
-        leg->SetTextSize(0.032);
-        for (size_t is = 0; is < ratios.size(); ++is) {
-            ratios[is]->SetMarkerStyle(smark[is]);
-            ratios[is]->SetMarkerColor(scol[is]);
-            ratios[is]->SetLineColor(scol[is]);
-            ratios[is]->SetLineWidth(2);
-            leg->AddEntry(ratios[is], slabels[is].c_str(), "lp");
-        }
-        leg->Draw();                       // legend first ...
-        std::vector<std::string> offscale;
-        for (size_t is = 0; is < ratios.size(); ++is) {
-            ratios[is]->Draw("E1 same");   // ... then the data on top of it
+            TCanvas c(Form("c_step3_ptslices_%d", half), "", 900, 700);
+            gPad->SetLeftMargin(0.12);
+            gPad->SetBottomMargin(0.12);
+            // Reserved strip ABOVE the frame for the legend: with the series filling the pad,
+            // every in-frame position lands on data and a white legend backing would only hide
+            // the points behind it.
+            gPad->SetTopMargin(0.22);
 
-            // mark every point whose CENTRAL VALUE is above the capped frame
-            for (int i = 1; i <= ratios[is]->GetNbinsX(); ++i) {
-                const double v = ratios[is]->GetBinContent(i);
-                if (v <= ymax) continue;
-                const double x = ratios[is]->GetBinCenter(i);
-                auto* ar = new TArrow(x, ymax * 0.88, x, ymax * 0.985, 0.012, "|>");
-                ar->SetLineColor(scol[is]);
-                ar->SetFillColor(scol[is]);
-                ar->SetLineWidth(2);
-                ar->Draw();
-                offscale.push_back(Form("#DeltaR=%.2f: %.1f #pm %.1f", x, v,
-                                        ratios[is]->GetBinError(i)));
+            double ymax = 0.;
+            for (int is = is_lo; is < is_hi; ++is)
+                for (int i = 1; i <= ratios[is]->GetNbinsX(); ++i)
+                    ymax = std::max(ymax, ratios[is]->GetBinContent(i) + ratios[is]->GetBinError(i));
+            // CAP the auto-range: max+error is set by the noisiest bin, which would squeeze the
+            // structure into the bottom sliver. Every point pushed off scale is MARKED with an
+            // arrow and listed -- silently dropping data from a physics figure is not allowed.
+            ymax = std::min(std::max(1.15, 1.15 * ymax), 3.0);
+            DrawEffFrame(0.0, 1.0, "#DeltaR", 0.0, ymax, cfg.eps_dr_text);
+            DrawUnityLine(0.0, 1.0);
+
+            auto* leg = new TLegend(0.13, 0.79, 0.97, 0.925);
+            leg->SetNColumns(2);
+            leg->SetBorderSize(0);
+            leg->SetFillStyle(0);
+            leg->SetTextSize(0.032);
+            for (int is = is_lo; is < is_hi; ++is) {
+                ratios[is]->SetMarkerStyle(smark[is % smark.size()]);
+                ratios[is]->SetMarkerColor(scol[is % scol.size()]);
+                ratios[is]->SetLineColor(scol[is % scol.size()]);
+                ratios[is]->SetLineWidth(2);
+                leg->AddEntry(ratios[is], slabels[is].c_str(), "lp");
             }
-        }
-        DrawHeadline(headline, 0.12, 0.965);
-        if (!offscale.empty()) {
-            // Inside the frame, below the legend strip: this note is what keeps the y-cap
-            // honest, so it must stay legible. 2 entries per line.
-            TLatex note;
-            note.SetNDC();
-            note.SetTextFont(42);
-            note.SetTextSize(0.026);
-            note.SetTextColor(kGray + 3);
-            double y = 0.72;
-            for (size_t i = 0; i < offscale.size(); i += 2) {
-                std::string txt = (i == 0) ? "above scale (arrows): " : "  ";
-                txt += offscale[i];
-                if (i + 1 < offscale.size()) txt += ", " + offscale[i + 1];
-                note.DrawLatex(0.45, y, txt.c_str());
-                y -= 0.035;
+            leg->Draw();
+            std::vector<std::string> offscale;
+            for (int is = is_lo; is < is_hi; ++is) {
+                ratios[is]->Draw("E1 same");
+                for (int i = 1; i <= ratios[is]->GetNbinsX(); ++i) {
+                    const double v = ratios[is]->GetBinContent(i);
+                    if (v <= ymax) continue;
+                    const double x = ratios[is]->GetBinCenter(i);
+                    auto* ar = new TArrow(x, ymax * 0.88, x, ymax * 0.985, 0.012, "|>");
+                    ar->SetLineColor(scol[is % scol.size()]);
+                    ar->SetFillColor(scol[is % scol.size()]);
+                    ar->SetLineWidth(2);
+                    ar->Draw();
+                    offscale.push_back(Form("#DeltaR=%.2f: %.1f #pm %.1f", x, v,
+                                            ratios[is]->GetBinError(i)));
+                }
             }
+            DrawHeadline(headline, 0.12, 0.965);
+            if (!offscale.empty()) {
+                TLatex note;
+                note.SetNDC(); note.SetTextFont(42); note.SetTextSize(0.026);
+                note.SetTextColor(kGray + 3);
+                double y = 0.72;
+                for (size_t i = 0; i < offscale.size(); i += 2) {
+                    std::string txt = (i == 0) ? "above scale (arrows): " : "  ";
+                    txt += offscale[i];
+                    if (i + 1 < offscale.size()) txt += ", " + offscale[i + 1];
+                    note.DrawLatex(0.45, y, txt.c_str());
+                    y -= 0.035;
+                }
+            }
+            SaveCanvas(c, dir3 + Form("step3_eps_dr_zoom_pair_pt_slices_%s.png",
+                                      half == 0 ? "lowpt" : "highpt"));
         }
-        SaveCanvas(c, dir3 + "step3_eps_dr_zoom_pair_pt_slices.png");
     }
 
     // ================================================================
@@ -1499,7 +1560,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         const int npt  = h3fn->GetYaxis()->GetNbins();  // coarse pair-pT (crossx)
         const int neta = h3fn->GetZaxis()->GetNbins();  // coarse pair-eta (crossx)
 
-        auto pt_label  = [&](int iy){ return std::string(Form("%.0f < p_{T}^{pair} < %.0f GeV",
+        auto pt_label  = [&](int iy){ return std::string(Form("%.1f < p_{T}^{pair} < %.1f GeV",
             h3fn->GetYaxis()->GetBinLowEdge(iy), h3fn->GetYaxis()->GetBinUpEdge(iy))); };
         auto eta_label = [&](int iz){ return std::string(Form("%.1f < #eta^{pair} < %.1f",
             h3fn->GetZaxis()->GetBinLowEdge(iz), h3fn->GetZaxis()->GetBinUpEdge(iz))); };
@@ -1522,8 +1583,10 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             return r;
         };
 
-        const std::vector<Color_t> ptcol  = {kRed + 1, kBlue + 1, kGreen + 2, kMagenta};
-        const std::vector<Style_t> ptmark = {20, 21, 22, 23};
+        // 8 pair-pT bins: a 4-entry palette made bins 1&5, 2&6, 3&7, 4&8 indistinguishable.
+        const std::vector<Color_t> ptcol  = {kRed + 1, kBlue + 1, kGreen + 2, kMagenta,
+                                             kOrange + 7, kCyan + 2, kViolet + 1, kBlack};
+        const std::vector<Style_t> ptmark = {20, 21, 22, 23, 33, 34, 29, 24};
 
         // ---- two panel plots (zoom + full dR) ----
         struct Rng { TH3D* n; TH3D* d; TH3D* a; TH3D* b; std::string tag; double xhi; };
@@ -1599,25 +1662,34 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         }
 
         // ---- tables (full-dR 3D, plateau window [kPlateauLo, kPlateauHi]) ----
+        // Each cell is measured TWICE -- once in the nominal window and once in the retired
+        // [1,4] one -- from the SAME ratio histogram, so the difference is purely the window.
         using Plat = PlateauCell;   // shared with the ROOT-file writer below
         auto cell_plateau = [&](int iy, int iz) -> Plat {
             TH1D* r = cell_ratio(h3fn, h3fd, h3fA, h3fB, iy, iz, neta,
                                  Form("plat_%s_%d_%d", sample.c_str(), iy, iz));
-            double sw = 0, swv = 0;
-            std::vector<std::pair<double,double>> vw;  // (value, weight)
-            for (int i = 1; i <= r->GetNbinsX(); ++i) {
-                const double xc = r->GetBinCenter(i);
-                if (xc < kPlateauLo || xc > kPlateauHi) continue;
-                const double v = r->GetBinContent(i), e = r->GetBinError(i);
-                if (e <= 0. || v == 0.) continue;
-                const double w = 1. / (e * e); sw += w; swv += w * v; vw.push_back({v, w});
-            }
+            auto window = [&](double lo, double hi) -> Plat {
+                double sw = 0, swv = 0;
+                std::vector<std::pair<double,double>> vw;  // (value, weight)
+                for (int i = 1; i <= r->GetNbinsX(); ++i) {
+                    const double xc = r->GetBinCenter(i);
+                    if (xc < lo || xc > hi) continue;
+                    const double v = r->GetBinContent(i), e = r->GetBinError(i);
+                    if (e <= 0. || v == 0.) continue;
+                    const double w = 1. / (e * e); sw += w; swv += w * v; vw.push_back({v, w});
+                }
+                if (sw <= 0.) return Plat{ -1, -1, -1, 0 };
+                const double mean = swv / sw, err = std::sqrt(1. / sw);
+                double swd = 0;
+                for (auto& p : vw) swd += p.second * (p.first - mean) * (p.first - mean);
+                const double rms = std::sqrt(swd / sw);  // weighted RMS scatter about the mean
+                return Plat{ mean, err, rms, (int)vw.size() };
+            };
+            Plat nom = window(kPlateauLo, kPlateauHi);
+            const Plat alt = window(kPlateauSystLo, kPlateauSystHi);
             delete r;
-            if (sw <= 0.) return Plat{ -1, -1, -1, 0 };
-            const double mean = swv / sw, err = std::sqrt(1. / sw);
-            double swd = 0; for (auto& p : vw) swd += p.second * (p.first - mean) * (p.first - mean);
-            const double rms = std::sqrt(swd / sw);      // weighted RMS scatter about the mean
-            return Plat{ mean, err, rms, (int)vw.size() };
+            if (nom.nb > 0 && alt.nb > 0) nom.syst = std::fabs(nom.mean - alt.mean);
+            return nom;
         };
 
         std::vector<std::vector<Plat>> P(npt, std::vector<Plat>(neta));
@@ -1627,7 +1699,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         // Table A: plateau value +- stat error ; Table B: fluctuation (stat err + RMS scatter)
         auto eta_hdr = [&](int iz){ return Form("[%.1f,%.1f)",
             h3fn->GetZaxis()->GetBinLowEdge(iz), h3fn->GetZaxis()->GetBinUpEdge(iz)); };
-        auto pt_hdr  = [&](int iy){ return Form("pTpair[%.0f,%.0f)",
+        auto pt_hdr  = [&](int iy){ return Form("pTpair[%.1f,%.1f)",
             h3fn->GetYaxis()->GetBinLowEdge(iy), h3fn->GetYaxis()->GetBinUpEdge(iy)); };
 
         auto write_table_A = [&](std::ostream& os){
@@ -1653,17 +1725,23 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                << kPlateauLo << "," << kPlateauHi << "]).\n";
             os << "# sample=" << sample << "  WP=" << wp_text << "\n";
             os << "# each cell = stat_err(mean) / rms_scatter (weighted RMS of the plateau-window"
-                  " bins about their mean) / n_bins.\n";
+                  " bins about their mean) / n_bins / window_syst.\n";
             os << "# rms_scatter measures how flat/noisy the plateau is; compare |mean-1| to it +"
                   " stat_err to judge whether the deviation is significant (systematic size).\n";
-            os << std::left << std::setw(24) << "pair-eta \\ pair-pT";
-            for (int iy = 1; iy <= npt; ++iy) os << std::setw(24) << pt_hdr(iy);
+            os << "# window_syst = |plateau[" << kPlateauLo << "," << kPlateauHi << "] - plateau["
+               << kPlateauSystLo << "," << kPlateauSystHi << "]|, the plateau-window"
+                  " normalization systematic (-- = not evaluable).\n";
+            os << std::left << std::setw(28) << "pair-eta \\ pair-pT";
+            for (int iy = 1; iy <= npt; ++iy) os << std::setw(28) << pt_hdr(iy);
             os << "\n";
             for (int iz = 1; iz <= neta; ++iz) {
-                os << std::left << std::setw(24) << eta_hdr(iz);
+                os << std::left << std::setw(28) << eta_hdr(iz);
                 for (int iy = 1; iy <= npt; ++iy) {
                     const Plat& p = P[iy - 1][iz - 1];
-                    os << std::setw(24) << (p.nb > 0 ? Form("%.4f/%.4f/%d", p.err, p.rms, p.nb) : "--");
+                    os << std::setw(28) << (p.nb > 0
+                        ? Form("%.4f/%.4f/%d/%s", p.err, p.rms, p.nb,
+                               p.syst >= 0. ? Form("%.4f", p.syst) : "--")
+                        : "--");
                 }
                 os << "\n";
             }
@@ -1678,7 +1756,8 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         // Same numbers, machine-readable, for fit_dr_corrections.cxx. RECREATE: Step 3 always
         // runs, so it owns the file and Step 4 appends to it below.
         WritePlateauRootFile(DrCorrPlateauFile(id, use_tight_wp), /*recreate=*/true, 3, h3fn, P,
-                             plateau.first, plateau.second, sample, wp_text, "eps_dR");
+                             plateau.first, plateau.second, plateau_syst,
+                             sample, wp_text, "eps_dR");
     }
 
     // ================================================================
@@ -1689,7 +1768,8 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
     // ================================================================
     {
         const std::string step4_path =
-            cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label + wp_suf + "_step4.root";
+            cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label + wp_suf
+                                 + MCTrigEffPairPt::FileSuffix() + "_step4.root";
         TFile* fmc4 = TFile::Open(step4_path.c_str(), "READ");
         if (!fmc4 || fmc4->IsZombie()) {
             std::cout << "\n[Step 4] no " << step4_path << " -- skipping single-leg ΔR plots "
@@ -1727,8 +1807,12 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             TH1D* r4_full = MakeRatio4("full");
 
             const auto plat4 = PlateauWeightedMean(r4_full, kPlateauLo, kPlateauHi);
-            printf("  %s single-leg plateau (weighted mean, dR in [%.0f,%.0f]): %.4f +- %.4f\n",
-                   sample.c_str(), kPlateauLo, kPlateauHi, plat4.first, plat4.second);
+            const auto plat4_alt = PlateauWeightedMean(r4_full, kPlateauSystLo, kPlateauSystHi);
+            const double plat4_syst = std::fabs(plat4.first - plat4_alt.first);
+            printf("  %s single-leg plateau (weighted mean, dR in [%.0f,%.0f]): %.4f +- %.4f"
+                   "   [window syst vs dR in [%.0f,%.0f] = %.4f]\n",
+                   sample.c_str(), kPlateauLo, kPlateauHi, plat4.first, plat4.second,
+                   kPlateauSystLo, kPlateauSystHi, plat4_syst);
 
             auto DrawStep4 = [&](TH1D* r, double xlo, double xhi, const std::string& png,
                                  bool plateau_in_range) {
@@ -1766,7 +1850,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 TLatex tl; tl.SetNDC(); tl.SetTextFont(42); tl.SetTextSize(0.035);
                 tl.DrawLatex(0.42, 0.32, (eps_single_text +
                     " = P(#mu fires mu4 | #DeltaR) / #varepsilon(p_{T}, q#upoint#eta)").c_str());
-                tl.DrawLatex(0.42, 0.25, Form("plateau #LT#DeltaR#in[%.0f,%.0f]#GT = %.4f #pm %.4f",
+                tl.DrawLatex(0.42, 0.25, Form("plateau #LT#DeltaR#in[%g,%g]#GT = %.4f #pm %.4f",
                                               kPlateauLo, kPlateauHi, plat4.first, plat4.second));
                 SaveCanvas(c, dir4 + png + ".png");
             };
@@ -1788,7 +1872,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             TH3D* h3fQ = GetObj<TH3D>(fmc4, "h_mc_single_dr_full_vs_pt_eta_covQ");
             const int npt  = h3fn->GetYaxis()->GetNbins();
             const int neta = h3fn->GetZaxis()->GetNbins();
-            auto pt_label  = [&](int iy){ return std::string(Form("%.0f < p_{T}^{pair} < %.0f GeV",
+            auto pt_label  = [&](int iy){ return std::string(Form("%.1f < p_{T}^{pair} < %.1f GeV",
                 h3fn->GetYaxis()->GetBinLowEdge(iy), h3fn->GetYaxis()->GetBinUpEdge(iy))); };
             auto eta_label = [&](int iz){ return std::string(Form("%.1f < #eta^{pair} < %.1f",
                 h3fn->GetZaxis()->GetBinLowEdge(iz), h3fn->GetZaxis()->GetBinUpEdge(iz))); };
@@ -1809,64 +1893,75 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 delete n; delete d; delete a; delete b; delete p; delete q;
                 return r;
             };
-            const std::vector<Color_t> ptcol  = {kRed + 1, kBlue + 1, kGreen + 2, kMagenta};
-            const std::vector<Style_t> ptmark = {20, 21, 22, 23};
+            // 8 pair-pT bins since round 8 -- one distinct colour+marker per bin.
+            const std::vector<Color_t> ptcol  = {kRed + 1, kBlue + 1, kGreen + 2, kMagenta,
+                                                 kOrange + 7, kCyan + 2, kViolet + 1, kBlack};
+            const std::vector<Style_t> ptmark = {20, 21, 22, 23, 33, 34, 29, 24};
 
             // pair-pT slices (integrate eta): zoom dR
             {
-                TCanvas c("c_step4_ptslices", "", 900, 700);
-                gPad->SetLeftMargin(0.12); gPad->SetBottomMargin(0.12);
-                gPad->SetTopMargin(0.22);   // reserved legend strip, as in Step 3
-                std::vector<TH1D*> rs; double ymax = 0.;
-                for (int iy = 1; iy <= npt; ++iy) {
-                    TH1D* r = cell_ratio(h3zn, h3zd, h3zA, h3zB, h3zP, h3zQ, iy, 0, neta,
-                                         Form("s4pt_%s_%d", sample.c_str(), iy));
-                    rs.push_back(r);
-                    for (int i = 1; i <= r->GetNbinsX(); ++i)
-                        ymax = std::max(ymax, r->GetBinContent(i) + r->GetBinError(i));
-                }
-                ymax = std::min(std::max(1.15, 1.15 * ymax), 3.0);
-                DrawEffFrame(0.0, 1.0, "#DeltaR", 0.0, ymax, eps_single_text);
-                DrawUnityLine(0.0, 1.0);
-                auto* leg = new TLegend(0.13, 0.79, 0.97, 0.925);
-                leg->SetNColumns(2);
-                leg->SetBorderSize(0);
-                leg->SetFillStyle(0);
-                leg->SetTextSize(0.032);
-                for (int iy = 0; iy < npt; ++iy) {
-                    rs[iy]->SetMarkerStyle(ptmark[iy % ptmark.size()]);
-                    rs[iy]->SetMarkerColor(ptcol[iy % ptcol.size()]);
-                    rs[iy]->SetLineColor(ptcol[iy % ptcol.size()]);
-                    rs[iy]->SetLineWidth(2);
-                    leg->AddEntry(rs[iy], pt_label(iy + 1).c_str(), "lp");
-                }
-                leg->Draw();
-                std::vector<std::string> offscale;
-                for (int iy = 0; iy < npt; ++iy) {
-                    rs[iy]->Draw("E1 same");
-                    for (int i = 1; i <= rs[iy]->GetNbinsX(); ++i) {
-                        if (rs[iy]->GetBinContent(i) <= ymax) continue;
-                        auto* ar = new TArrow(rs[iy]->GetBinCenter(i), ymax * 0.88,
-                                              rs[iy]->GetBinCenter(i), ymax * 0.985, 0.012, "|>");
-                        ar->SetLineColor(ptcol[iy % ptcol.size()]);
-                        ar->SetFillColor(ptcol[iy % ptcol.size()]); ar->Draw();
-                        offscale.push_back(Form("#DeltaR=%.2f: %.1f #pm %.1f", rs[iy]->GetBinCenter(i),
-                                                rs[iy]->GetBinContent(i), rs[iy]->GetBinError(i)));
+                // Build every series ONCE, then draw the lower and upper halves of the pair-pT
+                // bins into SEPARATE PNGs (round 8, user): 8 overlaid series in one pad are
+                // unreadable. y-range computed per half so each file is scaled to its own data.
+                std::vector<TH1D*> rs;
+                for (int iy = 1; iy <= npt; ++iy)
+                    rs.push_back(cell_ratio(h3zn, h3zd, h3zA, h3zB, h3zP, h3zQ, iy, 0, neta,
+                                            Form("s4pt_%s_%d", sample.c_str(), iy)));
+                const int nhalf4 = (npt + 1) / 2;
+                for (int half = 0; half < 2; ++half) {
+                    const int lo = half * nhalf4, hi = std::min(npt, (half + 1) * nhalf4);
+                    if (lo >= hi) continue;
+                    TCanvas c(Form("c_step4_ptslices_%d", half), "", 900, 700);
+                    gPad->SetLeftMargin(0.12); gPad->SetBottomMargin(0.12);
+                    gPad->SetTopMargin(0.22);   // reserved legend strip, as in Step 3
+                    double ymax = 0.;
+                    for (int iy = lo; iy < hi; ++iy)
+                        for (int i = 1; i <= rs[iy]->GetNbinsX(); ++i)
+                            ymax = std::max(ymax, rs[iy]->GetBinContent(i) + rs[iy]->GetBinError(i));
+                    ymax = std::min(std::max(1.15, 1.15 * ymax), 3.0);
+                    DrawEffFrame(0.0, 1.0, "#DeltaR", 0.0, ymax, eps_single_text);
+                    DrawUnityLine(0.0, 1.0);
+                    auto* leg = new TLegend(0.13, 0.79, 0.97, 0.925);
+                    leg->SetNColumns(2);
+                    leg->SetBorderSize(0);
+                    leg->SetFillStyle(0);
+                    leg->SetTextSize(0.032);
+                    for (int iy = lo; iy < hi; ++iy) {
+                        rs[iy]->SetMarkerStyle(ptmark[iy % ptmark.size()]);
+                        rs[iy]->SetMarkerColor(ptcol[iy % ptcol.size()]);
+                        rs[iy]->SetLineColor(ptcol[iy % ptcol.size()]);
+                        rs[iy]->SetLineWidth(2);
+                        leg->AddEntry(rs[iy], pt_label(iy + 1).c_str(), "lp");
                     }
-                }
-                DrawHeadline(headline, 0.12, 0.965);
-                if (!offscale.empty()) {
-                    TLatex note; note.SetNDC(); note.SetTextFont(42); note.SetTextSize(0.026);
-                    note.SetTextColor(kGray + 3);
-                    double y = 0.72;   // inside the frame, below the legend strip
-                    for (size_t i = 0; i < offscale.size(); i += 2) {
-                        std::string txt = (i == 0) ? "above scale (arrows): " : "  ";
-                        txt += offscale[i];
-                        if (i + 1 < offscale.size()) txt += ", " + offscale[i + 1];
-                        note.DrawLatex(0.45, y, txt.c_str()); y -= 0.035;
+                    leg->Draw();
+                    std::vector<std::string> offscale;
+                    for (int iy = lo; iy < hi; ++iy) {
+                        rs[iy]->Draw("E1 same");
+                        for (int i = 1; i <= rs[iy]->GetNbinsX(); ++i) {
+                            if (rs[iy]->GetBinContent(i) <= ymax) continue;
+                            auto* ar = new TArrow(rs[iy]->GetBinCenter(i), ymax * 0.88,
+                                                  rs[iy]->GetBinCenter(i), ymax * 0.985, 0.012, "|>");
+                            ar->SetLineColor(ptcol[iy % ptcol.size()]);
+                            ar->SetFillColor(ptcol[iy % ptcol.size()]); ar->Draw();
+                            offscale.push_back(Form("#DeltaR=%.2f: %.1f #pm %.1f", rs[iy]->GetBinCenter(i),
+                                                    rs[iy]->GetBinContent(i), rs[iy]->GetBinError(i)));
+                        }
                     }
+                    DrawHeadline(headline, 0.12, 0.965);
+                    if (!offscale.empty()) {
+                        TLatex note; note.SetNDC(); note.SetTextFont(42); note.SetTextSize(0.026);
+                        note.SetTextColor(kGray + 3);
+                        double y = 0.72;   // inside the frame, below the legend strip
+                        for (size_t i = 0; i < offscale.size(); i += 2) {
+                            std::string txt = (i == 0) ? "above scale (arrows): " : "  ";
+                            txt += offscale[i];
+                            if (i + 1 < offscale.size()) txt += ", " + offscale[i + 1];
+                            note.DrawLatex(0.45, y, txt.c_str()); y -= 0.035;
+                        }
+                    }
+                    SaveCanvas(c, dir4 + Form("step4_eps_dr_single_zoom_pair_pt_slices_%s.png",
+                                              half == 0 ? "lowpt" : "highpt"));
                 }
-                SaveCanvas(c, dir4 + "step4_eps_dr_single_zoom_pair_pt_slices.png");
             }
 
             // pair-eta panels (each subplot = eta bin, each line = pair-pT bin), zoom + full
@@ -1934,26 +2029,33 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             auto cell_plateau = [&](int iy, int iz) -> Plat {
                 TH1D* r = cell_ratio(h3fn, h3fd, h3fA, h3fB, h3fP, h3fQ, iy, iz, neta,
                                      Form("s4plat_%s_%d_%d", sample.c_str(), iy, iz));
-                double sw = 0, swv = 0; std::vector<std::pair<double,double>> vw;
-                for (int i = 1; i <= r->GetNbinsX(); ++i) {
-                    const double xc = r->GetBinCenter(i);
-                    if (xc < kPlateauLo || xc > kPlateauHi) continue;
-                    const double v = r->GetBinContent(i), e = r->GetBinError(i);
-                    if (e <= 0. || v == 0.) continue;
-                    const double w = 1. / (e * e); sw += w; swv += w * v; vw.push_back({v, w});
-                }
+                auto window = [&](double lo, double hi) -> Plat {
+                    double sw = 0, swv = 0; std::vector<std::pair<double,double>> vw;
+                    for (int i = 1; i <= r->GetNbinsX(); ++i) {
+                        const double xc = r->GetBinCenter(i);
+                        if (xc < lo || xc > hi) continue;
+                        const double v = r->GetBinContent(i), e = r->GetBinError(i);
+                        if (e <= 0. || v == 0.) continue;
+                        const double w = 1. / (e * e); sw += w; swv += w * v; vw.push_back({v, w});
+                    }
+                    if (sw <= 0.) return Plat{ -1, -1, -1, 0 };
+                    const double mean = swv / sw, err = std::sqrt(1. / sw);
+                    double swd = 0;
+                    for (auto& p : vw) swd += p.second * (p.first - mean) * (p.first - mean);
+                    return Plat{ mean, err, std::sqrt(swd / sw), (int)vw.size() };
+                };
+                Plat nom = window(kPlateauLo, kPlateauHi);
+                const Plat alt = window(kPlateauSystLo, kPlateauSystHi);
                 delete r;
-                if (sw <= 0.) return Plat{ -1, -1, -1, 0 };
-                const double mean = swv / sw, err = std::sqrt(1. / sw);
-                double swd = 0; for (auto& p : vw) swd += p.second * (p.first - mean) * (p.first - mean);
-                return Plat{ mean, err, std::sqrt(swd / sw), (int)vw.size() };
+                if (nom.nb > 0 && alt.nb > 0) nom.syst = std::fabs(nom.mean - alt.mean);
+                return nom;
             };
             std::vector<std::vector<Plat>> P(npt, std::vector<Plat>(neta));
             for (int iy = 1; iy <= npt; ++iy)
                 for (int iz = 1; iz <= neta; ++iz) P[iy - 1][iz - 1] = cell_plateau(iy, iz);
             auto eta_hdr = [&](int iz){ return Form("[%.1f,%.1f)",
                 h3fn->GetZaxis()->GetBinLowEdge(iz), h3fn->GetZaxis()->GetBinUpEdge(iz)); };
-            auto pt_hdr  = [&](int iy){ return Form("pTpair[%.0f,%.0f)",
+            auto pt_hdr  = [&](int iy){ return Form("pTpair[%.1f,%.1f)",
                 h3fn->GetYaxis()->GetBinLowEdge(iy), h3fn->GetYaxis()->GetBinUpEdge(iy)); };
             auto write_table_A = [&](std::ostream& os){
                 os << "# Step-4 large-dR plateau eps_single (weighted mean over dR in ["
@@ -1978,15 +2080,21 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 os << "# Step-4 plateau FLUCTUATION per (pair pT, pair eta) cell (dR in ["
                    << kPlateauLo << "," << kPlateauHi << "]).\n";
                 os << "# sample=" << sample << "  WP=" << wp_text << "\n";
-                os << "# each cell = stat_err(mean) / rms_scatter / n_bins.\n";
-                os << std::left << std::setw(24) << "pair-eta \\ pair-pT";
-                for (int iy = 1; iy <= npt; ++iy) os << std::setw(24) << pt_hdr(iy);
+                os << "# each cell = stat_err(mean) / rms_scatter / n_bins / window_syst.\n";
+                os << "# window_syst = |plateau[" << kPlateauLo << "," << kPlateauHi
+                   << "] - plateau[" << kPlateauSystLo << "," << kPlateauSystHi << "]|, the"
+                      " plateau-window normalization systematic (-- = not evaluable).\n";
+                os << std::left << std::setw(28) << "pair-eta \\ pair-pT";
+                for (int iy = 1; iy <= npt; ++iy) os << std::setw(28) << pt_hdr(iy);
                 os << "\n";
                 for (int iz = 1; iz <= neta; ++iz) {
-                    os << std::left << std::setw(24) << eta_hdr(iz);
+                    os << std::left << std::setw(28) << eta_hdr(iz);
                     for (int iy = 1; iy <= npt; ++iy) {
                         const Plat& p = P[iy - 1][iz - 1];
-                        os << std::setw(24) << (p.nb > 0 ? Form("%.4f/%.4f/%d", p.err, p.rms, p.nb) : "--");
+                        os << std::setw(28) << (p.nb > 0
+                            ? Form("%.4f/%.4f/%d/%s", p.err, p.rms, p.nb,
+                                   p.syst >= 0. ? Form("%.4f", p.syst) : "--")
+                            : "--");
                     }
                     os << "\n";
                 }
@@ -2000,8 +2108,8 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             // Machine-readable copy for fit_dr_corrections.cxx. UPDATE, not RECREATE: Step 3
             // created the file earlier in this same run and its maps must survive.
             WritePlateauRootFile(DrCorrPlateauFile(id, use_tight_wp), /*recreate=*/false, 4,
-                                 h3fn, P, plat4.first, plat4.second, sample, wp_text,
-                                 "eps_single");
+                                 h3fn, P, plat4.first, plat4.second, plat4_syst,
+                                 sample, wp_text, "eps_single");
             fmc4->Close();
         }
     }

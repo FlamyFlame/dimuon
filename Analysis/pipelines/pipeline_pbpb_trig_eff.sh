@@ -222,7 +222,7 @@ get_combined_hists() {
 
 # RDF output filename (fine q·η binning — needed for pT fitting + TH2D fallback)
 get_rdf_output() {
-  echo "$(get_year_dir "$1")/histograms_real_pairs_pbpb_20${1}_single_mu4_fine_q_eta_bin.root"
+  echo "$(get_year_dir "$1")/histograms_real_pairs_pbpb_20${1}_single_mu4_coarse_q_eta_bin_qeta_fid.root"
 }
 get_fit_output() {
   echo "$(get_year_dir "$1")/trg_effcy_pT_fitting_to_fermi_plus_log/single_mu_effcy_pT_fit.root"

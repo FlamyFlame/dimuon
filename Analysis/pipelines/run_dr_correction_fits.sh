@@ -52,6 +52,15 @@ STEPS="${STEPS:-3 4}"
 # at Rp (a visible cusp), so they are not smooth. They remain constructible for reproducing old
 # outputs, but nothing produces them by default.
 METHODS="${METHODS:-expo polyu_fixedRp interp}"
+# The pair-pT-binning token must MIRROR Utilities/MCTrigEffPairPtBinning.h: the C++ writes
+# ..._pt4bin... when MCTRIGEFF_PAIRPT_4BIN is set, and these artefact checks look the files up by
+# name. When they disagreed, a perfectly good 4-bin run was reported as 18 "missing fit files".
+PTBIN_SUF=""; [[ -n "${MCTRIGEFF_PAIRPT_4BIN:-}" ]] && PTBIN_SUF="_pt4bin"
+PTBIN_DIR=""   # retired: the pair-pT variant is in the top-level base now
+# Pair-pT binning token -- MUST match Utilities/MCTrigEffPairPtBinning.h::FileSuffix().
+# The C++ builds the real filenames; this shell only VALIDATES them, and a name built in two
+# places is exactly how the 4-bin pass came to report every artefact as missing while the
+# files were in fact written correctly under their token.
 SKIP_MEASURE="${SKIP_MEASURE:-0}"
 SKIP_FIT="${SKIP_FIT:-0}"
 STRICT_GUARD="${STRICT_GUARD:-0}"
@@ -99,7 +108,8 @@ EOF
 
 wp_flag()   { [[ "$1" == "tight" ]] && echo "true" || echo "false"; }
 wp_suffix() { [[ "$1" == "tight" ]] && echo ""     || echo "_medium_wp"; }
-wp_dir()    { [[ "$1" == "tight" ]] && echo ""     || echo "medium/"; }
+# retired: the WP is in the top-level base now, not a per-directory subdir
+wp_dir()    { echo ""; }
 
 # Sample identity mirrored from dr_correction_sample_cfg.h. Kept minimal (only what the SHELL
 # needs to locate artefacts); the macros themselves always read the header, so there is exactly
@@ -122,12 +132,18 @@ sample_label() {
     *) fail "unknown sample '$1'" ;;
   esac
 }
+# MUST mirror dr_correction_sample_cfg.h::DrCorrOutTag + the out_base strings: each variant is
+# its OWN top-level tree, mc_based{_pt4bin}{_medium}. This shell only VALIDATES what the C++
+# wrote, and every time the two constructions have drifted apart the driver has either reported
+# real files as missing or (worse) deleted the other variant's outputs. Derive, never retype.
 sample_plot_base() {
-  case "$1" in
-    pp|pp_full) echo "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/pp_trigger_efficiency/mc_based/" ;;
-    overlay)    echo "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/pbpb_trigger_efficiency/mc_based/" ;;
-    noovl)      echo "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/r17663_no_overlay_trigger_efficiency/mc_based/" ;;
-    *) fail "unknown sample '$1'" ;;
+  local sample="$1" wp="$2" tag="${PTBIN_SUF}"
+  [[ "$wp" != "tight" ]] && tag="${tag}_medium"
+  case "$sample" in
+    pp|pp_full) echo "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/pp_trigger_efficiency/mc_based${tag}/" ;;
+    overlay)    echo "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/pbpb_trigger_efficiency/mc_based${tag}/" ;;
+    noovl)      echo "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/r17663_no_overlay_trigger_efficiency/mc_based${tag}/" ;;
+    *) fail "unknown sample '$sample'" ;;
   esac
 }
 
@@ -156,13 +172,13 @@ declare -a CHI2_SUMMARY=()
 for sample in ${SAMPLES}; do
   MCDIR="$(sample_mc_dir "${sample}")"
   LABEL="$(sample_label "${sample}")"
-  PLOTBASE="$(sample_plot_base "${sample}")"
 
   for wp in ${WPS}; do
     WPF="$(wp_flag "${wp}")"
     WPS_SUF="$(wp_suffix "${wp}")"
     WPD="$(wp_dir "${wp}")"
-    PLATEAU_FILE="${MCDIR}dr_correction_plateaus_${LABEL}${WPS_SUF}.root"
+    PLOTBASE="$(sample_plot_base "${sample}" "${wp}")"
+    PLATEAU_FILE="${MCDIR}dr_correction_plateaus_${LABEL}${WPS_SUF}${PTBIN_SUF}.root"
 
     # ---- Stage 1: measure + write the plateau ROOT file ---------------------------------------
     if [[ "${SKIP_MEASURE}" == "1" ]]; then
@@ -181,11 +197,11 @@ for sample in ${SAMPLES}; do
     log "  plateau file OK: ${PLATEAU_FILE}"
 
     for step in ${STEPS}; do
-      GUARD_REPORT="${PLOTBASE}step${step}_dr_fit/${WPD}plateau_guard_report.txt"
+      GUARD_REPORT="${PLOTBASE}step${step}_dr_fit/${PTBIN_DIR}${WPD}plateau_guard_report.txt"
 
       for method in ${METHODS}; do
-        FIT_FILE="${MCDIR}dr_correction_fits_${LABEL}${WPS_SUF}_step${step}_${method}.root"
-        MDIR="${PLOTBASE}step${step}_dr_fit/${method}/${WPD}"
+        FIT_FILE="${MCDIR}dr_correction_fits_${LABEL}${WPS_SUF}${PTBIN_SUF}_step${step}_${method}.root"
+        MDIR="${PLOTBASE}step${step}_dr_fit/${PTBIN_DIR}${method}/${WPD}"
 
         # ---- Stage 2: guard + fit --------------------------------------------------------------
         if [[ "${SKIP_FIT}" == "1" ]]; then

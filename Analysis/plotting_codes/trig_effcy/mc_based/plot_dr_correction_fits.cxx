@@ -42,6 +42,7 @@
 #include <TLatex.h>
 #include <TLegend.h>
 #include <TLine.h>
+#include <TPad.h>
 #include <TROOT.h>
 #include <TString.h>
 #include <TStyle.h>
@@ -83,8 +84,11 @@ inline std::pair<std::string, std::string> MethodFormulaTex(const std::string& m
         return {"f(#DeltaR) = 1 + u^{2}(a_{2} + a_{3}u + a_{4}u^{2})",
                 "u #equiv max(0, 1 - #DeltaR/R_{p})"};
     if (method == "interp")
-        return {"f(#DeltaR) = linear interpolation of the points",
-                "f = 1 for #DeltaR #geq R_{p}"};
+        // P2: a real piecewise DEFINITION with R_p defined and its value drawn, matching the
+        // treatment polyu_fixedRp already gets. "linear interpolation of the points" is prose,
+        // not an equation, and R_p was never defined anywhere on the canvas.
+        return {"f(#DeltaR) = piecewise-linear through the measured points for #DeltaR < R_{p}",
+                "f(#DeltaR) = 1 for #DeltaR #geq R_{p}"};
     return {"", ""};
 }
 
@@ -147,7 +151,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     gStyle->SetOptStat(0);
     gStyle->SetOptTitle(0);
 
-    const DrCorrSample cfg = GetDrCorrSample(sample);
+    const DrCorrSample cfg = GetDrCorrSample(sample, use_tight_wp);
     const std::string wp_suf  = DrCorrWpSuffix(use_tight_wp);
     const std::string wp_text = use_tight_wp ? "Tight muons" : "Medium muons";
     const std::string wp_dir  = DrCorrWpDir(use_tight_wp);
@@ -158,6 +162,9 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         : std::string("#varepsilon_{#DeltaR}^{single}");
     const std::string tag = "step" + std::to_string(step);
 
+    // out_base now carries the variant tag (mc_based / _medium / _pt4bin / _pt4bin_medium),
+    // so this needs no per-directory token. Before 2026-08-05 it had neither, which put the
+    // 4-bin fit plots into the 8-bin directories under identical names.
     const std::string odir = cfg.out_base + tag + "_dr_fit/" + method + "/" + wp_dir;
     gSystem->mkdir(odir.c_str(), kTRUE);
 
@@ -226,6 +233,9 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
                                                     : hplat->GetBinContent(iy, iz);
         gPad->SetLeftMargin(0.14);
         gPad->SetBottomMargin(0.14);
+        // Reserved strip above the frame for the pair-eta label: when the y range is clamped at
+        // the cap, the off-scale arrows sit just under the frame top and ran through the label.
+        gPad->SetTopMargin(0.10);
         TH1* fr = gPad->DrawFrame(0.0, ylo, kXhi, yhi);
         fr->GetXaxis()->SetTitle("#DeltaR(#mu_{1}, #mu_{2})");
         fr->GetYaxis()->SetTitle((quantity_tex + " / plateau").c_str());
@@ -236,7 +246,12 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         fr->GetYaxis()->SetTitleOffset(1.25);
         DrawUnity(0.0, kXhi);
 
-        if (plateau <= 0.) {
+        // Same screen as the fit stage (shared helper): an unmeasurable cell is NOT drawn --
+        // drawing one means dividing the curve by a near-zero plateau and presenting the
+        // resulting O(10) excursion as a correction.
+        const double plat_err = (iy == 0 && iz == 0) ? hpinc->GetBinError(1)
+                                                     : hplat->GetBinError(iy, iz);
+        if (!DrCorrPlateauUsable(plateau, plat_err)) {
             TLatex t; t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.05);
             t.DrawLatex(0.20, 0.55, "no fit");
             return;
@@ -261,7 +276,27 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
             gf->Draw("L same");
         }
 
-        g->Draw("PZ same");
+        // POINTS OUTSIDE THE FIT DOMAIN ARE DRAWN IN BLUE (user, 2026-08-06), so a human can see
+        // at a glance which points the fit was actually constrained by. Only dR < kFitHi enters
+        // the fit; the points beyond it are the plateau-window bins, shown as a check that the
+        // normalized curve really does sit at 1 there. Black = fitted, blue = excluded.
+        auto* g_fit = new TGraphErrors();
+        auto* g_exc = new TGraphErrors();
+        for (int i = 0, kf = 0, ke = 0; i < g->GetN(); ++i) {
+            double x, y;
+            g->GetPoint(i, x, y);
+            auto* dst = (x < kFitHi) ? g_fit : g_exc;
+            int&  k   = (x < kFitHi) ? kf : ke;
+            dst->SetPoint(k, x, y);
+            dst->SetPointError(k, 0., g->GetErrorY(i));
+            ++k;
+        }
+        g_fit->SetMarkerStyle(20); g_fit->SetMarkerSize(0.7);
+        g_fit->SetMarkerColor(kBlack);   g_fit->SetLineColor(kBlack);
+        g_exc->SetMarkerStyle(24); g_exc->SetMarkerSize(0.7);
+        g_exc->SetMarkerColor(kBlue + 1); g_exc->SetLineColor(kBlue + 1);
+        if (g_fit->GetN()) g_fit->Draw("PZ same");
+        if (g_exc->GetN()) g_exc->Draw("PZ same");
         for (int i = 0; i < g->GetN(); ++i) {
             double x, y;
             g->GetPoint(i, x, y);
@@ -269,7 +304,8 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
             const bool up = (y > yhi);
             auto* ar = new TArrow(x, ylo + (up ? 0.88 : 0.12) * (yhi - ylo),
                                   x, ylo + (up ? 0.98 : 0.02) * (yhi - ylo), 0.008, "|>");
-            ar->SetLineColor(kBlack); ar->SetFillColor(kBlack); ar->SetLineWidth(2);
+            const Color_t acol = (x < kFitHi) ? kBlack : kBlue + 1;
+            ar->SetLineColor(acol); ar->SetFillColor(acol); ar->SetLineWidth(2);
             ar->Draw();
             offscale.push_back(Form("#DeltaR=%.2f: %.2f #pm %.2f", x, y, g->GetErrorY(i)));
         }
@@ -277,9 +313,9 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         TLatex t;
         t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.045);
         if (iy == 0 && iz == 0) {
-            t.DrawLatex(0.18, 0.88, "inclusive (all p_{T}^{pair}, all #eta^{pair})");
+            t.DrawLatex(0.18, 0.925, "inclusive (all p_{T}^{pair}, all #eta^{pair})");
         } else {
-            t.DrawLatex(0.18, 0.88, Form("%.1f < #eta^{pair} < %.1f",
+            t.DrawLatex(0.18, 0.925, Form("%.1f < #eta^{pair} < %.1f",
                                          hplat->GetYaxis()->GetBinLowEdge(iz),
                                          hplat->GetYaxis()->GetBinUpEdge(iz)));
         }
@@ -332,27 +368,47 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         // draws it, so deleting it here silently erased all the black points from the canvas.
     };
 
-    // ---- y range: COMMON across the 9 eta panels of one canvas, so the panels are comparable --
-    auto y_range = [&](int iy, double& ylo, double& yhi) {
-        double lo = 1., hi = 1.;
+    // ---- y range: ONE range for the WHOLE METHOD DIRECTORY (user, 2026-08-05) ---------------
+    // Common not just across the eta panels of one canvas, but across EVERY pair-pT bin -- i.e.
+    // every PNG in this <step>_dr_fit/<method>/ directory shares one y axis. Otherwise each file
+    // silently rescales and the pair-pT dependence, which is the whole point of binning in
+    // pair pT, cannot be read by flipping between the files.
+    //
+    // The range is set from the CENTRAL VALUES only, NOT value +- error (user): in the sparse
+    // high-pair-pT cells the error bars are several times the correction itself, and including
+    // them let one noisy cell dictate the axis for every plot, squashing all the real structure
+    // into a sliver. Points whose central value still falls outside the capped range are marked
+    // with an arrow by draw_cell(), so nothing is dropped silently.
+    double g_ylo = 1., g_yhi = 1.;
+    for (int iy = 1; iy <= npt; ++iy) {
         for (int iz = 1; iz <= neta; ++iz) {
             const double plateau = hplat->GetBinContent(iy, iz);
-            if (plateau <= 0.) continue;
+            // Screen with the SAME test the drawing code uses: an unmeasurable cell is never
+            // drawn, so letting its eps/plateau values (O(10-130) when the plateau is ~0.008)
+            // set the shared range pushed every PNG in the directory to the 3.0 cap and squashed
+            // the structure the panels exist to show.
+            if (!DrCorrPlateauUsable(plateau, hplat->GetBinError(iy, iz))) continue;
             auto* g = cell_points(iy, iz, plateau);
             for (int i = 0; i < g->GetN(); ++i) {
                 double x, y;
                 g->GetPoint(i, x, y);
-                lo = std::min(lo, y - g->GetErrorY(i));
-                hi = std::max(hi, y + g->GetErrorY(i));
+                g_ylo = std::min(g_ylo, y);
+                g_yhi = std::max(g_yhi, y);
             }
             delete g;
         }
-        // 20% headroom at the top: the legend lives there, and a legend drawn over data points
-        // is the same sin as hiding them under the fit line.
-        ylo = std::max(kYcapLo, lo - 0.05 * (hi - lo));
-        yhi = std::min(kYcapHi, hi + 0.25 * (hi - lo));
-        if (yhi - ylo < 0.2) { ylo = std::max(kYcapLo, 0.9); yhi = 1.12; }
-    };
+    }
+    {
+        // 25% headroom at the top for the legend; a legend over data points hides them just as
+        // badly as an axis that crops them.
+        const double span = g_yhi - g_ylo;
+        g_ylo = std::max(kYcapLo, g_ylo - 0.05 * span);
+        g_yhi = std::min(kYcapHi, g_yhi + 0.25 * span);
+        if (g_yhi - g_ylo < 0.2) { g_ylo = std::max(kYcapLo, 0.9); g_yhi = 1.12; }
+    }
+    std::cout << "  common y range for every PNG in this method dir: ["
+              << g_ylo << ", " << g_yhi << "]\n";
+    auto y_range = [&](int /*iy*/, double& ylo, double& yhi) { ylo = g_ylo; yhi = g_yhi; };
 
     // ---- one canvas per pair-pT bin ----------------------------------------------------------
     // subplot grid: nrows >= ncols, nrows ~ sqrt(N)  (feedback_subplot_layout)
@@ -361,12 +417,21 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     for (int iy = 1; iy <= npt; ++iy) {
         double ylo, yhi;
         y_range(iy, ylo, yhi);
+        // A dedicated HEADER STRIP at the top of the canvas: the divided pads otherwise reach
+        // the very top edge, and the title + fit-range line were drawn on top of the first
+        // panel's pair-eta label. The panel grid lives in its own pad below the strip.
+        const int   kHeaderPx = 70;
+        const int   canv_h    = 470 * nrow + kHeaderPx;
+        const double hfrac    = double(kHeaderPx) / canv_h;
         TCanvas c(Form("c_%s_%s_pt%d", tag.c_str(), method.c_str(), iy), "",
-                  520 * ncol, 470 * nrow);
-        c.Divide(ncol, nrow);
+                  520 * ncol, canv_h);
+        auto* grid = new TPad(Form("grid_%s_%s_pt%d", tag.c_str(), method.c_str(), iy), "",
+                              0., 0., 1., 1. - hfrac);
+        grid->Draw();
+        grid->Divide(ncol, nrow);
         std::vector<std::string> offscale;
         for (int iz = 1; iz <= neta; ++iz) {
-            c.cd(iz);
+            grid->cd(iz);
             draw_cell(iy, iz, ylo, yhi, offscale);
             if (iz == 1) {   // legend once
                 auto* gd = new TGraphErrors(); gd->SetMarkerStyle(20); gd->SetMarkerColor(kBlack);
@@ -383,8 +448,8 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         TLatex st; st.SetNDC(); st.SetTextFont(42); st.SetTextSize(0.019);
         // No "Step %d": the step number is an internal pipeline index. The quantity itself
         // (eps_dR^2mu4 / eps_dR^single) already identifies what is drawn.
-        st.DrawLatex(0.02, 0.982,
-            Form("%s, %s,  %s / plateau,  %.0f < p_{T}^{pair} < %.0f GeV",
+        st.DrawLatex(0.02, 1. - 0.40 * hfrac,
+            Form("%s, %s,  %s / plateau,  %.1f < p_{T}^{pair} < %.1f GeV",
                  cfg.sample_text.c_str(), wp_text.c_str(), quantity_tex.c_str(),
                  hplat->GetXaxis()->GetBinLowEdge(iy),
                  hplat->GetXaxis()->GetBinUpEdge(iy)));
@@ -398,7 +463,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
                 sub += offscale[i] + std::string(i + 1 < offscale.size() && i < 5 ? ", " : "");
             if (offscale.size() > 6) sub += Form(", ... (%zu total)", offscale.size());
         }
-        n.DrawLatex(0.02, 0.963, sub.c_str());
+        n.DrawLatex(0.02, 1. - 0.80 * hfrac, sub.c_str());
         const std::string png = odir + Form("%s_dr_fit_%s_pairpt_%.0f_%.0f.png", tag.c_str(),
                                             method.c_str(),
                                             hplat->GetXaxis()->GetBinLowEdge(iy),
@@ -409,19 +474,19 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
 
     // ---- the inclusive cell, on its own canvas ------------------------------------------------
     {
-        TCanvas c(Form("c_%s_%s_incl", tag.c_str(), method.c_str()), "", 900, 700);
+        // Reserved header strip, as on the grid canvases: without it the headline was drawn at
+        // y = 0.96 straight on top of the panel label "inclusive (all p_T^pair, all eta^pair)".
+        const int kInclHeaderPx = 46;
+        const int incl_h = 700 + kInclHeaderPx;
+        const double ihfrac = double(kInclHeaderPx) / incl_h;
+        TCanvas c(Form("c_%s_%s_incl", tag.c_str(), method.c_str()), "", 900, incl_h);
+        auto* ipad = new TPad("ipad", "", 0., 0., 1., 1. - ihfrac);
+        ipad->SetBottomMargin(0.13); ipad->Draw(); ipad->cd();
         std::vector<std::string> offscale;
-        double lo = 1., hi = 1.;
-        auto* g = cell_points(0, 0, hpinc->GetBinContent(1));
-        for (int i = 0; i < g->GetN(); ++i) {
-            double x, y;
-            g->GetPoint(i, x, y);
-            lo = std::min(lo, y - g->GetErrorY(i));
-            hi = std::max(hi, y + g->GetErrorY(i));
-        }
-        delete g;
-        draw_cell(0, 0, std::max(kYcapLo, lo - 0.05 * (hi - lo)),
-                        std::min(kYcapHi, hi + 0.25 * (hi - lo)), offscale);
+        // SAME y range as every other PNG in this method directory (user): the inclusive canvas
+        // used to compute its own from y +- error, which broke both the common-range rule and the
+        // explicit "central values only, not error bars" instruction.
+        draw_cell(0, 0, g_ylo, g_yhi, offscale);
         auto* gd = new TGraphErrors(); gd->SetMarkerStyle(20); gd->SetMarkerColor(kBlack);
         gd->SetLineColor(kBlack);
         auto* gf = new TGraph(); gf->SetLineColor(kRed + 1); gf->SetLineWidth(2);
@@ -434,10 +499,11 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         leg->Draw();
         // 0.024, not 0.030: the longest headline (overlay + Medium + `powerlaw_fixedRp`) ran off
         // the right edge of the 900 px canvas and lost the method name.
+        c.cd(0);   // headline goes on the CANVAS, in the reserved strip -- not inside the pad
         TLatex st; st.SetNDC(); st.SetTextFont(42); st.SetTextSize(0.024);
         // No internal method name on the canvas -- the equation in the annotation box identifies
         // the fitted function to the audience (the method name only tags the output directory).
-        st.DrawLatex(0.06, 0.960, Form("%s, %s,  %s / plateau",
+        st.DrawLatex(0.06, 1. - 0.62 * ihfrac, Form("%s, %s,  %s / plateau",
                                        cfg.sample_text.c_str(), wp_text.c_str(),
                                        quantity_tex.c_str()));
         const std::string png = odir + tag + "_dr_fit_" + method + "_inclusive.png";

@@ -210,7 +210,7 @@ get_combined_hists() {
 }
 
 get_rdf_output() {
-  echo "${PP_DIR}/histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin.root"
+  echo "${PP_DIR}/histograms_real_pairs_pp_2024_single_mu4_coarse_q_eta_bin_qeta_fid.root"
 }
 get_fit_output() {
   echo "${PP_DIR}/trg_effcy_pT_fitting_to_erf_plus_log/single_mu_effcy_pT_fit.root"

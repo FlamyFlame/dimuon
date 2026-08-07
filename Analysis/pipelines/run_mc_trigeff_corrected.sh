@@ -1,4 +1,16 @@
 #!/usr/bin/env bash
+# ============================================================================================
+# RETIRED 2026-08-05 (advisor, relayed by the user): weighting each MC muon by SF = eps_data/
+# eps_MC is NOT a reasonable procedure. The analysis uses data-driven single-muon efficiencies
+# with MC-derived dR corrections; if the SF is ever to be tested it is applied as a direct
+# multiplication eps_MC x SF, never as a per-muon weight.
+# The R16 CONCLUSION stands (the dR corrections are insensitive to the single-muon
+# normalization) -- only this implementation is retired. Its plot directories
+# (step{1,3,4}_corrected_mc) have been deleted and are no longer produced.
+# Kept executable only to reproduce the historical study on request.
+# ============================================================================================
+echo "run_mc_trigeff_corrected.sh is RETIRED (see header). Set I_MEAN_IT=1 to run anyway." >&2
+[[ -z "${I_MEAN_IT:-}" ]] && exit 0
 # =============================================================================
 # CORRECTED-MC trigger-efficiency study driver
 # (docs/tracking/mc_trigger_efficiency.md, round-7 Autonomy Contract item 5).

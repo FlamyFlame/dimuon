@@ -77,6 +77,7 @@
 
 #include "dr_correction_sample_cfg.h"
 #include "dr_correction_ratio.h"
+#include "../../../Utilities/MCTrigEffPlateauWindow.h"
 
 #include <algorithm>
 #include <cmath>
@@ -96,8 +97,9 @@
 constexpr double kFlatOnsetStep3 = 0.5;
 constexpr double kFlatOnsetStep4 = 0.3;
 
-// The zoom histogram spans dR in [0,1] with 20 bins; that is the fit domain. The bins in
-// [1,4] are what DEFINED the plateau, so re-fitting them would just re-fit the normalization.
+// The zoom histogram spans dR in [0,1] with 20 bins; that is the fit domain. The bins inside
+// the PLATEAU WINDOW (MCTrigEffPlateauWindow.h) are what DEFINED the plateau, so re-fitting
+// them would just re-fit the normalization.
 constexpr double kFitLo = 0.0;
 constexpr double kFitHi = 1.0;
 
@@ -113,6 +115,7 @@ constexpr double kTF1RangeHi = 10.0;
 // (docs/systematic_uncertainties.md §1a).
 constexpr double kPlateauGuardTol = 0.15;
 constexpr double kPlateauFlagTol  = 0.10;
+
 
 namespace {
 
@@ -228,7 +231,7 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
 {
     gROOT->SetBatch(kTRUE);
 
-    const DrCorrSample cfg = GetDrCorrSample(sample);
+    const DrCorrSample cfg = GetDrCorrSample(sample, use_tight_wp);
     const StepCfg      S   = MakeStepCfg(step);
     const MethodCfg    M   = MakeMethodCfg(method);
     const std::string  wp_suf  = DrCorrWpSuffix(use_tight_wp);
@@ -259,6 +262,11 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     }
     hplat = (TH2D*)hplat->Clone(("plat_" + tag).c_str()); hplat->SetDirectory(nullptr);
     hpnb  = (TH2D*)hpnb ->Clone(("pnb_"  + tag).c_str()); hpnb ->SetDirectory(nullptr);
+    // Plateau-window normalization systematic |p[2,4] - p[1,4]|, added 2026-08-04. OPTIONAL:
+    // a plateau file written before that date has no such key, and the fit is unaffected by it
+    // (it is reported, never applied), so an older file must keep working rather than throw.
+    TH2D* hpsys = (TH2D*)fpl->Get(("h_" + tag + "_plateau_syst").c_str());
+    if (hpsys) { hpsys = (TH2D*)hpsys->Clone(("psys_" + tag).c_str()); hpsys->SetDirectory(nullptr); }
     const double plat_incl     = hpinc->GetBinContent(1);
     const double plat_incl_err = hpinc->GetBinError(1);
     fpl->Close();
@@ -269,19 +277,44 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     const int neta = hplat->GetNbinsY();
 
     // ---------------------------------------------------------------- 2. the guard
-    std::vector<std::string> violations, flagged, unmeasured;
+    std::vector<std::string> violations, flagged, unmeasured, wsyst;
+    double wsyst_max = 0.;
     for (int iy = 1; iy <= npt; ++iy) {
         for (int iz = 1; iz <= neta; ++iz) {
             const double v = hplat->GetBinContent(iy, iz);
             const double e = hplat->GetBinError(iy, iz);
-            const char* cell = Form("pT_pair[%.0f,%.0f) x eta_pair[%.1f,%.1f)",
+            const char* cell = Form("pT_pair[%.1f,%.1f) x eta_pair[%.1f,%.1f)",
                                     hplat->GetXaxis()->GetBinLowEdge(iy),
                                     hplat->GetXaxis()->GetBinUpEdge(iy),
                                     hplat->GetYaxis()->GetBinLowEdge(iz),
                                     hplat->GetYaxis()->GetBinUpEdge(iz));
-            if (hpnb->GetBinContent(iy, iz) <= 0 || v <= 0.) {
-                unmeasured.push_back(cell);
+            // UNMEASURABLE SCREEN (user policy: such cells are NOT plotted, and their count IS
+            // reported; no silent fallback). `v <= 0.` alone was far too weak -- it let through
+            // overlay cells with a plateau of 0.0078-0.27, which are then used as DIVISORS, so
+            // eps/plateau exploded to O(15) and the "fit" was parameters pinned at their bounds
+            // through panels containing no visible data at all. Two additional objective screens:
+            //   (a) plateau too far below 1 to be a normalization at all. The plateau is a RATIO
+            //       that must tend to 1; a value below kPlateauMinUsable is not a small offset,
+            //       it is an empty cell, and dividing by it manufactures a huge correction.
+            //   (b) relative error >= 100%: the cell carries no information (e.g. the pp cell
+            //       1.0879 +- 1.0879 built from a SINGLE dR bin, which the old guard called "ok"
+            //       because it only ever tested |p-1| and never the error).
+            const double e_cell = hplat->GetBinError(iy, iz);
+            const bool   degenerate    = (v > 0. && v < 0.5);
+            const bool   uninformative = (v > 0. && e_cell >= v);
+            if (hpnb->GetBinContent(iy, iz) <= 0 || !DrCorrPlateauUsable(v, e_cell)) {
+                unmeasured.push_back(std::string(cell) +
+                    (degenerate    ? Form("  [plateau %.4f < 0.5: not a normalization]", v)
+                   : uninformative ? Form("  [rel. error %.0f%%: no information]", 100. * e_cell / v)
+                   : ""));
                 continue;
+            }
+            if (hpsys) {
+                const double s = hpsys->GetBinContent(iy, iz);
+                if (s >= 0.) {
+                    wsyst.push_back(Form("%s : %.4f", cell, s));
+                    wsyst_max = std::max(wsyst_max, s);
+                }
             }
             const double dev = std::fabs(v - 1.0);
             if (dev > kPlateauGuardTol)
@@ -306,6 +339,9 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
            << kPlateauFlagTol << " are FLAGGED but allowed, and carry |plateau-1| as a\n"
               "#       systematic (docs/systematic_uncertainties.md 1a). A TEST sample is exempt"
               " from the fatal tier but still reported.\n"
+           << "# plateau window: dR in [" << MCTrigEffPlateau::kLo << ","
+           << MCTrigEffPlateau::kHi << "]  (systematic variation: dR in ["
+           << MCTrigEffPlateau::kSystLo << "," << MCTrigEffPlateau::kSystHi << "])\n"
            << "# inclusive plateau = " << Form("%.4f +- %.4f", plat_incl, plat_incl_err) << "\n\n";
         os << "unmeasurable cells (no dR bin in the plateau window): " << unmeasured.size() << "\n";
         for (const auto& u : unmeasured) os << "  " << u << "\n";
@@ -315,6 +351,13 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
         os << "\nFAILING cells (|plateau-1| > " << kPlateauGuardTol << ") : " << violations.size()
            << "\n";
         for (const auto& v : violations) os << "  " << v << "\n";
+        if (hpsys) {
+            os << "\nplateau-WINDOW systematic |plateau[nominal] - plateau[retired [1,4]]| per"
+                  " cell (reported, NOT applied here; it is an uncertainty on the normalization,"
+                  " docs/systematic_uncertainties.md 1a) -- max = "
+               << Form("%.4f", wsyst_max) << "\n";
+            for (const auto& w : wsyst) os << "  " << w << "\n";
+        }
         os << "\nverdict: " << (violations.empty() ? "PASS"
                                                    : (cfg.is_full_sample ? "FAIL (FULL sample)"
                                                                          : "reported, exempt (TEST sample)"))
@@ -356,7 +399,11 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     }
 
     // ---------------------------------------------------------------- 3. input histograms
+    // The pair-pT-binning token must be here too: without it a 4-bin run reads the NOMINAL
+    // 8-bin histograms while its plateau map is 4x9, which is exactly what the cell-count
+    // guard below caught.
     const std::string hist_path = cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label + wp_suf
+                                + MCTrigEffPairPt::FileSuffix()
                                 + S.file_suffix;
     TFile* fh = OpenRead(hist_path);
     // Staleness: the plateau file is produced BY the histograms, so it must be at least as new.
@@ -434,7 +481,8 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
         << std::setw(12) << "chi2/ndf" << std::setw(12) << "f(0)" << "\n";
 
     // Fit-quality bookkeeping. A PLAIN MEAN over all cells is useless for a TEST sample: the
-    // 10k-event overlay has cells whose plateau is 0.04 or 16 (too few pairs in dR in [1,4] to
+    // 10k-event overlay has cells whose plateau is 0.04 or 16 (too few pairs in the plateau
+    // window to
     // define one at all), and normalizing by such a plateau blows the curve up and drags the
     // mean to O(100). Report, in addition: the MEDIAN, the mean over cells whose plateau is
     // sane (|plateau-1| <= the guard tolerance), and the INCLUSIVE cell -- which is the only
@@ -450,7 +498,8 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
             const bool inclusive = (iy == 0 && iz == 0);
             if (!inclusive && (iy == 0 || iz == 0)) continue;   // only the full inclusive cell
 
-            const double plateau = inclusive ? plat_incl : hplat->GetBinContent(iy, iz);
+            const double plateau     = inclusive ? plat_incl : hplat->GetBinContent(iy, iz);
+            const double plateau_err = inclusive ? plat_incl_err : hplat->GetBinError(iy, iz);
             const int    pnb     = inclusive ? 1         : (int)hpnb->GetBinContent(iy, iz);
             const std::string nm = CellName("r", step, iy, iz);
 
@@ -461,7 +510,10 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                 : Form("[%.1f,%.1f)", hplat->GetYaxis()->GetBinLowEdge(iz),
                                       hplat->GetYaxis()->GetBinUpEdge(iz));
 
-            if (pnb <= 0 || plateau <= 0.) {
+            // Do not even attempt a fit on an unmeasurable cell -- the same screen the guard
+            // and the plot stage use. Fitting one wastes the fit and writes chi2/parameters
+            // for a curve divided by a near-zero plateau.
+            if (pnb <= 0 || !DrCorrPlateauUsable(plateau, plateau_err)) {
                 if (!inclusive) hstat->SetBinContent(iy, iz, 0.);
                 rep << std::left << std::setw(22) << ptlab << std::setw(16) << etalab
                     << std::setw(12) << "--" << std::setw(10) << 0
@@ -526,7 +578,15 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                                   S.quantity.c_str()));
                 gk->Write();
                 if (!inclusive) {
-                    hstat->SetBinContent(iy, iz, 1.);
+                    // An interpolation always "succeeds" numerically, but that says nothing about
+                    // whether the CELL is usable. This branch used to write fit_ok = 1
+                    // unconditionally, publishing 20 overlay cells (e.g. plateau 0.0078 +- 0.0051,
+                    // a x128 inflation) that the guard listed as unmeasurable and the plot stage
+                    // refused to draw. Same screen as the parametric branch.
+                    const bool interp_usable = DrCorrPlateauUsable(plateau, plateau_err)
+                                            && std::fabs(plateau - 1.0) <= kPlateauGuardTol;
+                    if (!interp_usable) ++n_unusable;
+                    hstat->SetBinContent(iy, iz, interp_usable ? 1. : 0.);
                     hchi ->SetBinContent(iy, iz, -1.);     // n/a for an interpolation
                     hknot->SetBinContent(iy, iz, knot_rel);
                     hf0  ->SetBinContent(iy, iz, gk->Eval(0.0));
@@ -592,7 +652,13 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                 const double x = kFitLo + (S.flat_onset - kFitLo) * k / 200.0;
                 if (f->Eval(x) <= 0.) { physical = false; break; }
             }
+            // fit_ok is the flag CONSUMERS gate on, so it must apply the SAME screen as the
+            // guard and the plot stage. It previously tested only |plateau-1|, never the plateau
+            // ERROR, so a cell like 1.0879 +- 1.0879 (a single dR bin, 100% relative error) was
+            // published as fit_ok = 1 while the guard called it unmeasurable and the plot drew
+            // "no fit" -- the artefact the analysis consumes disagreed with both.
             const bool usable = ok && physical
+                             && DrCorrPlateauUsable(plateau, plateau_err)
                              && std::fabs(plateau - 1.0) <= kPlateauGuardTol;
             if (!usable && !inclusive) ++n_unusable;
             if (!inclusive) {
@@ -675,7 +741,9 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
         << "  -- consumers MUST require fit_ok == 1\n"
         << "# chi2/ndf over cells with |plateau-1| <= " << kPlateauFlagTol << ": "
         << line_sane << "\n"
-        << "# (cells whose plateau is far from 1 have too few dR-in-[1,4] pairs to define one;"
+        << "# (cells whose plateau is far from 1 have too few pairs inside the plateau window"
+        << " dR in [" << MCTrigEffPlateau::kLo << "," << MCTrigEffPlateau::kHi
+        << "] to define one;"
            " normalizing by such a plateau inflates chi2 without saying anything about the fit"
            " function.)\n"
         // kept for backwards compatibility with the driver's summary parser
