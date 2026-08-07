@@ -7,6 +7,11 @@
 #include <type_traits>
 
 static TFile* s_effcy_pT_fit_file = nullptr;
+// Mirrors of the instance q*eta configuration, so the STATIC efficiency evaluator below can
+// use the SAME binning the graphs were produced with. Set once in the constructor.
+static QEtaBinning s_q_eta_proj_ranges;
+static bool        s_use_coarse_q_eta = true;
+
 static std::map<std::string, TF1*> s_effcy_pT_fit_map;
 static TFile* s_effcy_2D_hist_file = nullptr;
 static std::map<std::string, TH2D*> s_effcy_2D_hist_map;
@@ -57,6 +62,8 @@ void RDFBasedHistFillingData::InitializeDataCommon(){
                                                         : "_fine_q_eta_bin");
 
     SetQEtaProjRanges(run_year, q_eta_proj_ranges, q_eta_ranges_str, useCoarseQEtaBin);
+    s_q_eta_proj_ranges = q_eta_proj_ranges;   // for the static evaluator
+    s_use_coarse_q_eta  = useCoarseQEtaBin;
 
     if (isForSoumya){
         single_muon_trig_effcy_var1Ds = {};
@@ -95,7 +102,11 @@ void RDFBasedHistFillingData::InitializeDataCommon(){
         qEtaBin_suffix = "_nominal";
     }
 
-    out_file_suffix = trig_suffix + isForSoumya_suffix + qEtaBin_suffix;
+    // Fiducial-gap-cut variant gets its own token so it can never overwrite a no-gap-cut
+    // output (round 8). Placed right after the q*eta-binning token, before the WP token.
+    const std::string gap_suffix = (trigger_effcy_calc && apply_fiducial_gap_cut)
+                                 ? "_qeta_fid" : "";
+    out_file_suffix = trig_suffix + isForSoumya_suffix + qEtaBin_suffix + gap_suffix;
     if (save_non_sepr_trg_hists) out_file_suffix += "_w_nonsepr";
     if (save_good_accept_trg_hists) out_file_suffix += "_w_good_accept";
     // Muon working-point (WP) routing for the DATA crossx spectrum: NOMINAL = Tight
@@ -625,7 +636,11 @@ std::string RDFBasedHistFillingData::FindCtrSuffix(int centrality) {
 float RDFBasedHistFillingData::EvaluateSingleMuonEffcyPtFitted(const std::string& ctr_suffix, bool charge_positive, float pt, float q_eta) {
     static const CommonEffcyConfig cfg{};
     std::string musign = charge_positive ? "_sign1" : "_sign2";
-    std::string q_eta_suffix = FindBinReturnStr(q_eta, cfg.q_eta_proj_ranges_fine_excl_gap);
+    // ROUND 8: read the binning the graphs were actually PRODUCED with. This used to hardcode
+    // the FINE list while the producer honoured useCoarseQEtaBin -- so switching the producer to
+    // coarse silently left every lookup missing. `q_eta_proj_ranges` is set by SetQEtaProjRanges
+    // from the same flag, which makes producer and reader impossible to desynchronise.
+    std::string q_eta_suffix = FindBinReturnStr(q_eta, s_q_eta_proj_ranges);
 
     if (!q_eta_suffix.empty()) {
         std::string key = "f_pt2nd_vs_q_eta2nd" + ctr_suffix + musign + "_2mu4_sepr_py_" + q_eta_suffix + "_divided";
@@ -643,15 +658,33 @@ float RDFBasedHistFillingData::EvaluateSingleMuonEffcyPtFitted(const std::string
         }
     }
 
-    // Fallback: unfitted 2D histogram for gap regions or missing TF1
-    std::string h2d_key = "h_pt2nd_vs_q_eta2nd" + ctr_suffix + musign + "_2mu4_sepr_divided";
-    auto it2d = s_effcy_2D_hist_map.find(h2d_key);
-    if (it2d != s_effcy_2D_hist_map.end()) {
-        int bin = it2d->second->FindBin(q_eta, pt);
-        double val = it2d->second->GetBinContent(bin);
-        if (val > 0.01 && val <= 1.0) return static_cast<float>(val);
+    // LEGACY fine-binning path ONLY: the fine q*eta list has holes (the gap regions), so a muon
+    // landing in one has no fitted turn-on and falls back to the unfitted 2D ratio.
+    // This fallback is the origin of a REAL BUG (pp_trig_eff_highpt_jump.md): when the 2D bin is
+    // also empty -- which happens at high pT -- the function returned -1, the caller turned that
+    // into w_trig = 0, and the pair was SILENTLY DROPPED from every trigger-corrected histogram,
+    // pulling corrected/uncorrected below 1 (to 0.37 in pp24, to exactly 0 in PbPb).
+    // With the NOMINAL coarse binning the list is contiguous and the fiducial gap cut removes
+    // q*eta > 2.2, so this branch is unreachable and no pair can be dropped.
+    if (!s_use_coarse_q_eta) {
+        std::string h2d_key = "h_pt2nd_vs_q_eta2nd" + ctr_suffix + musign + "_2mu4_sepr_divided";
+        auto it2d = s_effcy_2D_hist_map.find(h2d_key);
+        if (it2d != s_effcy_2D_hist_map.end()) {
+            int bin = it2d->second->FindBin(q_eta, pt);
+            double val = it2d->second->GetBinContent(bin);
+            if (val > 0.01 && val <= 1.0) return static_cast<float>(val);
+        }
+        return -1.0f;   // legacy sentinel -> w_trig = 0 -> pair dropped (the known bug)
     }
-    return -1.0f;
+
+    // Coarse (nominal) binning: no holes, so getting here means the fits and the selection
+    // disagree -- a configuration error. Fail LOUDLY instead of returning a sentinel that
+    // silently deletes data from a physics result.
+    throw std::runtime_error(
+        Form("EvaluateSingleMuonEffcyPtFitted: no fitted turn-on for q_eta=%.3f pt=%.2f "
+             "(ctr='%s', %s) on the CONTIGUOUS coarse q*eta binning. The turn-on fits and the "
+             "selection disagree -- were the fits made with the legacy fine binning?",
+             q_eta, pt, ctr_suffix.c_str(), musign.c_str()));
 }
 
 float RDFBasedHistFillingData::EvaluateSingleMuonEffcy(const std::string& ctr_suffix, bool charge_positive, float pt, float q_eta) {

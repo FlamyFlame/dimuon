@@ -14,6 +14,7 @@
 
 #include "MuonObjectsParamsAndHelpers/PbPbBaseClass.h"
 #include "Utilities/proj_range_to_suffix.cxx"
+#include "RDFBasedHistFilling/CommonEffcyConfig.h"
 
 // ============================================================
 // Base class: all shared logic
@@ -42,13 +43,16 @@ protected:
 
     std::vector<std::string> musigns = {"sign1", "sign2"};
 
-    // MUST match CommonEffcyConfig::q_eta_proj_ranges_fine_excl_gap (Run 3). The forward
-    // (-2.4,-2.0) bin is split into (-2.4,-2.2)+(-2.2,-2.0) (round-5 change #2).
-    std::vector<std::string> q_eta_bins_for_pT_trg_effcy_graphs = {
-        "minus2_40_TO_minus2_20", "minus2_20_TO_minus2_00",
-        "minus2_00_TO_minus1_60", "minus1_60_TO_minus1_30", "minus0_90_TO_minus0_50",
-        "minus0_50_TO_minus0_10", "0_10_TO_0_50", "0_50_TO_1_00", "1_30_TO_1_60", "1_60_TO_2_00", "2_00_TO_2_20"
-    };
+    // DERIVED from CommonEffcyConfig -- never retyped. This list used to be a hand-maintained
+    // copy of q_eta_proj_ranges_fine_excl_gap that had to be edited in lockstep with three other
+    // copies. Since round 8 the NOMINAL binning is the CONTIGUOUS COARSE one (gaps INCLUDED), so
+    // every muon has a fitted turn-on and the unfitted-2D gap fallback is gone.
+    std::vector<std::string> q_eta_bins_for_pT_trg_effcy_graphs = [] {
+        static const CommonEffcyConfig cfg{};
+        std::vector<std::string> v;
+        for (const auto& r : cfg.q_eta_proj_ranges_coarse_incl_gap) v.push_back(pairToSuffix(r));
+        return v;
+    }();
 
     static bool fileExists(const std::string& dir){
         return (gSystem->AccessPathName(dir.c_str()) == kFALSE);
@@ -311,7 +315,13 @@ private:
             : Form("c_%s%s_%s", trg.c_str(), ctr.c_str(), musign.c_str());
 
         TCanvas* c = new TCanvas(cname.c_str(), "Trigger Turn-on Curves", 1500, 1000);
-        c->Divide(4,3);
+        // pad grid derived from the bin count (10 coarse bins + legend since round 8);
+        // a hardcoded 4x3 silently drew into the wrong pads when the count changed
+        {
+            const int nb = static_cast<int>(q_eta_bins_for_pT_trg_effcy_graphs.size());
+            const int ncols = 3, nrows = (nb + 1 + ncols - 1) / ncols;  // +1 legend pad
+            c->Divide(ncols, nrows);
+        }
         c->SetGrid();
 
         int idx = 0;
@@ -400,7 +410,7 @@ protected:
         std::string base = isBNL ? "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/"
                                  : "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/";
         data_dir = base + "pp_2024/";
-        infile_name = data_dir + "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin" + wp_suffix + ".root";
+        infile_name = data_dir + "histograms_real_pairs_pp_2024_single_mu4_coarse_q_eta_bin_qeta_fid" + wp_suffix + ".root";
         h2d_ref_name = "h_pt2nd_vs_q_eta2nd_sign1_mu4";
         plot_outdir = base + "plots/pp_trigger_efficiency/mu4/pT_fitting/pp24" + wp_suffix;
     }
@@ -435,7 +445,7 @@ protected:
         std::string base = isBNL ? "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/"
                                  : "/Users/yuhanguo/Documents/physics/heavy-ion/dimuon/datasets/";
         data_dir = base + "pbpb_20" + yr + "/";
-        infile_name = data_dir + "histograms_real_pairs_pbpb_20" + yr + "_single_mu4_fine_q_eta_bin" + wp_suffix + ".root";
+        infile_name = data_dir + "histograms_real_pairs_pbpb_20" + yr + "_single_mu4_coarse_q_eta_bin_qeta_fid" + wp_suffix + ".root";
         h2d_ref_name = "h_pt2nd_vs_q_eta2nd_ctr0_5_sign1_mu4";
         plot_outdir = base + "plots/pbpb_trigger_efficiency/mu4/pT_fitting/pbpb" + yr + wp_suffix;
     }

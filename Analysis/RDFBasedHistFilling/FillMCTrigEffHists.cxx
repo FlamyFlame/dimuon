@@ -81,6 +81,7 @@
 #include <vector>
 
 #include <TFile.h>
+#include <TSystem.h>
 #include <TF1.h>
 #include <TH1D.h>
 #include <TH2D.h>
@@ -94,6 +95,8 @@ using namespace std;
 #include "../MuonObjectsParamsAndHelpers/ParamsSet.h"
 // Shared with plot_mc_trig_eff.cxx, which PRINTS this threshold on the sanity-check canvases.
 #include "../Utilities/MCTrigEffSanityCfg.h"
+#include "../Utilities/MCTrigEffPlateauWindow.h"
+#include "../Utilities/MCTrigEffPairPtBinning.h"
 #include "../Utilities/proj_range_to_suffix.cxx"
 #include "CommonEffcyConfig.h"
 
@@ -126,13 +129,13 @@ const std::string kDataPPFitTmpl =
     "single_mu_effcy_pT_fit{WP}.root";
 const std::string kDataPPHistTmpl =
     "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"
-    "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin{WP}.root";
+    "histograms_real_pairs_pp_2024_single_mu4_coarse_q_eta_bin_qeta_fid{WP}.root";
 const std::string kDataPbPbFitTmpl =
     "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2023/trg_effcy_pT_fitting_to_fermi_plus_log/"
     "single_mu_effcy_pT_fit{WP}.root";
 const std::string kDataPbPbHistTmpl =
     "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2023/"
-    "histograms_real_pairs_pbpb_2023_single_mu4_fine_q_eta_bin{WP}.root";
+    "histograms_real_pairs_pbpb_2023_single_mu4_coarse_q_eta_bin_qeta_fid{WP}.root";
 
 std::string SubstWP(std::string s, const std::string& wp_suf) {
     const std::string tok = "{WP}";
@@ -252,7 +255,10 @@ Binnings MakeBinnings() {
     for (int i = 0; i <= 23; ++i) b.dr_full[i] = i * (5.75 / 23);
 
     // round-5 #4: coarse pair-pT (crossx) x coarse pair-eta (crossx pair_eta bins)
-    b.pair_pt_coarse = pms.pair_pt_coarse_bins;   // CANONICAL (ParamsSet, single source)
+    // Nominal 8 log bins, or the opt-in 4-bin comparison variant -- resolved in ONE place
+    // (MCTrigEffPairPtBinning.h), which also supplies the matching output token, so the
+    // fill and the plot stage cannot disagree about which binning is in use.
+    b.pair_pt_coarse = MCTrigEffPairPt::Edges(pms);
     static const CommonEffcyConfig cfg{};
     b.pair_eta_coarse = RangesToEdges(cfg.pair_eta_proj_ranges_coarse_incl_gap); // 9 bins over [-2.4,2.4]
 
@@ -298,7 +304,7 @@ struct MCEffEvaluator {
     std::map<std::string, TH2D*> ratio_map; // h_mc_pt_vs_q_eta_ratio_<muplus|muminus>
     CommonEffcyConfig cfg{};
     long long n_floor = 0;      // floor (0.02) firings
-    long long n_fallback = 0;   // gap-q·η fallback lookups
+    long long n_fallback = 0;   // retired gap fallback; kept as a tripwire, must stay 0
     long long n_eval = 0;
 
     void LoadFits(const std::string& fit_file) {
@@ -328,8 +334,11 @@ struct MCEffEvaluator {
             throw std::runtime_error("MCEffEvaluator: no f_mc_pt_vs_q_eta_* TF1s in " + fit_file);
     }
 
+    // ROUND 8: the COARSE q·η binning is contiguous over [-2.4, 2.2) and the fiducial gap cut
+    // removes q·η > 2.2, so every surviving muon lands in a fitted bin. There are no holes left
+    // and therefore NO 2D fallback: an empty suffix is now a configuration error, not a gap.
     std::string FindQEtaSuffix(float q_eta) const {
-        for (const auto& range : cfg.q_eta_proj_ranges_fine_excl_gap)
+        for (const auto& range : cfg.q_eta_proj_ranges_coarse_incl_gap)
             if (q_eta >= range.first && q_eta < range.second) return pairToSuffix(range);
         return "";
     }
@@ -351,26 +360,16 @@ struct MCEffEvaluator {
                 val = it->second->Eval(x);
             }
         }
-        if (val < 0.0) {
-            // gap q·η (or missing TF1): unfitted 2D ratio fallback
-            ++n_fallback;
-            auto it2d = ratio_map.find("h_mc_pt_vs_q_eta_ratio_" + chg);
-            if (it2d != ratio_map.end()) {
-                TH2D* h = it2d->second;
-                const double x = std::min(std::max(static_cast<double>(q_eta),
-                                                   h->GetXaxis()->GetXmin() + 1e-6),
-                                          h->GetXaxis()->GetXmax() - 1e-6);
-                const double y = std::min(std::max(static_cast<double>(pt),
-                                                   h->GetYaxis()->GetXmin() + 1e-6),
-                                          h->GetYaxis()->GetXmax() - 1e-6);
-                val = h->GetBinContent(h->FindBin(x, y));
-            }
-        }
         if (val < 0.0)
-            // neither TF1 nor fallback TH2D provided a value: a configuration error,
-            // not a low-efficiency leg -- must not be silently absorbed into the floor
-            throw std::runtime_error("MCEffEvaluator: no efficiency source for chg=" + chg +
-                                     Form(" q_eta=%.3f pt=%.2f", q_eta, pt));
+            // No fitted turn-on for this muon. With the contiguous coarse binning + the gap cut
+            // this is UNREACHABLE by construction, so reaching it means the sample and the fits
+            // disagree (e.g. fits made with the fine binning, or the gap cut switched off).
+            // THROW rather than fall back: a silent fallback here is what produced the w_trig = 0
+            // pair-dropping bug on the data side (pp_trig_eff_highpt_jump.md).
+            throw std::runtime_error("MCEffEvaluator: no fitted efficiency for chg=" + chg +
+                                     Form(" q_eta=%.3f pt=%.2f", q_eta, pt) +
+                                     " -- the fits and the selection disagree (coarse q_eta"
+                                     " binning + fiducial gap cut should make this impossible)");
         if (val > 1.0) val = 1.0;    // cap: efficiency <= 1
         if (val < 0.02) { val = 0.02; ++n_floor; }  // mandated floor (counted)
         return val;
@@ -378,8 +377,8 @@ struct MCEffEvaluator {
 
     void PrintStats(const std::string& tag) const {
         std::cout << "MCEffEvaluator [" << tag << "]: " << n_eval << " evaluations, "
-                  << n_fallback << " gap-q_eta 2D fallbacks ("
-                  << (n_eval ? 100.0 * n_fallback / n_eval : 0.0) << "%), "
+                  << n_fallback << " gap-q_eta 2D fallbacks (round 8: must be 0 -- the coarse "
+                     "binning has no holes), "
                   << n_floor << " floor(0.02) firings ("
                   << (n_eval ? 100.0 * n_floor / n_eval : 0.0) << "%)" << std::endl;
     }
@@ -436,7 +435,8 @@ struct DataEffEvaluator {
     }
 
     std::string FindQEtaSuffix(float q_eta) const {
-        for (const auto& range : cfg.q_eta_proj_ranges_fine_excl_gap)
+        // ROUND 8: coarse (contiguous) binning, same as MCEffEvaluator -- see the note there.
+        for (const auto& range : cfg.q_eta_proj_ranges_coarse_incl_gap)
             if (q_eta >= range.first && q_eta < range.second) return pairToSuffix(range);
         return "";
     }
@@ -457,23 +457,12 @@ struct DataEffEvaluator {
                 val = it->second->Eval(x);
             }
         }
-        if (val < 0.0) {
-            ++n_fallback;
-            auto it2d = ratio_map.find("h_pt2nd_vs_q_eta2nd" + ctr + sign + "_2mu4_sepr_divided");
-            if (it2d != ratio_map.end()) {
-                TH2D* h = it2d->second;
-                const double x = std::min(std::max(static_cast<double>(q_eta),
-                                                   h->GetXaxis()->GetXmin() + 1e-6),
-                                          h->GetXaxis()->GetXmax() - 1e-6);
-                const double y = std::min(std::max(static_cast<double>(pt),
-                                                   h->GetYaxis()->GetXmin() + 1e-6),
-                                          h->GetYaxis()->GetXmax() - 1e-6);
-                val = h->GetBinContent(h->FindBin(x, y));
-            }
-        }
         if (val < 0.0)
-            throw std::runtime_error("DataEffEvaluator: no efficiency source for" + sign +
-                                     Form(" q_eta=%.3f pt=%.2f", q_eta, pt));
+            // No 2D fallback (round 8) -- the coarse binning is contiguous and the gap cut
+            // removes q*eta > 2.2, so this is unreachable unless fits and selection disagree.
+            throw std::runtime_error("DataEffEvaluator: no fitted efficiency for" + sign +
+                                     Form(" q_eta=%.3f pt=%.2f", q_eta, pt) +
+                                     " -- fits and selection disagree");
         if (val > 1.0) val = 1.0;
         if (val < 0.02) { val = 0.02; ++n_floor; }
         return val;
@@ -481,8 +470,8 @@ struct DataEffEvaluator {
 
     void PrintStats(const std::string& tag) const {
         std::cout << "DataEffEvaluator [" << tag << "]: " << n_eval << " evaluations, "
-                  << n_fallback << " gap-q_eta 2D fallbacks ("
-                  << (n_eval ? 100.0 * n_fallback / n_eval : 0.0) << "%), "
+                  << n_fallback << " gap-q_eta 2D fallbacks (round 8: must be 0 -- the coarse "
+                     "binning has no holes), "
                   << n_floor << " floor(0.02) firings ("
                   << (n_eval ? 100.0 * n_floor / n_eval : 0.0) << "%)" << std::endl;
     }
@@ -649,8 +638,33 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
                                        "(m2_pt > 7 || m2_charge * m2_eta > -2)";
     (void)kFwdVetoSingle;   // defined for symmetry with the nominal macro; Step 1 is UNvetoed
 
+    // ---- q*eta FIDUCIAL GAP CUT (round 8, user; ParamsSet::single_mu_fiducial_gap_cuts) -------
+    // Reject a muon whose q*eta falls in a detector-gap window; a PAIR needs BOTH legs to pass.
+    // UNLIKE the forward veto above this applies to EVERY step INCLUDING Step 1 and the sanity
+    // check: the gap muons are being removed from the analysis altogether, so the eps_MC(pT,q*eta)
+    // map itself must be measured without them. The windows are built from ParamsSet so the
+    // numbers are never retyped into a JIT string.
+    // The matching cut on the DATA side is applied to the PROBE only (user decision) --
+    // see ParamsSet.h. The two are consistent: eps^nc is a per-muon efficiency, and after this
+    // cut it is only ever evaluated for muons outside the gaps.
+    // NOMINAL: ON. The one exception is the FORWARD-EDGE DECISION STUDY
+    // (plot_forward_qeta_edge_scan.cxx), which has to compare candidate upper edges 2.20 / 2.25 /
+    // 2.30 / 2.40 and therefore needs the q*eta > 2.2 muons this cut removes. Set the environment
+    // variable MCTRIGEFF_NO_GAPCUT=1 for that one pass; it writes to a DISTINCT `_nogapcut`
+    // output so it can never be mistaken for, or overwrite, the nominal.
+    const bool kApplyGapCut = (gSystem->Getenv("MCTRIGEFF_NO_GAPCUT") == nullptr);
+    if (!kApplyGapCut)
+        std::cout << "\n  ##### MCTRIGEFF_NO_GAPCUT set: fiducial gap cut DISABLED, writing a "
+                     "_nogapcut output (forward-edge study only) #####\n" << std::endl;
+    const std::string kGapSingle = ParamsSet::FiducialGapCutExpr("charge * eta");
+    const std::string kGapLeg    = ParamsSet::FiducialGapCutExpr("lg_charge * lg_eta") + " && "
+                                 + ParamsSet::FiducialGapCutExpr("ot_charge * ot_eta");
+    const std::string kGapPair   = ParamsSet::FiducialGapCutExpr("m1_charge * m1_eta") + " && "
+                                 + ParamsSet::FiducialGapCutExpr("m2_charge * m2_eta");
+
     // common selection = data-side muon definition (nominal WP + fiducial) + truth fiducial
-    const std::string sel_single = wp_col + " && pt > 4 && fabs(eta) < 2.4 && " + kTruthFidSingle;
+    const std::string sel_single = wp_col + " && pt > 4 && fabs(eta) < 2.4 && " + kTruthFidSingle
+                                 + (kApplyGapCut ? " && " + kGapSingle : std::string());
     // overlay: 0-5% centrality only (doc D2; test sample is b=0-5 fm)
     const std::string sel_single_full = cfg.is_overlay
         ? sel_single + " && ev_centrality >= 0 && ev_centrality < 5"
@@ -660,7 +674,8 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
     const std::string sel_pair_legs =
         "lg_wp && lg_pt > 4 && fabs(lg_eta) < 2.4 && "
         "ot_wp && ot_pt > 4 && fabs(ot_eta) < 2.4 && " + kTruthFidLeg +
-        (kVetoFwdLowPt ? " && " + kFwdVetoLeg : std::string());
+        (kVetoFwdLowPt ? " && " + kFwdVetoLeg : std::string()) +
+        (kApplyGapCut  ? " && " + kGapLeg    : std::string());
     const std::string sel_pair_full = cfg.is_overlay
         ? sel_pair_legs + " && avg_centrality >= 0 && avg_centrality < 5"
         : sel_pair_legs;
@@ -1062,6 +1077,9 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
             std::string sel = "m1_wp && m1_pt > 4 && fabs(m1_eta) < 2.4 && "
                               "m2_wp && m2_pt > 4 && fabs(m2_eta) < 2.4 && " + kTruthFidPair;
             if (kVetoFwdLowPt) sel += " && " + kFwdVetoPair;   // Step 3 (round-7 forward veto)
+            // Step 3 builds its OWN selection string and does NOT go through sel_pair_full, so the
+            // gap cut has to be repeated here -- the one place it is easy to leave out.
+            if (kApplyGapCut)  sel += " && " + kGapPair;
             if (cfg.is_overlay) sel += " && avg_centrality >= 0 && avg_centrality < 5";
             dp = dp.Filter(sel, tree + " step3 selection");
 
@@ -1161,7 +1179,10 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
     if (sf_eval)     sf_eval->PrintStats(cfg.label);
 
     // ---------- write ----------
+    const std::string gap_tag = kApplyGapCut ? "" : "_nogapcut";
+    const std::string ptbin_tag = MCTrigEffPairPt::FileSuffix();
     const std::string out_name = cfg.dir + "mc_trig_eff_hists_" + cfg.label + wp_suf + corr_suf +
+                                 gap_tag + ptbin_tag +
                                  (do_sanity ? "_sanity.root" : do_step4 ? "_step4.root"
                                   : do_step3 ? "_step3.root" : ".root");
     TFile fout(out_name.c_str(), "RECREATE");
@@ -1175,14 +1196,16 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
 
     // ---------- sanity printout ----------
     auto PrintDrRatio = [&](const std::string& base, const std::string& tag) {
-        // eps(dR) = num/denom: large-dR plateau (weighted avg over [1,4], the published window)
-        // + small-dR values from the zoom hist.
+        // eps(dR) = num/denom: large-dR plateau (unweighted avg over the published window,
+        // MCTrigEffPlateauWindow.h) + small-dR values from the zoom hist.
         TH1D* hn = hists1D.at("h_mc_" + base + "_dr_full_num");
         TH1D* hd = hists1D.at("h_mc_" + base + "_dr_full_denom");
         double sn = 0, sd = 0;
         for (int i = 1; i <= hd->GetNbinsX(); ++i) {
             const double c = hd->GetBinCenter(i);
-            if (c >= 1.0 && c <= 4.0) { sn += hn->GetBinContent(i); sd += hd->GetBinContent(i); }
+            if (c >= MCTrigEffPlateau::kLo && c <= MCTrigEffPlateau::kHi) {
+                sn += hn->GetBinContent(i); sd += hd->GetBinContent(i);
+            }
         }
         std::cout << "\n===== " << tag << " sanity: eps_dR = num/denom, sample=" << cfg.label
                   << " =====" << std::endl;
@@ -1249,13 +1272,16 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
                       << " | pt 20-60: " << eff_range(20, 60) << std::endl;
         }
     } else {
-        // eps_dR ratio diagnostics: plateau at large dR (avg over [1,4] -- same window as the published plateau in plot_mc_trig_eff.cxx) + small-dR values
+        // eps_dR ratio diagnostics: plateau at large dR (avg over the published window,
+        // MCTrigEffPlateauWindow.h -- same window as plot_mc_trig_eff.cxx) + small-dR values
         TH1D* hn = hists1D.at("h_mc_dr_full_num");
         TH1D* hd = hists1D.at("h_mc_dr_full_denom");
         double sn = 0, sd = 0;
         for (int i = 1; i <= hd->GetNbinsX(); ++i) {
             const double c = hd->GetBinCenter(i);
-            if (c >= 1.0 && c <= 4.0) { sn += hn->GetBinContent(i); sd += hd->GetBinContent(i); }
+            if (c >= MCTrigEffPlateau::kLo && c <= MCTrigEffPlateau::kHi) {
+                sn += hn->GetBinContent(i); sd += hd->GetBinContent(i);
+            }
         }
         std::cout << "\n===== Step-3 sanity: eps_dR = num/denom, sample=" << cfg.label
                   << " =====" << std::endl;

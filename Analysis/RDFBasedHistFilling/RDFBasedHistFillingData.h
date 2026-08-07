@@ -172,7 +172,12 @@ enum HistFillingCycle{
     // Public method to run histogram filling
     void RunFillHistograms() { FillHistograms(); }
 
-    bool useCoarseQEtaBin = false;
+    // ROUND 8 (user): the COARSE, gap-INCLUSIVE q*eta binning is the NOMINAL one for the
+    // single-muon turn-on fits. It is contiguous, so there are no unfitted holes, no 2D
+    // fallback and no -1 'no efficiency' sentinel (that sentinel is what silently dropped
+    // pairs from the corrected crossx -- pp_trig_eff_highpt_jump.md). Set false to fall
+    // back to the LEGACY fine, gap-EXCLUSIVE binning.
+    bool useCoarseQEtaBin = true;
     int hist_filling_cycle = generic;
     int trigger_mode = 1;
     bool useMu4NoL1Leg = true;  // if true, require the probe muon to pass the mu4noL1 (unseeded) leg for _mu4_mu4noL1 filters
@@ -203,8 +208,20 @@ enum HistFillingCycle{
     bool save_non_sepr_trg_hists = false; // save trigger efficiency histograms without separation requirement
     bool save_good_accept_trg_hists = false; // save trigger efficiency histograms with good acceptance requirement
 
-    bool output_generic_hists;
-    bool output_gapcut_hists;
+    // Explicit defaults: these were UNINITIALISED and are read in FillHistograms* by the
+    // trigger-efficiency pipelines, which never assign them -- undefined behaviour that
+    // decided whether a whole histogram family was produced. Nominal = generic on,
+    // the legacy `_wgapcut` diagnostic off.
+    bool output_generic_hists = true;
+    bool output_gapcut_hists = false;
+
+    // ROUND 8 (user): apply ParamsSet::single_mu_fiducial_gap_cuts to the tag-and-probe
+    // PROBE, so the data single-muon efficiency is measured on the same fiducial region
+    // the analysis applies it to. PROBE ONLY (user decision): eps^nc is a per-muon
+    // efficiency and is only ever evaluated for muons outside the gaps, so the tag's
+    // location does not enter its definition; cutting the tag as well would only cost
+    // statistics. Output carries a distinct suffix so nominal is never clobbered.
+    bool apply_fiducial_gap_cut = true;
 
     bool filter_out_photo_resn_for_trig_effcy = true;
     bool use_3D_2nd_muon = false; // if true, use 3D kinematics (phi, q*eta, pT) for single (2nd) muon trigger efficiencies

@@ -162,6 +162,14 @@ void RDFBasedHistFillingPP::FillHistogramsDimuTrigGivenMu4(){
                 df_map.at(df_name) = df_map.at(df_name).Define("eta2nd",    "m" + ind2nd + ".eta");
                 df_map.at(df_name) = df_map.at(df_name).Define("phi2nd",    "m" + ind2nd + ".phi");
                 df_map.at(df_name) = df_map.at(df_name).Define("q_eta2nd",  "charge2nd * eta2nd");
+                // PROBE-side fiducial gap cut (round 8, user decision): the data single-muon
+                // efficiency is measured on the SAME fiducial region the analysis applies it to.
+                // PROBE ONLY -- the tag is deliberately left uncut: eps^nc is a per-muon
+                // efficiency, so the tag's q*eta does not enter its definition, and cutting the
+                // tag too would only cost statistics. Windows come from ParamsSet, never retyped.
+                if (apply_fiducial_gap_cut)
+                    df_map.at(df_name) = df_map.at(df_name)
+                        .Filter(ParamsSet::FiducialGapCutExpr("q_eta2nd"), "probe fiducial gap cut");
                 df_map.at(df_name) = df_map.at(df_name).Define("mu2nd_passmu4noL1", "m" + ind2nd + ".passmu4noL1");
                 df_map.at(df_name) = df_map.at(df_name).Define("mu2nd_good_acceptance",  "pt2nd >= 6 && ((eta2nd > 1.1 && eta2nd < 2.3) || (eta2nd > -2.3 && eta2nd < -1.2))");
 
@@ -293,8 +301,13 @@ void RDFBasedHistFillingPP::CalculateSingleMuonTrigEffcyRatios(){
 }
 
 void RDFBasedHistFillingPP::MakeAndWriteSingleMuonTrigEffPtGraphs(){
-    if(useCoarseQEtaBin)    MakeAndWriteSingleMuonTrigEffPtGraphsHelper({});
-    else                    MakeAndWriteSingleMuonTrigEffPtGraphsHelper(musigns);
+    // The charge-integrated form ({}) exists for the obsolete isForSoumya output. The trigger
+    // efficiency itself is ALWAYS per charge -- the toroid bends mu+ and mu- oppositely, which is
+    // why the axis is q*eta at all, and the lookup key carries _sign1/_sign2. Before round 8 this
+    // branched on useCoarseQEtaBin, so making the coarse binning nominal would have silently
+    // produced NO per-charge graphs and left every efficiency lookup missing.
+    if (isForSoumya) MakeAndWriteSingleMuonTrigEffPtGraphsHelper({});
+    else             MakeAndWriteSingleMuonTrigEffPtGraphsHelper(musigns);
 }
 
 void RDFBasedHistFillingPP::OpenEffcyPtFitFile() {
@@ -320,7 +333,7 @@ void RDFBasedHistFillingPP::OpenEffcyPtFitFile() {
     std::cout << "OpenEffcyPtFitFile: loaded " << s_effcy_pT_fit_map.size() << " TF1s from " << fit_path << std::endl;
 
     std::string base_dir = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_20" + std::to_string(run_year);
-    std::string hist_path = base_dir + "/histograms_real_pairs_pp_20" + std::to_string(run_year) + "_single_mu4_fine_q_eta_bin" + wpsuf + ".root";
+    std::string hist_path = base_dir + "/histograms_real_pairs_pp_20" + std::to_string(run_year) + "_single_mu4_coarse_q_eta_bin_qeta_fid" + wpsuf + ".root";
     s_effcy_2D_hist_file = TFile::Open(hist_path.c_str(), "READ");
     if (!s_effcy_2D_hist_file || s_effcy_2D_hist_file->IsZombie()) {
         std::cerr << "OpenEffcyPtFitFile: WARNING — 2D hist file not found: " << hist_path << " (gap fallback disabled)" << std::endl;

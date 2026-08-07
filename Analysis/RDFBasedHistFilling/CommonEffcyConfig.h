@@ -42,16 +42,37 @@ struct CommonEffcyConfig {
         {2.0f, 2.4f}
     };
 
-    QEtaBinning q_eta_proj_ranges_coarse_incl_gap = { // Run 3; -2.4 <= q*eta < 2.2 (one-sided), gap included
+    // RUN-3 COARSE q*eta binning -- the NOMINAL binning for the single-muon mu4 turn-on fits
+    // since 2026-08-04 (user, advisor feedback). 10 contiguous bins spanning -2.4 <= q*eta < 2.3
+    // (one-sided; the forward slice q*eta > 2.3 is removed by the fiducial gap cut,
+    // ParamsSet::single_mu_fiducial_gap_cuts).
+    //
+    // WHY COARSE, AND WHY IT MATTERS: the fine `q_eta_proj_ranges_fine_excl_gap` binning EXCLUDES
+    // the gap regions, so muons landing in a gap had no fitted turn-on and fell back to an
+    // unfitted 2D (pT, q*eta) histogram ratio -- and to a -1.0 "no efficiency" sentinel when that
+    // 2D bin was empty, which silently dropped the pair from every corrected histogram
+    // (pp_trig_eff_highpt_jump.md). The hypothesis behind this change is that the same
+    // binning/fluctuation effects in those gap regions are also what pushed the dR-correction
+    // plateaus away from 1. A CONTIGUOUS binning has no holes, so there is no fallback and no
+    // sentinel: every surviving muon has a fitted turn-on.
+    //
+    // The only difference from the pre-2026-08-04 version is that (-0.5, 0.5) is SPLIT at 0.
+    // The split matters because q*eta folds the two charges through the toroid bending
+    // direction, and the eta ~ 0 crack is not symmetric in q*eta (muon_gap_cuts_acceptance.md F7).
+    // TOP EDGE TRACKS THE GAP CUT: it must equal the lower edge of the forward window in
+    // ParamsSet::single_mu_fiducial_gap_cuts (2.30 since 2026-08-04). If they disagree, muons
+    // between the two survive the cut with no fitted turn-on and the evaluator throws.
+    QEtaBinning q_eta_proj_ranges_coarse_incl_gap = {
         {-2.4f, -2.0f},
         {-2.0f, -1.5f},
         {-1.5f, -1.0f},
         {-1.0f, -0.5f},
-        {-0.5f, 0.5f},
+        {-0.5f, 0.0f},
+        {0.0f, 0.5f},
         {0.5f, 1.0f},
         {1.0f, 1.5f},
         {1.5f, 2.0f},
-        {2.0f, 2.2f}
+        {2.0f, 2.3f}
     };
 
     QEtaBinning q_eta_proj_ranges_coarse_incl_gap_run2 = { // Run 2; gap included

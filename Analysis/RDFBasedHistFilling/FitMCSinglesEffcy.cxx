@@ -272,7 +272,7 @@ void FitMCSinglesEffcy(const std::string& sample = "pp", bool use_tight_wp = tru
         c->Divide(4, 3);
 
         int idx = 0;
-        for (const auto& range : cfg.q_eta_proj_ranges_fine_excl_gap) {
+        for (const auto& range : cfg.q_eta_proj_ranges_coarse_incl_gap) {
             const std::string q_eta_suffix = pairToSuffix(range);
 
             // projection bin range, exactly as the data graph maker (Data.cxx:491-493)
@@ -350,10 +350,12 @@ void FitMCSinglesEffcy(const std::string& sample = "pp", bool use_tight_wp = tru
             ++idx;
         }
 
-        // NOMINAL png name left byte-identical (no WP token -- a pre-existing quirk: the Medium
-        // run overwrites the Tight png). The CORRECTED pngs carry BOTH tokens so that they
-        // neither clobber the nominal ones nor each other across working points.
-        const std::string png_tag = corrected_mc ? (corr_suf + wp_suf) : std::string("");
+        // The WP token is UNCONDITIONAL. Without it the nominal Tight and Medium pngs share one
+        // filename, so the second working point to run silently overwrote the first and the
+        // surviving file was mislabelled -- a Medium turn-on presented as the Tight one. Both
+        // working points are a standing requirement (memory `feedback_plots_wp_config_var`), so
+        // both must survive.
+        const std::string png_tag = (corrected_mc ? corr_suf : std::string("")) + wp_suf;
         c->SaveAs(Form("%smc_trg_effcy_pT_fitting_%s%s_%s.png", plot_dir.c_str(), label.c_str(),
                        png_tag.c_str(), chg_label.c_str()));
     }
