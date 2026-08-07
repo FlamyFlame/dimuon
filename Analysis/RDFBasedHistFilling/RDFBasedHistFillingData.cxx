@@ -62,6 +62,24 @@ void RDFBasedHistFillingData::InitializeDataCommon(){
                                                         : "_fine_q_eta_bin");
 
     SetQEtaProjRanges(run_year, q_eta_proj_ranges, q_eta_ranges_str, useCoarseQEtaBin);
+
+    // BLOCKING COUPLING, checked at STARTUP rather than trusted to a comment.
+    // The coarse q*eta binning's top edge and the fiducial gap cut's forward window MUST be the
+    // same number. If they diverge, muons in between survive the cut with no fitted turn-on: the
+    // evaluator does throw, but only if such a muon actually occurs -- arbitrarily late in a
+    // multi-hour job, and never at all if that region happens to be empty in a given sample.
+    // Fail here instead, before any event is read.
+    if (useCoarseQEtaBin && !ParamsSet::single_mu_fiducial_gap_cuts.empty()) {
+        const float qeta_top = q_eta_proj_ranges.back().second;
+        const float gap_lo   = ParamsSet::single_mu_fiducial_gap_cuts.back().first;
+        if (std::fabs(qeta_top - gap_lo) > 1e-4f)
+            throw std::runtime_error(Form(
+                "RDFBasedHistFillingData: coarse q*eta top edge (%.3f, CommonEffcyConfig.h) does "
+                "not match the fiducial gap cut's forward window (%.3f, ParamsSet.h). Muons "
+                "between them would survive the cut with no fitted turn-on. Fix one of the two.",
+                qeta_top, gap_lo));
+    }
+
     s_q_eta_proj_ranges = q_eta_proj_ranges;   // for the static evaluator
     s_use_coarse_q_eta  = useCoarseQEtaBin;
 
