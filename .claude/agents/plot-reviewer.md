@@ -48,6 +48,24 @@ For each item, state PASS or FAIL with specific evidence.
 
 3. **Legend for multi-dataset canvases**: if multiple lines, histograms, or datasets are plotted on the same canvas or subplot, a legend is present that clearly labels each one. Labels must be comprehensible (not raw variable names or cryptic codes). State which canvas is missing a legend or has unclear labels.
 
+3b. **Publication-standard text (P1a/P1b/P1c of `atlas-plotting.md`)** — read EVERY string
+    rendered on the canvas (headline, legend entries, legend header, axis titles incl. ratio
+    pads, in-frame labels, annotations, off-scale notes) and FAIL any that is:
+    - **code- or task-specific**: pipeline step index (`Step 3`, `step4`), round/iteration
+      number (`round-7`), variant or mode key (`vtx`, `ptm`, `[L1]`, `[HLT]`, `zoom`, `full`),
+      method/file identifier (`powerlaw_floatRp`), tree/branch name, or a production tag that
+      is not itself the subject of the figure;
+    - **an undefined abbreviation** (`T&P`, `SF`, `corr`/`orig`, `thr`) — ATLAS-standard
+      vocabulary excepted;
+    - **a number the reader needs, missing or replaced by a pointer** (`< thr`, "see
+      fit_report.txt"). Also check the drawn value against the code that APPLIES the cut: if
+      the plot macro retypes the number instead of reading the shared definition, FAIL it —
+      that is how a plot ends up stating a cut the analysis no longer applies;
+    - **a statement about downstream USE** rather than about the plotted measurement;
+    - **left-over or truncated text**: empty/half-finished annotations, a legend entry cut off
+      at the pad edge, a headline rendered at the wrong size or inside a sub-pad.
+    This applies to diagnostic and sanity-check plot sets exactly as to deliverables.
+
 4. **Legends/textboxes do not obscure data**: legends, text boxes, and labels do not cover or overlap with histograms, lines, or data points. If they do, state which element obscures which data and suggest repositioning.
 
 5. **ATLAS style (if required)**: if the user requested ATLAS style, verify: (a) `SetAtlasStyle()` or equivalent is called, (b) "ATLAS Internal" (or "ATLAS Preliminary") text is present on the canvas. If not required by the user, mark N/A.
@@ -99,8 +117,10 @@ For each checklist item:
 
 CRITICAL: physics-results criteria C1, C2, C3 (unphysical discontinuity, shape/
 magnitude violation, Run 2 inconsistency) — always; plus items 1, 2, 7, 12
-(missing/empty plots, wrong output location, unconstrained fits)
-WARNING: items 3, 4, 5, 6, 8, 9, 10, 11, 13, 14, 15 (readability, style, directory, fit quality)
+(missing/empty plots, wrong output location, unconstrained fits), and item 3b when the
+canvas states a WRONG number or points the audience at a file/code (both mislead the reader)
+WARNING: items 3, 4, 5, 6, 8, 9, 10, 11, 13, 14, 15 and the remaining 3b cases
+(readability, style, directory, fit quality)
 
 ## Anti-patterns to catch
 

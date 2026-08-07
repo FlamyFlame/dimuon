@@ -25,13 +25,34 @@ vary → take the ratio to nominal → smooth/fit the ratio → sum sources in q
 
 ## 1. Trigger efficiency
 
-### 1a. ΔR-correlation correction — large-ΔR plateau normalization  ⚠ ACTIVE, size to be re-derived
+### 1a. ΔR-correlation correction — large-ΔR plateau normalization  ⚠ ACTIVE
 
 **What it is.** The MC-derived ΔR corrections are ratios that must, by construction, tend to 1
 for well-separated muons (`mc_trigger_efficiency.md` §3.3/§3.4 diagnostic 2): a plateau ≠ 1
 measures the quality of the ε_MC turn-on parameterization used in the inverse weighting, not
 physics. The corrections are therefore **plateau-normalized** before use, and the size of the
 offset that was normalized away is taken as a systematic on the correction.
+
+**THE PLATEAU WINDOW AND ITS OWN SYSTEMATIC (2026-08-04).** The window is **ΔR ∈ [2, 3.5]**,
+defined once in `Analysis/Utilities/MCTrigEffPlateauWindow.h` and read from there by every
+stage — it is never retyped (three separate copies had silently kept an older value). It
+replaced ΔR ∈ [1,4], which was not flat: on pp24 Tight a constant fit gives χ²/ndf 3.67 (Step 3)
+/ 3.85 (Step 4) over [1,4] against **1.08 / 0.76** over [2,3.5]. Both edges moved, each for an
+independently measured reason — the lower edge for per-cell structure in ΔR ∈ [1,2], the upper
+edge because the inclusive curve falls monotonically beyond ΔR ≈ 3.5 for a **geometric** reason
+(Δφ ≤ π ⇒ ΔR > 3.5 forces |Δη| > 1.54, pushing both legs into the r16578 forward-endcap region
+where ε_MC is badly parameterized — see §1c). Full derivation: `mc_trigger_efficiency.md` §3.3.
+
+The **plateau-window systematic** is `|plateau[2,3.5] − plateau[1,4]|`, evaluated per
+(pair pT, pair η) cell from the SAME ratio histogram, so the difference is purely the window:
+- machine-readable: `h_stepN_plateau_syst` (per cell) and `h_stepN_plateau_syst_inclusive` in
+  the plateau ROOT file below. A value of **−1 means "not evaluable"**, never zero uncertainty.
+- also listed per cell in `plateau_guard_report.txt` and as the 4th field of the
+  `stepN_plateau_fluctuation_pair_eta_pt.txt` tables.
+- It is **reported only** — nothing normalizes or divides by it.
+- It also covers the residual mismatch between this window and the ΔR > 0.8 region in which the
+  data-derived ε^nc is defined (0.45 % inclusively on pp24, up to ~3 % per cell;
+  `mc_trigger_efficiency.md` §2).
 
 **Where the numbers live — READ THESE, DO NOT COPY THEM INTO PROSE:**
 - **Machine-readable (authoritative): the plateau ROOT file** written by the Step-3/Step-4

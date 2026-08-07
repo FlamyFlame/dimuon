@@ -48,6 +48,32 @@ to read off the figure must not be drawn on it.** The audience cannot see the co
 tracking doc, or any .txt output, so a plot must stand alone and must contain only what a
 published figure would.
 
+Three rules follow from that, and they apply to EVERY plot the repo produces — deliverables,
+cross-checks, sanity studies and internal diagnostics alike (a "diagnostic" figure is still
+shown to a physicist, and it is the one most likely to end up pasted into a talk):
+
+**P1a — nothing code- or task-specific.** No token whose meaning lives in the source tree or in
+this project's task history: pipeline step indices (`step3`, `Step 1`, `Step-1 sanity check`),
+round/iteration numbers (`round-7 selection`), variant/mode keys (`vtx`, `ptm`, `orig`,
+`full_chain`, `[L1]`, `[HLT]`, `zoom`, `full`), method or file-name identifiers
+(`powerlaw_floatRp`, `sf_closure`, `do_step4`), tree/branch names, or production tags
+(`r17663`, `_pdf`, "FULL sample") — the last only when the figure's SUBJECT is the production
+itself. Name the PHYSICS instead: the efficiency being plotted, the sample's beam/energy/run
+conditions, the requirement being applied.
+
+**P1b — no abbreviation the audience has not been given.** Spell out `T&P` → `tag-and-probe`,
+`SF` → the ratio it stands for (`#varepsilon_{data}/#varepsilon_{MC}`), `corr`/`orig` →
+`corrected`/`uncorrected`. Standard ATLAS vocabulary (`mu4`, `L1 MU3V`, `HLT`, `p_{T}`,
+`#eta`, `R_{AA}`) is fine; anything invented in this analysis needs its definition ON the
+canvas.
+
+**P1c — every number the reader needs is ON the plot; anything else is deleted.** A threshold
+drawn as `< thr`, a cut named but not valued, a "see the table" pointer — all FAIL. Draw the
+value (`|#Deltap_{T}|/p_{T}^{truth} < 0.10`). Take the value from the single source that
+defines the cut (a shared header/config), NEVER retyped into the plot macro — a retyped number
+drifts silently the first time the cut changes and puts a wrong number in front of the reader.
+If a number is not needed to read the figure, remove it rather than shrink it.
+
 **FAIL the plot if the canvas carries any of:**
 - **Explanatory / tutorial sentences** about method or intent — "All three: MC direct
   P(mu4 | reco mu), no tag-and-probe.", "Ratio pad: MC / data, both series.",
@@ -64,10 +90,26 @@ published figure would.
   "(chi2/ndf undefined -- it passes through every point)". State the fact tersely ("no fit")
   or draw nothing.
 
+- **Statements about how the result is USED downstream** — "VALIDATION only -- NOT applied to
+  pp 2mu4", "dresses the union linear terms". That is an analysis decision recorded in the
+  tracking doc; the figure shows a measurement.
+- **Half-finished text left by an earlier edit** — empty `DrawLatex("")` calls, a dangling
+  clause (`#LTSF#GT #approx #varepsilon_{data}.`), a legend entry truncated at the pad edge.
+  After ANY text change, LOOK at the rendered PNG: a string that is too long for its legend is
+  silently cut off, and a headline drawn after a sub-pad loop lands inside the last sub-pad.
+
 Legitimate on-canvas text: axis titles with units, the legend (physical series names), the
-sample/working-point headline, physical bin ranges, defining equations, fitted parameter
-values with uncertainties, chi2/ndf **as a number**, and a terse record of any point pushed
-off scale by an axis cap (dropping data silently is worse).
+sample/working-point headline (beam, energy, run conditions), physical bin ranges, defining
+equations, fitted parameter values with uncertainties, chi2/ndf **as a number**, the numerical
+value of any cut the reader needs, and a terse record of any point pushed off scale by an axis
+cap (dropping data silently is worse).
+
+**Legend placement when the data fills the frame.** A white/semi-opaque legend backing does NOT
+solve an overlap: against a white frame it is invisible, and drawing it before the series only
+means the points are painted over the labels. When no quadrant is free (dense multi-series
+panels), give the legend its OWN space — a reserved strip above the frame (`SetTopMargin`, then
+place the legend in NDC above it), or one canvas-level legend in the header strip of a
+multi-panel figure. Same for a panel label that collides with off-scale arrows at the frame top.
 
 ## Fits: the EQUATION is mandatory (MANDATORY — `/review-plot` P2)
 

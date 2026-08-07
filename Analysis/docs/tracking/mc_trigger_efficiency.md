@@ -21,7 +21,67 @@ HIJING overlay r17618 `_July2026`) to deliver the MC-based trigger-efficiency pr
    weighting on an unbiased (no-trigger-requirement) MC pair sample. This is the analysis
    deliverable that replaces the current dummy ε_ΔR ≡ 1 (roadmap Q4).
 
-## Autonomy Contract (round 7 — ACTIVE, opened 2026-08-03; re-read on every compaction)
+## Autonomy Contract (round 8 — ACTIVE, opened 2026-08-04; re-read on every compaction)
+
+**Origin:** advisor feedback relayed by the user 2026-08-04. Three physics points, then a
+concrete work list. Round 7 is CLOSED except for its two reviews and wrap-up.
+
+- Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a plan, a
+  passing small test, or one pipeline stage is NOT a stopping point.
+- Done = all of the following:
+  1. **Backup** of the current (fine q·η + gap-fallback) results: the whole
+     `~/usatlasdata/dimuon_data/plots/{pp,pbpb}_trigger_efficiency/` directories copied to
+     `{pp,pbpb}_trigger_efficiency_fine_q_eta_bins_w_gap/`.
+  2. **Canonical coarse pair-pT binning = 8 LOGARITHMIC bins, 8 → 150 GeV**, in
+     `ParamsSet.h`; the two existing 4-bin definitions (`pair_pt_coarse_bins` 8–120 and
+     `pair_pt_coarse_bins_pt150` 8–150) are **DELETED**, `N_COARSE_PAIR_PT_BINS = 8`.
+     *Physics:* pair pT is the key observable; 4 bins smear its dependence out of the
+     efficiency correction, which propagates into the pair-pT spectrum and R_AA.
+     **Crossx consumers (`RDFBasedHistFillingPP.cxx`, `RDFBasedHistFillingPbPb.cxx`) and the
+     plots they feed are an explicit FUTURE TO-DO — postponed, not done here.**
+  3. **Run-3 coarse q·η binning** `{-2.4,-2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0,1.5,2.0,2.2}` (10 bins)
+     becomes `CommonEffcyConfig::q_eta_proj_ranges_coarse_incl_gap` (today's version merges
+     (−0.5,0.5) into one bin — that is the only difference).
+  4. **Gap fiducial cut applied** to every trigger-efficiency measurement, from
+     `ParamsSet::single_mu_fiducial_gap_cuts` (already declared, **currently read by nothing**):
+     reject a muon whose `q·η` lies in any of `(−1.20,−1.05)`, `(−0.06,0.06)`, `(2.20,2.40)`;
+     reject a PAIR if EITHER leg is rejected. Applied to the single-muon tree AND the pair
+     trees via a gap-cut mode in the ntuple-processing code (**default true**, distinct output
+     suffix, nominal never clobbered), per the NTuple-Processing Provenance rule.
+     **Data ntuple processing + nominal signal selection are explicitly OUT of scope
+     (larger blast radius, needs a human decision) — future to-do.**
+  5. **Single-muon efficiencies remade** (data AND MC) on the coarse q·η binning. Because the
+     coarse binning INCLUDES the gaps, **the gap-region 2D fallback disappears** — the
+     single-muon efficiency retrieval must be adjusted accordingly, with the fine-q·η path kept
+     as an opt-in legacy mode. `mu4_mu4noL1` is not maintained (memory
+     `feedback_mu4_mu4noL1_not_maintained`) ⇒ mu4 only.
+  6. **Forward-edge decision plot:** single-muon mu4 efficiency in the most positive q·η bin,
+     pT dependence with upper edges **(2,2.2), (2,2.25), (2,2.3), (2,2.4)** overlaid; 4 subplots
+     — μ⁺ left / μ⁻ right, data top / MC bottom. Purpose: decide whether the forward cut must
+     stay at 2.2 or can loosen to 2.25 / 2.3. ((2,2.4) is known to be bad.)
+  7. **All remaining MC trigger-efficiency plots remade** on the 8 pair-pT bins, keeping the
+     gap cut and the round-7 forward veto (`pT > 7 || q·η > −2`) on Steps 2/3/4.
+  8. **Blast-radius flag:** everything outside trigger efficiency that the q·η-binning and
+     gap-cut changes affect is enumerated in the doc as a future to-do (not executed).
+  9. Reviews (`/review-analysis-code`, `/review-plot`), docs, INDEX, commit.
+- Stop-and-ask = ANY physics-results-bending ambiguity (no fixed list; use judgment; when unsure
+  whether an ambiguity is blocking, treat it as blocking → AskUserQuestion).
+
+**Point 3 of the advisor feedback (recorded, changes the R16 method):** weighting each MC muon
+by `SF = ε_data/ε_MC` is **not a reasonable procedure**. The analysis proceeds with
+**data-driven single-muon mu4 efficiencies + MC-derived ΔR corrections**. If the SF is to be
+tested at all, it is applied as a direct multiplication `ε_MC × SF`, never as a per-muon weight.
+⇒ the round-7 corrected-MC study (R16) keeps its *conclusion* (the ΔR corrections are
+insensitive to the single-muon normalization) but its per-muon-SF **implementation is
+deprecated**; do not extend it.
+
+**⚠ Cross-doc coupling (read before touching the gap cut):** `muon_gap_cuts_acceptance.md`
+(ACTIVE, a SIBLING SESSION is writing it) owns the derivation of these gap windows — its F6/F7
+measure the structure, F8 declares the vector. `pp_trig_eff_highpt_jump.md` (ACTIVE, blocked on
+a user decision) documents the live `w_trig = 0` bug whose candidate fix (d) *is* this fiducial
+cut. Do not edit either doc from here; cross-reference them.
+
+## Autonomy Contract (round 7 — CLOSING 2026-08-04; re-read on every compaction)
 - Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a plan, a
   passing small test, or one pipeline stage is NOT a stopping point.
 - Done = all of the following, in this order (item 1 lands BEFORE any other):
@@ -223,9 +283,9 @@ single-leg ΔR correction added 2026-07-28 — see the note below):
 - **PbPb, mu4 (union — at least one muon fires):**
   `P(pair | ΔR) = ε_ΔR^single(ΔR)·(ε₁ + ε₂) − ε₁·ε₂·ε_ΔR^cross(ΔR)`
   where
-  - `ε_ΔR^single(ΔR) = ε_single(ΔR) / ε_single(ΔR>1)` is the ΔR correction on the single-leg
-    (marginal) trigger probability — the deliverable of **Step 4 (§3.4)**, plateau-normalized so
-    it is 1 for well-separated muons; and
+  - `ε_ΔR^single(ΔR) = ε_single(ΔR) / ε_single(plateau window)` is the ΔR correction on the
+    single-leg (marginal) trigger probability — the deliverable of **Step 4 (§3.4)**,
+    plateau-normalized so it is 1 for well-separated muons; and
   - `ε_ΔR^cross(ΔR) = P(both fire | ΔR) / (ε₁ ε₂)` is the joint (cross-term) correction — **Step 3
     (§3.3)**.
 
@@ -238,9 +298,14 @@ single-leg ΔR correction added 2026-07-28 — see the note below):
   dependence is fully absorbed into ε_ΔR^2mu4**, so `ε_ΔR^single` is NOT needed for pp (Step 4 is
   run on pp only to validate the procedure on the FULL sample's statistics; see §3.4).
 
-with εᵢ = ε^nc(pTᵢ, q·ηᵢ), the **data-derived** single-muon mu4 efficiency of an isolated muon
-(measured at ΔR > 0.8, i.e. already the ΔR>1 / plateau value, so the linear terms reduce to εᵢ
-at large ΔR as required). MC supplies only the ΔR **ratios** ε_ΔR^single and ε_ΔR^cross — the
+with εᵢ = ε^nc(pTᵢ, q·ηᵢ), the **data-derived** single-muon mu4 efficiency of an isolated muon,
+measured at ΔR > 0.8 so that it is already an isolated-muon value and the linear terms reduce to
+εᵢ at large ΔR as required. **Consistency caveat (2026-08-04):** the MC ratios are now normalized
+over ΔR ∈ [2, 3.5] (§3.3), which is NOT the ΔR > 0.8 region in which ε^nc is defined, so the two
+references do not coincide by construction. Measured size of the mismatch on pp24 Tight: the
+inclusive ε_ΔR^cross averaged over ΔR ∈ [1,2] is 0.97599/0.97159 = **1.0045**, i.e. 0.45 %
+(up to ~3 % in individual cells). That residual is covered by the plateau-window systematic
+(§3.3); it is not assumed away. MC supplies only the ΔR **ratios** ε_ΔR^single and ε_ΔR^cross — the
 per-leg L1 over-efficiency cancels in each (§1, §4). The two assumptions this doc
 measures/tests: (i) ~~the singles terms ε₁, ε₂ carry **no** ΔR dependence~~ **VIOLATED (R4) and
 now CORRECTED**: the singles ARE ΔR-dependent, so the union's linear terms are dressed by
@@ -249,7 +314,7 @@ alone (checked via kinematic binning).
 
 **Decision note (2026-07-28, user — resolves Remaining Work 1).** The RW-1 union-weight
 question is settled in favour of the "ΔR-dependent ratio correction on the linear terms" option:
-`ε_ΔR^single(ΔR) = ε_single(ΔR)/ε_single(ΔR>1)`, measured by inverse weighting exactly as Step 3
+`ε_ΔR^single(ΔR) = ε_single(ΔR)/ε_single(plateau window)`, measured by inverse weighting as Step 3
 measures ε_ΔR^cross but at the single-leg level (§3.4). The union weight is reformulated as
 above; pp/2mu4 is unchanged.
 
@@ -377,6 +442,29 @@ is the MC-internal ΔR **ratio** (Steps 2–3).
   detector regions, decisions must decorrelate; failure to flatten means residual kinematic
   mis-parameterization of ε_MC leaking in. (2) **plateau = 1** — an offset measures fit
   quality, not physics. The physical content is the small-ΔR shape relative to the plateau.
+
+**THE PLATEAU WINDOW (authoritative; code constant in
+`Analysis/Utilities/MCTrigEffPlateauWindow.h`, never retyped).** ΔR ∈ **[2, 3.5]** since
+2026-08-04 (user decision; before that [1,4]). It applies identically to §3.3 and §3.4. Both
+edges are cut, each for an independently measured reason:
+- **Lower edge 1.0 → 2.0 — per-cell structure.** In several (pair pT, pair η) cells the
+  ΔR ∈ [1,2] half sits significantly above the far half (worst: pT_pair[8,14) × η_pair[−0.5,0.5),
+  +0.054 at 7.9σ). Cutting it improves the mean per-cell constant-fit χ²/ndf from 1.64 to 1.27
+  (Step 3) and 1.66 to 1.34 (Step 4). Cutting only the upper edge does **not** fix this.
+- **Upper edge 4.0 → 3.5 — the tail is an ARTEFACT, and it is diagnostic 1 firing.** The
+  inclusive pp24 curve is flat from ΔR ≈ 0.6 to ≈ 3.4 (0.9702–0.9792) and then falls
+  monotonically: 0.9571 (3.62), 0.9521 (3.88), 0.9341, 0.9262, 0.9156, 0.8965, 0.668, 0.390.
+  The cause is **geometric**: with Δφ ≤ π, ΔR > 3.5 forces |Δη| > 1.54 and ΔR > 4 forces
+  |Δη| > 2.47, so large-ΔR pairs push **both** legs into the endcaps — precisely the r16578
+  forward-endcap region (R8/R10/R14) where ε_MC is badly parameterized. Run 2's analogous L1
+  close-by-RoI correction stays at unity out to large ΔR and shows no such fall.
+  Inclusive constant-fit χ²/ndf (Step 3 / Step 4): [1,4] 3.67/3.85, [2,4] 5.06/5.37,
+  **[2,3.5] 1.08/0.76**.
+- **Cost:** median per-cell relative stat error 0.95% → 1.40% (Step 3), 0.46% → 0.66% (Step 4).
+  All cells stay usable (`fit_ok = 1` in 36/36).
+- **The retired [1,4] window is kept ONLY as the normalization systematic**
+  `|plateau[2,3.5] − plateau[1,4]|`, written per cell into the plateau ROOT file and reported in
+  `plateau_guard_report.txt`. It is an uncertainty — nothing may normalize a curve by it.
 - **Application:** ε_ΔR multiplies ε₁ε₂ in the pp 2mu4 weight, and dresses the ε₁ε₂ cross
   term in the PbPb union weight (both data-derived ε's unchanged).
 
@@ -390,8 +478,8 @@ their own ΔR correction. Step 4 measures it as a continuous, kinematics-divided
 
 - **What it measures:** `ε_single(ΔR)` = P(a muon fires the full mu4 chain | it is a leg of an
   offline reco pair at separation ΔR), with the leg's (pT, q·η) kinematic dependence divided
-  out; plateau-normalized → `ε_ΔR^single(ΔR) = ε_single(ΔR)/ε_single(ΔR>1)`. This dresses the
-  union's linear terms (§2).
+  out; plateau-normalized → `ε_ΔR^single(ΔR) = ε_single(ΔR)/ε_single(plateau window)`. This
+  dresses the union's linear terms (§2).
 - **Method (inverse weighting — the leg-level analog of §3.3):**
   - **Object:** each muon **leg** of every MC reco pair (role-swap: both legs of a pair are
     probes; SS + OS trees summed — the trigger response is a per-muon detector property, blind to
@@ -401,7 +489,7 @@ their own ΔR correction. Step 4 measures it as a continuous, kinematics-divided
   - **Numerator:** legs whose **own** per-muon mu4 match fires (never the event-level chain,
     never the partner's decision), each weighted `1/ε_MC(pTleg, q·ηleg)` with ε_MC the **MC-derived**
     §3.1 fit, TF1-Eval'd continuously (clamp to fit range, floor, cap — as §3.3).
-  - **Ratio vs ΔR = ε_single(ΔR)**; plateau-normalize over ΔR∈[1,4] → ε_ΔR^single(ΔR).
+  - **Ratio vs ΔR = ε_single(ΔR)**; plateau-normalize over the plateau window → ε_ΔR^single(ΔR).
 - **Why MC ε in the weights / plateau = 1 by construction:** same self-consistency as §3.3. If
   the single efficiency had no ΔR dependence (ε_single(ΔR)=ε_MC(pT,q·η)), then in each ΔR bin
   Σ_num 1/ε_MC ≈ Σ_den ε_MC/ε_MC = N → ratio = 1 at every ΔR. A large-ΔR plateau ≠ 1 is a fit-quality
@@ -1300,6 +1388,290 @@ centrality (D2).
     `P = ε_ΔR^single(ΔR)·(ε₁+ε₂) − ε₁ε₂·ε_ΔR^cross(ΔR)`; ε_ΔR^single delivered (plateau-normalize like
     ε_ΔR^cross before wiring into crossx — RW6 unchanged). pp/2mu4 untouched. Next: commit.
 
+### R19. Plateau window → ΔR ∈ [2, 3.5]; round-7 closed (2026-08-04)
+
+**Two user decisions (AskUserQuestion) and one mid-review correction.**
+
+**D-P1 — crossx binning: DEFER AND BUNDLE.** R17 recorded "crossx outputs are now stale"; that
+was too broad. Measured: the ONLY crossx consumers of `pair_pt_coarse_bins` are the two
+extended-mass 0–20 GeV histograms `h2d_crossx_minv_0_20_vs_pair_pt_coarse_{op,ss}_dsigma`
+(`RDFBasedHistFillingPP.cxx:552-560`, `PbPb.cxx:1069-1082`) — the THStack / control-region study
+inputs. The **nominal dσ/dp_T spectra were never affected** (they use `pT_bins_120`/`ptb150`).
+Decision: refill those once, together with the pp + PbPb 23/24/25 refill that the sibling
+session's `w_trig = 0` gap bug (`pp_trig_eff_highpt_jump.md`, `9f97818`) forces anyway.
+
+**D-P2 — plateau window.** First measured near-half-vs-far-half and proposed [2,4]. The
+`/review-analysis-code` reviewer found — and an independent recomputation confirmed — that this
+was **half the story and [2,4] was inclusively WORSE than the [1,4] it replaced**. The inclusive
+pp24 Tight curve is flat from ΔR ≈ 0.6 to ≈ 3.4 and then falls monotonically: 0.9571 (3.62),
+0.9521 (3.88), 0.9341, 0.9262, 0.9156, 0.8965, 0.668, 0.390. Constant-fit χ²/ndf (S3 / S4):
+[1,4] 3.67/3.85, **[2,4] 5.06/5.37**, [1,3.5] 0.90/0.74, **[2,3.5] 1.08/0.76**.
+Cause is GEOMETRIC — Δφ ≤ π ⇒ ΔR > 3.5 forces |Δη| > 1.54 and ΔR > 4 forces |Δη| > 2.47, pushing
+BOTH legs into the r16578 forward-endcap region (R8/R10/R14) where ε_MC is badly parameterized;
+i.e. §3.3 diagnostic 1 firing. Run 2's analogous L1 close-by-RoI correction stays at unity out to
+large ΔR. **User decision: nominal ΔR ∈ [2, 3.5]**, each edge cut for its own measured reason
+(lower = per-cell structure, mean per-cell χ²/ndf 1.64→1.27 S3 and 1.66→1.34 S4; upper = the
+artefact tail). Systematic = `|plateau[2,3.5] − plateau[1,4]|` per cell.
+
+**Final numbers (Tight, canonical pair-pT binning as of round 7):**
+| | inclusive plateau | flagged cells | failing | verdict |
+|---|---|---|---|---|
+| pp_full Step 3 | **0.9731 ± 0.0009** | 1 (pT_pair[41,120)×η_pair[1.0,1.5) = 0.8850 ± 0.0367) | 0 | PASS |
+| pp_full Step 4 | **0.9867 ± 0.0004** | **0** | 0 | PASS |
+| overlay Step 3 | 0.8669 ± 0.0218 | 4 (TEST sample, exempt) | — | reported |
+0 unmeasurable cells anywhere. Window systematic: median ≈ 0.007, max 0.171.
+
+**Code:** new `Analysis/Utilities/MCTrigEffPlateauWindow.h` is the single source of truth for both
+windows, included by `plot_mc_trig_eff.cxx`, `plot_mc_trig_eff_corrected.cxx`,
+`fit_dr_corrections.cxx` and `FillMCTrigEffHists.cxx`; **three silently-diverged literal copies
+deleted** (the corrected macro and two sites in the filler still held [1,4]). Plateau ROOT file
+gains `h_stepN_plateau_syst` / `h_stepN_plateau_syst_inclusive` (−1 = not evaluable, never 0);
+guard report and Table B gained the window systematic. `FitMCSinglesEffcy` PNGs now carry the WP
+token (Medium had been overwriting Tight — a deterministic clobber, not a race).
+
+**Review:** 1 CRITICAL (the window, above) + 7 WARNINGs; every reported number verified MATCH by
+independent recomputation. One correction to my own text: "per-cell errors grow ~2–5×" was
+overstated (median 1.31×). Two findings — `plot_dr_correction_fits.cxx` draws only ΔR < 2 (so no
+plateau-defining bin is on the canvas) and its hand-mirrored fit constants — live in a file a
+SIBLING SESSION holds uncommitted; reported, not edited. **Carry both into round 8.**
+
+### R20. Round 8 opened — advisor feedback (2026-08-04)
+
+Backup of the pre-change state: `~/usatlasdata/dimuon_data/plots/{pp,pbpb}_trigger_efficiency_
+fine_q_eta_bins_w_gap/` (311 + 526 PNGs, verified equal counts).
+
+**Canonical binnings changed (done, smoke-tested):**
+- `ParamsSet::pair_pt_coarse_bins` = **8 log bins 8→150 GeV**, generated by `fillLogBinningArray`
+  (never retyped): 8, 11.54, 16.65, 24.01, 34.64, 49.97, 72.08, 104.0, 150.
+  `N_COARSE_PAIR_PT_BINS = 8`; **`pair_pt_coarse_bins_pt150` DELETED** (it had no readers).
+  ⚠ The coarse axis is no longer derived from `pT_bins_120` — **no interior edge coincides with
+  the fine axis**; nothing may assume coarse ⊂ fine.
+- `CommonEffcyConfig::q_eta_proj_ranges_coarse_incl_gap` = 10 contiguous bins
+  `{-2.4,-2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0,1.5,2.0,2.2}` (only change: (−0.5,0.5) split at 0).
+- New `ParamsSet::PassSingleMuFiducialGap(eta, charge)` + `FiducialGapCutExpr(q_eta_expr)` —
+  ONE definition for MC and data, deliberately NOT an extension of
+  `PassSingleMuonGapCut`/`MuPairPassGapCut` (different object; those define every existing
+  `_wgapcut` histogram and redefining them would silently change already-produced outputs).
+  Verified: q·η −1.1/0.0/2.3 rejected; −2.3/1.1/−1.25/2.1 kept; charge folding correct.
+
+**User decisions this round:** data tag-and-probe gap cut applies to the **PROBE ONLY**
+(ε^nc is a per-muon efficiency evaluated only for non-gap muons; the tag is left uncut, and this
+is the like-for-like match to MC Step 1, which has no tag). Per-cell ΔR corrections: **NO
+fallback of any kind** — unmeasurable cells are **not plotted**, and the count of unmeasurable
+cells is reported explicitly; a silent fallback would be misleading, and any future fallback must
+be requested explicitly and tested against the original. Step-3/Step-4 pair-pT overlays must be
+**split into two PNGs** (bottom four and top four pair-pT bins) — 8 lines in one subplot is
+unreadable.
+
+**Scout findings that change the work (three independent read-only sweeps, cross-checked):**
+- **FIVE hardcoded copies** of the q·η bin list, not three: `SingleMuEffcyPtTurnOnFitter.cxx:45-51`,
+  `plot_mc_trig_eff.cxx:409-415` **and `:416-418` (numeric)**, `plot_mc_trig_eff_corrected.cxx:424-430`
+  **and `:431-433` (numeric)**.
+- **`useCoarseQEtaBin` already exists** (`RDFBasedHistFillingData.h:175`) and the graph PRODUCER
+  honours it, but the FITTER and the READER (`RDFBasedHistFillingData.cxx:628`) both hardcode
+  *fine* — that asymmetry is the actual bug to fix. Also `PP.cxx:296`/`PbPb.cxx:642` skip the
+  per-charge/per-centrality graphs in coarse mode; trigger efficiency needs them.
+- **FATAL at 8 bins:** `plot_mc_trig_eff.cxx:1412-1413` `scol`/`smark` are 4-element vectors
+  indexed WITHOUT modulo at `:1459-1461, :1476-1477` (index runs to 7) ⇒ undefined behaviour.
+- Removing the gap fallback **fixes the `w_trig = 0` sentinel bug** of `pp_trig_eff_highpt_jump.md`.
+- **Latent bug (verified):** `RDFBasedHistFillingData.h:206-207` — `output_generic_hists` and
+  `output_gapcut_hists` have **no initializer** and are read uninitialized at
+  `RDFBasedHistFillingData.cxx:188` by the trig-eff pipelines.
+- **A live second-binning bug, independent of this work:** the data-area extended-mass macros
+  (`plot_extmass.C`, `thstack_extmass.C`) label panels 8/15/27/50/150 while the histograms they
+  project were filled with 8/13.75/23.63/40.62/120. They also index `PTLAB[5]`/`px[4][4]`/
+  `colc[4]` by pair-pT bin ⇒ **out of bounds at 8 bins**.
+- ⚠ **The crossx fillers have NO opt-out** — they read the same vector, so any recompile switches
+  their axis to 8 bins. "Postponed" means *do not rerun crossx*, not *code unaffected*.
+- ⚠ Editing `q_eta_proj_ranges_coarse_incl_gap` **also changes the single-muon RECO-efficiency
+  plots** (`plot_single_muon_reco_effcy.cxx:103-105`, `..._r17618_vs_r17662.cxx:171-173`) — the
+  "anything other than trigger efficiency" flag the user asked for. Do NOT touch the `_run2`
+  vectors: `RDFBasedHistFillingData.cxx:743-748` key-matches against them.
+
+Full inventories: scratch docs `_sub_qeta_binning_1.md`, `_sub_gapcut_wiring_2.md`,
+`_sub_pairpt_binning_3.md` (Explore agents are read-only and could not write their own; the
+orchestrator persisted their returned text verbatim).
+
+**R20b. Round-8 wiring as implemented (2026-08-04).**
+
+*Gap cut* — `ParamsSet::PassSingleMuFiducialGap(eta,charge)` + `FiducialGapCutExpr(q_eta_expr)`
+(string builder, so the windows are never retyped into a JIT filter). Applied at the RDF stage,
+NOT in the ntuple processing: `eta`/`charge` are already branches on both trees, every other
+muon-level fiducial cut in this chain already lives in the RDF macro, and the DATA gap cut cannot
+go in the data NTP (out of scope) — putting the MC cut in the MC NTP would split one fiducial
+definition across two stages and make MC/data asymmetric. Sites:
+`FillMCTrigEffHists.cxx` `sel_single` (Steps 1 + sanity), `sel_pair_legs` (Steps 2 + 4), and the
+**separate Step-3 selection string** (Step 3 does not use `sel_pair_full` — the one easy to miss);
+data probe-side in `RDFBasedHistFillingPP.cxx` / `PbPb.cxx` right after `q_eta2nd` is defined.
+Output token `_qeta_fid`, so no gap-cut output can overwrite a no-gap-cut one.
+
+*Coarse q·η* — `useCoarseQEtaBin` now defaults **true** (fine = legacy opt-in). The
+producer/reader asymmetry is fixed: `EvaluateSingleMuonEffcyPtFitted` reads `q_eta_proj_ranges`
+(set from the same flag) instead of the hardcoded fine list, via new file-scope mirrors
+`s_q_eta_proj_ranges` / `s_use_coarse_q_eta` (the evaluator is a STATIC member and cannot see
+instance state). **The 2D fallback is now confined to the legacy fine path**; on the nominal
+coarse path a missing turn-on THROWS instead of returning the −1 sentinel — which is the
+`w_trig = 0` pair-dropping bug of `pp_trig_eff_highpt_jump.md`, now structurally impossible.
+`MakeAndWriteSingleMuonTrigEffPtGraphs` branched on `useCoarseQEtaBin` and produced NO per-charge
+graphs in coarse mode; it now branches on `isForSoumya` (obsolete) so per-charge graphs are always
+made — otherwise every efficiency lookup would have silently missed.
+**All five hardcoded copies of the q·η bin list are gone** (data fitter, plot macro ×2 incl. the
+numeric ones); each now derives from `CommonEffcyConfig`. Legend pads derive from the bin count
+instead of a literal `cd(12)`.
+
+*Plots* — the 4-element `scol`/`smark` and `ptcol`/`ptmark` palettes (indexed WITHOUT modulo up
+to 7 at 8 bins ⇒ undefined behaviour) extended to 8 distinct entries and modulo-guarded. Step-3
+and Step-4 pair-pT overlays **split into `_lowpt` / `_highpt` PNGs** (user: 8 overlaid series in
+one pad are unreadable), y-range computed per half. Pair-pT labels `%.0f` → `%.1f` (the new edges
+11.54 / 16.65 / 24.01 … are misstated by up to 0.5 GeV at `%.0f`).
+
+*Latent bug fixed* — `RDFBasedHistFillingData.h` `output_generic_hists` / `output_gapcut_hists`
+were UNINITIALISED and read by the trig-eff pipelines; now `true` / `false`.
+
+*Runs so far:* pp24 data trig-eff refilled on the coarse binning + probe gap cut (60 per-charge
+`_py_*_divided` graphs) and refitted (40 TF1s). MC chain (fill → fit → Steps 3/4 → sanity, 3
+samples × 2 WPs) launched.
+
+**⚠ OPERATIONAL TRAP HIT (2026-08-04):** the PbPb23 data trig-eff fill with
+`EnableImplicitMT(8)` was **SIGKILLed (exit 9), almost certainly OOM** — PbPb books the
+centrality-binned families on top of everything else. It left a **450-byte output file** and the
+wrapping shell still reported exit 0, so an exit-code check would have called it a success and the
+next stage would have fitted an empty file. This is the standing "validate ARTEFACTS, not exit
+codes" rule, and it now has a second failure mode: **check the output SIZE, not just existence.**
+Re-run with `EnableImplicitMT(2)`.
+
+**Round-8 run status at last checkpoint:** pp24 data (fill + fit) DONE; MC fill/fit/Steps 3-4/
+sanity DONE for all 3 samples × 2 WPs; pp_full plot set DONE on the 8 pair-pT bins (the
+`_lowpt`/`_highpt` split PNGs are present and the plateau table shows the new edges
+`pTpair[8.0,11.5) … [104.0,150.0)`). Overlay/noovl plots and the ΔR fits are BLOCKED on the
+PbPb23 data reference. **Confirmed cost of the finer binning, exactly as predicted:** the pp_full
+Step-3 top cell reads `1.0879 ± 1.0879` — a 100 % relative error, i.e. genuinely unmeasurable.
+Per the user's instruction such cells must NOT be plotted and their COUNT must be reported; no
+fallback of any kind. That reporting is still TO DO.
+
+### R21. ★ THE GAP HYPOTHESIS IS CONFIRMED — plateaus move to ≈1 (2026-08-04, Tight)
+
+The advisor's hypothesis was that the plateaus sat away from 1 because the **gap regions** were
+handled by an unfitted 2D fallback with large binning fluctuations. Cutting those muons and
+fitting a CONTIGUOUS coarse q·η binning does exactly what was predicted:
+
+| inclusive plateau | round 7 (fine q·η + gap fallback) | round 8 (coarse q·η + gap cut) |
+|---|---|---|
+| pp_full Step 3 | 0.9731 ± 0.0009 | **0.9945 ± 0.0009** |
+| pp_full Step 4 | 0.9867 ± 0.0004 | **0.9974 ± 0.0004** |
+| overlay Step 3 | 0.8669 ± 0.0218 | **0.9614 ± 0.0249** |
+| overlay Step 4 | 0.9477 ± 0.0090 | **0.9924 ± 0.0114** |
+
+**Medium WP reproduces it** (pp Step 3 0.9948 ± 0.0008, Step 4 0.9977 ± 0.0004; same failing/
+flagged counts 12/5 and 2/7) ⇒ the improvement is WP-independent, as a detector-geometry
+effect must be.
+
+The overlay Step-3 move (0.867 → 0.961) is the striking one: the long-standing ~13 % offset was
+**mostly the gap-region fallback**, not a genuine failure of the inverse-weighting closure. The
+plateau-normalization systematic (§1a) shrinks accordingly and must be re-derived on these values.
+
+**The cost is per-cell, and it is real.** With 8 × 9 = 72 cells (Tight):
+
+| | unmeasurable | flagged (0.10–0.15) | FAILING (>0.15) | verdict |
+|---|---|---|---|---|
+| pp_full Step 3 | 0 | 4 | **12** | FAIL (FULL sample) |
+| pp_full Step 4 | 0 | 7 | **2** | FAIL (FULL sample) |
+| overlay Step 3 | 18 | 1 | 45 | reported, exempt (TEST) |
+| overlay Step 4 | 15 | 5 | 34 | reported, exempt (TEST) |
+
+The failures concentrate in `pT_pair ≳ 50 GeV`, where the old single [41,120) column is now split
+four ways and pp Pythia runs out of yield (e.g. Step 3 `pT_pair[72.1,104.0) × η_pair[−2.4,−2.0)`
+= 1.1060 ± 0.0059). The guard did its job: it reported every cell and exited non-zero, and the
+fits exist only under an explicit override, for inspection. **Open decision for the user:**
+whether 8 bins is right, or the top edge should come down from 150 GeV — the inclusive and
+mid-pT corrections are excellent either way.
+
+### R22. Forward q·η edge scan — 2.30 is safe, 2.40 is not (2026-08-04)
+
+Plateau ε (pT > 8 GeV), all four panels agreeing (`forward_qeta_edge_scan/`):
+
+| upper edge | data μ⁺ | data μ⁻ | MC μ⁺ | MC μ⁻ | probes (data μ⁺) |
+|---|---|---|---|---|---|
+| 2.20 | 0.9073 | 0.9177 | 0.9339 | 0.9306 | 3 380 |
+| 2.25 | 0.9004 | 0.9107 | 0.9268 | 0.9245 | 4 320 |
+| **2.30** | 0.9026 | 0.9101 | 0.9281 | 0.9251 | **4 900** |
+| 2.40 | 0.8492 | 0.8563 | 0.8851 | 0.8804 | 6 220 |
+
+2.20 → 2.30 costs ~0.5 % in plateau efficiency and recovers **45 % more probes**; 2.40 costs ~6 %.
+⇒ the forward window can be loosened to `{2.30, 2.40}`. **NOT applied** — one edit in
+`ParamsSet.h`, awaiting the user.
+
+*New macro* `plotting_codes/trig_effcy/mc_based/plot_forward_qeta_edge_scan.cxx` — the forward-edge
+decision plot (2×2: μ⁺/μ⁻ × data/MC, upper edge scanned 2.20/2.25/2.30/2.40). **It requires
+NO-GAP-CUT inputs** (the nominal chain removes q·η > 2.2 outright, which would draw four identical
+curves); it asserts the q·η > 2.2 region is populated and refuses to run otherwise. Needs one
+MC pass with the gap cut disabled (`_nogapcut` output) — NOT yet produced.
+
+### R23. Both reviewers run — one OPEN physics finding that REFUTES an earlier claim (2026-08-06)
+
+`/review-plot` FAIL (11 CRITICAL, 11 WARNING) and `/review-analysis-code` FAIL (3 CRITICAL,
+14 WARNING). Every reported number verified MATCH in both. Logs:
+`.claude/logs/review-plot-20260806-073032-round8-mc-trigeff-gapcut.md`,
+`.claude/logs/review-analysis-code-20260806-205802-round8-gapcut-binning.md`.
+
+**★ OPEN, BLOCKING BEFORE THESE CORRECTIONS ARE USED — the top pair-pT plateaus are a real
+effect, NOT a statistics effect.** This doc previously attributed the 12 failing pp Step-3 cells
+to the top bins "running out of yield" at 8 bins. **That is wrong.** Measured:
+`pT_pair[104,150) × η_pair[0.5,1.0)` = **1.2198 ± 0.0037**, weighted RMS 0.0063 over 4 ΔR bins —
+**59σ from 1**; also 1.2020 ± 0.0111 (18σ) and 1.1922 ± 0.0088 (22σ). Twelve cells across the top
+three pair-pT bins are 20–42 % high, coherently across ΔR, with per-cell scatter far below the
+offset. Round 7 had **0** failing pp cells and verdict PASS; round 8 has 12. Two candidate
+mechanisms, both testable:
+- **(a) the ε_MC pT clamp.** `MCEffEvaluator::Eval` clamps pT into the TF1 fit range [4, 60] GeV.
+  In a 104–150 GeV *pair* bin both legs sit near 50–75 GeV, so ε is read at the 60 GeV edge;
+  ε₁ε₂ biased low pushes the inverse-weighted ratio UP. Same family as the out-of-range TF1 trap
+  of `pp_trig_eff_highpt_jump.md`. Test: extend the single-muon turn-on fit range above 60 GeV.
+- **(b) the new COARSE q·η bins** are up to 0.5 wide and straddle the barrel/endcap transition,
+  so ⟨ε(bin)⟩ is a poorer parameterisation than the retired fine bins — and the quality of that
+  parameterisation is exactly what §3.3 diagnostic 1 measures.
+⇒ **C4 investigation required.** Do NOT adopt the per-cell high-pair-pT corrections until it is
+resolved; the inclusive and mid-pT corrections are unaffected.
+
+**Fixed this round (both reviews):** the `interp` branch set `fit_ok = 1` unconditionally,
+publishing 20 overlay cells (e.g. plateau 0.0078 ± 0.0051, a ×128 inflation) that the guard called
+unmeasurable and the plot refused to draw — the consumed artefact disagreed with both the guard and
+the figures; `fit_ok` never tested the plateau ERROR, so the 1.0879 ± 1.0879 single-ΔR-bin cell was
+published as usable; the y-range loop screened differently from the drawing code, so undrawn cells
+pushed every PNG to the 3.0 cap; the plateau-window label printed `[2,4]` for a `[2,3.5]` window
+(`%.0f` rounding onto the RETIRED edge); fit headlines misstated every pair-pT edge; the Step-3
+palette drew 8 series in 4 colours; the inclusive canvas headline collided with its panel label;
+the `interp` annotation was prose with an undefined `R_p`; 8 stale PNGs; and the nested `medium/`
+subdirectories (a LOCAL `wp_dir` in `plot_mc_trig_eff.cxx` bypassed the retired helper).
+**New (user):** Step-3/4 fit plots draw fit-domain points black and **excluded points blue**.
+
+**Open WARNINGs carried forward:** the 2.30 gap-cut ↔ coarse-q·η-top-edge tie is comment-only and
+only throws when a muon lands in the mismatch window (needs a startup assert); the tag-and-probe
+filename is retyped in 8 places and two of them load the COARSE file for a fallback only the
+LEGACY path uses; `MCTRIGEFF_PAIRPT_4BIN=""` flips the C++ and shell tests apart (the shell would
+then `rm -f` the NOMINAL fit file); the PNG-count check still expects 5 not 9; `PlotSubdir()` is
+dead and contradicts the adopted layout; `run_pipeline2_pbpb.C` defaults to the legacy fine path,
+re-arming the −1 sentinel; **the coarse q·η change silently re-bins the single-muon RECO-efficiency
+plots (9→10 bins, forward edge 2.2→2.3) under unchanged filenames — a blast-radius item missing
+from the Contract**; `plot_muon_q_eta_spectrum.cxx` still asserts the removed fallback/sentinel
+behaviour on a figure; and stale "2.2"/"NOT YET WIRED IN" comments contradict the live code on the
+BLOCKING gap-cut vector.
+
+**★ PHYSICS ITEM FOR THE BUNDLED CROSSX RERUN:** ε^nc is now measured on non-gap PROBES, but the
+signal selection still has NO gap cut, and the coarse q·η bins STRADDLE the gaps. A bin-averaged
+turn-on measured without gap muons will therefore be applied to signal muons that ARE gap muons,
+whose true efficiency is lower ⇒ under-correction. Either apply the gap cut to the signal selection
+in the same rerun, or measure ε^nc without the probe cut in the straddling bins. State the choice
+in the Physics Procedure.
+
+### D6: the gap cut lives at the RDF stage, not in the ntuple processing (2026-08-05)
+Round-8 Contract item 4 specified "a gap-cut mode in the ntuple-processing code". It was
+implemented at the RDF stage instead. **Provenance rule satisfied** (the cut is applied to
+ntuple-processing OUTPUT branches — `charge`, `eta` — never re-derived from raw NTUPs), and three
+independent reasons favour it: every other muon-level fiducial cut in this chain already lives
+there; the DATA gap cut cannot go in the data NTP (out of scope), so an NTP-side MC cut would make
+MC and data asymmetric; and it avoids re-running 8 grid-scale NTP jobs. Recorded here because the
+reviewer correctly flagged the deviation as undocumented.
+
 ## Results & Observations
 
 ### R1. NTP discovery (2026-07-10, Explore agent + orchestrator check)
@@ -2104,8 +2476,48 @@ criteria **P1** and **P2**):
 
 ## Latest Stage
 
-**2026-08-04 (round 8) — IN PROGRESS: on-canvas TEXT & LEGEND cleanup of the whole MC
-trig-eff plot set (publication standard).**
+**2026-08-04 (round 7, closing) — IN PROGRESS: plateau window moves to ΔR ∈ [2,4]; then the
+two reviews, wrap-up and the final summary.**
+
+*Plan, written before the work (per-step protocol). Two user decisions taken 2026-08-04
+(AskUserQuestion), both recorded in R19 below once measured:*
+
+- **D-P1 (crossx binning, RW/R17 blast radius) — DEFER AND BUNDLE.** Measured scope correction:
+  the ONLY crossx consumers of `ParamsSet::pair_pt_coarse_bins` are the two extended-mass
+  0–20 GeV histograms `h2d_crossx_minv_0_20_vs_pair_pt_coarse_{op,ss}_dsigma`
+  (`RDFBasedHistFillingPP.cxx:555`, `RDFBasedHistFillingPbPb.cxx:1072`) — the THStack /
+  control-region study inputs. The **nominal dσ/dp_T spectra are NOT affected** (they use
+  `pT_bins_120` / `ptb150`). R17's "crossx outputs are now stale" is therefore too broad.
+  Decision: change nothing now; those two histograms are stale and are refilled **once**,
+  on the canonical binning, together with the pp + PbPb 23/24/25 refill that the sibling
+  session's `w_trig = 0` gap bug (`pp_trig_eff_highpt_jump.md`, commit `9f97818`) will force
+  anyway. Do NOT spend a separate full refill on two auxiliary histograms.
+- **D-P2 (plateau window) — NOMINAL ΔR ∈ [2,4]; carry `|p[1,4] − p[2,4]|` as a per-cell
+  normalization systematic.** The retired [1,4] window is demonstrably not flat (constant-fit
+  χ²/ndf 3.67 Step 3 / 3.82 Step 4 inclusively, 5.6–7.1 in the worst cells), and in the flagged
+  cell pT_pair[41,120) × η_pair[−2.4,−2.0) the entire 14.2σ excess lives in ΔR ∈ [1,2].
+
+*Work planned for D-P2 (§3.3 / §3.4 diagnostic 1 — the plateau is the "well-separated muons"
+reference, so it must be measured where the curve is actually flat):*
+1. `plot_mc_trig_eff.cxx`: `kPlateauLo` 1.0 → 2.0; add the retired window as
+   `kPlateauSystLo/Hi = [1,4]`, measured in parallel per cell.
+2. Plateau ROOT file gains `h_stepN_plateau_syst` (per cell `|p_nom − p_alt|`) and
+   `h_stepN_plateau_syst_inclusive`; provenance stamp records both windows. Existing keys and
+   their meaning are unchanged, so `fit_dr_corrections.cxx` consumes the new file unmodified.
+3. `fit_dr_corrections.cxx`: `plateau_guard_report.txt` reports the window systematic per cell
+   (optional read — an older plateau file without the key still works).
+4. Human-readable Table B gains the window systematic as a fourth field.
+5. Re-run the measure stage (pp_full, overlay, noovl × Tight/Medium), then
+   `run_dr_correction_fits.sh` for `expo` / `polyu_fixedRp` / `interp`.
+6. `/review-analysis-code` (this change + the ~19 open WARNINGs), `/review-plot` (first run
+   this round; must enforce the new P1/P2), `/wrap-up`, final summary.
+
+**⚠ Concurrency:** a sibling session holds uncommitted edits to
+`plotting_codes/trig_effcy/mc_based/plot_dr_correction_fits.cxx` (a pair-η label-position fix)
+and to `docs/tracking/muon_gap_cuts_acceptance.md`. Neither file is edited or committed here.
+
+**2026-08-04 (round 8) — DONE (committed `9179f8b`): on-canvas TEXT & LEGEND cleanup of the
+whole MC trig-eff plot set (publication standard).**
 
 *Plan, written before the work (per-step protocol).* User request: no code-/task-specific
 tokens and no unexplained abbreviations anywhere on a canvas; every number the audience needs
@@ -2145,6 +2557,67 @@ Edits (text/legend only — no physics, no binning, no selection change):
 
 *Verified against the Physics Procedure:* nothing here changes §3.0–§3.5 — the definitions
 drawn on the canvases are being made to MATCH §3.1/§3.3/§3.4 wording, not to differ from it.
+
+*Result (written after the work).* All MC trig-eff PNGs regenerated from the existing ROOT
+inputs (no refill, no refit). What changed on the canvases:
+
+| was | now |
+|---|---|
+| `Pythia8 pp24 fullsim (FULL sample)` | `Pythia8 pp, #sqrt{s} = 5.36 TeV (2024 conditions)` |
+| `HIJING overlay Pb+Pb23 cond., 0-5%` | `Pythia8 + HIJING overlay, Pb+Pb #sqrt{s_{NN}} = 5.36 TeV, 0-5% (2023 conditions)` |
+| `original MC (round-7 selection)` | `nominal muon selection` |
+| `+ \|#Deltap_{T}\|/p_{T}^{truth} < thr` | `+ \|#Deltap_{T}\|/p_{T}^{truth} < 0.10`, read from the shared header |
+| drop-note `inapplicable ...: vtx, ptm` | `no muon in this sample satisfies: <requirement>` |
+| `-- Step-1 sanity check`, `[L1]`/`[HLT]`/`[full_chain]`, `-- zoom #DeltaR`, `-- Step 3` | removed (legend header / axis already say it) |
+| `inclusive singles (Step 1)` | `all #DeltaR`;  `/ #DeltaR #geq 1` → `ratio to #DeltaR #geq 1` |
+| `MC direct P(mu4 \| reco #mu)`, `... T&P ...` | `MC, P(mu4 \| reconstructed #mu)`, `..., tag-and-probe P(2mu4 \| mu4 tag, #DeltaR > 0.8)` |
+| `..., MC #varepsilon in weights` | dropped; the defining equation alone is drawn |
+| `VALIDATION only -- NOT applied to pp 2mu4` | removed (D-T2) |
+| `SF-corrected MC`, `#frac{corr-orig}{#sigma_{orig}}` | `MC #times #varepsilon_{data}/#varepsilon_{MC}`, `#frac{corrected - uncorrected}{#sigma_{uncorrected}}` |
+| `r17663 / pp24` ratio title | `no overlay / pp cond.` |
+| `#DeltaR(#mu_{1},#mu_{2})  [dimensionless]`, `measured / plateau` | `#DeltaR(#mu_{1},#mu_{2})`, `measurement` |
+| leftovers: empty `DrawLatex("")`, `#LTSF#GT #approx #varepsilon_{data}.`, bare `MC` | deleted |
+| plateau printed `%.3f #pm %.3f` (→ `#pm 0.000`) | `%.4f #pm %.4f` |
+
+**Three rendering bugs found only by LOOKING at the PNGs** (invisible in the source):
+1. **Step-1-sanity headlines were drawn inside the last sub-pad** (`DrawHeadline` called after
+   the pad loop) — tiny and overlapping the ratio-pad labels on every sanity canvas. Fixed with
+   `c.cd(0)`; the 11-panel canvas additionally needs a RAW `TLatex`, because on the canvas the
+   size is a fraction of 2100 px and `DrawHeadline`'s 0.030 pad-floor renders a ~60 px headline.
+2. **Legends drawn on top of the data** (Step-3/4 pair-pT slices and pair-η panels). A white or
+   semi-opaque backing does NOT fix this — invisible against a white frame, and drawing it first
+   merely paints the points over the labels. Fixed by giving the legend its own space: a
+   reserved `SetTopMargin(0.22)` strip on the slice canvases, ONE canvas-level legend in the
+   header strip of the 9-panel canvases, and a 70 px header `TPad` on the
+   `plot_dr_correction_fits` per-pair-pT canvases (whose η labels collided with the super-title
+   and the off-scale line).
+3. **Legend entries truncated at the pad edge** once the full definitions were used → text size
+   0.026 + `SetMargin(0.12)` on the q·η legend pads.
+
+**Two structural fixes so the text cannot drift again:**
+- new `Analysis/Utilities/MCTrigEffSanityCfg.h` — `kSanityPtMatchThr = 0.10` defined ONCE and
+  included by both `FillMCTrigEffHists.cxx` (applies the cut) and `plot_mc_trig_eff.cxx`
+  (prints it), so the drawn number cannot disagree with the applied one;
+- `plot_mc_trig_eff_corrected.cxx` now takes `sample_text`/`eps_dr_text` from the shared
+  `dr_correction_sample_cfg.h` instead of its own copy — that duplicate is exactly why the
+  corrected-MC set still carried the old headline after the others were rewritten.
+
+Reviewer criteria updated as the user asked: `.claude/conventions/atlas-plotting.md` gains
+**P1a** (nothing code-/task-specific), **P1b** (no undefined abbreviation), **P1c** (every
+needed number ON the plot, read from the definition site, never retyped) + a legend-placement
+rule; `.claude/agents/plot-reviewer.md` gains checklist item **3b** (CRITICAL when the canvas
+states a wrong number or points at a file). Auto-memory
+`feedback_no_illustrative_text_on_plots` extended to match.
+
+**Stale superseded-binning PNGs DELETED (user-approved, 2026-08-04).** `step{3,4}_dr_fit/
+{expo,polyu_fixedRp,interp}[/medium]/` had held **96** `*_pairpt_8_15 / 15_27 / 27_50 / 50_150`
+files written 10:25–10:33 today, i.e. BEFORE the 10:59 refill moved the 3D onto the canonical
+`8/13.75/23.63/40.62/120` axis — so two pair-pT binnings were sitting side by side in the same
+directories (the precise hazard `.claude/CLAUDE.md` §Binnings exists to prevent), and the stale
+set also carried the pre-cleanup text. They were unregenerable (their fit ROOT files no longer
+exist, the power laws having been rejected). Removed; the only pair-pT edges left under
+`*_dr_fit/` are now `8_14 / 14_24 / 24_41 / 41_120`, 36 files each. MC trig-eff PNG count
+666 → 570. (Deleted list: session scratchpad `stale_deleted.txt`.)
 
 ---
 
