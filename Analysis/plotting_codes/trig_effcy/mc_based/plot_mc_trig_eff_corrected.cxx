@@ -82,6 +82,9 @@
 // duplicate went stale the moment the headlines were rewritten -- two plot sets of the same
 // sample then carried two different sample identities.
 #include "dr_correction_sample_cfg.h"
+#include "../../../RDFBasedHistFilling/CommonEffcyConfig.h"
+#include "../../../Utilities/proj_range_to_suffix.cxx"
+#include "../../../Utilities/MCTrigEffPlateauWindow.h"
 
 namespace {
 
@@ -369,7 +372,7 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
 {
     const std::string wp = use_tight_wp ? "" : "_medium_wp";
     // Sample IDENTITY (headline + eps_dR symbol) from the shared table -- never retyped here.
-    const DrCorrSample id = GetDrCorrSample(sample);
+    const DrCorrSample id = GetDrCorrSample(sample, use_tight_wp);
     SampleCfg c;
     c.sample_text = id.sample_text;
     c.eps_dr_text = id.eps_dr_text;
@@ -379,7 +382,7 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
                           : "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/";
         c.mc_label = full ? "pp24_full" : "pp24";
         c.data_hist_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"
-                           "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin" + wp + ".root";
+                           "histograms_real_pairs_pp_2024_single_mu4_coarse_q_eta_bin_qeta_fid" + wp + ".root";
         c.data_fit_file  = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"
                            "trg_effcy_pT_fitting_to_erf_plus_log/single_mu_effcy_pT_fit" + wp + ".root";
         c.ctr         = "";
@@ -390,7 +393,7 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
         c.mc_dir   = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/";
         c.mc_label = "hijing_overlay_pbpb23";
         c.data_hist_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2023/"
-                           "histograms_real_pairs_pbpb_2023_single_mu4_fine_q_eta_bin" + wp + ".root";
+                           "histograms_real_pairs_pbpb_2023_single_mu4_coarse_q_eta_bin_qeta_fid" + wp + ".root";
         c.data_fit_file  = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2023/"
                            "trg_effcy_pT_fitting_to_fermi_plus_log/single_mu_effcy_pT_fit" + wp + ".root";
         c.ctr         = "_ctr0_5";   // D2: the overlay compares ONLY to PbPb23 data 0-5%
@@ -401,7 +404,7 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
         c.mc_dir   = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_no_overlay_test_sample/";
         c.mc_label = "r17663_no_overlay";
         c.data_hist_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"
-                           "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin" + wp + ".root";
+                           "histograms_real_pairs_pp_2024_single_mu4_coarse_q_eta_bin_qeta_fid" + wp + ".root";
         c.data_fit_file  = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"
                            "trg_effcy_pT_fitting_to_erf_plus_log/single_mu_effcy_pT_fit" + wp + ".root";
         c.ctr         = "";
@@ -420,24 +423,29 @@ const std::vector<std::string> kCharges   = {"muplus", "muminus"};
 const std::vector<std::string> kDataSigns = {"sign1", "sign2"};
 const std::vector<std::string> kChargeTex = {"#mu^{+}", "#mu^{-}"};
 
-// fine q.eta bins (CommonEffcyConfig.h q_eta_proj_ranges_fine_excl_gap); the forward
-// (-2.4,-2.0) bin is split into two (round-5 change #2) -> 11 bins.
-const std::vector<std::string> kQEtaSuffix = {
-    "minus2_40_TO_minus2_20", "minus2_20_TO_minus2_00",
-    "minus2_00_TO_minus1_60", "minus1_60_TO_minus1_30",
-    "minus0_90_TO_minus0_50", "minus0_50_TO_minus0_10", "0_10_TO_0_50",
-    "0_50_TO_1_00", "1_30_TO_1_60", "1_60_TO_2_00", "2_00_TO_2_20"};
-const std::vector<std::pair<double,double>> kQEtaRange = {
-    {-2.4,-2.2},{-2.2,-2.0},{-2.0,-1.6},{-1.6,-1.3},{-0.9,-0.5},{-0.5,-0.1},
-    { 0.1, 0.5},{ 0.5, 1.0},{ 1.3, 1.6},{ 1.6, 2.0},{ 2.0, 2.2}};
+// q.eta bins -- DERIVED from CommonEffcyConfig (round 8), never retyped. The two hand-maintained
+// copies that used to live here silently held the retired FINE binning.
+const std::vector<std::string> kQEtaSuffix = [] {
+    static const CommonEffcyConfig cfg{};
+    std::vector<std::string> v;
+    for (const auto& r : cfg.q_eta_proj_ranges_coarse_incl_gap) v.push_back(pairToSuffix(r));
+    return v;
+}();
+const std::vector<std::pair<double,double>> kQEtaRange = [] {
+    static const CommonEffcyConfig cfg{};
+    std::vector<std::pair<double,double>> v;
+    for (const auto& r : cfg.q_eta_proj_ranges_coarse_incl_gap) v.emplace_back(r.first, r.second);
+    return v;
+}();
 
 const Color_t kCorrColor = kRed + 1;     // corrected MC
 const Color_t kOrigColor = kBlue + 1;    // original (uncorrected) MC
 const Color_t kDataColor = kBlack;       // data tag-and-probe
 
-// Step-3/4 plateau window (§3.3 diagnostic 1), same as the nominal macro.
-const double kPlateauLo = 1.0;
-const double kPlateauHi = 4.0;
+// Step-3/4 plateau window (§3.3 diagnostic 1) -- READ from the shared header, never retyped:
+// this copy silently held the retired [1,4] edges after the nominal macro moved to [2,3.5].
+const double kPlateauLo = MCTrigEffPlateau::kLo;
+const double kPlateauHi = MCTrigEffPlateau::kHi;
 
 // ---- Step-3/4 cell projection: eps(dR) in one (pair-pT bin iy, pair-eta bin iz) cell --------
 // Central value = num/denom; ERROR = conditional/binomial-correct form. covP/covQ are Step-4
@@ -835,7 +843,7 @@ void plot_mc_trig_eff_corrected(const std::string& sample = "pp_full", bool use_
             Step34Hists HC = LoadStep34(fc, S.base, R.tag, S.with_cov);
             const int npt  = HO.num->GetYaxis()->GetNbins();
             const int neta = HO.num->GetZaxis()->GetNbins();
-            auto pt_label  = [&](int iy){ return std::string(Form("%.0f < p_{T}^{pair} < %.0f GeV",
+            auto pt_label  = [&](int iy){ return std::string(Form("%.1f < p_{T}^{pair} < %.1f GeV",
                 HO.num->GetYaxis()->GetBinLowEdge(iy), HO.num->GetYaxis()->GetBinUpEdge(iy))); };
             auto eta_label = [&](int iz){ return std::string(Form("%.1f < #eta^{pair} < %.1f",
                 HO.num->GetZaxis()->GetBinLowEdge(iz), HO.num->GetZaxis()->GetBinUpEdge(iz))); };
@@ -978,7 +986,7 @@ void plot_mc_trig_eff_corrected(const std::string& sample = "pp_full", bool use_
             Step34Hists HO = LoadStep34(fo, S.base, "full", S.with_cov);
             const int npt  = (int)stat_full.size();
             const int neta = npt ? (int)stat_full[0].size() : 0;
-            auto pt_hdr  = [&](int iy){ return Form("pTpair[%.0f,%.0f)",
+            auto pt_hdr  = [&](int iy){ return Form("pTpair[%.1f,%.1f)",
                 HO.num->GetYaxis()->GetBinLowEdge(iy), HO.num->GetYaxis()->GetBinUpEdge(iy)); };
             auto eta_hdr = [&](int iz){ return Form("[%.1f,%.1f)",
                 HO.num->GetZaxis()->GetBinLowEdge(iz), HO.num->GetZaxis()->GetBinUpEdge(iz)); };
