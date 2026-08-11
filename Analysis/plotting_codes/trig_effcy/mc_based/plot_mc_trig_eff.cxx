@@ -48,6 +48,8 @@
 #include <TROOT.h>
 
 #include <TH3D.h>
+#include <TGraphErrors.h>
+#include <TPad.h>
 
 // Sample identity (input dir, file label, plot root, headline, eps symbol, FULL-vs-TEST flag)
 // and the names of the plateau / fit ROOT files. Shared with fit_dr_corrections.cxx and
@@ -87,6 +89,16 @@ T* GetObj(TFile* f, const std::string& name)
         throw std::runtime_error("plot_mc_trig_eff: missing object '" + name +
                                  "' in file " + f->GetName());
     return obj;
+}
+
+// Soft variant: returns nullptr instead of throwing. Used ONLY for the round-9 per-sign
+// histograms, which a sample filled before round 9 simply does not have -- a missing per-sign
+// series must degrade to "no sign-separated results for this sample", never kill the whole
+// plot set. Anything the nominal results depend on still goes through GetObj.
+template <typename T>
+T* GetObjOrNull(TFile* f, const std::string& name)
+{
+    return dynamic_cast<T*>(f->Get(name.c_str()));
 }
 
 TFile* OpenFile(const std::string& path)
@@ -581,6 +593,36 @@ std::pair<double,double> PlateauWeightedMean(TH1* ratio, double xlo, double xhi)
 // consumer must not silently read that as zero uncertainty.
 struct PlateauCell { double mean, err, rms; int nb; double syst = -1.; };
 
+// The per-cell large-dR plateau of a dR-correction ratio histogram, measured in the nominal
+// window and in the retired [1,4] one (same histogram, so their difference is purely the window).
+// Extracted from the Step-3 table block (round 9) so the sign-integrated, same-sign and
+// opposite-sign series are all measured by ONE piece of code -- three copies of a weighted mean
+// is exactly how two plateau definitions would start to drift apart.
+PlateauCell PlateauFromRatio(const TH1D* r)
+{
+    auto window = [&](double lo, double hi) -> PlateauCell {
+        double sw = 0, swv = 0;
+        std::vector<std::pair<double,double>> vw;  // (value, weight)
+        for (int i = 1; i <= r->GetNbinsX(); ++i) {
+            const double xc = r->GetBinCenter(i);
+            if (xc < lo || xc > hi) continue;
+            const double v = r->GetBinContent(i), e = r->GetBinError(i);
+            if (e <= 0. || v == 0.) continue;
+            const double w = 1. / (e * e); sw += w; swv += w * v; vw.push_back({v, w});
+        }
+        if (sw <= 0.) return PlateauCell{ -1, -1, -1, 0 };
+        const double mean = swv / sw, err = std::sqrt(1. / sw);
+        double swd = 0;
+        for (auto& q : vw) swd += q.second * (q.first - mean) * (q.first - mean);
+        const double rms = std::sqrt(swd / sw);  // weighted RMS scatter about the mean
+        return PlateauCell{ mean, err, rms, (int)vw.size() };
+    };
+    PlateauCell nom = window(kPlateauLo, kPlateauHi);
+    const PlateauCell alt = window(kPlateauSystLo, kPlateauSystHi);
+    if (nom.nb > 0 && alt.nb > 0) nom.syst = std::fabs(nom.mean - alt.mean);
+    return nom;
+}
+
 TH2D* BookPlateauMap(const TH3D* src, const std::string& name, const std::string& ztitle)
 {
     const TAxis* ay = src->GetYaxis();   // pair pT
@@ -599,13 +641,16 @@ TH2D* BookPlateauMap(const TH3D* src, const std::string& name, const std::string
 }
 
 // P is indexed [iy-1][iz-1] exactly as the tables build it (iy = pair-pT bin, iz = pair-eta bin).
+// `sign` selects the series: "" = sign-integrated (nominal), "ss" = same sign, "os" = opposite
+// sign. It only tags the key names, so one file holds all three and the fit stage picks a series
+// by name -- no second file, no chance of pairing one sample's signs with another's.
 void WritePlateauRootFile(const std::string& path, bool recreate, int step, const TH3D* src,
                           const std::vector<std::vector<PlateauCell>>& P,
                           double incl_mean, double incl_err, double incl_syst,
                           const std::string& sample, const std::string& wp_text,
-                          const std::string& quantity)
+                          const std::string& quantity, const std::string& sign = "")
 {
-    const std::string tag = "step" + std::to_string(step);
+    const std::string tag = "step" + std::to_string(step) + (sign.empty() ? "" : "_" + sign);
     TDirectory* prev = gDirectory;   // restored below: the caller keeps reading its input files
     TFile* f = TFile::Open(path.c_str(), recreate ? "RECREATE" : "UPDATE");
     if (!f || f->IsZombie())
@@ -1357,64 +1402,13 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
            sample.c_str(), kPlateauLo, kPlateauHi, plateau.first, plateau.second,
            kPlateauSystLo, kPlateauSystHi, plateau_syst);
 
-    auto DrawStep3 = [&](TH1D* r, double xlo, double xhi, const std::string& png,
-                         bool plateau_in_range) {
-        TCanvas c(("c_" + png).c_str(), "", 900, 700);
-        gPad->SetLeftMargin(0.12);
-        gPad->SetBottomMargin(0.12);
-        double ymax = 0.;
-        for (int i = 1; i <= r->GetNbinsX(); ++i)
-            ymax = std::max(ymax, r->GetBinContent(i) + r->GetBinError(i));
-        ymax = std::max(1.15, 1.15 * ymax);   // y linear, auto but include 1
-        DrawEffFrame(xlo, xhi, "#DeltaR", 0.0, ymax, cfg.eps_dr_text);
-        DrawUnityLine(xlo, xhi);
-
-        // fitted plateau line: solid over the plateau window [kPlateauLo,kPlateauHi] where in range,
-        // dotted across the pad otherwise (zoom canvas)
-        TLine* plateau_line = nullptr;
-        if (plateau_in_range) {
-            plateau_line = new TLine(kPlateauLo, plateau.first, kPlateauHi, plateau.first);
-            plateau_line->SetLineColor(kBlue + 1);
-            plateau_line->SetLineWidth(3);
-        } else {
-            plateau_line = new TLine(xlo, plateau.first, xhi, plateau.first);
-            plateau_line->SetLineColor(kBlue + 1);
-            plateau_line->SetLineWidth(2);
-            plateau_line->SetLineStyle(3);
-        }
-        plateau_line->Draw("same");
-
-        r->SetMarkerStyle(20);
-        r->SetMarkerColor(kMCColor);
-        r->SetLineColor(kMCColor);
-        r->SetLineWidth(2);
-        r->Draw("E1 same");
-
-        // Two things are drawn (measurement + fitted plateau level), so both are named.
-        auto* leg3 = new TLegend(0.42, 0.40, 0.90, 0.52);
-        leg3->SetBorderSize(0); leg3->SetFillStyle(0); leg3->SetTextSize(0.033);
-        leg3->AddEntry(r, "measurement", "lp");
-        leg3->AddEntry(plateau_line, "plateau", "l");
-        leg3->Draw();
-
-        DrawHeadline(headline);
-        // Defining equation + plateau value in the EMPTY lower-right quadrant: the correction
-        // sits at ~1 across the pad, so anything written at the top runs through the points and
-        // the plateau line (it did). No implementation asides -- the equation IS the definition.
-        TLatex tl;
-        tl.SetNDC();
-        tl.SetTextFont(42);
-        tl.SetTextSize(0.035);
-        tl.DrawLatex(0.42, 0.32, (cfg.eps_dr_text +
-            " = P(both #mu fire | #DeltaR) / (#varepsilon_{1}#varepsilon_{2})").c_str());
-        // %.4f, not %.3f: the pp full-sample error is 4e-4 and printed as "#pm 0.000", which
-        // reads as a zero uncertainty.
-        tl.DrawLatex(0.42, 0.25, Form("plateau #LT#DeltaR#in[%g,%g]#GT = %.4f #pm %.4f",
-                                      kPlateauLo, kPlateauHi, plateau.first, plateau.second));
-        SaveCanvas(c, dir3 + png + ".png");
-    };
-    DrawStep3(r_zoom, 0.0, 1.0,  "step3_eps_dr_zoom", false);
-    DrawStep3(r_full, 0.0, 5.75, "step3_eps_dr_full", true);
+    // REMOVED (round 9, user request): the two pair-pT/pair-eta INTEGRATED canvases
+    // (step3_eps_dr_zoom.png, step3_eps_dr_full.png). An inclusive curve averages the correction
+    // over the whole (pair pT, pair eta) plane, which is not a quantity the analysis applies --
+    // the correction is used per cell. The inclusive plateau itself is still MEASURED above and
+    // still written to the plateau ROOT file (h_step3_plateau_inclusive), which the fit stage
+    // and the guard both read; only the two figures are gone. The per-cell distributions now
+    // live under step3_dr_correction/<dR range>/, one PNG per pair-pT bin (see below).
 
     // --- pair-pT-binned zoom ratio, one series per COARSE pair-pT bin ---
     // Round 7: this panel used to slice a SEPARATE dR x fine-pair-pT 2D (pT_bins_120, grouped
@@ -1668,33 +1662,170 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         auto cell_plateau = [&](int iy, int iz) -> Plat {
             TH1D* r = cell_ratio(h3fn, h3fd, h3fA, h3fB, iy, iz, neta,
                                  Form("plat_%s_%d_%d", sample.c_str(), iy, iz));
-            auto window = [&](double lo, double hi) -> Plat {
-                double sw = 0, swv = 0;
-                std::vector<std::pair<double,double>> vw;  // (value, weight)
-                for (int i = 1; i <= r->GetNbinsX(); ++i) {
-                    const double xc = r->GetBinCenter(i);
-                    if (xc < lo || xc > hi) continue;
-                    const double v = r->GetBinContent(i), e = r->GetBinError(i);
-                    if (e <= 0. || v == 0.) continue;
-                    const double w = 1. / (e * e); sw += w; swv += w * v; vw.push_back({v, w});
-                }
-                if (sw <= 0.) return Plat{ -1, -1, -1, 0 };
-                const double mean = swv / sw, err = std::sqrt(1. / sw);
-                double swd = 0;
-                for (auto& p : vw) swd += p.second * (p.first - mean) * (p.first - mean);
-                const double rms = std::sqrt(swd / sw);  // weighted RMS scatter about the mean
-                return Plat{ mean, err, rms, (int)vw.size() };
-            };
-            Plat nom = window(kPlateauLo, kPlateauHi);
-            const Plat alt = window(kPlateauSystLo, kPlateauSystHi);
+            const Plat p = PlateauFromRatio(r);
             delete r;
-            if (nom.nb > 0 && alt.nb > 0) nom.syst = std::fabs(nom.mean - alt.mean);
-            return nom;
+            return p;
         };
 
         std::vector<std::vector<Plat>> P(npt, std::vector<Plat>(neta));
         for (int iy = 1; iy <= npt; ++iy)
             for (int iz = 1; iz <= neta; ++iz) P[iy - 1][iz - 1] = cell_plateau(iy, iz);
+
+        // ============================================================================
+        // ROUND 9 (user request): the eps_dR DISTRIBUTIONS, one PNG per pair-pT bin, one
+        // subplot per pair-eta bin, with THAT CELL'S plateau -- the very value the curve is
+        // divided by before it is fitted -- drawn as a horizontal line. Three dR ranges, each
+        // in its own subdirectory, because a single x range cannot show both the small-dR rise
+        // (which lives below dR ~ 0.3) and the plateau region (dR in [2, 3.5]) legibly.
+        //   0 to 1   : the fit domain, on the fine 0.05-wide dR bins
+        //   0 to 2   : fine bins below 1, the wide bins above -- the same concatenation the fit
+        //              plots use, so the two figure sets show literally the same points
+        //   full     : out to the end of the wide-bin axis, so the plateau line sits ON the data
+        // Superseded here: one canvas carrying all 8 pair-pT curves at once, which is what made
+        // these unreadable.
+        // ============================================================================
+        {
+            struct DrRange { std::string dir; double xhi; bool zoom_part; bool wide_part; };
+            const std::vector<DrRange> dr_views = {
+                {"dr_0_to_1",     1.0,  true,  false},
+                {"dr_0_to_2",     2.0,  true,  true },
+                {"dr_full_range", h3fn->GetXaxis()->GetXmax(), false, true }};
+
+            // One graph per cell for a given view: fine bins below 1 and/or wide bins above.
+            auto cell_graph = [&](const DrRange& R, int iy, int iz) -> TGraphErrors* {
+                auto* g = new TGraphErrors();
+                int k = 0;
+                if (R.zoom_part) {
+                    TH1D* rz = cell_ratio(h3zn, h3zd, h3zA, h3zB, iy, iz, neta,
+                                          Form("d9z_%s_%d_%d", sample.c_str(), iy, iz));
+                    for (int i = 1; i <= rz->GetNbinsX(); ++i) {
+                        const double x = rz->GetBinCenter(i);
+                        if (x > R.xhi || rz->GetBinContent(i) == 0.) continue;
+                        g->SetPoint(k, x, rz->GetBinContent(i));
+                        g->SetPointError(k, 0., rz->GetBinError(i));
+                        ++k;
+                    }
+                    delete rz;
+                }
+                if (R.wide_part) {
+                    TH1D* rf = cell_ratio(h3fn, h3fd, h3fA, h3fB, iy, iz, neta,
+                                          Form("d9f_%s_%d_%d", sample.c_str(), iy, iz));
+                    // below 1.0 the fine bins already cover the range -- never draw both
+                    const double xlo_wide = R.zoom_part ? 1.0 : 0.0;
+                    for (int i = 1; i <= rf->GetNbinsX(); ++i) {
+                        const double x = rf->GetBinCenter(i);
+                        if (x <= xlo_wide || x > R.xhi || rf->GetBinContent(i) == 0.) continue;
+                        g->SetPoint(k, x, rf->GetBinContent(i));
+                        g->SetPointError(k, 0., rf->GetBinError(i));
+                        ++k;
+                    }
+                    delete rf;
+                }
+                return g;
+            };
+
+            const int ncol9 = (int)std::ceil(std::sqrt((double)neta));
+            const int nrow9 = (int)std::ceil((double)neta / ncol9);
+            int n_no_plateau = 0;
+            for (const auto& R : dr_views) {
+                const std::string vdir = dir3 + R.dir + "/";
+                gSystem->mkdir(vdir.c_str(), kTRUE);
+                for (int iy = 1; iy <= npt; ++iy) {
+                    // y range shared by all panels of ONE png, from the drawn points and the
+                    // plateau lines, so the nine pair-eta panels are directly comparable.
+                    // Range from CENTRAL values only, as the fit canvases do: the last few
+                    // wide-dR bins carry errors of order 1, and including them would stretch
+                    // the axis to the 3.0 cap and flatten the structure this figure exists for.
+                    double ylo = 1., yhi = 1.;
+                    std::vector<TGraphErrors*> gs(neta + 1, nullptr);
+                    for (int iz = 1; iz <= neta; ++iz) {
+                        gs[iz] = cell_graph(R, iy, iz);
+                        for (int i = 0; i < gs[iz]->GetN(); ++i) {
+                            double x, y; gs[iz]->GetPoint(i, x, y);
+                            ylo = std::min(ylo, y); yhi = std::max(yhi, y);
+                        }
+                        const Plat& pc = P[iy - 1][iz - 1];
+                        if (pc.nb > 0) { ylo = std::min(ylo, pc.mean); yhi = std::max(yhi, pc.mean); }
+                    }
+                    const double span = std::max(yhi - ylo, 0.10);
+                    ylo = std::max(0.0, ylo - 0.08 * span);
+                    yhi = std::min(3.0, yhi + 0.22 * span);
+
+                    const int kHeaderPx = 70;
+                    TCanvas c(Form("c_s3d9_%s_%d", R.dir.c_str(), iy), "",
+                              520 * ncol9, 470 * nrow9 + kHeaderPx);
+                    const double hfrac = (double)kHeaderPx / (470.0 * nrow9 + kHeaderPx);
+                    auto* grid = new TPad(Form("grid_s3d9_%d", iy), "", 0., 0., 1., 1. - hfrac);
+                    grid->SetFillStyle(0); grid->Draw(); grid->cd(); grid->Divide(ncol9, nrow9);
+
+                    TLine* leg_line = nullptr;
+                    for (int iz = 1; iz <= neta; ++iz) {
+                        grid->cd(iz);
+                        gPad->SetLeftMargin(0.14); gPad->SetBottomMargin(0.13);
+                        gPad->SetTopMargin(0.10);
+                        DrawEffFrame(0.0, R.xhi, "#DeltaR(#mu_{1}, #mu_{2})", ylo, yhi,
+                                     cfg.eps_dr_text);
+                        DrawUnityLine(0.0, R.xhi);
+
+                        const Plat& pc = P[iy - 1][iz - 1];
+                        TLine* pl = nullptr;
+                        if (DrCorrPlateauUsable(pc.mean, pc.err)) {
+                            // solid over the window where the window is on the canvas, dashed
+                            // across the pad otherwise -- the line is a REFERENCE LEVEL there,
+                            // not a measurement of the bins under it.
+                            const bool in_range = (kPlateauLo < R.xhi);
+                            pl = in_range ? new TLine(kPlateauLo, pc.mean,
+                                                      std::min(kPlateauHi, R.xhi), pc.mean)
+                                          : new TLine(0.0, pc.mean, R.xhi, pc.mean);
+                            pl->SetLineColor(kBlue + 1);
+                            pl->SetLineWidth(in_range ? 3 : 2);
+                            if (!in_range) pl->SetLineStyle(2);
+                            pl->Draw("same");
+                            if (!leg_line) leg_line = pl;
+                        } else if (R.dir == dr_views.front().dir) {   // count each cell ONCE, in the first view
+                            ++n_no_plateau;
+                        }
+
+                        gs[iz]->SetMarkerStyle(20); gs[iz]->SetMarkerSize(0.8);
+                        gs[iz]->SetMarkerColor(kBlack); gs[iz]->SetLineColor(kBlack);
+                        gs[iz]->Draw("PZ same");
+
+                        TLatex tl; tl.SetNDC(); tl.SetTextFont(42); tl.SetTextSize(0.048);
+                        tl.DrawLatex(0.17, 0.955, eta_label(iz).c_str());
+                        tl.SetTextSize(0.038);
+                        tl.DrawLatex(0.19, 0.855,
+                            DrCorrPlateauUsable(pc.mean, pc.err)
+                                ? Form("plateau = %.4f #pm %.4f", pc.mean, pc.err)
+                                : "plateau not measurable");
+                    }
+                    c.cd(0);
+                    // No eps symbol in the title -- every y axis on the canvas already carries
+                    // it, and repeating it here is what pushed the title into the legend.
+                    TLatex st; st.SetNDC(); st.SetTextFont(42); st.SetTextSize(0.018);
+                    st.DrawLatex(0.03, 1. - 0.45 * hfrac,
+                        (headline + ",  " + pt_label(iy)).c_str());
+                    if (!gs[1]->GetN() && !leg_line) { /* nothing drawn -- no legend to make */ }
+                    else {
+                        auto* lg = new TLegend(0.74, 1. - 0.92 * hfrac, 0.99, 1. - 0.06 * hfrac);
+                        lg->SetNColumns(1);
+                        lg->SetBorderSize(0); lg->SetFillStyle(0); lg->SetTextSize(0.016);
+                        lg->AddEntry(gs[1], "measurement", "lp");
+                        if (leg_line)
+                            lg->AddEntry(leg_line,
+                                Form("plateau, #DeltaR #in [%g, %g]", kPlateauLo, kPlateauHi), "l");
+                        lg->Draw();
+                    }
+                    SaveCanvas(c, vdir + Form("step3_eps_dr_pairpt_%.0f_%.0f.png",
+                                              h3fn->GetYaxis()->GetBinLowEdge(iy),
+                                              h3fn->GetYaxis()->GetBinUpEdge(iy)));
+                    for (int iz = 1; iz <= neta; ++iz) delete gs[iz];
+                }
+            }
+            printf("  Step-3 dR-correction distributions: %d x %d PNGs written under %s"
+                   " (dr_0_to_1 / dr_0_to_2 / dr_full_range); %d of %d cells have no measurable"
+                   " plateau and carry no plateau line\n",
+                   (int)dr_views.size(), npt, dir3.c_str(), n_no_plateau, npt * neta);
+        }
 
         // Table A: plateau value +- stat error ; Table B: fluctuation (stat err + RMS scatter)
         auto eta_hdr = [&](int iz){ return Form("[%.1f,%.1f)",
@@ -1758,6 +1889,50 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         WritePlateauRootFile(DrCorrPlateauFile(id, use_tight_wp), /*recreate=*/true, 3, h3fn, P,
                              plateau.first, plateau.second, plateau_syst,
                              sample, wp_text, "eps_dR");
+
+        // ---- ROUND 9: the SAME-SIGN and OPPOSITE-SIGN series -----------------------------
+        // Each sign gets its OWN plateau, measured exactly as the sign-integrated one and from
+        // its own histograms -- normalizing a same-sign curve by an opposite-sign-dominated
+        // plateau would import the very charge dependence the split exists to test. Written
+        // into the same plateau file under sign-tagged keys; a sample filled before round 9
+        // simply has no per-sign histograms and is skipped with a note.
+        for (const std::string& sgn : {std::string("ss"), std::string("os")}) {
+            const std::string hp = "h_mc_dr_" + sgn + "_";
+            TH3D* sn = GetObjOrNull<TH3D>(fmc3, hp + "full_vs_pt_eta_num");
+            TH3D* sd = GetObjOrNull<TH3D>(fmc3, hp + "full_vs_pt_eta_denom");
+            TH3D* sA = GetObjOrNull<TH3D>(fmc3, hp + "full_vs_pt_eta_errA");
+            TH3D* sB = GetObjOrNull<TH3D>(fmc3, hp + "full_vs_pt_eta_errB");
+            TH1D* i_n = GetObjOrNull<TH1D>(fmc3, hp + "full_num");
+            TH1D* i_d = GetObjOrNull<TH1D>(fmc3, hp + "full_denom");
+            TH1D* i_A = GetObjOrNull<TH1D>(fmc3, hp + "full_errA");
+            TH1D* i_B = GetObjOrNull<TH1D>(fmc3, hp + "full_errB");
+            if (!sn || !sd || !sA || !sB || !i_n || !i_d || !i_A || !i_B) {
+                std::cout << "  [Step 3] no " << hp << "* histograms -- sign-separated plateaus "
+                          << "skipped for this sample (refill to produce them)\n";
+                continue;
+            }
+            auto* ri = (TH1D*)i_n->Clone(("s3incl_" + sgn).c_str());
+            ri->SetDirectory(nullptr);
+            ri->Divide(i_d);
+            SetConditionalRatioErrors(ri, i_d, i_A, i_B);
+            const auto pi  = PlateauWeightedMean(ri, kPlateauLo, kPlateauHi);
+            const auto pia = PlateauWeightedMean(ri, kPlateauSystLo, kPlateauSystHi);
+            delete ri;
+
+            std::vector<std::vector<Plat>> Ps(npt, std::vector<Plat>(neta));
+            for (int iy = 1; iy <= npt; ++iy)
+                for (int iz = 1; iz <= neta; ++iz) {
+                    TH1D* r = cell_ratio(sn, sd, sA, sB, iy, iz, neta,
+                                         Form("plat3%s_%s_%d_%d", sgn.c_str(), sample.c_str(), iy, iz));
+                    Ps[iy - 1][iz - 1] = PlateauFromRatio(r);
+                    delete r;
+                }
+            WritePlateauRootFile(DrCorrPlateauFile(id, use_tight_wp), /*recreate=*/false, 3, sn, Ps,
+                                 pi.first, pi.second, std::fabs(pi.first - pia.first),
+                                 sample, wp_text, "eps_dR", sgn);
+            printf("  %s (%s pairs) inclusive plateau = %.4f +- %.4f\n", sample.c_str(),
+                   sgn == "ss" ? "same-sign" : "opposite-sign", pi.first, pi.second);
+        }
     }
 
     // ================================================================
@@ -2110,6 +2285,53 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             WritePlateauRootFile(DrCorrPlateauFile(id, use_tight_wp), /*recreate=*/false, 4,
                                  h3fn, P, plat4.first, plat4.second, plat4_syst,
                                  sample, wp_text, "eps_single");
+
+            // ---- ROUND 9: same-sign / opposite-sign series, exactly as Step 3 --------------
+            for (const std::string& sgn : {std::string("ss"), std::string("os")}) {
+                const std::string hp4 = "h_mc_single_dr_" + sgn + "_";
+                TH3D* sn = GetObjOrNull<TH3D>(fmc4, hp4 + "full_vs_pt_eta_num");
+                TH3D* sd = GetObjOrNull<TH3D>(fmc4, hp4 + "full_vs_pt_eta_denom");
+                TH3D* sA = GetObjOrNull<TH3D>(fmc4, hp4 + "full_vs_pt_eta_errA");
+                TH3D* sB = GetObjOrNull<TH3D>(fmc4, hp4 + "full_vs_pt_eta_errB");
+                TH3D* sP = GetObjOrNull<TH3D>(fmc4, hp4 + "full_vs_pt_eta_covP");
+                TH3D* sQ = GetObjOrNull<TH3D>(fmc4, hp4 + "full_vs_pt_eta_covQ");
+                TH1D* i_n = GetObjOrNull<TH1D>(fmc4, hp4 + "full_num");
+                TH1D* i_d = GetObjOrNull<TH1D>(fmc4, hp4 + "full_denom");
+                TH1D* i_A = GetObjOrNull<TH1D>(fmc4, hp4 + "full_errA");
+                TH1D* i_B = GetObjOrNull<TH1D>(fmc4, hp4 + "full_errB");
+                TH1D* i_P = GetObjOrNull<TH1D>(fmc4, hp4 + "full_covP");
+                TH1D* i_Q = GetObjOrNull<TH1D>(fmc4, hp4 + "full_covQ");
+                if (!sn || !sd || !sA || !sB || !sP || !sQ ||
+                    !i_n || !i_d || !i_A || !i_B || !i_P || !i_Q) {
+                    std::cout << "  [Step 4] no " << hp4 << "* histograms -- sign-separated "
+                              << "plateaus skipped for this sample (refill to produce them)\n";
+                    continue;
+                }
+                auto* ri = (TH1D*)i_n->Clone(("s4incl_" + sgn).c_str());
+                ri->SetDirectory(nullptr);
+                ri->Divide(i_d);
+                SetConditionalRatioErrors(ri, i_d, i_A, i_B, i_P, i_Q);
+                const auto pi  = PlateauWeightedMean(ri, kPlateauLo, kPlateauHi);
+                const auto pia = PlateauWeightedMean(ri, kPlateauSystLo, kPlateauSystHi);
+                delete ri;
+
+                std::vector<std::vector<Plat>> Ps(npt, std::vector<Plat>(neta));
+                for (int iy = 1; iy <= npt; ++iy)
+                    for (int iz = 1; iz <= neta; ++iz) {
+                        TH1D* r = cell_ratio(sn, sd, sA, sB, sP, sQ, iy, iz, neta,
+                                             Form("plat4%s_%s_%d_%d", sgn.c_str(),
+                                                  sample.c_str(), iy, iz));
+                        Ps[iy - 1][iz - 1] = PlateauFromRatio(r);
+                        delete r;
+                    }
+                WritePlateauRootFile(DrCorrPlateauFile(id, use_tight_wp), /*recreate=*/false, 4,
+                                     sn, Ps, pi.first, pi.second,
+                                     std::fabs(pi.first - pia.first),
+                                     sample, wp_text, "eps_single", sgn);
+                printf("  %s (%s pairs) single-leg inclusive plateau = %.4f +- %.4f\n",
+                       sample.c_str(), sgn == "ss" ? "same-sign" : "opposite-sign",
+                       pi.first, pi.second);
+            }
             fmc4->Close();
         }
     }
