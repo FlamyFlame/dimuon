@@ -1830,12 +1830,47 @@ background subtraction is **OS − SS**, i.e. the same-sign spectrum enters the 
    question** (the top-pair-pT plateaus 20–42 % high, ε_MC pT clamp vs coarse q·η binning), this
    cannot be waved away.
 
-**The decisive test needs a refill, not a replot:** the stored Step-3 numerator is already
-inverse-weighted, so the RAW joint trigger probability P(both fire | ΔR) per sign — which carries no
-ε_MC at all — cannot be formed from the current files. Booking a weight-only numerator alongside the
-inverse-weighted one would settle it: if the raw same-sign/opposite-sign split survives, explanation
-1 stands and the correction must become sign-dependent; if it vanishes, explanation 2 stands and the
-fix belongs in ε_MC. **STOP-AND-ASK item raised to the user 2026-08-11; not acted on here.**
+**★ THE TEST WAS RUN, AND EXPLANATION 2 IS REFUTED (2026-08-11).** A weight-only numerator
+(`numraw`, the SAME trigger-passing node weighted by the plain MC weight) was booked beside the
+inverse-weighted one and Step 3 refilled, giving the RAW joint trigger probability
+P(both fire | ΔR) with **no ε_MC anywhere in it**. pp_full, Tight:
+
+| ΔR | P_raw same sign | P_raw opposite sign | raw ratio | ε_ΔR ratio (inverse-weighted) |
+|---|---|---|---|---|
+| 0.025 | 0.2375 | 0.5564 | **0.427** | **0.425** |
+| 0.075 | 0.3135 | 0.5489 | 0.571 | 0.595 |
+| 0.125 | 0.4714 | 0.5762 | 0.818 | 0.844 |
+| 0.175 | 0.5595 | 0.5789 | 0.967 | 0.978 |
+| 0.225 | 0.6316 | 0.6147 | 1.027 | 1.030 |
+| 0.325 | 0.6420 | 0.6503 | 0.987 | 1.025 |
+
+The raw ratio and the inverse-weighted ratio agree bin by bin to ≲3 %. **Two conclusions, and they
+point the same way:**
+- The split is **already present in the raw trigger probability**, so the 1/(ε₁ε₂) weight neither
+  creates it nor materially changes it ⇒ **explanation 2 (ε_MC mis-parameterisation squaring for
+  close same-sign pairs) is ruled out.**
+- The inverse weighting is precisely what divides out the (pT, q·η) kinematic dependence, and it
+  does **not** remove the split ⇒ a different (pT, q·η) MIX for close same-sign vs opposite-sign
+  pairs is ruled out as well.
+
+⇒ **a genuine charge-dependent two-body trigger correlation**, confined to the JOINT term (Step 3
+only, nothing in Step 4's single-leg marginal) and to ΔR ≲ 0.15. That is the signature of L1
+close-by-RoI merging: same-charge muons bend the same way in the toroid, so a close same-sign pair
+stays close in the muon spectrometer and its two RoIs merge into one, failing a 2-of-2 trigger;
+opposite-charge muons bend apart. Explanation 1 stands. (Independent support: the opposite-sign
+curve — f(0) ≈ 0.82, recovered by ΔR ≈ 0.3 — matches the Run 2 close-by-RoI correction ρ_ΔR, which
+was measured on opposite-charge dimuons; `.claude/kb/physics/detector/atlas_run2_muon_trigger.md`
+§12.4. No Run 2 same-sign analog exists, so that branch is RUN2-CROSSCHECK UNVERIFIED.)
+
+**OPEN — USER DECISION, with a rerun blast radius.** The measurement is settled; how the analysis
+USES it is not. The nominal ε_ΔR is sign-integrated and ≈ the opposite-sign curve, so same-sign
+pairs are under-corrected by up to ×2.3 below ΔR ≈ 0.15. The natural fix is to apply the
+**sign-dependent** ε_ΔR (same-sign correction to the same-sign spectrum, opposite-sign to the
+opposite-sign one) in the pp 2mu4 weight — the per-sign fits already exist, at both working points
+and for all three fit functions. That changes the trigger-corrected yields and therefore
+**requires a crossx refill + full replot** (`signal_selection_change_impact.md`), which is exactly
+why it is not done here. It should be bundled with the refill the `w_trig = 0` gap bug already
+forces (`pp_trig_eff_highpt_jump.md`). **Raised to the user 2026-08-11.**
 
 **(d) Statistics of the 8-bin pair-pT axis** — new macro `write_mc_pair_statistics_tables.cxx`,
 reading three TH2Ds per sign (`h_mc_paircount / pairsumw / pairsumw2 _vs_pt_eta_{ss,os}`) that

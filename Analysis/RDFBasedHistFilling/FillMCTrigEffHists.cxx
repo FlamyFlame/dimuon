@@ -1211,6 +1211,17 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
                     .Define("w_inv", "weight * sf1 * sf2 / (eps1 * eps2)");
             book_step3(dn, "num", "w_inv");
 
+            // RAW joint trigger probability (round 9): the SAME trigger-passing node, weighted by
+            // the plain MC weight instead of 1/(eps1 eps2). numraw/denom is therefore
+            // P(both mu fire | dR) with NO eps_MC anywhere in it.
+            // Why it exists: R25 found the same-sign and opposite-sign eps_dR differing by a factor
+            // 2.3 in the first dR bin. Two explanations compete -- a real L1 close-by-RoI effect,
+            // or an eps_MC mis-parameterisation that SQUARES in the 1/(eps1 eps2) weight for a
+            // close SAME-sign pair (q*eta_1 ~ q*eta_2) while partly CANCELLING for a close
+            // OPPOSITE-sign pair (q*eta_1 ~ -q*eta_2). The inverse-weighted numerator cannot tell
+            // them apart; this one can, because the second explanation lives entirely in the weight.
+            book_step3(dn, "numraw", "weight");
+
             // CONDITIONAL (binomial-correct) ERROR TERMS (round 7) -- see the Step-4 block for
             // the derivation. Here each entry is one PAIR (a single Bernoulli trial with
             // p = eps_1 eps_2 R), so only the diagonal part exists: Var = A - R*B, with

@@ -102,6 +102,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <map>
 #include <numeric>
 #include <stdexcept>
 #include <string>
@@ -232,6 +233,31 @@ TH2D* BookLike(const TH2D* like, const std::string& name, const std::string& zti
     h->Reset();
     h->SetTitle((";p_{T}^{pair} [GeV];#eta^{pair};" + ztitle).c_str());
     return h;
+}
+
+// A free parameter that came out sitting ON one of its fit limits is NOT a measurement: MINUIT
+// parks it on the boundary and still returns a parabolic error, which then spans the limit
+// ("#lambda = 0.02 +- 0.058"). Such a parameter is flagged here and on the canvas
+// (plot_dr_correction_fits.cxx uses the identical test on the PERSISTED TF1, whose limits survive
+// the write/read). The limits themselves are never touched -- changing them would move the
+// nominal correction.
+bool ParAtLimit(TF1* f, int ip)
+{
+    double lo = 0., hi = 0.;
+    f->GetParLimits(ip, lo, hi);
+    if (!(lo < hi)) return false;          // unbounded, or FixParameter (which sets lo == hi)
+    const double tol = 1e-3 * (hi - lo);
+    const double v   = f->GetParameter(ip);
+    return std::fabs(v - lo) <= tol || std::fabs(v - hi) <= tol;
+}
+
+// "#lambda" -> "lambda", "R_{p}" -> "R_p": the reports are plain text, the canvas is LaTeX.
+std::string ParPlainName(const char* n)
+{
+    std::string s;
+    for (const char* p = n; *p; ++p)
+        if (*p != '#' && *p != '{' && *p != '}') s += *p;
+    return s;
 }
 
 std::string CellName(const std::string& base, int step, int iy, int iz)
@@ -576,6 +602,13 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     int n_unusable = 0;   // cells persisted with fit_ok = 0 (fit failed / plateau outside the
                           // guard tolerance / correction not > 0 over [0, Rp])
     double chi2_incl = -1.;
+    // The inclusive cell has no bin in the per-cell TH2Ds, so its usability flag has to travel
+    // separately -- exactly as its plateau does (h_stepN_plateau_inclusive). Without it the plot
+    // stage had no way to know that the inclusive fit was rejected and drew it like any other.
+    double incl_fit_ok = 0.;
+    // F6 bookkeeping: which cells ended with a free parameter pinned on a fit limit.
+    std::vector<std::string> atlimit_cells;
+    std::map<std::string, int> atlimit_par_count;
 
     // iy/iz = 0 is the inclusive cell, fitted first.
     for (int iy = 0; iy <= npt; ++iy) {
@@ -662,6 +695,10 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                 gk->SetTitle(Form("linear-interpolation knots; #DeltaR; %s (plateau-normalized)",
                                   S.quantity.c_str()));
                 gk->Write();
+                // Same screen for the inclusive cell; it just has nowhere to write a TH2D bin.
+                const bool interp_usable_incl = DrCorrPlateauUsable(plateau, plateau_err)
+                                             && std::fabs(plateau - 1.0) <= kPlateauGuardTol;
+                if (inclusive) incl_fit_ok = interp_usable_incl ? 1. : 0.;
                 if (!inclusive) {
                     // An interpolation always "succeeds" numerically, but that says nothing about
                     // whether the CELL is usable. This branch used to write fit_ok = 1
@@ -746,6 +783,7 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                              && DrCorrPlateauUsable(plateau, plateau_err)
                              && std::fabs(plateau - 1.0) <= kPlateauGuardTol;
             if (!usable && !inclusive) ++n_unusable;
+            if (inclusive) incl_fit_ok = usable ? 1. : 0.;
             if (!inclusive) {
                 hstat->SetBinContent(iy, iz, usable ? 1. : 0.);
                 hchi ->SetBinContent(iy, iz, chi2ndf);
@@ -764,13 +802,25 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                 }
             }
 
+            // F6: a parameter pinned on its limit is reported as such, here and on the canvas.
+            std::string atlim;
+            for (int ip = 0; ip < M.npar; ++ip) {
+                if (!ParAtLimit(f, ip)) continue;
+                const std::string pn = ParPlainName(f->GetParName(ip));
+                atlim += (atlim.empty() ? "" : ",") + pn;
+                ++atlimit_par_count[pn];
+            }
+            if (!atlim.empty())
+                atlimit_cells.push_back(std::string(ptlab) + " x " + etalab + " : " + atlim);
+
             rep << std::left << std::setw(22) << ptlab << std::setw(16) << etalab
                 << std::setw(12) << Form("%.4f", plateau) << std::setw(10) << k;
             for (int ip = 0; ip < 3; ++ip)
                 rep << std::setw(14) << (ip < M.npar ? Form("%.4f", f->GetParameter(ip)) : "--");
             rep << std::setw(12) << (ok ? Form("%.3f", chi2ndf) : "FAILED")
                 << std::setw(12) << Form("%.4f", f->Eval(0.0))
-                << (M.npar > 3 ? Form("  p3=%.4f", f->GetParameter(3)) : "") << "\n";
+                << (M.npar > 3 ? Form("  p3=%.4f", f->GetParameter(3)) : "")
+                << (atlim.empty() ? "" : "  AT LIMIT: " + atlim) << "\n";
             delete f;
             delete g;
         }
@@ -791,6 +841,13 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
         hi->SetBinError(1, plat_incl_err);
         hi->Write();
         delete hi;
+        // Consumers must gate on fit_ok; the inclusive cell needs its own carrier.
+        auto* hk = new TH1D(("h_" + tag + "_fit_ok_inclusive").c_str(),
+                            ";;1 = fit usable, 0 = rejected", 1, 0., 1.);
+        hk->SetDirectory(nullptr);
+        hk->SetBinContent(1, incl_fit_ok);
+        hk->Write();
+        delete hk;
     }
     TNamed("provenance",
            Form("sample=%s (%s); WP=%s; series=%s; step=%d (%s); method=%s; formula=%s; Rp=%.2f; "
@@ -836,7 +893,13 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
            " normalizing by such a plateau inflates chi2 without saying anything about the fit"
            " function.)\n"
         // kept for backwards compatibility with the driver's summary parser
-        << "# mean chi2/ndf over " << chi2_all.size() << " converged cells = "
+        << "# parameters pinned ON a fit limit (MINUIT parks the value on the boundary and still"
+           " returns an error that spans it -- such a value is a constraint, not a measurement;"
+           " marked '(at limit)' on the canvas): " << atlimit_cells.size() << " cell(s)\n";
+    for (const auto& kv : atlimit_par_count)
+        rep << "#   " << kv.first << ": " << kv.second << " cell(s)\n";
+    for (const auto& c : atlimit_cells) rep << "#     " << c << "\n";
+    rep << "# mean chi2/ndf over " << chi2_all.size() << " converged cells = "
         << (chi2_all.empty() ? "n/a"
                              : Form("%.3f", std::accumulate(chi2_all.begin(), chi2_all.end(), 0.)
                                             / chi2_all.size()))
