@@ -621,8 +621,14 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
             const int    pnb     = inclusive ? 1         : (int)hpnb->GetBinContent(iy, iz);
             const std::string nm = CellName("r", step, iy, iz);
 
+            // ONE DECIMAL, as the canvases and the PNG file names already use: at "%.0f" the
+            // log edges 11.54 / 16.65 / 24.01 / 34.64 / 49.97 / 72.08 / 103.98 printed as
+            // 12 / 17 / 24 / 35 / 50 / 72 / 104, so the human-readable report named cells the
+            // figures next to it call 11.5 / 16.6 / 24.0 ... -- two namings of one binning,
+            // exactly the drift .claude/CLAUDE.md 'Binnings' exists to stop. Label only; no
+            // fitted quantity depends on this string.
             const char* ptlab  = inclusive ? "inclusive"
-                : Form("[%.0f,%.0f)", hplat->GetXaxis()->GetBinLowEdge(iy),
+                : Form("[%.1f,%.1f)", hplat->GetXaxis()->GetBinLowEdge(iy),
                                       hplat->GetXaxis()->GetBinUpEdge(iy));
             const char* etalab = inclusive ? "inclusive"
                 : Form("[%.1f,%.1f)", hplat->GetYaxis()->GetBinLowEdge(iz),

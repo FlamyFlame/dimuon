@@ -1590,22 +1590,52 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
         const int ncol = (int)std::ceil(std::sqrt((double)neta));
         const int nrow = (int)std::ceil((double)neta / ncol);
         for (const auto& R : rngs) {
-            TCanvas c(("c_s3_pteta_" + R.tag).c_str(), "", 500 * ncol, 450 * nrow);
-            c.Divide(ncol, nrow);
-            std::vector<TH1D*> rs_leg;   // series of the first panel, used for the canvas legend
+            // ONE y range for all nine panels of a canvas, built in a FIRST PASS over every
+            // (pair pT, pair eta) cell -- exactly as the eps_dR distribution canvases below do.
+            // Panel-by-panel autoscaling gave visible maxima of 2.4 / 2.0 / 1.8 / 1.6 on one
+            // canvas, so two neighbouring panels of the same quantity were read on different
+            // scales, and the two figure sets of that quantity followed opposite rules.
+            // Range from CENTRAL values only, as those canvases do: the last wide-dR bins carry
+            // errors of order 1 and including them stretches the axis to the 3.0 cap and flattens
+            // the structure the figure exists for. Points above the cap keep their arrow AND are
+            // listed on the canvas.
+            std::vector<std::vector<TH1D*>> rs_all(neta + 1);
+            double ymax = 0.;
             for (int iz = 1; iz <= neta; ++iz) {
-                c.cd(iz);
-                gPad->SetLeftMargin(0.14); gPad->SetBottomMargin(0.13);
-                std::vector<TH1D*> rs;
-                double ymax = 0.;
                 for (int iy = 1; iy <= npt; ++iy) {
                     TH1D* r = cell_ratio(R.n, R.d, R.a, R.b, iy, iz, neta,
                                          Form("s3pe_%s_%s_%d_%d", sample.c_str(), R.tag.c_str(), iy, iz));
-                    rs.push_back(r);
+                    rs_all[iz].push_back(r);
                     for (int i = 1; i <= r->GetNbinsX(); ++i)
-                        ymax = std::max(ymax, r->GetBinContent(i) + r->GetBinError(i));
+                        ymax = std::max(ymax, r->GetBinContent(i));
                 }
-                ymax = std::min(std::max(1.15, 1.15 * ymax), 3.0);   // cap; off-scale points arrowed
+            }
+            ymax = std::min(std::max(1.15, 1.15 * ymax), 3.0);   // cap; off-scale points arrowed
+
+            // A RESERVED HEADER STRIP, with the grid of panels in a TPad below it -- the same
+            // construction the eps_dR distribution canvases use. The eight pair-pT entries used
+            // to be squeezed into ONE row across the full canvas width (SetNColumns(8) ~ 0.12 NDC
+            // ~ 180 px per entry for a label like "104.0 < p_{T}^{pair} < 150.0 GeV"), so every
+            // entry's text ran into the next entry's marker, the last one was clipped at the right
+            // edge, and the only key identifying the eight curves was unreadable. Two rows of four
+            // give each entry ~360 px.
+            const int    kHeaderPx = 128;
+            const int    canv_h    = 450 * nrow + kHeaderPx;
+            const double hfrac     = (double)kHeaderPx / canv_h;
+            TCanvas c(("c_s3_pteta_" + R.tag).c_str(), "", 500 * ncol, canv_h);
+            auto* grid = new TPad(("grid_s3pe_" + R.tag).c_str(), "", 0., 0., 1., 1. - hfrac);
+            grid->SetFillStyle(0); grid->Draw(); grid->cd(); grid->Divide(ncol, nrow);
+            std::vector<TH1D*> rs_leg;   // series of the first panel, used for the canvas legend
+            std::vector<std::string> offscale;
+            for (int iz = 1; iz <= neta; ++iz) {
+                grid->cd(iz);
+                gPad->SetLeftMargin(0.14); gPad->SetBottomMargin(0.13);
+                // Reserved strip ABOVE the frame for the pair-eta label, as on the eps_dR
+                // distribution canvases: inside the frame the label sat at the same height as the
+                // off-scale arrows, which are drawn just under the frame top, and the arrow was
+                // painted straight through "-2.4 < eta^pair < -2.0".
+                gPad->SetTopMargin(0.10);
+                std::vector<TH1D*>& rs = rs_all[iz];
                 DrawEffFrame(0.0, R.xhi, "#DeltaR", 0.0, ymax, cfg.eps_dr_text);
                 DrawUnityLine(0.0, R.xhi);
                 for (int iy = 0; iy < npt; ++iy) {
@@ -1625,32 +1655,51 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                         ar->SetLineColor(ptcol[iy % ptcol.size()]);
                         ar->SetFillColor(ptcol[iy % ptcol.size()]);
                         ar->Draw();
+                        offscale.push_back(Form(
+                            "#eta^{pair} #in [%.1f,%.1f), p_{T}^{pair} #in [%.1f,%.1f) GeV,"
+                            " #DeltaR = %.2f: %.1f",
+                            h3fn->GetZaxis()->GetBinLowEdge(iz), h3fn->GetZaxis()->GetBinUpEdge(iz),
+                            h3fn->GetYaxis()->GetBinLowEdge(iy + 1),
+                            h3fn->GetYaxis()->GetBinUpEdge(iy + 1),
+                            r->GetBinCenter(i), r->GetBinContent(i)));
                     }
                 }
-                // eta-bin label INSIDE the frame top-left (was in the top margin at y=0.94,
-                // where it collided with the canvas super-title on the top pad row -- review WARNING).
+                // eta-bin label in the reserved strip above the frame. It used to sit at y=0.94
+                // of a pad with no top margin, i.e. under the canvas super-title; the strip keeps
+                // it clear of BOTH the super-title (now in its own header) and the arrows inside
+                // the frame.
                 TLatex tl; tl.SetNDC(); tl.SetTextFont(42); tl.SetTextSize(0.050);
-                tl.DrawLatex(0.17, 0.86, eta_label(iz).c_str());
+                tl.DrawLatex(0.15, 0.945, eta_label(iz).c_str());
             }
             c.cd(0);
-            // Super-title in the empty top strip. Use a RAW TLatex (NOT DrawHeadline, which floors
-            // the size at 0.030 -> the long title then overflows the right edge; review WARNING).
-            // At 0.016 the longest title (r17663 medium/zoom) fits the 1500px width, and baseline
-            // 0.978 + ~0.016 height < 1.0 clears the top edge; it sits above the in-frame eta labels.
-            // No `R.tag` ("zoom"/"full") on the canvas: which DeltaR range is shown is visible
-            // on the axis, and the token is an internal name for two output files.
-            TLatex st; st.SetNDC(); st.SetTextFont(42); st.SetTextSize(0.016);
-            st.DrawLatex(0.03, 0.988, (headline + ",  " + cfg.eps_dr_text +
+            // Header strip, in PIXELS of this canvas so the layout does not depend on the grid
+            // size. Row 1 = super-title, rows 2-3 = the two-row legend, row 4 = the off-scale
+            // record. No `R.tag` ("zoom"/"full") on the canvas: which DeltaR range is shown is
+            // visible on the axis, and the token is an internal name for two output files.
+            auto ny = [&](double px) { return 1.0 - px / canv_h; };
+            TLatex st; st.SetNDC(); st.SetTextFont(42); st.SetTextSize(22.0 / canv_h);
+            st.DrawLatex(0.02, ny(26), (headline + ",  " + cfg.eps_dr_text +
                          " in (p_{T}^{pair}, #eta^{pair}) cells").c_str());
-            // ONE legend for the whole canvas, in the empty strip under the super-title: in a
-            // panel the series cover the frame, so an in-panel legend always sits on data.
             if (!rs_leg.empty()) {
-                auto* leg = new TLegend(0.03, 0.955, 0.97, 0.982);
-                leg->SetNColumns(npt);
-                leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.014);
+                // ONE legend for the whole canvas, in its own strip: in a panel the series cover
+                // the frame, so an in-panel legend always sits on data.
+                auto* leg = new TLegend(0.02, ny(100), 0.98, ny(38));
+                leg->SetNColumns(4);
+                leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(16.0 / canv_h);
                 for (int iy = 0; iy < npt; ++iy)
                     leg->AddEntry(rs_leg[iy], pt_label(iy + 1).c_str(), "lp");
                 leg->Draw();
+            }
+            if (!offscale.empty()) {
+                // Terse record of every point the axis cap pushed off frame -- an arrow says a
+                // point is missing, it does not say how far off it was.
+                std::string note = "above the axis range: " + offscale[0];
+                for (size_t k = 1; k < offscale.size() && k < 2; ++k) note += ";  " + offscale[k];
+                if (offscale.size() > 2)
+                    note += Form(";  ... (%d in total)", (int)offscale.size());
+                TLatex os_; os_.SetNDC(); os_.SetTextFont(42); os_.SetTextSize(15.0 / canv_h);
+                os_.SetTextColor(kGray + 3);
+                os_.DrawLatex(0.02, ny(118), note.c_str());
             }
             SaveCanvas(c, dir3 + "step3_eps_dr_" + R.tag + "_pair_eta_pt.png");
         }
@@ -2190,21 +2239,40 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             const int ncol = (int)std::ceil(std::sqrt((double)neta));
             const int nrow = (int)std::ceil((double)neta / ncol);
             for (const auto& R : rngs) {
-                TCanvas c(("c_s4_pteta_" + R.tag).c_str(), "", 500 * ncol, 450 * nrow);
-                c.Divide(ncol, nrow);
-                std::vector<TH1D*> rs_leg;   // first panel's series -> canvas-level legend
+                // ONE y range for all nine panels, from a FIRST PASS over every (pair pT, pair
+                // eta) cell, and CENTRAL values only -- identical rule to the Step-3 panels and
+                // to the eps_dR distribution canvases. Per-panel autoscaling made neighbouring
+                // panels of the same quantity read on different scales.
+                std::vector<std::vector<TH1D*>> rs_all(neta + 1);
+                double ymax = 0.;
                 for (int iz = 1; iz <= neta; ++iz) {
-                    c.cd(iz);
-                    gPad->SetLeftMargin(0.14); gPad->SetBottomMargin(0.13);
-                    std::vector<TH1D*> rs; double ymax = 0.;
                     for (int iy = 1; iy <= npt; ++iy) {
                         TH1D* r = cell_ratio(R.n, R.d, R.a, R.b, R.p, R.q, iy, iz, neta,
                                              Form("s4pe_%s_%s_%d_%d", sample.c_str(), R.tag.c_str(), iy, iz));
-                        rs.push_back(r);
+                        rs_all[iz].push_back(r);
                         for (int i = 1; i <= r->GetNbinsX(); ++i)
-                            ymax = std::max(ymax, r->GetBinContent(i) + r->GetBinError(i));
+                            ymax = std::max(ymax, r->GetBinContent(i));
                     }
-                    ymax = std::min(std::max(1.15, 1.15 * ymax), 3.0);
+                }
+                ymax = std::min(std::max(1.15, 1.15 * ymax), 3.0);   // cap; off-scale arrowed
+
+                // Reserved header strip + the panel grid in a TPad below, as in Step 3: the eight
+                // pair-pT entries in ONE row (SetNColumns(8)) overran the canvas -- each entry's
+                // text ran into the next entry's marker and the last one was clipped off the right
+                // edge. Two rows of four.
+                const int    kHeaderPx = 128;
+                const int    canv_h    = 450 * nrow + kHeaderPx;
+                const double hfrac     = (double)kHeaderPx / canv_h;
+                TCanvas c(("c_s4_pteta_" + R.tag).c_str(), "", 500 * ncol, canv_h);
+                auto* grid = new TPad(("grid_s4pe_" + R.tag).c_str(), "", 0., 0., 1., 1. - hfrac);
+                grid->SetFillStyle(0); grid->Draw(); grid->cd(); grid->Divide(ncol, nrow);
+                std::vector<TH1D*> rs_leg;   // first panel's series -> canvas-level legend
+                std::vector<std::string> offscale;
+                for (int iz = 1; iz <= neta; ++iz) {
+                    grid->cd(iz);
+                    gPad->SetLeftMargin(0.14); gPad->SetBottomMargin(0.13);
+                    gPad->SetTopMargin(0.10);   // label strip above the frame -- see Step 3
+                    std::vector<TH1D*>& rs = rs_all[iz];
                     DrawEffFrame(0.0, R.xhi, "#DeltaR", 0.0, ymax, eps_single_text);
                     DrawUnityLine(0.0, R.xhi);
                     for (int iy = 0; iy < npt; ++iy) {
@@ -2223,22 +2291,40 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                                                   r->GetBinCenter(i), ymax * 0.985, 0.008, "|>");
                             ar->SetLineColor(ptcol[iy % ptcol.size()]);
                             ar->SetFillColor(ptcol[iy % ptcol.size()]); ar->Draw();
+                            offscale.push_back(Form(
+                                "#eta^{pair} #in [%.1f,%.1f), p_{T}^{pair} #in [%.1f,%.1f) GeV,"
+                                " #DeltaR = %.2f: %.1f",
+                                h3fn->GetZaxis()->GetBinLowEdge(iz),
+                                h3fn->GetZaxis()->GetBinUpEdge(iz),
+                                h3fn->GetYaxis()->GetBinLowEdge(iy + 1),
+                                h3fn->GetYaxis()->GetBinUpEdge(iy + 1),
+                                r->GetBinCenter(i), r->GetBinContent(i)));
                         }
                     }
                     TLatex tl; tl.SetNDC(); tl.SetTextFont(42); tl.SetTextSize(0.050);
-                    tl.DrawLatex(0.17, 0.86, eta_label(iz).c_str());
+                    tl.DrawLatex(0.15, 0.945, eta_label(iz).c_str());   // reserved strip, see Step 3
                 }
                 c.cd(0);
-                TLatex st; st.SetNDC(); st.SetTextFont(42); st.SetTextSize(0.016);
-                st.DrawLatex(0.03, 0.988, (headline + ",  " + eps_single_text +
+                auto ny = [&](double px) { return 1.0 - px / canv_h; };
+                TLatex st; st.SetNDC(); st.SetTextFont(42); st.SetTextSize(22.0 / canv_h);
+                st.DrawLatex(0.02, ny(26), (headline + ",  " + eps_single_text +
                              " in (p_{T}^{pair}, #eta^{pair}) cells").c_str());
                 if (!rs_leg.empty()) {   // canvas-level legend, as in Step 3
-                    auto* leg = new TLegend(0.03, 0.955, 0.97, 0.982);
-                    leg->SetNColumns(npt);
-                    leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.014);
+                    auto* leg = new TLegend(0.02, ny(100), 0.98, ny(38));
+                    leg->SetNColumns(4);
+                    leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(16.0 / canv_h);
                     for (int iy = 0; iy < npt; ++iy)
                         leg->AddEntry(rs_leg[iy], pt_label(iy + 1).c_str(), "lp");
                     leg->Draw();
+                }
+                if (!offscale.empty()) {
+                    std::string note = "above the axis range: " + offscale[0];
+                    for (size_t k = 1; k < offscale.size() && k < 2; ++k) note += ";  " + offscale[k];
+                    if (offscale.size() > 2)
+                        note += Form(";  ... (%d in total)", (int)offscale.size());
+                    TLatex os_; os_.SetNDC(); os_.SetTextFont(42); os_.SetTextSize(15.0 / canv_h);
+                    os_.SetTextColor(kGray + 3);
+                    os_.DrawLatex(0.02, ny(118), note.c_str());
                 }
                 SaveCanvas(c, dir4 + "step4_eps_dr_single_" + R.tag + "_pair_eta_pt.png");
             }

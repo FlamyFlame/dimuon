@@ -1717,6 +1717,17 @@ whose true efficiency is lower ⇒ under-correction. Either apply the gap cut to
 in the same rerun, or measure ε^nc without the probe cut in the straddling bins. State the choice
 in the Physics Procedure.
 
+### R24b. The `_pt4bin` variant trees are STALE as of round 9 (2026-08-11)
+
+`{pp,pbpb}_trigger_efficiency/mc_based_pt4bin{,_medium}/` were last written on the round-8 code.
+They have none of the round-9 structure — no `sign_intgr/` / `sign_sepr/`, no
+`step3_dr_correction/dr_*` subdirectories — and their `fit_report*.txt` still carry the `%.0f`
+pair-pT labels that round 9 replaced everywhere else (24 files). They were deliberately NOT
+regenerated: round 9 is scoped to the canonical 8-bin axis, and rewriting only their reports would
+leave a half-migrated tree, which is worse than a uniformly old one. If the 4-bin comparison is
+still wanted, it needs one full `MCTRIGEFF_PAIRPT_4BIN=1` pass of the chain, not a patch.
+(The `*_fine_q_eta_bins_w_gap/` trees are the round-8 backup snapshot and are frozen by design.)
+
 ### R26. ★ OPEN — the NOMINAL `expo` form cannot describe the measured shape in the most
 ### populated cell (2026-08-11, plot review; pre-existing, exposed by round 9)
 

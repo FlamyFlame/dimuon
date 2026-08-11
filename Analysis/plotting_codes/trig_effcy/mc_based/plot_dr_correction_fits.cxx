@@ -446,6 +446,16 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         // THE CELL LABEL COMES FIRST. It used to be drawn after the "no usable plateau" early
         // return, so a cell with no measurement came out as an unlabelled empty frame and the
         // reader could not tell WHICH cell it was.
+        // WHICH panel a point belongs to must travel WITH the point: the off-scale record is
+        // drawn once for the whole nine-panel canvas, so "#DeltaR=0.03: 4.92 #pm 4.92" on its own
+        // does not say which pair-eta cell it came from (nor, in the sign-separated mode, which
+        // charge combination). Empty on the single-panel inclusive canvas, where there is only
+        // one cell and the panel already names it.
+        const std::string cell_id = (iy == 0 && iz == 0)
+            ? std::string()
+            : std::string(Form("#eta^{pair} #in [%.1f,%.1f), ",
+                               series[0].hplat->GetYaxis()->GetBinLowEdge(iz),
+                               series[0].hplat->GetYaxis()->GetBinUpEdge(iz)));
         TLatex t;
         t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.045);
         if (iy == 0 && iz == 0) {
@@ -502,6 +512,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         for (size_t is = 0; is < series.size(); ++is) {
             if (!usable[is]) continue;
             const Series& s = series[is];
+            const std::string sign_id = sepr ? s.legend + ", " : std::string();
             auto* g = cell_points(s, iy, iz, plateau_of(s, iy, iz));
             auto* g_fit = new TGraphErrors();
             auto* g_exc = new TGraphErrors();
@@ -536,7 +547,8 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
                 const Color_t acol = (x < kFitHi) ? s.c_mark : s.c_exc;
                 ar->SetLineColor(acol); ar->SetFillColor(acol); ar->SetLineWidth(2);
                 ar->Draw();
-                offscale.push_back(Form("#DeltaR=%.2f: %.2f #pm %.2f", x, y, g->GetErrorY(i)));
+                offscale.push_back(Form("%s%s#DeltaR=%.2f: %.2f #pm %.2f", cell_id.c_str(),
+                                        sign_id.c_str(), x, y, g->GetErrorY(i)));
             }
             // `g` is intentionally NOT deleted: ~TGraph removes the object from every pad that
             // draws it, so deleting it here silently erased all the points from the canvas.
@@ -651,64 +663,93 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     // them let one noisy cell dictate the axis for every plot, squashing all the real structure
     // into a sliver. Points whose central value still falls outside the capped range are marked
     // with an arrow by draw_cell(), so nothing is dropped silently.
-    double g_ylo = 1., g_yhi = 1.;
-    double y_ann_max = 1.;     // highest point that would sit UNDER the annotation columns
-    for (const auto& s : series) {
-        for (int iy = 1; iy <= npt; ++iy) {
-            for (int iz = 1; iz <= neta; ++iz) {
-                const double plateau = s.hplat->GetBinContent(iy, iz);
+    // TWO ranges, deliberately different, because the two figure types answer different
+    // questions:
+    //   * the NINE-PANEL pair-pT files share ONE range across the whole method/mode directory,
+    //     so the pair-pT dependence can be read by flipping between the files (user, 2026-08-05);
+    //   * the single-panel INCLUSIVE canvas is a figure in its own right and is not compared to
+    //     anything by flipping, so it gets a range from its OWN points. Inheriting the
+    //     directory-wide range put the Step-4 inclusive points (0.99-1.16) inside a 0-2.4 frame,
+    //     i.e. ~7% of the height, and turned the ~15% small-dR rise that IS the content of the
+    //     figure into a barely visible kink.
+    // Both are set from the CENTRAL VALUES only, NOT value +- error (user): in the sparse
+    // high-pair-pT cells the error bars are several times the correction itself, and including
+    // them let one noisy cell dictate the axis, squashing all the real structure into a sliver.
+    // Points whose central value still falls outside the capped range are marked with an arrow
+    // by draw_cell(), so nothing is dropped silently.
+    auto compute_range = [&](bool incl_only) -> std::pair<double, double> {
+        std::vector<std::pair<int, int>> cells;
+        if (incl_only) cells.push_back({0, 0});
+        else for (int iy = 1; iy <= npt; ++iy)
+                 for (int iz = 1; iz <= neta; ++iz) cells.push_back({iy, iz});
+
+        double ylo = 1., yhi = 1.;
+        for (const auto& s : series) {
+            for (const auto& c : cells) {
                 // Screen with the SAME test the drawing code uses: an unmeasurable cell is never
                 // drawn, so letting its eps/plateau values (O(10-130) when the plateau is ~0.008)
-                // set the shared range pushed every PNG in the directory to the 3.0 cap and
-                // squashed the structure the panels exist to show.
-                if (!DrCorrPlateauUsable(plateau, s.hplat->GetBinError(iy, iz))) continue;
-                auto* g = cell_points(s, iy, iz, plateau);
+                // set the range pushed every PNG to the 3.0 cap and squashed the structure the
+                // panels exist to show.
+                const double plateau = plateau_of(s, c.first, c.second);
+                if (!DrCorrPlateauUsable(plateau, plateau_err_of(s, c.first, c.second))) continue;
+                auto* g = cell_points(s, c.first, c.second, plateau);
                 for (int i = 0; i < g->GetN(); ++i) {
                     double x, y;
                     g->GetPoint(i, x, y);
-                    g_ylo = std::min(g_ylo, y);
-                    g_yhi = std::max(g_yhi, y);
+                    ylo = std::min(ylo, y);
+                    yhi = std::max(yhi, y);
                 }
                 delete g;
             }
         }
-    }
-    {
-        const double span = g_yhi - g_ylo;
-        g_ylo = std::max(kYcapLo, g_ylo - 0.05 * span);
-        g_yhi = std::min(kYcapHi, g_yhi + 0.05 * span);
-        if (g_yhi - g_ylo < 0.2) { g_ylo = std::max(kYcapLo, 0.9); g_yhi = 1.12; }
-    }
-    // Second pass, now that the cap is known: the highest DRAWN point under the text columns.
-    for (const auto& s : series) {
-        for (int iy = 1; iy <= npt; ++iy) {
-            for (int iz = 1; iz <= neta; ++iz) {
-                const double plateau = s.hplat->GetBinContent(iy, iz);
-                if (!DrCorrPlateauUsable(plateau, s.hplat->GetBinError(iy, iz))) continue;
-                auto* g = cell_points(s, iy, iz, plateau);
+        {
+            const double span = yhi - ylo;
+            ylo = std::max(kYcapLo, ylo - 0.05 * span);
+            yhi = std::min(kYcapHi, yhi + 0.05 * span);
+            // Minimum span, so a cell whose points all sit at ~1 does not get an absurdly zoomed
+            // axis. It widens AROUND THE DATA, never to a fixed window: the fixed [0.9, 1.12] it
+            // used to jump to sat below the Step-4 inclusive maximum (1.16) and would have
+            // arrowed off scale the very rise the figure exists to show.
+            if (yhi - ylo < 0.2) {
+                const double mid = 0.5 * (ylo + yhi);
+                ylo = std::max(kYcapLo, mid - 0.10);
+                yhi = std::min(kYcapHi, mid + 0.10);
+            }
+        }
+        // Second pass, now that the cap is known: the highest DRAWN point under the text columns.
+        double y_ann = 1.;
+        for (const auto& s : series) {
+            for (const auto& c : cells) {
+                const double plateau = plateau_of(s, c.first, c.second);
+                if (!DrCorrPlateauUsable(plateau, plateau_err_of(s, c.first, c.second))) continue;
+                auto* g = cell_points(s, c.first, c.second, plateau);
                 for (int i = 0; i < g->GetN(); ++i) {
                     double x, y;
                     g->GetPoint(i, x, y);
-                    if (x >= dR_ann_lo && y <= g_yhi) y_ann_max = std::max(y_ann_max, y);
+                    if (x >= dR_ann_lo && y <= yhi) y_ann = std::max(y_ann, y);
                 }
                 delete g;
             }
         }
-    }
-    {
-        // RESERVE the band, do not paint over the data: stretch the shared upper edge until the
-        // highest point that falls under the annotation columns is clear of them. A translucent
-        // box behind the text is not a fix (the convention says so explicitly), and the previous
+        // RESERVE the band, do not paint over the data: stretch the upper edge until the highest
+        // point that falls under the annotation columns is clear of them. A translucent box
+        // behind the text is not a fix (the convention says so explicitly), and the previous
         // "put the block in whichever half looks emptier" heuristic had no free half to find in
         // the dense cells -- "plateau = 1.0043" ended up drawn straight through the fitted curve,
         // the unity line and two measured points.
         const double q_max = (ann_bot - 0.03 - kFrLo) / (kFrHi - kFrLo);
-        if (q_max > 0.05 && (y_ann_max - g_ylo) > q_max * (g_yhi - g_ylo))
-            g_yhi = g_ylo + (y_ann_max - g_ylo) / q_max;
-    }
-    std::cout << "  common y range for every PNG in this method/mode dir: ["
+        if (q_max > 0.05 && (y_ann - ylo) > q_max * (yhi - ylo))
+            yhi = ylo + (y_ann - ylo) / q_max;
+        return {ylo, yhi};
+    };
+
+    const std::pair<double, double> grid_rng = compute_range(false);
+    const std::pair<double, double> incl_rng = compute_range(true);
+    const double g_ylo = grid_rng.first, g_yhi = grid_rng.second;
+    std::cout << "  common y range for every pair-pT PNG in this method/mode dir: ["
               << g_ylo << ", " << g_yhi << "]  (top " << 100. * h_ann / (kFrHi - kFrLo)
-              << "% reserved for the fit annotation)\n";
+              << "% reserved for the fit annotation);  inclusive canvas: ["
+              << incl_rng.first << ", " << incl_rng.second << "]\n";
 
     // ---- the canvas HEADER STRIP -------------------------------------------------------------
     // Everything the nine panels share: the sample/working point, the DEFINITION of the plotted
@@ -718,8 +759,12 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     auto header_px = [&](int leg_ncol) {
         return 124 + ((n_leg + leg_ncol - 1) / leg_ncol) * 22 + 8;
     };
+    // n_show = how many off-scale entries are spelled out before the running total takes over.
+    // Each entry now names its pair-eta cell and its charge combination, so it is ~3x longer than
+    // the bare "#DeltaR=..: .." it replaced and the 900 px inclusive canvas fits fewer of them
+    // than the 1560 px grid; the count is therefore the caller's (it knows the canvas width).
     auto draw_header = [&](double H, const std::string& cell_text,
-                           const std::vector<std::string>& offscale, int leg_ncol) {
+                           const std::vector<std::string>& offscale, int leg_ncol, size_t n_show) {
         auto ny = [&](double px) { return 1.0 - px / H; };
         TLatex t; t.SetNDC(); t.SetTextFont(42);
         t.SetTextSize(22.0 / H);
@@ -731,9 +776,10 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         if (!eq_line2.empty()) t.DrawLatex(0.02, ny(96), eq_line2.c_str());
         if (!offscale.empty()) {
             std::string sub = "off scale: ";
-            for (size_t i = 0; i < offscale.size() && i < 6; ++i)
-                sub += offscale[i] + std::string(i + 1 < offscale.size() && i < 5 ? ", " : "");
-            if (offscale.size() > 6) sub += Form(", ... (%zu total)", offscale.size());
+            for (size_t i = 0; i < offscale.size() && i < n_show; ++i)
+                sub += offscale[i]
+                     + std::string(i + 1 < offscale.size() && i + 1 < n_show ? ";  " : "");
+            if (offscale.size() > n_show) sub += Form(";  ... (%zu total)", offscale.size());
             t.SetTextColor(kGray + 3);
             t.SetTextSize(15.0 / H);
             t.DrawLatex(0.02, ny(114), sub.c_str());
@@ -778,10 +824,10 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
             draw_cell(iy, iz, g_ylo, g_yhi, offscale);
         }
         c.cd(0);
-        draw_header(canv_h, pt_label(iy), offscale, n_leg);
+        draw_header(canv_h, pt_label(iy), offscale, n_leg, 3);
         const std::string png = odir + tag + "_dr_fit_" + method + "_" + pt_png_tag(iy) + ".png";
         c.SaveAs(png.c_str());
-        std::cout << "  wrote " << png << "\n";
+        std::cout << "  wrote " << png << "  (" << offscale.size() << " points off scale)\n";
     }
 
     // ---- the inclusive cell, on its own canvas ------------------------------------------------
@@ -794,15 +840,16 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         auto* ipad = new TPad("ipad", "", 0., 0., 1., 1. - ihfrac);
         ipad->SetBottomMargin(0.13); ipad->Draw(); ipad->cd();
         std::vector<std::string> offscale;
-        // SAME y range as every other PNG in this method directory (user): the inclusive canvas
-        // used to compute its own from y +- error, which broke both the common-range rule and the
-        // explicit "central values only, not error bars" instruction.
-        draw_cell(0, 0, g_ylo, g_yhi, offscale);
+        // The inclusive canvas uses the range built from the INCLUSIVE points (compute_range(true)
+        // above), not the directory-wide one: it is a stand-alone figure, nobody flips between it
+        // and the pair-pT files, and the shared range compressed its data into <10% of the frame.
+        // Still central values only, never y +- error.
+        draw_cell(0, 0, incl_rng.first, incl_rng.second, offscale);
         c.cd(0);
-        draw_header(incl_h, "", offscale, 3);
+        draw_header(incl_h, "", offscale, 3, 2);   // 900 px wide: two entries fit on the line
         const std::string png = odir + tag + "_dr_fit_" + method + "_inclusive.png";
         c.SaveAs(png.c_str());
-        std::cout << "  wrote " << png << "\n";
+        std::cout << "  wrote " << png << "  (" << offscale.size() << " points off scale)\n";
     }
 
     // ---- SAME SIGN / OPPOSITE SIGN RATIO (sign_sepr only) -------------------------------------
@@ -847,25 +894,40 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
             return gr;
         };
 
-        // One y range for the whole directory, central values only -- as the main panels.
-        double r_lo = 1., r_hi = 1.;
-        for (int iy = 1; iy <= npt; ++iy)
-            for (int iz = 1; iz <= neta; ++iz) {
-                auto* g = cell_ratio(iy, iz);
+        // TWO ranges, for the same reason as the main panels above: the nine-panel pair-pT
+        // files share ONE range across the directory so the pair-pT dependence can be read by
+        // flipping between them, while the single-panel inclusive canvas is a stand-alone figure
+        // and is scaled to its OWN points -- the shared range put the inclusive ratio points
+        // (0.42-1.10) inside a 0-3.0 frame. Central values only in both cases.
+        auto ratio_range = [&](bool incl_only) -> std::pair<double, double> {
+            std::vector<std::pair<int, int>> cells;
+            if (incl_only) cells.push_back({0, 0});
+            else for (int iy = 1; iy <= npt; ++iy)
+                     for (int iz = 1; iz <= neta; ++iz) cells.push_back({iy, iz});
+            double lo = 1., hi = 1.;
+            for (const auto& c : cells) {
+                auto* g = cell_ratio(c.first, c.second);
                 for (int i = 0; i < g->GetN(); ++i) {
                     double x, y;
                     g->GetPoint(i, x, y);
-                    r_lo = std::min(r_lo, y);
-                    r_hi = std::max(r_hi, y);
+                    lo = std::min(lo, y);
+                    hi = std::max(hi, y);
                 }
                 delete g;
             }
-        {
-            const double span = r_hi - r_lo;
-            r_lo = std::max(0.0,      r_lo - 0.10 * span);
-            r_hi = std::min(kYcapHi,  r_hi + 0.10 * span);
-            if (r_hi - r_lo < 0.2) { r_lo = 0.9; r_hi = 1.12; }
-        }
+            const double span = hi - lo;
+            lo = std::max(0.0,     lo - 0.10 * span);
+            hi = std::min(kYcapHi, hi + 0.10 * span);
+            if (hi - lo < 0.2) {   // widen AROUND the data, never to a fixed window -- see above
+                const double mid = 0.5 * (lo + hi);
+                lo = std::max(0.0,     mid - 0.10);
+                hi = std::min(kYcapHi, mid + 0.10);
+            }
+            return {lo, hi};
+        };
+        const std::pair<double, double> rgrid = ratio_range(false);
+        const std::pair<double, double> rincl = ratio_range(true);
+        double r_lo = rgrid.first, r_hi = rgrid.second;   // draw_ratio_cell captures these
 
         auto draw_ratio_cell = [&](int iy, int iz, std::vector<std::string>& offscale) {
             gPad->SetLeftMargin(0.14);
@@ -880,6 +942,14 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
             fr->GetYaxis()->SetLabelSize(0.042);
             fr->GetYaxis()->SetTitleOffset(1.25);
             DrawUnity(0.0, kXhi);
+            // Same reason as in draw_cell(): the off-scale record is canvas-level, so the point
+            // has to carry its own pair-eta cell. The two charge combinations need no tag here --
+            // this figure IS their ratio and every y axis on it says so.
+            const std::string cell_id = (iy == 0 && iz == 0)
+                ? std::string()
+                : std::string(Form("#eta^{pair} #in [%.1f,%.1f), ",
+                                   series[0].hplat->GetYaxis()->GetBinLowEdge(iz),
+                                   series[0].hplat->GetYaxis()->GetBinUpEdge(iz)));
             TLatex t; t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.045);
             if (iy == 0 && iz == 0)
                 t.DrawLatex(0.18, 0.925, "inclusive (all p_{T}^{pair}, all #eta^{pair})");
@@ -905,12 +975,13 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
                                       x, r_lo + (up ? 0.98 : 0.02) * (r_hi - r_lo), 0.008, "|>");
                 ar->SetLineColor(kBlack); ar->SetFillColor(kBlack); ar->SetLineWidth(2);
                 ar->Draw();
-                offscale.push_back(Form("#DeltaR=%.2f: %.2f #pm %.2f", x, y, g->GetErrorY(i)));
+                offscale.push_back(Form("%s#DeltaR=%.2f: %.2f #pm %.2f", cell_id.c_str(),
+                                        x, y, g->GetErrorY(i)));
             }
         };
 
         auto ratio_header = [&](double H, const std::string& cell_text,
-                                const std::vector<std::string>& offscale) {
+                                const std::vector<std::string>& offscale, size_t n_show) {
             auto ny = [&](double px) { return 1.0 - px / H; };
             TLatex t; t.SetNDC(); t.SetTextFont(42);
             t.SetTextSize(22.0 / H);
@@ -924,17 +995,21 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
             t.DrawLatex(0.02, ny(56), def_line.c_str());
             if (!offscale.empty()) {
                 std::string sub = "off scale: ";
-                for (size_t i = 0; i < offscale.size() && i < 6; ++i)
-                    sub += offscale[i] + std::string(i + 1 < offscale.size() && i < 5 ? ", " : "");
-                if (offscale.size() > 6) sub += Form(", ... (%zu total)", offscale.size());
+                for (size_t i = 0; i < offscale.size() && i < n_show; ++i)
+                    sub += offscale[i]
+                         + std::string(i + 1 < offscale.size() && i + 1 < n_show ? ";  " : "");
+                if (offscale.size() > n_show) sub += Form(";  ... (%zu total)", offscale.size());
                 t.SetTextColor(kGray + 3);
                 t.SetTextSize(15.0 / H);
-                t.DrawLatex(0.02, ny(78), sub.c_str());
+                // 30 px below the definition line, not 22: both lines carry super/subscripts
+                // (eps^{2mu4}_{dR} above, eta^{pair} below) and at 22 px the eta superscript was
+                // drawn into the epsilon subscript.
+                t.DrawLatex(0.02, ny(86), sub.c_str());
                 t.SetTextColor(kBlack);
             }
         };
 
-        const int kRatioHeaderPx = 92;
+        const int kRatioHeaderPx = 104;   // title 26 + definition 56 + off-scale record 86 + margin
         for (int iy = 1; iy <= npt; ++iy) {
             const int    canv_h = 470 * nrow + kRatioHeaderPx;
             const double hfrac  = double(kRatioHeaderPx) / canv_h;
@@ -950,11 +1025,11 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
                 draw_ratio_cell(iy, iz, offscale);
             }
             c.cd(0);
-            ratio_header(canv_h, pt_label(iy), offscale);
+            ratio_header(canv_h, pt_label(iy), offscale, 3);
             const std::string png = odir + tag + "_dr_fit_" + method + "_" + pt_png_tag(iy)
                                   + "_ratio.png";
             c.SaveAs(png.c_str());
-            std::cout << "  wrote " << png << "\n";
+            std::cout << "  wrote " << png << "  (" << offscale.size() << " points off scale)\n";
         }
         {
             const int    incl_h = 700 + kRatioHeaderPx;
@@ -963,12 +1038,13 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
             auto* ipad = new TPad("ripad", "", 0., 0., 1., 1. - ihfrac);
             ipad->SetBottomMargin(0.13); ipad->Draw(); ipad->cd();
             std::vector<std::string> offscale;
+            r_lo = rincl.first; r_hi = rincl.second;   // this canvas is scaled to its own points
             draw_ratio_cell(0, 0, offscale);
             c.cd(0);
-            ratio_header(incl_h, "", offscale);
+            ratio_header(incl_h, "", offscale, 2);
             const std::string png = odir + tag + "_dr_fit_" + method + "_inclusive_ratio.png";
             c.SaveAs(png.c_str());
-            std::cout << "  wrote " << png << "\n";
+            std::cout << "  wrote " << png << "  (" << offscale.size() << " points off scale)\n";
         }
     }
 
