@@ -10,13 +10,23 @@ set -Eeuo pipefail
 #   Stage 1  MEASURE + PLATEAU   plot_mc_trig_eff(sample, wp)
 #              re-makes the Step-1..4 plots AND writes the per-(pair pT, pair eta) large-dR
 #              plateau to  <mc_dir>/dr_correction_plateaus_<label><wp>.root
-#   Stage 2  GUARD + FIT         fit_dr_corrections(sample, wp, step, method)
-#              reads that ROOT file (never a .txt / .md), enforces |plateau-1| <= 0.1 on a FULL
+#   Stage 2  GUARD + FIT         fit_dr_corrections(sample, wp, step, method, sign)
+#              reads that ROOT file (never a .txt / .md), enforces |plateau-1| <= 0.15 on a FULL
 #              production, divides each cell's curve by ITS OWN plateau, fits
-#   Stage 3  PLOT + READ-BACK    plot_dr_correction_fits(sample, wp, step, method)
-#              re-opens the fit file in a SEPARATE process, draws measured (black) vs fitted
-#              (red) -- 1 PNG per pair-pT bin, 1 subplot per pair-eta bin -- and verifies every
-#              persisted function outside its fit range
+#   Stage 3  PLOT + READ-BACK    plot_dr_correction_fits(sample, wp, step, method, mode)
+#              re-opens the fit file(s) in a SEPARATE process, draws measured vs fitted -- 1 PNG
+#              per pair-pT bin, 1 subplot per pair-eta bin -- and verifies every persisted
+#              function outside its fit range
+#
+# SIGN SERIES. One run produces up to three fitted series per (sample, WP, step, method):
+# sign-integrated (the NOMINAL correction), same sign and opposite sign. They differ only in the
+# input histograms and plateaus; the guard is FATAL only for the sign-integrated series of a FULL
+# production (each sign holds a fraction of the pairs, so per-sign failures are a statistics
+# statement -- see fit_dr_corrections.cxx). The plots come out as two sets:
+#   step<N>_dr_fit/<method>/sign_intgr/   the sign-integrated series alone
+#   step<N>_dr_fit/<method>/sign_sepr/    same sign and opposite sign overlaid, both fits
+# A sample without per-sign inputs (e.g. an overlay filled before the per-sign booking) skips its
+# sign-separated series with a printed note and still produces the sign-integrated one.
 #
 # WHY ARTEFACT VALIDATION AND NOT EXIT CODES: a ROOT macro that throws still exits 0 (the
 # exception aborts the interpreter after ROOT has already decided the batch job "ran"). Every
@@ -33,6 +43,9 @@ set -Eeuo pipefail
 #   SKIP_MEASURE=1                   reuse the existing plateau ROOT files (skip Stage 1)
 #   SKIP_FIT=1                       reuse the existing fit ROOT files (skip Stage 2) -- for
 #                                    re-making only the plots / the read-back audit
+#   SIGNS="intgr ss os"              sign series to fit. `intgr` = sign-integrated (nominal),
+#                                    `ss` = same sign, `os` = opposite sign. The sign_sepr plot
+#                                    set needs BOTH ss and os.
 #   STRICT_GUARD=1                   a FULL-sample plateau violation stops that sample/step dead
 #                                    (no override re-run). Default 0: the violation is reported,
 #                                    the fits are re-run with an explicit override so a human can
@@ -52,6 +65,9 @@ STEPS="${STEPS:-3 4}"
 # at Rp (a visible cusp), so they are not smooth. They remain constructible for reproducing old
 # outputs, but nothing produces them by default.
 METHODS="${METHODS:-expo polyu_fixedRp interp}"
+# Sign series. "intgr" is the token for the sign-INTEGRATED (nominal) series; the C++ takes "" for
+# it, so it is translated in sign_arg() below and never typed as an empty word here.
+SIGNS="${SIGNS:-intgr ss os}"
 # The pair-pT-binning token must MIRROR Utilities/MCTrigEffPairPtBinning.h: the C++ writes
 # ..._pt4bin... when MCTRIGEFF_PAIRPT_4BIN is set, and these artefact checks look the files up by
 # name. When they disagreed, a perfectly good 4-bin run was reported as 18 "missing fit files".
@@ -90,6 +106,12 @@ source_env_once() {
 # ---- artefact checks -------------------------------------------------------------------------
 
 # A ROOT file that opens, is non-empty, and contains every named object.
+#
+# NO `-q` HERE, and that is not a style choice: `root -l -b -q` with no macro argument QUITS
+# BEFORE READING STDIN, so the heredoc below was never executed and this function returned 0
+# unconditionally -- i.e. every artefact check it backs silently PASSED, missing objects and all.
+# Verified 2026-08-11: `root -l -b -q` fed `gSystem->Exit(7);` on stdin exits 0; `root -l -b`
+# exits 7. Fixed 2026-08-11 together with the sign-series work.
 root_file_has_objects() {
   local f="$1"; shift
   [[ -s "$f" ]] || return 1
@@ -97,11 +119,47 @@ root_file_has_objects() {
   for n in "${names[@]}"; do
     checks+="if (!fin->Get(\"${n}\")) { fin->Close(); gSystem->Exit(4); }"$'\n'
   done
-  root -l -b -q <<EOF >/dev/null 2>&1
+  root -l -b <<EOF >/dev/null 2>&1
 TFile *fin = TFile::Open("$f", "READ");
 if (!fin || fin->IsZombie()) { gSystem->Exit(2); }
 ${checks}
 fin->Close();
+gSystem->Exit(0);
+EOF
+}
+
+# sign token -> the C++ argument / the file-name suffix / the human wording used in report names.
+# Mirrors dr_correction_sample_cfg.h (DrCorrSignText / DrCorrSignFileTag): the C++ builds the real
+# names, this shell only VALIDATES them.
+sign_arg()  { [[ "$1" == "intgr" ]] && echo "" || echo "$1"; }
+sign_fsuf() { [[ "$1" == "intgr" ]] && echo "" || echo "_$1"; }
+sign_rtag() {
+  case "$1" in
+    intgr) echo "" ;;
+    ss)    echo "_same_sign" ;;
+    os)    echo "_opposite_sign" ;;
+    *) fail "unknown sign '$1' (use intgr | ss | os)" ;;
+  esac
+}
+sign_text() {
+  case "$1" in
+    intgr) echo "sign-integrated" ;;
+    ss)    echo "same sign" ;;
+    os)    echo "opposite sign" ;;
+  esac
+}
+
+# Number of pair-pT bins, READ FROM THE FIT FILE ITSELF (the x axis of h_step<N>_plateau) rather
+# than hard-coded. The expected PNG count is that number + 1 (one canvas per pair-pT bin plus the
+# inclusive one), so it follows the binning automatically: the literal 5 this check used to carry
+# was the 4-bin variant's count and silently under-checked the 8-bin nominal (which makes 9).
+fit_file_npt() {
+  local f="$1" step="$2"
+  [[ -s "$f" ]] || { echo 0; return; }
+  root -l -b <<EOF 2>/dev/null | tail -1
+TFile *fin = TFile::Open("$f", "READ");
+TH2 *h = fin ? (TH2*)fin->Get("h_step${step}_plateau") : nullptr;
+printf("%d\\n", h ? h->GetNbinsX() : 0);
 gSystem->Exit(0);
 EOF
 }
@@ -197,88 +255,137 @@ for sample in ${SAMPLES}; do
     log "  plateau file OK: ${PLATEAU_FILE}"
 
     for step in ${STEPS}; do
-      GUARD_REPORT="${PLOTBASE}step${step}_dr_fit/${PTBIN_DIR}${WPD}plateau_guard_report.txt"
 
       for method in ${METHODS}; do
-        FIT_FILE="${MCDIR}dr_correction_fits_${LABEL}${WPS_SUF}${PTBIN_SUF}_step${step}_${method}.root"
         MDIR="${PLOTBASE}step${step}_dr_fit/${PTBIN_DIR}${method}/${WPD}"
 
-        # ---- Stage 2: guard + fit --------------------------------------------------------------
-        if [[ "${SKIP_FIT}" == "1" ]]; then
-          log "Stage 2 [${sample}/${wp}/step${step}/${method}]: SKIPPED (SKIP_FIT=1)"
-        else
-          # deleted first so the artefact check below cannot pass on a stale file
-          rm -f "${FIT_FILE}"
-          log "Stage 2 [${sample}/${wp}/step${step}/${method}]: guard + fit"
-          root -l -b -q "fit_dr_corrections.cxx+(\"${sample}\", ${WPF}, ${step}, \"${method}\", false)" \
-            > "/tmp/drfit_fit_${sample}_${wp}_${step}_${method}.log" 2>&1 || true
-        fi
+        # ---- Stage 2: guard + fit, once per SIGN SERIES ----------------------------------------
+        FITTED_SIGNS=""      # signs whose fit file came out complete -> drive Stage 3
+        for sgn in ${SIGNS}; do
+          SARG="$(sign_arg   "${sgn}")"
+          SFSUF="$(sign_fsuf "${sgn}")"
+          SRTAG="$(sign_rtag "${sgn}")"
+          STEXT="$(sign_text "${sgn}")"
+          FIT_FILE="${MCDIR}dr_correction_fits_${LABEL}${WPS_SUF}${PTBIN_SUF}_step${step}_${method}${SFSUF}.root"
+          GUARD_REPORT="${PLOTBASE}step${step}_dr_fit/${PTBIN_DIR}${WPD}plateau_guard_report${SRTAG}.txt"
+          FITLOG="/tmp/drfit_fit_${sample}_${wp}_${step}_${method}_${sgn}.log"
 
-        # The guard writes its verdict BEFORE it throws, so the verdict is readable either way.
-        GUARD_FAILED=0
-        if [[ -f "${GUARD_REPORT}" ]] && grep -q "^verdict: FAIL" "${GUARD_REPORT}"; then
-          GUARD_FAILED=1
-        fi
-
-        if [[ "${GUARD_FAILED}" == "1" ]]; then
-          if [[ ! " ${GUARD_FAILURES[*]-} " == *" ${sample}/${wp}/step${step} "* ]]; then
-            GUARD_FAILURES+=("${sample}/${wp}/step${step}")
+          if [[ "${SKIP_FIT}" == "1" ]]; then
+            log "Stage 2 [${sample}/${wp}/step${step}/${method}/${STEXT}]: SKIPPED (SKIP_FIT=1)"
+          else
+            # deleted first so the artefact check below cannot pass on a stale file
+            rm -f "${FIT_FILE}"
+            log "Stage 2 [${sample}/${wp}/step${step}/${method}/${STEXT}]: guard + fit"
+            root -l -b -q "fit_dr_corrections.cxx+(\"${sample}\", ${WPF}, ${step}, \"${method}\", false, \"${SARG}\")" \
+              > "${FITLOG}" 2>&1 || true
           fi
-          echo "==============================================================================="
-          echo " PLATEAU GUARD FAILED: ${sample} (FULL production) / ${wp} / step ${step}"
-          sed -n '/^cells with/,$p' "${GUARD_REPORT}"
-          echo "==============================================================================="
-          if [[ "${STRICT_GUARD}" == "1" ]]; then
-            log "  STRICT_GUARD=1 -> no fits produced for ${sample}/${wp}/step${step}"
+
+          # The guard writes its verdict BEFORE it throws, so the verdict is readable either way.
+          # Only the SIGN-INTEGRATED series has a fatal tier: that series is the nominal
+          # deliverable, while one charge combination carries a fraction of the statistics, so a
+          # per-sign violation is a statistics statement and is reported, not enforced
+          # (fit_dr_corrections.cxx writes "reported, not enforced" as its verdict there).
+          GUARD_FAILED=0
+          if [[ "${sgn}" == "intgr" && -f "${GUARD_REPORT}" ]] \
+             && grep -q "^verdict: FAIL" "${GUARD_REPORT}"; then
+            GUARD_FAILED=1
+          fi
+
+          if [[ "${GUARD_FAILED}" == "1" ]]; then
+            if [[ ! " ${GUARD_FAILURES[*]-} " == *" ${sample}/${wp}/step${step} "* ]]; then
+              GUARD_FAILURES+=("${sample}/${wp}/step${step}")
+            fi
+            echo "==============================================================================="
+            echo " PLATEAU GUARD FAILED: ${sample} (FULL production) / ${wp} / step ${step}"
+            sed -n '/^FAILING cells/,$p' "${GUARD_REPORT}"
+            echo "==============================================================================="
+            if [[ "${STRICT_GUARD}" == "1" ]]; then
+              log "  STRICT_GUARD=1 -> no fits produced for ${sample}/${wp}/step${step}"
+              continue
+            fi
+            if [[ "${SKIP_FIT}" != "1" ]]; then
+              log "  re-running WITH the explicit override so the plots exist for human inspection"
+              root -l -b -q "fit_dr_corrections.cxx+(\"${sample}\", ${WPF}, ${step}, \"${method}\", true, \"${SARG}\")" \
+                > "${FITLOG}" 2>&1 || true
+            fi
+          fi
+
+          if ! root_file_has_objects "${FIT_FILE}" "h_step${step}_chi2ndf" \
+                                                   "h_step${step}_plateau"; then
+            # A sign-separated series whose per-sign inputs do not exist yet is SKIPPED on purpose
+            # by the macro (it says so on stdout) -- that is not an artefact failure, it is a
+            # sample that has not been re-filled with the per-sign booking.
+            if [[ "${sgn}" != "intgr" ]] && grep -q "SKIPPED:" "${FITLOG}" 2>/dev/null; then
+              log "  note: no ${STEXT} inputs for ${sample} -- that series is skipped (see ${FITLOG})"
+            else
+              ARTEFACT_FAILURES+=("fit file missing/incomplete: ${FIT_FILE}")
+              log "  !! fit file missing or incomplete -- see ${FITLOG}"
+            fi
             continue
           fi
-          if [[ "${SKIP_FIT}" != "1" ]]; then
-            log "  re-running WITH the explicit override so the plots exist for human inspection"
-            root -l -b -q "fit_dr_corrections.cxx+(\"${sample}\", ${WPF}, ${step}, \"${method}\", true)" \
-              > "/tmp/drfit_fit_${sample}_${wp}_${step}_${method}.log" 2>&1 || true
+          FITTED_SIGNS="${FITTED_SIGNS} ${sgn}"
+
+          # Summary line per method and series. The INCLUSIVE chi2/ndf and the median over
+          # sane-plateau cells are the honest comparators; a plain mean is hostage to the
+          # 10k-overlay cells whose plateau is not measurable at all (see fit_report.txt).
+          if [[ -f "${MDIR}fit_report${SRTAG}.txt" ]]; then
+            INCL=$(grep "INCLUSIVE cell" "${MDIR}fit_report${SRTAG}.txt" | tail -1 | awk -F'= ' '{print $NF}')
+            SANE=$(grep "cells with |plateau-1|" "${MDIR}fit_report${SRTAG}.txt" | tail -1 | sed 's/.*<= [0-9.]*: //')
+            CHI2_SUMMARY+=("$(printf '%-10s %-7s step%-2s %-16s %-16s incl chi2/ndf = %-8s | sane cells: %s' \
+                              "${sample}" "${wp}" "${step}" "${method}" "${STEXT}" "${INCL:-n/a}" "${SANE:-n/a}")")
           fi
+        done
+
+        # ---- Stage 3: plot + read-back verification, one directory per MODE ---------------------
+        # sign_intgr needs the sign-integrated fits; sign_sepr overlays both charge combinations
+        # and therefore needs BOTH per-sign fit files.
+        MODES=""
+        [[ " ${FITTED_SIGNS} " == *" intgr "* ]] && MODES="sign_intgr"
+        if [[ " ${FITTED_SIGNS} " == *" ss "* && " ${FITTED_SIGNS} " == *" os "* ]]; then
+          MODES="${MODES} sign_sepr"
+        elif [[ " ${SIGNS} " == *" ss "* || " ${SIGNS} " == *" os "* ]]; then
+          log "  note: no sign_sepr plots for ${sample}/${wp}/step${step}/${method} -- that needs"
+          log "        BOTH the same-sign and the opposite-sign fits (have:${FITTED_SIGNS:-none})"
         fi
 
-        if ! root_file_has_objects "${FIT_FILE}" "h_step${step}_chi2ndf" \
-                                                 "h_step${step}_plateau"; then
-          ARTEFACT_FAILURES+=("fit file missing/incomplete: ${FIT_FILE}")
-          log "  !! fit file missing or incomplete -- see /tmp/drfit_fit_${sample}_${wp}_${step}_${method}.log"
-          continue
-        fi
+        for mode in ${MODES}; do
+          log "Stage 3 [${sample}/${wp}/step${step}/${method}/${mode}]: plots + read-back check"
+          root -l -b -q "plot_dr_correction_fits.cxx+(\"${sample}\", ${WPF}, ${step}, \"${method}\", \"${mode}\")" \
+            > "/tmp/drfit_plot_${sample}_${wp}_${step}_${method}_${mode}.log" 2>&1 || true
 
-        # ---- Stage 3: plot + read-back verification ---------------------------------------------
-        log "Stage 3 [${sample}/${wp}/step${step}/${method}]: plots + read-back check"
-        root -l -b -q "plot_dr_correction_fits.cxx+(\"${sample}\", ${WPF}, ${step}, \"${method}\")" \
-          > "/tmp/drfit_plot_${sample}_${wp}_${step}_${method}.log" 2>&1 || true
+          # Expected PNG count DERIVED from the binning in the fit file: one canvas per pair-pT
+          # bin plus the inclusive one. Never a literal -- the literal 5 that used to be here was
+          # the 4-bin variant's count and passed silently on the 8-bin nominal, which makes 9.
+          REF_SIGN="intgr"; [[ "${mode}" == "sign_sepr" ]] && REF_SIGN="ss"
+          REF_FIT="${MCDIR}dr_correction_fits_${LABEL}${WPS_SUF}${PTBIN_SUF}_step${step}_${method}$(sign_fsuf "${REF_SIGN}").root"
+          NPT=$(fit_file_npt "${REF_FIT}" "${step}")
+          EXP_PNG=$(( NPT + 1 ))
+          NPNG=$(find "${MDIR}${mode}/" -maxdepth 1 -name "step${step}_dr_fit_${method}_*.png" 2>/dev/null | wc -l)
+          if [[ "${NPT}" -lt 1 ]]; then
+            ARTEFACT_FAILURES+=("cannot read the pair-pT binning from ${REF_FIT}")
+          elif [[ "${NPNG}" -lt "${EXP_PNG}" ]]; then
+            ARTEFACT_FAILURES+=("only ${NPNG}/${EXP_PNG} PNGs in ${MDIR}${mode}/")
+            log "  !! only ${NPNG} PNGs (expected ${EXP_PNG}: ${NPT} pair-pT bins + inclusive)"
+          fi
+        done
 
-        NPNG=$(find "${MDIR}" -maxdepth 1 -name "step${step}_dr_fit_${method}_*.png" 2>/dev/null | wc -l)
-        if [[ "${NPNG}" -lt 5 ]]; then
-          ARTEFACT_FAILURES+=("only ${NPNG}/5 PNGs in ${MDIR}")
-          log "  !! only ${NPNG} PNGs (expected 5: 4 pair-pT bins + inclusive)"
-        fi
         # PERSISTENCE is a hard failure (the compiled-TF1 read-back trap); FLATNESS beyond Rp is
         # a property of the chosen function and is reported, not enforced -- `expo` is expected
         # to miss it, and that is exactly the information the method comparison needs.
-        if [[ ! -f "${MDIR}readback_check.txt" ]]; then
-          ARTEFACT_FAILURES+=("no readback_check.txt in ${MDIR}")
-        else
-          if ! grep -qE "^checked [0-9]+ functions, 0 FAILED persistence" "${MDIR}readback_check.txt"; then
-            ARTEFACT_FAILURES+=("READ-BACK PERSISTENCE FAILURE in ${MDIR}readback_check.txt")
-            log "  !! READ-BACK FAILURE -- persisted functions do not evaluate correctly"
+        # One read-back report per SERIES; it stays in <method>/ next to the fit reports.
+        for sgn in ${FITTED_SIGNS}; do
+          RB="${MDIR}readback_check$(sign_rtag "${sgn}").txt"
+          if [[ ! -f "${RB}" ]]; then
+            ARTEFACT_FAILURES+=("no $(basename "${RB}") in ${MDIR}")
+          else
+            if ! grep -qE "^checked [0-9]+ functions, 0 FAILED persistence" "${RB}"; then
+              ARTEFACT_FAILURES+=("READ-BACK PERSISTENCE FAILURE in ${RB}")
+              log "  !! READ-BACK FAILURE -- persisted functions do not evaluate correctly"
+            fi
+            FLATLINE=$(grep "^flatness beyond Rp" "${RB}" || true)
+            [[ -n "${FLATLINE}" ]] && log "  [$(sign_text "${sgn}")] ${FLATLINE}"
           fi
-          FLATLINE=$(grep "^flatness beyond Rp" "${MDIR}readback_check.txt" || true)
-          [[ -n "${FLATLINE}" ]] && log "  ${FLATLINE}"
-        fi
-
-        # Summary line per method. The INCLUSIVE chi2/ndf and the median over sane-plateau cells
-        # are the honest comparators; a plain mean is hostage to the 10k-overlay cells whose
-        # plateau is not measurable at all (see fit_report.txt).
-        if [[ -f "${MDIR}fit_report.txt" ]]; then
-          INCL=$(grep "INCLUSIVE cell" "${MDIR}fit_report.txt" | tail -1 | awk -F'= ' '{print $NF}')
-          SANE=$(grep "cells with |plateau-1|" "${MDIR}fit_report.txt" | tail -1 | sed 's/.*<= [0-9.]*: //')
-          CHI2_SUMMARY+=("$(printf '%-10s %-7s step%-2s %-18s incl chi2/ndf = %-8s | sane cells: %s' \
-                            "${sample}" "${wp}" "${step}" "${method}" "${INCL:-n/a}" "${SANE:-n/a}")")
-        fi
+        done
       done
     done
   done
