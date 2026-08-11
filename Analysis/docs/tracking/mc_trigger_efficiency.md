@@ -1611,6 +1611,11 @@ fitting a CONTIGUOUS coarse q·η binning does exactly what was predicted:
 | overlay Step 3 | 0.8669 ± 0.0218 | **0.9614 ± 0.0249** |
 | overlay Step 4 | 0.9477 ± 0.0090 | **0.9924 ± 0.0114** |
 
+**⚠ STALE NUMBERS (noted 2026-08-11):** the round-8 column above was measured with the forward q·η
+edge at 2.20. After R22's edge moved to 2.30 the same quantities read **0.9921 ± 0.0009** (Step 3)
+and **0.9962** (Step 4). The *conclusion* of R21 — that the gap handling was what held the plateaus
+away from 1 — is unaffected; only the third-decimal values are superseded.
+
 **Medium WP reproduces it** (pp Step 3 0.9948 ± 0.0008, Step 4 0.9977 ± 0.0004; same failing/
 flagged counts 12/5 and 2/7) ⇒ the improvement is WP-independent, as a detector-geometry
 effect must be.
@@ -1711,6 +1716,50 @@ turn-on measured without gap muons will therefore be applied to signal muons tha
 whose true efficiency is lower ⇒ under-correction. Either apply the gap cut to the signal selection
 in the same rerun, or measure ε^nc without the probe cut in the straddling bins. State the choice
 in the Physics Procedure.
+
+### R26. ★ OPEN — the NOMINAL `expo` form cannot describe the measured shape in the most
+### populated cell (2026-08-11, plot review; pre-existing, exposed by round 9)
+
+**Not a round-9 regression — a property of the fit form chosen in `440e4a0`** ("expo is NOMINAL").
+
+In `pT_pair ∈ [8.0, 11.5) GeV × η_pair ∈ [−0.5, 0.5)` — the single largest cell of the sample (that
+pair-pT bin holds 144 721 same-sign + 776 604 opposite-sign pairs, and (−0.5, 0.5) is the widest
+pair-η bin) — the sign-integrated `expo` fit has **χ²/ndf = 48.18**. The measured plateau-normalized
+points **dip** to 0.908 at ΔR ≈ 0.225 and then **rise above 1** to 1.064–1.114 across
+ΔR ∈ [0.425, 0.975], while the fitted curve is pinned at 1.000 over that whole region
+(A = +0.0535, λ = 0.0269 — the fit has collapsed onto its own asymptote). The monotone form
+`1 + A·exp[−(ΔR/λ)^p]` **cannot represent a dip-then-overshoot shape at all**, so the delivered
+correction is low by 8–11 % over more than half the fit domain in the most populated cell. Because
+`usable` in `fit_dr_corrections.cxx` has **no χ² term**, the cell carries `fit_ok = 1` and every
+consumer will apply it.
+
+**It is systematic, not one bad cell.** Per-cell χ²/ndf over the 79 cells (Tight, sign-integrated):
+
+| step / method | median | mean | max | cells > 5 | cells > 10 |
+|---|---|---|---|---|---|
+| Step 3 / **expo (NOMINAL)** | 1.47 | 3.16 | **48.2** | 7 | 6 |
+| Step 3 / polyu_fixedRp | 0.54 | 0.54 | **1.8** | 0 | 0 |
+| Step 4 / **expo (NOMINAL)** | 0.56 | 2.28 | **34.0** | 9 | 3 |
+| Step 4 / polyu_fixedRp | 1.02 | 1.01 | **2.8** | 0 | 0 |
+
+(`interp` has χ²/ndf ≈ 0 by construction — it passes through every point, so it is not a
+fit-quality statement.) The independent at-limit count says the same thing: sign-integrated `expo`
+has **34/73 Step-4 cells with a parameter pinned on a limit** (mostly `p` at its upper limit 8.0),
+against **0–1 everywhere for `polyu_fixedRp`**.
+
+This is R19's "per-cell structure" residual — the ΔR ∈ [2, 3.5] plateau window reduced it but did
+not remove it — and it is **distinct from the open R23 item**, which concerns the top pair-pT bins.
+
+**Three options, all physics decisions ⇒ USER (raised 2026-08-11):**
+1. **Make `polyu_fixedRp` the nominal.** On this evidence it is simply the better description
+   (max χ²/ndf 1.8 / 2.8 vs 48.2 / 34.0, no at-limit parameters). Cost: it rejects more same-sign
+   cells on positivity (R25), and it reverses the `440e4a0` decision.
+2. **Add a χ²/ndf screen to `usable`** so a cell like this is rejected on the canvas and for
+   consumers exactly as an unphysical `f(0) < 0` cell is. Honest, but it *removes* the correction
+   in the most populated cell rather than fixing it.
+3. **Adopt a form that can describe a dip-then-overshoot.** Most work; only worth it if the
+   overshoot is physical rather than a residual of the plateau normalization.
+**Nothing changed here** — the nominal fit function is not something to swap autonomously.
 
 ### D6: the gap cut lives at the RDF stage, not in the ntuple processing (2026-08-05)
 Round-8 Contract item 4 specified "a gap-cut mode in the ntuple-processing code". It was
@@ -1844,8 +1893,11 @@ P(both fire | ΔR) with **no ε_MC anywhere in it**. pp_full, Tight:
 | 0.225 | 0.6316 | 0.6147 | 1.027 | 1.030 |
 | 0.325 | 0.6420 | 0.6503 | 0.987 | 1.025 |
 
-The raw ratio and the inverse-weighted ratio agree bin by bin to ≲3 %. **Two conclusions, and they
-point the same way:**
+**Both columns are ratios of the UN-plateau-normalized curves** (that is the like-for-like
+comparison: the raw probability has no plateau normalization to apply). They agree bin by bin to
+**≲4 %** — largest deviation 4.2 % at ΔR = 0.075, 3.8 % at ΔR = 0.325. For reference the
+plateau-normalized ε_ΔR ratio, which is what the ratio canvases draw, is 0.4273 / 0.5977 / 0.8477 /
+0.9825 / 1.0347 / 1.0296 — the same story. **Two conclusions, and they point the same way:**
 - The split is **already present in the raw trigger probability**, so the 1/(ε₁ε₂) weight neither
   creates it nor materially changes it ⇒ **explanation 2 (ε_MC mis-parameterisation squaring for
   close same-sign pairs) is ruled out.**
@@ -1857,20 +1909,40 @@ point the same way:**
 only, nothing in Step 4's single-leg marginal) and to ΔR ≲ 0.15. That is the signature of L1
 close-by-RoI merging: same-charge muons bend the same way in the toroid, so a close same-sign pair
 stays close in the muon spectrometer and its two RoIs merge into one, failing a 2-of-2 trigger;
-opposite-charge muons bend apart. Explanation 1 stands. (Independent support: the opposite-sign
-curve — f(0) ≈ 0.82, recovered by ΔR ≈ 0.3 — matches the Run 2 close-by-RoI correction ρ_ΔR, which
-was measured on opposite-charge dimuons; `.claude/kb/physics/detector/atlas_run2_muon_trigger.md`
-§12.4. No Run 2 same-sign analog exists, so that branch is RUN2-CROSSCHECK UNVERIFIED.)
+opposite-charge muons bend apart. Explanation 1 stands. (Independent support, RECOVERY SCALE ONLY: the
+opposite-sign curve recovers by ΔR ≈ 0.3, the same scale as the Run 2 close-by-RoI correction ρ_ΔR,
+which was measured on opposite-charge dimuons. **The magnitude may NOT be compared** — that KB entry
+states explicitly "do not infer the size of our ε_dR from these Run 2 ρ_ΔR curves — different
+system, energy, and trigger" (`.claude/kb/physics/detector/atlas_run2_muon_trigger.md` §12.4). No
+Run 2 same-sign analog exists, so that branch is RUN2-CROSSCHECK UNVERIFIED.)
 
 **OPEN — USER DECISION, with a rerun blast radius.** The measurement is settled; how the analysis
 USES it is not. The nominal ε_ΔR is sign-integrated and ≈ the opposite-sign curve, so same-sign
 pairs are under-corrected by up to ×2.3 below ΔR ≈ 0.15. The natural fix is to apply the
 **sign-dependent** ε_ΔR (same-sign correction to the same-sign spectrum, opposite-sign to the
 opposite-sign one) in the pp 2mu4 weight — the per-sign fits already exist, at both working points
-and for all three fit functions. That changes the trigger-corrected yields and therefore
+and for all three fit functions. **But coverage is NOT free, and the user should know that before
+deciding:** the same-sign curve falls to f(0) ≈ 0.1–0.3, which a form pinned to 1 at large ΔR can
+only reach with a large negative amplitude, so it frequently goes unphysical and is rejected.
+Same-sign cells with `fit_ok = 0`, Tight: **25/72 (`expo`), 31/72 (`polyu_fixedRp`), 11/72
+(`interp`)** — against 12/72 for the sign-integrated nominal (Medium: 24/72, 30/72). **Only the
+interpolation currently covers the same-sign cells at the nominal rate.** That changes the trigger-corrected yields and therefore
 **requires a crossx refill + full replot** (`signal_selection_change_impact.md`), which is exactly
 why it is not done here. It should be bundled with the refill the `w_trig = 0` gap bug already
 forces (`pp_trig_eff_highpt_jump.md`). **Raised to the user 2026-08-11.**
+
+**(c2) THREE pre-existing bugs found while doing (c), all fixed.**
+- `plot_dr_correction_fits.cxx` built `hist_path` **without** `MCTrigEffPairPt::FileSuffix()` — the
+  only stage in the chain that did — so under `MCTRIGEFF_PAIRPT_4BIN=1` it paired 8-bin histograms
+  with the 4-bin fit file. The fit stage has explicit cell-count and edge guards for exactly this;
+  the plot stage had none.
+- **`root_file_has_objects()` in `run_dr_correction_fits.sh` was a silent no-op.** It fed a heredoc
+  to `root -l -b -q`, and `root -q` with no macro argument **quits before reading stdin**, so the
+  function returned success for every input — *every* "file missing/incomplete" artefact check in
+  that pipeline had been passing unconditionally. Verified both ways before and after the fix. This
+  is the standing "validate ARTEFACTS, not exit codes" rule failing at the validator itself.
+- The driver's PNG-count check still expected the stale literal **5** (from "4 pair-pT bins +
+  inclusive"); it is now derived from the plateau map's x-axis.
 
 **(d) Statistics of the 8-bin pair-pT axis** — new macro `write_mc_pair_statistics_tables.cxx`,
 reading three TH2Ds per sign (`h_mc_paircount / pairsumw / pairsumw2 _vs_pt_eta_{ss,os}`) that
