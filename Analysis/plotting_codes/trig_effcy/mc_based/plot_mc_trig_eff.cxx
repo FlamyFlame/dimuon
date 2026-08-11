@@ -2139,9 +2139,13 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             gPad->SetTopMargin(0.20);
             DrawEffFrame(xlo, xhi, "", std::max(0., ymin - 0.15 * ys),
                          std::min(1.05, ymax + 0.15 * ys), ytitle, true);
-            g_os->SetMarkerColor(kBlue + 1); g_os->SetLineColor(kBlue + 1);
+            // COLOUR CONVENTION (user, round 9): opposite sign = RED, same sign = BLUE. It is
+            // the same convention the step{3,4}_dr_fit sign_sepr canvases use, and this figure
+            // shows the same two samples -- swapping it here would invite a reader flipping
+            // between the two figure sets to read the curves backwards.
+            g_os->SetMarkerColor(kRed + 1);  g_os->SetLineColor(kRed + 1);
             g_os->SetMarkerStyle(20); g_os->SetMarkerSize(1.0); g_os->SetLineWidth(2);
-            g_ss->SetMarkerColor(kRed + 1);  g_ss->SetLineColor(kRed + 1);
+            g_ss->SetMarkerColor(kBlue + 1); g_ss->SetLineColor(kBlue + 1);
             g_ss->SetMarkerStyle(21); g_ss->SetMarkerSize(1.0); g_ss->SetLineWidth(2);
             g_os->Draw("PZ same");
             g_ss->Draw("PZ same");
