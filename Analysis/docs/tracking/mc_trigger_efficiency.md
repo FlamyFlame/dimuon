@@ -2836,6 +2836,60 @@ criteria **P1** and **P2**):
 
 ## Latest Stage
 
+**2026-08-11 (round 10) — IN PROGRESS. Two user follow-ups on the round-9 Step-3 outputs.**
+
+*Plan, written before the work (per-step protocol). pp only; Step 4 is explicitly out of scope
+for the new variant.*
+
+1. **One y range per ΔR-range subdirectory** (not per PNG). ✅ **DONE** — `plot_mc_trig_eff.cxx`
+   now computes the range once over every (pair pT, pair η) cell of a view and applies it to all
+   eight pair-pT canvases; it is printed to the log. Tight: `dr_0_to_1` [0.039, 1.815],
+   `dr_0_to_2` [0.000, 2.545], `dr_full_range` [0.000, 2.584]. Regenerated pp × both WPs,
+   overwriting in place. *Motivation:* with a per-file range, flipping through the eight files
+   compared curves drawn on different axes — a cell could look deeper than one in another file
+   purely from the scaling. The Step-3 FIT canvases already shared a range across their pair-pT
+   PNGs (`compute_range` in `plot_dr_correction_fits.cxx`), verified, so no change was needed
+   there; the standalone inclusive canvas keeps its own range (round-9 review finding: the shared
+   one squeezed its data into <10 % of the frame).
+
+2. **A no-plateau-correction Step-3 fit variant** — IN PROGRESS.
+   *User motivation, recorded verbatim:* the inverse-weighted ΔR distribution has "complicated
+   structures ... even in the full range, especially in the gap-enclosing pair-η bins, which means
+   the plateau determined in a large ΔR region might not be accurate for small ΔR (region of
+   interest)". This is the same pathology R23 and R26 circle: in `pT_pair [104, 150)` the per-cell
+   plateaus sit at **1.15–1.32** while the small-ΔR points sit at **0.2–0.5**, so a far-region
+   normalization moves the region of interest by 20–30 %.
+   *Two user decisions (AskUserQuestion, 2026-08-11):*
+   - **(D-R1) The no-correction fit floats its own asymptote:** `f(ΔR) = C + A·exp[−(ΔR/λ)^p]`
+     with **C free**, fitted to the **raw, un-normalized** ε_ΔR. The baseline is then determined by
+     the ΔR < 1 data itself and the [2, 3.5] window **never enters the fit**. `polyu_fixedRp` gets
+     the same treatment (its leading 1 becomes a free constant); `interp` pins its flat region to
+     the last measured knot instead of to 1.
+   - **(D-R2) Layout:** the plateau mode is the TOP level —
+     `step3_dr_fit/{plateau_corrected,no_plateau_correction}/<method>/{sign_intgr,sign_sepr}/`, so
+     each mode is a complete parallel tree comparable as a unit (which is what the future MC-closure
+     comparison needs). Step 4 stays corrected-only per the user, but its tree moves to
+     `step4_dr_fit/plateau_corrected/...` so the two steps do not end up with different shapes.
+   *Follow-up user requirement:* **C must be printed on every subplot**, explicitly labelled as the
+   fitted plateau, per sign in `sign_sepr`, with the `(at limit)` marker if it hits a bound — and it
+   must never be confusable with the `plateau = …` line the corrected mode prints from the [2, 3.5]
+   window, which the no-correction mode does not use.
+   *Consequence settled from the stated purpose (not a free choice):* **the plateau guard does not
+   apply in no-correction mode.** Nothing is normalized by the plateau, so `|plateau − 1| > 0.15`
+   cannot disqualify a cell and a cell whose far-ΔR plateau is unmeasurable is still fittable. The
+   variant should therefore cover MORE cells than the corrected one — itself a useful number.
+   *Fit domain, confirmed in code and reported to the user:* ΔR ∈ **[0, 1]** only — `kFitLo/kFitHi`,
+   the `zoom` histogram alone (20 bins of 0.05, centres 0.025…0.975), TF1 built on that range and
+   fitted with `"QRNS"`. Points drawn between ΔR = 1 and 2 come from the wide-bin histogram and are
+   excluded. So C is fixed by the ΔR ≈ 0.4–1.0 points; where a cell has not flattened by ΔR = 1, C
+   absorbs the residual slope and becomes correlated with A — visible as a large error on C.
+
+*Still open and unchanged:* R25 (sign-dependent correction — user decision, crossx blast radius),
+R26 (both parametric forms fail in a minority of cells), R23, and the earlier carry-overs.
+
+---
+
+
 **2026-08-11 (round 9) — DONE. Both reviews PASS. Two OPEN findings handed to the user.**
 
 Delivered, pp only (`pp_full`, both working points): the Step-1 2D (q·η, pT) single-muon efficiency
