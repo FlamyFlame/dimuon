@@ -2034,6 +2034,97 @@ cross sections are nb, ×1000 to compare with pp data in pb⁻¹.)
   and hence a **user decision** — flagged here, not acted on.
 
 
+### R27. AUDIT of the ΔR-correction error bars — what they ARE, and the three things they are NOT
+### (2026-08-11, user question; pp24 FULL, Tight, current round-9 outputs)
+
+**Question.** How are the error bars on the inverse-weighted ΔR corrections computed, why not
+`TH1::Divide`, and are they right — in particular, how much of the offset-from-1 and of the
+bin-to-bin scatter is statistics, and how much is the ε_MC uncertainty propagated through the
+inverse weighting?
+
+**(a) What is computed (one implementation, `plotting_codes/trig_effcy/mc_based/dr_correction_ratio.h`
+`SetConditionalRatioErrors`).** With `D = Σ_all w`, `N = Σ_fired a_i`, `a_i = w_i/(ε₁ε₂)` (Step 3)
+or `w_i/ε_i` (Step 4), `R = N/D`, the sample is held FIXED and only the Bernoulli trigger decisions
+fluctuate: `Var(N) = Σ a_i² p_i(1−p_i) + 2Σ_pairs a₁a₂(p₁₂ − p₁p₂)`, `p_i = ε_i·R`, estimated from
+histograms booked in `FillMCTrigEffHists.cxx` as `Var = A − R·B (+ covP − R²·covQ)` with
+`A = Σ_fired a²`, `B = Σ_fired a²·ε`, and `e_R = √Var/D`. `A − R·B` is exactly unbiased for
+`Σ a²p(1−p)` under `p_i = ε_i R`. Unweighted limit A = B = N ⇒ `e_R = √(R(1−R)/D)` — textbook
+binomial. covP/covQ exist only for Step 4 (both legs of a pair share one ΔR bin); Step 3 has one
+Bernoulli trial per entry, so they are null.
+
+**(b) Why not `TH1::Divide`.** Option-less Divide propagates `e_R = R√((e_N/N)²+(e_D/D)²)`, which
+assumes numerator and denominator INDEPENDENT — but the numerator is a re-weighted SUBSET of the
+denominator. Ratio of the two, in the uniform limit, is `√((1+p)/(1−p))`, p the effective pair
+efficiency. Option `"B"` / `TGraphAsymmErrors::Divide` is also unusable, for a different reason:
+the entries are not counts (weights 1/(ε₁ε₂) > 1, so N > D is allowed and the binomial/Bayes
+estimators are undefined — R16 already hit exactly that as a silent empty-graph bug).
+**Re-measured today on the current round-9 pp files (inclusive Step 3, `h_mc_dr_full`):**
+`σ_Divide/σ_cond = 1.51–1.87`, and over the plateau window [2, 3.5] the constant-fit
+**χ²/ndf = 1.13 with the conditional errors vs 0.39 with Divide** (Step 4: 0.73 vs 0.13).
+The conditional bars are the ones the scatter actually supports.
+
+**(c) Scale of the statistical bar — it is NOT √(R(1−R)/n).** Because R ≈ 1 while the per-pair
+firing probability is p ≈ ε₁ε₂ ≈ 0.5, the fluctuating quantity is the trigger decision, not the
+ratio: `σ_R ≈ √(R(1−εR)/(ε·n_eff))`. At ΔR = 0.125 (inclusive, `h_mc_dr_full`) that is
+**0.00117 measured vs 0.00046** for the naive √(R(1−R)/n_eff) — inverse weighting costs a factor
+≈ 1/√ε ≈ 1.4 on top, plus the MC event-weight spread. n_eff there is 5.9e5 pairs.
+
+**(d) Current inclusive numbers (round 9, plateau window [2, 3.5], pp24 FULL Tight):**
+Step 3 plateau **0.99208 ± 0.00087 (9.1σ from 1)**, Step 4 **0.99621 ± 0.00040 (9.5σ)**. (R12(f)'s
+"0.9911 ± 0.0004, 22σ" was Step 4 on the retired [1,4] window, 2026-08-03 — superseded, same
+conclusion: the offset is real, not a fluctuation.) The offset is a fit-quality offset in ε_MC, and
+that is what §3.3 diagnostic 2 says it is.
+
+**(e) ★ THE MISSING TERM — ε_MC uncertainty is NOT in any bar.** The bars condition on the ε map
+being EXACT. Measured size of the ε_MC uncertainty itself (from
+`single_mu_effcy_pT_fit_mc.root`): fit-parameter statistical error **0.15–1.0 % absolute**;
+fit-FORM residual (point − fit)/fit rms **0.7–2.7 % in the central q·η bins**, **6.5–8.2 %** in
+q·η ∈ (1.0,1.5) and (2.0,2.3), **21 %** in the forward (−2.4,−2.0) bin that `kVetoFwdLowPt` removes.
+So per leg the real ε uncertainty is the FORM one, ~1–2 %, not the fit-stat one.
+- **Why it mostly cancels.** `R ∝ Σ_fired w/(ε₁ε₂)`, so ε → ε(1+δ) gives
+  `δR/R = −⟨δ₁+δ₂⟩_fired(ΔR)`. After plateau normalization only the DIFFERENCE survives:
+  `δ(ε_ΔR)/ε_ΔR = −[⟨δ₁+δ₂⟩(ΔR) − ⟨δ₁+δ₂⟩(plateau)]`. A global ε normalization error cancels
+  EXACTLY; only the ΔR-dependent kinematic-mix difference is left.
+- **Measured leverage** (nominal vs the corrected-MC files, i.e. ε_MC → ε_corr ≈ ε_data, a real
+  10–25 % per-leg perturbation with a realistic barrel-vs-endcap shape): the RAW plateau moves
+  **0.99208 → 0.97193 (−2.0 %)**, but the plateau-NORMALIZED curve moves by only **+0.019 at
+  ΔR = 0.025, +0.015 at ΔR = 0.125, < 0.004 above ΔR ≈ 0.5**. Leverage ≈ **0.1 at ΔR → 0, ≈ 0 in
+  the plateau** — this is the quantitative version of R16's "insensitive to the overall ε
+  normalization", now resolved in ΔR instead of as a per-cell median.
+- **But it is not negligible where the physics is.** At ΔR = 0.125 that shift is **12.6 σ_stat**;
+  at ΔR = 0.025 it is 5.9 σ_stat. Folding the leverage 0.1 onto the ~1–2 % real form uncertainty
+  gives **~0.1–0.2 % at ΔR → 0**, i.e. 0.3–0.6× the statistical bar there — comparable, one-sided,
+  and fully correlated across ΔR bins. **⇒ an ε_MC-parameterization systematic on ε_ΔR should be
+  quoted; today none is.** It is NOT the same thing as the plateau-window systematic
+  `|plateau[2,3.5] − plateau[1,4]|`, which sizes *where the reference is taken*, not *how well
+  ε_MC(pT, q·η) is parameterized*.
+
+**(f) Second missing term — the plateau normalization error is dropped.**
+`fit_dr_corrections.cxx:657` does `r->Scale(1.0/plateau)`, which scales contents AND errors by the
+same factor, so the plateau's own uncertainty never enters the normalized points, the fitted
+parameters, or `f_at_0`. For the per-cell fits this is the LARGER of the two normalization
+effects: `dr_correction_plateaus_pp24_full.root` `h_step3_plateau` has **median per-cell relative
+error 1.53 % over 72 cells** (inclusive: 0.09 %). Dividing content and error together is the right
+treatment for a FIT (a correlated normalization must not be added per point), but the resulting
+±1.5 % must be carried separately as a correlated systematic on every per-cell correction, and is
+not. This is the same quantity the round-10 `no_plateau_correction` variant exists to sidestep.
+
+**(g) Third — event-level correlation, checked and NEGLIGIBLE.** pp's Step-3 numerator condition is
+the EVENT-level `pass2mu4`, so two selected pairs in one event share ONE Bernoulli trial, which the
+diagonal `A − R·B` does not model (the code comment flags it as unmodelled). Measured on the pp24
+FULL pair trees (Tight, pT > 4, |η| < 2.4): **2.52 % of opposite-sign and 0.46 % of same-sign
+selected pairs come from events with more than one selected pair** (1.013 / 1.003 pairs per event).
+Worst-case error underestimate √(1 + 0.025) = **1.3 %** — below the 1–2 % agreement of (b). Not
+worth modelling.
+
+**Verdict.** The bars are CORRECT as what they claim to be — conditional (binomial) statistical
+errors on an inverse-weighted efficiency ratio, with the sample held fixed — and the plateau
+χ²/ndf ≈ 1.13 confirms the bin-to-bin scatter matches them. They are NOT the total uncertainty on
+the deliverable: the 9σ offset from 1 is a genuine ε_MC parameterization effect (correctly
+normalized away), and the two correlated normalization terms in (e) and (f) are real, of order
+0.1–0.2 % (shape) and 1.5 % (per-cell plateau), and are currently unquoted. **New Remaining-Work
+item; needs a user decision on how to size them** (see Remaining Work 9).
+
 ### R1. NTP discovery (2026-07-10, Explore agent + orchestrator check)
 
 **Chain:** `PythiaFullSimAnalysis` / `PythiaFullSimOverlayAnalysis`
@@ -2833,6 +2924,21 @@ criteria **P1** and **P2**):
 9. **Corrected-MC study (contract item 5, round 7)** — whether re-weighting each MC muon by
    `SF = ε_data/ε_MC(pT, q·η)` changes the ΔR correction terms. Feeds MC-closure design choice
    (a) above.
+
+10. **★ OPEN (R27, 2026-08-11) — TWO UNQUOTED CORRELATED UNCERTAINTIES ON ε_ΔR. Needs a user
+    decision on how to size them.** The published bars are conditional STATISTICAL errors only
+    (and are correct as such: plateau χ²/ndf 1.13). Missing:
+    (i) **ε_MC parameterization** — the ε map is treated as exact. Its real (form) uncertainty is
+    ~1–2 % per leg; measured leverage onto the plateau-normalized correction is ≈ 0.1 at ΔR → 0 and
+    ≈ 0 in the plateau ⇒ ~0.1–0.2 % at small ΔR, one-sided and fully ΔR-correlated, i.e. 0.3–0.6×
+    the statistical bar exactly where the physics lives. Distinct from the plateau-WINDOW
+    systematic. A ready-made evaluation exists: the nominal-vs-corrected-MC difference of the
+    normalized curves (R27(e)).
+    (ii) **plateau normalization** — `fit_dr_corrections.cxx:657` scales contents and errors
+    together, so the plateau's own error (median **1.53 %** per cell, 72 cells, pp Step 3) never
+    reaches the fitted parameters or `f_at_0`. Correct for the fit, but it must travel as a
+    correlated systematic and today does not. Interacts with the round-10
+    `no_plateau_correction` variant, which removes the term rather than sizing it.
 
 ## Latest Stage
 
