@@ -688,9 +688,21 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
         {"dr0_2_1_0", "dr >= 0.2 && dr < 1.0"},
         {"dr1_0_inf", "dr >= 1.0"}
     };
-    // SS (sign1) + OS (sign2) are summed into the same histograms: the trigger response
-    // is a per-muon detector property, blind to the pair charge product.
+    // SS (sign1) + OS (sign2) are summed into the SIGN-INTEGRATED histograms: the trigger
+    // response is a per-muon detector property, blind to the pair charge product, so the
+    // sign-integrated correction remains the nominal one.
+    // ROUND 9 (user request): Steps 3 and 4 ALSO book a per-sign copy of every histogram, so the
+    // same-sign and opposite-sign dR corrections can be measured and fitted independently and
+    // the charge-blindness above can be CHECKED rather than assumed. The sign-integrated
+    // histograms are unchanged -- the per-sign ones are additional, never a replacement.
+    // Tree -> sign convention (DimuonAlgCoreT.c:113, MuonPairMC.h:47): sign1 = SAME sign,
+    // sign2 = OPPOSITE sign, split on the TRUTH charges.
     const std::vector<std::string> pair_trees = {"muon_pair_tree_sign1", "muon_pair_tree_sign2"};
+    auto sign_prefix = [](const std::string& tree) -> std::string {
+        if (tree == "muon_pair_tree_sign1") return "ss_";   // same sign
+        if (tree == "muon_pair_tree_sign2") return "os_";   // opposite sign
+        throw std::runtime_error("FillMCTrigEffHists: unknown pair tree '" + tree + "'");
+    };
 
     HistAccumulator<TH1D> acc1D;
     HistAccumulator<TH2D> acc2D;
@@ -828,31 +840,39 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
                 ROOT::RDF::RNode dl = AliasLeg(*rdf_store.back(), leg, wp_col);
                 dl = dl.Filter(sel_pair_full, tree + Form(" step4 leg%d selection", leg));
 
+                // Sign-integrated + per-sign copies, exactly as Step 3 (round 9). The per-sign
+                // series exist so the charge-blindness of the single-leg trigger response can be
+                // checked; the sign-integrated series stays the nominal one.
+                const std::string sp4 = sign_prefix(tree);
+                const std::vector<std::string> name_prefixes4 = {std::string("h_mc_single_dr_"),
+                                                                 "h_mc_single_dr_" + sp4};
                 auto book_step4 = [&](ROOT::RDF::RNode node, const std::string& nd,
                                       const std::string& wcol) {
-                    acc1D.add("h_mc_single_dr_zoom_" + nd,
-                        node.Histo1D({uniq("h_mc_single_dr_zoom_" + nd).c_str(), ";#DeltaR;entries",
+                  for (const auto& hp : name_prefixes4) {
+                    acc1D.add(hp + "zoom_" + nd,
+                        node.Histo1D({uniq(hp + "zoom_" + nd).c_str(), ";#DeltaR;entries",
                                       static_cast<int>(bins.dr_zoom.size()) - 1, bins.dr_zoom.data()},
                                      "dr", wcol));
-                    acc1D.add("h_mc_single_dr_full_" + nd,
-                        node.Histo1D({uniq("h_mc_single_dr_full_" + nd).c_str(), ";#DeltaR;entries",
+                    acc1D.add(hp + "full_" + nd,
+                        node.Histo1D({uniq(hp + "full_" + nd).c_str(), ";#DeltaR;entries",
                                       static_cast<int>(bins.dr_full.size()) - 1, bins.dr_full.data()},
                                      "dr", wcol));
                     // pair-pT x pair-eta breakdown (plateau-stability systematic, mirrors Step 3 #4)
-                    acc3D.add("h_mc_single_dr_zoom_vs_pt_eta_" + nd,
-                        node.Histo3D({uniq("h_mc_single_dr_zoom_vs_pt_eta_" + nd).c_str(),
+                    acc3D.add(hp + "zoom_vs_pt_eta_" + nd,
+                        node.Histo3D({uniq(hp + "zoom_vs_pt_eta_" + nd).c_str(),
                                       ";#DeltaR;p_{T}^{pair} [GeV];#eta^{pair}",
                                       static_cast<int>(bins.dr_zoom.size()) - 1, bins.dr_zoom.data(),
                                       static_cast<int>(bins.pair_pt_coarse.size()) - 1, bins.pair_pt_coarse.data(),
                                       static_cast<int>(bins.pair_eta_coarse.size()) - 1, bins.pair_eta_coarse.data()},
                                      "dr", "pair_pt", "pair_eta", wcol));
-                    acc3D.add("h_mc_single_dr_full_vs_pt_eta_" + nd,
-                        node.Histo3D({uniq("h_mc_single_dr_full_vs_pt_eta_" + nd).c_str(),
+                    acc3D.add(hp + "full_vs_pt_eta_" + nd,
+                        node.Histo3D({uniq(hp + "full_vs_pt_eta_" + nd).c_str(),
                                       ";#DeltaR;p_{T}^{pair} [GeV];#eta^{pair}",
                                       static_cast<int>(bins.dr_full.size()) - 1, bins.dr_full.data(),
                                       static_cast<int>(bins.pair_pt_coarse.size()) - 1, bins.pair_pt_coarse.data(),
                                       static_cast<int>(bins.pair_eta_coarse.size()) - 1, bins.pair_eta_coarse.data()},
                                      "dr", "pair_pt", "pair_eta", wcol));
+                  }
                 };
 
                 // Per-leg efficiency columns. `eps_*` = the ε the numerator is DIVIDED BY (nominal
@@ -1083,13 +1103,21 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
             if (cfg.is_overlay) sel += " && avg_centrality >= 0 && avg_centrality < 5";
             dp = dp.Filter(sel, tree + " step3 selection");
 
+            const std::string sp = sign_prefix(tree);
+            // Every Step-3 histogram is booked TWICE: once sign-integrated ("h_mc_dr_...", both
+            // trees merged by HistAccumulator) and once with the per-sign prefix
+            // ("h_mc_dr_ss_..." / "h_mc_dr_os_...", one tree each). Downstream stages select a
+            // series purely by that prefix, so no consumer has to know about the trees.
+            const std::vector<std::string> name_prefixes = {std::string("h_mc_dr_"),
+                                                            "h_mc_dr_" + sp};
             auto book_step3 = [&](ROOT::RDF::RNode node, const std::string& nd, const std::string& wcol) {
-                acc1D.add("h_mc_dr_zoom_" + nd,
-                    node.Histo1D({uniq("h_mc_dr_zoom_" + nd).c_str(), ";#DeltaR;entries",
+              for (const auto& hp : name_prefixes) {
+                acc1D.add(hp + "zoom_" + nd,
+                    node.Histo1D({uniq(hp + "zoom_" + nd).c_str(), ";#DeltaR;entries",
                                   static_cast<int>(bins.dr_zoom.size()) - 1, bins.dr_zoom.data()},
                                  "dr", wcol));
-                acc1D.add("h_mc_dr_full_" + nd,
-                    node.Histo1D({uniq("h_mc_dr_full_" + nd).c_str(), ";#DeltaR;entries",
+                acc1D.add(hp + "full_" + nd,
+                    node.Histo1D({uniq(hp + "full_" + nd).c_str(), ";#DeltaR;entries",
                                   static_cast<int>(bins.dr_full.size()) - 1, bins.dr_full.data()},
                                  "dr", wcol));
                 // NOTE (round 7): the separate dR x FINE-pair-pT 2D that used to live here was
@@ -1101,24 +1129,58 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
                 // cannot disagree. Single source of truth: ParamsSet.h (see CLAUDE.md).
                 // round-5 #4: dR x coarse pair-pT x coarse pair-eta, for the pair-eta dependence
                 // of eps_dR. Zoom and full dR ranges; projected per (pair pT, pair eta) cell.
-                acc3D.add("h_mc_dr_zoom_vs_pt_eta_" + nd,
-                    node.Histo3D({uniq("h_mc_dr_zoom_vs_pt_eta_" + nd).c_str(),
+                acc3D.add(hp + "zoom_vs_pt_eta_" + nd,
+                    node.Histo3D({uniq(hp + "zoom_vs_pt_eta_" + nd).c_str(),
                                   ";#DeltaR;p_{T}^{pair} [GeV];#eta^{pair}",
                                   static_cast<int>(bins.dr_zoom.size()) - 1, bins.dr_zoom.data(),
                                   static_cast<int>(bins.pair_pt_coarse.size()) - 1, bins.pair_pt_coarse.data(),
                                   static_cast<int>(bins.pair_eta_coarse.size()) - 1, bins.pair_eta_coarse.data()},
                                  "dr", "pair_pt", "pair_eta", wcol));
-                acc3D.add("h_mc_dr_full_vs_pt_eta_" + nd,
-                    node.Histo3D({uniq("h_mc_dr_full_vs_pt_eta_" + nd).c_str(),
+                acc3D.add(hp + "full_vs_pt_eta_" + nd,
+                    node.Histo3D({uniq(hp + "full_vs_pt_eta_" + nd).c_str(),
                                   ";#DeltaR;p_{T}^{pair} [GeV];#eta^{pair}",
                                   static_cast<int>(bins.dr_full.size()) - 1, bins.dr_full.data(),
                                   static_cast<int>(bins.pair_pt_coarse.size()) - 1, bins.pair_pt_coarse.data(),
                                   static_cast<int>(bins.pair_eta_coarse.size()) - 1, bins.pair_eta_coarse.data()},
                                  "dr", "pair_pt", "pair_eta", wcol));
+              }
             };
 
             // denominator: ALL selected pairs, no trigger requirement (§4), weight = MC weight
             book_step3(dp, "denom", "weight");
+
+            // ---- STATISTICS BOOKKEEPING (round 9, user request) -------------------------
+            // How much sample the (pair pT, pair eta) cells of the dR correction actually have,
+            // per pair charge combination. Booked HERE, on the Step-3 denominator node, because
+            // that node is exactly one entry per selected pair under exactly the selection the
+            // correction is measured with -- a separate macro re-deriving the selection would be
+            // free to drift from it. Three quantities per cell:
+            //   count  = raw number of muon pairs (unweighted; the statistical sample size)
+            //   sumw   = sum of the per-pair MC weight = sigma_slice * eps_filt * r_isospin / N_slice,
+            //            i.e. the cross section of that cell, in **nb** (ParamsSet / ami_weights.md;
+            //            AMI crossSection is nb, NOT pb -- x1000 to compare with pp data in pb).
+            //   sumw2  = sum of weight^2, so the statistical error on sumw is sqrt(sumw2).
+            {
+                auto dstat = dp.Define("w2_pair", "weight * weight");
+                acc2D.add("h_mc_paircount_vs_pt_eta_" + std::string(sp, 0, 2),
+                    dstat.Histo2D({uniq("h_mc_paircount_vs_pt_eta_" + sp).c_str(),
+                                   ";p_{T}^{pair} [GeV];#eta^{pair};muon pairs",
+                                   static_cast<int>(bins.pair_pt_coarse.size()) - 1, bins.pair_pt_coarse.data(),
+                                   static_cast<int>(bins.pair_eta_coarse.size()) - 1, bins.pair_eta_coarse.data()},
+                                  "pair_pt", "pair_eta"));
+                acc2D.add("h_mc_pairsumw_vs_pt_eta_" + std::string(sp, 0, 2),
+                    dstat.Histo2D({uniq("h_mc_pairsumw_vs_pt_eta_" + sp).c_str(),
+                                   ";p_{T}^{pair} [GeV];#eta^{pair};#sigma [nb]",
+                                   static_cast<int>(bins.pair_pt_coarse.size()) - 1, bins.pair_pt_coarse.data(),
+                                   static_cast<int>(bins.pair_eta_coarse.size()) - 1, bins.pair_eta_coarse.data()},
+                                  "pair_pt", "pair_eta", "weight"));
+                acc2D.add("h_mc_pairsumw2_vs_pt_eta_" + std::string(sp, 0, 2),
+                    dstat.Histo2D({uniq("h_mc_pairsumw2_vs_pt_eta_" + sp).c_str(),
+                                   ";p_{T}^{pair} [GeV];#eta^{pair};#Sigma w^{2} [nb^{2}]",
+                                   static_cast<int>(bins.pair_pt_coarse.size()) - 1, bins.pair_pt_coarse.data(),
+                                   static_cast<int>(bins.pair_eta_coarse.size()) - 1, bins.pair_eta_coarse.data()},
+                                  "pair_pt", "pair_eta", "w2_pair"));
+            }
 
             // numerator: trigger condition, weight = MC weight * SF1*SF2 / (eps1 * eps2)
             //   nominal   : SF ≡ 1, eps = the §3.1 MC fits           -> weight / (eps1 eps2) (§3.3)
