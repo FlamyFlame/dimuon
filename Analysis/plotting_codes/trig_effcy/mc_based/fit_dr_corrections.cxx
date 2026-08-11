@@ -36,6 +36,23 @@
 //   human can look at the plots of a failing sample, and the driver script never uses it on the
 //   nominal path.
 //
+// SIGN SERIES (`sign` argument; "" = sign-integrated, "ss" = same sign, "os" = opposite sign)
+//   The same measurement restricted to one dimuon charge combination. Everything is identical
+//   except the input histogram prefix, the plateau key tag, the output file name and the report
+//   names (dr_correction_sample_cfg.h).
+//   GUARD POLICY -- deliberately asymmetric:
+//     * sign-INTEGRATED: unchanged. A FULL production that fails |plateau-1| <= 0.15 THROWS. That
+//       series is the nominal deliverable, so a broken inverse-weighting closure must stop it.
+//     * sign-SEPARATED: measured, reported and listed cell by cell exactly as above, but NEVER
+//       fatal. Each sign carries a FRACTION of the statistics (same sign is ~13% of the selected
+//       pairs), so cells that fail there are a STATEMENT ABOUT THE STATISTICS of that subsample,
+//       not a defect of the nominal correction.
+//     * unchanged for all three: the unmeasurable-cell screen (DrCorrPlateauUsable) and the
+//       `fit_ok` flag, so nothing unusable is ever published no matter which series produced it.
+//   A sample whose per-sign histograms/plateaus do not exist yet (e.g. an overlay production
+//   filled before the per-sign booking) SKIPS the sign-separated series with a printed note --
+//   never a throw, so its sign-integrated nominal series stays runnable.
+//
 // SHAPE CONSTRAINT
 //   Step 4 must be flat for dR >~ 0.3, Step 3 for dR >~ 0.5 (kFlatOnsetStep{3,4}).
 //
@@ -60,6 +77,7 @@
 // Compile/run (ACLiC, from this directory):
 //   root -l -b -q -e '.L fit_dr_corrections.cxx+'                         // compile only
 //   root -l -b -q 'fit_dr_corrections.cxx+("pp_full", true, 3, "powerlaw_fixedRp")'
+//   root -l -b -q 'fit_dr_corrections.cxx+("pp_full", true, 3, "expo", false, "ss")'   // same sign
 //   root -l -b -q 'fit_dr_corrections_all.cxx...'  -> see fit_dr_corrections_all() below
 
 #include <TAxis.h>
@@ -128,10 +146,14 @@ struct StepCfg {
     std::string quantity;      // short name used in the plateau file / provenance
 };
 
-StepCfg MakeStepCfg(int step)
+// THE ONE PLACE where the sign token enters the histogram names. FillMCTrigEffHists.cxx books the
+// per-sign copies under the sign-integrated name with "<sign>_" inserted directly after the common
+// prefix: h_mc_dr_ -> h_mc_dr_ss_ , h_mc_single_dr_ -> h_mc_single_dr_os_ .
+StepCfg MakeStepCfg(int step, const std::string& sign = "")
 {
-    if (step == 3) return {3, "_step3.root", "h_mc_dr_",        false, kFlatOnsetStep3, "eps_dR"};
-    if (step == 4) return {4, "_step4.root", "h_mc_single_dr_", true,  kFlatOnsetStep4, "eps_single"};
+    const std::string sg = sign.empty() ? "" : sign + "_";
+    if (step == 3) return {3, "_step3.root", "h_mc_dr_" + sg,        false, kFlatOnsetStep3, "eps_dR"};
+    if (step == 4) return {4, "_step4.root", "h_mc_single_dr_" + sg, true,  kFlatOnsetStep4, "eps_single"};
     throw std::runtime_error("fit_dr_corrections: step must be 3 or 4, got "
                              + std::to_string(step));
 }
@@ -225,34 +247,76 @@ std::string CellName(const std::string& base, int step, int iy, int iz)
 
 // step   : 3 (cross / 2mu4 term) or 4 (single leg)
 // method : powerlaw_fixedRp | powerlaw_floatRp | expo | interp
+// sign   : "" (sign-integrated, the NOMINAL series) | "ss" (same sign) | "os" (opposite sign)
 void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp = true,
                         int step = 3, const std::string& method = "powerlaw_fixedRp",
-                        bool allow_plateau_violation = false)
+                        bool allow_plateau_violation = false, const std::string& sign = "")
 {
     gROOT->SetBatch(kTRUE);
 
     const DrCorrSample cfg = GetDrCorrSample(sample, use_tight_wp);
-    const StepCfg      S   = MakeStepCfg(step);
+    const StepCfg      S   = MakeStepCfg(step, sign);
     const MethodCfg    M   = MakeMethodCfg(method);
     const std::string  wp_suf  = DrCorrWpSuffix(use_tight_wp);
     const std::string  wp_text = use_tight_wp ? "Tight muons" : "Medium muons";
+    const std::string  sign_text = DrCorrSignText(sign);          // throws on an unknown token
+    const std::string  sign_ftag = DrCorrSignFileTag(sign);
+    const std::string  series    = sign.empty() ? "sign-integrated" : sign_text;
 
     std::cout << "\n================ fit_dr_corrections: " << sample << " / step " << step
-              << " / " << method << " / " << wp_text << " ================\n";
+              << " / " << method << " / " << wp_text << " / " << series << " ================\n";
+
+    // The pair-pT-binning token must be in BOTH input names: without it a 4-bin run reads the
+    // NOMINAL 8-bin histograms while its plateau map is 4x9 (the cell-count guard below catches
+    // that, but only after the fact).
+    const std::string plateau_path = DrCorrPlateauFile(cfg, use_tight_wp);
+    const std::string hist_path = cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label + wp_suf
+                                + MCTrigEffPairPt::FileSuffix()
+                                + S.file_suffix;
+    // Plateau-file key tag. The SIGN is part of it (h_step3_ss_plateau / prov_step3_ss), because
+    // the plateau file holds all three series side by side. The keys WRITTEN below keep the plain
+    // "step<N>" tag -- the sign is in the fit FILE name, so every consumer reads one set of names.
+    const std::string ptag = "step" + std::to_string(step) + (sign.empty() ? "" : "_" + sign);
+    const std::string tag  = "step" + std::to_string(step);
+
+    // ---- availability probe for a SIGN-SEPARATED series (non-fatal by design) -----------------
+    // A production filled before the per-sign booking (e.g. the HIJING overlay) has neither the
+    // per-sign histograms nor the per-sign plateaus. Skipping with a printed note keeps that
+    // sample's sign-integrated NOMINAL series runnable; throwing here would take it down too.
+    if (!sign.empty()) {
+        bool have_plateau = false, have_hists = false;
+        if (TFile* p1 = TFile::Open(plateau_path.c_str(), "READ")) {
+            if (!p1->IsZombie()) have_plateau = p1->Get(("h_" + ptag + "_plateau").c_str());
+            p1->Close();
+        }
+        if (TFile* p2 = TFile::Open(hist_path.c_str(), "READ")) {
+            if (!p2->IsZombie())
+                have_hists = p2->Get((S.h_prefix + "zoom_vs_pt_eta_num").c_str());
+            p2->Close();
+        }
+        if (!have_plateau || !have_hists) {
+            std::cout << "  SKIPPED: sample '" << sample << "' has no " << sign_text
+                      << " inputs yet (" << (have_plateau ? "" : "no h_" + ptag + "_plateau in "
+                                                                 + plateau_path + "  ")
+                      << (have_hists ? "" : "no " + S.h_prefix + "zoom_vs_pt_eta_num in "
+                                            + hist_path)
+                      << ").\n  Re-fill the histograms with the per-sign booking to produce it."
+                         " The sign-integrated series is unaffected.\n";
+            return;
+        }
+    }
 
     // ---------------------------------------------------------------- 1. plateaus (ROOT file)
-    const std::string plateau_path = DrCorrPlateauFile(cfg, use_tight_wp);
     TFile* fpl = OpenRead(plateau_path);
-    const std::string tag = "step" + std::to_string(step);
-    TH2D* hplat = GetObj<TH2D>(fpl, "h_" + tag + "_plateau");
-    TH2D* hpnb  = GetObj<TH2D>(fpl, "h_" + tag + "_plateau_nbins");
-    TH1D* hpinc = GetObj<TH1D>(fpl, "h_" + tag + "_plateau_inclusive");
+    TH2D* hplat = GetObj<TH2D>(fpl, "h_" + ptag + "_plateau");
+    TH2D* hpnb  = GetObj<TH2D>(fpl, "h_" + ptag + "_plateau_nbins");
+    TH1D* hpinc = GetObj<TH1D>(fpl, "h_" + ptag + "_plateau_inclusive");
     // PROVENANCE. Every sample shares the same (pair pT, pair eta) binning, so an edge check
     // could never catch a cross-sample mix-up; the only thing that can is the stamp the producer
     // wrote. Refuse to normalize one sample's curves by another sample's (or another WP's)
     // plateaus.
     {
-        TNamed* prov = GetObj<TNamed>(fpl, "prov_" + tag);
+        TNamed* prov = GetObj<TNamed>(fpl, "prov_" + ptag);
         const std::string title = prov->GetTitle();
         if (title.find("sample=" + sample + ";") == std::string::npos ||
             title.find("WP=" + wp_text + ";") == std::string::npos)
@@ -260,13 +324,13 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                 + " was written for a DIFFERENT sample/WP -- its stamp is '" + title
                 + "', this job is sample=" + sample + ", WP=" + wp_text);
     }
-    hplat = (TH2D*)hplat->Clone(("plat_" + tag).c_str()); hplat->SetDirectory(nullptr);
-    hpnb  = (TH2D*)hpnb ->Clone(("pnb_"  + tag).c_str()); hpnb ->SetDirectory(nullptr);
+    hplat = (TH2D*)hplat->Clone(("plat_" + ptag).c_str()); hplat->SetDirectory(nullptr);
+    hpnb  = (TH2D*)hpnb ->Clone(("pnb_"  + ptag).c_str()); hpnb ->SetDirectory(nullptr);
     // Plateau-window normalization systematic |p[2,4] - p[1,4]|, added 2026-08-04. OPTIONAL:
     // a plateau file written before that date has no such key, and the fit is unaffected by it
     // (it is reported, never applied), so an older file must keep working rather than throw.
-    TH2D* hpsys = (TH2D*)fpl->Get(("h_" + tag + "_plateau_syst").c_str());
-    if (hpsys) { hpsys = (TH2D*)hpsys->Clone(("psys_" + tag).c_str()); hpsys->SetDirectory(nullptr); }
+    TH2D* hpsys = (TH2D*)fpl->Get(("h_" + ptag + "_plateau_syst").c_str());
+    if (hpsys) { hpsys = (TH2D*)hpsys->Clone(("psys_" + ptag).c_str()); hpsys->SetDirectory(nullptr); }
     const double plat_incl     = hpinc->GetBinContent(1);
     const double plat_incl_err = hpinc->GetBinError(1);
     fpl->Close();
@@ -277,6 +341,14 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     const int neta = hplat->GetNbinsY();
 
     // ---------------------------------------------------------------- 2. the guard
+    // GUARD POLICY (user, 2026-08-11). The measurement, the reporting and the per-cell lists are
+    // IDENTICAL for all three series. Only the CONSEQUENCE differs: a FULL-sample failure is fatal
+    // for the sign-INTEGRATED series (the nominal deliverable) and is reported-but-not-fatal for a
+    // sign-separated one, because each sign holds only a fraction of the pairs (same sign ~13% of
+    // the selected sample) -- a per-sign failure is a statistics statement about that subsample,
+    // not a defect in the nominal correction. The unmeasurable-cell screen and the fit_ok flag are
+    // untouched by this, so an unusable cell is still never published in ANY series.
+    const bool guard_is_fatal = cfg.is_full_sample && sign.empty();
     std::vector<std::string> violations, flagged, unmeasured, wsyst;
     double wsyst_max = 0.;
     for (int iy = 1; iy <= npt; ++iy) {
@@ -329,16 +401,28 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
         const std::string gdir = cfg.out_base + "step" + std::to_string(step) + "_dr_fit/"
                                + DrCorrWpDir(use_tight_wp);
         gSystem->mkdir(gdir.c_str(), kTRUE);
-        std::ofstream os(gdir + "plateau_guard_report.txt");
+        std::ofstream os(gdir + "plateau_guard_report" + sign_ftag + ".txt");
         os << "# Large-dR plateau guard, " << S.quantity << " (Step " << step << ")\n"
            << "# sample=" << sample << " (" << (cfg.is_full_sample ? "FULL" : "TEST")
-           << " production)  WP=" << wp_text << "\n"
-           << "# source: " << plateau_path << "\n"
+           << " production)  WP=" << wp_text << "  series=" << series << "\n"
+           << "# source: " << plateau_path << "  (keys h_" << ptag << "_*)\n"
            << "# rule: a FULL production must satisfy |plateau-1| <= " << kPlateauGuardTol
            << " in EVERY (pair pT, pair eta) cell (FATAL above that); cells with |plateau-1| > "
            << kPlateauFlagTol << " are FLAGGED but allowed, and carry |plateau-1| as a\n"
               "#       systematic (docs/systematic_uncertainties.md 1a). A TEST sample is exempt"
               " from the fatal tier but still reported.\n"
+           << (sign.empty()
+               ? "# this is the SIGN-INTEGRATED series: the fatal tier is ENFORCED on a FULL"
+                 " production.\n"
+               : "# this is the " + series + " series: every flagged/failing/unmeasurable cell is"
+                 " measured and listed below exactly as for the\n"
+                 "#       sign-integrated series, but the fatal tier is NOT enforced. One sign"
+                 " carries only a fraction of the pairs\n"
+                 "#       (same sign ~13% of the selected sample), so a failing cell here is a"
+                 " statement about the statistics of this\n"
+                 "#       subsample, not a defect of the nominal correction. The unmeasurable-cell"
+                 " screen and the fit_ok flag are\n"
+                 "#       unchanged, so nothing unusable is published from this series either.\n")
            << "# plateau window: dR in [" << MCTrigEffPlateau::kLo << ","
            << MCTrigEffPlateau::kHi << "]  (systematic variation: dR in ["
            << MCTrigEffPlateau::kSystLo << "," << MCTrigEffPlateau::kSystHi << "])\n"
@@ -358,11 +442,15 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                << Form("%.4f", wsyst_max) << "\n";
             for (const auto& w : wsyst) os << "  " << w << "\n";
         }
-        os << "\nverdict: " << (violations.empty() ? "PASS"
-                                                   : (cfg.is_full_sample ? "FAIL (FULL sample)"
-                                                                         : "reported, exempt (TEST sample)"))
+        os << "\nverdict: " << (violations.empty()
+                                  ? "PASS"
+                                  : (guard_is_fatal
+                                        ? "FAIL (FULL sample)"
+                                        : (cfg.is_full_sample
+                                               ? "reported, not enforced (" + series + " series)"
+                                               : "reported, exempt (TEST sample)")))
            << "\n";
-        std::cout << "  wrote " << gdir << "plateau_guard_report.txt\n";
+        std::cout << "  wrote " << gdir << "plateau_guard_report" << sign_ftag << ".txt\n";
     }
     if (!flagged.empty()) {
         std::cout << "  ~~ FLAGGED: " << flagged.size() << " cell(s) with "
@@ -375,14 +463,14 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                   << kPlateauGuardTol << ":\n";
         for (const auto& v : violations) std::cout << "     " << v << "\n";
     }
-    if (cfg.is_full_sample && !violations.empty()) {
+    if (guard_is_fatal && !violations.empty()) {
         const std::string msg =
             "fit_dr_corrections: PLATEAU GUARD FAILED for FULL sample '" + sample + "' (step "
             + std::to_string(step) + ", " + wp_text + "): " + std::to_string(violations.size())
             + " (pair pT, pair eta) cell(s) have |plateau-1| > "
             + std::to_string(kPlateauGuardTol) + " -- see the list above and "
             + cfg.out_base + "step" + std::to_string(step) + "_dr_fit/"
-            + DrCorrWpDir(use_tight_wp) + "plateau_guard_report.txt";
+            + DrCorrWpDir(use_tight_wp) + "plateau_guard_report" + sign_ftag + ".txt";
         // Flush BEFORE throwing: an uncaught exception out of a ROOT macro aborts the process,
         // and abort() does not flush stdout -- the violation list printed above would be lost.
         std::cout << std::flush;
@@ -391,20 +479,15 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                   << "  ## OVERRIDE: " << msg << "\n"
                   << "  ## allow_plateau_violation=true -- continuing ON PURPOSE.\n"
                   << "  ###############################################################\n";
-    } else if (!cfg.is_full_sample && !violations.empty()) {
-        std::cout << "  (TEST sample -> guard NOT enforced; the cells above are reported only.)\n";
+    } else if (!violations.empty()) {
+        std::cout << "  (" << (cfg.is_full_sample ? series + " series" : std::string("TEST sample"))
+                  << " -> guard NOT enforced; the cells above are reported only.)\n";
     } else {
         std::cout << "  plateau guard PASSED (all |plateau-1| <= " << kPlateauGuardTol
                   << (flagged.empty() ? "" : "; see the FLAGGED cells above") << ").\n";
     }
 
     // ---------------------------------------------------------------- 3. input histograms
-    // The pair-pT-binning token must be here too: without it a 4-bin run reads the NOMINAL
-    // 8-bin histograms while its plateau map is 4x9, which is exactly what the cell-count
-    // guard below caught.
-    const std::string hist_path = cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label + wp_suf
-                                + MCTrigEffPairPt::FileSuffix()
-                                + S.file_suffix;
     TFile* fh = OpenRead(hist_path);
     // Staleness: the plateau file is produced BY the histograms, so it must be at least as new.
     // (A plot_mc_trig_eff run that predates a hist refill would normalize the new curves by the
@@ -455,7 +538,7 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     TH2D* hknot = BookLike(hplat, "h_" + tag + "_knot_rel_err",
                            "mean relative stat. error of the interpolated points");
 
-    const std::string out_path = DrCorrFitFile(cfg, use_tight_wp, step, method);
+    const std::string out_path = DrCorrFitFile(cfg, use_tight_wp, step, method, sign);
     TFile* fout = TFile::Open(out_path.c_str(), "RECREATE");
     if (!fout || fout->IsZombie())
         throw std::runtime_error("fit_dr_corrections: cannot write " + out_path);
@@ -465,16 +548,18 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     const std::string mdir = cfg.out_base + "step" + std::to_string(step) + "_dr_fit/" + method
                            + "/" + DrCorrWpDir(use_tight_wp);
     gSystem->mkdir(mdir.c_str(), kTRUE);
-    std::ofstream rep(mdir + "fit_report.txt");
+    std::ofstream rep(mdir + "fit_report" + sign_ftag + ".txt");
     rep << "# " << S.quantity << " (Step " << step << ") plateau-normalized fit, method = "
         << method << "\n"
-        << "# sample=" << sample << "  WP=" << wp_text << "  " << cfg.sample_text << "\n"
+        << "# sample=" << sample << "  WP=" << wp_text << "  series=" << series << "  "
+        << cfg.sample_text << "\n"
         << "# formula: " << (M.formula.empty() ? "linear interpolation of the measured points, "
                                                  "1 above Rp" : M.formula) << "\n"
         << "# flat onset Rp = " << S.flat_onset << " ; fit range dR in [" << kFitLo << ","
         << kFitHi << "]\n"
         << "# each cell's curve is divided by ITS OWN large-dR plateau (from " << plateau_path
-        << ") before fitting\n\n"
+        << ", keys h_" << ptag << "_*) before fitting\n"
+        << "# measured from " << hist_path << " (" << S.h_prefix << "zoom_vs_pt_eta_*)\n\n"
         << std::left << std::setw(22) << "pT_pair" << std::setw(16) << "eta_pair"
         << std::setw(12) << "plateau" << std::setw(10) << "npts"
         << std::setw(14) << "p0" << std::setw(14) << "p1" << std::setw(14) << "p2"
@@ -708,15 +793,19 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
         delete hi;
     }
     TNamed("provenance",
-           Form("sample=%s (%s); WP=%s; step=%d (%s); method=%s; formula=%s; Rp=%.2f; "
-                "fit range dR=[%.2f,%.2f]; stored TF1 range=[0,%.1f]; plateau source=%s; "
-                "guard=%s; producer=fit_dr_corrections.cxx",
-                sample.c_str(), cfg.is_full_sample ? "FULL" : "TEST", wp_text.c_str(), step,
+           Form("sample=%s (%s); WP=%s; series=%s; step=%d (%s); method=%s; formula=%s; Rp=%.2f; "
+                "fit range dR=[%.2f,%.2f]; stored TF1 range=[0,%.1f]; plateau source=%s (keys "
+                "h_%s_*); histograms=%s (%szoom_vs_pt_eta_*); guard=%s; "
+                "producer=fit_dr_corrections.cxx",
+                sample.c_str(), cfg.is_full_sample ? "FULL" : "TEST", wp_text.c_str(),
+                series.c_str(), step,
                 S.quantity.c_str(), method.c_str(),
                 M.formula.empty() ? "linear interpolation (TGraph knots)" : M.formula.c_str(),
-                S.flat_onset, kFitLo, kFitHi, kTF1RangeHi, plateau_path.c_str(),
+                S.flat_onset, kFitLo, kFitHi, kTF1RangeHi, plateau_path.c_str(), ptag.c_str(),
+                hist_path.c_str(), S.h_prefix.c_str(),
                 violations.empty() ? "PASS"
-                                   : (cfg.is_full_sample ? "FAIL(overridden)" : "TEST-exempt")))
+                                   : (guard_is_fatal ? "FAIL(overridden)"
+                                                     : "reported, not enforced")))
         .Write();
     fout->Close();
     fh->Close();
@@ -758,14 +847,15 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
               << "  chi2/ndf all cells: " << line_all << "\n"
               << "  chi2/ndf sane-plateau cells: " << line_sane << "\n"
               << "  wrote " << out_path << "\n"
-              << "  wrote " << mdir << "fit_report.txt\n";
+              << "  wrote " << mdir << "fit_report" << sign_ftag << ".txt\n";
 }
 
-// Convenience: every method for one (sample, WP, step).
+// Convenience: every method for one (sample, WP, step, sign).
 void fit_dr_corrections_all(const std::string& sample = "pp_full", bool use_tight_wp = true,
-                            int step = 3, bool allow_plateau_violation = false)
+                            int step = 3, bool allow_plateau_violation = false,
+                            const std::string& sign = "")
 {
     for (const std::string& m : {"powerlaw_fixedRp", "powerlaw_floatRp", "expo",
                                  "polyu_fixedRp", "interp"})
-        fit_dr_corrections(sample, use_tight_wp, step, m, allow_plateau_violation);
+        fit_dr_corrections(sample, use_tight_wp, step, m, allow_plateau_violation, sign);
 }

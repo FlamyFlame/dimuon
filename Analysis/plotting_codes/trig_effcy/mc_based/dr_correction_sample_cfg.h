@@ -133,13 +133,45 @@ inline std::string DrCorrPlateauFile(const DrCorrSample& s, bool use_tight_wp)
          + MCTrigEffPairPt::FileSuffix() + ".root";
 }
 
-// Fit output, one file per (sample, WP, step, method).
+// ---------------------------------------------------------------------------------------------
+// SIGN SERIES of the dR correction (added 2026-08-11).
+//   ""   sign-integrated -- the NOMINAL correction the analysis applies
+//   "ss" same sign        (repo convention: muon_pair_tree_sign1 = same sign)
+//   "os" opposite sign    (muon_pair_tree_sign2 = opposite sign)
+// The token enters (a) the histogram-name prefix, (b) the plateau-file key tag, (c) the fit-FILE
+// name and (d) the report-file names. It deliberately does NOT enter the keys INSIDE a fit file:
+// the sign is already in the file name, so all three series carry identical internal keys and
+// every consumer reads them the same way.
+// Canvas/report wording is always the SPELLED-OUT physics ("same sign" / "opposite sign"); bare
+// SS/OS and sign1/sign2 are forbidden on a figure (.claude/conventions/atlas-plotting.md).
+inline std::string DrCorrSignText(const std::string& sign)
+{
+    if (sign.empty())  return "";
+    if (sign == "ss")  return "same sign";
+    if (sign == "os")  return "opposite sign";
+    throw std::runtime_error("DrCorrSignText: sign must be \"\" (sign-integrated), \"ss\" or "
+                             "\"os\", got '" + sign + "'");
+}
+
+// Report-file token, e.g. fit_report.txt -> fit_report_same_sign.txt. Physically named so a
+// same-sign report can never be mistaken for -- or clobber -- the opposite-sign or the nominal one.
+inline std::string DrCorrSignFileTag(const std::string& sign)
+{
+    if (sign.empty()) return "";
+    std::string t = DrCorrSignText(sign);
+    for (char& c : t) if (c == ' ') c = '_';
+    return "_" + t;
+}
+
+// Fit output, one file per (sample, WP, step, method, sign). `sign` defaults to the
+// sign-integrated series so every pre-existing call site keeps its current file name byte-for-byte.
 inline std::string DrCorrFitFile(const DrCorrSample& s, bool use_tight_wp, int step,
-                                 const std::string& method)
+                                 const std::string& method, const std::string& sign = "")
 {
     return s.mc_dir + "dr_correction_fits_" + s.mc_label + DrCorrWpSuffix(use_tight_wp)
          + MCTrigEffPairPt::FileSuffix()
-         + "_step" + std::to_string(step) + "_" + method + ".root";
+         + "_step" + std::to_string(step) + "_" + method
+         + (sign.empty() ? "" : "_" + sign) + ".root";
 }
 
 #endif // DR_CORRECTION_SAMPLE_CFG_H
