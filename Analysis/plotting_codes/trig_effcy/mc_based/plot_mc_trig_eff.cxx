@@ -1779,27 +1779,37 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             for (const auto& R : dr_views) {
                 const std::string vdir = dir3 + R.dir + "/";
                 gSystem->mkdir(vdir.c_str(), kTRUE);
-                for (int iy = 1; iy <= npt; ++iy) {
-                    // y range shared by all panels of ONE png, from the drawn points and the
-                    // plateau lines, so the nine pair-eta panels are directly comparable.
-                    // Range from CENTRAL values only, as the fit canvases do: the last few
-                    // wide-dR bins carry errors of order 1, and including them would stretch
-                    // the axis to the 3.0 cap and flatten the structure this figure exists for.
-                    double ylo = 1., yhi = 1.;
-                    std::vector<TGraphErrors*> gs(neta + 1, nullptr);
+                // ONE y range for the WHOLE subdirectory (user, 2026-08-11): every pair-pT PNG
+                // of a given dR range shares it, not just the nine pair-eta panels inside one
+                // PNG. Flipping through the eight files then compares like with like -- with a
+                // per-file range, a cell that looks deeper than its neighbour in another file
+                // may simply be drawn on a different axis.
+                // Range from CENTRAL values only, as the fit canvases do: the last few wide-dR
+                // bins carry errors of order 1, and including them would stretch the axis to the
+                // 3.0 cap and flatten the structure this figure exists for.
+                double ylo = 1., yhi = 1.;
+                for (int iy = 1; iy <= npt; ++iy)
                     for (int iz = 1; iz <= neta; ++iz) {
-                        gs[iz] = cell_graph(R, iy, iz);
-                        for (int i = 0; i < gs[iz]->GetN(); ++i) {
-                            double x, y; gs[iz]->GetPoint(i, x, y);
+                        TGraphErrors* gp = cell_graph(R, iy, iz);
+                        for (int i = 0; i < gp->GetN(); ++i) {
+                            double x, y; gp->GetPoint(i, x, y);
                             ylo = std::min(ylo, y); yhi = std::max(yhi, y);
                         }
+                        delete gp;
                         const Plat& pc = P[iy - 1][iz - 1];
                         if (pc.nb > 0) { ylo = std::min(ylo, pc.mean); yhi = std::max(yhi, pc.mean); }
                     }
+                {
                     const double span = std::max(yhi - ylo, 0.10);
                     ylo = std::max(0.0, ylo - 0.08 * span);
                     yhi = std::min(3.0, yhi + 0.22 * span);
+                }
+                printf("  %s: shared y range [%.3f, %.3f] across all %d pair-pT canvases\n",
+                       R.dir.c_str(), ylo, yhi, npt);
 
+                for (int iy = 1; iy <= npt; ++iy) {
+                    std::vector<TGraphErrors*> gs(neta + 1, nullptr);
+                    for (int iz = 1; iz <= neta; ++iz) gs[iz] = cell_graph(R, iy, iz);
                     // TWO header rows. The PbPb headline ("Pythia8 + HIJING overlay, Pb+Pb
                     // sqrt(s_NN) = 5.36 TeV, 0-5% (2023 conditions), Tight muons, ...") is far
                     // longer than the pp one, and a single-row header put it straight through the
