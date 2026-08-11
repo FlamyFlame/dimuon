@@ -1744,33 +1744,48 @@ correction is low by 8–11 % over more than half the fit domain in the most pop
 `usable` in `fit_dr_corrections.cxx` has **no χ² term**, the cell carries `fit_ok = 1` and every
 consumer will apply it.
 
-**It is systematic, not one bad cell.** Per-cell χ²/ndf over the 79 cells (Tight, sign-integrated):
+**It is systematic, not one bad cell — and NEITHER parametric form escapes it.**
 
-| step / method | median | mean | max | cells > 5 | cells > 10 |
-|---|---|---|---|---|---|
-| Step 3 / **expo (NOMINAL)** | 1.47 | 3.16 | **48.2** | 7 | 6 |
-| Step 3 / polyu_fixedRp | 0.54 | 0.54 | **1.8** | 0 | 0 |
-| Step 4 / **expo (NOMINAL)** | 0.56 | 2.28 | **34.0** | 9 | 3 |
-| Step 4 / polyu_fixedRp | 1.02 | 1.01 | **2.8** | 0 | 0 |
+**⚠ CORRECTION (2026-08-11, caught by the plot reviewer).** An earlier version of this entry
+carried a χ²/ndf table claiming `polyu_fixedRp` had max 1.8 / 2.8 against `expo`'s 48.2 / 34.0, and
+recommended switching the nominal on that basis. **That table was wrong** — it came from a parse
+that mis-read the column on every row carrying a trailing `AT LIMIT:` annotation, so those rows
+entered as zero. The corrected numbers, taken from the reports' OWN summary lines and confirmed by
+an independent re-parse (Tight, sign-integrated, `pp_full`):
 
-(`interp` has χ²/ndf ≈ 0 by construction — it passes through every point, so it is not a
-fit-quality statement.) The independent at-limit count says the same thing: sign-integrated `expo`
-has **34/73 Step-4 cells with a parameter pinned on a limit** (mostly `p` at its upper limit 8.0),
-against **0–1 everywhere for `polyu_fixedRp`**.
+| step / method | mean | median | max | cells > 5 | cells > 10 | n |
+|---|---|---|---|---|---|---|
+| Step 3 / **expo (NOMINAL)** | 3.695 | 1.896 | 48.2 | 7 | 6 | 71 |
+| Step 3 / polyu_fixedRp | 3.645 | 1.778 | 35.3 | **10** | 7 | 71 |
+| Step 4 / **expo (NOMINAL)** | 12.465 | 2.749 | 641.1 | 13 | 6 | 72 |
+| Step 4 / polyu_fixedRp | **23.411** | 2.716 | **932.4** | **19** | 10 | 72 |
 
-This is R19's "per-cell structure" residual — the ΔR ∈ [2, 3.5] plateau window reduced it but did
-not remove it — and it is **distinct from the open R23 item**, which concerns the top pair-pT bins.
+⇒ **`polyu_fixedRp` is NOT globally better, and the earlier recommendation to adopt it is
+WITHDRAWN.** It edges `expo` on the Step-3 mean/median/max and on the worst cell (35.3 vs 48.2 —
+both still bad fits), but it is clearly WORSE on the Step-4 aggregate (mean 23.4 vs 12.5, max 932
+vs 641) and has more badly-fitted cells than `expo` in both steps. The one place its advantage is
+real and verified is the **at-limit count: 0 against `expo`'s 34/73 in Step 4** (Step 3: 0 vs 7).
+
+The finding that survives, and it is the more important one: **both parametric forms fail badly in
+a substantial minority of cells** — 7–19 cells of ~71 above χ²/ndf 5, with Step-4 tails reaching
+the hundreds — while `usable` has no χ² term, so every one of them is published with `fit_ok = 1`.
+The problem is the parametric family, not the choice between these two members of it.
+(`interp` has χ²/ndf ≈ 0 by construction — it passes through every point — so it is not a
+fit-quality statement, but it also has the fewest rejected same-sign cells, 11/72 vs 25 and 31.)
 
 **Three options, all physics decisions ⇒ USER (raised 2026-08-11):**
-1. **Make `polyu_fixedRp` the nominal.** On this evidence it is simply the better description
-   (max χ²/ndf 1.8 / 2.8 vs 48.2 / 34.0, no at-limit parameters). Cost: it rejects more same-sign
-   cells on positivity (R25), and it reverses the `440e4a0` decision.
-2. **Add a χ²/ndf screen to `usable`** so a cell like this is rejected on the canvas and for
-   consumers exactly as an unphysical `f(0) < 0` cell is. Honest, but it *removes* the correction
-   in the most populated cell rather than fixing it.
-3. **Adopt a form that can describe a dip-then-overshoot.** Most work; only worth it if the
-   overshoot is physical rather than a residual of the plateau normalization.
-**Nothing changed here** — the nominal fit function is not something to swap autonomously.
+1. **Add a χ²/ndf screen to `usable`** in `fit_dr_corrections.cxx`, so a badly-fitted cell is
+   rejected on the canvas and for consumers exactly as an unphysical `f(0) < 0` cell already is.
+   This is the change most clearly supported by the evidence, and it is method-agnostic. Cost: it
+   removes the correction in those cells rather than fixing it — including the most populated one.
+2. **Use `interp` for the per-cell corrections** (no functional-form bias by construction; also the
+   best same-sign coverage), keeping a parametric form only for the inclusive summary curve.
+   Cost: an interpolation carries no smoothing, so it propagates per-bin statistical noise.
+3. **Adopt a form that can describe a dip-then-overshoot.** Most work, and only worth it if the
+   overshoot is physical rather than a residual of the plateau normalization — which is itself
+   worth establishing first.
+**Nothing changed here** — the nominal fit function is not something to swap autonomously, and on
+the corrected numbers there is no obvious swap to make.
 
 ### D6: the gap cut lives at the RDF stage, not in the ntuple processing (2026-08-05)
 Round-8 Contract item 4 specified "a gap-cut mode in the ntuple-processing code". It was
