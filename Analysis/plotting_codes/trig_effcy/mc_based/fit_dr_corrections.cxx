@@ -599,8 +599,9 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     // sane (|plateau-1| <= the guard tolerance), and the INCLUSIVE cell -- which is the only
     // statistically meaningful curve for a 10k-event sample anyway.
     std::vector<double> chi2_all, chi2_sane;
-    int n_unusable = 0;   // cells persisted with fit_ok = 0 (fit failed / plateau outside the
-                          // guard tolerance / correction not > 0 over [0, Rp])
+    int n_unusable = 0;   // EVERY cell persisted with fit_ok = 0, by whichever route: no
+                          // measurable plateau / too few points to fit / fit failed / plateau
+                          // outside the guard tolerance / correction not > 0 over [0, Rp]
     double chi2_incl = -1.;
     // The inclusive cell has no bin in the per-cell TH2Ds, so its usability flag has to travel
     // separately -- exactly as its plateau does (h_stepN_plateau_inclusive). Without it the plot
@@ -638,6 +639,11 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
             // and the plot stage use. Fitting one wastes the fit and writes chi2/parameters
             // for a curve divided by a near-zero plateau.
             if (pnb <= 0 || !DrCorrPlateauUsable(plateau, plateau_err)) {
+                // n_unusable must count every cell PERSISTED with fit_ok = 0, not only the ones
+                // that reach the end of the loop: it is the caption of the fit_ok map, and the
+                // two early exits used to write the flag without counting it, so the report
+                // under-stated its own map (same-sign expo said 25 for 32 zeroed cells).
+                if (!inclusive) ++n_unusable;
                 if (!inclusive) hstat->SetBinContent(iy, iz, 0.);
                 rep << std::left << std::setw(22) << ptlab << std::setw(16) << etalab
                     << std::setw(12) << "--" << std::setw(10) << 0
@@ -668,6 +674,8 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
             if (k > 0) knot_rel /= k;
 
             if (k < M.nfree + 2) {
+                // Persisted with fit_ok = 0 -> counted (see the "no plateau" branch above).
+                if (!inclusive) ++n_unusable;
                 if (!inclusive) hstat->SetBinContent(iy, iz, 0.);
                 rep << std::left << std::setw(22) << ptlab << std::setw(16) << etalab
                     << std::setw(12) << Form("%.4f", plateau) << std::setw(10) << k
@@ -888,7 +896,8 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     rep << "\n# chi2/ndf, INCLUSIVE cell (the only statistically meaningful curve for a 10k-event"
            " TEST sample) = " << line_incl << "\n"
         << "# chi2/ndf over all converged cells:            " << line_all << "\n"
-        << "# cells marked UNUSABLE (h_stepN_fit_ok = 0: fit failed, |plateau-1| > "
+        << "# cells marked UNUSABLE (h_stepN_fit_ok = 0: no measurable plateau, too few points"
+           " to fit, fit failed, |plateau-1| > "
         << kPlateauGuardTol << ", or the correction is not > 0 over [0, Rp]): " << n_unusable
         << "  -- consumers MUST require fit_ok == 1\n"
         << "# chi2/ndf over cells with |plateau-1| <= " << kPlateauFlagTol << ": "

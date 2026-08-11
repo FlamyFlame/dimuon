@@ -688,13 +688,25 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
         {"dr0_2_1_0", "dr >= 0.2 && dr < 1.0"},
         {"dr1_0_inf", "dr >= 1.0"}
     };
-    // SS (sign1) + OS (sign2) are summed into the SIGN-INTEGRATED histograms: the trigger
-    // response is a per-muon detector property, blind to the pair charge product, so the
-    // sign-integrated correction remains the nominal one.
+    // SS (sign1) + OS (sign2) are summed into the SIGN-INTEGRATED histograms.
     // ROUND 9 (user request): Steps 3 and 4 ALSO book a per-sign copy of every histogram, so the
-    // same-sign and opposite-sign dR corrections can be measured and fitted independently and
-    // the charge-blindness above can be CHECKED rather than assumed. The sign-integrated
-    // histograms are unchanged -- the per-sign ones are additional, never a replacement.
+    // same-sign and opposite-sign dR corrections are measured and fitted independently and the
+    // charge dependence is CHECKED rather than assumed. The sign-integrated histograms are
+    // unchanged -- the per-sign ones are additional, never a replacement.
+    //
+    // Why the sign-integrated series is still nominal, per step:
+    //  * STEP 4 (single-leg correction eps_single(dR)): charge blindness HOLDS as far as
+    //    measured -- the trigger response is a per-muon detector property, blind to the pair
+    //    charge product, and R25 finds the two signs agreeing at every dR (f(0) = 1.047 same
+    //    sign vs 1.148 opposite sign). Summing them is then the statistically optimal choice and
+    //    the sign-integrated correction is nominal on physics grounds.
+    //  * STEP 3 (dR correction to the factorised eps1*eps2): charge blindness is REFUTED. R25
+    //    (measured this same round, docs/tracking/mc_trigger_efficiency.md) finds
+    //    same-sign/opposite-sign = 0.427 at dR = 0.025, and the same split survives in the RAW
+    //    un-inverse-weighted joint probability numraw/denom -- so it is not an artefact of the
+    //    1/(eps1 eps2) weight. The sign-integrated Step-3 series therefore remains nominal only
+    //    PENDING AN OPEN USER DECISION on whether to adopt the per-sign corrections; it is NOT
+    //    justified by charge blindness.
     // Tree -> sign convention (DimuonAlgCoreT.c:113, MuonPairMC.h:47): sign1 = SAME sign,
     // sign2 = OPPOSITE sign, split on the TRUTH charges.
     const std::vector<std::string> pair_trees = {"muon_pair_tree_sign1", "muon_pair_tree_sign2"};
@@ -1282,7 +1294,8 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
         }
         std::cout << "\n===== " << tag << " sanity: eps_dR = num/denom, sample=" << cfg.label
                   << " =====" << std::endl;
-        std::cout << "  large-dR average (dR in [1,4], weighted): "
+        std::cout << Form("  large-dR average (dR in [%g,%g], weighted): ",
+                          MCTrigEffPlateau::kLo, MCTrigEffPlateau::kHi)
                   << (sd > 0 ? sn / sd : -1) << std::endl;
         TH1D* hzn = hists1D.at("h_mc_" + base + "_dr_zoom_num");
         TH1D* hzd = hists1D.at("h_mc_" + base + "_dr_zoom_denom");
@@ -1358,7 +1371,8 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
         }
         std::cout << "\n===== Step-3 sanity: eps_dR = num/denom, sample=" << cfg.label
                   << " =====" << std::endl;
-        std::cout << "  large-dR average (dR in [1,4], weighted): "
+        std::cout << Form("  large-dR average (dR in [%g,%g], weighted): ",
+                          MCTrigEffPlateau::kLo, MCTrigEffPlateau::kHi)
                   << (sd > 0 ? sn / sd : -1) << std::endl;
         TH1D* hzn = hists1D.at("h_mc_dr_zoom_num");
         TH1D* hzd = hists1D.at("h_mc_dr_zoom_denom");

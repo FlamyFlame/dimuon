@@ -360,12 +360,28 @@ for sample in ${SAMPLES}; do
           REF_FIT="${MCDIR}dr_correction_fits_${LABEL}${WPS_SUF}${PTBIN_SUF}_step${step}_${method}$(sign_fsuf "${REF_SIGN}").root"
           NPT=$(fit_file_npt "${REF_FIT}" "${step}")
           EXP_PNG=$(( NPT + 1 ))
-          NPNG=$(find "${MDIR}${mode}/" -maxdepth 1 -name "step${step}_dr_fit_${method}_*.png" 2>/dev/null | wc -l)
+          # MAIN and RATIO canvases are counted SEPARATELY. In sign_sepr the macro writes both
+          # families into one directory, and a single glob over them summed to 2*(NPT+1) while
+          # EXP_PNG was still NPT+1 -- so the check passed with up to NPT+1 files missing,
+          # including the ENTIRE same-sign/opposite-sign ratio set, which is the one figure the
+          # sign split exists to produce. sign_intgr has a single sign and no ratio canvas.
+          NPNG=$(find "${MDIR}${mode}/" -maxdepth 1 -name "step${step}_dr_fit_${method}_*.png" \
+                      ! -name "*_ratio.png" 2>/dev/null | wc -l)
+          NPNG_RATIO=$(find "${MDIR}${mode}/" -maxdepth 1 -name "step${step}_dr_fit_${method}_*_ratio.png" \
+                            2>/dev/null | wc -l)
+          EXP_PNG_RATIO=0
+          [[ "${mode}" == "sign_sepr" ]] && EXP_PNG_RATIO="${EXP_PNG}"
           if [[ "${NPT}" -lt 1 ]]; then
             ARTEFACT_FAILURES+=("cannot read the pair-pT binning from ${REF_FIT}")
-          elif [[ "${NPNG}" -lt "${EXP_PNG}" ]]; then
-            ARTEFACT_FAILURES+=("only ${NPNG}/${EXP_PNG} PNGs in ${MDIR}${mode}/")
-            log "  !! only ${NPNG} PNGs (expected ${EXP_PNG}: ${NPT} pair-pT bins + inclusive)"
+          else
+            if [[ "${NPNG}" -lt "${EXP_PNG}" ]]; then
+              ARTEFACT_FAILURES+=("only ${NPNG}/${EXP_PNG} main PNGs in ${MDIR}${mode}/")
+              log "  !! only ${NPNG} main PNGs (expected ${EXP_PNG}: ${NPT} pair-pT bins + inclusive)"
+            fi
+            if [[ "${NPNG_RATIO}" -lt "${EXP_PNG_RATIO}" ]]; then
+              ARTEFACT_FAILURES+=("only ${NPNG_RATIO}/${EXP_PNG_RATIO} same-sign/opposite-sign ratio PNGs in ${MDIR}${mode}/")
+              log "  !! only ${NPNG_RATIO} ratio PNGs (expected ${EXP_PNG_RATIO}: ${NPT} pair-pT bins + inclusive)"
+            fi
           fi
         done
 

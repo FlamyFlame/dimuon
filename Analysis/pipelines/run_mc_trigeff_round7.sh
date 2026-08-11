@@ -130,21 +130,45 @@ for wp in $WPS; do
 
         # Step-1 2D efficiency maps (round 9). r17663 is a one-time Step-1 cross-check and
         # deliberately gets no analysis-level plot set, so it is skipped here.
+        #
+        # The exit code proves nothing (see the val_file comment above): a throwing macro still
+        # exits 0. The ARTEFACT is the pair of PNGs, and their directory is built in C++ from
+        # DrCorrSampleCfg::out_base, which this shell must NOT re-derive (the dr-correction driver
+        # records what happens when the two constructions drift). So take the paths from the
+        # macro's own two "wrote" lines and check the files they name.
         if [[ $s != noovl ]]; then
+            s2d_log="$LOG_DIR/singles2d_${s}_${wp}.log"
             ( cd "$PLOT_DIR" && root -l -b -q "plot_mc_singles_2d_effcy.cxx+(\"$s\", $cpp)" ) \
-                >"$LOG_DIR/singles2d_${s}_${wp}.log" 2>&1 || fail "2D singles plot $s/$wp failed"
+                >"$s2d_log" 2>&1 || fail "2D singles plot $s/$wp failed"
+            mapfile -t s2d_png < <(sed -n 's/^ *wrote //p' "$s2d_log")
+            [[ ${#s2d_png[@]} -eq 2 ]] \
+                || fail "2D singles plot $s/$wp wrote ${#s2d_png[@]} PNG(s), expected 2 -- see $s2d_log"
+            for f in "${s2d_png[@]}"; do val_file "$f"; done
+            for want in step1_eff_2d_pt_vs_q_eta_charge_sepr.png \
+                        step1_eff_2d_pt_vs_q_eta_charge_comb.png; do
+                printf '%s\n' "${s2d_png[@]}" | grep -q "/step1_singles_data_mc/${want}\$" \
+                    || fail "2D singles plot $s/$wp did not write $want -- see $s2d_log"
+            done
         fi
 
-        # Muon-pair count / cross-section tables (round 9). They read the Step-3 statistics
-        # histograms, which only a post-round-9 fill has -- a sample filled earlier is skipped
-        # with a note rather than failing the pipeline.
+        # Muon-pair count / cross-section tables (round 9). ONE failure mode is benign and
+        # expected during the transition: a sample filled BEFORE the round-9 STATISTICS
+        # BOOKKEEPING block simply has no statistics histograms, and the macro says so with
+        # "histogram '...' is MISSING from <file>". Every OTHER throw is a hard guard --
+        # pair-pT bin count vs MCTrigEffPairPt::NBins(), axis-edge mismatch among the six TH2Ds,
+        # an all-empty binned range -- i.e. a binning or provenance error, and downgrading those
+        # to a log line is exactly how a wrong table gets published. So: note only the MISSING
+        # case, fail on anything else.
         if [[ $s != noovl ]]; then
-            if ( cd "$PLOT_DIR" && root -l -b -q "write_mc_pair_statistics_tables.cxx+(\"$s\", $cpp)" ) \
-                    >"$LOG_DIR/stats_tables_${s}_${wp}.log" 2>&1 \
-               && grep -q "CSVs written to" "$LOG_DIR/stats_tables_${s}_${wp}.log"; then
+            st_log="$LOG_DIR/stats_tables_${s}_${wp}.log"
+            ( cd "$PLOT_DIR" && root -l -b -q "write_mc_pair_statistics_tables.cxx+(\"$s\", $cpp)" ) \
+                >"$st_log" 2>&1 || true
+            if grep -q "CSVs written to" "$st_log"; then
                 :
-            else
+            elif grep -q "is MISSING from" "$st_log"; then
                 log "  note: no statistics tables for $s/$wp (needs a post-round-9 Step-3 fill)"
+            else
+                fail "statistics tables $s/$wp failed for a reason other than a pre-round-9 fill -- see $st_log"
             fi
         fi
     done

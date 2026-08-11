@@ -1931,6 +1931,15 @@ plateau-normalized ε_ΔR ratio, which is what the ratio canvases draw, is 0.427
   does **not** remove the split ⇒ a different (pT, q·η) MIX for close same-sign vs opposite-sign
   pairs is ruled out as well.
 
+**Unexplained, noticed on the new raw-probability figure (2026-08-11) — NOT investigated.** The
+opposite-sign raw probability **dips to ≈0.44 around ΔR ≈ 0.65–0.75** while the same-sign one stays
+flat at ≈0.62, pushing P_SS/P_OS up to ≈1.4 there. A plausible candidate is the **OS-only resonance
+veto** applied at the ntuple stage (`project_os_resonance_veto`: the OS pair tree is resonance-vetoed,
+the SS tree is not), which removes a kinematic band from the opposite-sign sample only. It sits far
+above the ΔR ≲ 0.15 region this entry is about and does not affect the conclusion below, but it is
+a real asymmetry between the two samples and should be understood before the per-sign corrections
+are used. Figure: `step3_dr_correction/step3_raw_joint_trigger_probability_by_sign.png`.
+
 ⇒ **a genuine charge-dependent two-body trigger correlation**, confined to the JOINT term (Step 3
 only, nothing in Step 4's single-leg marginal) and to ΔR ≲ 0.15. That is the signature of L1
 close-by-RoI merging: same-charge muons bend the same way in the toroid, so a close same-sign pair
@@ -1950,10 +1959,24 @@ opposite-sign one) in the pp 2mu4 weight — the per-sign fits already exist, at
 and for all three fit functions. **But coverage is NOT free, and the user should know that before
 deciding:** the same-sign curve falls to f(0) ≈ 0.1–0.3, which a form pinned to 1 at large ΔR can
 only reach with a large negative amplitude, so it frequently goes unphysical and is rejected.
-Same-sign cells with `fit_ok = 0`, Tight: **25/72 (`expo`), 31/72 (`polyu_fixedRp`), 11/72
-(`interp`)** — against 12/72 for the sign-integrated nominal (Medium: 24/72, 30/72). **Only the
-interpolation currently covers the same-sign cells at the nominal rate.** *(These counts are
-corrected below — an earlier version quoted the fit reports' UNUSABLE line, which under-counted.)*
+Same-sign cells with `fit_ok = 0` (Step 3, corrected — see the ⚠ below):
+
+| WP | sign-integrated | same sign, `expo` | same sign, `polyu_fixedRp` | same sign, `interp` |
+|---|---|---|---|---|
+| Tight | **13**/72 | **32**/72 | **38**/72 | **15**/72 |
+| Medium | **12**/72 | **31**/72 | **37**/72 | **15**/72 |
+
+**Only the interpolation comes close to covering the same-sign cells at the nominal rate**, and even
+it rejects 15 against the nominal 13.
+
+**⚠ CORRECTED (2026-08-11, code review).** An earlier version of this entry quoted 25 / 31 / 11
+against 12, taken from the fit reports' `cells marked UNUSABLE` line. **That line under-counted:**
+`n_unusable` was incremented only for cells that reached the end of the fit loop, while the two
+early-exit paths (`no plateau -> cell skipped`, `too few points -> no fit`) persisted `fit_ok = 0`
+without counting it. The reported number therefore disagreed with the `h_stepN_fit_ok` map it
+described — worst in the same-sign series, i.e. exactly the one this decision is about. Fixed in
+`fit_dr_corrections.cxx`; every report now equals a direct bin count of its own map. Step 4 moved
+the same way (Tight same sign: expo 5 → 12, `polyu_fixedRp` 4 → 11, `interp` 2 → 6).
 
 **A second thing on the table before deciding — a definitional mismatch (code review, 2026-08-11).**
 The MC same-sign/opposite-sign split is on the **TRUTH** charges (`MuonPairMC.h`

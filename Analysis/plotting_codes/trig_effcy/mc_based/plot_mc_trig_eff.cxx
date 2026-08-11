@@ -1397,8 +1397,8 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
     const auto plateau = PlateauWeightedMean(r_full, kPlateauLo, kPlateauHi);
     const auto plateau_alt = PlateauWeightedMean(r_full, kPlateauSystLo, kPlateauSystHi);
     const double plateau_syst = std::fabs(plateau.first - plateau_alt.first);
-    printf("  %s plateau (weighted mean, dR in [%.0f,%.0f]): %.4f +- %.4f"
-           "   [window syst vs dR in [%.0f,%.0f] = %.4f]\n",
+    printf("  %s plateau (weighted mean, dR in [%g,%g]): %.4f +- %.4f"
+           "   [window syst vs dR in [%g,%g] = %.4f]\n",
            sample.c_str(), kPlateauLo, kPlateauHi, plateau.first, plateau.second,
            kPlateauSystLo, kPlateauSystHi, plateau_syst);
 
@@ -2029,6 +2029,160 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
     }
 
     // ================================================================
+    // RAW joint trigger probability per pair charge combination (round 9)
+    // ================================================================
+    // WHY THIS FIGURE IS PART OF THE COMMITTED CHAIN. The Step-3 dR correction splits by pair
+    // charge below dR ~ 0.15 (mc_trigger_efficiency.md R25). Two explanations competed: a genuine
+    // L1 close-by-RoI effect, or an eps_MC mis-parameterisation that SQUARES in the 1/(eps1 eps2)
+    // numerator weight for a close SAME-sign pair (q.eta_1 ~ q.eta_2) while partly CANCELLING for
+    // a close OPPOSITE-sign pair (q.eta_1 ~ -q.eta_2). The discriminator is the numerator that
+    // carries NO eps_MC at all -- the SAME trigger-passing node weighted by the plain MC weight
+    // (booked as "numraw" in FillMCTrigEffHists.cxx) -- because the second explanation lives
+    // entirely in the weight. R25's refutation of it rests on this quantity and on nothing else,
+    // so the chain must DRAW it; until it did, the result was not reproducible by running the
+    // committed code. Graceful skip for a sample filled before that numerator was booked.
+    {
+        TH1D* n_ss = GetObjOrNull<TH1D>(fmc3, "h_mc_dr_ss_zoom_numraw");
+        TH1D* d_ss = GetObjOrNull<TH1D>(fmc3, "h_mc_dr_ss_zoom_denom");
+        TH1D* n_os = GetObjOrNull<TH1D>(fmc3, "h_mc_dr_os_zoom_numraw");
+        TH1D* d_os = GetObjOrNull<TH1D>(fmc3, "h_mc_dr_os_zoom_denom");
+        if (!n_ss || !d_ss || !n_os || !d_os) {
+            std::cout << "  [Step 3] the per-sign RAW joint trigger probability is NOT available "
+                         "in this file (h_mc_dr_{ss,os}_zoom_numraw missing) -- figure skipped; "
+                         "refill this sample to produce it\n";
+        } else {
+            // P = sum_fired w / sum_all w. With a_i = w_i (no inverse weight) the round-7
+            // conditional variance A - R*B specialises to A = B = sum_fired w^2, which Sumw2
+            // already stores as the numerator's bin error squared. Feeding that to the SHARED
+            // SetConditionalRatioErrors keeps one implementation of the error formula instead of
+            // a second, drifting copy.
+            auto raw_prob = [](TH1D* n, TH1D* d, const char* nm) -> TH1D* {
+                auto* ab = (TH1D*)n->Clone(Form("%s_ab", nm));
+                ab->SetDirectory(nullptr);
+                for (int i = 1; i <= ab->GetNbinsX(); ++i) {
+                    const double e = n->GetBinError(i);
+                    ab->SetBinContent(i, e * e);
+                }
+                auto* r = (TH1D*)n->Clone(nm);
+                r->SetDirectory(nullptr);
+                r->Divide(d);
+                SetConditionalRatioErrors(r, d, ab, ab);
+                delete ab;
+                return r;
+            };
+            TH1D* p_ss = raw_prob(n_ss, d_ss, "praw_ss");
+            TH1D* p_os = raw_prob(n_os, d_os, "praw_os");
+
+            // Same-sign and opposite-sign pairs are DISJOINT samples, so the two probabilities
+            // are statistically independent and their relative errors add in quadrature.
+            auto* p_rat = (TH1D*)p_ss->Clone("praw_ss_over_os");
+            p_rat->SetDirectory(nullptr);
+            for (int i = 1; i <= p_rat->GetNbinsX(); ++i) {
+                const double a = p_ss->GetBinContent(i), b = p_os->GetBinContent(i);
+                const double ea = p_ss->GetBinError(i),  eb = p_os->GetBinError(i);
+                if (!(a > 0.) || !(b > 0.)) { p_rat->SetBinContent(i, 0.); p_rat->SetBinError(i, 0.); continue; }
+                const double v = a / b;
+                p_rat->SetBinContent(i, v);
+                p_rat->SetBinError(i, v * std::sqrt((ea / a) * (ea / a) + (eb / b) * (eb / b)));
+            }
+
+            // Points, not bin contents: an empty denominator bin is genuinely undefined and must
+            // not be drawn at zero.
+            auto to_graph = [](TH1D* h, TH1D* d) {
+                auto* g = new TGraphErrors();
+                int k = 0;
+                for (int i = 1; i <= h->GetNbinsX(); ++i) {
+                    if (d->GetBinContent(i) <= 0. || h->GetBinContent(i) <= 0.) continue;
+                    g->SetPoint(k, h->GetBinCenter(i), h->GetBinContent(i));
+                    g->SetPointError(k, 0., h->GetBinError(i));
+                    ++k;
+                }
+                return g;
+            };
+            auto* g_ss  = to_graph(p_ss,  d_ss);
+            auto* g_os  = to_graph(p_os,  d_os);
+            auto* g_rat = to_graph(p_rat, d_ss);
+
+            const double xlo = p_ss->GetXaxis()->GetXmin();
+            const double xhi = p_ss->GetXaxis()->GetXmax();
+            auto span_of = [](TGraphErrors* g, double& lo, double& hi) {
+                for (int i = 0; i < g->GetN(); ++i) {
+                    double x, y; g->GetPoint(i, x, y);
+                    lo = std::min(lo, y); hi = std::max(hi, y);
+                }
+            };
+            double ymin = 1e30, ymax = -1e30;
+            span_of(g_ss, ymin, ymax); span_of(g_os, ymin, ymax);
+            if (ymin > ymax) { ymin = 0.; ymax = 1.; }
+            double rmin = 1e30, rmax = -1e30;
+            span_of(g_rat, rmin, rmax);
+            if (rmin > rmax) { rmin = 0.; rmax = 2.; }
+            const double ys = std::max(ymax - ymin, 0.05);
+            const double rs = std::max(rmax - rmin, 0.10);
+
+            // The trigger requirement itself differs by beam: pp uses the dimuon 2mu4 decision,
+            // the Pb+Pb overlay requires each muon to pass mu4 (FillMCTrigEffHists.cxx
+            // `trig_cond`). Name the requirement the reader is actually looking at.
+            const bool cross = (sample == "overlay");
+            const std::string ytitle = cross ? "P(both #mu pass mu4 | #mu pair)"
+                                             : "P(2mu4 | #mu pair)";
+
+            TCanvas c("c_step3_raw_joint_prob", "", 900, 780);
+            TPad body("p_s3raw_body", "", 0., 0., 1., 0.93);   // headline gets its own strip
+            body.Draw();
+            body.cd();
+            auto pads = SplitPadForRatio("s3raw", false);
+
+            pads.first->cd();
+            // Reserved strip above the frame: the two series fill the pad, so an in-frame legend
+            // would sit on the data (and a white backing would only hide points).
+            gPad->SetTopMargin(0.20);
+            DrawEffFrame(xlo, xhi, "", std::max(0., ymin - 0.15 * ys),
+                         std::min(1.05, ymax + 0.15 * ys), ytitle, true);
+            g_os->SetMarkerColor(kBlue + 1); g_os->SetLineColor(kBlue + 1);
+            g_os->SetMarkerStyle(20); g_os->SetMarkerSize(1.0); g_os->SetLineWidth(2);
+            g_ss->SetMarkerColor(kRed + 1);  g_ss->SetLineColor(kRed + 1);
+            g_ss->SetMarkerStyle(21); g_ss->SetMarkerSize(1.0); g_ss->SetLineWidth(2);
+            g_os->Draw("PZ same");
+            g_ss->Draw("PZ same");
+
+            TLatex eq;
+            eq.SetNDC(); eq.SetTextFont(42); eq.SetTextSize(0.046);
+            eq.DrawLatex(0.15, 0.925,
+                         "P = #Sigma w_{MC} (pairs that fired) / #Sigma w_{MC} (all pairs)");
+            auto* leg = new TLegend(0.15, 0.815, 0.95, 0.885);
+            leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetNColumns(2);
+            leg->SetTextSize(0.044);
+            leg->AddEntry(g_ss, "same sign, P_{SS}", "lp");
+            leg->AddEntry(g_os, "opposite sign, P_{OS}", "lp");
+            leg->Draw();
+
+            pads.second->cd();
+            DrawRatioFrame(xlo, xhi, "#DeltaR", "P_{SS} / P_{OS}",
+                           std::max(0., rmin - 0.15 * rs), rmax + 0.15 * rs);
+            g_rat->SetMarkerColor(kBlack); g_rat->SetLineColor(kBlack);
+            g_rat->SetMarkerStyle(20); g_rat->SetMarkerSize(1.0); g_rat->SetLineWidth(2);
+            g_rat->Draw("PZ same");
+
+            c.cd();
+            DrawHeadline(headline, 0.12, 0.962, 0.040);
+            SaveCanvas(c, dir3 + "step3_raw_joint_trigger_probability_by_sign.png");
+
+            // The numbers behind the figure, so the charge split can be checked against values.
+            std::cout << "  RAW joint trigger probability (no eps_MC weighting), " << sample
+                      << ", " << wp_text << ":\n";
+            for (int i = 1; i <= p_ss->GetNbinsX(); ++i) {
+                if (p_ss->GetBinContent(i) <= 0. || p_os->GetBinContent(i) <= 0.) continue;
+                if (p_ss->GetBinCenter(i) > 0.5) break;
+                printf("    dR = %.3f : same sign %.4f, opposite sign %.4f, ratio %.3f\n",
+                       p_ss->GetBinCenter(i), p_ss->GetBinContent(i), p_os->GetBinContent(i),
+                       p_rat->GetBinContent(i));
+            }
+            delete p_ss; delete p_os; delete p_rat;
+        }
+    }
+
+    // ================================================================
     // Step 4 (§3.4): single-leg ΔR correction ε_single(ΔR) = inverse-weighted num / denom.
     //   Leg-level analog of Step 3. Deliverable for the PbPb UNION linear terms (overlay);
     //   for pp it is a VALIDATION only (2mu4 product absorbs the single-leg ΔR into ε_ΔR^2mu4)
@@ -2077,8 +2231,8 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             const auto plat4 = PlateauWeightedMean(r4_full, kPlateauLo, kPlateauHi);
             const auto plat4_alt = PlateauWeightedMean(r4_full, kPlateauSystLo, kPlateauSystHi);
             const double plat4_syst = std::fabs(plat4.first - plat4_alt.first);
-            printf("  %s single-leg plateau (weighted mean, dR in [%.0f,%.0f]): %.4f +- %.4f"
-                   "   [window syst vs dR in [%.0f,%.0f] = %.4f]\n",
+            printf("  %s single-leg plateau (weighted mean, dR in [%g,%g]): %.4f +- %.4f"
+                   "   [window syst vs dR in [%g,%g] = %.4f]\n",
                    sample.c_str(), kPlateauLo, kPlateauHi, plat4.first, plat4.second,
                    kPlateauSystLo, kPlateauSystHi, plat4_syst);
 
