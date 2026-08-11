@@ -73,7 +73,9 @@ const char* kOutDirBase =
     "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/single_b_analysis/muon_gap_cuts";
 const char* kDataBase = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/";
 
-const double kAxisLo = -2.4, kAxisHi = 2.4;
+// Plot axis limits. NOT retyped: set once from ParamsSet::makeEtaTrigEffcyBinning(1)
+// at the top of plot_muon_q_eta_spectrum().
+double kAxisLo = 0., kAxisHi = 0.;
 
 // ---------------------------------------------------------------------------
 // Existing gap definitions in the code base, read from their sources.
@@ -278,9 +280,14 @@ void DrawGapMarkers(const std::vector<TH1D*>& redraw) {
     gPad->RedrawAxis();
 }
 
-// Common positive log-y range for a set of histograms, so overlaid curves share one
-// frame and no point falls off-frame.
-void SetCommonLogRange(const std::vector<TH1D*>& hs) {
+// Common log-y range for a set of overlaid histograms. The floor is capped at
+// kMaxDecades below the peak: a handful of acceptance-edge bins are orders of magnitude
+// below the bulk, and letting them set the floor squeezes all the gap structure the
+// figure exists to show into the top of the frame. Returns the number of bins pushed
+// below the frame so the caller can record it on the canvas — capping an axis silently
+// is worse than capping it (atlas-plotting.md).
+const double kMaxDecades = 2.0;
+int SetCommonLogRange(const std::vector<TH1D*>& hs) {
     double lo = 1e300, hi = 0.;
     for (TH1D* h : hs)
         for (int i = 1; i <= h->GetNbinsX(); ++i) {
@@ -290,12 +297,32 @@ void SetCommonLogRange(const std::vector<TH1D*>& hs) {
                 hi = std::max(hi, c);
             }
         }
-    if (hi <= 0.) return;
+    if (hi <= 0.) return 0;
     if (lo >= 1e300) lo = hi * 1e-3;
+    const double floor_val = std::max(lo, hi * std::pow(10., -kMaxDecades));
+    int n_below = 0;
+    for (TH1D* h : hs)
+        for (int i = 1; i <= h->GetNbinsX(); ++i) {
+            const double c = h->GetBinContent(i);
+            if (c > 0 && c < floor_val) ++n_below;
+        }
     for (TH1D* h : hs) {
-        h->SetMinimum(lo / 3.);
-        h->SetMaximum(hi * 3.);
+        h->SetMinimum(floor_val / 1.5);
+        h->SetMaximum(hi * 1.5);
     }
+    return n_below;
+}
+
+// Terse record of points pushed off scale by the axis cap.
+void NoteOffScale(int n_below) {
+    if (n_below <= 0) return;
+    TLatex t;
+    t.SetNDC();
+    t.SetTextFont(42);
+    t.SetTextSize(0.033);
+    t.SetTextColor(kGray + 3);
+    t.DrawLatex(gPad->GetLeftMargin() + 0.03, gPad->GetBottomMargin() + 0.03,
+                Form("%d bins below axis range", n_below));
 }
 
 void Header(const std::string& text, const std::string& sub) {
@@ -311,6 +338,38 @@ void Header(const std::string& text, const std::string& sub) {
         t.SetTextSize(0.035);
         t.DrawLatex(gPad->GetLeftMargin(), frame_top + 0.020, sub.c_str());
     }
+}
+
+// The key for the gap-band / dashed-line overlays. Every canvas that draws the overlays
+// needs it (a reader of one figure alone cannot otherwise decode the shading). Values are
+// FORMATTED from the constants, never retyped, so the text cannot drift from the bands.
+void AddGapKeyEntries(TLegend& l) {
+    TBox* b1 = new TBox();
+    b1->SetFillColorAlpha(kRed - 7, 0.45);
+    l.AddEntry(b1, Form("rejected: |#eta| < %.3f  (all p_{T})", ParamsSet::eta_gap_cut1),
+               "f");
+    TBox* b2 = new TBox();
+    b2->SetFillColorAlpha(kOrange - 9, 0.45);
+    l.AddEntry(b2, Form("rejected: q#times#eta windows  (p_{T} < %.0f GeV only)",
+                        kGapCutPtThreshold),
+               "f");
+    TLine* ln = new TLine();
+    ln->SetLineColor(kBlue + 1);
+    ln->SetLineStyle(2);
+    l.AddEntry(ln, "kept, but no fitted trigger efficiency", "l");
+}
+
+// The gap key drawn ONCE across the top of a multi-panel canvas: in a half-width panel a
+// per-pad legend clips these strings, and the overlay applies to every panel anyway.
+void CanvasGapKey(TCanvas& c, double y1, double y2) {
+    c.cd();
+    TLegend* l = new TLegend(0.06, y1, 0.98, y2);
+    l->SetBorderSize(0);
+    l->SetFillStyle(0);
+    l->SetTextSize(0.011);
+    l->SetNColumns(3);
+    AddGapKeyEntries(*l);
+    l->Draw();
 }
 
 // Sample headline drawn ONCE across the top of the canvas. The per-panel pads are only
@@ -404,6 +463,10 @@ void SetRatioRange(const std::vector<TH1D*>& rs) {
             hi = std::max(hi, r->GetBinContent(i) + r->GetBinError(i));
         }
     if (lo > hi) return;
+    // A ratio panel must show its unity reference; without this the dashed y=1 line is
+    // clipped to the PAD (not the frame) and renders across the x-axis tick labels.
+    lo = std::min(lo, 1.0);
+    hi = std::max(hi, 1.0);
     const double pad = 0.08 * (hi - lo) + 1e-6;
     for (TH1D* r : rs) {
         r->SetMinimum(lo - pad);
@@ -455,15 +518,17 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true) {
     // ---- canonical binnings, read from their single sources of truth ----
     const std::vector<double> qeta_bins = ParamsSet::makeEtaTrigEffcyBinning(1);
     const int nb = static_cast<int>(qeta_bins.size()) - 1;
+    kAxisLo = qeta_bins.front();  // never retyped
+    kAxisHi = qeta_bins.back();
     printf("q*eta binning: %d bins over [%.2f, %.2f] "
            "(ParamsSet::makeEtaTrigEffcyBinning(1))\n",
            nb, qeta_bins.front(), qeta_bins.back());
 
     // ParamsSet::ctrbins = {0,5,10,20,30,50,80}; merge 0-5 and 5-10 into 0-10.
     std::vector<int> ctr_lo, ctr_hi;
-    for (size_t i = 0; i + 1 < ParamsSet::ctrbins.size(); ++i) {
-        if (ParamsSet::ctrbins[i] == 0 && ParamsSet::ctrbins[i + 1] == 5) continue;
-        ctr_lo.push_back(ParamsSet::ctrbins[i] == 5 ? 0 : ParamsSet::ctrbins[i]);
+    // Merge the FIRST TWO bins (by index, not by value) into one, per the request.
+    for (size_t i = 1; i + 1 < ParamsSet::ctrbins.size(); ++i) {
+        ctr_lo.push_back(i == 1 ? ParamsSet::ctrbins.front() : ParamsSet::ctrbins[i]);
         ctr_hi.push_back(ParamsSet::ctrbins[i + 1]);
     }
     const int nctr = static_cast<int>(ctr_lo.size());
@@ -529,11 +594,11 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true) {
     const std::vector<PanelSet> sets = {
         {pp_all, pp_pos, pp_neg, pp_lopt, pp_hipt,
          "pp #sqrt{s} = 5.36 TeV, 2024, HLT_2mu4",
-         "single muons of selected pairs, " + wp_lbl + " WP",
+         "single muons of selected pairs, " + wp_lbl + " WP (per muon)",
          "muon_q_eta_spectrum_pp24"},
         {pb_all, pb_pos, pb_neg, pb_lopt, pb_hipt,
          "Pb+Pb #sqrt{s_{NN}} = 5.36 TeV, 2023+2024+2025, HLT_mu4",
-         "0-80% centrality, single muons of selected pairs, " + wp_lbl + " WP",
+         "0-80% centrality, single muons of selected pairs, " + wp_lbl + " WP (per muon)",
          "muon_q_eta_spectrum_pbpb_combined"}};
 
     for (const auto& ps : sets) {
@@ -543,25 +608,17 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true) {
         MakeSinglePad(c, ps.fname + "_p1", 0.000, 0.0, 0.334, 0.90)->cd();
         gPad->SetLogy();
         StyleSpectrum(ps.all, kBlack);
-        SetCommonLogRange({ps.all});
+        const int nb1 = SetCommonLogRange({ps.all});
         ps.all->Draw("hist");
         gPad->Update();
         DrawGapMarkers({ps.all});
-        Header("all muons, with the existing gap cuts", "");
+        NoteOffScale(nb1);
+        Header("all muons; existing gap cuts overlaid", "");
         {
             TLegend l(0.23, 0.15, 0.96, 0.35);
             StyleLegend(l, 0.032);
             l.AddEntry(ps.all, "all muons", "l");
-            TBox* b1 = new TBox();
-            b1->SetFillColorAlpha(kRed - 7, 0.45);
-            l.AddEntry(b1, "rejected: |#eta| < 0.135  (all p_{T})", "f");
-            TBox* b2 = new TBox();
-            b2->SetFillColorAlpha(kOrange - 9, 0.45);
-            l.AddEntry(b2, "rejected: q#times#eta windows  (p_{T} < 6 GeV only)", "f");
-            TLine* ln = new TLine();
-            ln->SetLineColor(kBlue + 1);
-            ln->SetLineStyle(2);
-            l.AddEntry(ln, "kept, but no fitted trigger efficiency", "l");
+            AddGapKeyEntries(l);
             l.DrawClone();
         }
 
@@ -573,11 +630,12 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true) {
             StyleSpectrum(ps.pos, kRed + 1);
             StyleSpectrum(ps.neg, kAzure + 2);
             for (TH1D* h : {ps.pos, ps.neg}) { h->GetXaxis()->SetLabelSize(0.); h->GetXaxis()->SetTitleSize(0.); }
-            SetCommonLogRange({ps.pos, ps.neg});
+            const int nb2 = SetCommonLogRange({ps.pos, ps.neg});
             ps.pos->Draw("hist");
             ps.neg->Draw("hist same");
             gPad->Update();
             DrawGapMarkers({ps.pos, ps.neg});
+            NoteOffScale(nb2);
             Header("by muon charge", "");
             {
                 TLegend l(0.72, 0.16, 0.95, 0.33);
@@ -604,11 +662,12 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true) {
             StyleSpectrum(ps.lopt, kMagenta + 1);
             StyleSpectrum(ps.hipt, kGreen + 2);
             for (TH1D* h : {ps.lopt, ps.hipt}) { h->GetXaxis()->SetLabelSize(0.); h->GetXaxis()->SetTitleSize(0.); }
-            SetCommonLogRange({ps.lopt, ps.hipt});
+            const int nb3 = SetCommonLogRange({ps.lopt, ps.hipt});
             ps.hipt->Draw("hist");
             ps.lopt->Draw("hist same");
             gPad->Update();
             DrawGapMarkers({ps.hipt, ps.lopt});
+            NoteOffScale(nb3);
             Header("split at p_{T} = 6 GeV", "");
             {
                 TLegend l(0.56, 0.16, 0.95, 0.33);
@@ -636,30 +695,34 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true) {
     // Each centrality panel gets its OWN y-range so the gap structure fills the frame;
     // cross-centrality comparison is the job of the unit-area overlay + its ratio pad.
     {
-        TCanvas c("cC", "", 1400, 1700);
+        TCanvas c("cC", "", 1400, 1760);
         const int ncol = 2, nrow = 3;
+        const double kPanelTop = 0.965;  // leave a band for the canvas-level gap key
         for (int k = 0; k < nctr; ++k) {
             const int col = k % ncol, row = k / ncol;
             MakeSinglePad(c, Form("cC_p%d", k), col / double(ncol),
-                          1.0 - (row + 1) / double(nrow), (col + 1) / double(ncol),
-                          1.0 - row / double(nrow))
+                          kPanelTop * (1.0 - (row + 1) / double(nrow)),
+                          (col + 1) / double(ncol),
+                          kPanelTop * (1.0 - row / double(nrow)))
                 ->cd();
             gPad->SetLogy();
             StyleSpectrum(pb_ctr[k], kBlack);
-            SetCommonLogRange({pb_ctr[k]});
+            const int nbc = SetCommonLogRange({pb_ctr[k]});
             pb_ctr[k]->Draw("hist");
             gPad->Update();
             DrawGapMarkers({pb_ctr[k]});
+            NoteOffScale(nbc);
             Header(Form("Pb+Pb #sqrt{s_{NN}} = 5.36 TeV, 23+24+25, %d-%d%%", ctr_lo[k],
                         ctr_hi[k]),
-                   wp_lbl + " WP");
+                   wp_lbl + " WP (per muon)");
         }
 
         // last panel: unit-normalised shape overlay + ratio to the 0-10% shape
         const int k = nctr, col = k % ncol, row = k / ncol;
         auto pads = MakeRatioPads(c, "cC_shape", col / double(ncol),
-                                  1.0 - (row + 1) / double(nrow),
-                                  (col + 1) / double(ncol), 1.0 - row / double(nrow));
+                                  kPanelTop * (1.0 - (row + 1) / double(nrow)),
+                                  (col + 1) / double(ncol),
+                                  kPanelTop * (1.0 - row / double(nrow)));
         const int cols[6] = {kBlack, kRed + 1, kOrange + 7, kGreen + 2, kAzure + 2,
                              kMagenta + 1};
         std::vector<TH1D*> shapes;
@@ -675,11 +738,12 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true) {
         }
         pads.first->cd();
         gPad->SetLogy();
-        SetCommonLogRange(shapes);
+        const int nbs = SetCommonLogRange(shapes);
         for (size_t j = 0; j < shapes.size(); ++j)
             shapes[j]->Draw(j == 0 ? "hist" : "hist same");
         gPad->Update();
         DrawGapMarkers(shapes);
+        NoteOffScale(nbs);
         Header("shape vs centrality (unit area)", "");
         {
             TLegend l(0.68, 0.15, 0.95, 0.45);
@@ -701,6 +765,7 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true) {
         DrawGapMarkers(srat);
         DrawRatioUnityLine();
 
+        CanvasGapKey(c, kPanelTop + 0.002, 0.999);
         c.SaveAs((outdir + "/muon_q_eta_spectrum_pbpb_combined_ctr_binned" + wp_tag +
                   ".png")
                      .c_str());
@@ -727,17 +792,19 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true) {
         }
         pads.first->cd();
         gPad->SetLogy();
-        SetCommonLogRange({pp_s, pb_s});
+        const int nbd = SetCommonLogRange({pp_s, pb_s});
         pp_s->Draw("hist");
         pb_s->Draw("hist same");
         gPad->Update();
         DrawGapMarkers({pp_s, pb_s});
-        Header("q#times#eta shape: pp vs Pb+Pb", "unit area, " + wp_lbl + " WP");
+        NoteOffScale(nbd);
+        Header("q#times#eta shape: pp vs Pb+Pb", "unit area, " + wp_lbl + " WP (per muon)");
         {
             TLegend l(0.46, 0.15, 0.95, 0.32);
             StyleLegend(l, 0.038);
             l.AddEntry(pp_s, "pp 2024 (HLT_2mu4)", "l");
             l.AddEntry(pb_s, "Pb+Pb 23+24+25, 0-80% (HLT_mu4)", "l");
+            AddGapKeyEntries(l);
             l.DrawClone();
         }
         pads.second->cd();

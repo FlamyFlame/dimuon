@@ -21,7 +21,7 @@ HIJING overlay r17618 `_July2026`) to deliver the MC-based trigger-efficiency pr
    weighting on an unbiased (no-trigger-requirement) MC pair sample. This is the analysis
    deliverable that replaces the current dummy ε_ΔR ≡ 1 (roadmap Q4).
 
-## Autonomy Contract (round 9 — ACTIVE, opened 2026-08-10; re-read on every compaction)
+## Autonomy Contract (round 9 — **DONE 2026-08-11**; all 7 Done items met, both reviews PASS)
 
 **Origin:** user request 2026-08-10 (session "MC-based trigger efficiency followup"). Focus is
 **pp**; PbPb (HIJING overlay) code is updated for consistency only and is **NOT rerun**.
@@ -2836,200 +2836,47 @@ criteria **P1** and **P2**):
 
 ## Latest Stage
 
-**2026-08-04 (round 7, closing) — IN PROGRESS: plateau window moves to ΔR ∈ [2,4]; then the
-two reviews, wrap-up and the final summary.**
+**2026-08-11 (round 9) — DONE. Both reviews PASS. Two OPEN findings handed to the user.**
 
-*Plan, written before the work (per-step protocol). Two user decisions taken 2026-08-04
-(AskUserQuestion), both recorded in R19 below once measured:*
+Delivered, pp only (`pp_full`, both working points): the Step-1 2D (q·η, pT) single-muon efficiency
+maps; `step3_dr_correction/` restructured into three ΔR ranges × one PNG per pair-pT bin × one
+subplot per pair-η bin with the per-cell plateau drawn; same-sign / opposite-sign separated Step-3
+and Step-4 fits under `sign_intgr/` + `sign_sepr/` (with per-sign ratio canvases); and the MC
+pair-count / cross-section CSV tables on the 8-bin pair-pT axis. PbPb code updated and its plot
+stage re-run for consistency (plateaus verified bit-identical, 288/288 cells) but **not refilled**,
+so it has no per-sign histograms — every per-sign path degrades to a printed note, verified.
+**r17663 (`noovl`) untouched throughout.**
 
-- **D-P1 (crossx binning, RW/R17 blast radius) — DEFER AND BUNDLE.** Measured scope correction:
-  the ONLY crossx consumers of `ParamsSet::pair_pt_coarse_bins` are the two extended-mass
-  0–20 GeV histograms `h2d_crossx_minv_0_20_vs_pair_pt_coarse_{op,ss}_dsigma`
-  (`RDFBasedHistFillingPP.cxx:555`, `RDFBasedHistFillingPbPb.cxx:1072`) — the THStack /
-  control-region study inputs. The **nominal dσ/dp_T spectra are NOT affected** (they use
-  `pT_bins_120` / `ptb150`). R17's "crossx outputs are now stale" is therefore too broad.
-  Decision: change nothing now; those two histograms are stale and are refilled **once**,
-  on the canonical binning, together with the pp + PbPb 23/24/25 refill that the sibling
-  session's `w_trig = 0` gap bug (`pp_trig_eff_highpt_jump.md`, commit `9f97818`) will force
-  anyway. Do NOT spend a separate full refill on two auxiliary histograms.
-- **D-P2 (plateau window) — NOMINAL ΔR ∈ [2,4]; carry `|p[1,4] − p[2,4]|` as a per-cell
-  normalization systematic.** The retired [1,4] window is demonstrably not flat (constant-fit
-  χ²/ndf 3.67 Step 3 / 3.82 Step 4 inclusively, 5.6–7.1 in the worst cells), and in the flagged
-  cell pT_pair[41,120) × η_pair[−2.4,−2.0) the entire 14.2σ excess lives in ΔR ∈ [1,2].
+`/review-plot` **APPROVED at iteration 4**; `/review-analysis-code` **PASS at iteration 2**. Every
+numerical claim in R24–R26 was independently reproduced by the reviewers. Between them the two
+loops found and fixed, in the round-9 work: canvases drawing fits the analysis' own `fit_ok` screen
+rejects (32/72 same-sign Step-3 `expo` cells) with full parameters; measured points silently dropped
+above the y cap (15 hidden on the overlay, one at 11.19 in a panel that IS drawn); a legend
+overrunning the canvas; inclusive canvases squeezed into <10 % of their frame; a `#kern` with empty
+braces that shifted nothing; and the raw-probability figure drawn with the sign colours inverted.
+Pre-existing bugs fixed along the way: a missing pair-pT file-suffix in the fit plotter; a
+**`root_file_has_objects()` that was a silent no-op**, so every artefact check in that pipeline had
+been passing unconditionally; a stale PNG-count literal; and `n_unusable` disagreeing with the
+`fit_ok` map it described.
 
-*Work planned for D-P2 (§3.3 / §3.4 diagnostic 1 — the plateau is the "well-separated muons"
-reference, so it must be measured where the curve is actually flat):*
-1. `plot_mc_trig_eff.cxx`: `kPlateauLo` 1.0 → 2.0; add the retired window as
-   `kPlateauSystLo/Hi = [1,4]`, measured in parallel per cell.
-2. Plateau ROOT file gains `h_stepN_plateau_syst` (per cell `|p_nom − p_alt|`) and
-   `h_stepN_plateau_syst_inclusive`; provenance stamp records both windows. Existing keys and
-   their meaning are unchanged, so `fit_dr_corrections.cxx` consumes the new file unmodified.
-3. `fit_dr_corrections.cxx`: `plateau_guard_report.txt` reports the window systematic per cell
-   (optional read — an older plateau file without the key still works).
-4. Human-readable Table B gains the window systematic as a fourth field.
-5. Re-run the measure stage (pp_full, overlay, noovl × Tight/Medium), then
-   `run_dr_correction_fits.sh` for `expo` / `polyu_fixedRp` / `interp`.
-6. `/review-analysis-code` (this change + the ~19 open WARNINGs), `/review-plot` (first run
-   this round; must enforce the new P1/P2), `/wrap-up`, final summary.
+**★ TWO THINGS WAIT ON THE USER — neither is acted on:**
+1. **R25** — the Step-3 (both-legs) ΔR correction is **not charge-blind**: same-sign/opposite-sign
+   = 0.43 at ΔR = 0.025, dying out by ΔR ≈ 0.175, absent from Step 4. Proven to be in the RAW
+   trigger probability (`numraw`), which rules out both an ε_MC-weight artefact and a kinematic-mix
+   artefact. The sign-integrated nominal ≈ the opposite-sign curve (87 % of pairs), so it
+   under-corrects same-sign pairs by up to ×2.3 at small ΔR — and the background subtraction is
+   OS − SS. Applying the sign-dependent correction needs a crossx refill; coverage cost and the
+   TRUTH-vs-RECO charge caveat are tabulated in R25.
+2. **R26** — **both** parametric fit forms fail badly in a substantial minority of cells (7–19 of
+   ~71 above χ²/ndf 5; the densest cell reaches 48.2 with a dip-then-overshoot no monotone form can
+   represent), while `usable` has no χ² term so all of them are published with `fit_ok = 1`. Most
+   likely resolution is a χ² screen in `usable` or per-cell interpolation — **not** the
+   `polyu_fixedRp` swap an earlier, wrongly-parsed version of R26 recommended (withdrawn).
 
-**⚠ Concurrency:** a sibling session holds uncommitted edits to
-`plotting_codes/trig_effcy/mc_based/plot_dr_correction_fits.cxx` (a pair-η label-position fix)
-and to `docs/tracking/muon_gap_cuts_acceptance.md`. Neither file is edited or committed here.
-
-**2026-08-04 (round 8) — DONE (committed `9179f8b`): on-canvas TEXT & LEGEND cleanup of the
-whole MC trig-eff plot set (publication standard).**
-
-*Plan, written before the work (per-step protocol).* User request: no code-/task-specific
-tokens and no unexplained abbreviations anywhere on a canvas; every number the audience needs
-must be ON the plot (or deleted); never point the audience at a file/document. Four user
-decisions taken up-front (AskUserQuestion, 2026-08-04):
-- **D-T1** headline = physical sample identity **plus collision energy** (`#sqrt{s} = 5.36 TeV`
-  pp, `#sqrt{s_{NN}} = 5.36 TeV` Pb+Pb); production bookkeeping (`fullsim`, `(FULL sample)`)
-  dropped.
-- **D-T2** the Step-4 usage notes (`VALIDATION only -- NOT applied to pp 2mu4`, `dresses the
-  union linear terms`) are **removed** — how a result is consumed belongs in this doc.
-- **D-T3** the r17663 diagnostic set is cleaned like the deliverables, but **keeps the r-tag in
-  the headline** for traceability; series/ratio labels become physical configurations.
-- **D-T4** Step-1 keeps the conditional-probability notation (the MC and data estimators
-  genuinely differ); only `T&P` → `tag-and-probe` and the drawing asides go.
-
-Edits (text/legend only — no physics, no binning, no selection change):
-1. `dr_correction_sample_cfg.h` — `sample_text` per D-T1/D-T3 (one edit, all three macros).
-2. `plot_mc_trig_eff.cxx` — sanity variant labels (`round-7 selection`, `thr`, `vtx`/`ptm`
-   drop-note keys), Step-2 `[full_chain]`/`[L1]`/`[HLT]` tags + stage efficiency strings,
-   `inclusive singles (Step 1)`, `MC #varepsilon in weights`, `(+ fit)` / `, no fit` asides,
-   `r17663 / pp24` ratio title, Step-3/4 super-title `zoom`/`full` tags, D-T2 note removal.
-   Plus two real rendering bugs found in the audit: the Step-1-sanity headline is drawn into
-   the last sub-pad (garbled over the ratio pad) — needs `c.cd(0)`; and the Step-3/4 pair-pT
-   slice legend sits on top of the data — move into the empty lower-right quadrant.
-3. `plot_dr_correction_fits.cxx` — `[dimensionless]`, `Step %d`, `measured / plateau`.
-4. `plot_mc_trig_eff_corrected.cxx` — `SF-corrected`, `corr - orig / #sigma_{orig}`,
-   `one panel per #eta^{pair} bin` prose, leftover empty/half `DrawLatex` fragments
-   (`MC`, `#LTSF#GT #approx #varepsilon_{data}.`).
-5. New `Analysis/Utilities/MCTrigEffSanityCfg.h` — single source of truth for the sanity
-   `|#Deltap_{T}|/p_{T}^{truth}` threshold (0.10), included by BOTH `FillMCTrigEffHists.cxx`
-   and the plot macro, so the number printed on the canvas can never drift from the cut applied.
-6. Regenerate (plot stages only, no refill): `plot_mc_trig_eff` × {pp_full, overlay, noovl} ×
-   {Tight, Medium}; `run_dr_correction_fits.sh SKIP_MEASURE=1 SKIP_FIT=1`;
-   `run_mc_trigeff_corrected.sh STAGES=plots`.
-7. Fold the new criteria into `.claude/conventions/atlas-plotting.md` + `plot-reviewer.md`
-   (user asked for this explicitly) and into auto-memory; then `/review-plot`.
-
-*Verified against the Physics Procedure:* nothing here changes §3.0–§3.5 — the definitions
-drawn on the canvases are being made to MATCH §3.1/§3.3/§3.4 wording, not to differ from it.
-
-*Result (written after the work).* All MC trig-eff PNGs regenerated from the existing ROOT
-inputs (no refill, no refit). What changed on the canvases:
-
-| was | now |
-|---|---|
-| `Pythia8 pp24 fullsim (FULL sample)` | `Pythia8 pp, #sqrt{s} = 5.36 TeV (2024 conditions)` |
-| `HIJING overlay Pb+Pb23 cond., 0-5%` | `Pythia8 + HIJING overlay, Pb+Pb #sqrt{s_{NN}} = 5.36 TeV, 0-5% (2023 conditions)` |
-| `original MC (round-7 selection)` | `nominal muon selection` |
-| `+ \|#Deltap_{T}\|/p_{T}^{truth} < thr` | `+ \|#Deltap_{T}\|/p_{T}^{truth} < 0.10`, read from the shared header |
-| drop-note `inapplicable ...: vtx, ptm` | `no muon in this sample satisfies: <requirement>` |
-| `-- Step-1 sanity check`, `[L1]`/`[HLT]`/`[full_chain]`, `-- zoom #DeltaR`, `-- Step 3` | removed (legend header / axis already say it) |
-| `inclusive singles (Step 1)` | `all #DeltaR`;  `/ #DeltaR #geq 1` → `ratio to #DeltaR #geq 1` |
-| `MC direct P(mu4 \| reco #mu)`, `... T&P ...` | `MC, P(mu4 \| reconstructed #mu)`, `..., tag-and-probe P(2mu4 \| mu4 tag, #DeltaR > 0.8)` |
-| `..., MC #varepsilon in weights` | dropped; the defining equation alone is drawn |
-| `VALIDATION only -- NOT applied to pp 2mu4` | removed (D-T2) |
-| `SF-corrected MC`, `#frac{corr-orig}{#sigma_{orig}}` | `MC #times #varepsilon_{data}/#varepsilon_{MC}`, `#frac{corrected - uncorrected}{#sigma_{uncorrected}}` |
-| `r17663 / pp24` ratio title | `no overlay / pp cond.` |
-| `#DeltaR(#mu_{1},#mu_{2})  [dimensionless]`, `measured / plateau` | `#DeltaR(#mu_{1},#mu_{2})`, `measurement` |
-| leftovers: empty `DrawLatex("")`, `#LTSF#GT #approx #varepsilon_{data}.`, bare `MC` | deleted |
-| plateau printed `%.3f #pm %.3f` (→ `#pm 0.000`) | `%.4f #pm %.4f` |
-
-**Three rendering bugs found only by LOOKING at the PNGs** (invisible in the source):
-1. **Step-1-sanity headlines were drawn inside the last sub-pad** (`DrawHeadline` called after
-   the pad loop) — tiny and overlapping the ratio-pad labels on every sanity canvas. Fixed with
-   `c.cd(0)`; the 11-panel canvas additionally needs a RAW `TLatex`, because on the canvas the
-   size is a fraction of 2100 px and `DrawHeadline`'s 0.030 pad-floor renders a ~60 px headline.
-2. **Legends drawn on top of the data** (Step-3/4 pair-pT slices and pair-η panels). A white or
-   semi-opaque backing does NOT fix this — invisible against a white frame, and drawing it first
-   merely paints the points over the labels. Fixed by giving the legend its own space: a
-   reserved `SetTopMargin(0.22)` strip on the slice canvases, ONE canvas-level legend in the
-   header strip of the 9-panel canvases, and a 70 px header `TPad` on the
-   `plot_dr_correction_fits` per-pair-pT canvases (whose η labels collided with the super-title
-   and the off-scale line).
-3. **Legend entries truncated at the pad edge** once the full definitions were used → text size
-   0.026 + `SetMargin(0.12)` on the q·η legend pads.
-
-**Two structural fixes so the text cannot drift again:**
-- new `Analysis/Utilities/MCTrigEffSanityCfg.h` — `kSanityPtMatchThr = 0.10` defined ONCE and
-  included by both `FillMCTrigEffHists.cxx` (applies the cut) and `plot_mc_trig_eff.cxx`
-  (prints it), so the drawn number cannot disagree with the applied one;
-- `plot_mc_trig_eff_corrected.cxx` now takes `sample_text`/`eps_dr_text` from the shared
-  `dr_correction_sample_cfg.h` instead of its own copy — that duplicate is exactly why the
-  corrected-MC set still carried the old headline after the others were rewritten.
-
-Reviewer criteria updated as the user asked: `.claude/conventions/atlas-plotting.md` gains
-**P1a** (nothing code-/task-specific), **P1b** (no undefined abbreviation), **P1c** (every
-needed number ON the plot, read from the definition site, never retyped) + a legend-placement
-rule; `.claude/agents/plot-reviewer.md` gains checklist item **3b** (CRITICAL when the canvas
-states a wrong number or points at a file). Auto-memory
-`feedback_no_illustrative_text_on_plots` extended to match.
-
-**Stale superseded-binning PNGs DELETED (user-approved, 2026-08-04).** `step{3,4}_dr_fit/
-{expo,polyu_fixedRp,interp}[/medium]/` had held **96** `*_pairpt_8_15 / 15_27 / 27_50 / 50_150`
-files written 10:25–10:33 today, i.e. BEFORE the 10:59 refill moved the 3D onto the canonical
-`8/13.75/23.63/40.62/120` axis — so two pair-pT binnings were sitting side by side in the same
-directories (the precise hazard `.claude/CLAUDE.md` §Binnings exists to prevent), and the stale
-set also carried the pre-cleanup text. They were unregenerable (their fit ROOT files no longer
-exist, the power laws having been rejected). Removed; the only pair-pT edges left under
-`*_dr_fit/` are now `8_14 / 14_24 / 24_41 / 41_120`, 36 files each. MC trig-eff PNG count
-666 → 570. (Deleted list: session scratchpad `stale_deleted.txt`.)
+Also open and unchanged from earlier rounds: R23 (top-pair-pT plateaus 20–42 % high), the §2
+plateau-normalization before crossx, the trigger-group send, and the full data-side dp/p cascade.
 
 ---
-
-**2026-08-03 (round 7) — PAUSED mid-round at user request (tmux restart). RESUME HERE.**
-Commits `f990173`..`b3b2a99` on master; working tree clean at the pause.
-
-**DONE (committed):**
-1. **Truth fiducial default** (§3.0c'), full product set regenerated — contract item 1. ✅
-2. **ΔR-correction error bars fixed** (R12) — contract item 4 answered. ✅
-3. **§3.5 sanity check** — `n_vtx` NTP propagation (both NTP passes re-run, entry counts
-   identical: pp 19 563 129, overlay 95 389), `do_sanity` fill mode + plot block, run for
-   pp_full / overlay / noovl × both WPs. **VERDICT: the forward anomaly is REAL** — see R14
-   below. Contract item 2 ✅ except the sanity PNGs, which are not yet rendered (the plot macro
-   was locked by the parallel fit task).
-4. **Forward low-pT veto** `pT > 7 || q·η > −2` applied to Steps 2/3/4 and all fills re-run —
-   contract item 3. ✅ (plots not yet re-rendered)
-5. **`docs/systematic_uncertainties.md`** created — contract item 7. ✅
-6. **MC-closure test written as Remaining Work 8**, NOT executed — contract item 8. ✅
-7. **ΔR-correction fit stage delivered** (delegated): plateau ROOT file written by the measuring
-   step, guard, fits, plots, driver — contract item 6. Files committed EXCEPT the
-   `plot_mc_trig_eff.cxx` hunks (see below).
-
-**REMAINING — pick up in this order:**
-- **(a) MERGE `plot_mc_trig_eff.cxx`.** The fit task's version is staged at
-  `/tmp/plot_mc_trig_eff_FROM_T5.cxx`; its six hunks (which write
-  `<mc_dir>/dr_correction_plateaus_<label>[_medium_wp].root` from the Step-3/Step-4 blocks) are
-  listed verbatim in `docs/tracking/_sub_drfit_1.md`. They must be merged into the committed
-  version, which additionally carries the Step-1 sanity block. **Do not overwrite; do not
-  `git merge` the worktree branch — its base commit is stale.**
-- **(b) Re-render all plots** (`pipelines/run_mc_trigeff_round7.sh`, plot stage) so the sanity
-  PNGs and the post-veto Step-2/3/4 PNGs exist, then re-run
-  `pipelines/run_dr_correction_fits.sh` on the post-veto inputs.
-- **(c) ⚠ USER DECISION — the full-sample plateau guard FAILS.** `|plateau − 1| > 0.1` in three
-  pp_full cells, all in the top pair-pT bin (50–150 GeV): Step 3 η_pair[1.0,1.5) = 0.8597 ±
-  0.0346 (worst) and η_pair[2.0,2.4) = 1.1082 ± 0.0119; Step 4 η_pair[0.5,1.0) = 0.8954 ±
-  0.0091. The guard behaves exactly as specified (throws); what to DO about those cells is a
-  physics decision. Note these values predate the veto refill and must be re-measured first.
-- **(d) The corrected-MC study (contract item 5) was still running when the session paused** and
-  was killed by the restart. **Its work is SAFE — staged into master by `8b5d269`, do not go
-  looking in the worktree:**
-  - `docs/tracking/_sub_corrmc_1.md` — its scratch doc, the source of truth for its findings.
-    **Read this first**; do not assume the run finished.
-  - `plotting_codes/trig_effcy/mc_based/plot_mc_trig_eff_corrected.cxx` and
-    `pipelines/run_mc_trigeff_corrected.sh` — usable as-is.
-  - `docs/tracking/_staged_corrmc/{FillMCTrigEffHists.cxx,FitMCSinglesEffcy.cxx}.t4` — its
-    versions of the two SHARED files. They are master@`3be0c5a` + its corrected-mode edits, so
-    they LACK the forward veto and the vertex-comment fix. **3-way merge them; never copy over.**
-  - Its ROOT outputs already exist on disk: `mc_trig_eff_hists_pp24_full[_medium_wp]_corrected*`
-    (incl. `_step3`, `_step4` and a `_sfclosure` variant), `single_mu_effcy_pT_fit_mc_corrected*`,
-    and the six `step{1,3,4}_corrected_mc/` plot directories under both trigger-efficiency plot
-    roots. **They were produced BEFORE the forward veto landed ⇒ stale; regenerate.**
-- **(e)** Then `/review-analysis-code` + `/review-plot`, `/wrap-up`, final summary.
 
 ### R14. Sanity-check VERDICT: the forward MC anomaly is REAL (2026-08-03, round 7)
 

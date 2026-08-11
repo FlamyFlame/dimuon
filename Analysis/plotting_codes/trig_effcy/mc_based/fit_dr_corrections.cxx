@@ -352,7 +352,8 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     }
     hplat = (TH2D*)hplat->Clone(("plat_" + ptag).c_str()); hplat->SetDirectory(nullptr);
     hpnb  = (TH2D*)hpnb ->Clone(("pnb_"  + ptag).c_str()); hpnb ->SetDirectory(nullptr);
-    // Plateau-window normalization systematic |p[2,4] - p[1,4]|, added 2026-08-04. OPTIONAL:
+    // Plateau-window normalization systematic |p[kLo,kHi] - p[kSystLo,kSystHi]| (nominal
+    // [2, 3.5] against the retired [1, 4]; MCTrigEffPlateauWindow.h), added 2026-08-04. OPTIONAL:
     // a plateau file written before that date has no such key, and the fit is unaffected by it
     // (it is reported, never applied), so an older file must keep working rather than throw.
     TH2D* hpsys = (TH2D*)fpl->Get(("h_" + ptag + "_plateau_syst").c_str());
