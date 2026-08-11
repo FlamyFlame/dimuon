@@ -21,6 +21,55 @@ HIJING overlay r17618 `_July2026`) to deliver the MC-based trigger-efficiency pr
    weighting on an unbiased (no-trigger-requirement) MC pair sample. This is the analysis
    deliverable that replaces the current dummy ε_ΔR ≡ 1 (roadmap Q4).
 
+## Autonomy Contract (round 9 — ACTIVE, opened 2026-08-10; re-read on every compaction)
+
+**Origin:** user request 2026-08-10 (session "MC-based trigger efficiency followup"). Focus is
+**pp**; PbPb (HIJING overlay) code is updated for consistency only and is **NOT rerun**.
+**r17663 (`noovl`) is explicitly OUT OF SCOPE for every item** — it was a one-time Step-1
+cross-check and must not acquire Steps 2/3/4 or analysis-level decisions.
+
+- Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a plan, a
+  passing small test, or one pipeline stage is NOT a stopping point.
+- Done = all of the following, for **pp (pp_full)** at **both WPs** (Tight nominal + Medium):
+  1. **Step-1 2D efficiency plots.** MC single-muon mu4 efficiency as a **2D map in
+     (pT, q·η)**, on the SAME binning as the data single-muon mu4 efficiency 2D plots:
+     (a) one PNG with **2 subplots — μ⁺ left, μ⁻ right**; (b) one PNG with **μ⁺ and μ⁻
+     combined**. Written under `step1_singles_data_mc/`.
+  2. **Step-3 ΔR-correction distribution plots restructured.** `step3_dr_correction/` gains
+     **three subdirectories** — ΔR ∈ [0,1], [0,2], and full range — each containing **one PNG
+     per pair-pT bin**, with **one subplot per pair-η bin**, and the **plateau value of that
+     (pair pT, pair η) cell** (the very value used to normalize before the ΔR fit) drawn as a
+     **horizontal line**. The **pair-pT/pair-η-INTEGRATED Step-3 plots are removed** (user: not
+     helpful for the analysis).
+  3. **Sign-separated Step-3 and Step-4 fits.** Under **each fit-function subdirectory** of
+     `step3_dr_fit/` and `step4_dr_fit/` there are now subdirectories separating
+     **sign-integrated** (`sign_intgr/`, = today's single-marker + single-fit plots, MOVED
+     there unchanged) from **sign-separated** (`sign_sepr/`, same-sign and opposite-sign
+     markers AND their two fitted curves overlaid on each subplot; e.g. red / dark red for
+     opposite sign, blue / dark blue for same sign). The sign-integrated results are KEPT —
+     the sign-separated ones are NEW fits, measured and fitted independently, including an
+     independent plateau per sign where a plateau is needed.
+  4. **MC statistics tables** in a new directory `mc_statistics_pt8bins/` under
+     `pp_trigger_efficiency/`, on the canonical 8-bin log pair-pT binning (8→150 GeV).
+     **Three sets × 2 CSV files = 6 CSVs**, one file for raw muon-pair COUNTS and one for
+     SUMMED CROSS SECTION in each set:
+     (i) same-sign and opposite-sign as 2 columns × 8 pair-pT rows (pair-η integrated);
+     (ii) same-sign only, pair-pT as columns × pair-η as rows;
+     (iii) opposite-sign only, pair-pT as columns × pair-η as rows.
+  5. **PbPb (HIJING overlay) plotting/filling code updated for consistency** with every code
+     change above, compiled and shown to be consistent — but **NOT rerun** (user: optional).
+  6. **r17663 / `noovl` untouched** by every item above.
+  7. Reviews (`/review-plot`, and `/review-analysis-code` for the C++/RDF changes), tracking
+     doc + INDEX updated, commits, and a final summary listing **every new plot and file path
+     produced this round**.
+- Stop-and-ask = ANY physics-results-bending ambiguity (no fixed list; use judgment; when unsure
+  whether an ambiguity is blocking, treat it as blocking → AskUserQuestion).
+
+**Carried forward, NOT part of round 9's Done:** the R23 OPEN finding (top-pair-pT plateaus
+20–42 % high — ε_MC pT clamp vs coarse-q·η parameterisation, C4 investigation) remains open and
+blocks *use* of the per-cell high-pair-pT corrections; round 9 produces plots and tables on top
+of the existing round-8 measurement and does not resolve it.
+
 ## Autonomy Contract (round 8 — ACTIVE, opened 2026-08-04; re-read on every compaction)
 
 **Origin:** advisor feedback relayed by the user 2026-08-04. Three physics points, then a
