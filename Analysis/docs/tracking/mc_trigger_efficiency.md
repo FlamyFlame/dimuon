@@ -1952,7 +1952,17 @@ deciding:** the same-sign curve falls to f(0) ≈ 0.1–0.3, which a form pinned
 only reach with a large negative amplitude, so it frequently goes unphysical and is rejected.
 Same-sign cells with `fit_ok = 0`, Tight: **25/72 (`expo`), 31/72 (`polyu_fixedRp`), 11/72
 (`interp`)** — against 12/72 for the sign-integrated nominal (Medium: 24/72, 30/72). **Only the
-interpolation currently covers the same-sign cells at the nominal rate.** That changes the trigger-corrected yields and therefore
+interpolation currently covers the same-sign cells at the nominal rate.** *(These counts are
+corrected below — an earlier version quoted the fit reports' UNUSABLE line, which under-counted.)*
+
+**A second thing on the table before deciding — a definitional mismatch (code review, 2026-08-11).**
+The MC same-sign/opposite-sign split is on the **TRUTH** charges (`MuonPairMC.h`
+`truth_same_sign = (m1.truth_charge == m2.truth_charge)`, selected by `GetMuPairIsSameSign`), but
+the consumer this proposal has in mind — applying the same-sign correction to the same-sign spectrum
+in the OS − SS subtraction — classifies DATA pairs by **RECO** charge. The leakage is small
+(muon charge mis-identification is ≲0.1 %, i.e. ≲1 % relative on the 13 % same-sign sample) and it
+does not change the conclusion, but it is a real definitional difference and it should be on the
+table rather than discovered later. That changes the trigger-corrected yields and therefore
 **requires a crossx refill + full replot** (`signal_selection_change_impact.md`), which is exactly
 why it is not done here. It should be bundled with the refill the `w_trig = 0` gap bug already
 forces (`pp_trig_eff_highpt_jump.md`). **Raised to the user 2026-08-11.**
