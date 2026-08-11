@@ -1751,7 +1751,12 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                     ylo = std::max(0.0, ylo - 0.08 * span);
                     yhi = std::min(3.0, yhi + 0.22 * span);
 
-                    const int kHeaderPx = 70;
+                    // TWO header rows. The PbPb headline ("Pythia8 + HIJING overlay, Pb+Pb
+                    // sqrt(s_NN) = 5.36 TeV, 0-5% (2023 conditions), Tight muons, ...") is far
+                    // longer than the pp one, and a single-row header put it straight through the
+                    // legend. Row 1 = headline, row 2 = the definition of the plotted quantity on
+                    // the left and the legend on the right.
+                    const int kHeaderPx = 118;
                     TCanvas c(Form("c_s3d9_%s_%d", R.dir.c_str(), iy), "",
                               520 * ncol9, 470 * nrow9 + kHeaderPx);
                     const double hfrac = (double)kHeaderPx / (470.0 * nrow9 + kHeaderPx);
@@ -1759,6 +1764,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                     grid->SetFillStyle(0); grid->Draw(); grid->cd(); grid->Divide(ncol9, nrow9);
 
                     TLine* leg_line = nullptr;
+                    std::vector<std::string> offscale;   // points pushed off the top of the frame
                     for (int iz = 1; iz <= neta; ++iz) {
                         grid->cd(iz);
                         gPad->SetLeftMargin(0.14); gPad->SetBottomMargin(0.13);
@@ -1790,32 +1796,70 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                         gs[iz]->SetMarkerColor(kBlack); gs[iz]->SetLineColor(kBlack);
                         gs[iz]->Draw("PZ same");
 
-                        TLatex tl; tl.SetNDC(); tl.SetTextFont(42); tl.SetTextSize(0.048);
-                        tl.DrawLatex(0.17, 0.955, eta_label(iz).c_str());
-                        tl.SetTextSize(0.038);
-                        tl.DrawLatex(0.19, 0.855,
-                            DrCorrPlateauUsable(pc.mean, pc.err)
-                                ? Form("plateau = %.4f #pm %.4f", pc.mean, pc.err)
-                                : "plateau not measurable");
+                        // A point above the y cap must be RECORDED, never silently dropped: on the
+                        // overlay several small-dR points reach 8-11 in a panel that is otherwise
+                        // drawn normally, and those are exactly the points this figure exists to
+                        // show. Arrow in the panel + a terse canvas-level list, as the fit
+                        // canvases already do.
+                        for (int i = 0; i < gs[iz]->GetN(); ++i) {
+                            double x, y; gs[iz]->GetPoint(i, x, y);
+                            if (y <= yhi) continue;
+                            auto* ar = new TArrow(x, ylo + 0.88 * (yhi - ylo),
+                                                  x, ylo + 0.985 * (yhi - ylo), 0.008, "|>");
+                            ar->SetLineColor(kBlack); ar->SetFillColor(kBlack); ar->Draw();
+                            offscale.push_back(Form("#eta^{pair} #in [%.1f,%.1f), #DeltaR = %.2f: %.2f",
+                                                    h3fn->GetZaxis()->GetBinLowEdge(iz),
+                                                    h3fn->GetZaxis()->GetBinUpEdge(iz), x, y));
+                        }
+
+                        // Cell label AND plateau value both go ABOVE the frame, on one line. In
+                        // the overlay the points and the off-scale arrows fill the frame edge to
+                        // edge, so there is no free band inside it for an annotation -- and a
+                        // number printed over the data is worse than one printed outside it.
+                        TLatex tl; tl.SetNDC(); tl.SetTextFont(42); tl.SetTextSize(0.040);
+                        tl.DrawLatex(0.15, 0.945,
+                            (eta_label(iz) + ",   " +
+                             (DrCorrPlateauUsable(pc.mean, pc.err)
+                                  ? std::string(Form("plateau = %.4f #pm %.4f", pc.mean, pc.err))
+                                  : std::string("plateau not measurable"))).c_str());
                     }
                     c.cd(0);
-                    // No eps symbol in the title -- every y axis on the canvas already carries
-                    // it, and repeating it here is what pushed the title into the legend.
-                    TLatex st; st.SetNDC(); st.SetTextFont(42); st.SetTextSize(0.018);
-                    st.DrawLatex(0.03, 1. - 0.45 * hfrac,
+                    // Row 1: sample identity + the pair-pT cell. No eps symbol here -- every y
+                    // axis on the canvas already carries it.
+                    TLatex st; st.SetNDC(); st.SetTextFont(42); st.SetTextSize(0.016);
+                    st.DrawLatex(0.03, 1. - 0.30 * hfrac,
                         (headline + ",  " + pt_label(iy)).c_str());
+                    // Row 2 left: what the symbol on the y axis MEANS. The quantity is specific to
+                    // this analysis, so the figure has to define it; §3.3 wording.
+                    TLatex df; df.SetNDC(); df.SetTextFont(42); df.SetTextSize(0.015);
+                    df.DrawLatex(0.03, 1. - 0.66 * hfrac,
+                        (cfg.eps_dr_text + " = P(both #mu fire | #DeltaR) / "
+                         "(#varepsilon_{1}#varepsilon_{2})").c_str());
+                    if (!offscale.empty()) {
+                        // Terse record of every point the axis cap pushed off frame.
+                        std::string note = "above the axis range: " + offscale[0];
+                        for (size_t k = 1; k < offscale.size() && k < 3; ++k) note += ";  " + offscale[k];
+                        if (offscale.size() > 3)
+                            note += Form(";  ... (%d in total)", (int)offscale.size());
+                        TLatex os_; os_.SetNDC(); os_.SetTextFont(42); os_.SetTextSize(0.013);
+                        os_.SetTextColor(kGray + 3);
+                        os_.DrawLatex(0.03, 1. - 0.95 * hfrac, note.c_str());
+                    }
                     if (!gs[1]->GetN() && !leg_line) { /* nothing drawn -- no legend to make */ }
                     else {
-                        auto* lg = new TLegend(0.74, 1. - 0.92 * hfrac, 0.99, 1. - 0.06 * hfrac);
+                        auto* lg = new TLegend(0.70, 1. - 0.90 * hfrac, 0.99, 1. - 0.42 * hfrac);
                         lg->SetNColumns(1);
-                        lg->SetBorderSize(0); lg->SetFillStyle(0); lg->SetTextSize(0.016);
+                        lg->SetBorderSize(0); lg->SetFillStyle(0); lg->SetTextSize(0.015);
                         lg->AddEntry(gs[1], "measurement", "lp");
                         if (leg_line)
                             lg->AddEntry(leg_line,
                                 Form("plateau, #DeltaR #in [%g, %g]", kPlateauLo, kPlateauHi), "l");
                         lg->Draw();
                     }
-                    SaveCanvas(c, vdir + Form("step3_eps_dr_pairpt_%.0f_%.0f.png",
+                    // ONE DECIMAL: at %.0f the log edges 11.54 / 16.65 / 24.01 print as 12/17/24
+                    // while the canvas label says 11.5/16.6/24.0 -- a name that contradicts the
+                    // figure is the binning-drift the repo rule exists to prevent.
+                    SaveCanvas(c, vdir + Form("step3_eps_dr_pairpt_%.1f_%.1f.png",
                                               h3fn->GetYaxis()->GetBinLowEdge(iy),
                                               h3fn->GetYaxis()->GetBinUpEdge(iy)));
                     for (int iz = 1; iz <= neta; ++iz) delete gs[iz];

@@ -1784,9 +1784,58 @@ overlay). **Inclusive plateaus, pp_full:**
 | Step 3 (ε_ΔR^2mu4) | 0.9889 ± 0.0016 | 0.9933 ± 0.0010 | 0.9900 ± 0.0015 | 0.9935 ± 0.0010 |
 | Step 4 (ε_ΔR^single) | 0.9950 ± 0.0007 | 0.9967 ± 0.0005 | 0.9956 ± 0.0007 | 0.9970 ± 0.0005 |
 
-The two signs agree to ≈0.4 % (Step 3) and ≈0.2 % (Step 4), i.e. at the ~2σ level on the
-same-sign error — consistent with the charge-blindness the sign-integrated correction assumes,
-which until now had been asserted rather than measured.
+The **plateaus** agree to ≈0.4 % (Step 3) and ≈0.2 % (Step 4). **That is NOT the same as
+charge-blindness, and an earlier version of this entry wrongly concluded that it was.** §3.3 says
+explicitly that "the physical content is the small-ΔR shape relative to the plateau" — and that is
+exactly where the two signs part company. See R25.
+
+### R25. ★ OPEN — the Step-3 (both-legs) ΔR correction is NOT charge-blind at small ΔR
+### (2026-08-11, pp_full Tight; refutes the §3.4 "blind to the pair charge product" rationale for Step 3)
+
+Plateau-normalized inclusive measurements, read directly from the Step-3 histograms (no fit):
+
+| ΔR | same sign | opposite sign | same/opposite |
+|---|---|---|---|
+| 0.025 | 0.3570 | 0.8356 | **0.427** |
+| 0.075 | 0.4794 | 0.8020 | **0.598** |
+| 0.125 | 0.7186 | 0.8477 | 0.848 |
+| 0.175 | 0.8602 | 0.8755 | 0.982 |
+| 0.225 | 0.9422 | 0.9106 | 1.035 |
+| 0.275 | 0.9528 | 0.9419 | 1.012 |
+
+So the divergence is a **factor 2.3 in the first ΔR bin**, dies out by ΔR ≈ 0.175, and is present in
+the MEASURED points — it is not a fit artefact. The `expo` fits reproduce it: same sign
+f(0) = 0.304 (A = −0.696 ± 0.035, λ = 0.137 ± 0.006), opposite sign f(0) = 0.816
+(A = −0.184 ± 0.002, λ = 0.258 ± 0.003); Medium behaves identically.
+**Step 4 (single leg) shows nothing of the kind** — the two signs agree at every ΔR
+(f(0) 1.047 same sign vs 1.148 opposite sign). So the effect lives ONLY in the two-leg/joint term.
+
+**Consequence for the analysis (not yet acted on).** The nominal ε_ΔR is sign-INTEGRATED and is
+therefore ≈ the opposite-sign curve, because opposite-sign pairs are 87 % of the sample by count
+(2 169 349 vs 323 349). Applying it to same-sign pairs **under-corrects them by up to a factor 2.3
+below ΔR ≈ 0.15**. That is not academic: the ΔR > 0.05 cut was removed from the signal selection
+(`remove_dr_cut_signal_selection.md`), so small-ΔR pairs are in the signal region, and the
+background subtraction is **OS − SS**, i.e. the same-sign spectrum enters the result directly.
+
+**TWO COMPETING EXPLANATIONS — both plausible, NOT resolved, do not adopt either yet.**
+1. **A genuine L1 close-by-RoI effect.** In the toroid, two same-charge muons bend the same way, so
+   a close same-sign pair stays close in the muon spectrometer and its two L1 RoIs merge into one —
+   the pair then fails a 2-of-2 trigger. Opposite-charge muons bend apart and separate their RoIs.
+   This predicts exactly what is seen: an effect in the JOINT term only (Step 3) and none in the
+   single-leg marginal (Step 4), dying out once the pair is wider than an RoI.
+2. **An ε_MC parameterisation artefact in the inverse weight** (raised by the plot reviewer, and it
+   is a good point). For a close SAME-sign pair q·η₁ ≈ q·η₂, so the 1/(ε₁ε₂) weight **squares** any
+   mis-parameterisation of ε_MC in that q·η region; for a close OPPOSITE-sign pair
+   q·η₁ ≈ −q·η₂ and the two errors partly **cancel**. Given **R23 is still open on exactly that
+   question** (the top-pair-pT plateaus 20–42 % high, ε_MC pT clamp vs coarse q·η binning), this
+   cannot be waved away.
+
+**The decisive test needs a refill, not a replot:** the stored Step-3 numerator is already
+inverse-weighted, so the RAW joint trigger probability P(both fire | ΔR) per sign — which carries no
+ε_MC at all — cannot be formed from the current files. Booking a weight-only numerator alongside the
+inverse-weighted one would settle it: if the raw same-sign/opposite-sign split survives, explanation
+1 stands and the correction must become sign-dependent; if it vanishes, explanation 2 stands and the
+fix belongs in ε_MC. **STOP-AND-ASK item raised to the user 2026-08-11; not acted on here.**
 
 **(d) Statistics of the 8-bin pair-pT axis** — new macro `write_mc_pair_statistics_tables.cxx`,
 reading three TH2Ds per sign (`h_mc_paircount / pairsumw / pairsumw2 _vs_pt_eta_{ss,os}`) that
