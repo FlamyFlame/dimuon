@@ -1723,6 +1723,102 @@ reviewer correctly flagged the deviation as undocumented.
 
 ## Results & Observations
 
+### R24. Round 9 — sign-separated corrections, per-cell ΔR distributions, 2D singles map,
+### and the statistics of the 8-bin pair-pT axis (2026-08-10/11, pp only)
+
+**Scope note.** pp (`pp_full`) only; the HIJING overlay was updated for CODE consistency and its
+PLOT stage re-run (same round-8 ROOT inputs → plateaus verified bit-identical, 288/288 cells), but
+it was **not refilled**, so it has no per-sign histograms. `noovl` (r17663) was not touched at all,
+per the user's standing instruction that it is a one-time Step-1 cross-check only.
+
+**(a) Step-1: MC single-muon mu4 efficiency as a 2D (q·η, pT) map.** New macro
+`plotting_codes/trig_effcy/mc_based/plot_mc_singles_2d_effcy.cxx`. Two canvases per WP — μ⁺/μ⁻ side
+by side, and the two charges combined (numerators and denominators **added before dividing**, not
+an average of two efficiencies). The histograms already existed (`h_mc_pt_vs_q_eta_{num,denom}_*`,
+booked since round 7); no refill was needed. Binning verified **bit-identical** to the data
+tag-and-probe 2D map — 184 q·η × 41 pT bins, max |edge difference| = 0 on both axes — so the MC and
+data maps can be read against each other directly. Plateau (pT > 8 GeV, all q·η), Tight:
+μ⁺ 0.9138, μ⁻ 0.9155, combined 0.9147; Medium 0.9115 / 0.9135 / 0.9125.
+- *Confirmed not a bug:* the pT axis carries a **duplicate 8.0 GeV edge** (`pT_bins_8` ⊕ `pT_bins_60`
+  concatenated without dropping the shared edge) ⇒ one permanently empty zero-width bin. It is
+  inherited deliberately from the data construction (`RDFBasedHistFillingData.cxx`), and both sides
+  have it, so the two maps stay aligned. 1144 of 7544 cells are undefined = 24 fully-empty q·η
+  columns (the three gap-cut windows, measured at `[−1.200,−1.060)`, `[−0.060,0.060)`,
+  `[2.300,2.400)` — exactly `single_mu_fiducial_gap_cuts` with the new 2.30 forward edge) plus the
+  zero-width pT row: 40·24 + 184 = 1144 exactly. Structural, not statistical.
+
+**(b) Step-3 ΔR-correction distributions, per cell, with the plateau drawn.**
+`step3_dr_correction/` now has three subdirectories — `dr_0_to_1/`, `dr_0_to_2/`,
+`dr_full_range/` — each holding **one PNG per pair-pT bin with one subplot per pair-η bin**, the
+per-cell plateau drawn as a horizontal line (solid over ΔR ∈ [2, 3.5] where the window is on the
+canvas, dashed across the pad otherwise). Three ranges because no single x range shows both the
+small-ΔR rise (below ΔR ≈ 0.3) and the plateau window legibly. The 0–2 view concatenates the fine
+0.05-wide bins below 1 with the wide bins above, which is the SAME point set the fit canvases draw
+— the two figure sets are directly comparable, and no third ΔR binning was invented.
+- **The two pair-pT/pair-η INTEGRATED canvases were dropped** (user: not useful — the correction is
+  applied per cell, never inclusively). The inclusive plateau is still MEASURED and still written to
+  the plateau ROOT file, which the fit stage and the guard both read; only the two figures are gone.
+  Per the user's decision the pair-η-integrated pair-pT-slice canvases and the 9-panel overlays STAY.
+- Rendering fixes found only by looking at the rendered PNGs: the super-title ran into the legend
+  (the ε symbol was repeated in the title although every y axis carries it — removed, legend moved
+  right), and the y range was being set from value ± error, which let a handful of wide-ΔR bins with
+  errors of order 1 stretch every panel to the 3.0 cap and flatten the structure. Central values
+  only now, as the fit canvases already did.
+- Cells with no measurable plateau carry no plateau line and are counted in the log: pp 1/72 (Tight)
+  and 0/72 (Medium); overlay 36/72 and 38/72 — the expected cost of a 10 000-event TEST sample on 72
+  cells, reported rather than papered over.
+
+**(c) Sign-separated Step-3 and Step-4 (`FillMCTrigEffHists.cxx`, `plot_mc_trig_eff.cxx`).**
+Every Step-3/Step-4 histogram is now booked **twice**: sign-integrated (unchanged, still nominal)
+and with a per-sign prefix `h_mc_dr_{ss,os}_` / `h_mc_single_dr_{ss,os}_`, one pair tree each
+(`muon_pair_tree_sign1` = same sign, `sign2` = opposite sign — the split is on the TRUTH charges).
+Closure checked: `ss + os = integrated` exactly (denominator 6.983715 + 30.225879 = 37.209594 nb).
+Each sign gets its **own** plateau, written into the same plateau ROOT file under sign-tagged keys
+(`h_step3_ss_plateau`, `prov_step3_os`, …) — normalizing a same-sign curve by an
+opposite-sign-dominated plateau would import the very charge dependence the split exists to test.
+Samples filled before this round degrade to a printed note instead of throwing (verified on the
+overlay). **Inclusive plateaus, pp_full:**
+
+| | Tight same sign | Tight opposite sign | Medium same sign | Medium opposite sign |
+|---|---|---|---|---|
+| Step 3 (ε_ΔR^2mu4) | 0.9889 ± 0.0016 | 0.9933 ± 0.0010 | 0.9900 ± 0.0015 | 0.9935 ± 0.0010 |
+| Step 4 (ε_ΔR^single) | 0.9950 ± 0.0007 | 0.9967 ± 0.0005 | 0.9956 ± 0.0007 | 0.9970 ± 0.0005 |
+
+The two signs agree to ≈0.4 % (Step 3) and ≈0.2 % (Step 4), i.e. at the ~2σ level on the
+same-sign error — consistent with the charge-blindness the sign-integrated correction assumes,
+which until now had been asserted rather than measured.
+
+**(d) Statistics of the 8-bin pair-pT axis** — new macro `write_mc_pair_statistics_tables.cxx`,
+reading three TH2Ds per sign (`h_mc_paircount / pairsumw / pairsumw2 _vs_pt_eta_{ss,os}`) that
+`FillMCTrigEffHists.cxx` now books **on the Step-3 denominator node**, so the tables describe
+exactly the selection the ΔR correction is measured under and cannot drift from it. Six CSVs per WP
+in `mc_statistics_pt8bins[_medium]/`. **Key numbers (Tight, inside the binned range):**
+
+| pair pT [GeV] | same-sign pairs | σ_SS [nb] | opposite-sign pairs | σ_OS [nb] |
+|---|---|---|---|---|
+| 8.0–11.5 | 144 721 | 1.2349 | 776 604 | 7.9344 |
+| 11.5–16.6 | 99 382 | 0.6734 | 773 805 | 6.5984 |
+| 16.6–24.0 | 46 722 | 0.2365 | 383 473 | 2.5811 |
+| 24.0–34.6 | 19 953 | 0.06766 | 150 976 | 0.7644 |
+| 34.6–50.0 | 8 455 | 0.01699 | 55 792 | 0.18666 |
+| 50.0–72.1 | 3 199 | 0.003650 | 20 623 | 0.038618 |
+| 72.1–104.0 | 792 | 0.000580 | 6 788 | 0.007115 |
+| 104.0–150.0 | **125** | 0.0000812 | **1 288** | 0.000959 |
+| total | 323 349 | 2.2338 | 2 169 349 | 18.1117 |
+
+(Medium: SS 352 665 / 2.4626 nb, OS 2 385 330 / 20.1386 nb. Cross sections are in **nb** — AMI
+cross sections are nb, ×1000 to compare with pp data in pb⁻¹.)
+- **★ This directly sizes the R23 open question.** The top pair-pT bin holds **125 same-sign and
+  1 288 opposite-sign pairs, spread over 9 pair-η bins** — of order 10–150 pairs per cell. Per-cell
+  corrections in the top bins are statistics-starved regardless of what the R23 investigation
+  concludes about the ε_MC pT clamp vs the coarse q·η parameterisation.
+- **Also measured, and new:** only **40.77 %** of selected same-sign pairs and **66.61 %** of
+  opposite-sign pairs fall inside `pair pT ∈ [8, 150] GeV`; the rest sit **below 8 GeV** and are
+  outside the coarse axis entirely. The ΔR correction is therefore measured on well under half the
+  same-sign sample. Whether the coarse pair-pT axis should extend below 8 GeV is a binning question
+  and hence a **user decision** — flagged here, not acted on.
+
+
 ### R1. NTP discovery (2026-07-10, Explore agent + orchestrator check)
 
 **Chain:** `PythiaFullSimAnalysis` / `PythiaFullSimOverlayAnalysis`

@@ -68,6 +68,10 @@ log "════ pre-compiling ACLiC macros ════"
     || fail "FitMCSinglesEffcy compile failed"
 ( cd "$PLOT_DIR" && root -l -b -q -e '.L plot_mc_trig_eff.cxx+'   ) >"$LOG_DIR/compile_plot.log" 2>&1 \
     || fail "plot_mc_trig_eff compile failed"
+( cd "$PLOT_DIR" && root -l -b -q -e '.L plot_mc_singles_2d_effcy.cxx+' ) \
+    >"$LOG_DIR/compile_singles2d.log" 2>&1 || fail "plot_mc_singles_2d_effcy compile failed"
+( cd "$PLOT_DIR" && root -l -b -q -e '.L write_mc_pair_statistics_tables.cxx+' ) \
+    >"$LOG_DIR/compile_stats.log" 2>&1 || fail "write_mc_pair_statistics_tables compile failed"
 log "  compiled OK"
 
 # ---- 1. fill / fit chain, one background job per (sample, WP) ---------------------------
@@ -123,6 +127,26 @@ for wp in $WPS; do
         grep -q "done\." "$LOG_DIR/plot_${s}_${wp}.log" || fail "plot $s/$wp did not reach the end"
         grep -q "SANITY CHECK" "$LOG_DIR/plot_${s}_${wp}.log" \
             || fail "plot $s/$wp produced no Step-1 sanity block (missing _sanity.root?)"
+
+        # Step-1 2D efficiency maps (round 9). r17663 is a one-time Step-1 cross-check and
+        # deliberately gets no analysis-level plot set, so it is skipped here.
+        if [[ $s != noovl ]]; then
+            ( cd "$PLOT_DIR" && root -l -b -q "plot_mc_singles_2d_effcy.cxx+(\"$s\", $cpp)" ) \
+                >"$LOG_DIR/singles2d_${s}_${wp}.log" 2>&1 || fail "2D singles plot $s/$wp failed"
+        fi
+
+        # Muon-pair count / cross-section tables (round 9). They read the Step-3 statistics
+        # histograms, which only a post-round-9 fill has -- a sample filled earlier is skipped
+        # with a note rather than failing the pipeline.
+        if [[ $s != noovl ]]; then
+            if ( cd "$PLOT_DIR" && root -l -b -q "write_mc_pair_statistics_tables.cxx+(\"$s\", $cpp)" ) \
+                    >"$LOG_DIR/stats_tables_${s}_${wp}.log" 2>&1 \
+               && grep -q "CSVs written to" "$LOG_DIR/stats_tables_${s}_${wp}.log"; then
+                :
+            else
+                log "  note: no statistics tables for $s/$wp (needs a post-round-9 Step-3 fill)"
+            fi
+        fi
     done
 done
 
