@@ -634,11 +634,12 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     if (step == 3)
         def_line = quantity_tex + "(#DeltaR) #equiv P("
                  + (is_2mu4 ? "pair passes 2mu4" : "both muons mu4-matched")
-                 + " | #DeltaR) / (#varepsilon_{1}#varepsilon_{2}),   "
+                 + " |#kern[-0.45]{} #DeltaR) / (#varepsilon_{1}#varepsilon_{2}),   "
                    "#varepsilon_{i} = #varepsilon^{mu4}(p_{T}^{i}, q^{i}#eta^{i})";
     else
-        def_line = quantity_tex + "(#DeltaR) #equiv P(leg fires the full mu4 chain | leg of a "
-                   "reco pair at #DeltaR) / #varepsilon^{mu4}(p_{T}, q#eta)";
+        def_line = quantity_tex + "(#DeltaR) #equiv P(leg fires the full mu4 chain "
+                   "|#kern[-0.45]{} leg of a reco pair at #DeltaR) "
+                   "/ #varepsilon^{mu4}(p_{T}, q#eta)";
     def_line += Form(";   plateau = #LT%s#GT over #DeltaR #in [%.1f, %.1f]", quantity_tex.c_str(),
                      MCTrigEffPlateau::kLo, MCTrigEffPlateau::kHi);
 
