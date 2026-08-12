@@ -102,3 +102,7 @@
 {"event":"end","command":"review-plot","status":"stopped_by_user","iterations":2,"timestamp":"2026-08-04T18:51:32-04:00","criticals":0,"warnings":0,"slug":"muon-q-eta-gap-spectrum"}
 {"event":"start","command":"review-plot","task":"round-8 MC trig-eff plot set","slug":"round8-mc-trigeff-gapcut","timestamp":"2026-08-06T07:30:32-04:00"}
 {"event":"end","command":"review-analysis-code","status":"escalated","iterations":1,"timestamp":"2026-08-06T20:58:02-04:00","criticals":1,"warnings":14,"slug":"round8-gapcut-binning"}
+{"event":"start","command":"review-plot","task":"round-9 MC trig-eff plots: 2D singles map, dR-correction distributions, sign-separated fits, statistics CSVs","slug":"round9-sign-sepr-dr-corr","timestamp":"2026-08-11T01:50:26-04:00"}
+{"event":"end","command":"review-plot","status":"approved","iterations":4,"timestamp":"2026-08-11T04:57:16-04:00","criticals":0,"warnings":0,"slug":"round9-sign-sepr-dr-corr"}
+{"event":"start","command":"review-plot","task":"sign_sepr marker/colour scheme in plot_dr_correction_fits.cxx","slug":"sign-sepr-marker-colours","timestamp":"2026-08-12T17:58:08-04:00"}
+{"event":"end","command":"review-plot","status":"approved","iterations":2,"timestamp":"2026-08-12T18:28:46-04:00","criticals":0,"warnings":0,"slug":"sign-sepr-marker-colours"}

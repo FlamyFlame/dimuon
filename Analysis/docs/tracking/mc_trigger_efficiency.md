@@ -1852,6 +1852,72 @@ would fix it without giving up comparability — **not done, user's call.**
 **Next (NOT done, user's stated intent):** compare MC closure with and against the plateau
 correction. That is Remaining Work 8's closure test, now with two correction variants to run it on.
 
+### R28. sign_sepr marker/colour scheme + the fit-rejection standard (2026-08-12, round 10 item 3, user)
+
+**Change (plot only, no physics).** In `plot_dr_correction_fits.cxx` the sign-separated series
+were `kBlue+3` / `kRed+3` markers on `kBlue` / `kRed` curves, with SQUARES for same sign and
+CIRCLES for opposite sign — two very dark, similarly-valued hues that the user could not tell apart
+where the series overlap at small ΔR, which is the whole point of the comparison. Now
+(`plot_dr_correction_fits.cxx:280–283`):
+
+| series | markers + error-bar lines | fitted curve | marker shape (in fit domain / outside) |
+|---|---|---|---|
+| same sign | `kBlue+1` | `kBlue` | triangle 22 / 26 |
+| opposite sign | `kRed+1` | `kRed` | circle 20 / 24 |
+
+The shape now carries the sign as well as the hue (greyscale- and print-safe). `sign_intgr` is
+untouched. Regenerated with `SKIP_MEASURE=1 SKIP_FIT=1 SAMPLES=pp_full STEPS="3 4" WPS="tight medium"`
+(plot stage only — the reviewer verified from the filesystem that every `fit_report*.txt` still
+carries its 08-11 mtime, so no fit and no measurement was re-run): Step 3 = 12 `sign_sepr`
+directories (2 WP × 2 plateau modes × 3 methods) × 18 PNG = 216, plus 108 `sign_intgr` PNG;
+Step 4 = **162** PNG. No artefact failures. The pipeline still exits 2 on the **pre-existing** R23
+plateau-guard FAIL (`pp_full/tight/step3`, `pp_full/medium/step3`) — unchanged by this edit.
+
+**One defect found and fixed on the way (pre-existing, both steps).** The defining equation carried
+a negative kern around the conditioning bar, `" |#kern[-0.20]{#DeltaR})"`. A kern is an
+**absolute**-font-size nudge and this macro draws two canvas sizes, so on the 900 px INCLUSIVE
+canvases it pulled the `Δ` on top of the `|` and `P(pair passes 2mu4 |ΔR)` rendered as one garbled
+glyph, while the 1556 px 3×3 canvases looked fine — i.e. it was invisible to anyone who checked
+only the per-pair-pT figures. Both kerns removed (Step 3, and the Step-4 analog
+`"|#kern[-0.15]{leg}"`), with the reason recorded in the code so it is not "tightened" back. Step 4
+was regenerated for that reason alone. This defeated the definition of the analysis-invented symbol
+ε_ΔR on every inclusive canvas of every method since the equation was introduced.
+
+**`/review-plot` APPROVED at iteration 2** (log
+`.claude/logs/review-plot-20260812-175808-sign-sepr-marker-colours.md`). The reviewer confirmed
+separability at full resolution in the dense small-ΔR overlap, that the error bars really carry
+`c_mark` (what looks black in a downscaled view is dense blue), that filled-inside/open-outside
+survives the shape change for both series, and re-verified the sign mapping at source
+(`FillMCTrigEffHists.cxx:714-715`, `sign1 → ss_ → "same sign"`).
+
+**Left alone deliberately, flagged by the reviewer:** the sibling trees
+(`pbpb_trigger_efficiency/*`, `*_pt4bin*`, `r17663_no_overlay_*`, `*_fine_q_eta_bins_w_gap/*`) still
+carry BOTH the old kern and the old square/dark-shade markers — and they are also still on the
+pre-round-10 layout (no `plateau_corrected/` level), so they need a re-run, not a restyle.
+
+**The fit-rejection standard (user question, answered from the code).** One gate,
+`h_step3_fit_ok`; consumers must require `== 1`. A cell is rejected if ANY of:
+1. **unmeasurable cell** — `DrCorrPlateauUsable`: `plateau > 0`, `≥ 0.5`, `err < plateau`, and
+   ≥1 plateau bin (`dr_correction_sample_cfg.h:42`, `fit_dr_corrections.cxx:754`). No fit is even
+   attempted.
+2. **too few informative points** — points with non-zero error in ΔR ∈ [0,1] must be
+   `≥ nfree + 2` (`:791`).
+3. **fit did not converge** — `TFitResult::IsValid()` and `ndf > 0` (`:945`).
+4. **unphysical** — `f(ΔR) ≤ 0` anywhere on 201 samples over [0, R_p] (`:961`); a trigger
+   correction can never be ≤ 0.
+5. **plateau off unity** — `|plateau − 1| > 0.15` (`kPlateauGuardTol`, `:976`). **Dropped in
+   `no_plateau_correction`**, where nothing is divided by the plateau.
+`interp` has no parameters, so only 1, 4 (`interp_physical`) and 5 apply (`:860–875`).
+
+NOT part of the gate, and worth restating: **χ²/ndf never enters `usable`** — this is the open
+finding **R26**. Distinct from all of the above is the *sample-level* plateau guard
+(`|plateau−1| > 0.10` FLAGGED, `> 0.15` FAIL) which is fatal only for the sign-integrated series of
+a FULL production and is what makes the pipeline exit non-zero today.
+
+Current Step-3 `expo`, pp24 FULL, Tight, of 72 cells: plateau_corrected 32 rejected (same sign) /
+17 (opposite sign); no_plateau_correction 27 / 4 — i.e. criterion 5 is what rejects most same-sign
+cells in the corrected tree, exactly the pathology the no-correction variant was built for.
+
 ### D6: the gap cut lives at the RDF stage, not in the ntuple processing (2026-08-05)
 Round-8 Contract item 4 specified "a gap-cut mode in the ntuple-processing code". It was
 implemented at the RDF stage instead. **Provenance rule satisfied** (the cut is applied to
@@ -3054,6 +3120,13 @@ for the new variant.*
    fitted with `"QRNS"`. Points drawn between ΔR = 1 and 2 come from the wide-bin histogram and are
    excluded. So C is fixed by the ΔR ≈ 0.4–1.0 points; where a cell has not flattened by ΔR = 1, C
    absorbs the residual slope and becomes correlated with A — visible as a large error on C.
+
+3. **`sign_sepr` marker/colour scheme** (user, 2026-08-12). ✅ **DONE — see R28.** Same sign =
+   blue triangles (`kBlue+1` markers and error bars) on a `kBlue` fit; opposite sign = red circles
+   (`kRed+1`) on a `kRed` fit. All 12 `sign_sepr` directories regenerated (plot stage only; no fit
+   or measurement was re-run). R28 also records, in full, the fit-rejection standard the user asked
+   for — the five `fit_ok` criteria, what `interp` uses, and the fact that χ²/ndf is NOT among them
+   (R26).
 
 *Still open and unchanged:* R25 (sign-dependent correction — user decision, crossx blast radius),
 R26 (both parametric forms fail in a minority of cells), R23, and the earlier carry-overs.
