@@ -24,7 +24,10 @@
 //                measured values black with error bars, fitted function red.
 //   sign_sepr/   same cells, but the SAME-SIGN and the OPPOSITE-SIGN series and both of their
 //                fitted curves overlaid on every subplot -- blue for same sign, red for opposite
-//                sign, markers a darker shade of the curve colour. This is a physics comparison
+//                sign; the fitted curves in kBlue/kRed and the markers + error bars one shade
+//                darker (kBlue+1/kRed+1), with TRIANGLES for same sign against CIRCLES for
+//                opposite sign so the two series stay separable in print and in greyscale.
+//                This is a physics comparison
 //                (do the two charge combinations need the same dR correction?), so both series
 //                must be on the SAME axes, in the same cells, with both sets of fitted parameters
 //                readable on the panel.
@@ -266,14 +269,18 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     TFile* fh = OpenRead(hist_path);
 
     // Series definition. Sign-integrated: the historical black/blue/red scheme, unchanged.
-    // Sign-separated (user, 2026-08-11): opposite sign red curve + dark-red markers, same sign
-    // blue curve + dark-blue markers, so a curve and its measurement read as one pair.
+    // Sign-separated (user, 2026-08-11, marker/colour revision 2026-08-12): opposite sign = kRed
+    // curve with kRed+1 markers AND error bars, same sign = kBlue curve with kBlue+1 markers and
+    // error bars, so a curve and its measurement read as one pair. The MARKER SHAPE, not only the
+    // hue, carries the sign: same sign gets triangles (22 filled / 26 open), opposite sign keeps
+    // circles (20 / 24) -- the earlier kBlue+3 vs kRed+3 pair was too dark to tell apart where the
+    // two series overlap at small dR, which is exactly the region the comparison is about.
     std::vector<Series> series;
     if (!sepr) {
         series.push_back({"", "measurement", kRed + 1, kBlack, kBlue + 1, 20, 24});
     } else {
-        series.push_back({"ss", DrCorrSignText("ss"), kBlue, kBlue + 3, kBlue + 3, 21, 25});
-        series.push_back({"os", DrCorrSignText("os"), kRed,  kRed  + 3, kRed  + 3, 20, 24});
+        series.push_back({"ss", DrCorrSignText("ss"), kBlue, kBlue + 1, kBlue + 1, 22, 26});
+        series.push_back({"os", DrCorrSignText("os"), kRed,  kRed  + 1, kRed  + 1, 20, 24});
     }
 
     for (auto& s : series) {
@@ -694,16 +701,20 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     // The symbol eps_dR^{2mu4} / ^{cross} / ^{single} is invented by this analysis, so the canvas
     // has to say what it MEANS -- the drawn f(dR) is the FIT function, not the definition. Wording
     // follows the Physics Procedure (mc_trigger_efficiency.md §3.3 for Step 3, §3.4 for Step 4).
+    // NO NEGATIVE KERN around the conditioning bar: #kern[-0.20]{#DeltaR} pulled the #Delta on top
+    // of the '|' on the INCLUSIVE canvas (900 px, smaller absolute font), rendering 'P(pair passes
+    // 2mu4 |#DeltaR)' as one garbled glyph while the 1556 px 3x3 canvases looked fine. A kern is an
+    // absolute-size-dependent nudge; the canvases here come in two sizes, so it cannot be tuned once.
     const bool is_2mu4 = cfg.eps_dr_text.find("2mu4") != std::string::npos;
     std::string def_line;
     if (step == 3)
         def_line = quantity_tex + "(#DeltaR) #equiv P("
                  + (is_2mu4 ? "pair passes 2mu4" : "both muons mu4-matched")
-                 + " |#kern[-0.20]{#DeltaR}) / (#varepsilon_{1}#varepsilon_{2}),   "
+                 + " | #DeltaR) / (#varepsilon_{1}#varepsilon_{2}),   "
                    "#varepsilon_{i} = #varepsilon^{mu4}(p_{T}^{i}, q^{i}#eta^{i})";
     else
         def_line = quantity_tex + "(#DeltaR) #equiv P(leg fires the full mu4 chain "
-                   "|#kern[-0.15]{leg} of a reco pair at #DeltaR) "
+                   "| leg of a reco pair at #DeltaR) "
                    "/ #varepsilon^{mu4}(p_{T}, q#eta)";
     // The large-dR plateau is DEFINED here only where the figure uses it. In the no-correction
     // mode nothing on the canvas is divided by it, so defining it would introduce a quantity the
