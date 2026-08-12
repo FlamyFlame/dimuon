@@ -10,21 +10,35 @@ set -Eeuo pipefail
 #   Stage 1  MEASURE + PLATEAU   plot_mc_trig_eff(sample, wp)
 #              re-makes the Step-1..4 plots AND writes the per-(pair pT, pair eta) large-dR
 #              plateau to  <mc_dir>/dr_correction_plateaus_<label><wp>.root
-#   Stage 2  GUARD + FIT         fit_dr_corrections(sample, wp, step, method, sign)
+#   Stage 2  GUARD + FIT         fit_dr_corrections(sample, wp, step, method, sign, plateau mode)
 #              reads that ROOT file (never a .txt / .md), enforces |plateau-1| <= 0.15 on a FULL
-#              production, divides each cell's curve by ITS OWN plateau, fits
-#   Stage 3  PLOT + READ-BACK    plot_dr_correction_fits(sample, wp, step, method, mode)
+#              production and divides each cell's curve by ITS OWN plateau -- or, in the
+#              no-plateau-correction mode, applies neither and fits a free baseline instead
+#   Stage 3  PLOT + READ-BACK    plot_dr_correction_fits(sample, wp, step, method, mode, pmode)
 #              re-opens the fit file(s) in a SEPARATE process, draws measured vs fitted -- 1 PNG
 #              per pair-pT bin, 1 subplot per pair-eta bin -- and verifies every persisted
 #              function outside its fit range
+#
+# PLATEAU MODE. The dR fit runs in one or both of two modes, and the mode is the TOP level of
+# the plot tree so the two can never interleave:
+#   step<N>_dr_fit/plateau_corrected/<method>/<sign mode>/       NOMINAL. Each cell's curve is
+#              divided by ITS OWN large-dR plateau and the fitted shape tends to 1.
+#   step<N>_dr_fit/no_plateau_correction/<method>/<sign mode>/   The RAW efficiency is fitted with
+#              a FREE baseline C, so the baseline comes from the dR < 1 data itself and the
+#              [2, 3.5] plateau window never enters the fit. Motivation (user, 2026-08-11): the
+#              inverse-weighted dR distribution carries structure out to large dR, worst in the
+#              pair-eta bins enclosing the detector gap, so a far-away plateau may be the wrong
+#              baseline for the small-dR region the correction is about.
+# STEP 4 RUNS THE NOMINAL MODE ONLY (user: "ignore step4, focus on step3 for now"), but its output
+# still lands under plateau_corrected/ so both step trees have the same shape.
 #
 # SIGN SERIES. One run produces up to three fitted series per (sample, WP, step, method):
 # sign-integrated (the NOMINAL correction), same sign and opposite sign. They differ only in the
 # input histograms and plateaus; the guard is FATAL only for the sign-integrated series of a FULL
 # production (each sign holds a fraction of the pairs, so per-sign failures are a statistics
 # statement -- see fit_dr_corrections.cxx). The plots come out as two sets:
-#   step<N>_dr_fit/<method>/sign_intgr/   the sign-integrated series alone
-#   step<N>_dr_fit/<method>/sign_sepr/    same sign and opposite sign overlaid, both fits
+#   step<N>_dr_fit/<plateau mode>/<method>/sign_intgr/  the sign-integrated series alone
+#   step<N>_dr_fit/<plateau mode>/<method>/sign_sepr/   same sign and opposite sign overlaid
 # A sample without per-sign inputs (e.g. an overlay filled before the per-sign booking) skips its
 # sign-separated series with a printed note and still produces the sign-integrated one.
 #
@@ -43,6 +57,9 @@ set -Eeuo pipefail
 #   SKIP_MEASURE=1                   reuse the existing plateau ROOT files (skip Stage 1)
 #   SKIP_FIT=1                       reuse the existing fit ROOT files (skip Stage 2) -- for
 #                                    re-making only the plots / the read-back audit
+#   PLATEAU_MODES="corr nocorr"      plateau modes to run. `corr` = the nominal, plateau-
+#                                    normalized fit; `nocorr` = the raw fit with a free baseline.
+#                                    Step 4 is restricted to `corr` whatever this says.
 #   SIGNS="intgr ss os"              sign series to fit. `intgr` = sign-integrated (nominal),
 #                                    `ss` = same sign, `os` = opposite sign. The sign_sepr plot
 #                                    set needs BOTH ss and os.
@@ -68,6 +85,10 @@ METHODS="${METHODS:-expo polyu_fixedRp interp}"
 # Sign series. "intgr" is the token for the sign-INTEGRATED (nominal) series; the C++ takes "" for
 # it, so it is translated in sign_arg() below and never typed as an empty word here.
 SIGNS="${SIGNS:-intgr ss os}"
+# Plateau modes. The C++ takes "corr" / "nocorr"; the directory names and the fit-file token are
+# built by dr_correction_sample_cfg.h (DrCorrPlateauModeDir / DrCorrPlateauModeTag) and only
+# MIRRORED here, in pmode_dir/pmode_fsuf below, for the artefact checks.
+PLATEAU_MODES="${PLATEAU_MODES:-corr nocorr}"
 # The pair-pT-binning token must MIRROR Utilities/MCTrigEffPairPtBinning.h: the C++ writes
 # ..._pt4bin... when MCTRIGEFF_PAIRPT_4BIN is set, and these artefact checks look the files up by
 # name. When they disagreed, a perfectly good 4-bin run was reported as 18 "missing fit files".
@@ -141,6 +162,23 @@ sign_rtag() {
     *) fail "unknown sign '$1' (use intgr | ss | os)" ;;
   esac
 }
+# Plateau-mode -> plot subdirectory / fit-file token. MUST mirror dr_correction_sample_cfg.h:
+# the C++ builds the real names, this shell only VALIDATES what it wrote.
+pmode_dir() {
+  case "$1" in
+    corr)   echo "plateau_corrected/" ;;
+    nocorr) echo "no_plateau_correction/" ;;
+    *) fail "unknown plateau mode '$1' (use corr | nocorr)" ;;
+  esac
+}
+pmode_fsuf() { [[ "$1" == "nocorr" ]] && echo "_nocorr" || echo ""; }
+pmode_text() {
+  case "$1" in
+    corr)   echo "plateau-corrected" ;;
+    nocorr) echo "no plateau correction" ;;
+  esac
+}
+
 sign_text() {
   case "$1" in
     intgr) echo "sign-integrated" ;;
@@ -256,8 +294,25 @@ for sample in ${SAMPLES}; do
 
     for step in ${STEPS}; do
 
+      # STEP 4 IS NOMINAL-MODE ONLY (user: ignore step 4 for now). Its plots still land under
+      # plateau_corrected/ so the step-3 and step-4 trees have the same shape.
+      STEP_PMODES="${PLATEAU_MODES}"
+      if [[ "${step}" == "4" ]]; then
+        if [[ " ${PLATEAU_MODES} " == *" corr "* ]]; then
+          STEP_PMODES="corr"
+        else
+          log "step 4 runs the plateau-corrected mode only -- not in PLATEAU_MODES, skipping it"
+          continue
+        fi
+      fi
+
+      for pmode in ${STEP_PMODES}; do
+        PMDIR="$(pmode_dir  "${pmode}")"
+        PMSUF="$(pmode_fsuf "${pmode}")"
+        PMTEXT="$(pmode_text "${pmode}")"
+
       for method in ${METHODS}; do
-        MDIR="${PLOTBASE}step${step}_dr_fit/${PTBIN_DIR}${method}/${WPD}"
+        MDIR="${PLOTBASE}step${step}_dr_fit/${PMDIR}${PTBIN_DIR}${method}/${WPD}"
 
         # ---- Stage 2: guard + fit, once per SIGN SERIES ----------------------------------------
         FITTED_SIGNS=""      # signs whose fit file came out complete -> drive Stage 3
@@ -266,17 +321,17 @@ for sample in ${SAMPLES}; do
           SFSUF="$(sign_fsuf "${sgn}")"
           SRTAG="$(sign_rtag "${sgn}")"
           STEXT="$(sign_text "${sgn}")"
-          FIT_FILE="${MCDIR}dr_correction_fits_${LABEL}${WPS_SUF}${PTBIN_SUF}_step${step}_${method}${SFSUF}.root"
-          GUARD_REPORT="${PLOTBASE}step${step}_dr_fit/${PTBIN_DIR}${WPD}plateau_guard_report${SRTAG}.txt"
-          FITLOG="/tmp/drfit_fit_${sample}_${wp}_${step}_${method}_${sgn}.log"
+          FIT_FILE="${MCDIR}dr_correction_fits_${LABEL}${WPS_SUF}${PTBIN_SUF}_step${step}_${method}${SFSUF}${PMSUF}.root"
+          GUARD_REPORT="${PLOTBASE}step${step}_dr_fit/${PMDIR}${PTBIN_DIR}${WPD}plateau_guard_report${SRTAG}.txt"
+          FITLOG="/tmp/drfit_fit_${sample}_${wp}_${step}_${method}_${sgn}_${pmode}.log"
 
           if [[ "${SKIP_FIT}" == "1" ]]; then
-            log "Stage 2 [${sample}/${wp}/step${step}/${method}/${STEXT}]: SKIPPED (SKIP_FIT=1)"
+            log "Stage 2 [${sample}/${wp}/step${step}/${method}/${STEXT}/${PMTEXT}]: SKIPPED (SKIP_FIT=1)"
           else
             # deleted first so the artefact check below cannot pass on a stale file
             rm -f "${FIT_FILE}"
-            log "Stage 2 [${sample}/${wp}/step${step}/${method}/${STEXT}]: guard + fit"
-            root -l -b -q "fit_dr_corrections.cxx+(\"${sample}\", ${WPF}, ${step}, \"${method}\", false, \"${SARG}\")" \
+            log "Stage 2 [${sample}/${wp}/step${step}/${method}/${STEXT}/${PMTEXT}]: guard + fit"
+            root -l -b -q "fit_dr_corrections.cxx+(\"${sample}\", ${WPF}, ${step}, \"${method}\", false, \"${SARG}\", \"${pmode}\")" \
               > "${FITLOG}" 2>&1 || true
           fi
 
@@ -285,8 +340,11 @@ for sample in ${SAMPLES}; do
           # deliverable, while one charge combination carries a fraction of the statistics, so a
           # per-sign violation is a statistics statement and is reported, not enforced
           # (fit_dr_corrections.cxx writes "reported, not enforced" as its verdict there).
+          # The fatal tier exists only where the plateau is actually APPLIED. In the
+          # no-plateau-correction mode nothing is normalized by it, so it cannot disqualify
+          # anything and its report's verdict says "not applicable".
           GUARD_FAILED=0
-          if [[ "${sgn}" == "intgr" && -f "${GUARD_REPORT}" ]] \
+          if [[ "${sgn}" == "intgr" && "${pmode}" == "corr" && -f "${GUARD_REPORT}" ]] \
              && grep -q "^verdict: FAIL" "${GUARD_REPORT}"; then
             GUARD_FAILED=1
           fi
@@ -305,7 +363,7 @@ for sample in ${SAMPLES}; do
             fi
             if [[ "${SKIP_FIT}" != "1" ]]; then
               log "  re-running WITH the explicit override so the plots exist for human inspection"
-              root -l -b -q "fit_dr_corrections.cxx+(\"${sample}\", ${WPF}, ${step}, \"${method}\", true, \"${SARG}\")" \
+              root -l -b -q "fit_dr_corrections.cxx+(\"${sample}\", ${WPF}, ${step}, \"${method}\", true, \"${SARG}\", \"${pmode}\")" \
                 > "${FITLOG}" 2>&1 || true
             fi
           fi
@@ -330,9 +388,19 @@ for sample in ${SAMPLES}; do
           # 10k-overlay cells whose plateau is not measurable at all (see fit_report.txt).
           if [[ -f "${MDIR}fit_report${SRTAG}.txt" ]]; then
             INCL=$(grep "INCLUSIVE cell" "${MDIR}fit_report${SRTAG}.txt" | tail -1 | awk -F'= ' '{print $NF}')
-            SANE=$(grep "cells with |plateau-1|" "${MDIR}fit_report${SRTAG}.txt" | tail -1 | sed 's/.*<= [0-9.]*: //')
-            CHI2_SUMMARY+=("$(printf '%-10s %-7s step%-2s %-16s %-16s incl chi2/ndf = %-8s | sane cells: %s' \
-                              "${sample}" "${wp}" "${step}" "${method}" "${STEXT}" "${INCL:-n/a}" "${SANE:-n/a}")")
+            # The "sane plateau" subset only exists in the nominal mode (a curve divided by a bad
+            # plateau has an inflated chi2). Nothing is divided in the other mode, so the honest
+            # comparator there is the statistic over ALL converged cells.
+            if [[ "${pmode}" == "corr" ]]; then
+              SANE=$(grep "cells with |plateau-1|" "${MDIR}fit_report${SRTAG}.txt" | tail -1 | sed 's/.*<= [0-9.]*: //')
+            else
+              SANE=$(grep "over all converged cells" "${MDIR}fit_report${SRTAG}.txt" | tail -1 | sed 's/.*converged cells: *//')
+            fi
+            # ... and the label must say WHICH subset the number is, or the two modes' summary
+            # lines look comparable when they are not.
+            SUBSET="sane-plateau cells"; [[ "${pmode}" == "corr" ]] || SUBSET="all fitted cells"
+            CHI2_SUMMARY+=("$(printf '%-10s %-7s step%-2s %-22s %-16s %-16s incl chi2/ndf = %-8s | %s: %s' \
+                              "${sample}" "${wp}" "${step}" "${PMTEXT}" "${method}" "${STEXT}" "${INCL:-n/a}" "${SUBSET}" "${SANE:-n/a}")")
           fi
         done
 
@@ -349,15 +417,15 @@ for sample in ${SAMPLES}; do
         fi
 
         for mode in ${MODES}; do
-          log "Stage 3 [${sample}/${wp}/step${step}/${method}/${mode}]: plots + read-back check"
-          root -l -b -q "plot_dr_correction_fits.cxx+(\"${sample}\", ${WPF}, ${step}, \"${method}\", \"${mode}\")" \
-            > "/tmp/drfit_plot_${sample}_${wp}_${step}_${method}_${mode}.log" 2>&1 || true
+          log "Stage 3 [${sample}/${wp}/step${step}/${method}/${mode}/${PMTEXT}]: plots + read-back check"
+          root -l -b -q "plot_dr_correction_fits.cxx+(\"${sample}\", ${WPF}, ${step}, \"${method}\", \"${mode}\", \"${pmode}\")" \
+            > "/tmp/drfit_plot_${sample}_${wp}_${step}_${method}_${mode}_${pmode}.log" 2>&1 || true
 
           # Expected PNG count DERIVED from the binning in the fit file: one canvas per pair-pT
           # bin plus the inclusive one. Never a literal -- the literal 5 that used to be here was
           # the 4-bin variant's count and passed silently on the 8-bin nominal, which makes 9.
           REF_SIGN="intgr"; [[ "${mode}" == "sign_sepr" ]] && REF_SIGN="ss"
-          REF_FIT="${MCDIR}dr_correction_fits_${LABEL}${WPS_SUF}${PTBIN_SUF}_step${step}_${method}$(sign_fsuf "${REF_SIGN}").root"
+          REF_FIT="${MCDIR}dr_correction_fits_${LABEL}${WPS_SUF}${PTBIN_SUF}_step${step}_${method}$(sign_fsuf "${REF_SIGN}")${PMSUF}.root"
           NPT=$(fit_file_npt "${REF_FIT}" "${step}")
           EXP_PNG=$(( NPT + 1 ))
           # MAIN and RATIO canvases are counted SEPARATELY. In sign_sepr the macro writes both
@@ -403,6 +471,7 @@ for sample in ${SAMPLES}; do
           fi
         done
       done
+      done
     done
   done
 done
@@ -414,7 +483,9 @@ echo
 if [[ ${#GUARD_FAILURES[@]} -gt 0 ]]; then
   echo "PLATEAU GUARD FAILED (FULL samples) for: ${GUARD_FAILURES[*]}"
   echo "  -> the fits above were produced with the explicit override; they are for inspection."
-  echo "     See <plot base>/step<N>_dr_fit/plateau_guard_report.txt for the offending cells."
+  echo "     See <plot base>/step<N>_dr_fit/plateau_corrected/plateau_guard_report.txt for the"
+  echo "     offending cells (the no-plateau-correction mode has no fatal tier -- it applies no"
+  echo "     plateau, so |plateau-1| cannot disqualify a cell there)."
 fi
 if [[ ${#ARTEFACT_FAILURES[@]} -gt 0 ]]; then
   echo "ARTEFACT FAILURES:"

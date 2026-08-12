@@ -163,15 +163,50 @@ inline std::string DrCorrSignFileTag(const std::string& sign)
     return "_" + t;
 }
 
-// Fit output, one file per (sample, WP, step, method, sign). `sign` defaults to the
-// sign-integrated series so every pre-existing call site keeps its current file name byte-for-byte.
+// ---------------------------------------------------------------------------------------------
+// PLATEAU MODE of the dR fit (added 2026-08-11).
+//   "corr"   (or "") -- NOMINAL: each cell's eps_dR is divided by ITS OWN large-dR plateau
+//                       (dR in [2, 3.5], MCTrigEffPlateauWindow.h) and the normalized curve is
+//                       fitted with a shape that tends to 1.
+//   "nocorr"         -- the RAW, un-normalized eps_dR is fitted with a FREE additive baseline C.
+//                       The baseline is then determined by the dR < 1 data itself and the
+//                       [2, 3.5] window NEVER enters the fit. Motivation (user, 2026-08-11): the
+//                       inverse-weighted dR distribution shows structure out to large dR --
+//                       worst in the pair-eta bins that enclose the detector gap -- so a plateau
+//                       measured far away may not be the right baseline for the small-dR region
+//                       the correction is actually about.
+// The mode is the TOP level of the plot tree (step<N>_dr_fit/<mode dir>/<method>/<sign mode>/)
+// and a token in the fit file name; both are built HERE so the fit stage, the plot stage and the
+// driver script cannot disagree about them.
+inline std::string DrCorrPlateauModeDir(const std::string& mode)
+{
+    if (mode.empty() || mode == "corr") return "plateau_corrected/";
+    if (mode == "nocorr")               return "no_plateau_correction/";
+    throw std::runtime_error("DrCorrPlateauModeDir: plateau mode must be \"corr\" or \"nocorr\", "
+                             "got '" + mode + "'");
+}
+
+// File-name token. EMPTY for the nominal mode, so every pre-existing fit file keeps its current
+// name byte-for-byte and no consumer of the nominal correction has to be touched.
+inline std::string DrCorrPlateauModeTag(const std::string& mode)
+{
+    if (mode.empty() || mode == "corr") return "";
+    if (mode == "nocorr")               return "_nocorr";
+    throw std::runtime_error("DrCorrPlateauModeTag: plateau mode must be \"corr\" or \"nocorr\", "
+                             "got '" + mode + "'");
+}
+
+// Fit output, one file per (sample, WP, step, method, sign, plateau mode). `sign` and
+// `plateau_mode` both default to the NOMINAL choice so every pre-existing call site keeps its
+// current file name byte-for-byte.
 inline std::string DrCorrFitFile(const DrCorrSample& s, bool use_tight_wp, int step,
-                                 const std::string& method, const std::string& sign = "")
+                                 const std::string& method, const std::string& sign = "",
+                                 const std::string& plateau_mode = "")
 {
     return s.mc_dir + "dr_correction_fits_" + s.mc_label + DrCorrWpSuffix(use_tight_wp)
          + MCTrigEffPairPt::FileSuffix()
          + "_step" + std::to_string(step) + "_" + method
-         + (sign.empty() ? "" : "_" + sign) + ".root";
+         + (sign.empty() ? "" : "_" + sign) + DrCorrPlateauModeTag(plateau_mode) + ".root";
 }
 
 #endif // DR_CORRECTION_SAMPLE_CFG_H

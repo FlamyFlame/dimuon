@@ -28,6 +28,19 @@
 //                (do the two charge combinations need the same dR correction?), so both series
 //                must be on the SAME axes, in the same cells, with both sets of fitted parameters
 //                readable on the panel.
+// TWO PLATEAU MODES (user, 2026-08-11) -- the TOP level of the tree, above <method>/:
+//   plateau_corrected/       NOMINAL. Every measured point is divided by its cell's large-dR
+//                            plateau and the fitted shape tends to 1; the y axis is the RATIO
+//                            of the efficiency to that plateau.
+//   no_plateau_correction/   The RAW, un-normalized efficiency, fitted with a FREE baseline C.
+//                            The y axis is the efficiency itself -- deliberately a DIFFERENT
+//                            axis title, because it is a different quantity, and the [2, 3.5]
+//                            plateau is not used anywhere on these canvases. C is drawn per
+//                            panel with the other fitted parameters (for the interpolation,
+//                            which has no fitted parameters, the pinned flat-branch value is
+//                            drawn instead), so the reader can see what the fit decided the
+//                            baseline is in every cell.
+//
 // Only PNGs live in those two subdirectories; the text artefacts (fit_report*.txt from the fit
 // stage, readback_check*.txt from this one) stay directly in <method>/ where they have always been.
 //
@@ -86,22 +99,27 @@ constexpr double kYcapLo  = 0.0;
 //   polyu_fixedRp                       : 1+u^2*([0]+[1]*u+[2]*u^2), u = max(0,1-x/[3])
 //   interp                              : linear interpolation, 1 above Rp
 // Returns {formula line, definition line} -- the second may be empty.
-inline std::pair<std::string, std::string> MethodFormulaTex(const std::string& method)
+// `nocorr` = the no-plateau-correction mode, where the leading 1 of every shape is the FREE
+// fitted baseline C (fit_dr_corrections.cxx). The equation MUST show it: it is the parameter that
+// replaces the external normalization, and it is drawn per panel with the other parameters.
+inline std::pair<std::string, std::string> MethodFormulaTex(const std::string& method,
+                                                            bool nocorr = false)
 {
+    const std::string base = nocorr ? "C" : "1";
     if (method == "powerlaw_fixedRp" || method == "powerlaw_floatRp")
-        return {"f(#DeltaR) = 1 + A #upoint u^{n}",
+        return {"f(#DeltaR) = " + base + " + A #upoint u^{n}",
                 "u #equiv max(0, 1 - #DeltaR/R_{p})"};
     if (method == "expo")
-        return {"f(#DeltaR) = 1 + A #upoint exp[-(#DeltaR/#lambda)^{p}]", ""};
+        return {"f(#DeltaR) = " + base + " + A #upoint exp[-(#DeltaR/#lambda)^{p}]", ""};
     if (method == "polyu_fixedRp")
-        return {"f(#DeltaR) = 1 + u^{2}(a_{2} + a_{3}u + a_{4}u^{2})",
+        return {"f(#DeltaR) = " + base + " + u^{2}(a_{2} + a_{3}u + a_{4}u^{2})",
                 "u #equiv max(0, 1 - #DeltaR/R_{p})"};
     if (method == "interp")
         // P2: a real piecewise DEFINITION with R_p defined and its value drawn, matching the
         // treatment polyu_fixedRp already gets. "linear interpolation of the points" is prose,
         // not an equation, and R_p was never defined anywhere on the canvas.
         return {"f(#DeltaR) = piecewise-linear through the measured points for #DeltaR < R_{p}",
-                "f(#DeltaR) = 1 for #DeltaR #geq R_{p}"};
+                "f(#DeltaR) = " + base + " for #DeltaR #geq R_{p}"};
     return {"", ""};
 }
 
@@ -201,9 +219,12 @@ bool ParAtLimit(TF1* f, int ip)
 // method : powerlaw_fixedRp | powerlaw_floatRp | expo | polyu_fixedRp | interp
 // mode   : "sign_intgr" (the nominal, sign-integrated correction) | "sign_sepr" (same sign and
 //          opposite sign overlaid). One output subdirectory each, under <method>/.
+// plateau_mode : "corr" (NOMINAL: points divided by the plateau) | "nocorr" (raw efficiency,
+//          free fitted baseline C). One output subdirectory each, ABOVE <method>/.
 void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tight_wp = true,
                              int step = 3, const std::string& method = "polyu_fixedRp",
-                             const std::string& mode = "sign_intgr")
+                             const std::string& mode = "sign_intgr",
+                             const std::string& plateau_mode = "corr")
 {
     gROOT->SetBatch(kTRUE);
     gStyle->SetOptStat(0);
@@ -213,6 +234,9 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         throw std::runtime_error("plot_dr_correction_fits: mode must be 'sign_intgr' or "
                                  "'sign_sepr', got '" + mode + "'");
     const bool sepr = (mode == "sign_sepr");
+    // THE mode switch. DrCorrPlateauModeDir validates the token (it throws on anything else).
+    const bool        nocorr   = (plateau_mode == "nocorr");
+    const std::string mode_dir = DrCorrPlateauModeDir(plateau_mode);
 
     const DrCorrSample cfg = GetDrCorrSample(sample, use_tight_wp);
     const std::string wp_suf  = DrCorrWpSuffix(use_tight_wp);
@@ -228,7 +252,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     // out_base carries the variant tag (mc_based / _medium / _pt4bin / _pt4bin_medium); the mode
     // subdirectory separates the sign-integrated plots from the sign-separated ones so the two
     // can never interleave under identical file names. Text reports stay in <method>/ (rdir).
-    const std::string rdir = cfg.out_base + tag + "_dr_fit/" + method + "/" + wp_dir;
+    const std::string rdir = cfg.out_base + tag + "_dr_fit/" + mode_dir + method + "/" + wp_dir;
     const std::string odir = rdir + mode + "/";
     // The directory is created only once the series have actually loaded -- a mode that is
     // skipped for lack of per-sign inputs must not leave an empty directory behind.
@@ -254,7 +278,8 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
 
     for (auto& s : series) {
         const std::string pref    = h_base + (s.sign.empty() ? "" : s.sign + "_");
-        const std::string fitpath = DrCorrFitFile(cfg, use_tight_wp, step, method, s.sign);
+        const std::string fitpath = DrCorrFitFile(cfg, use_tight_wp, step, method, s.sign,
+                                                 plateau_mode);
         // GRACEFUL SKIP (non-fatal, by design): a production filled before the per-sign booking
         // has neither the per-sign histograms nor the per-sign fits. Say so and return, so the
         // sign-integrated plots of that same sample keep being produced.
@@ -336,7 +361,19 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         return s.hok->GetBinContent(iy, iz) > 0.5 ? 1 : 0;
     };
 
-    // ---- the measured, plateau-normalized points of one cell (fit input + plateau check) -----
+    // The DIVISOR applied to every measured point: the cell's plateau in the nominal mode, and
+    // exactly 1 in the no-correction mode, where the baseline is a fitted parameter instead.
+    auto norm_of = [&](const Series& s, int iy, int iz) {
+        return nocorr ? 1.0 : plateau_of(s, iy, iz);
+    };
+    // The unmeasurable-plateau screen is a statement about a DIVISOR. Nothing is divided in the
+    // no-correction mode, so no cell is screened out there -- it is drawn and fitted from its
+    // own dR < 1 points, which is the entire point of the mode.
+    auto cell_drawable = [&](const Series& s, int iy, int iz) {
+        return nocorr || DrCorrPlateauUsable(plateau_of(s, iy, iz), plateau_err_of(s, iy, iz));
+    };
+
+    // ---- the measured points of one cell (fit input + large-dR check region) ------------------
     auto cell_points = [&](const Series& s, int iy, int iz, double plateau) -> TGraphErrors* {
         auto* g = new TGraphErrors();
         int k = 0;
@@ -374,7 +411,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     // forced the annotation block down into the data; the convention's answer to "no quadrant is
     // free" is to give the text its own space, so the shared part moves to the header strip and
     // each panel keeps only its own numbers.
-    const auto ftex = MethodFormulaTex(method);
+    const auto ftex = MethodFormulaTex(method, nocorr);
     std::vector<int> free_par;             // drawn per cell, per series
     std::vector<std::string> fixed_line;   // drawn once, shared
     bool has_tf1 = false;
@@ -415,11 +452,18 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     constexpr double kFrLo = 0.14, kFrHi = 0.90;   // frame edges in pad NDC (margins set below)
     constexpr double kAnnTop = 0.88;
     const double kColStep = sepr ? 0.040 : 0.045;
-    const int n_ann_rows = std::max((sepr ? 1 : 0) + 1 + (int)free_par.size() + (has_tf1 ? 1 : 0),
+    // rows per column: series name (sign_sepr only) + the plateau line (nominal mode only) +
+    // one per free parameter + chi2/ndf -- or, for the interpolation in the no-correction mode,
+    // the single pinned-baseline line that takes the place of both.
+    const int n_ann_rows = std::max((sepr ? 1 : 0) + (nocorr ? 0 : 1) + (int)free_par.size()
+                                    + (has_tf1 ? 1 : (nocorr ? 1 : 0)),
                                     (sepr ? 1 : 0) + 2);
     const double h_ann   = n_ann_rows * kColStep + 0.02;
     const double ann_bot = kAnnTop - h_ann;
-    const double xcol[2] = {sepr ? 0.42 : 0.55, 0.71};
+    // Single-series canvases start their one column further left in the no-correction mode: the
+    // baseline line ("C (fitted plateau) = 0.979 #pm 0.011") is the longest string any panel
+    // carries and at 0.55 its tail was clipped by the frame edge. The nominal mode keeps 0.55.
+    const double xcol[2] = {sepr ? 0.42 : (nocorr ? 0.45 : 0.55), 0.71};
     const double ann_x_lo  = xcol[0] - 0.02;
     const double dR_ann_lo = (ann_x_lo - kFrLo) / (kFrHi - kFrLo) * kXhi;   // dR under the text
 
@@ -435,7 +479,9 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         gPad->SetTopMargin(0.10);
         TH1* fr = gPad->DrawFrame(0.0, ylo, kXhi, yhi);
         fr->GetXaxis()->SetTitle("#DeltaR(#mu_{1}, #mu_{2})");
-        fr->GetYaxis()->SetTitle((quantity_tex + " / plateau").c_str());
+        // The two modes plot DIFFERENT quantities and must never carry the same axis title:
+        // a ratio to the large-dR plateau, or the efficiency ratio itself.
+        fr->GetYaxis()->SetTitle((nocorr ? quantity_tex : quantity_tex + " / plateau").c_str());
         fr->GetXaxis()->SetTitleSize(0.050);
         fr->GetYaxis()->SetTitleSize(0.050);
         fr->GetXaxis()->SetLabelSize(0.042);
@@ -472,8 +518,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         std::vector<bool> usable(series.size(), false);
         int n_usable = 0;
         for (size_t is = 0; is < series.size(); ++is) {
-            usable[is] = DrCorrPlateauUsable(plateau_of(series[is], iy, iz),
-                                             plateau_err_of(series[is], iy, iz));
+            usable[is] = cell_drawable(series[is], iy, iz);
             if (usable[is]) ++n_usable;
         }
         if (n_usable == 0) {
@@ -513,7 +558,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
             if (!usable[is]) continue;
             const Series& s = series[is];
             const std::string sign_id = sepr ? s.legend + ", " : std::string();
-            auto* g = cell_points(s, iy, iz, plateau_of(s, iy, iz));
+            auto* g = cell_points(s, iy, iz, norm_of(s, iy, iz));
             auto* g_fit = new TGraphErrors();
             auto* g_exc = new TGraphErrors();
             for (int i = 0, kf = 0, ke = 0; i < g->GetN(); ++i) {
@@ -572,8 +617,14 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
             q.SetTextColor(sepr ? series[is].c_mark : kBlack);
             if (sepr) { q.DrawLatex(xc, ty, series[is].legend.c_str()); ty -= kColStep; }
             if (!usable[is]) { q.DrawLatex(xc, ty, "no fit"); q.SetTextColor(kBlack); continue; }
-            q.DrawLatex(xc, ty, Form("plateau = %.4f", plateau_of(series[is], iy, iz)));
-            ty -= kColStep;
+            // The [2, 3.5] plateau is drawn ONLY where it is actually applied. In the
+            // no-correction mode it is measured but unused, and a second number called "plateau"
+            // sitting next to the fitted baseline C would be read as the thing the curve tends
+            // to. It stays in the fit report instead.
+            if (!nocorr) {
+                q.DrawLatex(xc, ty, Form("plateau = %.4f", plateau_of(series[is], iy, iz)));
+                ty -= kColStep;
+            }
             // A cell can have a usable plateau and still carry no fitted function for ONE sign
             // (too few points with a non-zero error in that charge combination).
             if (!F[is].valid()) { q.DrawLatex(xc, ty, "no fit"); q.SetTextColor(kBlack); continue; }
@@ -582,19 +633,33 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
                 q.SetTextColor(kBlack);
                 continue;
             }
+            // The fitted baseline gets a NAMED label wherever the column is wide enough for it
+            // (one series per panel); with two colour-coded columns side by side there is room
+            // for the symbol only, and the header line next to the equation says what it is.
+            // ("fitted" only where it really is fitted: the interpolation PINS its baseline to
+            // the last measured point rather than fitting it.)
+            const char* c_label = sepr ? "C"
+                                : (method == "interp" ? "C (plateau)" : "C (fitted plateau)");
             if (F[is].f) {
                 for (int ip : free_par) {
                     // A parameter pinned ON its limit is a constraint, not a measurement, and its
                     // error spans the limit -- say so instead of printing "0.02 +- 0.058".
+                    const char* pn = F[is].f->GetParName(ip);
+                    if (nocorr && std::string(pn) == "C") pn = c_label;
                     q.DrawLatex(xc, ty, ParAtLimit(F[is].f, ip)
-                        ? Form("%s = %.3g (at limit)", F[is].f->GetParName(ip),
-                               F[is].f->GetParameter(ip))
-                        : Form("%s = %.3g #pm %.2g", F[is].f->GetParName(ip),
-                               F[is].f->GetParameter(ip), F[is].f->GetParError(ip)));
+                        ? Form("%s = %.3g (at limit)", pn, F[is].f->GetParameter(ip))
+                        : Form("%s = %.3g #pm %.2g", pn, F[is].f->GetParameter(ip),
+                               F[is].f->GetParError(ip)));
                     ty -= kColStep;
                 }
                 const double c = chi2_of(is);
                 if (c >= 0.) q.DrawLatex(xc, ty, Form("#chi^{2}/ndf = %.2f", c));
+            } else if (nocorr && F[is].g) {
+                // The interpolation has no fitted parameters, but it does have a BASELINE: the
+                // value its flat branch was pinned to (the last measured point below R_p). The
+                // asymptote must be readable off every panel here exactly as it is for the
+                // parametric fits, since nothing external normalizes these curves.
+                q.DrawLatex(xc, ty, Form("%s = %.4f", c_label, F[is].Eval(kXhi)));
             }
             q.SetTextColor(kBlack);
         }
@@ -640,12 +705,23 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         def_line = quantity_tex + "(#DeltaR) #equiv P(leg fires the full mu4 chain "
                    "|#kern[-0.15]{leg} of a reco pair at #DeltaR) "
                    "/ #varepsilon^{mu4}(p_{T}, q#eta)";
-    def_line += Form(";   plateau = #LT%s#GT over #DeltaR #in [%.1f, %.1f]", quantity_tex.c_str(),
-                     MCTrigEffPlateau::kLo, MCTrigEffPlateau::kHi);
+    // The large-dR plateau is DEFINED here only where the figure uses it. In the no-correction
+    // mode nothing on the canvas is divided by it, so defining it would introduce a quantity the
+    // reader then has to look for and never finds.
+    if (!nocorr)
+        def_line += Form(";   plateau = #LT%s#GT over #DeltaR #in [%.1f, %.1f]",
+                         quantity_tex.c_str(), MCTrigEffPlateau::kLo, MCTrigEffPlateau::kHi);
 
     // The fit function and everything about it that is the same in all nine panels.
     const std::string eq_line1 = ftex.first;
     std::string eq_line2 = ftex.second;
+    // C replaces the external normalization in the no-correction mode, so the canvas says what it
+    // is once, next to the equation; its per-cell VALUE is drawn in every panel.
+    if (nocorr)
+        eq_line2 += (eq_line2.empty() ? "" : ",   ")
+                  + std::string(method == "interp"
+                        ? "C = the plateau, pinned to the last measured point"
+                        : "C = the fitted plateau, free in the fit");
     for (const auto& fl : fixed_line) eq_line2 += (eq_line2.empty() ? "" : ",   ") + fl;
     if (rp_ext_line) eq_line2 += (eq_line2.empty() ? "" : std::string(",   "))
                                + Form("R_{p} = %.2f", rp_prov);
@@ -691,9 +767,8 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
                 // drawn, so letting its eps/plateau values (O(10-130) when the plateau is ~0.008)
                 // set the range pushed every PNG to the 3.0 cap and squashed the structure the
                 // panels exist to show.
-                const double plateau = plateau_of(s, c.first, c.second);
-                if (!DrCorrPlateauUsable(plateau, plateau_err_of(s, c.first, c.second))) continue;
-                auto* g = cell_points(s, c.first, c.second, plateau);
+                if (!cell_drawable(s, c.first, c.second)) continue;
+                auto* g = cell_points(s, c.first, c.second, norm_of(s, c.first, c.second));
                 for (int i = 0; i < g->GetN(); ++i) {
                     double x, y;
                     g->GetPoint(i, x, y);
@@ -721,9 +796,8 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         double y_ann = 1.;
         for (const auto& s : series) {
             for (const auto& c : cells) {
-                const double plateau = plateau_of(s, c.first, c.second);
-                if (!DrCorrPlateauUsable(plateau, plateau_err_of(s, c.first, c.second))) continue;
-                auto* g = cell_points(s, c.first, c.second, plateau);
+                if (!cell_drawable(s, c.first, c.second)) continue;
+                auto* g = cell_points(s, c.first, c.second, norm_of(s, c.first, c.second));
                 for (int i = 0; i < g->GetN(); ++i) {
                     double x, y;
                     g->GetPoint(i, x, y);
@@ -769,8 +843,9 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         auto ny = [&](double px) { return 1.0 - px / H; };
         TLatex t; t.SetNDC(); t.SetTextFont(42);
         t.SetTextSize(22.0 / H);
-        t.DrawLatex(0.02, ny(26), Form("%s, %s,  %s / plateau%s", cfg.sample_text.c_str(),
-                                       wp_text.c_str(), quantity_tex.c_str(), cell_text.c_str()));
+        t.DrawLatex(0.02, ny(26), Form("%s, %s,  %s%s%s", cfg.sample_text.c_str(),
+                                       wp_text.c_str(), quantity_tex.c_str(),
+                                       nocorr ? "" : " / plateau", cell_text.c_str()));
         t.SetTextSize(17.0 / H);
         t.DrawLatex(0.02, ny(56), def_line.c_str());
         if (!eq_line1.empty()) t.DrawLatex(0.02, ny(78), eq_line1.c_str());
@@ -865,13 +940,10 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     if (sepr) {
         auto cell_ratio = [&](int iy, int iz) -> TGraphErrors* {
             auto* gr = new TGraphErrors();
-            if (!DrCorrPlateauUsable(plateau_of(series[0], iy, iz),
-                                     plateau_err_of(series[0], iy, iz))
-             || !DrCorrPlateauUsable(plateau_of(series[1], iy, iz),
-                                     plateau_err_of(series[1], iy, iz)))
+            if (!cell_drawable(series[0], iy, iz) || !cell_drawable(series[1], iy, iz))
                 return gr;
-            auto* gs = cell_points(series[0], iy, iz, plateau_of(series[0], iy, iz));
-            auto* go = cell_points(series[1], iy, iz, plateau_of(series[1], iy, iz));
+            auto* gs = cell_points(series[0], iy, iz, norm_of(series[0], iy, iz));
+            auto* go = cell_points(series[1], iy, iz, norm_of(series[1], iy, iz));
             int k = 0;
             for (int i = 0; i < gs->GetN(); ++i) {
                 double x1, y1;
@@ -989,9 +1061,10 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
             // The two charge combinations are named by the y-axis title of every panel, so the
             // headline does NOT repeat them: with them it overran the right edge of the 900 px
             // inclusive canvas and was silently cut off mid-word.
-            t.DrawLatex(0.02, ny(26), Form("%s, %s,  %s / plateau%s",
+            t.DrawLatex(0.02, ny(26), Form("%s, %s,  %s%s%s",
                                            cfg.sample_text.c_str(), wp_text.c_str(),
-                                           quantity_tex.c_str(), cell_text.c_str()));
+                                           quantity_tex.c_str(), nocorr ? "" : " / plateau",
+                                           cell_text.c_str()));
             t.SetTextSize(17.0 / H);
             t.DrawLatex(0.02, ny(56), def_line.c_str());
             if (!offscale.empty()) {
@@ -1090,9 +1163,17 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
            << "# shape has compact support (exactly 1 for dR >= Rp by construction): "
            << (compact ? "YES" : "NO") << "\n"
            << "# PERSISTENCE: every value finite"
-           << (compact ? ", and exactly 1 for dR >= Rp (a read-back returning 0 outside the"
-                         " stored range -- the compiled-TF1 bug -- fails here)" : "") << "\n"
-           << "# FLATNESS   : |f(dR) - 1| <= " << kFlatTol << " for dR >= Rp = " << Rp << "\n\n";
+           << (compact ? (nocorr
+                          ? ", and exactly the fitted baseline C for dR >= Rp (a read-back"
+                            " returning 0 outside the stored range -- the compiled-TF1 bug --"
+                            " fails here)"
+                          : ", and exactly 1 for dR >= Rp (a read-back returning 0 outside the"
+                            " stored range -- the compiled-TF1 bug -- fails here)") : "") << "\n"
+           << (nocorr
+               ? "# FLATNESS   : |f(dR) - C| <= "     // no external normalization: the asymptote
+               : "# FLATNESS   : |f(dR) - 1| <= ")    // is the fitted baseline C, not 1
+           << kFlatTol << " for dR >= Rp = " << Rp
+           << (nocorr ? "  (C = the fitted/pinned baseline of that cell)" : "") << "\n\n";
         int nchecked = 0, nfail_persist = 0, nfail_flat = 0;
         double worst_flat = 0.;
         for (int iy = 0; iy <= npt; ++iy) {
@@ -1114,14 +1195,29 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
                     const int ip = F.f->GetParNumber("R_{p}");
                     if (ip >= 0) rp_cell = std::max(rp_cell, F.f->GetParameter(ip));
                 }
+                // THE ASYMPTOTE this cell is supposed to reach. Exactly 1 when the curve was
+                // normalized by the plateau; the cell's own fitted baseline C when it was not
+                // (for the interpolation, the constant its flat branch was pinned to). Testing
+                // a no-correction curve against 1 would call every cell non-flat and would say
+                // nothing about either persistence or flatness.
+                double flat_ref = 1.0;
+                if (nocorr) {
+                    if (F.f) {
+                        const int ic = F.f->GetParNumber("C");
+                        flat_ref = (ic >= 0) ? F.f->GetParameter(ic) : F.Eval(20.0);
+                    } else {
+                        flat_ref = F.Eval(kXhi);   // the pinned flat branch of the interpolation
+                    }
+                }
                 for (double x : {0.0, 0.5 * Rp, Rp, 0.9, 1.5, 3.0, 8.0, 20.0}) {
                     const double v = F.Eval(x);
                     line += Form("  f(%.2f)=%.5f", x, v);
                     if (!std::isfinite(v)) bad_persist = true;
-                    if (compact && x >= rp_cell && std::fabs(v - 1.0) > 1e-9) bad_persist = true;
+                    if (compact && x >= rp_cell && std::fabs(v - flat_ref) > 1e-9)
+                        bad_persist = true;
                     if (x >= Rp) {
-                        worst_flat = std::max(worst_flat, std::fabs(v - 1.0));
-                        if (std::fabs(v - 1.0) > kFlatTol) bad_flat = true;
+                        worst_flat = std::max(worst_flat, std::fabs(v - flat_ref));
+                        if (std::fabs(v - flat_ref) > kFlatTol) bad_flat = true;
                     }
                 }
                 if (bad_persist) { ++nfail_persist; line += "   <-- PERSISTENCE FAIL"; }
@@ -1129,13 +1225,17 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
                 os << line << "\n";
             }
         }
+        // The deviation is measured from the asymptote the mode actually has: 1 when the curves
+        // were normalized by the plateau, the cell's own baseline C when they were not.
+        const char* dev_sym = nocorr ? "|f-C|" : "|f-1|";
         os << "\nchecked " << nchecked << " functions, " << nfail_persist << " FAILED persistence"
            << "\nflatness beyond Rp: " << nfail_flat << " function(s) exceed " << kFlatTol
-           << ", worst |f-1| = " << Form("%.2e", worst_flat) << "\n";
+           << ", worst " << dev_sym << " = " << Form("%.2e", worst_flat) << "\n";
         std::cout << "  read-back check ["
                   << (s.sign.empty() ? "sign-integrated" : s.legend) << "]: " << nchecked
                   << " functions, " << nfail_persist << " FAILED persistence; " << nfail_flat
-                  << " not flat beyond Rp (worst |f-1| = " << Form("%.2e", worst_flat) << ")\n"
+                  << " not flat beyond Rp (worst " << dev_sym << " = "
+                  << Form("%.2e", worst_flat) << ")\n"
                   << "  wrote " << rpath << "\n";
         if (nfail_persist) std::cout << "  ** PERSISTENCE FAILURE -- do NOT use these fits **\n";
     }
@@ -1146,9 +1246,10 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
 
 // Convenience: every method for one (sample, WP, step, mode).
 void plot_dr_correction_fits_all(const std::string& sample = "pp_full", bool use_tight_wp = true,
-                                 int step = 3, const std::string& mode = "sign_intgr")
+                                 int step = 3, const std::string& mode = "sign_intgr",
+                                 const std::string& plateau_mode = "corr")
 {
     for (const std::string& m : {"powerlaw_fixedRp", "powerlaw_floatRp", "expo",
                                  "polyu_fixedRp", "interp"})
-        plot_dr_correction_fits(sample, use_tight_wp, step, m, mode);
+        plot_dr_correction_fits(sample, use_tight_wp, step, m, mode, plateau_mode);
 }

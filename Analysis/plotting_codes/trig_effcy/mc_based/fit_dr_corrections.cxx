@@ -24,6 +24,26 @@
 //   The plateau is measured by the step above and travels as DATA. Nothing here parses a .txt
 //   or a .md table: a number retyped by hand is wrong the moment the chain is re-run.
 //
+// PLATEAU MODE (`plateau_mode` argument, added 2026-08-11)
+//   "corr"   NOMINAL, and everything above describes it: the curve is divided by the plateau
+//            and the fitted shape tends to 1.
+//   "nocorr" The plateau is NOT applied. The RAW, un-normalized eps_dR is fitted with a FREE
+//            additive baseline C -- expo becomes C + A exp(-(dR/lambda)^p), polyu becomes
+//            C + u^2(a2 + a3 u + a4 u^2), and the interpolation pins its flat branch to the LAST
+//            MEASURED knot instead of to 1. The baseline is then determined by the dR < 1 data
+//            ITSELF and the [2, 3.5] window never enters the fit.
+//            WHY (user, 2026-08-11): the inverse-weighted dR distribution carries structure out
+//            to large dR -- worst in the pair-eta bins that enclose the detector gap -- so a
+//            plateau measured far from the small-dR region may not be the right baseline for it.
+//            CONSEQUENCE FOR THE GUARD, stated here because a silently vanishing guard is worse
+//            than no guard: in "nocorr" NOTHING is normalized by the plateau, so |plateau-1| can
+//            no longer disqualify a cell and a cell whose far-dR plateau is unmeasurable is still
+//            perfectly fittable. The plateau is still MEASURED and REPORTED per cell (clearly
+//            labelled as not used); only its CONSEQUENCES are switched off. A cell is skipped
+//            in this mode for exactly two reasons: too few points, or a failed/unphysical fit.
+//   The mode is the TOP level of the plot tree and a file-name token, both built in
+//   dr_correction_sample_cfg.h (DrCorrPlateauModeDir / DrCorrPlateauModeTag).
+//
 // FULL-SAMPLE GUARD
 //   For a FULL production (`DrCorrSample::is_full_sample`, currently only pp_full) the
 //   inverse-weighting closure must hold cell by cell. TWO TIERS: |plateau - 1| > 0.10 is
@@ -171,7 +191,10 @@ struct MethodCfg {
 // beyond the flat onset Rp. Writing every shape in u makes "exactly 1 beyond Rp" automatic
 // instead of a piecewise `if` that TFormula would have to carry.
 
-MethodCfg MakeMethodCfg(const std::string& m)
+// `nocorr` = the plateau is NOT applied, so the fitted shape must supply its own asymptote:
+// the leading constant 1 of every formula becomes a FREE parameter C, appended as the LAST
+// parameter so the meaning of [0], [1], ... is the same in both modes.
+MethodCfg MakeMethodCfg(const std::string& m, bool nocorr = false)
 {
     // TFormula strings ONLY (never a C++ lambda) so the TF1s survive write/read -- see the
     // read-back trap in the header comment.
@@ -182,9 +205,13 @@ MethodCfg MakeMethodCfg(const std::string& m)
     // step4 17/37), so this is the typical case, not an edge case. Retained only so an old
     // output can be reproduced; NOT in the driver's default METHODS list.
     if (m == "powerlaw_fixedRp")   // f = 1 + A u^n ,          Rp fixed        -- REJECTED
-        return {m, "1+[0]*TMath::Power(TMath::Max(0.,1.-x/[2]),[1])", 3, 2, false};
+        return nocorr
+            ? MethodCfg{m, "[3]+[0]*TMath::Power(TMath::Max(0.,1.-x/[2]),[1])", 4, 3, false}
+            : MethodCfg{m, "1+[0]*TMath::Power(TMath::Max(0.,1.-x/[2]),[1])",   3, 2, false};
     if (m == "powerlaw_floatRp")   // f = 1 + A u^n ,          Rp free         -- REJECTED
-        return {m, "1+[0]*TMath::Power(TMath::Max(0.,1.-x/[2]),[1])", 3, 3, true};
+        return nocorr
+            ? MethodCfg{m, "[3]+[0]*TMath::Power(TMath::Max(0.,1.-x/[2]),[1])", 4, 4, true}
+            : MethodCfg{m, "1+[0]*TMath::Power(TMath::Max(0.,1.-x/[2]),[1])",   3, 3, true};
     // ---- NOMINAL (user 2026-08-04) ----------------------------------------------------------
     // Smooth everywhere and -> 1 as dR -> infinity. It approaches 1 ASYMPTOTICALLY rather than
     // reaching it exactly at Rp; that is fine -- "flat for dR >~ 0.5" is an ESTIMATE, not a
@@ -193,15 +220,21 @@ MethodCfg MakeMethodCfg(const std::string& m)
     // fit_ok = 0. Preferred over polyu because it has no high-order polynomial terms that could
     // fit procedure artefacts rather than real shape.
     if (m == "expo")               // f = 1 + A exp(-(dR/lambda)^p) -- NOMINAL
-        return {m, "1+[0]*TMath::Exp(-TMath::Power(x/[1],[2]))", 3, 3, false};
+                                   // nocorr: f = C + A exp(-(dR/lambda)^p), C free
+        return nocorr
+            ? MethodCfg{m, "[3]+[0]*TMath::Exp(-TMath::Power(x/[1],[2]))", 4, 4, false}
+            : MethodCfg{m, "1+[0]*TMath::Exp(-TMath::Power(x/[1],[2]))",   3, 3, false};
     // BACKUP: C^1 at Rp by construction and flexible enough for a non-monotonic small-dR shape,
     // but the higher-order terms can also absorb shapes that are procedure artefacts rather than
     // physics -- which is why `expo` is nominal and this is the cross-check.
     if (m == "polyu_fixedRp")      // f = 1 + a2 u^2 + a3 u^3 + a4 u^4 -- C^1 at Rp (value AND
                                    // slope -> 0), and flexible enough for a non-monotonic
                                    // small-dR shape, which the single power law cannot do
-        return {m, "1+TMath::Power(TMath::Max(0.,1.-x/[3]),2)*([0]+[1]*TMath::Max(0.,1.-x/[3])"
-                   "+[2]*TMath::Power(TMath::Max(0.,1.-x/[3]),2))", 4, 3, false};
+        return nocorr
+            ? MethodCfg{m, "[4]+TMath::Power(TMath::Max(0.,1.-x/[3]),2)*([0]+[1]*TMath::Max(0.,1.-x/[3])"
+                           "+[2]*TMath::Power(TMath::Max(0.,1.-x/[3]),2))", 5, 4, false}
+            : MethodCfg{m, "1+TMath::Power(TMath::Max(0.,1.-x/[3]),2)*([0]+[1]*TMath::Max(0.,1.-x/[3])"
+                           "+[2]*TMath::Power(TMath::Max(0.,1.-x/[3]),2))", 4, 3, false};
     if (m == "interp")             // linear interpolation of the measured points, 1 above Rp
         return {m, "", 0, 0, false};
     throw std::runtime_error("fit_dr_corrections: unknown method '" + m +
@@ -274,15 +307,23 @@ std::string CellName(const std::string& base, int step, int iy, int iz)
 // step   : 3 (cross / 2mu4 term) or 4 (single leg)
 // method : powerlaw_fixedRp | powerlaw_floatRp | expo | interp
 // sign   : "" (sign-integrated, the NOMINAL series) | "ss" (same sign) | "os" (opposite sign)
+// plateau_mode : "corr" (NOMINAL, divide by the large-dR plateau) | "nocorr" (fit the raw
+//                eps_dR with a free baseline C -- see the PLATEAU MODE block in the header)
 void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp = true,
                         int step = 3, const std::string& method = "powerlaw_fixedRp",
-                        bool allow_plateau_violation = false, const std::string& sign = "")
+                        bool allow_plateau_violation = false, const std::string& sign = "",
+                        const std::string& plateau_mode = "corr")
 {
     gROOT->SetBatch(kTRUE);
 
     const DrCorrSample cfg = GetDrCorrSample(sample, use_tight_wp);
     const StepCfg      S   = MakeStepCfg(step, sign);
-    const MethodCfg    M   = MakeMethodCfg(method);
+    // THE mode switch. `mode_dir` also validates the token (it throws on anything else).
+    const bool         nocorr   = (plateau_mode == "nocorr");
+    const std::string  mode_dir = DrCorrPlateauModeDir(plateau_mode);
+    const std::string  mode_text = nocorr
+        ? "NO plateau correction (raw eps, free baseline C)" : "plateau-normalized";
+    const MethodCfg    M   = MakeMethodCfg(method, nocorr);
     const std::string  wp_suf  = DrCorrWpSuffix(use_tight_wp);
     const std::string  wp_text = use_tight_wp ? "Tight muons" : "Medium muons";
     const std::string  sign_text = DrCorrSignText(sign);          // throws on an unknown token
@@ -290,7 +331,12 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     const std::string  series    = sign.empty() ? "sign-integrated" : sign_text;
 
     std::cout << "\n================ fit_dr_corrections: " << sample << " / step " << step
-              << " / " << method << " / " << wp_text << " / " << series << " ================\n";
+              << " / " << method << " / " << wp_text << " / " << series << " / " << mode_text
+              << " ================\n";
+
+    // The ONE place the plateau mode enters the output PATH: everything this job writes below
+    // (the guard report and the per-method report directory) hangs off `sdir`.
+    const std::string sdir = cfg.out_base + "step" + std::to_string(step) + "_dr_fit/" + mode_dir;
 
     // The pair-pT-binning token must be in BOTH input names: without it a 4-bin run reads the
     // NOMINAL 8-bin histograms while its plateau map is 4x9 (the cell-count guard below catches
@@ -375,7 +421,10 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     // the selected sample) -- a per-sign failure is a statistics statement about that subsample,
     // not a defect in the nominal correction. The unmeasurable-cell screen and the fit_ok flag are
     // untouched by this, so an unusable cell is still never published in ANY series.
-    const bool guard_is_fatal = cfg.is_full_sample && sign.empty();
+    // ... and NEVER in "nocorr": nothing there is normalized by the plateau, so |plateau-1|
+    // cannot disqualify a cell. The measurement and the per-cell lists below are produced in
+    // both modes; only the consequence differs.
+    const bool guard_is_fatal = cfg.is_full_sample && sign.empty() && !nocorr;
     std::vector<std::string> violations, flagged, unmeasured, wsyst;
     double wsyst_max = 0.;
     for (int iy = 1; iy <= npt; ++iy) {
@@ -425,31 +474,64 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
         }
     }
     {
-        const std::string gdir = cfg.out_base + "step" + std::to_string(step) + "_dr_fit/"
-                               + DrCorrWpDir(use_tight_wp);
+        const std::string gdir = sdir + DrCorrWpDir(use_tight_wp);
         gSystem->mkdir(gdir.c_str(), kTRUE);
+        // The tier rule and WHO enforces it. In "nocorr" the tiers are still COMPUTED and the
+        // same cells are still listed -- so the two modes' reports can be compared line by line --
+        // but nothing enforces them, and the report must say so where it states the rule rather
+        // than leave a "the fatal tier is ENFORCED" sentence standing next to a mode that applies
+        // no plateau at all. The nominal branch below is byte-for-byte the text this report has
+        // always carried.
+        std::string rule_block;
+        if (nocorr) {
+            rule_block =
+                std::string("# the two |plateau-1| tiers (FLAGGED > ") + Form("%g", kPlateauFlagTol)
+                + ", FAILING > " + Form("%g", kPlateauGuardTol) + ") are computed and listed below"
+                  " exactly as in the\n"
+                  "#       plateau-corrected mode, so the same cells can be compared line by line."
+                  " NEITHER TIER IS ENFORCED HERE, for any series\n"
+                  "#       and any production: no curve is divided by the plateau, so no value of"
+                  " it can make a cell unusable. The screens that\n"
+                  "#       DO apply in this mode are the fit's own: too few points, a failed fit,"
+                  " or a correction that is not > 0 over [0, Rp].\n";
+        } else {
+            rule_block =
+                std::string("# rule: a FULL production must satisfy |plateau-1| <= ")
+                + Form("%g", kPlateauGuardTol)
+                + " in EVERY (pair pT, pair eta) cell (FATAL above that); cells with |plateau-1| > "
+                + Form("%g", kPlateauFlagTol) + " are FLAGGED but allowed, and carry |plateau-1| as a\n"
+                  "#       systematic (docs/systematic_uncertainties.md 1a). A TEST sample is exempt"
+                  " from the fatal tier but still reported.\n"
+                + (sign.empty()
+                   ? std::string("# this is the SIGN-INTEGRATED series: the fatal tier is ENFORCED"
+                                 " on a FULL production.\n")
+                   : "# this is the " + series + " series: every flagged/failing/unmeasurable cell is"
+                     " measured and listed below exactly as for the\n"
+                     "#       sign-integrated series, but the fatal tier is NOT enforced. One sign"
+                     " carries only a fraction of the pairs\n"
+                     "#       (same sign ~13% of the selected sample), so a failing cell here is a"
+                     " statement about the statistics of this\n"
+                     "#       subsample, not a defect of the nominal correction. The unmeasurable-cell"
+                     " screen and the fit_ok flag are\n"
+                     "#       unchanged, so nothing unusable is published from this series either.\n");
+        }
         std::ofstream os(gdir + "plateau_guard_report" + sign_ftag + ".txt");
         os << "# Large-dR plateau guard, " << S.quantity << " (Step " << step << ")\n"
            << "# sample=" << sample << " (" << (cfg.is_full_sample ? "FULL" : "TEST")
            << " production)  WP=" << wp_text << "  series=" << series << "\n"
            << "# source: " << plateau_path << "  (keys h_" << ptag << "_*)\n"
-           << "# rule: a FULL production must satisfy |plateau-1| <= " << kPlateauGuardTol
-           << " in EVERY (pair pT, pair eta) cell (FATAL above that); cells with |plateau-1| > "
-           << kPlateauFlagTol << " are FLAGGED but allowed, and carry |plateau-1| as a\n"
-              "#       systematic (docs/systematic_uncertainties.md 1a). A TEST sample is exempt"
-              " from the fatal tier but still reported.\n"
-           << (sign.empty()
-               ? "# this is the SIGN-INTEGRATED series: the fatal tier is ENFORCED on a FULL"
-                 " production.\n"
-               : "# this is the " + series + " series: every flagged/failing/unmeasurable cell is"
-                 " measured and listed below exactly as for the\n"
-                 "#       sign-integrated series, but the fatal tier is NOT enforced. One sign"
-                 " carries only a fraction of the pairs\n"
-                 "#       (same sign ~13% of the selected sample), so a failing cell here is a"
-                 " statement about the statistics of this\n"
-                 "#       subsample, not a defect of the nominal correction. The unmeasurable-cell"
-                 " screen and the fit_ok flag are\n"
-                 "#       unchanged, so nothing unusable is published from this series either.\n")
+           << (nocorr
+               ? "# PLATEAU MODE: no plateau correction. NOTHING below is applied to the fits --"
+                 " each cell's raw eps is fitted with a FREE\n"
+                 "#       baseline C determined from the dR < 1 data alone, so the plateau"
+                 " measured here is REPORTED FOR INFORMATION\n"
+                 "#       ONLY: it disqualifies no cell, and a cell whose plateau is unmeasurable"
+                 " is still fitted. In this mode a cell is\n"
+                 "#       skipped only for too few points or a failed/unphysical fit.\n"
+               : "")   // the nominal mode's report is left BYTE-IDENTICAL to the pre-2026-08-11
+                       // one -- it only moved into plateau_corrected/, and the directory says so
+
+           << rule_block
            << "# plateau window: dR in [" << MCTrigEffPlateau::kLo << ","
            << MCTrigEffPlateau::kHi << "]  (systematic variation: dR in ["
            << MCTrigEffPlateau::kSystLo << "," << MCTrigEffPlateau::kSystHi << "])\n"
@@ -469,7 +551,10 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                << Form("%.4f", wsyst_max) << "\n";
             for (const auto& w : wsyst) os << "  " << w << "\n";
         }
-        os << "\nverdict: " << (violations.empty()
+        os << "\nverdict: " << (nocorr
+                              ? "not applicable (no plateau correction: the plateau is measured"
+                                " and reported, nothing is normalized by it)"
+                              : violations.empty()
                                   ? "PASS"
                                   : (guard_is_fatal
                                         ? "FAIL (FULL sample)"
@@ -507,7 +592,9 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                   << "  ## allow_plateau_violation=true -- continuing ON PURPOSE.\n"
                   << "  ###############################################################\n";
     } else if (!violations.empty()) {
-        std::cout << "  (" << (cfg.is_full_sample ? series + " series" : std::string("TEST sample"))
+        std::cout << "  (" << (nocorr ? std::string("no plateau correction")
+                             : cfg.is_full_sample ? series + " series"
+                                                  : std::string("TEST sample"))
                   << " -> guard NOT enforced; the cells above are reported only.)\n";
     } else {
         std::cout << "  plateau guard PASSED (all |plateau-1| <= " << kPlateauGuardTol
@@ -557,7 +644,9 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     // ---------------------------------------------------------------- 4. fit every cell
     TH2D* hchi  = BookLike(hplat, "h_" + tag + "_chi2ndf", "#chi^{2}/ndf");
     std::vector<TH2D*> hpar;
-    for (int ip = 0; ip < 4; ++ip)
+    // 4 in the nominal mode (unchanged); one more only when the formula really has a 5th
+    // parameter (nocorr polyu, whose free baseline C is [4]).
+    for (int ip = 0; ip < std::max(4, M.npar); ++ip)
         hpar.push_back(BookLike(hplat, "h_" + tag + "_par" + std::to_string(ip),
                                 "fit parameter " + std::to_string(ip)));
     TH2D* hf0   = BookLike(hplat, "h_" + tag + "_f_at_0",  "fitted correction at #DeltaR = 0");
@@ -565,27 +654,47 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     TH2D* hknot = BookLike(hplat, "h_" + tag + "_knot_rel_err",
                            "mean relative stat. error of the interpolated points");
 
-    const std::string out_path = DrCorrFitFile(cfg, use_tight_wp, step, method, sign);
+    const std::string out_path = DrCorrFitFile(cfg, use_tight_wp, step, method, sign,
+                                              plateau_mode);
     TFile* fout = TFile::Open(out_path.c_str(), "RECREATE");
     if (!fout || fout->IsZombie())
         throw std::runtime_error("fit_dr_corrections: cannot write " + out_path);
     fout->cd();
 
     // one plot/report subdirectory per method (and medium/ inside it for the Medium WP)
-    const std::string mdir = cfg.out_base + "step" + std::to_string(step) + "_dr_fit/" + method
-                           + "/" + DrCorrWpDir(use_tight_wp);
+    const std::string mdir = sdir + method + "/" + DrCorrWpDir(use_tight_wp);
     gSystem->mkdir(mdir.c_str(), kTRUE);
     std::ofstream rep(mdir + "fit_report" + sign_ftag + ".txt");
-    rep << "# " << S.quantity << " (Step " << step << ") plateau-normalized fit, method = "
-        << method << "\n"
+    rep << "# " << S.quantity << " (Step " << step << ") "
+        << (nocorr ? "RAW (no plateau correction)" : "plateau-normalized")
+        << " fit, method = " << method << "\n"
         << "# sample=" << sample << "  WP=" << wp_text << "  series=" << series << "  "
         << cfg.sample_text << "\n"
-        << "# formula: " << (M.formula.empty() ? "linear interpolation of the measured points, "
-                                                 "1 above Rp" : M.formula) << "\n"
+        << "# formula: "
+        << (M.formula.empty()
+                ? (nocorr ? "linear interpolation of the measured points, flat at the LAST "
+                            "measured knot value above Rp"
+                          : "linear interpolation of the measured points, 1 above Rp")
+                : M.formula) << "\n"
         << "# flat onset Rp = " << S.flat_onset << " ; fit range dR in [" << kFitLo << ","
         << kFitHi << "]\n"
-        << "# each cell's curve is divided by ITS OWN large-dR plateau (from " << plateau_path
-        << ", keys h_" << ptag << "_*) before fitting\n"
+        << (nocorr
+            ? "# NO PLATEAU CORRECTION: nothing is divided by the plateau. The asymptote is the "
+              "FREE parameter C, determined by the\n"
+              "#   dR < 1 data alone -- the fit sees ONLY the zoom histogram (dR in [0,1], 20 "
+              "bins); no bin of the plateau window\n"
+              "#   is ever fitted, in this mode or the nominal one. The plateau column below is MEASURED AND REPORTED FOR "
+              "INFORMATION ONLY -- it is NOT used, it\n"
+              "#   normalizes nothing, and it disqualifies no cell: the |plateau-1| guard and the "
+              "unmeasurable-plateau screen do NOT\n"
+              "#   apply in this mode (a cell whose far-dR plateau cannot be measured is still "
+              "perfectly fittable). A cell is skipped\n"
+              "#   here only for too few points or a failed/unphysical fit, and fit_ok = (fit "
+              "valid) AND (f > 0 over [0, Rp]).\n"
+              "#   Source of the reported plateau: "
+            : "# each cell's curve is divided by ITS OWN large-dR plateau (from ")
+        << plateau_path << ", keys h_" << ptag << "_*"
+        << (nocorr ? "\n" : ") before fitting\n")
         << "# measured from " << hist_path << " (" << S.h_prefix << "zoom_vs_pt_eta_*)\n\n"
         << std::left << std::setw(22) << "pT_pair" << std::setw(16) << "eta_pair"
         << std::setw(12) << "plateau" << std::setw(10) << "npts"
@@ -639,7 +748,10 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
             // Do not even attempt a fit on an unmeasurable cell -- the same screen the guard
             // and the plot stage use. Fitting one wastes the fit and writes chi2/parameters
             // for a curve divided by a near-zero plateau.
-            if (pnb <= 0 || !DrCorrPlateauUsable(plateau, plateau_err)) {
+            // "nocorr" DOES NOT DIVIDE, so this screen must not run there: the danger it guards
+            // against (a near-zero divisor inflating the curve) does not exist, and a cell whose
+            // far-dR plateau is unmeasurable is still perfectly fittable from its dR < 1 points.
+            if (!nocorr && (pnb <= 0 || !DrCorrPlateauUsable(plateau, plateau_err))) {
                 // n_unusable must count every cell PERSISTED with fit_ok = 0, not only the ones
                 // that reach the end of the loop: it is the caption of the fit_ok map, and the
                 // two early exits used to write the flag without counting it, so the report
@@ -652,9 +764,10 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                 continue;
             }
 
-            // measured curve, normalized to 1 at large dR
+            // measured curve: normalized to 1 at large dR (corr) or RAW (nocorr, where the
+            // asymptote is the free parameter C instead of an external divisor)
             TH1D* r = DrCellRatio(h3n, h3d, h3a, h3b, h3p, h3q, iy, iz, nm.c_str());
-            r->Scale(1.0 / plateau);   // scales contents AND errors
+            if (!nocorr) r->Scale(1.0 / plateau);   // scales contents AND errors
 
             // points that carry information (a zero-denominator bin has error 0)
             auto* g = new TGraphErrors();
@@ -685,6 +798,31 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                 continue;
             }
 
+            // Starting value (and scale for the limits) of the FREE baseline C in "nocorr":
+            // the mean of the measured points in the UPPER part of the FIT DOMAIN, dR in
+            // [Rp, 1] -- the flattest part of the data the fit actually sees. It is a starting
+            // value only; nothing outside dR < 1 is used, so the [2, 3.5] plateau still plays no
+            // role. Falls back to the mean over all fitted points if no point sits above Rp.
+            double C0 = 1.;
+            if (nocorr) {
+                double sum = 0.; int nc = 0;
+                for (int i = 0; i < g->GetN(); ++i) {
+                    double x, y;
+                    g->GetPoint(i, x, y);
+                    if (x >= S.flat_onset) { sum += y; ++nc; }
+                }
+                if (nc == 0)
+                    for (int i = 0; i < g->GetN(); ++i) {
+                        double x, y;
+                        g->GetPoint(i, x, y);
+                        sum += y; ++nc;
+                    }
+                C0 = (nc > 0 && sum > 0.) ? sum / nc : 1.;
+            }
+            // Generous but FINITE limits, scaled to the data: an unbounded baseline lets MINUIT
+            // trade C against A without ever converging.
+            const double C_lo = 0., C_hi = std::max(5.0 * C0, 2.0);
+
             if (M.formula.empty()) {
                 // ---- interpolation: knots below Rp, then a hard 1 --------------------------
                 // No free parameters and no chi2: it passes through every point, so it also
@@ -693,6 +831,7 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                 auto* gk = new TGraph();
                 int kk = 0;
                 bool first_knot = true;
+                double last_knot = C0;    // nocorr fallback if no point sits below Rp
                 for (int i = 0; i < g->GetN(); ++i) {
                     double x, y;
                     g->GetPoint(i, x, y);
@@ -702,28 +841,42 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                     // data does not contain (the first bin centre is 0.025).
                     if (first_knot) { gk->SetPoint(kk++, 0.0, y); first_knot = false; }
                     gk->SetPoint(kk++, x, y);
+                    last_knot = y;
                 }
-                // pin the flat branch: value 1 from Rp out to the generous range end
+                // Pin the flat branch out to the generous range end. corr: the value is 1 by
+                // construction (that is what the plateau normalization bought). nocorr: there is
+                // no external normalization to pin to, so it is pinned to the LAST MEASURED KNOT
+                // -- the baseline the data itself supplies just below Rp.
+                const double flat_val = nocorr ? last_knot : 1.0;
                 for (double x : {S.flat_onset, 1.0, 2.0, 5.0, kTF1RangeHi})
-                    if (x >= S.flat_onset) gk->SetPoint(kk++, x, 1.0);
+                    if (x >= S.flat_onset) gk->SetPoint(kk++, x, flat_val);
                 gk->SetName(CellName("gknots", step, iy, iz).c_str());
-                gk->SetTitle(Form("linear-interpolation knots; #DeltaR; %s (plateau-normalized)",
-                                  S.quantity.c_str()));
+                gk->SetTitle(Form("linear-interpolation knots; #DeltaR; %s (%s)",
+                                  S.quantity.c_str(),
+                                  nocorr ? "no plateau correction" : "plateau-normalized"));
                 gk->Write();
-                // Same screen for the inclusive cell; it just has nowhere to write a TH2D bin.
-                const bool interp_usable_incl = DrCorrPlateauUsable(plateau, plateau_err)
-                                             && std::fabs(plateau - 1.0) <= kPlateauGuardTol;
-                if (inclusive) incl_fit_ok = interp_usable_incl ? 1. : 0.;
+                // USABILITY. corr: the plateau screens (the curve is only meaningful relative
+                // to a sane plateau). nocorr: no plateau is involved, so the only requirement is
+                // that the interpolated correction is physical -- positive over [0, Rp].
+                auto interp_physical = [&]() {
+                    for (int t = 0; t <= 200; ++t)
+                        if (gk->Eval(kFitLo + (S.flat_onset - kFitLo) * t / 200.0) <= 0.)
+                            return false;
+                    return true;
+                };
+                const bool interp_ok = nocorr
+                    ? interp_physical()
+                    : (DrCorrPlateauUsable(plateau, plateau_err)
+                       && std::fabs(plateau - 1.0) <= kPlateauGuardTol);
+                if (inclusive) incl_fit_ok = interp_ok ? 1. : 0.;
                 if (!inclusive) {
                     // An interpolation always "succeeds" numerically, but that says nothing about
                     // whether the CELL is usable. This branch used to write fit_ok = 1
                     // unconditionally, publishing 20 overlay cells (e.g. plateau 0.0078 +- 0.0051,
                     // a x128 inflation) that the guard listed as unmeasurable and the plot stage
                     // refused to draw. Same screen as the parametric branch.
-                    const bool interp_usable = DrCorrPlateauUsable(plateau, plateau_err)
-                                            && std::fabs(plateau - 1.0) <= kPlateauGuardTol;
-                    if (!interp_usable) ++n_unusable;
-                    hstat->SetBinContent(iy, iz, interp_usable ? 1. : 0.);
+                    if (!interp_ok) ++n_unusable;
+                    hstat->SetBinContent(iy, iz, interp_ok ? 1. : 0.);
                     hchi ->SetBinContent(iy, iz, -1.);     // n/a for an interpolation
                     hknot->SetBinContent(iy, iz, knot_rel);
                     hf0  ->SetBinContent(iy, iz, gk->Eval(0.0));
@@ -733,6 +886,7 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                     << std::setw(14) << "--" << std::setw(14) << "--" << std::setw(14) << "--"
                     << std::setw(12) << "n/a"
                     << std::setw(12) << Form("%.4f", gk->Eval(0.0))
+                    << (nocorr ? Form("  C(flat branch)=%.4f", flat_val) : "")
                     << "  mean rel. stat. err of knots = " << Form("%.4f", knot_rel) << "\n";
                 g->Write();
                 delete g;
@@ -744,27 +898,47 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                               kFitLo, kFitHi);
             double y0 = 0., x0 = 0.;
             g->GetPoint(0, x0, y0);
-            const double A0 = y0 - 1.0;
+            // The amplitude is measured FROM THE BASELINE: 1 when the curve was normalized,
+            // the fitted-baseline estimate C0 when it was not.
+            const double A0 = y0 - (nocorr ? C0 : 1.0);
             if (method == "expo") {
-                f->SetParNames("A", "#lambda", "p");
-                f->SetParameters(A0 != 0. ? A0 : 0.2, 0.25, 1.5);
+                if (nocorr) {
+                    f->SetParNames("A", "#lambda", "p", "C");
+                    f->SetParameters(A0 != 0. ? A0 : 0.2, 0.25, 1.5, C0);
+                } else {
+                    f->SetParNames("A", "#lambda", "p");
+                    f->SetParameters(A0 != 0. ? A0 : 0.2, 0.25, 1.5);
+                }
                 f->SetParLimits(0, -5.0, 20.0);
                 f->SetParLimits(1, 0.02, 3.0);
                 f->SetParLimits(2, 0.3, 8.0);
+                if (nocorr) f->SetParLimits(3, C_lo, C_hi);
             } else if (method == "polyu_fixedRp") {
-                f->SetParNames("a_{2}", "a_{3}", "a_{4}", "R_{p}");
-                f->SetParameters(A0 != 0. ? A0 : 0.2, 0.0, 0.0, S.flat_onset);
+                if (nocorr) {
+                    f->SetParNames("a_{2}", "a_{3}", "a_{4}", "R_{p}", "C");
+                    f->SetParameters(A0 != 0. ? A0 : 0.2, 0.0, 0.0, S.flat_onset, C0);
+                } else {
+                    f->SetParNames("a_{2}", "a_{3}", "a_{4}", "R_{p}");
+                    f->SetParameters(A0 != 0. ? A0 : 0.2, 0.0, 0.0, S.flat_onset);
+                }
                 f->SetParLimits(0, -50.0, 50.0);
                 f->SetParLimits(1, -100.0, 100.0);
                 f->SetParLimits(2, -100.0, 100.0);
                 f->FixParameter(3, S.flat_onset);
+                if (nocorr) f->SetParLimits(4, C_lo, C_hi);
             } else {
-                f->SetParNames("A", "n", "R_{p}");
-                f->SetParameters(A0 != 0. ? A0 : 0.2, 2.0, S.flat_onset);
+                if (nocorr) {
+                    f->SetParNames("A", "n", "R_{p}", "C");
+                    f->SetParameters(A0 != 0. ? A0 : 0.2, 2.0, S.flat_onset, C0);
+                } else {
+                    f->SetParNames("A", "n", "R_{p}");
+                    f->SetParameters(A0 != 0. ? A0 : 0.2, 2.0, S.flat_onset);
+                }
                 f->SetParLimits(0, -5.0, 20.0);
                 f->SetParLimits(1, 0.2, 20.0);
                 if (M.float_rp) f->SetParLimits(2, 0.6 * S.flat_onset, 1.6 * S.flat_onset);
                 else            f->FixParameter(2, S.flat_onset);
+                if (nocorr) f->SetParLimits(3, C_lo, C_hi);
             }
 
             TFitResultPtr fr = g->Fit(f, "QRNS");
@@ -794,15 +968,19 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
             // ERROR, so a cell like 1.0879 +- 1.0879 (a single dR bin, 100% relative error) was
             // published as fit_ok = 1 while the guard called it unmeasurable and the plot drew
             // "no fit" -- the artefact the analysis consumes disagreed with both.
+            // In "nocorr" the two plateau conditions are DROPPED, and deliberately so: nothing
+            // is normalized by the plateau there, so it cannot make a fit unusable. What remains
+            // is the part that is about the fit itself -- it converged, and the correction is
+            // positive over [0, Rp].
             const bool usable = ok && physical
-                             && DrCorrPlateauUsable(plateau, plateau_err)
-                             && std::fabs(plateau - 1.0) <= kPlateauGuardTol;
+                             && (nocorr || (DrCorrPlateauUsable(plateau, plateau_err)
+                                            && std::fabs(plateau - 1.0) <= kPlateauGuardTol));
             if (!usable && !inclusive) ++n_unusable;
             if (inclusive) incl_fit_ok = usable ? 1. : 0.;
             if (!inclusive) {
                 hstat->SetBinContent(iy, iz, usable ? 1. : 0.);
                 hchi ->SetBinContent(iy, iz, chi2ndf);
-                for (int ip = 0; ip < M.npar && ip < 4; ++ip) {
+                for (int ip = 0; ip < M.npar && ip < (int)hpar.size(); ++ip) {
                     hpar[ip]->SetBinContent(iy, iz, f->GetParameter(ip));
                     hpar[ip]->SetBinError  (iy, iz, f->GetParError(ip));
                 }
@@ -813,7 +991,11 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                 if (inclusive) chi2_incl = chi2ndf;
                 else {
                     chi2_all.push_back(chi2ndf);
-                    if (std::fabs(plateau - 1.0) <= kPlateauFlagTol) chi2_sane.push_back(chi2ndf);
+                    // The "sane plateau" subset exists because a curve divided by a bad plateau
+                    // has an inflated chi2. Nothing is divided in "nocorr", so the subset has no
+                    // meaning there and is left empty (the report says so).
+                    if (!nocorr && std::fabs(plateau - 1.0) <= kPlateauFlagTol)
+                        chi2_sane.push_back(chi2ndf);
                 }
             }
 
@@ -834,8 +1016,12 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                 rep << std::setw(14) << (ip < M.npar ? Form("%.4f", f->GetParameter(ip)) : "--");
             rep << std::setw(12) << (ok ? Form("%.3f", chi2ndf) : "FAILED")
                 << std::setw(12) << Form("%.4f", f->Eval(0.0))
-                << (M.npar > 3 ? Form("  p3=%.4f", f->GetParameter(3)) : "")
-                << (atlim.empty() ? "" : "  AT LIMIT: " + atlim) << "\n";
+                ;
+            for (int ip = 3; ip < M.npar; ++ip)
+                rep << (nocorr && ip == M.npar - 1
+                            ? Form("  C=%.4f+-%.4f", f->GetParameter(ip), f->GetParError(ip))
+                            : Form("  p%d=%.4f", ip, f->GetParameter(ip)));
+            rep << (atlim.empty() ? "" : "  AT LIMIT: " + atlim) << "\n";
             delete f;
             delete g;
         }
@@ -865,12 +1051,16 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
         delete hk;
     }
     TNamed("provenance",
-           Form("sample=%s (%s); WP=%s; series=%s; step=%d (%s); method=%s; formula=%s; Rp=%.2f; "
+           Form("sample=%s (%s); WP=%s; series=%s; plateau mode=%s; step=%d (%s); method=%s; "
+                "formula=%s; Rp=%.2f; "
                 "fit range dR=[%.2f,%.2f]; stored TF1 range=[0,%.1f]; plateau source=%s (keys "
                 "h_%s_*); histograms=%s (%szoom_vs_pt_eta_*); guard=%s; "
                 "producer=fit_dr_corrections.cxx",
                 sample.c_str(), cfg.is_full_sample ? "FULL" : "TEST", wp_text.c_str(),
-                series.c_str(), step,
+                series.c_str(),
+                nocorr ? "nocorr (raw eps, free baseline C -- the plateau is NOT applied)"
+                       : "corr (each cell divided by its own large-dR plateau)",
+                step,
                 S.quantity.c_str(), method.c_str(),
                 M.formula.empty() ? "linear interpolation (TGraph knots)" : M.formula.c_str(),
                 S.flat_onset, kFitLo, kFitHi, kTF1RangeHi, plateau_path.c_str(), ptag.c_str(),
@@ -897,17 +1087,25 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     rep << "\n# chi2/ndf, INCLUSIVE cell (the only statistically meaningful curve for a 10k-event"
            " TEST sample) = " << line_incl << "\n"
         << "# chi2/ndf over all converged cells:            " << line_all << "\n"
-        << "# cells marked UNUSABLE (h_stepN_fit_ok = 0: no measurable plateau, too few points"
-           " to fit, fit failed, |plateau-1| > "
-        << kPlateauGuardTol << ", or the correction is not > 0 over [0, Rp]): " << n_unusable
-        << "  -- consumers MUST require fit_ok == 1\n"
-        << "# chi2/ndf over cells with |plateau-1| <= " << kPlateauFlagTol << ": "
-        << line_sane << "\n"
-        << "# (cells whose plateau is far from 1 have too few pairs inside the plateau window"
-        << " dR in [" << MCTrigEffPlateau::kLo << "," << MCTrigEffPlateau::kHi
-        << "] to define one;"
-           " normalizing by such a plateau inflates chi2 without saying anything about the fit"
-           " function.)\n"
+        << (nocorr
+            ? Form("# cells marked UNUSABLE (h_stepN_fit_ok = 0: too few points to fit, fit"
+                   " failed, or the correction is not > 0 over [0, Rp] -- the plateau screens do"
+                   " NOT apply in this mode): %d  -- consumers MUST require fit_ok == 1\n",
+                   n_unusable)
+            : Form("# cells marked UNUSABLE (h_stepN_fit_ok = 0: no measurable plateau, too few"
+                   " points to fit, fit failed, |plateau-1| > %g, or the correction is not > 0"
+                   " over [0, Rp]): %d  -- consumers MUST require fit_ok == 1\n",
+                   kPlateauGuardTol, n_unusable))
+        << (nocorr
+            ? std::string("# chi2/ndf over cells with a near-unity plateau: n/a -- no curve is"
+                          " divided by the plateau in this mode, so that subset carries no"
+                          " information here.\n")
+            : std::string("# chi2/ndf over cells with |plateau-1| <= ")
+              + Form("%g", kPlateauFlagTol) + ": " + line_sane + "\n"
+              + "# (cells whose plateau is far from 1 have too few pairs inside the plateau window"
+              + Form(" dR in [%g,%g] to define one;", MCTrigEffPlateau::kLo, MCTrigEffPlateau::kHi)
+              + " normalizing by such a plateau inflates chi2 without saying anything about the"
+                " fit function.)\n")
         // kept for backwards compatibility with the driver's summary parser
         << "# parameters pinned ON a fit limit (MINUIT parks the value on the boundary and still"
            " returns an error that spans it -- such a value is a constraint, not a measurement;"
@@ -932,9 +1130,11 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
 // Convenience: every method for one (sample, WP, step, sign).
 void fit_dr_corrections_all(const std::string& sample = "pp_full", bool use_tight_wp = true,
                             int step = 3, bool allow_plateau_violation = false,
-                            const std::string& sign = "")
+                            const std::string& sign = "",
+                            const std::string& plateau_mode = "corr")
 {
     for (const std::string& m : {"powerlaw_fixedRp", "powerlaw_floatRp", "expo",
                                  "polyu_fixedRp", "interp"})
-        fit_dr_corrections(sample, use_tight_wp, step, m, allow_plateau_violation, sign);
+        fit_dr_corrections(sample, use_tight_wp, step, m, allow_plateau_violation, sign,
+                           plateau_mode);
 }
