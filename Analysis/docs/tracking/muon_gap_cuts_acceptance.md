@@ -416,53 +416,6 @@ measurement limitation (the 2D map covers them and only runs out of statistics a
 the right fix for F2b is to extend the fit binning — or option (a) nearest-fitted-bin — not to
 redefine the acceptance around it. Keep the two decisions separate.
 
-### F9 — Plot sets split old vs new gap cuts (2026-08-04)
-
-`plot_muon_q_eta_spectrum.cxx` now takes a second argument, `use_new_gap_cuts`, selecting
-WHICH candidate definition is overlaid and which one the quoted "fraction removed" refers to.
-**The spectra themselves are identical in both cases** — only the overlay and the fractions
-change. Output split accordingly:
-
-```
-muon_gap_cuts/old_gap_cuts/[medium/]   legacy PassSingleMuonGapCut  (red/orange bands)
-muon_gap_cuts/new_gap_cuts/[medium/]   proposed fiducial windows    (green bands)
-```
-
-Both sets regenerated from the same macro build (4 PNGs x 2 WPs x 2 cut sets = 16).
-Run as `plot_muon_q_eta_spectrum.cxx+(use_tight_wp, use_new_gap_cuts)`.
-
-The proposed windows are **read from `ParamsSet::single_mu_fiducial_gap_cuts`** — nothing is
-retyped or overridden in the macro, so re-tuning means editing `ParamsSet.h` alone and
-re-running.
-
-**Forward edge is now 2.30, not 2.20.** The value in `ParamsSet.h` was changed to
-`{2.30f, 2.40f}` outside this session (it arrived in sibling commit `c426437`, a pair-pT
-binning commit that also swept up the then-uncommitted `single_mu_fiducial_gap_cuts`
-addition). That matches the user's request to plot the 2.3 variant, so the macro simply reads
-it. **The header comment in `ParamsSet.h` was corrected accordingly** — it previously argued
-the 2.20 edge made a future swap yield-neutral, which is no longer true.
-
-**Consequence of 2.30 that must not be lost:** the vector is meant to REPLACE the standalone
-per-muon `q·η < 2.2` signal cut. At 2.30 that swap is **not** yield-neutral — it recovers
-q·η ∈ (2.2, 2.3), i.e. +1.36 % of pp and +2.24 % of PbPb single muons. **That recovered slice
-has no fitted trigger efficiency today** (the fitted ranges in
-`CommonEffcyConfig::q_eta_proj_ranges_fine_excl_gap` stop at 2.2), so adopting 2.30 REQUIRES
-extending the fit binning to cover (2.2, 2.3) — otherwise those muons hit the `-1.0f`
-sentinel and are silently dropped (F2b / `pp_trig_eff_highpt_jump.md`). Reverting the edge to
-2.20 would instead make the swap exactly yield-neutral and need no fit change.
-
-Measured fraction of single muons removed, per cut set (per muon; pairs assume both must pass):
-
-| cut set | pp muons | pp pairs | PbPb 0–80 % muons | PbPb pairs |
-|---|---|---|---|---|
-| legacy `PassSingleMuonGapCut` | 7.39 % | 14.2 % | 10.16 % | 19.3 % |
-| proposed, Tight | **3.29 %** | 6.5 % | **5.13 %** | 10.0 % |
-| proposed, Medium | 3.36 % | 6.6 % | 5.72 % | 11.1 % |
-
-Per centrality (proposed, Tight): 0–10 % 5.09 %, 10–20 % 5.17 %, 20–30 % 5.15 %,
-30–50 % 5.16 %, 50–80 % 5.27 % — essentially flat, unlike the legacy set which drifts
-0.1022 → 0.0956 over the same range.
-
 ## Ruled Out (append-only)
 
 - *Plotting from the existing 2026-06-23 trees* — stale on the one-sided Δp/p fix (F3), which
