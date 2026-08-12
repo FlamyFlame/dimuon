@@ -1787,6 +1787,71 @@ fit-quality statement, but it also has the fewest rejected same-sign cells, 11/7
 **Nothing changed here** — the nominal fit function is not something to swap autonomously, and on
 the corrected numbers there is no obvious swap to make.
 
+### R27. The no-plateau-correction Step-3 fit variant (2026-08-11, round 10, user request)
+
+**What it is.** `step3_dr_fit/` now carries two complete parallel trees,
+`plateau_corrected/` (the previous results, relocated one level deeper, verified **byte-identical**
+— 408 files compared, 0 differing) and `no_plateau_correction/`, each holding
+`<method>/{sign_intgr,sign_sepr}/`. Step 4 is corrected-only (user) but moved to
+`step4_dr_fit/plateau_corrected/` so the two steps keep the same shape. 486 PNG + 126 TXT.
+
+**The fit.** Raw, un-normalized ε_ΔR fitted with a **free additive baseline**
+`f(ΔR) = C + A·exp[−(ΔR/λ)^p]` (`polyu_fixedRp` likewise; `interp` pins its flat branch to the last
+measured knot). **Fit domain unchanged and confirmed in code: ΔR ∈ [0, 1] only** — the `zoom`
+histogram, 20 bins of 0.05, centres 0.025…0.975; the wide-bin histogram (which carries the [2, 3.5]
+window) is read by the PLOT stage only. **So C is fixed exclusively by data in [0, 1] and no
+plateau-window bin enters any fit** — which is the whole point.
+
+**The plateau guard does not apply here**, and that is a consequence, not a choice: nothing is
+normalized by the plateau, so `|plateau − 1| > 0.15` cannot disqualify a cell and an unmeasurable
+far-ΔR plateau does not prevent a fit. Cells fitted, Step 3, sign-integrated, 72 cells:
+
+| WP / method | corrected | no correction | only corrected | only no-correction |
+|---|---|---|---|---|
+| Tight `expo` | 59 | **68** | 1 | 10 |
+| Tight `polyu_fixedRp` | 59 | **66** | 0 | 7 |
+| Tight `interp` | 59 | **70** | 0 | 11 |
+| Medium `expo` | 60 | **67** | 2 | 9 |
+| Medium `polyu_fixedRp` | 60 | **66** | 0 | 6 |
+| Medium `interp` | 60 | **70** | 0 | 10 |
+
+The "only no-correction" cells are exactly those the corrected mode threw out on its plateau. The
+three "only corrected" cells fail the positivity screen — the un-normalized fit dips below zero on
+[0, R_p] (worst: Medium `pT_pair[50,72.1) × η_pair[1.5,2.0)`, min f = −0.671).
+
+**Inclusive cell, `expo`, sign-integrated:**
+
+| | A | λ | p | C | χ² / ndf |
+|---|---|---|---|---|---|
+| Tight, corrected | −0.1881 ± 0.0024 | 0.2530 ± 0.0026 | 2.481 ± 0.083 | — | 174.22 / 17 = 10.25 |
+| Tight, no correction | −0.1848 ± 0.0030 | 0.2513 ± 0.0031 | 2.520 ± 0.093 | **0.9906 ± 0.0015** | 173.18 / 16 = 10.82 |
+| Medium, corrected | −0.1853 ± 0.0023 | 0.2594 ± 0.0025 | 2.536 ± 0.083 | — | 191.52 / 17 = 11.27 |
+| Medium, no correction | −0.1832 ± 0.0028 | 0.2588 ± 0.0030 | 2.551 ± 0.091 | **0.9920 ± 0.0014** | 191.36 / 16 = 11.96 |
+
+Nested-model sanity check passes: **χ² DROPS when C is freed** (174.22 → 173.18), so the extra
+parameter is not fighting the data; χ²/ndf rises only because ndf goes 17 → 16.
+
+**★ The inclusive cell is NOT where the two methods disagree — the per-cell ones are.** Inclusively
+C reproduces the unused [2, 3.5] plateau to 0.15 % (0.9906 vs 0.9921). Per cell they part company
+exactly where the user predicted: `pT_pair[8.0,11.5) × η_pair[−2.4,−2.0)` gives **C = 0.849 ± 0.013
+against a plateau of 0.997** — a 15 % difference in the normalization applied to the small-ΔR region
+of interest, in a gap-adjacent forward η bin. That is the quantitative form of the concern that
+motivated this variant, and it is why the comparison has to be made per cell.
+
+**Presentation.** `C (fitted plateau) = v ± e` is printed on every panel and on the inclusive
+canvas, per sign in `sign_sepr`, with the `(at limit)` marker where it binds; the drawn equation and
+a header line define it. The [2, 3.5] value is deliberately **not** drawn on a no-correction canvas,
+so two different numbers called "plateau" never appear together; it stays in the report. The y-axis
+title differs between the modes (ratio-to-plateau vs the measured efficiency itself).
+
+**Open trade-off to be aware of:** the per-pair-pT canvases share one y range across the directory
+(user request, round 10 item 1), and in the no-correction tree that range is stretched by a few
+wild high-pair-pT cells, so a typical panel uses ~20 % of its frame. A percentile-based shared range
+would fix it without giving up comparability — **not done, user's call.**
+
+**Next (NOT done, user's stated intent):** compare MC closure with and against the plateau
+correction. That is Remaining Work 8's closure test, now with two correction variants to run it on.
+
 ### D6: the gap cut lives at the RDF stage, not in the ntuple processing (2026-08-05)
 Round-8 Contract item 4 specified "a gap-cut mode in the ntuple-processing code". It was
 implemented at the RDF stage instead. **Provenance rule satisfied** (the cut is applied to
@@ -2958,7 +3023,7 @@ for the new variant.*
    there; the standalone inclusive canvas keeps its own range (round-9 review finding: the shared
    one squeezed its data into <10 % of the frame).
 
-2. **A no-plateau-correction Step-3 fit variant** — IN PROGRESS.
+2. **A no-plateau-correction Step-3 fit variant** — ✅ **DONE (see R27 for the results).**
    *User motivation, recorded verbatim:* the inverse-weighted ΔR distribution has "complicated
    structures ... even in the full range, especially in the gap-enclosing pair-η bins, which means
    the plateau determined in a large ΔR region might not be accurate for small ΔR (region of
