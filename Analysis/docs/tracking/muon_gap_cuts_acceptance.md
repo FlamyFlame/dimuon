@@ -488,6 +488,77 @@ single_mu_fiducial_gap_cuts = {{-1.20f, -1.05f}, {-0.06f, 0.06f}, {2.30f, 2.40f}
    evaluations is not started and needs an explicit go-ahead. Nothing reads
    `single_mu_fiducial_gap_cuts`, so no result has moved.
 
+### F11 — Crack window widened to (−0.10, +0.06); dashed no-fit markers removed (2026-08-12)
+
+**(a) Central crack window is now ASYMMETRIC.** `single_mu_fiducial_gap_cuts` central window
+changed `{-0.06, +0.06}` → `{-0.10, +0.06}` (user, 2026-08-12). The full set is now
+
+```cpp
+{{-1.20f, -1.05f}, {-0.10f, 0.06f}, {2.30f, 2.40f}};
+```
+
+The user's instruction as first written was `(-1., -0.06)`. Measured before applying anything:
+that window removes **23.81 % (pp) / 24.51 % (PbPb)** of single muons on its own — 25.99 % /
+28.30 % for the whole set, i.e. **45.2 % / 48.6 % of PAIRS** — and it would have cut a region
+that is *enriched*, not depleted. Slice-by-slice N(negative)/N(mirror positive) in 0.1 steps:
+
+| slice | pp | PbPb |
+|---|---|---|
+| (−0.10, 0.00) | **0.509** | **0.578** |
+| (−0.20, −0.10) | 0.885 | 0.872 |
+| (−0.30, −0.20) … (−1.00, −0.90) | 1.03 – 1.46 | 1.08 – 1.39 |
+| (−1.10, −1.00) | 0.772 | 1.059 |
+| (−1.20, −1.10) | 0.599 | 0.932 |
+
+Only (−0.10, 0.00) is depleted near zero — and only on the negative side, in the same sense
+for both charges (F7). It would also have left a surviving 1.0 % (pp) / 1.3 % (PbPb) sliver at
+[−1.05, −1.00] between the two windows. Put to the user with these numbers; the user chose
+`(-0.10, +0.06)`, which covers the whole measured depletion and nothing else.
+
+Cost at Tight WP, measured twice independently (a scratch scan over the trees, then the macro's
+own fill-loop counter — they agree exactly):
+
+| set | pp muons | pp pairs | PbPb muons | PbPb pairs |
+|---|---|---|---|---|
+| legacy `PassSingleMuonGapCut` | 7.39 % | 14.2 % | 10.16 % | 19.3 % |
+| fiducial, symmetric `{-0.06,+0.06}` (previous) | 3.29 % | 6.47 % | 5.13 % | 10.00 % |
+| **fiducial, `{-0.10,+0.06}` (current)** | **3.79 %** | **7.44 %** | **5.60 %** | **10.89 %** |
+
+Per-window: crack 1.62 % (pp) / 1.81 % (PbPb), dip 1.80 % / 2.88 %, forward 0.37 % / 0.91 %.
+Medium WP: 3.90 % (pp) / 6.40 % (PbPb) of muons. Per centrality (Tight) 5.55 → 5.76 % over
+0–10 → 50–80 %, still essentially flat.
+
+**(b) THE VECTOR IS NO LONGER INERT — this edit changes results.** F8/F10 said nothing read
+`single_mu_fiducial_gap_cuts`. That is now WRONG: a sibling session wired it into the
+**trigger-efficiency chain** on 2026-08-04 (`mc_trigger_efficiency.md`), and the stale
+"nothing reads this vector" claim has been corrected in the `ParamsSet.h` header comment.
+Live consumers:
+- `RDFBasedHistFilling/FillMCTrigEffHists.cxx:641–663` — MC trig-eff, Steps 1–4, single /
+  leg / pair forms via `ParamsSet::FiducialGapCutExpr`.
+- `RDFBasedHistFillingPP.cxx:172`, `RDFBasedHistFillingPbPb.cxx:342` — data tag-and-probe,
+  applied to the **probe only** (user decision; the tag is left uncut).
+- `RDFBasedHistFillingData.cxx:72–74` — reads the forward window's lower edge to check it
+  against the coarse q·η binning.
+- `CommonEffcyConfig.h:48,63` — the coarse binning's top edge (2.30) must track the forward
+  window or the evaluator throws. **The central window is not referenced there, so widening
+  the crack does NOT break that consistency check** (the coarse binning has an edge at 0.0,
+  and (−0.10, +0.06) sits inside the (−0.5, 0.0) and (0.0, +0.5) bins).
+
+⇒ **The MC trigger efficiency and the data tag-and-probe efficiencies are now STALE** and must
+be rerun. NOT done here: that is the sibling session's active pipeline, and rerunning it
+unilaterally would collide with its in-flight work. Flagged to the user instead.
+
+**(c) Dashed "no fitted trigger efficiency" markers removed from all 16 PNGs.** The trigger-
+efficiency code now fits in the **contiguous** `CommonEffcyConfig::q_eta_proj_ranges_coarse_incl_gap`
+(10 bins, −2.4 ≤ q·η < 2.3, no holes, top edge tracking the fiducial cut), so the regions those
+lines marked no longer exist — every surviving muon has a fitted turn-on and there is no
+`-1.0f` sentinel to fall into. Verified in `CommonEffcyConfig.h:65–76` before removing. Deleted
+from `plot_muon_q_eta_spectrum.cxx`: the `FineExclGapHoles()` helper, the dashed-`TLine` overlay
+in `DrawGapMarkers`, the `"kept, but no fitted trigger efficiency"` `TLegend` entry, the console
+report of the holes, and the now-unused `CommonEffcyConfig.h` include + `pairToSuffix` link shim.
+Legend boxes shrunk by one entry's height and `CanvasGapKey` dropped from 2/3 to 1/2 columns so
+the remaining entries keep their spacing. All 16 PNGs regenerated and visually checked.
+
 ## Ruled Out (append-only)
 
 - *Plotting from the existing 2026-06-23 trees* — stale on the one-sided Δp/p fix (F3), which
@@ -497,27 +568,32 @@ single_mu_fiducial_gap_cuts = {{-1.20f, -1.05f}, {-0.06f, 0.06f}, {2.30f, 2.40f}
 
 ## Latest Stage
 
-**Decision-support task COMPLETE (F10).** Trees regenerated (F5), macro written and reviewed,
-16 PNGs produced for both candidate cut sets at both WPs (F6, F7, F9), and the user has fixed
-the cut set: `{{-1.20,-1.05}, {-0.06,0.06}, {2.30,2.40}}` in q·η, already the value in
-`ParamsSet.h`. Nothing in the analysis chain reads it, so no result has moved.
+**Cut set FIXED (F10, F11a):** `{{-1.20,-1.05}, {-0.10,+0.06}, {2.30,2.40}}` in q·η, at a cost
+of 3.79 % (pp) / 5.60 % (PbPb) of single muons. Plots regenerated at the new window with the
+obsolete no-fit dashed markers removed (F11c).
 
-**Deferred, awaiting an explicit go-ahead from the user — in dependency order:**
+**IMMEDIATE, OPEN — the trigger efficiencies are STALE (F11b).** Unlike every earlier edit to
+this vector, the 2026-08-12 crack widening DOES move results: `single_mu_fiducial_gap_cuts` has
+been live in the trigger-efficiency chain since 2026-08-04 (MC trig-eff Steps 1–4; data
+tag-and-probe probe leg, pp + PbPb). The MC and data trigger efficiencies must be refit.
+**Not rerun here** — that pipeline belongs to the sibling session's `mc_trigger_efficiency.md`
+and a unilateral rerun would collide with its in-flight work. Awaiting the user's call on who
+runs it.
 
-1. **Extend the trigger-efficiency fit binning to cover q·η ∈ (2.2, 2.3)** — a PREREQUISITE
-   created by the 2.30 edge (F10.1), not optional. Without it the wiring-in silently drops the
-   recovered slice via the `-1.0f` sentinel.
-2. **Wire the vector into the selection** — replaces the standalone per-muon `q·η < 2.2` at the
-   13 call sites (F8) plus the trigger/reco-efficiency evaluations; full
-   `signal_selection_change_impact.md` rerun blast radius.
-3. **ε_acc itself** — the acceptance efficiency that compensates the fiducial cut has not been
-   built; the measured removed-fractions in F9 are the raw input to it.
+**Still deferred, awaiting an explicit go-ahead:**
 
-Also still open, from F8: the fiducial region and the efficiency parameterisation are not
-consistent — `q_eta_proj_ranges_fine_excl_gap` holes do not align with the chosen windows.
-Coupled doc: `pp_trig_eff_highpt_jump.md` option (d). F8's conclusion stands — fix the F2b
-`w_trig = 0` bug by extending the fit binning, not by redefining the acceptance.
+1. **Wire the vector into the SIGNAL selection** — replaces the standalone per-muon
+   `q·η < 2.2` at the 13 call sites (F8); full `signal_selection_change_impact.md` blast
+   radius. Prerequisite from the 2.30 edge (F10.1) is already satisfied: the coarse binning
+   now runs to 2.3.
+2. **Reconstruction efficiency, data ntuple processing and the template fits** — the other
+   three consumers named in the `ParamsSet.h` STATUS block, none of which apply the cut yet.
+3. **ε_acc itself** — not built; the F11a removed-fractions are its raw input.
 
-Side flags for the user, never part of this task (F4): cross-year FCal scaling is documented
-but never implemented in code; muon-level `ev_centrality` bypasses the PbPb25 pair-level
-centrality recalculation.
+Also open from F8: `q_eta_proj_ranges_fine_excl_gap` holes still do not align with the chosen
+windows — but that binning is no longer what the trigger-efficiency fits use, so it is now a
+tidy-up, not a correctness issue.
+
+Side flags, never part of this task (F4): cross-year FCal scaling is documented but never
+implemented in code; muon-level `ev_centrality` bypasses the PbPb25 pair-level centrality
+recalculation.
