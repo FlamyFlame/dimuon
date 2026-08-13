@@ -1918,6 +1918,60 @@ Current Step-3 `expo`, pp24 FULL, Tight, of 72 cells: plateau_corrected 32 rejec
 17 (opposite sign); no_plateau_correction 27 / 4 — i.e. criterion 5 is what rejects most same-sign
 cells in the corrected tree, exactly the pathology the no-correction variant was built for.
 
+### R29. Round 11 — the gap-window rerun, and what it moved (2026-08-13)
+
+**Trigger.** `single_mu_fiducial_gap_cuts` central crack window `{-0.06,+0.06}` → `{-0.10,+0.06}`
+(commit `1f143e6`; derivation and cost in `muon_gap_cuts_acceptance.md` F11a — the depletion is
+one-sided, N(neg)/N(mirror pos) = 0.509 pp / 0.578 PbPb in (−0.10, 0.00) and ≈1 elsewhere, so the
+symmetric window cut healthy acceptance on the + side and left the depleted slice in). The window
+is compiled into the RDF/JIT selection at FILL time, so this needed a REFILL, not a replot.
+
+**What was rerun, in order** (each stage's inputs strictly older than its outputs):
+
+| # | stage | driver | outputs |
+|---|---|---|---|
+| 1 | data T&P, pp24, Tight | `SKIP_CONDOR=1 pipeline_pp_trig_eff.sh` | fill 02:15→02:17, fit + plots 02:17 |
+| 2 | data T&P, PbPb 23/24/25, Tight (+ the inverse-weighted data ΔR stage) | `SKIP_CONDOR=1 pipeline_pbpb_trig_eff.sh` | fills 02:26 / 02:30 / 02:36, fits 02:37, plots → 02:38 |
+| 3 | data T&P, **Medium** WP, pp24 + PbPb23 | **`run_data_trigeff_medium_wp.sh` (NEW, see below)** | 02:39 / 02:44 |
+| 4 | MC chain: refill Steps 1–4, refit turn-ons, replot, 2D maps, statistics tables — 3 samples × 2 WPs | `run_mc_trigeff_round7.sh` | 02:44→03:01 |
+| 5 | ΔR corrections: guard + refit + replot (both plateau modes, 3 methods, 3 sign series, both views) | `SKIP_MEASURE=1 run_dr_correction_fits.sh` | 03:0x→03:2x, 54 nominal fit files |
+
+The NTuple processing was NOT rerun and did not need to be — the cut is applied at the RDF stage
+(D6). Verified directly on the refilled pp24 data file: the probe q·η spectrum is **exactly zero**
+in [−0.100, +0.060) and populated on both sides (1972 entries in [−0.110,−0.100), 2228 in
+[0.060,0.070)), i.e. the asymmetric window is live and is the ONLY thing that changed.
+
+**A hole this exposed, now fixed: the data pipelines never ran the Medium WP.** Both
+`pipeline_{pp,pbpb}_trig_eff.sh` leave `isTight` at its default `true`, so every rerun refreshed
+the Tight tag-and-probe file and silently left the `_medium_wp` one behind — and that file is not
+a spare: `plot_mc_trig_eff.cxx` with `use_tight_wp = false` reads it as the data reference the
+Medium MC is compared against. Before this round the Medium data files dated from 2026-08-04, so a
+Medium comparison would have put **new-window MC against old-window data**, with no error and no
+warning. New driver `pipelines/run_data_trigeff_medium_wp.sh` runs exactly the two WP-dependent
+stages (RDF fill with `isTight=false`, turn-on fit with `wp_suffix="_medium_wp"`) for pp24 and
+PbPb23 — the two files anything consumes. **PbPb 24/25 Medium T&P files have never existed and
+still do not**; nothing reads them today, so they were not invented here.
+
+**What it moved (pp24 FULL, Tight, Step-3 `expo`, plateau-corrected), old → new:**
+
+| quantity | before (2026-08-11) | after |
+|---|---|---|
+| plateau-guard FAILING cells (\|plateau−1\| > 0.15) | 12 | **11** |
+| rejected cells, same sign / opposite sign (of 72) | 32 / 17 | **32 / 17** (unchanged) |
+| inclusive χ²/ndf, sign-integrated | 10.248 | **10.278** |
+| inclusive χ²/ndf, same sign / opposite sign | 1.308 / 9.803 | **1.323 / 9.860** |
+
+Small, as expected for a window that removes ~1.6 % of pp muons in a narrow q·η slice, and in the
+harmless direction (one fewer cell fails the guard). **R23 is NOT resolved by this** — the guard
+still returns `verdict: FAIL` on the top pair-pT cells, so the pipeline still exits non-zero, and
+R25/R26 are untouched: the sign-dependence and the χ²-blind `fit_ok` gate are properties of the
+fit, not of the fiducial region.
+
+**Blast radius, stated and checked:** the gap cut is still NOT in the signal selection
+(`muon_gap_cuts_acceptance.md` F10.3), so **crossx and R_AA did not move** and
+`signal_selection_change_impact.md` was not triggered. `_pt4bin` was deliberately excluded (already
+STALE per R24b).
+
 ### D6: the gap cut lives at the RDF stage, not in the ntuple processing (2026-08-05)
 Round-8 Contract item 4 specified "a gap-cut mode in the ntuple-processing code". It was
 implemented at the RDF stage instead. **Provenance rule satisfied** (the cut is applied to
@@ -3072,6 +3126,79 @@ criteria **P1** and **P2**):
     `no_plateau_correction` variant, which removes the term rather than sizing it.
 
 ## Latest Stage
+
+**2026-08-13 (round 11) — ✅ DONE, 03:2x. The gap-window rerun is COMPLETE. Every MC and data
+trigger-efficiency product in this doc is current with `single_mu_fiducial_gap_cuts =
+{{-1.20,-1.05}, {-0.10,+0.06}, {2.30,2.40}}`.**
+
+> ### 📌 HAND-OFF TO THE MC-CLOSURE THREAD (`mc_trig_eff_closure.md`) — READ THIS FIRST
+>
+> **The rerun is finished; the inputs you consume are final as of 2026-08-13 03:2x.** Use them
+> as they now stand:
+>
+> | what you read | path (pp24 FULL) | written |
+> |---|---|---|
+> | MC trig-eff hists, Step 3 / Step 4 | `pythia_fullsim_full_sample/mc_trig_eff_hists_pp24_full{,_medium_wp}_step{3,4}.root` | 02:51 / 02:54 |
+> | MC single-muon turn-on fits | `…/single_mu_effcy_pT_fit_mc{,_medium_wp}.root` | 02:50 |
+> | ΔR plateaus | `…/dr_correction_plateaus_pp24_full{,_medium_wp}.root` | 02:57 / 02:59 |
+> | **ΔR-correction fits (54 nominal files)** | `…/dr_correction_fits_pp24_full*<step><method><sign><pmode>.root` | **03:13–03:2x** |
+> | data T&P reference, Tight / Medium | `dimuon_data/pp_2024/…_qeta_fid{,_medium_wp}.root` + `…/single_mu_effcy_pT_fit{,_medium_wp}.root` | 02:17 / 02:39 |
+> | data T&P, PbPb 23/24/25 Tight; PbPb23 Medium | `dimuon_data/pbpb_20{23,24,25}/…_qeta_fid*.root` + their fits | 02:26–02:38 / 02:44 |
+>
+> **⚠ Your outputs from before ~03:25 are STALE — please regenerate.** Our two runs overlapped:
+> `mc_trig_eff_closure_pp24_full.root` (02:53:04) and `…_medium_wp.root` (02:58:04) were written
+> **while** this rerun was in flight, so they combine the new Step-3/4 hists with the **old
+> (2026-08-11, pre-widening) ΔR-correction fits** — the fits were only rewritten at 03:13–03:2x.
+> A closure built on that mixture is not a closure of anything: the correction applied and the
+> efficiency it was derived from used different fiducial regions.
+>
+> **Concurrency, going forward.** We share `pythia_fullsim_full_sample/` and the RDF/ACLiC
+> build directory, and none of it is under git, so a collision is silent. This thread is now
+> **idle** on those paths — nothing further will be written here without saying so in this doc
+> first. Your `_pt4bin` Step-3 refill (02:59:56) did not collide with anything of ours (the
+> nominal token is empty), but note `_pt4bin` remains STALE for everything else (**R24b**) — it
+> was deliberately NOT part of this rerun.
+
+*Plan, written before the work (per-step protocol).*
+
+**Why.** `ParamsSet::single_mu_fiducial_gap_cuts` central crack window was widened
+`{-0.06, +0.06}` → `{-0.10, +0.06}` (commit `1f143e6`, user decision recorded in
+`muon_gap_cuts_acceptance.md` F11a; the measured depletion is one-sided, N(neg)/N(mirror pos) =
+0.509 pp / 0.578 PbPb in (−0.10, 0.00) and ≈1 everywhere else, so the symmetric window was
+cutting healthy acceptance on the positive side and leaving the depleted slice in). That vector is
+LIVE in the trigger-efficiency chain — `FillMCTrigEffHists.cxx:641–663` (MC, Steps 1–4, single /
+leg / pair forms) and `RDFBasedHistFillingPP.cxx:172` + `RDFBasedHistFillingPbPb.cxx:342` (data
+tag-and-probe, PROBE leg only) — and the windows are built into the RDF/JIT selection strings at
+FILL time, so the numbers are baked into the filled histograms: a replot cannot pick the change up,
+the hists must be REFILLED. F11b flagged this and left the rerun to this doc's session; the user
+has now asked for it, explicitly including the data single-muon mu4 efficiency.
+
+**Blast radius (stated before running).** The gap cut is NOT yet in the signal selection (deferred,
+`muon_gap_cuts_acceptance.md` F10.3), so **crossx and R_AA are NOT affected** and
+`signal_selection_change_impact.md` is not triggered. Stale, and only: the data single-muon
+efficiency (pp24, PbPb 23/24/25) and everything downstream of it, and the whole MC trig-eff chain.
+The NTuple processing is untouched — the cut lives at the RDF stage (D6) — so no condor, no
+re-skim. `CommonEffcyConfig` consistency is unaffected: only the FORWARD window's edge (2.30) is
+coupled to the coarse q·η binning; the central window sits inside existing bin edges.
+
+**Order (data first, because the MC Step-1 canvases overlay the data turn-on):**
+1. **Data, pp24** — `SKIP_CONDOR=1 pipeline_pp_trig_eff.sh` (stages 5–8: RDF fill → turn-on fit →
+   validate → Pipeline-2 plots).
+2. **Data, PbPb 23/24/25** — `SKIP_CONDOR=1 pipeline_pbpb_trig_eff.sh` (stages 5–10; 9–10 are the
+   inverse-weighted data ΔR corrections, which consume the refitted ε_single and therefore move
+   too).
+3. **MC chain** — `run_mc_trigeff_round7.sh` (refill Steps 1–4, refit turn-ons, replot) for
+   `pp_full` + the two test samples, both working points.
+4. **ΔR corrections** — `run_dr_correction_fits.sh` with NO skips (measure → guard+fit → plot),
+   which also re-lays the round-10 two-view tree on the new numbers.
+5. Re-verify: plateau guard verdict, fit-report rejection counts, and the Step-1 data/MC comparison,
+   against the pre-change values recorded in R24–R28.
+
+*Nothing else in this doc changes: no binning, no sample, no weight, no fit method, no plateau
+window.*
+
+---
+
 
 **2026-08-11 (round 10) — IN PROGRESS. Two user follow-ups on the round-9 Step-3 outputs.**
 
