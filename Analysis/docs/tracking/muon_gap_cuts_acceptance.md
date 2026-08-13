@@ -463,6 +463,31 @@ Per centrality (proposed, Tight): 0–10 % 5.09 %, 10–20 % 5.17 %, 20–30 % 5
 30–50 % 5.16 %, 50–80 % 5.27 % — essentially flat, unlike the legacy set which drifts
 0.1022 → 0.0956 over the same range.
 
+### F10 — USER DECISIONS: the cut set is SETTLED (2026-08-12)
+
+The three open questions from F8/F9 were put to the user and answered. The fiducial definition
+is now fixed and matches what is already in `ParamsSet.h` — **no code change was needed**:
+
+```cpp
+single_mu_fiducial_gap_cuts = {{-1.20f, -1.05f}, {-0.06f, 0.06f}, {2.30f, 2.40f}};
+```
+
+1. **Forward edge = 2.30** (not 2.20). The user chose the looser edge, accepting that the swap
+   for the standalone per-muon `q·η < 2.2` signal cut is therefore **not** yield-neutral: it
+   recovers q·η ∈ (2.2, 2.3), +1.36 % of pp and +2.24 % of PbPb single muons.
+   **Consequence, now a hard PREREQUISITE for wiring in:** that recovered slice has no fitted
+   trigger efficiency (`CommonEffcyConfig::q_eta_proj_ranges_fine_excl_gap` stops at 2.2), so
+   the fit binning MUST be extended to cover (2.2, 2.3) *before* the vector replaces the
+   standalone cut — otherwise those muons hit the `-1.0f` sentinel and are silently dropped
+   (F2b / `pp_trig_eff_highpt_jump.md`). The user did NOT ask for that extension yet; it is
+   deferred with the wiring-in, not waived.
+2. **Crack window stays in q·η**, `{-0.06, +0.06}`, not switched to |η|. One variable for all
+   three windows; the measured skew (minimum at q·η ≈ −0.02, ratio 2.44 pp / 2.02 PbPb at
+   ∓0.05, F7) is accepted rather than modelled with a per-window variable flag.
+3. **Wiring in is HELD.** The replacement at the 13 call sites + the trigger/reco-efficiency
+   evaluations is not started and needs an explicit go-ahead. Nothing reads
+   `single_mu_fiducial_gap_cuts`, so no result has moved.
+
 ## Ruled Out (append-only)
 
 - *Plotting from the existing 2026-06-23 trees* — stale on the one-sided Δp/p fix (F3), which
@@ -472,26 +497,27 @@ Per centrality (proposed, Tight): 0–10 % 5.09 %, 10–20 % 5.17 %, 20–30 % 5
 
 ## Latest Stage
 
-**Steps 3 and 4 are DONE.** Trees regenerated (F5), macro written and reviewed, 16 PNGs
-produced for both candidate cut sets at both WPs (F6, F7, F9). The decision-support material
-the task set out to deliver is complete.
+**Decision-support task COMPLETE (F10).** Trees regenerated (F5), macro written and reviewed,
+16 PNGs produced for both candidate cut sets at both WPs (F6, F7, F9), and the user has fixed
+the cut set: `{{-1.20,-1.05}, {-0.06,0.06}, {2.30,2.40}}` in q·η, already the value in
+`ParamsSet.h`. Nothing in the analysis chain reads it, so no result has moved.
 
-**BLOCKED ON THE USER — three open decisions, in dependency order:**
+**Deferred, awaiting an explicit go-ahead from the user — in dependency order:**
 
-1. **Forward edge: keep 2.30 or revert to 2.20?** (F9) 2.30 recovers q·η ∈ (2.2, 2.3)
-   (+1.36 % pp / +2.24 % PbPb muons) but that slice has NO fitted trigger efficiency, so it
-   requires extending the fit binning first. 2.20 makes the eventual swap exactly
-   yield-neutral and needs no fit change.
-2. **Crack-at-zero cut variable is still open** (F7): the |η|≈0 crack is skewed for BOTH
-   charges (ratio 2.44 pp / 2.02 PbPb at ∓0.05, minimum at q·η ≈ −0.02), so it is not cleanly
-   a q·η feature the way the |η|≈1.15 dip is. The provisional {−0.06, +0.06} is written in
-   q·η; whether it should be in η instead is undecided.
-3. **Wiring in** (F8 §Intended scope): replacing the standalone per-muon `q·η < 2.2` at the 13
-   call sites + the trigger/reco-efficiency evaluations is a signal-selection change with the
-   full `signal_selection_change_impact.md` rerun blast radius. NOT started; needs approval.
+1. **Extend the trigger-efficiency fit binning to cover q·η ∈ (2.2, 2.3)** — a PREREQUISITE
+   created by the 2.30 edge (F10.1), not optional. Without it the wiring-in silently drops the
+   recovered slice via the `-1.0f` sentinel.
+2. **Wire the vector into the selection** — replaces the standalone per-muon `q·η < 2.2` at the
+   13 call sites (F8) plus the trigger/reco-efficiency evaluations; full
+   `signal_selection_change_impact.md` rerun blast radius.
+3. **ε_acc itself** — the acceptance efficiency that compensates the fiducial cut has not been
+   built; the measured removed-fractions in F9 are the raw input to it.
 
-Coupled decision: `pp_trig_eff_highpt_jump.md` option (d) is this fiducial-cut approach; F8
-concludes the F2b `w_trig = 0` bug should be fixed by extending the fit binning, NOT by
-redefining the acceptance. Keep the two decisions separate.
+Also still open, from F8: the fiducial region and the efficiency parameterisation are not
+consistent — `q_eta_proj_ranges_fine_excl_gap` holes do not align with the chosen windows.
+Coupled doc: `pp_trig_eff_highpt_jump.md` option (d). F8's conclusion stands — fix the F2b
+`w_trig = 0` bug by extending the fit binning, not by redefining the acceptance.
 
-Nothing in the analysis chain reads `single_mu_fiducial_gap_cuts` yet, so no result has moved.
+Side flags for the user, never part of this task (F4): cross-year FCal scaling is documented
+but never implemented in code; muon-level `ev_centrality` bypasses the PbPb25 pair-level
+centrality recalculation.
