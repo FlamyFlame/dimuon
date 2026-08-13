@@ -114,3 +114,4 @@
 {"event":"start","command":"review-plot","task":"PbPb forward qeta edge scan: data-only by-year + by-centrality PNGs","slug":"pbpb-forward-qeta-edge-scan","timestamp":"2026-08-13T18:35:30-04:00"}
 {"event":"start","command":"review-plot","task":"truth q*eta reference plot set + legend-over-curve fix in the new-gap-cut figures","slug":"truth-qeta-and-legend-fix","timestamp":"2026-08-13T19:01:27-04:00"}
 {"event":"end","command":"review-plot","status":"approved","iterations":4,"timestamp":"2026-08-13T19:10:17-04:00","criticals":0,"warnings":0,"slug":"pbpb-forward-qeta-edge-scan"}
+{"event":"end","command":"review-plot","status":"approved","iterations":2,"timestamp":"2026-08-13T19:32:23-04:00","criticals":0,"warnings":0,"slug":"truth-qeta-and-legend-fix"}

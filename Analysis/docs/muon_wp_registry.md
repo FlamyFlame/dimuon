@@ -123,6 +123,15 @@ Medium (PbPb overlay; out of scope for the pp work — flag for the overlay owne
   var, default Tight — per memory `feedback_plots_wp_config_var`).
 - `bkg_mc_provenance_20260624/code/{bkg_mc_provenance.C,fill_weighted_fullsim.C}` — `useTight` already present.
 
+### 8. WP-INDEPENDENT by construction — no config var, and none should be added
+- `plotting_codes/single_b_analysis/plot_muon_truth_q_eta_spectrum.cxx` — the TRUTH single-muon
+  q·η reference (`muon_gap_cuts/truth_q_eta/`). Its population is truth muons in the truth
+  fiducial (`truth_pt > 4 && |truth_eta| < 2.4`) with **no reco match**, so there is no
+  reconstruction quality to require. Adding a Tight/Medium config var here (the rule that governs
+  every other plot set) would advertise a choice that does not exist. The neighbouring DATA figure
+  `plot_muon_q_eta_spectrum.cxx` does carry the WP var (§6/§7 style) and is the WP-sensitive one.
+  Consistent with the "truth acceptance is WP-independent" line of the blast radius below.
+
 ## Blast radius of a Medium↔Tight switch (see also `signal_selection_change_impact.md`)
 That doc's "ntuple UNCHANGED" assumption is FALSE for the WP (WP is upstream for DATA). Net
 result-affecting chain: DATA WP selection (§2/§3) → data crossx (pp + PbPb 23/24/25) → crossx / R_AA /

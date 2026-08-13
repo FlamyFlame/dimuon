@@ -38,6 +38,8 @@ does NOT choose the cuts.
 | 3 | Regenerate the single-muon trees with the current nominal selection (one-sided Δp/p) | DONE (F5) |
 | 4 | Plot the q·η spectra (pp24; PbPb combined ctr-integrated; PbPb combined ctr-binned) | DONE (F6) |
 | 5 | `/review-plot` | IN PROGRESS |
+| 6 | TRUTH q*eta reference spectrum (MC, truth fiducial only) | DONE (F12) |
+| 7 | Fix TLegend boxes covering curves in the new-gap-cut figures | DONE (F13) |
 
 ## Accumulated Findings (append-only)
 
@@ -559,6 +561,116 @@ report of the holes, and the now-unused `CommonEffcyConfig.h` include + `pairToS
 Legend boxes shrunk by one entry's height and `CanvasGapKey` dropped from 2/3 to 1/2 columns so
 the remaining entries keep their spacing. All 16 PNGs regenerated and visually checked.
 
+### F12 — TRUTH q·η reference: the three gap features are 100 % detector, and ε_acc = 0.913 (2026-08-13)
+
+New plot set `muon_gap_cuts/truth_q_eta/` from
+`plotting_codes/single_b_analysis/plot_muon_truth_q_eta_spectrum.cxx`:
+`muon_truth_q_eta_spectrum_pp24_fullsim.png`, `..._pbpb_overlay.png`,
+`..._pp_vs_pbpb_shape.png`. Truth muons in the truth fiducial (`truth_pt > 4`,
+`|truth_eta| < 2.4`) with **no reco match, no working point, no trigger** — the spectrum the
+data figures of F6 cannot provide. Cross-section-weighted by `ev_weight`; same canonical
+`makeEtaTrigEffcyBinning(1)` axis as F6, so truth and data panels are cell-for-cell
+comparable. Sample scope was the user's call: pp24 primary **plus** the overlay; a
+truth-vs-data comparison panel was offered and declined.
+
+**Input provenance.** `muon_tree` in NOMINAL mode (`PythiaFullSimExtras.c:395–412`), whose
+gate is exactly the truth fiducial with no reco match — it is the single-muon reco-efficiency
+denominator. The `store_mc_trigger` twin of the same tree is NOT interchangeable (its gate is
+`reco_match && pt > 3 && |eta| < 2.6`, which would put the reconstruction efficiency straight
+back in). Truth-seeded from the Pythia-only block, so HIJING muons never enter.
+
+| sample | truth muons | Σ weights (nb) |
+|---|---|---|
+| pp24 Pythia fullsim, FULL `_pdf` production | 17 105 648 | 168.3 |
+| HIJING overlay, PbPb23 test sample, centrality 0–13 % | 107 786 | 144.1 |
+
+**The overlay input was STALE and was regenerated here** (same failure mode as F3, caught
+before plotting). The on-disk copy was dated 2026-06-10 and so predated `8c917b4`
+(2026-07-14 — the Pythia truth index guard *leaked the HIJING generator block* when the
+Pythia Geant4 block is empty, i.e. a change to which truth muons exist at all) and `216f750`
+(2026-07-14, `isTestSample` / isospin, which sets `ev_weight`). Rerun with
+`run_pythia_fullsim_overlay_single_muon.sh` → the new
+`..._hijing_overlay_pbpb23_..._single_muon.root` (the old file also carried the legacy
+`hijing_overlay_pp24` label). Measured effect: 107 796 → 107 786 muons, i.e. the HIJING leak
+was **10 muons** in this sample — small, but it could not be known to be small without
+rerunning. The pp24 FULL file (2026-07-20) postdates both fixes and is current: the only later
+NTP commits are `c0043bd` (inside `if (store_mc_trigger)` only) and `f990173` (adds `n_vtx`).
+
+**★ RESULT 1 — every feature the fiducial cut targets is purely detector.** The dip finder
+(bins below 60 % of the local 21-bin median) reports **nothing anywhere on the axis, in either
+sample**: the truth spectrum is a smooth, charge-symmetric arc. Measured against the same
+diagnostic used on data in F6/F7 (0.02-wide q·η slices, cross-section weighted):
+
+| feature | data pp24 (F6/F7) | **truth pp24** |
+|---|---|---|
+| barrel/endcap dip, minimum bin [−1.12, −1.10) | **0.32** of plateau | **1.036** |
+| whole dip window [−1.20, −1.05], mean | ~0.4 of plateau | **1.034** |
+| crack window [−0.10, +0.06], mean / side-band | deep and skewed (min ≈ 0.35, ratio 2.44 at ∓0.05) | **1.007** |
+| forward N(+2.38,+2.40) / N(−2.40,−2.38) | **0.094** (factor 11.4 collapse) | **1.005** |
+
+So the −1.11 dip, the η ≈ 0 crack **and** the one-sided forward collapse have **no generator-level
+counterpart whatsoever** — they are entirely trigger × reconstruction. This is what makes the
+truth spectrum usable as the ε_acc denominator, and it independently confirms the F7 reading
+that these are detector/bending-direction effects rather than kinematics.
+
+**★ RESULT 2 — the truth-level acceptance cost, ε_acc.** Fraction of truth muons removed by
+`single_mu_fiducial_gap_cuts` (cross-section weighted; raw fractions agree to <0.4 %):
+
+| window | pp24 | PbPb overlay |
+|---|---|---|
+| [−1.20, −1.05] (barrel/endcap dip) | 3.36 % | 3.32 % |
+| [−0.10, +0.06] (crack) | 4.16 % | 4.15 % |
+| [+2.30, +2.40] (forward edge) | 1.16 % | 1.32 % |
+| **all windows** | **8.67 %** | **8.79 %** |
+| **ε_acc = 1 − removed** | **0.9133** | **0.9121** |
+
+**Two things to carry forward:**
+1. **ε_acc must be built from TRUTH, not from the data spectra of F11a.** The same cut removes
+   **8.67 % of truth muons but only 3.79 % of reconstructed pp muons** (5.60 % PbPb) — a factor
+   **2.3 (pp) / 1.6 (PbPb)**. The data fractions are small precisely *because* the detector has
+   already removed most of that population; using them as ε_acc would under-correct by that
+   factor. The F11a numbers are the cost in *reconstructed yield*, which is a different (and
+   also useful) quantity — the two must not be interchanged.
+2. **ε_acc is essentially system-independent**: pp and the PbPb overlay agree to 0.13 % absolute
+   (0.9133 vs 0.9121), and the unit-area pp/PbPb truth shape ratio is flat at 1 within the
+   overlay's statistics across the whole axis. At truth level the two differ only through the
+   beam mixture, and that difference is not resolvable here. (The overlay is a 108 k test
+   sample and its panels are visibly noisy on the canonical fine axis; the binning was NOT
+   coarsened for it.)
+
+**Working point.** Deliberately absent — a truth muon has no reconstruction quality, so the
+Tight/Medium config var every other plot set carries has no meaning. Recorded as such in
+`docs/muon_wp_registry.md` §8 (new section: "WP-INDEPENDENT by construction").
+
+### F13 — TLegend boxes were covering curve segments in the new-gap-cut figures (2026-08-13)
+
+User-reported, on `muon_gap_cuts/new_gap_cuts/` (the legacy `old_gap_cuts/` set was explicitly
+out of scope and was NOT regenerated, so it still carries the old layout). The legends are
+opaque by necessity — they sit over the shaded gap bands — and are drawn last, so a legend at a
+hard-coded corner erases whatever passes underneath it. The corner that is empty in pp is
+crossed by the Pb+Pb acceptance edge, which is why the defect showed up on the Pb+Pb panels.
+
+Three distinct faults, all fixed in `plot_muon_q_eta_spectrum.cxx`:
+1. **Panel 1's legend carried the entire gap-window key** — five entries, the full width of the
+   frame — so there was nowhere to put it that was not on top of the spectrum; it sat across the
+   q·η ≈ 0 dip and the forward edge. The key now goes **once across the canvas** in a band freed
+   above the pads (pads 0.90 → 0.875), and panel 1 has no in-frame legend at all: it has one
+   curve, which the panel header already names.
+2. **The pp-vs-Pb+Pb legend was sized for two entries but held five**, so ROOT printed the
+   window lines on top of the sample lines. Same fix (key to the canvas band) plus a new
+   `LegendHeight(n_entries, text_size)` so a box can no longer be sized independently of what
+   it holds.
+3. **The remaining 2–5 entry legends are now auto-placed** by `AutoLegendBox()`: it scores the
+   four in-frame corners by how much of the drawn curve falls inside the candidate box and
+   returns the emptiest. Scoring walks consecutive-bin **segments**, not bin contents, because a
+   step histogram draws the vertical connector between bins — a steep plunge (exactly the
+   forward acceptance edge) can cross a box without any single bin content landing inside it.
+
+Both WPs regenerated (`new_gap_cuts/` + `new_gap_cuts/medium/`, 8 PNGs); every panel visually
+re-checked. The same helpers were ported verbatim into
+`plot_muon_truth_q_eta_spectrum.cxx` so the truth and data figures place their legends by the
+same rule and can be read side by side.
+
 ## Ruled Out (append-only)
 
 - *Plotting from the existing 2026-06-23 trees* — stale on the one-sided Δp/p fix (F3), which
@@ -567,6 +679,15 @@ the remaining entries keep their spacing. All 16 PNGs regenerated and visually c
   Provenance rule and unnecessary: the single-muon trees are exactly the intended output.
 
 ## Latest Stage
+
+**STEP 6 + 7 DONE (2026-08-13).** The TRUTH q·η reference spectrum exists at
+`muon_gap_cuts/truth_q_eta/` (F12) and the legend-over-curve defect in the new-gap-cut data
+figures is fixed (F13). Headline: the −1.11 dip, the η ≈ 0 crack and the one-sided forward
+collapse are **100 % detector** — the truth spectrum is featureless across all three
+(1.036 / 1.007 / 1.005 where the data sit at 0.32 / deep / 0.094) — and the truth-level
+acceptance is **ε_acc = 0.9133 (pp) / 0.9121 (PbPb overlay)**, i.e. the cut costs **8.67 %** of
+TRUE muons against only 3.79 % of reconstructed ones. Building ε_acc itself is still the
+deferred item below; F12 supplies its numerator/denominator.
 
 **Cut set FIXED (F10, F11a):** `{{-1.20,-1.05}, {-0.10,+0.06}, {2.30,2.40}}` in q·η, at a cost
 of 3.79 % (pp) / 5.60 % (PbPb) of single muons. Plots regenerated at the new window with the
