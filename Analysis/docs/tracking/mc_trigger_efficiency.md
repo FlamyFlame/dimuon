@@ -108,6 +108,8 @@ concrete work list. Round 7 is CLOSED except for its two reviews and wrap-up.
      pT dependence with upper edges **(2,2.2), (2,2.25), (2,2.3), (2,2.4)** overlaid; 4 subplots
      — μ⁺ left / μ⁻ right, data top / MC bottom. Purpose: decide whether the forward cut must
      stay at 2.2 or can loosen to 2.25 / 2.3. ((2,2.4) is known to be bad.)
+     *(Historical record of the REQUEST. 2.25 is not a bin boundary on the fine q·η axis and
+     resolves to 2.26 — see the R22 correction box.)*
   7. **All remaining MC trigger-efficiency plots remade** on the 8 pair-pT bins, keeping the
      gap cut and the round-7 forward veto (`pT > 7 || q·η > −2`) on Steps 2/3/4.
   8. **Blast-radius flag:** everything outside trigger efficiency that the q·η-binning and
@@ -1646,20 +1648,32 @@ Plateau ε (pT > 8 GeV), all four panels agreeing (`forward_qeta_edge_scan/`):
 
 | upper edge | data μ⁺ | data μ⁻ | MC μ⁺ | MC μ⁻ | probes (data μ⁺) |
 |---|---|---|---|---|---|
-| 2.20 | 0.9073 | 0.9177 | 0.9339 | 0.9306 | 3 380 |
-| 2.25 | 0.9004 | 0.9107 | 0.9268 | 0.9245 | 4 320 |
-| **2.30** | 0.9026 | 0.9101 | 0.9281 | 0.9251 | **4 900** |
+| 2.20 | 0.9073 | 0.9177 | 0.9339 | 0.9306 | 3 378 |
+| 2.26 | 0.9004 | 0.9107 | 0.9268 | 0.9245 | 4 318 |
+| **2.30** | 0.9026 | 0.9101 | 0.9281 | 0.9251 | **4 898** |
 | 2.40 | 0.8492 | 0.8563 | 0.8851 | 0.8804 | 6 220 |
 
 2.20 → 2.30 costs ~0.5 % in plateau efficiency and recovers **45 % more probes**; 2.40 costs ~6 %.
-⇒ the forward window can be loosened to `{2.30, 2.40}`. **NOT applied** — one edit in
-`ParamsSet.h`, awaiting the user.
+⇒ the forward window can be loosened to `{2.30, 2.40}`. **APPLIED** — `ParamsSet.h` now carries
+`{2.30, 2.40}`.
+
+> **Correction (2026-08-13, R31).** The row originally headed **2.25** was mislabelled: the fine
+> q·η axis is 0.02-wide above 2.20 (edges … 2.24, **2.26** …), so 2.25 is *not* a bin boundary and
+> the projection necessarily stopped at **2.26**. The efficiencies were always right — only the
+> stated edge was wrong (and the probe counts were rounded to 3 380 / 4 320 / 4 900 where the
+> integrals are 3 378 / 4 318 / 4 898). Header and counts corrected above; the pp figure was
+> regenerated on the fixed
+> labelling (2026-08-13), and every label is now written from the achieved bin edge so it can no
+> longer disagree with the data. **Central values unchanged.**
 
 *New macro* `plotting_codes/trig_effcy/mc_based/plot_forward_qeta_edge_scan.cxx` — the forward-edge
-decision plot (2×2: μ⁺/μ⁻ × data/MC, upper edge scanned 2.20/2.25/2.30/2.40). **It requires
-NO-GAP-CUT inputs** (the nominal chain removes q·η > 2.2 outright, which would draw four identical
-curves); it asserts the q·η > 2.2 region is populated and refuses to run otherwise. Needs one
-MC pass with the gap cut disabled (`_nogapcut` output) — NOT yet produced.
+decision plot (2×2: μ⁺/μ⁻ × data/MC, upper edges REQUESTED 2.20/2.25/2.30/2.40 — the drawn ladder
+resolves to 2.20/**2.26**/2.30/2.40, see the correction box above). **It requires NO-GAP-CUT
+inputs** (the nominal chain removes the forward window outright, which would draw four identical
+curves); it asserts the q·η > 2.2 region is populated and refuses to run otherwise. It needs one MC
+pass with the gap cut disabled (`_nogapcut` output) — **produced 2026-08-04**,
+`pythia_fullsim_full_sample/mc_trig_eff_hists_pp24_full_nogapcut.root`, and it is what the MC
+panels of the pp figure are drawn from.
 
 ### R23. Both reviewers run — one OPEN physics finding that REFUTES an earlier claim (2026-08-06)
 
@@ -2005,12 +2019,146 @@ all 24 inclusive pairs.
 - An **unconstrained** fit published with `fit_ok = 1` (`A = −0.153 ± 1.7`, `C = 0.706 ± 2.3`, i.e.
   300 % errors) whose **χ²/ndf is 1.45** — evidence for the open **R26** decision that a χ² screen
   alone would not catch this class; a relative-parameter-error screen would.
-- `forward_qeta_edge_scan/` still shows the **old symmetric window** (2026-08-04). Regenerating it
-  needs a dedicated `MCTRIGEFF_NO_GAPCUT=1` fill — user's call.
+- ~~`forward_qeta_edge_scan/` still shows the **old symmetric window** (2026-08-04). Regenerating it
+  needs a dedicated `MCTRIGEFF_NO_GAPCUT=1` fill — user's call.~~ **Resolved for PbPb by R31
+  (2026-08-13): the PbPb figure is now DATA-ONLY, so no `_nogapcut` MC fill is needed there. The pp
+  figure is untouched and still carries the 2026-08-04 MC panels.**
 - `plot_mc_trig_eff.cxx` defines ε_ΔR as "P(both μ fire | ΔR)" where the fit plots say "P(pair
   passes 2mu4 | ΔR)". The latter is correct; fixing it rewrites the plateau files the concurrent
   closure thread now reads, so it is NOT done here.
 - Pre-restructure orphan directories in the PbPb fit-plot trees (housekeeping, PbPb not refilled).
+
+### R31. PbPb forward q·η edge scan is now DATA-ONLY: by-year + by-centrality (2026-08-13, user)
+
+**What changed and why.** The PbPb `forward_qeta_edge_scan/` figure was a 2 × 2 with *data on top,
+HIJING overlay on the bottom*. The overlay is still a **test sample**, and in a single forward q·η
+slice (2.0 < q·η < 2.4) it has far too few muons to say anything about where the edge belongs — the
+bottom row carried no information and invited over-reading. **User decision: drop the MC entirely
+from the PbPb figure** and spend the panels on the two axes PbPb actually has and pp does not.
+`single_mu_eff_forward_qeta_edge_scan.png` was **deleted**; two PNGs replace it (same directory,
+`…/plots/pbpb_trigger_efficiency/mc_based/forward_qeta_edge_scan/`):
+
+| PNG | grid | content |
+|---|---|---|
+| `…_by_year.png` | 3 rows × 2 cols | centrality-integrated; **μ⁺ left, μ⁻ right**; rows = PbPb **2023 / 2024 / 2025** |
+| `…_centrality.png` | 3 rows × 2 cols | **2023+2024+2025 summed AND μ⁺ + μ⁻ summed**; one panel per centrality bin |
+
+Centrality bins are read from **`ParamsSet::ctrbins = {0,5,10,20,30,50,80}`** — the histogram key
+`_ctr<lo>_<hi>_` *and* the panel label are both built from that one vector, so they cannot drift
+apart (CLAUDE.md BLOCKING binning rule). Its 6 bins are exactly the 3 × 2 grid the user asked for.
+**pp is untouched** (still the 2 × 2 data/MC canvas), and no other PbPb trigger-efficiency plot was
+regenerated.
+
+**Inputs.** The un-suffixed no-gap-cut tag-and-probe outputs
+`pbpb_20{23,24,25}/histograms_real_pairs_pbpb_20YY_single_mu4_fine_q_eta_bin.root`
+(the gap-cut variant carries `_qeta_fid`; a gap-cut input would have nothing above q·η = 2.2 and
+the macro's `AssertForwardRegionPopulated` guard refuses to run on one). Numerator / denominator =
+`_2mu4_sepr` / `_mu4_sepr`, i.e. the `{"_2mu4","_mu4"}` entry of `trigs_pair` for `trigger_mode=1`.
+
+**Two candidate-edge ladders, and why.** The requested ladder was 2.20 / 2.25 / 2.30 / 2.40, but
+neither figure could draw it as written, for two independent binning reasons — both verified
+against the ROOT files by the reviewer:
+
+1. **2.25 is not a bin boundary.** The fine q·η axis is 0.10 wide up to 2.20 and 0.02 wide above
+   it (edges … 2.20, 2.22, 2.24, **2.26** …), so a projection asked to stop below 2.25 stops at
+   2.26. The by-year ladder is therefore **2.20 / 2.26 / 2.30 / 2.40**.
+2. **The per-centrality q·η binning is not uniform in centrality.** It is registered per bin in
+   `hist_binning_map` (`binName + "_ctr<lo>_<hi>"`) and the peripheral bins are deliberately
+   coarser: **184** bins for 0–5 / 5–10 / 10–20 / 20–30 %, **102** for 30–50 %, **61** for
+   50–80 %. 2.30 exists on the 184-bin grid but **not** on the 61-bin grid, whose neighbouring
+   boundaries are 2.28 and 2.36. Scanning "2.30" in all six panels would have meant [2.0,2.30) in
+   four panels, [2.0,2.32) in 30–50 % and [2.0,2.36) in 50–80 % — one legend entry over three
+   different physical windows, exactly the CLAUDE.md §Binnings failure. The centrality figure
+   therefore scans the boundaries **common to all six panels**, computed at run time by
+   `CommonQEtaBoundaries`: **2.20 / 2.28 / 2.36 / 2.40**.
+
+Every legend entry is written from the edge the axis actually delivered (`ResolveQEtaRange`), so
+no label can state a q·η the drawn data does not have. **The adopted edge 2.30 is drawn as a curve
+in the by-year figure; in the centrality figure it is bracketed by the 2.28 and 2.36 curves**, and
+both canvases carry its value in the headline, read from
+`ParamsSet::single_mu_fiducial_gap_cuts` rather than retyped.
+
+**Numbers — plateau ε (p_T > 8 GeV) and probe count D, per candidate upper edge.**
+All 48 values below were independently recomputed from the three `_fine_q_eta_bin` files by the
+reviewer: **48/48 MATCH**.
+
+*By year (all centralities), ladder 2.20 / 2.26 / 2.30 / 2.40:*
+
+| | [2.0,2.20) | [2.0,2.26) | [2.0,2.30) | [2.0,2.40) |
+|---|---|---|---|---|
+| 2023 μ⁺ | 0.8514 (2571) | 0.8534 (3295) | **0.8565 (3763)** | 0.8133 (4767) |
+| 2023 μ⁻ | 0.8649 (2605) | 0.8638 (3327) | **0.8691 (3758)** | 0.8212 (4765) |
+| 2024 μ⁺ | 0.9181 (1783) | 0.9083 (2280) | **0.9065 (2567)** | 0.8545 (3195) |
+| 2024 μ⁻ | 0.9053 (1796) | 0.8961 (2300) | **0.8986 (2623)** | 0.8435 (3271) |
+| 2025 μ⁺ | 0.9037 (5045) | 0.9018 (6488) | **0.9050 (7409)** | 0.8575 (9324) |
+| 2025 μ⁻ | 0.9102 (5102) | 0.9037 (6570) | **0.9054 (7417)** | 0.8493 (9351) |
+
+*By centrality (23+24+25, μ⁺+μ⁻), common ladder 2.20 / 2.28 / 2.36 / 2.40:*
+
+| centrality | [2.0,2.20) | [2.0,2.28) | [2.0,2.36) | [2.0,2.40) |
+|---|---|---|---|---|
+| 0–5 % | 0.8678 (3723) | **0.8665 (5100)** | 0.8558 (6291) | 0.8171 (6846) |
+| 5–10 % | 0.8830 (3394) | **0.8845 (4641)** | 0.8729 (5713) | 0.8254 (6279) |
+| 10–20 % | 0.9018 (5174) | **0.8983 (7136)** | 0.8926 (8787) | 0.8510 (9549) |
+| 20–30 % | 0.9052 (3122) | **0.8989 (4271)** | 0.8921 (5262) | 0.8530 (5694) |
+| 30–50 % | 0.9171 (2653) | **0.9115 (3627)** | 0.9087 (4426) | 0.8676 (4782) |
+| 50–80 % | 0.9032 (682) | **0.8966 (928)** | 0.8921 (1159) | 0.8565 (1254) |
+
+**Physics read.** The adopted forward edge **2.30 is confirmed in PbPb on both new axes**, and the
+conclusion is the one R22 reached in pp:
+All Δε and probe-gain numbers below are quoted **relative to the tightest edge, 2.20**, and are
+plateau quantities (p_T > 8 GeV), i.e. read straight off the two tables above.
+- **Loosening from 2.20 is free.** By year, 2.20 → 2.30 changes the plateau by |Δε| ≤ **0.0116**
+  (max 2024 μ⁺; *positive*, i.e. an improvement, in both 2023 charges) while the probe sample grows
+  by **+44.0 – +46.9 %**. By centrality, 2.20 → 2.28 costs |Δε| ≤ **0.0066** in every bin (again
+  positive in 5–10 %) for **+36.1 – +37.9 %** probes, and even 2.36 costs only **0.0084 – 0.0131**
+  for **+66.8 – +69.9 %**.
+- **2.40 is not free.** It costs **0.038 – 0.064** by year and **0.047 – 0.058** by centrality —
+  a 4–6 % absolute loss, at least 5× and up to ~40× the 2.28/2.30 step, and visible as a red
+  turn-on *shifted* to higher p_T rather than merely scaled down (muons falling off the endcap
+  trigger acceptance, not a flat inefficiency).
+- **The effect is charge-blind** (μ⁺ and μ⁻ agree to within **0.0135** at every edge in every year,
+  i.e. ~1–1.5 %) and **occupancy-blind**: the 2.28-vs-2.20 step does not grow toward central
+  collisions — it is smallest in 0–5 % (−0.0013) and largest in 50–80 % (−0.0066) — so the
+  loosened window is as safe in central as in peripheral events.
+- A separate, edge-independent trend is visible: the plateau itself rises from 0.8678 ± 0.0055
+  (0–5 %) to 0.9171 ± 0.0054 (30–50 %), i.e. Δ = 0.049 ± 0.008, a **~6σ** effect — not a
+  fluctuation. It is not monotone in occupancy (50–80 % sits at 0.9032 ± 0.0113, *below* 30–50 %).
+  It is present at *every* candidate edge, so it factorizes out of the edge comparison and does not
+  bear on the decision. Note it is **not** covered by the Run 2 reference:
+  `atlas_run2_muon_trigger.md` §11 records *no significant* central-vs-peripheral difference for
+  HLT_mu4 in Pb+Pb, but that statement is η-integrated whereas this is the outermost 0.4 units of
+  q·η, so the two are not in contradiction — flagged here as unexplained rather than expected.
+- 2023 sits ~0.04 below 2024/2025 at every edge; this is a year-level offset, not an edge-scan
+  effect (the *shape* of the edge dependence is identical in all three years). See the caveat
+  below before reading it as physical.
+
+**⚠ Caveat on the inputs (stated, not fixed).** The three `_fine_q_eta_bin` files were filled at
+different times: **2023 on 2026-07-21, 2024 and 2025 on 2026-07-08** — i.e. before the one-sided
+Δp/p fix `71fcf1c` (2026-07-16) reached them, whereas 2023 is after it. The muon-pair trees
+themselves are all current (regenerated 2026-08-13 02:19), so a refill would make the three years
+consistent. **It was NOT done**: `TrigEffPlotterPbPb::configureDataFiles` reads these exact
+un-suffixed filenames, so refilling them would silently change the input of the
+`pbpb_trigger_efficiency/mu4/no_corr/` plot set, which the user explicitly fenced off for this
+task. The effect on this figure is expected to be small (Δp/p is a probe-quality cut and largely
+cancels in an efficiency ratio) and it cannot fake the 2.40 cliff, but the ~0.04 year-to-year
+offset above should not be read as purely physical until the refill is done.
+
+**Note on the output directory.** Both PNGs stay in
+`plots/pbpb_trigger_efficiency/**mc_based**/forward_qeta_edge_scan/`. That parent name is now a
+misnomer for a data-only figure, but it is kept deliberately: renaming would split the figure from
+its pp twin and orphan the `mc_based_medium` sibling. **The PbPb content of that directory is
+data-only.**
+
+*Macro* `plotting_codes/trig_effcy/mc_based/plot_forward_qeta_edge_scan.cxx` — PbPb branch
+rewritten (`PlotPbPbByYear` / `PlotPbPbByCentrality`), pp branch factored into `PlotPP`, plus three
+shared fixes that also touch pp: `ResolveQEtaRange` (labels written from the achieved bin edge),
+`CommonQEtaBoundaries` (the centrality common grid), and the adopted-edge value on the headline
+read from `ParamsSet`. **pp was regenerated on the fixed labelling** — its efficiencies are
+unchanged, only the "2.25" legend entry became the truthful "2.26" (see the R22 correction box).
+Run: `root -l -b -q 'plot_forward_qeta_edge_scan.cxx+("pbpb")'` / `...+("pp")`.
+
+**Reviewed** `/review-plot`, log `.claude/logs/review-plot-20260813-183530-pbpb-forward-qeta-edge-scan.md`.
 
 ### D6: the gap cut lives at the RDF stage, not in the ntuple processing (2026-08-05)
 Round-8 Contract item 4 specified "a gap-cut mode in the ntuple-processing code". It was
@@ -3166,6 +3314,16 @@ criteria **P1** and **P2**):
     `no_plateau_correction` variant, which removes the term rather than sizing it.
 
 ## Latest Stage
+
+**2026-08-13 (side task) — ✅ DONE. PbPb forward q·η edge scan re-cut as DATA-ONLY (R31):
+`single_mu_eff_forward_qeta_edge_scan.png` deleted, replaced by `…_by_year.png` (μ⁺/μ⁻ ×
+2023/2024/2025, centrality-integrated) and `…_centrality.png` (23+24+25, μ⁺+μ⁻, one panel per
+`ParamsSet::ctrbins` bin). The adopted forward edge **2.30 is confirmed in PbPb**: relative to
+2.20 it costs |Δε| ≤ 0.0116 (by year, at 2.30) for **+44.0–46.9 %** probes and ≤ 0.0066 (by
+centrality, at 2.28) for **+36.1–37.9 %**, while 2.40 costs **0.038–0.064** (by year) /
+**0.047–0.058** (by centrality) — charge-blind (≤ 0.0135) and centrality-blind.
+pp untouched; no other PbPb trigger-efficiency plot regenerated. One stated caveat: the 2024/2025
+`_fine_q_eta_bin` inputs predate the Δp/p fix `71fcf1c` (see R31).**
 
 **2026-08-13 (round 11) — ✅ DONE, 03:2x. The gap-window rerun is COMPLETE. Every MC and data
 trigger-efficiency product in this doc is current with `single_mu_fiducial_gap_cuts =
