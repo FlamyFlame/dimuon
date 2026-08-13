@@ -19,6 +19,17 @@
 // LAYOUT (user requirement): 1 PNG per pair-pT bin, 1 subplot per pair-eta bin (9 bins -> 3x3,
 // nrows >= ncols ~ sqrt(N)); plus one PNG for the inclusive cell.
 //
+// TWO dR VIEWS of the same cells (user, 2026-08-12), STEP 3 ONLY -- see `dr_view` and kXhiFull:
+//   <sign mode>/          DEFAULT. dR in [0, 1] = the FIT DOMAIN, the window the correction is
+//                         applied in. No point outside it, so no open markers and no
+//                         "outside the fit range" legend entry.
+//   <sign mode>/dR0_2/    REFERENCE. dR in [0, 2]: the fit domain plus the large-dR points that
+//                         DEFINED the plateau (drawn open), kept so that check stays available.
+// Step 4 was NOT restructured (user asked for step3_dr_fit only): it keeps one flat directory
+// holding the dR in [0, 2] view, and the pipeline calls it with dr_view = "dr0_2".
+// In sign_sepr, the same-sign/opposite-sign OVERLAY is the main figure and stays at the top of
+// its view directory; the same-sign/opposite-sign RATIO canvases go one level down in ratio/.
+//
 // TWO SERIES MODES (user, 2026-08-11) -- one subdirectory per mode under <method>/:
 //   sign_intgr/  the sign-INTEGRATED correction, i.e. the nominal one the analysis applies:
 //                measured values black with error bars, fitted function red.
@@ -56,6 +67,7 @@
 //   root -l -b -q -e '.L plot_dr_correction_fits.cxx+'                       // compile only
 //   root -l -b -q 'plot_dr_correction_fits.cxx+("pp_full", true, 3, "polyu_fixedRp")'
 //   root -l -b -q 'plot_dr_correction_fits.cxx+("pp_full", true, 3, "expo", "sign_sepr")'
+//   root -l -b -q 'plot_dr_correction_fits.cxx+("pp_full", true, 3, "expo", "sign_sepr", "corr", "dr0_2")'
 
 #include <TArrow.h>
 #include <TAxis.h>
@@ -89,8 +101,20 @@
 
 namespace {
 
-constexpr double kXhi     = 2.0;    // drawn dR range (fit domain 0-1 + plateau check to 2)
 constexpr double kFitHi   = 1.0;    // fit domain upper edge (must match fit_dr_corrections.cxx)
+// DRAWN dR WINDOW -- two views of the SAME fitted cells (user, 2026-08-12), selected by `dr_view`:
+//   "dr0_1"  DEFAULT. The FIT DOMAIN itself, dR in [0, kFitHi]. This is the region the correction
+//            is actually applied in, so it is the main figure. It contains no point the fit did
+//            not see -- hence no open markers and no "outside the fit range" legend entry.
+//   "dr0_2"  REFERENCE, kept one level down in dR0_2/. The fit domain PLUS the large-dR points
+//            that DEFINED the plateau, so the check that they sit at 1 stays available.
+// The two views share every number: same histograms, same fits, same acceptance screens. Only the
+// drawn x window, and with it the y range computed from the drawn points, differ.
+constexpr double kXhiFull = 2.0;
+// The interpolation's pinned flat branch is a property of the FIT, not of the drawn window, so it
+// is probed at a FIXED dR inside that branch. Probing it at the view's upper edge would make the
+// printed baseline -- and the read-back audit's asymptote -- change between two views of one fit.
+constexpr double kFlatProbeX = 2.0;
 constexpr double kYcapHi  = 3.0;    // hard cap on the auto y range; off-scale points are arrowed
 constexpr double kYcapLo  = 0.0;
 
@@ -224,10 +248,14 @@ bool ParAtLimit(TF1* f, int ip)
 //          opposite sign overlaid). One output subdirectory each, under <method>/.
 // plateau_mode : "corr" (NOMINAL: points divided by the plateau) | "nocorr" (raw efficiency,
 //          free fitted baseline C). One output subdirectory each, ABOVE <method>/.
+// dr_view : "dr0_1" (DEFAULT, the fit domain -- the main figure) | "dr0_2" (the reference view
+//          out to dR = 2, written to dR0_2/). STEP 3 ONLY: step 4 was not restructured (user), so
+//          it keeps its flat layout and must be called with "dr0_2" to reproduce its plots.
 void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tight_wp = true,
                              int step = 3, const std::string& method = "polyu_fixedRp",
                              const std::string& mode = "sign_intgr",
-                             const std::string& plateau_mode = "corr")
+                             const std::string& plateau_mode = "corr",
+                             const std::string& dr_view = "dr0_1")
 {
     gROOT->SetBatch(kTRUE);
     gStyle->SetOptStat(0);
@@ -236,6 +264,14 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     if (mode != "sign_intgr" && mode != "sign_sepr")
         throw std::runtime_error("plot_dr_correction_fits: mode must be 'sign_intgr' or "
                                  "'sign_sepr', got '" + mode + "'");
+    if (dr_view != "dr0_1" && dr_view != "dr0_2")
+        throw std::runtime_error("plot_dr_correction_fits: dr_view must be 'dr0_1' or 'dr0_2', "
+                                 "got '" + dr_view + "'");
+    // The drawn window. Everything downstream -- the point loading, the frame, the sampled curve,
+    // the y range, the ratio canvases -- reads it from here, so the two views cannot drift apart.
+    const double kXhi = (dr_view == "dr0_2") ? kXhiFull : kFitHi;
+    // Points beyond the fit domain exist only in the reference view.
+    const bool draw_check_region = (kXhi > kFitHi);
     const bool sepr = (mode == "sign_sepr");
     // THE mode switch. DrCorrPlateauModeDir validates the token (it throws on anything else).
     const bool        nocorr   = (plateau_mode == "nocorr");
@@ -256,7 +292,18 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     // subdirectory separates the sign-integrated plots from the sign-separated ones so the two
     // can never interleave under identical file names. Text reports stay in <method>/ (rdir).
     const std::string rdir = cfg.out_base + tag + "_dr_fit/" + mode_dir + method + "/" + wp_dir;
-    const std::string odir = rdir + mode + "/";
+    // VIEW LEVEL. The fit-domain view is the MAIN figure and stays at the top of <sign mode>/;
+    // the reference view goes one level down. Step 4 was deliberately left on its old flat layout
+    // (user restructured step 3 only), so its dR0_2/ level is suppressed.
+    const std::string view_dir = (step == 3 && dr_view == "dr0_2") ? "dR0_2/" : "";
+    const std::string odir = rdir + mode + "/" + view_dir;
+    // The same-sign/opposite-sign RATIO canvases get their own subdirectory (user, 2026-08-12):
+    // the overlay of the two charge combinations is the main figure of sign_sepr, and one flat
+    // directory of 18 files interleaved the two families under near-identical names.
+    // GATED ON STEP 3, exactly like view_dir above: the user restructured step3_dr_fit only, and
+    // an ungated ratio/ left step 4 with the new subdirectory AND its 9 top-level ratio PNGs from
+    // the previous run -- two copies, identical today, silently diverging from the next run on.
+    const std::string rodir = (step == 3) ? odir + "ratio/" : odir;
     // The directory is created only once the series have actually loaded -- a mode that is
     // skipped for lack of per-sign inputs must not leave an empty directory behind.
 
@@ -336,6 +383,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     }
 
     gSystem->mkdir(odir.c_str(), kTRUE);
+    if (sepr) gSystem->mkdir(rodir.c_str(), kTRUE);
 
     const int npt  = series[0].hplat->GetNbinsX();
     const int neta = series[0].hplat->GetNbinsY();
@@ -456,8 +504,19 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     // Geometry of the RESERVED annotation band. Its height follows from the number of lines the
     // columns actually carry, and the shared y range below is stretched until no measured point
     // can reach into it -- reserving space, not painting a box over the data.
-    constexpr double kFrLo = 0.14, kFrHi = 0.90;   // frame edges in pad NDC (margins set below)
-    constexpr double kAnnTop = 0.88;
+    // RESERVED STRIP ABOVE THE FRAME -- not a band stolen from the top of the y range.
+    // History, because the two wrong answers were both tried here: (1) drawing the per-cell
+    // numbers INSIDE the frame put "plateau = 1.0043" through the fitted curve, the unity line
+    // and two measured points; (2) reserving the space by STRETCHING the y range until no point
+    // could reach the text worked only while the drawn window was dR in [0, 2], where the text
+    // sat over the flat right half. In the dR in [0, 1] view the same columns cover dR > 0.34,
+    // i.e. real structure in every cell, and the exact reservation inflated the shared range to
+    // [0, 4.88] -- the figure became 76% empty to keep text off the data. Clamping that stretch
+    // at the y cap then put error bars back through the text. The strip removes the trade-off:
+    // the text can never collide with data because it is not in the frame, and the y range is
+    // free to follow the points (capped) in BOTH views.
+    constexpr double kLabRow  = 0.045;             // the pair-eta label, at the top of the strip
+    constexpr double kStripTop = 0.965;            // NDC y of the label baseline
     const double kColStep = sepr ? 0.040 : 0.045;
     // rows per column: series name (sign_sepr only) + the plateau line (nominal mode only) +
     // one per free parameter + chi2/ndf -- or, for the interpolation in the no-correction mode,
@@ -466,13 +525,13 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
                                     + (has_tf1 ? 1 : (nocorr ? 1 : 0)),
                                     (sepr ? 1 : 0) + 2);
     const double h_ann   = n_ann_rows * kColStep + 0.02;
-    const double ann_bot = kAnnTop - h_ann;
+    // Pad top margin = label + annotation rows + a little air. The frame starts below it.
+    const double kTopMarg = 0.035 + kLabRow + h_ann;
+    const double kAnnTop  = kStripTop - kLabRow;   // first annotation row, under the label
     // Single-series canvases start their one column further left in the no-correction mode: the
     // baseline line ("C (fitted plateau) = 0.979 #pm 0.011") is the longest string any panel
     // carries and at 0.55 its tail was clipped by the frame edge. The nominal mode keeps 0.55.
     const double xcol[2] = {sepr ? 0.42 : (nocorr ? 0.45 : 0.55), 0.71};
-    const double ann_x_lo  = xcol[0] - 0.02;
-    const double dR_ann_lo = (ann_x_lo - kFrLo) / (kFrHi - kFrLo) * kXhi;   // dR under the text
 
     // ---- one subplot ------------------------------------------------------------------------
     // Returns the list of points pushed off the (capped) frame, so the caller can list them on
@@ -481,9 +540,8 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
                          std::vector<std::string>& offscale) {
         gPad->SetLeftMargin(0.14);
         gPad->SetBottomMargin(0.14);
-        // Reserved strip above the frame for the pair-eta label: when the y range is clamped at
-        // the cap, the off-scale arrows sit just under the frame top and ran through the label.
-        gPad->SetTopMargin(0.10);
+        // The strip: the pair-eta label AND this cell's fitted numbers live above the frame.
+        gPad->SetTopMargin(kTopMarg);
         TH1* fr = gPad->DrawFrame(0.0, ylo, kXhi, yhi);
         fr->GetXaxis()->SetTitle("#DeltaR(#mu_{1}, #mu_{2})");
         // The two modes plot DIFFERENT quantities and must never carry the same axis title:
@@ -512,9 +570,9 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         TLatex t;
         t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.045);
         if (iy == 0 && iz == 0) {
-            t.DrawLatex(0.18, 0.925, "inclusive (all p_{T}^{pair}, all #eta^{pair})");
+            t.DrawLatex(0.18, kStripTop, "inclusive (all p_{T}^{pair}, all #eta^{pair})");
         } else {
-            t.DrawLatex(0.18, 0.925, Form("%.1f < #eta^{pair} < %.1f",
+            t.DrawLatex(0.18, kStripTop, Form("%.1f < #eta^{pair} < %.1f",
                                          series[0].hplat->GetYaxis()->GetBinLowEdge(iz),
                                          series[0].hplat->GetYaxis()->GetBinUpEdge(iz)));
         }
@@ -591,8 +649,9 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
                 // An up-arrow under the reserved annotation band is drawn BELOW the band: the
                 // band is text-only space, and an arrowhead behind a parameter value is exactly
                 // the collision the reservation exists to prevent.
-                const double ftop = (x >= dR_ann_lo)
-                    ? std::max(0.25, (ann_bot - 0.03 - kFrLo) / (kFrHi - kFrLo)) : 0.98;
+                // The whole frame is data space now (the numbers are in the strip above it), so
+                // an up-arrow goes to the frame top wherever the point is.
+                constexpr double ftop = 0.98;
                 auto* ar = new TArrow(x, ylo + (up ? ftop - 0.10 : 0.12) * (yhi - ylo),
                                       x, ylo + (up ? ftop        : 0.02) * (yhi - ylo),
                                       0.008, "|>");
@@ -666,7 +725,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
                 // value its flat branch was pinned to (the last measured point below R_p). The
                 // asymptote must be readable off every panel here exactly as it is for the
                 // parametric fits, since nothing external normalizes these curves.
-                q.DrawLatex(xc, ty, Form("%s = %.4f", c_label, F[is].Eval(kXhi)));
+                q.DrawLatex(xc, ty, Form("%s = %.4f", c_label, F[is].Eval(kFlatProbeX)));
             }
             q.SetTextColor(kBlack);
         }
@@ -676,7 +735,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     // Markers and fitted curve of one series are separate entries so both the marker shape and
     // the line colour are defined. Wording is the spelled-out physics -- bare SS/OS and
     // sign1/sign2 are forbidden on a canvas (.claude/conventions/atlas-plotting.md).
-    const int n_leg = (int)series.size() * 2 + 1;
+    const int n_leg = (int)series.size() * 2 + (draw_check_region ? 1 : 0);
     auto fill_legend = [&](TLegend* leg) {
         for (const auto& s : series) {
             auto* gd = new TGraphErrors();
@@ -689,7 +748,9 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
             leg->AddEntry(gf, sepr ? ("fit, " + s.legend).c_str() : "fit", "l");
         }
         // The open markers were drawn but never identified. They are the bins BEYOND the fit
-        // domain -- the large-dR check region the fit was not constrained by.
+        // domain -- the large-dR check region the fit was not constrained by. In the fit-domain
+        // view there are none, and a key for a marker the reader cannot find is worse than no key.
+        if (!draw_check_region) return;
         auto* ge = new TGraphErrors();
         ge->SetMarkerStyle(24);
         ge->SetMarkerColor(sepr ? kGray + 2 : series[0].c_exc);
@@ -803,29 +864,8 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
                 yhi = std::min(kYcapHi, mid + 0.10);
             }
         }
-        // Second pass, now that the cap is known: the highest DRAWN point under the text columns.
-        double y_ann = 1.;
-        for (const auto& s : series) {
-            for (const auto& c : cells) {
-                if (!cell_drawable(s, c.first, c.second)) continue;
-                auto* g = cell_points(s, c.first, c.second, norm_of(s, c.first, c.second));
-                for (int i = 0; i < g->GetN(); ++i) {
-                    double x, y;
-                    g->GetPoint(i, x, y);
-                    if (x >= dR_ann_lo && y <= yhi) y_ann = std::max(y_ann, y);
-                }
-                delete g;
-            }
-        }
-        // RESERVE the band, do not paint over the data: stretch the upper edge until the highest
-        // point that falls under the annotation columns is clear of them. A translucent box
-        // behind the text is not a fix (the convention says so explicitly), and the previous
-        // "put the block in whichever half looks emptier" heuristic had no free half to find in
-        // the dense cells -- "plateau = 1.0043" ended up drawn straight through the fitted curve,
-        // the unity line and two measured points.
-        const double q_max = (ann_bot - 0.03 - kFrLo) / (kFrHi - kFrLo);
-        if (q_max > 0.05 && (y_ann - ylo) > q_max * (yhi - ylo))
-            yhi = ylo + (y_ann - ylo) / q_max;
+        // NO annotation-clearance stretch any more: the numbers sit in the strip above the frame
+        // (see kTopMarg), so the frame is data space and the range is set by the data alone.
         return {ylo, yhi};
     };
 
@@ -833,8 +873,8 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     const std::pair<double, double> incl_rng = compute_range(true);
     const double g_ylo = grid_rng.first, g_yhi = grid_rng.second;
     std::cout << "  common y range for every pair-pT PNG in this method/mode dir: ["
-              << g_ylo << ", " << g_yhi << "]  (top " << 100. * h_ann / (kFrHi - kFrLo)
-              << "% reserved for the fit annotation);  inclusive canvas: ["
+              << g_ylo << ", " << g_yhi << "]  (the fit annotation is in the strip above the "
+                 "frame, so none of this range is reserved for it);  inclusive canvas: ["
               << incl_rng.first << ", " << incl_rng.second << "]\n";
 
     // ---- the canvas HEADER STRIP -------------------------------------------------------------
@@ -1111,7 +1151,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
             }
             c.cd(0);
             ratio_header(canv_h, pt_label(iy), offscale, 3);
-            const std::string png = odir + tag + "_dr_fit_" + method + "_" + pt_png_tag(iy)
+            const std::string png = rodir + tag + "_dr_fit_" + method + "_" + pt_png_tag(iy)
                                   + "_ratio.png";
             c.SaveAs(png.c_str());
             std::cout << "  wrote " << png << "  (" << offscale.size() << " points off scale)\n";
@@ -1127,7 +1167,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
             draw_ratio_cell(0, 0, offscale);
             c.cd(0);
             ratio_header(incl_h, "", offscale, 2);
-            const std::string png = odir + tag + "_dr_fit_" + method + "_inclusive_ratio.png";
+            const std::string png = rodir + tag + "_dr_fit_" + method + "_inclusive_ratio.png";
             c.SaveAs(png.c_str());
             std::cout << "  wrote " << png << "  (" << offscale.size() << " points off scale)\n";
         }
@@ -1217,7 +1257,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
                         const int ic = F.f->GetParNumber("C");
                         flat_ref = (ic >= 0) ? F.f->GetParameter(ic) : F.Eval(20.0);
                     } else {
-                        flat_ref = F.Eval(kXhi);   // the pinned flat branch of the interpolation
+                        flat_ref = F.Eval(kFlatProbeX);   // pinned flat branch of the interpolation
                     }
                 }
                 for (double x : {0.0, 0.5 * Rp, Rp, 0.9, 1.5, 3.0, 8.0, 20.0}) {

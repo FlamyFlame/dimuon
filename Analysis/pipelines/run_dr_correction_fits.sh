@@ -417,9 +417,18 @@ for sample in ${SAMPLES}; do
         fi
 
         for mode in ${MODES}; do
-          log "Stage 3 [${sample}/${wp}/step${step}/${method}/${mode}/${PMTEXT}]: plots + read-back check"
-          root -l -b -q "plot_dr_correction_fits.cxx+(\"${sample}\", ${WPF}, ${step}, \"${method}\", \"${mode}\", \"${pmode}\")" \
-            > "/tmp/drfit_plot_${sample}_${wp}_${step}_${method}_${mode}_${pmode}.log" 2>&1 || true
+        # dR VIEWS (user, 2026-08-12). STEP 3 carries two views of the same fitted cells: the
+        # DEFAULT dR in [0,1] -- the fit domain, the window the correction is applied in, written
+        # at the top of <sign mode>/ -- and the REFERENCE dR in [0,2] one level down in dR0_2/,
+        # which keeps the large-dR points that DEFINED the plateau visible. Step 4 was NOT
+        # restructured (the user asked for step3_dr_fit only), so it runs the [0,2] view alone and
+        # keeps its flat layout; the C++ suppresses the dR0_2/ level for step != 3.
+        VIEWS="dr0_1 dr0_2"; [[ "${step}" == "3" ]] || VIEWS="dr0_2"
+        for view in ${VIEWS}; do
+          VIEWDIR=""; [[ "${step}" == "3" && "${view}" == "dr0_2" ]] && VIEWDIR="dR0_2/"
+          log "Stage 3 [${sample}/${wp}/step${step}/${method}/${mode}/${PMTEXT}/${view}]: plots + read-back check"
+          root -l -b -q "plot_dr_correction_fits.cxx+(\"${sample}\", ${WPF}, ${step}, \"${method}\", \"${mode}\", \"${pmode}\", \"${view}\")" \
+            > "/tmp/drfit_plot_${sample}_${wp}_${step}_${method}_${mode}_${pmode}_${view}.log" 2>&1 || true
 
           # Expected PNG count DERIVED from the binning in the fit file: one canvas per pair-pT
           # bin plus the inclusive one. Never a literal -- the literal 5 that used to be here was
@@ -428,30 +437,47 @@ for sample in ${SAMPLES}; do
           REF_FIT="${MCDIR}dr_correction_fits_${LABEL}${WPS_SUF}${PTBIN_SUF}_step${step}_${method}$(sign_fsuf "${REF_SIGN}")${PMSUF}.root"
           NPT=$(fit_file_npt "${REF_FIT}" "${step}")
           EXP_PNG=$(( NPT + 1 ))
-          # MAIN and RATIO canvases are counted SEPARATELY. In sign_sepr the macro writes both
-          # families into one directory, and a single glob over them summed to 2*(NPT+1) while
-          # EXP_PNG was still NPT+1 -- so the check passed with up to NPT+1 files missing,
-          # including the ENTIRE same-sign/opposite-sign ratio set, which is the one figure the
-          # sign split exists to produce. sign_intgr has a single sign and no ratio canvas.
-          NPNG=$(find "${MDIR}${mode}/" -maxdepth 1 -name "step${step}_dr_fit_${method}_*.png" \
-                      ! -name "*_ratio.png" 2>/dev/null | wc -l)
-          NPNG_RATIO=$(find "${MDIR}${mode}/" -maxdepth 1 -name "step${step}_dr_fit_${method}_*_ratio.png" \
-                            2>/dev/null | wc -l)
+          # MAIN and RATIO canvases are counted SEPARATELY, and now live in two directories: the
+          # main overlay canvases at the top of the view directory, the same-sign/opposite-sign
+          # ratio canvases in its ratio/ subdir. Separately, because when one glob covered both
+          # families it summed to 2*(NPT+1) against an EXP_PNG of NPT+1 -- so the check passed
+          # with the ENTIRE ratio set missing, the one figure the sign split exists to produce.
+          # sign_intgr has a single sign and no ratio canvas.
+          # A MISSING directory means zero files, not a pipeline abort. `find` on a path that does
+          # not exist returns 1, and under `set -o pipefail` that 1 survives the pipe to `wc` and
+          # trips the ERR trap -- which is exactly how the first run of the two-view layout died
+          # on the sign_intgr view, where ratio/ legitimately never exists. Count what is there.
+          count_png() {   # $1 = directory, $2 = -name pattern, $3.. = extra find predicates
+            local dir="$1"; shift
+            [[ -d "${dir}" ]] || { echo 0; return 0; }
+            find "${dir}" -maxdepth 1 "$@" 2>/dev/null | wc -l
+          }
+          NPNG=$(count_png "${MDIR}${mode}/${VIEWDIR}" -name "step${step}_dr_fit_${method}_*.png" \
+                           ! -name "*_ratio.png")
+          # MIRRORS THE C++ GATE (plot_dr_correction_fits.cxx: `rodir`): the ratio/ level is part
+          # of the step-3 restructure only, so in step 4 the ratio canvases sit beside the main
+          # ones. Checking for a ratio/ that the macro is not asked to write reported 6 x "0/9
+          # ratio PNGs" for output that was in fact complete.
+          RATIO_DIR="${MDIR}${mode}/${VIEWDIR}"
+          [[ "${step}" == "3" ]] && RATIO_DIR="${MDIR}${mode}/${VIEWDIR}ratio"
+          NPNG_RATIO=$(count_png "${RATIO_DIR}" \
+                                 -name "step${step}_dr_fit_${method}_*_ratio.png")
           EXP_PNG_RATIO=0
           [[ "${mode}" == "sign_sepr" ]] && EXP_PNG_RATIO="${EXP_PNG}"
           if [[ "${NPT}" -lt 1 ]]; then
             ARTEFACT_FAILURES+=("cannot read the pair-pT binning from ${REF_FIT}")
           else
             if [[ "${NPNG}" -lt "${EXP_PNG}" ]]; then
-              ARTEFACT_FAILURES+=("only ${NPNG}/${EXP_PNG} main PNGs in ${MDIR}${mode}/")
+              ARTEFACT_FAILURES+=("only ${NPNG}/${EXP_PNG} main PNGs in ${MDIR}${mode}/${VIEWDIR}")
               log "  !! only ${NPNG} main PNGs (expected ${EXP_PNG}: ${NPT} pair-pT bins + inclusive)"
             fi
             if [[ "${NPNG_RATIO}" -lt "${EXP_PNG_RATIO}" ]]; then
-              ARTEFACT_FAILURES+=("only ${NPNG_RATIO}/${EXP_PNG_RATIO} same-sign/opposite-sign ratio PNGs in ${MDIR}${mode}/")
+              ARTEFACT_FAILURES+=("only ${NPNG_RATIO}/${EXP_PNG_RATIO} same-sign/opposite-sign ratio PNGs in ${RATIO_DIR}")
               log "  !! only ${NPNG_RATIO} ratio PNGs (expected ${EXP_PNG_RATIO}: ${NPT} pair-pT bins + inclusive)"
             fi
           fi
-        done
+        done   # view
+        done   # mode
 
         # PERSISTENCE is a hard failure (the compiled-TF1 read-back trap); FLATNESS beyond Rp is
         # a property of the chosen function and is reported, not enforced -- `expo` is expected
