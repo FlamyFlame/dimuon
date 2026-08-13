@@ -256,6 +256,74 @@ void StyleLegend(TLegend& l, double text_size) {
     l.SetTextSize(text_size);
 }
 
+// Height a legend needs so its entries do not print on top of each other. ROOT divides the
+// box evenly over the entries, so a box sized independently of the entry count silently
+// overlaps its own text once the count grows (which is exactly what happened to the pp-vs-
+// PbPb legend after the gap-window lines were added to it).
+double LegendHeight(int n_entries, double text_size) {
+    return n_entries * 1.8 * text_size + 0.02;
+}
+
+// Where to put a legend so it hides no curve.
+//
+// The legends here MUST be opaque (they sit over the shaded gap bands) and they are drawn
+// LAST, so wherever one lands it erases whatever passes underneath. A fixed corner is
+// therefore only safe for one particular spectrum: the same corner that is empty in pp is
+// crossed by the Pb+Pb acceptance edge, which is how the Pb+Pb panels ended up with curve
+// segments hidden. This scores the four in-frame corners by how much of the drawn curve
+// falls inside the box and returns the emptiest, so the placement follows the data.
+//
+// MUST be called after the frame exists and gPad->Update() has run -- it reads the pad's
+// user range. Scoring uses consecutive-bin SEGMENTS, not bin contents: a step histogram
+// draws the vertical connector between two bins, so a steep plunge can cross a box without
+// any single bin content landing inside it.
+struct LegBox {
+    double x1, y1, x2, y2;
+};
+
+LegBox AutoLegendBox(const std::vector<TH1D*>& hs, double w, double h) {
+    const double lm = gPad->GetLeftMargin(), rm = gPad->GetRightMargin();
+    const double bm = gPad->GetBottomMargin(), tm = gPad->GetTopMargin();
+    const double inset = 0.02;
+    const double ux0 = gPad->GetUxmin(), ux1 = gPad->GetUxmax();
+    const double uy0 = gPad->GetUymin(), uy1 = gPad->GetUymax();  // log10 units if logy
+    const bool logy = gPad->GetLogy();
+
+    // Conventional order, so a tie keeps the familiar top-right placement.
+    const std::vector<std::pair<double, double>> cands = {
+        {1 - rm - inset - w, 1 - tm - inset - h},  // top right
+        {lm + inset, 1 - tm - inset - h},          // top left
+        {1 - rm - inset - w, bm + inset},          // bottom right
+        {lm + inset, bm + inset}};                 // bottom left
+
+    auto to_x = [&](double xn) { return ux0 + (xn - lm) / (1 - lm - rm) * (ux1 - ux0); };
+    auto to_y = [&](double yn) {
+        const double v = uy0 + (yn - bm) / (1 - bm - tm) * (uy1 - uy0);
+        return logy ? std::pow(10., v) : v;
+    };
+
+    size_t best = 0;
+    int best_score = -1;
+    for (size_t i = 0; i < cands.size(); ++i) {
+        const double bx0 = to_x(cands[i].first), bx1 = to_x(cands[i].first + w);
+        const double by0 = to_y(cands[i].second), by1 = to_y(cands[i].second + h);
+        int hits = 0;
+        for (const TH1D* hh : hs)
+            for (int b = 1; b < hh->GetNbinsX(); ++b) {
+                const double xa = hh->GetBinCenter(b), xb = hh->GetBinCenter(b + 1);
+                if (xb < bx0 || xa > bx1) continue;
+                const double ca = hh->GetBinContent(b), cb = hh->GetBinContent(b + 1);
+                if (std::max(ca, cb) >= by0 && std::min(ca, cb) <= by1) ++hits;
+            }
+        if (best_score < 0 || hits < best_score) {
+            best_score = hits;
+            best = i;
+        }
+    }
+    return {cands[best].first, cands[best].second, cands[best].first + w,
+            cands[best].second + h};
+}
+
 // Shaded bands for the gap-cut windows. Drawn under the curves, which are then redrawn on
 // top. Darker band = rejected at all pT; lighter = rejected only for pT < 6 GeV.
 // NOTE (2026-08-12): this used to also draw dashed edges bounding the q*eta regions with no
@@ -364,7 +432,7 @@ void AddGapKeyEntries(TLegend& l, bool compact = false) {
         TBox* b = new TBox();
         b->SetFillColorAlpha(kGreen - 7, 0.45);
         if (compact) {
-            std::string txt = "rejected (all p_{T}):";
+            std::string txt = "rejected at all p_{T}, q#times#eta in:";
             for (size_t i = 0; i < g_new_windows.size(); ++i)
                 txt += Form("%s (%.2f, %.2f)", i ? "," : "", g_new_windows[i].first,
                             g_new_windows[i].second);
@@ -391,12 +459,15 @@ void AddGapKeyEntries(TLegend& l, bool compact = false) {
 
 // The gap key drawn ONCE across the top of a multi-panel canvas: in a half-width panel a
 // per-pad legend clips these strings, and the overlay applies to every panel anyway.
-void CanvasGapKey(TCanvas& c, double y1, double y2) {
+void CanvasGapKey(TCanvas& c, double y1, double y2, double text_size = 0.011) {
     c.cd();
     TLegend* l = new TLegend(0.06, y1, 0.98, y2);
     l->SetBorderSize(0);
     l->SetFillStyle(0);
-    l->SetTextSize(0.011);
+    l->SetTextSize(text_size);
+    // Default margin reserves a QUARTER of the box width for the colour swatch; across a
+    // full-canvas box that is a green slab wider than the text it labels.
+    l->SetMargin(0.03);
     l->SetNColumns(kUseNewGapCuts ? 1 : 2);
     AddGapKeyEntries(*l, /*compact=*/true);
     l->Draw();
@@ -648,7 +719,7 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
         TCanvas c(("c_" + ps.fname).c_str(), "", 2100, 840);
 
         // --- column 1: the spectrum + gap windows (single curve, no ratio) ---
-        MakeSinglePad(c, ps.fname + "_p1", 0.000, 0.0, 0.334, 0.90)->cd();
+        MakeSinglePad(c, ps.fname + "_p1", 0.000, 0.0, 0.334, 0.875)->cd();
         gPad->SetLogy();
         StyleSpectrum(ps.all, kBlack);
         const int nb1 = SetCommonLogRange({ps.all});
@@ -659,17 +730,14 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
         Header(kUseNewGapCuts ? "all muons; proposed gap cuts overlaid"
                               : "all muons; existing gap cuts overlaid",
                "");
-        {
-            TLegend l(0.23, 0.15, 0.96, kUseNewGapCuts ? 0.375 : 0.30);
-            StyleLegend(l, 0.032);
-            l.AddEntry(ps.all, "all muons", "l");
-            AddGapKeyEntries(l);
-            l.DrawClone();
-        }
+        // NO in-frame legend here. It used to carry the whole gap-window key, which made it
+        // the width of the frame and five entries tall -- with nowhere left to put it, it sat
+        // on the Pb+Pb acceptance edge and on the q*eta = 0 dip. The key is now drawn once
+        // across the canvas (below), and this panel has a single curve that the header names.
 
         // --- column 2: by muon charge, with mu+/mu- ratio ---
         {
-            auto pads = MakeRatioPads(c, ps.fname + "_p2", 0.334, 0.0, 0.667, 0.90);
+            auto pads = MakeRatioPads(c, ps.fname + "_p2", 0.334, 0.0, 0.667, 0.875);
             pads.first->cd();
             gPad->SetLogy();
             StyleSpectrum(ps.pos, kRed + 1);
@@ -683,7 +751,9 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
             NoteOffScale(nb2);
             Header("by muon charge", "");
             {
-                TLegend l(0.72, 0.16, 0.95, 0.33);
+                const LegBox lb = AutoLegendBox({ps.pos, ps.neg}, 0.23,
+                                                LegendHeight(2, 0.050));
+                TLegend l(lb.x1, lb.y1, lb.x2, lb.y2);
                 StyleLegend(l, 0.050);
                 l.AddEntry(ps.pos, "#mu^{+}", "l");
                 l.AddEntry(ps.neg, "#mu^{-}", "l");
@@ -701,7 +771,7 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
 
         // --- column 3: split at pT = 6 GeV, with the ratio ---
         {
-            auto pads = MakeRatioPads(c, ps.fname + "_p3", 0.667, 0.0, 1.000, 0.90);
+            auto pads = MakeRatioPads(c, ps.fname + "_p3", 0.667, 0.0, 1.000, 0.875);
             pads.first->cd();
             gPad->SetLogy();
             StyleSpectrum(ps.lopt, kMagenta + 1);
@@ -715,7 +785,9 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
             NoteOffScale(nb3);
             Header("split at p_{T} = 6 GeV", "");
             {
-                TLegend l(0.56, 0.16, 0.95, 0.33);
+                const LegBox lb = AutoLegendBox({ps.lopt, ps.hipt}, 0.32,
+                                                LegendHeight(2, 0.045));
+                TLegend l(lb.x1, lb.y1, lb.x2, lb.y2);
                 StyleLegend(l, 0.045);
                 l.AddEntry(ps.lopt, "p_{T} < 6 GeV", "l");
                 l.AddEntry(ps.hipt, "p_{T} #geq 6 GeV", "l");
@@ -731,6 +803,9 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
             DrawRatioUnityLine();
         }
 
+        // One key for all three panels, in the band freed above them -- the overlay is the
+        // same in every panel, and no in-frame box can be placed without covering data.
+        CanvasGapKey(c, 0.878, 0.906, 0.020);
         CanvasHeadline(c, ps.header, ps.sub);
         c.SaveAs((outdir + "/" + ps.fname + wp_tag + ".png").c_str());
     }
@@ -791,7 +866,8 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
         NoteOffScale(nbs);
         Header("shape vs centrality (unit area)", "");
         {
-            TLegend l(0.68, 0.15, 0.95, 0.45);
+            const LegBox lb = AutoLegendBox(shapes, 0.27, LegendHeight(nctr, 0.042));
+            TLegend l(lb.x1, lb.y1, lb.x2, lb.y2);
             StyleLegend(l, 0.042);
             for (int j = 0; j < nctr; ++j)
                 l.AddEntry(shapes[j], Form("%d-%d%%", ctr_lo[j], ctr_hi[j]), "l");
@@ -819,7 +895,7 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
     // ============ Plot D : pp24 vs PbPb shape comparison, with ratio ============
     {
         TCanvas c("cD", "", 950, 850);
-        auto pads = MakeRatioPads(c, "cD", 0.0, 0.0, 1.0, 1.0);
+        auto pads = MakeRatioPads(c, "cD", 0.0, 0.0, 1.0, 0.945);
         TH1D* pp_s = (TH1D*)pp_all->Clone("h_pp_shape");
         TH1D* pb_s = (TH1D*)pb_all->Clone("h_pb_shape");
         for (TH1D* h : {pp_s, pb_s}) {
@@ -845,11 +921,14 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
         NoteOffScale(nbd);
         Header("q#times#eta shape: pp vs Pb+Pb", "unit area, " + wp_lbl + " WP (per muon)");
         {
-            TLegend l(0.46, 0.15, 0.95, 0.29);
+            // Two entries only: the gap-window key moved to the canvas band. Kept in this
+            // box it needed five lines in a box sized for two, so the window text printed
+            // over the sample text AND the box sat across the q*eta > 2.3 acceptance edge.
+            const LegBox lb = AutoLegendBox({pp_s, pb_s}, 0.49, LegendHeight(2, 0.038));
+            TLegend l(lb.x1, lb.y1, lb.x2, lb.y2);
             StyleLegend(l, 0.038);
             l.AddEntry(pp_s, "pp 2024 (HLT_2mu4)", "l");
             l.AddEntry(pb_s, "Pb+Pb 23+24+25, 0-80% (HLT_mu4)", "l");
-            AddGapKeyEntries(l);
             l.DrawClone();
         }
         pads.second->cd();
@@ -859,6 +938,7 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
         gPad->Update();
         DrawGapMarkers({r});
         DrawRatioUnityLine();
+        CanvasGapKey(c, 0.950, 0.990, 0.020);
         c.SaveAs(
             (outdir + "/muon_q_eta_spectrum_pp_vs_pbpb_shape" + wp_tag + ".png").c_str());
     }
