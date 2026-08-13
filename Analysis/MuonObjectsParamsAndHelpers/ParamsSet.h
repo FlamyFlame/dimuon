@@ -180,15 +180,22 @@ public:
    	//                  measured half-depth region (-1.17,-1.08) with margin. In pp the
    	//                  dip bottoms at 32% of plateau, in PbPb only 67% and centred
    	//                  nearer -1.16 -- a single common window is a pp/PbPb compromise.
-   	//   {+2.20, +2.40} forward acceptance edge, ONE-SIDED: the yield collapses to 8.8%
+   	//   {+2.30, +2.40} forward acceptance edge, ONE-SIDED: the yield collapses to 8.8%
    	//                  (pp) / 52% (PbPb) of its q*eta=2.2 value by 2.4, while the
    	//                  NEGATIVE side still holds ~71% out to -2.4. So there is
    	//                  deliberately no mirror window at -2.4.
-   	//                  The lower edge 2.20 currently REPRODUCES the standalone per-muon
-   	//                  signal cut `m*.charge * m*.eta < 2.2` exactly (muons already
-   	//                  satisfy |eta| < 2.4), so wiring this vector in as a replacement
-   	//                  for that cut is yield-neutral by construction. 2.30 is the
-   	//                  looser alternative under consideration -- see the cost table.
+   	//                  EDGE CHOICE (currently 2.30, user 2026-08-04): this is LOOSER
+   	//                  than the standalone per-muon signal cut `m*.charge*m*.eta < 2.2`
+   	//                  that the vector is meant to replace, so the swap is NOT
+   	//                  yield-neutral -- it RECOVERS q*eta in (2.2, 2.3), i.e. +1.36% of
+   	//                  pp and +2.24% of PbPb single muons. That recovered slice has NO
+   	//                  fitted trigger efficiency today (the fitted q*eta ranges in
+   	//                  CommonEffcyConfig::q_eta_proj_ranges_fine_excl_gap stop at 2.2),
+   	//                  so adopting 2.30 REQUIRES extending the fit binning to cover
+   	//                  (2.2, 2.3) -- otherwise those muons hit the -1.0f "no efficiency"
+   	//                  sentinel and get silently dropped (pp_trig_eff_highpt_jump.md).
+   	//                  Setting the edge back to 2.20 would instead make the swap exactly
+   	//                  yield-neutral and need no fit change.
    	// Deliberately NOT included:
    	//   - the legacy "feet" window (0.56,0.67) and positive-side (1.064,1.29): the
    	//     measured structure there is too shallow to be worth the acceptance.
