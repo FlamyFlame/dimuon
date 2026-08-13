@@ -95,6 +95,16 @@ sites (marked ⚠) move the number; **cosmetic** sites (labels) do not but must 
 - All three MC-trig-eff files gained a `pp_full` sample (2026-07-20): pp24 FULL production, same
   WP semantics; intermediate hists/fits labelled `pp24_full`.
 
+**MC trigger-efficiency CLOSURE (2026-08-13, `mc_trig_eff_closure.md`):**
+- `RDFBasedHistFilling/FillMCTrigEffClosure.cxx` — `use_tight_wp` arg (default **TIGHT**). Drives
+  BOTH the MC selection column (`pass_tight`/`pass_medium`) AND the working point of the DATA
+  tag-and-probe eps^nc it is weighted by (`single_mu_effcy_pT_fit{_medium_wp}.root`) and of the
+  Step-3 dR fits — the WP must never be mixed across the three (`mc_trigger_efficiency.md` §3.0(d)).
+  Outputs suffixed `_medium_wp`.
+- `plotting_codes/trig_effcy/mc_based/plot_mc_trig_eff_closure.cxx` — `use_tight_wp` arg
+  (default **TIGHT**); Medium lands in the `mc_based_medium/` plot tree via `DrCorrOutTag`.
+- `pipelines/run_mc_trigeff_closure.sh` — `WPS` env var, default `"tight medium"` (both produced).
+
 **Pythia-fullsim crossx (2026-07-20):** `plotting_codes/pythia_plotting_codes/plot_pythia_fullsim_kn_pt_crossx.cxx`
 — **`g_use_tight_wp` config var, default TIGHT** (was HARD-CODED to `pair_pass_medium` in 4 places
 while every other pp-fullsim stage used Tight; now `plot_pythia_fullsim_kn_pt_crossx(is_test_sample,
