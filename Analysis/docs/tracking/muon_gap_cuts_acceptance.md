@@ -416,6 +416,53 @@ measurement limitation (the 2D map covers them and only runs out of statistics a
 the right fix for F2b is to extend the fit binning — or option (a) nearest-fitted-bin — not to
 redefine the acceptance around it. Keep the two decisions separate.
 
+### F9 — Plot sets split old vs new gap cuts (2026-08-04)
+
+`plot_muon_q_eta_spectrum.cxx` now takes a second argument, `use_new_gap_cuts`, selecting
+WHICH candidate definition is overlaid and which one the quoted "fraction removed" refers to.
+**The spectra themselves are identical in both cases** — only the overlay and the fractions
+change. Output split accordingly:
+
+```
+muon_gap_cuts/old_gap_cuts/[medium/]   legacy PassSingleMuonGapCut  (red/orange bands)
+muon_gap_cuts/new_gap_cuts/[medium/]   proposed fiducial windows    (green bands)
+```
+
+Both sets regenerated from the same macro build (4 PNGs x 2 WPs x 2 cut sets = 16).
+Run as `plot_muon_q_eta_spectrum.cxx+(use_tight_wp, use_new_gap_cuts)`.
+
+The proposed windows are **read from `ParamsSet::single_mu_fiducial_gap_cuts`** — nothing is
+retyped or overridden in the macro, so re-tuning means editing `ParamsSet.h` alone and
+re-running.
+
+**Forward edge is now 2.30, not 2.20.** The value in `ParamsSet.h` was changed to
+`{2.30f, 2.40f}` outside this session (it arrived in sibling commit `c426437`, a pair-pT
+binning commit that also swept up the then-uncommitted `single_mu_fiducial_gap_cuts`
+addition). That matches the user's request to plot the 2.3 variant, so the macro simply reads
+it. **The header comment in `ParamsSet.h` was corrected accordingly** — it previously argued
+the 2.20 edge made a future swap yield-neutral, which is no longer true.
+
+**Consequence of 2.30 that must not be lost:** the vector is meant to REPLACE the standalone
+per-muon `q·η < 2.2` signal cut. At 2.30 that swap is **not** yield-neutral — it recovers
+q·η ∈ (2.2, 2.3), i.e. +1.36 % of pp and +2.24 % of PbPb single muons. **That recovered slice
+has no fitted trigger efficiency today** (the fitted ranges in
+`CommonEffcyConfig::q_eta_proj_ranges_fine_excl_gap` stop at 2.2), so adopting 2.30 REQUIRES
+extending the fit binning to cover (2.2, 2.3) — otherwise those muons hit the `-1.0f`
+sentinel and are silently dropped (F2b / `pp_trig_eff_highpt_jump.md`). Reverting the edge to
+2.20 would instead make the swap exactly yield-neutral and need no fit change.
+
+Measured fraction of single muons removed, per cut set (per muon; pairs assume both must pass):
+
+| cut set | pp muons | pp pairs | PbPb 0–80 % muons | PbPb pairs |
+|---|---|---|---|---|
+| legacy `PassSingleMuonGapCut` | 7.39 % | 14.2 % | 10.16 % | 19.3 % |
+| proposed, Tight | **3.29 %** | 6.5 % | **5.13 %** | 10.0 % |
+| proposed, Medium | 3.36 % | 6.6 % | 5.72 % | 11.1 % |
+
+Per centrality (proposed, Tight): 0–10 % 5.09 %, 10–20 % 5.17 %, 20–30 % 5.15 %,
+30–50 % 5.16 %, 50–80 % 5.27 % — essentially flat, unlike the legacy set which drifts
+0.1022 → 0.0956 over the same range.
+
 ## Ruled Out (append-only)
 
 - *Plotting from the existing 2026-06-23 trees* — stale on the one-sided Δp/p fix (F3), which
@@ -425,20 +472,26 @@ redefine the acceptance around it. Keep the two decisions separate.
 
 ## Latest Stage
 
-**Step 3 (in progress):** back up the 2026-06-23 single-muon trees, then resubmit all four
-Condor productions (`run_{pp_24,pbpb_23,pbpb_24,pbpb_25}_output_single_muon_tree.sub`;
-12/4/2/6 jobs) with the current nominal selection.
+**Steps 3 and 4 are DONE.** Trees regenerated (F5), macro written and reviewed, 16 PNGs
+produced for both candidate cut sets at both WPs (F6, F7, F9). The decision-support material
+the task set out to deliver is complete.
 
-**Step 4 (next):** new macro `plotting_codes/single_b_analysis/plot_muon_q_eta_spectrum.C`.
-Design decisions fixed up front:
-- **q·η binning = `ParamsSet::makeEtaTrigEffcyBinning(1)`** — the existing canonical fine q·η
-  axis (0.01 for |q·η|<0.2, 0.02 over [−1.3, 1.4] and [2.2, 2.4], 0.10 elsewhere), already used
-  for the 2D trigger-efficiency histograms. NOT a new binning (§Binnings rule).
-- Variable-width bins ⇒ plot dN/d(q·η) via `Scale(1., "width")`.
-- **WP config var, default TIGHT** (`quality & 16`), Medium (`quality & 8`) reachable.
-- Centrality bins from `RDFBasedHistFillingData::FindCtrSuffix` / `RDFBasedHistFillingPbPb.cxx:502`
-  — `{0,5},{5,10},{10,20},{20,30},{30,50},{50,80}` with 0–5 and 5–10 merged per the request.
-- PbPb 23+24+25 always combined (never per-year).
-- Overlay the F2 gap regions as shaded bands so the user can judge them against the spectrum.
-- No trigger-efficiency correction: the raw (trigger-biased) spectrum is what the user asked
-  for, to be read together with the data-driven mu4 efficiencies.
+**BLOCKED ON THE USER — three open decisions, in dependency order:**
+
+1. **Forward edge: keep 2.30 or revert to 2.20?** (F9) 2.30 recovers q·η ∈ (2.2, 2.3)
+   (+1.36 % pp / +2.24 % PbPb muons) but that slice has NO fitted trigger efficiency, so it
+   requires extending the fit binning first. 2.20 makes the eventual swap exactly
+   yield-neutral and needs no fit change.
+2. **Crack-at-zero cut variable is still open** (F7): the |η|≈0 crack is skewed for BOTH
+   charges (ratio 2.44 pp / 2.02 PbPb at ∓0.05, minimum at q·η ≈ −0.02), so it is not cleanly
+   a q·η feature the way the |η|≈1.15 dip is. The provisional {−0.06, +0.06} is written in
+   q·η; whether it should be in η instead is undecided.
+3. **Wiring in** (F8 §Intended scope): replacing the standalone per-muon `q·η < 2.2` at the 13
+   call sites + the trigger/reco-efficiency evaluations is a signal-selection change with the
+   full `signal_selection_change_impact.md` rerun blast radius. NOT started; needs approval.
+
+Coupled decision: `pp_trig_eff_highpt_jump.md` option (d) is this fiducial-cut approach; F8
+concludes the F2b `w_trig = 0` bug should be fixed by extending the fit binning, NOT by
+redefining the acceptance. Keep the two decisions separate.
+
+Nothing in the analysis chain reads `single_mu_fiducial_gap_cuts` yet, so no result has moved.
