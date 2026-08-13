@@ -54,7 +54,6 @@
 //   root -l -b -q 'plot_muon_q_eta_spectrum.cxx+(false, true)'     // Medium, new cuts
 
 #include "../../MuonObjectsParamsAndHelpers/ParamsSet.h"
-#include "../../RDFBasedHistFilling/CommonEffcyConfig.h"
 
 #include <TBox.h>
 #include <TCanvas.h>
@@ -74,12 +73,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-
-// CommonEffcyConfig.h declares but does not define pairToSuffix (it is defined in the RDF
-// translation unit). Nothing here calls it; provide a definition so the macro links.
-std::string pairToSuffix(const std::pair<float, float>& p) {
-    return "_" + std::to_string(p.first) + "_" + std::to_string(p.second);
-}
 
 namespace {
 
@@ -153,32 +146,6 @@ bool PassSelectedGapCut(double eta, double pt, int charge) {
                           : PassSingleMuonGapCut(eta, pt, charge);
 }
 
-// The *other*, independent set of "gap" regions: the q*eta intervals NOT covered by any
-// fitted turn-on range in CommonEffcyConfig::q_eta_proj_ranges_fine_excl_gap. Muons there
-// have no fitted TF1 and fall back to the unfitted 2D efficiency map (and, when that bin
-// is empty, to the -1.0f sentinel that silently drops the pair — see
-// pp_trig_eff_highpt_jump.md). The ranges are READ from CommonEffcyConfig, never retyped;
-// this returns their complement over the plotted axis, INCLUDING the uncovered tails
-// outside the first/last fitted range (the fitted set is one-sided, -2.4 <= q*eta < 2.2,
-// so [2.2, 2.4] has no fitted efficiency either).
-std::vector<std::pair<double, double>> FineExclGapHoles() {
-    CommonEffcyConfig cfg;
-    std::vector<std::pair<double, double>> fitted;
-    for (const auto& r : cfg.q_eta_proj_ranges_fine_excl_gap)
-        fitted.emplace_back(r.first, r.second);
-    std::sort(fitted.begin(), fitted.end());
-
-    std::vector<std::pair<double, double>> holes;
-    if (fitted.empty()) return holes;
-    if (fitted.front().first > kAxisLo + 1e-9)
-        holes.emplace_back(kAxisLo, fitted.front().first);
-    for (size_t i = 0; i + 1 < fitted.size(); ++i)
-        if (fitted[i + 1].first > fitted[i].second + 1e-9)
-            holes.emplace_back(fitted[i].second, fitted[i + 1].first);
-    if (fitted.back().second < kAxisHi - 1e-9)
-        holes.emplace_back(fitted.back().second, kAxisHi);
-    return holes;
-}
 
 struct Sample {
     std::string dir;   // e.g. "pbpb_2023/"
@@ -289,9 +256,13 @@ void StyleLegend(TLegend& l, double text_size) {
     l.SetTextSize(text_size);
 }
 
-// Shaded bands for the PassSingleMuonGapCut windows + dashed edges bounding the q*eta
-// regions with no fitted trigger efficiency. Drawn under the curves, which are then
-// redrawn on top. Darker band = rejected at all pT; lighter = rejected only for pT < 6 GeV.
+// Shaded bands for the gap-cut windows. Drawn under the curves, which are then redrawn on
+// top. Darker band = rejected at all pT; lighter = rejected only for pT < 6 GeV.
+// NOTE (2026-08-12): this used to also draw dashed edges bounding the q*eta regions with no
+// fitted trigger efficiency. Those regions no longer exist -- the trigger-efficiency code
+// now fits in the CONTIGUOUS CommonEffcyConfig::q_eta_proj_ranges_coarse_incl_gap binning,
+// which includes the gaps and whose top edge tracks the fiducial cut, so every surviving
+// muon has a fitted turn-on and there is nothing to mark.
 void DrawGapMarkers(const std::vector<TH1D*>& redraw) {
     const double ymin = gPad->GetUymin(), ymax = gPad->GetUymax();
     const double y0 = gPad->GetLogy() ? std::pow(10., ymin) : ymin;
@@ -316,16 +287,6 @@ void DrawGapMarkers(const std::vector<TH1D*>& redraw) {
             b->SetFillColorAlpha(kOrange - 9, 0.45);
             b->SetLineColor(kOrange - 9);
             b->Draw("same");
-        }
-    }
-    for (const auto& w : FineExclGapHoles()) {
-        for (double x : {w.first, w.second}) {
-            if (x <= kAxisLo + 1e-9 || x >= kAxisHi - 1e-9) continue;  // axis edges
-            TLine* l = new TLine(x, y0, x, y1);
-            l->SetLineColor(kBlue + 1);
-            l->SetLineStyle(2);
-            l->SetLineWidth(1);
-            l->Draw("same");
         }
     }
     for (TH1D* h : redraw) h->Draw("hist same");
@@ -392,7 +353,7 @@ void Header(const std::string& text, const std::string& sub) {
     }
 }
 
-// The key for the gap-band / dashed-line overlays. Every canvas that draws the overlays
+// The key for the gap-band overlays. Every canvas that draws the overlays
 // needs it (a reader of one figure alone cannot otherwise decode the shading). Values are
 // FORMATTED from the constants, never retyped, so the text cannot drift from the bands.
 // compact=true puts all proposed windows on ONE entry -- fine for the full-canvas key,
@@ -426,10 +387,6 @@ void AddGapKeyEntries(TLegend& l, bool compact = false) {
                             kGapCutPtThreshold),
                    "f");
     }
-    TLine* ln = new TLine();
-    ln->SetLineColor(kBlue + 1);
-    ln->SetLineStyle(2);
-    l.AddEntry(ln, "kept, but no fitted trigger efficiency", "l");
 }
 
 // The gap key drawn ONCE across the top of a multi-panel canvas: in a half-width panel a
@@ -440,7 +397,7 @@ void CanvasGapKey(TCanvas& c, double y1, double y2) {
     l->SetBorderSize(0);
     l->SetFillStyle(0);
     l->SetTextSize(0.011);
-    l->SetNColumns(kUseNewGapCuts ? 2 : 3);
+    l->SetNColumns(kUseNewGapCuts ? 1 : 2);
     AddGapKeyEntries(*l, /*compact=*/true);
     l->Draw();
 }
@@ -703,7 +660,7 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
                               : "all muons; existing gap cuts overlaid",
                "");
         {
-            TLegend l(0.23, 0.15, 0.96, kUseNewGapCuts ? 0.42 : 0.35);
+            TLegend l(0.23, 0.15, 0.96, kUseNewGapCuts ? 0.375 : 0.30);
             StyleLegend(l, 0.032);
             l.AddEntry(ps.all, "all muons", "l");
             AddGapKeyEntries(l);
@@ -888,7 +845,7 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
         NoteOffScale(nbd);
         Header("q#times#eta shape: pp vs Pb+Pb", "unit area, " + wp_lbl + " WP (per muon)");
         {
-            TLegend l(0.46, 0.15, 0.95, 0.32);
+            TLegend l(0.46, 0.15, 0.95, 0.29);
             StyleLegend(l, 0.038);
             l.AddEntry(pp_s, "pp 2024 (HLT_2mu4)", "l");
             l.AddEntry(pb_s, "Pb+Pb 23+24+25, 0-80% (HLT_mu4)", "l");
@@ -925,13 +882,6 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
            "(ParamsSet::charge_eta_gap_cuts):\n",
            kGapCutPtThreshold);
     for (const auto& w : GapWindowsLowPtOnly())
-        printf("      [%+.4f, %+.4f]\n", w.first, w.second);
-    printf("q*eta with NO fitted trigger efficiency (complement of "
-           "CommonEffcyConfig::q_eta_proj_ranges_fine_excl_gap,\n"
-           "  incl. the uncovered tail above the one-sided fitted range)\n"
-           "  -- NOT a rejection: these muons fall back to the unfitted 2D efficiency "
-           "map:\n");
-    for (const auto& w : FineExclGapHoles())
         printf("      [%+.4f, %+.4f]\n", w.first, w.second);
 
     ReportDips(pp_all, "pp24");

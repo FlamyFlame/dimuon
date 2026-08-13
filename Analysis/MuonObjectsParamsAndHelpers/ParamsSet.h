@@ -160,17 +160,26 @@ public:
    	// ---- PROVISIONAL single-muon detector-gap FIDUCIAL cut (q*eta) ----
    	// Reject a muon whose q*eta falls inside any of these windows. Intended to be
    	// compensated by an acceptance efficiency in the correction chain.
-   	// STATUS: proposed default, NOT YET WIRED INTO ANY SELECTION and not yet approved.
-   	// Nothing reads this vector; adding it changes no result. See
-   	// Analysis/docs/tracking/muon_gap_cuts_acceptance.md (F6/F7) for the measurement.
+   	// STATUS: LIVE in the TRIGGER-EFFICIENCY chain only (see the STATUS block at the end
+   	// of this comment). Changing any window here therefore CHANGES the MC trig-eff and the
+   	// data tag-and-probe efficiencies and requires rerunning them -- it is no longer a
+   	// free-to-edit provisional constant. Still NOT in the signal selection. See
+   	// Analysis/docs/tracking/muon_gap_cuts_acceptance.md (F6/F7/F11) for the measurement.
    	//
    	// Derived from the measured single-muon q*eta spectra (pp24 + PbPb 23/24/25):
-   	//   {-0.06, +0.06} barrel crack at eta~0. The visible core is |q*eta| <~ 0.05,
-   	//                  about half the width of the legacy eta_gap_cut1 = 0.135.
-   	//                  NOTE the crack profile is NOT symmetric about 0 (minimum at
-   	//                  q*eta ~ -0.02, and the +/- yield ratio at |q*eta|=0.05 is 2.4
-   	//                  in pp / 2.0 in PbPb, the SAME sense for both charges), so a
-   	//                  symmetric window is a compromise -- candidate for fine-tuning.
+   	//   {-0.10, +0.06} barrel crack at eta~0, ASYMMETRIC (user, 2026-08-12). The crack
+   	//                  profile is NOT symmetric about 0: the minimum sits at q*eta ~ -0.02
+   	//                  and the depletion is one-sided, in the SAME sense for both charges
+   	//                  (+/- yield ratio at |q*eta| = 0.05 is 2.4 in pp / 2.0 in PbPb).
+   	//                  Measured in 0.1-wide slices, N(slice)/N(mirror slice) is 0.51 (pp)
+   	//                  / 0.58 (PbPb) for (-0.10, 0.00) -- the only depleted slice near
+   	//                  zero -- while every slice from -1.0 to -0.2 is at or ABOVE 1.0,
+   	//                  i.e. enriched. So the window is extended on the negative side to
+   	//                  -0.10 to cover the whole depletion, and left at +0.06 on the
+   	//                  positive side, where there is none. The earlier symmetric
+   	//                  {-0.06, +0.06} cut only part of the depleted region.
+   	//                  It is still narrower than the legacy eta_gap_cut1 = 0.135, which
+   	//                  is symmetric in |eta| and so cuts a healthy +0.06..+0.135 slice.
    	//   {-1.20, -1.05} barrel/endcap transition. This is a q*eta (toroid bending
    	//                  direction) effect, NOT a fixed-|eta| geometric gap: each charge
    	//                  dips on ONE side only (mu+ at eta=-1.15, mu- at eta=+1.15, both
@@ -210,15 +219,17 @@ public:
    	// Doing that is a signal-selection change with the full rerun blast radius in
    	// Analysis/docs/signal_selection_change_impact.md -- do NOT wire it in without the
    	// user's go-ahead.
-   	// Cost if applied per muon (Tight WP, measured on the current single-muon trees):
-   	//        forward edge   whole set, muons        whole set, pairs (both must pass)
-   	//   pp    (2.2,2.4) 1.36%   4.28%                  8.38%
-   	//         (2.3,2.4) 0.37%   3.29%                  6.47%
-   	//   PbPb  (2.2,2.4) 2.24%   6.45%                 12.49%
-   	//         (2.3,2.4) 0.91%   5.13%                 10.00%
+   	// Cost if applied per muon (Tight WP, measured on the current single-muon trees).
+   	// AS CONFIGURED -- {-1.20,-1.05}, {-0.10,+0.06}, {2.30,2.40}:
+   	//                 crack   dip     fwd     whole set, muons   whole set, pairs
+   	//   pp            1.62%   1.80%   0.37%   3.79%              7.44%
+   	//   PbPb 0-80%    1.81%   2.88%   0.91%   5.60%             10.89%
+   	// With the previous symmetric crack window {-0.06,+0.06} the totals were
+   	// 3.29% / 6.47% (pp) and 5.13% / 10.00% (PbPb), so widening the crack to -0.10 costs
+   	// a further 0.50% (pp) / 0.47% (PbPb) of single muons.
    	// (The forward slice is already outside the signal region today, so adopting
-   	//  {2.2,2.4} costs nothing relative to the CURRENT selection; {2.3,2.4} would
-   	//  RECOVER 1.36% / 2.24% of muons.)
+   	//  {2.2,2.4} would cost nothing relative to the CURRENT selection; {2.3,2.4} instead
+   	//  RECOVERS 1.36% / 2.24% of muons -- see the EDGE CHOICE note above.)
    	// STATUS 2026-08-04: WIRED IN, for the TRIGGER EFFICIENCY ONLY (user instruction).
    	//   - MC trig-eff sample: FillMCTrigEffHists.cxx, all of Steps 1-4, both legs of a pair.
    	//   - DATA tag-and-probe: applied to the PROBE only (user decision) -- eps^nc is a per-muon
@@ -440,7 +451,7 @@ std::vector<std::array<float,2>> ParamsSet::charge_eta_gap_cuts = {{0.56,0.67}, 
 // muons relative to 2.20.
 // COUPLED: CommonEffcyConfig::q_eta_proj_ranges_coarse_incl_gap's top bin must END at this
 // same 2.30, or muons in [2.20,2.30) would survive the cut with no fitted turn-on.
-std::vector<std::pair<float,float>> ParamsSet::single_mu_fiducial_gap_cuts = {{-1.20f,-1.05f}, {-0.06f,0.06f}, {2.30f,2.40f}};
+std::vector<std::pair<float,float>> ParamsSet::single_mu_fiducial_gap_cuts = {{-1.20f,-1.05f}, {-0.10f,0.06f}, {2.30f,2.40f}};
 std::vector<float> ParamsSet::pTbins = {4.,5.,6.,7.,8.,9.,10.,12.,15.,20.};
 std::vector<int> ParamsSet::ctrbins = {0, 5, 10, 20, 30, 50, 80};
 // std::vector<double> ParamsSet::pTHatbins_pythia = {5, 10, 25, 60, 120, 3200};
