@@ -501,9 +501,6 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
                           && (ftex.first.find("R_{p}") != std::string::npos
                            || ftex.second.find("R_{p}") != std::string::npos);
 
-    // Geometry of the RESERVED annotation band. Its height follows from the number of lines the
-    // columns actually carry, and the shared y range below is stretched until no measured point
-    // can reach into it -- reserving space, not painting a box over the data.
     // RESERVED STRIP ABOVE THE FRAME -- not a band stolen from the top of the y range.
     // History, because the two wrong answers were both tried here: (1) drawing the per-cell
     // numbers INSIDE the frame put "plateau = 1.0043" through the fitted curve, the unity line
@@ -516,7 +513,12 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     // the text can never collide with data because it is not in the frame, and the y range is
     // free to follow the points (capped) in BOTH views.
     constexpr double kLabRow  = 0.045;             // the pair-eta label, at the top of the strip
-    constexpr double kStripTop = 0.965;            // NDC y of the label baseline
+    // NDC y of the LABEL BASELINE. Not higher: the label carries superscripts (p_{T}^{pair},
+    // #eta^{pair}) whose ascent is not counted in the baseline position, so at 0.965 they were
+    // CLIPPED by the pad edge on the 900x826 inclusive canvases -- "pair" came out with its top
+    // sliced off -- while the shorter 3x3 sub-pads happened to survive. Sized off the tallest
+    // glyph, not the baseline.
+    constexpr double kStripTop = 0.940;
     const double kColStep = sepr ? 0.040 : 0.045;
     // rows per column: series name (sign_sepr only) + the plateau line (nominal mode only) +
     // one per free parameter + chi2/ndf -- or, for the interpolation in the no-correction mode,
@@ -526,7 +528,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
                                     (sepr ? 1 : 0) + 2);
     const double h_ann   = n_ann_rows * kColStep + 0.02;
     // Pad top margin = label + annotation rows + a little air. The frame starts below it.
-    const double kTopMarg = 0.035 + kLabRow + h_ann;
+    const double kTopMarg = 0.060 + kLabRow + h_ann;   // tracks kStripTop: strip height is unchanged
     const double kAnnTop  = kStripTop - kLabRow;   // first annotation row, under the label
     // Single-series canvases start their one column further left in the no-correction mode: the
     // baseline line ("C (fitted plateau) = 0.979 #pm 0.011") is the longest string any panel
@@ -883,7 +885,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     // scale, and the legend. Sizes are given in PIXELS of this canvas and converted, so the strip
     // looks the same on the 3x3 grid and on the single-panel inclusive canvas.
     auto header_px = [&](int leg_ncol) {
-        return 124 + ((n_leg + leg_ncol - 1) / leg_ncol) * 22 + 8;
+        return 128 + ((n_leg + leg_ncol - 1) / leg_ncol) * 22 + 8;
     };
     // n_show = how many off-scale entries are spelled out before the running total takes over.
     // Each entry now names its pair-eta cell and its charge combination, so it is ~3x longer than
@@ -900,7 +902,12 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         t.SetTextSize(17.0 / H);
         t.DrawLatex(0.02, ny(56), def_line.c_str());
         if (!eq_line1.empty()) t.DrawLatex(0.02, ny(78), eq_line1.c_str());
-        if (!eq_line2.empty()) t.DrawLatex(0.02, ny(96), eq_line2.c_str());
+        // 22 px pitch like the two lines above it. At the 18 px it used to sit at, a 17 px font
+        // put the descenders of eq_line1 on the cap height of eq_line2: the a_{2}/a_{3}
+        // subscripts of the polyu equation printed on top of "u = max(0, 1 - dR/R_p)", and the
+        // interpolation's line 2 landed on line 3. The fit equation is a MANDATORY on-canvas
+        // element, so it has to be legible on every method, not just the two-line ones.
+        if (!eq_line2.empty()) t.DrawLatex(0.02, ny(100), eq_line2.c_str());
         if (!offscale.empty()) {
             std::string sub = "off scale: ";
             for (size_t i = 0; i < offscale.size() && i < n_show; ++i)
@@ -909,10 +916,10 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
             if (offscale.size() > n_show) sub += Form(";  ... (%zu total)", offscale.size());
             t.SetTextColor(kGray + 3);
             t.SetTextSize(15.0 / H);
-            t.DrawLatex(0.02, ny(114), sub.c_str());
+            t.DrawLatex(0.02, ny(118), sub.c_str());
             t.SetTextColor(kBlack);
         }
-        auto* leg = new TLegend(0.02, ny(header_px(leg_ncol) - 8.), 0.98, ny(126));
+        auto* leg = new TLegend(0.02, ny(header_px(leg_ncol) - 8.), 0.98, ny(130));
         leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(16.0 / H);
         leg->SetNColumns(leg_ncol);
         fill_legend(leg);

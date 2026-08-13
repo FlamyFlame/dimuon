@@ -1972,6 +1972,46 @@ fit, not of the fiducial region.
 `signal_selection_change_impact.md` was not triggered. `_pt4bin` was deliberately excluded (already
 STALE per R24b).
 
+### R30. Post-rerun plot review: two header-text defects fixed, four findings left open (2026-08-13)
+
+`/review-plot` ran once over the FINAL state (layout restructure + gap-cut rerun together) and
+**APPROVED at iteration 3**. The physics half is the part worth recording: C1/C2 clean on the
+refilled results (every departure maps to an already-open finding — R4's forward rise, R25's sign
+split, R23's top-pair-pT plateaus); the widened window is visible as an empty q·η column from
+−0.10 to +0.06 measured off the rendered Step-1 2D map and, correctly, invisible in the pair-η
+binning whose edges straddle it; the dependency chain `ParamsSet.h → .so → data T&P (both WPs) →
+turn-on fits → MC hists → plateaus → 108 fit ROOTs → 810 PNGs` was verified node by node to be in
+order with **zero stale products**; and C3 against the Run 2 muon-trigger KB entry is consistent in
+both the ρ_ΔR turn-on scale and the HLT_mu4 barrel/endcap magnitudes (including the *sign* of the
+MC-over-data barrel excess, which is our separately measured 1.21/leg, not a new effect). The two
+dR views were shown **pixel-identical in their annotation strips** for all 192 nine-panel pairs and
+all 24 inclusive pairs.
+
+**Fixed (plot-macro only — no refill, no refit, so nothing the closure thread reads moved):**
+1. The header's last line pitch was 18 px for a 17 px font, so `eq_line1`'s descenders sat on
+   `eq_line2`'s cap height — the `a_2`/`a_3` subscripts of the `polyu_fixedRp` equation printed on
+   top of `u ≡ max(0, 1 − ΔR/R_p)`, and `interp`'s line 2 on line 3. Pre-existing, on ~2/3 of the
+   fit canvases, and the fit equation is a MANDATORY on-canvas element. Pitch → 22 px with
+   everything below it moved down by the same 4 px.
+2. **A regression of round 10 that the reviewer did NOT catch, found by direct inspection:** on the
+   900×826 INCLUSIVE canvases the panel label's superscripts (`p_T^{pair}`, `η^{pair}`) were
+   CLIPPED by the pad edge. Moving the label into the strip put its baseline at NDC 0.965, where
+   the baseline fits but the glyph *ascent* does not; the shorter 3×3 sub-pads happened to survive,
+   which is exactly why a "label present and legible?" check passed it. Label → 0.940, top margin
+   tracking it. *Lesson: position text from its tallest glyph, not its baseline — and crop-and-zoom
+   the rendered PNG, because a superscript with its top sliced off still reads as present.*
+
+**Left open deliberately (all INFO):**
+- An **unconstrained** fit published with `fit_ok = 1` (`A = −0.153 ± 1.7`, `C = 0.706 ± 2.3`, i.e.
+  300 % errors) whose **χ²/ndf is 1.45** — evidence for the open **R26** decision that a χ² screen
+  alone would not catch this class; a relative-parameter-error screen would.
+- `forward_qeta_edge_scan/` still shows the **old symmetric window** (2026-08-04). Regenerating it
+  needs a dedicated `MCTRIGEFF_NO_GAPCUT=1` fill — user's call.
+- `plot_mc_trig_eff.cxx` defines ε_ΔR as "P(both μ fire | ΔR)" where the fit plots say "P(pair
+  passes 2mu4 | ΔR)". The latter is correct; fixing it rewrites the plateau files the concurrent
+  closure thread now reads, so it is NOT done here.
+- Pre-restructure orphan directories in the PbPb fit-plot trees (housekeeping, PbPb not refilled).
+
 ### D6: the gap cut lives at the RDF stage, not in the ntuple processing (2026-08-05)
 Round-8 Contract item 4 specified "a gap-cut mode in the ntuple-processing code". It was
 implemented at the RDF stage instead. **Provenance rule satisfied** (the cut is applied to
