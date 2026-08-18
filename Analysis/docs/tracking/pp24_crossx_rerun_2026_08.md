@@ -23,7 +23,7 @@ crossx plots and the pp-data/MC comparison plots are produced with:
 Explicitly OUT of scope: unfolding, signal-selection acceptance, template fitting, PbPb
 T_AA-weighted event yields, R_AA.
 
-## Autonomy Contract (ACTIVE — re-read on every compaction)
+## Autonomy Contract (DONE 2026-08-18 — all six Done items met)
 - Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a
   plan, a passing small test, or one pipeline stage is NOT a stopping point.
 - Done =
@@ -184,12 +184,9 @@ both binned in TRUTH kinematics and weighted by the MC event weight.
 
 ## Latest Stage
 
-**Step 0 (in progress, 2026-08-17):** Doc triage done. Five read-only mapping agents launched
-to inventory (a) every q*eta signal-cut site in the pp24 crossx + pp24 fullsim reco-eff chain,
-(b) the trigger-efficiency application path and its configuration knobs, (c) the reco-efficiency
-path and the pp24 fullsim production state, (d) the Delta-p/p cut state and pp24 NTuple
-freshness, (e) the MC trigger-efficiency doc state (eps_dR definition, fit fallback chain,
-7-pair-pT-bin variant status). Physics Procedure to be written from their output.
+**DONE 2026-08-18.** All six Autonomy-Contract Done items are met; the pipeline ran clean end to
+end and both mandated reviews returned PASS-WITH-COMMENTS with every finding closed or explicitly
+carried forward (see Remaining Work). Nothing is in flight.
 
 ## Progress Log
 
