@@ -361,8 +361,18 @@ void RDFBasedHistFillingData::BuildFilterToVarListMapDataImpl(){
 void RDFBasedHistFillingData::BuildFilterToVarListMapDataCommon(){
     for (std::string sign : pair_signs){
 
-        df_filter_to_var1D_list_map[sign + ""]         = {"Dphi", "DR", "DR_zoomin"};
-        df_filter_to_var1D_list_map[sign + "_wgapcut"] = {"Dphi", "DR", "DR_zoomin"};
+        // The GENERIC 1D list -- these are the efficiency-corrected (w_reco_trig) distributions
+        // the pp-data/MC comparison reads. Extended 2026-08-18 (user): it held only
+        // {Dphi, DR, DR_zoomin}, which is why every other PNG in plots/mc_data_compr/ was an
+        // orphan from the Run-2-era macro -- the data histogram behind it simply did not exist.
+        // Every variable added here is ALREADY defined in var1D_pp.json with a fixed binning and
+        // already exists under the SAME name on the Pythia side, so nothing is re-invented and
+        // the two can be overlaid (hist_helper scales by "width", so unequal bin counts between
+        // data and MC are densities and compare correctly).
+        df_filter_to_var1D_list_map[sign + ""]         = {"Dphi", "Dphi_zoomin", "DR", "DR_zoomin",
+                                                          "Deta_zoomin", "minv_zoomin"};
+        df_filter_to_var1D_list_map[sign + "_wgapcut"] = {"Dphi", "Dphi_zoomin", "DR", "DR_zoomin",
+                                                          "Deta_zoomin", "minv_zoomin"};
 
         df_filter_and_weight_to_var1D_list_map[{sign + ""           , "_jacobian_corrected"}] = {"DR", "DR_zoomin"};
         df_filter_and_weight_to_var1D_list_map[{sign + "_wgapcut"   , "_jacobian_corrected"}] = {"DR", "DR_zoomin"};

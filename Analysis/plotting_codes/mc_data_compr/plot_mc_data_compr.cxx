@@ -244,6 +244,23 @@ void PlotMCDataComprClass::plot_mc_data_compr_1D(){
     PlotMCDataComprSingleKinematics p_Dphi("Dphi", "#Delta #phi");
     p_Dphi.logy = true;
     p_Dphi.Run();
+
+    // Added 2026-08-18 (user): these three exist on BOTH sides under the same name, so the only
+    // thing that was missing was the data histogram -- now filled by the extended generic 1D list
+    // in RDFBasedHistFillingData::BuildFilterToVarListMapDataCommon. POWHEG carries none of them
+    // (its combined file has only DR with mechanism suffixes), so it is skipped with a [SKIP]
+    // line, exactly as it already is for Dphi.
+    PlotMCDataComprSingleKinematics p_Dphi_zoomin("Dphi_zoomin", "#Delta #phi");
+    p_Dphi_zoomin.logy = true;
+    p_Dphi_zoomin.Run();
+
+    PlotMCDataComprSingleKinematics p_Deta_zoomin("Deta_zoomin", "#Delta #eta");
+    p_Deta_zoomin.logy = true;
+    p_Deta_zoomin.Run();
+
+    PlotMCDataComprSingleKinematics p_minv_zoomin("minv_zoomin", "m_{#mu#mu} [GeV]");
+    p_minv_zoomin.logy = true;
+    p_minv_zoomin.Run();
 }
 
 void PlotMCDataComprClass::plot_mc_data_compr_DR_zoomin(){
