@@ -269,15 +269,37 @@ validate_files_or_fail "hadd hists pp24" "$combined_h"
 unset h_parts
 
 # ------ Stage 5: RDF crossx hist filling + validate ------
+# FRESHNESS, not just existence. ROOT's TRint CATCHES a C++ exception thrown inside the event
+# loop, prints it, and still exits 0 -- so `run_crossx_hist_filling_pp24.sh` can "succeed" while
+# leaving the PREVIOUS run's histogram file untouched on disk. That happened on 2026-08-18 (a
+# muon at exactly q*eta = 2.30 had no fitted turn-on): the file opened, had keys, passed
+# validation, and the pipeline only failed two stages later in the plotter. Stamp the time before
+# the run and require the output to be newer than it.
 log "Running RDF crossx hist filling for PP 2024"
+rdf_stamp="$(mktemp)"
 pushd "$RDF_DIR" >/dev/null
 ./run_crossx_hist_filling_pp24.sh || {
   popd >/dev/null
+  rm -f "$rdf_stamp"
   fail "RDF crossx hist filling failed for PP 2024"
 }
 popd >/dev/null
 rdf_out="$(get_rdf_output)"
 validate_files_or_fail "RDF crossx pp24" "$rdf_out"
+if [[ ! "$rdf_out" -nt "$rdf_stamp" ]]; then
+  rm -f "$rdf_stamp"
+  fail "RDF crossx output ${rdf_out} is OLDER than this run — the hist filling threw and ROOT swallowed it. Check the log for 'runtime_error'."
+fi
+rm -f "$rdf_stamp"
+# ...and the file must actually CONTAIN the crossx spectrum. A throw mid-event-loop leaves a
+# freshly-RECREATEd near-empty file, which is newer than the stamp and still opens.
+root -l -b -q <<EOF >/dev/null 2>&1
+TFile* f = TFile::Open("${rdf_out}", "READ");
+if (!f || f->IsZombie()) gSystem->Exit(2);
+if (!f->Get("h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts")) { f->Close(); gSystem->Exit(3); }
+f->Close(); gSystem->Exit(0);
+EOF
+[[ $? -eq 0 ]] || fail "RDF crossx output ${rdf_out} has no h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts — the event loop threw (ROOT exits 0 anyway). Check the log for 'runtime_error'."
 
 # ------ Stage 6: Crossx plotting ------
 # use_pt_bins_150=true also refreshes the opt-in pp24_pt_150/ variant. It is NOT
