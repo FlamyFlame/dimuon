@@ -230,14 +230,29 @@ public:
    	// (The forward slice is already outside the signal region today, so adopting
    	//  {2.2,2.4} would cost nothing relative to the CURRENT selection; {2.3,2.4} instead
    	//  RECOVERS 1.36% / 2.24% of muons -- see the EDGE CHOICE note above.)
-   	// STATUS 2026-08-04: WIRED IN, for the TRIGGER EFFICIENCY ONLY (user instruction).
+   	// STATUS 2026-08-04: WIRED IN, for the TRIGGER EFFICIENCY (user instruction).
    	//   - MC trig-eff sample: FillMCTrigEffHists.cxx, all of Steps 1-4, both legs of a pair.
    	//   - DATA tag-and-probe: applied to the PROBE only (user decision) -- eps^nc is a per-muon
    	//     efficiency and is only ever evaluated for muons outside the gaps, so eps(probe | probe
    	//     outside gap) is exactly the object the analysis applies. The tag is left uncut.
-   	// STILL NOT APPLIED (future to-do, needs the signal_selection_change_impact.md rerun):
-   	// the nominal signal selection, the data ntuple processing, reconstruction efficiency,
-   	// and the template fits.
+   	// STATUS 2026-08-17: WIRED IN as the pp24 SIGNAL SELECTION, on BOTH muons of a pair,
+   	// REPLACING the standalone per-muon `q*eta < 2.2` (user instruction; tracking doc
+   	// docs/tracking/pp24_crossx_rerun_2026_08.md; blast radius per
+   	// docs/signal_selection_change_impact.md):
+   	//   - pp24 data crossx: RDFBasedHistFillingPP.cxx `signal_cuts` + both `signal_cuts_no_minv`.
+   	//   - pp24 fullsim reco efficiency: RDFBasedHistFillingPythiaFullsim.cxx
+   	//     `pass_signal_truth` (TRUTH q*eta) and `pass_signal_reco` (RECO q*eta).
+   	//   - the data-like mirror Utilities/MCTrigEffPairSelection.h SingleBSignalCutsReco().
+   	// Because the ntuple stage already requires |eta| < 2.4, the forward window {2.30, 2.40}
+   	// makes the effective forward edge 2.30 == the top edge of
+   	// CommonEffcyConfig::q_eta_proj_ranges_coarse_incl_gap, so every surviving muon has a
+   	// fitted turn-on (no sentinel, no silent pair drop).
+   	// STILL NOT APPLIED (future to-do, each with its own rerun):
+   	// the PbPb data crossx and the PbPb overlay reco efficiency, the Pythia/Powheg TRUTH
+   	// signal acceptance, the data ntuple processing, and the template fits.
+   	// NOTE the resulting pp24 cross-section is a FIDUCIAL (gap-cut) cross-section: the
+   	// truth-level gap acceptance eps_acc = 0.9133 (muon_gap_cuts_acceptance.md F12) is a
+   	// SEPARATE factor and is not applied anywhere yet.
    	static std::vector<std::pair<float,float>> single_mu_fiducial_gap_cuts;
 
    	// --- The fiducial gap cut, in the TWO forms the analysis needs -----------------------
@@ -248,21 +263,41 @@ public:
    	// definition behind every existing `_wgapcut` diagnostic histogram -- redefining them would
    	// silently change the meaning of already-produced outputs whose names would not change.
    	// This cut is pT-INDEPENDENT by requirement, so the acceptance factorises in q*eta alone.
+   	// The windows are rejected CLOSED, `[lo, hi]`, not open. That is not a detail:
+   	// the forward window's lower edge 2.30 is ALSO the top edge of the contiguous coarse q*eta
+   	// turn-on binning (CommonEffcyConfig::q_eta_proj_ranges_coarse_incl_gap, whose bins are
+   	// half-open `[lo, hi)`), and the ntuple keeps |eta| <= 2.4, so with OPEN windows a muon at
+   	// exactly q*eta = 2.30 or 2.40 survived the cut and then had NO fitted turn-on -- which
+   	// EvaluateSingleMuonEffcyPtFitted throws on, by design, rather than silently dropping the
+   	// pair. Closing the interval makes the surviving region exactly [-2.4, 2.30) minus the two
+   	// interior windows, i.e. precisely the region the turn-on fits cover. (Found 2026-08-17 when
+   	// a real pp24 muon landed on q*eta = 2.300; the change is measure-zero everywhere else,
+   	// since it only moves exact boundary values.)
    	static bool PassSingleMuFiducialGap(float eta, int charge) {
    		const float q_eta = charge * eta;
    		for (const auto& w : single_mu_fiducial_gap_cuts)
-   			if (q_eta > w.first && q_eta < w.second) return false;
+   			if (q_eta >= w.first && q_eta <= w.second) return false;
    		return true;
    	}
    	// RDF/JIT string form, so the window numbers are never retyped into a Filter expression.
    	// `q_eta_expr` is any expression evaluating to q*eta (e.g. "charge*eta", "lg_charge*lg_eta").
+   	//
+   	// EVERYTHING HERE IS IN FLOAT, deliberately: the expression is cast to float and the edges
+   	// carry an `f` suffix. Without that, the JIT compares a float q*eta PROMOTED TO DOUBLE
+   	// against a DOUBLE decimal literal -- and 2.30f = 2.2999999523... is strictly less than the
+   	// double 2.3 = 2.2999999999..., so a muon sitting exactly on the forward edge was NOT
+   	// rejected, while `FindBinReturnStr` (which compares in float, against the float bin edge
+   	// 2.30f) then found no q*eta bin for it and EvaluateSingleMuonEffcyPtFitted threw. Observed
+   	// on real pp24 data, 2026-08-18. The float cast makes this Filter and the float-valued
+   	// binning agree bit for bit -- and makes it agree with PassSingleMuFiducialGap, which has
+   	// always compared in float.
    	static std::string FiducialGapCutExpr(const std::string& q_eta_expr) {
    		std::string s = "!(";
    		for (size_t i = 0; i < single_mu_fiducial_gap_cuts.size(); ++i) {
    			const auto& w = single_mu_fiducial_gap_cuts[i];
    			if (i) s += " || ";
-   			s += "((" + q_eta_expr + ") > " + std::to_string(w.first)
-   			   + " && (" + q_eta_expr + ") < " + std::to_string(w.second) + ")";
+   			s += "((float)(" + q_eta_expr + ") >= " + std::to_string(w.first) + "f"
+   			   + " && (float)(" + q_eta_expr + ") <= " + std::to_string(w.second) + "f)";
    		}
    		return s + ")";
    	}

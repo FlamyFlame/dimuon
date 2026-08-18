@@ -67,13 +67,16 @@ inline std::string Step3PairSelection(bool apply_gap_cut = true)
 }
 
 // The DATA-LIKE single-b RECO signal selection, byte-identical to `signal_cuts` in
-// RDFBasedHistFilling/RDFBasedHistFillingPP.cxx:434 (and PbPb.cxx:977) with the m1./m2. dots
+// RDFBasedHistFilling/RDFBasedHistFillingPP.cxx (and PbPb.cxx) with the m1./m2. dots
 // replaced by the underscore aliases. Ground truth for the values: docs/analysis_overview.md §2
 // and docs/signal_selection_change_impact.md §0. There is NO dR cut (removed 2026-06-22).
+// 2026-08-17: the per-muon one-sided `q*eta < 2.2` was REPLACED by the detector-gap fiducial
+// cut on BOTH muons (FiducialGapCut() above) -- kept in lockstep with the crossx by
+// construction, since both now read ParamsSet::single_mu_fiducial_gap_cuts.
 inline std::string SingleBSignalCutsReco()
 {
     return "minv > 1.08 && minv < 2.9 && pair_pt > 8 && "
-           "m1_charge * m1_eta < 2.2 && m2_charge * m2_eta < 2.2";
+         + FiducialGapCut();
 }
 
 }  // namespace MCTrigEffPairSel
