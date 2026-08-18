@@ -117,3 +117,5 @@
 {"event":"end","command":"review-plot","status":"approved","iterations":2,"timestamp":"2026-08-13T19:32:23-04:00","criticals":0,"warnings":0,"slug":"truth-qeta-and-legend-fix"}
 {"event":"start","command":"review-analysis-code","task":"round-12 nocorr_ptmerge third plateau mode for the Step-3 dR-correction fits","slug":"ptmerge-third-plateau-mode","timestamp":"2026-08-17T23:31:27-04:00"}
 {"event":"end","command":"review-analysis-code","status":"approved","iterations":2,"timestamp":"2026-08-18T10:09:55-04:00","criticals":0,"warnings":0,"slug":"ptmerge-third-plateau-mode"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":2,"timestamp":"2026-08-18T10:13:15-04:00","criticals":0,"warnings":0,"slug":"ptmerge-third-plateau-mode"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":2,"timestamp":"2026-08-18T10:14:22-04:00","criticals":0,"warnings":0,"escalated":["chi2/positive-amplitude screen in fit_ok (R26)","overlay minimum-points threshold"],"slug":"ptmerge-third-plateau-mode"}

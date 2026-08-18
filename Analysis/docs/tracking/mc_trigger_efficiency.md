@@ -2288,9 +2288,11 @@ decision about widening the merge.
 merged cell still delivers ε_ΔR above 1: `p_T^pair ∈ [11.5,16.6) × η^pair ∈ [−2.4,−2.0)`, Tight,
 opposite sign, `expo`, where the fit returns **A = +0.2838** (a positive amplitude = a close-by
 *enhancement*, which a 2mu4 product cannot physically be), **λ = 0.0208 pinned on its 0.02 lower
-limit**, C = 0.8922, χ²/ndf = 4.65 ⇒ f(0)/C = **1.318**. It is **pre-existing** (the un-merged
-`nocorr` has the same cell at 1.354) and the merge strictly improves the class, but the code's own
-alarm only fires above 1.5, so it is published silently. It belongs to **OPEN R26**: a screen on
+limit**, C = 0.8922, χ²/ndf = 4.65 ⇒ f(0)/C = **1.318**. It is **pre-existing and untouched by the merge**: the
+un-merged `nocorr` tree has this identical cell at the identical 1.318 (that pair-pT bin is nowhere
+near the merged one). The un-merged tree's own maximum, **1.354, sat in a different cell** —
+`[72.1,104) × [−2.4,−2.0)` — and that cell is absorbed by the merge. The code's own alarm only fires
+above 1.5, so both are published silently. It belongs to **OPEN R26**: a screen on
 `A > 0` (equivalently `f(0) > C`) would remove this class of cell, and that is a fit-form decision,
 not something to patch here. Consumers should treat any delivered value above 1 as an artefact.
 
@@ -2339,9 +2341,11 @@ anomaly, R8/R10/R14).
    artefact for ALL three plateau modes and the MC-closure thread's inputs, so it is a **USER
    DECISION**, deliberately not taken here.
 2. **One overlay panel gains an unconstrained fit.** In the Pb+Pb top cell the merge turns one
-   "too few points" cell (`[72.1,150) × [−0.5,0.5)`, 7 points) into a fitted one with **every
-   parameter error ≥ its parameter** (A = 0.586 ± 5.5, λ = 0.037 ± 2.1, p = 3.42 ± 4.4,
-   C = 0.661 ± 0.15), drawn with the same authority as a pp FULL-sample panel. The overlay is a
+   "too few points" cell (`[72.1,150) × [−0.5,0.5)`, 7 points) into a fitted one whose **three
+   SHAPE parameters are entirely unconstrained** — A = 0.586 ± 5.5, λ = 0.037 ± 2.1, p = 3.42 ± 4.4,
+   each error larger than its own parameter — while only the baseline C = 0.661 ± 0.15 is measured
+   (values from the sign-integrated series; opposite sign is numerically equivalent, C identical).
+   It is drawn with the same authority as a pp FULL-sample panel. The overlay is a
    10 000-event TEST sample and is not a deliverable, but the acceptance rule
    (`k ≥ nfree + 2`) is what admits it — also a **USER DECISION**.
 
@@ -3559,7 +3563,9 @@ for all three plateau modes and therefore the MC-closure thread's inputs.
 > | plateau mode | `nocorr_ptmerge` | `DrCorrCrossxMode()` |
 >
 > **Files** (pp24 Pythia fullsim FULL, `/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample/`),
-> written 2026-08-17 23:16–23:24, all AFTER every input they consume:
+> written **2026-08-18 09:46–09:53**, all AFTER every input they consume. (They were first produced
+> 2026-08-17 23:16–23:24 and REFITTED on 2026-08-18 for a report-TEXT correction only — every fitted
+> number is unchanged and was re-verified against the pre-refit values.)
 > - Tight  : `dr_correction_fits_pp24_full_step3_expo_os_nocorr_ptmerge.root`
 > - Medium : `dr_correction_fits_pp24_full_medium_wp_step3_expo_os_nocorr_ptmerge.root`
 > - the `polyu_fixedRp` and `interp` siblings exist under the same naming (swap the method token),
