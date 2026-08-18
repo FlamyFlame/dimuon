@@ -74,7 +74,11 @@ struct DrCorrectionCrossxEvaluator {
     // (RDFBasedHistFillingBaseClass.cxx). A plain ++ here is a data race -- harmless to the
     // returned value (every lookup is a const read of a histogram or TF1) but it would corrupt
     // exactly the census that tells us how much of the correction is a placeholder.
-    std::atomic<long long> n_eval{0}, n_primary{0}, n_backup{0}, n_raw{0};
+    std::atomic<long long> n_eval{0}, n_primary{0}, n_backup{0}, n_raw{0}, n_outside{0};
+    // Per-CELL census, decided once at load time. Distinct from the per-EVALUATION counters above:
+    // a consumer that only holds a produced file must be able to state how much of the MAP is the
+    // TEMPORARY raw-bin placeholder, which is a property of the cells, not of the pairs.
+    int n_cells_primary = 0, n_cells_backup = 0, n_cells_raw = 0;
 
     // The pair-pT cell edges this correction is defined on, AFTER the mode's merging. Exposed so
     // the caller can state them in its log rather than re-deriving them.
@@ -101,6 +105,7 @@ struct DrCorrectionCrossxEvaluator {
                 else if (backup .cells[iy][iz].fit) { route[iy][iz] = 1; ++n1; }
                 else                                { route[iy][iz] = 2; ++n2; }
             }
+        n_cells_primary = n0; n_cells_backup = n1; n_cells_raw = n2;
         std::cout << "DrCorrectionCrossxEvaluator [" << cfg.mc_label << " / "
                   << DrCorrSignText(sign) << " / " << mode << "]: " << npt << "x" << neta
                   << " cells routed -- " << n0 << " on the " << DrCorrCrossxMethod()
@@ -119,10 +124,17 @@ struct DrCorrectionCrossxEvaluator {
         ++n_eval;
         const int iy = primary.h_fit_ok->GetXaxis()->FindBin(pair_pt);
         const int iz = primary.h_fit_ok->GetYaxis()->FindBin(pair_eta);
-        int r = 2;
-        if (iy >= 1 && iy <= primary.h_fit_ok->GetNbinsX() &&
-            iz >= 1 && iz <= primary.h_fit_ok->GetNbinsY())
-            r = route[iy - 1][iz - 1];
+        // OUTSIDE THE CELL GRID is its own outcome and must be counted as such. It is NOT the
+        // raw-bin branch: the pair gets eps_dR = 1 (no correction) because no cell covers it --
+        // typically pair pT below the 8 GeV bottom edge, which the signal region excludes but the
+        // GENERIC sample does not. Lumping it in with "both fits rejected" made the census read
+        // 53 % placeholder when the map itself has only ONE such cell out of 63.
+        if (iy < 1 || iy > primary.h_fit_ok->GetNbinsX() ||
+            iz < 1 || iz > primary.h_fit_ok->GetNbinsY()) {
+            ++n_outside;
+            return 1.0;
+        }
+        const int r = route[iy - 1][iz - 1];
         if (r == 1) { ++n_backup;  return backup .Eval(dr, pair_pt, pair_eta); }
         if (r == 0) { ++n_primary; return primary.Eval(dr, pair_pt, pair_eta); }
         ++n_raw;
@@ -138,7 +150,9 @@ struct DrCorrectionCrossxEvaluator {
         std::cout << "DrCorrectionCrossxEvaluator: " << N << " evaluations -- "
                   << n_primary << " routed to " << DrCorrCrossxMethod() << " (" << pct(n_primary)
                   << "%), " << n_backup << " to " << DrCorrCrossxBackupMethod() << " ("
-                  << pct(n_backup) << "%), " << n_raw << " to the raw bins (" << pct(n_raw) << "%)"
+                  << pct(n_backup) << "%), " << n_raw << " to the raw bins (" << pct(n_raw)
+                  << "%), " << n_outside << " OUTSIDE the cell grid (" << pct(n_outside)
+                  << "%, eps_dR = 1 -- pairs the correction does not cover, e.g. pair pT < 8 GeV)"
                   << std::endl;
         primary.PrintStats();
         if (n_backup > 0) backup.PrintStats();
@@ -248,6 +262,11 @@ private:
         };
         check(primary.h_fit_ok->GetXaxis(), pt,  "pair-pT");
         check(primary.h_fit_ok->GetYaxis(), eta, "pair-eta");
+        // The BACKUP too: CheckSameGrid compares only bin COUNTS, so a stale backup file with the
+        // same number of cells but different edges would otherwise correct a pair with another
+        // cell's curve -- silently, since every histogram still fills (.claude/CLAUDE.md §Binnings).
+        check(backup.h_fit_ok->GetXaxis(), pt,  "pair-pT (backup)");
+        check(backup.h_fit_ok->GetYaxis(), eta, "pair-eta (backup)");
         pt_cell_edges  = pt;
         eta_cell_edges = eta;
     }
