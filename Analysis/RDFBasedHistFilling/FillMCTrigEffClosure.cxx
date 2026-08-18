@@ -116,6 +116,15 @@ const std::vector<std::string> kVersions = {"all_os", "signal"};
 const char* kSignSeries = "os";
 const char* kPairTree   = "muon_pair_tree_sign2";   // opposite sign
 
+// The PLATEAU MODE of the dR-correction fits this closure consumes: the UN-MERGED
+// no-plateau-correction variant (doc 3.2). It is named here and passed EXPLICITLY to both the
+// evaluator and the provenance stamp below, because `DrCorrectionEvaluator::Load` now takes the
+// mode as a defaulted argument (2026-08-17): relying on that default while the stamp spells the
+// token out would make the stamp lie the moment the default moved. The pp24 CROSSX application
+// deliberately uses a DIFFERENT mode (DrCorrCrossxMode() = "nocorr_ptmerge", the last two pair-pT
+// bins merged); this closure stays on the un-merged cells it was measured against.
+const char* kDrPlateauMode = "nocorr";
+
 // DATA tag-and-probe reference for pp (RDFBasedHistFillingPP.cxx:306/323 -- the erf_plus_log fit
 // directory). {WP} is "" (Tight) or "_medium_wp": the data reference MUST be at the same working
 // point as the MC (mc_trigger_efficiency.md §3.0(d)).
@@ -198,7 +207,7 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
     std::map<std::string, DrCorrectionEvaluator*> eps_dr;
     for (const auto& m : kMethods) {
         auto* e = new DrCorrectionEvaluator();
-        e->Load(cfg, use_tight_wp, m, kSignSeries);
+        e->Load(cfg, use_tight_wp, m, kSignSeries, kDrPlateauMode);
         // The correction cells and the histogram axes MUST be the same binning, or a pair would be
         // corrected by another cell's curve while every histogram still fills (CLAUDE.md §Binnings).
         if (e->h_fit_ok->GetNbinsX() != (int)pt_edges.size() - 1 ||
@@ -357,7 +366,7 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
         dr_prov += Form(" | %s: %s; cells fitted %d, RAW-BIN PLACEHOLDER %d, no correction %d"
                         " (of the rejected, %d had fit_ok=1 but an unusable baseline C)",
                         m.c_str(),
-                        stamp(DrCorrFitFile(cfg, use_tight_wp, 3, m, kSignSeries, "nocorr")).c_str(),
+                        stamp(DrCorrFitFile(cfg, use_tight_wp, 3, m, kSignSeries, kDrPlateauMode)).c_str(),
                         eps_dr.at(m)->n_cells_fitted, eps_dr.at(m)->n_cells_raw,
                         eps_dr.at(m)->n_cells_dead, eps_dr.at(m)->n_cells_bad_C);
     }
