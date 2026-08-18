@@ -54,6 +54,13 @@
 //                            which has no fitted parameters, the pinned flat-branch value is
 //                            drawn instead), so the reader can see what the fit decided the
 //                            baseline is in every cell.
+//   no_plateau_correction_last2ptbins_merged/
+//                            The SAME raw fit, with the LAST TWO pair-pT bins merged into ONE
+//                            cell (user, 2026-08-17) -- so this tree has one PNG fewer and its top
+//                            canvas covers p_T^pair in [72.1, 150) GeV. The measured points drawn
+//                            here are re-projected over BOTH filled bins, so they are the points
+//                            the merged fit actually saw. Why the merge exists, and why it is not
+//                            a new binning: dr_correction_pt_groups.h.
 //
 // Only PNGs live in those two subdirectories; the text artefacts (fit_report*.txt from the fit
 // stage, readback_check*.txt from this one) stay directly in <method>/ where they have always been.
@@ -90,6 +97,7 @@
 
 #include "dr_correction_sample_cfg.h"
 #include "dr_correction_ratio.h"
+#include "dr_correction_pt_groups.h"
 #include "../../../Utilities/MCTrigEffPlateauWindow.h"
 
 #include <cmath>
@@ -247,7 +255,9 @@ bool ParAtLimit(TF1* f, int ip)
 // mode   : "sign_intgr" (the nominal, sign-integrated correction) | "sign_sepr" (same sign and
 //          opposite sign overlaid). One output subdirectory each, under <method>/.
 // plateau_mode : "corr" (NOMINAL: points divided by the plateau) | "nocorr" (raw efficiency,
-//          free fitted baseline C). One output subdirectory each, ABOVE <method>/.
+//          free fitted baseline C) | "nocorr_ptmerge" (the same raw fit with the last two pair-pT
+//          bins merged into one cell, so this set has one PNG fewer). One output subdirectory
+//          each, ABOVE <method>/.
 // dr_view : "dr0_1" (DEFAULT, the fit domain -- the main figure) | "dr0_2" (the reference view
 //          out to dR = 2, written to dR0_2/). STEP 3 ONLY: step 4 was not restructured (user), so
 //          it keeps its flat layout and must be called with "dr0_2" to reproduce its plots.
@@ -273,8 +283,11 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     // Points beyond the fit domain exist only in the reference view.
     const bool draw_check_region = (kXhi > kFitHi);
     const bool sepr = (mode == "sign_sepr");
-    // THE mode switch. DrCorrPlateauModeDir validates the token (it throws on anything else).
-    const bool        nocorr   = (plateau_mode == "nocorr");
+    // THE mode switch. Both predicates validate the token (they throw on anything else). Never
+    // compare `plateau_mode` to a literal: "nocorr_ptmerge" is ALSO a no-plateau-correction mode,
+    // and a `== "nocorr"` test would divide its points by a plateau the fit never used.
+    const bool        nocorr   = DrCorrModeNoPlateau(plateau_mode);
+    const bool        ptmerge  = DrCorrModeMergeLastTwoPt(plateau_mode);
     const std::string mode_dir = DrCorrPlateauModeDir(plateau_mode);
 
     const DrCorrSample cfg = GetDrCorrSample(sample, use_tight_wp);
@@ -392,6 +405,17 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
             throw std::runtime_error("plot_dr_correction_fits: the overlaid series describe "
                                      "different (pair pT, pair eta) cells -- stale fit file?");
 
+    // The pair-pT GROUPING of the fit cells -- one group per fitted cell, built from the SAME axis
+    // and the SAME mode the fit stage used (dr_correction_pt_groups.h). It is what maps a cell
+    // index back to the filled bins whose points have to be re-projected: in "nocorr_ptmerge" the
+    // top cell spans TWO filled bins, so projecting bin `iy` alone would draw one half of the
+    // merged cell under the merged cell's fitted curve.
+    const DrPtGroups G = MakeDrPtGroups(series[0].zn->GetYaxis(), ptmerge);
+    if (G.n != npt)
+        throw std::runtime_error("plot_dr_correction_fits: the fit file has " + std::to_string(npt)
+            + " pair-pT cells but plateau mode '" + plateau_mode + "' groups the histograms into "
+            + std::to_string(G.n) + " -- the fit file and the requested mode disagree");
+
     // Flat onset R_p, READ FROM THE FIT FILE's provenance stamp (fit_dr_corrections.cxx writes it
     // from kFlatOnsetStep{3,4}) rather than retyped here. Needed on the canvas for the methods
     // whose equation mentions R_p but which have no R_p among the drawn parameters -- the
@@ -432,8 +456,8 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     auto cell_points = [&](const Series& s, int iy, int iz, double plateau) -> TGraphErrors* {
         auto* g = new TGraphErrors();
         int k = 0;
-        TH1D* rz = DrCellRatio(s.zn, s.zd, s.za, s.zb, s.zp, s.zq, iy, iz,
-                               Form("pz_%s_%d_%d", s.sign.c_str(), iy, iz));
+        TH1D* rz = DrGroupCellRatio(s.zn, s.zd, s.za, s.zb, s.zp, s.zq, G, iy, iz,
+                                    Form("pz_%s_%d_%d", s.sign.c_str(), iy, iz));
         for (int i = 1; i <= rz->GetNbinsX(); ++i) {
             const double e = rz->GetBinError(i);
             if (e <= 0.) continue;
@@ -442,8 +466,8 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
             ++k;
         }
         delete rz;
-        TH1D* rf = DrCellRatio(s.fn, s.fd, s.fa, s.fb, s.fp, s.fq, iy, iz,
-                               Form("pf_%s_%d_%d", s.sign.c_str(), iy, iz));
+        TH1D* rf = DrGroupCellRatio(s.fn, s.fd, s.fa, s.fb, s.fp, s.fq, G, iy, iz,
+                                    Form("pf_%s_%d_%d", s.sign.c_str(), iy, iz));
         for (int i = 1; i <= rf->GetNbinsX(); ++i) {
             const double x = rf->GetBinCenter(i), e = rf->GetBinError(i);
             if (x <= kFitHi || x > kXhi || e <= 0.) continue;   // only the dR > 1 check region
@@ -1214,8 +1238,11 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         }
         const std::string rpath = rdir + "readback_check" + DrCorrSignFileTag(s.sign) + ".txt";
         std::ofstream os(rpath);
+        // THE PLATEAU MODE MUST BE PASSED. Omitting it defaults to "corr", so every non-nominal
+        // mode's report named the plateau-corrected file while having verified its own -- a
+        // persistence audit that cannot be traced to the artefact it audited (2026-08-17 review).
         os << "# Read-back verification of "
-           << DrCorrFitFile(cfg, use_tight_wp, step, method, s.sign)
+           << DrCorrFitFile(cfg, use_tight_wp, step, method, s.sign, plateau_mode)
            << "\n# performed in a SEPARATE ROOT process from the fit (that is the point).\n"
            << "# series: " << (s.sign.empty() ? "sign-integrated" : s.legend) << "\n"
            << "# shape has compact support (exactly 1 for dR >= Rp by construction): "

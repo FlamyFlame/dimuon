@@ -178,22 +178,52 @@ inline std::string DrCorrSignFileTag(const std::string& sign)
 // The mode is the TOP level of the plot tree (step<N>_dr_fit/<mode dir>/<method>/<sign mode>/)
 // and a token in the fit file name; both are built HERE so the fit stage, the plot stage and the
 // driver script cannot disagree about them.
+//   "nocorr_ptmerge" -- the SAME raw fit as "nocorr", with the LAST TWO pair-pT BINS MERGED into
+//                       one cell (added 2026-08-17, user request). It exists because the top two
+//                       cells of the 8-bin log axis, p_T^pair in [72.1,104) and [104,150) GeV, run
+//                       past where pp Pythia has yield: they hold the plateau-guard failures and
+//                       their dR fits are noise-dominated. Merging them buys back statistics in
+//                       exactly one place and leaves every other cell untouched.
+//                       IT IS NOT A NEW BINNING (.claude/CLAUDE.md 'Binnings'): the FILLED
+//                       histograms keep ParamsSet::pair_pt_coarse_bins, the two source bins are
+//                       simply PROJECTED TOGETHER at the fit/plot stage -- numerically identical
+//                       to having filled a 7-bin axis -- and the variant is opt-in and suffixed so
+//                       it can neither overwrite nor be mistaken for the other two modes.
+//                       Defined for the 8-bin nominal axis ONLY; asking for it with
+//                       MCTRIGEFF_PAIRPT_4BIN set THROWS (dr_correction_pt_groups.h).
 inline std::string DrCorrPlateauModeDir(const std::string& mode)
 {
-    if (mode.empty() || mode == "corr") return "plateau_corrected/";
-    if (mode == "nocorr")               return "no_plateau_correction/";
-    throw std::runtime_error("DrCorrPlateauModeDir: plateau mode must be \"corr\" or \"nocorr\", "
-                             "got '" + mode + "'");
+    if (mode.empty() || mode == "corr")  return "plateau_corrected/";
+    if (mode == "nocorr")                return "no_plateau_correction/";
+    if (mode == "nocorr_ptmerge")        return "no_plateau_correction_last2ptbins_merged/";
+    throw std::runtime_error("DrCorrPlateauModeDir: plateau mode must be \"corr\", \"nocorr\" or "
+                             "\"nocorr_ptmerge\", got '" + mode + "'");
+}
+
+// THE TWO QUESTIONS every stage actually asks about a plateau mode. Ask these -- never compare the
+// token to a literal: with three modes, `mode == "nocorr"` silently answers NO for the merged mode,
+// which is also a no-plateau-correction one, and the plateau would be applied where it must not be.
+inline bool DrCorrModeNoPlateau(const std::string& mode)
+{
+    DrCorrPlateauModeDir(mode);                       // validates the token
+    return mode == "nocorr" || mode == "nocorr_ptmerge";
+}
+
+inline bool DrCorrModeMergeLastTwoPt(const std::string& mode)
+{
+    DrCorrPlateauModeDir(mode);                       // validates the token
+    return mode == "nocorr_ptmerge";
 }
 
 // File-name token. EMPTY for the nominal mode, so every pre-existing fit file keeps its current
 // name byte-for-byte and no consumer of the nominal correction has to be touched.
 inline std::string DrCorrPlateauModeTag(const std::string& mode)
 {
-    if (mode.empty() || mode == "corr") return "";
-    if (mode == "nocorr")               return "_nocorr";
-    throw std::runtime_error("DrCorrPlateauModeTag: plateau mode must be \"corr\" or \"nocorr\", "
-                             "got '" + mode + "'");
+    if (mode.empty() || mode == "corr")  return "";
+    if (mode == "nocorr")                return "_nocorr";
+    if (mode == "nocorr_ptmerge")        return "_nocorr_ptmerge";
+    throw std::runtime_error("DrCorrPlateauModeTag: plateau mode must be \"corr\", \"nocorr\" or "
+                             "\"nocorr_ptmerge\", got '" + mode + "'");
 }
 
 // Fit output, one file per (sample, WP, step, method, sign, plateau mode). `sign` and
@@ -208,5 +238,18 @@ inline std::string DrCorrFitFile(const DrCorrSample& s, bool use_tight_wp, int s
          + "_step" + std::to_string(step) + "_" + method
          + (sign.empty() ? "" : "_" + sign) + DrCorrPlateauModeTag(plateau_mode) + ".root";
 }
+
+// ---------------------------------------------------------------------------------------------
+// THE VARIANT THE pp24 CROSSX APPLICATION USES (user, 2026-08-17) -- TEMPORARY.
+// Named here so the choice is made in ONE place and no consumer retypes it. It is the
+// no-plateau-correction fit with the last two pair-pT bins merged, opposite-sign pairs, `expo`
+// form; the correction is applied as eps_dR = f(dR)/C for dR < 1 and 1 above
+// (dr_correction_apply.h, mc_trig_eff_closure.md 3.2). The other methods and sign series are still
+// produced -- they are the comparison, not the deliverable.
+// TEMPORARY because mc_trigger_efficiency.md R26 (both parametric forms fail in a minority of
+// cells, and `usable` carries no chi2 term) is still OPEN.
+inline const char* DrCorrCrossxMethod() { return "expo"; }
+inline const char* DrCorrCrossxSign()   { return "os"; }
+inline const char* DrCorrCrossxMode()   { return "nocorr_ptmerge"; }
 
 #endif // DR_CORRECTION_SAMPLE_CFG_H

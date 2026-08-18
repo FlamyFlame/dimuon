@@ -72,15 +72,20 @@ inline void SetConditionalRatioErrors(TH1D* r, const TH1D* den, const TH1D* A, c
 }
 
 // eps_dR(dR) (Step 3) or eps_single(dR) (Step 4) for ONE (pair pT, pair eta) cell of the 3D
-// histograms. iy = pair-pT bin, iz = pair-eta bin; **0 means "integrate over that axis"**, so
-// (iy=0, iz=0) is the fully inclusive curve. `hp`/`hq` (the Step-4 leg-leg covariance terms) may
-// be null. The returned TH1D is detached from any file and owned by the caller.
-inline TH1D* DrCellRatio(TH3D* hn, TH3D* hd, TH3D* ha, TH3D* hb, TH3D* hp, TH3D* hq,
-                         int iy, int iz, const char* nm)
+// histograms. `hp`/`hq` (the Step-4 leg-leg covariance terms) may be null; the returned TH1D is
+// detached from any file and owned by the caller.
+//
+// EXPLICIT-RANGE form. `ylo/yhi` (pair pT) and `zlo/zhi` (pair eta) are 1-based INCLUSIVE bin
+// ranges of the 3D histograms; 0 on either pair means "integrate over that axis". A cell spanning
+// more than one bin is built by summing num / denom / errA / errB over the range BEFORE the ratio
+// is formed -- i.e. exactly what filling a coarser axis would have produced, never an average of
+// per-bin ratios. Used by the merged pair-pT grouping (dr_correction_pt_groups.h).
+inline TH1D* DrCellRatioRange(TH3D* hn, TH3D* hd, TH3D* ha, TH3D* hb, TH3D* hp, TH3D* hq,
+                              int ylo, int yhi, int zlo, int zhi, const char* nm)
 {
     const int npt = hn->GetYaxis()->GetNbins(), neta = hn->GetZaxis()->GetNbins();
-    const int ylo = (iy == 0) ? 1 : iy, yhi = (iy == 0) ? npt  : iy;
-    const int zlo = (iz == 0) ? 1 : iz, zhi = (iz == 0) ? neta : iz;
+    if (ylo == 0 || yhi == 0) { ylo = 1; yhi = npt;  }
+    if (zlo == 0 || zhi == 0) { zlo = 1; zhi = neta; }
     TH1D* n = hn->ProjectionX(Form("%s_n", nm), ylo, yhi, zlo, zhi, "e");
     TH1D* d = hd->ProjectionX(Form("%s_d", nm), ylo, yhi, zlo, zhi, "e");
     TH1D* a = ha->ProjectionX(Form("%s_a", nm), ylo, yhi, zlo, zhi, "e");
@@ -93,6 +98,13 @@ inline TH1D* DrCellRatio(TH3D* hn, TH3D* hd, TH3D* ha, TH3D* hb, TH3D* hp, TH3D*
     SetConditionalRatioErrors(r, d, a, b, p, q);
     delete n; delete d; delete a; delete b; delete p; delete q;
     return r;
+}
+
+// One bin per axis (the historical signature): iy = pair-pT bin, iz = pair-eta bin, 0 = integrate.
+inline TH1D* DrCellRatio(TH3D* hn, TH3D* hd, TH3D* ha, TH3D* hb, TH3D* hp, TH3D* hq,
+                         int iy, int iz, const char* nm)
+{
+    return DrCellRatioRange(hn, hd, ha, hb, hp, hq, iy, iy, iz, iz, nm);
 }
 
 #endif // DR_CORRECTION_RATIO_H

@@ -41,6 +41,21 @@
 //            perfectly fittable. The plateau is still MEASURED and REPORTED per cell (clearly
 //            labelled as not used); only its CONSEQUENCES are switched off. A cell is skipped
 //            in this mode for exactly two reasons: too few points, or a failed/unphysical fit.
+//   "nocorr_ptmerge" The SAME raw fit as "nocorr", with the LAST TWO pair-pT bins MERGED into a
+//            single fit cell (user, 2026-08-17). The top two cells of the 8-bin log axis --
+//            p_T^pair in [72.1,104) and [104,150) GeV -- run past where pp Pythia has yield: they
+//            hold the plateau-guard failures (R24/R27) and their dR fits are noise-dominated.
+//            The merge is a PROJECTION of the two bins together (num/denom/errA/errB summed before
+//            the ratio), i.e. numerically identical to having filled a 7-bin axis; the filled
+//            histograms and ParamsSet::pair_pt_coarse_bins are UNCHANGED, and the variant is
+//            opt-in and suffixed. 8-bin nominal axis only -- with MCTRIGEFF_PAIRPT_4BIN set it
+//            throws (dr_correction_pt_groups.h). The plateau map on disk describes the un-merged
+//            grid, so for the merged cell it is RE-MEASURED here, from the full-dR histograms in
+//            the same file, with the same estimator and window (dr_correction_plateau.h) -- and,
+//            as in "nocorr", it is reported and applied to nothing.
+//            This is the variant the pp24 crossx application uses (DrCorrCrossxMode()).
+//   ASK THE PREDICATES, never `plateau_mode == "nocorr"`: the merged mode is ALSO a
+//   no-plateau-correction mode (DrCorrModeNoPlateau / DrCorrModeMergeLastTwoPt).
 //   The mode is the TOP level of the plot tree and a file-name token, both built in
 //   dr_correction_sample_cfg.h (DrCorrPlateauModeDir / DrCorrPlateauModeTag).
 //
@@ -115,6 +130,8 @@
 
 #include "dr_correction_sample_cfg.h"
 #include "dr_correction_ratio.h"
+#include "dr_correction_plateau.h"
+#include "dr_correction_pt_groups.h"
 #include "../../../Utilities/MCTrigEffPlateauWindow.h"
 
 #include <algorithm>
@@ -308,7 +325,8 @@ std::string CellName(const std::string& base, int step, int iy, int iz)
 // method : powerlaw_fixedRp | powerlaw_floatRp | expo | interp
 // sign   : "" (sign-integrated, the NOMINAL series) | "ss" (same sign) | "os" (opposite sign)
 // plateau_mode : "corr" (NOMINAL, divide by the large-dR plateau) | "nocorr" (fit the raw
-//                eps_dR with a free baseline C -- see the PLATEAU MODE block in the header)
+//                eps_dR with a free baseline C) | "nocorr_ptmerge" (same, with the last two
+//                pair-pT bins merged into one cell) -- see the PLATEAU MODE block in the header
 void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp = true,
                         int step = 3, const std::string& method = "powerlaw_fixedRp",
                         bool allow_plateau_violation = false, const std::string& sign = "",
@@ -318,11 +336,15 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
 
     const DrCorrSample cfg = GetDrCorrSample(sample, use_tight_wp);
     const StepCfg      S   = MakeStepCfg(step, sign);
-    // THE mode switch. `mode_dir` also validates the token (it throws on anything else).
-    const bool         nocorr   = (plateau_mode == "nocorr");
+    // THE mode switch. Both predicates validate the token (they throw on anything else). Never
+    // compare `plateau_mode` to a literal here: "nocorr_ptmerge" is ALSO a no-plateau-correction
+    // mode, and a `== "nocorr"` test would silently apply the plateau to it.
+    const bool         nocorr   = DrCorrModeNoPlateau(plateau_mode);
+    const bool         ptmerge  = DrCorrModeMergeLastTwoPt(plateau_mode);
     const std::string  mode_dir = DrCorrPlateauModeDir(plateau_mode);
-    const std::string  mode_text = nocorr
-        ? "NO plateau correction (raw eps, free baseline C)" : "plateau-normalized";
+    const std::string  mode_text = std::string(nocorr
+        ? "NO plateau correction (raw eps, free baseline C)" : "plateau-normalized")
+        + (ptmerge ? ", LAST TWO pair-pT BINS MERGED" : "");
     const MethodCfg    M   = MakeMethodCfg(method, nocorr);
     const std::string  wp_suf  = DrCorrWpSuffix(use_tight_wp);
     const std::string  wp_text = use_tight_wp ? "Tight muons" : "Medium muons";
@@ -410,10 +432,108 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     std::cout << "  plateaus read from " << plateau_path << "\n"
               << "  inclusive plateau = " << Form("%.4f +- %.4f", plat_incl, plat_incl_err) << "\n";
 
-    const int npt  = hplat->GetNbinsX();
-    const int neta = hplat->GetNbinsY();
+    // ------------------------------------------------- 2. input histograms (read BEFORE the guard)
+    // They are opened here, ahead of the guard, because the pair-pT GROUPING is derived from their
+    // own axis and -- in the merged mode -- the plateau map itself has to be re-measured on the
+    // merged cells before anything can be guarded or reported.
+    TFile* fh = OpenRead(hist_path);
+    // Staleness: the plateau file is produced BY the histograms, so it must be at least as new.
+    // (A plot_mc_trig_eff run that predates a hist refill would normalize the new curves by the
+    // old plateaus -- the exact silent-wrong-result this ROOT-file hand-off exists to prevent.)
+    {
+        Long_t id, sz, fl, mt_h, mt_p;
+        gSystem->GetPathInfo(hist_path.c_str(),    &id, &sz, &fl, &mt_h);
+        gSystem->GetPathInfo(plateau_path.c_str(), &id, &sz, &fl, &mt_p);
+        if (mt_p < mt_h)
+            std::cout << "  ** WARNING: the plateau file is OLDER than the histogram file\n"
+                      << "     " << plateau_path << "\n     is older than\n     " << hist_path
+                      << "\n     -> re-run plot_mc_trig_eff() for this sample/WP before trusting "
+                         "these fits.\n";
+    }
+    TH3D* h3n = GetObj<TH3D>(fh, S.h_prefix + "zoom_vs_pt_eta_num");
+    TH3D* h3d = GetObj<TH3D>(fh, S.h_prefix + "zoom_vs_pt_eta_denom");
+    TH3D* h3a = GetObj<TH3D>(fh, S.h_prefix + "zoom_vs_pt_eta_errA");
+    TH3D* h3b = GetObj<TH3D>(fh, S.h_prefix + "zoom_vs_pt_eta_errB");
+    TH3D* h3p = S.has_cov ? GetObj<TH3D>(fh, S.h_prefix + "zoom_vs_pt_eta_covP") : nullptr;
+    TH3D* h3q = S.has_cov ? GetObj<TH3D>(fh, S.h_prefix + "zoom_vs_pt_eta_covQ") : nullptr;
 
-    // ---------------------------------------------------------------- 2. the guard
+    // The plateau map and the histograms MUST describe the same cells, or a cell would be
+    // normalized by another cell's plateau. Check the binning, do not assume it.
+    const int npt_src  = hplat->GetNbinsX();     // as FILLED, before any grouping
+    const int neta     = hplat->GetNbinsY();
+    if (h3n->GetYaxis()->GetNbins() != npt_src || h3n->GetZaxis()->GetNbins() != neta)
+        throw std::runtime_error("fit_dr_corrections: plateau map (" + std::to_string(npt_src) + "x"
+            + std::to_string(neta) + ") does not match the histogram cells ("
+            + std::to_string(h3n->GetYaxis()->GetNbins()) + "x"
+            + std::to_string(h3n->GetZaxis()->GetNbins()) + ") -- stale plateau file?");
+    for (int iy = 1; iy <= npt_src + 1; ++iy)
+        if (std::fabs(h3n->GetYaxis()->GetBinLowEdge(iy) - hplat->GetXaxis()->GetBinLowEdge(iy))
+            > 1e-6)
+            throw std::runtime_error("fit_dr_corrections: pair-pT edges differ between the "
+                                     "plateau file and the histograms -- stale plateau file?");
+    for (int iz = 1; iz <= neta + 1; ++iz)
+        if (std::fabs(h3n->GetZaxis()->GetBinLowEdge(iz) - hplat->GetYaxis()->GetBinLowEdge(iz))
+            > 1e-6)
+            throw std::runtime_error("fit_dr_corrections: pair-eta edges differ between the "
+                                     "plateau file and the histograms -- stale plateau file?");
+
+
+    // ------------------------------------------------- 2b. the pair-pT GROUPING of the fit cells
+    // One fit cell per group. Identical to the filled binning in every mode but "nocorr_ptmerge",
+    // where the last two pair-pT bins form ONE cell (dr_correction_pt_groups.h: what it is, why,
+    // and why it is not a new binning). Derived from the histograms' OWN axis -- no edge is typed
+    // here, in the report, or in the plot stage.
+    const DrPtGroups G = MakeDrPtGroups(h3n->GetYaxis(), ptmerge);
+    if (ptmerge)
+        std::cout << "  pair-pT cells MERGED: " << npt_src << " filled bins -> " << G.n
+                  << " fit cells; the top cell is p_T^pair ["
+                  << Form("%.1f, %.1f", G.edges[G.n - 1], G.edges[G.n]) << ") GeV\n";
+
+    // In the merged mode the plateau map on disk describes the UN-merged grid, so it cannot be
+    // read cell-by-cell: the merged cell has no entry in it. It is RE-MEASURED here on the merged
+    // cells, from the full-dR histograms in the same file, with the SAME estimator and the SAME
+    // window as the producer used (dr_correction_plateau.h) -- and, exactly as in the un-merged
+    // no-plateau-correction mode, nothing is normalized by the result: it is measured so the
+    // report can state it and so the three modes' reports stay comparable line by line.
+    if (ptmerge) {
+        TH3D* f3n = GetObj<TH3D>(fh, S.h_prefix + "full_vs_pt_eta_num");
+        TH3D* f3d = GetObj<TH3D>(fh, S.h_prefix + "full_vs_pt_eta_denom");
+        TH3D* f3a = GetObj<TH3D>(fh, S.h_prefix + "full_vs_pt_eta_errA");
+        TH3D* f3b = GetObj<TH3D>(fh, S.h_prefix + "full_vs_pt_eta_errB");
+        // THROWING accessors, like the four above: a missing covariance term would otherwise be
+        // read as "no leg-leg covariance" and the merged Step-4 plateau errors would come out
+        // silently too small instead of failing.
+        TH3D* f3p = S.has_cov ? GetObj<TH3D>(fh, S.h_prefix + "full_vs_pt_eta_covP") : nullptr;
+        TH3D* f3q = S.has_cov ? GetObj<TH3D>(fh, S.h_prefix + "full_vs_pt_eta_covQ") : nullptr;
+
+        TH2D* mplat = BookDrGroupMap(hplat, G, "plat_merged_" + ptag, "plateau");
+        TH2D* mpnb  = BookDrGroupMap(hplat, G, "pnb_merged_"  + ptag, "n #DeltaR bins in the window");
+        TH2D* mpsys = BookDrGroupMap(hplat, G, "psys_merged_" + ptag, "plateau-window systematic");
+        for (int iy = 1; iy <= G.n; ++iy) {
+            for (int iz = 1; iz <= neta; ++iz) {
+                TH1D* rf = DrGroupCellRatio(f3n, f3d, f3a, f3b, f3p, f3q, G, iy, iz,
+                                            Form("mplat_%s_%d_%d", ptag.c_str(), iy, iz));
+                const PlateauCell pc = PlateauFromRatio(rf);
+                delete rf;
+                // Same convention as the producer: an unmeasurable cell is written as 0 with 0
+                // error, and the consumer must read plateau <= 0 as "no plateau", never divide.
+                mplat->SetBinContent(iy, iz, pc.nb > 0 ? pc.mean : 0.);
+                mplat->SetBinError  (iy, iz, pc.nb > 0 ? pc.err  : 0.);
+                mpnb ->SetBinContent(iy, iz, pc.nb);
+                mpsys->SetBinContent(iy, iz, pc.nb > 0 ? pc.syst : -1.);
+            }
+        }
+        delete hplat; delete hpnb; if (hpsys) delete hpsys;
+        hplat = mplat; hpnb = mpnb; hpsys = mpsys;
+    }
+
+    const int npt = hplat->GetNbinsX();   // = G.n, the number of FIT CELLS along pair pT
+    if (npt != G.n)
+        throw std::runtime_error("fit_dr_corrections: internal inconsistency -- the plateau map has "
+                                 + std::to_string(npt) + " pair-pT cells, the grouping has "
+                                 + std::to_string(G.n));
+
+    // ---------------------------------------------------------------- 3. the guard
     // GUARD POLICY (user, 2026-08-11). The measurement, the reporting and the per-cell lists are
     // IDENTICAL for all three series. Only the CONSEQUENCE differs: a FULL-sample failure is fatal
     // for the sign-INTEGRATED series (the nominal deliverable) and is reported-but-not-fatal for a
@@ -517,6 +637,13 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
         }
         std::ofstream os(gdir + "plateau_guard_report" + sign_ftag + ".txt");
         os << "# Large-dR plateau guard, " << S.quantity << " (Step " << step << ")\n"
+           << (ptmerge
+               ? Form("# PAIR-pT CELLS: last two filled bins MERGED (%d -> %d cells, top cell"
+                      " p_T^pair [%.1f, %.1f) GeV). The plateau of every cell below is\n"
+                      "#       RE-MEASURED on the merged grid from the full-dR histograms with the"
+                      " same estimator and window as the producer used.\n",
+                      npt_src, G.n, G.edges[G.n - 1], G.edges[G.n])
+               : "")
            << "# sample=" << sample << " (" << (cfg.is_full_sample ? "FULL" : "TEST")
            << " production)  WP=" << wp_text << "  series=" << series << "\n"
            << "# source: " << plateau_path << "  (keys h_" << ptag << "_*)\n"
@@ -601,46 +728,6 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                   << (flagged.empty() ? "" : "; see the FLAGGED cells above") << ").\n";
     }
 
-    // ---------------------------------------------------------------- 3. input histograms
-    TFile* fh = OpenRead(hist_path);
-    // Staleness: the plateau file is produced BY the histograms, so it must be at least as new.
-    // (A plot_mc_trig_eff run that predates a hist refill would normalize the new curves by the
-    // old plateaus -- the exact silent-wrong-result this ROOT-file hand-off exists to prevent.)
-    {
-        Long_t id, sz, fl, mt_h, mt_p;
-        gSystem->GetPathInfo(hist_path.c_str(),    &id, &sz, &fl, &mt_h);
-        gSystem->GetPathInfo(plateau_path.c_str(), &id, &sz, &fl, &mt_p);
-        if (mt_p < mt_h)
-            std::cout << "  ** WARNING: the plateau file is OLDER than the histogram file\n"
-                      << "     " << plateau_path << "\n     is older than\n     " << hist_path
-                      << "\n     -> re-run plot_mc_trig_eff() for this sample/WP before trusting "
-                         "these fits.\n";
-    }
-    TH3D* h3n = GetObj<TH3D>(fh, S.h_prefix + "zoom_vs_pt_eta_num");
-    TH3D* h3d = GetObj<TH3D>(fh, S.h_prefix + "zoom_vs_pt_eta_denom");
-    TH3D* h3a = GetObj<TH3D>(fh, S.h_prefix + "zoom_vs_pt_eta_errA");
-    TH3D* h3b = GetObj<TH3D>(fh, S.h_prefix + "zoom_vs_pt_eta_errB");
-    TH3D* h3p = S.has_cov ? GetObj<TH3D>(fh, S.h_prefix + "zoom_vs_pt_eta_covP") : nullptr;
-    TH3D* h3q = S.has_cov ? GetObj<TH3D>(fh, S.h_prefix + "zoom_vs_pt_eta_covQ") : nullptr;
-
-    // The plateau map and the histograms MUST describe the same cells, or a cell would be
-    // normalized by another cell's plateau. Check the binning, do not assume it.
-    if (h3n->GetYaxis()->GetNbins() != npt || h3n->GetZaxis()->GetNbins() != neta)
-        throw std::runtime_error("fit_dr_corrections: plateau map (" + std::to_string(npt) + "x"
-            + std::to_string(neta) + ") does not match the histogram cells ("
-            + std::to_string(h3n->GetYaxis()->GetNbins()) + "x"
-            + std::to_string(h3n->GetZaxis()->GetNbins()) + ") -- stale plateau file?");
-    for (int iy = 1; iy <= npt + 1; ++iy)
-        if (std::fabs(h3n->GetYaxis()->GetBinLowEdge(iy) - hplat->GetXaxis()->GetBinLowEdge(iy))
-            > 1e-6)
-            throw std::runtime_error("fit_dr_corrections: pair-pT edges differ between the "
-                                     "plateau file and the histograms -- stale plateau file?");
-    for (int iz = 1; iz <= neta + 1; ++iz)
-        if (std::fabs(h3n->GetZaxis()->GetBinLowEdge(iz) - hplat->GetYaxis()->GetBinLowEdge(iz))
-            > 1e-6)
-            throw std::runtime_error("fit_dr_corrections: pair-eta edges differ between the "
-                                     "plateau file and the histograms -- stale plateau file?");
-
     // ---------------------------------------------------------------- 4. fit every cell
     TH2D* hchi  = BookLike(hplat, "h_" + tag + "_chi2ndf", "#chi^{2}/ndf");
     std::vector<TH2D*> hpar;
@@ -678,6 +765,17 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                 : M.formula) << "\n"
         << "# flat onset Rp = " << S.flat_onset << " ; fit range dR in [" << kFitLo << ","
         << kFitHi << "]\n"
+        << (ptmerge
+            ? Form("# PAIR-pT CELLS: the LAST TWO filled bins are MERGED into one cell -- %d filled"
+                   " bins -> %d fit cells, top cell p_T^pair [%.1f, %.1f) GeV.\n"
+                   "#   The merge is a PROJECTION of the two bins together (num/denom/errA/errB"
+                   " summed before the ratio), i.e. numerically\n"
+                   "#   identical to having filled a %d-bin axis; ParamsSet::pair_pt_coarse_bins and"
+                   " the filled histograms are UNCHANGED.\n"
+                   "#   Motivation: the top two cells of the 8-bin log axis run past where the"
+                   " sample has yield (mc_trigger_efficiency.md R24/R27).\n",
+                   npt_src, G.n, G.edges[G.n - 1], G.edges[G.n], G.n)
+            : "")
         << (nocorr
             ? "# NO PLATEAU CORRECTION: nothing is divided by the plateau. The asymptote is the "
               "FREE parameter C, determined by the\n"
@@ -766,7 +864,7 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
 
             // measured curve: normalized to 1 at large dR (corr) or RAW (nocorr, where the
             // asymptote is the free parameter C instead of an external divisor)
-            TH1D* r = DrCellRatio(h3n, h3d, h3a, h3b, h3p, h3q, iy, iz, nm.c_str());
+            TH1D* r = DrGroupCellRatio(h3n, h3d, h3a, h3b, h3p, h3q, G, iy, iz, nm.c_str());
             if (!nocorr) r->Scale(1.0 / plateau);   // scales contents AND errors
 
             // points that carry information (a zero-denominator bin has error 0)
@@ -1051,15 +1149,20 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
         delete hk;
     }
     TNamed("provenance",
-           Form("sample=%s (%s); WP=%s; series=%s; plateau mode=%s; step=%d (%s); method=%s; "
+           Form("sample=%s (%s); WP=%s; series=%s; plateau mode=%s; pair-pT cells=%d (filled bins"
+                " %d); step=%d (%s); method=%s; "
                 "formula=%s; Rp=%.2f; "
                 "fit range dR=[%.2f,%.2f]; stored TF1 range=[0,%.1f]; plateau source=%s (keys "
                 "h_%s_*); histograms=%s (%szoom_vs_pt_eta_*); guard=%s; "
                 "producer=fit_dr_corrections.cxx",
                 sample.c_str(), cfg.is_full_sample ? "FULL" : "TEST", wp_text.c_str(),
                 series.c_str(),
-                nocorr ? "nocorr (raw eps, free baseline C -- the plateau is NOT applied)"
+                nocorr ? (ptmerge
+                            ? "nocorr_ptmerge (raw eps, free baseline C -- the plateau is NOT"
+                              " applied; LAST TWO pair-pT bins merged into one cell)"
+                            : "nocorr (raw eps, free baseline C -- the plateau is NOT applied)")
                        : "corr (each cell divided by its own large-dR plateau)",
+                G.n, npt_src,
                 step,
                 S.quantity.c_str(), method.c_str(),
                 M.formula.empty() ? "linear interpolation (TGraph knots)" : M.formula.c_str(),
@@ -1084,8 +1187,15 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     const std::string line_all  = stats(chi2_all);
     const std::string line_sane = stats(chi2_sane);
     const std::string line_incl = (chi2_incl >= 0.) ? Form("%.3f", chi2_incl) : "n/a";
-    rep << "\n# chi2/ndf, INCLUSIVE cell (the only statistically meaningful curve for a 10k-event"
-           " TEST sample) = " << line_incl << "\n"
+    // The parenthetical is SAMPLE-CONDITIONAL. It described the 10 000-event overlay, but it was
+    // written unconditionally, so every pp24 FULL-production report claimed its own sample was a
+    // 10k TEST one -- a wrong sample descriptor sitting next to the headline chi2 of a delivered
+    // artefact (2026-08-17 plot review).
+    rep << "\n# chi2/ndf, INCLUSIVE cell"
+        << (cfg.is_full_sample
+            ? ""
+            : " (the only statistically meaningful curve for a 10 000-event TEST sample)")
+        << " = " << line_incl << "\n"
         << "# chi2/ndf over all converged cells:            " << line_all << "\n"
         << (nocorr
             ? Form("# cells marked UNUSABLE (h_stepN_fit_ok = 0: too few points to fit, fit"

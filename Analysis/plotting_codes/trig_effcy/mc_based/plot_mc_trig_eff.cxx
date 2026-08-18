@@ -60,6 +60,7 @@
 // The round-7 conditional ratio error + the (pair pT, pair eta) cell projection, shared with
 // the fit stage so both use the identical error definition.
 #include "dr_correction_ratio.h"
+#include "dr_correction_plateau.h"
 // The Step-1 sanity-check pT-match threshold, shared with FillMCTrigEffHists.cxx (which APPLIES
 // it) so the value DRAWN on the canvas is the value that was cut on.
 #include "../../../Utilities/MCTrigEffSanityCfg.h"
@@ -588,40 +589,9 @@ std::pair<double,double> PlateauWeightedMean(TH1* ratio, double xlo, double xhi)
 // The 2D maps clone their axes from the source TH3D, so the consumer's (pair pT, pair eta)
 // cell indexing is identical to the producer's by construction, not by convention.
 // ================================================================================
-// `syst` = |mean - mean(retired [1,4] window)|, the plateau-window normalization systematic.
-// It is < 0 when the alternative window has no usable dR bin, i.e. "not evaluable" -- the
-// consumer must not silently read that as zero uncertainty.
-struct PlateauCell { double mean, err, rms; int nb; double syst = -1.; };
-
-// The per-cell large-dR plateau of a dR-correction ratio histogram, measured in the nominal
-// window and in the retired [1,4] one (same histogram, so their difference is purely the window).
-// Extracted from the Step-3 table block (round 9) so the sign-integrated, same-sign and
-// opposite-sign series are all measured by ONE piece of code -- three copies of a weighted mean
-// is exactly how two plateau definitions would start to drift apart.
-PlateauCell PlateauFromRatio(const TH1D* r)
-{
-    auto window = [&](double lo, double hi) -> PlateauCell {
-        double sw = 0, swv = 0;
-        std::vector<std::pair<double,double>> vw;  // (value, weight)
-        for (int i = 1; i <= r->GetNbinsX(); ++i) {
-            const double xc = r->GetBinCenter(i);
-            if (xc < lo || xc > hi) continue;
-            const double v = r->GetBinContent(i), e = r->GetBinError(i);
-            if (e <= 0. || v == 0.) continue;
-            const double w = 1. / (e * e); sw += w; swv += w * v; vw.push_back({v, w});
-        }
-        if (sw <= 0.) return PlateauCell{ -1, -1, -1, 0 };
-        const double mean = swv / sw, err = std::sqrt(1. / sw);
-        double swd = 0;
-        for (auto& q : vw) swd += q.second * (q.first - mean) * (q.first - mean);
-        const double rms = std::sqrt(swd / sw);  // weighted RMS scatter about the mean
-        return PlateauCell{ mean, err, rms, (int)vw.size() };
-    };
-    PlateauCell nom = window(kPlateauLo, kPlateauHi);
-    const PlateauCell alt = window(kPlateauSystLo, kPlateauSystHi);
-    if (nom.nb > 0 && alt.nb > 0) nom.syst = std::fabs(nom.mean - alt.mean);
-    return nom;
-}
+// PlateauCell / PlateauFromRatio now live in dr_correction_plateau.h (included above), so the
+// fit stage can measure the plateau of a MERGED pair-pT cell with the SAME estimator and the same
+// window instead of carrying a second copy of the weighted mean.
 
 TH2D* BookPlateauMap(const TH3D* src, const std::string& name, const std::string& ztitle)
 {
