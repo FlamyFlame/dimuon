@@ -19,6 +19,7 @@
 
 #include "dr_correction_sample_cfg.h"
 #include "dr_correction_ratio.h"
+#include "dr_correction_pt_groups.h"
 
 // =================================================================================================
 // APPLYING eps_dR: turn the per-(pair pT, pair eta) Step-3 fits into a number for ONE pair.
@@ -36,6 +37,14 @@
 // puts the plateau at 1, which is what the factorised per-pair weight eps1*eps2*eps_dR assumes.
 // Because f(dR) -> C well before dR = 1, f(1)/C ~ 1 and there is NO STEP at the dR = 1 boundary
 // where the correction hands over to unity.
+//
+// WHICH VARIANT pp24 CROSSX APPLIES (user, 2026-08-17; TEMPORARY, named in
+// dr_correction_sample_cfg.h so no consumer retypes it): method `expo` = DrCorrCrossxMethod(),
+// series `os` (opposite sign) = DrCorrCrossxSign(), plateau mode `nocorr_ptmerge` =
+// DrCorrCrossxMode() -- the no-plateau-correction fit with the LAST TWO pair-pT bins merged into a
+// single cell covering p_T^pair in [72.1, 150) GeV. Load() still DEFAULTS to the un-merged
+// "nocorr", so the MC closure thread keeps consuming exactly what it consumed before; the merged
+// variant is requested explicitly.
 //
 // WHY THE NO-PLATEAU-CORRECTION VARIANT and not the nominal plateau-normalized one: the measured
 // eps_dR carries structure out to large dR, worst in the pair-eta bins that enclose the detector
@@ -90,7 +99,7 @@ struct DrCorrectionEvaluator {
 
     std::vector<std::vector<Cell>> cells;      // [iy-1][iz-1]
     std::unique_ptr<TH2D> h_fit_ok;            // also supplies the cell axes
-    std::string method, sign, label;
+    std::string method, sign, label, mode;
 
     long long n_eval = 0, n_flat = 0, n_fit = 0, n_raw = 0, n_rawempty = 0, n_none = 0;
     long long n_floor = 0, n_cap = 0, n_outside = 0;
@@ -103,15 +112,30 @@ struct DrCorrectionEvaluator {
     int max_corr_iy = 0, max_corr_iz = 0, min_corr_iy = 0, min_corr_iz = 0;
 
     // ------------------------------------------------------------------ construction
-    // `sign` is the series token ("os" for opposite sign); the plateau mode is always "nocorr"
-    // here -- the applied form above is defined in terms of the FREE baseline C, which only the
-    // no-plateau-correction fit has.
+    // `sign` is the series token ("os" for opposite sign). `plateau_mode` must be one of the
+    // NO-PLATEAU-CORRECTION modes -- the applied form above is defined in terms of the FREE
+    // baseline C, which only those fits have:
+    //   "nocorr"          the un-merged pair-pT cells (the default; what the MC closure consumes)
+    //   "nocorr_ptmerge"  the same fit with the LAST TWO pair-pT bins merged into one cell. This
+    //                     is the variant the pp24 crossx application uses (DrCorrCrossxMode(),
+    //                     with DrCorrCrossxMethod() / DrCorrCrossxSign()); its top cell covers
+    //                     p_T^pair in [72.1, 150) GeV, where the un-merged pair of cells runs past
+    //                     the sample's yield (mc_trigger_efficiency.md R24/R27, and the closure
+    //                     collapse in mc_trig_eff_closure.md R1b).
+    // The DEFAULT is deliberately the un-merged mode: changing it would silently move every
+    // existing consumer (the MC closure) onto a different correction.
     void Load(const DrCorrSample& cfg, bool use_tight_wp, const std::string& method_in,
-              const std::string& sign_in)
+              const std::string& sign_in, const std::string& plateau_mode = "nocorr")
     {
         method = method_in;
         sign   = sign_in;
+        mode   = plateau_mode;
         label  = cfg.mc_label;
+
+        if (!DrCorrModeNoPlateau(plateau_mode))
+            throw std::runtime_error("DrCorrectionEvaluator: plateau mode '" + plateau_mode +
+                                     "' has no free baseline C, so the f(dR)/C form is undefined "
+                                     "for it. Use 'nocorr' or 'nocorr_ptmerge'.");
 
         if (method == "interp")
             throw std::runtime_error("DrCorrectionEvaluator: method 'interp' has no fitted "
@@ -119,12 +143,12 @@ struct DrCorrectionEvaluator {
                                      "parametric method (expo | polyu_fixedRp).");
 
         const std::string fit_path =
-            DrCorrFitFile(cfg, use_tight_wp, 3, method, sign, "nocorr");
+            DrCorrFitFile(cfg, use_tight_wp, 3, method, sign, plateau_mode);
         TFile* ff = TFile::Open(fit_path.c_str(), "READ");
         if (!ff || ff->IsZombie())
             throw std::runtime_error("DrCorrectionEvaluator: cannot open " + fit_path +
-                                     " -- run fit_dr_corrections with plateau mode 'nocorr' and "
-                                     "sign '" + sign + "' first");
+                                     " -- run fit_dr_corrections with plateau mode '"
+                                     + plateau_mode + "' and sign '" + sign + "' first");
 
         auto* ok = dynamic_cast<TH2D*>(ff->Get("h_step3_fit_ok"));
         if (!ok)
@@ -140,6 +164,11 @@ struct DrCorrectionEvaluator {
         // lazily -- a run in which every cell is fitted never needs it.
         TFile* fh = nullptr;
         TH3D *h3n = nullptr, *h3d = nullptr, *h3a = nullptr, *h3b = nullptr;
+        // The pair-pT GROUPING of the fit cells, needed by the raw-bin fallback below: with the
+        // last two bins merged, cell `iy` at the top spans TWO filled bins, and projecting bin
+        // `iy` alone would silently deliver half of it. Built from the histograms' own axis, so it
+        // is filled in together with them (dr_correction_pt_groups.h).
+        DrPtGroups Gpt;
         const std::string hist_path = cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label
                                     + DrCorrWpSuffix(use_tight_wp)
                                     + MCTrigEffPairPt::FileSuffix() + "_step3.root";
@@ -210,9 +239,16 @@ struct DrCorrectionEvaluator {
                     if (!h3n || !h3d || !h3a || !h3b)
                         throw std::runtime_error("DrCorrectionEvaluator: missing " + hp +
                                                  "{num,denom,errA,errB} in " + hist_path);
+                    Gpt = MakeDrPtGroups(h3n->GetYaxis(),
+                                         DrCorrModeMergeLastTwoPt(plateau_mode));
+                    if (Gpt.n != npt)
+                        throw std::runtime_error("DrCorrectionEvaluator: the fit file has "
+                            + std::to_string(npt) + " pair-pT cells but plateau mode '"
+                            + plateau_mode + "' groups " + hist_path + " into "
+                            + std::to_string(Gpt.n) + " -- fit file and mode disagree");
                 }
-                TH1D* r = DrCellRatio(h3n, h3d, h3a, h3b, nullptr, nullptr, iy, iz,
-                                      Form("rawcorr_pt%d_eta%d", iy, iz));
+                TH1D* r = DrGroupCellRatio(h3n, h3d, h3a, h3b, nullptr, nullptr, Gpt, iy, iz,
+                                           Form("rawcorr_pt%d_eta%d", iy, iz));
                 double sum = 0.; int nb = 0;
                 for (int i = 1; i <= r->GetNbinsX(); ++i) {
                     const double x = r->GetBinCenter(i);
@@ -225,7 +261,8 @@ struct DrCorrectionEvaluator {
             }
         }
         std::cout << "DrCorrectionEvaluator [" << label << " / " << method << " / "
-                  << (sign.empty() ? "sign-integrated" : DrCorrSignText(sign))
+                  << (sign.empty() ? "sign-integrated" : DrCorrSignText(sign)) << " / "
+                  << plateau_mode
                   << "]: " << npt << "x" << neta << " cells -- " << n_fitted << " fitted, "
                   << n_fallback << " on the RAW-BIN PLACEHOLDER, " << n_dead
                   << " with no correction at all (eps_dR = 1); of the rejected, "
