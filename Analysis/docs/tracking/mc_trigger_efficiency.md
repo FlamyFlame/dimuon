@@ -3530,10 +3530,18 @@ criteria **P1** and **P2**):
 
 ## Latest Stage
 
-**2026-08-17 (round 12) — the third Step-3 plateau mode is BUILT AND RUN; results in R32.**
-Steps 1–10 of the plan below are DONE (code, full production, regression check); step 11 (the two
-mandated reviews, doc/INDEX, commit) is in progress. **The delivered artefacts are complete and
-final unless a review finds a defect, which would be recorded here and in R32.**
+**2026-08-18 (round 12) — ✅ DONE. The third Step-3 plateau mode is built, produced, reviewed and
+committed; results and numbers in R32.** All 11 plan steps below are complete: code + full
+production (pp24 + overlay × both WPs × 3 methods × 3 sign series, step 3), the byte-identical
+regression check on the two pre-existing modes, `/review-analysis-code` and the plot review (four
+defects found, three of them pre-existing, all fixed and re-verified; APPROVED at iteration 2),
+docs and INDEX, commits `22b8454`, `b853b81`, `6841045`, `6c11caa`. **The artefacts are FINAL and
+usable — the hand-off block above is live.**
+
+**Carried forward as OPEN, needing a user decision (both are R26; see R32 for the numbers):** a
+positive-amplitude / χ² screen for `fit_ok`, and the minimum-points threshold that admits one
+unconstrained overlay fit. Neither was changed here: each would alter the published acceptance rule
+for all three plateau modes and therefore the MC-closure thread's inputs.
 
 > ### 📌 HAND-OFF TO THE pp24-CROSSX THREAD (`pp24_crossx_rerun_2026_08.md`) — READ THIS FIRST
 >
