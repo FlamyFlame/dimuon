@@ -2,6 +2,8 @@
 #include <TKey.h>
 #include <algorithm>
 #include "RDFBasedHistFillingData.cxx"
+#include "../Utilities/DrCorrectionCrossxEvaluator.h"
+#include "../Utilities/PairRecoEffEvaluator.h"
 
 void RDFBasedHistFillingPP::SetIOPathsHook(){
     infile_var1D_json = "var1D_pp.json";
@@ -310,6 +312,93 @@ void RDFBasedHistFillingPP::MakeAndWriteSingleMuonTrigEffPtGraphs(){
     else             MakeAndWriteSingleMuonTrigEffPtGraphsHelper(musigns);
 }
 
+// =================================================================================================
+// The MC-derived PAIR corrections the pp24 cross-section applies on top of the DATA single-muon
+// turn-ons (2026-08-17; docs/tracking/pp24_crossx_rerun_2026_08.md Physics Procedure 3c/3d):
+//
+//   eps_dR^2mu4(dR; pair pT, pair eta)  -- the 2mu4 trigger CORRELATION correction. The two legs
+//     of a close-by pair do not fire independently, so eps_trig^pair is NOT eps_1*eps_2 alone.
+//     Utilities/DrCorrectionCrossxEvaluator.h: opposite-sign, no plateau correction, the canonical
+//     8 pair-pT bins with the last two merged (7 cells), exponential fit -> polynomial fit where
+//     the exponential is rejected -> raw measured bins where both are.
+//
+//   eps_reco^pair(pair pT, pair eta, dR)  -- the pp24-fullsim PAIR reconstruction efficiency,
+//     REPLACING the Run 2 single-muon eps_1*eps_2 placeholder (which had no dR dependence at all).
+//     Utilities/PairRecoEffEvaluator.h.
+//
+// Both live on the heap for the lifetime of the process: RDF Defines are LAZY, so a stack-scoped
+// evaluator would be destroyed before the event loop runs.
+// =================================================================================================
+static DrCorrectionCrossxEvaluator* s_dr_corr        = nullptr;
+static PairRecoEffEvaluator*        s_pair_reco_eff  = nullptr;
+
+static int s_pair_eff_loaded_wp = -1;   // -1 = nothing loaded; else the isTight the maps carry
+
+void RDFBasedHistFillingPP::OpenPairEfficiencyInputs()
+{
+    // Both corrections come from the SAME pp24 fullsim FULL production, so the directory is taken
+    // from the one place that names it (dr_correction_sample_cfg.h) instead of being retyped.
+    const DrCorrSample mc = GetDrCorrSample("pp_full", isTight);
+
+    // The maps are WP-SPECIFIC (Tight and Medium are different files). Caching them on "already
+    // loaded" alone would let a second Run() in the same process, at the other working point,
+    // silently reuse the first WP's efficiencies -- every histogram would still fill.
+    if (s_pair_eff_loaded_wp >= 0 && s_pair_eff_loaded_wp != (isTight ? 1 : 0))
+        throw std::runtime_error("OpenPairEfficiencyInputs: the pair-efficiency maps are already "
+                                 "loaded for the OTHER working point. Run one WP per process.");
+
+    if (!s_dr_corr) {
+        s_dr_corr = new DrCorrectionCrossxEvaluator();
+        s_dr_corr->Load(mc, isTight);
+    }
+    if (!s_pair_reco_eff) {
+        s_pair_reco_eff = new PairRecoEffEvaluator();
+        s_pair_reco_eff->Load(mc.mc_dir + "pair_reco_eff_pp24_full.root", isTight);
+    }
+    s_pair_eff_loaded_wp = isTight ? 1 : 0;
+}
+
+// The per-pair census of both MC corrections, AFTER the event loop. Neither header hides anything
+// -- how many pairs took a fallback, were clamped past the measured domain, or fell outside the
+// eps_dR cell grid (which must be zero) -- but none of it reaches the log unless this is called.
+void RDFBasedHistFillingPP::PrintPairEfficiencyStats()
+{
+    if (s_dr_corr)       s_dr_corr->PrintStats();
+    if (s_pair_reco_eff) s_pair_reco_eff->PrintStats();
+}
+
+// The ONE definition of the per-pair efficiency weight columns. It used to be written out five
+// times, verbatim (crossx OS, crossx SS, the two no-minv template passes, and the generic
+// histograms); any correction added to one and not the others silently produced two different
+// cross-sections in the same file.
+ROOT::RDF::RNode RDFBasedHistFillingPP::AddPairEfficiencyWeightColumns(ROOT::RDF::RNode df)
+{
+    return df
+        .Define("q_eta1", "(float)(m1.charge * m1.eta)")
+        .Define("q_eta2", "(float)(m2.charge * m2.eta)")
+        // DATA tag-and-probe single-muon mu4 turn-on, per leg.
+        .Define("effcy1", [](int q, float pt, float qe) {
+            return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe);
+        }, {"m1.charge", "m1.pt", "q_eta1"})
+        .Define("effcy2", [](int q, float pt, float qe) {
+            return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe);
+        }, {"m2.charge", "m2.pt", "q_eta2"})
+        // MC 2mu4 dR correlation correction. Exactly 1 for dR >= 1 (outside the fit domain).
+        .Define("eps_dr", [](float dr, float pair_pt, float pair_eta) {
+            return s_dr_corr->Eval(dr, pair_pt, pair_eta);
+        }, {"dr", "pair_pt", "pair_eta"})
+        // eps_trig^pair = eps^nc_1 * eps^nc_2 * eps_dR  (2mu4 is an AND of the two legs).
+        .Define("effcy_pair",
+                "effcy1 > 0 && effcy2 > 0 && eps_dr > 0 ? (double)(effcy1 * effcy2 * eps_dr) : -1.0")
+        .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
+        // pp24-fullsim PAIR reco efficiency. Already floored inside the evaluator; a -1 means no
+        // level of the map carries a measurement, which the caller must treat as "no correction".
+        .Define("effcy_reco_pair", [](float pair_pt, float pair_eta, float dr) {
+            return s_pair_reco_eff->Eval(pair_pt, pair_eta, dr);
+        }, {"pair_pt", "pair_eta", "dr"})
+        .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / effcy_reco_pair : 1.0");
+}
+
 void RDFBasedHistFillingPP::OpenEffcyPtFitFile() {
     if (!s_effcy_pT_fit_map.empty()) {
         std::cout << "OpenEffcyPtFitFile: TF1 map already loaded (" << s_effcy_pT_fit_map.size() << " entries)" << std::endl;
@@ -365,38 +454,35 @@ void RDFBasedHistFillingPP::MakeAndWriteDRTrigEffGraphs() {
 void RDFBasedHistFillingPP::FillHistogramsGeneric(){
     if (!trigger_effcy_calc) {
         OpenEffcyPtFitFile();
-        OpenRecoEffPlaceholderFile(isTight);  // reco-eff PLACEHOLDER (WP-matched keys); generic histos reco-corrected too
+        OpenPairEfficiencyInputs();           // MC eps_dR (2mu4) + pp24-fullsim PAIR eps_reco
+
+        // THE FIDUCIAL GAP CUT IS MANDATORY HERE, not optional (2026-08-17). These generic
+        // dataframes are efficiency-corrected below, and the single-muon turn-on is fitted on a
+        // CONTIGUOUS q*eta binning that stops at 2.30 -- the top edge of
+        // CommonEffcyConfig::q_eta_proj_ranges_coarse_incl_gap, chosen to match the gap cut's
+        // forward window. A muon at q*eta in [2.30, 2.40) therefore has NO fitted turn-on, and
+        // EvaluateSingleMuonEffcyPtFitted deliberately THROWS rather than returning a sentinel
+        // that would silently delete the pair (pp_trig_eff_highpt_jump.md). Applying the same cut
+        // the crossx signal region applies is what makes the efficiency defined for every pair
+        // that survives -- and it puts the generic/MC-data-comparison histograms in the SAME
+        // fiducial region as the cross-section. Idempotent w.r.t. the later signal-cut filters,
+        // which contain the same expression.
+        const std::string fiducial_gap_cut =
+            ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta") + " && "
+          + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta");
 
         for (const std::string& category : categories_essential) {
             std::string df_name = "df" + category;
-            ROOT::RDF::RNode& df = map_at_checked(df_map, df_name,
-                Form("PP::FillHistogramsGeneric: df_map.at(%s)", df_name.c_str()));
+            ROOT::RDF::RNode df = map_at_checked(df_map, df_name,
+                Form("PP::FillHistogramsGeneric: df_map.at(%s)", df_name.c_str()))
+                .Filter(fiducial_gap_cut, "fiducial gap cut (both muons)");
 
             // Generic analysis histograms (incl. the gapcut histos read by the
             // MC-data comparison) are weighted by the SAME per-pair efficiency
-            // correction as the crossx: w_reco_trig = w_reco * w_trig. This keeps
-            // the MC-data comparison consistent with the reco-eff placeholder
-            // (and any future efficiency/det-response/unfolding change to pp crossx).
-            // w_reco is the eps1*eps2 reco PLACEHOLDER (pp -> centrality = -1).
-            ROOT::RDF::RNode df_with_trig = df
-                .Define("q_eta1", "(float)(m1.charge * m1.eta)")
-                .Define("q_eta2", "(float)(m2.charge * m2.eta)")
-                .Define("effcy1", [](int q, float pt, float qe) {
-                    return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe);
-                }, {"m1.charge", "m1.pt", "q_eta1"})
-                .Define("effcy2", [](int q, float pt, float qe) {
-                    return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe);
-                }, {"m2.charge", "m2.pt", "q_eta2"})
-                .Define("effcy_pair", "effcy1 > 0 && effcy2 > 0 ? (double)(effcy1 * effcy2) : -1.0")
-                .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
-                .Define("effcy_reco1", [](float pt, float qe) {
-                    return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe);
-                }, {"m1.pt", "q_eta1"})
-                .Define("effcy_reco2", [](float pt, float qe) {
-                    return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe);
-                }, {"m2.pt", "q_eta2"})
-                .Define("effcy_reco_pair", "effcy_reco1 > 0 && effcy_reco2 > 0 ? (double)(effcy_reco1 * effcy_reco2) : -1.0")
-                .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / (effcy_reco_pair < 0.05 ? 0.05 : effcy_reco_pair) : 1.0")
+            // correction as the crossx: w_reco_trig = w_reco * w_trig, both built by
+            // AddPairEfficiencyWeightColumns. That is what keeps the MC-data comparison
+            // and the cross-section on one and the same correction.
+            ROOT::RDF::RNode df_with_trig = AddPairEfficiencyWeightColumns(df)
                 .Define("w_reco_trig", "w_reco * w_trig");
 
             df_map.erase(df_name);
@@ -425,13 +511,27 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         );
     }
     OpenEffcyPtFitFile();
-    OpenRecoEffPlaceholderFile(isTight);  // Run 2 reco-eff PLACEHOLDER (eps1*eps2 proxy; WP-matched keys)
+    OpenPairEfficiencyInputs();           // MC eps_dR (2mu4) + pp24-fullsim PAIR eps_reco
 
     std::cout << "[PP] FillHistogramsCrossx: opposite-sign only, signal cuts, "
               << "crossx_weight = weight * " << pp_crossx_lumi_factor
               << " (1/L_int), with 2mu4 trig eff correction" << std::endl;
 
-    const std::string signal_cuts = "minv > 1.08 && minv < 2.9 && pair_pt > 8 && m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2";
+    // SIGNAL REGION (docs/analysis_overview.md §2). Since 2026-08-17 the per-muon one-sided
+    // `q*eta < 2.2` is REPLACED by the detector-gap FIDUCIAL cut, required of BOTH muons
+    // (user instruction 2026-08-17; docs/tracking/pp24_crossx_rerun_2026_08.md). The windows are
+    // READ from ParamsSet::single_mu_fiducial_gap_cuts -- the single source of truth; the values
+    // are NEVER retyped here (muon_gap_cuts_acceptance.md F10/F11a).
+    // The forward window {2.30, 2.40} together with the ntuple-level |eta| < 2.4 makes the
+    // effective forward edge 2.30, which is exactly the top edge of the CONTIGUOUS coarse q*eta
+    // turn-on binning (CommonEffcyConfig::q_eta_proj_ranges_coarse_incl_gap) -- so every
+    // surviving muon has a fitted trigger efficiency and the "no fitted turn-on" throw in
+    // EvaluateSingleMuonEffcyPtFitted stays unreachable. Blast radius:
+    // docs/signal_selection_change_impact.md.
+    const std::string signal_cuts =
+        std::string("minv > 1.08 && minv < 2.9 && pair_pt > 8 && ")
+        + ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta") + " && "
+        + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta");
 
     // --- Muon working-point (WP) selection for the DATA crossx spectrum ---
     // NOMINAL WP = TIGHT (isTight=true). Tight ⊂ Medium and the pair-level Tight flag
@@ -451,34 +551,16 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         df_map.emplace("df_single_b_crossx", df_single_b_crossx);
     }
 
-    // Per-pair 2mu4 trigger efficiency: ε_pair = ε₁ · ε₂ (AND logic)
+    // Per-pair 2mu4 trigger efficiency: eps_pair = eps_1 * eps_2 * eps_dR (AND logic on the two
+    // legs, times the MC-measured dR correlation correction).
     // If FillHistogramsGeneric already added trigger columns to df_op, they
     // propagate through the Filter to df_single_b_crossx — skip re-Define.
-    // Per-pair trigger (w_trig) AND reco-eff PLACEHOLDER (w_reco = 1/(eps1*eps2),
-    // pp -> centrality=-1, pair eff floored at 0.05, lookup-fail -> 1) columns.
+    // Per-pair trigger (w_trig) AND pp24-fullsim PAIR reco-eff (w_reco) columns.
     // If FillHistogramsGeneric already added them to df_op (generic ran; it now
     // defines the full trig+reco chain), they propagate through the signal-cut
     // Filter -> reuse them (skip re-Define to avoid an RDF column collision).
     ROOT::RDF::RNode df_with_trig = generic_weight_col.empty()
-        ? df_single_b_crossx
-            .Define("q_eta1", "(float)(m1.charge * m1.eta)")
-            .Define("q_eta2", "(float)(m2.charge * m2.eta)")
-            .Define("effcy1", [](int q, float pt, float qe) {
-                return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe);
-            }, {"m1.charge", "m1.pt", "q_eta1"})
-            .Define("effcy2", [](int q, float pt, float qe) {
-                return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe);
-            }, {"m2.charge", "m2.pt", "q_eta2"})
-            .Define("effcy_pair", "effcy1 > 0 && effcy2 > 0 ? (double)(effcy1 * effcy2) : -1.0")
-            .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
-            .Define("effcy_reco1", [](float pt, float qe) {
-                return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe);
-            }, {"m1.pt", "q_eta1"})
-            .Define("effcy_reco2", [](float pt, float qe) {
-                return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe);
-            }, {"m2.pt", "q_eta2"})
-            .Define("effcy_reco_pair", "effcy_reco1 > 0 && effcy_reco2 > 0 ? (double)(effcy_reco1 * effcy_reco2) : -1.0")
-            .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / (effcy_reco_pair < 0.05 ? 0.05 : effcy_reco_pair) : 1.0")
+        ? AddPairEfficiencyWeightColumns(df_single_b_crossx)
         : df_single_b_crossx;
 
     const double lumi_factor = pp_crossx_lumi_factor;
@@ -495,10 +577,12 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         .Define("crossx_weight",
             [lumi_factor](double weight){ return weight * lumi_factor; },
             {"weight"})
-        // NOMINAL corrected weight now INCLUDES the reco-eff PLACEHOLDER (w_reco):
-        // every crossx histogram filled with crossx_weight_trig_corr is reco+trig
-        // corrected. Equals the _corr_unfolded_reco_trig stage (w_unfold==1). To
-        // revert to trig-only, drop "w_reco *". (reco_eff_placeholder_run2.md)
+        // NOMINAL corrected weight = trigger (incl. the MC eps_dR correlation correction) x the
+        // pp24-fullsim PAIR reco efficiency. Every crossx histogram filled with
+        // crossx_weight_trig_corr is reco+trig corrected; it equals the _corr_unfolded_reco_trig
+        // stage (w_unfold == 1). To revert to trig-only, drop "w_reco *".
+        // (docs/tracking/pp24_crossx_rerun_2026_08.md; the Run-2 single-muon placeholder this
+        // replaced is docs/tracking/reco_eff_placeholder_run2.md)
         .Define("crossx_weight_trig_corr", "crossx_weight * w_reco * w_trig")
         .Define("cw_raw",                "crossx_weight")
         .Define("cw_unfolded",           "cw_raw * w_unfold")
@@ -523,8 +607,12 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
     // MINUS minv window, NO dR. Weight = TRIGGER-ONLY reco-level dsigma (1/L * w_trig, NO
     // reco-eff): the minv fit runs at reco, BEFORE reco-eff/unfolding (3e ordering reversal).
     if (low_mass_template_calc) {
+        // signal_cuts MINUS the minv window; the q*eta fiducial gap cut is kept IDENTICAL
+        // to signal_cuts (both muons, windows read from ParamsSet).
         const std::string signal_cuts_no_minv =
-            "pair_pt > 8 && m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2";
+            std::string("pair_pt > 8 && ")
+            + ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta") + " && "
+            + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta");
         const double lumi_factor_tmpl = pp_crossx_lumi_factor;
         // TEMPLATE-FIT DATA INPUT = TRIGGER-ONLY, RECONSTRUCTED LEVEL (correction-ordering
         // reversal 2026-07-01, low_mass_dimuon_template_fit.md 3e). The minv template fit is
@@ -536,14 +624,11 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         // background has NO truth match, so the fit lives at reco. Hence weight is trigger-only
         // (NO w_reco). The nominal signal-region crossx (above, reco+trig) is a SEPARATE object.
         auto attach_crossx_weight = [&](ROOT::RDF::RNode node) -> ROOT::RDF::RNode {
+            // The template-fit input is TRIGGER-ONLY by design (it uses w_trig, not w_reco), but
+            // the columns come from the SAME helper so its trigger correction can never differ
+            // from the crossx's.
             ROOT::RDF::RNode n = generic_weight_col.empty()
-                ? node
-                    .Define("q_eta1", "(float)(m1.charge * m1.eta)")
-                    .Define("q_eta2", "(float)(m2.charge * m2.eta)")
-                    .Define("effcy1", [](int q, float pt, float qe){ return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe); }, {"m1.charge","m1.pt","q_eta1"})
-                    .Define("effcy2", [](int q, float pt, float qe){ return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe); }, {"m2.charge","m2.pt","q_eta2"})
-                    .Define("effcy_pair", "effcy1 > 0 && effcy2 > 0 ? (double)(effcy1 * effcy2) : -1.0")
-                    .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
+                ? AddPairEfficiencyWeightColumns(node)
                 : node;
             return n
                 .Define("crossx_weight", [lumi_factor_tmpl](double weight){ return weight * lumi_factor_tmpl; }, {"weight"})
@@ -581,8 +666,16 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         // CAVEAT: 1/eff_trig is only well defined on the trigger plateau (pair pT >~ 8); for soft
         // muons near the pT>4 threshold the trig-eff placeholder clamps, so the corrected soft
         // (low-mass) spectrum carries turn-on/clamp artifacts -- approximate there.
-        ROOT::RDF::RNode df_op_nosel = attach_crossx_weight(map_at_checked(df_map, "df_op", "FillHistogramsCrossx PP: df_op (template nosel)"));
-        ROOT::RDF::RNode df_ss_nosel = attach_crossx_weight(map_at_checked(df_map, "df_ss", "FillHistogramsCrossx PP: df_ss (template nosel)"));
+        // "_nosel" = no SIGNAL-REGION cuts (no minv window, no pair-pT threshold). It is NOT "no
+        // cuts at all": these histograms are trigger-corrected, and the single-muon turn-on is
+        // only fitted inside the fiducial q*eta region, so a muon in a gap window has no
+        // efficiency and EvaluateSingleMuonEffcyPtFitted throws by design. The fiducial gap cut is
+        // therefore a PREREQUISITE of the weight, not part of the selection being switched off.
+        const std::string fiducial_gap_cut_nosel =
+            ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta") + " && "
+          + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta");
+        ROOT::RDF::RNode df_op_nosel = attach_crossx_weight(map_at_checked(df_map, "df_op", "FillHistogramsCrossx PP: df_op (template nosel)").Filter(fiducial_gap_cut_nosel));
+        ROOT::RDF::RNode df_ss_nosel = attach_crossx_weight(map_at_checked(df_map, "df_ss", "FillHistogramsCrossx PP: df_ss (template nosel)").Filter(fiducial_gap_cut_nosel));
         hist1d_rresultptr_map["h1d_crossx_minv_0_4_op_dsigma_nosel"] = df_op_nosel.Histo1D(ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_op_dsigma_nosel", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [pb GeV^{-1}]", 50, 0.0, 4.0), "minv", "crossx_weight_trig_only");
         hist1d_rresultptr_map["h1d_crossx_minv_0_4_ss_dsigma_nosel"] = df_ss_nosel.Histo1D(ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_ss_dsigma_nosel", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [pb GeV^{-1}]", 50, 0.0, 4.0), "minv", "crossx_weight_trig_only");
         std::cout << "[PP] FillHistogramsCrossx (low-mass template mode, "
@@ -625,28 +718,10 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
     // categories_essential = pair_signs) when generic ran; else define inline.
     {
         ROOT::RDF::RNode df_ss_crossx = map_at_checked(df_map, "df_ss", "FillHistogramsCrossx PP: df_ss").Filter(signal_cuts);
-        // Full trig+reco efficiency chain — defined inline only if generic did NOT
-        // run (else reuse the columns FillHistogramsGeneric added to df_ss).
+        // Full trig+reco efficiency chain -- added only if generic did NOT run (else reuse the
+        // columns FillHistogramsGeneric already added to df_ss).
         ROOT::RDF::RNode df_ss_with_trig = generic_weight_col.empty()
-            ? df_ss_crossx
-                .Define("q_eta1", "(float)(m1.charge * m1.eta)")
-                .Define("q_eta2", "(float)(m2.charge * m2.eta)")
-                .Define("effcy1", [](int q, float pt, float qe) {
-                    return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe);
-                }, {"m1.charge", "m1.pt", "q_eta1"})
-                .Define("effcy2", [](int q, float pt, float qe) {
-                    return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe);
-                }, {"m2.charge", "m2.pt", "q_eta2"})
-                .Define("effcy_pair", "effcy1 > 0 && effcy2 > 0 ? (double)(effcy1 * effcy2) : -1.0")
-                .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
-                .Define("effcy_reco1", [](float pt, float qe) {
-                    return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe);
-                }, {"m1.pt", "q_eta1"})
-                .Define("effcy_reco2", [](float pt, float qe) {
-                    return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe);
-                }, {"m2.pt", "q_eta2"})
-                .Define("effcy_reco_pair", "effcy_reco1 > 0 && effcy_reco2 > 0 ? (double)(effcy_reco1 * effcy_reco2) : -1.0")
-                .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / (effcy_reco_pair < 0.05 ? 0.05 : effcy_reco_pair) : 1.0")
+            ? AddPairEfficiencyWeightColumns(df_ss_crossx)
             : df_ss_crossx;
         ROOT::RDF::RNode df_ss_weighted = df_ss_with_trig
             .Define("crossx_weight",
@@ -692,9 +767,12 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
     // and reco+trig corrected (crossx_weight_trig_corr), IDENTICAL selection/binning/
     // weight for OS and SS so D_OS - D_SS is a clean combinatoric subtraction.
     {
-        // signal_cuts MINUS the two minv-window conditions; everything else identical.
+        // signal_cuts MINUS the minv window; the q*eta fiducial gap cut is kept IDENTICAL
+        // to signal_cuts (both muons, windows read from ParamsSet).
         const std::string signal_cuts_no_minv =
-            "pair_pt > 8 && m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2";
+            std::string("pair_pt > 8 && ")
+            + ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta") + " && "
+            + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta");
 
         // Attach the trig+reco+crossx weight chain to a node filtered WITHOUT the
         // minv window. If FillHistogramsGeneric ran, it added w_trig/w_reco to
@@ -702,25 +780,7 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         // reuse them; else define inline exactly as the OS/SS crossx blocks above do.
         auto attach_crossx_weight = [&](ROOT::RDF::RNode node) -> ROOT::RDF::RNode {
             ROOT::RDF::RNode n = generic_weight_col.empty()
-                ? node
-                    .Define("q_eta1", "(float)(m1.charge * m1.eta)")
-                    .Define("q_eta2", "(float)(m2.charge * m2.eta)")
-                    .Define("effcy1", [](int q, float pt, float qe) {
-                        return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe);
-                    }, {"m1.charge", "m1.pt", "q_eta1"})
-                    .Define("effcy2", [](int q, float pt, float qe) {
-                        return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe);
-                    }, {"m2.charge", "m2.pt", "q_eta2"})
-                    .Define("effcy_pair", "effcy1 > 0 && effcy2 > 0 ? (double)(effcy1 * effcy2) : -1.0")
-                    .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
-                    .Define("effcy_reco1", [](float pt, float qe) {
-                        return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe);
-                    }, {"m1.pt", "q_eta1"})
-                    .Define("effcy_reco2", [](float pt, float qe) {
-                        return RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(-1, pt, qe);
-                    }, {"m2.pt", "q_eta2"})
-                    .Define("effcy_reco_pair", "effcy_reco1 > 0 && effcy_reco2 > 0 ? (double)(effcy_reco1 * effcy_reco2) : -1.0")
-                    .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / (effcy_reco_pair < 0.05 ? 0.05 : effcy_reco_pair) : 1.0")
+                ? AddPairEfficiencyWeightColumns(node)
                 : node;
             return n
                 .Define("crossx_weight",

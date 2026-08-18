@@ -266,6 +266,21 @@ protected:
 
     virtual void        OpenEffcyPtFitFile() override;
 
+    // --- the per-pair efficiency weight chain (2026-08-17) -------------------------------------
+    // Opens the two MC-derived pair corrections the pp24 crossx applies on top of the DATA
+    // single-muon turn-ons, and adds the weight columns. Both were previously written out FIVE
+    // times, verbatim, in FillHistogramsGeneric/FillHistogramsCrossx; they are factored here so
+    // the crossx, the same-sign crossx, the no-minv passes and the generic histograms can never
+    // drift apart. See docs/tracking/pp24_crossx_rerun_2026_08.md Physics Procedure 3c/3d.
+    //   eps_dR   -- MC 2mu4 dR correlation correction (Utilities/DrCorrectionCrossxEvaluator.h)
+    //   eps_reco -- pp24-fullsim PAIR reco efficiency (Utilities/PairRecoEffEvaluator.h)
+    void                OpenPairEfficiencyInputs();
+    ROOT::RDF::RNode    AddPairEfficiencyWeightColumns(ROOT::RDF::RNode df);
+    void                PrintPairEfficiencyStats();
+    // Runs AFTER the RDF event loop has been materialised, which is where the per-pair census of
+    // the two MC corrections becomes meaningful.
+    virtual void        HistPostProcessDataExtra() override { PrintPairEfficiencyStats(); }
+
     void                SumSingleMuonTrigEffHistsPP();
     virtual void        SumSingleMuonTrigEffHistsExtra() override{ return SumSingleMuonTrigEffHistsPP();}
 
