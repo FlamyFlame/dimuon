@@ -15,6 +15,7 @@
 #include "../../RDFBasedHistFilling/CommonEffcyConfig.h"
 #include "../../MuonObjectsParamsAndHelpers/DatasetTriggerMap.h"
 #include "../../Utilities/CommonLogYRange.h"
+#include "../helper_functions.c"
 
 void plot_crossx_trig_corr_sanity() {
     gStyle->SetOptStat(0);
@@ -104,9 +105,11 @@ void plot_crossx_trig_corr_sanity() {
         if (!h2_corr) { std::cerr << "[WARN] Missing corrected hist: " << spec.h2_corrected << std::endl; continue; }
         if (!h2_raw)  { std::cerr << "[WARN] Missing no_trig_corr hist: " << spec.h2_no_trig_corr << std::endl; continue; }
 
-        int nrow = 2, ncol = 5;
-        if ((int)eta_bins.size() <= 6) { nrow = 2; ncol = 3; }
-        if ((int)eta_bins.size() <= 4) { nrow = 2; ncol = 2; }
+        // Grid from the shared helper (nrow >= ncol, nrow ~ sqrt(N)), the same one the main
+        // crossx panels use -- the hard-coded 2x5 left an empty 10th pad for the 9 pair-eta bins
+        // and violated the repo's subplot-layout rule.
+        int nrow = 1, ncol = 1;
+        DetermineSubplotGrid(static_cast<int>(eta_bins.size()), nrow, ncol);
 
         TCanvas c("c_sanity", (spec.label + " raw vs trig-corr").c_str(), 400 * ncol, 350 * nrow);
         c.Divide(ncol, nrow);
@@ -148,7 +151,9 @@ void plot_crossx_trig_corr_sanity() {
             hp_corr->GetYaxis()->SetTitleSize(0.06);
             hp_corr->GetXaxis()->SetLabelSize(0.05);
             hp_corr->GetYaxis()->SetLabelSize(0.05);
-            hp_corr->GetYaxis()->SetTitleOffset(1.45);
+            // 1.45 pushed the "[pb GeV^{-1}]" superscript off the pad, so the plot displayed a
+            // WRONG unit ("[pb GeV ']"). Pulled in to match the wider left margin below.
+            hp_corr->GetYaxis()->SetTitleOffset(1.15);
             hp_corr->SetTitle("");
 
             panel_corr[ieta] = hp_corr;
@@ -174,7 +179,7 @@ void plot_crossx_trig_corr_sanity() {
             c.cd((int)ieta + 1);
             gPad->SetLogx();
             gPad->SetLogy();
-            gPad->SetLeftMargin(0.16);
+            gPad->SetLeftMargin(0.19);
             gPad->SetBottomMargin(0.13);
 
             const auto& eb = eta_bins[ieta];
@@ -194,8 +199,14 @@ void plot_crossx_trig_corr_sanity() {
             leg->SetFillStyle(0);
             leg->SetTextSize(0.042);
             leg->AddEntry((TObject*)0, Form("#eta^{pair} #in [%.1f, %.1f]", eb.first, eb.second), "");
-            leg->AddEntry(hp_raw,  "Raw (no trig corr)", "lpe");
-            leg->AddEntry(hp_corr, "No-corr trig eff", "lpe");
+            // The two curves are the FIRST and LAST correction stages (CorrectionStages.h):
+            // `crossx_weight` = 1/L only, and `crossx_weight_trig_corr` = 1/L x 1/eps_reco x
+            // 1/eps_trig. The old labels ("Raw (no trig corr)" / "No-corr trig eff") said the gap
+            // between them was the TRIGGER correction alone; since 2026-08-18 it is the product of
+            // the trigger correction AND the fullsim pair reco efficiency, up to x13.7. "No-corr"
+            // also read as "no correction" when it meant the `nocorr` eps_dR plateau knob.
+            leg->AddEntry(hp_raw,  "Uncorrected", "lpe");
+            leg->AddEntry(hp_corr, "Corrected (#varepsilon_{trig} #times #varepsilon_{reco})", "lpe");
             leg->Draw();
         }
 

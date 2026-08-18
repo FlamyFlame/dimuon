@@ -31,7 +31,15 @@ protected:
 
     CommonEffcyConfig cfg;
     std::vector<std::pair<float, float>> q_eta_bins;
-    std::vector<std::pair<float, float>> dr_bins{{0.0f, 0.2f}, {0.2f, 0.4f}, {0.4f, 0.6f}, {0.6f, 1.0f}};
+    // READ from RDFBasedHistFillingPythia::dr_bins_edges_for_reco_effcy, the single source of the
+    // reco-efficiency dR binning, instead of retyping the edges (.claude/CLAUDE.md §Binnings).
+    // The values happened to agree, which is exactly how two binnings coexist unnoticed.
+    std::vector<std::pair<float, float>> dr_bins = [] {
+        std::vector<std::pair<float, float>> v;
+        const auto& e = CommonEffcyConfig{}.dr_bins_edges_for_reco_effcy;
+        for (std::size_t i = 0; i + 1 < e.size(); ++i) v.emplace_back(e[i], e[i + 1]);
+        return v;
+    }();
 
     std::array<int, 6> line_colors{{kRed + 1, kBlue + 1, kGreen + 2, kMagenta + 1, kOrange + 7, kCyan + 2}};
     std::array<int, 6> marker_styles{{20, 21, 22, 33, 34, 29}};
