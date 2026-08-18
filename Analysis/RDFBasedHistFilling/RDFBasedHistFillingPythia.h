@@ -129,7 +129,9 @@ protected:
     std::vector<std::array<std::string,2>> detec_resp_var2Ds;
 
     // --- projection-graph configs ---
-    std::vector<float> dr_bins_edges_for_reco_effcy          = {0.0f, 0.2f, 0.4f, 0.6f, 1.0f};
+    // READ from CommonEffcyConfig, the single source shared with the crossx plotter. Never
+    // retype these edges (.claude/CLAUDE.md §Binnings).
+    std::vector<float> dr_bins_edges_for_reco_effcy = CommonEffcyConfig{}.dr_bins_edges_for_reco_effcy;
     std::vector<float> pair_pT_bins_edges_for_reco_effcy_dR  = {8.0f, 12.0f, 20.0f, std::numeric_limits<float>::max()};
 
     std::vector<std::pair<float,float>> dr_ranges_for_reco_effcy;

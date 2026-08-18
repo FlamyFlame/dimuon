@@ -1,4 +1,5 @@
 #include "RDFBasedHistFillingPythia.cxx"
+#include "CommonEffcyConfig.h"
 #include "../Utilities/GeneralUtils.h"
 #include "../MuonObjectsParamsAndHelpers/FullSimSampleType.h"
 #include <cmath>
@@ -82,7 +83,12 @@ void RDFBasedHistFillingPythiaFullsim::BuildFilterToVarListMapExtra(){
         {"truth_minv_zoomin", "truth_dr_zoomin"}
     };
     reco_effcy_var3Ds = {
-        {"truth_pair_pt", "truth_pair_eta", "truth_dr_zoomin"}
+        // DIAGNOSTIC view (fine axes; pre-existing).
+        {"truth_pair_pt", "truth_pair_eta", "truth_dr_zoomin"},
+        // The APPLIED eps_reco cells: canonical coarse pair pT x coarse pair eta x the
+        // reco-efficiency dR edges. Consumed by
+        // plotting_codes/reco_effcy/build_pp24_fullsim_pair_reco_eff.C.
+        {"truth_pair_pt_coarse", "truth_pair_eta_coarse", "truth_dr_effcy"}
     };
 
     detec_resp_var1Ds = {
@@ -111,6 +117,35 @@ void RDFBasedHistFillingPythiaFullsim::BuildFilterToVarListMapExtra(){
 
 void RDFBasedHistFillingPythiaFullsim::BuildHistBinningMapPythiaFullsimExtra(){
     hist_binning_map["eta_bins_reco_effcy"] = ParamsSet::makeEtaTrigEffcyBinning(1);
+
+    // --- axes of the 3D PAIR reco efficiency the cross-section applies (2026-08-17) -------------
+    // eps_reco(pair pT, pair eta, dR) is a per-pair WEIGHT, so its cells must be the CANONICAL
+    // coarse binnings and nothing else (.claude/CLAUDE.md §Binnings): the same pair-pT vector the
+    // MC trigger dR correction is celled on, and the same pair-eta ranges every pair-eta view of
+    // this analysis uses. Read from ParamsSet / CommonEffcyConfig, never retyped.
+    // The fine `pT_bins_80` / 48-bin eta axes of the pre-existing reco-eff VIEWS are untouched --
+    // those are diagnostic projections, not the applied correction.
+    hist_binning_map["pair_pt_coarse_bins"] = pms.pair_pt_coarse_bins;
+
+    {
+        static const CommonEffcyConfig eff_cfg{};
+        std::vector<double> eta_edges;
+        eta_edges.push_back(eff_cfg.pair_eta_proj_ranges_coarse_incl_gap.front().first);
+        for (const auto& r : eff_cfg.pair_eta_proj_ranges_coarse_incl_gap)
+            eta_edges.push_back(r.second);
+        hist_binning_map["pair_eta_coarse_bins"] = eta_edges;
+    }
+
+    // dR axis = the projection edges the reco-efficiency views have used since the pipeline was
+    // written (`dr_bins_edges_for_reco_effcy`), promoted to a histogram axis. It is NOT extended
+    // beyond 1.0 and does not need to be: inside the signal region dR is KINEMATICALLY bounded,
+    // dR ~< 2 m_uu / pT^pair <= 2 * 2.9 / 8 = 0.725, and the measured maximum over the pp24
+    // fullsim single-b truth signal region is 0.701. Nothing falls above the top edge.
+    {
+        std::vector<double> dr_edges(dr_bins_edges_for_reco_effcy.begin(),
+                                     dr_bins_edges_for_reco_effcy.end());
+        hist_binning_map["dr_bins_reco_effcy"] = dr_edges;
+    }
 }
 
 void RDFBasedHistFillingPythiaFullsim::CreateBaseRDFsPythiaFullsimExtra(){
@@ -132,11 +167,24 @@ void RDFBasedHistFillingPythiaFullsim::CreateBaseRDFsPythiaFullsimExtra(){
         ROOT::RDF::RNode& node = map_at_checked(df_map, df_name + "_weighted",
             Form("CreateBaseRDFsPythiaFullsimExtra: df_map.at(%s)", (df_name + "_weighted").c_str()));
 
+        // SIGNAL REGION, truth and reco legs. Since 2026-08-17 the per-muon one-sided
+        // `q*eta < 2.2` is REPLACED by the detector-gap FIDUCIAL cut required of BOTH muons,
+        // in LOCKSTEP with the data crossx (RDFBasedHistFillingPP.cxx `signal_cuts`).
+        // Windows are READ from ParamsSet::single_mu_fiducial_gap_cuts and never retyped.
+        // The cut is applied on TRUTH q*eta in the denominator leg and on RECO q*eta in the
+        // numerator leg, so eps_reco is a FIDUCIAL pair efficiency: it does NOT contain the
+        // truth-level gap acceptance eps_acc (muon_gap_cuts_acceptance.md F12), which stays a
+        // separate, not-yet-built factor.
+        const std::string gap_truth = ParamsSet::FiducialGapCutExpr("m1.truth_charge * m1.truth_eta")
+                                    + " && " + ParamsSet::FiducialGapCutExpr("m2.truth_charge * m2.truth_eta");
+        const std::string gap_reco  = ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta")
+                                    + " && " + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta");
         auto node_sig = node
             .Define("pass_signal_truth",
-                "truth_minv > 1.08 && truth_minv < 2.9 && truth_pair_pt > 8 && m1.truth_charge * m1.truth_eta < 2.2 && m2.truth_charge * m2.truth_eta < 2.2")
+                "truth_minv > 1.08 && truth_minv < 2.9 && truth_pair_pt > 8 && " + gap_truth)
             .Define("pass_signal_reco",
-                "(m1.reco_match && m2.reco_match) ? (minv > 1.08 && minv < 2.9 && pair_pt > 8 && m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2) : false");
+                "(m1.reco_match && m2.reco_match) ? (minv > 1.08 && minv < 2.9 && pair_pt > 8 && "
+                + gap_reco + ") : false");
 
         df_map.emplace(df_name + "_pass_medium_weighted",   node_sig.Filter("pair_pass_medium"));
         df_map.emplace(df_name + "_pass_tight_weighted",    node_sig.Filter("pair_pass_tight"));

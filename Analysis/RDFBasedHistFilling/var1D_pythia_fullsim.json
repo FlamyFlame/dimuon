@@ -197,6 +197,24 @@
             "var_name": "minv",
             "title": "m_{#mu#mu}^{reco} [GeV]",
             "binning": "minv_log_bins"
+        },
+        {
+            "hist_name": "truth_pair_pt_coarse",
+            "var_name": "truth_pair_pt",
+            "title": "p_{T}^{pair,truth} [GeV]",
+            "binning": "pair_pt_coarse_bins"
+        },
+        {
+            "hist_name": "truth_pair_eta_coarse",
+            "var_name": "truth_pair_eta",
+            "title": "#eta^{pair,truth}",
+            "binning": "pair_eta_coarse_bins"
+        },
+        {
+            "hist_name": "truth_dr_effcy",
+            "var_name": "truth_dr",
+            "title": "#DeltaR^{truth}",
+            "binning": "dr_bins_reco_effcy"
         }
     ]
 }
