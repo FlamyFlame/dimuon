@@ -2160,6 +2160,221 @@ Run: `root -l -b -q 'plot_forward_qeta_edge_scan.cxx+("pbpb")'` / `...+("pp")`.
 
 **Reviewed** `/review-plot`, log `.claude/logs/review-plot-20260813-183530-pbpb-forward-qeta-edge-scan.md`.
 
+### R32. Round 12 — the THIRD Step-3 plateau mode: no plateau correction with the LAST TWO
+### pair-pT BINS MERGED (2026-08-17, user request; pp + overlay, both WPs, all methods, all signs)
+
+**What it is.** `step3_dr_fit/` now carries THREE parallel trees. Beside `plateau_corrected/`
+(nominal) and `no_plateau_correction/` (R27) there is
+**`no_plateau_correction_last2ptbins_merged/`**, holding the SAME raw fit — `f(ΔR) = C + A·exp[−(ΔR/λ)^p]`
+with the baseline C free and fitted on ΔR ∈ [0,1] alone — measured on a pair-pT axis whose **last two
+cells are merged**: `p_T^pair ∈ [72.1,104)` + `[104,150)` → **one cell [72.1,150) GeV**, so the grid
+is **7 × 9 = 63 cells** instead of 8 × 9 = 72. Everything else is untouched (same samples, same gap
+cut, same pair-η binning, same plateau window, same methods, same sign series, same two ΔR views,
+same styling).
+
+**Why (physics).** The top two cells of the 8-bin log axis run past where pp Pythia has yield. They
+are where the plateau guard fails (R24/R27), where the ΔR fits are noise-dominated, and where the
+closure collapses (`mc_trig_eff_closure.md` R1b, η^pair ∈ [−2.4,−2.0) × p_T^pair ∈ [72,104)).
+Merging them buys statistics in exactly one place and leaves every measuring cell alone.
+
+**It is NOT a new binning** (.claude/CLAUDE.md §Binnings). `ParamsSet::pair_pt_coarse_bins` and the
+FILLED histograms are unchanged; a merged cell is the two source bins **projected together**
+(num/denom/errA/errB summed *before* the ratio, `DrCellRatioRange`), which is numerically identical
+to having filled a 7-bin axis. The grouping is derived in ONE place from the source histogram's own
+axis (`dr_correction_pt_groups.h`) — no edge value is typed in a macro, a report or a plot — and the
+variant is opt-in and suffixed (`_nocorr_ptmerge`), so it can neither overwrite nor be mistaken for
+the other two trees. **8-bin axis only:** with `MCTRIGEFF_PAIRPT_4BIN` set the C++ throws and the
+driver skips it with a note (the `_pt4bin` variant already merges the top cells by construction).
+
+**The plateau in this mode.** As in `nocorr`, nothing is normalized by it and the guard's fatal tier
+is off. But the plateau map on disk describes the UN-merged grid, so for the merged cells it is
+**re-measured** from the `full_vs_pt_eta_*` histograms in the same file with the SAME estimator and
+the SAME window — `PlateauFromRatio` was moved out of `plot_mc_trig_eff.cxx` into the shared
+`dr_correction_plateau.h` rather than copied (R17's lesson). It is reported, and applied to nothing.
+
+**★ WHAT THE MERGE ACTUALLY BUYS — the delivered correction, not the χ².** Census from
+`DrCorrectionEvaluator` (pp24 FULL, opposite sign, the series the analysis applies):
+
+| WP / method | cells | fitted | raw-bin placeholder | **no correction at all** | delivered ε_ΔR span |
+|---|---|---|---|---|---|
+| Tight `expo` un-merged | 72 | 68 | 2 | **2** | 0.061 – 1.354 |
+| Tight `expo` **MERGED** | 63 | 60 | 3 | **0** | 0.061 – 1.318 |
+| Tight `polyu_fixedRp` un-merged | 72 | 65 | 4 | **3** | 0.078 – **2.736** |
+| Tight `polyu_fixedRp` **MERGED** | 63 | 62 | 1 | **0** | 0.059 – 1.240 |
+| Medium `expo` un-merged | 72 | 70 | 0 | **2** | 0.015 – 1.354 |
+| Medium `expo` **MERGED** | 63 | 61 | 2 | **0** | 0.015 – 1.219 |
+| Medium `polyu_fixedRp` un-merged | 72 | 66 | 3 | **3** | 0.065 – **2.749** |
+| Medium `polyu_fixedRp` **MERGED** | 63 | 62 | 1 | **0** | 0.063 – 1.243 |
+
+Two things follow, and they are the point of the variant:
+1. **No dead cell is left.** In the un-merged mode 2–3 cells per configuration deliver **no
+   correction at all** (ε_ΔR ≡ 1 by default) — all of them in the top two pair-pT bins. Merged,
+   every one of the 63 cells delivers a measured correction.
+2. **The ε_ΔR = 2.74 fit artefact is GONE.** The `polyu_fixedRp` cell with C = 0.053 ± 3.18 that
+   inflated f/C to 2.74 — flagged as an artefact in `mc_trig_eff_closure.md` R2 and named in this
+   doc's open "sanity bound on the delivered ε_ΔR" — does not survive the merge: the merged maximum
+   is 1.24. A 2mu4 close-by correction is a LOSS, so a delivered value above ~1 was never a
+   measurement; the merged set no longer produces one above 1.32.
+
+**What it does NOT buy: fit quality.** χ²/ndf does not improve, and should not be expected to — with
+twice the pairs the error bars shrink, so the same shape mismatch costs more χ². pp24 Tight,
+opposite sign, `expo`: merged mean 2.03 / median 1.59 / max 8.80 over 63 cells, against un-merged
+1.81 / 1.51 / 6.07 over 70. **R26 is neither fixed nor worsened by this change** — it is the same
+parametric family on better-populated cells.
+
+**Inclusive cell unchanged, as it must be** — it integrates over pair pT, so the merge cannot touch
+it: χ²/ndf = 10.319 (Tight, opposite sign, `expo`), identical to the un-merged `nocorr` value.
+
+**★ THE pp24 CROSSX DEFAULT (user, 2026-08-17; TEMPORARY).** `expo` + **opposite sign** + this merged
+mode is the variant the pp24 cross-section will apply, named once in
+`dr_correction_sample_cfg.h` as `DrCorrCrossxMethod()` / `DrCorrCrossxSign()` / `DrCorrCrossxMode()`
+so no consumer retypes it. The applied form is unchanged from `mc_trig_eff_closure.md` §3.2:
+`ε_ΔR(ΔR) = f(ΔR)/C` for ΔR < 1, `= 1` for ΔR ≥ 1. TEMPORARY because R26 is still OPEN.
+**Scope was limited to producing the variant (user): the crossx chain was NOT touched here**, and
+`DrCorrectionEvaluator::Load()` still DEFAULTS to the un-merged `nocorr`, so the MC-closure thread's
+results do not move.
+
+**Artefacts.** 576 PNGs + reports across four trees (pp / PbPb × Tight / Medium), 8 canvases per
+(method, sign mode, ΔR view) = 7 pair-pT + inclusive; 18 pp + 18 overlay fit ROOT files
+`dr_correction_fits_<label>{,_medium_wp}_step3_<method>{,_ss,_os}_nocorr_ptmerge.root`. Driver run
+`SAMPLES="pp_full overlay" WPS="tight medium" STEPS="3" PLATEAU_MODES="nocorr_ptmerge"
+SKIP_MEASURE=1 ./run_dr_correction_fits.sh` → exit 0, "all stages complete", zero artefact failures,
+zero read-back persistence failures. Step 4 remains corrected-mode-only (user).
+
+**★ TWO OPEN ITEMS THE ROUND-12 PLOT REVIEW RAISED — BOTH NEED A USER DECISION, BOTH ARE R26.**
+Neither was changed autonomously: each would alter the published `fit_ok` artefact for all three
+plateau modes and therefore the closure thread's inputs as well.
+1. **The new default series contains a cell whose fit is accepted but unusable.** Merged top cell
+   × η^pair ∈ [−2.4,−2.0), opposite sign, `expo`: **A = +0.5855 — a POSITIVE amplitude, i.e. a
+   close-by ENHANCEMENT**, which a 2mu4 *product* trigger cannot physically be; C = 0.4900 ± 0.7162
+   (a **146 %** relative error), `p` pinned on its limit, χ²/ndf = 8.80, f(0)/C = **2.19**, and
+   `fit_ok = 1`. Identical at Medium. **It is NOT delivered as 2.19** — `DrCorrectionEvaluator`'s
+   own baseline screen `DrCorrPlateauUsable(C, err)` rejects it on both criteria and falls back to
+   the raw bins, which deliver **1.168** at ΔR → 0 (in the un-merged mode that cell delivered no
+   correction at all). But two things remain true: the CANVAS draws a curve the analysis will never
+   use (R28 defined ONE gate, `h_stepN_fit_ok`; `dr_correction_apply.h` adds a second screen the
+   canvas does not know about), and 1.168 > 1 is still not a close-by loss. **A screen on `A > 0`
+   (equivalently `f(0) > C`), or the χ² term R26 is about, would remove this class of cell.**
+2. **The Pb+Pb overlay gains exactly one unconstrained fit.** In the merged top cell ×
+   η^pair ∈ [−0.5,0.5) the overlay now has 7 points and is fitted with A = 0.586 ± 5.5,
+   λ = 0.0371 ± 2.1, p = 3.42 ± 4.4, C = 0.661 ± 0.15 — **every parameter error ≥ its parameter** —
+   and it is drawn with the same authority as the pp FULL-sample panels. In the un-merged tree all
+   18 overlay top-p_T cells were "too few points → no fit". The `k < nfree + 2` threshold admits
+   it. Raising that threshold is again a change to the acceptance rule.
+
+**What the merge actually buys, measured (plot review).** The statistics gain is **modest**:
+N_eff rises by only **1.06–1.48×** depending on η^pair (the `[104,150)` bin's filled ΔR bins are a
+SUBSET of `[72.1,104)`'s — the filled-bin count is unchanged in all nine cells), so error bars
+shrink **3–18 %**, not dramatically. The real gain is **coverage**, and it is confined to the
+deliverable's top row (pp24 Tight, opposite sign, `expo`, ΔR → 0):
+
+| η^pair bin | un-merged `[104,150)` | merged `[72.1,150)` |
+|---|---|---|
+| [−2.4,−2.0) | **no correction (ε_ΔR ≡ 1)** | raw placeholder, 1.168 |
+| [−2.0,−1.5) … [0.5,1.0) | fitted, 0.123 – 0.382 | fitted, 0.116 – 0.417 |
+| [1.0,1.5) | raw placeholder | raw placeholder |
+| [1.5,2.0) | fitted, 0.400 | fitted, 0.399 |
+| [2.0,2.4) | **no correction (ε_ΔR ≡ 1)** | **fitted, 0.304** |
+
+One caveat the review raised and this doc records rather than dismisses: because the two source
+bins can carry genuinely different ε_ΔR shapes, a merged cell describes a **mixture**. In the
+SIGN-INTEGRATED series that shows up as two cells whose merged fit is *worse* than the un-merged
+`[72.1,104)` one (η^pair ∈ [1.0,1.5) becomes rejected, f(0) = −0.95; η^pair ∈ [−1.5,−1.0) falls
+into a cusp solution). **Neither is present in the opposite-sign deliverable** (checked cell by
+cell, table above) — but the sign-integrated tree carries them and they belong to any future
+decision about widening the merge.
+
+**Remaining known artefact of the crossx deliverable (from the round-12 code review, INFO).** One
+merged cell still delivers ε_ΔR above 1: `p_T^pair ∈ [11.5,16.6) × η^pair ∈ [−2.4,−2.0)`, Tight,
+opposite sign, `expo`, where the fit returns **A = +0.2838** (a positive amplitude = a close-by
+*enhancement*, which a 2mu4 product cannot physically be), **λ = 0.0208 pinned on its 0.02 lower
+limit**, C = 0.8922, χ²/ndf = 4.65 ⇒ f(0)/C = **1.318**. It is **pre-existing** (the un-merged
+`nocorr` has the same cell at 1.354) and the merge strictly improves the class, but the code's own
+alarm only fires above 1.5, so it is published silently. It belongs to **OPEN R26**: a screen on
+`A > 0` (equivalently `f(0) > C`) would remove this class of cell, and that is a fit-form decision,
+not something to patch here. Consumers should treat any delivered value above 1 as an artefact.
+
+**★ WHAT THE MERGE COSTS AND WHAT IT DOES NOT BUY (round-12 plot review, measured).** Two honest
+qualifications, both measured from the source 3D histograms rather than assumed:
+- **The statistics gain is modest.** Pooling `[104,150)` into `[72.1,104)` raises the effective
+  entry count in the fit domain by only **1.06×–1.48×** depending on pair-η — error bars shrink
+  **3–18 %**, not dramatically — and the number of FILLED ΔR bins is unchanged in all nine cells
+  (13/17/20/20/20/20/19/17/12 before and after), because `[104,150)`'s filled bins are a subset of
+  its neighbour's. The merge's real benefit is **coverage**, not precision (below).
+- **In the sign-INTEGRATED series it costs one cell**: `η^pair ∈ [1.0,1.5)` had `fit_ok = 1` at
+  `[72.1,104)` and the merged cell is rejected (f(0) = −0.95), so nothing above 72.1 GeV is fitted
+  there. **This does NOT affect the deliverable**: in the opposite-sign series that cell was already
+  on the raw-bin placeholder before the merge and still is.
+
+**Per-cell status of the DELIVERABLE (pp24 Tight, opposite sign, `expo`), top pair-pT row** — the
+row the merge acts on, at ΔR → 0:
+
+| η^pair bin | un-merged `[104,150)` | merged `[72.1,150)` |
+|---|---|---|
+| [−2.4,−2.0) | **no correction (ε_ΔR ≡ 1)** | raw placeholder, **1.168** |
+| [−2.0,−1.5) | fit 0.268 | fit 0.417 |
+| [−1.5,−1.0) | fit 0.382 | fit 0.221 |
+| [−1.0,−0.5) | fit 0.123 | fit 0.150 |
+| [−0.5,0.5) | fit 0.198 | fit 0.211 |
+| [0.5,1.0) | fit 0.167 | fit 0.116 |
+| [1.0,1.5) | raw 0.188 | raw 0.436 |
+| [1.5,2.0) | fit 0.400 | fit 0.399 |
+| [2.0,2.4) | **no correction (ε_ΔR ≡ 1)** | fit 0.304 |
+
+⇒ the two dead cells are gone and `[2.0,2.4)` gains a real fit; the price is that `[−2.4,−2.0)`
+now delivers **1.168 from the raw-bin placeholder where it previously delivered nothing** — above 1,
+so an artefact of that forward cell rather than a measurement (same forward region as the r16578
+anomaly, R8/R10/R14).
+
+**★ OPEN, ESCALATED TO THE USER (round-12 reviews) — R26 is now biting the DEFAULT series.**
+1. **`fit_ok` still carries no χ²/shape term**, and in the merged top cell × `η^pair ∈ [−2.4,−2.0)`
+   the `expo` fit returns **A = +0.5855 — a POSITIVE amplitude, i.e. a close-by *enhancement***,
+   which a 2mu4 product cannot physically be — with **C = 0.4900 ± 0.7162 (146 % relative error)**
+   and `p` pinned at its limit, χ²/ndf = 8.80, yet `fit_ok = 1` and the canvas draws it. It is only
+   the CONSUMER's extra baseline screen (`DrCorrPlateauUsable(C)` in `dr_correction_apply.h`) that
+   keeps f(0)/C = 2.19 out of the analysis. Two consequences: the canvas and the consumer disagree
+   about which cells are usable (R28 defines ONE gate; `apply.h` adds a second the canvas does not
+   know about), and the fallback still delivers 1.168 > 1. A screen on **A > 0** (equivalently
+   f(0) > C) or on χ² inside `usable` would remove this class of cell — but it changes the published
+   artefact for ALL three plateau modes and the MC-closure thread's inputs, so it is a **USER
+   DECISION**, deliberately not taken here.
+2. **One overlay panel gains an unconstrained fit.** In the Pb+Pb top cell the merge turns one
+   "too few points" cell (`[72.1,150) × [−0.5,0.5)`, 7 points) into a fitted one with **every
+   parameter error ≥ its parameter** (A = 0.586 ± 5.5, λ = 0.037 ± 2.1, p = 3.42 ± 4.4,
+   C = 0.661 ± 0.15), drawn with the same authority as a pp FULL-sample panel. The overlay is a
+   10 000-event TEST sample and is not a deliverable, but the acceptance rule
+   (`k ≥ nfree + 2`) is what admits it — also a **USER DECISION**.
+
+**Review round (both mandated reviewers run 2026-08-17/18).** Four defects were found and FIXED,
+three of them PRE-EXISTING and inherited by the new tree rather than caused by it:
+1. **The read-back report named the WRONG fit file in every non-nominal plateau mode**
+   (`plot_dr_correction_fits.cxx` called `DrCorrFitFile(...)` without the mode, which defaults to
+   the plateau-corrected name). So the persistence audit of the `nocorr` tree — and now of the
+   *deliverable* merged tree — could not be traced to the artefact it audited. Fixed; the
+   `no_plateau_correction/` and merged trees' reports were regenerated and verified on disk to name
+   their own file. `plateau_corrected/` needed none — for that mode the fixed call produces exactly
+   the name the old defaulted call already produced.
+2. **Every pp24 FULL report described the sample as "a 10k-event TEST sample"** in the line
+   carrying the headline inclusive χ²/ndf. The parenthetical is now conditional on
+   `is_full_sample`: pp24 reports drop it, the genuinely 10 000-event overlay keeps it.
+3. The merged-mode plateau re-measurement fetched the Step-4 covariance terms with a tolerant
+   `Get` while the four beside them threw; now uniformly `GetObj<TH3D>` (unreachable in step 3,
+   where `has_cov` is false, but it would have silently under-stated merged Step-4 plateau errors).
+4. `FillMCTrigEffClosure.cxx` duplicated the `"nocorr"` token as a literal in its provenance stamp
+   while `Load()` had just gained a defaulted mode argument; it now carries an explicit
+   `kDrPlateauMode` constant passed to both, so the stamp cannot drift from what was loaded.
+Only the MERGED tree was refitted for (2). The `plateau_corrected/` and `no_plateau_correction/`
+fit files were deliberately **NOT** regenerated: a sibling session's MC-closure results consume
+them and rewriting their mtimes would make that session's freshness gate call its own outputs
+stale. **Those two trees therefore still carry the old report text**; the code is fixed and they
+will pick it up at their next legitimate regeneration.
+
+**Regression: the shared-header refactor moved NOTHING.** `PlateauFromRatio` was relocated and
+`DrCellRatio` became a thin wrapper over the new explicit-range form, both of which are on the
+NOMINAL path. Re-running pp24 Tight `expo` in the pre-existing `corr` (sign-integrated) and `nocorr`
+(opposite-sign) modes after the change reproduced their `fit_report*.txt` **byte-identically**
+(`diff` clean, both).
+
 ### D6: the gap cut lives at the RDF stage, not in the ntuple processing (2026-08-05)
 Round-8 Contract item 4 specified "a gap-cut mode in the ntuple-processing code". It was
 implemented at the RDF stage instead. **Provenance rule satisfied** (the cut is applied to
@@ -3314,6 +3529,150 @@ criteria **P1** and **P2**):
     `no_plateau_correction` variant, which removes the term rather than sizing it.
 
 ## Latest Stage
+
+**2026-08-17 (round 12) — the third Step-3 plateau mode is BUILT AND RUN; results in R32.**
+Steps 1–10 of the plan below are DONE (code, full production, regression check); step 11 (the two
+mandated reviews, doc/INDEX, commit) is in progress. **The delivered artefacts are complete and
+final unless a review finds a defect, which would be recorded here and in R32.**
+
+> ### 📌 HAND-OFF TO THE pp24-CROSSX THREAD (`pp24_crossx_rerun_2026_08.md`) — READ THIS FIRST
+>
+> **The 7-pair-pT-cell ΔR correction your Objective item 3 asks for EXISTS and is usable as of
+> 2026-08-17 23:29.** It is the new `nocorr_ptmerge` plateau mode (R32). Nothing about the
+> definition, the fit domain or the applied form changed — only the pair-pT cell grid.
+>
+> **What to load** (named in code so you never retype it —
+> `plotting_codes/trig_effcy/mc_based/dr_correction_sample_cfg.h`):
+>
+> | | value | accessor |
+> |---|---|---|
+> | method | `expo` | `DrCorrCrossxMethod()` |
+> | sign series | `os` (opposite sign) | `DrCorrCrossxSign()` |
+> | plateau mode | `nocorr_ptmerge` | `DrCorrCrossxMode()` |
+>
+> **Files** (pp24 Pythia fullsim FULL, `/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample/`),
+> written 2026-08-17 23:16–23:24, all AFTER every input they consume:
+> - Tight  : `dr_correction_fits_pp24_full_step3_expo_os_nocorr_ptmerge.root`
+> - Medium : `dr_correction_fits_pp24_full_medium_wp_step3_expo_os_nocorr_ptmerge.root`
+> - the `polyu_fixedRp` and `interp` siblings exist under the same naming (swap the method token),
+>   both signs and both WPs — 18 files in total.
+> Do NOT build the path by hand: `DrCorrFitFile(cfg, use_tight_wp, 3, method, sign, mode)`.
+>
+> **How to apply it — use the existing consumer, do not re-derive.**
+> `plotting_codes/trig_effcy/mc_based/dr_correction_apply.h` (`DrCorrectionEvaluator`) already
+> implements the agreed form, `ε_ΔR(ΔR) = f(ΔR)/C` for ΔR < 1 and `= 1` for ΔR ≥ 1
+> (`mc_trig_eff_closure.md` §3.2), with the baseline screen on C, the TF1 range clamp, the
+> floor/cap counters and the per-cell census printout. `Eval(dR, pair_pt, pair_eta)` looks the cell
+> up on the FIT FILE's own axes, so the 7-cell grid needs nothing from you.
+> **Call it as** `ev.Load(cfg, use_tight_wp, DrCorrCrossxMethod(), DrCorrCrossxSign(), DrCorrCrossxMode());`
+> — the `plateau_mode` argument is NEW (2026-08-17) and **defaults to the un-merged `nocorr`**, which
+> is deliberate: the MC-closure thread consumes that default and must not move. Pass the mode
+> explicitly or you will silently get the 8-cell correction.
+>
+> **⚠ FOUR THINGS YOU MUST KNOW**
+> 0. **One forward cell of the top pair-pT row delivers ε_ΔR = 1.168 at ΔR → 0**
+>    (`η^pair ∈ [−2.4,−2.0)`, from the raw-bin placeholder — its `expo`/`polyu` fits are rejected by
+>    the baseline screen). A close-by 2mu4 correction is a LOSS, so a value above 1 is an artefact,
+>    not a measurement; it is ~1 % of pairs but it is in your weight. It belongs to OPEN R26 and is
+>    **escalated to the user** (R32) — do not paper over it, and state it wherever the crossx result
+>    is quoted until the user decides.
+> 1. **The `expo → polyu → raw` cascade is NOT in `dr_correction_apply.h`** — that class does ONE
+>    method → raw-bin placeholder. You have already built the cascade on top of the accessors above
+>    in `Analysis/Utilities/DrCorrectionCrossxEvaluator.h` (seen here 2026-08-17, with its own
+>    `DrCorrCrossxBackupMethod() = "polyu_fixedRp"`), so nothing is missing — but note that
+>    `dr_correction_apply.h` itself was **edited on 2026-08-17** by this thread (the new
+>    `plateau_mode` argument, the grouped raw-bin fallback), so re-read it before changing it.
+>    Sizing for your routing counters, from the census in R32 (pp24 Tight, opposite sign, merged):
+>    `expo` delivers a fit in 60 of 63 cells with 3 on the raw-bin placeholder; `polyu_fixedRp`
+>    delivers 62 of 63 with 1. **No cell is left without a correction in either** — the 2–3 dead
+>    cells of the un-merged mode are gone, which is most of what the merge bought you. Expect your
+>    route census to come out roughly 60 primary / ~2 backup / ~1 raw, not 63/0/0.
+> 2. **The raw-bin placeholder is still a flagged TEMPORARY stop-gap** (`mc_trig_eff_closure.md`
+>    §3.3, this doc's OPEN R26). It is fine to run on, but it must be stated wherever the result is.
+> 3. **The merged mode is defined for the 8-bin nominal pair-pT axis ONLY.** With
+>    `MCTRIGEFF_PAIRPT_4BIN` set it throws by design.
+>
+> **Sanity numbers to check yourself against** (R32). Over the cells delivered from a FIT, ε_ΔR
+> spans **0.061 – 1.318** (Tight `expo`, opposite sign) — note this extremum, printed by
+> `DrCorrectionEvaluator`, covers the FITTED cells only, **not** the raw-bin placeholder ones.
+> Per-cell values at ΔR → 0 in the merged top row `p_T^pair ∈ [72.1,150)`, opposite sign, `expo`:
+> η^pair bins 2–6, 8, 9 deliver 0.116 – 0.417 from a fit (a close-by LOSS, as the physics requires);
+> bin 7 `[1.0,1.5)` delivers 0.436 from the raw-bin placeholder; **bin 1 `[−2.4,−2.0)` delivers
+> 1.168 from the raw-bin placeholder** — above 1, i.e. an artefact of that forward cell, not a
+> measurement (in the un-merged mode that cell delivered no correction at all, ε_ΔR ≡ 1).
+> A 2mu4 close-by correction is a LOSS, so treat any delivered value above 1 as an artefact and say
+> so wherever the result is quoted; the un-merged `polyu` maximum of 2.74 flagged in
+> `mc_trig_eff_closure.md` R2 does not survive the merge (merged max 1.24).
+>
+> **Concurrency.** This thread wrote only: the new `no_plateau_correction_last2ptbins_merged/` plot
+> trees, the `*_nocorr_ptmerge.root` fit files, and the source files listed in R32
+> (`dr_correction_*.h`, `fit_dr_corrections.cxx`, `plot_dr_correction_fits.cxx`,
+> `plot_mc_trig_eff.cxx`, `run_dr_correction_fits.sh`). It did **not** touch
+> `RDFBasedHistFilling*`, `MCTrigEffPairSelection.h`, the crossx code, or any pre-existing
+> trigger-efficiency output. We share the ACLiC build directory
+> `plotting_codes/trig_effcy/mc_based/*.so` — recompile before you run.
+
+*Plan, written before the work (per-step protocol).*
+
+**What the user asked for.** Beside `plateau_corrected/` and `no_plateau_correction/`, add a third
+top-level directory under `step3_dr_fit/` carrying the **no-plateau-correction fit with the last
+two pair-pT bins combined**. It applies to the **8-bin pair-pT version ONLY** (confirmed with the
+user 2026-08-17; the `_pt4bin` variant already has a single top cell). The variant with
+**opposite-sign pairs + the `expo` form** becomes the **temporary default the pp24 crossx
+application will use**; the other methods (`polyu_fixedRp`, `interp`) and the other sign series are
+still produced, with every other setting unchanged.
+
+**Why it is physics-motivated.** On the 8-bin log axis the top two cells — `p_T^pair ∈ [72.1,104)`
+and `[104,150)` GeV — run past where pp Pythia has yield: they hold the plateau-guard failures
+(R24/R27), they are where the closure collapsed (`mc_trig_eff_closure.md` R1b), and their ΔR fits
+are noise-dominated. Merging them buys back statistics in exactly one place without touching the
+cells that carry the measurement.
+
+**Scope (confirmed with the user 2026-08-17): PRODUCE THE VARIANT ONLY.** The crossx chain is NOT
+touched — ε_ΔR is not yet applied anywhere in the crossx hist filling (only the MC closure consumes
+it), so wiring it in is a separate step with its own blast radius. Nothing in
+`signal_selection_change_impact.md` is triggered.
+
+**Binning statement (.claude/CLAUDE.md §Binnings).** No canonical binning is changed:
+`ParamsSet::pair_pt_coarse_bins` and the FILLED histograms keep their 8 bins. The merge is a
+**grouping applied at the fit/plot stage** — bins 7 and 8 are projected together — which is
+numerically identical to filling a 7-bin axis, and it is **opt-in and suffixed**
+(`_nocorr_ptmerge` / `no_plateau_correction_last2ptbins_merged/`), never a silent second default.
+The grouping is derived in ONE place from the source histogram's own axis, so no edge value is
+retyped anywhere.
+
+**Implementation plan (per §3.3):**
+1. `dr_correction_sample_cfg.h` — third plateau-mode token `nocorr_ptmerge` + the two predicates
+   (`no plateau` / `merge last two pT bins`) every stage asks instead of comparing strings;
+   directory + file-name token; the named constants recording the pp24-crossx default
+   (method `expo`, sign `os`, mode `nocorr_ptmerge`).
+2. NEW `dr_correction_pt_groups.h` — the pair-pT grouping (group → source-bin range, group edges,
+   merged-axis map booking), built from the source axis, with a hard throw if the merge is asked
+   for on the 4-bin variant.
+3. `dr_correction_ratio.h` — `DrCellRatio` gains an explicit-bin-range form; the existing
+   signature stays a thin wrapper so every current call is byte-identical.
+4. NEW `dr_correction_plateau.h` — `PlateauFromRatio` MOVED out of `plot_mc_trig_eff.cxx` so the
+   merged cell's plateau is measured by the SAME code that measures every other cell's (it is
+   reported-only in a no-plateau-correction mode, but a second copy of a weighted mean is how two
+   plateau definitions start to drift — R17).
+5. `fit_dr_corrections.cxx` — mode plumbing via the predicates; in the merged mode the plateau /
+   nbins / window-systematic maps are re-measured on the MERGED cells from the full-range 3D
+   histograms and the fit runs on the 7-cell axis; report + provenance state the merge.
+6. `plot_dr_correction_fits.cxx` — same predicates; the measured points are re-projected with the
+   grouped bin range; a guard that the fit file's pair-pT axis matches the mode.
+7. `dr_correction_apply.h` — optional `plateau_mode` argument (**default unchanged**, so the
+   closure thread's results do not move) + grouped raw-bin fallback; header documents the
+   temporary pp24-crossx default.
+8. `pipelines/run_dr_correction_fits.sh` — the third mode in the defaults and in the three mirror
+   functions; skipped with a printed note when `MCTRIGEFF_PAIRPT_4BIN` is set.
+9. Run: `pp_full` + `overlay`, both WPs, step 3, all methods, all sign series, mode
+   `nocorr_ptmerge` (`SKIP_MEASURE=1` — the plateau files are the round-11 ones and are current).
+10. Regression check: re-run one `nocorr` and one `corr` series and diff the fit reports against
+    the pre-change copies — the shared-header refactor must not move a single number.
+11. `/review-analysis-code` + `/review-plot`, doc + INDEX update, commits.
+
+---
+
 
 **2026-08-13 (side task) — ✅ DONE. PbPb forward q·η edge scan re-cut as DATA-ONLY (R31):
 `single_mu_eff_forward_qeta_edge_scan.png` deleted, replaced by `…_by_year.png` (μ⁺/μ⁻ ×
