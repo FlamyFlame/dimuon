@@ -6,7 +6,15 @@
 # Closes the pp24 2mu4 trigger correction on the MC sample that carries BOTH an unbiased
 # denominator and the per-pair trigger decision:
 #
-#     C = Sum_{2mu4} w_MC / [eps^nc_data(1) eps^nc_data(2) eps_dR(dR)]  /  Sum_{all} w_MC   = 1 ?
+#     C = Sum_{2mu4} w_MC / [eps_MC(1) eps_MC(2) eps_dR(dR)]  /  Sum_{all} w_MC   = 1 ?
+#
+# The applied single-muon efficiency is the MC one (user, 2026-08-18; doc D4), so the test is
+# SELF-CONTAINED and its residual is the dR correction alone. TWO eps_dR variants are produced,
+# each into its own output file and its own plot subdirectory:
+#   nocorr           un-merged 8 pair-pT cells, exponential and polynomial fits as separate series
+#   nocorr_ptmerge   the variant the pp24 CROSS-SECTION applies -- last two pair-pT bins merged,
+#                    one series built by the expo -> polyu -> raw-bin cascade. 8-bin axis ONLY
+#                    (the merge is undefined on the 4-bin comparison binning and THROWS).
 #
 # STAGES
 #   Stage 0  compile the two macros ONCE (a race on a shared _cxx.so is the real hazard)
@@ -19,8 +27,9 @@
 #            It has to be regenerated rather than reused: the `_pt4bin` outputs on disk predate
 #            both the per-sign booking and the no-plateau-correction fit variant
 #            (mc_trigger_efficiency.md R24b), so neither input this closure needs exists in them.
-#   Stage 2  FillMCTrigEffClosure   -> mc_trig_eff_closure_<label><wp><ptbin>.root
-#   Stage 3  plot_mc_trig_eff_closure -> <plot base>/closure/*.png  (2 PNGs per WP x binning)
+#   Stage 2  FillMCTrigEffClosure   -> mc_trig_eff_closure_<label><wp><ptbin><mode>.root
+#   Stage 3  plot_mc_trig_eff_closure -> <plot base>/closure/<mode dir>/*.png
+#            (2 PNGs per WP x binning x mode)
 #
 # WHY ARTEFACT VALIDATION AND NOT EXIT CODES: a ROOT macro that throws still exits 0 (the
 # exception aborts the interpreter after ROOT has decided the batch job "ran"). Every stage is
@@ -34,6 +43,7 @@
 # Env vars:
 #   WPS="tight medium"    working points (registry: Analysis/docs/muon_wp_registry.md)
 #   PTBINS="8 4"          pair-pT binnings; 4 sets MCTRIGEFF_PAIRPT_4BIN
+#   MODES="nocorr nocorr_ptmerge"   eps_dR variants (nocorr_ptmerge is skipped for PTBINS=4)
 #   REGEN_4BIN=0|1        rebuild the 4-bin upstream (Stage 1). Costs ~4 min.
 #   SKIP_FILL=1           reuse the closure ROOT files, re-make the plots only
 # =============================================================================================
@@ -52,6 +62,9 @@ PTBINS="${PTBINS:-8 4}"
 REGEN_4BIN="${REGEN_4BIN:-0}"
 SKIP_FILL="${SKIP_FILL:-0}"
 METHODS="expo polyu_fixedRp"    # MUST match kMethods in FillMCTrigEffClosure.cxx
+# Both methods are needed by BOTH modes: `nocorr` draws them as two series, and the
+# `nocorr_ptmerge` cascade falls back to the polynomial where the exponential is rejected.
+MODES="${MODES:-nocorr nocorr_ptmerge}"
 
 MC_DIR="/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample"
 PLOT_BASE="/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/pp_trigger_efficiency"
@@ -108,6 +121,15 @@ wp_suffix() { [[ "$1" == "tight" ]] && echo ""     || echo "_medium_wp"; }
 # driver has reported real files as missing (see run_dr_correction_fits.sh).
 plot_tag() { local t=""; [[ "$1" == "4" ]] && t="_pt4bin"; [[ "$2" == "tight" ]] || t="${t}_medium"; echo "$t"; }
 ptbin_suf() { [[ "$1" == "4" ]] && echo "_pt4bin" || echo ""; }
+# File token and plot subdirectory of an eps_dR variant. These MIRROR DrCorrPlateauModeTag /
+# DrCorrPlateauModeDir in dr_correction_sample_cfg.h -- the C++ builds the real paths, this shell
+# only validates them, and every time the two constructions drifted the driver reported real files
+# as missing.
+mode_tag() { case "$1" in nocorr) echo "_nocorr";; nocorr_ptmerge) echo "_nocorr_ptmerge";;
+                          *) fail "unknown eps_dR mode '$1'";; esac; }
+mode_dir() { case "$1" in nocorr) echo "no_plateau_correction";;
+                          nocorr_ptmerge) echo "no_plateau_correction_last2ptbins_merged";;
+                          *) fail "unknown eps_dR mode '$1'";; esac; }
 
 # ---- Stage 0: compile ONCE ------------------------------------------------------------------
 # `root -q 'X.cxx+'` with no argument compiles AND RUNS X() with its defaults; `-e '.L X.cxx+'`
@@ -118,11 +140,20 @@ val_compiled "${RDF_DIR}/FillMCTrigEffClosure.cxx" "${RDF_DIR}/FillMCTrigEffClos
              "${LOG_DIR}/compile_fill.log" \
              "${ANALYSIS_DIR}/Utilities/MCTrigEffPairSelection.h" \
              "${ANALYSIS_DIR}/Utilities/SingleMuEffEvaluator.h" \
-             "${PLOT_DIR}/dr_correction_apply.h"
+             "${ANALYSIS_DIR}/Utilities/DrCorrectionCrossxEvaluator.h" \
+             "${ANALYSIS_DIR}/Utilities/MCTrigEffPairPtBinning.h" \
+             "${ANALYSIS_DIR}/RDFBasedHistFilling/CommonEffcyConfig.h" \
+             "${ANALYSIS_DIR}/MuonObjectsParamsAndHelpers/ParamsSet.h" \
+             "${PLOT_DIR}/dr_correction_apply.h" \
+             "${PLOT_DIR}/dr_correction_sample_cfg.h"
 ( cd "${PLOT_DIR}" && root -l -b -q -e '.L plot_mc_trig_eff_closure.cxx+' ) >"${LOG_DIR}/compile_plot.log" 2>&1
 val_compiled "${PLOT_DIR}/plot_mc_trig_eff_closure.cxx" "${PLOT_DIR}/plot_mc_trig_eff_closure_cxx.so" \
              "${LOG_DIR}/compile_plot.log" \
-             "${PLOT_DIR}/dr_correction_apply.h" "${PLOT_DIR}/dr_correction_ratio.h"
+             "${PLOT_DIR}/dr_correction_apply.h" "${PLOT_DIR}/dr_correction_ratio.h" \
+             "${PLOT_DIR}/dr_correction_sample_cfg.h" \
+             "${ANALYSIS_DIR}/Utilities/MCTrigEffPairPtBinning.h" \
+             "${ANALYSIS_DIR}/Utilities/CommonLogYRange.h" \
+             "${ANALYSIS_DIR}/RDFBasedHistFilling/CommonEffcyConfig.h"
 if [[ "${REGEN_4BIN}" == "1" ]]; then
   ( cd "${RDF_DIR}"  && root -l -b -q -e '.L FillMCTrigEffHists.cxx+' ) >"${LOG_DIR}/compile_hists.log" 2>&1
   ( cd "${PLOT_DIR}" && root -l -b -q -e '.L plot_mc_trig_eff.cxx+' )   >"${LOG_DIR}/compile_trigeff.log" 2>&1
@@ -160,58 +191,73 @@ for pb in ${PTBINS}; do
   PBSUF="$(ptbin_suf "$pb")"
   for wp in ${WPS}; do
     WPF="$(wp_flag "$wp")"; WPS_SUF="$(wp_suffix "$wp")"
-    OUT="${MC_DIR}/mc_trig_eff_closure_${LABEL}${WPS_SUF}${PBSUF}.root"
+    for mode in ${MODES}; do
+      # The merge is defined on the canonical 8-bin axis only (dr_correction_pt_groups.h throws
+      # otherwise), so skip it loudly rather than letting the macro die inside ROOT.
+      if [[ "$pb" == "4" && "$mode" == "nocorr_ptmerge" ]]; then
+        log "Stage 2/3 [4-bin/${wp}/${mode}]: SKIPPED -- the merged variant is defined for the "\
+"canonical 8-bin pair-pT axis only"
+        continue
+      fi
+      MTAG="$(mode_tag "$mode")"; MDIR="$(mode_dir "$mode")"
+      OUT="${MC_DIR}/mc_trig_eff_closure_${LABEL}${WPS_SUF}${PBSUF}${MTAG}.root"
 
-    # Every fit file the fill will read must exist BEFORE the fill, or the macro throws inside
-    # ROOT and (exit code 0) looks like success until the artefact check three lines later.
-    for m in ${METHODS}; do
-      f="${MC_DIR}/dr_correction_fits_${LABEL}${WPS_SUF}${PBSUF}_step3_${m}_os_nocorr.root"
-      [[ -s "$f" ]] || fail "no opposite-sign no-plateau-correction fit for ${pb}-bin/${wp}/${m}:
+      # Every fit file the fill will read must exist BEFORE the fill, or the macro throws inside
+      # ROOT and (exit code 0) looks like success until the artefact check three lines later.
+      # BOTH methods, in BOTH modes: `nocorr` draws them as two series and the `nocorr_ptmerge`
+      # cascade needs the polynomial for the cells where the exponential is rejected.
+      for m in ${METHODS}; do
+        f="${MC_DIR}/dr_correction_fits_${LABEL}${WPS_SUF}${PBSUF}_step3_${m}_os${MTAG}.root"
+        [[ -s "$f" ]] || fail "no opposite-sign '${mode}' fit for ${pb}-bin/${wp}/${m}:
     ${f}
-  Produce it with run_dr_correction_fits.sh (SIGNS=os PLATEAU_MODES=nocorr) for the 8-bin
+  Produce it with run_dr_correction_fits.sh (SIGNS=os PLATEAU_MODES=${mode}) for the 8-bin
   binning, or re-run this script with REGEN_4BIN=1 for the 4-bin variant."
-    done
+      done
 
-    if [[ "${SKIP_FILL}" == "1" ]]; then
-      log "Stage 2 [${pb}-bin/${wp}]: SKIPPED (SKIP_FILL=1)"
-    else
-      log "Stage 2 [${pb}-bin/${wp}]: closure fill"
-      rm -f "${OUT}"          # so the check below cannot pass on a stale file
-      ( cd "${RDF_DIR}" && root -l -b -q "FillMCTrigEffClosure.cxx+(\"${SAMPLE}\", ${WPF})" ) \
-        >"${LOG_DIR}/fill_${pb}bin_${wp}.log" 2>&1
-    fi
-    val "${OUT}"
-    # FRESHNESS, not just existence: the closure must be newer than every efficiency input it was
-    # weighted by. Its own provenance TNamed records those files' mtimes for the same reason.
-    # EVERY input that enters the weight, not just the dR fits: the single-muon turn-ons (data
-    # eps^nc and the eps_MC of the diagnostic numerator) are rewritten by the concurrent
-    # trigger-efficiency session too, and they were outside the original gate.
-    FRESH_INPUTS=("${MC_DIR}/mc_trig_eff_hists_${LABEL}${WPS_SUF}${PBSUF}_step3.root"
-                  "${MC_DIR}/muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_mc_trig_full.root"
-                  "${DATA_FIT_DIR}/single_mu_effcy_pT_fit${WPS_SUF}.root"
-                  "${MC_DIR}/single_mu_effcy_pT_fit_mc${WPS_SUF}.root")
-    for m in ${METHODS}; do
-      FRESH_INPUTS+=("${MC_DIR}/dr_correction_fits_${LABEL}${WPS_SUF}${PBSUF}_step3_${m}_os_nocorr.root")
-    done
-    val_fresh "${OUT}" "${FRESH_INPUTS[@]}"
-    # The raw-bin fallback is a TEMPORARY PLACEHOLDER (doc §3.3): surface it every run, so it
-    # cannot quietly become permanent.
-    grep -h "RAW-BIN PLACEHOLDER" "${LOG_DIR}/fill_${pb}bin_${wp}.log" 2>/dev/null | sed 's/^/  /'
+      if [[ "${SKIP_FILL}" == "1" ]]; then
+        log "Stage 2 [${pb}-bin/${wp}/${mode}]: SKIPPED (SKIP_FILL=1)"
+      else
+        log "Stage 2 [${pb}-bin/${wp}/${mode}]: closure fill"
+        rm -f "${OUT}"          # so the check below cannot pass on a stale file
+        ( cd "${RDF_DIR}" && root -l -b -q \
+            "FillMCTrigEffClosure.cxx+(\"${SAMPLE}\", ${WPF}, \"${mode}\")" ) \
+          >"${LOG_DIR}/fill_${pb}bin_${wp}_${mode}.log" 2>&1
+      fi
+      val "${OUT}"
+      # FRESHNESS, not just existence: the closure must be newer than every efficiency input it was
+      # weighted by. Its own provenance TNamed records those files' mtimes for the same reason.
+      # EVERY input that enters the weight, not just the dR fits: the single-muon turn-ons (the
+      # APPLIED eps_MC and the eps^nc_data of the diagnostic numerator) are rewritten by the
+      # concurrent trigger-efficiency session too, and they were outside the original gate.
+      FRESH_INPUTS=("${MC_DIR}/mc_trig_eff_hists_${LABEL}${WPS_SUF}${PBSUF}_step3.root"
+                    "${MC_DIR}/muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_mc_trig_full.root"
+                    "${DATA_FIT_DIR}/single_mu_effcy_pT_fit${WPS_SUF}.root"
+                    "${MC_DIR}/single_mu_effcy_pT_fit_mc${WPS_SUF}.root")
+      for m in ${METHODS}; do
+        FRESH_INPUTS+=("${MC_DIR}/dr_correction_fits_${LABEL}${WPS_SUF}${PBSUF}_step3_${m}_os${MTAG}.root")
+      done
+      val_fresh "${OUT}" "${FRESH_INPUTS[@]}"
+      # The raw-bin fallback is a TEMPORARY PLACEHOLDER (doc §3.3): surface it every run, so it
+      # cannot quietly become permanent.
+      grep -h "RAW-BIN PLACEHOLDER\|on the RAW measured bins" \
+        "${LOG_DIR}/fill_${pb}bin_${wp}_${mode}.log" 2>/dev/null | sed 's/^/  /'
 
-    log "Stage 3 [${pb}-bin/${wp}]: closure plots"
-    PDIR="${PLOT_BASE}/mc_based$(plot_tag "$pb" "$wp")/closure"
-    PNGS=(closure_pair_pt_all_opposite_sign.png closure_pair_pt_single_b_signal_cuts.png)
-    # Removed BEFORE the macro runs, for the same reason ${OUT} is: otherwise a plot pass that
-    # dies inside ROOT (which still exits 0) validates on the previous run's PNGs.
-    for f in "${PNGS[@]}"; do rm -f "${PDIR}/${f}"; done
-    ( cd "${PLOT_DIR}" && root -l -b -q "plot_mc_trig_eff_closure.cxx+(\"${SAMPLE}\", ${WPF})" ) \
-      >"${LOG_DIR}/plot_${pb}bin_${wp}.log" 2>&1
-    for f in "${PNGS[@]}"; do
-      val "${PDIR}/${f}"
-      val_fresh "${PDIR}/${f}" "${OUT}"
+      log "Stage 3 [${pb}-bin/${wp}/${mode}]: closure plots"
+      PDIR="${PLOT_BASE}/mc_based$(plot_tag "$pb" "$wp")/closure/${MDIR}"
+      PNGS=(closure_pair_pt_all_opposite_sign.png closure_pair_pt_single_b_signal_cuts.png)
+      # Removed BEFORE the macro runs, for the same reason ${OUT} is: otherwise a plot pass that
+      # dies inside ROOT (which still exits 0) validates on the previous run's PNGs.
+      for f in "${PNGS[@]}"; do rm -f "${PDIR}/${f}"; done
+      ( cd "${PLOT_DIR}" && root -l -b -q \
+          "plot_mc_trig_eff_closure.cxx+(\"${SAMPLE}\", ${WPF}, \"${mode}\")" ) \
+        >"${LOG_DIR}/plot_${pb}bin_${wp}_${mode}.log" 2>&1
+      for f in "${PNGS[@]}"; do
+        val "${PDIR}/${f}"
+        val_fresh "${PDIR}/${f}" "${OUT}"
+      done
+      log "  2 PNGs in ${PDIR}"
+      grep -h "inclusive closure" "${LOG_DIR}/fill_${pb}bin_${wp}_${mode}.log" 2>/dev/null | sed 's/^/  /'
     done
-    log "  2 PNGs in ${PDIR}"
-    grep -h "inclusive closure" "${LOG_DIR}/fill_${pb}bin_${wp}.log" 2>/dev/null | sed 's/^/  /'
   done
 done
 unset MCTRIGEFF_PAIRPT_4BIN

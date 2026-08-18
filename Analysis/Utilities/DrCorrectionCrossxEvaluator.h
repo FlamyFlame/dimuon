@@ -150,8 +150,11 @@ struct DrCorrectionCrossxEvaluator {
         std::cout << "DrCorrectionCrossxEvaluator: " << N << " evaluations -- "
                   << n_primary << " routed to " << DrCorrCrossxMethod() << " (" << pct(n_primary)
                   << "%), " << n_backup << " to " << DrCorrCrossxBackupMethod() << " ("
-                  << pct(n_backup) << "%), " << n_raw << " to the raw bins (" << pct(n_raw)
-                  << "%), " << n_outside << " OUTSIDE the cell grid (" << pct(n_outside)
+                  << pct(n_backup) << "%), " << n_raw
+                  << " to the RAW-BIN PLACEHOLDER (" << pct(n_raw)
+                  << "%  <-- the cascade's per-PAIR placeholder share; the per-method lines below "
+                     "count each sub-evaluator's OWN calls, which is a different question), "
+                  << n_outside << " OUTSIDE the cell grid (" << pct(n_outside)
                   << "%, eps_dR = 1 -- pairs the correction does not cover, e.g. pair pT < 8 GeV)"
                   << std::endl;
         primary.PrintStats();
@@ -173,6 +176,13 @@ struct DrCorrectionCrossxEvaluator {
     // in mc_trigger_efficiency.md) but it can never again be invisible.
     void ReportDeliveredExtrema(int npt, int neta)
     {
+        // The scan below is a DIAGNOSTIC over cell CENTRES, not over pairs. Its Eval calls would
+        // otherwise land in the sub-evaluators' counters and inflate the very census that says how
+        // much of the delivered map is the TEMPORARY placeholder (measured: the scan added 99
+        // raw-bin + 101 empty-bin evaluations to a real 71, i.e. the quoted placeholder share came
+        // out 2.2x too high). Snapshot, scan, restore.
+        const auto snap_p = primary.SnapshotCounters();
+        const auto snap_b = backup.SnapshotCounters();
         double lo = 1e300, hi = -1e300;
         int lo_y = 0, lo_z = 0, hi_y = 0, hi_z = 0; double hi_dr = 0.;
         const TAxis* ax = primary.h_fit_ok->GetXaxis();
@@ -192,6 +202,8 @@ struct DrCorrectionCrossxEvaluator {
                      "spans [" << lo << " (pair pT bin " << lo_y << ", pair eta bin " << lo_z
                   << "), " << hi << " (pair pT bin " << hi_y << ", pair eta bin " << hi_z
                   << ", dR = " << hi_dr << ")]" << std::endl;
+        primary.RestoreCounters(snap_p);
+        backup .RestoreCounters(snap_b);
         if (hi > 1.0)
             std::cout << "  ** WARNING: a delivered eps_dR ABOVE 1. A 2mu4 close-by correction is "
                          "a LOSS, so eps_dR <= 1 is a physics requirement -- that cell is a fit / "

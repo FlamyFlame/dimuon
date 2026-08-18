@@ -323,6 +323,26 @@ struct DrCorrectionEvaluator {
         return v;
     }
 
+    // The load-time scans (DrCorrectionCrossxEvaluator::ReportDeliveredExtrema) call Eval over a
+    // grid of cell centres to bound the DELIVERED correction. Those calls are diagnostics, not
+    // pairs: left in the counters they inflate exactly the census that says how much of the map is
+    // a placeholder (measured: 99 raw-bin + 101 empty-bin evaluations added to a real 71, i.e. the
+    // placeholder share came out 2.2x too high). A caller that scans therefore snapshots the
+    // counters and restores them afterwards.
+    struct Counters {
+        long long n_eval, n_flat, n_fit, n_raw, n_rawempty, n_none, n_floor, n_cap, n_outside;
+    };
+    Counters SnapshotCounters() const
+    {
+        return {n_eval, n_flat, n_fit, n_raw, n_rawempty, n_none, n_floor, n_cap, n_outside};
+    }
+    void RestoreCounters(const Counters& c)
+    {
+        n_eval = c.n_eval; n_flat = c.n_flat; n_fit = c.n_fit; n_raw = c.n_raw;
+        n_rawempty = c.n_rawempty; n_none = c.n_none; n_floor = c.n_floor; n_cap = c.n_cap;
+        n_outside = c.n_outside;
+    }
+
     void PrintStats() const
     {
         auto pct = [&](long long n) { return n_eval ? 100.0 * n / n_eval : 0.0; };

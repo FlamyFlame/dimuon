@@ -4,14 +4,25 @@
 // The MC-closure figure of the pp24 2mu4 trigger correction
 // (docs/tracking/mc_trig_eff_closure.md §3.4; inputs from FillMCTrigEffClosure.cxx).
 //
-// ONE PNG per sample version. Subplots = pair-eta bins
+// ONE PNG per (sample version, eps_dR variant). Subplots = pair-eta bins
 // (CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap, 9 bins -> 3x3). Each subplot:
 //
-//   upper pad   dsigma/dpT^pair, three series:
+//   upper pad   dsigma/dpT^pair. "nocorr" draws THREE series:
 //                 (1) all pairs, NO trigger requirement
 //                 (2) pairs passing 2mu4, corrected with the exponential dR-correction form
 //                 (3) pairs passing 2mu4, corrected with the polynomial dR-correction form
-//   lower pad   the closure ratio (2)/(1) and (3)/(1); it must be 1 everywhere.
+//               "nocorr_ptmerge" draws TWO: (1), and one corrected series built by the
+//               cross-section's expo -> polyu -> raw-bins cascade (the delivered correction, not
+//               a fit form -- so there is nothing to compare form-by-form).
+//   lower pad   the closure ratio of each corrected series over (1); it must be 1 everywhere.
+//
+// THE APPLIED SINGLE-MUON EFFICIENCY IS eps_MC (user, 2026-08-18; doc D4): the closure is
+// self-contained, so what it tests is the dR correction and its fit alone. The fill stage also
+// books an eps^nc_data numerator, which is the printed diagnostic, NOT drawn here.
+//
+// The two variants are written to SEPARATE subdirectories, named by the repo's own mode helper
+// (DrCorrPlateauModeDir), and each figure's pair-pT axis is that variant's own cell axis -- 7 bins
+// for the merged one, since its top cell spans [72.1, 150) GeV.
 //
 // The ratio carries the CONDITIONAL (binomial-correct) error, because the numerator is a
 // re-weighted SUBSET of the denominator (mc_trigger_efficiency.md R12). It is computed by the
@@ -24,6 +35,7 @@
 //
 // Usage (from Analysis/plotting_codes/trig_effcy/mc_based/):
 //   root -l -b -q 'plot_mc_trig_eff_closure.cxx+("pp_full", true)'
+//   root -l -b -q 'plot_mc_trig_eff_closure.cxx+("pp_full", true, "nocorr_ptmerge")'
 //   MCTRIGEFF_PAIRPT_4BIN=1 root -l -b -q 'plot_mc_trig_eff_closure.cxx+("pp_full", true)'
 // =============================================================================
 
@@ -66,9 +78,16 @@ struct Series {
     Color_t     colour;
     Style_t     marker;
 };
-const std::vector<Series> kCorrected = {
+// "nocorr": the two parametric forms are two independent answers to the same question, so both
+// are drawn. "nocorr_ptmerge": ONE delivered correction (the cross-section's cascade), so one
+// series -- naming it after a fit form would misdescribe the cells routed to the other form or to
+// the raw bins. The keys are the fill stage's tokens (FillMCTrigEffClosure.cxx).
+const std::vector<Series> kCorrectedPerForm = {
     {"expo",          "2mu4, corrected (exponential #varepsilon_{#DeltaR})", kRed + 1,  20},
     {"polyu_fixedRp", "2mu4, corrected (polynomial #varepsilon_{#DeltaR})",  kBlue + 1, 22},
+};
+const std::vector<Series> kCorrectedCascade = {
+    {"crossx_cascade", "2mu4, corrected (#varepsilon_{#DeltaR})", kRed + 1, 20},
 };
 const Color_t kUncorrColour = kBlack;
 const Style_t kUncorrMarker = 21;
@@ -110,23 +129,30 @@ TH1D* Row(TH2D* h, int iz, const std::string& nm)
 }  // namespace
 
 // =============================================================================
-void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_tight_wp = true)
+void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_tight_wp = true,
+                              const std::string& plateau_mode = "nocorr")
 {
     gROOT->SetBatch(kTRUE);
     gStyle->SetOptStat(0);
+
+    // Validates the token and tells the two variants apart; DrCorrPlateauModeDir throws on
+    // anything else, so a typo can never silently land in the wrong directory.
+    const bool cascade = DrCorrModeMergeLastTwoPt(plateau_mode);
+    const std::vector<Series>& kCorrected = cascade ? kCorrectedCascade : kCorrectedPerForm;
 
     const DrCorrSample cfg = GetDrCorrSample(sample, use_tight_wp);
     const std::string wp_suf  = DrCorrWpSuffix(use_tight_wp);
     const std::string wp_text = use_tight_wp ? "Tight muons" : "Medium muons";
 
     const std::string in_path = cfg.mc_dir + "mc_trig_eff_closure_" + cfg.mc_label + wp_suf
-                              + MCTrigEffPairPt::FileSuffix() + ".root";
+                              + MCTrigEffPairPt::FileSuffix()
+                              + DrCorrPlateauModeTag(plateau_mode) + ".root";
     TFile* fin = TFile::Open(in_path.c_str(), "READ");
     if (!fin || fin->IsZombie())
         throw std::runtime_error("plot_mc_trig_eff_closure: cannot open " + in_path
                                  + " -- run FillMCTrigEffClosure first");
 
-    const std::string outdir = cfg.out_base + "closure/";
+    const std::string outdir = cfg.out_base + "closure/" + DrCorrPlateauModeDir(plateau_mode);
     gSystem->mkdir(outdir.c_str(), kTRUE);
 
     static const CommonEffcyConfig ecfg{};
@@ -140,10 +166,12 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
         const std::string pre = "h_closure_" + V.key + "_";
         TH2D* h_den = Get<TH2D>(fin, pre + "den");
         std::map<std::string, TH2D*> h_num, h_A, h_B;
+        // `_epsmc_`: the numerator weighted with the APPLIED eps_MC. The file also holds an
+        // `_epsdata_` numerator -- the diagnostic (doc D4) -- which is deliberately NOT drawn.
         for (const auto& S : kCorrected) {
-            h_num[S.key] = Get<TH2D>(fin, pre + "num_"  + S.key);
-            h_A  [S.key] = Get<TH2D>(fin, pre + "numA_" + S.key);
-            h_B  [S.key] = Get<TH2D>(fin, pre + "numB_" + S.key);
+            h_num[S.key] = Get<TH2D>(fin, pre + "num_epsmc_"  + S.key);
+            h_A  [S.key] = Get<TH2D>(fin, pre + "numA_epsmc_" + S.key);
+            h_B  [S.key] = Get<TH2D>(fin, pre + "numB_epsmc_" + S.key);
         }
         if (h_den->GetNbinsY() != neta)
             throw std::runtime_error("plot_mc_trig_eff_closure: the histograms carry "
@@ -174,8 +202,10 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
                 // Var = A - R*B, NOT A - B. B = sum_fired a^2 * p carries the PREDICTED per-pair
                 // probability p; the variance needs the TRUE one, whose first-order estimate is
                 // R*p (R = this bin's closure ratio). A - B is the special case R = 1 -- i.e. it
-                // assumes the closure already holds, which is the very thing being tested and
-                // which misses by ~27 % here. It also goes NEGATIVE in cells where R > 1, and a
+                // assumes the closure already holds, which is the very thing being tested. In the
+                // applied (eps_MC) configuration R is 0.994 INCLUSIVELY but spans 0.52-1.38 per
+                // cell, which is the scale that matters: dropping the factor misstates sigma by up
+                // to 1.11x (over) and 2.98x (under). It can also drive A - B negative, and a
                 // negative variance silently became a zero error, which both consumers drop.
                 // SetConditionalRatioErrors is the repo's single implementation and carries the
                 // k=n boundary fallback for exactly that case.
@@ -338,22 +368,27 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
         hd->DrawLatex(0.035, 0.918,
                       "w = 1 / [#varepsilon(p_{T,1},q#eta_{1}) "
                       "#varepsilon(p_{T,2},q#eta_{2}) #varepsilon_{#DeltaR}(#DeltaR)],"
-                      "   #varepsilon = single-muon mu4 efficiency from the data tag-and-probe "
-                      "turn-on");
+                      "   #varepsilon = single-muon mu4 efficiency from the MC turn-on");
         hd->DrawLatex(0.035, 0.897,
                       Form("#varepsilon_{#DeltaR}(#DeltaR) = f(#DeltaR)/C for #DeltaR < %g and 1 "
-                           "above;   exponential  f = C + A e^{-(#DeltaR/#lambda)^{p}}", 
+                           "above;   exponential  f = C + A e^{-(#DeltaR/#lambda)^{p}}",
                            DrCorrectionEvaluator::kDrMax));
         hd->DrawLatex(0.035, 0.876,
                       "polynomial  f = C + u^{2}(a_{2} + a_{3}u + a_{4}u^{2}),"
                       "   u #equiv max(0, 1 - #DeltaR/R_{p})");
-        if (n_offscale > 0)
+        // The cascade IS the correction's definition in the merged variant -- which f(dR) a cell
+        // uses is not a code detail but part of what eps_dR means there.
+        if (cascade)
             hd->DrawLatex(0.035, 0.855,
+                          "f = the exponential where its fit is accepted, the polynomial where it "
+                          "is not, and the measured #varepsilon_{#DeltaR} values where neither is");
+        if (n_offscale > 0)
+            hd->DrawLatex(0.035, cascade ? 0.834 : 0.855,
                           Form("%d ratio point(s) outside the lower-pad range", n_offscale));
 
         // One canvas-level legend, laid out as a single row in the reserved strip.
         auto* leg = new TLegend(0.035, 0.943, 0.990, 0.974);
-        leg->SetNColumns(3);
+        leg->SetNColumns(1 + (int)kCorrected.size());
         leg->SetBorderSize(0); leg->SetFillStyle(0);
         leg->SetTextFont(42); leg->SetTextSize(0.0150);
         leg->AddEntry(spec_unc[0], "no trigger requirement", "PE");
@@ -366,7 +401,7 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
         std::cout << "  wrote " << png << std::endl;
 
         // ---- the number the figure is about, in text -----------------------------------------
-        std::cout << "  inclusive closure (" << V.key << "):";
+        std::cout << "  inclusive closure [" << plateau_mode << "] (" << V.key << "):";
         for (const auto& S : kCorrected) {
             double n = 0., d = 0.;
             for (int iz = 1; iz <= neta; ++iz) {
