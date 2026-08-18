@@ -474,3 +474,69 @@ pathology is present: no high-pT blow-up (`pp_trig_eff_highpt_jump.md`) and no c
    background-unsubtracted (plot-review completeness note).
 6. Validate eps_dR below dR = 0.1 before the top three pair-pT points are quoted — they hold
    175 / 60 / 17 raw pairs and rely on the sparsest end of the fit domain.
+
+## Follow-up 2026-08-18 — the MC-data comparison plot set
+
+**Trigger:** the user reported the `plots/mc_data_compr/` PNGs as stale. Diagnosis: only 7 of the
+34 were pipeline-produced; the other 27 were ORPHANS from the pre-`0a9eaba` macro (a pp17 series
+plus a `_ratio_to_pp17` mode, reading the Run-2 `histograms_real_pairs_pp.root`). Nothing in the
+repo could regenerate them, so they had been frozen since Feb 2025 while sitting next to current
+output. The root cause of the narrow produced set was UPSTREAM, not in the plotter:
+`RDFBasedHistFillingData::BuildFilterToVarListMapDataCommon` filled the generic 1D list for the
+`_ss`/`_op` categories with exactly `{Dphi, DR, DR_zoomin}`, so no other 1D data histogram existed.
+
+**Done (user-directed):**
+1. **pp17 removed from the code.** The active macro never had it (`s_nDtTypes = 4` = POWHEG bb/cc,
+   Pythia, pp24). The four quarantined Run-2 macros under `mc_data_compr/others/` that still drew
+   it (normalized by 1/256.8 pb^-1, reading `athena/runMCV2`) are DELETED; nothing referenced them.
+2. **Generic 1D list extended** with `Dphi_zoomin`, `Deta_zoomin`, `minv_zoomin` — each already
+   defined in `var1D_pp.json` with a fixed binning AND already present under the same name on the
+   Pythia side, so no binning is invented. Crossx hist filling rerun; the three new comparison
+   plots are produced.
+3. **Pair-pT cross-section comparison, 8-150 GeV** (user: "use pair pT 8-150 as default"),
+   pair-eta integrated AND in the 9 canonical pair-eta bins (user: "same as
+   pp24_crossx_pair_pt_in_eta_subplots.png but with MC"). New macro
+   `plotting_codes/mc_data_compr/plot_mc_data_pair_pt_in_eta.cxx` ->
+   `pair_pt_mc_data_compr.png` + `pair_pt_in_eta_subplots_mc_data_compr.png`.
+
+**Why the pair-pT plot uses a DIFFERENT Pythia sample from the 1D plots.** The private sample the
+1D comparison reads cannot serve it, for four independent reasons: its pair-pT axis is 30 uniform
+bins 0-30 GeV (2.8 % of its weight already in the pT overflow, and the whole 30-150 region
+absent); 4 of the 9 canonical pair-eta boundaries (+-0.5, +-1.5) fall at BIN CENTRES on its 24-bin
+eta axis, so the panels could not be cut without straddling and double-counting; its selection is
+`from_same_b` with no signal region; and its weight never touches AMI
+(`PythiaAlgCoreT.c:983`, `eventWeight / njobs`). The partner used instead is
+`h2d_sig_accept_num_pt_150_eta` from `pythia_truth_full_sample/pythia_5p36TeV/`, whose axes are
+BIT-IDENTICAL to the data's `h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts` (all 16 pT edges of
+`ParamsSet::pT_bins_150`, all 45 pair-eta edges — the macro re-verifies this at load time and
+THROWS on divergence). One factor puts it on the data footing: **nb -> pb = 1000**, the AMI
+`crossSection` being in nb.
+
+**Result: MC/data = 1.63 integrated** (data 5784.06 pb, MC 9407.74 pb); per pair-eta panel
+1.19, 1.33, 1.87, 1.60, 1.92, 1.59, 1.85, 1.35, 1.18. The deliberate mismatches behind that number
+are listed in the macro header and must be quoted with it: MC is pure truth single-b while the
+data OS carries unsubtracted gluon-splitting and combinatorial background; the MC truth acceptance
+is still on `q*eta < 2.2` while the data moved to the gap windows; the MC is the 4-beam
+4:6:6:9 Pb-isospin-averaged NN cross-section compared against pp data; and the data is
+reco-level-corrected but NOT unfolded.
+
+### OPEN — two normalization/domain issues found on the way, NOT yet decided
+
+**O1. The 1D comparison plots' Pythia normalization is an undocumented empirical scale.**
+`plot_mc_data_compr.cxx` applies `1e3 (NB_TO_PB) x 1e3 (TRUTH_COMBINE_RENORM) = 1e6` to the
+PRIVATE sample, justified in-code as "the stored MC weight is in nb (AMI crossSection is nb)".
+That rationale does not hold for that file — the private weight never touches AMI. Measured, after
+each side is treated as `hist_helper` treats it: private Pythia / data = **1.342** on dR, whereas
+the AMI-normalized FULL sample with the clean x1000 gives **1.597**, consistent with the 1.626 the
+2D cross-section gives independently. So the Pythia curve in the 1D plots sits ~16 % low on a
+tuned number with no derivation. **Recommendation: move the 1D comparison onto the same full
+AMI-normalized sample the pair-pT plot uses.** Not done — it changes every 1D plot's MC curve.
+
+**O2. eps_reco is extrapolated over most of the GENERIC sample.** The generic dataframes have no
+signal-region cut, but eps_reco was measured only inside it. Census from the production run:
+**73.6 % of evaluations clamped in dR**, 52.5 % in pair pT, 21.8 % in pair eta; 12.2 % fall back to
+the dR-integrated map. So in the 1D comparison plots the away-side pairs (dR ~ 3, which dominate
+dR and dphi) are corrected by the dR in [0.6, 1.0) efficiency. The correction is applied as the
+user asked, and every clamp is now counted and printed, but the 1D plots' data points are NOT on
+the same footing as the signal-region cross-section. Options: measure eps_reco over the generic
+domain, restrict the comparison to the signal region, or accept and document.
