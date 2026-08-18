@@ -23,16 +23,41 @@ uncertainty** variations of the selection (e.g. ΔR, minv, pair-pT, q·η bounds
 
 ## 0. The current signal region (reference)
 
-Data (reco), identical in pp and PbPb crossx:
+> **[!] pp AND Pb+Pb NO LONGER SHARE A SIGNAL REGION (since 2026-08-18).** pp24 moved to the
+> detector-gap fiducial cut; Pb+Pb has NOT. **Do not form R_AA across the two until Pb+Pb is
+> brought over.** See `docs/tracking/pp24_crossx_rerun_2026_08.md`.
+
+**pp24 (reco), current:**
 ```
 minv > 1.08 && minv < 2.9 && pair_pt > 8
-  && m1.charge*m1.eta < 2.2 && m2.charge*m2.eta < 2.2 && dr > 0.05
+  && BOTH muons pass ParamsSet::PassSingleMuFiducialGap(eta, charge)
 ```
-Truth analog (Pythia/Powheg): same with `truth_*` variables + `from_same_b`.
+i.e. q*eta = charge*eta must NOT lie in any window of
+`ParamsSet::single_mu_fiducial_gap_cuts` = {(-1.20,-1.05), (-0.10,+0.06), (2.30,2.40)},
+rejected on CLOSED intervals. Combined with the ntuple-level |eta| <= 2.4 the surviving region is
+exactly `[-2.4, 2.30)` minus the two interior windows -- precisely the region the single-muon
+turn-on fits cover (`CommonEffcyConfig::q_eta_proj_ranges_coarse_incl_gap`). That coupling is not
+cosmetic: a muon outside the fitted range has NO efficiency and
+`EvaluateSingleMuonEffcyPtFitted` throws. **Both the predicate and the RDF/JIT string form are
+built in FLOAT** (`ParamsSet::FiducialGapCutExpr`) so the Filter and the float-valued binning
+agree bit for bit -- a double-vs-float mismatch at the 2.30 edge is exactly what broke the first
+2026-08-18 run.
 
-> **Note on q·η:** the cut is one-sided per muon (`q*eta < 2.2`, no explicit
-> lower bound; the floor is the muon |η|≈2.5 detector edge, mapped into the
-> −2.4…2.2 efficiency binning). A change here has the same blast radius below.
+**Pb+Pb crossx and ALL truth analogs (Pythia/Powheg), still the OLD form:**
+```
+minv > 1.08 && minv < 2.9 && pair_pt > 8
+  && m1.charge*m1.eta < 2.2 && m2.charge*m2.eta < 2.2
+```
+Truth analog: same with `truth_*` variables + `from_same_b`.
+
+**No dR cut anywhere** (removed 2026-06-22).
+
+> **Note on q*eta:** the retired cut was one-sided per muon (`q*eta < 2.2`, no explicit lower
+> bound; the floor is the muon |eta| ~ 2.5 detector edge). Replacing it with the fiducial cut
+> RECOVERS q*eta in (2.2, 2.30) -- +1.36 % of pp muons -- and removes the three gap windows, for
+> -3.79 % of pp muons / -7.4 % of pp pairs net. The resulting pp24 cross-section is a **FIDUCIAL**
+> one: the truth-level gap acceptance eps_acc = 0.9133
+> (`docs/tracking/muon_gap_cuts_acceptance.md` F12) is a SEPARATE factor, not applied anywhere yet.
 
 > **Note on the ΔR cut (motivation, for systematics):** `dr > 0.05` was added
 > because the **data-based** dR-dependent trigger-efficiency inverse-weighting
@@ -57,9 +82,11 @@ Truth analog (Pythia/Powheg): same with `truth_*` variables + `from_same_b`.
   plots stay valid. (The *applied* per-pair trigger weight inside crossx is
   recomputed automatically when crossx re-runs — no separate action.)
 - **Reco-eff PLACEHOLDER file** (`run2_reco_eff_placeholder.root`, Run 2 TF1,
-  function of pT & q·η only — **no ΔR dependence**) — UNCHANGED. It is what the
-  nominal crossx currently folds in as `w_reco`. See §4 for why the fullsim
-  reco-eff re-derivation is code-consistency-only today.
+  function of pT & q*eta only -- **no dR dependence**) -- still what **Pb+Pb** folds in as
+  `w_reco`. **NOT pp24 any more:** since 2026-08-18 pp24 applies the genuine fullsim PAIR
+  efficiency `pair_reco_eff_pp24_full.root` (`Utilities/PairRecoEffEvaluator.h`) plus the MC 2mu4
+  dR-correlation correction (`Utilities/DrCorrectionCrossxEvaluator.h`), so for pp §3.C below is
+  RESULT-AFFECTING, not bookkeeping. See §4.
 
 ---
 
@@ -77,6 +104,9 @@ Edit the cut in **all** of these (keep them in sync):
 | `RDFBasedHistFilling/RDFBasedHistFillingPythiaFullsimOverlay.cxx` | :69/:71 | PbPb (overlay) reco-eff |
 | `RDFBasedHistFilling/RDFBasedHistFillingPowhegFullsim.cxx` | :185/:186 | Powheg reco-eff (obsolete demo) |
 | `plotting_codes/single_b_analysis/plot_sig_accept_cutflow_above_60GeV.cxx` | :40 (`kCuts`) | cutflow diagnostic — **must mirror the cut list/order** |
+| `Utilities/MCTrigEffPairSelection.h` | `SingleBSignalCutsReco()` | the **data-like mirror** of the PP `signal_cuts`, consumed by `FillMCTrigEffClosure.cxx`. Kept in lockstep by construction since 2026-08-18 (both read `ParamsSet`), but a signal-region change makes the MC-closure "data-like" variant STALE |
+| `plotting_codes/single_b_analysis/plot_dr_vs_pair_pt_diagnostic.cxx` | :134, :137 | pp24 reco diagnostic -- still on `q*eta < 2.2` |
+| `plot_reco_distr_singleb_vs_op_pp24.C` | :54-55 | pp24 reco diagnostic -- still on `q*eta < 2.2` |
 
 **Legacy / retired (leave, or fix for hygiene only):**
 `SingleBAnalysis/SingleBAnalysisBase.cxx:25`,
@@ -120,8 +150,15 @@ inert until real MC (see §4):**
 
 ## 4. Reco-eff / det-response nuance (read before rerunning §3.C)
 
-The nominal crossx currently applies a **placeholder** reco efficiency (Run 2
-TF1, pT·q·η, ΔR-independent) — **not** the fullsim pair ε_reco. So:
+**pp24 (since 2026-08-18): the fullsim pair eps_reco IS the nominal.** It is
+eps_reco(pair pT, pair eta, dR), built by
+`plotting_codes/reco_effcy/build_pp24_fullsim_pair_reco_eff.C` on the canonical coarse axes and
+read by `Utilities/PairRecoEffEvaluator.h`. For pp, §3.C is therefore RESULT-AFFECTING: a signal
+cut change must rerun the fullsim reco-eff AND rebuild that file, or the correction and the data
+describe different regions.
+
+**Pb+Pb still applies the placeholder** (Run 2 TF1, pT & q*eta, dR-independent) -- **not** the
+fullsim/overlay pair eps_reco. So, for Pb+Pb only:
 
 - Removing/altering the signal cut changes the **set of pairs filled** in data
   crossx and the **truth acceptance** → §3.A and §3.B genuinely change results.
