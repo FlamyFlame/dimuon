@@ -31,6 +31,12 @@ void PlotMCDataComprBaseClass::initialize(){
 }
 
 void PlotMCDataComprBaseClass::set_legend_position(){
+    // With a LOG y axis there IS no corner that is empty for every shape: dR fills the top, dphi
+    // is U-shaped and fills the bottom corners. So on log y the sentinel is deliberately LEFT IN
+    // PLACE and the caller builds a default-constructed TLegend, which ROOT auto-places in a gap
+    // it finds itself (the same fix used for the gap-cut figures, muon_gap_cuts_acceptance.md
+    // F13). A position the caller set explicitly still wins.
+    if (logy) return;
     if (legend_position_same_sign[0] < -999.){
         legend_position_same_sign = {0.5,0.6,0.95,0.89};
     }

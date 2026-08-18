@@ -13,6 +13,7 @@
 #include "../helper_functions.c"
 #include "../DimuonPlottingBaseClass.cxx"
 #include "../../MuonObjectsParamsAndHelpers/ParamsSet.h"
+#include "../../MuonObjectsParamsAndHelpers/PPBaseClass.h"
 
 class PlotMCDataComprBaseClass : public DimuonPlottingBaseClass{
 protected:
@@ -26,7 +27,13 @@ protected:
     };
 
     double pi = acos(-1.0);
-    std::array<float, s_nDtTypes> norm_factor = {1., 1., 1., 1./410.815};
+    // The pp24 2mu4 luminosity is READ from PPBaseClass, the single source of truth the
+    // cross-section itself uses. It was hard-coded here as 1/410.815 pb^-1 and was left behind
+    // when the value was corrected to 400.412 pb^-1 on 2026-06-15 (commit 009f3b8) -- so the
+    // data curve in every one of these plots was 2.6 % low relative to the cross-section it is
+    // meant to be compared against. Retyping a normalization is exactly how that happens.
+    std::array<float, s_nDtTypes> norm_factor =
+        {1., 1., 1., (float)PPBaseClass::GetCrossxFactor(24, "2mu4")};
     std::array<Color_t, s_nDtTypes> colors = {kRed, kRed, kBlue, kGreen+2};
 
     std::string pythia_with_data_resonance_cuts_dir;
@@ -78,6 +85,9 @@ protected:
 public:
     bool pythia_with_data_resonance_cuts = false;
 
+    // Log y for the 1D distributions. It lives HERE, not in the derived plotter, because
+    // set_legend_position() below must know about it: the legend's default corner depends on it.
+    bool logy = false;
     std::array<float,4> legend_position_same_sign = {s_NULL, s_NULL, s_NULL, s_NULL};
     std::array<float,4> legend_position_opp_sign = {s_NULL, s_NULL, s_NULL, s_NULL};
 };

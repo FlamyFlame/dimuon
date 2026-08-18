@@ -73,7 +73,11 @@ void PlotMCDataSingle2DHistogram::Run(){
         for (unsigned int ksign = 0; ksign < s_nSigns; ksign++){
             for (unsigned int jdphi = 0; jdphi < s_nSigns; jdphi++){
                 
-                std::string hist_gapcut_postfix = (is_data[idt])? "_gapcut1" : "";
+                // 2026-08-17: was `_gapcut1`, a name the RDF hist filling has not produced for a
+                // long time (grep: no such suffix anywhere in RDFBasedHistFilling), so this macro
+                // could only have thrown. The plain histograms now carry the analysis fiducial
+                // gap cut in the base selection, which is what this comparison wants.
+                std::string hist_gapcut_postfix = "";
                 std::string hist_name = "h_" + kin + dphis[jdphi] + signs[ksign] + hist_gapcut_postfix;
                 
                 h2d_list[idt][ksign][jdphi] = (TH2D*) f[idt]->Get(hist_name.c_str());
