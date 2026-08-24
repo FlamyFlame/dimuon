@@ -334,6 +334,41 @@ silently (every histogram would still fill), which is the failure mode D3b alrea
 the pair selection. The macro additionally THROWS if the requested mode is `nocorr_ptmerge` while
 `DrCorrCrossxMode()` has moved elsewhere, so the two cannot diverge unnoticed.
 
+### D6: the RATIO pad range is shared by the two figures, the SPECTRUM pad range is not (user, 2026-08-24)
+**Old:** each PNG derived both of its ranges from its own histograms.
+**New:** the ratio-pad range is computed once from the union of BOTH versions and applied to both
+figures; the spectrum-pad range stays per figure (still common to its nine panels via
+`ApplyCommonLogYRange`).
+**Reason:** the closure ratio is the same dimensionless test on two samples, and the reader compares
+the `all_os` and `signal` PNGs against each other, so a ratio-pad y-position must mean the same
+number in both — `ApplyCommonLogYRange`'s property 2 (one scale for all panels) applied BETWEEN the
+two files, not only within each. The spectra are the opposite case: they are cross sections of two
+different samples whose normalizations differ by physics, so one common frame would waste most of
+each. Implementation consequence: the macro is now two-phase — build every histogram of both
+versions, derive the shared range, then draw.
+*(First implemented as "share both pads"; the user corrected it the same day — the upper pad must
+differ between the groups.)*
+
+### D7: the ratio frame CONTAINS EVERY DRAWN POINT — the 2–98 percentile frame is gone (user, 2026-08-24)
+**Old:** the ratio frame was the 2–98 percentile of the points' `y ± σ`, with excursions drawn
+off-scale and only counted in a line of header text.
+**New:** min/max over the drawn central values of both figures, padded 8 %, still forced to contain 1.
+The off-scale counter is KEPT as a guard — it can no longer fire, so a non-zero count means the range
+and the drawing have drifted apart.
+**Reason:** the percentile frame hid exactly one point — the `η^pair ∈ [−2.4,−2.0) × p_T^pair > 72 GeV`
+cell at **C = 0.534** — so its marker was drawn in the spectrum pad and then absent from the ratio pad
+directly below it, which reads as missing data. That cell is R5, the closure's principal FINDING, not
+noise to frame out. This is the rule `CommonLogYRange.h` property 1 already states for the spectra,
+now applied to the ratio. Central values only: in the statistics-poor top pair-p_T cells the
+conditional error reaches ~0.6, and sizing the frame to every error BAR would compress the band for no
+gain — a marker inside the frame with its bar clipped at the edge is the convention the spectra use.
+**Price, stated plainly:** in the `nocorr` variant the shared frame is [0.40, 2.18] (driven by the
+signal region's `C = 2.058` top cell), so the ~1 % bulk band occupies only ~11 % of the pad height
+(reviewer-measured). The merged variant — the one the cross-section applies — is unaffected:
+[0.48, 1.29], bulk ~24 %. If both properties are ever wanted at once, the two options that keep every
+point on the canvas are a **log ratio axis** or a percentile frame **plus** an explicit off-scale
+arrow and value per clipped point; silently reverting to the bare percentile frame is not one.
+
 ### D3: forward low-p_T veto kept in the closure sample (2026-08-13)
 `p_T > 7 || q·η > −2` is part of the sample the ΔR correction was measured on. Dropping it for the
 closure would apply the correction to a population it was not measured on, and would re-admit the
@@ -429,6 +464,32 @@ forward-endcap region where ε_MC is badly parameterized (parent R8/R10/R14).
     4 untagged ROOT files → `<mc dir>/superseded_round1_data_eps/`, 8 round-1 logs →
     `pipelines/logs_closure/superseded_round1_data_eps/`. A glob-based figure sweep now sees 20
     closure PNGs, 8 of them superseded — delete the quarantine directories once the user confirms.
+
+- 2026-08-24 — **ROUND 3 (presentation only; no physics input changed).** User request, in two
+  parts, both in `plot_mc_trig_eff_closure.cxx` only: (a) the two PNGs of a variant must share the
+  ratio-pad y-range (D6 — first done for both pads, corrected by the user the same day: the
+  spectrum pad stays per figure, the two samples' cross sections differ in normalization by
+  physics); (b) the ratio range must contain every point that is drawn, after the merged variant's
+  `η^pair ∈ [−2.4,−2.0)`, top pair-p_T point appeared in the spectrum pad and was missing from the
+  ratio pad below it (D7).
+  * Macro restructured into two phases — build every histogram of BOTH versions, derive the shared
+    ratio range from the union, then draw — because a range shared between the figures cannot be
+    computed inside a per-figure loop. `ApplyCommonLogYRange` is now called once per version,
+    inside phase 1.
+  * The 2–98 percentile ratio frame was replaced by min/max over the drawn central values (D7).
+  * **Re-FILLED, not just re-plotted:** the driver's `val_fresh` gate refused to plot, because the
+    pp24 DATA tag-and-probe Tight turn-on `single_mu_effcy_pT_fit.root` had been rewritten
+    2026-08-24 00:31 (a sibling session), i.e. after the round-2 fills of 2026-08-18. That file
+    feeds ONLY the diagnostic ε^nc numerator, never the applied ε_MC — and the refill confirms it:
+    every applied number is unchanged to 6 digits (all_OS Tight `nocorr`/expo 0.993978,
+    `nocorr_ptmerge` 0.993991; signal 0.988774 / 0.988776; Medium 0.995520 / 0.995514; 4-bin
+    0.992663). All 12 PNGs regenerated 15:38–15:39 on top of fills of 15:30–15:36.
+  * Shared ratio frames delivered: `nocorr` **[0.398, 2.181]** Tight / [0.407, 2.110] Medium;
+    `nocorr_ptmerge` **[0.478, 1.288]** Tight / [0.480, 1.308] Medium; 4-bin [0.476, 1.315] Tight /
+    [0.479, 1.320] Medium. Every one is printed to the plot log as `shared ratio-pad range`.
+  * Off-scale ratio points: **0** in all 12 figures (the header line that reported them no longer
+    appears anywhere).
+
 
 ## Results & Observations
 
@@ -759,6 +820,19 @@ cell its own thread flagged (`pp24_crossx_rerun_2026_08.md`: "one forward ε_ΔR
    `MCTrigEffPairSel::Step3PairSelection()`.
 
 ## Latest Stage
+
+**2026-08-24 — ROUND 3 DONE (figures only).** Two user-requested range changes in
+`plot_mc_trig_eff_closure.cxx`, no physics input and no applied number changed:
+1. **The ratio pad's y-range is now SHARED between the `all_os` and `signal` PNGs of a variant**
+   (D6). The spectrum pad is deliberately NOT shared — those are cross sections of two different
+   samples — and keeps one range per figure across its nine panels.
+2. **The ratio frame now contains EVERY drawn point** (D7), replacing the 2–98 percentile frame
+   that had pushed the merged variant's `η^pair ∈ [−2.4,−2.0) × p_T^pair > 72 GeV` point
+   (C = 0.534, R5) off-scale while its marker was drawn in the spectrum pad above.
+
+All 12 PNGs regenerated. The closure fills were re-run first (the driver's freshness gate caught
+the sibling session's 2026-08-24 rewrite of the Tight DATA turn-on, which feeds only the diagnostic
+numerator): **every applied value is unchanged to 6 digits** — see the round-3 Progress Log entry.
 
 **2026-08-18 — ROUND 2 DONE.** Applied ε = **ε_MC** (self-contained closure, D4); rerun on the
 current inputs; **two ε_ΔR variants, one subdirectory each**. `/review-analysis-code` PASS after 3

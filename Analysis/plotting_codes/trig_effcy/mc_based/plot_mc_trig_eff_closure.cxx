@@ -24,6 +24,16 @@
 // (DrCorrPlateauModeDir), and each figure's pair-pT axis is that variant's own cell axis -- 7 bins
 // for the merged one, since its top cell spans [72.1, 150) GeV.
 //
+// SCALES (user, 2026-08-24). The RATIO pad range is SHARED BY THE TWO PNGs of a variant -- the
+// closure is the same dimensionless test on two samples, so a y-position must mean the same
+// number in both files. The SPECTRUM pad is NOT shared: those are cross sections of two different
+// samples and differ in normalization by physics, so each PNG keeps its own range (still one
+// range for all nine panels within it, ApplyCommonLogYRange property 2).
+// The ratio frame CONTAINS EVERY DRAWN POINT (central values; error bars may clip), the rule
+// ApplyCommonLogYRange already states for the spectra: a cell drawn in the upper pad and missing
+// from the ratio pad below it reads as absent data, and the cells that sit far from 1 are this
+// figure's findings.
+//
 // The ratio carries the CONDITIONAL (binomial-correct) error, because the numerator is a
 // re-weighted SUBSET of the denominator (mc_trigger_efficiency.md R12). It is computed by the
 // repo's ONE implementation, SetConditionalRatioErrors in dr_correction_ratio.h -- Var = A - R*B
@@ -162,38 +172,63 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
     const int ncol = static_cast<int>(std::ceil(std::sqrt((double)neta)));
     const int nrow = static_cast<int>(std::ceil((double)neta / ncol));
 
-    for (const auto& V : kVersions) {
+
+    // ==========================================================================================
+    // THE RATIO RANGE IS SHARED BY THE TWO FIGURES; THE SPECTRUM RANGE IS NOT (user, 2026-08-24).
+    //
+    // The closure ratio is the same dimensionless test on two samples (all opposite-sign pairs /
+    // the single-b signal region), and the reader compares the two files against each other, so a
+    // ratio-pad y-position must mean the same number in both -- the failure ApplyCommonLogYRange's
+    // property 2 removes WITHIN a figure, reappearing BETWEEN them. The spectra are the opposite
+    // case: they are cross sections of two different samples whose normalizations differ by
+    // physics, so forcing one range on both would waste most of each frame; each PNG keeps its own
+    // (still common to its nine panels).
+    // Hence every histogram of both versions is built FIRST -- the shared ratio range needs them
+    // all -- and only then is anything drawn.
+    // ==========================================================================================
+    struct VersionData {
+        TH2D*                                     h_den = nullptr;
+        std::map<std::string, TH2D*>              h_num;
+        std::vector<TH1D*>                        spec_unc;   // [pair-eta bin]
+        std::vector<std::map<std::string, TH1D*>> spec_cor, ratio;
+    };
+    std::vector<VersionData> vdata(kVersions.size());
+    std::vector<double> ratio_pts;    // every ratio point drawn in EITHER figure
+
+    // ---------------- build every panel's histograms first (the shared ranges need them all) ---
+    for (size_t iv = 0; iv < kVersions.size(); ++iv) {
+        const VersionCfg& V = kVersions[iv];
+        VersionData&      D = vdata[iv];
+
         const std::string pre = "h_closure_" + V.key + "_";
-        TH2D* h_den = Get<TH2D>(fin, pre + "den");
-        std::map<std::string, TH2D*> h_num, h_A, h_B;
+        D.h_den = Get<TH2D>(fin, pre + "den");
+        std::map<std::string, TH2D*> h_A, h_B;
         // `_epsmc_`: the numerator weighted with the APPLIED eps_MC. The file also holds an
         // `_epsdata_` numerator -- the diagnostic (doc D4) -- which is deliberately NOT drawn.
         for (const auto& S : kCorrected) {
-            h_num[S.key] = Get<TH2D>(fin, pre + "num_epsmc_"  + S.key);
-            h_A  [S.key] = Get<TH2D>(fin, pre + "numA_epsmc_" + S.key);
-            h_B  [S.key] = Get<TH2D>(fin, pre + "numB_epsmc_" + S.key);
+            D.h_num[S.key] = Get<TH2D>(fin, pre + "num_epsmc_"  + S.key);
+            h_A[S.key]     = Get<TH2D>(fin, pre + "numA_epsmc_" + S.key);
+            h_B[S.key]     = Get<TH2D>(fin, pre + "numB_epsmc_" + S.key);
         }
-        if (h_den->GetNbinsY() != neta)
+        if (D.h_den->GetNbinsY() != neta)
             throw std::runtime_error("plot_mc_trig_eff_closure: the histograms carry "
-                + std::to_string(h_den->GetNbinsY()) + " pair-eta bins but CommonEffcyConfig has "
+                + std::to_string(D.h_den->GetNbinsY()) + " pair-eta bins but CommonEffcyConfig has "
                 + std::to_string(neta) + " -- stale input?");
 
-        // ---------------- build every panel's histograms first (shared ranges need them all) ----
-        std::vector<TH1D*> spec_unc(neta, nullptr);
-        std::vector<std::map<std::string, TH1D*>> spec_cor(neta), ratio(neta);
-        std::vector<TH1*> for_range;
-        double rmin = 1.0, rmax = 1.0;   // seeded at the closure reference
-        int n_offscale = 0;
+        D.spec_unc.assign(neta, nullptr);
+        D.spec_cor.resize(neta);
+        D.ratio.resize(neta);
+        std::vector<TH1*> for_range;   // every spectrum of THIS figure -- its own range (above)
 
         for (int iz = 1; iz <= neta; ++iz) {
-            TH1D* den = Row(h_den, iz, Form("%s_den_eta%d", V.key.c_str(), iz));
+            TH1D* den = Row(D.h_den, iz, Form("%s_den_eta%d", V.key.c_str(), iz));
             for (const auto& S : kCorrected) {
-                TH1D* num = Row(h_num[S.key], iz, Form("%s_num_%s_eta%d", V.key.c_str(),
-                                                       S.key.c_str(), iz));
-                TH1D* A   = Row(h_A  [S.key], iz, Form("%s_A_%s_eta%d", V.key.c_str(),
-                                                       S.key.c_str(), iz));
-                TH1D* B   = Row(h_B  [S.key], iz, Form("%s_B_%s_eta%d", V.key.c_str(),
-                                                       S.key.c_str(), iz));
+                TH1D* num = Row(D.h_num[S.key], iz, Form("%s_num_%s_eta%d", V.key.c_str(),
+                                                         S.key.c_str(), iz));
+                TH1D* A   = Row(h_A[S.key], iz, Form("%s_A_%s_eta%d", V.key.c_str(),
+                                                     S.key.c_str(), iz));
+                TH1D* B   = Row(h_B[S.key], iz, Form("%s_B_%s_eta%d", V.key.c_str(),
+                                                     S.key.c_str(), iz));
                 // CLOSURE RATIO with the conditional (binomial-correct) error. Built BEFORE the
                 // width scaling: dividing two spectra scaled by the same widths is identical, but
                 // A and B are sums of squared weights and do NOT scale the same way, so the error
@@ -215,67 +250,65 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
                 r->Divide(den);
                 SetConditionalRatioErrors(r, den, A, B);
                 delete A; delete B;
-                ratio[iz - 1][S.key] = r;
+                D.ratio[iz - 1][S.key] = r;
+                for (int b = 1; b <= r->GetNbinsX(); ++b)
+                    if (r->GetBinContent(b) > 0.) ratio_pts.push_back(r->GetBinContent(b));
                 num->Scale(1.0, "width");
-                spec_cor[iz - 1][S.key] = num;
+                D.spec_cor[iz - 1][S.key] = num;
                 for_range.push_back(num);
             }
             den->Scale(1.0, "width");
-            spec_unc[iz - 1] = den;
+            D.spec_unc[iz - 1] = den;
             for_range.push_back(den);
         }
+        ApplyCommonLogYRange(for_range);   // per FIGURE, not across the two (see the block above)
+    }
 
-        // Ratio-pad range: ONE range for all nine panels, derived from the data by PERCENTILE
-        // rather than by min/max.
-        //
-        // Why not min/max: a single statistics-poor high-pair-pT cell that is nonetheless
-        // "informative" by any error-based gate (measured: 3.007 +- 0.621, 21 % relative) stretched
-        // the signal-region figure to [0.13, 3.89] and squeezed the band the figure exists to show
-        // -- the ~1.27 offset and the barrel/endcap step -- into ~16 % of the pad height. Gating on
-        // the error cannot remove such a point, because its error is genuinely small.
-        //
-        // Percentiles keep the frame on the bulk while the excursions remain VISIBLE (drawn, just
-        // off the top or bottom of the frame) and, crucially, COUNTED: the count is printed on the
-        // canvas below, so nothing is silently dropped.
-        {
-            std::vector<double> vals;
-            for (int iz = 0; iz < neta; ++iz)
-                for (const auto& S : kCorrected) {
-                    TH1D* r = ratio[iz][S.key];
-                    for (int b = 1; b <= r->GetNbinsX(); ++b) {
-                        const double y = r->GetBinContent(b), e = r->GetBinError(b);
-                        if (y <= 0. || e <= 0.) continue;
-                        if (e > 0.5 * y) continue;   // no information at all
-                        vals.push_back(y - e);
-                        vals.push_back(y + e);
-                    }
-                }
-            if (!vals.empty()) {
-                std::sort(vals.begin(), vals.end());
-                const size_t n = vals.size();
-                rmin = vals[(size_t)(0.02 * (n - 1))];
-                rmax = vals[(size_t)(0.98 * (n - 1))];
-            }
-        }
-        // The range always CONTAINS 1: perfect closure is the reference the reader measures the
-        // result against, so an axis that excludes it would hide how far away the result is. A
-        // minimum width keeps a panel from being blown up by rounding when everything coincides.
-        rmin = std::min(rmin, 1.0); rmax = std::max(rmax, 1.0);
-        if (rmax - rmin < 0.10) { const double m = 0.5 * (rmin + rmax); rmin = m - 0.05; rmax = m + 0.05; }
-        const double pad = 0.08 * (rmax - rmin);
-        rmin -= pad; rmax += pad;
+    // ---------------- the shared ratio range --------------------------------------------------
+    // RATIO PAD: EVERY DRAWN POINT IS INSIDE THE FRAME (user, 2026-08-24) -- the same rule
+    // ApplyCommonLogYRange states for the spectra (property 1), now applied to the ratio.
+    //
+    // It replaces a 2-98 percentile frame, which kept the bulk band wide but pushed the extreme
+    // cells off-scale: the merged variant's `eta^pair in [-2.4,-2.0) x pT^pair > 72 GeV` cell
+    // closes at 0.534, so its marker was drawn in the spectrum pad and then vanished from the
+    // ratio pad below it -- a panel showing a point in one pad and not the other reads as missing
+    // data, and that cell is the closure's principal FINDING (doc R5), not noise to be framed out.
+    // The price is a wider frame wherever one cell sits far from 1; that is the honest rendering.
+    //
+    // Central values only: in the statistics-poor top pair-pT cells the conditional error reaches
+    // ~0.6, and sizing the frame to contain every error BAR would compress the band the figure is
+    // about for no gain -- a marker inside the frame with its bar clipped at the edge is the same
+    // convention the spectra use.
+    double rmin = 1.0, rmax = 1.0;   // seeded at the closure reference
+    if (!ratio_pts.empty()) {
+        rmin = *std::min_element(ratio_pts.begin(), ratio_pts.end());
+        rmax = *std::max_element(ratio_pts.begin(), ratio_pts.end());
+    }
+    // The range always CONTAINS 1: perfect closure is the reference the reader measures the
+    // result against, so an axis that excludes it would hide how far away the result is. A
+    // minimum width keeps a panel from being blown up by rounding when everything coincides.
+    rmin = std::min(rmin, 1.0); rmax = std::max(rmax, 1.0);
+    if (rmax - rmin < 0.10) { const double m = 0.5 * (rmin + rmax); rmin = m - 0.05; rmax = m + 0.05; }
+    const double rpad = 0.08 * (rmax - rmin);
+    rmin -= rpad; rmax += rpad;
+
+    // ---------------- draw --------------------------------------------------------------------
+    for (size_t iv = 0; iv < kVersions.size(); ++iv) {
+        const VersionCfg& V = kVersions[iv];
+        VersionData&      D = vdata[iv];
+
+        // Guard, not a range policy: with the rule above nothing can fall outside the frame, so a
+        // non-zero count here means the range and the drawing have drifted apart.
+        int n_offscale = 0;
         for (int iz = 0; iz < neta; ++iz)
             for (const auto& S : kCorrected) {
-                TH1D* r = ratio[iz][S.key];
+                TH1D* r = D.ratio[iz][S.key];
                 for (int b = 1; b <= r->GetNbinsX(); ++b) {
                     const double y = r->GetBinContent(b);
                     if (y > 0. && (y < rmin || y > rmax)) ++n_offscale;
                 }
             }
 
-        ApplyCommonLogYRange(for_range);
-
-        // ---------------- draw ----------------------------------------------------------------
         // Header strip reserved at the TOP of the canvas: with nine dense two-pad panels no
         // quadrant is free, so the legend and the defining equations get their own space rather
         // than being laid over data (.claude/conventions/atlas-plotting.md, legend placement).
@@ -309,7 +342,7 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
             // ---- spectra ----
             pu->cd();
             pu->SetLogy(1);
-            TH1D* du = spec_unc[iz - 1];
+            TH1D* du = D.spec_unc[iz - 1];
             du->SetTitle("");
             du->GetYaxis()->SetTitle("d#sigma/dp_{T}^{pair} [nb/GeV]");
             du->GetYaxis()->SetTitleSize(0.070); du->GetYaxis()->SetLabelSize(0.060);
@@ -319,7 +352,7 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
             du->SetMarkerStyle(kUncorrMarker); du->SetMarkerSize(1.1);
             du->Draw("PE");
             for (const auto& S : kCorrected) {
-                TH1D* h = spec_cor[iz - 1][S.key];
+                TH1D* h = D.spec_cor[iz - 1][S.key];
                 h->SetMarkerColor(S.colour); h->SetLineColor(S.colour);
                 h->SetMarkerStyle(S.marker); h->SetMarkerSize(1.1);
                 h->Draw("PE SAME");
@@ -332,7 +365,7 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
             pl->cd();
             bool first = true;
             for (const auto& S : kCorrected) {
-                TH1D* r = ratio[iz - 1][S.key];
+                TH1D* r = D.ratio[iz - 1][S.key];
                 r->SetTitle("");
                 r->SetMarkerColor(S.colour); r->SetLineColor(S.colour);
                 r->SetMarkerStyle(S.marker); r->SetMarkerSize(1.1);
@@ -351,8 +384,8 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
                 first = false;
             }
             // Perfect closure, the reference the whole figure is measured against.
-            auto* ln = new TLine(spec_unc[iz - 1]->GetXaxis()->GetXmin(), 1.0,
-                                 spec_unc[iz - 1]->GetXaxis()->GetXmax(), 1.0);
+            auto* ln = new TLine(D.spec_unc[iz - 1]->GetXaxis()->GetXmin(), 1.0,
+                                 D.spec_unc[iz - 1]->GetXaxis()->GetXmax(), 1.0);
             ln->SetLineStyle(2); ln->SetLineColor(kGray + 2);
             ln->Draw();
         }
@@ -391,9 +424,9 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
         leg->SetNColumns(1 + (int)kCorrected.size());
         leg->SetBorderSize(0); leg->SetFillStyle(0);
         leg->SetTextFont(42); leg->SetTextSize(0.0150);
-        leg->AddEntry(spec_unc[0], "no trigger requirement", "PE");
+        leg->AddEntry(D.spec_unc[0], "no trigger requirement", "PE");
         for (const auto& S : kCorrected)
-            leg->AddEntry(spec_cor[0][S.key], S.legend.c_str(), "PE");
+            leg->AddEntry(D.spec_cor[0][S.key], S.legend.c_str(), "PE");
         leg->Draw();
 
         const std::string png = outdir + V.file + ".png";
@@ -405,13 +438,14 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
         for (const auto& S : kCorrected) {
             double n = 0., d = 0.;
             for (int iz = 1; iz <= neta; ++iz) {
-                n += h_num[S.key]->Integral(1, h_num[S.key]->GetNbinsX(), iz, iz);
-                d += h_den->Integral(1, h_den->GetNbinsX(), iz, iz);
+                n += D.h_num[S.key]->Integral(1, D.h_num[S.key]->GetNbinsX(), iz, iz);
+                d += D.h_den->Integral(1, D.h_den->GetNbinsX(), iz, iz);
             }
             std::cout << "  " << S.key << " = " << (d > 0 ? n / d : -1.);
         }
         std::cout << std::endl;
     }
+    std::cout << "  shared ratio-pad range [" << rmin << ", " << rmax << "]" << std::endl;
 
     fin->Close();
     std::cout << "done." << std::endl;
