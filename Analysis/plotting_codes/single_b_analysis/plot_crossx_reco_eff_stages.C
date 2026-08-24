@@ -4,9 +4,11 @@
 // Before/after efficiency-correction comparison for the single-b crossx, showing
 // the impact of the reconstruction-efficiency PLACEHOLDER. Per pair-eta bin, the
 // pair-pT differential cross-section is drawn as THREE lines:
-//   - Raw (no correction)                         = *_corr_raw
-//   - Reco-eff corrected (placeholder)            = *_corr_unfolded_reco
-//   - Reco + trigger-eff corrected                = *_corr_unfolded_reco_trig
+//   - Uncorrected                                 = *_corr_raw
+//   - Reconstruction-efficiency corrected         = *_corr_unfolded_reco
+//   - Reconstruction- and trigger-efficiency corrected = *_corr_unfolded_reco_trig
+// The reconstruction efficiency is the measured pp24-fullsim 3D PAIR efficiency for pp and the
+// Run-2 single-muon PLACEHOLDER for PbPb -- the legend no longer calls it a placeholder in both.
 // (the "unfolded" stage is an identity placeholder, so raw == unfolded for now.)
 //
 // Uses the correction-stage histograms added by FillHistogramsCrossx (PP+PbPb).
@@ -27,6 +29,10 @@
 #include "TH1D.h"
 #include "TH2D.h"
 #include "TKey.h"
+#include <cmath>
+#include "TLatex.h"
+#include "TLine.h"
+#include "TPad.h"
 #include "TLegend.h"
 #include "TStyle.h"
 #include "TSystem.h"
@@ -46,11 +52,15 @@ void plot_crossx_reco_eff_stages() {
     const auto& eta_bins = cfg.pair_eta_proj_ranges_coarse_incl_gap;
 
     // The three correction stages to overlay (suffix, legend, color, marker).
-    struct Stage { std::string suffix, label; int color, marker; };
+    // The reconstruction-efficiency label is SAMPLE-DEPENDENT. pp applies the measured
+    // pp24-fullsim 3D pair efficiency; Pb+Pb still applies the Run 2 single-muon PLACEHOLDER, and
+    // a reader of the Pb+Pb figure must be able to see that from the figure itself.
+    struct Stage { std::string suffix, label, label_pbpb; int color, marker; };
     const std::vector<Stage> stages = {
-        {"_corr_raw",               "Raw (no correction)",          kBlack,   24},
-        {"_corr_unfolded_reco",     "Reco eff corr (placeholder)",  kBlue+1,  25},
-        {"_corr_unfolded_reco_trig","Reco #times trig eff corr",    kRed+1,   20},
+        {"_corr_raw",               "Uncorrected", "Uncorrected", kBlack, 24},
+        {"_corr_unfolded_reco",     "+ reconstruction efficiency",
+                                    "+ reconstruction efficiency (Run 2 placeholder)", kBlue+1, 25},
+        {"_corr_unfolded_reco_trig","+ trigger efficiency", "+ trigger efficiency", kRed+1, 20},
     };
 
     struct SampleSpec {
@@ -141,11 +151,14 @@ void plot_crossx_reco_eff_stages() {
         }
         if (!ok) { for (auto& [yr,f] : files){f->Close();delete f;} continue; }
 
-        int nrow = 2, ncol = 5;
-        if ((int)eta_bins.size() <= 6) { nrow = 2; ncol = 3; }
-        if ((int)eta_bins.size() <= 4) { nrow = 2; ncol = 2; }
+        // nrows >= ncols, nrows ~ sqrt(N)  (subplot-layout convention). Nine pair-eta bins are
+        // 3x3, never 5x2 -- the sibling trigger-corrections figure uses the same grid, and two
+        // figures of the same spectrum must not be laid out differently.
+        const int n_eta = (int)eta_bins.size();
+        const int ncol = (n_eta <= 3) ? n_eta : (int)std::ceil(std::sqrt((double)n_eta));
+        const int nrow = (int)std::ceil((double)n_eta / ncol);
 
-        TCanvas c("c_reco_stages", (spec.label + " reco-eff stages").c_str(), 400*ncol, 350*nrow);
+        TCanvas c("c_reco_stages", (spec.label + " reco-eff stages").c_str(), 430*ncol, 380*nrow);
         c.Divide(ncol, nrow);
         std::vector<TH1D*> trash;
         std::vector<std::vector<TH1D*>> panels(eta_bins.size());
@@ -173,7 +186,7 @@ void plot_crossx_reco_eff_stages() {
             hp[0]->GetYaxis()->SetTitle(spec.y_title.c_str());
             hp[0]->GetXaxis()->SetTitleSize(0.06); hp[0]->GetYaxis()->SetTitleSize(0.06);
             hp[0]->GetXaxis()->SetLabelSize(0.05); hp[0]->GetYaxis()->SetLabelSize(0.05);
-            hp[0]->GetYaxis()->SetTitleOffset(1.45);
+            hp[0]->GetYaxis()->SetTitleOffset(1.55);
             hp[0]->SetTitle("");
             panels[ieta] = hp;
         }
@@ -189,30 +202,109 @@ void plot_crossx_reco_eff_stages() {
             ApplyCommonLogYRange(flat, 3.0);  // a little headroom above the highest point
         }
 
-        // PASS 2 — draw.
+        // PASS 2 — draw. Each panel is split into a spectrum pad and a ratio pad, and the
+        // legend gets its OWN strip at the top of the canvas rather than a box inside a frame:
+        // widening it to fit the longest entry only traded clipping for an overlap with the
+        // highest-pair-pT points (atlas-plotting.md -- reserve space, do not overlay).
+        const double head = 0.085;
+        TPad* head_pad = new TPad("head_pad", "", 0.0, 1.0 - head, 1.0, 1.0);
+        TPad* body_pad = new TPad("body_pad", "", 0.0, 0.0, 1.0, 1.0 - head);
+        head_pad->SetFillStyle(0); body_pad->SetFillStyle(0);
+        head_pad->Draw(); body_pad->Draw();
+
+        head_pad->cd();
+        {
+            TLegend* leg = new TLegend(0.05, 0.05, 0.98, 0.95);
+            leg->SetNColumns((int)stages.size());
+            leg->SetBorderSize(0); leg->SetFillStyle(0);
+            // The Pb+Pb reconstruction entry carries "(Run 2 placeholder)" and is much longer
+            // than the pp one; at a single shared text size its closing bracket ran into the
+            // next column's marker.
+            leg->SetTextSize(spec.is_pp ? 0.32 : 0.24);
+            for (size_t s = 0; s < stages.size(); ++s)
+                leg->AddEntry(panels[0][s],
+                              (spec.is_pp ? stages[s].label : stages[s].label_pbpb).c_str(), "lpe");
+            leg->Draw();
+        }
+
+        // ONE ratio range for all nine panels. With a per-panel range the same visual height
+        // means a different correction from one panel to the next, which is exactly the
+        // comparison the pad exists to make. Built first, over every panel's ratios.
+        std::vector<std::vector<TH1D*>> all_ratios(eta_bins.size());
+        double rmin_all = 1.0, rmax_all = 1.0;
+        for (size_t ieta = 0; ieta < eta_bins.size(); ++ieta) {
+            auto& hp = panels[ieta];
+            if (hp.empty() || !hp[0]) continue;
+            for (size_t st = 1; st < stages.size(); ++st) {
+                TH1D* r = (TH1D*)hp[st]->Clone(Form("r%zu_%zu", st, ieta));
+                r->SetDirectory(nullptr);
+                r->Divide(hp[0]);
+                trash.push_back(r);
+                all_ratios[ieta].push_back(r);
+                for (int b = 1; b <= r->GetNbinsX(); ++b) {
+                    if (hp[0]->GetBinContent(b) <= 0. || r->GetBinContent(b) <= 0.) continue;
+                    rmin_all = std::min(rmin_all, r->GetBinContent(b));
+                    rmax_all = std::max(rmax_all, r->GetBinContent(b));
+                }
+            }
+        }
+        std::cout << "[INFO] shared ratio range for " << spec.label << ": ["
+                  << 0.9 * rmin_all << ", " << 1.1 * rmax_all << "]" << std::endl;
+
+        body_pad->cd();
+        body_pad->Divide(ncol, nrow);
         for (size_t ieta = 0; ieta < eta_bins.size(); ++ieta) {
             auto& hp = panels[ieta];
             if (hp.empty() || !hp[0]) continue;
 
-            c.cd((int)ieta + 1);
-            gPad->SetLogx(); gPad->SetLogy();
-            gPad->SetLeftMargin(0.16); gPad->SetBottomMargin(0.13);
-
+            body_pad->cd((int)ieta + 1);
             const auto& eb = eta_bins[ieta];
+
+            // Upper pad: the three spectra. Lower pad: corrected / uncorrected -- the size of
+            // the correction is the point of the figure and cannot be read off a 7-decade log
+            // axis by eye (R3).
+            TPad* up = new TPad(Form("up%zu", ieta), "", 0, 0.38, 1, 1);
+            TPad* lo = new TPad(Form("lo%zu", ieta), "", 0, 0.0,  1, 0.38);
+            up->SetLogx(); up->SetLogy();
+            up->SetLeftMargin(0.19); up->SetBottomMargin(0.02); up->SetTopMargin(0.04);
+            lo->SetLogx(); lo->SetGridy();
+            lo->SetLeftMargin(0.19); lo->SetTopMargin(0.02); lo->SetBottomMargin(0.30);
+            up->Draw(); lo->Draw();
+
+            up->cd();
+            hp[0]->GetXaxis()->SetLabelSize(0);
+            hp[0]->GetXaxis()->SetTitleSize(0);
+            hp[0]->GetYaxis()->SetTitleSize(0.075);
+            hp[0]->GetYaxis()->SetLabelSize(0.065);
+            hp[0]->GetYaxis()->SetTitleOffset(1.20);
             hp[0]->Draw("E1");
             for (size_t s = 1; s < stages.size(); ++s) hp[s]->Draw("E1 same");
+            TLatex t; t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.075);
+            t.DrawLatex(0.24, 0.10, Form("#eta^{pair} #in [%.1f, %.1f]", eb.first, eb.second));
 
-            // Lower-LEFT: this legend carries marker samples, so it must not sit over the
-            // curves. On a steeply falling spectrum the low-pT (left) end is at the TOP of
-            // the frame and the low values are at high pT (right), so the lower-left corner
-            // is the one region guaranteed empty in every panel. (At the old per-panel
-            // ymax*1e-5 floor the top box was nearly clear; with the common ~7-decade frame
-            // every point moves up in NDC and the top box lands on the data.)
-            TLegend* leg = new TLegend(0.19, 0.14, 0.66, 0.40);
-            leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.040);
-            leg->AddEntry((TObject*)0, Form("#eta^{pair} #in [%.1f, %.1f]", eb.first, eb.second), "");
-            for (size_t s = 0; s < stages.size(); ++s) leg->AddEntry(hp[s], stages[s].label.c_str(), "lpe");
-            leg->Draw();
+            lo->cd();
+            std::vector<TH1D*>& ratios = all_ratios[ieta];
+            for (size_t i = 0; i < ratios.size(); ++i) {
+                TH1D* r = ratios[i];
+                r->SetTitle("");
+                r->GetYaxis()->SetTitle("corrected / uncorrected");
+                r->GetYaxis()->SetRangeUser(0.9 * rmin_all, 1.1 * rmax_all);
+                r->GetYaxis()->SetNdivisions(505);
+                r->GetXaxis()->SetTitle("p_{T}^{pair} [GeV]");
+                r->GetXaxis()->SetTitleSize(0.120); r->GetXaxis()->SetLabelSize(0.105);
+                r->GetYaxis()->SetTitleSize(0.090); r->GetYaxis()->SetLabelSize(0.100);
+                r->GetYaxis()->SetTitleOffset(0.95);
+                r->GetXaxis()->SetTitleOffset(1.00);
+                r->Draw(i == 0 ? "E1" : "E1 same");
+            }
+            if (!ratios.empty()) {
+                // The "no correction" reference. R3: a ratio pad needs a line at 1.
+                TLine* one = new TLine(ratios[0]->GetXaxis()->GetXmin(), 1.0,
+                                       ratios[0]->GetXaxis()->GetXmax(), 1.0);
+                one->SetLineStyle(2);
+                one->SetLineColor(kGray + 2);
+                one->Draw("SAME");
+            }
         }
 
         std::string safe = spec.label; std::replace(safe.begin(), safe.end(), ' ', '_');

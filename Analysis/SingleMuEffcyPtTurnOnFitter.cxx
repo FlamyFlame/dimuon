@@ -3,6 +3,9 @@
 #include "TF1.h"
 #include "TCanvas.h"
 #include "TLegend.h"
+#include "TLatex.h"
+#include <cmath>
+#include <stdexcept>
 #include "TMath.h"
 #include "TStyle.h"
 #include "TROOT.h"
@@ -314,7 +317,7 @@ private:
             ? Form("c_%s_%s", trg.c_str(), musign.c_str())
             : Form("c_%s%s_%s", trg.c_str(), ctr.c_str(), musign.c_str());
 
-        TCanvas* c = new TCanvas(cname.c_str(), "Trigger Turn-on Curves", 1500, 1000);
+        TCanvas* c = new TCanvas(cname.c_str(), "Trigger Turn-on Curves", 1500, 1300);
         // pad grid derived from the bin count (10 coarse bins + legend since round 8);
         // a hardcoded 4x3 silently drew into the wrong pads when the count changed
         {
@@ -329,9 +332,15 @@ private:
             c->cd(idx + 1);
             gPad->SetLogx();
 
-            TLegend* leg = new TLegend(0.35, 0.25, 0.88, 0.5);
+            // The legend lives in the reserved strip ABOVE the frame. Inside the frame there is
+            // no safe corner: the turn-on sweeps the lower left and plateaus across the upper
+            // right, and on the peripheral Pb+Pb panels the old box was drawn straight through
+            // both the points and the fit.
+            TLegend* leg = new TLegend(0.56, 0.735, 0.98, 0.795);
+            leg->SetNColumns(2);
             leg->SetBorderSize(0);
             leg->SetFillStyle(0);
+            leg->SetTextSize(0.055);
 
             // graph name differs only by ctr insertion (exactly like your two files) :contentReference[oaicite:13]{index=13} :contentReference[oaicite:14]{index=14}
             std::string gname;
@@ -345,14 +354,14 @@ private:
             TGraphAsymmErrors* g = dynamic_cast<TGraphAsymmErrors*>(f->Get(gname.c_str()));
             if (!g) {
                 std::cerr << "Warning: graph " << gname << " not found in file.\n";
-                ++idx;
+            ++idx;
                 continue;
             }
 
             TF1* fit = fitTurnOn(g);
             if (!fit){
                 std::cerr << "Warning: fit for graph " << gname << " is null\n";
-                ++idx;
+            ++idx;
                 continue;
             }
 
@@ -367,20 +376,95 @@ private:
             fit->SetLineColor(kRed);
             fit->SetLineWidth(2);
 
+            // Axis text sized for a 3-column pad grid on a 1500x1000 canvas: at the ROOT
+            // defaults the titles and labels come out at ~3 pt in the saved PNG, which is
+            // unreadable once the figure is placed in a document. SetMoreLogLabels() adds the
+            // intermediate decade ticks -- without it a 4-60 GeV log axis carries a single "10".
+            gPad->SetLeftMargin(0.17);
+            gPad->SetBottomMargin(0.18);
+            gPad->SetTopMargin(0.30);   // reserved strip: equation, parameters, bin label, legend
             g->GetXaxis()->SetTitle("p_{T} [GeV]");
-            g->GetYaxis()->SetTitle("#epsilon");
+            g->GetYaxis()->SetTitle("#varepsilon_{single}");
             g->GetYaxis()->SetRangeUser(0, 1.1);
+            g->GetXaxis()->SetTitleSize(0.085);  g->GetXaxis()->SetLabelSize(0.072);
+            g->GetYaxis()->SetTitleSize(0.085);  g->GetYaxis()->SetLabelSize(0.072);
+            g->GetYaxis()->SetTitleOffset(0.90);
+            g->GetXaxis()->SetTitleOffset(0.95);
+            g->GetXaxis()->SetMoreLogLabels();
+            g->GetXaxis()->SetNoExponent();
             g->Draw("AP");
-            if (h_pt_ref) adjustLogXRange(g, h_pt_ref);
+            // Draw over the FITTED range, taken from the TF1 itself so the number is never
+            // retyped. adjustLogXRange stretches the axis to the reference histogram's first bin
+            // (0.4 GeV), a decade below the lowest measured point, which squeezed the whole
+            // turn-on into the right half of the frame.
+            g->GetXaxis()->SetLimits(fit->GetXmin(), fit->GetXmax());
             fit->Draw("SAME");
 
             std::string musign_label = (musign == "sign1")? "#mu^{+}" : "#mu^{-}";
             auto q_eta_pair = hProjNameToPair(gname);
             std::string q_eta_label = pairToLegendLabel(q_eta_pair);
 
-            leg->AddEntry(g, (trg + ", " + musign_label).c_str(), "lp");
-            leg->AddEntry("", q_eta_label.c_str(), "");
+            leg->AddEntry(g, (trg_maps.at(trg) + ", " + musign_label).c_str(), "lp");
+            leg->AddEntry(fit, "fit", "l");
             leg->Draw("SAME");
+
+            // The fitted parameters, with the equation above them (atlas-plotting.md P2: a
+            // drawn fit without its exact form and its parameter values fails). Written in the
+            // upper-left, which the turn-on leaves empty at low pT.
+            TLatex ft;
+            ft.SetNDC();
+            ft.SetTextFont(42);
+            ft.SetTextSize(0.056);
+            ft.DrawLatex(0.19, 0.750, q_eta_label.c_str());
+            ft.SetTextSize(0.058);
+            // Written FLAT, not as nested fractions: a superscript inside a fraction denominator
+            // inside an outer fraction renders as a smudge at this text size, which defeats the
+            // point of drawing the equation at all.
+            if (fitting_mode != erf_plus_log && fitting_mode != fermi_plus_log)
+                throw std::runtime_error("SingleMuEffcyPtTurnOnFitter: the drawn equation is only "
+                                         "written for erf_plus_log and fermi_plus_log; add the "
+                                         "form before enabling another fitting_mode");
+            ft.DrawLatex(0.19, 0.945, (fitting_mode == erf_plus_log)
+                ? "#varepsilon = 0.5 P [1 + erf((p_{T}-m)/(#sqrt{2}s))] "
+                  "[1 + c ln(1+(p_{T}-4)/4)]"
+                : "#varepsilon = P / [1 + exp((x_{0}-p_{T})/w)] #times "
+                  "[1 + c ln(1+(p_{T}-4)/4)]");
+            // EVERY free parameter of the drawn equation is printed: the logarithmic term adds
+            // up to ~20 % by 60 GeV, so a reader given only P cannot reconstruct the curve they
+            // are looking at.
+            const double chi2ndf = fit->GetNDF() > 0 ? fit->GetChisquare() / fit->GetNDF() : 0.0;
+
+            // A parameter that has run onto one of its own fit limits is a CONSTRAINT, not a
+            // measurement, and must be identifiable as such. The test is relative to the width of
+            // the allowed interval: an absolute tolerance flags a value pinned at 0.10000000 and
+            // misses its neighbour at 0.09999849, which is the same boundary. Applied to every
+            // printed parameter, not only to c.
+            auto at_limit = [&fit](int ipar) {
+                double lo = 0., hi = 0.;
+                fit->GetParLimits(ipar, lo, hi);
+                if (hi <= lo) return "";                      // unbounded: nothing to report
+                const double v = fit->GetParameter(ipar);
+                const double tol = 1e-4 * (hi - lo);
+                return (std::fabs(v - lo) < tol || std::fabs(v - hi) < tol) ? "*" : "";
+            };
+            const int i_plateau = (fitting_mode == erf_plus_log) ? 2 : 0;
+            const int i_shape1  = (fitting_mode == erf_plus_log) ? 0 : 1;
+            const int i_shape2  = (fitting_mode == erf_plus_log) ? 1 : 2;
+            const bool any_at_limit = *at_limit(i_plateau) || *at_limit(i_shape1)
+                                   || *at_limit(i_shape2)  || *at_limit(3);
+
+            ft.SetTextSize(0.048);
+            ft.DrawLatex(0.19, 0.885,
+                         Form((fitting_mode == erf_plus_log)
+                                  ? "P = %.3f%s, m = %.2f%s GeV, s = %.2f%s GeV"
+                                  : "P = %.3f%s, x_{0} = %.2f%s GeV, w = %.2f%s GeV",
+                              fit->GetParameter(i_plateau), at_limit(i_plateau),
+                              fit->GetParameter(i_shape1),  at_limit(i_shape1),
+                              fit->GetParameter(i_shape2),  at_limit(i_shape2)));
+            ft.DrawLatex(0.19, 0.825,
+                         Form("c = %.4f%s,  #chi^{2}/ndf = %.2f%s",
+                              fit->GetParameter(3), at_limit(3), chi2ndf,
+                              any_at_limit ? "    * at a fit limit" : ""));
 
             ++idx;
         }

@@ -50,6 +50,8 @@
 #include <TLine.h>
 #include <TSystem.h>
 #include <TStyle.h>
+#include <TAxis.h>
+#include <TROOT.h>
 #include <string>
 #include <vector>
 #include <utility>
@@ -140,11 +142,12 @@ static void makePlotsOneWP(const std::string& wp, const std::string& out_root, c
     TFile* fin = TFile::Open(out_root.c_str(), "READ");
     for (size_t ic=0; ic<kCtrIntervals.size(); ++ic){
         const int lo = kCtrIntervals[ic].first, hi = kCtrIntervals[ic].second;
-        TCanvas c("c","c",1200,1000);
+        TCanvas c("c","c",1350,1150);
         c.Divide(3,3);
         for (size_t is=0; is<kQEtaSlices.size(); ++is){
             c.cd(is+1);
             gPad->SetGridx(); gPad->SetGridy();
+            gPad->SetLeftMargin(0.15); gPad->SetBottomMargin(0.15);
             std::string nm = "tf1_reco_eff_" + wp + "_pbpb" + ctrKey(lo,hi)
                            + "_q_eta_" + pairToSuffix(kQEtaSlices[is]);
             TF1* g = (TF1*)fin->Get(nm.c_str());
@@ -153,40 +156,68 @@ static void makePlotsOneWP(const std::string& wp, const std::string& out_root, c
             g->SetTitle("");
             g->SetRange(4,19);
             g->GetXaxis()->SetLimits(4,20);
-            g->GetXaxis()->SetTitle("p_{T}^{truth} [GeV]");
-            g->GetYaxis()->SetTitle("Efficiency");
-            g->GetYaxis()->SetRangeUser(0,1.6);
+            g->GetXaxis()->SetTitle("muon p_{T} [GeV]");
+            g->GetYaxis()->SetTitle("#varepsilon_{reco}");
+            // The curves never exceed ~0.86; a y-axis running to 1.6 left 45 % of the frame
+            // empty and squeezed every curve into the lower half. 1.0 is the physical ceiling
+            // and 1.05 leaves room for the panel text.
+            g->GetYaxis()->SetRangeUser(0, 1.05);
+            g->GetXaxis()->SetTitleSize(0.068); g->GetXaxis()->SetLabelSize(0.058);
+            g->GetYaxis()->SetTitleSize(0.068); g->GetYaxis()->SetLabelSize(0.058);
+            g->GetYaxis()->SetTitleOffset(1.05);
             g->Draw("L");
-            TLatex t; t.SetNDC(); t.SetTextSize(0.05);
-            t.DrawLatex(0.18,0.85, Form("%.1f<q*#eta<%.1f, %s-#mu",
-                        kQEtaSlices[is].first, kQEtaSlices[is].second, wp.c_str()));
-            t.DrawLatex(0.18,0.79, Form("%d-%d%%  (Run 2 fit, PLACEHOLDER)", lo, hi));
+            // The working point and the Run-2 origin must BOTH be on the canvas: the two WP
+            // files are otherwise indistinguishable, and a reader has to be able to see that
+            // these curves are a Run-2 measurement standing in, not a result of this analysis.
+            // Lower right: the efficiency rises steeply at the left edge and plateaus at
+            // 0.6-0.95, so the region below ~0.45 on the right is empty at every centrality and
+            // both working points. The previous placement at y = 0.88 put the first line ON the
+            // top frame line, and in the peripheral Medium panels the curve ran through it.
+            TLatex t; t.SetNDC(); t.SetTextSize(0.050); t.SetTextAlign(31);
+            t.DrawLatex(0.93,0.36, Form("%.1f < q#upoint#eta < %.1f",
+                        kQEtaSlices[is].first, kQEtaSlices[is].second));
+            t.DrawLatex(0.93,0.29, Form("%d-%d%% centrality, %s muons",
+                        lo, hi, wp == "tight" ? "Tight" : "Medium"));
+            t.DrawLatex(0.93,0.22, "Run 2 single-muon fit");
         }
         std::string out = plot_dir + Form("reco_eff_placeholder_%s_pbpb_ctr%d_%d.png", wp.c_str(), lo, hi);
         c.SaveAs(out.c_str());
     }
     // --- pp reproduction canvas ---
     {
-        TCanvas c("cpp","cpp",1000,500);
+        TCanvas c("cpp","cpp",1200,560);
         c.Divide(2,1);
         const std::string bn = "gr_reco_eff_" + wp + "_pp_barrel";
         const std::string en = "gr_reco_eff_" + wp + "_pp_endcap";
         const char* names[2] = {bn.c_str(), en.c_str()};
-        const char* labs[2]  = {"0.10<#eta<1.05","1.30<#eta<2.10"};
+        // |eta|: the parameterisation is symmetric and is applied as |q*eta| < 1.05 (barrel)
+        // or >= 1.05 (endcap), i.e. to both hemispheres -- writing a positive-only range would
+        // misdescribe where the curve is used.
+        const char* labs[2]  = {"0.10 < |#eta| < 1.05","1.30 < |#eta| < 2.10"};
         for (int k=0;k<2;++k){
             c.cd(k+1); gPad->SetGridx(); gPad->SetGridy();
             TGraph* g = (TGraph*)fin->Get(names[k]);
             if (!g) continue;
+            // Same axis titles, range and text sizes as the Pb+Pb canvases -- the two halves of
+            // one plot set must not be styled differently.
+            gPad->SetLeftMargin(0.14); gPad->SetBottomMargin(0.14);
             g->SetMarkerStyle(20); g->SetMarkerColor(kBlack); g->SetLineColor(kBlack);
             g->SetTitle(""); g->GetXaxis()->SetLimits(4,20);
-            g->GetXaxis()->SetTitle("p_{T} [GeV]"); g->GetYaxis()->SetTitle("Reconstruction efficiency");
-            g->GetYaxis()->SetRangeUser(0,1.2); g->Draw("APL");
-            TLatex t; t.SetNDC(); t.SetTextSize(0.045);
-            t.DrawLatex(0.30,0.40, Form("%s muon, %s", wp.c_str(), labs[k]));
-            t.DrawLatex(0.30,0.33, "pp placeholder (HF R_{AA} Fig.31)");
+            g->GetXaxis()->SetTitle("muon p_{T} [GeV]");
+            g->GetYaxis()->SetTitle("#varepsilon_{reco}");
+            g->GetXaxis()->SetTitleSize(0.055); g->GetXaxis()->SetLabelSize(0.048);
+            g->GetYaxis()->SetTitleSize(0.055); g->GetYaxis()->SetLabelSize(0.048);
+            g->GetYaxis()->SetTitleOffset(1.10);
+            g->GetYaxis()->SetRangeUser(0,1.05); g->Draw("APL");
+            // Two short lines rather than one long one: the previous single line ran past the
+            // pad edge and lost its closing words.
+            TLatex t; t.SetNDC(); t.SetTextSize(0.042);
+            t.DrawLatex(0.22,0.42, Form("%s, %s muons", labs[k], wp == "tight" ? "Tight" : "Medium"));
+            t.DrawLatex(0.22,0.35, "Run 2 single-muon measurement");
             if (pp_interim){
                 t.SetTextColor(kRed+1);
-                t.DrawLatex(0.30,0.26, "INTERIM: Medium Fig.31 (no Tight pp source)");
+                t.DrawLatex(0.22,0.28, "INTERIM: the Medium curve is reused,");
+                t.DrawLatex(0.22,0.22, "no Tight pp source exists");
             }
         }
         c.SaveAs((plot_dir + "reco_eff_placeholder_" + wp + "_pp.png").c_str());

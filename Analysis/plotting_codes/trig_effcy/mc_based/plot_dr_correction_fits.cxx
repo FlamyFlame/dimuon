@@ -816,15 +816,14 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     // C replaces the external normalization in the no-correction mode, so the canvas says what it
     // is once, next to the equation; its per-cell VALUE is drawn in every panel.
     if (nocorr)
-        eq_line2 += (eq_line2.empty() ? "" : ",   ")
-                  + std::string(method == "interp"
-                        ? "C = the plateau, pinned to the last measured point"
-                        : "C = the fitted plateau, free in the fit");
+        // No prose: "C = the fitted plateau, free in the fit" and "fit range: dR < 1.0" are
+        // statements about the method, and the canvas is not where a method is explained
+        // (atlas-plotting.md P1). C's per-cell VALUE is drawn in every panel, which is what the
+        // reader needs; the fit domain is visible from where the curve is drawn.
     for (const auto& fl : fixed_line) eq_line2 += (eq_line2.empty() ? "" : ",   ") + fl;
     if (rp_ext_line) eq_line2 += (eq_line2.empty() ? "" : std::string(",   "))
                                + Form("R_{p} = %.2f", rp_prov);
-    eq_line2 += std::string(eq_line2.empty() ? "" : ",   ")
-              + Form("fit range: #DeltaR < %.1f", kFitHi);
+
 
     // ---- y range: ONE range for the WHOLE METHOD DIRECTORY (user, 2026-08-05) ---------------
     // Common not just across the eta panels of one canvas, but across EVERY pair-pT bin -- i.e.
@@ -874,6 +873,21 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
                     yhi = std::max(yhi, y);
                 }
                 delete g;
+                // The FITTED CURVE too, sampled over the fit range. It is drawn, so it must fit
+                // in the frame: on the sign-separated canvases the same-sign fit continues below
+                // the lowest measured point as dR -> 0 and used to run off the bottom of the
+                // axis, in precisely the small-dR region the figure exists to show.
+                const FittedFunc F = LoadFunc(s.ffit, step, c.first, c.second);
+                if (F.valid()) {
+                    const double nrm = norm_of(s, c.first, c.second);
+                    for (int i = 0; i <= 40; ++i) {
+                        const double x = kFitHi * i / 40.0;
+                        const double y = F.Eval(x) / (nrm > 0. ? nrm : 1.0);
+                        if (!std::isfinite(y)) continue;
+                        ylo = std::min(ylo, y);
+                        yhi = std::max(yhi, y);
+                    }
+                }
             }
         }
         {
