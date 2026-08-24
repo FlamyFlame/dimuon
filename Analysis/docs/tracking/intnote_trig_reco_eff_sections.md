@@ -15,7 +15,7 @@
    the code, record the inconsistency in §Inconsistencies of THIS doc for the user, and do
    not edit the other doc.
 
-## Autonomy Contract (ACTIVE — re-read on every compaction)
+## Autonomy Contract (DONE 2026-08-24 — all seven Done items met)
 - Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a
   plan, a passing small test, or one pipeline stage is NOT a stopping point.
 - Done =
@@ -295,11 +295,7 @@ Confirmed against the code by the subagents; **no other doc was edited.**
   left a 10.95 pt overfull hbox per callout (twelve of them once the note carried six boxes);
   it now uses a vertical-mode `\hrule`, which cannot overflow.
 
-## Latest Stage
 
-Step 6b: reviewer loops -- `/review-plot` on the new plotting macro and its five figures, then
-`/review-note` on the two new sections. Then commit (IntNotes submodule, then the parent pointer,
-then the Analysis-side plotting code), then the final summary with the inconsistency list.
 
 - **2026-08-24, Step 6b iteration 1 (both reviewers FAIL; amended).**
   `/review-plot` on the new macro: **every executor number reproduced exactly** (21 projected
@@ -466,3 +462,38 @@ that the cosmetic turn-on replot moved nothing.
   `FCal_ET_Bins_PbPb2024`; only `:150` (2025) reuses the 2023 thresholds. And `grep fcal_scale`
   over every `*.c *.C *.h *.cxx` in the repo returns **nothing** -- the cross-year FCal scaling
   is documented in four docs and implemented in none.
+
+
+## Latest Stage
+
+DONE. Both sections written, reviewed to convergence and committed; the figure set is synced
+CLEAN; the note builds clean. Nothing is in flight.
+
+## Completion summary (2026-08-24)
+
+**Delivered.** `IntNotes/tex/trigger_efficiency.tex` (7 subsections, 8 equations, 8 figures) and
+`IntNotes/tex/reconstruction_efficiency.tex` (7 subsections, 7 figures), both `\input` from the
+Analysis chapter, which previously held only the ATLAS template blurb. The note went from 13
+pages to 33 and from ZERO usable figures to 14, all current-generation and all Tight WP.
+
+**The figure sync was broken before this task, not merely stale:** all eight manifest entries
+pointed at an `Analysis/plots/` tree that does not exist, and none was referenced by any tex
+file. `sync_note_figures.py` now reports CLEAN.
+
+**Build.** The note had never compiled on this machine — the system TeX Live lacks
+`newtxtext.sty`, `biber` and `latexmk`. With
+`PATH=/cvmfs/sft.cern.ch/lcg/external/texlive/2024/bin/x86_64-linux:$PATH` it builds clean:
+33 pages, 0 undefined references, 0 undefined citations, 0 overfull boxes.
+
+**Review.** Five plot-review iterations and three note-review iterations. The reviewers
+independently re-extracted every quoted number from the ROOT files; the substantive catches were
+three wrong physics numbers of mine (a false plateau claim, a closure cell quoted from the wrong
+sample variant, and a systematic understated by more than a factor two because a statistical
+error had been mistaken for the displacement it is meant to size), one near-verbatim uncited
+quotation, and one bound understated by three orders of magnitude. All fixed and re-verified.
+
+**New plots added** (reported to the user): five per working point in
+`<sample>/plots/pp24_reco_effcy_plots/{tight,medium}/applied/` from the new macro
+`plot_pp24_fullsim_pair_reco_eff.cxx`, plus a ratio pad on the two crossx correction-stage
+figures. Four existing plot sets were regenerated after fixing legibility and honesty defects;
+every stored fit and efficiency was verified unchanged.
