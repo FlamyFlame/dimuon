@@ -255,9 +255,9 @@ by index) applied to a grouping that cannot be expressed by an index rule alone.
    `BookDrGroupMap` BOTH axes' groupings. → `/review-analysis-code`.
 2. [x] `dr_correction_sample_cfg.h`: the two new mode tokens, their directories, and
    `DrCorrModeMergeEta()`. → same review.
-3. [ ] `fit_dr_corrections.cxx`: thread the pair-η grouping through the cell loop, the plateau
+3. [x] `fit_dr_corrections.cxx`: thread the pair-η grouping through the cell loop, the plateau
    re-measurement (merged cells have no entry in the on-disk map) and the reports (per §PP-2).
-4. [ ] `plot_dr_correction_fits.cxx`: same grouping; 1×3 panel grid for 3 pair-η cells.
+4. [x] `plot_dr_correction_fits.cxx`: same grouping; 1×3 panel grid for 3 pair-η cells.
 5. [x] `dr_correction_apply.h`: pair-η grouping in the raw fallback; **`interp` support** — the
    `gknots` TGraph tier with C = the flat-branch value (per §PP-3).
 6. [x] NEW `Utilities/DrCorrectionCascadeEvaluator.h`: the expo → polyu → interp → none cascade for
@@ -323,7 +323,50 @@ by index) applied to a grouping that cannot be expressed by an index rule alone.
 
 ## Results & Observations
 
-*(to be filled)*
+### R1. Steps 3+4 — the pair-η grouping in the fit and its plot stage (2026-08-24, delegated)
+
+*(merged from the subagent's scratch doc `_sub_etamerge_fitstage_1.md`, now deleted; every number
+below was measured, not asserted.)*
+
+**Regression on the un-merged path — clean.** `nocorr` / `expo` / pp_full / Tight / step 3 /
+opposite sign: `plateau_guard_report_opposite_sign.txt` **byte-identical** to the pre-work copy;
+`fit_report_opposite_sign.txt` identical in **every one of its 72 cell rows**, every plateau, every
+fitted parameter, every χ²/ndf, the unusable count and the at-limit list. It differs in **one line
+only**, and that line is a **stale-baseline artefact rather than a regression**: the "(the only
+statistically meaningful curve for a 10k-event TEST sample)" parenthetical on the inclusive χ²/ndf
+became sample-conditional in commit `22b8454` (2026-08-18 10:10), while the baseline on disk was
+written 2026-08-17 23:13 by the previous binary. pp24 is a FULL production, so omitting it is the
+correct current output. The plot path is unchanged too — `readback_check.txt` byte-identical,
+9 PNGs at 1556×1540 px.
+
+**The new modes, measured** (pp_full, Tight, step 3, `expo`, opposite sign):
+
+| mode | `h_step3_fit_ok` | cells | accepted (`fit_ok = 1`) | unusable | χ²/ndf over the cells |
+|---|---|---|---|---|---|
+| `nocorr` (reference) | 8 × 9 | 72 | 68 | 4 | mean 1.809, median 1.511 (n = 70) |
+| `nocorr_etamerge` | **8 × 3** | **24** | **23** | 1 | mean 1.852, median 1.421 (n = 24) |
+| `nocorr_etamerge_ptmerge` | **7 × 3** | **21** | **20** | 1 | mean 2.007, median 1.529 (n = 21) |
+
+The 68/72 of the reference reproduces `mc_trigger_efficiency.md` R27's independently recorded
+"Tight `expo`, no correction: 68" — an outside check that the un-merged path did not move.
+**χ²/ndf does not improve with the merge, and should not be expected to** — the same point R32
+makes for the pair-p_T merge: with three times the pairs the error bars shrink, so the same shape
+mismatch costs more χ². What the merge buys is coverage, and that is what the closure measures.
+
+The merged pair-η axis reads **[−2.4, −1.0)**, **[−1.0, +1.0)**, **[+1.0, +2.4)** in the fit file
+and in the report labels — the three physical detector regions, from the source axis's own edges.
+`polyu_fixedRp` (24 cells, mean 1.913) and `interp` run clean on the new modes as well.
+
+**Panel grid.** 3 pair-η cells are drawn **1 × 3** (1556 × 600 px), not the 2 × 2 the bare
+`ceil(sqrt(N))` rule would give; 9 cells stay 3 × 3 (1556 × 1540 px). The header strip needed no
+change and the reason is now in the code: the canvas is sized `520·ncol × (470·nrow + header)`, so
+a panel is 520 × 470 px in every layout and the strip, specified in canvas pixels, keeps its
+absolute geometry (checked numerically and by opening the PNG).
+
+**One process note worth keeping.** An intermediate edit left an unbalanced `)`; ACLiC reported
+`expected ':'` **and left the previous `.so` in place**. It was caught only by the
+check-the-log-AND-the-timestamp rule the drivers already encode, and every measurement above was
+redone with the final binary. This is the "stale .so" trap in its natural habitat.
 
 ## Remaining Work
 
