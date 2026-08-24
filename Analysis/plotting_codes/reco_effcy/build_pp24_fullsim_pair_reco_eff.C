@@ -25,7 +25,8 @@
 //
 // TWO FALLBACK LEVELS ARE WRITTEN ALONGSIDE THE 3D MAP, and they are not optional. The three
 // variables are strongly correlated inside the signal region (dR ~< 2 m_uu / pT^pair, so high
-// pair pT forces small dR): about 60 % of the 3D cells have NO denominator at all. A pair landing
+// pair pT forces small dR): about half of the 3D cells have NO denominator at all (measured: 143 of 288 empty, plus one
+// cell with a denominator but no reconstructed pair, so 144 of 288 deliver no efficiency). A pair landing
 // in one of those must not be left uncorrected -- w_reco = 1 would be a silent, one-sided bias.
 // So the evaluator falls back, per pair and counted:
 //     3D cell  ->  the dR-INTEGRATED efficiency of the same (pair pT, pair eta) cell

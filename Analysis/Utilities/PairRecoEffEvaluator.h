@@ -57,7 +57,7 @@
 //     edge or beyond the top dR edge is corrected by the edge cell rather than dropped; the count
 //     is reported, never silent.
 //   * an EMPTY 3D cell does NOT return "no correction". Inside the signal region the three
-//     variables are strongly correlated (dR ~< 2 m_uu / pT^pair), so ~60 % of the 3D cells carry
+//     variables are strongly correlated (dR ~< 2 m_uu / pT^pair), so ~50 % of the 3D cells carry
 //     no measurement; leaving those pairs uncorrected would be a silent, ONE-SIDED bias. The
 //     evaluator falls back, per pair and COUNTED:
 //         3D cell -> the dR-INTEGRATED efficiency of the same (pair pT, pair eta) cell
@@ -101,7 +101,7 @@ struct PairRecoEffEvaluator {
         if (!h2)
             throw std::runtime_error("PairRecoEffEvaluator: no " + key + "_dr_integrated in "
                                      + path + " -- the dR-integrated fallback is REQUIRED, not "
-                                     "optional (about 60 % of the 3D cells carry no measurement)");
+                                     "optional (about half of the 3D cells carry no measurement)");
         h_eff2d.reset(static_cast<TH2D*>(h2->Clone("h_pair_reco_eff2d_clone")));
         h_eff2d->SetDirectory(nullptr);
 
@@ -207,8 +207,13 @@ private:
         };
         check(h_eff->GetXaxis(), pms.pair_pt_coarse_bins, "pair-pT");
         check(h_eff->GetYaxis(), eta,                     "pair-eta");
-        // The dR axis has no canonical vector of its own -- it is defined by the producer
-        // (RDFBasedHistFillingPythia.h dr_bins_edges_for_pair_reco_eff) and simply read here.
+        // The dR axis has a canonical vector too -- CommonEffcyConfig::dr_bins_edges_for_reco_effcy,
+        // which RDFBasedHistFillingPythia.h re-exports -- so it is guarded like the other two.
+        // Leaving it unchecked was the wrong way round: a stale file with a different dR binning
+        // would be caught by the PLOTTER and silently accepted by the object that is APPLIED.
+        std::vector<double> dr(cfg.dr_bins_edges_for_reco_effcy.begin(),
+                               cfg.dr_bins_edges_for_reco_effcy.end());
+        check(h_eff->GetZaxis(), dr, "dR");
     }
 };
 
