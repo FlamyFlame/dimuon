@@ -473,8 +473,13 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
         const Ssiz_t i = t.Index("eps_dR CELLS: ");
         if (i >= 0) {
             const Ssiz_t j = t.Index(" (", i);
-            if (j > i) cell_text = "#varepsilon_{#DeltaR} cells: "
-                                 + std::string(TString(t(i + 14, j - i - 14)).Data());
+            if (j > i) {
+                TString cells = t(i + 14, j - i - 14);        // "8 pair pT x 9 pair eta"
+                cells.ReplaceAll(" pair pT x ", " #times ");
+                cells.ReplaceAll(" pair eta", "");
+                cell_text = std::string(cells.Data())
+                          + " #varepsilon_{#DeltaR} cells (p_{T}^{pair} #times #eta^{pair})";
+            }
         }
     }
 
