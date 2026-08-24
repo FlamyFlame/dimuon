@@ -50,18 +50,31 @@
 //   "all_os"  every opposite-sign pair passing the MC trigger-efficiency pair selection
 //   "signal"  the same, plus the DATA-LIKE single-b RECO signal cuts
 //
-// TWO eps_dR VARIANTS, one per RUN (the `plateau_mode` argument; doc §3.2, user 2026-08-18) --
-// each writes its own output file and is plotted into its own subdirectory:
-//   "nocorr"          the un-merged 8 pair-pT cells, with the two parametric fit forms kept as
-//                     SEPARATE series (`expo` = nominal, `polyu_fixedRp` = backup) -> 2 corrected
-//                     numerators, drawn as 2 of the figure's 3 lines.
-//   "nocorr_ptmerge"  the variant the pp24 CROSS-SECTION applies: the last two pair-pT bins merged
-//                     into one cell, and ONE numerator built by the cross-section's own
-//                     cross-method cascade (expo fit -> polyu fit where the exponential is
-//                     rejected -> the raw measured bins where both are). It is produced by
-//                     Utilities/DrCorrectionCrossxEvaluator.h ITSELF, not by a copy of its logic,
-//                     so the closure tests the delivered object rather than a re-implementation
-//                     (doc D5).
+// FOUR eps_dR CELL-GROUPING APPROACHES, one per RUN (the `plateau_mode` argument; user
+// 2026-08-24, docs/tracking/mc_trigeff_dr_binning_approaches.md). Each writes its own output file
+// and is plotted into its own subdirectory. They differ ONLY in how the (pair pT, pair eta) plane
+// is partitioned before the Step-3 fit:
+//   "nocorr"                    8 pair-pT x 9 pair-eta = 72 cells   -- the un-merged reference
+//   "nocorr_ptmerge"            7 x 9 = 63   -- the last two pair-pT bins merged
+//   "nocorr_etamerge"           8 x 3 = 24   -- pair eta merged into the 3 detector regions
+//                                              (negative endcap / barrel / positive endcap)
+//   "nocorr_etamerge_ptmerge"   7 x 3 = 21   -- both merges
+//
+// THE DELIVERED CORRECTION IS THE SAME CASCADE IN ALL FOUR: expo fit -> polyu fit where the
+// exponential is rejected -> the `interp` interpolation where both are -> the raw measured bins
+// where every tier is (Utilities/DrCorrectionCascadeEvaluator.h). That is what makes the four
+// comparable: what differs between the figures is the CELL GROUPING, not the cascade. The
+// un-merged reference ADDITIONALLY books the two parametric forms as separate series, whose
+// figures go to their own subdirectory -- they answer how much the two forms disagree cell by
+// cell (mc_trigger_efficiency.md R26, OPEN), which the single delivered series cannot show.
+//
+// THE HISTOGRAM AXES ARE THE pp24 CROSS-SECTION's, NOT THE CORRECTION's (user 2026-08-24; doc D8,
+// superseding mc_trig_eff_closure.md D2): ParamsSet::pT_bins_150 (15 log bins, 8-150 GeV) x the 9
+// CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap panels, IN EVERY APPROACH. The point of
+// the comparison is which approach corrects the cross-section most accurately, so all four must be
+// read out in the cross-section's own cells; four figures on four different x-axes could not be
+// compared. The correction is still looked up PER PAIR in its own cell grid, so no physics moves
+// with the presentation binning.
 //
 // ERRORS. The numerator is a re-weighted SUBSET of the denominator, so the closure ratio needs the
 // CONDITIONAL (binomial-correct) error, not TH1::Divide's independent propagation (which is too
@@ -87,7 +100,9 @@
 // Usage (from Analysis/RDFBasedHistFilling/):
 //   root -l -b -q 'FillMCTrigEffClosure.cxx+("pp_full", true)'                       // Tight, nocorr
 //   root -l -b -q 'FillMCTrigEffClosure.cxx+("pp_full", false)'                      // Medium
-//   root -l -b -q 'FillMCTrigEffClosure.cxx+("pp_full", true, "nocorr_ptmerge")'     // crossx variant
+//   root -l -b -q 'FillMCTrigEffClosure.cxx+("pp_full", true, "nocorr_ptmerge")'
+//   root -l -b -q 'FillMCTrigEffClosure.cxx+("pp_full", true, "nocorr_etamerge")'
+//   root -l -b -q 'FillMCTrigEffClosure.cxx+("pp_full", true, "nocorr_etamerge_ptmerge")'
 //   MCTRIGEFF_PAIRPT_4BIN=1 root -l -b -q 'FillMCTrigEffClosure.cxx+("pp_full", true)'
 //
 // Output: <sample dir>/mc_trig_eff_closure_<label><wp><ptbin><mode>.root
@@ -117,19 +132,28 @@ using namespace std;
 #include "../Utilities/MCTrigEffPairPtBinning.h"
 #include "../Utilities/MCTrigEffPairSelection.h"
 #include "../plotting_codes/trig_effcy/mc_based/dr_correction_apply.h"
-#include "../Utilities/DrCorrectionCrossxEvaluator.h"
+#include "../Utilities/DrCorrectionCascadeEvaluator.h"
 #include "CommonEffcyConfig.h"
 
 namespace MCTrigEffClosure {
 
-// The dR-fit forms the "nocorr" variant is produced for. `expo` is the NOMINAL Step-3 form and
-// `polyu_fixedRp` the backup; both fail in a minority of cells (mc_trigger_efficiency.md R26,
-// OPEN), which is exactly why that variant is drawn for both rather than for one.
-const std::vector<std::string> kMethods = {"expo", "polyu_fixedRp"};
+// THE DELIVERED SERIES, in every approach: the cross-method cascade
+// expo -> polyu_fixedRp -> interp -> raw bins (Utilities/DrCorrectionCascadeEvaluator.h;
+// docs/tracking/mc_trigeff_dr_binning_approaches.md PP-3). It is NOT a fit form -- naming it after
+// one would misdescribe the cells routed to another -- so it is named for what it is.
+const char* kCascadeKey = "cascade";
 
-// The single series of the "nocorr_ptmerge" variant. It is NOT a fit form: it is the delivered
-// cross-method cascade, so it is named for what it is rather than for any one method.
-const char* kCascadeKey = "crossx_cascade";
+// The two PARAMETRIC forms, booked as SEPARATE series in the un-merged `nocorr` approach ONLY
+// (user, 2026-08-24). They answer a different question from the cascade: how much the two forms
+// disagree cell by cell (mc_trigger_efficiency.md R26, OPEN). Their figures go to their own
+// subdirectory so they cannot be mistaken for the delivered correction.
+const std::vector<std::string> kSeparateFormMethods = {"expo", "polyu_fixedRp"};
+
+// Which approaches get the separate-form series. Only the un-merged reference: in the merged
+// approaches the point of the figure is the delivered correction, not a form comparison.
+inline bool WantsSeparateFormSeries(const std::string& plateau_mode) {
+    return plateau_mode == "nocorr";
+}
 
 // Sample versions. "signal" is a strict SUBSET of "all_os".
 const std::vector<std::string> kVersions = {"all_os", "signal"};
@@ -140,8 +164,8 @@ const std::vector<std::string> kVersions = {"all_os", "signal"};
 const char* kSignSeries = "os";
 const char* kPairTree   = "muon_pair_tree_sign2";   // opposite sign
 
-// The PLATEAU MODE is now an ARGUMENT (doc §3.2, user 2026-08-18) -- the closure is produced for
-// BOTH no-plateau-correction variants, one run and one output file each. It is passed EXPLICITLY
+// The PLATEAU MODE is an ARGUMENT -- the closure is produced for EACH of the four
+// no-plateau-correction approaches, one run and one output file each. It is passed EXPLICITLY
 // to every evaluator and into the provenance stamp: `DrCorrectionEvaluator::Load` takes the mode
 // as a DEFAULTED argument, so relying on that default while the stamp spells a token out would
 // make the stamp lie the moment the default moved.
@@ -230,29 +254,65 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
               << "  pair file : " << pair_file << "\n"
               << "  pair pT   : " << MCTrigEffPairPt::Describe() << std::endl;
 
-    // ---------------------------------------------------------------- binnings (never retyped)
-    // The histogram axis IS the correction's own cell axis (doc D2): a closure drawn on a finer
-    // pair-pT axis than the cells the correction was measured in would mix two binnings of the
-    // same quantity (.claude/CLAUDE.md §Binnings item 2). For the merged mode that means the last
-    // two canonical bins become ONE, exactly as the fit stage projected them -- the edge BETWEEN
-    // them is dropped, no edge value is invented.
+    // ------------------------------------------------------- binnings (never retyped; doc D8)
+    // THE HISTOGRAM AXES ARE THE pp24 CROSS-SECTION's, NOT THE CORRECTION's (user, 2026-08-24;
+    // docs/tracking/mc_trigeff_dr_binning_approaches.md PP-1 / D8, superseding
+    // mc_trig_eff_closure.md D2):
+    //   pair pT  = ParamsSet::pT_bins_150  -- 15 log bins, 8 -> 150 GeV, the crossx "8-150 GeV"
+    //              version (h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts in
+    //              RDFBasedHistFillingPP.cxx)
+    //   pair eta = the 9 CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap panels, the same
+    //              ranges SingleBCrossxPlotterBase::DrawPairPtByEta slices the cross-section in
+    // This is INDEPENDENT of how many cells the correction is fitted in, and deliberately so: four
+    // approaches drawn on four different x-axes could not be compared, and none of them would be
+    // on the axis the decision is about. The correction is looked up PER PAIR in its own cell grid
+    // (below), so nothing about the physics changes when the presentation binning does.
     ParamsSet pms;
     static const CommonEffcyConfig ecfg{};
-    std::vector<double> pt_edges = MCTrigEffPairPt::Edges(pms);
+    const std::vector<double> pt_edges  = pms.pT_bins_150;
+    const std::vector<double> eta_edges = RangesToEdges(ecfg.pair_eta_proj_ranges_coarse_incl_gap);
+
+    // THE CORRECTION's OWN CELL GRID -- what the sample has to be restricted to, because outside it
+    // no correction exists. Built with the SAME grouping helpers the fit stage used, so it cannot
+    // describe a different grouping from the one that was fitted.
+    if (merge_last_two_pt && MCTrigEffPairPt::UseFourBin())
+        throw std::invalid_argument("FillMCTrigEffClosure: a pair-pT-merging plateau mode is "
+                                    "defined for the canonical 8-bin pair-pT axis only -- "
+                                    "unset MCTRIGEFF_PAIRPT_4BIN.");
+    std::vector<double> cell_pt_edges = merge_last_two_pt ? pms.pair_pt_coarse_bins
+                                                          : MCTrigEffPairPt::Edges(pms);
     if (merge_last_two_pt) {
-        // The merged variant is defined for the canonical 8-bin axis ONLY (the fit stage throws
-        // for the 4-bin one), so say so here rather than failing later on a cell-count mismatch.
-        if (MCTrigEffPairPt::UseFourBin())
-            throw std::invalid_argument("FillMCTrigEffClosure: plateau mode 'nocorr_ptmerge' is "
-                                        "defined for the canonical 8-bin pair-pT axis only -- "
-                                        "unset MCTRIGEFF_PAIRPT_4BIN.");
-        if (pt_edges.size() < 3)
+        if (cell_pt_edges.size() < 3)
             throw std::runtime_error("FillMCTrigEffClosure: cannot merge the last two pair-pT "
                                      "bins of a binning with fewer than 2 bins");
-        pt_edges.erase(pt_edges.end() - 2);
+        cell_pt_edges.erase(cell_pt_edges.end() - 2);
     }
-    const std::vector<double> eta_edges = RangesToEdges(ecfg.pair_eta_proj_ranges_coarse_incl_gap);
-    const double pt_lo = pt_edges.front(), pt_hi = pt_edges.back();
+    std::vector<double> cell_eta_edges = eta_edges;
+    if (DrCorrModeMergeEta(plateau_mode)) {
+        TAxis tmp((int)cell_eta_edges.size() - 1, cell_eta_edges.data());
+        cell_eta_edges = MakeDrEtaGroups(&tmp, true).edges;
+    }
+    const double pt_lo  = cell_pt_edges.front(),  pt_hi  = cell_pt_edges.back();
+    const double eta_lo = cell_eta_edges.front(), eta_hi = cell_eta_edges.back();
+
+    // The presentation axis and the correction cells must COVER THE SAME REGION, or the closure
+    // would either include pairs the correction does not reach or exclude pairs the cross-section
+    // does. Both are 8 -> 150 GeV and -2.4 -> 2.4 today; this is the guard that says so if either
+    // ever moves (.claude/CLAUDE.md Binnings: a mismatch here is silent -- every histogram fills).
+    if (std::fabs(pt_edges.front() - pt_lo)   > 1e-6 ||
+        std::fabs(pt_edges.back()  - pt_hi)   > 1e-6 ||
+        std::fabs(eta_edges.front() - eta_lo) > 1e-6 ||
+        std::fabs(eta_edges.back()  - eta_hi) > 1e-6)
+        throw std::runtime_error(Form("FillMCTrigEffClosure: the crossx presentation axis covers "
+            "pair pT [%g, %g] x pair eta [%g, %g] but the correction cells cover [%g, %g] x "
+            "[%g, %g] -- the closure would be filled outside the region the correction defines.",
+            pt_edges.front(), pt_edges.back(), eta_edges.front(), eta_edges.back(),
+            pt_lo, pt_hi, eta_lo, eta_hi));
+    std::cout << "  plot axes : pair pT = ParamsSet::pT_bins_150 (" << pt_edges.size() - 1
+              << " log bins, " << pt_lo << "-" << pt_hi << " GeV) x " << eta_edges.size() - 1
+              << " pair-eta panels  [the pp24 CROSSX binning, doc D8]\n"
+              << "  eps_dR cells : " << cell_pt_edges.size() - 1 << " pair pT x "
+              << cell_eta_edges.size() - 1 << " pair eta" << std::endl;
 
     // ---------------------------------------------------------------- efficiency lookups
     // Heap: the lambdas below are captured by LAZY RDF nodes and must outlive the booking scope.
@@ -280,45 +340,39 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
     };
 
     std::vector<SeriesEval> series;
-    if (merge_last_two_pt) {
-        // The closure of the merged variant must test WHAT THE CROSS-SECTION APPLIES, so it uses
-        // the cross-section's own evaluator rather than a second implementation of its cascade
-        // (doc D5). If the crossx defaults ever move to another mode, this run would silently
-        // stop testing them -- hence the check.
-        if (std::string(DrCorrCrossxMode()) != plateau_mode)
-            throw std::runtime_error(std::string("FillMCTrigEffClosure: this run asks for plateau "
-                "mode '") + plateau_mode + "' but the cross-section now applies '"
-                + DrCorrCrossxMode() + "' -- the cascade series would no longer be closing the "
-                "configuration it is named after.");
-        auto* e = new DrCorrectionCrossxEvaluator();
-        e->Load(cfg, use_tight_wp);          // reads DrCorrCrossxMethod/Sign/Mode itself
-        if (std::string(DrCorrCrossxSign()) != kSignSeries)
-            throw std::runtime_error("FillMCTrigEffClosure: the closure sample is opposite sign "
-                                     "but the cross-section cascade is built on sign series '"
-                                     + std::string(DrCorrCrossxSign()) + "'.");
+    {
+        // THE DELIVERED SERIES -- the same cross-method cascade in every approach (doc PP-3), so
+        // the comparison between the four measures the CELL GROUPING and not the cascade. Built by
+        // the shared DrCorrectionCascadeEvaluator rather than a copy of its routing logic: a second
+        // implementation could drift silently, since every histogram would still fill (the lesson
+        // doc D3b records for the pair selection).
+        auto* e = new DrCorrectionCascadeEvaluator();
+        e->Load(cfg, use_tight_wp, kSignSeries, plateau_mode);
         series.push_back({kCascadeKey,
                           [e](double dr, double ppt, double peta) { return e->Eval(dr, ppt, peta); },
                           [e]() { e->PrintStats(); },
-                          e->primary.h_fit_ok.get(),
-                          Form(" | %s: cascade %s -> %s -> raw bins; cells routed: %d on %s, "
-                               "%d on %s, %d on the RAW-BIN PLACEHOLDER; %s; %s",
-                               kCascadeKey, DrCorrCrossxMethod(), DrCorrCrossxBackupMethod(),
-                               e->n_cells_primary, DrCorrCrossxMethod(),
-                               e->n_cells_backup, DrCorrCrossxBackupMethod(), e->n_cells_raw,
-                               stamp(DrCorrFitFile(cfg, use_tight_wp, 3, DrCorrCrossxMethod(),
-                                                   kSignSeries, plateau_mode)).c_str(),
-                               stamp(DrCorrFitFile(cfg, use_tight_wp, 3,
-                                                   DrCorrCrossxBackupMethod(),
-                                                   kSignSeries, plateau_mode)).c_str())});
-    } else {
-        for (const auto& m : kMethods) {
+                          e->Grid(),
+                          std::string(" | ") + kCascadeKey + ": " + e->Describe() + "; "
+                          + [&] {
+                              std::string t;
+                              for (const auto& m : e->methods)
+                                  t += stamp(DrCorrFitFile(cfg, use_tight_wp, 3, m, kSignSeries,
+                                                           plateau_mode)) + "; ";
+                              return t;
+                          }()});
+    }
+    // The un-merged reference additionally carries the two PARAMETRIC FORMS as separate series
+    // (doc PP-4): where they disagree is a direct read-out of the OPEN R26, which the single
+    // cascade series cannot show.
+    if (WantsSeparateFormSeries(plateau_mode)) {
+        for (const auto& m : kSeparateFormMethods) {
             auto* e = new DrCorrectionEvaluator();
             e->Load(cfg, use_tight_wp, m, kSignSeries, plateau_mode);
             series.push_back({m,
                               [e](double dr, double ppt, double peta) { return e->Eval(dr, ppt, peta); },
                               [e]() { e->PrintStats(); },
                               e->h_fit_ok.get(),
-                              Form(" | %s: %s; cells fitted %d, RAW-BIN PLACEHOLDER %d, "
+                              Form(" | %s: %s; cells with a curve %d, RAW-BIN PLACEHOLDER %d, "
                                    "no correction %d (of the rejected, %d had fit_ok=1 but an "
                                    "unusable baseline C)",
                                    m.c_str(),
@@ -329,25 +383,30 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
         }
     }
 
+    // Every series must be defined on THE CORRECTION's cell grid -- not on the presentation axis,
+    // which is the cross-section's and deliberately finer (doc D8). A series whose fit file
+    // describes another grid would correct a pair with another cell's curve while every histogram
+    // still fills (.claude/CLAUDE.md Binnings).
     for (const auto& S : series) {
         const TH2D* g = S.grid;
-        if (g->GetNbinsX() != (int)pt_edges.size() - 1 ||
-            g->GetNbinsY() != (int)eta_edges.size() - 1)
+        if (g->GetNbinsX() != (int)cell_pt_edges.size() - 1 ||
+            g->GetNbinsY() != (int)cell_eta_edges.size() - 1)
             throw std::runtime_error("FillMCTrigEffClosure: the " + S.key + " fit file has " +
                 std::to_string(g->GetNbinsX()) + "x" + std::to_string(g->GetNbinsY()) +
-                " cells but this run's binning is " + std::to_string(pt_edges.size() - 1) + "x" +
-                std::to_string(eta_edges.size() - 1) +
+                " cells but plateau mode '" + plateau_mode + "' groups the canonical binning into "
+                + std::to_string(cell_pt_edges.size() - 1) + "x"
+                + std::to_string(cell_eta_edges.size() - 1) +
                 " -- 4-bin/8-bin mismatch (MCTRIGEFF_PAIRPT_4BIN), or the wrong plateau mode?");
-        for (size_t i = 0; i < pt_edges.size(); ++i)
-            if (std::fabs(g->GetXaxis()->GetBinLowEdge(i + 1) - pt_edges[i]) > 1e-6)
-                throw std::runtime_error("FillMCTrigEffClosure: pair-pT edges differ between the "
-                                         + S.key + " fit file and ParamsSet (mode '" + plateau_mode
-                                         + "') -- stale fit file?");
-        for (size_t i = 0; i < eta_edges.size(); ++i)
-            if (std::fabs(g->GetYaxis()->GetBinLowEdge(i + 1) - eta_edges[i]) > 1e-6)
-                throw std::runtime_error("FillMCTrigEffClosure: pair-eta edges differ between the "
-                                         + S.key + " fit file and CommonEffcyConfig -- stale fit "
-                                         "file?");
+        for (size_t i = 0; i < cell_pt_edges.size(); ++i)
+            if (std::fabs(g->GetXaxis()->GetBinLowEdge(i + 1) - cell_pt_edges[i]) > 1e-6)
+                throw std::runtime_error("FillMCTrigEffClosure: pair-pT cell edges differ between "
+                                         "the " + S.key + " fit file and ParamsSet (mode '"
+                                         + plateau_mode + "') -- stale fit file?");
+        for (size_t i = 0; i < cell_eta_edges.size(); ++i)
+            if (std::fabs(g->GetYaxis()->GetBinLowEdge(i + 1) - cell_eta_edges[i]) > 1e-6)
+                throw std::runtime_error("FillMCTrigEffClosure: pair-eta cell edges differ between "
+                                         "the " + S.key + " fit file and CommonEffcyConfig (mode '"
+                                         + plateau_mode + "') -- stale fit file?");
     }
 
     // ---------------------------------------------------------------- the pair sample
@@ -376,7 +435,7 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
     auto d_all_pt = d;                       // kept only to count what the cell window removes
     d = d.Filter(Form("pair_pt >= %.10g && pair_pt < %.10g && "
                       "pair_eta >= %.10g && pair_eta < %.10g",
-                      pt_lo, pt_hi, eta_edges.front(), eta_edges.back()),
+                      pt_lo, pt_hi, eta_lo, eta_hi),
                  "pair pT and pair eta inside the correction cells");
 
     std::map<std::string, ROOT::RDF::RNode> versions;
@@ -496,18 +555,27 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
       + stamp(cfg.mc_dir + "single_mu_effcy_pT_fit_mc" + wp_suf + ".root")
       + " | eps^nc_data file (DIAGNOSTIC, num_epsdata_*): " + stamp(SubstWP(kDataPPFitTmpl, wp_suf));
     TNamed("provenance",
-           Form("MC closure of the pp 2mu4 trigger correction (docs/tracking/mc_trig_eff_closure.md)"
+           Form("MC closure of the pp 2mu4 trigger correction "
+                "(docs/tracking/mc_trigeff_dr_binning_approaches.md; machinery: mc_trig_eff_closure.md)"
                 " | sample=%s label=%s WP=%s | tree=%s (opposite sign)"
                 " | APPLIED weight = w_MC / [eps_MC(1) * eps_MC(2) * eps_dR(dR)]  (self-contained,"
-                " doc D4); the eps^nc_data numerator is the diagnostic, their ratio is <r_1 r_2>"
+                " closure doc D4); the eps^nc_data numerator is the diagnostic, their ratio is"
+                " <r_1 r_2>"
                 " | eps_dR = Step-3 %s fits, plateau mode '%s',"
-                " divided by their own fitted baseline C, applied for dR < %g only"
-                " | pair pT cells: %s | base selection: %s | signal cuts: %s%s%s",
+                " divided by their own baseline C, applied for dR < %g only"
+                " | eps_dR CELLS: %d pair pT x %d pair eta (%s) | HISTOGRAM AXES (the pp24 CROSSX"
+                " binning, doc D8): ParamsSet::pT_bins_150, %d log bins %g-%g GeV x %d pair-eta"
+                " panels | base selection: %s | signal cuts: %s%s%s",
                 sample.c_str(), cfg.mc_label.c_str(), wp_text.c_str(), kPairTree,
                 kSignSeries, plateau_mode.c_str(),
                 DrCorrectionEvaluator::kDrMax,
+                (int)cell_pt_edges.size() - 1, (int)cell_eta_edges.size() - 1,
                 (MCTrigEffPairPt::Describe()
-                 + (merge_last_two_pt ? " [last two bins MERGED into one cell]" : "")).c_str(),
+                 + (merge_last_two_pt ? " [last two pair-pT bins MERGED]" : "")
+                 + (DrCorrModeMergeEta(plateau_mode)
+                        ? " [pair eta MERGED into the 3 detector regions]" : "")).c_str(),
+                (int)pt_edges.size() - 1, pt_edges.front(), pt_edges.back(),
+                (int)eta_edges.size() - 1,
                 base_sel.c_str(), MCTrigEffPairSel::SingleBSignalCutsReco().c_str(),
                 eps_prov.c_str(), dr_prov.c_str()))
         .Write();
@@ -526,8 +594,8 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
                   << std::endl;
     for (const auto& S : series) S.print_stats();
     std::cout << "  selected pairs: " << *n_sel << " ; inside the correction cells (pair pT ["
-              << pt_lo << ", " << pt_hi << "), pair eta [" << eta_edges.front() << ", "
-              << eta_edges.back() << ")): " << *n_in_cells << " ("
+              << pt_lo << ", " << pt_hi << "), pair eta [" << eta_lo << ", "
+              << eta_hi << ")): " << *n_in_cells << " ("
               << (*n_sel ? 100.0 * (*n_in_cells) / (*n_sel) : 0.0) << "%)" << std::endl;
 
     // ---------------------------------------------------------------- inclusive closure

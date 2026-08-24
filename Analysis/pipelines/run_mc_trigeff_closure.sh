@@ -8,13 +8,26 @@
 #
 #     C = Sum_{2mu4} w_MC / [eps_MC(1) eps_MC(2) eps_dR(dR)]  /  Sum_{all} w_MC   = 1 ?
 #
-# The applied single-muon efficiency is the MC one (user, 2026-08-18; doc D4), so the test is
-# SELF-CONTAINED and its residual is the dR correction alone. TWO eps_dR variants are produced,
-# each into its own output file and its own plot subdirectory:
-#   nocorr           un-merged 8 pair-pT cells, exponential and polynomial fits as separate series
-#   nocorr_ptmerge   the variant the pp24 CROSS-SECTION applies -- last two pair-pT bins merged,
-#                    one series built by the expo -> polyu -> raw-bin cascade. 8-bin axis ONLY
-#                    (the merge is undefined on the 4-bin comparison binning and THROWS).
+# The applied single-muon efficiency is the MC one (user, 2026-08-18; closure doc D4), so the test
+# is SELF-CONTAINED and its residual is the dR correction alone.
+#
+# FOUR CELL-GROUPING APPROACHES (user, 2026-08-24;
+# docs/tracking/mc_trigeff_dr_binning_approaches.md), each into its own output file and its own
+# plot subdirectory. They differ ONLY in how the (pair pT, pair eta) plane is partitioned before
+# the Step-3 fit:
+#   nocorr                    8 pair-pT x 9 pair-eta = 72 cells   -- the un-merged reference
+#   nocorr_ptmerge            7 x 9 = 63   -- last two pair-pT bins combined. 8-BIN AXIS ONLY.
+#   nocorr_etamerge           8 x 3 = 24   -- pair eta combined into the 3 detector regions
+#                                            (negative endcap / barrel / positive endcap)
+#   nocorr_etamerge_ptmerge   7 x 3 = 21   -- both. 8-BIN AXIS ONLY.
+# The DELIVERED correction is the SAME cascade in all four -- expo fit -> polyu fit -> `interp`
+# interpolation -> the raw measured bins -- so what differs between the closures is the grouping.
+# All three fit methods are therefore needed in EVERY mode. The un-merged reference additionally
+# draws the two parametric forms as separate series, into a `separate_fit_forms/` subdirectory.
+#
+# EVERY closure is binned on the pp24 CROSS-SECTION's binning (ParamsSet::pT_bins_150, 15 log bins
+# 8-150 GeV, x the 9 pair-eta panels), whatever its correction cells are -- doc D8. That is what
+# makes the four comparable, and it is why Stage 4 can overlay them in one figure.
 #
 # STAGES
 #   Stage 0  compile the two macros ONCE (a race on a shared _cxx.so is the real hazard)
@@ -29,7 +42,11 @@
 #            (mc_trigger_efficiency.md R24b), so neither input this closure needs exists in them.
 #   Stage 2  FillMCTrigEffClosure   -> mc_trig_eff_closure_<label><wp><ptbin><mode>.root
 #   Stage 3  plot_mc_trig_eff_closure -> <plot base>/closure/<mode dir>/*.png
-#            (2 PNGs per WP x binning x mode)
+#            (2 PNGs per WP x binning x mode; the un-merged mode adds 2 more in
+#             <mode dir>/separate_fit_forms/)
+#   Stage 4  plot_mc_trig_eff_closure_compare -> <plot base>/closure/approach_comparison/*.png
+#            the 4 approaches overlaid with the no-trigger series (5 lines). Needs ALL FOUR
+#            approaches, so it runs for the canonical 8-bin binning only.
 #
 # WHY ARTEFACT VALIDATION AND NOT EXIT CODES: a ROOT macro that throws still exits 0 (the
 # exception aborts the interpreter after ROOT has decided the batch job "ran"). Every stage is
@@ -43,7 +60,10 @@
 # Env vars:
 #   WPS="tight medium"    working points (registry: Analysis/docs/muon_wp_registry.md)
 #   PTBINS="8 4"          pair-pT binnings; 4 sets MCTRIGEFF_PAIRPT_4BIN
-#   MODES="nocorr nocorr_ptmerge"   eps_dR variants (nocorr_ptmerge is skipped for PTBINS=4)
+#   MODES="nocorr nocorr_ptmerge nocorr_etamerge nocorr_etamerge_ptmerge"
+#                         cell-grouping approaches. The two pair-pT-merging ones are skipped for
+#                         PTBINS=4 (the merge is undefined there and THROWS).
+#   SKIP_COMPARE=1        skip Stage 4 (the 4-approach overlay)
 #   REGEN_4BIN=0|1        rebuild the 4-bin upstream (Stage 1). Costs ~4 min.
 #   SKIP_FILL=1           reuse the closure ROOT files, re-make the plots only
 # =============================================================================================
@@ -61,10 +81,12 @@ WPS="${WPS:-tight medium}"
 PTBINS="${PTBINS:-8 4}"
 REGEN_4BIN="${REGEN_4BIN:-0}"
 SKIP_FILL="${SKIP_FILL:-0}"
-METHODS="expo polyu_fixedRp"    # MUST match kMethods in FillMCTrigEffClosure.cxx
-# Both methods are needed by BOTH modes: `nocorr` draws them as two series, and the
-# `nocorr_ptmerge` cascade falls back to the polynomial where the exponential is rejected.
-MODES="${MODES:-nocorr nocorr_ptmerge}"
+# MUST match DrCorrCascadeMethods() in Utilities/DrCorrectionCascadeEvaluator.h -- the delivered
+# cascade loads ALL THREE in EVERY mode (expo -> polyu_fixedRp -> interp), so all three fit files
+# have to exist before any fill.
+METHODS="expo polyu_fixedRp interp"
+MODES="${MODES:-nocorr nocorr_ptmerge nocorr_etamerge nocorr_etamerge_ptmerge}"
+SKIP_COMPARE="${SKIP_COMPARE:-0}"
 
 MC_DIR="/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample"
 PLOT_BASE="/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/pp_trigger_efficiency"
@@ -125,11 +147,20 @@ ptbin_suf() { [[ "$1" == "4" ]] && echo "_pt4bin" || echo ""; }
 # DrCorrPlateauModeDir in dr_correction_sample_cfg.h -- the C++ builds the real paths, this shell
 # only validates them, and every time the two constructions drifted the driver reported real files
 # as missing.
-mode_tag() { case "$1" in nocorr) echo "_nocorr";; nocorr_ptmerge) echo "_nocorr_ptmerge";;
-                          *) fail "unknown eps_dR mode '$1'";; esac; }
-mode_dir() { case "$1" in nocorr) echo "no_plateau_correction";;
-                          nocorr_ptmerge) echo "no_plateau_correction_last2ptbins_merged";;
-                          *) fail "unknown eps_dR mode '$1'";; esac; }
+mode_tag() { case "$1" in
+    nocorr)                  echo "_nocorr";;
+    nocorr_ptmerge)          echo "_nocorr_ptmerge";;
+    nocorr_etamerge)         echo "_nocorr_etamerge";;
+    nocorr_etamerge_ptmerge) echo "_nocorr_etamerge_ptmerge";;
+    *) fail "unknown eps_dR mode '$1'";; esac; }
+mode_dir() { case "$1" in
+    nocorr)                  echo "no_plateau_correction";;
+    nocorr_ptmerge)          echo "no_plateau_correction_last2ptbins_merged";;
+    nocorr_etamerge)         echo "no_plateau_correction_paireta_merged";;
+    nocorr_etamerge_ptmerge) echo "no_plateau_correction_paireta_merged_last2ptbins_merged";;
+    *) fail "unknown eps_dR mode '$1'";; esac; }
+# Does this mode combine the last two pair-pT bins? Those are the 8-bin-axis-only ones.
+mode_merges_pt() { case "$1" in nocorr_ptmerge|nocorr_etamerge_ptmerge) return 0;; *) return 1;; esac; }
 
 # ---- Stage 0: compile ONCE ------------------------------------------------------------------
 # `root -q 'X.cxx+'` with no argument compiles AND RUNS X() with its defaults; `-e '.L X.cxx+'`
@@ -140,7 +171,8 @@ val_compiled "${RDF_DIR}/FillMCTrigEffClosure.cxx" "${RDF_DIR}/FillMCTrigEffClos
              "${LOG_DIR}/compile_fill.log" \
              "${ANALYSIS_DIR}/Utilities/MCTrigEffPairSelection.h" \
              "${ANALYSIS_DIR}/Utilities/SingleMuEffEvaluator.h" \
-             "${ANALYSIS_DIR}/Utilities/DrCorrectionCrossxEvaluator.h" \
+             "${ANALYSIS_DIR}/Utilities/DrCorrectionCascadeEvaluator.h" \
+             "${PLOT_DIR}/dr_correction_cell_groups.h" \
              "${ANALYSIS_DIR}/Utilities/MCTrigEffPairPtBinning.h" \
              "${ANALYSIS_DIR}/RDFBasedHistFilling/CommonEffcyConfig.h" \
              "${ANALYSIS_DIR}/MuonObjectsParamsAndHelpers/ParamsSet.h" \
@@ -152,6 +184,15 @@ val_compiled "${PLOT_DIR}/plot_mc_trig_eff_closure.cxx" "${PLOT_DIR}/plot_mc_tri
              "${PLOT_DIR}/dr_correction_apply.h" "${PLOT_DIR}/dr_correction_ratio.h" \
              "${PLOT_DIR}/dr_correction_sample_cfg.h" \
              "${ANALYSIS_DIR}/Utilities/MCTrigEffPairPtBinning.h" \
+             "${ANALYSIS_DIR}/Utilities/CommonLogYRange.h" \
+             "${ANALYSIS_DIR}/RDFBasedHistFilling/CommonEffcyConfig.h"
+( cd "${PLOT_DIR}" && root -l -b -q -e '.L plot_mc_trig_eff_closure_compare.cxx+' ) \
+  >"${LOG_DIR}/compile_compare.log" 2>&1
+val_compiled "${PLOT_DIR}/plot_mc_trig_eff_closure_compare.cxx" \
+             "${PLOT_DIR}/plot_mc_trig_eff_closure_compare_cxx.so" \
+             "${LOG_DIR}/compile_compare.log" \
+             "${PLOT_DIR}/dr_correction_apply.h" "${PLOT_DIR}/dr_correction_ratio.h" \
+             "${PLOT_DIR}/dr_correction_sample_cfg.h" \
              "${ANALYSIS_DIR}/Utilities/CommonLogYRange.h" \
              "${ANALYSIS_DIR}/RDFBasedHistFilling/CommonEffcyConfig.h"
 if [[ "${REGEN_4BIN}" == "1" ]]; then
@@ -174,12 +215,18 @@ if [[ "${REGEN_4BIN}" == "1" && " ${PTBINS} " == *" 4 "* ]]; then
     ( cd "${PLOT_DIR}" && root -l -b -q "plot_mc_trig_eff.cxx+(\"${SAMPLE}\", ${WPF})" ) \
       >"${LOG_DIR}/regen4_plateau_${wp}.log" 2>&1
     val "${MC_DIR}/dr_correction_plateaus_${LABEL}${WPS_SUF}_pt4bin.root"
-    for m in ${METHODS}; do
-      log "Stage 1c [4-bin/${wp}/${m}]: opposite-sign fit, no plateau correction"
-      ( cd "${PLOT_DIR}" && root -l -b -q \
-          "fit_dr_corrections.cxx+(\"${SAMPLE}\", ${WPF}, 3, \"${m}\", false, \"os\", \"nocorr\")" ) \
-        >"${LOG_DIR}/regen4_fit_${wp}_${m}.log" 2>&1
-      val "${MC_DIR}/dr_correction_fits_${LABEL}${WPS_SUF}_pt4bin_step3_${m}_os_nocorr.root"
+    for mode in ${MODES}; do
+      # The pair-pT merge is defined on the canonical 8-bin axis only -- the 4-bin variant already
+      # combines the top cells by construction and the C++ THROWS if asked.
+      if mode_merges_pt "$mode"; then continue; fi
+      MTAG="$(mode_tag "$mode")"
+      for m in ${METHODS}; do
+        log "Stage 1c [4-bin/${wp}/${mode}/${m}]: opposite-sign fit, no plateau correction"
+        ( cd "${PLOT_DIR}" && root -l -b -q \
+            "fit_dr_corrections.cxx+(\"${SAMPLE}\", ${WPF}, 3, \"${m}\", false, \"os\", \"${mode}\")" ) \
+          >"${LOG_DIR}/regen4_fit_${wp}_${mode}_${m}.log" 2>&1
+        val "${MC_DIR}/dr_correction_fits_${LABEL}${WPS_SUF}_pt4bin_step3_${m}_os${MTAG}.root"
+      done
     done
   done
   unset MCTRIGEFF_PAIRPT_4BIN
@@ -192,11 +239,12 @@ for pb in ${PTBINS}; do
   for wp in ${WPS}; do
     WPF="$(wp_flag "$wp")"; WPS_SUF="$(wp_suffix "$wp")"
     for mode in ${MODES}; do
-      # The merge is defined on the canonical 8-bin axis only (dr_correction_pt_groups.h throws
-      # otherwise), so skip it loudly rather than letting the macro die inside ROOT.
-      if [[ "$pb" == "4" && "$mode" == "nocorr_ptmerge" ]]; then
-        log "Stage 2/3 [4-bin/${wp}/${mode}]: SKIPPED -- the merged variant is defined for the "\
-"canonical 8-bin pair-pT axis only"
+      # The pair-pT merge is defined on the canonical 8-bin axis only
+      # (dr_correction_cell_groups.h throws otherwise), so skip it loudly rather than letting the
+      # macro die inside ROOT. The pair-eta merge is orthogonal and runs on either axis.
+      if [[ "$pb" == "4" ]] && mode_merges_pt "$mode"; then
+        log "Stage 2/3 [4-bin/${wp}/${mode}]: SKIPPED -- combining the last two pair-pT bins is "\
+"defined for the canonical 8-bin pair-pT axis only"
         continue
       fi
       MTAG="$(mode_tag "$mode")"; MDIR="$(mode_dir "$mode")"
@@ -204,8 +252,8 @@ for pb in ${PTBINS}; do
 
       # Every fit file the fill will read must exist BEFORE the fill, or the macro throws inside
       # ROOT and (exit code 0) looks like success until the artefact check three lines later.
-      # BOTH methods, in BOTH modes: `nocorr` draws them as two series and the `nocorr_ptmerge`
-      # cascade needs the polynomial for the cells where the exponential is rejected.
+      # ALL THREE methods, in EVERY mode: the delivered cascade loads expo, polyu_fixedRp and
+      # interp and routes each cell to the first one that is accepted.
       for m in ${METHODS}; do
         f="${MC_DIR}/dr_correction_fits_${LABEL}${WPS_SUF}${PBSUF}_step3_${m}_os${MTAG}.root"
         [[ -s "$f" ]] || fail "no opposite-sign '${mode}' fit for ${pb}-bin/${wp}/${m}:
@@ -245,21 +293,65 @@ for pb in ${PTBINS}; do
       log "Stage 3 [${pb}-bin/${wp}/${mode}]: closure plots"
       PDIR="${PLOT_BASE}/mc_based$(plot_tag "$pb" "$wp")/closure/${MDIR}"
       PNGS=(closure_pair_pt_all_opposite_sign.png closure_pair_pt_single_b_signal_cuts.png)
+      # The un-merged reference produces a SECOND figure set -- the two parametric forms as
+      # separate series -- in its own subdirectory (user, 2026-08-24). Mirrors kPerFormSubdir in
+      # plot_mc_trig_eff_closure.cxx; the C++ builds the real path, this only validates it.
+      PDIRS=("${PDIR}")
+      [[ "$mode" == "nocorr" ]] && PDIRS+=("${PDIR}/separate_fit_forms")
       # Removed BEFORE the macro runs, for the same reason ${OUT} is: otherwise a plot pass that
       # dies inside ROOT (which still exits 0) validates on the previous run's PNGs.
-      for f in "${PNGS[@]}"; do rm -f "${PDIR}/${f}"; done
+      for d in "${PDIRS[@]}"; do for f in "${PNGS[@]}"; do rm -f "${d}/${f}"; done; done
       ( cd "${PLOT_DIR}" && root -l -b -q \
           "plot_mc_trig_eff_closure.cxx+(\"${SAMPLE}\", ${WPF}, \"${mode}\")" ) \
         >"${LOG_DIR}/plot_${pb}bin_${wp}_${mode}.log" 2>&1
-      for f in "${PNGS[@]}"; do
-        val "${PDIR}/${f}"
-        val_fresh "${PDIR}/${f}" "${OUT}"
-      done
-      log "  2 PNGs in ${PDIR}"
+      for d in "${PDIRS[@]}"; do for f in "${PNGS[@]}"; do
+        val "${d}/${f}"
+        val_fresh "${d}/${f}" "${OUT}"
+      done; done
+      log "  $(( 2 * ${#PDIRS[@]} )) PNGs in ${PDIR}"
       grep -h "inclusive closure" "${LOG_DIR}/fill_${pb}bin_${wp}_${mode}.log" 2>/dev/null | sed 's/^/  /'
     done
   done
 done
 unset MCTRIGEFF_PAIRPT_4BIN
+
+# ---- Stage 4: the 4-approach overlay ---------------------------------------------------------
+# Needs ALL FOUR approaches, two of which are defined for the canonical 8-bin pair-pT axis only,
+# so it runs for the 8-bin binning alone. Its per-approach points must EQUAL the ones in each
+# approach's own subdirectory -- same fills, same cascade, only overlaid -- and the macro itself
+# enforces the precondition that makes the overlay legitimate: the four no-trigger denominators
+# are compared bin by bin and it THROWS if they differ.
+NEEDED_MODES="nocorr nocorr_ptmerge nocorr_etamerge nocorr_etamerge_ptmerge"
+HAVE_ALL=1
+for need in ${NEEDED_MODES}; do
+  [[ " ${MODES} " == *" ${need} "* ]] || HAVE_ALL=0
+done
+if [[ "${SKIP_COMPARE}" == "1" ]]; then
+  log "Stage 4: SKIPPED (SKIP_COMPARE=1)"
+elif [[ "${HAVE_ALL}" != "1" || " ${PTBINS} " != *" 8 "* ]]; then
+  log "Stage 4: SKIPPED -- the overlay needs all four approaches on the 8-bin axis (MODES='${MODES}', PTBINS='${PTBINS}')"
+else
+  CMP_PNGS=(closure_compare_pair_pt_all_opposite_sign.png
+            closure_compare_pair_pt_single_b_signal_cuts.png)
+  for wp in ${WPS}; do
+    WPF="$(wp_flag "$wp")"; WPS_SUF="$(wp_suffix "$wp")"
+    CDIR="${PLOT_BASE}/mc_based$(plot_tag "8" "$wp")/closure/approach_comparison"
+    log "Stage 4 [${wp}]: the 4-approach overlay"
+    for f in "${CMP_PNGS[@]}"; do rm -f "${CDIR}/${f}"; done
+    ( cd "${PLOT_DIR}" && root -l -b -q \
+        "plot_mc_trig_eff_closure_compare.cxx+(\"${SAMPLE}\", ${WPF})" ) \
+      >"${LOG_DIR}/compare_${wp}.log" 2>&1
+    CMP_INPUTS=()
+    for mode in ${NEEDED_MODES}; do
+      CMP_INPUTS+=("${MC_DIR}/mc_trig_eff_closure_${LABEL}${WPS_SUF}$(mode_tag "$mode").root")
+    done
+    for f in "${CMP_PNGS[@]}"; do
+      val "${CDIR}/${f}"
+      val_fresh "${CDIR}/${f}" "${CMP_INPUTS[@]}"
+    done
+    log "  2 PNGs in ${CDIR}"
+    grep -h "inclusive closure" "${LOG_DIR}/compare_${wp}.log" 2>/dev/null | sed 's/^/  /'
+  done
+fi
 
 log "════ MC trigger-efficiency closure DONE ════"

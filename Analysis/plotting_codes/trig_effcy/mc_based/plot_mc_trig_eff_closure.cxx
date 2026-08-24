@@ -2,33 +2,46 @@
 // plot_mc_trig_eff_closure.cxx
 //
 // The MC-closure figure of the pp24 2mu4 trigger correction
-// (docs/tracking/mc_trig_eff_closure.md §3.4; inputs from FillMCTrigEffClosure.cxx).
+// (docs/tracking/mc_trigeff_dr_binning_approaches.md §PP-4; machinery and physics:
+//  mc_trig_eff_closure.md; inputs from FillMCTrigEffClosure.cxx).
 //
-// ONE PNG per (sample version, eps_dR variant). Subplots = pair-eta bins
+// ONE PNG per (sample version, figure set). Subplots = pair-eta bins
 // (CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap, 9 bins -> 3x3). Each subplot:
 //
-//   upper pad   dsigma/dpT^pair. "nocorr" draws THREE series:
-//                 (1) all pairs, NO trigger requirement
-//                 (2) pairs passing 2mu4, corrected with the exponential dR-correction form
-//                 (3) pairs passing 2mu4, corrected with the polynomial dR-correction form
-//               "nocorr_ptmerge" draws TWO: (1), and one corrected series built by the
-//               cross-section's expo -> polyu -> raw-bins cascade (the delivered correction, not
-//               a fit form -- so there is nothing to compare form-by-form).
-//   lower pad   the closure ratio of each corrected series over (1); it must be 1 everywhere.
+//   upper pad   dsigma/dpT^pair -- the no-trigger-requirement series, plus one corrected series
+//               per entry of the figure set.
+//   lower pad   the closure ratio of each corrected series over the no-trigger one; it must be 1
+//               everywhere.
 //
-// THE APPLIED SINGLE-MUON EFFICIENCY IS eps_MC (user, 2026-08-18; doc D4): the closure is
+// THE FOUR CELL-GROUPING APPROACHES (`plateau_mode`; user 2026-08-24). `nocorr` (8 pair-pT x 9
+// pair-eta), `nocorr_ptmerge` (7x9), `nocorr_etamerge` (8x3) and `nocorr_etamerge_ptmerge` (7x3)
+// each go to their OWN subdirectory, named by the repo's own mode helper (DrCorrPlateauModeDir).
+// The DELIVERED series is the same cross-method cascade in all four -- expo fit -> polyu fit where
+// the exponential is rejected -> the interpolation where both are -> the measured values where
+// every tier is -- so what differs between the figures is the CELL GROUPING and not the cascade.
+//
+// THE UN-MERGED REFERENCE PRODUCES A SECOND FIGURE SET, in a `separate_fit_forms/` subdirectory of
+// its own (user, 2026-08-24): the `expo` and `polyu_fixedRp` corrections drawn as two SEPARATE
+// series. That is a different question from the delivered correction -- how far apart the two
+// parametric forms are, cell by cell (mc_trigger_efficiency.md R26, OPEN) -- and mixing it into the
+// deliverable's directory is what the separation prevents.
+//
+// THE X AXIS IS THE pp24 CROSS-SECTION's, NOT THE CORRECTION's (doc D8, superseding
+// mc_trig_eff_closure.md D2): ParamsSet::pT_bins_150, 15 log bins over 8-150 GeV, IN EVERY
+// APPROACH -- because the question the comparison answers is which approach corrects the
+// cross-section most accurately, and four figures on four different x-axes could not be compared.
+// The axis comes from the filled histogram itself here; the fill stage is the one place that reads
+// ParamsSet.
+//
+// THE APPLIED SINGLE-MUON EFFICIENCY IS eps_MC (user, 2026-08-18; closure doc D4): the closure is
 // self-contained, so what it tests is the dR correction and its fit alone. The fill stage also
 // books an eps^nc_data numerator, which is the printed diagnostic, NOT drawn here.
 //
-// The two variants are written to SEPARATE subdirectories, named by the repo's own mode helper
-// (DrCorrPlateauModeDir), and each figure's pair-pT axis is that variant's own cell axis -- 7 bins
-// for the merged one, since its top cell spans [72.1, 150) GeV.
-//
-// SCALES (user, 2026-08-24). The RATIO pad range is SHARED BY THE TWO PNGs of a variant -- the
-// closure is the same dimensionless test on two samples, so a y-position must mean the same
-// number in both files. The SPECTRUM pad is NOT shared: those are cross sections of two different
-// samples and differ in normalization by physics, so each PNG keeps its own range (still one
-// range for all nine panels within it, ApplyCommonLogYRange property 2).
+// SCALES (user, 2026-08-24). The RATIO pad range is SHARED BY THE TWO PNGs of a figure set -- the
+// closure is the same dimensionless test on two samples, so a y-position must mean the same number
+// in both files. The SPECTRUM pad is NOT shared: those are cross sections of two different samples
+// and differ in normalization by physics, so each PNG keeps its own range (still one range for all
+// nine panels within it, ApplyCommonLogYRange property 2).
 // The ratio frame CONTAINS EVERY DRAWN POINT (central values; error bars may clip), the rule
 // ApplyCommonLogYRange already states for the spectra: a cell drawn in the upper pad and missing
 // from the ratio pad below it reads as absent data, and the cells that sit far from 1 are this
@@ -39,13 +52,10 @@
 // repo's ONE implementation, SetConditionalRatioErrors in dr_correction_ratio.h -- Var = A - R*B
 // with the k=n boundary fallback. The spectra carry their own sqrt(sum w^2).
 //
-// The pair-pT axis IS the binning the dR correction's cells are defined on (doc D2) -- 8 log bins
-// by default, the 4-bin variant under MCTRIGEFF_PAIRPT_4BIN. Both are read from
-// MCTrigEffPairPt::Edges, never retyped.
-//
 // Usage (from Analysis/plotting_codes/trig_effcy/mc_based/):
 //   root -l -b -q 'plot_mc_trig_eff_closure.cxx+("pp_full", true)'
 //   root -l -b -q 'plot_mc_trig_eff_closure.cxx+("pp_full", true, "nocorr_ptmerge")'
+//   root -l -b -q 'plot_mc_trig_eff_closure.cxx+("pp_full", true, "nocorr_etamerge")'
 //   MCTRIGEFF_PAIRPT_4BIN=1 root -l -b -q 'plot_mc_trig_eff_closure.cxx+("pp_full", true)'
 // =============================================================================
 
@@ -68,6 +78,7 @@
 #include <TPad.h>
 #include <TROOT.h>
 #include <TStyle.h>
+#include <TNamed.h>
 #include <TSystem.h>
 
 #include "dr_correction_sample_cfg.h"
@@ -80,27 +91,30 @@
 namespace {
 
 // Series identity. NO internal method name ever reaches the canvas
-// (.claude/conventions/atlas-plotting.md P1a) -- the two corrected series are named by the
-// FUNCTIONAL FORM of the dR correction, whose equations are drawn in the header strip.
+// (.claude/conventions/atlas-plotting.md P1a) -- the corrected series are named by the FUNCTIONAL
+// FORM of the dR correction, whose equations are drawn in the header strip.
 struct Series {
-    std::string key;        // histogram token (fill-stage method name); never drawn
+    std::string key;        // histogram token (fill-stage series key); never drawn
     std::string legend;     // what the reader sees
     Color_t     colour;
     Style_t     marker;
 };
-// "nocorr": the two parametric forms are two independent answers to the same question, so both
-// are drawn. "nocorr_ptmerge": ONE delivered correction (the cross-section's cascade), so one
-// series -- naming it after a fit form would misdescribe the cells routed to the other form or to
-// the raw bins. The keys are the fill stage's tokens (FillMCTrigEffClosure.cxx).
+
+// THE DELIVERED correction -- one series, in every approach. Naming it after a fit form would
+// misdescribe the cells routed to another form or to the interpolation.
+const std::vector<Series> kCorrectedCascade = {
+    {"cascade", "2mu4, corrected (#varepsilon_{#DeltaR})", kRed + 1, 20},
+};
+// The un-merged reference's SECOND figure set: the two parametric forms side by side.
 const std::vector<Series> kCorrectedPerForm = {
     {"expo",          "2mu4, corrected (exponential #varepsilon_{#DeltaR})", kRed + 1,  20},
     {"polyu_fixedRp", "2mu4, corrected (polynomial #varepsilon_{#DeltaR})",  kBlue + 1, 22},
 };
-const std::vector<Series> kCorrectedCascade = {
-    {"crossx_cascade", "2mu4, corrected (#varepsilon_{#DeltaR})", kRed + 1, 20},
-};
 const Color_t kUncorrColour = kBlack;
 const Style_t kUncorrMarker = 21;
+
+// The subdirectory the per-form set goes to, relative to the approach's own directory.
+const char* kPerFormSubdir = "separate_fit_forms/";
 
 struct VersionCfg {
     std::string key;        // histogram token
@@ -136,35 +150,16 @@ TH1D* Row(TH2D* h, int iz, const std::string& nm)
     return p;
 }
 
-}  // namespace
-
-// =============================================================================
-void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_tight_wp = true,
-                              const std::string& plateau_mode = "nocorr")
+// =============================================================================================
+// ONE FIGURE SET: the same series list drawn for both sample versions, sharing one ratio range.
+// The un-merged approach calls this twice (the cascade set, then the per-form set); every other
+// approach calls it once.
+// =============================================================================================
+void DrawClosureSet(TFile* fin, const DrCorrSample& cfg, const std::string& wp_text,
+                    const std::string& plateau_mode, const std::vector<Series>& kCorrected,
+                    const std::string& outdir, bool per_form_set,
+                    const std::string& set_headline, const std::string& tag)
 {
-    gROOT->SetBatch(kTRUE);
-    gStyle->SetOptStat(0);
-
-    // Validates the token and tells the two variants apart; DrCorrPlateauModeDir throws on
-    // anything else, so a typo can never silently land in the wrong directory.
-    const bool cascade = DrCorrModeMergeLastTwoPt(plateau_mode);
-    const std::vector<Series>& kCorrected = cascade ? kCorrectedCascade : kCorrectedPerForm;
-
-    const DrCorrSample cfg = GetDrCorrSample(sample, use_tight_wp);
-    const std::string wp_suf  = DrCorrWpSuffix(use_tight_wp);
-    const std::string wp_text = use_tight_wp ? "Tight muons" : "Medium muons";
-
-    const std::string in_path = cfg.mc_dir + "mc_trig_eff_closure_" + cfg.mc_label + wp_suf
-                              + MCTrigEffPairPt::FileSuffix()
-                              + DrCorrPlateauModeTag(plateau_mode) + ".root";
-    TFile* fin = TFile::Open(in_path.c_str(), "READ");
-    if (!fin || fin->IsZombie())
-        throw std::runtime_error("plot_mc_trig_eff_closure: cannot open " + in_path
-                                 + " -- run FillMCTrigEffClosure first");
-
-    const std::string outdir = cfg.out_base + "closure/" + DrCorrPlateauModeDir(plateau_mode);
-    gSystem->mkdir(outdir.c_str(), kTRUE);
-
     static const CommonEffcyConfig ecfg{};
     const auto& eta_ranges = ecfg.pair_eta_proj_ranges_coarse_incl_gap;
     const int neta = static_cast<int>(eta_ranges.size());
@@ -172,6 +167,7 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
     const int ncol = static_cast<int>(std::ceil(std::sqrt((double)neta)));
     const int nrow = static_cast<int>(std::ceil((double)neta / ncol));
 
+    gSystem->mkdir(outdir.c_str(), kTRUE);
 
     // ==========================================================================================
     // THE RATIO RANGE IS SHARED BY THE TWO FIGURES; THE SPECTRUM RANGE IS NOT (user, 2026-08-24).
@@ -204,7 +200,8 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
         D.h_den = Get<TH2D>(fin, pre + "den");
         std::map<std::string, TH2D*> h_A, h_B;
         // `_epsmc_`: the numerator weighted with the APPLIED eps_MC. The file also holds an
-        // `_epsdata_` numerator -- the diagnostic (doc D4) -- which is deliberately NOT drawn.
+        // `_epsdata_` numerator -- the diagnostic (closure doc D4) -- which is deliberately NOT
+        // drawn.
         for (const auto& S : kCorrected) {
             D.h_num[S.key] = Get<TH2D>(fin, pre + "num_epsmc_"  + S.key);
             h_A[S.key]     = Get<TH2D>(fin, pre + "numA_epsmc_" + S.key);
@@ -221,14 +218,14 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
         std::vector<TH1*> for_range;   // every spectrum of THIS figure -- its own range (above)
 
         for (int iz = 1; iz <= neta; ++iz) {
-            TH1D* den = Row(D.h_den, iz, Form("%s_den_eta%d", V.key.c_str(), iz));
+            TH1D* den = Row(D.h_den, iz, Form("%s%s_den_eta%d", tag.c_str(), V.key.c_str(), iz));
             for (const auto& S : kCorrected) {
-                TH1D* num = Row(D.h_num[S.key], iz, Form("%s_num_%s_eta%d", V.key.c_str(),
-                                                         S.key.c_str(), iz));
-                TH1D* A   = Row(h_A[S.key], iz, Form("%s_A_%s_eta%d", V.key.c_str(),
-                                                     S.key.c_str(), iz));
-                TH1D* B   = Row(h_B[S.key], iz, Form("%s_B_%s_eta%d", V.key.c_str(),
-                                                     S.key.c_str(), iz));
+                TH1D* num = Row(D.h_num[S.key], iz, Form("%s%s_num_%s_eta%d", tag.c_str(),
+                                                         V.key.c_str(), S.key.c_str(), iz));
+                TH1D* A   = Row(h_A[S.key], iz, Form("%s%s_A_%s_eta%d", tag.c_str(),
+                                                     V.key.c_str(), S.key.c_str(), iz));
+                TH1D* B   = Row(h_B[S.key], iz, Form("%s%s_B_%s_eta%d", tag.c_str(),
+                                                     V.key.c_str(), S.key.c_str(), iz));
                 // CLOSURE RATIO with the conditional (binomial-correct) error. Built BEFORE the
                 // width scaling: dividing two spectra scaled by the same widths is identical, but
                 // A and B are sums of squared weights and do NOT scale the same way, so the error
@@ -237,15 +234,11 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
                 // Var = A - R*B, NOT A - B. B = sum_fired a^2 * p carries the PREDICTED per-pair
                 // probability p; the variance needs the TRUE one, whose first-order estimate is
                 // R*p (R = this bin's closure ratio). A - B is the special case R = 1 -- i.e. it
-                // assumes the closure already holds, which is the very thing being tested. In the
-                // applied (eps_MC) configuration R is 0.994 INCLUSIVELY but spans 0.52-1.38 per
-                // cell, which is the scale that matters: dropping the factor misstates sigma by up
-                // to 1.11x (over) and 2.98x (under). It can also drive A - B negative, and a
-                // negative variance silently became a zero error, which both consumers drop.
+                // assumes the closure already holds, which is the very thing being tested.
                 // SetConditionalRatioErrors is the repo's single implementation and carries the
-                // k=n boundary fallback for exactly that case.
-                TH1D* r = static_cast<TH1D*>(num->Clone(Form("%s_ratio_%s_eta%d", V.key.c_str(),
-                                                             S.key.c_str(), iz)));
+                // k=n boundary fallback.
+                TH1D* r = static_cast<TH1D*>(num->Clone(Form("%s%s_ratio_%s_eta%d", tag.c_str(),
+                                                             V.key.c_str(), S.key.c_str(), iz)));
                 r->SetDirectory(nullptr);
                 r->Divide(den);
                 SetConditionalRatioErrors(r, den, A, B);
@@ -267,14 +260,6 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
     // ---------------- the shared ratio range --------------------------------------------------
     // RATIO PAD: EVERY DRAWN POINT IS INSIDE THE FRAME (user, 2026-08-24) -- the same rule
     // ApplyCommonLogYRange states for the spectra (property 1), now applied to the ratio.
-    //
-    // It replaces a 2-98 percentile frame, which kept the bulk band wide but pushed the extreme
-    // cells off-scale: the merged variant's `eta^pair in [-2.4,-2.0) x pT^pair > 72 GeV` cell
-    // closes at 0.534, so its marker was drawn in the spectrum pad and then vanished from the
-    // ratio pad below it -- a panel showing a point in one pad and not the other reads as missing
-    // data, and that cell is the closure's principal FINDING (doc R5), not noise to be framed out.
-    // The price is a wider frame wherever one cell sits far from 1; that is the honest rendering.
-    //
     // Central values only: in the statistics-poor top pair-pT cells the conditional error reaches
     // ~0.6, and sizing the frame to contain every error BAR would compress the band the figure is
     // about for no gain -- a marker inside the frame with its bar clipped at the edge is the same
@@ -313,9 +298,8 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
         // quadrant is free, so the legend and the defining equations get their own space rather
         // than being laid over data (.claude/conventions/atlas-plotting.md, legend placement).
         const double head = 0.17;
-        TCanvas c(("c_closure_" + V.key).c_str(), "", 1800, 1750);
+        TCanvas c((tag + "c_closure_" + V.key).c_str(), "", 1800, 1750);
 
-        std::vector<TPad*> upper, lower;
         for (int iz = 1; iz <= neta; ++iz) {
             // c.cd() EVERY iteration: a new TPad is adopted by gPad, and gPad is whatever pad was
             // last cd()'d into. Without this the second panel is created INSIDE the first panel's
@@ -327,8 +311,10 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
             const double ybot = 1.0 - head - (row + 1) * (1.0 - head) / nrow;
             const double ysplit = ybot + 0.36 * (ytop - ybot);   // 64 % spectrum / 36 % ratio
 
-            auto* pu = new TPad(Form("pu_%s_%d", V.key.c_str(), iz), "", x1, ysplit, x2, ytop);
-            auto* pl = new TPad(Form("pl_%s_%d", V.key.c_str(), iz), "", x1, ybot,   x2, ysplit);
+            auto* pu = new TPad(Form("%spu_%s_%d", tag.c_str(), V.key.c_str(), iz), "",
+                                x1, ysplit, x2, ytop);
+            auto* pl = new TPad(Form("%spl_%s_%d", tag.c_str(), V.key.c_str(), iz), "",
+                                x1, ybot,   x2, ysplit);
             for (TPad* p : {pu, pl}) {
                 p->SetLeftMargin(0.235); p->SetRightMargin(0.02);
                 p->SetLogx(1);
@@ -337,7 +323,6 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
             pu->SetTopMargin(0.04); pu->SetBottomMargin(0.02);
             pl->SetTopMargin(0.02); pl->SetBottomMargin(0.32);
             pu->Draw(); pl->Draw();
-            upper.push_back(pu); lower.push_back(pl);
 
             // ---- spectra ----
             pu->cd();
@@ -379,7 +364,6 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
                 r->GetXaxis()->SetTitleOffset(1.00);
                 // NO SetMoreLogLabels(): the axis starts at 8 GeV, so it draws "9" and "10"
                 // adjacent on a log scale and at this panel width they touch and read as "910".
-                // The decade labels plus minor ticks are unambiguous on their own.
                 r->Draw(first ? "PE" : "PE SAME");
                 first = false;
             }
@@ -396,7 +380,8 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
         hd->SetNDC(); hd->SetTextFont(42);
         hd->SetTextSize(0.0180);
         hd->DrawLatex(0.035, 0.982,
-                      (cfg.sample_text + ",  " + wp_text + ",  " + V.headline).c_str());
+                      (cfg.sample_text + ",  " + wp_text + ",  " + V.headline + ",  "
+                       + set_headline).c_str());
         hd->SetTextSize(0.0150);
         hd->DrawLatex(0.035, 0.918,
                       "w = 1 / [#varepsilon(p_{T,1},q#eta_{1}) "
@@ -409,14 +394,15 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
         hd->DrawLatex(0.035, 0.876,
                       "polynomial  f = C + u^{2}(a_{2} + a_{3}u + a_{4}u^{2}),"
                       "   u #equiv max(0, 1 - #DeltaR/R_{p})");
-        // The cascade IS the correction's definition in the merged variant -- which f(dR) a cell
-        // uses is not a code detail but part of what eps_dR means there.
-        if (cascade)
+        // Which f a cell uses is not a code detail in the cascade set -- it is part of what
+        // eps_dR MEANS there, so the canvas has to define it.
+        if (!per_form_set)
             hd->DrawLatex(0.035, 0.855,
                           "f = the exponential where its fit is accepted, the polynomial where it "
-                          "is not, and the measured #varepsilon_{#DeltaR} values where neither is");
+                          "is not, the linear interpolation of the measured points where neither "
+                          "is, and those measured values themselves where none is");
         if (n_offscale > 0)
-            hd->DrawLatex(0.035, cascade ? 0.834 : 0.855,
+            hd->DrawLatex(0.035, per_form_set ? 0.855 : 0.834,
                           Form("%d ratio point(s) outside the lower-pad range", n_offscale));
 
         // One canvas-level legend, laid out as a single row in the reserved strip.
@@ -445,7 +431,69 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
         }
         std::cout << std::endl;
     }
-    std::cout << "  shared ratio-pad range [" << rmin << ", " << rmax << "]" << std::endl;
+    std::cout << "  shared ratio-pad range [" << rmin << ", " << rmax << "]  (" << outdir << ")"
+              << std::endl;
+}
+
+}  // namespace
+
+// =============================================================================
+void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_tight_wp = true,
+                              const std::string& plateau_mode = "nocorr")
+{
+    gROOT->SetBatch(kTRUE);
+    gStyle->SetOptStat(0);
+
+    // Validates the token; DrCorrPlateauModeDir throws on anything else, so a typo can never
+    // silently land in the wrong directory.
+    const std::string mode_dir = DrCorrPlateauModeDir(plateau_mode);
+    if (!DrCorrModeNoPlateau(plateau_mode))
+        throw std::runtime_error("plot_mc_trig_eff_closure: the closure is defined for the "
+                                 "no-plateau-correction approaches only, got '" + plateau_mode
+                                 + "'");
+
+    const DrCorrSample cfg = GetDrCorrSample(sample, use_tight_wp);
+    const std::string wp_suf  = DrCorrWpSuffix(use_tight_wp);
+    const std::string wp_text = use_tight_wp ? "Tight muons" : "Medium muons";
+
+    const std::string in_path = cfg.mc_dir + "mc_trig_eff_closure_" + cfg.mc_label + wp_suf
+                              + MCTrigEffPairPt::FileSuffix()
+                              + DrCorrPlateauModeTag(plateau_mode) + ".root";
+    TFile* fin = TFile::Open(in_path.c_str(), "READ");
+    if (!fin || fin->IsZombie())
+        throw std::runtime_error("plot_mc_trig_eff_closure: cannot open " + in_path
+                                 + " -- run FillMCTrigEffClosure first");
+
+    // What the cells of THIS approach are, in physics words, for the canvas headline. Read from
+    // the fill stage's own provenance stamp rather than re-derived, so the figure cannot claim a
+    // grouping the file was not built with.
+    std::string cell_text = "#varepsilon_{#DeltaR} cells: see provenance";
+    if (auto* prov = dynamic_cast<TNamed*>(fin->Get("provenance"))) {
+        const TString t = prov->GetTitle();
+        const Ssiz_t i = t.Index("eps_dR CELLS: ");
+        if (i >= 0) {
+            const Ssiz_t j = t.Index(" (", i);
+            if (j > i) cell_text = "#varepsilon_{#DeltaR} cells: "
+                                 + std::string(TString(t(i + 14, j - i - 14)).Data());
+        }
+    }
+
+    const std::string outdir = cfg.out_base + "closure/" + mode_dir;
+
+    // The DELIVERED correction: one series, in every approach.
+    DrawClosureSet(fin, cfg, wp_text, plateau_mode, kCorrectedCascade, outdir,
+                   /*per_form_set=*/false, cell_text, "casc_");
+
+    // The un-merged reference's second figure set. Its series exist in the file only for that
+    // approach (FillMCTrigEffClosure.cxx::WantsSeparateFormSeries), so the presence of the
+    // histograms is what decides -- not a mode literal repeated here.
+    const bool have_per_form =
+        fin->Get("h_closure_all_os_num_epsmc_expo") &&
+        fin->Get("h_closure_all_os_num_epsmc_polyu_fixedRp");
+    if (have_per_form)
+        DrawClosureSet(fin, cfg, wp_text, plateau_mode, kCorrectedPerForm,
+                       outdir + kPerFormSubdir, /*per_form_set=*/true,
+                       cell_text + ", the two parametric forms separately", "form_");
 
     fin->Close();
     std::cout << "done." << std::endl;
