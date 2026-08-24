@@ -79,7 +79,7 @@ inline void SetConditionalRatioErrors(TH1D* r, const TH1D* den, const TH1D* A, c
 // ranges of the 3D histograms; 0 on either pair means "integrate over that axis". A cell spanning
 // more than one bin is built by summing num / denom / errA / errB over the range BEFORE the ratio
 // is formed -- i.e. exactly what filling a coarser axis would have produced, never an average of
-// per-bin ratios. Used by the merged pair-pT grouping (dr_correction_pt_groups.h).
+// per-bin ratios. Used by the merged pair-pT grouping (dr_correction_cell_groups.h).
 inline TH1D* DrCellRatioRange(TH3D* hn, TH3D* hd, TH3D* ha, TH3D* hb, TH3D* hp, TH3D* hq,
                               int ylo, int yhi, int zlo, int zhi, const char* nm)
 {

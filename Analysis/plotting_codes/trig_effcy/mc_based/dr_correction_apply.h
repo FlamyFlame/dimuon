@@ -12,6 +12,7 @@
 
 #include <TF1.h>
 #include <TFile.h>
+#include <TGraph.h>
 #include <TH1D.h>
 #include <TH2D.h>
 #include <TH3D.h>
@@ -19,7 +20,7 @@
 
 #include "dr_correction_sample_cfg.h"
 #include "dr_correction_ratio.h"
-#include "dr_correction_pt_groups.h"
+#include "dr_correction_cell_groups.h"
 
 // =================================================================================================
 // APPLYING eps_dR: turn the per-(pair pT, pair eta) Step-3 fits into a number for ONE pair.
@@ -37,6 +38,21 @@
 // puts the plateau at 1, which is what the factorised per-pair weight eps1*eps2*eps_dR assumes.
 // Because f(dR) -> C well before dR = 1, f(1)/C ~ 1 and there is NO STEP at the dR = 1 boundary
 // where the correction hands over to unity.
+//
+// THE THREE CURVE FLAVOURS THIS STRUCT CAN DELIVER (one per `method`), all in the SAME form
+// f(dR)/C, so a cascade can put them in one chain without special-casing any of them:
+//   `expo`           f = C + A exp[-(dR/lambda)^p]          C = the fitted free asymptote
+//   `polyu_fixedRp`  f = C + u^2(a2 + a3 u + a4 u^2)        C = the fitted free asymptote
+//   `interp`         linear interpolation through the measured points below R_p, FLAT at the last
+//                    measured knot above it (fit_dr_corrections.cxx's `flat_val`)
+//                                                          C = that flat-branch value
+// The interpolation was added 2026-08-24 (user; docs/tracking/mc_trigeff_dr_binning_approaches.md
+// §PP-3) because it is the third tier of the delivered cascade, REPLACING the raw-bin placeholder
+// below. It is one of the three resolutions mc_trigger_efficiency.md R26 names ("per-cell
+// interpolation"), and it enters on exactly the same footing as the two fits: a curve divided by
+// its own baseline. It carries no parameter errors, so its baseline screen is
+// DrCorrPlateauUsable(C, 0) -- i.e. the "is C a sane normalization?" half of the test, which is
+// the only half that is defined without an error.
 //
 // WHICH VARIANT pp24 CROSSX APPLIES (user, 2026-08-17; TEMPORARY, named in
 // dr_correction_sample_cfg.h so no consumer retypes it): method `expo` = DrCorrCrossxMethod(),
@@ -91,10 +107,13 @@ struct DrCorrectionEvaluator {
     static constexpr double kMaxCorr = 5.0;    // pathology guard, not a physics choice
 
     struct Cell {
-        TF1*   fit = nullptr;      // owned by the open TFile
-        double C   = 0.;           // the fit's own free asymptote (last parameter)
-        TH1D*  raw = nullptr;      // TEMPORARY PLACEHOLDER: raw measured eps_dR of this cell
-        double C_raw = 0.;         // its dR in [0.5, 1.0] mean
+        TF1*    fit   = nullptr;   // parametric methods; owned by the open TFile
+        TGraph* knots = nullptr;   // `interp`; owned by the open TFile
+        double  C     = 0.;        // the baseline of whichever of the two is set (see the header)
+        TH1D*   raw   = nullptr;   // TEMPORARY PLACEHOLDER: raw measured eps_dR of this cell
+        double  C_raw = 0.;        // its dR in [0.5, 1.0] mean
+        // "does this cell deliver a measured CURVE?" -- the question every cascade branches on.
+        bool HasCurve() const { return fit != nullptr || knots != nullptr; }
     };
 
     std::vector<std::vector<Cell>> cells;      // [iy-1][iz-1]
@@ -115,7 +134,11 @@ struct DrCorrectionEvaluator {
     // `sign` is the series token ("os" for opposite sign). `plateau_mode` must be one of the
     // NO-PLATEAU-CORRECTION modes -- the applied form above is defined in terms of the FREE
     // baseline C, which only those fits have:
-    //   "nocorr"          the un-merged pair-pT cells (the default; what the MC closure consumes)
+    //   "nocorr"          the un-merged cells (the default; the reference of the 4-approach
+    //                     comparison in docs/tracking/mc_trigeff_dr_binning_approaches.md)
+    //   "nocorr_etamerge" the same fit with the 9 pair-eta bins merged into the 3 physical
+    //                     detector regions (negative-eta endcap / barrel / positive-eta endcap)
+    //   "nocorr_etamerge_ptmerge"  both merges at once
     //   "nocorr_ptmerge"  the same fit with the LAST TWO pair-pT bins merged into one cell. This
     //                     is the variant the pp24 crossx application uses (DrCorrCrossxMode(),
     //                     with DrCorrCrossxMethod() / DrCorrCrossxSign()); its top cell covers
@@ -136,11 +159,6 @@ struct DrCorrectionEvaluator {
             throw std::runtime_error("DrCorrectionEvaluator: plateau mode '" + plateau_mode +
                                      "' has no free baseline C, so the f(dR)/C form is undefined "
                                      "for it. Use 'nocorr' or 'nocorr_ptmerge'.");
-
-        if (method == "interp")
-            throw std::runtime_error("DrCorrectionEvaluator: method 'interp' has no fitted "
-                                     "baseline C, so the f(dR)/C form is undefined for it. Use a "
-                                     "parametric method (expo | polyu_fixedRp).");
 
         const std::string fit_path =
             DrCorrFitFile(cfg, use_tight_wp, 3, method, sign, plateau_mode);
@@ -167,8 +185,10 @@ struct DrCorrectionEvaluator {
         // The pair-pT GROUPING of the fit cells, needed by the raw-bin fallback below: with the
         // last two bins merged, cell `iy` at the top spans TWO filled bins, and projecting bin
         // `iy` alone would silently deliver half of it. Built from the histograms' own axis, so it
-        // is filled in together with them (dr_correction_pt_groups.h).
-        DrPtGroups Gpt;
+        // is filled in together with them (dr_correction_cell_groups.h).
+        // ... and the pair-ETA grouping, for the same reason: with the 9 filled pair-eta bins
+        // grouped into the 3 detector regions, cell `iz` spans THREE filled bins.
+        DrAxisGroups Gpt, Geta;
         const std::string hist_path = cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label
                                     + DrCorrWpSuffix(use_tight_wp)
                                     + MCTrigEffPairPt::FileSuffix() + "_step3.root";
@@ -181,7 +201,35 @@ struct DrCorrectionEvaluator {
         for (int iy = 1; iy <= npt; ++iy) {
             for (int iz = 1; iz <= neta; ++iz) {
                 Cell& c = cells[iy - 1][iz - 1];
-                if (h_fit_ok->GetBinContent(iy, iz) > 0.5) {
+                if (h_fit_ok->GetBinContent(iy, iz) > 0.5 && method == "interp") {
+                    // The interpolation is persisted as a TGraph of knots, not a TF1. Its baseline
+                    // is the FLAT BRANCH the producer pinned to the last measured knot below R_p,
+                    // which is what the fitted C is for the parametric forms -- so `f(dR)/C` means
+                    // the same thing here, and there is no step at dR = 1.
+                    auto* gk = dynamic_cast<TGraph*>(ff->Get(Form("gknots_step3_pt%d_eta%d",
+                                                                  iy, iz)));
+                    if (gk && gk->GetN() > 1) {
+                        const double C = gk->Eval(kDrMax);   // the flat branch, by construction
+                        // No parameter errors exist for an interpolation, so the screen is the
+                        // error-free half of DrCorrPlateauUsable: "is C a sane normalization?".
+                        // Passing 0 makes its `err >= plateau` clause vacuous, which is the honest
+                        // reading -- not a silently weaker test smuggled in as the same one.
+                        if (DrCorrPlateauUsable(C, 0.)) {
+                            c.knots = gk; c.C = C; ++n_cells_fitted;
+                            for (int k = 0; k <= 200; ++k) {
+                                const double x = kDrMax * k / 200.0;
+                                const double v = gk->Eval(x) / C;
+                                if (v > max_corr) { max_corr = v; max_corr_iy = iy; max_corr_iz = iz; }
+                                if (v < min_corr) { min_corr = v; min_corr_iy = iy; min_corr_iz = iz; }
+                            }
+                            continue;
+                        }
+                        ++n_cells_bad_C;
+                        std::cout << "  ** cell (pair pT bin " << iy << ", pair eta bin " << iz
+                                  << ") has fit_ok = 1 but an UNUSABLE interpolation baseline C = "
+                                  << C << " -> rejected, falling back to the raw bins" << std::endl;
+                    }
+                } else if (h_fit_ok->GetBinContent(iy, iz) > 0.5) {
                     auto* f = dynamic_cast<TF1*>(ff->Get(Form("f_step3_pt%d_eta%d", iy, iz)));
                     // The free baseline is the LAST parameter in both nocorr formulas
                     // (fit_dr_corrections.cxx MakeMethodCfg: expo -> [3], polyu_fixedRp -> [4]).
@@ -239,15 +287,18 @@ struct DrCorrectionEvaluator {
                     if (!h3n || !h3d || !h3a || !h3b)
                         throw std::runtime_error("DrCorrectionEvaluator: missing " + hp +
                                                  "{num,denom,errA,errB} in " + hist_path);
-                    Gpt = MakeDrPtGroups(h3n->GetYaxis(),
-                                         DrCorrModeMergeLastTwoPt(plateau_mode));
-                    if (Gpt.n != npt)
+                    Gpt  = MakeDrPtGroups (h3n->GetYaxis(),
+                                           DrCorrModeMergeLastTwoPt(plateau_mode));
+                    Geta = MakeDrEtaGroups(h3n->GetZaxis(),
+                                           DrCorrModeMergeEta(plateau_mode));
+                    if (Gpt.n != npt || Geta.n != neta)
                         throw std::runtime_error("DrCorrectionEvaluator: the fit file has "
-                            + std::to_string(npt) + " pair-pT cells but plateau mode '"
-                            + plateau_mode + "' groups " + hist_path + " into "
-                            + std::to_string(Gpt.n) + " -- fit file and mode disagree");
+                            + std::to_string(npt) + "x" + std::to_string(neta)
+                            + " cells but plateau mode '" + plateau_mode + "' groups " + hist_path
+                            + " into " + std::to_string(Gpt.n) + "x" + std::to_string(Geta.n)
+                            + " -- fit file and mode disagree");
                 }
-                TH1D* r = DrGroupCellRatio(h3n, h3d, h3a, h3b, nullptr, nullptr, Gpt, iy, iz,
+                TH1D* r = DrGroupCellRatio(h3n, h3d, h3a, h3b, nullptr, nullptr, Gpt, Geta, iy, iz,
                                            Form("rawcorr_pt%d_eta%d", iy, iz));
                 double sum = 0.; int nb = 0;
                 for (int i = 1; i <= r->GetNbinsX(); ++i) {
@@ -263,7 +314,8 @@ struct DrCorrectionEvaluator {
         std::cout << "DrCorrectionEvaluator [" << label << " / " << method << " / "
                   << (sign.empty() ? "sign-integrated" : DrCorrSignText(sign)) << " / "
                   << plateau_mode
-                  << "]: " << npt << "x" << neta << " cells -- " << n_fitted << " fitted, "
+                  << "]: " << npt << "x" << neta << " cells -- " << n_fitted
+                  << (method == "interp" ? " interpolated, " : " fitted, ")
                   << n_fallback << " on the RAW-BIN PLACEHOLDER, " << n_dead
                   << " with no correction at all (eps_dR = 1); of the rejected, "
                   << n_cells_bad_C << " had fit_ok = 1 but an unusable baseline C" << std::endl;
@@ -301,6 +353,13 @@ struct DrCorrectionEvaluator {
         if (c.fit) {
             const double x = std::min(std::max(dr, c.fit->GetXmin()), c.fit->GetXmax());
             v = c.fit->Eval(x) / c.C;
+            ++n_fit;
+        } else if (c.knots) {
+            // A TGraph EXTRAPOLATES LINEARLY outside its knots, so dR is clamped into [0, kDrMax]
+            // exactly as it is clamped into a TF1's range above. The producer already pinned
+            // dR = 0 to the first measured value for the same reason.
+            const double x = std::min(std::max(dr, 0.0), kDrMax);
+            v = c.knots->Eval(x) / c.C;
             ++n_fit;
         } else if (c.raw) {
             // A cell on the placeholder, but the individual raw BIN this pair lands in may still

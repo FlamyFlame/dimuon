@@ -190,14 +190,31 @@ inline std::string DrCorrSignFileTag(const std::string& sign)
 //                       to having filled a 7-bin axis -- and the variant is opt-in and suffixed so
 //                       it can neither overwrite nor be mistaken for the other two modes.
 //                       Defined for the 8-bin nominal axis ONLY; asking for it with
-//                       MCTRIGEFF_PAIRPT_4BIN set THROWS (dr_correction_pt_groups.h).
+//                       MCTRIGEFF_PAIRPT_4BIN set THROWS (dr_correction_cell_groups.h).
+//   "nocorr_etamerge" -- the SAME raw fit as "nocorr", with the 9 pair-eta bins MERGED into the
+//                       THREE PHYSICAL DETECTOR REGIONS: negative-eta endcap (-2.4,-1.0), barrel
+//                       (-1.0,1.0), positive-eta endcap (1.0,2.4) (added 2026-08-24, user
+//                       request; docs/tracking/mc_trigeff_dr_binning_approaches.md). It is the
+//                       pair-ETA analogue of "nocorr_ptmerge": the 9-bin pair-eta grid is the
+//                       CROSS-SECTION's presentation binning and was never chosen for eps_dR's
+//                       statistics, so grouping it triples the pairs per fit while keeping the one
+//                       distinction that is physically motivated. The two ENDCAPS are NOT merged
+//                       with each other -- the r16578 forward anomaly is negative-eta only
+//                       (mc_trigger_efficiency.md R8/R10/R14).
+//   "nocorr_etamerge_ptmerge" -- both merges at once (7 pair-pT x 3 pair-eta = 21 cells).
+// Like the pair-pT merge, NEITHER is a new binning: the filled histograms are untouched and the
+// source bins are PROJECTED TOGETHER at the fit stage (dr_correction_cell_groups.h).
 inline std::string DrCorrPlateauModeDir(const std::string& mode)
 {
     if (mode.empty() || mode == "corr")  return "plateau_corrected/";
     if (mode == "nocorr")                return "no_plateau_correction/";
     if (mode == "nocorr_ptmerge")        return "no_plateau_correction_last2ptbins_merged/";
-    throw std::runtime_error("DrCorrPlateauModeDir: plateau mode must be \"corr\", \"nocorr\" or "
-                             "\"nocorr_ptmerge\", got '" + mode + "'");
+    if (mode == "nocorr_etamerge")       return "no_plateau_correction_paireta_merged/";
+    if (mode == "nocorr_etamerge_ptmerge")
+        return "no_plateau_correction_paireta_merged_last2ptbins_merged/";
+    throw std::runtime_error("DrCorrPlateauModeDir: plateau mode must be \"corr\", \"nocorr\", "
+                             "\"nocorr_ptmerge\", \"nocorr_etamerge\" or "
+                             "\"nocorr_etamerge_ptmerge\", got '" + mode + "'");
 }
 
 // THE TWO QUESTIONS every stage actually asks about a plateau mode. Ask these -- never compare the
@@ -206,24 +223,34 @@ inline std::string DrCorrPlateauModeDir(const std::string& mode)
 inline bool DrCorrModeNoPlateau(const std::string& mode)
 {
     DrCorrPlateauModeDir(mode);                       // validates the token
-    return mode == "nocorr" || mode == "nocorr_ptmerge";
+    return mode.rfind("nocorr", 0) == 0;              // every nocorr* mode
 }
 
 inline bool DrCorrModeMergeLastTwoPt(const std::string& mode)
 {
     DrCorrPlateauModeDir(mode);                       // validates the token
-    return mode == "nocorr_ptmerge";
+    return mode == "nocorr_ptmerge" || mode == "nocorr_etamerge_ptmerge";
+}
+
+// Does this mode group the 9 filled pair-eta bins into the 3 physical detector regions?
+inline bool DrCorrModeMergeEta(const std::string& mode)
+{
+    DrCorrPlateauModeDir(mode);                       // validates the token
+    return mode == "nocorr_etamerge" || mode == "nocorr_etamerge_ptmerge";
 }
 
 // File-name token. EMPTY for the nominal mode, so every pre-existing fit file keeps its current
 // name byte-for-byte and no consumer of the nominal correction has to be touched.
 inline std::string DrCorrPlateauModeTag(const std::string& mode)
 {
-    if (mode.empty() || mode == "corr")  return "";
-    if (mode == "nocorr")                return "_nocorr";
-    if (mode == "nocorr_ptmerge")        return "_nocorr_ptmerge";
-    throw std::runtime_error("DrCorrPlateauModeTag: plateau mode must be \"corr\", \"nocorr\" or "
-                             "\"nocorr_ptmerge\", got '" + mode + "'");
+    if (mode.empty() || mode == "corr")       return "";
+    if (mode == "nocorr")                     return "_nocorr";
+    if (mode == "nocorr_ptmerge")             return "_nocorr_ptmerge";
+    if (mode == "nocorr_etamerge")            return "_nocorr_etamerge";
+    if (mode == "nocorr_etamerge_ptmerge")    return "_nocorr_etamerge_ptmerge";
+    throw std::runtime_error("DrCorrPlateauModeTag: plateau mode must be \"corr\", \"nocorr\", "
+                             "\"nocorr_ptmerge\", \"nocorr_etamerge\" or "
+                             "\"nocorr_etamerge_ptmerge\", got '" + mode + "'");
 }
 
 // Fit output, one file per (sample, WP, step, method, sign, plateau mode). `sign` and
