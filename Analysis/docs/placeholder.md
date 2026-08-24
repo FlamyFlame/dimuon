@@ -10,7 +10,8 @@ status source; this file is the consolidated quick index.
 A symlink to this file exists in the IntNote repo (`IntNotes/placeholder.md`) so
 the note writer always has the disclosure list at hand.
 
-Last updated: 2026-06-15.
+Last updated: 2026-08-24. (Items 3 and 7 rescoped: the pp side of BOTH is no longer a
+placeholder. See `docs/tracking/intnote_trig_reco_eff_sections.md` for the code evidence.)
 
 ---
 
@@ -18,13 +19,13 @@ Last updated: 2026-06-15.
 
 | # | Placeholder | Scope | Used now | Needs | Code / data location | Roadmap |
 |---|-------------|-------|----------|-------|----------------------|---------|
-| 1 | **Centrality classification** | PbPb 2024, 2025 | 2023 Glauber FCal-ET thresholds + cross-year FCal scaling | Official 2024/2025 Glauber centrality calibration | `MuonPairPbPb.h:144,150` (`GetCentralityPbPb2023`); `fcal_scale_pbpb_20YY.root` | Q2.3, ledger step 6 |
+| 1 | **Centrality classification** | PbPb 2024 (provisional own bins), 2025 (2023 thresholds) | 2024: `GetCentralityPbPb2024` with `FCal_ET_Bins_PbPb2024`; 2025: the 2023 Glauber FCal-ET thresholds. **The cross-year FCal scaling is documented but implemented in NO source file** (`grep fcal_scale` over `*.c *.C *.h *.cxx` returns nothing). | Official 2024/2025 Glauber centrality calibration | `MuonPairPbPb.h:147` (2024), `:150` (2025) | Q2.3, ledger step 6 |
 | 2 | **⟨T_AA⟩ values** | PbPb 2024, 2025 | 2023 ⟨T_AA⟩ = {26.1428, 20.3241, 14.0502, 8.5074, 3.7733, 0.6716} mb⁻¹ | Official 2024/2025 ⟨T_AA⟩ + uncertainties + citable ref | `PbPbBaseClass.h` `make_crossx_factors_pbpb_2024/2025`; source `IntNotes/data/centrality/TaaValues2023.txt` | Q2.3 |
-| 3 | **Reconstruction efficiency** — Run 2 single-muon ε_reco proxy (ε₁·ε₂), standing in for the proper 3D pair ε_reco(pair pT, pair η, dR) | PbPb (all yrs) + pp | **Applied** in crossx as a correction STAGE (`_corr_unfolded_reco[_trig]` hists); **PbPb = colleague's EXACT Run 2 Medium-μ TF1 fits** (`MuonRecoEffcyRun2MC_medium.root`, evaluated at exact pT; 2026-06-19); pp = Medium-μ digitized from HF R_AA Fig.31 | Full Pythia fullsim HIJING-overlay (r17662) + full pp24 fullsim → proper 3D pair ε_reco | `RDFBasedHistFilling{Data,PP,PbPb}` (`EvaluateSingleMuonRecoEffPlaceholder`, `CorrectionStages.h`); `EfficiencyCorrs/EffFiles/run2_reco_eff_placeholder.root` | Q4, ledger 12; tracking `reco_eff_placeholder_run2.md` |
+| 3 | **Reconstruction efficiency** — Run 2 single-muon ε_reco proxy (ε₁·ε₂), standing in for the proper 3D pair ε_reco(pair pT, pair η, dR). **pp24 IS NO LONGER A PLACEHOLDER (2026-08-18):** it uses the measured pp24-fullsim 3D pair efficiency (`pair_reco_eff_pp24_full.root`, inclusive 0.6620 Tight / 0.7301 Medium) via `Utilities/PairRecoEffEvaluator.h`. PbPb only. | PbPb (all yrs) | **Applied** in crossx as a correction STAGE (`_corr_unfolded_reco[_trig]` hists); **PbPb = colleague's EXACT Run 2 Medium-μ TF1 fits** (`MuonRecoEffcyRun2MC_medium.root`, evaluated at exact pT; 2026-06-19); **pp is NOT a placeholder** (measured pp24-fullsim 3D pair eps_reco since 2026-08-18) | Full Pythia fullsim HIJING-overlay (r17662) + full pp24 fullsim → proper 3D pair ε_reco | `RDFBasedHistFilling{Data,PP,PbPb}` (`EvaluateSingleMuonRecoEffPlaceholder`, `CorrectionStages.h`); `EfficiencyCorrs/EffFiles/run2_reco_eff_placeholder.root` | Q4, ledger 12; tracking `reco_eff_placeholder_run2.md` |
 | 4 | **σ_PbPb (total hadronic)** | PbPb (all yrs) | 7.8 b at 5.36 TeV — **unvalidated guess** | Citable 5.36 TeV reference | `PbPbBaseClass.h` (guess comment on 2023 helper) | Q2.2 |
 | 5 | **Luminosity uncertainty** | all years | not set | Official per-year Run 3 lumi uncertainty | — (note systematics) | Q2.1 |
 | 6 | **PbPb 2026 lumi + GRL** | PbPb 2026 | placeholder (data not yet in skim) | 2026 data in skim, then lumi/GRL | `IntNotes/analysis_metadata.md` | Q2.1/Q2.5 |
-| 7 | **dR trigger-correlation correction** | PbPb | dummy ε_dR ≡ 1; **and the former ΔR>0.05 SIGNAL cut was removed 2026-06-22 (interim nominal)** — both pending the MC-based dR trigger correction that decides whether any ΔR cut is needed | Fullsim overlay with trigger sim | crossx pipeline (dR corr = 1; no ΔR signal cut); `docs/tracking/remove_dr_cut_signal_selection.md` | Q4 |
+| 7 | **dR trigger-correlation correction** — **pp24 IS NO LONGER A DUMMY (2026-08-18):** a measured MC ε_dR is applied (`DrCorrectionCrossxEvaluator`, expo / opposite sign / last-two-pair-pT-bins-merged; inclusive 0.818 at dR→0). **PbPb still applies the BARE union with NO ε_dR at all** (`RDFBasedHistFillingPbPb.cxx:1008`) — the dR-corrected union in `mc_trigger_efficiency.md` §2 is documented but not implemented. | PbPb | dummy ε_dR ≡ 1; **and the former ΔR>0.05 SIGNAL cut was removed 2026-06-22 (interim nominal)** — both pending the MC-based dR trigger correction that decides whether any ΔR cut is needed | Fullsim overlay with trigger sim | crossx pipeline (dR corr = 1; no ΔR signal cut); `docs/tracking/remove_dr_cut_signal_selection.md` | Q4 |
 | 8 | **Detector response / unfolding** | PbPb + pp | test-sample shapes | Full Pythia fullsim (pp24 + overlay) | unfolding inputs | Q4 |
 | 9 | **Δp/p significance + template-fit purity** | PbPb + pp | **DEFERRED** (2026-06-22) — not built; fake-muon purity treated as ~flat (Run 2 dimuon note >98%) for the preliminary chain | **Future TODO needing MC:** signal/bkg Δp/p templates from fullsim + a π/K-enriched MC (Run 3 equivalent not yet identified). Build the fake fit (at RECO level — Δp/p is intrinsically reco) once that MC exists | (to be built) | Q4; tracking `low_mass_dimuon_template_fit.md` §3a |
 | 10 | **MCP scale factors** | MC | omitted (pure MC-driven) | Run 3 HI MCP recommendation | — | Q2.7 |
@@ -38,12 +39,16 @@ Last updated: 2026-06-15.
 Official Glauber centrality calibrations and ⟨T_AA⟩ for 2024 and 2025 **do not
 exist yet**. Until they do:
 
-- **Centrality:** 2024 and 2025 events are classified with the **2023** Glauber
-  FCal-ET thresholds (`FCal_ET_Bins_PbPb2023`) via
-  `MuonPairPbPb::GetCentralityPbPb2023`, after applying the per-year **FCal
-  cross-year scale factors** (`fcal_scale_pbpb_20YY.root`) so the 2024/2025 FCal
-  scale is mapped onto the 2023 reference. Code: `MuonPairPbPb.h:144` (2024),
-  `:150` (2025, *"use pbpb2023 thresholds until pbpb2025 are derived"*).
+- **Centrality:** **2024** events are classified with their own provisional
+  `FCal_ET_Bins_PbPb2024` via `MuonPairPbPb::GetCentralityPbPb2024`
+  (`MuonPairPbPb.h:147`); **2025** events fall back to the **2023** Glauber FCal-ET
+  thresholds via `GetCentralityPbPb2023` (`:150`, *"use pbpb2023 thresholds until
+  pbpb2025 are derived"*). **The per-year FCal cross-year scale factors
+  (`fcal_scale_pbpb_20YY.root`) are documented in several docs but appear in NO
+  source file** — `grep fcal_scale` over `*.c *.C *.h *.cxx` returns nothing, so no
+  cross-year FCal rescaling is actually applied. Corrected 2026-08-24 against the
+  code; the previous text claimed 2023 thresholds for both years and a scaling that
+  is not implemented.
 - **⟨T_AA⟩:** the crossx normalization for 2024 and 2025
   (`make_crossx_factors_pbpb_2024/2025` in `PbPbBaseClass.h`) uses the **2023**
   ⟨T_AA⟩ array as a placeholder; only the per-year luminosity is year-specific
@@ -56,44 +61,32 @@ centrality and ⟨T_AA⟩ are 2023 placeholders pending official calibrations.
 
 ### 3. Reconstruction efficiency
 
-The proper Run 3 correction is the **3D pair** efficiency ε_reco(pair pT, pair η,
-dR) (method settled; index-mapping/HIJING bugs fixed; residual low-pT overlay
-deficit shown physical — investigation Steps 23–24), but only **test** MC exists
-(bug-fixed r17618 60k-evt + r17662 10k-evt overlay; pp24 fullsim test only), so
-it is not yet derivable for real.
+**pp24 IS NO LONGER A PLACEHOLDER (2026-08-18).** The pp cross-section applies the measured
+**3D pair** efficiency ε_reco(pair pT, pair η, dR) from the pp24-condition Pythia8 fullsim FULL
+production: 8 × 9 × 4 = 288 cells, built by
+`plotting_codes/reco_effcy/build_pp24_fullsim_pair_reco_eff.C` into
+`~/usatlasdata/pythia_fullsim_full_sample/pair_reco_eff_pp24_full.root` and read at fill time by
+`Utilities/PairRecoEffEvaluator.h` (`RDFBasedHistFillingPP.cxx:396-399`). Inclusive value
+**0.6620 Tight / 0.7301 Medium**; it is a FIDUCIAL efficiency (the detector-gap cut sits on both
+the truth denominator and the reco numerator), so ε_acc = 0.9133 is a separate, unapplied factor.
+Figures: `<sample>/plots/pp24_reco_effcy_plots/{tight,medium}/applied/`.
 
-**Interim placeholder NOW APPLIED (2026-06-15):** a Run 2 **single-muon** ε_reco
-**product proxy** ε_reco(p_a)·ε_reco(p_b), per the Run 2 dimuon-note treatment
-(`w⁻¹ = ε_trig·ε_reco(p_a)·ε_reco(p_b)`). Placeholder source values (Medium muons):
+**Pb+Pb IS STILL A PLACEHOLDER.** The proper Run 3 correction is the same 3D pair efficiency from
+the Pythia+HIJING overlay, but only a small TEST overlay production exists, so Pb+Pb instead uses
+a Run 2 **single-muon** product proxy ε_reco(p_a)·ε_reco(p_b), with **no dR dependence at all**:
 
-- **PbPb (updated 2026-06-18):** the colleague's **EXACT Run 2 Medium-μ fits**
-  actually used in the Run 2 note — `EfficiencyCorrs/EffFiles/MuonRecoEffcyRun2MC_medium.root`
-  (logistic TF1 `tf1_eff_fit_cent{C}_eta{E}`), single-muon ε_reco(pT, q·η) per
-  centrality (0–10…60–80%), HIJING overlay 5.02 TeV. This **replaces** the earlier
-  eyeball digitization of App. F.2 (same source physics, real fitted numbers).
-- **pp:** Run 2 HF-muon R_AA note **HION-2019-58 / arXiv:2109.00411 Fig. 31** —
-  data-driven Medium-μ ε_reco^pp(pT), barrel (|η|<1.05) + endcap (1.3<|η|<2.1).
-  This is the source the dimuon note itself cites for its pp efficiencies; chosen
-  over the peripheral-PbPb fallback. (See `reading`/memory `project_pp_reco_eff_placeholder`.)
-
-Written into `EfficiencyCorrs/EffFiles/run2_reco_eff_placeholder.root`
-(`plotting_codes/reco_effcy/build_run2_reco_eff_placeholder.C`): PbPb stored as the
-colleague's Medium **TF1 fits** (`tf1_reco_eff_medium_pbpb_ctr{lo}_{hi}_q_eta_{suffix}`,
-63 of them) and **evaluated at the exact muon pT** in the lookup — no resampling
-(2026-06-19; pp still eyeball HF R_AA Fig.31 as 2 TGraphs). `EvaluateSingleMuonRecoEffPlaceholder`
-loads TF1 (PbPb) + TGraph (pp) and dispatches by side. Applied in the crossx RDF as a
-correction **stage** (`CorrectionStages.h`): histograms saved at each stage —
-`_corr_raw` → `_corr_unfolded` (identity) → `_corr_unfolded_reco` →
-`_corr_unfolded_reco_trig`; before/after 3-line plots in
-`dimuon_data/plots/sanity_check_crossx/*_reco_eff_stages_*`.
-
-The reco correction is also folded into the **pp generic analysis weight**
-(`FillHistogramsGeneric` → `generic_weight_col = w_reco_trig`), so the **MC-data
-comparison** (POWHEG/Pythia vs pp24) reflects it. **INVARIANT:** regenerate the
-MC-data comparison (`plot_mc_data_compr.cxx`; pp crossx pipeline stage 8) after
-ANY pp efficiency / detector-response / unfolding change. The PbPb crossx also
-has a genuine **differential cross-section** dσ/dp_T = (1/L)·dN [nb/GeV]
-(`differential_crossx/` plots), distinct from the T_AA-weighted R_AA input.
+- the colleague's **exact Run 2 fits** from the Run 2 dimuon analysis (ATL-COM-PHYS-2021-1094) —
+  `EfficiencyCorrs/EffFiles/MuonRecoEffcyRun2MC_{tight,medium}.root`, logistic TF1
+  `tf1_eff_fit_cent{C}_eta{E}`, single-muon ε_reco(pT, q·η) per centrality (0–10…60–80%), HIJING
+  overlay 5.02 TeV. **BOTH working points are built and the consumer picks the WP-matched key**
+  (`RDFBasedHistFillingData.cxx:783`); the muon pT is clamped to [4, 19] GeV at the point of use.
+- Written into `EfficiencyCorrs/EffFiles/run2_reco_eff_placeholder.root` by
+  `plotting_codes/reco_effcy/build_run2_reco_eff_placeholder.C` (63 TF1s per WP).
+  `EvaluateSingleMuonRecoEffPlaceholder` loads them and dispatches by centrality; applied in
+  `RDFBasedHistFillingPbPb.cxx:1010-1023` as ε₁·ε₂, floored at 0.05 before inversion.
+- The pp TGraphs in the same file (HF R_AA note HION-2019-58 Fig. 31, Medium) are reached only
+  through the centrality < 0 sentinel, which the Pb+Pb path never takes; they are effectively
+  dead now that pp has its own measured map.
 
 **Why this placeholder is poor (must be replaced):** (1) Run 3 muon reco is
 expected considerably better than Run 2 (New Small Wheel + other Run 3 muon
