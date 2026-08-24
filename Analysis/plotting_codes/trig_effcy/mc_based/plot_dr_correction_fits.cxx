@@ -60,7 +60,17 @@
 //                            canvas covers p_T^pair in [72.1, 150) GeV. The measured points drawn
 //                            here are re-projected over BOTH filled bins, so they are the points
 //                            the merged fit actually saw. Why the merge exists, and why it is not
-//                            a new binning: dr_correction_pt_groups.h.
+//                            a new binning: dr_correction_cell_groups.h.
+//   no_plateau_correction_paireta_merged/
+//                            The SAME raw fit with the pair-eta bins merged into the THREE
+//                            PHYSICAL DETECTOR REGIONS -- negative-eta endcap, barrel,
+//                            positive-eta endcap (user, 2026-08-24) -- so every canvas here
+//                            carries 3 panels (1 x 3) instead of 9 (3 x 3), and each panel's
+//                            measured points are re-projected over ALL the filled pair-eta bins
+//                            of its region. Same construction and the same "not a new binning"
+//                            argument as the pair-pT merge: dr_correction_cell_groups.h.
+//   no_plateau_correction_paireta_merged_last2ptbins_merged/
+//                            Both merges at once: 7 canvases of 3 panels each.
 //
 // Only PNGs live in those two subdirectories; the text artefacts (fit_report*.txt from the fit
 // stage, readback_check*.txt from this one) stay directly in <method>/ where they have always been.
@@ -97,7 +107,7 @@
 
 #include "dr_correction_sample_cfg.h"
 #include "dr_correction_ratio.h"
-#include "dr_correction_pt_groups.h"
+#include "dr_correction_cell_groups.h"
 #include "../../../Utilities/MCTrigEffPlateauWindow.h"
 
 #include <cmath>
@@ -256,8 +266,9 @@ bool ParAtLimit(TF1* f, int ip)
 //          opposite sign overlaid). One output subdirectory each, under <method>/.
 // plateau_mode : "corr" (NOMINAL: points divided by the plateau) | "nocorr" (raw efficiency,
 //          free fitted baseline C) | "nocorr_ptmerge" (the same raw fit with the last two pair-pT
-//          bins merged into one cell, so this set has one PNG fewer). One output subdirectory
-//          each, ABOVE <method>/.
+//          bins merged into one cell, so this set has one PNG fewer) | "nocorr_etamerge" (the
+//          pair-eta bins merged into the three detector regions, so each PNG has 3 panels) |
+//          "nocorr_etamerge_ptmerge" (both). One output subdirectory each, ABOVE <method>/.
 // dr_view : "dr0_1" (DEFAULT, the fit domain -- the main figure) | "dr0_2" (the reference view
 //          out to dR = 2, written to dR0_2/). STEP 3 ONLY: step 4 was not restructured (user), so
 //          it keeps its flat layout and must be called with "dr0_2" to reproduce its plots.
@@ -288,6 +299,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     // and a `== "nocorr"` test would divide its points by a plateau the fit never used.
     const bool        nocorr   = DrCorrModeNoPlateau(plateau_mode);
     const bool        ptmerge  = DrCorrModeMergeLastTwoPt(plateau_mode);
+    const bool        etamerge = DrCorrModeMergeEta(plateau_mode);
     const std::string mode_dir = DrCorrPlateauModeDir(plateau_mode);
 
     const DrCorrSample cfg = GetDrCorrSample(sample, use_tight_wp);
@@ -405,16 +417,22 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
             throw std::runtime_error("plot_dr_correction_fits: the overlaid series describe "
                                      "different (pair pT, pair eta) cells -- stale fit file?");
 
-    // The pair-pT GROUPING of the fit cells -- one group per fitted cell, built from the SAME axis
-    // and the SAME mode the fit stage used (dr_correction_pt_groups.h). It is what maps a cell
-    // index back to the filled bins whose points have to be re-projected: in "nocorr_ptmerge" the
-    // top cell spans TWO filled bins, so projecting bin `iy` alone would draw one half of the
+    // The CELL GROUPING of the fit cells -- one group per fitted cell on EACH axis, built from the
+    // SAME axes and the SAME mode the fit stage used (dr_correction_cell_groups.h). It is what maps
+    // a cell index back to the filled bins whose points have to be re-projected: in
+    // "nocorr_ptmerge" the top pair-pT cell spans TWO filled bins and in "nocorr_etamerge" every
+    // pair-eta cell spans several, so projecting bin `iy`/`iz` alone would draw one slice of the
     // merged cell under the merged cell's fitted curve.
-    const DrPtGroups G = MakeDrPtGroups(series[0].zn->GetYaxis(), ptmerge);
+    const DrPtGroups   G    = MakeDrPtGroups (series[0].zn->GetYaxis(), ptmerge);
+    const DrAxisGroups Geta = MakeDrEtaGroups(series[0].zn->GetZaxis(), etamerge);
     if (G.n != npt)
         throw std::runtime_error("plot_dr_correction_fits: the fit file has " + std::to_string(npt)
             + " pair-pT cells but plateau mode '" + plateau_mode + "' groups the histograms into "
             + std::to_string(G.n) + " -- the fit file and the requested mode disagree");
+    if (Geta.n != neta)
+        throw std::runtime_error("plot_dr_correction_fits: the fit file has " + std::to_string(neta)
+            + " pair-eta cells but plateau mode '" + plateau_mode + "' groups the histograms into "
+            + std::to_string(Geta.n) + " -- the fit file and the requested mode disagree");
 
     // Flat onset R_p, READ FROM THE FIT FILE's provenance stamp (fit_dr_corrections.cxx writes it
     // from kFlatOnsetStep{3,4}) rather than retyped here. Needed on the canvas for the methods
@@ -456,7 +474,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     auto cell_points = [&](const Series& s, int iy, int iz, double plateau) -> TGraphErrors* {
         auto* g = new TGraphErrors();
         int k = 0;
-        TH1D* rz = DrGroupCellRatio(s.zn, s.zd, s.za, s.zb, s.zp, s.zq, G, iy, iz,
+        TH1D* rz = DrGroupCellRatio(s.zn, s.zd, s.za, s.zb, s.zp, s.zq, G, Geta, iy, iz,
                                     Form("pz_%s_%d_%d", s.sign.c_str(), iy, iz));
         for (int i = 1; i <= rz->GetNbinsX(); ++i) {
             const double e = rz->GetBinError(i);
@@ -466,7 +484,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
             ++k;
         }
         delete rz;
-        TH1D* rf = DrGroupCellRatio(s.fn, s.fd, s.fa, s.fb, s.fp, s.fq, G, iy, iz,
+        TH1D* rf = DrGroupCellRatio(s.fn, s.fd, s.fa, s.fb, s.fp, s.fq, G, Geta, iy, iz,
                                     Form("pf_%s_%d_%d", s.sign.c_str(), iy, iz));
         for (int i = 1; i <= rf->GetNbinsX(); ++i) {
             const double x = rf->GetBinCenter(i), e = rf->GetBinError(i);
@@ -965,9 +983,17 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     };
 
     // ---- one canvas per pair-pT bin ----------------------------------------------------------
-    // subplot grid: nrows >= ncols, nrows ~ sqrt(N)  (feedback_subplot_layout)
-    const int ncol = (int)std::ceil(std::sqrt((double)neta));
-    const int nrow = (int)std::ceil((double)neta / ncol);
+    // Subplot grid (feedback_subplot_layout): nrows >= ncols, nrows ~ sqrt(N) -- AND, for N <= 3,
+    // a SINGLE ROW. The sqrt rule alone sends the 3 merged pair-eta cells of "nocorr_etamerge" to
+    // a 2x2 grid with one empty quadrant; three detector regions read left-to-right along eta, so
+    // 1x3 is both the convention and the physically natural order.
+    const int ncol = (neta <= 3) ? neta : (int)std::ceil(std::sqrt((double)neta));
+    const int nrow = (neta <= 3) ? 1    : (int)std::ceil((double)neta / ncol);
+    // The canvas is sized from the GRID, not from a fixed shape: 520 x 470 px per panel plus the
+    // header strip. A 1x3 layout is therefore 1560 px wide and one panel tall, and every panel is
+    // the same size it has on the 3x3 canvases -- so the header strip, whose text and legend are
+    // specified in PIXELS of the canvas and converted (draw_header / header_px), keeps its exact
+    // absolute geometry and cannot collide with a shorter grid.
     // The pair-pT edges in the FILE NAME must be the same numbers the canvas prints. "%.0f" wrote
     // pairpt_8_12 for the bin the canvas labels 8.0-11.5 GeV: two namings of one binning, which
     // is exactly the drift .claude/CLAUDE.md §Binnings exists to stop.

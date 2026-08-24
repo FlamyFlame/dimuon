@@ -34,9 +34,23 @@ set -Eeuo pipefail
 #              2026-08-17), so this tree has ONE canvas fewer and its top one covers
 #              p_T^pair in [72.1, 150) GeV. The top two cells of the 8-bin log axis run past where
 #              the sample has yield. It is NOT a new binning -- the two bins are projected together
-#              at the fit stage; see dr_correction_pt_groups.h. 8-BIN AXIS ONLY: it is skipped,
+#              at the fit stage; see dr_correction_cell_groups.h. 8-BIN AXIS ONLY: it is skipped,
 #              with a printed note, when MCTRIGEFF_PAIRPT_4BIN is set. With opposite-sign pairs and
 #              the `expo` form this is the variant the pp24 crossx application uses.
+#   step<N>_dr_fit/no_plateau_correction_paireta_merged/<method>/<sign mode>/
+#              The SAME raw fit with the pair-eta bins MERGED into the THREE PHYSICAL DETECTOR
+#              REGIONS -- negative-eta endcap, barrel, positive-eta endcap (user, 2026-08-24) -- so
+#              every canvas here carries 3 panels instead of 9. The 9-bin pair-eta grid is the
+#              CROSS-SECTION's presentation binning, never chosen for eps_dR's statistics; the
+#              three regions triple the pairs per fit while keeping the one physically motivated
+#              distinction (endcap L1 geometry differs from the barrel's), and the two ENDCAPS are
+#              deliberately NOT merged with each other. Also NOT a new binning -- the source bins
+#              are projected together at the fit stage and the interior group boundaries are looked
+#              up in the filled axis; see dr_correction_cell_groups.h. It is ORTHOGONAL to the
+#              pair-pT axis, so it runs on the 4-bin variant too.
+#   step<N>_dr_fit/no_plateau_correction_paireta_merged_last2ptbins_merged/<method>/<sign mode>/
+#              Both merges at once. Because it merges pair pT as well, the 8-BIN-AXIS-ONLY
+#              restriction above applies to it too and it is skipped under MCTRIGEFF_PAIRPT_4BIN.
 # STEP 4 RUNS THE NOMINAL MODE ONLY (user: "ignore step4, focus on step3 for now"), but its output
 # still lands under plateau_corrected/ so both step trees have the same shape.
 #
@@ -65,12 +79,15 @@ set -Eeuo pipefail
 #   SKIP_MEASURE=1                   reuse the existing plateau ROOT files (skip Stage 1)
 #   SKIP_FIT=1                       reuse the existing fit ROOT files (skip Stage 2) -- for
 #                                    re-making only the plots / the read-back audit
-#   PLATEAU_MODES="corr nocorr nocorr_ptmerge"
+#   PLATEAU_MODES="corr nocorr nocorr_ptmerge nocorr_etamerge nocorr_etamerge_ptmerge"
 #                                    plateau modes to run. `corr` = the nominal, plateau-
 #                                    normalized fit; `nocorr` = the raw fit with a free baseline;
 #                                    `nocorr_ptmerge` = the same with the last two pair-pT bins
-#                                    merged (8-bin axis only). Step 4 is restricted to `corr`
-#                                    whatever this says.
+#                                    merged (8-bin axis only); `nocorr_etamerge` = the same with
+#                                    the pair-eta bins merged into the three detector regions (no
+#                                    axis restriction); `nocorr_etamerge_ptmerge` = both merges
+#                                    (8-bin axis only, because it merges pair pT). Step 4 is
+#                                    restricted to `corr` whatever this says.
 #   SIGNS="intgr ss os"              sign series to fit. `intgr` = sign-integrated (nominal),
 #                                    `ss` = same sign, `os` = opposite sign. The sign_sepr plot
 #                                    set needs BOTH ss and os.
@@ -99,7 +116,7 @@ SIGNS="${SIGNS:-intgr ss os}"
 # Plateau modes. The C++ takes "corr" / "nocorr"; the directory names and the fit-file token are
 # built by dr_correction_sample_cfg.h (DrCorrPlateauModeDir / DrCorrPlateauModeTag) and only
 # MIRRORED here, in pmode_dir/pmode_fsuf below, for the artefact checks.
-PLATEAU_MODES="${PLATEAU_MODES:-corr nocorr nocorr_ptmerge}"
+PLATEAU_MODES="${PLATEAU_MODES:-corr nocorr nocorr_ptmerge nocorr_etamerge nocorr_etamerge_ptmerge}"
 # The pair-pT-binning token must MIRROR Utilities/MCTrigEffPairPtBinning.h: the C++ writes
 # ..._pt4bin... when MCTRIGEFF_PAIRPT_4BIN is set, and these artefact checks look the files up by
 # name. When they disagreed, a perfectly good 4-bin run was reported as 18 "missing fit files".
@@ -175,27 +192,34 @@ sign_rtag() {
 }
 # Plateau-mode -> plot subdirectory / fit-file token. MUST mirror dr_correction_sample_cfg.h:
 # the C++ builds the real names, this shell only VALIDATES what it wrote.
+PMODE_TOKENS="corr | nocorr | nocorr_ptmerge | nocorr_etamerge | nocorr_etamerge_ptmerge"
 pmode_dir() {
   case "$1" in
-    corr)           echo "plateau_corrected/" ;;
-    nocorr)         echo "no_plateau_correction/" ;;
-    nocorr_ptmerge) echo "no_plateau_correction_last2ptbins_merged/" ;;
-    *) fail "unknown plateau mode '$1' (use corr | nocorr | nocorr_ptmerge)" ;;
+    corr)                    echo "plateau_corrected/" ;;
+    nocorr)                  echo "no_plateau_correction/" ;;
+    nocorr_ptmerge)          echo "no_plateau_correction_last2ptbins_merged/" ;;
+    nocorr_etamerge)         echo "no_plateau_correction_paireta_merged/" ;;
+    nocorr_etamerge_ptmerge) echo "no_plateau_correction_paireta_merged_last2ptbins_merged/" ;;
+    *) fail "unknown plateau mode '$1' (use ${PMODE_TOKENS})" ;;
   esac
 }
 pmode_fsuf() {
   case "$1" in
-    corr)           echo "" ;;
-    nocorr)         echo "_nocorr" ;;
-    nocorr_ptmerge) echo "_nocorr_ptmerge" ;;
-    *) fail "unknown plateau mode '$1' (use corr | nocorr | nocorr_ptmerge)" ;;
+    corr)                    echo "" ;;
+    nocorr)                  echo "_nocorr" ;;
+    nocorr_ptmerge)          echo "_nocorr_ptmerge" ;;
+    nocorr_etamerge)         echo "_nocorr_etamerge" ;;
+    nocorr_etamerge_ptmerge) echo "_nocorr_etamerge_ptmerge" ;;
+    *) fail "unknown plateau mode '$1' (use ${PMODE_TOKENS})" ;;
   esac
 }
 pmode_text() {
   case "$1" in
-    corr)           echo "plateau-corrected" ;;
-    nocorr)         echo "no plateau correction" ;;
-    nocorr_ptmerge) echo "no plateau corr., last 2 pT bins merged" ;;
+    corr)                    echo "plateau-corrected" ;;
+    nocorr)                  echo "no plateau correction" ;;
+    nocorr_ptmerge)          echo "no plateau corr., last 2 pT bins merged" ;;
+    nocorr_etamerge)         echo "no plateau corr., pair-eta merged into 3" ;;
+    nocorr_etamerge_ptmerge) echo "no plateau corr., pair-eta merged into 3 + last 2 pT bins merged" ;;
   esac
 }
 
@@ -327,12 +351,18 @@ for sample in ${SAMPLES}; do
       fi
 
       for pmode in ${STEP_PMODES}; do
-        # THE MERGE IS DEFINED FOR THE 8-BIN NOMINAL AXIS ONLY (the C++ throws on the other one;
-        # dr_correction_pt_groups.h). Skipping it here with a note keeps a 4-bin production
-        # running instead of filling the summary with expected failures.
-        if [[ "${pmode}" == "nocorr_ptmerge" && -n "${MCTRIGEFF_PAIRPT_4BIN:-}" ]]; then
-          log "  skipping plateau mode nocorr_ptmerge: it is defined for the 8-bin pair-pT axis"
-          log "        only, and MCTRIGEFF_PAIRPT_4BIN is set (that variant already merges the top cells)"
+        # THE PAIR-pT MERGE IS DEFINED FOR THE 8-BIN NOMINAL AXIS ONLY (the C++ throws on the
+        # other one; dr_correction_cell_groups.h). Skipping it here with a note keeps a 4-bin
+        # production running instead of filling the summary with expected failures. EVERY mode
+        # that merges pair pT is covered, `nocorr_etamerge_ptmerge` included -- it merges the top
+        # two pair-pT bins exactly as `nocorr_ptmerge` does, so the same restriction applies.
+        # `nocorr_etamerge` ALONE is NOT skipped: the pair-eta merge is orthogonal to the pair-pT
+        # axis and is defined on both variants.
+        if [[ ( "${pmode}" == "nocorr_ptmerge" || "${pmode}" == "nocorr_etamerge_ptmerge" ) \
+              && -n "${MCTRIGEFF_PAIRPT_4BIN:-}" ]]; then
+          log "  skipping plateau mode ${pmode}: it merges the last two pair-pT bins, which is"
+          log "        defined for the 8-bin pair-pT axis only, and MCTRIGEFF_PAIRPT_4BIN is set"
+          log "        (that variant already merges the top cells)"
           continue
         fi
         PMDIR="$(pmode_dir  "${pmode}")"

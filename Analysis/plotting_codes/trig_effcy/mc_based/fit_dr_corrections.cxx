@@ -49,13 +49,33 @@
 //            the ratio), i.e. numerically identical to having filled a 7-bin axis; the filled
 //            histograms and ParamsSet::pair_pt_coarse_bins are UNCHANGED, and the variant is
 //            opt-in and suffixed. 8-bin nominal axis only -- with MCTRIGEFF_PAIRPT_4BIN set it
-//            throws (dr_correction_pt_groups.h). The plateau map on disk describes the un-merged
+//            throws (dr_correction_cell_groups.h). The plateau map on disk describes the un-merged
 //            grid, so for the merged cell it is RE-MEASURED here, from the full-dR histograms in
 //            the same file, with the same estimator and window (dr_correction_plateau.h) -- and,
 //            as in "nocorr", it is reported and applied to nothing.
 //            This is the variant the pp24 crossx application uses (DrCorrCrossxMode()).
-//   ASK THE PREDICATES, never `plateau_mode == "nocorr"`: the merged mode is ALSO a
-//   no-plateau-correction mode (DrCorrModeNoPlateau / DrCorrModeMergeLastTwoPt).
+//   "nocorr_etamerge" The SAME raw fit as "nocorr", with the 9 pair-eta bins MERGED into the
+//            THREE PHYSICAL DETECTOR REGIONS -- negative-eta endcap, barrel, positive-eta endcap
+//            (user, 2026-08-24) -- so the grid is 8 x 3 = 24 cells. Same trade-off as the pair-pT
+//            merge, on the second axis: the 9-bin pair-eta grid is the CROSS-SECTION's
+//            presentation binning, never chosen for eps_dR's statistics, and grouping it triples
+//            the pairs per fit while keeping the one distinction that is physically motivated
+//            (the endcap L1 trigger geometry differs from the barrel's). The two ENDCAPS are
+//            deliberately NOT merged with each other: the r16578 forward anomaly is
+//            NEGATIVE-eta only (R8/R10/R14). Like the pair-pT merge it is a PROJECTION of the
+//            source bins (num/denom/errA/errB summed before the ratio), so the filled histograms
+//            and CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap are UNCHANGED; the
+//            interior group boundaries are LOOKED UP in the filled axis and it THROWS if either
+//            is not an existing edge (dr_correction_cell_groups.h). Orthogonal to the pair-pT
+//            axis, so it has no 8-bin restriction.
+//   "nocorr_etamerge_ptmerge" Both merges at once: 7 pair-pT x 3 pair-eta = 21 cells. It merges
+//            pair pT, so the 8-bin-axis restriction of "nocorr_ptmerge" applies to it too.
+//   In BOTH merged families the plateau map on disk describes the UN-grouped grid, so it is
+//   RE-MEASURED here on the grouped cells (same estimator, same window) and -- as in every
+//   "nocorr*" mode -- reported and applied to NOTHING.
+//   ASK THE PREDICATES, never `plateau_mode == "nocorr"`: every merged mode is ALSO a
+//   no-plateau-correction mode (DrCorrModeNoPlateau / DrCorrModeMergeLastTwoPt /
+//   DrCorrModeMergeEta).
 //   The mode is the TOP level of the plot tree and a file-name token, both built in
 //   dr_correction_sample_cfg.h (DrCorrPlateauModeDir / DrCorrPlateauModeTag).
 //
@@ -131,7 +151,7 @@
 #include "dr_correction_sample_cfg.h"
 #include "dr_correction_ratio.h"
 #include "dr_correction_plateau.h"
-#include "dr_correction_pt_groups.h"
+#include "dr_correction_cell_groups.h"
 #include "../../../Utilities/MCTrigEffPlateauWindow.h"
 
 #include <algorithm>
@@ -326,7 +346,9 @@ std::string CellName(const std::string& base, int step, int iy, int iz)
 // sign   : "" (sign-integrated, the NOMINAL series) | "ss" (same sign) | "os" (opposite sign)
 // plateau_mode : "corr" (NOMINAL, divide by the large-dR plateau) | "nocorr" (fit the raw
 //                eps_dR with a free baseline C) | "nocorr_ptmerge" (same, with the last two
-//                pair-pT bins merged into one cell) -- see the PLATEAU MODE block in the header
+//                pair-pT bins merged into one cell) | "nocorr_etamerge" (same, with the pair-eta
+//                bins merged into the three physical detector regions) |
+//                "nocorr_etamerge_ptmerge" (both merges) -- see the PLATEAU MODE block above
 void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp = true,
                         int step = 3, const std::string& method = "powerlaw_fixedRp",
                         bool allow_plateau_violation = false, const std::string& sign = "",
@@ -341,10 +363,12 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     // mode, and a `== "nocorr"` test would silently apply the plateau to it.
     const bool         nocorr   = DrCorrModeNoPlateau(plateau_mode);
     const bool         ptmerge  = DrCorrModeMergeLastTwoPt(plateau_mode);
+    const bool         etamerge = DrCorrModeMergeEta(plateau_mode);
     const std::string  mode_dir = DrCorrPlateauModeDir(plateau_mode);
     const std::string  mode_text = std::string(nocorr
         ? "NO plateau correction (raw eps, free baseline C)" : "plateau-normalized")
-        + (ptmerge ? ", LAST TWO pair-pT BINS MERGED" : "");
+        + (ptmerge  ? ", LAST TWO pair-pT BINS MERGED" : "")
+        + (etamerge ? ", pair-eta MERGED into the three detector regions" : "");
     const MethodCfg    M   = MakeMethodCfg(method, nocorr);
     const std::string  wp_suf  = DrCorrWpSuffix(use_tight_wp);
     const std::string  wp_text = use_tight_wp ? "Tight muons" : "Medium muons";
@@ -460,10 +484,10 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     // The plateau map and the histograms MUST describe the same cells, or a cell would be
     // normalized by another cell's plateau. Check the binning, do not assume it.
     const int npt_src  = hplat->GetNbinsX();     // as FILLED, before any grouping
-    const int neta     = hplat->GetNbinsY();
-    if (h3n->GetYaxis()->GetNbins() != npt_src || h3n->GetZaxis()->GetNbins() != neta)
+    const int neta_src = hplat->GetNbinsY();     // as FILLED, before any grouping
+    if (h3n->GetYaxis()->GetNbins() != npt_src || h3n->GetZaxis()->GetNbins() != neta_src)
         throw std::runtime_error("fit_dr_corrections: plateau map (" + std::to_string(npt_src) + "x"
-            + std::to_string(neta) + ") does not match the histogram cells ("
+            + std::to_string(neta_src) + ") does not match the histogram cells ("
             + std::to_string(h3n->GetYaxis()->GetNbins()) + "x"
             + std::to_string(h3n->GetZaxis()->GetNbins()) + ") -- stale plateau file?");
     for (int iy = 1; iy <= npt_src + 1; ++iy)
@@ -471,31 +495,37 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
             > 1e-6)
             throw std::runtime_error("fit_dr_corrections: pair-pT edges differ between the "
                                      "plateau file and the histograms -- stale plateau file?");
-    for (int iz = 1; iz <= neta + 1; ++iz)
+    for (int iz = 1; iz <= neta_src + 1; ++iz)
         if (std::fabs(h3n->GetZaxis()->GetBinLowEdge(iz) - hplat->GetYaxis()->GetBinLowEdge(iz))
             > 1e-6)
             throw std::runtime_error("fit_dr_corrections: pair-eta edges differ between the "
                                      "plateau file and the histograms -- stale plateau file?");
 
 
-    // ------------------------------------------------- 2b. the pair-pT GROUPING of the fit cells
-    // One fit cell per group. Identical to the filled binning in every mode but "nocorr_ptmerge",
-    // where the last two pair-pT bins form ONE cell (dr_correction_pt_groups.h: what it is, why,
-    // and why it is not a new binning). Derived from the histograms' OWN axis -- no edge is typed
-    // here, in the report, or in the plot stage.
-    const DrPtGroups G = MakeDrPtGroups(h3n->GetYaxis(), ptmerge);
+    // ------------------------------------------------- 2b. the CELL GROUPING of the fit cells
+    // One fit cell per group, on BOTH axes. Identical to the filled binning except in the merged
+    // modes: "nocorr_ptmerge" makes the last two pair-pT bins ONE cell, "nocorr_etamerge" makes
+    // the 9 pair-eta bins THREE detector regions, "nocorr_etamerge_ptmerge" does both
+    // (dr_correction_cell_groups.h: what they are, why, and why neither is a new binning). Both
+    // are derived from the histograms' OWN axes -- no edge is typed here, in the report, or in
+    // the plot stage.
+    const DrPtGroups   G    = MakeDrPtGroups (h3n->GetYaxis(), ptmerge);
+    const DrAxisGroups Geta = MakeDrEtaGroups(h3n->GetZaxis(), etamerge);
     if (ptmerge)
         std::cout << "  pair-pT cells MERGED: " << npt_src << " filled bins -> " << G.n
                   << " fit cells; the top cell is p_T^pair ["
                   << Form("%.1f, %.1f", G.edges[G.n - 1], G.edges[G.n]) << ") GeV\n";
+    if (etamerge)
+        std::cout << "  pair-eta cells MERGED: " << neta_src << " filled bins -> "
+                  << DrGroupsDescribe(Geta, "eta_pair", "") << "\n";
 
-    // In the merged mode the plateau map on disk describes the UN-merged grid, so it cannot be
-    // read cell-by-cell: the merged cell has no entry in it. It is RE-MEASURED here on the merged
-    // cells, from the full-dR histograms in the same file, with the SAME estimator and the SAME
-    // window as the producer used (dr_correction_plateau.h) -- and, exactly as in the un-merged
-    // no-plateau-correction mode, nothing is normalized by the result: it is measured so the
-    // report can state it and so the three modes' reports stay comparable line by line.
-    if (ptmerge) {
+    // In a merged mode -- on EITHER axis -- the plateau map on disk describes the UN-grouped grid,
+    // so it cannot be read cell-by-cell: a grouped cell has no entry in it. It is RE-MEASURED here
+    // on the grouped cells, from the full-dR histograms in the same file, with the SAME estimator
+    // and the SAME window as the producer used (dr_correction_plateau.h) -- and, exactly as in the
+    // un-grouped no-plateau-correction mode, nothing is normalized by the result: it is measured so
+    // the report can state it and so every mode's report stays comparable line by line.
+    if (ptmerge || etamerge) {
         TH3D* f3n = GetObj<TH3D>(fh, S.h_prefix + "full_vs_pt_eta_num");
         TH3D* f3d = GetObj<TH3D>(fh, S.h_prefix + "full_vs_pt_eta_denom");
         TH3D* f3a = GetObj<TH3D>(fh, S.h_prefix + "full_vs_pt_eta_errA");
@@ -506,12 +536,12 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
         TH3D* f3p = S.has_cov ? GetObj<TH3D>(fh, S.h_prefix + "full_vs_pt_eta_covP") : nullptr;
         TH3D* f3q = S.has_cov ? GetObj<TH3D>(fh, S.h_prefix + "full_vs_pt_eta_covQ") : nullptr;
 
-        TH2D* mplat = BookDrGroupMap(hplat, G, "plat_merged_" + ptag, "plateau");
-        TH2D* mpnb  = BookDrGroupMap(hplat, G, "pnb_merged_"  + ptag, "n #DeltaR bins in the window");
-        TH2D* mpsys = BookDrGroupMap(hplat, G, "psys_merged_" + ptag, "plateau-window systematic");
+        TH2D* mplat = BookDrGroupMap(G, Geta, "plat_merged_" + ptag, "plateau");
+        TH2D* mpnb  = BookDrGroupMap(G, Geta, "pnb_merged_"  + ptag, "n #DeltaR bins in the window");
+        TH2D* mpsys = BookDrGroupMap(G, Geta, "psys_merged_" + ptag, "plateau-window systematic");
         for (int iy = 1; iy <= G.n; ++iy) {
-            for (int iz = 1; iz <= neta; ++iz) {
-                TH1D* rf = DrGroupCellRatio(f3n, f3d, f3a, f3b, f3p, f3q, G, iy, iz,
+            for (int iz = 1; iz <= Geta.n; ++iz) {
+                TH1D* rf = DrGroupCellRatio(f3n, f3d, f3a, f3b, f3p, f3q, G, Geta, iy, iz,
                                             Form("mplat_%s_%d_%d", ptag.c_str(), iy, iz));
                 const PlateauCell pc = PlateauFromRatio(rf);
                 delete rf;
@@ -532,6 +562,11 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
         throw std::runtime_error("fit_dr_corrections: internal inconsistency -- the plateau map has "
                                  + std::to_string(npt) + " pair-pT cells, the grouping has "
                                  + std::to_string(G.n));
+    const int neta = hplat->GetNbinsY();  // = Geta.n, the number of FIT CELLS along pair eta
+    if (neta != Geta.n)
+        throw std::runtime_error("fit_dr_corrections: internal inconsistency -- the plateau map has "
+                                 + std::to_string(neta) + " pair-eta cells, the grouping has "
+                                 + std::to_string(Geta.n));
 
     // ---------------------------------------------------------------- 3. the guard
     // GUARD POLICY (user, 2026-08-11). The measurement, the reporting and the per-cell lists are
@@ -635,15 +670,28 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                      " screen and the fit_ok flag are\n"
                      "#       unchanged, so nothing unusable is published from this series either.\n");
         }
+        // The grouped-axis notes, built from the GROUPINGS' OWN edges (never a typed value). One
+        // per axis, so a run that groups both says so twice rather than describing one merge.
+        const std::string g_ptmerge_note = ptmerge
+            ? std::string(Form("# PAIR-pT CELLS: last two filled bins MERGED (%d -> %d cells, top"
+                               " cell p_T^pair [%.1f, %.1f) GeV). The plateau of every cell below"
+                               " is\n"
+                               "#       RE-MEASURED on the merged grid from the full-dR histograms"
+                               " with the same estimator and window as the producer used.\n",
+                               npt_src, G.n, G.edges[G.n - 1], G.edges[G.n]))
+            : std::string();
+        const std::string g_etamerge_note = etamerge
+            ? std::string("# PAIR-eta CELLS (") + std::to_string(neta_src) + " filled bins -> "
+              + std::to_string(Geta.n) + " fit cells, the three physical detector regions):\n"
+                "#       " + DrGroupsDescribe(Geta, "eta_pair", "") + "\n"
+                "#       The plateau of every cell below is RE-MEASURED on the merged grid from"
+                " the full-dR histograms with the same\n"
+                "#       estimator and window as the producer used.\n"
+            : std::string();
         std::ofstream os(gdir + "plateau_guard_report" + sign_ftag + ".txt");
         os << "# Large-dR plateau guard, " << S.quantity << " (Step " << step << ")\n"
-           << (ptmerge
-               ? Form("# PAIR-pT CELLS: last two filled bins MERGED (%d -> %d cells, top cell"
-                      " p_T^pair [%.1f, %.1f) GeV). The plateau of every cell below is\n"
-                      "#       RE-MEASURED on the merged grid from the full-dR histograms with the"
-                      " same estimator and window as the producer used.\n",
-                      npt_src, G.n, G.edges[G.n - 1], G.edges[G.n])
-               : "")
+           << g_ptmerge_note
+           << g_etamerge_note
            << "# sample=" << sample << " (" << (cfg.is_full_sample ? "FULL" : "TEST")
            << " production)  WP=" << wp_text << "  series=" << series << "\n"
            << "# source: " << plateau_path << "  (keys h_" << ptag << "_*)\n"
@@ -751,6 +799,39 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     // one plot/report subdirectory per method (and medium/ inside it for the Medium WP)
     const std::string mdir = sdir + method + "/" + DrCorrWpDir(use_tight_wp);
     gSystem->mkdir(mdir.c_str(), kTRUE);
+    // The grouped-axis notes of the FIT report, built from the GROUPINGS' OWN edges. One per axis,
+    // so a run that groups both describes both merges rather than only the first.
+    const std::string r_ptmerge_note = ptmerge
+        ? std::string(Form("# PAIR-pT CELLS: the LAST TWO filled bins are MERGED into one cell --"
+                           " %d filled bins -> %d fit cells, top cell p_T^pair [%.1f, %.1f) GeV.\n"
+                           "#   The merge is a PROJECTION of the two bins together"
+                           " (num/denom/errA/errB summed before the ratio), i.e. numerically\n"
+                           "#   identical to having filled a %d-bin axis;"
+                           " ParamsSet::pair_pt_coarse_bins and the filled histograms are"
+                           " UNCHANGED.\n"
+                           "#   Motivation: the top two cells of the 8-bin log axis run past where"
+                           " the sample has yield (mc_trigger_efficiency.md R24/R27).\n",
+                           npt_src, G.n, G.edges[G.n - 1], G.edges[G.n], G.n))
+        : std::string();
+    const std::string r_etamerge_note = etamerge
+        ? std::string("# PAIR-eta CELLS (") + std::to_string(neta_src) + " filled bins -> "
+                      + std::to_string(Geta.n) + " fit cells, the three physical detector"
+                        " regions):\n"
+                        "#   " + DrGroupsDescribe(Geta, "eta_pair", "") + "\n"
+                        "#   The merge is a PROJECTION of the source bins together"
+                        " (num/denom/errA/errB summed before the ratio), i.e. numerically\n"
+                        "#   identical to having filled a " + std::to_string(Geta.n)
+                      + "-bin axis; CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap and"
+                        " the filled\n"
+                        "#   histograms are UNCHANGED, and the interior group boundaries were"
+                        " LOOKED UP in the filled axis (a boundary that is not an\n"
+                        "#   existing edge throws). Motivation: the filled pair-eta grid is"
+                        " the cross-section's presentation binning, not a choice made\n"
+                        "#   for eps_dR's statistics; the three regions triple the pairs per fit"
+                        " while keeping the one physically motivated distinction\n"
+                        "#   (endcap L1 geometry differs from the barrel's). The two ENDCAPS are"
+                        " deliberately NOT merged with each other.\n"
+        : std::string();
     std::ofstream rep(mdir + "fit_report" + sign_ftag + ".txt");
     rep << "# " << S.quantity << " (Step " << step << ") "
         << (nocorr ? "RAW (no plateau correction)" : "plateau-normalized")
@@ -765,17 +846,8 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                 : M.formula) << "\n"
         << "# flat onset Rp = " << S.flat_onset << " ; fit range dR in [" << kFitLo << ","
         << kFitHi << "]\n"
-        << (ptmerge
-            ? Form("# PAIR-pT CELLS: the LAST TWO filled bins are MERGED into one cell -- %d filled"
-                   " bins -> %d fit cells, top cell p_T^pair [%.1f, %.1f) GeV.\n"
-                   "#   The merge is a PROJECTION of the two bins together (num/denom/errA/errB"
-                   " summed before the ratio), i.e. numerically\n"
-                   "#   identical to having filled a %d-bin axis; ParamsSet::pair_pt_coarse_bins and"
-                   " the filled histograms are UNCHANGED.\n"
-                   "#   Motivation: the top two cells of the 8-bin log axis run past where the"
-                   " sample has yield (mc_trigger_efficiency.md R24/R27).\n",
-                   npt_src, G.n, G.edges[G.n - 1], G.edges[G.n], G.n)
-            : "")
+        << r_ptmerge_note
+        << r_etamerge_note
         << (nocorr
             ? "# NO PLATEAU CORRECTION: nothing is divided by the plateau. The asymptote is the "
               "FREE parameter C, determined by the\n"
@@ -864,7 +936,7 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
 
             // measured curve: normalized to 1 at large dR (corr) or RAW (nocorr, where the
             // asymptote is the free parameter C instead of an external divisor)
-            TH1D* r = DrGroupCellRatio(h3n, h3d, h3a, h3b, h3p, h3q, G, iy, iz, nm.c_str());
+            TH1D* r = DrGroupCellRatio(h3n, h3d, h3a, h3b, h3p, h3q, G, Geta, iy, iz, nm.c_str());
             if (!nocorr) r->Scale(1.0 / plateau);   // scales contents AND errors
 
             // points that carry information (a zero-denominator bin has error 0)
@@ -1148,21 +1220,26 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
         hk->Write();
         delete hk;
     }
+    // The plateau-mode stamp: the TOKEN itself, then what it does on each axis. Built from the
+    // predicates, so a new mode cannot acquire a stamp that describes a different one.
+    // The empty token is the nominal mode's other spelling (DrCorrPlateauModeDir accepts both),
+    // so it is normalised here -- a stamp reading " (each cell divided by ...)" names no mode.
+    const std::string mode_prov = (plateau_mode.empty() ? std::string("corr") : plateau_mode) + " ("
+        + (nocorr ? "raw eps, free baseline C -- the plateau is NOT applied"
+                  : "each cell divided by its own large-dR plateau")
+        + (ptmerge  ? "; LAST TWO pair-pT bins merged into one cell" : "")
+        + (etamerge ? "; pair-eta merged into the three physical detector regions" : "") + ")";
     TNamed("provenance",
            Form("sample=%s (%s); WP=%s; series=%s; plateau mode=%s; pair-pT cells=%d (filled bins"
-                " %d); step=%d (%s); method=%s; "
+                " %d); pair-eta cells=%d (filled bins %d); step=%d (%s); method=%s; "
                 "formula=%s; Rp=%.2f; "
                 "fit range dR=[%.2f,%.2f]; stored TF1 range=[0,%.1f]; plateau source=%s (keys "
                 "h_%s_*); histograms=%s (%szoom_vs_pt_eta_*); guard=%s; "
                 "producer=fit_dr_corrections.cxx",
                 sample.c_str(), cfg.is_full_sample ? "FULL" : "TEST", wp_text.c_str(),
                 series.c_str(),
-                nocorr ? (ptmerge
-                            ? "nocorr_ptmerge (raw eps, free baseline C -- the plateau is NOT"
-                              " applied; LAST TWO pair-pT bins merged into one cell)"
-                            : "nocorr (raw eps, free baseline C -- the plateau is NOT applied)")
-                       : "corr (each cell divided by its own large-dR plateau)",
-                G.n, npt_src,
+                mode_prov.c_str(),
+                G.n, npt_src, Geta.n, neta_src,
                 step,
                 S.quantity.c_str(), method.c_str(),
                 M.formula.empty() ? "linear interpolation (TGraph knots)" : M.formula.c_str(),
