@@ -14,51 +14,31 @@
             "hist_name": "Deta_zoomin",
             "var_name": "deta",
             "title": "#Delta#eta",
-            "binning": {
-                "nbins": 20,
-                "min": -0.8,
-                "max": 0.8
-            }
+            "binning": "deta_zoomin_bins_1d"
         },
         {
             "hist_name": "Dphi",
             "var_name": "dphi",
             "title": "#Delta#phi",
-            "binning": {
-                "nbins": 64,
-                "min": -3.141592653589793,
-                "max": 3.141592653589793
-            }
+            "binning": "dphi_bins_1d"
         },
         {
             "hist_name": "Dphi_zoomin",
             "var_name": "dphi",
             "title": "#Delta#phi",
-            "binning": {
-                "nbins": 20,
-                "min": -0.8,
-                "max": 0.8
-            }
+            "binning": "dphi_zoomin_bins_1d"
         },
         {
             "hist_name": "DR",
             "var_name": "dr",
             "title": "#DeltaR",
-            "binning": {
-                "nbins": 40,
-                "min": 0.0,
-                "max": 5.75
-            }
+            "binning": "dr_bins_1d"
         },
         {
             "hist_name": "DR_zoomin",
             "var_name": "dr",
             "title": "#DeltaR",
-            "binning": {
-                "nbins": 20,
-                "min": 0.0,
-                "max": 0.8
-            }
+            "binning": "dr_zoomin_bins_1d"
         },
         {
             "hist_name": "DR_0_2",
@@ -98,11 +78,7 @@
             "hist_name": "minv_zoomin",
             "var_name": "minv",
             "title": "m_{#mu#mu} [GeV]",
-            "binning": {
-                "nbins": 40,
-                "min": 0.0,
-                "max": 3.0
-            }
+            "binning": "minv_zoomin_bins_1d"
         },
         {
             "hist_name": "pair_pt_log",

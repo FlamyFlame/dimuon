@@ -448,6 +448,45 @@ void RDFBasedHistFillingPP::MakeAndWriteDRTrigEffGraphs() {
 }
 
 // ============================================================================
+// ApplyMuonWorkingPointFilter: the NOMINAL Tight muon working point on df_op/df_ss
+// ============================================================================
+//
+// --- Muon working-point (WP) selection for the DATA spectra ---
+// NOMINAL WP = TIGHT (isTight=true). Tight is a subset of Medium and the pair-level Tight flag
+// (both muons quality&16) is already serialized in the data pair tree, so we select it here with
+// a Filter -- NO ntuple reprocessing (verified: OP frac ~0.91). Setting isTight=false recovers
+// the Medium spectrum (WP systematic; distinct _medium_wp output).
+//
+// WHY IT LIVES HERE AND NOT INSIDE FillHistogramsCrossx (fixed 2026-08-25): the driver
+// RDFBasedHistFillingData::FillHistograms() calls FillHistogramsGeneric() BEFORE
+// FillHistogramsCrossx(). While the Tight Filter was applied inside FillHistogramsCrossx, every
+// GENERIC histogram was therefore a MEDIUM-WP yield -- yet it was divided by the TIGHT
+// efficiencies (Tight pair eps_reco, Tight single-muon turn-on fits) that
+// AddPairEfficiencyWeightColumns builds. A yield and a correction from two different working
+// points is a physics error: the WP cancels in neither eps_reco nor eps_trig, so the
+// MC-vs-data comparison read a spectrum that was ~10% too large and mis-corrected on top.
+// Applying the WP here, above BOTH families, puts the yield and its correction on one WP.
+//
+// Applied to BOTH df_op and df_ss so every downstream pull (generic, gapcut, crossx, SS crossx,
+// template-fit) inherits it; only the quality bit (8->16) changes.
+// (docs/muon_wp_registry.md 3; tight_wp_default_change.md S2.3)
+void RDFBasedHistFillingPP::ApplyMuonWorkingPointFilter(){
+    if (!isTight) {
+        // MEDIUM escape hatch, unchanged: no WP Filter at all (the pair tree is already Medium).
+        std::cout << "[PP] ApplyMuonWorkingPointFilter: isTight=false -> Medium WP, no filter"
+                  << std::endl;
+        return;
+    }
+    if (wp_filter_applied) return;   // exactly once: a second Filter would be a redundant node
+
+    df_map.at("df_op") = map_at_checked(df_map, "df_op", "ApplyMuonWorkingPointFilter: df_op").Filter("pair_pass_tight", "tight WP (pair)");
+    df_map.at("df_ss") = map_at_checked(df_map, "df_ss", "ApplyMuonWorkingPointFilter: df_ss").Filter("pair_pass_tight", "tight WP (pair)");
+    wp_filter_applied = true;
+    std::cout << "[PP] ApplyMuonWorkingPointFilter: TIGHT WP filter applied to df_op and df_ss"
+              << std::endl;
+}
+
+// ============================================================================
 // FillHistogramsGeneric: override to add 2mu4 trigger efficiency weighting
 // ============================================================================
 
@@ -455,6 +494,11 @@ void RDFBasedHistFillingPP::FillHistogramsGeneric(){
     if (!trigger_effcy_calc) {
         OpenEffcyPtFitFile();
         OpenPairEfficiencyInputs();           // MC eps_dR (2mu4) + pp24-fullsim PAIR eps_reco
+
+        // WORKING POINT FIRST -- before the gap cut, before the efficiency weight columns and
+        // before ANY histogram is booked. The generic histograms are corrected by the Tight
+        // efficiencies below, so the yield they correct must be the Tight yield.
+        ApplyMuonWorkingPointFilter();
 
         // THE FIDUCIAL GAP CUT IS MANDATORY HERE, not optional (2026-08-17). These generic
         // dataframes are efficiency-corrected below, and the single-muon turn-on is fitted on a
@@ -482,13 +526,22 @@ void RDFBasedHistFillingPP::FillHistogramsGeneric(){
             // correction as the crossx: w_reco_trig = w_reco * w_trig, both built by
             // AddPairEfficiencyWeightColumns. That is what keeps the MC-data comparison
             // and the cross-section on one and the same correction.
+            // ..._over_dr is the SAME weight divided by dR: the dR Jacobian that turns dN/ddR
+            // into the (1/dR) dN/ddR density behind the "_jacobian_corrected" histograms.
+            // Form copied from the truth precedent RDFBasedHistFillingPythiaTruth.cxx:96
+            // (`weight_over_dr`), including the dr>0 guard. Before 2026-08-25 the
+            // "_jacobian_corrected" data histograms were booked with w_reco_trig itself, so they
+            // were bit-identical clones of their un-corrected twins -- a name with no weighting
+            // behind it.
             ROOT::RDF::RNode df_with_trig = AddPairEfficiencyWeightColumns(df)
-                .Define("w_reco_trig", "w_reco * w_trig");
+                .Define("w_reco_trig", "w_reco * w_trig")
+                .Define("w_reco_trig_over_dr", "dr > 0 ? (w_reco * w_trig) / dr : 0.0");
 
             df_map.erase(df_name);
             df_map.emplace(df_name, df_with_trig);
         }
         generic_weight_col = "w_reco_trig";  // reco+trig corrected (was "w_trig")
+        generic_jacobian_weight_col = "w_reco_trig_over_dr";  // = generic_weight_col / dR
         std::cout << "[PP] FillHistogramsGeneric: w_reco_trig (reco+trig) columns added to "
                   << categories_essential.size() << " dataframes" << std::endl;
     }
@@ -534,16 +587,17 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta");
 
     // --- Muon working-point (WP) selection for the DATA crossx spectrum ---
-    // NOMINAL WP = TIGHT (isTight=true). Tight ⊂ Medium and the pair-level Tight flag
-    // (both muons quality&16) is already serialized in the data pair tree, so we select it
-    // here with a Filter -- NO ntuple reprocessing (verified: OP frac ~0.91). Setting
-    // isTight=false recovers the Medium spectrum (WP systematic; distinct _medium_wp output).
-    // Applied to BOTH df_op and df_ss so every downstream crossx pull inherits it; only the
-    // quality bit (8->16) changes. (docs/muon_wp_registry.md §3; tight_wp_default_change.md S2.3)
-    if (isTight) {
-        df_map.at("df_op") = map_at_checked(df_map, "df_op", "FillHistogramsCrossx: df_op (tight WP)").Filter("pair_pass_tight");
-        df_map.at("df_ss") = map_at_checked(df_map, "df_ss", "FillHistogramsCrossx: df_ss (tight WP)").Filter("pair_pass_tight");
-    }
+    // Moved into ApplyMuonWorkingPointFilter() (2026-08-25) so that FillHistogramsGeneric --
+    // which the driver runs FIRST -- gets the same Tight yield it is corrected with; see the
+    // physics comment on that function. The call is idempotent, so:
+    //   * output_generic_hists == true  -> generic already applied it; this is a no-op;
+    //   * output_generic_hists == false -> generic never ran; this applies it here.
+    // Either way the crossx spectrum is Tight, exactly as before, and the isTight==false
+    // (Medium) escape hatch is untouched. FillHistogramsCrossx is only ever reached with
+    // trigger_effcy_calc == false (see RDFBasedHistFillingData::FillHistograms), which is
+    // exactly the branch of FillHistogramsGeneric that applies the WP -- so the two callers
+    // can never disagree about whether the WP is on.
+    ApplyMuonWorkingPointFilter();
 
     ROOT::RDF::RNode df_op_base = map_at_checked(df_map, "df_op", "FillHistogramsCrossx: df_op");
     ROOT::RDF::RNode df_single_b_crossx = df_op_base.Filter(signal_cuts);
@@ -690,15 +744,73 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         for (int i = 0; i <= n; ++i) e[i] = lo + i * step;
         return e;
     };
-    const auto eta_edges  = make_unif_edges(44, -2.4,  2.4);
+    // FINE pair-eta axis: SINGLE SOURCE = ParamsSet (N_PAIR_ETA_CROSSX_BINS / PAIR_ETA_CROSSX_MIN
+    // / PAIR_ETA_CROSSX_MAX and the generated pair_eta_crossx_bins edge vector, which is also
+    // what hist_binning_map["pair_eta_crossx"] serves to the 1D views). The literal
+    // "44, -2.4, 2.4" is never retyped here again. The fixed-bin TH2 axes below keep the
+    // FIXED-bin constructor (nbins, min, max) so their on-disk representation is byte-for-byte
+    // what it was; only the TH3 axes, which always needed an explicit edge array, take the
+    // vector (its edges agree with the fixed-bin axis to <= 8.9e-16, i.e. to double rounding).
+    const int     n_eta_crossx = ParamsSet::N_PAIR_ETA_CROSSX_BINS;
+    const double* eta_edges    = pms.pair_eta_crossx_bins.data();
     const auto minv_edges = make_unif_edges(50,  1.0,  3.0);
     const auto dr_edges   = make_unif_edges(50,  0.0, 1.0);
 
+    // ------------------------------------------------------------------------------------------
+    // SIGNAL-REGION 1D DIFFERENTIAL CROSS SECTIONS (both signs)
+    // ------------------------------------------------------------------------------------------
+    // These are 1D views of EXACTLY the object the 2D/3D crossx histograms above describe: the
+    // SAME node (OS: df_single_b_crossx_weighted, i.e. df_op after the Tight WP filter and the
+    // single-b signal cuts; SS: the mirror node built in the SS block below) and the SAME weight
+    // crossx_weight_trig_corr = weight * (1/L_int) * w_reco * w_trig. Nothing is re-selected and
+    // nothing is re-weighted here, so a 1D panel and the 2D/3D panel beside it can never
+    // describe different cells.
+    //
+    // Every axis is requested BY NAME from hist_binning_map (registered once in
+    // RDFBasedHistFillingBaseClass::BuildHistBinningMapBaseCommon) -- the pair-eta axis is
+    // "pair_eta_crossx", the very edge vector the 2D/3D views use, and the pair-pT axis is
+    // "pT_bins_150", the axis of h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts. No binning is
+    // retyped in this file.
+    //
+    // NOT scaled by bin width at fill time: like h1d_crossx_minv_0_4_*_dsigma, these hold
+    // sum(w) per bin and the plotter applies Scale(norm, "width"). The y titles therefore name
+    // the density the plotter produces, with the unit of the observable: dimensionless
+    // observables (dR, dphi, deta, pair eta) -> [pb], dimensionful ones (minv, pair pT) ->
+    // [pb GeV^{-1}].
+    //   {hist tag, RDF column, hist_binning_map name, x title, y title}
+    const std::vector<std::array<std::string, 5>> signal_region_1d_vars = {
+        {"DR_zoomin",   "dr",       "dr_zoomin_bins_1d",   "#DeltaR",            "d#sigma/d#DeltaR [pb]"},
+        {"Dphi_zoomin", "dphi",     "dphi_zoomin_bins_1d", "#Delta#phi",         "d#sigma/d#Delta#phi [pb]"},
+        {"Deta_zoomin", "deta",     "deta_zoomin_bins_1d", "#Delta#eta",         "d#sigma/d#Delta#eta [pb]"},
+        {"minv_zoomin", "minv",     "minv_zoomin_bins_1d", "m_{#mu#mu} [GeV]",   "d#sigma/dm_{#mu#mu} [pb GeV^{-1}]"},
+        {"pair_eta",    "pair_eta", "pair_eta_crossx",     "#eta^{pair}",        "d#sigma/d#eta^{pair} [pb]"},
+        {"pair_pt_150", "pair_pt",  "pT_bins_150",         "p_{T}^{pair} [GeV]", "d#sigma/dp_{T}^{pair} [pb GeV^{-1}]"}
+    };
+
+    auto book_signal_region_1d = [&](ROOT::RDF::RNode node,
+                                     const std::string& weight_col,
+                                     const std::string& sign_suffix) {
+        for (const auto& v : signal_region_1d_vars) {
+            const std::string hname =
+                "h1d_crossx_" + v[0] + "_w_signal_cuts" + sign_suffix + "_dsigma";
+            const std::vector<double>& edges = map_at_checked(
+                hist_binning_map, v[2],
+                "FillHistogramsCrossx PP: hist_binning_map (signal-region 1D)");
+            const std::string htitle = ";" + v[3] + ";" + v[4];
+            hist1d_rresultptr_map[hname] = node.Histo1D(
+                ROOT::RDF::TH1DModel(hname.c_str(), htitle.c_str(),
+                                     static_cast<int>(edges.size()) - 1, edges.data()),
+                v[1], weight_col);
+        }
+    };
+
+    book_signal_region_1d(df_single_b_crossx_weighted, "crossx_weight_trig_corr", "_op");
+
     hist2d_rresultptr_map["h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts"] = df_single_b_crossx_weighted.Histo2D(
-        ROOT::RDF::TH2DModel("h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, 44, -2.4, 2.4),
+        ROOT::RDF::TH2DModel("h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
         "pair_pt", "pair_eta", "crossx_weight_trig_corr");
     hist2d_rresultptr_map["h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts_no_trig_corr"] = df_single_b_crossx_weighted.Histo2D(
-        ROOT::RDF::TH2DModel("h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts_no_trig_corr", ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, 44, -2.4, 2.4),
+        ROOT::RDF::TH2DModel("h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts_no_trig_corr", ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
         "pair_pt", "pair_eta", "crossx_weight");
 
     // Correction-stage histograms (raw -> unfolded -> +reco -> +reco+trig) for the
@@ -707,7 +819,7 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
     for (const auto& st : CrossxCorrectionStages()) {
         const std::string nm = std::string("h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts") + st.suffix;
         hist2d_rresultptr_map[nm] = df_single_b_crossx_weighted.Histo2D(
-            ROOT::RDF::TH2DModel(nm.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, 44, -2.4, 2.4),
+            ROOT::RDF::TH2DModel(nm.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
             "pair_pt", "pair_eta", st.weight_col);
     }
 
@@ -728,8 +840,13 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
                 [lumi_factor](double weight){ return weight * lumi_factor; }, {"weight"})
             .Define("crossx_weight_trig_corr", "crossx_weight * w_reco * w_trig");
         hist2d_rresultptr_map["h2d_ss_crossx_pair_pt_pair_eta_binned_w_signal_cuts"] = df_ss_weighted.Histo2D(
-            ROOT::RDF::TH2DModel("h2d_ss_crossx_pair_pt_pair_eta_binned_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, 44, -2.4, 2.4),
+            ROOT::RDF::TH2DModel("h2d_ss_crossx_pair_pt_pair_eta_binned_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
             "pair_pt", "pair_eta", "crossx_weight_trig_corr");
+
+        // SS half of the signal-region 1D set: SAME node/weight as the SS 2D yield above, and the
+        // SAME axes as the OS half, so D_OS - D_SS is a clean bin-by-bin combinatoric
+        // subtraction (analysis_overview.md 4a).
+        book_signal_region_1d(df_ss_weighted, "crossx_weight_trig_corr", "_ss");
     }
 
     hist2d_rresultptr_map["h2d_crossx_pair_pt_minv_w_signal_cuts"] = df_single_b_crossx_weighted.Histo2D(
@@ -740,24 +857,23 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         "pair_pt", "dr", "crossx_weight_trig_corr");
 
     hist3d_rresultptr_map["h3d_crossx_minv_vs_pair_eta_vs_pair_pt_w_signal_cuts"] = df_single_b_crossx_weighted.Histo3D(
-        ROOT::RDF::TH3DModel("h3d_crossx_minv_vs_pair_eta_vs_pair_pt_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair};m_{#mu#mu} [GeV]", npt, ptbins, 44, eta_edges.data(), 50, minv_edges.data()),
+        ROOT::RDF::TH3DModel("h3d_crossx_minv_vs_pair_eta_vs_pair_pt_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair};m_{#mu#mu} [GeV]", npt, ptbins, n_eta_crossx, eta_edges, 50, minv_edges.data()),
         "pair_pt", "pair_eta", "minv", "crossx_weight_trig_corr");
     hist3d_rresultptr_map["h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts"] = df_single_b_crossx_weighted.Histo3D(
-        ROOT::RDF::TH3DModel("h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt, ptbins, 44, eta_edges.data(), 50, dr_edges.data()),
+        ROOT::RDF::TH3DModel("h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt, ptbins, n_eta_crossx, eta_edges, 50, dr_edges.data()),
         "pair_pt", "pair_eta", "dr", "crossx_weight_trig_corr");
 
     // --- pT_bins_150 variants ---
     {
         const int    npt150    = (int)(pms.pT_bins_150.size() - 1);
         const double* ptbins150 = pms.pT_bins_150.data();
-        const auto eta_edges150 = make_unif_edges(44, -2.4, 2.4);
         const auto dr_edges150  = make_unif_edges(50, 0.0, 1.0);
 
         hist2d_rresultptr_map["h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts"] = df_single_b_crossx_weighted.Histo2D(
-            ROOT::RDF::TH2DModel("h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair}", npt150, ptbins150, 44, -2.4, 2.4),
+            ROOT::RDF::TH2DModel("h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair}", npt150, ptbins150, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
             "pair_pt", "pair_eta", "crossx_weight_trig_corr");
         hist3d_rresultptr_map["h3d_crossx_dr_vs_pair_eta_vs_pt_150_w_signal_cuts"] = df_single_b_crossx_weighted.Histo3D(
-            ROOT::RDF::TH3DModel("h3d_crossx_dr_vs_pair_eta_vs_pt_150_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt150, ptbins150, 44, eta_edges150.data(), 50, dr_edges150.data()),
+            ROOT::RDF::TH3DModel("h3d_crossx_dr_vs_pair_eta_vs_pt_150_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt150, ptbins150, ParamsSet::N_PAIR_ETA_CROSSX_BINS, pms.pair_eta_crossx_bins.data(), 50, dr_edges150.data()),
             "pair_pt", "pair_eta", "dr", "crossx_weight_trig_corr");
     }
 

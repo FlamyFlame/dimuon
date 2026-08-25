@@ -183,6 +183,44 @@ bool MuPairPassGapCut(float m1eta, float m1pt, int m1charge, float m2eta, float 
     return PassSingleMuonGapCut(m1eta, m1pt, m1charge) && PassSingleMuonGapCut(m2eta, m2pt, m2charge);
 }
 
+// Books the "_jacobian_corrected" twins of the generic histograms: the SAME variables, node and
+// selection as the un-suffixed generic set, but weighted by generic_jacobian_weight_col
+// (= generic_weight_col / dR, the dR Jacobian). The two weight columns MUST differ; a subclass
+// that sets generic_weight_col without setting generic_jacobian_weight_col gets no jacobian
+// histograms at all, which is the honest outcome -- the alternative (falling back to
+// generic_weight_col) is precisely the silent bug this replaced.
+void RDFBasedHistFillingData::BookJacobianCorrectedGeneric(
+        const std::string& category,
+        ROOT::RDF::RNode df,
+        const std::vector<std::string>& e1D,
+        const std::vector<std::array<std::string,2>>& e2D,
+        const std::vector<std::array<std::string,3>>& e3D){
+
+    if (generic_jacobian_weight_col.empty()) {
+        std::cerr << "Warning: BookJacobianCorrectedGeneric: generic_jacobian_weight_col is not "
+                  << "set while generic_weight_col = '" << generic_weight_col
+                  << "'; SKIPPING the '_jacobian_corrected' histograms for '" << category
+                  << "' (they would otherwise be identical clones of the un-suffixed ones)."
+                  << std::endl;
+        return;
+    }
+    if (generic_jacobian_weight_col == generic_weight_col) {
+        throw std::runtime_error(
+            "BookJacobianCorrectedGeneric: generic_jacobian_weight_col == generic_weight_col ('"
+            + generic_weight_col + "'); the '_jacobian_corrected' histograms would be identical "
+            "clones of the un-suffixed ones.");
+    }
+
+    std::pair<std::string,std::string> jk(category, "_jacobian_corrected");
+    auto jit1D = df_filter_and_weight_to_var1D_list_map.find(jk);
+    auto jit2D = df_filter_and_weight_to_var2D_list_map.find(jk);
+    auto jit3D = df_filter_and_weight_to_var3D_list_map.find(jk);
+    FillHistogramsSingleDataFrame(category + "_jacobian_corrected", df, generic_jacobian_weight_col,
+        (jit1D != df_filter_and_weight_to_var1D_list_map.end() ? jit1D->second : e1D),
+        (jit2D != df_filter_and_weight_to_var2D_list_map.end() ? jit2D->second : e2D),
+        (jit3D != df_filter_and_weight_to_var3D_list_map.end() ? jit3D->second : e3D));
+}
+
 void RDFBasedHistFillingData::FillHistogramsGeneric(){
     static const std::vector<std::string> e1D;
     static const std::vector<std::array<std::string,2>> e2D;
@@ -204,14 +242,13 @@ void RDFBasedHistFillingData::FillHistogramsGeneric(){
                 (it2D != df_filter_to_var2D_list_map.end() ? it2D->second : e2D),
                 (it3D != df_filter_to_var3D_list_map.end() ? it3D->second : e3D));
 
-            std::pair<std::string,std::string> jk(category, "_jacobian_corrected");
-            auto jit1D = df_filter_and_weight_to_var1D_list_map.find(jk);
-            auto jit2D = df_filter_and_weight_to_var2D_list_map.find(jk);
-            auto jit3D = df_filter_and_weight_to_var3D_list_map.find(jk);
-            FillHistogramsSingleDataFrame(category + "_jacobian_corrected", df, generic_weight_col,
-                (jit1D != df_filter_and_weight_to_var1D_list_map.end() ? jit1D->second : e1D),
-                (jit2D != df_filter_and_weight_to_var2D_list_map.end() ? jit2D->second : e2D),
-                (jit3D != df_filter_and_weight_to_var3D_list_map.end() ? jit3D->second : e3D));
+            // "_jacobian_corrected" MUST be filled with generic_jacobian_weight_col
+            // (= generic_weight_col / dR), NOT with generic_weight_col. Until 2026-08-25 it was
+            // handed generic_weight_col, so h_DR_op and h_DR_op_jacobian_corrected were
+            // bit-identical (verified: integral 1.2727e7, bin5 = 264460 in both) -- the suffix
+            // named a 1/dR Jacobian that no weight ever applied. Booking is SKIPPED, loudly,
+            // rather than silently re-cloning, if the subclass forgot to define the column.
+            BookJacobianCorrectedGeneric(category, df, e1D, e2D, e3D);
         }
 
         if (output_gapcut_hists){
@@ -231,14 +268,7 @@ void RDFBasedHistFillingData::FillHistogramsGeneric(){
                     (it2D_gc != df_filter_to_var2D_list_map.end() ? it2D_gc->second : e2D),
                     (it3D_gc != df_filter_to_var3D_list_map.end() ? it3D_gc->second : e3D));
 
-                std::pair<std::string,std::string> jk_gc(cat_gc, "_jacobian_corrected");
-                auto jit1D_gc = df_filter_and_weight_to_var1D_list_map.find(jk_gc);
-                auto jit2D_gc = df_filter_and_weight_to_var2D_list_map.find(jk_gc);
-                auto jit3D_gc = df_filter_and_weight_to_var3D_list_map.find(jk_gc);
-                FillHistogramsSingleDataFrame(cat_gc + "_jacobian_corrected", df_wgapcut, generic_weight_col,
-                    (jit1D_gc != df_filter_and_weight_to_var1D_list_map.end() ? jit1D_gc->second : e1D),
-                    (jit2D_gc != df_filter_and_weight_to_var2D_list_map.end() ? jit2D_gc->second : e2D),
-                    (jit3D_gc != df_filter_and_weight_to_var3D_list_map.end() ? jit3D_gc->second : e3D));
+                BookJacobianCorrectedGeneric(cat_gc, df_wgapcut, e1D, e2D, e3D);
             }
         }
     }

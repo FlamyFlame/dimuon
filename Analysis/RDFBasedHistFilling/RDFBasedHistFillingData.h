@@ -111,8 +111,23 @@ protected:
 
     virtual bool    IsPbPb() const { return false; } // avoids dynamic_cast<PbPb*> cross-dependency when compiling PP and PbPb separately
     std::string     generic_weight_col;
+    // Weight column for the "_jacobian_corrected" twins of the generic histograms, i.e. the SAME
+    // correction as generic_weight_col divided by dR (the dR Jacobian, d/ddR). It MUST be a
+    // different column from generic_weight_col: until 2026-08-25 the "_jacobian_corrected"
+    // booking below was handed generic_weight_col itself, so h_DR_op and
+    // h_DR_op_jacobian_corrected came out bit-identical -- the name promised a 1/dR weighting
+    // that was never applied. Set by the subclass that sets generic_weight_col
+    // (RDFBasedHistFillingPP::FillHistogramsGeneric -> "w_reco_trig_over_dr").
+    std::string     generic_jacobian_weight_col;
     virtual void    FillHistograms() override;
     virtual void    FillHistogramsGeneric();
+    // Books the "_jacobian_corrected" twins of the generic histograms with
+    // generic_jacobian_weight_col (never with generic_weight_col -- see there).
+    void            BookJacobianCorrectedGeneric(const std::string& category,
+                                                 ROOT::RDF::RNode df,
+                                                 const std::vector<std::string>& e1D,
+                                                 const std::vector<std::array<std::string,2>>& e2D,
+                                                 const std::vector<std::array<std::string,3>>& e3D);
     virtual void    FillHistogramsCrossx() = 0; // trigger_mode == 2 crossx filling (opposite-sign only, with signal cuts)
     virtual void    FillHistogramsSingleMuonEffcy() = 0;
     virtual void    FillHistogramsDimuTrigGivenMu4() = 0;
@@ -240,6 +255,11 @@ protected:
 // --------------------- protected class variables ---------------------------
     double pp_crossx_lumi_factor = -1.; // set in InitializePPExtra(); -1 = not set / not applicable
 
+    // --- muon working-point (WP) filter bookkeeping -------------------------------------------
+    // The Tight-WP Filter on df_op/df_ss must be applied EXACTLY ONCE, and it must be applied
+    // BEFORE any histogram is booked off those dataframes. See ApplyMuonWorkingPointFilter().
+    bool wp_filter_applied = false;
+
     std::vector<int> levels_trg_effcy_to_be_summed_w_musign_summing;
     std::vector<std::vector<std::string>> levels_trg_effcy_filters_to_be_summed_w_musign_summing;
     std::vector<std::string> trg_effcy_filters_to_be_summed_w_musign_summing;
@@ -263,6 +283,12 @@ protected:
     virtual void        FillTrigEffcyHistsInvWeightedbySingleMuonEffcies() override;
     virtual void        FillHistogramsCrossx() override;
     virtual void        FillHistogramsGeneric() override;
+
+    // Applies the NOMINAL Tight muon working point to df_op/df_ss, once, before anything is
+    // booked from them. Idempotent (guarded by wp_filter_applied) and a no-op when isTight is
+    // false (the Medium WP-systematic escape hatch). See the definition in
+    // RDFBasedHistFillingPP.cxx for the physics.
+    void                ApplyMuonWorkingPointFilter();
 
     virtual void        OpenEffcyPtFitFile() override;
 
