@@ -1,53 +1,56 @@
 // =================================================================================================
-// plot_mc_data_pair_pt_in_eta.cxx
+// plot_mc_data_pair_pt_in_eta.cxx  --  SIGNAL family
 //
 // pp24 data vs Pythia truth: the single-b dimuon pair-pT cross-section over 8-150 GeV, both
 // pair-eta-integrated and split into the 9 canonical pair-eta bins. The MC counterpart of
 // plots/single_b_analysis/pp24/pp24_crossx_pair_pt_in_eta_subplots.png (user, 2026-08-18).
+// Both views project the SAME 2D histogram, so the integrated panel and the nine panels cannot
+// describe different cells.
 //
-// WHY THIS IS A SEPARATE MACRO FROM plot_mc_data_compr.cxx. That one overlays 1D shape
-// distributions (dR, dphi, ...) taken from the Pythia PRIVATE sample. This one is a
-// CROSS-SECTION comparison and must use the AMI-normalized FULL sample, because:
-//   * the private sample's pair-pT axis is 30 uniform bins 0-30 GeV -- it does not reach 150, and
-//     2.8 % of its weight is already in the pT overflow;
-//   * its pair-eta axis has 24 uniform bins, and 4 of the 9 canonical pair-eta boundaries
-//     (+-0.5, +-1.5) fall at BIN CENTRES there, so the panels could not be cut at the right
-//     edges without straddling and double-counting;
-//   * its selection is `from_same_b` only -- no minv window, no pair-pT threshold -- i.e. not the
-//     signal region at all;
-//   * and its weight never touches AMI (PythiaAlgCoreT.c:983, eventWeight / njobs), so it has no
-//     cross-section normalization to convert.
-//
-// THE PAIR USED HERE HAS BIT-IDENTICAL AXES (verified edge by edge: all 16 pT edges from
-// ParamsSet::pT_bins_150 and all 45 pair-eta edges), so both sides are cut at exactly the same
-// panel boundaries and no binning mismatch is introduced (.claude/CLAUDE.md Binnings):
+// THE MC PARTNER IS THE pp24-CONDITION FULLSIM FULL SAMPLE. It replaced the Pythia TRUTH full
+// sample on 2026-08-25 for a physics reason, not a convenience one: the truth sample's weight
+// sets the beam ratio to the Pb isospin mixture 4:6:6:9 unconditionally, so its absolute sigma is
+// a Pb isospin-averaged NN cross-section -- not a pp cross-section, and therefore the wrong object
+// to place beside pp24 data (16.6 % in the signal region). The fullsim pp24 sample is pp beam only
+// with isospin weight 1, is AMI-weighted, and already implements the data signal region bit for
+// bit on truth quantities.
 //
 //   data : dimuon_data/pp_2024/histograms_real_pairs_pp_2024_2mu4_nominal.root
 //          h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts
 //          = (1/L) * sum 1/(eps_trig * eps_reco), L = 400.412 pb^-1, single-b signal region
 //            (m in (1.08,2.9), pair pT > 8, BOTH muons passing the fiducial gap cut), Tight WP.
-//   MC   : pythia_truth_full_sample/pythia_5p36TeV/histograms_pythia_5p36TeV_no_data_resonance_cuts.root
-//          h2d_sig_accept_num_pt_150_eta
-//          = truth from_same_b in the truth signal region, AMI-weighted.
+//   MC   : pythia_fullsim_full_sample/histograms_pythia_fullsim_pp24_no_data_resonance_cuts_full.root
+//          h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_single_b_pass_signal_truth
+//          = truth from_same_b OS pairs in the truth signal region, AMI-weighted.
 //
 // NORMALIZATION: the AMI `crossSection` is in **nb** (PythiaAlgCoreT.c:549-557), so the MC needs
 // exactly one factor, nb -> pb = 1000, and nothing else. The data is already in pb.
 //
 // KNOWN, DELIBERATE MISMATCHES -- state them wherever this plot is used, they are NOT bugs:
-//   1. FIDUCIAL REGION. The data uses the 3 gap windows; the Pythia TRUTH acceptance was
-//      deliberately left on the one-sided `q*eta < 2.2`
-//      (docs/tracking/pp24_crossx_rerun_2026_08.md, "Pb+Pb / truth acceptance not migrated").
-//      So the MC keeps muons the data cuts, and cuts 2.2 < q*eta < 2.3 that the data keeps.
-//   2. SIGNAL DEFINITION. MC is pure truth single-b; the data is raw OS with NO same-sign
+//   1. SIGNAL DEFINITION. MC is pure truth single-b; the data is raw OS with NO same-sign
 //      subtraction and no template-fit background subtraction, so it still contains
 //      gluon-splitting and combinatorial background.
-//   3. ISOSPIN. The full sample is the 4-beam 4:6:6:9 Pb-averaged NN cross-section, compared
-//      against pp data.
-//   4. The data is reco-level, corrected but NOT unfolded; the MC is truth-level.
+//   2. The data is reco-level, corrected but NOT unfolded; the MC is truth-level.
+// (The fiducial-region and isospin mismatches that the truth sample carried are GONE with it: the
+// fullsim applies the same three gap windows to truth q*eta, and runs the pp beam alone.)
 //
-// Usage:  root -l -b -q 'plot_mc_data_pair_pt_in_eta.cxx+()'
+// BINNINGS: nothing here is retyped. The pair-pT and pair-eta axes come from the histograms
+// themselves (both sides booked from `ParamsSet::pT_bins_150` and `ParamsSet::pair_eta_crossx_bins`
+// by name), and the nine PANEL boundaries -- a different object -- are read from
+// `CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap`.
+// The fine pair-eta axis is 48 uniform bins on [-2.4, 2.4] (`ParamsSet::N_PAIR_ETA_CROSSX_BINS`),
+// i.e. width exactly 0.1, so ALL EIGHT internal panel boundaries (+-0.5, 1.0, 1.5, 2.0) are bin
+// edges and the FindBin(lo+1e-6)..FindBin(hi-1e-6) projection below is exact by construction: no
+// bin lands in two panels, none is dropped, and the panel labels are literally the range drawn.
+// (With the previous 44-bin axis none of the eight was an edge, eight bins were double-counted
+// and the nine panels summed to +20.0 % of the true total.)
+//
+// Output: /usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/signal/
+// Usage:  root -l -b -q 'plot_mc_data_pair_pt_in_eta.cxx+()'           (Tight, nominal)
+//         root -l -b -q 'plot_mc_data_pair_pt_in_eta.cxx+("medium")'   (Medium WP systematic)
 // =================================================================================================
 
+#include <algorithm>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
@@ -59,32 +62,35 @@
 #include <TH1D.h>
 #include <TH2D.h>
 #include <TLatex.h>
+
+#include "McDataComprColors.h"
+#include "McDataComprConfig.h"
+#include "McDataComprRatio.h"
 #include <TLegend.h>
 #include <TStyle.h>
+#include <TSystem.h>
 
 #include "../helper_functions.c"
 #include "../../RDFBasedHistFilling/CommonEffcyConfig.h"
 
 namespace {
 
-const char* kDataFile =
-    "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"
-    "histograms_real_pairs_pp_2024_2mu4_nominal.root";
 const char* kDataHist = "h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts";
 
-const char* kMcFile =
-    "/usatlas/u/yuhanguo/usatlasdata/pythia_truth_full_sample/pythia_5p36TeV/"
-    "histograms_pythia_5p36TeV_no_data_resonance_cuts.root";
-const char* kMcHist = "h2d_sig_accept_num_pt_150_eta";
+// The 2D naming convention is h_<y-variable>_vs_<x-variable><filter>
+// (RDFBasedHistFillingBaseClass.cxx:561): x = pair pT, y = pair eta, same as the data histogram.
+const char* kMcHist =
+    "h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_single_b_pass_signal_truth";
 
 // AMI crossSection is in nb; the data is normalized by a luminosity in pb^-1.
 const double kNbToPb = 1.0e3;
 
-const char* kOutDir = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/";
+const char* kOutDir = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/signal/";
 
-TH2D* Fetch(const char* file, const char* hist)
+TH2D* Fetch(const std::string& file, const char* hist)
 {
-    TFile* f = TFile::Open(file, "READ");
+    McDataComprConfig::AssertInputExists(file, hist);
+    TFile* f = TFile::Open(file.c_str(), "READ");
     if (!f || f->IsZombie())
         throw std::runtime_error(std::string("cannot open ") + file);
     auto* h = dynamic_cast<TH2D*>(f->Get(hist));
@@ -97,16 +103,21 @@ TH2D* Fetch(const char* file, const char* hist)
 }
 
 // The two axes MUST agree bin for bin: a panel cut at a different edge on each side would compare
-// different eta ranges while every histogram still fills.
+// different eta ranges while every histogram still fills. Compared with a RELATIVE tolerance --
+// one side is built as (nbins, min, max) and the other from a generated edge vector, and those
+// agree only to double rounding.
 void AssertSameAxes(const TH2D* a, const TH2D* b)
 {
     auto cmp = [](const TAxis* x, const TAxis* y, const char* what) {
         if (x->GetNbins() != y->GetNbins())
             throw std::runtime_error(std::string("axis bin count differs on ") + what);
-        for (int i = 1; i <= x->GetNbins() + 1; ++i)
-            if (std::fabs(x->GetBinLowEdge(i) - y->GetBinLowEdge(i)) > 1e-6)
+        for (int i = 1; i <= x->GetNbins() + 1; ++i) {
+            const double ea = x->GetBinLowEdge(i);
+            const double eb = y->GetBinLowEdge(i);
+            if (std::fabs(ea - eb) > 1e-9 * std::max(1.0, std::fabs(ea)))
                 throw std::runtime_error(std::string("axis edge ") + std::to_string(i)
                                          + " differs on " + what);
+        }
     };
     cmp(a->GetXaxis(), b->GetXaxis(), "pair pT");
     cmp(a->GetYaxis(), b->GetYaxis(), "pair eta");
@@ -127,7 +138,9 @@ TH1D* Project(TH2D* h, double eta_lo, double eta_hi, const char* name, double sc
     p->SetMarkerSize(0.9);
     p->SetStats(0);
     p->GetXaxis()->SetTitle("p_{T}^{pair} [GeV]");
-    p->GetYaxis()->SetTitle("d#sigma/dp_{T} [pb GeV^{-1}]");
+    // The observable is the PAIR pT, and the title has to say so: "d#sigma/dp_{T}" alone reads as
+    // a single-muon spectrum, which this is not.
+    p->GetYaxis()->SetTitle("d#sigma/dp_{T}^{pair} [pb GeV^{-1}]");
     return p;
 }
 
@@ -144,14 +157,52 @@ void StyleFrame(TH1D* h, double lo, double hi)
     h->GetXaxis()->SetTitleOffset(1.15);
 }
 
+// -------------------------------------------------------------------------------------------
+// A common log-y range for the nine panels that is not mostly empty.
+//
+// The old rule was [global min x 0.3, global max x 3]. The global minimum is set by a couple of
+// nearly-empty bins in the outermost |eta| panels, so the frame reached ~1e-5 while most panels
+// stop near 1e-3 -- roughly two of the six drawn decades were blank in every panel. Taking a low
+// PERCENTILE of the drawn values instead trims that sparse tail while keeping the bulk of every
+// panel inside the frame. The number of points that fall below the frame is printed, so the
+// trade-off is auditable rather than silent; it is deliberately NOT written on the canvas.
+// -------------------------------------------------------------------------------------------
+void CommonLogYRange(const std::vector<TH1D*>& hists, double pct, double& lo, double& hi)
+{
+    std::vector<double> v;
+    for (const TH1D* h : hists)
+        for (int b = 1; b <= h->GetNbinsX(); ++b) {
+            const double y = h->GetBinContent(b);
+            if (y > 0.) v.push_back(y);
+        }
+    if (v.empty()) { lo = 1e-6; hi = 1.; return; }
+    std::sort(v.begin(), v.end());
+    const size_t idx = static_cast<size_t>(pct * (v.size() - 1));
+    lo = v[idx] * 0.5;
+    hi = v.back() * 3.0;
+
+    size_t below = 0;
+    for (double y : v) if (y < lo) ++below;
+    printf("[range] 9-panel common y = %.4g .. %.4g ; %zu of %zu positive points fall below it\n",
+           lo, hi, below, v.size());
+}
+
 }  // namespace
 
-void plot_mc_data_pair_pt_in_eta()
+// `wp` = "tight" (nominal) or "medium" (WP systematic). Repo rule: every plot set exposes a
+// Medium/Tight config var and defaults to Tight. It switches the DATA input file only -- the MC
+// here is a TRUTH histogram and has no reconstruction working point. See McDataComprConfig::MuonWP.
+void plot_mc_data_pair_pt_in_eta(const char* wp = "tight")
 {
-    gStyle->SetOptStat(0);
+    const McDataComprConfig::MuonWP muon_wp = McDataComprConfig::ParseWP(wp);
+    std::cout << "plot_mc_data_pair_pt_in_eta: muon WP = " << McDataComprConfig::WPName(muon_wp)
+              << std::endl;
 
-    std::unique_ptr<TH2D> h_data(Fetch(kDataFile, kDataHist));
-    std::unique_ptr<TH2D> h_mc  (Fetch(kMcFile,   kMcHist));
+    gStyle->SetOptStat(0);
+    gSystem->mkdir(kOutDir, kTRUE);
+
+    std::unique_ptr<TH2D> h_data(Fetch(McDataComprConfig::DataFile(muon_wp), kDataHist));
+    std::unique_ptr<TH2D> h_mc  (Fetch(McDataComprConfig::PythiaFile(false), kMcHist));
     AssertSameAxes(h_data.get(), h_mc.get());
 
     static const CommonEffcyConfig cfg{};
@@ -161,10 +212,14 @@ void plot_mc_data_pair_pt_in_eta()
            h_data->Integral(), h_mc->Integral(), h_mc->Integral() * kNbToPb,
            h_mc->Integral() * kNbToPb / h_data->Integral());
 
+    // The full pair-eta range is read from the histogram axis, never retyped.
+    const double eta_full_lo = h_data->GetYaxis()->GetXmin();
+    const double eta_full_hi = h_data->GetYaxis()->GetXmax();
+
     // ---------------------------------------------------------------- pair-eta integrated
     {
-        TH1D* d = Project(h_data.get(), -2.4, 2.4, "hpt_int_data", 1.0,      kGreen + 2, 20);
-        TH1D* m = Project(h_mc.get(),   -2.4, 2.4, "hpt_int_mc",   kNbToPb,  kBlue,      21);
+        TH1D* d = Project(h_data.get(), eta_full_lo, eta_full_hi, "hpt_int_data", 1.0,     McDataComprColors::kSignalData, 20);
+        TH1D* m = Project(h_mc.get(),   eta_full_lo, eta_full_hi, "hpt_int_mc",   kNbToPb, McDataComprColors::kSignalMc, 21);
 
         double lo = 1e300, hi = -1e300;
         for (TH1D* h : {d, m})
@@ -172,20 +227,46 @@ void plot_mc_data_pair_pt_in_eta()
                 const double v = h->GetBinContent(b);
                 if (v > 0.) { lo = std::min(lo, v); hi = std::max(hi, v); }
             }
-        StyleFrame(d, lo * 0.3, hi * 3.0);
+        // Headroom above the curves so the legend and the eta label are clear of the markers.
+        lo *= 0.3; hi *= 8.0;
+        StyleFrame(d, lo, hi);
+        McDataComprRatio::ApplyLogYLabelPolicy(d, lo, hi);
+        McDataComprRatio::HideXAxis(d);
 
-        TCanvas c("c_int", "pair pT, pair-eta integrated", 700, 600);
-        c.SetLogx(); c.SetLogy();
-        c.SetLeftMargin(0.16); c.SetBottomMargin(0.15);
+        TCanvas c("c_int", "pair pT, pair-eta integrated", 700, 800);
+        TPad* pad_main = nullptr;
+        TPad* pad_ratio = nullptr;
+        McDataComprRatio::SplitPadForRatio(&c, pad_main, pad_ratio, 0.17, 0.04);
+
+        pad_main->cd();
+        gPad->SetLogx(); gPad->SetLogy();
         d->Draw("E");
         m->Draw("E,same");
-        TLegend l(0.20, 0.20, 0.55, 0.36);
-        l.SetBorderSize(0); l.SetFillStyle(0); l.SetTextFont(42); l.SetTextSize(0.038);
+        TLegend l(0.22, 0.10, 0.62, 0.28);
+        l.SetBorderSize(0); l.SetFillStyle(0); l.SetTextFont(42); l.SetTextSize(0.045);
         l.AddEntry(d, "pp data 2024", "lp");
-        l.AddEntry(m, "Pythia", "lp");
+        l.AddEntry(m, "Pythia, single-b", "lp");
         l.Draw();
-        TLatex t; t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.038);
-        t.DrawLatex(0.20, 0.86, "|#eta^{pair}| < 2.4");
+        TLatex t; t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.045);
+        t.DrawLatex(0.22, 0.87, Form("%.1f < #eta^{pair} < %.1f", eta_full_lo, eta_full_hi));
+
+        pad_ratio->cd();
+        gPad->SetLogx();
+        TH1D* r = McDataComprRatio::MakeRatio(m, d, "r_pt_int");
+        double rlo = 0., rhi = 2.; bool rlog = false;
+        McDataComprRatio::AutoRatioRange(std::vector<TH1*>{r}, rlo, rhi, rlog);
+        printf("[ratio] signal pair_pt (eta integrated) : y-range %.4g .. %.4g%s\n",
+               rlo, rhi, rlog ? " (log)" : "");
+        gPad->SetLogy(rlog);
+        // StyleFrame uses RELATIVE (precision-2) font sizes, so the ratio pad's text must be
+        // scaled by the pad-height ratio to come out the same physical size as the main pad's.
+        StyleFrame(r, rlo, rhi);
+        McDataComprRatio::StyleRatioFrame(r, "p_{T}^{pair} [GeV]", rlo, rhi, rlog,
+                                          McDataComprRatio::RelativeTextScale());
+        r->Draw("E");
+        McDataComprRatio::DrawUnityLine(r);
+        r->Draw("E,same");
+
         c.SaveAs((std::string(kOutDir) + "pair_pt_mc_data_compr.png").c_str());
     }
 
@@ -194,42 +275,70 @@ void plot_mc_data_pair_pt_in_eta()
         int nrow = 1, ncol = 1;
         DetermineSubplotGrid(static_cast<int>(eta_bins.size()), nrow, ncol);
 
-        std::vector<TH1D*> ds, ms;
-        double lo = 1e300, hi = -1e300;
+        std::vector<TH1D*> ds, ms, all;
         for (size_t i = 0; i < eta_bins.size(); ++i) {
             TH1D* d = Project(h_data.get(), eta_bins[i].first, eta_bins[i].second,
-                              ("hd" + std::to_string(i)).c_str(), 1.0,     kGreen + 2, 20);
+                              ("hd" + std::to_string(i)).c_str(), 1.0,     McDataComprColors::kSignalData, 20);
             TH1D* m = Project(h_mc.get(),   eta_bins[i].first, eta_bins[i].second,
-                              ("hm" + std::to_string(i)).c_str(), kNbToPb, kBlue,      21);
+                              ("hm" + std::to_string(i)).c_str(), kNbToPb, McDataComprColors::kSignalMc, 21);
             ds.push_back(d); ms.push_back(m);
-            for (TH1D* h : {d, m})
-                for (int b = 1; b <= h->GetNbinsX(); ++b) {
-                    const double v = h->GetBinContent(b);
-                    if (v > 0.) { lo = std::min(lo, v); hi = std::max(hi, v); }
-                }
+            all.push_back(d); all.push_back(m);
         }
 
         // ONE common log-y range across all panels, so the nine are directly comparable by eye.
-        TCanvas c("c_eta", "pair pT in pair-eta bins", 450 * ncol, 350 * nrow);
+        double lo = 0., hi = 0.;
+        CommonLogYRange(all, 0.03, lo, hi);
+
+        // ONE common ratio range too, for the same reason as the common y range: nine panels each
+        // on its own ratio scale cannot be compared by eye, which is the whole point of the view.
+        std::vector<TH1*> rs;
+        for (size_t i = 0; i < eta_bins.size(); ++i)
+            rs.push_back(McDataComprRatio::MakeRatio(ms[i], ds[i],
+                                                     "r_eta" + std::to_string(i)));
+        double rlo = 0., rhi = 2.; bool rlog = false;
+        McDataComprRatio::AutoRatioRange(rs, rlo, rhi, rlog);
+        printf("[ratio] signal pair_pt_in_eta (9 panels, common) : y-range %.4g .. %.4g%s\n",
+               rlo, rhi, rlog ? " (log)" : "");
+
+        // Each cell is 450 x 450 px, not 450 x 350: the bottom 30 % is the ratio pad and the main
+        // panel must not lose height to it.
+        TCanvas c("c_eta", "pair pT in pair-eta bins", 450 * ncol, 450 * nrow);
         c.Divide(ncol, nrow);
         for (size_t i = 0; i < eta_bins.size(); ++i) {
-            c.cd(static_cast<int>(i) + 1);
+            TPad* pad_main = nullptr;
+            TPad* pad_ratio = nullptr;
+            McDataComprRatio::SplitPadForRatio(c.cd(static_cast<int>(i) + 1),
+                                               pad_main, pad_ratio, 0.20, 0.04);
+
+            pad_main->cd();
             gPad->SetLogx(); gPad->SetLogy();
-            gPad->SetLeftMargin(0.18); gPad->SetBottomMargin(0.17);
-            StyleFrame(ds[i], lo * 0.3, hi * 3.0);
+            StyleFrame(ds[i], lo, hi);
+            McDataComprRatio::ApplyLogYLabelPolicy(ds[i], lo, hi);
+            McDataComprRatio::HideXAxis(ds[i]);
             ds[i]->Draw("E");
             ms[i]->Draw("E,same");
 
-            TLatex t; t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.05);
-            t.DrawLatex(0.22, 0.87, Form("#eta^{pair} #in [%.1f, %.1f]",
+            TLatex t; t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.06);
+            t.DrawLatex(0.24, 0.88, Form("#eta^{pair} #in [%.1f, %.1f]",
                                          eta_bins[i].first, eta_bins[i].second));
             if (i == 0) {
-                TLegend* l = new TLegend(0.22, 0.20, 0.62, 0.36);
-                l->SetBorderSize(0); l->SetFillStyle(0); l->SetTextFont(42); l->SetTextSize(0.05);
+                TLegend* l = new TLegend(0.24, 0.08, 0.68, 0.28);
+                l->SetBorderSize(0); l->SetFillStyle(0); l->SetTextFont(42); l->SetTextSize(0.058);
                 l->AddEntry(ds[i], "pp data 2024", "lp");
-                l->AddEntry(ms[i], "Pythia", "lp");
+                l->AddEntry(ms[i], "Pythia, single-b", "lp");
                 l->Draw();
             }
+
+            pad_ratio->cd();
+            gPad->SetLogx();
+            gPad->SetLogy(rlog);
+            TH1D* r = static_cast<TH1D*>(rs[i]);
+            StyleFrame(r, rlo, rhi);
+            McDataComprRatio::StyleRatioFrame(r, "p_{T}^{pair} [GeV]", rlo, rhi, rlog,
+                                              McDataComprRatio::RelativeTextScale());
+            r->Draw("E");
+            McDataComprRatio::DrawUnityLine(r);
+            r->Draw("E,same");
         }
         c.SaveAs((std::string(kOutDir) + "pair_pt_in_eta_subplots_mc_data_compr.png").c_str());
     }

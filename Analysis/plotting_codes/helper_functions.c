@@ -1,4 +1,6 @@
 #include <string>
+#include <iostream>   // std::cout is used below; without this the file only compiled when an
+                      // includer happened to pull <iostream> in first (ACLiC failure, 2026-08-25)
 #include "THStack.h"
 
 void DetermineSubplotGrid(int nsubplots, int& nrow, int& ncol) {
