@@ -325,11 +325,19 @@ if [[ "$SKIP_MC_DATA_COMPR" -eq 1 ]]; then
   log "SKIP_MC_DATA_COMPR=1 — skipping MC-data comparison plots"
 else
   MC_COMPR_DIR="${ANALYSIS_DIR}/plotting_codes/mc_data_compr"
-  log "Running MC-data comparison plots (POWHEG/Pythia vs pp data)"
+  log "Running MC-data comparison plots (Pythia pp24 fullsim / POWHEG vs pp data)"
   pushd "$MC_COMPR_DIR" >/dev/null
-  root -l -b -q 'plot_mc_data_compr.cxx()'
+  # THREE macros since 2026-08-25 (docs/tracking/mc_data_compr_signal_generic_split.md): the set
+  # is split into a SIGNAL family (data-like signal-region cuts, so every correction is applied
+  # inside the region it was measured in) and a GENERIC family (no signal-region cuts, so the
+  # corrections are extrapolated -- see the README in that directory). The signal family is the
+  # one that carries physics; running only the generic macro, as this stage used to, would leave
+  # the signal plots stale after a crossx rerun.
+  root -l -b -q 'plot_mc_data_compr_signal.cxx+()'    # -> plots/mc_data_compr/signal/
+  root -l -b -q 'plot_mc_data_pair_pt_in_eta.cxx+()'  # -> plots/mc_data_compr/signal/ (was manual-only)
+  root -l -b -q 'plot_mc_data_compr.cxx+()'           # -> plots/mc_data_compr/generic/
   popd >/dev/null
-  log "MC-data comparison plots saved to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/"
+  log "MC-data comparison plots saved to /usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/{signal,generic}/"
 fi
 
 log "PP crossx/nominal pipeline completed successfully"

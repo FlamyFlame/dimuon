@@ -19,6 +19,27 @@ uncertainty** variations of the selection (e.g. ΔR, minv, pair-pT, q·η bounds
 > owns only the *engineering dependency graph*. Pipeline/stage details:
 > `README.md` + `pipelines/`.
 
+> **A binning change has its own, smaller blast radius — and one such change landed
+> 2026-08-25.** `ParamsSet::N_PAIR_ETA_CROSSX_BINS` (the FINE pair-eta axis of the crossx 2D/3D
+> views) moved **44 -> 48**, i.e. width 0.109090... -> exactly 0.1. This is not a selection
+> change: no cut moved, and `sigma_fid` is unchanged. It was necessary because with 44 bins
+> **none** of the 8 internal boundaries of the 9 coarse panels
+> (`CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap`) was a bin edge, so every
+> `FindBin(lo+eps)..FindBin(hi-eps)` panel projection shared a bin with its neighbour — the 9
+> panels summed **+20.0 %** above the true total and the panel LABELS disagreed with the bins
+> drawn by up to 0.091 in eta. Affected consumers: `SingleBCrossxPlotterBase`,
+> `SignalAcceptancePlotter`, `plot_mc_data_pair_pt_in_eta.cxx`.
+> Rerun set for a change to this axis (much narrower than a selection change): the hist-filling
+> stages that BOOK the axis (pp24 data crossx, pp24 Pythia fullsim) plus everything in §5 that
+> projects it. Corrections are NOT affected — `eps_reco` is celled on
+> `ParamsSet::pair_pt_coarse_bins` x `pair_eta_proj_ranges_coarse_incl_gap` x
+> `dr_bins_edges_for_reco_effcy`, none of which is this axis.
+> **Pb+Pb has NOT adopted it** (`RDFBasedHistFillingPbPb.cxx` still retypes `44, -2.4, 2.4`), on
+> purpose: its code and its on-disk histograms stay mutually consistent that way. Pb+Pb must
+> switch to the constant AND rerun its crossx hist filling in the SAME step, or its panel
+> projections and its labels will disagree.
+> Owning doc: `docs/tracking/mc_data_compr_signal_generic_split.md`.
+
 ---
 
 ## 0. The current signal region (reference)

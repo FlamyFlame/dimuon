@@ -48,14 +48,35 @@ sites (marked ⚠) move the number; **cosmetic** sites (labels) do not but must 
   dead RDF `isTight` (see §3) to `Filter("pair_pass_tight")` — the flag is already stored (`:675`).
 - Legacy `original_no_template_class/DimuonDataAnalysisBaseClass.*` — same logic, inactive.
 
-### 3. RDF hist-filling ⚠
-- **DATA:** `RDFBasedHistFillingData.h:176` `bool isTight=false;` — **declared but UNUSED** (`.cxx:32`
-  help-print only; no `Filter`). `RDFBasedHistFillingPP.cxx:545` / `RDFBasedHistFillingPbPb.cxx`
-  inherit the ntuple WP (no re-apply). ⇒ to select Tight without reprocessing, wire `isTight` →
-  `Filter("pair_pass_tight")` here.
+### 3. RDF hist-filling ✅ (route (b) is implemented; Tight is the live default)
+- **DATA:** `RDFBasedHistFillingData.h` `bool isTight = true;` — **the live DATA WP default**, and
+  it IS wired: `RDFBasedHistFillingPP::ApplyMuonWorkingPointFilter()` (`RDFBasedHistFillingPP.cxx`,
+  ~`:451-487`) applies `Filter("pair_pass_tight")`. Route (b) of §2, no reprocessing.
+  (This section previously said `Data.h:176 bool isTight=false;` "declared but UNUSED, no Filter",
+  which had been stale since `tight_wp_default_change.md` S2.3; corrected 2026-08-25.)
+- **WHERE it is applied matters (fixed 2026-08-25,
+  `docs/tracking/mc_data_compr_signal_generic_split.md` D3):** the filter used to live inside
+  `FillHistogramsCrossx` only, while the driver `RDFBasedHistFillingData::FillHistograms` books
+  the GENERIC histograms first — so every generic / MC-data-comparison histogram was a **Medium**
+  yield divided by **Tight** eps_trig and eps_reco, the mismatched-correction case §4 forbids.
+  It is now applied once, above the generic booking, via a `wp_filter_applied` guard, and reaches
+  both families; the crossx spectra are provably unchanged (Filter/Define commute, every
+  efficiency column being a pure per-entry Define) and every generic histogram moved by the
+  expected Tight/Medium factor 0.875-0.895.
 - **MC (already both variants):** `RDFBasedHistFillingPythiaFullsim.cxx`, `...Overlay.cxx` (PbPb),
   `...PowhegFullsim.cxx`, `...PowhegFullsimSingleMuon.cxx` build both `_pass_medium` & `_pass_tight`
   hist variants — just select the tight output.
+
+### 3b. Plot sets — WP config var (repo rule: every plot set exposes one, default TIGHT)
+- **`mc_data_compr`** (`plotting_codes/mc_data_compr/{plot_mc_data_compr_signal,plot_mc_data_compr,plot_mc_data_pair_pt_in_eta}.cxx`)
+  — WP var `McDataComprConfig::MuonWP muon_wp`, **default Tight**, set from the macro argument
+  `"tight" | "medium"` (an unknown string throws from `ParseWP`). It switches the **DATA input
+  file** to the `_medium_wp` crossx output, i.e. selection AND corrections together.
+  It does **NOT** switch the MC: every MC histogram in this set is a TRUTH-quantity histogram,
+  and a reconstruction working point does not exist for a truth pair.
+  ⚠ The Medium data file has not been produced yet — make it with
+  `RDFBasedHistFillingData::isTight = false`; until then `"medium"` throws an actionable error
+  rather than silently falling back. (Added 2026-08-25.)
 
 ### 4. Reco-efficiency ⚠ (Tight input EXISTS; active placeholder built from MEDIUM)
 - Active placeholder: `plotting_codes/reco_effcy/build_run2_reco_eff_placeholder.C:85` reads
