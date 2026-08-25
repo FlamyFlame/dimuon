@@ -47,6 +47,35 @@ public:
     std::vector<double> pT_bins_120;
     std::vector<double> pT_bins_150;  // FINE logarithmic pair-pT binning (15 bins, 8-150 GeV)
 
+    // ---- FINE pair-eta axis of the cross-section 2D/3D views (SINGLE SOURCE OF TRUTH) ----
+    // 44 uniform bins over [-2.4, +2.4]. This is the axis the pp/PbPb crossx histograms
+    // h2d_crossx_*_pair_eta_binned_* and h3d_crossx_* are binned on, and therefore the axis
+    // every 1D pair-eta view of the SAME quantity must use (.claude/CLAUDE.md Binnings rule 2:
+    // 1D/2D/3D views of one quantity share one binning -- project the SAME histogram).
+    // It is a DIFFERENT object from the 9 coarse analysis panels
+    // CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap, which are the physics cells.
+    // Introduced 2026-08-25 to retire the retyped copies of "44, -2.4, 2.4"
+    // (RDFBasedHistFillingPP.cxx x5+3).
+    //
+    // 2026-08-25: **44 -> 48** (user decision). Bin width becomes exactly 0.1, which makes every
+    // boundary of the 9 coarse analysis panels
+    // (CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap: +-0.5, +-1.0, +-1.5, +-2.0) an
+    // EXACT bin edge. With 44 bins the width was 0.109090..., none of the 8 internal boundaries
+    // was an edge, and every panel projection `FindBin(lo+eps)..FindBin(hi-eps)` therefore shared
+    // bins 4, 9, 13, 18, 27, 32, 36, 41 with its neighbour: the 9 panels summed to 6942.93 pb
+    // against a true total of 5784.06 pb (+20.0 %), and a panel labelled [-1.0,-0.5] actually
+    // drew [-1.0909,-0.4364] -- a label/binning disagreement, i.e. .claude/CLAUDE.md Binnings
+    // rule 5. Affected the pp24 crossx plot set (SingleBCrossxPlotterBase), the signal-acceptance
+    // plots and the MC-data comparison alike. The TOTAL is unaffected (sigma_fid = 5784.06 pb);
+    // only the per-panel split moves.
+    // NOT yet adopted by RDFBasedHistFillingPbPb.cxx, which still retypes "44, -2.4, 2.4": its
+    // code and its on-disk histograms stay mutually consistent that way. Pb+Pb must move to this
+    // constant AND be rerun in the same step -- see the tracking doc's Remaining Work.
+    static const int N_PAIR_ETA_CROSSX_BINS = 48;
+    static constexpr double PAIR_ETA_CROSSX_MIN = -2.4;
+    static constexpr double PAIR_ETA_CROSSX_MAX =  2.4;
+    std::vector<double> pair_eta_crossx_bins;   // 45 edges, filled in the constructor
+
     // ---- NOMINAL COARSE pair-pT binning (SINGLE SOURCE OF TRUTH) ----
     // The coarse pair-pT bins used for the low-mass template fit / R_AA coarse binning and
     // any coarsely-binned pair-pT plot set. THIS is the only place these values live: read
@@ -599,6 +628,15 @@ ParamsSet::ParamsSet(){
     fillLogBinningArray(pT_bins_80,  12, 8.0,  80.0);  // 12 log bins from 8  to 80  GeV
     fillLogBinningArray(pT_bins_120, 15, 8.0, 120.0);  // 15 log bins from 8  to 120 GeV
     fillLogBinningArray(pT_bins_150, 15, 8.0, 150.0);  // 15 log bins from 8  to 150 GeV
+
+    // FINE pair-eta axis of the crossx 2D/3D views -- see the declaration. Generated, so the
+    // edges follow N_PAIR_ETA_CROSSX_BINS automatically and are never retyped.
+    pair_eta_crossx_bins.clear();
+    pair_eta_crossx_bins.reserve(N_PAIR_ETA_CROSSX_BINS + 1);
+    for (int i = 0; i <= N_PAIR_ETA_CROSSX_BINS; ++i)
+        pair_eta_crossx_bins.push_back(PAIR_ETA_CROSSX_MIN
+            + (PAIR_ETA_CROSSX_MAX - PAIR_ETA_CROSSX_MIN)
+              * static_cast<double>(i) / N_PAIR_ETA_CROSSX_BINS);
 
     // NOMINAL COARSE pair-pT binning (single source of truth; see the declaration above).
     // 8 LOGARITHMIC bins, 8 -> 150 GeV. Generated, never retyped, so N_COARSE_PAIR_PT_BINS is

@@ -138,6 +138,33 @@ void RDFBasedHistFillingBaseClass::BuildHistBinningMapBaseCommon(){
     hist_binning_map["pT_bins_120"] = pms.pT_bins_120;
     hist_binning_map["pT_bins_150"] = pms.pT_bins_150;
 
+    // ------- FINE pair-eta axis of the crossx 2D/3D views -------
+    // Single source: ParamsSet::pair_eta_crossx_bins (44 uniform bins on [-2.4, 2.4]). Named
+    // here so a json var list can request it BY NAME and a 1D pair-eta histogram is guaranteed
+    // to share the axis of the crossx 2D/3D views of the same quantity.
+    hist_binning_map["pair_eta_crossx"] = pms.pair_eta_crossx_bins;
+
+    // ------- 1D comparison axes (SINGLE SOURCE) -------
+    // dR / dphi / deta / minv zoom-in axes used by the pp24 generic AND signal-region 1D
+    // histograms and by the MC-vs-data comparison histograms on the MC side. They live here,
+    // once, so the data and the MC partner of the SAME observable cannot be booked on
+    // different axes -- which is exactly what had happened (fullsim truth_dr_zoomin was
+    // 20x[0,1] against the data's 20x[0,0.8], dphi/deta +-1.0 against +-0.8), making a ratio
+    // impossible and every overlay a density-only comparison.
+    // VALUES UNCHANGED: they are the pre-existing var1D_pp.json numbers, moved, not re-chosen.
+    // Both var1D_pp.json and var1D_pythia_fullsim.json now request them BY NAME.
+    auto make_unif_bins = [](int n, double lo, double hi){
+        std::vector<double> e; e.reserve(n + 1);
+        for (int i = 0; i <= n; ++i) e.push_back(lo + (hi - lo) * static_cast<double>(i) / n);
+        return e;
+    };
+    hist_binning_map["dr_bins_1d"]          = make_unif_bins(40,  0.0, 5.75);
+    hist_binning_map["dr_zoomin_bins_1d"]   = make_unif_bins(20,  0.0, 0.8);
+    hist_binning_map["dphi_bins_1d"]        = make_unif_bins(64, -ParamsSet::PI, ParamsSet::PI);
+    hist_binning_map["dphi_zoomin_bins_1d"] = make_unif_bins(20, -0.8, 0.8);
+    hist_binning_map["deta_zoomin_bins_1d"] = make_unif_bins(20, -0.8, 0.8);
+    hist_binning_map["minv_zoomin_bins_1d"] = make_unif_bins(40,  0.0, 3.0);
+
     // ------- minv log binning -------
 
     static const int nminv_bins_log = 40;
