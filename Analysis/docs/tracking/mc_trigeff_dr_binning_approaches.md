@@ -188,6 +188,38 @@ and the cascade-corrected series of A (kRed), B (kBlue), C (kGreen+2), D (kMagen
 approach's points MUST be numerically identical to the ones in its own subdirectory: same fill,
 same cascade, only overlaid.
 
+#### §PP-5 The summed squared non-closure D^2 (user, 2026-08-25)
+
+A second figure in the same `approach_comparison/` subdirectory compresses the nine pair-η panels
+of one approach into a single curve, so the four can be read against each other bin by bin:
+
+```
+D^2(p_T^pair) = Sum over pair-eta bins of ( C(p_T^pair, eta^pair) - 1 )^2
+```
+
+over exactly the C the 9-panel figure's lower pads draw, on the same crossx presentation binning
+(§PP-1). One curve per approach, four overlaid in one panel with a TLegend.
+
+**It is a distance from closure, NOT a chi^2** — the terms are not divided by their uncertainties
+(the user's definition), so the quantity says how FAR an approach lands from unity, not how
+SIGNIFICANT that distance is; a noisy cell and a genuinely mis-corrected cell contribute alike.
+It is therefore never called a chi^2 on the canvas, in the axis title or in the filename. Each
+point carries the propagated bar sigma(D^2) = 2 sqrt(Sum (C-1)^2 sigma_C^2), the only part of the
+figure that knows about statistics.
+
+Two constraints on how it is formed:
+
+- **A pair-η cell enters the sum only where the no-trigger DENOMINATOR is non-empty.** An empty
+  cell has C = 0 and sigma_C = 0 by construction (`dr_correction_ratio.h` returns both as 0 for
+  D <= 0), so it would otherwise contribute a spurious (0-1)^2 = 1 and the curve would count empty
+  phase space as maximal non-closure. A cell with a filled denominator but nothing passing the
+  trigger DOES contribute its (0-1)^2 = 1 — that is a real total non-closure.
+- **The four sums run over the SAME cells**, because the four denominators are already checked
+  bin by bin to be identical; the same cells are skipped in every approach.
+
+D^2 is a pure sum, **not a density** — never width-scaled, and its `Integral` is taken without
+the `"width"` option.
+
 ### 4. Negative constraints
 
 - **The pp24 cross-section application is NOT changed by this work** (user, 2026-08-24).
@@ -270,6 +302,8 @@ by index) applied to a grouping that cannot be expressed by an index rule alone.
 10. [x] Drivers: `run_dr_correction_fits.sh` (new modes) and `run_mc_trigeff_closure.sh` (four
     modes, `interp` in METHODS, the comparison stage).
 11. [ ] Run everything, sanity-check, record numbers here; reviews; commit.
+12. [x] `plot_mc_trig_eff_closure_compare.cxx`: the **summed squared non-closure** panel
+    (user, 2026-08-25; §PP-5). → `/review-plot`.
 
 ## Progress Log
 
@@ -321,6 +355,17 @@ by index) applied to a grouping that cannot be expressed by an index rule alone.
   the `interp` fit, replacing the raw-bin placeholder (§PP-3); (ii) the pp24 cross-section
   application is NOT changed by this work (§4 / D9). Plan recorded before any edit.
 
+- 2026-08-25 — **Step 12: the summed squared non-closure panel** (§PP-5), added to
+  `plot_mc_trig_eff_closure_compare.cxx` and written into the SAME
+  `closure/approach_comparison/` subdirectory as the 9-panel overlay:
+  `closure_compare_nonclosure_squared_{all_opposite_sign,single_b_signal_cuts}.png`, both WPs
+  (4 PNGs). `pipelines/run_mc_trigeff_closure.sh` Stage 4 now deletes and validates all four.
+  Layout: `#Sigma_{#eta^{pair}}` rather than `#sum` (the big-operator glyph is drawn ~3x the text
+  size and collides with the axis labels at any offset that still fits); log y taken only when the
+  dynamic range exceeds 100 (it does: 632 all-OS, 727 signal). `/review-plot` PASS at iteration 1,
+  every reported number independently re-derived from the TH2Ds by the reviewer (MATCH).
+  See R2 for the numbers.
+
 ## Results & Observations
 
 ### R1. Steps 3+4 — the pair-η grouping in the fit and its plot stage (2026-08-24, delegated)
@@ -368,6 +413,52 @@ absolute geometry (checked numerically and by opening the PNG).
 check-the-log-AND-the-timestamp rule the drivers already encode, and every measurement above was
 redone with the final binary. This is the "stale .so" trap in its natural habitat.
 
+### R2. The summed squared non-closure, measured (2026-08-25)
+
+D^2 summed over all 15 crossx pair-p_T bins — **lower is better**, but read the split below before
+ranking anything:
+
+| version | A 8x9 | B 7x9 | C 8x3 | D 7x3 |
+|---|---|---|---|---|
+| Tight, all opposite-sign | 3.666 | 2.175 | 2.086 | **2.066** |
+| Tight, single-b signal | 6.028 | 5.955 | 10.499 | **4.693** |
+| Medium, all opposite-sign | 3.383 | 2.196 | 2.079 | **2.058** |
+| Medium, single-b signal | 5.082 | 5.748 | 10.195 | **4.598** |
+
+**The grand total is not the whole story, and the code now prints the split.** The pair-p_T merge
+fuses the top TWO of the 8 eps_dR cells, so below that edge A and B coincide bin by bin and so do
+C and D: every difference the p_T merge makes lives in the crossx bins above it. The split bin is
+FOUND, not typed (the first bin where a merged-p_T approach departs from its un-merged twin) and
+comes out as **bin 12, p_T^pair = 68.65 GeV**:
+
+| version | range | A | B | C | D |
+|---|---|---|---|---|---|
+| Tight, all OS | bins 1-11 (< 68.65 GeV) | 0.321 | 0.321 | **0.186** | **0.186** |
+| Tight, all OS | bins 12-15 | 3.345 | **1.854** | 1.900 | 1.880 |
+| Tight, signal | bins 1-11 | **0.473** | **0.473** | 0.714 | 0.714 |
+| Tight, signal | bins 12-15 | 5.555 | 5.482 | 9.785 | **3.978** |
+| Medium, all OS | bins 1-11 | 0.337 | 0.337 | **0.186** | **0.186** |
+| Medium, all OS | bins 12-15 | 3.046 | **1.859** | 1.893 | 1.872 |
+| Medium, signal | bins 1-11 | **0.466** | **0.466** | 0.709 | 0.709 |
+| Medium, signal | bins 12-15 | 4.616 | 5.283 | 9.486 | **3.890** |
+
+Three readings, all of which the choice of approach has to face:
+
+1. **~90 % of every total sits in the top four bins** (Tight all-OS approach A: 3.345 of 3.666),
+   which are exactly the statistics-starved ones. The reviewer's re-derivation: Tight signal,
+   approach C, **bin 14 alone is 6.998 +- 10.8** of that column's 10.499 — the single bin that
+   makes C look worst is a ~0.6 sigma effect. D^2 also carries a positive noise bias
+   E[D^2] = Sum dev_true^2 + Sum sigma_C^2, largest precisely there. A ranking read off the grand
+   total is a ranking of those four bins.
+2. **Below the merge edge the pair-eta merge flips sign between the two sample versions**: it
+   HELPS on all opposite-sign pairs (0.186 vs 0.321) and HURTS in the single-b signal region
+   (0.714 vs 0.473), at both WPs. Same correction, different population — the signal region is the
+   one the cross-section uses.
+3. **Above the edge the p_T merge is what pays**, and it pays in every version (A -> B: 3.345 ->
+   1.854 all-OS; the eta merge alone, C, is the worst column in the signal region).
+
+Nothing here is yet a decision — recorded as measurement.
+
 ## Remaining Work
 
 1. **Replace `DrCorrectionCrossxEvaluator` with the general cascade class** once an approach is
@@ -375,13 +466,11 @@ redone with the final binary. This is the "stale .so" trap in its natural habita
 
 ## Latest Stage
 
-**2026-08-24 — closure side written and compiling; waiting on the fit stage.** Steps 1, 2, 5–10 are
-done (see the Progress Log entry). Steps 3 and 4 — the pair-η grouping inside
-`fit_dr_corrections.cxx` and `plot_dr_correction_fits.cxx`, plus `run_dr_correction_fits.sh` — are
-with a delegated subagent (scratch doc `_sub_etamerge_fitstage_1.md`), which is also running the
-byte-identical regression of the existing `nocorr` fit report.
+**2026-08-25 — the comparison figure set now has TWO members per sample version.** Step 12
+(§PP-5, the summed squared non-closure D^2) is done, reviewed (PASS) and its numbers are in R2.
+Everything else is as the 2026-08-24 entry left it: steps 1-10 done, step 11 (the full run of all
+four approaches + `/review-analysis-code` + commit of the run) still open.
 
-**Next, in order:** (1) merge the subagent's work and re-verify the regression myself; (2) run
-`run_dr_correction_fits.sh` for the two NEW modes, opposite sign, all three methods, both WPs;
-(3) run `run_mc_trigeff_closure.sh` for all four approaches; (4) `/review-analysis-code` +
-`/review-plot`; (5) record numbers here and commit.
+**Next, in order:** (1) finish step 11 — `/review-analysis-code` on the C++/RDF written on
+2026-08-24; (2) with the user, read R2 and choose an approach; (3) Remaining Work 1 — replace
+`DrCorrectionCrossxEvaluator` with the general cascade class configured for the chosen mode.
