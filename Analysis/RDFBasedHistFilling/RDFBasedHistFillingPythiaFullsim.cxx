@@ -1,5 +1,10 @@
-#include "RDFBasedHistFillingPythia.cxx"
+// CommonEffcyConfig.h MUST come FIRST: RDFBasedHistFillingPythia.h (pulled in by
+// RDFBasedHistFillingPythia.cxx) default-initialises a data member from `CommonEffcyConfig{}`
+// (RDFBasedHistFillingPythia.h:134) but does not include the header itself, so with the includes
+// the other way round this translation unit does not compile ("use of undeclared identifier
+// 'CommonEffcyConfig'"). Pre-existing since the 2026-08-18 header edit; found 2026-08-25.
 #include "CommonEffcyConfig.h"
+#include "RDFBasedHistFillingPythia.cxx"
 #include "../Utilities/GeneralUtils.h"
 #include "../MuonObjectsParamsAndHelpers/FullSimSampleType.h"
 #include <cmath>
@@ -7,6 +12,88 @@
 #include <limits>
 #include <set>
 #include <sstream>
+
+// ---------------------------------------------------------------------------------------------
+// pp24 MC-vs-DATA comparison families (2026-08-25)
+// ---------------------------------------------------------------------------------------------
+// The comparison plots are built in TWO families, and within one family EVERY sample carries the
+// SAME cuts -- the MC in TRUTH quantities:
+//   SIGNAL  : the data signal region. On the MC side that is exactly the pre-existing
+//             `_single_b_pass_signal_truth` filter (from_same_b + `pass_signal_truth`, which is
+//             already bit-for-bit the data signal region: m_uu in (1.08, 2.9), pair pT > 8 GeV,
+//             fiducial gap cut on BOTH muons). No new cut is introduced here.
+//   GENERIC : all OS (resp. SS) pairs + the fiducial gap cut on both muons, and NOTHING else --
+//             no mass window, no pair-pT threshold, no `from_same_b`. The MC mirror of the data
+//             generic histograms, with the gap cut taken on TRUTH q*eta.
+// The axes are requested BY NAME from `hist_binning_map` so they are the SAME vectors the data
+// crossx histograms are booked on (.claude/CLAUDE.md §Binnings) -- a bin-for-bin ratio is only
+// meaningful if the two sides literally share the edge vector.
+namespace {
+
+const std::vector<std::string>& McVsDataVar1Ds(){
+    static const std::vector<std::string> v = {
+        "truth_dr_zoomin_ppbin",    // dr_zoomin_bins_1d
+        "truth_dphi_zoomin_ppbin",  // dphi_zoomin_bins_1d
+        "truth_deta_zoomin_ppbin",  // deta_zoomin_bins_1d
+        "truth_minv_zoomin_ppbin",  // minv_zoomin_bins_1d
+        "truth_pair_eta_crossx",    // pair_eta_crossx
+        "truth_pair_pt_log_150"     // pT_bins_150
+    };
+    return v;
+}
+
+// FULL-RANGE dR and dphi. GENERIC family ONLY: inside the signal region dR is kinematically
+// bounded (m < 2.9 GeV with pair pT > 8 GeV forces dR ~< 2m/pT = 0.725), so a full-range view
+// there carries nothing the zoom-in does not -- but the GENERIC family spans the away-side peak
+// at dR ~ pi, which is exactly what the generic DR and Dphi panels exist to show, and without
+// these two the Pythia curve was simply absent from those panels.
+// Same axes as the data's `h_DR_<sign>` / `h_Dphi_<sign>`: dr_bins_1d, dphi_bins_1d.
+const std::vector<std::string>& McVsDataGenericOnlyVar1Ds(){
+    static const std::vector<std::string> v = {
+        "truth_dr_ppbin",   // dr_bins_1d   (40 x [0, 5.75])
+        "truth_dphi_ppbin"  // dphi_bins_1d (64 x [-pi, pi])
+    };
+    return v;
+}
+
+// The MC partner of the data's `h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts`: pair pT on
+// `pT_bins_150` x pair eta on `pair_eta_crossx`. SIGNAL family only.
+const std::vector<std::array<std::string,2>>& McVsDataVar2Ds(){
+    static const std::vector<std::array<std::string,2>> v = {
+        {"truth_pair_pt_log_150", "truth_pair_eta_crossx"}
+    };
+    return v;
+}
+
+// SIGNAL-family filters: the pre-existing truth signal region, on all three pair categories.
+//   _single_b_pass_signal_truth : the physics signal, OS pairs from the same b -- the OS partner
+//                                 of the data.
+//   _op_pass_signal_truth       : all truth OS pairs in the signal region ("MC including its own
+//                                 background") reference.
+//   _ss_pass_signal_truth       : all truth SS pairs in the signal region -- the partner of the
+//                                 data SS panel. `from_same_b` has no same-sign counterpart by
+//                                 construction (df_single_b_weighted = df_op_weighted.Filter(
+//                                 "from_same_b")), so the SS partner is the plain SS category.
+const std::vector<std::string>& McVsDataSignalFilters(){
+    static const std::vector<std::string> v = {
+        "_single_b_pass_signal_truth", "_op_pass_signal_truth", "_ss_pass_signal_truth"
+    };
+    return v;
+}
+
+// The 2D pair-pT x pair-eta view is needed for the single-b signal only.
+const std::string& McVsDataSignal2DFilter(){
+    static const std::string f = "_single_b_pass_signal_truth";
+    return f;
+}
+
+// GENERIC-family filters (new; created in CreateBaseRDFsPythiaFullsimExtra).
+const std::vector<std::string>& McVsDataGenericFilters(){
+    static const std::vector<std::string> v = {"_op_gapcut_truth", "_ss_gapcut_truth"};
+    return v;
+}
+
+} // namespace
 
 void RDFBasedHistFillingPythiaFullsim::SetIOPathsHook(){
     // is_test_sample selects which fullsim production's NTuple-processing output to read, and
@@ -113,6 +200,22 @@ void RDFBasedHistFillingPythiaFullsim::BuildFilterToVarListMapExtra(){
         InsertOrAppend(df_filter_and_weight_to_var1D_list_map, std::make_pair(filter, ""), detec_resp_var1Ds);
     for (auto& filter : detector_response_filters)
         InsertOrAppend(df_filter_and_weight_to_var2D_list_map, std::make_pair(filter, ""), detec_resp_var2Ds);
+
+    // --- pp24 MC-vs-data comparison families (see the anonymous namespace at the top) ---------
+    // APPENDED to whatever the reco-efficiency / detector-response booking already put on these
+    // filters; no existing histogram set is altered.
+    for (const std::string& filter : McVsDataSignalFilters())
+        InsertOrAppend(df_filter_and_weight_to_var1D_list_map,
+                       std::make_pair(filter, std::string("")), McVsDataVar1Ds());
+    InsertOrAppend(df_filter_and_weight_to_var2D_list_map,
+                   std::make_pair(McVsDataSignal2DFilter(), std::string("")), McVsDataVar2Ds());
+
+    for (const std::string& filter : McVsDataGenericFilters()){
+        InsertOrAppend(df_filter_and_weight_to_var1D_list_map,
+                       std::make_pair(filter, std::string("")), McVsDataVar1Ds());
+        InsertOrAppend(df_filter_and_weight_to_var1D_list_map,
+                       std::make_pair(filter, std::string("")), McVsDataGenericOnlyVar1Ds());
+    }
 }
 
 void RDFBasedHistFillingPythiaFullsim::BuildHistBinningMapPythiaFullsimExtra(){
@@ -162,23 +265,26 @@ void RDFBasedHistFillingPythiaFullsim::CreateBaseRDFsPythiaFullsimExtra(){
         "CreateBaseRDFsPythiaFullsimExtra: df_op_weighted");
     df_map.emplace("df_single_b_weighted", df_op_weighted.Filter("from_same_b"));
 
+    // SIGNAL REGION, truth and reco legs. Since 2026-08-17 the per-muon one-sided
+    // `q*eta < 2.2` is REPLACED by the detector-gap FIDUCIAL cut required of BOTH muons,
+    // in LOCKSTEP with the data crossx (RDFBasedHistFillingPP.cxx `signal_cuts`).
+    // Windows are READ from ParamsSet::single_mu_fiducial_gap_cuts and never retyped.
+    // The cut is applied on TRUTH q*eta in the denominator leg and on RECO q*eta in the
+    // numerator leg, so eps_reco is a FIDUCIAL pair efficiency: it does NOT contain the
+    // truth-level gap acceptance eps_acc (muon_gap_cuts_acceptance.md F12), which stays a
+    // separate, not-yet-built factor.
+    // Hoisted out of the category loop (2026-08-25) so the GENERIC family below reuses the
+    // very SAME `gap_truth` string as the signal region -- one expression, one definition.
+    const std::string gap_truth = ParamsSet::FiducialGapCutExpr("m1.truth_charge * m1.truth_eta")
+                                + " && " + ParamsSet::FiducialGapCutExpr("m2.truth_charge * m2.truth_eta");
+    const std::string gap_reco  = ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta")
+                                + " && " + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta");
+
     for (const std::string& pair_catgr : {"_ss", "_op", "_single_b"}){
         const std::string df_name = "df" + pair_catgr;
         ROOT::RDF::RNode& node = map_at_checked(df_map, df_name + "_weighted",
             Form("CreateBaseRDFsPythiaFullsimExtra: df_map.at(%s)", (df_name + "_weighted").c_str()));
 
-        // SIGNAL REGION, truth and reco legs. Since 2026-08-17 the per-muon one-sided
-        // `q*eta < 2.2` is REPLACED by the detector-gap FIDUCIAL cut required of BOTH muons,
-        // in LOCKSTEP with the data crossx (RDFBasedHistFillingPP.cxx `signal_cuts`).
-        // Windows are READ from ParamsSet::single_mu_fiducial_gap_cuts and never retyped.
-        // The cut is applied on TRUTH q*eta in the denominator leg and on RECO q*eta in the
-        // numerator leg, so eps_reco is a FIDUCIAL pair efficiency: it does NOT contain the
-        // truth-level gap acceptance eps_acc (muon_gap_cuts_acceptance.md F12), which stays a
-        // separate, not-yet-built factor.
-        const std::string gap_truth = ParamsSet::FiducialGapCutExpr("m1.truth_charge * m1.truth_eta")
-                                    + " && " + ParamsSet::FiducialGapCutExpr("m2.truth_charge * m2.truth_eta");
-        const std::string gap_reco  = ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta")
-                                    + " && " + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta");
         auto node_sig = node
             .Define("pass_signal_truth",
                 "truth_minv > 1.08 && truth_minv < 2.9 && truth_pair_pt > 8 && " + gap_truth)
@@ -194,11 +300,39 @@ void RDFBasedHistFillingPythiaFullsim::CreateBaseRDFsPythiaFullsimExtra(){
         df_map.emplace(df_name + "_pass_tight_and_signal_truth_and_reco_weighted",
             node_sig.Filter("pair_pass_tight && pass_signal_truth && pass_signal_reco"));
     }
+
+    // --- GENERIC family (2026-08-25) ---------------------------------------------------------
+    // The MC mirror of the data generic histograms: ALL truth OS (resp. SS) pairs plus the
+    // fiducial gap cut on BOTH muons in TRUTH q*eta, and NOTHING else -- deliberately no mass
+    // window, no pair-pT threshold and no `from_same_b`, because the data generic selection has
+    // none of those either. Same `gap_truth` expression as the signal region above.
+    for (const std::string& pair_catgr : {"_ss", "_op"}){
+        const std::string df_name = "df" + pair_catgr + "_weighted";
+        ROOT::RDF::RNode& node = map_at_checked(df_map, df_name,
+            Form("CreateBaseRDFsPythiaFullsimExtra: df_map.at(%s)", df_name.c_str()));
+        df_map.emplace("df" + pair_catgr + "_gapcut_truth_weighted", node.Filter(gap_truth));
+    }
 }
 
 void RDFBasedHistFillingPythiaFullsim::FillHistogramsFullSim(){
     FillHistogramsFullSimDetecResp();
     FillHistogramsFullSimRecoEffcies();
+
+    // GENERIC family of the pp24 MC-vs-data comparison. The SIGNAL family needs no separate call:
+    // its filters `_{single_b,op,ss}_pass_signal_truth` are already booked by
+    // FillHistogramsFullSimRecoEffcies, and BuildFilterToVarListMapExtra APPENDED the comparison
+    // variables to those filters' var lists.
+    // DELIBERATELY NOT wrapped in the try/catch the sibling methods below use. If one of these
+    // dataframes or variables is missing, the MC curve simply VANISHES from the generic panels
+    // and the plotter prints a `[SKIP]` that nobody reads -- a silently incomplete output, the
+    // failure mode `.claude/kb/.../reference_root_swallows_rdf_exceptions` exists to prevent.
+    // Let it throw: `map_at_checked` names the missing key.
+    for (const std::string& filter : McVsDataGenericFilters()){
+        const std::string df_name = "df" + filter + "_weighted";
+        ROOT::RDF::RNode& node = map_at_checked(df_map, df_name,
+            Form("FillHistogramsFullSim (generic family): df_map.at(%s)", df_name.c_str()));
+        FillHistogramsSingleDataFrame(filter, "", node);
+    }
 }
 
 void RDFBasedHistFillingPythiaFullsim::FillHistogramsFullSimDetecResp(){

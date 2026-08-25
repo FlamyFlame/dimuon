@@ -215,6 +215,54 @@
             "var_name": "truth_dr",
             "title": "#DeltaR^{truth}",
             "binning": "dr_bins_reco_effcy"
+        },
+        {
+            "hist_name": "truth_dr_zoomin_ppbin",
+            "var_name": "truth_dr",
+            "title": "#DeltaR^{truth}",
+            "binning": "dr_zoomin_bins_1d"
+        },
+        {
+            "hist_name": "truth_dphi_zoomin_ppbin",
+            "var_name": "truth_dphi",
+            "title": "#Delta#phi^{truth}",
+            "binning": "dphi_zoomin_bins_1d"
+        },
+        {
+            "hist_name": "truth_deta_zoomin_ppbin",
+            "var_name": "truth_deta",
+            "title": "#Delta#eta^{truth}",
+            "binning": "deta_zoomin_bins_1d"
+        },
+        {
+            "hist_name": "truth_minv_zoomin_ppbin",
+            "var_name": "truth_minv",
+            "title": "m_{#mu#mu}^{truth} [GeV]",
+            "binning": "minv_zoomin_bins_1d"
+        },
+        {
+            "hist_name": "truth_pair_eta_crossx",
+            "var_name": "truth_pair_eta",
+            "title": "#eta^{pair,truth}",
+            "binning": "pair_eta_crossx"
+        },
+        {
+            "hist_name": "truth_pair_pt_log_150",
+            "var_name": "truth_pair_pt",
+            "title": "p_{T}^{pair,truth} [GeV]",
+            "binning": "pT_bins_150"
+        },
+        {
+            "hist_name": "truth_dr_ppbin",
+            "var_name": "truth_dr",
+            "title": "#DeltaR^{truth}",
+            "binning": "dr_bins_1d"
+        },
+        {
+            "hist_name": "truth_dphi_ppbin",
+            "var_name": "truth_dphi",
+            "title": "#Delta#phi^{truth}",
+            "binning": "dphi_bins_1d"
         }
     ]
 }

@@ -1,6 +1,12 @@
 #pragma once
 
 #include "RDFBasedHistFillingBaseClass.cxx"
+// Needed HERE, not only in the .cxx: the in-class initialiser of
+// `dr_bins_edges_for_reco_effcy` below reads CommonEffcyConfig{}. Missing since the
+// 2026-08-18 edit that introduced that initialiser, which left this header (and therefore
+// RDFBasedHistFillingPythiaFullsim / ...Truth / ...FullsimOverlay) uncompilable with
+// "use of undeclared identifier 'CommonEffcyConfig'". Found 2026-08-25.
+#include "CommonEffcyConfig.h"
 #include "../MuonObjectsParamsAndHelpers/muon_pair_enums_MC.h"
 #include "../Utilities/HistFillUtils.h"
 #include <cmath>
