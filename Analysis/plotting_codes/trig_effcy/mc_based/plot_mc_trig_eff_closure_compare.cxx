@@ -31,6 +31,14 @@
 // approach's own closure file and re-forms the same ratio with the same conditional error, so a
 // point here must equal the point in that approach's own subdirectory.
 //
+// TWO FIGURES PER SAMPLE VERSION:
+//   closure_compare_pair_pt_*.png            the 9 pair-eta panels, 5 series each
+//   closure_compare_nonclosure_squared_*.png the same closure ratios compressed to ONE panel --
+//                                            D^2(pT) = sum over pair eta of (C-1)^2, one curve per
+//                                            approach. A distance from closure, NOT a chi^2 (the
+//                                            terms are not divided by their errors); see the block
+//                                            that builds it.
+//
 // Usage (from Analysis/plotting_codes/trig_effcy/mc_based/):
 //   root -l -b -q 'plot_mc_trig_eff_closure_compare.cxx+("pp_full", true)'
 //   root -l -b -q 'plot_mc_trig_eff_closure_compare.cxx+("pp_full", false)'   // Medium
@@ -89,10 +97,13 @@ const char* kCascadeKey = "cascade";
 const Color_t kUncorrColour = kBlack;
 const Style_t kUncorrMarker = 21;
 
-struct VersionCfg { std::string key, file, headline; };
+struct VersionCfg { std::string key, file, file_d2, headline; };
 const std::vector<VersionCfg> kVersions = {
-    {"all_os", "closure_compare_pair_pt_all_opposite_sign", "all opposite-sign muon pairs"},
+    {"all_os", "closure_compare_pair_pt_all_opposite_sign",
+               "closure_compare_nonclosure_squared_all_opposite_sign",
+     "all opposite-sign muon pairs"},
     {"signal", "closure_compare_pair_pt_single_b_signal_cuts",
+               "closure_compare_nonclosure_squared_single_b_signal_cuts",
      "opposite-sign pairs in the single-b signal region"},
 };
 
@@ -399,6 +410,150 @@ void plot_mc_trig_eff_closure_compare(const std::string& sample = "pp_full",
                       << (d > 0 ? D.h_num[a]->Integral(1, D.h_num[a]->GetNbinsX(), 1, neta) / d
                                 : -1.);
         std::cout << std::endl;
+
+        // ===== the pair-eta-summed squared non-closure, D^2(pT) ==============================
+        //
+        //     D^2(p_T^pair) = sum over pair-eta bins of (C - 1)^2
+        //
+        // over exactly the closure ratios C the lower pads above draw, in the same crossx
+        // pair-pT binning. It compresses the 9 pair-eta panels of one approach into one curve so
+        // the four approaches can be read against each other bin by bin.
+        //
+        // IT IS A DISTANCE FROM CLOSURE, NOT A chi^2. The terms are not divided by their
+        // uncertainties (that is what the user asked for), so the quantity says how FAR an
+        // approach lands from unity, not how SIGNIFICANT that distance is; a noisy cell and a
+        // genuinely mis-corrected cell contribute alike. The bar on each point is the propagation
+        // of the ratio errors, sigma(D^2) = 2 sqrt(sum (C-1)^2 sigma_C^2), and is the only thing
+        // here that knows about statistics.
+        //
+        // A pair-eta cell enters the sum only where the no-trigger DENOMINATOR is non-empty: an
+        // empty cell has C = 0 and sigma_C = 0 by construction (dr_correction_ratio.h returns
+        // both as 0 for D <= 0), so it would otherwise contribute a spurious (0-1)^2 = 1 and the
+        // curve would count empty phase space as maximal non-closure. A cell with a filled
+        // denominator but nothing passing the trigger DOES contribute its (0-1)^2 = 1 -- that is
+        // a real total non-closure, not an artefact.
+        //
+        // The four sums run over the SAME cells: the denominators were checked bin by bin to be
+        // identical above, so the same cells are skipped in every approach.
+        std::vector<TH1D*> d2(kApproaches.size(), nullptr);
+        for (size_t a = 0; a < kApproaches.size(); ++a) {
+            d2[a] = static_cast<TH1D*>(D.ratio[0][a]->Clone(
+                        Form("cmp_%s_d2_%zu", V.key.c_str(), a)));
+            d2[a]->SetDirectory(nullptr);
+            d2[a]->Reset("ICES");
+        }
+        const int nptx = D.h_den->GetNbinsX();
+        std::vector<int> ncell(nptx + 1, 0);
+        double d2max = 0., d2minpos = 1e300;
+        for (int bx = 1; bx <= nptx; ++bx)
+            for (size_t a = 0; a < kApproaches.size(); ++a) {
+                double sum = 0., var = 0.;
+                int ncontrib = 0;
+                for (int iz = 1; iz <= neta; ++iz) {
+                    if (D.h_den->GetBinContent(bx, iz) <= 0.) continue;
+                    const TH1D* r = D.ratio[iz - 1][a];
+                    const double dev = r->GetBinContent(bx) - 1.0;
+                    const double er  = r->GetBinError(bx);
+                    sum += dev * dev;
+                    var += dev * dev * er * er;
+                    ++ncontrib;
+                }
+                d2[a]->SetBinContent(bx, sum);
+                d2[a]->SetBinError(bx, 2.0 * std::sqrt(var));
+                if (a == 0) ncell[bx] = ncontrib;   // the same in all four -- same denominators
+                if (sum > d2max) d2max = sum;
+                if (sum > 0. && sum < d2minpos) d2minpos = sum;
+            }
+
+        // Log y when the curves span more than ~2 decades (they do: a few 1e-3 at low pair pT
+        // against O(1) where the closure collapses), linear from 0 otherwise -- on a linear axis
+        // the low-pT half of a 4-decade curve is a flat line on the frame and unreadable.
+        const bool d2_logy = (d2minpos < 1e299) && (d2max > 0.) && (d2max / d2minpos > 100.);
+
+        TCanvas c2(("c_d2_" + V.key).c_str(), "", 1100, 850);
+        c2.SetLeftMargin(0.145); c2.SetRightMargin(0.035);
+        c2.SetTopMargin(0.105);  c2.SetBottomMargin(0.115);
+        c2.SetLogx(1);
+        c2.SetLogy(d2_logy ? 1 : 0);
+        c2.SetTicks(1, 1);
+
+        for (size_t a = 0; a < kApproaches.size(); ++a) {
+            TH1D* h = d2[a];
+            h->SetTitle("");
+            h->SetMarkerColor(kApproaches[a].colour); h->SetLineColor(kApproaches[a].colour);
+            h->SetMarkerStyle(kApproaches[a].marker); h->SetMarkerSize(1.3);
+            h->GetXaxis()->SetTitle("p_{T}^{pair} [GeV]");
+            // "#Sigma" rather than "#sum": the big operator glyph is drawn ~3x the text size
+            // and collides with the axis labels at any offset that still fits on the canvas.
+            h->GetYaxis()->SetTitle("#Sigma_{#eta^{pair}} (C #minus 1)^{2}");
+            h->GetXaxis()->SetTitleSize(0.045); h->GetXaxis()->SetLabelSize(0.040);
+            h->GetYaxis()->SetTitleSize(0.045); h->GetYaxis()->SetLabelSize(0.040);
+            h->GetYaxis()->SetTitleOffset(1.50);
+            if (d2_logy) h->GetYaxis()->SetRangeUser(0.4 * d2minpos, 3.0 * d2max);
+            else         h->GetYaxis()->SetRangeUser(0.0, 1.25 * d2max);
+            h->Draw(a == 0 ? "PE" : "PE SAME");
+        }
+
+        auto* h2 = new TLatex();
+        h2->SetNDC(); h2->SetTextFont(42); h2->SetTextSize(0.0235);
+        h2->DrawLatex(0.100, 0.957,
+                      (cfg.sample_text + ",  " + wp_text + ",  " + V.headline).c_str());
+        h2->SetTextSize(0.0215);
+        h2->DrawLatex(0.100, 0.922,
+                      // TLatex leaves a visible gap in "1/#varepsilon" -- the inverse power is
+                      // both correct and renders cleanly.
+                      "C(p_{T}^{pair}, #eta^{pair}) = "
+                      "[2mu4 yield weighted by (#varepsilon_{trig}^{pair})^{-1}] / "
+                      "[yield with no trigger requirement]");
+
+        auto* leg2 = new TLegend(0.170, 0.630, 0.680, 0.880);
+        leg2->SetBorderSize(0); leg2->SetFillStyle(0);
+        leg2->SetTextFont(42); leg2->SetTextSize(0.028);
+        for (size_t a = 0; a < kApproaches.size(); ++a)
+            leg2->AddEntry(d2[a], legend[a].c_str(), "PE");
+        leg2->Draw();
+
+        const std::string png2 = outdir + V.file_d2 + ".png";
+        c2.SaveAs(png2.c_str());
+        std::cout << "  wrote " << png2 << std::endl;
+
+        // The pair-pT-summed total per approach -- the single number the figure is a differential
+        // view of -- and the number of pair-eta cells each pair-pT bin actually summed over, which
+        // is NOT constant across the axis (the high-pT bins are empty in some pair-eta panels) and
+        // is therefore needed to read the curve.
+        //
+        // AND THE SAME TOTAL SPLIT AT THE PAIR-pT MERGE EDGE. The merge fuses the top TWO of the
+        // 8 eps_dR pair-pT cells, so below that edge a pair gets an identical correction whether
+        // or not the merge is on: A and B coincide bin by bin, and so do C and D. Every difference
+        // the pair-pT merge makes therefore lives in the few crossx bins above the edge -- which
+        // are also the statistics-starved ones, where the points are consistent with zero inside
+        // their bars and where D^2 carries its largest positive noise bias
+        // (E[D^2] = sum dev_true^2 + sum sigma_C^2). A ranking read off the grand total alone is
+        // a ranking of those few bins, so both parts are printed. The split bin is FOUND, not
+        // typed: it is the first bin where a merged-pT approach departs from its un-merged twin.
+        int bsep = nptx + 1;
+        for (int bx = 1; bx <= nptx && bsep > nptx; ++bx)
+            for (size_t a = 0; a + 1 < kApproaches.size(); a += 2)   // (A,B) then (C,D)
+                if (std::fabs(d2[a + 1]->GetBinContent(bx) - d2[a]->GetBinContent(bx))
+                        > 1e-9 * std::max(1.0, d2[a]->GetBinContent(bx))) { bsep = bx; break; }
+
+        std::cout << "  D^2 summed over pair pT (" << V.key << "):";
+        for (size_t a = 0; a < kApproaches.size(); ++a)
+            std::cout << "  " << kApproaches[a].mode << " = "
+                      << d2[a]->Integral(1, nptx);   // bin counts, not a density -> plain sum
+        if (bsep <= nptx) {
+            std::cout << "\n    of which bins 1-" << bsep - 1 << " (p_T^pair < "
+                      << d2[0]->GetXaxis()->GetBinLowEdge(bsep)
+                      << " GeV, below the pair-pT merge edge):";
+            for (size_t a = 0; a < kApproaches.size(); ++a)
+                std::cout << "  " << d2[a]->Integral(1, bsep - 1);
+            std::cout << "\n    and bins " << bsep << "-" << nptx << " (the rest):";
+            for (size_t a = 0; a < kApproaches.size(); ++a)
+                std::cout << "  " << d2[a]->Integral(bsep, nptx);
+        }
+        std::cout << "\n  pair-eta cells summed per pair-pT bin:";
+        for (int bx = 1; bx <= nptx; ++bx) std::cout << " " << ncell[bx];
+        std::cout << " (of " << neta << ")" << std::endl;
     }
     std::cout << "  shared ratio-pad range [" << rmin << ", " << rmax << "]" << std::endl;
 
