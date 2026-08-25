@@ -203,6 +203,42 @@
                 "min": 0.0,
                 "max": 5.0
             }
+        },
+        {
+            "hist_name": "dr_ppbin",
+            "var_name": "truth_dr",
+            "title": "#DeltaR",
+            "binning": "dr_bins_1d"
+        },
+        {
+            "hist_name": "dr_zoomin_ppbin",
+            "var_name": "truth_dr",
+            "title": "#DeltaR",
+            "binning": "dr_zoomin_bins_1d"
+        },
+        {
+            "hist_name": "dphi_ppbin",
+            "var_name": "truth_dphi",
+            "title": "#Delta#phi",
+            "binning": "dphi_bins_1d"
+        },
+        {
+            "hist_name": "dphi_zoomin_ppbin",
+            "var_name": "truth_dphi",
+            "title": "#Delta#phi",
+            "binning": "dphi_zoomin_bins_1d"
+        },
+        {
+            "hist_name": "deta_zoomin_ppbin",
+            "var_name": "truth_deta",
+            "title": "#Delta#eta",
+            "binning": "deta_zoomin_bins_1d"
+        },
+        {
+            "hist_name": "minv_zoomin_ppbin",
+            "var_name": "truth_minv",
+            "title": "m_{#mu#mu} [GeV]",
+            "binning": "minv_zoomin_bins_1d"
         }
     ]
 }

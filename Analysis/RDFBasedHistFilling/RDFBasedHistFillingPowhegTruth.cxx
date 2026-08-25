@@ -2,6 +2,85 @@
 
 #include "RDFBasedHistFillingPowheg.cxx"
 
+// ---------------------------------------------------------------------------------------------
+// pp24 MC-vs-DATA comparison, GENERIC family (2026-08-25)
+// ---------------------------------------------------------------------------------------------
+// Binding rule of the generic family: EVERY sample in it carries the SAME cuts as the data --
+// all opposite-sign (resp. same-sign) pairs plus the fiducial detector-gap cut on BOTH muons,
+// and NOTHING else: no mass window, no pair-pT threshold, no flavour/origin requirement. On the
+// MC side the gap cut is taken on TRUTH q*eta.
+//
+// This block is STRICTLY ADDITIVE. It does NOT touch `FillHistogramsSignalAcceptance`, whose
+// one-sided per-muon `q*eta < 2.2` is the POWHEG truth SIGNAL selection feeding the NLO
+// template fit (docs/tracking/low_mass_dimuon_template_fit.md): changing that selection in
+// place would silently bend the template-fit input. The gap cut below lives BESIDE it, on its
+// own dataframes and its own histogram keys.
+//
+// Everything is declared file-locally rather than as class members because the class layout
+// lives in RDFBasedHistFillingPowheg.h, which this change deliberately leaves untouched. Same
+// pattern as RDFBasedHistFillingPythiaFullsim.cxx.
+namespace {
+
+// The six comparison observables. Their axes are requested BY NAME from `hist_binning_map`
+// (see var1D_powheg_truth.json), so they are literally the SAME edge vectors the pp24 data and
+// the Pythia fullsim are booked on -- a bin-for-bin data/MC ratio is only meaningful if the two
+// sides share the edge vector, and the previous POWHEG file was on a 100 x [0, 5.75] dR axis
+// against the data's 40 x [0, 5.75] (ratio 2.5, not even rebinnable).
+// NOTE the naming: hist_name has NO `truth_` prefix here, because EVERY variable in
+// var1D_powheg_truth.json is a truth variable and none of them carries one.
+const std::vector<std::string>& McVsDataGenericVar1Ds(){
+    static const std::vector<std::string> v = {
+        "dr_ppbin",           // dr_bins_1d           (40 x [0, 5.75])
+        "dr_zoomin_ppbin",    // dr_zoomin_bins_1d    (20 x [0, 0.8])
+        "dphi_ppbin",         // dphi_bins_1d         (64 x [-pi, pi])
+        "dphi_zoomin_ppbin",  // dphi_zoomin_bins_1d  (20 x [-0.8, 0.8])
+        "deta_zoomin_ppbin",  // deta_zoomin_bins_1d  (20 x [-0.8, 0.8])
+        "minv_zoomin_ppbin"   // minv_zoomin_bins_1d  (40 x [0, 3])
+    };
+    return v;
+}
+
+// The gap-cut FLAVOUR partition, identical in definition to the one
+// FillHistogramsTruthFlavorBinned already applies (`:296-306`), so the gap-cut histograms carry
+// the very same classification axis as the rest of the file. It IS a partition -- mutually
+// exclusive and exhaustive -- so the four members sum to the inclusive gap-cut yield, which is
+// what lets the plot side rebuild an inclusive POWHEG curve without the 2.88x over-count that
+// summing the three OVERLAPPING axes (mechanism / origin / flavour) produced.
+const std::vector<std::pair<std::string, std::string>>& McVsDataGenericFlavourSplit(){
+    static const std::vector<std::pair<std::string, std::string>> v = {
+        {"_flavor_binned_single_b",    "from_same_b"},
+        {"_flavor_binned_both_from_b", "!from_same_b && both_from_b"},
+        {"_flavor_binned_both_from_c", "!from_same_b && !both_from_b && both_from_c"},
+        {"_flavor_binned_others",      "!from_same_b && !both_from_b && !both_from_c"}
+    };
+    return v;
+}
+
+// The two pair categories of the generic family, and the dataframe key each is built on.
+const std::vector<std::string>& McVsDataGenericSigns(){
+    static const std::vector<std::string> v = {"_ss", "_op"};
+    return v;
+}
+
+const char* kGapCutTag = "_gapcut_truth";
+
+// Every filter suffix the generic family books: the INCLUSIVE gap-cut category plus its four
+// flavour members, for both signs.
+const std::vector<std::string>& McVsDataGenericFilters(){
+    static const std::vector<std::string> v = []{
+        std::vector<std::string> out;
+        for (const std::string& sign : McVsDataGenericSigns()){
+            out.push_back(sign + kGapCutTag);
+            for (const auto& [flav_suffix, flav_expr] : McVsDataGenericFlavourSplit())
+                out.push_back(sign + kGapCutTag + flav_suffix);
+        }
+        return out;
+    }();
+    return v;
+}
+
+} // namespace
+
 void RDFBasedHistFillingPowhegTruth::InitializePowhegExtra(){
 	weight_specifier_to_column_map["_jacobian_corrected"] = "weight_norm_over_truth_dr";
 
@@ -111,6 +190,14 @@ void RDFBasedHistFillingPowhegTruth::BuildSimpleFilterToVarListMapPowhegExtra(){
 		InsertOrAppend(df_filter_and_weight_to_var1D_list_map, std::make_pair(filter, "_jacobian_corrected"), truth_flavor_var1Ds_jacobian);
 		InsertOrAppend(df_filter_and_weight_to_var2D_list_map, std::make_pair(filter, "_jacobian_corrected"), truth_flavor_var2Ds_jacobian);
 	}
+
+	// --- pp24 MC-vs-data comparison, GENERIC family (see the anonymous namespace at the top) ---
+	// APPENDED on filters of its own; no existing (filter, weight) entry is altered. Nominal
+	// weight only ("" -> weight_norm): the data side has no 1/dR-weighted generic histogram, so
+	// a jacobian variant here would have nothing to be compared against.
+	for (const std::string& filter : McVsDataGenericFilters())
+		InsertOrAppend(df_filter_and_weight_to_var1D_list_map,
+		               std::make_pair(filter, std::string("")), McVsDataGenericVar1Ds());
 }
 
 void RDFBasedHistFillingPowhegTruth::FlattenFiltersExtra(){
@@ -140,6 +227,23 @@ void RDFBasedHistFillingPowhegTruth::CreateBaseRDFsPowhegExtra(){
 
 	auto df_single_b_weighted = df_op_weighted.Filter("from_same_b && truth_dr < 1.0");
 	df_map.emplace("df_single_b_weighted", df_single_b_weighted);
+
+	// --- GENERIC family (2026-08-25): the MC mirror of the data generic selection ------------
+	// ALL truth OS (resp. SS) pairs plus the fiducial gap cut on BOTH muons in TRUTH q*eta, and
+	// NOTHING else. The gap windows are READ from ParamsSet::single_mu_fiducial_gap_cuts through
+	// FiducialGapCutExpr and are never retyped -- the same call the pp24 data crossx and the
+	// Pythia fullsim make, so the three sides cut on identical windows by construction.
+	// Deliberately NOT `q*eta < 2.2`: that one-sided cut belongs to the signal selection at
+	// FillHistogramsSignalAcceptance and is left exactly as it is.
+	const std::string gap_truth = ParamsSet::FiducialGapCutExpr("m1.truth_charge * m1.truth_eta")
+	                            + " && " + ParamsSet::FiducialGapCutExpr("m2.truth_charge * m2.truth_eta");
+
+	for (const std::string& sign : McVsDataGenericSigns()){
+		const std::string src_df = "df" + sign + "_weighted";
+		ROOT::RDF::RNode& node = map_at_checked(df_map, src_df,
+			("CreateBaseRDFsPowhegTruthExtra (generic family): " + src_df).c_str());
+		df_map.emplace("df" + sign + kGapCutTag + "_weighted", node.Filter(gap_truth));
+	}
 }
 
 void RDFBasedHistFillingPowhegTruth::FillHistogramsTruth(){
@@ -147,6 +251,31 @@ void RDFBasedHistFillingPowhegTruth::FillHistogramsTruth(){
 	FillHistogramsTruthOriginBinned();
 	FillHistogramsTruthFlavorBinned();
 	FillHistogramsSignalAcceptance();
+
+	// --- GENERIC family of the pp24 MC-vs-data comparison (2026-08-25) ----------------------
+	// Booked on its own dataframes and its own histogram keys, so nothing above changes.
+	// Inclusive gap-cut category FIRST, then the four members of the flavour partition on top
+	// of the SAME gap-cut node -- so the four sum to the inclusive by construction and either
+	// can be used on the plot side.
+	// Written inline rather than as its own member function because the class layout lives in
+	// RDFBasedHistFillingPowheg.h, which this change deliberately leaves untouched.
+	try {
+		for (const std::string& sign : McVsDataGenericSigns()){
+			const std::string gap_filter = sign + kGapCutTag;
+			const std::string gap_df = "df" + gap_filter + "_weighted";
+			ROOT::RDF::RNode& node = map_at_checked(df_map, gap_df,
+				("FillHistogramsTruth (generic family): " + gap_df).c_str());
+
+			FillHistogramsSingleDataFrame(gap_filter, "", node);
+
+			for (const auto& [flav_suffix, flav_expr] : McVsDataGenericFlavourSplit())
+				FillHistogramsSingleDataFrame(gap_filter + flav_suffix, "", node.Filter(flav_expr));
+		}
+	}
+	catch (const std::exception& e) {
+		std::cerr << "FillHistogramsTruth (generic family): " << e.what() << std::endl;
+		throw;
+	}
 }
 
 void RDFBasedHistFillingPowhegTruth::FillHistogramsSignalAcceptance(){
