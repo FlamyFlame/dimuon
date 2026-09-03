@@ -350,12 +350,29 @@ and remains the alternative.
 - **Overwrites, does not preserve, the old grouping's outputs**: `nocorr_etamerge` and
   `nocorr_etamerge_ptmerge` fit files and plots (user: "overwrite previous results" — this is not a
   third alternative alongside the signed split, it replaces it).
-- Out of THIS request's scope (user, 2026-09-03): the MC closure re-run (`FillMCTrigEffClosure.cxx`
-  §PP-1's coverage guard compares `MakeDrEtaGroups(...).edges.front()/.back()` against the signed
-  presentation axis and would now throw for a merge-eta mode, since `.edges` is |η|-based when
-  folded — flagged in-code, not fixed, pending the closure re-run) and the pp24 crossx application
-  (`DrCorrCrossxMode()` is `nocorr_ptmerge`, which never merges eta, so it is unaffected either
-  way). **Propagation to the crossx / MC-data comparison plots awaits explicit user approval.**
+- **MC closure re-run DONE (2026-09-03, same day, following request):** `FillMCTrigEffClosure.cxx`'s
+  coverage guard (`.edges.front()/.back()` against the signed presentation axis) DID throw for a
+  merge-eta mode exactly as flagged, since `MakeDrEtaGroups(...).edges` is |η|-based [0, 2.4] when
+  folded, not signed [−2.4, 2.4]. Fixed by comparing in |η| space for a folded mode (presentation
+  |η| extent is [0, `eta_edges.back()`], since the presentation axis is symmetric about 0 — checked
+  in-code, not assumed). **A second, more serious bug was found while fixing the first**: the
+  RDF sample Filter two lines below the guard applied the SAME (folded, |η|-space) bounds directly
+  to the SIGNED `pair_eta` branch — `pair_eta >= 0.0 && pair_eta < 2.4` — which would have silently
+  DROPPED EVERY NEGATIVE-η pair from the merge-eta closure sample (a ~50% sample loss, no crash,
+  no warning: exactly the class of silent binning bug `.claude/CLAUDE.md` "Binnings" warns about).
+  Fixed by mapping the folded cell extent back to signed `pair_eta` bounds
+  `[-eta_hi, +eta_hi]` before filtering; verified post-fix that the merge-eta selected-pair survival
+  fraction (66.63%) now matches the un-merged reference exactly, confirming no pairs are being lost
+  to sign. Re-ran `FillMCTrigEffClosure` for `nocorr_etamerge` / `nocorr_etamerge_ptmerge`, both
+  WPs (`nocorr` / `nocorr_ptmerge` untouched — their grouping is unaffected by D11) and
+  `plot_mc_trig_eff_closure_compare.cxx`, both WPs. **Result is a genuine, sizeable surprise: the
+  new fold grouping closes MUCH WORSE than the retired signed grouping** — see R4. The pp24 crossx
+  application (`DrCorrCrossxMode()` is `nocorr_ptmerge`, which never merges eta) is unaffected
+  either way. **Propagation to the crossx / MC-data comparison plots still awaits explicit user
+  approval** — R4 argues AGAINST adopting the fold grouping, not for it. This code fix did **NOT**
+  go through a formal `/review-analysis-code` pass (self-verified only, per the user's standing
+  instruction this session to skip formal review and look directly) — flag for a review pass before
+  this closure result is used to make the grouping decision.
 
 ---
 
@@ -464,6 +481,23 @@ and remains the alternative.
   mark this done from the executor's own compile/rerun/visual verification instead** (this is a
   deviation from the usual binding review-on-plot-change rule, made explicitly by the user, not a
   skipped step). See R3 for the numbers.
+
+- 2026-09-03 — **D11's deferred closure re-run, executed on request.** Attempting it hit the
+  coverage-guard throw D11 had flagged and left unfixed; fixed it to compare in |η| space for a
+  folded mode. While fixing it, found and fixed a SECOND, more serious bug in the same function:
+  the RDF sample `Filter` applied the folded (|η|-space, [0, 2.4]) cell bounds directly to the
+  SIGNED `pair_eta` branch, which would have silently kept only `pair_eta >= 0` — dropping every
+  negative-η pair from a merge-eta closure fill (no crash, no warning). Fixed by mapping the folded
+  extent back to signed bounds before filtering; verified the merge-eta selected-pair survival
+  fraction (66.63%) now matches the un-merged reference exactly. Re-ran `FillMCTrigEffClosure` for
+  `nocorr_etamerge`/`nocorr_etamerge_ptmerge`, both WPs, and `plot_mc_trig_eff_closure_compare.cxx`,
+  both WPs (`nocorr`/`nocorr_ptmerge` untouched — D11 does not affect their grouping). Compiled
+  clean. **Not formally reviewed** (self-verified, per the user's standing instruction this session
+  to skip formal review) — flag for `/review-analysis-code` before the result below drives a
+  grouping decision. See R4: the new fold grouping's χ²/ndof is 4-8x WORSE than both the retired
+  signed grouping (R3) and the un-merged/pT-merged approaches, in every version and WP — a genuine
+  reversal of the earlier ranking, not a bug artefact (checked: the fold's own selected-pair count
+  and cell coverage match the un-merged reference).
 
 ## Results & Observations
 
@@ -601,6 +635,47 @@ The four-approach ranking itself is qualitatively similar to R2 (C/D beat A/B on
 C/D on signal), so which grouping to adopt is still an open call, now on more solid statistical
 footing.
 
+### R4. χ²/ndof re-measured on the NEW |η|-fold pair-η grouping (2026-09-03, D11)
+
+Same χ²/ndof machinery as R3, same `nocorr`/`nocorr_ptmerge` inputs (A/B, unaffected by D11), but
+C/D (`nocorr_etamerge`/`nocorr_etamerge_ptmerge`) now read the FRESH closure fill on the sign-
+independent |η| fold (barrel <1.0 / [1.0,2.0) / [2.0,2.4)), after the two bugs above were fixed.
+
+Inclusive closure (integral over all cells — a weak, non-differential check, quoted for context):
+
+| version | A `nocorr` | B `nocorr_ptmerge` | C `nocorr_etamerge` (NEW fold) | D `nocorr_etamerge_ptmerge` (NEW fold) |
+|---|---|---|---|---|
+| Tight, all-OS | 0.99400 | 0.99399 | 0.96937 | 0.96937 |
+| Tight, signal | 0.98879 | 0.98878 | 0.95469 | 0.95468 |
+| Medium, all-OS | 0.99552 | 0.99552 | 0.97007 | 0.97007 |
+| Medium, signal | 0.99051 | 0.99049 | 0.95520 | 0.95520 |
+
+χ²/ndof summed over all 15 crossx pair-p_T bins:
+
+| version | n_dof | A | B | C (NEW fold) | D (NEW fold) |
+|---|---|---|---|---|---|
+| Tight, all-OS | 135 | 15.47 | 15.33 | **93.15** | **93.28** |
+| Tight, signal | 133 | 8.44 | 8.28 | **61.33** | **61.56** |
+| Medium, all-OS | 135 | 14.91 | 14.95 | **96.92** | **97.07** |
+| Medium, signal | 133 | 7.94 | 8.04 | **64.56** | **64.77** |
+
+Split at the pair-p_T merge edge (Tight, all-OS shown; the other three versions are the same
+pattern): bins 1-11 (ndof=99) go from C/D's **15.79** under the retired signed grouping (R3) to
+**112.8** under the new fold; bins 12-15 (ndof=36) go from **2.06-2.27** to **39.1-39.6**. The
+degradation is dominated by the well-measured low-p_T bins, exactly where R3 already found the
+un-normalized D² had been hiding the real (small-but-significant) signed-grouping non-closure —
+the fold grouping is worse almost everywhere on the axis, not just in a few cells.
+
+**This REVERSES the R2/R3 ranking.** Under the retired signed grouping, C/D were competitive with
+or better than A/B (R3: 12.1-12.2 vs 15.3-15.5 all-OS). Under the new |η| fold, C/D are 4-8x WORSE
+than A/B in every version and WP. The physics reason the fold was adopted (D11: the dR correction
+barely depends on the SIGN of pair η, measured from the Step-3 FIT quality/χ²-per-dof) does not
+carry over to the CLOSURE test, which is a stricter, more differential check of the delivered
+correction against the trigger-weighted spectrum — the two questions are related but not the same,
+and this result says they disagree here. **Recorded as measurement, not a decision**: whether the
+fold grouping should still be adopted (e.g. for reasons independent of this closure metric) is for
+the user to weigh against R4, not something this doc resolves on its own.
+
 ## Remaining Work
 
 1. **Replace `DrCorrectionCrossxEvaluator` with the general cascade class** once an approach is
@@ -617,15 +692,23 @@ relied on for a final decision, not just recorded as measurement. R3's headline:
 low-p_T bins, not the sparse high-p_T ones, carry most of the statistical significance — opposite
 of what R2's un-normalized reading suggested.
 
-**D11 (pair-η grouping → sign-independent \|η\| fold) is a SEPARATE, still-open thread on this same
-doc** (see Design Decisions), not touched by Step 13: its closure re-run is explicitly out of that
-request's scope pending a coverage-guard fix in `FillMCTrigEffClosure.cxx` (D11's own note). R2/R3
-both still describe the RETIRED signed grouping for approaches C/D.
+**D11's closure re-run is now DONE (2026-09-03, same day, on request).** The coverage-guard
+throw D11 had flagged and left unfixed was hit and fixed (fold-aware |η| comparison); fixing it
+surfaced a SECOND, more serious bug in the same function — the sample `Filter` applying folded
+|η|-space bounds to the signed `pair_eta` branch, silently dropping every negative-η pair from a
+merge-eta fill — also fixed and verified. `FillMCTrigEffClosure` re-run for `nocorr_etamerge` /
+`nocorr_etamerge_ptmerge`, both WPs; `plot_mc_trig_eff_closure_compare.cxx` re-run, both WPs. R2/R3
+still correctly describe the RETIRED signed grouping (historical, kept per tracking-doc discipline)
+— **R4 has the current numbers on the new fold**, and they are a genuine surprise: the fold
+grouping's χ²/ndof is 4-8x WORSE than the un-merged/pT-merged approaches AND worse than the retired
+signed grouping was, in every version and WP. **Not formally reviewed** (`/review-analysis-code`
+skipped per the user's standing instruction this session) — flag before this drives a decision.
 
 Everything else is as the 2026-08-24 entry left it: steps 1-10 done, step 11 (the full run of all
 four approaches + `/review-analysis-code` + commit of the run) still open.
 
 **Next, in order:** (1) finish step 11 — `/review-analysis-code` on the C++/RDF written on
-2026-08-24; (2) resolve D11's closure-re-run blocker and re-run on the new pair-η grouping; (3)
-with the user, read R3 (not R2) and choose an approach; (4) Remaining Work 1 — replace
-`DrCorrectionCrossxEvaluator` with the general cascade class configured for the chosen mode.
+2026-08-24 AND on today's two closure-fill bug fixes; (2) with the user, read R4 (not R2/R3) and
+choose an approach — R4 argues against the fold grouping on closure grounds alone; (3) Remaining
+Work 1 — replace `DrCorrectionCrossxEvaluator` with the general cascade class configured for the
+chosen mode.

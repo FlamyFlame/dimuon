@@ -287,26 +287,41 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
                                      "bins of a binning with fewer than 2 bins");
         cell_pt_edges.erase(cell_pt_edges.end() - 2);
     }
+    // FOLD-AWARE COVERAGE CHECK (2026-09-03, docs/tracking/mc_trigeff_dr_binning_approaches.md
+    // D11). MakeDrEtaGroups(..., true).edges is the |eta| axis 0 -> eta_max (sign-independent
+    // fold), not the signed -eta_max -> eta_max axis the presentation binning uses -- comparing
+    // the two directly would throw for a merge-eta mode even when the cells fully cover the
+    // presentation region. Fixed by comparing in |eta| space for a folded mode: the presentation
+    // axis is symmetric about 0 (RangesToEdges of pair_eta_proj_ranges_coarse_incl_gap, checked
+    // just below), so its |eta| extent is [0, eta_edges.back()] regardless of sign.
+    const bool eta_folded = DrCorrModeMergeEta(plateau_mode);
     std::vector<double> cell_eta_edges = eta_edges;
-    if (DrCorrModeMergeEta(plateau_mode)) {
+    if (eta_folded) {
         TAxis tmp((int)cell_eta_edges.size() - 1, cell_eta_edges.data());
         cell_eta_edges = MakeDrEtaGroups(&tmp, true).edges;
     }
     const double pt_lo  = cell_pt_edges.front(),  pt_hi  = cell_pt_edges.back();
     const double eta_lo = cell_eta_edges.front(), eta_hi = cell_eta_edges.back();
 
+    if (eta_folded && std::fabs(eta_edges.front() + eta_edges.back()) > 1e-6)
+        throw std::runtime_error("FillMCTrigEffClosure: the crossx presentation pair-eta axis is "
+            "not symmetric about 0 -- the |eta| fold's coverage check is not well defined for it.");
+    const double eta_lo_ref = eta_folded ? 0.0 : eta_edges.front();
+    const double eta_hi_ref = eta_edges.back();   // already the max |eta| either way (symmetric)
+
     // The presentation axis and the correction cells must COVER THE SAME REGION, or the closure
     // would either include pairs the correction does not reach or exclude pairs the cross-section
-    // does. Both are 8 -> 150 GeV and -2.4 -> 2.4 today; this is the guard that says so if either
-    // ever moves (.claude/CLAUDE.md Binnings: a mismatch here is silent -- every histogram fills).
-    if (std::fabs(pt_edges.front() - pt_lo)   > 1e-6 ||
-        std::fabs(pt_edges.back()  - pt_hi)   > 1e-6 ||
-        std::fabs(eta_edges.front() - eta_lo) > 1e-6 ||
-        std::fabs(eta_edges.back()  - eta_hi) > 1e-6)
+    // does. Both are 8 -> 150 GeV and -2.4 -> 2.4 (or, folded, 0 -> 2.4) today; this is the guard
+    // that says so if either ever moves (.claude/CLAUDE.md Binnings: a mismatch here is silent --
+    // every histogram fills).
+    if (std::fabs(pt_edges.front() - pt_lo)     > 1e-6 ||
+        std::fabs(pt_edges.back()  - pt_hi)     > 1e-6 ||
+        std::fabs(eta_lo_ref       - eta_lo)    > 1e-6 ||
+        std::fabs(eta_hi_ref       - eta_hi)    > 1e-6)
         throw std::runtime_error(Form("FillMCTrigEffClosure: the crossx presentation axis covers "
             "pair pT [%g, %g] x pair eta [%g, %g] but the correction cells cover [%g, %g] x "
             "[%g, %g] -- the closure would be filled outside the region the correction defines.",
-            pt_edges.front(), pt_edges.back(), eta_edges.front(), eta_edges.back(),
+            pt_edges.front(), pt_edges.back(), eta_lo_ref, eta_hi_ref,
             pt_lo, pt_hi, eta_lo, eta_hi));
     std::cout << "  plot axes : pair pT = ParamsSet::pT_bins_150 (" << pt_edges.size() - 1
               << " log bins, " << pt_lo << "-" << pt_hi << " GeV) x " << eta_edges.size() - 1
@@ -432,10 +447,17 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
     // triggered pairs). Without this cut those pairs sit in the histogram overflow -- excluded
     // from every drawn panel -- while still being counted as "no correction available", which
     // reads like a lookup failure when it is simply a pair outside the measured region.
+    // This Filter runs on the SIGNED `pair_eta` branch, so its bounds must be in SIGNED space --
+    // eta_lo/eta_hi are the |eta| bounds of the (possibly folded) correction cells and must NOT be
+    // used directly here for a folded mode (0/2.4 would keep only pair_eta >= 0, silently dropping
+    // every negative-eta pair). A folded cell grid covers |eta| in [0, eta_hi], i.e. signed
+    // pair_eta in [-eta_hi, +eta_hi]; an un-merged/pT-only-merged grid is already signed.
+    const double eta_filt_lo = eta_folded ? -eta_hi : eta_lo;
+    const double eta_filt_hi = eta_hi;   // upper bound is the same in both spaces (eta_hi = eta_max)
     auto d_all_pt = d;                       // kept only to count what the cell window removes
     d = d.Filter(Form("pair_pt >= %.10g && pair_pt < %.10g && "
                       "pair_eta >= %.10g && pair_eta < %.10g",
-                      pt_lo, pt_hi, eta_lo, eta_hi),
+                      pt_lo, pt_hi, eta_filt_lo, eta_filt_hi),
                  "pair pT and pair eta inside the correction cells");
 
     std::map<std::string, ROOT::RDF::RNode> versions;
@@ -594,8 +616,8 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
                   << std::endl;
     for (const auto& S : series) S.print_stats();
     std::cout << "  selected pairs: " << *n_sel << " ; inside the correction cells (pair pT ["
-              << pt_lo << ", " << pt_hi << "), pair eta [" << eta_lo << ", "
-              << eta_hi << ")): " << *n_in_cells << " ("
+              << pt_lo << ", " << pt_hi << "), pair eta [" << eta_filt_lo << ", "
+              << eta_filt_hi << ")): " << *n_in_cells << " ("
               << (*n_sel ? 100.0 * (*n_in_cells) / (*n_sel) : 0.0) << "%)" << std::endl;
 
     // ---------------------------------------------------------------- inclusive closure
