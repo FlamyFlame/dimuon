@@ -213,6 +213,17 @@ None. Deliverables complete and reviewed.
 
 (cleared -- see Completion summary below)
 
+## Addendum (2026-09-03, post-completion)
+
+User asked for the SAME CSVs on CURRENT (un-projected) statistics, same |eta|-merged binning, for
+a direct cell-by-cell comparison against the projected ones. Added to
+`write_mc_pair_statistics_tables_projected.cxx` (same macro, additive: two more `Emit` calls per
+sign reusing the same `GroupSum(s.all, ...)` already computed for the projection, no new selection
+or histogram read) -- `{same,opposite}_sign_pt_vs_abs_eta_counts_current.csv`. Recompiled, reran;
+opposite-sign current total 2143213 matches the projected file's own footer exactly (same source
+histograms). Not re-reviewed (additive, same formula components already verified in the review
+loop above; no new arithmetic).
+
 ## Completion
 
 DONE 2026-09-03. Both deliverables built, reviewed (PASS) and on disk:

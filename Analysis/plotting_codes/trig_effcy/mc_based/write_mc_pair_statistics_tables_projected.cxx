@@ -24,6 +24,12 @@
 // (dr_correction_cell_groups.h) -- the SAME utility just added for the dR-correction fit cells
 // (mode "nocorr_etamerge"); never re-invented here, per .claude/CLAUDE.md 'Binnings'.
 //
+// FOUR CSVs per (sample, WP): for each sign (same-sign, opposite-sign),
+//   {sign}_pt_vs_abs_eta_counts_projected.csv  the projected count (formula above)
+//   {sign}_pt_vs_abs_eta_counts_current.csv    the SAME cells, SAME binning, un-projected (all
+//                                               six pT-hat slices as actually produced) -- the
+//                                               direct baseline for a side-by-side comparison.
+//
 // Compile/run (ACLiC, from this directory):
 //   root -l -b -q 'write_mc_pair_statistics_tables_projected.cxx+("pp_full", true)'   // Tight
 // =================================================================================================
@@ -184,14 +190,61 @@ void write_mc_pair_statistics_tables_projected(const std::string& sample = "pp_f
         os << "\n#\n";
     };
 
+    // CURRENT (un-projected) companion, same selection/binning/eta-merge, all six pT-hat slices
+    // as actually produced -- for a DIRECT comparison against the *_projected.csv cell by cell.
+    // Not a projection: no sf anywhere here, this is simply GroupSum(s.all, ...) on its own.
+    auto header_current = [&](std::ostream& os, const std::string& sign_label) {
+        os << "# CURRENT (un-projected, all six pT-hat slices as actually produced) same-sign/\n";
+        os << "# opposite-sign muon-pair statistics of the Step-3 DeltaR-correction sample\n";
+        os << "# (mc_trigger_efficiency.md 3.3), on the SAME selection as\n";
+        os << "# write_mc_pair_statistics_tables.cxx, with the pair-eta axis MERGED into the 3\n";
+        os << "# sign-independent |pair eta| bins -- the direct baseline for\n";
+        os << "# *_pt_vs_abs_eta_counts_projected.csv (same cells, same binning, sf NOT applied).\n";
+        os << "#\n";
+        os << "# " << sign_label << " pairs only. QUANTITY: raw pair count (UNWEIGHTED, "
+              "DIMENSIONLESS).\n";
+        os << "# sample=" << cfg.key << "  label=" << cfg.mc_label << "  WP=" << wp_txt
+           << " (required of BOTH legs)\n";
+        os << "# source = " << in_path << "\n";
+        os << "# sign convention: muon_pair_tree_sign1 = SAME sign, muon_pair_tree_sign2 = "
+              "OPPOSITE sign.\n";
+        os << "# pair-pT bin edges [GeV]:";
+        for (int ix = 1; ix <= npt + 1; ++ix) os << " " << Fmt("%.4f", ax->GetBinLowEdge(ix));
+        os << "\n";
+        os << "# pair-eta GROUP edges (|eta^pair|, folded neg+pos source bins):";
+        for (double e : Geta.edges) os << " " << Fmt("%.4f", e);
+        os << "\n#\n";
+    };
+
+    for (const auto& s : signs) {
+        Emit(out_dir + s.file_stem + "_pt_vs_abs_eta_counts_current.csv", [&](std::ostream& os) {
+            header_current(os, s.label);
+            os << "# Rows = |pair eta| GROUP; columns = pair-pT bins [GeV]. Cell = CURRENT raw\n";
+            os << "# pair count, all six pT-hat slices as actually produced (no projection).\n";
+            os << "pair_abs_eta\\pair_pT_GeV";
+            for (int ix = 1; ix <= npt; ++ix) os << "," << pt_lab(ix);
+            os << "\n";
+            double grand_cur = 0.;
+            for (int g = 1; g <= Geta.n; ++g) {
+                os << eta_lab(g);
+                for (int ix = 1; ix <= npt; ++ix) {
+                    const double all = GroupSum(s.all, ix, Geta, g);
+                    grand_cur += all;
+                    os << "," << Fmt("%.0f", all);
+                }
+                os << "\n";
+            }
+            os << "# total: current=" << Fmt("%.0f", grand_cur) << "\n";
+        });
+    }
+
     for (const auto& s : signs) {
         Emit(out_dir + s.file_stem + "_pt_vs_abs_eta_counts_projected.csv", [&](std::ostream& os) {
             header(os, s.label);
             os << "# Rows = |pair eta| GROUP; columns = pair-pT bins [GeV]. Cell = PROJECTED raw\n";
-            os << "# pair count (see the formula above); the CURRENT (un-projected) total is in\n";
-            os << "# the footer line below, and the CURRENT per-cell count is the same cell of\n";
-            os << "# write_mc_pair_statistics_tables.cxx's *_pt_vs_eta_counts.csv summed over the\n";
-            os << "# matching fine pair-eta bins.\n";
+            os << "# pair count (see the formula above). The DIRECT, cell-by-cell CURRENT\n";
+            os << "# (un-projected) companion, same selection/binning/eta-merge, is the sibling\n";
+            os << "# file *_pt_vs_abs_eta_counts_current.csv.\n";
             os << "pair_abs_eta\\pair_pT_GeV";
             for (int ix = 1; ix <= npt; ++ix) os << "," << pt_lab(ix);
             os << "\n";
@@ -215,7 +268,7 @@ void write_mc_pair_statistics_tables_projected(const std::string& sample = "pp_f
     }
 
     std::cout << "\n[write_mc_pair_statistics_tables_projected] " << cfg.key << ", " << wp_txt
-              << " WP: 2 CSVs written to " << out_dir << "\n";
+              << " WP: 4 CSVs written to " << out_dir << "\n";
 
     for (auto& s : signs) { delete s.all; delete s.kn4; delete s.kn5; }
 }
