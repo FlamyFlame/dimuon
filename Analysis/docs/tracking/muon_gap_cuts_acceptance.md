@@ -671,6 +671,93 @@ re-checked. The same helpers were ported verbatim into
 `plot_muon_truth_q_eta_spectrum.cxx` so the truth and data figures place their legends by the
 same rule and can be read side by side.
 
+### F14 — q·η shape vs single-muon p_T: the adopted windows are p_T-stable, but a p_T-dependent depletion at q·η ≈ +0.6 and +1.2 is NOT covered (2026-09-03)
+
+**Step 8, user request.** New standalone macro
+`plotting_codes/single_b_analysis/plot_muon_q_eta_pt_dependence.cxx` →
+`muon_gap_cuts/new_gap_cuts/muon_q_eta_pt_dependence.png` (Medium WP would go to
+`new_gap_cuts/medium/`; only Tight was produced). 6 panels, 3 rows × 2 cols: pp24, then
+Pb+Pb 23+24+25 at 0-10 / 10-20 / 20-30 / 30-50 / 50-80 %. Each panel overlays 4 unit-area
+q·η PDFs for p_T ∈ [4,4.5), [4.5,5), [5,6), [6,∞) GeV. Separate macro from
+`plot_muon_q_eta_spectrum.cxx` so the four existing figures need no rerun.
+
+**Binnings.** q·η = `ParamsSet::makeEtaTrigEffcyBinning(1)` (184 bins, [−2.40, 2.40]), the
+same canonical axis as every other panel in this doc; centrality = `ParamsSet::ctrbins` with
+0-5 + 5-10 merged, identical to the sibling's Plot C; windows read from
+`ParamsSet::single_mu_fiducial_gap_cuts`. **The four p_T slices are the USER'S EXPLICIT
+CHOICE for this figure** (2026-09-03) and are deliberately NOT
+`ParamsSet::single_mu_pt_coarse_bins` ({4,8,14,25,100}), whose single 4-8 GeV bin cannot
+resolve the behaviour just above threshold. Plot-local diagnostic axis; feeds no physics
+result, no fit and no correction. Nothing retyped, nothing silently redefined.
+
+**Result 1 — the p_T-INDEPENDENT fiducial cut is justified where its windows sit.** The
+q·η ≈ −1.11 barrel/endcap dip, the η ≈ 0 crack and the forward collapse appear at the same
+q·η and roughly the same depth in all four p_T slices, in pp and at every centrality. The
+rejected fraction is correspondingly near-flat in p_T:
+
+| panel | 4.0-4.5 | 4.5-5.0 | 5.0-6.0 | >6 GeV | all p_T |
+|---|---|---|---|---|---|
+| pp24 | 0.0368 | 0.0329 | 0.0301 | 0.0425 | **0.0379** |
+| Pb+Pb 0-10% | 0.0578 | 0.0544 | 0.0524 | 0.0563 | 0.0555 |
+| Pb+Pb 10-20% | 0.0586 | 0.0555 | 0.0534 | 0.0573 | 0.0565 |
+| Pb+Pb 20-30% | 0.0574 | 0.0549 | 0.0542 | 0.0576 | 0.0563 |
+| Pb+Pb 30-50% | 0.0570 | 0.0547 | 0.0549 | 0.0577 | 0.0564 |
+| Pb+Pb 50-80% | 0.0575 | 0.0567 | 0.0555 | 0.0591 | 0.0576 |
+
+Range 0.030-0.043 (pp) and 0.052-0.059 (Pb+Pb), no monotonic trend. The pp all-p_T value
+**0.0379 reproduces the 3.79 % of F10/F11a exactly**, and there is no centrality dependence
+worth speaking of (0.0555 → 0.0576 from 0-10 % to 50-80 %).
+
+**Result 2 — OPEN CUT QUESTION. The p_T dependence lives on the POSITIVE q·η side, where the
+adopted set has no window.** In every panel the 4.0-4.5 GeV curve carries deep, narrow
+depletions at **q·η ≈ +0.6** and **q·η ≈ +1.1-1.3** that shrink monotonically through
+4.5-5.0 and 5.0-6.0 GeV and are essentially absent above 6 GeV. Those are precisely the two
+legacy `ParamsSet::charge_eta_gap_cuts` windows **{0.56, 0.67}** and **{1.064, 1.29}** — and
+precisely why the legacy `PassSingleMuonGapCut` gated them at p_T < 6 GeV
+(`RDFBasedHistFillingData.cxx:144`). So the legacy code's p_T gate was tracking something
+real, it is still present in the data, and the adopted set (F10/F11a) does not cover it.
+Physically this is the expected toroid bending-out of low-p_T muons of that sign at the
+detector feet / support structures (KB `physics/detector/atlas_run2_muon_trigger.md` lists
+"gaps at η≈0, feet, support structures"). **This is a cut decision, i.e. the user's**: adding
+a fourth and fifth window at all p_T costs yield above 6 GeV where there is no dip, whereas
+leaving them costs a p_T-dependent acceptance that ε_acc must then carry. NOT acted on.
+
+**Result 3 — the pp forward region is trigger-shaped, not gap-shaped.** For q·η > +1.5 the pp
+low-p_T slices fall by more than a decade toward the acceptance edge while p_T > 6 GeV stays
+flat. No Pb+Pb counterpart. This is the **2mu4 both-leg** turn-on folded into the acceptance
+edge (Pb+Pb is single `mu4`), not detector structure — consistent with F12, which finds the
+truth spectrum featureless there.
+
+**Plot-review outcome (partial).** `/review-plot` iteration 1 returned **FAIL** on one
+CRITICAL: the opaque in-frame `TLegend` covered the η ≈ 0 crack minimum in **all six**
+panels — **a recurrence of F13 in new code**, because this macro hard-coded the box instead
+of porting `AutoLegendBox()`. Measured: legend top = 0.119 on the shared Pb+Pb axis / 0.0272
+on the pp axis vs crack minima 0.058-0.084 (Pb+Pb, all four curves in every panel) and
+0.0231 (pp, p_T > 6 GeV), so the crack read ≈ 0.44 of plateau where it is really ≈ 0.25 —
+the figure understated the very feature the middle window is drawn around. **Fixed** by
+deleting the in-frame legend and drawing both keys once across the top of the canvas
+(`CanvasKey()`, `kPanelTop` 0.965 → 0.942); the defect is recorded in that helper's comment
+so it is not reintroduced a third time. Also fixed: the trigger is now named on every panel
+(`HLT_2mu4` / `HLT_mu4`, sub-line) — it had been on pp only; the sibling's |q·η| ∈ [1.4,2.2]
+binning-step caveat added to the header (the apparent step at |q·η| ≈ 1.4 is the 0.02 → 0.10
+step change, not structure); Medium WP routed to `new_gap_cuts/medium/`.
+
+Iteration 1 independently re-derived every number through a **different read path**
+(`TTree::Draw` expressions instead of `SetMakeClass` + branch addresses) and got MATCH on all
+of them — windows, axis, centrality edges, the pp24 population 9 107 895, every per-slice and
+all-p_T fraction above, `Integral("width") = 1.000000` for all 12 curves checked, and the
+axis-cap bookkeeping (9 bins off scale in pp; the Pb+Pb cap verified inactive). That also
+rules out the `SetMakeClass(1)` branch-type trap. C3 came back
+`RUN2-CROSSCHECK UNVERIFIED` — no Run 2 analog of this figure exists; the KB corroborates the
+gap structure qualitatively only. Non-blocking.
+
+⚠ **CAVEAT: iteration 2 was stopped by the user before returning a verdict.** The amended
+figure has therefore **not** been independently re-verified — the legend fix was checked by
+the agent only (crack now visibly reaching ≈ 0.065 in Pb+Pb, ≈ 0.022 in pp, i.e. no longer
+truncated). The numbers in Result 1 are unaffected: the amendment touched drawing code and
+output paths only, not the fill loop, and those numbers were verified in iteration 1. If this
+figure is ever promoted toward a note, re-run `/review-plot` on it first.
+
 ## Ruled Out (append-only)
 
 - *Plotting from the existing 2026-06-23 trees* — stale on the one-sided Δp/p fix (F3), which
@@ -679,6 +766,25 @@ same rule and can be read side by side.
   Provenance rule and unnecessary: the single-muon trees are exactly the intended output.
 
 ## Latest Stage
+
+**STEP 8 DONE (2026-09-03).** The p_T-dependence figure exists at
+`muon_gap_cuts/new_gap_cuts/muon_q_eta_pt_dependence.png` (F14). Headline: the three adopted
+windows are **p_T-stable** — the rejected fraction varies only over 0.030-0.043 (pp) /
+0.052-0.059 (Pb+Pb) across the four p_T slices, with no trend — so the p_T-INDEPENDENT
+fiducial cut is justified *where its windows sit*. Its plot review is only **partially**
+complete: iteration 1 caught and fixed a CRITICAL recurrence of F13 (legend covering the
+crack in all six panels) and verified every number through an independent read path;
+iteration 2 was stopped before a verdict, so the amended figure is not independently
+re-verified.
+
+**NEW OPEN CUT QUESTION (F14 Result 2) — for the user.** The p_T dependence is on the
+POSITIVE q·η side, where the adopted set has no window: the 4.0-4.5 GeV slice is deeply
+depleted at **q·η ≈ +0.6** and **≈ +1.1-1.3**, shrinking monotonically with p_T and gone
+above 6 GeV. Those are exactly the legacy `charge_eta_gap_cuts` windows {0.56, 0.67} and
+{1.064, 1.29}, which the legacy code applied only below 6 GeV — so that p_T gate was
+tracking something real and the adopted set does not cover it. Adding windows there costs
+yield above 6 GeV where there is no dip; leaving them makes the acceptance p_T-dependent and
+pushes the cost into ε_acc. **Not acted on — a cut decision is the user's.**
 
 **STEP 6 + 7 DONE (2026-08-13).** The TRUTH q·η reference spectrum exists at
 `muon_gap_cuts/truth_q_eta/` (F12) and the legend-over-curve defect in the new-gap-cut data
