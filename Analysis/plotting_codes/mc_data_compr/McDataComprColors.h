@@ -17,10 +17,17 @@
 //                               is the data's counterpart on that pad)
 //   Pythia, all OS   -> BLUE   (secondary reference; deliberately NOT black, so it can never be
 //                               mistaken for the single-b signal)
-// The GENERIC family keeps its own palette (`PlotMCDataComprBaseClass::colors`).
+//   POWHEG           -> GREEN  (added 2026-09-03; the fourth colour, so that inside `signal/`
+//                               red/black/blue/green each mean ONE thing across every PNG in the
+//                               directory. It is deliberately NOT blue, which already means
+//                               "Pythia, all OS" on the neighbouring canvas.)
+// The GENERIC family keeps its own palette (`PlotMCDataComprBaseClass::colors`), where the same
+// three colours carry DIFFERENT meanings -- the two families are separate directories and
+// separate conventions.
 // =================================================================================================
 namespace McDataComprColors {
-    constexpr Color_t kSignalData  = kRed;
-    constexpr Color_t kSignalMc    = kBlack;
-    constexpr Color_t kSignalMcRef = kBlue;
+    constexpr Color_t kSignalData   = kRed;
+    constexpr Color_t kSignalMc     = kBlack;
+    constexpr Color_t kSignalMcRef  = kBlue;
+    constexpr Color_t kSignalPowheg = kGreen + 2;
 }

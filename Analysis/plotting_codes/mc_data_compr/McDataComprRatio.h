@@ -9,6 +9,7 @@
 #include <TH1.h>
 #include <TLegend.h>
 #include <TLine.h>
+#include <TMarker.h>
 #include <TPad.h>
 #include <TVirtualPad.h>
 
@@ -218,6 +219,41 @@ inline TLine* DrawUnityLine(const TH1* frame)
     l->SetLineWidth(1);
     l->Draw("same");
     return l;
+}
+
+// -------------------------------------------------------------------------------------------
+// OUT-OF-RANGE ratio points.
+//
+// `AutoRatioRange` deliberately ignores points with a >50 % relative error when it picks the
+// frame, so a genuine but badly-measured ratio can land outside it. ROOT then draws the error
+// bar stub and clips the marker, and the reader cannot tell an off-scale point from a missing
+// one -- found in review 2026-09-03 on the nine-panel signal figure, where two green POWHEG
+// points at ratio ~4.1 rendered as bare stubs.
+//
+// This paints a hollow triangle AT the frame edge, pointing the way the point went. It is a
+// position marker, not a value: it says "this point is off-scale in this direction", which is
+// exactly the information the clipped drawing destroys. Call it AFTER the histogram is drawn.
+// -------------------------------------------------------------------------------------------
+inline std::vector<TMarker*> DrawOutOfRangeMarkers(const TH1* r, double lo, double hi)
+{
+    std::vector<TMarker*> marks;
+    if (!r) return marks;
+    const double span = hi - lo;
+    if (!(span > 0.)) return marks;
+    for (int b = 1; b <= r->GetNbinsX(); ++b) {
+        const double y = r->GetBinContent(b);
+        if (y == 0. && r->GetBinError(b) == 0.) continue;   // empty bin, not an off-scale one
+        if (y <= hi && y >= lo) continue;
+        const bool above = (y > hi);
+        TMarker* m = new TMarker(r->GetXaxis()->GetBinCenter(b),
+                                 above ? hi - 0.03 * span : lo + 0.03 * span,
+                                 above ? 22 : 23);          // triangle up / down
+        m->SetMarkerColor(r->GetMarkerColor());
+        m->SetMarkerSize(1.0);
+        m->Draw();
+        marks.push_back(m);
+    }
+    return marks;
 }
 
 // -------------------------------------------------------------------------------------------

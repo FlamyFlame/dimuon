@@ -86,6 +86,17 @@ inline std::string PythiaFile(bool with_data_resonance_cuts){
 inline std::string PowhegFileName(){ return "histograms_powheg_truth.root"; }
 inline std::string PowhegFile(){ return std::string(PowhegDir()) + PowhegFileName(); }
 
+// POWHEG **FullSim**, used by the SIGNAL family only (2026-09-03). A different object from the
+// POWHEG TRUTH file above: it is a reconstructed-detector production, and it exists only in
+// **pp17 conditions** (sqrt(s_NN) = 5.02 TeV, Run-2 detector) because no POWHEG FullSim pp24
+// -conditions sample was ever produced. The comparison histograms in it are truth-level and
+// carry the pp24 data's signal cuts, but the underlying beam energy and detector are pp17 --
+// which is why every plot that draws this curve says so in its legend.
+// The RDF stage reads bb AND cc; the single-b signal is entirely bb (`from_same_b` needs a
+// b-flavoured hadron ancestor -- measured 2026-09-03: 517 459 signal pairs from bb, 0 from cc).
+inline std::string PowhegFullsimFileName(){ return "histograms_powheg_fullsim_pp17.root"; }
+inline std::string PowhegFullsimFile(){ return std::string(PowhegDir()) + PowhegFullsimFileName(); }
+
 // A missing Medium data file is the one failure mode a user will actually hit, so say what to do
 // about it instead of letting TFile::Open return a null pointer.
 inline void AssertInputExists(const std::string& path, const std::string& what){

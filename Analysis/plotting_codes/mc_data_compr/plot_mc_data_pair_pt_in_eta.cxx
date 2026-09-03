@@ -19,12 +19,32 @@
 //          h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts
 //          = (1/L) * sum 1/(eps_trig * eps_reco), L = 400.412 pb^-1, single-b signal region
 //            (m in (1.08,2.9), pair pT > 8, BOTH muons passing the fiducial gap cut), Tight WP.
-//   MC   : pythia_fullsim_full_sample/histograms_pythia_fullsim_pp24_no_data_resonance_cuts_full.root
+//   Pythia: pythia_fullsim_full_sample/histograms_pythia_fullsim_pp24_no_data_resonance_cuts_full.root
 //          h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_single_b_pass_signal_truth
 //          = truth from_same_b OS pairs in the truth signal region, AMI-weighted.
+//   POWHEG: powheg_full_sample/histograms_powheg_fullsim_pp17.root
+//          h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_single_b_pass_signal_truth_gapcut
+//          = the SAME truth selection (from_same_b + the data's mass window, pair-pT threshold
+//            and fiducial gap windows on truth q*eta), per-sample cross-section weighted.
 //
-// NORMALIZATION: the AMI `crossSection` is in **nb** (PythiaAlgCoreT.c:549-557), so the MC needs
-// exactly one factor, nb -> pb = 1000, and nothing else. The data is already in pb.
+// POWHEG FULLSIM IS A **pp17-CONDITIONS** SAMPLE (sqrt(s_NN) = 5.02 TeV, Run-2 detector). No
+// POWHEG FullSim pp24-conditions production exists, so this is the only POWHEG FullSim available
+// and the difference in beam energy and detector conditions is REAL. The legend says so on every
+// canvas; do not quote a POWHEG/data ratio from this figure without repeating it.
+//
+// NORMALIZATION: three samples, three different rules, none of them guessed.
+//   data   : already d(sigma) in pb (the crossx histogram is 1/L-weighted at fill time).
+//   Pythia : the AMI `crossSection` is in **nb** (PythiaAlgCoreT.c:549-557) -> exactly one
+//            factor, nb -> pb = 1000.
+//   POWHEG : `weight = EventWeights[0] * filter_effcy` is already a cross-section in **pb**
+//            (PowhegAlgCoreT.c:209-212; read as nb it would be an 11 mb b-bbar cross-section,
+//            55x the total sigma_bb at 5.02 TeV) -> factor **1**, and it must NOT be given
+//            Pythia's x1000. The per-event division by the GENERATED statistics is done inside
+//            the RDF stage, PER SAMPLE (RDFBasedHistFillingPowhegFullsim.cxx): the run reads the
+//            bb and cc productions together and the class-wide `weight_norm` divides both by
+//            N_bb + N_cc, which is an N-weighted average and not a sum -- a ~2x under-
+//            normalization that is invisible in the reco-efficiency ratios the class was written
+//            for but fatal here.
 //
 // KNOWN, DELIBERATE MISMATCHES -- state them wherever this plot is used, they are NOT bugs:
 //   1. SIGNAL DEFINITION. MC is pure truth single-b; the data is raw OS with NO same-sign
@@ -82,8 +102,26 @@ const char* kDataHist = "h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts";
 const char* kMcHist =
     "h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_single_b_pass_signal_truth";
 
+// POWHEG FullSim pp17: the SAME 2D view on the SAME named axes, under the gap-cut truth signal
+// filter added on 2026-09-03 (the class's pre-existing `_pass_signal_truth` still carries the
+// retired one-sided q*eta < 2.2, and its `_single_b` an extra truth_dr < 1.0).
+const char* kPowhegHist =
+    "h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_single_b_pass_signal_truth_gapcut";
+
 // AMI crossSection is in nb; the data is normalized by a luminosity in pb^-1.
 const double kNbToPb = 1.0e3;
+// POWHEG's weight is already a cross-section in pb. See the normalization block at the top.
+const double kPowhegNorm = 1.0;
+
+// Legend entries. POWHEG's names the sample's conditions because they are NOT the data's.
+// The data entry names its beam energy too: a legend that says "5.02 TeV" on one curve and
+// nothing on another leaves the contrast the POWHEG caveat exists for to be inferred.
+const char* kDataLegend   = "pp data 2024 (5.36 TeV)";
+const char* kPythiaLegend = "Pythia, single-b (pp24 cond.)";
+// Two lines, not one: at nine-panel scale the one-line form ran past the pad edge and was
+// clipped mid-word. The conditions line is what makes the curve honest, so it must always render.
+const char* kPowhegLegend     = "POWHEG, single-b";
+const char* kPowhegCondLegend = "  (pp17 cond., 5.02 TeV)";
 
 const char* kOutDir = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/signal/";
 
@@ -203,14 +241,21 @@ void plot_mc_data_pair_pt_in_eta(const char* wp = "tight")
 
     std::unique_ptr<TH2D> h_data(Fetch(McDataComprConfig::DataFile(muon_wp), kDataHist));
     std::unique_ptr<TH2D> h_mc  (Fetch(McDataComprConfig::PythiaFile(false), kMcHist));
+    std::unique_ptr<TH2D> h_pow (Fetch(McDataComprConfig::PowhegFullsimFile(), kPowhegHist));
+    // All three sides are booked from the SAME named binnings (`pT_bins_150`, `pair_eta_crossx`),
+    // so a divergence is a producer bug, never something to silently plot.
     AssertSameAxes(h_data.get(), h_mc.get());
+    AssertSameAxes(h_data.get(), h_pow.get());
 
     static const CommonEffcyConfig cfg{};
     const auto& eta_bins = cfg.pair_eta_proj_ranges_coarse_incl_gap;
 
-    printf("data integral = %.6g pb ; MC integral = %.6g nb -> %.6g pb ; MC/data = %.4g\n",
+    printf("data integral = %.6g pb ; Pythia = %.6g nb -> %.6g pb ; Pythia/data = %.4g\n",
            h_data->Integral(), h_mc->Integral(), h_mc->Integral() * kNbToPb,
            h_mc->Integral() * kNbToPb / h_data->Integral());
+    printf("POWHEG FullSim pp17 integral = %.6g pb ; POWHEG/data = %.4g\n",
+           h_pow->Integral() * kPowhegNorm,
+           h_pow->Integral() * kPowhegNorm / h_data->Integral());
 
     // The full pair-eta range is read from the histogram axis, never retyped.
     const double eta_full_lo = h_data->GetYaxis()->GetXmin();
@@ -220,9 +265,10 @@ void plot_mc_data_pair_pt_in_eta(const char* wp = "tight")
     {
         TH1D* d = Project(h_data.get(), eta_full_lo, eta_full_hi, "hpt_int_data", 1.0,     McDataComprColors::kSignalData, 20);
         TH1D* m = Project(h_mc.get(),   eta_full_lo, eta_full_hi, "hpt_int_mc",   kNbToPb, McDataComprColors::kSignalMc, 21);
+        TH1D* w = Project(h_pow.get(),  eta_full_lo, eta_full_hi, "hpt_int_pow",  kPowhegNorm, McDataComprColors::kSignalPowheg, 22);
 
         double lo = 1e300, hi = -1e300;
-        for (TH1D* h : {d, m})
+        for (TH1D* h : {d, m, w})
             for (int b = 1; b <= h->GetNbinsX(); ++b) {
                 const double v = h->GetBinContent(b);
                 if (v > 0.) { lo = std::min(lo, v); hi = std::max(hi, v); }
@@ -240,21 +286,32 @@ void plot_mc_data_pair_pt_in_eta(const char* wp = "tight")
 
         pad_main->cd();
         gPad->SetLogx(); gPad->SetLogy();
-        d->Draw("E");
+        // DRAW ORDER = POWHEG, Pythia, DATA -- the data LAST so it is on top and can never be
+        // hidden by an MC curve where the three cross (user instruction, 2026-09-03). The frame
+        // is still defined by the data histogram, which is why it is the one that was styled and
+        // range-set above; `d->Draw("E")` first paints the frame, then the MC curves go under
+        // ROOT's painting order and the data is re-drawn last on top of them.
+        d->Draw("AXIS");
+        w->Draw("E,same");
         m->Draw("E,same");
-        TLegend l(0.22, 0.10, 0.62, 0.28);
-        l.SetBorderSize(0); l.SetFillStyle(0); l.SetTextFont(42); l.SetTextSize(0.045);
-        l.AddEntry(d, "pp data 2024", "lp");
-        l.AddEntry(m, "Pythia, single-b", "lp");
+        d->Draw("E,same");
+        TLegend l(0.22, 0.10, 0.68, 0.33);
+        l.SetBorderSize(0); l.SetFillStyle(0); l.SetTextFont(42); l.SetTextSize(0.040);
+        // Legend order = draw order = POWHEG, Pythia, pp24.
+        l.AddEntry(w, kPowhegLegend, "lp");
+        l.AddEntry((TObject*)nullptr, kPowhegCondLegend, "");
+        l.AddEntry(m, kPythiaLegend, "lp");
+        l.AddEntry(d, kDataLegend,   "lp");
         l.Draw();
         TLatex t; t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.045);
         t.DrawLatex(0.22, 0.87, Form("%.1f < #eta^{pair} < %.1f", eta_full_lo, eta_full_hi));
 
         pad_ratio->cd();
         gPad->SetLogx();
-        TH1D* r = McDataComprRatio::MakeRatio(m, d, "r_pt_int");
+        TH1D* r  = McDataComprRatio::MakeRatio(m, d, "r_pt_int");
+        TH1D* rw = McDataComprRatio::MakeRatio(w, d, "r_pt_int_pow");
         double rlo = 0., rhi = 2.; bool rlog = false;
-        McDataComprRatio::AutoRatioRange(std::vector<TH1*>{r}, rlo, rhi, rlog);
+        McDataComprRatio::AutoRatioRange(std::vector<TH1*>{r, rw}, rlo, rhi, rlog);
         printf("[ratio] signal pair_pt (eta integrated) : y-range %.4g .. %.4g%s\n",
                rlo, rhi, rlog ? " (log)" : "");
         gPad->SetLogy(rlog);
@@ -265,7 +322,10 @@ void plot_mc_data_pair_pt_in_eta(const char* wp = "tight")
                                           McDataComprRatio::RelativeTextScale());
         r->Draw("E");
         McDataComprRatio::DrawUnityLine(r);
+        rw->Draw("E,same");
         r->Draw("E,same");
+        McDataComprRatio::DrawOutOfRangeMarkers(rw, rlo, rhi);
+        McDataComprRatio::DrawOutOfRangeMarkers(r,  rlo, rhi);
 
         c.SaveAs((std::string(kOutDir) + "pair_pt_mc_data_compr.png").c_str());
     }
@@ -275,14 +335,16 @@ void plot_mc_data_pair_pt_in_eta(const char* wp = "tight")
         int nrow = 1, ncol = 1;
         DetermineSubplotGrid(static_cast<int>(eta_bins.size()), nrow, ncol);
 
-        std::vector<TH1D*> ds, ms, all;
+        std::vector<TH1D*> ds, ms, ws, all;
         for (size_t i = 0; i < eta_bins.size(); ++i) {
             TH1D* d = Project(h_data.get(), eta_bins[i].first, eta_bins[i].second,
                               ("hd" + std::to_string(i)).c_str(), 1.0,     McDataComprColors::kSignalData, 20);
             TH1D* m = Project(h_mc.get(),   eta_bins[i].first, eta_bins[i].second,
                               ("hm" + std::to_string(i)).c_str(), kNbToPb, McDataComprColors::kSignalMc, 21);
-            ds.push_back(d); ms.push_back(m);
-            all.push_back(d); all.push_back(m);
+            TH1D* w = Project(h_pow.get(),  eta_bins[i].first, eta_bins[i].second,
+                              ("hw" + std::to_string(i)).c_str(), kPowhegNorm, McDataComprColors::kSignalPowheg, 22);
+            ds.push_back(d); ms.push_back(m); ws.push_back(w);
+            all.push_back(d); all.push_back(m); all.push_back(w);
         }
 
         // ONE common log-y range across all panels, so the nine are directly comparable by eye.
@@ -291,12 +353,16 @@ void plot_mc_data_pair_pt_in_eta(const char* wp = "tight")
 
         // ONE common ratio range too, for the same reason as the common y range: nine panels each
         // on its own ratio scale cannot be compared by eye, which is the whole point of the view.
-        std::vector<TH1*> rs;
-        for (size_t i = 0; i < eta_bins.size(); ++i)
+        std::vector<TH1*> rs, rws, r_all;
+        for (size_t i = 0; i < eta_bins.size(); ++i) {
             rs.push_back(McDataComprRatio::MakeRatio(ms[i], ds[i],
                                                      "r_eta" + std::to_string(i)));
+            rws.push_back(McDataComprRatio::MakeRatio(ws[i], ds[i],
+                                                      "rw_eta" + std::to_string(i)));
+            r_all.push_back(rs.back()); r_all.push_back(rws.back());
+        }
         double rlo = 0., rhi = 2.; bool rlog = false;
-        McDataComprRatio::AutoRatioRange(rs, rlo, rhi, rlog);
+        McDataComprRatio::AutoRatioRange(r_all, rlo, rhi, rlog);
         printf("[ratio] signal pair_pt_in_eta (9 panels, common) : y-range %.4g .. %.4g%s\n",
                rlo, rhi, rlog ? " (log)" : "");
 
@@ -315,30 +381,43 @@ void plot_mc_data_pair_pt_in_eta(const char* wp = "tight")
             StyleFrame(ds[i], lo, hi);
             McDataComprRatio::ApplyLogYLabelPolicy(ds[i], lo, hi);
             McDataComprRatio::HideXAxis(ds[i]);
-            ds[i]->Draw("E");
+            // POWHEG, Pythia, DATA -- data LAST so it sits on top (see the integrated panel).
+            ds[i]->Draw("AXIS");
+            ws[i]->Draw("E,same");
             ms[i]->Draw("E,same");
+            ds[i]->Draw("E,same");
 
             TLatex t; t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.06);
             t.DrawLatex(0.24, 0.88, Form("#eta^{pair} #in [%.1f, %.1f]",
                                          eta_bins[i].first, eta_bins[i].second));
             if (i == 0) {
-                TLegend* l = new TLegend(0.24, 0.08, 0.68, 0.28);
-                l->SetBorderSize(0); l->SetFillStyle(0); l->SetTextFont(42); l->SetTextSize(0.058);
-                l->AddEntry(ds[i], "pp data 2024", "lp");
-                l->AddEntry(ms[i], "Pythia, single-b", "lp");
+                // Upper RIGHT, not lower left: the pair-pT spectrum falls by ~5 decades, so the
+                // bottom-left corner that used to hold the legend is exactly where the high-pT
+                // tail of all three curves lives, and the POWHEG entry ran straight through its
+                // own markers. The upper-right quadrant is empty in every panel by construction.
+                TLegend* l = new TLegend(0.55, 0.60, 0.98, 0.88);
+                l->SetBorderSize(0); l->SetFillStyle(0); l->SetTextFont(42); l->SetTextSize(0.040);
+                l->AddEntry(ws[i], kPowhegLegend, "lp");
+                l->AddEntry((TObject*)nullptr, kPowhegCondLegend, "");
+                l->AddEntry(ms[i], kPythiaLegend, "lp");
+                l->AddEntry(ds[i], kDataLegend,   "lp");
                 l->Draw();
             }
 
             pad_ratio->cd();
             gPad->SetLogx();
             gPad->SetLogy(rlog);
-            TH1D* r = static_cast<TH1D*>(rs[i]);
+            TH1D* r  = static_cast<TH1D*>(rs[i]);
+            TH1D* rw = static_cast<TH1D*>(rws[i]);
             StyleFrame(r, rlo, rhi);
             McDataComprRatio::StyleRatioFrame(r, "p_{T}^{pair} [GeV]", rlo, rhi, rlog,
                                               McDataComprRatio::RelativeTextScale());
             r->Draw("E");
             McDataComprRatio::DrawUnityLine(r);
+            rw->Draw("E,same");
             r->Draw("E,same");
+            McDataComprRatio::DrawOutOfRangeMarkers(rw, rlo, rhi);
+            McDataComprRatio::DrawOutOfRangeMarkers(r,  rlo, rhi);
         }
         c.SaveAs((std::string(kOutDir) + "pair_pt_in_eta_subplots_mc_data_compr.png").c_str());
     }
