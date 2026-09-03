@@ -177,6 +177,9 @@ protected:
     virtual void        FillHistogramsFullSimRecoEffcies();
 
     virtual void        HistPostProcessExtra() override{ return MakeAndWriteMuPairRecoEffProjGraphs(); }
+    // Post-event-loop existence/non-emptiness guard for the pp24 MC-vs-data comparison
+    // histograms; see the definition in RDFBasedHistFillingPowhegFullsim.cxx.
+    void                AssertMcVsDataHistsFilled();
     virtual void        WriteOutputExtra() override;
     virtual void        CleanupExtra() override;
 

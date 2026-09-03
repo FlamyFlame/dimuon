@@ -121,9 +121,10 @@ Edit the cut in **all** of these (keep them in sync):
 | `RDFBasedHistFilling/RDFBasedHistFillingPbPb.cxx` | :920 (crossx); :1195 (ΔR-binned variant) | PbPb data crossx |
 | `RDFBasedHistFilling/RDFBasedHistFillingPythiaTruth.cxx` | :412 | truth signal acceptance |
 | `RDFBasedHistFilling/RDFBasedHistFillingPowhegTruth.cxx` | :158 | Powheg truth acceptance |
-| `RDFBasedHistFilling/RDFBasedHistFillingPythiaFullsim.cxx` | :129/:131 (`pass_signal_truth`/`_reco`) | pp reco-eff / det-resp |
+| `RDFBasedHistFilling/RDFBasedHistFillingPythiaFullsim.cxx` | `pass_signal_truth`/`pass_signal_reco` in `CreateBaseRDFsPythiaFullsimExtra` (was cited as :129/:131; :289/:291 as of 2026-09-03) | pp reco-eff / det-resp |
 | `RDFBasedHistFilling/RDFBasedHistFillingPythiaFullsimOverlay.cxx` | :69/:71 | PbPb (overlay) reco-eff |
-| `RDFBasedHistFilling/RDFBasedHistFillingPowhegFullsim.cxx` | :185/:186 | Powheg reco-eff (obsolete demo) |
+| `RDFBasedHistFilling/RDFBasedHistFillingPowhegFullsim.cxx` | `pass_signal_truth`/`pass_signal_reco` in `CreateBaseRDFsPowhegFullsimExtra`, still on the retired one-sided `q*eta < 2.2` (was cited as :185/:186; :259/:260 as of 2026-09-03) | Powheg reco-eff (obsolete demo) |
+| `RDFBasedHistFilling/RDFBasedHistFillingPowhegFullsim.cxx` | the `_single_b_pass_signal_truth_gapcut` filter in `CreateBaseRDFsPowhegFullsimExtra` (CURRENT cut set, from `ParamsSet`) | POWHEG FullSim pp17 curve of `plots/mc_data_compr/signal/pair_pt{,_in_eta_subplots}_mc_data_compr.png` — rerun the POWHEG fullsim RDF stage, then the two macros |
 | `plotting_codes/single_b_analysis/plot_sig_accept_cutflow_above_60GeV.cxx` | :40 (`kCuts`) | cutflow diagnostic — **must mirror the cut list/order** |
 | `Utilities/MCTrigEffPairSelection.h` | `SingleBSignalCutsReco()` | the **data-like mirror** of the PP `signal_cuts`, consumed by `FillMCTrigEffClosure.cxx`. Kept in lockstep by construction since 2026-08-18 (both read `ParamsSet`), but a signal-region change makes the MC-closure "data-like" variant STALE |
 | `plotting_codes/single_b_analysis/plot_dr_vs_pair_pt_diagnostic.cxx` | :134, :137 | pp24 reco diagnostic -- still on `q*eta < 2.2` |

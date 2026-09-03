@@ -197,6 +197,18 @@
             "var_name": "minv",
             "title": "m_{#mu#mu}^{reco} [GeV]",
             "binning": "minv_log_bins"
+        },
+        {
+            "hist_name": "truth_pair_eta_crossx",
+            "var_name": "truth_pair_eta",
+            "title": "#eta^{pair,truth}",
+            "binning": "pair_eta_crossx"
+        },
+        {
+            "hist_name": "truth_pair_pt_log_150",
+            "var_name": "truth_pair_pt",
+            "title": "p_{T}^{pair,truth} [GeV]",
+            "binning": "pT_bins_150"
         }
     ]
 }

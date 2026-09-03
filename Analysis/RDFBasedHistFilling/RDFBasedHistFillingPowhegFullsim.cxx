@@ -8,6 +8,83 @@
 #include <set>
 #include <sstream>
 
+// =================================================================================================
+// pp24 MC-vs-DATA comparison, SIGNAL family: the POWHEG FullSim partner of the Pythia FullSim
+// curve (docs/tracking/pp24_stats_and_powheg_fullsim_compr.md, W2).
+//
+// POWHEG FullSim exists only in **pp17 conditions** (sqrt(s_NN) = 5.02 TeV); there is no pp24
+// -conditions production. That is a real, stated caveat carried into the plot legend, NOT a
+// silent substitution.
+//
+// Two pre-existing selections in this class do NOT match the data's signal region and are
+// therefore NOT reused (both are left byte-unchanged because they feed the POWHEG reco-efficiency
+// and detector-response outputs -- additive pattern, per
+// docs/tracking/mc_data_compr_signal_generic_split.md D8):
+//   * `pass_signal_truth` (CreateBaseRDFsPowhegFullsimExtra, the `.Define` in the pair-category
+//     loop) still applies the LEGACY one-sided `q*eta < 2.2`, retired on 2026-08-17 in favour of
+//     the three `ParamsSet::single_mu_fiducial_gap_cuts` windows;
+//   * `df_single_b_weighted` (same function, just above that loop) is
+//     `from_same_b && truth_dr < 1.0`, whereas the Pythia FullSim partner this must match is
+//     `from_same_b` ALONE (RDFBasedHistFillingPythiaFullsim.cxx, `df_single_b_weighted`).
+// So a NEW node and a NEW filter are built beside them, applying the data signal region on TRUTH
+// quantities exactly as the Pythia mirror does.
+//
+// "Exactly as the Pythia mirror does" is a statement about the KINEMATIC + GAP selection, which
+// is byte-for-byte the same expression. `from_same_b` itself is each generator's OWN truth
+// tracing and the two algorithms differ (POWHEG walks to the earliest non-c-hadron parent and
+// requires it to be a b hadron, `PowhegTruthExtras.c`; Pythia compares eldest-b-hadron barcodes,
+// `PythiaTruthExtras.c`). For a figure whose subject IS generator dependence that is an
+// interpretation caveat, not a defect -- it is recorded in the signal-family README.
+// =================================================================================================
+namespace {
+
+// The single-b truth signal region on the DATA's cuts. Distinct from `_single_b_pass_signal_truth`
+// (legacy q*eta < 2.2, and a `truth_dr < 1.0` inherited from `_single_b`).
+const std::string& McVsDataSignalFilter(){
+    static const std::string f = "_single_b_pass_signal_truth_gapcut";
+    return f;
+}
+
+// The MC partner of the data's `h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts` and of the
+// Pythia FullSim `h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_single_b_pass_signal_truth`:
+// pair pT on `pT_bins_150` x pair eta on `pair_eta_crossx`, requested BY NAME so the three
+// histograms cannot be booked on different axes (.claude/CLAUDE.md Binnings rule 1).
+const std::vector<std::array<std::string,2>>& McVsDataVar2Ds(){
+    static const std::vector<std::array<std::string,2>> v = {
+        {"truth_pair_pt_log_150", "truth_pair_eta_crossx"}
+    };
+    return v;
+}
+
+// 1D projections of the same object, for cross-checking the 2D against its own projections.
+const std::vector<std::string>& McVsDataVar1Ds(){
+    static const std::vector<std::string> v = {
+        "truth_pair_pt_log_150", "truth_pair_eta_crossx"
+    };
+    return v;
+}
+
+// --- NORMALIZATION -------------------------------------------------------------------------
+// The comparison histograms may NOT use the class-wide `weight_norm`, and this is physics, not
+// style. `RDFBasedHistFillingPowheg::CreateBaseRDFsPowhegCommon` builds
+//     weight_norm = weight / SumMetaNentriesBeforeFilter(ALL input files)
+// and the non-mixed pp17 fullsim run reads TWO independent productions, bb and cc, with their own
+// generated statistics (measured 2026-09-03: N_bb = 4 905 394, N_cc = 4 879 931). A cross-section
+// is sigma_bb + sigma_cc = SUM_bb w/N_bb + SUM_cc w/N_cc; dividing everything by N_bb + N_cc
+// instead gives their N-weighted AVERAGE, i.e. each sample is ~2x under-normalized. That is
+// invisible in every ratio the class was built for (the reco-efficiency num/denom carry the same
+// weight and it cancels), which is why it has never mattered before -- but it is fatal for an
+// ABSOLUTE cross-section drawn beside data, and it does not cancel: the single-b signal lives
+// almost entirely in the bb sample (`from_same_b` requires a b-flavoured hadron ancestor,
+// PowhegTruthExtras.c:1088-1092), while the cc sample contributes ~half the denominator.
+//
+// So the comparison histograms get their own weight column, normalized PER SAMPLE via
+// RDataFrame's DefinePerSample. `weight_norm` and every histogram built from it are untouched.
+constexpr const char* kNgenSampleColumn    = "powheg_n_gen_sample";
+constexpr const char* kMcVsDataWeightColumn = "weight_norm_per_sample";
+
+} // namespace
+
 void RDFBasedHistFillingPowhegFullsim::SetIOPathsHook(){
     if (!useMixed){
         RDFBasedHistFillingPowheg::SetIOPathsHook();
@@ -145,6 +222,11 @@ void RDFBasedHistFillingPowhegFullsim::BuildFlattenedFilterToVarListMapPowhegFul
 
     for (auto filter : detector_response_filters)   InsertOrAppend(df_filter_and_weight_to_var1D_list_map, std::make_pair(filter, ""), detec_resp_var1Ds);    
     for (auto filter : detector_response_filters)   InsertOrAppend(df_filter_and_weight_to_var2D_list_map, std::make_pair(filter, ""), detec_resp_var2Ds);
+
+    // The pp24 MC-vs-data comparison histograms are DELIBERATELY not registered here: they are
+    // filled with an explicit, PER-SAMPLE-normalized weight column that is not `weight_norm`,
+    // so they go through the explicit (suffix, df, weight_col, vars...) overload in
+    // FillHistogramsFullSim instead. See the anonymous namespace at the top of this file.
 }
 
 void RDFBasedHistFillingPowhegFullsim::BuildHistBinningMapPowhegFullsimExtra(){
@@ -193,11 +275,86 @@ void RDFBasedHistFillingPowhegFullsim::CreateBaseRDFsPowhegFullsimExtra(){
         df_map.emplace(df_name + "_pass_tight_and_signal_truth_and_reco_weighted",
                        node_with_signal.Filter("pair_pass_tight && pass_signal_truth && pass_signal_reco"));
     }
+
+    // --- pp24 MC-vs-data comparison, SIGNAL family ---------------------------------------------
+    // The data signal region on TRUTH quantities, built to match the Pythia FullSim partner
+    // BIT FOR BIT (RDFBasedHistFillingPythiaFullsim.cxx:266,288-290):
+    //   from_same_b  (and NOT the `truth_dr < 1.0` that `df_single_b_weighted` above adds),
+    //   truth_minv in (1.08, 2.9), truth_pair_pt > 8,
+    //   the three fiducial gap windows on TRUTH q*eta of BOTH muons -- read from
+    //   ParamsSet::single_mu_fiducial_gap_cuts via FiducialGapCutExpr, never retyped.
+    // The dropped `truth_dr < 1.0` is expected to be INERT here (m < 2.9 GeV at pair pT > 8 GeV
+    // forces dR <~ 2m/pT = 0.725), but it is dropped rather than relied on, and the two counts
+    // are compared in the tracking doc.
+    if (!useMixed){
+        const std::string gap_truth =
+              ParamsSet::FiducialGapCutExpr("m1.truth_charge * m1.truth_eta")
+            + " && " + ParamsSet::FiducialGapCutExpr("m2.truth_charge * m2.truth_eta");
+
+        // PER-SAMPLE cross-section normalization (see the anonymous namespace at the top for why
+        // the shared `weight_norm` cannot be used for an ABSOLUTE cross-section here).
+        std::map<std::string, double> ngen_by_file;
+        for (const std::string& f : input_files)
+            ngen_by_file[f] = SumMetaNentriesBeforeFilter({f});
+        for (const auto& kv : ngen_by_file){
+            if (kv.second <= 0.)
+                throw std::runtime_error("CreateBaseRDFsPowhegFullsimExtra: non-positive "
+                                         "nentries_before_cuts for " + kv.first);
+            std::cout << "[PowhegFullsim] N_gen(" << kv.first << ") = " << kv.second << std::endl;
+        }
+
+        df_map.emplace("df" + McVsDataSignalFilter() + "_weighted",
+            df_op_weighted.Filter("from_same_b")
+                          .Filter("truth_minv > 1.08 && truth_minv < 2.9 && truth_pair_pt > 8 && "
+                                  + gap_truth,
+                                  "powheg_fullsim_mc_vs_data_signal_region")
+                          // EXACTLY ONE input path may match, and the match is checked rather
+                          // than taken from the first hit: `RSampleInfo::Contains` is a
+                          // SUBSTRING test, and this directory already holds `..._part1.root`
+                          // and `..._backup_before_dCache.root` beside the two inputs. A future
+                          // rename that made one input path a substring of another would
+                          // mis-normalize the whole curve with no error at all.
+                          .DefinePerSample(kNgenSampleColumn,
+                              [ngen_by_file](unsigned int, const ROOT::RDF::RSampleInfo& id){
+                                  double found = -1.;
+                                  int nmatch = 0;
+                                  for (const auto& kv : ngen_by_file)
+                                      if (id.Contains(kv.first)){ found = kv.second; ++nmatch; }
+                                  if (nmatch != 1)
+                                      throw std::runtime_error(
+                                          "PowhegFullsim per-sample N_gen: sample '"
+                                          + id.AsString() + "' matched " + std::to_string(nmatch)
+                                          + " input paths; exactly 1 is required.");
+                                  return found;
+                              })
+                          .Define(kMcVsDataWeightColumn,
+                                  std::string("weight / ") + kNgenSampleColumn));
+    }
 }
 
 void RDFBasedHistFillingPowhegFullsim::FillHistogramsFullSim(){
     if (!useMixed) FillHistogramsFullSimDetecResp();
     FillHistogramsFullSimRecoEffcies();
+
+    // pp24 MC-vs-data comparison, SIGNAL family. DELIBERATELY NOT wrapped in the try/catch the
+    // sibling methods use: a missing dataframe or a missing var1D entry then throws through
+    // `map_at_checked` / `Var1DSearch` instead of leaving the POWHEG curve to VANISH behind a
+    // `[SKIP]` nobody reads.
+    // That guarantee is NARROW, and deliberately stated as such: a bad COLUMN name is caught and
+    // `continue`d inside RDFBasedHistFillingBaseClass::FillHistogramsSingleDataFrame, and an
+    // exception thrown inside the RDF event loop is swallowed by ROOT, which then exits 0
+    // (.claude/kb reference_root_swallows_rdf_exceptions). Both of those are covered instead by
+    // AssertMcVsDataHistsFilled() below, which runs AFTER the loop.
+    if (!useMixed){
+        const std::string df_name = "df" + McVsDataSignalFilter() + "_weighted";
+        ROOT::RDF::RNode& node = map_at_checked(df_map, df_name,
+            Form("FillHistogramsFullSim (mc-vs-data signal family): df_map.at(%s)", df_name.c_str()));
+        // Explicit weight column: the PER-SAMPLE-normalized cross-section weight, NOT the
+        // shared `weight_norm`. The histogram name keeps the plain filter suffix.
+        FillHistogramsSingleDataFrame(McVsDataSignalFilter(), node, kMcVsDataWeightColumn,
+                                      McVsDataVar1Ds(), McVsDataVar2Ds(),
+                                      std::vector<std::array<std::string,3>>{});
+    }
 }
 
 void RDFBasedHistFillingPowhegFullsim::FillHistogramsFullSimDetecResp(){
@@ -516,7 +673,31 @@ void RDFBasedHistFillingPowhegFullsim::MakeAndWriteMuPairRecoEffProjGraphs(){
     }
 }
 
+// POST-EVENT-LOOP guard for the MC-vs-data comparison histograms. It exists because the two
+// failure modes that would silently drop the POWHEG curve cannot be caught where they happen:
+// ROOT swallows an exception thrown INSIDE the event loop and still exits 0, and a bad weight
+// column is caught and `continue`d by the base-class filler. Both leave a fresh output file with
+// the histogram simply absent or empty -- and the plotter would then draw two curves instead of
+// three with no error anywhere. Checked here, outside the loop, where a throw actually escapes.
+void RDFBasedHistFillingPowhegFullsim::AssertMcVsDataHistsFilled(){
+    if (useMixed) return;
+    const std::string h2 = "h_" + McVsDataVar2Ds()[0][1] + "_vs_" + McVsDataVar2Ds()[0][0]
+                         + McVsDataSignalFilter();
+    auto it = hist2D_map.find(h2);
+    if (it == hist2D_map.end() || it->second == nullptr)
+        throw std::runtime_error("RDFBasedHistFillingPowhegFullsim: the MC-vs-data comparison "
+                                 "histogram '" + h2 + "' was never produced. The event loop "
+                                 "dropped it silently; check the log for a cerr from "
+                                 "FillHistogramsSingleDataFrame or a swallowed RDF exception.");
+    if (it->second->GetEntries() <= 0)
+        throw std::runtime_error("RDFBasedHistFillingPowhegFullsim: '" + h2 + "' is EMPTY. The "
+                                 "signal-region filter or the per-sample weight column failed.");
+    std::cout << "[PowhegFullsim] " << h2 << " : " << it->second->GetEntries()
+              << " entries, integral " << it->second->Integral() << " pb" << std::endl;
+}
+
 void RDFBasedHistFillingPowhegFullsim::WriteOutputExtra(){
+    AssertMcVsDataHistsFilled();
     HistFillUtils::write_hist_map_vector(mu_pair_reco_eff_proj_graph_map, mu_pair_reco_eff_proj_graphs_to_not_write);
     HistFillUtils::write_hist_map_vector(mu_pair_reco_eff_proj_hist_map, mu_pair_reco_eff_proj_hists_to_not_write);
 }

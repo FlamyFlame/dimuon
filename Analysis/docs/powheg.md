@@ -91,6 +91,23 @@ where `nentries_before_cuts_sum` is the sum of `nentries_before_cuts` from the `
 
 If `meta_tree` is unavailable (legacy files), falls back to unscaled `weight`.
 
+> **`weight_norm` is NOT an absolute cross-section when a run reads bb AND cc.** The denominator
+> is the SUM of the two productions' generated statistics (measured for the pp17 fullsim,
+> 2026-09-03: `N_bb = 4 905 394`, `N_cc = 4 879 931`), so `weight_norm` gives their **N-weighted
+> average**, not `σ_bb + σ_cc` — each sample comes out ≈2× under-normalized. This cancels in every
+> ratio the class was written for (reco-efficiency numerator and denominator carry the same
+> weight), which is why it has gone unnoticed, but it is fatal for a spectrum drawn beside data.
+> The `_single_b_pass_signal_truth_gapcut` histograms therefore use their own column
+> `weight_norm_per_sample = weight / N_gen(this file)`, built with `DefinePerSample`
+> (`RDFBasedHistFillingPowhegFullsim.cxx`). Any future absolute-normalization consumer must do
+> the same. The POWHEG **truth** run is unaffected: only the bb file exists there.
+
+### Units
+
+`EventWeights[0]` is a cross-section in **pb**, not nb. Mean `EventWeights[0] ≈ 1.1 × 10⁷`; read
+as nb that would be an 11 mb b-bbar cross-section, ~55× the total σ_bb at 5.02 TeV. So POWHEG
+histograms need **no** nb→pb factor, unlike the AMI-weighted Pythia ones.
+
 ### Cross-section outlier cut
 
 Events with `|weight| > crossx_cut * filter_effcy` are rejected, where `crossx_cut = 5 × 10⁸`. This removes rare extreme-weight events produced by the NLO generator.
@@ -271,6 +288,27 @@ root -l -b <<'EOF'
 .q
 EOF
 ```
+
+### pp24 MC-vs-data comparison histograms (non-mixed fullsim only)
+
+Added 2026-09-03 (`docs/tracking/pp24_stats_and_powheg_fullsim_compr.md`). One extra filter and
+three extra histograms, all APPENDED — nothing existing is changed:
+
+| filter | what it selects |
+|---|---|
+| `_single_b_pass_signal_truth_gapcut` | `from_same_b` **and** the CURRENT pp24 data signal region on truth: `1.08 < truth_minv < 2.9`, `truth_pair_pt > 8`, both muons outside every `ParamsSet::single_mu_fiducial_gap_cuts` window in truth `q·η` |
+
+It exists because neither pre-existing selection matches the data:
+`pass_signal_truth` still applies the one-sided `q*eta < 2.2` retired on 2026-08-17, and
+`df_single_b_weighted` adds a `truth_dr < 1.0` that the Pythia fullsim partner does not have
+(verified inert inside this signal region: 517 459 pairs with and without it). Both are left
+byte-unchanged because they feed the reco-efficiency and detector-response outputs.
+
+Histograms (weight column `weight_norm_per_sample`, see §Weighting):
+`h_truth_pair_pt_log_150_…`, `h_truth_pair_eta_crossx_…` and the 2D
+`h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_…`, on the same named binnings
+(`pT_bins_150`, `pair_eta_crossx`) as the pp24 data and the Pythia fullsim partners.
+Consumer: `plotting_codes/mc_data_compr/plot_mc_data_pair_pt_in_eta.cxx`.
 
 ## Pipelines
 
