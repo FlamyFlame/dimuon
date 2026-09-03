@@ -551,7 +551,7 @@ ROOT::RDF::RNode AliasLeg(ROOT::RDF::RNode node, int leg, const std::string& wp_
 void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
                         bool use_tight_wp = true, bool do_step4 = false,
                         bool do_sanity = false, bool corrected_mc = false,
-                        bool sf_closure = false) {
+                        bool sf_closure = false, bool book_kn_stats = false) {
     using namespace MCTrigEff;
 
     if ((int)do_step3 + (int)do_step4 + (int)do_sanity > 1)
@@ -563,6 +563,9 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
     if (sf_closure && !corrected_mc)
         throw std::invalid_argument("FillMCTrigEffHists: sf_closure is a mode OF the corrected-MC "
                                     "path (SF forced to 1); it needs corrected_mc = true");
+    if (book_kn_stats && !do_step3)
+        throw std::invalid_argument("FillMCTrigEffHists: book_kn_stats (per-pTHat-slice "
+                                    "statistics) is a Step-3 addition; it needs do_step3 = true");
 
     const SampleConfig cfg = GetSampleConfig(sample);
     const Binnings bins = MakeBinnings();
@@ -1246,6 +1249,62 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
                            .Define("w_errB", "w_inv*w_inv*epsn1*epsn2");
             book_step3(dnerr, "errA", "w_errA");
             book_step3(dnerr, "errB", "w_errB");
+        }
+
+        // ---- STATISTICS BOOKKEEPING, per-pTHat-slice (2026-09-03, user request) --------------
+        // Same three quantities (count/sumw/sumw2) as the STATISTICS BOOKKEEPING block above,
+        // booked IDENTICALLY (same Step-3 selection, same axes), but read from the per-kn trees
+        // `muon_pair_tree_kin{N}_sign{M}` that the SAME mc_trig pair file already carries
+        // (PythiaAlgCoreT::fill_kn_trees_fullsim -- FillMuonPairTreePythia fills BOTH the merged
+        // and the per-kn tree for every pair, so this is the ntuple-processing OUTPUT, not a
+        // re-derivation from raw NTUPs). This isolates ONE pT-hat slice's contribution to each
+        // (pair pT, pair eta) cell so it can be scaled to a PROJECTED sample size without
+        // touching the other slices, e.g. "what would this cell look like with N events in kn4
+        // instead of the N_beam actually produced". Opt-in (book_kn_stats, default false):
+        // byte-unchanged for every existing call site; only the pp_full rerun that asks for it
+        // gets these extra keys, additively, in the SAME step3 output file.
+        if (book_kn_stats) {
+            for (int ikin : {4, 5}) {  // the two highest pT-hat slices (user's stats request)
+                for (int ksign = 1; ksign <= 2; ++ksign) {
+                    const std::string ktree = "muon_pair_tree_kin" + std::to_string(ikin)
+                                             + "_sign" + std::to_string(ksign);
+                    rdf_store.emplace_back(std::make_unique<ROOT::RDataFrame>(ktree, cfg.pair_file));
+                    ROOT::RDF::RNode dk = *rdf_store.back();
+                    dk = dk.Alias("m1_pt", "m1.pt").Alias("m1_eta", "m1.eta").Alias("m1_charge", "m1.charge")
+                           .Alias("m1_wp", "m1." + wp_col).Alias("m1_passmu4", "m1.passmu4")
+                           .Alias("m1_truth_pt", "m1.truth_pt").Alias("m1_truth_eta", "m1.truth_eta")
+                           .Alias("m2_pt", "m2.pt").Alias("m2_eta", "m2.eta").Alias("m2_charge", "m2.charge")
+                           .Alias("m2_wp", "m2." + wp_col).Alias("m2_passmu4", "m2.passmu4")
+                           .Alias("m2_truth_pt", "m2.truth_pt").Alias("m2_truth_eta", "m2.truth_eta");
+                    std::string ksel = "m1_wp && m1_pt > 4 && fabs(m1_eta) < 2.4 && "
+                                       "m2_wp && m2_pt > 4 && fabs(m2_eta) < 2.4 && " + kTruthFidPair;
+                    if (kVetoFwdLowPt) ksel += " && " + kFwdVetoPair;
+                    if (kApplyGapCut)  ksel += " && " + kGapPair;
+                    if (cfg.is_overlay) ksel += " && avg_centrality >= 0 && avg_centrality < 5";
+                    dk = dk.Filter(ksel, ktree + " step3 selection (kn-split statistics)")
+                           .Define("w2_pair_kn", "weight * weight");
+                    const std::string ktag = std::string(ksign == 1 ? "ss" : "os")
+                                            + "_kn" + std::to_string(ikin);
+                    acc2D.add("h_mc_paircount_vs_pt_eta_" + ktag,
+                        dk.Histo2D({uniq("h_mc_paircount_vs_pt_eta_" + ktag).c_str(),
+                                    ";p_{T}^{pair} [GeV];#eta^{pair};muon pairs",
+                                    static_cast<int>(bins.pair_pt_coarse.size()) - 1, bins.pair_pt_coarse.data(),
+                                    static_cast<int>(bins.pair_eta_coarse.size()) - 1, bins.pair_eta_coarse.data()},
+                                   "pair_pt", "pair_eta"));
+                    acc2D.add("h_mc_pairsumw_vs_pt_eta_" + ktag,
+                        dk.Histo2D({uniq("h_mc_pairsumw_vs_pt_eta_" + ktag).c_str(),
+                                    ";p_{T}^{pair} [GeV];#eta^{pair};#sigma [nb]",
+                                    static_cast<int>(bins.pair_pt_coarse.size()) - 1, bins.pair_pt_coarse.data(),
+                                    static_cast<int>(bins.pair_eta_coarse.size()) - 1, bins.pair_eta_coarse.data()},
+                                   "pair_pt", "pair_eta", "weight"));
+                    acc2D.add("h_mc_pairsumw2_vs_pt_eta_" + ktag,
+                        dk.Histo2D({uniq("h_mc_pairsumw2_vs_pt_eta_" + ktag).c_str(),
+                                    ";p_{T}^{pair} [GeV];#eta^{pair};#Sigma w^{2} [nb^{2}]",
+                                    static_cast<int>(bins.pair_pt_coarse.size()) - 1, bins.pair_pt_coarse.data(),
+                                    static_cast<int>(bins.pair_eta_coarse.size()) - 1, bins.pair_eta_coarse.data()},
+                                   "pair_pt", "pair_eta", "w2_pair_kn"));
+                }
+            }
         }
     }
 

@@ -10,6 +10,7 @@
 // [ub/GeV] -- a 1000x mislabel. Comparing to pp DATA (dsigma = N/L, L in pb^-1) needs nb->pb, x1000.
 
 #include "../../MuonObjectsParamsAndHelpers/FullSimSampleType.h"
+#include "../../Utilities/PtHatKn45ProjectedStats.h"
 
 // ============================ CONFIG ============================
 // g_is_test_sample : which pp24-fullsim production to read.
@@ -53,6 +54,7 @@ static double ForecastScale(double sf_test) { return g_is_test_sample ? sf_test 
 #include <TSystem.h>
 #include <TPad.h>
 #include <cmath>
+#include <stdexcept>
 #include <string>
 #include <vector>
 #include <array>
@@ -864,4 +866,177 @@ void plot_pythia_fullsim_kn_pt_crossx(bool is_test_sample = true, bool use_tight
     plot_stat_error_forecast(25, 150., "_150GeV");
     plot_err_fraction_map(20, 120., "");
     plot_err_fraction_map(25, 150., "_150GeV");
+}
+
+// ================================================================================================
+// PROJECTED-STATISTICS companion plot (2026-09-03, user request; see
+// docs/tracking/pythia_pp24_pthat_stats_projection.md). Answers "what would this spectrum look
+// like if the two highest pT-hat slices (kn4 = 70-125 GeV, kn5 = 125-300 GeV) had N_TARGET events
+// instead of the N_CURRENT the FULL sample was actually produced with" -- a decision aid for an
+// MC production request, NOT a new measurement.
+//
+// PHYSICS (doc Physics Procedure §1): the per-pair weight w = sigma_slice*genFiltEff/N_slice
+// scales as 1/N while the pair COUNT scales as N, so sum(w) -- the bin content plotted here -- is
+// an UNBIASED estimator of the slice's cross section independent of N. Only its STATISTICAL
+// UNCERTAINTY shrinks, as 1/sqrt(N). So: central values (bin content) of kn4/kn5 are left
+// UNTOUCHED, and their bin ERROR is divided by sqrt(sf), sf = N_target/N_current. kn0-3 (not part
+// of the request) get sf = 1, i.e. are byte-identical to the nominal `plot_impl` output. This is
+// the SAME mechanism as `ForecastScale`/`plot_stat_error_forecast` above (TEST->FULL forecast);
+// here it runs FULL-sample -> a LARGER FULL sample, unconditionally (not gated by
+// g_is_test_sample), for kn4/kn5 only.
+//
+// N_current/N_target (measured, both slices alike) live in Utilities/PtHatKn45ProjectedStats.h --
+// the SINGLE SOURCE OF TRUTH shared with the projected SS/OS statistics CSVs, so the plot and the
+// tables can never disagree about the scale factor.
+//
+// The ORIGINAL plot_impl PNGs are never touched: this writes to its OWN subdirectory with its own
+// file names (user instruction: "keep that original plot, but make a new plot").
+void plot_impl_projected(int nbins_arg, double xmax_arg, const std::string& suffix) {
+
+    if (g_is_test_sample)
+        throw std::runtime_error("plot_impl_projected: projecting additional statistics is only "
+            "meaningful starting from the CURRENT FULL sample (g_is_test_sample must be false)");
+
+    const double kSf = PtHatKn45Projected::kSf;   // = 3.75001..., both slices alike
+
+    const std::string input_file = InputFile();
+    const std::string output_dir = OutputDir() + "projected_stats/";
+    gSystem->mkdir(output_dir.c_str(), true);
+
+    const int nkn = 6;
+    const std::array<std::string, nkn> kn_labels_nominal = {
+        "#hat{p}_{T} 8-14 GeV",
+        "#hat{p}_{T} 14-24 GeV",
+        "#hat{p}_{T} 24-40 GeV",
+        "#hat{p}_{T} 40-70 GeV",
+        "#hat{p}_{T} 70-125 GeV",
+        "#hat{p}_{T} 125-300 GeV"
+    };
+    std::array<std::string, nkn> kn_labels = kn_labels_nominal;
+    kn_labels[4] += " (proj. 1.2M evt)";
+    kn_labels[5] += " (proj. 1.2M evt)";
+    const std::array<int, nkn> colors = {
+        kRed+1, kOrange+1, kGreen+2, kCyan+2, kBlue+1, kViolet+1
+    };
+
+    const int    nbins = nbins_arg;
+    const double xmin  = 8., xmax = xmax_arg;
+    std::vector<double> edges(nbins + 1);
+    const double lmin = std::log(xmin), lmax = std::log(xmax);
+    for (int i = 0; i <= nbins; i++)
+        edges[i] = std::exp(lmin + i * (lmax - lmin) / nbins);
+
+    const std::array<std::string, 2> var_names   = { "truth_pair_pt", "pair_pt" };
+    const std::array<std::string, 2> var_titles  = {
+        "truth p_{T}^{pair} [GeV]", "reco p_{T}^{pair} [GeV]"
+    };
+    const std::array<std::string, 2> filter_strs = {
+        "from_same_b",
+        ("from_same_b && " + PairWPFilter())
+    };
+    const std::array<std::string, 2> label_strs  = {
+        "truth p_{T}^{pair}", "reco p_{T}^{pair}"
+    };
+    const std::array<std::string, 2> out_names   = {
+        "truth_pair_pt_kn_projected" + suffix, "reco_pair_pt_kn_projected" + suffix
+    };
+
+    for (int ivar = 0; ivar < 2; ivar++) {
+        const auto& var     = var_names[ivar];
+        const auto& xtitle  = var_titles[ivar];
+        const auto& filter  = filter_strs[ivar];
+        const auto& label   = label_strs[ivar];
+        const auto& outname = out_names[ivar];
+
+        std::vector<TH1D*> hists(nkn);
+        for (int ikn = 0; ikn < nkn; ikn++) {
+            const std::string tree = "muon_pair_tree_kin" + std::to_string(ikn) + "_sign2";
+            ROOT::RDataFrame df(tree, input_file);
+            auto hptr = df.Filter(filter)
+                          .Histo1D(ROOT::RDF::TH1DModel{
+                              ("hproj_" + var + "_kn" + std::to_string(ikn)).c_str(), "",
+                              nbins, edges.data()
+                          }, var, "weight");
+            hists[ikn] = (TH1D*)hptr->Clone();
+            hists[ikn]->SetDirectory(nullptr);
+            hists[ikn]->Scale(1., "width");   // differential; central values UNCHANGED by the projection
+
+            if (ikn == 4 || ikn == 5)         // kn4/kn5 ONLY: stat. error -> what N_target buys
+                for (int ib = 1; ib <= hists[ikn]->GetNbinsX(); ib++)
+                    hists[ikn]->SetBinError(ib, hists[ikn]->GetBinError(ib) / std::sqrt(kSf));
+
+            hists[ikn]->SetLineColor(colors[ikn]);
+            hists[ikn]->SetMarkerColor(colors[ikn]);
+            hists[ikn]->SetMarkerStyle(20);
+            hists[ikn]->SetMarkerSize(0.7);
+            hists[ikn]->SetLineWidth(1);
+        }
+
+        double ymax = 0.;
+        for (auto* h : hists) ymax = std::max(ymax, h->GetMaximum());
+        double ymin_nonzero = 1e30;
+        for (auto* h : hists)
+            for (int ib = 1; ib <= h->GetNbinsX(); ib++)
+                if (h->GetBinContent(ib) > 0)
+                    ymin_nonzero = std::min(ymin_nonzero, h->GetBinContent(ib));
+        if (ymin_nonzero > 1e29) ymin_nonzero = 1e-12;
+
+        TCanvas* c = new TCanvas(outname.c_str(), "", 800, 700);
+        gPad->SetLeftMargin(0.16);
+        gPad->SetRightMargin(0.05);
+        gPad->SetBottomMargin(0.14);
+        gPad->SetLogx();
+        gPad->SetLogy();
+
+        for (int ikn = 0; ikn < nkn; ikn++) {
+            auto* h = hists[ikn];
+            h->GetXaxis()->SetTitle(xtitle.c_str());
+            h->GetYaxis()->SetTitle("d#sigma/dp_{T} [nb/GeV]");
+            h->GetXaxis()->SetRangeUser(xmin, xmax);
+            h->GetYaxis()->SetRangeUser(ymin_nonzero * 0.3, ymax * 5.);
+            h->GetXaxis()->SetTitleSize(0.045);
+            h->GetYaxis()->SetTitleSize(0.045);
+            h->GetXaxis()->SetTitleOffset(1.1);
+            h->GetYaxis()->SetTitleOffset(1.6);
+            if (ikn == 0) h->Draw("E");
+            else          h->Draw("E same");
+        }
+
+        TLegend* leg = new TLegend(0.50, 0.60, 0.93, 0.92);
+        leg->SetBorderSize(0);
+        leg->SetFillStyle(0);
+        leg->SetTextSize(0.028);
+        for (int ikn = 0; ikn < nkn; ikn++)
+            leg->AddEntry(hists[ikn], kn_labels[ikn].c_str(), "lep");
+        leg->Draw();
+
+        TLatex lat;
+        lat.SetNDC();
+        lat.SetTextSize(0.032);
+        lat.DrawLatex(0.17, 0.93, (std::string("Pythia fullsim pp24 FULL sample, single-b signal, ")
+            + label).c_str());
+        TLatex lat_note;
+        lat_note.SetNDC();
+        lat_note.SetTextSize(0.024);
+        lat_note.SetTextColor(kBlue+2);
+        lat_note.DrawLatex(0.17, 0.895,
+            "Projection: kn4/kn5 error bars scaled to 1.2M evt (from 320k); central values unchanged");
+
+        c->SaveAs((output_dir + outname + ".png").c_str());
+
+        for (auto* h : hists) delete h;
+        delete c;
+    }
+}
+
+// Entry point: nominal-WP FULL-sample projection, both binnings. is_test_sample must already be
+// false when this runs (set by a prior plot_pythia_fullsim_kn_pt_crossx(false, ...) call, or here
+// directly) -- projecting from the TEST sample would answer a different, uninteresting question.
+void plot_pythia_fullsim_kn_pt_crossx_projected(bool use_tight_wp = true) {
+    g_is_test_sample = false;
+    g_use_tight_wp   = use_tight_wp;
+    gStyle->SetOptStat(0);
+    gStyle->SetOptTitle(0);
+    plot_impl_projected(20, 120., "");
+    plot_impl_projected(25, 150., "_150GeV");
 }
