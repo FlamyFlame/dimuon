@@ -46,8 +46,10 @@
 #             <mode dir>/separate_fit_forms/)
 #   Stage 4  plot_mc_trig_eff_closure_compare -> <plot base>/closure/approach_comparison/*.png
 #            the 4 approaches overlaid with the no-trigger series (5 lines), PLUS the single-panel
-#            pair-eta-summed squared non-closure D^2(pT) = sum_eta (C-1)^2 built from the same
-#            ratios. 4 PNGs. Needs ALL FOUR approaches, so it runs for the 8-bin binning only.
+#            pair-eta-summed chi^2/ndof non-closure chi^2/ndof(pT) = [sum_eta (C-1)^2/sigma_C^2] /
+#            n_dof built from the same ratios (user, 2026-09-03 -- each term is normalized by its
+#            statistical variance, replacing the un-normalized D^2 = sum_eta (C-1)^2 of
+#            2026-08-25). 4 PNGs. Needs ALL FOUR approaches, so it runs for the 8-bin binning only.
 #
 # WHY ARTEFACT VALIDATION AND NOT EXIT CODES: a ROOT macro that throws still exits 0 (the
 # exception aborts the interpreter after ROOT has decided the batch job "ran"). Every stage is
@@ -333,11 +335,11 @@ elif [[ "${HAVE_ALL}" != "1" || " ${PTBINS} " != *" 8 "* ]]; then
   log "Stage 4: SKIPPED -- the overlay needs all four approaches on the 8-bin axis (MODES='${MODES}', PTBINS='${PTBINS}')"
 else
   # Two figures per sample version: the 9-panel overlay, and the single-panel pair-eta-summed
-  # squared non-closure D^2(pT) = sum_eta (C-1)^2 built from the SAME ratios.
+  # chi^2/ndof non-closure built from the SAME ratios (each term normalized by sigma_C^2).
   CMP_PNGS=(closure_compare_pair_pt_all_opposite_sign.png
             closure_compare_pair_pt_single_b_signal_cuts.png
-            closure_compare_nonclosure_squared_all_opposite_sign.png
-            closure_compare_nonclosure_squared_single_b_signal_cuts.png)
+            closure_compare_nonclosure_chi2_all_opposite_sign.png
+            closure_compare_nonclosure_chi2_single_b_signal_cuts.png)
   for wp in ${WPS}; do
     WPF="$(wp_flag "$wp")"; WPS_SUF="$(wp_suffix "$wp")"
     CDIR="${PLOT_BASE}/mc_based$(plot_tag "8" "$wp")/closure/approach_comparison"
@@ -355,7 +357,7 @@ else
       val_fresh "${CDIR}/${f}" "${CMP_INPUTS[@]}"
     done
     log "  ${#CMP_PNGS[@]} PNGs in ${CDIR}"
-    grep -hE "inclusive closure|D\\^2 summed over pair pT" "${LOG_DIR}/compare_${wp}.log" 2>/dev/null | sed 's/^/  /'
+    grep -hE "inclusive closure|chi\\^2/ndof summed over pair pT" "${LOG_DIR}/compare_${wp}.log" 2>/dev/null | sed 's/^/  /'
   done
 fi
 

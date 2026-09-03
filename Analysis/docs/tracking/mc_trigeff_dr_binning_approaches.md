@@ -25,6 +25,11 @@ statistics** and compares all four on an equal footing:
 The three merged pair-η cells are **negative-η endcap (−2.4, −1.0)**, **barrel (−1.0, +1.0)**,
 **positive-η endcap (+1.0, +2.4)** — the physical detector regions, not an arbitrary regrouping.
 
+**SUPERSEDED 2026-09-03 (D11):** the pair-η merge is now the SIGN-INDEPENDENT |η^pair| grouping
+**|η| < 1.0**, **1.0 ≤ |η| < 2.0**, **2.0 ≤ |η| < 2.4** — see D11 below. Every "negative-eta
+endcap / positive-eta endcap" reference in this doc from this point back describes the RETIRED
+2026-08-24 grouping; R1/R2's numbers were measured against it and are historical, not current.
+
 Each approach gets its own Step-3 fit tree (`expo` + `polyu_fixedRp` + `interp`, no-plateau-correction,
 opposite sign) and its own MC closure. The four closures are then **overlaid in one figure** so the
 approach that corrects the pp24 cross-section most accurately can be chosen from evidence.
@@ -120,9 +125,10 @@ The correction itself is still looked up **per pair**, in its own approach's cel
 ε_ΔR does not know which histogram bin it will later be filled into, so nothing about the physics
 changes when the presentation binning does.
 
-#### §PP-2 The pair-η grouping
+#### §PP-2 The pair-η grouping (SUPERSEDED 2026-09-03 — see D11 for the current definition)
 
-Group boundaries: the **interior** edges −1.0 and +1.0, which MUST already exist in
+**Original (2026-08-24), retired:** group boundaries the **interior** edges −1.0 and +1.0
+(negative-eta endcap / barrel / positive-eta endcap), which MUST already exist in
 `pair_eta_proj_ranges_coarse_incl_gap`; the outer edges are read from the source axis. A boundary
 that is not an existing edge is a THROW, never a rebin. Consequences, exactly as for the pair-p_T
 merge (parent R32):
@@ -138,6 +144,23 @@ merge (parent R32):
   source bins span 1.4/0.5/0.4 units of η and the forward-negative anomaly sits in only one of them,
   so the mixture is not uniform — this is a cost of the approach, to be read off the closure, not
   assumed away.
+
+**Current (2026-09-03), per D11:** group boundaries the **interior |η| edges** 1.0 and 2.0 (a
+sign-independent fold: |η| < 1.0, 1.0 ≤ |η| < 2.0, 2.0 ≤ |η| < 2.4), each of which MUST be an
+existing edge on **both sides of 0** of `pair_eta_proj_ranges_coarse_incl_gap` (the source axis
+must be symmetric about 0 for a sign-independent fold to be well defined). The barrel group
+(|η| < 1.0) straddles zero and is therefore one contiguous source range; each forward group is the
+**union** of a negative-eta and a positive-eta source sub-range — the one grouping on this axis a
+single contiguous range cannot describe, so `DrAxisGroups` (`dr_correction_cell_groups.h`) now
+carries a **list** of source sub-ranges per group rather than one, and
+`DrCellRatioMultiRange` (`dr_correction_ratio.h`) sums every sub-range's num/denom/errA/errB before
+the ratio, generalizing `DrCellRatioRange`. Same non-new-binning guarantees as above; same opt-in
+suffixing. **`DrCorrectionEvaluator::Eval` (`dr_correction_apply.h`) looks a pair's cell up by
+`|pair_eta|` whenever the loaded mode folds eta** (`eta_folded` member, set from
+`DrCorrModeMergeEta`) — the folded output axis runs 0 → η_max, so a signed lookup would send every
+negative-η pair to the underflow bin and silently return `eps_dR = 1` for half the sample; this was
+fixed in the same edit that introduced the fold, even though nothing downstream calls `Eval` with
+a folded mode yet (§4 below).
 
 #### §PP-3 The delivered ε_ΔR: the expo → polyu → interp cascade
 
@@ -188,37 +211,54 @@ and the cascade-corrected series of A (kRed), B (kBlue), C (kGreen+2), D (kMagen
 approach's points MUST be numerically identical to the ones in its own subdirectory: same fill,
 same cascade, only overlaid.
 
-#### §PP-5 The summed squared non-closure D^2 (user, 2026-08-25)
+#### §PP-5 The pair-η-summed non-closure chi^2/ndof (user, 2026-08-25; RENORMALIZED 2026-09-03)
 
 A second figure in the same `approach_comparison/` subdirectory compresses the nine pair-η panels
 of one approach into a single curve, so the four can be read against each other bin by bin:
 
 ```
-D^2(p_T^pair) = Sum over pair-eta bins of ( C(p_T^pair, eta^pair) - 1 )^2
+chi^2(p_T^pair)      = Sum over pair-eta bins of ( C(p_T^pair, eta^pair) - 1 )^2 / sigma_C^2
+chi^2/ndof(p_T^pair) = chi^2(p_T^pair) / n_dof(p_T^pair)
 ```
 
-over exactly the C the 9-panel figure's lower pads draw, on the same crossx presentation binning
-(§PP-1). One curve per approach, four overlaid in one panel with a TLegend.
+over exactly the C (and its conditional/binomial-correct sigma_C) the 9-panel figure's lower pads
+draw, on the same crossx presentation binning (§PP-1). One curve per approach, four overlaid in one
+panel with a TLegend, plus a dashed reference line at chi^2/ndof = 1 (perfect closure).
 
-**It is a distance from closure, NOT a chi^2** — the terms are not divided by their uncertainties
-(the user's definition), so the quantity says how FAR an approach lands from unity, not how
-SIGNIFICANT that distance is; a noisy cell and a genuinely mis-corrected cell contribute alike.
-It is therefore never called a chi^2 on the canvas, in the axis title or in the filename. Each
-point carries the propagated bar sigma(D^2) = 2 sqrt(Sum (C-1)^2 sigma_C^2), the only part of the
-figure that knows about statistics.
+**RENORMALIZED (user, 2026-09-03): it is now a PROPER chi^2** — the 2026-08-25 original divided
+neither term by its uncertainty ("a distance from closure, NOT a chi^2 ... the user's
+definition"), and R2 below showed why that reading is not meaningful: the un-normalized sum was
+dominated by whichever cells happened to be statistics-starved, on equal footing with cells that
+are genuinely mis-corrected (the reviewer's own check on it, "bin 14 alone is 6.998 ± 10.8 — a
+~0.6σ effect," makes the point directly). Each term is now divided by `sigma_C^2` before summing,
+so `chi^2/ndof` says how SIGNIFICANT the deviation from closure is, comparably across pair-p_T
+bins with different `n_dof`, not merely how far the raw ratios sit from 1. The bar on each point is
+NOT a propagated point error — a chi^2 statistic is judged against its own null distribution, not
+against itself with a Gaussian uncertainty — it is the null-hypothesis (perfect-closure) width
+`sqrt(2/n_dof(p_T))`, i.e. how much `chi^2/ndof` would fluctuate around 1 by statistics alone if
+the correction closed exactly.
 
-Two constraints on how it is formed:
+Two constraints on how it is formed (unchanged from 2026-08-25):
 
-- **A pair-η cell enters the sum only where the no-trigger DENOMINATOR is non-empty.** An empty
-  cell has C = 0 and sigma_C = 0 by construction (`dr_correction_ratio.h` returns both as 0 for
-  D <= 0), so it would otherwise contribute a spurious (0-1)^2 = 1 and the curve would count empty
-  phase space as maximal non-closure. A cell with a filled denominator but nothing passing the
-  trigger DOES contribute its (0-1)^2 = 1 — that is a real total non-closure.
+- **A pair-η cell enters the sum only where the no-trigger DENOMINATOR is non-empty AND
+  sigma_C > 0.** An empty cell has C = 0 and sigma_C = 0 by construction (`dr_correction_ratio.h`
+  returns both as 0 for D <= 0) and is excluded, avoiding a division by zero. A cell with a filled
+  denominator but nothing passing the trigger has C = 0 and sigma_C = max(0,1)/n_eff > 0 (the k=0
+  boundary case in `SetConditionalRatioErrors`), so it correctly contributes a large but finite
+  term — real total non-closure, not a spurious infinity.
 - **The four sums run over the SAME cells**, because the four denominators are already checked
-  bin by bin to be identical; the same cells are skipped in every approach.
+  bin by bin to be identical; the same cells are skipped in every approach, so `n_dof(p_T)` does
+  not depend on the approach.
 
-D^2 is a pure sum, **not a density** — never width-scaled, and its `Integral` is taken without
-the `"width"` option.
+`chi^2` (and its `n_dof`) are pure sums, **not a density** — never width-scaled, and their
+`Integral` is taken without the `"width"` option. Do NOT combine pair-η bins' statistics (numerator
+and denominator) before forming C and only then compare that combined ratio to 1: pair-η bins can
+carry opposite-sign non-closure (the r16578 forward anomaly, parent R8/R10/R14, is not charge/η
+blind), and pre-combining would let such structured, physically real non-closure cancel in the
+combined ratio — exactly the failure §PP-1's "read out in the cross-section's own cells" and D2's
+never-regroup-to-hide-structure principle exist to prevent. Summing independent per-η
+`(C-1)^2/sigma_C^2` terms is the standard way to build a multi-bin chi^2 across independent cells
+and preserves that structure; only the missing `/sigma_C^2` normalization was the defect.
 
 ### 4. Negative constraints
 
@@ -231,9 +271,12 @@ the `"width"` option.
   the pair-η ones from `CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap`, the closure's
   presentation axis from `ParamsSet::pT_bins_150` — all read, never retyped. The merges are
   projections of those axes, not new edges.
-- **The two endcaps are never merged with each other.** They differ physically (parent R8/R10/R14:
-  the r16578 anomaly is forward-*negative* only), and the closure's principal finding (closure doc
-  R5) lives in one of them.
+- **SUPERSEDED 2026-09-03 (D11):** this doc's original constraint was "the two endcaps are never
+  merged with each other" (parent R8/R10/R14: the r16578 anomaly is forward-*negative* only). D11
+  reverses this — the pair-η merge now explicitly DOES fold the negative- and positive-eta endcap
+  bins together by |η|, because the measured dR correction barely depends on sign. The r16578
+  anomaly is a single-muon-leg reconstruction effect (parent R8/R10/R14), a different quantity from
+  the pair-level dR correlation this doc fits; the two findings are not in tension.
 - **No trigger requirement anywhere in the denominator**, and **do NOT apply ε_ΔR^single (Step 4)**
   to the pp weight — both inherited unchanged from the closure doc §4.
 - **Do NOT re-derive the sample selection from raw NTUPs.** Everything reads the ntuple-processing
@@ -277,6 +320,42 @@ configured with the winning mode and tier list, not edited to match it.
 own pair-η axis, throwing if either is not an existing edge. The outer edges come from the axis.
 This is the same discipline `MakeDrPtGroups` uses (which reads every edge from the axis and merges
 by index) applied to a grouping that cannot be expressed by an index rule alone.
+**Superseded 2026-09-03 by D11's boundary set — the LOOKUP discipline itself is unchanged.**
+
+### D11: the pair-η merge is now SIGN-INDEPENDENT (|η| fold), not the signed 3-region split (user, 2026-09-03)
+**Old (D10 / 2026-08-24):** negative-eta endcap (−2.4,−1.0) / barrel (−1.0,1.0) / positive-eta
+endcap (1.0,2.4) — a signed 3-way split, chosen because the r16578 forward anomaly is
+negative-eta-only (parent R8/R10/R14) and the two endcaps were deliberately kept apart.
+**New:** |η^pair| < 1.0 (barrel) / 1.0 ≤ |η| < 2.0 / 2.0 ≤ |η| < 2.4 — a sign-independent fold.
+**Reason (user, 2026-09-03):** having now measured the dR correction in both groupings' cells, the
+correlation barely depends on the SIGN of pair η, while the >2.0-vs-<2.0 split WITHIN the endcap is
+a much bigger effect than any negative/positive asymmetry — the boundary that matters is how
+forward a pair is, not which side of η = 0 it is on. This is the **new default** merged pair-η
+grouping for the dR correction; the un-merged 9-bin grid (`nocorr`, `nocorr_ptmerge`) is untouched
+and remains the alternative.
+**Consequences:**
+- `MakeDrEtaGroups`'s boundary set moves from `DrEtaMergeInteriorBoundaries()` = {−1.0, +1.0}
+  (signed, contiguous groups) to `DrEtaAbsMergeInteriorBoundaries()` = {1.0, 2.0} (|η|, folded
+  groups) — see the current §PP-2 above and `dr_correction_cell_groups.h`.
+- `DrAxisGroups` generalises from one `[lo,hi]` per group to a **list** of source sub-ranges per
+  group (`DrCellRatioMultiRange` in `dr_correction_ratio.h` sums every sub-range before the
+  ratio) — the only structural change this decision required, because a forward |η| group is the
+  union of a negative- and a positive-eta source sub-range.
+- **R1/R2's numbers (below) describe the RETIRED signed grouping and are historical.** They are
+  kept, not deleted (tracking-doc discipline), but must not be read as current.
+- `DrCorrectionEvaluator::Eval` was fixed to look a pair's cell up by `|pair_eta|` for a folded
+  mode (previously it always used the signed value, which would have silently broken any consumer
+  of a merge-eta mode — caught and fixed in this edit even though nothing calls `Eval` with a
+  merge-eta mode yet, §4).
+- **Overwrites, does not preserve, the old grouping's outputs**: `nocorr_etamerge` and
+  `nocorr_etamerge_ptmerge` fit files and plots (user: "overwrite previous results" — this is not a
+  third alternative alongside the signed split, it replaces it).
+- Out of THIS request's scope (user, 2026-09-03): the MC closure re-run (`FillMCTrigEffClosure.cxx`
+  §PP-1's coverage guard compares `MakeDrEtaGroups(...).edges.front()/.back()` against the signed
+  presentation axis and would now throw for a merge-eta mode, since `.edges` is |η|-based when
+  folded — flagged in-code, not fixed, pending the closure re-run) and the pp24 crossx application
+  (`DrCorrCrossxMode()` is `nocorr_ptmerge`, which never merges eta, so it is unaffected either
+  way). **Propagation to the crossx / MC-data comparison plots awaits explicit user approval.**
 
 ---
 
@@ -304,6 +383,9 @@ by index) applied to a grouping that cannot be expressed by an index rule alone.
 11. [ ] Run everything, sanity-check, record numbers here; reviews; commit.
 12. [x] `plot_mc_trig_eff_closure_compare.cxx`: the **summed squared non-closure** panel
     (user, 2026-08-25; §PP-5). → `/review-plot`.
+13. [x] `plot_mc_trig_eff_closure_compare.cxx`: **renormalize** the non-closure panel into a proper
+    `chi^2/ndof` (user, 2026-09-03; §PP-5). `/review-plot` did NOT complete (reviewer subagent
+    stopped by the user; done from the executor's own verification per explicit user request).
 
 ## Progress Log
 
@@ -365,6 +447,23 @@ by index) applied to a grouping that cannot be expressed by an index rule alone.
   dynamic range exceeds 100 (it does: 632 all-OS, 727 signal). `/review-plot` PASS at iteration 1,
   every reported number independently re-derived from the TH2Ds by the reviewer (MATCH).
   See R2 for the numbers.
+
+- 2026-09-03 — **Step 13: RENORMALIZED the non-closure panel into a proper χ²/ndof** (§PP-5), per
+  the advisor's flag that the 2026-08-25 unnormalized D² was not statistically meaningful. Each
+  term `(C_η−1)²` is now divided by `σ_C,η²` (the same conditional/binomial-correct error already
+  used for the ratio pads); plotted as `χ²/ndof(p_T) = [Σ_η (C−1)²/σ_C²] / n_dof` with `n_dof` the
+  existing per-bin contributing-cell count (`ncell[bx]`, identical across all four approaches — the
+  denominators are enforced identical). Point error bar is the null-hypothesis width `√(2/ndof)`,
+  not a propagated point error. PNGs renamed `closure_compare_nonclosure_squared_*` →
+  `closure_compare_nonclosure_chi2_*` (macro `file_chi2` field + `run_mc_trigeff_closure.sh`
+  `CMP_PNGS`/comment/log-grep, all updated together). Deliberately reused the EXISTING closure ROOT
+  files on disk (2026-08-24/25, verified by mtime to predate D11 — this fix does not touch the
+  pair-η-grouping work; C/D's numbers below are still on the retired signed grouping, per D11's own
+  note). Compiled clean (ACLiC, no new warnings), rerun both WPs. **Formal `/review-plot` did not
+  complete — the reviewer subagent was stopped by the user mid-run, who then explicitly asked to
+  mark this done from the executor's own compile/rerun/visual verification instead** (this is a
+  deviation from the usual binding review-on-plot-change rule, made explicitly by the user, not a
+  skipped step). See R3 for the numbers.
 
 ## Results & Observations
 
@@ -459,6 +558,49 @@ Three readings, all of which the choice of approach has to face:
 
 Nothing here is yet a decision — recorded as measurement.
 
+### R3. The non-closure χ²/ndof, renormalized (2026-09-03)
+
+Same inputs as R2 (the retired signed pair-η grouping, historical — D11 postdates this fill), same
+four approaches, but each `(C-1)^2` term is now divided by `σ_C^2` before summing, per §PP-5's
+2026-09-03 renormalization.
+
+χ²/ndof summed over all 15 crossx pair-p_T bins (`n_dof` shared by all four approaches, since their
+denominators are identical):
+
+| version | n_dof | A `nocorr` | B `nocorr_ptmerge` | C `nocorr_etamerge` | D `nocorr_etamerge_ptmerge` |
+|---|---|---|---|---|---|
+| Tight, all opposite-sign | 135 | 15.474 | 15.333 | 12.129 | 12.185 |
+| Tight, single-b signal | 133 | 8.441 | 8.285 | 9.336 | 9.414 |
+| Medium, all opposite-sign | 135 | 14.909 | 14.953 | 12.696 | 12.745 |
+| Medium, single-b signal | 133 | 7.940 | 8.043 | 9.555 | 9.638 |
+
+Split at the pair-p_T merge edge (bin 12, 68.65 GeV — same bin R2 found):
+
+| version | range | n_dof | A | B | C | D |
+|---|---|---|---|---|---|---|
+| Tight, all OS | bins 1-11 | 99 | 20.151 | 20.151 | 15.789 | 15.789 |
+| Tight, all OS | bins 12-15 | 36 | 2.609 | 2.081 | 2.063 | 2.275 |
+| Tight, signal | bins 1-11 | 99 | 10.375 | 10.375 | 11.390 | 11.390 |
+| Tight, signal | bins 12-15 | 34 | 2.808 | 2.199 | 3.357 | 3.660 |
+| Medium, all OS | bins 1-11 | 99 | 19.618 | 19.618 | 16.569 | 16.569 |
+| Medium, all OS | bins 12-15 | 36 | 1.958 | 2.122 | 2.045 | 2.229 |
+| Medium, signal | bins 1-11 | 99 | 10.053 | 10.053 | 11.710 | 11.710 |
+| Medium, signal | bins 12-15 | 34 | 1.788 | 2.191 | 3.278 | 3.604 |
+
+**This changes the reading, not just the number.** R2's un-normalized D² put ~90% of the total in
+the top 4 (statistics-starved) bins and concluded the ranking was mostly a ranking of noise there.
+Normalized, it is the OPPOSITE: **the well-measured low-p_T bins (1-11, huge MC statistics) carry
+χ²/ndof ~ 10-20 — far from the closure reference of 1 — while the statistics-starved high-p_T bins
+(12-15) sit at χ²/ndof ~ 2-4, close to consistent with 1 given their own bar `√(2/ndof)`.** The
+residual non-closure is small in absolute size (the "inclusive closure" ratios all sit at
+0.988-0.996, i.e. within 0.4-1.2% of 1) but, with pp24's full-sample statistics, that small
+residual is highly statistically significant almost everywhere on the axis — not a noise artefact
+confined to a few bins. This is a genuinely different conclusion from R2's and belongs in front of
+whichever approach gets chosen next (Remaining Work 1 / R2's "nothing here is yet a decision").
+The four-approach ranking itself is qualitatively similar to R2 (C/D beat A/B on all-OS; A/B beat
+C/D on signal), so which grouping to adopt is still an open call, now on more solid statistical
+footing.
+
 ## Remaining Work
 
 1. **Replace `DrCorrectionCrossxEvaluator` with the general cascade class** once an approach is
@@ -466,11 +608,24 @@ Nothing here is yet a decision — recorded as measurement.
 
 ## Latest Stage
 
-**2026-08-25 — the comparison figure set now has TWO members per sample version.** Step 12
-(§PP-5, the summed squared non-closure D^2) is done, reviewed (PASS) and its numbers are in R2.
+**2026-09-03 — Step 13: the non-closure panel is now a proper χ²/ndof, not the un-normalized D².**
+§PP-5 renormalized (advisor's flag), code + pipeline + doc updated, both WPs rerun on the EXISTING
+(pre-D11, 2026-08-24/25) closure files, numbers in R3. **Formal `/review-plot` did NOT complete**
+(reviewer subagent stopped by the user, who then explicitly asked to mark this done from the
+executor's own verification instead) — flag for a real review pass later if this panel is ever
+relied on for a final decision, not just recorded as measurement. R3's headline: the well-measured
+low-p_T bins, not the sparse high-p_T ones, carry most of the statistical significance — opposite
+of what R2's un-normalized reading suggested.
+
+**D11 (pair-η grouping → sign-independent \|η\| fold) is a SEPARATE, still-open thread on this same
+doc** (see Design Decisions), not touched by Step 13: its closure re-run is explicitly out of that
+request's scope pending a coverage-guard fix in `FillMCTrigEffClosure.cxx` (D11's own note). R2/R3
+both still describe the RETIRED signed grouping for approaches C/D.
+
 Everything else is as the 2026-08-24 entry left it: steps 1-10 done, step 11 (the full run of all
 four approaches + `/review-analysis-code` + commit of the run) still open.
 
 **Next, in order:** (1) finish step 11 — `/review-analysis-code` on the C++/RDF written on
-2026-08-24; (2) with the user, read R2 and choose an approach; (3) Remaining Work 1 — replace
+2026-08-24; (2) resolve D11's closure-re-run blocker and re-run on the new pair-η grouping; (3)
+with the user, read R3 (not R2) and choose an approach; (4) Remaining Work 1 — replace
 `DrCorrectionCrossxEvaluator` with the general cascade class configured for the chosen mode.

@@ -32,12 +32,15 @@
 // point here must equal the point in that approach's own subdirectory.
 //
 // TWO FIGURES PER SAMPLE VERSION:
-//   closure_compare_pair_pt_*.png            the 9 pair-eta panels, 5 series each
-//   closure_compare_nonclosure_squared_*.png the same closure ratios compressed to ONE panel --
-//                                            D^2(pT) = sum over pair eta of (C-1)^2, one curve per
-//                                            approach. A distance from closure, NOT a chi^2 (the
-//                                            terms are not divided by their errors); see the block
-//                                            that builds it.
+//   closure_compare_pair_pt_*.png         the 9 pair-eta panels, 5 series each
+//   closure_compare_nonclosure_chi2_*.png the same closure ratios compressed to ONE panel --
+//                                         chi^2/ndof(pT) = [sum over pair eta of (C-1)^2/sigma_C^2]
+//                                         / n_dof, one curve per approach. A PROPER chi^2 (each
+//                                         term IS divided by its statistical variance, per the
+//                                         user 2026-09-03 -- the earlier un-normalized sum of
+//                                         (C-1)^2 let noisy, statistics-starved cells dominate the
+//                                         total on equal footing with genuinely mis-corrected
+//                                         ones); see the block that builds it.
 //
 // Usage (from Analysis/plotting_codes/trig_effcy/mc_based/):
 //   root -l -b -q 'plot_mc_trig_eff_closure_compare.cxx+("pp_full", true)'
@@ -97,13 +100,13 @@ const char* kCascadeKey = "cascade";
 const Color_t kUncorrColour = kBlack;
 const Style_t kUncorrMarker = 21;
 
-struct VersionCfg { std::string key, file, file_d2, headline; };
+struct VersionCfg { std::string key, file, file_chi2, headline; };
 const std::vector<VersionCfg> kVersions = {
     {"all_os", "closure_compare_pair_pt_all_opposite_sign",
-               "closure_compare_nonclosure_squared_all_opposite_sign",
+               "closure_compare_nonclosure_chi2_all_opposite_sign",
      "all opposite-sign muon pairs"},
     {"signal", "closure_compare_pair_pt_single_b_signal_cuts",
-               "closure_compare_nonclosure_squared_single_b_signal_cuts",
+               "closure_compare_nonclosure_chi2_single_b_signal_cuts",
      "opposite-sign pairs in the single-b signal region"},
 };
 
@@ -411,88 +414,107 @@ void plot_mc_trig_eff_closure_compare(const std::string& sample = "pp_full",
                                 : -1.);
         std::cout << std::endl;
 
-        // ===== the pair-eta-summed squared non-closure, D^2(pT) ==============================
+        // ===== the pair-eta-summed chi^2/ndof non-closure, chi^2(pT)/n_dof =====================
         //
-        //     D^2(p_T^pair) = sum over pair-eta bins of (C - 1)^2
+        //     chi^2(p_T^pair)      = sum over pair-eta bins of (C - 1)^2 / sigma_C^2
+        //     chi^2/ndof(p_T^pair) = chi^2(p_T^pair) / n_dof(p_T^pair)
         //
         // over exactly the closure ratios C the lower pads above draw, in the same crossx
         // pair-pT binning. It compresses the 9 pair-eta panels of one approach into one curve so
         // the four approaches can be read against each other bin by bin.
         //
-        // IT IS A DISTANCE FROM CLOSURE, NOT A chi^2. The terms are not divided by their
-        // uncertainties (that is what the user asked for), so the quantity says how FAR an
-        // approach lands from unity, not how SIGNIFICANT that distance is; a noisy cell and a
-        // genuinely mis-corrected cell contribute alike. The bar on each point is the propagation
-        // of the ratio errors, sigma(D^2) = 2 sqrt(sum (C-1)^2 sigma_C^2), and is the only thing
-        // here that knows about statistics.
+        // THIS IS NOW A PROPER chi^2 (user, 2026-09-03 -- supersedes the un-normalized D^2 of
+        // 2026-08-25, "sum (C-1)^2, not divided by errors"). Each term IS divided by its
+        // statistical variance sigma_C^2, so a noisy, statistics-starved cell no longer
+        // contributes on equal footing with a genuinely mis-corrected one: R2's own reviewer
+        // check on the un-normalized version ("bin 14 alone is 6.998 +/- 10.8 -- a ~0.6 sigma
+        // effect") is exactly the failure this fixes. chi^2/ndof ~ 1 is the closure reference;
+        // its bar is the null-hypothesis width sqrt(2/ndof), NOT a propagated point error -- a
+        // chi^2 statistic is compared to its own distribution, not to itself with a Gaussian bar.
         //
-        // A pair-eta cell enters the sum only where the no-trigger DENOMINATOR is non-empty: an
-        // empty cell has C = 0 and sigma_C = 0 by construction (dr_correction_ratio.h returns
-        // both as 0 for D <= 0), so it would otherwise contribute a spurious (0-1)^2 = 1 and the
-        // curve would count empty phase space as maximal non-closure. A cell with a filled
-        // denominator but nothing passing the trigger DOES contribute its (0-1)^2 = 1 -- that is
-        // a real total non-closure, not an artefact.
+        // A pair-eta cell enters the sum only where the no-trigger DENOMINATOR is non-empty AND
+        // sigma_C > 0: an empty cell has C = 0, sigma_C = 0 by construction (dr_correction_ratio.h
+        // returns both as 0 for D <= 0) and is excluded rather than dividing by zero. A cell with
+        // a filled denominator but nothing passing the trigger has C = 0 and sigma_C =
+        // max(0,1)/n_eff > 0 (the k=0 boundary case in SetConditionalRatioErrors), so it correctly
+        // contributes a large but finite term -- real total non-closure, not a NaN.
         //
-        // The four sums run over the SAME cells: the denominators were checked bin by bin to be
-        // identical above, so the same cells are skipped in every approach.
-        std::vector<TH1D*> d2(kApproaches.size(), nullptr);
+        // ndof(p_T) does not depend on the approach: the four denominators were checked bin by
+        // bin to be identical above, so the same cells are skipped in every approach and the four
+        // raw chi^2 sums share one ndof per pair-pT bin.
+        std::vector<TH1D*> chi2h(kApproaches.size(), nullptr);    // plotted: chi^2/ndof per pT bin
+        std::vector<TH1D*> chi2raw(kApproaches.size(), nullptr); // chi^2 (unnormalized by ndof)
         for (size_t a = 0; a < kApproaches.size(); ++a) {
-            d2[a] = static_cast<TH1D*>(D.ratio[0][a]->Clone(
-                        Form("cmp_%s_d2_%zu", V.key.c_str(), a)));
-            d2[a]->SetDirectory(nullptr);
-            d2[a]->Reset("ICES");
+            chi2h[a] = static_cast<TH1D*>(D.ratio[0][a]->Clone(
+                        Form("cmp_%s_chi2_%zu", V.key.c_str(), a)));
+            chi2h[a]->SetDirectory(nullptr);
+            chi2h[a]->Reset("ICES");
+            chi2raw[a] = static_cast<TH1D*>(chi2h[a]->Clone(Form("cmp_%s_chi2raw_%zu",
+                                                                  V.key.c_str(), a)));
+            chi2raw[a]->SetDirectory(nullptr);
         }
         const int nptx = D.h_den->GetNbinsX();
         std::vector<int> ncell(nptx + 1, 0);
-        double d2max = 0., d2minpos = 1e300;
+        double redmax = 0., redminpos = 1e300;
         for (int bx = 1; bx <= nptx; ++bx)
             for (size_t a = 0; a < kApproaches.size(); ++a) {
-                double sum = 0., var = 0.;
+                double chi2 = 0.;
                 int ncontrib = 0;
                 for (int iz = 1; iz <= neta; ++iz) {
                     if (D.h_den->GetBinContent(bx, iz) <= 0.) continue;
                     const TH1D* r = D.ratio[iz - 1][a];
                     const double dev = r->GetBinContent(bx) - 1.0;
                     const double er  = r->GetBinError(bx);
-                    sum += dev * dev;
-                    var += dev * dev * er * er;
+                    if (er <= 0.) continue;   // no measured variance -> cannot enter a chi^2 term
+                    chi2 += (dev * dev) / (er * er);
                     ++ncontrib;
                 }
-                d2[a]->SetBinContent(bx, sum);
-                d2[a]->SetBinError(bx, 2.0 * std::sqrt(var));
+                chi2raw[a]->SetBinContent(bx, chi2);
                 if (a == 0) ncell[bx] = ncontrib;   // the same in all four -- same denominators
-                if (sum > d2max) d2max = sum;
-                if (sum > 0. && sum < d2minpos) d2minpos = sum;
+                const double reduced = (ncontrib > 0) ? chi2 / ncontrib : 0.;
+                const double err     = (ncontrib > 0) ? std::sqrt(2.0 / ncontrib) : 0.;
+                chi2h[a]->SetBinContent(bx, reduced);
+                chi2h[a]->SetBinError(bx, err);
+                if (ncontrib > 0) {
+                    if (reduced > redmax) redmax = reduced;
+                    if (reduced > 0. && reduced < redminpos) redminpos = reduced;
+                }
             }
 
-        // Log y when the curves span more than ~2 decades (they do: a few 1e-3 at low pair pT
-        // against O(1) where the closure collapses), linear from 0 otherwise -- on a linear axis
-        // the low-pT half of a 4-decade curve is a flat line on the frame and unreadable.
-        const bool d2_logy = (d2minpos < 1e299) && (d2max > 0.) && (d2max / d2minpos > 100.);
+        // Log y when the curves span more than ~2 decades, linear from 0 otherwise -- on a linear
+        // axis the low-pT half of a many-decade curve is a flat line on the frame and unreadable.
+        // Either way the range is widened, if needed, so the chi^2/ndof = 1 closure reference is
+        // always on the frame.
+        const bool chi2_logy = (redminpos < 1e299) && (redmax > 0.) && (redmax / redminpos > 100.);
 
-        TCanvas c2(("c_d2_" + V.key).c_str(), "", 1100, 850);
+        TCanvas c2(("c_chi2_" + V.key).c_str(), "", 1100, 850);
         c2.SetLeftMargin(0.145); c2.SetRightMargin(0.035);
         c2.SetTopMargin(0.105);  c2.SetBottomMargin(0.115);
         c2.SetLogx(1);
-        c2.SetLogy(d2_logy ? 1 : 0);
+        c2.SetLogy(chi2_logy ? 1 : 0);
         c2.SetTicks(1, 1);
 
         for (size_t a = 0; a < kApproaches.size(); ++a) {
-            TH1D* h = d2[a];
+            TH1D* h = chi2h[a];
             h->SetTitle("");
             h->SetMarkerColor(kApproaches[a].colour); h->SetLineColor(kApproaches[a].colour);
             h->SetMarkerStyle(kApproaches[a].marker); h->SetMarkerSize(1.3);
             h->GetXaxis()->SetTitle("p_{T}^{pair} [GeV]");
-            // "#Sigma" rather than "#sum": the big operator glyph is drawn ~3x the text size
-            // and collides with the axis labels at any offset that still fits on the canvas.
-            h->GetYaxis()->SetTitle("#Sigma_{#eta^{pair}} (C #minus 1)^{2}");
+            h->GetYaxis()->SetTitle("#chi^{2}_{#eta^{pair}} / n_{dof}");
             h->GetXaxis()->SetTitleSize(0.045); h->GetXaxis()->SetLabelSize(0.040);
             h->GetYaxis()->SetTitleSize(0.045); h->GetYaxis()->SetLabelSize(0.040);
             h->GetYaxis()->SetTitleOffset(1.50);
-            if (d2_logy) h->GetYaxis()->SetRangeUser(0.4 * d2minpos, 3.0 * d2max);
-            else         h->GetYaxis()->SetRangeUser(0.0, 1.25 * d2max);
+            if (chi2_logy) h->GetYaxis()->SetRangeUser(std::min(0.4 * redminpos, 0.5),
+                                                        std::max(3.0 * redmax, 2.0));
+            else           h->GetYaxis()->SetRangeUser(0.0, std::max(1.25 * redmax, 1.3));
             h->Draw(a == 0 ? "PE" : "PE SAME");
         }
+
+        // Perfect-closure reference: chi^2/ndof = 1, the value the whole figure is measured
+        // against (same dashed-red convention as the closure ratio pads above).
+        TLine* lref = new TLine(chi2h[0]->GetXaxis()->GetXmin(), 1.0,
+                                 chi2h[0]->GetXaxis()->GetXmax(), 1.0);
+        lref->SetLineStyle(2); lref->SetLineColor(kRed + 1); lref->Draw("SAME");
 
         auto* h2 = new TLatex();
         h2->SetNDC(); h2->SetTextFont(42); h2->SetTextSize(0.0235);
@@ -510,48 +532,57 @@ void plot_mc_trig_eff_closure_compare(const std::string& sample = "pp_full",
         leg2->SetBorderSize(0); leg2->SetFillStyle(0);
         leg2->SetTextFont(42); leg2->SetTextSize(0.028);
         for (size_t a = 0; a < kApproaches.size(); ++a)
-            leg2->AddEntry(d2[a], legend[a].c_str(), "PE");
+            leg2->AddEntry(chi2h[a], legend[a].c_str(), "PE");
         leg2->Draw();
 
-        const std::string png2 = outdir + V.file_d2 + ".png";
+        const std::string png2 = outdir + V.file_chi2 + ".png";
         c2.SaveAs(png2.c_str());
         std::cout << "  wrote " << png2 << std::endl;
 
-        // The pair-pT-summed total per approach -- the single number the figure is a differential
-        // view of -- and the number of pair-eta cells each pair-pT bin actually summed over, which
-        // is NOT constant across the axis (the high-pT bins are empty in some pair-eta panels) and
-        // is therefore needed to read the curve.
+        // The pair-pT-summed total per approach -- the single reduced chi^2 the figure is a
+        // differential view of -- and the number of pair-eta cells (= ndof) each pair-pT bin
+        // actually summed over, which is NOT constant across the axis (the high-pT bins are empty
+        // in some pair-eta panels) and is therefore needed to read the curve.
         //
         // AND THE SAME TOTAL SPLIT AT THE PAIR-pT MERGE EDGE. The merge fuses the top TWO of the
         // 8 eps_dR pair-pT cells, so below that edge a pair gets an identical correction whether
         // or not the merge is on: A and B coincide bin by bin, and so do C and D. Every difference
-        // the pair-pT merge makes therefore lives in the few crossx bins above the edge -- which
-        // are also the statistics-starved ones, where the points are consistent with zero inside
-        // their bars and where D^2 carries its largest positive noise bias
-        // (E[D^2] = sum dev_true^2 + sum sigma_C^2). A ranking read off the grand total alone is
-        // a ranking of those few bins, so both parts are printed. The split bin is FOUND, not
-        // typed: it is the first bin where a merged-pT approach departs from its un-merged twin.
+        // the pair-pT merge makes therefore lives in the few crossx bins above the edge. The split
+        // bin is FOUND, not typed: it is the first bin where a merged-pT approach's raw chi^2
+        // departs from its un-merged twin's.
         int bsep = nptx + 1;
         for (int bx = 1; bx <= nptx && bsep > nptx; ++bx)
             for (size_t a = 0; a + 1 < kApproaches.size(); a += 2)   // (A,B) then (C,D)
-                if (std::fabs(d2[a + 1]->GetBinContent(bx) - d2[a]->GetBinContent(bx))
-                        > 1e-9 * std::max(1.0, d2[a]->GetBinContent(bx))) { bsep = bx; break; }
+                if (std::fabs(chi2raw[a + 1]->GetBinContent(bx) - chi2raw[a]->GetBinContent(bx))
+                        > 1e-9 * std::max(1.0, chi2raw[a]->GetBinContent(bx))) { bsep = bx; break; }
 
-        std::cout << "  D^2 summed over pair pT (" << V.key << "):";
-        for (size_t a = 0; a < kApproaches.size(); ++a)
+        double ndofAll = 0.;
+        for (int bx = 1; bx <= nptx; ++bx) ndofAll += ncell[bx];
+        std::cout << "  chi^2/ndof summed over pair pT (" << V.key << "), ndof=" << ndofAll << ":";
+        for (size_t a = 0; a < kApproaches.size(); ++a) {
+            const double tot = chi2raw[a]->Integral(1, nptx);   // bin counts, not a density
             std::cout << "  " << kApproaches[a].mode << " = "
-                      << d2[a]->Integral(1, nptx);   // bin counts, not a density -> plain sum
-        if (bsep <= nptx) {
-            std::cout << "\n    of which bins 1-" << bsep - 1 << " (p_T^pair < "
-                      << d2[0]->GetXaxis()->GetBinLowEdge(bsep)
-                      << " GeV, below the pair-pT merge edge):";
-            for (size_t a = 0; a < kApproaches.size(); ++a)
-                std::cout << "  " << d2[a]->Integral(1, bsep - 1);
-            std::cout << "\n    and bins " << bsep << "-" << nptx << " (the rest):";
-            for (size_t a = 0; a < kApproaches.size(); ++a)
-                std::cout << "  " << d2[a]->Integral(bsep, nptx);
+                      << (ndofAll > 0 ? tot / ndofAll : 0.) << " (chi2=" << tot << ")";
         }
-        std::cout << "\n  pair-eta cells summed per pair-pT bin:";
+        if (bsep <= nptx) {
+            double ndofLo = 0., ndofHi = 0.;
+            for (int bx = 1; bx < bsep; ++bx) ndofLo += ncell[bx];
+            for (int bx = bsep; bx <= nptx; ++bx) ndofHi += ncell[bx];
+            std::cout << "\n    of which bins 1-" << bsep - 1 << " (p_T^pair < "
+                      << chi2raw[0]->GetXaxis()->GetBinLowEdge(bsep)
+                      << " GeV, below the pair-pT merge edge, ndof=" << ndofLo << "):";
+            for (size_t a = 0; a < kApproaches.size(); ++a) {
+                const double tot = chi2raw[a]->Integral(1, bsep - 1);
+                std::cout << "  " << (ndofLo > 0 ? tot / ndofLo : 0.);
+            }
+            std::cout << "\n    and bins " << bsep << "-" << nptx << " (the rest, ndof=" << ndofHi
+                      << "):";
+            for (size_t a = 0; a < kApproaches.size(); ++a) {
+                const double tot = chi2raw[a]->Integral(bsep, nptx);
+                std::cout << "  " << (ndofHi > 0 ? tot / ndofHi : 0.);
+            }
+        }
+        std::cout << "\n  pair-eta cells (= ndof) summed per pair-pT bin:";
         for (int bx = 1; bx <= nptx; ++bx) std::cout << " " << ncell[bx];
         std::cout << " (of " << neta << ")" << std::endl;
     }

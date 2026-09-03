@@ -123,3 +123,8 @@
 {"event":"end","command":"review-analysis-code","status":"approved","iterations":2,"timestamp":"2026-07-08T05:18:09Z","criticals":0,"warnings":0,"slug":"tight-wp-default"}
 {"event":"start","command":"review-plot","task":"tight WP crossx + R_AA","slug":"tight-wp-crossx-raa","timestamp":"2026-07-08T11:50:26Z"}
 {"event":"end","command":"review-plot","status":"approved","iterations":2,"timestamp":"2026-07-08T11:59:14Z","criticals":0,"warnings":0,"slug":"tight-wp-crossx-raa"}
+{"event":"start","command":"review-analysis-code","task":"pair-eta sign-independent fold for dR correction, D11","slug":"dr-etamerge-fold","timestamp":"2026-09-03T15:42:20Z"}
+{"event":"start","command":"review-plot","task":"pair-eta fold panel labels and PNG regen","slug":"dr-etamerge-plot-labels","timestamp":"2026-09-03T15:43:44Z"}
+{"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-09-03T15:46:09Z","criticals":0,"warnings":0,"slug":"dr-etamerge-plot-labels"}
+{"event": "start", "command": "review-plot", "task": "Review chi2/ndof renormalization of MC trig-eff closure non-closure panel", "slug": "chi2-closure-normalization", "timestamp": "2026-09-03T11:48:34.470196"}
+{"event": "end", "command": "review-plot", "status": "skipped_by_user", "iterations": 0, "timestamp": "2026-09-03T11:59:45.056852", "criticals": 0, "warnings": 0, "slug": "chi2-closure-normalization"}
