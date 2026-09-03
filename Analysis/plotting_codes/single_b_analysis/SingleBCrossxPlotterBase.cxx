@@ -366,7 +366,11 @@ protected:
             const auto& eta_bin = q_eta_bins.at(ieta);
             all_hists.at(ieta)->Draw("E1");
 
-            TLegend* leg = new TLegend(0.60, 0.70, 0.93, 0.90);
+            // x2 is the FRAME edge, not 0.93: the pad keeps ROOT's default right margin 0.1, so
+            // a right-aligned (SetTextAlign(32)) legend ending at 0.93 pushes its last character
+            // 0.03 NDC OUTSIDE the frame and the frame line is drawn through it. Found in review
+            // 2026-09-03 on both this figure and the counts figure that reuses this method.
+            TLegend* leg = new TLegend(0.60, 0.70, 1.0 - gPad->GetRightMargin(), 0.90);
             leg->SetBorderSize(0);
             leg->SetFillStyle(0);
             leg->SetTextSize(0.045);

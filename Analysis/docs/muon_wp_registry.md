@@ -77,6 +77,15 @@ sites (marked ⚠) move the number; **cosmetic** sites (labels) do not but must 
   ⚠ The Medium data file has not been produced yet — make it with
   `RDFBasedHistFillingData::isTight = false`; until then `"medium"` throws an actionable error
   rather than silently falling back. (Added 2026-08-25.)
+- **pp24 signal-region COUNTS**
+  (`plotting_codes/single_b_analysis/plot_pp_counts_pair_pt_in_eta.cxx`)
+  — WP var `CountsWP wp`, **default Tight**, third macro argument `"tight" | "medium"`
+  (unknown string throws from `ParseCountsWP`). It switches the DATA input file to the
+  `_medium_wp` crossx output, which for a COUNTS figure is the whole of the WP: the Medium
+  selection changes which pairs exist, and the plot is an unweighted count of them.
+  The info line on the canvas is built from `run_year` and the WP, so it cannot go stale
+  against the file actually read. Same ⚠ as above: the Medium data file does not exist yet.
+  (Added 2026-09-03, `docs/tracking/pp24_stats_and_powheg_fullsim_compr.md`.)
 
 ### 4. Reco-efficiency ⚠ (Tight input EXISTS; active placeholder built from MEDIUM)
 - Active placeholder: `plotting_codes/reco_effcy/build_run2_reco_eff_placeholder.C:85` reads
@@ -133,6 +142,9 @@ use_tight_wp)`). Its overlay twin `plot_pythia_fullsim_overlay_kn_pt_crossx.cxx`
 Medium (PbPb overlay; out of scope for the pp work — flag for the overlay owner).
 
 ### 6. Plotting labels — cosmetic (must stay consistent; will go stale)
+NOTE: `plot_pp_counts_pair_pt_in_eta.cxx` deliberately does NOT belong in this list — its info
+line is CONSTRUCTED from `run_year` and the WP (§3b), which is the pattern the hard-coded labels
+below should migrate to.
 `plot_single_b_crossx_pp.cxx:28,33,45,50`; `plot_single_b_crossx_pbpb.cxx:14,30`;
 `plot_single_muon_reco_effcy.cxx:169,229,317`; `plot_reco_distr_singleb_vs_op_pp24.C:16,88,89,120,121`;
 `TrigEffPlotterPbPb.cxx:561`; `build_run2_reco_eff_placeholder.C:151,163`;

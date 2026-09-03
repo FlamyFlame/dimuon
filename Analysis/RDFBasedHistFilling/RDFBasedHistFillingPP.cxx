@@ -813,6 +813,29 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         ROOT::RDF::TH2DModel("h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts_no_trig_corr", ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
         "pair_pt", "pair_eta", "crossx_weight");
 
+    // --- RAW PAIR COUNTS in the signal region -------------------------------------------------
+    // The UNWEIGHTED twin of h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts: SAME node
+    // (df_single_b_crossx_weighted = Tight WP + signal_cuts on the OS tree) and SAME axes, but
+    // NO weight column, so the bin content is an integer number of pairs and the error is
+    // sqrt(N). This is the statistical reach of the measurement, which the corrected spectrum
+    // hides -- a cell can sit at a healthy dsigma/dpT and rest on three pairs.
+    //
+    // Deliberately NOT derived from the "_corr_raw" stage histogram: that one is
+    // crossx_weight = weight * (1/L_int), so it is the count divided by the luminosity AND
+    // carries a weighted (not Poisson) error. Counting needs an unweighted fill.
+    //
+    // ONE way in which N and dsigma do NOT describe the same pair set, and it is deliberate:
+    // a pair whose trigger efficiency could not be evaluated gets the sentinel w_trig = 0
+    // (:392-393 above, and the ACTIVE docs/tracking/pp_trig_eff_highpt_jump.md), so it is
+    // COUNTED here but contributes exactly 0 to every crossx histogram. N is therefore the raw
+    // statistical reach of the selection; dsigma is built from the subset that could be
+    // corrected. Measured 2026-09-03: no cell is emptied by this (0 cells with counts > 0 and
+    // crossx == 0), so the effect is partial, never gross.
+    // Consumed by plotting_codes/single_b_analysis/plot_pp_counts_pair_pt_in_eta.cxx.
+    hist2d_rresultptr_map["h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts"] = df_single_b_crossx_weighted.Histo2D(
+        ROOT::RDF::TH2DModel("h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
+        "pair_pt", "pair_eta");
+
     // Correction-stage histograms (raw -> unfolded -> +reco -> +reco+trig) for the
     // primary pair_pt x pair_eta differential, so each correction's impact is
     // visible at plotting time. See CorrectionStages.h.

@@ -311,6 +311,11 @@ EOF
 log "Running crossx plotting for PP 2024 (nominal + pt_150 variant)"
 pushd "$PLOT_DIR" >/dev/null
 root -l -b -q 'plot_single_b_crossx_pp.cxx(24,"",true)'
+# RAW pair counts in the same cells as the crossx figure above (PNG + CSV). It reads the
+# unweighted twin h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts written by Stage 5, so it must
+# run in the same pass -- the statistical reach and the cross-section it belongs to have to come
+# from one RDF output. See docs/tracking/pp24_stats_and_powheg_fullsim_compr.md.
+root -l -b -q 'plot_pp_counts_pair_pt_in_eta.cxx+(24)'
 popd >/dev/null
 
 # ------ Stage 7: Trigger efficiency correction sanity check ------
