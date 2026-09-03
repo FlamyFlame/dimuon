@@ -131,3 +131,6 @@
 {"event":"start","command":"review-analysis-code","task":"pthat kn45 projected statistics: FillMCTrigEffHists book_kn_stats, PtHatKn45ProjectedStats.h, write_mc_pair_statistics_tables_projected.cxx","slug":"pthat-stats-projection","timestamp":"2026-09-03T12:16:11-04:00"}
 {"event":"start","command":"review-plot","task":"pthat kn45 projected-stats companion plot review","slug":"kn45-projected-stats-plot","timestamp":"2026-09-03T12:17:29-04:00"}
 {"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-09-03T12:21:17-04:00","criticals":0,"warnings":0,"slug":"kn45-projected-stats-plot"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":3,"timestamp":"2026-09-03T12:23:19-04:00","criticals":0,"warnings":0,"slug":"pthat-stats-projection"}
+{"event":"start","command":"review-investigation","task":"pp24 mc-data comparison plot zero-bin vs nonzero pp_counts discrepancy","slug":"pp24-mc-data-zero-bin","timestamp":"2026-09-03T17:21:30Z"}
+{"event":"end","command":"review-investigation","status":"approved","iterations":2,"timestamp":"2026-09-03T17:52:00Z","criticals":0,"warnings":0,"slug":"pp24-mc-data-zero-bin"}

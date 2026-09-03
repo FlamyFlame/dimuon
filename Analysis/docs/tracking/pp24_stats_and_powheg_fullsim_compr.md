@@ -336,6 +336,19 @@ P1-P11.
 4. **The counts figure has no SS twin.** The signal-region SS pair count would give the
    combinatorial scale of the same cells; `book_signal_region_1d` already fills SS 1D
    cross-sections, so only the unweighted 2D is missing. Not requested.
+5. **`pp_counts_pair_pt_in_eta_subplots.png` and the `mc_data_compr/signal/` plots use DIFFERENT
+   pair-pT axes** -- `pT_bins_120` (8-120 GeV) for W1/pp_counts vs `pT_bins_150` (8-150 GeV) for
+   W2/mc_data_compr, both 15 log bins. Both are pre-existing, deliberate, named axes (never
+   invented for either deliverable) and each plot is internally correct, but because the two
+   binnings share a bin COUNT their edges look comparable by POSITION when they are not: bin 14/15
+   is [83.6,100.2] GeV on pT_bins_120 and [101.5,123.4] GeV on pT_bins_150. A user comparing "the
+   same bin index" across the two plot families will see a real, nonzero pT_bins_120 cell next to
+   an apparently-empty pT_bins_150 cell that is actually a DIFFERENT, higher pT range -- not a
+   dropped entry (2026-09-03 investigation, `.claude/logs/review-investigation-20260903-132126-pp24-mc-data-zero-bin.md`,
+   confirmed by direct raw count: pT_bins_150 bin 14, eta[-1.5,-1] = N=0 via the new
+   `h2d_counts_pt_150_pair_eta_binned_w_signal_cuts`, RDFBasedHistFillingPP.cxx). Not fixed here
+   (no binning may be changed without the user, CLAUDE.md Binnings rule); flag to the user if a
+   pT_bins_120 companion counts/crossx view of the mc_data_compr family, or vice versa, is wanted.
 
 ## Latest Stage
 

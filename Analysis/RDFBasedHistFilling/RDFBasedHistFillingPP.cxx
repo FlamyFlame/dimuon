@@ -895,6 +895,14 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         hist2d_rresultptr_map["h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts"] = df_single_b_crossx_weighted.Histo2D(
             ROOT::RDF::TH2DModel("h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair}", npt150, ptbins150, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
             "pair_pt", "pair_eta", "crossx_weight_trig_corr");
+        // The UNWEIGHTED twin of h2d_crossx_pt_150_..., same pattern as
+        // h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts above but on the pT_bins_150 axis:
+        // SAME node, no weight column, so a bin above the pT_bins_120 axis's 120 GeV ceiling
+        // (which h2d_counts_... cannot resolve) has a direct Poisson raw count instead of only
+        // an inference from the neighboring pT_bins_120 axis.
+        hist2d_rresultptr_map["h2d_counts_pt_150_pair_eta_binned_w_signal_cuts"] = df_single_b_crossx_weighted.Histo2D(
+            ROOT::RDF::TH2DModel("h2d_counts_pt_150_pair_eta_binned_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair}", npt150, ptbins150, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
+            "pair_pt", "pair_eta");
         hist3d_rresultptr_map["h3d_crossx_dr_vs_pair_eta_vs_pt_150_w_signal_cuts"] = df_single_b_crossx_weighted.Histo3D(
             ROOT::RDF::TH3DModel("h3d_crossx_dr_vs_pair_eta_vs_pt_150_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt150, ptbins150, ParamsSet::N_PAIR_ETA_CROSSX_BINS, pms.pair_eta_crossx_bins.data(), 50, dr_edges150.data()),
             "pair_pt", "pair_eta", "dr", "crossx_weight_trig_corr");
