@@ -126,3 +126,7 @@
 {"event":"start","command":"review-plot","task":"applied pair reco eff plots","slug":"applied-pair-reco-eff","timestamp":"2026-08-24T04:08:11Z"}
 {"event":"start","command":"review-plot","task":"MC trig-eff closure figures round-3 y-axis range changes (shared ratio range across the two sample versions; full-coverage ratio frame)","slug":"closure-yaxis-shared-ratio","timestamp":"2026-08-24T15:40:42-04:00"}
 {"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-08-24T15:52:36-04:00","criticals":0,"warnings":0,"slug":"closure-yaxis-shared-ratio"}
+{"event":"start","command":"review-plot","task":"closure non-closure squared panel","slug":"closure-nonclosure-squared","timestamp":"2026-08-25T11:42:49-04:00"}
+{"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-08-25T11:57:08-04:00","criticals":0,"warnings":0,"slug":"closure-nonclosure-squared"}
+{"event":"start","command":"review-plot","task":"muon q-eta PDF vs single-muon pT, 6 panels","slug":"qeta-pt-dependence","timestamp":"2026-09-03T10:11:23-04:00"}
+{"event":"end","command":"review-plot","status":"stopped_by_user","iterations":1,"timestamp":"2026-09-03T11:38:08-04:00","criticals":0,"warnings":0,"unresolved":["iteration-2 verdict never returned; amended figure not independently re-verified"],"slug":"qeta-pt-dependence"}
