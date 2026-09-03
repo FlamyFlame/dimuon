@@ -74,7 +74,7 @@ public:
     static const int N_PAIR_ETA_CROSSX_BINS = 48;
     static constexpr double PAIR_ETA_CROSSX_MIN = -2.4;
     static constexpr double PAIR_ETA_CROSSX_MAX =  2.4;
-    std::vector<double> pair_eta_crossx_bins;   // 45 edges, filled in the constructor
+    std::vector<double> pair_eta_crossx_bins;   // N_PAIR_ETA_CROSSX_BINS + 1 = 49 edges, filled in the constructor
 
     // ---- NOMINAL COARSE pair-pT binning (SINGLE SOURCE OF TRUTH) ----
     // The coarse pair-pT bins used for the low-mass template fit / R_AA coarse binning and

@@ -139,7 +139,9 @@ void RDFBasedHistFillingBaseClass::BuildHistBinningMapBaseCommon(){
     hist_binning_map["pT_bins_150"] = pms.pT_bins_150;
 
     // ------- FINE pair-eta axis of the crossx 2D/3D views -------
-    // Single source: ParamsSet::pair_eta_crossx_bins (44 uniform bins on [-2.4, 2.4]). Named
+    // Single source: ParamsSet::pair_eta_crossx_bins (48 uniform bins on [-2.4, 2.4], i.e. width
+    // exactly 0.1 so every coarse pair-eta panel boundary is a bin edge; it was 44 until the
+    // 2026-08-25 fix). Named
     // here so a json var list can request it BY NAME and a 1D pair-eta histogram is guaranteed
     // to share the axis of the crossx 2D/3D views of the same quantity.
     hist_binning_map["pair_eta_crossx"] = pms.pair_eta_crossx_bins;
