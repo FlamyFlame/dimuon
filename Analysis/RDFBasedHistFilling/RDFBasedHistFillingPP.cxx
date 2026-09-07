@@ -850,6 +850,33 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         df_single_b_crossx_diag_mupt45.Histo2D(
             ROOT::RDF::TH2DModel("h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts_diag_mupt45", ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
             "pair_pt", "pair_eta");
+
+    // ==== TEMPORARY DIAGNOSTIC — same 4.0-vs-4.5 GeV comparison, LOG BINS FROM 9 GeV ==========
+    // docs/tracking/muon_pt45_cut_diagnostic.md. User-requested rebinning VARIANT of the SAME
+    // pT>4/pT>4.5 comparison above: log-spaced bins starting at 9 GeV instead of 8, SAME MAX
+    // (120 GeV) and SAME number of bins (15) as ParamsSet::pT_bins_120. This does NOT touch or
+    // re-derive the canonical pT_bins_120 axis -- it is an opt-in, suffixed variant
+    // (`.claude/CLAUDE.md` §Binnings item 4), additive alongside (not replacing) the
+    // `_diag_mupt45` histograms above. Diagnostic/temporary like the rest of this block --
+    // DELETE if the 4.5 GeV cut is adopted.
+    const int npt_from9 = (int)(pms.pT_bins_120.size() - 1);
+    std::vector<double> ptbins_from9_vec;
+    {
+        const double lo = 9.0, hi = pms.pT_bins_120.back();
+        const double logLo = std::log10(lo), logHi = std::log10(hi);
+        const double step = (logHi - logLo) / npt_from9;
+        for (int i = 0; i <= npt_from9; ++i) ptbins_from9_vec.push_back(std::pow(10, logLo + i * step));
+    }
+    const double* ptbins_from9 = ptbins_from9_vec.data();
+
+    hist2d_rresultptr_map["h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts_logbins_from9"] =
+        df_single_b_crossx_weighted.Histo2D(
+            ROOT::RDF::TH2DModel("h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts_logbins_from9", ";p_{T}^{pair} [GeV];#eta^{pair}", npt_from9, ptbins_from9, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
+            "pair_pt", "pair_eta");
+    hist2d_rresultptr_map["h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts_diag_mupt45_logbins_from9"] =
+        df_single_b_crossx_diag_mupt45.Histo2D(
+            ROOT::RDF::TH2DModel("h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts_diag_mupt45_logbins_from9", ";p_{T}^{pair} [GeV];#eta^{pair}", npt_from9, ptbins_from9, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
+            "pair_pt", "pair_eta");
     // ==== END TEMPORARY DIAGNOSTIC =============================================================
 
     // Correction-stage histograms (raw -> unfolded -> +reco -> +reco+trig) for the

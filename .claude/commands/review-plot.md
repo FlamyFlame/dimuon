@@ -173,6 +173,21 @@ R3. **Ratio panel required when a ratio is meaningful.** If two (or three) curve
     **FAIL**. Do NOT demand a ratio for curves that are not meant to be compared pointwise
     (e.g. several independent physics categories stacked or overlaid for shape only).
 
+R4. **Y/Z-scale default is LINEAR for non-momentum variables (user, 2026-09-07).** For any
+    histogram or 2D map, default to a **linear** y-axis (z-axis for 2D) UNLESS one of these
+    holds:
+    - the plotted variable itself has a clear physics reason for log — a power-law-like
+      spectrum (the canonical case is pT, which falls steeply over orders of magnitude); or
+    - the x-axis (the observable being plotted) is itself log-binned (e.g. pT) — a log y/z
+      then keeps bin-density visually honest alongside the log x.
+    A wide dynamic range (>10x) alone is NOT sufficient justification — that old heuristic is
+    retired. Variables with no power-law shape and no log binning (pair η, q·η, vertex/track
+    multiplicity, counts vs. an angular or index variable, etc.) → **linear y/z by default**.
+    An undocumented log y/z on such a variable → **FAIL** (state in a code comment when log IS
+    used and why, mirroring the THStack ≳3-decades documentation requirement). Cross-ref
+    `feedback_log_scale_plots` (this is the y/z-axis half; R2 above is the x-axis half) and
+    `feedback_thstack_linear_and_ordering` (THStack case, same underlying principle).
+
 ### Fitting checks (apply when plots include fits)
 10. **Fit overlay visible**: fit curve drawn on data, visually distinguishable (different color/style).
 11. **Fit follows data**: no wild divergence or large systematic residual pattern. Do NOT fail on moderate scatter — goodness-of-fit depends on statistics and model choice.
@@ -228,7 +243,8 @@ For any numbers reported by the executor:
 - Saving PDF when only PNG was requested
 - Default ROOT color palette instead of distinct readable colors
 - Raw branch names as axis titles instead of physics labels
-- Missing log scale when dynamic range > ~10x
+- Log y/z scale on a non-power-law, non-log-binned variable with no stated physics reason (R4) — dynamic range >10x alone does NOT justify it
+- Missing log scale for a genuinely power-law/log-binned variable (e.g. pT) when it spans wide dynamic range and is left on linear
 - Ratio panels with Y-axis range hiding data points
 - Plots saved to ad-hoc or flat directories instead of designated plot areas
 - New plots for a procedure placed in a different directory from existing plots for the same procedure

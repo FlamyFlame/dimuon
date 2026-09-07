@@ -223,15 +223,63 @@ percentages independently reproduced via a fresh ACLiC rebuild + rerun.
   the two driver macros, the three new Draw methods in
   `SingleBCrossxPlotterBase.cxx`) must be DELETED.
 
+**Step 6 (2026-09-07), styling + rebinning follow-ups on the pair-eta and pair-pT plots.**
+Counts/selection UNCHANGED throughout (verified after every rerun: pp24
+705404->541427, Pb+Pb 275622->180446, byte-identical to Step 1-4) -- these are
+draw-code-only changes.
+1. **Pair-eta-dependence plots -> LINEAR y** (`pair_eta_dependence_mupt_45_vs_40.png`,
+   both datasets): pair_eta is not momentum-like and is not log-binned, so per the
+   newly adopted linear-y-default rule (`.claude/CLAUDE.md`-adjacent
+   `.claude/commands/review-plot.md` R4, added this session; `feedback_log_scale_plots`
+   memory corrected accordingly) this plot now defaults to linear y instead of log.
+   `SingleBCrossxPlotterBase::DrawPairEtaIntegratedTwoSeries`: removed `SetLogy()`
+   and the log-only `ApplyCommonLogYRange` headroom, replaced with a plain linear
+   `SetMinimum(0)` / `SetMaximum(max*1.4)`. The pair-pT plots (pair pT is
+   power-law/log-binned) correctly KEPT log y -- untouched.
+   - An independent `/review-plot` reviewer subagent (spawned before the user said
+     further review loops weren't needed for this thread) caught a real pre-existing
+     defect surfaced by the rescale: the fixed-NDC `TLegend(0.15,0.78,0.97,0.94)`
+     extended above the frame's top border (top margin default 0.9), so its top row
+     was visually bisected by the axis line in BOTH datasets, independent of
+     log/linear. Fixed: headroom raised to `max*1.4` and the legend moved to
+     `(0.15,0.73,0.97,0.90)`, comfortably inside the frame and above the tallest
+     point (verified visually post-fix, both datasets).
+2. **Scientific-notation y-axis labels** (all datasets, the linear pair-eta plots):
+   ROOT's `TAxis` has no per-tick label-format hook (unlike `TF1`/`TGraph`); the only
+   available "N x 10^p" typesetting is `TGaxis::SetMaxDigits` (global/static), which
+   by default (5 digits) fired for pp24 (6-digit range, "x10^3" header) but not for
+   Pb+Pb (5-digit range, bare integers) -- an inconsistent look between the two
+   datasets. Forced `TGaxis::SetMaxDigits(3)` (saved/restored around the Draw call)
+   so both now show the header consistently (pp24 "x10^6", Pb+Pb "x10^3").
+3. **User-requested rebinning VARIANT, log bins from 9 GeV** (2026-09-07): additive,
+   NEW PNGs for the two pair-pT-dependence plots per dataset --
+   `pair_pt_dependence_mupt_45_vs_40_logbins_from9.png` and
+   `pair_pt_in_eta_subplots_mupt_45_vs_40_logbins_from9.png` -- log-spaced bins
+   starting at 9 GeV instead of 8, SAME MAX (120 GeV) and SAME bin count (15) as
+   `ParamsSet::pT_bins_120`. Opt-in and suffixed per `.claude/CLAUDE.md` Binnings
+   item 4 -- does NOT touch `pT_bins_120` and does NOT overwrite the existing
+   8-GeV-start PNGs. New additive histograms (`_logbins_from9` /
+   `_diag_mupt45_logbins_from9` suffixes) added alongside the existing
+   `_diag_mupt45` ones in `RDFBasedHistFillingPP.cxx` (pp24, full crossx pipeline
+   rerun via `run_crossx_hist_filling_pp24.sh` to materialize them) and
+   `fill_pbpb_muon_pt45_diag_counts.cxx` (Pb+Pb standalone macro, rerun). pair-eta-
+   dependence is unaffected by the pair-pT axis and was not remade for this variant.
+   User explicitly said no `/review-plot` loop was needed for this rebinning
+   follow-up or the scientific-notation change; verified directly (binning,
+   counts, rendering) by the orchestrator instead.
+
 ## Latest Stage
 
-**DONE 2026-09-06.** All deliverables complete and both reviews PASS:
-- 6 PNGs (3 per dataset x 2 datasets) + 2 summary txt files, all
-  `/review-plot`-approved.
+**DONE 2026-09-07.** All deliverables complete:
+- Original 6 PNGs (3 per dataset x 2 datasets) + 2 summary txt files, both
+  `/review-analysis-code` and `/review-plot` PASSED at iteration 1 (2026-09-06).
+- Step 6 follow-ups (2026-09-07): pair-eta plots remade linear-y with a fixed
+  legend/frame overlap and consistent scientific-notation y-labels; 4 NEW
+  additive PNGs (2 per dataset) for a user-requested log-bins-from-9-GeV variant
+  of the pair-pT plots, verified directly (no formal review loop, per explicit
+  user instruction).
 - pp24: 705404 (muon pT>4, current) -> 541427 (muon pT>4.5, candidate) raw
   signal-region OS pairs, **-23.2458%**.
 - Pb+Pb 2023+2024+2025 combined: 275622 -> 180446 pairs, **-34.5314%**.
-- Both `/review-analysis-code` (RDF code) and `/review-plot` (plotting code)
-  PASSED at iteration 1.
 - Nothing left except the human decision on whether to adopt the 4.5 GeV cut
   (see Remaining Work) -- not an action item for this doc.

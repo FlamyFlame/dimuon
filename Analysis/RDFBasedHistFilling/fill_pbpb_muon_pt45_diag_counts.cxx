@@ -101,6 +101,31 @@ void fill_pbpb_muon_pt45_diag_counts()
             ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
         "pair_pt", "pair_eta");
 
+    // User-requested rebinning VARIANT of the SAME comparison: log bins from 9 GeV instead of 8,
+    // SAME MAX (120 GeV) and SAME number of bins (15) -- opt-in and suffixed, does not touch
+    // ParamsSet::pT_bins_120 or overwrite the two histograms above (`.claude/CLAUDE.md` §Binnings
+    // item 4; mirrors the identical variant added to RDFBasedHistFillingPP.cxx for pp24).
+    const int npt_from9 = npt;
+    std::vector<double> ptbins_from9_vec;
+    {
+        const double lo = 9.0, hi = pms.pT_bins_120.back();
+        const double logLo = std::log10(lo), logHi = std::log10(hi);
+        const double step = (logHi - logLo) / npt_from9;
+        for (int i = 0; i <= npt_from9; ++i) ptbins_from9_vec.push_back(std::pow(10, logLo + i * step));
+    }
+    const double* ptbins_from9 = ptbins_from9_vec.data();
+
+    auto h_baseline_from9 = df_baseline.Histo2D(
+        ROOT::RDF::TH2DModel("h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts_diag_baseline_logbins_from9",
+            ";p_{T}^{pair} [GeV];#eta^{pair}", npt_from9, ptbins_from9,
+            ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
+        "pair_pt", "pair_eta");
+    auto h_mupt45_from9 = df_mupt45.Histo2D(
+        ROOT::RDF::TH2DModel("h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts_diag_mupt45_logbins_from9",
+            ";p_{T}^{pair} [GeV];#eta^{pair}", npt_from9, ptbins_from9,
+            ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
+        "pair_pt", "pair_eta");
+
     const double n_baseline = h_baseline->Integral(0, -1, 0, -1);
     const double n_mupt45   = h_mupt45->Integral(0, -1, 0, -1);
     std::cout << "[INFO] PbPb 23+24+25 combined, signal region, Tight WP:" << std::endl;
@@ -117,6 +142,8 @@ void fill_pbpb_muon_pt45_diag_counts()
     TFile fout(out_path.c_str(), "RECREATE");
     h_baseline->Write();
     h_mupt45->Write();
+    h_baseline_from9->Write();
+    h_mupt45_from9->Write();
     fout.Close();
     std::cout << "[INFO] Saved: " << out_path << std::endl;
 }

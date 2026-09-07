@@ -9,6 +9,7 @@
 
 #include "TCanvas.h"
 #include "TFile.h"
+#include "TGaxis.h"
 #include "TH1D.h"
 #include "TH2D.h"
 #include "TH3D.h"
@@ -598,25 +599,54 @@ protected:
             h->SetMarkerSize(1.0);
             h->GetXaxis()->SetTitle("#eta^{pair}");
             h->GetYaxis()->SetTitle(y_title.c_str());
+            h->GetYaxis()->SetNoExponent(kFALSE);
             h->SetTitle("");
         };
         style(hpa, 0);
         style(hpb, 1);
 
+        // Scientific notation on the y-axis (e.g. "1 #times 10^{4}"): TAxis has no per-label
+        // format hook (unlike TGraph/TF1), so this is ROOT's actual mechanism -- a shared
+        // "#times 10^{p}" header with reduced tick values -- forced on for BOTH plots via
+        // TGaxis::SetMaxDigits (global/static, so save+restore around this Draw call only).
+        // Without this, ROOT's default threshold (5 digits) fires for pp24's 6-digit range but
+        // NOT PbPb's 5-digit range, leaving one plot with the header and the other with bare
+        // long integers -- an inconsistent look between the two datasets this forces to agree.
+        const int prev_max_digits = TGaxis::GetMaxDigits();
+        TGaxis::SetMaxDigits(3);
+
         TCanvas c("ceta_2s", "pair eta integrated, two series", 700, 550);
-        c.SetLogy();
-        c.SetLeftMargin(0.13);
+        c.SetLeftMargin(0.17);
         c.SetBottomMargin(0.12);
 
-        // This quantity's shape vs pair-eta is NOT monotonic (a broad hill with a central dip at
-        // the eta~0 gap cut) and its dynamic range differs between datasets (pp24 ~5x, PbPb
-        // ~10x less), so no FIXED corner is safe for both: a bottom-left box that cleared pp24
-        // overlapped PbPb's central bump (review 2026-09-06 self-check on real output). Use the
-        // ceil_pad mechanism instead (Utilities/CommonLogYRange.h) to open genuinely empty
-        // headroom ABOVE every point regardless of shape or dataset, then place both legends
-        // there -- the muon_gap_cuts_acceptance.md F13/F14 fix for the same class of problem on
-        // q*eta plots.
-        ApplyCommonLogYRange({hpa, hpb}, /*ceil_pad=*/6.0);
+        // LINEAR y (2026-09-07, corrected from log-y): pair_eta is not a momentum-like
+        // observable and its axis is not log-binned, so per the linear-y-default rule
+        // (.claude/commands/review-plot.md R4 / feedback_log_scale_plots memory) this plot
+        // takes a linear y-scale by default -- there is no power-law or log-binning
+        // justification for log here. This quantity's shape vs pair-eta is NOT monotonic (a
+        // broad hill with a central dip at the eta~0 gap cut) and its scale differs between
+        // datasets (pp24 ~5x, PbPb ~10x less), so no FIXED corner is safe for both: a
+        // bottom-left box that cleared pp24 overlapped PbPb's central bump (review 2026-09-06
+        // self-check on real output, when this was still log-y). Keep the same fix -- headroom
+        // ABOVE every point regardless of shape or dataset, then place both legends there (the
+        // muon_gap_cuts_acceptance.md F13/F14 fix for the same class of problem on q*eta plots)
+        // -- just computed directly for a linear axis instead of via the log-only
+        // ApplyCommonLogYRange (Utilities/CommonLogYRange.h; its floor/ceil padding and
+        // positive-bin-only scan are log-scale-specific and do not apply here).
+        double eta2s_ymax = 0.0;
+        for (const TH1D* h : {hpa, hpb}) {
+            for (int b = 1; b <= h->GetNbinsX(); ++b) {
+                eta2s_ymax = std::max(eta2s_ymax, h->GetBinContent(b));
+            }
+        }
+        // 1.4x (not 1.35x): a /review-plot pass (2026-09-07) pixel-measured the legend's top
+        // row bisected by the frame's top border at 1.35x with the legend box unmoved -- widen
+        // the headroom AND move the legend down (below) to guarantee clearance from both the
+        // frame border above and the tallest point below.
+        for (TH1D* h : {hpa, hpb}) {
+            h->SetMinimum(0.0);
+            h->SetMaximum(eta2s_ymax * 1.4);
+        }
 
         hpa->Draw("E1");
         hpb->Draw("E1 SAME");
@@ -637,7 +667,11 @@ protected:
         proxy_b.SetLineWidth(2); proxy_b.SetLineColor(line_colors.at(1));
         proxy_b.SetMarkerColor(line_colors.at(1)); proxy_b.SetMarkerStyle(marker_styles.at(1));
 
-        TLegend leg(0.15, 0.78, 0.97, 0.94);
+        // Top bound 0.90 = default frame top (ROOT top margin 0.1, not overridden on this
+        // canvas), matching the safe bound already used elsewhere in this file (e.g. the
+        // panel-method legends above); bottom bound 0.73 clears the tallest point, which the
+        // 1.4x headroom above places at NDC ~0.68 regardless of dataset shape or scale.
+        TLegend leg(0.15, 0.73, 0.97, 0.90);
         leg.SetBorderSize(0);
         leg.SetFillStyle(0);
         leg.SetNColumns(2);
@@ -653,6 +687,8 @@ protected:
         std::string full_path = output_dir + "/" + png_name;
         c.SaveAs(full_path.c_str());
         std::cout << "[INFO] Saved: " << full_path << std::endl;
+
+        TGaxis::SetMaxDigits(prev_max_digits);  // restore -- static/global setting
 
         delete hpa;
         delete hpb;

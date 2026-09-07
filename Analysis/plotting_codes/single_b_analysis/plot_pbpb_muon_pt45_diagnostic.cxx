@@ -63,6 +63,17 @@ public:
         DrawPairPtByEtaTwoSeries(h2_a, h2_b, "p_{T} > 4 GeV", "p_{T} > 4.5 GeV", info_line1, info_line2,
             "pair_pt_in_eta_subplots_mupt_45_vs_40.png", "N_{pairs}");
 
+        // User-requested rebinning VARIANT (2026-09-07): SAME two pair-pT-dependence plots,
+        // but on log bins starting at 9 GeV instead of 8 (same MAX=120 GeV, same 15 bins) --
+        // additive new PNGs, does NOT overwrite the two above. pair-eta-dependence is unaffected
+        // by the pair-pT axis, so it is not remade here.
+        const std::string h2_a_from9 = h2_a + "_logbins_from9";
+        const std::string h2_b_from9 = h2_b + "_logbins_from9";
+        DrawPairPtIntegratedTwoSeries(h2_a_from9, h2_b_from9, label_a, label_b, info_line1, info_line2,
+            "pair_pt_dependence_mupt_45_vs_40_logbins_from9.png", "N_{pairs}");
+        DrawPairPtByEtaTwoSeries(h2_a_from9, h2_b_from9, "p_{T} > 4 GeV", "p_{T} > 4.5 GeV", info_line1, info_line2,
+            "pair_pt_in_eta_subplots_mupt_45_vs_40_logbins_from9.png", "N_{pairs}");
+
         TH2D* ha = dynamic_cast<TH2D*>(GetHistObject(h2_a));
         TH2D* hb = dynamic_cast<TH2D*>(GetHistObject(h2_b));
         const double n_a = ha->Integral(0, -1, 0, -1);
