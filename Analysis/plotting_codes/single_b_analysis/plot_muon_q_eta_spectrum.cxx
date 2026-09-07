@@ -58,7 +58,6 @@
 #include <TBox.h>
 #include <TCanvas.h>
 #include <TChain.h>
-#include <TGaxis.h>
 #include <TH1D.h>
 #include <TLatex.h>
 #include <TLegend.h>
@@ -243,10 +242,7 @@ void StyleSpectrum(TH1D* h, int color) {
     h->GetYaxis()->SetTitleSize(0.050);
     h->GetXaxis()->SetLabelSize(0.045);
     h->GetYaxis()->SetLabelSize(0.045);
-    // Linear-scale labels are full 7-digit numbers (TGaxis::SetMaxDigits(7) above), much
-    // wider than the old log-axis decade labels -- offset pushed out so they clear the
-    // title, paired with the wider pad LeftMargin (0.28) in MakeSinglePad/MakeRatioPads.
-    h->GetYaxis()->SetTitleOffset(3.00);
+    h->GetYaxis()->SetTitleOffset(1.70);
 }
 
 // Legends must be opaque: they sit over the shaded gap bands.
@@ -382,14 +378,18 @@ void Header(const std::string& text, const std::string& sub) {
     TLatex t;
     t.SetNDC();
     t.SetTextFont(42);
-    // Both lines must clear the frame: baselines are placed above 1-topMargin.
+    // Both lines must clear the frame: baselines are placed above 1-topMargin. The
+    // near-frame line (the only line when sub is empty; the sub line otherwise) is pushed
+    // up to +0.055/+0.050 rather than the tighter +0.025/+0.020 used when the axis was log:
+    // on a linear axis with large content, ROOT draws a "x10^n" multiplier box just above
+    // the frame, and the tighter offsets used to sit right on top of it.
     const double frame_top = 1.0 - gPad->GetTopMargin();
     t.SetTextSize(0.042);
-    t.DrawLatex(gPad->GetLeftMargin(), frame_top + (sub.empty() ? 0.025 : 0.067),
+    t.DrawLatex(gPad->GetLeftMargin(), frame_top + (sub.empty() ? 0.055 : 0.095),
                 text.c_str());
     if (!sub.empty()) {
         t.SetTextSize(0.035);
-        t.DrawLatex(gPad->GetLeftMargin(), frame_top + 0.020, sub.c_str());
+        t.DrawLatex(gPad->GetLeftMargin(), frame_top + 0.050, sub.c_str());
     }
 }
 
@@ -468,15 +468,13 @@ std::pair<TPad*, TPad*> MakeRatioPads(TCanvas& c, const std::string& name, doubl
     const double ysplit = y1 + 0.34 * (y2 - y1);
     TPad* p_main = new TPad((name + "_main").c_str(), "", x1, ysplit, x2, y2);
     TPad* p_rat = new TPad((name + "_rat").c_str(), "", x1, y1, x2, ysplit);
-    // Wider than p_rat's: the main pad's y-axis carries full 7-digit linear-scale counts
-    // (TGaxis::SetMaxDigits(7) above), not the O(1) ratio values below.
-    p_main->SetLeftMargin(0.28);
+    p_main->SetLeftMargin(0.20);
     p_main->SetRightMargin(0.04);
     p_main->SetTopMargin(0.14);
     p_main->SetBottomMargin(0.02);
     p_main->SetTickx(1);
     p_main->SetTicky(1);
-    p_rat->SetLeftMargin(0.28);  // MUST match p_main's or the x-axes will not line up
+    p_rat->SetLeftMargin(0.20);  // MUST match p_main's or the x-axes will not line up
     p_rat->SetRightMargin(0.04);
     p_rat->SetTopMargin(0.03);
     p_rat->SetBottomMargin(0.34);
@@ -492,8 +490,7 @@ TPad* MakeSinglePad(TCanvas& c, const std::string& name, double x1, double y1, d
                     double y2) {
     c.cd();  // pads belong to the CANVAS, not to whatever sub-pad is current
     TPad* p = new TPad(name.c_str(), "", x1, y1, x2, y2);
-    // Wide enough for the full 7-digit linear-scale counts (TGaxis::SetMaxDigits(7) above).
-    p->SetLeftMargin(0.28);
+    p->SetLeftMargin(0.20);
     p->SetRightMargin(0.04);
     p->SetTopMargin(0.14);
     p->SetBottomMargin(0.14);
@@ -585,10 +582,6 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
     gStyle->SetOptStat(0);
     gStyle->SetPadTickX(1);
     gStyle->SetPadTickY(1);
-    // The linear y-axis needs full-digit labels (up to ~3.5M): ROOT's default
-    // SetMaxDigits(5) would switch to a "x10^n" multiplier box drawn just above the
-    // frame, which collides with the Header()/CanvasGapKey() text placed there.
-    TGaxis::SetMaxDigits(7);
 
     const std::string wp_tag = use_tight_wp ? "" : "_medium_wp";
     const std::string wp_lbl = use_tight_wp ? "Tight" : "Medium";

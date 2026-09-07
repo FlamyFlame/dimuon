@@ -205,70 +205,33 @@ void StyleShape(TH1D* h, int color) {
     h->GetYaxis()->SetTitleSize(0.050);
     h->GetXaxis()->SetLabelSize(0.045);
     h->GetYaxis()->SetLabelSize(0.045);
-    // These shapes span well under one decade over most of the axis; without this ROOT
-    // labels only the decade ticks and the axis reads as a single "10^{-1}".
-    h->GetYaxis()->SetMoreLogLabels();
     h->GetYaxis()->SetTitleOffset(1.70);
 }
 
-// Common log-y range over a GROUP of histograms. The grouping matters and is deliberate
+// Common LINEAR-y range over a GROUP of histograms. The grouping matters and is deliberate
 // (see the call site): the five Pb+Pb panels share one range so the centrality dependence
-// can be read across them, while pp gets its own. A single range over all six would be set
-// by pp -- whose low-p_T slices collapse by two decades at the forward acceptance edge --
-// and would squeeze all five Pb+Pb panels into the top third of their frames.
-// Within a group the floor is capped kMaxDecades below the group peak: a handful of
-// acceptance-edge bins sit orders of magnitude below the bulk and would otherwise squeeze
-// the gap structure the figure exists to show into the top of the frame. Returns how many
-// bins that cap pushes off scale, so it can be recorded on the canvas -- capping an axis
-// silently is worse than capping it (atlas-plotting.md).
-const double kMaxDecades = 2.0;
-int SetCommonLogRange(const std::vector<TH1D*>& hs) {
-    double lo = 1e300, hi = 0.;
+// can be read across them, while pp gets its own -- a single range over all six would be set
+// by pp's peak and would squeeze the Pb+Pb panels toward the bottom of their frames.
+// Floor pinned at 0 -- a linear axis must start at zero or the apparent gap depth is
+// visually distorted -- and ceiling at kHeadroom above the group peak. Unlike a log floor,
+// nothing is ever pushed off scale.
+const double kHeadroom = 1.15;
+void SetCommonLinRange(const std::vector<TH1D*>& hs) {
+    double hi = 0.;
     for (TH1D* h : hs)
-        for (int i = 1; i <= h->GetNbinsX(); ++i) {
-            const double c = h->GetBinContent(i);
-            if (c > 0) {
-                lo = std::min(lo, c);
-                hi = std::max(hi, c);
-            }
-        }
-    if (hi <= 0.) return 0;
-    if (lo >= 1e300) lo = hi * 1e-3;
-    const double floor_val = std::max(lo, hi * std::pow(10., -kMaxDecades));
-    int n_below = 0;
-    for (TH1D* h : hs)
-        for (int i = 1; i <= h->GetNbinsX(); ++i) {
-            const double c = h->GetBinContent(i);
-            if (c > 0 && c < floor_val) ++n_below;
-        }
+        for (int i = 1; i <= h->GetNbinsX(); ++i)
+            hi = std::max(hi, h->GetBinContent(i));
     for (TH1D* h : hs) {
-        h->SetMinimum(floor_val / 1.5);
-        h->SetMaximum(hi * 1.5);
+        h->SetMinimum(0.);
+        h->SetMaximum(hi * kHeadroom);
     }
-    return n_below;
-}
-
-// Terse in-frame record of points pushed off scale by the axis cap.
-void NoteOffScale(int n_below) {
-    if (n_below <= 0) return;
-    TLatex t;
-    t.SetNDC();
-    t.SetTextFont(42);
-    t.SetTextSize(0.033);
-    t.SetTextColor(kGray + 3);
-    // Top RIGHT, right-aligned: the only corner of the pp frame that is empty. The
-    // bottom-left holds the legend and the top-left holds the rise of the low-p_T curve
-    // towards the backward acceptance edge.
-    t.SetTextAlign(31);
-    t.DrawLatex(1.0 - gPad->GetRightMargin() - 0.03, 1.0 - gPad->GetTopMargin() - 0.055,
-                Form("%d bins below axis range", n_below));
 }
 
 // Shaded bands for the adopted fiducial windows, drawn under the curves, which are then
 // redrawn on top.
 void DrawGapBands(const std::vector<TH1D*>& redraw) {
-    const double y0 = std::pow(10., gPad->GetUymin());
-    const double y1 = std::pow(10., gPad->GetUymax());
+    const double y0 = gPad->GetUymin();
+    const double y1 = gPad->GetUymax();
     for (const auto& w : g_windows) {
         TBox* b = new TBox(w.first, y0, w.second, y1);
         b->SetFillColorAlpha(kGreen - 7, 0.45);
@@ -451,15 +414,13 @@ void plot_muon_q_eta_pt_dependence(bool use_tight_wp = true) {
     const int cols[4] = {kBlack, kRed + 1, kAzure + 2, kMagenta + 1};
     for (int p = 0; p < npanel; ++p)
         for (int i = 0; i < kNPt; ++i) StyleShape(h[p][i], cols[i]);
-    // Two range groups (see SetCommonLogRange): pp alone, and the five Pb+Pb panels
+    // Two range groups (see SetCommonLinRange): pp alone, and the five Pb+Pb panels
     // together so their centrality dependence is readable on one axis.
-    std::vector<int> n_below(npanel, 0);
-    n_below[0] = SetCommonLogRange(h[0]);
+    SetCommonLinRange(h[0]);
     std::vector<TH1D*> pb_h;
     for (int p = 1; p < npanel; ++p)
         pb_h.insert(pb_h.end(), h[p].begin(), h[p].end());
-    const int n_below_pb = SetCommonLogRange(pb_h);
-    for (int p = 1; p < npanel; ++p) n_below[p] = 0;
+    SetCommonLinRange(pb_h);
 
     TCanvas c("c_qeta_pt", "", 1400, 1760);
     const int ncol = 2, nrow = 3;
@@ -470,27 +431,12 @@ void plot_muon_q_eta_pt_dependence(bool use_tight_wp = true) {
                 kPanelTop * (1.0 - (row + 1) / double(nrow)), (col + 1) / double(ncol),
                 kPanelTop * (1.0 - row / double(nrow)))
             ->cd();
-        gPad->SetLogy();
         for (int i = 0; i < kNPt; ++i) h[p][i]->Draw(i == 0 ? "hist" : "hist same");
         gPad->Update();
         DrawGapBands(h[p]);
         Header(head[p], sub[p]);
-        NoteOffScale(p == 0 ? n_below[0] : 0);
         // NO in-frame legend -- see the comment on CanvasKey. The p_T key is drawn once
         // across the top of the canvas below.
-    }
-
-    // The Pb+Pb cap applies to all five Pb+Pb panels at once, so it is recorded once on
-    // the canvas rather than repeated in each frame.
-    if (n_below_pb > 0) {
-        c.cd();
-        TLatex t;
-        t.SetNDC();
-        t.SetTextFont(42);
-        t.SetTextSize(0.012);
-        t.SetTextColor(kGray + 3);
-        t.DrawLatex(0.06, 0.004,
-                    Form("%d bins below the shared Pb+Pb axis range", n_below_pb));
     }
 
     // p_T key first (nearest the panels, four columns in the muon colours), gap key above.

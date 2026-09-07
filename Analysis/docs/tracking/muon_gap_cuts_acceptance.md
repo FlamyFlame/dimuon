@@ -794,6 +794,36 @@ All 19 regenerated PNGs (8 `old_gap_cuts/[medium/]` — since deleted, see above
 `new_gap_cuts/[medium/]` + 3 `truth_q_eta/`) visually re-checked; no header/label/legend
 collisions remain on any panel inspected.
 
+### F16 — F14's p_T-dependence macro also switched to linear-y; F15's header fix redone with native scientific notation (2026-09-06)
+
+**User follow-up to F15.** Two changes:
+
+1. **`plot_muon_q_eta_pt_dependence.cxx` (F14) switched from log-y to linear-y**, matching the
+   other two q·η macros — no longer out of scope. Its content is unit-area PDFs (max ~0.45), so
+   it never triggers ROOT's axis-multiplier notation and needed no header/margin changes, only
+   the standard log-y-removal treatment (`SetCommonLogRange`/`kMaxDecades`/`NoteOffScale` →
+   `SetCommonLinRange`, floor 0, ceiling 1.15× peak). Fixed a latent bug found along the way:
+   `DrawGapBands` unconditionally computed `std::pow(10., gPad->GetUymin()/GetUymax())` for the
+   gap-band vertical extent — correct only for a log axis, silently wrong (though harmless while
+   the axis WAS always log) for the now-linear one; replaced with the raw `GetUymin()`/
+   `GetUymax()` values.
+2. **F15's header/axis-multiplier collision fix redone**: the F15 approach
+   (`TGaxis::SetMaxDigits(7)` forcing full-digit y-axis labels, e.g. "3000000", plus a
+   `SetTitleOffset`/`SetLeftMargin` increase to fit them) is REPLACED per explicit user
+   instruction — full-digit labels are not wanted; ROOT's native `×10^n` scientific notation
+   (e.g. "3500" ticks with a "×10^3" box) is. Reverted `TGaxis::SetMaxDigits`/`TitleOffset`
+   (1.70)/`LeftMargin` (0.20) to their pre-F15 values in `plot_muon_q_eta_spectrum.cxx`, and
+   fixed the ACTUAL collision at its source instead: `Header()`'s near-frame text offsets raised
+   (empty-sub 0.025→0.055; two-line sub-line 0.020→0.050, main 0.067→0.095) so the header text
+   clears ROOT's native multiplier box rather than sitting on top of it.
+
+`/review-plot` PASS at iteration 1
+(`.claude/logs/review-plot-20260906-224247-qeta-ptdep-linear-and-header-fix.md`); reviewer
+independently reran all three macros and matched every console number exactly (F11a/F14/F12).
+Verified clean (native "×10^3" box visible, no collision) on the highest-magnitude case (Medium
+WP PbPb combined, ~3.5M plateau) and the tightest pad grid (Plot C, 2×3), and on both
+`plot_muon_q_eta_pt_dependence.cxx` PNGs (Tight + Medium).
+
 ## Ruled Out (append-only)
 
 - *Plotting from the existing 2026-06-23 trees* — stale on the one-sided Δp/p fix (F3), which
@@ -803,13 +833,13 @@ collisions remain on any panel inspected.
 
 ## Latest Stage
 
-**STEP 9 DONE (2026-09-06, F15).** q·η spectra (data + truth) switched to linear y-scale,
-`/review-plot` PASS iteration 1, all numbers verified byte-identical to F6/F9/F11a/F12 by the
-reviewer's own independent rerun. A header/axis-multiplier-box collision regression introduced
-by the linear-scale switch was found and fixed at the root (`TGaxis::SetMaxDigits`,
-`TitleOffset`, `LeftMargin` — see F15). `muon_gap_cuts/old_gap_cuts/` deleted per user
-instruction (superseded by F10's settled cut set). F14's `muon_q_eta_pt_dependence.png`
-(separate p_T-dependence diagnostic) is untouched — still log-y, out of scope.
+**STEP 9 DONE (2026-09-06, F15+F16).** q·η spectra (data + truth + F14's p_T-dependence
+diagnostic) all switched to linear y-scale, `/review-plot` PASS on both rounds, all numbers
+verified byte-identical to F6/F9/F11a/F12/F14 by the reviewer's own independent reruns.
+`muon_gap_cuts/old_gap_cuts/` deleted per user instruction (superseded by F10's settled cut
+set). The header/axis-multiplier-box collision the linear switch exposed is fixed by
+repositioning `Header()`'s near-frame text (F16) so ROOT's native `×10^n` scientific-notation
+axis labels display normally — NOT by forcing full-digit labels (F15's approach, reverted).
 
 **STEP 8 DONE (2026-09-03).** The p_T-dependence figure exists at
 `muon_gap_cuts/new_gap_cuts/muon_q_eta_pt_dependence.png` (F14). Headline: the three adopted

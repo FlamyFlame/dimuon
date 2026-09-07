@@ -136,3 +136,7 @@
 {"event":"end","command":"review-investigation","status":"approved","iterations":2,"timestamp":"2026-09-03T17:52:00Z","criticals":0,"warnings":0,"slug":"pp24-mc-data-zero-bin"}
 {"event":"start","command":"review-plot","task":"Switch muon q*eta distribution plots (data+truth) from log-y to linear-y","slug":"qeta-linear-yscale","timestamp":"2026-09-07T01:21:36Z"}
 {"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-09-07T01:49:13Z","criticals":0,"warnings":0,"slug":"qeta-linear-yscale"}
+{"event":"start","command":"review-analysis-code","task":"mupt45 diag hists","slug":"mupt45-diag-hists","timestamp":"2026-09-06T22:13:48Z"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-09-06T22:35:00Z","criticals":0,"warnings":0,"slug":"mupt45-diag-hists"}
+{"event":"start","command":"review-plot","task":"pt-dependence macro linear-y conversion + revert digit-forcing header fix to native scientific notation","slug":"qeta-ptdep-linear-and-header-fix","timestamp":"2026-09-07T02:43:20Z"}
+{"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-09-07T02:49:09Z","criticals":0,"warnings":0,"slug":"qeta-ptdep-linear-and-header-fix"}
