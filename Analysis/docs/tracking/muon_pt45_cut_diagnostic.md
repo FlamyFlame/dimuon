@@ -36,6 +36,34 @@ disproportionate fraction of pairs.
 **Stop-and-ask** = ANY physics-results-bending ambiguity (use judgment; if
 unsure whether it's blocking, treat it as blocking → AskUserQuestion).
 
+## Decision Status — PENDING (2026-09-07, BLOCKING on other work)
+
+**NOT DECIDED.** The 4.5 GeV candidate cut costs a considerable fraction of
+signal statistics (pp24 **-23.2458%**, Pb+Pb 23+24+25 combined **-34.5314%**
+raw signal-region OS pairs — see Progress Log). Whether that statistics loss
+is worth the reduced gap-cut/reconstruction-efficiency systematic it buys is
+a **human decision, not yet made**.
+
+**Binding on every other agent/session until this is resolved:**
+- The **nominal analysis stays on muon reconstructed pT > 4 GeV** everywhere
+  (NTuple processing, RDF hist filling, crossx, template fits, all plots) —
+  do NOT switch to 4.5 GeV anywhere outside this diagnostic.
+- Do **NOT** modify `NTupleProcessingCode/DimuonDataAlgCoreT.c:596` (data) or
+  the analogous truth-pT cuts in `PythiaFullSimExtras.c` / `PowhegFullSimExtras.c`
+  (MC) to raise the cut to 4.5 GeV.
+- Do **NOT** add a pT > 4.5 GeV cut (temporary or otherwise) to crossx, R_AA,
+  reco-eff, trigger-eff, template-fit, or any other analysis code/plot outside
+  the diagnostic files already listed in this doc's Design Decisions /
+  Remaining Work.
+- The existing temporary `_diag_mupt45` / `_logbins_from9` diagnostic
+  histograms and driver macros (this doc's own scope) may stay as-is or be
+  regenerated for further diagnosis, but are NOT a license to propagate the
+  4.5 GeV cut into any other pipeline or output.
+- **Unblocks when:** the user makes an explicit decision to adopt 4.5 GeV
+  (→ execute the full permanent-change + rerun-everything plan in Design
+  Decisions / Remaining Work below) or to keep 4 GeV (→ this doc is fully
+  closed and the temporary diagnostic code is deleted per Remaining Work).
+
 ## Physics Procedure
 
 1. **Motivation.** §Objective above. The reconstruction-efficiency systematic
@@ -215,7 +243,12 @@ percentages independently reproduced via a fresh ACLiC rebuild + rerun.
   pre-existing bug is owned by `pp_trig_eff_highpt_jump.md` (ACTIVE, blocked
   on a user decision), not this doc; flagged here per the user's explicit
   instruction when approving the bypass.
-- **Human decision pending** on whether to adopt the 4.5 GeV cut. If adopted:
+- **Human decision pending (see §Decision Status above, BLOCKING)** on whether
+  to adopt the 4.5 GeV cut, given the considerable statistics cost (pp24
+  -23.2458%, Pb+Pb combined -34.5314%). Until decided, every other
+  agent/session works with the ORIGINAL pT > 4 GeV cut everywhere and must
+  NOT modify NTuple processing or add a pT > 4.5 GeV cut to crossx or any
+  other part of the analysis. If adopted:
   the permanent change goes in `NTupleProcessingCode/DimuonDataAlgCoreT.c:596`
   (data) + `PythiaFullSimExtras.c`/`PowhegFullSimExtras.c` truth_pt (MC), ALL
   data and MC results must be rerun, and every `_diag_mupt45`/temporary block
@@ -270,7 +303,9 @@ draw-code-only changes.
 
 ## Latest Stage
 
-**DONE 2026-09-07.** All deliverables complete:
+**Diagnostic deliverables DONE 2026-09-07; doc PARKED pending a human decision
+(see §Decision Status, BLOCKING on other work).** All requested plots/numbers
+are complete:
 - Original 6 PNGs (3 per dataset x 2 datasets) + 2 summary txt files, both
   `/review-analysis-code` and `/review-plot` PASSED at iteration 1 (2026-09-06).
 - Step 6 follow-ups (2026-09-07): pair-eta plots remade linear-y with a fixed
@@ -281,5 +316,8 @@ draw-code-only changes.
 - pp24: 705404 (muon pT>4, current) -> 541427 (muon pT>4.5, candidate) raw
   signal-region OS pairs, **-23.2458%**.
 - Pb+Pb 2023+2024+2025 combined: 275622 -> 180446 pairs, **-34.5314%**.
-- Nothing left except the human decision on whether to adopt the 4.5 GeV cut
-  (see Remaining Work) -- not an action item for this doc.
+- **NOT decided**: whether the statistics cost above is worth the reduced
+  gap-cut/reco-efficiency systematic. Until the user decides, the nominal
+  analysis STAYS on pT > 4 GeV everywhere and no other work may add a 4.5 GeV
+  cut anywhere outside this doc's own temporary diagnostic code (see §Decision
+  Status for the exact binding constraint and unblock condition).
