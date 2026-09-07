@@ -836,6 +836,22 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         ROOT::RDF::TH2DModel("h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
         "pair_pt", "pair_eta");
 
+    // ==== TEMPORARY DIAGNOSTIC — muon reconstructed pT > 4.5 GeV cut study ====================
+    // docs/tracking/muon_pt45_cut_diagnostic.md. Human decision pending on raising the muon
+    // reconstructed-pT cut from the current 4 GeV (NTupleProcessingCode/DimuonDataAlgCoreT.c:596,
+    // "m1.pt < 4 || m2.pt < 4") to 4.5 GeV. Diagnosed here with an ADDITIVE filter on top of the
+    // unchanged signal region -- NOT a change to signal_cuts or to any nominal histogram above.
+    // If the 4.5 GeV cut is adopted, the permanent change belongs in NTuple processing (this file
+    // + the analogous truth_pt cut in NTupleProcessingCode/{Pythia,Powheg}FullSimExtras.c for MC),
+    // every data and MC result must be rerun, and this block must be DELETED.
+    ROOT::RDF::RNode df_single_b_crossx_diag_mupt45 =
+        df_single_b_crossx_weighted.Filter("m1.pt > 4.5 && m2.pt > 4.5", "diag_mupt45_cut");
+    hist2d_rresultptr_map["h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts_diag_mupt45"] =
+        df_single_b_crossx_diag_mupt45.Histo2D(
+            ROOT::RDF::TH2DModel("h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts_diag_mupt45", ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
+            "pair_pt", "pair_eta");
+    // ==== END TEMPORARY DIAGNOSTIC =============================================================
+
     // Correction-stage histograms (raw -> unfolded -> +reco -> +reco+trig) for the
     // primary pair_pt x pair_eta differential, so each correction's impact is
     // visible at plotting time. See CorrectionStages.h.
