@@ -40,6 +40,7 @@ does NOT choose the cuts.
 | 5 | `/review-plot` | IN PROGRESS |
 | 6 | TRUTH q*eta reference spectrum (MC, truth fiducial only) | DONE (F12) |
 | 7 | Fix TLegend boxes covering curves in the new-gap-cut figures | DONE (F13) |
+| 9 | Switch q·η spectra (data + truth) to linear y-scale; delete `old_gap_cuts/` (superseded by F10's settled cut) | DONE (F15) |
 
 ## Accumulated Findings (append-only)
 
@@ -758,6 +759,41 @@ truncated). The numbers in Result 1 are unaffected: the amendment touched drawin
 output paths only, not the fill loop, and those numbers were verified in iteration 1. If this
 figure is ever promoted toward a note, re-run `/review-plot` on it first.
 
+### F15 — q·η spectra (data + truth) switched to linear y; `old_gap_cuts/` deleted (2026-09-06)
+
+**Step 9, user request.** Both q·η spectrum macros — `plot_muon_q_eta_spectrum.cxx` (data,
+F6/F9/F11/F13) and `plot_muon_truth_q_eta_spectrum.cxx` (truth, F12) — switched from log-y to
+LINEAR y (floor 0, ceiling 1.15× the overlaid peak via a new `SetCommonLinRange`, replacing the
+log-floor `SetCommonLogRange`/`kMaxDecades`/`NoteOffScale` machinery), so the plateau and the
+three gap-cut windows' depth/steepness read on an absolute scale instead of a compressed one.
+`/review-plot` PASS at iteration 1 (log
+`.claude/logs/review-plot-20260906-212055-qeta-linear-yscale.md`); every console number
+(gap-cut fail fractions, truth ε_acc and its per-window breakdown) verified byte-identical to
+F6/F9/F11a/F12 by the reviewer's own independent rerun. `muon_q_eta_pt_dependence.png` (F14) is
+UNCHANGED — out of scope, still log-y, a separate diagnostic.
+
+**Regression found and fixed during execution (data macro only).** Switching to linear-y made
+ROOT invoke its "×10^n" axis-multiplier annotation (needed once raw counts render as full
+numbers up to ~3.5M), which collided with the `Header()`/`CanvasGapKey()` text drawn just above
+the frame — present on every panel with an empty-sub `Header()` call and on the sub-line of
+two-line headers. Root-caused and fixed, not patched with fragile per-panel offsets:
+`TGaxis::SetMaxDigits(7)` (full-digit labels, no multiplier box) + `StyleSpectrum`'s y-axis
+`SetTitleOffset` 1.70→3.00 + `SetLeftMargin` 0.20→0.28 in `MakeSinglePad` and BOTH
+`p_main`/`p_rat` of `MakeRatioPads` (kept equal so the stacked main+ratio x-axes still line up).
+Verified clean on the highest-magnitude case (Medium WP PbPb combined, ~3.5M plateau) and the
+tightest pad grid (Plot C, 2×3). The truth macro's values stay at O(10–50) nb (weighted
+cross-section, not raw counts) and never trigger this, so it needed none of these changes —
+log-y removal only.
+
+**`old_gap_cuts/` deleted per user instruction** (superseded by F10's settled cut set; the
+legacy `PassSingleMuonGapCut` comparison it existed to provide is no longer needed). The macro's
+`use_new_gap_cuts=false` code path (which would regenerate it) is left in place, unused, in case
+a future legacy comparison is wanted again.
+
+All 19 regenerated PNGs (8 `old_gap_cuts/[medium/]` — since deleted, see above — + 8
+`new_gap_cuts/[medium/]` + 3 `truth_q_eta/`) visually re-checked; no header/label/legend
+collisions remain on any panel inspected.
+
 ## Ruled Out (append-only)
 
 - *Plotting from the existing 2026-06-23 trees* — stale on the one-sided Δp/p fix (F3), which
@@ -766,6 +802,14 @@ figure is ever promoted toward a note, re-run `/review-plot` on it first.
   Provenance rule and unnecessary: the single-muon trees are exactly the intended output.
 
 ## Latest Stage
+
+**STEP 9 DONE (2026-09-06, F15).** q·η spectra (data + truth) switched to linear y-scale,
+`/review-plot` PASS iteration 1, all numbers verified byte-identical to F6/F9/F11a/F12 by the
+reviewer's own independent rerun. A header/axis-multiplier-box collision regression introduced
+by the linear-scale switch was found and fixed at the root (`TGaxis::SetMaxDigits`,
+`TitleOffset`, `LeftMargin` — see F15). `muon_gap_cuts/old_gap_cuts/` deleted per user
+instruction (superseded by F10's settled cut set). F14's `muon_q_eta_pt_dependence.png`
+(separate p_T-dependence diagnostic) is untouched — still log-y, out of scope.
 
 **STEP 8 DONE (2026-09-03).** The p_T-dependence figure exists at
 `muon_gap_cuts/new_gap_cuts/muon_q_eta_pt_dependence.png` (F14). Headline: the three adopted

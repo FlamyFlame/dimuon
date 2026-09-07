@@ -229,9 +229,6 @@ void StyleSpectrum(TH1D* h, int color) {
     h->GetYaxis()->SetTitleSize(0.050);
     h->GetXaxis()->SetLabelSize(0.045);
     h->GetYaxis()->SetLabelSize(0.045);
-    // These spectra span well under one decade; without this ROOT labels only the decade
-    // ticks and the axis reads as a single power of ten.
-    h->GetYaxis()->SetMoreLogLabels();
     h->GetYaxis()->SetTitleOffset(1.70);
 }
 
@@ -357,47 +354,20 @@ void CanvasGapKey(TCanvas& c, double y1, double y2, double text_size) {
     l->Draw();
 }
 
-// Common log-y range for a set of overlaid histograms, with the floor capped kMaxDecades
-// below the peak: a handful of acceptance-edge bins sit orders of magnitude below the
-// bulk, and letting them set the floor squeezes the gap structure the figure exists to
-// show into the top of the frame. Returns the number of bins pushed below the frame, so
-// the caller can record it -- capping an axis silently is worse than capping it.
-const double kMaxDecades = 2.0;
-int SetCommonLogRange(const std::vector<TH1D*>& hs) {
-    double lo = 1e300, hi = 0.;
+// Common LINEAR-y range for a set of overlaid histograms. Floor pinned at 0 -- a linear
+// axis must start at zero or the apparent depth of the gap structure this figure exists
+// to show is visually distorted -- and ceiling at kHeadroom above the peak so the curve
+// never touches the frame. Unlike a log floor, nothing is ever pushed off scale.
+const double kHeadroom = 1.15;
+void SetCommonLinRange(const std::vector<TH1D*>& hs) {
+    double hi = 0.;
     for (TH1D* h : hs)
-        for (int i = 1; i <= h->GetNbinsX(); ++i) {
-            const double c = h->GetBinContent(i);
-            if (c > 0) {
-                lo = std::min(lo, c);
-                hi = std::max(hi, c);
-            }
-        }
-    if (hi <= 0.) return 0;
-    if (lo >= 1e300) lo = hi * 1e-3;
-    const double floor_val = std::max(lo, hi * std::pow(10., -kMaxDecades));
-    int n_below = 0;
-    for (TH1D* h : hs)
-        for (int i = 1; i <= h->GetNbinsX(); ++i) {
-            const double c = h->GetBinContent(i);
-            if (c > 0 && c < floor_val) ++n_below;
-        }
+        for (int i = 1; i <= h->GetNbinsX(); ++i)
+            hi = std::max(hi, h->GetBinContent(i));
     for (TH1D* h : hs) {
-        h->SetMinimum(floor_val / 1.5);
-        h->SetMaximum(hi * 1.5);
+        h->SetMinimum(0.);
+        h->SetMaximum(hi * kHeadroom);
     }
-    return n_below;
-}
-
-void NoteOffScale(int n_below) {
-    if (n_below <= 0) return;
-    TLatex t;
-    t.SetNDC();
-    t.SetTextFont(42);
-    t.SetTextSize(0.033);
-    t.SetTextColor(kGray + 3);
-    t.DrawLatex(gPad->GetLeftMargin() + 0.03, gPad->GetBottomMargin() + 0.03,
-                Form("%d bins below axis range", n_below));
 }
 
 void Header(const std::string& text) {
@@ -644,13 +614,11 @@ void plot_muon_truth_q_eta_spectrum() {
 
         // --- column 1: the spectrum + fiducial windows ---
         MakeSinglePad(c, ps.fname + "_p1", 0.000, 0.0, 0.334, 0.875)->cd();
-        gPad->SetLogy();
         StyleSpectrum(ps.all, kBlack);
-        const int nb1 = SetCommonLogRange({ps.all});
+        SetCommonLinRange({ps.all});
         ps.all->Draw("hist e");
         gPad->Update();
         DrawGapMarkers({ps.all});
-        NoteOffScale(nb1);
         Header("all truth muons; fiducial gap cut overlaid");
         // No in-frame legend: one curve, named by the header, and the window key is drawn
         // once across the canvas below. A box carrying the key would span the frame.
@@ -659,19 +627,17 @@ void plot_muon_truth_q_eta_spectrum() {
         {
             auto pads = MakeRatioPads(c, ps.fname + "_p2", 0.334, 0.0, 0.667, 0.875);
             pads.first->cd();
-            gPad->SetLogy();
             StyleSpectrum(ps.pos, kRed + 1);
             StyleSpectrum(ps.neg, kAzure + 2);
             for (TH1D* h : {ps.pos, ps.neg}) {
                 h->GetXaxis()->SetLabelSize(0.);
                 h->GetXaxis()->SetTitleSize(0.);
             }
-            const int nb2 = SetCommonLogRange({ps.pos, ps.neg});
+            SetCommonLinRange({ps.pos, ps.neg});
             ps.pos->Draw("hist e");
             ps.neg->Draw("hist e same");
             gPad->Update();
             DrawGapMarkers({ps.pos, ps.neg});
-            NoteOffScale(nb2);
             Header("by truth charge");
             {
                 const LegBox lb = AutoLegendBox({ps.pos, ps.neg}, 0.23,
@@ -696,19 +662,17 @@ void plot_muon_truth_q_eta_spectrum() {
         {
             auto pads = MakeRatioPads(c, ps.fname + "_p3", 0.667, 0.0, 1.000, 0.875);
             pads.first->cd();
-            gPad->SetLogy();
             StyleSpectrum(ps.lopt, kMagenta + 1);
             StyleSpectrum(ps.hipt, kGreen + 2);
             for (TH1D* h : {ps.lopt, ps.hipt}) {
                 h->GetXaxis()->SetLabelSize(0.);
                 h->GetXaxis()->SetTitleSize(0.);
             }
-            const int nb3 = SetCommonLogRange({ps.lopt, ps.hipt});
+            SetCommonLinRange({ps.lopt, ps.hipt});
             ps.hipt->Draw("hist e");
             ps.lopt->Draw("hist e same");
             gPad->Update();
             DrawGapMarkers({ps.hipt, ps.lopt});
-            NoteOffScale(nb3);
             Header(Form("split at truth p_{T} = %.0f GeV", kPtSplit));
             {
                 const LegBox lb = AutoLegendBox({ps.lopt, ps.hipt}, 0.32,
@@ -758,13 +722,11 @@ void plot_muon_truth_q_eta_spectrum() {
             h->GetXaxis()->SetTitleSize(0.);
         }
         pads.first->cd();
-        gPad->SetLogy();
-        const int nbc = SetCommonLogRange({pp_s, pb_s});
+        SetCommonLinRange({pp_s, pb_s});
         pp_s->Draw("hist e");
         pb_s->Draw("hist e same");
         gPad->Update();
         DrawGapMarkers({pp_s, pb_s});
-        NoteOffScale(nbc);
         Header("truth q#times#eta shape: pp vs Pb+Pb");
         {
             const LegBox lb = AutoLegendBox({pp_s, pb_s}, 0.49, LegendHeight(2, 0.036));

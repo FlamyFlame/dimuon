@@ -58,6 +58,7 @@
 #include <TBox.h>
 #include <TCanvas.h>
 #include <TChain.h>
+#include <TGaxis.h>
 #include <TH1D.h>
 #include <TLatex.h>
 #include <TLegend.h>
@@ -242,10 +243,10 @@ void StyleSpectrum(TH1D* h, int color) {
     h->GetYaxis()->SetTitleSize(0.050);
     h->GetXaxis()->SetLabelSize(0.045);
     h->GetYaxis()->SetLabelSize(0.045);
-    // Several of these spectra span well under one decade; without this ROOT labels
-    // only the decade ticks and the axis reads as a single "10^6".
-    h->GetYaxis()->SetMoreLogLabels();
-    h->GetYaxis()->SetTitleOffset(1.70);
+    // Linear-scale labels are full 7-digit numbers (TGaxis::SetMaxDigits(7) above), much
+    // wider than the old log-axis decade labels -- offset pushed out so they clear the
+    // title, paired with the wider pad LeftMargin (0.28) in MakeSinglePad/MakeRatioPads.
+    h->GetYaxis()->SetTitleOffset(3.00);
 }
 
 // Legends must be opaque: they sit over the shaded gap bands.
@@ -361,49 +362,20 @@ void DrawGapMarkers(const std::vector<TH1D*>& redraw) {
     gPad->RedrawAxis();
 }
 
-// Common log-y range for a set of overlaid histograms. The floor is capped at
-// kMaxDecades below the peak: a handful of acceptance-edge bins are orders of magnitude
-// below the bulk, and letting them set the floor squeezes all the gap structure the
-// figure exists to show into the top of the frame. Returns the number of bins pushed
-// below the frame so the caller can record it on the canvas — capping an axis silently
-// is worse than capping it (atlas-plotting.md).
-const double kMaxDecades = 2.0;
-int SetCommonLogRange(const std::vector<TH1D*>& hs) {
-    double lo = 1e300, hi = 0.;
+// Common LINEAR-y range for a set of overlaid histograms. Floor pinned at 0 -- a linear
+// axis must start at zero or the apparent depth of the gap structure this figure exists
+// to show is visually distorted -- and ceiling at kHeadroom above the peak so the curve
+// never touches the frame. Unlike a log floor, nothing is ever pushed off scale.
+const double kHeadroom = 1.15;
+void SetCommonLinRange(const std::vector<TH1D*>& hs) {
+    double hi = 0.;
     for (TH1D* h : hs)
-        for (int i = 1; i <= h->GetNbinsX(); ++i) {
-            const double c = h->GetBinContent(i);
-            if (c > 0) {
-                lo = std::min(lo, c);
-                hi = std::max(hi, c);
-            }
-        }
-    if (hi <= 0.) return 0;
-    if (lo >= 1e300) lo = hi * 1e-3;
-    const double floor_val = std::max(lo, hi * std::pow(10., -kMaxDecades));
-    int n_below = 0;
-    for (TH1D* h : hs)
-        for (int i = 1; i <= h->GetNbinsX(); ++i) {
-            const double c = h->GetBinContent(i);
-            if (c > 0 && c < floor_val) ++n_below;
-        }
+        for (int i = 1; i <= h->GetNbinsX(); ++i)
+            hi = std::max(hi, h->GetBinContent(i));
     for (TH1D* h : hs) {
-        h->SetMinimum(floor_val / 1.5);
-        h->SetMaximum(hi * 1.5);
+        h->SetMinimum(0.);
+        h->SetMaximum(hi * kHeadroom);
     }
-    return n_below;
-}
-
-// Terse record of points pushed off scale by the axis cap.
-void NoteOffScale(int n_below) {
-    if (n_below <= 0) return;
-    TLatex t;
-    t.SetNDC();
-    t.SetTextFont(42);
-    t.SetTextSize(0.033);
-    t.SetTextColor(kGray + 3);
-    t.DrawLatex(gPad->GetLeftMargin() + 0.03, gPad->GetBottomMargin() + 0.03,
-                Form("%d bins below axis range", n_below));
 }
 
 void Header(const std::string& text, const std::string& sub) {
@@ -496,13 +468,15 @@ std::pair<TPad*, TPad*> MakeRatioPads(TCanvas& c, const std::string& name, doubl
     const double ysplit = y1 + 0.34 * (y2 - y1);
     TPad* p_main = new TPad((name + "_main").c_str(), "", x1, ysplit, x2, y2);
     TPad* p_rat = new TPad((name + "_rat").c_str(), "", x1, y1, x2, ysplit);
-    p_main->SetLeftMargin(0.20);
+    // Wider than p_rat's: the main pad's y-axis carries full 7-digit linear-scale counts
+    // (TGaxis::SetMaxDigits(7) above), not the O(1) ratio values below.
+    p_main->SetLeftMargin(0.28);
     p_main->SetRightMargin(0.04);
     p_main->SetTopMargin(0.14);
     p_main->SetBottomMargin(0.02);
     p_main->SetTickx(1);
     p_main->SetTicky(1);
-    p_rat->SetLeftMargin(0.20);
+    p_rat->SetLeftMargin(0.28);  // MUST match p_main's or the x-axes will not line up
     p_rat->SetRightMargin(0.04);
     p_rat->SetTopMargin(0.03);
     p_rat->SetBottomMargin(0.34);
@@ -518,7 +492,8 @@ TPad* MakeSinglePad(TCanvas& c, const std::string& name, double x1, double y1, d
                     double y2) {
     c.cd();  // pads belong to the CANVAS, not to whatever sub-pad is current
     TPad* p = new TPad(name.c_str(), "", x1, y1, x2, y2);
-    p->SetLeftMargin(0.20);
+    // Wide enough for the full 7-digit linear-scale counts (TGaxis::SetMaxDigits(7) above).
+    p->SetLeftMargin(0.28);
     p->SetRightMargin(0.04);
     p->SetTopMargin(0.14);
     p->SetBottomMargin(0.14);
@@ -610,6 +585,10 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
     gStyle->SetOptStat(0);
     gStyle->SetPadTickX(1);
     gStyle->SetPadTickY(1);
+    // The linear y-axis needs full-digit labels (up to ~3.5M): ROOT's default
+    // SetMaxDigits(5) would switch to a "x10^n" multiplier box drawn just above the
+    // frame, which collides with the Header()/CanvasGapKey() text placed there.
+    TGaxis::SetMaxDigits(7);
 
     const std::string wp_tag = use_tight_wp ? "" : "_medium_wp";
     const std::string wp_lbl = use_tight_wp ? "Tight" : "Medium";
@@ -720,13 +699,11 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
 
         // --- column 1: the spectrum + gap windows (single curve, no ratio) ---
         MakeSinglePad(c, ps.fname + "_p1", 0.000, 0.0, 0.334, 0.875)->cd();
-        gPad->SetLogy();
         StyleSpectrum(ps.all, kBlack);
-        const int nb1 = SetCommonLogRange({ps.all});
+        SetCommonLinRange({ps.all});
         ps.all->Draw("hist");
         gPad->Update();
         DrawGapMarkers({ps.all});
-        NoteOffScale(nb1);
         Header(kUseNewGapCuts ? "all muons; proposed gap cuts overlaid"
                               : "all muons; existing gap cuts overlaid",
                "");
@@ -739,16 +716,14 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
         {
             auto pads = MakeRatioPads(c, ps.fname + "_p2", 0.334, 0.0, 0.667, 0.875);
             pads.first->cd();
-            gPad->SetLogy();
             StyleSpectrum(ps.pos, kRed + 1);
             StyleSpectrum(ps.neg, kAzure + 2);
             for (TH1D* h : {ps.pos, ps.neg}) { h->GetXaxis()->SetLabelSize(0.); h->GetXaxis()->SetTitleSize(0.); }
-            const int nb2 = SetCommonLogRange({ps.pos, ps.neg});
+            SetCommonLinRange({ps.pos, ps.neg});
             ps.pos->Draw("hist");
             ps.neg->Draw("hist same");
             gPad->Update();
             DrawGapMarkers({ps.pos, ps.neg});
-            NoteOffScale(nb2);
             Header("by muon charge", "");
             {
                 const LegBox lb = AutoLegendBox({ps.pos, ps.neg}, 0.23,
@@ -773,16 +748,14 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
         {
             auto pads = MakeRatioPads(c, ps.fname + "_p3", 0.667, 0.0, 1.000, 0.875);
             pads.first->cd();
-            gPad->SetLogy();
             StyleSpectrum(ps.lopt, kMagenta + 1);
             StyleSpectrum(ps.hipt, kGreen + 2);
             for (TH1D* h : {ps.lopt, ps.hipt}) { h->GetXaxis()->SetLabelSize(0.); h->GetXaxis()->SetTitleSize(0.); }
-            const int nb3 = SetCommonLogRange({ps.lopt, ps.hipt});
+            SetCommonLinRange({ps.lopt, ps.hipt});
             ps.hipt->Draw("hist");
             ps.lopt->Draw("hist same");
             gPad->Update();
             DrawGapMarkers({ps.hipt, ps.lopt});
-            NoteOffScale(nb3);
             Header("split at p_{T} = 6 GeV", "");
             {
                 const LegBox lb = AutoLegendBox({ps.lopt, ps.hipt}, 0.32,
@@ -825,13 +798,11 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
                           (col + 1) / double(ncol),
                           kPanelTop * (1.0 - row / double(nrow)))
                 ->cd();
-            gPad->SetLogy();
             StyleSpectrum(pb_ctr[k], kBlack);
-            const int nbc = SetCommonLogRange({pb_ctr[k]});
+            SetCommonLinRange({pb_ctr[k]});
             pb_ctr[k]->Draw("hist");
             gPad->Update();
             DrawGapMarkers({pb_ctr[k]});
-            NoteOffScale(nbc);
             Header(Form("Pb+Pb #sqrt{s_{NN}} = 5.36 TeV, 23+24+25, %d-%d%%", ctr_lo[k],
                         ctr_hi[k]),
                    wp_lbl + " WP (per muon)");
@@ -857,13 +828,11 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
             shapes.push_back(h);
         }
         pads.first->cd();
-        gPad->SetLogy();
-        const int nbs = SetCommonLogRange(shapes);
+        SetCommonLinRange(shapes);
         for (size_t j = 0; j < shapes.size(); ++j)
             shapes[j]->Draw(j == 0 ? "hist" : "hist same");
         gPad->Update();
         DrawGapMarkers(shapes);
-        NoteOffScale(nbs);
         Header("shape vs centrality (unit area)", "");
         {
             const LegBox lb = AutoLegendBox(shapes, 0.27, LegendHeight(nctr, 0.042));
@@ -912,13 +881,11 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
             h->GetXaxis()->SetTitleSize(0.);
         }
         pads.first->cd();
-        gPad->SetLogy();
-        const int nbd = SetCommonLogRange({pp_s, pb_s});
+        SetCommonLinRange({pp_s, pb_s});
         pp_s->Draw("hist");
         pb_s->Draw("hist same");
         gPad->Update();
         DrawGapMarkers({pp_s, pb_s});
-        NoteOffScale(nbd);
         Header("q#times#eta shape: pp vs Pb+Pb", "unit area, " + wp_lbl + " WP (per muon)");
         {
             // Two entries only: the gap-window key moved to the canvas band. Kept in this

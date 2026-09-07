@@ -134,3 +134,5 @@
 {"event":"end","command":"review-analysis-code","status":"approved","iterations":3,"timestamp":"2026-09-03T12:23:19-04:00","criticals":0,"warnings":0,"slug":"pthat-stats-projection"}
 {"event":"start","command":"review-investigation","task":"pp24 mc-data comparison plot zero-bin vs nonzero pp_counts discrepancy","slug":"pp24-mc-data-zero-bin","timestamp":"2026-09-03T17:21:30Z"}
 {"event":"end","command":"review-investigation","status":"approved","iterations":2,"timestamp":"2026-09-03T17:52:00Z","criticals":0,"warnings":0,"slug":"pp24-mc-data-zero-bin"}
+{"event":"start","command":"review-plot","task":"Switch muon q*eta distribution plots (data+truth) from log-y to linear-y","slug":"qeta-linear-yscale","timestamp":"2026-09-07T01:21:36Z"}
+{"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-09-07T01:49:13Z","criticals":0,"warnings":0,"slug":"qeta-linear-yscale"}
