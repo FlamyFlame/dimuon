@@ -133,6 +133,7 @@ using namespace std;
 #include "../Utilities/MCTrigEffPairSelection.h"
 #include "../plotting_codes/trig_effcy/mc_based/dr_correction_apply.h"
 #include "../Utilities/DrCorrectionCascadeEvaluator.h"
+#include "../Utilities/PairTrigEffEvaluator.h"
 #include "CommonEffcyConfig.h"
 
 namespace MCTrigEffClosure {
@@ -182,6 +183,26 @@ struct SeriesEval {
     const TH2D* grid = nullptr;                          // the cell axes this eps_dR is defined on
     std::string provenance;
 };
+
+// ---- THE SINGLE-VALUE PAIR EFFICIENCY SERIES (docs/tracking/mc_trigeff_single_value_pair_eff.md)
+// The ALTERNATIVE procedure: one measured number per (pair pT, |eta^pair|, sign) cell inside a
+// mass window replaces the dR correction -- either the whole per-pair weight (`pure`) or just the
+// eps_dR factor (`calibrated`). It carries NO dR dependence, so it is NOT a SeriesEval and is
+// deliberately kept in its own list rather than overloaded onto one: SeriesEval's cell grid is
+// checked against the dR correction's, and this object lives on a different (folded |eta|) grid.
+struct PairSeriesEval {
+    std::string key;                     // histogram + RDF column token
+    std::string window;                  // mass-window token: which cells were measured
+    bool        calibrated = false;      // false: w/eps^pair ; true: w/(eps_MC1 eps_MC2 K)
+    PairTrigEffEvaluator* ev = nullptr;
+    std::string provenance;
+};
+
+// BOOKED FOR THE `signal` VERSION ONLY, and that is a physics statement, not an economy: the mass
+// window is part of the single-value efficiency's DEFINITION, so applying it to the all-opposite-
+// sign sample would correct pairs of one mass mixture with a number measured on another. The
+// dR-correction series carry no such restriction and are booked for both versions as before.
+const char* kPairEffVersion = "signal";
 
 // DATA tag-and-probe reference for pp (RDFBasedHistFillingPP.cxx:306/323 -- the erf_plus_log fit
 // directory). {WP} is "" (Tight) or "_medium_wp": the data reference MUST be at the same working
@@ -424,6 +445,24 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
                                          + plateau_mode + "') -- stale fit file?");
     }
 
+    // ---- the single-value pair-efficiency series ------------------------------------------------
+    // One per (mass window) x (pure, calibrated). Their own canonical-binning guard runs inside
+    // PairTrigEffEvaluator::Load, against ParamsSet::pair_pt_coarse_bins and the live |eta| fold,
+    // so a stale file throws there rather than being silently read as today's cells.
+    const std::string pair_eff_file = PairTrigEff::FileName(cfg.mc_dir, cfg.mc_label, wp_suf);
+    std::vector<PairSeriesEval> pair_series;
+    for (const auto& W : PairTrigEff::Windows())
+        for (bool calib : {false, true}) {
+            auto* pe = new PairTrigEffEvaluator();
+            pe->Load(pair_eff_file, kSignSeries, W.token,
+                     calib ? PairTrigEffEvaluator::ApplyForm::kCalibrated
+                           : PairTrigEffEvaluator::ApplyForm::kPure);
+            pair_series.push_back({std::string(calib ? "paireffK_" : "paireff_") + W.token,
+                                   W.token, calib, pe,
+                                   " | " + std::string(calib ? "paireffK_" : "paireff_") + W.token
+                                   + ": " + pe->Describe() + "; " + stamp(pair_eff_file)});
+        }
+
     // ---------------------------------------------------------------- the pair sample
     ROOT::RDataFrame df(kPairTree, pair_file);
     ROOT::RDF::RNode d = df;
@@ -505,6 +544,52 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
                .Define("pdata_" + k, "eps1 * eps2 * edr_" + k)
                .Define("wdata_" + k, "weight / pdata_" + k);
     }
+    // The single-value series. `pe_<k>` is the measured cell value or -1 where the cell carries no
+    // number (below the delivered pair-pT range, or empty): such a pair gets weight 0 rather than
+    // an invented correction, and the coverage-restricted denominator booked below is what lets
+    // the plotter tell "not covered" apart from "does not close".
+    for (const auto& P : pair_series) {
+        const std::string k = P.key;
+        dn = dn.Define("pe_" + k,
+                       [ev = P.ev](float ppt, float peta) {
+                           return ev->Covered(ppt, peta) ? ev->Eval(ppt, peta) : -1.0;
+                       },
+                       {"pair_pt", "pair_eta"})
+               // p = the per-pair trigger probability THIS procedure predicts; w = its inverse
+               // times the MC weight. The pure form replaces the whole product, the calibrated one
+               // multiplies the two single-muon efficiencies -- exactly as eps_dR does.
+               .Define("p_" + k, P.calibrated
+                                     ? "pe_" + k + " > 0 ? epsmc1 * epsmc2 * pe_" + k + " : 0.0"
+                                     : "pe_" + k + " > 0 ? pe_" + k + " : 0.0")
+               .Define("w_" + k,  "p_" + k + " > 0 ? weight / p_" + k + " : 0.0")
+               .Define("wA_" + k, "w_" + k + " * w_" + k)
+               .Define("wB_" + k, "w_" + k + " * w_" + k + " * p_" + k)
+               // Same invariant, same estimator as the dR series: p is consumed as a Bernoulli
+               // probability by the conditional error, so a p > 1 is counted rather than clamped.
+               // eps^pair <= 1 by construction, but K can exceed 1 as a fluctuation.
+               .Define("pgt1_" + k, "p_" + k + " > 1.0 ? 1.0 : 0.0");
+    }
+    // COVERAGE, on the DENOMINATOR node: the sum of w over the pairs a given window's cells
+    // actually reach. A presentation bin where this differs from the full denominator is only
+    // PARTLY covered, and drawing the single-value ratio there would show a coverage artefact as
+    // if it were non-closure (doc PP-4).
+    ROOT::RDF::RNode dcov = d;
+    for (const auto& W : PairTrigEff::Windows()) {
+        auto* pe = new PairTrigEffEvaluator();
+        pe->Load(pair_eff_file, kSignSeries, W.token, PairTrigEffEvaluator::ApplyForm::kPure);
+        dcov = dcov.Define("wcov_" + W.token,
+                           [ev = pe](float ppt, float peta, double wgt) {
+                               return ev->Covered(ppt, peta) ? wgt : 0.0;
+                           },
+                           {"pair_pt", "pair_eta", "weight"});
+    }
+    // Only the version the single-value series are booked for; an all-OS coverage denominator
+    // would never be read (kPairEffVersion == "signal") and would invite the mistake of pairing it
+    // with a signal-region numerator.
+    std::map<std::string, ROOT::RDF::RNode> cov_versions;
+    cov_versions.emplace("signal", dcov.Filter(MCTrigEffPairSel::SingleBSignalCutsReco(),
+                                               "data-like single-b signal cuts (coverage)"));
+
     std::map<std::string, ROOT::RDF::RNode> trig_versions;
     trig_versions.emplace("all_os", dn);
     trig_versions.emplace("signal", dn.Filter(MCTrigEffPairSel::SingleBSignalCutsReco(),
@@ -547,12 +632,35 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
                           trig_versions.at(v).Histo2D(model(pre + "num_epsdata_" + k),
                                                       "pair_pt", "pair_eta", "wdata_" + k));
         }
+        if (v == kPairEffVersion) {
+            for (const auto& P : pair_series) {
+                const std::string k = P.key;
+                books.emplace(pre + "num_" + k,
+                              trig_versions.at(v).Histo2D(model(pre + "num_" + k),
+                                                          "pair_pt", "pair_eta", "w_" + k));
+                books.emplace(pre + "numA_" + k,
+                              trig_versions.at(v).Histo2D(model(pre + "numA_" + k),
+                                                          "pair_pt", "pair_eta", "wA_" + k));
+                books.emplace(pre + "numB_" + k,
+                              trig_versions.at(v).Histo2D(model(pre + "numB_" + k),
+                                                          "pair_pt", "pair_eta", "wB_" + k));
+            }
+            for (const auto& W : PairTrigEff::Windows())
+                books.emplace(pre + "den_paireff_" + W.token,
+                              cov_versions.at(v).Histo2D(model(pre + "den_paireff_" + W.token),
+                                                         "pair_pt", "pair_eta",
+                                                         "wcov_" + W.token));
+        }
     }
     auto n_sel     = d_all_pt.Count();
     auto n_in_cells = d.Count();
     std::map<std::string, ROOT::RDF::RResultPtr<double>> n_pgt1;
     for (const auto& S : series)
         n_pgt1.emplace(S.key, dn.Sum<double>("pgt1_" + S.key));
+    // On the SAME node the series are booked on (`kPairEffVersion`), not the wider all-OS one --
+    // a count that named the series but described a superset of it would be misleading.
+    for (const auto& P : pair_series)
+        n_pgt1.emplace(P.key, trig_versions.at(kPairEffVersion).Sum<double>("pgt1_" + P.key));
 
     // ---------------------------------------------------------------- run + write
     // The mode token is part of the NAME: the two variants are different measurements on the same
@@ -573,6 +681,7 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
     // UNINITIALIZED on failure, and writing that garbage would defeat the point of stamping).
     std::string dr_prov;
     for (const auto& S : series) dr_prov += S.provenance;
+    for (const auto& P : pair_series) dr_prov += P.provenance;
     // EVERY efficiency input gets path+mtime+size, not just the dR fits: a concurrent session
     // rewrites the single-muon turn-ons too, and a consumer holding only this file has no other
     // way to tell which version it was weighted by.
@@ -618,6 +727,10 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
                   << (long long)*n_pgt1.at(S.key) << " triggered pairs (" << S.key
                   << ") -- p is used as a Bernoulli probability by the conditional error"
                   << std::endl;
+    for (const auto& P : pair_series)
+        std::cout << "  predicted per-pair probability p > 1 in "
+                  << (long long)*n_pgt1.at(P.key) << " triggered pairs (" << P.key << ")"
+                  << std::endl;
     for (const auto& S : series) S.print_stats();
     std::cout << "  selected pairs: " << *n_sel << " ; inside the correction cells (pair pT ["
               << pt_lo << ", " << pt_hi << "), pair eta [" << eta_filt_lo << ", "
@@ -642,6 +755,14 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
                       << " [eps^nc_data diagnostic "
                       << (den > 0 ? books.at(pre + "num_epsdata_" + S.key)->Integral() / den : -1.)
                       << "]";
+        if (v == kPairEffVersion)
+            for (const auto& P : pair_series)
+                std::cout << "\n            single-value " << P.key << ": corrected/all = "
+                          << (den > 0 ? books.at(pre + "num_" + P.key)->Integral() / den : -1.)
+                          << "  [coverage: covered/all denominator = "
+                          << (den > 0 ? books.at(pre + "den_paireff_" + P.window)->Integral() / den
+                                      : -1.)
+                          << "]";
         std::cout << std::endl;
     }
 
