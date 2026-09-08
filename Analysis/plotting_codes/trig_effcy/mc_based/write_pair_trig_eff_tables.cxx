@@ -71,24 +71,31 @@ void write_pair_trig_eff_tables(const std::string& sample = "pp_full", bool use_
                                  + " -- run FillMCTrigEffPairEff first");
     auto* prov = dynamic_cast<TNamed*>(fin->Get("provenance"));
 
-    const std::vector<double> pt  = PairTrigEff::PairPtEdges();
     const std::vector<double> eta = PairTrigEff::AbsEtaGroups().edges;
-    const int npt = (int)pt.size() - 1, neta = (int)eta.size() - 1;
-    const int first_delivered = PairTrigEff::FirstDeliveredPtBin();
+    const int neta = (int)eta.size() - 1;
 
     const std::string outdir = cfg.out_base + "single_value_pair_eff_tables/";
     gSystem->mkdir(outdir.c_str(), kTRUE);
 
-    // ---------------------------------------------------------------- the two efficiency tables
+    // ---------------------------------------------------------------- the efficiency tables
+    // One CSV per (sign, cell mode). The merged mode is a DIFFERENT pair-pT axis -- seven cells,
+    // the last one [72.08, 150) GeV -- so it cannot share a table with the un-merged one without
+    // either padding a row or repeating a number as if it were two measurements.
+    for (const auto& M : PairTrigEff::CellModes())
     for (const auto& S : PairTrigEff::Signs()) {
+        const std::vector<double> pt = PairTrigEff::PairPtEdges(M.token);
+        const int npt = (int)pt.size() - 1;
+        const int first_delivered = PairTrigEff::FirstDeliveredPtBin(M.token);
         // One evaluator per (window, form) so the status column is the reader's own answer.
         std::map<std::string, PairTrigEffEvaluator> ev;
         for (const auto& W : PairTrigEff::Windows()) {
-            ev[W.token].Load(in_path, S.token, W.token, PairTrigEffEvaluator::ApplyForm::kPure);
+            ev[W.token].Load(in_path, S.token, W.token, PairTrigEffEvaluator::ApplyForm::kPure,
+                             M.token);
         }
 
         const std::string path = outdir + "single_value_pair_eff_"
-                               + (S.token == "os" ? "opposite_sign" : "same_sign") + wp_suf + ".csv";
+                               + (S.token == "os" ? "opposite_sign" : "same_sign")
+                               + M.suffix + wp_suf + ".csv";
         std::ofstream out(path);
         if (!out) throw std::runtime_error("write_pair_trig_eff_tables: cannot write " + path);
         out << std::setprecision(6) << std::fixed;
@@ -99,6 +106,7 @@ void write_pair_trig_eff_tables(const std::string& sample = "pp_full", bool use_
                "per-pair trigger weight)\n"
             << "# K   = sum_{pairs firing 2mu4} w/(eps_MC1 eps_MC2) / sum_{all pairs} w   "
                "(CALIBRATED: multiplies the two single-muon efficiencies)\n"
+            << "# cells: " << M.text << " x the " << neta << " |eta^pair| groups\n"
             << "# mass windows: sig = " << PairTrigEff::Window("sig").lo << "-"
             << PairTrigEff::Window("sig").hi << " GeV (the single-b signal window); wide = "
             << PairTrigEff::Window("wide").lo << "-" << PairTrigEff::Window("wide").hi
@@ -130,8 +138,8 @@ void write_pair_trig_eff_tables(const std::string& sample = "pp_full", bool use_
             for (int iy = 1; iy <= neta; ++iy) {
                 const double eta_c = 0.5 * (eta[iy - 1] + eta[iy]);
                 for (const auto& W : PairTrigEff::Windows()) {
-                    const TH2D* he = Get(fin, PairTrigEff::HistName("eps", S.token, W.token));
-                    const TH2D* hk = Get(fin, PairTrigEff::HistName("k",   S.token, W.token));
+                    const TH2D* he = Get(fin, PairTrigEff::HistName("eps", S.token, W.token, M.token));
+                    const TH2D* hk = Get(fin, PairTrigEff::HistName("k",   S.token, W.token, M.token));
                     out << "," << he->GetBinContent(ix, iy) << "," << he->GetBinError(ix, iy)
                         << "," << hk->GetBinContent(ix, iy) << "," << hk->GetBinError(ix, iy);
                 }
@@ -150,11 +158,14 @@ void write_pair_trig_eff_tables(const std::string& sample = "pp_full", bool use_
     // and therefore what decides whether it can be measured at all. Written for same sign because
     // that is the sparse one: the background estimate is OS - SS, so the same-sign reach is the
     // binding constraint on the whole procedure at high pair pT.
-    {
+    for (const auto& M : PairTrigEff::CellModes()) {
         const std::string win = "sig";
-        const TH2D* na = Get(fin, PairTrigEff::HistName("nraw",     "ss", win));
-        const TH2D* np = Get(fin, PairTrigEff::HistName("nrawpass", "ss", win));
-        const std::string path = outdir + "single_value_pair_stats_same_sign" + wp_suf + ".csv";
+        const std::vector<double> pt = PairTrigEff::PairPtEdges(M.token);
+        const int npt = (int)pt.size() - 1;
+        const TH2D* na = Get(fin, PairTrigEff::HistName("nraw",     "ss", win, M.token));
+        const TH2D* np = Get(fin, PairTrigEff::HistName("nrawpass", "ss", win, M.token));
+        const std::string path = outdir + "single_value_pair_stats_same_sign" + M.suffix
+                               + wp_suf + ".csv";
         std::ofstream out(path);
         if (!out) throw std::runtime_error("write_pair_trig_eff_tables: cannot write " + path);
 
@@ -162,6 +173,7 @@ void write_pair_trig_eff_tables(const std::string& sample = "pp_full", bool use_
             << PairTrigEff::Window(win).lo << " < m_mumu < " << PairTrigEff::Window(win).hi
             << " GeV, " << cfg.sample_text << ", " << wp_text << " muons\n"
             << "# RAW, UNWEIGHTED pair counts on the same cells as the efficiency tables.\n"
+            << "# cells: " << M.text << "\n"
             << "# n_all  = pairs passing the MC trigger-efficiency pair selection in the cell\n"
             << "# n_2mu4 = of those, the ones that fired 2mu4   (eps^pair is their WEIGHTED ratio)\n"
             << "# source: " << in_path << "\n"

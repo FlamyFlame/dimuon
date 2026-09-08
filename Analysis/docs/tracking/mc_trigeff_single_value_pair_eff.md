@@ -488,6 +488,56 @@ macro prints every refusal with its reason. Tight, refused:
 The threshold is a NEW named choice (50 raw pairs ≈ ±0.07 on a binomial at eps ~ 0.5) and is
 flagged for the user in R4.
 
+
+### R8 — The pair-pT-MERGED variant, and the two comparison figures (user, 2026-09-08)
+
+A second way of buying statistics in the top cells, on the pair-pT axis instead of the mass axis:
+`ptmerge` combines the last two coarse cells into one **[72.08, 150) GeV** cell, the direct analogue
+of the dR correction's own `nocorr_ptmerge` (parent R32). It is **not a new binning** — the merged
+cell is the two source cells' num / den / A / B summed BEFORE the ratio — and it is opt-in and
+suffixed (`_ptmerge`). Measured for both mass windows (the merge is a projection of sums already
+there, so producing `wide` costs nothing); the request's scope, and everything below, is the
+SIGNAL window.
+
+**Delivered, opposite sign, Tight, signal window:**
+
+| p_T^pair [GeV] | \|eta^pair\| | eps^pair | K | raw all / fired |
+|---|---|---|---|---|
+| 49.97-72.08 | 0-1 | 0.3393 ± 0.0100 | 0.4319 ± 0.0130 | 4830 / 1633 |
+| 49.97-72.08 | 1-2 | 0.6233 ± 0.0150 | 0.7311 ± 0.0189 | 2142 / 1295 |
+| 49.97-72.08 | 2-2.2 | 0.5686 ± 0.0418 | 0.6360 ± 0.0482 | 268 / 156 |
+| **72.08-150** | 0-1 | 0.2221 ± 0.0136 | 0.2744 ± 0.0167 | 1954 / 466 |
+| **72.08-150** | 1-2 | 0.5400 ± 0.0300 | 0.6173 ± 0.0343 | 721 / 358 |
+| **72.08-150** | 2-2.2 | 0.5051 ± 0.0938 | 0.5532 ± 0.1050 | **69 / 33** |
+
+**★ The merge is close to free, and it buys the cell the un-merged version could not deliver.**
+- **Closure is unchanged**: on the crossx binning above the cell edge the merged series matches the
+  un-merged one to **0.0054 at worst** across the nine pair-eta panels (0.9378 -> 0.9432 in the most
+  forward-negative one; five panels agree to <= 0.0019), and both close to 1.0000 inclusively.
+  Merging two cells whose efficiencies differ by only 0.22 vs 0.23 (barrel) costs almost nothing.
+- **Coverage rises** 70.9413 % -> 70.9702 % of the no-trigger yield above the first drawn bin.
+- **No opposite-sign cell is refused any more.** The forward `[103.98,150) x |eta| 2-2.2` cell that
+  rested on 4 raw pairs (R6) becomes part of a 69-pair cell and clears the gate; the un-merged
+  version delivers 8 of 9 cells, the merged one 6 of 6.
+- **Same sign is helped but not rescued**: `[72.08,150) x |eta| < 1` reaches exactly 50 pairs and is
+  delivered (0.3260 ± 0.1178); `|eta| 1-2` still has 8 and `|eta| 2-2.2` none. Refusals fall from 7
+  cells to 3, but the 35 % error on the one cell that survives says what it is worth.
+
+**Two figures now, in their own subdirectories under `closure/single_value_highpt_comparison/`:**
+
+| subdirectory | question | series |
+|---|---|---|
+| `mass_window_compr/` | does the mass window matter? | no-trigger + dR pT-merged + dR +\|eta\| fold + single value 1.08-2.9 + single value 1-4 |
+| `pt_merge_compr/` | does merging the top two pair-pT cells cost anything? | the same two dR series + single value signal window on 8 cells + on the merged 7 |
+
+each in the PURE and the CALIBRATED applied form, at both working points. The previous flat-path
+PNGs were moved into `mass_window_compr/` (verified replaced, then removed).
+
+**Reading, for the decision in R4:** the merge is the cheaper of the two ways of coping with the
+statistics. It halves the numbers needed above 72 GeV, removes every opposite-sign refusal, and
+costs 0.005 in closure — whereas widening the mass window costs 14 % (R3). If the single-value
+procedure is adopted, adopt it merged.
+
 ### R4 — What is NOT settled by this work
 
 - Which of `eps^pair` and `K` the cross-section should apply (§2 / D1). `K` keeps the data
@@ -512,8 +562,9 @@ Nothing in this doc's own scope. What is left is USER JUDGEMENT (R4) plus one ha
    carries the 1.27 MC/data pair over-efficiency and needs a separate scale factor) or the
    calibrated `K` (multiplies the DATA tag-and-probe singles, the analysis's existing calibration).
    Both are in the ROOT file.
-2. **Whether to adopt the single-value procedure at all, and in which cells.** Nothing is wired into
-   the cross-section.
+2. **Whether to adopt the single-value procedure at all, and in which cells** — and, if so, whether
+   on the merged pair-pT cells, which R8 shows to be nearly free. Nothing is wired into the
+   cross-section.
 3. **The delivery threshold** `MinCellPairs() = 50` (R6) — this session's choice, one constant.
 4. **HAND-OFF to `mc_trigeff_dr_binning_approaches.md`:** its R4 is retracted and the four-approach
    ranking reverses, so the choice of dR cell grouping for the pp24 cross-section is reopened on the

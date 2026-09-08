@@ -84,31 +84,57 @@ namespace {
 struct Series {
     std::string num_key;
     std::string legend;
-    std::string window;        // non-empty => a single-value series, coverage-masked
+    std::string cov;           // non-empty => a single-value series, masked by this coverage token
+    std::string mode;          // cell mode of a single-value series ("" for the dR ones)
     int         file_index;
     Color_t     colour;
     Style_t     marker;
 };
+
+// TWO COMPARISONS, each answering a different question and each into its own subdirectory.
+//   kMassWindow  does the mass window matter?  -> the two windows on the canonical cells
+//   kPtMerge     does merging the top two pair-pT cells help? -> the signal window, both cell modes
+// Both keep the SAME two dR-procedure series as the reference against which the single-value
+// procedure is judged, so the two figures can be read side by side.
+enum class Comparison { kMassWindow, kPtMerge };
 
 const char* kCascadeKey = "cascade";
 const std::vector<std::string> kModes = {"nocorr_ptmerge", "nocorr_etamerge_ptmerge"};
 
 // The single-value numerators live in BOTH files (they do not depend on the dR cell grouping);
 // they are read from file 0 and cross-checked against file 1, so a stale file cannot slip in.
-std::vector<Series> BuildSeries(bool calibrated)
+std::vector<Series> BuildSeries(bool calibrated, Comparison what)
 {
     const std::string p = calibrated ? "paireffK_" : "paireff_";
-    return {
+    std::vector<Series> v = {
         {std::string("num_epsmc_") + kCascadeKey, "#varepsilon_{#DeltaR}(#DeltaR):  top two "
-         "p_{T}^{pair} cells combined", "", 0, kBlue, 22},
+         "p_{T}^{pair} cells combined", "", "", 0, kBlue, 22},
         {std::string("num_epsmc_") + kCascadeKey, "#varepsilon_{#DeltaR}(#DeltaR):  that plus the "
-         "|#eta^{pair}| fold", "", 1, kMagenta, 33},
-        {"num_" + p + "sig",  "single value:  1.08 < m_{#mu#mu} < 2.9 GeV (signal window)",
-         "sig",  0, kRed, 20},
-        {"num_" + p + "wide", "single value:  1 < m_{#mu#mu} < 4 GeV (template-fit window)",
-         "wide", 0, kGreen + 2, 21},
+         "|#eta^{pair}| fold", "", "", 1, kMagenta, 33},
     };
+    if (what == Comparison::kMassWindow) {
+        v.push_back({"num_" + p + "sig",
+                     "single value:  1.08 < m_{#mu#mu} < 2.9 GeV (signal window)",
+                     "sig", "nomerge", 0, kRed, 20});
+        v.push_back({"num_" + p + "wide",
+                     "single value:  1 < m_{#mu#mu} < 4 GeV (template-fit window)",
+                     "wide", "nomerge", 0, kGreen + 2, 21});
+    } else {
+        v.push_back({"num_" + p + "sig",
+                     "single value, signal window:  8 p_{T}^{pair} cells",
+                     "sig", "nomerge", 0, kRed, 20});
+        v.push_back({"num_" + p + "sig_ptmerge",
+                     "single value, signal window:  top two p_{T}^{pair} cells combined",
+                     "sig_ptmerge", "ptmerge", 0, kGreen + 2, 21});
+    }
+    return v;
 }
+
+struct ComparisonCfg { Comparison what; std::string subdir; std::string headline_extra; };
+const std::vector<ComparisonCfg> kComparisons = {
+    {Comparison::kMassWindow, "mass_window_compr", ""},
+    {Comparison::kPtMerge,    "pt_merge_compr",    ""},
+};
 
 const Color_t kUncorrColour = kBlack;
 const Style_t kUncorrMarker = 24;
@@ -168,8 +194,9 @@ void plot_mc_trig_eff_closure_highpt_compare(const std::string& sample = "pp_ful
     // header states, so the label and the axis cannot disagree (.claude/CLAUDE.md Binnings item 5).
     double pt_zoom_lo = pt_cell_lo;   // resolved against the histogram axis once it is open
 
-    const std::string outdir = cfg.out_base + "closure/single_value_highpt_comparison/";
-    gSystem->mkdir(outdir.c_str(), kTRUE);
+    // One SUBDIRECTORY per comparison, under the shared parent: the two figures answer different
+    // questions on the same axes, so they belong beside each other rather than in one flat folder.
+    const std::string base_outdir = cfg.out_base + "closure/single_value_highpt_comparison/";
 
     // ---------------- open the two dR-approach closure files ---------------------------------
     std::vector<TFile*> fin(kModes.size(), nullptr);
@@ -221,9 +248,10 @@ void plot_mc_trig_eff_closure_highpt_compare(const std::string& sample = "pp_ful
 
     // The single-value numerators are written into every mode's file; they must be IDENTICAL, or
     // one of the two runs used a different pair-efficiency file.
-    for (bool calib : {false, true})
-        for (const auto& S : BuildSeries(calib)) {
-            if (S.window.empty()) continue;
+    for (const auto& C : kComparisons)
+      for (bool calib : {false, true})
+        for (const auto& S : BuildSeries(calib, C.what)) {
+            if (S.cov.empty()) continue;
             TH2D* a0 = Get<TH2D>(fin[0], pre + S.num_key);
             TH2D* a1 = Get<TH2D>(fin[1], pre + S.num_key);
             for (int bx = 1; bx <= a0->GetNbinsX(); ++bx)
@@ -238,8 +266,20 @@ void plot_mc_trig_eff_closure_highpt_compare(const std::string& sample = "pp_ful
         }
 
     // ---------------- build and draw, once per applied form ----------------------------------
-    for (bool calibrated : {false, true}) {
-        const std::vector<Series> series = BuildSeries(calibrated);
+    for (const auto& C : kComparisons) {
+      const std::string outdir = base_outdir + C.subdir + "/";
+      gSystem->mkdir(outdir.c_str(), kTRUE);
+      for (bool calibrated : {false, true}) {
+        const std::vector<Series> series = BuildSeries(calibrated, C.what);
+
+        // The cell MODES actually drawn. Computed here because the header needs one line per mode,
+        // and the header's height sets where the panels start: with two modes the block is six
+        // lines and a fixed 0.21 strip put the last one on top of the first panel row.
+        std::vector<std::string> modes_drawn;
+        for (const auto& S : series)
+            if (!S.mode.empty()
+                && std::find(modes_drawn.begin(), modes_drawn.end(), S.mode) == modes_drawn.end())
+                modes_drawn.push_back(S.mode);
 
         // ---- per pair-eta panel: the spectra, the ratios, and the coverage mask -------------
         std::vector<TH1D*> spec_unc(neta, nullptr);
@@ -285,8 +325,8 @@ void plot_mc_trig_eff_closure_highpt_compare(const std::string& sample = "pp_ful
                 // C = 0 (a bin where pairs exist and none fired), which a content-based test could
                 // not.
                 std::vector<bool> ok(r->GetNbinsX() + 2, true);
-                if (!S.window.empty()) {
-                    TH1D* dcov = Row(Get<TH2D>(fin[0], pre + "den_paireff_" + S.window),
+                if (!S.cov.empty()) {
+                    TH1D* dcov = Row(Get<TH2D>(fin[0], pre + "den_paireff_" + S.cov),
                                      iz, Form("hp_%s_cov%zu_eta%d", tag.c_str(), a, iz));
                     for (int b = 1; b <= r->GetNbinsX(); ++b) {
                         const double dfull = den->GetBinContent(b), dc = dcov->GetBinContent(b);
@@ -375,7 +415,10 @@ void plot_mc_trig_eff_closure_highpt_compare(const std::string& sample = "pp_ful
         rmin -= rpad; rmax += rpad;
 
         // ---- draw ---------------------------------------------------------------------------
-        const double head = 0.21;
+        // One extra 0.02 strip per additional cell-mode line, so the header can never reach down
+        // into the panels.
+        const double head = 0.21 + 0.02 * (double)(modes_drawn.size() > 1 ? modes_drawn.size() - 1
+                                                                          : 0);
         TCanvas c(("c_hp_" + tag).c_str(), "", 1800, 1800);
 
         for (int iz = 1; iz <= neta; ++iz) {
@@ -478,20 +521,32 @@ void plot_mc_trig_eff_closure_highpt_compare(const std::string& sample = "pp_ful
         // edge of the canvas and was clipped mid-number, which is worse than no label at all.
         hd->DrawLatex(0.030, 0.844,
                       "#varepsilon = single-muon mu4 efficiency from the MC turn-on");
-        std::string cells = Form("single-value cells:  [%.2f, %.2f), [%.2f, %.2f), [%.2f, %.2f) "
-                                 "GeV  #times  |#eta^{pair}|",
-                                 coarse[coarse.size() - 4], coarse[coarse.size() - 3],
-                                 coarse[coarse.size() - 3], coarse[coarse.size() - 2],
-                                 coarse[coarse.size() - 2], coarse[coarse.size() - 1]);
+        // The cell list of every cell MODE actually drawn, each edge read from that mode's own
+        // axis. In the pair-pT-merge comparison the two single-value series live on DIFFERENT
+        // cells, and a figure that showed only one of the two lists would mislabel the other.
+        std::string etacols;
         {
             const std::vector<double>& ge = PairTrigEff::AbsEtaGroups().edges;
             for (size_t g = 0; g + 1 < ge.size(); ++g)
-                cells += Form("%s %g#minus%g", g ? "," : "", ge[g], ge[g + 1]);
+                etacols += Form("%s %g#minus%g", g ? "," : "", ge[g], ge[g + 1]);
         }
-        hd->DrawLatex(0.030, 0.824, cells.c_str());
+        double ytext = 0.824;
+        for (const std::string& m : modes_drawn) {
+            const std::vector<double> me = PairTrigEff::PairPtEdges(m);
+            const int lo = PairTrigEff::FirstDeliveredPtBin(m);
+            std::string cells = "single-value cells";
+            if (modes_drawn.size() > 1)
+                cells += (m == "ptmerge" ? " (top two combined)" : " (8 p_{T}^{pair} cells)");
+            cells += ": ";
+            for (size_t i = lo - 1; i + 1 < me.size(); ++i)
+                cells += Form("%s[%.2f, %.2f)", i == (size_t)lo - 1 ? "" : ", ", me[i], me[i + 1]);
+            cells += Form(" GeV  #times  |#eta^{pair}|%s", etacols.c_str());
+            hd->DrawLatex(0.030, ytext, cells.c_str());
+            ytext -= 0.020;
+        }
         const int n_masked = (int)masked_bins.size();
         if (n_masked > 0)
-            hd->DrawLatex(0.030, 0.804,
+            hd->DrawLatex(0.030, ytext,
                           Form("%d bins omitted from the single-value series: not fully inside a "
                                "measured cell, or in a cell with fewer than %d pairs",
                                n_masked, PairTrigEff::MinCellPairs()));
@@ -505,7 +560,7 @@ void plot_mc_trig_eff_closure_highpt_compare(const std::string& sample = "pp_ful
             leg->AddEntry(spec_cor[0][a], series[a].legend.c_str(), "PE");
         leg->Draw();
 
-        const std::string png = outdir + "closure_highpt_single_value_"
+        const std::string png = outdir + "closure_highpt_single_value_" + C.subdir + "_"
                               + (calibrated ? "calibrated" : "pure") + ".png";
         c.SaveAs(png.c_str());
         std::cout << "  wrote " << png << std::endl;
@@ -531,18 +586,18 @@ void plot_mc_trig_eff_closure_highpt_compare(const std::string& sample = "pp_ful
                       << std::setw(24) << std::left << "eta^pair";
             for (const auto& S : series)
                 std::cout << std::setw(22)
-                          << (S.window.empty()
+                          << (S.cov.empty()
                                   ? (S.file_index == 0 ? "dR: pT-merged" : "dR: +|eta| fold")
-                                  : ("single value " + S.window));
+                                  : ("single value " + S.cov));
             std::cout << std::endl;
 
             auto row = [&](int iz_lo, int iz_hi, const char* label) {
                 std::cout << "  " << std::setw(24) << std::left << label;
                 for (const auto& S : series) {
                     TH2D* n = Get<TH2D>(fin[S.file_index], pre + S.num_key);
-                    TH2D* d = S.window.empty()
+                    TH2D* d = S.cov.empty()
                                   ? h_den
-                                  : Get<TH2D>(fin[0], pre + "den_paireff_" + S.window);
+                                  : Get<TH2D>(fin[0], pre + "den_paireff_" + S.cov);
                     const double D = d->Integral(b_lo, b_hi, iz_lo, iz_hi);
                     std::cout << std::setw(22)
                               << (D > 0 ? Form("%.4f", n->Integral(b_lo, b_hi, iz_lo, iz_hi) / D)
@@ -555,18 +610,21 @@ void plot_mc_trig_eff_closure_highpt_compare(const std::string& sample = "pp_ful
                                  eta_ranges[iz - 1].second));
             row(1, neta, "ALL PANELS");
             // The coverage fraction itself, so the reader can see how much of the region above the
-            // cell edge the single-value correction reaches at all.
-            for (const auto& W : PairTrigEff::Windows()) {
-                TH2D* d = Get<TH2D>(fin[0], pre + "den_paireff_" + W.token);
+            // cell edge each single-value series reaches at all. Per DRAWN series, because merging
+            // the top pair-pT cells changes the answer -- that is the point of the merge.
+            for (const auto& S : series) {
+                if (S.cov.empty()) continue;
+                TH2D* d = Get<TH2D>(fin[0], pre + "den_paireff_" + S.cov);
                 const double Dc = d->Integral(b_lo, b_hi, 1, neta);
                 const double Df = h_den->Integral(b_lo, b_hi, 1, neta);
-                std::cout << "  coverage (" << W.token << "): the single-value cells reach "
+                std::cout << "  coverage (" << S.cov << "): the single-value cells reach "
                           << (Df > 0 ? 100.0 * Dc / Df : 0.0)
                           << "% of the no-trigger yield above " << pt_zoom_lo
                           << " GeV (the rest is the bin straddling the cell edge, plus any cell "
                              "the delivery gate refuses)" << std::endl;
             }
         }
+      }
     }
 
     for (auto* f : fin) f->Close();

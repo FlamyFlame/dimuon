@@ -16,7 +16,11 @@
 #   Stage 2  FillMCTrigEffClosure   -> mc_trig_eff_closure_...<mode>.root, for the TWO dR
 #            approaches this doc compares against, now carrying the single-value numerators too
 #   Stage 3  plot_mc_trig_eff_closure_highpt_compare
-#            -> <plot base>/closure/single_value_highpt_comparison/*.png   (2 PNGs per WP)
+#            -> <plot base>/closure/single_value_highpt_comparison/<comparison>/*.png
+#               two comparisons x two applied forms = 4 PNGs per WP:
+#                 mass_window_compr/  the two mass windows on the canonical cells
+#                 pt_merge_compr/     the signal window, with and without the pair-pT merge
+#   Stage 4  write_pair_trig_eff_tables -> <plot base>/single_value_pair_eff_tables/*.csv
 #
 # UPSTREAM IS NOT REBUILT HERE. The Step-3 dR fits and the MC single-muon turn-ons come from the
 # trigger-efficiency chain (pipeline_pythia_fullsim_pp.sh Stage 10 + run_dr_correction_fits.sh) and
@@ -85,6 +89,8 @@ log "[Stage 0] compiling"
     > "${LOG_DIR}/compile_closure.log" 2>&1 || fail "FillMCTrigEffClosure did not compile"
 ( cd "${PLOT_DIR}" && root -l -b -q -e '.L plot_mc_trig_eff_closure_highpt_compare.cxx+' ) \
     > "${LOG_DIR}/compile_plot.log" 2>&1 || fail "plot_mc_trig_eff_closure_highpt_compare did not compile"
+( cd "${PLOT_DIR}" && root -l -b -q -e '.L write_pair_trig_eff_tables.cxx+' ) \
+    > "${LOG_DIR}/compile_tables.log" 2>&1 || fail "write_pair_trig_eff_tables did not compile"
 
 for WP in ${WPS}; do
     SUF=$(wp_suffix "$WP"); CPP=$(wp_cpp "$WP")
@@ -130,12 +136,38 @@ plot_mc_trig_eff_closure_highpt_compare("${SAMPLE}", ${CPP});
 .q
 ROOTEOF
     ) > "${LOG_DIR}/plot_${WP}.log" 2>&1 || fail "the comparison figure (${WP}) crashed"
-    OUT="${PLOT_BASE}/mc_based$( [[ "$WP" == medium ]] && echo _medium )/closure/single_value_highpt_comparison"
-    for F in closure_highpt_single_value_pure.png closure_highpt_single_value_calibrated.png; do
-        [[ -f "${OUT}/${F}" ]] || fail "Stage 3 (${WP}): ${OUT}/${F} was not written"
-        mt=$(stat -c %Y "${OUT}/${F}"); (( mt >= T0 )) || fail "Stage 3 (${WP}): ${F} is stale"
+    BASE="${PLOT_BASE}/mc_based$( [[ "$WP" == medium ]] && echo _medium )"
+    OUT="${BASE}/closure/single_value_highpt_comparison"
+    for C in mass_window_compr pt_merge_compr; do
+        for F in "closure_highpt_single_value_${C}_pure.png" \
+                 "closure_highpt_single_value_${C}_calibrated.png"; do
+            [[ -f "${OUT}/${C}/${F}" ]] || fail "Stage 3 (${WP}): ${OUT}/${C}/${F} was not written"
+            mt=$(stat -c %Y "${OUT}/${C}/${F}")
+            (( mt >= T0 )) || fail "Stage 3 (${WP}): ${C}/${F} is stale"
+        done
     done
-    log "  -> ${OUT}/"
+    log "  -> ${OUT}/{mass_window_compr,pt_merge_compr}/"
+
+    # --- Stage 4: the CSV tables ------------------------------------------------------------------
+    T0=$(date +%s)
+    log "[Stage 4] write_pair_trig_eff_tables (${WP})"
+    ( cd "${PLOT_DIR}" && root -l -b <<ROOTEOF
+.L write_pair_trig_eff_tables.cxx+
+write_pair_trig_eff_tables("${SAMPLE}", ${CPP});
+.q
+ROOTEOF
+    ) > "${LOG_DIR}/tables_${WP}.log" 2>&1 || fail "the CSV tables (${WP}) crashed"
+    TBL="${BASE}/single_value_pair_eff_tables"
+    for F in single_value_pair_eff_opposite_sign${SUF}.csv \
+             single_value_pair_eff_same_sign${SUF}.csv \
+             single_value_pair_eff_opposite_sign_ptmerge${SUF}.csv \
+             single_value_pair_eff_same_sign_ptmerge${SUF}.csv \
+             single_value_pair_stats_same_sign${SUF}.csv \
+             single_value_pair_stats_same_sign_ptmerge${SUF}.csv; do
+        [[ -f "${TBL}/${F}" ]] || fail "Stage 4 (${WP}): ${TBL}/${F} was not written"
+        mt=$(stat -c %Y "${TBL}/${F}"); (( mt >= T0 )) || fail "Stage 4 (${WP}): ${F} is stale"
+    done
+    log "  -> ${TBL}/"
 done
 
 log "=== done. logs in ${LOG_DIR} ==="
