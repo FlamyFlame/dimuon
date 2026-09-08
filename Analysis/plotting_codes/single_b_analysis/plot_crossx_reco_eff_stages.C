@@ -40,6 +40,7 @@
 #include "../../RDFBasedHistFilling/CommonEffcyConfig.h"
 #include "../../Utilities/CommonLogYRange.h"
 #include "../../Utilities/PbPbSampledLumi.h"
+#include "../../Utilities/PairEtaPanelBins.h"
 
 void plot_crossx_reco_eff_stages() {
     gStyle->SetOptStat(0);
@@ -167,8 +168,9 @@ void plot_crossx_reco_eff_stages() {
         // log-y range can be derived from all of them (Utilities/CommonLogYRange.h).
         for (size_t ieta = 0; ieta < eta_bins.size(); ++ieta) {
             const auto& eb = eta_bins[ieta];
-            int y1 = h2[0]->GetYaxis()->FindBin(eb.first  + 1e-6);
-            int y2 = h2[0]->GetYaxis()->FindBin(eb.second - 1e-6);
+            const auto yb = PairEtaPanels::Bins(h2[0]->GetYaxis(), eb,
+                                               "plot_crossx_reco_eff_stages");
+            int y1 = yb.first, y2 = yb.second;
 
             std::vector<TH1D*> hp(stages.size(), nullptr);
             for (size_t s = 0; s < stages.size(); ++s) {

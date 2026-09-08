@@ -15,6 +15,7 @@
 #include "../../RDFBasedHistFilling/CommonEffcyConfig.h"
 #include "../../MuonObjectsParamsAndHelpers/DatasetTriggerMap.h"
 #include "../../Utilities/CommonLogYRange.h"
+#include "../../Utilities/PairEtaPanelBins.h"
 #include "../helper_functions.c"
 
 void plot_crossx_trig_corr_sanity() {
@@ -122,8 +123,9 @@ void plot_crossx_trig_corr_sanity() {
         // log-y range can be derived from all of them (Utilities/CommonLogYRange.h).
         for (size_t ieta = 0; ieta < eta_bins.size(); ++ieta) {
             const auto& eb = eta_bins[ieta];
-            int y1 = h2_corr->GetYaxis()->FindBin(eb.first  + 1e-6);
-            int y2 = h2_corr->GetYaxis()->FindBin(eb.second - 1e-6);
+            const auto yb = PairEtaPanels::Bins(h2_corr->GetYaxis(), eb,
+                                               "plot_crossx_trig_corr_sanity");
+            int y1 = yb.first, y2 = yb.second;
 
             TH1D* hp_corr = h2_corr->ProjectionX(Form("corr_%zu_%d", ieta, rand()), y1, y2, "e");
             hp_corr->SetDirectory(nullptr);

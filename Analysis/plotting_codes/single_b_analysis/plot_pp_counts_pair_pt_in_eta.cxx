@@ -40,6 +40,7 @@
 #include <vector>
 
 #include "SingleBCrossxPlotterBase.cxx"
+#include "../../MuonObjectsParamsAndHelpers/ParamsSet.h"   // fiducial-cut expressions, for provenance
 
 // Repo rule: every plot set and its code expose a Medium/Tight working-point config var and
 // default to TIGHT (docs/muon_wp_registry.md). Here it switches the DATA input file, which is the
@@ -89,8 +90,9 @@ public:
         double grand = 0.;
 
         for (size_t ieta = 0; ieta < q_eta_bins.size(); ++ieta) {
-            const int y1 = h2->GetYaxis()->FindBin(q_eta_bins[ieta].first  + 1e-6);
-            const int y2 = h2->GetYaxis()->FindBin(q_eta_bins[ieta].second - 1e-6);
+            const auto yb = PairEtaPanels::Bins(h2->GetYaxis(), q_eta_bins[ieta],
+                                               "PPSignalCountsPlotter::WriteCsv");
+            const int y1 = yb.first, y2 = yb.second;
             for (int ix = 1; ix <= npt; ++ix) {
                 double n = 0.;
                 for (int iy = y1; iy <= y2; ++iy) n += h2->GetBinContent(ix, iy);
@@ -100,16 +102,22 @@ public:
             }
         }
 
-        // Exactness check (see the comment above). The 2D integral covers the whole pair-eta
-        // axis, which the nine panels are supposed to tile exactly.
+        // Exactness check. Since 2026-09-07 the nine panels tile the SURVIVING region
+        // |eta^pair| < ParamsSet::pair_eta_fiducial_max = 2.2, NOT the whole +-2.4 fine axis --
+        // so this compares the panel sum against the 2D integral only because the producer
+        // applied the pair-level gap cut, leaving |eta^pair| > 2.2 empty. Panel-vs-axis
+        // ALIGNMENT is now checked separately and unconditionally by PairEtaPanels::Bins above;
+        // a residual here therefore means the input FILE is stale (filled before the pair-level
+        // cut existed), not that a boundary is off a bin edge.
         const double total_2d = h2->Integral();
         if (std::fabs(grand - total_2d) > 1e-6 * std::max(1.0, total_2d)) {
             throw std::runtime_error(
-                "PPSignalCountsPlotter::WriteCsv: the 9 pair-eta panels do not partition the "
-                "fine pair-eta axis (panel sum " + std::to_string(grand) + " vs 2D integral "
-                + std::to_string(total_2d) + "). A coarse panel boundary is not a bin edge -- "
-                "check ParamsSet::N_PAIR_ETA_CROSSX_BINS against "
-                "CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap.");
+                "PPSignalCountsPlotter::WriteCsv: the 9 pair-eta panels do not account for the "
+                "whole fine pair-eta axis (panel sum " + std::to_string(grand) + " vs 2D integral "
+                + std::to_string(total_2d) + "). The panels cover |eta^pair| < "
+                + std::to_string(ParamsSet::pair_eta_fiducial_max) + "; a nonzero residual outside "
+                "that means this input file was filled BEFORE the pair-level gap cut was added -- "
+                "rerun the pp24 crossx hist filling.");
         }
 
         const std::string path = output_dir + "/" + csv_name;
@@ -122,7 +130,9 @@ public:
         out << "# pp 20" << run_year << " data, " << CountsWPName(wp)
             << " WP: RAW opposite-sign muon-pair COUNTS in the single-b signal region "
                "(1.08 < m_uu < 2.9 GeV, pair pT > 8 GeV, both muons outside every "
-               "ParamsSet::single_mu_fiducial_gap_cuts window). Unweighted, NOT efficiency "
+               "ParamsSet::single_mu_fiducial_gap_cuts window, and |eta^pair| < "
+            << ParamsSet::pair_eta_fiducial_max
+            << "). Unweighted, NOT efficiency "
                "corrected, NOT background subtracted. Columns = pair pT [GeV] "
                "(ParamsSet::pT_bins_120); rows = the 9 "
                "CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap panels.\n";

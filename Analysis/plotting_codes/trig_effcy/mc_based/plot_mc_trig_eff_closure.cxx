@@ -87,6 +87,7 @@
 #include "../../../Utilities/CommonLogYRange.h"
 #include "../../../Utilities/MCTrigEffPairPtBinning.h"
 #include "../../../RDFBasedHistFilling/CommonEffcyConfig.h"
+#include "../../../Utilities/PairEtaPanelBins.h"
 
 namespace {
 
@@ -211,6 +212,17 @@ void DrawClosureSet(TFile* fin, const DrCorrSample& cfg, const std::string& wp_t
             throw std::runtime_error("plot_mc_trig_eff_closure: the histograms carry "
                 + std::to_string(D.h_den->GetNbinsY()) + " pair-eta bins but CommonEffcyConfig has "
                 + std::to_string(neta) + " -- stale input?");
+        // BIN COUNT IS NOT ENOUGH. Panel `iz` is drawn with the label EtaLabel(eta_ranges[iz-1])
+        // read LIVE from CommonEffcyConfig, while its content is Y-bin `iz` of a file written
+        // earlier. A count check passes even when the two describe different ranges -- which is
+        // exactly what happened on 2026-09-07, when the coarse pair-eta outer bins moved
+        // +-(2.0,2.4) -> +-(2.0,2.2) to follow the pair-level gap cut: every closure file on disk
+        // still had 9 bins over +-2.4 and would have been relabelled silently. Check the EDGES,
+        // per panel, through the shared guard (muon_gap_cuts_acceptance.md F18).
+        PairEtaPanels::CheckPanelsMatchFiducialCut();
+        for (int iz = 1; iz <= neta; ++iz)
+            PairEtaPanels::CheckAxisAligned(D.h_den->GetYaxis(), eta_ranges[iz - 1], iz, iz,
+                                            "plot_mc_trig_eff_closure");
 
         D.spec_unc.assign(neta, nullptr);
         D.spec_cor.resize(neta);

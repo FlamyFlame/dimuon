@@ -59,11 +59,19 @@
 // by name), and the nine PANEL boundaries -- a different object -- are read from
 // `CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap`.
 // The fine pair-eta axis is 48 uniform bins on [-2.4, 2.4] (`ParamsSet::N_PAIR_ETA_CROSSX_BINS`),
-// i.e. width exactly 0.1, so ALL EIGHT internal panel boundaries (+-0.5, 1.0, 1.5, 2.0) are bin
-// edges and the FindBin(lo+1e-6)..FindBin(hi-1e-6) projection below is exact by construction: no
-// bin lands in two panels, none is dropped, and the panel labels are literally the range drawn.
+// i.e. width exactly 0.1, so EVERY panel boundary -- the eight internal ones at +-0.5, 1.0, 1.5,
+// 2.0 AND the outer ones at +-2.2 -- is a bin edge, and the projection below is exact by
+// construction: no bin lands in two panels and the panel labels are literally the range drawn.
 // (With the previous 44-bin axis none of the eight was an edge, eight bins were double-counted
 // and the nine panels summed to +20.0 % of the true total.)
+// SINCE 2026-09-07 the panels tile only |eta^pair| < ParamsSet::pair_eta_fiducial_max = 2.2, so
+// the four outermost fine bins (|eta^pair| > 2.2) lie outside EVERY panel. They are empty here
+// because all three inputs carry the pair-level gap cut. TWO different guards keep that honest:
+// PairEtaPanels::Bins throws if a panel edge is not a bin edge of the histogram being projected
+// (ALIGNMENT), and `assert_inside_fiducial` below throws if an input still has yield beyond +-2.2
+// (EMPTINESS). The second is the one that matters here, because the pair-eta-INTEGRATED
+// projection further down runs over the FULL axis while its label claims the fiducial region --
+// the two views agree only through that emptiness.
 //
 // Output: /usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/mc_data_compr/signal/
 // Usage:  root -l -b -q 'plot_mc_data_pair_pt_in_eta.cxx+()'           (Tight, nominal)
@@ -92,6 +100,7 @@
 
 #include "../helper_functions.c"
 #include "../../RDFBasedHistFilling/CommonEffcyConfig.h"
+#include "../../Utilities/PairEtaPanelBins.h"
 
 namespace {
 
@@ -164,8 +173,10 @@ void AssertSameAxes(const TH2D* a, const TH2D* b)
 TH1D* Project(TH2D* h, double eta_lo, double eta_hi, const char* name, double scale,
               Color_t col, Style_t mstyle)
 {
-    const int y1 = h->GetYaxis()->FindBin(eta_lo + 1e-6);
-    const int y2 = h->GetYaxis()->FindBin(eta_hi - 1e-6);
+    const auto yb = PairEtaPanels::Bins(h->GetYaxis(),
+                                       {static_cast<float>(eta_lo), static_cast<float>(eta_hi)},
+                                       "plot_mc_data_pair_pt_in_eta::Project");
+    const int y1 = yb.first, y2 = yb.second;
     TH1D* p = h->ProjectionX(name, y1, y2, "e");
     p->SetDirectory(nullptr);
     p->Scale(scale, "width");          // -> dsigma/dpT [pb/GeV]
@@ -250,6 +261,32 @@ void plot_mc_data_pair_pt_in_eta(const char* wp = "tight")
     static const CommonEffcyConfig cfg{};
     const auto& eta_bins = cfg.pair_eta_proj_ranges_coarse_incl_gap;
 
+    // THE FIDUCIAL CLAIM IS CHECKED, NOT ASSUMED. The pair-eta-integrated panel is labelled
+    // |eta^pair| < ParamsSet::pair_eta_fiducial_max, and the 9 panels tile only that region, so
+    // both are honest ONLY if the inputs actually carry the pair-level gap cut. An input filled
+    // before that cut existed still has yield beyond +-2.2: it would be silently INCLUDED in the
+    // integrated panel (which projects the whole axis) while the label said it was excluded, and
+    // silently DROPPED from the 9-panel view. PairEtaPanels::Bins guards panel/axis ALIGNMENT;
+    // only this guards EMPTINESS. Mirrors the residual check in plot_pp_counts_pair_pt_in_eta.cxx.
+    auto assert_inside_fiducial = [&](TH2D* h, const char* which) {
+        const TAxis* ay = h->GetYaxis();
+        const auto lo = PairEtaPanels::Bins(ay, eta_bins.front(), "plot_mc_data_pair_pt_in_eta");
+        const auto hi = PairEtaPanels::Bins(ay, eta_bins.back(),  "plot_mc_data_pair_pt_in_eta");
+        const double all    = h->Integral();
+        const double inside = h->Integral(1, h->GetNbinsX(), lo.first, hi.second);
+        if (std::fabs(all - inside) > 1e-6 * std::max(1.0, std::fabs(all)))
+            throw std::runtime_error(
+                std::string(which) + ": " + std::to_string(100. * (all - inside) / all)
+                + " % of the yield lies outside |eta^pair| < "
+                + std::to_string(ParamsSet::pair_eta_fiducial_max)
+                + ", so this file was filled BEFORE the pair-level gap cut was added (2026-09-07). "
+                  "The integrated panel would include it while its label says it is excluded, and "
+                  "the 9-panel view would drop it. Rerun the hist filling that produced this file.");
+    };
+    assert_inside_fiducial(h_data.get(), "pp24 data");
+    assert_inside_fiducial(h_mc.get(),   "Pythia fullsim");
+    assert_inside_fiducial(h_pow.get(),  "POWHEG fullsim");
+
     printf("data integral = %.6g pb ; Pythia = %.6g nb -> %.6g pb ; Pythia/data = %.4g\n",
            h_data->Integral(), h_mc->Integral(), h_mc->Integral() * kNbToPb,
            h_mc->Integral() * kNbToPb / h_data->Integral());
@@ -257,7 +294,12 @@ void plot_mc_data_pair_pt_in_eta(const char* wp = "tight")
            h_pow->Integral() * kPowhegNorm,
            h_pow->Integral() * kPowhegNorm / h_data->Integral());
 
-    // The full pair-eta range is read from the histogram axis, never retyped.
+    // The full pair-eta range is read from the histogram axis, never retyped. It is the range
+    // PROJECTED (the whole +-2.4 axis, which is correct -- nothing is left out); it is NOT the
+    // range the spectrum COVERS, because every input carries the pair-level gap cut
+    // |eta^pair| < ParamsSet::pair_eta_fiducial_max = 2.2. The panel is therefore LABELLED from
+    // the physics, not from the axis -- otherwise a final-results figure would overstate its own
+    // acceptance by 0.2 in |eta^pair| (.claude/CLAUDE.md Binnings rule 5).
     const double eta_full_lo = h_data->GetYaxis()->GetXmin();
     const double eta_full_hi = h_data->GetYaxis()->GetXmax();
 
@@ -304,7 +346,7 @@ void plot_mc_data_pair_pt_in_eta(const char* wp = "tight")
         l.AddEntry(d, kDataLegend,   "lp");
         l.Draw();
         TLatex t; t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.045);
-        t.DrawLatex(0.22, 0.87, Form("%.1f < #eta^{pair} < %.1f", eta_full_lo, eta_full_hi));
+        t.DrawLatex(0.22, 0.87, Form("|#eta^{pair}| < %.1f", ParamsSet::pair_eta_fiducial_max));
 
         pad_ratio->cd();
         gPad->SetLogx();

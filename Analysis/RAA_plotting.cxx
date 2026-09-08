@@ -12,6 +12,8 @@
 #include <cmath>
 #include "MuonObjectsParamsAndHelpers/DatasetTriggerMap.h"
 #include "Utilities/PbPbSampledLumi.h"
+#include "MuonObjectsParamsAndHelpers/ParamsSet.h"
+#include <stdexcept>
 
 class RAAPlotting{
 private:
@@ -340,12 +342,47 @@ void RAAPlotting::RunPlotting(){
 			TH1D* hcrossx_pbpb_centr_cur_ctr = hcrossx_pbpb_proj_list.at(iline);
 	    	TH1D* h_RAA_cur_bin = (TH1D*) hcrossx_pbpb_centr_cur_ctr->Clone("h_RAA_cur_bin");
 			if (mode == 1 || mode == 2){
-				// Index-wise ratio R_AA = PbPb / pp. Bin counts match by construction
-				// (same pT/eta axis); done explicitly (not TH1::Divide) because the
-				// PbPb 3D eta axis is an explicit edge array while the pp 2D eta axis
-				// is uniform — numerically identical edges but different internal
-				// representation, which makes TH1::Divide warn. Independent ratio error.
+				// Index-wise ratio R_AA = PbPb / pp, done explicitly (not TH1::Divide)
+				// because one axis is an explicit edge array and the other uniform, which
+				// makes TH1::Divide warn even when the edges agree. Independent ratio error.
+				//
+				// THE AXES ARE NOT MATCHED BY CONSTRUCTION -- this used to say they were,
+				// and for mode 2 that is FALSE. Pb+Pb books its pair-eta axis as a retyped
+				// `make_unif_edges(44, -2.4, 2.4)` (RDFBasedHistFillingPbPb.cxx) while pp
+				// books ParamsSet::N_PAIR_ETA_CROSSX_BINS = 48 over the same range, so an
+				// index-wise ratio pairs Pb+Pb bin `ib` with a pp bin covering a DIFFERENT
+				// eta interval -- at ib = 44, Pb+Pb [2.291, 2.4] over pp [1.9, 2.0]. That
+				// is a silently wrong final-results figure. Pre-existing (the 44-vs-48
+				// split predates the 2026-09-07 gap-cut change) and NOT fixed here,
+				// because the fix is to move Pb+Pb onto N_PAIR_ETA_CROSSX_BINS and rerun
+				// its crossx hist filling (docs/signal_selection_change_impact.md
+				// §0; docs/tracking/muon_gap_cuts_acceptance.md F18). Until then: THROW.
+				if (hcrossx_pbpb_centr_cur_ctr->GetNbinsX() != hcrossx_pp_proj->GetNbinsX())
+					throw std::runtime_error(Form(
+						"RAA_plotting mode %d: Pb+Pb has %d bins and pp has %d -- an "
+						"index-wise R_AA would divide different %s intervals. Bring Pb+Pb "
+						"onto ParamsSet::N_PAIR_ETA_CROSSX_BINS and rerun its crossx hist "
+						"filling (signal_selection_change_impact.md).",
+						mode, hcrossx_pbpb_centr_cur_ctr->GetNbinsX(),
+						hcrossx_pp_proj->GetNbinsX(), (mode == 2 ? "eta^pair" : "pair pT")));
+				if (std::fabs(hcrossx_pbpb_centr_cur_ctr->GetXaxis()->GetBinUpEdge(
+				                  hcrossx_pbpb_centr_cur_ctr->GetNbinsX())
+				            - hcrossx_pp_proj->GetXaxis()->GetBinUpEdge(
+				                  hcrossx_pp_proj->GetNbinsX())) > 1e-6)
+					throw std::runtime_error(Form(
+						"RAA_plotting mode %d: the two axes end at different upper edges, "
+						"Pb+Pb %.6f vs pp %.6f.", mode,
+						hcrossx_pbpb_centr_cur_ctr->GetXaxis()->GetBinUpEdge(
+							hcrossx_pbpb_centr_cur_ctr->GetNbinsX()),
+						hcrossx_pp_proj->GetXaxis()->GetBinUpEdge(hcrossx_pp_proj->GetNbinsX())));
 				for (int ib = 1; ib <= h_RAA_cur_bin->GetNbinsX(); ++ib){
+					if (std::fabs(hcrossx_pbpb_centr_cur_ctr->GetXaxis()->GetBinLowEdge(ib)
+					            - hcrossx_pp_proj->GetXaxis()->GetBinLowEdge(ib)) > 1e-6)
+						throw std::runtime_error(Form(
+							"RAA_plotting mode %d: bin %d low edge differs, Pb+Pb %.6f vs "
+							"pp %.6f -- the two axes are not the same binning.",
+							mode, ib, hcrossx_pbpb_centr_cur_ctr->GetXaxis()->GetBinLowEdge(ib),
+							hcrossx_pp_proj->GetXaxis()->GetBinLowEdge(ib)));
 					double a = hcrossx_pbpb_centr_cur_ctr->GetBinContent(ib), ea = hcrossx_pbpb_centr_cur_ctr->GetBinError(ib);
 					double b = hcrossx_pp_proj->GetBinContent(ib),           eb = hcrossx_pp_proj->GetBinError(ib);
 					double r = (b != 0.) ? a / b : 0.;
@@ -394,10 +431,13 @@ void RAAPlotting::RunPlotting(){
 	    h_first->GetYaxis()->SetRangeUser(0,ymax);
 	    h_first->GetYaxis()->SetTitle("R_{AA}");
 	    h_first->GetXaxis()->SetTitle( (mode==1) ? "p_{T}^{pair} [GeV]" : (mode==2) ? "#eta^{pair}" : "Centrality [%]" );
-	    // mode 2: restrict the displayed eta to the well-populated region; the
-	    // |eta| ~ 2.3-2.4 acceptance-edge bins are very low-stat (giant error bars)
-	    // and not meaningful for R_AA (and would otherwise spike into the legend).
-	    if (mode == 2) h_first->GetXaxis()->SetRangeUser(-2.3, 2.3);
+	    // mode 2: restrict the displayed eta to the fiducial region. Since 2026-09-07 that
+	    // IS the physics boundary, not a cosmetic one: the pair-level gap cut keeps
+	    // |eta^pair| < ParamsSet::pair_eta_fiducial_max, so anything beyond it is outside the
+	    // measurement. (It previously read a retyped 2.3, chosen because the |eta| ~ 2.3-2.4
+	    // acceptance-edge bins were very low-stat and spiked into the legend.)
+	    if (mode == 2) h_first->GetXaxis()->SetRangeUser(-ParamsSet::pair_eta_fiducial_max,
+	                                                      ParamsSet::pair_eta_fiducial_max);
 	    
 	    for (int iline = (subplot-1) * line_var_rebins.size() / nSubplots; iline < subplot * line_var_rebins.size() / nSubplots; iline++){
 	    	TH1D* h_RAA_cur_bin = h_RAA_list.at(iline);

@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include "TAxis.h"
 #include "TCanvas.h"
 #include "TFile.h"
 #include "TGaxis.h"
@@ -20,6 +21,7 @@
 #include "../helper_functions.c"
 #include "../../RDFBasedHistFilling/CommonEffcyConfig.h"
 #include "../../Utilities/CommonLogYRange.h"
+#include "../../Utilities/PairEtaPanelBins.h"
 #include "../../Utilities/proj_range_to_suffix.cxx"
 #include "../../MuonObjectsParamsAndHelpers/DatasetTriggerMap.h"
 #include "../../MuonObjectsParamsAndHelpers/PPBaseClass.h"
@@ -41,6 +43,13 @@ protected:
         for (std::size_t i = 0; i + 1 < e.size(); ++i) v.emplace_back(e[i], e[i + 1]);
         return v;
     }();
+
+    // Panel/axis alignment guard: hoisted 2026-09-07 into Utilities/PairEtaPanelBins.h, because
+    // five macros OUTSIDE this class project the same panels off UNGUARDED axes and a guard only
+    // some call sites use is not a guard. See that header for the full rationale (F18).
+    static std::pair<int, int> PanelEtaBins(const TAxis* ax, const std::pair<float, float>& panel,
+                                            const std::string& context)
+    { return PairEtaPanels::Bins(ax, panel, context); }
 
     std::array<int, 6> line_colors{{kRed + 1, kBlue + 1, kGreen + 2, kMagenta + 1, kOrange + 7, kCyan + 2}};
     std::array<int, 6> marker_styles{{20, 21, 22, 33, 34, 29}};
@@ -190,8 +199,9 @@ protected:
         // frame is painted (see Utilities/CommonLogYRange.h).
         for (size_t ieta = 0; ieta < q_eta_bins.size(); ++ieta) {
             const auto& eta_bin = q_eta_bins.at(ieta);
-            const int y1 = h3->GetYaxis()->FindBin(eta_bin.first + 1e-6);
-            const int y2 = h3->GetYaxis()->FindBin(eta_bin.second - 1e-6);
+            const auto ybins = PanelEtaBins(h3->GetYaxis(), eta_bin,
+                                            "SingleBCrossxPlotterBase (3D dR-in-eta panels)");
+            const int y1 = ybins.first, y2 = ybins.second;
 
             std::vector<TH1D*> lines;
             lines.reserve(dr_bins.size());
@@ -327,8 +337,9 @@ protected:
         // log-y range can be derived from all panels (Utilities/CommonLogYRange.h).
         for (size_t ieta = 0; ieta < q_eta_bins.size(); ++ieta) {
             const auto& eta_bin = q_eta_bins.at(ieta);
-            const int y1 = h2->GetYaxis()->FindBin(eta_bin.first  + 1e-6);
-            const int y2 = h2->GetYaxis()->FindBin(eta_bin.second - 1e-6);
+            const auto ybins = PanelEtaBins(h2->GetYaxis(), eta_bin,
+                                            "SingleBCrossxPlotterBase (2D pT-in-eta panels)");
+            const int y1 = ybins.first, y2 = ybins.second;
 
             const std::string proj_name = "hpt_eta" + std::to_string(ieta) + "_"
                                           + std::to_string(std::rand());
@@ -450,10 +461,12 @@ protected:
         // range can be derived from all of them first (Utilities/CommonLogYRange.h).
         for (size_t ieta = 0; ieta < q_eta_bins.size(); ++ieta) {
             const auto& eta_bin = q_eta_bins.at(ieta);
-            const int y1a = ha->GetYaxis()->FindBin(eta_bin.first  + 1e-6);
-            const int y2a = ha->GetYaxis()->FindBin(eta_bin.second - 1e-6);
-            const int y1b = hb->GetYaxis()->FindBin(eta_bin.first  + 1e-6);
-            const int y2b = hb->GetYaxis()->FindBin(eta_bin.second - 1e-6);
+            const auto ybins_a = PanelEtaBins(ha->GetYaxis(), eta_bin,
+                                              "SingleBCrossxPlotterBase (2-sample overlay, A)");
+            const auto ybins_b = PanelEtaBins(hb->GetYaxis(), eta_bin,
+                                              "SingleBCrossxPlotterBase (2-sample overlay, B)");
+            const int y1a = ybins_a.first, y2a = ybins_a.second;
+            const int y1b = ybins_b.first, y2b = ybins_b.second;
 
             const std::string nA = "hpt2s_a_eta" + std::to_string(ieta) + "_" + std::to_string(std::rand());
             const std::string nB = "hpt2s_b_eta" + std::to_string(ieta) + "_" + std::to_string(std::rand());
@@ -577,8 +590,9 @@ protected:
             h1->Sumw2();
             for (size_t ieta = 0; ieta < q_eta_bins.size(); ++ieta) {
                 const auto& eta_bin = q_eta_bins.at(ieta);
-                const int y1 = h2->GetYaxis()->FindBin(eta_bin.first  + 1e-6);
-                const int y2 = h2->GetYaxis()->FindBin(eta_bin.second - 1e-6);
+                const auto ybins = PanelEtaBins(h2->GetYaxis(), eta_bin,
+                                                "SingleBCrossxPlotterBase (eta-panel ratios)");
+                const int y1 = ybins.first, y2 = ybins.second;
                 double err = 0.;
                 const double n = h2->IntegralAndError(1, h2->GetNbinsX(), y1, y2, err);
                 h1->SetBinContent((int)ieta + 1, n);

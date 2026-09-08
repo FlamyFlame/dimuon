@@ -48,7 +48,20 @@
 #include <TNamed.h>
 #include <TParameter.h>
 
+#include "../../MuonObjectsParamsAndHelpers/ParamsSet.h"   // the fiducial-cut expressions, for provenance
+#include "../../Utilities/PairEtaPanelBins.h"
+
 namespace {
+
+// std::to_string on a float always yields six decimals ("2.200000"); the provenance string is
+// read by people, so trim the trailing zeros.
+std::string FormatEdge(float v)
+{
+    std::string s = std::to_string(v);
+    s.erase(s.find_last_not_of('0') + 1);
+    if (!s.empty() && s.back() == '.') s.pop_back();
+    return s;
+}
 
 const char* kBase =
     "h_truth_dr_effcy_vs_truth_pair_eta_coarse_vs_truth_pair_pt_coarse_single_b";
@@ -86,6 +99,24 @@ int build_pp24_fullsim_pair_reco_eff(bool use_full_sample = true)
 
     TH3D* h_den = Get3D(fin.get(), std::string(kBase) + "_pass_signal_truth");
     if (!h_den) return 2;
+
+    // The provenance written at the end CLAIMS this file is celled on
+    // CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap and carries the pair-level window
+    // |eta^pair| < ParamsSet::pair_eta_fiducial_max. Check that here, in the WRITER -- both
+    // consumers (PairRecoEffEvaluator, plot_pp24_fullsim_pair_reco_eff.cxx) do verify the axis,
+    // but only after a mislabelled file already exists. A writer must not stamp a claim its own
+    // axis contradicts. h_den's Y axis IS the 9-bin panel axis, so panel i <-> bin i+1.
+    // BEFORE the RECREATE, deliberately: throwing after it would destroy a good previous output
+    // and leave a partial one in its place.
+    {
+        const CommonEffcyConfig eff_cfg{};
+        const auto& panels = eff_cfg.pair_eta_proj_ranges_coarse_incl_gap;
+        PairEtaPanels::CheckPanelsMatchFiducialCut();
+        for (std::size_t i = 0; i < panels.size(); ++i)
+            PairEtaPanels::CheckAxisAligned(h_den->GetYaxis(), panels[i],
+                                            static_cast<int>(i) + 1, static_cast<int>(i) + 1,
+                                            "build_pp24_fullsim_pair_reco_eff");
+    }
 
     std::unique_ptr<TFile> fout(TFile::Open(out_path.c_str(), "RECREATE"));
 
@@ -165,7 +196,9 @@ int build_pp24_fullsim_pair_reco_eff(bool use_full_sample = true)
     static_cast<TH2D*>(h_den->Project3D("yx"))->Clone("h_pair_reco_eff_denom2d")->Write();
     TNamed prov("provenance",
                 ("single-b OS pair reco efficiency; fiducial (gap cut on BOTH the truth and the "
-                 "reco leg, ParamsSet::single_mu_fiducial_gap_cuts); source " + in_path
+                 "reco leg, ParamsSet::single_mu_fiducial_gap_cuts, PLUS the pair-level window "
+                 "|eta^pair| < " + FormatEdge(ParamsSet::pair_eta_fiducial_max)
+                 + "); source " + in_path
                  + "; axes = ParamsSet::pair_pt_coarse_bins x "
                    "CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap x "
                    "RDFBasedHistFillingPythia::dr_bins_edges_for_reco_effcy; does NOT contain "

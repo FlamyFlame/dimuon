@@ -15,6 +15,7 @@
 
 #include "../helper_functions.c"
 #include "../../RDFBasedHistFilling/CommonEffcyConfig.h"
+#include "../../Utilities/PairEtaPanelBins.h"
 
 class SignalAcceptancePlotter {
 protected:
@@ -114,8 +115,9 @@ public:
             gPad->SetBottomMargin(0.13);
 
             const auto& eta_bin = q_eta_bins.at(ieta);
-            const int y1 = hnum->GetYaxis()->FindBin(eta_bin.first  + 1e-6f);
-            const int y2 = hnum->GetYaxis()->FindBin(eta_bin.second - 1e-6f);
+            const auto yb = PairEtaPanels::Bins(hnum->GetYaxis(), eta_bin,
+                                               "SignalAcceptancePlotter");
+            const int y1 = yb.first, y2 = yb.second;
 
             const std::string tag = std::to_string(ieta);
             TH1D* hn = hnum->ProjectionX(("hn_acc_eta" + tag).c_str(), y1, y2, "e");
