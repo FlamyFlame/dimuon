@@ -519,6 +519,28 @@ Nothing in this doc's own scope. What is left is USER JUDGEMENT (R4) plus one ha
    ranking reverses, so the choice of dR cell grouping for the pp24 cross-section is reopened on the
    regenerated figures. That decision is that doc's, not this one's.
 
+### R7 — CSV tables (user request, 2026-09-08)
+
+`plotting_codes/trig_effcy/mc_based/write_pair_trig_eff_tables.cxx` reads the deliverable and
+writes three CSVs per working point into
+`plots/pp_trigger_efficiency/mc_based[_medium]/single_value_pair_eff_tables/`, all with pair-p_T
+ROWS and |eta^pair| COLUMNS on the canonical axes:
+
+| file | contents |
+|---|---|
+| `single_value_pair_eff_opposite_sign[_medium_wp].csv` | eps^pair and K with their conditional errors, BOTH mass windows, plus a per-cell delivery status |
+| `single_value_pair_eff_same_sign[_medium_wp].csv` | the same for same-sign pairs |
+| `single_value_pair_stats_same_sign[_medium_wp].csv` | the same-sign RAW pair counts in the SIGNAL window (`n_all`, `n_2mu4`), with per-row and per-column totals |
+
+Nothing is recomputed: every value is read from `pair_trig_eff_*.root` as written, and the status
+column is obtained by ASKING `PairTrigEffEvaluator` at each cell centre rather than re-implementing
+its gate, so a cell marked `delivered` in a CSV is exactly one a consumer can `Eval()`.
+Cross-checked against R1 and against the fill log's totals (same-sign 32001 selected / 19177 firing).
+
+The same-sign signal-window statistics make R2 item 4 concrete — 17255 / 13724 / 1022 pairs in the
+three |eta^pair| groups summed over all pair p_T, but only **176 / 85 / 5** in 49.97-72.08 GeV,
+**43 / 8 / 0** in 72.08-103.98 and **7 / 0 / 0** in 103.98-150.
+
 ## Latest Stage
 
 **2026-09-08 — DONE.** Both reviews PASS, everything is committed, and nothing is in flight. The
