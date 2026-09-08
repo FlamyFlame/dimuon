@@ -27,8 +27,8 @@ void PowhegFullSimExtras<PairT, MuonT, Derived>::InitInputExtra(){
     // tree is loaded leaves the pointer null. See Utilities/AllVertexIPSelection.h
     // (BRANCH BINDING).
     if (UseAllVertexIP()) {
-        if (!self().fChainRef()->GetListOfBranches()->FindObject("vtx_z") ||
-            !self().fChainRef()->GetListOfBranches()->FindObject("vtx_ntrk"))
+        if (!self().fChainRef()->GetBranch("vtx_z") ||
+            !self().fChainRef()->GetBranch("vtx_ntrk"))
             throw std::runtime_error("PowhegFullSimExtras: pp-conditions fullsim NTUP has no "
                                      "vtx_z/vtx_ntrk branches, so the all-vertex "
                                      "impact-parameter selection that MIRRORS the pp data "
@@ -265,6 +265,8 @@ void PowhegFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
                 const int ip_vtx = UseAllVertexIP()
                     ? PairAllVertexIndex(self().mpairRef()->m1, self().mpairRef()->m2, &ip_pass_primary)
                     : -1;
+                // No `disable_ip_cut` term here, unlike the Pythia mirror: PowhegFullSimExtras
+                // has no such member. The asymmetry is deliberate, not an oversight.
                 const bool ip_pair_ok = !UseAllVertexIP() || ip_vtx >= 0;
                 self().mpairRef()->pair_pass_medium = (self().mpairRef()->m1.pass_medium && self().mpairRef()->m2.pass_medium && ip_pair_ok);
                 self().mpairRef()->pair_pass_tight  = (self().mpairRef()->m1.pass_tight  && self().mpairRef()->m2.pass_tight  && ip_pair_ok);

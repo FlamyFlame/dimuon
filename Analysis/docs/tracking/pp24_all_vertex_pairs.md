@@ -99,8 +99,23 @@ vertex satisfies (a)+(b) for both muons. The vertex recorded on the pair
 (`matched_vtx_ind`) is the eligible vertex minimising max(|z0_v sin(theta)|) over the two
 muons — i.e. the best-matching vertex — with ties broken by the lower index, so index 0 wins
 whenever it is as good as any other. A pair is counted as **secondary-vertex** when
-`matched_vtx_ind != 0`. Vertex-assignment ambiguity is small by construction: only 0.73% of
-vertex pairs are within 2 mm in z (`vtx_z` RMS 61.0 mm, mean |z_i - z_0| 68.3 mm).
+`matched_vtx_ind != 0`.
+
+Vertex-assignment ambiguity is small by construction. Measured on `data_pp24_part11.root`,
+first 300 000 events, **eligible (`vtx_ntrk >= 2`) vertices only**, averaging over vertex
+*pairs*: only **0.60 %** of vertex pairs sit within 2 mm in z, against a `vtx_z` RMS of
+**58.3 mm** and a mean |z_i - z_j| of **67.3 mm**. (Two reviewers reproduced these three
+numbers to three digits; the values 0.73 % / 61.0 / 68.3 quoted here before 2026-09-08 were
+not reproducible under any definition and are withdrawn. The sample and the
+"eligible-only, over pairs" definition are part of the statement — an all-vertices variant
+gives 10.3 % / 57.9 / 48.1 instead.)
+
+A related property this design rests on, **empirical rather than structural**: the returned
+index can only be the primary if vertex 0 is itself eligible. Were `vtx_ntrk[0] < 2` ever to
+occur, a pair the old primary-vertex cut kept could be dropped, breaking the strict-superset
+guarantee. Measured over all 1 696 134 events of `data_pp24_part11.root`: **zero** such events,
+minimum `vtx_ntrk[0] = 2` — as expected of the highest-sum-pT^2 vertex. Re-check if the skim's
+vertex ordering or cleaning changes.
 
 **(e) Statistics record.** Fraction of kept pairs with `matched_vtx_ind != 0`, computed from
 the NTuple-processing OUTPUT pair tree (never from the raw NTUPs), for pp24, reported
@@ -199,16 +214,26 @@ OUT: Pb+Pb anything; R_AA; unfolding; template fits; the Pb+Pb pair-eta axis mig
   `pass_primary_vtx` (deliberately NOT in the shared `PairDataExtras`, so Pb+Pb's tree is
   untouched).
 
-  **Non-obvious mechanism found the hard way (a ROOT trap, documented at both call sites):**
-  the input chain runs in `SetMakeClass(1)` mode. If `SetBranchAddress` for an STL-collection
-  branch is issued AFTER the chain's first tree has been loaded, ROOT takes the immediate
-  MakeClass path (`rc = kMakeClass = 3`), treats the argument as the address of the DATA rather
-  than of a pointer-to-vector, never allocates the `std::vector`, and would write leaf bytes
-  over the member itself. Bound before the first load it is deferred (`rc = kNoCheck = 5`) and
-  `TChain::LoadTree` allocates correctly. `GetBranch()` itself loads the tree — which is why the
-  vertex ADDRESSES are set in `PPExtras::PerformTChainFill` (right after `Add`) while the
-  existence check and `SetBranchStatus` stay in `InitInputBranchesDimuonAnalysisExtra`.
-  This is also why every DataCore branch is bound before the first `GetBranch()` call.
+  **Non-obvious ROOT mechanism, measured twice (the first two accounts were both wrong).**
+  These chains run in `SetMakeClass(1)` mode. `SetBranchAddress` on an STL-collection branch
+  leaves the pointer NULL if and ONLY IF **both** of these hold: the chain's first tree is
+  already loaded **and** the branch is currently DISABLED. The 2x2 measurement, on the real
+  chain (reproduced independently by the iteration-2 reviewer):
+
+  | | branch enabled | branch DISABLED |
+  |---|---|---|
+  | bound BEFORE first tree load | rc = 5 (kNoCheck), allocated | rc = 5, allocated |
+  | bound AFTER first tree load | rc = 3 (kMakeClass), allocated | rc = 3, **NULL** |
+
+  My first diagnosis blamed the load ordering alone (it is not sufficient); the iteration-1
+  reviewer, varying only the other axis, concluded the trap did not exist at all (it does).
+  **The rule that follows is simply `SetBranchStatus(name, 1)` BEFORE `SetBranchAddress`** —
+  which is exactly what `Utilities/tchain_helpers.h::enable_and_bind` already does, and why all
+  three call sites now use it. Ordering against the tree load is then irrelevant, which matters
+  because `GetBranch()`, `GetListOfBranches()` and `GetEntries()` all load the first tree, so
+  "after the load" is the normal state by the time any Extra hook runs. The truth table lives in
+  `Utilities/AllVertexIPSelection.h`; `bind_branch` now also accepts rc == 5, which it used to
+  reject — so the working order had been unusable through that helper.
 
 - 2026-09-08 Step 2 DONE — **MC mirror**. `PythiaFullSimExtras.{h,c}`: `UseAllVertexIP()` is
   true iff `getFullSimSampleType() == FullSimSampleType::pp`; `vtx_z`/`vtx_ntrk` bound inside
@@ -285,8 +310,15 @@ primary vertex outright, i.e. it is ADDED by this change. `f_sec >= f_new` alway
 | 24.01-34.64 | 34 046 | 0.937 ± 0.052 % | 0.303 ± 0.030 % |
 | 34.64-49.97 | 7 526 | 0.811 ± 0.103 % | 0.345 ± 0.068 % |
 | 49.97-72.08 | 1 300 | 1.077 ± 0.286 % | 0.308 ± 0.154 % |
-| 72.08-103.98 | 179 | 0.559 ± 0.557 % | 0.000 % |
-| 103.98-150.00 | 16 | 0.000 % | 0.000 % |
+| 72.08-103.98 | 179 | 0.559 ± 0.557 % | 0.000 + 1.023 % |
+| 103.98-150.00 | 16 | 0.000 + 10.869 % | 0.000 + 10.869 % |
+| >= 150 (above axis) | 3 | 0.000 + 45.865 % | 0.000 + 45.865 % |
+
+Errors are nested-binomial; at k = 0 (and k = N) the 68 % Clopper-Pearson width is given
+instead, because 0/16 is "no events yet", not a measurement of exactly zero. The above-axis row
+exists so the per-bin rows exhaust the integrated total — the macro now ASSERTS that
+(`check_complete`, throws) rather than claiming it in a comment, which is precisely the claim
+that turned out to be false in the first version (3 pairs above 150 GeV were being dropped).
 
 (The all-pairs-vs-pair-pT table, including the 2 591 627 pairs below the 8 GeV axis where
 `f_new` reaches 2.116 ± 0.009 %, is in the CSV.)

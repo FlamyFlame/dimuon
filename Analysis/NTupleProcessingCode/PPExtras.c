@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include "TSystem.h"
 #include "../Utilities/AllVertexIPSelection.h"
+#include "../Utilities/tchain_helpers.h"
 
 template <class Derived>
 void PPExtras<Derived>::InitParamsExtra(){
@@ -74,10 +75,11 @@ void PPExtras<Derived>::InitInputBranchesDimuonAnalysisExtra(){
                                  "all-vertex impact-parameter selection cannot be applied. "
                                  "Re-skim with m_store_Vtx enabled.");
 
-    ch->SetBranchStatus ("vtx_z"   , 1);
-    ch->SetBranchStatus ("vtx_ntrk", 1);
-    ch->SetBranchAddress("vtx_z"   , &vtx_z);
-    ch->SetBranchAddress("vtx_ntrk", &vtx_ntrk);
+    // enable_and_bind enables THEN binds -- the order that matters here -- and checks the
+    // SetBranchAddress return code, which a raw SetBranchAddress pair would silently discard.
+    // Same helper as both MC mirrors, so the three sites cannot drift.
+    enable_and_bind(ch, "vtx_z"   , &vtx_z);
+    enable_and_bind(ch, "vtx_ntrk", &vtx_ntrk);
 
     std::cout << "INFO: pp all-vertex impact-parameter selection ENABLED "
                  "(pairs may come from secondary vertices)." << std::endl;

@@ -30,8 +30,8 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::InitInputExtra(){
         // first tree is loaded leaves the pointer null. See Utilities/AllVertexIPSelection.h
         // (BRANCH BINDING) for the measured truth table.
         if (UseAllVertexIP()) {
-            if (!ch->GetListOfBranches()->FindObject("vtx_z") ||
-                !ch->GetListOfBranches()->FindObject("vtx_ntrk"))
+            if (!ch->GetBranch("vtx_z") ||
+                !ch->GetBranch("vtx_ntrk"))
                 throw std::runtime_error("PythiaFullSimExtras: pp-conditions fullsim NTUP has no "
                                          "vtx_z/vtx_ntrk branches, so the all-vertex "
                                          "impact-parameter selection that MIRRORS the pp data "

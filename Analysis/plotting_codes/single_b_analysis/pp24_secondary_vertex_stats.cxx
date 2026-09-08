@@ -49,18 +49,26 @@
 
 #include "TSystem.h"
 #include "ROOT/RDataFrame.hxx"
+#include "TEfficiency.h"
 
 #include "../../MuonObjectsParamsAndHelpers/ParamsSet.h"
 #include "../../MuonObjectsParamsAndHelpers/DatasetTriggerMap.h"
 
 namespace {
 
-// Binomial error on a fraction k/n. The two samples are nested (k is a subset of n), so this is
+// Binomial error on a fraction k/n. The two samples are NESTED (k is a subset of n), so this is
 // the right error, not the uncorrelated-ratio one.
+//
+// At the endpoints the normal-approximation form collapses to exactly 0, which in a published
+// table reads as an exact measurement of zero rather than as "no events yet" -- 0/16 is not
+// 0.000 +- 0.000. There the 68 % Clopper-Pearson interval is used instead and its one-sided
+// width reported, so an empty high-pT bin shows an honest uncertainty.
 double FracErr(double k, double n) {
     if (n <= 0) return 0.0;
+    if (k <= 0)  return TEfficiency::ClopperPearson((int)n, 0,      0.6827, true);
+    if (k >= n)  return 1.0 - TEfficiency::ClopperPearson((int)n, (int)n, 0.6827, false);
     const double p = k / n;
-    return std::sqrt(std::max(0.0, p * (1.0 - p)) / n);
+    return std::sqrt(p * (1.0 - p) / n);
 }
 
 struct Row {
@@ -197,6 +205,33 @@ void pp24_secondary_vertex_stats(bool use_tight_wp = true,
         r.label = bin_label(pt_bins[i], pt_bins[i + 1]);
         sig_pt_rows.push_back(r);
     }
+    {
+        // The signal region already requires pair_pt > 8, so it has no below-axis row -- but it
+        // DOES have pairs above 150 GeV, and without this row the eight bins would silently sum
+        // to less than the integrated signal total, contradicting the completeness the CSV
+        // header claims. (Measured 2026-09-08: 3 pairs. Small, but a table must not assert
+        // something untrue about itself.)
+        std::ostringstream hi_cut;
+        hi_cut << std::setprecision(10) << "(" << signal_cuts << ") && pair_pt >= "
+               << pt_bins.back();
+        Row r = count(df_os, hi_cut.str());
+        r.label = "pair pT >= 150 (above)";
+        sig_pt_rows.push_back(r);
+    }
+
+    // Completeness assertion, not a comment: the per-bin rows must exhaust the integrated
+    // totals, or one of the cut strings has drifted from the axis.
+    auto check_complete = [](const std::vector<Row>& rows, const Row& total, const char* what) {
+        double n = 0;
+        for (const auto& r : rows) n += r.n;
+        if (n != total.n)
+            throw std::runtime_error(std::string("pp24_secondary_vertex_stats: the ") + what
+                + " pair-pT rows sum to " + std::to_string((long long)n) + " but the integrated "
+                "total is " + std::to_string((long long)total.n) + ". The binning rows no longer "
+                "tile the sample -- check the below-/above-axis cuts against pair_pt_coarse_bins.");
+    };
+    check_complete(pt_rows,     all_both, "all-pairs");
+    check_complete(sig_pt_rows, sig,      "signal-region");
 
     // ---- console table ---------------------------------------------------------------------
     auto header = [](const std::string& title) {
@@ -244,6 +279,10 @@ void pp24_secondary_vertex_stats(bool use_tight_wp = true,
            "complete. Signal region = OS + " << wp_name << " + 1.08 < m_uu < 2.9 GeV + "
            "pair pT > 8 GeV + both muons outside every ParamsSet::single_mu_fiducial_gap_cuts "
            "window + |eta^pair| < " << ParamsSet::pair_eta_fiducial_max << ".\n"
+        << "# The pair-pT edges in the `selection` column are ROUNDED to 2 dp for legibility; "
+           "the cuts themselves use the exact ParamsSet edges. Errors are nested-binomial, "
+           "except at k = 0 or k = N where the 68 % Clopper-Pearson width is given (a bin with "
+           "no secondary-vertex pairs is not a measurement of exactly zero).\n"
         << "population,selection,N,N_sec,f_sec,f_sec_err,N_new,f_new,f_new_err\n";
 
     auto write_row = [&](const std::string& pop, const Row& r) {

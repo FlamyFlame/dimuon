@@ -111,6 +111,13 @@ inline bool PassAnyVertex(double d0, double z0, double eta,
 // data_pp24_part11.root, first 300 000 events, eligible vertices only, just 0.60 % of vertex
 // pairs sit within 2 mm in z, against an RMS spread of 58.3 mm and a mean |dz| of 67.3 mm.)
 //
+// NOTE (empirical, not structural): this returns the primary only if vertex 0 is itself
+// ELIGIBLE. If `vtx_ntrk[0] < 2` ever occurred, a pair the old primary-vertex cut kept could be
+// dropped, breaking the strict-superset property the whole change rests on. Measured on all
+// 1 696 134 events of data_pp24_part11.root: ZERO events with `vtx_ntrk[0] < 2` (minimum 2),
+// which is what one expects of the highest-sum-pT^2 vertex. Re-check if the skim's vertex
+// ordering or its cleaning ever changes.
+//
 // `pass_primary_out`, when non-null, receives whether vertex 0 ITSELF qualifies -- i.e. whether
 // the pair would also have survived the old primary-vertex-only cut. The two statistics differ
 // and must not be confused:
