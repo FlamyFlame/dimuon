@@ -499,6 +499,46 @@ and remains the alternative.
   reversal of the earlier ranking, not a bug artefact (checked: the fold's own selected-pair count
   and cell coverage match the un-merged reference).
 
+
+- 2026-09-08 — **★ R4 IS RETRACTED: the fold's poor closure was a BUG in the cascade evaluator, not
+  the grouping.** Found by `/review-analysis-code` while reviewing the sibling thread
+  `mc_trigeff_single_value_pair_eff.md`. `DrCorrectionCascadeEvaluator::Eval` looked the pair-eta
+  cell up with the **signed** `pair_eta` on the **folded** (|eta|, 0 -> 2.2) Y axis, so in every
+  `*_etamerge*` mode every pair with `pair_eta < 0` fell into the underflow, was counted "outside
+  the cell grid" and received **`eps_dR = 1` — no correction at all**. Half the sample, silently:
+  the etamerge closure log read `628453 OUTSIDE the cell grid (50.67%)` against `0 OUTSIDE` for an
+  un-folded mode. This is the SAME bug D11 fixed in `DrCorrectionEvaluator::Eval` and in the
+  closure's sample Filter — but the CASCADE class had reimplemented those two lines and was missed,
+  and the cascade class is the one that builds the delivered series every closure figure draws.
+  `DrCorrectionCrossxEvaluator` carried it too (latent: `DrCorrCrossxMode()` is un-folded).
+  **Fix:** one shared `DrCorrectionEvaluator::CellLookupEta(pair_eta, folded)` in
+  `dr_correction_apply.h`, called from all four sites, so the fold cannot be forgotten a fifth time.
+  **Rerun (2026-09-08):** all four modes x both WPs refilled and replotted, plus the 4-approach
+  overlay and the chi^2/ndof panel.
+  **THE RANKING REVERSES.** chi^2/ndof summed over the 15 crossx pair-p_T bins, SIGNAL version,
+  ndof = 133 — both working points, each row read from its OWN log
+  (`pipelines/logs_closure/compare_{tight,medium}.log:21`), against R4's same-version rows:
+
+  | | A `nocorr` | B `nocorr_ptmerge` | C `nocorr_etamerge` | D `nocorr_etamerge_ptmerge` |
+  |---|---|---|---|---|
+  | **Tight**, R4 (bug present) | 8.44 | 8.28 | **61.33** | **61.56** |
+  | **Tight**, now | 6.557 (chi2 872.1) | 6.503 (864.9) | **5.029 (668.8)** | 5.129 (682.2) |
+  | **Medium**, R4 (bug present) | 7.94 | 8.04 | **64.56** | **64.77** |
+  | **Medium**, now | 6.321 (840.7) | 6.266 (833.4) | **5.222 (694.5)** | 5.332 (709.2) |
+
+  **⚠ THE "now" ROWS CARRY TWO CHANGES, NOT ONE.** The fold fix acts ONLY on C and D — A and B are
+  un-folded, so `CellLookupEta` is a no-op for them — yet A moves 8.44 -> 6.557 as well. That part
+  is the 2026-09-07 gap-cut rerun (`muon_gap_cuts_acceptance.md` F17/F18): every closure file was
+  refilled today against Step-3 fits regenerated on the new fiducial windows. **The fold fix's own
+  effect is the C/D column**, where 61 -> 5 cannot be attributed to a gap-cut change that moved A
+  and B by 20 %. Read the table by column, not by row.
+  The |eta| fold is now the BEST of the four by this metric, not the worst. **R4's conclusion
+  ("argues AGAINST adopting the fold on closure grounds") no longer holds and must be re-judged by
+  the user against the regenerated figures.** The sibling doc's independent measurement agrees:
+  above 50 GeV approach D's inclusive closure moved 0.7433 -> 0.9362 and its "sign asymmetry"
+  (0.44 at eta^pair in [-1,-0.5) against 0.94 at the mirror) vanished entirely — that pattern was
+  the bug's signature. See `mc_trigeff_single_value_pair_eff.md` R5 for the full evidence.
+
 ## Results & Observations
 
 ### R1. Steps 3+4 — the pair-η grouping in the fit and its plot stage (2026-08-24, delegated)
@@ -683,32 +723,9 @@ the user to weigh against R4, not something this doc resolves on its own.
 
 ## Latest Stage
 
-**2026-09-03 — Step 13: the non-closure panel is now a proper χ²/ndof, not the un-normalized D².**
-§PP-5 renormalized (advisor's flag), code + pipeline + doc updated, both WPs rerun on the EXISTING
-(pre-D11, 2026-08-24/25) closure files, numbers in R3. **Formal `/review-plot` did NOT complete**
-(reviewer subagent stopped by the user, who then explicitly asked to mark this done from the
-executor's own verification instead) — flag for a real review pass later if this panel is ever
-relied on for a final decision, not just recorded as measurement. R3's headline: the well-measured
-low-p_T bins, not the sparse high-p_T ones, carry most of the statistical significance — opposite
-of what R2's un-normalized reading suggested.
-
-**D11's closure re-run is now DONE (2026-09-03, same day, on request).** The coverage-guard
-throw D11 had flagged and left unfixed was hit and fixed (fold-aware |η| comparison); fixing it
-surfaced a SECOND, more serious bug in the same function — the sample `Filter` applying folded
-|η|-space bounds to the signed `pair_eta` branch, silently dropping every negative-η pair from a
-merge-eta fill — also fixed and verified. `FillMCTrigEffClosure` re-run for `nocorr_etamerge` /
-`nocorr_etamerge_ptmerge`, both WPs; `plot_mc_trig_eff_closure_compare.cxx` re-run, both WPs. R2/R3
-still correctly describe the RETIRED signed grouping (historical, kept per tracking-doc discipline)
-— **R4 has the current numbers on the new fold**, and they are a genuine surprise: the fold
-grouping's χ²/ndof is 4-8x WORSE than the un-merged/pT-merged approaches AND worse than the retired
-signed grouping was, in every version and WP. **Not formally reviewed** (`/review-analysis-code`
-skipped per the user's standing instruction this session) — flag before this drives a decision.
-
-Everything else is as the 2026-08-24 entry left it: steps 1-10 done, step 11 (the full run of all
-four approaches + `/review-analysis-code` + commit of the run) still open.
-
-**Next, in order:** (1) finish step 11 — `/review-analysis-code` on the C++/RDF written on
-2026-08-24 AND on today's two closure-fill bug fixes; (2) with the user, read R4 (not R2/R3) and
-choose an approach — R4 argues against the fold grouping on closure grounds alone; (3) Remaining
-Work 1 — replace `DrCorrectionCrossxEvaluator` with the general cascade class configured for the
-chosen mode.
+**2026-09-08 — R4 RETRACTED, all four approaches refilled and replotted on the fixed cascade
+lookup (see the last Progress Log entry).** Nothing is in flight in this doc. The open item is a
+USER JUDGEMENT: with the bug gone the |eta| fold has the BEST chi^2/ndof of the four
+(5.22 / 5.33 against 6.32 / 6.27), the reverse of what R4 concluded, so the choice of approach for
+the pp24 cross-section is reopened on the regenerated evidence. The cross-section application is
+still deliberately unchanged (`DrCorrCrossxMode()` = `nocorr_ptmerge`).

@@ -138,3 +138,4 @@
 {"event":"start","command":"review-plot","task":"round-13 MC trig-eff plot sets on the new gap cuts + pair-eta cut + Step-3 expo shape restriction","slug":"round13-gapcut-step3-plots","timestamp":"2026-09-08T00:29:39-04:00"}
 {"event":"start","command":"review-analysis-code","task":"single-value pair 2mu4 efficiency code","slug":"single-value-pair-2mu4-eff","timestamp":"2026-09-08T04:54:07Z"}
 {"event":"end","command":"review-plot","status":"approved","iterations":2,"timestamp":"2026-09-08T01:31:19-04:00","criticals":0,"warnings":0,"slug":"round13-gapcut-step3-plots"}
+{"event":"start","command":"review-plot","task":"5-line high-pT closure comparison figure","slug":"single-value-highpt-closure","timestamp":"2026-09-08T05:36:09Z"}
