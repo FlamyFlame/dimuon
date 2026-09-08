@@ -410,5 +410,53 @@ void pp24_secondary_vertex_stats(bool use_tight_wp = true,
             "pair_pt_range_GeV", body);
     }
 
+    // ---- Two BRIEF CSVs, for presenting -----------------------------------------------------
+    // Same numbers again, stripped to what the console prints: no counts-and-provenance columns,
+    // percentages rather than fractions, and ONE header line instead of five. Emitted from the
+    // same Row objects in the same pass as everything else, so the brief and detailed files
+    // cannot disagree.
+    //
+    // The one header line is not decoration: f_sec and f_new are two similar-looking percentages
+    // and a bare table of them is ambiguous, which is exactly the confusion this file set has
+    // already had to correct once (the WP label). One line is the minimum that keeps it honest.
+    auto write_brief = [&](const std::string& path,
+                           const std::string& first_col,
+                           const std::string& scope,
+                           const std::vector<std::pair<std::string, Row>>& body) {
+        std::ofstream o(path);
+        if (!o) throw std::runtime_error("Cannot write " + path);
+        o << "# pp24 " << wp_name << " WP, " << scope
+          << ". f_sec = pair's best-matching vertex is not the primary; "
+             "f_new = pair fails the primary outright (ADDED by the all-vertex rule). "
+             "Percentages. Errors binomial; one-sided 68% CL where f = 0.\n";
+        o << first_col << ",N,f_sec_percent,f_sec_err,f_new_percent,f_new_err\n";
+        auto pct = [](double a, double b){ return b > 0 ? 100.0 * a / b : 0.0; };
+        for (const auto& kv : body) {
+            const Row& r = kv.second;
+            o << "\"" << kv.first << "\"," << (long long)r.n
+              << "," << std::fixed << std::setprecision(3) << pct(r.n_sec, r.n)
+              << "," << 100.0 * FracErr(r.n_sec, r.n)
+              << "," << pct(r.n_new, r.n)
+              << "," << 100.0 * FracErr(r.n_new, r.n) << "\n";
+        }
+        o.close();
+        std::cout << "Brief CSV written to " << path << std::endl;
+    };
+
+    write_brief(out_dir + "/pp24_secondary_vertex_integrated_brief.csv",
+                "population", "integrated over all pair pT",
+                { {"all pairs (OS+SS)", all_both},
+                  {"all OS pairs",      all_os},
+                  {"all SS pairs",      all_ss},
+                  {"signal region (OS)", sig} });
+
+    {
+        std::vector<std::pair<std::string, Row>> body;
+        for (const auto& r : sig_pt_rows) body.emplace_back(r.label, r);
+        write_brief(out_dir + "/pp24_secondary_vertex_vs_pair_pt_signal_brief.csv",
+                    "pair_pt_GeV", "single-b signal region (OS), canonical coarse pair-pT bins",
+                    body);
+    }
+
     std::cout << "\nMaster CSV written to " << csv << std::endl;
 }
