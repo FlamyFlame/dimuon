@@ -763,12 +763,16 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             gmc->Draw("PZ same");
 
             DrawHeadline(headline + ", " + kChargeTex[ic], 0.14, 0.955, 0.05);
-            // wide box + smaller text: the overlay data label ("... T&P P(2mu4 | mu4 tag,
-            // DR>0.8)") is long and must not clip at the pad edge (plot review iter 1)
-            auto* leg = new TLegend(0.18, 0.10, 0.93, 0.30);
+            // The overlay data label ("... tag-and-probe P(2mu4 | mu4 tag, DR > 0.8)") is long.
+            // At 0.036 it ran past the right frame line and its closing bracket was cut off
+            // (plot review, round 13): a legend entry that does not fit is a legend entry the
+            // reader cannot check the definition of. Fixed by shrinking the text and pulling the
+            // marker column in -- NOT by widening the box, which is already at the frame edge.
+            auto* leg = new TLegend(0.15, 0.10, 0.95, 0.30);
             leg->SetBorderSize(0);
             leg->SetFillStyle(0);
-            leg->SetTextSize(0.036);
+            leg->SetTextSize(0.029);
+            leg->SetMargin(0.10);
             leg->AddEntry(gmc, mc_leg.c_str(), "lp");
             leg->AddEntry(gda, data_leg.c_str(), "lp");
             leg->Draw();
@@ -1452,7 +1456,10 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             DrawEffFrame(0.0, 1.0, "#DeltaR", 0.0, ymax, cfg.eps_dr_text);
             DrawUnityLine(0.0, 1.0);
 
-            auto* leg = new TLegend(0.13, 0.79, 0.97, 0.925);
+            // top edge 0.925 -> 0.905: a band is reserved above the legend for the eps_dR
+            // definition line added in round 13 (see below), which would otherwise sit on the
+            // legend's top row.
+            auto* leg = new TLegend(0.13, 0.79, 0.97, 0.905);
             leg->SetNColumns(2);
             leg->SetBorderSize(0);
             leg->SetFillStyle(0);
@@ -1482,6 +1489,15 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 }
             }
             DrawHeadline(headline, 0.12, 0.965);
+            // The y-axis symbol is specific to THIS analysis, so the figure must define it --
+            // the per-pair-pT canvases already do, and these four top-level canvases did not
+            // (plot review, round 13). Same wording, from PP section 3.3.
+            {
+                TLatex df; df.SetNDC(); df.SetTextFont(42); df.SetTextSize(0.026);
+                df.DrawLatex(0.12, 0.921, (cfg.eps_dr_text
+                             + " = P(both #mu fire | #DeltaR) / (#varepsilon_{1}#varepsilon_{2})")
+                             .c_str());
+            }
             if (!offscale.empty()) {
                 TLatex note;
                 note.SetNDC(); note.SetTextFont(42); note.SetTextSize(0.026);
@@ -1589,7 +1605,11 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             // entry's text ran into the next entry's marker, the last one was clipped at the right
             // edge, and the only key identifying the eight curves was unreadable. Two rows of four
             // give each entry ~360 px.
-            const int    kHeaderPx = 128;
+            // 128 -> 152 px (round 13): a fourth row was added to the strip for the eps_dR
+            // DEFINITION, which the per-pair-pT canvases already carried and this one did not.
+            // The strip is grown rather than the rows repacked -- at 128 px the definition would
+            // have landed on top of the two-row legend.
+            const int    kHeaderPx = 152;
             const int    canv_h    = 450 * nrow + kHeaderPx;
             const double hfrac     = (double)kHeaderPx / canv_h;
             TCanvas c(("c_s3_pteta_" + R.tag).c_str(), "", 500 * ncol, canv_h);
@@ -1603,7 +1623,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                 // Reserved strip ABOVE the frame for the pair-eta label, as on the eps_dR
                 // distribution canvases: inside the frame the label sat at the same height as the
                 // off-scale arrows, which are drawn just under the frame top, and the arrow was
-                // painted straight through "-2.4 < eta^pair < -2.0".
+                // painted straight through "-2.2 < eta^pair < -2.0".
                 gPad->SetTopMargin(0.10);
                 std::vector<TH1D*>& rs = rs_all[iz];
                 DrawEffFrame(0.0, R.xhi, "#DeltaR", 0.0, ymax, cfg.eps_dr_text);
@@ -1643,17 +1663,24 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             }
             c.cd(0);
             // Header strip, in PIXELS of this canvas so the layout does not depend on the grid
-            // size. Row 1 = super-title, rows 2-3 = the two-row legend, row 4 = the off-scale
-            // record. No `R.tag` ("zoom"/"full") on the canvas: which DeltaR range is shown is
-            // visible on the axis, and the token is an internal name for two output files.
+            // size. Row 1 = super-title, row 2 = the eps_dR definition, rows 3-4 = the two-row
+            // legend, row 5 = the off-scale record. No `R.tag` ("zoom"/"full") on the canvas:
+            // which DeltaR range is shown is visible on the axis, and the token is an internal
+            // name for two output files.
             auto ny = [&](double px) { return 1.0 - px / canv_h; };
             TLatex st; st.SetNDC(); st.SetTextFont(42); st.SetTextSize(22.0 / canv_h);
-            st.DrawLatex(0.02, ny(26), (headline + ",  " + cfg.eps_dr_text +
+            st.DrawLatex(0.02, ny(24), (headline + ",  " + cfg.eps_dr_text +
                          " in (p_{T}^{pair}, #eta^{pair}) cells").c_str());
+            // What the y-axis symbol MEANS -- analysis-specific, so the figure defines it
+            // (plot review, round 13; the per-pair-pT canvases already carried this line).
+            TLatex df; df.SetNDC(); df.SetTextFont(42); df.SetTextSize(16.0 / canv_h);
+            df.DrawLatex(0.02, ny(46), (cfg.eps_dr_text
+                         + " = P(both #mu fire | #DeltaR) / (#varepsilon_{1}#varepsilon_{2})")
+                         .c_str());
             if (!rs_leg.empty()) {
                 // ONE legend for the whole canvas, in its own strip: in a panel the series cover
                 // the frame, so an in-panel legend always sits on data.
-                auto* leg = new TLegend(0.02, ny(100), 0.98, ny(38));
+                auto* leg = new TLegend(0.02, ny(126), 0.98, ny(64));
                 leg->SetNColumns(4);
                 leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(16.0 / canv_h);
                 for (int iy = 0; iy < npt; ++iy)
@@ -1669,7 +1696,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                     note += Form(";  ... (%d in total)", (int)offscale.size());
                 TLatex os_; os_.SetNDC(); os_.SetTextFont(42); os_.SetTextSize(15.0 / canv_h);
                 os_.SetTextColor(kGray + 3);
-                os_.DrawLatex(0.02, ny(118), note.c_str());
+                os_.DrawLatex(0.02, ny(143), note.c_str());
             }
             SaveCanvas(c, dir3 + "step3_eps_dr_" + R.tag + "_pair_eta_pt.png");
         }
