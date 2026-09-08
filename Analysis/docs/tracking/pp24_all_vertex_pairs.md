@@ -294,10 +294,15 @@ OUT: Pb+Pb anything; R_AA; unfolding; template fits; the Pb+Pb pair-eta axis mig
 
 ### THE STATISTICS RECORD (Done item 3) — pp24, full sample, Tight WP
 
-Produced 2026-09-08 by `plotting_codes/single_b_analysis/pp24_secondary_vertex_stats.cxx` from
+Produced 2026-09-08 by `plotting_codes/single_b_analysis/pp24_secondary_vertex_stats.cxx` (WP
+applied to EVERY population — see the WORKING POINT note below) from
 the hadded ntuple-processing output `muon_pairs_pp_2024_2mu4_mindR_0_02.root` (all 12 batches,
 rerun with the all-vertex selection AND the 2026-09-07 gap cuts). CSV:
-`plots/single_b_analysis/pp24/pp24_secondary_vertex_fraction.csv`.
+`plots/single_b_analysis/pp24/pp24_secondary_vertex_fraction.csv` (master), plus two focused
+CSVs emitted from the SAME pass so they cannot drift from it:
+`pp24_secondary_vertex_integrated.csv` (the integrated table) and
+`pp24_secondary_vertex_vs_pair_pt_signal.csv` (the signal region split by the canonical coarse
+pair-pT axis).
 
 `f_sec` = the pair's own best-matching vertex is not the primary. `f_new` = the pair fails the
 primary vertex outright, i.e. it is ADDED by this change. `f_sec >= f_new` always.
@@ -306,9 +311,9 @@ primary vertex outright, i.e. it is ADDED by this change. `f_sec >= f_new` alway
 
 | population | N | f_sec | f_new |
 |---|---|---|---|
-| all pairs (OS+SS) | 4 920 638 | 2.314 ± 0.007 % | **1.657 ± 0.006 %** |
-| all OS pairs | 3 482 923 | 2.296 ± 0.008 % | 1.659 ± 0.007 % |
-| all SS pairs | 1 437 715 | 2.357 ± 0.013 % | 1.651 ± 0.011 % |
+| all pairs (OS+SS) | 4 420 941 | 2.258 ± 0.007 % | **1.593 ± 0.006 %** |
+| all OS pairs | 3 133 983 | 2.237 ± 0.008 % | 1.592 ± 0.007 % |
+| all SS pairs | 1 286 958 | 2.309 ± 0.013 % | 1.593 ± 0.011 % |
 | **single-b signal region (OS)** | **661 237** | 2.138 ± 0.018 % | **1.400 ± 0.014 %** |
 
 **Signal region (OS), canonical `ParamsSet::pair_pt_coarse_bins` [GeV]**
@@ -331,8 +336,22 @@ exists so the per-bin rows exhaust the integrated total — the macro now ASSERT
 (`check_complete`, throws) rather than claiming it in a comment, which is precisely the claim
 that turned out to be false in the first version (3 pairs above 150 GeV were being dropped).
 
-(The all-pairs-vs-pair-pT table, including the 2 591 627 pairs below the 8 GeV axis where
-`f_new` reaches 2.116 ± 0.009 %, is in the CSV.)
+(The all-pairs-vs-pair-pT table, including the 2 308 426 pairs below the 8 GeV axis where
+`f_new` reaches 2.045 ± 0.009 %, is in the CSV.)
+
+**WORKING POINT — read before quoting any of these.** The pair TREE is filled at **Medium**
+(`DimuonDataAlgCoreT.h:363`, `requireTight = false`, which the nominal pp24 run script does not
+override), so **Tight is an additional `pair_pass_tight` filter applied at this stage**. Every
+row above is Tight, and so is every row of all three CSVs.
+
+*Corrected 2026-09-08 (user question).* The first version of this table applied the WP only
+inside `signal_cuts`, so the "all pairs" rows were **Medium** while the signal-region rows were
+**Tight**, under a header that called the whole table "Tight WP" — two working points in one
+table under one label, exactly the failure the per-variant attribution rule exists to prevent.
+The signal-region numbers were unaffected (they were already Tight) and did NOT move; the
+all-pairs rows did: N 4 920 638 -> 4 420 941 (the 10.2 % of pairs that are Medium but not
+Tight), f_sec 2.314 -> 2.258 %, f_new 1.657 -> 1.593 %. The WP is now applied to every
+population in the macro and both the console and CSV headers state where Tight comes from.
 
 **PHYSICS — the effect is strongly pair-pT DEPENDENT, and in the direction it must be.**
 `f_new` falls monotonically from 2.73 % in the lowest signal-region bin to ~0.3 % above 25 GeV,
