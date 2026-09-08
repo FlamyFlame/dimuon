@@ -18,7 +18,7 @@ highest pair-p_T cells, as an ALTERNATIVE to the current factorized weight
 statistics-starved there. Deliver the numbers in a ROOT file the crossx pipeline can read, and
 compare the two procedures on the MC closure, restricted to p_T^pair > 50 GeV.
 
-## Autonomy Contract (ACTIVE — re-read on every compaction)
+## Autonomy Contract (DONE 2026-09-08 — every item met; kept for the record)
 - Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a
   plan, a passing small test, or one pipeline stage is NOT a stopping point.
 - Done =
@@ -253,7 +253,9 @@ would overload a class whose every consumer assumes `f(dR)/C`. New:
 4. [x] `plotting_codes/trig_effcy/mc_based/plot_mc_trig_eff_closure_highpt_compare.cxx` — the
    5-line zoomed figure, both forms. → `/review-plot`.
 5. [x] Driver `pipelines/run_mc_trigeff_pair_eff.sh`; run everything; record numbers here.
-6. [ ] `/review-analysis-code` (steps 1-3), `/review-plot` (step 4); INDEX; commits.
+6. [x] `/review-analysis-code` — **PASS at iteration 3** (2 FAIL rounds first; the first found
+   the CRITICAL cascade fold bug, the second the coverage-tolerance one). `/review-plot` — **PASS at
+   iteration 2**. INDEX updated; committed as `455fe32`, `7f7e5f2`, `1b249f2`, `849acd8`, `a3f9711`.
 
 ## Progress Log
 
@@ -293,8 +295,8 @@ would overload a class whose every consumer assumes `f(dR)/C`. New:
   `pair_trig_eff_pp24_full_medium_wp.root` + `mc_based_medium/closure/single_value_highpt_comparison/`.
   **The result is WP-independent**, as the mu4 response has been throughout this thread: inclusive
   closure above the cell edge 1.0015 (dR p_T-merged) / 0.9393 (|eta| fold, POST fold-bug fix; the pre-fix number was 0.7441) / **1.0000** (single
-  value, sig) / **0.8630** (single value, wide), against Tight's 1.0003 / 0.9362 / 1.0000 / 0.8607;
-  per panel the two working points agree to <= 0.02 everywhere. The mass-window bias, the |eta|-fold
+  value, sig) / **0.8629** (single value, wide), against Tight's 1.0003 / 0.9362 / 1.0000 / 0.8607;
+  per panel the two working points agree to 0.026 at worst (the `wide` series in the 0.5 < eta^pair < 1.0 panel, 0.7863 Tight vs 0.8122 Medium). The mass-window bias, the |eta|-fold
   sign asymmetry and the per-panel spread are therefore not WP artefacts.
 
 - 2026-09-08 — **One defect found and fixed in this session, in the printed table only (the figure
@@ -408,6 +410,11 @@ series against its own covered region:
   `eps_dR = 1`, i.e. no correction at all. The perfectly sign-split pattern is that bug's
   signature. **Both the D column above and the parent doc's R4 are affected.** Fixed and re-run —
   see R5 for the corrected numbers.
+- **A genuine C = 0, not a coverage artefact** (checked, so a future reader does not reopen it):
+  panel eta^pair in [-1.5,-1.0), presentation bin [123.37, 150) GeV shows C = 0 for **all four**
+  corrected series. That bin is FULLY covered -- its cell `[103.98,150) x |eta| 1-2` is delivered
+  (102 raw pairs, eps = 0.4201) and `den_paireff = den = 4.33e-06` -- so it simply holds ~7
+  effective pairs of which none fired 2mu4. The dR series show the identical zero.
 - Coverage: the single-value cells reach **70.94 %** of the no-trigger yield above the first drawn
   presentation bin; the remaining 29 % is the bin straddling the 49.97 GeV cell edge plus the one
   cell the delivery gate refuses (R6), both omitted from the single-value series (doc §PP-4).
@@ -472,9 +479,11 @@ macro prints every refusal with its reason. Tight, refused:
 - **os**, `[103.98, 150) x |eta| [2.0, 2.2)`: eps = 0.8072 ± 0.3150 on **4** raw pairs (`sig`),
   0.8491 ± 0.1526 on 14 (`wide`). This was the one cell that read *higher* than its row-mates when
   the physics requires it to be the lowest — a 2-pair fluctuation.
-- **ss**, every cell above 72 GeV plus `[49.97,72.08) x |eta| [2.0,2.2)`: 43, 8, 0, 7, 0, 0 and 5
-  raw pairs. **The same-sign single-value efficiency is simply not measurable above ~72 GeV in this
-  MC sample.**
+- **ss**, in the `sig` window: every cell above 72 GeV plus `[49.97,72.08) x |eta| [2.0,2.2)` --
+  43, 8, 0, 7, 0, 0 and 5 raw pairs. In the WIDER `wide` window one of them survives,
+  `[72.08,103.98) x |eta| < 1`, which clears 50 pairs there. **The same-sign single-value efficiency
+  is essentially not measurable above ~72 GeV in this MC sample**, and not at all in the signal
+  window.
 
 The threshold is a NEW named choice (50 raw pairs ≈ ±0.07 on a binomial at eps ~ 0.5) and is
 flagged for the user in R4.
@@ -497,18 +506,24 @@ flagged for the user in R4.
 
 ## Remaining Work
 
-1. `/review-analysis-code` and `/review-plot` verdicts (in flight), and their fixes.
-2. ~~The Medium working point~~ — DONE 2026-09-08, WP-independent (see Progress Log).
-3. USER DECISIONS (R4): which form to apply, whether to adopt, in which cells.
-4. Parent thread `mc_trigeff_dr_binning_approaches.md`: its R4 conclusion about approaches C and D
-   was measured with the R5 bug in place and must be re-derived (its four-approach comparison and
-   chi^2/ndof figures are regenerated by this doc's rerun; the doc TEXT is the user's to re-judge).
+Nothing in this doc's own scope. What is left is USER JUDGEMENT (R4) plus one hand-off:
+
+1. **Which form to apply** — the pure `eps_2mu4^pair` (the procedure as stated, but pure MC, so it
+   carries the 1.27 MC/data pair over-efficiency and needs a separate scale factor) or the
+   calibrated `K` (multiplies the DATA tag-and-probe singles, the analysis's existing calibration).
+   Both are in the ROOT file.
+2. **Whether to adopt the single-value procedure at all, and in which cells.** Nothing is wired into
+   the cross-section.
+3. **The delivery threshold** `MinCellPairs() = 50` (R6) — this session's choice, one constant.
+4. **HAND-OFF to `mc_trigeff_dr_binning_approaches.md`:** its R4 is retracted and the four-approach
+   ranking reverses, so the choice of dR cell grouping for the pp24 cross-section is reopened on the
+   regenerated figures. That decision is that doc's, not this one's.
 
 ## Latest Stage
 
-**2026-09-08 — step 1/2 (the evaluator header + the fill macro).** Writing
-`Utilities/PairTrigEffEvaluator.h` and `RDFBasedHistFilling/FillMCTrigEffPairEff.cxx` per §2 /
-§PP-1 / §PP-2 / §PP-3. Files involved: those two, plus the read-only
-`Utilities/MCTrigEffPairSelection.h`, `Utilities/SingleMuEffEvaluator.h`,
-`plotting_codes/trig_effcy/mc_based/dr_correction_cell_groups.h` (the |eta| fold) and
-`dr_correction_ratio.h` (the conditional error).
+**2026-09-08 — DONE.** Both reviews PASS, everything is committed, and nothing is in flight. The
+deliverables are `pair_trig_eff_pp24_full[_medium_wp].root` (+ `Utilities/PairTrigEffEvaluator.h` to
+read it) and
+`plots/pp_trigger_efficiency/mc_based[_medium]/closure/single_value_highpt_comparison/closure_highpt_single_value_{pure,calibrated}.png`.
+The cross-section is deliberately unchanged. Everything further is the user decisions in Remaining
+Work.

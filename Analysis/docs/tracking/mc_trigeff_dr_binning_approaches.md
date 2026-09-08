@@ -726,6 +726,7 @@ the user to weigh against R4, not something this doc resolves on its own.
 **2026-09-08 — R4 RETRACTED, all four approaches refilled and replotted on the fixed cascade
 lookup (see the last Progress Log entry).** Nothing is in flight in this doc. The open item is a
 USER JUDGEMENT: with the bug gone the |eta| fold has the BEST chi^2/ndof of the four
-(5.22 / 5.33 against 6.32 / 6.27), the reverse of what R4 concluded, so the choice of approach for
+(Tight, signal: 5.029 / 5.129 against 6.557 / 6.503; Medium: 5.222 / 5.332 against 6.321 /
+6.266), the reverse of what R4 concluded, so the choice of approach for
 the pp24 cross-section is reopened on the regenerated evidence. The cross-section application is
 still deliberately unchanged (`DrCorrCrossxMode()` = `nocorr_ptmerge`).

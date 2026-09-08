@@ -587,7 +587,7 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
     // would never be read (kPairEffVersion == "signal") and would invite the mistake of pairing it
     // with a signal-region numerator.
     std::map<std::string, ROOT::RDF::RNode> cov_versions;
-    cov_versions.emplace("signal", dcov.Filter(MCTrigEffPairSel::SingleBSignalCutsReco(),
+    cov_versions.emplace(kPairEffVersion, dcov.Filter(MCTrigEffPairSel::SingleBSignalCutsReco(),
                                                "data-like single-b signal cuts (coverage)"));
 
     std::map<std::string, ROOT::RDF::RNode> trig_versions;
