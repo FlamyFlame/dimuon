@@ -203,6 +203,101 @@ void write_pair_trig_eff_tables(const std::string& sample = "pp_full", bool use_
         std::cout << "  wrote " << path << "  (last row = all pair-pT bins)" << std::endl;
     }
 
+    // ------------------------------------------------- the compact pT-merged tables (user request)
+    // FOUR files beside the figure they belong to, each a strict matrix of the DELIVERED merged
+    // cells: 2 pair-pT rows x 3 |eta^pair| columns. Quantities that need more than one number per
+    // cell (the error, the second form, the delivery status) are stacked as further blocks of the
+    // SAME shape rather than widened into extra columns, so every block can be read as the matrix
+    // it is. Signal mass window only -- that is what the pt_merge comparison is about.
+    {
+        const std::string win  = "sig";
+        const std::string mode = "ptmerge";
+        const std::vector<double> pt = PairTrigEff::PairPtEdges(mode);
+        const int npt = (int)pt.size() - 1;
+        const int lo  = PairTrigEff::FirstDeliveredPtBin(mode);
+        const std::string dir = cfg.out_base + "closure/single_value_highpt_comparison/"
+                                               "pt_merge_compr/";
+        gSystem->mkdir(dir.c_str(), kTRUE);
+
+        auto row_label = [&](int ix) { return Form("%.2f-%.2f", pt[ix - 1], pt[ix]); };
+        auto header = [&](std::ofstream& o) {
+            o << "pair_pt_GeV";
+            for (int g = 0; g < neta; ++g) o << "," << EtaCol(eta, g);
+            o << "\n";
+        };
+        auto block = [&](std::ofstream& o, const char* title, const TH2D* h, bool err, int prec) {
+            o << "# " << title << "\n";
+            header(o);
+            for (int ix = lo; ix <= npt; ++ix) {
+                o << row_label(ix);
+                for (int iy = 1; iy <= neta; ++iy)
+                    o << "," << Form("%.*f", prec,
+                                     err ? h->GetBinError(ix, iy) : h->GetBinContent(ix, iy));
+                o << "\n";
+            }
+            o << "\n";
+        };
+
+        for (const auto& S : PairTrigEff::Signs()) {
+            const std::string tag = (S.token == "os" ? "opposite_sign" : "same_sign");
+
+            // ---- efficiencies
+            PairTrigEffEvaluator ev;
+            ev.Load(in_path, S.token, win, PairTrigEffEvaluator::ApplyForm::kPure, mode);
+            const std::string pe = dir + "pt_merge_pair_eff_" + tag + wp_suf + ".csv";
+            std::ofstream oe(pe);
+            if (!oe) throw std::runtime_error("write_pair_trig_eff_tables: cannot write " + pe);
+            oe << "# single-value pair 2mu4 efficiency, LAST TWO pair-pT CELLS COMBINED\n"
+               << "# " << cfg.sample_text << ", " << wp_text << " muons, " << S.text << " pairs\n"
+               << "# mass window: " << PairTrigEff::Window(win).lo << " < m_mumu < "
+               << PairTrigEff::Window(win).hi << " GeV (the single-b signal window)\n"
+               << "# eps = sum_{firing 2mu4} w / sum_{all} w      (PURE: replaces the whole "
+                  "per-pair trigger weight)\n"
+               << "# K   = sum_{firing 2mu4} w/(eps_MC1 eps_MC2) / sum_{all} w   (CALIBRATED: "
+                  "multiplies the two single-muon efficiencies)\n"
+               << "# errors are conditional/binomial; `status` is PairTrigEffEvaluator's own "
+                  "answer (>= " << PairTrigEff::MinCellPairs() << " raw pairs and a value in (0, "
+               << PairTrigEff::MaxDeliveredValue() << "] are required to deliver a cell)\n"
+               << "# source: " << in_path << "\n\n";
+            block(oe, "eps",     Get(fin, PairTrigEff::HistName("eps", S.token, win, mode)), false, 6);
+            block(oe, "eps_err", Get(fin, PairTrigEff::HistName("eps", S.token, win, mode)), true,  6);
+            block(oe, "K",       Get(fin, PairTrigEff::HistName("k",   S.token, win, mode)), false, 6);
+            block(oe, "K_err",   Get(fin, PairTrigEff::HistName("k",   S.token, win, mode)), true,  6);
+            oe << "# status\n";
+            header(oe);
+            for (int ix = lo; ix <= npt; ++ix) {
+                oe << row_label(ix);
+                for (int iy = 1; iy <= neta; ++iy)
+                    oe << "," << PairTrigEffEvaluator::StatusText(
+                                    ev.Status(0.5 * (pt[ix - 1] + pt[ix]),
+                                              0.5 * (eta[iy - 1] + eta[iy])));
+                oe << "\n";
+            }
+            oe.close();
+            std::cout << "  wrote " << pe << std::endl;
+
+            // ---- statistics
+            const std::string ps = dir + "pt_merge_pair_stats_" + tag + wp_suf + ".csv";
+            std::ofstream os(ps);
+            if (!os) throw std::runtime_error("write_pair_trig_eff_tables: cannot write " + ps);
+            os << "# " << S.text << " pair STATISTICS on the same cells as the efficiency table\n"
+               << "# " << cfg.sample_text << ", " << wp_text << " muons, mass window "
+               << PairTrigEff::Window(win).lo << " < m_mumu < " << PairTrigEff::Window(win).hi
+               << " GeV\n"
+               << "# RAW, UNWEIGHTED counts -- the number of Bernoulli trials the efficiency and "
+                  "its error are built on\n"
+               << "# n_all  = pairs passing the MC trigger-efficiency pair selection in the cell\n"
+               << "# n_2mu4 = of those, the ones that fired 2mu4\n"
+               << "# source: " << in_path << "\n\n";
+            block(os, "n_all",  Get(fin, PairTrigEff::HistName("nraw",     S.token, win, mode)),
+                  false, 0);
+            block(os, "n_2mu4", Get(fin, PairTrigEff::HistName("nrawpass", S.token, win, mode)),
+                  false, 0);
+            os.close();
+            std::cout << "  wrote " << ps << std::endl;
+        }
+    }
+
     fin->Close();
     std::cout << "done." << std::endl;
 }

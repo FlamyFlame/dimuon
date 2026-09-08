@@ -583,6 +583,19 @@ ROWS and |eta^pair| COLUMNS on the canonical axes:
 | `single_value_pair_eff_same_sign[_medium_wp].csv` | the same for same-sign pairs |
 | `single_value_pair_stats_same_sign[_medium_wp].csv` | the same-sign RAW pair counts in the SIGNAL window (`n_all`, `n_2mu4`), with per-row and per-column totals |
 
+Each of those exists for BOTH cell modes (the merged one carries a `_ptmerge` suffix and seven
+pair-p_T rows). **Four COMPACT tables also sit beside the figure they belong to**, in
+`closure/single_value_highpt_comparison/pt_merge_compr/` — the DELIVERED merged cells only, as a
+strict **2 pair-p_T rows x 3 |eta^pair| columns** matrix, signal window (user, 2026-09-08):
+
+| file | blocks, each 2 x 3 |
+|---|---|
+| `pt_merge_pair_eff_{opposite,same}_sign[_medium_wp].csv` | `eps`, `eps_err`, `K`, `K_err`, `status` |
+| `pt_merge_pair_stats_{opposite,same}_sign[_medium_wp].csv` | `n_all`, `n_2mu4` |
+
+Quantities needing more than one number per cell are stacked as further blocks of the SAME shape
+rather than widened into extra columns, so every block reads as the matrix it is.
+
 Nothing is recomputed: every value is read from `pair_trig_eff_*.root` as written, and the status
 column is obtained by ASKING `PairTrigEffEvaluator` at each cell centre rather than re-implementing
 its gate, so a cell marked `delivered` in a CSV is exactly one a consumer can `Eval()`.

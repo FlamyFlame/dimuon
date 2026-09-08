@@ -20,7 +20,9 @@
 #               two comparisons x two applied forms = 4 PNGs per WP:
 #                 mass_window_compr/  the two mass windows on the canonical cells
 #                 pt_merge_compr/     the signal window, with and without the pair-pT merge
-#   Stage 4  write_pair_trig_eff_tables -> <plot base>/single_value_pair_eff_tables/*.csv
+#   Stage 4  write_pair_trig_eff_tables -> <plot base>/single_value_pair_eff_tables/*.csv, and the
+#            compact 2 pair-pT x 3 |eta^pair| tables of the DELIVERED merged cells beside their own
+#            figure in closure/single_value_highpt_comparison/pt_merge_compr/*.csv
 #
 # UPSTREAM IS NOT REBUILT HERE. The Step-3 dR fits and the MC single-muon turn-ons come from the
 # trigger-efficiency chain (pipeline_pythia_fullsim_pp.sh Stage 10 + run_dr_correction_fits.sh) and
@@ -167,7 +169,13 @@ ROOTEOF
         [[ -f "${TBL}/${F}" ]] || fail "Stage 4 (${WP}): ${TBL}/${F} was not written"
         mt=$(stat -c %Y "${TBL}/${F}"); (( mt >= T0 )) || fail "Stage 4 (${WP}): ${F} is stale"
     done
-    log "  -> ${TBL}/"
+    for F in pt_merge_pair_eff_opposite_sign${SUF}.csv pt_merge_pair_eff_same_sign${SUF}.csv \
+             pt_merge_pair_stats_opposite_sign${SUF}.csv pt_merge_pair_stats_same_sign${SUF}.csv; do
+        P="${OUT}/pt_merge_compr/${F}"
+        [[ -f "$P" ]] || fail "Stage 4 (${WP}): ${P} was not written"
+        mt=$(stat -c %Y "$P"); (( mt >= T0 )) || fail "Stage 4 (${WP}): ${F} is stale"
+    done
+    log "  -> ${TBL}/ and ${OUT}/pt_merge_compr/*.csv"
 done
 
 log "=== done. logs in ${LOG_DIR} ==="
