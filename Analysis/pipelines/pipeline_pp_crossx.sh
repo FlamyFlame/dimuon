@@ -321,7 +321,11 @@ popd >/dev/null
 # ------ Stage 7: Trigger efficiency correction sanity check ------
 log "Running before/after trigger efficiency correction sanity plots"
 pushd "$PLOT_DIR" >/dev/null
-root -l -b -q 'plot_crossx_trig_corr_sanity.C()'
+# include_pbpb=false: pp only. The Pb+Pb histograms still carry the retyped 44-bin pair-eta
+# axis, on which the coarse panel edge 2.2 is not a bin edge, so PairEtaPanels::Bins throws --
+# and it is the FIRST spec, so the pp panels would never be drawn. See the macro's own comment
+# and docs/tracking/pp24_all_vertex_pairs.md D5. Restore the default once Pb+Pb is migrated.
+root -l -b -q 'plot_crossx_trig_corr_sanity.C(false)'
 popd >/dev/null
 
 # ------ Stage 8 (optional): MC-data comparison plots ------

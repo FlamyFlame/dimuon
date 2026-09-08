@@ -18,7 +18,19 @@
 #include "../../Utilities/PairEtaPanelBins.h"
 #include "../helper_functions.c"
 
-void plot_crossx_trig_corr_sanity() {
+// include_pbpb=false draws the PP 2024 panel set ONLY.
+//
+// WHY THE SWITCH EXISTS (2026-09-08, user decision; docs/tracking/pp24_all_vertex_pairs.md D5).
+// Each sample writes its OWN PNG, so skipping Pb+Pb refreshes the pp figure and leaves the
+// Pb+Pb one untouched -- nothing is silently merged or clobbered. It is needed because the
+// Pb+Pb histograms still book a retyped "44, -2.4, 2.4" pair-eta axis on which the coarse
+// panel edge 2.2 is NOT a bin edge, so PairEtaPanels::Bins THROWS on them
+// (muon_gap_cuts_acceptance.md F18). That throw is the guard working, and it happens on the
+// FIRST spec -- so without this switch the *pp* crossx pipeline fails at its Stage 7 for a
+// Pb+Pb reason and never draws the pp panels at all.
+// The default stays true: the Pb+Pb pipeline must keep hitting the guard until Pb+Pb is moved
+// onto ParamsSet::N_PAIR_ETA_CROSSX_BINS and the fiducial + pair-level cuts and rerun.
+void plot_crossx_trig_corr_sanity(bool include_pbpb = true) {
     gStyle->SetOptStat(0);
 
     const std::string data_dir = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data";
@@ -51,6 +63,11 @@ void plot_crossx_trig_corr_sanity() {
     };
 
     for (const auto& spec : samples) {
+        if (!include_pbpb && !spec.is_pp) {
+            std::cout << "SKIP (include_pbpb=false): " << spec.label << std::endl;
+            continue;
+        }
+
         std::vector<TFile*> files;
         for (const auto& [yr, dir] : spec.year_paths) {
             std::vector<std::string> candidates;
