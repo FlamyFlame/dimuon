@@ -21,6 +21,33 @@ HIJING overlay r17618 `_July2026`) to deliver the MC-based trigger-efficiency pr
    weighting on an unbiased (no-trigger-requirement) MC pair sample. This is the analysis
    deliverable that replaces the current dummy ε_ΔR ≡ 1 (roadmap Q4).
 
+## Autonomy Contract (round 13 — **DONE 2026-09-08**; all 7 Done items met, both reviews PASS)
+- Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a
+  plan, a passing small test, or one pipeline stage is NOT a stopping point.
+- Done =
+  1. `fit_dr_corrections.cxx`: the **Step-3 `expo`** fit carries the two user-required
+     parameter restrictions (small-ΔR plateau BELOW the large-ΔR plateau; turning point at
+     ΔR > 0 / zero slope at ΔR = 0). Step 4 keeps its present limits — its physics is the
+     OPPOSITE sign (R4: ε_single is ENHANCED at small ΔR).
+  2. pp24 **DATA** single-muon mu4 T&P rerun on the new gap cut + the new coarse q·η top bin
+     (`pipeline_pp_trig_eff.sh` stages 5–8, `SKIP_CONDOR=1`), both WPs.
+  3. **MC pp_full** Steps 1–4 refilled + turn-ons refitted + replotted on the new
+     `single_mu_fiducial_gap_cuts` AND the new pair-level `|η^pair| < 2.2`, both WPs
+     (`run_mc_trigeff_round7.sh`, `SAMPLES="pp_full"`).
+  4. **Step-3 ΔR-correction fits** re-measured and refitted for pp_full, both WPs, all
+     methods × all sign series × all plateau modes, with the new restrictions
+     (`run_dr_correction_fits.sh`, `STEPS=3`, no skips), plots regenerated.
+  5. The most-forward pair-η cells are `(−2.2,−2.0)` / `(2.0,2.2)` in the 9-bin views and
+     `2.0 ≤ |η^pair| < 2.2` in the 3-bin folded views — VERIFIED on the produced artefacts,
+     not assumed from the source.
+  6. `/review-analysis-code` on the fit-code change and `/review-plot` on the regenerated
+     Step-1 + Step-3 plot sets, both PASS/APPROVED.
+  7. Doc + INDEX updated, work committed.
+- **NOT in scope (user, explicit):** propagating ε_ΔR to the pp24 cross-section; the HIJING
+  overlay and `noovl` MC; PbPb data T&P; Step-4 fits; the MC closure.
+- Stop-and-ask = ANY physics-results-bending ambiguity (no fixed list; use judgment;
+  when unsure whether an ambiguity is blocking, treat it as blocking → AskUserQuestion).
+
 ## Autonomy Contract (round 9 — **DONE 2026-08-11**; all 7 Done items met, both reviews PASS)
 
 **Origin:** user request 2026-08-10 (session "MC-based trigger efficiency followup"). Focus is
@@ -2390,6 +2417,162 @@ reviewer correctly flagged the deviation as undocumented.
 
 ## Results & Observations
 
+### R33. Round 13 — the new gap-cut set + the pair-level |η^pair| < 2.2, and the Step-3 `expo`
+### shape restriction (2026-09-07/08, pp24 only)
+
+**Scope, confirmed with the user before any work (AskUserQuestion, 2026-09-07): pp_full only on
+the MC side, pp24 only on the data side.** The HIJING overlay, `noovl`, PbPb data, the Step-4
+fits and the MC closure are OUT of scope and are knowingly left STALE. ε_ΔR was NOT propagated to
+the pp24 cross-section (user: future work, other agents in flight).
+
+**(a) What moved in the input.** `muon_gap_cuts_acceptance.md` F17 changed the cut set and added a
+pair-level window; that session committed the code (`f7c5abe`…`8da992e`) but ran nothing. This
+round is the rerun. Live in every number below:
+`single_mu_fiducial_gap_cuts` = **{{−1.30,−1.05}, {−0.10,+0.06}, {2.20,2.40}}**; NEW
+`ParamsSet::pair_eta_fiducial_max = 2.2` on `kGapLeg` (Steps 2/4) and `kGapPair` (Step 3) but NOT
+`kGapSingle` (Step 1 fills a single-muon map — there is no pair to cut on); coarse q·η top bin
+{2.0,2.3} → **{2.0,2.2}** (forced by the `SetIOPaths` startup throw); coarse pair-η outer bins
+±(2.0,2.4) → **±(2.0,2.2)**.
+
+*A concurrency check that mattered.* The sibling session edited `FillMCTrigEffHists.cxx` at
+21:27:49, i.e. AFTER this round's Step-1–4 fills (21:17–21:26) and while the plot stage ran. The
+edit refactored `kGapPair` from an inline string to `MCTrigEffPairSel::FiducialGapCut()`. Both
+forms were compiled standalone and print the **byte-identical** selection string, so the filled
+histograms are valid against HEAD. Nothing else the sibling touched feeds this chain.
+
+**(b) The Step-3 `expo` shape restriction (user).** `f(ΔR) = C + A·exp[−(ΔR/λ)^p]`. The two
+requirements map onto the parameters exactly, and **they are not nested — they are the same
+constraint**:
+1. *small-ΔR plateau below the large-ΔR plateau* ⟺ `f(0) = C+A < C` ⟺ **`A < 0`**, which also makes
+   `f` monotone increasing and so removes the "decreasing with ΔR" failure at the same time.
+2. *turning point at ΔR > 0*, with *"slope at ΔR = 0 should be zero"* to be tried first. For this
+   form `f'' = 0` at `ΔR_infl = λ((p−1)/p)^{1/p}`, real and positive **iff `p > 1`**; and
+   `f'(0) = 0` **iff `p > 1`** as well (`p = 1` → finite slope `|A|/λ`; `p < 1` → infinite slope at
+   0 and no positive inflection, which IS the "concave rise, turning point < 0" failure). So the
+   stronger requirement and its stated fallback collapse to the single condition `p > 1`, and
+   **there is no weaker variant to relax to** if too many cells are rejected. Derived analytically
+   and confirmed numerically at p = 0.5/0.8/1.0/1.001/1.5/3.0.
+Both are STRICT inequalities that MINUIT cannot express, so the imposed limits are their closures
+`A ∈ [−5,0]`, `p ∈ [1,8]`. A cell railed at `A = 0` or `p = 1` is the BOUNDARY case — a constrained
+value, not a measurement — and both the fit report and the ROOT `provenance` now say so, with both
+ends of each rail spelled out (`p = 8` and `A = −5` are the pre-existing limits and mean the
+opposite things).
+Imposed as parameter limits, not as a post-hoc `fit_ok` screen: a screened-out cell delivers NO
+correction (it falls through to the backup method / raw-bin placeholder), whereas a constrained fit
+delivers the best physically admissible fit — and "restrict the fitting parameters" is what was
+asked.
+**Step 4 is deliberately EXCLUDED** (`restrict_shape = (step == 3)`): its single-leg correction is
+physically an ENHANCEMENT at small ΔR (R4/§3.4, ε(ΔR<0.12)/ε(ΔR>1) ≈ 1.20 pp), i.e. `A > 0`.
+
+**(c) What was rerun.** Data pp24 T&P Tight (`pipeline_pp_trig_eff.sh` stages 5–8) + Medium
+(`run_data_trigeff_medium_wp.sh`); MC `pp_full` Steps 1–4 + turn-on refits + sanity + plots + 2D
+maps + statistics tables (`run_mc_trigeff_round7.sh`); Step-3 ΔR fits, all 3 methods × 3 sign
+series × 5 plateau modes, both WPs (`run_dr_correction_fits.sh STEPS=3`). Data top q·η bin is now
+`2_00_TO_2_20` in the turn-on fit file.
+
+**(d) Headline numbers.**
+- Step-1 MC single-muon ε(mu4), pp24 FULL Tight, on the new cuts: **0.8025 (μ⁺) / 0.7961 (μ⁻)**
+  (was 0.7722 summed on the old cuts — the rise is expected, the widened crack and barrel/endcap
+  windows remove low-efficiency muons).
+- Step-1 MC/data ratio vs pT (μ⁺): 1.206 (4.3 GeV), 1.115, 1.103, 1.114, 1.129, 1.081 (40 GeV) —
+  consistent with the known ~1.13 per-leg L1 MC over-efficiency (§3.1).
+- **Every pair-η cell edge is now what the user asked for**: the 9-bin views run
+  `[−2.2,−2.0) … [2.0,2.2)` and the folded views `[0,1), [1,2), [2,2.2)`. Verified on the produced
+  artefacts, not assumed: **zero occurrences of 2.3 or 2.4 in any pair-η context** anywhere in the
+  source, the reports or the canvases. (A `−2.4` on a SINGLE-MUON q·η axis is correct and stays —
+  the forward window is one-sided.) Nothing is retyped: `MakeDrEtaGroups` reads the outer edge off
+  the filled axis.
+- **The restriction holds identically**: over all 30 Step-3 `expo` reports (both WPs × 5 plateau
+  modes × 3 sign series), 1542 rows = 1453 carrying fitted parameters (1452 converged + 1
+  non-converged) + 30 `inclusive` + 59 with no fit (46 too-few-points + 13 no-plateau).
+  **Zero violations of `A ≤ 0` and zero of `p ≥ 1`.** A spans [−5.0000, −0.0000], p spans
+  [1.0000, 8.0000].
+- **How much the restriction actually bound** — cells railed on the NEW limits vs the pre-existing
+  ones (`expo`, per-cell rows; `ptmerge` = last two pair-pT bins merged, `etamerge` = folded |η|):
+
+  | WP | plateau mode | series | fitted | p@1 NEW | p@8 old | A@0 NEW | A@−5 old | fit_ok=0 |
+  |---|---|---|---|---|---|---|---|---|
+  | T | plateau_corrected | intgr | 70 | 8 | 8 | 0 | 0 | 13 |
+  | T | plateau_corrected | os | 70 | 10 | 7 | 0 | 0 | 16 |
+  | T | plateau_corrected | ss | 64 | 11 | 12 | 1 | 0 | 25 |
+  | T | nocorr | intgr | 70 | 4 | 8 | 0 | 0 | 4 |
+  | T | nocorr | os | 70 | 6 | 10 | 0 | 0 | 4 |
+  | T | nocorr | ss | 64 | 9 | 14 | 2 | 0 | 19 |
+  | T | nocorr_ptmerge | intgr | 63 | 5 | 9 | 0 | 0 | 2 |
+  | T | **nocorr_ptmerge** | **os** | **63** | **7** | **10** | **0** | **0** | **1** |
+  | T | nocorr_ptmerge | ss | 61 | 8 | 12 | 1 | 1 | 12 |
+  | T | nocorr_etamerge | intgr | 23 | 2 | 3 | 0 | 0 | 1 |
+  | T | nocorr_etamerge | os | 23 | 1 | 3 | 0 | 0 | 1 |
+  | T | nocorr_etamerge | ss | 22 | 1 | 3 | 1 | 0 | 3 |
+  | T | nocorr_etamerge_ptmerge | intgr | 21 | 2 | 3 | 0 | 0 | 0 |
+  | T | nocorr_etamerge_ptmerge | os | 21 | 1 | 3 | 0 | 0 | 0 |
+  | T | nocorr_etamerge_ptmerge | ss | 21 | 1 | 2 | 1 | 0 | 1 |
+  | M | plateau_corrected | intgr | 70 | 9 | 9 | 0 | 0 | 13 |
+  | M | plateau_corrected | os | 70 | 11 | 8 | 0 | 0 | 15 |
+  | M | plateau_corrected | ss | 64 | 11 | 12 | 2 | 0 | 25 |
+  | M | nocorr | intgr | 70 | 5 | 8 | 0 | 0 | 4 |
+  | M | nocorr | os | 70 | 5 | 10 | 0 | 0 | 4 |
+  | M | nocorr | ss | 64 | 8 | 14 | 3 | 0 | 19 |
+  | M | nocorr_ptmerge | intgr | 63 | 5 | 8 | 0 | 0 | 2 |
+  | M | nocorr_ptmerge | os | 63 | 6 | 10 | 0 | 0 | 1 |
+  | M | nocorr_ptmerge | ss | 61 | 8 | 13 | 2 | 1 | 11 |
+  | M | nocorr_etamerge | intgr | 23 | 2 | 3 | 0 | 0 | 1 |
+  | M | nocorr_etamerge | os | 23 | 1 | 3 | 0 | 0 | 1 |
+  | M | nocorr_etamerge | ss | 23 | 1 | 4 | 1 | 0 | 2 |
+  | M | nocorr_etamerge_ptmerge | intgr | 21 | 2 | 3 | 0 | 0 | 0 |
+  | M | nocorr_etamerge_ptmerge | os | 21 | 1 | 3 | 0 | 0 | 0 |
+  | M | nocorr_etamerge_ptmerge | ss | 21 | 0 | 2 | 1 | 0 | 1 |
+
+  Read this as the measurement of how often the unconstrained fit wanted a flipped shape: `p@1` is
+  a cell whose free fit wanted `p ≤ 1` (the concave-rise pathology), `A@0` a cell whose free fit
+  wanted a small-ΔR ENHANCEMENT. **Same-sign is by far the worst** (9–11 of ~64 at `p = 1`, and
+  every `A@0` cell but none of the sign-integrated or opposite-sign ones), which is consistent with
+  R25: the same-sign small-ΔR correlation is the real one and the `expo` form struggles with it.
+  The pre-existing `p = 8` rail (the fit wanting a step function, R26) is untouched and comparably
+  common — it is a different pathology and the report now tells the reader to separate them.
+- **★ The restriction closes R32 item 0 for fitted cells.** With `A ≤ 0`, `ε_ΔR = f(ΔR)/C ≤ 1`
+  identically, so the "ε_ΔR = 1.168 / 2.19 at ΔR → 0" artefact — a close-by 2mu4 correction that
+  came out as a GAIN — is now **structurally impossible for a fitted cell**. Measured on the
+  crossx-consumed series (Tight, `expo`, opposite sign, `nocorr_ptmerge`): `f(0)` spans
+  **−0.4626 … 0.9098** over 63 cells with **no cell above 1**, and the delivered
+  `ε_ΔR(0) = f(0)/C` spans **0.113 … 0.944** over the 62 usable cells. Only **1** cell is rejected
+  (was 3 before). It is NOT closed for the **raw-bin placeholder** path in `dr_correction_apply.h`,
+  which is unconstrained and can still deliver > 1 — that remains open.
+- ε_ΔR(0) deepens monotonically with pair pT: ≈0.86–0.92 in `p_T^pair ∈ [8,11.5)` GeV → ≈0.14–0.53
+  in `[72.1,150)`, which is the expected close-by-L1 behaviour.
+
+**(e) Reviews.** `/review-analysis-code` **APPROVED at iteration 4**, `/review-plot` **APPROVED at
+iteration 2**. Between them they found and got fixed: a false statement about the `p = 1` boundary
+published in all 30 fit reports (at `p = 1` neither requirement actually holds — the limit is the
+CLOSURE of `p > 1`, and the report now says so); a rail description that documented only one end of
+the `A` limit; a **§Binnings violation** — a NEWLY retyped `2.0 ≤ |η| < 2.4` in a header comment
+while the produced axis was `[2, 2.2)`, which I had also *reported as fixed when it was not*; a
+missing shape-restriction stamp in the ROOT `provenance` (the file the crossx evaluator actually
+consumes); a clipped Step-1 data legend losing its closing bracket in 6 PNGs; a missing ε_ΔR
+defining equation on 8 canvases; and **a refuted explanation left standing in this doc** (see the
+corrected `raw_joint_trigger_probability` entry above — the OS-only resonance veto cannot be the
+cause, because this sample is the `_no_data_resonance_cuts_` tree and there is no `minv` cut
+anywhere in the MC trig-eff selection). No fitted number moved across any of the amendments:
+90/90 fit reports were byte-identical in their data rows after each re-emit.
+
+**(f) STALE, knowingly — do not read these as current.**
+1. **Step-4 fits.** The Step-4 *histograms* were refilled on the new cuts (21:15–21:26) but the
+   Step-4 *fits* (`step4_dr_fit/`, 2026-08-13) were NOT re-run — user: "ignore step4 fit for now".
+   The Step-4 subtree is therefore internally MIXED: `step4_dr_correction_singles/` (measurement
+   plots) is fresh, `step4_dr_fit/` is not.
+2. **The `_pt4bin` variant** (R24b) — still stale, and now also carries UNRESTRICTED Step-3 `expo`
+   fits with no shape stamp. Distinct `FileSuffix()`, no nominal consumer reads it.
+3. **The MC closure** (`mc_trig_eff_closure.md`) — its inputs all moved; it must be regenerated.
+4. **The HIJING overlay, `noovl`, and PbPb data T&P** — out of scope this round.
+5. `ε_ΔR` is **not** propagated to the pp24 cross-section (user's explicit instruction).
+
+**(g) Carried open, unchanged.** R23 (top-pair-pT plateaus 20–42 % high; 12 guard failures in the
+Tight sign-integrated `corr` mode this round), R25 (the correction is not charge-blind), R26 (both
+parametric forms fail in a minority of cells; the `p = 8` rail is its signature), R27 (the two
+unquoted correlated uncertainties, and the plateau-error `k = n` binomial fallback), and the
+`ParAtLimit` bare-bool limitation (the summary aggregate merges the `p = 1` and `p = 8` rails; the
+per-cell `p` column and the new report text separate them).
+
 ### R24. Round 9 — sign-separated corrections, per-cell ΔR distributions, 2D singles map,
 ### and the statistics of the 8-bin pair-pT axis (2026-08-10/11, pp only)
 
@@ -2523,14 +2706,33 @@ plateau-normalized ε_ΔR ratio, which is what the ratio canvases draw, is 0.427
   does **not** remove the split ⇒ a different (pT, q·η) MIX for close same-sign vs opposite-sign
   pairs is ruled out as well.
 
-**Unexplained, noticed on the new raw-probability figure (2026-08-11) — NOT investigated.** The
-opposite-sign raw probability **dips to ≈0.44 around ΔR ≈ 0.65–0.75** while the same-sign one stays
-flat at ≈0.62, pushing P_SS/P_OS up to ≈1.4 there. A plausible candidate is the **OS-only resonance
-veto** applied at the ntuple stage (`project_os_resonance_veto`: the OS pair tree is resonance-vetoed,
-the SS tree is not), which removes a kinematic band from the opposite-sign sample only. It sits far
-above the ΔR ≲ 0.15 region this entry is about and does not affect the conclusion below, but it is
-a real asymmetry between the two samples and should be understood before the per-sign corrections
-are used. Figure: `step3_dr_correction/step3_raw_joint_trigger_probability_by_sign.png`.
+**Unexplained, noticed on the new raw-probability figure (2026-08-11) — STILL OPEN; the original
+candidate explanation was REFUTED 2026-09-08 (round-13 plot review).** The opposite-sign raw
+probability **dips around ΔR ≈ 0.65–0.75** while the same-sign one stays flat, pushing P_SS/P_OS up
+to ≈1.4 there. Re-measured on the round-13 outputs: P_OS falls from ≈0.66 at ΔR ≈ 0.38 to **0.455 at
+ΔR ≈ 0.72** and recovers to ≈0.61 by ΔR ≈ 0.83, against P_SS flat at ≈0.61–0.63; the error bars are
+≈±0.01, far smaller than the excursion, so it is not a fluctuation.
+
+- **REFUTED: the OS-only ntuple-stage resonance veto.** The original entry proposed
+  `project_os_resonance_veto` (the OS pair tree is resonance-vetoed at the ntuple stage, the SS tree
+  is not). That cannot be the cause **for this sample**: the MC trig-eff fill reads the
+  `..._no_data_resonance_cuts_mc_trig_...` trees (`FillMCTrigEffHists.cxx:165–166`), i.e. the
+  variant produced *without* the veto, and neither `FillMCTrigEffHists.cxx` nor
+  `MCTrigEffPairSel::Step3PairSelection()` (`Utilities/MCTrigEffPairSelection.h:62–70`) contains any
+  `minv` cut at all — verified by grep, 2026-09-08. Both samples therefore keep their resonances.
+- **Candidate that survives, NOT yet tested:** precisely *because* the resonances are kept, the OS
+  sample contains J/ψ (prompt or from B — the argument rests only on an OS-only narrow resonance
+  at m = 3.10 GeV, not on where it came from) while the SS sample cannot. For a two-body decay
+  ΔR ≈ 2m/p_T^pair, so a J/ψ (m = 3.10 GeV) lands at ΔR ≈ 0.65–0.75 for
+  p_T^pair ≈ 8–9.5 GeV — the most populated pair-pT cell — and each leg is then ≈4–5 GeV, i.e. sitting
+  in the mu4 turn-on where the per-leg efficiency is lowest. That would depress the OS **raw** joint
+  probability in exactly this ΔR window, and would be divided out by the 1/(ε₁ε₂) weighting, which is
+  consistent with ε_ΔR showing no corresponding feature. Testable by re-filling the raw-probability
+  figure with the J/ψ mass band excluded, or by splitting it in pair pT.
+- It sits far above the ΔR ≲ 0.15 region this entry is about and does not affect the conclusion
+  below, but it is a real asymmetry between the two samples and **should be understood before the
+  per-sign corrections are used**.
+Figure: `step3_dr_correction/step3_raw_joint_trigger_probability_by_sign.png`.
 
 ⇒ **a genuine charge-dependent two-body trigger correlation**, confined to the JOINT term (Step 3
 only, nothing in Step 4's single-leg marginal) and to ΔR ≲ 0.15. That is the signature of L1
@@ -3533,6 +3735,100 @@ criteria **P1** and **P2**):
     `no_plateau_correction` variant, which removes the term rather than sizing it.
 
 ## Latest Stage
+
+**2026-09-08 (round 13) — ✅ DONE. Rerun on the NEW fiducial cut set + the NEW pair-level
+`|η^pair| < 2.2`, and the Step-3 `expo` fit CONSTRAINED so it cannot come out flipped. Both
+reviews PASS (`/review-analysis-code` iter 4, `/review-plot` iter 2); full results and numbers in
+R33.**
+
+Delivered, pp24 only (user-confirmed scope): the pp24 DATA single-muon mu4 T&P refit at both WPs on
+the new probe gap cut and the new coarse q·η top bin `[2.0,2.2)`; the MC `pp_full` Steps 1–4 refill
++ turn-on refit + full plot set at both WPs; and the Step-3 ΔR-correction fits re-measured and
+refitted for 3 methods × 3 sign series × 5 plateau modes at both WPs. Step-1 MC ε(mu4) =
+**0.8025 (μ⁺) / 0.7961 (μ⁻)**. Every pair-η cell is now `[−2.2,−2.0) … [2.0,2.2)` (folded:
+`[0,1), [1,2), [2,2.2)`) — verified on the artefacts, zero `2.3`/`2.4` anywhere in a pair-η context.
+The `expo` restriction `A ≤ 0, p ≥ 1` holds in **all 1453 fitted cells with zero violations**, and
+it makes `ε_ΔR ≤ 1` structurally, closing R32 item 0 for fitted cells (the crossx-consumed series
+now delivers `ε_ΔR(0) ∈ [0.113, 0.944]` with 1 rejected cell instead of 3).
+
+**Two things the user should know.** (1) The two stated fit requirements are **the same
+constraint** for this functional form (`p > 1`), so the "impose the stronger one first, relax to
+the weaker if too many fits are rejected" path does not exist — see R33(b). (2) **Knowingly left
+STALE** and listed in R33(f): the Step-4 *fits* (their histograms were refilled, so that subtree is
+now mixed), the `_pt4bin` variant, the MC closure, the HIJING overlay / `noovl` / PbPb data, and —
+per the explicit instruction — the pp24 cross-section, to which ε_ΔR was NOT propagated.
+
+*The original plan, as written before the work, follows.*
+
+---
+
+**2026-09-07 (round 13) — plan. Rerun on the NEW fiducial cut set + the NEW pair-level
+`|η^pair| < 2.2`, and CONSTRAIN the Step-3 `expo` fit so it cannot come out flipped.**
+
+*Plan, written before the work (per-step protocol). Scope confirmed with the user
+(AskUserQuestion, 2026-09-07): **pp_full only** on the MC side, **pp24 only** on the data side.
+The HIJING overlay, `noovl`, PbPb data, Step-4 fits and the MC closure are OUT of scope and are
+knowingly left STALE. ε_ΔR is NOT propagated to the pp24 cross-section (user: future work, other
+agents in flight).*
+
+**Why (the input change).** `muon_gap_cuts_acceptance.md` F17 (2026-09-07, user) changed the
+fiducial cut set and added a pair-level window; the code was edited there but **nothing was
+rerun**, so every artefact in this doc is stale. Specifically:
+- `ParamsSet::single_mu_fiducial_gap_cuts` `{{-1.20,-1.05},{-0.10,+0.06},{2.30,2.40}}` →
+  **`{{-1.30,-1.05},{-0.10,+0.06},{2.20,2.40}}`**.
+- NEW `ParamsSet::pair_eta_fiducial_max = 2.2` (symmetric, strict `<`), joined to `kGapLeg` and
+  `kGapPair` in `FillMCTrigEffHists.cxx` and to `MCTrigEffPairSelection.h::FiducialGapCut()`.
+  **NOT** on `kGapSingle` — Step 1 fills a single-muon map, there is no pair to cut on (this is
+  exactly the user's "the |pair η| cut doesn't apply to step 1, but it does to steps 3/4").
+- FORCED: `CommonEffcyConfig::q_eta_proj_ranges_coarse_incl_gap` top bin `{2.0,2.3}` →
+  **`{2.0,2.2}`** (the `RDFBasedHistFillingData::SetIOPaths` startup throw slaves it to the
+  forward window's lower edge).
+- USER DECISION: `CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap` outer bins
+  `±(2.0,2.4)` → **`±(2.0,2.2)`**, so the 9 panels exactly tile the surviving region. This is
+  what makes the most-forward Step-3 cells `(−2.2,−2.0)` and `(2.0,2.2)`, and the top folded
+  cell `2.0 ≤ |η^pair| < 2.2`, as the user asked. **No canonical binning is retyped anywhere:**
+  `MakeDrEtaGroups` reads `eta_max` off the source histogram's own axis, so the folded top group
+  follows the pair-η vector automatically (`dr_correction_cell_groups.h`); the pair-pT axis is
+  untouched (`.claude/CLAUDE.md` §Binnings).
+
+**The fit restriction (user, §3.3 deliverable).** The Step-3 `expo` form is
+`f(ΔR) = C + A·exp[−(ΔR/λ)^p]` (`C ≡ 1` in the plateau-corrected mode, free in the `nocorr`
+family). Some cells fit "flipped": decreasing with ΔR, or rising concavely with the turning point
+below 0. Mapping the user's two requirements onto the parameters:
+1. *"the small-ΔR plateau must lie BELOW the large-ΔR plateau"* — `f(0) = C + A`, `f(∞) = C`, so
+   this is exactly **`A < 0`**. It also makes `f` monotonically increasing
+   (`f' = −A(p/λ)(ΔR/λ)^{p−1}e^{−u} > 0`), which kills the "decreasing with ΔR" failure too.
+2. *"the turning point must be > 0"*, with *"in principle the slope at ΔR = 0 should be zero"*
+   tried first — for this form the two are the SAME condition. `f'' = 0` at
+   `ΔR_infl = λ·((p−1)/p)^{1/p}`, which is real and positive **iff `p > 1`**; and
+   `f'(0) = 0 ⟺ p > 1` as well (`p = 1` gives slope `|A|/λ`, `p < 1` gives an infinite slope and
+   no positive inflection — precisely the "concave rise, turning point < 0" failure). So the
+   stronger requirement and its fallback collapse to one constraint, **`p ≥ 1`**, and there is no
+   weaker variant to fall back to if too many cells are rejected. Implemented as the parameter
+   limit, so MINUIT searches only the physical region rather than the fit being screened after
+   the fact.
+   *Why a limit and not a post-hoc `fit_ok` screen:* a screened-out cell delivers NO correction
+   (it falls through to the backup method / raw-bin placeholder); a constrained fit delivers the
+   best fit that is physically admissible. The user asked to "restrict the fitting parameters".
+3. **Step 4 is deliberately EXCLUDED.** Its physics is the opposite sign: R4/§3.4 measured the
+   single-leg efficiency to be *enhanced* at small ΔR (`ε(ΔR<0.12)/ε(ΔR>1) ≈ 1.20 pp`), i.e.
+   `A > 0`. Imposing `A < 0` there would be wrong. The restriction is gated on `step == 3`.
+
+**Execution order (data first — the MC Step-1 canvases overlay the data turn-on, and the coarse
+q·η binning moved on BOTH sides):**
+1. `fit_dr_corrections.cxx` — the Step-3 `expo` limits; `/review-analysis-code`.
+2. **Data pp24** — `SKIP_CONDOR=1 pipeline_pp_trig_eff.sh` stages 5–8, Tight + Medium.
+3. **MC pp_full** — `SAMPLES="pp_full" run_mc_trigeff_round7.sh` (Steps 1–4 refill, turn-on
+   refit, sanity, replot, 2D maps, statistics tables), both WPs.
+4. **Step-3 ΔR corrections** — `SAMPLES="pp_full" STEPS=3 run_dr_correction_fits.sh`, no skips,
+   all methods × signs × plateau modes.
+5. Verify the pair-η cell edges on the produced artefacts; compare the fit reports against the
+   round-11/12 values (how many cells the restriction moved / rejected); `/review-plot`.
+
+*Nothing else in this doc changes: no sample, no weight, no fit method, no plateau window, no
+pair-pT binning.*
+
+---
 
 **2026-08-18 (round 12) — ✅ DONE. The third Step-3 plateau mode is built, produced, reviewed and
 committed; results and numbers in R32.** All 11 plan steps below are complete: code + full
