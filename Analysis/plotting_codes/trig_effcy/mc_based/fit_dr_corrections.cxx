@@ -54,20 +54,29 @@
 //            the same file, with the same estimator and window (dr_correction_plateau.h) -- and,
 //            as in "nocorr", it is reported and applied to nothing.
 //            This is the variant the pp24 crossx application uses (DrCorrCrossxMode()).
-//   "nocorr_etamerge" The SAME raw fit as "nocorr", with the 9 pair-eta bins MERGED into the
-//            THREE PHYSICAL DETECTOR REGIONS -- negative-eta endcap, barrel, positive-eta endcap
-//            (user, 2026-08-24) -- so the grid is 8 x 3 = 24 cells. Same trade-off as the pair-pT
-//            merge, on the second axis: the 9-bin pair-eta grid is the CROSS-SECTION's
+//   "nocorr_etamerge" The SAME raw fit as "nocorr", with the 9 pair-eta bins MERGED into THREE
+//            SIGN-INDEPENDENT |eta^pair| BINS: the barrel group, then the two groups above the
+//            interior |eta| boundaries of DrEtaAbsMergeInteriorBoundaries(). The OUTER edge is
+//            deliberately NOT typed here -- MakeDrEtaGroups reads it off the filled pair-eta
+//            axis, so it follows CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap
+//            automatically and cannot drift from it (.claude/CLAUDE.md 'Binnings' rule 1). The
+//            SIGN-INDEPENDENT fold replaced the original signed
+//            negative-endcap/barrel/positive-endcap grouping on 2026-09-03 (user; the earlier
+//            grouping was added 2026-08-24) -- see dr_correction_cell_groups.h, which is the
+//            authority for both the boundaries and the fold. The grid is 8 x 3 = 24 cells. Same
+//            trade-off as
+//            the pair-pT merge, on the second axis: the 9-bin pair-eta grid is the CROSS-SECTION's
 //            presentation binning, never chosen for eps_dR's statistics, and grouping it triples
-//            the pairs per fit while keeping the one distinction that is physically motivated
-//            (the endcap L1 trigger geometry differs from the barrel's). The two ENDCAPS are
-//            deliberately NOT merged with each other: the r16578 forward anomaly is
-//            NEGATIVE-eta only (R8/R10/R14). Like the pair-pT merge it is a PROJECTION of the
-//            source bins (num/denom/errA/errB summed before the ratio), so the filled histograms
-//            and CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap are UNCHANGED; the
-//            interior group boundaries are LOOKED UP in the filled axis and it THROWS if either
-//            is not an existing edge (dr_correction_cell_groups.h). Orthogonal to the pair-pT
-//            axis, so it has no 8-bin restriction.
+//            the pairs per fit while keeping the one distinction that is NOW physically motivated
+//            (the dR correlation barely depends on the SIGN of pair eta, but the |eta|>2-vs-<2
+//            split inside the endcap is much bigger than any negative/positive asymmetry). The
+//            barrel group is one contiguous source range; each forward group FOLDS its
+//            negative- and positive-eta source bins together. Like the pair-pT merge it is a
+//            PROJECTION of the source bins (num/denom/errA/errB summed before the ratio), so the
+//            filled histograms and CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap are
+//            UNCHANGED; every |eta| boundary is LOOKED UP as a symmetric pair of existing edges
+//            and it THROWS if either side is missing (dr_correction_cell_groups.h). Orthogonal to
+//            the pair-pT axis, so it has no 8-bin restriction.
 //   "nocorr_etamerge_ptmerge" Both merges at once: 7 pair-pT x 3 pair-eta = 21 cells. It merges
 //            pair pT, so the 8-bin-axis restriction of "nocorr_ptmerge" applies to it too.
 //   In BOTH merged families the plateau map on disk describes the UN-grouped grid, so it is
@@ -116,6 +125,14 @@
 //                      Exactly 1 and continuous for dR >= Rp -- the constraint is built in.
 //   powerlaw_floatRp : same, Rp free within [0.6, 1.6] x the nominal onset.
 //   expo             : f = 1 + A*exp(-(dR/lambda)^p)     smooth, approaches 1 asymptotically.
+//                      STEP 3 ONLY, since 2026-09-07 (user): A <= 0 and p >= 1, so the
+//                      small-dR plateau lies BELOW the large-dR one and, for p > 1, the
+//                      turning point sits at dR > 0 (equivalently f'(0) = 0). Both are
+//                      CLOSURES of strict inequalities, so a cell railed at A = 0 or at
+//                      p = 1 is the boundary case, not a curve satisfying the
+//                      requirement. See the block comment at
+//                      the parameter limits for why those two requirements coincide here,
+//                      and why Step 4 is excluded.
 //   interp           : linear interpolation through the measured points below Rp, hard 1 above
 //                      (stored as a TGraph of knots -- no free parameters, no chi2).
 //
@@ -347,7 +364,7 @@ std::string CellName(const std::string& base, int step, int iy, int iz)
 // plateau_mode : "corr" (NOMINAL, divide by the large-dR plateau) | "nocorr" (fit the raw
 //                eps_dR with a free baseline C) | "nocorr_ptmerge" (same, with the last two
 //                pair-pT bins merged into one cell) | "nocorr_etamerge" (same, with the pair-eta
-//                bins merged into the three physical detector regions) |
+//                bins merged into three sign-independent |eta^pair| bins) |
 //                "nocorr_etamerge_ptmerge" (both merges) -- see the PLATEAU MODE block above
 void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp = true,
                         int step = 3, const std::string& method = "powerlaw_fixedRp",
@@ -368,7 +385,7 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     const std::string  mode_text = std::string(nocorr
         ? "NO plateau correction (raw eps, free baseline C)" : "plateau-normalized")
         + (ptmerge  ? ", LAST TWO pair-pT BINS MERGED" : "")
-        + (etamerge ? ", pair-eta MERGED into the three detector regions" : "");
+        + (etamerge ? ", pair-eta MERGED into three sign-independent |eta| bins" : "");
     const MethodCfg    M   = MakeMethodCfg(method, nocorr);
     const std::string  wp_suf  = DrCorrWpSuffix(use_tight_wp);
     const std::string  wp_text = use_tight_wp ? "Tight muons" : "Medium muons";
@@ -505,7 +522,7 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     // ------------------------------------------------- 2b. the CELL GROUPING of the fit cells
     // One fit cell per group, on BOTH axes. Identical to the filled binning except in the merged
     // modes: "nocorr_ptmerge" makes the last two pair-pT bins ONE cell, "nocorr_etamerge" makes
-    // the 9 pair-eta bins THREE detector regions, "nocorr_etamerge_ptmerge" does both
+    // the 9 pair-eta bins THREE sign-independent |eta| bins, "nocorr_etamerge_ptmerge" does both
     // (dr_correction_cell_groups.h: what they are, why, and why neither is a new binning). Both
     // are derived from the histograms' OWN axes -- no edge is typed here, in the report, or in
     // the plot stage.
@@ -682,7 +699,7 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
             : std::string();
         const std::string g_etamerge_note = etamerge
             ? std::string("# PAIR-eta CELLS (") + std::to_string(neta_src) + " filled bins -> "
-              + std::to_string(Geta.n) + " fit cells, the three physical detector regions):\n"
+              + std::to_string(Geta.n) + " fit cells, three sign-independent |eta| bins):\n"
                 "#       " + DrGroupsDescribe(Geta, "eta_pair", "") + "\n"
                 "#       The plateau of every cell below is RE-MEASURED on the merged grid from"
                 " the full-dR histograms with the same\n"
@@ -813,10 +830,63 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                            " the sample has yield (mc_trigger_efficiency.md R24/R27).\n",
                            npt_src, G.n, G.edges[G.n - 1], G.edges[G.n], G.n))
         : std::string();
+    // Self-describing artefact: a fit report must state the shape restriction its numbers were
+    // produced under, or a later reader cannot tell a railed parameter from a measured one.
+    const std::string r_shape_note = (method == "expo" && step == 3)
+        ? std::string("# SHAPE RESTRICTION (user, 2026-09-07), Step-3 `expo` ONLY. Two physics"
+                      " requirements, imposed as fit LIMITS on\n"
+                      "#   f = C + A exp[-(dR/lambda)^p]  (C is the FREE fitted baseline in the"
+                      " `nocorr` family -- the `C=` column below --\n"
+                      "#   and is FIXED at 1 in the plateau-corrected mode; see the `formula:`"
+                      " line above):\n"
+                      "#   (1) The small-dR plateau f(0) = C + A must lie BELOW the large-dR"
+                      " plateau C -- the dR correlation is an\n"
+                      "#       INEFFICIENCY at small dR, never an enhancement. That is exactly"
+                      " A < 0, which also makes f monotone\n"
+                      "#       INCREASING in dR. Imposed as the CLOSURE A <= 0 (limit [-5, 0]).\n"
+                      "#   (2) The requirement that the turning point"
+                      " dR_infl = lambda*((p-1)/p)^(1/p) sit at dR > 0, and the requirement\n"
+                      "#       f'(0) = 0, are FOR THIS FORM THE SAME CONDITION, p > 1 -- so there"
+                      " is no weaker fallback to relax to.\n"
+                      "#       (p = 1 gives the finite slope |A|/lambda at dR = 0; p < 1 gives an"
+                      " INFINITE slope there and no positive\n"
+                      "#       inflection at all -- the 'concave rise, turning point < 0'"
+                      " failure.) Imposed as the CLOSURE p >= 1 (limit\n"
+                      "#       [1, 8]), since MINUIT cannot express a strict inequality.\n"
+                      "#   READING THE RAILS. Both limits are closures, so a cell parked ON one is"
+                      " the BOUNDARY case -- a CONSTRAINED\n"
+                      "#   value, not a measurement -- and each rail has TWO ends that mean"
+                      " OPPOSITE things. Tell them apart with the p0\n"
+                      "#   (= A) and p2 (= p) columns below, together with the per-cell"
+                      " `AT LIMIT:` annotation, which uses the plain names:\n"
+                      "#     p = 1  (NEW, this restriction; flagged when p is within"
+                      " ParAtLimit's tolerance 1e-3*(hi-lo) of the rail,\n"
+                      "#            so a handful of flagged cells sit just inside it): the"
+                      " unconstrained fit wanted p <= 1. The delivered curve is a pure\n"
+                      "#            exponential -- it does NOT satisfy requirement (2): its slope"
+                      " at dR = 0 is the finite |A|/lambda (its\n"
+                      "#            steepest point) and its inflection has migrated out of dR > 0"
+                      " altogether (dR_infl -> 0; for p = 1\n"
+                      "#            f'' is nowhere zero and the curve is concave on all of"
+                      " dR > 0).\n"
+                      "#     p = 8  (PRE-EXISTING upper limit, unchanged): the opposite pathology"
+                      " -- the fit wants a step function; a symptom\n"
+                      "#            of the same form inadequacy R26 records.\n"
+                      "#     A = 0  (NEW, this restriction): the unconstrained fit wanted a"
+                      " small-dR ENHANCEMENT. f is then flat at C,\n"
+                      "#            i.e. the cell delivers NO correction.\n"
+                      "#     A = -5 (PRE-EXISTING lower limit, unchanged): the opposite -- the fit"
+                      " wanted an even deeper drop. Such a\n"
+                      "#            cell can have f(0) < 0 and is then rejected by the fit_ok"
+                      " `physical` screen.\n"
+                      "#   NOT applied to Step 4, whose single-leg correction is physically an"
+                      " ENHANCEMENT at small dR (A > 0;\n"
+                      "#   mc_trigger_efficiency.md R4 / section 3.4).\n")
+        : std::string();
     const std::string r_etamerge_note = etamerge
         ? std::string("# PAIR-eta CELLS (") + std::to_string(neta_src) + " filled bins -> "
-                      + std::to_string(Geta.n) + " fit cells, the three physical detector"
-                        " regions):\n"
+                      + std::to_string(Geta.n) + " fit cells, three sign-independent"
+                        " |eta| bins):\n"
                         "#   " + DrGroupsDescribe(Geta, "eta_pair", "") + "\n"
                         "#   The merge is a PROJECTION of the source bins together"
                         " (num/denom/errA/errB summed before the ratio), i.e. numerically\n"
@@ -829,8 +899,12 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                         " the cross-section's presentation binning, not a choice made\n"
                         "#   for eps_dR's statistics; the three regions triple the pairs per fit"
                         " while keeping the one physically motivated distinction\n"
-                        "#   (endcap L1 geometry differs from the barrel's). The two ENDCAPS are"
-                        " deliberately NOT merged with each other.\n"
+                        "#   (the dR correlation barely depends on the SIGN of pair eta, but the"
+                        " |eta|>2-vs-<2 split inside the endcap\n"
+                        "#   is much bigger than any negative/positive asymmetry). The barrel"
+                        " group is one contiguous source range; each\n"
+                        "#   forward group FOLDS its negative- and positive-eta source bins"
+                        " together.\n"
         : std::string();
     std::ofstream rep(mdir + "fit_report" + sign_ftag + ".txt");
     rep << "# " << S.quantity << " (Step " << step << ") "
@@ -848,6 +922,7 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
         << kFitHi << "]\n"
         << r_ptmerge_note
         << r_etamerge_note
+        << r_shape_note
         << (nocorr
             ? "# NO PLATEAU CORRECTION: nothing is divided by the plateau. The asymptote is the "
               "FREE parameter C, determined by the\n"
@@ -1072,16 +1147,74 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
             // the fitted-baseline estimate C0 when it was not.
             const double A0 = y0 - (nocorr ? C0 : 1.0);
             if (method == "expo") {
+                // ---- THE STEP-3 SHAPE RESTRICTION (user, 2026-09-07) ------------------------
+                // f(dR) = C + A exp[-(dR/lambda)^p]   (C == 1 in the plateau-corrected mode).
+                // Left free, this form can fit two shapes that are not physical for a CLOSE-BY
+                // 2mu4 correction, and did so in cells the fit_ok screen still accepted: a curve
+                // that DECREASES with dR, and a concave rise whose turning point sits below 0.
+                // The user's two requirements map onto the parameters exactly:
+                //   (1) "the small-dR plateau must lie BELOW the large-dR plateau" -- i.e. the dR
+                //       correlation is an INEFFICIENCY at small dR, never an enhancement.
+                //       f(0) = C + A and f(inf) = C, so this is A < 0. It also makes f monotone
+                //       increasing (f' = -A (p/lambda)(dR/lambda)^(p-1) e^(-u) > 0), which
+                //       removes the "decreasing with dR" failure at the same time. Like (2)
+                //       below, the inequality is STRICT and the imposed limit is its CLOSURE
+                //       A <= 0; a cell railed AT A = 0 is the boundary case -- f is flat at C,
+                //       i.e. that cell delivers NO correction -- and is the cell whose
+                //       unconstrained fit wanted a small-dR ENHANCEMENT. The PRE-EXISTING lower
+                //       limit A = -5 is untouched and means the opposite (the fit wanted an even
+                //       deeper drop; such a cell can have f(0) < 0 and is then rejected by the
+                //       `physical` screen), so the two ends of the A rail must not be read alike.
+                //   (2) "the turning point must be > 0", with "the slope at dR = 0 should be zero"
+                //       tried first. FOR THIS FORM THE TWO ARE THE SAME CONDITION, so there is no
+                //       weaker fallback to relax to: f'' = 0 at dR = lambda*((p-1)/p)^(1/p),
+                //       which is real and positive iff p > 1; and f'(0) = 0 iff p > 1 as well
+                //       (p = 1 gives the finite slope |A|/lambda, p < 1 gives an INFINITE slope
+                //       at 0 and no positive inflection -- precisely the "concave rise, turning
+                //       point < 0" failure). Both requirements are therefore the SINGLE condition
+                //       p > 1 -- a STRICT inequality, which MINUIT cannot express. The limit below
+                //       is its CLOSURE, p >= 1. Read the boundary honestly: a cell that comes out
+                //       railed AT p = 1 is a pure exponential, whose slope at dR = 0 is the finite
+                //       |A|/lambda (its steepest point) and whose inflection has migrated out of
+                //       dR > 0 altogether (dR_infl -> 0 as p -> 1+; AT p = 1, f'' is nowhere zero
+                //       and the curve is concave on all of dR > 0). It
+                //       does NOT satisfy the requirement; it is the closest admissible approach to
+                //       it, and it is the cell whose unconstrained fit wanted p < 1. Such cells are
+                //       flagged `AT LIMIT: p` per cell and must be read as constrained, not
+                //       measured. Tightening the limit to 1 + eps would only move the rail and
+                //       change the delivered correction, so it is deliberately not done.
+                // Imposed as PARAMETER LIMITS, not as a post-hoc fit_ok screen, because that is
+                // what the user asked for and because a screened-out cell delivers NO correction
+                // (it falls through to the backup method / the raw-bin placeholder) whereas a
+                // constrained fit delivers the best fit that is physically admissible. A cell
+                // that wanted the forbidden region rails on the limit and is flagged
+                // "(at limit)" by ParAtLimit on the canvas and in the report.
+                //
+                // STEP 4 IS DELIBERATELY EXCLUDED. Its physics has the OPPOSITE sign: R4 / PP
+                // section 3.4 measured the SINGLE-LEG efficiency to be ENHANCED at small dR
+                // (eps(dR<0.12)/eps(dR>1) ~ 1.20 pp, 1.34 overlay), i.e. A > 0. Imposing A < 0
+                // there would force the wrong shape on a correction that is not the same object.
+                const bool restrict_shape = (step == 3);
+                const double A_lim_hi = restrict_shape ?  0.0 : 20.0;
+                const double p_lim_lo = restrict_shape ?  1.0 :  0.3;
+                // The seed must live inside the limits, or MINUIT starts on/outside a boundary.
+                // Unrestricted, the seed is byte-identical to what it always was.
+                // Strictly inside is not enough: a seed within ParAtLimit's own tolerance of a
+                // boundary (1e-3 x range = 0.005 for A) starts MINUIT effectively ON the limit,
+                // the pathology this clamp exists to avoid. Keep a margin at BOTH ends.
+                double A_seed = (A0 != 0. ? A0 : 0.2);
+                if (restrict_shape && !(A_seed < -0.01)) A_seed = -0.2;   // also catches NaN
+                if (restrict_shape && A_seed <= -4.9)    A_seed = -1.0;
                 if (nocorr) {
                     f->SetParNames("A", "#lambda", "p", "C");
-                    f->SetParameters(A0 != 0. ? A0 : 0.2, 0.25, 1.5, C0);
+                    f->SetParameters(A_seed, 0.25, 1.5, C0);
                 } else {
                     f->SetParNames("A", "#lambda", "p");
-                    f->SetParameters(A0 != 0. ? A0 : 0.2, 0.25, 1.5);
+                    f->SetParameters(A_seed, 0.25, 1.5);
                 }
-                f->SetParLimits(0, -5.0, 20.0);
+                f->SetParLimits(0, -5.0, A_lim_hi);
                 f->SetParLimits(1, 0.02, 3.0);
-                f->SetParLimits(2, 0.3, 8.0);
+                f->SetParLimits(2, p_lim_lo, 8.0);
                 if (nocorr) f->SetParLimits(3, C_lo, C_hi);
             } else if (method == "polyu_fixedRp") {
                 if (nocorr) {
@@ -1228,11 +1361,20 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
         + (nocorr ? "raw eps, free baseline C -- the plateau is NOT applied"
                   : "each cell divided by its own large-dR plateau")
         + (ptmerge  ? "; LAST TWO pair-pT bins merged into one cell" : "")
-        + (etamerge ? "; pair-eta merged into the three physical detector regions" : "") + ")";
+        + (etamerge ? "; pair-eta merged into three sign-independent |eta| bins" : "") + ")";
+    // The shape restriction belongs in the ROOT file too, not only in the text report: the ROOT
+    // file is what dr_correction_apply.h / DrCorrectionCrossxEvaluator.h actually consume, so a
+    // consumer must be able to see, from the artefact alone, that A and p were CONSTRAINED.
+    const std::string shape_prov = (method == "expo" && step == 3)
+        ? std::string("; SHAPE RESTRICTION (Step-3 expo only): A in [-5,0] (small-dR plateau below"
+                      " the large-dR one) and p in [1,8] (turning point at dR>0 / f'(0)=0);"
+                      " both limits are CLOSURES -- a value ON one is a constraint, not a"
+                      " measurement (the fit report lists every such cell)")
+        : std::string();
     TNamed("provenance",
            Form("sample=%s (%s); WP=%s; series=%s; plateau mode=%s; pair-pT cells=%d (filled bins"
                 " %d); pair-eta cells=%d (filled bins %d); step=%d (%s); method=%s; "
-                "formula=%s; Rp=%.2f; "
+                "formula=%s%s; Rp=%.2f; "
                 "fit range dR=[%.2f,%.2f]; stored TF1 range=[0,%.1f]; plateau source=%s (keys "
                 "h_%s_*); histograms=%s (%szoom_vs_pt_eta_*); guard=%s; "
                 "producer=fit_dr_corrections.cxx",
@@ -1243,6 +1385,7 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                 step,
                 S.quantity.c_str(), method.c_str(),
                 M.formula.empty() ? "linear interpolation (TGraph knots)" : M.formula.c_str(),
+                shape_prov.c_str(),
                 S.flat_onset, kFitLo, kFitHi, kTF1RangeHi, plateau_path.c_str(), ptag.c_str(),
                 hist_path.c_str(), S.h_prefix.c_str(),
                 violations.empty() ? "PASS"
