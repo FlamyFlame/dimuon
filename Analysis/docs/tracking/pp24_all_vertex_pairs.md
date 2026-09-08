@@ -226,6 +226,18 @@ OUT: Pb+Pb anything; R_AA; unfolding; template fits; the Pb+Pb pair-eta axis mig
   single-muon analogue, and since the pair form implies it, `pair_pass_{medium,tight}` are
   exact.
 
+- 2026-09-08 Steps 4b + 5 DONE — **pp24 data Condor rerun + the statistics record**.
+  Both pp24 modes resubmitted and finished clean in 18 min: cluster 10570
+  (`run_pp_24_nominal.sub`, trigger_mode=3 -> `muon_pairs_pp_2024_part*_2mu4_mindR_0_02.root`)
+  and cluster 10571 (`run_pp_24.sub`, trigger_mode=1 -> the `_single_mu4_mindR_0_02_res_cut_v2`
+  variant, distinct paths — the two clusters do NOT collide). 24/24 jobs, no errors in any
+  `.err` beyond the pre-existing TStreamerInfo warnings, 12+12 outputs present. hadded to
+  `muon_pairs_pp_2024_2mu4_mindR_0_02.root` (652 MB) + the cut-acceptance hists. Statistics
+  record produced from it — see Results & Observations. Headline: **1.400 ± 0.014 % of
+  signal-region OS pairs are ADDED by the all-vertex rule, but with a factor-~9 pair-pT
+  dependence (2.73 % -> 0.3 %)**, so the cross-section change is a shape change, not a
+  normalisation.
+
 - 2026-09-08 Step 3 (partial) — **local tests**. pp: `PPAnalysis(24,11)`, `trigger_mode=3`,
   `is_test_run=true`, 300 000 events -> 2 641 pairs (SS 777, OS 1 864), of which
   **58 (2.20 %) have a secondary best-matching vertex** and **42 (1.59 %) fail the primary
@@ -243,6 +255,60 @@ OUT: Pb+Pb anything; R_AA; unfolding; template fits; the Pb+Pb pair-eta axis mig
   deleted). Four user decisions taken (D2-D5 above, plus the 8-bin binning).
 
 ## Results & Observations
+
+### THE STATISTICS RECORD (Done item 3) — pp24, full sample, Tight WP
+
+Produced 2026-09-08 by `plotting_codes/single_b_analysis/pp24_secondary_vertex_stats.cxx` from
+the hadded ntuple-processing output `muon_pairs_pp_2024_2mu4_mindR_0_02.root` (all 12 batches,
+rerun with the all-vertex selection AND the 2026-09-07 gap cuts). CSV:
+`plots/single_b_analysis/pp24/pp24_secondary_vertex_fraction.csv`.
+
+`f_sec` = the pair's own best-matching vertex is not the primary. `f_new` = the pair fails the
+primary vertex outright, i.e. it is ADDED by this change. `f_sec >= f_new` always.
+
+**Integrated**
+
+| population | N | f_sec | f_new |
+|---|---|---|---|
+| all pairs (OS+SS) | 4 920 638 | 2.314 ± 0.007 % | **1.657 ± 0.006 %** |
+| all OS pairs | 3 482 923 | 2.296 ± 0.008 % | 1.659 ± 0.007 % |
+| all SS pairs | 1 437 715 | 2.357 ± 0.013 % | 1.651 ± 0.011 % |
+| **single-b signal region (OS)** | **661 237** | 2.138 ± 0.018 % | **1.400 ± 0.014 %** |
+
+**Signal region (OS), canonical `ParamsSet::pair_pt_coarse_bins` [GeV]**
+
+| pair pT | N | f_sec | f_new |
+|---|---|---|---|
+| 8.00-11.54 | 224 389 | 3.506 ± 0.039 % | **2.727 ± 0.034 %** |
+| 11.54-16.65 | 275 901 | 1.669 ± 0.024 % | 0.914 ± 0.018 % |
+| 16.65-24.01 | 117 877 | 1.079 ± 0.030 % | 0.409 ± 0.019 % |
+| 24.01-34.64 | 34 046 | 0.937 ± 0.052 % | 0.303 ± 0.030 % |
+| 34.64-49.97 | 7 526 | 0.811 ± 0.103 % | 0.345 ± 0.068 % |
+| 49.97-72.08 | 1 300 | 1.077 ± 0.286 % | 0.308 ± 0.154 % |
+| 72.08-103.98 | 179 | 0.559 ± 0.557 % | 0.000 % |
+| 103.98-150.00 | 16 | 0.000 % | 0.000 % |
+
+(The all-pairs-vs-pair-pT table, including the 2 591 627 pairs below the 8 GeV axis where
+`f_new` reaches 2.116 ± 0.009 %, is in the CSV.)
+
+**PHYSICS — the effect is strongly pair-pT DEPENDENT, and in the direction it must be.**
+`f_new` falls monotonically from 2.73 % in the lowest signal-region bin to ~0.3 % above 25 GeV,
+a factor ~9. That is the expected behaviour and is a real consistency check on the whole
+procedure: the primary vertex is the highest-sum-pT^2 vertex in the event, so a collision hard
+enough to make a high-pair-pT dimuon almost always WINS that ranking and is therefore the
+primary — it can only be "secondary" if some other collision in the same crossing was harder
+still. A soft collision making a low-pair-pT dimuon loses the ranking often. Hence the
+correction is largest exactly where the cross-section is largest.
+
+**CONSEQUENCE for the cross-section: this is a SHAPE change, not only a normalisation.**
+dsigma/dpair-pT rises by ~2.7 % in the first coarse bin and by ~0.3 % in the highest populated
+ones, so the spectrum steepens slightly less than before. It must NOT be quoted as "a 1.4 %
+overall increase" — 1.4 % is only the signal-region integral. Any downstream ratio that assumed
+a flat normalisation shift (R_AA included, once Pb+Pb is brought over) has to take the
+pair-pT dependence.
+
+The one non-monotonic point, signal-region 49.97-72.08 with `f_sec` 1.077 % against 0.811 % in
+the bin below, is 14 pairs against an error of 0.286 % — under 1 sigma, not a feature.
 
 ### Scouting numbers (pre-implementation, raw-NTUP estimate)
 
@@ -325,6 +391,26 @@ Steps 4-8 of the Implementation Plan, per the table above.
 
 ## Latest Stage
 
-**STEPS 1-2 DONE, STEP 3 (local tests) IN PROGRESS (2026-09-07/08).** Data + MC code written
-and compiling; pp and Pb+Pb smoke tests pass; the MC smoke test is running. Next: statistics
-macro (Step 5 tooling), then the Condor reruns.
+**DATA HALF DONE; MC HALF HELD ON A CONCURRENT SESSION (2026-09-08).**
+
+Done: Steps 1, 2, 3, 4a, 4b, 5 — code written, reviewed once and amended for all 10 findings,
+committed (2bb281d, 99a9efa, ee46d2c, 568542e); both pp24 Condor modes rerun clean and hadded;
+the statistics record produced at full statistics (see Results & Observations).
+
+**HELD — do not start without checking:** Steps 6, 7a, 7b, 7c, 8 (eps^nc refit, Pythia fullsim
+NTuple+RDF+MC trig-eff, dR fits, pair_reco_eff rebuild, crossx). **A SECOND Claude session is
+working in this same checkout on the MC trigger efficiency** — `FillMCTrigEffPairEff.cxx`,
+`FillMCTrigEffClosure.cxx`, `Utilities/PairTrigEffEvaluator.h` and a new ACTIVE tracking doc
+`mc_trigeff_single_value_pair_eff.md` ("single-value pair 2mu4 efficiency in the top pair-pT
+cells"), all written 2026-09-08 00:31-00:41 with their own ACTIVE Autonomy Contract. The
+collision is not merely a race: **Step 7a's fullsim NTuple rerun MOVES the fullsim pair tree
+their whole measurement is built on** (by ~1.2 %), and Stage 10 + the dR fits overwrite
+`mc_trig_eff_hists_*`, `dr_correction_fits_*` and `plots/pp_trigger_efficiency/mc_based/` —
+none of which git can see (`.gitignore` drops `*.root *.png`). USER DECISION 2026-09-08: hold
+the MC half, finish the data half, resume when that session reports done. Second user decision
+the same day: the cross-section keeps the **dR-fit** trigger weight (with today's MINUIT-limits
+change, which still needs `/review-analysis-code`); the single-value pair-efficiency method is
+NOT adopted into the crossx — consistent with that doc's own Done list ("NOT wired into the
+cross-section").
+
+Also in flight: `/review-analysis-code` iteration 2 on the amended code + the statistics macro.
