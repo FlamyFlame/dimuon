@@ -287,9 +287,12 @@ void RDFBasedHistFillingPowhegFullsim::CreateBaseRDFsPowhegFullsimExtra(){
     // forces dR <~ 2m/pT = 0.725), but it is dropped rather than relied on, and the two counts
     // are compared in the tracking doc.
     if (!useMixed){
+        // Plus the PAIR-LEVEL window |eta^pair| < ParamsSet::pair_eta_fiducial_max = 2.2
+        // (user, 2026-09-07), which the Pythia FullSim partner also applies.
         const std::string gap_truth =
               ParamsSet::FiducialGapCutExpr("m1.truth_charge * m1.truth_eta")
-            + " && " + ParamsSet::FiducialGapCutExpr("m2.truth_charge * m2.truth_eta");
+            + " && " + ParamsSet::FiducialGapCutExpr("m2.truth_charge * m2.truth_eta")
+            + " && " + ParamsSet::PairFiducialEtaCutExpr("truth_pair_eta");
 
         // PER-SAMPLE cross-section normalization (see the anonymous namespace at the top for why
         // the shared `weight_norm` cannot be used for an ABSOLUTE cross-section here).

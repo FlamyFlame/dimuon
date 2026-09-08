@@ -502,24 +502,27 @@ void RDFBasedHistFillingPP::FillHistogramsGeneric(){
 
         // THE FIDUCIAL GAP CUT IS MANDATORY HERE, not optional (2026-08-17). These generic
         // dataframes are efficiency-corrected below, and the single-muon turn-on is fitted on a
-        // CONTIGUOUS q*eta binning that stops at 2.30 -- the top edge of
+        // CONTIGUOUS q*eta binning that stops at 2.20 -- the top edge of
         // CommonEffcyConfig::q_eta_proj_ranges_coarse_incl_gap, chosen to match the gap cut's
-        // forward window. A muon at q*eta in [2.30, 2.40) therefore has NO fitted turn-on, and
+        // forward window. A muon at q*eta in [2.20, 2.40] therefore has NO fitted turn-on, and
         // EvaluateSingleMuonEffcyPtFitted deliberately THROWS rather than returning a sentinel
         // that would silently delete the pair (pp_trig_eff_highpt_jump.md). Applying the same cut
         // the crossx signal region applies is what makes the efficiency defined for every pair
         // that survives -- and it puts the generic/MC-data-comparison histograms in the SAME
         // fiducial region as the cross-section. Idempotent w.r.t. the later signal-cut filters,
         // which contain the same expression.
+        // The PAIR-LEVEL gap cut |eta^pair| < 2.2 travels with the single-muon windows
+        // everywhere they are applied to BOTH legs (user, 2026-09-07; ParamsSet.h).
         const std::string fiducial_gap_cut =
             ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta") + " && "
-          + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta");
+          + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta") + " && "
+          + ParamsSet::PairFiducialEtaCutExpr("pair_eta");
 
         for (const std::string& category : categories_essential) {
             std::string df_name = "df" + category;
             ROOT::RDF::RNode df = map_at_checked(df_map, df_name,
                 Form("PP::FillHistogramsGeneric: df_map.at(%s)", df_name.c_str()))
-                .Filter(fiducial_gap_cut, "fiducial gap cut (both muons)");
+                .Filter(fiducial_gap_cut, "fiducial gap cut (both muons + pair eta)");
 
             // Generic analysis histograms (incl. the gapcut histos read by the
             // MC-data comparison) are weighted by the SAME per-pair efficiency
@@ -574,9 +577,13 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
     // `q*eta < 2.2` is REPLACED by the detector-gap FIDUCIAL cut, required of BOTH muons
     // (user instruction 2026-08-17; docs/tracking/pp24_crossx_rerun_2026_08.md). The windows are
     // READ from ParamsSet::single_mu_fiducial_gap_cuts -- the single source of truth; the values
-    // are NEVER retyped here (muon_gap_cuts_acceptance.md F10/F11a).
-    // The forward window {2.30, 2.40} together with the ntuple-level |eta| < 2.4 makes the
-    // effective forward edge 2.30, which is exactly the top edge of the CONTIGUOUS coarse q*eta
+    // are NEVER retyped here (muon_gap_cuts_acceptance.md F10/F11a/F17).
+    // 2026-09-07 the PAIR-LEVEL gap cut |eta^pair| < ParamsSet::pair_eta_fiducial_max = 2.2 was
+    // ADDED alongside them (user): a pair can reach |eta^pair| > 2.2 with both muons passing the
+    // one-sided q*eta windows, but only through a charge-dependent corner of phase space whose
+    // pair efficiency is shaped by the single-muon cut itself. Removed rather than modelled.
+    // The forward window {2.20, 2.40} together with the ntuple-level |eta| < 2.4 makes the
+    // effective forward edge 2.20, which is exactly the top edge of the CONTIGUOUS coarse q*eta
     // turn-on binning (CommonEffcyConfig::q_eta_proj_ranges_coarse_incl_gap) -- so every
     // surviving muon has a fitted trigger efficiency and the "no fitted turn-on" throw in
     // EvaluateSingleMuonEffcyPtFitted stays unreachable. Blast radius:
@@ -584,7 +591,8 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
     const std::string signal_cuts =
         std::string("minv > 1.08 && minv < 2.9 && pair_pt > 8 && ")
         + ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta") + " && "
-        + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta");
+        + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta") + " && "
+        + ParamsSet::PairFiducialEtaCutExpr("pair_eta");
 
     // --- Muon working-point (WP) selection for the DATA crossx spectrum ---
     // Moved into ApplyMuonWorkingPointFilter() (2026-08-25) so that FillHistogramsGeneric --
@@ -661,12 +669,14 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
     // MINUS minv window, NO dR. Weight = TRIGGER-ONLY reco-level dsigma (1/L * w_trig, NO
     // reco-eff): the minv fit runs at reco, BEFORE reco-eff/unfolding (3e ordering reversal).
     if (low_mass_template_calc) {
-        // signal_cuts MINUS the minv window; the q*eta fiducial gap cut is kept IDENTICAL
-        // to signal_cuts (both muons, windows read from ParamsSet).
+        // signal_cuts MINUS the minv window; the gap cuts are kept IDENTICAL to signal_cuts
+        // -- both muons' q*eta windows AND the pair-level |eta^pair| < 2.2, all read from
+        // ParamsSet.
         const std::string signal_cuts_no_minv =
             std::string("pair_pt > 8 && ")
             + ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta") + " && "
-            + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta");
+            + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta") + " && "
+            + ParamsSet::PairFiducialEtaCutExpr("pair_eta");
         const double lumi_factor_tmpl = pp_crossx_lumi_factor;
         // TEMPLATE-FIT DATA INPUT = TRIGGER-ONLY, RECONSTRUCTED LEVEL (correction-ordering
         // reversal 2026-07-01, low_mass_dimuon_template_fit.md 3e). The minv template fit is
@@ -727,7 +737,8 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         // therefore a PREREQUISITE of the weight, not part of the selection being switched off.
         const std::string fiducial_gap_cut_nosel =
             ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta") + " && "
-          + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta");
+          + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta") + " && "
+          + ParamsSet::PairFiducialEtaCutExpr("pair_eta");
         ROOT::RDF::RNode df_op_nosel = attach_crossx_weight(map_at_checked(df_map, "df_op", "FillHistogramsCrossx PP: df_op (template nosel)").Filter(fiducial_gap_cut_nosel));
         ROOT::RDF::RNode df_ss_nosel = attach_crossx_weight(map_at_checked(df_map, "df_ss", "FillHistogramsCrossx PP: df_ss (template nosel)").Filter(fiducial_gap_cut_nosel));
         hist1d_rresultptr_map["h1d_crossx_minv_0_4_op_dsigma_nosel"] = df_op_nosel.Histo1D(ROOT::RDF::TH1DModel("h1d_crossx_minv_0_4_op_dsigma_nosel", ";m_{#mu#mu} [GeV];d#sigma/dm_{#mu#mu} [pb GeV^{-1}]", 50, 0.0, 4.0), "minv", "crossx_weight_trig_only");
@@ -957,12 +968,14 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
     // and reco+trig corrected (crossx_weight_trig_corr), IDENTICAL selection/binning/
     // weight for OS and SS so D_OS - D_SS is a clean combinatoric subtraction.
     {
-        // signal_cuts MINUS the minv window; the q*eta fiducial gap cut is kept IDENTICAL
-        // to signal_cuts (both muons, windows read from ParamsSet).
+        // signal_cuts MINUS the minv window; the gap cuts are kept IDENTICAL to signal_cuts
+        // -- both muons' q*eta windows AND the pair-level |eta^pair| < 2.2, all read from
+        // ParamsSet.
         const std::string signal_cuts_no_minv =
             std::string("pair_pt > 8 && ")
             + ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta") + " && "
-            + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta");
+            + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta") + " && "
+            + ParamsSet::PairFiducialEtaCutExpr("pair_eta");
 
         // Attach the trig+reco+crossx weight chain to a node filtered WITHOUT the
         // minv window. If FillHistogramsGeneric ran, it added w_trig/w_reco to

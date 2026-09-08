@@ -443,13 +443,17 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
     //
     // The pair-eta bound is NOT redundant with the per-leg |eta| < 2.4: pair eta is the
     // pseudorapidity of the SUM 4-vector, which is not bounded by the two legs' pseudorapidities
-    // and does exceed 2.4 for a small number of forward collinear pairs (measured: 16 of 1.36 M
-    // triggered pairs). Without this cut those pairs sit in the histogram overflow -- excluded
+    // and used to exceed the axis top edge for a small number of forward collinear pairs
+    // (measured: 16 of 1.36 M triggered pairs, when that edge was still 2.4). SINCE 2026-09-07 the
+    // pair-level gap cut |eta^pair| < ParamsSet::pair_eta_fiducial_max = 2.2 is already inside
+    // base_sel, so this bound is now redundant on the nominal path and the quoted count is
+    // historical -- it is kept because it is derived from the CELL GRID, which a folded or
+    // otherwise-regrouped mode can narrow further. Without it such pairs sit in the overflow -- excluded
     // from every drawn panel -- while still being counted as "no correction available", which
     // reads like a lookup failure when it is simply a pair outside the measured region.
     // This Filter runs on the SIGNED `pair_eta` branch, so its bounds must be in SIGNED space --
     // eta_lo/eta_hi are the |eta| bounds of the (possibly folded) correction cells and must NOT be
-    // used directly here for a folded mode (0/2.4 would keep only pair_eta >= 0, silently dropping
+    // used directly here for a folded mode (0/eta_hi would keep only pair_eta >= 0, silently dropping
     // every negative-eta pair). A folded cell grid covers |eta| in [0, eta_hi], i.e. signed
     // pair_eta in [-eta_hi, +eta_hi]; an un-merged/pT-only-merged grid is already signed.
     const double eta_filt_lo = eta_folded ? -eta_hi : eta_lo;

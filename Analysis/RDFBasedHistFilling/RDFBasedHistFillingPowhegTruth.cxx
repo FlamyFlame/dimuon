@@ -235,8 +235,11 @@ void RDFBasedHistFillingPowhegTruth::CreateBaseRDFsPowhegExtra(){
 	// Pythia fullsim make, so the three sides cut on identical windows by construction.
 	// Deliberately NOT `q*eta < 2.2`: that one-sided cut belongs to the signal selection at
 	// FillHistogramsSignalAcceptance and is left exactly as it is.
+	// The PAIR-LEVEL window |eta^pair| < ParamsSet::pair_eta_fiducial_max = 2.2 (user,
+	// 2026-09-07) is part of the same gap definition and travels with the single-muon windows.
 	const std::string gap_truth = ParamsSet::FiducialGapCutExpr("m1.truth_charge * m1.truth_eta")
-	                            + " && " + ParamsSet::FiducialGapCutExpr("m2.truth_charge * m2.truth_eta");
+	                            + " && " + ParamsSet::FiducialGapCutExpr("m2.truth_charge * m2.truth_eta")
+	                            + " && " + ParamsSet::PairFiducialEtaCutExpr("truth_pair_eta");
 
 	for (const std::string& sign : McVsDataGenericSigns()){
 		const std::string src_df = "df" + sign + "_weighted";

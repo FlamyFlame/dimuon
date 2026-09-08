@@ -97,6 +97,7 @@ using namespace std;
 #include "../Utilities/MCTrigEffSanityCfg.h"
 #include "../Utilities/MCTrigEffPlateauWindow.h"
 #include "../Utilities/MCTrigEffPairPtBinning.h"
+#include "../Utilities/MCTrigEffPairSelection.h"
 #include "../Utilities/proj_range_to_suffix.cxx"
 #include "CommonEffcyConfig.h"
 
@@ -260,7 +261,9 @@ Binnings MakeBinnings() {
     // fill and the plot stage cannot disagree about which binning is in use.
     b.pair_pt_coarse = MCTrigEffPairPt::Edges(pms);
     static const CommonEffcyConfig cfg{};
-    b.pair_eta_coarse = RangesToEdges(cfg.pair_eta_proj_ranges_coarse_incl_gap); // 9 bins over [-2.4,2.4]
+    // 9 bins; the axis now spans [-2.2, 2.2] -- its OUTER EDGES track
+    // ParamsSet::pair_eta_fiducial_max (the pair-level gap cut), see CommonEffcyConfig.h.
+    b.pair_eta_coarse = RangesToEdges(cfg.pair_eta_proj_ranges_coarse_incl_gap);
 
     return b;
 }
@@ -655,15 +658,30 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
     // 2.30 / 2.40 and therefore needs the q*eta > 2.2 muons this cut removes. Set the environment
     // variable MCTRIGEFF_NO_GAPCUT=1 for that one pass; it writes to a DISTINCT `_nogapcut`
     // output so it can never be mistaken for, or overwrite, the nominal.
+    // NOTE it also disables the PAIR-LEVEL window, which lives inside kGapLeg/kGapPair. In that
+    // study output, pairs with |eta^pair| >= ParamsSet::pair_eta_fiducial_max therefore land in
+    // the pair-eta OVERFLOW rather than in the last bin. Harmless for the forward-edge scan,
+    // which reads only the Step-1 single-muon q*eta histograms -- but do not read a pair-eta
+    // spectrum out of a `_nogapcut` file.
     const bool kApplyGapCut = (gSystem->Getenv("MCTRIGEFF_NO_GAPCUT") == nullptr);
     if (!kApplyGapCut)
         std::cout << "\n  ##### MCTRIGEFF_NO_GAPCUT set: fiducial gap cut DISABLED, writing a "
                      "_nogapcut output (forward-edge study only) #####\n" << std::endl;
+    // The PAIR-LEVEL window |eta^pair| < ParamsSet::pair_eta_fiducial_max = 2.2 (user,
+    // 2026-09-07) joins the single-muon windows on every node where a PAIR is the object --
+    // kGapLeg (Steps 2 and 4) and kGapPair (Step 3 and its kn-split statistics). NOT kGapSingle:
+    // Step 1 fills a truth-seeded SINGLE-MUON map, where there is no pair to cut on. The Step-3
+    // dR correction and the Step-4 combination must be measured on exactly the pair population
+    // the cross-section applies them to, which now carries the pair-eta window.
     const std::string kGapSingle = ParamsSet::FiducialGapCutExpr("charge * eta");
     const std::string kGapLeg    = ParamsSet::FiducialGapCutExpr("lg_charge * lg_eta") + " && "
-                                 + ParamsSet::FiducialGapCutExpr("ot_charge * ot_eta");
-    const std::string kGapPair   = ParamsSet::FiducialGapCutExpr("m1_charge * m1_eta") + " && "
-                                 + ParamsSet::FiducialGapCutExpr("m2_charge * m2_eta");
+                                 + ParamsSet::FiducialGapCutExpr("ot_charge * ot_eta") + " && "
+                                 + ParamsSet::PairFiducialEtaCutExpr("pair_eta");
+    // MIRROR NOTICE honoured 2026-09-07: the m1_/m2_ pair form is no longer built inline here,
+    // it comes from Utilities/MCTrigEffPairSelection.h -- the header this file was the original
+    // of -- so the two constructions cannot drift. kGapSingle and kGapLeg stay inline: the header
+    // has no single-muon or lg_/ot_ leg-alias variant.
+    const std::string kGapPair   = MCTrigEffPairSel::FiducialGapCut();
 
     // common selection = data-side muon definition (nominal WP + fiducial) + truth fiducial
     const std::string sel_single = wp_col + " && pt > 4 && fabs(eta) < 2.4 && " + kTruthFidSingle

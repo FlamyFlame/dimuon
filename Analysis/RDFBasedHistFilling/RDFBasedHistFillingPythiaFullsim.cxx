@@ -275,10 +275,16 @@ void RDFBasedHistFillingPythiaFullsim::CreateBaseRDFsPythiaFullsimExtra(){
     // separate, not-yet-built factor.
     // Hoisted out of the category loop (2026-08-25) so the GENERIC family below reuses the
     // very SAME `gap_truth` string as the signal region -- one expression, one definition.
+    // The PAIR-LEVEL window |eta^pair| < ParamsSet::pair_eta_fiducial_max = 2.2 (user,
+    // 2026-09-07) is part of the same gap definition and travels with the single-muon windows:
+    // truth pair eta on the denominator leg, reco pair eta on the numerator leg, so eps_reco
+    // stays the efficiency of exactly the region the data crossx selects.
     const std::string gap_truth = ParamsSet::FiducialGapCutExpr("m1.truth_charge * m1.truth_eta")
-                                + " && " + ParamsSet::FiducialGapCutExpr("m2.truth_charge * m2.truth_eta");
+                                + " && " + ParamsSet::FiducialGapCutExpr("m2.truth_charge * m2.truth_eta")
+                                + " && " + ParamsSet::PairFiducialEtaCutExpr("truth_pair_eta");
     const std::string gap_reco  = ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta")
-                                + " && " + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta");
+                                + " && " + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta")
+                                + " && " + ParamsSet::PairFiducialEtaCutExpr("pair_eta");
 
     for (const std::string& pair_catgr : {"_ss", "_op", "_single_b"}){
         const std::string df_name = "df" + pair_catgr;
