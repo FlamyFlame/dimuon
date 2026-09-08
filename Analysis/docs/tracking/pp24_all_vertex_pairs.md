@@ -104,14 +104,22 @@ whenever it is as good as any other. A pair is counted as **secondary-vertex** w
 Vertex-assignment ambiguity is small by construction. Measured on `data_pp24_part11.root`,
 first 300 000 events, **eligible (`vtx_ntrk >= 2`) vertices only**, averaging over vertex
 *pairs*: only **0.60 %** of vertex pairs sit within 2 mm in z, against a `vtx_z` RMS of
-**58.3 mm** and a mean |z_i - z_j| of **67.3 mm**. (Two reviewers reproduced these three
+**58.3 mm** (about zero; the about-the-mean standard deviation is 58.31 vs 58.32 mm, since
+<vtx_z> = -1.11 mm — the two agree to the three figures quoted) and a mean |z_i - z_j| of
+**67.3 mm**. (Two reviewers reproduced these three
 numbers to three digits; the values 0.73 % / 61.0 / 68.3 quoted here before 2026-09-08 were
 not reproducible under any definition and are withdrawn. The sample and the
 "eligible-only, over pairs" definition are part of the statement — keeping that definition and
 changing only eligible->all gives 10.3 % / 57.9 mm / 60.3 mm instead. Do not confuse the
 pair-averaged mean |z_i - z_j| quoted here with the mean distance to the PRIMARY,
 |z_i - z_0| over i >= 1, which is a different quantity: 65.4 mm eligible-only, 48.1 mm over all
-vertices.)
+vertices. Note WHAT the eligible->all contrast actually is: the container holds the
+track-bearing vertices plus **exactly one** `ntrk == 0` dummy per event — measured, the two
+counts differ by 300 000 in 300 000 events — so the whole difference between the two rows is
+that single beam-spot duplicate of the primary, and nothing else. That is a direct measurement
+of what the ntrk >= 2 guard of §3c removes: without it, every event would carry a second
+"vertex" at z identical to the primary's, and 10.3 % of vertex pairs would sit within 2 mm of
+each other instead of 0.60 %.)
 
 A related property this design rests on, **empirical rather than structural**: the returned
 index can only be the primary if vertex 0 is itself eligible. Were `vtx_ntrk[0] < 2` ever to
@@ -422,30 +430,38 @@ net change is ~0.
 
 ## Remaining Work
 
-Steps 4-8 of the Implementation Plan, per the table above.
+Steps 6, 7a, 7b, 7c and 8 of the Implementation Plan, per the rerun-plan table above.
+Steps 1-5 are done and the code has PASSED `/review-analysis-code` at iteration 4.
+
+Carried forward, NOT part of this task:
+- The concurrent session's `pair_trig_eff_pp24_full[_medium_wp].root` must be **re-measured** on
+  the new fullsim pair tree before it is used (invalidated by step 7a, by user decision).
+- POWHEG pp17 fullsim is code-changed but deliberately not rerun; rerun it before reviving any
+  POWHEG fullsim RECO product.
+- Pb+Pb still has neither the fiducial nor the pair-level cut and still books a retyped 44-bin
+  pair-eta axis; crossx Stage 7 draws pp only until that is migrated.
 
 ## Latest Stage
 
-**DATA HALF DONE; MC HALF HELD ON A CONCURRENT SESSION (2026-09-08).**
+**DATA HALF COMPLETE AND CERTIFIED; MC HALF NOW RUNNING (2026-09-08).**
 
-Done: Steps 1, 2, 3, 4a, 4b, 5 — code written, reviewed once and amended for all 10 findings,
-committed (2bb281d, 99a9efa, ee46d2c, 568542e); both pp24 Condor modes rerun clean and hadded;
-the statistics record produced at full statistics (see Results & Observations).
+Steps 1-5 DONE. `/review-analysis-code` **PASSED at iteration 4** (commits 2bb281d, 99a9efa,
+ee46d2c, 568542e, 16cc84c, 0473bde, c60d351 + the round-4 INFO fixes). Rounds 2, 3 and 4 each
+found **zero code-correctness and zero physics issues**; every finding after round 1 was
+documentation, completeness or artefact-truthfulness. The reviewers reproduced the branch-binding
+2x2 truth table three independent times, re-measured all four vertex-spread quantities, exercised
+`check_complete` adversarially (silent on the true set, fires on a 3-pair gap, fires on a
+duplicated row), and regenerated the CSV byte-identically.
 
-**HELD — do not start without checking:** Steps 6, 7a, 7b, 7c, 8 (eps^nc refit, Pythia fullsim
-NTuple+RDF+MC trig-eff, dR fits, pair_reco_eff rebuild, crossx). **A SECOND Claude session is
-working in this same checkout on the MC trigger efficiency** — `FillMCTrigEffPairEff.cxx`,
-`FillMCTrigEffClosure.cxx`, `Utilities/PairTrigEffEvaluator.h` and a new ACTIVE tracking doc
-`mc_trigeff_single_value_pair_eff.md` ("single-value pair 2mu4 efficiency in the top pair-pT
-cells"), all written 2026-09-08 00:31-00:41 with their own ACTIVE Autonomy Contract. The
-collision is not merely a race: **Step 7a's fullsim NTuple rerun MOVES the fullsim pair tree
-their whole measurement is built on** (by ~1.2 %), and Stage 10 + the dR fits overwrite
-`mc_trig_eff_hists_*`, `dr_correction_fits_*` and `plots/pp_trigger_efficiency/mc_based/` —
-none of which git can see (`.gitignore` drops `*.root *.png`). USER DECISION 2026-09-08: hold
-the MC half, finish the data half, resume when that session reports done. Second user decision
-the same day: the cross-section keeps the **dR-fit** trigger weight (with today's MINUIT-limits
-change, which still needs `/review-analysis-code`); the single-value pair-efficiency method is
-NOT adopted into the crossx — consistent with that doc's own Done list ("NOT wired into the
-cross-section").
+**MC half unblocked 2026-09-08.** The concurrent session's tracking doc
+(`mc_trigeff_single_value_pair_eff.md`) reads DONE, all committed, nothing in flight. USER
+DECISION: proceed with the fullsim rerun, accepting that it invalidates that session's
+`pair_trig_eff_pp24_full[_medium_wp].root` (01:55/01:58 today) — those were measured from
+`muon_pairs_pythia_fullsim_pp24_..._mc_trig_full.root` dated **22 July**, i.e. an input that
+already predated the 2026-09-07 gap cuts, and step 7a rewrites exactly that file. Their
+single-value pair efficiency is a not-yet-wired study (its own Done list says "NOT wired into
+the cross-section") and the cross-section keeps the dR-fit trigger weight, so nothing in the
+crossx chain depends on it. **It must be re-measured on the new tree before it is used for
+anything.**
 
-Also in flight: `/review-analysis-code` iteration 2 on the amended code + the statistics macro.
+Now running: Steps 6, 7a, 7b, 7c, 8 in the dependency order of the rerun plan.

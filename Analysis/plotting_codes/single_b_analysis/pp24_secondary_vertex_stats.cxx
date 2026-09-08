@@ -79,8 +79,9 @@ struct Row {
 // At k = 0 / k = N the error is a ONE-SIDED Clopper-Pearson width, so it must not be printed as
 // "+-": "0.000 +- 10.869 %" claims a two-sided interval that runs below zero.
 const char* ErrSign(double k, double n) {
-    if (n > 0 && k <= 0) return " +  ";
-    if (n > 0 && k >= n) return " -  ";
+    if (n <= 0)          return "    ";  // 0/0 has no interval at all, one-sided or otherwise
+    if (k <= 0)          return " +  ";
+    if (k >= n)          return " -  ";
     return " +- ";
 }
 
@@ -90,10 +91,10 @@ void PrintRow(std::ostream& os, const Row& r) {
        << std::setw(10) << (long long)r.n
        << std::setw(9)  << (long long)r.n_sec
        << "  " << std::fixed << std::setprecision(3) << std::setw(6) << pct(r.n_sec, r.n)
-       << ErrSign(r.n_sec, r.n) << std::setw(5) << 100.0 * FracErr(r.n_sec, r.n) << " %"
+       << ErrSign(r.n_sec, r.n) << std::setw(6) << 100.0 * FracErr(r.n_sec, r.n) << " %"
        << std::setw(9)  << (long long)r.n_new
        << "  " << std::setw(6) << pct(r.n_new, r.n)
-       << ErrSign(r.n_new, r.n) << std::setw(5) << 100.0 * FracErr(r.n_new, r.n) << " %" << std::endl;
+       << ErrSign(r.n_new, r.n) << std::setw(6) << 100.0 * FracErr(r.n_new, r.n) << " %" << std::endl;
 }
 
 }  // namespace
@@ -251,8 +252,8 @@ void pp24_secondary_vertex_stats(bool use_tight_wp = true,
         std::cout << "\n" << title << "\n"
                   << std::left << std::setw(22) << "population" << std::right
                   << std::setw(10) << "N"
-                  << std::setw(9)  << "N_sec" << std::setw(18) << "f_sec"
-                  << std::setw(9)  << "N_new" << std::setw(18) << "f_new" << std::endl;
+                  << std::setw(9)  << "N_sec" << std::setw(19) << "f_sec"
+                  << std::setw(9)  << "N_new" << std::setw(19) << "f_new" << std::endl;
     };
 
     std::cout << "\npp24 secondary-vertex statistics, " << wp_name << " WP\n"
@@ -294,8 +295,10 @@ void pp24_secondary_vertex_stats(bool use_tight_wp = true,
            "window + |eta^pair| < " << ParamsSet::pair_eta_fiducial_max << ".\n"
         << "# The pair-pT edges in the `selection` column are ROUNDED to 2 dp for legibility; "
            "the cuts themselves use the exact ParamsSet edges. Errors are nested-binomial, "
-           "except at k = 0 or k = N where the 68 % Clopper-Pearson width is given (a bin with "
-           "no secondary-vertex pairs is not a measurement of exactly zero).\n"
+           "except at k = 0 or k = N, where the 68 % Clopper-Pearson width is given and is "
+           "ONE-SIDED -- upward at k = 0, downward at k = N (a bin with no secondary-vertex "
+           "pairs is not a measurement of exactly zero, and its interval does not extend below "
+           "it). These columns carry no sign, so read them with this line.\n"
         << "population,selection,N,N_sec,f_sec,f_sec_err,N_new,f_new,f_new_err\n";
 
     auto write_row = [&](const std::string& pop, const Row& r) {
