@@ -125,6 +125,35 @@ inline const PairSign& Sign(const std::string& token)
     throw std::invalid_argument("PairTrigEff::Sign: unknown pair-sign token '" + token + "'");
 }
 
+// ---------------------------------------------------------------------------- the cell modes
+// A second way of buying statistics in the top cells, on the pair-pT axis this time: the
+// alternative to a finer correction is a COARSER one. `ptmerge` combines the last two coarse
+// pair-pT cells into a single [72.08, 150) GeV cell, exactly as the dR correction's own
+// `nocorr_ptmerge` mode does (mc_trigger_efficiency.md R32).
+//
+// ⚠ IT IS NOT A NEW BINNING (.claude/CLAUDE.md §Binnings item 4). The FILLED histograms keep the
+// canonical 8 pair-pT bins; a merged cell is the two source bins' num / den / A / B SUMMED BEFORE
+// the ratio, which is numerically identical to having filled a 7-bin axis. The variant is opt-in
+// and SUFFIXED, so it can neither overwrite nor be mistaken for the un-merged one.
+struct CellMode {
+    std::string token;    // "nomerge" / "ptmerge"
+    std::string suffix;   // "" / "_ptmerge" -- empty for the default so existing names are unchanged
+    std::string text;
+};
+inline const std::vector<CellMode>& CellModes()
+{
+    static const std::vector<CellMode> m = {
+        {"nomerge", "",          "the canonical 8 coarse pair-pT cells"},
+        {"ptmerge", "_ptmerge",  "the last two coarse pair-pT cells combined into one"},
+    };
+    return m;
+}
+inline const CellMode& Mode(const std::string& token)
+{
+    for (const auto& m : CellModes()) if (m.token == token) return m;
+    throw std::invalid_argument("PairTrigEff::Mode: unknown cell-mode token '" + token + "'");
+}
+
 // ---------------------------------------------------------------------------- on-disk naming
 // One TH2D per (quantity, sign, window). X = the canonical coarse pair-pT axis, Y = the 3
 // |eta^pair| groups. Quantities:
@@ -136,9 +165,9 @@ inline const PairSign& Sign(const std::string& token)
 //   nraw      raw (UNWEIGHTED) all-pairs count   -- the statistical reach, never hidden
 //   nrawpass  raw (UNWEIGHTED) firing-pair count
 inline std::string HistName(const std::string& quantity, const std::string& sign,
-                            const std::string& window)
+                            const std::string& window, const std::string& mode = "nomerge")
 {
-    return "h_paireff_" + quantity + "_" + sign + "_" + window;
+    return "h_paireff_" + quantity + "_" + sign + "_" + window + Mode(mode).suffix;
 }
 
 // The deliverable file. One file per sample x working point; the sign and the window are inside.
@@ -152,10 +181,27 @@ inline std::string FileName(const std::string& mc_dir, const std::string& mc_lab
 // Both are DERIVED, never typed. The |eta| fold is built by the caller (the fill macro and the
 // evaluator both hand in the edges they got from MakeDrEtaGroups) -- this header only states what
 // the pair-pT axis is, because that one has a single canonical source with no grouping step.
-inline std::vector<double> PairPtEdges()
+inline std::vector<double> PairPtEdges(const std::string& mode = "nomerge")
 {
     static const ParamsSet pms;
-    return pms.pair_pt_coarse_bins;
+    std::vector<double> e = pms.pair_pt_coarse_bins;
+    if (Mode(mode).token == "ptmerge") {
+        if (e.size() < 3)
+            throw std::runtime_error("PairTrigEff::PairPtEdges: cannot merge the last two pair-pT "
+                                     "cells of a binning with fewer than 2");
+        e.erase(e.end() - 2);         // drop the edge BETWEEN the last two cells
+    }
+    return e;
+}
+
+// The pair-pT edge the DELIVERED range starts at -- 49.97 GeV, the lower edge of the request's
+// control cell. Read from the canonical vector, never typed, and independent of the cell mode:
+// merging the cells ABOVE it cannot move it, which is why the delivered range is expressed as an
+// edge here and looked up in whatever axis is in use, rather than as a bin index.
+inline double FirstDeliveredPtEdge()
+{
+    const std::vector<double> e = PairPtEdges("nomerge");
+    return e[e.size() - 4];
 }
 
 // Contiguous (lo,hi) ranges -> bin edges (same helper as FillMCTrigEffHists.cxx /
@@ -208,9 +254,13 @@ inline double MaxDeliveredValue() { return 1.0; }
 // highest cells; the measurement itself is made in all of them (it costs nothing and the low bins
 // are the sanity check against the well-determined dR correction), so the delivered range is a
 // separate, explicit statement rather than a truncated axis.
-inline int FirstDeliveredPtBin()
+inline int FirstDeliveredPtBin(const std::string& mode = "nomerge")
 {
-    return static_cast<int>(PairPtEdges().size()) - 3;   // 8 bins -> bin 6 = [49.97, 72.08) GeV
+    const std::vector<double> e = PairPtEdges(mode);
+    for (size_t i = 0; i + 1 < e.size(); ++i)
+        if (std::fabs(e[i] - FirstDeliveredPtEdge()) < 1e-6) return (int)i + 1;
+    throw std::runtime_error("PairTrigEff::FirstDeliveredPtBin: the delivered-range edge is not an "
+                             "edge of the cell mode's own pair-pT axis");
 }
 
 }  // namespace PairTrigEff
@@ -228,10 +278,10 @@ public:
     enum class ApplyForm { kPure, kCalibrated };
 
     void Load(const std::string& file, const std::string& sign, const std::string& window,
-              ApplyForm form)
+              ApplyForm form, const std::string& mode = "nomerge")
     {
         PairTrigEff::CheckSignalWindowMirror();
-        sign_ = sign; window_ = window; form_ = form; file_ = file;
+        sign_ = sign; window_ = window; form_ = form; file_ = file; mode_ = mode;
         TFile* f = TFile::Open(file.c_str(), "READ");
         if (!f || f->IsZombie())
             throw std::runtime_error("PairTrigEffEvaluator: cannot open " + file
@@ -243,15 +293,15 @@ public:
         // denominator still counts -- a bias that reads as non-closure. K >= eps always, so only
         // the calibrated form can fail the upper bound; requiring BOTH in range makes the two
         // agree by construction. (No cell differs today: max delivered K = 0.78.)
-        h_eps_.reset(Grab(f, PairTrigEff::HistName("eps", sign, window)));
-        h_k_  .reset(Grab(f, PairTrigEff::HistName("k",   sign, window)));
+        h_eps_.reset(Grab(f, PairTrigEff::HistName("eps", sign, window, mode)));
+        h_k_  .reset(Grab(f, PairTrigEff::HistName("k",   sign, window, mode)));
         h_.reset(static_cast<TH2D*>((form == ApplyForm::kPure ? h_eps_ : h_k_)->Clone(
-            (PairTrigEff::HistName(form == ApplyForm::kPure ? "eps" : "k", sign, window)
+            (PairTrigEff::HistName(form == ApplyForm::kPure ? "eps" : "k", sign, window, mode)
              + "_sel").c_str())));
         h_->SetDirectory(nullptr);
-        h_den_.reset(Grab(f, PairTrigEff::HistName("den",      sign, window)));
-        h_nraw_.reset(Grab(f, PairTrigEff::HistName("nraw",     sign, window)));
-        h_nrawpass_.reset(Grab(f, PairTrigEff::HistName("nrawpass", sign, window)));
+        h_den_     .reset(Grab(f, PairTrigEff::HistName("den",      sign, window, mode)));
+        h_nraw_    .reset(Grab(f, PairTrigEff::HistName("nraw",     sign, window, mode)));
+        h_nrawpass_.reset(Grab(f, PairTrigEff::HistName("nrawpass", sign, window, mode)));
         auto* prov = dynamic_cast<TNamed*>(f->Get("provenance"));
         provenance_ = prov ? prov->GetTitle() : "";
         f->Close();
@@ -275,7 +325,7 @@ public:
     {
         int ix = 0, iy = 0;
         if (!Cell(pair_pt, pair_eta, ix, iy))              return Reject::kOffAxis;
-        if (ix < PairTrigEff::FirstDeliveredPtBin())       return Reject::kBelowDeliveredPt;
+        if (ix < PairTrigEff::FirstDeliveredPtBin(mode_)) return Reject::kBelowDeliveredPt;
         // Emptiness is decided on the RAW histogram, the same one the fill macro's REFUSED list
         // uses -- the weighted denominator would be a second, near-equivalent definition of the
         // same predicate, and near-equivalent is how these drift apart.
@@ -358,6 +408,7 @@ public:
              + std::string(form_ == ApplyForm::kPure ? "PURE eps^pair, replaces the whole weight"
                                                 : "CALIBRATED K, multiplies eps(1)eps(2)")
              + "], sign " + sign_ + ", " + PairTrigEff::Window(window_).text
+             + ", cells: " + PairTrigEff::Mode(mode_).text
              + Form(", delivered only for cells with >= %d raw pairs and a value in (0, %g]",
                     PairTrigEff::MinCellPairs(), PairTrigEff::MaxDeliveredValue())
              + ", from " + file_;
@@ -398,17 +449,18 @@ private:
     // helper the `nocorr_etamerge*` dR modes use, so the two groupings cannot drift apart.
     void CheckCanonicalBinning() const
     {
-        const std::vector<double> px = PairTrigEff::PairPtEdges();
+        const std::vector<double> px = PairTrigEff::PairPtEdges(mode_);
         if (h_->GetNbinsX() != (int)px.size() - 1)
             throw std::runtime_error("PairTrigEffEvaluator: " + file_ + " has "
-                + std::to_string(h_->GetNbinsX()) + " pair-pT cells but "
-                "ParamsSet::pair_pt_coarse_bins has " + std::to_string(px.size() - 1)
-                + " -- stale file");
+                + std::to_string(h_->GetNbinsX()) + " pair-pT cells but cell mode '" + mode_
+                + "' of ParamsSet::pair_pt_coarse_bins has " + std::to_string(px.size() - 1)
+                + " -- stale file, or the wrong cell mode");
         for (size_t i = 0; i < px.size(); ++i)
             if (std::fabs(h_->GetXaxis()->GetBinLowEdge((int)i + 1) - px[i]) > 1e-6)
                 throw std::runtime_error("PairTrigEffEvaluator: pair-pT edge " + std::to_string(i)
                     + " of " + file_ + " is " + std::to_string(h_->GetXaxis()->GetBinLowEdge((int)i + 1))
-                    + " but ParamsSet says " + std::to_string(px[i]) + " -- stale file");
+                    + " but cell mode '" + mode_ + "' of ParamsSet says " + std::to_string(px[i])
+                    + " -- stale file");
 
         const std::vector<double> ay = PairTrigEff::AbsEtaGroups().edges;
         if (h_->GetNbinsY() != (int)ay.size() - 1)
@@ -426,7 +478,7 @@ private:
     }
 
     std::unique_ptr<TH2D> h_, h_eps_, h_k_, h_den_, h_nraw_, h_nrawpass_;
-    std::string sign_, window_, file_, provenance_;
+    std::string sign_, window_, mode_ = "nomerge", file_, provenance_;
     ApplyForm form_ = ApplyForm::kPure;
 };
 

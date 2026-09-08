@@ -193,9 +193,21 @@ struct SeriesEval {
 struct PairSeriesEval {
     std::string key;                     // histogram + RDF column token
     std::string window;                  // mass-window token: which cells were measured
+    std::string mode;                    // cell mode: "nomerge" / "ptmerge"
+    std::string cov;                     // coverage token = window + the mode's suffix
     bool        calibrated = false;      // false: w/eps^pair ; true: w/(eps_MC1 eps_MC2 K)
     PairTrigEffEvaluator* ev = nullptr;
     std::string provenance;
+};
+
+// WHICH (mass window, cell mode) COMBINATIONS ARE BUILT. Both windows on the canonical cells, and
+// the pair-pT-merged variant for the SIGNAL window only -- the merge is the alternative the user
+// asked for in the signal window, and a merged `wide` series would answer no question the two
+// existing ones do not (the mass-window comparison is made on the canonical cells).
+const std::vector<std::pair<std::string, std::string>> kPairCells = {
+    {"sig",  "nomerge"},
+    {"wide", "nomerge"},
+    {"sig",  "ptmerge"},
 };
 
 // BOOKED FOR THE `signal` VERSION ONLY, and that is a physics statement, not an economy: the mass
@@ -451,16 +463,18 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
     // so a stale file throws there rather than being silently read as today's cells.
     const std::string pair_eff_file = PairTrigEff::FileName(cfg.mc_dir, cfg.mc_label, wp_suf);
     std::vector<PairSeriesEval> pair_series;
-    for (const auto& W : PairTrigEff::Windows())
+    for (const auto& WM : kPairCells)
         for (bool calib : {false, true}) {
+            const std::string suf = PairTrigEff::Mode(WM.second).suffix;
+            const std::string key = std::string(calib ? "paireffK_" : "paireff_") + WM.first + suf;
             auto* pe = new PairTrigEffEvaluator();
-            pe->Load(pair_eff_file, kSignSeries, W.token,
+            pe->Load(pair_eff_file, kSignSeries, WM.first,
                      calib ? PairTrigEffEvaluator::ApplyForm::kCalibrated
-                           : PairTrigEffEvaluator::ApplyForm::kPure);
-            pair_series.push_back({std::string(calib ? "paireffK_" : "paireff_") + W.token,
-                                   W.token, calib, pe,
-                                   " | " + std::string(calib ? "paireffK_" : "paireff_") + W.token
-                                   + ": " + pe->Describe() + "; " + stamp(pair_eff_file)});
+                           : PairTrigEffEvaluator::ApplyForm::kPure,
+                     WM.second);
+            pair_series.push_back({key, WM.first, WM.second, WM.first + suf, calib, pe,
+                                   " | " + key + ": " + pe->Describe() + "; "
+                                   + stamp(pair_eff_file)});
         }
 
     // ---------------------------------------------------------------- the pair sample
@@ -573,11 +587,16 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
     // actually reach. A presentation bin where this differs from the full denominator is only
     // PARTLY covered, and drawing the single-value ratio there would show a coverage artefact as
     // if it were non-closure (doc PP-4).
+    // One coverage column per (mass window, cell mode) actually used: merging the top pair-pT cells
+    // CHANGES which pairs are covered (it is what lets the forward 4-pair cell clear the delivery
+    // gate), so a single per-window coverage denominator would silently be the wrong reference for
+    // the merged series.
     ROOT::RDF::RNode dcov = d;
-    for (const auto& W : PairTrigEff::Windows()) {
+    for (const auto& WM : kPairCells) {
         auto* pe = new PairTrigEffEvaluator();
-        pe->Load(pair_eff_file, kSignSeries, W.token, PairTrigEffEvaluator::ApplyForm::kPure);
-        dcov = dcov.Define("wcov_" + W.token,
+        pe->Load(pair_eff_file, kSignSeries, WM.first, PairTrigEffEvaluator::ApplyForm::kPure,
+                 WM.second);
+        dcov = dcov.Define("wcov_" + WM.first + PairTrigEff::Mode(WM.second).suffix,
                            [ev = pe](float ppt, float peta, double wgt) {
                                return ev->Covered(ppt, peta) ? wgt : 0.0;
                            },
@@ -645,11 +664,12 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
                               trig_versions.at(v).Histo2D(model(pre + "numB_" + k),
                                                           "pair_pt", "pair_eta", "wB_" + k));
             }
-            for (const auto& W : PairTrigEff::Windows())
-                books.emplace(pre + "den_paireff_" + W.token,
-                              cov_versions.at(v).Histo2D(model(pre + "den_paireff_" + W.token),
-                                                         "pair_pt", "pair_eta",
-                                                         "wcov_" + W.token));
+            for (const auto& WM : kPairCells) {
+                const std::string ct = WM.first + PairTrigEff::Mode(WM.second).suffix;
+                books.emplace(pre + "den_paireff_" + ct,
+                              cov_versions.at(v).Histo2D(model(pre + "den_paireff_" + ct),
+                                                         "pair_pt", "pair_eta", "wcov_" + ct));
+            }
         }
     }
     auto n_sel     = d_all_pt.Count();
@@ -760,7 +780,7 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
                 std::cout << "\n            single-value " << P.key << ": corrected/all = "
                           << (den > 0 ? books.at(pre + "num_" + P.key)->Integral() / den : -1.)
                           << "  [coverage: covered/all denominator = "
-                          << (den > 0 ? books.at(pre + "den_paireff_" + P.window)->Integral() / den
+                          << (den > 0 ? books.at(pre + "den_paireff_" + P.cov)->Integral() / den
                                       : -1.)
                           << "]";
         std::cout << std::endl;

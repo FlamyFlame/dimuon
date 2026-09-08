@@ -225,21 +225,59 @@ void FillMCTrigEffPairEff(const std::string& sample = "pp_full", bool use_tight_
         }
     }
 
+    // ------------------------------------------------------------------ the cells, both modes
+    // `nomerge` is the canonical 8-cell pair-pT axis. `ptmerge` combines the last two cells into
+    // one [72.08, 150) GeV cell -- the pair-pT analogue of the dR correction's own `nocorr_ptmerge`
+    // (mc_trigger_efficiency.md R32), and the same trade: it buys statistics where the sample runs
+    // out, at the cost of describing a MIXTURE of two cells. It is NOT a new binning: the merged
+    // cell is the two source cells' num / den / A / B SUMMED BEFORE the ratio, which is exactly
+    // what filling a 7-bin axis would have given (.claude/CLAUDE.md Binnings item 4), and it is
+    // opt-in and suffixed so it cannot be mistaken for the un-merged measurement.
+    std::vector<std::unique_ptr<TH2D>> owned;
+    std::map<std::string, TH2D*> H;          // every delivered histogram, keyed by its final name
+    for (auto& kv : books) H.emplace(kv.first, kv.second.GetPtr());
+
+    const std::vector<double> mpt = PairTrigEff::PairPtEdges("ptmerge");
+    const int nmpt = (int)mpt.size() - 1;
+    auto merge_last_two_pt = [&](const TH2D* h, const std::string& name) {
+        auto m = std::unique_ptr<TH2D>(new TH2D(name.c_str(), h->GetTitle(),
+                                                nmpt, mpt.data(), neta, eta_edges.data()));
+        m->SetDirectory(nullptr);
+        m->Sumw2();
+        for (int iy = 1; iy <= neta; ++iy) {
+            for (int ix = 1; ix <= nmpt - 1; ++ix) {           // the untouched low cells
+                m->SetBinContent(ix, iy, h->GetBinContent(ix, iy));
+                m->SetBinError  (ix, iy, h->GetBinError  (ix, iy));
+            }
+            // the merged top cell: contents ADD, errors add in quadrature (these are all SUMS --
+            // of weights, of squared weights -- never ratios, so summing them is exact.)
+            const double c = h->GetBinContent(npt - 1, iy) + h->GetBinContent(npt, iy);
+            const double e1 = h->GetBinError(npt - 1, iy), e2 = h->GetBinError(npt, iy);
+            m->SetBinContent(nmpt, iy, c);
+            m->SetBinError  (nmpt, iy, std::sqrt(e1 * e1 + e2 * e2));
+        }
+        TH2D* raw = m.get();
+        owned.push_back(std::move(m));
+        return raw;
+    };
+
     // ------------------------------------------------------------------ form the two ratios
     // Built here rather than by every consumer, so the conditional error is applied in ONE place
-    // and a reader of the file gets the number AND its bar without re-deriving either.
-    std::map<std::string, std::unique_ptr<TH2D>> ratios;
-    auto make_ratio = [&](const std::string& sign, const std::string& win, const std::string& q,
-                          const char* num_key, const char* A_key, const char* B_key) {
-        const std::string name = PairTrigEff::HistName(q, sign, win);
-        TH2D* den = books.at(PairTrigEff::HistName("den", sign, win)).GetPtr();
-        TH2D* num = books.at(PairTrigEff::HistName(num_key, sign, win)).GetPtr();
-        TH2D* A   = books.at(PairTrigEff::HistName(A_key,   sign, win)).GetPtr();
-        TH2D* B   = books.at(PairTrigEff::HistName(B_key,   sign, win)).GetPtr();
+    // and a reader of the file gets the number AND its bar without re-deriving either. The SAME
+    // routine serves both cell modes -- the merged inputs are ordinary sums, so nothing about the
+    // ratio or its error changes.
+    auto form_ratio = [&](const std::string& q, const std::string& sign, const std::string& win,
+                          const std::string& mode, const char* num_key, const char* A_key,
+                          const char* B_key) {
+        const std::string name = PairTrigEff::HistName(q, sign, win, mode);
+        TH2D* den = H.at(PairTrigEff::HistName("den",  sign, win, mode));
+        TH2D* num = H.at(PairTrigEff::HistName(num_key, sign, win, mode));
+        TH2D* A   = H.at(PairTrigEff::HistName(A_key,   sign, win, mode));
+        TH2D* B   = H.at(PairTrigEff::HistName(B_key,   sign, win, mode));
         auto r = std::unique_ptr<TH2D>(static_cast<TH2D*>(num->Clone(name.c_str())));
         r->SetDirectory(nullptr);
         r->Divide(den);
-        // SetConditionalRatioErrors is written for TH1D (one dR row at a time); the cells here are
+        // SetConditionalRatioErrors is written for TH1D (one row at a time); the cells here are
         // independent of one another, so it is applied row by row on projections and the errors
         // copied back. Same single implementation, no second copy of the formula.
         for (int iy = 1; iy <= neta; ++iy) {
@@ -250,24 +288,37 @@ void FillMCTrigEffPairEff(const std::string& sample = "pp_full", bool use_tight_
             std::unique_ptr<TH1D> bb(B  ->ProjectionX(("b" + tag).c_str(), iy, iy, "e"));
             for (auto* h : {rr.get(), dd.get(), aa.get(), bb.get()}) h->SetDirectory(nullptr);
             SetConditionalRatioErrors(rr.get(), dd.get(), aa.get(), bb.get());
-            for (int ix = 1; ix <= npt; ++ix) r->SetBinError(ix, iy, rr->GetBinError(ix));
+            for (int ix = 1; ix <= r->GetNbinsX(); ++ix)
+                r->SetBinError(ix, iy, rr->GetBinError(ix));
         }
         r->SetTitle(Form(";p_{T}^{pair} [GeV];|#eta^{pair}|;%s",
                          q == "eps" ? "#varepsilon_{2#mu4}^{pair}" : "K"));
-        ratios.emplace(name, std::move(r));
+        TH2D* raw = r.get();
+        owned.push_back(std::move(r));
+        H.emplace(name, raw);
     };
+
     for (const auto& S : PairTrigEff::Signs())
         for (const auto& W : PairTrigEff::Windows()) {
-            make_ratio(S.token, W.token, "eps", "num",  "Aeps", "Beps");
-            make_ratio(S.token, W.token, "k",   "numk", "Ak",   "Bk");
+            // the merged SUMS first -- the ratios of both modes are then formed the same way
+            for (const char* q : {"den", "num", "numk", "Aeps", "Beps", "Ak", "Bk",
+                                  "nraw", "nrawpass"}) {
+                const std::string src = PairTrigEff::HistName(q, S.token, W.token, "nomerge");
+                const std::string dst = PairTrigEff::HistName(q, S.token, W.token, "ptmerge");
+                H.emplace(dst, merge_last_two_pt(H.at(src), dst));
+            }
+            for (const auto& M : PairTrigEff::CellModes()) {
+                form_ratio("eps", S.token, W.token, M.token, "num",  "Aeps", "Beps");
+                form_ratio("k",   S.token, W.token, M.token, "numk", "Ak",   "Bk");
+            }
         }
+
 
     // ------------------------------------------------------------------ write
     const std::string out_name = PairTrigEff::FileName(cfg.mc_dir, cfg.mc_label, wp_suf);
     TFile fout(out_name.c_str(), "RECREATE");
     if (fout.IsZombie()) throw std::runtime_error("FillMCTrigEffPairEff: cannot open " + out_name);
-    for (auto& kv : books)  kv.second->Write(kv.first.c_str());
-    for (auto& kv : ratios) kv.second->Write(kv.first.c_str());
+    for (auto& kv : H) kv.second->Write(kv.first.c_str());
 
     std::string wins;
     for (const auto& W : PairTrigEff::Windows())
@@ -279,17 +330,21 @@ void FillMCTrigEffPairEff(const std::string& sample = "pp_full", bool use_tight_
                 " weight); K = sum_pass w/(eps_MC1 eps_MC2) / sum_all w  (CALIBRATED: multiplies"
                 " the two single-muon efficiencies, the single-number analogue of eps_dR)"
                 " | eps_MC: %s | cells: %d pair pT (ParamsSet::pair_pt_coarse_bins) x %d |eta^pair|"
-                " groups (%s) x signs os,ss | mass windows: %s| DELIVERED for pair-pT bins %d..%d"
-                " = [%g, %g) GeV | pair file: %s | base selection: %s | cell selection: %s"
+                " groups (%s) x signs os,ss | mass windows: %s| CELL MODES: `` = the canonical %d"
+                " pair-pT cells, `_ptmerge` = the last two combined into [%g, %g) GeV (a projection"
+                " of the same filled sums, NOT a new binning) | DELIVERED from %g GeV up"
+                " | pair file: %s | base selection: %s | cell selection: %s"
+                " | delivery gate: >= %d raw pairs and a value in (0, %g]"
                 " | NOT wired into the cross-section",
                 sample.c_str(), cfg.mc_label.c_str(), wp_text.c_str(), Stamp(eps_mc_file).c_str(),
                 npt, neta, DrGroupsDescribe(eta_grp, "|eta^pair|", "").c_str(), wins.c_str(),
-                first_delivered, npt, pt_edges[first_delivered - 1], pt_edges[npt],
-                Stamp(pair_file).c_str(), base_sel_text.c_str(), cell_sel_text.c_str()))
+                npt, mpt[nmpt - 1], mpt[nmpt], PairTrigEff::FirstDeliveredPtEdge(),
+                Stamp(pair_file).c_str(), base_sel_text.c_str(), cell_sel_text.c_str(),
+                PairTrigEff::MinCellPairs(), PairTrigEff::MaxDeliveredValue()))
         .Write();
     fout.Close();
-    std::cout << "\nFillMCTrigEffPairEff: wrote " << books.size() + ratios.size()
-              << " TH2D to " << out_name << std::endl;
+    std::cout << "\nFillMCTrigEffPairEff: wrote " << H.size() << " TH2D to " << out_name
+              << std::endl;
 
     // ------------------------------------------------------------------ the tables
     eps_mc->PrintStats(cfg.mc_label);
@@ -317,15 +372,15 @@ void FillMCTrigEffPairEff(const std::string& sample = "pp_full", bool use_tight_
                           << std::left << Form("[%.2f, %.2f)", pt_edges[ix - 1], pt_edges[ix])
                           << std::setw(16) << Form("[%.1f, %.1f)", eta_edges[iy - 1], eta_edges[iy]);
                 for (const auto& W : PairTrigEff::Windows()) {
-                    const TH2D* e = ratios.at(PairTrigEff::HistName("eps", S.token, W.token)).get();
-                    const TH2D* k = ratios.at(PairTrigEff::HistName("k",   S.token, W.token)).get();
+                    const TH2D* e = H.at(PairTrigEff::HistName("eps", S.token, W.token));
+                    const TH2D* k = H.at(PairTrigEff::HistName("k",   S.token, W.token));
                     std::cout << std::setw(34) << Form("%.4f +- %.4f", e->GetBinContent(ix, iy),
                                                        e->GetBinError(ix, iy))
                               << std::setw(22) << Form("%.4f +- %.4f", k->GetBinContent(ix, iy),
                                                        k->GetBinError(ix, iy));
                 }
-                const TH2D* na = books.at(PairTrigEff::HistName("nraw",     S.token, "sig")).GetPtr();
-                const TH2D* np = books.at(PairTrigEff::HistName("nrawpass", S.token, "sig")).GetPtr();
+                const TH2D* na = H.at(PairTrigEff::HistName("nraw",     S.token, "sig"));
+                const TH2D* np = H.at(PairTrigEff::HistName("nrawpass", S.token, "sig"));
                 std::cout << Form("%.0f / %.0f", na->GetBinContent(ix, iy), np->GetBinContent(ix, iy))
                           << (ix >= first_delivered ? "" : ")") << std::endl;
             }
@@ -340,28 +395,55 @@ void FillMCTrigEffPairEff(const std::string& sample = "pp_full", bool use_tight_
                   << std::setw(14) << "eps(wide)" << "raw pairs outside" << std::endl;
         for (int ix = first_delivered; ix <= npt; ++ix)
             for (int iy = 1; iy <= neta; ++iy) {
-                const TH2D* ds = books.at(PairTrigEff::HistName("den", S.token, "sig")).GetPtr();
-                const TH2D* dw = books.at(PairTrigEff::HistName("den", S.token, "wide")).GetPtr();
-                const TH2D* ns = books.at(PairTrigEff::HistName("num", S.token, "sig")).GetPtr();
-                const TH2D* nw = books.at(PairTrigEff::HistName("num", S.token, "wide")).GetPtr();
-                const TH2D* ra = books.at(PairTrigEff::HistName("nraw", S.token, "sig")).GetPtr();
-                const TH2D* rw = books.at(PairTrigEff::HistName("nraw", S.token, "wide")).GetPtr();
+                const TH2D* ds = H.at(PairTrigEff::HistName("den", S.token, "sig"));
+                const TH2D* dw = H.at(PairTrigEff::HistName("den", S.token, "wide"));
+                const TH2D* ns = H.at(PairTrigEff::HistName("num", S.token, "sig"));
+                const TH2D* nw = H.at(PairTrigEff::HistName("num", S.token, "wide"));
+                const TH2D* ra = H.at(PairTrigEff::HistName("nraw", S.token, "sig"));
+                const TH2D* rw = H.at(PairTrigEff::HistName("nraw", S.token, "wide"));
                 const double dD = dw->GetBinContent(ix, iy) - ds->GetBinContent(ix, iy);
                 const double dN = nw->GetBinContent(ix, iy) - ns->GetBinContent(ix, iy);
                 std::cout << "  " << std::setw(22) << std::left
                           << Form("[%.2f, %.2f)", pt_edges[ix - 1], pt_edges[ix])
                           << std::setw(16) << Form("[%.1f, %.1f)", eta_edges[iy - 1], eta_edges[iy])
                           << std::setw(14)
-                          << Form("%.4f", ratios.at(PairTrigEff::HistName("eps", S.token, "sig"))
+                          << Form("%.4f", H.at(PairTrigEff::HistName("eps", S.token, "sig"))
                                               ->GetBinContent(ix, iy))
                           << std::setw(14) << (dD > 0 ? Form("%.4f", dN / dD) : "-")
                           << std::setw(14)
-                          << Form("%.4f", ratios.at(PairTrigEff::HistName("eps", S.token, "wide"))
+                          << Form("%.4f", H.at(PairTrigEff::HistName("eps", S.token, "wide"))
                                               ->GetBinContent(ix, iy))
                           << Form("%.0f", rw->GetBinContent(ix, iy) - ra->GetBinContent(ix, iy))
                           << std::endl;
             }
     }
+    // ------------------------------------------------------------------ the pT-merged variant
+    // Only the SIGNAL window is tabulated (the request's scope); the merged `wide` cells are
+    // written to the file all the same, because the merge is a projection of sums that are already
+    // there and costs nothing to produce.
+    for (const auto& S : PairTrigEff::Signs()) {
+        std::cout << "\n===== single-value pair 2mu4 efficiency, LAST TWO pair-pT CELLS MERGED, "
+                  << S.text << ", " << wp_text << ", signal window =====\n  "
+                  << std::setw(22) << std::left << "pair pT [GeV]" << std::setw(16) << "|eta^pair|"
+                  << std::setw(26) << "eps^pair sig" << std::setw(26) << "K sig"
+                  << "raw pairs (all / 2mu4)" << std::endl;
+        const TH2D* e  = H.at(PairTrigEff::HistName("eps",      S.token, "sig", "ptmerge"));
+        const TH2D* k  = H.at(PairTrigEff::HistName("k",        S.token, "sig", "ptmerge"));
+        const TH2D* na = H.at(PairTrigEff::HistName("nraw",     S.token, "sig", "ptmerge"));
+        const TH2D* np = H.at(PairTrigEff::HistName("nrawpass", S.token, "sig", "ptmerge"));
+        for (int ix = PairTrigEff::FirstDeliveredPtBin("ptmerge"); ix <= nmpt; ++ix)
+            for (int iy = 1; iy <= neta; ++iy)
+                std::cout << "  " << std::setw(22) << std::left
+                          << Form("[%.2f, %.2f)", mpt[ix - 1], mpt[ix])
+                          << std::setw(16) << Form("[%.1f, %.1f)", eta_edges[iy - 1], eta_edges[iy])
+                          << std::setw(26) << Form("%.4f +- %.4f", e->GetBinContent(ix, iy),
+                                                   e->GetBinError(ix, iy))
+                          << std::setw(26) << Form("%.4f +- %.4f", k->GetBinContent(ix, iy),
+                                                   k->GetBinError(ix, iy))
+                          << Form("%.0f / %.0f", na->GetBinContent(ix, iy),
+                                  np->GetBinContent(ix, iy)) << std::endl;
+    }
+
     // ------------------------------------------------------------------ the delivery gate
     // Which delivered cells PairTrigEffEvaluator will refuse, and why. Nothing is removed from the
     // file -- every cell above is measured, written and printed; this states which of them a
@@ -372,11 +454,15 @@ void FillMCTrigEffPairEff(const std::string& sample = "pp_full", bool use_tight_
               << "] =====" << std::endl;
     int n_gated = 0;
     for (const auto& S : PairTrigEff::Signs())
-        for (const auto& W : PairTrigEff::Windows()) {
-            const TH2D* nr = books.at(PairTrigEff::HistName("nraw", S.token, W.token)).GetPtr();
+      for (const auto& W : PairTrigEff::Windows())
+        for (const auto& M : PairTrigEff::CellModes()) {
+            const std::vector<double>& mp = (M.token == "ptmerge") ? mpt : pt_edges;
+            const int nb = (int)mp.size() - 1;
+            const int lo = PairTrigEff::FirstDeliveredPtBin(M.token);
+            const TH2D* nr = H.at(PairTrigEff::HistName("nraw", S.token, W.token, M.token));
             for (const auto& q : {std::string("eps"), std::string("k")}) {
-                const TH2D* v = ratios.at(PairTrigEff::HistName(q, S.token, W.token)).get();
-                for (int ix = first_delivered; ix <= npt; ++ix)
+                const TH2D* v = H.at(PairTrigEff::HistName(q, S.token, W.token, M.token));
+                for (int ix = lo; ix <= nb; ++ix)
                     for (int iy = 1; iy <= neta; ++iy) {
                         const double n = nr->GetBinContent(ix, iy);
                         const double x = v->GetBinContent(ix, iy);
@@ -387,10 +473,11 @@ void FillMCTrigEffPairEff(const std::string& sample = "pp_full", bool use_tight_
                                               ? "value above the physical maximum" : nullptr;
                         if (!why) continue;
                         ++n_gated;
-                        std::cout << "  REFUSED  " << S.token << " / " << W.token << " / " << q
+                        std::cout << "  REFUSED  " << S.token << " / " << W.token << " / "
+                                  << M.token << " / " << q
                                   << Form("  pT [%.2f, %.2f)  |eta| [%.1f, %.1f)  value %.4f "
                                           "+- %.4f  raw pairs %.0f  -- %s",
-                                          pt_edges[ix - 1], pt_edges[ix], eta_edges[iy - 1],
+                                          mp[ix - 1], mp[ix], eta_edges[iy - 1],
                                           eta_edges[iy], x, v->GetBinError(ix, iy), n, why)
                                   << std::endl;
                     }
