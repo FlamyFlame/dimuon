@@ -38,15 +38,19 @@ set -Eeuo pipefail
 #              with a printed note, when MCTRIGEFF_PAIRPT_4BIN is set. With opposite-sign pairs and
 #              the `expo` form this is the variant the pp24 crossx application uses.
 #   step<N>_dr_fit/no_plateau_correction_paireta_merged/<method>/<sign mode>/
-#              The SAME raw fit with the pair-eta bins MERGED into the THREE PHYSICAL DETECTOR
-#              REGIONS -- negative-eta endcap, barrel, positive-eta endcap (user, 2026-08-24) -- so
-#              every canvas here carries 3 panels instead of 9. The 9-bin pair-eta grid is the
-#              CROSS-SECTION's presentation binning, never chosen for eps_dR's statistics; the
-#              three regions triple the pairs per fit while keeping the one physically motivated
-#              distinction (endcap L1 geometry differs from the barrel's), and the two ENDCAPS are
-#              deliberately NOT merged with each other. Also NOT a new binning -- the source bins
-#              are projected together at the fit stage and the interior group boundaries are looked
-#              up in the filled axis; see dr_correction_cell_groups.h. It is ORTHOGONAL to the
+#              The SAME raw fit with the pair-eta bins MERGED into THREE SIGN-INDEPENDENT
+#              |eta^pair| BINS -- |eta| < 1.0 (barrel), 1.0 <= |eta| < 2.0, 2.0 <= |eta| < the source axis's top edge (2.2 since 2026-09-07,
+#                     tracking ParamsSet::pair_eta_fiducial_max)
+#              (user, 2026-08-24; SUPERSEDED 2026-09-03 -- the dR correlation barely depends on
+#              the SIGN of pair eta, but the |eta|>2-vs-<2 split inside the endcap is much bigger
+#              than any negative/positive asymmetry) -- so every canvas here carries 3 panels
+#              instead of 9. The 9-bin pair-eta grid is the CROSS-SECTION's presentation binning,
+#              never chosen for eps_dR's statistics; the three bins triple the pairs per fit while
+#              keeping the one physically motivated distinction. The barrel group is one
+#              contiguous source range; each forward group FOLDS its negative- and positive-eta
+#              source bins together. Also NOT a new binning -- the source bins are projected
+#              together at the fit stage and every |eta| boundary is looked up as a symmetric
+#              pair of existing edges; see dr_correction_cell_groups.h. It is ORTHOGONAL to the
 #              pair-pT axis, so it runs on the 4-bin variant too.
 #   step<N>_dr_fit/no_plateau_correction_paireta_merged_last2ptbins_merged/<method>/<sign mode>/
 #              Both merges at once. Because it merges pair pT as well, the 8-BIN-AXIS-ONLY
@@ -84,8 +88,8 @@ set -Eeuo pipefail
 #                                    normalized fit; `nocorr` = the raw fit with a free baseline;
 #                                    `nocorr_ptmerge` = the same with the last two pair-pT bins
 #                                    merged (8-bin axis only); `nocorr_etamerge` = the same with
-#                                    the pair-eta bins merged into the three detector regions (no
-#                                    axis restriction); `nocorr_etamerge_ptmerge` = both merges
+#                                    the pair-eta bins folded into 3 sign-independent |eta| bins
+#                                    (no axis restriction); `nocorr_etamerge_ptmerge` = both merges
 #                                    (8-bin axis only, because it merges pair pT). Step 4 is
 #                                    restricted to `corr` whatever this says.
 #   SIGNS="intgr ss os"              sign series to fit. `intgr` = sign-integrated (nominal),
@@ -218,8 +222,8 @@ pmode_text() {
     corr)                    echo "plateau-corrected" ;;
     nocorr)                  echo "no plateau correction" ;;
     nocorr_ptmerge)          echo "no plateau corr., last 2 pT bins merged" ;;
-    nocorr_etamerge)         echo "no plateau corr., pair-eta merged into 3" ;;
-    nocorr_etamerge_ptmerge) echo "no plateau corr., pair-eta merged into 3 + last 2 pT bins merged" ;;
+    nocorr_etamerge)         echo "no plateau corr., pair-eta folded into 3 |eta| bins" ;;
+    nocorr_etamerge_ptmerge) echo "no plateau corr., pair-eta folded into 3 |eta| bins + last 2 pT bins merged" ;;
   esac
 }
 

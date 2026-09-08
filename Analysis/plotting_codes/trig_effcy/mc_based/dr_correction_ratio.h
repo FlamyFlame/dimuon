@@ -36,6 +36,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
+#include <utility>
+#include <vector>
 
 inline void SetConditionalRatioErrors(TH1D* r, const TH1D* den, const TH1D* A, const TH1D* B,
                                       const TH1D* covP = nullptr, const TH1D* covQ = nullptr)
@@ -75,29 +78,64 @@ inline void SetConditionalRatioErrors(TH1D* r, const TH1D* den, const TH1D* A, c
 // histograms. `hp`/`hq` (the Step-4 leg-leg covariance terms) may be null; the returned TH1D is
 // detached from any file and owned by the caller.
 //
-// EXPLICIT-RANGE form. `ylo/yhi` (pair pT) and `zlo/zhi` (pair eta) are 1-based INCLUSIVE bin
-// ranges of the 3D histograms; 0 on either pair means "integrate over that axis". A cell spanning
-// more than one bin is built by summing num / denom / errA / errB over the range BEFORE the ratio
-// is formed -- i.e. exactly what filling a coarser axis would have produced, never an average of
-// per-bin ratios. Used by the merged pair-pT grouping (dr_correction_cell_groups.h).
-inline TH1D* DrCellRatioRange(TH3D* hn, TH3D* hd, TH3D* ha, TH3D* hb, TH3D* hp, TH3D* hq,
-                              int ylo, int yhi, int zlo, int zhi, const char* nm)
+// MULTI-RANGE form. A fit cell is, in general, the UNION of one or more rectangular (pair-pT x
+// pair-eta) sub-ranges of the 3D histograms -- one for every plain merged cell (pair-pT merge, or
+// the un-merged identity), and MORE than one for a FOLDED cell such as the sign-independent |eta|
+// groups (dr_correction_cell_groups.h), whose forward groups are the union of a negative-eta and a
+// positive-eta sub-range. Each sub-range is projected and the results are SUMMED (num / denom /
+// errA / errB, and the Step-4 covariance terms if present) BEFORE the ratio is formed -- i.e.
+// exactly what filling one coarser/folded axis would have produced, never an average of per-range
+// ratios. An empty `yranges` (or `zranges`) means "integrate over that axis", mirroring
+// DrCellRatioRange's `ylo == 0` convention below.
+inline TH1D* DrCellRatioMultiRange(TH3D* hn, TH3D* hd, TH3D* ha, TH3D* hb, TH3D* hp, TH3D* hq,
+                                   std::vector<std::pair<int,int>> yranges,
+                                   std::vector<std::pair<int,int>> zranges,
+                                   const char* nm)
 {
     const int npt = hn->GetYaxis()->GetNbins(), neta = hn->GetZaxis()->GetNbins();
-    if (ylo == 0 || yhi == 0) { ylo = 1; yhi = npt;  }
-    if (zlo == 0 || zhi == 0) { zlo = 1; zhi = neta; }
-    TH1D* n = hn->ProjectionX(Form("%s_n", nm), ylo, yhi, zlo, zhi, "e");
-    TH1D* d = hd->ProjectionX(Form("%s_d", nm), ylo, yhi, zlo, zhi, "e");
-    TH1D* a = ha->ProjectionX(Form("%s_a", nm), ylo, yhi, zlo, zhi, "e");
-    TH1D* b = hb->ProjectionX(Form("%s_b", nm), ylo, yhi, zlo, zhi, "e");
-    TH1D* p = hp ? hp->ProjectionX(Form("%s_p", nm), ylo, yhi, zlo, zhi, "e") : nullptr;
-    TH1D* q = hq ? hq->ProjectionX(Form("%s_q", nm), ylo, yhi, zlo, zhi, "e") : nullptr;
+    if (yranges.empty()) yranges.push_back({1, npt});
+    if (zranges.empty()) zranges.push_back({1, neta});
+
+    TH1D *n = nullptr, *d = nullptr, *a = nullptr, *b = nullptr, *p = nullptr, *q = nullptr;
+    int idx = 0;
+    for (const auto& y : yranges) {
+        for (const auto& z : zranges) {
+            const std::string tag = std::string(nm) + "_sub" + std::to_string(idx++);
+            TH1D* nn = hn->ProjectionX((tag + "_n").c_str(), y.first, y.second, z.first, z.second, "e");
+            TH1D* dd = hd->ProjectionX((tag + "_d").c_str(), y.first, y.second, z.first, z.second, "e");
+            TH1D* aa = ha->ProjectionX((tag + "_a").c_str(), y.first, y.second, z.first, z.second, "e");
+            TH1D* bb = hb->ProjectionX((tag + "_b").c_str(), y.first, y.second, z.first, z.second, "e");
+            TH1D* pp = hp ? hp->ProjectionX((tag + "_p").c_str(), y.first, y.second, z.first, z.second, "e")
+                          : nullptr;
+            TH1D* qq = hq ? hq->ProjectionX((tag + "_q").c_str(), y.first, y.second, z.first, z.second, "e")
+                          : nullptr;
+            if (!n) { n = nn; d = dd; a = aa; b = bb; p = pp; q = qq; }
+            else {
+                n->Add(nn); d->Add(dd); a->Add(aa); b->Add(bb);
+                if (p) p->Add(pp);
+                if (q) q->Add(qq);
+                delete nn; delete dd; delete aa; delete bb; delete pp; delete qq;
+            }
+        }
+    }
     auto* r = (TH1D*)n->Clone(nm);
     r->SetDirectory(nullptr);
     r->Divide(d);
     SetConditionalRatioErrors(r, d, a, b, p, q);
     delete n; delete d; delete a; delete b; delete p; delete q;
     return r;
+}
+
+// EXPLICIT-RANGE form (the historical signature). `ylo/yhi` (pair pT) and `zlo/zhi` (pair eta) are
+// 1-based INCLUSIVE bin ranges of the 3D histograms; 0 on either pair means "integrate over that
+// axis". A thin wrapper over DrCellRatioMultiRange with a single sub-range on each axis.
+inline TH1D* DrCellRatioRange(TH3D* hn, TH3D* hd, TH3D* ha, TH3D* hb, TH3D* hp, TH3D* hq,
+                              int ylo, int yhi, int zlo, int zhi, const char* nm)
+{
+    std::vector<std::pair<int,int>> yr, zr;
+    if (ylo != 0 && yhi != 0) yr.push_back({ylo, yhi});
+    if (zlo != 0 && zhi != 0) zr.push_back({zlo, zhi});
+    return DrCellRatioMultiRange(hn, hd, ha, hb, hp, hq, yr, zr, nm);
 }
 
 // One bin per axis (the historical signature): iy = pair-pT bin, iz = pair-eta bin, 0 = integrate.

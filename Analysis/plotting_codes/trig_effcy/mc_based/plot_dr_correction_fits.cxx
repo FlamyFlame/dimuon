@@ -62,13 +62,15 @@
 //                            the merged fit actually saw. Why the merge exists, and why it is not
 //                            a new binning: dr_correction_cell_groups.h.
 //   no_plateau_correction_paireta_merged/
-//                            The SAME raw fit with the pair-eta bins merged into the THREE
-//                            PHYSICAL DETECTOR REGIONS -- negative-eta endcap, barrel,
-//                            positive-eta endcap (user, 2026-08-24) -- so every canvas here
+//                            The SAME raw fit with the pair-eta bins folded into THREE
+//                            SIGN-INDEPENDENT |eta^pair| BINS -- |eta| < 1.0 (barrel),
+//                            1.0 <= |eta| < 2.0, 2.0 <= |eta| < 2.4 (user, 2026-08-24; SUPERSEDED
+//                            2026-09-03, see dr_correction_cell_groups.h) -- so every canvas here
 //                            carries 3 panels (1 x 3) instead of 9 (3 x 3), and each panel's
 //                            measured points are re-projected over ALL the filled pair-eta bins
-//                            of its region. Same construction and the same "not a new binning"
-//                            argument as the pair-pT merge: dr_correction_cell_groups.h.
+//                            of its |eta| group (a forward group's points come from BOTH its
+//                            negative- and positive-eta source bins). Same construction and the
+//                            same "not a new binning" argument as the pair-pT merge.
 //   no_plateau_correction_paireta_merged_last2ptbins_merged/
 //                            Both merges at once: 7 canvases of 3 panels each.
 //
@@ -267,7 +269,7 @@ bool ParAtLimit(TF1* f, int ip)
 // plateau_mode : "corr" (NOMINAL: points divided by the plateau) | "nocorr" (raw efficiency,
 //          free fitted baseline C) | "nocorr_ptmerge" (the same raw fit with the last two pair-pT
 //          bins merged into one cell, so this set has one PNG fewer) | "nocorr_etamerge" (the
-//          pair-eta bins merged into the three detector regions, so each PNG has 3 panels) |
+//          pair-eta bins folded into three sign-independent |eta| bins, so each PNG has 3 panels) |
 //          "nocorr_etamerge_ptmerge" (both). One output subdirectory each, ABOVE <method>/.
 // dr_view : "dr0_1" (DEFAULT, the fit domain -- the main figure) | "dr0_2" (the reference view
 //          out to dR = 2, written to dR0_2/). STEP 3 ONLY: step 4 was not restructured (user), so
@@ -606,18 +608,22 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         // does not say which pair-eta cell it came from (nor, in the sign-separated mode, which
         // charge combination). Empty on the single-panel inclusive canvas, where there is only
         // one cell and the panel already names it.
+        // The pair-eta symbol switches to |#eta^{pair}| in a FOLDED mode (nocorr_etamerge*):
+        // the panel axis there runs 0 -> eta_max, not -eta_max -> eta_max, so an unsigned label
+        // would misdescribe a range that is, in fact, unsigned.
+        const char* eta_sym = etamerge ? "|#eta^{pair}|" : "#eta^{pair}";
         const std::string cell_id = (iy == 0 && iz == 0)
             ? std::string()
-            : std::string(Form("#eta^{pair} #in [%.1f,%.1f), ",
+            : std::string(Form("%s #in [%.1f,%.1f), ", eta_sym,
                                series[0].hplat->GetYaxis()->GetBinLowEdge(iz),
                                series[0].hplat->GetYaxis()->GetBinUpEdge(iz)));
         TLatex t;
         t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.045);
         if (iy == 0 && iz == 0) {
-            t.DrawLatex(0.18, kStripTop, "inclusive (all p_{T}^{pair}, all #eta^{pair})");
+            t.DrawLatex(0.18, kStripTop, Form("inclusive (all p_{T}^{pair}, all %s)", eta_sym));
         } else {
-            t.DrawLatex(0.18, kStripTop, Form("%.1f < #eta^{pair} < %.1f",
-                                         series[0].hplat->GetYaxis()->GetBinLowEdge(iz),
+            t.DrawLatex(0.18, kStripTop, Form("%.1f < %s < %.1f",
+                                         series[0].hplat->GetYaxis()->GetBinLowEdge(iz), eta_sym,
                                          series[0].hplat->GetYaxis()->GetBinUpEdge(iz)));
         }
 
@@ -985,7 +991,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     // ---- one canvas per pair-pT bin ----------------------------------------------------------
     // Subplot grid (feedback_subplot_layout): nrows >= ncols, nrows ~ sqrt(N) -- AND, for N <= 3,
     // a SINGLE ROW. The sqrt rule alone sends the 3 merged pair-eta cells of "nocorr_etamerge" to
-    // a 2x2 grid with one empty quadrant; three detector regions read left-to-right along eta, so
+    // a 2x2 grid with one empty quadrant; the three |eta| bins read left-to-right, so
     // 1x3 is both the convention and the physically natural order.
     const int ncol = (neta <= 3) ? neta : (int)std::ceil(std::sqrt((double)neta));
     const int nrow = (neta <= 3) ? 1    : (int)std::ceil((double)neta / ncol);
@@ -1140,17 +1146,18 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
             // Same reason as in draw_cell(): the off-scale record is canvas-level, so the point
             // has to carry its own pair-eta cell. The two charge combinations need no tag here --
             // this figure IS their ratio and every y axis on it says so.
+            const char* eta_sym = etamerge ? "|#eta^{pair}|" : "#eta^{pair}";
             const std::string cell_id = (iy == 0 && iz == 0)
                 ? std::string()
-                : std::string(Form("#eta^{pair} #in [%.1f,%.1f), ",
+                : std::string(Form("%s #in [%.1f,%.1f), ", eta_sym,
                                    series[0].hplat->GetYaxis()->GetBinLowEdge(iz),
                                    series[0].hplat->GetYaxis()->GetBinUpEdge(iz)));
             TLatex t; t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.045);
             if (iy == 0 && iz == 0)
-                t.DrawLatex(0.18, 0.925, "inclusive (all p_{T}^{pair}, all #eta^{pair})");
+                t.DrawLatex(0.18, 0.925, Form("inclusive (all p_{T}^{pair}, all %s)", eta_sym));
             else
-                t.DrawLatex(0.18, 0.925, Form("%.1f < #eta^{pair} < %.1f",
-                                              series[0].hplat->GetYaxis()->GetBinLowEdge(iz),
+                t.DrawLatex(0.18, 0.925, Form("%.1f < %s < %.1f",
+                                              series[0].hplat->GetYaxis()->GetBinLowEdge(iz), eta_sym,
                                               series[0].hplat->GetYaxis()->GetBinUpEdge(iz)));
             auto* g = cell_ratio(iy, iz);
             if (g->GetN() == 0) {

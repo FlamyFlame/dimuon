@@ -235,7 +235,16 @@ void FillMCTrigEffPairEff(const std::string& sample = "pp_full", bool use_tight_
     // opt-in and suffixed so it cannot be mistaken for the un-merged measurement.
     std::vector<std::unique_ptr<TH2D>> owned;
     std::map<std::string, TH2D*> H;          // every delivered histogram, keyed by its final name
-    for (auto& kv : books) H.emplace(kv.first, kv.second.GetPtr());
+    // A COLLIDING NAME MUST THROW. std::map::emplace is a no-op on a duplicate key, so a collision
+    // would silently keep the stale histogram, drop the new one from the file, and make every later
+    // H.at(name) return the wrong object -- with no diagnostic at all.
+    auto add = [&H](const std::string& name, TH2D* h) {
+        if (!H.emplace(name, h).second)
+            throw std::runtime_error("FillMCTrigEffPairEff: duplicate histogram name '" + name
+                                     + "' -- two (quantity, sign, window, cell mode) combinations "
+                                       "map to one name");
+    };
+    for (auto& kv : books) add(kv.first, kv.second.GetPtr());
 
     const std::vector<double> mpt = PairTrigEff::PairPtEdges("ptmerge");
     const int nmpt = (int)mpt.size() - 1;
@@ -295,7 +304,7 @@ void FillMCTrigEffPairEff(const std::string& sample = "pp_full", bool use_tight_
                          q == "eps" ? "#varepsilon_{2#mu4}^{pair}" : "K"));
         TH2D* raw = r.get();
         owned.push_back(std::move(r));
-        H.emplace(name, raw);
+        add(name, raw);
     };
 
     for (const auto& S : PairTrigEff::Signs())
@@ -305,7 +314,7 @@ void FillMCTrigEffPairEff(const std::string& sample = "pp_full", bool use_tight_
                                   "nraw", "nrawpass"}) {
                 const std::string src = PairTrigEff::HistName(q, S.token, W.token, "nomerge");
                 const std::string dst = PairTrigEff::HistName(q, S.token, W.token, "ptmerge");
-                H.emplace(dst, merge_last_two_pt(H.at(src), dst));
+                add(dst, merge_last_two_pt(H.at(src), dst));
             }
             for (const auto& M : PairTrigEff::CellModes()) {
                 form_ratio("eps", S.token, W.token, M.token, "num",  "Aeps", "Beps");

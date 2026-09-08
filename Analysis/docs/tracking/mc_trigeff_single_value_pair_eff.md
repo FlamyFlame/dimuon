@@ -234,6 +234,25 @@ what to apply is left to the user with the numbers in hand.
 Filling the whole canonical axis costs nothing, gives the low-p_T cells as a sanity check against
 the dR procedure where the latter is well determined, and avoids inventing a 3-bin axis.
 
+### D4: the data/MC difference is handled by a SCALE FACTOR, not by re-factorizing the weight (user, 2026-09-08)
+**Old (D1):** two applied forms were delivered and plotted — the pure `eps_2mu4^pair`, and a
+"calibrated" `K = eps^pair / <eps_1 eps_2>` meant to be applied as `eps(1) eps(2) K` on top of the
+DATA tag-and-probe singles, so that MC was trusted only for the deviation from factorization.
+**New:** the applied object is the **raw** `eps_2mu4^pair`. The data/MC difference will be corrected
+by the **product of the two single-muon data/MC scale factors** — a step still under discussion with
+colleagues and explicitly a future to-do, NOT part of this doc.
+**Reason (user):** `K` re-introduces the factorization the single-value procedure exists to avoid —
+writing the weight as `eps(1) eps(2) K` is structurally the old procedure with the dR fit replaced
+by a per-cell constant, so it is a third procedure rather than "a single pair-level efficiency".
+And the correction is a DATA-application question: any data/MC factor **cancels identically in an
+MC closure**, so it cannot belong in this doc's test and would only obscure what the test measures.
+**Consequences:** the closure applies the raw value only; the `paireffK_*` closure series and the
+`_calibrated` figures are withdrawn (one PNG per comparison per WP now, not two). `K` itself is
+still written to `pair_trig_eff_*.root` and to the CSVs as a **DIAGNOSTIC** — the ratio of the
+measured pair efficiency to what the factorized product predicts, i.e. how much of the pair
+inefficiency is single-muon turn-on and how much is the close-by correlation (0.96 at 8-11 GeV
+falling to 0.27 at 72-104 GeV, barrel).
+
 ### D3: a separate fill macro + loader, not an extension of the dR-correction chain
 `eps^pair` is a different object from `eps_dR` (no dR dependence, whole-weight replacement,
 mass-windowed, sign-separated). Routing it through `DrCorrectionEvaluator`/the plateau-mode tokens
@@ -319,6 +338,22 @@ would overload a class whose every consumer assumes `f(dR)/C`. New:
   **-2.2 ... 2.2**; `..._expo_os_nocorr_etamerge_ptmerge.root` Y(3) = **0 / 1 / 2 / 2.2**. Both
   fresh on the new fiducial region. The closure ROOT files (2026-09-03) are the only stale link
   and are rebuilt by step 3 of the plan anyway.
+  **★ CARRIED FORWARD AS A SECOND UNCOMMITTED, UNREVIEWED INPUT — and the one that defines this
+  doc's |eta^pair| axis** (`/review-analysis-code` 2026-09-08, issue 1). `PairTrigEff::AbsEtaGroups()`
+  gets the three |eta^pair| cells by calling `MakeDrEtaGroups(..., true)`. That returns the
+  sign-independent fold {0, 1, 2, 2.2} only in the version of
+  `plotting_codes/trig_effcy/mc_based/dr_correction_cell_groups.h` carrying
+  `mc_trigeff_dr_binning_approaches.md` D11 — which is a CONCURRENT session's **uncommitted** work
+  (`M` in `git status`, its own review log reading `Iterations completed: 0`). At HEAD the same call
+  returns the SIGNED grouping {-2.2, -1.0, 1.0, 2.2}, and since every histogram here is filled with
+  `|pair_eta|`, a clean checkout of HEAD would leave the first cell permanently empty, collapse
+  |eta| in [1, 2.2) into one cell, and label the cells "-2.2..-1" — a different measurement, with no
+  crash. **A clean checkout of HEAD therefore does NOT reproduce the numbers in this doc.**
+  Mitigated 2026-09-08 by a guard in `AbsEtaGroups()` that THROWS unless the returned grouping is
+  actually a |eta| fold (folded flag set, first edge 0), so the failure is loud rather than silent;
+  the dependency itself is the concurrent thread's to commit. §PP-1's "the SAME helper as the
+  `nocorr_etamerge*` dR modes" should be read with that caveat.
+
   **Carried forward as a known, unreviewed input:** the 2026-09-07 `expo` shape restriction
   (A <= 0, p >= 1, Step 3 only) is baked into these fit files and has no `/review-analysis-code`
   log; it is the user's own in-flight change and is used as-is.
@@ -510,12 +545,26 @@ SIGNAL window.
 | **72.08-150** | 1-2 | 0.5400 ± 0.0300 | 0.6173 ± 0.0343 | 721 / 358 |
 | **72.08-150** | 2-2.2 | 0.5051 ± 0.0938 | 0.5532 ± 0.1050 | **69 / 33** |
 
-**★ The merge is close to free, and it buys the cell the un-merged version could not deliver.**
-- **Closure is unchanged**: on the crossx binning above the cell edge the merged series matches the
+**★ The merge is cheap PER PANEL, and it buys the cell the un-merged version could not deliver.**
+- **Panel-integrated closure is unchanged**: above the cell edge the merged series matches the
   un-merged one to **0.0054 at worst** across the nine pair-eta panels (0.9378 -> 0.9432 in the most
   forward-negative one; five panels agree to <= 0.0019), and both close to 1.0000 inclusively.
-  Merging two cells whose efficiencies differ by only 0.22 vs 0.23 (barrel) costs almost nothing.
-- **Coverage rises** 70.9413 % -> 70.9702 % of the no-trigger yield above the first drawn bin.
+- **⚠ BUT THAT NUMBER IS PARTLY PROTECTED BY CONSTRUCTION, and it is NOT a per-bin statement**
+  (`/review-plot` iteration 3, INFO 3). `eps_merged` is the S0-weighted mean of its two source
+  cells, so the corrected yield summed OVER the merged cell is preserved exactly; only the
+  redistribution across (pair-eta panel x fine pair-pT bin) can move a panel integral, and just
+  **5.2 %** of the yield above 46.4 GeV sits beyond 83.46 GeV. So <= 0.0054 per panel is what the
+  construction predicts, not independent evidence. **Per presentation BIN the merge moves the
+  corrected yield by up to ~22 %** -- panel [-1.5,-1.0), bin [101.47,123.37): 1.718 -> 1.337; panel
+  [-2.0,-1.5), same bin: 0.678 -> 0.555; panel [1.0,1.5), same bin: 0.399 -> 0.326. Quote "the merge
+  is nearly free" only at the cell/panel level, never per bin.
+- What the merge genuinely trades is RESOLUTION for REACH: it replaces two measured numbers (0.221
+  and 0.230 in the barrel, 0.555/0.420, 0.481/0.807) by one, and in exchange every cell is
+  measurable.
+- **Coverage rises** 70.9413 % -> 70.9702 % of the no-trigger yield above the first drawn bin, and
+  the merged series loses only **9** presentation bins to masking against the un-merged series' 11.
+  (The figure originally printed their UNION; since 2026-09-08 it reports the two counts separately
+  wherever they differ, because that difference IS the comparison the figure is about.)
 - **No opposite-sign cell is refused any more.** The forward `[103.98,150) x |eta| 2-2.2` cell that
   rested on 4 raw pairs (R6) becomes part of a 69-pair cell and clears the gate; the un-merged
   version delivers 8 of 9 cells, the merged one 6 of 6.
@@ -535,8 +584,9 @@ PNGs were moved into `mass_window_compr/` (verified replaced, then removed).
 
 **Reading, for the decision in R4:** the merge is the cheaper of the two ways of coping with the
 statistics. It halves the numbers needed above 72 GeV, removes every opposite-sign refusal, and
-costs 0.005 in closure — whereas widening the mass window costs 14 % (R3). If the single-value
-procedure is adopted, adopt it merged.
+costs <= 0.005 in the panel-integrated closure (with the construction caveat above) — whereas
+widening the mass window costs **14 % inclusively, a genuine bias that no construction protects**
+(R3). If the single-value procedure is adopted, adopt it merged and in the signal window.
 
 ### R4 — What is NOT settled by this work
 
@@ -558,10 +608,11 @@ procedure is adopted, adopt it merged.
 
 Nothing in this doc's own scope. What is left is USER JUDGEMENT (R4) plus one hand-off:
 
-1. **Which form to apply** — the pure `eps_2mu4^pair` (the procedure as stated, but pure MC, so it
-   carries the 1.27 MC/data pair over-efficiency and needs a separate scale factor) or the
-   calibrated `K` (multiplies the DATA tag-and-probe singles, the analysis's existing calibration).
-   Both are in the ROOT file.
+1. ~~Which form to apply~~ — **SETTLED (user, 2026-09-08, D4):** the raw `eps_2mu4^pair`, with the
+   data/MC difference to be corrected later by the product of the two single-muon data/MC scale
+   factors. That step is under discussion with colleagues and is a future to-do; it does not enter
+   the MC closure, where any such factor cancels identically. `K` remains in the file as a
+   diagnostic only.
 2. **Whether to adopt the single-value procedure at all, and in which cells** — and, if so, whether
    on the merged pair-pT cells, which R8 shows to be nearly free. Nothing is wired into the
    cross-section.

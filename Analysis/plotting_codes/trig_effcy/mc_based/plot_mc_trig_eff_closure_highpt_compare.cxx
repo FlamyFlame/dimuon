@@ -2,43 +2,57 @@
 // plot_mc_trig_eff_closure_highpt_compare.cxx
 //
 // THE dR-CORRECTION PROCEDURE vs THE SINGLE-VALUE PAIR EFFICIENCY, ABOVE 50 GeV
-// (docs/tracking/mc_trigeff_single_value_pair_eff.md §PP-4; inputs from FillMCTrigEffClosure.cxx)
+// (docs/tracking/mc_trigeff_single_value_pair_eff.md PP-4 and R8; inputs from FillMCTrigEffClosure)
 //
-// FIVE SERIES, one figure:
+// TWO COMPARISONS, each into its OWN subdirectory of
+// <plot base>/closure/single_value_highpt_comparison/ -- one PNG each per working point. Both keep
+// the SAME two dR-procedure series as the reference against which the single-value procedure is
+// judged, so the two can be read side by side:
 //
-//   no trigger requirement                                                            black, open
-//   dR procedure, top two pair-pT cells merged            (`nocorr_ptmerge`)           kBlue
-//   dR procedure, that plus the |eta^pair| fold           (`nocorr_etamerge_ptmerge`)  kMagenta
-//   single value, signal mass window        1.08 < m < 2.9 GeV                         kRed
-//   single value, template-fit mass window     1 < m < 4  GeV                          kGreen+2
+//   mass_window_compr/   does the MASS WINDOW matter?
+//       no trigger requirement                                                     black, open
+//       dR, top two pair-pT cells merged        (`nocorr_ptmerge`)                 kBlue
+//       dR, that plus the |eta^pair| fold       (`nocorr_etamerge_ptmerge`)        kMagenta
+//       single value, 1.08 < m < 2.9 GeV (signal window)                           kRed
+//       single value,    1 < m < 4   GeV (template-fit window)                     kGreen+2
 //
-// The first three weight a firing pair by 1/[eps_MC(1) eps_MC(2) eps_dR(dR ; cell)]; the last two
-// replace that product by ONE measured number per (pair pT, |eta^pair|, sign) cell. A second
-// figure draws the single-value series in their CALIBRATED form, 1/[eps_MC(1) eps_MC(2) K(cell)],
-// which is the apples-to-apples comparison against the dR series (same singles, different pair
-// correction) and the form the cross-section would apply; the default figure draws the PURE form,
-// which is the procedure as stated.
+//   pt_merge_compr/      does MERGING the top two pair-pT cells cost anything?
+//       the same no-trigger and two dR series
+//       single value, signal window, the canonical 8 pair-pT cells                 kRed
+//       single value, signal window, top two combined into [72.08, 150) GeV        kGreen+2
 //
-// WHY ONLY ABOVE 50 GeV. The single-value efficiency is delivered for the three highest coarse
-// pair-pT cells -- [49.97, 72.08), [72.08, 103.98), [103.98, 150) GeV -- because that is where the
-// dR-shape fit runs out of pairs. The lowest of the three is the CONTROL region, where the dR
-// procedure still works and the two must agree.
+// The dR series weight a firing pair by 1/[eps_MC(1) eps_MC(2) eps_dR(dR ; cell)]; the single-value
+// ones replace that product by ONE measured number per (pair pT, |eta^pair|, sign) cell.
+//
+// THE RAW MEASURED NUMBER IS WHAT IS APPLIED (user, 2026-09-08). This is an MC-only test, so no
+// data/MC correction belongs in it: the plan for the cross-section is to correct eps^pair by the
+// product of the two single-muon data/MC scale factors, but such a factor cancels identically in an
+// MC closure and would only obscure what the test measures. An earlier version of this macro also
+// drew a "calibrated" series, w = 1/[eps(1) eps(2) K] with K = eps^pair / <eps_1 eps_2>; it is
+// withdrawn, because writing the weight that way RE-INTRODUCES the very factorization the
+// single-value procedure exists to avoid.
+//
+// WHY ONLY ABOVE 50 GeV. The single-value efficiency is delivered for the coarse pair-pT cells
+// above 49.97 GeV, because that is where the dR-shape fit runs out of pairs. The lowest delivered
+// cell is the CONTROL region, where the dR procedure still works and the two must agree.
 //
 // WHY ONLY THE SIGNAL SAMPLE VERSION. The mass window is part of the single-value efficiency's
 // definition, so the all-opposite-sign sample is a different mass mixture and the number does not
 // apply to it. FillMCTrigEffClosure books the single-value numerators for the `signal` version
 // only, for the same reason.
 //
-// COVERAGE, NOT NON-CLOSURE. A presentation bin that straddles the 49.97 GeV cell edge is only
-// PARTLY reached by the single-value correction. Such a bin is identified from the closure file's
-// own coverage denominator (`den_paireff_<window>` vs `den`) and the single-value point is OMITTED
-// there -- drawing it would show a coverage artefact as if the procedure did not close. The
-// dR series are unaffected and keep every bin.
+// COVERAGE, NOT NON-CLOSURE. A presentation bin that straddles a cell edge, or that lies in a cell
+// the delivery gate refuses, is only partly reached by the single-value correction. Such bins are
+// identified from the closure file's own coverage denominator (`den_paireff_<window><mode suffix>`
+// against `den`) and the single-value point is OMITTED there -- drawing it would show a coverage
+// artefact as if the procedure did not close. The two cell modes have DIFFERENT coverage (that is
+// the point of the merge), so the coverage key carries the mode suffix and the omitted-bin count
+// is reported per series.
 //
 // SAME BINNING AS THE CROSS-SECTION, ALWAYS: ParamsSet::pT_bins_150 x the 9
 // CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap panels (doc PP-1/D8), enforced here
-// rather than assumed -- the two files' denominators are compared bin by bin and the panel edges
-// are checked against the live ranges.
+// rather than assumed -- the two closure files' denominators are compared bin by bin and the panel
+// edges are checked against the live ranges.
 //
 // Usage (from Analysis/plotting_codes/trig_effcy/mc_based/):
 //   root -l -b -q 'plot_mc_trig_eff_closure_highpt_compare.cxx+("pp_full", true)'
@@ -46,6 +60,8 @@
 // =================================================================================================
 
 #include <algorithm>
+#include <functional>
+#include <map>
 #include <cmath>
 #include <iomanip>
 #include <iostream>
@@ -103,9 +119,9 @@ const std::vector<std::string> kModes = {"nocorr_ptmerge", "nocorr_etamerge_ptme
 
 // The single-value numerators live in BOTH files (they do not depend on the dR cell grouping);
 // they are read from file 0 and cross-checked against file 1, so a stale file cannot slip in.
-std::vector<Series> BuildSeries(bool calibrated, Comparison what)
+std::vector<Series> BuildSeries(Comparison what)
 {
-    const std::string p = calibrated ? "paireffK_" : "paireff_";
+    const std::string p = "paireff_";
     std::vector<Series> v = {
         {std::string("num_epsmc_") + kCascadeKey, "#varepsilon_{#DeltaR}(#DeltaR):  top two "
          "p_{T}^{pair} cells combined", "", "", 0, kBlue, 22},
@@ -249,8 +265,7 @@ void plot_mc_trig_eff_closure_highpt_compare(const std::string& sample = "pp_ful
     // The single-value numerators are written into every mode's file; they must be IDENTICAL, or
     // one of the two runs used a different pair-efficiency file.
     for (const auto& C : kComparisons)
-      for (bool calib : {false, true})
-        for (const auto& S : BuildSeries(calib, C.what)) {
+        for (const auto& S : BuildSeries(C.what)) {
             if (S.cov.empty()) continue;
             TH2D* a0 = Get<TH2D>(fin[0], pre + S.num_key);
             TH2D* a1 = Get<TH2D>(fin[1], pre + S.num_key);
@@ -269,8 +284,8 @@ void plot_mc_trig_eff_closure_highpt_compare(const std::string& sample = "pp_ful
     for (const auto& C : kComparisons) {
       const std::string outdir = base_outdir + C.subdir + "/";
       gSystem->mkdir(outdir.c_str(), kTRUE);
-      for (bool calibrated : {false, true}) {
-        const std::vector<Series> series = BuildSeries(calibrated, C.what);
+      {
+        const std::vector<Series> series = BuildSeries(C.what);
 
         // The cell MODES actually drawn. Computed here because the header needs one line per mode,
         // and the header's height sets where the panels start: with two modes the block is six
@@ -289,12 +304,13 @@ void plot_mc_trig_eff_closure_highpt_compare(const std::string& sample = "pp_ful
         std::vector<TH1D*> ratio_frame(neta, nullptr);
         std::vector<double> ratio_pts;
         std::vector<TH1*> for_range;
-        const std::string tag = calibrated ? "cal" : "pure";
+        const std::string tag = C.subdir;
         // The masked (panel, bin) pairs, as a UNION over the single-value windows: the header
         // states how many BINS lost their single-value points, so counting once per series would
         // report twice the number, and counting only the first window would undercount if the two
         // windows ever refused different cells.
-        std::set<std::pair<int, int>> masked_bins;
+        std::set<std::pair<int, int>> masked_bins;                 // the union, over all series
+        std::map<std::string, std::set<std::pair<int, int>>> masked_by_series;
 
         for (int iz = 1; iz <= neta; ++iz) {
             TH1D* den = Row(h_den, iz, Form("hp_%s_den_eta%d", tag.c_str(), iz));
@@ -343,7 +359,7 @@ void plot_mc_trig_eff_closure_highpt_compare(const std::string& sample = "pp_ful
                         ok[b] = covered;
                         if (!covered && dfull > 0.
                             && den->GetXaxis()->GetBinUpEdge(b) > pt_zoom_lo)
-                            masked_bins.insert({iz, b});
+                        { masked_bins.insert({iz, b}); masked_by_series[S.cov].insert({iz, b}); }
                     }
                     delete dcov;
                 }
@@ -505,14 +521,9 @@ void plot_mc_trig_eff_closure_highpt_compare(const std::string& sample = "pp_ful
                       "#DeltaR procedure:   w = 1 / [#varepsilon(p_{T,1},q#eta_{1}) "
                       "#varepsilon(p_{T,2},q#eta_{2}) #varepsilon_{#DeltaR}(#DeltaR)]");
         hd->DrawLatex(0.030, 0.864,
-                      calibrated
-                      ? "single value:   w = 1 / [#varepsilon(p_{T,1},q#eta_{1}) "
-                        "#varepsilon(p_{T,2},q#eta_{2}) K],   "
-                        "K = #Sigma_{2#mu4} w/(#varepsilon_{1}#varepsilon_{2}) / #Sigma_{all} w "
-                        "per (p_{T}^{pair}, |#eta^{pair}|, sign) cell"
-                      : "single value:   w = 1 / #varepsilon_{2#mu4}^{pair},   "
-                        "#varepsilon_{2#mu4}^{pair} = #Sigma_{2#mu4} w / #Sigma_{all} w "
-                        "per (p_{T}^{pair}, |#eta^{pair}|, sign) cell");
+                      "single value:   w = 1 / #varepsilon_{2#mu4}^{pair},   "
+                      "#varepsilon_{2#mu4}^{pair} = #Sigma_{2#mu4} w / #Sigma_{all} w "
+                      "per (p_{T}^{pair}, |#eta^{pair}|, sign) cell");
         // EVERY edge in these lines is READ, never typed: the pair-pT cells from the canonical
         // coarse vector, the |eta^pair| groups from the live fold. The outer pair-eta edge already
         // moved 2.4 -> 2.2 on 2026-09-07; a typed label would now silently disagree with the axis
@@ -544,12 +555,20 @@ void plot_mc_trig_eff_closure_highpt_compare(const std::string& sample = "pp_ful
             hd->DrawLatex(0.030, ytext, cells.c_str());
             ytext -= 0.020;
         }
-        const int n_masked = (int)masked_bins.size();
-        if (n_masked > 0)
-            hd->DrawLatex(0.030, ytext,
-                          Form("%d bins omitted from the single-value series: not fully inside a "
-                               "measured cell, or in a cell with fewer than %d pairs",
-                               n_masked, PairTrigEff::MinCellPairs()));
+        // THE OMITTED-BIN COUNT IS NOT DRAWN (user, 2026-09-08). Which bins are absent is not
+        // something the reader has to act on: "not fully inside a measured cell" is an artefact of
+        // the presentation binning being finer than the correction cells, and the bins dropped for
+        // want of statistics are already visible, cell by cell and with their raw pair counts, in
+        // the statistics tables beside this figure. It is reported to the LOG instead, where it
+        // still serves as a check that the mask did what it should.
+        for (const auto& S : series) {
+            if (S.cov.empty()) continue;
+            std::cout << "  [" << tag << "] " << S.cov << ": "
+                      << masked_by_series[S.cov].size()
+                      << " presentation bins omitted (not fully inside a measured cell, or in a "
+                         "cell with fewer than " << PairTrigEff::MinCellPairs() << " pairs)"
+                      << std::endl;
+        }
 
         auto* leg = new TLegend(0.030, 0.900, 0.990, 0.976);
         leg->SetNColumns(2);
@@ -560,8 +579,7 @@ void plot_mc_trig_eff_closure_highpt_compare(const std::string& sample = "pp_ful
             leg->AddEntry(spec_cor[0][a], series[a].legend.c_str(), "PE");
         leg->Draw();
 
-        const std::string png = outdir + "closure_highpt_single_value_" + C.subdir + "_"
-                              + (calibrated ? "calibrated" : "pure") + ".png";
+        const std::string png = outdir + "closure_highpt_single_value_" + C.subdir + ".png";
         c.SaveAs(png.c_str());
         std::cout << "  wrote " << png << std::endl;
 
@@ -577,9 +595,8 @@ void plot_mc_trig_eff_closure_highpt_compare(const std::string& sample = "pp_ful
         {
             const int b_lo = h_den->GetXaxis()->FindFixBin(pt_zoom_lo * 1.0001);
             const int b_hi = h_den->GetXaxis()->GetNbins();
-            std::cout << "\n===== closure above " << pt_zoom_lo << " GeV, "
-                      << (calibrated ? "CALIBRATED" : "PURE") << " single-value form, " << wp_text
-                      << " =====\n"
+            std::cout << "\n===== closure above " << pt_zoom_lo << " GeV, " << C.subdir << ", "
+                      << wp_text << " =====\n"
                       << "  (each series integrated over its own covered region of the panel; the "
                          "dR series cover every bin,\n   the single-value series only pair p_T >= "
                       << pt_cell_lo << " GeV, so they carry their own matched denominator)\n  "

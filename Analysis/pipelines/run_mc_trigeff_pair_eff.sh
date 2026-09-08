@@ -17,7 +17,7 @@
 #            approaches this doc compares against, now carrying the single-value numerators too
 #   Stage 3  plot_mc_trig_eff_closure_highpt_compare
 #            -> <plot base>/closure/single_value_highpt_comparison/<comparison>/*.png
-#               two comparisons x two applied forms = 4 PNGs per WP:
+#               two comparisons, the RAW measured efficiency applied = 2 PNGs per WP:
 #                 mass_window_compr/  the two mass windows on the canonical cells
 #                 pt_merge_compr/     the signal window, with and without the pair-pT merge
 #   Stage 4  write_pair_trig_eff_tables -> <plot base>/single_value_pair_eff_tables/*.csv, and the
@@ -141,12 +141,10 @@ ROOTEOF
     BASE="${PLOT_BASE}/mc_based$( [[ "$WP" == medium ]] && echo _medium )"
     OUT="${BASE}/closure/single_value_highpt_comparison"
     for C in mass_window_compr pt_merge_compr; do
-        for F in "closure_highpt_single_value_${C}_pure.png" \
-                 "closure_highpt_single_value_${C}_calibrated.png"; do
-            [[ -f "${OUT}/${C}/${F}" ]] || fail "Stage 3 (${WP}): ${OUT}/${C}/${F} was not written"
-            mt=$(stat -c %Y "${OUT}/${C}/${F}")
-            (( mt >= T0 )) || fail "Stage 3 (${WP}): ${C}/${F} is stale"
-        done
+        F="closure_highpt_single_value_${C}.png"
+        [[ -f "${OUT}/${C}/${F}" ]] || fail "Stage 3 (${WP}): ${OUT}/${C}/${F} was not written"
+        mt=$(stat -c %Y "${OUT}/${C}/${F}")
+        (( mt >= T0 )) || fail "Stage 3 (${WP}): ${C}/${F} is stale"
     done
     log "  -> ${OUT}/{mass_window_compr,pt_merge_compr}/"
 

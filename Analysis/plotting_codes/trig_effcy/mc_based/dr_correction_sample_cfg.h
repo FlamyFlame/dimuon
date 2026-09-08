@@ -191,16 +191,22 @@ inline std::string DrCorrSignFileTag(const std::string& sign)
 //                       it can neither overwrite nor be mistaken for the other two modes.
 //                       Defined for the 8-bin nominal axis ONLY; asking for it with
 //                       MCTRIGEFF_PAIRPT_4BIN set THROWS (dr_correction_cell_groups.h).
-//   "nocorr_etamerge" -- the SAME raw fit as "nocorr", with the 9 pair-eta bins MERGED into the
-//                       THREE PHYSICAL DETECTOR REGIONS: negative-eta endcap (-2.4,-1.0), barrel
-//                       (-1.0,1.0), positive-eta endcap (1.0,2.4) (added 2026-08-24, user
-//                       request; docs/tracking/mc_trigeff_dr_binning_approaches.md). It is the
-//                       pair-ETA analogue of "nocorr_ptmerge": the 9-bin pair-eta grid is the
+//   "nocorr_etamerge" -- the SAME raw fit as "nocorr", with the 9 pair-eta bins MERGED into THREE
+//                       SIGN-INDEPENDENT |eta^pair| BINS: |eta| < 1.0 (barrel), 1.0 <= |eta| < 2.0
+//                       and 2.0 <= |eta| < 2.4 (added 2026-08-24, user request; SUPERSEDED
+//                       2026-09-03 -- the ORIGINAL grouping was signed: negative-eta endcap
+//                       (-2.4,-1.0) / barrel (-1.0,1.0) / positive-eta endcap (1.0,2.4). Replaced
+//                       because the dR correlation was found to barely depend on the SIGN of pair
+//                       eta, while the |eta|>2-vs-<2 split inside the endcap is a much bigger
+//                       effect than any negative/positive asymmetry --
+//                       docs/tracking/mc_trigeff_dr_binning_approaches.md). It is the pair-ETA
+//                       analogue of "nocorr_ptmerge": the 9-bin pair-eta grid is the
 //                       CROSS-SECTION's presentation binning and was never chosen for eps_dR's
 //                       statistics, so grouping it triples the pairs per fit while keeping the one
-//                       distinction that is physically motivated. The two ENDCAPS are NOT merged
-//                       with each other -- the r16578 forward anomaly is negative-eta only
-//                       (mc_trigger_efficiency.md R8/R10/R14).
+//                       distinction that is now physically motivated (forward vs less-forward, not
+//                       positive vs negative). The barrel group is one contiguous source range;
+//                       each forward group FOLDS its negative- and positive-eta source bins
+//                       together (dr_correction_cell_groups.h).
 //   "nocorr_etamerge_ptmerge" -- both merges at once (7 pair-pT x 3 pair-eta = 21 cells).
 // Like the pair-pT merge, NEITHER is a new binning: the filled histograms are untouched and the
 // source bins are PROJECTED TOGETHER at the fit stage (dr_correction_cell_groups.h).
@@ -232,7 +238,7 @@ inline bool DrCorrModeMergeLastTwoPt(const std::string& mode)
     return mode == "nocorr_ptmerge" || mode == "nocorr_etamerge_ptmerge";
 }
 
-// Does this mode group the 9 filled pair-eta bins into the 3 physical detector regions?
+// Does this mode group the 9 filled pair-eta bins into the 3 sign-independent |eta^pair| bins?
 inline bool DrCorrModeMergeEta(const std::string& mode)
 {
     DrCorrPlateauModeDir(mode);                       // validates the token

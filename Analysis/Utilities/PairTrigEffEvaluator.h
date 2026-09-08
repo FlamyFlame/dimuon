@@ -228,7 +228,30 @@ inline DrAxisGroups AbsEtaGroups()
     static const CommonEffcyConfig ecfg{};
     std::vector<double> src = RangesToEdgesLocal(ecfg.pair_eta_proj_ranges_coarse_incl_gap);
     TAxis ax((int)src.size() - 1, src.data());
-    return MakeDrEtaGroups(&ax, true);
+    DrAxisGroups G = MakeDrEtaGroups(&ax, true);
+
+    // ⚠ GUARD, AND THE REASON IT EXISTS. `MakeDrEtaGroups(..., true)` returns the sign-independent
+    // |eta| fold ONLY in the version of dr_correction_cell_groups.h that carries
+    // mc_trigeff_dr_binning_approaches.md D11. An older version of that header returns the SIGNED
+    // three-region grouping {-2.2, -1.0, 1.0, 2.2} for the same call, and every histogram here is
+    // FILLED with |pair_eta| -- so against it the first cell would be permanently empty, |eta| in
+    // [1, 2.2) would collapse into one cell, and the labels would read "-2.2..-1": a completely
+    // different measurement, with no crash and no warning, because CheckCanonicalBinning() only
+    // checks the file against whatever this function returns and is self-consistent either way.
+    // (`/review-analysis-code` 2026-09-08 found the repository in exactly that state -- the D11
+    // header is a concurrent thread's uncommitted work; see the Progress Log Stage-0 entry.)
+    // A folded axis starts at 0 and is non-negative; anything else is not the axis this object is
+    // defined on, and must stop the job rather than quietly re-bin it.
+    if (!G.folded || G.edges.empty() || std::fabs(G.edges.front()) > 1e-9)
+        throw std::runtime_error(
+            "PairTrigEff::AbsEtaGroups: MakeDrEtaGroups(..., true) did not return a "
+            "sign-independent |eta^pair| fold (first edge "
+            + (G.edges.empty() ? std::string("<none>") : std::to_string(G.edges.front()))
+            + ", folded=" + (G.folded ? "true" : "false")
+            + "). The single-value pair efficiency is binned in |eta^pair| and would be silently "
+              "measured on a different axis. Use the dr_correction_cell_groups.h that carries the "
+              "D11 |eta| fold (mc_trigeff_dr_binning_approaches.md).");
+    return G;
 }
 
 // MINIMUM CELL POPULATION for a cell to be DELIVERED through the reader. A single-value

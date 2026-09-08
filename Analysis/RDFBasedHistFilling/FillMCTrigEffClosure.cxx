@@ -186,8 +186,8 @@ struct SeriesEval {
 
 // ---- THE SINGLE-VALUE PAIR EFFICIENCY SERIES (docs/tracking/mc_trigeff_single_value_pair_eff.md)
 // The ALTERNATIVE procedure: one measured number per (pair pT, |eta^pair|, sign) cell inside a
-// mass window replaces the dR correction -- either the whole per-pair weight (`pure`) or just the
-// eps_dR factor (`calibrated`). It carries NO dR dependence, so it is NOT a SeriesEval and is
+// mass window replaces the dR correction, and replaces the
+// per-pair weight outright. It carries NO dR dependence, so it is NOT a SeriesEval and is
 // deliberately kept in its own list rather than overloaded onto one: SeriesEval's cell grid is
 // checked against the dR correction's, and this object lives on a different (folded |eta|) grid.
 struct PairSeriesEval {
@@ -195,7 +195,6 @@ struct PairSeriesEval {
     std::string window;                  // mass-window token: which cells were measured
     std::string mode;                    // cell mode: "nomerge" / "ptmerge"
     std::string cov;                     // coverage token = window + the mode's suffix
-    bool        calibrated = false;      // false: w/eps^pair ; true: w/(eps_MC1 eps_MC2 K)
     PairTrigEffEvaluator* ev = nullptr;
     std::string provenance;
 };
@@ -458,24 +457,29 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
     }
 
     // ---- the single-value pair-efficiency series ------------------------------------------------
-    // One per (mass window) x (pure, calibrated). Their own canonical-binning guard runs inside
+    // One per (mass window, cell mode). Their own canonical-binning guard runs inside
     // PairTrigEffEvaluator::Load, against ParamsSet::pair_pt_coarse_bins and the live |eta| fold,
     // so a stale file throws there rather than being silently read as today's cells.
     const std::string pair_eff_file = PairTrigEff::FileName(cfg.mc_dir, cfg.mc_label, wp_suf);
+    // THE RAW eps^pair ONLY (user, 2026-09-08). The MC closure is an MC-only test, so the applied
+    // weight must be the measured number itself. The data/MC difference is a DATA-application
+    // question -- the plan is to correct eps^pair by the product of the two single-muon data/MC
+    // scale factors, still under discussion -- and it cannot and must not enter here: any such
+    // factor cancels identically in an MC closure, so including it would only obscure what the
+    // test measures. (The earlier `paireffK_*` series, which re-factorized the weight as
+    // eps(1) eps(2) K, is withdrawn for the same reason; K itself is still written to
+    // pair_trig_eff_*.root as a DIAGNOSTIC of how much of the pair inefficiency is single-muon
+    // turn-on rather than close-by correlation.)
     std::vector<PairSeriesEval> pair_series;
-    for (const auto& WM : kPairCells)
-        for (bool calib : {false, true}) {
-            const std::string suf = PairTrigEff::Mode(WM.second).suffix;
-            const std::string key = std::string(calib ? "paireffK_" : "paireff_") + WM.first + suf;
-            auto* pe = new PairTrigEffEvaluator();
-            pe->Load(pair_eff_file, kSignSeries, WM.first,
-                     calib ? PairTrigEffEvaluator::ApplyForm::kCalibrated
-                           : PairTrigEffEvaluator::ApplyForm::kPure,
-                     WM.second);
-            pair_series.push_back({key, WM.first, WM.second, WM.first + suf, calib, pe,
-                                   " | " + key + ": " + pe->Describe() + "; "
-                                   + stamp(pair_eff_file)});
-        }
+    for (const auto& WM : kPairCells) {
+        const std::string suf = PairTrigEff::Mode(WM.second).suffix;
+        const std::string key = "paireff_" + WM.first + suf;
+        auto* pe = new PairTrigEffEvaluator();
+        pe->Load(pair_eff_file, kSignSeries, WM.first, PairTrigEffEvaluator::ApplyForm::kPure,
+                 WM.second);
+        pair_series.push_back({key, WM.first, WM.second, WM.first + suf, pe,
+                               " | " + key + ": " + pe->Describe() + "; " + stamp(pair_eff_file)});
+    }
 
     // ---------------------------------------------------------------- the pair sample
     ROOT::RDataFrame df(kPairTree, pair_file);
@@ -570,11 +574,9 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
                        },
                        {"pair_pt", "pair_eta"})
                // p = the per-pair trigger probability THIS procedure predicts; w = its inverse
-               // times the MC weight. The pure form replaces the whole product, the calibrated one
-               // multiplies the two single-muon efficiencies -- exactly as eps_dR does.
-               .Define("p_" + k, P.calibrated
-                                     ? "pe_" + k + " > 0 ? epsmc1 * epsmc2 * pe_" + k + " : 0.0"
-                                     : "pe_" + k + " > 0 ? pe_" + k + " : 0.0")
+               // times the MC weight. The measured number REPLACES the whole product -- there is no
+               // single-muon efficiency in this weight at all, which is the point of the procedure.
+               .Define("p_" + k, "pe_" + k + " > 0 ? pe_" + k + " : 0.0")
                .Define("w_" + k,  "p_" + k + " > 0 ? weight / p_" + k + " : 0.0")
                .Define("wA_" + k, "w_" + k + " * w_" + k)
                .Define("wB_" + k, "w_" + k + " * w_" + k + " * p_" + k)

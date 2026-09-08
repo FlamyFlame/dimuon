@@ -12,25 +12,34 @@
 //     past where pp Pythia has yield: they hold the plateau-guard failures
 //     (mc_trigger_efficiency.md R24/R27) and the closure collapse (mc_trig_eff_closure.md R5), and
 //     their dR fits are noise-dominated.
-//   * PAIR-ETA MERGE ("nocorr_etamerge", user 2026-08-24) -- the 9 pair-eta bins become THREE
-//     PHYSICAL DETECTOR REGIONS: negative-eta endcap (-2.4,-1.0), barrel (-1.0,1.0), positive-eta
-//     endcap (1.0,2.4). Same trade-off on the second axis: the 9-bin pair-eta grid is the
-//     CROSS-SECTION's presentation binning, never chosen for eps_dR's statistics, and grouping it
-//     triples the pairs per fit while keeping the one distinction that is physically motivated
-//     (endcap L1 geometry differs from the barrel's). The two ENDCAPS are deliberately NOT merged
-//     with each other: the r16578 forward anomaly is NEGATIVE-eta only (parent R8/R10/R14).
+//   * PAIR-ETA MERGE ("nocorr_etamerge", user 2026-09-03; SUPERSEDES the 2026-08-24 signed
+//     negative-endcap/barrel/positive-endcap grouping) -- the 9 pair-eta bins become THREE
+//     SIGN-INDEPENDENT |eta^pair| BINS: |eta| < 1.0 (barrel), 1.0 <= |eta| < 2.0, and 2.0 up to
+//     the source axis's top edge -- which is 2.2 since 2026-09-07, because that axis's outer
+//     edges track ParamsSet::pair_eta_fiducial_max. The group boundaries {1.0, 2.0} are looked
+//     up in the source axis rather than retyped, so the fold follows the axis automatically.
+//     The dR correlation was found to barely depend on the SIGN of pair eta,
+//     while the >2.0-vs-<2.0 split inside the endcap is a much bigger effect than any
+//     negative/positive asymmetry -- so the fold that buys back statistics is now in |eta|, not in
+//     the detector-region sign. Same trade-off as the pair-pT merge: the 9-bin pair-eta grid is
+//     the CROSS-SECTION's presentation binning, never chosen for eps_dR's statistics, and folding
+//     it triples the pairs per fit while keeping the one distinction that is physically motivated.
+//     The barrel group is ONE contiguous run of source bins; the two forward groups FOLD their
+//     negative- and positive-eta source bins TOGETHER -- the one grouping on this axis a single
+//     contiguous range cannot describe (see DrAxisGroups below).
 //   * "nocorr_etamerge_ptmerge" applies both.
 //
 // NEITHER IS A NEW BINNING (.claude/CLAUDE.md 'Binnings'). The FILLED histograms keep
 // `ParamsSet::pair_pt_coarse_bins` and `CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap`
 // untouched; a merged cell is its source bins PROJECTED TOGETHER, which is numerically identical
-// to having filled a coarser axis (the projection sums num / denom / errA / errB before any ratio
-// is formed, exactly as the fill would have). Two consequences that make this the safe
-// construction:
+// to having filled a coarser/folded axis (the projection sums num / denom / errA / errB over every
+// source sub-range before any ratio is formed, exactly as the fill would have). Two consequences
+// that make this the safe construction:
 //   * every group edge is READ from the source histogram's own axis, never retyped, so the
 //     grouping cannot drift from the binning it groups. For pair eta, where the grouping cannot be
-//     expressed as an index rule, the requested INTERIOR boundaries are LOOKED UP in the axis and
-//     a boundary that is not an existing edge THROWS -- it never rebins;
+//     expressed as an index rule, the requested |eta| boundaries are LOOKED UP as a SYMMETRIC PAIR
+//     of existing edges (one on each side of 0), and a boundary that fails that THROWS -- it never
+//     rebins or invents an edge;
 //   * every variant is opt-in and suffixed (`_nocorr_ptmerge`, `_nocorr_etamerge`,
 //     `_nocorr_etamerge_ptmerge`), so it can neither overwrite nor be mistaken for another tree.
 //
@@ -45,6 +54,7 @@
 #include <cmath>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <TAxis.h>
@@ -57,13 +67,17 @@
 #include "dr_correction_sample_cfg.h"
 #include "../../../Utilities/MCTrigEffPairPtBinning.h"
 
-// One entry per FIT CELL along one axis: the source-histogram bin range it covers, plus the group
-// edges. `n == source bins` and every range is a single bin unless that axis is grouped.
+// One entry per FIT CELL along one axis: the source-histogram sub-range(s) it covers, plus the
+// group edges. `n == source bins` (identity) or the number of merged cells. A group is USUALLY one
+// contiguous 1-based inclusive [lo,hi] sub-range of the source axis; the sign-independent |eta|
+// fold is the one grouping that needs MORE than one -- a forward |eta| group is the UNION of a
+// negative-eta and a positive-eta source sub-range, which a single [lo,hi] cannot express.
 struct DrAxisGroups {
     int                 n = 0;        // number of groups = number of fit cells on this axis
-    std::vector<int>    lo, hi;       // 1-based source-bin range of each group, size n
-    std::vector<double> edges;        // size n+1, read from the source axis
+    std::vector<std::vector<std::pair<int,int>>> ranges;  // size n; each group's source sub-range(s)
+    std::vector<double> edges;        // size n+1, the OUTPUT axis (read from / derived off the source)
     bool                merged = false;
+    bool                folded = false;   // true if any group folds >1 disjoint source sub-range
 };
 
 // The historical name, kept so the pair-pT call sites read the same as before.
@@ -75,11 +89,13 @@ inline DrAxisGroups MakeDrIdentityGroups(const TAxis* ax)
 {
     if (!ax) throw std::runtime_error("MakeDrIdentityGroups: null axis");
     DrAxisGroups G;
-    for (int i = 1; i <= ax->GetNbins(); ++i) { G.lo.push_back(i); G.hi.push_back(i); }
-    G.n = (int)G.lo.size();
+    const int nb = ax->GetNbins();
+    G.ranges.resize(nb);
+    for (int i = 1; i <= nb; ++i) G.ranges[i - 1] = {{i, i}};
+    G.n = nb;
     G.edges.resize(G.n + 1);
-    for (int g = 0; g < G.n; ++g) G.edges[g] = ax->GetBinLowEdge(G.lo[g]);
-    G.edges[G.n] = ax->GetBinUpEdge(G.hi[G.n - 1]);
+    for (int g = 0; g < G.n; ++g) G.edges[g] = ax->GetBinLowEdge(g + 1);
+    G.edges[G.n] = ax->GetBinUpEdge(G.n);
     return G;
 }
 
@@ -109,92 +125,131 @@ inline DrAxisGroups MakeDrPtGroups(const TAxis* pt_axis, bool merge_last_two)
     DrAxisGroups G;
     G.merged = true;
     for (int i = 1; i <= nsrc; ++i) {
-        if (i == nsrc) { G.hi.back() = i; continue; }   // fold the last bin into the previous group
-        G.lo.push_back(i);
-        G.hi.push_back(i);
+        if (i == nsrc) { G.ranges.back()[0].second = i; continue; }   // fold last bin into previous
+        G.ranges.push_back({{i, i}});
     }
-    G.n = (int)G.lo.size();
+    G.n = (int)G.ranges.size();
     G.edges.resize(G.n + 1);
-    for (int g = 0; g < G.n; ++g) G.edges[g] = pt_axis->GetBinLowEdge(G.lo[g]);
-    G.edges[G.n] = pt_axis->GetBinUpEdge(G.hi[G.n - 1]);
+    for (int g = 0; g < G.n; ++g) G.edges[g] = pt_axis->GetBinLowEdge(G.ranges[g][0].first);
+    G.edges[G.n] = pt_axis->GetBinUpEdge(G.ranges[G.n - 1][0].second);
     return G;
 }
 
-// THE PAIR-ETA GROUP BOUNDARIES (user, 2026-08-24). INTERIOR boundaries only -- the outer ones are
-// whatever the source axis's outer edges are, so nothing about the acceptance is retyped here.
-// The three regions they produce are the physical ones: negative-eta endcap | barrel | positive-eta
-// endcap. They are NOT a binning: each must already be an edge of
-// CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap, and MakeDrEtaGroups throws if it is not.
-inline const std::vector<double>& DrEtaMergeInteriorBoundaries()
+// THE PAIR-ETA GROUP BOUNDARIES (user, 2026-09-03; SUPERSEDES the 2026-08-24 signed
+// negative-endcap/barrel/positive-endcap grouping -- see the header comment and
+// docs/tracking/mc_trigeff_dr_binning_approaches.md). Sign-independent |eta^pair| INTERIOR
+// boundaries; the outer one is read from the source axis. Each boundary MUST be an existing edge
+// on BOTH sides of 0 (the source axis must be symmetric about 0 for a sign-independent fold to be
+// well defined); MakeDrEtaGroups throws otherwise, never inventing an edge.
+inline const std::vector<double>& DrEtaAbsMergeInteriorBoundaries()
 {
-    static const std::vector<double> b = {-1.0, 1.0};
+    static const std::vector<double> b = {1.0, 2.0};
     return b;
 }
 
-// Build the pair-eta grouping. `merge_eta` comes from DrCorrModeMergeEta(plateau_mode).
+// Build the pair-eta grouping. `merge_eta` comes from DrCorrModeMergeEta(plateau_mode). The
+// barrel group (|eta| < the first boundary) straddles zero and is therefore ONE contiguous source
+// range; every other group is the UNION of a negative-eta and a positive-eta source sub-range
+// (e.g. |eta| in [1,2) = source bins covering [-2,-1) UNION source bins covering [1,2)).
 inline DrAxisGroups MakeDrEtaGroups(const TAxis* eta_axis, bool merge_eta)
 {
     if (!eta_axis) throw std::runtime_error("MakeDrEtaGroups: null pair-eta axis");
     if (!merge_eta) return MakeDrIdentityGroups(eta_axis);
 
     const int nsrc = eta_axis->GetNbins();
-    const auto& bnd = DrEtaMergeInteriorBoundaries();
 
-    // LOOK THE BOUNDARIES UP in the axis; never rebin to them. `FindBin` alone would happily
-    // return the bin CONTAINING a boundary that is not an edge, which is exactly how a grouping
-    // silently stops describing the binning it groups.
-    std::vector<int> cut_bins;              // first source bin of each group after the first
-    for (double b : bnd) {
-        int found = -1;
+    // LOOK EDGES UP in the axis; never rebin to them. `FindBin` alone would happily return the
+    // bin CONTAINING a boundary that is not an edge, which is exactly how a grouping silently
+    // stops describing the binning it groups.
+    auto find_bin_with_low_edge = [&](double val) -> int {
         for (int i = 1; i <= nsrc; ++i)
-            if (std::fabs(eta_axis->GetBinLowEdge(i) - b) < 1e-6) { found = i; break; }
-        if (found < 0)
-            throw std::runtime_error(
-                "MakeDrEtaGroups: the requested pair-eta group boundary " + std::to_string(b)
-                + " is not an edge of the filled pair-eta axis. The merge groups EXISTING bins; "
-                  "it must never invent an edge (.claude/CLAUDE.md 'Binnings').");
-        if (found == 1)
-            throw std::runtime_error(
-                "MakeDrEtaGroups: pair-eta group boundary " + std::to_string(b)
-                + " coincides with the axis's lower edge, which would produce an empty group");
-        cut_bins.push_back(found);
-    }
-    for (size_t i = 1; i < cut_bins.size(); ++i)
-        if (cut_bins[i] <= cut_bins[i - 1])
-            throw std::runtime_error("MakeDrEtaGroups: the pair-eta group boundaries are not "
-                                     "strictly increasing along the axis");
+            if (std::fabs(eta_axis->GetBinLowEdge(i) - val) < 1e-6) return i;
+        return -1;
+    };
+    auto find_bin_with_up_edge = [&](double val) -> int {
+        for (int i = 1; i <= nsrc; ++i)
+            if (std::fabs(eta_axis->GetBinUpEdge(i) - val) < 1e-6) return i;
+        return -1;
+    };
+
+    const double eta_lo = eta_axis->GetBinLowEdge(1), eta_hi = eta_axis->GetBinUpEdge(nsrc);
+    if (std::fabs(eta_lo + eta_hi) > 1e-6)
+        throw std::runtime_error(
+            "MakeDrEtaGroups: the source pair-eta axis [" + std::to_string(eta_lo) + ", "
+            + std::to_string(eta_hi) + "] is not symmetric about 0 -- a sign-independent |eta| "
+              "fold is not well defined for it");
+    const double eta_max = eta_hi;
+
+    std::vector<double> ab = {0.0};                                  // |eta| boundaries
+    for (double b : DrEtaAbsMergeInteriorBoundaries()) ab.push_back(b);
+    ab.push_back(eta_max);
+    for (size_t i = 1; i < ab.size(); ++i)
+        if (ab[i] <= ab[i - 1])
+            throw std::runtime_error("MakeDrEtaGroups: |eta| group boundaries are not strictly "
+                                     "increasing");
 
     DrAxisGroups G;
     G.merged = true;
-    size_t next_cut = 0;
-    for (int i = 1; i <= nsrc; ++i) {
-        const bool starts_group = (i == 1) ||
-            (next_cut < cut_bins.size() && i == cut_bins[next_cut]);
-        if (starts_group) {
-            if (i != 1) ++next_cut;
-            G.lo.push_back(i);
-            G.hi.push_back(i);
+    const int ngroup = (int)ab.size() - 1;
+    G.ranges.resize(ngroup);
+    G.edges.resize(ngroup + 1);
+    for (int g = 0; g < ngroup; ++g) {
+        const double lo = ab[g], hi = ab[g + 1];
+        G.edges[g] = lo;
+        if (g == 0) {
+            // straddles zero -> one contiguous source range [-hi, +hi)
+            const int blo = find_bin_with_low_edge(-hi);
+            const int bhi = find_bin_with_up_edge(hi);
+            if (blo < 0 || bhi < 0)
+                throw std::runtime_error(
+                    "MakeDrEtaGroups: the |eta| boundary " + std::to_string(hi) + " is not a "
+                    "symmetric pair of existing edges on the source pair-eta axis. The merge "
+                    "groups EXISTING bins; it must never invent an edge (.claude/CLAUDE.md "
+                    "'Binnings').");
+            G.ranges[g].push_back({blo, bhi});
         } else {
-            G.hi.back() = i;
+            const int neg_lo = find_bin_with_low_edge(-hi);
+            const int neg_hi = find_bin_with_up_edge(-lo);
+            const int pos_lo = find_bin_with_low_edge(lo);
+            const int pos_hi = find_bin_with_up_edge(hi);
+            if (neg_lo < 0 || neg_hi < 0 || pos_lo < 0 || pos_hi < 0)
+                throw std::runtime_error(
+                    "MakeDrEtaGroups: the |eta| boundary [" + std::to_string(lo) + ", "
+                    + std::to_string(hi) + ") is not a symmetric pair of existing edges on the "
+                      "source pair-eta axis. The merge groups EXISTING bins; it must never invent "
+                      "an edge (.claude/CLAUDE.md 'Binnings').");
+            G.ranges[g].push_back({neg_lo, neg_hi});
+            G.ranges[g].push_back({pos_lo, pos_hi});
+            G.folded = true;
         }
     }
-    G.n = (int)G.lo.size();
-    if (G.n != (int)bnd.size() + 1)
-        throw std::runtime_error("MakeDrEtaGroups: internal inconsistency -- "
-                                 + std::to_string(bnd.size()) + " boundaries produced "
-                                 + std::to_string(G.n) + " groups");
-    G.edges.resize(G.n + 1);
-    for (int g = 0; g < G.n; ++g) G.edges[g] = eta_axis->GetBinLowEdge(G.lo[g]);
-    G.edges[G.n] = eta_axis->GetBinUpEdge(G.hi[G.n - 1]);
+    G.edges[ngroup] = ab.back();
+    G.n = ngroup;
+
+    // Every source bin must be covered EXACTLY ONCE -- the fold must be a partition of the source
+    // axis, not an approximation of one.
+    std::vector<int> cover(nsrc + 1, 0);
+    for (const auto& rs : G.ranges)
+        for (const auto& r : rs)
+            for (int i = r.first; i <= r.second; ++i) ++cover[i];
+    for (int i = 1; i <= nsrc; ++i)
+        if (cover[i] != 1)
+            throw std::runtime_error("MakeDrEtaGroups: internal inconsistency -- source bin "
+                                     + std::to_string(i) + " covered " + std::to_string(cover[i])
+                                     + " times (expected 1)");
     return G;
 }
 
-// One line for a log / report, so a run always states what it grouped.
+// One line for a log / report, so a run always states what it grouped. The OUTPUT axis (`edges`)
+// is what is printed; for the |eta| fold that axis runs 0 -> eta_max, so the unit string should
+// read "|eta^{pair}|" at call sites that pass a folded grouping (fit_dr_corrections.cxx).
 inline std::string DrGroupsDescribe(const DrAxisGroups& G, const char* axis_name, const char* unit)
 {
     if (!G.merged) return std::string(axis_name) + ": " + std::to_string(G.n)
                         + " cells (filled binning, no grouping)";
-    std::string s = std::string(axis_name) + ": MERGED into " + std::to_string(G.n) + " cells --";
+    std::string s = std::string(axis_name) + ": MERGED into " + std::to_string(G.n) + " cells";
+    if (G.folded) s += " (sign-independent fold)";
+    s += " --";
     for (int g = 0; g < G.n; ++g)
         s += Form("%s [%.4g, %.4g)%s", g ? "," : "", G.edges[g], G.edges[g + 1], unit);
     return s;
@@ -202,9 +257,9 @@ inline std::string DrGroupsDescribe(const DrAxisGroups& G, const char* axis_name
 
 // The (pair pT, pair eta) cell ratio for pair-pT GROUP `iy` and pair-eta GROUP `iz` (both 1-based;
 // iy = 0 integrates over pair pT and iz = 0 over pair eta, i.e. the inclusive cell). Identical to
-// DrCellRatio for identity groupings -- it IS DrCellRatio with the groups' source-bin ranges, so a
-// merged cell is built by summing its source bins' num/denom/errA/errB before the ratio, never by
-// averaging ratios.
+// DrCellRatio for identity groupings -- it sums the group's source sub-range(s)' num/denom/errA/
+// errB before the ratio, never averages ratios, and handles a group folded from more than one
+// disjoint source sub-range (the sign-independent |eta| groups) via DrCellRatioMultiRange.
 inline TH1D* DrGroupCellRatio(TH3D* hn, TH3D* hd, TH3D* ha, TH3D* hb, TH3D* hp, TH3D* hq,
                               const DrAxisGroups& Gpt, const DrAxisGroups& Geta,
                               int iy, int iz, const char* nm)
@@ -215,11 +270,11 @@ inline TH1D* DrGroupCellRatio(TH3D* hn, TH3D* hd, TH3D* ha, TH3D* hb, TH3D* hp, 
     if (iz < 0 || iz > Geta.n)
         throw std::runtime_error("DrGroupCellRatio: pair-eta group " + std::to_string(iz)
                                  + " out of range [0," + std::to_string(Geta.n) + "]");
-    const int ylo = (iy == 0) ? 0 : Gpt.lo[iy - 1];    // 0 -> DrCellRatioRange integrates the axis
-    const int yhi = (iy == 0) ? 0 : Gpt.hi[iy - 1];
-    const int zlo = (iz == 0) ? 0 : Geta.lo[iz - 1];
-    const int zhi = (iz == 0) ? 0 : Geta.hi[iz - 1];
-    return DrCellRatioRange(hn, hd, ha, hb, hp, hq, ylo, yhi, zlo, zhi, nm);
+    const std::vector<std::pair<int,int>> yranges =
+        (iy == 0) ? std::vector<std::pair<int,int>>{} : Gpt.ranges[iy - 1];
+    const std::vector<std::pair<int,int>> zranges =
+        (iz == 0) ? std::vector<std::pair<int,int>>{} : Geta.ranges[iz - 1];
+    return DrCellRatioMultiRange(hn, hd, ha, hb, hp, hq, yranges, zranges, nm);
 }
 
 // A (pair pT, pair eta) map on the GROUPED axes. Used for every per-cell map the fit stage writes,
