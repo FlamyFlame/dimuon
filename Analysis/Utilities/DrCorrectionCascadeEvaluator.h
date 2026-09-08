@@ -162,7 +162,14 @@ struct DrCorrectionCascadeEvaluator {
         ++n_eval;
         const TH2D* g = Grid();
         const int iy = g->GetXaxis()->FindBin(pair_pt);
-        const int iz = g->GetYaxis()->FindBin(pair_eta);
+        // FOLD-AWARE (fixed 2026-09-08). A folded |eta| mode's Y axis runs 0 -> eta_max, so the
+        // signed lookup this line used to do put EVERY negative-eta pair in the underflow bin,
+        // where it was counted "outside the cell grid" and returned eps_dR = 1: half the sample
+        // silently uncorrected in every `*_etamerge*` closure (50.67 % outside, against 0 % for an
+        // un-folded mode). Same bug as mc_trigeff_dr_binning_approaches.md D11, in a class that had
+        // reimplemented the lookup; the value now comes from the one shared helper.
+        const int iz = g->GetYaxis()->FindBin(
+            DrCorrectionEvaluator::CellLookupEta(pair_eta, tiers.front()->eta_folded));
         // OUTSIDE THE CELL GRID is its own outcome and must be counted as such. It is NOT the
         // raw-bin branch: the pair gets eps_dR = 1 (no correction) because no cell covers it --
         // typically pair pT below the 8 GeV bottom edge, which the signal region excludes but the

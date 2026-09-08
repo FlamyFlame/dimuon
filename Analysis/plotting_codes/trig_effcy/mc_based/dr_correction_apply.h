@@ -119,6 +119,12 @@ struct DrCorrectionEvaluator {
     std::vector<std::vector<Cell>> cells;      // [iy-1][iz-1]
     std::unique_ptr<TH2D> h_fit_ok;            // also supplies the cell axes
     std::string method, sign, label, mode;
+    // Set from DrCorrModeMergeEta(mode) at Load() time. A folded |eta| grouping's Y axis (of
+    // h_fit_ok) runs 0 -> eta_max, NOT -eta_max -> eta_max, so Eval() below must look the cell up
+    // by |pair_eta|, never by the signed value -- a signed lookup on that axis would send every
+    // negative-eta pair to the underflow bin and silently deliver eps_dR = 1 (no correction) to
+    // half the sample.
+    bool eta_folded = false;
 
     long long n_eval = 0, n_flat = 0, n_fit = 0, n_raw = 0, n_rawempty = 0, n_none = 0;
     long long n_floor = 0, n_cap = 0, n_outside = 0;
@@ -136,8 +142,12 @@ struct DrCorrectionEvaluator {
     // baseline C, which only those fits have:
     //   "nocorr"          the un-merged cells (the default; the reference of the 4-approach
     //                     comparison in docs/tracking/mc_trigeff_dr_binning_approaches.md)
-    //   "nocorr_etamerge" the same fit with the 9 pair-eta bins merged into the 3 physical
-    //                     detector regions (negative-eta endcap / barrel / positive-eta endcap)
+    //   "nocorr_etamerge" the same fit with the 9 pair-eta bins merged into 3 sign-independent
+    //                     |eta^pair| bins: |eta| < 1.0 (barrel), 1.0 <= |eta| < 2.0 and
+    //                     2.0 <= |eta| < the source axis's top edge (2.2 since 2026-09-07,
+    //                     tracking ParamsSet::pair_eta_fiducial_max; see
+    //                     dr_correction_cell_groups.h). Eval() below looks
+    //                     the cell up by |pair_eta| whenever this mode is loaded.
     //   "nocorr_etamerge_ptmerge"  both merges at once
     //   "nocorr_ptmerge"  the same fit with the LAST TWO pair-pT bins merged into one cell. This
     //                     is the variant the pp24 crossx application uses (DrCorrCrossxMode(),
@@ -154,6 +164,7 @@ struct DrCorrectionEvaluator {
         sign   = sign_in;
         mode   = plateau_mode;
         label  = cfg.mc_label;
+        eta_folded = DrCorrModeMergeEta(plateau_mode);
 
         if (!DrCorrModeNoPlateau(plateau_mode))
             throw std::runtime_error("DrCorrectionEvaluator: plateau mode '" + plateau_mode +
@@ -187,7 +198,8 @@ struct DrCorrectionEvaluator {
         // `iy` alone would silently deliver half of it. Built from the histograms' own axis, so it
         // is filled in together with them (dr_correction_cell_groups.h).
         // ... and the pair-ETA grouping, for the same reason: with the 9 filled pair-eta bins
-        // grouped into the 3 detector regions, cell `iz` spans THREE filled bins.
+        // folded into 3 sign-independent |eta| bins, a forward cell `iz` spans TWO disjoint
+        // filled-bin sub-ranges (a negative-eta one and a positive-eta one).
         DrAxisGroups Gpt, Geta;
         const std::string hist_path = cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label
                                     + DrCorrWpSuffix(use_tight_wp)
@@ -334,13 +346,29 @@ struct DrCorrectionEvaluator {
     }
 
     // ------------------------------------------------------------------ evaluation
+    // THE ONE PLACE THE pair-eta CELL LOOKUP VALUE IS FORMED, for every consumer of a Step-3 fit
+    // map. A folded |eta| grouping's Y axis runs 0 -> eta_max, so a SIGNED lookup sends every
+    // negative-eta pair into the underflow bin, where it is counted "outside the cell grid" and
+    // silently gets eps_dR = 1 -- half the sample left uncorrected, with no crash and no warning.
+    // That bug was fixed here on 2026-09-03 (mc_trigeff_dr_binning_approaches.md D11) but NOT in
+    // DrCorrectionCascadeEvaluator or DrCorrectionCrossxEvaluator, which reimplemented the same
+    // two lines; it was found again on 2026-09-08 in the cascade class, where it had corrupted
+    // every `*_etamerge*` closure. Hence a shared helper: the fold can no longer be forgotten by
+    // the next class that needs a cell index.
+    static double CellLookupEta(double pair_eta, bool folded)
+    {
+        return folded ? std::fabs(pair_eta) : pair_eta;
+    }
+
     double Eval(double dr, double pair_pt, double pair_eta)
     {
         ++n_eval;
         if (dr >= kDrMax) { ++n_flat; return 1.0; }
 
         const int iy = h_fit_ok->GetXaxis()->FindBin(pair_pt);
-        const int iz = h_fit_ok->GetYaxis()->FindBin(pair_eta);
+        // A folded |eta| grouping's Y axis runs 0 -> eta_max (see `eta_folded` above); the
+        // un-merged / pair-pT-only-merged modes keep the signed -eta_max -> eta_max axis.
+        const int iz = h_fit_ok->GetYaxis()->FindBin(CellLookupEta(pair_eta, eta_folded));
         if (iy < 1 || iy > h_fit_ok->GetNbinsX() || iz < 1 || iz > h_fit_ok->GetNbinsY()) {
             // Outside the measured cells there is no correction. The caller is expected to have
             // restricted the sample to the cell grid, so this is COUNTED and must come out 0.

@@ -123,7 +123,13 @@ struct DrCorrectionCrossxEvaluator {
     {
         ++n_eval;
         const int iy = primary.h_fit_ok->GetXaxis()->FindBin(pair_pt);
-        const int iz = primary.h_fit_ok->GetYaxis()->FindBin(pair_eta);
+        // FOLD-AWARE (fixed 2026-09-08, latent until now). DrCorrCrossxMode() is `nocorr_ptmerge`,
+        // which does not fold, so this class has never mis-looked-up a pair -- but the moment a
+        // `*_etamerge*` mode is chosen (the open decision in mc_trigeff_dr_binning_approaches.md
+        // Remaining Work 1) a signed lookup would have dropped the trigger correction on every
+        // negative-eta pair of the pp24 cross-section, silently. Shared helper, one definition.
+        const int iz = primary.h_fit_ok->GetYaxis()->FindBin(
+            DrCorrectionEvaluator::CellLookupEta(pair_eta, primary.eta_folded));
         // OUTSIDE THE CELL GRID is its own outcome and must be counted as such. It is NOT the
         // raw-bin branch: the pair gets eps_dR = 1 (no correction) because no cell covers it --
         // typically pair pT below the 8 GeV bottom edge, which the signal region excludes but the
@@ -217,7 +223,8 @@ private:
     double EvalNoCount(double dr, double pair_pt, double pair_eta)
     {
         const int iy = primary.h_fit_ok->GetXaxis()->FindBin(pair_pt);
-        const int iz = primary.h_fit_ok->GetYaxis()->FindBin(pair_eta);
+        const int iz = primary.h_fit_ok->GetYaxis()->FindBin(
+            DrCorrectionEvaluator::CellLookupEta(pair_eta, primary.eta_folded));
         if (iy < 1 || iy > primary.h_fit_ok->GetNbinsX() ||
             iz < 1 || iz > primary.h_fit_ok->GetNbinsY()) return 1.0;
         return (route[iy - 1][iz - 1] == 1) ? backup.Eval(dr, pair_pt, pair_eta)
@@ -255,6 +262,16 @@ private:
         std::vector<double> eta;
         eta.push_back(cfg.pair_eta_proj_ranges_coarse_incl_gap.front().first);
         for (const auto& r : cfg.pair_eta_proj_ranges_coarse_incl_gap) eta.push_back(r.second);
+        // A FOLDED mode's fit file carries the |eta| group axis (0 -> eta_max), not the signed
+        // 9-bin one, so the guard has to expect the folded edges or it throws 3-vs-9 before the
+        // fold-aware lookup at Eval() is ever reached. Harmless-but-unreachable is still wrong:
+        // Remaining Work 1 of mc_trigeff_dr_binning_approaches.md is exactly the decision that
+        // would put a `*_etamerge*` mode here, and the guard must be ready for it. Built with the
+        // SAME MakeDrEtaGroups fold the fit stage used, so it cannot describe a different grouping.
+        if (DrCorrModeMergeEta(mode)) {
+            TAxis src((int)eta.size() - 1, eta.data());
+            eta = MakeDrEtaGroups(&src, true).edges;
+        }
 
         auto check = [](const TAxis* ax, const std::vector<double>& edges, const char* what) {
             if (ax->GetNbins() != (int)edges.size() - 1)
