@@ -824,6 +824,220 @@ Verified clean (native "×10^3" box visible, no collision) on the highest-magnit
 WP PbPb combined, ~3.5M plateau) and the tightest pad grid (Plot C, 2×3), and on both
 `plot_muon_q_eta_pt_dependence.cxx` PNGs (Tight + Medium).
 
+### F17 — CUT SET CHANGED by the user; PAIR-LEVEL |eta^pair| < 2.2 added; full gap-cut inventory (2026-09-07)
+
+**User instruction (three parts).**
+
+1. `ParamsSet::single_mu_fiducial_gap_cuts` **{{-1.20,-1.05},{-0.10,+0.06},{2.30,2.40}} ->
+   {{-1.30,-1.05},{-0.10,+0.06},{2.20,2.40}}**. The barrel/endcap window is widened on the
+   negative-q·η side; the forward edge goes back to 2.20, where it again coincides with the
+   historical standalone per-muon `q·η < 2.2` signal cut. The crack window is unchanged.
+2. The q·η spectrum plot set is regenerated at the new windows, overwriting `new_gap_cuts/`
+   and `truth_q_eta/`.
+3. A **PAIR-LEVEL gap cut |eta^pair| < 2.2** (symmetric) is added, applied to the signal pairs
+   and everywhere the single-muon windows are applied to BOTH legs. Physics reason, per the
+   user: a pair can reach |eta^pair| > 2.2 with both muons passing the one-sided q·η windows,
+   but only through a charge-dependent corner of phase space whose pair efficiency is shaped by
+   the single-muon cut itself rather than by a smooth detector response. Removed, not modelled.
+
+**FORCED consequence — the coarse turn-on binning moved with the forward edge.**
+`RDFBasedHistFillingData::SetIOPaths` throws at startup unless
+`CommonEffcyConfig::q_eta_proj_ranges_coarse_incl_gap`'s top edge EQUALS the forward window's
+lower edge. Top bin **{2.0, 2.3} -> {2.0, 2.2}**. Not an independent binning choice — it is
+slaved to the cut; without it every trigger-efficiency job aborts before reading an event.
+
+**USER DECISION (asked, 2026-09-07):** the coarse **pair-η** binning
+`CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap` outer bins **±(2.0, 2.4) -> ±(2.0,
+2.2)**, so the 9 panels exactly tile the surviving region. Keeping ±2.4 would have left the two
+outer panels populated over half their width — dσ/dη diluted ~2× against the interior panels,
+with labels that still said (2.0, 2.4).
+
+**USER DECISION (asked, 2026-09-07):** the pair-level cut is **NOT** applied in the data
+tag-and-probe. ε^nc is a per-muon efficiency; the partner's position does not enter its
+definition (which is also why the tag is left uncut). The pair cut lives only where a PAIR is
+the object.
+
+**New measured costs** (macros' own console output, this session):
+
+| | pp24 | PbPb 23+24+25 |
+|---|---|---|
+| reco muons removed, Tight | **6.93 %** (was 3.79) | **9.03 %** (was 5.60) |
+| reco muons removed, Medium | 7.03 % | 9.77 % |
+| truth ε_acc | **0.8789** (was 0.9133) | **0.8765** (was 0.9121) |
+
+Truth cost per window: `[-1.30,-1.05]` 5.52 %, `[-0.10,+0.06]` 4.16 %, `[+2.20,+2.40]` 2.44 %
+(pp24 fullsim; PbPb overlay 5.58 / 4.15 / 2.62 %). PbPb is centrality-flat (9.00–9.15 % over
+0–10…50–80 %). pp p_T dependence is mild and monotonic (5.30 % in 4.0–4.5 GeV -> 8.00 % above
+6 GeV); PbPb flat. Widening the barrel/endcap window and pulling the forward edge back roughly
+**doubles** the single-muon cost of the fiducial cut. **These are single-muon numbers only —
+the pair-level |eta^pair| < 2.2 cut's own cost is NOT yet measured.**
+
+**Regenerated plot sets** (overwritten, `plots/single_b_analysis/muon_gap_cuts/`):
+`new_gap_cuts/muon_q_eta_spectrum_{pp24,pbpb_combined,pbpb_combined_ctr_binned,pp_vs_pbpb_shape}.png`
+(+ `medium/`), `new_gap_cuts/muon_q_eta_pt_dependence.png` (Tight + Medium),
+`truth_q_eta/` (3 PNGs).
+
+**COMPLETE GAP-CUT INVENTORY** (two independent subagents, cross-checked; their scratch docs
+`_sub_gapcut_inventory_{A,B}.md` merged here and deleted). The pre-existing summary in the
+`ParamsSet.h` STATUS block was correct but **incomplete** — it missed 7 live sites.
+
+*Sites reading `ParamsSet` (the fiducial cut), LIVE:*
+
+| Site | Step | Legs | Pair cut added? |
+|---|---|---|---|
+| `PP.cxx` `FillHistogramsGeneric` | pp24 generic + MC-data compr | both | **yes** |
+| `PP.cxx` `signal_cuts` | pp24 crossx signal region | both | **yes** |
+| `PP.cxx` template-fit pass `signal_cuts_no_minv` | low-mass template | both | **yes** |
+| `PP.cxx` template `_nosel` | low-mass template | both | **yes** |
+| `PP.cxx` template inputs in the nominal crossx pass | low-mass template | both | **yes** |
+| `PythiaFullsim.cxx` `gap_truth` / `gap_reco` | pp24 pair reco-eff | both, each leg | **yes** (truth_pair_eta / pair_eta) |
+| `PowhegTruth.cxx` generic `_gapcut_truth` | POWHEG truth generic family | both (truth) | **yes** |
+| `PowhegFullsim.cxx` `_single_b_pass_signal_truth_gapcut` | MC-vs-data signal family | both (truth) | **yes** |
+| `FillMCTrigEffHists.cxx` `kGapLeg` | MC trig-eff Steps 2 & 4 | both legs | **yes** |
+| `FillMCTrigEffHists.cxx` `kGapPair` | MC trig-eff Step 3 + kn-split stats | both | **yes** |
+| `FillMCTrigEffHists.cxx` `kGapSingle` | MC trig-eff Step 1 + sanity | single muon | **no** — no pair exists |
+| `Utilities/MCTrigEffPairSelection.h` `FiducialGapCut()` | closure (`FillMCTrigEffClosure.cxx`) + `SingleBSignalCutsReco()` | both | **yes** |
+| `PP.cxx:172` / `PbPb.cxx:340` T&P probe | data mu4 ε^nc | probe only | **no** — user decision |
+
+*Sites still on the RETIRED one-sided `q·η < 2.2`, numbers retyped — NO gap cut, so no pair cut
+either (unchanged, and each is a pre-existing divergence, not one introduced here):*
+`PbPb.cxx` crossx signal region + both template blocks; `PythiaFullsimOverlay.cxx`
+per-centrality `pass_signal_{truth,reco}` (note the class is INTERNALLY SPLIT — its inclusive
+nodes inherit the fiducial cut from the Pythia-fullsim base); `PythiaTruth.cxx` truth template
+`_sigsel` and truth signal acceptance; `PowhegTruth.cxx` signal acceptance;
+`PowhegFullsim.cxx` legacy `pass_signal_{truth,reco}`. Diagnostics likewise:
+`plot_sig_accept_cutflow_above_60GeV.cxx`, `plot_dr_vs_pair_pt_diagnostic.cxx`,
+`plot_reco_distr_singleb_vs_op_pp24.C`, `fill_pbpb_muon_pt45_diag_counts.cxx`.
+
+*NTuple processing applies NO gap cut* (verified by grep across `NTupleProcessingCode/`); only
+|η| < 2.4. Every consumer cuts for itself.
+
+*Legacy `_wgapcut` family* (`PassSingleMuonGapCut`: |η| < `eta_gap_cut1` = 0.135 at all p_T +
+`charge_eta_gap_cuts` below 6 GeV) is a DIFFERENT object, live only as a pp24 diagnostic
+(`run_crossx_hist_filling_pp24.sh` sets `output_gapcut_hists=true`). Untouched.
+
+**Open defects found by the inventory, NOT fixed here** (each is pre-existing):
+
+1. `PbPb.cxx:707` loads the trigger-efficiency input measured WITH the probe fiducial cut
+   (`..._qeta_fid...root`) while the PbPb signal selection is still `q·η < 2.2` — efficiency and
+   selection on different fiducial regions.
+2. R_AA therefore mixes fiducial regions (pp numerator fiducial, PbPb denominator not).
+3. `ParamsSet::PassSingleMuFiducialGap` has **zero call sites**; the three q·η plotters
+   re-implement the test with OPEN intervals in DOUBLE, whereas the helper and
+   `FiducialGapCutExpr` use CLOSED intervals in FLOAT. Measure-zero, but it is exactly the bug
+   class fixed at source on 2026-08-18.
+4. Truth signal acceptance (Pythia + POWHEG) is on the retired cut, so it cannot yet supply
+   ε_acc for the current fiducial region.
+5. `PowhegFullSimExtras.c:35` `if ((muon.eta) > 2.4)` — missing `fabs` (obsolete path).
+
+### F18 — the pair-η binning change silently truncated Pb+Pb; now it throws (2026-09-07)
+
+Found by `/review-analysis-code` on the F17 change (CRITICAL, verified independently by bin
+arithmetic). Shrinking the coarse pair-η panels to ±2.2 is safe on the **pp** axis
+(`ParamsSet::N_PAIR_ETA_CROSSX_BINS = 48` over [−2.4, 2.4], width exactly 0.1 → 2.2 **is** a bin
+edge) but **not** on Pb+Pb, which still books a retyped `44, −2.4, 2.4` axis (width 0.10909…)
+and has adopted neither the fiducial nor the pair-level cut. On that axis
+`FindBin(2.2 − 1e-6)` = bin 43, upper edge **2.29091**, where it used to be bin 44 (upper edge
+2.4): every Pb+Pb pair with |η^pair| ∈ [2.29091, 2.4] would have disappeared from the panel set
+and from the pair-η-integrated dσ/dη, with no warning, while the outer panel labelled (2.0, 2.2)
+actually integrated 1.96364–2.29091.
+
+**Fix applied — a guard, not a silent choice.** `Utilities/PairEtaPanelBins.h` (new):
+`PairEtaPanels::Bins(axis, panel, context)` computes the bin range and THROWS unless both panel
+edges are bin edges of *that* histogram's η axis, naming the range actually covered, the axis's
+bin count/limits, and the fix. It also carries `CheckPanelsMatchFiducialCut()` — the pair-η
+analogue of the q·η startup throw — which fires if the panel set ever stops tiling exactly
+|η^pair| < `ParamsSet::pair_eta_fiducial_max` (that coupling was asserted in three comments and
+enforced nowhere).
+
+**The guard had to be HOISTED — this is the part the first fix got wrong.** Round 1 put it inside
+`SingleBCrossxPlotterBase`, which covers five projection sites but not the *five more outside that
+class* that project the same panels: `plot_crossx_trig_corr_sanity.C` (run by BOTH the pp and the
+Pb+Pb crossx pipelines, reading the Pb+Pb 44-bin histograms), `plot_crossx_reco_eff_stages.C`
+(same Pb+Pb family), `SignalAcceptancePlotter.cxx` (Pythia **and** POWHEG truth acceptance, both
+booked `44, -2.4, 2.4`), `plot_pp_counts_pair_pt_in_eta.cxx` (a derived class that still called
+`FindBin` directly), and `plot_mc_data_pair_pt_in_eta.cxx`. Found by the iteration-2 reviewer,
+also CRITICAL. **A guard only some call sites use is not a guard** — all ten sites now go through
+the header.
+
+**A THIRD class of consumer, found in iteration 3 (also CRITICAL).** The two MC-trig-eff closure
+plotters (`plot_mc_trig_eff_closure.cxx`, `plot_mc_trig_eff_closure_compare.cxx`) do not call
+`FindBin` at all — they treat pair-η histogram **bin `iz`** as **panel `iz`** and label it
+`EtaLabel(eta_ranges[iz-1])` read live from `CommonEffcyConfig`, guarded only by a **bin-COUNT**
+check. A count check cannot see an edge move: all ten `mc_trig_eff_closure_*.root` files on disk
+still carry 9 bins over ±2.4, so they would have passed and been drawn with panels labelled
+(2.0, 2.2) that actually contain (2.0, 2.4). Both now call
+`PairEtaPanels::CheckAxisAligned` per panel after the count check, so a stale file throws.
+**Lesson: "project a bin range" was the wrong thing to grep for; "identify a bin with a panel" is
+the actual hazard, and it can be spelled without `FindBin`.**
+
+Also fixed in iteration 3: the MC-vs-data pair-η-**integrated** panel was labelled
+`-2.4 < η^pair < 2.4`, read off the histogram axis, on a spectrum every input of which now carries
+|η^pair| < 2.2 — a final-results figure overstating its own acceptance. It is now labelled from
+`ParamsSet::pair_eta_fiducial_max` (the projection still runs over the full axis, which is
+correct: nothing is left out, the region is simply empty).
+
+`plot_pp_counts_pair_pt_in_eta.cxx`'s own partition assertion was also repaired: it asserted that
+the nine panels tile the whole ±2.4 fine axis, which they no longer do, and its throw message
+misdiagnosed the failure as `N_PAIR_ETA_CROSSX_BINS` being wrong. It now says what a residual
+actually means — an input file filled before the pair-level cut existed.
+
+**Unblocking Pb+Pb is a user decision with a rerun:** move `RDFBasedHistFillingPbPb.cxx` onto
+`ParamsSet::N_PAIR_ETA_CROSSX_BINS` **and** onto the fiducial + pair-level cuts, then rerun the
+Pb+Pb crossx hist filling — in one step, or its code and its on-disk histograms disagree. The same
+applies to the Pythia/POWHEG **truth signal-acceptance** producers, which also book the 44-bin
+axis; until then the signal-acceptance panel plots throw too.
+
+**Iteration 4 — the hazard class is CLOSED, and two guards were hardened.** The reviewer's own
+three-pass sweep (greps for `FindBin`, `Projection[XYZ]`, `GetBinContent` loops, suffix read-back,
+`RangesToEdges`, and bin-index-as-panel-index, across all of `plotting_codes/`, `Utilities/`,
+`RDFBasedHistFilling/`, `pipelines/` and the loose top-level macros) found **no remaining
+unguarded panel→bin association**. Every site is either guarded by `PairEtaPanelBins.h`, carries
+its own throwing whole-axis edge comparison (`PairRecoEffEvaluator`, both
+`DrCorrection*Evaluator`s, `plot_pp24_fullsim_pair_reco_eff`, `FillMCTrigEffClosure`,
+`fit_dr_corrections`), merely BOOKS an axis from the ranges, or is structurally immune (bins and
+labels both read from the file's own axis). Two guards were still too weak and are now fixed:
+
+* **The MC-vs-data integrated panel asserted the fiducial region without checking it.** Its label
+  now says |η^pair| < 2.2 while the projection deliberately runs over the whole ±2.4 axis, so the
+  claim is only true if the inputs carry the cut — and the reviewer measured **1.66 %** of the
+  current pp24 input outside it. `assert_inside_fiducial` now throws on each of data / Pythia /
+  POWHEG. `PairEtaPanels::Bins` guards ALIGNMENT; this guards EMPTINESS — they are different
+  properties and the figure needs both.
+* **`build_pp24_fullsim_pair_reco_eff.C` was the one WRITER in the chain with no guard.** It
+  stamps a provenance string claiming the panel axis and the pair-level window; the current
+  `pair_reco_eff_pp24_full.root` on disk has the OLD ±2.4 outer bins while already carrying that
+  claim. Both consumers throw, but only after a mislabelled file exists. The writer now checks
+  its own axis before writing.
+
+**Also found in iteration 4, PRE-EXISTING and now made loud, not fixed:** `RAA_plotting.cxx`
+mode 2 (R_AA vs pair η) forms an **index-wise** PbPb/pp ratio while Pb+Pb has 44 pair-η bins and
+pp has 48 — at bin 44 that divides Pb+Pb [2.291, 2.4] by pp [1.9, 2.0], and every bin above the
+first is offset. The in-code comment claimed the axes "match by construction", which is true for
+mode 1 (both `pT_bins_120`) and false for mode 2. This predates the 2026-09-07 change; its real
+fix is the same Pb+Pb migration to `N_PAIR_ETA_CROSSX_BINS` + rerun. A bin-count and per-bin
+edge check now **throws** instead, and the display range is taken from
+`ParamsSet::pair_eta_fiducial_max` rather than a retyped 2.3.
+
+**One more doc defect the same review caught:** `signal_selection_change_impact.md` §1 listed the
+trigger-efficiency derivation as UNCHANGED — true for a *pair*-cut change, but this change moved
+the **probe** gap windows and the coarse q·η binning, so P2/P3 MUST be refit. §1 now carries an
+explicit carve-out.
+
+Also fixed in the same amendment round (all WARNING-level, all comment/provenance truthfulness):
+the `ParamsSet.h` header still called the cut "PROVISIONAL / not yet implemented / LIVE in the
+trigger-efficiency chain only" and still quoted ε_acc = 0.9133 twenty lines below the new table;
+`plot_muon_q_eta_spectrum.cxx` carried a literal window list stale by two revisions (now removed
+in favour of the run-time printout); `plot_forward_qeta_edge_scan.cxx` still said the edge "was
+loosened" to (2.30, 2.40); `FillMCTrigEffHists.cxx` labelled the pair-η axis "[-2.4,2.4]";
+`dr_correction_cell_groups.h` AND `pipelines/run_dr_correction_fits.sh` documented the etamerge
+top group as "2.0 ≤ |η| < 2.4"; and three
+provenance strings **written into produced artefacts** (the Step-3 pair-statistics CSV, the
+ε_reco histogram title, the raw-counts CSV) described only the single-muon windows — all three
+now also emit `ParamsSet::PairFiducialEtaCutExpr`. `FillMCTrigEffHists.cxx`'s `kGapPair` was
+migrated onto `Utilities/MCTrigEffPairSelection.h::FiducialGapCut()`, honouring that header's
+MIRROR NOTICE, so the gap construction can no longer drift between the two.
+
 ## Ruled Out (append-only)
 
 - *Plotting from the existing 2026-06-23 trees* — stale on the one-sided Δp/p fix (F3), which
@@ -832,6 +1046,22 @@ WP PbPb combined, ~3.5M plateau) and the tightest pad grid (Plot C, 2×3), and o
   Provenance rule and unnecessary: the single-muon trees are exactly the intended output.
 
 ## Latest Stage
+
+**STEP 10 IN PROGRESS (2026-09-07, F17) — CUT SET CHANGED + PAIR-LEVEL CUT WIRED IN.**
+`single_mu_fiducial_gap_cuts` = **{{-1.30,-1.05}, {-0.10,+0.06}, {2.20,2.40}}**, plus a NEW
+**pair-level |eta^pair| < 2.2** (`ParamsSet::pair_eta_fiducial_max`), wired into every site
+where the single-muon windows are applied to BOTH legs (12 sites; full inventory in F17).
+Two coupled binning edges moved with it: the coarse q·η turn-on top edge 2.3 -> 2.2 (FORCED by
+the startup throw) and the coarse pair-η outer bins ±(2.0,2.4) -> ±(2.0,2.2) (user decision).
+q·η plot set regenerated; new costs 6.93 % (pp) / 9.03 % (PbPb) of reco muons, ε_acc = 0.8789.
+
+**NOT YET DONE — the whole downstream chain is STALE.** Nothing has been rerun. Per
+`docs/signal_selection_change_impact.md` this needs, in order: (1) the single-muon mu4 turn-on
+refits (the coarse q·η binning changed AND the probe gap cut changed), (2) MC trig-eff Steps 1-4
++ the ΔR correction fits + closure, (3) pp24 fullsim reco-eff + rebuild of
+`pair_reco_eff_pp24_full.root`, (4) pp24 data crossx + template inputs, (5) POWHEG truth/fullsim
+generic+signal families, (6) all crossx / R_AA / MC-data-comparison / acceptance plots, (7) note
+figure re-sync. **Awaiting the user's go-ahead on how much of that to run and in what order.**
 
 **STEP 9 DONE (2026-09-06, F15+F16).** q·η spectra (data + truth + F14's p_T-dependence
 diagnostic) all switched to linear y-scale, `/review-plot` PASS on both rounds, all numbers

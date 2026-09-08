@@ -45,7 +45,14 @@ pair has characteristically **low invariant mass** and **small opening angle**.
 - opposite-sign (OS) muon pair,
 - m_μμ ∈ **[1.08, 2.9] GeV**,
 - pair p_T > **8 GeV**,
-- |pair η| < **2.2** (per-muon q·η, one-sided).
+- **Detector-gap fiducial cut**, `ParamsSet::single_mu_fiducial_gap_cuts` (2026-09-07):
+  BOTH muons must have q·η outside {(-1.30,-1.05), (-0.10,+0.06), (2.20,2.40)} (closed
+  intervals, one-sided because the windows track the toroid bending direction), **and**
+  the pair must satisfy **|η^pair| < 2.2** (symmetric, pair-level). This replaced the
+  former one-sided per-muon `q·η < 2.2` on 2026-08-17 in pp24; Pb+Pb has NOT been
+  brought over yet. The resulting cross-section is a FIDUCIAL one — the acceptance
+  ε_acc = 0.8789 is a separate, not-yet-applied factor
+  (`docs/tracking/muon_gap_cuts_acceptance.md`).
 - **No ΔR cut.** *(A former ΔR(μ,μ) > 0.05 cut was removed 2026-06-22 — interim
   nominal. It was a stats workaround for the data-based dR trigger-efficiency
   inverse-weighting, not a physics requirement, and it biased the high-pair-pT
