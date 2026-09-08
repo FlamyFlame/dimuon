@@ -245,6 +245,8 @@ void write_mc_pair_statistics_tables(const std::string& sample = "pp_full",
         os << "#     - truth fiducial: truth pT > 4 GeV and |truth eta| < 2.4;\n";
         os << "#     - forward low-pT veto: (pT > 7 GeV) OR (q*eta > -2);\n";
         os << "#     - q*eta fiducial gap cut: " << ParamsSet::FiducialGapCutExpr("q*eta") << ";\n";
+        os << "#     - pair-level fiducial gap cut: |eta^pair| < "
+           << ParamsSet::pair_eta_fiducial_max << ";\n";
         if (cfg.key == "overlay")
             os << "#     - event centrality in [0,5) %.\n";
         os << "#   NO TRIGGER REQUIREMENT (these are the Step-3 denominator pairs).\n";

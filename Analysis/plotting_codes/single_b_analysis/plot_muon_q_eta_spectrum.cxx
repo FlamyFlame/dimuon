@@ -118,8 +118,9 @@ bool PassSingleMuonGapCut(double eta, double pt, int charge) {
 }
 
 // ---- the PROPOSED fiducial cut ----
-// Windows are READ from ParamsSet::single_mu_fiducial_gap_cuts, the single source of truth
-// (currently {-1.20,-1.05}, {-0.06,0.06}, {2.30,2.40}); no value is retyped or overridden
+// Windows are READ from ParamsSet::single_mu_fiducial_gap_cuts, the single source of truth;
+// the live values are PRINTED at run time and deliberately not repeated here (a literal list in
+// this comment went stale twice, 2026-08-12 and 2026-09-07). No value is retyped or overridden
 // here, so re-tuning the cut means editing ParamsSet.h alone and re-running. Built once into
 // g_new_windows because the test runs per muon over ~10 M entries.
 bool kUseNewGapCuts = false;

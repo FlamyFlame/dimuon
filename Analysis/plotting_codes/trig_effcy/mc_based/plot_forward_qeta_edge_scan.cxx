@@ -7,8 +7,11 @@
 // yield at q*eta = 2.38-2.40 as only 8.8% of its 2.20-2.22 value, while the NEGATIVE side still
 // holds ~71% out to -2.4. The question this figure answered was whether the forward edge had to
 // sit at 2.20 or could be loosened to 2.25 / 2.30, recovering 1.4% (pp) / 2.2% (PbPb) of muons.
-// It was loosened: `ParamsSet::single_mu_fiducial_gap_cuts` now rejects q*eta in (2.30, 2.40),
-// and this macro is the supporting evidence, kept live so the choice can be re-checked.
+// It was loosened to 2.30 on 2026-08-04 -- and the user moved it BACK to 2.20 on 2026-09-07:
+// `ParamsSet::single_mu_fiducial_gap_cuts` now rejects q*eta in [2.20, 2.40], so the edge again
+// coincides with the historical per-muon `q*eta < 2.2` signal cut. This macro is the supporting
+// evidence for that scan, kept live so the choice can be re-checked; it does not itself set the
+// edge, which is read from ParamsSet.
 //
 // WHAT THIS DRAWS: the single-muon mu4 efficiency vs pT in the MOST POSITIVE q*eta bin, with the
 // bin's UPPER edge scanned over 2.20 / 2.25 / 2.30 / 2.40 (lower edge fixed at 2.0). If the 2.40

@@ -20,7 +20,7 @@
 // untouched. sf = PtHatKn45Projected::kSf (SAME constant the projected crossx plot uses).
 //
 // BINNING: pair-pT keeps the filled 8-bin axis (ParamsSet::pair_pt_coarse_bins) untouched. Pair-eta
-// is MERGED into the 3 sign-independent |eta^pair| bins 0-1, 1-2, 2-2.4 via MakeDrEtaGroups
+// is MERGED into the 3 sign-independent |eta^pair| bins 0-1, 1-2, 2 - the axis top edge (2.2 since 2026-09-07) via MakeDrEtaGroups
 // (dr_correction_cell_groups.h) -- the SAME utility just added for the dR-correction fit cells
 // (mode "nocorr_etamerge"); never re-invented here, per .claude/CLAUDE.md 'Binnings'.
 //
