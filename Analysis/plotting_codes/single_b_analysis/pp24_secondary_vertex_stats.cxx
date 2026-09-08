@@ -76,16 +76,24 @@ struct Row {
     double n{0}, n_sec{0}, n_new{0};
 };
 
+// At k = 0 / k = N the error is a ONE-SIDED Clopper-Pearson width, so it must not be printed as
+// "+-": "0.000 +- 10.869 %" claims a two-sided interval that runs below zero.
+const char* ErrSign(double k, double n) {
+    if (n > 0 && k <= 0) return " +  ";
+    if (n > 0 && k >= n) return " -  ";
+    return " +- ";
+}
+
 void PrintRow(std::ostream& os, const Row& r) {
     auto pct = [](double a, double b){ return b > 0 ? 100.0 * a / b : 0.0; };
     os << std::left << std::setw(22) << r.label << std::right
        << std::setw(10) << (long long)r.n
        << std::setw(9)  << (long long)r.n_sec
        << "  " << std::fixed << std::setprecision(3) << std::setw(6) << pct(r.n_sec, r.n)
-       << " +- " << std::setw(5) << 100.0 * FracErr(r.n_sec, r.n) << " %"
+       << ErrSign(r.n_sec, r.n) << std::setw(5) << 100.0 * FracErr(r.n_sec, r.n) << " %"
        << std::setw(9)  << (long long)r.n_new
        << "  " << std::setw(6) << pct(r.n_new, r.n)
-       << " +- " << std::setw(5) << 100.0 * FracErr(r.n_new, r.n) << " %" << std::endl;
+       << ErrSign(r.n_new, r.n) << std::setw(5) << 100.0 * FracErr(r.n_new, r.n) << " %" << std::endl;
 }
 
 }  // namespace
@@ -165,6 +173,11 @@ void pp24_secondary_vertex_stats(bool use_tight_wp = true,
     // Built with ostringstream, NOT snprintf into a fixed buffer: `signal_cuts` is several
     // hundred characters (it carries every gap window), and a truncated cut string does not
     // fail loudly -- RDF just refuses to JIT a half-expression.
+    // The edges are serialised into the cut strings at setprecision(10), i.e. ~1e-10 GeV from
+    // the exact double. That is NOT a retyped binning and cannot mis-tile: the SAME stream
+    // produces bin i's upper edge and bin i+1's lower edge, so the half-open [lo, hi) bins meet
+    // at a bit-identical threshold, and the residual is far below the float granularity of
+    // pair_pt. `check_complete` below enforces the tiling regardless.
     auto pt_cut = [](double lo, double hi) {
         std::ostringstream o;
         o << std::setprecision(10) << "pair_pt >= " << lo << " && pair_pt < " << hi;

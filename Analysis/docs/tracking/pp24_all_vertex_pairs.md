@@ -107,8 +107,11 @@ first 300 000 events, **eligible (`vtx_ntrk >= 2`) vertices only**, averaging ov
 **58.3 mm** and a mean |z_i - z_j| of **67.3 mm**. (Two reviewers reproduced these three
 numbers to three digits; the values 0.73 % / 61.0 / 68.3 quoted here before 2026-09-08 were
 not reproducible under any definition and are withdrawn. The sample and the
-"eligible-only, over pairs" definition are part of the statement — an all-vertices variant
-gives 10.3 % / 57.9 / 48.1 instead.)
+"eligible-only, over pairs" definition are part of the statement — keeping that definition and
+changing only eligible->all gives 10.3 % / 57.9 mm / 60.3 mm instead. Do not confuse the
+pair-averaged mean |z_i - z_j| quoted here with the mean distance to the PRIMARY,
+|z_i - z_0| over i >= 1, which is a different quantity: 65.4 mm eligible-only, 48.1 mm over all
+vertices.)
 
 A related property this design rests on, **empirical rather than structural**: the returned
 index can only be the primary if vertex 0 is itself eligible. Were `vtx_ntrk[0] < 2` ever to
