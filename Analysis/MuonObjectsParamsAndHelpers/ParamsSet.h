@@ -186,14 +186,15 @@ public:
    	std::vector<std::array<float,2>> minv_cuts_v2;
    	static std::vector<std::array<float,2>> charge_eta_gap_cuts;
 
-   	// ---- PROVISIONAL single-muon detector-gap FIDUCIAL cut (q*eta) ----
-   	// Reject a muon whose q*eta falls inside any of these windows. Intended to be
-   	// compensated by an acceptance efficiency in the correction chain.
-   	// STATUS: LIVE in the TRIGGER-EFFICIENCY chain only (see the STATUS block at the end
-   	// of this comment). Changing any window here therefore CHANGES the MC trig-eff and the
-   	// data tag-and-probe efficiencies and requires rerunning them -- it is no longer a
-   	// free-to-edit provisional constant. Still NOT in the signal selection. See
-   	// Analysis/docs/tracking/muon_gap_cuts_acceptance.md (F6/F7/F11) for the measurement.
+   	// ---- single-muon detector-gap FIDUCIAL cut (q*eta) ----
+   	// Reject a muon whose q*eta falls inside any of these windows. Compensated by an acceptance
+   	// efficiency eps_acc in the correction chain (eps_acc itself is NOT built yet).
+   	// STATUS: LIVE in the trigger-efficiency chain AND in the pp24 SIGNAL SELECTION. The two
+   	// STATUS blocks at the end of this comment, not this header, are the current site list.
+   	// Changing any window here changes the MC trig-eff, the data tag-and-probe efficiencies, the
+   	// pp24 cross-section and everything downstream, and requires rerunning all of it
+   	// (docs/signal_selection_change_impact.md). NOT a free-to-edit constant. See
+   	// Analysis/docs/tracking/muon_gap_cuts_acceptance.md (F6/F7/F11/F17).
    	//
    	// Derived from the measured single-muon q*eta spectra (pp24 + PbPb 23/24/25):
    	//   {-0.10, +0.06} barrel crack at eta~0, ASYMMETRIC (user, 2026-08-12). The crack
@@ -209,56 +210,64 @@ public:
    	//                  {-0.06, +0.06} cut only part of the depleted region.
    	//                  It is still narrower than the legacy eta_gap_cut1 = 0.135, which
    	//                  is symmetric in |eta| and so cuts a healthy +0.06..+0.135 slice.
-   	//   {-1.20, -1.05} barrel/endcap transition. This is a q*eta (toroid bending
+   	//   {-1.30, -1.05} barrel/endcap transition. This is a q*eta (toroid bending
    	//                  direction) effect, NOT a fixed-|eta| geometric gap: each charge
    	//                  dips on ONE side only (mu+ at eta=-1.15, mu- at eta=+1.15, both
    	//                  q*eta=-1.15) with no mirror dip, a factor ~7-9 asymmetry. So it
    	//                  MUST be cut one-sided in q*eta; an |eta| window would discard
    	//                  twice the phase space for no gain. The window brackets the
-   	//                  measured half-depth region (-1.17,-1.08) with margin. In pp the
+   	//                  measured half-depth region (-1.17,-1.08); the lower edge was
+   	//                  widened -1.20 -> -1.30 (user, 2026-09-07) to cover the full
+   	//                  negative-side extent of the dip. In pp the
    	//                  dip bottoms at 32% of plateau, in PbPb only 67% and centred
    	//                  nearer -1.16 -- a single common window is a pp/PbPb compromise.
-   	//   {+2.30, +2.40} forward acceptance edge, ONE-SIDED: the yield collapses to 8.8%
+   	//   {+2.20, +2.40} forward acceptance edge, ONE-SIDED: the yield collapses to 8.8%
    	//                  (pp) / 52% (PbPb) of its q*eta=2.2 value by 2.4, while the
    	//                  NEGATIVE side still holds ~71% out to -2.4. So there is
    	//                  deliberately no mirror window at -2.4.
-   	//                  EDGE CHOICE (currently 2.30, user 2026-08-04): this is LOOSER
-   	//                  than the standalone per-muon signal cut `m*.charge*m*.eta < 2.2`
-   	//                  that the vector is meant to replace, so the swap is NOT
-   	//                  yield-neutral -- it RECOVERS q*eta in (2.2, 2.3), i.e. +1.36% of
-   	//                  pp and +2.24% of PbPb single muons. That recovered slice has NO
-   	//                  fitted trigger efficiency today (the fitted q*eta ranges in
-   	//                  CommonEffcyConfig::q_eta_proj_ranges_fine_excl_gap stop at 2.2),
-   	//                  so adopting 2.30 REQUIRES extending the fit binning to cover
-   	//                  (2.2, 2.3) -- otherwise those muons hit the -1.0f "no efficiency"
-   	//                  sentinel and get silently dropped (pp_trig_eff_highpt_jump.md).
-   	//                  Setting the edge back to 2.20 would instead make the swap exactly
-   	//                  yield-neutral and need no fit change.
+   	//                  EDGE CHOICE (2.20, user 2026-09-07; was 2.30 from 2026-08-04):
+   	//                  2.20 coincides with the historical standalone per-muon signal cut
+   	//                  `m*.charge*m*.eta < 2.2` that this vector replaces, so the swap is
+   	//                  exactly yield-neutral at the forward edge. The coarse turn-on
+   	//                  binning's top edge MUST follow it down to 2.20
+   	//                  (CommonEffcyConfig::q_eta_proj_ranges_coarse_incl_gap), which is
+   	//                  enforced by the startup throw in RDFBasedHistFillingData.
    	// Deliberately NOT included:
    	//   - the legacy "feet" window (0.56,0.67) and positive-side (1.064,1.29): the
    	//     measured structure there is too shallow to be worth the acceptance.
    	//   - any pT dependence: unlike charge_eta_gap_cuts, which only applies for
    	//     pT < 6 GeV, this is pT-INDEPENDENT so that the acceptance factors as a pure
    	//     function of q*eta.
-   	// INTENDED SCOPE (not yet implemented): this vector is meant to become the SINGLE
-   	// source of the gap/fiducial definition -- applied in the signal selection AND in
-   	// the trigger- and reconstruction-efficiency evaluations -- REPLACING the standalone
-   	// `q*eta < 2.2` cut currently repeated across RDFBasedHistFilling{PP,PbPb,
-   	// PythiaTruth,PythiaFullsim,PythiaFullsimOverlay,PowhegTruth,PowhegFullsim}.cxx.
-   	// Doing that is a signal-selection change with the full rerun blast radius in
-   	// Analysis/docs/signal_selection_change_impact.md -- do NOT wire it in without the
-   	// user's go-ahead.
-   	// Cost if applied per muon (Tight WP, measured on the current single-muon trees).
-   	// AS CONFIGURED -- {-1.20,-1.05}, {-0.10,+0.06}, {2.30,2.40}:
-   	//                 crack   dip     fwd     whole set, muons   whole set, pairs
-   	//   pp            1.62%   1.80%   0.37%   3.79%              7.44%
-   	//   PbPb 0-80%    1.81%   2.88%   0.91%   5.60%             10.89%
-   	// With the previous symmetric crack window {-0.06,+0.06} the totals were
-   	// 3.29% / 6.47% (pp) and 5.13% / 10.00% (PbPb), so widening the crack to -0.10 costs
-   	// a further 0.50% (pp) / 0.47% (PbPb) of single muons.
-   	// (The forward slice is already outside the signal region today, so adopting
-   	//  {2.2,2.4} would cost nothing relative to the CURRENT selection; {2.3,2.4} instead
-   	//  RECOVERS 1.36% / 2.24% of muons -- see the EDGE CHOICE note above.)
+   	// INTENDED SCOPE (PARTLY implemented -- see the STATUS blocks below): this vector is the
+   	// SINGLE source of the gap/fiducial definition and is meant to REPLACE the standalone
+   	// `q*eta < 2.2` everywhere. DONE for pp24 (data crossx + templates + generic, Pythia
+   	// fullsim reco-eff, POWHEG truth/fullsim generic+signal families) and for the whole MC and
+   	// data trigger efficiency. STILL on the retired `q*eta < 2.2`: RDFBasedHistFillingPbPb.cxx
+   	// (crossx + templates), RDFBasedHistFillingPythiaTruth.cxx, the per-centrality nodes of
+   	// RDFBasedHistFillingPythiaFullsimOverlay.cxx, and the Pythia/POWHEG truth signal
+   	// ACCEPTANCE. Bringing any of those over is a signal-selection change with the full rerun
+   	// blast radius in Analysis/docs/signal_selection_change_impact.md -- get the user's
+   	// go-ahead first.
+   	// COST, per muon, AS CONFIGURED -- {-1.30,-1.05}, {-0.10,+0.06}, {2.20,2.40}.
+   	// Measured 2026-09-07 by plotting_codes/single_b_analysis/plot_muon_q_eta_spectrum.cxx on the
+   	// current single-muon trees (fraction of RECONSTRUCTED muons rejected):
+   	//                 Tight     Medium
+   	//   pp24          6.93%     7.03%
+   	//   PbPb 0-80%    9.03%     9.77%
+   	// (centrality-flat in PbPb: 9.00 / 9.07 / 9.04 / 9.06 / 9.15% over 0-10/10-20/20-30/30-50/
+   	//  50-80%.) The p_T dependence is mild and monotonic in pp (5.30% in 4.0-4.5 GeV -> 8.00%
+   	//  above 6 GeV) and flat in PbPb -- plot_muon_q_eta_pt_dependence.cxx.
+   	// The superseded set {-1.20,-1.05},{-0.10,+0.06},{2.30,2.40} cost 3.79% (pp, per-window
+   	// 1.62/1.80/0.37) / 5.60% (PbPb, 1.81/2.88/0.91), i.e. 7.44% / 10.89% of PAIRS. Widening the
+   	// barrel/endcap window to -1.30 and pulling the forward edge back to 2.20 roughly doubles the
+   	// single-muon cost. (The pair-level cost of the new set is not re-measured here; the
+   	// PAIR-LEVEL |eta^pair| < 2.2 cut declared further down adds to it.)
+   	// TRUTH-level cost per window -- what the acceptance eps_acc must carry -- from
+   	// plot_muon_truth_q_eta_spectrum.cxx on the pp24 Pythia fullsim / PbPb overlay truth muons:
+   	//                 [-1.30,-1.05]  [-0.10,+0.06]  [+2.20,+2.40]   eps_acc
+   	//   pp24 fullsim      5.52%          4.16%          2.44%        0.8789
+   	//   PbPb overlay      5.58%          4.15%          2.62%        0.8765
+   	// (was eps_acc = 0.9133 / 0.9121 for the superseded set.)
    	// STATUS 2026-08-04: WIRED IN, for the TRIGGER EFFICIENCY (user instruction).
    	//   - MC trig-eff sample: FillMCTrigEffHists.cxx, all of Steps 1-4, both legs of a pair.
    	//   - DATA tag-and-probe: applied to the PROBE only (user decision) -- eps^nc is a per-muon
@@ -272,16 +281,18 @@ public:
    	//   - pp24 fullsim reco efficiency: RDFBasedHistFillingPythiaFullsim.cxx
    	//     `pass_signal_truth` (TRUTH q*eta) and `pass_signal_reco` (RECO q*eta).
    	//   - the data-like mirror Utilities/MCTrigEffPairSelection.h SingleBSignalCutsReco().
-   	// Because the ntuple stage already requires |eta| < 2.4, the forward window {2.30, 2.40}
-   	// makes the effective forward edge 2.30 == the top edge of
+   	// Because the ntuple stage already requires |eta| < 2.4, the forward window {2.20, 2.40}
+   	// makes the effective forward edge 2.20 == the top edge of
    	// CommonEffcyConfig::q_eta_proj_ranges_coarse_incl_gap, so every surviving muon has a
    	// fitted turn-on (no sentinel, no silent pair drop).
    	// STILL NOT APPLIED (future to-do, each with its own rerun):
    	// the PbPb data crossx and the PbPb overlay reco efficiency, the Pythia/Powheg TRUTH
    	// signal acceptance, the data ntuple processing, and the template fits.
    	// NOTE the resulting pp24 cross-section is a FIDUCIAL (gap-cut) cross-section: the
-   	// truth-level gap acceptance eps_acc = 0.9133 (muon_gap_cuts_acceptance.md F12) is a
-   	// SEPARATE factor and is not applied anywhere yet.
+   	// truth-level gap acceptance eps_acc = 0.8789 (pp24 fullsim) / 0.8765 (PbPb overlay)
+   	// (muon_gap_cuts_acceptance.md F12/F17) is a SEPARATE factor, not applied anywhere yet --
+   	// and it does NOT yet include the cost of the PAIR-LEVEL |eta^pair| < 2.2 window declared
+   	// below.
    	static std::vector<std::pair<float,float>> single_mu_fiducial_gap_cuts;
 
    	// --- The fiducial gap cut, in the TWO forms the analysis needs -----------------------
@@ -293,12 +304,12 @@ public:
    	// silently change the meaning of already-produced outputs whose names would not change.
    	// This cut is pT-INDEPENDENT by requirement, so the acceptance factorises in q*eta alone.
    	// The windows are rejected CLOSED, `[lo, hi]`, not open. That is not a detail:
-   	// the forward window's lower edge 2.30 is ALSO the top edge of the contiguous coarse q*eta
+   	// the forward window's lower edge (2.20) is ALSO the top edge of the contiguous coarse q*eta
    	// turn-on binning (CommonEffcyConfig::q_eta_proj_ranges_coarse_incl_gap, whose bins are
    	// half-open `[lo, hi)`), and the ntuple keeps |eta| <= 2.4, so with OPEN windows a muon at
-   	// exactly q*eta = 2.30 or 2.40 survived the cut and then had NO fitted turn-on -- which
+   	// exactly q*eta = 2.20 or 2.40 survived the cut and then had NO fitted turn-on -- which
    	// EvaluateSingleMuonEffcyPtFitted throws on, by design, rather than silently dropping the
-   	// pair. Closing the interval makes the surviving region exactly [-2.4, 2.30) minus the two
+   	// pair. Closing the interval makes the surviving region exactly [-2.4, 2.20) minus the two
    	// interior windows, i.e. precisely the region the turn-on fits cover. (Found 2026-08-17 when
    	// a real pp24 muon landed on q*eta = 2.300; the change is measure-zero everywhere else,
    	// since it only moves exact boundary values.)
@@ -329,6 +340,36 @@ public:
    			   + " && (float)(" + q_eta_expr + ") <= " + std::to_string(w.second) + "f)";
    		}
    		return s + ")";
+   	}
+
+   	// ---- PAIR-LEVEL detector-gap fiducial cut: |eta^pair| < 2.2 --------------------------
+   	// The single-muon fiducial cut above removes q*eta in [2.20, 2.40], ONE-SIDED. A PAIR can
+   	// still reach |eta^pair| > 2.2 with both muons passing that cut -- e.g. two muons at
+   	// eta = +2.3 whose charges both give q*eta = -2.3. But in that region the pair acceptance is
+   	// carved out by the SINGLE-MUON q*eta window in a charge- and configuration-dependent way, so
+   	// the pair efficiency there is a complicated function of the single-muon cut rather than a
+   	// smooth detector response. Rather than model that, the region is removed (user instruction,
+   	// 2026-09-07): |eta^pair| < 2.2, SYMMETRIC -- unlike the single-muon windows, which are
+   	// one-sided in q*eta because they track the toroid bending direction; eta^pair carries no
+   	// charge, so there is nothing for a one-sided window to track.
+   	// This is a GAP CUT AT PAIR LEVEL and belongs everywhere the single-muon gap cut is applied to
+   	// both legs of a pair. Like the single-muon windows, its cost must eventually be carried by
+   	// the acceptance factor eps_acc (muon_gap_cuts_acceptance.md F12).
+   	// Comparison is STRICT (`<`), so the surviving region is the OPEN interval (-2.2, +2.2), and
+   	// it is done in FLOAT for the same JIT float/double reason documented above. Strict is the
+   	// correct direction here: the coarse pair-eta bins are half-open [lo,hi) with outer edges at
+   	// exactly +-2.2, so a pair sitting on 2.2 must be rejected or it would land in overflow.
+   	// NOTE PassPairFiducialEta is the non-RDF (plain C++) form and currently has NO call sites --
+   	// every live consumer is an RDF Filter and uses PairFiducialEtaCutExpr. It is kept as the
+   	// predicate a non-RDF consumer should call rather than re-implementing the test.
+   	static constexpr float pair_eta_fiducial_max = 2.2f;
+   	static bool PassPairFiducialEta(float pair_eta) {
+   		return std::fabs(pair_eta) < pair_eta_fiducial_max;
+   	}
+   	// RDF/JIT string form; `pair_eta_expr` is any expression evaluating to the pair eta.
+   	static std::string PairFiducialEtaCutExpr(const std::string& pair_eta_expr) {
+   		return "(fabs((float)(" + pair_eta_expr + ")) < "
+   		     + std::to_string(pair_eta_fiducial_max) + "f)";
    	}
 
    	float minv_upper = 60;
@@ -505,17 +546,19 @@ float ParamsSet::deltaR_thrsh[ndRselcs] = {0.8,1.2,5.75};
 float ParamsSet::deltaR_thrsh_zoomin = 0.8;
 
 std::vector<std::array<float,2>> ParamsSet::charge_eta_gap_cuts = {{0.56,0.67}, {1.064,1.29}, {-1.29,-1.12}};
-// PROVISIONAL fiducial gap windows in q*eta -- see the declaration for the derivation.
-// Not read by any selection yet.
-// Forward window LOOSENED 2.20 -> 2.30 (user, 2026-08-04) on the evidence of the edge scan
-// (mc_trigger_efficiency.md R22): moving the edge from 2.20 to 2.30 leaves the plateau
-// efficiency unchanged in BOTH systems, BOTH charges, data AND MC -- pp 0.9073 -> 0.9026
-// (mu+), PbPb 0.8514 -> 0.8565 (mu+, i.e. marginally better) -- while recovering ~45% more
-// probes. Only 2.40 degrades it (~6% pp, ~4-5% PbPb). Recovers 1.4% (pp) / 2.2% (PbPb) of
-// muons relative to 2.20.
+// Fiducial gap windows in q*eta -- see the declaration for the derivation.
+// HISTORY of the two windows that have moved:
+//   barrel/endcap: {-1.20,-1.05} -> {-1.30,-1.05} (user, 2026-09-07). Widened on the
+//     negative-q*eta side to cover the full extent of the one-sided transition dip.
+//   forward edge: 2.20 -> 2.30 (user, 2026-08-04, on the edge scan of
+//     mc_trigger_efficiency.md R22) -> back to 2.20 (user, 2026-09-07). At 2.20 the
+//     forward window again coincides with the historical standalone per-muon
+//     `q*eta < 2.2` signal cut, so the fiducial swap is yield-neutral there.
 // COUPLED: CommonEffcyConfig::q_eta_proj_ranges_coarse_incl_gap's top bin must END at this
-// same 2.30, or muons in [2.20,2.30) would survive the cut with no fitted turn-on.
-std::vector<std::pair<float,float>> ParamsSet::single_mu_fiducial_gap_cuts = {{-1.20f,-1.05f}, {-0.10f,0.06f}, {2.30f,2.40f}};
+// same 2.20, or muons between the two edges would survive the cut with no fitted turn-on. The
+// coupling is not left to this comment: RDFBasedHistFillingData::SetIOPaths checks it at startup
+// and THROWS if the two numbers disagree.
+std::vector<std::pair<float,float>> ParamsSet::single_mu_fiducial_gap_cuts = {{-1.30f,-1.05f}, {-0.10f,0.06f}, {2.20f,2.40f}};
 std::vector<float> ParamsSet::pTbins = {4.,5.,6.,7.,8.,9.,10.,12.,15.,20.};
 std::vector<int> ParamsSet::ctrbins = {0, 5, 10, 20, 30, 50, 80};
 // std::vector<double> ParamsSet::pTHatbins_pythia = {5, 10, 25, 60, 120, 3200};

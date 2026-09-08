@@ -43,8 +43,8 @@ struct CommonEffcyConfig {
     };
 
     // RUN-3 COARSE q*eta binning -- the NOMINAL binning for the single-muon mu4 turn-on fits
-    // since 2026-08-04 (user, advisor feedback). 10 contiguous bins spanning -2.4 <= q*eta < 2.3
-    // (one-sided; the forward slice q*eta > 2.3 is removed by the fiducial gap cut,
+    // since 2026-08-04 (user, advisor feedback). 10 contiguous bins spanning -2.4 <= q*eta < 2.2
+    // (one-sided; the forward slice q*eta > 2.2 is removed by the fiducial gap cut,
     // ParamsSet::single_mu_fiducial_gap_cuts).
     //
     // WHY COARSE, AND WHY IT MATTERS: the fine `q_eta_proj_ranges_fine_excl_gap` binning EXCLUDES
@@ -60,8 +60,10 @@ struct CommonEffcyConfig {
     // The split matters because q*eta folds the two charges through the toroid bending
     // direction, and the eta ~ 0 crack is not symmetric in q*eta (muon_gap_cuts_acceptance.md F7).
     // TOP EDGE TRACKS THE GAP CUT: it must equal the lower edge of the forward window in
-    // ParamsSet::single_mu_fiducial_gap_cuts (2.30 since 2026-08-04). If they disagree, muons
-    // between the two survive the cut with no fitted turn-on and the evaluator throws.
+    // ParamsSet::single_mu_fiducial_gap_cuts (2.20 since 2026-09-07; 2.30 from 2026-08-04 to
+    // 2026-09-07). If they disagree, muons between the two survive the cut with no fitted
+    // turn-on and the evaluator throws. This edge is NOT an independent binning choice -- it
+    // is slaved to the gap cut and moves only when the user moves that.
     QEtaBinning q_eta_proj_ranges_coarse_incl_gap = {
         {-2.4f, -2.0f},
         {-2.0f, -1.5f},
@@ -72,7 +74,7 @@ struct CommonEffcyConfig {
         {0.5f, 1.0f},
         {1.0f, 1.5f},
         {1.5f, 2.0f},
-        {2.0f, 2.3f}
+        {2.0f, 2.2f}
     };
 
     QEtaBinning q_eta_proj_ranges_coarse_incl_gap_run2 = { // Run 2; gap included
@@ -88,10 +90,15 @@ struct CommonEffcyConfig {
     };
 
     // For PAIR ETA binning (reco efficiency, cross-section, signal acceptance).
-    // Last bin extends to 2.4: signal cuts are per-muon q*eta < 2.2 (one-sided,
-    // -2.4 <= q*eta < 2.2), so pair eta reaches 2.4. No run-year split needed.
+    // OUTER EDGES 2.4 -> 2.2 (user, 2026-09-07), following the new PAIR-LEVEL fiducial cut
+    // |eta^pair| < ParamsSet::pair_eta_fiducial_max = 2.2. Before that cut existed the outer
+    // bins had to reach 2.4, because the per-muon q*eta cut is one-sided and a pair of two
+    // forward muons could reach |eta^pair| = 2.4. Now nothing can: keeping the old +-(2.0,2.4)
+    // bins would leave the two outer panels populated over only half their width, so their
+    // dsigma/deta would be diluted ~2x relative to the interior panels while their LABELS still
+    // said (2.0,2.4). The 9 panels now exactly tile the surviving region. No run-year split.
     QEtaBinning pair_eta_proj_ranges_coarse_incl_gap = {
-        {-2.4f, -2.0f},
+        {-2.2f, -2.0f},
         {-2.0f, -1.5f},
         {-1.5f, -1.0f},
         {-1.0f, -0.5f},
@@ -99,7 +106,7 @@ struct CommonEffcyConfig {
         {0.5f, 1.0f},
         {1.0f, 1.5f},
         {1.5f, 2.0f},
-        {2.0f, 2.4f}
+        {2.0f, 2.2f}
     };
 
 
