@@ -575,6 +575,19 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::FillMuonPair_DataCore
 
 
 template <class PairT, class MuonT, class Derived, class... Extras>
+bool DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::PassD0Z0_DataCore(){
+	// PRIMARY-VERTEX impact-parameter cut -- the default, used by Pb+Pb.
+	// The skim stores z0 = idTrk->z0() + idTrk->vz() - z_vtx(0), i.e. already referenced to
+	// vertex index 0 (SkimCode/.../TrigRates.cxx ProcessMuons()); d0 = idTrk->d0() is
+	// referenced to the BEAMLINE and is vertex-independent.
+	const double m1z0sinTheta = fabs(mpairRef()->m1.z0 * sin(2.0*atan(exp(-mpairRef()->m1.eta))));
+	const double m2z0sinTheta = fabs(mpairRef()->m2.z0 * sin(2.0*atan(exp(-mpairRef()->m2.eta))));
+	return (fabs(mpairRef()->m1.d0) < pms.d0cut && fabs(mpairRef()->m2.d0) < pms.d0cut
+	        && m1z0sinTheta < pms.z0cut && m2z0sinTheta < pms.z0cut);
+}
+
+
+template <class PairT, class MuonT, class Derived, class... Extras>
 bool DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::PassCuts_DataCore(bool requireTight){
 
 	//require some quality cuts on the muons
@@ -601,11 +614,9 @@ bool DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::PassCuts_DataCore(boo
 	if( mpairRef()->m1.dP_overP > pms.deltaP_overP_thrsh || mpairRef()->m2.dP_overP > pms.deltaP_overP_thrsh ) return false;
 	h_cutAcceptanceRef()[mpairRef()->m1.charge != mpairRef()->m2.charge]->Fill(static_cast<int>(CutsCommon::pass_muon_dP_overP) + 0.5, mpairRef()->weight);
 	
-	//cut on d0 & z0 sin(theta)
-	double m1z0sinTheta = fabs(mpairRef()->m1.z0 * sin(2.0*atan(exp(-mpairRef()->m1.eta))));
-	double m2z0sinTheta = fabs(mpairRef()->m2.z0 * sin(2.0*atan(exp(-mpairRef()->m2.eta))));
-	bool pass_d0_z0_cuts = (fabs(mpairRef()->m1.d0) < pms.d0cut && fabs(mpairRef()->m2.d0) < pms.d0cut && m1z0sinTheta < pms.z0cut && m2z0sinTheta < pms.z0cut);
-	if (!pass_d0_z0_cuts) return false;
+	//cut on d0 & z0 sin(theta). DISPATCHED (see PassD0Z0Hook): Pb+Pb uses the primary vertex
+	//only; pp requires the two muons to point at the SAME vertex, which may be a secondary one.
+	if (!PassD0Z0Hook()) return false;
 	h_cutAcceptanceRef()[mpairRef()->m1.charge != mpairRef()->m2.charge]->Fill(static_cast<int>(CutsCommon::pass_muon_d0_z0) + 0.5, mpairRef()->weight);
 
 	// for both muons, require muon + track charge to agree

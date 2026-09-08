@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 template <class PairT, class MuonT, class Derived>
 class PowhegFullSimExtras {
     template <class, class, class, class...> friend class PowhegAlgCoreT;
@@ -34,6 +36,21 @@ protected:
     std::vector<float>*      truth_muon_eta;
     std::vector<float>*      truth_muon_phi;
     std::vector<int>*        truth_muon_ch;
+
+    // ---- ALL-VERTEX impact-parameter selection (pp-CONDITIONS fullsim ONLY) -------------
+    // Mirrors the pp DATA selection (NTupleProcessingCode/PPExtras.c) through the shared
+    // Utilities/AllVertexIPSelection.h. See PythiaFullSimExtras.h for the full rationale; the
+    // POWHEG pp fullsim enters the MC-vs-data comparison, so it must sit on the same pair
+    // selection as the data it is compared with. The PbPb fullsim OVERLAY keeps the
+    // primary-vertex cut (its events have exactly one track-bearing vertex).
+    std::vector<float>*      vtx_z    {nullptr};
+    std::vector<int>*        vtx_ntrk {nullptr};
+
+    bool UseAllVertexIP() const { return !self().getIsFullsimOverlay(); }
+    int  PairAllVertexIndex(const muon_t& m1, const muon_t& m2, bool* pass_primary_out);
+    void FinalizeExtra();
+
+    long long n_allvtx_pairs_pass{0}, n_allvtx_pairs_secondary{0}, n_allvtx_pairs_added{0};
 
     std::vector<int> resonance_tagged_muon_index_list_reco {};
     std::vector<int> resonance_tagged_muon_index_list_truth {};

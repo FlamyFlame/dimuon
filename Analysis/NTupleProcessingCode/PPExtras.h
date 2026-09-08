@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vector>
 #include "Riostream.h"
 #include "TChain.h"
 #include "../MuonObjectsParamsAndHelpers/muon_pair_enums_data.h"
@@ -17,6 +18,15 @@ protected:
 
     void InitParamsExtra();
   void PerformTChainFill();
+
+  // ---- ALL-VERTEX impact-parameter selection (pp only) --------------------------------
+  // The skim's PrimaryVertices dump, in container order. vtx_z[0] is the primary vertex --
+  // the same one the skim used to reference every muon's stored z0.
+  std::vector<float>* vtx_z    {nullptr};
+  std::vector<int>*   vtx_ntrk {nullptr};
+
+  void InitInputBranchesDimuonAnalysisExtra();
+  bool PassD0Z0Extra();
 
 public:
   ~PPExtras(){}

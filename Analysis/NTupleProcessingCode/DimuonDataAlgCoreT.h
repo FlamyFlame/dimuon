@@ -257,6 +257,29 @@ protected:
 
     bool PassCuts_DataCore(bool requireTight);
 
+    // --------------- PassD0Z0Impl ---------------
+    // The impact-parameter (|d0|, |z0 sin(theta)|) decision, made DISPATCHABLE.
+    //
+    // It cannot be an ordinary PassCutsExtra: PassCutsHook is
+    //     PassCuts_DataCore(requireTight) && (CallPassCuts<Extras>(), ...)
+    // so DataCore runs FIRST and short-circuits -- an Extra can only ever REMOVE pairs, never
+    // rescue one that the primary-vertex cut has already rejected. pp needs exactly that rescue
+    // (pairs from secondary/pile-up vertices), so the decision itself is delegated.
+    //
+    // Default (used by Pb+Pb, which rejects pile-up at event level): the primary vertex only,
+    // i.e. the z0 stored by the skim, which is already referenced to vertex 0. pp overrides it
+    // with PPExtras::PassD0Z0Extra(). At most ONE Extra may implement the override.
+    bool PassD0Z0_DataCore();
+
+    template <class E>
+    void CallPassD0Z0(bool& handled, bool& result) {
+        if constexpr (requires(Derived& d){ static_cast<E&>(d).PassD0Z0Extra(); }) {
+            if (handled) throw std::runtime_error("More than one Extra implements PassD0Z0Extra()");
+            handled = true;
+            result  = static_cast<E&>(self()).PassD0Z0Extra();
+        }
+    }
+
     // --------------- PassEventSelImpl ---------------
     template <class E>
     bool CallPassEventSel() {
@@ -419,6 +442,13 @@ public:
     // --------------- PassCutsHook ---------------
     bool PassCutsHook(){
         return (PassCuts_DataCore(requireTight) && (CallPassCuts<Extras>(), ...));
+    }
+
+    // --------------- PassD0Z0Hook ---------------
+    bool PassD0Z0Hook(){
+        bool handled = false, result = true;
+        (CallPassD0Z0<Extras>(handled, result), ...);
+        return handled ? result : PassD0Z0_DataCore();
     }
 
     // --------------- PassEventSelHook ---------------

@@ -1,5 +1,6 @@
 #include "PowhegFullSimExtras.h"
 #include "../Utilities/tchain_helpers.h"
+#include "../Utilities/AllVertexIPSelection.h"
 
 template <class PairT, class MuonT, class Derived>
 void PowhegFullSimExtras<PairT, MuonT, Derived>::InitInputExtra(){
@@ -19,6 +20,22 @@ void PowhegFullSimExtras<PairT, MuonT, Derived>::InitInputExtra(){
     enable_and_bind(self().fChainRef(), "truth_muon_eta"         , &truth_muon_eta);
     enable_and_bind(self().fChainRef(), "truth_muon_phi"         , &truth_muon_phi);
     enable_and_bind(self().fChainRef(), "truth_muon_ch"          , &truth_muon_ch);
+
+    // ALL-VERTEX impact-parameter selection (pp-conditions fullsim only). enable_and_bind
+    // enables the branch BEFORE setting its address, which is the order that matters on a
+    // SetMakeClass(1) chain -- binding a still-DISABLED STL-collection branch after the first
+    // tree is loaded leaves the pointer null. See Utilities/AllVertexIPSelection.h
+    // (BRANCH BINDING).
+    if (UseAllVertexIP()) {
+        if (!self().fChainRef()->GetListOfBranches()->FindObject("vtx_z") ||
+            !self().fChainRef()->GetListOfBranches()->FindObject("vtx_ntrk"))
+            throw std::runtime_error("PowhegFullSimExtras: pp-conditions fullsim NTUP has no "
+                                     "vtx_z/vtx_ntrk branches, so the all-vertex "
+                                     "impact-parameter selection that MIRRORS the pp data "
+                                     "selection cannot be applied. Re-skim with m_store_Vtx.");
+        enable_and_bind(self().fChainRef(), "vtx_z"   , &vtx_z);
+        enable_and_bind(self().fChainRef(), "vtx_ntrk", &vtx_ntrk);
+    }
 }
 
 template <class PairT, class MuonT, class Derived>
@@ -32,16 +49,30 @@ bool PowhegFullSimExtras<PairT, MuonT, Derived>::PassMuonMediumCuts(const muon_t
     if ((muon.quality&256)==0) return false;//MuonCuts
 
     // reco kinematic cuts
-    if ((muon.eta) > 2.4) return false;
+    // 2026-09-08: fabs restored. Without it this kept muons with eta < -2.4, i.e. it was NOT the
+    // mirror of PassCuts_DataCore that the comment above claims (Pythia's twin always had the
+    // fabs). Listed as an open defect in muon_gap_cuts_acceptance.md F17; closed here because it
+    // sits inside the block being edited. Only reachable on the POWHEG fullsim RECO path, which
+    // has no live consumer -- see pp24_all_vertex_pairs.md ("Why POWHEG is code-changed but NOT
+    // rerun"); the trees on disk still carry the un-fabs'd selection.
+    if (fabs(muon.eta) > 2.4) return false;
     if (muon.pt < 4) return false;
 
     // HF muon cut    
     if (muon.dP_overP > self().pmsRef().deltaP_overP_thrsh ) return false;
     
     //cut on d0 & z0 sin(theta) against fake muons
-    double z0sinTheta = fabs(muon.z0 * sin(2.0*atan(exp(-muon.eta))));
-    bool pass_d0_z0_cuts = (fabs(muon.d0) < self().pmsRef().d0cut && z0sinTheta < self().pmsRef().z0cut);
-    if (!pass_d0_z0_cuts) return false;
+    if (UseAllVertexIP()) {
+        // ANY-vertex form for the per-muon flag; the stricter SAME-vertex requirement is added
+        // at pair level in PassPairAllVertexIP (see PythiaFullSimExtras.h).
+        if (!AllVertexIP::PassAnyVertex(muon.d0, muon.z0, muon.eta, vtx_z, vtx_ntrk,
+                                        self().pmsRef().d0cut, self().pmsRef().z0cut))
+            return false;
+    } else {
+        double z0sinTheta = fabs(muon.z0 * sin(2.0*atan(exp(-muon.eta))));
+        bool pass_d0_z0_cuts = (fabs(muon.d0) < self().pmsRef().d0cut && z0sinTheta < self().pmsRef().z0cut);
+        if (!pass_d0_z0_cuts) return false;
+    }
 
     // if track charge saved, require muon + track charge to agree
     if (turn_on_track_charge){
@@ -50,6 +81,32 @@ bool PowhegFullSimExtras<PairT, MuonT, Derived>::PassMuonMediumCuts(const muon_t
     
     return true;
 }
+
+template <class PairT, class MuonT, class Derived>
+int PowhegFullSimExtras<PairT, MuonT, Derived>::PairAllVertexIndex(const muon_t& m1, const muon_t& m2,
+                                                                    bool* pass_primary_out){
+    // Pure lookup, NO counters -- called before the WP flags are known.
+    return AllVertexIP::BestCommonVertex(m1.d0, m1.z0, m1.eta,
+                                         m2.d0, m2.z0, m2.eta,
+                                         vtx_z, vtx_ntrk,
+                                         self().pmsRef().d0cut, self().pmsRef().z0cut,
+                                         pass_primary_out);
+}
+
+
+template <class PairT, class MuonT, class Derived>
+void PowhegFullSimExtras<PairT, MuonT, Derived>::FinalizeExtra(){
+    if (!UseAllVertexIP() || n_allvtx_pairs_pass == 0) return;
+    auto pct = [](long long a, long long b){ return b > 0 ? 100.0 * a / b : 0.0; };
+    std::cout << "All-vertex IP report (POWHEG pp fullsim; both muons reco-matched + Tight WP; "
+                 "no trigger, no resonance veto): "
+              << n_allvtx_pairs_pass << " pairs\n"
+              << "  from a SECONDARY vertex (best vertex != 0): " << n_allvtx_pairs_secondary
+              << " (" << pct(n_allvtx_pairs_secondary, n_allvtx_pairs_pass) << "%)\n"
+              << "  ADDED by the all-vertex rule (fail primary): " << n_allvtx_pairs_added
+              << " (" << pct(n_allvtx_pairs_added, n_allvtx_pairs_pass) << "%)" << std::endl;
+}
+
 
 template <class PairT, class MuonT, class Derived>
 void PowhegFullSimExtras<PairT, MuonT, Derived>::CheckBranchPtrsExtra(){
@@ -203,8 +260,22 @@ void PowhegFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
             if (self().mpairRef()->m1.reco_match && self().mpairRef()->m2.reco_match){                
                 self().ResonanceTaggingReco();
                 self().ResonanceTaggingTruth();
-                self().mpairRef()->pair_pass_medium = (self().mpairRef()->m1.pass_medium && self().mpairRef()->m2.pass_medium);
-                self().mpairRef()->pair_pass_tight  = (self().mpairRef()->m1.pass_tight  && self().mpairRef()->m2.pass_tight);
+                // Same-vertex requirement (pp-conditions fullsim only), mirroring the pp data.
+                bool ip_pass_primary = false;
+                const int ip_vtx = UseAllVertexIP()
+                    ? PairAllVertexIndex(self().mpairRef()->m1, self().mpairRef()->m2, &ip_pass_primary)
+                    : -1;
+                const bool ip_pair_ok = !UseAllVertexIP() || ip_vtx >= 0;
+                self().mpairRef()->pair_pass_medium = (self().mpairRef()->m1.pass_medium && self().mpairRef()->m2.pass_medium && ip_pair_ok);
+                self().mpairRef()->pair_pass_tight  = (self().mpairRef()->m1.pass_tight  && self().mpairRef()->m2.pass_tight  && ip_pair_ok);
+
+                // Counted only over Tight-WP pairs, so the reported fraction has a stated
+                // population (see FinalizeExtra).
+                if (UseAllVertexIP() && ip_vtx >= 0 && self().mpairRef()->pair_pass_tight) {
+                    ++n_allvtx_pairs_pass;
+                    if (ip_vtx != 0)      ++n_allvtx_pairs_secondary;
+                    if (!ip_pass_primary) ++n_allvtx_pairs_added;
+                }
             }else{
                 self().mpairRef()->pair_pass_medium = false;
                 self().mpairRef()->pair_pass_tight  = false;

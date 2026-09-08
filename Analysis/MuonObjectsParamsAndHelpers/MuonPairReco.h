@@ -66,8 +66,35 @@ struct PairRecoExtras {
   	}
 };
 
+// pp-ONLY pair extras. Deliberately NOT in PairDataExtras, which Pb+Pb also inherits: Pb+Pb
+// rejects pile-up at event level and its pairs are primary-vertex pairs by construction, so it
+// must neither carry nor be asked about this field (and its output tree stays unchanged).
+template <class Derived>
+struct PairPPExtras {
+    // Index, in the skim's PrimaryVertices dump (branches vtx_x/vtx_y/vtx_z/vtx_ntrk, stored in
+    // container order), of the vertex with respect to which BOTH muons of this pair pass the
+    // |d0| and |z0 sin(theta)| cuts -- the best-matching such vertex (see
+    // PPExtras::PassD0Z0Extra). 0 IS the primary vertex; anything > 0 is a secondary (pile-up)
+    // vertex. -1 means "not set", which for a pair that reached the output tree is a bug.
+    //
+    // WHY pp keeps pairs off the primary vertex at all: pp24 has ~4 inelastic collisions per
+    // bunch crossing and the pp luminosity is defined over ALL of them, so counting only
+    // primary-vertex pairs puts an under-counted numerator over an all-collision L_int.
+    // See docs/tracking/pp24_all_vertex_pairs.md.
+    int matched_vtx_ind{-1};
+
+    // Would this pair ALSO have passed the old primary-vertex-only cut? Kept so the two
+    // distinct statistics can both be computed from the ntuple OUTPUT and are never confused:
+    //   pairs "from a secondary vertex"        <=>  matched_vtx_ind != 0
+    //   pairs ADDED by the all-vertex change   <=>  !pass_primary_vtx
+    // They differ: a pair can pass w.r.t. the primary and still match a secondary vertex more
+    // closely, in which case it is the former but not the latter.
+    bool pass_primary_vtx{false};
+};
+
 struct MuonPairPP
   : MuonPairBaseT<MuonPairPP, MuonPP>
   , PairRecoExtras<MuonPairPP>
   , PairDataExtras<MuonPairPP>
+  , PairPPExtras<MuonPairPP>
 {};

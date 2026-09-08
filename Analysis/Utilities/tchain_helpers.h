@@ -26,7 +26,12 @@ inline void bind_branch(TChain* ch,
         if(write_debug) std::cout << "rc: " << rc << ", name: " << name << ", b: " << b << std::endl;
     }
 
-    bool invalid = (rc != 0 && rc != 3);
+    // Accepted TTree::SetBranchAddress return codes:
+    //   0 kMatch, 3 kMakeClass (this codebase's chains all run SetMakeClass(1)),
+    //   5 kNoCheck -- returned when the TChain has not loaded a tree yet, so the address is
+    //     cached and applied by LoadTree. Rejecting 5 made "bind before the first load" throw,
+    //     which is a legitimate (and, for a DISABLED branch, the only working) order.
+    bool invalid = (rc != 0 && rc != 3 && rc != 5);
     if (use_TBranch) invalid |= !b;
     if (invalid) {
         std::ostringstream oss;

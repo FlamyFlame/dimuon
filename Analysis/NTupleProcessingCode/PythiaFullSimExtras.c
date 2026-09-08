@@ -1,5 +1,6 @@
 #include "PythiaFullSimExtras.h"
 #include "../Utilities/tchain_helpers.h"
+#include "../Utilities/AllVertexIPSelection.h"
 
 template <class PairT, class MuonT, class Derived>
 void PythiaFullSimExtras<PairT, MuonT, Derived>::InitInputExtra(){
@@ -22,6 +23,23 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::InitInputExtra(){
         enable_and_bind(ch, "truth_muon_eta"    , &truth_muon_eta);
         enable_and_bind(ch, "truth_muon_phi"    , &truth_muon_phi);
         enable_and_bind(ch, "truth_muon_ch"     , &truth_muon_ch);
+
+        // ALL-VERTEX impact-parameter selection (pp-conditions fullsim only). enable_and_bind
+        // enables the branch BEFORE setting its address, which is the order that matters on a
+        // SetMakeClass(1) chain -- binding a still-DISABLED STL-collection branch after the
+        // first tree is loaded leaves the pointer null. See Utilities/AllVertexIPSelection.h
+        // (BRANCH BINDING) for the measured truth table.
+        if (UseAllVertexIP()) {
+            if (!ch->GetListOfBranches()->FindObject("vtx_z") ||
+                !ch->GetListOfBranches()->FindObject("vtx_ntrk"))
+                throw std::runtime_error("PythiaFullSimExtras: pp-conditions fullsim NTUP has no "
+                                         "vtx_z/vtx_ntrk branches, so the all-vertex "
+                                         "impact-parameter selection that MIRRORS the pp data "
+                                         "selection cannot be applied. Re-skim with m_store_Vtx.");
+            enable_and_bind(ch, "vtx_z"   , &vtx_z);
+            enable_and_bind(ch, "vtx_ntrk", &vtx_ntrk);
+            has_vtx_ntrk = true;
+        }
     };
 
     for (int ikin = 0; ikin < self().nKinRanges; ikin++)
@@ -93,6 +111,11 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::InitInputExtra(){
             // absent only in a skim older than the vertex dump; then n_vtx stays -1 and the
             // requirement is simply unavailable (never silently 0, which would look like
             // "no pile-up" and pass a `n_vtx == 1`-style cut vacuously).
+            // MUST stay per-chain and unconditional: has_vtx_ntrk is a CLASS member, not
+            // per-chain state, so gating the bind on it would bind only the first chain of
+            // evChains_kn_beam and leave every later chain with no address -- n_vtx would then
+            // be read from whatever the first chain last held. Re-binding the same address on
+            // a chain that bind_reco already bound is harmless (enable_and_bind enables first).
             if (ch->GetBranch("vtx_ntrk")) {
                 enable_and_bind(ch, "vtx_ntrk", &vtx_ntrk);
                 has_vtx_ntrk = true;
@@ -134,8 +157,27 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::InitInputExtra(){
 
 template <class PairT, class MuonT, class Derived>
 void PythiaFullSimExtras<PairT, MuonT, Derived>::FinalizeExtra(){
-    if (!self().store_mc_trigger || n_sf_recomatched == 0) return;
     auto pct = [](long long a, long long b){ return b > 0 ? 100.0 * a / b : 0.0; };
+
+    if (UseAllVertexIP() && n_allvtx_pairs_pass > 0) {
+        // POPULATION (state it, do not assume it matches the data number): truth-fiducial pairs
+        // with BOTH muons reco-matched and passing the TIGHT WP and the same-vertex IP cut. It
+        // carries NO trigger requirement and NO resonance veto, so it is the MC analogue of the
+        // data fraction, not the same measurement -- the data number
+        // (pp24_secondary_vertex_stats.cxx) is trigger-matched and resonance-vetoed.
+        // The two fractions below are themselves distinct: "from a secondary vertex" is the
+        // pair's own best-matching vertex; "added" is what the all-vertex rule gains over the
+        // primary-vertex-only cut.
+        std::cout << "All-vertex IP report (pp-conditions fullsim; truth-fiducial, both muons "
+                     "reco-matched + Tight WP; no trigger, no resonance veto): "
+                  << n_allvtx_pairs_pass << " pairs\n"
+                  << "  from a SECONDARY vertex (best vertex != 0): " << n_allvtx_pairs_secondary
+                  << " (" << pct(n_allvtx_pairs_secondary, n_allvtx_pairs_pass) << "%)\n"
+                  << "  ADDED by the all-vertex rule (fail primary): " << n_allvtx_pairs_added
+                  << " (" << pct(n_allvtx_pairs_added, n_allvtx_pairs_pass) << "%)" << std::endl;
+    }
+
+    if (!self().store_mc_trigger || n_sf_recomatched == 0) return;
 
     std::cout << "SF fill report (store_mc_trigger): " << n_sf_recomatched << " reco-matched muons\n"
               << "  SF_medium unfilled (<=0, set to 1): " << n_sf_med_unfilled
@@ -179,8 +221,18 @@ bool PythiaFullSimExtras<PairT, MuonT, Derived>::PassMuonMediumCuts(const muon_t
     if (muon.dP_overP > self().pmsRef().deltaP_overP_thrsh) return false;
 
     if (!self().disable_ip_cut) {
-        double z0sinTheta = fabs(muon.z0 * sin(2.0*atan(exp(-muon.eta))));
-        if (fabs(muon.d0) >= self().pmsRef().d0cut || z0sinTheta >= self().pmsRef().z0cut) return false;
+        if (UseAllVertexIP()) {
+            // ANY-vertex form: a SINGLE muon has no partner to share a vertex with, so the
+            // per-muon flag asks only that it point at SOME eligible vertex. The stricter
+            // SAME-vertex requirement is applied on top, at pair level, via PairAllVertexIndex
+            // -- and since the pair form implies this one, pair_pass_{medium,tight} are exact.
+            if (!AllVertexIP::PassAnyVertex(muon.d0, muon.z0, muon.eta, vtx_z, vtx_ntrk,
+                                            self().pmsRef().d0cut, self().pmsRef().z0cut))
+                return false;
+        } else {
+            double z0sinTheta = fabs(muon.z0 * sin(2.0*atan(exp(-muon.eta))));
+            if (fabs(muon.d0) >= self().pmsRef().d0cut || z0sinTheta >= self().pmsRef().z0cut) return false;
+        }
     }
 
     if (turn_on_track_charge){
@@ -188,6 +240,19 @@ bool PythiaFullSimExtras<PairT, MuonT, Derived>::PassMuonMediumCuts(const muon_t
     }
     return true;
 }
+
+template <class PairT, class MuonT, class Derived>
+int PythiaFullSimExtras<PairT, MuonT, Derived>::PairAllVertexIndex(const muon_t& m1, const muon_t& m2,
+                                                                   bool* pass_primary_out){
+    // Pure lookup, NO counters: it is called before the WP flags are known, and counting here
+    // would define the statistic over a population nobody can state.
+    return AllVertexIP::BestCommonVertex(m1.d0, m1.z0, m1.eta,
+                                         m2.d0, m2.z0, m2.eta,
+                                         vtx_z, vtx_ntrk,
+                                         self().pmsRef().d0cut, self().pmsRef().z0cut,
+                                         pass_primary_out);
+}
+
 
 template <class PairT, class MuonT, class Derived>
 void PythiaFullSimExtras<PairT, MuonT, Derived>::CheckBranchPtrsExtra(){
@@ -448,8 +513,28 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
             if (self().mpairRef()->m1.reco_match && self().mpairRef()->m2.reco_match){
                 ResonanceTaggingReco();
                 ResonanceTaggingTruth();
-                self().mpairRef()->pair_pass_medium = (self().mpairRef()->m1.pass_medium && self().mpairRef()->m2.pass_medium);
-                self().mpairRef()->pair_pass_tight  = (self().mpairRef()->m1.pass_tight  && self().mpairRef()->m2.pass_tight);
+                // Same-vertex requirement (pp-conditions fullsim only): both muons must pass
+                // the impact-parameter cuts w.r.t. the SAME vertex, exactly as the pp data
+                // does. A no-op for every other sample type.
+                bool ip_pass_primary = false;
+                const int ip_vtx = UseAllVertexIP()
+                    ? PairAllVertexIndex(self().mpairRef()->m1, self().mpairRef()->m2, &ip_pass_primary)
+                    : -1;
+                // disable_ip_cut is a debug switch that must disable the IP requirement at BOTH
+                // levels; without the second clause it would only skip the per-muon test.
+                const bool ip_pair_ok = !UseAllVertexIP() || self().disable_ip_cut || ip_vtx >= 0;
+                self().mpairRef()->pair_pass_medium = (self().mpairRef()->m1.pass_medium && self().mpairRef()->m2.pass_medium && ip_pair_ok);
+                self().mpairRef()->pair_pass_tight  = (self().mpairRef()->m1.pass_tight  && self().mpairRef()->m2.pass_tight  && ip_pair_ok);
+
+                // Statistics counted ONLY over pairs that also pass the Tight WP, so the
+                // reported fraction refers to a stated, physically meaningful population rather
+                // than to "every truth-fiducial reco-matched pair" (which is not comparable to
+                // the data number). See FinalizeExtra for the exact population.
+                if (UseAllVertexIP() && ip_vtx >= 0 && self().mpairRef()->pair_pass_tight) {
+                    ++n_allvtx_pairs_pass;
+                    if (ip_vtx != 0)       ++n_allvtx_pairs_secondary;
+                    if (!ip_pass_primary)  ++n_allvtx_pairs_added;
+                }
                 if (self().store_mc_trigger)
                     self().mpairRef()->pass2mu4 =
                         LookupPairPass2mu4(self().mpairRef()->m1.reco_ind, self().mpairRef()->m2.reco_ind);

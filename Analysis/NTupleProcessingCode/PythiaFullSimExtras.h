@@ -1,5 +1,8 @@
 #pragma once
 
+#include <vector>
+#include "../MuonObjectsParamsAndHelpers/FullSimSampleType.h"
+
 template <class PairT, class MuonT, class Derived>
 class PythiaFullSimExtras {
     template <class, class, class, class...> friend class PythiaAlgCoreT;
@@ -49,6 +52,10 @@ protected:
     // Bound only in store_mc_trigger mode; a skim without the branch leaves n_vtx = -1.
     std::vector<int>*    vtx_ntrk    = nullptr;
     bool                 has_vtx_ntrk = false;
+    // Vertex z positions, in the same container order -- needed by the ALL-VERTEX
+    // impact-parameter selection (Utilities/AllVertexIPSelection.h). Bound, together with
+    // vtx_ntrk, on EVERY chain (not only in store_mc_trigger mode) whenever UseAllVertexIP().
+    std::vector<float>*  vtx_z       = nullptr;
 
     // reco/ID efficiency SFs (skim tools; filled only for WP-passing muons, <=0 otherwise)
     std::vector<float>*  muon_eff_SF_medium    = nullptr;
@@ -113,6 +120,24 @@ protected:
     void FillRecoQuantities(muon_t& m, int reco_ind);
     void CheckBranchPtrsExtra();
     bool PassMuonMediumCuts(const muon_t& muon);
+
+    // ---- ALL-VERTEX impact-parameter selection (pp-CONDITIONS fullsim ONLY) -------------
+    // Mirrors the pp DATA selection (NTupleProcessingCode/PPExtras.c) through the shared
+    // Utilities/AllVertexIPSelection.h, so eps_reco is measured on the SAME pair selection the
+    // data applies. Without this the pp24 fullsim -- which has genuine pile-up, track-bearing
+    // vertices 1:5.0%, 2:14.7%, 3:21.8%, 4:22.7%, essentially the same as data's 1:6.4%,
+    // 2:17.9%, 3:25.1%, 4:23.0% -- would supply an efficiency measured on a ~1.6-1.9 % narrower
+    // selection than the data it corrects.
+    // ONLY FullSimSampleType::pp. The HIJING overlay has exactly one track-bearing vertex in
+    // 100 % of events, so it is an exact no-op there and is left off explicitly rather than
+    // relied on; zmumu / noovl / data likewise keep the primary-vertex cut.
+    bool UseAllVertexIP() const {
+        return self().getFullSimSampleType() == FullSimSampleType::pp;
+    }
+    int  PairAllVertexIndex(const muon_t& m1, const muon_t& m2, bool* pass_primary_out);
+
+    // Counters for the end-of-job report (no output branch needed).
+    long long n_allvtx_pairs_pass{0}, n_allvtx_pairs_secondary{0}, n_allvtx_pairs_added{0};
 
 public:
     int  turn_on_track_charge = false;
