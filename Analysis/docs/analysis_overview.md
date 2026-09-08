@@ -198,6 +198,16 @@ stitching and normalization are to be developed.
 - "HI" in branch names = Heavy Ion (Pb+Pb only); never apply to pp.
 - Triggers: PbPb = single-mu4; pp24 = 2mu4. **mu4_mu4noL1 is not currently used**
   for either system.
+- **Vertices differ between the two systems, on purpose.** Pb+Pb has ~10⁻³ collisions per
+  bunch crossing AND rejects pile-up at event level, so its pairs are primary-vertex pairs:
+  both muons must pass |d₀| < 2 mm and |z₀ sin θ| < 2 mm w.r.t. **the primary vertex**. pp24
+  has ~4 collisions per crossing and its **luminosity is defined over all of them**, so
+  restricting the numerator to the primary vertex while dividing by an all-collision L_int
+  would bias dσ/dX low: pp pairs are therefore selected against **every** reconstructed
+  track-bearing vertex, and are kept when both muons pass the same cuts w.r.t. **the same**
+  vertex, primary or secondary (2026-09-08). Applied at the NTuple stage and **mirrored in the
+  pp-conditions fullsim MC**, so ε_reco is measured on the selection it corrects.
+  See `docs/tracking/pp24_all_vertex_pairs.md`.
 - Reco/trigger efficiencies and all derived numbers depend on external inputs
   (lumi, ⟨T_AA⟩, σ_PbPb, GRLs, HLT names) that are **not yet confirmed**; see
   roadmap §Q2 before quoting any number.

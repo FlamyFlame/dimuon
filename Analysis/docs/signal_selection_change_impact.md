@@ -128,9 +128,25 @@ Truth analog: same with `truth_*` variables + `from_same_b`.
 
 ## 1. What does NOT change (boundaries of the blast radius)
 
-- **NTuple processing / `muon_pairs_*` trees** — UNCHANGED. The selection is
-  applied downstream in RDF hist-filling, not at tree creation. Do **not**
-  reprocess ntuples or resubmit Condor.
+- **NTuple processing / `muon_pairs_*` trees** — UNCHANGED *by a signal-selection cut change*.
+  Signal-region cuts are applied downstream in RDF hist-filling, not at tree creation, so a
+  change to a cut listed in §0 does **not** require reprocessing ntuples or resubmitting Condor.
+
+  > **[!] CARVE-OUT — this boundary is about SIGNAL-SELECTION cuts only, and it does NOT hold
+  > for a change to the cuts that ARE applied at tree creation** (muon quality/WP, pT > 4,
+  > |η| < 2.4, one-sided Δp/p, the impact-parameter cut, trigger matching, the resonance veto).
+  > On **2026-09-08** the pp impact-parameter cut became an **all-vertex, same-vertex** pair
+  > requirement (`docs/tracking/pp24_all_vertex_pairs.md`), which is exactly such a change: the
+  > pp24 trees themselves move, so **both** pp24 Condor modes (nominal `run_pp_24_nominal.sub`
+  > and trigger-efficiency `run_pp_24.sub`) MUST be resubmitted, the ε^nc fits refit on the new
+  > trees, and the pp-conditions **fullsim MC** NTuple stages rerun as well (the MC mirrors the
+  > selection, so ε_reco moves with it). Pb+Pb is untouched by that change.
+  >
+  > The MC side is wider than ε_reco: the gate is the whole `FullSimSampleType::pp` production,
+  > so the **detector response** and the **template-fit MC** move with it too (all four come out
+  > of the same `pipeline_pythia_fullsim_pp.sh` Stage 5). The POWHEG **pp17** fullsim is also
+  > switched on by its `!isFullsimOverlay` gate, but is deliberately NOT rerun — its only live
+  > product is truth-level; see `docs/tracking/pp24_all_vertex_pairs.md`.
 - **Trigger-efficiency derivation (P2 ε^nc fits, P3)** — UNCHANGED *by a pair-cut change*. The
   single-muon tag-and-probe ε^nc(pT, q·η) fits and their `_fine_q_eta_bin`
   inputs are independent of the *pair* signal-region cuts. `pipeline_pp_trig_eff.sh`,
