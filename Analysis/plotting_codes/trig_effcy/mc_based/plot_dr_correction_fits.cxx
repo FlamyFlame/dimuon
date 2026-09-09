@@ -143,7 +143,9 @@ constexpr double kYcapLo  = 0.0;
 // in step with the TFormula strings in fit_dr_corrections.cxx::MakeMethodCfg.
 //   powerlaw_fixedRp / powerlaw_floatRp : 1+[0]*pow(max(0,1-x/[2]),[1])
 //   expo                                : 1+[0]*exp(-pow(x/[1],[2]))
-//   polyu_fixedRp                       : 1+u^2*([0]+[1]*u+[2]*u^2), u = max(0,1-x/[3])
+//   polyu_fixedRp                       : 1+u^2*([0]+[1]*(u-1)+[2]*(u^2-1)), u = max(0,1-x/[3])
+//                                         -- [0] is A = f(0)-baseline (the Step-3 restriction of
+//                                         2026-09-08), NOT the u^2 coefficient a2 = A-a3-a4.
 //   interp                              : linear interpolation, 1 above Rp
 // Returns {formula line, definition line} -- the second may be empty.
 // `nocorr` = the no-plateau-correction mode, where the leading 1 of every shape is the FREE
@@ -159,8 +161,11 @@ inline std::pair<std::string, std::string> MethodFormulaTex(const std::string& m
     if (method == "expo")
         return {"f(#DeltaR) = " + base + " + A #upoint exp[-(#DeltaR/#lambda)^{p}]", ""};
     if (method == "polyu_fixedRp")
-        return {"f(#DeltaR) = " + base + " + u^{2}(a_{2} + a_{3}u + a_{4}u^{2})",
-                "u #equiv max(0, 1 - #DeltaR/R_{p})"};
+        // Written in A = f(0) - baseline, exactly as fitted: the equation on the canvas must be
+        // the one whose parameters are printed under it, and A is the parameter the Step-3
+        // restriction bounds. It is the same quartic as before, with a_{2} = A - a_{3} - a_{4}.
+        return {"f(#DeltaR) = " + base + " + u^{2}[A + a_{3}(u - 1) + a_{4}(u^{2} - 1)]",
+                "u #equiv max(0, 1 - #DeltaR/R_{p}),   A #equiv f(0) - " + base};
     if (method == "interp")
         // P2: a real piecewise DEFINITION with R_p defined and its value drawn, matching the
         // treatment polyu_fixedRp already gets. "linear interpolation of the points" is prose,
@@ -201,12 +206,25 @@ struct FittedFunc {
     double Eval(double x) const { return f ? f->Eval(x) : (g ? g->Eval(x) : 1.0); }
 };
 
-FittedFunc LoadFunc(TFile* fit, int step, int iy, int iz)
+FittedFunc LoadFunc(TFile* fit, int step, int iy, int iz, const std::string& method)
 {
     FittedFunc F;
     const std::string suf = CellSuffix(iy, iz);
     F.f = dynamic_cast<TF1*>(fit->Get(Form("f_step%d%s", step, suf.c_str())));
     if (!F.f) F.g = dynamic_cast<TGraph*>(fit->Get(Form("gknots_step%d%s", step, suf.c_str())));
+    // SELF-DESCRIBING-ARTEFACT GUARD. MethodFormulaTex() is keyed on the METHOD NAME alone, so it
+    // would happily print the CURRENT equation over the parameters of a fit file written under an
+    // older parametrization. That is exactly the situation `polyu_fixedRp` is in since 2026-09-08:
+    // the fit is now written in A = f(0)-C where it used to be written in a2, the parameter COUNT
+    // is unchanged, and the persisted TF1 still Evals correctly -- so nothing else would notice,
+    // and the canvas would carry an equation that misdescribes its own curve. The parameter NAME
+    // is the discriminator (fit_dr_corrections.cxx SetParNames), and it survives write/read.
+    if (F.f && method == "polyu_fixedRp" && F.f->GetNpar() > 0 &&
+        std::string(F.f->GetParName(0)) != "A")
+        throw std::runtime_error(std::string("plot_dr_correction_fits: ") + fit->GetName() +
+            " holds a polyu_fixedRp fit whose parameter 0 is named '" + F.f->GetParName(0) +
+            "', not 'A' -- it predates the 2026-09-08 reparametrization, and the equation this "
+            "macro draws would misdescribe it. Re-run fit_dr_corrections for this configuration.");
     return F;
 }
 
@@ -516,7 +534,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     bool has_tf1 = false;
     {
         std::vector<FittedFunc> Fr(series.size());
-        for (size_t is = 0; is < series.size(); ++is) Fr[is] = LoadFunc(series[is].ffit, step, 0, 0);
+        for (size_t is = 0; is < series.size(); ++is) Fr[is] = LoadFunc(series[is].ffit, step, 0, 0, method);
         has_tf1 = (Fr[0].f != nullptr);
         if (Fr[0].f) {
             for (int ip = 0; ip < Fr[0].f->GetNpar(); ++ip) {
@@ -537,7 +555,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     bool rp_drawn = false;
     for (const auto& fl : fixed_line) if (fl.find("R_{p}") != std::string::npos) rp_drawn = true;
     {
-        const FittedFunc Fr0 = LoadFunc(series[0].ffit, step, 0, 0);
+        const FittedFunc Fr0 = LoadFunc(series[0].ffit, step, 0, 0, method);
         if (Fr0.f) for (int ip : free_par)
             if (std::string(Fr0.f->GetParName(ip)) == "R_{p}") rp_drawn = true;
     }
@@ -652,7 +670,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         std::vector<FittedFunc> F(series.size());
         for (size_t is = 0; is < series.size(); ++is) {
             if (!usable[is]) continue;
-            F[is] = LoadFunc(series[is].ffit, step, iy, iz);
+            F[is] = LoadFunc(series[is].ffit, step, iy, iz, method);
             if (!F[is].valid() || !accepted[is]) continue;
             auto* gf = new TGraph();
             const int NP = 500;
@@ -901,7 +919,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
                 // in the frame: on the sign-separated canvases the same-sign fit continues below
                 // the lowest measured point as dR -> 0 and used to run off the bottom of the
                 // axis, in precisely the small-dR region the figure exists to show.
-                const FittedFunc F = LoadFunc(s.ffit, step, c.first, c.second);
+                const FittedFunc F = LoadFunc(s.ffit, step, c.first, c.second, method);
                 if (F.valid()) {
                     const double nrm = norm_of(s, c.first, c.second);
                     for (int i = 0; i <= 40; ++i) {
@@ -1280,7 +1298,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         // rather than assumed from the method name.
         bool compact = (method == "interp");
         {
-            const FittedFunc Fp = LoadFunc(s.ffit, step, 0, 0);
+            const FittedFunc Fp = LoadFunc(s.ffit, step, 0, 0, method);
             if (Fp.f) compact = TString(Fp.f->GetExpFormula()).Contains("TMath::Max");
         }
         const std::string rpath = rdir + "readback_check" + DrCorrSignFileTag(s.sign) + ".txt";
@@ -1311,7 +1329,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
         for (int iy = 0; iy <= npt; ++iy) {
             for (int iz = 0; iz <= neta; ++iz) {
                 if (!(iy == 0 && iz == 0) && (iy == 0 || iz == 0)) continue;
-                const FittedFunc F = LoadFunc(s.ffit, step, iy, iz);
+                const FittedFunc F = LoadFunc(s.ffit, step, iy, iz, method);
                 if (!F.valid()) continue;
                 ++nchecked;
                 bool bad_persist = false, bad_flat = false;

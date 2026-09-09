@@ -25,7 +25,10 @@
 //
 //     per (pair pT, pair eta) cell:
 //        1. the EXPONENTIAL fit           f = C + A exp[-(dR/lambda)^p]        if it is accepted
-//        2. else the POLYNOMIAL fit       f = C + u^2 (a2 + a3 u + a4 u^2)     if IT is accepted
+//        2. else the POLYNOMIAL fit       f = C + u^2 [A + a3(u-1) + a4(u^2-1)] if IT is accepted
+//                                         (same quartic, a2 = A - a3 - a4; written in
+//                                         A = f(0)-C since 2026-09-08 -- the Step-3 requirement
+//                                         f(0) <= C is then the single fit limit A <= 0)
 //        3. else the RAW (absolute) measured bins, normalised by their own dR in [0.5,1] mean
 //
 // "Accepted" is the producer's own verdict `h_step3_fit_ok == 1` (fit converged, enough

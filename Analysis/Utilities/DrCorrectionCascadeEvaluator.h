@@ -27,7 +27,10 @@
 // SEVERAL methods in front of that chain, per (pair pT, pair eta) cell:
 //
 //     1. the EXPONENTIAL fit        f = C + A exp[-(dR/lambda)^p]      if it is accepted
-//     2. else the POLYNOMIAL fit    f = C + u^2 (a2 + a3 u + a4 u^2)   if IT is accepted
+//     2. else the POLYNOMIAL fit    f = C + u^2 [A + a3(u-1) + a4(u^2-1)]  if IT is accepted
+//                                   (the same quartic as C + a2 u^2 + a3 u^3 + a4 u^4, with
+//                                   a2 = A - a3 - a4; written in A = f(0)-C since 2026-09-08 so
+//                                   the Step-3 requirement f(0) <= C is one fit limit, A <= 0)
 //     3. else the INTERPOLATION     linear through the measured points below R_p, flat at the last
 //                                   measured knot above it            if IT is accepted
 //     4. else the raw measured bins of the FIRST tier, normalised by their own dR in [0.5,1] mean

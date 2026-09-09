@@ -30,6 +30,7 @@
 #include <TString.h>
 #include <TSystem.h>
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <map>
@@ -66,9 +67,12 @@ const std::map<std::string, NocorrMethodFormula>& NocorrMethodFormulas()
     static const std::map<std::string, NocorrMethodFormula> m = {
         {"expo", {"[3]+[0]*TMath::Exp(-TMath::Power(x/[1],[2]))",
                   {"A", "#lambda", "p", "C"}, -1}},
-        {"polyu_fixedRp", {"[4]+TMath::Power(TMath::Max(0.,1.-x/[3]),2)*([0]+[1]*TMath::Max(0.,1.-x/[3])"
-                           "+[2]*TMath::Power(TMath::Max(0.,1.-x/[3]),2))",
-                           {"a_{2}", "a_{3}", "a_{4}", "R_{p}", "C"}, 3}},
+        // p0 is A = f(0)-C, NOT a2: the Step-3 restriction of 2026-09-08 required the
+        // constrained combination a2+a3+a4 to BE a parameter (fit_dr_corrections.cxx
+        // MakeMethodCfg). Same function family, a3/a4 unchanged.
+        {"polyu_fixedRp", {"[4]+TMath::Power(TMath::Max(0.,1.-x/[3]),2)*([0]+[1]*(TMath::Max(0.,1.-x/[3])"
+                           "-1)+[2]*(TMath::Power(TMath::Max(0.,1.-x/[3]),2)-1))",
+                           {"A", "a_{3}", "a_{4}", "R_{p}", "C"}, 3}},
     };
     return m;
 }
@@ -95,6 +99,24 @@ TF1* RebuildNocorrTF1(const TF1* src, const std::string& method, const std::stri
         nf->SetParName(i, mf.parNames[i].c_str());
     }
     if (mf.fixedParIndex >= 0) nf->FixParameter(mf.fixedParIndex, src->GetParameter(mf.fixedParIndex));
+    // The formula above is a COPY of the producer's, and the parameter-count check alone cannot
+    // catch it drifting: a re-parametrized shape (as `polyu_fixedRp` was on 2026-09-08) keeps its
+    // parameter count while changing what p0 MEANS, and the rebuilt TF1 would then be silently
+    // wrong. So compare the rebuild against the source it copied, point by point, over the whole
+    // stored range -- the source TF1 read back from the fit file evaluates correctly even in the
+    // ROOT build whose name bookkeeping is broken (see the header comment).
+    for (int k = 0; k <= 100; ++k) {
+        const double x  = src->GetXmin() + (src->GetXmax() - src->GetXmin()) * k / 100.0;
+        const double a  = src->Eval(x), b = nf->Eval(x);
+        if (std::fabs(a - b) > 1e-9 * std::max(1e-3, std::fabs(a)))
+            throw std::runtime_error(std::string("combine_dr_correction_fits: the rebuilt TF1 for "
+                "method '") + method + "' does not reproduce the fitted one it copied (at dR=" +
+                std::to_string(x) + ": " + std::to_string(a) + " vs " + std::to_string(b) +
+                ") -- EITHER NocorrMethodFormulas() has drifted from fit_dr_corrections.cxx"
+                "::MakeMethodCfg, OR this fit file was written under an older parametrization"
+                " (polyu_fixedRp was re-written in A = f(0)-C on 2026-09-08, same parameter"
+                " COUNT, different meaning of p0) -- re-run fit_dr_corrections for it");
+    }
     return nf;
 }
 

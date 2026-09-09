@@ -27,7 +27,7 @@
 // deliverable's directory is what the separation prevents.
 //
 // THE X AXIS IS THE pp24 CROSS-SECTION's, NOT THE CORRECTION's (doc D8, superseding
-// mc_trig_eff_closure.md D2): ParamsSet::pT_bins_150, 15 log bins over 8-150 GeV, IN EVERY
+// mc_trig_eff_closure.md D2): ParamsSet::pT_bins_150, 16 log bins over 9-150 GeV, IN EVERY
 // APPROACH -- because the question the comparison answers is which approach corrects the
 // cross-section most accurately, and four figures on four different x-axes could not be compared.
 // The axis comes from the filled histogram itself here; the fill stage is the one place that reads
@@ -404,8 +404,8 @@ void DrawClosureSet(TFile* fin, const DrCorrSample& cfg, const std::string& wp_t
                            "above;   exponential  f = C + A e^{-(#DeltaR/#lambda)^{p}}",
                            DrCorrectionEvaluator::kDrMax));
         hd->DrawLatex(0.035, 0.876,
-                      "polynomial  f = C + u^{2}(a_{2} + a_{3}u + a_{4}u^{2}),"
-                      "   u #equiv max(0, 1 - #DeltaR/R_{p})");
+                      "polynomial  f = C + u^{2}[A + a_{3}(u - 1) + a_{4}(u^{2} - 1)],"
+                      "   u #equiv max(0, 1 - #DeltaR/R_{p}),   A #equiv f(0) - C");
         // Which f a cell uses is not a code detail in the cascade set -- it is part of what
         // eps_dR MEANS there, so the canvas has to define it.
         if (!per_form_set)

@@ -42,7 +42,10 @@
 // THE THREE CURVE FLAVOURS THIS STRUCT CAN DELIVER (one per `method`), all in the SAME form
 // f(dR)/C, so a cascade can put them in one chain without special-casing any of them:
 //   `expo`           f = C + A exp[-(dR/lambda)^p]          C = the fitted free asymptote
-//   `polyu_fixedRp`  f = C + u^2(a2 + a3 u + a4 u^2)        C = the fitted free asymptote
+//   `polyu_fixedRp`  f = C + u^2[A + a3(u-1) + a4(u^2-1)]   C = the fitted free asymptote
+//                    (the same quartic as C + a2 u^2 + a3 u^3 + a4 u^4, with
+//                    a2 = A - a3 - a4; carried in A = f(0)-C since 2026-09-08 so the
+//                    Step-3 restriction f(0) <= C is a limit on one parameter)
 //   `interp`         linear interpolation through the measured points below R_p, FLAT at the last
 //                    measured knot above it (fit_dr_corrections.cxx's `flat_val`)
 //                                                          C = that flat-branch value

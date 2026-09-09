@@ -133,6 +133,14 @@
 //                      requirement. See the block comment at
 //                      the parameter limits for why those two requirements coincide here,
 //                      and why Step 4 is excluded.
+//   polyu_fixedRp    : f = 1 + u^2*(A + a3*(u-1) + a4*(u^2-1)),  u = max(0, 1 - dR/Rp).
+//                      Identically the quartic 1 + a2 u^2 + a3 u^3 + a4 u^4 with
+//                      a2 = A - a3 - a4; the leading coefficient is carried as
+//                      A = f(0) - baseline BECAUSE THAT IS THE CONSTRAINED QUANTITY.
+//                      STEP 3 ONLY, since 2026-09-08 (user): A <= 0, i.e. "at dR = 0 the
+//                      efficiency cannot exceed the plateau". Same requirement, same
+//                      symbol and same meaning as `expo`'s A; see the block comment at the
+//                      parameter limits for the reparametrization and why Step 4 is excluded.
 //   interp           : linear interpolation through the measured points below Rp, hard 1 above
 //                      (stored as a TGraph of knots -- no free parameters, no chi2).
 //
@@ -281,14 +289,22 @@ MethodCfg MakeMethodCfg(const std::string& m, bool nocorr = false)
     // BACKUP: C^1 at Rp by construction and flexible enough for a non-monotonic small-dR shape,
     // but the higher-order terms can also absorb shapes that are procedure artefacts rather than
     // physics -- which is why `expo` is nominal and this is the cross-check.
-    if (m == "polyu_fixedRp")      // f = 1 + a2 u^2 + a3 u^3 + a4 u^4 -- C^1 at Rp (value AND
-                                   // slope -> 0), and flexible enough for a non-monotonic
-                                   // small-dR shape, which the single power law cannot do
-        return nocorr
-            ? MethodCfg{m, "[4]+TMath::Power(TMath::Max(0.,1.-x/[3]),2)*([0]+[1]*TMath::Max(0.,1.-x/[3])"
-                           "+[2]*TMath::Power(TMath::Max(0.,1.-x/[3]),2))", 5, 4, false}
-            : MethodCfg{m, "1+TMath::Power(TMath::Max(0.,1.-x/[3]),2)*([0]+[1]*TMath::Max(0.,1.-x/[3])"
-                           "+[2]*TMath::Power(TMath::Max(0.,1.-x/[3]),2))", 4, 3, false};
+    if (m == "polyu_fixedRp") {     // f = C + u^2(A + a3(u-1) + a4(u^2-1)) -- C^1 at Rp (value
+                                   // AND slope -> 0), and flexible enough for a non-monotonic
+                                   // small-dR shape, which the single power law cannot do.
+        // WRITTEN IN A = f(0) - C, NOT IN a2 (user restriction, 2026-09-08). The quartic is
+        // unchanged as a FUNCTION FAMILY: expanding gives C + a2 u^2 + a3 u^3 + a4 u^4 with
+        // a2 = A - a3 - a4, and a3/a4 still ARE the u^3/u^4 coefficients. Only the leading
+        // coefficient is traded, because u(0) = 1 makes the user's requirement
+        // "f(0) <= the plateau" the LINEAR constraint a2 + a3 + a4 <= 0 -- not a box constraint
+        // on any one of the three, so MINUIT cannot express it as a limit until the constrained
+        // combination IS a parameter. It then becomes the single limit A <= 0 imposed below.
+        const std::string u = "TMath::Max(0.,1.-x/[3])";
+        const std::string body = "TMath::Power(" + u + ",2)*([0]+[1]*(" + u + "-1)+[2]*("
+                                 "TMath::Power(" + u + ",2)-1))";
+        return nocorr ? MethodCfg{m, "[4]+" + body, 5, 4, false}
+                      : MethodCfg{m, "1+"   + body, 4, 3, false};
+    }
     if (m == "interp")             // linear interpolation of the measured points, 1 above Rp
         return {m, "", 0, 0, false};
     throw std::runtime_error("fit_dr_corrections: unknown method '" + m +
@@ -832,7 +848,7 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
         : std::string();
     // Self-describing artefact: a fit report must state the shape restriction its numbers were
     // produced under, or a later reader cannot tell a railed parameter from a measured one.
-    const std::string r_shape_note = (method == "expo" && step == 3)
+    const std::string r_shape_note_expo = (method == "expo" && step == 3)
         ? std::string("# SHAPE RESTRICTION (user, 2026-09-07), Step-3 `expo` ONLY. Two physics"
                       " requirements, imposed as fit LIMITS on\n"
                       "#   f = C + A exp[-(dR/lambda)^p]  (C is the FREE fitted baseline in the"
@@ -883,6 +899,59 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                       " ENHANCEMENT at small dR (A > 0;\n"
                       "#   mc_trigger_efficiency.md R4 / section 3.4).\n")
         : std::string();
+    const std::string r_shape_note_polyu = (method == "polyu_fixedRp" && step == 3)
+        ? std::string("# SHAPE RESTRICTION (user, 2026-09-08), Step-3 `polyu_fixedRp` ONLY. ONE"
+                      " physics requirement, imposed as a fit LIMIT:\n"
+                      "#   AT dR = 0 THE EFFICIENCY MAY NOT EXCEED THE PLATEAU. With"
+                      " u = max(0, 1 - dR/Rp) and u(0) = 1, the fitted\n"
+                      "#   quartic C + a2 u^2 + a3 u^3 + a4 u^4 has f(0) = C + (a2+a3+a4), so the"
+                      " requirement is a2 + a3 + a4 <= 0 --\n"
+                      "#   a LINEAR constraint on a COMBINATION, which MINUIT cannot express as a"
+                      " limit. The fit is therefore written\n"
+                      "#   with that combination AS parameter p0:\n"
+                      "#       A = f(0) - C = a2 + a3 + a4 ,   f = C + u^2 [ A + a3(u-1) +"
+                      " a4(u^2-1) ]\n"
+                      "#   (C is the FREE fitted baseline in the `nocorr` family -- the `C=`"
+                      " column below -- and is FIXED at 1 in the\n"
+                      "#   plateau-corrected mode; see the `formula:` line above.) The function"
+                      " FAMILY is unchanged and a3/a4 still ARE\n"
+                      "#   the u^3/u^4 coefficients: only the leading coefficient is"
+                      " re-expressed, so the p0 column now reads f(0)-C and\n"
+                      "#   NOT a2. Recover a2 = A - a3 - a4 if you need it. Imposed as the"
+                      " CLOSURE A <= 0 (limit [-50, 0]).\n"
+                      "#   WHAT IS *NOT* CONSTRAINED: only the dR = 0 value. This polynomial may"
+                      " still be non-monotonic and may still\n"
+                      "#   rise above the plateau BETWEEN 0 and Rp -- that flexibility is the"
+                      " reason this backup form exists next to\n"
+                      "#   the monotone `expo`, which by A <= 0 cannot exceed C anywhere.\n"
+                      "#   READING THE RAIL. The limit is a closure, so a cell parked ON it is the"
+                      " BOUNDARY case -- a CONSTRAINED value,\n"
+                      "#   not a measurement -- and its two ends mean OPPOSITE things (per-cell"
+                      " `AT LIMIT:` annotation, plain name `A`):\n"
+                      "#   ** THE FLAG IS NOT PROOF OF A RAIL HERE. ** ParAtLimit flags a"
+                      " parameter within 1e-3*(hi-lo) of a limit, and\n"
+                      "#   this range is [-50, 0], so the tolerance is 0.05 -- TEN TIMES the"
+                      " `expo` A-tolerance (range [-5,0] -> 0.005)\n"
+                      "#   and comparable to a typical fitted |A| of 0.1-0.8. Roughly HALF the"
+                      " cells flagged `AT LIMIT: A` are therefore\n"
+                      "#   ordinary fitted values sitting just inside the tolerance, not"
+                      " constrained ones. To count the cells the restriction\n"
+                      "#   ACTUALLY bound, read the p0 column and require |A| < 1e-4; do NOT"
+                      " count the flags, and do NOT compare the flag\n"
+                      "#   count with `expo`'s without correcting for the 10x tolerance"
+                      " difference.\n"
+                      "#     A = 0   (NEW, this restriction): the unconstrained fit wanted a"
+                      " small-dR ENHANCEMENT. The delivered curve\n"
+                      "#             touches the plateau at dR = 0 instead.\n"
+                      "#     A = -50 (PRE-EXISTING lower limit, unchanged): the opposite -- the"
+                      " fit wanted an even deeper drop. Such a\n"
+                      "#             cell can have f(0) < 0 and is then rejected by the fit_ok"
+                      " `physical` screen.\n"
+                      "#   NOT applied to Step 4, whose single-leg correction is physically an"
+                      " ENHANCEMENT at small dR (A > 0;\n"
+                      "#   mc_trigger_efficiency.md R4 / section 3.4).\n")
+        : std::string();
+    const std::string r_shape_note = r_shape_note_expo + r_shape_note_polyu;
     const std::string r_etamerge_note = etamerge
         ? std::string("# PAIR-eta CELLS (") + std::to_string(neta_src) + " filled bins -> "
                       + std::to_string(Geta.n) + " fit cells, three sign-independent"
@@ -1146,6 +1215,12 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
             // The amplitude is measured FROM THE BASELINE: 1 when the curve was normalized,
             // the fitted-baseline estimate C0 when it was not.
             const double A0 = y0 - (nocorr ? C0 : 1.0);
+            // STEP 3 ONLY, for `expo` (2026-09-07) and `polyu_fixedRp` (2026-09-08). Step 4's
+            // physics has the OPPOSITE sign (R4/section 3.4: the SINGLE-leg efficiency is
+            // ENHANCED at small dR, A > 0), so restricting it would force the wrong shape on a
+            // correction that is not the same object. One definition, so the two methods can
+            // never drift apart on WHICH step is restricted.
+            const bool restrict_shape = (step == 3);
             if (method == "expo") {
                 // ---- THE STEP-3 SHAPE RESTRICTION (user, 2026-09-07) ------------------------
                 // f(dR) = C + A exp[-(dR/lambda)^p]   (C == 1 in the plateau-corrected mode).
@@ -1194,7 +1269,6 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                 // section 3.4 measured the SINGLE-LEG efficiency to be ENHANCED at small dR
                 // (eps(dR<0.12)/eps(dR>1) ~ 1.20 pp, 1.34 overlay), i.e. A > 0. Imposing A < 0
                 // there would force the wrong shape on a correction that is not the same object.
-                const bool restrict_shape = (step == 3);
                 const double A_lim_hi = restrict_shape ?  0.0 : 20.0;
                 const double p_lim_lo = restrict_shape ?  1.0 :  0.3;
                 // The seed must live inside the limits, or MINUIT starts on/outside a boundary.
@@ -1217,14 +1291,55 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
                 f->SetParLimits(2, p_lim_lo, 8.0);
                 if (nocorr) f->SetParLimits(3, C_lo, C_hi);
             } else if (method == "polyu_fixedRp") {
+                // ---- THE STEP-3 SHAPE RESTRICTION FOR THE POLYNOMIAL (user, 2026-09-08) -----
+                // "At dR = 0 the efficiency cannot exceed the plateau." u(0) = 1, so
+                // f(0) = C + (a2 + a3 + a4) and the requirement is a2 + a3 + a4 <= 0 -- a LINEAR
+                // constraint on a COMBINATION of three parameters, which MINUIT cannot express
+                // as a limit. It is imposed by carrying that combination AS parameter [0]:
+                //     A = f(0) - C = a2 + a3 + a4  ,  a2 = A - a3 - a4
+                //     f = C + u^2 [ A + a3(u-1) + a4(u^2-1) ]   (MakeMethodCfg)
+                // The function FAMILY is identical to the old quartic and a3/a4 keep their exact
+                // meaning; only the leading coefficient is re-expressed, so nothing about the
+                // fit's flexibility changes -- only which of its directions can be bounded.
+                // Then the requirement is the single limit A <= 0.
+                //
+                // ONLY the dR = 0 value is constrained. The user asked for that and nothing
+                // else: this polynomial may still be non-monotonic and may still rise above the
+                // plateau BETWEEN 0 and Rp. That is deliberate -- flexibility for a
+                // non-monotonic small-dR shape is the whole reason this backup form exists next
+                // to the monotone `expo` (which, by A <= 0, cannot exceed C anywhere).
+                //
+                // READING THE RAIL. `A <= 0` is the CLOSURE of the strict inequality, so a cell
+                // that comes out AT A = 0 is the boundary case, not a curve satisfying the
+                // requirement: it is the cell whose unconstrained fit wanted a small-dR
+                // ENHANCEMENT, and its delivered curve simply touches the plateau at dR = 0.
+                // Such cells are flagged `AT LIMIT: A` per cell and in the report, exactly as
+                // `expo`'s are, and must be read as constrained rather than measured. The
+                // PRE-EXISTING lower limit A = -50 is untouched and means the opposite (the fit
+                // wanted an even deeper drop; such a cell can have f(0) < 0 and is then rejected
+                // by the `physical` screen below), so the two ends of the rail must not be read
+                // alike.
+                //
+                // Imposed as a PARAMETER LIMIT, not as a post-hoc fit_ok screen, for the reason
+                // recorded at `expo`: a screened-out cell delivers NO correction (it falls
+                // through to the next tier of the delivered cascade), whereas a constrained fit
+                // delivers the best physically admissible fit.
+                const double A_lim_hi = restrict_shape ? 0.0 : 50.0;
+                // The seed must live inside the limits with a margin: a seed within ParAtLimit's
+                // own tolerance (1e-3 x range = 0.05 here) of a boundary starts MINUIT
+                // effectively ON the limit, the pathology the flag exists to expose. Keep a
+                // margin at BOTH ends. Unrestricted, the seed is byte-identical to what it was.
+                double A_seed = (A0 != 0. ? A0 : 0.2);
+                if (restrict_shape && !(A_seed < -0.2)) A_seed = -0.2;   // also catches NaN
+                if (restrict_shape && A_seed <= -49.5)  A_seed = -1.0;
                 if (nocorr) {
-                    f->SetParNames("a_{2}", "a_{3}", "a_{4}", "R_{p}", "C");
-                    f->SetParameters(A0 != 0. ? A0 : 0.2, 0.0, 0.0, S.flat_onset, C0);
+                    f->SetParNames("A", "a_{3}", "a_{4}", "R_{p}", "C");
+                    f->SetParameters(A_seed, 0.0, 0.0, S.flat_onset, C0);
                 } else {
-                    f->SetParNames("a_{2}", "a_{3}", "a_{4}", "R_{p}");
-                    f->SetParameters(A0 != 0. ? A0 : 0.2, 0.0, 0.0, S.flat_onset);
+                    f->SetParNames("A", "a_{3}", "a_{4}", "R_{p}");
+                    f->SetParameters(A_seed, 0.0, 0.0, S.flat_onset);
                 }
-                f->SetParLimits(0, -50.0, 50.0);
+                f->SetParLimits(0, -50.0, A_lim_hi);
                 f->SetParLimits(1, -100.0, 100.0);
                 f->SetParLimits(2, -100.0, 100.0);
                 f->FixParameter(3, S.flat_onset);
@@ -1365,11 +1480,20 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     // The shape restriction belongs in the ROOT file too, not only in the text report: the ROOT
     // file is what dr_correction_apply.h / DrCorrectionCrossxEvaluator.h actually consume, so a
     // consumer must be able to see, from the artefact alone, that A and p were CONSTRAINED.
-    const std::string shape_prov = (method == "expo" && step == 3)
+    const std::string shape_prov = (step != 3) ? std::string()
+        : (method == "expo")
         ? std::string("; SHAPE RESTRICTION (Step-3 expo only): A in [-5,0] (small-dR plateau below"
                       " the large-dR one) and p in [1,8] (turning point at dR>0 / f'(0)=0);"
                       " both limits are CLOSURES -- a value ON one is a constraint, not a"
                       " measurement (the fit report lists every such cell)")
+        : (method == "polyu_fixedRp")
+        ? std::string("; SHAPE RESTRICTION (Step-3 polyu_fixedRp only): p0 IS A = f(0)-C ="
+                      " a2+a3+a4 (NOT a2 -- the quartic is written as C+u^2[A+a3(u-1)+a4(u^2-1)]"
+                      " so that the user's dR=0 requirement is a limit on one parameter),"
+                      " restricted to A in [-50,0] so the efficiency at dR=0 cannot exceed the"
+                      " plateau; the limit is a CLOSURE -- a value ON it is a constraint, not a"
+                      " measurement (the fit report lists every such cell). Only f(0) is"
+                      " constrained: the polynomial may still exceed C between 0 and Rp")
         : std::string();
     TNamed("provenance",
            Form("sample=%s (%s); WP=%s; series=%s; plateau mode=%s; pair-pT cells=%d (filled bins"

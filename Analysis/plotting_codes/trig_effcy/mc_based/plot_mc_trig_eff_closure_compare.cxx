@@ -22,7 +22,7 @@
 // pp24 cross-section most accurately.
 //
 // SAME BINNING, ALWAYS. Every panel is drawn on the pp24 CROSS-SECTION's binning
-// (ParamsSet::pT_bins_150, 15 log bins 8-150 GeV, x the 9
+// (ParamsSet::pT_bins_150, 16 log bins 9-150 GeV, x the 9
 // CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap panels) -- that is what makes the
 // overlay legitimate, and it is enforced here rather than assumed: the four denominators are
 // compared bin by bin and a disagreement THROWS.
@@ -391,8 +391,8 @@ void plot_mc_trig_eff_closure_compare(const std::string& sample = "pp_full",
         hd->DrawLatex(0.030, 0.864,
                       Form("#varepsilon_{#DeltaR}(#DeltaR) = f(#DeltaR)/C for #DeltaR < %g and 1 "
                            "above;  f = the exponential C + A e^{-(#DeltaR/#lambda)^{p}} where its "
-                           "fit is accepted, the polynomial C + u^{2}(a_{2}+a_{3}u+a_{4}u^{2}) "
-                           "where it is not,",
+                           "fit is accepted, the polynomial "
+                           "C + u^{2}[A+a_{3}(u#minus1)+a_{4}(u^{2}#minus1)] where it is not,",
                            DrCorrectionEvaluator::kDrMax));
         hd->DrawLatex(0.030, 0.844,
                       "the linear interpolation of the measured points where neither is, and those "
