@@ -2554,6 +2554,26 @@ both addressed, reports regenerated):
   the NEW equation over OLD `(a₂, a₃, a₄)` parameters and nothing would have noticed. The
   parameter NAME is the discriminator and it survives write/read.
 
+  *Verified by read-back, not assumed* (ROOT 6.34, the four files in
+  `~/usatlasdata/pythia_fullsim_full_sample/`):
+
+  | fit file | npar | `GetParName(0)` | p0 | guard |
+  |---|---|---|---|---|
+  | `..._step3_polyu_fixedRp_os_nocorr.root` (09-08 23:53) | 5 | `A` | −0.1982 | passes |
+  | `..._step3_polyu_fixedRp_os.root` (plateau-corr., 23:52) | 4 | `A` | −0.2060 | passes |
+  | `..._pt4bin_step3_polyu_fixedRp_os_nocorr.root` (08-13) | 5 | `a_{2}` | **+0.1101** | **THROWS** |
+  | `..._step4_polyu_fixedRp_os.root` (08-13) | 4 | `a_{2}` | −0.0585 | **THROWS** |
+
+  No false positive at either parameter count (`GetParName` survives the first-generation
+  write/read; the ROOT 6.34 name-bookkeeping corruption only bites on RE-writes, as
+  `combine_dr_correction_fits.cxx`'s header states), and it fires on exactly the files it was
+  written for. **The guard is not academic**: the stale `_pt4bin` p0 is `+0.1101`, so without it
+  the canvas would have printed `A = f(0) − C = +0.11 > 0` — a curve exceeding the plateau at
+  ΔR = 0, i.e. the figure would have advertised a violation of the very requirement this round
+  imposes, on a fit that never carried it. Step-4 polyu replots are consequently blocked until
+  refit, which is correct and intended — (h) already lists the Step-4 fits and the `_pt4bin`
+  variant as knowingly stale.
+
 **(h) NOT RERUN — the MC closure, and why (user decision).** Plan item 6 could not run: a
 CONCURRENT session in this same checkout has (uncommitted, ~16:19 on 2026-09-08) adopted the muon
 `pT > 4.5 GeV` cut and moved the canonical pair-pT axes **8 → 9 GeV**
