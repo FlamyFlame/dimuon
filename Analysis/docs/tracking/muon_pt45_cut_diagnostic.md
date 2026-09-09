@@ -36,33 +36,30 @@ disproportionate fraction of pairs.
 **Stop-and-ask** = ANY physics-results-bending ambiguity (use judgment; if
 unsure whether it's blocking, treat it as blocking → AskUserQuestion).
 
-## Decision Status — PENDING (2026-09-07, BLOCKING on other work)
+## Decision Status — RESOLVED 2026-09-08: ADOPTED
 
-**NOT DECIDED.** The 4.5 GeV candidate cut costs a considerable fraction of
-signal statistics (pp24 **-23.2458%**, Pb+Pb 23+24+25 combined **-34.5314%**
-raw signal-region OS pairs — see Progress Log). Whether that statistics loss
-is worth the reduced gap-cut/reconstruction-efficiency systematic it buys is
-a **human decision, not yet made**.
+**DECIDED: adopt the 4.5 GeV cut**, despite the considerable statistics cost
+this diagnostic measured (pp24 **-23.2458%**, Pb+Pb 23+24+25 combined
+**-34.5314%** raw signal-region OS pairs). The user made this call bundled
+with two further selection changes (fiducial gap window narrowed, signal
+pair-pT floor 8→9 GeV) and a full data+MC rerun.
 
-**Binding on every other agent/session until this is resolved:**
-- The **nominal analysis stays on muon reconstructed pT > 4 GeV** everywhere
-  (NTuple processing, RDF hist filling, crossx, template fits, all plots) —
-  do NOT switch to 4.5 GeV anywhere outside this diagnostic.
-- Do **NOT** modify `NTupleProcessingCode/DimuonDataAlgCoreT.c:596` (data) or
-  the analogous truth-pT cuts in `PythiaFullSimExtras.c` / `PowhegFullSimExtras.c`
-  (MC) to raise the cut to 4.5 GeV.
-- Do **NOT** add a pT > 4.5 GeV cut (temporary or otherwise) to crossx, R_AA,
-  reco-eff, trigger-eff, template-fit, or any other analysis code/plot outside
-  the diagnostic files already listed in this doc's Design Decisions /
-  Remaining Work.
-- The existing temporary `_diag_mupt45` / `_logbins_from9` diagnostic
-  histograms and driver macros (this doc's own scope) may stay as-is or be
-  regenerated for further diagnosis, but are NOT a license to propagate the
-  4.5 GeV cut into any other pipeline or output.
-- **Unblocks when:** the user makes an explicit decision to adopt 4.5 GeV
-  (→ execute the full permanent-change + rerun-everything plan in Design
-  Decisions / Remaining Work below) or to keep 4 GeV (→ this doc is fully
-  closed and the temporary diagnostic code is deleted per Remaining Work).
+**Execution owned by `mu_pt45_gap125_pairpt9_adoption.md` (ACTIVE)** — that
+doc is the authority for the permanent change from here: the NTuple-processing
+edits (`DimuonDataAlgCoreT.c` data, `PythiaFullSimExtras.c`/
+`PowhegFullSimExtras.c` MC), the coupled binning moves, the Pb+Pb migration,
+and the full rerun. This doc's temporary `_diag_mupt45` / `_logbins_from9`
+code (2 RDF-adjacent files, 2 driver macros, 3 Draw methods in
+`SingleBCrossxPlotterBase.cxx`) has been **DELETED** by that adoption work
+per this doc's own Remaining Work — confirmed 2026-09-09 (cross-session
+coordination with session "analysis-a8"): the files no longer exist in the
+working tree, and the deletions are part of the adoption doc's committed
+history.
+
+**The BLOCKING constraint above is LIFTED as of this decision** — it applied
+only while the decision was pending. Any further work on the pT cut, gap
+window, or pair-pT floor now follows `mu_pt45_gap125_pairpt9_adoption.md`,
+not this doc.
 
 ## Physics Procedure
 
@@ -303,9 +300,10 @@ draw-code-only changes.
 
 ## Latest Stage
 
-**Diagnostic deliverables DONE 2026-09-07; doc PARKED pending a human decision
-(see §Decision Status, BLOCKING on other work).** All requested plots/numbers
-are complete:
+**CLOSED 2026-09-09 — diagnostic DONE 2026-09-07, decision ADOPTED 2026-09-08,
+execution moved to `mu_pt45_gap125_pairpt9_adoption.md`.** This doc's own
+scope (the statistics-vs-systematics diagnostic) is complete and its
+temporary code has been deleted by the adoption work:
 - Original 6 PNGs (3 per dataset x 2 datasets) + 2 summary txt files, both
   `/review-analysis-code` and `/review-plot` PASSED at iteration 1 (2026-09-06).
 - Step 6 follow-ups (2026-09-07): pair-eta plots remade linear-y with a fixed
@@ -316,8 +314,7 @@ are complete:
 - pp24: 705404 (muon pT>4, current) -> 541427 (muon pT>4.5, candidate) raw
   signal-region OS pairs, **-23.2458%**.
 - Pb+Pb 2023+2024+2025 combined: 275622 -> 180446 pairs, **-34.5314%**.
-- **NOT decided**: whether the statistics cost above is worth the reduced
-  gap-cut/reco-efficiency systematic. Until the user decides, the nominal
-  analysis STAYS on pT > 4 GeV everywhere and no other work may add a 4.5 GeV
-  cut anywhere outside this doc's own temporary diagnostic code (see §Decision
-  Status for the exact binding constraint and unblock condition).
+- **Decided 2026-09-08: ADOPT.** Despite the statistics cost above, the user
+  chose to raise the cut (bundled with the gap-window and pair-pT-floor
+  changes — see §Decision Status). Nothing further to do in THIS doc; follow
+  `mu_pt45_gap125_pairpt9_adoption.md` for the live implementation.
