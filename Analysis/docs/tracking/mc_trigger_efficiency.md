@@ -2501,8 +2501,18 @@ So **the Tight polyu fits are on the 9 GeV axis while the Tight `expo`/`interp` 
 the same cells for Tight. **Medium is self-consistent** (all three methods at 8 GeV; its Step-3
 input is still 2026-09-07 21:21), so the Tight and Medium halves of the table in (e) also come
 from different fills. Nothing is published from this state — `DrCorrectionCascadeEvaluator`'s
-canonical-edge check and `combine_dr_correction_fits`'s point-by-point raw cross-check both THROW
-— and the fix is the one (h) already names: refill Step 3 on the 9 GeV axis and refit ALL THREE
+canonical-edge check and `combine_dr_correction_fits`'s point-by-point raw cross-check both THROW.
+**Do not read that as general protection.** Every guard in this chain
+(`DrCorrectionCascadeEvaluator`, `DrCorrectionCrossxEvaluator`, `PairRecoEffEvaluator`,
+`PairTrigEffEvaluator`, `PairEtaPanelBins`) compares axis EDGES — so it catches the 8 → 9 GeV
+pair-pT move and catches nothing else. **A muon-pT threshold change moves no axis and is invisible
+to all of them**, which is precisely how the reco-efficiency chain
+(`RDFBasedHistFillingPythiaFullsim.cxx`, which inherits the muon threshold from the persisted
+`pair_pass_*` flags instead of re-applying it) produced a 4.0 GeV-population artefact on
+2026-09-08 with no guard firing anywhere. Stamping the muon-pT threshold into artefact provenance
+and having the guards compare it was put to the user and NOT adopted this round, so that exposure
+survives the next threshold change — recorded in `mu_pt45_gap125_pairpt9_adoption.md` R4.
+The fix for the axis mismatch here is the one (h) already names: refill Step 3 on the 9 GeV axis and refit ALL THREE
 methods together. **The restriction itself held identically in both runs** (0 violations,
 `f(0) ≤ C` everywhere, on either axis); only the cell count (1483 → 1482) and the rail counts
 moved. Every number quoted here is read off the artefacts now on disk.
