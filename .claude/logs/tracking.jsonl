@@ -141,3 +141,7 @@
 {"event":"start","command":"review-plot","task":"5-line high-pT closure comparison figure","slug":"single-value-highpt-closure","timestamp":"2026-09-08T05:36:09Z"}
 {"event":"end","command":"review-plot","status":"approved","iterations":2,"timestamp":"2026-09-08T06:16:34Z","criticals":0,"warnings":0,"slug":"single-value-highpt-closure"}
 {"event":"end","command":"review-analysis-code","status":"approved","iterations":3,"timestamp":"2026-09-08T06:20:10Z","criticals":0,"warnings":0,"slug":"single-value-pair-2mu4-eff"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":4,"timestamp":"2026-09-08T10:54:23-04:00","criticals":0,"warnings":0,"slug":"pp-allvertex-ip"}
+{"event":"end","command":"review-plot","status":"approved","iterations":3,"timestamp":"2026-09-08T16:28:44Z","criticals":0,"warnings":0,"slug":"single-value-highpt-closure"}
+{"event":"start","command":"review-analysis-code","task":"Step-3 polyu_fixedRp shape restriction","slug":"polyu-dr0-plateau-limit","timestamp":"2026-09-08T20:47:33Z"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":2,"timestamp":"2026-09-09T04:32:03Z","criticals":0,"warnings":0,"slug":"polyu-dr0-plateau-limit"}

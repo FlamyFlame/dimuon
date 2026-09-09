@@ -2417,6 +2417,162 @@ reviewer correctly flagged the deviation as undocumented.
 
 ## Results & Observations
 
+### R34. Round 14 — the Step-3 POLYNOMIAL fit constrained at ΔR = 0 (2026-09-08, pp24 only)
+
+**User request:** *"For the step 3 polynomial fit, require that when dR = 0, the efficiency cannot
+have value exceeding plateau."* This is requirement (1) of R33(b) — the small-ΔR value must lie
+below the large-ΔR plateau — now imposed on the BACKUP form `polyu_fixedRp` as well as on the
+nominal `expo`. Scope mirrors round 13: **pp_full only, Step 3 only**; the HIJING overlay,
+`noovl`, PbPb, the Step-4 fits and the `_pt4bin` variant stay knowingly STALE.
+
+**(a) Why it needed a reparametrization, not a limit.** `f = C + u²(a₂ + a₃u + a₄u²)` with
+`u ≡ max(0, 1 − ΔR/R_p)` and `u(0) = 1`, so `f(0) = C + (a₂+a₃+a₄)`. The requirement `f(0) ≤ C`
+is the LINEAR constraint `a₂ + a₃ + a₄ ≤ 0` — a bound on a COMBINATION of three parameters, which
+MINUIT cannot express as a `SetParLimits` on any one of them. (This is the one structural
+difference from `expo`, where the same requirement was already a bound on the single parameter
+`A`.) The fit is therefore written with the constrained combination AS parameter `p0`:
+
+    A ≡ f(0) − C = a₂ + a₃ + a₄ ,   a₂ = A − a₃ − a₄
+    f = C + u² [ A + a₃(u − 1) + a₄(u² − 1) ]
+
+The function FAMILY is untouched — expanding gives back `C + a₂u² + a₃u³ + a₄u⁴`, and `a₃`/`a₄`
+still ARE the `u³`/`u⁴` coefficients — so the fit's flexibility is unchanged; only which of its
+directions can be bounded. The requirement is then the single limit **`A ∈ [−50, 0]`** (was
+`[−50, 50]`). Same symbol, same meaning as `expo`'s `A`. Verified as an exact identity before any
+production run: over 15 (C, a₂, a₃, a₄) sets and ΔR ∈ [0, 2], max |old − new| = **2.2e-16**,
+`f(0) − C = A` to 1e-12, and `f(R_p+) = C` exactly.
+
+**(b) What is deliberately NOT constrained.** Only the ΔR = 0 value, which is what was asked. The
+polynomial may still be non-monotonic and may still rise above `C` BETWEEN 0 and `R_p` — that
+flexibility is the whole reason this backup form exists next to the monotone `expo` (which, by
+`A ≤ 0`, cannot exceed `C` anywhere). No turning-point / zero-slope condition is imposed here:
+R33(b)'s condition (2) is specific to the exponential's `p`, and the quartic has no analogous
+single parameter.
+
+**Step 4 is EXCLUDED**, by the same physics as `expo` (R4/§3.4: the single-leg correction is an
+ENHANCEMENT at small ΔR, `A > 0`). `restrict_shape = (step == 3)` is now defined ONCE and shared
+by both restricted methods, so they cannot drift apart on which step is restricted.
+
+**(c) What was rerun.** `run_dr_correction_fits.sh` with `SAMPLES=pp_full STEPS=3 SKIP_MEASURE=1
+METHODS=polyu_fixedRp` — 2 WPs × 5 plateau modes × 3 sign series = **30 fit + plot
+configurations** (the plateaus are an unchanged input, hence `SKIP_MEASURE`). Exit code 2 is the
+PRE-EXISTING plateau-guard failure of the `plateau_corrected` mode, unchanged by this work.
+Then the MC closure — see (e).
+
+**(d) The restriction holds.** Over all 30 regenerated reports (the FINAL set, 2026-09-08
+23:52–23:57): **1482 fitted cells, ZERO cells with `A > 0`, and `f(0) ≤ C` in 1482 / 1482.** `A`
+reproduces `f(0) − C` to print precision (1e-4, the 4-dp `C=` column; ~1e-16 in
+`plateau_corrected` where `C = 1` exactly), and the driver's flatness audit reports worst
+`|f − C|` beyond `R_p` = **0.00e+00** in all 30 blocks.
+
+**⚠ THE INPUT MOVED BETWEEN THIS ROUND'S TWO RUNS, AND THE TIGHT FIT SET IS NOW INTERNALLY
+INCONSISTENT ACROSS METHODS.** The CONCURRENT workstream of (h) **refilled the Tight Step-3
+histogram at 2026-09-08 18:48 and its plateau map at 18:51** — on its NEW 9 GeV pair-pT axis —
+between this round's first run (16:48) and its second (23:52, done only to pick up the corrected
+report note of (g)). Read off the artefacts, first pair-pT cell of the Tight `nocorr` reports:
+
+| Tight, Step 3 | `expo` | `interp` | `polyu_fixedRp` |
+|---|---|---|---|
+| first pair-pT cell | `[8.0,11.5)` | `[8.0,11.5)` | **`[9.0,12.8)`** |
+| written | 09-08 00:53 | 09-08 00:56 | 09-08 23:53 |
+
+So **the Tight polyu fits are on the 9 GeV axis while the Tight `expo`/`interp` fits are still on
+8 GeV**, i.e. the three tiers of the delivered `expo → polyu → interp` cascade no longer describe
+the same cells for Tight. **Medium is self-consistent** (all three methods at 8 GeV; its Step-3
+input is still 2026-09-07 21:21), so the Tight and Medium halves of the table in (e) also come
+from different fills. Nothing is published from this state — `DrCorrectionCascadeEvaluator`'s
+canonical-edge check and `combine_dr_correction_fits`'s point-by-point raw cross-check both THROW
+— and the fix is the one (h) already names: refill Step 3 on the 9 GeV axis and refit ALL THREE
+methods together. **The restriction itself held identically in both runs** (0 violations,
+`f(0) ≤ C` everywhere, on either axis); only the cell count (1483 → 1482) and the rail counts
+moved. Every number quoted here is read off the artefacts now on disk.
+
+**(e) How often the limit actually binds — and why the `AT LIMIT` flag over-counts here by ~2×.**
+`ParAtLimit` flags a parameter within `1e-3 × (hi − lo)` of a limit. For polyu that range is
+`[−50, 0]`, so the tolerance is **0.05 — ten times `expo`'s** (range `[−5,0]` → 0.005) and
+comparable to a typical fitted `|A|` of 0.1–0.8. **171 cells are FLAGGED but only 95 are actually
+railed** (`|A| < 1e-4`); the rest are ordinary fits sitting just inside the tolerance. The flag
+count is therefore NOT comparable with `expo`'s without correcting for that factor, and the fit
+report now says so explicitly. Both counts, per series:
+
+| WP | plateau mode | fitted (intgr/os/ss) | flagged `AT LIMIT: A` | railed \|A\|<1e-4 |
+|---|---|---|---|---|
+| T | plateau_corrected | 71 / 71 / 65 | 10 / 11 / 7 | 8 / 9 / 4 |
+| T | nocorr | 71 / 71 / 65 | 7 / 8 / 3 | 4 / 4 / 2 |
+| T | nocorr_ptmerge | 64 / 64 / 62 | 7 / 7 / 2 | 4 / 3 / 1 |
+| T | nocorr_etamerge | 24 / 24 / 23 | 3 / 3 / 1 | 3 / 3 / 0 |
+| T | nocorr_etamerge_ptmerge | 22 / 22 / 21 | 3 / 3 / 1 | 3 / 3 / 0 |
+| M | plateau_corrected | 71 / 71 / 65 | 10 / 10 / 4 | 6 / 6 / 3 |
+| M | nocorr | 71 / 71 / 65 | 10 / 10 / 6 | 4 / 3 / 4 |
+| M | nocorr_ptmerge | 64 / 64 / 62 | 9 / 9 / 5 | 3 / 2 / 3 |
+| M | nocorr_etamerge | 24 / 24 / 24 | 4 / 4 / 3 | 2 / 2 / 1 |
+| M | nocorr_etamerge_ptmerge | 22 / 22 / 22 | 4 / 4 / 3 | 2 / 2 / 1 |
+
+**95 of 1482 (6.4 %) genuinely rail** — the same order as `expo` once the tolerance difference is
+accounted for, and the expected consequence of closing a half-space on a flexible quartic in
+low-statistics forward / high-pT cells. A railed cell delivers `ε_ΔR(0) = f(0)/C = 1`, i.e. no
+correction at ΔR = 0, and must be read as CONSTRAINED, not measured.
+
+**(f) TWO MEASURED SIDE-EFFECTS of the endpoint-only form of the requirement. Both were put to
+the user, who confirmed ΔR = 0 only, as asked** — so they are recorded here as known properties of
+the delivered fit, not as defects.
+
+1. *The `>plateau` pathology is partly DISPLACED, not removed.* Only `f(0)` is pinned; the quartic
+   may still rise above `C` between 0 and `R_p`, and it does. Max `f/C` on `(0, R_p]` exceeds 1 by
+   >1 % in **701 cells (47 %)**, >5 % in **278 (19 %)**, >20 % in **90 (6.1 %)**, >100 % in **32**;
+   worst **11.47** (Medium, `nocorr`, pT [50.0,72.1) × η [−2.2,−2.0), same sign). And the railed
+   cells do it MORE often than the rest — **25 % vs 18 % above 1.05** — i.e. the constraint pushes
+   some of the overshoot from ΔR = 0 to ΔR ≈ 0.1–0.3. This is exactly the flexibility that makes
+   `polyu` the backup form next to the monotone `expo` (which, by `A ≤ 0`, cannot exceed `C`
+   anywhere); the stronger requirement `ε_ΔR ≤ 1` over the whole domain is NOT expressible as a box
+   limit (it is a bound on `max_u`) and would need a penalty term or a post-fit `usable` screen.
+   **Not implemented — the user chose the ΔR = 0 requirement as stated.**
+2. *In the `nocorr*` family the fit has a second way to satisfy the constraint: collapse `C`.*
+   `C` is free there, so `f(0) ≤ C` can be met by lowering the baseline instead of the endpoint.
+   **11 of the 95 railed cells** came out with `C < 0.5` or `σ_C > 0.3·C`; worst
+   `C = 0.095 ± 0.110` against a MEASURED plateau of 1.134 (same cell as above), with
+   `a₃ = −36.7, a₄ = +19.2`. **9 of the 11** are caught downstream by
+   `DrCorrPlateauUsable` (`dr_correction_sample_cfg.h`: `C ≥ 0.5` and `σ_C < C`, the same screen a
+   bad measured plateau gets) and fall through to the `interp` tier, so the cascade ROUTING moves.
+   **The other 2 CLEAR the screen and ARE delivered at the polyu tier**: `C = 0.7805 ± 0.5334`
+   (Tight, `nocorr`, same sign, pT [105.5,150.0) × η [0.5,1.0)) and `C = 0.7776 ± 0.5335` (Medium,
+   the same cell family), both with `σ_C/C ≈ 0.68` and max `f/C` ≈ 1.90 / 1.94 — exactly the case
+   `dr_correction_apply.h`'s own comment already warns about ("a C that only just clears the
+   screen … can still put f/C above 2"). So it is NOT true that nothing wrong can be published;
+   what is true is that both survivors are same-sign, top-pair-pT cells. The producer-side remedy
+   (adding a `C` sanity term to `fit_ok` itself) was offered and NOT chosen.
+
+**(g) Two review fixes carried in the same change** (`/review-analysis-code`, iteration 1 FAIL →
+both addressed, reports regenerated):
+- the polyu report note now carries the `ParAtLimit`-tolerance caveat of (e), which the `expo`
+  note already had — without it the note asserted that every flagged cell is a constrained value,
+  false for half of them;
+- `plot_dr_correction_fits.cxx::LoadFunc` now THROWS if a `polyu_fixedRp` TF1's parameter 0 is not
+  named `A`. `MethodFormulaTex()` is keyed on the METHOD NAME alone, and the reparametrization
+  left the parameter COUNT unchanged and the persisted TF1 still `Eval`-correct — so replotting an
+  older fit file (the `_pt4bin` ones on disk, 2026-08-07/13, are exactly this) would have drawn
+  the NEW equation over OLD `(a₂, a₃, a₄)` parameters and nothing would have noticed. The
+  parameter NAME is the discriminator and it survives write/read.
+
+**(h) NOT RERUN — the MC closure, and why (user decision).** Plan item 6 could not run: a
+CONCURRENT session in this same checkout has (uncommitted, ~16:19 on 2026-09-08) adopted the muon
+`pT > 4.5 GeV` cut and moved the canonical pair-pT axes **8 → 9 GeV**
+(`ParamsSet::signal_pair_pt_min`, `pair_pt_coarse_bins`, `pT_bins_150`, …). Every Step-3 histogram
+and fit file on disk is still on the 8 GeV axis, so `DrCorrectionCascadeEvaluator` correctly throws
+*"pair-pT edge 0 is 8.000000 in the fit file but 9.000000 canonically — stale fit file"*. **This
+staleness predates and is independent of this change** — the round-13 fit files fail identically.
+Refilling Step-3 on the 9 GeV axis is that other workstream's blast radius and would write to the
+same files and output paths it is actively producing, so the user directed this round to **stop at
+the fits**. The four-approach closure figures of `mc_trigeff_dr_binning_approaches.md` (2026-09-08
+01:33) are therefore **STALE with respect to the polyu tier of the cascade** and must be
+regenerated by whoever refills Step-3 on the new binning — recorded there too.
+
+*Each Step-3 fit artefact is consistent with the histogram it was fitted to — but as (d) records,
+those histograms are no longer the same across methods for Tight (polyu on the 9 GeV refill of
+18:48; `expo`/`interp` on the 8 GeV fill of 00:49–00:59). `dr_correction_cell_groups.h` reads only
+`ParamsSet::N_COARSE_PAIR_PT_BINS`, still 8, so the CELL COUNT is unaffected by the concurrent
+edits — only the EDGES moved, and only for the Tight polyu set.*
+
 ### R33. Round 13 — the new gap-cut set + the pair-level |η^pair| < 2.2, and the Step-3 `expo`
 ### shape restriction (2026-09-07/08, pp24 only)
 
@@ -3735,6 +3891,98 @@ criteria **P1** and **P2**):
     `no_plateau_correction` variant, which removes the term rather than sizing it.
 
 ## Latest Stage
+
+**2026-09-08/09 (round 14) — ✅ DONE for the FITS; the MC closure is deliberately NOT rerun (user
+decision, see below). The Step-3 `polyu_fixedRp` (polynomial) fit is constrained so that at
+ΔR = 0 the efficiency cannot exceed the plateau. Full results and numbers in R34.**
+
+Delivered: the polynomial reparametrized in `A ≡ f(0) − C` so the user's requirement is the single
+fit limit `A ≤ 0` (R34(a)), Step 3 only; the 30 Step-3 polyu fit + plot configurations regenerated
+(2 WPs × 5 plateau modes × 3 sign series) — **1482 fitted cells, zero `A > 0`, `f(0) ≤ C` in all of
+them**, flat at `C` beyond `R_p` to 0.00e+00 in all 30 blocks; and two `/review-analysis-code`
+fixes (R34(g)): the report's `AT LIMIT` tolerance caveat, and a parametrization guard in the
+plotter that refuses to draw the new equation over an old fit file.
+
+**Three things the user should know.**
+1. **Two side-effects were measured and put to the user, who chose the requirement as stated
+   ("ΔR = 0 only")** — R34(f): the polynomial may still exceed the plateau BETWEEN 0 and `R_p`
+   (47 % of cells by >1 %, worst 11.5), and in the `nocorr` family 11 of the 95 railed cells met
+   the constraint by collapsing the free baseline `C` instead — 9 of those are caught by the
+   existing `DrCorrPlateauUsable` screen and rerouted to the `interp` tier, but **2 clear it**
+   (`C ≈ 0.78 ± 0.53`, `σ_C/C ≈ 0.68`) and are delivered with `f/C` up to 1.94.
+2. **The MC closure could NOT be rerun** — R34(h): a concurrent, uncommitted workstream moved the
+   canonical pair-pT axis 8 → 9 GeV, so `DrCorrectionCascadeEvaluator` throws on every Step-3 fit
+   file on disk. The staleness predates this change. The user directed this round to stop at the
+   fits. **`mc_trigeff_dr_binning_approaches.md`'s four-approach χ²/ndof figures are now stale for
+   two independent reasons and must not be used for the open approach decision** — flagged at the
+   top of that doc's Latest Stage.
+3. **The Tight Step-3 fit set is now internally INCONSISTENT across methods** — R34(d). That same
+   workstream refilled the Tight Step-3 histogram on its new 9 GeV axis at 2026-09-08 18:48,
+   between this round's two runs, so the Tight `polyu` fits are on 9 GeV while the Tight
+   `expo`/`interp` fits are still on 8 GeV; Medium is self-consistent at 8 GeV. Every consumer
+   THROWS rather than silently mixing them, and the fix is the refill + refit of all three methods
+   that item 2 already requires.
+
+*The plan, as written before the work, follows.*
+
+---
+
+**2026-09-08 (round 14) — plan. Extend the Step-3 shape restriction to the `polyu_fixedRp`
+(polynomial) fit: at ΔR = 0 the efficiency may not exceed the plateau.**
+
+*User request (verbatim intent): "For the step 3 polynomial fit, require that when dR = 0, the
+efficiency cannot have value exceeding plateau."* This is requirement (1) of R33(b) — the
+small-ΔR plateau must lie BELOW the large-ΔR one — now imposed on the BACKUP form as well as on
+the nominal `expo`. Nothing else about the polynomial is constrained (no monotonicity, no
+turning-point condition): the user asked for the ΔR = 0 value only.
+
+**How it maps onto the parameters.** `f = C + u²(a₂ + a₃u + a₄u²)`, `u ≡ max(0, 1 − ΔR/R_p)`,
+`u(0) = 1`, so `f(0) = C + (a₂ + a₃ + a₄)`. The requirement is therefore the LINEAR constraint
+`a₂ + a₃ + a₄ ≤ 0`, which is NOT a box constraint on any single existing parameter and so cannot
+be imposed as a MINUIT limit on `a₂`. It is imposed by REPARAMETRIZING the same function family
+so that the constrained quantity IS a parameter:
+
+    A ≡ f(0) − C = a₂ + a₃ + a₄     (so a₂ = A − a₃ − a₄)
+    f = C + u²·[ A + a₃(u − 1) + a₄(u² − 1) ]
+
+`a₃` and `a₄` keep their exact meaning (still the coefficients of `u³` and `u⁴`); only the
+leading coefficient is traded for `A`, which is the SAME symbol and the SAME meaning `expo`
+already uses (`f(0) − C`). Then the restriction is the closure `A ≤ 0`, i.e. limits `[−50, 0]`
+in place of the pre-existing `[−50, 50]`. A cell railed at `A = 0` is the boundary case — the
+unconstrained fit wanted a small-ΔR ENHANCEMENT — and delivers a curve that is flat at `C` at
+ΔR = 0; it is flagged `AT LIMIT: A` per cell exactly as `expo`'s is.
+
+**Step 4 is EXCLUDED, for the same physics reason as `expo`** (R33(b), R4/§3.4): the single-leg
+correction is physically an ENHANCEMENT at small ΔR, so `A > 0` there. `restrict_shape =
+(step == 3)`.
+
+**Plan (per §3.3 Step 3; reviewer: `/review-analysis-code` for the fit code, `/review-plot` for
+the regenerated plot sets):**
+1. `fit_dr_corrections.cxx` — reparametrized `polyu_fixedRp` formula (BOTH plateau families),
+   parameter names, seed (with the same inside-the-limits clamp `expo` got), the `A ≤ 0` limit
+   for step 3 only, and the fit-report + ROOT-`provenance` shape notes extended to the method.
+2. The two places that DUPLICATE the formula string / parameter names, which must move with it:
+   `combine_dr_correction_fits.cxx::NocorrMethodFormulas()` and
+   `plot_dr_correction_fits.cxx::MethodFormulaTex()`.
+3. The two closure figures that print the polynomial's equation as prose:
+   `plot_mc_trig_eff_closure.cxx`, `plot_mc_trig_eff_closure_compare.cxx`.
+4. Standalone check that the reparametrization is an identity on the OLD fitted parameters
+   (same curve, same `f(0)`) before any production rerun.
+5. Rerun `run_dr_correction_fits.sh` for `pp_full`, STEPS=3, both WPs, all methods × 3 sign
+   series × 5 plateau modes (`SKIP_MEASURE=1` — the plateaus are an input and did not change);
+   plots regenerated by the same driver.
+6. **Blast radius beyond this doc:** the delivered ε_ΔR is the `expo → polyu → interp` cascade
+   (`mc_trigeff_dr_binning_approaches.md` §PP-3), so every cell where `expo` is NOT accepted and
+   `polyu` IS now changes. That doc's four-approach MC closure χ²/ndof — currently the evidence
+   in front of the user for an OPEN approach decision — therefore goes stale and is rerun
+   (`run_mc_trigeff_closure.sh`, four modes, both WPs). The pp24 cross-section is unaffected:
+   ε_ΔR is still not propagated to it, and `DrCorrCrossxMethod()` is `expo`.
+7. Report how often the new limit binds (cells railed at `A = 0`, per WP × mode × sign), doc +
+   INDEX, commit.
+
+*The round-13 entry, now closed, follows.*
+
+---
 
 **2026-09-08 (round 13) — ✅ DONE. Rerun on the NEW fiducial cut set + the NEW pair-level
 `|η^pair| < 2.2`, and the Step-3 `expo` fit CONSTRAINED so it cannot come out flipped. Both

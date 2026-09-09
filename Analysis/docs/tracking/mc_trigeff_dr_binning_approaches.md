@@ -167,7 +167,11 @@ a folded mode yet (§4 below).
 Per (pair p_T, pair η) fit cell, in order:
 
 1. the **exponential** fit `f = C + A·exp[−(ΔR/λ)^p]`, if accepted;
-2. else the **polynomial** fit `f = C + u²(a₂ + a₃u + a₄u²)`, if accepted;
+2. else the **polynomial** fit `f = C + u²[A + a₃(u − 1) + a₄(u² − 1)]`, if accepted — the
+   same quartic as `C + a₂u² + a₃u³ + a₄u⁴` with `a₂ = A − a₃ − a₄`, written in
+   `A ≡ f(0) − C` since 2026-09-08 so that the user's Step-3 requirement "at ΔR = 0 the
+   efficiency cannot exceed the plateau" is the single fit limit `A ≤ 0`
+   (`mc_trigger_efficiency.md` R34);
 3. else the **interpolation** — linear through the measured points below R_p, flat at the last
    measured knot above it — if accepted;
 4. else no correction (ε_ΔR ≡ 1), counted and printed.
@@ -722,6 +726,32 @@ the user to weigh against R4, not something this doc resolves on its own.
    chosen (D9) — two cascade implementations must not coexist longer than this comparison.
 
 ## Latest Stage
+
+**2026-09-08 — ⚠ THE FOUR-APPROACH CLOSURE FIGURES ARE NOW STALE (two independent reasons).**
+
+1. **The polyu tier of the delivered cascade changed.** `mc_trigger_efficiency.md` R34 constrained
+   the Step-3 `polyu_fixedRp` fit so `f(0) ≤ C` (the user's "at ΔR = 0 the efficiency cannot exceed
+   the plateau"), and reparametrized it in `A ≡ f(0) − C`. §PP-3 tier 2 therefore moved in every
+   cell where `expo` is rejected and `polyu` accepted, and 11 cells additionally have a COLLAPSED
+   fitted baseline `C` — 9 rerouted to `interp` by `DrCorrPlateauUsable`, 2 delivered at the polyu
+   tier with `f/C` up to 1.94 (`mc_trigger_efficiency.md` R34(f)(2)). All 30
+   Step-3 polyu fit files were regenerated 2026-09-08; the approach-comparison figures are from
+   01:33 that morning.
+2. **The canonical pair-pT axis moved 8 → 9 GeV** (a CONCURRENT, uncommitted workstream adopting
+   muon `pT > 4.5 GeV`: `ParamsSet::signal_pair_pt_min`, `pair_pt_coarse_bins`, `pT_bins_150`).
+   `run_mc_trigeff_closure.sh` now dies in Stage 2 with `DrCorrectionCascadeEvaluator: pair-pT edge
+   0 is 8.000000 in the fit file but 9.000000 canonically -- stale fit file`. **The closure cannot
+   be regenerated at all until the Step-3 histograms are refilled on the 9 GeV axis.**
+
+**Consequence for the OPEN decision.** The χ²/ndof ranking below (Tight signal 6.557 A / 6.503 B /
+5.029 C / 5.129 D) was the evidence the approach choice awaits judgement on. Do NOT decide on it:
+it predates both changes. The correct sequence is — refill Step-3 on the new 9 GeV axis → refit all
+three methods → rerun this closure → re-read the ranking.
+
+*The previous Latest Stage follows.*
+
+---
+
 
 **2026-09-08 — R4 RETRACTED, all four approaches refilled and replotted on the fixed cascade
 lookup (see the last Progress Log entry).** Nothing is in flight in this doc. The open item is a
