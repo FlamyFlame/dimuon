@@ -2476,6 +2476,26 @@ report note of (g)). Read off the artefacts, first pair-pT cell of the Tight `no
 | first pair-pT cell | `[8.0,11.5)` | `[8.0,11.5)` | **`[9.0,12.8)`** |
 | written | 09-08 00:53 | 09-08 00:56 | 09-08 23:53 |
 
+*What the Tight 18:46/18:48 refill actually contains — MEASURED, because a peer session inferred
+otherwise.* The `_mc_trig` pair tree it read (17:11) is still a pT > 4.0 GeV NTuple and does
+contain muons below 4.5, which led a peer to conclude the refill is a "chimera" (new axes and gap
+window on an old muon-pT population) and that this round's fits are therefore void. **That
+inference does not hold for THIS chain**, and the artefacts say so: `FillMCTrigEffHists.cxx`
+applies `pt > 4.5` (and `truth_pt > 4.5`) as an EXPLICIT RDF selection string on every leg
+(`:718`, `:730-731`, `:1174-1175`, `:1348-1349`), on top of whatever the tree holds. Read back
+from `mc_trig_eff_hists_pp24_full.root` (18:46), `h_mc_pt_denom_mu{plus,minus}`: the axis starts
+at **4.50** and the **UNDERFLOW is exactly 0** — so not one selected muon sat below 4.5. Had the
+fill used a 4.0 GeV population against a 4.5 GeV axis, those muons would have piled into
+underflow. The 4.0 GeV tree is a SUPERSET from which the 4.5 GeV population is exactly
+recoverable (a pair with both legs above 4.5 is present in a 4.0-built tree unchanged), so the
+downstream cut reproduces an NTuple-level 4.5 selection for this chain. Contrast the Medium file
+(2026-09-07 21:21): axis from **4.00**, underflow 0, i.e. a genuine 4.0 GeV population.
+
+**The consequence is not that the Tight fits are void — it is that the two halves of the table in
+(e) differ in THREE ways at once**: muon pT (4.5 vs 4.0), gap window (−1.25 vs −1.30) and
+pair-pT axis (9 vs 8 GeV). They must not be compared with each other, and neither half is the
+final analysis state until the pending full rerun lands.
+
 So **the Tight polyu fits are on the 9 GeV axis while the Tight `expo`/`interp` fits are still on
 8 GeV**, i.e. the three tiers of the delivered `expo → polyu → interp` cascade no longer describe
 the same cells for Tight. **Medium is self-consistent** (all three methods at 8 GeV; its Step-3
