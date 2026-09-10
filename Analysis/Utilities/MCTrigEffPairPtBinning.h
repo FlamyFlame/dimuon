@@ -2,6 +2,7 @@
 #define MC_TRIG_EFF_PAIR_PT_BINNING_H
 
 #include <string>
+#include "TString.h"   // Form(), for the composed range string
 #include <vector>
 
 #include <TSystem.h>
@@ -18,11 +19,11 @@
 // output name are derived from a single switch that both stages read. Never re-derive either.
 //
 // NOMINAL (default, no environment variable): `ParamsSet::pair_pt_coarse_bins`
-//   = 8 logarithmic bins, 8 -> 150 GeV. This is the advisor's requested default: pair pT is the
+//   = 8 logarithmic bins, 9 -> 150 GeV. This is the advisor's requested default: pair pT is the
 //   key observable and 4 bins smear its dependence out of the efficiency correction.
 //
 // COMPARISON VARIANT (`MCTRIGEFF_PAIRPT_4BIN=1`): `ParamsSet::pair_pt_coarse_bins_4bin`
-//   = 4 logarithmic bins over the SAME 8 -> 150 GeV range. Its purpose is a like-for-like
+//   = 4 logarithmic bins over the SAME 9 -> 150 GeV range. Its purpose is a like-for-like
 //   comparison against the 8-bin default with EVERYTHING else held fixed (same samples, same gap
 //   cut, same q*eta binning, same plateau window, same fit methods), so the only difference is the
 //   number of pair-pT cells. It answers whether the finer binning buys resolution or just noise:
@@ -67,8 +68,15 @@ inline std::string PlotSubdir() {
 
 // One line for the log, so a run always states which binning it used.
 inline std::string Describe() {
-    return UseFourBin() ? "COMPARISON: 4 log pair-pT bins (8-150 GeV), output tagged _pt4bin"
-                        : "NOMINAL: 8 log pair-pT bins (8-150 GeV)";
+    // Range COMPOSED from ParamsSet, never retyped: this string is written into job logs and
+    // into the _pt4bin provenance, so a retyped range would emit a wrong claim with no error.
+    // (It said "8-150 GeV" until 2026-09-08, when the axis moved to 9-150.)
+    ParamsSet pms;
+    const auto& e = UseFourBin() ? pms.pair_pt_coarse_bins_4bin : pms.pair_pt_coarse_bins;
+    return std::string(UseFourBin() ? "COMPARISON: " : "NOMINAL: ")
+         + std::to_string(e.size() - 1) + " log pair-pT bins ("
+         + Form("%g-%g", e.front(), e.back()) + " GeV)"
+         + (UseFourBin() ? ", output tagged _pt4bin" : "");
 }
 
 }  // namespace MCTrigEffPairPt
