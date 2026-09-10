@@ -206,6 +206,13 @@ are *measured* per year (preamp cuts, background band, alt-banana points) are se
 2025 and marked for re-derivation; constants that are *conventions* (⟨T_AA⟩ = 2023 Glauber,
 σ_PbPb = 7.8 b) are reused unchanged because deviating would itself be the anomaly.
 
+**D5 — For year INPUTS the rule is probe-skip-relabel; only year CONSTANTS throw.**
+Added after the round-1 review. A missing luminosity, crossx factor or centrality mapping is
+a configuration error and must throw (D1). A missing *data file* is a normal transient state
+while a year is being produced, and must not take down the years that are ready — nor be
+silently claimed in a caption. Probe, skip with an `[INFO]` line, and rebuild every label and
+output path from the years that actually contributed.
+
 **D4 — Part count comes from the grid partition, not from 2025.** `SkimCode/run_26hi/
 InDstxt_PbPb2026_5p36TeV_part1..5.txt` gives 5, not the 6 that copying 2025 would have given.
 `grid_monitor`'s auto-update for `pbpb_2026` was enabled so the value self-corrects from
@@ -224,7 +231,7 @@ disk (it had been deliberately disabled while the 2026 analysis code did not exi
 | 7 | Implement 2026 in pipelines + Condor run scripts | DONE |
 | 8 | Implement 2026 in plotting + R_AA combination | DONE |
 | 9 | Compile + pre-flight every Pb+Pb pipeline for year 26 | DONE (`pipelines/preflight_pbpb_year.sh`) |
-| 10 | `/review-analysis-code` on the C++/RDF changes; `/review-pipeline` on the pipeline changes | pending |
+| 10 | `/review-analysis-code` on the C++/RDF changes | round 1 FAILED -> all findings fixed; re-review pending |
 | 11 | Commit; update INDEX; final summary | pending |
 
 ## Progress Log
@@ -353,6 +360,66 @@ regenerated. **No cut is derived or saved by that function**, so nothing downstr
   Result: **26 passes** (15 repo artifacts present, 9 data artifacts pending as expected,
   0 count mismatches), and **23 / 24 / 25 also pass against their real on-disk data**, so the
   check is not vacuously green.
+
+### 2026-09-10 — Step 10 round 1: `/review-analysis-code` returned **FAIL**, findings fixed
+
+**Root cause (accepted):** design decision D1 ("a year switch either has a real 2026 branch
+or it throws") was correct for year **constants** but was applied indiscriminately to year
+**inputs**. Because the 2026 data does not exist yet, that made seven existing 2023/24/25
+workflows unproducible, and left three more silently overwriting correct figures with a
+4-year caption over 3-year data (`TChain::Add` only warns on a missing file).
+
+**D5 (new) — for year INPUTS the rule is probe-skip-relabel, not throw.** The pattern already
+existed in `plot_single_b_crossx_pbpb.cxx`: probe each candidate with
+`gSystem->AccessPathName`, skip an absent year with an `[INFO]` line, and rebuild **both** the
+labels and the output path from the years that actually contributed — so a figure can never
+claim a year it did not use, and a year still in production cannot take down the years that
+are ready. Applied uniformly. A year *constant* that is missing is still a configuration
+error and still throws (D1 stands for those).
+
+Fixed, each verified:
+- **`RAA_plotting` mode 6** now discovers its year set. Verified end-to-end with `pbpb_2026/`
+  absent: logs the skip, reports "combining 3 Pb+Pb year(s)", regenerates the same three
+  filenames. The suffix is built with no separator before the first year so the 23/24/25 set
+  reproduces `_pbpb23_24_25_combined_pp24_2mu4` exactly — otherwise every existing R_AA PNG
+  would have been orphaned.
+- **Run-2 regression (the subtlest finding).** `PbPbMu4SampledLumiNb`'s new throwing default
+  broke years 15/18, which are *not* unknown: `RDFBasedHistFillingPbPb` still carries a full
+  Run-2 branch and `PbPbBaseClass` still registers `{18,"default"}`. Added
+  `case 15/18 = 1.817182 nb⁻¹`, verified at runtime to equal exactly the luminosity already
+  baked into `make_crossx_factors_pbpb_run2()` (0.436882 + 1.3803). The throw message, which
+  the first pass had rewritten to "23/24/25/26 (Run 3 Pb+Pb)", was restored to include 15/18.
+- **Four pipeline drivers + `run_scrambgen.sh` + `run_all_crossx.sh`** filter the year list on
+  input presence and announce every skip. Two bugs in the first attempt at that filter, both
+  caught by testing rather than assumption: `exit` inside `<(...)` only ends the subshell, and
+  `printf '%s\n'` with **zero** arguments still prints one blank line, which `mapfile` turns
+  into a one-element array containing `""` so the caller's emptiness test passed with nothing
+  to do. Verified: default → `23 24 25` with a loud skip; `YEARS="26"` → FATAL, exit 1.
+- **ScrambGen** would have written an *empty* scrambled file, which passes the downstream
+  existence check and feeds an empty `T_mix` into the template fit. `LoadMuons` now throws on
+  zero entries and `GeneratePairs` refuses to create the output when there is nothing to mix.
+- **`run_all_crossx.sh`** had been missed by all four enumeration sweeps: no 2026 filling step,
+  and a hard-coded `pbpb_23_24_25_combined` validation path while the plotter derives that name
+  from the years it finds. Both now come from one discovered list (verified: still resolves to
+  `pbpb_23_24_25_combined` today).
+- **Six multi-year plotting macros** and **the six event-selection macros** converted to
+  probe-skip-relabel, with the silent-empty traps closed (empty chain, non-null-but-empty
+  histogram, unchecked `TFile::Get`, single-part "availability").
+- **The Glauber mirror was single-sourced with ZERO numerical change.** The two hand-typed
+  copies now include one `plotting_codes/event_selection/PbPbCentralityFCalMirror.h` whose
+  values are byte-identical to the pre-edit macro text (machine-verified against `81ad7ef`).
+  Two copies became one; no number moved; the reconcile-with-canonical decision stays parked.
+
+**A pre-existing plotting bug found by actually running a macro** (not by reading it):
+`plot_npairs_vs_centrality` pad 4 ("OS / SS combined") rendered EMPTY on a 0-50000 axis, and
+pad 3's linear panel was squashed into the bottom sixth of its frame. Both pads clone
+`h_os[kComb]` *after* `draw_log()` has called `SetMaximum(5x peak)` on it. The obvious repair
+fails, and instructively: **`TH1::GetMaximum()` returns the STORED `fMaximum` once
+`SetMaximum` has been called**, so `GetMaximum()*1.2` just returns the same 5e4. Fixed by
+taking the largest bin content. Pad 3 now peaks at ~10700 pairs near 7 % centrality and OS/SS
+rises from ~1.0 central to ~2.5 peripheral — the expected shape (combinatorial-dominated
+centrally, correlated fraction growing peripherally). Pre-existing at `81ad7ef`, identical
+code with the literal index `[3]`.
 
 ## Results & Observations
 

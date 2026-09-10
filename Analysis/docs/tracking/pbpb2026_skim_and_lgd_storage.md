@@ -582,6 +582,96 @@ when trying 5 datasets"* — while nonetheless progressing. This is JEDI's trans
 site-brokerage message and it retries; it is only a repartitioning signal if a task stalls
 on it with no file progress. Being watched.
 
+### 2026-09-10 — Step 8: **pp_2024 MIGRATED, VERIFIED, SMOKE-TESTED**
+
+Rule `c2df30b0707d497588778c26712b4b78` reached **OK in ~5 minutes** (not the ~9.5 h FTS
+queue the June pilot hit). Symlink farm built at
+`~/usatlasdata/dimuon_data/pp_2024/` — 11 symlinks + 1 real keeper; originals parked in
+`pp_2024_orig_pp24/` (not deleted).
+
+**Verification: 12/12 files byte-exact AND entry-exact**, read *through the LGD symlinks*:
+
+| file | bytes | HeavyIonD3PD entries |
+|---|---:|---:|
+| part1 | 43 561 326 081 | 55 085 077 |
+| part2 | 24 415 363 953 | 30 868 668 |
+| part3 | 59 887 757 715 | 75 791 542 |
+| part4 | 48 496 541 554 | 62 352 884 |
+| part5 | 52 959 721 712 | 70 130 888 |
+| part6 | 38 125 489 756 | 49 095 975 |
+| part7 | 29 358 650 497 | 38 434 779 |
+| part8 | 89 167 442 900 | 114 520 973 |
+| part9 | 73 501 577 224 | 94 339 058 |
+| part10 | 7 135 340 634 | 9 170 777 |
+| part11 (keeper) | 1 332 016 729 | 1 696 134 |
+| part12 | 1 337 932 629 | 1 736 828 |
+| **total** | **469 279 161 384** | **603 223 583** |
+
+Cross-checked against the **independent** pre-migration baseline
+(`baseline_before_migration.txt`, taken before any upload): **zero mismatches**.
+
+**Smoke test PASSED.** The real NTuple processing was run against the farm —
+`PPAnalysis pp_24(24, 1); pp_24.is_test_run = true; pp_24.nevents_max = 20000; pp_24.Run();`
+— i.e. `file_batch = 1`, whose input `data_pp24_part1.root` is now a symlink to
+`/pnfs/.../LOCALGROUPDISK/rucio/user/yuhang/16/52/data_pp24_part1.root`. It ran to
+completion (2.09 s CPU, exit 0), resolved all its trigger branches, and wrote **non-empty**
+output: `muon_pair_tree_sign1` (SS) = 2 entries, `muon_pair_tree_sign2` (OS) = 16 entries
+from 20 000 events — a sane low-mass pp rate, so it really read data rather than an empty
+file. Outputs carry the `_test` suffix and cannot clobber production files.
+
+**Local keeper restored:** `data_pp24_part11.root` is a real 1.33 GB file again (and still
+on LGD). `farm` now skips the configured keeper outright, so re-running it after `keep`
+can no longer undo the keeper.
+
+Two more driver bugs fixed on the way, both of which the safety checks caught rather than
+letting them corrupt anything:
+
+3. **The BNL dCache door has moved from port 1094 to 1096**, and the PFN carries a *double*
+   slash after it. The hardcoded `PFN_PREFIX='root://dcgftp.usatlas.bnl.gov:1094/'`
+   inherited from the June migration therefore stripped **nothing**, and every "pnfs path"
+   still began with `root://`. `ln -s` would have created 12 dangling symlinks without a
+   word of complaint — the `PFN count != local file count` guard is what stopped it
+   (0 matched PFNs vs 12 files). Fixed to strip `^root://[^/]*/` generically and then
+   require the result to start with `/pnfs/`.
+4. **`do_verify` re-sourced `~/setup.sh` under `set -u`** and so died instantly, producing
+   `VERIFY FAILED` with zero per-file lines. Removed (setup_env already sources it, with
+   `set +u` around it).
+
+Also learned the hard way: **do not edit a bash script while it is running** — bash reads
+the file incrementally, and a mid-run patch produced a spurious
+`.: filename argument required` in an unrelated function.
+
+### 2026-09-10 — Step 9: the "pending / no candidates" scare, resolved
+
+~40 min in, tasks 52488079/80/81 flipped from `running`/`scouting` to **`pending`** with
+`errordialog: no candidates. brokerage failed for 4 input datasets when trying 4 datasets`.
+That reads like a brokerage dead-end, so it was checked rather than waited out.
+
+**Verdict: healthy JEDI backpressure, not a failure. No action needed.**
+
+- `superstatus` is still `running`; `nfilesfailed = 0` on every task.
+- Replicas are fine: e.g. `data26_hi.00522541...f1720_m2281` is complete at
+  **`FZK-LCG2_DATADISK`** as well as `CERN-PROD_DERIVED`, so real analysis DATADISK
+  replicas exist. (The worry was that everything sat only on `CERN-PROD_DERIVED`.)
+- The job-level view explains it. Task 52488079 alone already has **2 671 jobs**:
+  `activated 2413, defined 78, starting 62, running 32, merging 68, finished 18`,
+  spread over EMMY_KIT (1707), TRIUMF (725), INFN-CNAF (160), SARA-MATRIX (79).
+  With 2 413 jobs already queued, JEDI stops generating more and parks the task as
+  `pending` — that is the throttle working, and the "no candidates" line is it declining
+  to place *additional* chunks right now.
+
+**Important correction to the plan's sizing:** `--nGBPerJob MAX` did **not** give the
+~60-files/job assumed in the partition table. PanDA auto-sized to roughly **9 files/job**
+(23 879 files → 2 671 jobs), i.e. ~4.5× more jobs per task than the ~400 estimated, and
+~13 k jobs across the five tasks. That is far above the ~500-jobs/task rule of thumb the
+partition was built around — but the rule of thumb governs *what we ask JEDI to do*, and
+JEDI is choosing this splitting itself and throttling itself accordingly. Since nothing is
+failing, this is not a repartitioning trigger. Per the standing instruction, repartition
+only if a task actually **fails** on job count or per-job data volume.
+
+Watch condition: a task is in trouble only if it sits in `pending` with **no growth in
+`nfilesfinished`** over several polls, or `nfilesfailed` starts climbing.
+
 ## Results & Observations
 
 *(to be filled)*

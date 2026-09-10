@@ -29,7 +29,11 @@ WORK=/usatlas/u/yuhanguo/usatlasdata/lgd_migration/rawskim_2026
 SCRATCH_RSE=BNL-OSG2_SCRATCHDISK
 LGD_RSE=BNL-OSG2_LOCALGROUPDISK
 SCOPE=user.yuhang
-PFN_PREFIX='root://dcgftp.usatlas.bnl.gov:1094/'
+# Match ANY root:// endpoint, host and port included.  Do NOT hardcode the door:
+# the June 2026 migration recorded port 1094, but BNL now hands out 1096, and a
+# hardcoded literal silently strips nothing -- the "pnfs path" then still starts with
+# root:// and every symlink is dangling.
+PFN_RE='^root://[^/]*/'
 
 case "$KEY" in
   pbpb23) SUBDIR=pbpb_2023; GLOB='data_pbpb23_part*.root'; KEEP=data_pbpb23_part4.root ;;
@@ -131,7 +135,7 @@ do_wait() {
 do_farm() {
   say "=== symlink farm for $KEY ==="
   rucio list-file-replicas "${SCOPE}:${DS}" --protocols root --pfns --rses "$LGD_RSE" > "$PFNS" 2>>"$LOG"
-  local npfn; npfn=$(grep -c "^${PFN_PREFIX}" "$PFNS")
+  local npfn; npfn=$(grep -cE "$PFN_RE" "$PFNS")
   local nloc; nloc=$(files_local | wc -l)
   say "  $npfn PFNs on $LGD_RSE for $nloc local files"
   [[ "$npfn" -ne "$nloc" ]] && { say "  REFUSING to build farm: PFN count != local file count"; return 1; }
@@ -140,13 +144,23 @@ do_farm() {
   if [[ -d "${DIR}_orig_${KEY}" ]]; then say "  ${DIR}_orig_${KEY} already exists -- reusing"; else mkdir -p "${DIR}_orig_${KEY}"; fi
   for f in $(files_local); do
     [[ -L "$f" ]] && continue          # already a symlink: farm was built before
+    # Leave the local keeper alone.  If it were parked and symlinked, a later re-run of
+    # `farm` after `keep` would silently undo the keeper again.
+    [[ -n "${KEEP:-}" && "$(basename "$f")" == "$KEEP" ]] && continue
     mv "$f" "${DIR}_orig_${KEY}/" || { say "  mv failed for $f"; return 1; }
   done
 
   while read -r pfn; do
-    [[ "$pfn" == ${PFN_PREFIX}* ]] || continue
-    local pnfs="${pfn#$PFN_PREFIX}"
+    [[ "$pfn" =~ $PFN_RE ]] || continue
+    # Strip the endpoint, then normalise the leading slash: BNL writes the PFN with a
+    # DOUBLE slash after the port (":1096//pnfs/..."), but do not rely on that.
+    local pnfs; pnfs=$(sed -E "s|$PFN_RE||" <<< "$pfn")
+    pnfs="/${pnfs#/}"
+    [[ "$pnfs" == /pnfs/* ]] || { say "  UNEXPECTED pnfs path '$pnfs' from '$pfn'"; return 1; }
     local b; b=$(basename "$pnfs")
+    if [[ -n "${KEEP:-}" && "$b" == "$KEEP" ]]; then
+      say "  keep $b as a real local file (also on LGD)"; continue
+    fi
     ln -sfn "$pnfs" "$DIR/$b"
     say "  link $b -> $pnfs"
   done < "$PFNS"
@@ -155,7 +169,9 @@ do_farm() {
 
 do_verify() {
   say "=== verify $KEY (size + HeavyIonD3PD entries, farm vs parked original) ==="
-  source ~/setup.sh > /dev/null 2>&1
+  # NOTE: do NOT re-source ~/setup.sh here.  setup_env already did it (with `set +u`
+  # around it); a bare `source ~/setup.sh` under `set -u` kills the process instantly,
+  # which is exactly how this function first "failed" with zero output lines.
   local fail=0
   for l in "$DIR"/$GLOB; do
     [[ -e "$l" ]] || continue
