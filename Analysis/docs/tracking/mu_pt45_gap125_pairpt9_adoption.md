@@ -762,6 +762,35 @@ Iteration 3 demonstrated that amendments are not reliably complete (four iterati
 half-applied, R5), so the last batch is unverified. Either run it, or accept the risk and start
 Phase 1 — the user was offered both.
 
+### Merged from `_sub_crossx_axis_default_swap.md` (scratch doc now deleted)
+
+That subagent left three OPEN ITEMS FOR THE COORDINATOR that were never resolved. Checked
+2026-09-09:
+
+- **(a) The `_150` token in var1D / producer variable NAMES — left alone, deliberately.** Nine
+  sites (`var1D_{pythia_truth,pythia_fullsim,powheg_fullsim,powheg_truth,pp,pbpb}.json`,
+  `RDFBasedHistFillingPP.cxx:798`, `...PythiaFullsim.cxx:40,63`, `...PowhegFullsim.cxx:54,62`)
+  carry names like `pair_pt_log_150` / `truth_pair_pt_log_150`. They are ALREADY bound to
+  `"binning": "pT_bins_150"`, i.e. already on the nominal axis, and there is no second
+  alternative-axis member — so the names are cosmetically stale but **functionally correct**. The
+  subagent recommended dropping the token; NOT done, because the rename has real consumers
+  (`PlotMCDataComprBaseClass.c:38`, `plot_mc_data_pair_pt_in_eta.cxx`) and buys zero correctness.
+  **Renaming them `_150 -> _120` would be actively WRONG** — it would rebind the only 1D truth
+  pair-pT spectrum to the opt-in alternative and move the whole MC-vs-data comparison off the
+  nominal axis. Recorded so a future reader does not "tidy" it the wrong way.
+- **(b) Signal-acceptance producers — RESOLVED, verified 2026-09-09.** The subagent flagged that
+  `h2d_sig_accept_*` lives in the truth classes, outside its scope, and needed the same treatment.
+  It got it: `RDFBasedHistFillingPythiaTruth.cxx:479-503` and `...PowhegTruth.cxx:299-323` book the
+  unsuffixed `h2d_sig_accept_{num,denom}_pt_eta` on `pT_bins_150` and the opt-in
+  `..._pt_120_eta` on `pT_bins_120`. Reviewer B independently passed `SignalAcceptancePlotter`.
+- **(c) Old `_pt_150` plot directories — still present, NOT yet deleted.** Ten dirs, 7.1 MB, PNGs
+  only, under `plots/single_b_analysis/`. Five are plainly superseded (`pp24_pt_150`,
+  `pbpb_23_24_25_combined_pt_150`, `pbpb_23_24_combined_pt_150`, `pythia_pt_150`,
+  `powheg_pt_150`) — D5 authorises removing these, but only AFTER Phase 3 regenerates the nominal
+  unsuffixed dirs, so a failure cannot leave nothing behind. Five are DATED SNAPSHOTS
+  (`*_backup_20260615`, `*_backup_20260616_pre_reco_nominal`, `*_backup_20260505`) that the
+  subagent explicitly flagged as "keep or decide separately" — **user decision, not taken.**
+
 ### Carried forward, NOT part of this task
 
 - `SingleBAnalysis/SingleBAnalysisBase.cxx` (legacy pre-RDF) still retypes the fine pair-pT axis

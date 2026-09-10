@@ -408,7 +408,7 @@ void plot_mc_trig_eff_closure_highpt_compare(const std::string& sample = "pp_ful
         }
         // The common log-y scale must be derived from the bins the figure actually DRAWS.
         // ApplyCommonLogYRange scans every bin of every histogram it is given, and SetRangeUser is
-        // applied later, so scanning the full 8-150 GeV spectrum put the frame ceiling 2.8 decades
+        // applied later, so scanning the FULL pair-pT spectrum put the frame ceiling ~2.8 decades
         // above the highest drawn point -- 37 % of every upper pad empty. Bins below the zoom are
         // zeroed here (they can never be displayed: the frame starts at the first drawn bin) so the
         // shared helper sees only the drawn range, and the one-scale-for-all-panels property is
@@ -491,8 +491,10 @@ void plot_mc_trig_eff_closure_highpt_compare(const std::string& sample = "pp_ful
             fr->GetXaxis()->SetTitle("p_{T}^{pair} [GeV]");
             fr->GetXaxis()->SetTitleSize(0.125); fr->GetXaxis()->SetLabelSize(0.105);
             fr->GetXaxis()->SetTitleOffset(1.00);
-            // The drawn decade is 46-150 GeV, so ROOT's default log labelling prints only "10^{2}"
-            // and the reader cannot find 50, 72 or 104 GeV -- the very edges this figure is about.
+            // The drawn range is the top part of the pair-pT axis, inside which ROOT's default
+            // log labelling prints only "10^{2}" -- so the reader cannot find the coarse cell
+            // edges this figure is about. The edges are not retyped here (Binnings rule 1) and
+            // pt_zoom_lo is derived from the axis, so both follow ParamsSet automatically.
             fr->GetXaxis()->SetMoreLogLabels();
             fr->GetXaxis()->SetNoExponent();
             fr->Draw("AXIS");

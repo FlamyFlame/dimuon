@@ -55,8 +55,11 @@ pair has characteristically **low invariant mass** and **small opening angle**.
   former one-sided per-muon `q·η < 2.2` on 2026-08-17 in pp24; **Pb+Pb was brought over on
   2026-09-08**, so pp and Pb+Pb share the signal region again (the Pb+Pb histograms must be
   refilled before R_AA is quoted). The resulting cross-section is a FIDUCIAL one — the acceptance
-  ε_acc = 0.8789 is a separate, not-yet-applied factor
-  (`docs/tracking/muon_gap_cuts_acceptance.md`).
+  ε_acc is a separate, not-yet-applied factor (`docs/tracking/muon_gap_cuts_acceptance.md`).
+  **The published value ε_acc = 0.8789 is STALE IN TWO WAYS and must not be quoted:** it was
+  measured on the superseded gap window `(-1.30,-1.05)` AND at muon p_T > 4 GeV. Both moved on
+  2026-09-08 (`ParamsSet.h` says so at the tables themselves). Re-measurement is pending the
+  NTuple rerun.
 - **No ΔR cut.** *(A former ΔR(μ,μ) > 0.05 cut was removed 2026-06-22 — interim
   nominal. It was a stats workaround for the data-based dR trigger-efficiency
   inverse-weighting, not a physics requirement, and it biased the high-pair-pT

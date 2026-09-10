@@ -7,7 +7,7 @@
 // INPUT (NTuple-processing OUTPUT — never the raw NTUPs):
 //   single_muon_trees_<sample>_part<N>_<trig>_mindR_0_02.root : TTree "muon_tree".
 //   A muon is in that tree iff it belongs to a pair surviving the full nominal pair
-//   chain (trigger match, Combined+Medium+IDCuts+MuonCuts, |eta|<2.4, pt>4 GeV,
+//   chain (trigger match, Combined+Medium+IDCuts+MuonCuts, |eta|<2.4, pt>4.5 GeV,
 //   one-sided dp/p, d0/z0, photoproduction veto (PbPb), resonance veto), de-duplicated
 //   by muon index. It is therefore the trigger-biased single-muon projection of the
 //   selected dimuon sample — which is exactly the population a gap cut would act on.

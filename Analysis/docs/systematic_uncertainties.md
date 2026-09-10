@@ -86,9 +86,14 @@ exempt from the guard (their offending cells are reported, not fatal). The guard
 overlay once the full-statistics PbPb production lands.
 
 **⚠ TWO pp24 CELLS ARE FLAGGED (0.10 < |plateau−1| ≤ 0.15) — accepted and normalized (user
-decision 2026-08-04); NONE fails.** Numbers below are on the CANONICAL pair-pT binning
-{8, 13.75, 23.63, 40.62, 120} (see `.claude/CLAUDE.md` §Binnings; the pre-2026-08-04 numbers were
-measured on the retired {8,15,27,50,150} edges and are superseded). 34 of the 36 pp24
+decision 2026-08-04); NONE fails.** **⚠ HISTORICAL — the numbers below were measured on the
+then-current pair-pT edges {8, 13.75, 23.63, 40.62, 120} and are NOT on the canonical binning any
+more.** The canonical pair-pT axis is `ParamsSet::pair_pt_coarse_bins` (`N_COARSE_PAIR_PT_BINS`),
+8 logarithmic bins over 9-150 GeV since 2026-09-08; read it from there and never from this table
+(`.claude/CLAUDE.md` §Binnings rule 1). The cells named in the rows below therefore describe
+DIFFERENT intervals from the ones a plot made today will show, and the whole table is pending
+re-measurement after the muon-pT 4.5 rerun. (An earlier set of numbers, on {8,15,27,50,150},
+was superseded on 2026-08-04.) 34 of the 36 pp24
 (pair pT × pair η) cells have plateaus within 7% of 1; two are flagged, both **Step 3** in the
 top pair-pT bin, and **Step 4 has none**:
 

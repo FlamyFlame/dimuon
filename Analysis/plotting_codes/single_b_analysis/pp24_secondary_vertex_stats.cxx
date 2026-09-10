@@ -23,8 +23,8 @@
 // more closely.
 //
 // BINNING. Pair pT in the canonical coarse axis ParamsSet::pair_pt_coarse_bins
-// (N_COARSE_PAIR_PT_BINS = 8 logarithmic bins, 8-150 GeV), READ from ParamsSet and never retyped
-// (.claude/CLAUDE.md §Binnings). Pairs below 8 GeV and above 150 GeV are reported on their own
+// (N_COARSE_PAIR_PT_BINS = 8 logarithmic bins, 9-150 GeV), READ from ParamsSet and never retyped
+// (.claude/CLAUDE.md §Binnings). Pairs below 9 GeV and above 150 GeV are reported on their own
 // rows rather than folded into the first/last bin, so the "all pairs" total is complete.
 //
 // POPULATIONS. Two, because the answer differs and both matter:

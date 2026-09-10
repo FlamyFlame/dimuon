@@ -93,22 +93,26 @@ site inventory: `docs/tracking/muon_gap_cuts_acceptance.md` F17.
 (user decision, 2026-09-07). Consumers: pp24 + fullsim crossx hist filling, the pair reco-eff
 cells, the MC trig-eff pair-eta histograms, and every plotter that projects those panels.
 
-> **[!] Pb+Pb IS A CONSUMER AND IS *OUTSIDE* THE RERUN SET -- its crossx panel plots are now
-> BLOCKED, by design.** Pb+Pb books a RETYPED `44, -2.4, 2.4` pair-eta axis (width 0.10909...)
-> on which **2.2 is not a bin edge**, and it has adopted neither the fiducial cut nor the new
-> pair-level one. With the panel top at 2.2, the panel projection's
-> `FindBin(hi - 1e-6)` lands on bin 43 (upper edge **2.29091**) instead of bin 44, so every
-> Pb+Pb pair with |eta^pair| in [2.29091, 2.4] would silently vanish from the panels and from
-> the pair-eta-integrated dsigma/deta -- pairs no Pb+Pb cut removes -- while the outer panel,
-> labelled (2.0, 2.2), would actually integrate 1.96364-2.29091.
-> `Utilities/PairEtaPanelBins.h` (`PairEtaPanels::Bins` / `CheckAxisAligned`, used by all ten
-> pair-eta panel projection sites and by the two MC-trig-eff closure plotters) now **THROWS** on
-> any panel edge that is not a bin edge of the histogram's eta axis, so this fails loudly instead
-> of silently. It applies equally to the Pythia/POWHEG TRUTH signal-acceptance producers, which
-> also book the retyped 44-bin axis. **The fix is to
-> bring Pb+Pb onto `ParamsSet::N_PAIR_ETA_CROSSX_BINS` (48 over [-2.4, 2.4], width 0.1, on which
-> every coarse panel edge IS a bin edge) AND onto the fiducial + pair-level cuts, rerunning its
-> crossx hist filling in the SAME step.** Until then Pb+Pb crossx panel plots do not run.
+> **[RESOLVED IN CODE 2026-09-08 — historical note, kept because the guard it describes is still
+> live.]** As found on 2026-09-07, Pb+Pb booked a RETYPED `44, -2.4, 2.4` pair-eta axis
+> (width 0.10909...) on which **2.2 is not a bin edge**, and had adopted neither the fiducial cut
+> nor the pair-level one. With the panel top at 2.2 the panel projection's `FindBin(hi - 1e-6)`
+> landed on bin 43 (upper edge **2.29091**) instead of bin 44, so every Pb+Pb pair with
+> |eta^pair| in [2.29091, 2.4] silently vanished from the panels and from the pair-eta-integrated
+> dsigma/deta -- pairs no Pb+Pb cut removes -- while the outer panel, labelled (2.0, 2.2),
+> actually integrated 1.96364-2.29091.
+> **Still live, and the reason this note is kept:** `Utilities/PairEtaPanelBins.h`
+> (`PairEtaPanels::Bins` / `CheckAxisAligned`, used by all ten pair-eta panel projection sites and
+> by the two MC-trig-eff closure plotters) **THROWS** on any panel edge that is not a bin edge of
+> the histogram's eta axis, so a mismatch fails loudly instead of silently.
+> **What changed:** decisions D1 and D7 (`docs/tracking/mu_pt45_gap125_pairpt9_adoption.md`) moved
+> Pb+Pb AND the Pythia/POWHEG truth producers onto `ParamsSet::N_PAIR_ETA_CROSSX_BINS` (48 over
+> [-2.4, 2.4], width 0.1, on which every coarse panel edge IS a bin edge) and onto the fiducial +
+> pair-level cuts. Pb+Pb is therefore **inside** the rerun set, not outside it.
+> **What is still stale is the HISTOGRAMS ON DISK, not the code:** they stay on the retired 44-bin
+> axis until the Pb+Pb crossx refill completes, so the guard will still throw on them and the
+> Pb+Pb panels must not be plotted until then. That is why `pipeline_pp_crossx.sh` keeps
+> `INCLUDE_PBPB_SANITY=false` by default.
 > Found by `/review-analysis-code` 2026-09-07 (CRITICAL); owning doc
 > `docs/tracking/muon_gap_cuts_acceptance.md` F17.
 
@@ -123,9 +127,15 @@ Truth analog: same with `truth_*` variables + `from_same_b` and `truth_pt > 4.5`
 > bound; the floor is the muon |eta| ~ 2.5 detector edge). With the 2026-09-07 forward edge back
 > at 2.20 the swap is yield-neutral THERE, and the cut's whole cost is the three gap windows:
 > -6.93 % of pp / -9.03 % of PbPb reconstructed muons (Tight). The resulting pp24 cross-section
-> is a **FIDUCIAL** one: the truth-level gap acceptance eps_acc = 0.8789 (pp24 fullsim) / 0.8765
-> (PbPb overlay) (`docs/tracking/muon_gap_cuts_acceptance.md` F12/F17) is a SEPARATE factor, not
-> applied anywhere yet -- and it does NOT yet include the cost of the new pair-level cut.
+> is a **FIDUCIAL** one: the truth-level gap acceptance eps_acc
+> (`docs/tracking/muon_gap_cuts_acceptance.md` F12/F17) is a SEPARATE factor, not applied
+> anywhere yet -- and it does NOT yet include the cost of the new pair-level cut.
+> **The measured values 0.8789 (pp24 fullsim) / 0.8765 (PbPb overlay) are STALE IN TWO WAYS and
+> must not be quoted:** both were measured on the superseded gap window `(-1.30,-1.05)` AND at
+> muon p_T > 4 GeV, and both moved on 2026-09-08. `ParamsSet.h` carries the same warning at the
+> tables themselves. Re-measurement is pending the NTuple rerun.
+> The percentages quoted just above (-6.93 % / -9.03 %) were measured on the same superseded
+> window and are stale for the same reason.
 
 > **Note on the ΔR cut (motivation, for systematics):** `dr > 0.05` was added
 > because the **data-based** dR-dependent trigger-efficiency inverse-weighting
@@ -255,9 +265,24 @@ PbPb) that feed crossx plots **and** R_AA.
 
 **C. MC fullsim reco-eff / det-response — code-consistency now, numerically
 inert until real MC (see §4):**
-4. `pipeline_pythia_fullsim_overlay.sh` (hijing / zmumu / data) — PbPb reco-eff.
-5. `pipeline_powheg_fullsim_single_muon.sh` — **single-muon, NO rerun** (does
+4. `ENABLE_MC_TRIG_EFF=1 pipeline_pythia_fullsim_pp.sh full` — **pp24 reco-eff and detector
+   response. RESULT-AFFECTING for pp, not optional** (§4 says so in as many words and this list
+   used to omit it): the pp fullsim pair eps_reco has been the nominal correction since
+   2026-08-18. Local pass over the LGD symlink farm, ~6-8 h, NOT Condor.
+5. `plotting_codes/reco_effcy/build_pp24_fullsim_pair_reco_eff.C+(true)` →
+   `pair_reco_eff_pp24_full.root`. **Belongs to no pipeline** — it must be run by hand after
+   step 4, or `Utilities/PairRecoEffEvaluator.h` keeps applying the previous region's efficiency.
+6. `pipeline_pythia_fullsim_overlay.sh` (hijing / zmumu / data) — PbPb reco-eff.
+7. `pipeline_powheg_fullsim_single_muon.sh` — **single-muon, NO rerun** (does
    not use the pair signal cut).
+
+> **Boundary warning (added 2026-09-08).** §1's "the NTuple stage is unchanged" premise does NOT
+> hold for a change to the **muon pT threshold**, which is an NTuple-processing cut
+> (`DimuonDataAlgCoreT.c` for data; the truth-pT gates in `PythiaAlgCoreT.c` / `PowhegAlgCoreT.c`
+> and the reco/truth gates in `PythiaFullSimExtras.c` / `PowhegFullSimExtras.c` for MC). Such a
+> change forces a FULL NTuple rerun in data and MC, and it drags POWHEG fullsim back into the
+> blast radius — the carve-out in `pp24_all_vertex_pairs.md` rested on that change being
+> reco-only, and a truth-pT cut is not. See `docs/tracking/mu_pt45_gap125_pairpt9_adoption.md`.
 
 ---
 
@@ -324,8 +349,14 @@ acceptance) goes stale → re-run `/sync-note-figures` then `/check-note-sync`
 [ ] Edit cut in all §2 files (+ cutflow kCuts; + ΔR-axis floors if ΔR changes)
 [ ] /review-analysis-code on the edits (quote analysis_overview §2 signal region)
 [ ] Recompile (ACLiC) PP, PbPb, PythiaTruth, fullsim/overlay classes
+[ ] *** IS THIS AN NTUPLE-STAGE CUT? *** (muon pT is; pair pT / gap window / minv are not)
+[ ]   if yes: rerun NTuple processing FIRST -- data pp24 (both modes) + pbpb 23/24/25,
+[ ]   Pythia truth, Pythia fullsim pp, HIJING overlay, POWHEG truth AND POWHEG fullsim.
+[ ]   Nothing below is valid until it completes; see the §3.C boundary warning.
 [ ] Rerun data crossx: pp24 + pbpb23/24/25            (§3.A)
 [ ] Rerun pythia truth acceptance (3 modes)           (§3.B)
+[ ] Rerun pp Pythia fullsim reco-eff + det-response    (§3.C/§4) -- RESULT-AFFECTING for pp
+[ ] Rebuild pair_reco_eff_pp24_full.root by hand       (§3.C/§4) -- in no pipeline
 [ ] (Real MC only) rerun fullsim/overlay reco-eff      (§3.C/§4)
 [ ] Replot: pp crossx, pbpb crossx, sanity, stages    (§5)
 [ ] Rerun RAA_plotting (mode 6)                        (§5)

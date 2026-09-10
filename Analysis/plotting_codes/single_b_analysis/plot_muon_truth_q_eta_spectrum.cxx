@@ -9,7 +9,7 @@
 //
 // INPUT (NTuple-processing OUTPUT -- never the raw NTUPs): TTree "muon_tree" written by
 //   PythiaFullSimExtras.c:395-412 in its NOMINAL mode, whose gate is exactly
-//       truth_pt > 4.0 && fabs(truth_eta) < 2.4
+//       truth_pt > 4.5 && fabs(truth_eta) < 2.4
 //   with NO reco match required (it is the single-muon reco-efficiency denominator).
 //   The store_mc_trigger variant of the same tree is NOT interchangeable: its gate is a
 //   RECO one (reco_match && pt > 3 && |eta| < 2.6), so it would reintroduce exactly the

@@ -1,7 +1,7 @@
 // =================================================================================================
 // plot_mc_data_pair_pt_in_eta.cxx  --  SIGNAL family
 //
-// pp24 data vs Pythia truth: the single-b dimuon pair-pT cross-section over 8-150 GeV, both
+// pp24 data vs Pythia truth: the single-b dimuon pair-pT cross-section over 9-150 GeV, both
 // pair-eta-integrated and split into the 9 canonical pair-eta bins. The MC counterpart of
 // plots/single_b_analysis/pp24/pp24_crossx_pair_pt_in_eta_subplots.png (user, 2026-08-18).
 // Both views project the SAME 2D histogram, so the integrated panel and the nine panels cannot

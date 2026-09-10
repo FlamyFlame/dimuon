@@ -108,7 +108,10 @@ Modes: `hijing`, `zmumu`, `data`. The `--dry-run` flag skips Condor submission a
 | `_pass_medium_and_signal_truth_and_reco` | Medium + truth+reco signal |
 | `_pass_tight_and_signal_truth_and_reco` | Tight + truth+reco signal |
 
-Signal region: `truth_minv in [1.08, 2.9]`, `truth_pair_pt > 9`, `|truth_pair_eta| < ParamsSet::pair_eta_fiducial_max`, `(no dR cut -- `dr > 0.05` was removed 2026-06-22)`.
+Signal region: `truth_minv in [1.08, 2.9]`, `truth_pair_pt > 9`, **both muons passing
+`ParamsSet::single_mu_fiducial_gap_cuts` on truth q·η** (applied on both legs before the
+pair-level cut), and `|truth_pair_eta| < ParamsSet::pair_eta_fiducial_max`. No ΔR cut
+(`dr > 0.05` was removed 2026-06-22).
 
 Also fills inclusive (no centrality cut) histograms via the parent `RDFBasedHistFillingPythiaFullsim`.
 

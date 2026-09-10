@@ -1046,12 +1046,14 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
             const int    pnb     = inclusive ? 1         : (int)hpnb->GetBinContent(iy, iz);
             const std::string nm = CellName("r", step, iy, iz);
 
-            // ONE DECIMAL, as the canvases and the PNG file names already use: at "%.0f" the
-            // log edges 12.79 / 18.18 / 25.85 / 36.74 / 52.23 / 74.24 / 105.53 printed as
-            // 12 / 17 / 24 / 35 / 50 / 72 / 104, so the human-readable report named cells the
-            // figures next to it call 11.5 / 16.6 / 24.0 ... -- two namings of one binning,
-            // exactly the drift .claude/CLAUDE.md 'Binnings' exists to stop. Label only; no
-            // fitted quantity depends on this string.
+            // ONE DECIMAL, as the canvases and the PNG file names already use. The coarse
+            // pair-pT edges are logarithmic and NOT integers, so at "%.0f" several of them
+            // collapsed onto neighbouring whole numbers and the human-readable report named
+            // cells differently from the figures beside it -- two namings of one binning,
+            // exactly the drift .claude/CLAUDE.md 'Binnings' exists to stop. The edge VALUES are
+            // deliberately not repeated here: rule 1 forbids retyping them into a comment, and a
+            // retyped list is precisely what goes stale when the axis moves (it did, 8 -> 9 GeV
+            // on 2026-09-08). Label only; no fitted quantity depends on this string.
             const char* ptlab  = inclusive ? "inclusive"
                 : Form("[%.1f,%.1f)", hplat->GetXaxis()->GetBinLowEdge(iy),
                                       hplat->GetXaxis()->GetBinUpEdge(iy));

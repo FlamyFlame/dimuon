@@ -23,13 +23,16 @@
 // WHY THE SWITCH EXISTS (2026-09-08, user decision; docs/tracking/pp24_all_vertex_pairs.md D5).
 // Each sample writes its OWN PNG, so skipping Pb+Pb refreshes the pp figure and leaves the
 // Pb+Pb one untouched -- nothing is silently merged or clobbered. It is needed because the
-// Pb+Pb histograms still book a retyped "44, -2.4, 2.4" pair-eta axis on which the coarse
-// panel edge 2.2 is NOT a bin edge, so PairEtaPanels::Bins THROWS on them
+// Pb+Pb histograms ON DISK still carry the retired "44, -2.4, 2.4" pair-eta axis, on which the
+// coarse panel edge 2.2 is NOT a bin edge, so PairEtaPanels::Bins THROWS on them
 // (muon_gap_cuts_acceptance.md F18). That throw is the guard working, and it happens on the
 // FIRST spec -- so without this switch the *pp* crossx pipeline fails at its Stage 7 for a
 // Pb+Pb reason and never draws the pp panels at all.
-// The default stays true: the Pb+Pb pipeline must keep hitting the guard until Pb+Pb is moved
-// onto ParamsSet::N_PAIR_ETA_CROSSX_BINS and the fiducial + pair-level cuts and rerun.
+// The PRODUCER was migrated on 2026-09-08 (D1): RDFBasedHistFillingPbPb now books
+// ParamsSet::N_PAIR_ETA_CROSSX_BINS = 48 and applies the fiducial + pair-level cuts. What is
+// stale is the histograms, until the Pb+Pb crossx refill. The default stays true so that a
+// Pb+Pb run keeps hitting the guard until then; the pp pipeline passes false explicitly
+// (INCLUDE_PBPB_SANITY), because Phase 3a runs before the Pb+Pb refill of Phase 3b.
 void plot_crossx_trig_corr_sanity(bool include_pbpb = true) {
     gStyle->SetOptStat(0);
 

@@ -1019,7 +1019,8 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     // specified in PIXELS of the canvas and converted (draw_header / header_px), keeps its exact
     // absolute geometry and cannot collide with a shorter grid.
     // The pair-pT edges in the FILE NAME must be the same numbers the canvas prints. "%.0f" wrote
-    // pairpt_8_12 for the bin the canvas labels 8.0-11.5 GeV: two namings of one binning, which
+    // a file-name bin range that disagreed with the range the canvas printed: two namings of one
+    // binning, which
     // is exactly the drift .claude/CLAUDE.md §Binnings exists to stop.
     auto pt_png_tag = [&](int iy) {
         return std::string(Form("pairpt_%.1f_%.1f", series[0].hplat->GetXaxis()->GetBinLowEdge(iy),

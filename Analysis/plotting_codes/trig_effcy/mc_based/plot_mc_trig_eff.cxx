@@ -1912,9 +1912,11 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                                 Form("plateau, #DeltaR #in [%g, %g]", kPlateauLo, kPlateauHi), "l");
                         lg->Draw();
                     }
-                    // ONE DECIMAL: at %.0f the log edges 12.79 / 18.18 / 25.85 print as 13/18/26
-                    // while the canvas label says 11.5/16.6/24.0 -- a name that contradicts the
-                    // figure is the binning-drift the repo rule exists to prevent.
+                    // ONE DECIMAL: the coarse pair-pT edges are logarithmic and not integers,
+                    // so at %.0f the PNG file name rounded to values the canvas label does not
+                    // show -- a name that contradicts the figure is the binning-drift the repo
+                    // rule exists to prevent. The values are not retyped here on purpose
+                    // (Binnings rule 1); they move with ParamsSet::pair_pt_coarse_bins.
                     SaveCanvas(c, vdir + Form("step3_eps_dr_pairpt_%.1f_%.1f.png",
                                               h3fn->GetYaxis()->GetBinLowEdge(iy),
                                               h3fn->GetYaxis()->GetBinUpEdge(iy)));

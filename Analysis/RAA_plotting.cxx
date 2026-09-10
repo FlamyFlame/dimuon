@@ -449,16 +449,19 @@ void RAAPlotting::RunPlotting(){
 				// makes TH1::Divide warn even when the edges agree. Independent ratio error.
 				//
 				// THE AXES ARE NOT MATCHED BY CONSTRUCTION -- this used to say they were,
-				// and for mode 2 that is FALSE. Pb+Pb books its pair-eta axis as a retyped
-				// `make_unif_edges(44, -2.4, 2.4)` (RDFBasedHistFillingPbPb.cxx) while pp
-				// books ParamsSet::N_PAIR_ETA_CROSSX_BINS = 48 over the same range, so an
-				// index-wise ratio pairs Pb+Pb bin `ib` with a pp bin covering a DIFFERENT
-				// eta interval -- at ib = 44, Pb+Pb [2.291, 2.4] over pp [1.9, 2.0]. That
-				// is a silently wrong final-results figure. Pre-existing (the 44-vs-48
-				// split predates the 2026-09-07 gap-cut change) and NOT fixed here,
-				// because the fix is to move Pb+Pb onto N_PAIR_ETA_CROSSX_BINS and rerun
-				// its crossx hist filling (docs/signal_selection_change_impact.md
-				// §0; docs/tracking/muon_gap_cuts_acceptance.md F18). Until then: THROW.
+				// and for mode 2 that was FALSE. Pb+Pb USED TO book its pair-eta axis as a
+				// retyped `make_unif_edges(44, -2.4, 2.4)` while pp booked
+				// ParamsSet::N_PAIR_ETA_CROSSX_BINS = 48 over the same range, so an
+				// index-wise ratio paired Pb+Pb bin `ib` with a pp bin covering a DIFFERENT
+				// eta interval -- at ib = 44, Pb+Pb [2.291, 2.4] over pp [1.9, 2.0]: a
+				// silently wrong final-results figure.
+				// MIGRATED 2026-09-08 (D1): RDFBasedHistFillingPbPb.cxx now books
+				// N_PAIR_ETA_CROSSX_BINS too, so the producers agree. The guard STAYS, and
+				// this is not belt-and-braces: the Pb+Pb histograms ON DISK keep the retired
+				// 44-bin axis until the Pb+Pb crossx refill completes, and R_AA must not be
+				// formed until pp and Pb+Pb are both refilled on the shared region
+				// (docs/tracking/mu_pt45_gap125_pairpt9_adoption.md, negative constraint 6).
+				// Until then, on stale inputs: THROW.
 				if (hcrossx_pbpb_centr_cur_ctr->GetNbinsX() != hcrossx_pp_proj->GetNbinsX())
 					throw std::runtime_error(Form(
 						"RAA_plotting mode %d: Pb+Pb has %d bins and pp has %d -- an "

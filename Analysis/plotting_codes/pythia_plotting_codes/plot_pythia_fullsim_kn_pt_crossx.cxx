@@ -2,7 +2,8 @@
 // Selection: muon_pair_tree_kin*_sign2 with from_same_b.
 // Two plots: truth_pair_pt and reco pair_pt (pair_pass_medium additionally required).
 // Left subplot: markers+errorbars per kn.  Right subplot: stack.
-// Entry point calls two binning versions: 20 bins 8-120 GeV and 25 bins 8-150 GeV.
+// Entry point calls two binning versions: 20 bins 9-120 GeV and 25 bins 9-150 GeV.
+// (The low edge follows ParamsSet::signal_pair_pt_min, 8 -> 9 on 2026-09-08.)
 
 // UNITS (do not "fix" this back): the per-pair `weight` is sigma*genFiltEff*r_isospin/N_beam
 // with the AMI cross-section in **nb** (Analysis/docs/ami_weights.md). No unit conversion is

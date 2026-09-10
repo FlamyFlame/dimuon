@@ -25,7 +25,7 @@ Powheg+Pythia8 NLO MC for bb and cc dimuon production.
 > hadronizes into a heavy-flavour hadron and decays semileptonically to a muon
 > that carries only a *fraction* of the hadron's momentum; (3) each of those two
 > muons must still pass the analysis p_T > 4.5 GeV cut. So in practice the splitting
-> gluon must be considerably harder than 2·m_Q to yield two ≥ 4 GeV muons — a
+> gluon must be considerably harder than 2·m_Q to yield two ≥ 4.5 GeV muons — a
 > demanding configuration that HQ mode biases against. Net effect: the g→QQ̄
 > background cross-section in the Powheg-HQ sample is **non-zero but far too low**
 > relative to both Pythia and data.
@@ -296,13 +296,16 @@ three extra histograms, all APPENDED — nothing existing is changed:
 
 | filter | what it selects |
 |---|---|
-| `_single_b_pass_signal_truth_gapcut` | `from_same_b` **and** the CURRENT pp24 data signal region on truth: `1.08 < truth_minv < 2.9`, `truth_pair_pt > 9`, both muons outside every `ParamsSet::single_mu_fiducial_gap_cuts` window in truth `q·η` |
+| `_single_b_pass_signal_truth_gapcut` | `from_same_b` **and** the CURRENT pp24 data signal region on truth: `1.08 < truth_minv < 2.9`, `truth_pair_pt > 9`, both muons outside every `ParamsSet::single_mu_fiducial_gap_cuts` window in truth `q·η`, **and** the pair-level `\|truth_pair_eta\| < ParamsSet::pair_eta_fiducial_max` |
 
-It exists because neither pre-existing selection matches the data:
-`pass_signal_truth` was migrated off the one-sided `q*eta < 2.2` onto the fiducial + pair-level windows (D7, 2026-09-08) retired on 2026-08-17, and
-`df_single_b_weighted` adds a `truth_dr < 1.0` that the Pythia fullsim partner does not have
-(verified inert inside this signal region: 517 459 pairs with and without it). Both are left
-byte-unchanged because they feed the reco-efficiency and detector-response outputs.
+It exists because neither pre-existing selection matched the data at the time it was added:
+`pass_signal_truth` then still used the one-sided `q*eta < 2.2` that pp24 retired on 2026-08-17,
+and `df_single_b_weighted` adds a `truth_dr < 1.0` that the Pythia fullsim partner does not have
+(verified inert inside this signal region: 517 459 pairs with and without it).
+**Updated 2026-09-08 (D7):** `pass_signal_truth` HAS since been migrated onto the fiducial +
+pair-level windows (`RDFBasedHistFillingPowhegFullsim.cxx`), so it is no longer byte-unchanged --
+the earlier statement that both were left untouched is superseded. After D7 the two filters
+differ only by that `truth_dr < 1.0`.
 
 Histograms (weight column `weight_norm_per_sample`, see §Weighting):
 `h_truth_pair_pt_log_150_…`, `h_truth_pair_eta_crossx_…` and the 2D
