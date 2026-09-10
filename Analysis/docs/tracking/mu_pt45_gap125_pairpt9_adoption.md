@@ -838,6 +838,11 @@ was NOT used. Instead: the full Medium chain (step1 → fit → step3 → step4 
 only `*_medium_wp*`, plus the two missing Tight products (`_step4`, `_sanity`), which the peer does
 not read. Tight `_step3` deliberately left untouched.
 
+**CLOSED 2026-09-10 14:45-14:56.** Every MC trig-eff product is now same-day at BOTH working
+points: Medium step1 14:45, fit 14:45, step3 14:46, step4 14:48, sanity 14:50, plots 14:56
+(`mc_based_medium/`); Tight step4 14:52 and sanity 14:54 (its step1/fit/step3 stay at 06:00-06:01
+from job A, deliberately untouched while the peer was reading them). No stage failed.
+
 **A `USE_TIGHT_WP` default of 1 on a pipeline whose deliverable set includes both WPs is the real
 defect** — the same shape as the data-side gap that A9 fixed in `run_pbpb_all.sh`. Recorded under
 Remaining Work rather than fixed mid-rerun.
