@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 # End-to-end PbPb crossx/nominal analysis pipeline:
 #   0) event selection: derive cuts + produce all event selection plots
-#   1) submit NTuple processing condor jobs (nominal mode, all 3 PbPb years)
+#   1) submit NTuple processing condor jobs (nominal mode, all 4 PbPb years)
 #   2) wait for all clusters to finish
 #   3) validate per-batch ROOT outputs
 #   4) hadd per-batch outputs into combined muon_pairs + hists_cut_acceptance per year
@@ -17,7 +17,7 @@ set -Eeuo pipefail
 # Optional env vars:
 #   POLL_SECONDS=45
 #   CONDOR_TIMEOUT_SECONDS=0   # 0 => no timeout
-#   YEARS="23 24 25"           # override which years to process
+#   YEARS="23 24 25 26"        # override which years to process
 #   SKIP_CONDOR=1              # skip condor submit+wait, reuse existing NTuple outputs
 #   SKIP_EVSEL=1               # skip event selection only, still run condor+RDF+plots
 
@@ -32,7 +32,7 @@ POLL_SECONDS="${POLL_SECONDS:-45}"
 CONDOR_TIMEOUT_SECONDS="${CONDOR_TIMEOUT_SECONDS:-0}"
 SKIP_CONDOR="${SKIP_CONDOR:-0}"
 SKIP_EVSEL="${SKIP_EVSEL:-${SKIP_CONDOR}}"
-YEARS=(${YEARS:-23 24 25})
+YEARS=(${YEARS:-23 24 25 26})
 DATA_BASE="/usatlas/u/yuhanguo/usatlasdata/dimuon_data"
 
 # ─── `root -l -b`, NEVER `root -l -b -q`, when the macro comes from a HEREDOC ───────────────
@@ -191,7 +191,13 @@ wait_for_cluster_completion() {
 }
 
 # Queue counts per year (must match .sub files)
-declare -A QUEUE_COUNTS=( [23]=4 [24]=2 [25]=6 )
+# [26]=5 is a PLACEHOLDER: the 2026 skim is submitted as 5 grid tasks
+# (SkimCode/run_26hi/InDstxt_PbPb2026_5p36TeV_part1..5.txt), and grid_monitor's chunked
+# hadd can split a task into extra part files, so the real count can be larger.  Set it
+# from ~/usatlasdata/dimuon_data/pbpb_2026/data_pbpb26_part*.root and keep it EQUAL to
+# file_batch_max{26} in NTupleProcessingCode/PbPbExtras.c and to `queue N` in the
+# run_pbpb_26*.sub files.  Too few silently processes only part of the 2026 data.
+declare -A QUEUE_COUNTS=( [23]=4 [24]=2 [25]=6 [26]=5 )
 
 get_year_dir() { echo "${DATA_BASE}/pbpb_20$1"; }
 

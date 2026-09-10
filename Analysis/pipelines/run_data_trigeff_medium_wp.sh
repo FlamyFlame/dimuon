@@ -2,7 +2,7 @@
 set -Euo pipefail
 # =============================================================================================
 # MEDIUM-WP pass of the DATA single-muon mu4 trigger efficiency (tag-and-probe), pp24 + PbPb
-# 23/24/25.
+# 23/24/25/26.
 #
 # WHY THIS SCRIPT EXISTS. `pipeline_pp_trig_eff.sh` and `pipeline_pbpb_trig_eff.sh` run the
 # NOMINAL working point only (`isTight` defaults to true), so every rerun of those pipelines
@@ -25,11 +25,11 @@ set -Euo pipefail
 # stores (`pair_pass_tight` / `pair_pass_medium`, `q_eta2nd`).
 #
 # Usage:   ./run_data_trigeff_medium_wp.sh
-#          SAMPLES="pp 23 24 25" ./run_data_trigeff_medium_wp.sh
+#          SAMPLES="pp 23 24 25 26" ./run_data_trigeff_medium_wp.sh
 #          RDF_NTHREADS=4 ./run_data_trigeff_medium_wp.sh
 # =============================================================================================
 
-SAMPLES="${SAMPLES:-pp 23 24 25}"
+SAMPLES="${SAMPLES:-pp 23 24 25 26}"
 RDF_NTHREADS="${RDF_NTHREADS:-2}"
 
 ANALYSIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

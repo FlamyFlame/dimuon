@@ -7,7 +7,7 @@ set -Eeuo pipefail
 #   0) derive event selection cuts + produce all event selection plots
 #
 # Pipeline 2 (no-correlation single-muon efficiency):
-#   1) submit NTuple processing condor jobs (trig eff mode, all 3 PbPb years)
+#   1) submit NTuple processing condor jobs (trig eff mode, all 4 PbPb years)
 #   2) wait for all clusters to finish
 #   3) validate per-batch ROOT outputs
 #   4) hadd per-batch outputs into combined muon_pairs + hists_cut_acceptance per year
@@ -26,7 +26,7 @@ set -Eeuo pipefail
 # Optional env vars:
 #   POLL_SECONDS=45
 #   CONDOR_TIMEOUT_SECONDS=0   # 0 => no timeout
-#   YEARS="23 24 25"           # override which years to process
+#   YEARS="23 24 25 26"        # override which years to process
 #   SKIP_CONDOR=1              # skip condor submit+wait, reuse existing NTuple outputs
 #   SKIP_EVSEL=1               # skip event selection only, still run condor+RDF+plots
 #   RDF_NTHREADS=2             # ROOT implicit MT thread count (default 2; 8 needs ~48 GB RAM)
@@ -43,7 +43,7 @@ CONDOR_TIMEOUT_SECONDS="${CONDOR_TIMEOUT_SECONDS:-0}"
 SKIP_CONDOR="${SKIP_CONDOR:-0}"
 SKIP_EVSEL="${SKIP_EVSEL:-${SKIP_CONDOR}}"
 RDF_NTHREADS="${RDF_NTHREADS:-2}"
-YEARS=(${YEARS:-23 24 25})
+YEARS=(${YEARS:-23 24 25 26})
 DATA_BASE="/usatlas/u/yuhanguo/usatlasdata/dimuon_data"
 PLOT_BASE="${DATA_BASE}/plots"
 FITTER_DIR="${ANALYSIS_DIR}"
@@ -206,7 +206,9 @@ wait_for_cluster_completion() {
 }
 
 # Queue counts per year (must match .sub files)
-declare -A QUEUE_COUNTS=( [23]=4 [24]=2 [25]=6 )
+# [26]=5 is a PLACEHOLDER -- see the note in pipeline_pbpb_crossx.sh; it must equal
+# file_batch_max{26} in PbPbExtras.c and `queue N` in the run_pbpb_26*.sub files.
+declare -A QUEUE_COUNTS=( [23]=4 [24]=2 [25]=6 [26]=5 )
 
 get_year_dir() { echo "${DATA_BASE}/pbpb_20$1"; }
 

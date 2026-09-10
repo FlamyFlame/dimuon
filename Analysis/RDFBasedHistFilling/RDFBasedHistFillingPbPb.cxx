@@ -9,7 +9,7 @@ void RDFBasedHistFillingPbPb::SetIOPathsHook(){
 
 	std::string run_year_str = std::to_string(run_year);
 
-	if (run_year == 23 || run_year == 24 || run_year == 25){
+	if (run_year == 23 || run_year == 24 || run_year == 25 || run_year == 26){
         std::string base = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + run_year_str + "/muon_pairs_pbpb_20" + run_year_str + base_trig_suffix;
         std::string in_path;
         if (low_mass_template_calc) { // low-mass template-fit pass
@@ -100,7 +100,7 @@ void RDFBasedHistFillingPbPb::SetIOPathsHook(){
 		input_files.push_back(in_path);
 		output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/histograms_real_pairs_pbpb_20" + run_year_str + out_file_suffix + ".root";
 	} else{
-	    throw std::runtime_error("Run year must be 15/18/23/24/25! Current input invalid: " + run_year_str);
+	    throw std::runtime_error("Run year must be 23/24/25/26 (Run 3 Pb+Pb)! Current input invalid: " + run_year_str);
 	}
 }
 

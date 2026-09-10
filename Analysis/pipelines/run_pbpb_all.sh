@@ -11,7 +11,7 @@ set -Eeuo pipefail
 # Optional env vars (passed through to sub-pipelines):
 #   POLL_SECONDS=45
 #   CONDOR_TIMEOUT_SECONDS=0
-#   YEARS="23 24 25"
+#   YEARS="23 24 25 26"
 #   SKIP_CONDOR=1              # skip event sel + condor in both pipelines
 #   SKIP_EVSEL=1               # skip event selection only
 #   RDF_NTHREADS=2             # for trig_eff pipeline
@@ -28,7 +28,7 @@ SKIP_EVSEL="${SKIP_EVSEL:-${SKIP_CONDOR}}"
 # Consequence during a rerun: `YEARS=24 SKIP_CONDOR=1 ./run_pbpb_all.sh`, the natural way to
 # re-enter after one year fails, resubmits ~24 Condor jobs and overwrites 2023 and 2025 outputs
 # that were already good. Keep the scalar (exported) and derive the array from it.
-YEARS_STR="${YEARS:-23 24 25}"
+YEARS_STR="${YEARS:-23 24 25 26}"
 export YEARS="${YEARS_STR}"
 read -r -a YEARS_ARR <<< "${YEARS_STR}"
 DATA_BASE="/usatlas/u/yuhanguo/usatlasdata/dimuon_data"

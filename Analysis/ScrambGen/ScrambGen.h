@@ -18,6 +18,7 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <stdexcept>
 
 class ScrambGen {
 public:
@@ -25,7 +26,7 @@ public:
    UInt_t rng_seed = 20260623;   // fixed seed -> reproducible scrambled sample
    ScrambGen() {}
    ~ScrambGen() {}
-   void Run(int run_year);       // 23 / 24 / 25
+   void Run(int run_year);       // 23 / 24 / 25 / 26
 
 private:
    TRandom3 rng;
@@ -33,7 +34,25 @@ private:
    static std::string DataDir(int yr){
       return "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + std::to_string(yr) + "/";
    }
-   static int NParts(int yr){ return (yr == 23) ? 4 : (yr == 24) ? 2 : 6; }
+   // Number of single-muon-tree part files per year.  Explicit per year and throwing
+   // on an unknown one: the old "everything else -> 6" fallback silently gave any new
+   // year 2025's part count, and TChain::Add only warns on a missing file, so T_mix
+   // would have been built from a subset (or from nothing) with no error.
+   // 2026: PLACEHOLDER 5 = the 5 grid tasks the skim is submitted as; chunked hadd can
+   // make it larger.  Read the real count off the delivered
+   // single_muon_trees_pbpb_2026_part<N>_* files before running, and keep it equal to
+   // file_batch_max{26} in PbPbExtras.c and `queue N` in the .sub files.
+   static int NParts(int yr){
+      switch (yr % 2000) {
+         case 23: return 4;
+         case 24: return 2;
+         case 25: return 6;
+         case 26: return 5;   // PLACEHOLDER -- confirm against the delivered 2026 skim
+         default:
+            throw std::runtime_error("ScrambGen::NParts: no part count for Pb+Pb run year 20" +
+                                     std::to_string(yr % 2000));
+      }
+   }
    static std::string OutputPath(int yr){
       return DataDir(yr) + "muon_pairs_pbpb_20" + std::to_string(yr) + "_single_mu4_scrambled.root";
    }
