@@ -44,6 +44,35 @@ inline bool DrCorrPlateauUsable(double plateau, double err) {
     return plateau > 0. && plateau >= kPlateauMinUsable && !(err >= plateau);
 }
 
+// RUNAWAY-BASELINE SCREEN (user decision 2026-09-10). `DrCorrPlateauUsable` above bounds the
+// baseline only FROM BELOW, because it was written against a COLLAPSING one ("dividing by 0.01
+// inflates the curve 100x"). It is structurally blind to the opposite failure, which is real:
+// in the crossx-consumed expo/OS/Tight series the cell pair-pT [52.2,74.2) x pair-eta [1.0,1.5)
+// had lambda railed at its 3.0 limit, and MINUIT bought that nearly-straight-line fit by driving
+// the free baseline to C = 3.9755 +- 1.1774 against a plateau the SAME cell measured as 0.8225.
+// Since eps_dR = f/C, the delivered correction was 0.159 at dR=0 and 0.323 at dR=1 -- it never
+// approached 1, which it must by construction -- and the pp24 weight 1/(eps1*eps2*eps_dR) was
+// inflated 3.1-6.3x for every affected pair.
+//
+// C is the baseline the curve is normalized BY, so it must be consistent with the plateau the
+// cell actually MEASURED. Measured over the 63 accepted cells of that series, C/plateau has
+// median 1.003 and a 5th-95th percentile of 0.950-1.234; the pathological cell sits at 4.834 and
+// the next-worst at 1.991 (a cell whose PLATEAU is a marginal 0.539, not a runaway C). A
+// two-sided factor-1.5 window is therefore generous by a wide margin and still isolates both.
+// A cell rejected here falls through to the polyu / interp / raw-bin tiers, which exist for
+// exactly this and were being reached in 0 of 63 cells because the expo screen accepted almost
+// everything.
+//
+// NOT a bound on the delivered correction f/C. That is a DIFFERENT question and remains open:
+// 26 of those 63 cells deliver f/C < 0.5 somewhere in dR < 1 (down to 0.036), which the C screen
+// cannot see because their C is perfectly normal. See the parent tracking doc.
+inline constexpr double kDrCorrBaselineMaxRatio = 1.5;
+inline bool DrCorrBaselineConsistent(double C, double measured_plateau) {
+    if (!(measured_plateau > 0.)) return true;   // no measured plateau -> screen inapplicable, not failed
+    const double r = C / measured_plateau;
+    return r <= kDrCorrBaselineMaxRatio && r >= 1.0 / kDrCorrBaselineMaxRatio;
+}
+
 inline std::string DrCorrOutTag(bool use_tight_wp) {
     return MCTrigEffPairPt::FileSuffix() + std::string(use_tight_wp ? "" : "_medium");
 }

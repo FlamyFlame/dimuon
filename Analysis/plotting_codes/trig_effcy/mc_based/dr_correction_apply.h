@@ -121,6 +121,7 @@ struct DrCorrectionEvaluator {
 
     std::vector<std::vector<Cell>> cells;      // [iy-1][iz-1]
     std::unique_ptr<TH2D> h_fit_ok;            // also supplies the cell axes
+    std::unique_ptr<TH2D> h_plateau;           // the cell's OWN measured plateau; screens C
     std::string method, sign, label, mode;
     // Set from DrCorrModeMergeEta(mode) at Load() time. A folded |eta| grouping's Y axis (of
     // h_fit_ok) runs 0 -> eta_max, NOT -eta_max -> eta_max, so Eval() below must look the cell up
@@ -188,8 +189,26 @@ struct DrCorrectionEvaluator {
         h_fit_ok.reset(static_cast<TH2D*>(ok->Clone("h_fit_ok_clone")));
         h_fit_ok->SetDirectory(nullptr);
 
+        // The cell's OWN MEASURED plateau, written by the fit stage beside fit_ok. It is the
+        // reference the fitted baseline C is screened against below (user decision 2026-09-10).
+        // Absent only in a fit file older than that stage, in which case the ratio screen is
+        // skipped rather than guessed -- see the comment at the screen itself.
+        auto* plat_h = dynamic_cast<TH2D*>(ff->Get("h_step3_plateau"));
+        if (plat_h) {
+            h_plateau.reset(static_cast<TH2D*>(plat_h->Clone("h_plateau_clone")));
+            h_plateau->SetDirectory(nullptr);
+        } else {
+            std::cout << "  ** WARNING: no h_step3_plateau in " << fit_path
+                      << " -- the C-vs-measured-plateau screen is INACTIVE for this file."
+                      << std::endl;
+        }
+
         const int npt = h_fit_ok->GetNbinsX(), neta = h_fit_ok->GetNbinsY();
         cells.assign(npt, std::vector<Cell>(neta));
+        // The cell's own measured plateau, or 0 when the fit file predates it (screen inapplicable).
+        auto measured_plateau = [&](int ix, int iz_) -> double {
+            return h_plateau ? h_plateau->GetBinContent(ix, iz_) : 0.;
+        };
 
         // The RAW measured curves come from the SAME histogram file the fit stage read, projected
         // with the SAME per-cell projection + conditional errors (dr_correction_ratio.h). Opened
@@ -229,7 +248,7 @@ struct DrCorrectionEvaluator {
                         // error-free half of DrCorrPlateauUsable: "is C a sane normalization?".
                         // Passing 0 makes its `err >= plateau` clause vacuous, which is the honest
                         // reading -- not a silently weaker test smuggled in as the same one.
-                        if (DrCorrPlateauUsable(C, 0.)) {
+                        if (DrCorrPlateauUsable(C, 0.) && DrCorrBaselineConsistent(C, measured_plateau(iy, iz))) {
                             c.knots = gk; c.C = C; ++n_cells_fitted;
                             for (int k = 0; k <= 200; ++k) {
                                 const double x = kDrMax * k / 200.0;
@@ -265,7 +284,11 @@ struct DrCorrectionEvaluator {
                         // no chi2 term, so such a fit is published with fit_ok = 1).
                         // A cell rejected here falls through to the raw-bin placeholder below,
                         // which is the same route any other rejected fit takes.
-                        if (DrCorrPlateauUsable(C, eC)) {
+                        // ...and C must also be CONSISTENT WITH THE PLATEAU THIS CELL MEASURED.
+                        // DrCorrPlateauUsable bounds C only from below; a runaway C passes it and
+                        // silently inflates 1/eps_dR. See DrCorrBaselineConsistent for the case
+                        // that forced this (C = 3.98 against a measured plateau of 0.82).
+                        if (DrCorrPlateauUsable(C, eC) && DrCorrBaselineConsistent(C, measured_plateau(iy, iz))) {
                             c.fit = f; c.C = C; ++n_fitted;
                             // The screen bounds the DENOMINATOR C, not the delivered correction
                             // f/C. Those are different questions, and a C that only just clears
@@ -283,10 +306,17 @@ struct DrCorrectionEvaluator {
                             continue;
                         }
                         ++n_cells_bad_C;
+                        const double mp = measured_plateau(iy, iz);
+                        const bool   runaway = !DrCorrBaselineConsistent(C, mp);
                         std::cout << "  ** cell (pair pT bin " << iy << ", pair eta bin " << iz
                                   << ") has fit_ok = 1 but an UNUSABLE fitted baseline C = "
-                                  << C << " +- " << eC
-                                  << " -> rejected, falling back to the raw bins" << std::endl;
+                                  << C << " +- " << eC;
+                        if (runaway)
+                            std::cout << " -- INCONSISTENT with the plateau this cell MEASURED ("
+                                      << mp << "; ratio " << (mp > 0. ? C / mp : -1.)
+                                      << ", allowed " << 1.0 / kDrCorrBaselineMaxRatio << " - "
+                                      << kDrCorrBaselineMaxRatio << ")";
+                        std::cout << " -> rejected, falling back to the next tier" << std::endl;
                     }
                 }
                 // ---- TEMPORARY PLACEHOLDER (see the header comment) ----
