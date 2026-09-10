@@ -12,6 +12,23 @@ OUT_DIR="/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/single_b_analysis"
 
 mkdir -p "${OUT_DIR}"
 
+# ─── PREREQUISITE ──────────────────────────────────────────────────────────────────────────────
+# This driver fills and plots the cross-sections ONLY. It does NOT run the trigger-efficiency
+# stage, and the Pb+Pb crossx fill CONSUMES the single-muon turn-on TF1 fits
+# (<year>/trg_effcy_pT_fitting_to_fermi_plus_log/single_mu_effcy_pT_fit.root). If those are from a
+# previous round, the fill either throws inside the RDF event loop -- where ROOT swallows the
+# exception and still exits 0 -- or silently weights every pair with the wrong efficiency.
+# Run pipelines/run_pbpb_all.sh (trig-eff -> medium -> crossx, serialized) for a full refresh;
+# use this driver only when the fits on disk are known to be current.
+# ───────────────────────────────────────────────────────────────────────────────────────────────
+
+# Everything this run validates must be NEWER than this marker. Existence + non-zero size passes
+# on every leftover from the previous round, and a plotting macro that throws still exits 0, so
+# without a freshness test the script can print "All crossx filling and plotting finished
+# successfully" having produced nothing at all.
+RUN_MARKER="$(mktemp)"
+trap 'rm -f "${RUN_MARKER}"' EXIT
+
 run_and_log() {
   local label="$1"
   local cmd="$2"
@@ -26,7 +43,12 @@ run_and_log() {
 run_and_log "RDF crossx pbpb23" "cd '${RDF_DIR}' && bash run_crossx_hist_filling_pbpb23.sh"
 run_and_log "RDF crossx pbpb24" "cd '${RDF_DIR}' && bash run_crossx_hist_filling_pbpb24.sh"
 run_and_log "RDF crossx pbpb25" "cd '${RDF_DIR}' && bash run_crossx_hist_filling_pbpb25.sh"
-run_and_log "RDF crossx pp24" "cd '${RDF_DIR}' && bash test_crossx_pp24.sh"
+# NOT test_crossx_pp24.sh. Both write the SAME nominal output file, but the test one sets only
+# `trigger_mode = 3`, while run_crossx_hist_filling_pp24.sh also sets `output_generic_hists` and
+# `output_gapcut_hists`. Running the test variant here therefore REPLACED the nominal pp24
+# histogram file with one missing the entire `_wgapcut` family -- the fiducial-gap histograms this
+# analysis is built on -- with no error and no warning.
+run_and_log "RDF crossx pp24" "cd '${RDF_DIR}' && bash run_crossx_hist_filling_pp24.sh"
 
 # 2) Plot.  The NOMINAL pair-pT view is ParamsSet::pT_bins_150 (16 log bins 9 -> 150 GeV) and goes
 #    to the unsuffixed directories (pp24/, pbpb_..._combined/).  also_pt_120=true additionally
@@ -46,7 +68,12 @@ validate_png() {
     echo "[ERR] Empty PNG: ${png}" >&2
     exit 1
   fi
-  echo "[OK ] ${png} ($(stat -c%s "${png}") bytes)"
+  if [[ ! "${png}" -nt "${RUN_MARKER}" ]]; then
+    echo "[ERR] STALE PNG (not written by this run): ${png}" >&2
+    echo "      The plotting macro threw and ROOT exited 0 anyway; this is the previous round's file." >&2
+    exit 1
+  fi
+  echo "[OK ] ${png} ($(stat -c%s "${png}") bytes, fresh)"
 }
 
 validate_png "${OUT_DIR}/pp24/pp24_crossx_pair_pt_pair_eta.png"

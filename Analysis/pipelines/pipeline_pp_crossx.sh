@@ -21,6 +21,9 @@ set -Eeuo pipefail
 #   CONDOR_TIMEOUT_SECONDS=0   # 0 => no timeout
 #   SKIP_CONDOR=1              # skip condor submit+wait, reuse existing NTuple outputs
 #   SKIP_MC_DATA_COMPR=1       # skip MC-data comparison plots (default: 0, i.e. enabled)
+#   INCLUDE_PBPB_SANITY=true   # add the Pb+Pb panels to the Stage-7 sanity plot. Default false:
+#                              # valid only AFTER the Pb+Pb crossx refill (Phase 3b) has put those
+#                              # histograms on the 48-bin pair-eta axis.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ANALYSIS_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -347,11 +350,19 @@ popd >/dev/null
 # ------ Stage 7: Trigger efficiency correction sanity check ------
 log "Running before/after trigger efficiency correction sanity plots"
 pushd "$PLOT_DIR" >/dev/null
-# include_pbpb=false: pp only. The Pb+Pb histograms still carry the retyped 44-bin pair-eta
-# axis, on which the coarse panel edge 2.2 is not a bin edge, so PairEtaPanels::Bins throws --
-# and it is the FIRST spec, so the pp panels would never be drawn. See the macro's own comment
-# and docs/tracking/pp24_all_vertex_pairs.md D5. Restore the default once Pb+Pb is migrated.
-root -l -b -q 'plot_crossx_trig_corr_sanity.C(false)'
+# include_pbpb: the PRODUCER was migrated on 2026-09-08 -- RDFBasedHistFillingPbPb now books
+# ParamsSet::N_PAIR_ETA_CROSSX_BINS (48 uniform bins on [-2.4,2.4], so the coarse panel edge 2.2
+# IS a bin edge). What is stale is the Pb+Pb histograms ON DISK, which stay on the retired 44-bin
+# axis until Phase 3b refills them; on those, PairEtaPanels::Bins throws, and it is the FIRST
+# spec, so the pp panels would never be drawn either.
+# This pipeline (Phase 3a) runs BEFORE the Pb+Pb refill (Phase 3b), so the default stays false
+# here. It is an env var rather than a literal so that restoring it after 3b is a flag flip and
+# not a code edit that has to be remembered:
+#     INCLUDE_PBPB_SANITY=true ./pipeline_pp_crossx.sh
+# The macro's own default is include_pbpb = true.
+INCLUDE_PBPB_SANITY="${INCLUDE_PBPB_SANITY:-false}"
+log "  trigger-correction sanity: include_pbpb=${INCLUDE_PBPB_SANITY}"
+root -l -b -q "plot_crossx_trig_corr_sanity.C(${INCLUDE_PBPB_SANITY})"
 popd >/dev/null
 
 # ------ Stage 8 (optional): MC-data comparison plots ------

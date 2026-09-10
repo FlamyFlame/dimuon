@@ -56,7 +56,28 @@ label_of(){ case "$1" in
   *) fail "unknown sample $1" ;; esac; }
 
 # A ROOT macro that throws still exits 0 -- never trust the exit code, check the artefact.
-val_file(){ [[ -s "$1" ]] || fail "missing/empty artefact: $1"; }
+# But "the artefact exists and is non-empty" is satisfied by EVERY stale file from the previous
+# production, so on its own it proves nothing: a step-1 fill that throws on the migrated
+# q*eta / pair-eta edges would leave last round's file in place and this chain would report
+# CHAIN OK, with the fit, step-3, step-4 and the plots all built on the OLD histograms. The
+# artefact must additionally be NEWER than the marker taken when this chain started. Same
+# primitive as run_data_trigeff_medium_wp.sh's `val_new` and run_mc_trigeff_closure.sh's
+# `val_fresh`; this driver was the one that never got it.
+val_file(){
+  [[ -s "$1" ]] || fail "missing/empty artefact: $1"
+  [[ -n "${CHAIN_MARKER:-}" && "$1" -nt "$CHAIN_MARKER" ]] || fail "STALE artefact (not rewritten by this run): $1
+      It predates this chain, so it is the PREVIOUS production's file -- the stage threw and ROOT
+      exited 0 anyway. Do NOT let the chain continue on it."
+}
+
+# `run_root` exists because this script deliberately runs WITHOUT `set -e` (the chains run in
+# parallel), so a bare `root ...` line ignores its exit status entirely. Every ROOT invocation in
+# a chain goes through this so a hard failure is reported as one, in addition to the artefact
+# check that catches the soft (exit-0) failures.
+run_root(){  # $1 = human label, rest = command
+  local what="$1"; shift
+  "$@" || fail "$what exited non-zero"
+}
 
 # ---- 0. pre-compile the three macros ONCE (serial: shared _cxx.so) ----------------------
 log "════ pre-compiling ACLiC macros ════"
@@ -81,24 +102,27 @@ chain(){   # $1=sample $2=wp
     suf=$([[ $wp == tight ]] && echo ""   || echo "_medium_wp")
     out="$(outdir_of "$s")"; lbl="$(label_of "$s")"
     lg="$LOG_DIR/${s}_${wp}.log"
+    # Per-chain marker: every artefact this chain validates must be newer than it.
+    CHAIN_MARKER="$(mktemp)"
+    trap 'rm -f "${CHAIN_MARKER:-}"' RETURN
     {
         echo "=== $s / $wp : step1+2 ==="
-        ( cd "$RDF_DIR" && root -l -b -q "FillMCTrigEffHists.cxx+(\"$s\", false, $cpp)" )
+        run_root "step1+2 ($s/$wp)" bash -c 'cd "$1" && root -l -b -q "FillMCTrigEffHists.cxx+(\"$2\", false, $3)"' _ "$RDF_DIR" "$s" "$cpp"
         val_file "$out/mc_trig_eff_hists_${lbl}${suf}.root"
         echo "=== $s / $wp : fit ==="
-        ( cd "$RDF_DIR" && root -l -b -q "FitMCSinglesEffcy.cxx+(\"$s\", $cpp)" )
+        run_root "fit ($s/$wp)" bash -c 'cd "$1" && root -l -b -q "FitMCSinglesEffcy.cxx+(\"$2\", $3)"' _ "$RDF_DIR" "$s" "$cpp"
         val_file "$out/single_mu_effcy_pT_fit_mc${suf}.root"
         echo "=== $s / $wp : step3 ==="
-        ( cd "$RDF_DIR" && root -l -b -q "FillMCTrigEffHists.cxx+(\"$s\", true, $cpp)" )
+        run_root "step3 ($s/$wp)" bash -c 'cd "$1" && root -l -b -q "FillMCTrigEffHists.cxx+(\"$2\", true, $3)"' _ "$RDF_DIR" "$s" "$cpp"
         val_file "$out/mc_trig_eff_hists_${lbl}${suf}_step3.root"
         echo "=== $s / $wp : step4 ==="
-        ( cd "$RDF_DIR" && root -l -b -q "FillMCTrigEffHists.cxx+(\"$s\", false, $cpp, true)" )
+        run_root "step4 ($s/$wp)" bash -c 'cd "$1" && root -l -b -q "FillMCTrigEffHists.cxx+(\"$2\", false, $3, true)"' _ "$RDF_DIR" "$s" "$cpp"
         val_file "$out/mc_trig_eff_hists_${lbl}${suf}_step4.root"
         # Step-1 SANITY CHECK (Physics Procedure 3.5). Without this stage a clean regeneration
         # would silently produce no sanity plots at all: the plot macro skips the block with a
         # note when the _sanity.root is absent, so its absence is NOT an error anywhere else.
         echo "=== $s / $wp : sanity ==="
-        ( cd "$RDF_DIR" && root -l -b -q "FillMCTrigEffHists.cxx+(\"$s\", false, $cpp, false, true)" )
+        run_root "sanity ($s/$wp)" bash -c 'cd "$1" && root -l -b -q "FillMCTrigEffHists.cxx+(\"$2\", false, $3, false, true)"' _ "$RDF_DIR" "$s" "$cpp"
         val_file "$out/mc_trig_eff_hists_${lbl}${suf}_sanity.root"
         echo "=== $s / $wp : CHAIN OK ==="
     } >"$lg" 2>&1
