@@ -204,7 +204,7 @@ else
     BACKUP_TARGETS=("${PAIR_FILE}" "${SINGLE_FILE}")
     if (( ENABLE_MC_TRIG_EFF )); then
         BACKUP_TARGETS+=("${SAMPLE_DIR}/muon_pairs_pythia_fullsim_pp24${CUT}_mc_trig${SFX}.root")
-        BACKUP_TARGETS+=("${SAMPLE_DIR}/muon_pairs_pythia_fullsim_pp24${CUT}_single_muon_mc_trig${SFX}.root")
+        BACKUP_TARGETS+=("${SAMPLE_DIR}/muon_pairs_pythia_fullsim_pp24${CUT}_mc_trig_single_muon${SFX}.root")
     fi
     for f in "${BACKUP_TARGETS[@]}"; do
         [[ -f "$f" ]] && { bak="${f%.root}.bak_$(date +%Y%m%d_%H%M%S).root"; cp -a "$f" "$bak"; log "  backed up $(basename "$f") -> $(basename "$bak")"; }
@@ -258,7 +258,7 @@ log "  single-muon tree: ${n_single} entries  ✅"
 # silently skipped the mc_trig NTP on 2026-07-20). Check the artefact, not the exit code.
 if (( ENABLE_MC_TRIG_EFF )); then
     MCTRIG_PAIR="${SAMPLE_DIR}/muon_pairs_pythia_fullsim_pp24${CUT}_mc_trig${SFX}.root"
-    MCTRIG_SINGLE="${SAMPLE_DIR}/muon_pairs_pythia_fullsim_pp24${CUT}_single_muon_mc_trig${SFX}.root"
+    MCTRIG_SINGLE="${SAMPLE_DIR}/muon_pairs_pythia_fullsim_pp24${CUT}_mc_trig_single_muon${SFX}.root"
     [[ -f "$MCTRIG_PAIR" ]] || fail "mc_trig NTP missing: ${MCTRIG_PAIR} — Stage 3 likely threw but exited 0 (ROOT swallows C++ exceptions). Check the log for 'Runtime error'/'store_mc_trigger'."
     [[ -f "$MCTRIG_SINGLE" ]] || fail "mc_trig single-muon NTP missing: ${MCTRIG_SINGLE} — Stage 3 likely threw but exited 0."
     if (( ! SKIP_NTP )); then
