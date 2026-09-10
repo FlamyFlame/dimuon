@@ -1006,6 +1006,40 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
         df_map.at("df_ss") = map_at_checked(df_map, "df_ss", "FillHistogramsCrossx PbPb: df_ss (tight WP)").Filter("pair_pass_tight");
     }
 
+    // --- Centrality acceptance of the measurement -------------------------------------------
+    // The Pb+Pb measurement is defined over ParamsSet::ctrbins = {0,5,10,20,30,50,80}, i.e.
+    // 0-80 % centrality. Two populations fall outside it: pairs at centrality >= 80 (the most
+    // peripheral, ~0.10 % of signal-region OS pairs in every year) and pairs whose centrality
+    // determination FAILED, avg_centrality < 0 (~0.7 %).
+    //
+    // They contribute to NOTHING as the code stands. FindCtrSuffix returns "" for both, so they
+    // enter no `_ctr*` histogram; and the only centrality-INCLUSIVE histograms in this file, the
+    // two h3d_{op,ss}_crossx_..._vs_centr_... , carry centrality as a Z axis spanning exactly
+    // [0,80], so such pairs land in its over/underflow -- which every consumer excludes, R_AA
+    // included (RAA_plotting projects an explicit centrality bin RANGE, never 0..nbins+1).
+    // Verified on the pre-change 2023 output: all 164 keys are centrality-binned or carry a
+    // centrality axis; 0 are centrality-inclusive without one.
+    //
+    // But the empty ctr_suffix still reaches EvaluateSingleMuonEffcyPtFitted, which correctly
+    // refuses to invent an efficiency for a centrality it has no fit for and THROWS -- and ROOT's
+    // TRint CATCHES that inside the RDF event loop and exits 0, leaving a fresh near-empty file.
+    // That is exactly what destroyed pbpb_2024's crossx output on 2026-09-06 (851 bytes, 0 keys)
+    // and pbpb_2023's on 2026-09-10. It was LATENT before: every Pb+Pb muon with q*eta in
+    // [2.0,2.2) threw earlier for a different reason (the fits' retired `_2_00_TO_2_30` key), so
+    // the event loop never reached these pairs. Curing that exposed this.
+    //
+    // Excluding them HERE, up front, is therefore a strict no-op on every filled histogram and
+    // removes the throw. Edges are READ from ParamsSet::ctrbins, never retyped.
+    const std::string centrality_acceptance =
+        "avg_centrality >= " + std::to_string(ParamsSet::ctrbins.front())
+        + " && avg_centrality < " + std::to_string(ParamsSet::ctrbins.back());
+    df_map.at("df_op") = map_at_checked(df_map, "df_op", "FillHistogramsCrossx PbPb: df_op (centrality acceptance)")
+                             .Filter(centrality_acceptance, "centrality acceptance (OS)");
+    df_map.at("df_ss") = map_at_checked(df_map, "df_ss", "FillHistogramsCrossx PbPb: df_ss (centrality acceptance)")
+                             .Filter(centrality_acceptance, "centrality acceptance (SS)");
+    std::cout << "[PbPb] FillHistogramsCrossx: centrality acceptance = " << centrality_acceptance
+              << "  (pairs outside it enter no histogram; see the comment above)" << std::endl;
+
     ROOT::RDF::RNode df_op_base = map_at_checked(df_map, "df_op", "FillHistogramsCrossx PbPb: df_op");
     ROOT::RDF::RNode df_single_b_crossx = df_op_base.Filter(signal_cuts);
     if (df_map.find("df_single_b_crossx") == df_map.end()) {

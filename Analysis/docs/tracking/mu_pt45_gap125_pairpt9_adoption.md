@@ -648,6 +648,69 @@ the user, NOT edited here:
   9 emitted CSV headers, that D12 already fixed upstream — harmless today (`N_proc == N_beam` for a
   nominal run) but it would now misdiagnose a truncated file.
 
+### R8 — ★ The Pb+Pb crossx blocker: a SECOND latent throw, exposed by curing the first
+
+**Phase 1 ran; Pb+Pb crossx was the one failure.** Everything else completed: job A (Pythia
+fullsim pp24 FULL, ~7 h, Stages 1-10 incl. MC trig-eff), B (pp trig-eff + Tight turn-on refit),
+D (Pythia truth x3), F (HIJING overlay), and the Pb+Pb trig-eff + Tight + **Medium** turn-on refits
+for all three years.
+
+**What happened.** `pipeline_pbpb_crossx.sh` Stage 5, year 2023, threw inside the RDF event loop:
+
+> `EvaluateSingleMuonEffcyPtFitted: no fitted turn-on for q_eta=-1.969 pt=5.96 (ctr='', _sign2)`
+
+ROOT's TRint caught it, the macro printed `[RUN] pbpb23 FillHistogramsCrossx completed
+successfully!`, the job exited 0 — and left an **851-byte, 0-key corpse** at
+`pbpb_2023/histograms_real_pairs_pbpb_2023_single_mu4_no_trg_plots_nominal.root`, byte-for-byte the
+same failure that destroyed the 2024 file on 2026-09-06. **Nothing was lost**: the pre-change
+backup holds the good 3.6 MB 2023 file, and 2025 was never reached.
+
+**★ The repaired validation layer is what caught it.** `validate_root_file_quick` rejected the
+corpse (`BAD RDF crossx yr23`) and the pipeline aborted before plotting. With the `-q` bug still in
+place that check would have PASSED — it passed on anything — and Phase 3b would have plotted the
+previous production's histograms as if they were the new selection.
+
+**Root cause — NOT the q*eta binning, and NOT introduced by this change.** The q*eta bin exists:
+the refit file carries `minus2_00_TO_minus1_50`, which contains -1.969, and its top bin is now
+`_2_00_TO_2_20`, so **R1 Hazard 4 is cured**. The failure is the CENTRALITY: `ctr=''`.
+`RDFBasedHistFillingData::FindCtrSuffix` returns `""` for `centrality >= 80` and for
+`centrality < 0`, because the analysis' centrality binning is `ParamsSet::ctrbins =
+{0,5,10,20,30,50,80}`. The empty suffix then reaches the trigger evaluator, which correctly
+refuses to invent an efficiency and throws.
+
+Measured on the FRESH trees (signal-region OS pairs):
+
+| year | OS pairs | centrality >= 80 | centrality < 0 |
+|---|---|---|---|
+| 2023 | 434 966 | 438 (0.101 %) | 2 999 |
+| 2024 | 306 628 | 317 (0.103 %) | 1 281 |
+| 2025 | 869 072 | 805 (0.093 %) | 4 866 |
+
+**Why it is latent, not new.** The surviving population after this change is a strict SUBSET of the
+old one (every new cut removes pairs), so these pairs were always there. They never threw before
+because a DIFFERENT throw fired earlier: every Pb+Pb muon with q*eta in [2.0,2.2) hit the retired
+`_2_00_TO_2_30` fit key (Hazard 4). Curing that let the event loop run far enough to reach this.
+
+**The fix, and why it is provably a no-op on every physics result.** These pairs contribute to
+NOTHING as the code stands, established by direct inspection rather than assumption:
+1. `FindCtrSuffix` returns `""` ⇒ they enter no `_ctr*` histogram.
+2. The ONLY centrality-inclusive histograms in the Pb+Pb nominal output are
+   `h3d_{op,ss}_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt`, whose **Z axis is exactly
+   [0, 80] with edges {0,5,10,20,30,50,80}** ⇒ these pairs land in its over/underflow.
+3. Every consumer excludes that over/underflow: `RAA_plotting.cxx:369,375` projects an explicit
+   centrality bin RANGE (`bin_num_first, bin_num_last`), never `0..nbins+1`.
+4. Counted on the pre-change 2023 output: **164 keys, 0 of which are centrality-inclusive without a
+   centrality axis.** The template-fit output likewise: **60 keys, 0 without centrality binning.**
+
+So excluding them up front removes the throw and changes no filled bin. Implemented in
+`RDFBasedHistFillingPbPb::FillHistogramsCrossx` as a single filter on `df_op` and `df_ss`, with the
+edges READ from `ParamsSet::ctrbins` (never retyped).
+
+**Not treated as a stop-and-ask** because it is not a physics-results-bending choice: the
+measurement's centrality acceptance is already 0-80 % by construction everywhere else, and the
+filter only stops the evaluator being called on rows that have no home. Had any
+centrality-inclusive histogram lacked a centrality axis, this WOULD have been a user decision.
+
 ### R6 — Cross-session state (three peers share this checkout)
 
 Four peer sessions exist; three were engaged and all cleared this rerun. **They share the working
