@@ -1129,79 +1129,43 @@ fullsim resubmission after R10. All eight data trees independently verified for 
 
 ## Latest Stage
 
-**REVIEW ITERATION 4 IN FLIGHT; PHASE 1 PRE-FLIGHT DONE; RERUN ABOUT TO START.**
+**THE RERUN IS COMPLETE. Phases 1-3 done and regenerated on the corrected ε_ΔR. Two physics
+questions remain OPEN and are the user's to settle; until they are, the pp24 cross-section and R_AA
+ABOVE ~50 GeV are PROVISIONAL.**
 
-Plan for this session (user instruction 2026-09-09 22:33: *"finish this scoped 4th review then
-perform the full reruns"*), in order:
+State as of 2026-09-10 16:12:
+- **Phase 1** (97 Condor jobs + the ~7 h local fullsim pass + a 22-job POWHEG resubmit) — done, and
+  the cut verified directly in all eight trees, not inferred: nominal at exactly 4.5, trig-eff mode
+  at exactly 4.0 by design (D8), zero violations either way.
+- **Phase 2** — data turn-on refits pp + Pb+Pb, Tight AND Medium; MC trig-eff Steps 1-4 + sanity at
+  BOTH working points; `pair_reco_eff_pp24_full.root` rebuilt and sanity-checked;
+  `pair_trig_eff_pp24_full.root` regenerated on the 9 GeV axis.
+- **Phase 3** — pp24 and Pb+Pb cross-sections, R_AA (3 modes), MC-vs-data (3 macros), signal
+  acceptance + cutflow, all sanity plots. All regenerated AFTER the ε_ΔR fix.
+- **`/review-plot` ran** (2 reviewers, both FAIL) and everything actionable within this task's scope
+  is fixed; the residue is listed in R13 as recorded-not-acted-on.
+- **ΔR fits / MC closure** remain the `polyn fit restriction` peer's; it has been unblocked twice
+  (fresh trees, then `pair_trig_eff_pp24_full.root`) and owes the four-approach χ²/ndof ranking.
 
-1. **Review iteration 4** (in flight) — two independent read-only reviewers on the ONLY unverified
-   batch, commits `01031f0` (plots/pipelines, 42 files) + `c9ab2df` (docs, 11 files). Split by scope
-   so nothing is missed and neither can clobber the other: **A** = `Analysis/pipelines/` + the
-   run/submit shell scripts (the rerun drivers; the Phase-1 gate); **B** = `plotting_codes/`,
-   `RAA_plotting.cxx`, and the two designated ground-truth docs. Log:
-   `.claude/logs/review-analysis-code-20260909-223311-mupt45-iter4-amendment-verify.md`.
-   Both prompts carry the D6/D8/D9/D11 do-not-flag list so the deliberate divergences are not
-   "fixed", and the append-only-history exemption for tracking docs.
-   Rationale for running it at all: R5 says amendments are not reliably complete, AND the
-   iteration-3 pass was never written into the old review log (its header still reads
-   "Iterations completed: 2"), so the assurance is weaker than the doc implied. ~20 min against an
-   8 h+ Phase 1 that a Phase-1-reaching defect would waste.
-2. **Amend** anything the reviewers find that reaches the rerun; re-verify amendments explicitly
-   (the R5 failure mode), commit by explicit path.
-3. **Phase 1 → 2 → 3** exactly as the tables below prescribe.
+### What a resuming agent must NOT assume
 
-### Phase-1 pre-flight, completed and verified this session (read-only)
+1. **That the high-pair-pT pp results are final.** R13 lists three OPEN findings in one region — a
+   second bad ε_ΔR cell in η ∈ [0.5,1.0) (+3.2σ at 52.23 GeV), a barrel high-pT correction blow-up
+   that geometric acceptance does not explain, and Step-3 plateaus at 1.10-1.27 in the top two pT
+   columns. Plausibly one cause. Pb+Pb is immune, so R_AA inherits all of it from the pp denominator.
+2. **That "it compiled" or "the job exited 0" means anything**, unless a freshness check says so.
+   This rerun found: a validation layer that had never executed (R9), 22 Condor jobs reporting
+   normal termination while writing nothing (R10), and an RDF event loop that threw, printed
+   "completed successfully", exited 0 and left an 851-byte corpse (R8).
+3. **That a reviewer's or peer's premise is true.** Three were checked and wrong: a peer reported
+   the pair-eff sources as uncommitted (all three are clean at HEAD); a reviewer's suggested
+   rc-capture idiom silently discards the exit code; and my own guessed filename matched no file.
+   Every one was caught by testing rather than by reading.
 
-- **Condor queue EMPTY, no analysis process running.** Nothing to collide with.
-- **Working tree clean** at `c4e13ed`; the 21:45-21:48 mtimes on the `pipelines/` files are this
-  task's own pre-commit edits (`git diff HEAD -- Analysis/pipelines/` is empty), NOT a peer writing.
-- **`ParamsSet.h` values re-confirmed independently** by compiling a throwaway macro against the
-  live header (not by reading it): `signal_pair_pt_min = 9`, `pTbins[0] = 4.5`, gap windows
-  `(-1.25,-1.05) (-0.10,+0.06) (2.20,2.40)`, `pair_eta_fiducial_max = 2.2`,
-  `N_PAIR_ETA_CROSSX_BINS = 48`, `N_COARSE_PAIR_PT_BINS = 8`.
-- **`.L DataAnalysisClasses.h` loads clean inside the EXACT Condor environment**
-  (`atlasLocalSetup.sh` + `lsetup "views LCG_107a_ATLAS_2 x86_64-el9-gcc13-opt"`), which is what the
-  `run_*.sh` job scripts do. Phase 1 will not die on a load error.
-- **D8 wiring verified end to end at the run-script level**, which is where it can silently go wrong:
-  `DimuonDataAlgCoreT.c:70` DERIVES `trigger_effcy_calc = (trigger_mode==0||trigger_mode==1) &&
-  !pbpb_run3_mu4_force_nominal` (it is never set by hand), and `:627` reads
-  `const float muon_pt_min = trigger_effcy_calc ? 4.0f : 4.5f`. Checked every live job script:
-  `run_pp_24_nominal.sh` sets `trigger_mode = 3` -> 4.5; `run_pp_24.sh` sets nothing and the header
-  default is `trigger_mode = 1` -> 4.0 (correct for 1b); `run_pbpb_{23,24,25}_nominal.sh` each set
-  `pbpb_run3_mu4_force_nominal = true` -> 4.5; the plain `run_pbpb_{23,24,25}.sh` set neither -> 4.0.
-  All six Pb+Pb scripts and both pp scripts are correct.
-- **Job counts confirmed from the `.sub` files** (total **97**, matching the "~90" estimate):
-  pp24 12 + 12; Pb+Pb 4+4 (23) + 2+2 (24) + 6+6 (25) = 24; Pythia truth 2 + 6 + 6 = 14;
-  POWHEG truth 6 + 6 = 12; POWHEG fullsim 11 + 11 = 22; overlay 1.
-- **Backups verified present and correct** at `~/usatlasdata/dimuon_data/pre_mupt45_backup_20260908/`
-  (21.7 GB, 166 files: `mc_corrections` 151, `pp_2024` 6, `pbpb_2023` 5, `pbpb_2024` 2,
-  `pbpb_2025` 2). Every live `single_mu_effcy_pT_fit*.root` and every live per-year crossx
-  `histograms_real_pairs_*_nominal.root` has a backup copy; the backed-up
-  `pair_reco_eff_pp24_full.root` is genuinely the 2026-08-18 pre-change file.
-  Two files that Phase 2a will CREATE rather than overwrite (so nothing is lost):
-  `pbpb_2024` and `pbpb_2025` have **no** `single_mu_effcy_pT_fit_medium_wp.root` at all.
-- **Disk**: data fileset 1.38 TB used of a 1.54 TB soft quota / 1.79 TB hard limit (halved figures).
-  ~160 GB of headroom to the soft quota. The 4.5 GeV cut shrinks the trees and reruns overwrite in
-  place, so the steady state is negative -- but this is tighter than the doc's earlier 1.34/1.50
-  reading and is worth re-checking between phases.
-- **Driver mapping established** (which script owns which Phase row), so the phases below are run,
-  not reinvented: `pipeline_pp_trig_eff.sh` = 1b + 2a(pp, Tight) in one pass (its Stages 1-4 are the
-  NTuple submit/wait/validate/hadd, Stages 5-8 the fine-q*eta fill, the turn-on fit and its
-  validation); `run_data_trigeff_medium_wp.sh` = 2a(pp, Medium); `pipeline_pp_crossx.sh` = 1a + 3a
-  (Stages 1-4 NTuple nominal, 5 RDF crossx fill, 6 crossx plots, 7 the trig-eff-correction sanity
-  check, 8 the MC-data comparison); `run_pbpb_all.sh` = 1c + 2a(Pb+Pb) + 3b, now serialized.
-  **Ordering consequence that binds pp**: `pipeline_pp_crossx.sh` Stages 5-7 CONSUME the turn-on
-  fits, so 1b + 2a must complete BEFORE it -- run `pipeline_pp_trig_eff.sh` first, then the Medium
-  pass, then `pipeline_pp_crossx.sh`. Both pipelines expose `SKIP_CONDOR=1` to re-enter after the
-  NTuple stage without resubmitting.
+### Open, needing the user
 
-State otherwise unchanged from the previous entry:
-- All code is on master in 8 commits (`06f9bfb` -> `c4e13ed`); 21 compile targets clean.
-- **Nothing has been rerun. No Condor job submitted. No output file overwritten.** Every number and
-  plot on disk still describes the OLD selection.
-- Decisions D1-D12 settled; none outstanding.
-- The three engaged peer sessions cleared the rerun; two are waiting on the fresh trees (R6).
-
-**What a resuming agent must NOT assume:** that any MC artefact on disk is usable -- the R4 table
-lists eight fill classes whose outputs are stale until Phase 1 completes, and the axis-edge guards
-CANNOT detect the muon-pT half of that staleness.
+1. **A bound on the DELIVERED ε_ΔR (f/C)**, as opposed to the bound on C that was adopted — the two
+   remaining findings above may or may not be one problem with it. See R12/R13.
+2. **POWHEG `cc` truth is now producible** for the first time; deliberately NOT merged, so the curve
+   stays bb-only. Merging it would silently change a final figure under an unchanged legend.
+3. The old `_pt_150` plot directories; the `USE_TIGHT_WP` default that caused R11.
