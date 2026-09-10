@@ -31,11 +31,18 @@ Together these also carry two user-decided **binning** moves and a full **Pb+Pb 
      FULL nominal reconstructed-muon cut set (quality/WP, |η|, one-sided Δp/p, |d0|,
      |z0 sinθ|, trigger matching as applicable) — every gap against the nominal NTuple
      selection either closed or explicitly recorded as unclosable with the reason.
-  3. **Binnings** moved (user decisions D2/D3): `ParamsSet::pTbins` and
-     `single_mu_pt_coarse_bins` low edge 4 → 4.5; turn-on fit range `[4,60]` → `[4.5,60]`
-     with the log/linear pivot at 4.5 (data AND MC fitters); `pair_pt_coarse_bins`,
-     `pT_bins_120`, `pair_pt_coarse_bins_pt150` and the 4-bin variant low edge 8 → 9,
-     same bin counts, same log-spacing rule.
+  3. **Binnings** moved (user decisions D2/D3/D10): `ParamsSet::pTbins`,
+     `single_mu_pt_coarse_bins` and `pT_bins_40` low edge 4 → 4.5; `pT_bins_8` becomes TWO
+     SEGMENTS so 4.5 is a forced interior edge; `pair_pt_coarse_bins` (+ 4-bin variant),
+     `pT_bins_80`, `pT_bins_120` and `pT_bins_150` low edge 8 → 9, with `pT_bins_150` = 16
+     log bins 9→150 as the DEFAULT fine crossx axis and `pT_bins_120` = 16 log bins 9→120
+     as the opt-in `_pt_120` view.
+     ⚠ **SUPERSEDED, do not act on the original wording of this item:** it said the turn-on
+     fit range moves to `[4.5,60]` in BOTH fitters. **D11 reversed that.** The DATA fitter
+     `SingleMuEffcyPtTurnOnFitter` deliberately STAYS at `[4,60]` with the pivot at 4.0,
+     because the trigger-efficiency NTuple mode keeps 4.0 GeV probes (D8); only the MC twin
+     `FitMCSinglesEffcy` uses `[4.5,60]`. Do NOT "fix" the data fitter to 4.5 — R3 measures
+     what that would cost.
   4. **Pb+Pb migrated** (user decision D1): `RDFBasedHistFillingPbPb` and the overlay
      per-centrality nodes adopt `single_mu_fiducial_gap_cuts` + `pair_eta_fiducial_max`,
      and `ParamsSet::N_PAIR_ETA_CROSSX_BINS` (48) replaces the retyped `44, −2.4, 2.4`;
@@ -258,6 +265,25 @@ unfolding; ε_acc construction (still unbuilt); the F14 open question of extra q
   `FitMCSinglesEffcy` uses **[4.5, 60] with the pivot at 4.5**. The MC fitter's "mirrors the data
   fitter EXACTLY" header is amended to name this as the one deliberate difference, with the reason,
   so it does not read as drift.
+- **D12 (2026-09-09, user).** A PRE-EXISTING normalization hole, surfaced by the
+  `additional fullsim statistics` session and confirmed independently: `PythiaAlgCoreT.c`
+  built the weight as `ami_w * nom_ratio / N_beam` while the event loop runs over
+  `N_proc = min(N_beam, nevents_max)`, so a run truncated by `nevents_max` wrote an absolute
+  cross-section low by exactly `N_proc/N_beam`. Undetectable: the weight, the NTUP chain
+  entry count and AMI `totalEvents` all return `N_beam` and AGREE with each other. Reachable:
+  the pipeline smoke test passes `NEVENTS_MAX` through the same run script while
+  `extra_output_suffix` stays `_full`, and `--dry-run` does not change the output path, so a
+  2000-event file can land on the nominal filename and pass Stage 4's exists+non-empty check.
+  Dates to `6f78163` (2026-04-16); NOT introduced by this task.
+  **Fixed on both counts.** (a) `meta_tree_out` now records `N_proc` and `N_beam` per
+  (kn, beam) and is Filled on the FULLSIM path — it used to be Filled only under
+  `getIsPrivate()`, so every fullsim file carried an empty meta tree; a truncated chain also
+  prints a loud warning. (b) `N_proc` is hoisted ABOVE the weight and used as the denominator
+  in the fullsim AND the non-private-truth branch, and `p->crossx` multiplies back the SAME
+  count (`* N_to_process`, was `* N_beam`) — fixing only the weight would have reintroduced
+  the factor in `crossx`. **A no-op for every nominal run** (`N_proc == N_beam` when
+  `nevents_max` is unset), so nothing this rerun produces can move because of it.
+  NOT adopted: giving `--dry-run` its own output suffix (offered, user chose the narrower fix).
 - **D6 (2026-09-08, user).** The FINE q·η axis is left alone. The new window edge −1.25 is not
   a fine-axis edge (`makeEtaTrigEffcyBinning` runs …−1.26, −1.24… in 0.02 steps), so it splits
   a bin. Accepted: the cut is applied to the muon's own q·η value and the correction uses the
@@ -327,6 +353,15 @@ unfolding; ε_acc construction (still unbuilt); the F14 open question of extra q
     `SetLimits(4.0, 60.0)`. Fit parameter inits/limits were deliberately NOT moved — they are
     physics priors on where the mu4 turn-on sits, which is a trigger property independent of
     where the offline analysis cuts.
+
+- 2026-09-09 Steps 9–15 (partial). Everything COMPILES (21 targets: 3 NTuple analysis headers,
+  11 RDF/trig-eff classes ACLiC, 7 interpreted macros). `/review-analysis-code` ran THREE
+  iterations — see R5. D12 implemented (both halves). **COMMITTED in 7 logical commits:**
+  `06f9bfb` ParamsSet/binnings · `4506fd9` NTuple pT + D8 + D12 · `0054c90` trig-eff 4.5 +
+  same-vertex · `139262d` fitters/D11 · `e5e5312` Pb+Pb migration + pair pT 9 + default axis ·
+  `01031f0` plots/pipelines (R_AA top bin, Pb+Pb serialization, stale-macro gate) ·
+  `c9ab2df` docs. Working tree clean apart from `.claude/logs/tracking.jsonl`.
+  **NOTHING HAS BEEN RERUN. No Condor job has been submitted. No output file overwritten.**
 
 ## Results & Observations
 
@@ -487,6 +522,85 @@ put to the user on 2026-09-08 and NOT adopted in this round, so the exposure rem
 threshold change. All of these artefacts are regenerated by this task's rerun, so nothing here
 requires a code change — only that nothing consumes them in the meantime.
 
+### R5 — Review outcome: three iterations, and what the pattern says
+
+`/review-analysis-code`, log
+`.claude/logs/review-analysis-code-20260909-000600-mupt45-gap125-pairpt9-adoption.md`.
+
+| Iter | CRITICAL | WARNING | Character |
+|---|---|---|---|
+| 1 | 1 | 9 | R_AA silently dropping its top pair-pT bin, + stale text |
+| 2 | 0 | 8 | Stale text ONLY — no code or physics defect |
+| 3 | 1 (PRE-EXISTING) | 20 | First sweep of `plotting_codes/` + `pipelines/` |
+
+**Iteration 1's CRITICAL:** `RAA_plotting.cxx` grouped the fine pair-pT axis with a hardcoded
+15-bin map while the axis moved to 16, so bin 16 (125.8–150 GeV) was dropped from R_AA mode 3
+and all three labels were wrong. Its two existing guards compare pp against Pb+Pb and both axes
+moved together, so neither could fire. Fixed at root: the grouping is DERIVED from `ParamsSet`,
+split over the COARSE cells and expanded 2:1 so every group boundary is a `pair_pt_coarse_bins`
+edge — each R_AA group is a whole number of the cells the corrections were measured in
+(3+3+2 cells → 9–25.8 / 25.8–74.2 / 74.2–150 GeV) — plus a nesting assert and a coverage assert
+that fires if the grouping does not tile the histogram read from disk.
+
+**Iteration 3's CRITICAL is D12**, pre-existing and now fixed.
+
+**The dominant defect class, by a wide margin, is a stale CLAIM rather than wrong code** — a
+comment, a doc, a drawn label, or a string emitted at runtime. Two would have reached output: the
+R_AA figure legend published `p_T^pair > 8 GeV` on a final-results plot, and the ΔR evaluators
+printed "pair pT < 8 GeV" into every job log. Everything of that kind is now COMPOSED from
+`ParamsSet` rather than retyped.
+
+**★ The lesson that matters for a future round: my own amendments were not reliably complete.**
+Iteration 3 found FOUR iteration-2 fixes half-applied — most tellingly, a printed string left
+untouched while the comment beside it was corrected. Amendments must be re-verified, not assumed;
+a 4th iteration has NOT been run and the last batch of fixes is unverified by a reviewer.
+
+Two operational defects found in iteration 3 that would have broken THIS rerun:
+`run_pbpb_all.sh` launched trig-eff and crossx concurrently although crossx consumes trig-eff's
+turn-on fits (now serialized), and the Pb+Pb combiner silently dropped years missing a histogram
+while still labelling the canvas "2023, 2024, 2025 combined" (now probes every year and reports
+contributors).
+
+### R6 — Cross-session state (three peers share this checkout)
+
+Four peer sessions exist; three were engaged and all cleared this rerun. **They share the working
+tree**, so commit by explicit path and never `git add -A`.
+
+- **`polyn fit restriction`** — owns the Step-3 `polyu_fixedRp` reparametrization (`d23fb81`):
+  `A ≡ f(0) − C` is now parameter 0 with `A ∈ [−50, 0]`, Step 3 ONLY, Step 4 unchanged.
+  **Binding constraints on this rerun:** (i) `plot_dr_correction_fits.cxx::LoadFunc` THROWS if a
+  polyu TF1's parameter 0 is not named `A` — so **refit polyu wherever you replot it, and never
+  replot a polyu file you did not just produce**; that throw means the file predates `d23fb81`,
+  not that the code is broken; (ii) **refit expo + polyu + interp TOGETHER**, never one alone;
+  (iii) the four-approach χ²/ndof ranking in `mc_trigeff_dr_binning_approaches.md` is UNUSABLE
+  until after this rerun, and `run_mc_trigeff_closure.sh` currently dies in Stage 2 on the binning
+  guard. Correct order afterwards: refill Step 3 → refit all three methods → rerun closure →
+  re-read the ranking. Wants a ping when the fresh trees and Step-3 histograms exist.
+- **`additional fullsim statistics`** — read-only on
+  `muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_mc_trig_full.root`; writes only to a new
+  `plots/pp_trigger_efficiency/mc_pthat_slice_mass_stats{,_medium}/`. Sizing a NEW MC production
+  request; its current numbers are on the SUPERSEDED selection and it will redo on the fresh
+  trees. Found D12. Wants the same ping.
+- **`pT > 4.5GeV cut`** — the diagnostic thread this task executes the adopt branch of. Confirmed
+  consistent, closed its doc (`85ac4cb`), idle. Nothing outstanding.
+
+**A disagreement worth preserving, because the resolution is a reusable rule.** This doc first
+claimed the whole 17:11→18:52 chain was a chimera. The peer disproved that for the trig-eff chain
+by measurement (`mc_trig_eff_hists_pp24_full.root` 18:46: `h_mc_pt_denom_mu±` axis **4.50**,
+**underflow = 0**; the 09-07 Medium control: axis **4.00**) — `FillMCTrigEffHists` re-applies
+`pt > 4.5` textually, and a 4.0 GeV NTuple is a strict SUPERSET, so the re-applied cut reproduces
+the 4.5 population exactly. The claim survives only for the ε_reco side. That is the R4 rule, and
+the peer's own per-file grep formulation had to be corrected too: the test is **"does the
+selection string reaching the Filter contain the cut, AFTER resolving shared helpers"** — a
+per-file grep reports the closure and pair-eff as stale when they are immune via
+`MCTrigEffPairSelection.h`.
+
+**Unexplained and worth knowing:** something ran the complete 17:11→18:52 MC chain on 2026-09-08,
+ending in `pair_reco_eff_pp24_full.root` at 18:52, using the then-partially-edited `ParamsSet.h`.
+All three peers and this session deny it; `condor_q` was empty and no process survived. Best
+hypothesis: the abandoned step 7a of `pp24_all_vertex_pairs.md`, whose Latest Stage still reads
+"MC half NOW RUNNING" and whose chain matches exactly. Everything it wrote is regenerated here.
+
 ### R2 — Step 3 DONE: `ParamsSet.h` (the keystone)
 
 Gap window `{-1.30,-1.05}` → `{-1.25,-1.05}`; `pTbins` low edge 4 → 4.5; `pT_bins_40`,
@@ -498,80 +612,101 @@ tables as STALE IN TWO WAYS (superseded window AND measured at pT > 4).
 
 ## Remaining Work
 
-Implementation Plan steps 9–15: finish compiling, local smoke tests,
-`/review-analysis-code`, then the Condor reruns and the whole downstream chain.
+### THE RERUN, in dependency order (nothing below has been started)
 
-Carried forward, NOT part of this task:
-- `plot_reco_distr_singleb_vs_op_pp24.C` is left on the retired `q·η < 2.2` **and** on a
-  `dr > 0.05` cut that was removed from the analysis on 2026-06-22. Doubly stale, unmaintained,
-  loose top-level macro; recorded rather than fixed.
-- The legacy pre-RDF `SingleBAnalysis/SingleBAnalysisBase.cxx` still retypes the fine pair-pT
-  axis as `(15, 8.0, 120.0)` and its own `signal_cuts`. Not in the active chain (see
-  `signal_selection_change_impact.md` §2 "Legacy / retired"); left, and listed here so it is not
-  revived unnoticed.
+**Phase 1 — NTuple (Condor, except the fullsim pass).** Roughly 90 Condor jobs.
+
+| # | What | Notes |
+|---|---|---|
+| 1a | pp24 nominal, `run_pp_24_nominal.sub` (trigger_mode=3) | 12 jobs; then hadd |
+| 1b | pp24 trig-eff, `run_pp_24.sub` (trigger_mode=1) | 12 jobs; **stays at 4.0 GeV by design (D8)** |
+| 1c | Pb+Pb 2023/2024/2025, both modes | 12+12; `SKIP_EVSEL=1` (event selection is NOT in the blast radius — its cuts are event-level, derived from raw NTUPs) |
+| 1d | Pythia truth (private, nonprivate 5.36, nonprivate 5.02) | 2+6+6 |
+| 1e | POWHEG truth + POWHEG fullsim `run_powheg_fullsim_wtruth_{bb,cc}.sub` | 6+6 and 11+11. POWHEG fullsim IS in the blast radius: the carve-out in `pp24_all_vertex_pairs.md` rested on that change being reco-only, and a truth-pT cut is not |
+| 1f | HIJING overlay | 1 |
+| 1g | Pythia fullsim pp24 FULL `_pdf` | **NOT Condor** — local pass over the LGD symlink farm, ~6–8 h. `ENABLE_MC_TRIG_EFF=1 pipelines/pipeline_pythia_fullsim_pp.sh full`, **NOT** `SKIP_NTP=1` |
+
+**Phase 2 — derived corrections.**
+2a. Data mu4 turn-on refits, pp AND Pb+Pb, **Tight AND Medium** (`pipeline_pp_trig_eff.sh`,
+    `pipeline_pbpb_trig_eff.sh`, `SAMPLES="pp" pipelines/run_data_trigeff_medium_wp.sh`).
+    This also cures the Pb+Pb `_2_00_TO_2_30` vs `_2_00_TO_2_20` key mismatch (R1 Hazard 4).
+2b. MC trig-eff Steps 1–4.
+2c. ΔR-correction fits — **all three methods together** (`expo polyu_fixedRp interp`), never one
+    alone (R6).
+2d. MC closure. NOTE `run_mc_trigeff_closure.sh` currently dies in Stage 2 on the binning guard;
+    it should pass once 2b/2c are refilled on the 9 GeV axis.
+2e. `build_pp24_fullsim_pair_reco_eff.C+(true)` → `pair_reco_eff_pp24_full.root` (not in any
+    pipeline; RECREATE, no backup of its own).
+
+**Phase 3 — final results.**
+3a. pp24 crossx pipeline (+ MC-data comparison, Stage 8).
+3b. Pb+Pb: `run_pbpb_all.sh` — now SERIALIZED, trig-eff before crossx.
+3c. R_AA (`RAA_plotting.cxx` mode 6), now that pp and Pb+Pb share a signal region again.
+3d. Signal acceptance + cutflow, crossx sanity/stage plots.
+3e. `/review-plot` on the regenerated plot sets; `/sync-note-figures` + `/check-note-sync`.
+
+### Constraints that bind the rerun (do not rediscover these)
+
+- **Validate every stage by FRESHNESS + a required histogram, never by file-exists.** ROOT
+  swallows exceptions thrown inside an RDF event loop and still exits 0, leaving a fresh
+  near-empty file. `pbpb_2024/histograms_real_pairs_..._nominal.root` is an 851-byte, 0-key
+  corpse of exactly this (2026-09-06); 2023/2025 are last-good 2026-07-08.
+- **polyu:** refit wherever you replot; never replot a polyu file you did not just produce; a
+  `LoadFunc` throw means the file predates `d23fb81`, not that the code is broken.
+- **Never refit only one ΔR method.**
+- The four-approach χ²/ndof ranking in `mc_trigeff_dr_binning_approaches.md` is UNUSABLE until
+  after this rerun; re-read it only after closure is rerun.
+- **After the turn-on refit, print the R3 diagnostic** — σ_ε(4.5)/ε(4.5) from the fit covariance
+  (`"QR"` → `"QRS"`, `GetConfidenceIntervals` at `pT_min`), flag > 0.10, **stop at > 0.20**,
+  companion |ρ(mean,σ)| > 0.95. The at-a-fit-limit `*` flag provably cannot detect this.
+- **Ping the two waiting peers** when the fresh trees and Step-3 histograms exist (R6).
+- Backups of every pre-change artefact are at
+  `~/usatlasdata/dimuon_data/pre_mupt45_backup_20260908/` (151 correction files + hists + fits;
+  `pair_reco_eff_pp24_full.root` in it is genuinely the 2026-08-18 pre-change file).
+- Disk: ~1.34 TB of ~1.50 TB (halved figures). Reruns overwrite in place and the 4.5 GeV cut
+  shrinks trees, so the steady-state change is negative.
+- The eight classes of R4 produce artefacts that are stale until Phase 1 completes; nothing
+  should consume them in the meantime.
+
+### Immediate next step
+
+**A 4th `/review-analysis-code` iteration on the last amendment batch has NOT been run.**
+Iteration 3 demonstrated that amendments are not reliably complete (four iteration-2 fixes were
+half-applied, R5), so the last batch is unverified. Either run it, or accept the risk and start
+Phase 1 — the user was offered both.
+
+### Carried forward, NOT part of this task
+
+- `SingleBAnalysis/SingleBAnalysisBase.cxx` (legacy pre-RDF) still retypes the fine pair-pT axis
+  and its own `signal_cuts`; not in the active chain.
 - Dead NTuple copies (`PythiaNTupleFirstPass*`, `original_no_template_class/*`,
-  `maybe_old_unsure_pbpb/*`) still carry the 4.0 GeV threshold — reviving any of them revives it.
+  `maybe_old_unsure_pbpb/*`) still carry 4.0 GeV — reviving any revives it.
+- `plot_reco_distr_singleb_vs_op_pp24.C` keeps its retired selection but is now gated behind
+  `RUN_RECO_DISTR=1` with a STALE banner instead of running as a nominal pipeline stage.
+- **Open INFO items needing a user decision** (deliberately not acted on): `pT_bins_80` is reused
+  as a SINGLE-muon axis in `var1D_pythia_truth.json` / `var1D_powheg_truth.json` while now
+  starting at 9; retyped reco-eff ΔR slices `{8,12,20,∞}`; the
+  `trigger_effcy_calc`/`pbpb_run3_mu4_force_nominal` coupling (verified correct in all eight live
+  Pb+Pb scripts, but the flag silently gained a selection meaning); and **the muon-pT provenance
+  stamp** — proposed and NOT adopted, so the next threshold change has the same silent exposure
+  R4 describes.
 
 ## Latest Stage
 
-**CODE EDITS COMPLETE; COMPILING. Nothing has been rerun and no Condor job submitted.**
+**CODE COMPLETE, REVIEWED (3 iterations), COMPILING, AND COMMITTED. THE RERUN HAS NOT STARTED.**
+Resume from §Remaining Work → "Immediate next step".
 
-Done so far (steps 1–8):
-- `ParamsSet.h` keystone (R2) + a NEW `signal_pair_pt_min` / `SignalPairPtCutExpr` single source
-  of truth replacing the pair-pT threshold that had been RETYPED at ~10 sites, and the
-  two-segment `pT_bins_8` of D10.
-- NTuple processing: all 7 live pT thresholds → 4.5, plus the D8 mode-dependent form (the
-  trigger-efficiency mode keeps 4.0). Dead copies deliberately left at 4.0 and inventoried.
-- Pb+Pb MIGRATED (D1): fiducial + pair-level gap cuts adopted in the signal region and both
-  template blocks; the retyped `44, -2.4, 2.4` pair-η axis replaced by
-  `ParamsSet::N_PAIR_ETA_CROSSX_BINS` at all 10 sites.
-- Truth/fullsim/overlay analogs migrated off the retired `q·η < 2.2` (D7); the acceptance
-  cutflow now READS its cut list from `ParamsSet` instead of retyping it.
-- Trigger-efficiency selection: thresholds moved and the one genuine gap the audit found (the pp
-  same-vertex pair requirement, missing from Steps 2/3/4 + closure + pair-eff) closed via
-  `pair_pass_*`, behind a throwing pre-loop guard. `SingleBSignalCutsReco` now reads the pair-pT
-  threshold from `ParamsSet` — it had been a silent mirror (its guard compares only the `minv`
-  half).
-- Fit ranges split per D11; the MC fitter's "mirrors the data fitter EXACTLY" header amended.
-- Temporary `_diag_mupt45` / `_logbins_from9` diagnostic code DELETED (3 files + 384 lines of
-  plotter methods + the PP.cxx block), zero residual references.
+State as of 2026-09-09:
+- **All code changes are on master** in 7 commits (`06f9bfb` → `c9ab2df`; see Progress Log).
+  Working tree clean apart from `.claude/logs/tracking.jsonl`.
+- **21 compile targets clean** — 3 NTuple analysis headers, 11 RDF/trig-eff classes via ACLiC,
+  7 interpreted macros.
+- **Nothing has been rerun. No Condor job submitted. No output file overwritten.** Every number
+  and plot currently on disk still describes the OLD selection.
+- Decisions D1–D12 are settled and recorded above; none is outstanding.
+- The three engaged peer sessions have cleared the rerun and two are waiting on the fresh trees.
 
-**Verified, not assumed** — a standalone ROOT test of the new axes prints:
-gap windows `(-1.25,-1.05) (-0.10,0.06) (2.20,2.40)`; `signal_pair_pt_min = 9`;
-`pTbins[0] = single_mu_pt_coarse_bins[0] = 4.5`; `pT_bins_8` 20 bins 4.0→8.0 **with 4.5 an edge
-at index 2**; `pT_bins_150` 16 bins 9→150 and `pair_pt_coarse_bins` 8 bins 9→150 with
-**coarse[k] == fine[2k] for all k** (new coarse edges 9, 12.79, 18.18, 25.85, 36.74, 52.23,
-74.24, 105.53, 150); `_pt_120` 16 bins 9→120. ALL CHECKS PASSED.
-
-**D5 IMPLEMENTATION INVERTED (2026-09-08), on the strength of the coverage-gap report.**
-The first approach kept every histogram name and just re-pointed the plotters at the `_pt_150`
-family. The gap report showed that family is INCOMPLETE: no `_pt_150` twin exists for the minv
-and ΔR 2D histograms (pp and Pb+Pb, plus their `_counts`), for `_no_trig_corr`, for the four
-correction-stage suffixes, for the same-sign crossx, for the 3D minv — **or for the two R_AA
-global 3Ds**, which would have left R_AA on the 9→120 alternative while the cross-section sat on
-9→150. Two coexisting pair-pT binnings is precisely the failure the Binnings rule was written
-after. Booking ~15 new twins would also have cost memory in every job.
-**Inverted instead:** the UNSUFFIXED family — which is already the complete nominal set — is
-rebooked on `pT_bins_150`, and the partial `_pt_150` family is rebooked on `pT_bins_120` with its
-name token renamed to `_pt_120`. The coverage gap disappears because the default now uses the
-family that already covers everything, and no new histogram is created. Partial coverage is
-acceptable for an opt-in alternative view. The 1D `dsigma` family and the template-fit
-`pair_pt_log_150` histograms were ALREADY on `pT_bins_150`, so they are correct untouched and
-their names stay truthful.
-
-**Three bugs caught in my own edits during this step, by verifying rather than assuming:**
-(i) a scripted replacement left the Pb+Pb **R_AA global 3D** with its bin COUNT from
-`pT_bins_150` and its EDGES from `pT_bins_120` — a silently malformed axis on the R_AA input;
-(ii) the Pb+Pb per-centrality nominal block (the family BOTH the TAA-weighted and the counts
-plots are drawn from) was left on the 120 axis; (iii) 10 further retyped `44`-bin pair-η axes in
-the `44, eta_edges.data()` spelling, which the earlier `44, -2.4, 2.4` regex could not see.
-All fixed; a sweep now confirms every `npt`/`ptbins` pair agrees on its vector and no bare `44`
-remains in Pb+Pb code. Earlier in the same step a brace-matcher that ignored string literals cut
-three method signatures and left their bodies — the file was restored from git and the deletion
-redone with a literal-aware matcher.
-
-Compile status: `RDFBasedHistFillingPP`, `RDFBasedHistFillingPbPb`, the three NTuple analysis
-class headers (so the D8 mode-dependent cut compiles), `PythiaTruth`, `PowhegTruth`,
-`PythiaFullsim`, `PowhegFullsim`, `PythiaFullsimOverlay`, `FillMCTrigEffHists` and
-`FillMCTrigEffClosure` all compile with **no errors**; the remaining three classes and a PP/PbPb
-recompile after the inversion are in flight.
+**What a resuming agent must NOT assume:** that the amendment batch after review iteration 3 was
+verified — it was not (R5). And that any MC artefact on disk is usable — the R4 table lists eight
+classes whose outputs are stale until Phase 1 completes, and the axis-edge guards CANNOT detect
+the muon-pT half of that staleness.
