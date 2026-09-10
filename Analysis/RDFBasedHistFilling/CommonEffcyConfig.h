@@ -118,7 +118,7 @@ struct CommonEffcyConfig {
     // binnings of the same quantity coexist unnoticed (.claude/CLAUDE.md §Binnings).
     //
     // It deliberately stops at 1.0 and does NOT need extending: inside the single-b signal region
-    // dR is bounded KINEMATICALLY, dR ~< 2 m_uu / pT^pair <= 2 x 2.9 / 8 = 0.725, and the measured
+    // dR is bounded KINEMATICALLY, dR ~< 2 m_uu / pT^pair <= 2 x 2.9 / 9 = 0.644, and the measured
     // maximum over the pp24 fullsim truth signal region is 0.701.
     std::vector<float> dr_bins_edges_for_reco_effcy = {0.0f, 0.2f, 0.4f, 0.6f, 1.0f};
 };

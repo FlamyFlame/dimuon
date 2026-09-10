@@ -324,12 +324,13 @@ void RDFBasedHistFillingPythiaTruth::FillHistogramsTemplateMinvSignalRegion(){
         // (matched on truth columns; NO ΔR cut — removed, interim nominal). No
         // from_same_b — every category.
         const std::string kin_cuts =
-            "truth_pair_pt > 8 && m1.truth_charge * m1.truth_eta < 2.2 "
-            "&& m2.truth_charge * m2.truth_eta < 2.2";
+            ParamsSet::SignalPairPtCutExpr("truth_pair_pt") + " && " + ParamsSet::FiducialGapCutExpr("m1.truth_charge * m1.truth_eta")
+            + " && " + ParamsSet::FiducialGapCutExpr("m2.truth_charge * m2.truth_eta")
+            + " && " + ParamsSet::PairFiducialEtaCutExpr("truth_pair_eta");
         const std::vector<std::string> minv_template_var = {"minv_zoomin"};
         // (pair pT, pair eta)-binned versions of the minv_zoomin template, for k(m, pair pT, pair eta)
         // measured per R_AA bin (low_mass_dimuon_template_fit.md, "Gate criterion = k(m,pT,eta)").
-        // pair_pt_log_150 = pT_bins_150 (15 log bins 8-150 GeV, matches the R_AA pT axis); pair_eta =
+        // pair_pt_log_150 = pT_bins_150 (16 log bins 9-150 GeV, matches the R_AA pT axis); pair_eta =
         // 24 uniform bins. Same kin_cuts + _sigsel + "weight" as the 1D fill. Hist names produced:
         // h_minv_zoomin_vs_pair_pt_log_150<suffix> and h_minv_zoomin_vs_pair_eta<suffix>.
         const std::vector<std::array<std::string, 2>> minv_template_2D = {
@@ -467,35 +468,39 @@ void RDFBasedHistFillingPythiaTruth::FillHistogramsSignalAcceptance(){
         ROOT::RDF::RNode& df_op = map_at_checked(df_map, "df_op_weighted", "FillHistogramsSignalAcceptance: df_op_weighted");
 
         const std::string signal_cuts =
-            "from_same_b && truth_minv > 1.08 && truth_minv < 2.9 "
-            "&& truth_pair_pt > 8 && m1.truth_charge * m1.truth_eta < 2.2 && m2.truth_charge * m2.truth_eta < 2.2";
+            std::string("from_same_b && truth_minv > 1.08 && truth_minv < 2.9 && ")
+            + ParamsSet::SignalPairPtCutExpr("truth_pair_pt") + " && " + ParamsSet::FiducialGapCutExpr("m1.truth_charge * m1.truth_eta")
+            + " && " + ParamsSet::FiducialGapCutExpr("m2.truth_charge * m2.truth_eta")
+            + " && " + ParamsSet::PairFiducialEtaCutExpr("truth_pair_eta");
 
         auto df_denom = df_op.Filter("from_same_b");
         auto df_num   = df_op.Filter(signal_cuts);
 
-        const int     npt    = static_cast<int>(pms.pT_bins_120.size() - 1);
-        const double* ptbins = pms.pT_bins_120.data();
+        // DEFAULT fine pair-pT axis = pT_bins_150 (16 log bins 9 -> 150 GeV), D5 -- the
+		// unsuffixed acceptance family is the nominal one, mirroring the crossx classes.
+		const int     npt    = static_cast<int>(pms.pT_bins_150.size() - 1);
+        const double* ptbins = pms.pT_bins_150.data();
 
         hist2d_rresultptr_map["h2d_sig_accept_num_pt_eta"] = df_num.Histo2D(
             ROOT::RDF::TH2DModel("h2d_sig_accept_num_pt_eta",
-                ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, 44, -2.4, 2.4),
+                ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
             "truth_pair_pt", "truth_pair_eta", "weight");
 
         hist2d_rresultptr_map["h2d_sig_accept_denom_pt_eta"] = df_denom.Histo2D(
             ROOT::RDF::TH2DModel("h2d_sig_accept_denom_pt_eta",
-                ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, 44, -2.4, 2.4),
+                ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
             "truth_pair_pt", "truth_pair_eta", "weight");
 
-        // pT_bins_150 variants
-        const int     npt150    = static_cast<int>(pms.pT_bins_150.size() - 1);
-        const double* ptbins150 = pms.pT_bins_150.data();
-        hist2d_rresultptr_map["h2d_sig_accept_num_pt_150_eta"] = df_num.Histo2D(
-            ROOT::RDF::TH2DModel("h2d_sig_accept_num_pt_150_eta",
-                ";p_{T}^{pair} [GeV];#eta^{pair}", npt150, ptbins150, 44, -2.4, 2.4),
+        // OPT-IN `_pt_120` ALTERNATIVE VIEW (pT_bins_120 = 16 log bins 9 -> 120 GeV), D5.
+        const int     npt120    = static_cast<int>(pms.pT_bins_120.size() - 1);
+        const double* ptbins120 = pms.pT_bins_120.data();
+        hist2d_rresultptr_map["h2d_sig_accept_num_pt_120_eta"] = df_num.Histo2D(
+            ROOT::RDF::TH2DModel("h2d_sig_accept_num_pt_120_eta",
+                ";p_{T}^{pair} [GeV];#eta^{pair}", npt120, ptbins120, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
             "truth_pair_pt", "truth_pair_eta", "weight");
-        hist2d_rresultptr_map["h2d_sig_accept_denom_pt_150_eta"] = df_denom.Histo2D(
-            ROOT::RDF::TH2DModel("h2d_sig_accept_denom_pt_150_eta",
-                ";p_{T}^{pair} [GeV];#eta^{pair}", npt150, ptbins150, 44, -2.4, 2.4),
+        hist2d_rresultptr_map["h2d_sig_accept_denom_pt_120_eta"] = df_denom.Histo2D(
+            ROOT::RDF::TH2DModel("h2d_sig_accept_denom_pt_120_eta",
+                ";p_{T}^{pair} [GeV];#eta^{pair}", npt120, ptbins120, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
             "truth_pair_pt", "truth_pair_eta", "weight");
     }
     catch (const std::exception& e) {
@@ -572,12 +577,12 @@ void RDFBasedHistFillingPythiaTruth::HistPostProcessExtra(){
         } else {
             std::cerr << "[WARN] HistPostProcessExtra (Pythia): acceptance num/denom not found in hist2D_map." << std::endl;
         }
-        auto it_num150 = hist2D_map.find("h2d_sig_accept_num_pt_150_eta");
-        auto it_den150 = hist2D_map.find("h2d_sig_accept_denom_pt_150_eta");
-        if (it_num150 != hist2D_map.end() && it_den150 != hist2D_map.end()) {
-            TH2D* hratio150 = static_cast<TH2D*>(it_num150->second->Clone("h2d_sig_accept_pt_150_eta"));
-            hratio150->Divide(it_den150->second);
-            hist2D_map["h2d_sig_accept_pt_150_eta"] = hratio150;
+        auto it_num120 = hist2D_map.find("h2d_sig_accept_num_pt_120_eta");
+        auto it_den120 = hist2D_map.find("h2d_sig_accept_denom_pt_120_eta");
+        if (it_num120 != hist2D_map.end() && it_den120 != hist2D_map.end()) {
+            TH2D* hratio120 = static_cast<TH2D*>(it_num120->second->Clone("h2d_sig_accept_pt_120_eta"));
+            hratio120->Divide(it_den120->second);
+            hist2D_map["h2d_sig_accept_pt_120_eta"] = hratio120;
         }
     }
 

@@ -974,7 +974,25 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
     OpenEffcyPtFitFile();
     OpenRecoEffPlaceholderFile(isTight);  // Run 2 reco-eff PLACEHOLDER (eps1*eps2 proxy, per-centrality; WP-matched keys)
 
-    const std::string signal_cuts = "minv > 1.08 && minv < 2.9 && pair_pt > 8 && m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2";
+    // SIGNAL REGION. MIGRATED 2026-09-08 (user decision D1,
+    // docs/tracking/mu_pt45_gap125_pairpt9_adoption.md) from the retired standalone per-muon
+    // `q*eta < 2.2` onto the SAME definition pp24 has used since 2026-08-18: the single-muon
+    // detector-gap fiducial windows on BOTH muons plus the pair-level |eta^pair| < 2.2. pp and
+    // Pb+Pb therefore share a signal region again, which is what makes R_AA formable
+    // (muon_gap_cuts_acceptance.md F17 open defects 1 and 2).
+    // This ALSO removes the `-1.0f` "no fitted turn-on" sentinel of
+    // EvaluateSingleMuonEffcyPtFitted by construction -- option (d) of
+    // pp_trig_eff_highpt_jump.md: the forward window {2.20, 2.40} with the ntuple-level
+    // |eta| < 2.4 makes the effective forward edge 2.20, exactly the top edge of the CONTIGUOUS
+    // coarse q*eta turn-on binning, so every surviving muon has a fitted efficiency and no pair
+    // can be silently dropped with w_trig = 0.
+    // Pair-pT threshold read from ParamsSet (8 -> 9 GeV, user 2026-09-08); never retyped.
+    const std::string signal_cuts =
+        std::string("minv > 1.08 && minv < 2.9 && ")
+        + ParamsSet::SignalPairPtCutExpr("pair_pt") + " && "
+        + ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta") + " && "
+        + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta") + " && "
+        + ParamsSet::PairFiducialEtaCutExpr("pair_eta");
 
     // --- Muon working-point (WP) selection for the DATA crossx spectrum ---
     // NOMINAL WP = TIGHT (isTight=true). Tight ⊂ Medium and the pair-level Tight flag
@@ -1042,8 +1060,13 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
     // low_mass_dimuon_template_fit.md 3e). Reco-eff + unfolding are applied to the extracted
     // signal yield AFTER the fit. The nominal signal-region crossx (below) stays reco+trig.
     if (low_mass_template_calc) {
+        // signal_cuts MINUS the minv window; the gap cuts are kept IDENTICAL to signal_cuts
+        // (migrated onto the fiducial + pair-level windows 2026-09-08 with the signal region).
         const std::string signal_cuts_no_minv =
-            "pair_pt > 8 && m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2";
+            ParamsSet::SignalPairPtCutExpr("pair_pt") + " && "
+            + ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta") + " && "
+            + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta") + " && "
+            + ParamsSet::PairFiducialEtaCutExpr("pair_eta");
         auto attach_dsigma_weight = [&](ROOT::RDF::RNode node) -> ROOT::RDF::RNode {
             return node
                 .Define("q_eta1", "(float)(m1.charge * m1.eta)")
@@ -1136,17 +1159,20 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
         for (int i = 0; i <= n; ++i) e[i] = lo + i * step;
         return e;
     };
-    const auto eta_edges  = make_unif_edges(44, -2.4,  2.4);
+    const auto eta_edges  = make_unif_edges(ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX);
     const auto minv_edges = make_unif_edges(50,  1.0,  3.0);
     const auto dr_edges   = make_unif_edges(50,  0.0, 1.0);
 
     // Store 3D global histogram as RResultPtr (will be evaluated during HistPostProcess)
     {
-        const int     npt    = (int)(pms.pT_bins_120.size() - 1);
-        const double* ptbins = pms.pT_bins_120.data();
+        // DEFAULT fine pair-pT crossx axis = pT_bins_150 (16 log bins 9 -> 150 GeV), D5.
+        // Mirrors RDFBasedHistFillingPP.cxx; see the comment there for why the default lives
+        // on the UNSUFFIXED (complete) family rather than on added _pt_150 twins.
+        const int     npt    = (int)(pms.pT_bins_150.size() - 1);
+        const double* ptbins = pms.pT_bins_150.data();
         hist3d_rresultptr_map["h3d_op_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt"] = df_single_b_crossx_weighted.Histo3D(
             ROOT::RDF::TH3DModel("h3d_op_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt", ";p_{T}^{pair} [GeV];#eta^{pair};Centrality",
-                npt, ptbins, 44, eta_edges.data(), nCtrBins, ctr_bin_edges_double.data()),
+                npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, eta_edges.data(), nCtrBins, ctr_bin_edges_double.data()),
             "pair_pt", "pair_eta", "avg_centrality", "weight_for_RAA_trig_corr");
 
         // --- Same-sign (SS) signal-region 3D yield, for the OS-SS combinatorial
@@ -1180,7 +1206,7 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
             .Define("weight_for_RAA_trig_corr", "weight_for_RAA * w_reco * w_trig");
         hist3d_rresultptr_map["h3d_ss_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt"] = df_ss_weighted.Histo3D(
             ROOT::RDF::TH3DModel("h3d_ss_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt", ";p_{T}^{pair} [GeV];#eta^{pair};Centrality",
-                npt, ptbins, 44, eta_edges.data(), nCtrBins, ctr_bin_edges_double.data()),
+                npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, eta_edges.data(), nCtrBins, ctr_bin_edges_double.data()),
             "pair_pt", "pair_eta", "avg_centrality", "weight_for_RAA_trig_corr");
     }
 
@@ -1195,13 +1221,16 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
         ROOT::RDF::RNode df_crossx_ctr = df_single_b_crossx_weighted.Filter(ctr_filter);
 
         // Store 2D/3D histograms as RResultPtrs (lazy-evaluated, converted during HistPostProcess)
-        const int    npt    = (int)(pms.pT_bins_120.size() - 1);
-        const double* ptbins = pms.pT_bins_120.data();
+        // DEFAULT fine pair-pT crossx axis = pT_bins_150 (D5); the `_pt_120` block further
+        // below is the opt-in alternative. This is the family the TAA-weighted AND counts
+        // plots are drawn from, so it must carry the default.
+        const int    npt    = (int)(pms.pT_bins_150.size() - 1);
+        const double* ptbins = pms.pT_bins_150.data();
 
         // --- Version 1: TAA-weighted crossx histograms with trigger efficiency correction ---
         const std::string h2_eta_name = "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr;
         hist2d_rresultptr_map[h2_eta_name] = df_crossx_ctr.Histo2D(
-            ROOT::RDF::TH2DModel(h2_eta_name.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, 44, -2.4, 2.4),
+            ROOT::RDF::TH2DModel(h2_eta_name.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
             "pair_pt", "pair_eta", "weight_for_RAA_trig_corr");
 
         const std::string h2_minv_name = "h2d_crossx_pair_pt_minv_w_signal_cuts_" + ctr;
@@ -1219,7 +1248,7 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
         // from the T_AA-weighted R_AA-input above. Combined lumi-weighted by the plotter.
         const std::string h2_eta_dsig = "h2d_op_crossx_dsigma_vs_pair_eta_vs_pair_pt_" + ctr;
         hist2d_rresultptr_map[h2_eta_dsig] = df_crossx_ctr.Histo2D(
-            ROOT::RDF::TH2DModel(h2_eta_dsig.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, 44, -2.4, 2.4),
+            ROOT::RDF::TH2DModel(h2_eta_dsig.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
             "pair_pt", "pair_eta", "weight_for_dsigma_trig_corr");
         const std::string h2_minv_dsig = "h2d_crossx_pair_pt_minv_dsigma_" + ctr;
         hist2d_rresultptr_map[h2_minv_dsig] = df_crossx_ctr.Histo2D(
@@ -1232,24 +1261,24 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
 
         const std::string h3_minv_name = "h3d_crossx_minv_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr;
         hist3d_rresultptr_map[h3_minv_name] = df_crossx_ctr.Histo3D(
-            ROOT::RDF::TH3DModel(h3_minv_name.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};m_{#mu#mu} [GeV]", npt, ptbins, 44, eta_edges.data(), 50, minv_edges.data()),
+            ROOT::RDF::TH3DModel(h3_minv_name.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};m_{#mu#mu} [GeV]", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, eta_edges.data(), 50, minv_edges.data()),
             "pair_pt", "pair_eta", "minv", "weight_for_RAA_trig_corr");
 
         const std::string h3_dr_name = "h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr;
         hist3d_rresultptr_map[h3_dr_name] = df_crossx_ctr.Histo3D(
-            ROOT::RDF::TH3DModel(h3_dr_name.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt, ptbins, 44, eta_edges.data(), 50, dr_edges.data()),
+            ROOT::RDF::TH3DModel(h3_dr_name.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, eta_edges.data(), 50, dr_edges.data()),
             "pair_pt", "pair_eta", "dr", "weight_for_RAA_trig_corr");
 
         // differential cross-section 3D (dr x eta x pt) for the dr-lines plot
         const std::string h3_dr_dsig = "h3d_crossx_dr_vs_pair_eta_vs_pair_pt_dsigma_" + ctr;
         hist3d_rresultptr_map[h3_dr_dsig] = df_crossx_ctr.Histo3D(
-            ROOT::RDF::TH3DModel(h3_dr_dsig.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt, ptbins, 44, eta_edges.data(), 50, dr_edges.data()),
+            ROOT::RDF::TH3DModel(h3_dr_dsig.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, eta_edges.data(), 50, dr_edges.data()),
             "pair_pt", "pair_eta", "dr", "weight_for_dsigma_trig_corr");
 
         // --- No-trig-corr version: TAA-weighted but without trigger efficiency correction ---
         const std::string h2_eta_notc = "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr + "_no_trig_corr";
         hist2d_rresultptr_map[h2_eta_notc] = df_crossx_ctr.Histo2D(
-            ROOT::RDF::TH2DModel(h2_eta_notc.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, 44, -2.4, 2.4),
+            ROOT::RDF::TH2DModel(h2_eta_notc.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
             "pair_pt", "pair_eta", "weight_for_RAA");
 
         // --- Correction-stage histograms (raw -> unfolded -> +reco -> +reco+trig) ---
@@ -1257,14 +1286,14 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
         for (const auto& st : CrossxCorrectionStages()) {
             const std::string nm = "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr + st.suffix;
             hist2d_rresultptr_map[nm] = df_crossx_ctr.Histo2D(
-                ROOT::RDF::TH2DModel(nm.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, 44, -2.4, 2.4),
+                ROOT::RDF::TH2DModel(nm.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
                 "pair_pt", "pair_eta", st.weight_col);
         }
 
         // --- Version 2: event-count histograms (raw weight, uniform = 1 for data) ---
         const std::string h2_eta_cnt = "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr + "_counts";
         hist2d_rresultptr_map[h2_eta_cnt] = df_crossx_ctr.Histo2D(
-            ROOT::RDF::TH2DModel(h2_eta_cnt.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};N_{events}", npt, ptbins, 44, -2.4, 2.4),
+            ROOT::RDF::TH2DModel(h2_eta_cnt.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};N_{events}", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
             "pair_pt", "pair_eta", "weight");
 
         const std::string h2_minv_cnt = "h2d_crossx_pair_pt_minv_w_signal_cuts_" + ctr + "_counts";
@@ -1279,47 +1308,48 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
 
         const std::string h3_minv_cnt = "h3d_crossx_minv_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr + "_counts";
         hist3d_rresultptr_map[h3_minv_cnt] = df_crossx_ctr.Histo3D(
-            ROOT::RDF::TH3DModel(h3_minv_cnt.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};m_{#mu#mu} [GeV]", npt, ptbins, 44, eta_edges.data(), 50, minv_edges.data()),
+            ROOT::RDF::TH3DModel(h3_minv_cnt.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};m_{#mu#mu} [GeV]", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, eta_edges.data(), 50, minv_edges.data()),
             "pair_pt", "pair_eta", "minv", "weight");
 
         const std::string h3_dr_cnt = "h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr + "_counts";
         hist3d_rresultptr_map[h3_dr_cnt] = df_crossx_ctr.Histo3D(
-            ROOT::RDF::TH3DModel(h3_dr_cnt.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt, ptbins, 44, eta_edges.data(), 50, dr_edges.data()),
+            ROOT::RDF::TH3DModel(h3_dr_cnt.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, eta_edges.data(), 50, dr_edges.data()),
             "pair_pt", "pair_eta", "dr", "weight");
 
-        // --- pT_bins_150 variants ---
+        // --- OPT-IN `_pt_120` ALTERNATIVE VIEW (pT_bins_120 = 16 log bins 9 -> 120 GeV) ---
+            // Display variant only; does NOT nest inside pair_pt_coarse_bins.
         {
-            const int    npt150    = (int)(pms.pT_bins_150.size() - 1);
-            const double* ptbins150 = pms.pT_bins_150.data();
-            const auto eta_edges150 = make_unif_edges(44, -2.4, 2.4);
-            const auto dr_edges150  = make_unif_edges(50, 0.0, 1.0);
+            const int    npt120    = (int)(pms.pT_bins_120.size() - 1);
+            const double* ptbins120 = pms.pT_bins_120.data();
+            const auto eta_edges120 = make_unif_edges(ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX);
+            const auto dr_edges120  = make_unif_edges(50, 0.0, 1.0);
 
-            const std::string h2_eta_150 = "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pt_150_" + ctr;
-            hist2d_rresultptr_map[h2_eta_150] = df_crossx_ctr.Histo2D(
-                ROOT::RDF::TH2DModel(h2_eta_150.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt150, ptbins150, 44, -2.4, 2.4),
+            const std::string h2_eta_120 = "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pt_120_" + ctr;
+            hist2d_rresultptr_map[h2_eta_120] = df_crossx_ctr.Histo2D(
+                ROOT::RDF::TH2DModel(h2_eta_120.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt120, ptbins120, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
                 "pair_pt", "pair_eta", "weight_for_RAA_trig_corr");
-            const std::string h3_dr_150 = "h3d_crossx_dr_vs_pair_eta_vs_pt_150_w_signal_cuts_" + ctr;
-            hist3d_rresultptr_map[h3_dr_150] = df_crossx_ctr.Histo3D(
-                ROOT::RDF::TH3DModel(h3_dr_150.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt150, ptbins150, 44, eta_edges150.data(), 50, dr_edges150.data()),
+            const std::string h3_dr_120 = "h3d_crossx_dr_vs_pair_eta_vs_pt_120_w_signal_cuts_" + ctr;
+            hist3d_rresultptr_map[h3_dr_120] = df_crossx_ctr.Histo3D(
+                ROOT::RDF::TH3DModel(h3_dr_120.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt120, ptbins120, ParamsSet::N_PAIR_ETA_CROSSX_BINS, eta_edges120.data(), 50, dr_edges120.data()),
                 "pair_pt", "pair_eta", "dr", "weight_for_RAA_trig_corr");
 
-            // pt_150 GENUINE differential cross-section (nb/GeV) variants
-            const std::string h2_eta_150_dsig = "h2d_op_crossx_dsigma_vs_pair_eta_vs_pt_150_" + ctr;
-            hist2d_rresultptr_map[h2_eta_150_dsig] = df_crossx_ctr.Histo2D(
-                ROOT::RDF::TH2DModel(h2_eta_150_dsig.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt150, ptbins150, 44, -2.4, 2.4),
+            // pt_120 GENUINE differential cross-section (nb/GeV) variants
+            const std::string h2_eta_120_dsig = "h2d_op_crossx_dsigma_vs_pair_eta_vs_pt_120_" + ctr;
+            hist2d_rresultptr_map[h2_eta_120_dsig] = df_crossx_ctr.Histo2D(
+                ROOT::RDF::TH2DModel(h2_eta_120_dsig.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt120, ptbins120, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
                 "pair_pt", "pair_eta", "weight_for_dsigma_trig_corr");
-            const std::string h3_dr_150_dsig = "h3d_crossx_dr_vs_pair_eta_vs_pt_150_dsigma_" + ctr;
-            hist3d_rresultptr_map[h3_dr_150_dsig] = df_crossx_ctr.Histo3D(
-                ROOT::RDF::TH3DModel(h3_dr_150_dsig.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt150, ptbins150, 44, eta_edges150.data(), 50, dr_edges150.data()),
+            const std::string h3_dr_120_dsig = "h3d_crossx_dr_vs_pair_eta_vs_pt_120_dsigma_" + ctr;
+            hist3d_rresultptr_map[h3_dr_120_dsig] = df_crossx_ctr.Histo3D(
+                ROOT::RDF::TH3DModel(h3_dr_120_dsig.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt120, ptbins120, ParamsSet::N_PAIR_ETA_CROSSX_BINS, eta_edges120.data(), 50, dr_edges120.data()),
                 "pair_pt", "pair_eta", "dr", "weight_for_dsigma_trig_corr");
 
-            const std::string h2_eta_150_cnt = "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pt_150_" + ctr + "_counts";
-            hist2d_rresultptr_map[h2_eta_150_cnt] = df_crossx_ctr.Histo2D(
-                ROOT::RDF::TH2DModel(h2_eta_150_cnt.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt150, ptbins150, 44, -2.4, 2.4),
+            const std::string h2_eta_120_cnt = "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pt_120_" + ctr + "_counts";
+            hist2d_rresultptr_map[h2_eta_120_cnt] = df_crossx_ctr.Histo2D(
+                ROOT::RDF::TH2DModel(h2_eta_120_cnt.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt120, ptbins120, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
                 "pair_pt", "pair_eta", "weight");
-            const std::string h3_dr_150_cnt = "h3d_crossx_dr_vs_pair_eta_vs_pt_150_w_signal_cuts_" + ctr + "_counts";
-            hist3d_rresultptr_map[h3_dr_150_cnt] = df_crossx_ctr.Histo3D(
-                ROOT::RDF::TH3DModel(h3_dr_150_cnt.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt150, ptbins150, 44, eta_edges150.data(), 50, dr_edges150.data()),
+            const std::string h3_dr_120_cnt = "h3d_crossx_dr_vs_pair_eta_vs_pt_120_w_signal_cuts_" + ctr + "_counts";
+            hist3d_rresultptr_map[h3_dr_120_cnt] = df_crossx_ctr.Histo3D(
+                ROOT::RDF::TH3DModel(h3_dr_120_cnt.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt120, ptbins120, ParamsSet::N_PAIR_ETA_CROSSX_BINS, eta_edges120.data(), 50, dr_edges120.data()),
                 "pair_pt", "pair_eta", "dr", "weight");
         }
     }
@@ -1331,9 +1361,13 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
     // reco+trig corrected), lumi-combined at plot time (ΣN/ΣL). IDENTICAL selection/
     // binning/weight for OS and SS so D_OS - D_SS is a clean combinatoric subtraction.
     {
-        // signal_cuts MINUS the two minv-window conditions; everything else identical.
+        // signal_cuts MINUS the minv window; the gap cuts are kept IDENTICAL to signal_cuts
+        // (migrated onto the fiducial + pair-level windows 2026-09-08 with the signal region).
         const std::string signal_cuts_no_minv =
-            "pair_pt > 8 && m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2";
+            ParamsSet::SignalPairPtCutExpr("pair_pt") + " && "
+            + ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta") + " && "
+            + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta") + " && "
+            + ParamsSet::PairFiducialEtaCutExpr("pair_eta");
 
         // Attach the full per-pair efficiency chain + differential cross-section weight.
         // Both OS and SS use the SAME OR-logic pair trigger ε₁+ε₂−ε₁·ε₂ and the

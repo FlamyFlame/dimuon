@@ -175,7 +175,8 @@ struct DrCorrectionCascadeEvaluator {
             DrCorrectionEvaluator::CellLookupEta(pair_eta, tiers.front()->eta_folded));
         // OUTSIDE THE CELL GRID is its own outcome and must be counted as such. It is NOT the
         // raw-bin branch: the pair gets eps_dR = 1 (no correction) because no cell covers it --
-        // typically pair pT below the 8 GeV bottom edge, which the signal region excludes but the
+        // typically pair pT below the coarse grid's bottom edge (ParamsSet::pair_pt_coarse_bins
+        // .front(), 9 GeV since 2026-09-08), which the signal region excludes but the
         // GENERIC sample does not. Lumping the two together made the census read "53 % placeholder"
         // for a map with one placeholder cell.
         if (iy < 1 || iy > g->GetNbinsX() || iz < 1 || iz > g->GetNbinsY()) {
@@ -217,7 +218,8 @@ struct DrCorrectionCascadeEvaluator {
                   << "%  <-- the cascade's per-PAIR placeholder share; the per-method lines below "
                      "count each sub-evaluator's OWN calls, which is a different question), "
                   << n_outside << " OUTSIDE the cell grid (" << pct(n_outside)
-                  << "%, eps_dR = 1 -- pairs the correction does not cover, e.g. pair pT < 8 GeV)"
+                  << "%, eps_dR = 1 -- pairs the correction does not cover, e.g. pair pT < "
+                  << ParamsSet{}.pair_pt_coarse_bins.front() << " GeV)"
                   << std::endl;
         for (size_t t = 0; t < tiers.size(); ++t)
             if (t == 0 || n_tier[t].load() > 0) tiers[t]->PrintStats();

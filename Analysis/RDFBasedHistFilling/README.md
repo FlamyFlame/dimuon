@@ -61,7 +61,10 @@
 
 **Critical**: every named binning used in any JSON must be registered in `hist_binning_map`.  The
 base class `BuildHistBinningMapBaseCommon()` registers `pT_bins_40`, `pT_bins_80`, and
-`pT_bins_120` (log-spaced, 15 bins 8–120 GeV).  Dataset-specific binnings (e.g.
+`pT_bins_150` (log-spaced, **16 bins 9–150 GeV — the DEFAULT fine pair-pT crossx axis** since
+2026-09-08, chosen so every `pair_pt_coarse_bins` edge is also a fine edge: exactly two fine
+bins per coarse cell) and `pT_bins_120` (log-spaced, 16 bins 9–120 GeV — the opt-in `_pt_120`
+ALTERNATIVE view, which deliberately does NOT nest and must never bin a correction).  Dataset-specific binnings (e.g.
 `pT_bins_single_muon`, `eta_bins_trig_effcy`, centrality-dependent bins) are added via
 `BuildHistBinningMapDataCommon()` / `BuildHistBinningMapPbPbExtra()`.  If you add a new named
 binning to a JSON you *must* also register it in the appropriate `Build*` function; otherwise
@@ -75,7 +78,7 @@ key `"pair_pt_log"`.
 
 ### Hardcoded 2D/3D histograms
 Crossx 2D/3D histograms (e.g. `h2d_crossx_pair_pt_pair_eta_*`) are built directly in
-`FillHistogramsCrossx()` using `pms.pT_bins_120.data()` — they bypass the JSON mechanism
+`FillHistogramsCrossx()` using `pms.pT_bins_150.data()` — they bypass the JSON mechanism
 entirely.
 
 ### `TH3DModel` constructor limitation (ROOT ≥ 6.34)

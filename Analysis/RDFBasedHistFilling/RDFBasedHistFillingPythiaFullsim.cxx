@@ -20,7 +20,7 @@
 // SAME cuts -- the MC in TRUTH quantities:
 //   SIGNAL  : the data signal region. On the MC side that is exactly the pre-existing
 //             `_single_b_pass_signal_truth` filter (from_same_b + `pass_signal_truth`, which is
-//             already bit-for-bit the data signal region: m_uu in (1.08, 2.9), pair pT > 8 GeV,
+//             already bit-for-bit the data signal region: m_uu in (1.08, 2.9), pair pT > ParamsSet::signal_pair_pt_min (9 GeV),
 //             fiducial gap cut on BOTH muons). No new cut is introduced here.
 //   GENERIC : all OS (resp. SS) pairs + the fiducial gap cut on both muons, and NOTHING else --
 //             no mass window, no pair-pT threshold, no `from_same_b`. The MC mirror of the data
@@ -43,7 +43,7 @@ const std::vector<std::string>& McVsDataVar1Ds(){
 }
 
 // FULL-RANGE dR and dphi. GENERIC family ONLY: inside the signal region dR is kinematically
-// bounded (m < 2.9 GeV with pair pT > 8 GeV forces dR ~< 2m/pT = 0.725), so a full-range view
+// bounded (m < 2.9 GeV with pair pT > ParamsSet::signal_pair_pt_min (9 GeV) forces dR ~< 2m/pT = 0.644), so a full-range view
 // there carries nothing the zoom-in does not -- but the GENERIC family spans the away-side peak
 // at dR ~ pi, which is exactly what the generic DR and Dphi panels exist to show, and without
 // these two the Pythia curve was simply absent from those panels.
@@ -56,7 +56,9 @@ const std::vector<std::string>& McVsDataGenericOnlyVar1Ds(){
     return v;
 }
 
-// The MC partner of the data's `h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts`: pair pT on
+// The MC partner of the data's `h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts` (the UNSUFFIXED default family, booked
+// on ParamsSet::pT_bins_150 = 16 log bins 9->150 GeV since 2026-09-08; `_pt_120` is now the
+// opt-in 9->120 alternative): pair pT on
 // `pT_bins_150` x pair eta on `pair_eta_crossx`. SIGNAL family only.
 const std::vector<std::array<std::string,2>>& McVsDataVar2Ds(){
     static const std::vector<std::array<std::string,2>> v = {
@@ -242,7 +244,7 @@ void RDFBasedHistFillingPythiaFullsim::BuildHistBinningMapPythiaFullsimExtra(){
     // dR axis = the projection edges the reco-efficiency views have used since the pipeline was
     // written (`dr_bins_edges_for_reco_effcy`), promoted to a histogram axis. It is NOT extended
     // beyond 1.0 and does not need to be: inside the signal region dR is KINEMATICALLY bounded,
-    // dR ~< 2 m_uu / pT^pair <= 2 * 2.9 / 8 = 0.725, and the measured maximum over the pp24
+    // dR ~< 2 m_uu / pT^pair <= 2 * 2.9 / 9 = 0.644, and the measured maximum over the pp24
     // fullsim single-b truth signal region is 0.701. Nothing falls above the top edge.
     {
         std::vector<double> dr_edges(dr_bins_edges_for_reco_effcy.begin(),
@@ -293,9 +295,10 @@ void RDFBasedHistFillingPythiaFullsim::CreateBaseRDFsPythiaFullsimExtra(){
 
         auto node_sig = node
             .Define("pass_signal_truth",
-                "truth_minv > 1.08 && truth_minv < 2.9 && truth_pair_pt > 8 && " + gap_truth)
+                "truth_minv > 1.08 && truth_minv < 2.9 && " + ParamsSet::SignalPairPtCutExpr("truth_pair_pt") + " && " + gap_truth)
             .Define("pass_signal_reco",
-                "(m1.reco_match && m2.reco_match) ? (minv > 1.08 && minv < 2.9 && pair_pt > 8 && "
+                "(m1.reco_match && m2.reco_match) ? (minv > 1.08 && minv < 2.9 && "
+                + ParamsSet::SignalPairPtCutExpr("pair_pt") + " && "
                 + gap_reco + ") : false");
 
         df_map.emplace(df_name + "_pass_medium_weighted",   node_sig.Filter("pair_pass_medium"));

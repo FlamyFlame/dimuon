@@ -26,11 +26,14 @@
 //   * pp24 books its pair-eta axis on ParamsSet::N_PAIR_ETA_CROSSX_BINS = 48 over [-2.4, 2.4],
 //     width exactly 0.1, on which 2.2 IS a bin edge -> unaffected.
 //   * Pb+Pb (RDFBasedHistFillingPbPb.cxx) and the TRUTH signal-acceptance producers
-//     (RDFBasedHistFillingPythiaTruth.cxx, RDFBasedHistFillingPowhegTruth.cxx) still book a
+//     (RDFBasedHistFillingPythiaTruth.cxx, RDFBasedHistFillingPowhegTruth.cxx) USED to book a
 //     RETYPED `44, -2.4, 2.4` axis, width 0.10909..., on which 2.2 is NOT a bin edge: the outer
-//     panels would quietly stop at +-2.29091, discarding pairs in |eta^pair| in [2.29091, 2.4]
-//     that NO cut in those samples removes (they carry neither the fiducial nor the pair-level
-//     cut), while still being labelled (2.0, 2.2).
+//     panels quietly stopped at +-2.29091, discarding pairs in |eta^pair| in [2.29091, 2.4]
+//     that no cut in those samples removed, while still being labelled (2.0, 2.2).
+//     ALL THREE were migrated onto N_PAIR_ETA_CROSSX_BINS on 2026-09-08
+//     (mu_pt45_gap125_pairpt9_adoption.md D1/D7), so the CODE no longer produces such an axis.
+//     This guard stays, and is now aimed at STALE FILES: any histogram written before that date
+//     still carries the 44-bin axis, and reading one must fail rather than mislabel.
 // So: fail loudly. The fix for those samples is to book the axis on N_PAIR_ETA_CROSSX_BINS AND to
 // adopt the fiducial + pair-level cuts, rerunning their hist filling in the SAME step
 // (docs/signal_selection_change_impact.md; docs/tracking/muon_gap_cuts_acceptance.md F18).

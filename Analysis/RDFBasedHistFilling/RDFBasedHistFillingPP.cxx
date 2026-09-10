@@ -589,7 +589,7 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
     // EvaluateSingleMuonEffcyPtFitted stays unreachable. Blast radius:
     // docs/signal_selection_change_impact.md.
     const std::string signal_cuts =
-        std::string("minv > 1.08 && minv < 2.9 && pair_pt > 8 && ")
+        std::string("minv > 1.08 && minv < 2.9 && ") + ParamsSet::SignalPairPtCutExpr("pair_pt") + " && "
         + ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta") + " && "
         + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta") + " && "
         + ParamsSet::PairFiducialEtaCutExpr("pair_eta");
@@ -657,8 +657,16 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
 
     // Store RResultPtrs (lazy-evaluated) instead of immediate clones.
     // They will be evaluated during HistPostProcess() and converted to raw pointers.
-    const int    npt   = (int)(pms.pT_bins_120.size() - 1);
-    const double* ptbins = pms.pT_bins_120.data();
+    // DEFAULT fine pair-pT crossx axis = pT_bins_150 (16 log bins 9 -> 150 GeV), user
+    // decision D5 (docs/tracking/mu_pt45_gap125_pairpt9_adoption.md). Chosen so every
+    // pair_pt_coarse_bins edge IS a fine edge (coarse k = fine 2k), which the 9 -> 120
+    // alternative below deliberately does NOT satisfy.
+    // The UNSUFFIXED family is the complete nominal set (minv, dR, no_trig_corr, the
+    // correction stages, same-sign, the 3Ds and the R_AA globals), so putting the default
+    // here -- rather than adding _pt_150 twins for each -- is what keeps R_AA and the
+    // cross-section on ONE pair-pT binning.
+    const int    npt   = (int)(pms.pT_bins_150.size() - 1);
+    const double* ptbins = pms.pT_bins_150.data();
 
     // --- LOW-MASS TEMPLATE-FIT pass (low_mass_template_calc) ---
     // Reads _no_res_cut (resonances PRESENT; selected in SetIOPathsHook), distinct output.
@@ -673,7 +681,7 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         // -- both muons' q*eta windows AND the pair-level |eta^pair| < 2.2, all read from
         // ParamsSet.
         const std::string signal_cuts_no_minv =
-            std::string("pair_pt > 8 && ")
+            ParamsSet::SignalPairPtCutExpr("pair_pt") + " && "
             + ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta") + " && "
             + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta") + " && "
             + ParamsSet::PairFiducialEtaCutExpr("pair_eta");
@@ -710,7 +718,7 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         hist2d_rresultptr_map["h2d_crossx_minv_0_4_vs_pair_eta_ss_dsigma"] = df_ss_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_4_vs_pair_eta_ss_dsigma", ";#eta^{pair};m_{#mu#mu} [GeV]", 24, -2.4, 2.4, 50, 0.0, 4.0), "pair_eta", "minv", "crossx_weight_trig_only");
 
         // EXTENDED-MASS 0-20 GeV (40 bins, matching the extended_mass_control_region MC by-origin
-        // histos) for the THStack data-vs-MC + control-region study: 1D pair-pT-integrated (pair_pt>8)
+        // histos) for the THStack data-vs-MC + control-region study: 1D pair-pT-integrated (pair_pt > ParamsSet::signal_pair_pt_min)
         // and 2D vs the NOMINAL COARSE pair-pT bins (pms.pair_pt_coarse_bins). Same signal_cuts_no_minv
         // selection + trigger-only reco-level weight. In mixed_event_template mode these become the
         // extended mixed-event combinatoric T_mix (from the scrambled input).
@@ -722,13 +730,13 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         hist2d_rresultptr_map["h2d_crossx_minv_0_20_vs_pair_pt_coarse_ss_dsigma"] = df_ss_t.Histo2D(ROOT::RDF::TH2DModel("h2d_crossx_minv_0_20_vs_pair_pt_coarse_ss_dsigma", ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", nptc, ptc, 40, 0.0, 20.0), "pair_pt", "minv", "crossx_weight_trig_only");
 
         // NO-PAIR-SELECTION trigger-corrected 0-4 GeV data dsigma (muon-level selection only,
-        // inherent in the ntuple: pt>4, |eta|<2.4, quality, dp/p). NO pair_pt / q*eta cut. Same
+        // inherent in the ntuple: pt>4.5, |eta|<2.4, quality, dp/p). NO pair_pt / q*eta cut. Same
         // TRIGGER-ONLY reco-level weight (crossx_weight_trig_only = 1/L * w_trig, NO reco-eff) as
         // above, for the bkg_mc_provenance data-vs-fullsim comparison: the Pythia fullsim MC uses
         // RECONSTRUCTED quantities and therefore already carries the same reconstruction efficiency,
         // so correcting the data for reco-eff would invalidate the data-vs-MC comparison (2026-07-01).
         // CAVEAT: 1/eff_trig is only well defined on the trigger plateau (pair pT >~ 8); for soft
-        // muons near the pT>4 threshold the trig-eff placeholder clamps, so the corrected soft
+        // muons near the pT>4.5 threshold the trig-eff placeholder clamps, so the corrected soft
         // (low-mass) spectrum carries turn-on/clamp artifacts -- approximate there.
         // "_nosel" = no SIGNAL-REGION cuts (no minv window, no pair-pT threshold). It is NOT "no
         // cuts at all": these histograms are trigger-corrected, and the single-muon turn-on is
@@ -780,7 +788,8 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
     // Every axis is requested BY NAME from hist_binning_map (registered once in
     // RDFBasedHistFillingBaseClass::BuildHistBinningMapBaseCommon) -- the pair-eta axis is
     // "pair_eta_crossx", the very edge vector the 2D/3D views use, and the pair-pT axis is
-    // "pT_bins_150", the axis of h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts. No binning is
+    // "pT_bins_150", the axis of the UNSUFFIXED default family
+    // (h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts). No binning is
     // retyped in this file.
     //
     // NOT scaled by bin width at fill time: like h1d_crossx_minv_0_4_*_dsigma, these hold
@@ -847,48 +856,6 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         ROOT::RDF::TH2DModel("h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
         "pair_pt", "pair_eta");
 
-    // ==== TEMPORARY DIAGNOSTIC — muon reconstructed pT > 4.5 GeV cut study ====================
-    // docs/tracking/muon_pt45_cut_diagnostic.md. Human decision pending on raising the muon
-    // reconstructed-pT cut from the current 4 GeV (NTupleProcessingCode/DimuonDataAlgCoreT.c:596,
-    // "m1.pt < 4 || m2.pt < 4") to 4.5 GeV. Diagnosed here with an ADDITIVE filter on top of the
-    // unchanged signal region -- NOT a change to signal_cuts or to any nominal histogram above.
-    // If the 4.5 GeV cut is adopted, the permanent change belongs in NTuple processing (this file
-    // + the analogous truth_pt cut in NTupleProcessingCode/{Pythia,Powheg}FullSimExtras.c for MC),
-    // every data and MC result must be rerun, and this block must be DELETED.
-    ROOT::RDF::RNode df_single_b_crossx_diag_mupt45 =
-        df_single_b_crossx_weighted.Filter("m1.pt > 4.5 && m2.pt > 4.5", "diag_mupt45_cut");
-    hist2d_rresultptr_map["h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts_diag_mupt45"] =
-        df_single_b_crossx_diag_mupt45.Histo2D(
-            ROOT::RDF::TH2DModel("h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts_diag_mupt45", ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
-            "pair_pt", "pair_eta");
-
-    // ==== TEMPORARY DIAGNOSTIC — same 4.0-vs-4.5 GeV comparison, LOG BINS FROM 9 GeV ==========
-    // docs/tracking/muon_pt45_cut_diagnostic.md. User-requested rebinning VARIANT of the SAME
-    // pT>4/pT>4.5 comparison above: log-spaced bins starting at 9 GeV instead of 8, SAME MAX
-    // (120 GeV) and SAME number of bins (15) as ParamsSet::pT_bins_120. This does NOT touch or
-    // re-derive the canonical pT_bins_120 axis -- it is an opt-in, suffixed variant
-    // (`.claude/CLAUDE.md` §Binnings item 4), additive alongside (not replacing) the
-    // `_diag_mupt45` histograms above. Diagnostic/temporary like the rest of this block --
-    // DELETE if the 4.5 GeV cut is adopted.
-    const int npt_from9 = (int)(pms.pT_bins_120.size() - 1);
-    std::vector<double> ptbins_from9_vec;
-    {
-        const double lo = 9.0, hi = pms.pT_bins_120.back();
-        const double logLo = std::log10(lo), logHi = std::log10(hi);
-        const double step = (logHi - logLo) / npt_from9;
-        for (int i = 0; i <= npt_from9; ++i) ptbins_from9_vec.push_back(std::pow(10, logLo + i * step));
-    }
-    const double* ptbins_from9 = ptbins_from9_vec.data();
-
-    hist2d_rresultptr_map["h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts_logbins_from9"] =
-        df_single_b_crossx_weighted.Histo2D(
-            ROOT::RDF::TH2DModel("h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts_logbins_from9", ";p_{T}^{pair} [GeV];#eta^{pair}", npt_from9, ptbins_from9, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
-            "pair_pt", "pair_eta");
-    hist2d_rresultptr_map["h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts_diag_mupt45_logbins_from9"] =
-        df_single_b_crossx_diag_mupt45.Histo2D(
-            ROOT::RDF::TH2DModel("h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts_diag_mupt45_logbins_from9", ";p_{T}^{pair} [GeV];#eta^{pair}", npt_from9, ptbins_from9, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
-            "pair_pt", "pair_eta");
-    // ==== END TEMPORARY DIAGNOSTIC =============================================================
 
     // Correction-stage histograms (raw -> unfolded -> +reco -> +reco+trig) for the
     // primary pair_pt x pair_eta differential, so each correction's impact is
@@ -940,25 +907,30 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         ROOT::RDF::TH3DModel("h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt, ptbins, n_eta_crossx, eta_edges, 50, dr_edges.data()),
         "pair_pt", "pair_eta", "dr", "crossx_weight_trig_corr");
 
-    // --- pT_bins_150 variants ---
+    // --- OPT-IN `_pt_120` ALTERNATIVE VIEW (pT_bins_120 = 16 log bins 9 -> 120 GeV) ---
+        // Display variant only: it does NOT nest inside pair_pt_coarse_bins, so it must
+        // never bin a correction. Partial coverage is intentional -- the default
+        // unsuffixed family above carries the complete set.
     {
-        const int    npt150    = (int)(pms.pT_bins_150.size() - 1);
-        const double* ptbins150 = pms.pT_bins_150.data();
-        const auto dr_edges150  = make_unif_edges(50, 0.0, 1.0);
+        const int    npt120    = (int)(pms.pT_bins_120.size() - 1);
+        const double* ptbins120 = pms.pT_bins_120.data();
+        const auto dr_edges120  = make_unif_edges(50, 0.0, 1.0);
 
-        hist2d_rresultptr_map["h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts"] = df_single_b_crossx_weighted.Histo2D(
-            ROOT::RDF::TH2DModel("h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair}", npt150, ptbins150, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
+        hist2d_rresultptr_map["h2d_crossx_pt_120_pair_eta_binned_w_signal_cuts"] = df_single_b_crossx_weighted.Histo2D(
+            ROOT::RDF::TH2DModel("h2d_crossx_pt_120_pair_eta_binned_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair}", npt120, ptbins120, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
             "pair_pt", "pair_eta", "crossx_weight_trig_corr");
-        // The UNWEIGHTED twin of h2d_crossx_pt_150_..., same pattern as
-        // h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts above but on the pT_bins_150 axis:
-        // SAME node, no weight column, so a bin above the pT_bins_120 axis's 120 GeV ceiling
-        // (which h2d_counts_... cannot resolve) has a direct Poisson raw count instead of only
-        // an inference from the neighboring pT_bins_120 axis.
-        hist2d_rresultptr_map["h2d_counts_pt_150_pair_eta_binned_w_signal_cuts"] = df_single_b_crossx_weighted.Histo2D(
-            ROOT::RDF::TH2DModel("h2d_counts_pt_150_pair_eta_binned_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair}", npt150, ptbins150, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
+        // The UNWEIGHTED twin of h2d_crossx_pt_120_..., same pattern as
+        // h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts above but on the pT_bins_120 axis:
+        // SAME node, no weight column, so the alternative view carries its own direct Poisson
+        // raw counts rather than being inferred from the default axis's bins.
+        // (Before 2026-09-08 this comment argued the opposite way round, because the 150 axis
+        // was then the OPT-IN one and reached beyond the default's 120 GeV ceiling. The roles
+        // are now swapped: the default reaches 150 and this alternative stops at 120.)
+        hist2d_rresultptr_map["h2d_counts_pt_120_pair_eta_binned_w_signal_cuts"] = df_single_b_crossx_weighted.Histo2D(
+            ROOT::RDF::TH2DModel("h2d_counts_pt_120_pair_eta_binned_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair}", npt120, ptbins120, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
             "pair_pt", "pair_eta");
-        hist3d_rresultptr_map["h3d_crossx_dr_vs_pair_eta_vs_pt_150_w_signal_cuts"] = df_single_b_crossx_weighted.Histo3D(
-            ROOT::RDF::TH3DModel("h3d_crossx_dr_vs_pair_eta_vs_pt_150_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt150, ptbins150, ParamsSet::N_PAIR_ETA_CROSSX_BINS, pms.pair_eta_crossx_bins.data(), 50, dr_edges150.data()),
+        hist3d_rresultptr_map["h3d_crossx_dr_vs_pair_eta_vs_pt_120_w_signal_cuts"] = df_single_b_crossx_weighted.Histo3D(
+            ROOT::RDF::TH3DModel("h3d_crossx_dr_vs_pair_eta_vs_pt_120_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", npt120, ptbins120, ParamsSet::N_PAIR_ETA_CROSSX_BINS, pms.pair_eta_crossx_bins.data(), 50, dr_edges120.data()),
             "pair_pt", "pair_eta", "dr", "crossx_weight_trig_corr");
     }
 
@@ -972,7 +944,7 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         // -- both muons' q*eta windows AND the pair-level |eta^pair| < 2.2, all read from
         // ParamsSet.
         const std::string signal_cuts_no_minv =
-            std::string("pair_pt > 8 && ")
+            ParamsSet::SignalPairPtCutExpr("pair_pt") + " && "
             + ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta") + " && "
             + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta") + " && "
             + ParamsSet::PairFiducialEtaCutExpr("pair_eta");
