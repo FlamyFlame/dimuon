@@ -23,6 +23,7 @@ do_hi2015 = False
 do_hi2023 = False
 do_hi2024 = False
 do_hi2025 = False
+do_hi2026 = False
 
 # overlay
 do_pp_MC_fullsim_17 = False
@@ -40,15 +41,16 @@ _run_mode_arg = (os.environ.get("TRIGRATES_RUNMODE", "") or "").strip().lower()
 
 
 def _set_run_mode(mode):
-	global do_hi2023, do_hi2024, do_hi2025, do_pp2024, do_pp_MC_fullsim_24
+	global do_hi2023, do_hi2024, do_hi2025, do_hi2026, do_pp2024, do_pp_MC_fullsim_24
 	do_hi2023 = (mode == "hi2023")
 	do_hi2024 = (mode == "hi2024")
 	do_hi2025 = (mode == "hi2025")
+	do_hi2026 = (mode == "hi2026")
 	do_pp2024 = (mode == "pp2024")
 	do_pp_MC_fullsim_24 = (mode == "ppmcfullsim2024")
 
 
-if _run_mode_arg in ("hi2023", "hi2024", "hi2025", "pp2024", "ppmcfullsim2024"):
+if _run_mode_arg in ("hi2023", "hi2024", "hi2025", "hi2026", "pp2024", "ppmcfullsim2024"):
 	_set_run_mode(_run_mode_arg)
 elif _files_input_arg:
 	if "data23_hi" in _files_input_arg:
@@ -57,6 +59,8 @@ elif _files_input_arg:
 		_set_run_mode("hi2024")
 	elif "data25_hi" in _files_input_arg:
 		_set_run_mode("hi2025")
+	elif "data26_hi" in _files_input_arg:
+		_set_run_mode("hi2026")
 	elif "data24_5p36tev" in _files_input_arg or "data24_pp" in _files_input_arg:
 		_set_run_mode("pp2024")
 else:
@@ -67,6 +71,8 @@ else:
 		_set_run_mode("hi2024")
 	elif _run_dir == "run_25hi":
 		_set_run_mode("hi2025")
+	elif _run_dir == "run_26hi":
+		_set_run_mode("hi2026")
 	elif _run_dir == "run_24pp":
 		_set_run_mode("pp2024")
 
@@ -78,7 +84,8 @@ if (do_hi2018 or
 	 do_hi2015 or
 	 do_hi2023 or
 	 do_hi2024 or
-	 do_hi2025
+	 do_hi2025 or
+	 do_hi2026
 	 ):
 	is_HION = True
 # ------------------------------------------------------------
@@ -87,7 +94,7 @@ if (do_hi2018 or
 # ------------------------------------------------------------
 # for Run3 data
 is_Run3 = False
-if (do_hi2023 or do_hi2024 or do_hi2025 or do_pp2024 or do_pp_MC_fullsim_24):
+if (do_hi2023 or do_hi2024 or do_hi2025 or do_hi2026 or do_pp2024 or do_pp_MC_fullsim_24):
 	is_Run3 = True
 # ------------------------------------------------------------
 
@@ -114,7 +121,7 @@ use_trigger = (not is_MC) or mc_has_trigger_sim
 
 
 # CA config here is intended for modern Run-3-style configurations
-if not (do_hi2023 or do_hi2024 or do_hi2025 or do_pp2024 or do_pp_MC_fullsim_24):
+if not (do_hi2023 or do_hi2024 or do_hi2025 or do_hi2026 or do_pp2024 or do_pp_MC_fullsim_24):
 	print("*"*50, "\nTrigRates_CA.py is for modern Run-3 style samples. Use TrigRates_JO.py for older samples.\n", "*"*50)
 	exit()
 
@@ -160,6 +167,25 @@ elif do_hi2025:
 	# data25_hi Pb+Pb HardProbes AOD (periods R/S/T, runs 510493+).
 	# Files are not yet staged at CERN EOS; update path once staged or use xrootd/Rucio.
 	InputFile = "/eos/atlas/atlastier0/rucio/data25_hi/physics_HardProbes/00510493/data25_hi.00510493.physics_HardProbes.merge.AOD.f1655_m2272/data25_hi.00510493.physics_HardProbes.merge.AOD.f1655_m2272._lb0001._0001.1"
+	Muon_triggers = ["HLT_mu4_L1MU3V",
+									 "HLT_mu6_L1MU3V",
+									 "HLT_mu6_L1MU5VF",
+									 "HLT_mu8_L1MU5VF",
+									 "HLT_mu10_L1MU8F",
+									 "HLT_mu10_L1MU5VF"]
+	DiMuon_triggers = ["HLT_2mu4_L12MU3V", "HLT_mu4_mu4noL1_L1MU3V"]
+elif do_hi2026:
+	RunYear = 2026
+	# 2026 Pb+Pb GRL: periods J+K, defect tag DetStatus-v144-pro58-01, ignoring
+	# PIXEL_PERFORMANCE_INTOLERABLE / TRIG_HLT_IDT_BSPOT_INVALID_STATUS /
+	# ID_IBL_TRACKCOVERAGE_SEVERE / PIXEL_IBL_DISABLED  (35 runs, 522041-523437).
+	GRL = ["physics_HI2026_50ns_noIBL.xml"]
+	# data26_hi Pb+Pb HardProbes AOD.  Local-test default only; the grid job always
+	# overrides this through --filesInput=%IN.
+	InputFile = "PLACEHOLDER_DATA26_AOD"
+	# Same muon / dimuon chain lists as the other Run-3 Pb+Pb years (cf. do_hi2025):
+	# a different chain set would give 2026 a different effective trigger efficiency
+	# from 2023/24/25 and break the year combination.
 	Muon_triggers = ["HLT_mu4_L1MU3V",
 									 "HLT_mu6_L1MU3V",
 									 "HLT_mu6_L1MU5VF",
