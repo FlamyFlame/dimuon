@@ -1047,7 +1047,7 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
             const std::string nm = CellName("r", step, iy, iz);
 
             // ONE DECIMAL, as the canvases and the PNG file names already use: at "%.0f" the
-            // log edges 11.54 / 16.65 / 24.01 / 34.64 / 49.97 / 72.08 / 103.98 printed as
+            // log edges 12.79 / 18.18 / 25.85 / 36.74 / 52.23 / 74.24 / 105.53 printed as
             // 12 / 17 / 24 / 35 / 50 / 72 / 104, so the human-readable report named cells the
             // figures next to it call 11.5 / 16.6 / 24.0 ... -- two namings of one binning,
             // exactly the drift .claude/CLAUDE.md 'Binnings' exists to stop. Label only; no

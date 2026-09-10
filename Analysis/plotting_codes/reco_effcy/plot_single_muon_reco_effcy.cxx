@@ -104,7 +104,9 @@ void plot_single_muon_reco_effcy(
     const QEtaBinning& qeta_bins = ecfg.q_eta_proj_ranges_coarse_incl_gap;
     const int nQEta = (int)qeta_bins.size();
 
-    const std::vector<double> pt_edges = {4, 5, 6, 7, 8, 10, 12, 15, 20, 30, 50, 80, 120};
+    // Low edge follows the muon cut (4 -> 4.5, 2026-09-08); the truth denominator is gated at
+// 4.5, so a first bin starting at 4 would be partly empty and dilute the efficiency there.
+    const std::vector<double> pt_edges = {4.5, 5, 6, 7, 8, 10, 12, 15, 20, 30, 50, 80, 120};
     const int nPtBins = (int)pt_edges.size() - 1;
 
     std::vector<CtrBinDef> ctr_bins;

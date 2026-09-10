@@ -8,8 +8,9 @@
 // muon_pairs trees directly, structured after
 //   plotting_codes/single_b_analysis/plot_sig_accept_cutflow_above_60GeV.cxx
 //
-// Three plots (each TH2 colz, x = pair pT log axis w/ analysis pT_bins_120
-// binning, y = DeltaR uniform 0-1, 50 bins; PNG only):
+// Three plots (each TH2 colz, x = pair pT log axis on the NOMINAL cross-section
+// binning ParamsSet::pT_bins_150 (16 log bins, 9 -> 150 GeV), y = DeltaR uniform
+// 0-1, 50 bins; PNG only):
 //   1. pythia_truth_dr_vs_pair_pt.png  (Pythia evgen single-b, opposite-sign, weighted)
 //   2. pp24_data_dr_vs_pair_pt.png     (pp24 data, raw counts)
 //   3. pbpb_data_dr_vs_pair_pt.png     (PbPb 23+24+25 combined, raw counts)
@@ -22,6 +23,7 @@
 #include "../../MuonObjectsParamsAndHelpers/MuonPairPythia.h"  // truth pair struct (pulls in MuonPairPbPb/Reco)
 #include "../../MuonObjectsParamsAndHelpers/MuonPairPbPb.h"    // PbPb data pair struct
 #include "../../MuonObjectsParamsAndHelpers/MuonPairReco.h"    // PP data pair struct (MuonPairPP)
+#include "../../MuonObjectsParamsAndHelpers/ParamsSet.h"       // canonical axes + signal-region cuts
 
 #include "ROOT/RDataFrame.hxx"
 #include "TCanvas.h"
@@ -36,15 +38,10 @@
 #include <string>
 #include <vector>
 
-// Replicate ParamsSet::fillLogBinningArray + pT_bins_120 (15 log bins, 8 -> 120 GeV).
-static std::vector<double> MakeLogBins(int nBins, double low, double high) {
-    std::vector<double> bins;
-    const double logLow  = std::log10(low);
-    const double logHigh = std::log10(high);
-    const double logStep = (logHigh - logLow) / nBins;
-    for (int i = 0; i <= nBins; ++i) bins.push_back(std::pow(10.0, logLow + i * logStep));
-    return bins;
-}
+// No local log-binning helper: the pair-pT axis is READ from ParamsSet (see the axis block in
+// the body). A private MakeLogBins() lived here until 2026-09-08 and re-derived the axis as
+// (15, 8.0, 120.0); it would not have followed the move to 16 log bins 9 -> 150 GeV, which is
+// exactly the silent second-binning failure .claude/CLAUDE.md §Binnings forbids.
 
 static const double kDrCut = 0.05;  // the removed DeltaR cut value
 
@@ -89,7 +86,11 @@ void plot_dr_vs_pair_pt_diagnostic()
     ROOT::EnableImplicitMT();
 
     // ---- axis binning ----
-    const std::vector<double> xbins = MakeLogBins(15, 8.0, 120.0);  // pT_bins_120
+    // Read the canonical DEFAULT fine pair-pT crossx axis rather than re-deriving it: this
+    // macro used to retype MakeLogBins(15, 8.0, 120.0), which silently would NOT have followed
+    // the 2026-09-08 move to 16 log bins 9->150 (.claude/CLAUDE.md Binnings rule 1).
+    ParamsSet pms;
+    const std::vector<double> xbins = pms.pT_bins_150;
     const int    nx = static_cast<int>(xbins.size()) - 1;
     const int    ny = 50;
     const double ylo = 0.0, yhi = 1.0;
@@ -130,11 +131,17 @@ void plot_dr_vs_pair_pt_diagnostic()
 
     // Signal cuts EXCEPT DeltaR.
     const std::string truth_cuts =
-        "from_same_b && truth_minv > 1.08 && truth_minv < 2.9 && truth_pair_pt > 8 "
-        "&& m1.truth_charge * m1.truth_eta < 2.2 && m2.truth_charge * m2.truth_eta < 2.2";
+        std::string("from_same_b && truth_minv > 1.08 && truth_minv < 2.9 && ")
+        + ParamsSet::SignalPairPtCutExpr("truth_pair_pt") + " && "
+        + ParamsSet::FiducialGapCutExpr("m1.truth_charge * m1.truth_eta") + " && "
+        + ParamsSet::FiducialGapCutExpr("m2.truth_charge * m2.truth_eta") + " && "
+        + ParamsSet::PairFiducialEtaCutExpr("truth_pair_eta");
     const std::string data_cuts =
-        "minv > 1.08 && minv < 2.9 && pair_pt > 8 "
-        "&& m1.charge * m1.eta < 2.2 && m2.charge * m2.eta < 2.2";
+        std::string("minv > 1.08 && minv < 2.9 && ")
+        + ParamsSet::SignalPairPtCutExpr("pair_pt") + " && "
+        + ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta") + " && "
+        + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta") + " && "
+        + ParamsSet::PairFiducialEtaCutExpr("pair_eta");
 
     // ======================= 1. TRUTH (Pythia single-b) =======================
     {

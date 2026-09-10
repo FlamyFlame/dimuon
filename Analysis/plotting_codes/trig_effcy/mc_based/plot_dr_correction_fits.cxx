@@ -64,7 +64,7 @@
 //   no_plateau_correction_paireta_merged/
 //                            The SAME raw fit with the pair-eta bins folded into THREE
 //                            SIGN-INDEPENDENT |eta^pair| BINS -- |eta| < 1.0 (barrel),
-//                            1.0 <= |eta| < 2.0, 2.0 <= |eta| < 2.4 (user, 2026-08-24; SUPERSEDED
+//                            1.0 <= |eta| < 2.0, 2.0 <= |eta| < 2.2 (user, 2026-08-24; SUPERSEDED
 //                            2026-09-03, see dr_correction_cell_groups.h) -- so every canvas here
 //                            carries 3 panels (1 x 3) instead of 9 (3 x 3), and each panel's
 //                            measured points are re-projected over ALL the filled pair-eta bins

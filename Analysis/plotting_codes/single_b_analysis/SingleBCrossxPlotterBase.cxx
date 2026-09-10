@@ -55,6 +55,60 @@ protected:
     std::array<int, 6> marker_styles{{20, 21, 22, 33, 34, 29}};
 
 public:
+    // ============================ WHICH pair-pT axis is drawn ====================================
+    // User decision 2026-09-08 (docs/tracking/mu_pt45_gap125_pairpt9_adoption.md): the DEFAULT
+    // cross-section pair-pT view is ParamsSet::pT_bins_150 = 16 log bins 9 -> 150 GeV.
+    //
+    //   use_pt_bins_120 = false  (DEFAULT) -> the UNSUFFIXED histogram family, booked on
+    //       pT_bins_150 (16 log bins 9 -> 150 GeV), into the NOMINAL directory. That is the only
+    //       fine axis that NESTS 2:1 inside ParamsSet::pair_pt_coarse_bins (8 log bins over the
+    //       SAME 9 -> 150 range, log10-uniform), so coarse edge k IS fine edge 2k and every
+    //       correction cell is an exact union of two fine bins.
+    //   use_pt_bins_120 = true   (OPT-IN)  -> the "pt_120" histogram family, booked on
+    //       pT_bins_120 (16 log bins 9 -> 120 GeV), into a "_pt_120"-suffixed directory. It does
+    //       NOT nest inside the coarse cells and must never bin a correction; it is only an
+    //       alternative VIEW of the same measurement, and its coverage is deliberately partial.
+    //
+    // WHY THIS WAY ROUND (2026-09-09). The default used to be carried by a separate "pt_150"
+    // histogram family, which existed for only a handful of observables: the minv and dR 2Ds, the
+    // "_no_trig_corr" and correction-stage histograms, the SS yield and -- decisively -- the two
+    // Pb+Pb R_AA global 3Ds had no member of it. Making that partial family the nominal one would
+    // have left the R_AA input on a DIFFERENT pair-pT binning from the cross-section: two
+    // coexisting binnings, the exact failure .claude/CLAUDE.md §Binnings was written after. So the
+    // producers instead rebooked the COMPLETE unsuffixed family onto pT_bins_150 and demoted the
+    // partial family to pT_bins_120 (renaming its token "pt_150" -> "pt_120"). The unsuffixed
+    // names never encoded a range, so they stay truthful.
+    //
+    // Every call site here writes ONE canonical name -- the unsuffixed, nominal one -- and
+    // PtAxisHist() maps it onto the selected family, so no name is typed twice and the two views
+    // cannot drift apart.
+    bool use_pt_bins_120 = false;
+
+    // Canonical (unsuffixed, NOMINAL, pT_bins_150) name -> the selected family's histogram name.
+    // The default is the identity; the alternative is a single substring swap, following the
+    // producers' convention:
+    //   h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts    -> h2d_crossx_pt_120_pair_eta_binned_w_signal_cuts
+    //   h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts    -> h2d_counts_pt_120_pair_eta_binned_w_signal_cuts
+    //   h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts  -> h3d_crossx_dr_vs_pair_eta_vs_pt_120_w_signal_cuts
+    //   h2d_op_crossx_..._vs_pair_eta_vs_pair_pt_<ctr>      -> h2d_op_crossx_..._vs_pair_eta_vs_pt_120_<ctr>
+    // An observable with no member of the "pt_120" family simply cannot be drawn in the
+    // alternative view; it throws "Missing histogram", which is the honest outcome -- silently
+    // falling back to the nominal object would put a 9 -> 150 figure in the "_pt_120" directory.
+    std::string PtAxisHist(const std::string& nominal_name) const {
+        if (!use_pt_bins_120) return nominal_name;
+        const std::size_t p = nominal_name.find("pair_pt");
+        if (p == std::string::npos)
+            throw std::runtime_error(
+                "SingleBCrossxPlotterBase::PtAxisHist: '" + nominal_name + "' contains no "
+                "\"pair_pt\", so its pT_bins_120 alternative cannot be named. Either this is not a "
+                "pair-pT spectrum or the producers' naming convention changed.");
+        return nominal_name.substr(0, p) + "pt_120" + nominal_name.substr(p + 7);
+    }
+
+    // Appended to the output directory: nothing for the nominal 9 -> 150 view, "_pt_120" for the
+    // opt-in alternative, so the two never write the same PNG path.
+    std::string PtAxisDirSuffix() const { return use_pt_bins_120 ? "_pt_120" : ""; }
+
     SingleBCrossxPlotterBase(const std::string& in_path, const std::string& out_dir)
         : input_file_path(in_path), output_dir(out_dir), q_eta_bins(cfg.pair_eta_proj_ranges_coarse_incl_gap) {}
 
@@ -112,8 +166,25 @@ protected:
         return fin->Get(name.c_str());
     }
 
+    // The OPT-IN "pt_120" family is deliberately PARTIAL -- it exists for a handful of observables
+    // (the pair-eta 2D, the dR 3D and their counts twins), not for minv, dR-2D, the correction
+    // stages or the SS yield. In the alternative view a figure with no booked histogram is
+    // therefore SKIPPED, loudly, instead of aborting the plotting stage.
+    //
+    // In the NOMINAL view the same absence is a producer bug -- the unsuffixed family is complete
+    // by construction -- so nothing is skipped there and CheckHistogramExists still throws. The
+    // asymmetry is the point: never let a missing nominal histogram pass quietly.
+    bool SkipInAltView(const std::string& hname, const std::string& png_name) {
+        if (!use_pt_bins_120) return false;
+        if (GetHistObject(hname) != nullptr) return false;
+        std::cout << "[INFO] pt_120 alternative view: " << hname
+                  << " is not booked -- skipping " << png_name << std::endl;
+        return true;
+    }
+
     void Save2DColz(const std::string& hname, const std::string& png_name,
                     const std::string& z_title = "") {
+        if (SkipInAltView(hname, png_name)) return;
         CheckHistogramExists(hname, "TH2D");
         CheckHistogramNonEmpty(hname);
 
@@ -175,6 +246,7 @@ protected:
         const std::string& png_name,
         const std::string& y_title = "d#sigma/dp_{T} [pb GeV^{-1}]")
     {
+        if (SkipInAltView(h3_name, png_name)) return;
         CheckHistogramExists(h3_name, "TH3D");
         CheckHistogramNonEmpty(h3_name);
 
@@ -314,6 +386,7 @@ protected:
         const std::string& y_title = "d#sigma/dp_{T} [pb GeV^{-1}]",
         bool differential = true)
     {
+        if (SkipInAltView(h2_name, png_name)) return;
         CheckHistogramExists(h2_name, "TH2D");
         CheckHistogramNonEmpty(h2_name);
 
@@ -414,390 +487,6 @@ protected:
     // without touching anything else in this file.
     // =============================================================================================
 
-    // Panel-per-pair-eta (9 canonical panels), two-series overlay: pair-pT dependence in each
-    // pair-eta bin. h2_name_a/b must share the SAME pair-pT x pair-eta axes.
-    void DrawPairPtByEtaTwoSeries(
-        const std::string& h2_name_a, const std::string& h2_name_b,
-        const std::string& label_a, const std::string& label_b,
-        const std::string& data_info_line1, const std::string& data_info_line2,
-        const std::string& png_name,
-        const std::string& y_title = "N_{pairs}")
-    {
-        CheckHistogramExists(h2_name_a, "TH2D");
-        CheckHistogramExists(h2_name_b, "TH2D");
-        CheckHistogramNonEmpty(h2_name_a);
-        CheckHistogramNonEmpty(h2_name_b);
 
-        TH2D* ha = dynamic_cast<TH2D*>(GetHistObject(h2_name_a));
-        TH2D* hb = dynamic_cast<TH2D*>(GetHistObject(h2_name_b));
-        if (!ha || !hb) {
-            throw std::runtime_error("DrawPairPtByEtaTwoSeries: failed to retrieve TH2D(s): "
-                                     + h2_name_a + ", " + h2_name_b);
-        }
 
-        int nrow = 1, ncol = 1;
-        DetermineSubplotGrid(static_cast<int>(q_eta_bins.size()), nrow, ncol);
-
-        TCanvas c("cpt_eta_2s", "pair_pt by eta, two series", 450 * ncol, 350 * nrow);
-        c.Divide(ncol, nrow);
-
-        // Legend-icon PROXIES, styled like the two series but carrying no real bin content/error.
-        // NOT the real per-panel histograms: TLegend's "lep" icon for a referenced TH1 with a
-        // real (tiny, sqrt(N)) error on a log-y pad was found to render as a full-frame-height
-        // spike instead of a small icon tick (review 2026-09-06 self-check on real PbPb output,
-        // reproduced with independently-verified clean bin content/error -- a TLegend/log-pad
-        // rendering quirk, not a data bug). A 1-bin, zero-content, zero-error dummy sidesteps it.
-        TH1D proxy_a("proxy_pteta2s_a", "", 1, 0, 1);
-        TH1D proxy_b("proxy_pteta2s_b", "", 1, 0, 1);
-        proxy_a.SetLineWidth(2); proxy_a.SetLineColor(line_colors.at(0));
-        proxy_a.SetMarkerColor(line_colors.at(0)); proxy_a.SetMarkerStyle(marker_styles.at(0));
-        proxy_b.SetLineWidth(2); proxy_b.SetLineColor(line_colors.at(1));
-        proxy_b.SetMarkerColor(line_colors.at(1)); proxy_b.SetMarkerStyle(marker_styles.at(1));
-
-        std::vector<std::array<TH1D*, 2>> all_lines(q_eta_bins.size());
-        std::vector<TLegend*> all_legends;
-
-        // PASS 1 — build every panel's two projections WITHOUT drawing, so the common log-y
-        // range can be derived from all of them first (Utilities/CommonLogYRange.h).
-        for (size_t ieta = 0; ieta < q_eta_bins.size(); ++ieta) {
-            const auto& eta_bin = q_eta_bins.at(ieta);
-            const auto ybins_a = PanelEtaBins(ha->GetYaxis(), eta_bin,
-                                              "SingleBCrossxPlotterBase (2-sample overlay, A)");
-            const auto ybins_b = PanelEtaBins(hb->GetYaxis(), eta_bin,
-                                              "SingleBCrossxPlotterBase (2-sample overlay, B)");
-            const int y1a = ybins_a.first, y2a = ybins_a.second;
-            const int y1b = ybins_b.first, y2b = ybins_b.second;
-
-            const std::string nA = "hpt2s_a_eta" + std::to_string(ieta) + "_" + std::to_string(std::rand());
-            const std::string nB = "hpt2s_b_eta" + std::to_string(ieta) + "_" + std::to_string(std::rand());
-            TH1D* hpa = ha->ProjectionX(nA.c_str(), y1a, y2a, "e");
-            TH1D* hpb = hb->ProjectionX(nB.c_str(), y1b, y2b, "e");
-            hpa->SetDirectory(nullptr);
-            hpb->SetDirectory(nullptr);
-
-            auto style = [&](TH1D* h, int idx) {
-                h->SetLineWidth(2);
-                h->SetLineColor(line_colors.at(idx));
-                h->SetMarkerColor(line_colors.at(idx));
-                h->SetMarkerStyle(marker_styles.at(idx));
-                h->SetMarkerSize(0.9);
-                h->GetXaxis()->SetTitle("p_{T}^{pair} [GeV]");
-                h->GetYaxis()->SetTitle(y_title.c_str());
-                h->GetXaxis()->SetTitleSize(0.06);
-                h->GetYaxis()->SetTitleSize(0.06);
-                h->GetXaxis()->SetLabelSize(0.05);
-                h->GetYaxis()->SetLabelSize(0.05);
-                h->GetYaxis()->SetTitleOffset(1.45);
-                h->SetTitle("");
-            };
-            style(hpa, 0);
-            style(hpb, 1);
-
-            all_lines.at(ieta) = {hpa, hpb};
-        }
-
-        {
-            std::vector<TH1*> flat;
-            for (auto& pr : all_lines) { flat.push_back(pr[0]); flat.push_back(pr[1]); }
-            ApplyCommonLogYRange(flat);
-        }
-
-        // PASS 2 — draw.
-        for (size_t ieta = 0; ieta < q_eta_bins.size(); ++ieta) {
-            c.cd(static_cast<int>(ieta) + 1);
-            gPad->SetLogx();
-            gPad->SetLogy();
-            gPad->SetLeftMargin(0.16);
-            gPad->SetBottomMargin(0.13);
-
-            const auto& eta_bin = q_eta_bins.at(ieta);
-            all_lines.at(ieta)[0]->Draw("E1");
-            all_lines.at(ieta)[1]->Draw("E1 SAME");
-
-            // Info text (no symbols). x2 is the FRAME edge (1 - right margin), not 0.93 -- a
-            // right-aligned legend ending at a hardcoded 0.93 pushes past the frame when the pad's
-            // default right margin (0.1) is in effect (found in review 2026-09-03).
-            // Geometry mirrors DrawPairPtByEtaWithDrLines' two-box layout above (info box wider
-            // and higher, symbol box narrower/further right so it clears the falling spectrum's
-            // tail): found overlapping data at the wider/lower placement tried first (review
-            // 2026-09-06 self-check on real pp24 output).
-            TLegend* leg_info = new TLegend(0.38, 0.72, 1.0 - gPad->GetRightMargin(), 0.90);
-            leg_info->SetBorderSize(0);
-            leg_info->SetFillStyle(0);
-            leg_info->SetTextSize(0.042);
-            leg_info->SetTextAlign(32);
-            leg_info->SetMargin(0.01);
-            leg_info->AddEntry((TObject*)0, data_info_line1.c_str(), "");
-            leg_info->AddEntry((TObject*)0, data_info_line2.c_str(), "");
-            leg_info->AddEntry((TObject*)0, Form("#eta^{pair} #in [%.1f, %.1f]", eta_bin.first, eta_bin.second), "");
-            leg_info->Draw();
-            all_legends.push_back(leg_info);
-
-            // Series legend: narrow, left-aligned text, symbol just left of text (matches the
-            // dR-lines legend pattern), positioned further right/lower so it sits over the
-            // spectrum's low-value tail rather than its descending shoulder.
-            TLegend* leg_series = new TLegend(0.70, 0.58, 1.0 - gPad->GetRightMargin(), 0.72);
-            leg_series->SetBorderSize(0);
-            leg_series->SetFillStyle(0);
-            leg_series->SetTextSize(0.045);
-            leg_series->SetTextAlign(12);
-            leg_series->SetMargin(0.22);
-            leg_series->AddEntry(&proxy_a, label_a.c_str(), "p");
-            leg_series->AddEntry(&proxy_b, label_b.c_str(), "p");
-            leg_series->Draw();
-            all_legends.push_back(leg_series);
-        }
-
-        std::string full_path = output_dir + "/" + png_name;
-        c.SaveAs(full_path.c_str());
-        std::cout << "[INFO] Saved: " << full_path << std::endl;
-
-        for (auto& pr : all_lines) { delete pr[0]; delete pr[1]; }
-        for (TLegend* leg : all_legends) delete leg;
-    }
-
-    // Pair-eta dependence, pair-pT integrated: ONE panel, X = the 9 canonical pair-eta panels
-    // (variable-width bins built from q_eta_bins, which is contiguous by construction), two-series
-    // overlay. Row sums of h2_name_a/b over the full pair-pT axis, per panel.
-    void DrawPairEtaIntegratedTwoSeries(
-        const std::string& h2_name_a, const std::string& h2_name_b,
-        const std::string& label_a, const std::string& label_b,
-        const std::string& data_info_line1, const std::string& data_info_line2,
-        const std::string& png_name,
-        const std::string& y_title = "N_{pairs}")
-    {
-        CheckHistogramExists(h2_name_a, "TH2D");
-        CheckHistogramExists(h2_name_b, "TH2D");
-        CheckHistogramNonEmpty(h2_name_a);
-        CheckHistogramNonEmpty(h2_name_b);
-
-        TH2D* ha = dynamic_cast<TH2D*>(GetHistObject(h2_name_a));
-        TH2D* hb = dynamic_cast<TH2D*>(GetHistObject(h2_name_b));
-        if (!ha || !hb) {
-            throw std::runtime_error("DrawPairEtaIntegratedTwoSeries: failed to retrieve TH2D(s): "
-                                     + h2_name_a + ", " + h2_name_b);
-        }
-
-        // Variable bin edges from the 9 canonical panels -- contiguous by construction
-        // (pair_eta_proj_ranges_coarse_incl_gap), never retyped.
-        std::vector<double> edges;
-        edges.reserve(q_eta_bins.size() + 1);
-        edges.push_back(q_eta_bins.front().first);
-        for (const auto& b : q_eta_bins) edges.push_back(b.second);
-
-        auto build = [&](TH2D* h2, const std::string& nm) {
-            TH1D* h1 = new TH1D(nm.c_str(), "", (int)q_eta_bins.size(), edges.data());
-            h1->Sumw2();
-            for (size_t ieta = 0; ieta < q_eta_bins.size(); ++ieta) {
-                const auto& eta_bin = q_eta_bins.at(ieta);
-                const auto ybins = PanelEtaBins(h2->GetYaxis(), eta_bin,
-                                                "SingleBCrossxPlotterBase (eta-panel ratios)");
-                const int y1 = ybins.first, y2 = ybins.second;
-                double err = 0.;
-                const double n = h2->IntegralAndError(1, h2->GetNbinsX(), y1, y2, err);
-                h1->SetBinContent((int)ieta + 1, n);
-                h1->SetBinError((int)ieta + 1, err);
-            }
-            h1->SetDirectory(nullptr);
-            return h1;
-        };
-
-        TH1D* hpa = build(ha, "heta2s_a_" + std::to_string(std::rand()));
-        TH1D* hpb = build(hb, "heta2s_b_" + std::to_string(std::rand()));
-
-        auto style = [&](TH1D* h, int idx) {
-            h->SetLineWidth(2);
-            h->SetLineColor(line_colors.at(idx));
-            h->SetMarkerColor(line_colors.at(idx));
-            h->SetMarkerStyle(marker_styles.at(idx));
-            h->SetMarkerSize(1.0);
-            h->GetXaxis()->SetTitle("#eta^{pair}");
-            h->GetYaxis()->SetTitle(y_title.c_str());
-            h->GetYaxis()->SetNoExponent(kFALSE);
-            h->SetTitle("");
-        };
-        style(hpa, 0);
-        style(hpb, 1);
-
-        // Scientific notation on the y-axis (e.g. "1 #times 10^{4}"): TAxis has no per-label
-        // format hook (unlike TGraph/TF1), so this is ROOT's actual mechanism -- a shared
-        // "#times 10^{p}" header with reduced tick values -- forced on for BOTH plots via
-        // TGaxis::SetMaxDigits (global/static, so save+restore around this Draw call only).
-        // Without this, ROOT's default threshold (5 digits) fires for pp24's 6-digit range but
-        // NOT PbPb's 5-digit range, leaving one plot with the header and the other with bare
-        // long integers -- an inconsistent look between the two datasets this forces to agree.
-        const int prev_max_digits = TGaxis::GetMaxDigits();
-        TGaxis::SetMaxDigits(3);
-
-        TCanvas c("ceta_2s", "pair eta integrated, two series", 700, 550);
-        c.SetLeftMargin(0.17);
-        c.SetBottomMargin(0.12);
-
-        // LINEAR y (2026-09-07, corrected from log-y): pair_eta is not a momentum-like
-        // observable and its axis is not log-binned, so per the linear-y-default rule
-        // (.claude/commands/review-plot.md R4 / feedback_log_scale_plots memory) this plot
-        // takes a linear y-scale by default -- there is no power-law or log-binning
-        // justification for log here. This quantity's shape vs pair-eta is NOT monotonic (a
-        // broad hill with a central dip at the eta~0 gap cut) and its scale differs between
-        // datasets (pp24 ~5x, PbPb ~10x less), so no FIXED corner is safe for both: a
-        // bottom-left box that cleared pp24 overlapped PbPb's central bump (review 2026-09-06
-        // self-check on real output, when this was still log-y). Keep the same fix -- headroom
-        // ABOVE every point regardless of shape or dataset, then place both legends there (the
-        // muon_gap_cuts_acceptance.md F13/F14 fix for the same class of problem on q*eta plots)
-        // -- just computed directly for a linear axis instead of via the log-only
-        // ApplyCommonLogYRange (Utilities/CommonLogYRange.h; its floor/ceil padding and
-        // positive-bin-only scan are log-scale-specific and do not apply here).
-        double eta2s_ymax = 0.0;
-        for (const TH1D* h : {hpa, hpb}) {
-            for (int b = 1; b <= h->GetNbinsX(); ++b) {
-                eta2s_ymax = std::max(eta2s_ymax, h->GetBinContent(b));
-            }
-        }
-        // 1.4x (not 1.35x): a /review-plot pass (2026-09-07) pixel-measured the legend's top
-        // row bisected by the frame's top border at 1.35x with the legend box unmoved -- widen
-        // the headroom AND move the legend down (below) to guarantee clearance from both the
-        // frame border above and the tallest point below.
-        for (TH1D* h : {hpa, hpb}) {
-            h->SetMinimum(0.0);
-            h->SetMaximum(eta2s_ymax * 1.4);
-        }
-
-        hpa->Draw("E1");
-        hpb->Draw("E1 SAME");
-
-        // Legend-icon PROXY objects (not hpa/hpb) -- see DrawPairPtByEtaTwoSeries for why: a
-        // referenced real histogram's "lep" icon can render as a full-frame spike rather than a
-        // small tick. ONE combined TLegend (info text + series icons), not two separate boxes:
-        // two separate TLegend objects on this log-y pad -- one text-only, one symbol-bearing --
-        // was found to reproduce the same spike even with proxy icons (review 2026-09-06
-        // self-check on real PbPb output; isolated with a minimal standalone repro), while the
-        // panel method's two-box layout above does not show it. Root cause not fully understood
-        // (a ROOT TLegend/log-pad rendering interaction), so the single-box layout the panel
-        // method's own precedent (DrawPairPtByEta) already uses is the safer, tested pattern here.
-        TH1D proxy_a("proxy_eta2s_a", "", 1, 0, 1);
-        TH1D proxy_b("proxy_eta2s_b", "", 1, 0, 1);
-        proxy_a.SetLineWidth(2); proxy_a.SetLineColor(line_colors.at(0));
-        proxy_a.SetMarkerColor(line_colors.at(0)); proxy_a.SetMarkerStyle(marker_styles.at(0));
-        proxy_b.SetLineWidth(2); proxy_b.SetLineColor(line_colors.at(1));
-        proxy_b.SetMarkerColor(line_colors.at(1)); proxy_b.SetMarkerStyle(marker_styles.at(1));
-
-        // Top bound 0.90 = default frame top (ROOT top margin 0.1, not overridden on this
-        // canvas), matching the safe bound already used elsewhere in this file (e.g. the
-        // panel-method legends above); bottom bound 0.73 clears the tallest point, which the
-        // 1.4x headroom above places at NDC ~0.68 regardless of dataset shape or scale.
-        TLegend leg(0.15, 0.73, 0.97, 0.90);
-        leg.SetBorderSize(0);
-        leg.SetFillStyle(0);
-        leg.SetNColumns(2);
-        leg.SetTextSize(0.032);
-        leg.SetTextAlign(12);
-        leg.SetMargin(0.18);
-        leg.AddEntry((TObject*)0, data_info_line1.c_str(), "");
-        leg.AddEntry(&proxy_a, label_a.c_str(), "p");
-        leg.AddEntry((TObject*)0, data_info_line2.c_str(), "");
-        leg.AddEntry(&proxy_b, label_b.c_str(), "p");
-        leg.Draw();
-
-        std::string full_path = output_dir + "/" + png_name;
-        c.SaveAs(full_path.c_str());
-        std::cout << "[INFO] Saved: " << full_path << std::endl;
-
-        TGaxis::SetMaxDigits(prev_max_digits);  // restore -- static/global setting
-
-        delete hpa;
-        delete hpb;
-    }
-
-    // Pair-pT dependence, pair-eta integrated: ONE panel, X = the pT axis of h2_name_a/b
-    // (ParamsSet::pT_bins_120 by construction of the input histograms), two-series overlay.
-    void DrawPairPtIntegratedTwoSeries(
-        const std::string& h2_name_a, const std::string& h2_name_b,
-        const std::string& label_a, const std::string& label_b,
-        const std::string& data_info_line1, const std::string& data_info_line2,
-        const std::string& png_name,
-        const std::string& y_title = "N_{pairs}")
-    {
-        CheckHistogramExists(h2_name_a, "TH2D");
-        CheckHistogramExists(h2_name_b, "TH2D");
-        CheckHistogramNonEmpty(h2_name_a);
-        CheckHistogramNonEmpty(h2_name_b);
-
-        TH2D* ha = dynamic_cast<TH2D*>(GetHistObject(h2_name_a));
-        TH2D* hb = dynamic_cast<TH2D*>(GetHistObject(h2_name_b));
-        if (!ha || !hb) {
-            throw std::runtime_error("DrawPairPtIntegratedTwoSeries: failed to retrieve TH2D(s): "
-                                     + h2_name_a + ", " + h2_name_b);
-        }
-
-        const std::string nA = "hpt1d_a_" + std::to_string(std::rand());
-        const std::string nB = "hpt1d_b_" + std::to_string(std::rand());
-        TH1D* hpa = ha->ProjectionX(nA.c_str(), 1, ha->GetNbinsY(), "e");
-        TH1D* hpb = hb->ProjectionX(nB.c_str(), 1, hb->GetNbinsY(), "e");
-        hpa->SetDirectory(nullptr);
-        hpb->SetDirectory(nullptr);
-
-        auto style = [&](TH1D* h, int idx) {
-            h->SetLineWidth(2);
-            h->SetLineColor(line_colors.at(idx));
-            h->SetMarkerColor(line_colors.at(idx));
-            h->SetMarkerStyle(marker_styles.at(idx));
-            h->SetMarkerSize(1.0);
-            h->GetXaxis()->SetTitle("p_{T}^{pair} [GeV]");
-            h->GetYaxis()->SetTitle(y_title.c_str());
-            h->SetTitle("");
-        };
-        style(hpa, 0);
-        style(hpb, 1);
-
-        TCanvas c("cpt1d_2s", "pair pT integrated, two series", 700, 550);
-        c.SetLogx();
-        c.SetLogy();
-        c.SetLeftMargin(0.13);
-        c.SetBottomMargin(0.12);
-
-        // Extra ceil_pad headroom (see DrawPairEtaIntegratedTwoSeries for the same mechanism):
-        // the falling spectrum's top-left is occupied by the peak, so the legend needs both
-        // genuine top clearance AND a box wide enough for its longest label -- a box that fits
-        // "PP 2024, tight WP" clipped past the frame for the longer "Pb+Pb 2023+2024+2025
-        // combined, tight WP" info line (review 2026-09-06 self-check on real PbPb output).
-        ApplyCommonLogYRange({hpa, hpb}, /*ceil_pad=*/3.0);
-
-        hpa->Draw("E1");
-        hpb->Draw("E1 SAME");
-
-        TLegend leg_info(0.40, 0.80, 0.97, 0.92);
-        leg_info.SetBorderSize(0);
-        leg_info.SetFillStyle(0);
-        leg_info.SetTextSize(0.032);
-        leg_info.AddEntry((TObject*)0, data_info_line1.c_str(), "");
-        leg_info.AddEntry((TObject*)0, data_info_line2.c_str(), "");
-        leg_info.Draw();
-
-        // Legend-icon PROXY objects (not hpa/hpb) -- see DrawPairPtByEtaTwoSeries for why: a
-        // referenced real histogram's "lep" icon on a log-y pad was found to render as a
-        // full-frame spike rather than a small tick.
-        TH1D proxy_a("proxy_pt1d2s_a", "", 1, 0, 1);
-        TH1D proxy_b("proxy_pt1d2s_b", "", 1, 0, 1);
-        proxy_a.SetLineWidth(2); proxy_a.SetLineColor(line_colors.at(0));
-        proxy_a.SetMarkerColor(line_colors.at(0)); proxy_a.SetMarkerStyle(marker_styles.at(0));
-        proxy_b.SetLineWidth(2); proxy_b.SetLineColor(line_colors.at(1));
-        proxy_b.SetMarkerColor(line_colors.at(1)); proxy_b.SetMarkerStyle(marker_styles.at(1));
-
-        TLegend leg_series(0.40, 0.65, 0.97, 0.79);
-        leg_series.SetBorderSize(0);
-        leg_series.SetFillStyle(0);
-        leg_series.SetTextSize(0.036);
-        leg_series.SetTextAlign(12);
-        leg_series.SetMargin(0.15);
-        leg_series.AddEntry(&proxy_a, label_a.c_str(), "p");
-        leg_series.AddEntry(&proxy_b, label_b.c_str(), "p");
-        leg_series.Draw();
-
-        std::string full_path = output_dir + "/" + png_name;
-        c.SaveAs(full_path.c_str());
-        std::cout << "[INFO] Saved: " << full_path << std::endl;
-
-        delete hpa;
-        delete hpb;
-    }
 };

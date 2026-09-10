@@ -258,10 +258,23 @@ plot_single_muon_reco_effcy("pp", "default", ${TIGHT_CPP}, ${IS_TEST_CPP});
 ROOTEOF
     popd >/dev/null
     # reco-distr macro is a .C run INTERPRETED (not ACLiC); it lives at the Analysis root.
-    pushd "${ANALYSIS_DIR}" >/dev/null
-    root -l -b -q "plot_reco_distr_singleb_vs_op_pp24.C(${IS_TEST_CPP}, ${TIGHT_CPP})" \
-        || fail "reco-distr plotting failed"
-    popd >/dev/null
+    #
+    # OPT-IN SINCE 2026-09-09 -- this macro carries a RETIRED selection and is not maintained.
+    # Its `sel_op` applies `pair_pt > 8` (the signal cut moved to ParamsSet::signal_pair_pt_min
+    # = 9 GeV), the per-muon one-sided `q*eta < 2.2` (replaced by the fiducial gap windows on
+    # 2026-08-17) and `dr > 0.05` (REMOVED from the analysis on 2026-06-22). Running it as part of
+    # the nominal pipeline produced a figure describing a selection the analysis has not used for
+    # months, beside figures that do use the current one. Set RUN_RECO_DISTR=1 to run it anyway.
+    if [[ "${RUN_RECO_DISTR:-0}" == "1" ]]; then
+        log "  ##### STALE SELECTION: plot_reco_distr_singleb_vs_op_pp24.C applies pair_pt > 8,"
+        log "  ##### q*eta < 2.2 and dr > 0.05 -- none of which is the current signal region. #####"
+        pushd "${ANALYSIS_DIR}" >/dev/null
+        root -l -b -q "plot_reco_distr_singleb_vs_op_pp24.C(${IS_TEST_CPP}, ${TIGHT_CPP})" \
+            || fail "reco-distr plotting failed"
+        popd >/dev/null
+    else
+        log "  [skipped] plot_reco_distr_singleb_vs_op_pp24.C -- retired selection; RUN_RECO_DISTR=1 to run"
+    fi
 
     log "[Stage 9] differential crossx per pT-hat slice + kn contributor table"
     pushd "${PY_PLOT_DIR}" >/dev/null

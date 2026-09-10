@@ -28,6 +28,13 @@ PlotMCDataComprBaseClass::Observables(){
         {"Deta_zoomin",  "#Delta#eta",        "#Delta#eta",  "pb",          "Deta_zoomin", "truth_deta_zoomin_ppbin", "deta_zoomin_ppbin", false},
         {"minv_zoomin",  "m_{#mu#mu} [GeV]",  "m_{#mu#mu}",  "pb GeV^{-1}", "minv_zoomin", "truth_minv_zoomin_ppbin", "minv_zoomin_ppbin", false},
         {"pair_eta",     "#eta^{pair}",       "#eta^{pair}", "pb",          "pair_eta",    "truth_pair_eta_crossx",   "",                  false},
+        // pair pT: BOTH sides are on the NOMINAL 9 -> 150 GeV axis. The data variable
+        // `pair_pt_150` (RDFBasedHistFillingPP signal_region_1d_vars) and the MC variable
+        // `truth_pair_pt_log_150` (var1D_{pythia,powheg}_fullsim.json) are both bound to
+        // "binning": "pT_bins_150"; neither has a second, alternative-axis member, so there is
+        // nothing to select between here. The "_150" is a leftover naming token, not an
+        // opt-in marker -- the opt-in 9 -> 120 GeV view is the separate "pt_120" family and it
+        // does not reach these 1D spectra.
         {"pair_pt",      "p_{T}^{pair} [GeV]","p_{T}^{pair}","pb GeV^{-1}", "pair_pt_150", "truth_pair_pt_log_150",   "",                  true}
     };
     return v;

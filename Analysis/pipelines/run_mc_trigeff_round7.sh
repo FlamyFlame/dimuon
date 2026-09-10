@@ -4,7 +4,7 @@
 # (docs/tracking/mc_trigger_efficiency.md, round-7 Autonomy Contract item 1).
 #
 # Regenerates the COMPLETE MC trig-eff product set on top of the two round-7 code changes:
-#   (a) the TRUTH FIDUCIAL (truth pT > 4, |truth eta| < 2.4) is now part of the sample
+#   (a) the TRUTH FIDUCIAL (truth pT > 4.5, |truth eta| < 2.4) is now part of the sample
 #       selection for every sample and every step (FillMCTrigEffHists.cxx);
 #   (b) the Step-3/Step-4 ratio ERROR BARS use the conditional (binomial-correct) form
 #       instead of TH1::Divide's independent propagation (errA/errB/covP/covQ histograms

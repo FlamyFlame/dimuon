@@ -79,7 +79,7 @@ void write_pair_trig_eff_tables(const std::string& sample = "pp_full", bool use_
 
     // ---------------------------------------------------------------- the efficiency tables
     // One CSV per (sign, cell mode). The merged mode is a DIFFERENT pair-pT axis -- seven cells,
-    // the last one [72.08, 150) GeV -- so it cannot share a table with the un-merged one without
+    // the last one [74.24, 150) GeV -- so it cannot share a table with the un-merged one without
     // either padding a row or repeating a number as if it were two measurements.
     for (const auto& M : PairTrigEff::CellModes())
     for (const auto& S : PairTrigEff::Signs()) {

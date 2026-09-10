@@ -346,13 +346,17 @@ for yr in "${YEARS[@]}"; do
 done
 
 # ------ Stage 6: Crossx plotting (combined) ------
-# use_pt_bins_150=true also refreshes the opt-in *_pt_150/ variant. It is NOT a
-# second binning of the nominal result (see .claude/CLAUDE.md §Binnings): it is
-# the pT_bins_150 axis, plotted so the reach of the data above 120 GeV is visible.
-# It must be regenerated in the SAME run as the nominal, or the two directories
-# drift apart — they did, from 2026-06-19 to 2026-08-04, because this stage only
-# ever called the default (false).
-log "Running crossx plotting (all years combined; nominal + pt_150 variant)"
+# The NOMINAL pair-pT view (user decision 2026-09-08) is the UNSUFFIXED histogram family, booked
+# on ParamsSet::pT_bins_150 = 16 log bins 9 -> 150 GeV, written to
+# pbpb_<years>_combined/{TAA_weighted,counts}/. That is the only fine axis that nests 2:1 inside
+# the coarse correction cells (ParamsSet::pair_pt_coarse_bins, 8 log bins over the SAME 9 -> 150
+# range) — and, decisively for Pb+Pb, the R_AA global 3Ds belong to that family, so the R_AA input
+# and the cross-section share ONE binning. also_pt_120=true additionally refreshes the OPT-IN
+# *_combined_pt_120/ variant (the "pt_120" family on ParamsSet::pT_bins_120, 9 -> 120 GeV): an
+# alternative VIEW of the same measurement, never a second binning of the nominal result
+# (.claude/CLAUDE.md §Binnings). It must be regenerated in the SAME run as the nominal, or the two
+# drift apart — they did, 2026-06-19 to 2026-08-04.
+log "Running crossx plotting (all years combined; nominal 9-150 GeV + opt-in pt_120 variant)"
 pushd "$PLOT_DIR" >/dev/null
 root -l -b -q 'plot_single_b_crossx_pbpb.cxx(true)'
 popd >/dev/null

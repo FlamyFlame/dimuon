@@ -78,7 +78,10 @@ const char* kOutDir =
 
 // The truth fiducial, restated from PythiaFullSimExtras.c:405 (the gate that filled the
 // tree) and identical to FillMCTrigEffHists.cxx:603 kTruthFidSingle.
-const double kTruthPtMin = 4.0;
+const double kTruthPtMin = 4.5;   // 4 -> 4.5 with the offline threshold (2026-09-08).
+                                  // ParamsSet.h designates THIS macro to re-measure the
+                                  // stale eps_acc / gap-cost tables; left at 4.0 it would
+                                  // re-measure the OLD population and look valid.
 const double kTruthEtaMax = 2.4;
 
 // Split point of the third panel. Kept at the value used by the DATA figures so the two
@@ -596,7 +599,7 @@ void plot_muon_truth_q_eta_spectrum() {
         r.fc = FillSample(samples[i], r.all, r.pos, r.neg, r.lopt, r.hipt, &ctr);
         r.headline = samples[i].headline;
         r.fname = samples[i].fname;
-        r.sub = Form("truth muons, p_{T} > %.0f GeV, |#eta| < %.1f; "
+        r.sub = Form("truth muons, p_{T} > %.1f GeV, |#eta| < %.1f; "
                      "no reco match / working point / trigger%s%s  (%lld muons)",
                      kTruthPtMin, kTruthEtaMax, ctr.empty() ? "" : "; ",
                      ctr.c_str(), r.fc.n_raw);
@@ -749,7 +752,7 @@ void plot_muon_truth_q_eta_spectrum() {
         // it belongs on the canvas, formatted from the constants rather than retyped.
         CanvasHeadline(
             c, "Pythia8 hard-QCD dimuon, full simulation, #sqrt{s} = #sqrt{s_{NN}} = 5.36 TeV",
-            Form("truth muons, p_{T} > %.0f GeV, |#eta| < %.1f; "
+            Form("truth muons, p_{T} > %.1f GeV, |#eta| < %.1f; "
                  "no reco match / working point / trigger; unit area",
                  kTruthPtMin, kTruthEtaMax),
             0.972, 0.938, 0.030, 0.026);

@@ -34,7 +34,8 @@
 // docs/tracking/mc_data_compr_signal_generic_split.md):
 //
 //   signal/   the data-like single-b SIGNAL REGION. Data and Pythia carry the SAME cuts
-//             (m_uu in (1.08,2.9), pair pT > 8 GeV, fiducial gap cut on both muons; the MC in
+//             (m_uu in (1.08,2.9), pair pT > ParamsSet::signal_pair_pt_min (9 GeV since
+//             2026-09-08), fiducial gap cut on both muons; the MC in
 //             TRUTH quantities), so every efficiency correction on the data side is applied
 //             inside the region in which it was measured. No POWHEG, no jacobian variants.
 //   generic/  no signal-region cut on either side, gap cut only. Shapes over the full phase

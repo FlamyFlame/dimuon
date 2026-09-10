@@ -1601,7 +1601,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
             // A RESERVED HEADER STRIP, with the grid of panels in a TPad below it -- the same
             // construction the eps_dR distribution canvases use. The eight pair-pT entries used
             // to be squeezed into ONE row across the full canvas width (SetNColumns(8) ~ 0.12 NDC
-            // ~ 180 px per entry for a label like "104.0 < p_{T}^{pair} < 150.0 GeV"), so every
+            // ~ 180 px per entry for a label like "105.53 < p_{T}^{pair} < 150.0 GeV"), so every
             // entry's text ran into the next entry's marker, the last one was clipped at the right
             // edge, and the only key identifying the eight curves was unreadable. Two rows of four
             // give each entry ~360 px.
@@ -1912,7 +1912,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
                                 Form("plateau, #DeltaR #in [%g, %g]", kPlateauLo, kPlateauHi), "l");
                         lg->Draw();
                     }
-                    // ONE DECIMAL: at %.0f the log edges 11.54 / 16.65 / 24.01 print as 12/17/24
+                    // ONE DECIMAL: at %.0f the log edges 12.79 / 18.18 / 25.85 print as 13/18/26
                     // while the canvas label says 11.5/16.6/24.0 -- a name that contradicts the
                     // figure is the binning-drift the repo rule exists to prevent.
                     SaveCanvas(c, vdir + Form("step3_eps_dr_pairpt_%.1f_%.1f.png",

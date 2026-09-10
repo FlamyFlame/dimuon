@@ -28,8 +28,10 @@ run_and_log "RDF crossx pbpb24" "cd '${RDF_DIR}' && bash run_crossx_hist_filling
 run_and_log "RDF crossx pbpb25" "cd '${RDF_DIR}' && bash run_crossx_hist_filling_pbpb25.sh"
 run_and_log "RDF crossx pp24" "cd '${RDF_DIR}' && bash test_crossx_pp24.sh"
 
-# 2) Plot  (use_pt_bins_150=true: the *_pt_150 dirs must be refreshed in the SAME
-#    run as the nominal ones, else they silently go stale — they did for months.)
+# 2) Plot.  The NOMINAL pair-pT view is ParamsSet::pT_bins_150 (16 log bins 9 -> 150 GeV) and goes
+#    to the unsuffixed directories (pp24/, pbpb_..._combined/).  also_pt_120=true additionally
+#    refreshes the OPT-IN 9 -> 120 GeV alternative in the *_pt_120 dirs — it must be refreshed in
+#    the SAME run as the nominal one, else it silently goes stale, as it did for months.
 run_and_log "Plot crossx pp24" "cd '${ANALYSIS_DIR}' && root -l -b -q 'plotting_codes/single_b_analysis/plot_single_b_crossx_pp.cxx(24,\"\",true)'"
 run_and_log "Plot crossx pbpb combined" "cd '${ANALYSIS_DIR}' && root -l -b -q 'plotting_codes/single_b_analysis/plot_single_b_crossx_pbpb.cxx(true)'"
 

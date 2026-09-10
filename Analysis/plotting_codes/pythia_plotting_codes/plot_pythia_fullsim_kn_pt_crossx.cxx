@@ -58,6 +58,7 @@ static double ForecastScale(double sf_test) { return g_is_test_sample ? sf_test 
 #include <string>
 #include <vector>
 #include <array>
+#include "../../MuonObjectsParamsAndHelpers/ParamsSet.h"   // signal_pair_pt_min / pTbins -- axes read, never retyped
 
 void plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix) {
 
@@ -80,7 +81,7 @@ void plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix) {
     };
 
     const int    nbins = nbins_arg;
-    const double xmin  = 8., xmax = xmax_arg;
+    const double xmin  = ParamsSet::signal_pair_pt_min, xmax = xmax_arg;  // 8 -> 9 (2026-09-08)
     std::vector<double> edges(nbins + 1);
     const double lmin = std::log(xmin), lmax = std::log(xmax);
     for (int i = 0; i <= nbins; i++)
@@ -280,7 +281,7 @@ void plot_stat_error_forecast(int nbins_arg, double xmax_arg, const std::string&
     const std::array<double, nkn> scale_factors = {51., 90., 60., 30., 8., sf_kn5};
 
     const int    nbins = nbins_arg;
-    const double xmin  = 8., xmax = xmax_arg;
+    const double xmin  = ParamsSet::signal_pair_pt_min, xmax = xmax_arg;  // 8 -> 9 (2026-09-08)
     std::vector<double> edges(nbins + 1);
     const double lmin = std::log(xmin), lmax = std::log(xmax);
     for (int i = 0; i <= nbins; i++)
@@ -479,7 +480,7 @@ void plot_err_fraction_map(int nbins_arg, double xmax_arg, const std::string& su
     const std::array<double, nkn> scale_factors = {51., 90., 60., 30., 8., sf_kn5};
 
     const int    nbins = nbins_arg;
-    const double xmin  = 8., xmax = xmax_arg;
+    const double xmin  = ParamsSet::signal_pair_pt_min, xmax = xmax_arg;  // 8 -> 9 (2026-09-08)
     std::vector<double> edges(nbins + 1);
     const double lmin = std::log(xmin), lmax = std::log(xmax);
     for (int i = 0; i <= nbins; i++)
@@ -668,7 +669,7 @@ void plot_err_ratio_map(int nbins_arg, double xmax_arg, const std::string& suffi
     const std::array<double, nkn> scale_factors = {51., 90., 60., 30., 8., sf_kn5};
 
     const int    nbins = nbins_arg;
-    const double xmin  = 8., xmax = xmax_arg;
+    const double xmin  = ParamsSet::signal_pair_pt_min, xmax = xmax_arg;  // 8 -> 9 (2026-09-08)
     std::vector<double> edges(nbins + 1);
     const double lmin = std::log(xmin), lmax = std::log(xmax);
     for (int i = 0; i <= nbins; i++)
@@ -920,7 +921,7 @@ void plot_impl_projected(int nbins_arg, double xmax_arg, const std::string& suff
     };
 
     const int    nbins = nbins_arg;
-    const double xmin  = 8., xmax = xmax_arg;
+    const double xmin  = ParamsSet::signal_pair_pt_min, xmax = xmax_arg;  // 8 -> 9 (2026-09-08)
     std::vector<double> edges(nbins + 1);
     const double lmin = std::log(xmin), lmax = std::log(xmax);
     for (int i = 0; i <= nbins; i++)

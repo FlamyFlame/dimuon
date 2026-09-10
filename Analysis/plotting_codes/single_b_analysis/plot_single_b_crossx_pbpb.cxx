@@ -9,6 +9,10 @@ class SingleBCrossxPlotterPbPbCombined : public SingleBCrossxPlotterBase {
     std::vector<std::pair<int,std::string>> year_paths_;  // (2-digit year, file path)
     std::vector<TFile*>  files_;
     std::map<std::string,TH1*> hist_cache_;  // owned combined histograms
+    // Which YEARS actually contributed to each combined histogram. A year whose histogram is
+    // absent is skipped by GetHistObject, and before 2026-09-09 that happened in silence while
+    // the canvas label still claimed all three years -- a mislabelled final-results figure.
+    std::map<std::string,std::vector<int>> combined_years_;
 
     std::string label_line1_;  // e.g. "Pb+Pb 2023, 2024 combined"
     std::string label_line2_;  // "tight WP"
@@ -34,6 +38,8 @@ class SingleBCrossxPlotterPbPbCombined : public SingleBCrossxPlotterBase {
         std::string s = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/single_b_analysis/pbpb";
         for (auto& [yr, path] : year_paths_) s += "_" + std::to_string(yr);
         s += "_combined";
+        // "" for the nominal 9 -> 150 GeV view, "_pt_120" for the opt-in alternative.
+        s += PtAxisDirSuffix();
         return s;
     }
 
@@ -55,8 +61,21 @@ class SingleBCrossxPlotterPbPbCombined : public SingleBCrossxPlotterBase {
         if (files_.empty()) return {};
         std::vector<std::string> bins;
         for (const auto& ctr : ctr_candidates_) {
-            const std::string hname = "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr;
-            if (files_.front()->Get(hname.c_str())) bins.push_back(ctr);
+            // Probe the family actually being drawn, not the other one: a centrality bin whose
+            // selected-axis histogram is absent must not be reported as available.
+            const std::string hname =
+                PtAxisHist("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr);
+            // Probe EVERY year, not just files_.front(). Probing only the first year silently
+            // dropped a centrality bin that the first file happens to lack but the others have.
+            bool any = false, all = true;
+            for (auto* f : files_) { if (f->Get(hname.c_str())) any = true; else all = false; }
+            if (any) {
+                bins.push_back(ctr);
+                if (!all)
+                    std::cerr << "[WARN] centrality " << ctr << ": histogram " << hname
+                              << " is missing from at least one year -- the combined figure for"
+                              << " this bin averages only the years that have it." << std::endl;
+            }
         }
         if (bins.empty()) throw std::runtime_error("No centrality crossx histograms found.");
         return bins;
@@ -64,9 +83,12 @@ class SingleBCrossxPlotterPbPbCombined : public SingleBCrossxPlotterBase {
 
     bool HasCountsHists() {
         if (files_.empty()) return false;
-        const std::string test = "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_"
-                                 + ctr_candidates_.front() + "_counts";
-        return files_.front()->Get(test.c_str()) != nullptr;
+        const std::string test = PtAxisHist("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_"
+                                            + ctr_candidates_.front() + "_counts");
+        // Probe EVERY year: keyed on files_.front() alone, one year lacking the counts family
+        // silently suppressed the ENTIRE counts figure set with no message.
+        for (auto* f : files_) if (f->Get(test.c_str())) return true;
+        return false;
     }
 
     static std::string CtrLabelFromSuffix(const std::string& ctr) {
@@ -89,9 +111,12 @@ protected:
         const bool is_counts = (name.find("_counts") != std::string::npos);
         TH1* combined = nullptr;
         double sumL = 0.;
+        std::vector<int> contributing_years;
+        std::vector<int> missing_years;
         for (size_t i = 0; i < files_.size(); ++i) {
             TH1* h = dynamic_cast<TH1*>(files_[i]->Get(name.c_str()));
-            if (!h) continue;
+            if (!h) { missing_years.push_back(year_paths_[i].first); continue; }
+            contributing_years.push_back(year_paths_[i].first);
             const double w = is_counts ? 1.0 : PbPbMu4SampledLumiNb(year_paths_[i].first);
             if (!combined) {
                 combined = dynamic_cast<TH1*>(h->Clone(name.c_str()));
@@ -103,14 +128,23 @@ protected:
             sumL += w;
         }
         if (!combined) return nullptr;
+        // A year missing this histogram used to be dropped in SILENCE while the canvas label
+        // still read "Pb+Pb 2023, 2024, 2025 combined" -- a mislabelled final-results figure,
+        // with sumL normalising over the subset so the number looked entirely reasonable.
+        if (!missing_years.empty()) {
+            std::cerr << "[WARN] " << name << ": missing from year(s)";
+            for (int y : missing_years) std::cerr << " 20" << y;
+            std::cerr << "; the combined result uses only";
+            for (int y : contributing_years) std::cerr << " 20" << y;
+            std::cerr << ". The figure label must not claim the missing year(s)." << std::endl;
+        }
+        combined_years_[name] = contributing_years;
         if (!is_counts && sumL > 0.) combined->Scale(1.0 / sumL);
         hist_cache_[name] = combined;
         return combined;
     }
 
 public:
-    bool use_pt_bins_150 = false;
-
     SingleBCrossxPlotterPbPbCombined(const std::vector<std::pair<int,std::string>>& year_paths)
         : SingleBCrossxPlotterBase("", ""), year_paths_(year_paths) {}
 
@@ -119,6 +153,11 @@ public:
         for (TFile* f : files_) { f->Close(); delete f; }
     }
 
+    // One invocation draws exactly ONE pair-pT axis into its own directory tree (both the
+    // TAA_weighted and the counts variant): the nominal 9 -> 150 GeV view into
+    // pbpb_<years>_combined/, the opt-in 9 -> 120 GeV view into pbpb_<years>_combined_pt_120/.
+    // Every histogram is named ONCE in its canonical unsuffixed form and mapped onto the selected
+    // family by PtAxisHist(), so no figure in a directory can end up on the other axis.
     void Run() override {
         InitCombined();
 
@@ -138,97 +177,63 @@ public:
 
             if (has_counts) {
                 output_dir = counts_dir;
-                Save2DColz("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr + "_counts",
+                Save2DColz(PtAxisHist("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr + "_counts"),
                            tag + "_pair_pt_pair_eta.png",
                            "d^{2}N_{events}/dp_{T}d#eta [GeV^{-1}]");
-                Save2DColz("h2d_crossx_pair_pt_minv_w_signal_cuts_" + ctr + "_counts",
+                Save2DColz(PtAxisHist("h2d_crossx_pair_pt_minv_w_signal_cuts_" + ctr + "_counts"),
                            tag + "_pair_pt_minv.png",
                            "d^{2}N_{events}/dp_{T}dm_{#mu#mu} [GeV^{-1} GeV^{-1}]");
-                Save2DColz("h2d_crossx_pair_pt_dr_w_signal_cuts_" + ctr + "_counts",
+                Save2DColz(PtAxisHist("h2d_crossx_pair_pt_dr_w_signal_cuts_" + ctr + "_counts"),
                            tag + "_pair_pt_dr.png",
                            "d^{2}N_{events}/dp_{T}d#DeltaR [GeV^{-1}]");
                 DrawPairPtByEtaWithDrLines(
-                    "h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr + "_counts",
+                    PtAxisHist("h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr + "_counts"),
                     l1, label_line3_,
                     tag + "_pair_pt_in_eta_subplots_dr_lines.png",
                     "dN_{events}/dp_{T} [GeV^{-1}]");
                 DrawPairPtByEta(
-                    "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr + "_counts",
+                    PtAxisHist("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr + "_counts"),
                     l1, label_line3_,
                     tag + "_pair_pt_in_eta_subplots.png",
                     "dN_{events}/dp_{T} [GeV^{-1}]");
                 DrawPairPtByEta(
-                    "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr + "_counts",
+                    PtAxisHist("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr + "_counts"),
                     l1, label_line3_,
                     tag + "_pair_pt_in_eta_subplots_nondifferential.png",
                     "N_{events}", false);
             }
 
             output_dir = taa_dir;
-            Save2DColz("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr,
+            Save2DColz(PtAxisHist("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr),
                        tag + "_pair_pt_pair_eta.png",
                        "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{d^{2}n_{AA}}{dp_{T}d#eta} [pb GeV^{-1}]");
-            Save2DColz("h2d_crossx_pair_pt_minv_w_signal_cuts_" + ctr,
+            Save2DColz(PtAxisHist("h2d_crossx_pair_pt_minv_w_signal_cuts_" + ctr),
                        tag + "_pair_pt_minv.png",
                        "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{d^{2}n_{AA}}{dp_{T}dm_{#mu#mu}} [pb GeV^{-1} GeV^{-1}]");
-            Save2DColz("h2d_crossx_pair_pt_dr_w_signal_cuts_" + ctr,
+            Save2DColz(PtAxisHist("h2d_crossx_pair_pt_dr_w_signal_cuts_" + ctr),
                        tag + "_pair_pt_dr.png",
                        "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{d^{2}n_{AA}}{dp_{T}d#DeltaR} [pb GeV^{-1}]");
             DrawPairPtByEtaWithDrLines(
-                "h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr,
+                PtAxisHist("h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr),
                 l1, label_line3_,
                 tag + "_pair_pt_in_eta_subplots_dr_lines.png",
                 "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dn_{AA}}{dp_{T}} [pb GeV^{-1}]");
             DrawPairPtByEta(
-                "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr,
+                PtAxisHist("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr),
                 l1, label_line3_,
                 tag + "_pair_pt_in_eta_subplots.png",
                 "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dn_{AA}}{dp_{T}} [pb GeV^{-1}]");
         }
 
-        if (use_pt_bins_150) {
-            const std::string pt150_dir    = base_out + "_pt_150";
-            const std::string pt150_cntdir = pt150_dir + "/counts";
-            const std::string pt150_taadir = pt150_dir + "/TAA_weighted";
-            gSystem->mkdir(pt150_taadir.c_str(), true);
-            if (has_counts) gSystem->mkdir(pt150_cntdir.c_str(), true);
-
-            for (const auto& ctr : ctr_bins) {
-                const std::string tag     = "pbpb_combined_" + ctr;
-                const std::string ctr_pct = CtrLabelFromSuffix(ctr) + "%";
-                const std::string l1 = label_line1_ + ", " + ctr_pct;
-
-                if (has_counts) {
-                    output_dir = pt150_cntdir;
-                    DrawPairPtByEtaWithDrLines(
-                        "h3d_crossx_dr_vs_pair_eta_vs_pt_150_w_signal_cuts_" + ctr + "_counts",
-                        l1, label_line3_,
-                        tag + "_pair_pt_in_eta_subplots_dr_lines.png",
-                        "dN_{events}/dp_{T} [GeV^{-1}]");
-                    DrawPairPtByEta(
-                        "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pt_150_" + ctr + "_counts",
-                        l1, label_line3_,
-                        tag + "_pair_pt_in_eta_subplots.png",
-                        "dN_{events}/dp_{T} [GeV^{-1}]");
-                }
-                output_dir = pt150_taadir;
-                DrawPairPtByEtaWithDrLines(
-                    "h3d_crossx_dr_vs_pair_eta_vs_pt_150_w_signal_cuts_" + ctr,
-                    l1, label_line3_,
-                    tag + "_pair_pt_in_eta_subplots_dr_lines.png",
-                    "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dn_{AA}}{dp_{T}} [pb GeV^{-1}]");
-                DrawPairPtByEta(
-                    "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pt_150_" + ctr,
-                    l1, label_line3_,
-                    tag + "_pair_pt_in_eta_subplots.png",
-                    "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dn_{AA}}{dp_{T}} [pb GeV^{-1}]");
-            }
-            output_dir = base_out;
-        }
+        output_dir = base_out;
     }
 };
 
-void plot_single_b_crossx_pbpb(bool use_pt_bins_150 = false)
+// `also_pt_120 = true` additionally refreshes the OPT-IN 9 -> 120 GeV alternative view in
+// pbpb_<years>_combined_pt_120/, in the SAME invocation as the nominal 9 -> 150 GeV one --
+// refreshing only one of the two is how they drifted apart for months (2026-06-19 to 2026-08-04,
+// back when the 150 view was the opt-in one).
+void plot_single_b_crossx_pbpb(bool also_pt_120 = false)
 {
     static const std::string plots_base =
         "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/single_b_analysis/";
@@ -260,7 +265,12 @@ void plot_single_b_crossx_pbpb(bool use_pt_bins_150 = false)
     if (year_paths.empty())
         throw std::runtime_error("plot_single_b_crossx_pbpb: no PbPb input files found.");
 
-    SingleBCrossxPlotterPbPbCombined pl(year_paths);
-    pl.use_pt_bins_150 = use_pt_bins_150;
+    SingleBCrossxPlotterPbPbCombined pl(year_paths);  // DEFAULT: pT_bins_150 (9 -> 150 GeV)
     pl.Run();
+
+    if (also_pt_120) {
+        SingleBCrossxPlotterPbPbCombined pl120(year_paths);
+        pl120.use_pt_bins_120 = true;                 // OPT-IN: pT_bins_120 (9 -> 120 GeV)
+        pl120.Run();
+    }
 }

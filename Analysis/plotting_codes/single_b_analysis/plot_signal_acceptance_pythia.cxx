@@ -7,7 +7,7 @@ public:
               "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/single_b_analysis/pythia") {}
 
     void Run() override {
-        if (use_pt_bins_150) output_dir += "_pt_150";
+        output_dir += PtAxisDirSuffix();
         if (!Init()) return;
 
         Draw2DColz("pythia_sig_accept_pair_pt_vs_pair_eta.png");
@@ -19,11 +19,12 @@ public:
     }
 };
 
+// `also_pt_120 = true` additionally refreshes the opt-in 9 -> 120 GeV view in pythia_pt_120/.
 void plot_signal_acceptance_pythia(
     double ecom = 5.36,
     bool with_data_resonance_cuts = false,
     const std::string& input_file = "",
-    bool use_pt_bins_150 = false)
+    bool also_pt_120 = false)
 {
     std::string in_path = input_file;
     if (in_path.empty()) {
@@ -45,7 +46,12 @@ void plot_signal_acceptance_pythia(
                   + ecom_subdir + "/histograms_pythia_" + ecom_tag + cut_suffix + ".root";
     }
 
-    SignalAcceptancePlotterPythia pl(in_path);
-    pl.use_pt_bins_150 = use_pt_bins_150;
+    SignalAcceptancePlotterPythia pl(in_path);   // DEFAULT: pT_bins_150 -> pythia/
     pl.Run();
+
+    if (also_pt_120) {
+        SignalAcceptancePlotterPythia pl120(in_path);
+        pl120.use_pt_bins_120 = true;            // OPT-IN: pT_bins_120 -> pythia_pt_120/
+        pl120.Run();
+    }
 }

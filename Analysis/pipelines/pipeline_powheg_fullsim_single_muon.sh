@@ -11,7 +11,7 @@
 #   7) Run the plotter for both medium and tight working points
 #
 # Prerequisites:
-#   - PowhegFullSimExtras.c has the truth_pt > 4 && |eta| < 2.4 guard in place
+#   - PowhegFullSimExtras.c has the truth_pt > 4.5 && |eta| < 2.4 guard in place
 #   - ~/setup.sh provides ROOT, hadd, condor_submit, condor_q
 #
 # Usage:

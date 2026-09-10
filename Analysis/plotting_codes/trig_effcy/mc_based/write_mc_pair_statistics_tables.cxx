@@ -241,8 +241,8 @@ void write_mc_pair_statistics_tables(const std::string& sample = "pp_full",
         os << "#       (combined quality + WP bit + IDCuts + MuonCuts, dp/p < 0.12 ONE-SIDED,\n";
         os << "#        |d0| < 2 mm, |z0 sin(theta)| < 2 mm) -- the GENERIC selection, not the\n";
         os << "#        signal selection;\n";
-        os << "#     - pT > 4 GeV and |eta| < 2.4;\n";
-        os << "#     - truth fiducial: truth pT > 4 GeV and |truth eta| < 2.4;\n";
+        os << "#     - pT > 4.5 GeV and |eta| < 2.4, on BOTH legs;\n";
+        os << "#     - truth fiducial: truth pT > 4.5 GeV and |truth eta| < 2.4;\n";
         os << "#     - forward low-pT veto: (pT > 7 GeV) OR (q*eta > -2);\n";
         os << "#     - q*eta fiducial gap cut: " << ParamsSet::FiducialGapCutExpr("q*eta") << ";\n";
         os << "#     - pair-level fiducial gap cut: |eta^pair| < "

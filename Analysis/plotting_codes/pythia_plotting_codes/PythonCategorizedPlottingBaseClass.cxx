@@ -1,5 +1,6 @@
 #include "PythonCategorizedPlottingBaseClass.h"
 #include <set>
+#include "../../MuonObjectsParamsAndHelpers/ParamsSet.h"   // signal_pair_pt_min / pTbins -- axes read, never retyped
 
 PythiaCategorizedPlottingBaseClass::PythiaCategorizedPlottingBaseClass()
     : isPrivate(true), E_COM(5.36) {}
@@ -143,7 +144,7 @@ void PythiaCategorizedPlottingBaseClass::Run(){
 
         tbox->AddText(panel_descr_text.c_str());
         tbox->AddText(pdf_label.c_str());
-        tbox->AddText("p_{T}^{#mu} > 4GeV, |#eta^{#mu}| < 2.4");
+        tbox->AddText(Form("p_{T}^{#mu} > %.1f GeV, |#eta^{#mu}| < 2.4", ParamsSet::pTbins.front()));
 
         // ---------- THStack ----------
         if (staggered){

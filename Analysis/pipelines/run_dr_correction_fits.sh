@@ -32,7 +32,7 @@ set -Eeuo pipefail
 #   step<N>_dr_fit/no_plateau_correction_last2ptbins_merged/<method>/<sign mode>/
 #              The SAME raw fit with the LAST TWO pair-pT bins MERGED into one cell (user,
 #              2026-08-17), so this tree has ONE canvas fewer and its top one covers
-#              p_T^pair in [72.1, 150) GeV. The top two cells of the 8-bin log axis run past where
+#              p_T^pair in [74.24, 150) GeV. The top two cells of the 8-bin log axis run past where
 #              the sample has yield. It is NOT a new binning -- the two bins are projected together
 #              at the fit stage; see dr_correction_cell_groups.h. 8-BIN AXIS ONLY: it is skipped,
 #              with a printed note, when MCTRIGEFF_PAIRPT_4BIN is set. With opposite-sign pairs and

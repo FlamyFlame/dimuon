@@ -17,6 +17,8 @@
 #include "../../MuonObjectsParamsAndHelpers/MuonPairPythia.h"
 #include "../../MuonObjectsParamsAndHelpers/MuonPairPowheg.h"
 #include "../../Utilities/MC_helpers.h"
+#include "../../MuonObjectsParamsAndHelpers/ParamsSet.h"
+#include "TString.h"   // Form(), used to build the cut labels from the ParamsSet values
 
 #include "ROOT/RDataFrame.hxx"
 #include "TCanvas.h"
@@ -31,13 +33,23 @@
 #include <vector>
 
 // Signal cuts in order — must match FillHistogramsSignalAcceptance in the RDF truth classes.
-static const std::vector<std::pair<std::string, std::string>> kCuts = {
-    {"truth_minv > 1.08",                      "m_{#mu#mu}>1.08"},
-    {"truth_minv < 2.9",                       "m_{#mu#mu}<2.9"},
-    {"truth_pair_pt > 8",                      "p_{T}^{pair}>8"},
-    {"m1.truth_charge * m1.truth_eta < 2.2",   "#mu_{1}:q#eta<2.2"},
-    {"m2.truth_charge * m2.truth_eta < 2.2",   "#mu_{2}:q#eta<2.2"},
-};
+// MIGRATED 2026-09-08 with the truth signal acceptance itself: the pair-pT threshold and the
+// gap windows are READ FROM ParamsSet, never retyped, so this cutflow cannot drift from the
+// selection it is supposed to describe (docs/tracking/mu_pt45_gap125_pairpt9_adoption.md).
+// The label is built from the value rather than typed, for the same reason.
+static const std::vector<std::pair<std::string, std::string>>& kCuts() {
+    static const std::vector<std::pair<std::string, std::string>> cuts = {
+        {"truth_minv > 1.08",                    "m_{#mu#mu}>1.08"},
+        {"truth_minv < 2.9",                     "m_{#mu#mu}<2.9"},
+        {ParamsSet::SignalPairPtCutExpr("truth_pair_pt"),
+             Form("p_{T}^{pair}>%g", ParamsSet::signal_pair_pt_min)},
+        {ParamsSet::FiducialGapCutExpr("m1.truth_charge * m1.truth_eta"), "#mu_{1}: gap fid."},
+        {ParamsSet::FiducialGapCutExpr("m2.truth_charge * m2.truth_eta"), "#mu_{2}: gap fid."},
+        {ParamsSet::PairFiducialEtaCutExpr("truth_pair_eta"),
+             Form("|#eta^{pair}|<%g", ParamsSet::pair_eta_fiducial_max)},
+    };
+    return cuts;
+}
 
 // Compute both cutflows (all pT and pT>60) in a single RDF event-loop pass.
 // Returns {sums_all, sums_60}, each of length ncuts+1.
@@ -54,7 +66,7 @@ RunCutflowPair(ROOT::RDF::RNode df, const std::string& weight_col)
     // Collect all result pointers before any dereference so RDF evaluates in one pass.
     ptrs_all.push_back(dfcur_all.Sum<double>(weight_col));
     ptrs_60.push_back(dfcur_60.Sum<double>(weight_col));
-    for (auto& [expr, lbl] : kCuts) {
+    for (auto& [expr, lbl] : kCuts()) {
         dfcur_all = dfcur_all.Filter(expr);
         dfcur_60  = dfcur_60.Filter(expr);
         ptrs_all.push_back(dfcur_all.Sum<double>(weight_col));
@@ -83,7 +95,7 @@ static void MakePlots(const std::vector<double>& sums_all,
                       const std::string& mc_label)
 {
     gStyle->SetOptStat(0);
-    const int ncuts = static_cast<int>(kCuts.size());
+    const int ncuts = static_cast<int>(kCuts().size());
 
     const double norm_all = sums_all.at(0);
     const double norm_60  = sums_60.at(0);
@@ -95,7 +107,7 @@ static void MakePlots(const std::vector<double>& sums_all,
     // x-axis labels
     std::vector<std::string> lbls;
     lbls.push_back("no cut");
-    for (auto& [expr, lbl] : kCuts) lbls.push_back(lbl);
+    for (auto& [expr, lbl] : kCuts()) lbls.push_back(lbl);
 
     // ========================== Accum plot ==========================
     TH1D h_acc_all(("h_acc_all_" + prefix).c_str(), "", ncuts + 1, -0.5, ncuts + 0.5);

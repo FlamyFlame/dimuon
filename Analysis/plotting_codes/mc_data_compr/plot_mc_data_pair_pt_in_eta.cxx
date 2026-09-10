@@ -16,9 +16,10 @@
 // bit on truth quantities.
 //
 //   data : dimuon_data/pp_2024/histograms_real_pairs_pp_2024_2mu4_nominal.root
-//          h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts
+//          h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts
 //          = (1/L) * sum 1/(eps_trig * eps_reco), L = 400.412 pb^-1, single-b signal region
-//            (m in (1.08,2.9), pair pT > 8, BOTH muons passing the fiducial gap cut), Tight WP.
+//            (m in (1.08,2.9), pair pT > ParamsSet::signal_pair_pt_min, BOTH muons passing the
+//            fiducial gap cut and |eta^pair| < ParamsSet::pair_eta_fiducial_max), Tight WP.
 //   Pythia: pythia_fullsim_full_sample/histograms_pythia_fullsim_pp24_no_data_resonance_cuts_full.root
 //          h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_single_b_pass_signal_truth
 //          = truth from_same_b OS pairs in the truth signal region, AMI-weighted.
@@ -104,16 +105,29 @@
 
 namespace {
 
-const char* kDataHist = "h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts";
+// The NOMINAL data 2D: the UNSUFFIXED family, booked on ParamsSet::pT_bins_150 (16 log bins
+// 9 -> 150 GeV) since 2026-09-09. It used to be the separate "pt_150" family; that family was
+// demoted to the opt-in 9 -> 120 GeV alternative ("pt_120") because it covered only a handful of
+// observables -- notably not the Pb+Pb R_AA global 3Ds -- so keeping it as nominal would have
+// split the analysis across two pair-pT binnings.
+const char* kDataHist = "h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts";
 
 // The 2D naming convention is h_<y-variable>_vs_<x-variable><filter>
 // (RDFBasedHistFillingBaseClass.cxx:561): x = pair pT, y = pair eta, same as the data histogram.
+//
+// The "_150" here is part of the var1D variable name `truth_pair_pt_log_150`
+// (RDFBasedHistFilling/var1D_{pythia,powheg}_fullsim.json), which is bound to
+// "binning": "pT_bins_150" -- i.e. the NOMINAL 9 -> 150 GeV axis, the same one the data histogram
+// above now uses. There is no second truth pair-pT variable, so this side has no alternative view
+// and nothing to select between. The token is a leftover of the old naming and says nothing about
+// which axis is nominal; if the producers ever drop it, this name follows.
 const char* kMcHist =
     "h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_single_b_pass_signal_truth";
 
 // POWHEG FullSim pp17: the SAME 2D view on the SAME named axes, under the gap-cut truth signal
-// filter added on 2026-09-03 (the class's pre-existing `_pass_signal_truth` still carries the
-// retired one-sided q*eta < 2.2, and its `_single_b` an extra truth_dr < 1.0).
+// filter added on 2026-09-03. (The class's pre-existing `_pass_signal_truth` was migrated off the
+// retired one-sided q*eta < 2.2 on 2026-09-08 (D7), so the two now differ only by the extra
+// truth_dr < 1.0 that `_single_b` carries.)
 const char* kPowhegHist =
     "h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_single_b_pass_signal_truth_gapcut";
 

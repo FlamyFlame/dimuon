@@ -91,39 +91,48 @@ EOF
   log "Shared event selection complete for all years"
 fi
 
-# ------ Launch both pipelines in parallel (skip event selection) ------
-log "Launching crossx and trig_eff pipelines in parallel"
+# ------ Launch trig_eff then crossx, SERIALIZED (skip event selection) ------
+log "Launching trig_eff then crossx (SERIALIZED -- crossx consumes trig_eff's turn-on fits)"
 
 export SKIP_EVSEL=1
 CROSSX_LOG="${SCRIPT_DIR}/crossx_$$.log"
 TRIGEFF_LOG="${SCRIPT_DIR}/trigeff_$$.log"
 
-bash "${SCRIPT_DIR}/pipeline_pbpb_crossx.sh" > "$CROSSX_LOG" 2>&1 &
-PID_CROSSX=$!
-log "crossx pipeline started (PID $PID_CROSSX, log: $CROSSX_LOG)"
+# SERIALIZED, trig-eff FIRST (2026-09-09). These two used to run CONCURRENTLY, which is a race:
+# pipeline_pbpb_trig_eff.sh Stage 6 WRITES the single-muon turn-on TF1 fits
+#   <year>/trg_effcy_pT_fitting_to_fermi_plus_log/single_mu_effcy_pT_fit.root
+# and pipeline_pbpb_crossx.sh Stage 5 READS them to build the per-pair trigger weight. Run in
+# parallel, crossx picks up whatever fits happened to be on disk -- i.e. the PREVIOUS round's.
+# That is not hypothetical here: the Pb+Pb fit files key their top q*eta bin `_2_00_TO_2_30`
+# while the reader now builds `_2_00_TO_2_20` (the coarse edge moved with the fiducial cut), so
+# a concurrent run is GUARANTEED to read stale fits and throw inside the RDF event loop -- where
+# ROOT swallows the exception and still exits 0, leaving a fresh near-empty output. That failure
+# mode already destroyed pbpb_2024/histograms_real_pairs_..._nominal.root (851 bytes, 0 keys).
+bash "${SCRIPT_DIR}/pipeline_pbpb_trig_eff.sh" > "$TRIGEFF_LOG" 2>&1
+TRIGEFF_RC=$?
+log "trig_eff pipeline finished (rc=$TRIGEFF_RC, log: $TRIGEFF_LOG)"
 
-bash "${SCRIPT_DIR}/pipeline_pbpb_trig_eff.sh" > "$TRIGEFF_LOG" 2>&1 &
-PID_TRIGEFF=$!
-log "trig_eff pipeline started (PID $PID_TRIGEFF, log: $TRIGEFF_LOG)"
-
-# Wait for both and report
 FAIL=0
-if ! wait $PID_CROSSX; then
+if [[ $TRIGEFF_RC -ne 0 ]]; then
+  log "ERROR: trig_eff pipeline failed (see $TRIGEFF_LOG)"
+  log "ABORTING before crossx: it would consume the turn-on fits this stage was supposed to write."
+  exit 1
+fi
+log "trig_eff pipeline completed successfully"
+
+bash "${SCRIPT_DIR}/pipeline_pbpb_crossx.sh" > "$CROSSX_LOG" 2>&1
+CROSSX_RC=$?
+log "crossx pipeline finished (rc=$CROSSX_RC, log: $CROSSX_LOG)"
+
+if [[ $CROSSX_RC -ne 0 ]]; then
   log "ERROR: crossx pipeline failed (see $CROSSX_LOG)"
   FAIL=1
 else
   log "crossx pipeline completed successfully"
 fi
 
-if ! wait $PID_TRIGEFF; then
-  log "ERROR: trig_eff pipeline failed (see $TRIGEFF_LOG)"
-  FAIL=1
-else
-  log "trig_eff pipeline completed successfully"
-fi
-
 if [[ $FAIL -eq 1 ]]; then
-  fail "One or both pipelines failed — check logs above"
+  fail "The crossx pipeline failed — check logs above"
 fi
 
 log "All PbPb pipelines completed successfully"

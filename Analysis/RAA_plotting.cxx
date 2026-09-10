@@ -42,11 +42,64 @@ private:
 	std::vector<Color_t> ctr_colors = {kBlack, kBlue, kRed, kGreen+2, kMagenta, kOrange+2};
 	std::vector<std::string> ctr_labels = {"Centrality: 0-5%", "Centrality: 5-10%", "Centrality: 10-20%", "Centrality: 20-30%", "Centrality: 30-50%", "Centrality: 50-80%"};
 	
-	// RDF crossx pT axis has 15 bins, edges {8,10,11,14,16,20,24,28,34,41,49,58,70,84,100,120}.
-	// Group into 3 physics ranges covering ALL 15 bins (legacy used 12 bins / pT_bins_80).
-	std::vector<std::vector<int>> pair_pt_rebins = {{1,2,3,4,5},{6,7,8,9,10},{11,12,13,14,15}};
+	// Group the FINE crossx pair-pT axis into 3 physics ranges covering EVERY bin.
+	// DERIVED from ParamsSet, never retyped (.claude/CLAUDE.md Binnings rule 1). Until
+	// 2026-09-08 this was a hardcoded 15-bin map with retyped edges
+	// {8,10,11,14,16,20,24,28,34,41,49,58,70,84,100,120}; when the default crossx axis moved to
+	// ParamsSet::pT_bins_150 (16 log bins 9 -> 150 GeV, decision D5) that map silently DROPPED
+	// bin 16 (the top pair-pT decade) from R_AA and mislabelled all three groups. The two guards
+	// in RunPlotting() could not catch it: they compare pp against Pb+Pb, and both axes moved
+	// together. Deriving the grouping removes the whole failure mode.
+	// The split is made over the COARSE correction cells, not over raw fine bins, and then each
+	// coarse cell is expanded into its fine bins. That way every R_AA group boundary is also a
+	// `pair_pt_coarse_bins` edge, so each group is a whole number of the cells the efficiency
+	// corrections were actually MEASURED in -- rather than cutting a correction cell in half.
+	// This relies on the 2:1 nesting (coarse edge k == fine edge 2k), which is asserted here
+	// rather than assumed: the `_pt_120` alternative axis does NOT nest.
+	static std::vector<std::vector<int>> MakePairPtGroups(const std::vector<double>& fine,
+	                                                      const std::vector<double>& coarse,
+	                                                      int ngroups = 3) {
+		const int nfine = static_cast<int>(fine.size()) - 1;
+		const int ncoarse = static_cast<int>(coarse.size()) - 1;
+		if (ncoarse <= 0 || nfine != 2 * ncoarse)
+			throw std::runtime_error(Form(
+				"RAA_plotting MakePairPtGroups: the fine axis (%d bins) is not a 2:1 refinement of "
+				"the coarse one (%d bins). The R_AA pair-pT grouping is defined on the correction "
+				"cells, so it needs that nesting -- check ParamsSet::pT_bins_150 vs "
+				"pair_pt_coarse_bins.", nfine, ncoarse));
+		for (int k = 0; k <= ncoarse; ++k)
+			if (std::fabs(coarse.at(k) - fine.at(2 * k)) > 1e-9 * std::max(1.0, coarse.at(k)))
+				throw std::runtime_error(Form(
+					"RAA_plotting MakePairPtGroups: coarse edge %d (%.6f) is not fine edge %d "
+					"(%.6f).", k, coarse.at(k), 2 * k, fine.at(2 * k)));
+		// near-equal split of the COARSE cells; the remainder goes to the LOW groups, where the
+		// spectrum is steepest and the finer grouping is worth more
+		std::vector<std::vector<int>> groups(ngroups);
+		const int base = ncoarse / ngroups, rem = ncoarse % ngroups;
+		int c = 0;
+		for (int g = 0; g < ngroups; ++g)
+			for (int k = 0; k < base + (g < rem ? 1 : 0); ++k, ++c) {
+				groups[g].push_back(2 * c + 1);   // the two fine bins of coarse cell c
+				groups[g].push_back(2 * c + 2);
+			}
+		if (c != ncoarse)
+			throw std::runtime_error(Form("RAA_plotting MakePairPtGroups: covered %d of %d coarse "
+			                              "cells", c, ncoarse));
+		return groups;
+	}
+	static std::vector<std::string> MakePairPtLabels(const std::vector<std::vector<int>>& groups,
+	                                                 const std::vector<double>& edges) {
+		std::vector<std::string> labels;
+		for (const auto& g : groups)
+			labels.push_back(Form("p_{T}^{pair} %.3g-%.3g GeV",
+			                      edges.at(g.front() - 1), edges.at(g.back())));
+		return labels;
+	}
+	ParamsSet raa_pms;
+	std::vector<std::vector<int>> pair_pt_rebins =
+		MakePairPtGroups(raa_pms.pT_bins_150, raa_pms.pair_pt_coarse_bins);
 	std::vector<Color_t> pair_pt_colors = {kBlue, kRed, kGreen+2};
-	std::vector<std::string> pair_pt_labels = {"p_{T}^{pair} 8-20GeV", "p_{T}^{pair} 20-49GeV", "p_{T}^{pair} 49-120GeV"};
+	std::vector<std::string> pair_pt_labels = MakePairPtLabels(pair_pt_rebins, raa_pms.pT_bins_150);
 
 	// the rebins, colors & labels for the variable showing up as different lines
 	std::vector<std::vector<int>> line_var_rebins;
@@ -252,7 +305,23 @@ void RAAPlotting::HistProject(){
 		hcrossx_pp_proj = h2d_crossx_pp->ProjectionY("h_pp_crossx_pair_eta");
     }
 	
-	hcrossx_pp_proj->Scale(1.,"width");		    	
+	hcrossx_pp_proj->Scale(1.,"width");
+
+	// The pair-pT grouping is derived from ParamsSet, but the HISTOGRAM comes off disk and may
+	// have been filled on an older axis. Assert the grouping actually tiles it, so a stale input
+	// throws instead of silently dropping the bins the groups do not reach (which is exactly what
+	// the retired hardcoded 15-bin map did once the axis moved to 16 bins).
+	if (mode == 3){
+		int covered = 0, maxbin = 0;
+		for (const auto& g : line_var_rebins)
+			for (int b : g){ ++covered; maxbin = std::max(maxbin, b); }
+		if (covered != hcrossx_pp_proj->GetNbinsX() || maxbin != hcrossx_pp_proj->GetNbinsX())
+			throw std::runtime_error(Form(
+				"RAA_plotting mode 3: the pair-pT grouping covers %d bins (highest index %d) but "
+				"the pp crossx histogram has %d bins. The input was filled on a different "
+				"pair-pT axis than ParamsSet::pT_bins_150 -- refill it, do not reinterpret it.",
+				covered, maxbin, hcrossx_pp_proj->GetNbinsX()));
+	}
 
 	pp_crossx_intgr_in_pair_pT_bin.clear();
 
@@ -418,7 +487,10 @@ void RAAPlotting::RunPlotting(){
 		}
 		l->AddEntry("", legend_pbpb_label.c_str(), "");
 		l->AddEntry("", legend_pp_label.c_str(), "");
-		l->AddEntry("","m_{#mu#mu}#in(1.08,2.9), p_{T}^{pair}>8 GeV","");
+		// Composed from ParamsSet: this legend published the retired "> 8 GeV" after the cut moved
+		// to 9 (Binnings rule 5 -- label and axis must never be able to disagree).
+		l->AddEntry("", Form("m_{#mu#mu}#in(1.08,2.9), p_{T}^{pair}>%g GeV",
+		                     ParamsSet::signal_pair_pt_min), "");
 		l->AddEntry("","OS #minus SS subtracted, tight WP","");
 		l->AddEntry("","reco-eff + T_{AA}: PLACEHOLDERS","");
 	    

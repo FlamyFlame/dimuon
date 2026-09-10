@@ -714,7 +714,7 @@ void plot_mc_trig_eff_corrected(const std::string& sample = "pp_full", bool use_
         os << "# Q1: does correcting the MC by SF = eps_data/eps_MC reproduce the DATA "
               "single-muon mu4 efficiency?\n";
         os << "# sample=" << sample << "  WP=" << wp_text << "  " << cfg.sample_text << "\n";
-        os << "# (a) INTEGRATED efficiency over the whole selected sample (pT > 4, |eta| < 2.4).\n";
+        os << "# (a) INTEGRATED efficiency over the whole selected sample (pT > 4.5, |eta| < 2.4).\n";
         os << "#     CAUTION -- corr/data is NOT expected to be 1 here, and a deviation is not a\n"
               "#     failure of the correction: eps_corr is the MC-spectrum-weighted average of\n"
               "#     eps_data(pT, q.eta) while eps_data is the DATA-spectrum-weighted average, and\n"

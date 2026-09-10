@@ -1,7 +1,7 @@
 // =================================================================================================
 // plot_mc_trig_eff_closure_highpt_compare.cxx
 //
-// THE dR-CORRECTION PROCEDURE vs THE SINGLE-VALUE PAIR EFFICIENCY, ABOVE 50 GeV
+// THE dR-CORRECTION PROCEDURE vs THE SINGLE-VALUE PAIR EFFICIENCY, ABOVE 52.2 GeV
 // (docs/tracking/mc_trigeff_single_value_pair_eff.md PP-4 and R8; inputs from FillMCTrigEffClosure)
 //
 // TWO COMPARISONS, each into its OWN subdirectory of
@@ -19,7 +19,7 @@
 //   pt_merge_compr/      does MERGING the top two pair-pT cells cost anything?
 //       the same no-trigger and two dR series
 //       single value, signal window, the canonical 8 pair-pT cells                 kRed
-//       single value, signal window, top two combined into [72.08, 150) GeV        kGreen+2
+//       single value, signal window, top two combined into [74.24, 150) GeV        kGreen+2
 //
 // The dR series weight a firing pair by 1/[eps_MC(1) eps_MC(2) eps_dR(dR ; cell)]; the single-value
 // ones replace that product by ONE measured number per (pair pT, |eta^pair|, sign) cell.
@@ -32,8 +32,8 @@
 // withdrawn, because writing the weight that way RE-INTRODUCES the very factorization the
 // single-value procedure exists to avoid.
 //
-// WHY ONLY ABOVE 50 GeV. The single-value efficiency is delivered for the coarse pair-pT cells
-// above 49.97 GeV, because that is where the dR-shape fit runs out of pairs. The lowest delivered
+// WHY ONLY ABOVE 52.2 GeV. The single-value efficiency is delivered for the coarse pair-pT cells
+// above 52.23 GeV, because that is where the dR-shape fit runs out of pairs. The lowest delivered
 // cell is the CONTROL region, where the dR procedure still works and the two must agree.
 //
 // WHY ONLY THE SIGNAL SAMPLE VERSION. The mass window is part of the single-value efficiency's
@@ -350,7 +350,7 @@ void plot_mc_trig_eff_closure_highpt_compare(const std::string& sample = "pp_ful
                         // weighted yields in nb, all of them far below 1, so a `max(1.0, dfull)`
                         // floor turns this into an ABSOLUTE 1e-6 nb test that every bin passes --
                         // including a bin with ZERO coverage. That is what it did until
-                        // 2026-09-08: the forward [103.98,150) x |eta| 2-2.2 cell is refused by the
+                        // 2026-09-08: the forward [105.53,150) x |eta| 2-2.2 cell is refused by the
                         // reader (4 raw pairs), so bin [101.47, 123.37) of the 2.0 < eta^pair < 2.2
                         // panel has den = 6.2e-07 and den_paireff = 0, yet was drawn -- at C = 0,
                         // exactly the coverage artefact PP-4 exists to keep off the figure.

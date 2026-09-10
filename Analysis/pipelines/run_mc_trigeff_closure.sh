@@ -25,8 +25,8 @@
 # All three fit methods are therefore needed in EVERY mode. The un-merged reference additionally
 # draws the two parametric forms as separate series, into a `separate_fit_forms/` subdirectory.
 #
-# EVERY closure is binned on the pp24 CROSS-SECTION's binning (ParamsSet::pT_bins_150, 15 log bins
-# 8-150 GeV, x the 9 pair-eta panels), whatever its correction cells are -- doc D8. That is what
+# EVERY closure is binned on the pp24 CROSS-SECTION's binning (ParamsSet::pT_bins_150, 16 log bins
+# 9-150 GeV, x the 9 pair-eta panels), whatever its correction cells are -- doc D8. That is what
 # makes the four comparable, and it is why Stage 4 can overlay them in one figure.
 #
 # STAGES

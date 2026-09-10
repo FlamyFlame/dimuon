@@ -193,7 +193,7 @@ inline std::string DrCorrSignFileTag(const std::string& sign)
 //                       MCTRIGEFF_PAIRPT_4BIN set THROWS (dr_correction_cell_groups.h).
 //   "nocorr_etamerge" -- the SAME raw fit as "nocorr", with the 9 pair-eta bins MERGED into THREE
 //                       SIGN-INDEPENDENT |eta^pair| BINS: |eta| < 1.0 (barrel), 1.0 <= |eta| < 2.0
-//                       and 2.0 <= |eta| < 2.4 (added 2026-08-24, user request; SUPERSEDED
+//                       and 2.0 <= |eta| < 2.2 (added 2026-08-24, user request; SUPERSEDED
 //                       2026-09-03 -- the ORIGINAL grouping was signed: negative-eta endcap
 //                       (-2.4,-1.0) / barrel (-1.0,1.0) / positive-eta endcap (1.0,2.4). Replaced
 //                       because the dR correlation was found to barely depend on the SIGN of pair

@@ -2,7 +2,7 @@
 // plot_mc_data_compr_signal.cxx -- the SIGNAL family of the pp24 MC-vs-data comparison.
 //
 // Data and Pythia carry the SAME cuts: the single-b signal region (m_uu in (1.08, 2.9) GeV,
-// pair pT > 8 GeV, the fiducial gap cut on BOTH muons), taken in TRUTH quantities on the MC side.
+// pair pT > ParamsSet::signal_pair_pt_min (9 GeV since 2026-09-08), the fiducial gap cut on BOTH muons), taken in TRUTH quantities on the MC side.
 // Every efficiency correction on the data side is therefore applied inside the region in which it
 // was measured, which is what makes this family -- and not the generic one -- a genuine (fiducial,
 // reco-level, background-unsubtracted) cross-section comparison.

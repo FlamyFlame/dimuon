@@ -27,7 +27,17 @@ protected:
     std::vector<std::pair<float, float>> q_eta_bins;
 
 public:
-    bool use_pt_bins_150 = false;
+    // WHICH pair-pT axis (user decision 2026-09-08; mirrors SingleBCrossxPlotterBase):
+    //   false (DEFAULT) -> the UNSUFFIXED "h2d_sig_accept_*_pt_eta" family, booked on
+    //                      ParamsSet::pT_bins_150 (16 log bins 9 -> 150 GeV), into the unsuffixed
+    //                      output directory. The signal acceptance multiplies the cross-section,
+    //                      so it MUST be binned on the cross-section's nominal axis.
+    //   true  (OPT-IN)  -> the "h2d_sig_accept_*_pt_120_eta" family, booked on
+    //                      ParamsSet::pT_bins_120 (16 log bins 9 -> 120 GeV), into "_pt_120".
+    // Producers: RDFBasedHistFillingPythiaTruth.cxx / RDFBasedHistFillingPowhegTruth.cxx.
+    bool use_pt_bins_120 = false;
+
+    std::string PtAxisDirSuffix() const { return use_pt_bins_120 ? "_pt_120" : ""; }
 
     SignalAcceptancePlotter(const std::string& in_path, const std::string& out_dir)
         : input_file_path(in_path), output_dir(out_dir),
@@ -52,7 +62,7 @@ public:
 
     // 2D colz plot of the acceptance ratio histogram.
     void Draw2DColz(const std::string& png_name) {
-        const std::string hname = use_pt_bins_150 ? "h2d_sig_accept_pt_150_eta" : "h2d_sig_accept_pt_eta";
+        const std::string hname = use_pt_bins_120 ? "h2d_sig_accept_pt_120_eta" : "h2d_sig_accept_pt_eta";
         TH2D* h = dynamic_cast<TH2D*>(fin->Get(hname.c_str()));
         if (!h) throw std::runtime_error("Missing histogram: " + hname);
         if (h->GetEntries() == 0) throw std::runtime_error(hname + " is empty");
@@ -90,8 +100,8 @@ public:
     void DrawAcceptancePtByEta(const std::string& png_name,
                                 const std::string& mc_label_line1,
                                 const std::string& mc_label_line2) {
-        const std::string num_name = use_pt_bins_150 ? "h2d_sig_accept_num_pt_150_eta" : "h2d_sig_accept_num_pt_eta";
-        const std::string den_name = use_pt_bins_150 ? "h2d_sig_accept_denom_pt_150_eta" : "h2d_sig_accept_denom_pt_eta";
+        const std::string num_name = use_pt_bins_120 ? "h2d_sig_accept_num_pt_120_eta"   : "h2d_sig_accept_num_pt_eta";
+        const std::string den_name = use_pt_bins_120 ? "h2d_sig_accept_denom_pt_120_eta" : "h2d_sig_accept_denom_pt_eta";
         TH2D* hnum = dynamic_cast<TH2D*>(fin->Get(num_name.c_str()));
         TH2D* hden = dynamic_cast<TH2D*>(fin->Get(den_name.c_str()));
         if (!hnum) throw std::runtime_error("Missing histogram: " + num_name);

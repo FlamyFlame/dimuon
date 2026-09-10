@@ -12,21 +12,25 @@
 // property of the RAW COUNT, and this is it.
 //
 //   input : dimuon_data/pp_2024/histograms_real_pairs_pp_2024_2mu4_nominal.root
-//           h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts
+//           h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts  (nominal 9 -> 150 GeV axis)
+//           h2d_counts_pt_120_pair_eta_binned_w_signal_cuts   (opt-in  9 -> 120 GeV axis)
 //           = UNWEIGHTED OS pair count, filled from the very same RDF node as the crossx
 //             histogram it mirrors (Tight WP + `signal_cuts`: 1.08 < m < 2.9 GeV,
-//             pair pT > 8 GeV, both muons outside every ParamsSet::single_mu_fiducial_gap_cuts
-//             window), on the SAME axes (RDFBasedHistFillingPP.cxx).
+//             pair pT > ParamsSet::signal_pair_pt_min, both muons outside every
+//             ParamsSet::single_mu_fiducial_gap_cuts window), on the SAME axes
+//             (RDFBasedHistFillingPP.cxx).
 //
-// BINNING: identical to `pp24_crossx_pair_pt_in_eta_subplots.png` by construction -- the same
-// histogram axes (ParamsSet::pT_bins_120 x ParamsSet::pair_eta_crossx_bins) and the same nine
+// BINNING: identical to `pp24_crossx_pair_pt_in_eta_subplots.png` by construction -- the SAME
+// histogram (selected through SingleBCrossxPlotterBase::PtAxisHist, so the counts figure can never
+// sit on a different pair-pT axis than the cross-section figure beside it) and the same nine
 // panels (CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap), projected by the SAME
 // SingleBCrossxPlotterBase::DrawPairPtByEta code path. Nothing is retyped here.
 //
 // NOT width-scaled (`differential = false`): a count is a count. That is the whole distinction
 // from the crossx figure beside it.
 //
-// Output: plots/single_b_analysis/pp24/
+// Output: plots/single_b_analysis/pp24/          (nominal, pair pT 9 -> 150 GeV)
+//         plots/single_b_analysis/pp24_pt_120/   (opt-in alternative, 9 -> 120 GeV)
 //           pp_counts_pair_pt_in_eta_subplots.png
 //           pp_counts_pair_pt_in_eta.csv
 // Usage:  root -l -b -q 'plot_pp_counts_pair_pt_in_eta.cxx+()'
@@ -129,12 +133,16 @@ public:
         // worth using can skip (pandas: comment="#").
         out << "# pp 20" << run_year << " data, " << CountsWPName(wp)
             << " WP: RAW opposite-sign muon-pair COUNTS in the single-b signal region "
-               "(1.08 < m_uu < 2.9 GeV, pair pT > 8 GeV, both muons outside every "
+               "(1.08 < m_uu < 2.9 GeV, pair pT > " << ParamsSet::signal_pair_pt_min
+            << " GeV, both muons outside every "
                "ParamsSet::single_mu_fiducial_gap_cuts window, and |eta^pair| < "
             << ParamsSet::pair_eta_fiducial_max
             << "). Unweighted, NOT efficiency "
-               "corrected, NOT background subtracted. Columns = pair pT [GeV] "
-               "(ParamsSet::pT_bins_120); rows = the 9 "
+               "corrected, NOT background subtracted. Columns = pair pT [GeV] ("
+            << (use_pt_bins_120 ? "ParamsSet::pT_bins_120" : "ParamsSet::pT_bins_150")
+            << ", " << npt << " log bins " << std::fixed << std::setprecision(0)
+            << ax->GetBinLowEdge(1) << " - " << ax->GetBinUpEdge(npt)
+            << " GeV); rows = the 9 "
                "CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap panels.\n";
         out << "pair_eta_range";
         for (int ix = 1; ix <= npt; ++ix)
@@ -164,10 +172,13 @@ public:
     }
 
     void Run() override {
+        // Same axis discipline as the cross-section figure this one mirrors: ONE pair-pT axis per
+        // invocation, into its own directory (pp24/ nominal, pp24_pt_120/ alternative).
+        output_dir += PtAxisDirSuffix();
         if (!Init()) return;
 
         const std::string trig_label_pp = DatasetTriggerMap::GetTriggerLabel(run_year, "pp");
-        const std::string h2 = "h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts";
+        const std::string h2 = PtAxisHist("h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts");
         // Built from run_year and the WP, never hard-coded: a "PP 2024, tight WP" literal would
         // silently mislabel any other year or working point the macro is asked for.
         const std::string info_line = Form("PP 20%d, %s WP", run_year, CountsWPName(wp));
@@ -175,13 +186,18 @@ public:
         DrawPairPtByEta(h2, info_line, trig_label_pp,
                         "pp_counts_pair_pt_in_eta_subplots.png",
                         "N_{pairs}", /*differential=*/false);
-        WriteCsv(h2, "pp_counts_pair_pt_in_eta.csv");
+        // Same asymmetry as the draw methods: absent in the partial "pt_120" alternative -> skip;
+        // absent in the nominal view -> WriteCsv throws, because that would be a producer bug.
+        if (!SkipInAltView(h2, "pp_counts_pair_pt_in_eta.csv"))
+            WriteCsv(h2, "pp_counts_pair_pt_in_eta.csv");
     }
 };
 
 // `wp` = "tight" (nominal) or "medium" (the WP systematic variant).
+// `also_pt_120 = true` additionally refreshes the opt-in 9 -> 120 GeV view in pp24_pt_120/, in the
+// same invocation as the nominal 9 -> 150 GeV one, so the two cannot drift apart.
 void plot_pp_counts_pair_pt_in_eta(int run_year = 24, const std::string& input_file = "",
-                                   const char* wp = "tight")
+                                   const char* wp = "tight", bool also_pt_120 = false)
 {
     const CountsWP muon_wp = ParseCountsWP(wp);
     std::cout << "plot_pp_counts_pair_pt_in_eta: muon WP = " << CountsWPName(muon_wp) << std::endl;
@@ -218,6 +234,12 @@ void plot_pp_counts_pair_pt_in_eta(int run_year = 24, const std::string& input_f
         }
     }
 
-    PPSignalCountsPlotter pl(in_path, yr, muon_wp);
+    PPSignalCountsPlotter pl(in_path, yr, muon_wp);   // DEFAULT: pT_bins_150 -> pp24/
     pl.Run();
+
+    if (also_pt_120) {
+        PPSignalCountsPlotter pl120(in_path, yr, muon_wp);
+        pl120.use_pt_bins_120 = true;                 // OPT-IN: pT_bins_120 -> pp24_pt_120/
+        pl120.Run();
+    }
 }

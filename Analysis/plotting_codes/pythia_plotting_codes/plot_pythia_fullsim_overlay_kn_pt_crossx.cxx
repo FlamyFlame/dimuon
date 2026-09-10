@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 #include <array>
+#include "../../MuonObjectsParamsAndHelpers/ParamsSet.h"   // signal_pair_pt_min / pTbins -- axes read, never retyped
 
 static const std::string kInputFile =
     "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/"
@@ -72,7 +73,7 @@ static std::vector<double> LogEdges(int nbins, double xmin, double xmax) {
 void overlay_plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix) {
 
     gSystem->mkdir(kOutputDir.c_str(), true);
-    const auto edges = LogEdges(nbins_arg, 8., xmax_arg);
+    const auto edges = LogEdges(nbins_arg, ParamsSet::signal_pair_pt_min, xmax_arg);
 
     const std::array<std::string, 2> out_names = {
         "truth_pair_pt_kn" + suffix, "reco_pair_pt_kn" + suffix
@@ -118,7 +119,7 @@ void overlay_plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix
             auto* h = hists[ikn];
             h->GetXaxis()->SetTitle(kVarTitles[ivar].c_str());
             h->GetYaxis()->SetTitle("d#sigma/dp_{T} [nb/GeV]");
-            h->GetXaxis()->SetRangeUser(8., xmax_arg);
+            h->GetXaxis()->SetRangeUser(ParamsSet::signal_pair_pt_min, xmax_arg);
             h->GetYaxis()->SetRangeUser(ymin * 0.3, ymax * 5.);
             h->GetXaxis()->SetTitleSize(0.05); h->GetYaxis()->SetTitleSize(0.05);
             h->GetXaxis()->SetTitleOffset(1.1); h->GetYaxis()->SetTitleOffset(1.5);
@@ -149,7 +150,7 @@ void overlay_plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix
         hs->Draw("hist");
         hs->GetXaxis()->SetTitle(kVarTitles[ivar].c_str());
         hs->GetYaxis()->SetTitle("d#sigma/dp_{T} [nb/GeV]");
-        hs->GetXaxis()->SetRangeUser(8., xmax_arg);
+        hs->GetXaxis()->SetRangeUser(ParamsSet::signal_pair_pt_min, xmax_arg);
         hs->GetXaxis()->SetTitleSize(0.05); hs->GetYaxis()->SetTitleSize(0.05);
         hs->GetXaxis()->SetTitleOffset(1.1); hs->GetYaxis()->SetTitleOffset(1.5);
         TLegend* leg2 = new TLegend(0.67, 0.53, 1.08, 0.92);
@@ -171,7 +172,7 @@ void overlay_plot_stat_error_forecast(int nbins_arg, double xmax_arg, const std:
                                        const std::string& subdir = "") {
 
     gSystem->mkdir((kOutputDir + subdir).c_str(), true);
-    const auto edges = LogEdges(nbins_arg, 8., xmax_arg);
+    const auto edges = LogEdges(nbins_arg, ParamsSet::signal_pair_pt_min, xmax_arg);
 
     const std::array<std::string, 2> out_names = {
         "truth_pair_pt_kn_stat_error" + suffix,
@@ -235,7 +236,7 @@ void overlay_plot_stat_error_forecast(int nbins_arg, double xmax_arg, const std:
             auto* h = hists[ikn];
             h->GetXaxis()->SetTitle(kVarTitles[ivar].c_str());
             h->GetYaxis()->SetTitle("d#sigma/dp_{T} [nb/GeV]");
-            h->GetXaxis()->SetRangeUser(8., xmax_arg);
+            h->GetXaxis()->SetRangeUser(ParamsSet::signal_pair_pt_min, xmax_arg);
             h->GetYaxis()->SetRangeUser(ymin_d * 0.3, ymax_d * 5.);
             h->GetXaxis()->SetTitleSize(0.05); h->GetYaxis()->SetTitleSize(0.05);
             h->GetXaxis()->SetTitleOffset(1.1); h->GetYaxis()->SetTitleOffset(1.5);
@@ -256,7 +257,7 @@ void overlay_plot_stat_error_forecast(int nbins_arg, double xmax_arg, const std:
             auto* h = herr[ikn];
             h->GetXaxis()->SetTitle(kVarTitles[ivar].c_str());
             h->GetYaxis()->SetTitle("Full-sample rel. stat. error 1/#sqrt{N_{full}}");
-            h->GetXaxis()->SetRangeUser(8., xmax_arg);
+            h->GetXaxis()->SetRangeUser(ParamsSet::signal_pair_pt_min, xmax_arg);
             h->GetYaxis()->SetRangeUser(ymin_e * 0.3, ymax_e * 5.);
             h->GetXaxis()->SetTitleSize(0.05); h->GetYaxis()->SetTitleSize(0.05);
             h->GetXaxis()->SetTitleOffset(1.1); h->GetYaxis()->SetTitleOffset(1.5);
@@ -282,7 +283,7 @@ void overlay_plot_err_fraction_map(int nbins_arg, double xmax_arg, const std::st
                                     const std::string& subdir = "") {
 
     gSystem->mkdir((kOutputDir + subdir).c_str(), true);
-    const auto edges = LogEdges(nbins_arg, 8., xmax_arg);
+    const auto edges = LogEdges(nbins_arg, ParamsSet::signal_pair_pt_min, xmax_arg);
 
     const std::array<std::string, 2> out_names = {
         "truth_pair_pt_kn_err_frac" + suffix,
@@ -341,7 +342,7 @@ void overlay_plot_err_fraction_map(int nbins_arg, double xmax_arg, const std::st
             auto* h = hists[ikn];
             h->GetXaxis()->SetTitle(kVarTitles[ivar].c_str());
             h->GetYaxis()->SetTitle("d#sigma/dp_{T} [nb/GeV]");
-            h->GetXaxis()->SetRangeUser(8., xmax_arg);
+            h->GetXaxis()->SetRangeUser(ParamsSet::signal_pair_pt_min, xmax_arg);
             h->GetYaxis()->SetRangeUser(ymin_d * 0.3, ymax_d * 5.);
             h->GetXaxis()->SetTitleSize(0.05); h->GetYaxis()->SetTitleSize(0.05);
             h->GetXaxis()->SetTitleOffset(1.1); h->GetYaxis()->SetTitleOffset(1.5);
@@ -362,7 +363,7 @@ void overlay_plot_err_fraction_map(int nbins_arg, double xmax_arg, const std::st
         h2->GetXaxis()->SetTitle(kVarTitles[ivar].c_str());
         h2->GetYaxis()->SetTitle("#hat{p}_{T} range [GeV]");
         h2->GetZaxis()->SetTitle("#sigma_{err,kn} / #sigma_{err,total}");
-        h2->GetXaxis()->SetRangeUser(8., xmax_arg);
+        h2->GetXaxis()->SetRangeUser(ParamsSet::signal_pair_pt_min, xmax_arg);
         h2->SetMinimum(0.); h2->SetMaximum(1.);
         h2->GetXaxis()->SetTitleSize(0.05); h2->GetYaxis()->SetTitleSize(0.05);
         h2->GetZaxis()->SetTitleSize(0.045);
@@ -383,7 +384,7 @@ void overlay_plot_err_ratio_map(int nbins_arg, double xmax_arg, const std::strin
                                  const std::string& subdir = "") {
 
     gSystem->mkdir((kOutputDir + subdir).c_str(), true);
-    const auto edges = LogEdges(nbins_arg, 8., xmax_arg);
+    const auto edges = LogEdges(nbins_arg, ParamsSet::signal_pair_pt_min, xmax_arg);
 
     const std::array<std::string, 2> out_names = {
         "truth_pair_pt_kn_err_ratio" + suffix,
@@ -449,7 +450,7 @@ void overlay_plot_err_ratio_map(int nbins_arg, double xmax_arg, const std::strin
             auto* h = hists[ikn];
             h->GetXaxis()->SetTitle(kVarTitles[ivar].c_str());
             h->GetYaxis()->SetTitle("d#sigma/dp_{T} [nb/GeV]");
-            h->GetXaxis()->SetRangeUser(8., xmax_arg);
+            h->GetXaxis()->SetRangeUser(ParamsSet::signal_pair_pt_min, xmax_arg);
             h->GetYaxis()->SetRangeUser(ymin_d * 0.3, ymax_d * 5.);
             h->GetXaxis()->SetTitleSize(0.05); h->GetYaxis()->SetTitleSize(0.05);
             h->GetXaxis()->SetTitleOffset(1.1); h->GetYaxis()->SetTitleOffset(1.5);
@@ -470,7 +471,7 @@ void overlay_plot_err_ratio_map(int nbins_arg, double xmax_arg, const std::strin
         h2->GetXaxis()->SetTitle(kVarTitles[ivar].c_str());
         h2->GetYaxis()->SetTitle("#hat{p}_{T} range [GeV]");
         h2->GetZaxis()->SetTitle("(#sigma_{err,kn}/#sigma_{err,tot}) / (#sigma_{kn}/#sigma_{tot})");
-        h2->GetXaxis()->SetRangeUser(8., xmax_arg);
+        h2->GetXaxis()->SetRangeUser(ParamsSet::signal_pair_pt_min, xmax_arg);
         h2->SetMinimum(0.);
         h2->GetXaxis()->SetTitleSize(0.05); h2->GetYaxis()->SetTitleSize(0.05);
         h2->GetZaxis()->SetTitleSize(0.038);

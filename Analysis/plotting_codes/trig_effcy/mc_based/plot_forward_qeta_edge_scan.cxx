@@ -50,7 +50,7 @@
 //            what CLAUDE.md §Binnings forbids. Every legend entry is written from the edge the
 //            axis actually delivered, so no label can disagree with the data behind it.
 //
-// IMPORTANT -- INPUTS MUST HAVE NO FORWARD GAP CUT. The nominal chain now rejects q*eta > 2.3
+// IMPORTANT -- INPUTS MUST HAVE NO FORWARD GAP CUT. The nominal chain now rejects q*eta > 2.20
 // outright, so its outputs contain nothing to compare. This macro therefore reads files produced
 // WITHOUT the gap cut (the un-suffixed `_fine_q_eta_bin` tag-and-probe outputs; the gap-cut
 // variant carries `_qeta_fid`), and refuses to run if the region above 2.2 is empty (which is

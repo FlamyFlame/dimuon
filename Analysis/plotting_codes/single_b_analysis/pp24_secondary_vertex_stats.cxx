@@ -10,7 +10,7 @@
 // Physics + method: docs/tracking/pp24_all_vertex_pairs.md (§1, §3d, §3e).
 //
 // PROVENANCE. Reads the NTuple-processing OUTPUT pair trees -- never the raw NTUPs -- so every cut
-// (quality/WP, pT > 4, |eta| < 2.4, one-sided Delta-p/p, the same-vertex impact-parameter cut, the
+// (quality/WP, pT > 4.5, |eta| < 2.4, one-sided Delta-p/p, the same-vertex impact-parameter cut, the
 // 2mu4 trigger match, the opposite-sign resonance veto) is exactly the nominal one, applied once,
 // by the ntuple stage. See .claude/CLAUDE.md "NTuple-Processing Provenance".
 //
@@ -30,7 +30,8 @@
 // POPULATIONS. Two, because the answer differs and both matter:
 //   ALL PAIRS      -- everything in the output tree, the "good muon pairs" of the request.
 //   SIGNAL REGION  -- the single-b OS crossx selection this feeds
-//                     (Tight WP, 1.08 < m_uu < 2.9 GeV, pair pT > 8 GeV, both muons outside every
+//                     (Tight WP, 1.08 < m_uu < 2.9 GeV, pair pT > ParamsSet::signal_pair_pt_min
+//                     (9 GeV since 2026-09-08), both muons outside every
 //                      ParamsSet::single_mu_fiducial_gap_cuts window, |eta^pair| < 2.2).
 //
 // Usage:  root -l -b -q 'pp24_secondary_vertex_stats.cxx+()'
@@ -153,7 +154,7 @@ void pp24_secondary_vertex_stats(bool use_tight_wp = true,
     // Mirrors `signal_cuts` in RDFBasedHistFilling/RDFBasedHistFillingPP.cxx, in the pair tree's
     // dotted column names.
     const std::string signal_cuts = and_cut(wp_cut,
-        "minv > 1.08 && minv < 2.9 && pair_pt > 8 && "
+        "minv > 1.08 && minv < 2.9 && " + ParamsSet::SignalPairPtCutExpr("pair_pt") + " && "
         + ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta") + " && "
         + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta") + " && "
         + ParamsSet::PairFiducialEtaCutExpr("pair_eta"));
@@ -216,7 +217,7 @@ void pp24_secondary_vertex_stats(bool use_tight_wp = true,
     {
         std::ostringstream lo_cut;
         lo_cut << std::setprecision(10) << "pair_pt < " << pt_bins.front();
-        pt_rows.push_back(sum_os_ss(lo_cut.str(), "pair pT < 8 (below)"));
+        pt_rows.push_back(sum_os_ss(lo_cut.str(), Form("pair pT < %g (below)", pt_bins.front())));
 
         for (int i = 0; i < n_pt; ++i)
             pt_rows.push_back(sum_os_ss(pt_cut(pt_bins[i], pt_bins[i + 1]),
@@ -238,7 +239,7 @@ void pp24_secondary_vertex_stats(bool use_tight_wp = true,
         sig_pt_rows.push_back(r);
     }
     {
-        // The signal region already requires pair_pt > 8, so it has no below-axis row -- but it
+        // The signal region already requires pair_pt > signal_pair_pt_min, so it has no below-axis row -- but it
         // DOES have pairs above 150 GeV, and without this row the eight bins would silently sum
         // to less than the integrated signal total, contradicting the completeness the CSV
         // header claims. (Measured 2026-09-08: 3 pairs. Small, but a table must not assert
@@ -314,9 +315,9 @@ void pp24_secondary_vertex_stats(bool use_tight_wp = true,
            "secondary. f_new = N(!pass_primary_vtx)/N -- the pair fails the primary vertex "
            "outright, i.e. it is ADDED by the all-vertex rule. f_sec >= f_new by construction.\n"
         << "# pair-pT rows use ParamsSet::pair_pt_coarse_bins (N_COARSE_PAIR_PT_BINS = "
-        << n_pt << ", logarithmic, 8-150 GeV); the below-/above-axis rows keep the totals "
+        << n_pt << ", logarithmic, 9-150 GeV); the below-/above-axis rows keep the totals "
            "complete. Signal region = OS + " << wp_name << " + 1.08 < m_uu < 2.9 GeV + "
-           "pair pT > 8 GeV + both muons outside every ParamsSet::single_mu_fiducial_gap_cuts "
+           "pair pT > 9 GeV + both muons outside every ParamsSet::single_mu_fiducial_gap_cuts "
            "window + |eta^pair| < " << ParamsSet::pair_eta_fiducial_max << ".\n"
         << "# The pair-pT edges in the `selection` column are ROUNDED to 2 dp for legibility; "
            "the cuts themselves use the exact ParamsSet edges. Errors are nested-binomial, "
@@ -385,7 +386,7 @@ void pp24_secondary_vertex_stats(bool use_tight_wp = true,
     write_focused(out_dir + "/pp24_secondary_vertex_integrated.csv",
         "# INTEGRATED over all pair pT. 'all pairs (OS+SS)' is every pair in the output trees; "
         "'signal region (OS)' additionally requires " + wp_name + " + 1.08 < m_uu < 2.9 GeV + "
-        "pair pT > 8 GeV + both muons outside every ParamsSet::single_mu_fiducial_gap_cuts "
+        "pair pT > 9 GeV + both muons outside every ParamsSet::single_mu_fiducial_gap_cuts "
         "window + |eta^pair| < " + std::to_string(ParamsSet::pair_eta_fiducial_max) + ".\n",
         "population",
         { {"all pairs (OS+SS)", all_both},
@@ -403,7 +404,7 @@ void pp24_secondary_vertex_stats(bool use_tight_wp = true,
         write_focused(out_dir + "/pp24_secondary_vertex_vs_pair_pt_signal.csv",
             "# SIGNAL REGION (OS) only, split by the canonical coarse pair-pT axis "
             "ParamsSet::pair_pt_coarse_bins (N_COARSE_PAIR_PT_BINS = "
-            + std::to_string(n_pt) + ", logarithmic, 8-150 GeV), read from ParamsSet and never "
+            + std::to_string(n_pt) + ", logarithmic, 9-150 GeV), read from ParamsSet and never "
             "retyped. Bin edges in the first column are ROUNDED to 2 dp for legibility; the cuts "
             "use the exact edges. The last row is the above-axis overflow, kept so the rows sum "
             "to the integrated signal-region total.\n",

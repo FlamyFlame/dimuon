@@ -299,23 +299,29 @@ if (!f || f->IsZombie()) gSystem->Exit(2);
 if (!f->Get("h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts")) { f->Close(); gSystem->Exit(3); }
 f->Close(); gSystem->Exit(0);
 EOF
+# The probed histogram is the NOMINAL one -- the UNSUFFIXED family, booked on ParamsSet::pT_bins_150
+# (9 -> 150 GeV) -- that Stage 6 plots, not the opt-in "pt_120" alternative: a liveness check has to
+# look at the object the result is actually built from.
 [[ $? -eq 0 ]] || fail "RDF crossx output ${rdf_out} has no h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts — the event loop threw (ROOT exits 0 anyway). Check the log for 'runtime_error'."
 
 # ------ Stage 6: Crossx plotting ------
-# use_pt_bins_150=true also refreshes the opt-in pp24_pt_150/ variant. It is NOT
-# a second binning of the nominal result (see .claude/CLAUDE.md §Binnings): it is
-# the pT_bins_150 axis, plotted so the reach of the data above 120 GeV is visible.
-# It must be regenerated in the SAME run as the nominal, or the two directories
-# drift apart — they did, from 2026-04-17 to 2026-08-04, because this stage only
-# ever called the default (false).
-log "Running crossx plotting for PP 2024 (nominal + pt_150 variant)"
+# The NOMINAL pair-pT view (user decision 2026-09-08) is the UNSUFFIXED histogram family, booked
+# on ParamsSet::pT_bins_150 = 16 log bins 9 -> 150 GeV, written to pp24/. That is the only fine
+# axis that nests 2:1 inside the coarse correction cells (ParamsSet::pair_pt_coarse_bins, 8 log
+# bins over the SAME 9 -> 150 range). also_pt_120=true additionally refreshes the OPT-IN
+# pp24_pt_120/ variant (the "pt_120" family on ParamsSet::pT_bins_120, 9 -> 120 GeV): an
+# alternative VIEW of the same measurement, never a second binning of the nominal result
+# (.claude/CLAUDE.md §Binnings). It must be regenerated in the SAME run as the nominal, or the two
+# directories drift apart — they did, from 2026-04-17 to 2026-08-04.
+log "Running crossx plotting for PP 2024 (nominal 9-150 GeV + opt-in pt_120 variant)"
 pushd "$PLOT_DIR" >/dev/null
 root -l -b -q 'plot_single_b_crossx_pp.cxx(24,"",true)'
 # RAW pair counts in the same cells as the crossx figure above (PNG + CSV). It reads the
-# unweighted twin h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts written by Stage 5, so it must
-# run in the same pass -- the statistical reach and the cross-section it belongs to have to come
-# from one RDF output. See docs/tracking/pp24_stats_and_powheg_fullsim_compr.md.
-root -l -b -q 'plot_pp_counts_pair_pt_in_eta.cxx+(24)'
+# unweighted twin of the crossx histogram (h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts for
+# the nominal axis) written by Stage 5, so it must run in the same pass -- the statistical reach
+# and the cross-section it belongs to have to come from one RDF output.
+# See docs/tracking/pp24_stats_and_powheg_fullsim_compr.md.
+root -l -b -q 'plot_pp_counts_pair_pt_in_eta.cxx+(24,"","tight",true)'
 popd >/dev/null
 
 # ------ Stage 7: Trigger efficiency correction sanity check ------
