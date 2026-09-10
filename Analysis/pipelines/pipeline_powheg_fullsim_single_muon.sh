@@ -69,6 +69,15 @@ done
 # ---------------------------------------------------------------------------
 # Helpers (modelled after pipeline_pythia_truth.sh)
 # ---------------------------------------------------------------------------
+# ─── `root -l -b`, NEVER `root -l -b -q`, when the macro comes from a HEREDOC ───────────────
+# `root -l -b -q` with no macro argument QUITS BEFORE READING STDIN: the heredoc is never
+# executed and the command exits 0 UNCONDITIONALLY, so every check built on it silently PASSES --
+# missing trees, zero keys, a zombie file, all of it. The `$(...)` capture form is just as dead:
+# it returns an EMPTY string and a 0 status. This trap is documented in run_dr_correction_fits.sh
+# (found and fixed there 2026-08-11); the pipelines below still carried it, so their validation
+# layer had never actually run. Re-verified 2026-09-09: `root -l -b -q` fed `gSystem->Exit(7)` on
+# stdin exits 0 and prints nothing; `root -l -b` exits 7.
+# ───────────────────────────────────────────────────────────────────────────────────────────────
 now()  { date '+%F %T'; }
 log()  { echo "[$(now)] $*"; }
 fail() { echo "[$(now)] ERROR: $*" >&2; exit 1; }
@@ -152,7 +161,7 @@ validate_root_file_quick() {
     local f="$1"
     [[ -f "$f" ]] || return 1
     [[ -s "$f" ]] || return 1
-    root -l -b -q <<EOF >/dev/null 2>&1
+    root -l -b <<EOF >/dev/null 2>&1
 TFile *fin = TFile::Open("$f", "READ");
 if (!fin || fin->IsZombie()) { gSystem->Exit(2); }
 if (!fin->GetListOfKeys() || fin->GetListOfKeys()->GetSize() <= 0) { fin->Close(); gSystem->Exit(3); }
@@ -182,7 +191,7 @@ validate_single_muon_tree_nonempty_or_fail() {
     [[ -f "$f" ]] || fail "Single-muon combined file not found: $f"
 
     local check_output
-    if check_output="$(root -l -b -q <<EOF
+    if check_output="$(root -l -b <<EOF
 TFile *fin = TFile::Open("$f", "READ");
 if (!fin || fin->IsZombie()) {
   std::cout << "ERROR: cannot open file" << std::endl;

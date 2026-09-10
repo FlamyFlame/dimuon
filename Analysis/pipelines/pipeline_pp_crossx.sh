@@ -36,6 +36,15 @@ PP_DIR="${DATA_BASE}/pp_2024"
 
 QUEUE_COUNT=12
 
+# ─── `root -l -b`, NEVER `root -l -b -q`, when the macro comes from a HEREDOC ───────────────
+# `root -l -b -q` with no macro argument QUITS BEFORE READING STDIN: the heredoc is never
+# executed and the command exits 0 UNCONDITIONALLY, so every check built on it silently PASSES --
+# missing trees, zero keys, a zombie file, all of it. The `$(...)` capture form is just as dead:
+# it returns an EMPTY string and a 0 status. This trap is documented in run_dr_correction_fits.sh
+# (found and fixed there 2026-08-11); the pipelines below still carried it, so their validation
+# layer had never actually run. Re-verified 2026-09-09: `root -l -b -q` fed `gSystem->Exit(7)` on
+# stdin exits 0 and prints nothing; `root -l -b` exits 7.
+# ───────────────────────────────────────────────────────────────────────────────────────────────
 now() { date '+%F %T'; }
 log() { echo "[$(now)] $*"; }
 
@@ -76,7 +85,7 @@ validate_root_file_quick() {
   local f="$1"
   [[ -f "$f" ]] || return 1
   [[ -s "$f" ]] || return 1
-  root -l -b -q <<EOF >/dev/null 2>&1
+  root -l -b <<EOF >/dev/null 2>&1
 TFile *fin = TFile::Open("$f", "READ");
 if (!fin || fin->IsZombie()) { gSystem->Exit(2); }
 if (!fin->GetListOfKeys() || fin->GetListOfKeys()->GetSize() <= 0) { fin->Close(); gSystem->Exit(3); }
@@ -105,7 +114,7 @@ validate_combined_muon_pair_trees_nonempty_or_fail() {
   local f="$1"
   [[ -f "$f" ]] || fail "Combined file not found: $f"
   local check_output
-  if check_output="$(root -l -b -q <<EOF
+  if check_output="$(root -l -b <<EOF
 TFile *fin = TFile::Open("$f", "READ");
 if (!fin || fin->IsZombie()) {
   std::cout << "ERROR: cannot open file" << std::endl;
@@ -293,16 +302,27 @@ fi
 rm -f "$rdf_stamp"
 # ...and the file must actually CONTAIN the crossx spectrum. A throw mid-event-loop leaves a
 # freshly-RECREATEd near-empty file, which is newer than the stamp and still opens.
-root -l -b -q <<EOF >/dev/null 2>&1
-TFile* f = TFile::Open("${rdf_out}", "READ");
-if (!f || f->IsZombie()) gSystem->Exit(2);
-if (!f->Get("h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts")) { f->Close(); gSystem->Exit(3); }
-f->Close(); gSystem->Exit(0);
-EOF
 # The probed histogram is the NOMINAL one -- the UNSUFFIXED family, booked on ParamsSet::pT_bins_150
 # (9 -> 150 GeV) -- that Stage 6 plots, not the opt-in "pt_120" alternative: a liveness check has to
-# look at the object the result is actually built from.
-[[ $? -eq 0 ]] || fail "RDF crossx output ${rdf_out} has no h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts — the event loop threw (ROOT exits 0 anyway). Check the log for 'runtime_error'."
+# look at the object the result is actually built from. It must also be FILLED: a throw part-way
+# through the event loop can leave the booked-but-empty object behind.
+# `|| fail` rather than a following `[[ $? -eq 0 ]]`: under `set -e` a non-zero exit here aborts the
+# script at THIS line, so the check below it could never run and the operator got the generic ERR
+# line instead of the one message that names this failure mode.
+# NO `-q` HERE, and that is not a style choice: `root -l -b -q` with no macro argument QUITS
+# BEFORE READING STDIN, so the heredoc is never executed and the command exits 0 UNCONDITIONALLY --
+# the probe silently passes, missing histogram and all. That trap is documented and was fixed in
+# run_dr_correction_fits.sh on 2026-08-11; these two crossx pipelines still carried it, so this
+# check has never actually run. Re-verified 2026-09-09: `root -l -b -q` fed `gSystem->Exit(7)` on
+# stdin exits 0 and never prints; `root -l -b` exits 7.
+root -l -b >/dev/null 2>&1 <<EOF || fail "RDF crossx output ${rdf_out} has no FILLED h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts — the event loop threw (ROOT exits 0 anyway). Check the log for 'runtime_error'."
+TFile* f = TFile::Open("${rdf_out}", "READ");
+if (!f || f->IsZombie()) gSystem->Exit(2);
+TH1* h = (TH1*)f->Get("h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts");
+if (!h) { f->Close(); gSystem->Exit(3); }
+if (h->GetEntries() <= 0) { f->Close(); gSystem->Exit(4); }
+f->Close(); gSystem->Exit(0);
+EOF
 
 # ------ Stage 6: Crossx plotting ------
 # The NOMINAL pair-pT view (user decision 2026-09-08) is the UNSUFFIXED histogram family, booked

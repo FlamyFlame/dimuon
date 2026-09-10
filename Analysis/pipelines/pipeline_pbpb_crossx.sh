@@ -35,6 +35,15 @@ SKIP_EVSEL="${SKIP_EVSEL:-${SKIP_CONDOR}}"
 YEARS=(${YEARS:-23 24 25})
 DATA_BASE="/usatlas/u/yuhanguo/usatlasdata/dimuon_data"
 
+# ─── `root -l -b`, NEVER `root -l -b -q`, when the macro comes from a HEREDOC ───────────────
+# `root -l -b -q` with no macro argument QUITS BEFORE READING STDIN: the heredoc is never
+# executed and the command exits 0 UNCONDITIONALLY, so every check built on it silently PASSES --
+# missing trees, zero keys, a zombie file, all of it. The `$(...)` capture form is just as dead:
+# it returns an EMPTY string and a 0 status. This trap is documented in run_dr_correction_fits.sh
+# (found and fixed there 2026-08-11); the pipelines below still carried it, so their validation
+# layer had never actually run. Re-verified 2026-09-09: `root -l -b -q` fed `gSystem->Exit(7)` on
+# stdin exits 0 and prints nothing; `root -l -b` exits 7.
+# ───────────────────────────────────────────────────────────────────────────────────────────────
 now() { date '+%F %T'; }
 log() { echo "[$(now)] $*"; }
 
@@ -75,7 +84,7 @@ validate_root_file_quick() {
   local f="$1"
   [[ -f "$f" ]] || return 1
   [[ -s "$f" ]] || return 1
-  root -l -b -q <<EOF >/dev/null 2>&1
+  root -l -b <<EOF >/dev/null 2>&1
 TFile *fin = TFile::Open("$f", "READ");
 if (!fin || fin->IsZombie()) { gSystem->Exit(2); }
 if (!fin->GetListOfKeys() || fin->GetListOfKeys()->GetSize() <= 0) { fin->Close(); gSystem->Exit(3); }
@@ -104,7 +113,7 @@ validate_combined_muon_pair_trees_nonempty_or_fail() {
   local f="$1"
   [[ -f "$f" ]] || fail "Combined file not found: $f"
   local check_output
-  if check_output="$(root -l -b -q <<EOF
+  if check_output="$(root -l -b <<EOF
 TFile *fin = TFile::Open("$f", "READ");
 if (!fin || fin->IsZombie()) {
   std::cout << "ERROR: cannot open file" << std::endl;
@@ -333,16 +342,47 @@ for yr in "${YEARS[@]}"; do
 done
 
 # ------ Stage 5: RDF crossx hist filling per year + validate ------
+# FRESHNESS + a required FILLED histogram, mirroring the pp twin -- not `validate_files_or_fail`
+# alone, which only asks for a non-empty file with >=1 key. This is the exact stage that produced
+# pbpb_2024/histograms_real_pairs_..._nominal.root at 851 bytes with 0 keys on 2026-09-06: ROOT's
+# TRint CATCHES a C++ exception thrown inside the RDF event loop, prints it, and still exits 0, so
+# the `|| fail` above cannot see it. A key count also passes on a partially flushed file and on a
+# file the RDF never rewrote at all, which is the more insidious case -- it would carry the
+# PREVIOUS selection.
 for yr in "${YEARS[@]}"; do
   log "Running RDF crossx hist filling for PbPb 20${yr}"
+  rdf_stamp="$(mktemp)"
   pushd "$RDF_DIR" >/dev/null
   ./run_crossx_hist_filling_pbpb${yr}.sh || {
     popd >/dev/null
+    rm -f "$rdf_stamp"
     fail "RDF crossx hist filling failed for year ${yr}"
   }
   popd >/dev/null
   rdf_out="$(get_rdf_output "$yr")"
   validate_files_or_fail "RDF crossx yr${yr}" "$rdf_out"
+  if [[ ! "$rdf_out" -nt "$rdf_stamp" ]]; then
+    rm -f "$rdf_stamp"
+    fail "RDF crossx output ${rdf_out} is OLDER than this run — the hist filling threw and ROOT swallowed it, so this is the PREVIOUS production's file. Check the log for 'runtime_error'."
+  fi
+  rm -f "$rdf_stamp"
+  # The centrality-inclusive-most bin is present in every Pb+Pb year and is what the combined
+  # plotter reads first, so it is the right liveness probe.
+  # NO `-q` HERE, and that is not a style choice: `root -l -b -q` with no macro argument QUITS
+# BEFORE READING STDIN, so the heredoc is never executed and the command exits 0 UNCONDITIONALLY --
+# the probe silently passes, missing histogram and all. That trap is documented and was fixed in
+# run_dr_correction_fits.sh on 2026-08-11; these two crossx pipelines still carried it, so this
+# check has never actually run. Re-verified 2026-09-09: `root -l -b -q` fed `gSystem->Exit(7)` on
+# stdin exits 0 and never prints; `root -l -b` exits 7.
+root -l -b >/dev/null 2>&1 <<EOF || fail "RDF crossx output ${rdf_out} has no FILLED h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_ctr0_5 — the event loop threw (ROOT exits 0 anyway)."
+TFile* f = TFile::Open("${rdf_out}", "READ");
+if (!f || f->IsZombie()) gSystem->Exit(2);
+TH1* h = (TH1*)f->Get("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_ctr0_5");
+if (!h) { f->Close(); gSystem->Exit(3); }
+if (h->GetEntries() <= 0) { f->Close(); gSystem->Exit(4); }
+f->Close(); gSystem->Exit(0);
+EOF
+  log "  yr${yr} crossx output is fresh and its signal-region histogram is filled  OK"
 done
 
 # ------ Stage 6: Crossx plotting (combined) ------
