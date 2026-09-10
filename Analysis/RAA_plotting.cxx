@@ -608,7 +608,7 @@ void RAA_plotting_single_run_year_trigger_mode(int run_year_trigger_mode, bool u
 }
 
 void RAA_plotting(){
-	// -------------------- Run 3: PbPb 23+24+25 combined + pp24 2mu4, from RDF crossx --------------------
+	// -------------------- Run 3: PbPb 23+24+25+26 combined + pp24 2mu4, from RDF crossx --------------------
 	// (reco-eff PLACEHOLDER + OS-SS combinatorial subtraction; T_AA 2023 placeholder)
 	RAA_plotting_single_run_year_trigger_mode(6);
 
