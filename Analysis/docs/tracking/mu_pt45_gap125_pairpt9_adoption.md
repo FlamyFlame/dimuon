@@ -391,6 +391,39 @@ unfolding; ε_acc construction (still unbuilt); the F14 open question of extra q
   Logs: `.claude/logs/pipeline-runs/mupt45_rerun_20260909_225405/`. A persistent monitor tails all
   of them for stage transitions AND failure signatures.
 
+- 2026-09-10 **PHASE 1 COMPLETE; PHASE 2 COMPLETE except POWHEG; PHASE 3 IN FLIGHT.** Done since the
+  launch entry above:
+  * **Phase 1 finished** — all 97 Condor jobs plus the ~7 h local fullsim pass. Jobs A/B/D/F exited
+    0; C's trig-eff half exited 0 and its crossx half failed (R8) and was fixed and rerun.
+  * **★ Independent verification that the whole point of the rerun took effect** (the pipelines'
+    own checks were inert for all of Phase 1 — see R9 — so this was done from outside):
+    every trig-eff-mode tree sits at EXACTLY 4.0 GeV on purpose and every Pb+Pb nominal tree at
+    EXACTLY 4.5, with zero violations either way. **D8's mode-dependence works end to end.**
+    | tree | OS pairs | min muon pT | below threshold |
+    |---|---|---|---|
+    | pp24 trig-eff | 779 603 | 4.0000 | 0 below 4.0 |
+    | pbpb 23 / 24 / 25 trig-eff | 799 732 / 565 081 / 1 602 734 | 4.0000 | 0 below 4.0 |
+    | pbpb 23 / 24 / 25 nominal | 434 966 / 306 628 / 869 072 | 4.5000 | 0 below 4.5 |
+  * **Phase 2a DONE** — data mu4 turn-on refits, pp AND Pb+Pb, **Tight AND Medium**, all fresh.
+    The Pb+Pb refit cured R1 Hazard 4: the fits now key their top q*eta bin `_2_00_TO_2_20`, the way
+    the reader builds it. `pbpb_2024` and `pbpb_2025` Medium fits were CREATED (neither existed).
+  * **Phase 2b DONE for pp** — job A's Stage 10 ran the MC trig-eff chain end to end
+    (FillMCTrigEffHists step1 → FitMCSinglesEffcy → step3 → plot_mc_trig_eff) on the fresh sample.
+  * **Phase 2e DONE** — `pair_reco_eff_pp24_full.root` rebuilt (14:10, was 2026-09-08 18:52).
+    Sanity-checked: every efficiency in [0,1], 143 filled 3D cells, no unphysical value.
+  * **Phase 3b DONE** — Pb+Pb crossx completed for 2023/2024/2025 after the R8 fix (3.2 / 2.8 /
+    3.9 MB). **`pbpb_2024` is a real file again for the first time since 2026-09-06**, when it
+    became an 851-byte corpse. The Stage-7 sanity plot drew the **Pb+Pb panels** successfully,
+    which independently confirms the D1 48-bin pair-eta migration is live on the refilled
+    histograms — the `PairEtaPanels::Bins` guard passes where it used to throw.
+  * **Phase 3a IN FLIGHT** — `pipeline_pp_crossx.sh` (cluster 2429): pp24 nominal NTuple → hadd →
+    crossx → plots, with `INCLUDE_PBPB_SANITY=true` now that Pb+Pb is refilled (the flag flip the
+    A7 fix was built for). Run with `SKIP_MC_DATA_COMPR=1` because POWHEG was not ready — see R10.
+  * **Peers pinged** (R6 discharged): `polyn fit restriction` and `additional fullsim statistics`
+    both told the fresh trees and Step-3 histograms exist. The latter replied confirming and
+    FIXING both defects reported to it, and flagged one stale retyped edge in
+    `Utilities/PairTrigEffEvaluator.h` (mine), now de-numeralised.
+
 ## Results & Observations
 
 ### R1 — Recon findings that change the plan (three independent subagents, 2026-09-08)
@@ -710,6 +743,66 @@ edges READ from `ParamsSet::ctrbins` (never retyped).
 measurement's centrality acceptance is already 0-80 % by construction everywhere else, and the
 filter only stops the evaluator being called on rows that have no home. Had any
 centrality-inclusive histogram lacked a centrality axis, this WOULD have been a user decision.
+
+### R9 — ★ The validation layer had never run, and what that cost
+
+Found while fixing a NARROWER defect reviewer A reported (the pp crossx probe's failure message
+being unreachable under `set -e`). The message was unreachable; the deeper truth is **the probe
+never ran at all**.
+
+> **`root -l -b -q` with no macro argument QUITS BEFORE READING STDIN.** The heredoc is never
+> executed and the command exits 0 **unconditionally**. The `$(...)` capture form is equally dead:
+> empty output, status 0.
+
+So `validate_root_file_quick`, the post-hadd non-empty-tree check and the crossx
+required-histogram probe **passed on anything** — a zombie file, zero keys, missing trees.
+**19 occurrences across 8 pipelines.** The guard against the exact failure mode this whole task is
+built around was itself inert.
+
+Verified on the real artefact rather than argued: with the fix,
+`validate_root_file_quick` REJECTS the 851-byte 0-key `pbpb_2024` corpse (rc=3) and ACCEPTS the
+good 3.6 MB 2023 file. Before the fix, **both passed**.
+
+Note the trap was already found and documented ONCE, in `run_dr_correction_fits.sh` on 2026-08-11
+("`root -l -b -q` … QUITS BEFORE READING STDIN … this function returned 0 unconditionally").
+Nobody swept the other seven pipelines. The lesson is not that the bug was subtle — it is that a
+fix recorded in one file does not propagate itself.
+
+**What it cost, and what it saved.** Cost: the whole of Phase 1 ran with no working artefact
+validation, so every output had to be re-verified independently afterwards (done — see the Progress
+Log; that is where the muon-pT numbers come from). Saved: the FIRST pipeline to run with the
+repaired check, Pb+Pb crossx, immediately caught a swallowed exception (R8) and aborted before
+plotting. With the `-q` bug still in place it would have passed and Phase 3b would have plotted the
+previous production's histograms as the new selection.
+
+Fixed in two commits because four of the eight pipelines were mid-run when it was found and
+editing a script bash is still reading is unsafe: `47e7dea` (four idle) and `f047fd4` (the rest,
+after they exited). Zero occurrences remain.
+
+### R10 — POWHEG fullsim had not compiled since the all-vertex carve-out
+
+All 22 `run_powheg_fullsim_wtruth_{bb,cc}` jobs wrote NOTHING, and **Condor recorded "Normal
+termination (return value 0)" for every one** — ROOT exits 0 even when `.L` fails to COMPILE. Only
+a freshness check on the part files revealed it: 0 of 10 were newer than the submission, while
+POWHEG *truth* had all 6 fresh. A file-exists check would have seen ten healthy 100 MB parts from
+March and reported success.
+
+Two errors, both pre-existing:
+1. `PowhegFullSimExtras.h:49` — `UseAllVertexIP() const` calls `getIsFullsimOverlay()`, which
+   `PowhegAlgCoreT.h:89` declared **non-const**. The `PythiaAlgCoreT` twin has been const all along.
+2. `PowhegFullSimExtras.h:63,75` — `ResonanceTaggingImpl` takes **4** arguments; both sites passed
+   **3**. Never updated when `minv_cuts_to_use` was added.
+
+**Why they survived:** `pp24_all_vertex_pairs.md` deliberately carved POWHEG fullsim out of its
+blast radius, so `UseAllVertexIP` was added to a file that **nothing ever built**. R1 predicted this
+task would drag POWHEG fullsim back in (a truth-pT cut reaches truth-level nodes); doing so is what
+finally compiled it.
+
+**The one judgement call**, flagged rather than buried: the 4th argument is
+`self().pmsRef().minv_cuts_v2`, mirroring the Pythia fullsim twin EXACTLY. Determined rather than
+chosen — the two pp-conditions fullsim samples are drawn on the SAME MC-vs-data figures and must
+carry the same pair selection (this file's own header says so), and it is inert where it matters
+since v1 and v2 differ only below 1.06 GeV while the signal region starts at 1.08. Reversible.
 
 ### R6 — Cross-session state (three peers share this checkout)
 
