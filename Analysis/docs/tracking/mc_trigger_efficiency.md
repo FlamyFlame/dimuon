@@ -2417,6 +2417,87 @@ reviewer correctly flagged the deviation as undocumented.
 
 ## Results & Observations
 
+### R35. Round 14b — the Step-3 refit on the REAL (9 GeV / 4.5 GeV) cells, and two defects it
+### exposed in the NOMINAL `expo` method (2026-09-10, pp24 Tight)
+
+**Why.** R34's fits were on inputs that were not the analysis's cells. The
+`mu_pt45_gap125_pairpt9_adoption.md` rerun refilled the Tight MC Step-3 input on 2026-09-10
+(`mc_trig_eff_hists_pp24_full_step3.root` 06:01, plateaus 06:03), so the polyu round was redone on
+real cells. **All three methods were refit TOGETHER** (`expo` + `polyu_fixedRp` + `interp`,
+3 signs × 5 plateau modes = 45 configs, `SKIP_MEASURE=1` reusing the 06:03 plateau map) — never
+one alone, because the delivered ε_ΔR is their cascade.
+
+**Scope, user decision (2026-09-10): TIGHT ONLY.** The rerun's MC half ran Tight-only (its
+`USE_TIGHT_WP` default), so at refit time the Medium MC Step-3 input was still the 2026-09-07 file
+— 4.0 GeV muons, 8 GeV axis and the retired (−1.30,−1.05) gap simultaneously. Refitting Medium on
+that would have reproduced exactly the incomparability R34(d) documents, so it was left alone and
+flagged; the sibling session has since refilled the Medium MC chain (14:45–14:56) and the Medium
+ΔR refit is still OUTSTANDING.
+
+**(a) The constraint holds on the real cells.** 15 Tight polyu reports, **740 fitted cells, ZERO
+with `A > 0`, `f(0) ≤ C` in 740/740**; 76 flagged `AT LIMIT: A`, of which **53 genuinely railed**
+(`|A| < 1e-4`; the ~1.4× flag over-count is the 0.05-tolerance effect of R34(e)). Worst
+`max f/C` on `(0, R_p]` = 3.70, the same endpoint-only behaviour R34(f)(1) records and the user
+accepted. `polyu` and `interp` are exactly flat beyond `R_p` (0.00e+00 in every block); every
+non-zero flatness residual in the run belongs to `expo`, which approaches `C` asymptotically by
+construction.
+
+**(b) ⚠ DEFECT IN THE NOMINAL METHOD — a RUNAWAY fitted baseline, accepted and delivered.**
+In the crossx-consumed series (`expo`, opposite sign, `nocorr_ptmerge` =
+`DrCorrCrossxMethod/Sign/Mode`):
+
+  `pT_pair [52.2,74.2) × eta_pair [1.0,1.5)` : `A = −3.3428`, `λ = 2.9998`, `p = 1.3904`,
+  χ²/ndf = 4.072, `f(0) = 0.6327`, **`C = 3.9755 ± 1.1774`**, measured plateau **0.8225**,
+  `AT LIMIT: lambda`
+
+`λ` railed at its upper limit 3.0, so over the fit domain the exponential is nearly a straight
+line and MINUIT bought that flatness by driving the free baseline to **4.8× the cell's own
+measured plateau**. Delivered `ε_ΔR = f/C` is **0.159 at ΔR = 0 and 0.323 at ΔR = 1** — it never
+approaches 1, which it must by construction.
+
+**Four independent reasons nothing caught it**, all pre-existing:
+1. `fit_ok` carries no χ² term (R26, OPEN) — 4.072 passes.
+2. `DrCorrPlateauUsable` bounds `C` from BELOW only (`C ≥ 0.5`, `σ_C < C`). It was written for a
+   COLLAPSING baseline (R34(f)(2)); a runaway one sails through.
+3. `DrCorrectionCrossxEvaluator::Eval` applies no cap to the returned `f/C`; its screens are on
+   `C` and positivity.
+4. The 2026-09-07 shape restriction constrained `A` and `p` but left `λ ∈ [0.02, 3.0]` free —
+   and railing `λ` IS the mechanism. A cell with no plateau within reach buys a flat-looking fit
+   by inflating `C`.
+
+**Blast radius: this is in the CROSS-SECTION.** `RDFBasedHistFillingPP.cxx:390` applies
+`eps_trig^pair = eps^nc_1 · eps^nc_2 · eps_dR`, so ε_ΔR is now IN the pp24 crossx weight — no
+longer the "not propagated" state R33 recorded. The weight is `1/(ε₁ε₂ε_ΔR)`, so this cell
+inflates it **3–6×** for every OS pair at pair-pT 52–74 GeV, pair-η 1.0–1.5. Reported to the
+owning session while its crossx/R_AA plot reviews were in progress.
+
+**(c) The delivered span is worse than that one cell, and wrong in BOTH directions.** The
+closure's load-time scan over all 72 cells of the delivered cascade:
+`DELIVERED eps_dR spans [0.0441372 (pair pT bin 7, pair eta bin 3), 1]` — **0.044 is a 23× weight
+inflation**. The per-method scans in the same log report `polyu` spanning to 1.882 and `interp`
+to 2.324, each carrying the macro's own annotation *"ABOVE 1.5: a 2mu4 close-by correction is a
+LOSS, so this is a fit artefact, not a measurement"*. A magnitude bound on `f/C` — as opposed to
+the existing bound on `C` — exists nowhere in the chain.
+
+**(d) THE CASCADE NEVER REACHES THE POLYNOMIAL.** Census, `nocorr` / OS / Tight:
+**`70 on expo, 0 on polyu_fixedRp, 0 on interp, 2 on RAW`.** `expo` is accepted in 70 of 72 cells
+— including the runaway-C cell of (b) — so the polynomial tier is currently never used and the
+R34 ΔR = 0 constraint has NO effect on the delivered correction in this mode. **User decision
+(2026-09-10): keep it as the constrained backup** — it is correct and costless, and the moment
+any of the (b) screens tightens `expo`'s acceptance those cells route straight to it. This is
+also the strongest argument yet FOR tightening that acceptance: the cascade carries two working
+fallbacks it never reaches, because `fit_ok` accepts almost everything.
+
+**(e) The closure and the four-approach ranking are STILL not regenerated** — blocked a second
+time, on a different stale artefact: `PairTrigEffEvaluator: pair-pT edge 0 of
+pair_trig_eff_pp24_full.root is 8.000000 but ParamsSet says 9.000000 -- stale file` (that file is
+2026-09-08 12:35). It is the deliverable of `mc_trigeff_single_value_pair_eff.md`, whose sources
+are uncommitted in-flight edits from another session, and the single-value series is hard-wired
+into `FillMCTrigEffClosure` with no skip switch. Regenerating another thread's deliverable from
+its mid-edit source was declined (user decision) and the request routed to the coordinating
+session instead. **The four-approach χ²/ndof ranking therefore remains unusable**, as
+`mc_trigeff_dr_binning_approaches.md` already says.
+
 ### R34. Round 14 — the Step-3 POLYNOMIAL fit constrained at ΔR = 0 (2026-09-08, pp24 only)
 
 **User request:** *"For the step 3 polynomial fit, require that when dR = 0, the efficiency cannot
