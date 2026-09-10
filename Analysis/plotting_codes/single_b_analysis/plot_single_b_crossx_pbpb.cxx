@@ -34,6 +34,30 @@ class SingleBCrossxPlotterPbPbCombined : public SingleBCrossxPlotterBase {
         label_line2_ = "tight WP";
     }
 
+    // The drawn label must describe the years that ACTUALLY contributed to THIS histogram, not the
+    // years the job was asked to combine. GetCombined() already records them per histogram name and
+    // warns when a year is missing -- but the label was still built once from every entry in
+    // year_paths_, so the warning said "the figure label must not claim the missing year(s)" and
+    // then the figure claimed them anyway. This reads the recorded list back.
+    std::string YearsLabelFor(const std::string& hname) const {
+        auto it = combined_years_.find(hname);
+        if (it == combined_years_.end() || it->second.size() == year_paths_.size()) return label_line1_;
+        std::string yrs;
+        for (size_t i = 0; i < it->second.size(); ++i) {
+            if (i > 0) yrs += ", ";
+            yrs += "20" + std::to_string(it->second.at(i));
+        }
+        return "Pb+Pb " + yrs + " combined";
+    }
+
+    // Fetch-then-label. The fetch is what POPULATES combined_years_, so it has to happen before the
+    // label is formed; doing it here rather than relying on argument evaluation order keeps the two
+    // correct whichever order the compiler picks (the result is cached, so this costs nothing).
+    std::string L1For(const std::string& hname, const std::string& ctr_pct) {
+        (void)GetHistObject(hname);
+        return YearsLabelFor(hname) + ", " + ctr_pct;
+    }
+
     std::string OutDirName() const {
         std::string s = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/single_b_analysis/pbpb";
         for (auto& [yr, path] : year_paths_) s += "_" + std::to_string(yr);
@@ -173,7 +197,6 @@ public:
         for (const auto& ctr : ctr_bins) {
             const std::string tag     = "pbpb_combined_" + ctr;
             const std::string ctr_pct = CtrLabelFromSuffix(ctr) + "%";
-            const std::string l1 = label_line1_ + ", " + ctr_pct;
 
             if (has_counts) {
                 output_dir = counts_dir;
@@ -186,21 +209,27 @@ public:
                 Save2DColz(PtAxisHist("h2d_crossx_pair_pt_dr_w_signal_cuts_" + ctr + "_counts"),
                            tag + "_pair_pt_dr.png",
                            "d^{2}N_{events}/dp_{T}d#DeltaR [GeV^{-1}]");
-                DrawPairPtByEtaWithDrLines(
-                    PtAxisHist("h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr + "_counts"),
-                    l1, label_line3_,
-                    tag + "_pair_pt_in_eta_subplots_dr_lines.png",
-                    "dN_{events}/dp_{T} [GeV^{-1}]");
-                DrawPairPtByEta(
-                    PtAxisHist("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr + "_counts"),
-                    l1, label_line3_,
-                    tag + "_pair_pt_in_eta_subplots.png",
-                    "dN_{events}/dp_{T} [GeV^{-1}]");
-                DrawPairPtByEta(
-                    PtAxisHist("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr + "_counts"),
-                    l1, label_line3_,
-                    tag + "_pair_pt_in_eta_subplots_nondifferential.png",
-                    "N_{events}", false);
+                {
+                    const std::string hn = PtAxisHist("h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr + "_counts");
+                    DrawPairPtByEtaWithDrLines(
+                        hn, L1For(hn, ctr_pct), label_line3_,
+                        tag + "_pair_pt_in_eta_subplots_dr_lines.png",
+                        "dN_{events}/dp_{T} [GeV^{-1}]");
+                }
+                {
+                    const std::string hn = PtAxisHist("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr + "_counts");
+                    DrawPairPtByEta(
+                        hn, L1For(hn, ctr_pct), label_line3_,
+                        tag + "_pair_pt_in_eta_subplots.png",
+                        "dN_{events}/dp_{T} [GeV^{-1}]");
+                }
+                {
+                    const std::string hn = PtAxisHist("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr + "_counts");
+                    DrawPairPtByEta(
+                        hn, L1For(hn, ctr_pct), label_line3_,
+                        tag + "_pair_pt_in_eta_subplots_nondifferential.png",
+                        "N_{events}", false);
+                }
             }
 
             output_dir = taa_dir;
@@ -213,16 +242,20 @@ public:
             Save2DColz(PtAxisHist("h2d_crossx_pair_pt_dr_w_signal_cuts_" + ctr),
                        tag + "_pair_pt_dr.png",
                        "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{d^{2}n_{AA}}{dp_{T}d#DeltaR} [pb GeV^{-1}]");
-            DrawPairPtByEtaWithDrLines(
-                PtAxisHist("h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr),
-                l1, label_line3_,
-                tag + "_pair_pt_in_eta_subplots_dr_lines.png",
-                "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dn_{AA}}{dp_{T}} [pb GeV^{-1}]");
-            DrawPairPtByEta(
-                PtAxisHist("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr),
-                l1, label_line3_,
-                tag + "_pair_pt_in_eta_subplots.png",
-                "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dn_{AA}}{dp_{T}} [pb GeV^{-1}]");
+            {
+                const std::string hn = PtAxisHist("h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr);
+                DrawPairPtByEtaWithDrLines(
+                    hn, L1For(hn, ctr_pct), label_line3_,
+                    tag + "_pair_pt_in_eta_subplots_dr_lines.png",
+                    "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dn_{AA}}{dp_{T}} [pb GeV^{-1}]");
+            }
+            {
+                const std::string hn = PtAxisHist("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr);
+                DrawPairPtByEta(
+                    hn, L1For(hn, ctr_pct), label_line3_,
+                    tag + "_pair_pt_in_eta_subplots.png",
+                    "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dn_{AA}}{dp_{T}} [pb GeV^{-1}]");
+            }
         }
 
         output_dir = base_out;

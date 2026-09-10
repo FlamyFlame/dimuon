@@ -40,9 +40,11 @@ namespace {
     // empty/statistics-starved, so the axis stops at 20 GeV (an axis running to 100 GeV
     // would leave the data in a small fraction of the range).
     // 6 bins, LOG-spaced (the axis is drawn log-x, so the binning must be log too):
-    // edges = 4 * (20/4)^(i/6).
+    // edges = 4.5 * (20/4.5)^(i/6).
     const std::vector<double> pt_edges = [](){
-        std::vector<double> e; const double lo = 4.5, hi = 20.0;   // 4 -> 4.5 with the offline muon cut (2026-09-08) const int nb = 6;
+        // low edge 4 -> 4.5 with the offline muon cut (2026-09-08)
+        std::vector<double> e; const double lo = 4.5, hi = 20.0;
+        const int nb = 6;
         for (int i = 0; i <= nb; ++i) e.push_back(lo * std::pow(hi / lo, double(i) / nb));
         return e;
     }();

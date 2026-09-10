@@ -130,6 +130,7 @@ private:
 	void ModePrepare();
 	void HistRetrieve();
 	void HistProject();
+	void CheckPairPtAxisEdges(const TAxis* ax, const char* what) const;
 public:
 	bool use_same_y_axis_range_23_24 = false;
 	vector<vector<double>> ymax_pt_mode_23_24_common = {{0.92, 1.2}, {2.4, 3}}; // top dim: trigger; 2nd dim: ctr-based subplot
@@ -298,6 +299,29 @@ void RAAPlotting::HistRetrieve(){
 }
 
 
+// Identify the pair-pT axis by its EDGES against ParamsSet::pT_bins_150. Bin counts are not
+// distinguishing here -- pT_bins_120 has the same 16 -- and the two axes share their low edge (9),
+// so only the interior edges separate them. Tolerance is RELATIVE: the edges span 9 -> 150, and an
+// absolute epsilon that is sane at 9 is meaningless at 150.
+void RAAPlotting::CheckPairPtAxisEdges(const TAxis* ax, const char* what) const {
+	const auto& want = raa_pms.pT_bins_150;
+	if (!ax) return;
+	if (ax->GetNbins() != (int)want.size() - 1)
+		throw std::runtime_error(Form(
+			"RAA_plotting mode 3: %s has %d bins, ParamsSet::pT_bins_150 has %d.",
+			what, ax->GetNbins(), (int)want.size() - 1));
+	for (int i = 0; i <= ax->GetNbins(); ++i){
+		const double got = ax->GetBinLowEdge(i + 1);   // GetBinLowEdge(nbins+1) is the upper edge
+		const double exp = want.at(i);
+		if (std::fabs(got - exp) > 1e-6 * std::fabs(exp))
+			throw std::runtime_error(Form(
+				"RAA_plotting mode 3: %s edge %d is %.6g but ParamsSet::pT_bins_150 says %.6g. "
+				"The input was filled on a DIFFERENT pair-pT axis (pT_bins_120 has the same bin "
+				"count, so the count test cannot see this) -- refill it, do not reinterpret it.",
+				what, i, got, exp));
+	}
+}
+
 void RAAPlotting::HistProject(){
     if (mode == 1 || mode == 3){
 		hcrossx_pp_proj = h2d_crossx_pp->ProjectionX("h_pp_crossx_pair_pt");
@@ -321,6 +345,15 @@ void RAAPlotting::HistProject(){
 				"the pp crossx histogram has %d bins. The input was filled on a different "
 				"pair-pT axis than ParamsSet::pT_bins_150 -- refill it, do not reinterpret it.",
 				covered, maxbin, hcrossx_pp_proj->GetNbinsX()));
+
+		// A bin COUNT does not identify the axis. `pT_bins_120` is ALSO 16 bins (9 -> 120), so a
+		// histogram filled on the opt-in alternative view passes the count test and is then drawn
+		// with the 9-25.8 / 25.8-74.2 / 74.2-150 GeV labels while its real group edges are
+		// ~9-19.9 / 19.9-44.1 / 44.1-120 -- a wrong published figure with no error. Compare the
+		// EDGES, which is the only thing that identifies the binning.
+		CheckPairPtAxisEdges(hcrossx_pp_proj->GetXaxis(), "pp crossx projection");
+		if (h3d_crossx_pbpb_op) CheckPairPtAxisEdges(h3d_crossx_pbpb_op->GetXaxis(), "Pb+Pb crossx TH3 (OS) x-axis");
+		if (h3d_crossx_pbpb_ss) CheckPairPtAxisEdges(h3d_crossx_pbpb_ss->GetXaxis(), "Pb+Pb crossx TH3 (SS) x-axis");
 	}
 
 	pp_crossx_intgr_in_pair_pT_bin.clear();
