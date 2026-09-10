@@ -1,4 +1,8 @@
-// N_pairs vs centrality (0-80%, 1% bins) for PbPb 23+24+25+26 combined
+// N_pairs vs centrality (0-80%, 1% bins) for the PbPb running periods found on disk, combined.
+// A period whose part files are not there yet (2026, still being skimmed) is skipped with an
+// [INFO] line and drops out of every title, legend entry and printed table -- TChain::Add only
+// WARNS on a missing file, so without the probe the figure was silently overwritten with a title
+// and a legend entry claiming a year that contributed nothing.
 // Uses SetMakeClass(1) to read avg_centrality without needing a compiled dictionary
 #include "TFile.h"
 #include "TChain.h"
@@ -39,24 +43,58 @@ void plot_npairs_vs_centrality() {
     const std::string base = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/";
     const std::string suffix = "_single_mu4_mindR_0_01_res_cut_v2.root";
 
-    struct YearInfo { std::string dir; std::string tag; int nparts; int color; std::string label; };
+    struct YearInfo {
+        int year; std::string dir; std::string tag; int nparts; int color; std::string label;
+        std::vector<std::string> files;   // the part files that are actually on disk
+    };
     // NOTE: nparts for 2026 is a PLACEHOLDER (5) -- the 2026 skim is submitted as 5 grid
     // tasks, so at least 5 part files are expected, but the count can end up LARGER when
     // grid_monitor's chunked-hadd fallback splits an oversized task output into extra
     // parts. Confirm against what lands on disk; see
     // docs/tracking/pbpb2026_analysis_support.md.
-    std::vector<YearInfo> years = {
-        {base + "pbpb_2023/", "pbpb_2023", 4, kBlue+1,     "PbPb 2023"},
-        {base + "pbpb_2024/", "pbpb_2024", 2, kRed+1,      "PbPb 2024"},
-        {base + "pbpb_2025/", "pbpb_2025", 6, kGreen+2,    "PbPb 2025"},
-        {base + "pbpb_2026/", "pbpb_2026", 5, kMagenta+1,  "PbPb 2026"},  // nparts = PLACEHOLDER
+    std::vector<YearInfo> wanted = {
+        {2023, base + "pbpb_2023/", "pbpb_2023", 4, kBlue+1,     "PbPb 2023", {}},
+        {2024, base + "pbpb_2024/", "pbpb_2024", 2, kRed+1,      "PbPb 2024", {}},
+        {2025, base + "pbpb_2025/", "pbpb_2025", 6, kGreen+2,    "PbPb 2025", {}},
+        {2026, base + "pbpb_2026/", "pbpb_2026", 5, kMagenta+1,  "PbPb 2026", {}},  // nparts = PLACEHOLDER
     };
 
-    // The histogram arrays hold one slot per year plus one extra "all years combined"
-    // slot at index kComb. Both are derived from years.size() so that adding a year
-    // cannot leave a stale hard-coded 3/4 behind.
+    // Probe every expected part file. A year with no part on disk is dropped entirely; a year
+    // with only some of its parts is kept, with the shortfall reported (the placeholder nparts
+    // above is a guess, so this is not by itself an error).
+    std::vector<YearInfo> years;
+    for (auto& yr : wanted) {
+        for (int p = 1; p <= yr.nparts; ++p) {
+            std::string fname = yr.dir + "muon_pairs_" + yr.tag + "_part" + std::to_string(p) + suffix;
+            if (!gSystem->AccessPathName(fname.c_str())) yr.files.push_back(fname);
+        }
+        if (yr.files.empty()) {
+            printf("[INFO] %s: no input part file under %s -- skipping this year.\n",
+                   yr.label.c_str(), yr.dir.c_str());
+            continue;
+        }
+        printf("[INFO] %s: %zu of %d expected part files found.\n",
+               yr.label.c_str(), yr.files.size(), yr.nparts);
+        years.push_back(yr);
+    }
+    if (years.empty()) {
+        printf("[FATAL] no PbPb input part file found for any year -- nothing to plot.\n");
+        return;
+    }
+
+    // The histogram arrays hold one slot per SURVIVING year plus one extra "all years combined"
+    // slot at index kComb. Both are derived from years.size() so that adding a year -- or
+    // skipping one that is not on disk -- cannot leave a stale hard-coded 3/4 behind.
     const int kNY   = static_cast<int>(years.size());
     const int kComb = kNY;
+
+    // "PbPb 2023+2024+2025", built from the years that actually contributed. Never a typed
+    // year string: the figure must not be able to claim a year it did not read.
+    std::string years_title = "PbPb ";
+    for (int iy = 0; iy < kNY; ++iy) {
+        if (iy) years_title += "+";
+        years_title += std::to_string(years[iy].year);
+    }
 
     const int nbins = 80;
     const double ctr_lo = 0, ctr_hi = 80;
@@ -71,8 +109,7 @@ void plot_npairs_vs_centrality() {
         auto& yr = years[iy];
         TChain chain_os("muon_pair_tree_sign2");  // OS
         TChain chain_ss("muon_pair_tree_sign1");  // SS
-        for (int p = 1; p <= yr.nparts; ++p) {
-            std::string fname = yr.dir + "muon_pairs_" + yr.tag + "_part" + std::to_string(p) + suffix;
+        for (const auto& fname : yr.files) {
             chain_os.Add(fname.c_str());
             chain_ss.Add(fname.c_str());
         }
@@ -105,7 +142,7 @@ void plot_npairs_vs_centrality() {
         hc->SetLineColor(kBlack); hc->SetLineWidth(2);
         hc->GetXaxis()->SetTitle("Centrality (%)");
         hc->GetYaxis()->SetTitle(Form("N_{pairs} (%s) / 1%%", label));
-        hc->SetTitle(Form("PbPb 23+24+25+26, %s", label));
+        hc->SetTitle(Form("%s, %s", years_title.c_str(), label));
         hc->SetMinimum(0.5); hc->SetMaximum(hc->GetMaximum() * 5);
         hc->Draw("hist");
         for (int iy = 0; iy < kNY; ++iy) {
@@ -128,7 +165,7 @@ void plot_npairs_vs_centrality() {
     // Pad 3: combined OS, linear (clone to avoid log-scale contamination from pad 1)
     c->cd(3);
     TH1D* h_os_lin = (TH1D*)h_os[kComb]->Clone("h_os_lin");
-    h_os_lin->SetTitle("PbPb 23+24+25+26 combined, OS (linear)");
+    h_os_lin->SetTitle((years_title + " combined, OS (linear)").c_str());
     h_os_lin->SetMinimum(0);
     h_os_lin->SetMaximum(h_os_lin->GetMaximum() * 1.2);
     h_os_lin->Draw("hist");

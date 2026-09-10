@@ -21,16 +21,18 @@
 // LAYOUT
 //   pp   (unchanged): ONE canvas, 4 panels -- mu+ LEFT, mu- RIGHT, data TOP, MC BOTTOM.
 //   PbPb (2026-08-13, user): DATA ONLY, TWO canvases, 2 columns each. The by-year canvas has
-//        one row per running period (4 with 2026 added); the centrality canvas is 3 x 2.
+//        one row per AVAILABLE running period; the centrality canvas is 3 x 2. A period listed in
+//        kPbPbYears whose data file is not on disk yet (2026) is skipped with an [INFO] line, and
+//        both the row count and the drawn year list follow the periods that actually contributed.
 //        The HIJING overlay was dropped from the PbPb figure: it is still a TEST sample, so its
 //        statistics in a single forward q*eta slice are too thin to say anything about where the
 //        edge belongs, and a half-empty MC row only invited over-reading. The two data canvases
 //        use the axis that PbPb actually has and pp does not -- year and centrality:
 //        (1) `..._by_year.png`      -- centrality-integrated; mu+ LEFT, mu- RIGHT;
-//                                      rows = PbPb 2023 / 2024 / 2025 / 2026.
+//                                      one row per PbPb running period whose data file is on disk.
 //                                      Answers: is the forward edge behaving the same in all
 //                                      running periods, per charge?
-//        (2) `..._centrality.png`   -- PbPb 23+24+25+26 summed AND mu+ + mu- summed, one panel per
+//        (2) `..._centrality.png`   -- those same periods summed AND mu+ + mu- summed, one panel per
 //                                      centrality bin of `ParamsSet::ctrbins`
 //                                      (0-5 / 5-10 / 10-20 / 20-30 / 30-50 / 50-80 %) = exactly
 //                                      the 3 x 2 grid. Answers: does occupancy move the forward
@@ -105,7 +107,10 @@ const std::vector<double> kUpperEdges = {2.20, 2.25, 2.30, 2.40};
 const std::vector<Color_t> kEdgeCol   = {kBlack, kBlue + 1, kGreen + 2, kRed + 1};
 const std::vector<Style_t> kEdgeMark  = {20, 21, 22, 23};
 
-// The PbPb running periods, in the order they are drawn as rows.
+// The PbPb running periods, in the order they are drawn as rows. This is the list of periods the
+// macro LOOKS FOR; the ones it actually draws are whichever of these have a data file on disk --
+// see AvailablePbPbYears(). Every row count, canvas height, header and table tag below is built
+// from that filtered list, so a canvas can never claim a running period that contributed nothing.
 const std::vector<int> kPbPbYears = {2023, 2024, 2025, 2026};
 
 template <typename T>
@@ -291,6 +296,44 @@ std::string PbPbDataFile(int year, const std::string& wp) {
            "_single_mu4_fine_q_eta_bin" + wp + ".root";
 }
 
+// The running periods whose data file is actually readable. A period that has not been recorded
+// or skimmed yet (2026, at the time of writing) is SKIPPED with an [INFO] line instead of
+// aborting the macro -- otherwise adding a future year to kPbPbYears makes both existing PbPb
+// canvases unproducible.
+std::vector<int> AvailablePbPbYears(const std::string& wp) {
+    std::vector<int> years;
+    for (int year : kPbPbYears) {
+        const std::string fname = PbPbDataFile(year, wp);
+        if (gSystem->AccessPathName(fname.c_str())) {
+            std::cout << "[INFO] Pb+Pb " << year << ": no data file at " << fname
+                      << " -- skipping this running period." << std::endl;
+            continue;
+        }
+        std::unique_ptr<TFile> f(TFile::Open(fname.c_str(), "READ"));
+        if (!f || f->IsZombie()) {
+            std::cout << "[INFO] Pb+Pb " << year << ": cannot open " << fname
+                      << " -- skipping this running period." << std::endl;
+            continue;
+        }
+        std::cout << "[INFO] Pb+Pb " << year << ": using " << fname << std::endl;
+        years.push_back(year);
+    }
+    if (years.empty())
+        throw std::runtime_error("plot_forward_qeta_edge_scan: no PbPb data file found for any of "
+                                 "the configured running periods.");
+    return years;
+}
+
+// "2023+2024+2025" / "2023, 2024, 2025" tag built from the periods that actually contributed.
+std::string PbPbYearsTag(const std::vector<int>& years, const std::string& sep) {
+    std::string s;
+    for (size_t i = 0; i < years.size(); ++i) {
+        if (i) s += sep;
+        s += std::to_string(years[i]);
+    }
+    return s;
+}
+
 // `_ctr<lo>_<hi>` token as written by RDFBasedHistFillingPbPb, built from ParamsSet::ctrbins.
 std::string CtrToken(size_t ibin) {
     return "_ctr" + std::to_string(ParamsSet::ctrbins[ibin]) + "_" +
@@ -342,15 +385,18 @@ void DrawHeader(const std::string& text) {
 // PbPb canvas 1: centrality-integrated, mu+ / mu- columns, one row per running period.
 // ---------------------------------------------------------------------------------------------
 void PlotPbPbByYear(bool use_tight_wp, const std::string& wp, const std::string& wpt) {
+    // Only the running periods that are actually on disk get a row.
+    const std::vector<int> years = AvailablePbPbYears(wp);
+
     // 550 px per row (same per-panel height as the centrality canvas below), so the canvas
     // grows with the number of running periods instead of staying tuned to a fixed row count.
-    TCanvas c("c_fwd_edge_year", "", 1400, 550 * static_cast<int>(kPbPbYears.size()));
-    c.Divide(2, static_cast<int>(kPbPbYears.size()));
+    TCanvas c("c_fwd_edge_year", "", 1400, 550 * static_cast<int>(years.size()));
+    c.Divide(2, static_cast<int>(years.size()));
 
     std::vector<std::pair<std::string, std::pair<TH2D*, TH2D*>>> rows;  // for the number table
 
-    for (size_t iy = 0; iy < kPbPbYears.size(); ++iy) {
-        const int year = kPbPbYears[iy];
+    for (size_t iy = 0; iy < years.size(); ++iy) {
+        const int year = years[iy];
         const std::string fname = PbPbDataFile(year, wp);
         std::unique_ptr<TFile> f(TFile::Open(fname.c_str(), "READ"));
         if (!f || f->IsZombie()) throw std::runtime_error("cannot open data file " + fname);
@@ -389,14 +435,19 @@ void PlotPbPbByYear(bool use_tight_wp, const std::string& wp, const std::string&
 }
 
 // ---------------------------------------------------------------------------------------------
-// PbPb canvas 2: 2023+2024+2025+2026 summed and mu+ + mu- summed, one panel per centrality bin.
+// PbPb canvas 2: every AVAILABLE running period summed and mu+ + mu- summed, one panel per
+// centrality bin. The drawn year list follows the periods that were actually opened.
 // ---------------------------------------------------------------------------------------------
 void PlotPbPbByCentrality(bool use_tight_wp, const std::string& wp, const std::string& wpt) {
     const size_t nctr = ParamsSet::ctrbins.size() - 1;
 
-    // Sum over all running periods AND over both charges, per centrality bin.
+    // Only the running periods that are actually on disk enter the sum -- and the header and the
+    // acceptance-guard tag below are built from this same list.
+    const std::vector<int> years = AvailablePbPbYears(wp);
+
+    // Sum over all available running periods AND over both charges, per centrality bin.
     std::vector<TH2D*> num(nctr, nullptr), den(nctr, nullptr);
-    for (int year : kPbPbYears) {
+    for (int year : years) {
         const std::string fname = PbPbDataFile(year, wp);
         std::unique_ptr<TFile> f(TFile::Open(fname.c_str(), "READ"));
         if (!f || f->IsZombie()) throw std::runtime_error("cannot open data file " + fname);
@@ -425,7 +476,8 @@ void PlotPbPbByCentrality(bool use_tight_wp, const std::string& wp, const std::s
 
     // Guard on the summed sample: with all years and both charges in, an empty forward region
     // can only mean gap-cut inputs.
-    AssertForwardRegionPopulated(den[0], "PbPb 23+24+25+26, both charges, most central bin");
+    AssertForwardRegionPopulated(den[0], "PbPb " + PbPbYearsTag(years, "+") +
+                                         ", both charges, most central bin");
 
     // The six panels do NOT share one q*eta grid (184 / 102 / 61 bins, per-centrality by
     // registration), so scan only the boundaries all six have in common -- otherwise the same
@@ -450,8 +502,8 @@ void PlotPbPbByCentrality(bool use_tight_wp, const std::string& wp, const std::s
     }
 
     c.cd(0);
-    DrawHeader(kPbPbHeader + wpt + " muons,  forward q#eta edge scan,  "
-               "data 2023+2024+2025+2026,  #mu^{+} + #mu^{-}" + AdoptedForwardEdgeLabel());
+    DrawHeader(kPbPbHeader + wpt + " muons,  forward q#eta edge scan,  data "
+               + PbPbYearsTag(years, "+") + ",  #mu^{+} + #mu^{-}" + AdoptedForwardEdgeLabel());
 
     const std::string out_dir = PbPbOutDir(use_tight_wp);
     gSystem->mkdir(out_dir.c_str(), kTRUE);

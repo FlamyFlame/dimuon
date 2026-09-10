@@ -13,7 +13,9 @@
 // 0-1, 50 bins; PNG only):
 //   1. pythia_truth_dr_vs_pair_pt.png  (Pythia evgen single-b, opposite-sign, weighted)
 //   2. pp24_data_dr_vs_pair_pt.png     (pp24 data, raw counts)
-//   3. pbpb_data_dr_vs_pair_pt.png     (PbPb 23+24+25+26 combined, raw counts)
+//   3. pbpb_data_dr_vs_pair_pt.png     (all PbPb running periods found on disk, combined,
+//                                       raw counts; a year with no input is skipped with an
+//                                       [INFO] line and dropped from the title)
 //
 // A horizontal dashed red line is drawn at DeltaR = 0.05 (the removed cut).
 //
@@ -110,26 +112,41 @@ void plot_dr_vs_pair_pt_diagnostic()
         "muon_pairs_pp_2024_2mu4_mindR_0_02.root";
 
     // PbPb nominal crossx inputs: trigger_mode=1 (single_mu4), mindR_0_02, res_cut_v2, per-year hadded.
-    const std::vector<std::string> pbpb_files = {
-        "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2023/"
-        "muon_pairs_pbpb_2023_single_mu4_mindR_0_02_res_cut_v2.root",
-        "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2024/"
-        "muon_pairs_pbpb_2024_single_mu4_mindR_0_02_res_cut_v2.root",
-        "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2025/"
-        "muon_pairs_pbpb_2025_single_mu4_mindR_0_02_res_cut_v2.root",
-        "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2026/"
-        "muon_pairs_pbpb_2026_single_mu4_mindR_0_02_res_cut_v2.root",
+    // A running period whose hadded file is not on disk yet (2026, still being skimmed) is SKIPPED
+    // with an [INFO] line rather than aborting: it must not take the Pythia-truth and pp24 figures
+    // down with it, and the PbPb titles below are composed from the years that actually contributed
+    // so the figure can never claim a year it did not read.
+    std::vector<int> pbpb_years;
+    std::vector<std::string> pbpb_files;
+    for (int yr : {2023, 2024, 2025, 2026}) {
+        const std::string f = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_"
+                              + std::to_string(yr) + "/muon_pairs_pbpb_" + std::to_string(yr)
+                              + "_single_mu4_mindR_0_02_res_cut_v2.root";
+        if (gSystem->AccessPathName(f.c_str())) {
+            std::cout << "[INFO] PbPb " << yr << ": no input file at " << f
+                      << " -- skipping this year.\n";
+            continue;
+        }
+        pbpb_years.push_back(yr);
+        pbpb_files.push_back(f);
+    }
+    // "2023+2024+2025" built from the years that survived the probe -- never a typed year string.
+    auto pbpb_years_tag = [&pbpb_years]() {
+        std::string s;
+        for (size_t i = 0; i < pbpb_years.size(); ++i) {
+            if (i) s += "+";
+            s += std::to_string(pbpb_years[i]);
+        }
+        return s;
     };
 
+    // Fatal only for the file the block at hand actually consumes.
     auto check = [](const std::string& f) {
         if (gSystem->AccessPathName(f.c_str())) {
             std::cerr << "[FATAL] missing input file: " << f << "\n";
             gSystem->Exit(1);
         }
     };
-    check(truth_file);
-    check(pp24_file);
-    for (auto& f : pbpb_files) check(f);
 
     // Signal cuts EXCEPT DeltaR.
     const std::string truth_cuts =
@@ -148,6 +165,7 @@ void plot_dr_vs_pair_pt_diagnostic()
     // ======================= 1. TRUTH (Pythia single-b) =======================
     {
         std::cout << "\n[INFO] Pythia truth single-b...\n";
+        check(truth_file);
         auto df = ROOT::RDataFrame("muon_pair_tree_sign2", std::vector<std::string>{truth_file})
                       .Filter(truth_cuts);
         ROOT::RDF::TH2DModel model("h_truth", "Pythia truth single-b;p_{T}^{#mu#mu} [GeV];#DeltaR",
@@ -163,6 +181,7 @@ void plot_dr_vs_pair_pt_diagnostic()
     // ======================= 2. pp24 DATA =======================
     {
         std::cout << "\n[INFO] pp24 data...\n";
+        check(pp24_file);
         auto df = ROOT::RDataFrame("muon_pair_tree_sign2", std::vector<std::string>{pp24_file})
                       .Filter(data_cuts);
         ROOT::RDF::TH2DModel model("h_pp24", "pp24 data;p_{T}^{#mu#mu} [GeV];#DeltaR",
@@ -175,19 +194,23 @@ void plot_dr_vs_pair_pt_diagnostic()
                     "pp 2024 data (2mu4), OS, raw counts");
     }
 
-    // ====================== 3. PbPb DATA (23+24+25+26 combined) =====================
-    {
-        std::cout << "\n[INFO] PbPb data 2023+2024+2025+2026...\n";
+    // ============ 3. PbPb DATA (all running periods found on disk, combined) ============
+    if (pbpb_files.empty()) {
+        std::cout << "\n[INFO] No PbPb input file available -- skipping the PbPb figure.\n";
+    } else {
+        const std::string yrs = pbpb_years_tag();
+        std::cout << "\n[INFO] PbPb data " << yrs << "...\n";
         auto df = ROOT::RDataFrame("muon_pair_tree_sign2", pbpb_files)
                       .Filter(data_cuts);
-        ROOT::RDF::TH2DModel model("h_pbpb", "PbPb data 23+24+25+26;p_{T}^{#mu#mu} [GeV];#DeltaR",
+        ROOT::RDF::TH2DModel model("h_pbpb",
+                                   ("PbPb data " + yrs + ";p_{T}^{#mu#mu} [GeV];#DeltaR").c_str(),
                                    nx, xbins.data(), ny, ylo, yhi);
         auto h = df.Histo2D(model, "pair_pt", "dr");
         TH2D hh = *h;
         std::cout << "[INFO] PbPb TH2 entries = " << hh.GetEntries()
                   << ", integral = " << hh.Integral() << "\n";
         DrawAndSave(hh, out_dir + "/pbpb_data_dr_vs_pair_pt.png",
-                    "PbPb 2023+2024+2025+2026 data (single mu4), OS, raw counts");
+                    "PbPb " + yrs + " data (single mu4), OS, raw counts");
     }
 
     std::cout << "\n[INFO] Done.\n";

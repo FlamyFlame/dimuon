@@ -136,11 +136,37 @@ struct Sample {
     int nparts;
 };
 
+// The part files of one sample that are ACTUALLY on disk. TChain::Add only warns on a missing
+// file, so a running period that has not been skimmed yet (2026) would otherwise contribute
+// nothing while the panel headers still claimed it.
+std::vector<std::string> SampleFiles(const Sample& s) {
+    std::vector<std::string> files;
+    for (int p = 1; p <= s.nparts; ++p) {
+        const std::string f = std::string(kDataBase) + s.dir + "single_muon_trees_" + s.tag +
+                              "_part" + std::to_string(p) + "_" + s.trig + "_mindR_0_02.root";
+        if (!gSystem->AccessPathName(f.c_str())) files.push_back(f);
+    }
+    return files;
+}
+
 void AddParts(TChain& ch, const Sample& s) {
-    for (int p = 1; p <= s.nparts; ++p)
-        ch.Add((std::string(kDataBase) + s.dir + "single_muon_trees_" + s.tag + "_part" +
-                std::to_string(p) + "_" + s.trig + "_mindR_0_02.root")
-                   .c_str());
+    for (const auto& f : SampleFiles(s)) ch.Add(f.c_str());
+}
+
+// Year of a sample, read back from its tag ("pbpb_2023" -> "2023"), so no header retypes a year.
+std::string SampleYear(const Sample& s) {
+    const size_t u = s.tag.rfind('_');
+    return (u == std::string::npos) ? s.tag : s.tag.substr(u + 1);
+}
+
+// "2023+2024+2025" over the samples that survived the on-disk probe.
+std::string YearsTag(const std::vector<Sample>& samples) {
+    std::string t;
+    for (size_t i = 0; i < samples.size(); ++i) {
+        if (i) t += "+";
+        t += SampleYear(samples[i]);
+    }
+    return t;
 }
 
 // Fill h[panel][ptslice] from one sample. pp fills panel 0 only; a PbPb sample fills the
@@ -389,16 +415,37 @@ void plot_muon_q_eta_pt_dependence(bool use_tight_wp = true) {
     FillSample({"pp_2024/", "pp_2024", "2mu4", 12}, use_tight_wp, false, 0, ctr_lo, ctr_hi,
                h, n_all, n_cut);
 
-    printf("\n=== PbPb 2023 + 2024 + 2025 + 2026 (combined) ===\n");
     // nparts for 2026 is a PLACEHOLDER (5): the 2026 skim is submitted as 5 grid tasks, so
     // at least 5 part files are expected, but the count can end up LARGER when
     // grid_monitor's chunked-hadd fallback splits an oversized task output into extra
     // parts. Confirm against what lands on disk; see
     // docs/tracking/pbpb2026_analysis_support.md.
-    const std::vector<Sample> pbpb = {{"pbpb_2023/", "pbpb_2023", "single_mu4", 4},
-                                      {"pbpb_2024/", "pbpb_2024", "single_mu4", 2},
-                                      {"pbpb_2025/", "pbpb_2025", "single_mu4", 6},
-                                      {"pbpb_2026/", "pbpb_2026", "single_mu4", 5}};
+    const std::vector<Sample> pbpb_wanted = {{"pbpb_2023/", "pbpb_2023", "single_mu4", 4},
+                                             {"pbpb_2024/", "pbpb_2024", "single_mu4", 2},
+                                             {"pbpb_2025/", "pbpb_2025", "single_mu4", 6},
+                                             {"pbpb_2026/", "pbpb_2026", "single_mu4", 5}};
+
+    // Keep only the running periods with at least one part file on disk; the panel headers
+    // below are composed from this filtered list, never from a typed year string.
+    std::vector<Sample> pbpb;
+    for (const auto& s : pbpb_wanted) {
+        const size_t nf = SampleFiles(s).size();
+        if (nf == 0) {
+            printf("[INFO] PbPb %s: no input part file on disk -- skipping this running period.\n",
+                   SampleYear(s).c_str());
+            continue;
+        }
+        printf("[INFO] PbPb %s: %zu of %d expected part files found.\n",
+               SampleYear(s).c_str(), nf, s.nparts);
+        pbpb.push_back(s);
+    }
+    if (pbpb.empty()) {
+        printf("[FATAL] no PbPb input part file found for any running period -- nothing to plot.\n");
+        return;
+    }
+    const std::string pb_years = YearsTag(pbpb);
+
+    printf("\n=== PbPb %s (combined) ===\n", pb_years.c_str());
     for (const auto& s : pbpb)
         FillSample(s, use_tight_wp, true, -1, ctr_lo, ctr_hi, h, n_all, n_cut);
 
@@ -422,8 +469,8 @@ void plot_muon_q_eta_pt_dependence(bool use_tight_wp = true) {
     head[0] = "pp #sqrt{s} = 5.36 TeV, 2024";
     sub[0] = "HLT_2mu4, " + wp_lbl + " WP (per muon)";
     for (int k = 0; k < nctr; ++k) {
-        head[k + 1] = Form("Pb+Pb #sqrt{s_{NN}} = 5.36 TeV, 23+24+25+26, %d-%d%%", ctr_lo[k],
-                           ctr_hi[k]);
+        head[k + 1] = Form("Pb+Pb #sqrt{s_{NN}} = 5.36 TeV, %s, %d-%d%%", pb_years.c_str(),
+                           ctr_lo[k], ctr_hi[k]);
         sub[k + 1] = "HLT_mu4, " + wp_lbl + " WP (per muon)";
     }
 

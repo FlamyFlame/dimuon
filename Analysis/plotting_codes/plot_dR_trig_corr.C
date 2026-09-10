@@ -38,13 +38,27 @@ void plot_dR_trig_corr() {
         {26, base_dir() + "pbpb_2026/histograms_real_pairs_pbpb_2026_single_mu4_fine_q_eta_bin.root", kMagenta+1, 23}
     };
 
+    // A running period whose histogram file is not on disk yet (2026, still being skimmed) is
+    // SKIPPED and ERASED from `years`, so the draw loop and the legend below see exactly the years
+    // that were opened. Returning here instead -- as this loop used to -- produced no PNG at all
+    // and leaked the years that had already been opened.
     std::map<int, TFile*> files;
+    std::vector<YearInfo> years_open;
     for (auto& y : years) {
-        files[y.year] = TFile::Open(y.path.c_str());
-        if (!files[y.year] || files[y.year]->IsZombie()) {
-            std::cerr << "Cannot open " << y.path << std::endl;
-            return;
+        TFile* f = TFile::Open(y.path.c_str());
+        if (!f || f->IsZombie()) {
+            std::cout << "[INFO] PbPb 20" << y.year << ": cannot open " << y.path
+                      << " -- skipping this year." << std::endl;
+            delete f;
+            continue;
         }
+        files[y.year] = f;
+        years_open.push_back(y);
+    }
+    years = years_open;
+    if (years.empty()) {
+        std::cerr << "No PbPb histogram file could be opened -- nothing to plot." << std::endl;
+        return;
     }
 
     struct PlotDef {
@@ -165,6 +179,11 @@ void plot_dR_trig_corr() {
         {"_pt40_120", "40 < p_{T}^{pair} < 120 GeV"}
     };
 
+    // The pT-slice panels are a deliberate SINGLE-year set (2025); they are not combined over
+    // years. If that year's file is not among the ones opened, the panels are simply not drawn --
+    // dereferencing files[<year>] would otherwise be a null dereference.
+    const int kPtSliceYear = 25;
+
     struct DrRange { std::string var; double xmin, xmax; };
     std::vector<DrRange> dr_ranges = {
         {"DR_zoomin", 0.0, 0.8},
@@ -194,7 +213,7 @@ void plot_dR_trig_corr() {
 
                     for (int isl = 0; isl < (int)pt_slices.size(); isl++) {
                         std::string gname = "g_" + dr.var + std::string(sign) + term.graph_suffix + ctr_graph_suffix + pt_slices[isl].suffix + "_divided";
-                        auto g = (TGraphAsymmErrors*)files[25]->Get(gname.c_str());
+                        auto g = (TGraphAsymmErrors*)files.at(kPtSliceYear)->Get(gname.c_str());
                         if (!g) { std::cerr << "WARNING: missing " << gname << std::endl; continue; }
                         g->SetMarkerColor(colors[isl]);
                         g->SetLineColor(colors[isl]);
@@ -230,9 +249,14 @@ void plot_dR_trig_corr() {
         }
     };
 
-    makePtSlicePlots("", "", "ctr_integrated");
-    for (const auto& [label, suffix] : ctr_bins) {
-        makePtSlicePlots(label, suffix, "ctr_binned");
+    if (!files.count(kPtSliceYear)) {
+        std::cout << "[INFO] PbPb 20" << kPtSliceYear << " is not available -- skipping the "
+                  << "pair-pT-slice panels." << std::endl;
+    } else {
+        makePtSlicePlots("", "", "ctr_integrated");
+        for (const auto& [label, suffix] : ctr_bins) {
+            makePtSlicePlots(label, suffix, "ctr_binned");
+        }
     }
 
     for (auto& [yr, f] : files) f->Close();
