@@ -344,11 +344,13 @@ get_code_update_info() {
 		pbpb_2023) echo "$ANALYSIS_CODE_DIR/PbPbExtras.c $ANALYSIS_CODE_DIR/run_pbpb_23.sub 23" ;;
 		pbpb_2024) echo "$ANALYSIS_CODE_DIR/PbPbExtras.c $ANALYSIS_CODE_DIR/run_pbpb_24.sub 24" ;;
 		pbpb_2025) echo "$ANALYSIS_CODE_DIR/PbPbExtras.c $ANALYSIS_CODE_DIR/run_pbpb_25.sub 25" ;;
-		# pbpb_2026: NTuple-processing support for the 2026 data does not exist yet
-		# (PbPbExtras.c has no {26, ...} entry and there is no run_pbpb_26.sub).  Return
-		# empty so the auto-update is skipped instead of failing; whoever adds the 2026
-		# analysis code sets file_batch_max from the part count actually on disk.
-		pbpb_2026) echo "" ;;
+		# pbpb_2026: enabled 2026-09-10, once the 2026 analysis-code support landed
+		# (PbPbExtras.c now has {26, N} and run_pbpb_26.sub exists).  This is what makes
+		# file_batch_max self-correct from the part count actually written to disk,
+		# instead of staying at the placeholder guess.  NOTE: the auto-update touches
+		# only run_pbpb_26.sub; the other five run_pbpb_26_*.sub variants must be synced
+		# by hand.  See Analysis/docs/tracking/pbpb2026_analysis_support.md.
+		pbpb_2026) echo "$ANALYSIS_CODE_DIR/PbPbExtras.c $ANALYSIS_CODE_DIR/run_pbpb_26.sub 26" ;;
 		*) echo "" ;;
 	esac
 }
