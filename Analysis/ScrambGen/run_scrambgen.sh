@@ -13,16 +13,30 @@ if [[ ${setup_status} -ne 0 ]]; then echo "Environment setup failed (source ~/se
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${SCRIPT_DIR}"
 
-echo "[ScrambGen] PbPb 23/24/25/26 ..."
-root -l -b <<EOF
-.L ScrambGen.c+
-ScrambGen g;
-g.Run(23);
-g.Run(24);
-g.Run(25);
-g.Run(26);
-gSystem->Exit(0);
-EOF
+echo "[ScrambGen] PbPb (years with data) ..."
+# Only run years whose single-muon trees exist: ScrambGen now THROWS on an empty input
+# (rather than writing an empty scrambled file that downstream existence checks accept),
+# so a year still being produced would otherwise abort the whole run.
+DATA_BASE="/usatlas/u/yuhanguo/usatlasdata/dimuon_data"
+SG_YEARS=()
+for yr in 23 24 25 26; do
+  if compgen -G "${DATA_BASE}/pbpb_20${yr}/single_muon_trees_pbpb_20${yr}_part*_single_mu4_mindR_0_02.root" > /dev/null; then
+    SG_YEARS+=("${yr}")
+  else
+    echo "[SKIP] Pb+Pb 20${yr}: no single-muon trees on disk -- ScrambGen skipped." >&2
+  fi
+done
+if [[ ${#SG_YEARS[@]} -eq 0 ]]; then
+  echo "[FATAL] no Pb+Pb year has single-muon trees on disk." >&2
+  exit 1
+fi
+echo "[INFO] ScrambGen Pb+Pb years: ${SG_YEARS[*]}"
+{
+  echo '.L ScrambGen.c+'
+  echo 'ScrambGen g;'
+  for yr in "${SG_YEARS[@]}"; do echo "g.Run(${yr});"; done
+  echo 'gSystem->Exit(0);'
+} | root -l -b
 
 echo "[ScrambGen] pp24 ..."
 root -l -b <<EOF

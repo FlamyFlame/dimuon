@@ -68,6 +68,16 @@ private:
       MuonPbPb* m = nullptr;
       ch.SetBranchAddress("MuonObj", &m);
       const Long64_t nentries = ch.GetEntries();
+      // TChain::Add only WARNS on a missing file, so a year whose single-muon trees are
+      // not on disk yet (or only partially downloaded) would otherwise sail through and
+      // produce a scrambled file built from nothing -- which then passes the existence
+      // check in RDFBasedHistFillingPbPb and feeds an EMPTY mixed-event template T_mix
+      // into the template fit.  Fail loudly instead.
+      if (nentries == 0)
+         throw std::runtime_error("ScrambGen::LoadMuons: no entries for Pb+Pb 20" +
+                                  std::to_string(yr % 2000) + " -- expected " +
+                                  std::to_string(NParts(yr)) + " single-muon tree part(s) in " +
+                                  DataDir(yr) + ". Run the NTuple processing first.");
       for (Long64_t i = 0; i < nentries; ++i){
          ch.GetEntry(i);
          if (!m) continue;
@@ -81,6 +91,15 @@ private:
 
    // Mix muons within each interval and write the SS/OS scrambled pair trees.
    void GeneratePairs(int yr, std::vector<std::vector<MuonPbPb>>& by_ctr){
+      // Refuse to create the output at all if there is nothing to mix: an empty
+      // muon_pairs_*_scrambled.root is worse than none, because downstream code checks
+      // only that the file EXISTS.
+      size_t n_in = 0;
+      for (const auto& v : by_ctr) n_in += v.size();
+      if (n_in == 0)
+         throw std::runtime_error("ScrambGen::GeneratePairs: no input muons for Pb+Pb 20" +
+                                  std::to_string(yr % 2000) + " -- refusing to write " +
+                                  OutputPath(yr));
       TFile* out = new TFile(OutputPath(yr).c_str(), "recreate");
       if (!out || out->IsZombie()){ std::cerr << "[ScrambGen] cannot open output " << OutputPath(yr) << std::endl; return; }
       MuonPairPbPb* pair = new MuonPairPbPb();

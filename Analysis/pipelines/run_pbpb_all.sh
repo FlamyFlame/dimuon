@@ -29,9 +29,44 @@ SKIP_EVSEL="${SKIP_EVSEL:-${SKIP_CONDOR}}"
 # re-enter after one year fails, resubmits ~24 Condor jobs and overwrites 2023 and 2025 outputs
 # that were already good. Keep the scalar (exported) and derive the array from it.
 YEARS_STR="${YEARS:-23 24 25 26}"
-export YEARS="${YEARS_STR}"
-read -r -a YEARS_ARR <<< "${YEARS_STR}"
 DATA_BASE="/usatlas/u/yuhanguo/usatlasdata/dimuon_data"
+
+# ─── Drop years whose raw skim NTUPs are not on disk yet ───────────────────────────────
+# The default year list names every Pb+Pb data-taking period, including one whose grid
+# skim may still be running.  Without this filter the pipeline would abort on the first
+# stage that touches the absent year -- taking the years that ARE ready down with it.
+# A skipped year is announced loudly, once, so it can never be mistaken for a year that
+# was processed.  Pass YEARS explicitly to override the discovery.
+filter_years_with_data() {
+  local kept=() yr
+  for yr in "$@"; do
+    if compgen -G "${DATA_BASE}/pbpb_20${yr}/data_pbpb${yr}_part*.root" > /dev/null; then
+      kept+=("${yr}")
+    else
+      echo "[SKIP] Pb+Pb 20${yr}: no raw skim NTUPs in ${DATA_BASE}/pbpb_20${yr}/ -- year skipped." >&2
+    fi
+  done
+  # NOTE: this function is called inside $(...) / <(...), i.e. in a SUBSHELL, so it must
+  # NOT try to abort the pipeline itself -- an `exit` here would only end the subshell and
+  # leave the caller with an EMPTY year list that silently processes nothing.  The caller
+  # checks for empty and aborts.
+  # The emptiness guard matters: `printf '%s\n'` with ZERO arguments still prints one
+  # blank line, which mapfile would turn into a one-element array containing "", and the
+  # caller's `${#YEARS[@]} -eq 0` test would then pass with nothing to process.
+  if [[ ${#kept[@]} -gt 0 ]]; then
+    printf '%s\n' "${kept[@]}"
+  fi
+}
+# Resolve the year list ONCE here and export the result, so every child script
+# (and the medium-WP driver below) sees the same, already-filtered set.
+mapfile -t YEARS_ARR < <(filter_years_with_data ${YEARS_STR})
+if [[ ${#YEARS_ARR[@]} -eq 0 ]]; then
+  echo "[FATAL] none of the requested Pb+Pb years has raw skim NTUPs on disk -- nothing to do." >&2
+  exit 1
+fi
+YEARS_STR="${YEARS_ARR[*]}"
+export YEARS="${YEARS_STR}"
+echo "[INFO] Pb+Pb years to process: ${YEARS_STR}"
 
 now() { date '+%F %T'; }
 log() { echo "[$(now)] $*"; }

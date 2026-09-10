@@ -45,6 +45,39 @@ SKIP_EVSEL="${SKIP_EVSEL:-${SKIP_CONDOR}}"
 RDF_NTHREADS="${RDF_NTHREADS:-2}"
 YEARS=(${YEARS:-23 24 25 26})
 DATA_BASE="/usatlas/u/yuhanguo/usatlasdata/dimuon_data"
+
+# ─── Drop years whose raw skim NTUPs are not on disk yet ───────────────────────────────
+# The default year list names every Pb+Pb data-taking period, including one whose grid
+# skim may still be running.  Without this filter the pipeline would abort on the first
+# stage that touches the absent year -- taking the years that ARE ready down with it.
+# A skipped year is announced loudly, once, so it can never be mistaken for a year that
+# was processed.  Pass YEARS explicitly to override the discovery.
+filter_years_with_data() {
+  local kept=() yr
+  for yr in "$@"; do
+    if compgen -G "${DATA_BASE}/pbpb_20${yr}/data_pbpb${yr}_part*.root" > /dev/null; then
+      kept+=("${yr}")
+    else
+      echo "[SKIP] Pb+Pb 20${yr}: no raw skim NTUPs in ${DATA_BASE}/pbpb_20${yr}/ -- year skipped." >&2
+    fi
+  done
+  # NOTE: this function is called inside $(...) / <(...), i.e. in a SUBSHELL, so it must
+  # NOT try to abort the pipeline itself -- an `exit` here would only end the subshell and
+  # leave the caller with an EMPTY year list that silently processes nothing.  The caller
+  # checks for empty and aborts.
+  # The emptiness guard matters: `printf '%s\n'` with ZERO arguments still prints one
+  # blank line, which mapfile would turn into a one-element array containing "", and the
+  # caller's `${#YEARS[@]} -eq 0` test would then pass with nothing to process.
+  if [[ ${#kept[@]} -gt 0 ]]; then
+    printf '%s\n' "${kept[@]}"
+  fi
+}
+mapfile -t YEARS < <(filter_years_with_data "${YEARS[@]}")
+if [[ ${#YEARS[@]} -eq 0 ]]; then
+  echo "[FATAL] none of the requested Pb+Pb years has raw skim NTUPs on disk -- nothing to do." >&2
+  exit 1
+fi
+echo "[INFO] Pb+Pb years to process: ${YEARS[*]}"
 PLOT_BASE="${DATA_BASE}/plots"
 FITTER_DIR="${ANALYSIS_DIR}"
 PLOT_DR_DIR="${ANALYSIS_DIR}/plotting_codes"

@@ -40,9 +40,27 @@ run_and_log() {
 # 1) Fill crossx histograms
 # PbPb runs first: test_crossx_pp24.sh loads the PbPb .so in a separate session to resolve
 # the dynamic_cast<RDFBasedHistFillingPbPb*> typeinfo dependency before linking PP.
-run_and_log "RDF crossx pbpb23" "cd '${RDF_DIR}' && bash run_crossx_hist_filling_pbpb23.sh"
-run_and_log "RDF crossx pbpb24" "cd '${RDF_DIR}' && bash run_crossx_hist_filling_pbpb24.sh"
-run_and_log "RDF crossx pbpb25" "cd '${RDF_DIR}' && bash run_crossx_hist_filling_pbpb25.sh"
+# Every Pb+Pb data-taking year, filtered on input presence: a year whose muon_pairs
+# ntuple is not on disk yet (its skim or NTuple processing still running) is announced and
+# skipped, rather than failing the run for the years that ARE ready.  PBPB_YEARS is also
+# what names the combined output directory below, so the two cannot drift apart.
+DATA_BASE="/usatlas/u/yuhanguo/usatlasdata/dimuon_data"
+PBPB_YEARS=()
+for yr in 23 24 25 26; do
+  if compgen -G "${DATA_BASE}/pbpb_20${yr}/muon_pairs_pbpb_20${yr}_single_mu4"*.root > /dev/null; then
+    PBPB_YEARS+=("${yr}")
+  else
+    echo "[SKIP] Pb+Pb 20${yr}: no muon_pairs ntuple on disk -- crossx filling skipped." >&2
+  fi
+done
+if [[ ${#PBPB_YEARS[@]} -eq 0 ]]; then
+  echo "[FATAL] no Pb+Pb year has a muon_pairs ntuple on disk." >&2
+  exit 1
+fi
+echo "[INFO] Pb+Pb crossx years: ${PBPB_YEARS[*]}"
+for yr in "${PBPB_YEARS[@]}"; do
+  run_and_log "RDF crossx pbpb${yr}" "cd '${RDF_DIR}' && bash run_crossx_hist_filling_pbpb${yr}.sh"
+done
 # NOT test_crossx_pp24.sh. Both write the SAME nominal output file, but the test one sets only
 # `trigger_mode = 3`, while run_crossx_hist_filling_pp24.sh also sets `output_generic_hists` and
 # `output_gapcut_hists`. Running the test variant here therefore REPLACED the nominal pp24
@@ -81,8 +99,13 @@ validate_png "${OUT_DIR}/pp24/pp24_crossx_pair_pt_minv.png"
 validate_png "${OUT_DIR}/pp24/pp24_crossx_pair_pt_dr.png"
 validate_png "${OUT_DIR}/pp24/pp24_crossx_pair_pt_in_eta_subplots_dr_lines.png"
 
-# Combined PbPb (discovers which years are available; check a representative subset)
-COMB_TAA="${OUT_DIR}/pbpb_23_24_25_combined/TAA_weighted"
+# Combined PbPb (discovers which years are available; check a representative subset).
+# The directory name is built by plot_single_b_crossx_pbpb.cxx::OutDirName() from the years
+# it actually found, so derive it here from the SAME list instead of hard-coding a year set
+# -- otherwise this validation silently checks a stale directory once a year is added.
+COMB_YEARS="$(IFS=_; echo "${PBPB_YEARS[*]}")"
+COMB_TAA="${OUT_DIR}/pbpb_${COMB_YEARS}_combined/TAA_weighted"
+echo "[INFO] validating combined output in ${COMB_TAA}"
 for ctr in ctr0_5 ctr5_10 ctr10_20 ctr20_30 ctr30_50 ctr50_80; do
   validate_png "${COMB_TAA}/pbpb_combined_${ctr}_pair_pt_pair_eta.png"
   validate_png "${COMB_TAA}/pbpb_combined_${ctr}_pair_pt_in_eta_subplots_dr_lines.png"

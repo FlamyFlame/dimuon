@@ -29,7 +29,25 @@ set -Euo pipefail
 #          RDF_NTHREADS=4 ./run_data_trigeff_medium_wp.sh
 # =============================================================================================
 
+# Pb+Pb years here are FILTERED on data presence, so the default can safely name every
+# period: a year whose raw skim NTUPs are not on disk yet is announced and skipped rather
+# than failing the run after all the real work is done.  "pp" is never filtered.
 SAMPLES="${SAMPLES:-pp 23 24 25 26}"
+_data_base="/usatlas/u/yuhanguo/usatlasdata/dimuon_data"
+_kept=()
+for _s in ${SAMPLES}; do
+  if [[ "${_s}" == "pp" ]] || compgen -G "${_data_base}/pbpb_20${_s}/data_pbpb${_s}_part*.root" > /dev/null; then
+    _kept+=("${_s}")
+  else
+    echo "[SKIP] Pb+Pb 20${_s}: no raw skim NTUPs on disk -- sample skipped." >&2
+  fi
+done
+if [[ ${#_kept[@]} -eq 0 ]]; then
+  echo "[FATAL] no requested sample has input on disk." >&2
+  exit 1
+fi
+SAMPLES="${_kept[*]}"
+echo "[INFO] samples to process: ${SAMPLES}"
 RDF_NTHREADS="${RDF_NTHREADS:-2}"
 
 ANALYSIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
