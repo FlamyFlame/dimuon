@@ -363,6 +363,34 @@ unfolding; ε_acc construction (still unbuilt); the F14 open question of extra q
   `c9ab2df` docs. Working tree clean apart from `.claude/logs/tracking.jsonl`.
   **NOTHING HAS BEEN RERUN. No Condor job has been submitted. No output file overwritten.**
 
+- 2026-09-09 22:30-23:00 **REVIEW ITERATION 4 — the decision to run it was correct.** Two independent
+  read-only reviewers on the previously unverified `01031f0` + `c9ab2df` batch, split by scope
+  (A = `pipelines/` + run/submit scripts; B = `plotting_codes/` + `RAA_plotting.cxx` + docs).
+  **Both returned FAIL.** Combined: **6 CRITICAL, 31 WARNING, 6 INFO** — see R7. Three of the
+  CRITICALs would have silently corrupted or wasted this rerun, and one is a plain build break in a
+  file that had been reported as compiling. Merged findings in R7; the Phase-1-reaching half is
+  fixed and committed (`abb9103`, `227041f`) BEFORE any job was submitted.
+
+- 2026-09-09 22:54 **PHASE 1 LAUNCHED.** All RDF classes were pre-compiled serially first
+  (13 targets; `RDFBasedHistFillingPowhegFullsimSingleMuon` was MISSING a `.so` and was built now),
+  so every `.so` is newer than every header and the parallel pipelines only LOAD — nothing compiles
+  concurrently. That matters because `RDFBasedHistFillingPP.cxx` and `...PbPb.cxx` both include the
+  unguarded `RDFBasedHistFillingData.cxx`.
+  Five drivers, on DISJOINT output trees, each harness-owned so its exit notifies:
+  | Job | Driver | Covers | Writes to |
+  |---|---|---|---|
+  | A | `ENABLE_MC_TRIG_EFF=1 pipeline_pythia_fullsim_pp.sh full` | 1g (local, 6-8 h) | `pythia_fullsim_full_sample/` |
+  | B | `pipeline_pp_trig_eff.sh` | 1b + 2a(pp, Tight) | `pp_2024/` |
+  | C | `SKIP_EVSEL=1 run_pbpb_all.sh` | 1c + 2a(Pb+Pb, Tight+Medium) + 3b | `pbpb_2023/24/25/` |
+  | D | `pipeline_pythia_truth.sh` x3 modes | 1d | pythia truth dirs |
+  | F | `pipeline_pythia_fullsim_overlay.sh hijing` | 1f | overlay dir |
+  Plus Phase 1e submitted directly (no pipeline exists for it): clusters **2420** `powheg_truth_bb`,
+  **2421** `powheg_truth_cc`, **2422** `powheg_fullsim_wtruth_bb`, **2423** `powheg_fullsim_wtruth_cc`.
+  Job A Stage 0 preflight PASSED: all 6 pT-hat slices and exactly 6 AMI files present, so the
+  `expected_ami_dsids` guard is armed on the FULL `_pdf` production.
+  Logs: `.claude/logs/pipeline-runs/mupt45_rerun_20260909_225405/`. A persistent monitor tails all
+  of them for stage transitions AND failure signatures.
+
 ## Results & Observations
 
 ### R1 — Recon findings that change the plan (three independent subagents, 2026-09-08)
@@ -560,6 +588,65 @@ Two operational defects found in iteration 3 that would have broken THIS rerun:
 turn-on fits (now serialized), and the Pb+Pb combiner silently dropped years missing a histogram
 while still labelling the canvas "2023, 2024, 2025 combined" (now probes every year and reports
 contributors).
+
+### R7 — Review iteration 4: what the "unverified batch" actually contained
+
+Log `.claude/logs/review-analysis-code-20260909-223311-mupt45-iter4-amendment-verify.md`.
+Two reviewers, disjoint scope, both **FAIL**. R5 predicted the amendments were unreliable; they
+were. **The single most important number here: a file that this doc recorded as one of "21 compile
+targets clean" does not compile.** So "it compiled" was itself an unverified claim.
+
+**Phase-1-reaching — FIXED before any job was submitted (`abb9103`, `227041f`):**
+
+| # | Defect | Why it mattered |
+|---|---|---|
+| A1 | `pipeline_pythia_fullsim_pp.sh` validated Stages 1-3/5 by existence + entry count, never freshness | Stages 1-3 `cp -a` the OLD file and leave it at the nominal path; a throw inside the event loop is caught by TRint and the job exits 0 ⇒ the whole 6-8 h chain measures ε_reco and the detector response on the pre-change 4.0 GeV population and applies it to new-selection data. Now: `mktemp` stamps + `require_fresh` on every product, a real tree check on the single-muon file, and a FILLED-histogram probe replacing the key count (a key count passes on a partially flushed file) |
+| A3 | `run_pbpb_all.sh` `YEARS=(${YEARS:-...})` destroyed the scalar the children read | Arrays are not exported ⇒ every sub-pipeline saw `YEARS` unset and ran all three years. `YEARS=24 SKIP_CONDOR=1 ./run_pbpb_all.sh` — the natural re-entry after one year fails — would resubmit ~24 jobs and overwrite good output. Verified empirically before AND after the fix |
+| A9 | Nothing in the Pb+Pb path regenerated the **Medium-WP** turn-on fits | `pipeline_pbpb_trig_eff.sh` leaves `isTight` true, so Medium would have been the ONLY correction left on the superseded gap window and the old `_2_00_TO_2_30` q*eta key. A Medium stage now runs between trig-eff and crossx |
+| A12 | The mc_trig products were not in the backup loop | Its comment promised to back up "anything we are about to overwrite" and did not cover `ENABLE_MC_TRIG_EFF=1` — the configuration this rerun uses |
+| A11 | `pipeline_powheg_fullsim_single_muon.sh` validated an explicit part list then hadded a **glob** | The glob also matches this repo's own `.bak_<timestamp>.root` names; a double-counted batch in a reco-eff denominator is invisible downstream. Now merges the arrays it validated |
+| A5 | `run_pbpb_all.sh` serialization diagnostics were dead code under `set -e` | Safety property was fine (crossx cannot start early); the operator just got a generic ERR line instead of "ABORTING before crossx" |
+
+**★ A fix of mine that was itself wrong, caught by testing rather than assuming** — the R5 lesson,
+live: the reviewer's suggested `if ! cmd; then RC=$?; fi` (and my first application of it) captures
+the status of the `!` NEGATION, which is **always 0**, so a child exiting 7 reports `rc=0`. The
+working form is `cmd || RC=$?` with `RC` preset. Also caught the same way: I guessed the mc_trig
+single-muon suffix as `_single_muon_mc_trig` when the real composition is `_mc_trig_single_muon`
+(trig_suffix precedes extra_output_suffix), so the freshness gate I had just added would have
+aborted Stage 4 of a *correct* run. Both were found by exercising the change against the real
+shell / the real filenames.
+
+**NOT acted on, deliberately:** reviewer A re-raised (as CRITICAL) that `--dry-run` writes to the
+NOMINAL output filenames. D12 records that giving `--dry-run` its own suffix was offered to the
+user, who chose the narrower fix. Left as the user decided; this rerun does not use `--dry-run`.
+
+**Outstanding — NOT Phase-1-reaching, being fixed while Condor runs.** Reviewer A: #4
+`run_mc_trigeff_round7.sh` accepts a previous production's file as proof a stage ran and (no
+`set -e`) ignores ROOT's exit code entirely (Phase 2b); #6 pp crossx required-histogram probe's
+failure message unreachable under `set -e`; #7 the pp pipeline still skips the Pb+Pb sanity panels
+citing a 44-bin axis that no longer exists; #8 Pb+Pb crossx Stage 5 lacks the stamp + probe its pp
+twin has, on the exact stage that produced the 851-byte corpse; #10 `run_all_crossx.sh` fills pp24
+via `test_crossx_pp24.sh`, which omits the `_wgapcut` family the pipeline version writes, and gates
+four RDF stages on PNG existence alone. Reviewer B: **B1 build break** (`const int nb = 6;`
+swallowed into a `//` comment in `plot_single_muon_reco_effcy_r17618_vs_r17662.cxx:45`); **B2**
+Pb+Pb combined crossx records `combined_years_` and never reads it, so the drawn label still claims
+all three years while the code's own warning says it must not; **B3** `signal_selection_change_impact.md`
+asserts three lines above its own correction that Pb+Pb adopted neither gap cut; **B5** the new
+mode-3 coverage assert checks only the bin COUNT and `pT_bins_120` has the same count (16), so the
+one realistic wrong axis passes; plus ~20 stale comments/headers/labels and the doc items.
+
+**Two findings that belong to a PEER session, not this one** (`additional fullsim statistics` owns
+`mc_pthat_slice_mass_statistics.cxx` and `pthat_slice_mass_stats_sample_request.md`) — flagged to
+the user, NOT edited here:
+- **B23 is physics-results-bending.** `drop_sigma`'s "above" region is anchored on the data's own
+  peak bin while the header and the emitted CSV both say the two regions were "fixed before looking",
+  so the region systematically excludes its own largest bin and `nbins_above` varies 6/7/9/15/16
+  across rows (different mass ranges compared as if alike). Reviewer measured the effect on the
+  shipped histograms: pTH125_300 OS top-3 **+4.5σ → +3.9σ**, pTH70_125 SS top-3 **−4.7σ → −5.6σ**.
+  That moves the peer doc's stated decisive number.
+- **B22**: that macro ships an `N_beam`-vs-`N_proc` "residual risk" narrative, in the code and in all
+  9 emitted CSV headers, that D12 already fixed upstream — harmless today (`N_proc == N_beam` for a
+  nominal run) but it would now misdiagnose a truncated file.
 
 ### R6 — Cross-session state (three peers share this checkout)
 
