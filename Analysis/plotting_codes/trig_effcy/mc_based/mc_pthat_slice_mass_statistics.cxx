@@ -135,7 +135,7 @@ std::vector<MassRange> MassRanges()
 // question the request turns on -- "does the proposed filter separate the single-b population
 // from the back-to-back one?" -- and it exists as exact `Count()`s because the earlier answer was
 // read off the display histogram. NO log display axis has an edge at 2.9, 4 or 10 -- on the axis
-// in use when that error was made they fell at 2.8606 / 4.164 / 9.836, and they move again every
+// in use when that error was made they fell at 2.8602 / 4.1822 / 9.8358, and they move again every
 // time the axis does -- so integrating one splits the bands at the wrong masses. It moved the
 // headline same-sign number by 6.2 percentage points. D4 says every counted number comes from an
 // exact filter; so does this.
@@ -225,6 +225,26 @@ std::vector<double> MassAxis()
 //   density = the last bin ENTIRELY below the proposed filter. On a log axis no bin edge lands on
 //             the filter, so the straddling bin is reported separately rather than silently used.
 //
+// THE COMPARISON WINDOW IS PRE-REGISTERED, AND DERIVED. `drop_sigma` compares the mean density
+// just BELOW the filter with the mean density just ABOVE it, over a window that is symmetric in
+// log(m) about the cut:
+//     below = [filter / R, filter)      above = [filter, filter * R)      R = filter / wide_hi
+// With the canonical values (filter = 10, template-fit top = 4) R = 2.5, so the windows are
+// [4, 10) and [10, 25) GeV. R is DERIVED from the two canonical mass scales, not tuned, and
+// neither edge depends on the data.
+//
+// WHY THIS MATTERS AND WHAT IT REPLACES. The first version ended the "above" window at the DATA's
+// own tallest bin, while claiming the regions were "fixed before looking". That excluded the
+// largest bin from the mean by construction, biasing the step POSITIVE, and it made `nbins_above`
+// vary from row to row so the rows compared different mass ranges as if they were alike. Caught by
+// /review-analysis-code (CRITICAL) and independently by the session running the pT-4.5 adoption.
+// A window chosen by the data is not a pre-registered window, and a statistic computed on one may
+// not be reported as though it were.
+//
+// The window dependence is REPORTED, not hidden: `drop_sigma_wide`, over [filter, axis top), is
+// emitted beside it. If the two disagree in sign or size, the "step" is a property of the window
+// and not of the spectrum, and neither may be quoted as a result.
+//
 // RESOLVABILITY, AND THE LOOK-ELSEWHERE TRAP. A "peak" and a "minimum" of 25 and 7 pairs on a flat
 // ~15/bin continuum are Poisson noise. Comparing the tallest and shallowest bin of a ~20-bin scan
 // does NOT test that: the extremes of a flat distribution are guaranteed to be far apart, so such a
@@ -239,7 +259,9 @@ struct Landmark {
     double min_lo,  min_hi,  min_n;
     double below_lo, below_hi, below_n;
     bool   extremes_differ;   // look-elsewhere BIASED; see the header note
-    double drop_sigma;        // THE verdict: significance of the density step across the filter
+    double drop_sigma;        // pre-registered log-symmetric window [filter/R, filter) vs [filter, filter*R)
+    double drop_sigma_wide;   // same, but [filter, axis top) -- the window-dependence check
+    double above_mean_w, above_err_w; int above_nbins_w;
     // REGION-level quantities. A single bin is a Poisson draw: the top-3 pTH125_300 "minimum"
     // is a 2.5 sigma dip on a flat plateau, and quoting it as a measurement is the same error as
     // quoting the pTH70_125 one. These are the statements that survive a rebinning AND carry
@@ -291,9 +313,14 @@ Landmark FindLandmarks(const TH1D* h, double filter_m, double search_lo)
         mean = nb ? sum / nb : 0.;
         err  = nb ? std::sqrt(sum) / nb : 0.;      // Poisson on the summed count
     };
+    // Pre-registered, log-symmetric about the filter. `search_lo` IS filter/R by construction
+    // (it is the template-fit window's top), so the two windows are mirror images in log(m).
+    const double R = filter_m / search_lo;
     region(search_lo, filter_m, L.below_mean, L.below_err, L.below_nbins);
-    region(filter_m, L.peak_bin ? h->GetBinLowEdge(L.peak_bin) : filter_m,
-           L.above_mean, L.above_err, L.above_nbins);
+    region(filter_m, filter_m * R, L.above_mean, L.above_err, L.above_nbins);
+    // The window-dependence check: everything above the filter, to the axis top.
+    region(filter_m, h->GetBinLowEdge(h->GetNbinsX() + 1),
+           L.above_mean_w, L.above_err_w, L.above_nbins_w);
 
     // The geometric mean mass ABOVE the filter locates the back-to-back population without
     // depending on which bin happens to be tallest -- the tallest-bin comparison between the two
@@ -310,6 +337,8 @@ Landmark FindLandmarks(const TH1D* h, double filter_m, double search_lo)
     // crossed, i.e. the filter sits ABOVE the single-b population's edge rather than in a gap.
     const double de = std::sqrt(L.below_err * L.below_err + L.above_err * L.above_err);
     L.drop_sigma = de > 0. ? (L.below_mean - L.above_mean) / de : 0.;
+    const double dw = std::sqrt(L.below_err * L.below_err + L.above_err_w * L.above_err_w);
+    L.drop_sigma_wide = dw > 0. ? (L.below_mean - L.above_mean_w) / dw : 0.;
     return L;
 }
 
@@ -416,34 +445,39 @@ AmiInfo ReadAmi(const std::string& sample_dir, const PtHatSlice& sl)
     return a;
 }
 
-// ------------------------------------------------------------------ N_slice: what it is, and what it is NOT
-// N_slice is the denominator of EVERY percentage in this macro, so what it can and cannot detect
-// has to be stated precisely rather than asserted.
+// ------------------------------------------------------------------ N_slice: the events actually processed
+// N_slice is the denominator of EVERY percentage in this macro.
 //
-// THREE numbers are compared, and all three must agree:
+// IT IS READ FROM THE FILE, not inferred. `meta_tree_out` in the pair file carries
+// `nproc_kin<K>_beam0` -- the number of events the ntuple processing ACTUALLY LOOPED OVER for this
+// pT-hat slice -- alongside `nbeam_kin<K>_beam0` (the entries available). That is the
+// authoritative number and this macro requires it.
 //
-//   (b) from the WEIGHT the pairs actually carry. PythiaAlgCoreT.c:814 sets
-//       fullsim_weight_factor = sigma*eps_filt * r_isospin / N_beam with r_isospin = 1 for this
-//       pp-beam-only sample, and PythiaFullSimExtras.c:397 stamps it on every pair, so
-//       N = sigma*eps_filt / weight is the event count the weights were BUILT with.
-//   (a) from the NTUP farm on disk: the entries of the chain PythiaAlgCoreT builds, N_beam.
-//   (c) from AMI: `totalEvents`, the count the PRODUCTION reports, which lives outside this
-//       machine entirely. (a) vs (c) is the handle on a partially downloaded / partially
-//       symlinked farm -- a real hazard for a sample whose slices are exposed as an LGD symlink
-//       farm and never hadded. A small deficit is tolerated: one event is genuinely absent
-//       from the NTUPs of each `_pdf` slice.
+// NOTE, verified against the file rather than assumed: upstream ALSO has an in-memory
+// `meta_fullsim_truncated` flag (PythiaAlgCoreT.h:141) but **never Branches it**, so it does NOT
+// reach the pair file -- `meta_tree_out` carries only the `nentries_`, `nproc_` and `nbeam_`
+// families. The only file-level truncation detector is therefore `nproc != nbeam`, which is what
+// this macro uses.
 //
-// ⚠ WHAT THIS DOES **NOT** CATCH, stated because the CSV headers must not overclaim.
-// PythiaAlgCoreT.c:816 loops over N_proc = min(N_beam, nevents_max), but the WEIGHT is built from
-// N_beam regardless. So a run truncated by `nevents_max` (the pipeline's smoke test does exactly
-// this, through the same run script and onto the same `_full` pair-file path) produces a pair file
-// in which (A) = (B) = (C) = N_beam and every per-event rate is understated by N_proc / N_beam,
-// with all three checks agreeing. Nothing in the pair file records N_proc: `meta_tree_out` is
-// filled only for the private (non-fullsim) path, and it is EMPTY here (verified).
-// THE FIX IS UPSTREAM, not here: the ntuple processing should write the per-(kn, beam) N_proc into
-// `meta_tree_out` for fullsim, and this macro should then require it. Until it does, the CSV
-// headers say "the entries of the NTUP chain" and name this residual risk, rather than claiming
-// "the events actually processed".
+// HISTORY, because it is the reason the requirement is written this way. Until 2026-09-09 the
+// fullsim path filled no meta tree, the per-pair weight was built from N_beam while the loop ran
+// over N_proc = min(N_beam, nevents_max), and NOTHING in the pair file recorded N_proc. A run
+// truncated by `nevents_max` -- which the pipeline's smoke test does, onto this same `_full` path
+// -- therefore produced a file in which every available cross-check agreed at N_beam while every
+// per-event rate was understated by N_proc/N_beam. `/review-analysis-code` found that this macro's
+// then "denominator proved twice" was not two independent routes at all (both reduced to N_beam),
+// it was raised with the session that owns PythiaAlgCoreT, and it was fixed upstream (D12): the
+// weight now divides by N_proc and the meta tree records both counts. A pair file predating that
+// fix has no meta tree and is REFUSED here rather than silently mis-normalised.
+//
+// TWO CROSS-CHECKS on the number read from the file, both required to pass:
+//   (a) `nbeam_kin<K>_beam0` must equal the entries of the NTUP chain on disk -- catches a pair
+//       file and an NTUP farm that are out of step, or a partially symlinked farm;
+//   (b) sigma*eps_filt / w must equal N_proc, where w is the constant per-pair weight of the slice
+//       and sigma*eps_filt comes from that slice's own DSID-guarded AMI file -- catches a weight
+//       built from a different count than the loop used.
+//   plus AMI `totalEvents`, the production's own record, which lives off this machine entirely.
+
 Long64_t NtupChainEntries(const std::string& sample_dir, const PtHatSlice& sl)
 {
     const std::string base = sample_dir + "Pythia_5p36TeV_pp_hQCD_DiMu_pTH"
@@ -470,6 +504,39 @@ Long64_t NtupChainEntries(const std::string& sample_dir, const PtHatSlice& sl)
                                      "exist. Remove one.");
     }
     return ch.GetEntries();
+}
+
+// The per-slice event bookkeeping the ntuple processing now writes. A pair file that predates it
+// is refused: without N_proc there is no way to tell a full run from a truncated one, and every
+// per-event rate below would be silently understated.
+struct MetaCounts { Long64_t nproc, nbeam; };
+MetaCounts ReadMetaCounts(const std::string& pair_file, int ikin)
+{
+    std::unique_ptr<TFile> f(TFile::Open(pair_file.c_str(), "READ"));
+    if (!f || f->IsZombie())
+        throw std::runtime_error("mc_pthat_slice_mass_statistics: cannot open " + pair_file);
+    TTree* t = dynamic_cast<TTree*>(f->Get("meta_tree_out"));
+    const std::string stale =
+        "mc_pthat_slice_mass_statistics: " + pair_file + " has no usable `meta_tree_out`, so the "
+        "number of events ACTUALLY PROCESSED for each pT-hat slice is unrecorded. This pair file "
+        "predates the fullsim event-bookkeeping fix (PythiaAlgCoreT, 2026-09-09). Refusing to run: "
+        "a run truncated by `nevents_max` -- which the pipeline's smoke test does, onto this same "
+        "`_full` path -- would understate every per-event rate here with no other symptom. Re-run "
+        "the ntuple processing for this sample.";
+    if (!t || t->GetEntries() < 1) throw std::runtime_error(stale);
+
+    const std::string bp = "nproc_kin" + std::to_string(ikin) + "_beam0";
+    const std::string bb = "nbeam_kin" + std::to_string(ikin) + "_beam0";
+    if (!t->GetBranch(bp.c_str()) || !t->GetBranch(bb.c_str())) throw std::runtime_error(stale);
+
+    MetaCounts m{0, 0};
+    t->SetBranchAddress(bp.c_str(), &m.nproc);
+    t->SetBranchAddress(bb.c_str(), &m.nbeam);
+    t->GetEntry(0);
+    if (m.nproc <= 0)
+        throw std::runtime_error("mc_pthat_slice_mass_statistics: " + bp + " is "
+                                 + std::to_string(m.nproc) + " in " + pair_file);
+    return m;
 }
 
 // The single constant weight of one pT-hat slice. Every pair of the slice must carry it; a spread
@@ -572,9 +639,24 @@ void mc_pthat_slice_mass_statistics(const std::string& sample = "pp_full",
     std::map<std::string, AmiInfo>  ami;                   // per slice
 
     for (const auto& sl : Slices()) {
-        // ---- the denominator, established three ways (see NtupChainEntries' comment) ----
+        // ---- the denominator: READ from the file, then cross-checked (see the N_slice block) ----
         ami[sl.token] = ReadAmi(cfg.mc_dir, sl);
-        const Long64_t n_chain = NtupChainEntries(cfg.mc_dir, sl);
+        const Long64_t   n_chain = NtupChainEntries(cfg.mc_dir, sl);
+        const MetaCounts meta    = ReadMetaCounts(pair_file, sl.ikin);
+        // AUTHORITATIVE: the events the ntuple processing actually looped over for this slice.
+        n_events[sl.token] = meta.nproc;
+        if (meta.nproc != meta.nbeam)
+            std::cout << "  !! " << sl.token << ": this pair file is TRUNCATED -- "
+                      << meta.nproc << " of " << meta.nbeam << " events were processed"
+                      << ". The per-event rates below are still correct (they divide by N_proc), "
+                         "but the ABSOLUTE counts are those of a partial run." << std::endl;
+        // (a) the entries available on disk must match what the processing recorded as available.
+        if (meta.nbeam != n_chain)
+            throw std::runtime_error(
+                "mc_pthat_slice_mass_statistics: for " + sl.token + " the pair file records "
+                + std::to_string(meta.nbeam) + " available events but the NTUP farm on disk holds "
+                + std::to_string(n_chain) + ". The pair file and the farm are out of step -- one "
+                "was regenerated without the other, or a farm symlink is missing.");
 
         for (const auto& S : PairTrigEff::Signs()) {
             // The sign index comes from PairTrigEff's own tree name, not from a token
@@ -606,18 +688,20 @@ void mc_pthat_slice_mass_statistics(const std::string& sample = "pp_full",
             // the same-sign tree, and "one constant weight per slice" is a claim about the slice,
             // not about one of its two trees.
             {
+                // (b) the weight must have been built from the SAME count the loop used. Since
+                // the 2026-09-09 upstream fix the weight divides by N_proc, so this is exact.
                 const double w = ConstantSliceWeight(d, sl.token + " " + ktree);
                 const double n_from_w = ami.at(sl.token).sigma_eff_nb / w;
                 const Long64_t n_w = static_cast<Long64_t>(std::llround(n_from_w));
-                if (std::llabs(n_w - n_chain) > 1)
+                if (std::llabs(n_w - meta.nproc) > 1)
                     throw std::runtime_error(
                         "mc_pthat_slice_mass_statistics: N_slice DISAGREES for " + sl.token
                         + ": the per-pair weight implies " + Fmt("%.2f", n_from_w)
                         + " events (sigma*eps_filt = " + Fmt("%.6g", ami.at(sl.token).sigma_eff_nb)
-                        + " nb / w = " + Fmt("%.10g", w) + "), the NTUP farm holds "
-                        + std::to_string(n_chain) + ". Every percentage in this macro is N / this "
-                        "number, so the two must agree -- the pair file and the NTUP farm are out "
-                        "of step (one of them was regenerated without the other).");
+                        + " nb / w = " + Fmt("%.10g", w) + "), but the pair file records "
+                        + std::to_string(meta.nproc) + " events processed. The weight was built "
+                        "from a different event count than the loop used -- every per-event rate "
+                        "would be wrong by their ratio.");
                 // (a) vs (c): an incomplete farm. The NTUP farm is 3 part-files of ~107 k
                 // events each, so 2 % (6 400 of 320 000) sits far below a dropped part (33 %)
                 // and far above the single event genuinely missing from each slice (0.0003 %).
@@ -630,12 +714,13 @@ void mc_pthat_slice_mass_statistics(const std::string& sample = "pp_full",
                         "production has " + Fmt("%.0f", ami_ev) + ". The farm is incomplete (a "
                         "part-file missing or a broken symlink), which would understate every "
                         "per-event rate. Restore the farm; do not scale the result.");
-                n_events[sl.token] = n_chain;
                 if (S.token == "os")
                     std::cout << "  " << sl.token << ": DSID " << ami.at(sl.token).dsid
                               << ", sigma*eps_filt = " << Fmt("%.6g", ami.at(sl.token).sigma_eff_nb)
-                              << " nb, w = " << Fmt("%.6g", w) << " nb, N_slice = " << n_chain
+                              << " nb, w = " << Fmt("%.6g", w) << " nb, N_slice = N_proc = "
+                              << meta.nproc << " of " << meta.nbeam << " available"
                               << " (weight implies " << Fmt("%.2f", n_from_w)
+                              << ", NTUP chain " << n_chain
                               << ", AMI totalEvents " << Fmt("%.0f", ami_ev) << ")" << std::endl;
             }
 
@@ -750,27 +835,31 @@ void mc_pthat_slice_mass_statistics(const std::string& sample = "pp_full",
         os << "#   from raw NTUPs.\n";
         os << "#\n";
         os << "# DENOMINATOR of every percentage: N_slice = " << n_events.at(sl.token)
-           << " events -- the ENTRIES OF THE\n";
-        os << "#   NTUP CHAIN the ntuple processing loops over. Cross-checked two further ways,\n";
-        os << "#   all three required to agree:\n";
-        os << "#   (b) sigma*eps_filt / w = " << Fmt("%.6g", ami.at(sl.token).sigma_eff_nb)
-           << " nb / w, with w the constant per-pair weight of\n";
-        os << "#       the slice -- i.e. the N the weights were built with (PythiaAlgCoreT.c:814);\n";
+           << " events -- the events the ntuple\n";
+        os << "#   processing ACTUALLY LOOPED OVER for this slice, read from `meta_tree_out`\n";
+        os << "#   (nproc_kin" << sl.ikin << "_beam0) in the pair file, not inferred. Cross-checked\n";
+        os << "#   three ways, all required to pass:\n";
+        os << "#   (a) the events the processing recorded as AVAILABLE (nbeam_kin" << sl.ikin
+           << "_beam0) equal the\n";
+        os << "#       entries of the NTUP chain on disk;\n";
+        os << "#   (b) sigma*eps_filt / w = N_proc, with sigma*eps_filt = "
+           << Fmt("%.6g", ami.at(sl.token).sigma_eff_nb)
+           << " nb from this slice's own\n";
+        os << "#       DSID-guarded AMI file and w the constant per-pair weight -- i.e. the weight\n";
+        os << "#       was built from the same count the loop used;\n";
         os << "#   (c) the AMI production record, totalEvents = "
-           << Fmt("%.0f", ami.at(sl.token).total_events) << " (a partially downloaded or\n";
+           << Fmt("%.0f", ami.at(sl.token).total_events)
+           << " (a partially downloaded or\n";
         os << "#       partially symlinked farm would show up here and nowhere else).\n";
         os << "#   A percentage here is therefore the PER-EVENT PAIR RATE: multiply it by the\n";
         os << "#   number of events you request to get the expected pair count.\n";
         os << "#\n";
-        os << "#   ! RESIDUAL RISK, stated rather than hidden. None of the three checks can see a\n";
-        os << "#   run truncated by `nevents_max` (PythiaAlgCoreT.c:816 loops over\n";
-        os << "#   N_proc = min(N_beam, nevents_max) while the WEIGHT is built from N_beam), and\n";
-        os << "#   the pipeline's smoke test writes to this same `_full` pair-file path. Such a\n";
-        os << "#   file would make all three numbers agree while every rate below is understated\n";
-        os << "#   by N_proc/N_beam. Nothing in the pair file records N_proc (meta_tree_out is\n";
-        os << "#   filled only on the private path and is empty here). The fix is upstream: write\n";
-        os << "#   the per-(kn,beam) N_proc into meta_tree_out for fullsim and require it here.\n";
-        os << "#\n";
+        os << "#   ! WHAT `N` MEANS IN THAT PROJECTION. The rate is measured on a sample with NO\n";
+        os << "#   generator-level dimuon mass filter, so `rate x N` is the yield from N events\n";
+        os << "#   generated BEFORE any such filter. A request whose event count is quoted AFTER a\n";
+        os << "#   mass filter (the usual convention, and what AMI totalEvents records) would give\n";
+        os << "#   MORE pairs than this, by 1/eps_filter. The filter's own efficiency is a\n";
+        os << "#   generator-level number and is NOT measured here.\n";
         os << "# COUNTS ARE RAW AND UNWEIGHTED. Inside ONE pT-hat slice the MC weight is a single\n";
         os << "#   constant, so weighting adds no information and only the raw count answers\n";
         os << "#   \"how many pairs will N events give me\". These are NOT yields: slices are\n";
@@ -943,10 +1032,31 @@ void mc_pthat_slice_mass_statistics(const std::string& sample = "pp_full",
         os << "#           of a ~20-bin scan, and the extremes of a FLAT distribution are far apart\n";
         os << "#           by construction, so it reads YES even on pure noise.\n";
         os << "# drop_sigma = THE verdict this file stands behind: the significance of the step in\n";
-        os << "#           MEAN DENSITY across the filter, (below - above)/sqrt(err^2 + err^2), over\n";
-        os << "#           two regions fixed before looking. POSITIVE = the density FALLS across the\n";
-        os << "#           filter, i.e. the filter sits above the single-b population's edge and\n";
-        os << "#           BELOW the rise to the back-to-back peak -- not in a gap between them.\n";
+        os << "#           MEAN DENSITY across the filter, (below - above)/sqrt(err^2 + err^2), over a\n";
+        os << "#           PRE-REGISTERED window symmetric in log(m) about the cut -- [filter/R,\n";
+        os << "#           filter) vs [filter, filter*R) with R = filter / template-fit-top = "
+           << Fmt("%.3g", kLooseMassMax / PairTrigEff::Window("wide").hi) << ", i.e.\n";
+        os << "#           [" << Fmt("%.4g", PairTrigEff::Window("wide").hi) << ", "
+           << Fmt("%.4g", kLooseMassMax) << ") vs [" << Fmt("%.4g", kLooseMassMax) << ", "
+           << Fmt("%.4g", kLooseMassMax * kLooseMassMax / PairTrigEff::Window("wide").hi)
+           << ") GeV. Neither edge depends on the data.\n";
+        os << "#           POSITIVE = the density FALLS across the filter, i.e. the filter sits above\n";
+        os << "#           the single-b population's edge -- NOT in a gap between the two populations.\n";
+        os << "# drop_sigma_wide = the same step measured against EVERYTHING above the filter (to the\n";
+        os << "#           axis top). It is the WINDOW-DEPENDENCE CHECK.\n";
+        os << "# window_dependence_ok = do drop_sigma and drop_sigma_wide agree in SIGN?\n";
+        os << "#           If NO, the step is a property of the window and not of the spectrum and\n";
+        os << "#           **NEITHER value may be quoted as a result for that row**. The magnitudes\n";
+        os << "#           are NOT expected to agree: the wide window reaches into the steeply\n";
+        os << "#           falling high-mass tail, so it always gives the larger number. Only the\n";
+        os << "#           SIGN is the robustness claim.\n";
+        os << "#           EXPECT THIS TO FAIL ON THE `all selected pairs` ROWS, and it is not a\n";
+        os << "#           defect: inclusively the back-to-back peak sits INSIDE the narrow [10, 25)\n";
+        os << "#           window, so that window is dominated by the peak itself and measures\n";
+        os << "#           something different from the wide one. In the 3 highest pair-pT cells the\n";
+        os << "#           peak is near 45-50 GeV, OUTSIDE the narrow window, so there the narrow\n";
+        os << "#           window measures the shoulder just above the filter -- which IS the\n";
+        os << "#           quantity the filter question asks about.\n";
         os << "#\n";
         os << "# THE PHYSICS QUESTION THIS ANSWERS: if `min` lies ABOVE the proposed filter, then\n";
         os << "#   the filter cuts through a continuum rather than through a gap between the\n";
@@ -959,7 +1069,8 @@ void mc_pthat_slice_mass_statistics(const std::string& sample = "pp_full",
         os << "slice,sign,scope,peak_range_GeV,peak_N,peak_sqrtN,min_range_GeV,min_N,min_sqrtN,"
               "extremes_differ_LOOK_ELSEWHERE_BIASED,min_above_filter,last_bin_below_filter_GeV,its_N,pct_of_peak,"
               "straddling_bin_GeV,mean_per_bin_below_filter,its_err,nbins_below,"
-              "mean_per_bin_above_filter,its_err,nbins_above,geom_mean_mass_above_filter_GeV,drop_sigma\n";
+              "mean_per_bin_above_filter,its_err,nbins_above,geom_mean_mass_above_filter_GeV,drop_sigma,"
+              "mean_per_bin_above_wide,its_err,nbins_above_wide,drop_sigma_wide,window_dependence_ok\n";
         for (const auto& sl : Slices())
             for (const auto& S : SignsSsFirst())
                 for (int top = 0; top < 2; ++top) {
@@ -984,7 +1095,12 @@ void mc_pthat_slice_mass_statistics(const std::string& sample = "pp_full",
                        << "," << Fmt("%.1f", L.above_mean) << "," << Fmt("%.1f", L.above_err)
                        << "," << L.above_nbins
                        << "," << Fmt("%.1f", L.gmean_above)
-                       << "," << Fmt("%.1f", L.drop_sigma)
+                       << "," << Fmt("%.2f", L.drop_sigma)
+                       << "," << Fmt("%.1f", L.above_mean_w) << "," << Fmt("%.1f", L.above_err_w)
+                       << "," << L.above_nbins_w
+                       << "," << Fmt("%.2f", L.drop_sigma_wide)
+                       << "," << (((L.drop_sigma >= 0.) == (L.drop_sigma_wide >= 0.))
+                                  ? "YES" : "NO -- do not quote this row's step")
                        << "\n";
                 }
     });
@@ -1158,7 +1274,7 @@ void mc_pthat_slice_mass_statistics(const std::string& sample = "pp_full",
     };
     draw_set("pair_mass_by_pthat_slice.png", false, "all selected pairs");
     draw_set("pair_mass_by_pthat_slice_top3_pairpt.png", true,
-             Fmt("%.1f < p_{T}^{pair} < %.0f GeV", top_pt_lo, pt_edges.back()));
+             Fmt("%.2f < p_{T}^{pair} < %.0f GeV", top_pt_lo, pt_edges.back()));
 
     // ---------------------------------------------------------------- the histograms, for reuse
     const std::string root_out = out_dir + "mc_pthat_slice_mass_stats.root";

@@ -71,9 +71,15 @@ r(R)  = N(R) / N_events(s)                            [pairs per generated event
 ```
 
 `r` is the deliverable: the expected pair count of a **new** request of `N` events in that slice
-is `r · N`. `N_events(s)` is the **entry count of the NTUP chain the ntuple processing loops
-over** — see the caveat at the end of this section for the one thing that is *not* the same as
-"the events actually processed".
+is `r · N`.
+
+**⚠ WHAT `N` COUNTS — an open question that must be settled before the request goes out.** `r` is
+measured on a sample with **no generator-level mass filter**, so `r · N` is the yield from `N`
+events generated **before** any such filter. If the new request's event count is quoted **after**
+the mass filter — the usual convention, and what AMI `totalEvents` records — the yield is larger,
+by `1 / ε_massfilter`. **ε_massfilter is a generator-level number and is NOT measured anywhere in
+this doc**, so as it stands this study sizes the *unfiltered* request exactly and the *filtered*
+one only up to that factor. Raised by `/review-analysis-code`; see Remaining Work.
 
 **Why raw and unweighted.** This is a sample-size question, not a cross-section question. Within
 ONE pT-hat slice the per-pair MC weight is a single constant `σ_s · ε_filt,s / N_s`, so the
@@ -81,41 +87,35 @@ weighted and unweighted numbers carry identical information, and only the raw on
 "how many pairs will N events give me". These are explicitly **not** yields: slices are combined
 with very different weights, and no number in this doc may be summed across slices.
 
-**Why the denominator must be proved.** Every percentage here is `N / N_events`, so a wrong
-`N_events` silently rescales the entire request. **Three** numbers are therefore compared, and all
-three must agree:
+**Why the denominator must be right, and where it comes from.** Every percentage here is
+`N / N_events`, so a wrong `N_events` silently rescales the entire request. It is **read from the
+pair file**, not inferred: `meta_tree_out` carries `nproc_kin<K>_beam<B>`, the number of events the
+ntuple processing **actually looped over** for that slice, alongside `nbeam_kin<K>_beam<B>` (the
+events available). A pair file with no usable meta tree is **refused**
+(see R0 for why that guard exists).
 
-- **(a)** the entries of the NTUP chain the ntuple processing loops over, `N_beam`
-  (`PythiaAlgCoreT.c` `ProcessDataHook`);
-- **(b)** `σ·ε_filt / w`, where `w` is the constant per-pair weight carried by the slice's pairs
-  and `σ·ε_filt` comes from that slice's own AMI file — i.e. the event count the weights were
-  *built* with (`PythiaAlgCoreT.c:814`, `fullsim_weight_factor = σ·ε_filt · r_isospin / N_beam`,
-  with `r_isospin = 1` for this pp-beam-only sample). Required to agree with (a) to one event;
-- **(c)** the AMI production record's `totalEvents`, which lives outside this machine entirely.
-  (a) vs (c) is the only handle on a **partially downloaded or partially symlinked NTUP farm** —
-  a real hazard for a sample whose slices are exposed as an LGD symlink farm and never hadded.
-  Tolerance 2 % (= 6 400 events of 320 000). The NTUP farm is **3 part-files of ~107 k events**
-  each (AMI's `nFiles: 32` counts AODs, not NTUP parts), so a dropped part is a 33 % deficit and
-  throws, while the one event genuinely absent from each `_pdf` slice is 0.0003 % and passes.
+Three cross-checks on the number read from the file, all required to pass:
 
-(a) alone cannot notice a stale pair file; (b) alone cannot notice a weight built from a different
-event count; neither can see an incomplete farm. The AMI file is read under the **DSID guard** of
-`ami_weights.md` (the AMI files are named by beam + slice only, so another production's file opens
-silently).
+- **(a)** `nbeam_kin<K>_beam0` equals the entries of the NTUP chain on disk — catches a pair file
+  and an NTUP farm that are out of step, or a partially symlinked farm;
+- **(b)** `σ·ε_filt / w = N_proc`, where `w` is the constant per-pair weight of the slice and
+  `σ·ε_filt` comes from that slice's own **DSID-guarded** AMI file (`ami_weights.md` — the AMI
+  files are named by beam + slice only, so another production's file opens silently). Since the
+  2026-09-09 upstream fix the weight divides by `N_proc`, so this is exact;
+- **(c)** the AMI production record's `totalEvents`, which lives off this machine entirely.
+  Tolerance 2 % (= 6 400 of 320 000). The NTUP farm is **3 part-files of ~107 k events** each
+  (AMI's `nFiles: 32` counts AODs, not NTUP parts), so a dropped part is a 33 % deficit and throws,
+  while the one event genuinely absent from each `_pdf` slice is 0.0003 % and passes.
 
-**⚠ The residual risk these three do NOT cover — stated, not hidden** (found by
-`/review-analysis-code`, 2026-09-09). `PythiaAlgCoreT.c:816` loops over
-`N_proc = min(N_beam, nevents_max)` while the **weight is built from `N_beam` regardless**
-(line 814). A run truncated by `nevents_max` therefore yields a pair file in which
-(a) = (b) = (c) = `N_beam` — all three checks agreeing — while every per-event rate is understated
-by `N_proc / N_beam`. This is reachable, not hypothetical: `pipeline_pythia_fullsim_pp.sh:170-173`
-runs the smoke test with `NEVENTS_MAX` through the same run script, and
-`run_pythia_fullsim_mc_trig_full_sample.sh:48` keeps `extra_output_suffix="_full"`, so a smoke-test
-pair file lands on the nominal path. Nothing in the pair file records `N_proc`: `meta_tree_out`
-exists but is filled only on the private (non-fullsim) path and is **empty** here (verified).
-**The fix is upstream** — write the per-(kn, beam) `N_proc` into `meta_tree_out` for fullsim and
-require it here; raised with the session that owns `PythiaAlgCoreT` (see Remaining Work). Until
-then every CSV header names this risk instead of claiming "the events actually processed".
+A truncated run is now **reported**, not hidden: if `N_proc < N_beam` the macro says so loudly and
+notes that the per-event rates remain correct (they divide by `N_proc`) while the absolute counts
+are those of a partial run.
+
+**One thing upstream does NOT persist, checked rather than assumed.** `PythiaAlgCoreT` has an
+in-memory `meta_fullsim_truncated` flag (`PythiaAlgCoreT.h:141`) but **never `Branch()`es it**, so
+it does not reach the pair file: `meta_tree_out` carries only the `nentries_`, `nproc_` and
+`nbeam_` families (54 branches, enumerated). **`nproc != nbeam` is therefore the only file-level
+truncation detector**, and it is the one this macro uses.
 
 ### 3. Step-by-step method
 
@@ -155,8 +155,8 @@ marked.
 ### 4. Negative constraints
 
 - **These are not yields and not cross sections.** Nothing here may be summed across pT-hat
-  slices, and no number here belongs in a σ or R_AA. The per-slice weights differ by more than an
-  order of magnitude (`ami_weights.md` table B: 1.4588 nb vs 0.1978 nb).
+  slices, and no number here belongs in a σ or R_AA. The per-slice weights differ by a
+  factor of **7.4** (`ami_weights.md` table B: 1.4588 nb vs 0.1978 nb).
 - **The counts do not include a trigger requirement.** They are the denominator population. A
   reader wanting "how many pairs will fire 2mu4" must multiply by the pair efficiency, which is
   what `mc_trigeff_single_value_pair_eff.md` measures — it is not in this doc.
@@ -187,7 +187,8 @@ marked.
 
 **In:** the two highest pT-hat slices of the pp24-conditions Pythia fullsim FULL sample; the
 Step-3 trigger-efficiency pair population; both muon working points (Tight nominal, Medium
-alongside); the mass figure and the six CSV tables per WP.
+alongside); the mass figure and the nine CSV tables per WP (2 mass-window counts, 2 mass compositions,
+4 cell tables, 1 spectrum-landmarks file).
 
 **Out:** Pb+Pb / the HIJING overlay (the per-pair weight there is the mu4 union, a different
 formula); the trigger decision and any efficiency; the actual text of the production request;
@@ -212,14 +213,16 @@ downstream fit stage opens.
 within one pT-hat slice the weight is one constant, so weighting adds nothing, while the raw
 count is the only form that answers the request.
 
-**D3 — The denominator is checked three ways** (NTUP chain entries; σ·ε_filt / w; AMI
-`totalEvents`). See §2. **REVISED 2026-09-09** after `/review-analysis-code`: the original
-decision said "proved twice … the two independent routes fail in different ways", and that was
-wrong — routes (a) and (b) **both reduce to `N_beam`**, because the weight is itself built from
-`N_beam`. Route (c), the AMI production record, was added as the only handle that lives off this
-machine, and it catches an incomplete/partially-symlinked NTUP farm. Physics reason unchanged: a
-wrong `N_events` rescales the whole request. The residual `nevents_max` hole that **none** of the
-three can see is stated in §2's ⚠ block and in every CSV header; the fix is upstream (R0).
+**D3 — The denominator is READ from the file, then cross-checked three ways.** See §2.
+**REVISED TWICE.** (i) The original decision claimed "proved twice … the two independent routes
+fail in different ways"; that was wrong — routes (a) and (b) both reduced to `N_beam`, because the
+weight was itself built from `N_beam`. (ii) A third route (AMI `totalEvents`) was added, but none
+of the three could see `nevents_max` truncation, which was then documented as a residual risk and
+escalated. That risk is now **closed**: the upstream fix records `N_proc` in `meta_tree_out` and
+divides the weight by it, and this macro reads `N_proc` as the authoritative denominator and
+refuses a pair file that lacks it (R0). Truncation is detected as `nproc != nbeam`; the upstream
+`meta_fullsim_truncated` flag is not persisted to the file (R0). Physics reason unchanged throughout: a wrong `N_events`
+rescales the whole request.
 
 **D4 — A local log mass axis for the figure only.** No canonical minv binning spans the required
 range: `hist_binning_map["minv_log_bins_{ss,op}"]` stops at 60 GeV (below the back-to-back region
@@ -228,15 +231,17 @@ the figure exists to show) and is sign-dependent, so SS and OS could not share a
 The axis is **80 bins uniform in log(m), 0.211 → 400 GeV**. **REVISED 2026-09-09** from 70 bins /
 0.2 → 220 GeV: 220 GeV truncated the spectrum (the highest selected pair mass is **358.96 GeV**,
 and 30 pairs — 17 OS + 9 SS in pTH125_300, 2 + 2 in pTH70_125 — sat in overflow, silently absent
-from the drawn curve); the low edge moved to 0.211 so bin 1 no longer straddles the
-2m_μ = 0.21133 GeV kinematic threshold and read as a dip. Overflow and underflow are now verified
+from the drawn curve); the low edge moved 0.2 → 0.211 so that bin 1 =
+[0.21100, 0.23188) is only **1.66 %** dead below the 2m_μ = 0.21133 GeV kinematic threshold
+instead of 58 %. It **still straddles** that threshold — no log axis edge lands on it and none
+can — it simply no longer reads as a dip. Overflow and underflow are now verified
 **0** in all 16 histograms at both working points.
 
 **No table may depend on this axis** — every counted number comes from an exact
 `minv > lo && minv < hi` filter. **This rule was VIOLATED once and the violation is why the
 `mass_composition_top3_*.csv` tables exist** (D7): R2's first fractions table was integrated off
 display-bin edges instead. **No log display axis has an edge at 2.9, 4 or 10** — on the axis in
-use when that error was made they fell at 2.8606 / 4.164 / 9.836, and they move again every time
+use when that error was made they fell at 2.8602 / 4.1822 / 9.8358, and they move again every time
 the axis does — so the bands were split at the wrong masses, and the table was wrong by
 `/review-analysis-code` independently, 2026-09-09.
 
@@ -325,7 +330,7 @@ from the honest answer to the question being asked.
   pair-pT edges (it promised `> 52.2 GeV` for a histogram bounded at 150); D3 and D4 rewritten
   (both still asserted claims that had been withdrawn); the pTH70_125 top-3 peak/minimum row
   re-labelled as unresolvable Poisson noise (~15 ± 4 per bin) rather than a measurement; per-figure
-  headroom; axis low edge → 0.211 so bin 1 no longer straddles the 2m_μ threshold; `totalEvents `
+  headroom; axis low edge → 0.211 so bin 1's dead fraction below 2m_μ falls from 58 % to 1.66 % (it still straddles); `totalEvents `
   key given the trailing space its neighbours use; a retyped `1.08-2.9` in a CSV comment replaced
   by `ranges[1].csv_text`; the NTUP-farm granularity statement corrected (3 parts × ~107 k, 2 % =
   6 400 events, not "32 × 10 k").
@@ -355,33 +360,111 @@ from the honest answer to the question being asked.
   +2.6 σ for OS but **0.0 σ / −4.7 σ for SS** — for same-sign pairs at high pair p_T the filter
   cuts the middle of a flat continuum.
 
+- **2026-09-10, step 5 — rerun on the REGENERATED 4.5 GeV trees, and two defects fixed.**
+  Input `muon_pairs_..._mc_trig_full.root` mtime **2026-09-10 04:34:21**, 3 107 190 105 B (the
+  file SHRANK from 4 636 631 852 B — the tighter muon cut writes fewer pairs).
+  **Every Table-1, 3×3 and composition number is BYTE-IDENTICAL to the pre-rerun run.** That is
+  the predicted result and it closes the open item: the Step-3 population is invariant under the
+  muon-p_T change because `{quality, p_T>4.0} ∩ {p_T>4.5} = {quality, p_T>4.5}`, and the gap
+  windows and pair-p_T axes were always read from `ParamsSet` at selection time.
+  *Defect 1 (CRITICAL, `/review-analysis-code` + the peer session independently):* `drop_sigma`'s
+  "above" window ended at the DATA's own peak bin while claiming to be "fixed before looking" —
+  biased positive by construction, with the compared mass range varying row to row. Fixed to a
+  pre-registered log-symmetric window derived from canonical mass scales ([4,10) vs [10,25) GeV,
+  R = filter/template-fit-top = 2.5), with `drop_sigma_wide` emitted beside it as a stated
+  window-dependence check. **The headline "0.0 σ — perfectly flat" for pTH125_300 SS was an
+  artefact and is withdrawn**; the corrected values are +5.2/+2.9 σ (OS) vs +1.8/−1.6 σ (SS).
+  *Defect 2:* the macro's `N_proc` narrative was stale after the upstream fix — rewritten, and
+  `N_proc` is now read from `meta_tree_out` as the authoritative denominator (R0, now CLOSED).
+  Also fixed from the iteration-4 review (**but see the step-6 entry: two of these were logged
+  as fixed while the edit that would have made them had aborted, and were only actually applied in
+  step 6**): D4's false "no longer straddles 2m_μ" claim; the
+  unsupported "minimum lies above 10 GeV wherever resolvable" headline (deleted — it rested on a
+  look-elsewhere-biased single bin); "within ~12 %" (OS only; SS differs by 40–58 %); the Medium
+  range (1.040–1.076, not 1.04–1.07); "more than an order of magnitude" → ×7.4; the retired axis's
+  4.164 → 4.1822; and the ⚠ open question of whether a requested `N` is counted before or after
+  the mass filter, now BLOCKING in Remaining Work.
+
+- **2026-09-10, step 6 — iteration-5 review, four CRITICALs, and a false-verification of my own.**
+  *(1) The worst finding was not a number but a claim about a check.* R0 said
+  `meta_fullsim_truncated` had been **verified unset in the regenerated file**. That branch is not
+  in the file at all — upstream sets the flag in memory and never `Branch()`es it. The original
+  check had run a `TTree::Scan` that printed `Bad numerical expression: "meta_fullsim_truncated"`
+  and an empty column, and I read that as "it is a bool" instead of "it does not exist". The
+  macro's read of it was correspondingly a silent no-op. **A verification that cannot have happened
+  is worse than no verification.** Both the claim and the dead read are removed; `nproc != nbeam`
+  is now stated as the only file-level truncation detector, and the file's 54 branches are
+  enumerated as evidence.
+  *(2) Two "fixes" recorded in the step-5 log had never been applied* — D4's straddle claim and the
+  retired-axis edge `4.164`. The edit scripts that would have made them aborted on an unmatched
+  pattern and wrote nothing, and the log recorded the intent rather than the outcome. Both are now
+  applied and re-checked in place, and every edit in this step was verified against the file
+  afterwards rather than assumed.
+  *(3) §2 still carried a pre-R0-close sentence* defining `N_events` as the NTUP-chain entry count,
+  spliced onto the ⚠ block and contradicting the paragraph below it. Deleted.
+  *(4) `drop_sigma` vs `drop_sigma_wide` disagree in SIGN on all four `all selected pairs` rows*,
+  which by the CSV's own stated rule makes those rows unquotable — and nothing marked them. A
+  `window_dependence_ok` column now does, R2 states the failure explicitly, and the mechanism is
+  recorded: inclusively the back-to-back peak sits INSIDE the narrow [10,25) window, whereas in the
+  top-3 cells it is at 45–50 GeV and outside it. The accompanying honest caveat — that the top-3
+  step therefore measures the shoulder, not the rise, and depends on the peak being outside the
+  window — is now in R2 rather than left for a reader to notice.
+  Also: Scope said six CSVs where the macro writes nine; the top-3 canvas label rounded 52.2273
+  down to `52.2` with `%.1f` (now `%.2f`); Remaining Work still listed the completed regenerated-tree
+  re-derivation; the INDEX line was dated 2026-09-09 and still advertised R0 as an open gap.
+
 ## Results & Observations
 
 All numbers below are **Tight** WP, raw pair counts, `N_slice = 319 999` events per slice.
-Medium is 4–6 % higher inclusively and 2–6 % higher in the 3×3 cells (R6), and is in
+Medium is 4–8 % higher inclusively and 2–6 % higher in the 3×3 cells (R6), and is in
 `mc_pthat_slice_mass_stats_medium/`.
 Percentages are **per-event rates**: multiply by the requested event count for the projection.
 
-### R0 — Upstream gap found by review: `N_proc` is not recorded anywhere
+### R0 — Upstream gap found by review: **RAISED, FIXED UPSTREAM, AND NOW CONSUMED (CLOSED)**
 
-`/review-analysis-code` established that the denominator's two original routes both reduce to
-`N_beam` and neither sees `nevents_max` truncation (Physics Procedure §2, the ⚠ block). A third
-route — AMI `totalEvents` — was added and closes the *incomplete-farm* hole, but not this one.
-**Action taken:** the residual risk is now stated in every CSV header, and the upstream fix
-(fill `meta_tree_out` with per-(kn, beam) `N_proc` on the fullsim path) was raised with the
-session executing `mu_pt45_gap125_pairpt9_adoption.md` **before** it submits the NTuple rerun, so
-that the fix can land in the regenerated trees at zero extra cost rather than needing another
-full pass. Not verified for this run: nothing indicates the current pair file was truncated, and
-all three checks agree — the point is that they *would* agree either way.
+`/review-analysis-code` established that the denominator's two original routes both reduced to
+`N_beam` and neither could see `nevents_max` truncation, so a smoke-test pair file — which lands
+on this same `_full` path — would have made every check agree while every per-event rate was
+understated. Nothing in the pair file recorded `N_proc`.
 
-### R1 — The denominator is proved (to the extent R0 allows)
+**Resolution.** Raised with the session executing `mu_pt45_gap125_pairpt9_adoption.md` **before**
+it submitted the NTuple rerun, so the fix could land in the regenerated trees at no extra cost.
+It did (their D12): `PythiaAlgCoreT.c:839` now divides the weight by `N_proc`, and `meta_tree_out`
+records `nproc_kin<K>_beam<B>` and `nbeam_kin<K>_beam<B>` on the fullsim path. **Verified in the
+regenerated file**: `meta_tree_out` has 1 entry and 54 branches, with
+`nproc_kin4_beam0 = nbeam_kin4_beam0 = 319 999` and the same for kin5.
 
-Both slices: `σ·ε_filt / w` reproduces the NTUP chain count to **0.01 events**
-(pTH70_125: 1.45881 nb / 4.55879e-06 = 319 999.01 vs 319 999; pTH125_300: 0.197783 nb /
-6.18073e-07 = 319 999.01 vs 319 999). Both σ·ε_filt match `ami_weights.md` table B exactly
-(1.4588, 0.1978 nb), and both AMI files passed the DSID guard (803019, 803015). The AMI record
-quotes `totalEvents = 320000`; the NTUPs hold one event fewer, and it is the NTUP count the
-weights were built with.
+**CORRECTION (2026-09-10, `/review-plot` + `/review-analysis-code` iteration 5).** An earlier
+version of this paragraph also claimed `meta_fullsim_truncated` was verified unset **in the file**.
+It is not in the file at all — upstream sets the flag in memory and never Branches it. The original
+check had run a `TTree::Scan` that printed `Bad numerical expression: "meta_fullsim_truncated"` and
+an empty column, and that output was misread as "the branch is a bool" rather than "the branch does
+not exist". **A verification that cannot have happened is worse than no verification**, and the
+macro's read of that branch was correspondingly a silent no-op. Both are removed:
+`nproc != nbeam` is the only truncation detector and the code no longer pretends otherwise.
+
+**This macro now consumes it.** `N_slice` is **read** from `nproc_kin<K>_beam0`, not inferred, and
+the macro **refuses to run** on a pair file whose meta tree is missing or empty — with an error
+naming the upstream fix — rather than silently mis-normalising. The three checks are now
+cross-checks on a number read from the file: `nbeam` == NTUP chain entries; `σ·ε_filt / w` ==
+`N_proc` (exact since the fix); AMI `totalEvents`. A truncated file is reported loudly instead of
+passing. *(Note: fullsim files produced before 2026-09-09 carry an empty meta tree and will
+trigger the refusal — that is the intended behaviour.)*
+
+### R1 — The denominator, verified on the regenerated trees
+
+`N_slice` is **read** from the pair file's `meta_tree_out`: `nproc_kin4_beam0` =
+`nproc_kin5_beam0` = **319 999**, equal to `nbeam_kin{4,5}_beam0` — a complete, untruncated run.
+(`meta_fullsim_truncated` is **not** a branch of this file; see R0.) All three cross-checks pass on both slices:
+
+- **(a)** `nbeam` = 319 999 = the entries of the NTUP chain on disk;
+- **(b)** `σ·ε_filt / w` = 319 999.01 (pTH70_125: 1.45881 nb / 4.55879e-06; pTH125_300:
+  0.197783 nb / 6.18073e-07) — agrees with `N_proc` to 0.01 events;
+- **(c)** AMI `totalEvents` = 320 000; the NTUPs hold one event fewer (0.0003 %, far inside the
+  2 % tolerance).
+
+Both σ·ε_filt match `ami_weights.md` table B exactly (1.4588, 0.1978 nb) and both AMI files passed
+the **DSID guard** (803019, 803015).
 
 ### R2 — Where the back-to-back peak is (the filter question)
 
@@ -419,24 +502,60 @@ again — quote that CSV.** And two statistical rules that fell out of the same 
    *falls* as the filter is crossed, i.e. the filter sits above the single-b population's edge and
    below the rise to the back-to-back peak — **not in a gap between them**.
 
-**The measured density step across the proposed 10 GeV filter** (Tight; pairs per bin on the
-log-uniform axis, so these are densities dN/dln m; source `mass_spectrum_landmarks.csv`):
+**The measured density step across the proposed 10 GeV filter.**
 
-| population | 4–10 GeV | 10 GeV → peak | step | reading |
-|---|---|---|---|---|
-| top-3, pTH125_300 **OS** | 144.8 ± 4.3 | 121.7 ± 2.8 | **+4.5 σ** | density falls across the filter |
-| top-3, pTH70_125 **OS** | 18.4 ± 1.5 | 13.7 ± 1.0 | **+2.6 σ** | falls, weakly |
-| top-3, pTH125_300 **SS** | 59.9 ± 2.7 | 59.9 ± 1.9 | **0.0 σ** | **perfectly flat across the filter** |
-| top-3, pTH70_125 **SS** | 3.2 ± 0.6 | 7.6 ± 0.7 | **−4.7 σ** | density *rises* across the filter |
+**CORRECTED 2026-09-10 — the first version of this number was computed on a data-chosen window.**
+`drop_sigma`'s "above" region originally ended at the *tallest bin above the filter*, while the
+code and this doc both claimed the regions were "fixed before looking". That excluded the largest
+bin by construction (biasing the step positive) and made the compared mass range differ from row
+to row. Flagged as CRITICAL by `/review-analysis-code` and independently by the session running the
+p_T-4.5 adoption. **The withdrawn claim is the one that had been promoted to the INDEX headline:
+"0.0 σ — perfectly flat across the filter" for pTH125_300 same sign. It was an artefact of where
+the window happened to end.**
 
-**This is the sharpest form of the finding, and it splits by sign.** For **opposite sign** the
-filter does sit above the single-b population's edge — the density drops as it is crossed. For
-**same sign it does not**: in pTH125_300 the density is *identical* either side of 10 GeV, and in
-pTH70_125 it is *higher* above the cut than below it. For same-sign pairs at high pair p_T, the
-10 GeV filter cuts the middle of a flat continuum — there is nothing there to separate.
+The window is now pre-registered *and derived*: log-symmetric about the cut,
+`[filter/R, filter)` vs `[filter, filter·R)` with **R = filter / template-fit-top = 10/4 = 2.5**,
+i.e. **[4, 10) vs [10, 25) GeV**. Neither edge depends on the data. A second column,
+`drop_sigma_wide` over [10, 400) GeV, is emitted beside it as an explicit window-dependence check.
 
-The minimum of the spectrum lies **above** 10 GeV wherever it is resolvable at all
-(`min_above_filter = YES` for pTH125_300 OS in both scopes and pTH70_125 OS in the top cells).
+Tight, 3 highest pair-p_T cells; pairs per bin on the log-uniform axis (= dN/dln m); source
+`mass_spectrum_landmarks.csv`:
+
+| population | [4, 10) | [10, 25) | **step** | [10, 400) | step (wide) |
+|---|---|---|---|---|---|
+| pTH125_300 **OS** | 144.8 ± 4.3 | 115.7 ± 3.6 | **+5.2 σ** | 83.7 ± 1.5 | +13.6 σ |
+| pTH70_125 **OS** | 18.4 ± 1.5 | 12.8 ± 1.2 | **+2.9 σ** | 9.1 ± 0.5 | +5.9 σ |
+| pTH125_300 **SS** | 59.9 ± 2.7 | 53.2 ± 2.4 | **+1.8 σ** | 47.2 ± 1.1 | +4.3 σ |
+| pTH70_125 **SS** | 3.2 ± 0.6 | 4.8 ± 0.7 | **−1.6 σ** | 5.3 ± 0.4 | −2.8 σ |
+
+**How to read the two columns, and where the check FAILS.** The **magnitude** is not expected to
+agree and is not quotable: the wide window reaches into the steeply falling high-mass tail, so it
+always gives the larger number. Only the **sign** is the robustness claim, and it agrees in all
+four rows of the table above.
+
+**It does NOT agree in the four `all selected pairs` rows** (−25.7 vs +19.2, −17.5 vs +40.1,
+−15.6 vs +22.8, −3.2 vs +45.8). By the rule stated in the CSV header, **the inclusive rows' step is
+not quotable and nothing in this doc quotes it**; the CSV now carries a `window_dependence_ok`
+column marking them so. The mechanism is understood and is not a defect: **inclusively the
+back-to-back peak sits at 18–26 GeV, INSIDE the narrow [10, 25) window**, so that window is
+dominated by the peak itself. In the 3 highest pair-p_T cells the peak has moved to 45–50 GeV,
+**outside** the narrow window, so there the narrow window measures the shoulder just above the
+filter — which is precisely the quantity the filter question asks about.
+
+**The honest caveat that follows.** Because the top-3 narrow window sits below the back-to-back
+peak, `drop_sigma` there measures the 10–24 GeV shoulder and not the rise to the peak. That is the
+right quantity for "is the filter at an edge?", but it does mean the positive step depends on the
+peak being outside the window — which is uncomfortably adjacent to the data-dependence the
+pre-registration was introduced to remove. It is mitigated by the window being fixed by canonical
+mass scales rather than by the data, and by the wide column agreeing in sign; it is not eliminated.
+
+**What it says, and it is weaker than the first version claimed.** For **opposite sign** the
+density genuinely falls as the filter is crossed — +5.2 σ and +2.9 σ — so 10 GeV does sit above
+the single-b population's edge. For **same sign** the step is **marginal at best**: +1.8 σ in the
+harder slice, and in the softer slice it goes the *wrong way* (−1.6 σ, the density is higher above
+the cut than below it). So the sign asymmetry that matters for the request survives the
+correction — same-sign pairs at high pair p_T show little or no edge at 10 GeV — but the earlier
+"perfectly flat" phrasing overstated how clean that null was.
 
 - **What survives the proposed value, in the 3 highest pair-p_T cells.**
   Source: `mass_composition_top3_<slice>.csv`, **exact `minv` cuts** (D7).
@@ -490,10 +609,10 @@ The minimum of the spectrum lies **above** 10 GeV wherever it is resolvable at a
     same-sign pairs sit at 4–10 GeV — i.e. more than half of what the filter keeps is on the
     back-to-back continuum — and only 29–32 % are below 2.9 GeV. The same-sign sample at high
     pair p_T is back-to-back-dominated to begin with (65–76 % of *all* its pairs are above
-    10 GeV), and a 10 GeV filter does not change that character. The density step confirms it
-    independently: 0.0 σ (pTH125_300) and −4.7 σ (pTH70_125) — the same-sign density either side
-    of the cut is identical or higher above it, so for same sign there is no edge at 10 GeV to
-    cut on.
+    10 GeV), and a 10 GeV filter does not change that character. The density step says the same, though
+    only weakly: **+1.8 σ** (pTH125_300) and **−1.6 σ** (pTH70_125) on the pre-registered window —
+    marginal in one slice and the wrong way in the other, against **+5.2 σ / +2.9 σ** for opposite
+    sign. For same sign there is little or no edge at 10 GeV to cut on.
   - **This is a decision point for the user, not one to settle here** (§Remaining Work): a tighter
     filter on the same-sign-filtered request (m < 4–5 GeV) would buy far more usable SS pairs per
     event, at the cost of the mass headroom above the template-fit window. It does **not** affect
@@ -530,7 +649,8 @@ dominated by a population the analysis never uses.
 | m < 10 GeV | 16 320 (5.1000 %) | 92 945 (29.0454 %) |
 | 1.08 < m < 2.9 GeV | 4 946 (1.5456 %) | 37 923 (11.8510 %) |
 
-Inclusively the two slices are within ~12 % of each other. **The slices only separate in the top
+Inclusively the two slices are within ~12 % of each other **for opposite sign** (+11.6 % at
+m < 10 GeV, +5.1 % in the signal window); **same sign differs far more** (+40 % and +58 %). **The slices only separate in the top
 pair-p_T cells** (R5) — which is exactly why an inclusive rate is the wrong number to size this
 request on.
 
@@ -570,15 +690,17 @@ pTH125_300 SS **251** / OS **6 968**.
 ### R6 — Working-point dependence
 
 Medium/Tight ratio of the 3×3 totals: pTH125_300 OS 15 095/14 812 = 1.019, SS 1 011/986 = 1.025;
-pTH70_125 OS 3 630/3 557 = 1.021, SS 70/66 = 1.061. Inclusively 1.04–1.07. The WP choice does not
-change any conclusion above.
+pTH70_125 OS 3 630/3 557 = 1.021, SS 70/66 = 1.061. Inclusively **1.040–1.076** (the maximum is
+pTH70_125 SS in the signal window, 3 132 → 3 371). The WP choice does not change any conclusion
+above.
 
 ## Remaining Work
 
-- Run and record (step 3), reviewers (step 4).
-- **Re-derive on the regenerated pair trees** once session "analysis-a8" finishes the fullsim
-  ntuple rerun, and confirm the numbers are unchanged (they should be, per the set-algebra
-  argument above; a change would mean the rerun altered the sample, not the selection).
+- **BLOCKING for the request itself — is the requested `N` counted before or after the mass
+  filter?** §2's ⚠ block: `r · N` is exact only if `N` counts events *before* the filter. If it
+  counts events *after* (the usual convention), the yield is larger by `1 / ε_massfilter`, which
+  is a generator-level number this study does not measure. Settle the convention, and measure or
+  obtain ε_massfilter, before quoting any projected yield in the request.
 - **USER DECISION — the same-sign-filtered request's mass cut.** R2 establishes that `m < 10 GeV`
   leaves the same-sign sample back-to-back-dominated (54.6–57.9 % of surviving SS pairs at 4–10 GeV,
   only 29–32 % below 2.9 GeV), while it is clean for opposite sign. Whether the SS-filtered
@@ -591,21 +713,20 @@ change any conclusion above.
 
 ## Latest Stage
 
-Step 4, after three review iterations (`/review-analysis-code` and `/review-plot`, twice each in
-parallel plus this round). Every WARNING from all three rounds is addressed. The measurement was
-never in question — all counts, rates, bands, grids and denominator routes were independently
-re-derived from a retyped selection three times and matched exactly. All three failures were in
-*derived statements about the figure* that went stale when the display axis moved, which is why
-those statements are now emitted by the macro (`mass_spectrum_landmarks.csv`) rather than written
-by hand.
+Step 5. Rerun on the regenerated 4.5 GeV trees; all counts unchanged (predicted and now
+confirmed). Five review iterations have run (`/review-analysis-code` and `/review-plot`, twice
+each in parallel, then a combined adversarial pass). Every count in the deliverable has been
+independently re-derived from a retyped selection **four times** and matched exactly every time;
+every failure was in *derived statements* — a claimed valley, a table read off display-bin
+edges, landmarks left on a superseded axis, and a significance computed on a data-chosen window.
+Each has been fixed structurally rather than patched: the composition bands and the spectrum
+landmarks are now emitted by the macro, and the density-step window is pre-registered and derived.
 
-Next: iteration-4 review of the amended state; then commit by explicit path (new files only —
-the macro, this doc, the INDEX line — the working tree is shared with the session executing
-`mu_pt45_gap125_pairpt9_adoption.md`, so never `git add -A`).
+Next: iteration-5 review of this state, then commit by explicit path (macro + this doc + the
+INDEX line; the working tree is shared, so never `git add -A`).
 
-**Open items carried forward** — see Remaining Work: (1) the same-sign filter value is a USER
-DECISION, and R2's density step now makes the case sharper (0.0 σ / −4.7 σ: no edge to cut on);
-(2) re-derive on the regenerated pair trees when the fullsim NTuple rerun lands; (3) the upstream
-`meta_tree_out` / `N_proc` fix (R0); (4) the ΔR distribution of the kept sample in the top cells
-has still not been drawn, and that is the direct test of whether the filter leaves the
-ΔR-correction procedure measurable.
+**Open items** — see Remaining Work: (1) **BLOCKING** — is the requested `N` counted before or
+after the mass filter? ε_massfilter is not measured here; (2) USER DECISION — the same-sign
+request's mass cut, now supported by the corrected +1.8/−1.6 σ step; (3) the ΔR distribution of
+the kept sample in the top cells is still not drawn, and that is the direct test of whether the
+filter leaves the ΔR-correction procedure measurable.
