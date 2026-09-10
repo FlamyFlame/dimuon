@@ -144,3 +144,4 @@
 {"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-09-06T23:07:00Z","criticals":0,"warnings":0,"slug":"mupt45-diag-plots"}
 {"event":"start","command":"review-plot","task":"Remake pair-eta-dependence diagnostic plots (muon_pt45_cut_diagnostic) in linear y-scale per new linear-y-default convention; verify legend does not overlap data under the new headroom.","slug":"mupt45-eta-linear-yscale","timestamp":"2026-09-07T22:30:44Z"}
 {"event":"end","command":"review-plot","status":"closed_without_formal_reverify","iterations":1,"timestamp":"2026-09-07T22:52:00Z","criticals":1,"warnings":0,"slug":"mupt45-eta-linear-yscale"}
+{"event":"start","command":"review-analysis-code","task":"mupt45/gap125/pairpt9 adoption + PbPb migration","slug":"mupt45-gap125-pairpt9-adoption","timestamp":"2026-09-09T00:06:00-04:00"}

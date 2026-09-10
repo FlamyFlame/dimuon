@@ -24,7 +24,7 @@ Powheg+Pythia8 NLO MC for bb and cc dimuon production.
 > p_T ≳ 2·m_Q even with the two heavy quarks at rest; (2) each heavy quark then
 > hadronizes into a heavy-flavour hadron and decays semileptonically to a muon
 > that carries only a *fraction* of the hadron's momentum; (3) each of those two
-> muons must still pass the analysis p_T > 4 GeV cut. So in practice the splitting
+> muons must still pass the analysis p_T > 4.5 GeV cut. So in practice the splitting
 > gluon must be considerably harder than 2·m_Q to yield two ≥ 4 GeV muons — a
 > demanding configuration that HQ mode biases against. Net effect: the g→QQ̄
 > background cross-section in the Powheg-HQ sample is **non-zero but far too low**
@@ -296,10 +296,10 @@ three extra histograms, all APPENDED — nothing existing is changed:
 
 | filter | what it selects |
 |---|---|
-| `_single_b_pass_signal_truth_gapcut` | `from_same_b` **and** the CURRENT pp24 data signal region on truth: `1.08 < truth_minv < 2.9`, `truth_pair_pt > 8`, both muons outside every `ParamsSet::single_mu_fiducial_gap_cuts` window in truth `q·η` |
+| `_single_b_pass_signal_truth_gapcut` | `from_same_b` **and** the CURRENT pp24 data signal region on truth: `1.08 < truth_minv < 2.9`, `truth_pair_pt > 9`, both muons outside every `ParamsSet::single_mu_fiducial_gap_cuts` window in truth `q·η` |
 
 It exists because neither pre-existing selection matches the data:
-`pass_signal_truth` still applies the one-sided `q*eta < 2.2` retired on 2026-08-17, and
+`pass_signal_truth` was migrated off the one-sided `q*eta < 2.2` onto the fiducial + pair-level windows (D7, 2026-09-08) retired on 2026-08-17, and
 `df_single_b_weighted` adds a `truth_dr < 1.0` that the Pythia fullsim partner does not have
 (verified inert inside this signal region: 517 459 pairs with and without it). Both are left
 byte-unchanged because they feed the reco-efficiency and detector-response outputs.

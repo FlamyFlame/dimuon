@@ -108,7 +108,7 @@ Modes: `hijing`, `zmumu`, `data`. The `--dry-run` flag skips Condor submission a
 | `_pass_medium_and_signal_truth_and_reco` | Medium + truth+reco signal |
 | `_pass_tight_and_signal_truth_and_reco` | Tight + truth+reco signal |
 
-Signal region: `truth_minv in [1.08, 2.9]`, `truth_pair_pt > 8`, `truth_pair_eta < 2.2`, `truth_dr > 0.05`.
+Signal region: `truth_minv in [1.08, 2.9]`, `truth_pair_pt > 9`, `|truth_pair_eta| < ParamsSet::pair_eta_fiducial_max`, `(no dR cut -- `dr > 0.05` was removed 2026-06-22)`.
 
 Also fills inclusive (no centrality cut) histograms via the parent `RDFBasedHistFillingPythiaFullsim`.
 
@@ -192,7 +192,7 @@ The overlay NTUP `truth_mupair_*` pairs are **Pythia×Pythia** (all barcodes < 2
 
 **After fixes**, 500-event test (OS pairs, kn=0): `direct_b` 52%, `from_same_b` 30% — consistent with PP fullsim.
 
-The residual ~15% `s_light` is genuine Geant4 combinatorial background (pion/kaon decay muons passing the pT > 4 GeV cut). These pairs appear in `_op` efficiency but not `_single_b`.
+The residual ~15% `s_light` is genuine Geant4 combinatorial background (pion/kaon decay muons passing the pT > 4.5 GeV cut). These pairs appear in `_op` efficiency but not `_single_b`.
 
 ## Running manually (without pipeline)
 

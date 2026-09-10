@@ -43,14 +43,18 @@ pair has characteristically **low invariant mass** and **small opening angle**.
 
 **Truth-level signal region** (as implemented):
 - opposite-sign (OS) muon pair,
+- **both muons p_T > 4.5 GeV** (4 -> 4.5 on 2026-09-08). Applied UPSTREAM, at the NTuple stage,
+  so every consumer inherits it; it is mode-dependent in data, the trigger-efficiency mode keeping
+  4.0 GeV because ε^nc is a per-muon efficiency evaluated only above 4.5 (decision D8).
 - m_μμ ∈ **[1.08, 2.9] GeV**,
-- pair p_T > **8 GeV**,
+- pair p_T > **9 GeV** (`ParamsSet::signal_pair_pt_min`; 8 -> 9 on 2026-09-08),
 - **Detector-gap fiducial cut**, `ParamsSet::single_mu_fiducial_gap_cuts` (2026-09-07):
-  BOTH muons must have q·η outside {(-1.30,-1.05), (-0.10,+0.06), (2.20,2.40)} (closed
+  BOTH muons must have q·η outside {(-1.25,-1.05), (-0.10,+0.06), (2.20,2.40)} (closed
   intervals, one-sided because the windows track the toroid bending direction), **and**
   the pair must satisfy **|η^pair| < 2.2** (symmetric, pair-level). This replaced the
-  former one-sided per-muon `q·η < 2.2` on 2026-08-17 in pp24; Pb+Pb has NOT been
-  brought over yet. The resulting cross-section is a FIDUCIAL one — the acceptance
+  former one-sided per-muon `q·η < 2.2` on 2026-08-17 in pp24; **Pb+Pb was brought over on
+  2026-09-08**, so pp and Pb+Pb share the signal region again (the Pb+Pb histograms must be
+  refilled before R_AA is quoted). The resulting cross-section is a FIDUCIAL one — the acceptance
   ε_acc = 0.8789 is a separate, not-yet-applied factor
   (`docs/tracking/muon_gap_cuts_acceptance.md`).
 - **No ΔR cut.** *(A former ΔR(μ,μ) > 0.05 cut was removed 2026-06-22 — interim
@@ -184,7 +188,7 @@ spectrum but is **strongly suppressed in low-mass / low-k_T gluon splitting**
 (kinematically, stacking down the chain: the splitting gluon needs p_T ≳ 2 m_Q to
 make the QQ̄ pair; each heavy quark hadronizes and decays semileptonically to a
 muon carrying only a fraction of the hadron momentum; and each of those muons
-must still pass p_T > 4 GeV — so the gluon must be well above 2 m_Q). At NLO the classic flavour-creation / flavour-excitation /
+must still pass p_T > 4.5 GeV — so the gluon must be well above 2 m_Q). At NLO the classic flavour-creation / flavour-excitation /
 gluon-splitting "topologies" are no longer well-separated — they merge into the
 2→3 matrix element — *except* that the low-mass g→QQ̄ tail is the missing piece. The
 anticipated approach is to **stitch** the Powheg-HQ NLO piece together with a

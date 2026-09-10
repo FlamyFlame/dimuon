@@ -358,6 +358,61 @@ would overload a class whose every consumer assumes `f(dR)/C`. New:
   (A <= 0, p >= 1, Step 3 only) is baked into these fit files and has no `/review-analysis-code`
   log; it is the user's own in-flight change and is used as-is.
 
+- 2026-09-09 — **★ EVERY NUMBER IN THIS DOC IS NOW SUPERSEDED BY A SELECTION CHANGE MADE BY A
+  CONCURRENT THREAD. Nothing here was wrong; its sample no longer exists.** State established at
+  the start of this session by `git status` / `git log` / file mtimes, before any action:
+
+  **(a) The commit question is SETTLED — nothing of this thread is uncommitted.** All of
+  `Utilities/PairTrigEffEvaluator.h`, `RDFBasedHistFilling/FillMCTrigEffPairEff.cxx`,
+  `plotting_codes/trig_effcy/mc_based/plot_mc_trig_eff_closure_highpt_compare.cxx`,
+  `pipelines/run_mc_trigeff_pair_eff.sh`, this doc — and, crucially,
+  `plotting_codes/trig_effcy/mc_based/dr_correction_cell_groups.h` — are committed
+  (`3a97a3f`, plus `660107a` for `write_pair_trig_eff_tables.cxx`). The Stage-0 hazard recorded
+  above ("a clean checkout of HEAD does NOT reproduce the numbers in this doc") is therefore
+  **RESOLVED**: the D11 |eta| fold is at HEAD.
+
+  **(b) Both guards verified by running them, not by reading them.**
+  `PairTrigEff::AbsEtaGroups()` returns `folded=1, edges 0 / 1 / 2 / 2.2` — the fold, as required.
+  `PairTrigEffEvaluator::CheckCanonicalBinning()` now REFUSES the delivered file:
+  `pair-pT edge 0 of pair_trig_eff_pp24_full.root is 8.000000 but cell mode 'nomerge' of ParamsSet
+  says 9.000000 -- stale file`. The guard is doing exactly the job it was written for.
+
+  **(c) WHY it refuses: the analysis moved underneath this measurement.**
+  `mu_pt45_gap125_pairpt9_adoption.md` (ACTIVE, concurrent) adopted three user decisions —
+  **muon pT 4.0 → 4.5 GeV**, gap window **(−1.30,−1.05) → (−1.25,−1.05)**, signal **pair pT 8 → 9
+  GeV** — and with them `ParamsSet::pair_pt_coarse_bins` = 8 log bins **9 → 150**:
+  9 / 12.79 / 18.18 / 25.85 / 36.74 / **52.23 / 74.24 / 105.53** / 150. The three cells this doc
+  delivers are no longer [49.97,72.08) / [72.08,103.98) / [103.98,150) but
+  **[52.23,74.24) / [74.24,105.53) / [105.53,150)**. That thread also closed a genuine gap in
+  `MCTrigEffPairSel::Step3PairSelection()` — the pp **same-vertex** pair requirement (`pair_pass_*`),
+  which Steps 2/3/4, the closure AND `FillMCTrigEffPairEff.cxx` had all been missing — so the
+  measured population changes as well as the axis.
+
+  **(d) The upstream has ALREADY been rerun on the new selection; this thread's outputs have not.**
+  On disk in `pythia_fullsim_full_sample/`: the MC pair file
+  `muon_pairs_..._mc_trig_full.root` **2026-09-08 17:11**, `mc_trig_eff_hists_pp24_full.root` 18:46,
+  `single_mu_effcy_pT_fit_mc.root` 18:47, `..._step3.root` 18:48, the Step-3 ΔR fits 18:51 and a
+  further `polyu_fixedRp` sweep 23:52 → 2026-09-09 00:02. Their axes read
+  `X: 9 12.79 18.18 25.85 36.74 52.23 74.24 150` — the NEW binning. Against that,
+  `pair_trig_eff_pp24_full[_medium_wp].root` (12:35 / 12:39), the four
+  `mc_trig_eff_closure_pp24_full*` files (12:37–12:41) and every figure and CSV under
+  `closure/single_value_highpt_comparison/` (12:46) are **older than their own input** and carry the
+  8 → 150 axis.
+
+  **Consequence:** R1, R2 (item 3's mass table), R3, R5's corrected table, R6's refusal list, R7's
+  CSVs and R8's merged cells are all measurements of a sample the analysis no longer uses. They are
+  retained as the record of the OLD selection; **none of them may be quoted as current**. The
+  procedure, the code, both guards and the physics readings (the ΔR correlation dominates at high
+  pair pT; the 1–4 GeV window under-corrects the signal region; the pT merge buys reach cheaply)
+  are unaffected in KIND — but every NUMBER needs re-measuring, on ~23 % fewer pp24 pairs.
+
+  **Not started, and deliberately not started:** re-running `run_mc_trigeff_pair_eff.sh` writes
+  `pair_trig_eff_*.root`, `mc_trig_eff_closure_*.root` and the plot tree that the concurrent thread
+  is itself still writing (its last artefact landed 00:02 this morning) — parallel writers to one
+  git-invisible output path clobber each other silently (.claude/CLAUDE.md §Parallel delegation,
+  item 2). Held for the user's decision; see Latest Stage.
+
+
 ## Results & Observations
 
 ### R1 — The delivered numbers (pp24 fullsim FULL, Tight, `pair_trig_eff_pp24_full.root`)
@@ -588,6 +643,72 @@ costs <= 0.005 in the panel-integrated closure (with the construction caveat abo
 widening the mass window costs **14 % inclusively, a genuine bias that no construction protects**
 (R3). If the single-value procedure is adopted, adopt it merged and in the signal window.
 
+### R9 — Why all four corrected series track each other in the closure figure (user question, 2026-09-09)
+
+**Not a bug.** Verified first that the applied weight is what D4 says: `FillMCTrigEffClosure.cxx`
+loads the evaluator with `ApplyForm::kPure` for both windows and both cell modes — the raw
+`eps_2mu4^pair`, no K, no scale factor — and the comparison macro draws only those. (The dead
+`paireffK_*` histograms are still in the closure ROOT files; nothing reads them.)
+
+**The similarity is by CONSTRUCTION, and the construction covers the dR series too.** Both
+corrections are cell-integral-preserving on the very cell they were measured in:
+
+- single value: `sum_fired w / eps^pair = S1 / (S1/S0) = S0` — exactly.
+- ΔR procedure: `eps_dR` is the SAME estimator resolved in ΔR instead of integrated over it —
+  per ΔR bin j of the cell, `eps_dR,j = [sum_fired w/(eps1 eps2)]_j / [sum_all w]_j`, so
+  `sum_fired w/(eps1 eps2 eps_dR) = sum_j S0_j = S0` — exactly, up to the fit smoothing the raw
+  ratio. Indeed `K = S2/S0` IS the ΔR-integrated `eps_dR`.
+
+So the two procedures are the same ratio at two resolutions, both pinned to the same cell integral.
+They can differ ONLY through within-cell shape — and above 50 GeV both legs sit on the single-muon
+plateau (R2 item 1: K falls to 0.27 while the singles' turn-on contributes almost nothing), so the
+leg-p_T differential information the ΔR form carries is nearly constant there. **The doc's §PP-4
+"honest statement 1" is therefore INCOMPLETE: it says the single-value series closes to 1 by
+construction over its own cell, but the same is true of the ΔR series. The figure is much less of a
+head-to-head test than it reads as.**
+
+**On top of that, the excursions from 1 are COMMON-MODE, because all four numerators are sums over
+the SAME fired pairs.** Only the weight `1/eps_hat` differs; which pairs fired is one shared random
+draw. Measured over the 40 populated (pair-eta panel x fine p_T bin) cells above 50 GeV, the
+correlation of `(C - 1)` between series is **+0.82** (ΔR p_T-merged vs single value), **+0.94**
+(ΔR fold vs single value), **+0.85** (the two ΔR modes). All-panels-summed, per fine bin:
+
+| p_T^pair bin | N_eff | eps | C_B (ΔR) | C_D (fold) | C_sv sig | C_sv wide | sigma_stat |
+|---|---|---|---|---|---|---|---|
+| 56.46-68.65 | 1491 | 0.419 | 0.9627 | 0.9019 | 0.9504 | 0.8171 | 0.030 |
+| 68.65-83.46 | 814 | 0.374 | 1.0208 | 0.9211 | 1.0143 | 0.8689 | 0.045 |
+| 83.46-101.47 | 413 | 0.260 | 0.9050 | 0.8014 | 0.8328 | 0.7069 | 0.083 |
+| 101.47-123.37 | 166 | 0.325 | 1.3376 | 1.1136 | 1.1495 | 1.1044 | 0.112 |
+| 123.37-150.00 | 104 | 0.194 | 0.8193 | 0.7160 | 0.6877 | 0.6844 | 0.200 |
+
+(`N_eff = (sum w)^2 / sum w^2` of the no-trigger denominator; `sigma_stat = sqrt((1-eps)/(eps N_eff))`
+is the shared binomial scale. All four series move up together in 101-123 and down together in
+83-101 and 123-150, each excursion ~1-1.3 sigma_stat.)
+
+**Consequence for how the figure must be read.** `|C - 1|` is NOT a measure of procedure quality
+here: it is dominated by the shared draw, and it is largest exactly where N_eff collapses. The
+procedure-dependent information is the RATIO BETWEEN series, in which the shared fluctuation
+cancels — and that ratio is not flat:
+
+| p_T^pair bin | C_B / C_sv | C_D / C_sv | C_wide / C_sv |
+|---|---|---|---|
+| 56.46-68.65 | 1.0129 | 0.9490 | 0.8597 |
+| 68.65-83.46 | 1.0064 | 0.9081 | 0.8567 |
+| 83.46-101.47 | 1.0866 | 0.9622 | 0.8488 |
+| 101.47-123.37 | 1.1637 | 0.9688 | 0.9608 |
+| 123.37-150.00 | 1.1915 | 1.0412 | 0.9953 |
+
+**This is the real result the figure carries.** The ΔR procedure and the single value agree to
+**~1 %** at 56-83 GeV, where the ΔR fit has statistics — and the ΔR procedure runs **9 / 16 / 19 %
+HIGHER** above 83 GeV, i.e. it corrects progressively less, exactly in the region where its fit is
+starved and which is the reason this doc exists. The `wide` column is the mass-window bias
+(~14-15 %, flat where statistics are good), independent of the shared fluctuation as R2 item 3 said.
+
+**Caveat:** computed on the 2026-09-08 closure files, i.e. the SUPERSEDED selection (see the
+2026-09-09 Progress Log entry). The inclusive numbers here start at the 56.46 GeV presentation-bin
+edge rather than the coarse cell edge 49.97, so they do not reproduce R5's exact-1.0000 column;
+the per-bin structure and the correlations are what the reading rests on and are unaffected.
+
 ### R4 — What is NOT settled by this work
 
 - Which of `eps^pair` and `K` the cross-section should apply (§2 / D1). `K` keeps the data
@@ -658,9 +779,29 @@ three |eta^pair| groups summed over all pair p_T, but only **176 / 85 / 5** in 4
 
 ## Latest Stage
 
-**2026-09-08 — DONE.** Both reviews PASS, everything is committed, and nothing is in flight. The
-deliverables are `pair_trig_eff_pp24_full[_medium_wp].root` (+ `Utilities/PairTrigEffEvaluator.h` to
-read it) and
-`plots/pp_trigger_efficiency/mc_based[_medium]/closure/single_value_highpt_comparison/closure_highpt_single_value_{pure,calibrated}.png`.
-The cross-section is deliberately unchanged. Everything further is the user decisions in Remaining
-Work.
+**2026-09-09 — BLOCKED ON A USER DECISION; nothing in flight, nothing running.**
+
+Settled this session: everything is committed (Progress Log (a)); both guards verified by
+execution (b); the `dr_correction_cell_groups.h` dependency that made a clean checkout
+irreproducible is resolved.
+
+Open, and the reason work stopped: the concurrent `mu_pt45_gap125_pairpt9_adoption.md` thread moved
+the muon pT cut to 4.5 GeV, the gap window to (−1.25,−1.05), the signal pair-pT cut to 9 GeV and the
+coarse pair-pT axis to 9 → 150, and rebuilt the whole upstream on 2026-09-08 evening. **Every number
+this doc delivers is therefore stale** (Progress Log (c)/(d)); the canonical-binning guard already
+refuses the delivered ROOT file. Re-measuring is a re-run of all four stages into an output tree
+that the other thread is still writing, so it is the user's call, not this doc's.
+
+Also still open and unchanged from 2026-09-08:
+- `/review-analysis-code` on the pT-merge increment returned FAIL (2 WARNINGs: the then-uncommitted
+  fold dependency — now resolved by (a) — and a stale file header in the plot macro); all four fixes
+  were applied but NOT re-reviewed.
+- `/review-plot` passed at iteration 3, but the D4 calibrated-form removal and the "N bins omitted"
+  label removal landed after that pass, so the current figures are unreviewed. Both reviews are held
+  until it is decided whether the figures are regenerated first — reviewing a superseded figure set
+  would have to be repeated.
+- The closure ROOT files still carry dead `paireffK_*` numerators (replotted without refilling); a
+  refill drops them, and a refill is now a full re-measurement rather than a cleanup.
+- The user decisions of R4 / Remaining Work 2–4 (adopt the procedure at all and in which cells;
+  `MinCellPairs() = 50`; and, in the parent doc, which ΔR cell grouping the cross-section uses now
+  that R4's ranking reversed).

@@ -34,28 +34,42 @@ uncertainty** variations of the selection (e.g. ΔR, minv, pair-pT, q·η bounds
 > projects it. Corrections are NOT affected — `eps_reco` is celled on
 > `ParamsSet::pair_pt_coarse_bins` x `pair_eta_proj_ranges_coarse_incl_gap` x
 > `dr_bins_edges_for_reco_effcy`, none of which is this axis.
-> **Pb+Pb has NOT adopted it** (`RDFBasedHistFillingPbPb.cxx` still retypes `44, -2.4, 2.4`), on
-> purpose: its code and its on-disk histograms stay mutually consistent that way. Pb+Pb must
-> switch to the constant AND rerun its crossx hist filling in the SAME step, or its panel
-> projections and its labels will disagree.
+> **Pb+Pb ADOPTED it on 2026-09-08** (`docs/tracking/mu_pt45_gap125_pairpt9_adoption.md` D1):
+> `RDFBasedHistFillingPbPb.cxx` no longer retypes `44, -2.4, 2.4` in either spelling and now
+> reads `ParamsSet::N_PAIR_ETA_CROSSX_BINS`, together with the fiducial + pair-level gap cuts,
+> in the SAME step -- which is the condition this note demanded. Its crossx hist filling MUST be
+> rerun before any Pb+Pb panel plot or R_AA is quoted, or its code and its on-disk histograms
+> disagree.
 > Owning doc: `docs/tracking/mc_data_compr_signal_generic_split.md`.
 
 ---
 
 ## 0. The current signal region (reference)
 
-> **[!] pp AND Pb+Pb NO LONGER SHARE A SIGNAL REGION (since 2026-08-18).** pp24 moved to the
-> detector-gap fiducial cut; Pb+Pb has NOT. **Do not form R_AA across the two until Pb+Pb is
-> brought over.** See `docs/tracking/pp24_crossx_rerun_2026_08.md`.
+> **[!] pp AND Pb+Pb SHARE A SIGNAL REGION AGAIN (since 2026-09-08).** Pb+Pb was migrated onto the
+> detector-gap fiducial cut, the pair-level `|eta^pair| < 2.2` window and
+> `ParamsSet::N_PAIR_ETA_CROSSX_BINS` (48) in one step, together with the muon-pT and pair-pT
+> changes below. **R_AA is formable again ONCE BOTH SIDES HAVE BEEN REFILLED** -- the code is
+> migrated, the histograms are not yet. Owning doc:
+> `docs/tracking/mu_pt45_gap125_pairpt9_adoption.md` (D1). For the 2026-08-18..2026-09-08 period,
+> when the two genuinely differed, see `docs/tracking/pp24_crossx_rerun_2026_08.md`.
 
-**pp24 (reco), current (cut set changed by the user 2026-09-07):**
+**pp24 AND Pb+Pb (reco), current (cut set changed by the user 2026-09-08):**
 ```
-minv > 1.08 && minv < 2.9 && pair_pt > 8
+minv > 1.08 && minv < 2.9 && pair_pt > ParamsSet::signal_pair_pt_min   <-- 9 GeV, was 8
   && BOTH muons pass ParamsSet::PassSingleMuFiducialGap(eta, charge)
   && |pair_eta| < ParamsSet::pair_eta_fiducial_max          <-- NEW, pair level
 ```
+
+Plus, applied UPSTREAM at the **NTuple stage** and therefore inherited by every consumer:
+**muon reconstructed pT > 4.5 GeV** (was 4.0), and the truth-pT analogue in MC. That cut is
+**mode-dependent in data**: the trigger-efficiency NTuple mode (`trigger_effcy_calc`)
+deliberately keeps **4.0 GeV** so the tag-and-probe retains the turn-on rise -- `eps^nc` is a
+per-muon efficiency and is only ever evaluated above 4.5 (decision D8). MC is 4.5 everywhere,
+with no loose variant (D9). Because this one lives at the NTuple stage it BREAKS the §1
+"NTuple processing unchanged" boundary -- see the carve-out there.
 i.e. q*eta = charge*eta must NOT lie in any window of
-`ParamsSet::single_mu_fiducial_gap_cuts` = {(-1.30,-1.05), (-0.10,+0.06), (2.20,2.40)},
+`ParamsSet::single_mu_fiducial_gap_cuts` = {(-1.25,-1.05), (-0.10,+0.06), (2.20,2.40)},
 rejected on CLOSED intervals. Combined with the ntuple-level |eta| <= 2.4 the surviving region is
 exactly `[-2.4, 2.20)` minus the two interior windows -- precisely the region the single-muon
 turn-on fits cover (`CommonEffcyConfig::q_eta_proj_ranges_coarse_incl_gap`, top edge moved
@@ -98,12 +112,10 @@ cells, the MC trig-eff pair-eta histograms, and every plotter that projects thos
 > Found by `/review-analysis-code` 2026-09-07 (CRITICAL); owning doc
 > `docs/tracking/muon_gap_cuts_acceptance.md` F17.
 
-**Pb+Pb crossx and ALL truth analogs (Pythia/Powheg), still the OLD form:**
-```
-minv > 1.08 && minv < 2.9 && pair_pt > 8
-  && m1.charge*m1.eta < 2.2 && m2.charge*m2.eta < 2.2
-```
-Truth analog: same with `truth_*` variables + `from_same_b`.
+**Pb+Pb crossx and ALL truth analogs (Pythia/Powheg): MIGRATED 2026-09-08** onto exactly the form
+above (decisions D1 and D7). The retired one-sided `m.charge*m.eta < 2.2` no longer appears in any
+live selection in `RDFBasedHistFilling/`, `NTupleProcessingCode/` or `Utilities/`.
+Truth analog: same with `truth_*` variables + `from_same_b` and `truth_pt > 4.5`.
 
 **No dR cut anywhere** (removed 2026-06-22).
 
@@ -133,8 +145,16 @@ Truth analog: same with `truth_*` variables + `from_same_b`.
   change to a cut listed in §0 does **not** require reprocessing ntuples or resubmitting Condor.
 
   > **[!] CARVE-OUT — this boundary is about SIGNAL-SELECTION cuts only, and it does NOT hold
-  > for a change to the cuts that ARE applied at tree creation** (muon quality/WP, pT > 4,
+  > for a change to the cuts that ARE applied at tree creation** (muon quality/WP, pT > 4.5,
   > |η| < 2.4, one-sided Δp/p, the impact-parameter cut, trigger matching, the resonance veto).
+  > On **2026-09-08** the **muon pT threshold moved 4.0 -> 4.5 GeV** at this very stage
+  > (`docs/tracking/mu_pt45_gap125_pairpt9_adoption.md`), in data AND MC, so **every** NTuple
+  > stage had to be reprocessed -- pp24 both modes, Pb+Pb 2023/2024/2025, the Pythia fullsim,
+  > the HIJING overlay, and the Pythia/POWHEG truth productions. It is mode-dependent in data
+  > (the trigger-efficiency mode stays at 4.0, decision D8). Note this also drags POWHEG
+  > fullsim back into the blast radius, which the all-vertex change below had carved out:
+  > that carve-out rested on the change being reco-only, and a truth-pT cut is not.
+  >
   > On **2026-09-08** the pp impact-parameter cut became an **all-vertex, same-vertex** pair
   > requirement (`docs/tracking/pp24_all_vertex_pairs.md`), which is exactly such a change: the
   > pp24 trees themselves move, so **both** pp24 Condor modes (nominal `run_pp_24_nominal.sub`
@@ -182,7 +202,7 @@ Edit the cut in **all** of these (keep them in sync):
 | `RDFBasedHistFilling/RDFBasedHistFillingPowhegTruth.cxx` | :158 | Powheg truth acceptance |
 | `RDFBasedHistFilling/RDFBasedHistFillingPythiaFullsim.cxx` | `pass_signal_truth`/`pass_signal_reco` in `CreateBaseRDFsPythiaFullsimExtra` (was cited as :129/:131; :289/:291 as of 2026-09-03) | pp reco-eff / det-resp |
 | `RDFBasedHistFilling/RDFBasedHistFillingPythiaFullsimOverlay.cxx` | :69/:71 | PbPb (overlay) reco-eff |
-| `RDFBasedHistFilling/RDFBasedHistFillingPowhegFullsim.cxx` | `pass_signal_truth`/`pass_signal_reco` in `CreateBaseRDFsPowhegFullsimExtra`, still on the retired one-sided `q*eta < 2.2` (was cited as :185/:186; :259/:260 as of 2026-09-03) | Powheg reco-eff (obsolete demo) |
+| `RDFBasedHistFilling/RDFBasedHistFillingPowhegFullsim.cxx` | `pass_signal_truth`/`pass_signal_reco` in `CreateBaseRDFsPowhegFullsimExtra`, MIGRATED off the retired one-sided `q*eta < 2.2` on 2026-09-08 (D7) (was cited as :185/:186; :259/:260 as of 2026-09-03) | Powheg reco-eff (obsolete demo) |
 | `RDFBasedHistFilling/RDFBasedHistFillingPowhegFullsim.cxx` | the `_single_b_pass_signal_truth_gapcut` filter in `CreateBaseRDFsPowhegFullsimExtra` (CURRENT cut set, from `ParamsSet`) | POWHEG FullSim pp17 curve of `plots/mc_data_compr/signal/pair_pt{,_in_eta_subplots}_mc_data_compr.png` — rerun the POWHEG fullsim RDF stage, then the two macros |
 | `plotting_codes/single_b_analysis/plot_sig_accept_cutflow_above_60GeV.cxx` | :40 (`kCuts`) | cutflow diagnostic — **must mirror the cut list/order** |
 | `Utilities/MCTrigEffPairSelection.h` | `SingleBSignalCutsReco()` | the **data-like mirror** of the PP `signal_cuts`, consumed by `FillMCTrigEffClosure.cxx`. Kept in lockstep by construction since 2026-08-18 (both read `ParamsSet`), but a signal-region change makes the MC-closure "data-like" variant STALE |
