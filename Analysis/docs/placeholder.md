@@ -49,14 +49,15 @@ exist yet**. Until they do:
   cross-year FCal rescaling is actually applied. Corrected 2026-08-24 against the
   code; the previous text claimed 2023 thresholds for both years and a scaling that
   is not implemented.
-- **⟨T_AA⟩:** the crossx normalization for 2024 and 2025
-  (`make_crossx_factors_pbpb_2024/2025` in `PbPbBaseClass.h`) uses the **2023**
+- **⟨T_AA⟩:** the crossx normalization for 2024, 2025 and 2026
+  (`make_crossx_factors_pbpb_2024/2025/2026` in `PbPbBaseClass.h`) uses the **2023**
   ⟨T_AA⟩ array as a placeholder; only the per-year luminosity is year-specific
-  (2024 = 0.85112 [GRL ≥489703, corrected 2026-06-19], 2025 = 2.59933 nb⁻¹). Source values:
-  `IntNotes/data/centrality/TaaValues2023.txt`.
+  (2024 = 0.85112 [GRL ≥489703, corrected 2026-06-19], 2025 = 2.59933,
+  2026 = 2.62316 nb⁻¹ [GRL `physics_HI2026_50ns_noIBL.xml`, added 2026-09-10]).
+  Source values: `IntNotes/data/centrality/TaaValues2023.txt`.
 
-**Affects:** centrality binning, cross-section normalization, and R_AA for 2024
-and 2025. **Note disclosure (required):** state explicitly that 2024/2025
+**Affects:** centrality binning, cross-section normalization, and R_AA for 2024,
+2025 and 2026. **Note disclosure (required):** state explicitly that 2024/2025/2026
 centrality and ⟨T_AA⟩ are 2023 placeholders pending official calibrations.
 
 ### 3. Reconstruction efficiency
@@ -103,7 +104,7 @@ crossx histograms and the R_AA 3D input (`h3d_op_crossx_..._vs_centr...`) are
 reco+trig corrected (== the validated `_corr_unfolded_reco_trig` stage). Nominal
 crossx plots reran (pp24, pbpb_23_24_25_combined). **R_AA (task_06 DONE
 2026-06-16):** `RAA_plotting.cxx` modernized to read the RDF crossx outputs
-(combined PbPb 23+24+25 vs pp24), with SS signal-region histos added to the RDF
+(combined PbPb 23+24+25+26 vs pp24), with SS signal-region histos added to the RDF
 (`h3d_ss_...`, `h2d_ss_...`) so R_AA does the OS−SS combinatorial subtraction;
 reco-corrected R_AA plots (vs pair pT/η/centrality) in
 `dimuon_data/plots/single_b_analysis/RAA/`. See `docs/tracking/raa_from_rdf_crossx.md`.

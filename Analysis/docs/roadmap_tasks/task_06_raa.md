@@ -9,7 +9,7 @@ clearly flagged. **Reviewer:** `/review-plot`.
 ## Objective
 
 Produce R_AA(pair pT, pair η, centrality) from efficiency-corrected
-PbPb (23+24+25 combined) and pp24 cross-sections.
+PbPb (23+24+25+26 combined) and pp24 cross-sections.
 
 ## Inputs
 

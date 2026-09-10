@@ -194,8 +194,13 @@ exactly what goes stale.
 - Event selection: nominal vs the `_alt` banana cuts, already produced as
   `event_sel_cuts_pbpb_20YY_alt.root` (5-cut sequential selection;
   `docs/tracking/PbPb_JEDI...`/`pbpb_pipelines.md`).
-- Centrality calibration: vary the FCal scale factors (`fcal_scale_pbpb_20YY.root`, applied in
-  `FillMuonPairExtra`, with centrality recalculated via `GetCentralityPbPb2023` for 2024/2025).
+- Centrality calibration: the FCal→centrality thresholds are the 2023 Glauber ones for every
+  Run-3 year, and for 2025 and 2026 (whose skim `centrality` branch is unfilled) centrality is
+  recomputed from FCal E_T via `GetCentralityPbPb2023` in `MuonPairPbPb::UpdateCentrality`.
+  **Correction:** the `fcal_scale_pbpb_20YY.root` scale factors this bullet used to cite are
+  **not implemented in any source file** (documentation only — see `placeholder.md`), so there
+  is no scale factor to vary; the systematic must instead vary the thresholds themselves, or
+  wait for the official per-year calibrations.
 **Neither evaluated yet.**
 
 ## 7. Normalization

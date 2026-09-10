@@ -12,7 +12,7 @@ but differ in how that stage is configured and what follows it:
 | `pipeline_pbpb_crossx.sh` | Pipeline 1 | Crossx/nominal measurements: mass spectra, differential distributions |
 | `pipeline_pbpb_trig_eff.sh` | Pipeline 2 + 3 | Single-muon trigger efficiency (no-correlation) and dR corrections |
 
-Both pipelines process three PbPb years (2023, 2024, 2025) by default.
+Both pipelines process four PbPb years (2023, 2024, 2025, 2026) by default.
 They use the same `trigger_mode=1` (single mu4) for event selection, but
 Pipeline 1 disables trigger efficiency derivation via
 `mu4_nominal_pbpb_NO_trig_calc=true` at both the NTuple and RDF stages.
@@ -138,7 +138,7 @@ Derived `out_file_suffix`: `_single_mu4_no_trg_plots_fine_q_eta_bin`
 
 ### Output Files
 
-Per year (YY = 23, 24, 25):
+Per year (YY = 23, 24, 25, 26):
 
 | File | Path |
 |------|------|
@@ -271,7 +271,7 @@ Derived `out_file_suffix`: `_single_mu4_fine_q_eta_bin`
 
 ### Output Files
 
-Per year (YY = 23, 24, 25):
+Per year (YY = 23, 24, 25, 26):
 
 | File | Path |
 |------|------|
@@ -340,8 +340,16 @@ the number of input file batches for that year's dataset.
 | 2023 | 4 | 4 per pipeline (8 total across both) |
 | 2024 | 2 | 2 per pipeline (4 total across both) |
 | 2025 | 6 | 6 per pipeline (12 total across both) |
+| 2026 | 5 *(placeholder)* | 5 per pipeline (10 total across both) |
 
-Total per pipeline run: 12 condor jobs (4 + 2 + 6).
+Total per pipeline run: 17 condor jobs (4 + 2 + 6 + 5).
+
+The 2026 count is a **placeholder**: the 2026 skim is submitted as 5 grid tasks
+(`SkimCode/run_26hi/InDstxt_PbPb2026_5p36TeV_part1..5.txt`), but `grid_monitor`'s
+chunked-hadd fallback can split a task into extra part files, so the real count can be
+larger. `grid_monitor` auto-updates `PbPbExtras.c` `{26, N}` and `run_pbpb_26.sub` from
+what actually lands on disk; the other five `run_pbpb_26_*.sub` variants must be synced
+by hand. See `tracking/pbpb2026_analysis_support.md`.
 
 The queue counts are identical between Pipeline 1 and Pipeline 2 (same
 data, different processing mode), and are set in both the pipeline scripts

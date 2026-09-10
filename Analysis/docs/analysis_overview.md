@@ -31,7 +31,8 @@ anisotropy / flow**) in the quark–gluon plasma — i.e. how the heavy b quark 
 modified by the medium relative to a pp baseline.
 
 Datasets (Run 3): **pp 2024** (√s = 5.36 TeV) as the reference, and **Pb+Pb
-2023 / 2024 / 2025** (√s_NN = 5.36 TeV). Run 2 code paths (pp17, PbPb15/18)
+2023 / 2024 / 2025 / 2026** (√s_NN = 5.36 TeV), combined for all Pb+Pb results
+(Σ L_int = 7.24937 nb⁻¹). Run 2 code paths (pp17, PbPb15/18)
 exist only for cross-checks and are not maintained for new analysis decisions.
 
 ## 2. The signal: a single-b dimuon
@@ -142,7 +143,11 @@ calibration). These external numbers must be confirmed before entering results
 (roadmap §Q2).
 
 **(e) Centrality (Pb+Pb).** From forward calorimeter (FCal) ΣE_T with 2023 Glauber
-thresholds; cross-year FCal scaling brings 2024/2025 onto the 2023 scale.
+thresholds for every Run-3 year (2024 carries its own provisional threshold vector,
+which is in fact identical to the 2023 one). For 2025 and 2026 the skim's `centrality`
+branch is unfilled, so centrality is recomputed from FCal E_T at pair level. **No
+cross-year FCal scaling is implemented** — `fcal_scale_pbpb_20YY.root` appears in
+documentation only, never in a source file (see `placeholder.md`).
 
 **(f) R_AA & systematics.** Form R_AA from the corrected, normalized pp and PbPb
 spectra; propagate efficiency, unfolding, normalization, and selection

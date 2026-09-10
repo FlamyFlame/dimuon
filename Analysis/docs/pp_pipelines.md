@@ -137,8 +137,8 @@ on triggered samples, same as PbPb. The code exists as reference only.
 | Crossx trigger | trigger_mode=3 (2mu4) | trigger_mode=1 + NO_trig_calc |
 | NTuple split | Separate scripts for crossx vs trig eff | Same trigger, different flags |
 | pT fitting | erf+log | fermi+log |
-| Years | 24 only | 23, 24, 25 |
-| Queue count | 12 (all from one year) | 4+2+6 = 12 (across 3 years) |
+| Years | 24 only | 23, 24, 25, 26 |
+| Queue count | 12 (all from one year) | 4+2+6+5 = 17 (across 4 years) |
 | Pipeline 3 | Not included | Commented out (biased on triggered sample) |
 
 

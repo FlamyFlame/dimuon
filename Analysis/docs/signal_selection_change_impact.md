@@ -159,7 +159,7 @@ Truth analog: same with `truth_*` variables + `from_same_b` and `truth_pt > 4.5`
   > |η| < 2.4, one-sided Δp/p, the impact-parameter cut, trigger matching, the resonance veto).
   > On **2026-09-08** the **muon pT threshold moved 4.0 -> 4.5 GeV** at this very stage
   > (`docs/tracking/mu_pt45_gap125_pairpt9_adoption.md`), in data AND MC, so **every** NTuple
-  > stage had to be reprocessed -- pp24 both modes, Pb+Pb 2023/2024/2025, the Pythia fullsim,
+  > stage had to be reprocessed -- pp24 both modes, Pb+Pb 2023/2024/2025/2026, the Pythia fullsim,
   > the HIJING overlay, and the Pythia/POWHEG truth productions. It is mode-dependent in data
   > (the trigger-efficiency mode stays at 4.0, decision D8). Note this also drags POWHEG
   > fullsim back into the blast radius, which the all-vertex change below had carved out:
@@ -320,7 +320,7 @@ fullsim/overlay pair eps_reco. So, for Pb+Pb only:
   → `plots/sanity_check_crossx/` (raw/unfolded/reco/reco+trig stage overlays)
 
 **R_AA (run manually, not in pipeline):**
-- `RAA_plotting.cxx` (mode 6: PbPb 23+24+25 vs pp24, OS−SS) → `plots/single_b_analysis/RAA/*.png`
+- `RAA_plotting.cxx` (mode 6: PbPb 23+24+25+26 vs pp24, OS−SS) → `plots/single_b_analysis/RAA/*.png`
 
 **MC–data comparison (PP crossx pipeline stage 8, optional):**
 - `plotting_codes/mc_data_compr/plot_mc_data_compr.cxx`

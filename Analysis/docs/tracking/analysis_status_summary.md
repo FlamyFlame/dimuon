@@ -9,12 +9,42 @@ remains.
 ## Data Skim Reference
 
 - **Skim record:** `~/usatlasdata/dimuon_data/data-merging-record.txt`
-- **Skim tag:** May 2026 skim (v1/v2)
+- **Skim tag:** May 2026 skim (v1/v2); Pb+Pb 2026 = Sep 2026 skim (`hi2026` run mode)
 - **Datasets:**
   - PbPb 2023: 4 parts, 124.5M entries total
   - PbPb 2024: 2 parts, 92.6M entries total
   - PbPb 2025: 6 parts, 260.4M entries total
+  - PbPb 2026: **skim in production** — 5 grid tasks, 35 GRL runs (522041–523437);
+    expected `pbpb_2026/data_pbpb26_part1..5.root`, entry count TBD
   - pp 2024: 12 parts (chunked from 2 grid tasks)
+
+## PbPb 2026 — status (added 2026-09-10)
+
+A **fourth** Run-3 Pb+Pb period. It brings the combined Pb+Pb R_AA luminosity from
+4.62621 to **7.24937 nb⁻¹** (≈ 3.7× the Run-2 dimuon analysis, ≈ 1.57× the current
+23+24+25 combination).
+
+| Item | Status |
+|------|--------|
+| Luminosity table (`lumitable_pbpb_26_HLT_mu4.csv`, 2.62316 nb⁻¹) | **DONE** — run list verified byte-identical to the skim GRL |
+| Lumi + metadata docs (`luminosity/README.md`, `analysis_metadata.md`) | **DONE** |
+| Grid skim (`hi2026`), download, hadd | **IN PROGRESS** — sibling doc `pbpb2026_skim_and_lgd_storage.md` |
+| Analysis-code support (all stages) | **IN PROGRESS** — `pbpb2026_analysis_support.md` |
+| Event-selection cuts file `event_sel_cuts_pbpb_2026.root` | **NOT STARTED** — hard prerequisite: NTuple processing throws without it |
+| NTuple processing / hadd | **BLOCKED** on the skim + the cuts file |
+| Trigger efficiency (P2+P3, 2026's own ε) | **BLOCKED** on NTuple processing; also needs a 2026 MB sample |
+| RDF crossx hist filling | **BLOCKED** |
+| Combined 23+24+25+26 crossx / R_AA plots | **BLOCKED** — code is wired, inputs missing |
+
+**Everything already produced for 2023/2024/2025 is unaffected** by the 2026 work: no
+cut, weight, binning or convention changed. Reconstruction efficiency needs no 2026
+entry (the Run-2 placeholder is keyed by centrality × q·η, not by year); ⟨T_AA⟩ reuses
+the 2023 Glauber placeholder exactly as 2024 and 2025 do.
+
+> ⚠ **The rest of this document has not been revised since 2026-06-22** and predates,
+> among other things, the muon-pT 4→4.5 GeV / gap / pair-pT 9 GeV selection adoption
+> (`mu_pt45_gap125_pairpt9_adoption.md`), whose rerun has not started — so the "DONE"
+> marks below describe the OLD selection.
 
 ## PbPb Analysis Status (All 3 Years: 2023, 2024, 2025)
 
