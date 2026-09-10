@@ -56,7 +56,9 @@ bool PowhegFullSimExtras<PairT, MuonT, Derived>::PassMuonMediumCuts(const muon_t
     // has no live consumer -- see pp24_all_vertex_pairs.md ("Why POWHEG is code-changed but NOT
     // rerun"); the trees on disk still carry the un-fabs'd selection.
     if (fabs(muon.eta) > 2.4) return false;
-    if (muon.pt < 4) return false;
+    // Reco threshold 4.0 -> 4.5 GeV (user decision 2026-09-08,
+    // mu_pt45_gap125_pairpt9_adoption.md §3(a)); mirrors DimuonDataAlgCoreT::PassCuts_DataCore.
+    if (muon.pt < 4.5) return false;
 
     // HF muon cut    
     if (muon.dP_overP > self().pmsRef().deltaP_overP_thrsh ) return false;
@@ -220,8 +222,10 @@ void PowhegFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
         if(self().output_single_muon_tree){
             // Mirror the pair-level truth cuts from PassCuts_PowhegCore():
             // only store muons that are in the fiducial acceptance used for
-            // the muon-pair analysis (truth_pt > 4 GeV, |truth_eta| < 2.4).
-            if (cur_muon.truth_pt > 4.0 && fabs(cur_muon.truth_eta) < 2.4){
+            // the muon-pair analysis (truth_pt > 4.5 GeV, |truth_eta| < 2.4).
+            // Threshold 4.0 -> 4.5 GeV (user decision 2026-09-08,
+            // mu_pt45_gap125_pairpt9_adoption.md §3(a)).
+            if (cur_muon.truth_pt > 4.5 && fabs(cur_muon.truth_eta) < 2.4){
                 self().muon_raw_ptr = &cur_muon;
                 self().FillSingleMuonTree();
             }

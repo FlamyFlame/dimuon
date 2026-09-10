@@ -3,7 +3,7 @@
 # Run Pythia fullsim HIJING overlay with trigger propagation (store_mc_trigger):
 # single-muon tree for the MC-based single-muon mu4 efficiency (Step 1,
 # mc_trigger_efficiency.md §3.1). Gate = reco-matched, loose reco fiducial
-# (exact pT>4, |eta|<2.4 + WP applied in RDF). Output suffix: _mc_trig_single_muon.
+# (exact pT>4.5, |eta|<2.4 + WP applied in RDF; the threshold moved 4 -> 4.5 on 2026-09-08). Output suffix: _mc_trig_single_muon.
 # Usage: ./run_pythia_fullsim_overlay_single_muon_mc_trig.sh
 
 cd "$(dirname "$0")"

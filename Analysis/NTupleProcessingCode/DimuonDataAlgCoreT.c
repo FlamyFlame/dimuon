@@ -606,7 +606,26 @@ bool DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::PassCuts_DataCore(boo
 	if (fabs(mpairRef()->m1.eta) > 2.4 || fabs(mpairRef()->m2.eta) > 2.4) return false;
 	h_cutAcceptanceRef()[mpairRef()->m1.charge != mpairRef()->m2.charge]->Fill(static_cast<int>(CutsCommon::pass_muon_eta) + 0.5, mpairRef()->weight);
 
-	if (mpairRef()->m1.pt < 4 || mpairRef()->m2.pt < 4) return false;
+	// Muon pT threshold 4.0 -> 4.5 GeV (user decision 2026-09-08, mu_pt45_gap125_pairpt9_adoption.md
+	// §3(a)): reco pT in data, truth pT in MC, reco pT in the MC fullsim quality flags all move
+	// together. Muons in [4,4.5) carry the deepest, most rapidly varying q*eta efficiency structure.
+	//
+	// MODE-DEPENDENT (user decision D8, same doc). The TRIGGER-EFFICIENCY mode deliberately keeps
+	// the looser 4.0 GeV threshold, because its product eps^nc(pT, q*eta) is a PER-MUON efficiency:
+	// the population it is MEASURED on need not equal the population it is APPLIED to, and it is
+	// only ever evaluated above 4.5 GeV. Cutting probes at 4.5 would delete ~40 % of the 4->6 GeV
+	// mu4 rise and leave the fitted turn-on midpoint OUTSIDE the fit range in 63-80 % of q*eta
+	// cells, making (mean, sigma) degenerate along a flat interior valley -- which the existing
+	// at-a-fit-limit '*' flag provably cannot detect (it fires on a shape parameter zero times in
+	// all 380 stored fits) and which chi2/ndf is blind to by construction.
+	// The NOMINAL analysis mode cuts at 4.5: that tree IS the analysis population.
+	// ParamsSet::pT_bins_8 forces 4.5 to be a bin edge of the trigger-efficiency pt2nd axis, so
+	// the extra probes populate their own bins and the data/MC maps stay identical above 4.5.
+	// NOTE the MC side does NOT mirror this: MC is 4.5 everywhere (D9). Its trigger efficiency is
+	// truth-seeded and reco-matched, not tag-and-probe, so it has no probe population to widen,
+	// and its deliverable eps_dR is pair-level and must be measured on the analysis population.
+	const float muon_pt_min = trigger_effcy_calc ? 4.0f : 4.5f;
+	if (mpairRef()->m1.pt < muon_pt_min || mpairRef()->m2.pt < muon_pt_min) return false;
 	h_cutAcceptanceRef()[mpairRef()->m1.charge != mpairRef()->m2.charge]->Fill(static_cast<int>(CutsCommon::pass_muon_pt) + 0.5, mpairRef()->weight);
 	
 	// ONE-SIDED cut by definition (user, 2026-07-16): dP/P < thrsh; the negative tail is kept.

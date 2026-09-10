@@ -212,7 +212,9 @@ bool PythiaFullSimExtras<PairT, MuonT, Derived>::PassMuonMediumCuts(const muon_t
     if ((muon.quality&256)==0) return false; // MuonCuts
 
     if (fabs(muon.eta) > 2.4) return false;
-    if (muon.pt < 4) return false;
+    // Reco threshold 4.0 -> 4.5 GeV (user decision 2026-09-08,
+    // mu_pt45_gap125_pairpt9_adoption.md §3(a)); mirrors DimuonDataAlgCoreT::PassCuts_DataCore.
+    if (muon.pt < 4.5) return false;
 
     // ONE-SIDED cut by definition (user, 2026-07-16): dP/P < thrsh; the negative tail
     // (41% of reco muons negative, 2.6% below -0.12) is KEPT. Matches the corrected data
@@ -317,7 +319,7 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::FillRecoQuantities(muon_t& m, i
         m.trk_charge = 0;
 
     // Generic muon cuts -- an EXACT mirror of DimuonDataAlgCoreT::PassCuts_DataCore
-    // (quality bits, |eta|<2.4, pT>4, |dP/P|<0.12, d0/z0). Tight = Medium && bit16; the
+    // (quality bits, |eta|<2.4, pT>4.5, |dP/P|<0.12, d0/z0). Tight = Medium && bit16; the
     // quality bits are cumulative (getQuality(): Tight=0 < Medium=1), so a Tight muon
     // sets BOTH bit8 and bit16 and this equals data's Tight (&1,&16,&32,&256). (D5)
     m.pass_medium = PassMuonMediumCuts(m);
@@ -461,12 +463,15 @@ void PythiaFullSimExtras<PairT, MuonT, Derived>::ProcessEventFullsim(int ev_num)
             // Nominal: truth-fiducial gate (the reco-EFFICIENCY denominator must be a truth muon).
             // store_mc_trigger: RECO-based gate -- the Step-1 trigger-efficiency denominator is
             // "offline reconstructed muon"; a truth-pT gate would sculpt the reco-pT turn-on near
-            // threshold. Loose here (pT>3, |eta|<2.6); the exact fiducial (pT>4, |eta|<2.4) + WP
+            // threshold. Loose here (pT>3, |eta|<2.6) -- deliberately kept at 3 GeV so it stays
+            // BELOW the 4.5 GeV fiducial with margin; the exact fiducial (pT>4.5, |eta|<2.4) + WP
             // is applied downstream in RDF on reco quantities (§3.1). Still Pythia-truth-SEEDED,
             // so HIJING muons never enter (change #1).
+            // The nominal (truth) branch moves 4.0 -> 4.5 GeV with every other muon-pT threshold
+            // (user decision 2026-09-08, mu_pt45_gap125_pairpt9_adoption.md §3(a)).
             const bool keep = self().store_mc_trigger
                 ? (cur_muon.reco_match && cur_muon.pt > 3.0 && fabs(cur_muon.eta) < 2.6)
-                : (cur_muon.truth_pt > 4.0 && fabs(cur_muon.truth_eta) < 2.4);
+                : (cur_muon.truth_pt > 4.5 && fabs(cur_muon.truth_eta) < 2.4);
             if (keep){
                 self().muon_raw_ptr = &cur_muon;
                 self().FillSingleMuonTree();

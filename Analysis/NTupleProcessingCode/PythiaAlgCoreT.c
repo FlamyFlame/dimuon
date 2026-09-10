@@ -662,6 +662,20 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitOutputTreesExtra_Pyth
             &nentries_per_kin.at(ikin),
             Form("nentries_kin%d_with_3.7GeV_cuts/L", ikin));
 
+    // FULLSIM event bookkeeping -- see the member declarations in PythiaAlgCoreT.h for why.
+    // Sized ONCE here and never resized, so the addresses handed to Branch() stay valid.
+    meta_nproc_kn_beam.assign(static_cast<size_t>(nKinRanges) * nBeamTypes, 0);
+    meta_nbeam_kn_beam.assign(static_cast<size_t>(nKinRanges) * nBeamTypes, 0);
+    for (int ikin = 0; ikin < nKinRanges; ikin++) {
+        for (int ibeam = 0; ibeam < nBeamTypes; ibeam++) {
+            const size_t idx = static_cast<size_t>(ikin) * nBeamTypes + ibeam;
+            meta_tree_out->Branch(Form("nproc_kin%d_beam%d", ikin, ibeam),
+                &meta_nproc_kn_beam.at(idx), Form("nproc_kin%d_beam%d/L", ikin, ibeam));
+            meta_tree_out->Branch(Form("nbeam_kin%d_beam%d", ikin, ibeam),
+                &meta_nbeam_kn_beam.at(idx), Form("nbeam_kin%d_beam%d/L", ikin, ibeam));
+        }
+    }
+
     muonPairOutTreeKinRange.resize(nKinRanges);
     for (int ikin = 0; ikin < nKinRanges; ikin++) {
         muonPairOutTreeKinRange.at(ikin).resize(ParamsSet::nSigns);
@@ -745,7 +759,9 @@ bool PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::PassCuts_PythiaCore() {
     if (std::fabs(p->m1.truth_eta) > 2.4 || std::fabs(p->m2.truth_eta) > 2.4) return false;
     h_cutAcceptanceRef()[p->m1.truth_charge != p->m2.truth_charge]->Fill((int)pass_muon_eta + 0.5, p->weight);
 
-    if (p->m1.truth_pt < 4 || p->m2.truth_pt < 4) return false;
+    // Truth analog of the data reco threshold, 4.0 -> 4.5 GeV (user decision 2026-09-08,
+    // mu_pt45_gap125_pairpt9_adoption.md §3(a)).
+    if (p->m1.truth_pt < 4.5 || p->m2.truth_pt < 4.5) return false;
     h_cutAcceptanceRef()[p->m1.truth_charge != p->m2.truth_charge]->Fill((int)pass_muon_pt + 0.5, p->weight);
 
     return true;
@@ -808,15 +824,43 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook() {
 
                 double nom_ratio = nominal_beam_ratio.at(beam_names.at(ibeam));
                 double ami_w     = ami_weight_kn_beam.at(ikin).at(ibeam);
-                // fullsim_weight_factor is in **nb** (ami_w is nb; see AMI-read comment above).
-                fullsim_weight_factor = (N_beam > 0) ? ami_w * nom_ratio / static_cast<double>(N_beam) : 0.;
 
+                // N_proc is hoisted ABOVE the weight on purpose (2026-09-09). The weight used to
+                // divide by N_beam while this loop covers only N_proc = min(N_beam, nevents_max),
+                // so a run truncated by nevents_max produced an absolute cross-section low by
+                // exactly N_proc/N_beam -- undetectably, since the weight, the NTUP chain entry
+                // count and AMI totalEvents all return N_beam and agree with each other.
+                // Normalising by the count ACTUALLY PROCESSED is a NO-OP for every nominal run
+                // (N_proc == N_beam there) and fixes precisely the truncated case.
                 Long64_t N_proc = (this->nevents_max <= 0) ? N_beam
                                   : std::min<Long64_t>(N_beam, this->nevents_max);
+
+                // fullsim_weight_factor is in **nb** (ami_w is nb; see AMI-read comment above).
+                fullsim_weight_factor = (N_proc > 0) ? ami_w * nom_ratio / static_cast<double>(N_proc) : 0.;
                 std::cout << "Fullsim pTH" << kin_lo << "_" << kin_hi
                           << " beam=" << beam_names.at(ibeam)
                           << " N=" << N_proc << "/" << N_beam
                           << " w_factor=" << fullsim_weight_factor << std::endl;
+
+                // Record BOTH numbers (see PythiaAlgCoreT.h): the weight above is normalised
+                // to N_beam while this loop covers N_proc, so a consumer can only detect a
+                // truncated run if the file carries them both.
+                {
+                    const size_t idx = static_cast<size_t>(ikin) * nBeamTypes + ibeam;
+                    if (idx < meta_nproc_kn_beam.size()) {
+                        meta_nproc_kn_beam.at(idx) = N_proc;
+                        meta_nbeam_kn_beam.at(idx) = N_beam;
+                    }
+                }
+                if (N_proc < N_beam) {
+                    meta_fullsim_truncated = true;
+                    std::cout << "  ##### WARNING: TRUNCATED RUN (nevents_max) -- this chain's"
+                              << " pairs are normalised to N_beam=" << N_beam
+                              << " but only " << N_proc << " events were processed, so any"
+                              << " ABSOLUTE cross-section from this file is low by a factor "
+                              << (static_cast<double>(N_proc) / static_cast<double>(N_beam))
+                              << ". Ratios (reco-eff etc.) are unaffected. #####" << std::endl;
+                }
 
                 for (Long64_t jev = 0; jev < N_proc; jev++) {
                     if (jev % 10000 == 0)
@@ -827,6 +871,16 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook() {
                 }
             }
         }
+
+        // Fill meta_tree_out on the FULLSIM path too. It used to be Filled only under
+        // getIsPrivate() (InitializeExtra_PythiaCore), so every fullsim pair file carried an
+        // EMPTY meta tree and recorded nothing about how many events it had processed.
+        if (meta_tree_out) meta_tree_out->Fill();
+        if (meta_fullsim_truncated)
+            std::cout << "##### NOTE: at least one (kn,beam) chain was truncated by"
+                      << " nevents_max; meta_tree_out records N_proc vs N_beam per chain."
+                      << " Do NOT use this file for an absolute cross-section. #####"
+                      << std::endl;
         return;
     }
 
@@ -846,12 +900,16 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook() {
                 Long64_t N_beam = nentries_kn_beam.at(ikin).at(ibeam);
                 if (N_beam == 0) continue;
                 double nom_ratio = nominal_beam_ratio.at(beam_names.at(ibeam));
-                // w_norm (the per-pair `weight`) is in **nb** (ami_weight is nb; see AMI-read comment).
-                double w_norm = ami_weight_kn_beam.at(ikin).at(ibeam) * nom_ratio
-                                / static_cast<double>(N_beam);
                 efficiency = 1.;
+                // Hoisted above the weight for the same reason as the fullsim branch -- see there.
+                // NO-OP when nevents_max is unset (N_to_process == N_beam).
                 Long64_t N_to_process = (this->nevents_max <= 0)
                     ? N_beam : std::min<Long64_t>(N_beam, this->nevents_max);
+                // w_norm (the per-pair `weight`) is in **nb** (ami_weight is nb; see AMI-read comment).
+                double w_norm = (N_to_process > 0)
+                    ? ami_weight_kn_beam.at(ikin).at(ibeam) * nom_ratio
+                      / static_cast<double>(N_to_process)
+                    : 0.;
                 std::cout << "  beam " << beam_names.at(ibeam) << ": " << N_to_process
                           << " / " << N_beam << " events" << std::endl;
 
@@ -880,7 +938,9 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook() {
                         p->weight = w_norm;
                         p->m1.ev_weight = p->weight;
                         p->m2.ev_weight = p->weight;
-                        p->crossx = p->weight * N_beam / efficiency;
+                        // Must multiply back the SAME count w_norm divided by, or crossx
+                        // stops being sigma*eps_filt*ratio when a run is truncated.
+                        p->crossx = p->weight * N_to_process / efficiency;
 
                         h_cutAcceptanceRef()[p->m1.truth_charge != p->m2.truth_charge]->Fill(
                             (int)nocut + 0.5, p->weight);

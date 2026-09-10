@@ -124,6 +124,21 @@ protected:
 
     std::vector<long> nentries_per_kin;
     TTree* meta_tree_out = nullptr;
+    // ---- FULLSIM event bookkeeping written to meta_tree_out (added 2026-09-09) ----
+    // WHY: fullsim_weight_factor is normalised to N_beam (ProcessDataHook), but the event
+    // loop runs over N_proc = min(N_beam, nevents_max). A run truncated by nevents_max
+    // therefore writes N_proc events' worth of pairs carrying an N_beam normalisation, i.e.
+    // an absolute cross-section low by exactly N_proc/N_beam. Every other handle on the
+    // denominator -- the weight itself, the NTUP chain entry count, and AMI totalEvents --
+    // returns N_beam and they all AGREE with each other, so nothing could detect it. This is
+    // reachable: the pipeline smoke test passes NEVENTS_MAX through the same run script while
+    // the output suffix stays "_full", so a truncated file can land on the nominal path.
+    // Recording both numbers makes the discrepancy visible to any consumer.
+    // Flat index [ikin * nBeamTypes + ibeam]; sized once in InitOutputTreesExtra_PythiaCore
+    // and never resized after, so the Branch() addresses stay valid.
+    std::vector<Long64_t> meta_nproc_kn_beam;   // events actually looped over
+    std::vector<Long64_t> meta_nbeam_kn_beam;   // events the weight is normalised to
+    bool meta_fullsim_truncated = false;        // true if any (kn,beam) had N_proc < N_beam
     std::vector<std::vector<TTree*>> muonPairOutTreeKinRange;
 
     int current_ikin = 0;  // set during ProcessData for FillMuonPairTreePythia

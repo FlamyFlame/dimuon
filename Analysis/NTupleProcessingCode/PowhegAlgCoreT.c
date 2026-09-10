@@ -252,7 +252,9 @@ bool PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::PassCuts_PowhegCore(){
     if (fabs(mpairRef()->m1.truth_eta) > 2.4 || fabs(mpairRef()->m2.truth_eta) > 2.4) return false;
     h_cutAcceptanceRef()[mpairRef()->m1.truth_charge != mpairRef()->m2.truth_charge]->Fill(double(pass_muon_eta) + 0.5, mpairRef()->weight); // if same sign: fill the h_cutAcceptanceRef()[0] histogram; if opposite sign, fill the h_cutAcceptanceRef()[1] histogram
 
-    if (mpairRef()->m1.truth_pt < 4 || mpairRef()->m2.truth_pt < 4) return false;
+    // Truth analog of the data reco threshold, 4.0 -> 4.5 GeV (user decision 2026-09-08,
+    // mu_pt45_gap125_pairpt9_adoption.md §3(a)).
+    if (mpairRef()->m1.truth_pt < 4.5 || mpairRef()->m2.truth_pt < 4.5) return false;
     h_cutAcceptanceRef()[mpairRef()->m1.truth_charge != mpairRef()->m2.truth_charge]->Fill(double(pass_muon_pt) + 0.5, mpairRef()->weight);
 
     return true;
