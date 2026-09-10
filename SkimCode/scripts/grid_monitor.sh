@@ -196,6 +196,7 @@ map_outds() {
 	if   [[ "$outds" == *PbPb2023* ]]; then dir="pbpb_2023"; prefix="data_pbpb23"
 	elif [[ "$outds" == *PbPb2024* ]]; then dir="pbpb_2024"; prefix="data_pbpb24"
 	elif [[ "$outds" == *PbPb2025* ]]; then dir="pbpb_2025"; prefix="data_pbpb25"
+	elif [[ "$outds" == *PbPb2026* ]]; then dir="pbpb_2026"; prefix="data_pbpb26"
 	elif [[ "$outds" == *pp2024*   ]]; then dir="pp_2024";   prefix="data_pp24"
 	else
 		echo "UNKNOWN UNKNOWN"
@@ -343,6 +344,11 @@ get_code_update_info() {
 		pbpb_2023) echo "$ANALYSIS_CODE_DIR/PbPbExtras.c $ANALYSIS_CODE_DIR/run_pbpb_23.sub 23" ;;
 		pbpb_2024) echo "$ANALYSIS_CODE_DIR/PbPbExtras.c $ANALYSIS_CODE_DIR/run_pbpb_24.sub 24" ;;
 		pbpb_2025) echo "$ANALYSIS_CODE_DIR/PbPbExtras.c $ANALYSIS_CODE_DIR/run_pbpb_25.sub 25" ;;
+		# pbpb_2026: NTuple-processing support for the 2026 data does not exist yet
+		# (PbPbExtras.c has no {26, ...} entry and there is no run_pbpb_26.sub).  Return
+		# empty so the auto-update is skipped instead of failing; whoever adds the 2026
+		# analysis code sets file_batch_max from the part count actually on disk.
+		pbpb_2026) echo "" ;;
 		*) echo "" ;;
 	esac
 }
@@ -400,6 +406,7 @@ chunked_hadd_fallback() {
 		pbpb_2023) file_prefix="data_pbpb23" ;;
 		pbpb_2024) file_prefix="data_pbpb24" ;;
 		pbpb_2025) file_prefix="data_pbpb25" ;;
+		pbpb_2026) file_prefix="data_pbpb26" ;;
 		*) log_error "task $tid: unknown target_subdir '$target_subdir'"; return 1 ;;
 	esac
 
