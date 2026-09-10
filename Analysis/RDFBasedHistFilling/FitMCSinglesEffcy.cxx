@@ -4,9 +4,23 @@
 // MC single-muon mu4 turn-on fits (docs/tracking/mc_trigger_efficiency.md §3.1),
 // consumed by FillMCTrigEffHists Step 3 (§3.3 inverse weights).
 //
-// Mirrors the DATA fitter Analysis/SingleMuEffcyPtTurnOnFitter.cxx EXACTLY in the
-// fit ingredients (same functional forms, parameter init/limits, "QR" fit option,
-// [4,60] range, TFormula-string TF1 so the analytic formula persists on Write):
+// Mirrors the DATA fitter Analysis/SingleMuEffcyPtTurnOnFitter.cxx in the fit
+// ingredients (same functional forms, parameter init/limits, "QR" fit option, and the
+// same TFormula-string TF1 so the analytic formula persists on Write), with ONE
+// DELIBERATE DIFFERENCE:
+//
+//   FIT RANGE. MC is [4.5,60] with the log/linear pivot at 4.5; DATA is [4,60] with the
+//   pivot at 4.0. This is NOT drift -- it is the two samples' populations differing on
+//   purpose (docs/tracking/mu_pt45_gap125_pairpt9_adoption.md D8/D9/D11). MC has no muons
+//   below 4.5 GeV at all: the MC trigger efficiency is truth-seeded and reco-matched, not
+//   tag-and-probe, so there is no probe population to widen, and its deliverable eps_dR is
+//   pair-level and MUST be measured on the 4.5 GeV analysis population. The DATA fitter
+//   keeps 4.0 because its tag-and-probe eps^nc is a per-muon efficiency whose measurement
+//   population may be wider than the one it is applied to.
+//   Both are evaluated only above 4.5 GeV, where the analysis lives, and pT_bins_8 forces
+//   4.5 to be a bin edge so the two maps stay bit-identical there.
+//
+// Everything else is a true mirror:
 //   pp      -> erf_plus_log  (data pp nominal;   fitter lines 183-219, entry 451-457)
 //   overlay -> fermi_plus_log (data PbPb nominal; fitter lines 221-254, entry 459-465)
 // Efficiency points mirror the data graph formation (RDFBasedHistFillingData.cxx:483-508
@@ -49,6 +63,7 @@
 #include <TH2D.h>
 #include <TLegend.h>
 #include <TROOT.h>
+#include <TString.h>   // Form(), used to compose the log pivot from pT_min
 #include <TStyle.h>
 #include <TSystem.h>
 
@@ -64,14 +79,26 @@ namespace MCSinglesFit {
 enum FittingMode { erf_plus_log, fermi_plus_log };
 
 TF1* FitTurnOn(TGraphAsymmErrors* g, FittingMode mode, const std::string& fname, int& fit_status) {
-    const double pT_min = 4;
+    // Low edge 4.5 GeV, per D9: MC has no muons below 4.5 at all. This does NOT mirror the data
+    // fitter, which deliberately stays at 4.0 -- see this file's header for the ONE DELIBERATE
+    // DIFFERENCE (D11) and why it is not drift.
+    // The pivot of the log correction term IS pT_min and is COMPOSED from it
+    // rather than retyped -- the two used to be independent "4.0" literals in both fitters,
+    // which is precisely how a range change silently leaves the pivot behind.
+    const double pT_min = 4.5;
     const double pT_max = 60;
+    const std::string pivot = Form("%g", pT_min);
 
+    // Parameter inits/limits anchored near 4 GeV (erf mean, Fermi pT0 and its [2.5,5.5]
+    // limits) are PHYSICS PRIORS on where the mu4 turn-on sits -- a trigger/detector
+    // property, unchanged by where the offline analysis cuts -- so they are deliberately NOT
+    // moved with the fit range, in both fitters.
     TF1* fTurnOn = nullptr;
     if (mode == erf_plus_log) {
-        // data fitter fitTurnOnErfPlusLog (SingleMuEffcyPtTurnOnFitter.cxx:183-219)
+        // data fitter fitTurnOnErfPlusLog (SingleMuEffcyPtTurnOnFitter.cxx:193-238)
         const std::string formula =
-            "[2]*0.5*(1.0+TMath::Erf((x-[0])/(sqrt(2.0)*[1])))*(1.0+[3]*TMath::Log(1.0+(x-4.0)/4.0))";
+            "[2]*0.5*(1.0+TMath::Erf((x-[0])/(sqrt(2.0)*[1])))*(1.0+[3]*TMath::Log(1.0+(x-"
+            + pivot + ")/" + pivot + "))";
         fTurnOn = new TF1(fname.c_str(), formula.c_str(), pT_min, pT_max);
         fTurnOn->SetParNames("mean", "sigma", "plateau", "corrCoef");
         fTurnOn->SetParameters(4.0, 2.0, 1.0, 0.);
@@ -80,9 +107,10 @@ TF1* FitTurnOn(TGraphAsymmErrors* g, FittingMode mode, const std::string& fname,
         fTurnOn->SetParLimits(2, 0.5, 1.2);
         fTurnOn->SetParLimits(3, 0, 0.1);
     } else {
-        // data fitter fitTurnOnFermiPlusLog (SingleMuEffcyPtTurnOnFitter.cxx:221-254)
+        // data fitter fitTurnOnFermiPlusLog (SingleMuEffcyPtTurnOnFitter.cxx:240-280)
         const std::string formula =
-            "[0]/(1.0+TMath::Exp(([1]-x)/[2]))*(1.0+[3]*TMath::Log(1.0+(x-4.0)/4.0))";
+            "[0]/(1.0+TMath::Exp(([1]-x)/[2]))*(1.0+[3]*TMath::Log(1.0+(x-"
+            + pivot + ")/" + pivot + "))";
         fTurnOn = new TF1(fname.c_str(), formula.c_str(), pT_min, pT_max);
         fTurnOn->SetParNames("normFermi", "pT0", "Delta", "corrCoef");
         fTurnOn->SetParameters(0.9, 4.0, 1.5, 0.);
@@ -336,7 +364,10 @@ void FitMCSinglesEffcy(const std::string& sample = "pp", bool use_tight_wp = tru
             g->GetXaxis()->SetTitle("p_{T} [GeV]");
             g->GetYaxis()->SetTitle("#epsilon");
             g->GetYaxis()->SetRangeUser(0, 1.1);
-            g->GetXaxis()->SetLimits(4.0, 60.0);
+            // Axis range taken from the fitted TF1 itself (mirrors the data fitter,
+            // SingleMuEffcyPtTurnOnFitter.cxx) so the drawn range can never disagree with the
+            // fitted one; the old hardcoded (4.0, 60.0) was a second copy of the fit range.
+            g->GetXaxis()->SetLimits(fit->GetXmin(), fit->GetXmax());
             g->Draw("AP");
             fit->Draw("SAME");
 

@@ -194,21 +194,38 @@ private:
         std::string fname = g->GetName() ? g->GetName() : "graph";
         if (fname.rfind("g_", 0) == 0) fname.replace(0, 2, "f_"); else fname = "f_" + fname;
 
-        double pT_min = 4;
+        // The DATA fitter deliberately STAYS at a 4.0 GeV low edge, while the MC twin
+        // FitMCSinglesEffcy uses 4.5 (docs/tracking/mu_pt45_gap125_pairpt9_adoption.md,
+        // decisions D8/D9/D11). Do NOT "fix" this to 4.5: the trigger-efficiency NTuple mode
+        // keeps 4.0 GeV probes on purpose, and cutting them would remove ~40 % of the 4->6
+        // GeV mu4 rise and leave the turn-on midpoint outside the fitted range in 63-80 % of
+        // q*eta cells -- a degeneracy no existing warning can detect (R3).
+        double pT_min = 4;    // DATA probes keep the 4.0-4.5 GeV population (D8/D11):
+                              // eps^nc is a PER-MUON efficiency, so its measurement
+                              // population need not equal the 4.5 GeV analysis one,
+                              // and the 4-6 GeV rise is where the turn-on shape is
+                              // actually constrained. The MC twin FitMCSinglesEffcy
+                              // uses 4.5 -- see its header for why the mirror breaks.
         double pT_max = 60;
 
         // Build from a TFormula STRING (not a lambda) so the analytic formula
         // PERSISTS when the TF1 is written to a ROOT file. A lambda/compiled TF1
         // can only be saved as a sampled grid (fSave) over [pT_min,pT_max], and on
         // read-back Eval interpolates that grid and returns 0 outside the range —
-        // the trigger-eff high-pT bug. The 4.0 pivot in the log/linear term is
-        // pT_min (kept numeric to match the original).
+        // the trigger-eff high-pT bug. The pivot of the log/linear correction term IS
+        // pT_min, so it is COMPOSED from pT_min rather than retyped: the two used to be
+        // independent literals ("4.0", with a comment asserting they were the same
+        // number), which is exactly how a range change silently leaves the pivot behind.
+        const std::string pivot = Form("%g", pT_min);
         std::string erf_core = "[2]*0.5*(1.0+TMath::Erf((x-[0])/(sqrt(2.0)*[1])))";
         std::string formula  = (fitting_mode == erf_plus_log)
-            ? erf_core + "*(1.0+[3]*TMath::Log(1.0+(x-4.0)/4.0))"
-            : erf_core + "*(1.0+[3]*((x-4.0)/4.0))";
+            ? erf_core + "*(1.0+[3]*TMath::Log(1.0+(x-" + pivot + ")/" + pivot + "))"
+            : erf_core + "*(1.0+[3]*((x-" + pivot + ")/" + pivot + "))";
         TF1* fTurnOn = new TF1(fname.c_str(), formula.c_str(), pT_min, pT_max);
 
+        // The mean init/limits are a PHYSICS PRIOR on where the mu4 turn-on sits (L1 MU3V +
+        // HLT mu4; the rise is ~4-6 GeV), a trigger/detector property. They are deliberately
+        // NOT moved with the fit range, which is an offline-analysis choice.
         fTurnOn->SetParNames("mean", "sigma", "plateau", "corrCoef");
         fTurnOn->SetParameters(4.0, 2.0, 1.0, 0.);
         fTurnOn->SetParLimits(0, 0, 10);
@@ -232,18 +249,37 @@ private:
         std::string fname = g->GetName() ? g->GetName() : "graph";
         if (fname.rfind("g_", 0) == 0) fname.replace(0, 2, "f_"); else fname = "f_" + fname;
 
-        double pT_min = 4;
+        // The DATA fitter deliberately STAYS at a 4.0 GeV low edge, while the MC twin
+        // FitMCSinglesEffcy uses 4.5 (docs/tracking/mu_pt45_gap125_pairpt9_adoption.md,
+        // decisions D8/D9/D11). Do NOT "fix" this to 4.5: the trigger-efficiency NTuple mode
+        // keeps 4.0 GeV probes on purpose, and cutting them would remove ~40 % of the 4->6
+        // GeV mu4 rise and leave the turn-on midpoint outside the fitted range in 63-80 % of
+        // q*eta cells -- a degeneracy no existing warning can detect (R3).
+        // Kept identical between the two forms on purpose.
+        double pT_min = 4;    // DATA probes keep the 4.0-4.5 GeV population (D8/D11):
+                              // eps^nc is a PER-MUON efficiency, so its measurement
+                              // population need not equal the 4.5 GeV analysis one,
+                              // and the 4-6 GeV rise is where the turn-on shape is
+                              // actually constrained. The MC twin FitMCSinglesEffcy
+                              // uses 4.5 -- see its header for why the mirror breaks.
         double pT_max = 60;
 
         // TFormula STRING (not a lambda) so the analytic formula PERSISTS on Write
-        // (a lambda TF1 saves only a sampled grid → Eval returns 0 outside [4,60]).
-        // The 4.0 pivot in the log/linear term is pT_min (numeric, matches original).
+        // (a lambda TF1 saves only a sampled grid → Eval returns 0 outside
+        // [pT_min,pT_max], which for the DATA fitter is [4,60]). The pivot of the log/linear
+        // term IS pT_min and is
+        // COMPOSED from it, never retyped (see fitTurnOnErfPlusLog).
+        const std::string pivot = Form("%g", pT_min);
         std::string fermi_core = "[0]/(1.0+TMath::Exp(([1]-x)/[2]))";
         std::string formula    = (fitting_mode == fermi_plus_log)
-            ? fermi_core + "*(1.0+[3]*TMath::Log(1.0+(x-4.0)/4.0))"
-            : fermi_core + "*(1.0+[3]*((x-4.0)/4.0))";
+            ? fermi_core + "*(1.0+[3]*TMath::Log(1.0+(x-" + pivot + ")/" + pivot + "))"
+            : fermi_core + "*(1.0+[3]*((x-" + pivot + ")/" + pivot + "))";
         TF1* fTurnOn = new TF1(fname.c_str(), formula.c_str(), pT_min, pT_max);
 
+        // pT0 init 4.0 and its [2.5,5.5] limits are a PHYSICS PRIOR on the mu4 turn-on
+        // midpoint (trigger/detector property), NOT an artefact of the old [4,60] fit range;
+        // they are deliberately left where they were. Consequence to be aware of: 2.5-4.5 GeV
+        // of that interval now lies BELOW the fitted range, so pT0 is partly extrapolated.
         fTurnOn->SetParNames("normFermi", "pT0", "Delta", "corrCoef");
         fTurnOn->SetParameters(0.9, 4.0, 1.5, 0.);
         fTurnOn->SetParLimits(0, 0.6, 1.0);
@@ -267,7 +303,20 @@ private:
         std::string fname = g->GetName() ? g->GetName() : "graph";
         if (fname.rfind("g_", 0) == 0) fname.replace(0, 2, "f_"); else fname = "f_" + fname;
 
-        double pT_min = 4;
+        // The DATA fitter deliberately STAYS at a 4.0 GeV low edge, while the MC twin
+        // FitMCSinglesEffcy uses 4.5 (docs/tracking/mu_pt45_gap125_pairpt9_adoption.md,
+        // decisions D8/D9/D11). Do NOT "fix" this to 4.5: the trigger-efficiency NTuple mode
+        // keeps 4.0 GeV probes on purpose, and cutting them would remove ~40 % of the 4->6
+        // GeV mu4 rise and leave the turn-on midpoint outside the fitted range in 63-80 % of
+        // q*eta cells -- a degeneracy no existing warning can detect (R3).
+        // This form has no log/linear term, hence no pivot; the TF1 lower limit stays
+        // pT_min - 0.1 (the relationship, not the number, is preserved).
+        double pT_min = 4;    // DATA probes keep the 4.0-4.5 GeV population (D8/D11):
+                              // eps^nc is a PER-MUON efficiency, so its measurement
+                              // population need not equal the 4.5 GeV analysis one,
+                              // and the 4-6 GeV rise is where the turn-on shape is
+                              // actually constrained. The MC twin FitMCSinglesEffcy
+                              // uses 4.5 -- see its header for why the mirror breaks.
         double pT_max = 60;
 
         // TFormula STRING (not a lambda) so the analytic formula PERSISTS on Write.
@@ -275,6 +324,8 @@ private:
                                "[2]*0.5*(1.0+TMath::Erf((x-[0])/(sqrt(2.0)*[1])))",
                                pT_min - 0.1, pT_max);
 
+        // mean init/limits: physics prior on the mu4 turn-on location, NOT moved with the
+        // fit range (see fitTurnOnErfPlusLog).
         fTurnOn->SetParNames("mean", "sigma", "plateau");
         fTurnOn->SetParameters(4.0, 2.0, 1.0);
         fTurnOn->SetParLimits(0, 0, 10);
@@ -424,11 +475,18 @@ private:
                 throw std::runtime_error("SingleMuEffcyPtTurnOnFitter: the drawn equation is only "
                                          "written for erf_plus_log and fermi_plus_log; add the "
                                          "form before enabling another fitting_mode");
-            ft.DrawLatex(0.19, 0.945, (fitting_mode == erf_plus_log)
+            // The pivot printed in the equation is READ BACK from the fitted TF1 rather than
+            // retyped: for the two drawn forms the log pivot IS pT_min, which is the TF1's
+            // lower limit (only the pure-erf form offsets it by 0.1, and that form throws
+            // just above). A hardcoded "4" here survived the 4 -> 4.5 range move as a figure
+            // that misstated the function it was drawn from.
+            const double log_pivot = fit->GetXmin();
+            const char* eq_fmt = (fitting_mode == erf_plus_log)
                 ? "#varepsilon = 0.5 P [1 + erf((p_{T}-m)/(#sqrt{2}s))] "
-                  "[1 + c ln(1+(p_{T}-4)/4)]"
+                  "[1 + c ln(1+(p_{T}-%g)/%g)]"
                 : "#varepsilon = P / [1 + exp((x_{0}-p_{T})/w)] #times "
-                  "[1 + c ln(1+(p_{T}-4)/4)]");
+                  "[1 + c ln(1+(p_{T}-%g)/%g)]";
+            ft.DrawLatex(0.19, 0.945, Form(eq_fmt, log_pivot, log_pivot));
             // EVERY free parameter of the drawn equation is printed: the logarithmic term adds
             // up to ~20 % by 60 GeV, so a reader given only P cannot reconstruct the curve they
             // are looking at.
