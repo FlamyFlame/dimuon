@@ -100,7 +100,7 @@ void RDFBasedHistFillingPbPb::SetIOPathsHook(){
 		input_files.push_back(in_path);
 		output_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_run2/histograms_real_pairs_pbpb_20" + run_year_str + out_file_suffix + ".root";
 	} else{
-	    throw std::runtime_error("Run year must be 23/24/25/26 (Run 3 Pb+Pb)! Current input invalid: " + run_year_str);
+	    throw std::runtime_error("Run year must be 15/18 (Run 2) or 23/24/25/26 (Run 3 Pb+Pb)! Current input invalid: " + run_year_str);
 	}
 }
 

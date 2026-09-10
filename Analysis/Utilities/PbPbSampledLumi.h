@@ -45,6 +45,16 @@ inline double PbPbMu4SampledLumiNb(int run_year){
         // (PbPbBadRuns has no 26 entry), so the R_AA luminosity is the GRL total.
         // MUST match PbPbBaseClass.h make_crossx_factors_pbpb_2026.
         case 26: return 2.62316;
+        // Run 2 (2015 + 2018) is still a live code path: RDFBasedHistFillingPbPb keeps a
+        // full `run_year == 15 || run_year == 18` branch and PbPbBaseClass registers
+        // {18,"default"} crossx factors, so FillHistogramsCrossx can reach this function
+        // with 15/18 (trigger_mode 2/3; mode 1 short-circuits via trigger_effcy_calc).
+        // The value is the SAME combined 2015+2018 luminosity baked into
+        // make_crossx_factors_pbpb_run2(): 0.436882 + 1.3803 = 1.817182 nb^-1.
+        // Both years return it because the Run-2 crossx factors are the COMBINED ones
+        // (see the "2015 + 2018 are combined" comment in PbPbBaseClass::BuildPbPbMaps).
+        case 15:
+        case 18: return 1.817182;
         // Throw, never return 0.  A zero here was silently catastrophic in two ways:
         // RDFBasedHistFillingPbPb computes 1.0/L, so 0 gave an INFINITE differential
         // cross-section weight; and in the luminosity-weighted year combination
@@ -54,7 +64,7 @@ inline double PbPbMu4SampledLumiNb(int run_year){
             throw std::runtime_error(
                 "PbPbMu4SampledLumiNb: no sampled luminosity for Pb+Pb run year 20" +
                 std::to_string(run_year % 2000) +
-                " (known: 2023, 2024, 2025, 2026). Add it here AND in "
+                " (known: 2015, 2018, 2023, 2024, 2025, 2026). Add it here AND in "
                 "PbPbBaseClass.h::make_crossx_factors_pbpb_<yr>().");
     }
 }
