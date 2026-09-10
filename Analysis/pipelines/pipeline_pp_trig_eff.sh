@@ -41,6 +41,16 @@ PP_DIR="${DATA_BASE}/pp_2024"
 
 QUEUE_COUNT=12
 
+# ─── `root -l -b`, NEVER `root -l -b -q`, when the macro comes from a HEREDOC ───────────────
+# `root -l -b -q` with no macro argument QUITS BEFORE READING STDIN: the heredoc is never
+# executed and the command exits 0 UNCONDITIONALLY, so every check built on it silently PASSED --
+# missing trees, zero keys, a zombie file, all of it. The `$(...)` capture form is just as dead:
+# it returns an EMPTY string and a 0 status. Documented in run_dr_correction_fits.sh (found there
+# 2026-08-11); the pipelines were never swept, so this validation layer had never actually run.
+# Re-verified 2026-09-09 on the real artefact: with the fix, validate_root_file_quick REJECTS the
+# 851-byte 0-key pbpb_2024 corpse (rc=3) and accepts the good 3.6 MB 2023 file; before it, both
+# passed.
+# ───────────────────────────────────────────────────────────────────────────────────────────────
 now() { date '+%F %T'; }
 log() { echo "[$(now)] $*"; }
 
@@ -81,7 +91,7 @@ validate_root_file_quick() {
   local f="$1"
   [[ -f "$f" ]] || return 1
   [[ -s "$f" ]] || return 1
-  root -l -b -q <<EOF >/dev/null 2>&1
+  root -l -b <<EOF >/dev/null 2>&1
 TFile *fin = TFile::Open("$f", "READ");
 if (!fin || fin->IsZombie()) { gSystem->Exit(2); }
 if (!fin->GetListOfKeys() || fin->GetListOfKeys()->GetSize() <= 0) { fin->Close(); gSystem->Exit(3); }
@@ -110,7 +120,7 @@ validate_combined_muon_pair_trees_nonempty_or_fail() {
   local f="$1"
   [[ -f "$f" ]] || fail "Combined file not found: $f"
   local check_output
-  if check_output="$(root -l -b -q <<EOF
+  if check_output="$(root -l -b <<EOF
 TFile *fin = TFile::Open("$f", "READ");
 if (!fin || fin->IsZombie()) {
   std::cout << "ERROR: cannot open file" << std::endl;
@@ -323,7 +333,7 @@ fit_file="$(get_fit_output)"
 rdf_file="$(get_rdf_output)"
 log "Validating TF1 fits and TH2D fallback for PP 2024"
 root_rc=0
-check_output="$(root -l -b -q <<EOF
+check_output="$(root -l -b <<EOF
 TFile *ffit = TFile::Open("${fit_file}", "READ");
 if (!ffit || ffit->IsZombie()) {
   std::cout << "FAIL: cannot open fit file ${fit_file}" << std::endl;
