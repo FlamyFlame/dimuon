@@ -804,6 +804,44 @@ chosen — the two pp-conditions fullsim samples are drawn on the SAME MC-vs-dat
 carry the same pair selection (this file's own header says so), and it is inert where it matters
 since v1 and v2 differ only below 1.06 GeV while the signal region starts at 1.08. Reversible.
 
+### R11 — ★ The MC trig-eff chain ran TIGHT-ONLY, and step4/sanity were stale for BOTH WPs
+
+**Caught by the `polyn fit restriction` peer session, not by me, and not by either reviewer.** A
+genuine unmet Done item (item 6, "MC trig-eff Steps 1-4"), and a good argument for the peer pings.
+
+`pipeline_pythia_fullsim_pp.sh` Stage 10 honours `USE_TIGHT_WP`, whose **default is 1**. Job A was
+launched as `ENABLE_MC_TRIG_EFF=1 ... full` without setting it, so the whole MC chain
+(`FillMCTrigEffHists` step1 → `FitMCSinglesEffcy` → step3 → `plot_mc_trig_eff`) ran at **Tight
+only**. Verified independently on disk before acting:
+
+| product | Tight | Medium |
+|---|---|---|
+| `mc_trig_eff_hists_pp24_full[_medium_wp].root` | 09-10 06:00 ✅ | **09-07 21:20 ✗** |
+| `..._step3.root` | 09-10 06:01 ✅ | **09-07 21:21 ✗** |
+| `single_mu_effcy_pT_fit_mc[_medium_wp].root` | 09-10 06:00 ✅ | **09-07 21:20 ✗** |
+| `..._step4.root` | **09-07 21:24 ✗** | **09-07 21:24 ✗** |
+| `..._sanity.root` | **09-07 21:26 ✗** | **09-07 21:26 ✗** |
+
+So the Medium MC sat on 4.0 GeV muons, the retired 8 GeV pair-pT axis AND the superseded
+(−1.30,−1.05) gap window simultaneously — which makes the WP systematic meaningless, since
+`plot_mc_trig_eff` with `use_tight_wp=false` compares that against the FRESH Medium DATA file
+(refit 14:09). **A stale Medium file produces a comparison in which data and MC had different
+selections applied, with no error and no warning** — which is exactly what
+`run_data_trigeff_medium_wp.sh`'s own header warns about, for the data half of the same problem.
+
+**Wider than reported:** the peer flagged Medium; checking the actual mtimes showed **step4 and
+sanity were stale for Tight as well**, because Stage 10 runs only 10a-10d and stops at the plot.
+
+**Concurrency constraint that shaped the fix.** The peer was at that moment READING the Tight
+`_step3.root` for its ΔR refit. `run_mc_trigeff_round7.sh` would have rewritten it mid-read, so it
+was NOT used. Instead: the full Medium chain (step1 → fit → step3 → step4 → sanity), which touches
+only `*_medium_wp*`, plus the two missing Tight products (`_step4`, `_sanity`), which the peer does
+not read. Tight `_step3` deliberately left untouched.
+
+**A `USE_TIGHT_WP` default of 1 on a pipeline whose deliverable set includes both WPs is the real
+defect** — the same shape as the data-side gap that A9 fixed in `run_pbpb_all.sh`. Recorded under
+Remaining Work rather than fixed mid-rerun.
+
 ### R6 — Cross-session state (three peers share this checkout)
 
 Four peer sessions exist; three were engaged and all cleared this rerun. **They share the working
