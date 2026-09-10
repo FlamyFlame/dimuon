@@ -120,7 +120,7 @@ void check_skim_output(const char* new_file, const char* ref_file = nullptr,
    std::cout << "\n=== fill fractions (first " << n << " entries) ===\n";
 
    group_report(tn, "event info / vertex",   {"RunNumber","lbn","bcid","eventNumber","IntPerXing","vtx","Vtx"}, nb, n);
-   group_report(tn, "muon kinematics",       {"mu_pt","mu_eta","mu_phi","mu_charge","mu_quality","mu_author","mu_type"}, nb, n);
+   group_report(tn, "muon kinematics",       {"muon_pt","muon_eta","muon_phi","muon_charge","muon_e","muon_author","muon_type","muon_n"}, nb, n);
    group_report(tn, "muon SF / efficiency corr", {"_SF","eff_corr","eff_SF","quality"}, nb, n);
    group_report(tn, "trigger decisions",     {"trig","Trig","HLT","L1_","hlt"}, nb, n);
    group_report(tn, "ZDC",                   {"zdc_"}, nb, n);

@@ -44,20 +44,52 @@ Available AthAnalysis releases: see
 
 ## Build
 
+Two releases are maintained side by side:
+
+| Script | Release | Build dir | Use for |
+|---|---|---|---|
+| `setup_25.sh` | AthAnalysis **25.2.89** | `build_25/` | data23_hi, data24_hi, data25_hi, pp24, all fullsim MC |
+| `setup_26.sh` | AthAnalysis **25.2.90** | `build_26/` | **data26_hi** |
+
 ```bash
 cd SkimCode
-source setup_25.sh
+source setup_25.sh      # or setup_26.sh for the 2026 skim
 ```
 
-`setup_25.sh` runs `asetup AthAnalysis,25.2.89` and configures the `acm` work
-area in `build_25/`. After any C++ change in `source/`, in the same shell:
+Each script runs `asetup AthAnalysis,<version>` and configures the `acm` work area in its
+build dir. After any C++ change in `source/`, in the same shell:
 
 ```bash
-cd build_25 && acm compile && cd ..
+cd build_25 && acm compile && cd ..     # build_26 for the 2026 release
 ```
 
-If you hit mysterious build problems, delete `build_25/` and re-run
-`setup_25.sh`.
+If you hit mysterious build problems, delete the build dir and re-run its setup script.
+
+### Why 2026 needs a different release
+
+25.2.89 **cannot read 2026 data**. Its `TrigConfData` L1-menu parser does not know the
+gFEX `EnergyThreshold` algorithm flavour `gRISTRETTO` that appears in the 2026 L1 menu, so
+every job dies on its first event with
+
+```
+ERROR: problem when building L1 menu structure (algorithms).
+       Flavour gRISTRETTO for EnergyThreshold algorithm not recongnised!
+```
+
+25.2.90 is the **first** release containing `gRISTRETTO` (verified with `strings` on
+`libTrigConfData.so` across the series) and keeps the same `x86_64-el9-gcc14-opt` platform
+as 25.2.89, so it is the smallest step away from the release the other years used.
+
+**The step is physics-neutral, and this was measured rather than assumed.** The muon
+tool libraries do change between 25.2.89 and 25.2.90, so the same `data25_hi` AOD was
+skimmed under `TRIGRATES_RUNMODE=hi2025` with **both** releases and the outputs compared
+branch by branch: 488/1311 events kept in both, identical output size, and all **169
+branches agree exactly** (per-branch element count, sum and sum-of-squares). The
+2023/24/25 skims therefore need no regeneration and 2026 is directly combinable with them.
+
+**No C++ source change was needed for 2026.** `Module_EventShape.cxx` already has
+`case 2026:` falling through to the PbPb2023 FCal-E_T centrality thresholds, and `RunYear`
+is used nowhere else in the algorithm.
 
 
 ## Run modes (`TRIGRATES_RUNMODE`)
@@ -76,6 +108,7 @@ Supported modes:
 | `hi2023`                   | 2023  | data23_hi Pb+Pb                       | data      | v120-pro33-03                        | yes      | yes         |
 | `hi2024`                   | 2024  | data24_hi Pb+Pb                       | data      | HI2024_50ns                          | yes      | yes         |
 | `hi2025`                   | 2025  | data25_hi Pb+Pb                       | data      | HI2025_50ns                          | yes      | yes         |
+| `hi2026`                   | 2026  | data26_hi Pb+Pb                       | data      | HI2026_50ns_noIBL                    | yes      | yes         |
 | `pp2024`                   | 2024  | data24_5p36TeV pp reference           | data      | 2024ppRef_25ns                       | yes      | no          |
 | `ppmcfullsim2024`          | –     | Pythia8 pp fullsim MC                 | geant4    | (none)                               | **yes**† | no          |
 | `ppmcfullsim_hioverlay24`* | 2024  | Pythia8 pp fullsim + HIJING overlay   | geant4    | (none)                               | **yes**† | **off** — overlay AOD has no ZDC |
@@ -112,7 +145,7 @@ when per-year calibrations are finalised.
 (`hi*`, `pp*`, `ppmcfullsim2024`). After every change:
 
 ```bash
-for d in run_23hi run_24hi run_24pp run_25hi run_pythia_fullsim; do
+for d in run_23hi run_24hi run_24pp run_25hi run_26hi run_pythia_fullsim; do
   cp scripts/TrigRates_CA.py $d/TrigRates_CA.py
 done
 ```
@@ -318,6 +351,7 @@ NTupleProcessing code auto-update; internally they share the `IS_MC_FLAT` flag.
 | `PbPb2023data...partN._EXT0` | `pbpb_2023/` | `data_pbpb23_partN.root` |
 | `PbPb2024data...partN._EXT0` | `pbpb_2024/` | `data_pbpb24_partN.root` |
 | `PbPb2025data...partN._EXT0` | `pbpb_2025/` | `data_pbpb25_partN.root` |
+| `PbPb2026data...partN._EXT0` | `pbpb_2026/` | `data_pbpb26_partN.root` |
 | `pp2024data...partN._EXT0`   | `pp_2024/`   | `data_pp24_partN.root`   |
 | `NTUP.Pythia_5p36TeV_<s>.FullSimPP24...._EXT0` | `pythia_fullsim_test_sample/` | `Pythia_5p36TeV_<s>.FullSimPP24.NTUP.root` |
 | `NTUP.Pythia_5p36TeV_<s>.FullSimHIJINGOverlayPP24...._EXT0` | `pythia_fullsim_hijing_overlay_test_sample/` | `Pythia_5p36TeV_<s>.FullSimHIJINGOverlayPP24.NTUP.root` |
@@ -466,6 +500,60 @@ Submission script: `run_25hi/grid_sub.sh`.
 
 Alternative: `--nGBPerJob MAX` lets PanDA auto-size per site; most adaptive
 but per-task job count is less predictable.
+
+
+## Dataset inventory and partition plan — 2026 Pb+Pb HardProbes
+
+**Query:** `rucio list-dids "data26_hi:data26_hi.*physics_HardProbes*AOD*" --filter type=DATASET`
+→ 124 DIDs, **42 `merge.AOD`**. The CONTAINER query returns only `deriv.DAOD_HION5.*_p7386`
+containers (plus one PhysCont and one `OpenEnded.AOD`) — **no `merge.AOD` container
+exists**, so the DATASET query is the complete enumeration.
+
+**Selection:** f-tags only. One x-tag rejected
+(`data26_hi.00522056...merge.AOD.x973_m2281`; that run keeps its f1714 dataset). **No run
+carries two f-tags**, so no "keep the latest f-tag" resolution was needed and no run can
+be double-counted. 41 f-tag datasets in total; f1714 (13 runs), f1717 (2), f1720 (13),
+f1723 (12), f1727 (1).
+
+**GRL:** `xmls/physics_HI2026_50ns_noIBL.xml` — 35 runs, periods J+K, defect tag
+`DetStatus-v144-pro58-01`, ignoring `PIXEL_PERFORMANCE_INTOLERABLE`,
+`TRIG_HLT_IDT_BSPOT_INVALID_STATUS`, `ID_IBL_TRACKCOVERAGE_SEVERE`, `PIXEL_IBL_DISABLED`.
+All 35 GRL runs have an AOD dataset. **Six AOD runs are not in the GRL and are excluded
+from submission**: 522011, 522089, 522112, 522145, 522185 (the pre-GRL block at the start
+of the year) and 523168 (an *interior* run that is also near-empty: 3 files / 17 905
+events, the 2026 analogue of 2025's excluded run 511013). Excluding them costs 977 files /
+8.7 TB / 4 562 969 events = 0.87 % of files, 0.63 % of events, and changes no physics —
+`alg.UseGRL = True` means the skim drops every event of those runs anyway. They are parked
+in `run_26hi/InDstxt_PbPb2026_5p36TeV_nonGRL.txt` so a reissued GRL can be served by
+re-running just those.
+
+### Partition plan (`--nGBPerJob MAX`, ≤ ~500 jobs/task)
+
+| Part | Runs | #ds | Files | Jobs @60 f/job | Size (TB) | Events |
+|------|------|----:|------:|---------------:|----------:|-------:|
+| 1 | 522041–522327 | 8 | 23,879 | 398 | 273.8 | 142.1 M |
+| 2 | 522336–522518 | 7 | 23,559 | 393 | 298.1 | 157.6 M |
+| 3 | 522541–522780 | 8 | 22,542 | 376 | 288.4 | 149.5 M |
+| 4 | 522830–522998 | 6 | 20,965 | 350 | 266.3 | 138.2 M |
+| 5 | 523023–523437 | 6 | 20,334 | 339 | 257.6 | 134.1 M |
+| **Total** | **522041–523437** | **35** | **111,279** | **1,856** | **1,384.2** | **721.5 M** |
+
+**Average per file: 12.41 GB / 6,468 events** — larger than 2025's 11.3 GB, so
+`--nGBPerJob MAX` matters even more than last year (local staging would need ~745 GB/job).
+Partition chosen by contiguous-by-run grouping minimising the largest part: K=4 → 486 jobs
+in the biggest part, **K=5 → 398 (chosen**, ~100 jobs of headroom**)**, K=6 → 345.
+
+**Replicas: 100 % disk, zero tape.** All 41 datasets have a complete disk replica; all are
+complete at `CERN-PROD_DERIVED` and 13 are additionally complete at `BNL-OSG2_DATADISK`.
+**No staging rule is needed** — unlike the older `data23_hi` reprocessings.
+
+Partition files: `run_26hi/InDstxt_PbPb2026_5p36TeV_part{1..5}.txt`.
+Submission script: `run_26hi/grid_sub.sh`, **generated** by `run_26hi/make_grid_sub.sh`
+(regenerate rather than hand-edit, so the part count / outDS tags / run ranges stay in
+lock-step with the partition files on disk). Submit from a shell set up with
+`../setup_26.sh` so the tasks carry AthAnalysis 25.2.90.
+
+Scale vs 2025: 87 % of the events (721 M vs 828 M) in 5 tasks instead of 6.
 
 
 ## Legacy R21 JO workflow

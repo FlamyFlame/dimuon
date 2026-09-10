@@ -180,9 +180,10 @@ elif do_hi2026:
 	# PIXEL_PERFORMANCE_INTOLERABLE / TRIG_HLT_IDT_BSPOT_INVALID_STATUS /
 	# ID_IBL_TRACKCOVERAGE_SEVERE / PIXEL_IBL_DISABLED  (35 runs, 522041-523437).
 	GRL = ["physics_HI2026_50ns_noIBL.xml"]
-	# data26_hi Pb+Pb HardProbes AOD.  Local-test default only; the grid job always
-	# overrides this through --filesInput=%IN.
-	InputFile = "PLACEHOLDER_DATA26_AOD"
+	# data26_hi Pb+Pb HardProbes AOD, run 522474 lb0122 (inside GRL range 117-224),
+	# 1.487 GB / 731 events, complete replica at BNL-OSG2_DATADISK.  Local-test default
+	# only; the grid job always overrides this through --filesInput=%IN.
+	InputFile = "root://dcgftp.usatlas.bnl.gov:1094//pnfs/usatlas.bnl.gov/BNLT0D1/rucio/data26_hi/b6/6b/data26_hi.00522474.physics_HardProbes.merge.AOD.f1720_m2281._lb0122._0014.1"
 	# Same muon / dimuon chain lists as the other Run-3 Pb+Pb years (cf. do_hi2025):
 	# a different chain set would give 2026 a different effective trigger efficiency
 	# from 2023/24/25 and break the year combination.
