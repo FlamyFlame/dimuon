@@ -847,6 +847,63 @@ from job A, deliberately untouched while the peer was reading them). No stage fa
 defect** — the same shape as the data-side gap that A9 fixed in `run_pbpb_all.sh`. Recorded under
 Remaining Work rather than fixed mid-rerun.
 
+### R12 — ★★ BLOCKING: one ε_ΔR cell inflates the pp24 crossx weight 3-6x. NOT FIXED — user decision.
+
+Reported by the `polyn fit restriction` peer session and **independently confirmed here in full**
+(the fit report, the consuming code path, the screen that lets it through, and the yield impact).
+It is in the NOMINAL `expo` method, not in that session's polyu change.
+
+**The cell** — series `no_plateau_correction / expo / opposite sign / Tight`, i.e. exactly
+`DrCorrCrossxMode()` / `DrCorrCrossxMethod()` / `DrCorrCrossxSign()`, line 94 of
+`fit_report_opposite_sign.txt` (regenerated 2026-09-10 14:44):
+
+| pair pT | pair eta | plateau | npts | A | λ | p | χ²/ndf | f(0) | C |
+|---|---|---|---|---|---|---|---|---|---|
+| [52.2,74.2) | [1.0,1.5) | 0.8225 | 20 | −3.3428 | **2.9998 AT LIMIT** | 1.3904 | 4.072 | 0.6327 | **3.9755 ± 1.1774** |
+
+**Every other cell in that table has C ∈ [0.99, 1.27] with σ_C ≈ 0.003-0.05.** λ railed at its upper
+limit 3.0, so over the fit domain the exponential is nearly a straight line, and MINUIT paid for it
+by driving the free baseline to **4.8× the cell's own measured plateau**.
+
+**The delivered correction is ε_ΔR = f/C**, so in this cell it is **0.159 at ΔR=0 and 0.323 at
+ΔR=1** — it never approaches 1, which it must by construction.
+
+**It IS in the cross-section.** `RDFBasedHistFillingPP.cxx:387-392`:
+`eps_trig^pair = eps^nc_1 · eps^nc_2 · eps_dR`, then `w_trig = 1/eps_trig`. (This supersedes the
+"not propagated" state recorded earlier.)
+
+**Measured impact on the figures produced today** (pp24 OS, minv ∈ (1.08,2.9), pair pT > 9):
+
+| quantity | value |
+|---|---|
+| pairs in the affected cell | **205** |
+| ...as a fraction of the whole signal region | 0.032 % |
+| ...as a fraction of the [52.2,74.2) GeV pT slice | **15.6 %** |
+| ...with ΔR < 1, i.e. actually corrected | **205 (100 %)** |
+| weight inflation per affected pair | **3.1× - 6.3×** |
+
+⇒ globally negligible, **locally severe**: the (52-74 GeV, η 1.0-1.5) panel is inflated 3-6×
+outright, the η-integrated pair-pT spectrum in that bin by roughly 1.3-1.8×, and **R_AA inherits it
+as a SUPPRESSION** there because pp is the denominator.
+
+**Why nothing caught it — three independent screens, all blind to this failure:**
+1. `fit_ok` carries **no χ² term**, so χ²/ndf = 4.072 passes.
+2. `DrCorrPlateauUsable(plateau, err)` bounds the baseline only **from BELOW**
+   (`plateau >= 0.5 && err < plateau`). C = 3.98 with σ_C = 1.18 satisfies both. Its own comment
+   shows why: it was written against a *collapsing* baseline ("dividing by 0.01 inflates the curve
+   100x") and is structurally blind to a runaway one.
+3. `DrCorrectionCrossxEvaluator::Eval` applies **no cap** to the returned f/C.
+Plus: the 2026-09-07 shape restriction constrained A and p but left λ ∈ [0.02, 3.0] free, and
+railing λ is the mechanism — a cell with no plateau within reach buys a flat-looking fit by
+inflating C.
+
+**STATUS: NOT FIXED, and deliberately so.** The remedy is a physics choice with three candidate
+forms (add a χ² term to `fit_ok`; bound C from ABOVE against the cell's own measured plateau, which
+is already in the file; or treat `AT LIMIT: lambda` as disqualifying — any of which routes this cell
+to the polyu or interp tier). Under the Autonomy Contract this is a physics-results-bending
+ambiguity ⇒ **stop and ask**. **Every pp24 crossx and R_AA figure produced on 2026-09-10 carries
+this defect** and must be regenerated after the fix.
+
 ### R6 — Cross-session state (three peers share this checkout)
 
 Four peer sessions exist; three were engaged and all cleared this rerun. **They share the working
