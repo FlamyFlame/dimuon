@@ -60,7 +60,11 @@ protected:
         auto& pair = *self().mpairRef();
 
         if constexpr (requires { pair.minv; pair.same_sign; }) {
-            return self().ResonanceTaggingImpl(!pair.same_sign, pair.minv, resonance_tagged_muon_index_list_reco);
+            // 4th argument mirrors the Pythia fullsim twin (PythiaFullSimExtras.h) EXACTLY: these two
+            // pp-conditions fullsim samples are drawn on the SAME MC-vs-data figures, so they must
+            // carry the same pair selection (see this file's header). It is also inert where it
+            // matters: v1 and v2 differ only below 1.06 GeV and the signal region starts at 1.08.
+            return self().ResonanceTaggingImpl(!pair.same_sign, pair.minv, resonance_tagged_muon_index_list_reco, self().pmsRef().minv_cuts_v2);
         } else {
             std::cerr << "ResonanceTaggingReco requires PairT to have members `minv` and `same_sign`" << std::endl;
             std::cerr << "Returns without reco-minv-based resonance tagging!" << std::endl;
@@ -72,7 +76,7 @@ protected:
         auto& pair = *self().mpairRef();
 
         if constexpr (requires { pair.truth_minv; pair.truth_same_sign; }) {
-            return self().ResonanceTaggingImpl(!pair.truth_same_sign, pair.truth_minv, resonance_tagged_muon_index_list_truth);
+            return self().ResonanceTaggingImpl(!pair.truth_same_sign, pair.truth_minv, resonance_tagged_muon_index_list_truth, self().pmsRef().minv_cuts_v2);
         } else {
             std::cerr << "ResonanceTaggingTruth requires PairT to have members `truth_minv` and `truth_same_sign`" << std::endl;
             std::cerr << "Returns without truth-minv-based resonance tagging!" << std::endl;

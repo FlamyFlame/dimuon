@@ -198,8 +198,11 @@ inline std::vector<double> PairPtEdges(const std::string& mode = "nomerge")
     return e;
 }
 
-// The pair-pT edge the DELIVERED range starts at -- 49.97 GeV, the lower edge of the request's
-// control cell. Read from the canonical vector, never typed, and independent of the cell mode:
+// The pair-pT edge the DELIVERED range starts at: the lower edge of the request's control cell.
+// The VALUE is deliberately not written here -- it moves with ParamsSet::pair_pt_coarse_bins (it
+// was 49.97 GeV on the retired 8 GeV axis and is 52.2273 since the pair-pT floor moved to 9 GeV,
+// 2026-09-08), and a retyped edge in a comment is exactly what goes stale (CLAUDE.md Binnings
+// rule 1). Read from the canonical vector, never typed, and independent of the cell mode:
 // merging the cells ABOVE it cannot move it, which is why the delivered range is expressed as an
 // edge here and looked up in whatever axis is in use, rather than as a bin index.
 inline double FirstDeliveredPtEdge()

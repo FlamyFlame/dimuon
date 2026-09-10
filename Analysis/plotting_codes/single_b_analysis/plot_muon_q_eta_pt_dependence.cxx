@@ -30,7 +30,7 @@
 //             The canonical binning is NOT changed to suit a plot.
 //   centrality : ParamsSet::ctrbins = {0,5,10,20,30,50,80} with 0-5 and 5-10 merged into
 //             0-10, identical to the sibling macro's Plot C.
-//   p_T     : {4, 4.5, 5, 6, +inf} GeV. These four slices are the USER'S EXPLICIT CHOICE
+//   p_T     : {4.5, 5, 6, +inf} GeV. These three slices are the USER'S EXPLICIT CHOICE
 //             for this figure (2026-09-03) and are deliberately NOT
 //             ParamsSet::single_mu_pt_coarse_bins (READ it from ParamsSet; its values are not
 //             repeated here, because a retyped copy is what goes stale -- this comment used to
@@ -39,14 +39,10 @@
 //             binning has a single first bin. They are a plot-local diagnostic axis and
 //             feed no physics result, no fit and no correction.
 //
-//   *** OPEN, needs a user decision (raised 2026-09-09) ***
-//             The muon p_T threshold moved 4 -> 4.5 GeV on 2026-09-08 and is an NTUPLE-STAGE cut,
-//             so after the rerun the single-muon tree CONTAINS NOTHING below 4.5 GeV. The first
-//             slice [4, 4.5) is therefore empty BY CONSTRUCTION, and its legend entry would still
-//             be drawn. This figure's original question -- what the [4,4.5) muons do -- is also
-//             the question the 4.5 GeV cut was adopted to answer (muon_gap_cuts_acceptance.md
-//             F14), so it may simply have been settled. Options: drop the slice, keep it as a
-//             deliberately-empty control, or retire the macro. Not decided unilaterally.
+//             RESOLVED 2026-09-09 (user): the [4, 4.5) slice is DROPPED. It would have been empty
+//             by construction after the threshold moved to 4.5 GeV (an NTuple-stage cut), while
+//             still drawing a legend entry. The original question -- what the [4,4.5) muons do --
+//             is the one the 4.5 GeV adoption answered (muon_gap_cuts_acceptance.md F14).
 //
 // NORMALISATION: each curve is a unit-area PDF over the plotted q*eta range,
 //   Scale(1.,"width") then divide by Integral("width"). Shapes only -- the p_T slices
@@ -113,7 +109,12 @@ bool PassFiducialCut(double eta, int charge) {
 }
 
 // ---- the plot-local p_T slices (user-specified; see header) ----
-const std::vector<double> kPtEdges = {4.0, 4.5, 5.0, 6.0,
+// The [4.0, 4.5) slice was DROPPED on 2026-09-09 (user decision). The muon p_T threshold moved
+// 4 -> 4.5 GeV and it is an NTUPLE-STAGE cut, so the single-muon tree now contains nothing below
+// 4.5 GeV: that slice would have been empty by construction while still drawing a legend entry.
+// The figure's question -- the q*eta shape just above the threshold -- is unchanged; the
+// threshold is simply 4.5 now.
+const std::vector<double> kPtEdges = {4.5, 5.0, 6.0,
                                       std::numeric_limits<double>::infinity()};
 const int kNPt = static_cast<int>(kPtEdges.size()) - 1;
 

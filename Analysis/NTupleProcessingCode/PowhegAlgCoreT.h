@@ -86,7 +86,7 @@ protected:
     std::vector<float> *&       EventWeightsRef()   { return EventWeights; }
     
     bool                        getIsFullsim(){ return is_fullsim; }
-    bool                        getIsFullsimOverlay(){ return is_fullsim_overlay; }
+    bool                        getIsFullsimOverlay() const { return is_fullsim_overlay; }  // const: called from PowhegFullSimExtras::UseAllVertexIP() const (the PythiaAlgCoreT twin is already const)
     bool                        getPerformTruth(){ return perform_truth; }
     bool                        getUseLocal() const { return useLocal; }
 
