@@ -16,6 +16,7 @@
 #include <vector>
 #include <iostream>
 #include <algorithm>
+#include <stdexcept>
 #include "TChain.h"
 #include "TFile.h"
 #include "TParameter.h"
@@ -33,8 +34,14 @@
 static const std::string kBase    = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/";
 static const std::string kPlotDir = kBase + "plots/single_b_analysis/event_selection/";
 
+// The PbPb years shown, in x-axis order.  Every array below is sized by kNYears.
+static const int kYearsPP[] = {23, 24, 25, 26};
+static const int kNYears    = (int)(sizeof(kYearsPP) / sizeof(kYearsPP[0]));
+
 static std::vector<std::string> FilesForYear(int yr) {
     std::string base = kBase + "pbpb_20" + std::to_string(yr) + "/";
+    // NOTE: 2023 lists 3 parts here while plot_pbpb_event_sel_cuts.cxx lists 4.
+    // PRE-EXISTING inconsistency, left as found — do not "fix" it silently.
     if (yr == 23) return { base+"data_pbpb23_part1.root",
                            base+"data_pbpb23_part2.root",
                            base+"data_pbpb23_part3.root" };
@@ -46,7 +53,20 @@ static std::vector<std::string> FilesForYear(int yr) {
                            base+"data_pbpb25_part4.root",
                            base+"data_pbpb25_part5.root",
                            base+"data_pbpb25_part6.root" };
-    return {};
+    // PLACEHOLDER (2026): 5 grid tasks were submitted
+    // (SkimCode/run_26hi/InDstxt_PbPb2026_5p36TeV_part1..5.txt) so there are AT
+    // LEAST 5 parts; grid_monitor's chunked-hadd fallback can produce more.
+    // CONFIRM against pbpb_2026/ and extend — an UNDER-count silently drops data.
+    // See docs/tracking/pbpb2026_analysis_support.md.
+    if (yr == 26) return { base+"data_pbpb26_part1.root",
+                           base+"data_pbpb26_part2.root",
+                           base+"data_pbpb26_part3.root",
+                           base+"data_pbpb26_part4.root",
+                           base+"data_pbpb26_part5.root" };
+    // No silent empty list: it would build an empty TChain and give a mean of 0,
+    // i.e. a plotted (cut - mean) that is pure fiction.
+    throw std::runtime_error("FilesForYear: no input files configured for PbPb year "
+                             + std::to_string(yr));
 }
 
 struct YearResult {
@@ -125,21 +145,20 @@ void plot_zdc_preamp_cut_over_mean() {
     gStyle->SetOptStat(0);
     gSystem->mkdir(kPlotDir.c_str(), true);
 
-    const int years[3] = {23, 24, 25};
-    YearResult R[3];
-    for (int i = 0; i < 3; ++i) R[i] = ProcessYear(years[i]);
+    std::vector<YearResult> R(kNYears);
+    for (int i = 0; i < kNYears; ++i) R[i] = ProcessYear(kYearsPP[i]);
 
-    double diffA[3], diffC[3];
-    for (int i = 0; i < 3; ++i) {
+    std::vector<double> diffA(kNYears), diffC(kNYears);
+    for (int i = 0; i < kNYears; ++i) {
         diffA[i] = R[i].cut_A - R[i].mean_A;
         diffC[i] = R[i].cut_C - R[i].mean_C;
     }
 
     // y-axis range: span both A and C, always include zero
-    double lo = *std::min_element(diffA, diffA+3);
-    lo = std::min(lo, *std::min_element(diffC, diffC+3));
-    double hi = *std::max_element(diffA, diffA+3);
-    hi = std::max(hi, *std::max_element(diffC, diffC+3));
+    double lo = *std::min_element(diffA.begin(), diffA.end());
+    lo = std::min(lo, *std::min_element(diffC.begin(), diffC.end()));
+    double hi = *std::max_element(diffA.begin(), diffA.end());
+    hi = std::max(hi, *std::max_element(diffC.begin(), diffC.end()));
     double pad = 0.22 * (hi - lo);
     lo = std::min(lo - pad - 40., 0.);
     hi = hi + pad + 40.;
@@ -150,23 +169,25 @@ void plot_zdc_preamp_cut_over_mean() {
     c->SetBottomMargin(0.18);
     c->SetTopMargin(0.07);
 
-    const double xs[3] = {0., 1., 2.};
-    TGraph* gA = new TGraph(3, xs, diffA);
-    TGraph* gC = new TGraph(3, xs, diffC);
+    std::vector<double> xs(kNYears);
+    for (int i = 0; i < kNYears; ++i) xs[i] = (double)i;
+    const double x_lo = -0.5, x_hi = kNYears - 0.5;
+    TGraph* gA = new TGraph(kNYears, xs.data(), diffA.data());
+    TGraph* gC = new TGraph(kNYears, xs.data(), diffC.data());
 
     gA->SetMarkerStyle(20); gA->SetMarkerSize(1.8);
     gA->SetMarkerColor(kBlack); gA->SetLineColor(kBlack); gA->SetLineWidth(2);
     gC->SetMarkerStyle(21); gC->SetMarkerSize(1.8);
     gC->SetMarkerColor(kBlue+1); gC->SetLineColor(kBlue+1); gC->SetLineWidth(2);
 
-    TGraph* fr = new TGraph(3, xs, diffA);
+    TGraph* fr = new TGraph(kNYears, xs.data(), diffA.data());
     fr->SetTitle(";;Cut #minus mean [ADC]");
-    fr->GetXaxis()->SetLimits(-0.5, 2.5);
+    fr->GetXaxis()->SetLimits(x_lo, x_hi);
     fr->GetYaxis()->SetRangeUser(lo, hi);
-    fr->GetXaxis()->SetNdivisions(3);
+    fr->GetXaxis()->SetNdivisions(kNYears);
     fr->SetMarkerStyle(1); fr->SetMarkerColor(0); fr->SetLineColor(0);
     fr->Draw("AP");
-    fr->GetXaxis()->SetLimits(-0.5, 2.5);
+    fr->GetXaxis()->SetLimits(x_lo, x_hi);
     fr->GetYaxis()->SetRangeUser(lo, hi);
     fr->GetXaxis()->SetLabelOffset(999);
     fr->GetYaxis()->SetTitleOffset(1.5);
@@ -174,7 +195,7 @@ void plot_zdc_preamp_cut_over_mean() {
     fr->GetXaxis()->SetTitleSize(0.052);
 
     if (lo < 0. && hi > 0.) {
-        TLine* zl = new TLine(-0.5, 0., 2.5, 0.);
+        TLine* zl = new TLine(x_lo, 0., x_hi, 0.);
         zl->SetLineStyle(2); zl->SetLineColor(kGray+1);
         zl->Draw();
     }
@@ -185,14 +206,13 @@ void plot_zdc_preamp_cut_over_mean() {
     TLatex lab;
     lab.SetTextAlign(22); lab.SetTextSize(0.055);
     const double laby = lo - 0.09*(hi - lo);
-    lab.DrawLatex(0., laby, "2023");
-    lab.DrawLatex(1., laby, "2024");
-    lab.DrawLatex(2., laby, "2025");
+    for (int i = 0; i < kNYears; ++i)
+        lab.DrawLatex(xs[i], laby, Form("20%d", kYearsPP[i]));
 
     TLatex val;
     val.SetTextSize(0.042); val.SetTextAlign(21);
     const double off = 0.04 * (hi - lo);
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < kNYears; ++i) {
         val.SetTextColor(kBlack);
         val.DrawLatex(xs[i] - 0.09, diffA[i] + off, Form("%.0f", diffA[i]));
         val.SetTextColor(kBlue+1);

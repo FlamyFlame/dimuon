@@ -2,7 +2,7 @@
 // Sequential 5-cut event selection pipeline for PbPb data.
 //   Cut 1: ZDC vs FCal banana (loaded from event_sel_cuts_pbpb_YYYY.root)
 //   Cut 2: ZDC time |tA| < 1.5 ns AND |tC| < 1.5 ns
-//   Cut 3: ZDC preamp sum: fail only if BOTH A and C exceed threshold (hard cut per year; per-run mu+7sigma for 2025)
+//   Cut 3: ZDC preamp sum: fail only if BOTH A and C exceed threshold (hard cut per year; per-run mu+7sigma for 2025/2026)
 //   Cut 4: nTrk HItight fraction vs total nTrk — lower bound at mu-5sigma (per-slice Gauss)
 //   Cut 5: nTrk HItight vs FCal ET — band [mu-5sigma, mu+5sigma] (per-slice Gauss)
 // All cuts saved to event_sel_cuts_pbpb_YYYY.root.
@@ -12,7 +12,7 @@
 //
 // Usage:
 //   .L plot_pbpb_event_sel_cuts.cxx+
-//   plot_pbpb_event_sel_cuts(24)
+//   plot_pbpb_event_sel_cuts(24)   // run_year = 23, 24, 25 or 26
 
 #include <string>
 #include <vector>
@@ -42,16 +42,40 @@
 // ---- Cut tuning -------------------------------------------------------------
 static const double CUT2_T_NS_ALT    = 1.5;    // ZDC time window [ns]
 // Per-year ZDC preamp upper cut [ADC] — evaluate from Gaussian-to-tail turnover in 1D preamp histogram.
-// Values are {side_A, side_C}. pbpb2023 not yet evaluated (uses 2024 value as placeholder).
+// Values are {side_A, side_C}.
 static std::pair<float,float> GetPreampCuts(int yr) {
     static const std::map<int, std::pair<float,float>> kMap = {
         {23, {300.f, 300.f}},  // side A ~300 ADC, side C ~300 ADC
         {24, {420.f, 420.f}},  // symmetric; both sides well above 420
         {25, {850.f, 700.f}},  // side A ~850 ADC, side C ~700 ADC
+        // PLACEHOLDER (2026): copied from 2025, NOT yet evaluated on 2026 data.
+        // Must be re-derived from the 2026 1D preamp Gaussian-to-tail turnover
+        // once the skim exists.  See docs/tracking/pbpb2026_analysis_support.md.
+        // Note: for 2026 (like 2025) these scalars are only the per-run-fit
+        // fallback — the nominal Cut 3 uses the per-run mu+7sigma values.
+        {26, {850.f, 700.f}},
     };
     auto it = kMap.find(yr);
-    return (it != kMap.end()) ? it->second : std::make_pair(385.f, 385.f);
+    // No silent default: an invented preamp cut would be applied to every event
+    // of an unknown year with nobody told about it.
+    if (it == kMap.end())
+        throw std::runtime_error("GetPreampCuts: no ZDC preamp cut defined for PbPb year "
+                                 + std::to_string(yr));
+    return it->second;
 }
+// Years whose Cut 3 uses per-run mu+7sigma ZDC preamp thresholds instead of the
+// hard per-year scalar above.  2025 was derived from data; 2026 is ASSUMED to
+// behave the same way (same skim path / same ZDC readout configuration) —
+// PLACEHOLDER, to be confirmed once the 2026 skim exists.
+// See docs/tracking/pbpb2026_analysis_support.md.
+static bool UsesPerRunPreampCuts(int yr) { return yr == 25 || yr == 26; }
+
+// Years whose 'centrality' branch is unfilled (zero) in the skim, so the
+// centrality percentile must be recomputed from FCal ET.  Verified for 2025;
+// ASSUMED for 2026 because it reuses the 2025 skim path — PLACEHOLDER, confirm
+// against the 2026 NTUPs.  See docs/tracking/pbpb2026_analysis_support.md.
+static bool UsesFCalCentralityRecompute(int yr) { return yr == 25 || yr == 26; }
+
 static const double CUT4_N_SIGMA_ALT = 5.0;    // nTrk frac lower cut
 static const double CUT5_N_SIGMA_ALT = 5.0;    // nTrk-FCal band half-width
 
@@ -110,6 +134,21 @@ static std::map<int, std::vector<std::string>> BuildFileMapAlt() {
             base + "pbpb_2025/data_pbpb25_part4.root",
             base + "pbpb_2025/data_pbpb25_part5.root",
             base + "pbpb_2025/data_pbpb25_part6.root",
+        }},
+        // PLACEHOLDER (2026): the 2026 skim is submitted as 5 grid tasks
+        // (SkimCode/run_26hi/InDstxt_PbPb2026_5p36TeV_part1..5.txt), so there are
+        // AT LEAST 5 parts — but grid_monitor's chunked-hadd fallback splits a
+        // task whose output is too large into extra part files, so the final
+        // count can be LARGER.  CONFIRM against what actually lands in
+        // pbpb_2026/ and extend this list.  Missing files are skipped with a
+        // warning by FillHists() (an over-count is harmless), but an UNDER-count
+        // silently drops data.  See docs/tracking/pbpb2026_analysis_support.md.
+        {26, {
+            base + "pbpb_2026/data_pbpb26_part1.root",
+            base + "pbpb_2026/data_pbpb26_part2.root",
+            base + "pbpb_2026/data_pbpb26_part3.root",
+            base + "pbpb_2026/data_pbpb26_part4.root",
+            base + "pbpb_2026/data_pbpb26_part5.root",
         }},
     };
 }
@@ -211,7 +250,7 @@ public:
                       << " bad run(s) from PbPb 20" << yr_ << std::endl;
         BookHists();
         LoadCut1();
-        DerivePerRunPreampCuts25();  // no-op for 23/24; populates per_run_preamp_cuts_ for 25
+        DerivePerRunPreampCuts();  // no-op for 23/24; populates per_run_preamp_cuts_ for 25/26
         FillHists();
         DeriveCut4();
         FillCuts45();
@@ -245,7 +284,7 @@ private:
     Long64_t n_ctr80_[kNStages_A] = {};
     std::vector<EvDataAlt> stored_;  // events passing cuts 1-3
 
-    // Per-run preamp cuts for PbPb25 (derived by DerivePerRunPreampCuts25)
+    // Per-run preamp cuts for the years in UsesPerRunPreampCuts() (25, 26)
     std::map<int, std::pair<float,float>> per_run_preamp_cuts_;
 
     // Part III: preamp AC correlation split by Cut-3 pass/fail status
@@ -316,11 +355,12 @@ private:
     }
 
     // -------------------------------------------------------------------------
-    // PbPb25 only: derive per-run mu+7sigma ZDC preamp cuts from a first pass over
-    // the raw skim (trigger + Cut1 + Cut2), populating per_run_preamp_cuts_.
-    // No-op for 23/24.  Must be called after LoadCut1().
-    void DerivePerRunPreampCuts25() {
-        if (run_year_ != 25) return;
+    // For the years listed in UsesPerRunPreampCuts() (2025, and 2026 as a
+    // PLACEHOLDER assumption): derive per-run mu+7sigma ZDC preamp cuts from a
+    // first pass over the raw skim (trigger + Cut1 + Cut2), populating
+    // per_run_preamp_cuts_.  No-op for 23/24.  Must be called after LoadCut1().
+    void DerivePerRunPreampCuts() {
+        if (!UsesPerRunPreampCuts(run_year_)) return;
 
         static const double kFitLo  = -800., kFitHi = 1500.;
         static const int    kNSig   = 7;      // mu + 7*sigma
@@ -356,7 +396,7 @@ private:
 
         std::map<int, TH1D*> hA_map, hC_map;
         const Long64_t n_tot = chain.GetEntries();
-        std::cout << "DerivePerRunPreampCuts25: " << n_tot << " events, scanning..." << std::flush;
+        std::cout << "DerivePerRunPreampCuts: " << n_tot << " events, scanning..." << std::flush;
         long long n_sel = 0;
 
         for (Long64_t i = 0; i < n_tot; ++i) {
@@ -371,8 +411,8 @@ private:
             ++n_sel;
 
             if (hA_map.find(run_num) == hA_map.end()) {
-                hA_map[run_num] = new TH1D(Form("prc25_hA_%d", run_num), "", 198, -1000., 2960.);
-                hC_map[run_num] = new TH1D(Form("prc25_hC_%d", run_num), "", 198, -1000., 2960.);
+                hA_map[run_num] = new TH1D(Form("prc_hA_%d", run_num), "", 198, -1000., 2960.);
+                hC_map[run_num] = new TH1D(Form("prc_hC_%d", run_num), "", 198, -1000., 2960.);
                 hA_map[run_num]->SetDirectory(nullptr);
                 hC_map[run_num]->SetDirectory(nullptr);
             }
@@ -402,12 +442,12 @@ private:
             return {mu2 + kNSig * sig2, true};
         };
 
-        const auto [hard_A, hard_C] = GetPreampCuts(25);
+        const auto [hard_A, hard_C] = GetPreampCuts(run_year_);  // fallback for failed fits
         int n_fit_ok = 0;
         for (auto& [run, hA] : hA_map) {
             TH1D* hC = hC_map[run];
-            auto [cutA, okA] = fitCut(hA, Form("prc25_fA_%d", run));
-            auto [cutC, okC] = fitCut(hC, Form("prc25_fC_%d", run));
+            auto [cutA, okA] = fitCut(hA, Form("prc_fA_%d", run));
+            auto [cutC, okC] = fitCut(hC, Form("prc_fC_%d", run));
             per_run_preamp_cuts_[run] = {
                 okA ? (float)cutA : hard_A,
                 okC ? (float)cutC : hard_C
@@ -417,7 +457,7 @@ private:
                 run, (double)per_run_preamp_cuts_[run].first,  (okA ? "fit" : "hard"),
                      (double)per_run_preamp_cuts_[run].second, (okC ? "fit" : "hard"));
         }
-        std::cout << "DerivePerRunPreampCuts25: " << n_fit_ok << "/" << hA_map.size()
+        std::cout << "DerivePerRunPreampCuts: " << n_fit_ok << "/" << hA_map.size()
                   << " runs with successful fits on both sides." << std::endl;
 
         for (auto& [r, h] : hA_map) delete h;
@@ -504,7 +544,7 @@ private:
             }
             // For years where 'centrality' branch is unfilled, recalculate from FCal ET
             // using the same Glauber table as MuonPairPbPb::UpdateCentrality().
-            ev.centrality = (run_year_ == 25)
+            ev.centrality = UsesFCalCentralityRecompute(run_year_)
                             ? CentralityFromFCal2023(ev.fcal_AC)
                             : centrality_i;
             const bool is_ctr80 = (ev.centrality >= 0 && ev.centrality < 80);
@@ -539,9 +579,9 @@ private:
             if (is_ctr80) ++n_ctr80_[pass_c2 ? kC2Pass_A : kC2Fail_A];
             if (!pass_c2) continue;
 
-            // Determine Cut 3 threshold: per-run mu+7sigma for yr25, hard cut for 23/24
+            // Determine Cut 3 threshold: per-run mu+7sigma for yr25/26, hard cut for 23/24
             float c3_A = cut3_preamp_A_, c3_C = cut3_preamp_C_;
-            if (run_year_ == 25 && !per_run_preamp_cuts_.empty()) {
+            if (UsesPerRunPreampCuts(run_year_) && !per_run_preamp_cuts_.empty()) {
                 auto it = per_run_preamp_cuts_.find(run_num_ev);
                 if (it != per_run_preamp_cuts_.end()) {
                     c3_A = it->second.first;
@@ -687,8 +727,8 @@ private:
         TParameter<double> p4("nTrk_frac_n_sigma",      CUT4_N_SIGMA_ALT);     p4.Write("nTrk_frac_n_sigma",          TObject::kOverwrite);
         TParameter<double> p5("nTrk_FCal_band_n_sigma", CUT5_N_SIGMA_ALT);     p5.Write("nTrk_FCal_band_n_sigma",     TObject::kOverwrite);
 
-        // PbPb25: write per-run preamp cut TTree (branches: run_number, cut_A_ADC, cut_C_ADC)
-        if (run_year_ == 25 && !per_run_preamp_cuts_.empty()) {
+        // PbPb25/26: write per-run preamp cut TTree (branches: run_number, cut_A_ADC, cut_C_ADC)
+        if (UsesPerRunPreampCuts(run_year_) && !per_run_preamp_cuts_.empty()) {
             f->cd();
             std::vector<int> runs;
             for (auto& kv : per_run_preamp_cuts_) runs.push_back(kv.first);
@@ -696,7 +736,7 @@ private:
             Int_t    run_num_w = 0;
             Double_t cut_a_w = 0., cut_c_w = 0.;
             TTree* t = new TTree(PbPbEvSelKey::kPreampPerRunTree,
-                                 "Per-run ZDC preamp mu+7sigma cuts (PbPb25)");
+                                 Form("Per-run ZDC preamp mu+7sigma cuts (PbPb20%s)", yr_.c_str()));
             t->SetDirectory(nullptr);
             t->Branch("run_number", &run_num_w, "run_number/I");
             t->Branch("cut_A_ADC",  &cut_a_w,  "cut_A_ADC/D");
@@ -763,7 +803,9 @@ private:
         double zoom_lo = -800., zoom_hi = 1500.;
         if      (run_year_ == 23) { zoom_lo = -500.; zoom_hi =  700.; }
         else if (run_year_ == 24) { zoom_lo = -800.; zoom_hi =  800.; }
-        // year 25: keep [-800, 1500]
+        // years 25 and 26: keep the default [-800, 1500].  For 2026 this is a
+        // PLACEHOLDER inherited from 2025 (cosmetic only — it sets the display
+        // window, not the cut).  See docs/tracking/pbpb2026_analysis_support.md.
 
         TCanvas* c = new TCanvas("c_alt_cut3_sa", "", 1200, 600);
         c->Divide(2, 1, 0.005, 0.005);
@@ -1045,7 +1087,7 @@ private:
         lone.DrawClone();
         TLatex tl; tl.SetNDC(); tl.SetTextSize(0.035);
         AddLabel(tl, 0.17, 0.25);
-        if (run_year_ == 25)
+        if (UsesFCalCentralityRecompute(run_year_))
             tl.DrawLatex(0.17, 0.19, "Centrality from FCal E_{T} (pbpb2023 Glauber thresholds)");
         c->SaveAs(OutPath("centrality_ratio_after_before_cuts").c_str());
         delete c; delete ratio;
@@ -1060,7 +1102,7 @@ private:
         h_centr_before_cuts_->Draw("E");
         TLatex tl; tl.SetNDC(); tl.SetTextSize(0.035);
         AddLabel(tl, 0.17, 0.88);
-        if (run_year_ == 25)
+        if (UsesFCalCentralityRecompute(run_year_))
             tl.DrawLatex(0.17, 0.82, "Centrality from FCal E_{T} (pbpb2023 Glauber thresholds)");
         c->SaveAs(OutPath("centrality_before_cuts").c_str());
         delete c;
@@ -1075,7 +1117,7 @@ private:
         h_centr_after_cuts_->Draw("E");
         TLatex tl; tl.SetNDC(); tl.SetTextSize(0.035);
         AddLabel(tl, 0.17, 0.88);
-        if (run_year_ == 25)
+        if (UsesFCalCentralityRecompute(run_year_))
             tl.DrawLatex(0.17, 0.82, "Centrality from FCal E_{T} (pbpb2023 Glauber thresholds)");
         c->SaveAs(OutPath("centrality_after_cuts").c_str());
         delete c;
@@ -1099,7 +1141,7 @@ private:
             "Exactly one side fails Cut 3",
             "Both A & C fail Cut 3"
         };
-        const bool is_perrun = (run_year_ == 25);
+        const bool is_perrun = UsesPerRunPreampCuts(run_year_);
         const std::string cut_desc = is_perrun
             ? "per-run #mu+7#sigma"
             : Form("A=%.0f ADC, C=%.0f ADC", (double)cut3_preamp_A_, (double)cut3_preamp_C_);

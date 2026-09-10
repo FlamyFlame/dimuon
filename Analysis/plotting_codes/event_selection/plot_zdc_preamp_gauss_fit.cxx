@@ -1,8 +1,8 @@
 // plot_zdc_preamp_gauss_fit.cxx
 //
-// 2×3 canvas of ZDC presample amplitude distributions with Gaussian fits.
+// 2×N canvas of ZDC presample amplitude distributions with Gaussian fits.
 //   Rows: Side A (top), Side C (bottom)
-//   Columns: pbpb2023, pbpb2024, pbpb2025
+//   Columns: one per PbPb year in kYearsPP (pbpb2023, 2024, 2025, 2026)
 //
 // Data: events passing trigger + Cut1 (ZDC-FCal banana) + Cut2 (ZDC time).
 // Fit range matches the per-year zoom window used in the standalone cut-3 plot.
@@ -34,8 +34,14 @@
 static const std::string kBase    = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/";
 static const std::string kPlotDir = kBase + "plots/single_b_analysis/event_selection/";
 
+// The PbPb years shown, in column order.  Every array below is sized by kNYears.
+static const int kYearsPP[] = {23, 24, 25, 26};
+static const int kNYears    = (int)(sizeof(kYearsPP) / sizeof(kYearsPP[0]));
+
 static std::vector<std::string> FilesForYear(int yr) {
     std::string base = kBase + "pbpb_20" + std::to_string(yr) + "/";
+    // NOTE: 2023 lists 3 parts here while plot_pbpb_event_sel_cuts.cxx lists 4.
+    // PRE-EXISTING inconsistency, left as found — do not "fix" it silently.
     if (yr == 23) return { base+"data_pbpb23_part1.root",
                            base+"data_pbpb23_part2.root",
                            base+"data_pbpb23_part3.root" };
@@ -47,15 +53,35 @@ static std::vector<std::string> FilesForYear(int yr) {
                            base+"data_pbpb25_part4.root",
                            base+"data_pbpb25_part5.root",
                            base+"data_pbpb25_part6.root" };
-    return {};
+    // PLACEHOLDER (2026): 5 grid tasks were submitted
+    // (SkimCode/run_26hi/InDstxt_PbPb2026_5p36TeV_part1..5.txt) so there are AT
+    // LEAST 5 parts; grid_monitor's chunked-hadd fallback can produce more.
+    // CONFIRM against pbpb_2026/ and extend — an UNDER-count silently drops data.
+    // See docs/tracking/pbpb2026_analysis_support.md.
+    if (yr == 26) return { base+"data_pbpb26_part1.root",
+                           base+"data_pbpb26_part2.root",
+                           base+"data_pbpb26_part3.root",
+                           base+"data_pbpb26_part4.root",
+                           base+"data_pbpb26_part5.root" };
+    // No silent empty list: it would build an empty TChain and produce an empty
+    // histogram that still gets fitted and drawn as if it were data.
+    throw std::runtime_error("FilesForYear: no input files configured for PbPb year "
+                             + std::to_string(yr));
 }
 
 // Per-year zoom range (mirrors DrawStandaloneCut3 in plot_pbpb_event_sel_cuts.cxx)
 static void ZoomRange(int yr, double& lo, double& hi) {
-    lo = -800.; hi = 1500.;
     if      (yr == 23) { lo = -500.; hi =  700.; }
     else if (yr == 24) { lo = -800.; hi =  800.; }
-    // yr 25: keep [-800, 1500]
+    else if (yr == 25) { lo = -800.; hi = 1500.; }
+    // PLACEHOLDER (2026): copied from 2025; the fit range is also the Gaussian
+    // seed window, so re-check it against the 2026 preamp distribution.
+    // See docs/tracking/pbpb2026_analysis_support.md.
+    else if (yr == 26) { lo = -800.; hi = 1500.; }
+    // No silent default window: the zoom range IS the fit range here, so an
+    // unlisted year would be fitted over a window nobody chose.
+    else throw std::runtime_error("ZoomRange: no preamp zoom/fit range defined for PbPb year "
+                                  + std::to_string(yr));
 }
 
 struct YearHists {
@@ -160,27 +186,27 @@ void plot_zdc_preamp_gauss_fit() {
     gStyle->SetOptStat(0);
     gSystem->mkdir(kPlotDir.c_str(), true);
 
-    const int years[3] = {23, 24, 25};
-    YearHists Y[3];
-    for (int i = 0; i < 3; ++i) Y[i] = ProcessYear(years[i]);
+    std::vector<YearHists> Y(kNYears);
+    for (int i = 0; i < kNYears; ++i) Y[i] = ProcessYear(kYearsPP[i]);
 
     // Rebin histograms for display (×3 → 60 ADC/bin)
     const int rebin = 3;
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < kNYears; ++i) {
         Y[i].hA->Rebin(rebin); Y[i].hA->Scale(1.0 / rebin);
         Y[i].hC->Rebin(rebin); Y[i].hC->Scale(1.0 / rebin);
     }
 
-    // Canvas: 3 columns × 2 rows; pad index = col + row*3 + 1 (ROOT numbering)
-    TCanvas* cv = new TCanvas("cv_gauss", "", 1500, 900);
-    cv->Divide(3, 2, 0.003, 0.003);
+    // Canvas: kNYears columns × 2 rows; pad index = col + row*kNYears + 1 (ROOT numbering).
+    // Width scales with the column count (was 1500 for three columns).
+    TCanvas* cv = new TCanvas("cv_gauss", "", 500 * kNYears, 900);
+    cv->Divide(kNYears, 2, 0.003, 0.003);
 
     const char* sideLabel[2] = {"A", "C"};
 
     for (int row = 0; row < 2; ++row) {          // row 0 = Side A, row 1 = Side C
-        for (int col = 0; col < 3; ++col) {       // col = year index
-            int yr    = years[col];
-            int padNo = col + 1 + row * 3;        // ROOT pad number (1-based)
+        for (int col = 0; col < kNYears; ++col) { // col = year index
+            int yr    = kYearsPP[col];
+            int padNo = col + 1 + row * kNYears;  // ROOT pad number (1-based)
             cv->cd(padNo);
             gPad->SetLogy();
             gPad->SetLeftMargin(0.15);
@@ -247,9 +273,10 @@ void plot_zdc_preamp_gauss_fit() {
         }
     }
 
-    const std::string out = kPlotDir + "zdc_preamp_gauss_fit_2x3.png";
+    // Filename carries the actual grid so it can never claim a layout it does not have.
+    const std::string out = kPlotDir + Form("zdc_preamp_gauss_fit_2x%d.png", kNYears);
     cv->SaveAs(out.c_str());
     std::cout << "Saved: " << out << std::endl;
 
-    for (int i = 0; i < 3; ++i) { delete Y[i].hA; delete Y[i].hC; }
+    for (int i = 0; i < kNYears; ++i) { delete Y[i].hA; delete Y[i].hC; }
 }

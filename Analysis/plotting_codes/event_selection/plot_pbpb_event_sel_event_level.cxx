@@ -6,7 +6,7 @@
 //
 // Usage:
 //   .L plot_pbpb_event_sel_event_level.cxx+
-//   plot_pbpb_event_sel_event_level(24)   // run_year = 23 or 24
+//   plot_pbpb_event_sel_event_level(24)   // run_year = 23, 24, 25 or 26
 
 #include <string>
 #include <vector>
@@ -45,9 +45,18 @@ static std::pair<double,double> GetBgSearchRange(int yr) {
         {23, {220., 350.}},
         {24, {180., 300.}},
         {25, {170., 320.}},
+        // PLACEHOLDER (2026): copied from 2025; NOT yet tuned on 2026 data.
+        // Re-inspect the 2026 ZDC-vs-FCal 2D distribution and adjust.
+        // See docs/tracking/pbpb2026_analysis_support.md.
+        {26, {170., 320.}},
     };
     auto it = kBgMap.find(yr);
-    return (it != kBgMap.end()) ? it->second : std::make_pair(180., 300.);
+    // No silent default: falling back to another year's search window would fit
+    // the pileup band in the wrong place with nobody told about it.
+    if (it == kBgMap.end())
+        throw std::runtime_error("GetBgSearchRange: no background search range defined "
+                                 "for PbPb year " + std::to_string(yr));
+    return it->second;
 }
 
 // Per-year quadratic initial guess for background-band mu vs FCal ET [TeV].
@@ -61,12 +70,56 @@ static double GetBgMuGuess(int yr, double xcen) {
         {23, {-8./3.,          16./3.,          296.              }},  // pts: (3.5,282),(4.5,266),(5.0,256)
         {24, {-325./153.,     290./153.,       272. + 720./153. }},
         {25, {-50./9.,        145./9.,         270. -  77./9.   }},
+        // PLACEHOLDER (2026): copied from 2025 — the 2026 calibration points have
+        // not been read off yet.  See docs/tracking/pbpb2026_analysis_support.md.
+        {26, {-50./9.,        145./9.,         270. -  77./9.   }},
     };
     auto it = kQuad.find(yr);
-    if (it == kQuad.end()) return 250.;
+    // No silent default: a flat 250 would seed the background fit at an
+    // arbitrary place for an unconfigured year without anyone noticing.
+    if (it == kQuad.end())
+        throw std::runtime_error("GetBgMuGuess: no background mu guess defined for PbPb year "
+                                 + std::to_string(yr));
     const auto& q = it->second;
     return q.a * xcen * xcen + q.b * xcen + q.c;
 }
+
+// ---- Centrality recalculation from FCal ET ----------------------------------
+// PbPb2023 Glauber v3.2 table: FCal ET lower bounds (TeV) per integer percentile bin (0-84).
+// Mirrors PairPbPbExtras::FCal_ET_Bins_PbPb2023 in MuonPairPbPb.h.
+// Used for years where the 'centrality' branch is unfilled (pbpb2025, pbpb2026).
+// VERBATIM MIRROR of the same block in plot_pbpb_event_sel_cuts.cxx — keep the two
+// in sync (and with PairPbPbExtras::FCal_ET_Bins_PbPb2023, the canonical table).
+static const float kFCalBinsPbPb2023[85] = {
+  4.51272f, 4.32043f, 4.15372f, 3.99602f, 3.84498f, 3.69944f, 3.55802f, 3.42045f, 3.28744f, 3.15972f, // 0-10
+  3.03748f, 2.92012f, 2.80723f, 2.69878f, 2.59464f, 2.49406f, 2.39646f, 2.30180f, 2.21028f, 2.12188f, // 10-20
+  2.03659f, 1.95428f, 1.87489f, 1.79842f, 1.72484f, 1.65387f, 1.58516f, 1.51853f, 1.45406f, 1.39178f, // 20-30
+  1.33168f, 1.27363f, 1.21752f, 1.16336f, 1.11112f, 1.06069f, 1.01210f, 0.96518f, 0.91991f, 0.87632f, // 30-40
+  0.83431f, 0.79384f, 0.75493f, 0.71753f, 0.68162f, 0.64714f, 0.61393f, 0.58195f, 0.55126f, 0.52171f, // 40-50
+  0.49348f, 0.46640f, 0.44043f, 0.41569f, 0.39200f, 0.36933f, 0.34768f, 0.32701f, 0.30731f, 0.28853f, // 50-60
+  0.27064f, 0.25357f, 0.23726f, 0.22178f, 0.20720f, 0.19325f, 0.17983f, 0.16748f, 0.15557f, 0.14435f, // 60-70
+  0.13388f, 0.12389f, 0.11468f, 0.10598f, 0.09765f, 0.09015f, 0.08264f, 0.07589f, 0.06955f, 0.06321f, // 70-80
+  0.05760f, 0.05273f, 0.04787f, 0.04300f, 0.03885f                                                     // 80-85
+};
+// Returns integer centrality percentile [0,84], or -1 if FCal ET below the 85th-percentile boundary.
+// Identical logic to PairPbPbExtras::GetCentrality() with std::greater binary search.
+static int CentralityFromFCal2023(float fcal_AC) {
+    const int n = 85;
+    // lower_bound with greater<float>: first position where bins[k] <= fcal_AC
+    int lo = 0, hi = n;
+    while (lo < hi) {
+        int mid = (lo + hi) / 2;
+        if (kFCalBinsPbPb2023[mid] > fcal_AC) lo = mid + 1;
+        else                                   hi = mid;
+    }
+    return (lo >= n) ? -1 : lo;
+}
+
+// Years whose 'centrality' branch is unfilled (zero) in the skim, so the centrality
+// percentile must be recomputed from FCal ET.  Verified for 2025; ASSUMED for 2026
+// because it reuses the 2025 skim path — PLACEHOLDER, confirm against the 2026 NTUPs.
+// See docs/tracking/pbpb2026_analysis_support.md.
+static bool UsesFCalCentralityRecompute(int yr) { return yr == 25 || yr == 26; }
 
 // ---- per-year input file lists ----------------------------------------------
 static std::map<int, std::vector<std::string>> BuildFileMap() {
@@ -89,6 +142,20 @@ static std::map<int, std::vector<std::string>> BuildFileMap() {
             base + "pbpb_2025/data_pbpb25_part4.root",
             base + "pbpb_2025/data_pbpb25_part5.root",
             base + "pbpb_2025/data_pbpb25_part6.root",
+        }},
+        // PLACEHOLDER (2026): the 2026 skim is submitted as 5 grid tasks
+        // (SkimCode/run_26hi/InDstxt_PbPb2026_5p36TeV_part1..5.txt), so there are
+        // AT LEAST 5 parts — grid_monitor's chunked-hadd fallback can split a
+        // large task into extra part files, so the final count can be LARGER.
+        // CONFIRM against what lands in pbpb_2026/ and extend this list; an
+        // UNDER-count silently drops data.
+        // See docs/tracking/pbpb2026_analysis_support.md.
+        {26, {
+            base + "pbpb_2026/data_pbpb26_part1.root",
+            base + "pbpb_2026/data_pbpb26_part2.root",
+            base + "pbpb_2026/data_pbpb26_part3.root",
+            base + "pbpb_2026/data_pbpb26_part4.root",
+            base + "pbpb_2026/data_pbpb26_part5.root",
         }},
     };
 }
@@ -785,9 +852,17 @@ private:
             {23, {3.4, 225., 4.8, 165.}},
             {24, {3.4, 202., 4.8, 153.}},
             {25, {3.4, 200., 4.8, 152.}},
+            // PLACEHOLDER (2026): copied from 2025; re-read the calibration points
+            // off the 2026 ZDC-vs-FCal distribution.
+            // See docs/tracking/pbpb2026_analysis_support.md.
+            {26, {3.4, 200., 4.8, 152.}},
         };
         auto it = kPts.find(yr);
-        if (it == kPts.end()) return {3.4, 202., 4.8, 153.};
+        // No silent default: another year's calibration points would define a
+        // different alt banana cut with no warning.
+        if (it == kPts.end())
+            throw std::runtime_error("GetAltCutPts: no alt-cut calibration points defined "
+                                     "for PbPb year " + std::to_string(yr));
         return {it->second[0], it->second[1], it->second[2], it->second[3]};
     }
 
@@ -1053,18 +1128,28 @@ private:
         const Long64_t n = chain.GetEntries();
         std::cout << "ZDC time centrality pass: processing " << n << " events" << std::endl;
 
+        const bool recompute_ctr = UsesFCalCentralityRecompute(run_year_);
+        if (recompute_ctr)
+            std::cout << "  centrality recomputed from FCal E_{T} "
+                         "(PbPb2023 Glauber table); the skim 'centrality' branch is unfilled "
+                         "for PbPb20" << yr_ << std::endl;
+
         for (Long64_t i = 0; i < n; ++i) {
             chain.GetEntry(i);
             if (!b_HLT_mu4) continue;
-            if (centrality < 0 || centrality > 9) continue;  // keep 0-9 only
 
             const float fcal_AC = (FCal_Et_P + FCal_Et_N) * 1e-6f;
+            // For years whose 'centrality' branch is zero-filled, every event would
+            // otherwise be assigned centrality 0 and pile into the 0-1% panel.
+            const int ctr = recompute_ctr ? CentralityFromFCal2023(fcal_AC) : centrality;
+            if (ctr < 0 || ctr > 9) continue;  // keep 0-9 only
+
             const float zdc_tot = (zdc_E[0] + zdc_E[1]) / 1000.f;
             // Apply banana cut (interpolated)
             if (EvalCut(&g_cut, fcal_AC) > 0. && zdc_tot > EvalCut(&g_cut, fcal_AC)) continue;
 
             const float tA = zdc_t[1], tC = zdc_t[0];  // [1]=A, [0]=C
-            int ic = (centrality <= 4) ? centrality : 5;  // 0-4 individual, 5-9 → bin 5
+            int ic = (ctr <= 4) ? ctr : 5;  // 0-4 individual, 5-9 → bin 5
             hh[ic]->Fill(tA, tC);
         }
         std::cout << "ZDC time centrality histograms filled." << std::endl;
@@ -1083,6 +1168,10 @@ private:
             TLatex tl; tl.SetNDC(); tl.SetTextSize(0.055);
             tl.DrawLatex(0.15, 0.87, Form("Pb+Pb 20%s, centr. %s", yr_.c_str(), clabels[ic]));
             tl.DrawLatex(0.15, 0.79, "Banana cut passed");
+            if (recompute_ctr) {
+                tl.SetTextSize(0.040);
+                tl.DrawLatex(0.15, 0.72, "Centrality from FCal E_{T} (pbpb2023 Glauber thresholds)");
+            }
         }
         c->SaveAs(OutPath("ZDC_time_AC_corr_top_5_centr").c_str());
         std::cout << "Saved: " << OutPath("ZDC_time_AC_corr_top_5_centr") << std::endl;

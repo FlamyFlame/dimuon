@@ -2,7 +2,7 @@
 //
 // Ratio of the hard ZDC preamp cut (ADC) to the mean ZDC amplitude sum
 // (zdc_ZdcAmp, same side) for events passing trigger + Cut1 + Cut2.
-// Plotted for side A and side C across the three PbPb years.
+// Plotted for side A and side C across the PbPb data-taking years.
 //
 // If the ratio is approximately constant, the inter-year cut variation tracks
 // the amplitude scale (calibration shift).  A varying ratio signals a genuine
@@ -17,6 +17,7 @@
 #include <iostream>
 #include <algorithm>
 #include <utility>
+#include <stdexcept>
 #include "TChain.h"
 #include "TFile.h"
 #include "TParameter.h"
@@ -33,8 +34,15 @@
 static const std::string kBase    = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/";
 static const std::string kPlotDir = kBase + "plots/single_b_analysis/event_selection/";
 
+// The PbPb years shown, in x-axis order.  Every array in this macro is sized by
+// kNYears — adding a year means editing this list and FilesForYear() only.
+static const int kYearsPP[] = {23, 24, 25, 26};
+static const int kNYears    = (int)(sizeof(kYearsPP) / sizeof(kYearsPP[0]));
+
 static std::vector<std::string> FilesForYear(int yr) {
     std::string base = kBase + "pbpb_20" + std::to_string(yr) + "/";
+    // NOTE: 2023 lists 3 parts here while plot_pbpb_event_sel_cuts.cxx lists 4.
+    // PRE-EXISTING inconsistency, left as found — do not "fix" it silently.
     if (yr == 23) return { base+"data_pbpb23_part1.root",
                            base+"data_pbpb23_part2.root",
                            base+"data_pbpb23_part3.root" };
@@ -46,7 +54,20 @@ static std::vector<std::string> FilesForYear(int yr) {
                            base+"data_pbpb25_part4.root",
                            base+"data_pbpb25_part5.root",
                            base+"data_pbpb25_part6.root" };
-    return {};
+    // PLACEHOLDER (2026): 5 grid tasks were submitted
+    // (SkimCode/run_26hi/InDstxt_PbPb2026_5p36TeV_part1..5.txt) so there are AT
+    // LEAST 5 parts; grid_monitor's chunked-hadd fallback can produce more.
+    // CONFIRM against pbpb_2026/ and extend — an UNDER-count silently drops data.
+    // See docs/tracking/pbpb2026_analysis_support.md.
+    if (yr == 26) return { base+"data_pbpb26_part1.root",
+                           base+"data_pbpb26_part2.root",
+                           base+"data_pbpb26_part3.root",
+                           base+"data_pbpb26_part4.root",
+                           base+"data_pbpb26_part5.root" };
+    // No silent empty list: it would build an empty TChain and yield a mean of 1
+    // (see ProcessYear), i.e. a plotted ratio that is pure fiction.
+    throw std::runtime_error("FilesForYear: no input files configured for PbPb year "
+                             + std::to_string(yr));
 }
 
 struct YearResult {
@@ -121,8 +142,8 @@ static YearResult ProcessYear(int yr) {
     return res;
 }
 
-// Draw one panel: 3-column LP graph for side A (black) and C (blue).
-// valsA/valsC: 3-element arrays; fmt: printf format for value annotations.
+// Draw one panel: one column per year, LP graph for side A (black) and C (blue).
+// valsA/valsC: kNYears-element arrays; fmt: printf format for value annotations.
 static void DrawPanel(TPad* pad,
                       const double* valsA, const double* valsC,
                       const char* ytitle, const char* fmt,
@@ -133,30 +154,32 @@ static void DrawPanel(TPad* pad,
     pad->SetBottomMargin(0.18);
     pad->SetTopMargin(0.07);
 
-    const double xs[3] = {0., 1., 2.};
-    TGraph* gA = new TGraph(3, xs, valsA);
-    TGraph* gC = new TGraph(3, xs, valsC);
+    std::vector<double> xs(kNYears);
+    for (int i = 0; i < kNYears; ++i) xs[i] = (double)i;
+    const double x_lo = -0.5, x_hi = kNYears - 0.5;
+    TGraph* gA = new TGraph(kNYears, xs.data(), valsA);
+    TGraph* gC = new TGraph(kNYears, xs.data(), valsC);
     gA->SetMarkerStyle(20); gA->SetMarkerSize(1.8);
     gA->SetMarkerColor(kBlack); gA->SetLineColor(kBlack); gA->SetLineWidth(2);
     gC->SetMarkerStyle(21); gC->SetMarkerSize(1.8);
     gC->SetMarkerColor(kBlue+1); gC->SetLineColor(kBlue+1); gC->SetLineWidth(2);
 
-    TGraph* fr = new TGraph(3, xs, valsA);
+    TGraph* fr = new TGraph(kNYears, xs.data(), valsA);
     fr->SetTitle(Form(";PbPb year;%s", ytitle));
-    fr->GetXaxis()->SetLimits(-0.5, 2.5);
+    fr->GetXaxis()->SetLimits(x_lo, x_hi);
     fr->GetYaxis()->SetRangeUser(ylo, yhi);
-    fr->GetXaxis()->SetNdivisions(3);
+    fr->GetXaxis()->SetNdivisions(kNYears);
     fr->GetXaxis()->SetLabelOffset(999);
     fr->GetYaxis()->SetTitleOffset(1.6);
     fr->GetYaxis()->SetTitleSize(0.052);
     fr->GetXaxis()->SetTitleSize(0.052);
     fr->SetMarkerStyle(1); fr->SetMarkerColor(0); fr->SetLineColor(0);
     fr->Draw("AP");
-    fr->GetXaxis()->SetLimits(-0.5, 2.5);
+    fr->GetXaxis()->SetLimits(x_lo, x_hi);
     fr->GetYaxis()->SetRangeUser(ylo, yhi);
 
     if (ylo < 0. && yhi > 0.) {
-        TLine* zl = new TLine(-0.5, 0., 2.5, 0.);
+        TLine* zl = new TLine(x_lo, 0., x_hi, 0.);
         zl->SetLineStyle(2); zl->SetLineColor(kGray+1);
         zl->Draw();
     }
@@ -167,14 +190,13 @@ static void DrawPanel(TPad* pad,
     TLatex lab;
     lab.SetTextAlign(22); lab.SetTextSize(0.055);
     const double laby = ylo - 0.09*(yhi - ylo);
-    lab.DrawLatex(0., laby, "2023");
-    lab.DrawLatex(1., laby, "2024");
-    lab.DrawLatex(2., laby, "2025");
+    for (int i = 0; i < kNYears; ++i)
+        lab.DrawLatex(xs[i], laby, Form("20%d", kYearsPP[i]));
 
     TLatex val;
     val.SetTextSize(0.042); val.SetTextAlign(21);
     const double off = 0.04 * (yhi - ylo);
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < kNYears; ++i) {
         val.SetTextColor(kBlack);
         val.DrawLatex(xs[i] - 0.09, valsA[i] + off, Form(fmt, valsA[i]));
         val.SetTextColor(kBlue+1);
@@ -192,8 +214,8 @@ static void DrawPanel(TPad* pad,
 
 // y-axis range: 25% padding, always includes zero.
 static std::pair<double,double> YRange(const double* a, const double* b) {
-    double lo = std::min(*std::min_element(a,a+3), *std::min_element(b,b+3));
-    double hi = std::max(*std::max_element(a,a+3), *std::max_element(b,b+3));
+    double lo = std::min(*std::min_element(a,a+kNYears), *std::min_element(b,b+kNYears));
+    double hi = std::max(*std::max_element(a,a+kNYears), *std::max_element(b,b+kNYears));
     lo = std::min(lo, 0.);
     double pad = 0.25 * (hi - lo);
     return {lo - pad, hi + pad};
@@ -203,26 +225,25 @@ void plot_zdc_preamp_cut_vs_zdcamp() {
     gStyle->SetOptStat(0);
     gSystem->mkdir(kPlotDir.c_str(), true);
 
-    const int years[3] = {23, 24, 25};
-    YearResult R[3];
-    for (int i = 0; i < 3; ++i) R[i] = ProcessYear(years[i]);
+    std::vector<YearResult> R(kNYears);
+    for (int i = 0; i < kNYears; ++i) R[i] = ProcessYear(kYearsPP[i]);
 
-    double cutA[3], cutC[3], ratioA[3], ratioC[3];
-    for (int i = 0; i < 3; ++i) {
+    std::vector<double> cutA(kNYears), cutC(kNYears), ratioA(kNYears), ratioC(kNYears);
+    for (int i = 0; i < kNYears; ++i) {
         cutA[i]   = R[i].cut_A;   cutC[i]   = R[i].cut_C;
         ratioA[i] = R[i].ratio_A; ratioC[i] = R[i].ratio_C;
     }
 
-    auto [clo, chi] = YRange(cutA, cutC);
-    auto [rlo, rhi] = YRange(ratioA, ratioC);
+    auto [clo, chi] = YRange(cutA.data(), cutC.data());
+    auto [rlo, rhi] = YRange(ratioA.data(), ratioC.data());
 
     TCanvas* c = new TCanvas("c", "ZDC preamp cut vs ZdcAmp", 1100, 500);
     TPad* pL = new TPad("pL", "", 0.00, 0.00, 0.50, 1.00);
     TPad* pR = new TPad("pR", "", 0.50, 0.00, 1.00, 1.00);
     pL->Draw(); pR->Draw();
 
-    DrawPanel(pL, cutA,   cutC,   "Preamp hard cut [ADC]",          "%.0f", true,  clo, chi);
-    DrawPanel(pR, ratioA, ratioC, "Preamp cut / mean ZDC amplitude", "%.3f", false, rlo, rhi);
+    DrawPanel(pL, cutA.data(),   cutC.data(),   "Preamp hard cut [ADC]",          "%.0f", true,  clo, chi);
+    DrawPanel(pR, ratioA.data(), ratioC.data(), "Preamp cut / mean ZDC amplitude", "%.3f", false, rlo, rhi);
 
     const std::string out = kPlotDir + "zdc_preamp_cut_vs_zdcamp.png";
     c->SaveAs(out.c_str());

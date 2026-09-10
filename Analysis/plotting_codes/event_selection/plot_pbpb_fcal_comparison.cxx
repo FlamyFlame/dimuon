@@ -1,7 +1,7 @@
 // plot_pbpb_fcal_comparison.cxx
-// FCal ET shape comparison: PbPb 2024 and 2025 vs 2023 after full 5-cut
+// FCal ET shape comparison: PbPb 2024, 2025 and 2026 vs 2023 after full 5-cut
 // event selection (nominal two-band banana OR alternative quadratic banana).
-// Each output is a single canvas with two ratio sub-plots (24/23, 25/23).
+// Each output is a single canvas with three ratio sub-plots (24/23, 25/23, 26/23).
 //
 // Usage:
 //   .L plot_pbpb_fcal_comparison.cxx+
@@ -12,6 +12,7 @@
 #include <vector>
 #include <map>
 #include <cmath>
+#include <stdexcept>
 #include <iostream>
 #include "TChain.h"
 #include "TFile.h"
@@ -43,7 +44,38 @@ static std::map<int, std::vector<std::string>> BuildFilesFC() {
               base+"pbpb_2025/data_pbpb25_part4.root",
               base+"pbpb_2025/data_pbpb25_part5.root",
               base+"pbpb_2025/data_pbpb25_part6.root"}},
+        // PLACEHOLDER (2026): the 2026 skim is submitted as 5 grid tasks
+        // (SkimCode/run_26hi/InDstxt_PbPb2026_5p36TeV_part1..5.txt), so there are
+        // AT LEAST 5 parts — grid_monitor's chunked-hadd fallback can split a
+        // large task into extra part files, so the count can be LARGER.  CONFIRM
+        // against what lands in pbpb_2026/; an UNDER-count silently drops data.
+        // See docs/tracking/pbpb2026_analysis_support.md.
+        {26, {base+"pbpb_2026/data_pbpb26_part1.root",
+              base+"pbpb_2026/data_pbpb26_part2.root",
+              base+"pbpb_2026/data_pbpb26_part3.root",
+              base+"pbpb_2026/data_pbpb26_part4.root",
+              base+"pbpb_2026/data_pbpb26_part5.root"}},
     };
+}
+
+// Path of the per-year event-selection cuts file (nominal or alt variant).
+static std::string CutsPathFC(int yr, bool is_alt) {
+    const std::string ys = std::to_string(yr);
+    return "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + ys +
+           "/event_sel_cuts_pbpb_20" + ys + (is_alt ? "_alt" : "") + ".root";
+}
+
+// True when the cuts file AND at least one raw skim part exist for this year.
+// Used only to decide whether a year's column can be drawn at all — never to
+// substitute another year's cuts.
+static bool YearAvailableFC(int yr, bool is_alt) {
+    if (gSystem->AccessPathName(CutsPathFC(yr, is_alt).c_str())) return false;
+    auto fm = BuildFilesFC();
+    auto it = fm.find(yr);
+    if (it == fm.end()) return false;
+    for (const auto& f : it->second)
+        if (!gSystem->AccessPathName(f.c_str())) return true;
+    return false;
 }
 
 // ---- Per-year cut container -------------------------------------------------
@@ -59,37 +91,37 @@ struct CutSetFC {
 
 // Load all cuts from the per-year ROOT file (nominal or alt).
 static CutSetFC LoadCutsFC(int yr, bool is_alt) {
-    const std::string ys  = std::to_string(yr);
-    const std::string sfx = is_alt ? "_alt" : "";
-    const std::string path = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" +
-                             ys + "/event_sel_cuts_pbpb_20" + ys + sfx + ".root";
+    const std::string path = CutsPathFC(yr, is_alt);
     TFile* f = TFile::Open(path.c_str(), "READ");
-    if (!f || f->IsZombie()) {
-        std::cerr << "Cannot open cuts file: " << path << std::endl;
-        return {};
-    }
+    // No silent empty CutSetFC: with null TGraphs every event fails Cut 5 and the
+    // year's histogram comes out empty with nothing but a stderr line to say so.
+    if (!f || f->IsZombie())
+        throw std::runtime_error("LoadCutsFC: cannot open cuts file " + path);
     CutSetFC cs;
     auto loadG = [&](const char* key) -> TGraph* {
         TGraph* g = (TGraph*)f->Get(key);
-        return g ? (TGraph*)g->Clone() : nullptr;
+        if (!g) { f->Close(); throw std::runtime_error(
+            std::string("LoadCutsFC: missing TGraph '") + key + "' in " + path); }
+        return (TGraph*)g->Clone();
     };
-    auto loadP = [&](const char* key, double def) -> double {
+    // No default value: a missing TParameter used to fall back to a hard-coded
+    // 385 ADC / 1.5 ns, i.e. a cut nobody chose, applied without warning.
+    auto loadP = [&](const char* key) -> double {
         TParameter<double>* p = (TParameter<double>*)f->Get(key);
-        return p ? p->GetVal() : def;
+        if (!p) { f->Close(); throw std::runtime_error(
+            std::string("LoadCutsFC: missing TParameter '") + key + "' in " + path); }
+        return p->GetVal();
     };
     cs.g_cut1    = loadG(PbPbEvSelKey::kZDCFCalCut);
-    cs.t_ns      = loadP(PbPbEvSelKey::kZDCTimeCutNs,  1.5);
-    cs.preamp_A  = loadP(PbPbEvSelKey::kPreampACutADC, 385.);
-    cs.preamp_C  = loadP(PbPbEvSelKey::kPreampCCutADC, 385.);
+    cs.t_ns      = loadP(PbPbEvSelKey::kZDCTimeCutNs);
+    cs.preamp_A  = loadP(PbPbEvSelKey::kPreampACutADC);
+    cs.preamp_C  = loadP(PbPbEvSelKey::kPreampCCutADC);
     cs.g_cut4    = loadG(PbPbEvSelKey::kNTrkFracCutLo);
     cs.g_cut5_lo = loadG(PbPbEvSelKey::kNTrkFCalCutLo);
     cs.g_cut5_hi = loadG(PbPbEvSelKey::kNTrkFCalCutHi);
     f->Close();
-    std::cout << Form("Loaded cuts for 20%d (%s): cut1=%s cut4=%s cut5lo=%s\n",
-                      yr, is_alt ? "alt" : "nominal",
-                      cs.g_cut1    ? "ok" : "MISSING",
-                      cs.g_cut4    ? "ok" : "MISSING",
-                      cs.g_cut5_lo ? "ok" : "MISSING");
+    std::cout << Form("Loaded cuts for 20%d (%s): t=%.2f ns  preamp A=%.0f C=%.0f\n",
+                      yr, is_alt ? "alt" : "nominal", cs.t_ns, cs.preamp_A, cs.preamp_C);
     return cs;
 }
 
@@ -262,44 +294,83 @@ static void DrawRatioColumn(TPad* p_top, TPad* p_bot,
 }
 
 // ---- Main comparison function -----------------------------------------------
+// One column per comparison year, each ratioed to the 2023 reference:
+// 24/23, 25/23, 26/23.
 static void MakeComparisonPlot(bool is_alt) {
-    CutSetFC cs23 = LoadCutsFC(23, is_alt);
-    CutSetFC cs24 = LoadCutsFC(24, is_alt);
-    CutSetFC cs25 = LoadCutsFC(25, is_alt);
+    struct ColSpecFC { int yr; int col; const char* lbl; };
+    const ColSpecFC kCols[3] = {
+        {24, kRed+1,   "PbPb 2024"},
+        {25, kBlue+1,  "PbPb 2025"},
+        {26, kGreen+2, "PbPb 2026"},
+    };
+    const int kNCols = 3;
 
-    TH1D* h23 = FillFCalHist(23, cs23);
-    TH1D* h24 = FillFCalHist(24, cs24);
-    TH1D* h25 = FillFCalHist(25, cs25);
+    CutSetFC cs_ref = LoadCutsFC(23, is_alt);
+    TH1D*    h_ref  = FillFCalHist(23, cs_ref);
+    if (!h_ref) { std::cerr << "Missing 2023 reference histogram — aborting." << std::endl; return; }
 
-    if (!h23 || !h24 || !h25) {
-        std::cerr << "Missing histogram — aborting." << std::endl; return;
+    // A year is drawn only if BOTH its cuts file and its raw skim exist.  The
+    // 2026 skim is still being produced, so its column is expected to be absent
+    // for a while; the pad then says so explicitly instead of showing an empty
+    // frame that could be mistaken for real data.
+    CutSetFC cs[3];
+    TH1D*    h[3] = {};
+    bool     avail[3] = {};
+    for (int k = 0; k < kNCols; ++k) {
+        avail[k] = YearAvailableFC(kCols[k].yr, is_alt);
+        if (!avail[k]) {
+            std::cout << "MakeComparisonPlot: PbPb 20" << kCols[k].yr
+                      << " not available (cuts file and/or skim missing) — "
+                         "its column is drawn as 'not available'." << std::endl;
+            continue;
+        }
+        cs[k] = LoadCutsFC(kCols[k].yr, is_alt);
+        h[k]  = FillFCalHist(kCols[k].yr, cs[k]);
+        if (!h[k]) avail[k] = false;
     }
+
     // Normalize to unit area within 0-80% centrality (FCal_ET > PbPb2023 80% boundary).
     static const double kFCal80pct = 0.063208;  // TeV — FCal_ET_Bins_PbPb2023[79]
-    for (TH1D* h : {h23, h24, h25}) {
-        const int bin_lo = h->FindBin(kFCal80pct);
-        const double integ = h->Integral(bin_lo, h->GetNbinsX());
-        if (integ > 0.) h->Scale(1. / integ);
-    }
+    auto normalize = [&](TH1D* hh) {
+        if (!hh) return;
+        const int bin_lo = hh->FindBin(kFCal80pct);
+        const double integ = hh->Integral(bin_lo, hh->GetNbinsX());
+        if (integ > 0.) hh->Scale(1. / integ);
+    };
+    normalize(h_ref);
+    for (int k = 0; k < kNCols; ++k) normalize(h[k]);
 
     const double split = 0.30;   // fraction of canvas height for ratio pads
 
-    TCanvas* c = new TCanvas("c_fcal_comp", "", 1400, 750);
+    // Width scales with the column count (was 1400 for two columns).
+    TCanvas* c = new TCanvas("c_fcal_comp", "", 700 * kNCols, 750);
     c->SetMargin(0, 0, 0, 0);
 
-    // Four pads: left top, left bottom, right top, right bottom
-    TPad* pLt = new TPad("pLt", "", 0.00, split, 0.50, 1.00);
-    TPad* pLb = new TPad("pLb", "", 0.00, 0.00, 0.50, split);
-    TPad* pRt = new TPad("pRt", "", 0.50, split, 1.00, 1.00);
-    TPad* pRb = new TPad("pRb", "", 0.50, 0.00, 1.00, split);
-    for (TPad* p : {pLt, pLb, pRt, pRb}) p->Draw();
+    // Two pads (spectrum + ratio) per column.
+    TPad* p_top[3] = {};
+    TPad* p_bot[3] = {};
+    for (int k = 0; k < kNCols; ++k) {
+        const double x1 = (double)k / kNCols, x2 = (double)(k + 1) / kNCols;
+        p_top[k] = new TPad(Form("pT%d", k), "", x1, split, x2, 1.00);
+        p_bot[k] = new TPad(Form("pB%d", k), "", x1, 0.00,  x2, split);
+        p_top[k]->Draw();
+        p_bot[k]->Draw();
+    }
 
     const char* proc_label = is_alt ? "Alt. banana cut (quadratic)" : "Nominal 2-band banana cut";
 
-    DrawRatioColumn(pLt, pLb, h23, h24, kBlack, kRed+1,
-                    "PbPb 2023", "PbPb 2024", proc_label);
-    DrawRatioColumn(pRt, pRb, h23, h25, kBlack, kBlue+1,
-                    "PbPb 2023", "PbPb 2025", proc_label);
+    for (int k = 0; k < kNCols; ++k) {
+        if (avail[k]) {
+            DrawRatioColumn(p_top[k], p_bot[k], h_ref, h[k], kBlack, kCols[k].col,
+                            "PbPb 2023", kCols[k].lbl, proc_label);
+        } else {
+            p_top[k]->cd();
+            TLatex tl; tl.SetNDC(); tl.SetTextSize(0.045); tl.SetTextAlign(22);
+            tl.DrawLatex(0.5, 0.55, Form("%s: not available", kCols[k].lbl));
+            tl.SetTextSize(0.032);
+            tl.DrawLatex(0.5, 0.47, "event-selection cuts and/or skim missing");
+        }
+    }
 
     // Save
     const std::string base = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/single_b_analysis/";
@@ -314,11 +385,13 @@ static void MakeComparisonPlot(bool is_alt) {
     std::cout << "Saved: " << outname << std::endl;
 
     delete c;
-    delete h23; delete h24; delete h25;
-    for (auto* g : {cs23.g_cut1, cs23.g_cut4, cs23.g_cut5_lo, cs23.g_cut5_hi,
-                    cs24.g_cut1, cs24.g_cut4, cs24.g_cut5_lo, cs24.g_cut5_hi,
-                    cs25.g_cut1, cs25.g_cut4, cs25.g_cut5_lo, cs25.g_cut5_hi})
+    delete h_ref;
+    for (int k = 0; k < kNCols; ++k) delete h[k];
+    for (auto* g : {cs_ref.g_cut1, cs_ref.g_cut4, cs_ref.g_cut5_lo, cs_ref.g_cut5_hi})
         delete g;
+    for (int k = 0; k < kNCols; ++k)
+        for (auto* g : {cs[k].g_cut1, cs[k].g_cut4, cs[k].g_cut5_lo, cs[k].g_cut5_hi})
+            delete g;
 }
 
 // ---- 2025 vs 2024 single-column comparison ----------------------------------
