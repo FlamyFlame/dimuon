@@ -164,19 +164,32 @@ void plot_npairs_vs_centrality() {
 
     // Pad 3: combined OS, linear (clone to avoid log-scale contamination from pad 1)
     c->cd(3);
+    gPad->SetLeftMargin(0.15);   // the y-axis title was clipped by the default margin
     TH1D* h_os_lin = (TH1D*)h_os[kComb]->Clone("h_os_lin");
     h_os_lin->SetTitle((years_title + " combined, OS (linear)").c_str());
+    // NB: TH1::GetMaximum() returns the STORED fMaximum when one has been set, not the
+    // largest bin content -- and this clone inherited the 5x log-scale maximum that
+    // draw_log() set on h_os[kComb].  Using it here just rescaled that stored value, so
+    // the linear pad was drawn on a ~6e4 axis for a ~1e4 peak.  Read the bin content.
     h_os_lin->SetMinimum(0);
-    h_os_lin->SetMaximum(h_os_lin->GetMaximum() * 1.2);
+    h_os_lin->SetMaximum(h_os_lin->GetBinContent(h_os_lin->GetMaximumBin()) * 1.2);
     h_os_lin->Draw("hist");
 
     // Pad 4: OS/SS
     c->cd(4);
+    gPad->SetLeftMargin(0.15);   // the y-axis title was clipped by the default margin
     TH1D* h_ratio = (TH1D*)h_os[kComb]->Clone("h_ratio");
     h_ratio->Divide(h_ss[kComb]);
     h_ratio->SetTitle("OS / SS (combined)");
     h_ratio->GetYaxis()->SetTitle("OS / SS");
-    h_ratio->SetMinimum(0);
+    // The clone inherits the axis range draw_log() set on h_os[kComb] (max = 5x the OS
+    // peak, i.e. ~5e4), so the ratio -- an O(1) quantity -- was drawn far below the
+    // visible area and pad 4 rendered EMPTY.  (Pre-existing since the panel was written;
+    // unrelated to the year handling.)  GetMaximum() cannot be used to fix it: it returns
+    // the STORED fMaximum once SetMaximum has been called, so it would just hand back
+    // that same 5e4.  Take the largest bin content instead.
+    h_ratio->SetMinimum(0.);
+    h_ratio->SetMaximum(h_ratio->GetBinContent(h_ratio->GetMaximumBin()) * 1.2);
     h_ratio->Draw("hist");
 
     const std::string outdir = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/single_b_analysis/";
