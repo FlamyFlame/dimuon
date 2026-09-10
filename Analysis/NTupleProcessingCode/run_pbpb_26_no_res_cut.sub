@@ -1,0 +1,13 @@
+executable = run_pbpb_26_no_res_cut.sh
+arguments = $(Process)
+output = logs/run_pbpb_26_no_res_cut_batch_$(Process).out
+error = logs/run_pbpb_26_no_res_cut_batch_$(Process).err
+log = logs/run_pbpb_26_no_res_cut_batch_$(Process).log
+request_memory = 2GB
+# PLACEHOLDER: queue 5 = the 5 grid tasks the 2026 skim is submitted as
+# (SkimCode/run_26hi/InDstxt_PbPb2026_5p36TeV_part1..5.txt).  It can end up LARGER if
+# grid_monitor's chunked hadd splits a task into extra part files.  Keep it EQUAL to
+# run_year_to_file_batch_max_map{26,N} in NTupleProcessingCode/PbPbExtras.c: too many
+# jobs throws (loud), too few SILENTLY processes only part of the 2026 data.
+# grid_monitor auto-updates run_pbpb_26.sub only -- sync the other variants by hand.
+queue 5
