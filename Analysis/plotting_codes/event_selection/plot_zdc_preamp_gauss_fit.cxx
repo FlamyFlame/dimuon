@@ -2,7 +2,7 @@
 //
 // 2×N canvas of ZDC presample amplitude distributions with Gaussian fits.
 //   Rows: Side A (top), Side C (bottom)
-//   Columns: one per PbPb year in kYearsPP (pbpb2023, 2024, 2025, 2026)
+//   Columns: one per AVAILABLE PbPb year (subset of kYearsCfgPP = 2023, 2024, 2025, 2026)
 //
 // Data: events passing trigger + Cut1 (ZDC-FCal banana) + Cut2 (ZDC time).
 // Fit range matches the per-year zoom window used in the standalone cut-3 plot.
@@ -34,9 +34,12 @@
 static const std::string kBase    = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/";
 static const std::string kPlotDir = kBase + "plots/single_b_analysis/event_selection/";
 
-// The PbPb years shown, in column order.  Every array below is sized by kNYears.
-static const int kYearsPP[] = {23, 24, 25, 26};
-static const int kNYears    = (int)(sizeof(kYearsPP) / sizeof(kYearsPP[0]));
+// The PbPb years this macro KNOWS ABOUT (configured superset), in column order.
+// It is NOT the list that gets drawn: AvailableYears() filters it at run time down to
+// the years whose cuts file and skim are actually on disk, and the column count, pad
+// numbering, canvas width and output filename are all sized from that FILTERED list.
+static const int kYearsCfgPP[] = {23, 24, 25, 26};
+static const int kNYearsCfg    = (int)(sizeof(kYearsCfgPP) / sizeof(kYearsCfgPP[0]));
 
 static std::vector<std::string> FilesForYear(int yr) {
     std::string base = kBase + "pbpb_20" + std::to_string(yr) + "/";
@@ -63,10 +66,43 @@ static std::vector<std::string> FilesForYear(int yr) {
                            base+"data_pbpb26_part3.root",
                            base+"data_pbpb26_part4.root",
                            base+"data_pbpb26_part5.root" };
+    // Reachable only if a year is added to kYearsCfgPP without being added here.
     // No silent empty list: it would build an empty TChain and produce an empty
     // histogram that still gets fitted and drawn as if it were data.
     throw std::runtime_error("FilesForYear: no input files configured for PbPb year "
                              + std::to_string(yr));
+}
+
+// The years that can actually be drawn: cuts file present AND at least one skim part
+// present.  A configured-but-not-yet-produced year (2026 while the grid skim runs) is
+// SKIPPED with an [INFO] line instead of aborting the whole figure.  The canvas grid
+// and the output filename are sized from this list, so a 2×N canvas can never carry a
+// column for a year that contributed nothing.
+static std::vector<int> AvailableYears() {
+    std::vector<int> years;
+    for (int i = 0; i < kNYearsCfg; ++i) {
+        const int yr = kYearsCfgPP[i];
+        const std::string cpath = PbPbEvSelCutsPath(2000 + yr);
+        if (gSystem->AccessPathName(cpath.c_str())) {
+            std::cout << "[INFO] PbPb 20" << yr << ": skipping — cuts file not found: "
+                      << cpath << std::endl;
+            continue;
+        }
+        bool any_part = false;
+        for (const auto& f : FilesForYear(yr))
+            if (!gSystem->AccessPathName(f.c_str())) { any_part = true; break; }
+        if (!any_part) {
+            std::cout << "[INFO] PbPb 20" << yr << ": skipping — no skim part file found under "
+                      << kBase << "pbpb_20" << yr << "/" << std::endl;
+            continue;
+        }
+        std::cout << "[INFO] PbPb 20" << yr << ": available." << std::endl;
+        years.push_back(yr);
+    }
+    if (years.empty())
+        throw std::runtime_error("AvailableYears: no PbPb year has both a cuts file and a skim "
+                                 "input on disk — nothing to plot.");
+    return years;
 }
 
 // Per-year zoom range (mirrors DrawStandaloneCut3 in plot_pbpb_event_sel_cuts.cxx)
@@ -95,10 +131,24 @@ static YearHists ProcessYear(int yr) {
     TFile* fc = TFile::Open(cpath.c_str(), "READ");
     if (!fc || fc->IsZombie())
         throw std::runtime_error("Cuts file not found: " + cpath);
-    TGraph* g_cut1  = (TGraph*)((TGraph*)fc->Get(PbPbEvSelKey::kZDCFCalCut))->Clone();
-    double cut2_ns  = ((TParameter<double>*)fc->Get(PbPbEvSelKey::kZDCTimeCutNs))->GetVal();
-    double cut_A    = ((TParameter<double>*)fc->Get(PbPbEvSelKey::kPreampACutADC))->GetVal();
-    double cut_C    = ((TParameter<double>*)fc->Get(PbPbEvSelKey::kPreampCCutADC))->GetVal();
+    // Throwing accessors: an unchecked fc->Get() segfaults on a file that opens but
+    // is missing a key (e.g. an interrupted cut-derivation run).
+    auto loadG = [&](const char* key) -> TGraph* {
+        TGraph* g = (TGraph*)fc->Get(key);
+        if (!g) { fc->Close(); throw std::runtime_error(
+            std::string("Missing TGraph '") + key + "' in " + cpath); }
+        return (TGraph*)g->Clone();
+    };
+    auto loadP = [&](const char* key) -> double {
+        TParameter<double>* p = (TParameter<double>*)fc->Get(key);
+        if (!p) { fc->Close(); throw std::runtime_error(
+            std::string("Missing TParameter '") + key + "' in " + cpath); }
+        return p->GetVal();
+    };
+    TGraph* g_cut1  = loadG(PbPbEvSelKey::kZDCFCalCut);
+    double cut2_ns  = loadP(PbPbEvSelKey::kZDCTimeCutNs);
+    double cut_A    = loadP(PbPbEvSelKey::kPreampACutADC);
+    double cut_C    = loadP(PbPbEvSelKey::kPreampCCutADC);
     fc->Close();
 
     // 198 bins, −1000 to 2960 → ~20 ADC/bin; rebin×3 for display → 60 ADC/bin
@@ -112,6 +162,12 @@ static YearHists ProcessYear(int yr) {
         if (gSystem->AccessPathName(f.c_str()))
             { std::cerr << "Skipping: " << f << std::endl; continue; }
         chain.Add(f.c_str());
+    }
+    // An empty chain would leave hA/hC empty, and the empty histogram would still be
+    // fitted and drawn as if it were data.  Fail loudly instead.
+    if (chain.GetEntries() == 0) {
+        delete g_cut1; delete hA; delete hC;
+        throw std::runtime_error("TChain empty for PbPb 20" + std::to_string(yr));
     }
     chain.SetMakeClass(1);
     chain.SetBranchStatus("*", 0);
@@ -151,6 +207,11 @@ static YearHists ProcessYear(int yr) {
     }
     delete g_cut1;
     std::cout << "  " << n_sel << " pass trigger+Cut1+Cut2\n";
+    if (n_sel == 0) {
+        delete hA; delete hC;
+        throw std::runtime_error("No event passes trigger+Cut1+Cut2 for PbPb 20"
+                                 + std::to_string(yr) + " — refusing to fit an empty histogram.");
+    }
 
     YearHists res;
     res.hA    = hA;    res.hC    = hC;
@@ -186,27 +247,30 @@ void plot_zdc_preamp_gauss_fit() {
     gStyle->SetOptStat(0);
     gSystem->mkdir(kPlotDir.c_str(), true);
 
-    std::vector<YearHists> Y(kNYears);
-    for (int i = 0; i < kNYears; ++i) Y[i] = ProcessYear(kYearsPP[i]);
+    const std::vector<int> years = AvailableYears();
+    const int nY = (int)years.size();
+
+    std::vector<YearHists> Y(nY);
+    for (int i = 0; i < nY; ++i) Y[i] = ProcessYear(years[i]);
 
     // Rebin histograms for display (×3 → 60 ADC/bin)
     const int rebin = 3;
-    for (int i = 0; i < kNYears; ++i) {
+    for (int i = 0; i < nY; ++i) {
         Y[i].hA->Rebin(rebin); Y[i].hA->Scale(1.0 / rebin);
         Y[i].hC->Rebin(rebin); Y[i].hC->Scale(1.0 / rebin);
     }
 
-    // Canvas: kNYears columns × 2 rows; pad index = col + row*kNYears + 1 (ROOT numbering).
-    // Width scales with the column count (was 1500 for three columns).
-    TCanvas* cv = new TCanvas("cv_gauss", "", 500 * kNYears, 900);
-    cv->Divide(kNYears, 2, 0.003, 0.003);
+    // Canvas: nY columns × 2 rows; pad index = col + row*nY + 1 (ROOT numbering).
+    // Width scales with the column count actually drawn.
+    TCanvas* cv = new TCanvas("cv_gauss", "", 500 * nY, 900);
+    cv->Divide(nY, 2, 0.003, 0.003);
 
     const char* sideLabel[2] = {"A", "C"};
 
-    for (int row = 0; row < 2; ++row) {          // row 0 = Side A, row 1 = Side C
-        for (int col = 0; col < kNYears; ++col) { // col = year index
-            int yr    = kYearsPP[col];
-            int padNo = col + 1 + row * kNYears;  // ROOT pad number (1-based)
+    for (int row = 0; row < 2; ++row) {      // row 0 = Side A, row 1 = Side C
+        for (int col = 0; col < nY; ++col) { // col = available-year index
+            int yr    = years[col];
+            int padNo = col + 1 + row * nY;  // ROOT pad number (1-based)
             cv->cd(padNo);
             gPad->SetLogy();
             gPad->SetLeftMargin(0.15);
@@ -273,10 +337,12 @@ void plot_zdc_preamp_gauss_fit() {
         }
     }
 
-    // Filename carries the actual grid so it can never claim a layout it does not have.
-    const std::string out = kPlotDir + Form("zdc_preamp_gauss_fit_2x%d.png", kNYears);
+    // Filename carries the grid ACTUALLY drawn, so it can never claim a layout it does
+    // not have: 3 available years -> zdc_preamp_gauss_fit_2x3.png (the file already on
+    // disk), 4 -> zdc_preamp_gauss_fit_2x4.png.
+    const std::string out = kPlotDir + Form("zdc_preamp_gauss_fit_2x%d.png", nY);
     cv->SaveAs(out.c_str());
     std::cout << "Saved: " << out << std::endl;
 
-    for (int i = 0; i < kNYears; ++i) { delete Y[i].hA; delete Y[i].hC; }
+    for (int i = 0; i < nY; ++i) { delete Y[i].hA; delete Y[i].hC; }
 }

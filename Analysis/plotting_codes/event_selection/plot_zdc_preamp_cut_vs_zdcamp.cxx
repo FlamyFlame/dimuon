@@ -34,10 +34,13 @@
 static const std::string kBase    = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/";
 static const std::string kPlotDir = kBase + "plots/single_b_analysis/event_selection/";
 
-// The PbPb years shown, in x-axis order.  Every array in this macro is sized by
-// kNYears — adding a year means editing this list and FilesForYear() only.
-static const int kYearsPP[] = {23, 24, 25, 26};
-static const int kNYears    = (int)(sizeof(kYearsPP) / sizeof(kYearsPP[0]));
+// The PbPb years this macro KNOWS ABOUT (configured superset), in x-axis order.
+// It is NOT the list that gets drawn: AvailableYears() filters it at run time down
+// to the years whose cuts file and skim are actually on disk, and every array, loop,
+// axis limit, label and TGraph below is sized from that FILTERED list.  Adding a year
+// means editing this list and FilesForYear() only.
+static const int kYearsCfgPP[] = {23, 24, 25, 26};
+static const int kNYearsCfg    = (int)(sizeof(kYearsCfgPP) / sizeof(kYearsCfgPP[0]));
 
 static std::vector<std::string> FilesForYear(int yr) {
     std::string base = kBase + "pbpb_20" + std::to_string(yr) + "/";
@@ -64,10 +67,43 @@ static std::vector<std::string> FilesForYear(int yr) {
                            base+"data_pbpb26_part3.root",
                            base+"data_pbpb26_part4.root",
                            base+"data_pbpb26_part5.root" };
+    // Reachable only if a year is added to kYearsCfgPP without being added here.
     // No silent empty list: it would build an empty TChain and yield a mean of 1
     // (see ProcessYear), i.e. a plotted ratio that is pure fiction.
     throw std::runtime_error("FilesForYear: no input files configured for PbPb year "
                              + std::to_string(yr));
+}
+
+// The years that can actually be drawn: cuts file present AND at least one skim part
+// present.  A configured-but-not-yet-produced year (2026 while the grid skim runs) is
+// SKIPPED with an [INFO] line instead of aborting the whole figure.  Everything
+// downstream is sized from this list, so the figure can never show N-1 years under an
+// N-year legend/axis.
+static std::vector<int> AvailableYears() {
+    std::vector<int> years;
+    for (int i = 0; i < kNYearsCfg; ++i) {
+        const int yr = kYearsCfgPP[i];
+        const std::string cpath = PbPbEvSelCutsPath(2000 + yr);
+        if (gSystem->AccessPathName(cpath.c_str())) {
+            std::cout << "[INFO] PbPb 20" << yr << ": skipping — cuts file not found: "
+                      << cpath << std::endl;
+            continue;
+        }
+        bool any_part = false;
+        for (const auto& f : FilesForYear(yr))
+            if (!gSystem->AccessPathName(f.c_str())) { any_part = true; break; }
+        if (!any_part) {
+            std::cout << "[INFO] PbPb 20" << yr << ": skipping — no skim part file found under "
+                      << kBase << "pbpb_20" << yr << "/" << std::endl;
+            continue;
+        }
+        std::cout << "[INFO] PbPb 20" << yr << ": available." << std::endl;
+        years.push_back(yr);
+    }
+    if (years.empty())
+        throw std::runtime_error("AvailableYears: no PbPb year has both a cuts file and a skim "
+                                 "input on disk — nothing to plot.");
+    return years;
 }
 
 struct YearResult {
@@ -80,10 +116,24 @@ static YearResult ProcessYear(int yr) {
     TFile* fc = TFile::Open(cpath.c_str(), "READ");
     if (!fc || fc->IsZombie())
         throw std::runtime_error("Cuts file not found: " + cpath);
-    TGraph* g_cut1  = (TGraph*)((TGraph*)fc->Get(PbPbEvSelKey::kZDCFCalCut))->Clone();
-    double cut2_ns  = ((TParameter<double>*)fc->Get(PbPbEvSelKey::kZDCTimeCutNs))->GetVal();
-    double cut_A    = ((TParameter<double>*)fc->Get(PbPbEvSelKey::kPreampACutADC))->GetVal();
-    double cut_C    = ((TParameter<double>*)fc->Get(PbPbEvSelKey::kPreampCCutADC))->GetVal();
+    // Throwing accessors: an unchecked fc->Get() segfaults on a file that opens but
+    // is missing a key (e.g. an interrupted cut-derivation run).
+    auto loadG = [&](const char* key) -> TGraph* {
+        TGraph* g = (TGraph*)fc->Get(key);
+        if (!g) { fc->Close(); throw std::runtime_error(
+            std::string("Missing TGraph '") + key + "' in " + cpath); }
+        return (TGraph*)g->Clone();
+    };
+    auto loadP = [&](const char* key) -> double {
+        TParameter<double>* p = (TParameter<double>*)fc->Get(key);
+        if (!p) { fc->Close(); throw std::runtime_error(
+            std::string("Missing TParameter '") + key + "' in " + cpath); }
+        return p->GetVal();
+    };
+    TGraph* g_cut1  = loadG(PbPbEvSelKey::kZDCFCalCut);
+    double cut2_ns  = loadP(PbPbEvSelKey::kZDCTimeCutNs);
+    double cut_A    = loadP(PbPbEvSelKey::kPreampACutADC);
+    double cut_C    = loadP(PbPbEvSelKey::kPreampCCutADC);
     fc->Close();
 
     TChain chain("HeavyIonD3PD", "HeavyIonD3PD");
@@ -91,6 +141,12 @@ static YearResult ProcessYear(int yr) {
         if (gSystem->AccessPathName(f.c_str()))
             { std::cerr << "Skipping: " << f << std::endl; continue; }
         chain.Add(f.c_str());
+    }
+    // A present-but-empty (or entirely absent) skim would give n_sel = 0 and hence a
+    // mean of 1 below — a ratio of cut/1 plotted as if it were measured.  Fail loudly.
+    if (chain.GetEntries() == 0) {
+        delete g_cut1;
+        throw std::runtime_error("TChain empty for PbPb 20" + std::to_string(yr));
     }
     chain.SetMakeClass(1);
     chain.SetBranchStatus("*", 0);
@@ -129,9 +185,13 @@ static YearResult ProcessYear(int yr) {
     }
     delete g_cut1;
     std::cout << "  " << n_sel << " pass trigger+Cut1+Cut2\n";
+    if (n_sel == 0)
+        throw std::runtime_error("No event passes trigger+Cut1+Cut2 for PbPb 20"
+                                 + std::to_string(yr) + " — refusing to plot a ratio "
+                                 "against a placeholder mean.");
 
-    const double meanA = (n_sel > 0) ? sumA / n_sel : 1.;
-    const double meanC = (n_sel > 0) ? sumC / n_sel : 1.;
+    const double meanA = sumA / n_sel;
+    const double meanC = sumC / n_sel;
     YearResult res;
     res.cut_A   = cut_A;  res.cut_C   = cut_C;
     res.ratio_A = cut_A / meanA;
@@ -142,33 +202,34 @@ static YearResult ProcessYear(int yr) {
     return res;
 }
 
-// Draw one panel: one column per year, LP graph for side A (black) and C (blue).
-// valsA/valsC: kNYears-element arrays; fmt: printf format for value annotations.
-static void DrawPanel(TPad* pad,
+// Draw one panel: one column per AVAILABLE year, LP graph for side A (black) and C (blue).
+// valsA/valsC hold one entry per entry of `years`; fmt: printf format for value annotations.
+static void DrawPanel(TPad* pad, const std::vector<int>& years,
                       const double* valsA, const double* valsC,
                       const char* ytitle, const char* fmt,
                       bool drawLegend, double ylo, double yhi) {
+    const int nY = (int)years.size();
     pad->cd();
     pad->SetLeftMargin(0.18);
     pad->SetRightMargin(0.05);
     pad->SetBottomMargin(0.18);
     pad->SetTopMargin(0.07);
 
-    std::vector<double> xs(kNYears);
-    for (int i = 0; i < kNYears; ++i) xs[i] = (double)i;
-    const double x_lo = -0.5, x_hi = kNYears - 0.5;
-    TGraph* gA = new TGraph(kNYears, xs.data(), valsA);
-    TGraph* gC = new TGraph(kNYears, xs.data(), valsC);
+    std::vector<double> xs(nY);
+    for (int i = 0; i < nY; ++i) xs[i] = (double)i;
+    const double x_lo = -0.5, x_hi = nY - 0.5;
+    TGraph* gA = new TGraph(nY, xs.data(), valsA);
+    TGraph* gC = new TGraph(nY, xs.data(), valsC);
     gA->SetMarkerStyle(20); gA->SetMarkerSize(1.8);
     gA->SetMarkerColor(kBlack); gA->SetLineColor(kBlack); gA->SetLineWidth(2);
     gC->SetMarkerStyle(21); gC->SetMarkerSize(1.8);
     gC->SetMarkerColor(kBlue+1); gC->SetLineColor(kBlue+1); gC->SetLineWidth(2);
 
-    TGraph* fr = new TGraph(kNYears, xs.data(), valsA);
+    TGraph* fr = new TGraph(nY, xs.data(), valsA);
     fr->SetTitle(Form(";PbPb year;%s", ytitle));
     fr->GetXaxis()->SetLimits(x_lo, x_hi);
     fr->GetYaxis()->SetRangeUser(ylo, yhi);
-    fr->GetXaxis()->SetNdivisions(kNYears);
+    fr->GetXaxis()->SetNdivisions(nY);
     fr->GetXaxis()->SetLabelOffset(999);
     fr->GetYaxis()->SetTitleOffset(1.6);
     fr->GetYaxis()->SetTitleSize(0.052);
@@ -190,13 +251,13 @@ static void DrawPanel(TPad* pad,
     TLatex lab;
     lab.SetTextAlign(22); lab.SetTextSize(0.055);
     const double laby = ylo - 0.09*(yhi - ylo);
-    for (int i = 0; i < kNYears; ++i)
-        lab.DrawLatex(xs[i], laby, Form("20%d", kYearsPP[i]));
+    for (int i = 0; i < nY; ++i)
+        lab.DrawLatex(xs[i], laby, Form("20%d", years[i]));
 
     TLatex val;
     val.SetTextSize(0.042); val.SetTextAlign(21);
     const double off = 0.04 * (yhi - ylo);
-    for (int i = 0; i < kNYears; ++i) {
+    for (int i = 0; i < nY; ++i) {
         val.SetTextColor(kBlack);
         val.DrawLatex(xs[i] - 0.09, valsA[i] + off, Form(fmt, valsA[i]));
         val.SetTextColor(kBlue+1);
@@ -213,9 +274,12 @@ static void DrawPanel(TPad* pad,
 }
 
 // y-axis range: 25% padding, always includes zero.
-static std::pair<double,double> YRange(const double* a, const double* b) {
-    double lo = std::min(*std::min_element(a,a+kNYears), *std::min_element(b,b+kNYears));
-    double hi = std::max(*std::max_element(a,a+kNYears), *std::max_element(b,b+kNYears));
+static std::pair<double,double> YRange(const std::vector<double>& a,
+                                       const std::vector<double>& b) {
+    double lo = std::min(*std::min_element(a.begin(), a.end()),
+                         *std::min_element(b.begin(), b.end()));
+    double hi = std::max(*std::max_element(a.begin(), a.end()),
+                         *std::max_element(b.begin(), b.end()));
     lo = std::min(lo, 0.);
     double pad = 0.25 * (hi - lo);
     return {lo - pad, hi + pad};
@@ -225,25 +289,28 @@ void plot_zdc_preamp_cut_vs_zdcamp() {
     gStyle->SetOptStat(0);
     gSystem->mkdir(kPlotDir.c_str(), true);
 
-    std::vector<YearResult> R(kNYears);
-    for (int i = 0; i < kNYears; ++i) R[i] = ProcessYear(kYearsPP[i]);
+    const std::vector<int> years = AvailableYears();
+    const int nY = (int)years.size();
 
-    std::vector<double> cutA(kNYears), cutC(kNYears), ratioA(kNYears), ratioC(kNYears);
-    for (int i = 0; i < kNYears; ++i) {
+    std::vector<YearResult> R(nY);
+    for (int i = 0; i < nY; ++i) R[i] = ProcessYear(years[i]);
+
+    std::vector<double> cutA(nY), cutC(nY), ratioA(nY), ratioC(nY);
+    for (int i = 0; i < nY; ++i) {
         cutA[i]   = R[i].cut_A;   cutC[i]   = R[i].cut_C;
         ratioA[i] = R[i].ratio_A; ratioC[i] = R[i].ratio_C;
     }
 
-    auto [clo, chi] = YRange(cutA.data(), cutC.data());
-    auto [rlo, rhi] = YRange(ratioA.data(), ratioC.data());
+    auto [clo, chi] = YRange(cutA, cutC);
+    auto [rlo, rhi] = YRange(ratioA, ratioC);
 
     TCanvas* c = new TCanvas("c", "ZDC preamp cut vs ZdcAmp", 1100, 500);
     TPad* pL = new TPad("pL", "", 0.00, 0.00, 0.50, 1.00);
     TPad* pR = new TPad("pR", "", 0.50, 0.00, 1.00, 1.00);
     pL->Draw(); pR->Draw();
 
-    DrawPanel(pL, cutA.data(),   cutC.data(),   "Preamp hard cut [ADC]",          "%.0f", true,  clo, chi);
-    DrawPanel(pR, ratioA.data(), ratioC.data(), "Preamp cut / mean ZDC amplitude", "%.3f", false, rlo, rhi);
+    DrawPanel(pL, years, cutA.data(),   cutC.data(),   "Preamp hard cut [ADC]",          "%.0f", true,  clo, chi);
+    DrawPanel(pR, years, ratioA.data(), ratioC.data(), "Preamp cut / mean ZDC amplitude", "%.3f", false, rlo, rhi);
 
     const std::string out = kPlotDir + "zdc_preamp_cut_vs_zdcamp.png";
     c->SaveAs(out.c_str());

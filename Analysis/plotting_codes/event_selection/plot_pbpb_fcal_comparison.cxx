@@ -65,17 +65,32 @@ static std::string CutsPathFC(int yr, bool is_alt) {
            "/event_sel_cuts_pbpb_20" + ys + (is_alt ? "_alt" : "") + ".root";
 }
 
-// True when the cuts file AND at least one raw skim part exist for this year.
+// True when the cuts file AND *every* expected raw skim part exist for this year.
 // Used only to decide whether a year's column can be drawn at all — never to
 // substitute another year's cuts.
+// The full part list is required on purpose: accepting a SINGLE existing part would
+// let a partially-downloaded year (e.g. 2026 while the grid skim is still landing) be
+// normalised and ratioed against a complete 2023, producing a shape difference that is
+// pure bookkeeping.  A partial year is reported and drawn as "not available".
 static bool YearAvailableFC(int yr, bool is_alt) {
-    if (gSystem->AccessPathName(CutsPathFC(yr, is_alt).c_str())) return false;
+    if (gSystem->AccessPathName(CutsPathFC(yr, is_alt).c_str())) {
+        std::cout << "[INFO] PbPb 20" << yr << ": cuts file not found: "
+                  << CutsPathFC(yr, is_alt) << std::endl;
+        return false;
+    }
     auto fm = BuildFilesFC();
     auto it = fm.find(yr);
-    if (it == fm.end()) return false;
+    if (it == fm.end()) {
+        std::cout << "[INFO] PbPb 20" << yr << ": no input files configured." << std::endl;
+        return false;
+    }
     for (const auto& f : it->second)
-        if (!gSystem->AccessPathName(f.c_str())) return true;
-    return false;
+        if (gSystem->AccessPathName(f.c_str())) {
+            std::cout << "[INFO] PbPb 20" << yr << ": skim part missing: " << f
+                      << " — the year is incomplete and will not be drawn." << std::endl;
+            return false;
+        }
+    return true;
 }
 
 // ---- Per-year cut container -------------------------------------------------
@@ -142,8 +157,13 @@ static TH1D* FillFCalHist(int yr, const CutSetFC& cs) {
     TChain chain("HeavyIonD3PD", "HeavyIonD3PD");
     for (const auto& fpath : it->second)
         if (!gSystem->AccessPathName(fpath.c_str())) chain.Add(fpath.c_str());
+    // Return nullptr, NOT the empty histogram: a non-null empty hist sails past every
+    // `!h` guard downstream and gets normalised (integral 0 -> no scaling) and ratioed,
+    // i.e. drawn as if it were data.
     if (chain.GetEntries() == 0) {
-        std::cerr << "Empty TChain for year " << yr << std::endl; return h;
+        std::cerr << "Empty TChain for year " << yr << std::endl;
+        delete h;
+        return nullptr;
     }
 
     chain.SetMakeClass(1);
@@ -297,25 +317,28 @@ static void DrawRatioColumn(TPad* p_top, TPad* p_bot,
 // One column per comparison year, each ratioed to the 2023 reference:
 // 24/23, 25/23, 26/23.
 static void MakeComparisonPlot(bool is_alt) {
+    // The comparison-year table is the SINGLE source of the column count: every array,
+    // loop bound, pad split and canvas width below is derived from it, so adding a year
+    // is a one-line edit here.
     struct ColSpecFC { int yr; int col; const char* lbl; };
-    const ColSpecFC kCols[3] = {
+    const ColSpecFC kCols[] = {
         {24, kRed+1,   "PbPb 2024"},
         {25, kBlue+1,  "PbPb 2025"},
         {26, kGreen+2, "PbPb 2026"},
     };
-    const int kNCols = 3;
+    const int kNCols = (int)(sizeof(kCols) / sizeof(kCols[0]));
 
     CutSetFC cs_ref = LoadCutsFC(23, is_alt);
     TH1D*    h_ref  = FillFCalHist(23, cs_ref);
     if (!h_ref) { std::cerr << "Missing 2023 reference histogram — aborting." << std::endl; return; }
 
-    // A year is drawn only if BOTH its cuts file and its raw skim exist.  The
+    // A year is drawn only if its cuts file AND its complete raw skim exist.  The
     // 2026 skim is still being produced, so its column is expected to be absent
     // for a while; the pad then says so explicitly instead of showing an empty
     // frame that could be mistaken for real data.
-    CutSetFC cs[3];
-    TH1D*    h[3] = {};
-    bool     avail[3] = {};
+    std::vector<CutSetFC> cs(kNCols);
+    std::vector<TH1D*>    h(kNCols, nullptr);
+    std::vector<bool>     avail(kNCols, false);
     for (int k = 0; k < kNCols; ++k) {
         avail[k] = YearAvailableFC(kCols[k].yr, is_alt);
         if (!avail[k]) {
@@ -347,8 +370,8 @@ static void MakeComparisonPlot(bool is_alt) {
     c->SetMargin(0, 0, 0, 0);
 
     // Two pads (spectrum + ratio) per column.
-    TPad* p_top[3] = {};
-    TPad* p_bot[3] = {};
+    std::vector<TPad*> p_top(kNCols, nullptr);
+    std::vector<TPad*> p_bot(kNCols, nullptr);
     for (int k = 0; k < kNCols; ++k) {
         const double x1 = (double)k / kNCols, x2 = (double)(k + 1) / kNCols;
         p_top[k] = new TPad(Form("pT%d", k), "", x1, split, x2, 1.00);
