@@ -167,8 +167,13 @@ void PbPbExtras<Derived>::InitEventSel() {
   g_evsel_cut5_lo_ = get_graph(PbPbEvSelKey::kNTrkFCalCutLo);
   g_evsel_cut5_hi_ = get_graph(PbPbEvSelKey::kNTrkFCalCutHi);
 
-  // PbPb25: load per-run preamp cuts from TTree (keyed by run number)
-  if ((self().run_year % 2000) == 25) {
+  // Per-run ZDC preamp cuts (mu+7sigma, keyed by run number), used when the year's cuts
+  // file provides them.  This is PRESENCE-DRIVEN, not year-gated: only the PbPb25 file
+  // carries `t_preamp_per_run` today (verified: the 2023 and 2024 cuts files have no
+  // such key), so 2023/2024 keep the scalar cut exactly as before, while a new year
+  // (2026) picks the per-run cuts up automatically if and only if its cuts file was
+  // derived with them.  A year gate here would silently give a new year the scalar cut.
+  {
     TTree* t = dynamic_cast<TTree*>(f->Get(PbPbEvSelKey::kPreampPerRunTree));
     if (t) {
       Int_t    run_num = 0;
@@ -184,8 +189,8 @@ void PbPbExtras<Derived>::InitEventSel() {
                 << evsel_cut3_per_run_.size() << " runs (scalar fallback A="
                 << evsel_cut3_A_ << " C=" << evsel_cut3_C_ << " ADC)." << std::endl;
     } else {
-      std::cout << "PbPbExtras::InitEventSel: WARNING — per-run TTree not found in "
-                << path << "; falling back to scalar cut A=" << evsel_cut3_A_
+      std::cout << "PbPbExtras::InitEventSel: no per-run preamp TTree in "
+                << path << "; using the scalar cut A=" << evsel_cut3_A_
                 << " C=" << evsel_cut3_C_ << " ADC." << std::endl;
     }
   }
@@ -218,12 +223,13 @@ bool PbPbExtras<Derived>::PassEventSel() const {
   if (std::abs(zdc_ZdcTime[1]) >= (float)evsel_cut2_ns_) return false;  // [1]=A
   if (std::abs(zdc_ZdcTime[0]) >= (float)evsel_cut2_ns_) return false;  // [0]=C
 
-  // Cut 3: ZDC preamp amplitude (per-run mu+7sigma for yr25; hard scalar cut for 23/24)
+  // Cut 3: ZDC preamp amplitude (per-run mu+7sigma where the year's cuts file provides
+  // them -- currently PbPb25; hard scalar cut otherwise)
   float preamp_A = 0.f, preamp_C = 0.f;
   for (int i = 0; i < 4; ++i) preamp_A += zdc_ZdcModulePreSampleAmp[1][i];  // [1]=A
   for (int i = 0; i < 4; ++i) preamp_C += zdc_ZdcModulePreSampleAmp[0][i];  // [0]=C
   float cut3_A = evsel_cut3_A_, cut3_C = evsel_cut3_C_;
-  if ((self().run_year % 2000) == 25 && !evsel_cut3_per_run_.empty()) {
+  if (!evsel_cut3_per_run_.empty()) {
     auto it = evsel_cut3_per_run_.find(static_cast<int>(self().RunNumber));
     if (it != evsel_cut3_per_run_.end()) {
       cut3_A = it->second.first;
@@ -259,14 +265,24 @@ void PbPbExtras<Derived>::InitParamsExtra(){
 
   // pbpb2023: should have parts 1..4 but currently only 1..3 finished skimming.
   // Update {23, 3} -> {23, 4} and rerun after part4 is available.
+  // pbpb2026: PLACEHOLDER 5 -- the 2026 grid skim is submitted as 5 tasks
+  // (SkimCode/run_26hi/InDstxt_PbPb2026_5p36TeV_part1..5.txt, 45 datasets over the
+  // 35 GRL runs), so 5 is the expected part count.  It can end up LARGER: when a task's
+  // output is too big to hadd in one pass, grid_monitor's chunked_hadd_fallback splits
+  // it into extra part files.  grid_monitor auto-updates this entry (and
+  // run_pbpb_26.sub) from what is actually on disk -- keep the exact `{26, N}` spacing,
+  // its sed pattern depends on it.  The value MUST equal `queue N` in every
+  // run_pbpb_26*.sub: an over-count throws on the missing part (loud), but an
+  // UNDER-count silently processes only part of the 2026 data.
+  // See docs/tracking/pbpb2026_analysis_support.md (registry P1).
   std::map<int, int> run_year_to_file_batch_max_map = {
-    {23, 4}, {24, 2}, {25, 6}, {15, 7}, {18, 7}
+    {23, 4}, {24, 2}, {25, 6}, {26, 5}, {15, 7}, {18, 7}
   };
 
   // check for run year
   if (is_run3_local){
-    if (run_year_short != 23 && run_year_short != 24 && run_year_short != 25){
-      std::cerr<<"Error:: If isRun3 is true, run_year must be set to (20)23, (20)24, or (20)25"<<std::endl;
+    if (run_year_short != 23 && run_year_short != 24 && run_year_short != 25 && run_year_short != 26){
+      std::cerr<<"Error:: If isRun3 is true, run_year must be set to (20)23, (20)24, (20)25, or (20)26"<<std::endl;
       throw std::exception();
     }
   }else{
@@ -278,7 +294,7 @@ void PbPbExtras<Derived>::InitParamsExtra(){
 
   // check for file batch
   if (self().file_batch <= 0 || self().file_batch > run_year_to_file_batch_max_map[run_year_short]){
-    std::cerr<<"Error:: run3 file_batch is invalid! Must be in range 1-4 for 2023 data / 1-2 for 2024 data / 1-6 for 2025 data / 1-7 for 2015/2018 data"<<std::endl;
+    std::cerr<<"Error:: run3 file_batch is invalid! Must be in range 1-4 for 2023 data / 1-2 for 2024 data / 1-6 for 2025 data / 1-5 for 2026 data (placeholder) / 1-7 for 2015/2018 data"<<std::endl;
     throw std::exception();
   }
 }

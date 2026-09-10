@@ -2,6 +2,7 @@
 #include <map>
 #include <vector>
 #include <string>
+#include <stdexcept>
 #include <iostream>
 #include <algorithm>
 #include <type_traits>
@@ -127,6 +128,26 @@ public:
             1./(0.3  * 7.8 * 1000. *  0.6716 * 2.59933 / 1000.)
         };
     }
+    // PLACEHOLDER T_AA: official 2026 centrality/T_AA are not yet available, so the
+    // T_AA values below are the 2023 Glauber values (data/centrality/TaaValues2023.txt)
+    // reused as a placeholder -- exactly as 2024 and 2025 do -- and MUST be flagged as
+    // such in the internal note. The luminosity factor (2.62316 nb^-1) IS the 2026
+    // value: Prescale-Corrected Total = 2623.16 ub^-1 from
+    // IntNotes/data/luminosity/pbpb_2026/lumitable_pbpb_26_HLT_mu4.csv (35 runs,
+    // 522041-523437), whose run list is byte-identical to the skim GRL
+    // physics_HI2026_50ns_noIBL.xml; no 2026 run is excluded at event level.
+    // See IntNotes/analysis_metadata.md. (sigma_PbPb=7.8 b: see 2023 func note.)
+    // MUST stay in sync with Utilities/PbPbSampledLumi.h (year-combine cancellation).
+    static std::vector<double> make_crossx_factors_pbpb_2026() {
+        return {
+            1./(0.05 * 7.8 * 1000. * 26.1428 * 2.62316 / 1000.),
+            1./(0.05 * 7.8 * 1000. * 20.3241 * 2.62316 / 1000.),
+            1./(0.1  * 7.8 * 1000. * 14.0502 * 2.62316 / 1000.),
+            1./(0.1  * 7.8 * 1000. *  8.5074 * 2.62316 / 1000.),
+            1./(0.2  * 7.8 * 1000. *  3.7733 * 2.62316 / 1000.),
+            1./(0.3  * 7.8 * 1000. *  0.6716 * 2.62316 / 1000.)
+        };
+    }
 
     // -------- public class methods --------
      PbPbBaseClass(){
@@ -154,10 +175,12 @@ void PbPbBaseClass<Derived>::BuildPbPbMaps(){
     run_yr_and_ctrbin_version_to_crossx_factors_map[{24, "default"}] = make_crossx_factors_pbpb_2024();
 
     run_yr_and_ctrbin_version_to_crossx_factors_map[{25, "default"}]     = make_crossx_factors_pbpb_2025(); // 2025 lumi set; T_AA = 2023 placeholder until official
+    run_yr_and_ctrbin_version_to_crossx_factors_map[{26, "default"}]     = make_crossx_factors_pbpb_2026(); // 2026 lumi set; T_AA = 2023 placeholder until official
     run_yr_and_ctrbin_version_to_crossx_factors_map[{18, "include_upc"}] = make_crossx_factors_pbpb_run2(); // WRONG!! 50-100% NEED TO BE CORRECTED
     run_yr_and_ctrbin_version_to_crossx_factors_map[{23, "include_upc"}] = make_crossx_factors_pbpb_2023(); // WRONG!! 50-100% NEED TO BE CORRECTED
     run_yr_and_ctrbin_version_to_crossx_factors_map[{24, "include_upc"}] = make_crossx_factors_pbpb_2024(); // WRONG!! 50-100% NEED TO BE CORRECTED
     run_yr_and_ctrbin_version_to_crossx_factors_map[{25, "include_upc"}] = make_crossx_factors_pbpb_2025(); // 2025 lumi set; T_AA = 2023 placeholder until official
+    run_yr_and_ctrbin_version_to_crossx_factors_map[{26, "include_upc"}] = make_crossx_factors_pbpb_2026(); // 2026 lumi set; T_AA = 2023 placeholder until official
 
 }
 
@@ -239,21 +262,21 @@ void PbPbBaseClass<Derived>::SetCrossxFactorsPbPbCtrBinned(int run_yr, const std
     using Key = std::pair<int, std::string>;
     Key key{run_yr, ctr_binning_v};
 
-    std::vector<double> crossx_factors_null = {};
-    crossx_factors_null.assign(ctr_bins.size(), -1.);
-
     auto it = run_yr_and_ctrbin_version_to_crossx_factors_map.find(key);
 
     if (it != run_yr_and_ctrbin_version_to_crossx_factors_map.end()) {
         crossx_factors_ctr_binned = it->second;
-    }else{        
-        std::cerr << "[WARNING] PbPbBaseClass::SetCrossxFactorsPbPbCtrBinned: "
-                  << "No cross-section factors found for "
-                  << "run_yr=" << run_yr
-                  << ", ctr_binning_v=\"" << ctr_binning_v << "\"" << std::endl
-                  << "Return a list of -1." << std::endl;
-
-        crossx_factors_ctr_binned = crossx_factors_null;
+    }else{
+        // Throw, never fall back to -1.  SanityCheckPbPb only checks the SIZE of this
+        // vector, so a vector of -1 passed every check and produced NEGATIVE cross
+        // sections from a warning that is trivial to miss in a long log.  A year with
+        // no registered crossx factors is a configuration error, not a fallback case.
+        throw std::runtime_error(
+            "PbPbBaseClass::SetCrossxFactorsPbPbCtrBinned: no cross-section factors "
+            "registered for run_yr=" + std::to_string(run_yr) +
+            ", ctr_binning_v=\"" + ctr_binning_v + "\". Register them in "
+            "BuildPbPbMaps() via make_crossx_factors_pbpb_<yr>(), and keep the "
+            "luminosity in sync with Utilities/PbPbSampledLumi.h.");
     }
 }
 

@@ -22,6 +22,7 @@ public:
             {{23, "PbPb"},    "single_mu4" },
             {{24, "PbPb"},    "single_mu4" },
             {{25, "PbPb"},    "single_mu4" },
+            {{26, "PbPb"},    "single_mu4" },
             {{24, "pp"},           "2mu4"       },
             {{24, "pp_2mu4"},      "2mu4"       },
             {{24, "pp_single_mu4"},"single_mu4" },
@@ -35,6 +36,7 @@ public:
             {{23, "PbPb"},         "mu4"        },
             {{24, "PbPb"},         "mu4"        },
             {{25, "PbPb"},         "mu4"        },
+            {{26, "PbPb"},         "mu4"        },
             {{24, "pp"},           "2mu4"       },
             {{24, "pp_2mu4"},      "2mu4"       },
             {{24, "pp_single_mu4"},"mu4"        },
@@ -52,7 +54,7 @@ public:
             throw std::runtime_error(
                 "DatasetTriggerMap::GetTrigger: no entry for (run_year=" +
                 std::to_string(run_year) + ", data_type=\"" + data_type + "\"). "
-                "Valid keys: (23,PbPb),(24,PbPb),(25,PbPb),(24,pp),(24,pp_2mu4)."
+                "Valid keys: (23,PbPb),(24,PbPb),(25,PbPb),(26,PbPb),(24,pp),(24,pp_2mu4)."
             );
         }
         return it->second;
@@ -67,7 +69,7 @@ public:
             throw std::runtime_error(
                 "DatasetTriggerMap::GetTriggerLabel: no entry for (run_year=" +
                 std::to_string(run_year) + ", data_type=\"" + data_type + "\"). "
-                "Valid keys: (23,PbPb),(24,PbPb),(25,PbPb),(24,pp),(24,pp_2mu4)."
+                "Valid keys: (23,PbPb),(24,PbPb),(25,PbPb),(26,PbPb),(24,pp),(24,pp_2mu4)."
             );
         }
         return it->second;

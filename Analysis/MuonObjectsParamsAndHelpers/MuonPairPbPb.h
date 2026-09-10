@@ -48,9 +48,14 @@ struct MuonPairPbPb
 {
     void PairValueCalcHook() {
         this->PairValueCalcPbPb(); // sets avg_centrality from ev_centrality branch
-        // pbpb2025: centrality branch is all zeros in the skim → recalculate.
+        // pbpb2025 and pbpb2026: the skim's centrality branch is all zeros → recalculate
+        // from FCal E_T.  Without this the pair keeps avg_centrality = 0, i.e. every
+        // event is classified 0-1% (most central), with no warning and no crash.
+        // 2026 comes from the same skim path as 2025 (run mode hi2026), so the same
+        // recompute is required; confirm on the first data_pbpb26_part1.root that the
+        // branch is indeed zero-filled (docs/tracking/pbpb2026_analysis_support.md P4).
         int yr = year % 2000;
-        if (yr == 25) this->UpdateCentrality();
+        if (yr == 25 || yr == 26) this->UpdateCentrality();
     }
 };
 
@@ -149,9 +154,17 @@ void PairPbPbExtras<Derived>::UpdateCentrality(){
   case 25:
     avg_centrality = GetCentralityPbPb2023(FCal_Et);  // use pbpb2023 thresholds until pbpb2025 are derived
     break;
+  case 26:
+    avg_centrality = GetCentralityPbPb2023(FCal_Et);  // use pbpb2023 thresholds until pbpb2026 are derived
+    break;
   default:
-    std::cout << "PairPbPbExtras::UpdateCentrality:    WARNING:: UpdateCentrality called but year is INVALID (must be 2015 / 2023 / 2024 / 2025)" << std::endl;
-    std::cout << "Centrality is NOT updated!" << std::endl;
+    // Throw rather than warn: the previous warning-only fallback left avg_centrality
+    // untouched (0 = most central) once per pair, which is invisible in a Condor log of
+    // millions of lines and produces a fully populated, completely wrong centrality
+    // dependence.  Every year that legitimately calls UpdateCentrality has a case above.
+    throw std::runtime_error("PairPbPbExtras::UpdateCentrality: no FCal->centrality mapping "
+                             "for run year 20" + std::to_string(year % 2000) +
+                             " (supported: 2015, 2018, 2023, 2024, 2025, 2026)");
   }
 }
 

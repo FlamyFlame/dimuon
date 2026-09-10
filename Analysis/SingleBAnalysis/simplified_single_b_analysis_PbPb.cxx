@@ -54,6 +54,11 @@ void SingleBAnalysisPbPb::SetIOPaths(){
             outfile_relative_path_truncated = "pbpb_2025/pbpb_2025_single_b_ana_hists_single_mu4";
             break;
 
+        case 26:
+            infile_relative_path  = "pbpb_2026/muon_pairs_pbpb_2026_single_mu4.root";
+            outfile_relative_path_truncated = "pbpb_2026/pbpb_2026_single_b_ana_hists_single_mu4";
+            break;
+
         default:
             throw std::runtime_error(
                 "Invalid run_year: " + std::to_string(run_year)

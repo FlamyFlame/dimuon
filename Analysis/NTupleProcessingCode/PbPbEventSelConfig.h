@@ -39,7 +39,9 @@ namespace PbPbEvSelKey {
     constexpr const char* kNTrkFracCutLo   = "g_ntrk_frac_cut_lo";
     constexpr const char* kNTrkFCalCutLo   = "g_ntrk_fcal_cut_lo";
     constexpr const char* kNTrkFCalCutHi   = "g_ntrk_fcal_cut_hi";
-    // PbPb25 only: TTree with per-run mu+7sigma preamp cuts
+    // OPTIONAL: TTree with per-run mu+7sigma preamp cuts.  Present in the PbPb25 cuts
+    // file only (as of 2026-09-10); PbPbExtras::InitEventSel loads it whenever it is
+    // present, for any year, and falls back to the scalar cut when it is absent.
     // Branches: run_number (Int_t), cut_A_ADC (Double_t), cut_C_ADC (Double_t)
     constexpr const char* kPreampPerRunTree = "t_preamp_per_run";
 }
@@ -54,6 +56,11 @@ inline std::string PbPbEvSelCutsPath(int run_year) {
 
 // ---- Run-quality exclusion list (keyed by 2-digit or 4-digit year) ---------
 // Returns runs excluded from all event selection derivations and analysis.
+// NOTE: a run excluded here must ALSO have its luminosity removed from
+// Utilities/PbPbSampledLumi.h and PbPbBaseClass.h::make_crossx_factors_pbpb_<yr>(),
+// or the cross-section numerator and denominator cover different runs.
+// 2026: no run is excluded (the GRL physics_HI2026_50ns_noIBL.xml is the only
+// selection).  Revisit if a 2026 data-quality review flags runs.
 inline std::unordered_set<int> PbPbBadRuns(int run_year) {
     int yr = run_year % 2000;
     if (yr == 23) return {461674, 462964};

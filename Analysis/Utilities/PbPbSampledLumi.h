@@ -1,5 +1,8 @@
 #pragma once
 
+#include <stdexcept>
+#include <string>
+
 // =============================================================================
 // PbPb HLT_mu4 prescale-corrected SAMPLED LUMINOSITY per year [nb^-1].
 //
@@ -17,8 +20,8 @@
 //
 // Source of values: PbPbBaseClass.h crossx-factor functions / IntNotes
 // analysis_metadata.md (2023 excludes the two b-hadron runs 461674 + 462964).
-// 2024/2025 T_AA are 2023 placeholders, but the luminosities here are the real
-// per-year values.
+// 2024/2025/2026 T_AA are 2023 placeholders, but the luminosities here are the
+// real per-year values.
 // =============================================================================
 inline double PbPbMu4SampledLumiNb(int run_year){
     switch (run_year % 2000){
@@ -35,6 +38,23 @@ inline double PbPbMu4SampledLumiNb(int run_year){
         // make_crossx_factors_pbpb_2024.
         case 24: return 0.85112;
         case 25: return 2.59933;
-        default: return 0.;   // unknown year -> 0 weight (caller guards Sum L > 0)
+        // 2026 (added 2026-09-10): Prescale-Corrected Total = 2623.16 ub^-1 =
+        // 2.62316 nb^-1 from lumitable_pbpb_26_HLT_mu4.csv (35 runs, 522041-523437),
+        // whose run list is byte-identical to the skim GRL
+        // physics_HI2026_50ns_noIBL.xml. No 2026 run is excluded at event level
+        // (PbPbBadRuns has no 26 entry), so the R_AA luminosity is the GRL total.
+        // MUST match PbPbBaseClass.h make_crossx_factors_pbpb_2026.
+        case 26: return 2.62316;
+        // Throw, never return 0.  A zero here was silently catastrophic in two ways:
+        // RDFBasedHistFillingPbPb computes 1.0/L, so 0 gave an INFINITE differential
+        // cross-section weight; and in the luminosity-weighted year combination
+        // Sum_y(L_y h_y)/Sum_y(L_y) a new year would be dropped at weight zero while
+        // every plot still rendered with the year in its legend.
+        default:
+            throw std::runtime_error(
+                "PbPbMu4SampledLumiNb: no sampled luminosity for Pb+Pb run year 20" +
+                std::to_string(run_year % 2000) +
+                " (known: 2023, 2024, 2025, 2026). Add it here AND in "
+                "PbPbBaseClass.h::make_crossx_factors_pbpb_<yr>().");
     }
 }
