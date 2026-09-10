@@ -638,17 +638,23 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
         FillSample({"pp_2024/", "pp_2024", "2mu4", 12}, use_tight_wp, false, pp_all,
                    pp_pos, pp_neg, pp_lopt, pp_hipt, pp_dummy, ctr_lo, ctr_hi);
 
-    // ================= PbPb 23+24+25 ====================
-    printf("\n=== PbPb 2023 + 2024 + 2025 (combined) ===\n");
+    // ================ PbPb 23+24+25+26 ==================
+    printf("\n=== PbPb 2023 + 2024 + 2025 + 2026 (combined) ===\n");
     TH1D *pb_all = book("h_pb_all"), *pb_pos = book("h_pb_pos"), *pb_neg = book("h_pb_neg");
     TH1D *pb_lopt = book("h_pb_lopt"), *pb_hipt = book("h_pb_hipt");
     std::vector<TH1D*> pb_ctr(nctr);
     for (int k = 0; k < nctr; ++k)
         pb_ctr[k] = book(Form("h_pb_ctr%d_%d", ctr_lo[k], ctr_hi[k]));
 
+    // nparts for 2026 is a PLACEHOLDER (5): the 2026 skim is submitted as 5 grid tasks, so
+    // at least 5 part files are expected, but the count can end up LARGER when
+    // grid_monitor's chunked-hadd fallback splits an oversized task output into extra
+    // parts. Confirm against what lands on disk; see
+    // docs/tracking/pbpb2026_analysis_support.md.
     const std::vector<Sample> pbpb = {{"pbpb_2023/", "pbpb_2023", "single_mu4", 4},
                                       {"pbpb_2024/", "pbpb_2024", "single_mu4", 2},
-                                      {"pbpb_2025/", "pbpb_2025", "single_mu4", 6}};
+                                      {"pbpb_2025/", "pbpb_2025", "single_mu4", 6},
+                                      {"pbpb_2026/", "pbpb_2026", "single_mu4", 5}};
     FillCounts pb_fc;
     pb_fc.n_wp_ctr.assign(nctr, 0);
     pb_fc.n_gapcut_ctr.assign(nctr, 0);
@@ -684,7 +690,7 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
          "single muons of selected pairs, " + wp_lbl + " WP (per muon)",
          "muon_q_eta_spectrum_pp24"},
         {pb_all, pb_pos, pb_neg, pb_lopt, pb_hipt,
-         "Pb+Pb #sqrt{s_{NN}} = 5.36 TeV, 2023+2024+2025, HLT_mu4",
+         "Pb+Pb #sqrt{s_{NN}} = 5.36 TeV, 2023+2024+2025+2026, HLT_mu4",
          "0-80% centrality, single muons of selected pairs, " + wp_lbl + " WP (per muon)",
          "muon_q_eta_spectrum_pbpb_combined"}};
 
@@ -797,7 +803,7 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
             pb_ctr[k]->Draw("hist");
             gPad->Update();
             DrawGapMarkers({pb_ctr[k]});
-            Header(Form("Pb+Pb #sqrt{s_{NN}} = 5.36 TeV, 23+24+25, %d-%d%%", ctr_lo[k],
+            Header(Form("Pb+Pb #sqrt{s_{NN}} = 5.36 TeV, 23+24+25+26, %d-%d%%", ctr_lo[k],
                         ctr_hi[k]),
                    wp_lbl + " WP (per muon)");
         }
@@ -889,7 +895,7 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
             TLegend l(lb.x1, lb.y1, lb.x2, lb.y2);
             StyleLegend(l, 0.038);
             l.AddEntry(pp_s, "pp 2024 (HLT_2mu4)", "l");
-            l.AddEntry(pb_s, "Pb+Pb 23+24+25, 0-80% (HLT_mu4)", "l");
+            l.AddEntry(pb_s, "Pb+Pb 23+24+25+26, 0-80% (HLT_mu4)", "l");
             l.DrawClone();
         }
         pads.second->cd();
@@ -926,7 +932,7 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
         printf("      [%+.4f, %+.4f]\n", w.first, w.second);
 
     ReportDips(pp_all, "pp24");
-    ReportDips(pb_all, "PbPb 23+24+25, 0-80%");
+    ReportDips(pb_all, "PbPb 23+24+25+26, 0-80%");
 
     // Fraction of single muons the EXISTING PassSingleMuonGapCut would remove.
     // Counted muon-by-muon in the fill loop over exactly the plotted population,
@@ -936,7 +942,7 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
     printf("   pp24                : %.4f  (%lld / %lld)\n",
            pp_fc.n_wp > 0 ? double(pp_fc.n_gapcut) / pp_fc.n_wp : 0., pp_fc.n_gapcut,
            pp_fc.n_wp);
-    printf("   PbPb 23+24+25 0-80%% : %.4f  (%lld / %lld)\n",
+    printf("   PbPb 23+24+25+26 0-80%% : %.4f  (%lld / %lld)\n",
            pb_fc.n_wp > 0 ? double(pb_fc.n_gapcut) / pb_fc.n_wp : 0., pb_fc.n_gapcut,
            pb_fc.n_wp);
     for (int k = 0; k < nctr; ++k)

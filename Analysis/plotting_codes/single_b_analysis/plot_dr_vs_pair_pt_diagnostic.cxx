@@ -13,7 +13,7 @@
 // 0-1, 50 bins; PNG only):
 //   1. pythia_truth_dr_vs_pair_pt.png  (Pythia evgen single-b, opposite-sign, weighted)
 //   2. pp24_data_dr_vs_pair_pt.png     (pp24 data, raw counts)
-//   3. pbpb_data_dr_vs_pair_pt.png     (PbPb 23+24+25 combined, raw counts)
+//   3. pbpb_data_dr_vs_pair_pt.png     (PbPb 23+24+25+26 combined, raw counts)
 //
 // A horizontal dashed red line is drawn at DeltaR = 0.05 (the removed cut).
 //
@@ -117,6 +117,8 @@ void plot_dr_vs_pair_pt_diagnostic()
         "muon_pairs_pbpb_2024_single_mu4_mindR_0_02_res_cut_v2.root",
         "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2025/"
         "muon_pairs_pbpb_2025_single_mu4_mindR_0_02_res_cut_v2.root",
+        "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2026/"
+        "muon_pairs_pbpb_2026_single_mu4_mindR_0_02_res_cut_v2.root",
     };
 
     auto check = [](const std::string& f) {
@@ -173,19 +175,19 @@ void plot_dr_vs_pair_pt_diagnostic()
                     "pp 2024 data (2mu4), OS, raw counts");
     }
 
-    // ======================= 3. PbPb DATA (23+24+25 combined) =======================
+    // ====================== 3. PbPb DATA (23+24+25+26 combined) =====================
     {
-        std::cout << "\n[INFO] PbPb data 2023+2024+2025...\n";
+        std::cout << "\n[INFO] PbPb data 2023+2024+2025+2026...\n";
         auto df = ROOT::RDataFrame("muon_pair_tree_sign2", pbpb_files)
                       .Filter(data_cuts);
-        ROOT::RDF::TH2DModel model("h_pbpb", "PbPb data 23+24+25;p_{T}^{#mu#mu} [GeV];#DeltaR",
+        ROOT::RDF::TH2DModel model("h_pbpb", "PbPb data 23+24+25+26;p_{T}^{#mu#mu} [GeV];#DeltaR",
                                    nx, xbins.data(), ny, ylo, yhi);
         auto h = df.Histo2D(model, "pair_pt", "dr");
         TH2D hh = *h;
         std::cout << "[INFO] PbPb TH2 entries = " << hh.GetEntries()
                   << ", integral = " << hh.Integral() << "\n";
         DrawAndSave(hh, out_dir + "/pbpb_data_dr_vs_pair_pt.png",
-                    "PbPb 2023+2024+2025 data (single mu4), OS, raw counts");
+                    "PbPb 2023+2024+2025+2026 data (single mu4), OS, raw counts");
     }
 
     std::cout << "\n[INFO] Done.\n";

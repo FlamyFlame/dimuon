@@ -190,17 +190,23 @@ void RAAPlotting::InputOutputPrepare(){
 		legend_pbpb_label = "PbPb 2024 data, " + DatasetTriggerMap::GetTriggerLabel(24, "PbPb");
 		legend_pp_label   = "pp 2024 data, "   + DatasetTriggerMap::GetTriggerLabel(24, "pp_2mu4");
 		break;
-	case 6: // Run 3: PbPb 2023+2024+2025 combined (single_mu4) + pp 2024 (2mu4), from RDF crossx outputs
+	case 6: // Run 3: PbPb 2023+2024+2025+2026 combined (single_mu4) + pp 2024 (2mu4), from RDF crossx outputs
+		// pbpb_infiles and pbpb_lumis are POSITIONALLY PAIRED: entry i of one describes the
+		// same year as entry i of the other.  Adding a file without adding its luminosity
+		// used to give that year weight 1.0 nb^-1 silently (see the guard below), so keep
+		// the two lists edited together, in the same year order.
 		pp_infile   = base_dir + "pp_2024/histograms_real_pairs_pp_2024_2mu4_nominal.root";
 		pbpb_infiles = {
 			base_dir + "pbpb_2023/histograms_real_pairs_pbpb_2023_single_mu4_no_trg_plots_nominal.root",
 			base_dir + "pbpb_2024/histograms_real_pairs_pbpb_2024_single_mu4_no_trg_plots_nominal.root",
 			base_dir + "pbpb_2025/histograms_real_pairs_pbpb_2025_single_mu4_no_trg_plots_nominal.root",
+			base_dir + "pbpb_2026/histograms_real_pairs_pbpb_2026_single_mu4_no_trg_plots_nominal.root",
 		};
-		pbpb_lumis = { PbPbMu4SampledLumiNb(23), PbPbMu4SampledLumiNb(24), PbPbMu4SampledLumiNb(25) };
-		run_year_trigger_suffix = "_pbpb23_24_25_combined_pp24_2mu4";
+		pbpb_lumis = { PbPbMu4SampledLumiNb(23), PbPbMu4SampledLumiNb(24),
+		               PbPbMu4SampledLumiNb(25), PbPbMu4SampledLumiNb(26) };
+		run_year_trigger_suffix = "_pbpb23_24_25_26_combined_pp24_2mu4";
 		out_dir = base_dir + "plots/single_b_analysis/RAA/";
-		legend_pbpb_label = "Pb+Pb 2023+2024+2025, HLT_mu4";
+		legend_pbpb_label = "Pb+Pb 2023+2024+2025+2026, HLT_mu4";
 		legend_pp_label   = "pp 2024, HLT_2mu4";
 		break;
 
@@ -267,6 +273,17 @@ void RAAPlotting::HistRetrieve(){
     double sumL = 0.;
     for (size_t iy = 0; iy < pbpb_files.size(); ++iy){
         const std::string& fpath = pbpb_files[iy];
+        // Legacy single-file modes (1-5) carry no pbpb_lumis and are weighted 1 (the single
+        // year's normalization is already in its crossx factors).  But in a MULTI-file
+        // combination a missing luminosity is a bug, not a default: it silently gave that
+        // year weight 1.0 nb^-1 instead of its real L, biasing the combined result with no
+        // message.  Fail loudly instead.
+        if (pbpb_files.size() > 1 && pbpb_lumis.size() != pbpb_files.size()) {
+            std::cerr << "RAAPlotting: " << pbpb_files.size() << " Pb+Pb input files but "
+                      << pbpb_lumis.size() << " luminosities -- the two lists must be "
+                         "positionally paired, one entry per year." << std::endl;
+            throw std::runtime_error("RAAPlotting: pbpb_infiles / pbpb_lumis size mismatch");
+        }
         const double L = (iy < pbpb_lumis.size()) ? pbpb_lumis[iy] : 1.0; // legacy single-file -> weight 1
         TFile* f = TFile::Open(fpath.c_str());
         if (!f || f->IsZombie()) { std::cerr << "Error opening PbPb file: " << fpath << std::endl; throw std::exception(); }

@@ -55,7 +55,8 @@ void plot_crossx_trig_corr_sanity(bool include_pbpb = true) {
         {"PbPb 10-20%",
          "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_ctr10_20",
          "h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_ctr10_20_no_trig_corr",
-         {{23, data_dir + "/pbpb_2023"}, {24, data_dir + "/pbpb_2024"}, {25, data_dir + "/pbpb_2025"}}
+         {{23, data_dir + "/pbpb_2023"}, {24, data_dir + "/pbpb_2024"},
+          {25, data_dir + "/pbpb_2025"}, {26, data_dir + "/pbpb_2026"}}
         },
         {"PP 2024",
          "h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts",

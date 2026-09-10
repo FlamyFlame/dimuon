@@ -272,7 +272,10 @@ void plot_single_b_crossx_pbpb(bool also_pt_120 = false)
         "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/single_b_analysis/";
 
     std::vector<std::pair<int,std::string>> year_paths;
-    for (int yr : {23, 24, 25}) {
+    // All Run-3 Pb+Pb data-taking years.  A year whose crossx file is not on disk yet is
+    // skipped with an [INFO] line, and the figure labels are rebuilt from the years that
+    // actually contributed, so the plot never claims a year it did not use.
+    for (int yr : {23, 24, 25, 26}) {
         const std::string& trig = DatasetTriggerMap::GetTrigger(yr, "PbPb");
         const std::string base = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20"
                                  + std::to_string(yr) + "/histograms_real_pairs_pbpb_20"

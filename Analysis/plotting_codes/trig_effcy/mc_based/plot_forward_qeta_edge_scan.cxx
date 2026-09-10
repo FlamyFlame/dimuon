@@ -20,16 +20,17 @@
 //
 // LAYOUT
 //   pp   (unchanged): ONE canvas, 4 panels -- mu+ LEFT, mu- RIGHT, data TOP, MC BOTTOM.
-//   PbPb (2026-08-13, user): DATA ONLY, TWO canvases, each 3 rows x 2 columns.
+//   PbPb (2026-08-13, user): DATA ONLY, TWO canvases, 2 columns each. The by-year canvas has
+//        one row per running period (4 with 2026 added); the centrality canvas is 3 x 2.
 //        The HIJING overlay was dropped from the PbPb figure: it is still a TEST sample, so its
 //        statistics in a single forward q*eta slice are too thin to say anything about where the
 //        edge belongs, and a half-empty MC row only invited over-reading. The two data canvases
 //        use the axis that PbPb actually has and pp does not -- year and centrality:
 //        (1) `..._by_year.png`      -- centrality-integrated; mu+ LEFT, mu- RIGHT;
-//                                      rows = PbPb 2023 / 2024 / 2025.
+//                                      rows = PbPb 2023 / 2024 / 2025 / 2026.
 //                                      Answers: is the forward edge behaving the same in all
-//                                      three running periods, per charge?
-//        (2) `..._centrality.png`   -- PbPb 23+24+25 summed AND mu+ + mu- summed, one panel per
+//                                      running periods, per charge?
+//        (2) `..._centrality.png`   -- PbPb 23+24+25+26 summed AND mu+ + mu- summed, one panel per
 //                                      centrality bin of `ParamsSet::ctrbins`
 //                                      (0-5 / 5-10 / 10-20 / 20-30 / 30-50 / 50-80 %) = exactly
 //                                      the 3 x 2 grid. Answers: does occupancy move the forward
@@ -104,8 +105,8 @@ const std::vector<double> kUpperEdges = {2.20, 2.25, 2.30, 2.40};
 const std::vector<Color_t> kEdgeCol   = {kBlack, kBlue + 1, kGreen + 2, kRed + 1};
 const std::vector<Style_t> kEdgeMark  = {20, 21, 22, 23};
 
-// The three PbPb running periods, in the order they are drawn as rows.
-const std::vector<int> kPbPbYears = {2023, 2024, 2025};
+// The PbPb running periods, in the order they are drawn as rows.
+const std::vector<int> kPbPbYears = {2023, 2024, 2025, 2026};
 
 template <typename T>
 T* GetObj(TFile* f, const std::string& name) {
@@ -341,7 +342,9 @@ void DrawHeader(const std::string& text) {
 // PbPb canvas 1: centrality-integrated, mu+ / mu- columns, one row per running period.
 // ---------------------------------------------------------------------------------------------
 void PlotPbPbByYear(bool use_tight_wp, const std::string& wp, const std::string& wpt) {
-    TCanvas c("c_fwd_edge_year", "", 1400, 1650);
+    // 550 px per row (same per-panel height as the centrality canvas below), so the canvas
+    // grows with the number of running periods instead of staying tuned to a fixed row count.
+    TCanvas c("c_fwd_edge_year", "", 1400, 550 * static_cast<int>(kPbPbYears.size()));
     c.Divide(2, static_cast<int>(kPbPbYears.size()));
 
     std::vector<std::pair<std::string, std::pair<TH2D*, TH2D*>>> rows;  // for the number table
@@ -386,12 +389,12 @@ void PlotPbPbByYear(bool use_tight_wp, const std::string& wp, const std::string&
 }
 
 // ---------------------------------------------------------------------------------------------
-// PbPb canvas 2: 2023+2024+2025 summed and mu+ + mu- summed, one panel per centrality bin.
+// PbPb canvas 2: 2023+2024+2025+2026 summed and mu+ + mu- summed, one panel per centrality bin.
 // ---------------------------------------------------------------------------------------------
 void PlotPbPbByCentrality(bool use_tight_wp, const std::string& wp, const std::string& wpt) {
     const size_t nctr = ParamsSet::ctrbins.size() - 1;
 
-    // Sum over the three years AND over both charges, per centrality bin.
+    // Sum over all running periods AND over both charges, per centrality bin.
     std::vector<TH2D*> num(nctr, nullptr), den(nctr, nullptr);
     for (int year : kPbPbYears) {
         const std::string fname = PbPbDataFile(year, wp);
@@ -422,7 +425,7 @@ void PlotPbPbByCentrality(bool use_tight_wp, const std::string& wp, const std::s
 
     // Guard on the summed sample: with all years and both charges in, an empty forward region
     // can only mean gap-cut inputs.
-    AssertForwardRegionPopulated(den[0], "PbPb 23+24+25, both charges, most central bin");
+    AssertForwardRegionPopulated(den[0], "PbPb 23+24+25+26, both charges, most central bin");
 
     // The six panels do NOT share one q*eta grid (184 / 102 / 61 bins, per-centrality by
     // registration), so scan only the boundaries all six have in common -- otherwise the same
@@ -448,7 +451,7 @@ void PlotPbPbByCentrality(bool use_tight_wp, const std::string& wp, const std::s
 
     c.cd(0);
     DrawHeader(kPbPbHeader + wpt + " muons,  forward q#eta edge scan,  "
-               "data 2023+2024+2025,  #mu^{+} + #mu^{-}" + AdoptedForwardEdgeLabel());
+               "data 2023+2024+2025+2026,  #mu^{+} + #mu^{-}" + AdoptedForwardEdgeLabel());
 
     const std::string out_dir = PbPbOutDir(use_tight_wp);
     gSystem->mkdir(out_dir.c_str(), kTRUE);

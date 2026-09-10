@@ -389,10 +389,16 @@ void plot_muon_q_eta_pt_dependence(bool use_tight_wp = true) {
     FillSample({"pp_2024/", "pp_2024", "2mu4", 12}, use_tight_wp, false, 0, ctr_lo, ctr_hi,
                h, n_all, n_cut);
 
-    printf("\n=== PbPb 2023 + 2024 + 2025 (combined) ===\n");
+    printf("\n=== PbPb 2023 + 2024 + 2025 + 2026 (combined) ===\n");
+    // nparts for 2026 is a PLACEHOLDER (5): the 2026 skim is submitted as 5 grid tasks, so
+    // at least 5 part files are expected, but the count can end up LARGER when
+    // grid_monitor's chunked-hadd fallback splits an oversized task output into extra
+    // parts. Confirm against what lands on disk; see
+    // docs/tracking/pbpb2026_analysis_support.md.
     const std::vector<Sample> pbpb = {{"pbpb_2023/", "pbpb_2023", "single_mu4", 4},
                                       {"pbpb_2024/", "pbpb_2024", "single_mu4", 2},
-                                      {"pbpb_2025/", "pbpb_2025", "single_mu4", 6}};
+                                      {"pbpb_2025/", "pbpb_2025", "single_mu4", 6},
+                                      {"pbpb_2026/", "pbpb_2026", "single_mu4", 5}};
     for (const auto& s : pbpb)
         FillSample(s, use_tight_wp, true, -1, ctr_lo, ctr_hi, h, n_all, n_cut);
 
@@ -416,7 +422,7 @@ void plot_muon_q_eta_pt_dependence(bool use_tight_wp = true) {
     head[0] = "pp #sqrt{s} = 5.36 TeV, 2024";
     sub[0] = "HLT_2mu4, " + wp_lbl + " WP (per muon)";
     for (int k = 0; k < nctr; ++k) {
-        head[k + 1] = Form("Pb+Pb #sqrt{s_{NN}} = 5.36 TeV, 23+24+25, %d-%d%%", ctr_lo[k],
+        head[k + 1] = Form("Pb+Pb #sqrt{s_{NN}} = 5.36 TeV, 23+24+25+26, %d-%d%%", ctr_lo[k],
                            ctr_hi[k]);
         sub[k + 1] = "HLT_mu4, " + wp_lbl + " WP (per muon)";
     }
