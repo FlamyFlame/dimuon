@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# Master PbPb pipeline: runs shared event selection once, then launches
-# crossx and trig_eff pipelines in parallel (both skip event selection).
+# Master PbPb pipeline: runs shared event selection once, then runs, IN ORDER,
+# trig_eff -> medium-WP turn-on fits -> crossx (both sub-pipelines skip event selection).
+# The order is a data dependency, not a preference: crossx consumes the turn-on fits.
 #
 # Usage:
 #   ./run_pbpb_all.sh
@@ -21,7 +22,15 @@ EVSEL_DIR="${ANALYSIS_DIR}/plotting_codes/event_selection"
 
 SKIP_CONDOR="${SKIP_CONDOR:-0}"
 SKIP_EVSEL="${SKIP_EVSEL:-${SKIP_CONDOR}}"
-YEARS=(${YEARS:-23 24 25})
+# YEARS is consumed TWICE: locally as an array, and by the sub-pipelines as an inherited scalar.
+# `YEARS=(${YEARS:-...})` did only the first -- it replaced the scalar with an array, and arrays
+# are not exported, so every child saw YEARS UNSET and silently fell back to all three years.
+# Consequence during a rerun: `YEARS=24 SKIP_CONDOR=1 ./run_pbpb_all.sh`, the natural way to
+# re-enter after one year fails, resubmits ~24 Condor jobs and overwrites 2023 and 2025 outputs
+# that were already good. Keep the scalar (exported) and derive the array from it.
+YEARS_STR="${YEARS:-23 24 25}"
+export YEARS="${YEARS_STR}"
+read -r -a YEARS_ARR <<< "${YEARS_STR}"
 DATA_BASE="/usatlas/u/yuhanguo/usatlasdata/dimuon_data"
 
 now() { date '+%F %T'; }
@@ -47,7 +56,7 @@ if [[ "$SKIP_EVSEL" -eq 1 ]]; then
   log "SKIP_EVSEL=1 — skipping event selection (reusing existing cuts)"
 else
   log "Running shared event selection for all years"
-  for yr in "${YEARS[@]}"; do
+  for yr in "${YEARS_ARR[@]}"; do
     log "Event selection: deriving cuts for PbPb 20${yr}"
     pushd "$EVSEL_DIR" >/dev/null
     root -l -b -q "plot_pbpb_event_sel_event_level.cxx(${yr})"
@@ -108,11 +117,18 @@ TRIGEFF_LOG="${SCRIPT_DIR}/trigeff_$$.log"
 # a concurrent run is GUARANTEED to read stale fits and throw inside the RDF event loop -- where
 # ROOT swallows the exception and still exits 0, leaving a fresh near-empty output. That failure
 # mode already destroyed pbpb_2024/histograms_real_pairs_..._nominal.root (851 bytes, 0 keys).
-bash "${SCRIPT_DIR}/pipeline_pbpb_trig_eff.sh" > "$TRIGEFF_LOG" 2>&1
-TRIGEFF_RC=$?
+# `$?` after a BARE command is unreachable here: line 2 is `set -Eeuo pipefail`, so a non-zero
+# child aborts this script before the capture runs, and the operator gets the generic ERR-trap
+# line instead of the specific message. The serialization itself was always correct -- crossx is
+# a later command and cannot start early -- but its diagnostics were dead code.
+# `cmd || RC=$?` with RC preset to 0 is the form that works. NOT `if ! cmd; then RC=$?; fi`:
+# inside that `then` branch `$?` is the status of the `!` NEGATION, which is always 0, so the
+# real exit code is lost and every failure reports rc=0. Verified both forms empirically before
+# committing -- the negation form silently captured 0 from a child that exited 7.
+TRIGEFF_RC=0
+bash "${SCRIPT_DIR}/pipeline_pbpb_trig_eff.sh" > "$TRIGEFF_LOG" 2>&1 || TRIGEFF_RC=$?
 log "trig_eff pipeline finished (rc=$TRIGEFF_RC, log: $TRIGEFF_LOG)"
 
-FAIL=0
 if [[ $TRIGEFF_RC -ne 0 ]]; then
   log "ERROR: trig_eff pipeline failed (see $TRIGEFF_LOG)"
   log "ABORTING before crossx: it would consume the turn-on fits this stage was supposed to write."
@@ -120,19 +136,32 @@ if [[ $TRIGEFF_RC -ne 0 ]]; then
 fi
 log "trig_eff pipeline completed successfully"
 
-bash "${SCRIPT_DIR}/pipeline_pbpb_crossx.sh" > "$CROSSX_LOG" 2>&1
-CROSSX_RC=$?
+# ------ MEDIUM-WP turn-on fits, before crossx ------
+# pipeline_pbpb_trig_eff.sh Stage 5 leaves `isTight` at its default true, so it refreshes only the
+# TIGHT tag-and-probe file and its fit. Without this stage the Pb+Pb Medium turn-on fits would be
+# the ONLY correction left on the superseded (-1.30,-1.05) gap window and the old `_2_00_TO_2_30`
+# q*eta key, while everything around them moved -- and the WP registry requires the Medium leg to
+# exist for the WP systematic. It runs BEFORE crossx so a Medium crossx pass can never read a
+# Tight-vintage fit. Note this CREATES the 2024/2025 files: neither year had one on disk.
+MEDIUM_LOG="${SCRIPT_DIR}/trigeff_medium_$$.log"
+MEDIUM_RC=0
+SAMPLES="${YEARS_STR}" bash "${SCRIPT_DIR}/run_data_trigeff_medium_wp.sh" > "$MEDIUM_LOG" 2>&1 || MEDIUM_RC=$?
+log "medium-WP trig_eff finished (rc=$MEDIUM_RC, log: $MEDIUM_LOG)"
+if [[ $MEDIUM_RC -ne 0 ]]; then
+  log "ERROR: medium-WP trig_eff failed (see $MEDIUM_LOG)"
+  log "ABORTING before crossx: the Medium turn-on fits would stay on the superseded selection."
+  exit 1
+fi
+log "medium-WP trig_eff completed successfully"
+
+CROSSX_RC=0
+bash "${SCRIPT_DIR}/pipeline_pbpb_crossx.sh" > "$CROSSX_LOG" 2>&1 || CROSSX_RC=$?
 log "crossx pipeline finished (rc=$CROSSX_RC, log: $CROSSX_LOG)"
 
 if [[ $CROSSX_RC -ne 0 ]]; then
   log "ERROR: crossx pipeline failed (see $CROSSX_LOG)"
-  FAIL=1
-else
-  log "crossx pipeline completed successfully"
+  fail "The crossx pipeline failed — check $CROSSX_LOG"
 fi
-
-if [[ $FAIL -eq 1 ]]; then
-  fail "The crossx pipeline failed — check logs above"
-fi
+log "crossx pipeline completed successfully"
 
 log "All PbPb pipelines completed successfully"

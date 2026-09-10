@@ -260,15 +260,19 @@ log "Validating cc per-batch outputs"
 validate_files_or_fail "cc batch" "${CC_BATCH_FILES[@]}"
 
 # --- Step 4: hadd into combined files ---
-log "hadding bb batches -> ${BB_COMBINED}"
+# Merge the EXPLICIT, already-validated part arrays -- never a glob. A glob merges whatever
+# happens to match, including this repo's own backup convention
+# (`${f%.root}.bak_<timestamp>.root`, written by pipeline_pythia_fullsim_pp.sh), which renders as
+# `..._part7.bak_20260909_120000.root` and matches `..._part*.root`. A double-counted batch in a
+# reco-efficiency denominator is invisible in every downstream plot. The crossx pipelines already
+# build explicit part arrays for exactly this reason.
+log "hadding bb batches -> ${BB_COMBINED} (${#BB_BATCH_FILES[@]} validated parts)"
 rm -f "${BB_COMBINED}"
-# shellcheck disable=SC2086
-hadd -f "${BB_COMBINED}" "${BB_DIR}"/single_muon_trees_powheg_bb_fullsim_pp17_part*.root
+hadd -f "${BB_COMBINED}" "${BB_BATCH_FILES[@]}"
 
-log "hadding cc batches -> ${CC_COMBINED}"
+log "hadding cc batches -> ${CC_COMBINED} (${#CC_BATCH_FILES[@]} validated parts)"
 rm -f "${CC_COMBINED}"
-# shellcheck disable=SC2086
-hadd -f "${CC_COMBINED}" "${CC_DIR}"/single_muon_trees_powheg_cc_fullsim_pp17_part*.root
+hadd -f "${CC_COMBINED}" "${CC_BATCH_FILES[@]}"
 
 log "Validating combined files are valid ROOT files"
 validate_files_or_fail "combined" "${BB_COMBINED}" "${CC_COMBINED}"

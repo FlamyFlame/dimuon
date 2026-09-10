@@ -115,6 +115,44 @@ tree_entries() {  # $1=file $2=tree
     echo "${n:-0}"
 }
 
+# 1 if a named histogram exists in a file AND has entries, else 0. Same contract as
+# tree_entries: swallows ROOT's exit status, always prints a number, always exits 0.
+# This is the check that distinguishes "the event loop ran" from "the event loop threw and
+# ROOT swallowed it, leaving a freshly-written near-empty file" -- a key COUNT cannot, because
+# a partially-flushed file still has keys.
+hist_filled() {  # $1=file $2=histogram
+    local n
+    n=$(root -l -b -q -e "
+        TFile* f = TFile::Open(\"$1\");
+        if (!f || f->IsZombie()) { printf(\"HF 0\n\"); return; }
+        TH1* h = (TH1*)f->Get(\"$2\");
+        printf(\"HF %d\n\", (h && h->GetEntries() > 0) ? 1 : 0);
+    " 2>/dev/null | grep -oP 'HF \K[0-9]+' | tail -1 || true)
+    echo "${n:-0}"
+}
+
+# Freshness stamps. A stage is NEVER validated by file-exists alone: Stages 1-3 and 5 back the
+# OLD product up with `cp -a` and leave it at the nominal path, and a C++ throw inside an RDF
+# event loop is caught by TRint so the job still exits 0. Existence + non-empty therefore passes
+# on LAST production's file, and the whole chain would run on the pre-change 4.0 GeV / -1.30 gap
+# population with no crash and no warning. The stamp makes "did this stage actually rewrite the
+# file" answerable. (`pipeline_pp_crossx.sh` already does this; this pipeline did not.)
+STAMP_DIR="$(mktemp -d)"
+trap 'rm -rf "${STAMP_DIR}"' EXIT
+stamp_now() { local s="${STAMP_DIR}/$1"; : > "$s"; echo "$s"; }
+require_fresh() {  # $1=stamp $2..=files
+    local stamp="$1"; shift
+    local f
+    for f in "$@"; do
+        [[ -f "$f" ]] || fail "missing $f"
+        [[ "$f" -nt "$stamp" ]] || fail "STALE: $(basename "$f") was NOT rewritten by the stage that just ran.
+          It predates this stage, so it is the PREVIOUS production's file -- almost certainly a
+          C++ exception thrown inside the ROOT/RDF event loop, which TRint catches so the job
+          still exits 0. Do NOT let the chain continue: every downstream correction would be
+          measured on the old selection. Check the stage log for 'Error'/'Runtime error'/'throw'."
+    done
+}
+
 log "══════════ pp24 Pythia fullsim pipeline — SAMPLE=${SAMPLE} ══════════"
 log "  sample dir      : ${SAMPLE_DIR}"
 log "  WP              : $([[ $USE_TIGHT_WP == 1 ]] && echo Tight || echo Medium)"
@@ -160,7 +198,15 @@ else
     fi
 
     # Back up anything we are about to overwrite. Never clobber a previous result silently.
-    for f in "${PAIR_FILE}" "${SINGLE_FILE}"; do
+    # With ENABLE_MC_TRIG_EFF=1 Stage 3 ALSO rewrites the two mc_trig products, so they belong in
+    # this loop -- without them the comment above was simply false for the configuration the
+    # muon-pT 4.5 rerun uses.
+    BACKUP_TARGETS=("${PAIR_FILE}" "${SINGLE_FILE}")
+    if (( ENABLE_MC_TRIG_EFF )); then
+        BACKUP_TARGETS+=("${SAMPLE_DIR}/muon_pairs_pythia_fullsim_pp24${CUT}_mc_trig${SFX}.root")
+        BACKUP_TARGETS+=("${SAMPLE_DIR}/muon_pairs_pythia_fullsim_pp24${CUT}_single_muon_mc_trig${SFX}.root")
+    fi
+    for f in "${BACKUP_TARGETS[@]}"; do
         [[ -f "$f" ]] && { bak="${f%.root}.bak_$(date +%Y%m%d_%H%M%S).root"; cp -a "$f" "$bak"; log "  backed up $(basename "$f") -> $(basename "$bak")"; }
     done
 
@@ -171,6 +217,8 @@ else
         NEV_ENV=(env "NEVENTS_MAX=${SMOKE_NEVENTS}")
         log "  SMOKE TEST: nevents_max=${SMOKE_NEVENTS} per (slice,beam) chain"
     fi
+
+    NTP_STAMP="$(stamp_now ntp)"
 
     log "[Stage 1] NTP nominal   (${NTP_NOMINAL})"
     ( cd "${NTP_DIR}" && "${NEV_ENV[@]}" bash "${NTP_NOMINAL}" ) || fail "NTP nominal failed"
@@ -191,16 +239,32 @@ fi
 log "[Stage 4] validating NTP output"
 [[ -f "${PAIR_FILE}" ]]   || fail "missing ${PAIR_FILE}"
 [[ -f "${SINGLE_FILE}" ]] || fail "missing ${SINGLE_FILE}"
+# FRESHNESS FIRST -- see the require_fresh comment. Only meaningful if this run actually ran the
+# NTP stages; under SKIP_NTP=1 the files are deliberately last run's and there is nothing to
+# compare against.
+if (( ! SKIP_NTP )); then
+    require_fresh "${NTP_STAMP}" "${PAIR_FILE}" "${SINGLE_FILE}"
+    log "  NTP outputs are freshly written  ✅"
+fi
 n_pair=$(tree_entries "${PAIR_FILE}" "muon_pair_tree_kin0_sign2") || n_pair=0
 [[ "${n_pair:-0}" -gt 0 ]] || fail "muon_pair_tree_kin0_sign2 is EMPTY in ${PAIR_FILE}"
 log "  pair tree kin0_sign2: ${n_pair} entries  ✅"
+n_single=$(tree_entries "${SINGLE_FILE}" "muon_tree") || n_single=0
+[[ "${n_single:-0}" -gt 0 ]] || fail "muon_tree is EMPTY in ${SINGLE_FILE} (Stage 2 silent throw)"
+log "  single-muon tree: ${n_single} entries  ✅"
 
 # If MC trig-eff is on, VALIDATE the mc_trig NTP too. A ROOT stage that THROWS still exits 0, so
 # the NTP script's `|| fail` misses it (this is exactly how the store_mc_trigger multi-file bug
 # silently skipped the mc_trig NTP on 2026-07-20). Check the artefact, not the exit code.
 if (( ENABLE_MC_TRIG_EFF )); then
     MCTRIG_PAIR="${SAMPLE_DIR}/muon_pairs_pythia_fullsim_pp24${CUT}_mc_trig${SFX}.root"
+    MCTRIG_SINGLE="${SAMPLE_DIR}/muon_pairs_pythia_fullsim_pp24${CUT}_single_muon_mc_trig${SFX}.root"
     [[ -f "$MCTRIG_PAIR" ]] || fail "mc_trig NTP missing: ${MCTRIG_PAIR} — Stage 3 likely threw but exited 0 (ROOT swallows C++ exceptions). Check the log for 'Runtime error'/'store_mc_trigger'."
+    [[ -f "$MCTRIG_SINGLE" ]] || fail "mc_trig single-muon NTP missing: ${MCTRIG_SINGLE} — Stage 3 likely threw but exited 0."
+    if (( ! SKIP_NTP )); then
+        require_fresh "${NTP_STAMP}" "$MCTRIG_PAIR" "$MCTRIG_SINGLE"
+        log "  mc_trig NTP outputs are freshly written  ✅"
+    fi
     n_mct=$(tree_entries "$MCTRIG_PAIR" "muon_pair_tree_kin0_sign2") || n_mct=0
     [[ "${n_mct:-0}" -gt 0 ]] || fail "mc_trig NTP ${MCTRIG_PAIR} is EMPTY (Stage 3 silent throw)."
     log "  mc_trig pair tree kin0_sign2: ${n_mct} entries  ✅"
@@ -211,6 +275,7 @@ if (( SKIP_RDF )); then
     log "[Stage 5] SKIPPED (SKIP_RDF=1)"
 else
     [[ -f "${HIST_FILE}" ]] && { bak="${HIST_FILE%.root}.bak_$(date +%Y%m%d_%H%M%S).root"; cp -a "${HIST_FILE}" "$bak"; log "  backed up $(basename "${HIST_FILE}")"; }
+    RDF_STAMP="$(stamp_now rdf)"
     log "[Stage 5] RDF histogram filling"
     pushd "${RDF_DIR}" >/dev/null
     root -l -b <<ROOTEOF || fail "ROOT exited non-zero during RDF hist filling"
@@ -228,9 +293,19 @@ fi
 # --- Stage 6: validate histogram output ---------------------------------------------------
 log "[Stage 6] validating histogram output"
 [[ -f "${HIST_FILE}" ]] || fail "missing ${HIST_FILE}"
+if (( ! SKIP_RDF )); then
+    require_fresh "${RDF_STAMP}" "${HIST_FILE}"
+    log "  histogram file is freshly written  ✅"
+fi
+# A key COUNT is not a validation: a throw part-way through the event loop still flushes some
+# keys, and RECREATE on a file that then throws immediately leaves a near-empty one (the
+# 851-byte, 0-key Pb+Pb corpse of 2026-09-06 is the extreme case, but the partial case passes a
+# key count). Probe a histogram that only a completed SIGNAL-REGION fill can have filled.
+REQUIRED_HIST="h_pair_pt_single_b_pass_tight"
+[[ "$(hist_filled "${HIST_FILE}" "${REQUIRED_HIST}")" == "1" ]] \
+    || fail "${HIST_FILE} has no filled ${REQUIRED_HIST} — the RDF event loop threw and ROOT swallowed it (exit code 0 is not evidence). Nothing downstream may consume this file."
 nkeys=$(root -l -b -q -e "TFile* f=TFile::Open(\"${HIST_FILE}\"); printf(\"NK %d\n\", f&&!f->IsZombie()? f->GetListOfKeys()->GetSize():0);" 2>/dev/null | grep -oP 'NK \K[0-9]+' | tail -1 || true); nkeys=${nkeys:-0}
-[[ "${nkeys:-0}" -gt 0 ]] || fail "${HIST_FILE} has no keys"
-log "  ${nkeys} histogram keys  ✅"
+log "  ${nkeys} histogram keys, ${REQUIRED_HIST} filled  ✅"
 
 # --- Stages 7-9: plots --------------------------------------------------------------------
 if (( SKIP_PLOTS )); then
