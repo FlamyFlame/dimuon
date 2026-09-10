@@ -69,7 +69,7 @@
 // cell (mc_trigger_efficiency.md R26, OPEN), which the single delivered series cannot show.
 //
 // THE HISTOGRAM AXES ARE THE pp24 CROSS-SECTION's, NOT THE CORRECTION's (user 2026-08-24; doc D8,
-// superseding mc_trig_eff_closure.md D2): ParamsSet::pT_bins_150 (15 log bins, 8-150 GeV) x the 9
+// superseding mc_trig_eff_closure.md D2): ParamsSet::pT_bins_150 (16 log bins, 9-150 GeV) x the 9
 // CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap panels, IN EVERY APPROACH. The point of
 // the comparison is which approach corrects the cross-section most accurately, so all four must be
 // read out in the cross-section's own cells; four figures on four different x-axes could not be
@@ -290,8 +290,10 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
     // THE HISTOGRAM AXES ARE THE pp24 CROSS-SECTION's, NOT THE CORRECTION's (user, 2026-08-24;
     // docs/tracking/mc_trigeff_dr_binning_approaches.md PP-1 / D8, superseding
     // mc_trig_eff_closure.md D2):
-    //   pair pT  = ParamsSet::pT_bins_150  -- 15 log bins, 8 -> 150 GeV, the crossx "8-150 GeV"
-    //              version (h2d_crossx_pt_150_pair_eta_binned_w_signal_cuts in
+    //   pair pT  = ParamsSet::pT_bins_150  -- 16 log bins, 9 -> 150 GeV, the crossx "9-150 GeV"
+    //              version (h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts -- the unsuffixed DEFAULT family,
+    //              on ParamsSet::pT_bins_150 = 16 log bins 9->150 since 2026-09-08; the former
+    //              _pt_150 name now denotes the 9->120 alternative -- in
     //              RDFBasedHistFillingPP.cxx)
     //   pair eta = the 9 CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap panels, the same
     //              ranges SingleBCrossxPlotterBase::DrawPairPtByEta slices the cross-section in
@@ -343,7 +345,7 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
 
     // The presentation axis and the correction cells must COVER THE SAME REGION, or the closure
     // would either include pairs the correction does not reach or exclude pairs the cross-section
-    // does. Both are 8 -> 150 GeV and -2.4 -> 2.4 (or, folded, 0 -> 2.4) today; this is the guard
+    // does. Both are 9 -> 150 GeV and -2.4 -> 2.4 (or, folded, 0 -> 2.4) today; this is the guard
     // that says so if either ever moves (.claude/CLAUDE.md Binnings: a mismatch here is silent --
     // every histogram fills).
     if (std::fabs(pt_edges.front() - pt_lo)     > 1e-6 ||
@@ -483,8 +485,15 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
 
     // ---------------------------------------------------------------- the pair sample
     ROOT::RDataFrame df(kPairTree, pair_file);
+    // PAIR-level WP flag: pair_pass_X = m1.pass_X && m2.pass_X && ip_pair_ok, i.e. both per-muon
+    // nominal-muon flags PLUS the pp SAME-VERTEX pair requirement. Checked here, BEFORE the event
+    // loop (ROOT swallows exceptions thrown inside one and still exits 0).
+    const std::string pair_wp_col = MCTrigEffPairSel::PairWpBranch(use_tight_wp);
+    MCTrigEffPairSel::RequirePairWpColumn(df.GetColumnNames(), pair_wp_col,
+                                          pair_file + ":" + kPairTree);
     ROOT::RDF::RNode d = df;
-    d = d.Alias("m1_pt", "m1.pt").Alias("m1_eta", "m1.eta").Alias("m1_charge", "m1.charge")
+    d = d.Alias("pair_wp", pair_wp_col)
+         .Alias("m1_pt", "m1.pt").Alias("m1_eta", "m1.eta").Alias("m1_charge", "m1.charge")
          .Alias("m1_wp", "m1." + wp_col)
          .Alias("m1_truth_pt", "m1.truth_pt").Alias("m1_truth_eta", "m1.truth_eta")
          .Alias("m2_pt", "m2.pt").Alias("m2_eta", "m2.eta").Alias("m2_charge", "m2.charge")
@@ -733,7 +742,8 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
                         ? " [pair eta MERGED into the 3 detector regions]" : "")).c_str(),
                 (int)pt_edges.size() - 1, pt_edges.front(), pt_edges.back(),
                 (int)eta_edges.size() - 1,
-                base_sel.c_str(), MCTrigEffPairSel::SingleBSignalCutsReco().c_str(),
+                (base_sel + " [pair_wp = " + pair_wp_col + "]").c_str(),
+                MCTrigEffPairSel::SingleBSignalCutsReco().c_str(),
                 eps_prov.c_str(), dr_prov.c_str()))
         .Write();
     fout.Close();

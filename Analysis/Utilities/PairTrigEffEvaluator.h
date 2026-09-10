@@ -65,9 +65,13 @@ struct MassWindow {
 };
 
 // `sig`  = the single-b signal window. Combined with MCTrigEffPairSel::Step3PairSelection it IS
-//          the signal region: SingleBSignalCutsReco adds only pair_pt > 8 (implied by the coarse
-//          pair-pT axis, which starts at 8) and the fiducial gap cut (already in the base
-//          selection).
+//          the signal region: SingleBSignalCutsReco adds only the pair-pT threshold
+//          `ParamsSet::signal_pair_pt_min` (implied by the coarse pair-pT axis, which starts at
+//          the same value) and the fiducial gap cut (already in the base selection).
+//          The value is deliberately NOT written here: it moved 8 -> 9 GeV on 2026-09-08
+//          (docs/tracking/mu_pt45_gap125_pairpt9_adoption.md D3) and a retyped copy in a comment
+//          is how the two silently drift -- note CheckSignalWindowMirror below compares only the
+//          `minv` half of that string, so a pair-pT mismatch would NOT be caught.
 // `wide` = the template-fit window, which contains the phi, J/psi and psi(2S) mass region. The MC
 //          pair file carries NO resonance veto, so this is the honest 1-4 GeV mixture the MC
 //          produces (docs/tracking/mc_trigeff_single_value_pair_eff.md §PP-2).

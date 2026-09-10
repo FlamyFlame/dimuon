@@ -152,10 +152,19 @@ void FillMCTrigEffPairEff(const std::string& sample = "pp_full", bool use_tight_
         Form("pair_pt >= %.10g && pair_pt < %.10g && abs_pair_eta < %.10g",
              pt_edges.front(), pt_edges.back(), eta_edges.back());
 
+    // PAIR-level WP flag: pair_pass_X = m1.pass_X && m2.pass_X && ip_pair_ok, i.e. both per-muon
+    // nominal-muon flags PLUS the pp SAME-VERTEX pair requirement (which the per-muon, ANY-vertex
+    // flags deliberately omit). Required by Step3PairSelection().
+    const std::string pair_wp_col = MCTrigEffPairSel::PairWpBranch(use_tight_wp);
+
     for (const auto& S : PairTrigEff::Signs()) {
         ROOT::RDataFrame df(S.tree, pair_file);
+        // BEFORE the event loop: ROOT swallows exceptions thrown inside one and still exits 0.
+        MCTrigEffPairSel::RequirePairWpColumn(df.GetColumnNames(), pair_wp_col,
+                                              pair_file + ":" + S.tree);
         ROOT::RDF::RNode d = df;
-        d = d.Alias("m1_pt", "m1.pt").Alias("m1_eta", "m1.eta").Alias("m1_charge", "m1.charge")
+        d = d.Alias("pair_wp", pair_wp_col)
+             .Alias("m1_pt", "m1.pt").Alias("m1_eta", "m1.eta").Alias("m1_charge", "m1.charge")
              .Alias("m1_wp", "m1." + wp_col)
              .Alias("m1_truth_pt", "m1.truth_pt").Alias("m1_truth_eta", "m1.truth_eta")
              .Alias("m2_pt", "m2.pt").Alias("m2_eta", "m2.eta").Alias("m2_charge", "m2.charge")
@@ -348,7 +357,9 @@ void FillMCTrigEffPairEff(const std::string& sample = "pp_full", bool use_tight_
                 sample.c_str(), cfg.mc_label.c_str(), wp_text.c_str(), Stamp(eps_mc_file).c_str(),
                 npt, neta, DrGroupsDescribe(eta_grp, "|eta^pair|", "").c_str(), wins.c_str(),
                 npt, mpt[nmpt - 1], mpt[nmpt], PairTrigEff::FirstDeliveredPtEdge(),
-                Stamp(pair_file).c_str(), base_sel_text.c_str(), cell_sel_text.c_str(),
+                Stamp(pair_file).c_str(),
+                (base_sel_text + " [pair_wp = " + pair_wp_col + "]").c_str(),
+                cell_sel_text.c_str(),
                 PairTrigEff::MinCellPairs(), PairTrigEff::MaxDeliveredValue()))
         .Write();
     fout.Close();

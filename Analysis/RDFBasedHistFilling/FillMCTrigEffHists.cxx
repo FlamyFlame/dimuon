@@ -17,12 +17,24 @@
 //                  correction on the PbPb union LINEAR terms. NOT needed for pp (2mu4
 //                  product); pp runs only to validate the machinery on the full sample.
 //
-// Selection mirrors the data-side muon definition: Tight WP (analysis nominal),
-// pT > 4 GeV, |η| < 2.4. Overlay restricted to 0–5% centrality (doc D2).
+// Selection mirrors the data-side muon definition: the ntuple-processing WP flag (Tight WP,
+// analysis nominal) plus the restated pT > 4.5 GeV, |η| < 2.4. The flag is NOT a bare quality
+// bit -- pass_tight/pass_medium are PythiaFullSimExtras::PassMuonMediumCuts (+ quality&16), a
+// cut-by-cut mirror of the data's PassCuts_DataCore: combined &1, WP &16/&8, IDCuts &32,
+// MuonCuts &256, |η| < 2.4, pT > 4.5, one-sided Δp/p < 0.12, |d0| < 2 mm, |z0 sinθ| < 2 mm.
+// On a PAIR the flag is taken at PAIR level (pair_pass_tight / pair_pass_medium, aliased to
+// `pair_wp`), which additionally carries the pp SAME-VERTEX requirement -- see the (wp) bullet
+// of Utilities/MCTrigEffPairSelection.h. Step 1 is the single-muon exception (no pair).
+// Overlay restricted to 0–5% centrality (doc D2).
+//
+// MUON pT THRESHOLD 4.0 -> 4.5 GeV (user decision D4, 2026-09-08;
+// docs/tracking/mu_pt45_gap125_pairpt9_adoption.md §3(a),(d)): the reco threshold AND the truth
+// fiducial move together, here and in the ntuple processing. A selection left at 4 next to one
+// at 4.5 is a silent numerator/denominator desync.
 //
 // TRUTH FIDUCIAL (round 7, user 2026-08-03 -- DEFAULT for every sample and every step):
 // on top of the data-like RECO cuts, each MC muon must also satisfy
-//     truth pT > 4 GeV  &&  |truth η| < 2.4
+//     truth pT > 4.5 GeV  &&  |truth η| < 2.4
 // (§3.0(c'), kTruthFiducial* below). Because the sample is truth-SEEDED (round-5 #1), every
 // selected muon has a truth partner, so this is a well-defined cut on the muon itself. It
 // removes muons that enter the reco fiducial region ONLY through mismeasurement (truth below
@@ -40,7 +52,9 @@
 //   q·η  : "eta_bins_trig_effcy" = ParamsSet::makeEtaTrigEffcyBinning(1) (ibid:294)
 //   phi  : 128 uniform bins in [-pi, pi] (ibid:300-307)
 //   eta  : 48 uniform bins in [-2.4, 2.4]
-//   pair pT : "pair_pt_log" = pT_bins_120, 15 log bins 8–120 (var1D_pp.json:102-106)
+//   pair pT : "pair_pt_log" = ParamsSet::pT_bins_120, log-spaced (var1D_pp.json:102-106).
+//             Edges are NOT retyped here: the low edge tracks the pair-pT signal cut, which the
+//             user moved 8 -> 9 GeV on 2026-09-08 (mu_pt45_gap125_pairpt9_adoption.md D3).
 // MC is ALWAYS weighted: ev_weight (singles) / weight (pairs).
 //
 // CORRECTED-MC STUDY (round-7 contract item 5, `corrected_mc = true` -- the LAST argument):
@@ -528,10 +542,15 @@ struct SFEvaluator {
 
 // ---------- per-leg aliases on a pair tree ----------
 // Pair structs have no dictionary: use leaf-style columns. Dotted names need Alias before JIT.
-ROOT::RDF::RNode AliasLeg(ROOT::RDF::RNode node, int leg, const std::string& wp_col) {
+ROOT::RDF::RNode AliasLeg(ROOT::RDF::RNode node, int leg, const std::string& wp_col,
+                          const std::string& pair_wp_col) {
     const std::string m = (leg == 1) ? "m1." : "m2.";  // this leg
     const std::string o = (leg == 1) ? "m2." : "m1.";  // partner leg
-    return node.Alias("lg_pt",      m + "pt")
+    // `pair_wp` = pair_pass_tight / pair_pass_medium: the PAIR-level nominal muon definition,
+    // which carries the pp same-vertex requirement. lg_wp / ot_wp are kept for diagnostics but
+    // the nominal selection (sel_pair_legs) uses pair_wp -- see MCTrigEffPairSelection.h (wp).
+    return node.Alias("pair_wp", pair_wp_col)
+               .Alias("lg_pt",      m + "pt")
                .Alias("lg_eta",     m + "eta")
                .Alias("lg_charge",  m + "charge")
                .Alias("lg_wp",      m + wp_col)
@@ -576,6 +595,13 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
     // reachable for the WP systematic. Medium outputs carry the _medium_wp suffix.
     const std::string wp_col = use_tight_wp ? "pass_tight" : "pass_medium";
     const std::string wp_suf = use_tight_wp ? "" : "_medium_wp";
+    // PAIR-level WP flag (2026-09-08). pair_pass_X = m1.pass_X && m2.pass_X && ip_pair_ok, so on
+    // top of both per-muon flags it carries the pp SAME-VERTEX pair requirement that the data
+    // applies and the per-muon (ANY-vertex) flags deliberately do not. Every PAIR node selects on
+    // this instead of `m1_wp && m2_wp`; Step 1 (single-muon map) keeps the per-muon flag.
+    // Exactly equivalent to the per-muon AND for the overlay / noovl samples, where
+    // PythiaFullSimExtras::UseAllVertexIP() is false and ip_pair_ok is identically true.
+    const std::string pair_wp_col = MCTrigEffPairSel::PairWpBranch(use_tight_wp);
 
     // CORRECTED-MC study (mc_trigger_efficiency.md round-7 contract item 5). Every MC muon that
     // FIRES the trigger carries the extra per-muon weight SF = ε_data/ε_MC(pT, q·η); the
@@ -606,11 +632,13 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
     // cuts, to the muon itself and, for pairs, to BOTH legs (the pair is two muons that each
     // satisfy the analysis muon definition). Column names differ per tree: bare on the
     // single-muon tree, lg_/ot_ aliases on the pair trees, m1_/m2_ aliases in Step 3.
-    const std::string kTruthFidSingle = "truth_pt > 4 && fabs(truth_eta) < 2.4";
-    const std::string kTruthFidLeg    = "lg_truth_pt > 4 && fabs(lg_truth_eta) < 2.4 && "
-                                        "ot_truth_pt > 4 && fabs(ot_truth_eta) < 2.4";
-    const std::string kTruthFidPair   = "m1_truth_pt > 4 && fabs(m1_truth_eta) < 2.4 && "
-                                        "m2_truth_pt > 4 && fabs(m2_truth_eta) < 2.4";
+    // Threshold 4 -> 4.5 GeV (D4): kTruthFidPair MUST stay byte-equivalent to
+    // MCTrigEffPairSel::TruthFiducial(), and all three variants MUST carry the same number.
+    const std::string kTruthFidSingle = "truth_pt > 4.5 && fabs(truth_eta) < 2.4";
+    const std::string kTruthFidLeg    = "lg_truth_pt > 4.5 && fabs(lg_truth_eta) < 2.4 && "
+                                        "ot_truth_pt > 4.5 && fabs(ot_truth_eta) < 2.4";
+    const std::string kTruthFidPair   = "m1_truth_pt > 4.5 && fabs(m1_truth_eta) < 2.4 && "
+                                        "m2_truth_pt > 4.5 && fabs(m2_truth_eta) < 2.4";
 
     // Truth-reco pT-match threshold for the round-7 SANITY CHECK (do_sanity only; it is NOT
     // part of the nominal selection). Value + justification: mc_trigger_efficiency.md §3.5.
@@ -683,18 +711,24 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
     // has no single-muon or lg_/ot_ leg-alias variant.
     const std::string kGapPair   = MCTrigEffPairSel::FiducialGapCut();
 
-    // common selection = data-side muon definition (nominal WP + fiducial) + truth fiducial
-    const std::string sel_single = wp_col + " && pt > 4 && fabs(eta) < 2.4 && " + kTruthFidSingle
+    // common selection = data-side muon definition (nominal WP + fiducial) + truth fiducial.
+    // STEP 1 IS THE ONE PLACE THAT KEEPS THE PER-MUON FLAG: it is a single-muon map, there is no
+    // pair, and the ANY-vertex per-muon impact-parameter form is the correct analogue
+    // (PythiaFullSimExtras.c PassMuonMediumCuts). Do NOT put pair_wp here.
+    const std::string sel_single = wp_col + " && pt > 4.5 && fabs(eta) < 2.4 && " + kTruthFidSingle
                                  + (kApplyGapCut ? " && " + kGapSingle : std::string());
     // overlay: 0-5% centrality only (doc D2; test sample is b=0-5 fm)
     const std::string sel_single_full = cfg.is_overlay
         ? sel_single + " && ev_centrality >= 0 && ev_centrality < 5"
         : sel_single;
 
-    // Steps 2 and 4 (both legs must pass the analysis muon definition + the forward low-pT veto)
+    // Steps 2 and 4 (both legs must pass the analysis muon definition + the forward low-pT veto).
+    // `pair_wp` replaces `lg_wp && ot_wp`: it is the same conjunction PLUS the pp same-vertex
+    // requirement (see pair_wp_col above). Mirrors MCTrigEffPairSel::Step3PairSelection().
     const std::string sel_pair_legs =
-        "lg_wp && lg_pt > 4 && fabs(lg_eta) < 2.4 && "
-        "ot_wp && ot_pt > 4 && fabs(ot_eta) < 2.4 && " + kTruthFidLeg +
+        "pair_wp && "
+        "lg_pt > 4.5 && fabs(lg_eta) < 2.4 && "
+        "ot_pt > 4.5 && fabs(ot_eta) < 2.4 && " + kTruthFidLeg +
         (kVetoFwdLowPt ? " && " + kFwdVetoLeg : std::string()) +
         (kApplyGapCut  ? " && " + kGapLeg    : std::string());
     const std::string sel_pair_full = cfg.is_overlay
@@ -869,8 +903,10 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
 
         for (const auto& tree : pair_trees) {
             rdf_store.emplace_back(std::make_unique<ROOT::RDataFrame>(tree, cfg.pair_file));
+            MCTrigEffPairSel::RequirePairWpColumn(rdf_store.back()->GetColumnNames(), pair_wp_col,
+                                                  cfg.pair_file + ":" + tree + " (Step 4)");
             for (int leg = 1; leg <= 2; ++leg) {
-                ROOT::RDF::RNode dl = AliasLeg(*rdf_store.back(), leg, wp_col);
+                ROOT::RDF::RNode dl = AliasLeg(*rdf_store.back(), leg, wp_col, pair_wp_col);
                 dl = dl.Filter(sel_pair_full, tree + Form(" step4 leg%d selection", leg));
 
                 // Sign-integrated + per-sign copies, exactly as Step 3 (round 9). The per-sign
@@ -1064,8 +1100,10 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
             corrected_mc ? std::vector<std::string>{} : pair_trees;
         for (const auto& tree : step2_trees) {
             rdf_store.emplace_back(std::make_unique<ROOT::RDataFrame>(tree, cfg.pair_file));
+            MCTrigEffPairSel::RequirePairWpColumn(rdf_store.back()->GetColumnNames(), pair_wp_col,
+                                                  cfg.pair_file + ":" + tree + " (Step 2)");
             for (int leg = 1; leg <= 2; ++leg) {
-                ROOT::RDF::RNode dl = AliasLeg(*rdf_store.back(), leg, wp_col);
+                ROOT::RDF::RNode dl = AliasLeg(*rdf_store.back(), leg, wp_col, pair_wp_col);
                 dl = dl.Define("lg_q_eta", "(float)(lg_charge * lg_eta)")
                        .Filter(sel_pair_full, tree + Form(" leg%d selection", leg));
 
@@ -1119,16 +1157,22 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
 
         for (const auto& tree : pair_trees) {
             rdf_store.emplace_back(std::make_unique<ROOT::RDataFrame>(tree, cfg.pair_file));
+            MCTrigEffPairSel::RequirePairWpColumn(rdf_store.back()->GetColumnNames(), pair_wp_col,
+                                                  cfg.pair_file + ":" + tree + " (Step 3)");
             ROOT::RDF::RNode dp = *rdf_store.back();
-            dp = dp.Alias("m1_pt", "m1.pt").Alias("m1_eta", "m1.eta").Alias("m1_charge", "m1.charge")
+            dp = dp.Alias("pair_wp", pair_wp_col)
+                   .Alias("m1_pt", "m1.pt").Alias("m1_eta", "m1.eta").Alias("m1_charge", "m1.charge")
                    .Alias("m1_wp", "m1." + wp_col).Alias("m1_passmu4", "m1.passmu4")
                    .Alias("m1_truth_pt", "m1.truth_pt").Alias("m1_truth_eta", "m1.truth_eta")
                    .Alias("m2_pt", "m2.pt").Alias("m2_eta", "m2.eta").Alias("m2_charge", "m2.charge")
                    .Alias("m2_wp", "m2." + wp_col).Alias("m2_passmu4", "m2.passmu4")
                    .Alias("m2_truth_pt", "m2.truth_pt").Alias("m2_truth_eta", "m2.truth_eta");
 
-            std::string sel = "m1_wp && m1_pt > 4 && fabs(m1_eta) < 2.4 && "
-                              "m2_wp && m2_pt > 4 && fabs(m2_eta) < 2.4 && " + kTruthFidPair;
+            // Mirrors MCTrigEffPairSel::Step3PairSelection() -- `pair_wp` (pair-level flag, incl.
+            // the pp same-vertex requirement) and pT > 4.5 on both legs.
+            std::string sel = "pair_wp && "
+                              "m1_pt > 4.5 && fabs(m1_eta) < 2.4 && "
+                              "m2_pt > 4.5 && fabs(m2_eta) < 2.4 && " + kTruthFidPair;
             if (kVetoFwdLowPt) sel += " && " + kFwdVetoPair;   // Step 3 (round-7 forward veto)
             // Step 3 builds its OWN selection string and does NOT go through sel_pair_full, so the
             // gap cut has to be repeated here -- the one place it is easy to leave out.
@@ -1154,7 +1198,7 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
                                   static_cast<int>(bins.dr_full.size()) - 1, bins.dr_full.data()},
                                  "dr", wcol));
                 // NOTE (round 7): the separate dR x FINE-pair-pT 2D that used to live here was
-                // REMOVED. It was binned on pT_bins_120 (15 log bins 8-120) and the Step-3
+                // REMOVED. It was binned on pT_bins_120 (then 15 log bins 8-120; 16 log bins 9-120 since 2026-09-08) and the Step-3
                 // pair-pT slices panel grouped it as 8-13.8/13.8-23.6/23.6-40.6/40.6-120 --
                 // a SECOND, inconsistent pair-pT binning alongside the coarse
                 // canonical ParamsSet::pair_pt_coarse_bins used by the 3D below (and by
@@ -1287,15 +1331,22 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
                     const std::string ktree = "muon_pair_tree_kin" + std::to_string(ikin)
                                              + "_sign" + std::to_string(ksign);
                     rdf_store.emplace_back(std::make_unique<ROOT::RDataFrame>(ktree, cfg.pair_file));
+                    MCTrigEffPairSel::RequirePairWpColumn(rdf_store.back()->GetColumnNames(),
+                                                          pair_wp_col,
+                                                          cfg.pair_file + ":" + ktree
+                                                          + " (Step 3 kn-split)");
                     ROOT::RDF::RNode dk = *rdf_store.back();
-                    dk = dk.Alias("m1_pt", "m1.pt").Alias("m1_eta", "m1.eta").Alias("m1_charge", "m1.charge")
+                    dk = dk.Alias("pair_wp", pair_wp_col)
+                           .Alias("m1_pt", "m1.pt").Alias("m1_eta", "m1.eta").Alias("m1_charge", "m1.charge")
                            .Alias("m1_wp", "m1." + wp_col).Alias("m1_passmu4", "m1.passmu4")
                            .Alias("m1_truth_pt", "m1.truth_pt").Alias("m1_truth_eta", "m1.truth_eta")
                            .Alias("m2_pt", "m2.pt").Alias("m2_eta", "m2.eta").Alias("m2_charge", "m2.charge")
                            .Alias("m2_wp", "m2." + wp_col).Alias("m2_passmu4", "m2.passmu4")
                            .Alias("m2_truth_pt", "m2.truth_pt").Alias("m2_truth_eta", "m2.truth_eta");
-                    std::string ksel = "m1_wp && m1_pt > 4 && fabs(m1_eta) < 2.4 && "
-                                       "m2_wp && m2_pt > 4 && fabs(m2_eta) < 2.4 && " + kTruthFidPair;
+                    // Byte-identical to the Step-3 string above (same population, one pT-hat slice)
+                    std::string ksel = "pair_wp && "
+                                       "m1_pt > 4.5 && fabs(m1_eta) < 2.4 && "
+                                       "m2_pt > 4.5 && fabs(m2_eta) < 2.4 && " + kTruthFidPair;
                     if (kVetoFwdLowPt) ksel += " && " + kFwdVetoPair;
                     if (kApplyGapCut)  ksel += " && " + kGapPair;
                     if (cfg.is_overlay) ksel += " && avg_centrality >= 0 && avg_centrality < 5";
