@@ -946,6 +946,19 @@ Reviewer 2 saw the same edge independently in the MC/data ratio: flat at 1.30-1.
 from 9 to 52.23 GeV, then 0.92 in [52.23,62.27] — an **8σ** step, with both generators moving
 together, i.e. the discontinuity is in the DATA denominator.
 
+**★ MEASURED AFTER THE FIX (same local-power-law test the reviewer used, on the refilled
+histogram):** the R12 cell's panel is fully corrected and the residual is entirely the second cell.
+
+| panel | bin 11 [52.23,62.27) pull BEFORE | AFTER |
+|---|---|---|
+| η ∈ [1.0,1.5) — the R12 cell | **+11.1σ** (×3.50) | **+0.9σ** — every bin now within ±0.9σ |
+| η-integrated | **+7.2σ** (×1.36) | **+3.0σ** |
+| η ∈ [0.5,1.0) — the SECOND cell | +4.1σ | **+3.2σ** (unchanged, exactly as predicted) |
+
+So R12 accounted for the dominant part of the discontinuity, and what remains is item 1 below,
+whose C/plateau is a perfectly normal 1.098 — the screen correctly leaves it alone, which is why
+it must be diagnosed separately rather than by loosening this one.
+
 **★ STILL OPEN — findings the R12 fix does NOT explain, and that need their own investigation:**
 1. **A second bad cell.** With η ∈ [1.0,1.5) removed entirely, the [52.23,62.27] bin is *still*
    ×1.16 / +3.4σ high, carried by **η ∈ [0.5,1.0) at ×1.53 / +4.1σ** in the same pT bin (its
