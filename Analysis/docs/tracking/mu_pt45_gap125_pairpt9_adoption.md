@@ -893,97 +893,63 @@ tables as STALE IN TWO WAYS (superseded window AND measured at pT > 4).
 
 ## Remaining Work
 
-### THE RERUN, in dependency order (nothing below has been started)
+### THE RERUN — status 2026-09-10
 
-**Phase 1 — NTuple (Condor, except the fullsim pass).** Roughly 90 Condor jobs.
+**Phase 1 (NTuple) — DONE.** 97 Condor jobs + the ~7 h local fullsim pass, plus a 22-job POWHEG
+fullsim resubmission after R10. All eight data trees independently verified for the muon-pT cut
+(see Progress Log): nominal at exactly 4.5, trig-eff mode at exactly 4.0 by design, zero violations.
 
-| # | What | Notes |
-|---|---|---|
-| 1a | pp24 nominal, `run_pp_24_nominal.sub` (trigger_mode=3) | 12 jobs; then hadd |
-| 1b | pp24 trig-eff, `run_pp_24.sub` (trigger_mode=1) | 12 jobs; **stays at 4.0 GeV by design (D8)** |
-| 1c | Pb+Pb 2023/2024/2025, both modes | 12+12; `SKIP_EVSEL=1` (event selection is NOT in the blast radius — its cuts are event-level, derived from raw NTUPs) |
-| 1d | Pythia truth (private, nonprivate 5.36, nonprivate 5.02) | 2+6+6 |
-| 1e | POWHEG truth + POWHEG fullsim `run_powheg_fullsim_wtruth_{bb,cc}.sub` | 6+6 and 11+11. POWHEG fullsim IS in the blast radius: the carve-out in `pp24_all_vertex_pairs.md` rested on that change being reco-only, and a truth-pT cut is not |
-| 1f | HIJING overlay | 1 |
-| 1g | Pythia fullsim pp24 FULL `_pdf` | **NOT Condor** — local pass over the LGD symlink farm, ~6–8 h. `ENABLE_MC_TRIG_EFF=1 pipelines/pipeline_pythia_fullsim_pp.sh full`, **NOT** `SKIP_NTP=1` |
+**Phase 2 (derived corrections) — DONE.**
+- 2a data turn-on refits: pp + Pb+Pb, Tight AND Medium. Cured R1 Hazard 4.
+- 2b MC trig-eff Steps 1-4 + sanity, **both WPs** (Tight-only gap closed — R11).
+- 2c ΔR-correction fits: **owned by the `polyn fit restriction` peer session**, running now, all
+  three methods together (expo / polyu_fixedRp / interp) per R6.
+- 2d MC closure: follows the peer's refit.
+- 2e `pair_reco_eff_pp24_full.root` rebuilt and sanity-checked (all values in [0,1], 143 filled
+  3D cells).
 
-**Phase 2 — derived corrections.**
-2a. Data mu4 turn-on refits, pp AND Pb+Pb, **Tight AND Medium** (`pipeline_pp_trig_eff.sh`,
-    `pipeline_pbpb_trig_eff.sh`, `SAMPLES="pp" pipelines/run_data_trigeff_medium_wp.sh`).
-    This also cures the Pb+Pb `_2_00_TO_2_30` vs `_2_00_TO_2_20` key mismatch (R1 Hazard 4).
-2b. MC trig-eff Steps 1–4.
-2c. ΔR-correction fits — **all three methods together** (`expo polyu_fixedRp interp`), never one
-    alone (R6).
-2d. MC closure. NOTE `run_mc_trigeff_closure.sh` currently dies in Stage 2 on the binning guard;
-    it should pass once 2b/2c are refilled on the 9 GeV axis.
-2e. `build_pp24_fullsim_pair_reco_eff.C+(true)` → `pair_reco_eff_pp24_full.root` (not in any
-    pipeline; RECREATE, no backup of its own).
+**Phase 3 (final results) — DONE except the review.**
+- 3a pp24 crossx + pp24 nominal NTuple: DONE. 3b Pb+Pb crossx 23/24/25: DONE (after R8).
+- 3c R_AA modes 1/2/3 on run_year_trigger_mode 6: DONE. Both existing guards passed, which
+  independently confirms pp and Pb+Pb are on the SAME 48-bin pair-eta axis and the same fine
+  pair-pT axis — the whole point of D1.
+- MC-vs-data comparison (3 macros, 15 PNGs), signal acceptance + cutflow (Pythia + POWHEG, nominal
+  + `_pt_120`), crossx sanity plots incl. the Pb+Pb panels: DONE.
+- **3e `/review-plot` IN FLIGHT** — two read-only reviewers, disjoint scopes (crossx + R_AA;
+  MC-data + acceptance + trig-eff), applying physics-results criteria C1-C4.
+- `/sync-note-figures` + `/check-note-sync`: NOT started.
 
-**Phase 3 — final results.**
-3a. pp24 crossx pipeline (+ MC-data comparison, Stage 8).
-3b. Pb+Pb: `run_pbpb_all.sh` — now SERIALIZED, trig-eff before crossx.
-3c. R_AA (`RAA_plotting.cxx` mode 6), now that pp and Pb+Pb share a signal region again.
-3d. Signal acceptance + cutflow, crossx sanity/stage plots.
-3e. `/review-plot` on the regenerated plot sets; `/sync-note-figures` + `/check-note-sync`.
+### Open items for the user
+
+1. **POWHEG `cc` truth is now available for the first time.** All 6 `cc` parts were produced this
+   round (488 513 / 390 784 / 391 307 / 488 205 / 448 918 / 233 562 OS entries); previously parts 2
+   and 6 were missing, which is why `PlotMCDataComprBaseClass.h` states the curve is bb-ONLY and the
+   legend must not imply otherwise. **I did NOT merge it**, so `RDFBasedHistFillingPowheg` logged
+   `Skipping missing input file: ...cc_truth.root` and the bb-only configuration is preserved
+   EXACTLY. This matters because that class loops over `{bb, cc}` and includes whatever EXISTS — so
+   merging the cc file would silently turn the POWHEG curve into bb+cc while its legend still read
+   "POWHEG bb". Adding cc would change a final-results figure and needs a decision. (Impact on the
+   comparison curve itself is likely small: its histograms filter on `from_same_b`, which cc pairs
+   fail; the flavour-binned families would change a lot.)
+2. **Old `_pt_150` plot directories.** Five plainly superseded (D5 authorises removal now that
+   Phase 3 has regenerated the nominal dirs) and five DATED SNAPSHOTS the subagent flagged as
+   "keep or decide separately". 7.1 MB total, PNGs only. Not deleted.
+3. **`USE_TIGHT_WP` defaults to 1 in `pipeline_pythia_fullsim_pp.sh`** while its deliverable set
+   includes both working points — the defect behind R11, and the same shape as the data-side gap
+   A9 fixed in `run_pbpb_all.sh`. Not changed mid-rerun.
 
 ### Constraints that bind the rerun (do not rediscover these)
 
-- **Validate every stage by FRESHNESS + a required histogram, never by file-exists.** ROOT
-  swallows exceptions thrown inside an RDF event loop and still exits 0, leaving a fresh
-  near-empty file. `pbpb_2024/histograms_real_pairs_..._nominal.root` is an 851-byte, 0-key
-  corpse of exactly this (2026-09-06); 2023/2025 are last-good 2026-07-08.
-- **polyu:** refit wherever you replot; never replot a polyu file you did not just produce; a
-  `LoadFunc` throw means the file predates `d23fb81`, not that the code is broken.
+- **Validate every stage by FRESHNESS + a required histogram, never by file-exists** — and note
+  R9: the helper that was supposed to do this had never actually run.
+- **`root -l -b -q` with a HEREDOC executes NOTHING and exits 0.** Never use `-q` when the macro
+  comes from stdin. 19 sites fixed; zero remain.
+- **ROOT exits 0 even when `.L` fails to COMPILE** (R10) — a Condor "Normal termination (return
+  value 0)" is not evidence a job did anything.
+- **polyu:** refit wherever you replot; never replot a polyu file you did not just produce.
 - **Never refit only one ΔR method.**
-- The four-approach χ²/ndof ranking in `mc_trigeff_dr_binning_approaches.md` is UNUSABLE until
-  after this rerun; re-read it only after closure is rerun.
-- **After the turn-on refit, print the R3 diagnostic** — σ_ε(4.5)/ε(4.5) from the fit covariance
-  (`"QR"` → `"QRS"`, `GetConfidenceIntervals` at `pT_min`), flag > 0.10, **stop at > 0.20**,
-  companion |ρ(mean,σ)| > 0.95. The at-a-fit-limit `*` flag provably cannot detect this.
-- **Ping the two waiting peers** when the fresh trees and Step-3 histograms exist (R6).
-- Backups of every pre-change artefact are at
-  `~/usatlasdata/dimuon_data/pre_mupt45_backup_20260908/` (151 correction files + hists + fits;
-  `pair_reco_eff_pp24_full.root` in it is genuinely the 2026-08-18 pre-change file).
-- Disk: ~1.34 TB of ~1.50 TB (halved figures). Reruns overwrite in place and the 4.5 GeV cut
-  shrinks trees, so the steady-state change is negative.
-- The eight classes of R4 produce artefacts that are stale until Phase 1 completes; nothing
-  should consume them in the meantime.
-
-### Immediate next step
-
-**A 4th `/review-analysis-code` iteration on the last amendment batch has NOT been run.**
-Iteration 3 demonstrated that amendments are not reliably complete (four iteration-2 fixes were
-half-applied, R5), so the last batch is unverified. Either run it, or accept the risk and start
-Phase 1 — the user was offered both.
-
-### Merged from `_sub_crossx_axis_default_swap.md` (scratch doc now deleted)
-
-That subagent left three OPEN ITEMS FOR THE COORDINATOR that were never resolved. Checked
-2026-09-09:
-
-- **(a) The `_150` token in var1D / producer variable NAMES — left alone, deliberately.** Nine
-  sites (`var1D_{pythia_truth,pythia_fullsim,powheg_fullsim,powheg_truth,pp,pbpb}.json`,
-  `RDFBasedHistFillingPP.cxx:798`, `...PythiaFullsim.cxx:40,63`, `...PowhegFullsim.cxx:54,62`)
-  carry names like `pair_pt_log_150` / `truth_pair_pt_log_150`. They are ALREADY bound to
-  `"binning": "pT_bins_150"`, i.e. already on the nominal axis, and there is no second
-  alternative-axis member — so the names are cosmetically stale but **functionally correct**. The
-  subagent recommended dropping the token; NOT done, because the rename has real consumers
-  (`PlotMCDataComprBaseClass.c:38`, `plot_mc_data_pair_pt_in_eta.cxx`) and buys zero correctness.
-  **Renaming them `_150 -> _120` would be actively WRONG** — it would rebind the only 1D truth
-  pair-pT spectrum to the opt-in alternative and move the whole MC-vs-data comparison off the
-  nominal axis. Recorded so a future reader does not "tidy" it the wrong way.
-- **(b) Signal-acceptance producers — RESOLVED, verified 2026-09-09.** The subagent flagged that
-  `h2d_sig_accept_*` lives in the truth classes, outside its scope, and needed the same treatment.
-  It got it: `RDFBasedHistFillingPythiaTruth.cxx:479-503` and `...PowhegTruth.cxx:299-323` book the
-  unsuffixed `h2d_sig_accept_{num,denom}_pt_eta` on `pT_bins_150` and the opt-in
-  `..._pt_120_eta` on `pT_bins_120`. Reviewer B independently passed `SignalAcceptancePlotter`.
-- **(c) Old `_pt_150` plot directories — still present, NOT yet deleted.** Ten dirs, 7.1 MB, PNGs
-  only, under `plots/single_b_analysis/`. Five are plainly superseded (`pp24_pt_150`,
-  `pbpb_23_24_25_combined_pt_150`, `pbpb_23_24_combined_pt_150`, `pythia_pt_150`,
-  `powheg_pt_150`) — D5 authorises removing these, but only AFTER Phase 3 regenerates the nominal
-  unsuffixed dirs, so a failure cannot leave nothing behind. Five are DATED SNAPSHOTS
-  (`*_backup_20260615`, `*_backup_20260616_pre_reco_nominal`, `*_backup_20260505`) that the
-  subagent explicitly flagged as "keep or decide separately" — **user decision, not taken.**
+- Backups: `~/usatlasdata/dimuon_data/pre_mupt45_backup_20260908/` (166 files, 21.7 GB). They
+  earned their keep: the good pre-change Pb+Pb 2023 crossx file was needed when R8 left a corpse.
 
 ### Carried forward, NOT part of this task
 
