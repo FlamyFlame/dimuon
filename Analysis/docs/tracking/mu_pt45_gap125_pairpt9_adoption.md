@@ -897,12 +897,97 @@ Plus: the 2026-09-07 shape restriction constrained A and p but left λ ∈ [0.02
 railing λ is the mechanism — a cell with no plateau within reach buys a flat-looking fit by
 inflating C.
 
-**STATUS: NOT FIXED, and deliberately so.** The remedy is a physics choice with three candidate
+**RESOLVED 2026-09-10 (user chose: bound C against the cell's own measured plateau).**
+Implemented as `DrCorrBaselineConsistent(C, measured_plateau)` in `dr_correction_sample_cfg.h`, a
+two-sided factor-1.5 window, wired into BOTH acceptance sites of `dr_correction_apply.h`. The
+per-cell measured plateau was already persisted as `h_step3_plateau` in every fit file, so no new
+input was needed. Chosen over the two alternatives on measurement, not preference:
+
+| candidate | why not |
+|---|---|
+| χ² term in `fit_ok` | **poor discriminator here**: 5 cells exceed the bad cell's χ²/ndf = 4.072 and **4 of them have a perfectly good baseline** (C/plateau 0.75-1.05). The worst χ² in the table, 13.986, has C/plateau = 0.75 and is fine. Any threshold catching the bad cell rejects several good ones |
+| disqualify `AT LIMIT: lambda` | clean today — exactly 1 cell has it, the bad one — but rests on a single instance. (16 cells have `AT LIMIT: p` with C ∈ [0.947,1.195], all healthy, so p-at-limit must NOT disqualify) |
+
+**Verified end to end, not argued:**
+- The cascade census moves **70 expo / 0 polyu / 0 interp / 2 raw → 61 expo / 1 polyu / 1 raw.**
+  The polynomial tier — which exists for exactly this and was being reached in **zero** cells
+  because the expo screen accepted almost everything — now takes the bad cell.
+- Exactly **two** cells are rejected, both predicted: ratio 4.834 and 1.991.
+- In the pathological cell ε_ΔR now runs **0.56 at ΔR=0.05 → 1.0 by ΔR=0.5**, i.e. it tends to 1 as
+  it must, matching its healthy neighbours; the weight factor falls from **3.1-6.3× to 1.0-2.0×**.
+
+**STILL OPEN, and explicitly NOT covered by this fix** — a bound on the DELIVERED correction f/C is
+a different question from a bound on C. Cells remain whose C is entirely normal (C/plateau ≈ 1.03)
+but whose f/C dips low at small ΔR; the extremum over the accepted cells is 0.0363 at
+(pair-pT bin 7, pair-eta bin 7). **Important nuance measured here:** that 0.0363 is the value at
+ΔR **exactly 0**, which is kinematically unreachable (ΔR ≳ 2m/pT ≈ 0.014 at 150 GeV). At the
+smallest *reachable* ΔR the same cell gives ≈0.27, and it rises to 0.98 by ΔR = 0.3 — the right
+shape. So the delivered-magnitude question is real but much less severe than the raw extremum
+suggests, and it is entangled with reviewer finding R13-3 (the barrel high-pT correction). Not
+resolved here.
+
+**Superseded status line:** The remedy is a physics choice with three candidate
 forms (add a χ² term to `fit_ok`; bound C from ABOVE against the cell's own measured plateau, which
 is already in the file; or treat `AT LIMIT: lambda` as disqualifying — any of which routes this cell
 to the polyu or interp tier). Under the Autonomy Contract this is a physics-results-bending
 ambiguity ⇒ **stop and ask**. **Every pp24 crossx and R_AA figure produced on 2026-09-10 carries
 this defect** and must be regenerated after the fix.
+
+### R13 — `/review-plot`: two reviewers, both FAIL, and what remains open
+
+Disjoint scopes, read-only, physics-results criteria C1-C4 applied. Both independently reached the
+ε_ΔV pathology of R12 from the FIGURES, without being told, which is a good sign for the criteria.
+
+**Confirmed the R12 defect was visible in the final results** (reviewer 1): η-integrated, the pp24
+bin [52.23,62.27] sat **×1.36, +7.2σ** above a weighted local power law through its neighbours
+(every other bin within ±2.4σ). Split by η panel it was **×3.50 / +11.1σ** in η ∈ [1.0,1.5) — the
+R12 cell exactly — and it propagated into R_AA as a **coherent dip in ALL SIX centrality bins**.
+Reviewer 2 saw the same edge independently in the MC/data ratio: flat at 1.30-1.45 for all ten bins
+from 9 to 52.23 GeV, then 0.92 in [52.23,62.27] — an **8σ** step, with both generators moving
+together, i.e. the discontinuity is in the DATA denominator.
+
+**★ STILL OPEN — findings the R12 fix does NOT explain, and that need their own investigation:**
+1. **A second bad cell.** With η ∈ [1.0,1.5) removed entirely, the [52.23,62.27] bin is *still*
+   ×1.16 / +3.4σ high, carried by **η ∈ [0.5,1.0) at ×1.53 / +4.1σ** in the same pT bin (its
+   neighbour is ×0.80/−2.6σ, so the step across 52.23 GeV in that panel is ×1.9). Its C/plateau is
+   normal, so R12's screen does not touch it.
+2. **A systematic barrel high-pT blow-up.** The pp total trigger correction reaches 8.2/7.0/9.0 in
+   the three central η panels at 74-105 GeV and 9.6/7.7/10.4 at 105-150, against 1.9-2.4 in the
+   forward panels. Barrel/endcap is ~1.7 at low pT (consistent with RPC-vs-TGC L1 acceptance) and
+   grows to ~5 at high pT, which geometric acceptance does not explain. **Pb+Pb is immune** (flat
+   1.55-2.36 everywhere — it applies the bare trigger union, no ε_ΔR), so R_AA inherits this
+   entirely from the pp denominator.
+3. **Step-3 ε_ΔR plateaus sit at 1.10-1.27 in the two highest pair-pT columns** (all 16 cells),
+   where they are 1±0.05 in the 56 lower-pT cells. Since |value−1| feeds the systematic, that is a
+   10-27 % systematic confined to the top pT cells — the same region as 1 and 2.
+
+These three are one region and plausibly one cause. **Not investigated here** — they are
+pre-existing, they are not what this task set out to change, and the honest position is that the
+pp24 high-pair-pT cross-section and R_AA above ~50 GeV remain PROVISIONAL until they are settled.
+
+**Fixed from the review:** the Tight Step-4 plots were drawn at 06:03 from the pre-rerun Step-4
+histogram (Stage 10 stops at the plot, so the histogram I regenerated at 14:52 was never redrawn) —
+they carried the RETIRED 8→150 coarse binning while the Medium twin, run later, was on the
+canonical 9→150. Two coexisting pair-pT binnings in one plot set, the exact BLOCKING failure.
+Redrawn. Also redrawn: two `sanity_check_crossx` figures from 2026-08-24 still showing ±2.4 η panels.
+
+**Reviewer findings deliberately NOT acted on in this task** (cosmetic or pre-existing; recorded so
+they are not lost): legend text overrunning the frame in `DrawPairPtByEtaWithDrLines`; R_AA drawn on
+a LINEAR x-axis although the pair-pT axis is log-binned; R_AA markers all black because
+`SetMarkerColor` is never called; Pb+Pb `counts/` figures labelling a pair count `N_{events}`;
+no WP config var in `RAA_plotting.cxx` / `plot_crossx_trig_corr_sanity.C`; `label_line2_ = "tight WP"`
+set but never drawn on the Pb+Pb figures; 48 retired-binning PNGs from 09-08 still on disk; ~20
+blank canvases in the pp and Pb+Pb pair-trigger sets; the `mc_data_compr` READMEs quoting
+pre-adoption numbers; the Pb+Pb turn-on canvases labelled "2mu4" when Pb+Pb runs single mu4.
+
+**Both reviewers independently PASSED** the things this task actually changed: axis provenance
+(nominal 150 vs opt-in 120 never crossed, 2:1 nesting exact), no surviving "> 8 GeV" or "4 GeV"
+label anywhere, the R_AA group labels matching the axis they were drawn from, the Pb+Pb 48-bin
+migration visible on disk with the gap bands at η≈0 and ±1.15, the per-histogram Pb+Pb year label
+being honest, PNG-only, `Scale(N,"width")` on every differential quantity, and — notably — that the
+old `w_trig = 0` sentinel pathology is GONE: 1/ε ≥ 1 in **every** bin of pp and Pb+Pb.
+Run 2 cross-check: pp barrel plateau 0.68-0.76 / endcap 0.84-0.95 against Run 2 mu4 ≈0.70/≈0.90,
+and the Step-1 MC/data ≈1.10-1.15 reproduces the known Run 2 barrel data/MC deficit — consistent.
 
 ### R6 — Cross-session state (three peers share this checkout)
 
