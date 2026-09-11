@@ -32,18 +32,34 @@ Powheg+Pythia8 NLO MC for bb and cc dimuon production.
 > If a plot legitimately shows one mode alone (a diagnostic), its legend MUST name the mode
 > (`POWHEG bb`) and it must not be presented as the POWHEG prediction.
 >
-> **⚠ OPEN (2026-09-11) — the flavour-category flags are MODE-SCOPED and break when the two modes
-> are chained.** `PowhegTruthExtras.c` initializes BOTH `both_from_b` and `both_from_c` to **true**
-> (:1033, :1035) and then refines only the flag belonging to the sample's own mode: bb mode sets
-> `both_from_b = false` when the parents are not b-ish (:403) and never touches `both_from_c`; cc
-> mode sets `both_from_c = false` (:412) and never touches `both_from_b`. Each flag is therefore
-> meaningful ONLY inside its own sample — consistent with the mode-scoped guard at :267-268.
-> Chaining bb and cc into one RDataFrame consequently mislabels every flavour-binned histogram:
-> measured on the combined file, `both_from_b` = (bb b-parent pairs) + **ALL 2 441 289 cc pairs**
-> (×1.174) while `both_from_c` receives **no charm at all** (×1.000).
+> **⚠ OPEN (2026-09-11) — the flavour flags are MODE-SCOPED, and the plotting cascade assumes they
+> are not.** Measured on the trees themselves, not inferred:
+>
+> | branch | bb sample | cc sample |
+> |---|---|---|
+> | `from_same_b` | 472 771 true | 0 true (correct — charm events have no b-hadrons) |
+> | `both_from_b` | 1 494 997 true / 30 251 false | **2 441 289 true = ALL** (never refined in cc mode) |
+> | `both_from_c` | **1 525 248 true = ALL** (never refined in bb mode) | **2 321 978 true (95.1 %)** |
+>
+> **The cc sample's own tagging is HEALTHY** — `both_from_c` is true for 95.1 % of cc pairs, and
+> `m1_ancestor_category` is assigned (≥ 0) for the same 95.1 %. What is mode-scoped is the OTHER
+> flag: `PowhegTruthExtras.c` initializes BOTH flags to `true` (:1033, :1035) and then refines only
+> the one belonging to the sample's own mode — bb clears `both_from_b` (:403) and never touches
+> `both_from_c`; cc clears `both_from_c` (:412) and never touches `both_from_b`. Consistent with
+> the mode-scoped guard at :267-268. Each flag is meaningful ONLY inside its own sample.
+>
+> **The plotting layer uses an EXCLUSIVE cascade** — `single_b` / `!from_same_b && both_from_b` /
+> `!from_same_b && !both_from_b && both_from_c` / rest — which assumes both flags are
+> simultaneously meaningful. That assumption holds in NEITHER sample:
+> * **In the bb-only file (i.e. every POWHEG flavour plot made to date), the `both_from_c` bin
+>   contains 30 251 pairs of which 100 % are UNTAGGED** (`m1_ancestor_category == -10`, the reset
+>   value — the tracing returned early). It has never meant "both muons from charm"; it means
+>   "not classified as b". A pre-existing mislabel, independent of cc.
+> * **Chained bb+cc:** `!both_from_b` is false for every cc row, so all 2.44 M cc pairs land in the
+>   `both_from_b` bin (×1.174) and the `both_from_c` bin receives no charm (×1.000).
+>
 > **Unaffected:** the generic `_op/_ss_gapcut_truth` family that the MC-vs-data comparison draws
-> (no flavour flag; cc correctly adds, ×1.065) and the `single_b` family (`from_same_b`, false for
-> every cc pair — charm events contain no b-hadrons, so cc correctly contributes 0).
+> (no flavour flag; cc correctly adds, ×1.065) and `single_b` (`from_same_b`, correctly 0 from cc).
 > **Consequence:** the MC-vs-data comparison is correct with bb+cc; the flavour/origin-categorized
 > plots are NOT, and must not be regenerated from the combined file until the flags are made
 > mode-aware (an NTuple-stage change ⇒ a POWHEG truth rerun). Whether a bb-mode pair with charm

@@ -194,6 +194,20 @@ protected:
         return "h_" + o.mc_var + (isign == 0 ? McGenericCatSS() : McGenericCatOS())
              + (jacobian ? "_jacobian_corrected" : "");
     }
+    // ⚠ OPEN (2026-09-11, user): POWHEG here carries NEITHER `from_same_b` NOR the truth signal
+    // cuts, while the Pythia signal family carries both. The requirement is that POWHEG and Pythia
+    // both require `from_same_b` AND the data signal cuts evaluated on TRUTH quantities. As it
+    // stands:
+    //   Pythia  `_single_b_pass_signal_truth` = from_same_b && truth_minv in (1.08,2.9)
+    //                                        && truth_pair_pt > 9 && gap cuts        <-- correct
+    //   POWHEG  `_op_gapcut_truth`            = gap cuts ONLY                         <-- NOT
+    // and POWHEG is drawn only in the GENERIC family: plot_mc_data_compr_signal.cxx pushes three
+    // Pythia series and no POWHEG one at all. The POWHEG truth producer does build the full signal
+    // selection (RDFBasedHistFillingPowhegTruth::FillHistogramsSignalAcceptance) but consumes it
+    // internally for the acceptance RATIO and never writes it as a filter family, which is why
+    // there is no key to read. Closing this needs a `_single_b_pass_signal_truth` family in the
+    // POWHEG truth producer + a category argument here, mirroring SignalMcKey.
+    //
     // POWHEG, 2026-08-25 rework. The INCLUSIVE histogram is read directly. The producer also
     // writes `..._flavor_binned_{single_b,both_from_b,both_from_c,others}`, which sums to this
     // same inclusive to <= 4e-12 -- but nothing here sums anything any more: the old code summed
