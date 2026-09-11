@@ -4,8 +4,13 @@
 // PbPbCentralityFCalMirror.h
 //
 // Centrality recalculation from FCal ET, for the event-selection plotting macros
-// (plot_pbpb_event_sel_cuts.cxx, plot_pbpb_event_sel_event_level.cxx), used for years
-// whose 'centrality' branch is unfilled in the skim (pbpb2025, pbpb2026).
+// (plot_pbpb_event_sel_cuts.cxx, plot_pbpb_event_sel_event_level.cxx), used for the years
+// listed in their UsesFCalCentralityRecompute() (pbpb2025, pbpb2026).
+//
+// NOT because those years' 'centrality' branch is unfilled -- that claim was measured false
+// on 2026-09-11 (pbpb25 part1, 2 M events: mean 20.454, max 84, 4.08 % zeros, and already
+// agreeing with the 2023-table recompute in 299 992/300 000).  The recompute is an OVERRIDE
+// enforcing the PbPb2023 calibration (registered user decision D6), not a repair.
 //
 // ############################################################################
 // #  MIRROR — NOT the canonical table.                                        #

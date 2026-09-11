@@ -195,8 +195,10 @@ exactly what goes stale.
   `event_sel_cuts_pbpb_20YY_alt.root` (5-cut sequential selection;
   `docs/tracking/PbPb_JEDI...`/`pbpb_pipelines.md`).
 - Centrality calibration: the FCal→centrality thresholds are the 2023 Glauber ones for every
-  Run-3 year, and for 2025 and 2026 (whose skim `centrality` branch is unfilled) centrality is
-  recomputed from FCal E_T via `GetCentralityPbPb2023` in `MuonPairPbPb::UpdateCentrality`.
+  Run-3 year, and for 2025 and 2026 centrality is recomputed from FCal E_T via `GetCentralityPbPb2023`
+  in `MuonPairPbPb::UpdateCentrality`. That recompute **enforces** the 2023 calibration
+  (user decision D6); it is not a repair of an unfilled branch — the 2025 branch was
+  measured populated and already on the 2023 calibration (2026-09-11).
   **Correction:** the `fcal_scale_pbpb_20YY.root` scale factors this bullet used to cite are
   **not implemented in any source file** (documentation only — see `placeholder.md`), so there
   is no scale factor to vary; the systematic must instead vary the thresholds themselves, or

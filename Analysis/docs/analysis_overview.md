@@ -144,8 +144,12 @@ calibration). These external numbers must be confirmed before entering results
 
 **(e) Centrality (Pb+Pb).** From forward calorimeter (FCal) ΣE_T with 2023 Glauber
 thresholds for every Run-3 year (2024 carries its own provisional threshold vector,
-which is in fact identical to the 2023 one). For 2025 and 2026 the skim's `centrality`
-branch is unfilled, so centrality is recomputed from FCal E_T at pair level. **No
+which is in fact identical to the 2023 one). For 2025 and 2026 the centrality percentile is recomputed
+from FCal E_T at pair level, which **enforces** the 2023 calibration regardless of what the
+skim wrote (registered user decision, 2026-09-10). This is an override, not a repair: the
+2025 `centrality` branch was measured on 2026-09-11 to be populated and already on the 2023
+calibration (mean 20.454, max 84, 4.08 % zeros; agreeing with the 2023-table recompute in
+299 992 of 300 000 events), correcting an earlier claim that it was unfilled. **No
 cross-year FCal scaling is implemented** — `fcal_scale_pbpb_20YY.root` appears in
 documentation only, never in a source file (see `placeholder.md`).
 
