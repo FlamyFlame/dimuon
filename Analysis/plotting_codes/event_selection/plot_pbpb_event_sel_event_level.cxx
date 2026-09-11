@@ -28,7 +28,7 @@
 #include "TLatex.h"
 #include "TVectorD.h"
 // kFCalBinsPbPb2023 / CentralityFromFCal2023 — centrality recalculation from FCal ET,
-// for years whose 'centrality' branch is unfilled in the skim.  The table is a MIRROR
+// for the years listed in UsesFCalCentralityRecompute().  The table is a MIRROR
 // of PairPbPbExtras::FCal_ET_Bins_PbPb2023 rounded to 5 s.f. (40 of 85 entries differ);
 // read the header before touching a single digit of it.
 #include "PbPbCentralityFCalMirror.h"
@@ -90,9 +90,15 @@ static double GetBgMuGuess(int yr, double xcen) {
 }
 
 
-// Years whose 'centrality' branch is unfilled (zero) in the skim, so the centrality
-// percentile must be recomputed from FCal ET.  Verified for 2025; ASSUMED for 2026
-// because it reuses the 2025 skim path — PLACEHOLDER, confirm against the 2026 NTUPs.
+// Years for which the centrality percentile is RECOMPUTED from FCal E_T rather than taken
+// from the skim's 'centrality' branch.
+//
+// CORRECTED 2026-09-11: this was documented as "the branch is unfilled/zero" -- that is
+// FALSE for the current skim.  Measured on data_pbpb25_part1.root (2 M events): mean 20.454,
+// max 84, 4.08 % zeros, i.e. populated and indistinguishable in character from 2023; and it
+// already agrees with the 2023-table recompute in 299 992 / 300 000 events.  The recompute is
+// therefore a NO-OP for 2025, kept (and extended to 2026) because it ENFORCES the PbPb2023
+// calibration regardless of what the skim wrote -- the registered user decision D6.
 // See docs/tracking/pbpb2026_analysis_support.md.
 static bool UsesFCalCentralityRecompute(int yr) { return yr == 25 || yr == 26; }
 
@@ -1105,17 +1111,18 @@ private:
 
         const bool recompute_ctr = UsesFCalCentralityRecompute(run_year_);
         if (recompute_ctr)
-            std::cout << "  centrality recomputed from FCal E_{T} "
-                         "(PbPb2023 Glauber table); the skim 'centrality' branch is unfilled "
-                         "for PbPb20" << yr_ << std::endl;
+            std::cout << "  centrality recomputed from FCal E_{T} (PbPb2023 Glauber table) "
+                         "for PbPb20" << yr_ << " -- enforcing the 2023 calibration (D6)"
+                      << std::endl;
 
         for (Long64_t i = 0; i < n; ++i) {
             chain.GetEntry(i);
             if (!b_HLT_mu4) continue;
 
             const float fcal_AC = (FCal_Et_P + FCal_Et_N) * 1e-6f;
-            // For years whose 'centrality' branch is zero-filled, every event would
-            // otherwise be assigned centrality 0 and pile into the 0-1% panel.
+            // Enforce the PbPb2023 calibration for the years listed in
+            // UsesFCalCentralityRecompute() (D6), instead of trusting whatever calibration
+            // the skim's 'centrality' branch was filled with.
             const int ctr = recompute_ctr ? CentralityFromFCal2023(fcal_AC) : centrality;
             if (ctr < 0 || ctr > 9) continue;  // keep 0-9 only
 

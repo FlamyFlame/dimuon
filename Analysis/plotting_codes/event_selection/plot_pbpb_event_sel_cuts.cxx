@@ -39,7 +39,7 @@
 #include "TMath.h"
 #include "../../NTupleProcessingCode/PbPbEventSelConfig.h"
 // kFCalBinsPbPb2023 / CentralityFromFCal2023 — centrality recalculation from FCal ET,
-// for years whose 'centrality' branch is unfilled in the skim.  The table is a MIRROR
+// for the years listed in UsesFCalCentralityRecompute().  The table is a MIRROR
 // of PairPbPbExtras::FCal_ET_Bins_PbPb2023 rounded to 5 s.f. (40 of 85 entries differ);
 // read the header before touching a single digit of it.
 #include "PbPbCentralityFCalMirror.h"
@@ -75,10 +75,16 @@ static std::pair<float,float> GetPreampCuts(int yr) {
 // See docs/tracking/pbpb2026_analysis_support.md.
 static bool UsesPerRunPreampCuts(int yr) { return yr == 25 || yr == 26; }
 
-// Years whose 'centrality' branch is unfilled (zero) in the skim, so the
-// centrality percentile must be recomputed from FCal ET.  Verified for 2025;
-// ASSUMED for 2026 because it reuses the 2025 skim path — PLACEHOLDER, confirm
-// against the 2026 NTUPs.  See docs/tracking/pbpb2026_analysis_support.md.
+// Years for which the centrality percentile is RECOMPUTED from FCal E_T rather than taken
+// from the skim's 'centrality' branch.
+//
+// CORRECTED 2026-09-11: this was documented as "the branch is unfilled/zero" -- that is
+// FALSE for the current skim.  Measured on data_pbpb25_part1.root (2 M events): mean 20.454,
+// max 84, 4.08 % zeros, i.e. populated and indistinguishable in character from 2023; and it
+// already agrees with the 2023-table recompute in 299 992 / 300 000 events.  The recompute is
+// therefore a NO-OP for 2025, kept (and extended to 2026) because it ENFORCES the PbPb2023
+// calibration regardless of what the skim wrote -- the registered user decision D6.
+// See docs/tracking/pbpb2026_analysis_support.md.
 static bool UsesFCalCentralityRecompute(int yr) { return yr == 25 || yr == 26; }
 
 static const double CUT4_N_SIGMA_ALT = 5.0;    // nTrk frac lower cut
@@ -519,7 +525,8 @@ private:
                 ev.ntrk_total = (*trk_numqual)[0];
                 ev.ntrk_tight = (*trk_numqual)[3];
             }
-            // For years where 'centrality' branch is unfilled, recalculate from FCal ET
+            // Enforce the PbPb2023 calibration for the years listed in
+            // UsesFCalCentralityRecompute() (D6), rather than trusting the skim's branch.
             // using the same Glauber table as MuonPairPbPb::UpdateCentrality().
             ev.centrality = UsesFCalCentralityRecompute(run_year_)
                             ? CentralityFromFCal2023(ev.fcal_AC)

@@ -48,12 +48,27 @@ struct MuonPairPbPb
 {
     void PairValueCalcHook() {
         this->PairValueCalcPbPb(); // sets avg_centrality from ev_centrality branch
-        // pbpb2025 and pbpb2026: the skim's centrality branch is all zeros → recalculate
-        // from FCal E_T.  Without this the pair keeps avg_centrality = 0, i.e. every
-        // event is classified 0-1% (most central), with no warning and no crash.
-        // 2026 comes from the same skim path as 2025 (run mode hi2026), so the same
-        // recompute is required; confirm on the first data_pbpb26_part1.root that the
-        // branch is indeed zero-filled (docs/tracking/pbpb2026_analysis_support.md P4).
+        // Recompute the centrality percentile from FCal E_T for these years.
+        //
+        // CORRECTED 2026-09-11.  This used to say "the skim's centrality branch is all
+        // zeros -> recalculate".  That is FALSE for the current skim, measured directly on
+        // data_pbpb25_part1.root (2 M events): mean 20.454, max 84, only 4.08 % zeros --
+        // statistically indistinguishable from 2023 (19.947 / 84 / 4.20 %).  The branch is
+        // populated, and it is already on the 2023 calibration: it agrees with the
+        // 2023-table recompute in 299 992 of 300 000 events, the 8 exceptions differing by
+        // one unit (attributable to the rounded threshold table, see
+        // plotting_codes/event_selection/PbPbCentralityFCalMirror.h).
+        //
+        // So for 2025 this call is effectively a NO-OP, not a rescue.  It is kept, and
+        // extended to 2026, because it ENFORCES the PbPb2023 FCal calibration regardless of
+        // what the skim wrote -- which is exactly the registered user decision D6
+        // ("for now, use the pbpb2023 fcal for pbpb26, just like for pbpb24 & 25").
+        // It is an override, not a repair.
+        //
+        // For 2026 the question to ask on the first data_pbpb26_part1.root is therefore NOT
+        // "is the branch zero-filled" but "is it on a calibration other than 2023?" -- if it
+        // is, this override is intentional under D6, and the note must disclose it.
+        // See docs/tracking/pbpb2026_analysis_support.md §3c and registry P4.
         int yr = year % 2000;
         if (yr == 25 || yr == 26) this->UpdateCentrality();
     }
