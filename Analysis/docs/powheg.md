@@ -13,13 +13,42 @@ Powheg+Pythia8 NLO MC for bb and cc dimuon production.
 > `from_same_b` makes the cc contribution *small*, which is a physics result; it is not a reason
 > to drop the sample, and dropping it silently redefines the measured quantity.
 >
-> **Adding the cc file is not sufficient on its own.** `RDFBasedHistFillingPowheg::CreateBaseRDFsPowhegCommon`
-> normalizes by a SHARED denominator, `weight / SumMetaNentriesBeforeFilter(ALL input files)`.
-> That is correct only while ONE sample is on disk; with bb and cc chained it yields their
-> N-weighted average instead of their sum — each sample ≈2× under-normalized (N_bb and N_cc are
-> comparable). It cancels in every ratio, but not in an absolute cross-section drawn beside data.
-> `RDFBasedHistFillingPowhegFullsim` already solves this with `weight_norm_per_sample`
-> (`DefinePerSample`); the TRUTH path does not yet. Both must move together.
+> **REQUIRED DIVISION OF RESPONSIBILITY — both halves, each useless alone:**
+>
+> | layer | obligation |
+> |---|---|
+> | NTuple / RDF production | Normalize **each mode SEPARATELY, to its OWN exclusive cross section** — per-sample `N_gen`, **never a shared denominator** across the two |
+> | **Every plotting code** | **ADD the two normalized contributions.** A plot showing only `bb` is not "POWHEG"; it is one generator mode |
+>
+> **Never use a shared denominator across the two modes.**
+> `RDFBasedHistFillingPowheg::CreateBaseRDFsPowhegCommon` currently normalizes by
+> `weight / SumMetaNentriesBeforeFilter(ALL input files)`. That is correct only while ONE sample is
+> on disk; with bb and cc chained it yields their N-weighted AVERAGE instead of their sum — each
+> mode ≈2× under-normalized (N_bb ≈ N_cc). It cancels in every ratio, but not in an absolute
+> cross-section drawn beside data. `RDFBasedHistFillingPowhegFullsim` is the reference
+> implementation (`weight_norm_per_sample` via `DefinePerSample`); the TRUTH path does not yet do
+> this, so adding the cc file there without fixing the normalization first would halve the curve.
+>
+> If a plot legitimately shows one mode alone (a diagnostic), its legend MUST name the mode
+> (`POWHEG bb`) and it must not be presented as the POWHEG prediction.
+>
+> **⚠ OPEN (2026-09-11) — the flavour-category flags are MODE-SCOPED and break when the two modes
+> are chained.** `PowhegTruthExtras.c` initializes BOTH `both_from_b` and `both_from_c` to **true**
+> (:1033, :1035) and then refines only the flag belonging to the sample's own mode: bb mode sets
+> `both_from_b = false` when the parents are not b-ish (:403) and never touches `both_from_c`; cc
+> mode sets `both_from_c = false` (:412) and never touches `both_from_b`. Each flag is therefore
+> meaningful ONLY inside its own sample — consistent with the mode-scoped guard at :267-268.
+> Chaining bb and cc into one RDataFrame consequently mislabels every flavour-binned histogram:
+> measured on the combined file, `both_from_b` = (bb b-parent pairs) + **ALL 2 441 289 cc pairs**
+> (×1.174) while `both_from_c` receives **no charm at all** (×1.000).
+> **Unaffected:** the generic `_op/_ss_gapcut_truth` family that the MC-vs-data comparison draws
+> (no flavour flag; cc correctly adds, ×1.065) and the `single_b` family (`from_same_b`, false for
+> every cc pair — charm events contain no b-hadrons, so cc correctly contributes 0).
+> **Consequence:** the MC-vs-data comparison is correct with bb+cc; the flavour/origin-categorized
+> plots are NOT, and must not be regenerated from the combined file until the flags are made
+> mode-aware (an NTuple-stage change ⇒ a POWHEG truth rerun). Whether a bb-mode pair with charm
+> parents should count as `both_from_c` is a physics decision, not a code cleanup.
+> Enforced for plots as a MANDATORY item in `.claude/conventions/atlas-plotting.md`.
 
 > **Role update (2026-06-14).** Reconstruction efficiency and detector
 > response / unfolding are now both derived from **Pythia fullsim** (pp24 +

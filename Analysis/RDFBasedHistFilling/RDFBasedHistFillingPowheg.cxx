@@ -1,3 +1,4 @@
+#include <map>
 #include "RDFBasedHistFillingPowheg.h"
 #include <TSystem.h>
 
@@ -99,6 +100,15 @@ void RDFBasedHistFillingPowheg::CreateBaseRDFsPowhegImpl(){
 // silently redefines the measured quantity.
 //
 // ---------------------------------------------------------------------------------------------
+// THE CONTRACT. Two obligations, in two different layers. EACH IS USELESS WITHOUT THE OTHER:
+//
+//   THIS LAYER (NTuple / RDF) : normalize EACH MODE SEPARATELY, to its OWN exclusive cross
+//                               section -- per-sample N_gen, NEVER a shared denominator.
+//   EVERY PLOTTING CODE       : ADD the two normalized contributions. A curve showing only `bb`
+//                               is not "POWHEG"; it is one generator mode. (Stated as a MANDATORY
+//                               item in .claude/conventions/atlas-plotting.md.)
+//
+// ---------------------------------------------------------------------------------------------
 // CONSEQUENCE FOR THE NORMALIZATION BELOW -- READ BEFORE ADDING THE cc FILE.
 //
 // The block below divides EVERY event by SumMetaNentriesBeforeFilter(ALL input files), i.e. by a
@@ -116,37 +126,66 @@ void RDFBasedHistFillingPowheg::CreateBaseRDFsPowhegImpl(){
 //
 // `RDFBasedHistFillingPowhegFullsim` ALREADY solves exactly this, with `weight_norm_per_sample`
 // built via RDataFrame's DefinePerSample (see its anonymous namespace and
-// CreateBaseRDFsPowhegFullsimExtra). The truth path here has NOT been given the same treatment.
-// So: adding muon_pairs_powheg_cc_truth.root to the input list is NOT sufficient on its own --
-// this normalization must become per-sample in the same step, or the POWHEG curve silently
-// halves.
+// CreateBaseRDFsPowhegFullsimExtra) -- it is the REFERENCE IMPLEMENTATION; copy that pattern.
+// The truth path here has NOT been given the same treatment. So: adding
+// muon_pairs_powheg_cc_truth.root to the input list is NOT sufficient on its own -- this
+// normalization must become per-sample in the SAME step, or the POWHEG curve silently halves.
 // =================================================================================================
 void RDFBasedHistFillingPowheg::CreateBaseRDFsPowhegCommon(){
     // Sum over #entries before filter & calculate weight for normalizing histogram intergrals to crossx * filter efficiencies
     // Where filter efficiencies include all cuts applied in analysis 
 
     bool use_unscaled_weight = false;
-    double nentries_before_cuts_sum = 0.0;
+    // PER-SAMPLE generated statistics: N_gen for EACH input file separately, never summed across
+    // them. See the contract above -- sigma = sigma_bb + sigma_cc requires each mode to be divided
+    // by ITS OWN N_gen. A single shared denominator would give their N-weighted average instead.
+    // With ONE input file on disk this is numerically identical to the old shared-sum form, so the
+    // change is a strict no-op until the second mode is actually added.
+    std::map<std::string, double> ngen_by_file;
 
     try {
-        nentries_before_cuts_sum = SumMetaNentriesBeforeFilter(input_files);
-        if (nentries_before_cuts_sum <= 0.0) throw std::runtime_error("meta_tree-summed nentries_before_cuts is non-positive");
-        std::cout << "nentries_before_cuts_sum = " << nentries_before_cuts_sum << "\n";
+        for (const std::string& f : input_files){
+            const double n = SumMetaNentriesBeforeFilter({f});
+            if (n <= 0.0)
+                throw std::runtime_error("meta_tree nentries_before_cuts is non-positive for " + f);
+            ngen_by_file[f] = n;
+            std::cout << "[RDFPowheg] N_gen(" << f << ") = " << n << "\n";
+        }
+        if (ngen_by_file.empty()) throw std::runtime_error("no input files to normalize");
     } catch (const std::runtime_error& e){
         use_unscaled_weight = true;
-        std::cout << "[RDFPowheg] meta_tree unavailable; use unscaled event weights." << std::endl;
+        std::cout << "[RDFPowheg] meta_tree unavailable (" << e.what()
+                  << "); use unscaled event weights." << std::endl;
     }
+
+    // Resolve the sample a row came from to its OWN N_gen. The match is COUNTED rather than taken
+    // from the first hit: RSampleInfo::Contains is a SUBSTRING test, and these directories hold
+    // `..._part1.root` and `..._backup_before_dCache.root` beside the real inputs, so a future
+    // rename that made one input path a substring of another would mis-normalize the whole curve
+    // with no error at all. (Same guard, same reason, as RDFBasedHistFillingPowhegFullsim.)
+    auto per_sample_ngen = [ngen_by_file](unsigned int, const ROOT::RDF::RSampleInfo& id){
+        double found = -1.; int nmatch = 0;
+        for (const auto& kv : ngen_by_file)
+            if (id.Contains(kv.first)){ found = kv.second; ++nmatch; }
+        if (nmatch != 1)
+            throw std::runtime_error("RDFBasedHistFillingPowheg per-sample N_gen: sample '"
+                                     + id.AsString() + "' matched " + std::to_string(nmatch)
+                                     + " input paths; exactly 1 is required.");
+        return found;
+    };
 
     ROOT::RDF::RNode& df_ss = map_at_checked(df_map, "df_ss", "RDFBasedHistFillingPowheg::FillHistograms: df_map.at(df_ss)");
     auto df_ss_weighted = use_unscaled_weight
         ? df_ss.Define("weight_norm", "weight")
-        : df_ss.Define("weight_norm", [nentries_before_cuts_sum](double w){ return w / nentries_before_cuts_sum; }, {"weight"});
+        : df_ss.DefinePerSample("powheg_n_gen_sample", per_sample_ngen)
+               .Define("weight_norm", "weight / powheg_n_gen_sample");
     df_map.emplace("df_ss_weighted", df_ss_weighted);
 
     ROOT::RDF::RNode& df_op = map_at_checked(df_map, "df_op", "RDFBasedHistFillingPowheg::FillHistograms: df_map.at(df_op)");
     auto df_op_weighted = use_unscaled_weight
         ? df_op.Define("weight_norm", "weight")
-        : df_op.Define("weight_norm", [nentries_before_cuts_sum](double w){ return w / nentries_before_cuts_sum; }, {"weight"});
+        : df_op.DefinePerSample("powheg_n_gen_sample", per_sample_ngen)
+               .Define("weight_norm", "weight / powheg_n_gen_sample");
     df_map.emplace("df_op_weighted", df_op_weighted);
 }
 

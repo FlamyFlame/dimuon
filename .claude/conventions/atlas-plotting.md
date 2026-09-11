@@ -140,6 +140,37 @@ statistics, not cross-section, giving a distorted shape. Clone the WEIGHTED hist
 to unit area. (Enforced as criterion C6 in `physics-results-review.md`; memory
 `feedback_hf_muons_not_prompt`.)
 
+## POWHEG: every plot MUST sum bb + cc (MANDATORY)
+
+`bb` and `cc` are two POWHEG **generator modes**: each requires a b-b̄ (resp. c-c̄) pair to be
+produced as part of the NLO hard scattering. They are two distinct, **non-overlapping** (exclusive)
+contributions to the same physical process, so the POWHEG prediction is always
+
+    sigma_POWHEG = sigma_bb + sigma_cc
+
+**Division of responsibility — both halves are required, and each is useless alone:**
+
+| layer | obligation |
+|---|---|
+| NTuple / RDF production | Normalize **each mode SEPARATELY, to its OWN exclusive cross section** — per-sample `N_gen`, never a shared denominator across the two |
+| **Every plotting code** | **ADD the two normalized contributions.** A plot showing only `bb` is not "POWHEG": it is one generator mode |
+
+**This holds even when the observable selects only muons from b-hadron decays.** Requiring
+`from_same_b` makes the `cc` contribution *small* — that is a physics result to be shown, not
+grounds to drop the sample. A bb-only curve silently redefines the quantity being compared to data.
+
+**Never use a shared denominator across the two modes.** Normalizing by
+`N_bb + N_cc` yields their N-weighted AVERAGE rather than their sum, so with comparable generated
+statistics each mode comes out ≈2× under-normalized. It cancels in every RATIO — which is why such
+a bug can live a long time unnoticed — but NOT in an absolute cross-section drawn beside data.
+`RDFBasedHistFillingPowhegFullsim` is the reference implementation (`weight_norm_per_sample` via
+`DefinePerSample`); `RDFBasedHistFillingPowheg` (truth) still uses a shared denominator, so adding
+the cc file there without fixing the normalization first would halve the curve.
+
+If a plot legitimately shows one mode alone (a diagnostic), the legend MUST name the mode
+(`POWHEG bb`) and the plot must not be presented as the POWHEG prediction.
+Full statement: `Analysis/docs/powheg.md`; sample roles: `Analysis/docs/analysis_overview.md`.
+
 ## Stacked histograms (THStack) — LINEAR y + magnitude ordering (MANDATORY)
 
 A `THStack` shows composition as "parts of a whole": each component is the vertical THICKNESS

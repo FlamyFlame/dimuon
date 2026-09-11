@@ -174,8 +174,12 @@ systematics.
 c-c̄) pair in the NLO hard scattering, so they are distinct non-overlapping contributions to one
 process and σ = σ_bb + σ_cc everywhere POWHEG appears (flavour/origin plots, MC-vs-data, the NLO
 template). It holds even for observables that select only b-decay muons: `from_same_b` makes the
-cc contribution small, which is a result, not grounds to drop the sample. Normalization caveat
-(the two must be summed PER SAMPLE, not under a shared denominator): `docs/powheg.md`.
+cc contribution small, which is a result, not grounds to drop the sample.
+**Two obligations, both required:** the RDF normalizes **each mode separately to its own exclusive
+cross section** (per-sample `N_gen`, never a shared denominator — that would give their N-weighted
+average, ≈2× under-normalizing each), and **every plotting code must ADD the two**. A curve showing
+only `bb` is not "POWHEG". Details: `docs/powheg.md`; plotting rule:
+`.claude/conventions/atlas-plotting.md`.
 
 **Powheg fullsim is obsolete** for this analysis: only a Run 2 (pp17) sample
 exists, and Powheg has no pTHat slicing, so its high-p_T statistics are too poor

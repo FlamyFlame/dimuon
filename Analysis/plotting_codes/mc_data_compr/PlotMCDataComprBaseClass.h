@@ -115,10 +115,21 @@ protected:
     std::array<bool, s_nDtTypes> is_data = {false, false, true};
     std::array<std::string, s_nDtTypes> dt_paths;
     std::array<std::string, s_nDtTypes> fnames;
-    // "POWHEG bb" and NOT "POWHEG": the cc sample does not exist on disk
-    // (`muon_pairs_powheg_cc_truth.root` was never produced -- parts 2 and 6 are missing), so the
-    // curve is bb ONLY and the legend must not imply otherwise.
-    std::array<std::string, s_nDtTypes> dtTitles = {"POWHEG b#bar{b}", "Pythia", "pp data 2024"};
+    // "POWHEG" = bb + cc, as it must be. The two are POWHEG GENERATOR MODES -- each requires a
+    // b-bbar (resp. c-cbar) pair in the NLO hard scattering -- so they are two exclusive
+    // contributions to one process and their cross sections ADD. Every plotting code is REQUIRED
+    // to sum them (.claude/conventions/atlas-plotting.md, MANDATORY; Analysis/docs/powheg.md).
+    //
+    // It read "POWHEG bb" from 2026-08-25 to 2026-09-11 because muon_pairs_powheg_cc_truth.root
+    // did not exist (parts 2 and 6 had never been produced) -- an honest label on an incomplete
+    // curve. All 6 cc parts exist since the 2026-09-10 rerun; cc is merged and
+    // histograms_powheg_truth.root now carries bb + cc, each normalized to its OWN N_gen
+    // (RDFBasedHistFillingPowheg::CreateBaseRDFsPowhegCommon, per-sample via DefinePerSample).
+    // Measured effect on THIS curve: the generic family grows x1.065; the single_b family is
+    // unchanged, because `from_same_b` is false for every cc pair -- charm events contain no
+    // b-hadrons, so the charm sample contributes nothing to the single-b signal. That zero is a
+    // physics result, and it is the reason the sample may not simply be dropped.
+    std::array<std::string, s_nDtTypes> dtTitles = {"POWHEG", "Pythia", "pp data 2024"};
 
     // ---------------------------------------------------------------------------------------
     // THE ONE PLACE where the mc_data_compr histogram keys live.
