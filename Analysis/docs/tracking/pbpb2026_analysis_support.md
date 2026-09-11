@@ -180,7 +180,7 @@ be revisited once `~/usatlasdata/dimuon_data/pbpb_2026/` is populated.
 
 | # | Item | Placeholder value used | How to confirm |
 |---|------|------------------------|----------------|
-| P1 | Number of 2026 NTUP part files (`file_batch_max{26}`, Condor `queue N`, `QUEUE_COUNTS[26]`, `ScrambGen::NParts(26)`, every plotting part list) | **5** — the skim is submitted as 5 grid tasks (`SkimCode/run_26hi/InDstxt_PbPb2026_5p36TeV_part1..5.txt`, 45 datasets over the 35 GRL runs). NOT a copy of 2025's 6. Can end up LARGER: `grid_monitor`'s chunked-hadd fallback splits an over-large task into extra parts. | `pipelines/preflight_pbpb_year.sh 26` checks **all five declaration classes** against each other and against `ls` (extended 2026-09-11; it previously covered only three), treating an UNDER-count as an error and an OVER-count as a warning. **`grid_monitor` auto-updates only `PbPbExtras.c` and `run_pbpb_26.sub`** — the other five `.sub`, `ScrambGen::NParts` and the six plotting lists are manual, so run the preflight after the skim lands. |
+| P1 | Number of 2026 NTUP part files (`file_batch_max{26}`, Condor `queue N`, `QUEUE_COUNTS[26]`, `ScrambGen::NParts(26)`, every plotting part list) | **5** — the skim is submitted as 5 grid tasks (`SkimCode/run_26hi/InDstxt_PbPb2026_5p36TeV_part1..5.txt`, 45 datasets over the 35 GRL runs). NOT a copy of 2025's 6. Can end up LARGER: `grid_monitor`'s chunked-hadd fallback splits an over-large task into extra parts. | `pipelines/preflight_pbpb_year.sh 26` checks **all five declaration classes** against each other and against `ls` (extended 2026-09-11; it previously covered only three), grading the `.sub` queue counts and the macro part lists by direction (UNDER-count = error, it silently processes a subset; OVER-count = warning, it throws loudly on the missing part), and requiring exact equality for `file_batch_max`, `QUEUE_COUNTS`, `ScrambGen::NParts` and the on-disk count, where either direction would be silent. **`grid_monitor` auto-updates only `PbPbExtras.c` and `run_pbpb_26.sub`** — the other five `.sub`, `ScrambGen::NParts` and the six plotting lists are manual, so run the preflight after the skim lands. |
 | P2 | Total recorded 2026 events | *(unknown)* | entry count of the hadded NTUPs / `data-merging-record.txt` |
 | P3 | 2026 bad-run list | **empty** (no run excluded) — `PbPbBadRuns` has no 26 entry, so the R_AA luminosity is the full GRL total 2.62316 nb⁻¹ | 2026 DQ review. If it becomes non-empty, subtract those runs' `Prescale Corrected` in `PbPbSampledLumi.h`, `make_crossx_factors_pbpb_2026()` AND the lumi README **in the same change** — numerator and denominator must cover the same runs |
 | P4 | What calibration is the 2026 skim's `centrality` branch on? | **Irrelevant to the result** — under D6 the 2023 calibration is enforced by `UpdateCentrality` regardless. (The old entry asked whether the branch is "zero-filled"; that premise was false even for 2025 — see §3c.) | Open `data_pbpb26_part1.root` and check whether the branch is on a **non-2023** calibration. If it is, the override is intentional under D6 and **must be disclosed in the note**, not silently applied. |
@@ -347,6 +347,15 @@ Plus, in the event-selection derivation: `GetPreampCuts` → an invented **(385,
 
 ### 2026-09-10 — Steps 5-8 DONE (implementation)
 
+> **⚠ CORRECTION (2026-09-11, see the round-2 entry below):** where this entry and the
+> round-1 silent-failure table say the 2025/2026 `centrality` branch is "all zeros" and
+> that every event would land in the 0-1 % panel, that premise is FALSE — measured on the
+> real NTUPs. The branch is populated and already on the 2023 calibration, so declared
+> exception (a) (`MakeZDCTimeCentralityPlot`) regenerates an essentially identical 2025
+> figure: a no-op, not the repair of a collapsed panel. The recompute is an OVERRIDE
+> enforcing the 2023 calibration (D6). This log is append-only, so the original text
+> stands with this pointer rather than being rewritten.
+
 Design rule applied throughout: *a year switch either has a real 2026 branch or it throws.*
 Where the year gate was standing in for a property of the data, it was replaced by a test of
 that property, which removes the guess entirely:
@@ -510,6 +519,42 @@ required by the no-typed-year-string rule; filenames unchanged.
 Also noted: regenerating the 2025 cuts file changes a `TTree` *title* string (`(PbPb25)` →
 `(PbPb2025)`) and transient histogram names; the key name and every cut value are unchanged, so
 a byte-diff of a regenerated file is not a physics change.
+
+### 2026-09-11 — Step 10 round 3: FAIL (2 WARNING, 4 INFO, zero CRITICAL); fixed
+
+Both warnings were on my own round-2 fixes.
+
+**W1 was incomplete.** I corrected the falsified "centrality branch is unfilled" premise at five
+sites and missed three: the mirror header `PbPbCentralityFCalMirror.h`, `docs/analysis_overview.md`
+(the designated conceptual ground truth) and `docs/systematic_uncertainties.md` §6 (which will
+drive the centrality-calibration systematic, so a false premise there would have propagated into
+the note). All three corrected.
+
+**W2 — a bug I introduced in the preflight.** The new per-part-list check used
+`grep -c "data_pbpb<yr>_part"`, which counts matching LINES including comments. Commit `87644ce`
+had itself added a comment naming `data_pbpb25_part1.root` to both cut-derivation macros, so the
+preflight reported a 2025 drift that does not exist (7 vs 6). Benign in that direction, but the
+same mechanism works the dangerous way: one comment naming a part file could lift a genuine
+UNDER-count back to the expected number and silence the check. Now strips `//` comments and
+counts DISTINCT path literals. Verified both ways: the spurious 2025 report is gone, 2023's real
+3-of-4 drift still fires, and an injected bogus comment that fooled the old method (3 → 4) no
+longer fools the new one.
+
+INFO fixed: the preflight header now documents all five classes and the direction grading; P1's
+direction rule is scoped to the two classes it actually describes (the other three are
+exact-match); an append-only correction pointer was added to the round-1 log entry; and
+`AvailablePbPbYears` now applies the has-data test in the **zombie-file** branch too, closing the
+same mismatched-WP hole by the other route.
+
+**The parked Glauber item is now backed by direct evidence, and is stronger than when it was
+parked.** Round 3 confirmed and extended the attribution of the 8/300 000 centrality mismatches:
+recomputing with the CANONICAL `FCal_ET_Bins_PbPb2023` gives **300 000/300 000**, and each of the
+8 FCal values lies strictly between the canonical and the rounded mirror value of the same
+threshold — e.g. event 40750, FCal = 0.253569186, canonical bin[61] = 0.253565, mirror = 0.25357
+(re-verified here). The same pattern holds for 2024 (299 997/300 000 with the mirror,
+300 000/300 000 canonical). So the rounding is no longer a theoretical divergence: it
+**demonstrably misassigns ~27 events per million by one centrality unit**. Still parked — fixing
+it perturbs the 23/24/25 derivation and is the user's call — but that is the evidence to decide on.
 
 ## Results & Observations
 

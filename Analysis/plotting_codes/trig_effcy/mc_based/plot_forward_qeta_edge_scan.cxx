@@ -338,6 +338,14 @@ std::vector<int> AvailablePbPbYears(const std::string& wp) {
         }
         std::unique_ptr<TFile> f(TFile::Open(fname.c_str(), "READ"));
         if (!f || f->IsZombie()) {
+            // Same test as above: a period that HAS data but whose WP variant is present-
+            // but-unreadable is a broken pipeline output, not a period we do not hold.
+            // Skipping it would rebuild the same mismatched WP comparison by another route.
+            if (period_has_data && !wp.empty())
+                throw std::runtime_error(
+                    "plot_forward_qeta_edge_scan: Pb+Pb " + std::to_string(year) +
+                    " has data but its \"" + wp + "\" file cannot be opened: " + fname +
+                    ". Re-produce it rather than dropping the period from this working point.");
             std::cout << "[INFO] Pb+Pb " << year << ": cannot open " << fname
                       << " -- skipping this running period." << std::endl;
             continue;
