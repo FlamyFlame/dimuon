@@ -85,17 +85,28 @@ b. **Event selection.** The 5-cut sequential Pb+Pb event selection
    (ZDC/FCal distributions are year-dependent). 2026 needs its own cuts ROOT file.
    Cut 3 (ZDC preamp) is per-run $\mu+7\sigma$ for 2025 and a hard scalar for 23/24
    ([[project_pbpb_preamp_cut]]); which form 2026 takes is decided from the 2026 data.
-c. **Centrality.** The Pb+Pb 2025 skim writes an all-zero `centrality` branch, so 2025
-   pairs have their centrality **recomputed from FCal $E_{\rm T}$** at pair level
-   (`MuonPairPbPb::PairValueCalcHook` → `UpdateCentrality`, gated `yr == 25`), using the
-   **2023** FCal-$E_{\rm T}$ thresholds because per-year Glauber calibrations are not
-   finalised (2024 has its own provisional `FCal_ET_Bins_PbPb2024`, which is in fact
-   byte-identical to the 2023 vector). 2026 is produced by the same `hi2026` skim path,
-   so it almost certainly needs the same recompute and the same 2023 thresholds.
-   **No cross-year FCal rescaling exists in the code** — `fcal_scale` /
-   `fcal_corr_weight` appear in documentation only, never in a source file (the FCal
-   reweighting was removed in `40e67c9`; confirmed here by four independent sweeps).
-   2026 therefore needs NO `fcal_scale_pbpb_2026.root`.
+c. **Centrality.** All Run-3 Pb+Pb years use the **PbPb2023 FCal-$E_{\rm T}$ → centrality
+   thresholds** (registered user decision **D6**, 2026-09-10). `MuonPairPbPb::PairValueCalcHook`
+   recomputes the percentile from FCal $E_{\rm T}$ for 2025 and 2026, which **enforces** that
+   calibration rather than trusting whatever the skim wrote.
+
+   **CORRECTED 2026-09-11 — the previous justification was false.** This section, and a
+   long-standing comment in `MuonPairPbPb.h`, claimed the Pb+Pb 2025 skim writes an *all-zero*
+   `centrality` branch, so the recompute was a rescue. Measured directly on
+   `data_pbpb25_part1.root` (2 M events): **mean 20.454, max 84, only 4.08 % zeros** —
+   populated, and indistinguishable in character from 2023 (19.947 / 84 / 4.20 %). It is
+   moreover **already on the 2023 calibration**: it agrees with the 2023-table recompute in
+   **299 992 of 300 000** events, the 8 exceptions differing by exactly one unit and
+   attributable to the rounded mirror table (see the parked Glauber item below). So the
+   recompute is a **no-op for 2025**, not a repair — and the 2026 branch was added on a premise
+   that does not hold, even though the resulting behaviour is exactly what D6 asks for.
+   No number changes; the recorded reason does.
+
+   **No cross-year FCal rescaling exists in the code** — `fcal_scale` / `fcal_corr_weight`
+   appear in documentation only, never in a source file (removed in `40e67c9`; confirmed by
+   four independent sweeps). 2026 needs no `fcal_scale_pbpb_2026.root`. Note also that
+   `FCal_ET_Bins_PbPb2024` is byte-identical to the 2023 vector, so `case 24:` calling
+   `GetCentralityPbPb2024` puts 2024 on the same calibration as the rest.
 d. **Luminosity.** 2026 `Prescale Corrected` total = **2623.16 µb⁻¹ = 2.62316 nb⁻¹**
    from `lumitable_pbpb_26_HLT_mu4.csv`, whose run list is byte-identical to the skim
    GRL `physics_HI2026_50ns_noIBL.xml` (35 runs, 522041–523437). Enters
@@ -169,10 +180,10 @@ be revisited once `~/usatlasdata/dimuon_data/pbpb_2026/` is populated.
 
 | # | Item | Placeholder value used | How to confirm |
 |---|------|------------------------|----------------|
-| P1 | Number of 2026 NTUP part files (`file_batch_max{26}`, Condor `queue N`, `QUEUE_COUNTS[26]`, `ScrambGen::NParts(26)`, every plotting file list) | **5** — the skim is submitted as 5 grid tasks (`SkimCode/run_26hi/InDstxt_PbPb2026_5p36TeV_part1..5.txt`, 45 datasets over the 35 GRL runs). NOT a copy of 2025's 6. Can end up LARGER: `grid_monitor`'s chunked-hadd fallback splits an over-large task into extra parts. | `pipelines/preflight_pbpb_year.sh 26` cross-checks all declared counts against each other AND against `ls pbpb_2026/data_pbpb26_part*.root`. `grid_monitor` auto-updates `PbPbExtras.c {26, N}` + `run_pbpb_26.sub` from disk (enabled 2026-09-10); the other five `.sub` variants are manual. |
+| P1 | Number of 2026 NTUP part files (`file_batch_max{26}`, Condor `queue N`, `QUEUE_COUNTS[26]`, `ScrambGen::NParts(26)`, every plotting part list) | **5** — the skim is submitted as 5 grid tasks (`SkimCode/run_26hi/InDstxt_PbPb2026_5p36TeV_part1..5.txt`, 45 datasets over the 35 GRL runs). NOT a copy of 2025's 6. Can end up LARGER: `grid_monitor`'s chunked-hadd fallback splits an over-large task into extra parts. | `pipelines/preflight_pbpb_year.sh 26` checks **all five declaration classes** against each other and against `ls` (extended 2026-09-11; it previously covered only three), treating an UNDER-count as an error and an OVER-count as a warning. **`grid_monitor` auto-updates only `PbPbExtras.c` and `run_pbpb_26.sub`** — the other five `.sub`, `ScrambGen::NParts` and the six plotting lists are manual, so run the preflight after the skim lands. |
 | P2 | Total recorded 2026 events | *(unknown)* | entry count of the hadded NTUPs / `data-merging-record.txt` |
 | P3 | 2026 bad-run list | **empty** (no run excluded) — `PbPbBadRuns` has no 26 entry, so the R_AA luminosity is the full GRL total 2.62316 nb⁻¹ | 2026 DQ review. If it becomes non-empty, subtract those runs' `Prescale Corrected` in `PbPbSampledLumi.h`, `make_crossx_factors_pbpb_2026()` AND the lumi README **in the same change** — numerator and denominator must cover the same runs |
-| P4 | Is the 2026 skim's `centrality` branch zero-filled (→ needs the FCal recompute)? | **assumed YES**, because 2026 comes from the same skim path as 2025. Wired as `yr == 25 \|\| yr == 26` in `MuonPairPbPb::PairValueCalcHook` and in the two event-selection macros' `UsesFCalCentralityRecompute()` | open `data_pbpb26_part1.root` and check whether `centrality` is all zeros. **If it is NOT, revisit**: recomputing would then override a real branch |
+| P4 | What calibration is the 2026 skim's `centrality` branch on? | **Irrelevant to the result** — under D6 the 2023 calibration is enforced by `UpdateCentrality` regardless. (The old entry asked whether the branch is "zero-filled"; that premise was false even for 2025 — see §3c.) | Open `data_pbpb26_part1.root` and check whether the branch is on a **non-2023** calibration. If it is, the override is intentional under D6 and **must be disclosed in the note**, not silently applied. |
 | P5 | Does 2026 need per-run µ+7σ ZDC preamp cuts (2025-style) or a hard scalar (23/24-style)? | **assumed per-run**, i.e. `UsesPerRunPreampCuts(26) = true` in the cuts macro. In the *NTuple processing* this is no longer a guess at all: the loader is now **presence-driven** — it uses per-run cuts iff the year's cuts file contains `t_preamp_per_run` | inspect the 2026 preamp distributions as was done for 2025 |
 | P6 | 2026 hard scalar preamp cut (A, C) [ADC] | **{850, 700}** — copied from 2025 (23: {300,300}, 24: {420,420}) | re-derive from the 2026 1D preamp Gaussian-to-tail turnover |
 | P7 | 2026 ZDC background-band search window | **{170, 320}** — copied from 2025 | read off the 2026 ZDC-vs-FCal 2D |
@@ -220,6 +231,13 @@ Still **interim**: revisit when an official 2026 Glauber calibration exists. ⟨
 the same 2023 placeholder, consistent with 2024 and 2025.
 
 **D5 — For year INPUTS the rule is probe-skip-relabel; only year CONSTANTS throw.**
+*Caveat recorded 2026-09-11:* where the probe targets an **earlier stage's output**
+(`run_all_crossx.sh`, `run_scrambgen.sh`, `RAA_plotting` mode 6), a skip covers both "not
+produced yet" and "that stage failed or its output was deleted". It is mitigated rather than
+silent — the combined directory name, the R_AA filename suffix and every legend are rebuilt
+from the surviving years, so a shrunk combination changes the output path and is visible. Where
+the distinction is decidable it IS made: see `plot_forward_qeta_edge_scan`, which throws when a
+period has data but is missing the requested working-point variant.
 Added after the round-1 review. A missing luminosity, crossx factor or centrality mapping is
 a configuration error and must throw (D1). A missing *data file* is a normal transient state
 while a year is being produced, and must not take down the years that are ready — nor be
@@ -433,6 +451,65 @@ taking the largest bin content. Pad 3 now peaks at ~10700 pairs near 7 % central
 rises from ~1.0 central to ~2.5 peripheral — the expected shape (combinatorial-dominated
 centrally, correlated fraction growing peripherally). Pre-existing at `81ad7ef`, identical
 code with the literal index `[3]`.
+
+### 2026-09-11 — Step 10 round 2: independent review returned FAIL; findings fixed
+
+Round 2 ran after the API session limit reset. **3 WARNING + 8 INFO, zero CRITICAL** — all
+eight round-1 CRITICALs verified closed. Every reported number re-derived independently and
+MATCHED (2026 luminosity, GRL run-list identity, crossx factor ratio 0.990915536986 in all six
+bins, Run-3 sums, Run-2 1.817182, the 5-task partition, the Glauber mirror byte-identity, and
+`FCal_ET_Bins_PbPb2024` ≡ `_PbPb2023`).
+
+**W1 — the stated premise for the centrality recompute was FALSE (the important one).** The
+reviewer read the real NTUPs; I reproduced it independently. See the correction now in §3c:
+the 2025 `centrality` branch is populated (mean 20.454, max 84, 4.08 % zeros) and already on
+the 2023 calibration (299 992/300 000 agreement with the 2023-table recompute, the 8 exceptions
+off by one unit and traceable to the rounded mirror table). The recompute is a **no-op** for
+2025, and the 2026 branch rested on a premise that does not hold. **Behaviour unchanged and
+still correct under D6** — it is an *override* enforcing the 2023 calibration, not a repair.
+Corrected in `MuonPairPbPb.h`, both event-selection macros (including the runtime log line and
+the in-loop comments), §3c and registry P4. P4's confirm-step was the wrong test and is
+rewritten: ask whether the 2026 branch is on a *non-2023* calibration, and if so disclose the
+deliberate override in the note.
+
+**W2 — `plot_forward_qeta_edge_scan` Medium WP silently shrank to one year.** `_medium_wp`
+histograms exist only for 2023 (verified on disk); the new probe-skip turned a loud failure
+into a 2023-only Medium figure sitting beside a three-period Tight figure — a mismatched pair
+for the working-point systematic, presented as finished. `AvailablePbPbYears` now distinguishes
+**(a)** a period with no data at all (skip, D5) from **(b)** a period that *has* data but is
+missing this WP variant (**throw**, naming the file to produce). This is the "not produced yet
+vs genuinely failed" distinction D5 did not make.
+
+**W3 — the preflight overstated its own guard.** Registry P1 claimed it cross-checks all
+declarations of the part count; it checked three of five. Extended to assert
+`ScrambGen::NParts(<yr>)` and the per-part file lists in the six event-selection/preamp/FCal
+macros, and all `.sub` variants are now checked (the deliberately-partial one-offs are named
+explicitly, so a NEW variant is checked by default rather than silently exempt). It now also
+distinguishes the two directions, which are not equally dangerous: an **under**-count silently
+processes a subset (error), an **over**-count throws loudly on the missing part (warning).
+
+**The extended preflight immediately found real pre-existing drift** (all pre-dating this work,
+none introduced by it, none fixed unilaterally):
+- The three `plot_zdc_preamp_*` macros list **3 of 2023's 4** part files, so those cross-year
+  diagnostic figures are built from a subset of 2023. (The *cut derivation* macros correctly
+  list 4 — verified — so no derived cut is affected.)
+- `run_pbpb_23_no_res_mu4_mu4noL1.sub` (queue 6 vs 4), `run_pbpb_24_no_res_mu4_mu4noL1.sub` and
+  `run_pbpb_24_no_res_mu4.sub` (queue 9 vs 2) are stale. Over-counts, so they fail loudly; and
+  `mu4_mu4noL1` is not maintained.
+
+INFO items fixed: the legacy `case 26:` carries 25's TODO; `plot_dR_trig_corr`'s pT-slice header
+is derived from `kPtSliceYear` instead of a literal; the two crossx sanity macros probe with
+`AccessPathName` before `TFile::Open` so an unproduced year no longer prints a raw ROOT error;
+the wrong `// [0]=A, [1]=C` comment in `PbPbExtras.c:99` is flipped to the project convention.
+
+**Declared exceptions to "nothing changed for existing years" — now three, not two:**
+(a) `MakeZDCTimeCentralityPlot` (2025 centrality panel; derives no cut, nothing consumes it);
+(b) `plot_npairs_vs_centrality` pads 3/4 (axis ranges only);
+(c) **cosmetic year relabelling `"PbPb 23+24+25"` → `"PbPb 2023+2024+2025"`** in five macros,
+required by the no-typed-year-string rule; filenames unchanged.
+Also noted: regenerating the 2025 cuts file changes a `TTree` *title* string (`(PbPb25)` →
+`(PbPb2025)`) and transient histogram names; the key name and every cut value are unchanged, so
+a byte-diff of a regenerated file is not a physics change.
 
 ## Results & Observations
 
