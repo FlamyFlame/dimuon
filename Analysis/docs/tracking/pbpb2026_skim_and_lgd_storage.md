@@ -207,6 +207,73 @@ AOD (`00512049 ... f1671_m2272._lb0166._0007.1`, 2.553 GB, lb 166 inside GRL ran
 Consequence: the 2023/24/25 skims do **not** need to be regenerated, and the 2026 skim is
 directly combinable with them. No muon calibration, selection or scale-factor value moves.
 
+### D3 — v1 parts 1/3/4/5 killed and resubmitted as v2 with `--excludedSite 'EMMY_KIT*'`
+
+**Symptom:** tasks 52488081/83/85 sat in `pending` with
+`no candidates. brokerage failed for 1 input datasets when trying 1 datasets`, and
+52488079's file counter was frozen at 41/23879 for six hours.
+
+**Root cause, from the JEDI brokerage log** (`http://aipanda095.cern.ch:25080/cache/jedilog/52488081`,
+gzipped — `curl` it and `gunzip`; note the host is per-task, read it out of the task's
+`errordialog`, and `aipanda094` 404s for this one):
+
+```
+gshare: User Analysis , merging, task_class: 1
+skip site=EMMY_KIT/SCORE  ... weight=0.0000019 gshare=User Analysis
+     userR=0 userQ=4511 userQRem=0.000 nRunning=106 nActivated=10170
+     criteria=-below_min_weight        (MIN_WEIGHT_user=1e-05)
+skip site=FZK-LCG2/SCORE  ... weight=0.0000019 userR=87 userQ=397 ... same criteria
+136 ->   4 candidates,  98% cut : input data check
+  4 ->   2 candidates,  50% cut : SW/HW check
+  2 ->   0 candidates, 100% cut : final check
+no candidates
+```
+
+Two things the log settles that the task-level view hid:
+
+1. **This is the *merge* brokerage, not the run-job brokerage** (`gshare: ... , merging`).
+   The "1 input dataset" it cannot place is the task's **own output**
+   (`...part3..log` / `...part3._EXT0`) sitting on `FZK-LCG2_SCRATCHDISK`. So what was
+   blocked was *completing* work, not starting it — which is exactly why
+   `nfilesfinished` froze while jobs kept running.
+2. **Every candidate was cut by `-below_min_weight`**, with `userQRem=0.000`: the user's
+   queued-job budget was exhausted, pinning the brokerage weight at 1.9e-6 against a
+   1e-5 floor. Nothing was wrong with the input replicas — independently confirmed that
+   **every dataset in parts 3, 4 and 5 has a complete DATADISK replica**
+   (FZK, NDGF, RAL-ECHO, BNL, INFN-T1, SARA, PIC, IN2P3), so this was never a data-access
+   problem.
+
+**What exhausted the budget: EMMY_KIT accepting jobs it never ran.**
+
+| task | site | total | activated | running | finished | merging |
+|---|---|---:|---:|---:|---:|---:|
+| 52488079 | **EMMY_KIT** | 1707 | **1706** | **0** | 1 | 0 |
+| 52488079 | TRIUMF | 725 | 502 | 0 | 16 | 207 |
+| 52488080 | **EMMY_KIT** | 2816 | **2805** | **0** | 0 | 10 |
+| 52488080 | FZK-LCG2 | 5540 | 0 | 69 | 1 | 5403 |
+| 52488080 | IN2P3-CC | 3879 | 1868 | 0 | 1930 | 81 |
+
+~4 500 jobs parked at EMMY_KIT with **zero** running, while the site as a whole showed
+only 106 running against 10 170 activated — i.e. the site was accepting assignments and
+not executing them. Those jobs consumed the user's entire queue budget and starved the
+merge brokerage of every task.
+
+**Action taken:**
+- `Client.killTask()` on **52488079, 52488081, 52488083, 52488085** (v1 parts 1, 3, 4, 5).
+  Work lost is negligible: 18 / 1 / 1 / 1 finished jobs.
+- **52488080 (v1 part 2) deliberately NOT killed** — it had 1 932 finished and 5 403
+  merging at FZK-LCG2, i.e. most of a 23 559-file part. Its merge count rose from 5 519 to
+  5 717 within minutes of the kills, confirming that freeing the queue budget unblocked it.
+- Resubmitted **part 1 only** as `Sep2026.v2` → **jediTaskID 52491225**, now with
+  `--excludedSite 'EMMY_KIT*'`.
+- `make_grid_sub.sh` now takes an exclusion list and additionally emits
+  `grid_sub_part<N>.sh`, one per part, because **releasing all parts at once is what
+  exhausted the budget**. Parts 3, 4 and 5 are held until the budget frees.
+
+**Not changed: the partition, the per-job sizing, or any skim setting.** This was a site
+and scheduling problem, not a configuration one — so repartitioning would have been the
+wrong fix.
+
 ## Implementation Plan
 
 | # | Step | Status |
@@ -218,7 +285,7 @@ directly combinable with them. No muon calibration, selection or scale-factor va
 | 5 | Local test job on one 2026 AOD + branch sanity check | **DONE** |
 | 6 | Write `run_26hi/grid_sub.sh`, submit all parts | **DONE** (5 tasks) |
 | 7 | LGD pre-flight (quota, DID conflicts, pnfs mount, plugin install) | **DONE** |
-| 8 | Migrate pbpb23/24/25 + pp24 raw NTUPs → LGD, symlink farm, verify, smoke test, delete originals | pending |
+| 8 | Migrate pbpb23/24/25 + pp24 raw NTUPs → LGD, symlink farm, verify, smoke test | **DONE** (originals parked, purge pending) |
 | 9 | Monitor grid tasks → download → hadd → validate (`grid_monitor.sh`) | pending |
 | 10 | Sanity-check downloaded pbpb26 NTUPs | pending |
 | 11 | If tight: migrate pbpb26 NTUPs → LGD + cleanup | pending |
@@ -671,6 +738,64 @@ only if a task actually **fails** on job count or per-job data volume.
 
 Watch condition: a task is in trouble only if it sits in `pending` with **no growth in
 `nfilesfinished`** over several polls, or `nfilesfailed` starts climbing.
+
+### 2026-09-11 — Step 9: the task-level file counter is a MISLEADING health metric
+
+After ~6 h the task-level view looked frozen: 52488079 sat at `pending 41/23879` from
+21:50 to 03:35 with no movement at all, and 81/83/85 at `0`. That tripped the stall
+watch-condition set earlier. It was a **false alarm caused by watching the wrong number.**
+
+`nfilesfinished` counts only input files whose **merge job has completed**, so a task can
+show a frozen file count for hours while thousands of jobs are actually running and
+merging. The job-level view at 03:36:
+
+| task | jobs | finished | merging | run | activated | failed |
+|---|---:|---:|---:|---:|---:|---:|
+| 52488079 | 2 671 | 18 | 316 | 5 | 2 220 | 34 |
+| 52488080 | **13 810** | 1 932 | 5 519 | 148 | 6 177 | 31 |
+| 52488081 | 29 | 1 | 28 | 0 | 0 | 0 |
+| 52488083 | 16 | 1 | 14 | 0 | 1 | 0 |
+| 52488085 | 34 | 1 | 5 | 0 | 1 | 0 |
+
+52488080 had grown from 7 963 to 13 810 jobs in the minutes between two probes — JEDI is
+actively generating work. The picture is simply **sequential fair-share**: 80 is consuming
+the user's slots, 79 is queued behind it (2 220 activated, only 5 running), and 81/83/85
+are deliberately held at a few tens of jobs until capacity frees. Nothing is wrong.
+
+**Monitoring fixed accordingly.** `~/usatlasdata/dimuon_data/pbpb26_probe.sh` now probes
+the **jobs** API per task and appends `jobs= fin= merg= run= act= fail=` to
+`pbpb26_task_progress.log`. The watch now alerts only on (a) no job-level movement on *any*
+task across 3 consecutive half-hourly polls, (b) a ≥10 % failure rate on a task with >200
+jobs, or (c) all five complete.
+
+**Failed jobs: 65 of ~16 500 (0.4 %), and every single one is at INFN-CNAF.**
+`transexitcode 6`, `exeerrorcode 5406`, `piloterrorcode 1305`,
+`athena execution failed with 65`. Checked rather than assumed, because exit 65 is the
+same code the gRISTRETTO L1-menu abort produced locally — but the job record confirms
+`atlasrelease = Atlas-25.2.90`, `homepackage = AnalysisTransforms-AthAnalysis_25.2.90`,
+i.e. **the correct release was shipped**, and the identical payload succeeds in bulk at
+EMMY_KIT, TRIUMF, INFN-CNAF's peers and SARA-MATRIX. So this is a site-local problem at
+INFN-CNAF, not a configuration error. `maxattempt = 4` and retries are already happening
+(one job seen at `attemptnr = 2`), so PanDA will re-place them elsewhere. No action.
+
+### 2026-09-11 — Step 8 COMPLETE: all four raw-skim groups migrated and verified
+
+| group | files | LGD rule | rule OK after | farm | verify |
+|---|---:|---|---|---|---|
+| pp24 | 12 | `c2df30b0707d497588778c26712b4b78` | ~5 min | 11 links + 1 keeper | **PASSED** |
+| pbpb23 | 4 | `f8a4d04f72424ae6a3693f647967c3de` | <1 min | 3 links + 1 keeper | **PASSED** |
+| pbpb24 | 2 | `a0488483062c466a887d0b18a9b592f7` | ~5 min | 1 link + 1 keeper | **PASSED** |
+| pbpb25 | 6 | `3f4e61b0a5b646caa22e925990b949a3` | ~5 min | 5 links + 1 keeper | **PASSED** |
+
+All 24 files byte-exact and `HeavyIonD3PD`-entry-exact read through the LGD symlinks, with
+zero mismatches against the independent pre-migration baseline. Local keepers restored as
+real files: `data_pbpb23_part4`, `data_pbpb24_part1`, `data_pbpb25_part6`,
+`data_pp24_part11`. Originals are **parked, not deleted**, in `<dir>_orig_<key>/`.
+
+One wrinkle: pbpb25's `upload` stage returned non-zero even though all 6 files landed
+(`upload done: 6/6`), so `upload_all.sh` skipped its dataset and rule stages. Re-running the
+same command returned 0 and the group completed — transient, and harmless precisely because
+every stage is idempotent.
 
 ## Results & Observations
 
