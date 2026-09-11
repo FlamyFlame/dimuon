@@ -286,7 +286,7 @@ wrong fix.
 | 6 | Write `run_26hi/grid_sub.sh`, submit all parts | **DONE** (5 tasks) |
 | 7 | LGD pre-flight (quota, DID conflicts, pnfs mount, plugin install) | **DONE** |
 | 8 | Migrate pbpb23/24/25 + pp24 raw NTUPs → LGD, symlink farm, verify, smoke test | **DONE** (originals parked, purge pending) |
-| 9 | Monitor grid tasks → download → hadd → validate (`grid_monitor.sh`) | pending |
+| 9 | Monitor grid tasks → download → hadd → validate (`grid_monitor.sh`) | **IN PROGRESS** (running under nohup; parts 3/4/5 auto-released) |
 | 10 | Sanity-check downloaded pbpb26 NTUPs | pending |
 | 11 | If tight: migrate pbpb26 NTUPs → LGD + cleanup | pending |
 | 12 | Final: commit, close doc | pending |
@@ -796,6 +796,50 @@ One wrinkle: pbpb25's `upload` stage returned non-zero even though all 6 files l
 (`upload done: 6/6`), so `upload_all.sh` skipped its dataset and rule stages. Re-running the
 same command returned 0 and the group completed — transient, and harmless precisely because
 every stage is idempotent.
+
+### 2026-09-11 — Steps 8 (purge) + 9 (monitoring) — space freed, automation armed
+
+**Purge done, hedge kept.** `pp_2024` and `pbpb_2025` parked originals deleted after the
+`purge` stage **re-ran `verify` and it passed again** (17 files, all byte- and
+entry-exact): 467 947 148 751 + 253 147 519 838 bytes = **672 GB** reclaimed.
+
+| | before | after |
+|---|---:|---:|
+| used (real) | 1 379.4 GB | **707.8 GB** |
+| free (real) | 156.6 GB | **828.2 GB** |
+| % of quota | 90 % | 46 % |
+
+`pbpb_2023_orig_pbpb23` (116.5 GB) and `pbpb_2024_orig_pbpb24` (52.0 GB) are **deliberately
+still parked** as the hedge across the 2026-09-14 dCache upgrade; they will be purged after
+a post-outage re-verify. Holding them costs nothing — the space is not needed.
+
+Post-purge check of the farms: **20/20 symlinks resolve, 0 dangling, 4 real keepers**
+(`data_pbpb23_part4`, `data_pbpb24_part1`, `data_pbpb25_part6`, `data_pp24_part11`).
+Note `find -xtype l` is the wrong test for this (it means "symlink whose target is itself a
+symlink") and reported 0; the check that matters is `[ -L "$f" ] && [ -e "$f" ]`.
+
+**Task 52488080 recovered on its own, as predicted.** Between 03:43 and 03:57 its EMMY_KIT
+jobs went 2805 activated / 0 starting → 2796 / **9 starting**, FZK merging 5403 → 5634, and
+finished 1932 → 2034. EMMY_KIT was backlogged, not dead, so keeping this task was right.
+
+**Automation armed** (all under `~/usatlasdata/dimuon_data/`):
+- `pbpb26_probe.sh` — job-level probe; now reads its task list **from the bookkeeping file**
+  `sep2026_pbpb26_skim.txt`, so a newly released part is picked up with no edit.
+- `pbpb26_release_next.sh` — releases the next held part (3 → 4 → 5) only when
+  (1) total `activated` across live tasks < 4000, (2) the most recently released task is
+  demonstrably brokering (has jobs, some running/merging/finished), and (3) ≥ 90 min since
+  the last release. Pending list in `pbpb26_pending_parts.txt`; decisions logged to
+  `pbpb26_release.log`. On success it appends the new task ID to the bookkeeping file.
+- `grid_monitor.sh -i 20` running under **nohup** (survives the session) against
+  `sep2026_pbpb26_skim.txt`; it will download → hadd → validate → record into
+  `data-merging-record.txt` as each task completes. Confirmed live: both tasks registered,
+  polling, "No tasks ready. Sleeping 20min".
+- A watcher restarts `grid_monitor` after a part is released **only while it is idle**
+  (its status log's last lines say "Sleeping"), so a download is never interrupted; its
+  state file persists across restarts.
+
+Threshold rationale: the jam occurred at ~8 300 queued jobs; merges were flowing again at
+~6 200. 4 000 is a deliberately conservative release gate.
 
 ## Results & Observations
 
