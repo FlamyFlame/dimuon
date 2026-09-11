@@ -296,15 +296,42 @@ std::string PbPbDataFile(int year, const std::string& wp) {
            "_single_mu4_fine_q_eta_bin" + wp + ".root";
 }
 
-// The running periods whose data file is actually readable. A period that has not been recorded
-// or skimmed yet (2026, at the time of writing) is SKIPPED with an [INFO] line instead of
-// aborting the macro -- otherwise adding a future year to kPbPbYears makes both existing PbPb
-// canvases unproducible.
+// The running periods whose data file is actually readable.
+//
+// Two DIFFERENT situations must not be conflated, because only one of them is benign:
+//
+//   (a) the period has no data at all -- not yet recorded or skimmed (2026, at the time of
+//       writing).  SKIP it with an [INFO] line, so adding a future year to kPbPbYears does
+//       not make the existing PbPb canvases unproducible.
+//
+//   (b) the period HAS data (its nominal/Tight file exists) but this particular working-point
+//       variant has not been produced yet.  That is a MISSING PIPELINE OUTPUT for a period we
+//       hold, not a future year -- and silently dropping it yields, e.g., a 2023-only Medium
+//       figure sitting next to a three-period Tight figure.  Since the Medium WP feeds the
+//       working-point systematic, that mismatched pair would be presented as finished.  THROW,
+//       naming the file to produce.
+//
+// The nominal (Tight) file is the existence probe for "this period has data" because every WP
+// variant is filled from the same ntuple by the same RDF stage.
 std::vector<int> AvailablePbPbYears(const std::string& wp) {
     std::vector<int> years;
     for (int year : kPbPbYears) {
-        const std::string fname = PbPbDataFile(year, wp);
-        if (gSystem->AccessPathName(fname.c_str())) {
+        const std::string fname     = PbPbDataFile(year, wp);
+        const std::string nominal   = PbPbDataFile(year, "");
+        const bool has_this_wp      = !gSystem->AccessPathName(fname.c_str());
+        const bool period_has_data  = !gSystem->AccessPathName(nominal.c_str());
+
+        if (!has_this_wp) {
+            if (period_has_data && !wp.empty()) {
+                throw std::runtime_error(
+                    "plot_forward_qeta_edge_scan: Pb+Pb " + std::to_string(year) +
+                    " has data (" + nominal + ") but its \"" + wp +
+                    "\" working-point histograms are missing: " + fname +
+                    ". Produce them (run the trigger-efficiency RDF stage for this year with "
+                    "the requested working point) rather than silently dropping the period -- "
+                    "otherwise this working point is compared against a different set of "
+                    "running periods than the nominal one.");
+            }
             std::cout << "[INFO] Pb+Pb " << year << ": no data file at " << fname
                       << " -- skipping this running period." << std::endl;
             continue;
