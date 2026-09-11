@@ -96,7 +96,7 @@ void PbPbExtras<Derived>::FillMuonPairExtra(int pair_ind){
   if (self().isRun3){
     self().mpairRef()->year = self().run_year;
 
-    self().mpairRef()->ZDC_E_tot = zdc_ZdcEnergy[0] + zdc_ZdcEnergy[1];  // [0]=A, [1]=C
+    self().mpairRef()->ZDC_E_tot = zdc_ZdcEnergy[0] + zdc_ZdcEnergy[1];  // [0]=C, [1]=A (project convention; a sum here, so the order is irrelevant)
     self().mpairRef()->ZDC_t_A   = zdc_ZdcTime[1];   // [1] = A-side
     self().mpairRef()->ZDC_t_C   = zdc_ZdcTime[0];   // [0] = C-side
     float preamp_A = 0.f, preamp_C = 0.f;

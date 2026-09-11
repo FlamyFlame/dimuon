@@ -92,6 +92,10 @@ void plot_crossx_trig_corr_sanity(bool include_pbpb = true) {
                 };
             }
             for (const auto& c : candidates) {
+                // Probe before opening: TFile::Open on a non-existent path prints a raw
+                // "Error in <TFile::TFile>: file ... does not exist" to stderr, which for a
+                // year that simply has not been produced yet is noise, not an error.
+                if (gSystem->AccessPathName(c.c_str())) continue;
                 TFile* f = TFile::Open(c.c_str(), "READ");
                 if (f && !f->IsZombie()) {
                     files.push_back(f);

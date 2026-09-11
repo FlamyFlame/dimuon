@@ -54,7 +54,8 @@ void SingleBAnalysisPbPb::SetIOPaths(){
             outfile_relative_path_truncated = "pbpb_2025/pbpb_2025_single_b_ana_hists_single_mu4";
             break;
 
-        case 26:
+        case 26: // TODO: update filenames (as for 25) -- the NTuple stage writes
+                 // _single_mu4_mindR_0_02, not this bare name.  Legacy path, no caller.
             infile_relative_path  = "pbpb_2026/muon_pairs_pbpb_2026_single_mu4.root";
             outfile_relative_path_truncated = "pbpb_2026/pbpb_2026_single_b_ana_hists_single_mu4";
             break;

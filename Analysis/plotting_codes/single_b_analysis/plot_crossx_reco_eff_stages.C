@@ -98,6 +98,10 @@ void plot_crossx_reco_eff_stages() {
                 candidates = { base + "_single_mu4_no_trg_plots_nominal.root" };  // PbPb single-mu4 crossx output
             }
             for (const auto& c : candidates) {
+                // Probe before opening: TFile::Open on a non-existent path prints a raw
+                // "Error in <TFile::TFile>: file ... does not exist" to stderr, which for a
+                // year that simply has not been produced yet is noise, not an error.
+                if (gSystem->AccessPathName(c.c_str())) continue;
                 TFile* f = TFile::Open(c.c_str(), "READ");
                 if (f && !f->IsZombie()) { files.push_back({yr, f}); std::cout << "[INFO] Opened: " << c << "\n"; break; }
                 if (f) { f->Close(); delete f; }

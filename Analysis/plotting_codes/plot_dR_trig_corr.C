@@ -235,7 +235,7 @@ void plot_dR_trig_corr() {
                     TLatex tex;
                     tex.SetNDC();
                     tex.SetTextSize(0.035);
-                    std::string header = "PbPb 2025, " + sign_label + ", " + term.label;
+                    std::string header = Form("PbPb 20%d, ", kPtSliceYear) + sign_label + ", " + term.label;
                     if (!ctr_label.empty()) header += ", " + ctr_label;
                     tex.DrawLatex(0.15, 0.88, header.c_str());
 
