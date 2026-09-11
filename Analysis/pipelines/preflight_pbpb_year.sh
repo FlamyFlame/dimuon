@@ -47,21 +47,56 @@ nmax=$(grep -v '^[[:space:]]*//' "$A/NTupleProcessingCode/PbPbExtras.c" \
        | grep -oP "\{${YR}, \K[0-9]+" | head -1 || true)
 echo "  PbPbExtras.c file_batch_max{${YR}} = ${nmax:-<absent>}"
 bad=0
-# The pipelines launch exactly these two; a wrong queue count in them drops data silently.
-# Other run_pbpb_<yr>_*.sub are manual/one-off variants (test jobs, the unmaintained
-# mu4_mu4noL1 mode, part-N-only reruns) whose queue count is deliberately different --
-# report them as advisory, never as a failure.
-for v in "" _nominal; do
-  f="$A/NTupleProcessingCode/run_pbpb_${YR}${v}.sub"
+# Every run_pbpb_<yr>*.sub that processes the year's FULL file set must agree: a queue count
+# below the part count SILENTLY processes only part of the data.  The deliberately-partial
+# one-offs are named explicitly and excluded, so a NEW variant is checked by default rather
+# than quietly exempt.  (grid_monitor auto-updates only run_pbpb_<yr>.sub, so the others are
+# exactly the ones that drift.)
+partial_variants=( "_part4_only" "_test" "_diagnose" )
+for f in "$A"/NTupleProcessingCode/run_pbpb_${YR}*.sub; do
   [[ -f "$f" ]] || continue
+  base=$(basename "$f"); skip=0
+  for pv in "${partial_variants[@]}"; do [[ "$base" == *"${pv}"* ]] && skip=1; done
+  if [[ $skip -eq 1 ]]; then
+    q=$(grep -oP '^queue \K[0-9]+' "$f" | head -1 || true)
+    echo "  note     ${base}: queue $q (deliberately partial variant, not checked)"
+    continue
+  fi
   q=$(grep -oP '^queue \K[0-9]+' "$f" | head -1 || true)
-  if [[ "$q" != "$nmax" ]]; then echo "  MISMATCH $(basename "$f"): queue $q != $nmax"; bad=1; fi
+  # UNDER-count is the dangerous direction: Condor silently processes only part of the data.
+  # OVER-count throws loudly on the missing part, so it is stale-but-safe -> warn, don't fail.
+  if [[ "$q" -lt "$nmax" ]]; then
+    echo "  MISMATCH ${base}: queue $q < $nmax -- SILENTLY drops data"; bad=1
+  elif [[ "$q" -gt "$nmax" ]]; then
+    echo "  warn     ${base}: queue $q > $nmax (stale; throws loudly on the missing part)"
+  fi
 done
-for f in "$A"/NTupleProcessingCode/run_pbpb_${YR}_*.sub; do
+
+# ScrambGen::NParts(<yr>) -- builds the mixed-event template T_mix from the single-muon trees.
+sg=$(grep -oP "case ${YR}: return \K[0-9]+" "$A/ScrambGen/ScrambGen.h" | head -1 || true)
+if [[ -n "$sg" && "$sg" != "$nmax" ]]; then
+  echo "  MISMATCH ScrambGen::NParts(${YR}) = $sg != $nmax"; bad=1
+elif [[ -z "$sg" ]]; then
+  echo "  MISMATCH ScrambGen::NParts has no case for year ${YR}"; bad=1
+fi
+
+# Per-part file lists in the event-selection / preamp / FCal plotting macros.  Each hard-codes
+# data_pbpb<yr>_part1..N.root; a list shorter than the part count silently derives that year's
+# cuts from a subset of its data.
+for f in "$A"/plotting_codes/event_selection/plot_pbpb_event_sel_cuts.cxx \
+         "$A"/plotting_codes/event_selection/plot_pbpb_event_sel_event_level.cxx \
+         "$A"/plotting_codes/event_selection/plot_pbpb_fcal_comparison.cxx \
+         "$A"/plotting_codes/event_selection/plot_zdc_preamp_cut_vs_zdcamp.cxx \
+         "$A"/plotting_codes/event_selection/plot_zdc_preamp_cut_over_mean.cxx \
+         "$A"/plotting_codes/event_selection/plot_zdc_preamp_gauss_fit.cxx; do
   [[ -f "$f" ]] || continue
-  [[ "$f" == *_nominal.sub ]] && continue
-  q=$(grep -oP '^queue \K[0-9]+' "$f" | head -1 || true)
-  if [[ "$q" != "$nmax" ]]; then echo "  note     $(basename "$f"): queue $q (pipeline count $nmax)"; fi
+  cnt=$(grep -c "data_pbpb${YR}_part" "$f" || true)
+  if [[ "$cnt" -gt 0 && "$cnt" -lt "$nmax" ]]; then
+    echo "  MISMATCH $(basename "$f"): lists $cnt of $nmax part file(s) for 20${YR}"\
+         "-- derives from a SUBSET of the data"; bad=1
+  elif [[ "$cnt" -gt "$nmax" ]]; then
+    echo "  warn     $(basename "$f"): lists $cnt part file(s) for 20${YR}, expected $nmax"
+  fi
 done
 for p in pipeline_pbpb_crossx.sh pipeline_pbpb_trig_eff.sh; do
   qc=$(grep -oP "\[${YR}\]=\K[0-9]+" "$SCRIPT_DIR/$p" | head -1 || true)
