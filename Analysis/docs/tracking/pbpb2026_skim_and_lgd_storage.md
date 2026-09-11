@@ -878,6 +878,24 @@ against are not present.
 Live tasks now: **52491225** (v2 part1), **52488080** (v1 part2), **52491882** (v2 part3).
 Held: parts 4, 5.
 
+### 2026-09-11 00:29 — `pkill -f` self-match killed the watcher AND grid_monitor
+
+The release watcher contained `pkill -f "grid_monitor.sh -i 20"` to restart grid_monitor
+after a part is released. That pattern **also matches the watcher's own command line**, so
+the watcher killed itself (exit 144) and took `grid_monitor.sh` with it. This is the
+kill-side twin of the known `pgrep -f` waiter self-match trap.
+
+No damage: grid_monitor was idle ("No tasks ready. Sleeping") when it died, so no download
+or hadd was interrupted, and its state file persists.
+
+**Fixed** with `pbpb26_grid_monitor_start.sh`, which records `$!` into
+`pbpb26_grid_monitor.pid` and stops the previous instance by **PID**, never by pattern.
+Restarted with all three live tasks registered (52491225, 52488080, 52491882); it
+immediately reported `Task 52491225: running (0.2%)`, i.e. v2 part 1 is out of scouting.
+
+Lesson added to memory alongside the `pgrep -f` one: **never identify a long-lived
+background job by a `-f` pattern — use a recorded PID file.**
+
 ## Results & Observations
 
 *(to be filled)*
