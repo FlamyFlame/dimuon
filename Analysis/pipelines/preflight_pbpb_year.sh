@@ -10,10 +10,18 @@
 #   PENDING  a data artifact produced by an earlier stage.  Expected to be absent
 #            before that stage has run; NOT an error.
 #
-# Also cross-checks the three places that must agree on the year's part count
-# (file_batch_max in PbPbExtras.c, `queue N` in every run_pbpb_<yr>*.sub, and
-# QUEUE_COUNTS in both pipelines).  A DISAGREEMENT here is the one failure that
-# silently processes only part of the data, so it is reported as an error.
+# Also cross-checks the FIVE places that must agree on the year's part count:
+#   1. file_batch_max{<yr>} in NTupleProcessingCode/PbPbExtras.c
+#   2. `queue N` in every run_pbpb_<yr>*.sub (bar the deliberately-partial one-offs)
+#   3. QUEUE_COUNTS[<yr>] in both Pb+Pb pipelines
+#   4. ScrambGen::NParts(<yr>)  -- builds the mixed-event template T_mix
+#   5. the per-part file lists in the six event-selection / preamp / FCal plotting macros
+# and, when the year's directory exists, all of them against the files actually on disk.
+#
+# The two directions are NOT equally dangerous, and classes 2 and 5 are graded accordingly:
+# an UNDER-count silently processes a subset of the data (error), an OVER-count throws
+# loudly on the missing part (warning).  Classes 1, 3, 4 and the on-disk comparison are
+# exact-match -- for those, either direction is silent.
 set -Eeuo pipefail
 
 YR="${1:-}"
@@ -90,7 +98,11 @@ for f in "$A"/plotting_codes/event_selection/plot_pbpb_event_sel_cuts.cxx \
          "$A"/plotting_codes/event_selection/plot_zdc_preamp_cut_over_mean.cxx \
          "$A"/plotting_codes/event_selection/plot_zdc_preamp_gauss_fit.cxx; do
   [[ -f "$f" ]] || continue
-  cnt=$(grep -c "data_pbpb${YR}_part" "$f" || true)
+  # Count DISTINCT path literals, not matching lines: a line count includes comments, so a
+  # single comment naming data_pbpb<yr>_partN.root would inflate the total -- and in the
+  # dangerous direction it could lift a genuine UNDER-count back to the expected number and
+  # silence this very check.  Strip // comments first, then count unique part filenames.
+  cnt=$(sed 's://.*::' "$f" | grep -o "data_pbpb${YR}_part[0-9]\+\.root" | sort -u | wc -l)
   if [[ "$cnt" -gt 0 && "$cnt" -lt "$nmax" ]]; then
     echo "  MISMATCH $(basename "$f"): lists $cnt of $nmax part file(s) for 20${YR}"\
          "-- derives from a SUBSET of the data"; bad=1
