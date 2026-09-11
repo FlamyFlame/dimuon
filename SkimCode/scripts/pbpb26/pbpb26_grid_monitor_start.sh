@@ -16,6 +16,11 @@ if [[ -n "$old" ]] && kill -0 "$old" 2>/dev/null; then
   echo "stopped previous grid_monitor pid=$old"
 fi
 cd "$SK" || exit 1
-nohup bash grid_monitor.sh -i 20 "$D/sep2026_pbpb26_skim.txt" >> "$D/grid_monitor_pbpb26_nohup.log" 2>&1 &
+# setsid, not just nohup.  nohup only blocks SIGHUP; it does NOT detach from the process
+# group, so when this launcher is invoked from inside a watcher/monitor and that watcher is
+# later killed, the whole group -- grid_monitor included -- goes down with it.  That is
+# exactly how it died silently mid-"Sleeping 20min" on 2026-09-11.  setsid puts it in its
+# own session so it survives whatever started it.
+setsid nohup bash grid_monitor.sh -i 20 "$D/sep2026_pbpb26_skim.txt" >> "$D/grid_monitor_pbpb26_nohup.log" 2>&1 &
 echo $! > "$PIDF"
 echo "grid_monitor started pid=$(cat "$PIDF") tasks=$(grep -vcE '^\s*#|^\s*$' "$D/sep2026_pbpb26_skim.txt")"

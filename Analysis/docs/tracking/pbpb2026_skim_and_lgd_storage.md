@@ -1026,6 +1026,36 @@ Grid processing is unaffected by it, but `grid_monitor`'s downloads write to BNL
 storage and the proxy expires 20:27 UTC that day — so the download phase may need to wait
 for the service to return and for a renewed proxy.
 
+### 2026-09-11 22:2x — `nohup` was not enough: grid_monitor kept dying with its parent
+
+Found grid_monitor **dead** on a routine liveness check. Its log ends mid-cycle:
+
+```
+[2026-09-11 17:45:52] Task 52505076: pending (0.0%). Still running.
+[2026-09-11 17:45:52] No tasks ready. Sleeping 20min...
+```
+
+— no error, it simply never woke. Cause: it was launched with `nohup ... &` **from inside a
+watcher loop**, and `nohup` only blocks SIGHUP; it does *not* detach from the process group.
+So when that watcher was stopped, the whole process group went down with it, grid_monitor
+included. This had happened silently at least once before (the `pkill -f` incident took it
+down too, which masked the general problem as a one-off).
+
+Two fixes:
+1. `pbpb26_grid_monitor_start.sh` now launches with **`setsid nohup`**, giving grid_monitor
+   its own session — verified `PID = PGID = SID = 117670`, so nothing that kills the
+   launcher's group can reach it.
+2. A **watchdog** at the top of the watcher loop: every 30 min, if the recorded PID is gone,
+   restart it and say so. Belt and braces — even if a future change reintroduces a
+   parent-death path, the download stage restarts itself within half an hour instead of
+   stopping silently until someone notices.
+
+Generalised lesson (now in memory alongside the `pgrep`/`pkill` self-match ones): for a job
+that must outlive whatever started it, **`nohup` alone is insufficient — use `setsid`**, and
+verify with `ps -o pid,pgid,sid`.
+
+Progress at the restart: parts at **40 / 50 / 20 / 20 / 0 %**.
+
 ## Results & Observations
 
 *(to be filled)*
