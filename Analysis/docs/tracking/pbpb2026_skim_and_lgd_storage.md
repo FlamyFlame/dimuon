@@ -841,6 +841,43 @@ finished 1932 → 2034. EMMY_KIT was backlogged, not dead, so keeping this task 
 Threshold rationale: the jam occurred at ~8 300 queued jobs; merges were flowing again at
 ~6 200. 4 000 is a deliberately conservative release gate.
 
+### 2026-09-11 04:20 — the v2 fix WORKS; part 3 released (one gate bug on the way)
+
+**`--excludedSite 'EMMY_KIT*'` is confirmed effective.** Task **52491225** (v2 part 1),
+~30 min after submission: `jobs=15 fin=1 merg=12 run=1 act=0 fail=0`. **Zero activated** —
+every job it generated went straight to a site that ran it, instead of piling up unrun.
+Contrast v1 part 1, which had 1 706 of 2 671 jobs sitting activated at EMMY_KIT.
+
+**52488080 also broke through.** finished 2 034 → **7 550**, merging 5 634 → 233 (i.e. the
+merge backlog drained), and its 34 INFN-CNAF failures retried away to **fail=0**. This is
+the clearest confirmation that the blocked stage was *merging*, and that freeing the
+queue budget by killing the four dead tasks is what released it.
+
+**Part 3 released → jediTaskID 52491882.** It went out earlier than the gate intended,
+because of a bug worth recording: the release script took "the newest task" to be the
+**last line of the bookkeeping file**, but the v1 survivor 52488080 sits *below* the v2
+part-1 task 52491225 in that file. So "newest" resolved to the older, already-scaled task
+80, the scale-up check passed vacuously, and part 3 went out while part 1 still had only
+15 jobs. **Fixed:** newest = the task with the **largest jediTaskID** (PanDA issues them
+monotonically). Parts 4 and 5 are now gated correctly.
+
+Part 3 was left running rather than killed: with EMMY_KIT excluded, part 1 healthy at
+`act=0`, and task 80's merge backlog drained, the conditions the gate exists to protect
+against are not present.
+
+**Release gate, as now implemented** (`pbpb26_release_next.sh`):
+1. newest task (max jediTaskID) has **≥ 200 jobs**, **≥ 100** running/merging/finished,
+   and activated **< 70 %** of its jobs — i.e. it has scaled past its scout phase and is
+   really executing. A just-submitted task holds a handful of scout jobs, so "it has some
+   jobs" is not evidence of spare capacity.
+2. total activated across live tasks **< 15 000** — a *backstop only*. A raw activated
+   count is a poor jam signal on its own: the v1 jam happened at ~8 300 queued, yet 80 ran
+   happily at 8 157 queued once EMMY_KIT stopped hoarding.
+3. **≥ 90 min** since the last release.
+
+Live tasks now: **52491225** (v2 part1), **52488080** (v1 part2), **52491882** (v2 part3).
+Held: parts 4, 5.
+
 ## Results & Observations
 
 *(to be filled)*
