@@ -4,6 +4,23 @@
 
 Powheg+Pythia8 NLO MC for bb and cc dimuon production.
 
+> **POWHEG IS ALWAYS bb + cc (user, 2026-09-11).** `bb` and `cc` are two POWHEG **generator
+> modes**: each requires a b-b̄ (resp. c-c̄) pair to be produced as part of the NLO hard
+> scattering. They are two distinct, non-overlapping contributions to the same physical process,
+> so **their cross sections must be ADDED**, σ = σ_bb + σ_cc, for every POWHEG deliverable —
+> the origin/flavour-categorized plots, the MC-vs-data comparison, the NLO template.
+> **This holds even when the observable selects only muons from b-hadron decays:** requiring
+> `from_same_b` makes the cc contribution *small*, which is a physics result; it is not a reason
+> to drop the sample, and dropping it silently redefines the measured quantity.
+>
+> **Adding the cc file is not sufficient on its own.** `RDFBasedHistFillingPowheg::CreateBaseRDFsPowhegCommon`
+> normalizes by a SHARED denominator, `weight / SumMetaNentriesBeforeFilter(ALL input files)`.
+> That is correct only while ONE sample is on disk; with bb and cc chained it yields their
+> N-weighted average instead of their sum — each sample ≈2× under-normalized (N_bb and N_cc are
+> comparable). It cancels in every ratio, but not in an absolute cross-section drawn beside data.
+> `RDFBasedHistFillingPowhegFullsim` already solves this with `weight_norm_per_sample`
+> (`DefinePerSample`); the TRUTH path does not yet. Both must move together.
+
 > **Role update (2026-06-14).** Reconstruction efficiency and detector
 > response / unfolding are now both derived from **Pythia fullsim** (pp24 +
 > HIJING overlay), NOT Powheg. **Powheg fullsim is obsolete:** (1) only a Run 2

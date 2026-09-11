@@ -84,6 +84,43 @@ void RDFBasedHistFillingPowheg::CreateBaseRDFsPowhegImpl(){
     CreateBaseRDFsPowhegExtra();
 }
 
+// =================================================================================================
+// POWHEG IS ALWAYS bb + cc (user, 2026-09-11).
+//
+// `bb` and `cc` are two POWHEG GENERATOR MODES: each requires a b-bbar (resp. c-cbar) pair to be
+// produced as part of the NLO hard scattering. They are therefore two distinct, non-overlapping
+// contributions to the same physical process, and their cross sections must be ADDED --
+// sigma = sigma_bb + sigma_cc -- for every POWHEG deliverable: the origin/flavour-categorized
+// plots, the MC-vs-data comparison, the NLO template, everything.
+//
+// This holds EVEN WHEN THE OBSERVABLE SELECTS ONLY MUONS FROM b-HADRON DECAYS. Selecting
+// `from_same_b` does not make the cc sample irrelevant: it makes the cc sample's contribution to
+// that observable small, which is a physics result, not a reason to drop the sample. Dropping it
+// silently redefines the measured quantity.
+//
+// ---------------------------------------------------------------------------------------------
+// CONSEQUENCE FOR THE NORMALIZATION BELOW -- READ BEFORE ADDING THE cc FILE.
+//
+// The block below divides EVERY event by SumMetaNentriesBeforeFilter(ALL input files), i.e. by a
+// SHARED denominator. With only one sample on disk that is correct by coincidence. With bb AND cc
+// chained it is WRONG, and silently so:
+//
+//     correct:   sigma = SUM_bb w/N_bb  +  SUM_cc w/N_cc
+//     this code: sigma = SUM_all w/(N_bb + N_cc)        <-- their N-weighted AVERAGE
+//
+// i.e. each sample comes out roughly a factor 2 under-normalized (N_bb and N_cc are comparable).
+// It cancels in every RATIO built from these histograms, which is why it has never mattered, but
+// it is fatal for an ABSOLUTE cross-section drawn beside data -- and it does not cancel there,
+// because the single-b signal lives almost entirely in bb while cc contributes ~half the
+// denominator.
+//
+// `RDFBasedHistFillingPowhegFullsim` ALREADY solves exactly this, with `weight_norm_per_sample`
+// built via RDataFrame's DefinePerSample (see its anonymous namespace and
+// CreateBaseRDFsPowhegFullsimExtra). The truth path here has NOT been given the same treatment.
+// So: adding muon_pairs_powheg_cc_truth.root to the input list is NOT sufficient on its own --
+// this normalization must become per-sample in the same step, or the POWHEG curve silently
+// halves.
+// =================================================================================================
 void RDFBasedHistFillingPowheg::CreateBaseRDFsPowhegCommon(){
     // Sum over #entries before filter & calculate weight for normalizing histogram intergrals to crossx * filter efficiencies
     // Where filter efficiencies include all cuts applied in analysis 

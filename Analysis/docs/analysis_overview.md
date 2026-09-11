@@ -168,7 +168,14 @@ systematics.
 | **Pythia truth** (5.36 / 5.02 TeV) | Generator-level signal/flavour & origin studies |
 | **Pythia fullsim pp24** | **Reconstruction efficiency** and **detector response / unfolding** (pp) |
 | **Pythia fullsim HIJING overlay** | **Reconstruction efficiency** (PbPb), per centrality; overlay puts HIJING into the detector at hit level |
-| **Powheg truth (bb / cc)** | **NLO signal template** for the template fit (see §6) |
+| **Powheg truth (bb / cc)** | **NLO signal template** for the template fit (see §6). **bb and cc are two generator modes and their cross sections are ALWAYS ADDED** — see below |
+
+**POWHEG is always bb + cc.** The two are POWHEG *generator modes*, each requiring a b-b̄ (resp.
+c-c̄) pair in the NLO hard scattering, so they are distinct non-overlapping contributions to one
+process and σ = σ_bb + σ_cc everywhere POWHEG appears (flavour/origin plots, MC-vs-data, the NLO
+template). It holds even for observables that select only b-decay muons: `from_same_b` makes the
+cc contribution small, which is a result, not grounds to drop the sample. Normalization caveat
+(the two must be summed PER SAMPLE, not under a shared denominator): `docs/powheg.md`.
 
 **Powheg fullsim is obsolete** for this analysis: only a Run 2 (pp17) sample
 exists, and Powheg has no pTHat slicing, so its high-p_T statistics are too poor
