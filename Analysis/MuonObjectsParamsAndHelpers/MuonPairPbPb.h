@@ -88,6 +88,11 @@ const std::vector<float> PairPbPbExtras<Derived>::FCal_ET_Bins_PbPb2023 = {
 };
 
 template <class Derived>
+// BYTE-IDENTICAL to FCal_ET_Bins_PbPb2023 (verified 2026-09-10).  All four Run-3 Pb+Pb
+// years -- 2023, 2024, 2025 and 2026 -- therefore sit on the same 2023 FCal-E_T ->
+// centrality calibration, which is the registered interim choice (user decision
+// 2026-09-10; see UpdateCentrality case 26).  Editing this vector on its own would
+// silently desynchronise 2024 from the other three.
 const std::vector<float> PairPbPbExtras<Derived>::FCal_ET_Bins_PbPb2024 = { // update to agree with 2023 final
   4.51272, 4.32043, 4.15372, 3.99602, 3.84498, 3.69944, 3.55802, 3.42045, 3.28744, 3.15972, // 0-10
   3.03748, 2.92012, 2.80723, 2.69878, 2.59464, 2.49406, 2.39646, 2.3018, 2.21028, 2.12188, // 10-20
@@ -155,7 +160,15 @@ void PairPbPbExtras<Derived>::UpdateCentrality(){
     avg_centrality = GetCentralityPbPb2023(FCal_Et);  // use pbpb2023 thresholds until pbpb2025 are derived
     break;
   case 26:
-    avg_centrality = GetCentralityPbPb2023(FCal_Et);  // use pbpb2023 thresholds until pbpb2026 are derived
+    // USER DECISION 2026-09-10: Pb+Pb 2026 uses the PbPb2023 FCal-E_T -> centrality
+    // thresholds, exactly as 2024 and 2025 do.  This is a registered choice, not an
+    // agent placeholder -- but it is still an INTERIM calibration: revisit if/when an
+    // official 2026 Glauber centrality calibration becomes available.
+    // (Note: case 24 calls GetCentralityPbPb2024, whose FCal_ET_Bins_PbPb2024 vector is
+    // byte-identical to the 2023 one -- verified 2026-09-10 -- so all four Run-3 years
+    // are on the same 2023 calibration today.)
+    // See docs/tracking/pbpb2026_analysis_support.md and IntNotes/analysis_metadata.md §3.
+    avg_centrality = GetCentralityPbPb2023(FCal_Et);
     break;
   default:
     // Throw rather than warn: the previous warning-only fallback left avg_centrality

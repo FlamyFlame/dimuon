@@ -56,6 +56,12 @@ exist yet**. Until they do:
   2026 = 2.62316 nb⁻¹ [GRL `physics_HI2026_50ns_noIBL.xml`, added 2026-09-10]).
   Source values: `IntNotes/data/centrality/TaaValues2023.txt`.
 
+**2026 FCal→centrality (registered 2026-09-10):** the user decided that Pb+Pb 2026 uses the
+**PbPb2023 FCal-E_T thresholds**, exactly as 2024 and 2025 do. This is a registered interim
+choice, not an unreviewed placeholder — but it is still interim, and must be revisited if an
+official 2026 Glauber calibration appears. (`FCal_ET_Bins_PbPb2024` is byte-identical to the
+2023 vector, so all four Run-3 years are on the same calibration.)
+
 **Affects:** centrality binning, cross-section normalization, and R_AA for 2024,
 2025 and 2026. **Note disclosure (required):** state explicitly that 2024/2025/2026
 centrality and ⟨T_AA⟩ are 2023 placeholders pending official calibrations.

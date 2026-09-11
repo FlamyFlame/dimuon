@@ -181,6 +181,7 @@ be revisited once `~/usatlasdata/dimuon_data/pbpb_2026/` is populated.
 | P10 | 2026 event-selection cuts file `event_sel_cuts_pbpb_2026.root` | *(does not exist)* — **hard prerequisite**: `PbPbExtras::InitEventSel` throws without it, so no 2026 NTuple job can run | produce it with `plot_pbpb_event_sel_event_level.cxx(26)` then `plot_pbpb_event_sel_cuts.cxx(26)` |
 | P11 | A 2026 minimum-bias sample for the data-driven trigger efficiency | *(unknown)* — `TrigEffPlotterPbPb` needs `histograms_real_pairs_pbpb_2026_MB.root` | as for the other years |
 | P12 | 2026 ⟨T_AA⟩ | **2023 Glauber values** — the existing convention, identical to what 2024 and 2025 already do; flagged in `placeholder.md` and required to be disclosed in the note | official 2026 Glauber calibration |
+| P13 | 2026 FCal→centrality thresholds | **PbPb2023 thresholds — REGISTERED USER DECISION 2026-09-10 (D6), no longer a guess.** Same as 2024 and 2025 (whose vectors are byte-identical). Interim, not final. | an official 2026 Glauber centrality calibration; until then nothing to confirm |
 
 **Every placeholder is labelled as such in the code**, with a comment pointing back at this
 doc, so `grep -rn "PLACEHOLDER" ` over the 2026 sites enumerates them.
@@ -205,6 +206,18 @@ identical to 2023/24/25, so the analysis must treat 2026 as it treats 2025. Cons
 are *measured* per year (preamp cuts, background band, alt-banana points) are seeded from
 2025 and marked for re-derivation; constants that are *conventions* (⟨T_AA⟩ = 2023 Glauber,
 σ_PbPb = 7.8 b) are reused unchanged because deviating would itself be the anomaly.
+
+**D6 — Pb+Pb 2026 uses the PbPb2023 FCal→centrality calibration (USER DECISION 2026-09-10).**
+Registered on the user's instruction: "for now, we will use the pbpb2023 fcal for pbpb26, just
+like for pbpb24 & 25". This does not change any number — `UpdateCentrality` `case 26:` already
+resolved to `GetCentralityPbPb2023` — it changes the choice's **status**, from an agent
+placeholder awaiting confirmation to a registered decision. Verified while registering it that
+the premise holds exactly: `FCal_ET_Bins_PbPb2024` is **byte-identical** to
+`FCal_ET_Bins_PbPb2023` (all 85 entries), so although `case 24:` calls
+`GetCentralityPbPb2024`, all four Run-3 years sit on the same 2023 calibration today. Flagged
+at the 2024 vector that editing it alone would silently desynchronise 2024 from the others.
+Still **interim**: revisit when an official 2026 Glauber calibration exists. ⟨T_AA⟩ remains on
+the same 2023 placeholder, consistent with 2024 and 2025.
 
 **D5 — For year INPUTS the rule is probe-skip-relabel; only year CONSTANTS throw.**
 Added after the round-1 review. A missing luminosity, crossx factor or centrality mapping is
