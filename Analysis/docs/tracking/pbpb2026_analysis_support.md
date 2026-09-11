@@ -231,7 +231,7 @@ disk (it had been deliberately disabled while the 2026 analysis code did not exi
 | 7 | Implement 2026 in pipelines + Condor run scripts | DONE |
 | 8 | Implement 2026 in plotting + R_AA combination | DONE |
 | 9 | Compile + pre-flight every Pb+Pb pipeline for year 26 | DONE (`pipelines/preflight_pbpb_year.sh`) |
-| 10 | `/review-analysis-code` on the C++/RDF changes | round 1 FAILED -> all findings fixed; re-review pending |
+| 10 | `/review-analysis-code` on the C++/RDF changes | round 1 FAILED -> all findings fixed + executor-verified; **independent round-2 review still OWED** (reviewer hit an API session rate limit) |
 | 11 | Commit; update INDEX; final summary | pending |
 
 ## Progress Log
@@ -477,11 +477,21 @@ outside the requested 2026 scope and is a user decision.
 
 ## Latest Stage
 
-**Steps 1-9 DONE; the code is 2026-ready and waiting on data.** Every Pb+Pb stage — NTuple
-processing, event selection, centrality, RDF hist filling, efficiency lookups, Condor run
-scripts, pipeline drivers, plotting, and the R_AA year combination — accepts year 26, compiles,
-and passes `pipelines/preflight_pbpb_year.sh 26`. Nothing about 2023/2024/2025 changed except
-one deliberate diagnostic-figure bug fix (see Progress Log).
+**Code is 2026-ready and every Pb+Pb workflow runs today with the 2026 data still absent.**
+Steps 1-9 DONE. Step 10 round 1 returned FAIL; all findings are fixed, committed and verified
+by execution (year filter run from the real script under four configs; 13 macros compile clean;
+`RAA_plotting` and `plot_npairs_vs_centrality` run end-to-end and their figures inspected;
+per-year constants diffed against `81ad7ef` and found byte-identical for 23/24/25).
 
-**Next:** Step 10 (the two reviewers), then wait for the 2026 skim and work the Placeholder
-Registry.
+**OWED: an independent round-2 `/review-analysis-code` pass.** The round-2 reviewer subagent
+terminated early on an API session rate limit, so round 2 was verified by the executor, not by
+an independent reviewer. The loop is NOT closed with a PASS — rerun it before treating this
+work as reviewed.
+
+**Then:** wait for the 2026 skim, run `pipelines/preflight_pbpb_year.sh 26` first (it will catch
+a part-count drift immediately), and work the Placeholder Registry P1-P12.
+
+**Open user decisions** (all recorded above, none blocking): the Glauber mirror reconcile, the
+naive year sum in `plot_crossx_trig_corr_sanity.C`, the scalar-vs-per-run preamp cut drawn in
+the preamp/FCal figures, the single-year `files[25]` pT-slice set in `plot_dR_trig_corr.C`, and
+the FCal-comparison canvas widening at unchanged filenames.

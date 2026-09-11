@@ -145,3 +145,4 @@
 {"event":"start","command":"review-plot","task":"Remake pair-eta-dependence diagnostic plots (muon_pt45_cut_diagnostic) in linear y-scale per new linear-y-default convention; verify legend does not overlap data under the new headroom.","slug":"mupt45-eta-linear-yscale","timestamp":"2026-09-07T22:30:44Z"}
 {"event":"end","command":"review-plot","status":"closed_without_formal_reverify","iterations":1,"timestamp":"2026-09-07T22:52:00Z","criticals":1,"warnings":0,"slug":"mupt45-eta-linear-yscale"}
 {"event":"start","command":"review-analysis-code","task":"mupt45/gap125/pairpt9 adoption + PbPb migration","slug":"mupt45-gap125-pairpt9-adoption","timestamp":"2026-09-09T00:06:00-04:00"}
+{"event":"start","command":"review-analysis-code","task":"4th iteration: verify the post-iteration-3 amendment batch of the muon pT 4.5 / gap -1.25 / pair pT 9 adoption","slug":"mupt45-iter4-amendment-verify","timestamp":"2026-09-09T22:33:11-04:00"}
