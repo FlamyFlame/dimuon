@@ -896,6 +896,50 @@ immediately reported `Task 52491225: running (0.2%)`, i.e. v2 part 1 is out of s
 Lesson added to memory alongside the `pgrep -f` one: **never identify a long-lived
 background job by a `-f` pattern — use a recorded PID file.**
 
+### 2026-09-11 14:40 — ALL FIVE PARTS RELEASED; a near-miss duplicate submission
+
+The gated release worked: part 4 → **52501044** (13:07 UTC, total activated 6 196), part 5
+→ **52505076** (14:39 UTC, total activated 7 186). Both passed on the newest task's own
+scale-up, as intended. Live tasks and their progress at 14:39:
+
+| task | part | jobs | finished | merging | running | activated | failed |
+|---|---|---:|---:|---:|---:|---:|---:|
+| 52491225 | 1 (v2) | 7 196 | 1 645 | 2 584 | 8 | 2 928 | 31 |
+| 52488080 | 2 (v1) | 17 262 | **10 505** | 3 052 | 226 | 1 070 | 5 |
+| 52491882 | 3 (v2) | 4 115 | 34 | 1 923 | 202 | 1 859 | 6 |
+| 52501044 | 4 (v2) | 2 184 | 532 | 212 | 62 | 1 365 | 13 |
+| 52505076 | 5 (v2) | just submitted | | | | | |
+
+Failures total 55 of ~30 700 jobs (0.18 %) and are being retried. Task 80's queue has
+drained from 8 162 activated to 1 070 — the jam is fully cleared.
+
+**Near-miss caught: the pending list was never truncated.** After part 5 was released,
+`pbpb26_pending_parts.txt` still contained `5`. Cause:
+
+```bash
+grep -vE "^\s*${next}\s*$" "$PENDING" > "$PENDING.tmp" && mv "$PENDING.tmp" "$PENDING"
+```
+
+When the removed entry is the **last** one, `grep -v` prints nothing and **exits 1**, so
+the `&&` short-circuits and the `mv` never runs. The part stays queued and would have been
+released a **second time** once the 90-minute cooldown expired — producing a duplicate
+task, a second output dataset, and (because `grid_monitor` maps outDS → filename by part
+number) a second hadd into the same `data_pbpb26_part5.root`.
+
+Two fixes, belt and braces:
+1. Ignore grep's exit status (`... || true`, then an unconditional `mv`).
+2. An independent guard that refuses to release a part which already has a task in the
+   bookkeeping file, regardless of what the pending list says.
+
+Verified after the fix: pending list empty, and **one task per part, no duplicates**
+(`part1..part5`, one each).
+
+**Orphaned v1 output datasets exist and are harmless**: `...Sep2026.v1.part{1,4,5}._EXT0`
+(plus `.log`) remain registered from the killed tasks. Nothing references them —
+`grid_monitor` downloads the outDS recorded per task in `sep2026_pbpb26_skim.txt`, which
+are the v2 names for parts 1/3/4/5 — and they will age out of SCRATCHDISK. **Do not hadd
+by dataset-name pattern**, or v1 and v2 output for the same part could be mixed.
+
 ## Results & Observations
 
 *(to be filled)*

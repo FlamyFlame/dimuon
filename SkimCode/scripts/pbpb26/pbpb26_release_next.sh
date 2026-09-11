@@ -32,6 +32,16 @@ log() { echo "[$(date -u +%FT%TZ)] $*" >> "$LOG"; }
 next=$(grep -vE '^\s*#|^\s*$' "$PENDING" 2>/dev/null | head -1)
 [[ -z "$next" ]] && exit 0                     # nothing left to release
 
+# Independent guard against double-submission: if a task for this part already exists in
+# the bookkeeping file, drop it from the pending list and stop.  This catches any future
+# bookkeeping slip without relying on the pending list alone.
+if grep -qE "PbPb2026data\.[^ ]*\.part${next}\._EXT0" "$BOOK" 2>/dev/null; then
+  log "part $next already submitted (present in $BOOK) -- removing from pending list"
+  grep -vE "^[[:space:]]*${next}[[:space:]]*$" "$PENDING" > "$PENDING.tmp" || true
+  mv "$PENDING.tmp" "$PENDING"
+  exit 0
+fi
+
 now=$(date +%s)
 last=$(cat "$STAMP" 2>/dev/null || echo 0)
 (( now - last < COOLDOWN )) && exit 0
@@ -88,7 +98,13 @@ if [[ -z "$tid" ]]; then
   exit 1
 fi
 echo "$tid user.yuhang.TrigRates.dimuon.PbPb2026data.Sep2026.v2.part${next}._EXT0" >> "$BOOK"
-grep -vE "^\s*${next}\s*$" "$PENDING" > "$PENDING.tmp" && mv "$PENDING.tmp" "$PENDING"
+# NOTE: `grep -v ... > tmp && mv` is WRONG here.  When the removed entry was the LAST
+# one, grep prints nothing and exits 1, so the `&&` short-circuits and the pending list is
+# never truncated -- the part stays queued and gets released a SECOND time once the
+# cooldown expires, producing a duplicate task and a second output dataset that would be
+# hadded into the same data_pbpb26_part<N>.root.  Ignore grep's exit status.
+grep -vE "^[[:space:]]*${next}[[:space:]]*$" "$PENDING" > "$PENDING.tmp" || true
+mv "$PENDING.tmp" "$PENDING"
 date +%s > "$STAMP"
 log "part $next submitted as jediTaskID=$tid"
 echo "PbPb2026: released part $next -> jediTaskID=$tid (total activated was $total_act)"
