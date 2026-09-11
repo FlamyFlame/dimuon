@@ -940,6 +940,92 @@ Verified after the fix: pending list empty, and **one task per part, no duplicat
 are the v2 names for parts 1/3/4/5 — and they will age out of SCRATCHDISK. **Do not hadd
 by dataset-name pattern**, or v1 and v2 output for the same part could be mixed.
 
+### 2026-09-11 21:50 — why the tasks are slow: JEDI's 6 TB **transfer throttle**, not a config error
+
+A systematic sweep of every task's status + decoded JEDI log
+(`pbpb26_brokerage_check.sh`) found a cause that none of the earlier symptoms revealed:
+
+```
+52491225 [throttled]  throttled since transferring large data volume in
+                      total=35294GB > limit=6000GB  type=transfer
+52488080 [throttled]  total=48747GB > limit=6000GB  type=transfer
+```
+
+**The two most advanced tasks are not `pending` at all — they are `throttled`**, because
+their WAN read volume (35 TB and 49 TB) is far above JEDI's 6 000 GB pacing limit. This is
+a direct and unavoidable consequence of `--nGBPerJob MAX`, which is what makes jobs read
+input remotely over XRootD instead of staging it. For a 1.38 PB sample that accounting is
+inevitable: every byte processed is a byte "transferred".
+
+The `pending` tasks fail brokerage for a *second*, different reason — the per-site user
+queue cap:
+
+```
+skip site=BNL/SCORE  consider BNL unsuitable for the user due to long queue of the user:
+   nQ_pq_user(1814) > max_nQ_pq_user(475.050)
+   = BASE_QUEUE_RATIO_ON_PQ(0.050) * nR_pq(9501)      criteria=-badsite
+skip site=RAL/SCORE_VHIMEM  weight=0.0000019 < MIN_WEIGHT_user=1e-05
+   userQ=1542 userQRem=0.000                          criteria=-below_min_weight
+```
+
+i.e. a user may queue at most **5 % of a site's running jobs**, and with five tasks
+competing we are above it at BNL and RAL. The `-cache` and `-status` skips that also appear
+in the logs are permanent background noise (GPU/ARM queues without the x86_64 release, and
+sites in `test` state) and are **not** blocking — worth knowing so they are not
+misdiagnosed.
+
+**Progress is nevertheless real** — file-level completion at 21:50 UTC:
+
+| task | part | files done | % |
+|---|---|---|---:|
+| 52491225 | 1 (v2) | 8 770 / 23 879 | 36.7 |
+| 52488080 | 2 (v1) | 11 026 / 23 559 | 46.8 |
+| 52491882 | 3 (v2) | 3 800 / 22 542 | 16.9 |
+| 52501044 | 4 (v2) | 1 618 / 20 965 | 7.7 |
+| 52505076 | 5 (v2) | 0 / 20 334 | 0.0 |
+| **total** | | **25 214 / 111 279** | **22.7** |
+
+~22.7 % of the year in ~18 h since the v2 resubmission → order **3–5 days** to complete.
+Failures remain negligible (52 of ~34 000 jobs, 0.15 %).
+
+### Assessment: is the task too large, or do the grid parameters need adjusting?
+
+**The tasks are large, but the configuration is right and should NOT be changed.**
+
+- *Splitting into smaller tasks does not help.* The throttle is on transferred **bytes**,
+  and repartitioning does not reduce the bytes that must be read — it just spreads the same
+  volume over more throttled tasks, adding per-task scouting and merge overhead. Reaching
+  the 6 000 GB limit per task would need ~45 tasks **per part** (≈225 total) for 1.38 PB.
+- *Switching to local staging* (`--nFilesPerJob ~5`, ~62 GB/job, dropping
+  `--nGBPerJob MAX`) is the only change that would dodge the transfer throttle, because
+  input read from the site's own storage is not "transferred". **But it would make things
+  worse here:** each 2026 dataset has a complete replica at exactly **one** DATADISK
+  (FZK / NDGF / RAL / BNL / INFN-T1 / SARA / PIC / IN2P3, plus CERN-PROD_DERIVED). Local
+  staging pins every job to that single site, which runs straight into the very 5 %-of-site
+  user-queue cap that is already the *other* blocker — and hands up the WAN flexibility
+  that is currently letting these tasks run anywhere. It would also mean killing all five
+  tasks and discarding ~25 000 files of completed work.
+- *Reducing concurrency* would genuinely raise each task's share, but the jobs are already
+  generated; killing a task now throws away real work for a scheduling gain that JEDI will
+  hand back anyway as tasks finish.
+
+**Decision: no parameter change. Let the five tasks run.** `--nGBPerJob MAX` with remote
+read is the correct choice for input scattered one-replica-per-site, the throttle is JEDI
+pacing rather than failing, and every task is advancing.
+
+**Proactive brokerage monitoring added** (`pbpb26_brokerage_alert.sh`, wired into the
+watcher): every 30 min it reports any task in `pending`/`throttled`/`exhausted`/`broken`/
+`aborted` **together with the reason JEDI gave**, filtered to the reasons that actually
+block (`-below_min_weight`, `-badsite`, `-scratch`, `-storage`, `-walltime`, `-pilot`,
+`-hospital`, `-cap`) and ignoring the permanent `-cache` / `-status` noise. It fires only
+when the blocking state *changes*, so a new block surfaces at once without spamming a
+known one. This closes the gap that let "pending / no candidates" sit unexamined earlier.
+
+**Timing note:** a 3–5 day finish lands on or after **2026-09-14**, the dCache outage.
+Grid processing is unaffected by it, but `grid_monitor`'s downloads write to BNL-backed
+storage and the proxy expires 20:27 UTC that day — so the download phase may need to wait
+for the service to return and for a renewed proxy.
+
 ## Results & Observations
 
 *(to be filled)*
