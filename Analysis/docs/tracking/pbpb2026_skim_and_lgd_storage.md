@@ -128,13 +128,34 @@ names this work will produce, for that agent to consume:
 
 | Item | Value |
 |---|---|
-| Grid outDS prefix | `user.yuhang.TrigRates.dimuon.PbPb2026data.Sep2026.v1.part<N>.` |
 | Download dir | `~/usatlasdata/dimuon_data/pbpb_2026/` |
-| Merged NTUP names | `data_pbpb26_part<N>.root` |
+| Merged NTUP names | `data_pbpb26_part<N>.root`, **N = 1…5** |
 | Tree name | `HeavyIonD3PD` |
-| Skim run mode | `hi2026` (env `TRIGRATES_RUNMODE=hi2026`) |
-| GRL | `SkimCode/xmls/physics_HI2026_50ns_noIBL.xml` |
-| grid_monitor mapping | `PbPb2026data...partN._EXT0` → `pbpb_2026/data_pbpb26_partN.root` |
+| `file_batch_max` for year 26 | **5** — add `{26, 5}` to `PbPbExtras.c`'s `run_year_to_file_batch_max_map` (currently `{23,4},{24,2},{25,6},{15,7},{18,7}`), and create `run_pbpb_26.sub`/`.sh` from the 25 pair |
+| Skim run mode | `hi2026` (env `TRIGRATES_RUNMODE=hi2026`), AthAnalysis **25.2.90** (`setup_26.sh`) |
+| GRL | `SkimCode/xmls/physics_HI2026_50ns_noIBL.xml` — 35 runs, 522041–523437, periods J+K |
+| Centrality | `Module_EventShape.cxx` maps 2026 onto the **PbPb2023** FCal-E_T thresholds (same as 23/24/25) |
+| Branch list | identical to `data_pbpb25_*` **plus `muon_match_L1MU3V`**; always-empty are `L1TE`, `L1TE24`, `b_HLT_mu4_mu4noL1_L1MU3V` (same 3 as 2025) |
+| Triggers | same Run-3 Pb+Pb lists as 2025: `HLT_mu4_L1MU3V`, `mu6_L1MU3V`, `mu6_L1MU5VF`, `mu8_L1MU5VF`, `mu10_L1MU8F`, `mu10_L1MU5VF`; dimuon `2mu4_L12MU3V`, `mu4_mu4noL1_L1MU3V` |
+| grid_monitor mapping | `*PbPb2026*...partN._EXT0` → `pbpb_2026/data_pbpb26_partN.root` |
+
+**⚠ outDS tags are MIXED across parts — do not assume a single campaign tag.** After the
+v1 brokerage failure (Design Decision D3) parts 1/3/4/5 were resubmitted as `v2`, while
+part 2 survived as `v1`:
+
+| part | outDS | task |
+|---|---|---|
+| 1 | `user.yuhang.TrigRates.dimuon.PbPb2026data.Sep2026.**v2**.part1._EXT0` | 52491225 |
+| 2 | `user.yuhang.TrigRates.dimuon.PbPb2026data.Sep2026.**v1**.part2._EXT0` | 52488080 |
+| 3 | `user.yuhang.TrigRates.dimuon.PbPb2026data.Sep2026.**v2**.part3._EXT0` | 52491882 |
+| 4 | `user.yuhang.TrigRates.dimuon.PbPb2026data.Sep2026.**v2**.part4._EXT0` | 52501044 |
+| 5 | `user.yuhang.TrigRates.dimuon.PbPb2026data.Sep2026.**v2**.part5._EXT0` | 52505076 |
+
+Live task IDs are kept in `~/usatlasdata/dimuon_data/sep2026_pbpb26_skim.txt` — read that,
+not this table, if they may have changed. **Orphaned `Sep2026.v1.part{1,4,5}._EXT0`
+datasets from the killed tasks are still registered in Rucio: never select 2026 output by
+dataset-name pattern**, or v1 and v2 output for the same part will be mixed. The merged
+`data_pbpb26_part<N>.root` files that `grid_monitor` produces are unambiguous — use those.
 
 ## Scope
 
