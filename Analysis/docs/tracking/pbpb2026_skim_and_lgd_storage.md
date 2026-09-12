@@ -1189,6 +1189,42 @@ Everything from step 2 onward.
 
 ## Latest Stage
 
-**Step 2 + 3 + 7 launched in parallel.** Dataset enumeration delegated to a subagent
-(owns `run_26hi/InDstxt_*`), LGD pre-flight delegated to a second subagent (owns no repo
-files), while the orchestrator writes the `hi2026` run mode and compiles.
+**As of 2026-09-12 ~05:00 UTC.**
+
+**DONE — storage (steps 7–8).** All four raw-skim groups are on `BNL-OSG2_LOCALGROUPDISK`
+with same-path symlink farms, every file verified byte- and entry-exact against an
+independent pre-migration baseline, and the NTuple processing smoke-tested against the
+farm. `pp_2024` + `pbpb_2025` originals purged (672 GB reclaimed, **156.6 → 828.2 GB real
+free**, 90 % → 46 % of quota). `pbpb_2023` + `pbpb_2024` originals (168 GB) remain parked
+as the hedge across the **2026-09-14 dCache upgrade**; purge them after a post-outage
+re-verify. One real keeper per period kept local.
+
+**IN PROGRESS — skim (steps 9–10).** 4 of 5 parts live, **34 209 / 111 279 files = 30.7 %**
+of the year:
+
+| task | part | % | note |
+|---|---|---:|---|
+| 52491225 | 1 (v2) | 40 | throttled (transfer pacing) |
+| 52488080 | 2 (v1) | 60 | furthest along; queue fully drained |
+| 52491882 | 3 (v2) | 20 | |
+| 52501044 | 4 (v2) | 30 | |
+| — | 5 | — | **un-submitted**, re-queued behind the `MAX_LIVE=3` gate (D4) |
+
+**Next actions, in order:**
+1. Part 5 auto-releases when a live task reaches a terminal state (gate: ≤ 3 live).
+2. `grid_monitor` (setsid, PID `pbpb26_grid_monitor.pid`, watchdog-restarted) downloads →
+   hadds → validates each completed task into `~/usatlasdata/dimuon_data/pbpb_2026/` as
+   `data_pbpb26_part<N>.root`.
+3. **Sanity-check the first downloaded NTUP** with
+   `SkimCode/scripts/check_skim_output.C` against `data_pbpb25_part6.root` — expect a
+   branch list identical to 2025 **plus `muon_match_L1MU3V`**, and exactly three
+   always-empty branches (`L1TE`, `L1TE24`, `b_HLT_mu4_mu4noL1_L1MU3V`).
+4. Purge the parked `pbpb_2023`/`pbpb_2024` originals after the outage + re-verify.
+5. Step 11 (migrate the 2026 NTUPs to LGD) is **no longer forced by space** — the skim is
+   expected to be ~190 GB against 828 GB free — but is still worth doing for consistency,
+   after the outage and a proxy renewal.
+
+**Blocking external dependency:** the VOMS proxy expires **2026-09-14 20:27 UTC**, 33 min
+*before* the dCache maintenance window closes. Reads through the symlink farm need no
+proxy, but any Rucio operation after that point (including step 11) needs the user to
+renew it — the agent cannot, it requires a passphrase.
