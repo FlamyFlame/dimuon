@@ -1095,6 +1095,37 @@ and never sits unexamined — while not crying wolf over a task that is merely b
 Progress snapshot at the change: parts at 36.7 / 46.8 / 16.9 / 25.2 / 0.0 % =
 **28 881 / 111 279 files = 26 %** of the year.
 
+### 2026-09-12 — monitoring design, settled (three false-alarm modes, all now closed)
+
+Getting a useful alert out of PanDA took three corrections, each a distinct way of
+watching the wrong number. Recording them because they generalise to any future grid
+campaign:
+
+1. **Do not key alerts on drifting counters.** The brokerage text embeds
+   `total=35294GB` and `N input datasets`, both of which change every poll. Comparing raw
+   text fired constantly. → compare on a number-free key.
+2. **Do not key alerts on PanDA status.** Statuses flip
+   `pending ↔ running ↔ throttled ↔ scouting` between polls with no change in work done —
+   52501044 went `pending → running → pending` *while climbing 7.7 % → 25.2 %*. → the
+   progress digest keys on **percentages only**; status is printed, never compared.
+3. **Do not use `nfilesfinished` for stall detection — it is MERGE-GATED and lags by
+   hours.** It sat frozen at 8 770 / 11 026 / 3 800 / 5 285 / 0 across several polls while
+   the job level showed 52501044 growing 3 938 → 7 697 jobs, 52491882 merging 1 871 →
+   1 902, and 52491225 merging 1 024 → 1 035. A stall detector on that counter would have
+   cried wolf within 90 minutes. → stall detection now uses a **job-level** work counter
+   (`jobs + finished + merging` from the jobs API).
+
+**Final alerting contract** — the watcher speaks only for:
+- a task with **no job-level movement across 3 polls (1.5 h)**, printing JEDI's reason;
+- a real change in completion **percentage**;
+- a **terminal** task state;
+- **grid_monitor dying** (restarted automatically, under `setsid`).
+
+Status at this point: 52488080 has **drained its queue entirely** (`act=0`, 10 505
+finished, 4 054 merging) and is the closest to completion; 52501044 nearly doubled its job
+count to 7 697; 52505076 has moved out of starvation into `scouting`. Year total
+**28 881 / 111 279 files = 26.0 %**.
+
 ## Results & Observations
 
 *(to be filled)*
