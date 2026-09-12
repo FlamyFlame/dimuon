@@ -1218,6 +1218,42 @@ drifting counters; keying on PanDA status; using the merge-gated `nfilesfinished
 non-monotonic work counter. The general lesson: **for stall detection, only ever use a
 quantity that cannot decrease.**
 
+### 2026-09-12 08:46 — `throttled` is a managed state with NO user lever (PanDA says so)
+
+Both 52491225 and 52488080 tripped the (now monotonic) stall detector. Investigated
+properly rather than assuming, and the answer is that **there is nothing to fix.**
+
+Evidence that the work is sound:
+- **Merged output is accumulating and safe**: the part-2 `_EXT0` container holds **232
+  merged files / 35.93 GB**, with *two* Rucio rules in state **OK[232/0/0]** on SCRATCHDISK.
+- **Failures are trivial and transient**: 15 failed jobs total, spread over 5 sites,
+  diagnostics `Service not available at the moment` and `File transfer timed out during
+  stage-in` — no systematic error.
+- 52491225 is merely slow, not idle: its newest merge-job modification was **22 min** old.
+
+But 52488080 *was* genuinely idle — zero running, zero transferring, 3 234 merge jobs
+untouched since **01:01 UTC (7.75 h)**, terminal count frozen at 14 049, while ~9 700 of its
+23 559 input files remain unprocessed. So a non-destructive nudge was attempted:
+
+```
+Client.retryTask(52488080)
+ -> (4, 'Command rejected: the retry command is not accepted if the task is in throttled status')
+```
+
+**PanDA refuses the retry outright.** That is the authoritative answer: `throttled` is a
+state JEDI manages deliberately, and a user is not permitted to override it. A throttled
+task is *expected* to sit idle between pacing cycles; the transfer accounting does drain
+over longer timescales (52488080 went 48 747 → 30 760 GB).
+
+**Monitoring adjusted to match reality rather than to keep reporting it:** stall detection
+now uses a **6 h** window for `throttled` and labels the alert *informational — no user
+action possible*, while keeping the **2 h** window for `pending`/`broken`/`aborted`, where
+re-queueing genuinely is an option (as it was for part 5 in D4).
+
+**Conclusion for the record: there is no remaining grid action to take.** The configuration
+is right (D2), the site exclusion is right (D3), part 5 is correctly queued behind capacity
+(D4), and the pace is set by JEDI's transfer throttle, which no user command can lift.
+
 ## Latest Stage
 
 **As of 2026-09-12 ~05:00 UTC.**
