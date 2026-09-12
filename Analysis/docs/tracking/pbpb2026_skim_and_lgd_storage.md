@@ -1254,6 +1254,41 @@ re-queueing genuinely is an option (as it was for part 5 in D4).
 is right (D2), the site exclusion is right (D3), part 5 is correctly queued behind capacity
 (D4), and the pace is set by JEDI's transfer throttle, which no user command can lift.
 
+### 2026-09-12 13:00 — the throttle LIFTED, and the one genuinely wedged task was fixed
+
+All four tasks moved to `running` with **no errordialog** — JEDI's transfer throttle has
+cleared. Three stall alerts fired at once; only one was real. The discriminator that
+finally separates signal from noise:
+
+| task | live jobs | merging | merge backlog last touched |
+|---|---:|---:|---|
+| 52491225 | 37 | 1 555 | 0.1 h ago |
+| **52488080** | **0** | **3 234** | **12.0 h ago** ← wedged |
+| 52491882 | 883 | 2 868 | 0.0 h ago |
+| 52501044 | 4 050 | 2 075 | 0.5 h ago |
+
+Three of the four had jobs running *and* merges being touched within the last half hour —
+their terminal counts simply hadn't ticked inside the 2 h window, because merge completion
+is **bursty**. Only 52488080 had **zero live jobs and a merge backlog cold for 12 hours**,
+with ~9 700 of its 23 559 input files never processed.
+
+**`Client.retryTask(52488080)` now succeeded** — *"retry has been triggered for failed jobs
+while the task is still running"* — where the same call had been refused hours earlier
+because the task was `throttled`. Within a minute the task went from **live=0 → live=16**,
+i.e. JEDI resumed generating jobs for it. **The timing mattered: retry is only accepted
+once a task leaves `throttled`.**
+
+**Monitoring replaced with a signature that cannot false-alarm**
+(`pbpb26_wedge_check.sh`): a task is WEDGED iff
+`live jobs (running+activated+defined+starting+assigned) == 0`
+**and** `merging > 0` **and** the merge backlog is untouched for **> 6 h**.
+That is the only pattern on this campaign a user can actually act on. The watcher reports
+WEDGED once (not repeatedly) and reports RECOVERED when it clears.
+
+This closes the last of the monitoring-metric mistakes: drifting counters → PanDA status →
+merge-gated `nfilesfinished` → non-monotonic work counter → and finally, treating any lack
+of terminal-count movement as a stall when merge completion is inherently bursty.
+
 ## Latest Stage
 
 **As of 2026-09-12 ~05:00 UTC.**
