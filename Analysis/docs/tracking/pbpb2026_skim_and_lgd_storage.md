@@ -1187,6 +1187,37 @@ Year total including the re-queued part 5: **34 246 / 111 279 = 30.8 %**.
 
 Everything from step 2 onward.
 
+### 2026-09-12 06:41 — a FOURTH monitoring false alarm: the work counter was blind to merges
+
+The stall detector fired on 52488080 ("no job-level movement in 3 polls"). It was wrong,
+and the flaw was mine: the work counter was `jobs + finished + merging`, which is
+**invariant under merge completion** — a job moving `merging → finished` adds one to
+`finished` and subtracts one from `merging`, leaving the sum unchanged. The task was in its
+**final merge phase**, where that is the *only* thing happening, so the counter froze
+exactly when the task was doing the one thing left to do.
+
+What 52488080 was actually doing:
+
+| | earlier | at the alert | Δ |
+|---|---:|---:|---:|
+| finished | 10 505 | **11 356** | +851 |
+| merging | 4 054 | **3 234** | −820 |
+| transfer volume | 48 747 GB | **30 760 GB** | −17 987 |
+
+and its **run jobs are entirely done** — `activated 0, running 0, starting 0`;
+`finished 11 356, closed 2 678, failed 15, merging 3 234`. The 2 678 `closed` jobs are the
+old EMMY_KIT backlog, which JEDI reassigned away — that is how D3's problem finally cleared
+itself at the job level.
+
+**Fixed:** the work counter is now **monotonic** — terminal job states only
+(`finished + closed + failed + cancelled`) — and the stall window widened to 4 polls (2 h).
+A task in its merge phase now registers progress instead of looking frozen.
+
+Running tally of monitoring-metric mistakes on this campaign, all now closed: keying on
+drifting counters; keying on PanDA status; using the merge-gated `nfilesfinished`; and a
+non-monotonic work counter. The general lesson: **for stall detection, only ever use a
+quantity that cannot decrease.**
+
 ## Latest Stage
 
 **As of 2026-09-12 ~05:00 UTC.**
