@@ -295,6 +295,42 @@ merge brokerage of every task.
 and scheduling problem, not a configuration one — so repartitioning would have been the
 wrong fix.
 
+### D4 — part 5 killed and re-queued: its data lives at only two sites, both saturated
+
+The first **genuine** stall alert (as opposed to the three false-alarm modes) fired on
+**52505076 (v2 part 5)**: no job-level movement in 1.5 h, stuck at **37 / 20 334 files**.
+
+JEDI log (`aipanda099`) — note the cut profile is *different* from every earlier failure:
+
+```
+136 ->   5 candidates,  97% cut : input data check
+  5 ->   2 candidates,  60% cut : max IO intensity check
+  2 ->   1 candidates,  50% cut : SW/HW check
+  1 ->   0 candidates, 100% cut : final check
+reasons: -max_io_intensity x3, -badsite x1, -cache x1
+skip site=RAL/SCORE  consider RAL unsuitable for the user due to long queue of the user:
+   nQ_pq_user(5501) > max_nQ_pq_user(154.650) = 0.050 * nR_pq(3093)
+```
+
+**Root cause: data locality, not scheduling luck.** Part 5's runs (523023–523437) have
+complete DATADISK replicas at **only RAL-LCG2-ECHO and BNL-OSG2** — 523023 and 523188 at
+RAL, 523138/523372/523418/523437 at BNL. Three of the five candidate sites were then cut by
+`-max_io_intensity` (our ~98 MB/s/job remote reads exceed their limit), leaving RAL alone,
+and RAL rejected it because the user already has **5 501 jobs queued there against a cap of
+154** (RAL was only running 3 093 jobs, and the cap is 5 % of that). With four other tasks
+saturating both RAL and BNL, part 5 had **nowhere to go**.
+
+**Action:** killed 52505076 (37 files of work lost) and returned part 5 to the pending list
+for automatic re-release. Added a **`MAX_LIVE=3`** gate to `pbpb26_release_next.sh`: part 5
+is held until at most three tasks are still live, because *only a task finishing frees RAL
+and BNL*. Verified: `hold part 5: 4 tasks still live (> 3)`.
+
+Why not adjust per-job parameters instead: lowering `--nGBPerJob` would not help. IO
+intensity is bytes **per second**, so smaller jobs read less but also run shorter — the
+intensity is roughly invariant, and the binding cut at the surviving site was the queue cap,
+not IO. And replicating 257 TB to more sites to widen locality is obviously worse than
+waiting.
+
 ## Implementation Plan
 
 | # | Step | Status |
@@ -1125,6 +1161,23 @@ Status at this point: 52488080 has **drained its queue entirely** (`act=0`, 10 5
 finished, 4 054 merging) and is the closest to completion; 52501044 nearly doubled its job
 count to 7 697; 52505076 has moved out of starvation into `scouting`. Year total
 **28 881 / 111 279 files = 26.0 %**.
+
+### 2026-09-12 04:39 — part 5 re-queued; the other four are moving well
+
+The stall detector's first real catch — see Design Decision **D4**. Part 5 killed and
+re-queued behind a new `MAX_LIVE=3` gate; `grid_monitor` restarted on the remaining four.
+
+Meanwhile the rest advanced substantially:
+
+| task | part | files | % | Δ since 02:00 |
+|---|---|---|---:|---|
+| 52491225 | 1 | 9 207 / 23 879 | 40 | +437 |
+| 52488080 | 2 | **13 844 / 23 559** | **60** | +2 818 |
+| 52491882 | 3 | 3 856 / 22 542 | 20 | +56 |
+| 52501044 | 4 | 7 302 / 20 965 | 30 | +2 017 |
+| **total** | | **34 209 / 90 945** (of the 4 live parts) | | |
+
+Year total including the re-queued part 5: **34 246 / 111 279 = 30.8 %**.
 
 ## Results & Observations
 

@@ -26,6 +26,12 @@ ACT_MAX=15000          # backstop only -- see the note above
 NEWEST_MIN_JOBS=200    # the newest task must have scaled past its scout phase
 NEWEST_MIN_PROG=100    # ...and actually be executing, not merely queued
 COOLDOWN=5400          # 90 min
+MAX_LIVE=3             # release only when at most this many tasks are still live.
+                       # Part 5's runs (523023-523437) have DATADISK replicas at only
+                       # RAL and BNL; with four other tasks running, the user is over
+                       # the 5%-of-site-running queue cap at BOTH, so part 5 could not
+                       # be brokered anywhere and sat at 37/20334 files.  Waiting for a
+                       # task to finish is the only thing that frees those two sites.
 
 log() { echo "[$(date -u +%FT%TZ)] $*" >> "$LOG"; }
 
@@ -47,6 +53,18 @@ last=$(cat "$STAMP" 2>/dev/null || echo 0)
 (( now - last < COOLDOWN )) && exit 0
 
 tasks=$(grep -vE '^\s*#|^\s*$' "$BOOK" | awk '{print $1}')
+nlive=0
+for t in $tasks; do
+  tst=$(curl -s --max-time 60 "https://bigpanda.cern.ch/task/$t/?json" 2>/dev/null | python3 -c "
+import sys,json
+try: d=json.load(sys.stdin); print((d.get('task',d)).get('status') or '')
+except Exception: print('')" 2>/dev/null)
+  case "$tst" in done|finished|failed|broken|aborted) ;; *) nlive=$((nlive+1)) ;; esac
+done
+if (( nlive > MAX_LIVE )); then
+  log "hold part $next: $nlive tasks still live (> $MAX_LIVE)"
+  exit 0
+fi
 # The "newest" task is the one with the LARGEST jediTaskID -- PanDA hands them out
 # monotonically.  Do NOT use the last line of the bookkeeping file: the v1 survivor
 # 52488080 sits below the v2 part-1 task 52491225 there, so "last line" picked an OLDER,
