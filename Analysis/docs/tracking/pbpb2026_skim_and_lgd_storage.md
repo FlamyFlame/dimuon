@@ -1077,6 +1077,24 @@ verify with `ps -o pid,pgid,sid`.
 
 Progress at the restart: parts at **40 / 50 / 20 / 20 / 0 %**.
 
+### 2026-09-11 late — "pending / no candidates" is NOT by itself an actionable signal
+
+The brokerage alert was firing on every poll because these tasks **oscillate** in and out
+of brokerage as JEDI re-brokers them. Task 52501044 went `pending → running → pending`
+while climbing **7.7 % → 25.2 %** — blocked and productive at the same time. Comparing the
+set of flagged tasks (even with counters stripped) therefore alarms on normal churn.
+
+**Refined rule: alert on *stuck*, not on *blocked*.** A task must be in
+`pending`/`throttled`/`exhausted`/`broken`/`aborted` **and** show no increase in
+finished-file count across **3 consecutive polls (1.5 h)**. Only then is the JEDI reason
+printed. Terminal states and 10 %-step progress are reported unconditionally.
+
+This keeps the guarantee asked for — a genuinely blocked task is surfaced with its reason
+and never sits unexamined — while not crying wolf over a task that is merely being paced.
+
+Progress snapshot at the change: parts at 36.7 / 46.8 / 16.9 / 25.2 / 0.0 % =
+**28 881 / 111 279 files = 26 %** of the year.
+
 ## Results & Observations
 
 *(to be filled)*
