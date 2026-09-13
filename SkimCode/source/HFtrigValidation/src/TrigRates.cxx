@@ -821,6 +821,10 @@ StatusCode TrigRates::ProcessZdc(){
       t_xDetCentroidUnsub[i]=t_yDetCentroidUnsub[i]=0;
       t_xDetRowCentroidStdev[i]=t_yDetColCentroidStdev[i]=0;
       t_reactionPlaneAngle[i]=0; t_centroidStatus[i]=0;
+      // These two are not branched today, so this is output-neutral -- but without it the
+      // availability guards below can leave the PREVIOUS event's values in place, which
+      // becomes a live bug the moment someone registers the branch.
+      for(int j=0;j<4;j++) t_xDetRowCentroid[i][j]=t_yDetColCentroid[i][j]=0;
     }
   }
 
@@ -834,7 +838,20 @@ StatusCode TrigRates::ProcessZdc(){
   for(const auto* zdcSum : *zdcSums){
     int zdcside = zdcSum->zdcSide();
     if(zdcside == 0){
-      t_cosDeltaReactionPlaneAngle = zdcSum->auxdataConst<float>("cosDeltaReactionPlaneAngle" + auxSuffix);
+      // cosDeltaReactionPlaneAngle is an RPD/centroid quantity: its branch is created ONLY
+      // under (m_store_Zdc & 2) in InitZdc(), so with the data configs' StoreZdc=1 it was
+      // previously read and then thrown away.  Worse, runs whose ZDC reconstruction produced
+      // no RPD/centroid aux data (seen in data26_hi runs 522200, 522949, 522546, 522721,
+      // 522384, 522408) made the unconditional read throw SG::ExcBadAuxVar, which is FATAL
+      // in sysExecute and killed every job on those runs -- JEDI then marked their input
+      // files failed and the task ended 'finished' with whole runs silently missing.
+      // Gate on the same bit as the branch, and still check availability so that enabling
+      // the RPD bit on such a run yields the sentinel 0 rather than a crash.
+      if(m_store_Zdc & 2){
+        const std::string k = "cosDeltaReactionPlaneAngle" + auxSuffix;
+        if(zdcSum->isAvailable<float>(k))
+          t_cosDeltaReactionPlaneAngle = zdcSum->auxdataConst<float>(k);
+      }
       continue;
     }
     const int iside = (zdcside > 0) ? 1 : 0;
@@ -846,21 +863,36 @@ StatusCode TrigRates::ProcessZdc(){
     t_ZdcStatus    [iside] = zdcSum->auxdataConst<unsigned int>("Status"        + auxSuffix);
     t_ZdcModuleMask       += (zdcSum->auxdataConst<unsigned int>("ModuleMask"   + auxSuffix) << (4 * iside));
     if(m_store_Zdc & 2){
-      t_RpdSubAmpSum     [iside] = zdcSum->auxdataConst<float>("RpdSubAmpSum"    + auxSuffix);
-      t_xDetCentroid     [iside] = zdcSum->auxdataConst<float>("xDetCentroid"    + auxSuffix);
-      t_yDetCentroid     [iside] = zdcSum->auxdataConst<float>("yDetCentroid"    + auxSuffix);
-      t_xCentroid        [iside] = zdcSum->auxdataConst<float>("xCentroid"       + auxSuffix);
-      t_yCentroid        [iside] = zdcSum->auxdataConst<float>("yCentroid"       + auxSuffix);
-      t_xDetCentroidUnsub[iside] = zdcSum->auxdataConst<float>("xDetCentroidUnsub" + auxSuffix);
-      t_yDetCentroidUnsub[iside] = zdcSum->auxdataConst<float>("yDetCentroidUnsub" + auxSuffix);
-      std::vector<float> rx = zdcSum->auxdataConst<std::vector<float>>("xDetRowCentroid" + auxSuffix);
-      std::vector<float> ry = zdcSum->auxdataConst<std::vector<float>>("yDetColCentroid" + auxSuffix);
-      for(int r=0;r<4;r++) t_xDetRowCentroid[iside][r] = rx.at(r);
-      for(int c=0;c<4;c++) t_yDetColCentroid[iside][c] = ry.at(c);
-      t_xDetRowCentroidStdev[iside] = zdcSum->auxdataConst<float       >("xDetRowCentroidStdev" + auxSuffix);
-      t_yDetColCentroidStdev[iside] = zdcSum->auxdataConst<float       >("yDetColCentroidStdev" + auxSuffix);
-      t_reactionPlaneAngle  [iside] = zdcSum->auxdataConst<float       >("reactionPlaneAngle"   + auxSuffix);
-      t_centroidStatus      [iside] = zdcSum->auxdataConst<unsigned int>("centroidStatus"        + auxSuffix);
+      // Same failure mode as the zdcSide==0 read above: a run reconstructed without RPD
+      // data has none of these aux items, and an unguarded auxdataConst throws
+      // SG::ExcBadAuxVar (FATAL).  Leave the reset sentinel (0) in place when absent.
+      auto getF = [&](const char* n, float& dst){
+        const std::string k = std::string(n) + auxSuffix;
+        if(zdcSum->isAvailable<float>(k)) dst = zdcSum->auxdataConst<float>(k);
+      };
+      getF("RpdSubAmpSum"        , t_RpdSubAmpSum        [iside]);
+      getF("xDetCentroid"        , t_xDetCentroid        [iside]);
+      getF("yDetCentroid"        , t_yDetCentroid        [iside]);
+      getF("xCentroid"           , t_xCentroid           [iside]);
+      getF("yCentroid"           , t_yCentroid           [iside]);
+      getF("xDetCentroidUnsub"   , t_xDetCentroidUnsub   [iside]);
+      getF("yDetCentroidUnsub"   , t_yDetCentroidUnsub   [iside]);
+      getF("xDetRowCentroidStdev", t_xDetRowCentroidStdev[iside]);
+      getF("yDetColCentroidStdev", t_yDetColCentroidStdev[iside]);
+      getF("reactionPlaneAngle"  , t_reactionPlaneAngle  [iside]);
+      const std::string kx = "xDetRowCentroid" + auxSuffix;
+      if(zdcSum->isAvailable<std::vector<float>>(kx)){
+        const std::vector<float>& rx = zdcSum->auxdataConst<std::vector<float>>(kx);
+        for(size_t r=0; r<rx.size() && r<4; ++r) t_xDetRowCentroid[iside][r] = rx[r];
+      }
+      const std::string ky = "yDetColCentroid" + auxSuffix;
+      if(zdcSum->isAvailable<std::vector<float>>(ky)){
+        const std::vector<float>& ry = zdcSum->auxdataConst<std::vector<float>>(ky);
+        for(size_t c=0; c<ry.size() && c<4; ++c) t_yDetColCentroid[iside][c] = ry[c];
+      }
+      const std::string kcs = "centroidStatus" + auxSuffix;
+      if(zdcSum->isAvailable<unsigned int>(kcs))
+        t_centroidStatus[iside] = zdcSum->auxdataConst<unsigned int>(kcs);
     }
   }
 

@@ -373,6 +373,60 @@ It must not be left as a silent partial run.
 **Standing rule for this campaign: a task reaching `finished` is NOT success.** Always
 compare `nfilesfinished` against `nfiles` per input dataset before accepting its output.
 
+### D6 — ROOT CAUSE of the data gaps: an unguarded ZDC RPD aux read (NOT brokerage)
+
+D4/D5 attributed the missing files to brokerage starvation. **That was wrong**, and the
+job log settles it. Runs 522200, 522949, 522546, 522721, 522384, 522408 die with:
+
+```
+TrigRatesAlg FATAL Standard std::exception is caught in sysExecute
+TrigRatesAlg ERROR SG::ExcBadAuxVar: Attempt to retrieve nonexistent aux data item
+             `::cosDeltaReactionPlaneAngle' (560).
+-> athena execution failed with 65   (transexitcode 6, exeerrorcode 5406)
+```
+
+In `TrigRates::ProcessZdc()` the `zdcSide == 0` entry of the `ZdcSums` loop read
+`cosDeltaReactionPlaneAngle` **unconditionally**, while its output branch
+`zdc_cosDeltaReactionPlaneAngle` is created **only** under `if(m_store_Zdc & 2)` in
+`InitZdc()`. Every data config uses `StoreZdc = 1`, so the value was read and **discarded** —
+and on runs whose ZDC reconstruction produced no RPD/centroid aux data, that pointless read
+threw and killed the job after ~29 minutes of useful work. Retries to `maxattempt` all hit
+the same line, JEDI marked the files failed, and the task ended `finished` with whole runs
+missing.
+
+**Why it looked like a site problem:** those runs have complete DATADISK replicas at
+**INFN-T1 only**, so all their jobs necessarily ran at INFN-CNAF — which is why 100 % of the
+campaign's failed jobs were at that one site. The site correlation was an artefact of data
+locality, not a site fault.
+
+**Fix** (`TrigRates.cxx`, reviewed under `/review-analysis-code`): gate the read on the same
+`m_store_Zdc & 2` bit as its branch and add an `isAvailable<float>` check; the same
+availability guard applied to the 10 float RPD reads (plus `centroidStatus` separately, being `unsigned int`) and the 2 vector reads inside the existing
+bit-gated block, and `.at(r)` on an assumed-length-4 vector replaced with a bounded loop.
+Verified **output-neutral**: same input file pre- vs post-fix gives byte-identical output
+(377 883 bytes, 317 entries, **169/169 branches bit-identical**), so **2023/24/25 and pp24
+need NO re-skim**. And verified **effective**: a file from run 522200 now runs to
+`code 0: "successful run"` with zero `ExcBadAuxVar`.
+
+### D7 — recovery must RESUBMIT, and must process ONLY the missing files
+
+Two constraints that shape the recovery, both easy to get wrong:
+
+1. **`retryTask` cannot fix this.** A PanDA task runs the sandbox uploaded at submission
+   time, which embeds the *compiled* `libHFtrigValidation.so`. Retrying re-runs the **old,
+   broken binary**, so it will crash identically — which is exactly what was observed:
+   52501044's retry completed with the 753 files still missing. Recovery therefore requires
+   **new task submission** with the rebuilt sandbox.
+2. **Resubmitting the whole affected runs would DUPLICATE events.** Run 522200 already has
+   561 of its 2 192 files merged into `data_pbpb26_part1.root`; re-skimming the whole run
+   and adding it would double-count those events — a silent yield inflation. The recovery
+   task must process **only the files JEDI marked failed**, via
+   `pathena --inputFileList`, and land in its **own part number** (e.g. `part6`) so the
+   union across parts is exactly the full dataset, once each.
+
+Consequence for the analysis-code hand-off: `file_batch_max` for year 26 will exceed 5 —
+it becomes 5 + the number of recovery parts. Read the count from disk, do not assume.
+
 ## Implementation Plan
 
 | # | Step | Status |
