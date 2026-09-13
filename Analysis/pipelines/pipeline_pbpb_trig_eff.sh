@@ -242,7 +242,8 @@ wait_for_cluster_completion() {
 }
 
 # Queue counts per year (must match .sub files)
-# [26]=5 is a PLACEHOLDER -- see the note in pipeline_pbpb_crossx.sh; it must equal
+# [26]=5 is a STALE PLACEHOLDER (2026-09-13), known wrong; final set expected 1..7 and
+# file_batch_max{26} is deliberately 0. See the note in pipeline_pbpb_crossx.sh; it must equal
 # file_batch_max{26} in PbPbExtras.c and `queue N` in the run_pbpb_26*.sub files.
 declare -A QUEUE_COUNTS=( [23]=4 [24]=2 [25]=6 [26]=5 )
 

@@ -227,7 +227,10 @@ wait_for_cluster_completion() {
 }
 
 # Queue counts per year (must match .sub files)
-# [26]=5 is a PLACEHOLDER: the 2026 skim is submitted as 5 grid tasks
+# [26]=5 is a STALE PLACEHOLDER (2026-09-13): known wrong, the final set is expected 1..7.
+# file_batch_max{26} is deliberately 0 ('unset'), which blocks every 2026 job, so this is
+# inert until the count is established -- set all five declarations together.
+# Original note: the 2026 skim was first submitted as 5 grid tasks
 # (SkimCode/run_26hi/InDstxt_PbPb2026_5p36TeV_part1..5.txt), and grid_monitor's chunked
 # hadd can split a task into extra part files, so the real count can be larger.  Set it
 # from ~/usatlasdata/dimuon_data/pbpb_2026/data_pbpb26_part*.root and keep it EQUAL to

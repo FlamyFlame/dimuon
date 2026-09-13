@@ -54,6 +54,15 @@ echo "--- part-count agreement (a mismatch SILENTLY drops data) ---"
 nmax=$(grep -v '^[[:space:]]*//' "$A/NTupleProcessingCode/PbPbExtras.c" \
        | grep -oP "\{${YR}, \K[0-9]+" | head -1 || true)
 echo "  PbPbExtras.c file_batch_max{${YR}} = ${nmax:-<absent>}"
+if [[ "${nmax:-0}" == "0" ]]; then
+  # A deliberate "unset" (see PbPbExtras.c): the year's skim is still in production, so its
+  # part count is not knowable yet.  Cross-checking the other declarations against 0 would
+  # emit several mismatches that all say the same thing, so say it once instead.
+  echo "  >> Pb+Pb 20${YR} is deliberately UNSET: its part count is not established yet, so the"
+  echo "     other declarations (queue N, QUEUE_COUNTS, ScrambGen::NParts, plotting part lists)"
+  echo "     are moot until it is. Set them TOGETHER from the files on disk, then re-run this."
+  bad=1
+else
 bad=0
 # Every run_pbpb_<yr>*.sub that processes the year's FULL file set must agree: a queue count
 # below the part count SILENTLY processes only part of the data.  The deliberately-partial
@@ -134,6 +143,9 @@ if [[ -d "$DIR" ]]; then
     if [[ ${#holes[@]} -gt 0 ]]; then
       echo "  MISMATCH part numbering is NOT contiguous: present ${nums[*]}; missing ${holes[*]}."
       echo "           Condor submits one job per batch 1..N, so the missing batches would fail."
+      echo "           While a skim is still recovering this can be TRANSIENT (a late part has not"
+      echo "           landed yet) -- this check is a pre-submission gate, so the answer is 'wait',"
+      echo "           not 'renumber'. Confirm the final set with the skimming session."
       bad=1
     fi
     if [[ -n "${nmax:-}" && "$non" != "$nmax" ]]; then
@@ -144,6 +156,8 @@ else
   echo "  (no $DIR yet -- on-disk count not checked)"
 fi
 [[ $bad -eq 0 ]] && echo "  all declared part counts agree"
+
+fi
 
 echo "--- data artifacts (PENDING is fine before the producing stage runs) ---"
 pending "raw skim dir" "$DIR"
