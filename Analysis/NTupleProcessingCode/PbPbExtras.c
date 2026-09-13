@@ -265,20 +265,27 @@ void PbPbExtras<Derived>::InitParamsExtra(){
 
   // pbpb2023: should have parts 1..4 but currently only 1..3 finished skimming.
   // Update {23, 3} -> {23, 4} and rerun after part4 is available.
-  // pbpb2026: PLACEHOLDER 5 -- the 2026 grid skim is submitted as 5 tasks
-  // (SkimCode/run_26hi/InDstxt_PbPb2026_5p36TeV_part1..5.txt, 45 datasets over the
-  // 35 GRL runs), so 5 is the expected part count.  It can end up LARGER: when a task's
-  // output is too big to hadd in one pass, grid_monitor's chunked_hadd_fallback splits
-  // it into extra part files.  grid_monitor auto-updates this entry (and
-  // run_pbpb_26.sub) from what is actually on disk -- keep the exact `{26, N}` spacing,
-  // its sed pattern depends on it.  The value MUST equal `queue N` in every
-  // run_pbpb_26*.sub: an over-count throws on the missing part (loud), but an
-  // UNDER-count silently processes only part of the 2026 data.
-  // See docs/tracking/pbpb2026_analysis_support.md (registry P1).
+  // pbpb2026: DELIBERATELY 0 -- "unset", which makes every 2026 file_batch fail the range
+  // check below with the explicit message there.  Do NOT restore a guessed number.
+  //
+  // The 2026 skim is still recovering from a ZDC aux-item bug, and its parts are NOT a
+  // contiguous 1..N: parts 1-4 were submitted, part 5 is pending resubmission, part 6 is a
+  // recovery task and a part 7 will follow.  On disk today: parts 1 and 4 only.  A guessed
+  // maximum is worse than none -- too low SILENTLY processes a subset of the 2026 data, and
+  // the Condor model (one job per file_batch in 1..queue) additionally assumes contiguity,
+  // which does not hold yet.
+  //
+  // Set this from what is actually on disk once the skim is complete:
+  //     ls ~/usatlasdata/dimuon_data/pbpb_2026 | grep -E '^data_pbpb26_part[0-9]+\.root$'
+  // (note the strict pattern -- a plain glob also matches the *.bak_<date>.root files
+  //  grid_monitor leaves while re-merging), then run
+  //     Analysis/pipelines/preflight_pbpb_year.sh 26
+  // which cross-checks this entry against the .sub queue counts, QUEUE_COUNTS,
+  // ScrambGen::NParts, the plotting part lists AND the files on disk, including contiguity.
+  // grid_monitor also rewrites this entry automatically -- keep the exact "{26, N}" spacing.
   std::map<int, int> run_year_to_file_batch_max_map = {
-    {23, 4}, {24, 2}, {25, 6}, {26, 5}, {15, 7}, {18, 7}
+    {23, 4}, {24, 2}, {25, 6}, {26, 0}, {15, 7}, {18, 7}
   };
-
   // check for run year
   if (is_run3_local){
     if (run_year_short != 23 && run_year_short != 24 && run_year_short != 25 && run_year_short != 26){
@@ -294,7 +301,16 @@ void PbPbExtras<Derived>::InitParamsExtra(){
 
   // check for file batch
   if (self().file_batch <= 0 || self().file_batch > run_year_to_file_batch_max_map[run_year_short]){
-    std::cerr<<"Error:: run3 file_batch is invalid! Must be in range 1-4 for 2023 data / 1-2 for 2024 data / 1-6 for 2025 data / 1-5 for 2026 data (placeholder) / 1-7 for 2015/2018 data"<<std::endl;
+    if (run_year_short == 26 && run_year_to_file_batch_max_map[26] == 0){
+      std::cerr<<"Error:: PbPb 2026 file_batch_max is UNSET (0) on purpose: the 2026 skim is "
+                 "still in production and its parts are not yet a contiguous 1..N. Set "
+                 "run_year_to_file_batch_max_map{26} from the files actually on disk "
+                 "(ls ~/usatlasdata/dimuon_data/pbpb_2026 | grep -E "
+                 "'^data_pbpb26_part[0-9]+\\.root$') and run "
+                 "Analysis/pipelines/preflight_pbpb_year.sh 26 before submitting."<<std::endl;
+    } else {
+      std::cerr<<"Error:: run3 file_batch is invalid! Must be in range 1-4 for 2023 data / 1-2 for 2024 data / 1-6 for 2025 data / 1-7 for 2015/2018 data"<<std::endl;
+    }
     throw std::exception();
   }
 }
