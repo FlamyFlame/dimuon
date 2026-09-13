@@ -1510,6 +1510,44 @@ The in-flight re-download was left to finish rather than interrupted: killing a
 `rucio download` mid-flight risks leaving grid_monitor's state inconsistent, and the result
 is merely a slightly better partial file that will be superseded anyway.
 
+### 2026-09-13 11:55 — RECOVERY task 52519703 submitted with the fixed build
+
+`Client.get_files_in_datasets(<task>)` gives per-input-file status, which pins the damage
+exactly (statuses seen: `finished` 82 007, `ready` 2 367, `running` 6 571):
+
+| task | part | dataset | total | missing | file status |
+|---|---|---|---:|---:|---|
+| 52491225 | 1 | 522200 | 2 192 | **1 614** | `ready` — abandoned, task terminal |
+| 52501044 | 4 | 522949 | 3 044 | **753** | `ready` — abandoned, task terminal |
+| 52488080 | 2 | 522355 | 4 097 | 121 | `running` — not final yet |
+| 52488080 | 2 | 522384 | 2 896 | 897 | `running` |
+| 52488080 | 2 | 522408 | 4 282 | 1 791 | `running` |
+| 52491882 | 3 | 522546 | 3 675 | 2 872 | `running` |
+| 52491882 | 3 | 522721 | 890 | **890 (all)** | `running` |
+
+Two useful facts fall out. `ready` vs `running` cleanly separates **final** gaps (parts 1
+and 4, terminal) from gaps **still in flight** (parts 2 and 3). And the damage is *not*
+whole-run: 522200 got 578/2 192 through and 522355 got 3 976/4 097, so the missing RPD aux
+data varies by lumiblock within a run, which the per-file guard handles exactly.
+
+**Submitted `part6` = recovery for the two final gaps** — jediTaskID **52519703**,
+2 367 files, `run_26hi/grid_sub_part6_recovery.sh`:
+- `--inputFileList InputFileList_PbPb2026_recovery_part6.txt` — **only** the abandoned
+  files, so the 578 + 2 291 already merged into part1/part4 are not reprocessed. This is
+  what prevents silent double-counting (D7).
+- its own part number, so the union across parts is the full dataset exactly once.
+- `--excludedSite 'EMMY_KIT*'` as for every v2 task.
+- Verified the sandbox is the fixed one: `TrigRates.cxx` mtime 11:52:45 <
+  `build_26/.../libHFtrigValidationLib.so` mtime 11:53:58, both before submission.
+
+**Still to come:** parts 2 and 3 will gap out on the same bug (their 6 571 `running` files
+were submitted with the old sandbox) — a **part7** recovery will be needed once they reach
+a terminal state. Part 5 was never resubmitted after D4 and will now be submitted from the
+fixed build too, so it should not gap at all.
+
+Monitoring: `INCOMPLETE` now fires **once per (task, missing-count)** rather than every
+cycle — the gap is a standing fact until a recovery part exists, so repeating it was noise.
+
 ## Latest Stage
 
 **As of 2026-09-12 ~05:00 UTC.**
