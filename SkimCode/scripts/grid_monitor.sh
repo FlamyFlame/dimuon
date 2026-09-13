@@ -419,10 +419,18 @@ chunked_hadd_fallback() {
 
 	# Find current max part number on disk
 	local max_existing=0
+	# NOTE: match STRICTLY.  The glob ${file_prefix}_part*.root also catches the backups
+	# this script itself creates at line ~539 as "<name>.bak_YYYYMMDD.root" -- they keep the
+	# .root extension, so data_pbpb26_part1.bak_20260913.root matches.  A backup of a HIGHER
+	# part than any surviving real part would inflate max_existing, and max_existing is what
+	# gets written into PbPbExtras.c's {year, N} and the .sub "queue N" -- i.e. it would
+	# silently change how many file_batch jobs the analysis runs.
+	local bn pnum
 	for f in "$target_dir"/${file_prefix}_part*.root; do
 		[[ -f "$f" ]] || continue
-		local pnum
-		pnum=$(basename "$f" | grep -oP 'part\K[0-9]+')
+		bn=$(basename "$f")
+		[[ "$bn" =~ ^${file_prefix}_part([0-9]+)\.root$ ]] || continue
+		pnum="${BASH_REMATCH[1]}"
 		if (( pnum > max_existing )); then max_existing=$pnum; fi
 	done
 
