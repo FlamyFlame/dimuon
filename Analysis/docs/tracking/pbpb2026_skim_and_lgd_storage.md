@@ -331,6 +331,48 @@ intensity is roughly invariant, and the binding cut at the surviving site was th
 not IO. And replicating 257 TB to more sites to widen locality is obviously worse than
 waiting.
 
+### D5 — `finished` ≠ `done`: two tasks closed out with whole-run gaps (LUMINOSITY RISK)
+
+Tasks 52491225 (part 1) and 52501044 (part 4) reached terminal state **`finished`**, not
+`done`. That distinction matters and is easy to miss: `done` means every input file was
+processed; **`finished` means JEDI gave up on some and closed the task anyway.**
+`grid_monitor` treats *either* as ready to download (`done or finished (≥90% file
+success)`), so without this check both would have been merged and recorded as complete.
+
+**The losses are not random attrition — each is concentrated in ONE run:**
+
+| task | part | files | missing | concentrated in |
+|---|---|---|---:|---|
+| 52491225 | 1 | 22 248 / 23 879 | **1 631 (6.8 %)** | run **522200**: only 561 / 2 192 processed — **74 % of that run lost** |
+| 52501044 | 4 | 20 212 / 20 965 | **753 (3.6 %)** | run **522949**: 2 291 / 3 044 — 25 % lost |
+
+Every other dataset in both tasks is 100 % complete.
+
+**These were never processed by any job.** The task shows only **35 failed jobs** (all at
+INFN-CNAF, `athena execution failed with 65`) against 1 631 failed *files* — so the files
+were not tried and rejected, they were **abandoned**: JEDI could not broker them (the same
+locality / per-site queue-cap pressure as D4) and marked them failed when the task closed.
+
+**Why this is a physics risk, not just bookkeeping.** The analysis normalises by the
+integrated luminosity of the GRL runs. If run 522200 is 74 % absent from the skim while its
+*full* luminosity is still counted, every luminosity-normalised quantity built on part 1 —
+cross-sections, R_AA — is biased **high** by the missing fraction, silently. Nothing in the
+downstream chain would flag it: the NTUP opens, the tree has entries, every number comes
+out.
+
+**Action taken:** `Client.retryTask()` on both, *before* `grid_monitor` could download and
+record them as complete —
+`command=retry is registered for task ID 52491225 ... will be executed in a few minutes`
+(same for 52501044). Retry re-queues exactly the unprocessed files.
+
+**If the retry does not recover them, this becomes a STOP-AND-ASK**, because the choice is
+then a physics one: either exclude run 522200 (and any other short run) from the 2026 GRL
+*and* from the luminosity sum so the two stay consistent, or re-skim that run separately.
+It must not be left as a silent partial run.
+
+**Standing rule for this campaign: a task reaching `finished` is NOT success.** Always
+compare `nfilesfinished` against `nfiles` per input dataset before accepting its output.
+
 ## Implementation Plan
 
 | # | Step | Status |
