@@ -386,7 +386,7 @@ compare `nfilesfinished` against `nfiles` per input dataset before accepting its
 | 7 | LGD pre-flight (quota, DID conflicts, pnfs mount, plugin install) | **DONE** |
 | 8 | Migrate pbpb23/24/25 + pp24 raw NTUPs → LGD, symlink farm, verify, smoke test | **DONE** (originals parked, purge pending) |
 | 9 | Monitor grid tasks → download → hadd → validate (`grid_monitor.sh`) | **IN PROGRESS** (running under nohup; parts 3/4/5 auto-released) |
-| 10 | Sanity-check downloaded pbpb26 NTUPs | pending |
+| 10 | Sanity-check downloaded pbpb26 NTUPs | **PASS on part 1** (re-check after re-merge) |
 | 11 | If tight: migrate pbpb26 NTUPs → LGD + cleanup | pending |
 | 12 | Final: commit, close doc | pending |
 
@@ -1402,6 +1402,39 @@ Sanity check attempted on the merged file and **correctly refused** — ROOT rep
 `file ... probably not closed ... made a Zombie` because hadd was still writing. Re-run
 once the merge completes; that refusal is the right behaviour and is worth keeping in mind:
 **never validate an NTUP while grid_monitor is still merging it.**
+
+### 2026-09-13 06:55 — Step 10: first 2026 NTUP SANITY-CHECKED — PASS
+
+`data_pbpb26_part1.root` merged and validated by grid_monitor:
+**post-merge entries = 51 794 516 = pre-merge entries** (no loss in hadd), 160 input
+files → **~50 GB**.
+
+`check_skim_output.C` against the validated `data_pbpb25_part6.root`:
+
+- **169 branches; 0 missing, 1 extra** — the extra is `muon_match_L1MU3V`, exactly the
+  predicted delta (added to the skim source after the 2025 data was produced).
+- **3 of 169 always empty** — `L1TE`, `L1TE24`, `b_HLT_mu4_mu4noL1_L1MU3V` — the *identical*
+  set as 2025.
+- Fill fractions, against the 2025 reference:
+
+| group | 2026 part 1 | 2025 reference |
+|---|---:|---:|
+| event info / vertex (all 10) | 1.0000 | 1.0000 |
+| `FCal_Et`, `trk_numqual` | 1.0000 | 1.0000 |
+| `zdc_ZdcEnergy` | 0.9997 | 1.0000 |
+| `centrality` | 0.9588 | 0.9515 |
+| `muon_eff_SF_{medium,tight}` | 0.9977 | 0.9970 |
+| `muon_b_HLT_mu4_L1MU3V` (single-μ matching) | 0.9977 | 0.9970 |
+| `dimuon_b_HLT_2mu4_*` (pair level) | 0.5726 | 0.5635 |
+| `b_HLT_2mu4_L12MU3V` (event decision) | 0.0234 | — |
+
+Every group is healthy and tracks 2025 to within a fraction of a percent. **The `hi2026`
+skim configuration is validated on real merged output**, not just on the 731-event test job.
+
+**Caveat carried forward:** this file is still the **partial** 22 248 / 23 879 version
+(missing run 522200, D5). The branch/fill validation above is unaffected by that — it is a
+structural check — but the file must be re-merged after the retry recovers those files.
+`pbpb26_recheck_completed.sh` will force that automatically.
 
 ## Latest Stage
 
