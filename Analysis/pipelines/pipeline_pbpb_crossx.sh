@@ -44,7 +44,10 @@ DATA_BASE="/usatlas/u/yuhanguo/usatlasdata/dimuon_data"
 filter_years_with_data() {
   local kept=() yr
   for yr in "$@"; do
-    if compgen -G "${DATA_BASE}/pbpb_20${yr}/data_pbpb${yr}_part*.root" > /dev/null; then
+    # Strict match: a plain glob also catches the data_pbpb<yr>_part1.bak_<date>.root
+    # files grid_monitor leaves while re-merging, so a year holding ONLY a .bak would
+    # look ready.
+    if ls "${DATA_BASE}/pbpb_20${yr}" 2>/dev/null | grep -qE "^data_pbpb${yr}_part[0-9]+\.root$"; then
       kept+=("${yr}")
     else
       echo "[SKIP] Pb+Pb 20${yr}: no raw skim NTUPs in ${DATA_BASE}/pbpb_20${yr}/ -- year skipped." >&2

@@ -36,7 +36,9 @@ SAMPLES="${SAMPLES:-pp 23 24 25 26}"
 _data_base="/usatlas/u/yuhanguo/usatlasdata/dimuon_data"
 _kept=()
 for _s in ${SAMPLES}; do
-  if [[ "${_s}" == "pp" ]] || compgen -G "${_data_base}/pbpb_20${_s}/data_pbpb${_s}_part*.root" > /dev/null; then
+  # Strict match -- see the note in pipeline_pbpb_crossx.sh (.bak re-merge files).
+  if [[ "${_s}" == "pp" ]] || ls "${_data_base}/pbpb_20${_s}" 2>/dev/null \
+       | grep -qE "^data_pbpb${_s}_part[0-9]+\.root$"; then
     _kept+=("${_s}")
   else
     echo "[SKIP] Pb+Pb 20${_s}: no raw skim NTUPs on disk -- sample skipped." >&2

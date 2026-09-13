@@ -115,10 +115,30 @@ for p in pipeline_pbpb_crossx.sh pipeline_pbpb_trig_eff.sh; do
   if [[ "$qc" != "$nmax" ]]; then echo "  MISMATCH $p: QUEUE_COUNTS[$YR]=$qc != $nmax"; bad=1; fi
 done
 if [[ -d "$DIR" ]]; then
-  non=$(ls "$DIR"/data_pbpb${YR}_part*.root 2>/dev/null | wc -l)
+  # Match data_pbpb<yr>_part<digits>.root EXACTLY.  A plain glob also matches the
+  # data_pbpb<yr>_part1.bak_<date>.root files grid_monitor leaves while re-merging, which
+  # would inflate the count -- and an inflated count hides a genuine shortfall.
+  mapfile -t realparts < <(ls "$DIR" 2>/dev/null | grep -E "^data_pbpb${YR}_part[0-9]+\\.root$" | sort -V)
+  non=${#realparts[@]}
   echo "  part files on disk = $non"
-  if [[ "$non" -gt 0 && "$non" != "$nmax" ]]; then
-    echo "  MISMATCH: $non part files on disk but file_batch_max is $nmax"; bad=1
+  if [[ $non -gt 0 ]]; then
+    # Part numbers must be CONTIGUOUS 1..N: the Condor model submits one job per
+    # file_batch in 1..queue, so a hole (e.g. parts 1,4 with 2,3 absent) means those jobs
+    # die on a missing input while the count still looks plausible.
+    nums=(); for f in "${realparts[@]}"; do n="${f#*part}"; nums+=( "${n%%.root}" ); done
+    expect=1; holes=()
+    for n in "${nums[@]}"; do
+      while [[ $expect -lt $n ]]; do holes+=("$expect"); expect=$((expect+1)); done
+      expect=$((n+1))
+    done
+    if [[ ${#holes[@]} -gt 0 ]]; then
+      echo "  MISMATCH part numbering is NOT contiguous: present ${nums[*]}; missing ${holes[*]}."
+      echo "           Condor submits one job per batch 1..N, so the missing batches would fail."
+      bad=1
+    fi
+    if [[ -n "${nmax:-}" && "$non" != "$nmax" ]]; then
+      echo "  MISMATCH: $non part file(s) on disk but file_batch_max is ${nmax}"; bad=1
+    fi
   fi
 else
   echo "  (no $DIR yet -- on-disk count not checked)"
