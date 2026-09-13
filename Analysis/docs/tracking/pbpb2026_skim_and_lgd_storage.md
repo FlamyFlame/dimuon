@@ -1436,6 +1436,26 @@ skim configuration is validated on real merged output**, not just on the 731-eve
 structural check — but the file must be re-merged after the retry recovers those files.
 `pbpb26_recheck_completed.sh` will force that automatically.
 
+### 2026-09-13 11:18 — re-download guard fired correctly, then needed a settling condition
+
+The guard did its job: `RE-DOWNLOAD queued: task 52491225 gained 17 input files after merge
+(22248 -> 22265)`. And the **D5 retry is genuinely recovering the lost run** — run 522200
+went 561 → 578 files processed, which also proves those files are *readable*: they were
+abandoned by brokerage, not corrupt.
+
+But grid_monitor then re-claimed the task and started re-downloading **while 1 614 files
+were still missing** — producing a merge that is only marginally less partial, at the cost
+of ~50 GB of transfer plus a full re-hadd. A retried task trickles files back over hours, so
+firing on the first increment would repeat that cycle many times.
+
+**Guard tightened:** a re-download is now queued only when the task is in a **terminal**
+state (`done`/`finished`) **and** its file count is **unchanged since the previous poll** —
+i.e. the recovery has settled. Intermediate growth is tracked in a side file and ignored.
+
+The in-flight re-download was left to finish rather than interrupted: killing a
+`rucio download` mid-flight risks leaving grid_monitor's state inconsistent, and the result
+is merely a slightly better partial file that will be superseded anyway.
+
 ## Latest Stage
 
 **As of 2026-09-12 ~05:00 UTC.**
