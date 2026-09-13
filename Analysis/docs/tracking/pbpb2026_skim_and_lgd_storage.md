@@ -1289,6 +1289,47 @@ This closes the last of the monitoring-metric mistakes: drifting counters → Pa
 merge-gated `nfilesfinished` → non-monotonic work counter → and finally, treating any lack
 of terminal-count movement as a stall when merge completion is inherently bursty.
 
+### 2026-09-13 05:00 — grid_monitor MUST be stopped across the dCache outage (a real trap)
+
+Reading `grid_monitor.sh` before tomorrow's outage turned up a genuine hazard. A download
+failure is **terminal, not retried**:
+
+```bash
+if ! rucio download --dir "$target_dir" "$rucio_did" ...; then
+    log_error "task $tid: rucio download failed for $outds"; return 1        # line 546
+fi
+...
+else
+    set_task_state_if "$claimed_tid" "downloading" "failed"                   # line 858
+```
+
+and once every task is `completed` or `failed`, **the worker exits** ("All tasks resolved.
+Worker exiting."). So if any 2026 task completes during the **2026-09-14 13:00–21:00 UTC**
+window, `rucio download` hits a dead BNL dCache, the task is marked `failed` **permanently**,
+it is never retried, and grid_monitor may then exit altogether — losing the download
+silently, exactly when nobody is looking.
+
+**Mitigation, now automated in the watcher:**
+- With a 30-minute buffer either side (**12:30 → 21:30 UTC**), grid_monitor is **stopped by
+  PID** for the window and the watchdog is suppressed so it cannot restart it.
+- Afterwards, any task left in `failed` state is reset to `ready` in
+  `grid_monitor_state.txt` (an outage artefact, not a real failure) and grid_monitor is
+  restarted, both announced.
+- Grid *processing* is unaffected — PanDA jobs keep running throughout; only the
+  download/hadd stage pauses.
+
+**Task state at the check** — none wedged, all four working their tails:
+
+| task | part | live jobs | merging | input remaining |
+|---|---|---:|---:|---:|
+| 52491225 | 1 | 36 | **0** (all merged) | 3 034 |
+| 52488080 | 2 | 56 | 12 | 2 877 |
+| 52491882 | 3 | 262 | 46 | — |
+| 52501044 | 4 | 1 839 | 2 003 | — |
+
+The 90 % plateau on parts 1 and 2 is simply their last ~3 000 input files each, not a
+stall — both have live jobs. Year total **63.3 %**.
+
 ## Latest Stage
 
 **As of 2026-09-12 ~05:00 UTC.**
