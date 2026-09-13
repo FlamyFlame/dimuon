@@ -180,7 +180,7 @@ be revisited once `~/usatlasdata/dimuon_data/pbpb_2026/` is populated.
 
 | # | Item | Placeholder value used | How to confirm |
 |---|------|------------------------|----------------|
-| P1 | Number of 2026 NTUP part files (`file_batch_max{26}`, Condor `queue N`, `QUEUE_COUNTS[26]`, `ScrambGen::NParts(26)`, every plotting part list) | **5** — the skim is submitted as 5 grid tasks (`SkimCode/run_26hi/InDstxt_PbPb2026_5p36TeV_part1..5.txt`, 45 datasets over the 35 GRL runs). NOT a copy of 2025's 6. Can end up LARGER: `grid_monitor`'s chunked-hadd fallback splits an over-large task into extra parts. | `pipelines/preflight_pbpb_year.sh 26` checks **all five declaration classes** against each other and against `ls` (extended 2026-09-11; it previously covered only three), grading the `.sub` queue counts and the macro part lists by direction (UNDER-count = error, it silently processes a subset; OVER-count = warning, it throws loudly on the missing part), and requiring exact equality for `file_batch_max`, `QUEUE_COUNTS`, `ScrambGen::NParts` and the on-disk count, where either direction would be silent. **`grid_monitor` auto-updates only `PbPbExtras.c` and `run_pbpb_26.sub`** — the other five `.sub`, `ScrambGen::NParts` and the six plotting lists are manual, so run the preflight after the skim lands. |
+| P1 | Number of 2026 NTUP part files | **UNSET (0) on purpose** in `PbPbExtras.c`, so any 2026 NTuple job fails loudly with an explicit message. The earlier value 5 was wrong: per the skimming session (2026-09-13) parts 1-4 were submitted, **part 5 is pending resubmission, part 6 is a recovery task and a part 7 will follow**. On disk today: parts **1 and 4 only**. | After the skim completes: `ls ~/usatlasdata/dimuon_data/pbpb_2026 \| grep -E '^data_pbpb26_part[0-9]+\.root$'` (strict pattern — a plain glob also matches the `*.bak_<date>.root` re-merge files), set `file_batch_max{26}`, the six `.sub` `queue N`, `QUEUE_COUNTS[26]`, `ScrambGen::NParts(26)` and the plotting part lists, then run `pipelines/preflight_pbpb_year.sh 26`. |
 | P2 | Total recorded 2026 events | *(unknown)* | entry count of the hadded NTUPs / `data-merging-record.txt` |
 | P3 | 2026 bad-run list | **empty** (no run excluded) — `PbPbBadRuns` has no 26 entry, so the R_AA luminosity is the full GRL total 2.62316 nb⁻¹ | 2026 DQ review. If it becomes non-empty, subtract those runs' `Prescale Corrected` in `PbPbSampledLumi.h`, `make_crossx_factors_pbpb_2026()` AND the lumi README **in the same change** — numerator and denominator must cover the same runs |
 | P4 | What calibration is the 2026 skim's `centrality` branch on? | **Irrelevant to the result** — under D6 the 2023 calibration is enforced by `UpdateCentrality` regardless. (The old entry asked whether the branch is "zero-filled"; that premise was false even for 2025 — see §3c.) | Open `data_pbpb26_part1.root` and check whether the branch is on a **non-2023** calibration. If it is, the override is intentional under D6 and **must be disclosed in the note**, not silently applied. |
@@ -193,6 +193,8 @@ be revisited once `~/usatlasdata/dimuon_data/pbpb_2026/` is populated.
 | P11 | A 2026 minimum-bias sample for the data-driven trigger efficiency | *(unknown)* — `TrigEffPlotterPbPb` needs `histograms_real_pairs_pbpb_2026_MB.root` | as for the other years |
 | P12 | 2026 ⟨T_AA⟩ | **2023 Glauber values** — the existing convention, identical to what 2024 and 2025 already do; flagged in `placeholder.md` and required to be disclosed in the note | official 2026 Glauber calibration |
 | P13 | 2026 FCal→centrality thresholds | **PbPb2023 thresholds — REGISTERED USER DECISION 2026-09-10 (D6), no longer a guess.** Same as 2024 and 2025 (whose vectors are byte-identical). Interim, not final. | an official 2026 Glauber centrality calibration; until then nothing to confirm |
+| P14 | Is the 2026 skim complete enough for luminosity normalisation? | **NO — PROVISIONAL.** A skim bug (`TrigRates::ProcessZdc` reading a ZDC aux item that exists only under `StoreZdc & 2`) killed jobs on lumiblocks with no RPD data, so several runs are partially skimmed (e.g. 522200 578/2192, 522721 0/890). Fixed and recovery running. `PbPbMu4SampledLumiNb(26)` returns the **GRL total**, which is the right denominator only once every run reads 100 % — until then a 2026 crossx is biased LOW. A one-time runtime warning now says so. | The skimming session confirms all runs at 100 %; then remove the warning. |
+| P15 | Are the 2026 parts contiguous 1..N? | **NO — parts 1 and 4 today**, with 5 pending and 6/7 to come. The Condor model submits one job per `file_batch` in 1..queue, so it assumes contiguity. | `preflight_pbpb_year.sh 26` now reports holes explicitly; either the parts end up contiguous after recovery, or the 1..N job model needs revisiting. |
 
 **Every placeholder is labelled as such in the code**, with a comment pointing back at this
 doc, so `grep -rn "PLACEHOLDER" ` over the 2026 sites enumerates them.
@@ -555,6 +557,55 @@ threshold — e.g. event 40750, FCal = 0.253569186, canonical bin[61] = 0.253565
 300 000/300 000 canonical). So the rounding is no longer a theoretical divergence: it
 **demonstrably misassigns ~27 events per million by one centrality unit**. Still parked — fixing
 it perturbs the 23/24/25 derivation and is the user's call — but that is the evidence to decide on.
+
+### 2026-09-13 — Hand-off from the skimming session; provisional-state guards added
+
+The skimming session reported the 2026 skim state. Three items changed what this doc and the
+code assert; two of them were results-affecting, and acting on them exposed a bug of my own.
+
+**1. The skim is INCOMPLETE, so 2026 luminosity normalisation is provisional.** A skim bug
+(`TrigRates::ProcessZdc` unconditionally reading a ZDC aux item that exists only under
+`StoreZdc & 2`) threw `SG::ExcBadAuxVar` and killed every job on lumiblocks whose ZDC reco
+produced no RPD data. Several runs are partially skimmed (522200 578/2192, 522949 2291/3044,
+522721 0/890, and four more in flight). **Fixed and committed on the skim side, output-neutral
+— 169/169 branches bit-identical, so 2023/24/25 and pp24 need NO re-skim.** Recovery tasks are
+running. `PbPbMu4SampledLumiNb(26)` returns the **GRL total** 2.62316 nb⁻¹, which is the correct
+denominator only once every run reads 100 %; until then the numerator covers fewer events than
+the denominator describes and a 2026 cross-section is biased **LOW**. Nothing downstream can
+detect this — every histogram fills, every plot renders — so the function now emits a **one-time
+loud warning** (verified: printed once, value unchanged). Registry **P14**.
+
+**2. The part count is NOT 5, and the parts are NOT contiguous.** Parts 1-4 submitted, part 5
+pending resubmission, part 6 = recovery, part 7 to follow; on disk today **parts 1 and 4 only**.
+`file_batch_max{26}` is therefore set to **0 ("unset") on purpose**, so any 2026 NTuple job fails
+immediately with an explicit message telling the operator to set it from disk and run the
+preflight (verified). A guessed maximum is worse than none: too low SILENTLY processes a subset.
+The preflight now also reports **non-contiguity** — the Condor model submits one job per
+`file_batch` in 1..queue and so assumes 1..N with no holes. Registry **P1**, **P15**.
+
+**3. A bug of mine, found while acting on (2): every part-count glob counted `.bak` files.**
+`grid_monitor` renames an old NTUP to `data_pbpb26_part1.bak_<date>.root` before re-downloading,
+and `data_pbpb26_part*.root` **matches that**. My preflight and all four driver year-filters
+would have counted it as a part: measured on the real directory, 3 instead of the true 2. In the
+preflight that inflation could hide a genuine shortfall; in the drivers a year holding only a
+`.bak` would look ready. All of them now match `^data_pbpb<yr>_part[0-9]+\.root$` strictly.
+Verified against the live directory: count 2 (not 3), holes 2 and 3 reported, `file_batch_max`
+disagreement reported, exit 1 — while 2023/24/25 stay clean.
+
+**4. Settled facts recorded** (no action needed beyond this record): run mode `hi2026`;
+AthAnalysis **25.2.90** via `setup_26.sh` (NOT 25.2.89 — that release cannot parse the 2026 L1
+menu, gFEX `gRISTRETTO`); GRL `physics_HI2026_50ns_noIBL.xml`, 35 runs 522041-523437, periods
+J+K; centrality on the **PbPb2023** FCal-E_T thresholds, matching D6; tree `HeavyIonD3PD`;
+branch list identical to `data_pbpb25_*` **plus `muon_match_L1MU3V`** (a bonus — that branch is
+what an L1/HLT trigger-efficiency split needs); same three always-empty branches as 2025
+(`L1TE`, `L1TE24`, `b_HLT_mu4_mu4noL1_L1MU3V`); trigger lists identical to `hi2025`, which is
+what §3a of the Physics Procedure requires for the years to be combinable.
+
+**5. Noted, no action here:** outDS campaign tags are mixed per part (part 2 `v1`, rest `v2`) and
+orphaned `Sep2026.v1.part{1,4,5}` datasets remain registered in Rucio, so 2026 output must never
+be selected by dataset-name pattern. The analysis code already selects only the merged
+`data_pbpb26_part<N>.root` files, so it is unaffected. The merged files currently on disk are
+partial and will be replaced, so no durable artefact may be built on their entry counts.
 
 ## Results & Observations
 

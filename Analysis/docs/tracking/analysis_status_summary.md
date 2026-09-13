@@ -14,8 +14,11 @@ remains.
   - PbPb 2023: 4 parts, 124.5M entries total
   - PbPb 2024: 2 parts, 92.6M entries total
   - PbPb 2025: 6 parts, 260.4M entries total
-  - PbPb 2026: **skim in production** — 5 grid tasks, 35 GRL runs (522041–523437);
-    expected `pbpb_2026/data_pbpb26_part1..5.root`, entry count TBD
+  - PbPb 2026: **skim INCOMPLETE (recovery in progress, 2026-09-13)** — a ZDC aux-item bug
+    killed jobs on lumiblocks with no RPD data; several runs are partially skimmed. Parts are
+    NOT contiguous (1-4 submitted, 5 pending, 6 = recovery, 7 to follow; **on disk: 1 and 4**).
+    **Any 2026 luminosity-normalised number is PROVISIONAL and biased low until every run
+    reads 100 %.** 2023/24/25 and pp24 need NO re-skim (the fix is output-neutral).
   - pp 2024: 12 parts (chunked from 2 grid tasks)
 
 ## PbPb 2026 — status (added 2026-09-10)
@@ -28,7 +31,7 @@ A **fourth** Run-3 Pb+Pb period. It brings the combined Pb+Pb R_AA luminosity fr
 |------|--------|
 | Luminosity table (`lumitable_pbpb_26_HLT_mu4.csv`, 2.62316 nb⁻¹) | **DONE** — run list verified byte-identical to the skim GRL |
 | Lumi + metadata docs (`luminosity/README.md`, `analysis_metadata.md`) | **DONE** |
-| Grid skim (`hi2026`), download, hadd | **IN PROGRESS** — sibling doc `pbpb2026_skim_and_lgd_storage.md` |
+| Grid skim (`hi2026`), download, hadd | **IN PROGRESS — INCOMPLETE, recovery running** (sibling doc `pbpb2026_skim_and_lgd_storage.md`). AthAnalysis 25.2.90. |
 | Analysis-code support (all stages) | **IN PROGRESS** — `pbpb2026_analysis_support.md` |
 | Event-selection cuts file `event_sel_cuts_pbpb_2026.root` | **NOT STARTED** — hard prerequisite: NTuple processing throws without it |
 | NTuple processing / hadd | **BLOCKED** on the skim + the cuts file |
