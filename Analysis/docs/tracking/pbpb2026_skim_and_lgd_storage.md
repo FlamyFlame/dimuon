@@ -1372,6 +1372,37 @@ silently, exactly when nobody is looking.
 The 90 % plateau on parts 1 and 2 is simply their last ~3 000 input files each, not a
 stall — both have live jobs. Year total **63.3 %**.
 
+### 2026-09-13 06:51 — first NTUP merged, but it is PARTIAL; re-download guard added
+
+`grid_monitor` claimed 52491225 and merged it **before the retry could take effect**:
+`data_pbpb26_part1.root`, 160 input files → **16.5 GB, 51 794 516 pre-merge entries**.
+
+**That file is incomplete** — it is the 22 248 / 23 879 version, missing run 522200's
+1 631 files (D5). It must not be treated as final.
+
+Both retries did take: 52491225 and 52501044 are **`running` again**. Two follow-ups were
+needed because `grid_monitor` has no concept of a task gaining files after it was merged:
+
+1. **Part 4 was rescued in time.** Its local state was already `ready`, so grid_monitor
+   would have downloaded *its* partial output on the next cycle. Reset to `pending` so it
+   re-polls PanDA and sees the task is running again.
+2. **`pbpb26_recheck_completed.sh`** (now run every watcher cycle): it snapshots
+   `nfilesfinished` when a task is first seen as `completed`, and if that count later
+   **grows**, resets the grid_monitor state to `pending` so the task is re-downloaded and
+   re-merged. `rucio download` skips files already on disk, so the re-fetch is incremental.
+   Without this, a retried task's recovered events would be permanently absent from the
+   merged NTUP with nothing to indicate it.
+
+The watcher also now distinguishes the two terminal states explicitly, since this is the
+trap that nearly cost us a run:
+`INCOMPLETE: task ... finished with N/M files (K MISSING) -- retry before accepting its
+output` versus `TERMINAL: ... done (complete)`.
+
+Sanity check attempted on the merged file and **correctly refused** — ROOT reported
+`file ... probably not closed ... made a Zombie` because hadd was still writing. Re-run
+once the merge completes; that refusal is the right behaviour and is worth keeping in mind:
+**never validate an NTUP while grid_monitor is still merging it.**
+
 ## Latest Stage
 
 **As of 2026-09-12 ~05:00 UTC.**
