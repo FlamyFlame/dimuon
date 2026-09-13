@@ -194,7 +194,7 @@ be revisited once `~/usatlasdata/dimuon_data/pbpb_2026/` is populated.
 | P12 | 2026 ⟨T_AA⟩ | **2023 Glauber values** — the existing convention, identical to what 2024 and 2025 already do; flagged in `placeholder.md` and required to be disclosed in the note | official 2026 Glauber calibration |
 | P13 | 2026 FCal→centrality thresholds | **PbPb2023 thresholds — REGISTERED USER DECISION 2026-09-10 (D6), no longer a guess.** Same as 2024 and 2025 (whose vectors are byte-identical). Interim, not final. | an official 2026 Glauber centrality calibration; until then nothing to confirm |
 | P14 | Is the 2026 skim complete enough for luminosity normalisation? | **NO — PROVISIONAL.** A skim bug (`TrigRates::ProcessZdc` reading a ZDC aux item that exists only under `StoreZdc & 2`) killed jobs on lumiblocks with no RPD data, so several runs are partially skimmed (e.g. 522200 578/2192, 522721 0/890). Fixed and recovery running. `PbPbMu4SampledLumiNb(26)` returns the **GRL total**, which is the right denominator only once every run reads 100 % — until then a 2026 crossx is biased LOW. A one-time runtime warning now says so. | The skimming session confirms all runs at 100 %; then remove the warning. |
-| P15 | Are the 2026 parts contiguous 1..N? | **NO — parts 1 and 4 today**, with 5 pending and 6/7 to come. The Condor model submits one job per `file_batch` in 1..queue, so it assumes contiguity. | `preflight_pbpb_year.sh 26` now reports holes explicitly; either the parts end up contiguous after recovery, or the 1..N job model needs revisiting. |
+| P15 | Are the 2026 parts contiguous 1..N? | **RESOLVED 2026-09-13 — yes, the final set will be 1..7 with no permanent hole.** Part 5 was killed by a per-site queue cap (its runs live only at RAL+BNL) and is re-queued for automatic release; 6 = recovery for runs 522200+522949; 7 = recovery for the 522355/522384/522408/522546/522721 runs once terminal. So the one-job-per-`file_batch` Condor model stands. **⚠ Part 5 will be the LAST to appear**, so while recovery runs the preflight will legitimately report a transient hole at 5 with 6/7 present — that is expected, not the final state. | Skimming session confirms all 7 present and every run at 100 %; then set the count and run the preflight. |
 
 **Every placeholder is labelled as such in the code**, with a comment pointing back at this
 doc, so `grep -rn "PLACEHOLDER" ` over the 2026 sites enumerates them.
@@ -606,6 +606,47 @@ orphaned `Sep2026.v1.part{1,4,5}` datasets remain registered in Rucio, so 2026 o
 be selected by dataset-name pattern. The analysis code already selects only the merged
 `data_pbpb26_part<N>.root` files, so it is unaffected. The merged files currently on disk are
 partial and will be replaced, so no durable artefact may be built on their entry counts.
+
+### 2026-09-13 — Skimming session reply: contiguity resolved, output-neutrality evidenced
+
+**Contiguity (P15) is resolved: the final set is 1..7, no permanent hole.** Part 5 was not
+abandoned — it was killed when a per-site queue cap starved it (its runs live only at RAL+BNL,
+37 of 20334 files) and it is re-queued for automatic release from the fixed build. 6 = recovery
+for runs 522200+522949 (jediTaskID 52519703); 7 = recovery for 522355/522384/522408/522546/522721
+once those go terminal. The one-job-per-`file_batch` Condor model therefore stands unchanged.
+**Operational caveat worth remembering: part 5 appears LAST**, so during recovery the preflight
+will legitimately report a transient hole at 5 while 6 and 7 exist. That is expected and is not
+the final state — the preflight is a pre-submission gate, and the answer while it fires is
+"wait", not "fix the numbering". Noted in the preflight's own message.
+
+**Output-neutrality of the skim fix is now evidenced, not taken on trust.** I had recorded it as
+an assumption; the skimming session supplied three independent tiers:
+- `StoreZdc = 0` (pp24 and all MC): `ProcessZdc()` is never called at all
+  (`TrigRates.cxx:329` guards it), so the changed code is **unreachable** — pp24 is untouchable
+  by construction.
+- `StoreZdc = 1` (PbPb 23/24/25/26 data): every changed line sits inside `if (m_store_Zdc & 2)`,
+  which is false — a no-op. Empirically, same input AOD pre/post: 377883 bytes both, 317 entries
+  both, **169/169 branches bit-identical** on per-branch element count, sum and sum-of-squares,
+  re-run independently by a reviewer that also checked branch-count symmetry (169 vs 169) to
+  catch a branch present in only one file.
+- `StoreZdc = 3` (never used): differs only where the old code would have thrown a fatal.
+
+So **2023/2024/2025 and pp24 NTUPs are unchanged and their existing crossx / R_AA remain valid.**
+This closes the "taken on trust" flag in the 2026-09-13 hand-off entry above.
+
+**Bias direction — agreed wording, recorded so the two sessions stay consistent.** With the GRL
+total as the denominator while the numerator is missing events from partially-skimmed runs, the
+yield is understated and the cross-section comes out **LOW**. The skimming session's earlier note
+said "biased high", describing the *luminosity* being over-counted relative to the data present.
+Same underlying error, opposite referent; the code divides by L, so **"biased low" is the wording
+that matches the result** and is what the warning in `PbPbSampledLumi.h` and the lumi README say.
+
+**Still blocking, by mutual agreement:** `file_batch_max{26} = 0` and the one-time provisional
+luminosity warning both stay until the skimming session confirms every run at 100 % **with the
+per-run counts**, so the completeness can be verified here rather than taken on assertion.
+Current recovery signal: part 6 running 65 jobs, 12 finished, **0 failed**, all at INFN-CNAF —
+the exact site where 100 % of pre-fix jobs died, which is the cleanest available evidence the
+fix works at scale.
 
 ## Results & Observations
 
