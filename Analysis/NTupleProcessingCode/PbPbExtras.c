@@ -268,9 +268,10 @@ void PbPbExtras<Derived>::InitParamsExtra(){
   // pbpb2026: DELIBERATELY 0 -- "unset", which makes every 2026 file_batch fail the range
   // check below with the explicit message there.  Do NOT restore a guessed number.
   //
-  // The 2026 skim is still recovering from a ZDC aux-item bug, and its parts are NOT a
-  // contiguous 1..N: parts 1-4 were submitted, part 5 is pending resubmission, part 6 is a
-  // recovery task and a part 7 will follow.  On disk today: parts 1 and 4 only.  A guessed
+  // The 2026 skim is still completing.  Expected final set (corrected 2026-09-14): parts
+  // 1..6 -- 1-4 original, 5 pending release, 6 = recovery for runs 522200+522949.  There is
+  // NO part 7: the runs once thought to need one had files merely in flight, not abandoned.
+  // Contiguous, but not all present yet, and part 5 lands LAST.  A guessed
   // maximum is worse than none -- too low SILENTLY processes a subset of the 2026 data, and
   // the Condor model (one job per file_batch in 1..queue) additionally assumes contiguity,
   // which does not hold yet.

@@ -227,7 +227,8 @@ wait_for_cluster_completion() {
 }
 
 # Queue counts per year (must match .sub files)
-# [26]=5 is a STALE PLACEHOLDER (2026-09-13): known wrong, the final set is expected 1..7.
+# [26]=5 is a STALE PLACEHOLDER: known wrong; the final set is expected 1..6 (corrected
+# 2026-09-14 -- a part 7 is NOT coming), unconfirmed until part 3 is terminal.
 # file_batch_max{26} is deliberately 0 ('unset'), which blocks every 2026 job, so this is
 # inert until the count is established -- set all five declarations together.
 # Original note: the 2026 skim was first submitted as 5 grid tasks

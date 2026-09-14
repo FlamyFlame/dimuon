@@ -180,7 +180,7 @@ be revisited once `~/usatlasdata/dimuon_data/pbpb_2026/` is populated.
 
 | # | Item | Placeholder value used | How to confirm |
 |---|------|------------------------|----------------|
-| P1 | Number of 2026 NTUP part files | **UNSET (0) on purpose** in `PbPbExtras.c`, so any 2026 NTuple job fails loudly with an explicit message. The earlier value 5 was wrong: per the skimming session (2026-09-13) parts 1-4 were submitted, **part 5 is pending resubmission, part 6 is a recovery task and a part 7 will follow**. On disk today: parts **1 and 4 only**. | After the skim completes: `ls ~/usatlasdata/dimuon_data/pbpb_2026 \| grep -E '^data_pbpb26_part[0-9]+\.root$'` (strict pattern — a plain glob also matches the `*.bak_<date>.root` re-merge files), set `file_batch_max{26}`, the six `.sub` `queue N`, `QUEUE_COUNTS[26]`, `ScrambGen::NParts(26)` and the plotting part lists, then run `pipelines/preflight_pbpb_year.sh 26`. |
+| P1 | Number of 2026 NTUP part files | **UNSET (0) on purpose** in `PbPbExtras.c`, so any 2026 NTuple job fails loudly with an explicit message. Expected final set **1..6** (corrected 2026-09-14 — an earlier note predicted a part 7; see P15). Not all present yet, and **part 5 lands LAST**. | After the skim completes: `ls ~/usatlasdata/dimuon_data/pbpb_2026 \| grep -E '^data_pbpb26_part[0-9]+\.root$'` (strict pattern — a plain glob also matches the `*.bak_<date>.root` re-merge files), set `file_batch_max{26}`, the six `.sub` `queue N`, `QUEUE_COUNTS[26]`, `ScrambGen::NParts(26)` and the plotting part lists **together**, then run `pipelines/preflight_pbpb_year.sh 26`. |
 | P2 | Total recorded 2026 events | *(unknown)* | entry count of the hadded NTUPs / `data-merging-record.txt` |
 | P3 | 2026 bad-run list | **empty** (no run excluded) — `PbPbBadRuns` has no 26 entry, so the R_AA luminosity is the full GRL total 2.62316 nb⁻¹ | 2026 DQ review. If it becomes non-empty, subtract those runs' `Prescale Corrected` in `PbPbSampledLumi.h`, `make_crossx_factors_pbpb_2026()` AND the lumi README **in the same change** — numerator and denominator must cover the same runs |
 | P4 | What calibration is the 2026 skim's `centrality` branch on? | **Irrelevant to the result** — under D6 the 2023 calibration is enforced by `UpdateCentrality` regardless. (The old entry asked whether the branch is "zero-filled"; that premise was false even for 2025 — see §3c.) | Open `data_pbpb26_part1.root` and check whether the branch is on a **non-2023** calibration. If it is, the override is intentional under D6 and **must be disclosed in the note**, not silently applied. |
@@ -194,7 +194,7 @@ be revisited once `~/usatlasdata/dimuon_data/pbpb_2026/` is populated.
 | P12 | 2026 ⟨T_AA⟩ | **2023 Glauber values** — the existing convention, identical to what 2024 and 2025 already do; flagged in `placeholder.md` and required to be disclosed in the note | official 2026 Glauber calibration |
 | P13 | 2026 FCal→centrality thresholds | **PbPb2023 thresholds — REGISTERED USER DECISION 2026-09-10 (D6), no longer a guess.** Same as 2024 and 2025 (whose vectors are byte-identical). Interim, not final. | an official 2026 Glauber centrality calibration; until then nothing to confirm |
 | P14 | Is the 2026 skim complete enough for luminosity normalisation? | **NO — PROVISIONAL.** A skim bug (`TrigRates::ProcessZdc` reading a ZDC aux item that exists only under `StoreZdc & 2`) killed jobs on lumiblocks with no RPD data, so several runs are partially skimmed (e.g. 522200 578/2192, 522721 0/890). Fixed and recovery running. `PbPbMu4SampledLumiNb(26)` returns the **GRL total**, which is the right denominator only once every run reads 100 % — until then a 2026 crossx is biased LOW. A one-time runtime warning now says so. | The skimming session confirms all runs at 100 %; then remove the warning. |
-| P15 | Are the 2026 parts contiguous 1..N? | **RESOLVED 2026-09-13 — yes, the final set will be 1..7 with no permanent hole.** Part 5 was killed by a per-site queue cap (its runs live only at RAL+BNL) and is re-queued for automatic release; 6 = recovery for runs 522200+522949; 7 = recovery for the 522355/522384/522408/522546/522721 runs once terminal. So the one-job-per-`file_batch` Condor model stands. **⚠ Part 5 will be the LAST to appear**, so while recovery runs the preflight will legitimately report a transient hole at 5 with 6/7 present — that is expected, not the final state. | Skimming session confirms all 7 present and every run at 100 %; then set the count and run the preflight. |
+| P15 | Are the 2026 parts contiguous 1..N? | **Yes — final set 1..6** (corrected 2026-09-14; the predicted part 7 is NOT coming). 1-4 original, 5 pending release, 6 = recovery for runs 522200+522949. The one-job-per-`file_batch` Condor model stands. **⚠ Part 5 lands LAST**, so a transient hole at 5 with 6 present is expected during recovery, not the final state. | Skimming session confirms part 3 terminal and all six present with every run at 100 %. |
 
 **Every placeholder is labelled as such in the code**, with a comment pointing back at this
 doc, so `grep -rn "PLACEHOLDER" ` over the 2026 sites enumerates them.
@@ -647,6 +647,34 @@ per-run counts**, so the completeness can be verified here rather than taken on 
 Current recovery signal: part 6 running 65 jobs, 12 finished, **0 failed**, all at INFN-CNAF —
 the exact site where 100 % of pre-fix jobs died, which is the cleanest available evidence the
 fix works at scale.
+
+### 2026-09-14 — Skimming session corrections: final set is 1..6, not 1..7
+
+**There is no part 7.** The earlier prediction that runs 522355/522384/522408/522546/522721
+would need a second recovery was wrong, and the reason is worth recording because it is a
+general trap in reading grid task state: those runs' missing files were in status **`running`**
+(in flight), not **`ready`** (abandoned). Only `ready` is damage; counting both as missing
+produced the wrong forecast. Part 2 (task 52488080) has since gone `done` at 23 559/23 559 files
+with zero failures, and part 3 is on the same curve. The ZDC crash abandoned files in exactly
+the two runs whose files ended `ready` — 522200 and 522949 — which part 6 already covers.
+
+**Expected final set is therefore `1,2,3,4,5,6`**, contiguous, with part 5 landing last. Every
+site that previously said "1..7" is corrected: `PbPbExtras.c`, `ScrambGen.h`, the six
+`run_pbpb_26*.sub`, both pipelines, and registry P1/P15. This matters beyond tidiness — a reader
+of those comments would otherwise wait for a seventh part that never arrives, or read its
+absence as a failure.
+
+**Still expected-but-unconfirmed** until part 3 reaches terminal, so `file_batch_max{26} = 0`,
+the `ScrambGen::NParts(26)` throw and the provisional luminosity warning all stay. Current state
+reported: part 1 `finished` 22 265/23 879 and part 4 `finished` 20 212/20 965 (both gaps covered
+by part 6, at 1 580/2 367 with zero failed jobs), part 2 `done`, part 3 `running`, part 5 pending
+release.
+
+**Two operational notes, no action here:** the VOMS proxy has been renewed (valid to
+~2026-09-15 03:45 UTC, past the dCache window), so the earlier 20:27 UTC expiry warning is void;
+and grid_monitor is deliberately paused 12:30-21:30 UTC on 2026-09-14 for the dCache outage, so
+an absence of new merged files in that window is intended, not a fault. Grid processing continues
+throughout — only downloads pause.
 
 ## Results & Observations
 

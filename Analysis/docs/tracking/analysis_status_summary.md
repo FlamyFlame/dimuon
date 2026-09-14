@@ -16,7 +16,8 @@ remains.
   - PbPb 2025: 6 parts, 260.4M entries total
   - PbPb 2026: **skim INCOMPLETE (recovery in progress, 2026-09-13)** — a ZDC aux-item bug
     killed jobs on lumiblocks with no RPD data; several runs are partially skimmed. Parts are
-    NOT contiguous (1-4 submitted, 5 pending, 6 = recovery, 7 to follow; **on disk: 1 and 4**).
+    Expected final set **1..6**, contiguous (corrected 2026-09-14 — no part 7); part 5 lands
+    LAST, so a transient hole is expected while recovery runs.
     **Any 2026 luminosity-normalised number is PROVISIONAL and biased low until every run
     reads 100 %.** 2023/24/25 and pp24 need NO re-skim (the fix is output-neutral).
   - pp 2024: 12 parts (chunked from 2 grid tasks)

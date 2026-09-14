@@ -51,7 +51,8 @@ private:
             // Deliberately THROWS rather than returning a number, mirroring
             // file_batch_max{26} = 0 in PbPbExtras.c: the 2026 skim is still in production,
             // the earlier placeholder 5 is known wrong (the final set is expected to be
-            // 1..7), and a too-low count here silently builds T_mix from a SUBSET of the
+            // 1..6; corrected 2026-09-14, no part 7), and a too-low count here silently
+            // builds T_mix from a SUBSET of the
             // data -- TChain::Add only warns on a missing file.
             throw std::runtime_error(
                "ScrambGen::NParts: the Pb+Pb 2026 part count is not established yet. Set it "

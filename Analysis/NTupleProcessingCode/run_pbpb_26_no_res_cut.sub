@@ -5,7 +5,8 @@ error = logs/run_pbpb_26_no_res_cut_batch_$(Process).err
 log = logs/run_pbpb_26_no_res_cut_batch_$(Process).log
 request_memory = 2GB
 # STALE PLACEHOLDER (2026-09-13): 5 is KNOWN WRONG -- the final 2026 set is expected to
-# be parts 1..7 (5 pending release, 6-7 recovery). file_batch_max{26} in PbPbExtras.c is
+# be parts 1..6 (5 pending release, 6 = recovery; expected-but-unconfirmed until part 3 is terminal).
+# file_batch_max{26} in PbPbExtras.c is
 # deliberately 0 ('unset'), which blocks every 2026 job, so this number is inert until
 # the count is established. Set it TOGETHER with the others; preflight_pbpb_year.sh 26
 # enforces that they agree.  Original note:
