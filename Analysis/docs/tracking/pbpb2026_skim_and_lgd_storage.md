@@ -1548,6 +1548,37 @@ fixed build too, so it should not gap at all.
 Monitoring: `INCOMPLETE` now fires **once per (task, missing-count)** rather than every
 cycle — the gap is a standing fact until a recovery part exists, so repeating it was noise.
 
+### 2026-09-14 09:23 — TWO CORRECTIONS: part 7 is NOT needed, and the proxy is no longer a risk
+
+**Correction 1 — the ZDC crash hit only runs 522200 and 522949. Parts 2 and 3 are fine.**
+I predicted parts 2 and 3 would "gap out on the same bug" because they showed 2 809 and
+3 762 missing files. That was wrong, and the distinction I had already written down is
+exactly what I then failed to apply: those files were in status **`running`** (in flight),
+not **`ready`** (abandoned). They simply had not been processed yet.
+
+**52488080 (part 2) is now `done`: 23 559 / 23 559 files, 17 533 jobs, ALL `finished`,
+zero failed.** Runs 522355 / 522384 / 522408 completed normally. Part 3 is following the
+same curve (20 436 / 22 542 and climbing, runs 522546 / 522721 recovering).
+
+So the ZDC bug produced abandoned files in **exactly the two runs** whose files ended in
+`ready` — 522200 and 522949 — which is precisely what `part 6` already covers.
+**A `part 7` recovery is therefore not expected.** Final part set should be **1–6**, still
+contiguous. Watch part 3 to terminal before treating that as settled.
+
+The general rule, now stated properly: **`ready` = abandoned (real gap, needs recovery);
+`running` = merely in flight (no action).** Only `ready` counts as damage.
+
+**Correction 2 — the VOMS proxy has been renewed and no longer expires inside the outage.**
+I flagged repeatedly that it would die at 2026-09-14 20:27 UTC, 33 min before dCache
+returned. It now shows `timeleft 18:22:16` at 09:23 UTC (a new certificate serial,
+`CN=1795274672`, vs the original `CN=88594035`), i.e. valid to **~2026-09-15 03:45 UTC** —
+comfortably past the 21:00 UTC end of the maintenance window. **No proxy gap, and no user
+action needed for post-outage Rucio work.**
+
+Status at the check: part1 `finished` 22 265/23 879 (gap covered by part 6), part2 **`done`
+23 559/23 559**, part3 `running` 20 436/22 542, part4 `finished` 20 212/20 965 (gap covered
+by part 6), part6 recovery `running` 1 580/2 367 with **zero failed jobs**. Disk 680 GB free.
+grid_monitor alive; outage pause armed for 12:30–21:30 UTC today.
 ## Latest Stage
 
 **As of 2026-09-12 ~05:00 UTC.**
