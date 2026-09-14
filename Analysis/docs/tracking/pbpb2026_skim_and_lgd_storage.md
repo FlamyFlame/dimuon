@@ -1579,6 +1579,56 @@ Status at the check: part1 `finished` 22 265/23 879 (gap covered by part 6), par
 23 559/23 559**, part3 `running` 20 436/22 542, part4 `finished` 20 212/20 965 (gap covered
 by part 6), part6 recovery `running` 1 580/2 367 with **zero failed jobs**. Disk 680 GB free.
 grid_monitor alive; outage pause armed for 12:30–21:30 UTC today.
+### 2026-09-14 10:34 — part 5 finally submitted; three bugs of mine found doing it
+
+**My monitor rewrite silently dropped the release call.** The outage-aware rewrite lost
+`bash pbpb26_release_next.sh`, so **part 5 sat unsubmitted for two days** (last release-log
+entry 2026-09-12). Nothing alerted, because the watcher was reporting healthily on
+everything it *did* still check. Restored, with a comment saying why it must not be dropped
+again — it is a no-op when the pending list is empty, so there is no reason to omit it.
+
+**The release gate's absolute job threshold was wrong for recovery tasks.** It required the
+newest task to have `jobs >= 200`, but a recovery task is legitimately small — part 6 is
+2 367 files → 67 jobs — so the gate would have blocked part 5 *forever*. Replaced with a
+relative test: newest task past `scouting`/`pending`, some progress, and `activated` below
+70 % of its jobs.
+
+**pathena REACTIVATES a killed task if the outDS tag is unchanged.** Submitting part 5 with
+the same `Sep2026.v2.part5.` tag produced:
+```
+INFO : reactivation accepted. jediTaskID=52505076 (currently in aborted state)
+       will be re-executed with old and/or new input
+```
+A reactivated task keeps its **original sandbox** — the pre-ZDC-fix library from 09-11 —
+which would have reintroduced the exact bug this whole exercise removed. Caught because the
+release driver treats "no new jediTaskID in the output" as failure and left part 5 in the
+pending list. Killed 52505076 again and resubmitted under **`Sep2026.v3.part5.`** →
+**jediTaskID 52536033**, which the driver now prefers automatically via a `_v3` script
+variant.
+
+**All six parts now exist**: part1 v2 52491225, part2 v1 52488080, part3 v2 52491882,
+part4 v2 52501044, part5 **v3 52536033**, part6 v2 52519703 (recovery). Pending list empty.
+
+### 2026-09-14 — recovery outcome: 97 % recovered, 75 files remain on a SECOND defect
+
+Part 6 finished at **2 292 / 2 367** — it reclaimed **97 %** of the ZDC-lost files
+(522200: 1 580/1 614, 522949: 712/753). **75 files remain**, from 2 failed jobs of 67.
+
+Those 2 jobs died differently: `TrigRatesAlg FATAL Standard std::exception is caught in
+sysExecute` at event ~164 100 of run 522200 — but with **no `SG::ExcBadAuxVar` line**, so it
+is a *different* exception whose message was not logged. This is a second, distinct defect,
+not a regression of the one just fixed (the other 65 jobs on the same runs, same site,
+same build all succeeded).
+
+Scale: 75 files = **0.07 % of the year** (75 / 111 279), versus the 8 938 originally at
+risk. Not yet diagnosed — the exception type is not in the log, so identifying it needs
+either a targeted local run over that lumiblock or raised verbosity. **Flagged as an open
+item, not silently accepted**; the luminosity caveat applies to it at that much reduced
+scale.
+
+**Merged so far** (`~/usatlasdata/dimuon_data/pbpb_2026/`): part1 49.2 GB (partial,
+supersedable), part2 **55.1 GB complete, 58 758 472 entries, sanity-check PASS**, part4
+47.6 GB (partial), part6 5 653 189 entries. Disk 626 GB free.
 ## Latest Stage
 
 **As of 2026-09-12 ~05:00 UTC.**

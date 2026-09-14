@@ -23,8 +23,11 @@ PENDING=$D/pbpb26_pending_parts.txt
 STAMP=$D/pbpb26_last_release.stamp
 LOG=$D/pbpb26_release.log
 ACT_MAX=15000          # backstop only -- see the note above
-NEWEST_MIN_JOBS=200    # the newest task must have scaled past its scout phase
-NEWEST_MIN_PROG=100    # ...and actually be executing, not merely queued
+# Health of the newest task, expressed RELATIVELY.  An absolute job-count floor was wrong:
+# a recovery task is legitimately small (part6 = 2367 files -> 67 jobs) and can never reach
+# a fixed threshold, so the gate blocked part 5 indefinitely.  What actually matters is
+# whether the newest task is past scouting and not sitting on a queue backlog.
+NEWEST_MAX_ACT_FRAC=70 # activated must be < this % of the task's jobs
 COOLDOWN=5400          # 90 min
 MAX_LIVE=3             # release only when at most this many tasks are still live.
                        # Part 5's runs (523023-523437) have DATADISK replicas at only
@@ -87,17 +90,25 @@ except Exception: print(-1,-1,-1)
   fi
 done
 newest_ok=0
-if (( newest_jobs >= NEWEST_MIN_JOBS && newest_prog >= NEWEST_MIN_PROG \
-      && newest_act * 10 < newest_jobs * 7 )); then
-  newest_ok=1
-fi
+newest_st=$(curl -s --max-time 60 "https://bigpanda.cern.ch/task/$newest/?json" 2>/dev/null | python3 -c "
+import sys,json
+try: d=json.load(sys.stdin); print((d.get('task',d)).get('status') or '')
+except Exception: print('')" 2>/dev/null)
+case "$newest_st" in
+  scouting|pending|registered|defined) ;;   # not yet proven to broker -- hold
+  *)
+    if (( newest_jobs > 0 && newest_prog > 0 \
+          && newest_act * 100 < newest_jobs * NEWEST_MAX_ACT_FRAC )); then
+      newest_ok=1
+    fi ;;
+esac
 
 if (( total_act >= ACT_MAX )); then
   log "hold part $next: total activated=$total_act >= $ACT_MAX"
   exit 0
 fi
 if (( newest_ok == 0 )); then
-  log "hold part $next: newest task $newest not scaled/running yet (jobs=$newest_jobs prog=$newest_prog act=$newest_act; need jobs>=$NEWEST_MIN_JOBS prog>=$NEWEST_MIN_PROG act<70%)"
+  log "hold part $next: newest task $newest not scaled/running yet (jobs=$newest_jobs prog=$newest_prog act=$newest_act; status=$newest_st; need non-scouting, prog>0, act<${NEWEST_MAX_ACT_FRAC}% of jobs)"
   exit 0
 fi
 
@@ -108,14 +119,20 @@ source setup_26.sh  >> "$LOG" 2>&1
 lsetup panda        >> "$LOG" 2>&1
 set -u
 cd run_26hi || exit 1
-out=$(bash "grid_sub_part${next}.sh" 2>&1); echo "$out" >> "$LOG"
+# Prefer a _v3 variant when one exists.  pathena REACTIVATES an existing task if the outDS
+# tag is unchanged -- "reactivation accepted ... will be re-executed" -- and a reactivated
+# task keeps its ORIGINAL sandbox, i.e. the pre-ZDC-fix library.  A bumped tag forces a new
+# task with the current build.
+script="grid_sub_part${next}.sh"
+[[ -f "grid_sub_part${next}_v3.sh" ]] && script="grid_sub_part${next}_v3.sh"
+out=$(bash "$script" 2>&1); echo "$out" >> "$LOG"
 tid=$(grep -oE 'new jediTaskID=[0-9]+' <<<"$out" | grep -oE '[0-9]+' | head -1)
 if [[ -z "$tid" ]]; then
   log "SUBMISSION FAILED for part $next -- left in the pending list"
   echo "PbPb2026: submission of part $next FAILED (see $LOG)"
   exit 1
 fi
-echo "$tid user.yuhang.TrigRates.dimuon.PbPb2026data.Sep2026.v2.part${next}._EXT0" >> "$BOOK"
+echo "$tid user.yuhang.TrigRates.dimuon.PbPb2026data.Sep2026.$(grep -oE "Sep2026\\.v[0-9]+" "$script" | head -1 | cut -d. -f2).part${next}._EXT0" >> "$BOOK"
 # NOTE: `grep -v ... > tmp && mv` is WRONG here.  When the removed entry was the LAST
 # one, grep prints nothing and exits 1, so the `&&` short-circuits and the pending list is
 # never truncated -- the part stays queued and gets released a SECOND time once the
