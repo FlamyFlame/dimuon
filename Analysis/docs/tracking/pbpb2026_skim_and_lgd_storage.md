@@ -514,7 +514,16 @@ on the data (`Status == 1` in 0.9999, identical to normal parts). Nothing to und
 - Under the new code: **116 triggered events skipped, all in run 522200 LB 250**; 2 482
   written; exit 0 (old code: dead at event ~3 000, nothing written). Normal file: 0 skips.
 
-**OPEN — luminosity treatment (proposed to user, awaiting ruling):** because the loss is
+**RESOLVED — luminosity treatment (USER RULING 2026-09-15 ~21:30 UTC):** *do NOT exclude LBs
+from the event sample or the luminosity.* The luminosity stays the full GRL value as long as
+the skipped events are a negligible fraction of the whole dataset (order 1e-6). If a run or
+GRL LB has a *considerable* fraction of events with missing ZDC readout, report the run and
+LBs to the user for human verification and escalation to the ZDC experts — no automatic
+action. Consequence: nothing for the analysis-code session to implement; the per-(run,LB)
+skip table from part 7 is a REPORT, not an exclusion list. The paragraph below is the
+superseded proposal, kept for the record.
+
+**(superseded) luminosity treatment as first proposed:** because the loss is
 centrality-biased and sub-LB, a flat lumi correction cannot absorb it. Recommended: exclude
 the affected LBs (at most 246–253 of 522200, 180–186 of 522949) from **both** the event
 sample and the luminosity sum, as a GRL defect would be — a clean, negligible, unbiased loss
@@ -1890,7 +1899,16 @@ untouched (identical pre-existing `meTrk` error counts).
 0.308 % (2025), 0.217 % (2026) — with a `mask == 0` all-zero-ZDC subset of 678 / 25 / 555 /
 507 per 2 M. They pass the D9 guard correctly and pass every downstream ZDC cut, since
 `PassEventSel` never checks `ModuleMask`/`Status`. Cutting them in the 2026 skim alone would
-break year consistency; if cut, it must be uniform downstream. **User decision pending.**
+break year consistency; if cut, it must be uniform downstream.
+
+**USER DECISION 2026-09-15 (~21:50 UTC): do NOT require `ModuleMask == 255`, anywhere.** A
+missing module pulse is normal physics, not a readout fault: a neutron traverses depth L
+without interacting with probability ~e^(−L/λ_int), so it may start showering only in a
+later module (no pulse upstream), and a neutron showering in the first module may have too
+little energy left to fire the fourth. `ModuleMask` (per `ZDCDataAnalyzer::FinishEvent`: bit
+4·side+module set iff the module's pulse passed `armSumInclude()` — pulse found, no fit/χ²/T0
+failure, no LG over/underflow — and was added to the side sum) therefore encodes shower
+topology, not detector health. No skim change, no downstream cut. Closed.
 
 **Part 7 submitted: jediTaskID 52568862**, 244 files (169 of run 522546 lost to SiGNET
 site-disk failures; 75 of runs 522200/522949 lost to the absent-ZDC crashes), built from the
@@ -1947,9 +1965,57 @@ each year once its recovery part is merged, BEFORE the LGD upload.
 `run_pbpb_23*.sub` `queue 4 → 5`, `run_pbpb_25*.sub` `queue 6 → 7`; pp24
 `file_batch_max 12 → 13` (`PPExtras.c`) and `run_pp_24*.sub` `queue 12 → 13`. Every
 downstream PbPb23/PbPb25/pp24 result is stale until rerun with the new parts.
+### 2026-09-15 21:10 — resume: all 4 tasks running; LGD driver made incremental-safe
+
+State on resume: watcher (pid 1536330) and both grid_monitors alive; 52568862 (2026 p7)
+34/244, 52569154 (PbPb23 p5) 56/78, 52569156 (PbPb25 p7) 32/685, 52569161 (pp24 p13)
+scouting. Year 2026 at 111 157 / 111 279.
+
+**Prep for the LGD upload of the recovery parts** (step 3 of the per-task procedure): the
+`pbpb26` key was already in `lgd_migrate_rawskim.sh` (KEEP=""). For the three already-migrated
+years the driver's stages were walked for the incremental case (one new real file among
+symlinks + keeper): `upload` skips registered DIDs; `rule` finds the existing rule; `farm`
+count check holds (PFN count = dataset length = local count once the new file replicates);
+`verify`/`purge` act only on the newly parked file. The one defect was `dataset`: it attached
+the full local list, and rucio rejects the whole call with `DuplicateContent` if any DID is
+already attached → fixed to attach only DIDs absent from `rucio list-files`. Confirmed the
+three datasets are `open: True` (length 4 / 6 / 12) and the rules are `Grouping: DATASET`,
+so a newly attached file is picked up by the existing rule.
+
+Wake mechanism: one harness-owned waiter polling `grid_monitor_state.txt` for the four tasks
+leaving `pending`, plus watcher-log alerts (INCOMPLETE/WEDGED/WATCHDOG/FAILED/TERMINAL).
+
+### 2026-09-15 21:50 — PbPb23 part5 (52569154) MERGED: done 78/78, 0 duplicates, sanity PASS, 0 ZDC skips
+
+- Task **`done`**, 78/78 input files, 0 failed (run 462969 only; LBs 94–500). grid_monitor
+  merged 2 output files → `pbpb_2023/data_pbpb23_part5.root`, **117 025 entries**, 126 MB;
+  `data-merging-record.txt` line appended by grid_monitor.
+- **Duplicate proof** (`check_event_duplicates.C` over parts 1–5, 124 590 975 entries, 60 runs):
+  run 462969 shared by part2 + part5 → 2 641 230 events checked exactly, **0 duplicates**.
+- **Sanity** (`check_skim_output.C` vs local part4): 0 missing / 1 extra branch
+  (`muon_match_L1MU3V`, expected), 0 always-empty of 169, ZDC group fill 0.9997.
+- **D9 accounting**: all 35 run jobs' `payload.stdout` harvested → 35 × `leaving with code 0`,
+  **no `ZDC policy` warning in any job = 0 skipped events**. Clean.
+- **Run-job logs are ephemeral — harvester added.** JEDI's merged `<outDS>..log` tarball holds
+  ONLY the merge job's own files; the run jobs' `payload.stdout` (where the finalize table
+  prints) sit in `panda:panda.um.<outDS>..log.<sub>` datasets that are deleted after
+  log-merge. `~/usatlasdata/dimuon_data/joblogs_sep2026/harvest_runlogs.sh` (setsid, pid in
+  `harvest.pid`, log `harvest.log`) polls every 15 min, downloads every sub-dataset for the
+  four Sep-2026 tasks and extracts `payload.stdout` into `joblogs_sep2026/<task>/stdout/`;
+  exits when all are terminal in `grid_monitor_state.txt`. Part 7's table for the ZDC-expert
+  report comes from there.
+- **LGD DONE**: upload OK (DID check skipped the 4 existing), dataset stage attached exactly 1
+  new DID (5/5), existing rule `f8a4d04f…` went `REPLICATING` → `OK` in 5 min, farm rebuilt
+  (3 existing links re-pointed identically, keeper part4 untouched), part5 verified through the
+  symlink (125 907 372 bytes, 117 025 entries), parked original purged 21:49 UTC. PbPb23 now:
+  parts 1,2,3,5 on LGD via symlinks + part4 local keeper.
+- **Hand-off file** for the analysis session: `docs/tracking/_handoff_skim_to_analysis_2026-09-15.md`
+  (accumulating; PbPb23 row DONE, PbPb25/pp24/PbPb26 rows PENDING; corrects the sibling doc's
+  "no part 7"; carries both user rulings).
+
 ## Latest Stage
 
-**As of 2026-09-15 18:20 UTC.**
+**As of 2026-09-15 21:55 UTC.** (PbPb23 part5 DONE end-to-end. Three grid tasks running: 2026 p7 + recovery PbPb25 p7 / pp24 p13; per-task procedure on merge: dup-check → sanity-check → LGD upload → bookkeeping → hand-off. LGD driver ready for incremental parts.)
 
 **DONE — storage (steps 7–8).** 907 GB on `BNL-OSG2_LOCALGROUPDISK`, 24 files, all
 byte/entry-verified through the symlink farms (re-verified after the 09-14 dCache upgrade),
@@ -1976,14 +2042,9 @@ restarts grid_monitor only when work is pending, guards re-downloads, and report
    space. Needs `pbpb26` group added to the migration driver's keeper table.
 4. Close this doc.
 
-**TWO DECISIONS PENDING FROM THE USER** (both physics-affecting; recorded in D9):
-- **(a) Luminosity treatment of the ZDC-failure LBs** — at most 6 LBs (522200: 250/252/253;
-  522949: 182/185/186), where 3.8 % of events (strongly central) have no ZDC and are now
-  skipped. Recommendation: exclude these LBs from **both** events and luminosity, as a GRL
-  defect would be. Exact per-LB counts come from part 7's finalize table.
-- **(b) The cross-year `ModuleMask ≠ 255` population** (0.1–0.3 % of events in every year,
-  ZDC aux present but incomplete or all-zero; passes every ZDC cut). Downstream, all-years
-  decision — e.g. require `zdc_ZdcModuleMask == 255` in `PassEventSel`. Not a skim change.
+**Both user decisions taken (2026-09-15):** (a) luminosity unchanged, no LB exclusion; report
+run/LBs with a considerable missing-ZDC fraction for human escalation (D9); (b) no
+`ModuleMask == 255` requirement — missing module pulses are shower physics (D9 addendum).
 
 Also worth reporting to the ZDC/HI-reco experts: in both affected runs the per-event ZDC
 reconstruction failure begins at the tail of the RPD-less window (522200: RPD absent
