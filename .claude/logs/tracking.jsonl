@@ -152,3 +152,5 @@
 {"event":"end","command":"review-analysis-code","status":"escalated","iterations":4,"timestamp":"2026-09-11T00:36:37-04:00","criticals":0,"warnings":0,"unresolved":["round-3 findings fixed; optional round-4 confirmation not run"],"slug":"pbpb26-year-support"}
 {"event":"start","command":"review-analysis-code","task":"Fix SG::ExcBadAuxVar crash on cosDeltaReactionPlaneAngle in TrigRates::ProcessZdc","slug":"zdc-rpd-auxvar-crash","timestamp":"2026-09-13T15:39:21Z"}
 {"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-09-13T15:55:56Z","criticals":0,"warnings":0,"slug":"zdc-rpd-auxvar-crash"}
+{"event":"start","command":"review-analysis-code","task":"ZDC skip policy in TrigRates","slug":"zdc-skip-policy","timestamp":"2026-09-15T17:25:02Z"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":2,"timestamp":"2026-09-15T18:06:18Z","criticals":0,"warnings":0,"slug":"zdc-skip-policy"}

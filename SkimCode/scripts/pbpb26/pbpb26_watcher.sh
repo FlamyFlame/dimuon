@@ -13,7 +13,17 @@ say "watcher started pid=$$"
 while true; do
   gp=$(cat $D/pbpb26_grid_monitor.pid 2>/dev/null)
   if [ -z "$gp" ] || ! kill -0 "$gp" 2>/dev/null; then
-    say "WATCHDOG: grid_monitor was dead -- $(bash $D/pbpb26_grid_monitor_start.sh 2>&1 | tail -1)"
+    # Only restart while there is something left to download.  grid_monitor exits by
+    # itself once every task in its list is terminal ("All tasks resolved"); restarting it
+    # then just makes it exit again every cycle.  A task not yet 'completed'/'failed' in
+    # the state file, or a task in the bookkeeping file with no state entry (newly
+    # submitted), means there IS work.
+    if grep -vE '^[[:space:]]*#|^[[:space:]]*$' $D/sep2026_pbpb26_skim.txt | awk '{print $1}' | while read -r t; do
+         st=$(grep "^$t " $D/grid_monitor_state.txt | awk '{print $2}')
+         [ "$st" != "completed" ] && [ "$st" != "failed" ] && echo work
+       done | grep -q work; then
+      say "WATCHDOG: grid_monitor was dead with work pending -- $(bash $D/pbpb26_grid_monitor_start.sh 2>&1 | tail -1)"
+    fi
   fi
   bash $D/pbpb26_recheck_completed.sh 2>/dev/null | while read -r l; do say "$l"; done
   bash $D/pbpb26_release_next.sh 2>&1 | grep -E "released part|FAILED" | while read -r l; do say "$l"; done

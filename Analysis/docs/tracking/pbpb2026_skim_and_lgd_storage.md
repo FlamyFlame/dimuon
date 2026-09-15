@@ -474,6 +474,54 @@ use the reaction plane, which this analysis does not. It was never absent in 202
 (the same unconditional read would have crashed those skims too), so it is a 2026-specific
 change in the RPD reconstruction.
 
+### D9 — ZDC policy (USER DECISION 2026-09-15): skip events with missing required ZDC; never throw
+
+User ruling, verbatim in substance: *"StoreZdc=1 → CalibEnergy/Status/Time/PreSampleAmp
+absent ⇒ skip the event (not written), RPD quantities never read, and code never throws is
+the correct behavior. If ZDC quantities are missing, the event should NOT be saved."*
+
+Implemented in `TrigRates::ProcessZdc(bool& zdc_ok)` + `execute()`:
+- **Required** (bit 1, always on when `ProcessZdc` runs): `CalibEnergy`, `CalibEnergyErr`,
+  `UncalibSum`, `UncalibSumErr`, `AverageTime`, `Status`, `ModuleMask` on each side, and
+  `PreSampleAmp` on each module. Any absent → `zdc_ok = false` → `execute()` returns
+  **before `Fill()`**; the event is not written.
+- **RPD** (bit 2): never read under `StoreZdc = 1` — the whole block is inside
+  `if(m_store_Zdc & 2)`. If a future config enables it, the same rule applies.
+- **Never throws.** The one retained `StatusCode::FAILURE` is a *missing container*
+  (`ZdcSums` / `ZdcModules` absent): a configuration/input error, not an event condition —
+  an empty skim written silently would be the worse failure. User can override.
+- **Accounting**: skipped events counted by `(run, LB)`; `WARNING` on first skip per LB;
+  per-LB table at `finalize()`.
+
+**Why skip rather than write-with-flag:** `PbPbExtras.c::PassEventSel` reads
+`zdc_ZdcEnergy`/`ZdcTime`/`PreSampleAmp` directly and never checks `zdc_ZdcStatus`, so an
+event written with the reset sentinels would **pass** every ZDC cut. Not writing is the only
+safe granularity.
+
+**Correction of a misstatement the user reacted to:** part 6 did **not** save any event
+lacking `CalibEnergy`. The earlier fix guarded only RPD reads; the `CalibEnergy` read stayed
+unguarded, so every job that met such an event crashed before `Fill()` and wrote nothing
+(that is the 2 failed jobs → 75 files). Part 6's 2 292 files contain zero of them — verified
+on the data (`Status == 1` in 0.9999, identical to normal parts). Nothing to undo.
+
+**What the skipped events ARE** (probe on the crashing file, 6 302 events, LB 250):
+- 237 events (3.8 %) have **every** ZDC quantity absent on both sides — `CalibEnergy`,
+  `UncalibSum`, `AverageTime`, `Status`, `ModuleMask` — while the `ZdcSums` container is
+  present (3 entries). A total event-level ZDC reconstruction failure.
+- They are **strongly central**: FCal E_T mean 4.26 TeV (p10 **3.16**) vs normal 3.16 TeV
+  (p10 0.98); nTrk mean 3 900 (p10 2 440) vs 2 730 (p10 713). The dropped events' 10th
+  percentile sits above the normal median.
+- Under the new code: **116 triggered events skipped, all in run 522200 LB 250**; 2 482
+  written; exit 0 (old code: dead at event ~3 000, nothing written). Normal file: 0 skips.
+
+**OPEN — luminosity treatment (proposed to user, awaiting ruling):** because the loss is
+centrality-biased and sub-LB, a flat lumi correction cannot absorb it. Recommended: exclude
+the affected LBs (at most 246–253 of 522200, 180–186 of 522949) from **both** the event
+sample and the luminosity sum, as a GRL defect would be — a clean, negligible, unbiased loss
+of ~12 LBs instead of a small biased hole. The part-7 finalize tables will give the exact
+per-LB skip counts. To be implemented as a documented LB list handed to the analysis-code
+agent (owner of the lumi sum), not as a skim change.
+
 ## Implementation Plan
 
 | # | Step | Status |

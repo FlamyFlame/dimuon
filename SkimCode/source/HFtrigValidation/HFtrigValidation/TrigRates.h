@@ -1,5 +1,6 @@
 #ifndef __TrigRates_H__
 #define __TrigRates_H__
+#include <map>
 #include "HFtrigValidation/AthenaVersion.h"
 
 #include "AthenaBaseComps/AthAlgorithm.h"
@@ -145,7 +146,13 @@ private:
    int         m_store_Zdc     = 0;     //bitflag: 1=basic ZDC, 2=RPD/centroid info, 3=both
    std::string m_ZdcAuxSuffix;          //AuxSuffix for Zdc (e.g. "RP" when reprocessing)
    void       InitZdc   (TTree *l_OutTree);
-   StatusCode ProcessZdc();
+   // Fills the ZDC branches.  Sets zdc_ok=false -- WITHOUT throwing or failing -- when a
+   // ZDC quantity this configuration STORES is absent from the event; execute() then
+   // skips the event (it is not written).  See the policy comment at the definition.
+   StatusCode ProcessZdc(bool& zdc_ok);
+   // per-(run,LB) count of events skipped for missing required ZDC data; reported at finalize
+   std::map<std::pair<unsigned int,unsigned int>, unsigned long> m_zdc_skipped_by_lb;
+   unsigned long m_zdc_skipped_total = 0;
 
    bool        m_store_Vtx           = true; //=true then store vertex info           
    std::string m_vtx_container_key;

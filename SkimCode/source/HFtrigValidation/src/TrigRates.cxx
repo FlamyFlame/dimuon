@@ -326,7 +326,19 @@ StatusCode TrigRates::execute(){
 
    if(m_is_evgen==false){
      if(m_store_EventInfo>0)    CHECK(ProcessEventInfo   ());
-     if(m_store_Zdc        )    CHECK(ProcessZdc         ());
+     if(m_store_Zdc        ){
+       // ZDC policy: an event whose REQUIRED ZDC data is absent is NOT written.  The
+       // downstream PbPb event selection reads zdc_ZdcEnergy / ZdcTime / PreSampleAmp
+       // directly and never checks zdc_ZdcStatus, so an event written with the reset
+       // sentinels (all 0) would PASS every ZDC cut -- zdc_tot=0 is below the banana,
+       // |time|=0 is inside the box, preamp 0 is under threshold.  Not writing it is the
+       // only safe granularity.  Never throw/fail here: that kills the whole file and
+       // discards the good events around the bad ones (96% of the file in the observed
+       // case, data26_hi run 522200 LB 250).
+       bool zdc_ok = true;
+       CHECK(ProcessZdc(zdc_ok));
+       if(!zdc_ok) return StatusCode::SUCCESS;
+     }
      if(m_store_tracks     )    CHECK(ProcessTracks      ());
      if(m_store_pix_tracks )    CHECK(ProcessPixTracks   ());
      if(m_store_Vtx        )    CHECK(ProcessVertex      ());
@@ -356,6 +368,13 @@ StatusCode TrigRates::execute(){
 StatusCode TrigRates::finalize(){
   delete m_dimuMatchModule;
   m_dimuMatchModule = nullptr;
+  if(m_zdc_skipped_total>0){
+    ATH_MSG_WARNING("ZDC policy: " << m_zdc_skipped_total
+                    << " event(s) NOT written because required ZDC data was absent, by (run, LB):");
+    for(const auto& kv : m_zdc_skipped_by_lb)
+      ATH_MSG_WARNING("   run " << kv.first.first << "  LB " << kv.first.second
+                      << "  skipped " << kv.second);
+  }
   return StatusCode::SUCCESS;
 }
 
@@ -807,7 +826,8 @@ void TrigRates::InitZdc(TTree *l_OutTree){
 #endif
 }
 
-StatusCode TrigRates::ProcessZdc(){
+StatusCode TrigRates::ProcessZdc(bool& zdc_ok){
+  zdc_ok = true;
 #if defined(HF_IS_R25)
   t_ZdcModuleMask              = 0;
   t_cosDeltaReactionPlaneAngle = 0;
@@ -835,6 +855,12 @@ StatusCode TrigRates::ProcessZdc(){
   }
 
   std::string auxSuffix = m_ZdcAuxSuffix;
+  // Completeness at the ENTRY level, not just the aux level: an empty ZdcSums, a missing
+  // side, or missing ZdcModules entries would otherwise leave the reset sentinels in
+  // place and the event would be written -- exactly what this policy forbids.  Good
+  // events always carry both sides and all 8 modules (ModuleMask==255 in every normal
+  // event checked), so requiring them cannot drop good data.
+  unsigned sides_seen = 0, mods_seen = 0;
   for(const auto* zdcSum : *zdcSums){
     int zdcside = zdcSum->zdcSide();
     if(zdcside == 0){
@@ -851,24 +877,44 @@ StatusCode TrigRates::ProcessZdc(){
         const std::string k = "cosDeltaReactionPlaneAngle" + auxSuffix;
         if(zdcSum->isAvailable<float>(k))
           t_cosDeltaReactionPlaneAngle = zdcSum->auxdataConst<float>(k);
+        else { zdc_ok = false; break; }
       }
       continue;
     }
     const int iside = (zdcside > 0) ? 1 : 0;
-    t_ZdcEnergy    [iside] = zdcSum->auxdataConst<float       >("CalibEnergy"   + auxSuffix);
-    t_ZdcEnergyErr [iside] = zdcSum->auxdataConst<float       >("CalibEnergyErr"+ auxSuffix);
-    t_ZdcAmp       [iside] = zdcSum->auxdataConst<float       >("UncalibSum"    + auxSuffix);
-    t_ZdcAmpErr    [iside] = zdcSum->auxdataConst<float       >("UncalibSumErr" + auxSuffix);
-    t_ZdcTime      [iside] = zdcSum->auxdataConst<float       >("AverageTime"   + auxSuffix);
-    t_ZdcStatus    [iside] = zdcSum->auxdataConst<unsigned int>("Status"        + auxSuffix);
-    t_ZdcModuleMask       += (zdcSum->auxdataConst<unsigned int>("ModuleMask"   + auxSuffix) << (4 * iside));
+    // REQUIRED quantities (StoreZdc bit 1 -- always on when ProcessZdc runs).  If any is
+    // absent the event's ZDC is unusable for the analysis' event selection: mark the
+    // event to be skipped.  Observed in data26_hi (run 522200 LB 250): CalibEnergy absent
+    // for 3.8% of events while the ZdcSums container itself was present -- an event-level
+    // reconstruction failure, not a missing container.
+    const std::string kE  ="CalibEnergy"   +auxSuffix, kEe="CalibEnergyErr"+auxSuffix,
+                      kA  ="UncalibSum"    +auxSuffix, kAe="UncalibSumErr" +auxSuffix,
+                      kT  ="AverageTime"   +auxSuffix, kS ="Status"        +auxSuffix,
+                      kM  ="ModuleMask"    +auxSuffix;
+    if(!( zdcSum->isAvailable<float>(kE)  && zdcSum->isAvailable<float>(kEe)
+       && zdcSum->isAvailable<float>(kA)  && zdcSum->isAvailable<float>(kAe)
+       && zdcSum->isAvailable<float>(kT)  && zdcSum->isAvailable<unsigned int>(kS)
+       && zdcSum->isAvailable<unsigned int>(kM) )){
+      zdc_ok = false;
+      break;
+    }
+    t_ZdcEnergy    [iside] = zdcSum->auxdataConst<float       >(kE);
+    t_ZdcEnergyErr [iside] = zdcSum->auxdataConst<float       >(kEe);
+    t_ZdcAmp       [iside] = zdcSum->auxdataConst<float       >(kA);
+    t_ZdcAmpErr    [iside] = zdcSum->auxdataConst<float       >(kAe);
+    t_ZdcTime      [iside] = zdcSum->auxdataConst<float       >(kT);
+    t_ZdcStatus    [iside] = zdcSum->auxdataConst<unsigned int>(kS);
+    t_ZdcModuleMask       += (zdcSum->auxdataConst<unsigned int>(kM) << (4 * iside));
+    sides_seen |= 1u << iside;
     if(m_store_Zdc & 2){
-      // Same failure mode as the zdcSide==0 read above: a run reconstructed without RPD
-      // data has none of these aux items, and an unguarded auxdataConst throws
-      // SG::ExcBadAuxVar (FATAL).  Leave the reset sentinel (0) in place when absent.
+      // RPD/centroid group -- only read when this configuration STORES it (bit 2; no data
+      // year enables it).  Same rule as above: a stored quantity that is absent makes the
+      // event unusable for whatever the RPD branches are meant for, so skip the event
+      // rather than write sentinels.  Never throw.
       auto getF = [&](const char* n, float& dst){
         const std::string k = std::string(n) + auxSuffix;
         if(zdcSum->isAvailable<float>(k)) dst = zdcSum->auxdataConst<float>(k);
+        else zdc_ok = false;
       };
       getF("RpdSubAmpSum"        , t_RpdSubAmpSum        [iside]);
       getF("xDetCentroid"        , t_xDetCentroid        [iside]);
@@ -884,31 +930,56 @@ StatusCode TrigRates::ProcessZdc(){
       if(zdcSum->isAvailable<std::vector<float>>(kx)){
         const std::vector<float>& rx = zdcSum->auxdataConst<std::vector<float>>(kx);
         for(size_t r=0; r<rx.size() && r<4; ++r) t_xDetRowCentroid[iside][r] = rx[r];
-      }
+      } else zdc_ok = false;
       const std::string ky = "yDetColCentroid" + auxSuffix;
       if(zdcSum->isAvailable<std::vector<float>>(ky)){
         const std::vector<float>& ry = zdcSum->auxdataConst<std::vector<float>>(ky);
         for(size_t c=0; c<ry.size() && c<4; ++c) t_yDetColCentroid[iside][c] = ry[c];
-      }
+      } else zdc_ok = false;
       const std::string kcs = "centroidStatus" + auxSuffix;
       if(zdcSum->isAvailable<unsigned int>(kcs))
         t_centroidStatus[iside] = zdcSum->auxdataConst<unsigned int>(kcs);
+      else zdc_ok = false;
+      if(!zdc_ok) break;
     }
   }
 
-  // Module-level quantities (PreSampleAmp) — read from ZdcModules container
+  if(zdc_ok && sides_seen != 3u) zdc_ok = false;   // both sides must be present
+
+  // Module-level quantities (PreSampleAmp) — read from ZdcModules container.
+  // PreSampleAmp is REQUIRED (event-selection Cut 3), so its absence also skips the event.
   const xAOD::ZdcModuleContainer *zdcModules = nullptr;
-  if(evtStore()->retrieve(zdcModules, "ZdcModules").isFailure()){
-    ATH_MSG_ERROR(" Could not retrieve ZdcModules");
-    return StatusCode::FAILURE;
+  if(zdc_ok){
+    if(evtStore()->retrieve(zdcModules, "ZdcModules").isFailure()){
+      ATH_MSG_ERROR(" Could not retrieve ZdcModules");
+      return StatusCode::FAILURE;
+    }
+    const std::string kP = "PreSampleAmp" + auxSuffix;
+    for(const auto* zdcMod : *zdcModules){
+      const int zdcside = zdcMod->zdcSide();
+      if(zdcside == 0) continue; // skip global sum entries
+      const int iside = (zdcside > 0) ? 1 : 0;
+      const int imod  = zdcMod->zdcModule();
+      if(imod < 0 || imod >= 4) continue;
+      if(!zdcMod->isAvailable<float>(kP)){ zdc_ok = false; break; }
+      t_ZdcModulePreSampleAmp[iside][imod] = zdcMod->auxdataConst<float>(kP);
+      mods_seen |= 1u << (4 * iside + imod);
+    }
+    if(zdc_ok && mods_seen != 0xFFu) zdc_ok = false;   // all 8 modules must be present
   }
-  for(const auto* zdcMod : *zdcModules){
-    const int zdcside = zdcMod->zdcSide();
-    if(zdcside == 0) continue; // skip global sum entries
-    const int iside = (zdcside > 0) ? 1 : 0;
-    const int imod  = zdcMod->zdcModule();
-    if(imod < 0 || imod >= 4) continue;
-    t_ZdcModulePreSampleAmp[iside][imod] = zdcMod->auxdataConst<float>("PreSampleAmp" + auxSuffix);
+
+  if(!zdc_ok){
+    // Account for the skipped event by (run, LB) so the loss is visible and auditable at
+    // finalize, and so the luminosity treatment of the affected LBs can be decided from
+    // real numbers rather than assumed.
+    const xAOD::EventInfo* ei = nullptr;
+    if(evtStore()->retrieve(ei, m_EventInfo_key).isSuccess() && ei){
+      const auto key = std::make_pair(ei->runNumber(), ei->lumiBlock());
+      if(m_zdc_skipped_by_lb[key]++ == 0)
+        ATH_MSG_WARNING("ZDC policy: run " << ei->runNumber() << " LB " << ei->lumiBlock()
+                        << ": first event skipped for missing required ZDC data (more in this LB are counted silently)");
+    }
+    ++m_zdc_skipped_total;
   }
 
   return StatusCode::SUCCESS;

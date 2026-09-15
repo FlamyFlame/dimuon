@@ -238,10 +238,26 @@ HITight); `[4–7]` no pt cut.
 | `1`   | Basic: `zdc_ZdcAmp[2]`, `zdc_ZdcAmpErr[2]`, `zdc_ZdcEnergy[2]`, `zdc_ZdcEnergyErr[2]`, `zdc_ZdcTime[2]`, `zdc_ZdcStatus[2]`, `zdc_ZdcModuleMask`, `zdc_ZdcModulePreSampleAmp[2][4]` |
 | `1+2` | + RPD / centroid: `zdc_RpdSubAmpSum[2]`, `zdc_xDetCentroid[2]`, `zdc_yDetCentroid[2]`, `zdc_xCentroid[2]`, `zdc_yCentroid[2]`, `zdc_xDetCentroidUnsub[2]`, `zdc_yDetCentroidUnsub[2]`, `zdc_xDetRowCentroidStdev[2]`, `zdc_yDetColCentroidStdev[2]`, `zdc_reactionPlaneAngle[2]`, `zdc_cosDeltaReactionPlaneAngle`, `zdc_centroidStatus[2]` |
 
-Array index: `[0]` = A-side (`zdcSide < 0`), `[1]` = C-side (`zdcSide > 0`).
+Array index: `[0]` = **C**-side (`zdcSide < 0`), `[1]` = **A**-side (`zdcSide > 0`) —
+`iside = (zdcSide > 0) ? 1 : 0` in `ProcessZdc()`, matching the project convention
+(`FCal_Et_P` = A, `FCal_Et_N` = C).
+
+**ZDC data-quality policy (since 2026-09-15, tracking doc D9):** an event whose *required*
+ZDC data is absent is **not written**. With `StoreZdc = 1` that means: `ZdcSums` must carry
+both sides, each with `CalibEnergy`, `CalibEnergyErr`, `UncalibSum`, `UncalibSumErr`,
+`AverageTime`, `Status`, `ModuleMask`; `ZdcModules` must carry all 8 modules, each with
+`PreSampleAmp`. Anything missing → the event is skipped (never thrown on), counted by
+`(run, LB)`, and a per-LB table is printed as a `WARNING` at `finalize()`. Rationale: the
+downstream PbPb event selection reads `zdc_ZdcEnergy`/`ZdcTime`/`PreSampleAmp` directly and
+never checks `zdc_ZdcStatus`, so a zero-filled event would *pass* every ZDC cut. Observed in
+`data26_hi` run 522200 LB 250: 3.8 % of events lack every ZDC aux item on both sides while
+the container is present — a per-event reconstruction failure. RPD quantities (bit 2) are
+never read unless bit 2 is set. A missing *container* (`ZdcSums`/`ZdcModules` absent
+entirely) is still a hard failure — that is a configuration/input error, not an event
+condition.
 
 Current setting:
-- HI data modes (`hi2023/24/25`): `StoreZdc = 1`.
+- HI data modes (`hi2023/24/25/26`): `StoreZdc = 1`.
 - pp modes and Pythia fullsim: `StoreZdc = 0`.
 - HIJING-overlay MC: `StoreZdc = 0` — the overlay AOD has no
   `ZdcSums`/`ZdcModules` containers even though `is_HION = True`.
