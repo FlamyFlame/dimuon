@@ -1845,42 +1845,43 @@ carry the per-(run,LB) skipped-event table for the luminosity decision.
 Year at this point: **111 035 / 111 279 = 99.8 %** processed; part 7 covers the rest.
 ## Latest Stage
 
-**As of 2026-09-12 ~05:00 UTC.**
+**As of 2026-09-15 18:20 UTC.**
 
-**DONE — storage (steps 7–8).** All four raw-skim groups are on `BNL-OSG2_LOCALGROUPDISK`
-with same-path symlink farms, every file verified byte- and entry-exact against an
-independent pre-migration baseline, and the NTuple processing smoke-tested against the
-farm. `pp_2024` + `pbpb_2025` originals purged (672 GB reclaimed, **156.6 → 828.2 GB real
-free**, 90 % → 46 % of quota). `pbpb_2023` + `pbpb_2024` originals (168 GB) remain parked
-as the hedge across the **2026-09-14 dCache upgrade**; purge them after a post-outage
-re-verify. One real keeper per period kept local.
+**DONE — storage (steps 7–8).** 907 GB on `BNL-OSG2_LOCALGROUPDISK`, 24 files, all
+byte/entry-verified through the symlink farms (re-verified after the 09-14 dCache upgrade),
+smoke-tested, **all originals purged** (~840 GB reclaimed; GPFS 50 % of quota). 68 GB of
+keepers remain by design — note the pbpb24 keeper is 51.9 GB (period has only 2 files).
 
-**IN PROGRESS — skim (steps 9–10).** 4 of 5 parts live, **34 209 / 111 279 files = 30.7 %**
-of the year:
+**DONE — skim config, test, submission (steps 1–6).** `hi2026` on AthAnalysis **25.2.90**
+(forced by the 2026 L1 menu; proven output-neutral vs 25.2.89). Two skim-code defects found
+and fixed via review: the unguarded RPD read (D6, output-neutral) and the D9 ZDC policy
+(skip events with absent required ZDC data; never throw).
 
-| task | part | % | note |
-|---|---|---:|---|
-| 52491225 | 1 (v2) | 40 | throttled (transfer pacing) |
-| 52488080 | 2 (v1) | 60 | furthest along; queue fully drained |
-| 52491882 | 3 (v2) | 20 | |
-| 52501044 | 4 (v2) | 30 | |
-| — | 5 | — | **un-submitted**, re-queued behind the `MAX_LIVE=3` gate (D4) |
+**IN PROGRESS — step 9/10.** Six of seven parts merged and validated on disk
+(`data_pbpb26_part{1,2,3,4,5,6}.root`); year at **99.8 %**. **Part 7 (52568862)** running:
+244 files, the last gaps. The standalone watcher (`pbpb26_watcher.sh`, setsid, pid file)
+restarts grid_monitor only when work is pending, guards re-downloads, and reports to
+`pbpb26_watcher.log`.
 
-**Next actions, in order:**
-1. Part 5 auto-releases when a live task reaches a terminal state (gate: ≤ 3 live).
-2. `grid_monitor` (setsid, PID `pbpb26_grid_monitor.pid`, watchdog-restarted) downloads →
-   hadds → validates each completed task into `~/usatlasdata/dimuon_data/pbpb_2026/` as
-   `data_pbpb26_part<N>.root`.
-3. **Sanity-check the first downloaded NTUP** with
-   `SkimCode/scripts/check_skim_output.C` against `data_pbpb25_part6.root` — expect a
-   branch list identical to 2025 **plus `muon_match_L1MU3V`**, and exactly three
-   always-empty branches (`L1TE`, `L1TE24`, `b_HLT_mu4_mu4noL1_L1MU3V`).
-4. Purge the parked `pbpb_2023`/`pbpb_2024` originals after the outage + re-verify.
-5. Step 11 (migrate the 2026 NTUPs to LGD) is **no longer forced by space** — the skim is
-   expected to be ~190 GB against 828 GB free — but is still worth doing for consistency,
-   after the outage and a proxy renewal.
+**Remaining, in order:**
+1. Part 7 completes → grid_monitor downloads/merges → `data_pbpb26_part7.root`; sanity-check
+   it; read its job finalize logs for the **per-(run,LB) skipped-event table**.
+2. Confirm every run then reads 100 % (minus the D9-skipped events) and tell the analysis
+   session so it can lift its provisional-luminosity warning and set `file_batch_max{26}=7`.
+3. Step 11 (migrate the 2026 NTUPs, ~350 GB, to LGD) — optional for consistency; not forced by
+   space. Needs `pbpb26` group added to the migration driver's keeper table.
+4. Close this doc.
 
-**Blocking external dependency:** the VOMS proxy expires **2026-09-14 20:27 UTC**, 33 min
-*before* the dCache maintenance window closes. Reads through the symlink farm need no
-proxy, but any Rucio operation after that point (including step 11) needs the user to
-renew it — the agent cannot, it requires a passphrase.
+**TWO DECISIONS PENDING FROM THE USER** (both physics-affecting; recorded in D9):
+- **(a) Luminosity treatment of the ZDC-failure LBs** — at most 6 LBs (522200: 250/252/253;
+  522949: 182/185/186), where 3.8 % of events (strongly central) have no ZDC and are now
+  skipped. Recommendation: exclude these LBs from **both** events and luminosity, as a GRL
+  defect would be. Exact per-LB counts come from part 7's finalize table.
+- **(b) The cross-year `ModuleMask ≠ 255` population** (0.1–0.3 % of events in every year,
+  ZDC aux present but incomplete or all-zero; passes every ZDC cut). Downstream, all-years
+  decision — e.g. require `zdc_ZdcModuleMask == 255` in `PassEventSel`. Not a skim change.
+
+Also worth reporting to the ZDC/HI-reco experts: in both affected runs the per-event ZDC
+reconstruction failure begins at the tail of the RPD-less window (522200: RPD absent
+105–253, ZDC fails from 250; 522949: RPD absent 117–186, ZDC fails from 182) — it looks
+like a reconstruction-configuration transition, not two independent detector incidents.
