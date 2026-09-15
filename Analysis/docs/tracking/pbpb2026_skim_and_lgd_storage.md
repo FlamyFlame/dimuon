@@ -562,6 +562,17 @@ the full GRL luminosity while the numerator is missing these files. The bias is 
 structured** if any of it is the ZDC case, and in any event it must be either recovered or
 subtracted from the luminosity — it cannot be left as an unaccounted hole.
 
+**Probe result (direct xAOD read of abandoned files; job logs had aged off):**
+```
+PbPb25 part1  run 510510 lb166 (5648 events): ALL  noRPD + ZDC present   -> D6 case: good events lost
+PbPb25 part2  run 511035 lb300 (6404 events): ALL  RPD present + ZDC present -> healthy; site failure
+```
+So run 510510's 352-file block is **exactly the D6 bug** — ZDC fine in every event, only the
+RPD item absent, jobs killed by the unguarded read — i.e. ~2 M *good* events silently
+missing from `data_pbpb25_part1.root` since May. Run 511035 is healthy data that a site
+never processed. **None of the 794 files is the ZDC-absent case; all are recoverable good
+data; no LB exclusion is needed for them.**
+
 **This is a STOP-AND-ASK**: recovering these requires new grid tasks over 794 files with the
 fixed code and re-merging the PbPb25 and pp24 NTUPs (blast radius: every downstream PbPb25
 and pp24 result per `signal_selection_change_impact.md`), and the luminosity treatment of
