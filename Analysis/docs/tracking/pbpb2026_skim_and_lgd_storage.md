@@ -522,6 +522,51 @@ of ~12 LBs instead of a small biased hole. The part-7 finalize tables will give 
 per-LB skip counts. To be implemented as a documented LB list handed to the analysis-code
 agent (owner of the lumi sum), not as a skim change.
 
+### D10 — FINDING: the May-2026 PRODUCTION skims (PbPb25, pp24) also have abandoned files
+
+Prompted by the user's question "which datasets were skimmed after the throwing behaviour was
+introduced?" — answer: **all of them.** The unguarded `auxdataConst` ZDC reads entered in
+commit **85de057 (2026-04-10)**, the R25 rewrite; the older R21/R24 trees read the ZDC via
+`ZDCAnalysisTool`. Every production NTUP in use is the **May 2026 skim** (merging record:
+PbPb23 05-19/20, PbPb24 05-19, PbPb25 05-19→27, pp24 05-19→21), all made with that code.
+
+Then the obvious follow-up: `grid_monitor` accepts a task as complete at *"done or finished
+(≥90 % file success)"*, so a May task could have abandoned files exactly like the 2026 ones
+and nobody would have looked. **It did:**
+
+| task | dataset | status | missing | where | failed-job cause |
+|---|---|---|---|---|---|
+| 50267236 | PbPb23 part1 **v1** | finished | (78 at task level; **0 now** — superseded by part1 **v2** 50270743, `done`) | — | SiGNET "Service not available" |
+| 50267423 | **PbPb25 part1** | finished | **352** / 25 725 | run **510510**, LBs 146–194 (28 LBs) | 266 jobs, GRIF-LPNHE/LAL/IRFU, **`athena execution failed with 65`** |
+| 50267435 | **PbPb25 part2** | finished | **292** / 27 086 | run 511020 (55, LBs 440–563), run **511035** (237, LBs 147–658) | 193 jobs, IN2P3-CC, diag empty + 4 stage-in timeouts |
+| 50267490 | **PbPb25 part6** | finished | **41** / 7 119 | run 512013 (1), run 512049 (40, LBs 147–153) | 1 job, stage-in timeout at a *decommissioning* site |
+| 50267529 | **pp24 part2** | finished | **109** / 41 337 | run 488534, LBs 116–726 (74 LBs) | 41 jobs, CSCS-LCG2-ALPS, `LRMS error` (batch system) |
+| all others | | done | 0 | | |
+
+So **794 input files (685 PbPb25 + 109 pp24) are absent from the production NTUPs the
+analysis currently runs on**, undetected since May. PbPb23 and PbPb24 are complete.
+
+**Causes differ, and the distinction decides the action:**
+- **PbPb25 part1 / run 510510 LBs 146–194** carries the ZDC/RPD signature — `exit 65`, a
+  contiguous LB block, 266 failed jobs. Whether it is the *RPD-only* case (good events lost
+  to the D6 bug → **must be recovered**) or the *ZDC-absent* case (correctly unsaveable →
+  **exclude the LBs from luminosity**) is being determined by probing the files directly;
+  the job logs have aged off scratchdisk.
+- **PbPb25 part6 and pp24 part2** are site failures (stage-in timeout at a decommissioning
+  site; batch-system `LRMS error`) — **clean data, simply never processed → recover.**
+- **PbPb25 part2** is unknown (empty diagnostics at IN2P3-CC) — probing.
+
+**Consequence for existing results:** PbPb25 and pp24 cross-sections/R_AA are normalised to
+the full GRL luminosity while the numerator is missing these files. The bias is small
+(685/143 528 = 0.48 % of PbPb25 files; 109/107 642 = 0.10 % of pp24) but **centrality-
+structured** if any of it is the ZDC case, and in any event it must be either recovered or
+subtracted from the luminosity — it cannot be left as an unaccounted hole.
+
+**This is a STOP-AND-ASK**: recovering these requires new grid tasks over 794 files with the
+fixed code and re-merging the PbPb25 and pp24 NTUPs (blast radius: every downstream PbPb25
+and pp24 result per `signal_selection_change_impact.md`), and the luminosity treatment of
+any ZDC-absent LBs is a physics decision.
+
 ## Implementation Plan
 
 | # | Step | Status |
