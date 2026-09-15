@@ -25,6 +25,16 @@ while true; do
       say "WATCHDOG: grid_monitor was dead with work pending -- $(bash $D/pbpb26_grid_monitor_start.sh 2>&1 | tail -1)"
     fi
   fi
+  # Second grid_monitor instance for the May-2026 recovery parts (own bookkeeping + pid file).
+  mp=$(cat $D/may26rec_grid_monitor.pid 2>/dev/null)
+  if [ -z "$mp" ] || ! kill -0 "$mp" 2>/dev/null; then
+    if grep -vE '^[[:space:]]*#|^[[:space:]]*$' $D/sep2026_may26_recovery.txt 2>/dev/null | awk '{print $1}' | while read -r t; do
+         st=$(grep "^$t " $D/grid_monitor_state.txt | awk '{print $2}')
+         [ "$st" != "completed" ] && [ "$st" != "failed" ] && echo work
+       done | grep -q work; then
+      say "WATCHDOG: may26rec grid_monitor was dead with work pending -- $(bash $D/may26rec_grid_monitor_start.sh 2>&1 | tail -1)"
+    fi
+  fi
   bash $D/pbpb26_recheck_completed.sh 2>/dev/null | while read -r l; do say "$l"; done
   bash $D/pbpb26_release_next.sh 2>&1 | grep -E "released part|FAILED" | while read -r l; do say "$l"; done
   w=$(bash $D/pbpb26_wedge_check.sh 2>/dev/null)
@@ -36,7 +46,7 @@ while true; do
       [ "${wedged[$tid]:-0}" = "1" ] && say "RECOVERED: task $tid -- $rest"; wedged[$tid]=0
     fi
   done <<<"$w"
-  snap=$(for t in $(grep -vE '^[[:space:]]*#|^[[:space:]]*$' $D/sep2026_pbpb26_skim.txt | awk '{print $1}'); do
+  snap=$(for t in $(cat $D/sep2026_pbpb26_skim.txt $D/sep2026_may26_recovery.txt 2>/dev/null | grep -vE '^[[:space:]]*#|^[[:space:]]*$' | awk '{print $1}'); do
     curl -s --max-time 60 "https://bigpanda.cern.ch/task/$t/?json" 2>/dev/null | python3 -c "
 import sys,json
 try:

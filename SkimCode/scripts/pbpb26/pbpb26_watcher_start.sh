@@ -13,7 +13,10 @@ if [[ -n "$old" ]] && kill -0 "$old" 2>/dev/null; then
   for _ in 1 2 3 4 5; do kill -0 "$old" 2>/dev/null || break; sleep 1; done
 fi
 setsid nohup bash "$D/pbpb26_watcher.sh" > /dev/null 2>&1 &
-sleep 2
-new=$(pgrep -f "bash $D/pbpb26_watcher.sh" | while read -r p; do [[ "$(ps -o ppid= -p $p | tr -d ' ')" == "1" ]] && echo $p; done | head -1)
+new=""
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  new=$(pgrep -f "bash $D/pbpb26_watcher.sh" | while read -r p; do [[ "$(ps -o ppid= -p $p | tr -d ' ')" == "1" ]] && echo $p; done | head -1)
+  [[ -n "$new" ]] && break; sleep 1
+done
 echo "$new" > "$PIDF"
 echo "watcher started pid=$new sid=$(ps -o sid= -p $new | tr -d ' ')"

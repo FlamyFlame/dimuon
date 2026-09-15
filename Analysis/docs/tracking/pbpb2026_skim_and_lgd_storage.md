@@ -1899,6 +1899,54 @@ already merged is reprocessed. **Final part set: 1–7, contiguous.** Its job fi
 carry the per-(run,LB) skipped-event table for the luminosity decision.
 
 Year at this point: **111 035 / 111 279 = 99.8 %** processed; part 7 covers the rest.
+### 2026-09-15 20:25 — D10 recovery SUBMITTED (user decision: recover now, upload to LGD, no duplicates)
+
+User ruling: *recover now & upload the recovered parts to LOCALGROUPDISK (clean up locally);
+update the bookkeeping; check whether the NTuple-processing code needs the new parts; and
+prove explicitly, with code, that no event is duplicated.*
+
+**Correction to D10's table:** my task→part labels for PbPb23 were wrong — 50267236 is v1
+**part2** (runs 462717–463120), which IS merged as `data_pbpb23_part2.root`. So PbPb23 has
+a real 78-file gap (run 462969, SiGNET "Service not available"), not zero. Corrected
+totals: **872 files** = PbPb23 78 + PbPb25 685 + pp24 109. PbPb24 complete.
+
+**File-level disjointness proven for every year** (PanDA per-file status): no file with
+status `finished` appears in two merged parts; the recovery input lists are exactly the
+`!= finished` sets. (For PbPb23, part1 v1 vs v2 share **zero** input files — v2 was a
+different partition — and neither overlaps parts 2–4.)
+
+**Release choice for the recovery: 25.2.89** (`setup_25.sh`, `build_25`), the release of
+the rest of each year, with the ZDC-fixed source. Proven output-neutral for it directly:
+pre-fix commit `9f0f577` rebuilt in an isolated worktree vs current `build_25`, same
+`data25_hi` AOD in `hi2025` mode → 488/488 events, **169/169 branches bit-identical**.
+(Current source also carries `muon_match_L1MU3V`, added 2026-07-22 after the May skim, so
+recovery parts have 169 branches vs the May parts' 168 — commit `dea8c26` is purely
+additive, 33 insertions / 0 deletions.)
+
+**Submitted (new tasks, no reactivation), `--inputFileList`, `--excludedSite 'EMMY_KIT*'`:**
+
+| year | part | jediTaskID | files | outDS |
+|---|---|---|---:|---|
+| PbPb23 | **part5** | **52569154** | 78 | `PbPb2023data.Sep2026.v1.part5` |
+| PbPb25 | **part7** | **52569156** | 685 | `PbPb2025data.Sep2026.v1.part7` |
+| pp24 | **part13** | **52569161** | 109 | `pp2024data.Sep2026.v1.part13` |
+
+Bookkeeping: `~/usatlasdata/dimuon_data/sep2026_may26_recovery.txt`; a second grid_monitor
+instance (`may26rec_grid_monitor_start.sh`, own pid file, shared locked state file — its
+designed multi-worker mode) downloads them into the year directories; the standalone
+watcher now watchdogs both instances and reports all 10 tasks.
+
+**Event-level duplicate proof:** `SkimCode/scripts/check_event_duplicates.C` — per run,
+finds runs present in ≥2 merged files and checks `(RunNumber, eventNumber)` uniqueness
+exactly for those (a full hash set of 3e8 events would need many GB). Running now on the
+2026 parts 1–6 (parts 1/4 vs 6 share runs 522200/522949 — exactly the case). To be run on
+each year once its recovery part is merged, BEFORE the LGD upload.
+
+**NTuple-processing code impact (for the analysis session, which owns it):**
+`PbPbExtras.c` `run_year_to_file_batch_max_map`: `{23, 4} → {23, 5}`, `{25, 6} → {25, 7}`;
+`run_pbpb_23*.sub` `queue 4 → 5`, `run_pbpb_25*.sub` `queue 6 → 7`; pp24
+`file_batch_max 12 → 13` (`PPExtras.c`) and `run_pp_24*.sub` `queue 12 → 13`. Every
+downstream PbPb23/PbPb25/pp24 result is stale until rerun with the new parts.
 ## Latest Stage
 
 **As of 2026-09-15 18:20 UTC.**
