@@ -427,6 +427,53 @@ Two constraints that shape the recovery, both easy to get wrong:
 Consequence for the analysis-code hand-off: `file_batch_max` for year 26 will exceed 5 —
 it becomes 5 + the number of recovery parts. Read the count from disk, do not assume.
 
+### D8 — the recovered events are PHYSICALLY GOOD: the missing item is RPD, not ZDC (KEEP them)
+
+User's question (2026-09-15): is the "ZDC bug" a true detector error? If the ZDC data were
+absent or untrustworthy, the ZDC-dependent PbPb event selection could not be applied and
+those events **should be discarded**, not recovered. Answered with evidence, three ways:
+
+**1. What was missing is an RPD quantity, and the ZDC calorimeter data is demonstrably
+present.** `cosDeltaReactionPlaneAngle` belongs to the **Reaction Plane Detector** (the Run-3
+pad detector in front of the ZDC), which we never store (`StoreZdc = 1` = basic ZDC group
+only; RPD is bit 2, never enabled). The fix guarded **only** the RPD reads; the basic ZDC
+reads (`CalibEnergy`, `UncalibSum`, `AverageTime`, `Status`, `ModuleMask`, `PreSampleAmp`)
+stayed unguarded. Part 6 then processed 2 292 of the affected files **successfully** — had
+the ZDC data been absent, every one of those jobs would have crashed on `CalibEnergy`.
+
+**2. The affected lumiblocks are DQ-certified.** All 148 lost-file LBs of run 522200
+(105–253) and 67/68 of run 522949 (117–186) lie **inside the GRL**
+`physics_HI2026_50ns_noIBL.xml`, built from `PHYS_HeavyIonP_All_Good` — the DQ experts'
+certification, which covers the ZDC for heavy-ion physics. (LB 185 of 522949 is outside the
+GRL and the skim drops it regardless.)
+
+**3. The ZDC readings in the recovered events are indistinguishable from normal** — direct
+measurement on 300 000 events each:
+
+| ZDC quantity | recovered (part 6) | normal 2026 (part 2) | 2025 reference |
+|---|---|---|---|
+| `Status == 1` (good), side C / A | 0.9999 / 1.0000 | 1.0000 / 1.0000 | 0.9999 / 0.9993 |
+| energy > 0 recorded | 0.9991 | 0.9991 | 0.9990 |
+| ⟨E⟩ side C / A (GeV) | 68 621 / 73 355 | 70 591 / 74 674 | 71 671 / 75 005 |
+| `ModuleMask == 0xFF` (all 8 modules) | 0.9974 | 0.9978 | 0.9972 |
+| `PreSampleAmp` recorded | 0.9998 | 0.9998 | 0.9998 |
+
+Same status-bit health, same recording fraction, same module completeness, same preamp
+availability, and mean energies within the run-to-run spread. There is **no signature of
+a ZDC fault** — the ZDC energy cut and the preamp cut (Cut 3 of the PbPb event selection)
+can be applied to these events exactly as to any others.
+
+**Conclusion: this was a skim-code defect that rejected GOOD events. Recover and KEEP them
+(part 6 stays).** The user's rule is right in general — a genuine ZDC fault must lead to
+exclusion, not recovery — and the correct mechanism for that is the GRL/DQ certification
+plus `zdc_ZdcStatus` in the downstream event selection, both of which these events pass.
+
+**Why the RPD item is absent on these LBs is a separate, non-blocking question** (RPD not
+operating / not reconstructed on those lumiblocks). It matters only for flow analyses that
+use the reaction plane, which this analysis does not. It was never absent in 2023/24/25
+(the same unconditional read would have crashed those skims too), so it is a 2026-specific
+change in the RPD reconstruction.
+
 ## Implementation Plan
 
 | # | Step | Status |
