@@ -485,7 +485,7 @@ change in the RPD reconstruction.
 | 5 | Local test job on one 2026 AOD + branch sanity check | **DONE** |
 | 6 | Write `run_26hi/grid_sub.sh`, submit all parts | **DONE** (5 tasks) |
 | 7 | LGD pre-flight (quota, DID conflicts, pnfs mount, plugin install) | **DONE** |
-| 8 | Migrate pbpb23/24/25 + pp24 raw NTUPs → LGD, symlink farm, verify, smoke test | **DONE** (originals parked, purge pending) |
+| 8 | Migrate pbpb23/24/25 + pp24 raw NTUPs → LGD, symlink farm, verify, smoke test, delete originals | **DONE** (all originals purged after post-outage re-verify) |
 | 9 | Monitor grid tasks → download → hadd → validate (`grid_monitor.sh`) | **IN PROGRESS** (running under nohup; parts 3/4/5 auto-released) |
 | 10 | Sanity-check downloaded pbpb26 NTUPs | **PASS on part 1** (re-check after re-merge) |
 | 11 | If tight: migrate pbpb26 NTUPs → LGD + cleanup | pending |
@@ -1739,6 +1739,37 @@ bad ones). The user's stated rule — "not having 100 % is okay if we throw away
 authorises the skip; what remains open is whether/how the 3.8 % sub-LB loss is reflected in
 the luminosity, and whether the affected events are a biased sub-population (probe running:
 FCal E_T and track multiplicity of no-`CalibEnergy` events vs normal).
+### 2026-09-15 — storage migration CLOSED OUT: post-outage re-verify passed, hedge purged
+
+The pbpb_2023 / pbpb_2024 originals (168 GB) had been deliberately held back across the
+2026-09-14 dCache upgrade as the only non-LGD copies (LOCALGROUPDISK is disk-only, no
+tape). With dCache back, the `purge` stage re-ran `verify` **through the LGD symlinks**:
+
+| file | bytes | entries | |
+|---|---:|---:|---|
+| data_pbpb23_part1 | 27 368 624 389 | 24 900 695 | OK |
+| data_pbpb23_part2 | 49 652 674 526 | 46 216 614 | OK |
+| data_pbpb23_part3 | 47 847 221 649 | 44 525 454 | OK |
+| data_pbpb24_part2 | 55 336 051 785 | 47 740 740 | OK |
+
+all byte- and entry-exact after the upgrade → originals purged (124.9 + 55.3 GB).
+
+**Final accounting of the 907 GB migration:**
+
+| | |
+|---|---|
+| moved to `BNL-OSG2_LOCALGROUPDISK` | 907 GB, 24 files, 4 datasets, 4 rules OK |
+| reclaimed locally | **~840 GB** (672 earlier + 168 now) |
+| kept local by design (one real file per period) | 68 GB: pbpb23_part4 9.5, **pbpb24_part1 51.9**, pbpb25_part6 10.4, pp24_part11 1.3 |
+| parked originals remaining | **none** |
+| symlinks | 20/20 resolve, 0 dangling |
+
+GPFS data fileset: **764.7 GB used / 771.3 GB free = 50 % of quota** (was 90 %).
+
+Note on the keepers: the user authorised "a small raw data file per data-taking period".
+Three are genuinely small; **pbpb_2024 has only two files (48 and 52 GB), so its keeper is
+51.9 GB** — the smallest available, but not small. It is still on LGD as well; dropping it
+would reclaim a further 52 GB and is the user's call.
 ## Latest Stage
 
 **As of 2026-09-12 ~05:00 UTC.**
