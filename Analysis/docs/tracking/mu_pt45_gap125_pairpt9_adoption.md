@@ -450,6 +450,31 @@ unfolding; ε_acc construction (still unbuilt); the F14 open question of extra q
   the `mc_based_pt4bin*` variants, the already-named `mc_based.bak_testsample_*` snapshots, and the
   `_pt_150` directories of Open item 2.
 
+- 2026-09-15 (b) **Old-ONLY directories moved too (user: "to be consistent").** 50 directories with no
+  file newer than the Phase-1 launch, each moved as a whole to `<parent>/old_4GeV_cut/<name>`
+  (appended to `dimuon_data/plots/old_4GeV_cut_moved_files_20260915.txt`):
+  * `pp_trigger_efficiency/`: `mc_based/{step4_dr_fit,closure,single_value_pair_eff_tables,
+    forward_qeta_edge_scan}`, `mc_based_medium/{step3_dr_fit,step4_dr_fit,closure,
+    single_value_pair_eff_tables}`, `mc_based_pt4bin{,_medium}`, `mc_statistics_pt8bins{,_medium}`,
+    all six `mc_based.bak_*` / `mc_based_TESTSAMPLE_backup_*` snapshots.
+  * `pbpb_trigger_efficiency/`: `mc_based{,_medium,_pt4bin,_pt4bin_medium}`,
+    `mc_statistics_pt8bins{,_medium}`, `mu4/dR_cross_term` — i.e. the whole Pb+Pb MC trig-eff chain,
+    which was NOT rerun (Steps 1-4 ran for pp only).
+  * `plots/`: `r17663_no_overlay_trigger_efficiency`, `{pp,pbpb}_trigger_efficiency_fine_q_eta_bins_w_gap`,
+    `dR_trig_corr_plots` (May).
+  * `single_b_analysis/`: every `*_pt_150*` dir (closes Open item 2 — moved, not deleted),
+    `pbpb_23_24_combined*`, and the June `*_backup_2026061[56]*` snapshots.
+  * `pythia_fullsim_full_sample/plots/`: `pp24_reco_effcy_plots/{medium,tight/applied,tight/distr}`,
+    `pp24_det_resp_plots/medium`, `pp24_single_muon_reco_effcy/medium_wp` (Medium reco-eff / det-resp
+    not rerun — the `USE_TIGHT_WP` default, Open item 3).
+  Verified before moving: no entry contained a post-launch file; the analysis chain reads its
+  corrections from `pp_2024/pair_trig_eff_pp24_full.root` etc., never from a plot dir, so nothing
+  consumes these paths (the pipelines only WRITE them and will recreate them on rerun).
+  Deliberately left: non-pT / other-topic old dirs (`event_selection*`, `muon_gap_cuts`,
+  `muon_pt45_diagnostic`, `dr_vs_pair_pt_diagnostic`, `pbpb_data`, `pp_data`, `template_fitting`,
+  `powheg`, `reco_effcy_placeholder`, `fcal_scaling`, `mc_data_compr/backup*`, `projected_stats`,
+  test-sample and `pythia_private_sample` trees).
+
 ## Results & Observations
 
 ### R1 — Recon findings that change the plan (three independent subagents, 2026-09-08)
@@ -1117,7 +1142,7 @@ fullsim resubmission after R10. All eight data trees independently verified for 
    "POWHEG bb". Adding cc would change a final-results figure and needs a decision. (Impact on the
    comparison curve itself is likely small: its histograms filter on `from_same_b`, which cc pairs
    fail; the flavour-binned families would change a lot.)
-2. **Old `_pt_150` plot directories.** Five plainly superseded (D5 authorises removal now that
+2. ~~Old `_pt_150` plot directories~~ — MOVED to `single_b_analysis/old_4GeV_cut/` 2026-09-15 (not deleted). Was: five plainly superseded (D5 authorises removal now that
    Phase 3 has regenerated the nominal dirs) and five DATED SNAPSHOTS the subagent flagged as
    "keep or decide separately". 7.1 MB total, PNGs only. Not deleted.
 3. **`USE_TIGHT_WP` defaults to 1 in `pipeline_pythia_fullsim_pp.sh`** while its deliverable set
