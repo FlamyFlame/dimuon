@@ -1629,6 +1629,29 @@ scale.
 **Merged so far** (`~/usatlasdata/dimuon_data/pbpb_2026/`): part1 49.2 GB (partial,
 supersedable), part2 **55.1 GB complete, 58 758 472 entries, sanity-check PASS**, part4
 47.6 GB (partial), part6 5 653 189 entries. Disk 626 GB free.
+### 2026-09-15 16:08 — session restart killed the watchers; watchdog moved OUT of the session
+
+The Claude session process restarted overnight. Every in-session `Monitor` died with it —
+**including the one responsible for restarting grid_monitor after the dCache outage**. So
+grid_monitor, correctly stopped at 12:30 UTC on 09-14 for the outage, stayed dead for
+~18 h after the outage ended. Nothing was lost (the grid kept processing; downloads merely
+waited), but it is exactly the silent-idle failure this campaign keeps re-learning.
+
+**Structural fix:** the watchdog/release/re-download/wedge/progress logic now lives in
+`pbpb26_watcher.sh`, launched with **`setsid nohup`** in its own session
+(`PID = PGID = SID = 442212`) and logging to `pbpb26_watcher.log`. The in-session monitor
+is reduced to a `tail -F` of that log — it can die freely; the watcher does not. Note `$!`
+after `setsid nohup ... &` returns the short-lived `setsid` wrapper's PID, not the child's;
+the pidfile had to be corrected to the real process.
+
+**Good news found on restart:** dCache is back, the proxy is fresh at **96 h**, and
+**part 5 (52536033) is `done` — 20 334 / 20 334, complete**, submitted from the fixed build
+and gapping nowhere. Part 3 is at 22 319 / 22 542. grid_monitor restarted and immediately
+claimed part 5 for download.
+
+**INCOMPLETE alerts now skip gaps already covered by a recovery part** (via
+`pbpb26_covered_gaps.txt`): a task's own `nfilesfinished` never changes when its lost files
+are recovered by a *separate* task, so parts 1 and 4 would otherwise flag forever.
 ## Latest Stage
 
 **As of 2026-09-12 ~05:00 UTC.**
