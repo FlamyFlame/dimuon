@@ -424,6 +424,32 @@ unfolding; ε_acc construction (still unbuilt); the F14 open question of extra q
     FIXING both defects reported to it, and flagged one stale retyped edge in
     `Utilities/PairTrigEffEvaluator.h` (mine), now de-numeralised.
 
+- 2026-09-15 **Old-binning plot cleanup (user request).** Plot families whose filenames carry the
+  pair-pT edges are NOT overwritten by the rerun (new edges = new names), so old 8-GeV-axis PNGs
+  sat next to the new 9-GeV ones. Every plot directory under `dimuon_data/plots`, the fullsim /
+  overlay / truth / POWHEG sample `plots/` and `mc_trig_eff_fit_plots/` was scanned for files
+  OLDER than the Phase-1 launch (2026-09-09 22:54) coexisting with NEWER ones. **752 files moved
+  (not copied) into a per-directory `old_4GeV_cut/` subdirectory** (102 subdirs), list at
+  `dimuon_data/plots/old_4GeV_cut_moved_files_20260915.txt`:
+  * 732 old-edge pair-pT PNGs (`pairpt_8.0_11.5 … 104.0_150.0` / `72.1_150.0`) in
+    `pp_trigger_efficiency/mc_based{,_medium}/step3_dr_correction/dr_*` (48) and
+    `pp_trigger_efficiency/mc_based/step3_dr_fit/{5 variants}/{expo,interp,polyu_fixedRp}/sign_*`
+    (684). Verified: zero moved files carry a new edge, zero are newer than the launch.
+  * 20 other old pT-binned artefacts in the same mixed dirs: `step1_eff_2d_pt_vs_q_eta_charge_*`
+    (4, optional 2D macro not rerun), `dr_correction_data_and_fits_tight_os.root` (2, 09-03,
+    `combine_dr_correction_fits` not rerun; no reader in code), the Aug `_corrected*` MC turn-on
+    fit PNGs in `pythia_fullsim_full_sample/mc_trig_eff_fit_plots` (8), and the June `mu4noL1`
+    single-muon plots in `pp_trigger_efficiency/mu4/no_corr/pp24/single_muon_effcy` (6).
+  Left in place: non-pT files (`README.md`, `single_b_analysis/nevt_*`, 2025 `pythia_private_sample`
+  files). No IntNote manifest entry or live code path references a moved file.
+  **NOT touched — old-ONLY directories on the 8-GeV axis with no new sibling** (stale, not
+  confusing in the same way; user to decide): `pp_trigger_efficiency/mc_based_medium/step3_dr_fit/*`
+  and `mc_based{,_medium}/step4_dr_fit/plateau_corrected` (Medium ΔR fits / Step-4 fits not refit),
+  ALL of `pbpb_trigger_efficiency/mc_based*` and `r17663_no_overlay_trigger_efficiency/*` (the
+  Pb+Pb / no-overlay MC trig-eff chain was not rerun at all), `*_fine_q_eta_bins_w_gap/mc_based`,
+  the `mc_based_pt4bin*` variants, the already-named `mc_based.bak_testsample_*` snapshots, and the
+  `_pt_150` directories of Open item 2.
+
 ## Results & Observations
 
 ### R1 — Recon findings that change the plan (three independent subagents, 2026-09-08)
