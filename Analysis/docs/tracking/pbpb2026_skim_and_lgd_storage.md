@@ -1699,6 +1699,46 @@ claimed part 5 for download.
 **INCOMPLETE alerts now skip gaps already covered by a recovery part** (via
 `pbpb26_covered_gaps.txt`): a task's own `nfilesfinished` never changes when its lost files
 are recovered by a *separate* task, so parts 1 and 4 would otherwise flag forever.
+### 2026-09-15 — the 75-file remainder: ZDC `CalibEnergy` absent for 3.8 % of events in an LB
+
+Reproduced locally on the exact crashing file
+(`data26_hi.00522200...f1714_m2281._lb0250._0001.1`, 6 302 events) with `TrigRatesAlg` at
+DEBUG. The second exception is:
+
+```
+SG::ExcBadAuxVar: Attempt to retrieve nonexistent aux data item `::CalibEnergy' (545)
+```
+
+i.e. **the ZDC calibrated energy itself** — a quantity this analysis *requires* (Cut 1
+banana, and `ZDC_E_tot`). This is categorically different from the RPD item (D6/D8): it is
+the user's "ZDC data not recorded" case, and those events **must not be selected**.
+
+Per-event probe of the same file (xAOD python access, `ZdcSums.isAvailable("CalibEnergy")`):
+
+```
+LB 250: 6302 events, CalibEnergy present in 6065 (96.2%), ZdcSums never empty
+```
+
+So it is **event-level and sporadic** (3.8 % of events in the LB), not a detector-off LB
+range. The container exists; the calibration decoration is simply not written for those
+events — an event-level ZDC reconstruction failure. The 75 unrecovered files are the whole
+file-sets of the two jobs that hit such events (LBs 246–253 of 522200, 180–186 of 522949);
+the files *before* the crash in each job are actually fine.
+
+**Design constraint discovered:** the downstream selection (`PbPbExtras.c::PassEventSel`)
+reads `zdc_ZdcEnergy`, `zdc_ZdcTime`, `zdc_ZdcModulePreSampleAmp` directly and **never
+checks `zdc_ZdcStatus`**. An event written with the reset sentinels (all 0) would therefore
+**pass every ZDC cut** — `zdc_tot = 0` is below the banana, `|time| = 0` is inside the
+box, preamp 0 is under threshold. Writing such events is not an option; the only safe
+granularity is **not writing them**.
+
+**Policy proposed to the user (awaiting confirmation on the luminosity side):** *an event is
+skipped when a quantity the configuration STORES is absent; quantities not stored are never
+read; never throw* (throwing kills the file and discards the ~96 % good events around the
+bad ones). The user's stated rule — "not having 100 % is okay if we throw away bad events" —
+authorises the skip; what remains open is whether/how the 3.8 % sub-LB loss is reflected in
+the luminosity, and whether the affected events are a biased sub-population (probe running:
+FCal E_T and track multiplicity of no-`CalibEnergy` events vs normal).
 ## Latest Stage
 
 **As of 2026-09-12 ~05:00 UTC.**
