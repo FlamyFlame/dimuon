@@ -1818,6 +1818,31 @@ Note on the keepers: the user authorised "a small raw data file per data-taking 
 Three are genuinely small; **pbpb_2024 has only two files (48 and 52 GB), so its keeper is
 51.9 GB** — the smallest available, but not small. It is still on LGD as well; dropping it
 would reclaim a further 52 GB and is the user's call.
+### 2026-09-15 — D9 policy REVIEWED (PASS, iteration 2) and part 7 SUBMITTED
+
+`/review-analysis-code` on the skip policy: iteration 1 **FAIL** with one real WARNING —
+my guard covered aux-item absence but not *entry-level* incompleteness (an empty
+`ZdcSums`, a missing side, or missing `ZdcModules` entries would have been written with
+sentinels). Fixed by requiring both sides and all 8 modules. Two INFOs applied (configured
+`EventInfo` key; README policy paragraph — whose side-index line was **backwards**, `[0]=A`,
+and is corrected to `[0]=C, [1]=A`). Iteration 2 **PASS**, 0 critical, 0 warning; the
+reviewer re-ran the bit-identical comparison itself (169/169) and confirmed the muon code
+untouched (identical pre-existing `meTrk` error counts).
+
+**Cross-year finding escalated to the user (not a skim change):** events with ZDC aux
+*present* but `ModuleMask ≠ 255` exist in every year — 0.200 % (2023), 0.115 % (2024),
+0.308 % (2025), 0.217 % (2026) — with a `mask == 0` all-zero-ZDC subset of 678 / 25 / 555 /
+507 per 2 M. They pass the D9 guard correctly and pass every downstream ZDC cut, since
+`PassEventSel` never checks `ModuleMask`/`Status`. Cutting them in the 2026 skim alone would
+break year consistency; if cut, it must be uniform downstream. **User decision pending.**
+
+**Part 7 submitted: jediTaskID 52568862**, 244 files (169 of run 522546 lost to SiGNET
+site-disk failures; 75 of runs 522200/522949 lost to the absent-ZDC crashes), built from the
+approved D9 code (source 13:31 < library 13:32 < submission), `--inputFileList` so nothing
+already merged is reprocessed. **Final part set: 1–7, contiguous.** Its job finalize logs
+carry the per-(run,LB) skipped-event table for the luminosity decision.
+
+Year at this point: **111 035 / 111 279 = 99.8 %** processed; part 7 covers the rest.
 ## Latest Stage
 
 **As of 2026-09-12 ~05:00 UTC.**
