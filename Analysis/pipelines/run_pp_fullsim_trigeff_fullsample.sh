@@ -17,11 +17,12 @@ ANALYSIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NTP_DIR="${ANALYSIS_DIR}/NTupleProcessingCode"
 RDF_DIR="${ANALYSIS_DIR}/RDFBasedHistFilling"
 PLOT_DIR="${ANALYSIS_DIR}/plotting_codes/trig_effcy/mc_based"
-FULL=/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample
+source "${ANALYSIS_DIR}/pipelines/fullsim_sample_layout.sh"   # sample dir + product layout (shell twin of FullSimSampleType.h)
+FULL="$(fullsim_sample_dir pp_full)"       # trailing slash
 PP_TRIG=/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/pp_trigger_efficiency/mc_based
 
-MCTRIG_PAIR="${FULL}/muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_mc_trig_full.root"
-MCTRIG_SINGLE="${FULL}/muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_mc_trig_single_muon_full.root"
+MCTRIG_PAIR="${FULL}muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_mc_trig_full.root"
+MCTRIG_SINGLE="${FULL}muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_mc_trig_single_muon_full.root"
 
 ts(){ date "+%Y-%m-%d %H:%M:%S"; }
 log(){ echo "[$(ts)] $*"; }
@@ -61,7 +62,7 @@ fi
 
 log "[3] FillMCTrigEffHists step1 (pp_full)"
 ( cd "$RDF_DIR" && root -l -b -q 'FillMCTrigEffHists.cxx+("pp_full", false, '"$TIGHT_CPP"')' ) || fail "FillMCTrigEffHists step1 failed"
-HISTS="${FULL}/mc_trig_eff_hists_pp24_full$([[ $USE_TIGHT_WP == 1 ]] || echo _medium_wp).root"
+HISTS="$(fullsim_hists_file "${FULL}" "$(fullsim_sample_label pp_full)" "$([[ $USE_TIGHT_WP == 1 ]] || echo _medium_wp)")"
 [[ -f "$HISTS" ]] || fail "step1 produced no hist file $HISTS"
 log "  step1 hists: $(basename "$HISTS")"
 

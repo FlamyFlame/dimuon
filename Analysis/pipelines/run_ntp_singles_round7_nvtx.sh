@@ -31,10 +31,13 @@ script_of(){ case "$1" in
   overlay) echo run_pythia_fullsim_overlay_single_muon_mc_trig.sh ;;
   noovl)   echo run_pythia_fullsim_noovl_single_muon_mc_trig.sh ;;
   *) fail "unknown sample $1" ;; esac; }
+# Sample dirs from the shell twin of FullSimSampleType.h. The round-7 n_vtx trees were made on
+# the pbpb23 overlay (r17618), so this script pins OVERLAY_YEAR=23 unless told otherwise.
+: "${OVERLAY_YEAR:=23}"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fullsim_sample_layout.sh"
 tree_of(){ case "$1" in
-  pp_full) echo /usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample/muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_mc_trig_single_muon_full.root ;;
-  overlay) echo /usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/muon_pairs_pythia_fullsim_hijing_overlay_pbpb23_no_data_resonance_cuts_mc_trig_single_muon.root ;;
-  noovl)   echo /usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_no_overlay_test_sample/muon_pairs_pythia_fullsim_r17663_no_overlay_no_data_resonance_cuts_mc_trig_single_muon.root ;;
+  pp_full|overlay|noovl)
+    echo "$(fullsim_sample_dir "$1")muon_pairs_pythia_fullsim_$(fullsim_sample_label "$1")_no_data_resonance_cuts_mc_trig_single_muon$([[ $1 == pp_full ]] && echo _full).root" ;;
   *) fail "unknown sample $1" ;; esac; }
 
 export ATLAS_LOCAL_ROOT_BASE=/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase

@@ -12,6 +12,8 @@ export ATLAS_LOCAL_ROOT_BASE=/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase
 source $ATLAS_LOCAL_ROOT_BASE/user/atlasLocalSetup.sh --quiet
 lsetup "views LCG_107a_ATLAS_2 x86_64-el9-gcc13-opt"
 
+: "${OVERLAY_YEAR:=24}"
+
 root -b -l << EOF
 	.L PythiaAnalysisClasses.h+
 
@@ -19,6 +21,9 @@ root -b -l << EOF
 	// TEST sample: reads the overlay test sample AND uses the pp beam only (only beam produced).
 	// ONE switch -- it also selects the input dir. See FullSimSampleType.h.
 	py.isTestSample = true;
+	// HIJING-overlay conditions year: 24 (default) = pythia_fullsim_hijing_overlay_test_sample/
+	// (pbpb24, r17864), 23 = ..._pbpb23/ (r17618). Env OVERLAY_YEAR; drives dir AND label.
+	py.overlay_pbpb_year = ${OVERLAY_YEAR};
 	// AMI PROVENANCE: the overlay is built on the pp-beam evgen DSIDs. AMI files are keyed by
 	// beam+slice only, so declare them; InitInputFullsim throws if another production is read.
 	py.expected_ami_dsids = {802776, 802777, 802778, 802779, 802780, 802781};

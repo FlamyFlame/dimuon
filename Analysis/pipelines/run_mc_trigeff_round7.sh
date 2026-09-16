@@ -43,17 +43,12 @@ source "$ATLAS_LOCAL_ROOT_BASE/user/atlasLocalSetup.sh" --quiet
 lsetup "views LCG_107a_ATLAS_2 x86_64-el9-gcc13-opt"
 set -eu
 
-# sample -> output directory + hist-file label (mirrors FillMCTrigEffHists::GetSampleConfig)
-outdir_of(){ case "$1" in
-  pp_full) echo /usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample ;;
-  overlay) echo /usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample ;;
-  noovl)   echo /usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_no_overlay_test_sample ;;
-  *) fail "unknown sample $1" ;; esac; }
-label_of(){ case "$1" in
-  pp_full) echo pp24_full ;;
-  overlay) echo hijing_overlay_pbpb23 ;;
-  noovl)   echo r17663_no_overlay ;;
-  *) fail "unknown sample $1" ;; esac; }
+# sample -> sample directory + hist-file label + product layout: fullsim_sample_layout.sh, the
+# shell twin of FullSimSampleType.h / dr_correction_sample_cfg.h (what the macros read).
+# OVERLAY_YEAR (default 24; 23 = the _pbpb23 overlay) is honoured here and passed to every macro.
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fullsim_sample_layout.sh"
+outdir_of(){ fullsim_sample_dir "$1" || fail "unknown sample $1"; }
+label_of(){ fullsim_sample_label "$1" || fail "unknown sample $1"; }
 
 # A ROOT macro that throws still exits 0 -- never trust the exit code, check the artefact.
 # But "the artefact exists and is non-empty" is satisfied by EVERY stale file from the previous
@@ -107,23 +102,24 @@ chain(){   # $1=sample $2=wp
     trap 'rm -f "${CHAIN_MARKER:-}"' RETURN
     {
         echo "=== $s / $wp : step1+2 ==="
-        run_root "step1+2 ($s/$wp)" bash -c 'cd "$1" && root -l -b -q "FillMCTrigEffHists.cxx+(\"$2\", false, $3)"' _ "$RDF_DIR" "$s" "$cpp"
-        val_file "$out/mc_trig_eff_hists_${lbl}${suf}.root"
+        # FillMCTrigEffHists(sample, do_step3, tight, do_step4, do_sanity, corrected, sf_closure, kn_stats, overlay_year)
+        run_root "step1+2 ($s/$wp)" bash -c 'cd "$1" && root -l -b -q "FillMCTrigEffHists.cxx+(\"$2\", false, $3, false, false, false, false, false, $4)"' _ "$RDF_DIR" "$s" "$cpp" "$OVERLAY_YEAR"
+        val_file "$(fullsim_hists_file "$out" "$lbl" "$suf")"
         echo "=== $s / $wp : fit ==="
-        run_root "fit ($s/$wp)" bash -c 'cd "$1" && root -l -b -q "FitMCSinglesEffcy.cxx+(\"$2\", $3)"' _ "$RDF_DIR" "$s" "$cpp"
-        val_file "$out/single_mu_effcy_pT_fit_mc${suf}.root"
+        run_root "fit ($s/$wp)" bash -c 'cd "$1" && root -l -b -q "FitMCSinglesEffcy.cxx+(\"$2\", $3, false, false, $4)"' _ "$RDF_DIR" "$s" "$cpp" "$OVERLAY_YEAR"
+        val_file "$(fullsim_singles_fit_file "$out" "$lbl" "" "$suf")"
         echo "=== $s / $wp : step3 ==="
-        run_root "step3 ($s/$wp)" bash -c 'cd "$1" && root -l -b -q "FillMCTrigEffHists.cxx+(\"$2\", true, $3)"' _ "$RDF_DIR" "$s" "$cpp"
-        val_file "$out/mc_trig_eff_hists_${lbl}${suf}_step3.root"
+        run_root "step3 ($s/$wp)" bash -c 'cd "$1" && root -l -b -q "FillMCTrigEffHists.cxx+(\"$2\", true, $3, false, false, false, false, false, $4)"' _ "$RDF_DIR" "$s" "$cpp" "$OVERLAY_YEAR"
+        val_file "$(fullsim_hists_file "$out" "$lbl" "$suf" "_step3")"
         echo "=== $s / $wp : step4 ==="
-        run_root "step4 ($s/$wp)" bash -c 'cd "$1" && root -l -b -q "FillMCTrigEffHists.cxx+(\"$2\", false, $3, true)"' _ "$RDF_DIR" "$s" "$cpp"
-        val_file "$out/mc_trig_eff_hists_${lbl}${suf}_step4.root"
+        run_root "step4 ($s/$wp)" bash -c 'cd "$1" && root -l -b -q "FillMCTrigEffHists.cxx+(\"$2\", false, $3, true, false, false, false, false, $4)"' _ "$RDF_DIR" "$s" "$cpp" "$OVERLAY_YEAR"
+        val_file "$(fullsim_hists_file "$out" "$lbl" "$suf" "_step4")"
         # Step-1 SANITY CHECK (Physics Procedure 3.5). Without this stage a clean regeneration
         # would silently produce no sanity plots at all: the plot macro skips the block with a
         # note when the _sanity.root is absent, so its absence is NOT an error anywhere else.
         echo "=== $s / $wp : sanity ==="
-        run_root "sanity ($s/$wp)" bash -c 'cd "$1" && root -l -b -q "FillMCTrigEffHists.cxx+(\"$2\", false, $3, false, true)"' _ "$RDF_DIR" "$s" "$cpp"
-        val_file "$out/mc_trig_eff_hists_${lbl}${suf}_sanity.root"
+        run_root "sanity ($s/$wp)" bash -c 'cd "$1" && root -l -b -q "FillMCTrigEffHists.cxx+(\"$2\", false, $3, false, true, false, false, false, $4)"' _ "$RDF_DIR" "$s" "$cpp" "$OVERLAY_YEAR"
+        val_file "$(fullsim_hists_file "$out" "$lbl" "$suf" "_sanity")"
         echo "=== $s / $wp : CHAIN OK ==="
     } >"$lg" 2>&1
 }
@@ -146,7 +142,7 @@ for wp in $WPS; do
     cpp=$([[ $wp == tight ]] && echo true || echo false)
     for s in $SAMPLES; do
         log "plotting $s / $wp"
-        ( cd "$PLOT_DIR" && root -l -b -q "plot_mc_trig_eff.cxx+(\"$s\", $cpp)" ) \
+        ( cd "$PLOT_DIR" && root -l -b -q "plot_mc_trig_eff.cxx+(\"$s\", $cpp, $OVERLAY_YEAR)" ) \
             >"$LOG_DIR/plot_${s}_${wp}.log" 2>&1 || fail "plot $s/$wp failed"
         grep -q "done\." "$LOG_DIR/plot_${s}_${wp}.log" || fail "plot $s/$wp did not reach the end"
         grep -q "SANITY CHECK" "$LOG_DIR/plot_${s}_${wp}.log" \
@@ -162,7 +158,7 @@ for wp in $WPS; do
         # macro's own two "wrote" lines and check the files they name.
         if [[ $s != noovl ]]; then
             s2d_log="$LOG_DIR/singles2d_${s}_${wp}.log"
-            ( cd "$PLOT_DIR" && root -l -b -q "plot_mc_singles_2d_effcy.cxx+(\"$s\", $cpp)" ) \
+            ( cd "$PLOT_DIR" && root -l -b -q "plot_mc_singles_2d_effcy.cxx+(\"$s\", $cpp, $OVERLAY_YEAR)" ) \
                 >"$s2d_log" 2>&1 || fail "2D singles plot $s/$wp failed"
             mapfile -t s2d_png < <(sed -n 's/^ *wrote //p' "$s2d_log")
             [[ ${#s2d_png[@]} -eq 2 ]] \
@@ -185,7 +181,7 @@ for wp in $WPS; do
         # case, fail on anything else.
         if [[ $s != noovl ]]; then
             st_log="$LOG_DIR/stats_tables_${s}_${wp}.log"
-            ( cd "$PLOT_DIR" && root -l -b -q "write_mc_pair_statistics_tables.cxx+(\"$s\", $cpp)" ) \
+            ( cd "$PLOT_DIR" && root -l -b -q "write_mc_pair_statistics_tables.cxx+(\"$s\", $cpp, $OVERLAY_YEAR)" ) \
                 >"$st_log" 2>&1 || true
             if grep -q "CSVs written to" "$st_log"; then
                 :

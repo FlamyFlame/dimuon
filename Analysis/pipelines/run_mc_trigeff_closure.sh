@@ -91,9 +91,12 @@ METHODS="expo polyu_fixedRp interp"
 MODES="${MODES:-nocorr nocorr_ptmerge nocorr_etamerge nocorr_etamerge_ptmerge}"
 SKIP_COMPARE="${SKIP_COMPARE:-0}"
 
-MC_DIR="/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample"
+# Sample directory + product layout from the shell twin of FullSimSampleType.h; the C++ builds
+# the real paths, this shell only validates them, so the two must derive from the same table.
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fullsim_sample_layout.sh"
+MC_DIR="$(fullsim_sample_dir pp_full)"          # trailing slash
 PLOT_BASE="/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/pp_trigger_efficiency"
-LABEL="pp24_full"
+LABEL="$(fullsim_sample_label pp_full)"
 # The DATA tag-and-probe turn-on directory -- MUST mirror kDataPPFitTmpl in FillMCTrigEffClosure.cxx
 # (the C++ builds the real path; this shell only validates its freshness).
 DATA_FIT_DIR="/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/trg_effcy_pT_fitting_to_erf_plus_log"
@@ -213,11 +216,11 @@ if [[ "${REGEN_4BIN}" == "1" && " ${PTBINS} " == *" 4 "* ]]; then
     log "Stage 1a [4-bin/${wp}]: Step-3 fill"
     ( cd "${RDF_DIR}" && root -l -b -q "FillMCTrigEffHists.cxx+(\"${SAMPLE}\", true, ${WPF})" ) \
       >"${LOG_DIR}/regen4_fill_${wp}.log" 2>&1
-    val "${MC_DIR}/mc_trig_eff_hists_${LABEL}${WPS_SUF}_pt4bin_step3.root"
+    val "$(fullsim_hists_file "${MC_DIR}" "${LABEL}" "${WPS_SUF}" "_pt4bin_step3")"
     log "Stage 1b [4-bin/${wp}]: plateau measurement"
     ( cd "${PLOT_DIR}" && root -l -b -q "plot_mc_trig_eff.cxx+(\"${SAMPLE}\", ${WPF})" ) \
       >"${LOG_DIR}/regen4_plateau_${wp}.log" 2>&1
-    val "${MC_DIR}/dr_correction_plateaus_${LABEL}${WPS_SUF}_pt4bin.root"
+    val "$(fullsim_plateau_file "${MC_DIR}" "${LABEL}" "${WPS_SUF}" "_pt4bin")"
     for mode in ${MODES}; do
       # The pair-pT merge is defined on the canonical 8-bin axis only -- the 4-bin variant already
       # combines the top cells by construction and the C++ THROWS if asked.
@@ -228,7 +231,7 @@ if [[ "${REGEN_4BIN}" == "1" && " ${PTBINS} " == *" 4 "* ]]; then
         ( cd "${PLOT_DIR}" && root -l -b -q \
             "fit_dr_corrections.cxx+(\"${SAMPLE}\", ${WPF}, 3, \"${m}\", false, \"os\", \"${mode}\")" ) \
           >"${LOG_DIR}/regen4_fit_${wp}_${mode}_${m}.log" 2>&1
-        val "${MC_DIR}/dr_correction_fits_${LABEL}${WPS_SUF}_pt4bin_step3_${m}_os${MTAG}.root"
+        val "$(fullsim_fit_file "${MC_DIR}" "${LABEL}" "${WPS_SUF}" "_pt4bin" 3 "${m}" "_os" "${MTAG}")"
       done
     done
   done
@@ -251,14 +254,14 @@ for pb in ${PTBINS}; do
         continue
       fi
       MTAG="$(mode_tag "$mode")"; MDIR="$(mode_dir "$mode")"
-      OUT="${MC_DIR}/mc_trig_eff_closure_${LABEL}${WPS_SUF}${PBSUF}${MTAG}.root"
+      OUT="$(fullsim_closure_file "${MC_DIR}" "${LABEL}" "${WPS_SUF}" "${PBSUF}${MTAG}")"
 
       # Every fit file the fill will read must exist BEFORE the fill, or the macro throws inside
       # ROOT and (exit code 0) looks like success until the artefact check three lines later.
       # ALL THREE methods, in EVERY mode: the delivered cascade loads expo, polyu_fixedRp and
       # interp and routes each cell to the first one that is accepted.
       for m in ${METHODS}; do
-        f="${MC_DIR}/dr_correction_fits_${LABEL}${WPS_SUF}${PBSUF}_step3_${m}_os${MTAG}.root"
+        f="$(fullsim_fit_file "${MC_DIR}" "${LABEL}" "${WPS_SUF}" "${PBSUF}" 3 "${m}" "_os" "${MTAG}")"
         [[ -s "$f" ]] || fail "no opposite-sign '${mode}' fit for ${pb}-bin/${wp}/${m}:
     ${f}
   Produce it with run_dr_correction_fits.sh (SIGNS=os PLATEAU_MODES=${mode}) for the 8-bin
@@ -280,12 +283,12 @@ for pb in ${PTBINS}; do
       # EVERY input that enters the weight, not just the dR fits: the single-muon turn-ons (the
       # APPLIED eps_MC and the eps^nc_data of the diagnostic numerator) are rewritten by the
       # concurrent trigger-efficiency session too, and they were outside the original gate.
-      FRESH_INPUTS=("${MC_DIR}/mc_trig_eff_hists_${LABEL}${WPS_SUF}${PBSUF}_step3.root"
-                    "${MC_DIR}/muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_mc_trig_full.root"
+      FRESH_INPUTS=("$(fullsim_hists_file "${MC_DIR}" "${LABEL}" "${WPS_SUF}" "${PBSUF}_step3")"
+                    "${MC_DIR}muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_mc_trig_full.root"
                     "${DATA_FIT_DIR}/single_mu_effcy_pT_fit${WPS_SUF}.root"
-                    "${MC_DIR}/single_mu_effcy_pT_fit_mc${WPS_SUF}.root")
+                    "$(fullsim_singles_fit_file "${MC_DIR}" "${LABEL}" "" "${WPS_SUF}")")
       for m in ${METHODS}; do
-        FRESH_INPUTS+=("${MC_DIR}/dr_correction_fits_${LABEL}${WPS_SUF}${PBSUF}_step3_${m}_os${MTAG}.root")
+        FRESH_INPUTS+=("$(fullsim_fit_file "${MC_DIR}" "${LABEL}" "${WPS_SUF}" "${PBSUF}" 3 "${m}" "_os" "${MTAG}")")
       done
       val_fresh "${OUT}" "${FRESH_INPUTS[@]}"
       # The raw-bin fallback is a TEMPORARY PLACEHOLDER (doc §3.3): surface it every run, so it
@@ -350,7 +353,7 @@ else
       >"${LOG_DIR}/compare_${wp}.log" 2>&1
     CMP_INPUTS=()
     for mode in ${NEEDED_MODES}; do
-      CMP_INPUTS+=("${MC_DIR}/mc_trig_eff_closure_${LABEL}${WPS_SUF}$(mode_tag "$mode").root")
+      CMP_INPUTS+=("$(fullsim_closure_file "${MC_DIR}" "${LABEL}" "${WPS_SUF}" "$(mode_tag "$mode")")")
     done
     for f in "${CMP_PNGS[@]}"; do
       val "${CDIR}/${f}"

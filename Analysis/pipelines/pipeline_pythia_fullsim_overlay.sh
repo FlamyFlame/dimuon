@@ -18,6 +18,8 @@ set -Eeuo pipefail
 # Optional env vars:
 #   POLL_SECONDS=45
 #   CONDOR_TIMEOUT_SECONDS=0   # 0 => no timeout
+#   OVERLAY_YEAR=24            # hijing mode only: 24 = pythia_fullsim_hijing_overlay_test_sample/
+#                              # (Pb+Pb 2024 conditions, label hijing_overlay_pbpb24), 23 = ..._pbpb23/
 #
 # TEMPORARY: I/O paths and Condor job count are based on the current
 # test samples. When full overlay samples become available, update
@@ -224,12 +226,13 @@ wait_for_cluster_completion() {
 # ---------------------------------------------------------------------------
 
 # Map mode -> C++ enum name, label, data dir
-# These match FullSimSampleType.h exactly
+# These match FullSimSampleType.h exactly (hijing: via its shell twin, honouring OVERLAY_YEAR)
+source "${SCRIPT_DIR}/fullsim_sample_layout.sh"
 case "$MODE" in
     hijing)
         CPP_ENUM="hijing"
-        LABEL="hijing_overlay_pbpb23"
-        BASE_DIR="/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample"
+        LABEL="$(fullsim_sample_label overlay)"
+        BASE_DIR="$(fullsim_sample_dir overlay)"; BASE_DIR="${BASE_DIR%/}"
         ;;
     zmumu)
         CPP_ENUM="zmumu"
@@ -285,7 +288,7 @@ else
     mkdir -p "${NTP_DIR}/logs"
     pushd "${NTP_DIR}" >/dev/null
     submit_out="$(condor_submit \
-        -append "arguments = ${CPP_ENUM}" \
+        -append "arguments = ${CPP_ENUM} ${OVERLAY_YEAR}" \
         -append "sample_type = ${CPP_ENUM}" \
         run_pythia_fullsim_overlay.sub)"
     echo "${submit_out}" >&2
@@ -320,6 +323,7 @@ root -l -b <<ROOTEOF || fail "ROOT exited non-zero during RDF histogram filling"
 {
     RDFBasedHistFillingPythiaFullsimOverlay fs;
     fs.fullsim_sample_type = FullSimSampleType::${CPP_ENUM};
+    fs.overlay_pbpb_year   = ${OVERLAY_YEAR};
     fs.Run();
 }
 .q
@@ -355,15 +359,19 @@ root -l -b <<ROOTEOF || fail "ROOT exited non-zero during plotting"
     gROOT->SetBatch(kTRUE);
 
     PythiaFullsimRecoEffPlotterOverlay pl_medium(FullSimSampleType::${CPP_ENUM}, false, false);
+    pl_medium.overlay_pbpb_year = ${OVERLAY_YEAR};
     pl_medium.Run();
 
     PythiaFullsimRecoEffPlotterOverlay pl_tight(FullSimSampleType::${CPP_ENUM}, true, false);
+    pl_tight.overlay_pbpb_year = ${OVERLAY_YEAR};
     pl_tight.Run();
 
     PythiaFullsimRecoEffPlotterOverlay pl_medium_sig(FullSimSampleType::${CPP_ENUM}, false, true);
+    pl_medium_sig.overlay_pbpb_year = ${OVERLAY_YEAR};
     pl_medium_sig.Run();
 
     PythiaFullsimRecoEffPlotterOverlay pl_tight_sig(FullSimSampleType::${CPP_ENUM}, true, true);
+    pl_tight_sig.overlay_pbpb_year = ${OVERLAY_YEAR};
     pl_tight_sig.Run();
 }
 .q

@@ -49,12 +49,15 @@ ANALYSIS_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 RDF_DIR="${ANALYSIS_DIR}/RDFBasedHistFilling"
 PLOT_DIR="${ANALYSIS_DIR}/plotting_codes/trig_effcy/mc_based"
 LOG_DIR="${SCRIPT_DIR}/logs_pair_eff"
-MC_DIR="/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample"
+# Sample directory + product layout from the shell twin of FullSimSampleType.h (the C++ builds
+# the real paths; this shell only validates them).
+source "${SCRIPT_DIR}/fullsim_sample_layout.sh"
+MC_DIR="$(fullsim_sample_dir pp_full)"          # trailing slash
 PLOT_BASE="/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/pp_trigger_efficiency"
 mkdir -p "${LOG_DIR}"
 
 SAMPLE="pp_full"
-LABEL="pp24_full"
+LABEL="$(fullsim_sample_label pp_full)"
 WPS="${WPS:-tight}"
 MODES="${MODES:-nocorr_ptmerge nocorr_etamerge_ptmerge}"
 SKIP_FILL="${SKIP_FILL:-0}"
@@ -107,9 +110,9 @@ FillMCTrigEffPairEff("${SAMPLE}", ${CPP});
 .q
 ROOTEOF
         ) > "${LOG_DIR}/paireff_${WP}.log" 2>&1 || fail "FillMCTrigEffPairEff (${WP}) crashed"
-        check_artifact "${MC_DIR}/pair_trig_eff_${LABEL}${SUF}.root" "h_paireff_eps_os_sig" \
+        check_artifact "$(fullsim_pair_trig_eff_file "${MC_DIR}" "${LABEL}" "${SUF}")" "h_paireff_eps_os_sig" \
                        "$T0" "Stage 1 (${WP})"
-        log "  -> ${MC_DIR}/pair_trig_eff_${LABEL}${SUF}.root"
+        log "  -> $(fullsim_pair_trig_eff_file "${MC_DIR}" "${LABEL}" "${SUF}")"
 
         # --- Stage 2: the closure, one run per dR approach ---------------------------------------
         for MODE in ${MODES}; do
@@ -122,7 +125,7 @@ FillMCTrigEffClosure("${SAMPLE}", ${CPP}, "${MODE}");
 ROOTEOF
             ) > "${LOG_DIR}/closure_${WP}_${MODE}.log" 2>&1 \
                 || fail "FillMCTrigEffClosure (${WP}, ${MODE}) crashed"
-            check_artifact "${MC_DIR}/mc_trig_eff_closure_${LABEL}${SUF}$(mode_tag "$MODE").root" \
+            check_artifact "$(fullsim_closure_file "${MC_DIR}" "${LABEL}" "${SUF}" "$(mode_tag "$MODE")")" \
                            "h_closure_signal_num_paireff_sig" "$T0" "Stage 2 (${WP}, ${MODE})"
         done
     else

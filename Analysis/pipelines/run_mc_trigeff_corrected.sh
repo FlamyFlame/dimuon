@@ -67,21 +67,16 @@ source "$ATLAS_LOCAL_ROOT_BASE/user/atlasLocalSetup.sh" --quiet
 lsetup "views LCG_107a_ATLAS_2 x86_64-el9-gcc13-opt"
 set -eu
 
-# sample -> MC output directory + hist-file label (mirrors FillMCTrigEffHists::GetSampleConfig)
-outdir_of(){ case "$1" in
-  pp_full) echo /usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample ;;
-  overlay) echo /usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample ;;
-  noovl)   echo /usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_no_overlay_test_sample ;;
-  *) fail "unknown sample $1" ;; esac; }
-label_of(){ case "$1" in
-  pp_full) echo pp24_full ;;
-  overlay) echo hijing_overlay_pbpb23 ;;
-  noovl)   echo r17663_no_overlay ;;
-  *) fail "unknown sample $1" ;; esac; }
+# sample -> sample directory + hist-file label + product layout: fullsim_sample_layout.sh, the
+# shell twin of FullSimSampleType.h / dr_correction_sample_cfg.h (what the macros read).
+# OVERLAY_YEAR (default 24; 23 = the _pbpb23 overlay) is honoured here and passed to every macro.
+source "${ANALYSIS_DIR}/pipelines/fullsim_sample_layout.sh"
+outdir_of(){ fullsim_sample_dir "$1" || fail "unknown sample $1"; }
+label_of(){ fullsim_sample_label "$1" || fail "unknown sample $1"; }
 # plot base (mirrors plot_mc_trig_eff_corrected.cxx MakeCfg)
 plotbase_of(){ case "$1" in
   pp_full) echo /usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/pp_trigger_efficiency/mc_based ;;
-  overlay) echo /usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/pbpb_trigger_efficiency/mc_based ;;
+  overlay) echo /usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/pbpb_trigger_efficiency/mc_based/pbpb${OVERLAY_YEAR} ;;
   noovl)   echo /usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/r17663_no_overlay_trigger_efficiency/mc_based ;;
   *) fail "unknown sample $1" ;; esac; }
 
@@ -111,29 +106,29 @@ chain(){   # $1=sample  $2=wp  $3=closure(true|false)
     {
         echo "=== $s / $wp / closure=$clo : corrected step1 ==="
         ( cd "$RDF_DIR" && root -l -b -q \
-            "FillMCTrigEffHists.cxx+(\"$s\", false, $cpp, false, false, true, $clo)" )
-        val_file "$out/mc_trig_eff_hists_${lbl}${suf}${tag}.root"
+            "FillMCTrigEffHists.cxx+(\"$s\", false, $cpp, false, false, true, $clo, false, $OVERLAY_YEAR)" )
+        val_file "$(fullsim_hists_file "$out" "$lbl" "$suf" "$tag")"
         echo "=== $s / $wp / closure=$clo : corrected fit ==="
         # The fit output goes to its OWN file first, then is echoed into this log and grepped.
         # (`| tee /dev/stderr` would re-open the log via /proc/self/fd/2 at offset 0 and overwrite
         #  everything written so far -- it silently truncated these logs once already.)
         local fitlog="$LOG_DIR/fit_${s}_${wp}${tag}.log"
-        ( cd "$RDF_DIR" && root -l -b -q "FitMCSinglesEffcy.cxx+(\"$s\", $cpp, true, $clo)" ) \
+        ( cd "$RDF_DIR" && root -l -b -q "FitMCSinglesEffcy.cxx+(\"$s\", $cpp, true, $clo, $OVERLAY_YEAR)" ) \
             >"$fitlog" 2>&1
         cat "$fitlog"
         # An EMPTY fit graph leaves the TF1 at its initial parameters while still returning
         # status 0, so a silent bad turn-on must be caught here, not downstream.
         grep -q "fits, 0 failed" "$fitlog" \
             || fail "corrected turn-on fit reported FAILED fits for $s/$wp (see $fitlog)"
-        val_file "$out/single_mu_effcy_pT_fit_mc${tag}${suf}.root"
+        val_file "$(fullsim_singles_fit_file "$out" "$lbl" "$tag" "$suf")"
         echo "=== $s / $wp / closure=$clo : corrected step3 ==="
         ( cd "$RDF_DIR" && root -l -b -q \
-            "FillMCTrigEffHists.cxx+(\"$s\", true, $cpp, false, false, true, $clo)" )
-        val_file "$out/mc_trig_eff_hists_${lbl}${suf}${tag}_step3.root"
+            "FillMCTrigEffHists.cxx+(\"$s\", true, $cpp, false, false, true, $clo, false, $OVERLAY_YEAR)" )
+        val_file "$(fullsim_hists_file "$out" "$lbl" "$suf" "${tag}_step3")"
         echo "=== $s / $wp / closure=$clo : corrected step4 ==="
         ( cd "$RDF_DIR" && root -l -b -q \
-            "FillMCTrigEffHists.cxx+(\"$s\", false, $cpp, true, false, true, $clo)" )
-        val_file "$out/mc_trig_eff_hists_${lbl}${suf}${tag}_step4.root"
+            "FillMCTrigEffHists.cxx+(\"$s\", false, $cpp, true, false, true, $clo, false, $OVERLAY_YEAR)" )
+        val_file "$(fullsim_hists_file "$out" "$lbl" "$suf" "${tag}_step4")"
         echo "=== $s / $wp / closure=$clo : CHAIN OK ==="
     } >"$lg" 2>&1
 }
@@ -163,7 +158,7 @@ if has_stage plots; then
     wpdir=$([[ $wp == tight ]] && echo "" || echo "medium/")
     for s in $SAMPLES; do
         log "plotting $s / $wp"
-        ( cd "$PLOT_DIR" && root -l -b -q "plot_mc_trig_eff_corrected.cxx+(\"$s\", $cpp)" ) \
+        ( cd "$PLOT_DIR" && root -l -b -q "plot_mc_trig_eff_corrected.cxx+(\"$s\", $cpp, $OVERLAY_YEAR)" ) \
             >"$LOG_DIR/plot_${s}_${wp}.log" 2>&1 || fail "plot $s/$wp failed"
         grep -q "plot_mc_trig_eff_corrected(.*) done\." "$LOG_DIR/plot_${s}_${wp}.log" \
             || fail "plot $s/$wp did not reach the end (see $LOG_DIR/plot_${s}_${wp}.log)"

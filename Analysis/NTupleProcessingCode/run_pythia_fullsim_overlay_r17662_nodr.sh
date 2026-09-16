@@ -15,7 +15,9 @@ export ATLAS_LOCAL_ROOT_BASE=/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase
 source $ATLAS_LOCAL_ROOT_BASE/user/atlasLocalSetup.sh --quiet
 lsetup "views LCG_107a_ATLAS_2 x86_64-el9-gcc13-opt"
 
-INDIR=/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/r17662_run/
+# r17662 is a Pb+Pb-2023-conditions reprocessing of the pbpb23 test sample -> pinned to the
+# _pbpb23 directory explicitly (FullSimSampleType.h: the unsuffixed dir is the pbpb24 sample).
+INDIR=/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample_pbpb23/r17662_run/
 
 if [[ "$MODE" == "single_muon" ]]; then
   SINGLE="true"; SUFFIX="_r17662_nodr_single_muon"
@@ -30,6 +32,7 @@ root -b -l << EOF
 	// TEST sample: reads the overlay test sample AND uses the pp beam only (only beam produced).
 	// ONE switch -- it also selects the input dir. See FullSimSampleType.h.
 	py.isTestSample = true;
+	py.overlay_pbpb_year = 23;   // label hijing_overlay_pbpb23, matching INDIR above
 	// AMI PROVENANCE: the overlay is built on the pp-beam evgen DSIDs. AMI files are keyed by
 	// beam+slice only, so declare them; InitInputFullsim throws if another production is read.
 	py.expected_ami_dsids = {802776, 802777, 802778, 802779, 802780, 802781};

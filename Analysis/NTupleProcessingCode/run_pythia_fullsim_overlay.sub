@@ -1,5 +1,5 @@
 # Submit Pythia fullsim overlay NTuple processing.
-# Arguments passed via pipeline: sample_type (hijing|zmumu|data)
+# Arguments passed via pipeline: sample_type (hijing|zmumu|data) overlay_year (24|23)
 #
 # TEMPORARY: Currently queue 1 job because the test sample is small
 # enough to process all 6 kn ranges in a single job. When full

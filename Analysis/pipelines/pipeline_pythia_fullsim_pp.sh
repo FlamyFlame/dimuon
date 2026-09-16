@@ -69,13 +69,16 @@ RDF_DIR="${ANALYSIS_DIR}/RDFBasedHistFilling"
 RECO_DIR="${ANALYSIS_DIR}/plotting_codes/reco_effcy"
 PY_PLOT_DIR="${ANALYSIS_DIR}/plotting_codes/pythia_plotting_codes"
 
-DATA_ROOT="/usatlas/u/yuhanguo/usatlasdata"
+# Sample directory + per-sample product layout (backup/, mc_trig_eff/, ...): the shell twin of
+# FullSimSampleType.h. SAMPLE_DIR is kept WITHOUT the trailing slash, as the rest of this
+# script composes "${SAMPLE_DIR}/...".
+source "${SCRIPT_DIR}/fullsim_sample_layout.sh"
 if [[ "$SAMPLE" == "full" ]]; then
-    SAMPLE_DIR="${DATA_ROOT}/pythia_fullsim_full_sample"
+    SAMPLE_DIR="$(fullsim_sample_dir pp_full)"; SAMPLE_DIR="${SAMPLE_DIR%/}"
     SFX="_full"
     IS_TEST_CPP="false"
 else
-    SAMPLE_DIR="${DATA_ROOT}/pythia_fullsim_test_sample"
+    SAMPLE_DIR="$(fullsim_sample_dir pp)"; SAMPLE_DIR="${SAMPLE_DIR%/}"
     SFX=""
     IS_TEST_CPP="true"
 fi
@@ -206,8 +209,9 @@ else
         BACKUP_TARGETS+=("${SAMPLE_DIR}/muon_pairs_pythia_fullsim_pp24${CUT}_mc_trig${SFX}.root")
         BACKUP_TARGETS+=("${SAMPLE_DIR}/muon_pairs_pythia_fullsim_pp24${CUT}_mc_trig_single_muon${SFX}.root")
     fi
+    # Backups go to <sample>/backup/ (fullsim_sample_layout.sh), never beside the live file.
     for f in "${BACKUP_TARGETS[@]}"; do
-        [[ -f "$f" ]] && { bak="${f%.root}.bak_$(date +%Y%m%d_%H%M%S).root"; cp -a "$f" "$bak"; log "  backed up $(basename "$f") -> $(basename "$bak")"; }
+        [[ -f "$f" ]] && { bak="$(fullsim_backup_file "$f" "${SAMPLE_DIR}/")"; log "  backed up $(basename "$f") -> backup/$(basename "$bak")"; }
     done
 
     # --dry-run = a REAL smoke test: run every stage end to end, but cap the events per chain.
@@ -274,7 +278,7 @@ fi
 if (( SKIP_RDF )); then
     log "[Stage 5] SKIPPED (SKIP_RDF=1)"
 else
-    [[ -f "${HIST_FILE}" ]] && { bak="${HIST_FILE%.root}.bak_$(date +%Y%m%d_%H%M%S).root"; cp -a "${HIST_FILE}" "$bak"; log "  backed up $(basename "${HIST_FILE}")"; }
+    [[ -f "${HIST_FILE}" ]] && { bak="$(fullsim_backup_file "${HIST_FILE}" "${SAMPLE_DIR}/")"; log "  backed up $(basename "${HIST_FILE}") -> backup/$(basename "$bak")"; }
     RDF_STAMP="$(stamp_now rdf)"
     log "[Stage 5] RDF histogram filling"
     pushd "${RDF_DIR}" >/dev/null
@@ -377,7 +381,7 @@ if (( ENABLE_MC_TRIG_EFF )); then
     log "[Stage 10] MC-based trigger efficiency chain"
     if [[ "$SAMPLE" == "full" ]]; then TRIG_SAMPLE="pp_full"; else TRIG_SAMPLE="pp"; fi
 
-    PP_TRIG_PLOTS="${DATA_ROOT}/dimuon_data/plots/pp_trigger_efficiency/mc_based"
+    PP_TRIG_PLOTS="${FULLSIM_DATA_ROOT}/dimuon_data/plots/pp_trigger_efficiency/mc_based"
     if [[ "$SAMPLE" == "full" && -d "$PP_TRIG_PLOTS" ]]; then
         bak="${PP_TRIG_PLOTS}.bak_testsample_$(date +%Y%m%d_%H%M%S)"
         cp -a "$PP_TRIG_PLOTS" "$bak"

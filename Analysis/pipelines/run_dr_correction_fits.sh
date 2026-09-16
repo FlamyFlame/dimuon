@@ -9,7 +9,7 @@ set -Eeuo pipefail
 #
 #   Stage 1  MEASURE + PLATEAU   plot_mc_trig_eff(sample, wp)
 #              re-makes the Step-1..4 plots AND writes the per-(pair pT, pair eta) large-dR
-#              plateau to  <mc_dir>/dr_correction_plateaus_<label><wp>.root
+#              plateau to  <sample dir>/mc_trig_eff/dr_correction/dr_correction_plateaus_<label><wp>.root
 #   Stage 2  GUARD + FIT         fit_dr_corrections(sample, wp, step, method, sign, plateau mode)
 #              reads that ROOT file (never a .txt / .md), enforces |plateau-1| <= 0.15 on a FULL
 #              production and divides each cell's curve by ITS OWN plateau -- or, in the
@@ -104,6 +104,9 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ANALYSIS_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 MC_PLOT_DIR="${ANALYSIS_DIR}/plotting_codes/trig_effcy/mc_based"
+# Sample dirs / labels / product layout: the shell twin of FullSimSampleType.h. Honours
+# OVERLAY_YEAR (default 24; 23 = the _pbpb23 overlay sample) and passes it to every macro.
+source "${SCRIPT_DIR}/fullsim_sample_layout.sh"
 
 SAMPLES="${SAMPLES:-pp_full overlay}"
 WPS="${WPS:-tight medium}"
@@ -255,27 +258,10 @@ wp_suffix() { [[ "$1" == "tight" ]] && echo ""     || echo "_medium_wp"; }
 # retired: the WP is in the top-level base now, not a per-directory subdir
 wp_dir()    { echo ""; }
 
-# Sample identity mirrored from dr_correction_sample_cfg.h. Kept minimal (only what the SHELL
-# needs to locate artefacts); the macros themselves always read the header, so there is exactly
-# one place where a path can be wrong, and it is not this file.
-sample_mc_dir() {
-  case "$1" in
-    pp)      echo "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/" ;;
-    pp_full) echo "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample/" ;;
-    overlay) echo "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/" ;;
-    noovl)   echo "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_no_overlay_test_sample/" ;;
-    *) fail "unknown sample '$1'" ;;
-  esac
-}
-sample_label() {
-  case "$1" in
-    pp)      echo "pp24" ;;
-    pp_full) echo "pp24_full" ;;
-    overlay) echo "hijing_overlay_pbpb23" ;;
-    noovl)   echo "r17663_no_overlay" ;;
-    *) fail "unknown sample '$1'" ;;
-  esac
-}
+# Sample identity: fullsim_sample_layout.sh (the shell twin of dr_correction_sample_cfg.h /
+# FullSimSampleType.h). The shell only LOCATES artefacts; the macros read the header.
+sample_mc_dir() { fullsim_sample_dir "$1" || fail "unknown sample '$1'"; }
+sample_label()  { fullsim_sample_label "$1" || fail "unknown sample '$1'"; }
 # MUST mirror dr_correction_sample_cfg.h::DrCorrOutTag + the out_base strings: each variant is
 # its OWN top-level tree, mc_based{_pt4bin}{_medium}. This shell only VALIDATES what the C++
 # wrote, and every time the two constructions have drifted apart the driver has either reported
@@ -285,7 +271,7 @@ sample_plot_base() {
   [[ "$wp" != "tight" ]] && tag="${tag}_medium"
   case "$sample" in
     pp|pp_full) echo "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/pp_trigger_efficiency/mc_based${tag}/" ;;
-    overlay)    echo "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/pbpb_trigger_efficiency/mc_based${tag}/" ;;
+    overlay)    echo "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/pbpb_trigger_efficiency/mc_based${tag}/pbpb${OVERLAY_YEAR}/" ;;
     noovl)      echo "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/r17663_no_overlay_trigger_efficiency/mc_based${tag}/" ;;
     *) fail "unknown sample '$sample'" ;;
   esac
@@ -322,14 +308,14 @@ for sample in ${SAMPLES}; do
     WPS_SUF="$(wp_suffix "${wp}")"
     WPD="$(wp_dir "${wp}")"
     PLOTBASE="$(sample_plot_base "${sample}" "${wp}")"
-    PLATEAU_FILE="${MCDIR}dr_correction_plateaus_${LABEL}${WPS_SUF}${PTBIN_SUF}.root"
+    PLATEAU_FILE="$(fullsim_plateau_file "${MCDIR}" "${LABEL}" "${WPS_SUF}" "${PTBIN_SUF}")"
 
     # ---- Stage 1: measure + write the plateau ROOT file ---------------------------------------
     if [[ "${SKIP_MEASURE}" == "1" ]]; then
       log "Stage 1 [${sample}/${wp}]: SKIPPED (SKIP_MEASURE=1), reusing ${PLATEAU_FILE}"
     else
       log "Stage 1 [${sample}/${wp}]: plot_mc_trig_eff -> Step 1-4 plots + plateau ROOT file"
-      root -l -b -q "plot_mc_trig_eff.cxx+(\"${sample}\", ${WPF})" > \
+      root -l -b -q "plot_mc_trig_eff.cxx+(\"${sample}\", ${WPF}, ${OVERLAY_YEAR})" > \
         "/tmp/drfit_measure_${sample}_${wp}.log" 2>&1 || true
     fi
     if ! root_file_has_objects "${PLATEAU_FILE}" h_step3_plateau h_step3_plateau_inclusive \
@@ -383,7 +369,7 @@ for sample in ${SAMPLES}; do
           SFSUF="$(sign_fsuf "${sgn}")"
           SRTAG="$(sign_rtag "${sgn}")"
           STEXT="$(sign_text "${sgn}")"
-          FIT_FILE="${MCDIR}dr_correction_fits_${LABEL}${WPS_SUF}${PTBIN_SUF}_step${step}_${method}${SFSUF}${PMSUF}.root"
+          FIT_FILE="$(fullsim_fit_file "${MCDIR}" "${LABEL}" "${WPS_SUF}" "${PTBIN_SUF}" "${step}" "${method}" "${SFSUF}" "${PMSUF}")"
           GUARD_REPORT="${PLOTBASE}step${step}_dr_fit/${PMDIR}${PTBIN_DIR}${WPD}plateau_guard_report${SRTAG}.txt"
           FITLOG="/tmp/drfit_fit_${sample}_${wp}_${step}_${method}_${sgn}_${pmode}.log"
 
@@ -393,7 +379,7 @@ for sample in ${SAMPLES}; do
             # deleted first so the artefact check below cannot pass on a stale file
             rm -f "${FIT_FILE}"
             log "Stage 2 [${sample}/${wp}/step${step}/${method}/${STEXT}/${PMTEXT}]: guard + fit"
-            root -l -b -q "fit_dr_corrections.cxx+(\"${sample}\", ${WPF}, ${step}, \"${method}\", false, \"${SARG}\", \"${pmode}\")" \
+            root -l -b -q "fit_dr_corrections.cxx+(\"${sample}\", ${WPF}, ${step}, \"${method}\", false, \"${SARG}\", \"${pmode}\", ${OVERLAY_YEAR})" \
               > "${FITLOG}" 2>&1 || true
           fi
 
@@ -425,7 +411,7 @@ for sample in ${SAMPLES}; do
             fi
             if [[ "${SKIP_FIT}" != "1" ]]; then
               log "  re-running WITH the explicit override so the plots exist for human inspection"
-              root -l -b -q "fit_dr_corrections.cxx+(\"${sample}\", ${WPF}, ${step}, \"${method}\", true, \"${SARG}\", \"${pmode}\")" \
+              root -l -b -q "fit_dr_corrections.cxx+(\"${sample}\", ${WPF}, ${step}, \"${method}\", true, \"${SARG}\", \"${pmode}\", ${OVERLAY_YEAR})" \
                 > "${FITLOG}" 2>&1 || true
             fi
           fi
@@ -489,14 +475,14 @@ for sample in ${SAMPLES}; do
         for view in ${VIEWS}; do
           VIEWDIR=""; [[ "${step}" == "3" && "${view}" == "dr0_2" ]] && VIEWDIR="dR0_2/"
           log "Stage 3 [${sample}/${wp}/step${step}/${method}/${mode}/${PMTEXT}/${view}]: plots + read-back check"
-          root -l -b -q "plot_dr_correction_fits.cxx+(\"${sample}\", ${WPF}, ${step}, \"${method}\", \"${mode}\", \"${pmode}\", \"${view}\")" \
+          root -l -b -q "plot_dr_correction_fits.cxx+(\"${sample}\", ${WPF}, ${step}, \"${method}\", \"${mode}\", \"${pmode}\", \"${view}\", ${OVERLAY_YEAR})" \
             > "/tmp/drfit_plot_${sample}_${wp}_${step}_${method}_${mode}_${pmode}_${view}.log" 2>&1 || true
 
           # Expected PNG count DERIVED from the binning in the fit file: one canvas per pair-pT
           # bin plus the inclusive one. Never a literal -- the literal 5 that used to be here was
           # the 4-bin variant's count and passed silently on the 8-bin nominal, which makes 9.
           REF_SIGN="intgr"; [[ "${mode}" == "sign_sepr" ]] && REF_SIGN="ss"
-          REF_FIT="${MCDIR}dr_correction_fits_${LABEL}${WPS_SUF}${PTBIN_SUF}_step${step}_${method}$(sign_fsuf "${REF_SIGN}")${PMSUF}.root"
+          REF_FIT="$(fullsim_fit_file "${MCDIR}" "${LABEL}" "${WPS_SUF}" "${PTBIN_SUF}" "${step}" "${method}" "$(sign_fsuf "${REF_SIGN}")" "${PMSUF}")"
           NPT=$(fit_file_npt "${REF_FIT}" "${step}")
           EXP_PNG=$(( NPT + 1 ))
           # MAIN and RATIO canvases are counted SEPARATELY, and now live in two directories: the
