@@ -136,7 +136,7 @@ For each item, state PASS or FAIL with specific evidence.
 4. **Legends/textboxes do not obscure data**: no overlap with data points.
 5. **ATLAS style (if required)**: SetAtlasStyle() called, "ATLAS Internal" present. Mark N/A if not requested.
 6. **Axis labels readable**: not cropped, not overlapping, appropriate size.
-7. **Plot output directory**: plots saved under the designated area for the sample type (data → `.../dimuon_data/plots/`, Pythia truth → `.../pythia_truth_full_sample/plots/`, Pythia fullsim PP → `.../pythia_fullsim_full_sample/plots/`, Pythia fullsim HIJING overlay → `.../pythia_fullsim_hijing_overlay_test_sample/plots/`, Powheg → `.../powheg_full_sample/plots/`). Check SaveAs paths in code.
+7. **Plot output directory**: plots saved under the designated area for the sample type (data → `.../dimuon_data/plots/`, Pythia truth → `.../pythia_truth_full_sample/plots/`, Pythia fullsim PP → `.../pythia_fullsim_full_sample/plots/`, Pythia fullsim HIJING overlay → `.../pythia_fullsim_hijing_overlay_test_sample/plots/` (pbpb24, default) or `..._test_sample_pbpb23/plots/`, Powheg → `.../powheg_full_sample/plots/`). Check SaveAs paths in code.
 8. **Directory structure clear**: subdirectories organized by physics topic; no flat dump of many PNGs. If "Directory structure context" above specifies a user-requested layout, verify it is implemented exactly.
 9. **Related plots co-located**: if existing plots for the same physics procedure live elsewhere, verify both old and new plotting code are updated to use a common parent directory.
 

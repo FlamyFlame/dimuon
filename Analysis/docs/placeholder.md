@@ -72,7 +72,7 @@ centrality and ⟨T_AA⟩ are 2023 placeholders pending official calibrations.
 **3D pair** efficiency ε_reco(pair pT, pair η, dR) from the pp24-condition Pythia8 fullsim FULL
 production: 8 × 9 × 4 = 288 cells, built by
 `plotting_codes/reco_effcy/build_pp24_fullsim_pair_reco_eff.C` into
-`~/usatlasdata/pythia_fullsim_full_sample/pair_reco_eff_pp24_full.root` and read at fill time by
+`~/usatlasdata/pythia_fullsim_full_sample/reco_eff/pair_reco_eff_pp24_full.root` and read at fill time by
 `Utilities/PairRecoEffEvaluator.h` (`RDFBasedHistFillingPP.cxx:396-399`). Inclusive value
 **0.6620 Tight / 0.7301 Medium**; it is a FIDUCIAL efficiency (the detector-gap cut sits on both
 the truth denominator and the reco numerator), so ε_acc = 0.9133 is a separate, unapplied factor.

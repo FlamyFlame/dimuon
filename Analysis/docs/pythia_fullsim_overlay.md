@@ -8,11 +8,16 @@ Controlled by `FullSimSampleType` enum (`MuonObjectsParamsAndHelpers/FullSimSamp
 
 | Enum value | Label | Overlay | Input directory (test) |
 |-----------|-------|---------|----------------------|
-| `hijing` | `hijing_overlay_pp24` | HIJING 0–5 fm impact parameter (ultra-central) | `usatlasdata/pythia_fullsim_hijing_overlay_test_sample/` |
+| `hijing` (`pbpb_year = 24`, DEFAULT) | `hijing_overlay_pbpb24` | HIJING b = 0–5 fm, **Pb+Pb 2024 conditions** (r17864) | `usatlasdata/pythia_fullsim_hijing_overlay_test_sample/` |
+| `hijing` (`pbpb_year = 23`) | `hijing_overlay_pbpb23` | HIJING b = 0–5 fm, Pb+Pb 2023 conditions (r17618 / r17662) | `usatlasdata/pythia_fullsim_hijing_overlay_test_sample_pbpb23/` |
 | `zmumu` | `zmumu_overlay_pp24` | Z->mumu | `usatlasdata/pythia_fullsim_zmumu_overlay_test_sample/` |
 | `data` | `data_overlay_pp24` | Real data | `usatlasdata/pythia_fullsim_data_overlay_test_sample/` |
 
-Helper functions `FullSimSampleInputDir()`, `FullSimSampleLabel()`, `FullSimSamplePlotDir()`, etc. derive all I/O paths from the enum.
+Helper functions `FullSimSampleInputDir()`, `FullSimSampleLabel()`, `FullSimSamplePlotDir()`, etc. derive all I/O paths from the enum **and the conditions year** (`pbpb_year`, default 24). The year is a
+knob everywhere the overlay is read or written: `overlay_pbpb_year` on `PythiaAlgCoreT`, `RDFBasedHistFillingPythiaFullsimOverlay` and `PythiaFullsimRecoEffPlotterOverlay`; `OVERLAY_YEAR` (env,
+default 24) in `pipeline_pythia_fullsim_overlay.sh` / the `run_pythia_fullsim_overlay*.sh` scripts; `overlay_year` (last argument) on every MC trigger-efficiency macro. Sanity-check code that
+studies r17618 / r17662 / r17663 explicitly names the `_pbpb23` directory. Per-sample directory layout (MC-only products in `mc_trig_eff/`, `reco_eff/` subtrees; NTP + hist-filling outputs flat):
+`FullSimSampleType.h` "PER-SAMPLE DIRECTORY LAYOUT" / `pipelines/fullsim_sample_layout.sh`.
 
 **Current limitation:** All paths point to test samples (6 NTUP files, ~10k events each). When full overlay samples become available, update `FullSimSampleType.h` paths and the Condor `.sub` file queue count.
 

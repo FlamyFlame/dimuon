@@ -116,7 +116,11 @@ RDFBasedHistFillingBaseClass                (base: variable registration, hist b
 - `MuonPair*.h` -- pair structs (truth, reco, fullsim, overlay variants)
 - `PbPbBaseClass.h` -- centrality binning (CRTP), cross-section factors
 - `PPBaseClass.h` -- pp-specific params
-- `FullSimSampleType.h` -- enum `{pp, hijing, zmumu, data}` with I/O path helpers
+- `FullSimSampleType.h` -- enum `{pp, hijing, zmumu, data, noovl}` with I/O path helpers, the
+  HIJING-overlay conditions year (`pbpb_year`, default 24 = `pythia_fullsim_hijing_overlay_test_sample/`,
+  23 = `..._pbpb23/`) and the **per-sample directory layout** (`FullSimMCTrigEff*Dir`,
+  `FullSimRecoEffDir`, `FullSimMCSinglesFitFile`, ...) -- the single source of truth for where a
+  product lives inside a sample directory; shell twin `pipelines/fullsim_sample_layout.sh`
 - `ParamsSet.h` -- analysis parameter sets (mass cuts, eta ranges, etc.)
 
 ## Analysis pipelines

@@ -3948,11 +3948,14 @@ criteria **P1** and **P2**):
    pbpb23/24/25 nominal & trig-eff) and downstream (crossx, R_AA, template fits) still carry
    the old `fabs(dp/p)`; only the pp24+pbpb23 trig-eff references are being rerun in round 3
    (user decision 2026-07-16). Schedule the rest as one batch.
-3c. **Minor hardening (INFO from the round-4 review):** `FitMCSinglesEffcy` writes
+3c. ~~**Minor hardening (INFO from the round-4 review):** `FitMCSinglesEffcy` writes
    `single_mu_effcy_pT_fit_mc[_medium_wp].root` with a basename that is IDENTICAL across pp24,
-   overlay and noovl — only the directory separates them. Nothing was clobbered (dirs verified
-   distinct), but it is the one place in the new wiring where a wrong `dir` would silently
-   overwrite a sibling instead of erroring. Append `cfg.label` when that file is next touched.
+   overlay and noovl — only the directory separates them.~~ **DONE 2026-09-16
+   (`fullsim_sample_dir_layout.md`):** the file is now
+   `<sample>/mc_trig_eff/singles_fits/single_mu_effcy_pT_fit_mc_<label>[_corrected][_medium_wp].root`
+   (`FullSimMCSinglesFitFile`), and every MC trig-eff product lives in the sample's `mc_trig_eff/`
+   subtree; the `mc_trig_eff_fit_plots/` PNGs were retired (subset of the Step-1 q·η panel).
+   The overlay sample is selected by `overlay_year` (24 default = pbpb24 r17864 dir, 23 = `_pbpb23/`).
 4. **Double-matching cross-check for R4 — DONE incidentally in R8** (2026-07-16): `_0_01` and
    `_V3` per-muon matches are identical to the bare 0.02 match to the 4th decimal in every
    bin, both samples ⇒ double-matching excluded outright (no NTP flag needed; checked at the

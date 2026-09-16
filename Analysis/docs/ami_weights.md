@@ -87,7 +87,7 @@ D2). Comparing an absolute MC dσ to **pp data** (dσ = N/L, L in pb⁻¹) requi
 
 ## Registry (verified against `pyami` 2026-07-14 — both sets: **no drift**)
 
-#### A. pp24 fullsim **TEST** sample + HIJING overlay — evgen `e8599`, DSIDs 802758–802781
+#### A. pp24 fullsim **TEST** sample + HIJING overlay (pbpb23, r17618/r17662) — evgen `e8599`, DSIDs 802758–802781
 
 The HIJING overlay is built on the **pp-beam** evgen DSIDs (802776–802781) — the AMI weight comes
 from the **evgen** dataset, so the overlay's r-tag (r17618 / r17662) does not change it.
@@ -140,6 +140,18 @@ AMI files: `~/usatlasdata/pythia_fullsim_full_sample/ami_info/`
 > **The FULL/TEST ratio spans 0.879 – 1.545.** It is **slice-dependent**, so it cancels in
 > **nothing** — not in the MC trigger efficiency, not in any cross-section. This is exactly the
 > silent failure the rule above exists to prevent.
+
+#### B2. HIJING overlay **TEST** sample, Pb+Pb 2024 conditions — evgen `e8613_e8586`, r17864, single DSID (fetched 2026-09-15)
+
+Lives in `~/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/ami_info/` (the sample's OWN
+file; `PythiaAlgCoreT` reads a sample's own `ami_info/` whenever it exists — since 2026-09-16 —
+and falls back to the truth production's only for the e8599 test samples that have none).
+The DSID is the SAME as table A's pTH125_300/pp, so `expected_ami_dsids` cannot tell the two
+productions apart — the directory does. Sample doc: `docs/tracking/hijing_overlay_pbpb24_test_sample_skim.md`.
+
+| slice | beam | DSID | σ [nb] | genFiltEff | **σ·ε_filt [nb]** | vs table A |
+|---|---|---|---|---|---|---|
+| pTH125_300 | pp | 802776 | 89.541 | 0.002342314 | **0.20973** | 1.0000 (1e-4 relative) |
 
 #### C. Not yet fetched — **fetch before use**
 

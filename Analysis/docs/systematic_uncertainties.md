@@ -58,9 +58,10 @@ The **plateau-window systematic** is `|plateau[2,3.5] − plateau[1,4]|`, evalua
 - **Machine-readable (authoritative): the plateau ROOT file** written by the Step-3/Step-4
   stage of `plotting_codes/trig_effcy/mc_based/plot_mc_trig_eff.cxx`, one per sample and
   working point, next to that sample's histogram files:
-  `<sample dir>/dr_correction_plateaus_<label>[_medium_wp].root`
+  `<sample dir>/mc_trig_eff/dr_correction/dr_correction_plateaus_<label>[_medium_wp].root`
   (`<sample dir>` = `~/usatlasdata/pythia_fullsim_full_sample/` for pp24,
-  `~/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/` for the HIJING overlay). It holds
+  `~/usatlasdata/pythia_fullsim_hijing_overlay_test_sample_pbpb23/` for the pbpb23 HIJING overlay,
+  the unsuffixed dir for the pbpb24 one; layout: `FullSimSampleType.h`). It holds
   the large-ΔR plateau **per (pair pT, pair η) cell** — value, statistical error, RMS scatter
   and the number of contributing ΔR bins — for both Step 3 and Step 4, plus the inclusive
   plateau. The ΔR-correction fit stage reads it directly; nothing downstream may hardcode a

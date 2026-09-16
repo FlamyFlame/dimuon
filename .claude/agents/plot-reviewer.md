@@ -80,7 +80,7 @@ For each item, state PASS or FAIL with specific evidence.
    - Data: `/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/`
    - Pythia truth: `/usatlas/u/yuhanguo/usatlasdata/pythia_truth_full_sample/plots/`
    - Pythia fullsim PP: `/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample/plots/`
-   - Pythia fullsim HIJING overlay: `/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/plots/`
+   - Pythia fullsim HIJING overlay: `/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/plots/` (Pb+Pb 2024 conditions, default) or `..._test_sample_pbpb23/plots/` (Pb+Pb 2023 conditions)
    - Powheg: `/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/plots/`
 
    Check both the code's output path (SaveAs calls) and the actual file locations on disk. Plots saved outside these designated areas → FAIL.
