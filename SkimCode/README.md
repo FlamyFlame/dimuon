@@ -127,6 +127,18 @@ on `mc_has_trigger_sim` / `use_trigger`, **not** on `is_MC`. Simulated HLT menus
 `2mu4` and `mu4_mu4noL1` are unprescaled in both. Legacy Run-2 fullsim
 (`do_pp_MC_fullsim_17`) and the EvGen/truth-only skims keep trigger OFF.
 
+The overlay mode's `Muon_triggers` list follows the **`hi2024` data mode** (since
+the Sep 2026 r17864 skim). The 2023-menu `_VTE50` chains recorded by the r17618
+(2023-conditions) skim do not exist in the 2024 HI menu (`_VjTE50` there); a chain
+absent from the menu only yields a `Is Not Configured` warning and no branch.
+Overlay submission scripts, one per production:
+`run_pythia_fullsim_HIJING_overlay/grid_sub_pbpb23_test_sample.sh` (r17618, 6 slices,
+NTUPs now in `~/usatlasdata/pythia_fullsim_hijing_overlay_test_sample_pbpb23/`) and
+`grid_sub_pbpb24_test_sample.sh` (r17864, Pb+Pb 2024 conditions, pTH125_300 only,
+NTUP in `~/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/`; see
+`Analysis/docs/tracking/hijing_overlay_pbpb24_test_sample_skim.md` for the r-tag
+verification — its calorimeter response is broken).
+
 **MC keeps every event.** `alg.StoreAllEvents = (is_MC and mc_has_trigger_sim)`.
 With `StoreAllEvents=False`, `TrigRates::execute` (`TrigRates.cxx:305`) drops any
 event failing the OR of all configured chains — correct for the data skim, but it
