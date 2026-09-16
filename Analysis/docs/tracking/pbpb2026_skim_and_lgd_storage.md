@@ -523,6 +523,23 @@ action. Consequence: nothing for the analysis-code session to implement; the per
 skip table from part 7 is a REPORT, not an exclusion list. The paragraph below is the
 superseded proposal, kept for the record.
 
+**USER FINDING 2026-09-15 ~22:20 UTC — run 522200 explained, no escalation needed:** the user
+checked the run: a **ZDC TTC restart at ~LB 250**, with the ZdcCalib trigger rate ~0 for a
+period within **LBs 251–254** — a known issue to the ZDC experts. The apparent centrality bias
+of the skipped events is almost certainly a statistical fluctuation. Events in those LBs
+without ZDC information are exactly what the D9 check drops; the luminosity fraction is tiny
+→ **ignore the luminosity influence** (consistent with the ruling above). **Run 522949
+(LBs ~180–186) and 2025 run 510510 LB 174 are likewise checked by the user and known issues**
+(2026-09-15 ~22:30 UTC).
+
+**STANDING RULE (user, 2026-09-15):** a TTC restart or similar detector incident produces
+exactly this pattern — missing-ZDC events **concentrated in a few consecutive LBs**. When that
+is what the skip table shows, and the fraction relative to the **total dataset** (NOT to the
+LB) is negligible, there is **nothing to report and nothing to change in the luminosity**.
+Report only the unexpected: a non-negligible fraction of the whole dataset, or skips scattered
+across many LBs / a whole run rather than a contiguous cluster. Per-LB fractions therefore do
+not need computing for the current cases.
+
 **(superseded) luminosity treatment as first proposed:** because the loss is
 centrality-biased and sub-LB, a flat lumi correction cannot absorb it. Recommended: exclude
 the affected LBs (at most 246–253 of 522200, 180–186 of 522949) from **both** the event
@@ -2013,9 +2030,57 @@ leaving `pending`, plus watcher-log alerts (INCOMPLETE/WEDGED/WATCHDOG/FAILED/TE
   (accumulating; PbPb23 row DONE, PbPb25/pp24/PbPb26 rows PENDING; corrects the sibling doc's
   "no part 7"; carries both user rulings).
 
+### 2026-09-15 22:10 — first D9 skip tables from the live tasks; PbPb25 run 510510 ALSO has absent-ZDC events
+
+Harvested so far (`joblogs_sep2026/zdc_skip_table.sh <task>` aggregates the finalize lines):
+
+| task | jobs harvested | exit 0 | skipped (triggered) events by (run, LB) |
+|---|---:|---:|---|
+| 52568862 (2026 p7) | 11 / ~? | 11 | **522200 LB 250: 582** (3 jobs) — more LBs expected as 522949 jobs finish |
+| 52569156 (PbPb25 p7) | 368 / ~? | 368 | **510510 LB 170: 1, LB 172: 1, LB 174: 458** |
+| 52569154 (PbPb23 p5) | 35 / 35 | 35 | none |
+
+**Correction to D10's probe conclusion.** D10 probed one file of run 510510 (lb166: "ALL noRPD +
+ZDC present") and concluded the whole 352-file block was the RPD-only case. The finalize tables
+show run 510510 **also carries the absent-ZDC case** (LB 174: 458 triggered events skipped in one
+job; LBs 170/172: 1 each). Both cases are handled by the same D9 code, so nothing changes in the
+procedure — but the user's ruling (report considerable per-LB fractions) applies to **2025 run
+510510 LB 174** as well as to 2026 522200/522949. Denominators (written events per LB) will be
+counted from the merged NTUPs once each part lands; the skip counts are post-trigger, so the
+fraction must be skipped / (skipped + written) per LB.
+
+**Observation, pre-existing, not a blocker:** every run job in every year prints
+`CollectionContainer WARNING Could not find any SF period in CentralLowPt|Central|Forward
+matching the run number <HI run>` (PbPb23 462969, PbPb25 510510/511020, PbPb26 522200). The
+MCP scale-factor maps are keyed by pp periods and have none for heavy-ion runs; the May skims
+ran the identical tool configuration under the same release, so the `muon_eff_SF_*` branches
+of the recovery parts are filled the same way as the existing parts (fill fraction 0.9979 in
+part5, matching part4). Not a difference between recovery and production parts.
+
+### 2026-09-16 13:50 — PbPb26 part 7 (52568862) MERGED: done 244/244 → the 2026 skim is COMPLETE, every run 100 %
+
+- Task **`done`**, 244/244 (522200 34/34, 522546 169/169, 522949 41/41), 0 failed. grid_monitor
+  merged 5 output files → `pbpb_2026/data_pbpb26_part7.root`, **596 367 entries** (522200:
+  87 123, 522546: 412 281, 522949: 96 963; LBs 180–355), 605 MB.
+- **Year-level completeness (per-run, union of all 7 tasks vs full dataset sizes):** 35 runs,
+  **111 279 / 111 279 files finished, 0 mismatched runs** (`scratchpad/pbpb26_task_files.txt`).
+  Total 2026 recorded entries = **270 087 106** (parts 1–7; part1 at its re-merged 51 838 505).
+  ⇒ P14 (provisional luminosity) can be lifted: the GRL total 2.62316 nb⁻¹ is the right
+  denominator. **Final part set 1–7, contiguous.**
+- **Sanity** (`check_skim_output.C` vs part6): 169/169 branches, 0 missing / 0 extra, same three
+  always-empty as 2025 (`L1TE`, `L1TE24`, `b_HLT_mu4_mu4noL1_L1MU3V`), ZDC fill 0.9998.
+- **D9 table (all 16 run jobs harvested, 16 × exit 0; one extra log is a stage-in failure that
+  was retried):** run 522200 LB 250: **582**; run 522949 LB 182: **1 182**; total **1 764**
+  triggered events = 6.5e-6 of the dataset, each a single-LB cluster of a user-confirmed known
+  incident → per the standing rule, no report, no luminosity change.
+- **Duplicate proof over parts 1–7:** 270 087 106 entries, 35 runs; runs 522200 (3 files),
+  522546 (2), 522949 (3) checked exactly — 21 847 259 events, **0 duplicates**.
+- Storage: GPFS ~857 GB / 1.6 TB (53 %) → Done-item 6 (2026 → LGD) not triggered; 2026 parts
+  stay local unless the user asks for the migration (274 GB).
+
 ## Latest Stage
 
-**As of 2026-09-15 21:55 UTC.** (PbPb23 part5 DONE end-to-end. Three grid tasks running: 2026 p7 + recovery PbPb25 p7 / pp24 p13; per-task procedure on merge: dup-check → sanity-check → LGD upload → bookkeeping → hand-off. LGD driver ready for incremental parts.)
+**As of 2026-09-16 13:50 UTC.** (2026 SKIM COMPLETE: parts 1–7, every run 100 %, 0 duplicates over parts 1–7. PbPb23 part5 DONE end-to-end. Two recovery tasks running: PbPb25 p7 (678/685) / pp24 p13; per-task procedure on merge: dup-check → sanity-check → LGD upload → bookkeeping → hand-off. LGD driver ready for incremental parts.)
 
 **DONE — storage (steps 7–8).** 907 GB on `BNL-OSG2_LOCALGROUPDISK`, 24 files, all
 byte/entry-verified through the symlink farms (re-verified after the 09-14 dCache upgrade),
@@ -2027,9 +2092,8 @@ keepers remain by design — note the pbpb24 keeper is 51.9 GB (period has only 
 and fixed via review: the unguarded RPD read (D6, output-neutral) and the D9 ZDC policy
 (skip events with absent required ZDC data; never throw).
 
-**IN PROGRESS — step 9/10.** Six of seven parts merged and validated on disk
-(`data_pbpb26_part{1,2,3,4,5,6}.root`); year at **99.8 %**. **Part 7 (52568862)** running:
-244 files, the last gaps. The standalone watcher (`pbpb26_watcher.sh`, setsid, pid file)
+**DONE — steps 9/10 (2026-09-16).** All seven parts merged and validated on disk
+(`data_pbpb26_part{1..7}.root`, 270 087 106 entries); **every run 100 %** (111 279/111 279 files). The standalone watcher (`pbpb26_watcher.sh`, setsid, pid file)
 restarts grid_monitor only when work is pending, guards re-downloads, and reports to
 `pbpb26_watcher.log`.
 
