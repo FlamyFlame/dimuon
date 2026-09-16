@@ -15,7 +15,7 @@
 4. If local storage stays tight, migrate the full PbPb2026 skim output to
    LOCALGROUPDISK as well and clean up locally.
 
-## Autonomy Contract (ACTIVE — re-read on every compaction)
+## Autonomy Contract (DONE 2026-09-16 — all six Done items met; item 6 conditional, not triggered: storage at 53 %)
 - Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a
   plan, a passing small test, or one pipeline stage is NOT a stopping point.
 - Done =
@@ -2099,39 +2099,46 @@ part5, matching part4). Not a difference between recovery and production parts.
   evaluation with only 6 locks, so `wait` returned immediately and `farm` refused on PFN
   count (6 ≠ 7); `do_wait` now also requires an OK lock count ≥ the local file count.
 
+### 2026-09-16 20:05 — pp24 part13 (52569161) DONE end-to-end → ALL FOUR Sep-2026 TASKS CLOSED; doc CLOSED
+
+- Task **`done`**, 109/109 (run 488534), 0 failed; merged 3 files → `pp_2024/data_pp24_part13.root`,
+  **652 340 entries** (LBs 123–726). Sanity vs part11: 196 → 197 branches, 0 missing / 1 extra
+  (`muon_match_L1MU3V`); ZDC group absent by design (pp: `StoreZdc = 0`); 100/100 run jobs
+  exit 0, no ZDC policy output (never runs for pp).
+- **Duplicate proof over parts 1–13:** 603 875 923 entries, 8 runs; the 5 runs spanning several
+  parts checked exactly — 528 084 381 events, **0 duplicates**.
+- **LGD DONE 20:03 UTC:** attached (13/13), rule `c2df30b0…` waited correctly for 13/0/0 locks
+  (the patched `do_wait` — it first saw the stale 12/0/0 OK and kept waiting), farm built
+  (part11 keeper untouched), verified through the symlink (517 160 648 bytes / 652 340
+  entries), parked original purged.
+- **Daemons:** both grid_monitors exited on "All tasks resolved"; harvester exited on "all tasks
+  terminal" (100 + 640 + 16 + 35 run-job logs kept in `joblogs_sep2026/`, 1.3 GB); the standalone
+  watcher stopped by recorded PID (1536330). Nothing left running.
+- `data-merging-record.txt` tidied (grid_monitor's LLM "reorganize" step had no write
+  permission and left the tail unordered): 34 records = 5 + 2 + 7 + 13 + 7, one line per part,
+  the re-merged part1 line (51 838 505, verified on disk) kept; backup
+  `data-merging-record.txt.bak_20260916_pre_tidy`.
+
+**Final state of the campaign:**
+
+| year | parts | entries | on LGD | recovery |
+|---|---|---:|---|---|
+| PbPb23 | 1–5 | 124 590 975 | 1,2,3,5 (+ part4 local keeper) | part5 = 78 files of run 462969 |
+| PbPb24 | 1–2 | 92 650 031 | 2 (+ part1 local keeper) | complete in May |
+| PbPb25 | 1–7 | 261 363 935 | 1–5,7 (+ part6 local keeper) | part7 = 685 files, 5 runs |
+| pp24 | 1–13 | 603 875 923 | 1–10,12,13 (+ part11 local keeper) | part13 = 109 files of run 488534 |
+| PbPb26 | 1–7 | 270 087 106 | none (local, 274 GB; GPFS 53 %) | parts 6+7 = ZDC-crash + SiGNET losses |
+
+Every year: 0 duplicate events (exact `(RunNumber, eventNumber)` check on every run shared
+between parts). Every 2026 run at 100 % of its files. All four hand-off rows DONE in
+`_handoff_skim_to_analysis_2026-09-15.md`.
+
 ## Latest Stage
 
-**As of 2026-09-16 13:50 UTC.** (2026 SKIM COMPLETE: parts 1–7, every run 100 %, 0 duplicates over parts 1–7. PbPb23 part5 DONE end-to-end. PbPb25 p7 DONE end-to-end; pp24 p13 running; per-task procedure on merge: dup-check → sanity-check → LGD upload → bookkeeping → hand-off. LGD driver ready for incremental parts.)
-
-**DONE — storage (steps 7–8).** 907 GB on `BNL-OSG2_LOCALGROUPDISK`, 24 files, all
-byte/entry-verified through the symlink farms (re-verified after the 09-14 dCache upgrade),
-smoke-tested, **all originals purged** (~840 GB reclaimed; GPFS 50 % of quota). 68 GB of
-keepers remain by design — note the pbpb24 keeper is 51.9 GB (period has only 2 files).
-
-**DONE — skim config, test, submission (steps 1–6).** `hi2026` on AthAnalysis **25.2.90**
-(forced by the 2026 L1 menu; proven output-neutral vs 25.2.89). Two skim-code defects found
-and fixed via review: the unguarded RPD read (D6, output-neutral) and the D9 ZDC policy
-(skip events with absent required ZDC data; never throw).
-
-**DONE — steps 9/10 (2026-09-16).** All seven parts merged and validated on disk
-(`data_pbpb26_part{1..7}.root`, 270 087 106 entries); **every run 100 %** (111 279/111 279 files). The standalone watcher (`pbpb26_watcher.sh`, setsid, pid file)
-restarts grid_monitor only when work is pending, guards re-downloads, and reports to
-`pbpb26_watcher.log`.
-
-**Remaining, in order:**
-1. Part 7 completes → grid_monitor downloads/merges → `data_pbpb26_part7.root`; sanity-check
-   it; read its job finalize logs for the **per-(run,LB) skipped-event table**.
-2. Confirm every run then reads 100 % (minus the D9-skipped events) and tell the analysis
-   session so it can lift its provisional-luminosity warning and set `file_batch_max{26}=7`.
-3. Step 11 (migrate the 2026 NTUPs, ~350 GB, to LGD) — optional for consistency; not forced by
-   space. Needs `pbpb26` group added to the migration driver's keeper table.
-4. Close this doc.
-
-**Both user decisions taken (2026-09-15):** (a) luminosity unchanged, no LB exclusion; report
-run/LBs with a considerable missing-ZDC fraction for human escalation (D9); (b) no
-`ModuleMask == 255` requirement — missing module pulses are shower physics (D9 addendum).
-
-Also worth reporting to the ZDC/HI-reco experts: in both affected runs the per-event ZDC
-reconstruction failure begins at the tail of the RPD-less window (522200: RPD absent
-105–253, ZDC fails from 250; 522949: RPD absent 117–186, ZDC fails from 182) — it looks
-like a reconstruction-configuration transition, not two independent detector incidents.
+**CLOSED 2026-09-16 20:05 UTC.** Every Done item met: 2026 skim complete (parts 1–7, 35 runs at
+100 %, 270 087 106 entries, 0 duplicates); May-2026 recovery parts for PbPb23/PbPb25/pp24 merged,
+proven duplicate-free, on LGD and purged locally; raw-skim storage migration complete (GPFS
+53 %). 2026 parts remain local by design (storage not tight) — migrate with
+`lgd_migrate_rawskim.sh pbpb26 all` if ever wanted. Hand-off to the analysis session:
+`_handoff_skim_to_analysis_2026-09-15.md` (part counts 23→5, 25→7, pp24→13, 26→7; lift P14;
+rulings on ZDC luminosity / ModuleMask). Nothing running.

@@ -2,7 +2,7 @@
 
 Written by the skim/storage session (owner: `pbpb2026_skim_and_lgd_storage.md`). The analysis
 session owns every code change listed here; this file only states what is on disk and why.
-Updated as each grid task lands. **Read the status column — only DONE rows are on disk.**
+**All four rows DONE (2026-09-16).** Everything listed is on disk.
 
 ## 1. Part counts (`file_batch_max`, `.sub` `queue N`, `QUEUE_COUNTS`, `ScrambGen::NParts`, plot part lists)
 
@@ -10,7 +10,7 @@ Updated as each grid task lands. **Read the status column — only DONE rows are
 |---|---|---|---|---|
 | PbPb23 | 4 | **5** | **DONE 2026-09-15 21:49 UTC** — `pbpb_2023/data_pbpb23_part5.root` (117 025 entries, on LGD + symlink, verified) | May-2026 skim abandoned 78 files of run 462969 (SiGNET "Service not available"); recovered by task 52569154, `done` 78/78, 0 duplicate events vs parts 1–4 (exact check on the shared run) |
 | PbPb25 | 6 | **7** | **DONE 2026-09-16 16:21 UTC** — `pbpb_2025/data_pbpb25_part7.root` (971 913 entries, on LGD + symlink, verified) | 685 abandoned files recovered by task 52569156, `done` 685/685: run 510510 (352, RPD-only skim bug D6 — ZDC fine except two tiny known clusters), 511020 (55), 511035 (237), 512013 (1), 512049 (40); 0 duplicate events vs parts 1–6 (5 shared runs, 24.9 M events checked). NB `b_HLT_mu4_mu4noL1_L1MU3V` is filled for run 510510 only (trigger live early 2025 only) |
-| pp24 | 12 | **13** | PENDING — task 52569161 | 109 abandoned files, run 488534 (CSCS batch `LRMS error`) |
+| pp24 | 12 | **13** | **DONE 2026-09-16 20:03 UTC** — `pp_2024/data_pp24_part13.root` (652 340 entries, on LGD + symlink, verified) | 109 abandoned files of run 488534 (CSCS batch `LRMS error`) recovered by task 52569161, `done` 109/109; 0 duplicate events vs parts 1–12 (5 shared runs, 528 M events checked) |
 | PbPb26 | 0 (unset) | **7** | **DONE 2026-09-16 13:40 UTC** — `pbpb_2026/data_pbpb26_part{1..7}.root`, 270 087 106 entries; **every run 100 %** (35 runs, 111 279/111 279 files across the union of the 7 tasks) ⇒ **lift P14 (provisional-lumi warning): GRL total 2.62316 nb⁻¹ is final**; remove the `ScrambGen::NParts(26)` throw; part set 1–7 contiguous | **Correction to the 2026-09-14 note "there is no part 7": there IS a part 7** (task 52568862, 244 files: 169 of run 522546 lost to SiGNET disk failures + 75 of runs 522200/522949 lost to the absent-ZDC crashes, now skipped per D9). 2026 parts are LOCAL (not on LGD) |
 
 Code sites (from the skim doc D10 entry; verify against the tree): `PbPbExtras.c`
