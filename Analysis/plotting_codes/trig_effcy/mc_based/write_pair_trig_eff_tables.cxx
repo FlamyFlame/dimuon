@@ -64,7 +64,7 @@ void write_pair_trig_eff_tables(const std::string& sample = "pp_full", bool use_
     const std::string wp_suf  = DrCorrWpSuffix(use_tight_wp);
     const std::string wp_text = use_tight_wp ? "Tight" : "Medium";
 
-    const std::string in_path = PairTrigEff::FileName(cfg.mc_dir, cfg.mc_label, wp_suf);
+    const std::string in_path = PairTrigEff::FileName(cfg.sample_dir, cfg.mc_label, wp_suf);
     TFile* fin = TFile::Open(in_path.c_str(), "READ");
     if (!fin || fin->IsZombie())
         throw std::runtime_error("write_pair_trig_eff_tables: cannot open " + in_path

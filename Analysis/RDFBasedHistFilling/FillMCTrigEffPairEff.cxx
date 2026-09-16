@@ -106,7 +106,7 @@ void FillMCTrigEffPairEff(const std::string& sample = "pp_full", bool use_tight_
     const std::string wp_text = use_tight_wp ? "Tight" : "Medium";
 
     // Same pair file the closure reads, built from the same directory + ntuple-processing naming.
-    const std::string pair_file = cfg.mc_dir
+    const std::string pair_file = cfg.sample_dir
         + "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_mc_trig"
         + (cfg.key == "pp_full" ? "_full" : "") + ".root";
 
@@ -132,7 +132,7 @@ void FillMCTrigEffPairEff(const std::string& sample = "pp_full", bool use_tight_
     // The SAME single-muon efficiency the Step-3 inverse weighting divides by, so K is the
     // single-number analogue of eps_dR and not a differently-normalized object. Heap-allocated:
     // the lambdas below are captured by LAZY RDF nodes and must outlive this scope.
-    const std::string eps_mc_file = cfg.mc_dir + "single_mu_effcy_pT_fit_mc" + wp_suf + ".root";
+    const std::string eps_mc_file = DrCorrSinglesFitFile(cfg, use_tight_wp);
     auto* eps_mc = new SingleMuEffEvaluator();
     eps_mc->Load(SingleMuEffEvaluator::Src::kMCDirect, eps_mc_file);
 
@@ -333,7 +333,8 @@ void FillMCTrigEffPairEff(const std::string& sample = "pp_full", bool use_tight_
 
 
     // ------------------------------------------------------------------ write
-    const std::string out_name = PairTrigEff::FileName(cfg.mc_dir, cfg.mc_label, wp_suf);
+    const std::string out_name = PairTrigEff::FileName(cfg.sample_dir, cfg.mc_label, wp_suf);
+    gSystem->mkdir(gSystem->DirName(out_name.c_str()), kTRUE);
     TFile fout(out_name.c_str(), "RECREATE");
     if (fout.IsZombie()) throw std::runtime_error("FillMCTrigEffPairEff: cannot open " + out_name);
     for (auto& kv : H) kv.second->Write(kv.first.c_str());

@@ -53,13 +53,13 @@ namespace {
     // Both pure prob>0.5, pTH8_14 (kin0). R17618 uses only the kin0 slice so the
     // pT-hat mix matches R17662 exactly (fair comparison of the same muon population).
     const std::string R17618 =
-        "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/r17618_kin0_run/"
+        "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample_pbpb23/r17618_kin0_run/"
         "muon_pairs_pythia_fullsim_hijing_overlay_pbpb23_no_data_resonance_cuts_r17618kin0_single_muon.root";
     const std::string R17662 =
-        "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/r17662_run/"
+        "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample_pbpb23/r17662_run/"
         "muon_pairs_pythia_fullsim_hijing_overlay_pbpb23_no_data_resonance_cuts_r17662_single_muon.root";
     std::string OUTDIR =
-        "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/plots/r17618_vs_r17662_comparison/";
+        "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample_pbpb23/plots/r17618_vs_r17662_comparison/";
 
     // Muon working point (NOMINAL = Tight; set by the entry function). Only the quality bit
     // differs. make_eff() and the axis titles read these. Medium routes to a distinct outdir.

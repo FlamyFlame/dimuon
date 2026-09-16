@@ -42,6 +42,7 @@
 #include <vector>
 
 #include <TFile.h>
+#include <TSystem.h>   // gSystem->mkdir for the reco_eff/ subtree
 #include <TH1D.h>
 #include <TH2D.h>
 #include <TH3D.h>
@@ -49,6 +50,8 @@
 #include <TParameter.h>
 
 #include "../../MuonObjectsParamsAndHelpers/ParamsSet.h"   // the fiducial-cut expressions, for provenance
+#include "../../MuonObjectsParamsAndHelpers/FullSimSampleType.h"   // sample dir + reco_eff/ layout
+#include "../trig_effcy/mc_based/dr_correction_sample_cfg.h"          // DrCorrPairRecoEffFile: the ONE name
 #include "../../Utilities/PairEtaPanelBins.h"
 
 namespace {
@@ -83,13 +86,18 @@ TH3D* Get3D(TFile* f, const std::string& name)
 
 int build_pp24_fullsim_pair_reco_eff(bool use_full_sample = true)
 {
-    const std::string dir = use_full_sample
-        ? "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample/"
-        : "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/";
-    const std::string sfx = use_full_sample ? "_full" : "";
+    // Sample identity from the shared table (pp24 TEST = "pp", FULL = "pp_full"); the WP flag is
+    // irrelevant to the paths used here.
+    const DrCorrSample id  = GetDrCorrSample(use_full_sample ? "pp_full" : "pp", true);
+    const std::string  dir = id.sample_dir;
+    const std::string  sfx = use_full_sample ? "_full" : "";
+    // Input: the RDF hist-filling output, flat at the sample root. Output: the reco_eff/ subtree
+    // (FullSimSampleType.h "PER-SAMPLE DIRECTORY LAYOUT"), named by the SAME helper the crossx
+    // stage reads it back with (DrCorrPairRecoEffFile) -- one name, two sides.
     const std::string in_path  = dir + "histograms_pythia_fullsim_pp24_no_data_resonance_cuts"
                                + sfx + ".root";
-    const std::string out_path = dir + "pair_reco_eff_pp24" + sfx + ".root";
+    const std::string out_path = DrCorrPairRecoEffFile(id);
+    gSystem->mkdir(gSystem->DirName(out_path.c_str()), kTRUE);
 
     std::unique_ptr<TFile> fin(TFile::Open(in_path.c_str(), "READ"));
     if (!fin || fin->IsZombie()) {

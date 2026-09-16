@@ -14,6 +14,7 @@
 #include <TString.h>
 
 #include "../MuonObjectsParamsAndHelpers/ParamsSet.h"
+#include "../MuonObjectsParamsAndHelpers/FullSimSampleType.h"   // FullSimMCTrigEffPairEffDir
 #include "../RDFBasedHistFilling/CommonEffcyConfig.h"
 #include "../plotting_codes/trig_effcy/mc_based/dr_correction_cell_groups.h"
 #include "MCTrigEffPairSelection.h"
@@ -175,10 +176,12 @@ inline std::string HistName(const std::string& quantity, const std::string& sign
 }
 
 // The deliverable file. One file per sample x working point; the sign and the window are inside.
-inline std::string FileName(const std::string& mc_dir, const std::string& mc_label,
+// `sample_dir` is the sample ROOT directory (DrCorrSample::sample_dir); the file lives in its
+// mc_trig_eff/pair_eff/ subtree (FullSimSampleType.h "PER-SAMPLE DIRECTORY LAYOUT").
+inline std::string FileName(const std::string& sample_dir, const std::string& mc_label,
                             const std::string& wp_suffix)
 {
-    return mc_dir + "pair_trig_eff_" + mc_label + wp_suffix + ".root";
+    return FullSimMCTrigEffPairEffDir(sample_dir) + "pair_trig_eff_" + mc_label + wp_suffix + ".root";
 }
 
 // ---------------------------------------------------------------------------- the cell axes

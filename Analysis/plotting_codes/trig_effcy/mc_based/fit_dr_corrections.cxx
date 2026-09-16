@@ -235,8 +235,9 @@ struct StepCfg {
 StepCfg MakeStepCfg(int step, const std::string& sign = "")
 {
     const std::string sg = sign.empty() ? "" : sign + "_";
-    if (step == 3) return {3, "_step3.root", "h_mc_dr_" + sg,        false, kFlatOnsetStep3, "eps_dR"};
-    if (step == 4) return {4, "_step4.root", "h_mc_single_dr_" + sg, true,  kFlatOnsetStep4, "eps_single"};
+    // file_suffix is the DrCorrHistFile `variant` token (the helper appends ".root")
+    if (step == 3) return {3, "_step3", "h_mc_dr_" + sg,        false, kFlatOnsetStep3, "eps_dR"};
+    if (step == 4) return {4, "_step4", "h_mc_single_dr_" + sg, true,  kFlatOnsetStep4, "eps_single"};
     throw std::runtime_error("fit_dr_corrections: step must be 3 or 4, got "
                              + std::to_string(step));
 }
@@ -385,11 +386,11 @@ std::string CellName(const std::string& base, int step, int iy, int iz)
 void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp = true,
                         int step = 3, const std::string& method = "powerlaw_fixedRp",
                         bool allow_plateau_violation = false, const std::string& sign = "",
-                        const std::string& plateau_mode = "corr")
+                        const std::string& plateau_mode = "corr", int overlay_year = 24)
 {
     gROOT->SetBatch(kTRUE);
 
-    const DrCorrSample cfg = GetDrCorrSample(sample, use_tight_wp);
+    const DrCorrSample cfg = GetDrCorrSample(sample, use_tight_wp, overlay_year);
     const StepCfg      S   = MakeStepCfg(step, sign);
     // THE mode switch. Both predicates validate the token (they throw on anything else). Never
     // compare `plateau_mode` to a literal here: "nocorr_ptmerge" is ALSO a no-plateau-correction
@@ -421,9 +422,8 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
     // NOMINAL 8-bin histograms while its plateau map is 4x9 (the cell-count guard below catches
     // that, but only after the fact).
     const std::string plateau_path = DrCorrPlateauFile(cfg, use_tight_wp);
-    const std::string hist_path = cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label + wp_suf
-                                + MCTrigEffPairPt::FileSuffix()
-                                + S.file_suffix;
+    const std::string hist_path = DrCorrHistFile(cfg, use_tight_wp,
+                                                 MCTrigEffPairPt::FileSuffix() + S.file_suffix);
     // Plateau-file key tag. The SIGN is part of it (h_step3_ss_plateau / prov_step3_ss), because
     // the plateau file holds all three series side by side. The keys WRITTEN below keep the plain
     // "step<N>" tag -- the sign is in the fit FILE name, so every consumer reads one set of names.
@@ -824,6 +824,7 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
 
     const std::string out_path = DrCorrFitFile(cfg, use_tight_wp, step, method, sign,
                                               plateau_mode);
+    gSystem->mkdir(gSystem->DirName(out_path.c_str()), kTRUE);
     TFile* fout = TFile::Open(out_path.c_str(), "RECREATE");
     if (!fout || fout->IsZombie())
         throw std::runtime_error("fit_dr_corrections: cannot write " + out_path);
@@ -1587,10 +1588,10 @@ void fit_dr_corrections(const std::string& sample = "pp_full", bool use_tight_wp
 void fit_dr_corrections_all(const std::string& sample = "pp_full", bool use_tight_wp = true,
                             int step = 3, bool allow_plateau_violation = false,
                             const std::string& sign = "",
-                            const std::string& plateau_mode = "corr")
+                            const std::string& plateau_mode = "corr", int overlay_year = 24)
 {
     for (const std::string& m : {"powerlaw_fixedRp", "powerlaw_floatRp", "expo",
                                  "polyu_fixedRp", "interp"})
         fit_dr_corrections(sample, use_tight_wp, step, m, allow_plateau_violation, sign,
-                           plateau_mode);
+                           plateau_mode, overlay_year);
 }

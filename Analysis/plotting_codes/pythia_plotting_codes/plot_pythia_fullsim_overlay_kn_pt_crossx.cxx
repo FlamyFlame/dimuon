@@ -24,12 +24,21 @@
 #include <vector>
 #include <array>
 #include "../../MuonObjectsParamsAndHelpers/ParamsSet.h"   // signal_pair_pt_min / pTbins -- axes read, never retyped
+#include "../../MuonObjectsParamsAndHelpers/FullSimSampleType.h"   // overlay sample dir + label
 
-static const std::string kInputFile =
-    "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/"
-    "muon_pairs_pythia_fullsim_hijing_overlay_pbpb23_no_data_resonance_cuts.root";
-static const std::string kOutputDir =
-    "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/plots/";
+// The HIJING-overlay TEST sample; the conditions year (24 default = pbpb24, 23 = _pbpb23) is set
+// by the entry point's argument. Directory and label come from the same helper so they cannot
+// disagree. (File-scope strings, set ONCE by the entry point before any plotting function runs.)
+static std::string kInputFile;
+static std::string kOutputDir;
+static std::string kHeadline;    // canvas headline -- carries the SAME conditions year as the input
+static void SetOverlaySample(int overlay_year) {
+    const std::string dir = FullSimSampleInputDir(FullSimSampleType::hijing, /*is_test_sample=*/true, overlay_year);
+    kInputFile = dir + "muon_pairs_pythia_fullsim_" + FullSimSampleLabel(FullSimSampleType::hijing, overlay_year)
+               + "_no_data_resonance_cuts.root";
+    kOutputDir = FullSimPlotsDir(dir);
+    kHeadline  = "Pythia fullsim HIJING overlay (Pb+Pb 20" + std::to_string(overlay_year) + "), single-b, ";
+}
 
 static const int    kNkn = 6;
 static const std::array<std::string, 6> kKnLabels = {
@@ -131,7 +140,7 @@ void overlay_plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix
             leg1->AddEntry(hists[ikn], kKnLabels[ikn].c_str(), "lep");
         leg1->Draw();
         TLatex lat1; lat1.SetNDC(); lat1.SetTextSize(0.038);
-        lat1.DrawLatex(0.17, 0.92, ("Pythia fullsim HIJING overlay (Pb+Pb 2023), single-b, " + kLabels[ivar]).c_str());
+        lat1.DrawLatex(0.17, 0.92, (kHeadline + kLabels[ivar]).c_str());
 
         c->cd(2);
         gPad->SetLeftMargin(0.16); gPad->SetRightMargin(0.05);
@@ -159,7 +168,7 @@ void overlay_plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix
             leg2->AddEntry(hists[ikn], kKnLabels[ikn].c_str(), "f");
         leg2->Draw();
         TLatex lat2; lat2.SetNDC(); lat2.SetTextSize(0.038);
-        lat2.DrawLatex(0.17, 0.92, ("Pythia fullsim HIJING overlay (Pb+Pb 2023), single-b, " + kLabels[ivar]).c_str());
+        lat2.DrawLatex(0.17, 0.92, (kHeadline + kLabels[ivar]).c_str());
 
         c->SaveAs((kOutputDir + out_names[ivar] + ".png").c_str());
         for (auto* h : hists) delete h;
@@ -248,7 +257,7 @@ void overlay_plot_stat_error_forecast(int nbins_arg, double xmax_arg, const std:
             leg1->AddEntry(hists[ikn], kKnLabels[ikn].c_str(), "lep");
         leg1->Draw();
         TLatex lat1; lat1.SetNDC(); lat1.SetTextSize(0.038);
-        lat1.DrawLatex(0.17, 0.92, ("Pythia fullsim HIJING overlay (Pb+Pb 2023), single-b, " + kLabels[ivar]).c_str());
+        lat1.DrawLatex(0.17, 0.92, (kHeadline + kLabels[ivar]).c_str());
 
         c->cd(2);
         gPad->SetLeftMargin(0.16); gPad->SetRightMargin(0.05);
@@ -354,7 +363,7 @@ void overlay_plot_err_fraction_map(int nbins_arg, double xmax_arg, const std::st
             leg1->AddEntry(hists[ikn], kKnLabels[ikn].c_str(), "lep");
         leg1->Draw();
         TLatex lat1; lat1.SetNDC(); lat1.SetTextSize(0.038);
-        lat1.DrawLatex(0.17, 0.92, ("Pythia fullsim HIJING overlay (Pb+Pb 2023), single-b, " + kLabels[ivar]).c_str());
+        lat1.DrawLatex(0.17, 0.92, (kHeadline + kLabels[ivar]).c_str());
 
         c->cd(2);
         gPad->SetLeftMargin(0.14); gPad->SetRightMargin(0.16);
@@ -462,7 +471,7 @@ void overlay_plot_err_ratio_map(int nbins_arg, double xmax_arg, const std::strin
             leg1->AddEntry(hists[ikn], kKnLabels[ikn].c_str(), "lep");
         leg1->Draw();
         TLatex lat1; lat1.SetNDC(); lat1.SetTextSize(0.038);
-        lat1.DrawLatex(0.17, 0.92, ("Pythia fullsim HIJING overlay (Pb+Pb 2023), single-b, " + kLabels[ivar]).c_str());
+        lat1.DrawLatex(0.17, 0.92, (kHeadline + kLabels[ivar]).c_str());
 
         c->cd(2);
         gPad->SetLeftMargin(0.14); gPad->SetRightMargin(0.16);
@@ -488,7 +497,10 @@ void overlay_plot_err_ratio_map(int nbins_arg, double xmax_arg, const std::strin
 }
 
 // ---------------------------------------------------------------------------
-void plot_pythia_fullsim_overlay_kn_pt_crossx() {
+// overlay_year: HIJING-overlay conditions year -- 24 (default) = the pbpb24 test sample, 23 = the
+// _pbpb23 one (FullSimSampleType.h).
+void plot_pythia_fullsim_overlay_kn_pt_crossx(int overlay_year = 24) {
+    SetOverlaySample(overlay_year);
     gStyle->SetOptStat(0);
     gStyle->SetOptTitle(0);
     overlay_plot_impl(20, 120., "");

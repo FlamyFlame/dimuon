@@ -116,17 +116,16 @@ void Emit(const std::string& path, const std::function<void(std::ostream&)>& wri
 }  // namespace
 
 void write_mc_pair_statistics_tables_projected(const std::string& sample = "pp_full",
-                                               bool use_tight_wp = true)
+                                               bool use_tight_wp = true, int overlay_year = 24)
 {
     gROOT->SetBatch(kTRUE);
 
-    const DrCorrSample cfg    = GetDrCorrSample(sample, use_tight_wp);
+    const DrCorrSample cfg    = GetDrCorrSample(sample, use_tight_wp, overlay_year);
     const std::string  wp_suf = DrCorrWpSuffix(use_tight_wp);
     const std::string  wp_txt = use_tight_wp ? "Tight" : "Medium";
     const double        sf    = PtHatKn45Projected::kSf;
 
-    const std::string in_path = cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label + wp_suf
-                              + MCTrigEffPairPt::FileSuffix() + "_step3.root";
+    const std::string in_path = DrCorrHistFile(cfg, use_tight_wp, MCTrigEffPairPt::FileSuffix() + "_step3");
     TFile* fin = TFile::Open(in_path.c_str(), "READ");
     if (!fin || fin->IsZombie())
         throw std::runtime_error("write_mc_pair_statistics_tables_projected: cannot open " + in_path);
@@ -161,7 +160,10 @@ void write_mc_pair_statistics_tables_projected(const std::string& sample = "pp_f
     auto pt_lab = [&](int ix) { return Fmt("%.1f-%.1f", ax->GetBinLowEdge(ix), ax->GetBinUpEdge(ix)); };
     auto eta_lab = [&](int g) { return Fmt("%.1f to %.1f |eta|", Geta.edges[g - 1], Geta.edges[g]); };
 
-    const std::string out_dir = cfg.mc_dir;   // sits beside the source Step-3 file, like its input
+    // The CSVs are a human-readable product, so they live with the sample's plots (next to the
+    // projected-statistics PNGs of plot_pythia_fullsim_kn_pt_crossx), not among the ROOT inputs.
+    const std::string out_dir = FullSimPlotsDir(cfg.sample_dir) + "projected_stats/";
+    gSystem->mkdir(out_dir.c_str(), kTRUE);
 
     auto header = [&](std::ostream& os, const std::string& sign_label) {
         os << "# PROJECTED same-sign/opposite-sign muon-pair statistics of the Step-3 "

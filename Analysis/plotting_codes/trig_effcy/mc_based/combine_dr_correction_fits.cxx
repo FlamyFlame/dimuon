@@ -162,7 +162,8 @@ void combine_dr_correction_fits(const std::string& sample = "pp_full", bool use_
                                 int step = 3, const std::string& sign = "os",
                                 const std::string& plateau_mode = "nocorr_etamerge",
                                 std::vector<std::string> methods =
-                                    {"expo", "polyu_fixedRp", "interp"})
+                                    {"expo", "polyu_fixedRp", "interp"},
+                                int overlay_year = 24)
 {
     gROOT->SetBatch(kTRUE);
 
@@ -171,7 +172,7 @@ void combine_dr_correction_fits(const std::string& sample = "pp_full", bool use_
                                  "modes ('nocorr_etamerge' / 'nocorr_etamerge_ptmerge'), got '" +
                                  plateau_mode + "'");
 
-    const DrCorrSample cfg = GetDrCorrSample(sample, use_tight_wp);
+    const DrCorrSample cfg = GetDrCorrSample(sample, use_tight_wp, overlay_year);
 
     // ---- open every method's fit file, keep them open for the whole run -----------------------
     struct MethodFile {

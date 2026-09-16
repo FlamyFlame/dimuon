@@ -276,7 +276,7 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
 
     // The pair file is not in DrCorrSample (that table serves the fit chain), so it is built here
     // from the same directory + the ntuple-processing naming.
-    const std::string pair_file = cfg.mc_dir
+    const std::string pair_file = cfg.sample_dir
         + "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_mc_trig"
         + (cfg.key == "pp_full" ? "_full" : "") + ".root";
 
@@ -372,8 +372,7 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
     // DIAGNOSTIC numerator. SAME struct for both, hence the same clamp/cap/floor guards -- a guard
     // difference between the two would show up in their ratio as if it were physics.
     auto* eps_mc = new SingleMuEffEvaluator();
-    eps_mc->Load(SingleMuEffEvaluator::Src::kMCDirect,
-                 cfg.mc_dir + "single_mu_effcy_pT_fit_mc" + wp_suf + ".root");
+    eps_mc->Load(SingleMuEffEvaluator::Src::kMCDirect, DrCorrSinglesFitFile(cfg, use_tight_wp));
 
     // ---- eps_dR: one SeriesEval per corrected numerator (doc §3.2) --------------------------
     // "nocorr"          -> one entry per parametric fit form, drawn as separate series.
@@ -462,7 +461,7 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
     // One per (mass window, cell mode). Their own canonical-binning guard runs inside
     // PairTrigEffEvaluator::Load, against ParamsSet::pair_pt_coarse_bins and the live |eta| fold,
     // so a stale file throws there rather than being silently read as today's cells.
-    const std::string pair_eff_file = PairTrigEff::FileName(cfg.mc_dir, cfg.mc_label, wp_suf);
+    const std::string pair_eff_file = PairTrigEff::FileName(cfg.sample_dir, cfg.mc_label, wp_suf);
     // THE RAW eps^pair ONLY (user, 2026-09-08). The MC closure is an MC-only test, so the applied
     // weight must be the measured number itself. The data/MC difference is a DATA-application
     // question -- the plan is to correct eps^pair by the product of the two single-muon data/MC
@@ -696,9 +695,9 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
     // ---------------------------------------------------------------- run + write
     // The mode token is part of the NAME: the two variants are different measurements on the same
     // sample, and a shared file name would let one overwrite the other silently.
-    const std::string out_name = cfg.mc_dir + "mc_trig_eff_closure_" + cfg.mc_label + wp_suf
-                               + MCTrigEffPairPt::FileSuffix()
-                               + DrCorrPlateauModeTag(plateau_mode) + ".root";
+    const std::string out_name = DrCorrClosureFile(cfg, use_tight_wp,
+                                   MCTrigEffPairPt::FileSuffix() + DrCorrPlateauModeTag(plateau_mode));
+    gSystem->mkdir(gSystem->DirName(out_name.c_str()), kTRUE);
     TFile fout(out_name.c_str(), "RECREATE");
     if (fout.IsZombie()) throw std::runtime_error("FillMCTrigEffClosure: cannot open " + out_name);
     for (auto& kv : books) kv.second->Write(kv.first.c_str());
@@ -718,7 +717,7 @@ void FillMCTrigEffClosure(const std::string& sample = "pp_full", bool use_tight_
     // way to tell which version it was weighted by.
     const std::string eps_prov =
         " | eps_MC file (APPLIED, num_epsmc_*): "
-      + stamp(cfg.mc_dir + "single_mu_effcy_pT_fit_mc" + wp_suf + ".root")
+      + stamp(DrCorrSinglesFitFile(cfg, use_tight_wp))
       + " | eps^nc_data file (DIAGNOSTIC, num_epsdata_*): " + stamp(SubstWP(kDataPPFitTmpl, wp_suf));
     TNamed("provenance",
            Form("MC closure of the pp 2mu4 trigger correction "

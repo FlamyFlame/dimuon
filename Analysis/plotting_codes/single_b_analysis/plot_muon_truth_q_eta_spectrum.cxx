@@ -20,8 +20,9 @@
 //   so HIJING muons never enter, in the overlay either.
 //
 //   pp24  : Pythia fullsim FULL "_pdf" production (DSIDs 803015-803020), pp beam only.
-//   PbPb  : Pythia + HIJING overlay, PbPb23 conditions, TEST sample -- ~150x fewer muons
-//           than pp24. Its statistics are stated on the figure.
+//   PbPb  : Pythia + HIJING overlay TEST sample, Pb+Pb conditions year = the macro's
+//           `overlay_year` argument (24 default = r17864 sample, 23 = the _pbpb23 r17618 sample,
+//           ~150x fewer muons than pp24). Its statistics are stated on the figure.
 //
 // WEIGHT: every histogram is filled with ev_weight = ami_w * nom_ratio / N_beam
 //   (PythiaAlgCoreT.c:810-812), i.e. the AMI sigma * eps_filt of the pT-hat slice times
@@ -49,6 +50,7 @@
 //   root -l -b -q 'plot_muon_truth_q_eta_spectrum.cxx+()'
 
 #include "../../MuonObjectsParamsAndHelpers/ParamsSet.h"
+#include "../../MuonObjectsParamsAndHelpers/FullSimSampleType.h"   // sample dirs + labels
 
 #include <TBox.h>
 #include <TCanvas.h>
@@ -537,7 +539,9 @@ void ReportAcceptance(const char* label, const FillCounts& fc) {
 
 }  // namespace
 
-void plot_muon_truth_q_eta_spectrum() {
+// overlay_year: HIJING-overlay conditions year of the second sample -- 24 (default) = the pbpb24
+// test sample, 23 = the _pbpb23 one (FullSimSampleType.h); directory and label move together.
+void plot_muon_truth_q_eta_spectrum(int overlay_year = 24) {
     gROOT->SetBatch(true);
     gStyle->SetOptStat(0);
     gStyle->SetPadTickX(1);
@@ -567,16 +571,16 @@ void plot_muon_truth_q_eta_spectrum() {
         return h;
     };
 
-    const std::string kMCBase = "/usatlas/u/yuhanguo/usatlasdata/";
+    // Sample directories and labels from FullSimSampleType.h (the overlay year is the macro's
+    // argument; directory and label can never disagree).
     const std::vector<Sample> samples = {
-        {kMCBase + "pythia_fullsim_full_sample/"
-                   "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_"
-                   "single_muon_full.root",
+        {FullSimSampleInputDir(FullSimSampleType::pp, /*is_test_sample=*/false)
+             + "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_single_muon_full.root",
          "Pythia8 hard-QCD dimuon, pp #sqrt{s} = 5.36 TeV, full simulation",
          "muon_truth_q_eta_spectrum_pp24_fullsim"},
-        {kMCBase + "pythia_fullsim_hijing_overlay_test_sample/"
-                   "muon_pairs_pythia_fullsim_hijing_overlay_pbpb23_no_data_resonance_"
-                   "cuts_single_muon.root",
+        {FullSimSampleInputDir(FullSimSampleType::hijing, /*is_test_sample=*/true, overlay_year)
+             + "muon_pairs_pythia_fullsim_" + FullSimSampleLabel(FullSimSampleType::hijing, overlay_year)
+             + "_no_data_resonance_cuts_single_muon.root",
          "Pythia8 hard-QCD dimuon + HIJING overlay, Pb+Pb #sqrt{s_{NN}} = 5.36 TeV",
          "muon_truth_q_eta_spectrum_pbpb_overlay"}};
 

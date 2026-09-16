@@ -301,6 +301,13 @@ public:
     // isospin average and is therefore NOT a physical pp cross-section -- label it honestly.
     bool isTestSample = false;
 
+    // HIJING-overlay CONDITIONS YEAR (FullSimSampleType.h): 24 (DEFAULT) = Pb+Pb 2024 conditions,
+    // pythia_fullsim_hijing_overlay_test_sample/ (r17864) and the coming full production;
+    // 23 = Pb+Pb 2023 conditions, ..._test_sample_pbpb23/ (r17618 / r17662). Drives the input
+    // directory AND the output label (hijing_overlay_pbpb<yy>) together, so an output can never
+    // carry the wrong year. Ignored for every non-overlay sample type.
+    int overlay_pbpb_year = 24;
+
     // DIAGNOSTIC ONLY (default false = strict). When true, a missing pT-hat slice is a
     // warning instead of a fatal error. Required for single-slice studies (e.g. the r17662
     // signal-only-truth sample, which exists ONLY for pTH8_14). NEVER set this for a

@@ -354,7 +354,7 @@ std::pair<double,double> PlateauWeightedMean(TH1* ratio, double xlo, double xhi)
 // ================================================================= config
 
 struct SampleCfg {
-    std::string mc_dir;
+    DrCorrSample id;              // shared sample identity: every MC product file is named from it
     std::string mc_label;
     std::string data_hist_file;   // T&P hists + graphs (num/denom, g_..._divided)
     std::string data_fit_file;    // T&P TF1s (f_..._divided)
@@ -368,48 +368,43 @@ struct SampleCfg {
 // The DATA reference must be at the SAME working point as the MC (§3.0(d)) -- both data files
 // are WP-keyed. Paths are the analysis's own (RDFBasedHistFillingPP.cxx:306/323,
 // RDFBasedHistFillingPbPb.cxx:678/694) and match plot_mc_trig_eff.cxx MakeCfg.
-SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
+SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp, int overlay_year)
 {
     const std::string wp = use_tight_wp ? "" : "_medium_wp";
-    // Sample IDENTITY (headline + eps_dR symbol) from the shared table -- never retyped here.
-    const DrCorrSample id = GetDrCorrSample(sample, use_tight_wp);
+    // Sample IDENTITY (directory, label, headline, eps_dR symbol) from the shared table --
+    // never retyped here.
+    const DrCorrSample id = GetDrCorrSample(sample, use_tight_wp, overlay_year);
     SampleCfg c;
+    c.id          = id;
+    c.mc_label    = id.mc_label;
     c.sample_text = id.sample_text;
     c.eps_dr_text = id.eps_dr_text;
+    // Plot root + (overlay) year leaf from the shared table. This macro keeps its own
+    // per-step [medium/] layout under the unsuffixed mc_based tree, so it composes the tree
+    // itself instead of taking id.out_base (which carries the WP in the tree name).
+    c.out_base    = id.plot_root + "mc_based/" + id.plot_leaf;
     if (sample == "pp_full" || sample == "pp") {
-        const bool full = (sample == "pp_full");
-        c.mc_dir   = full ? "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample/"
-                          : "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/";
-        c.mc_label = full ? "pp24_full" : "pp24";
         c.data_hist_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"
                            "histograms_real_pairs_pp_2024_single_mu4_coarse_q_eta_bin_qeta_fid" + wp + ".root";
         c.data_fit_file  = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"
                            "trg_effcy_pT_fitting_to_erf_plus_log/single_mu_effcy_pT_fit" + wp + ".root";
         c.ctr         = "";
-        c.out_base    = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
-                        "pp_trigger_efficiency/mc_based/";
         c.data_text   = "pp 2024 data";
     } else if (sample == "overlay") {
-        c.mc_dir   = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/";
-        c.mc_label = "hijing_overlay_pbpb23";
-        c.data_hist_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2023/"
-                           "histograms_real_pairs_pbpb_2023_single_mu4_coarse_q_eta_bin_qeta_fid" + wp + ".root";
-        c.data_fit_file  = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2023/"
-                           "trg_effcy_pT_fitting_to_fermi_plus_log/single_mu_effcy_pT_fit" + wp + ".root";
-        c.ctr         = "_ctr0_5";   // D2: the overlay compares ONLY to PbPb23 data 0-5%
-        c.out_base    = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
-                        "pbpb_trigger_efficiency/mc_based/";
-        c.data_text   = "Pb+Pb 2023 data, 0-5%";
+        // Data reference = Pb+Pb data of the overlay's CONDITIONS YEAR, 0-5% (D2 for pbpb23;
+        // like-for-like for pbpb24): DrCorrDataRefDir, never a retyped year.
+        c.data_hist_file = DrCorrDataRefDir(id) + "histograms_real_pairs_" + DrCorrDataRefTag(id)
+                         + "_single_mu4_coarse_q_eta_bin_qeta_fid" + wp + ".root";
+        c.data_fit_file  = DrCorrDataRefDir(id)
+                         + "trg_effcy_pT_fitting_to_fermi_plus_log/single_mu_effcy_pT_fit" + wp + ".root";
+        c.ctr         = "_ctr0_5";   // D2: the overlay compares ONLY to 0-5% data
+        c.data_text   = DrCorrDataRefText(id);
     } else if (sample == "noovl") {
-        c.mc_dir   = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_no_overlay_test_sample/";
-        c.mc_label = "r17663_no_overlay";
         c.data_hist_file = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"
                            "histograms_real_pairs_pp_2024_single_mu4_coarse_q_eta_bin_qeta_fid" + wp + ".root";
         c.data_fit_file  = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"
                            "trg_effcy_pT_fitting_to_erf_plus_log/single_mu_effcy_pT_fit" + wp + ".root";
         c.ctr         = "";
-        c.out_base    = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
-                        "r17663_no_overlay_trigger_efficiency/mc_based/";
         c.data_text   = "pp 2024 data";
     } else {
         throw std::runtime_error("plot_mc_trig_eff_corrected: sample must be 'pp', 'pp_full', "
@@ -490,24 +485,25 @@ Step34Hists LoadStep34(TFile* f, const std::string& base, const std::string& ran
 
 // ================================================================= main
 
-void plot_mc_trig_eff_corrected(const std::string& sample = "pp_full", bool use_tight_wp = true)
+void plot_mc_trig_eff_corrected(const std::string& sample = "pp_full", bool use_tight_wp = true,
+                                int overlay_year = 24)
 {
     gROOT->SetBatch(kTRUE);
     gStyle->SetOptStat(0);
     gStyle->SetOptTitle(0);
     gErrorIgnoreLevel = kWarning;
 
-    const SampleCfg cfg = MakeCfg(sample, use_tight_wp);
+    const SampleCfg cfg = MakeCfg(sample, use_tight_wp, overlay_year);
     const std::string wp_suf  = use_tight_wp ? "" : "_medium_wp";
     const std::string wp_text = use_tight_wp ? "Tight muons" : "Medium muons";
     const std::string wp_dir  = use_tight_wp ? "" : "medium/";
     const std::string headline = cfg.sample_text + ", " + wp_text;
 
     // ---- inputs ----
-    TFile* fcorr1 = OpenFile(cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label + wp_suf + "_corrected.root");
-    TFile* fnom1  = OpenFile(cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label + wp_suf + ".root");
-    TFile* fcfit  = OpenFile(cfg.mc_dir + "single_mu_effcy_pT_fit_mc_corrected" + wp_suf + ".root");
-    TFile* fnfit  = OpenFile(cfg.mc_dir + "single_mu_effcy_pT_fit_mc" + wp_suf + ".root");
+    TFile* fcorr1 = OpenFile(DrCorrHistFile(cfg.id, use_tight_wp, "_corrected"));
+    TFile* fnom1  = OpenFile(DrCorrHistFile(cfg.id, use_tight_wp));
+    TFile* fcfit  = OpenFile(DrCorrSinglesFitFile(cfg.id, use_tight_wp, "_corrected"));
+    TFile* fnfit  = OpenFile(DrCorrSinglesFitFile(cfg.id, use_tight_wp));
     TFile* fdata  = OpenFile(cfg.data_hist_file);
     TFile* fdfit  = OpenFile(cfg.data_fit_file);
 
@@ -826,10 +822,8 @@ void plot_mc_trig_eff_corrected(const std::string& sample = "pp_full", bool use_
     for (const auto& S : steps) {
         std::cout << "\n===== Q2: " << S.key << " corrected vs original (" << sample << ", "
                   << wp_text << ") =====\n";
-        TFile* fo = OpenFile(cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label + wp_suf +
-                             S.file_tag + ".root");
-        TFile* fc = OpenFile(cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label + wp_suf +
-                             "_corrected" + S.file_tag + ".root");
+        TFile* fo = OpenFile(DrCorrHistFile(cfg.id, use_tight_wp, S.file_tag));
+        TFile* fc = OpenFile(DrCorrHistFile(cfg.id, use_tight_wp, "_corrected" + S.file_tag));
 
         struct Rng { std::string tag; double xhi; };
         const std::vector<Rng> rngs = {{"zoom", 1.0}, {"full", 5.75}};

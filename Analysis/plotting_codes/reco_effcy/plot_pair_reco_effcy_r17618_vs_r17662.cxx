@@ -28,7 +28,7 @@
 
 namespace {
     const std::string DIR =
-        "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/";
+        "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample_pbpb23/";
     const std::string H618 = DIR +
         "histograms_pythia_fullsim_hijing_overlay_pbpb23_no_data_resonance_cuts_r17618kin0_pair.root";
     const std::string H662 = DIR +

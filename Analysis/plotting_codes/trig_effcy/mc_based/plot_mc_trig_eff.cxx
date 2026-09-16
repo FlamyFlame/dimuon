@@ -17,7 +17,13 @@
 //
 // One macro for both samples:
 //   plot_mc_trig_eff("pp")      : Pythia8 pp24 fullsim  vs pp24 data       -> eps_dR^2mu4
-//   plot_mc_trig_eff("overlay") : HIJING overlay PbPb23 vs PbPb23 data 0-5% (D2) -> eps_dR^cross
+//   plot_mc_trig_eff("overlay") : HIJING overlay Pb+Pb vs Pb+Pb data 0-5% (D2) -> eps_dR^cross
+//                                 overlay_year (3rd argument, default 24) selects the overlay
+//                                 production: 24 = Pb+Pb 2024 conditions vs pbpb24 data,
+//                                 23 = Pb+Pb 2023 conditions (_pbpb23/) vs pbpb23 data.
+//
+// Inputs live in the sample's mc_trig_eff/ subtrees (FullSimSampleType.h "PER-SAMPLE DIRECTORY
+// LAYOUT"); every name is composed by dr_correction_sample_cfg.h helpers, never retyped.
 //
 // WP config (registry: Analysis/docs/muon_wp_registry.md): use_tight_wp default TRUE (Tight
 // nominal, unsuffixed inputs); false selects the _medium_wp MC inputs AND the WP-matched
@@ -31,6 +37,7 @@
 // Compile/run (ACLiC, from this directory):
 //   root -l -b -q 'plot_mc_trig_eff.cxx+("pp")'
 //   root -l -b -q 'plot_mc_trig_eff.cxx+("overlay")'
+//   root -l -b -q 'plot_mc_trig_eff.cxx+("overlay", true, 23)'
 
 #include <TFile.h>
 #include <TH1D.h>
@@ -292,7 +299,8 @@ void SaveCanvas(TCanvas& c, const std::string& path)
 // ---------------------------------------------------------------- config
 
 struct SampleCfg {
-    std::string mc_dir;
+    DrCorrSample id;           // the shared sample identity (dr_correction_sample_cfg.h): every
+                               // product file this macro opens is composed from it
     std::string mc_label;      // file label
     std::string data_file;
     std::string ctr;           // data ctr token ("" or "_ctr0_5")
@@ -324,18 +332,18 @@ struct SampleCfg {
 // tag-and-probe hist file carries the WP in its name (`_medium_wp` when the data RDF ran
 // with isTight=false; unsuffixed = Tight nominal). Comparing Medium MC against the Tight
 // data file -- which is what a hardcoded path would silently do -- is meaningless.
-SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
+SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp, int overlay_year)
 {
     const std::string data_wp = use_tight_wp ? "" : "_medium_wp";
 
-    // Sample IDENTITY (mc_dir / mc_label / out_base / sample_text / eps_dr_text) comes from the
-    // shared table in dr_correction_sample_cfg.h -- the same table the fit stage reads, so a
+    // Sample IDENTITY (sample_dir / mc_label / out_base / sample_text / eps_dr_text) comes from
+    // the shared table in dr_correction_sample_cfg.h -- the same table the fit stage reads, so a
     // path or label can never drift between the step that MEASURES the plateau and the step
     // that CONSUMES it. Everything below is plot-macro-specific and stays here.
-    const DrCorrSample id = GetDrCorrSample(sample, use_tight_wp);
+    const DrCorrSample id = GetDrCorrSample(sample, use_tight_wp, overlay_year);
 
     SampleCfg c;
-    c.mc_dir      = id.mc_dir;
+    c.id          = id;
     c.mc_label    = id.mc_label;
     c.out_base    = id.out_base;
     c.sample_text = id.sample_text;
@@ -353,7 +361,7 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
         // 2mu4 product weighting, SAME plot LOCATION (this is the canonical pp trig-eff
         // deliverable, which the full sample now supersedes -- back up the TEST-sample plots
         // first, done by the pipeline / the run wrapper). ONLY the MC inputs differ:
-        // mc_dir = full-sample dir, mc_label = "pp24_full" (reads the _full intermediate hists,
+        // sample_dir = full-sample dir, mc_label = "pp24_full" (reads the _full intermediate hists,
         // so the hists/fits never clobber the TEST ones).
         c.data_file   = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"
                         "histograms_real_pairs_pp_2024_single_mu4_coarse_q_eta_bin_qeta_fid"
@@ -362,11 +370,12 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
         c.data_text   = "pp 2024 data";
         c.step2_coarse = false;  // the full sample has far MORE pair statistics than the test
     } else if (sample == "overlay") {
-        c.data_file   = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2023/"
-                        "histograms_real_pairs_pbpb_2023_single_mu4_coarse_q_eta_bin_qeta_fid"
-                        + data_wp + ".root";
-        c.ctr         = "_ctr0_5";   // D2: overlay compares ONLY to PbPb23 data 0-5%
-        c.data_text   = "Pb+Pb 2023 data, 0-5%";
+        // Data reference = Pb+Pb data of the overlay's CONDITIONS YEAR, 0-5% (D2 for pbpb23;
+        // like-for-like for pbpb24) -- DrCorrDataRefDir, never a retyped year.
+        c.data_file   = DrCorrDataRefDir(id) + "histograms_real_pairs_" + DrCorrDataRefTag(id)
+                      + "_single_mu4_coarse_q_eta_bin_qeta_fid" + data_wp + ".root";
+        c.ctr         = "_ctr0_5";   // D2: the overlay compares ONLY to 0-5% data
+        c.data_text   = DrCorrDataRefText(id);
         // The overlay pair sample (0-5% only) is ~4x thinner than pp; on the native
         // 41-bin pT / 184-bin q.eta axes the three DeltaR series are an unreadable
         // error-bar forest and the comparison the panel exists for cannot be made.
@@ -396,19 +405,16 @@ SampleCfg MakeCfg(const std::string& sample, bool use_tight_wp)
         // own turn-on fit belongs to its own plot set (and its fit mode is fermi+log, not
         // the erf+log used here) -- drawing it would invite a fit-quality reading of a
         // curve that is here purely as a reference sample.
-        c.cmp_fit_file = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/"
-                         "single_mu_effcy_pT_fit_mc" + std::string(use_tight_wp ? "" : "_medium_wp")
-                       + ".root";
+        // EXPLICITLY the pbpb23 overlay (r17618): r17663 was reconstructed with the SAME
+        // PbPb23-conditions pass, so this comparison is pinned to overlay_year 23 whatever the
+        // chain's default overlay is.
+        c.cmp_fit_file = DrCorrSinglesFitFile(GetDrCorrSample("overlay", use_tight_wp, 23), use_tight_wp);
         c.cmp_text     = "MC, Pb+Pb 2023 conditions, with HIJING overlay";
         // Black series on the q.eta panels = pp24-CONDITIONS fullsim MC (FULL sample), NOT
         // pp data: the r17663 study is an MC-vs-MC comparison of reco-tag CONFIGURATIONS, so
         // all three curves are MC (red = Pb+Pb23 cond. no overlay; black = pp24 cond.;
         // blue = Pb+Pb23 cond. with HIJING overlay). Full sample chosen for statistics.
-        // FitMCSinglesEffcy writes the unqualified basename, distinguished here only by the
-        // full_sample directory (Remaining Work 3c).
-        c.qeta_black_mc_file = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample/"
-                               "single_mu_effcy_pT_fit_mc"
-                             + std::string(use_tight_wp ? "" : "_medium_wp") + ".root";
+        c.qeta_black_mc_file = DrCorrSinglesFitFile(GetDrCorrSample("pp_full", use_tight_wp), use_tight_wp);
         c.qeta_black_mc_text = "MC, pp 2024 conditions";
     } else {
         throw std::runtime_error("plot_mc_trig_eff: sample must be 'pp', 'pp_full', 'overlay' or "
@@ -622,6 +628,7 @@ void WritePlateauRootFile(const std::string& path, bool recreate, int step, cons
 {
     const std::string tag = "step" + std::to_string(step) + (sign.empty() ? "" : "_" + sign);
     TDirectory* prev = gDirectory;   // restored below: the caller keeps reading its input files
+    gSystem->mkdir(gSystem->DirName(path.c_str()), kTRUE);
     TFile* f = TFile::Open(path.c_str(), recreate ? "RECREATE" : "UPDATE");
     if (!f || f->IsZombie())
         throw std::runtime_error("WritePlateauRootFile: cannot open " + path + " for writing");
@@ -681,17 +688,18 @@ void WritePlateauRootFile(const std::string& path, bool recreate, int step, cons
 
 // ================================================================= main
 
-void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true)
+void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true,
+                      int overlay_year = 24)
 {
     gROOT->SetBatch(kTRUE);
     gStyle->SetOptStat(0);
     gStyle->SetOptTitle(0);
     gErrorIgnoreLevel = kWarning;
 
-    const SampleCfg cfg = MakeCfg(sample, use_tight_wp);
-    // Shared sample identity -- used here only to name the plateau ROOT file that the fit stage
-    // reads back (dr_correction_sample_cfg.h).
-    const DrCorrSample id = GetDrCorrSample(sample, use_tight_wp);
+    const SampleCfg cfg = MakeCfg(sample, use_tight_wp, overlay_year);
+    // Shared sample identity -- names every product file, incl. the plateau ROOT file that the
+    // fit stage reads back (dr_correction_sample_cfg.h).
+    const DrCorrSample& id = cfg.id;
 
     // WP config (registry: Analysis/docs/muon_wp_registry.md): Tight nominal unsuffixed;
     // Medium inputs carry _medium_wp. BOTH the MC inputs AND the data tag-and-probe file are
@@ -701,10 +709,9 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
     const std::string wp_text = use_tight_wp ? "Tight muons" : "Medium muons";
     const std::string headline = cfg.sample_text + ", " + wp_text;
 
-    TFile* fmc   = OpenFile(cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label + wp_suf + ".root");
-    TFile* fmc3  = OpenFile(cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label + wp_suf
-                          + MCTrigEffPairPt::FileSuffix() + "_step3.root");
-    TFile* ffit  = OpenFile(cfg.mc_dir + "single_mu_effcy_pT_fit_mc" + wp_suf + ".root");
+    TFile* fmc   = OpenFile(DrCorrHistFile(id, use_tight_wp));
+    TFile* fmc3  = OpenFile(DrCorrHistFile(id, use_tight_wp, MCTrigEffPairPt::FileSuffix() + "_step3"));
+    TFile* ffit  = OpenFile(DrCorrSinglesFitFile(id, use_tight_wp));
     TFile* fdata = OpenFile(cfg.data_file);
 
     // Medium-WP plots go into a medium/ SUBDIRECTORY of each step dir (same filenames as
@@ -1131,8 +1138,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
     // sample rather than the muon selection). Graceful skip if the _sanity.root is absent.
     // ================================================================
     {
-        const std::string sanity_path =
-            cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label + wp_suf + "_sanity.root";
+        const std::string sanity_path = DrCorrHistFile(id, use_tight_wp, "_sanity");
         TFile* fsan = TFile::Open(sanity_path.c_str(), "READ");
         if (!fsan || fsan->IsZombie()) {
             std::cout << "\n[Step-1 sanity] no " << sanity_path
@@ -2203,8 +2209,7 @@ void plot_mc_trig_eff(const std::string& sample = "pp", bool use_tight_wp = true
     // ================================================================
     {
         const std::string step4_path =
-            cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label + wp_suf
-                                 + MCTrigEffPairPt::FileSuffix() + "_step4.root";
+            DrCorrHistFile(id, use_tight_wp, MCTrigEffPairPt::FileSuffix() + "_step4");
         TFile* fmc4 = TFile::Open(step4_path.c_str(), "READ");
         if (!fmc4 || fmc4->IsZombie()) {
             std::cout << "\n[Step 4] no " << step4_path << " -- skipping single-leg ΔR plots "

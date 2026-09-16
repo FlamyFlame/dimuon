@@ -586,7 +586,7 @@ void mc_pthat_slice_mass_statistics(const std::string& sample = "pp_full",
     const std::string wp_text = use_tight_wp ? "Tight" : "Medium";
 
     // Same pair file the dR correction and the single-value pair efficiency read.
-    const std::string pair_file = cfg.mc_dir
+    const std::string pair_file = cfg.sample_dir
         + "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_mc_trig_full.root";
     Long_t f_id = 0, f_sz = 0, f_fl = 0, f_mt = 0;
     if (gSystem->GetPathInfo(pair_file.c_str(), &f_id, &f_sz, &f_fl, &f_mt) != 0)
@@ -640,8 +640,8 @@ void mc_pthat_slice_mass_statistics(const std::string& sample = "pp_full",
 
     for (const auto& sl : Slices()) {
         // ---- the denominator: READ from the file, then cross-checked (see the N_slice block) ----
-        ami[sl.token] = ReadAmi(cfg.mc_dir, sl);
-        const Long64_t   n_chain = NtupChainEntries(cfg.mc_dir, sl);
+        ami[sl.token] = ReadAmi(cfg.sample_dir, sl);
+        const Long64_t   n_chain = NtupChainEntries(cfg.sample_dir, sl);
         const MetaCounts meta    = ReadMetaCounts(pair_file, sl.ikin);
         // AUTHORITATIVE: the events the ntuple processing actually looped over for this slice.
         n_events[sl.token] = meta.nproc;
@@ -810,15 +810,8 @@ void mc_pthat_slice_mass_statistics(const std::string& sample = "pp_full",
     // SIBLING of the mc_based plot tree, not part of it, so it gets its own top-level directory
     // under the same plot root -- and, per the VARIANT LAYOUT of dr_correction_sample_cfg.h, the
     // working point lives in that top-level name.
-    std::string base = cfg.out_base;
-    if (!base.empty() && base.back() == '/') base.pop_back();
-    const size_t slash = base.find_last_of('/');
-    if (slash == std::string::npos || base.compare(slash + 1, 8, "mc_based") != 0)
-        throw std::runtime_error("mc_pthat_slice_mass_statistics: unexpected out_base '"
-                                 + cfg.out_base + "' (expected its last component to start with "
-                                 "'mc_based')");
-    const std::string out_dir = base.substr(0, slash + 1) + "mc_pthat_slice_mass_stats"
-                              + (use_tight_wp ? "" : "_medium") + "/";
+    const std::string out_dir = DrCorrSiblingTree(cfg, std::string("mc_pthat_slice_mass_stats")
+                                                       + (use_tight_wp ? "" : "_medium"));
     gSystem->mkdir(out_dir.c_str(), kTRUE);
 
     // ---------------------------------------------------------------- provenance header (all CSVs)

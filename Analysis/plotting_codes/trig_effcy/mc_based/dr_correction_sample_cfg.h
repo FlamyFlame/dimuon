@@ -23,12 +23,18 @@
 #include <stdexcept>
 #include <string>
 #include "../../../Utilities/MCTrigEffPairPtBinning.h"
+#include "../../../MuonObjectsParamsAndHelpers/FullSimSampleType.h"
 
 struct DrCorrSample {
     std::string key;             // sample token used on the command line
-    std::string mc_dir;          // directory holding mc_trig_eff_hists_* and the fit outputs
-    std::string mc_label;        // file label inside those names
-    std::string out_base;        // plots root for this sample
+    std::string sample_dir;      // the sample's ROOT directory (raw NTUP level). Products live in
+                                 // its subtrees -- compose with the FullSimMCTrigEff*Dir /
+                                 // DrCorr*File helpers, NEVER by appending a basename to this.
+    std::string mc_label;        // file label inside the product names
+    int         overlay_year;    // HIJING-overlay conditions year (24 default / 23); see below
+    std::string plot_root;       // ".../<beam>_trigger_efficiency/" -- the sample's plot root
+    std::string plot_leaf;       // "" or "pbpb<yy>/" -- the conditions-year leaf (overlay only)
+    std::string out_base;        // plot_root + "mc_based<tag>/" + plot_leaf: the variant tree
     std::string sample_text;     // canvas headline (without the working point)
     std::string eps_dr_text;     // Step-3 symbol (2mu4 product vs mu4 cross term)
     bool        is_full_sample;  // true = FULL production -> plateau guard is ENFORCED
@@ -77,17 +83,24 @@ inline std::string DrCorrOutTag(bool use_tight_wp) {
     return MCTrigEffPairPt::FileSuffix() + std::string(use_tight_wp ? "" : "_medium");
 }
 
-inline DrCorrSample GetDrCorrSample(const std::string& key, bool use_tight_wp)
+// `overlay_year` (user, 2026-09-16): which HIJING-overlay TEST production the "overlay" key
+// means -- 24 (DEFAULT, Pb+Pb 2024 conditions, pythia_fullsim_hijing_overlay_test_sample/) or
+// 23 (Pb+Pb 2023 conditions, ..._pbpb23/, the sample of every overlay result up to 2026-09).
+// Directory, label, headline and plot root all derive from it (FullSimSampleType.h), so the
+// two productions can never share a file or a figure. Ignored for the pp / noovl keys.
+inline std::string DrCorrSiblingTree(const DrCorrSample& s, const std::string& name);
+
+inline DrCorrSample GetDrCorrSample(const std::string& key, bool use_tight_wp, int overlay_year = 24)
 {
     DrCorrSample s;
     s.key = key;
+    s.overlay_year = overlay_year;
     if (key == "pp") {
         // pp24 fullsim TEST sample (24 x 10k). Superseded by "pp_full"; kept so the older
         // outputs remain reproducible.
-        s.mc_dir         = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/";
+        s.sample_dir     = FullSimSampleInputDir(FullSimSampleType::pp, /*is_test_sample=*/true);
         s.mc_label       = "pp24";
-        s.out_base       = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
-                           "pp_trigger_efficiency/mc_based" + DrCorrOutTag(use_tight_wp) + "/";
+        s.plot_root      = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/pp_trigger_efficiency/";
         // Canvas headlines carry the PHYSICAL sample identity only (beam, energy, run
         // conditions) -- production bookkeeping ("fullsim", "FULL sample", r-tags) means
         // nothing to a physics audience and is kept in this doc / the file names instead.
@@ -96,31 +109,32 @@ inline DrCorrSample GetDrCorrSample(const std::string& key, bool use_tight_wp)
         s.eps_dr_text    = "#varepsilon_{#DeltaR}^{2mu4}";
         s.is_full_sample = false;
     } else if (key == "pp_full") {
-        s.mc_dir         = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample/";
+        s.sample_dir     = FullSimSampleInputDir(FullSimSampleType::pp, /*is_test_sample=*/false);
         s.mc_label       = "pp24_full";
-        s.out_base       = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
-                           "pp_trigger_efficiency/mc_based" + DrCorrOutTag(use_tight_wp) + "/";
+        s.plot_root      = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/pp_trigger_efficiency/";
         // Same PHYSICS as the "pp" test sample above, hence the same headline: the test/full
         // distinction is a production fact, not a property the reader of the figure can act on.
         s.sample_text    = "Pythia8 pp, #sqrt{s} = 5.36 TeV (2024 conditions)";
         s.eps_dr_text    = "#varepsilon_{#DeltaR}^{2mu4}";
         s.is_full_sample = true;    // the only FULL production so far
     } else if (key == "overlay") {
-        s.mc_dir         = "/usatlas/u/yuhanguo/usatlasdata/"
-                           "pythia_fullsim_hijing_overlay_test_sample/";
-        s.mc_label       = "hijing_overlay_pbpb23";
-        s.out_base       = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
-                           "pbpb_trigger_efficiency/mc_based" + DrCorrOutTag(use_tight_wp) + "/";
+        FullSimCheckPbPbYear(overlay_year);
+        s.sample_dir     = FullSimSampleInputDir(FullSimSampleType::hijing, /*is_test_sample=*/true,
+                                                 overlay_year);
+        s.mc_label       = FullSimSampleLabel(FullSimSampleType::hijing, overlay_year);
+        // The conditions year is the LEAF of the plot root, exactly as the data-side trees put it
+        // (pbpb_trigger_efficiency/mu4/no_corr/pbpb<yy>), so the two overlay productions' plot
+        // sets sit side by side under one variant tree and never interleave.
+        s.plot_root      = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/pbpb_trigger_efficiency/";
+        s.plot_leaf      = "pbpb" + std::to_string(overlay_year) + "/";
         s.sample_text    = "Pythia8 + HIJING overlay, Pb+Pb #sqrt{s_{NN}} = 5.36 TeV, "
-                           "0-5% (2023 conditions)";
+                           "0-5% (20" + std::to_string(overlay_year) + " conditions)";
         s.eps_dr_text    = "#varepsilon_{#DeltaR}^{cross}";
         s.is_full_sample = false;   // 10 000-event TEST sample
     } else if (key == "noovl") {
-        s.mc_dir         = "/usatlas/u/yuhanguo/usatlasdata/"
-                           "pythia_fullsim_no_overlay_test_sample/";
-        s.mc_label       = "r17663_no_overlay";
-        s.out_base       = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/"
-                           "r17663_no_overlay_trigger_efficiency/mc_based" + DrCorrOutTag(use_tight_wp) + "/";
+        s.sample_dir     = FullSimSampleInputDir(FullSimSampleType::noovl, /*is_test_sample=*/true);
+        s.mc_label       = FullSimSampleLabel(FullSimSampleType::noovl);
+        s.plot_root      = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/r17663_no_overlay_trigger_efficiency/";
         // The ONE headline that keeps a production tag (user decision 2026-08-04): this plot set
         // exists to compare reconstruction CONFIGURATIONS, so the tag is the subject of the
         // figure rather than bookkeeping. The series labels are still physical.
@@ -132,12 +146,90 @@ inline DrCorrSample GetDrCorrSample(const std::string& key, bool use_tight_wp)
         throw std::runtime_error("GetDrCorrSample: sample must be 'pp', 'pp_full', 'overlay' or "
                                  "'noovl', got '" + key + "'");
     }
+    // VARIANT LAYOUT (below): the WP / binning variant is a top-level tree under the plot root;
+    // the overlay's conditions year is the leaf INSIDE it (D8 of fullsim_sample_dir_layout.md).
+    s.out_base = DrCorrSiblingTree(s, "mc_based" + DrCorrOutTag(use_tight_wp));
     return s;
+}
+
+// A SIBLING top-level tree of the variant tree, e.g. "mc_statistics_pt8bins" next to
+// "mc_based": plot_root + "<name>/" + plot_leaf. Every product set that sits BESIDE the mc_based
+// tree composes its directory here, so the year leaf can never be dropped or doubled.
+inline std::string DrCorrSiblingTree(const DrCorrSample& s, const std::string& name)
+{
+    return s.plot_root + name + "/" + s.plot_leaf;
 }
 
 // WP-dependent file suffix (Tight nominal = unsuffixed; Medium = _medium_wp), used for every
 // file name in the chain. Registry: Analysis/docs/muon_wp_registry.md.
 inline std::string DrCorrWpSuffix(bool use_tight_wp) { return use_tight_wp ? "" : "_medium_wp"; }
+
+// ---------------------------------------------------------------------------------------------
+// PRODUCT FILES of the chain, each in its subtree of the sample directory (FullSimSampleType.h
+// "PER-SAMPLE DIRECTORY LAYOUT"). Every stage composes its input and output names HERE, so a
+// producer and its consumers cannot disagree about where a file lives.
+//
+// The Step-1..4 histogram file written by FillMCTrigEffHists. `variant` is everything that
+// follows the WP token in the basename, e.g. "" (Steps 1-2), "_step3", "_step4", "_sanity",
+// "_corrected", "_corrected_sfclosure_step3", "_nogapcut", or the 4-bin token followed by one
+// of those -- the caller keeps composing it, only the directory and the prefix are fixed here.
+inline std::string DrCorrHistFile(const DrCorrSample& s, bool use_tight_wp,
+                                  const std::string& variant = "")
+{
+    return FullSimMCTrigEffHistsDir(s.sample_dir) + "mc_trig_eff_hists_" + s.mc_label
+         + DrCorrWpSuffix(use_tight_wp) + variant + ".root";
+}
+
+// The MC single-muon turn-on fit file (FitMCSinglesEffcy), `corr_suffix` = "" | "_corrected" |
+// "_corrected_sfclosure". Carries the sample label since 2026-09-16 (RW 3c).
+inline std::string DrCorrSinglesFitFile(const DrCorrSample& s, bool use_tight_wp,
+                                        const std::string& corr_suffix = "")
+{
+    return FullSimMCSinglesFitFile(s.sample_dir, s.mc_label, corr_suffix, DrCorrWpSuffix(use_tight_wp));
+}
+
+// The MC closure output (FillMCTrigEffClosure); `variant` = the plateau-mode / binning tokens
+// that follow the WP token, composed by the caller exactly as before.
+inline std::string DrCorrClosureFile(const DrCorrSample& s, bool use_tight_wp,
+                                     const std::string& variant = "")
+{
+    return FullSimMCTrigEffClosureDir(s.sample_dir) + "mc_trig_eff_closure_" + s.mc_label
+         + DrCorrWpSuffix(use_tight_wp) + variant + ".root";
+}
+
+// The single-value pair trigger efficiency map (FillMCTrigEffPairEff) is named by
+// PairTrigEff::FileName(s.sample_dir, s.mc_label, wp) in Utilities/PairTrigEffEvaluator.h.
+
+// DATA tag-and-probe REFERENCE of a sample (Step-1 comparison, corrected-MC study): the data
+// taken under the SAME conditions the sample simulates -- pp24 data for every pp-collision sample
+// (pp, pp_full, and the r17663 no-overlay diagnostic, which simulates pp collisions), Pb+Pb data
+// of the overlay's CONDITIONS YEAR for the HIJING overlay (23 -> pbpb_2023, the D2 choice for the
+// r17618 sample; 24 -> pbpb_2024, like-for-like for the r17864 sample). Returned as the data
+// directory + the year text, so a caller composes the file it needs without retyping the year.
+inline std::string DrCorrDataRefDir(const DrCorrSample& s)
+{
+    if (s.key == "overlay")
+        return "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20" + std::to_string(s.overlay_year) + "/";
+    return "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/";
+}
+inline std::string DrCorrDataRefTag(const DrCorrSample& s)     // file-name stem token
+{
+    if (s.key == "overlay") return "pbpb_20" + std::to_string(s.overlay_year);
+    return "pp_2024";
+}
+inline std::string DrCorrDataRefText(const DrCorrSample& s)    // legend / headline
+{
+    if (s.key == "overlay") return "Pb+Pb 20" + std::to_string(s.overlay_year) + " data, 0-5%";
+    return "pp 2024 data";
+}
+
+// The pp24-fullsim PAIR reconstruction efficiency map (build_pp24_fullsim_pair_reco_eff.C),
+// consumed by the pp24 crossx RDF stage. Not a trigger product, but it lives in the same sample
+// directory and is named from the same label.
+inline std::string DrCorrPairRecoEffFile(const DrCorrSample& s)
+{
+    return FullSimRecoEffDir(s.sample_dir) + "pair_reco_eff_" + s.mc_label + ".root";
+}
 
 // VARIANT LAYOUT (user, 2026-08-05): every non-nominal variant lives in its OWN TOP-LEVEL plot
 // directory -- `mc_based`, `mc_based_medium`, `mc_based_pt4bin`, `mc_based_pt4bin_medium` --
@@ -158,8 +250,8 @@ inline std::string DrCorrPlateauFile(const DrCorrSample& s, bool use_tight_wp)
     // The pair-pT-binning token keeps a 4-bin comparison run from overwriting the nominal
     // plateau map -- and, more importantly, keeps the fit stage's cell-count consistency guard
     // from silently pairing an 8-bin plateau file with 4-bin histograms.
-    return s.mc_dir + "dr_correction_plateaus_" + s.mc_label + DrCorrWpSuffix(use_tight_wp)
-         + MCTrigEffPairPt::FileSuffix() + ".root";
+    return FullSimMCTrigEffDrCorrDir(s.sample_dir) + "dr_correction_plateaus_" + s.mc_label
+         + DrCorrWpSuffix(use_tight_wp) + MCTrigEffPairPt::FileSuffix() + ".root";
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -295,8 +387,8 @@ inline std::string DrCorrFitFile(const DrCorrSample& s, bool use_tight_wp, int s
                                  const std::string& method, const std::string& sign = "",
                                  const std::string& plateau_mode = "")
 {
-    return s.mc_dir + "dr_correction_fits_" + s.mc_label + DrCorrWpSuffix(use_tight_wp)
-         + MCTrigEffPairPt::FileSuffix()
+    return FullSimMCTrigEffDrCorrDir(s.sample_dir) + "dr_correction_fits_" + s.mc_label
+         + DrCorrWpSuffix(use_tight_wp) + MCTrigEffPairPt::FileSuffix()
          + "_step" + std::to_string(step) + "_" + method
          + (sign.empty() ? "" : "_" + sign) + DrCorrPlateauModeTag(plateau_mode) + ".root";
 }

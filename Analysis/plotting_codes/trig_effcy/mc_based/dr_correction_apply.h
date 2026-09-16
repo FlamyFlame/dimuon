@@ -223,9 +223,8 @@ struct DrCorrectionEvaluator {
         // folded into 3 sign-independent |eta| bins, a forward cell `iz` spans TWO disjoint
         // filled-bin sub-ranges (a negative-eta one and a positive-eta one).
         DrAxisGroups Gpt, Geta;
-        const std::string hist_path = cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label
-                                    + DrCorrWpSuffix(use_tight_wp)
-                                    + MCTrigEffPairPt::FileSuffix() + "_step3.root";
+        const std::string hist_path = DrCorrHistFile(cfg, use_tight_wp,
+                                                     MCTrigEffPairPt::FileSuffix() + "_step3");
         const std::string hp = "h_mc_dr_" + (sign.empty() ? std::string() : sign + "_")
                              + "zoom_vs_pt_eta_";
 

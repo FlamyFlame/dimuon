@@ -76,8 +76,15 @@
 //   root -b -l -q 'FillMCTrigEffHists.cxx+("overlay", true)'              // Step 3
 //   root -b -l -q 'FillMCTrigEffHists.cxx+("overlay", false, true, true)' // Step 4
 //   root -b -l -q 'FillMCTrigEffHists.cxx+("pp_full", false, true, false, false, true)' // corrected Step 1
+//   root -b -l -q 'FillMCTrigEffHists.cxx+("overlay", true, true, false, false, false, false, false, 23)'
+//                                                                        // Step 3, pbpb23 overlay
 //
-// Output: <sample dir>/mc_trig_eff_hists_<pp24|hijing_overlay_pbpb23>.root
+// overlay_year (LAST argument, default 24): which HIJING-overlay TEST production "overlay" reads --
+// 24 = Pb+Pb 2024 conditions (pythia_fullsim_hijing_overlay_test_sample/), 23 = Pb+Pb 2023
+// conditions (..._pbpb23/). Directory and label derive from it (FullSimSampleType.h).
+//
+// Output: <sample dir>/mc_trig_eff/hists/mc_trig_eff_hists_<pp24_full|hijing_overlay_pbpb<yy>|...>.root
+//         (layout: FullSimSampleType.h "PER-SAMPLE DIRECTORY LAYOUT"; name: DrCorrHistFile)
 //         (do_step3=true writes a SEPARATE ..._step3.root; do_step4=true a SEPARATE
 //          ..._step4.root; neither touches the Step-1/2 file; corrected_mc=true inserts
 //          "_corrected" before that suffix)
@@ -114,13 +121,17 @@ using namespace std;
 #include "../Utilities/MCTrigEffPairSelection.h"
 #include "../Utilities/proj_range_to_suffix.cxx"
 #include "CommonEffcyConfig.h"
+#include "../MuonObjectsParamsAndHelpers/FullSimSampleType.h"
+#include "../plotting_codes/trig_effcy/mc_based/dr_correction_sample_cfg.h"   // DrCorrSample + product-file helpers
 
 namespace MCTrigEff {
 
 // ---------- sample configuration ----------
 struct SampleConfig {
-    std::string dir;
-    std::string label;        // pp24 | hijing_overlay_pbpb23
+    std::string dir;          // the sample ROOT directory; the ntuple-processing inputs are flat in it
+    std::string label;        // pp24 | pp24_full | hijing_overlay_pbpb<yy> | r17663_no_overlay
+    DrCorrSample products;    // the SAME identity as every downstream stage (dr_correction_sample_cfg.h):
+                              // every product this macro reads or writes is named through it
     std::string pair_file;
     std::string singles_file;
     bool is_overlay = false;  // overlay => 0-5% centrality restriction (doc D2) + mu4-cross-term numerator
@@ -137,20 +148,22 @@ struct SampleConfig {
 };
 
 // Data tag-and-probe reference paths (corrected-MC study). pp24 data is the reference for every
-// pp-collision sample (pp, pp_full, noovl); PbPb23 data 0-5% for the HIJING overlay (doc D2).
+// pp-collision sample (pp, pp_full, noovl); Pb+Pb data of the overlay's conditions year, 0-5%,
+// for the HIJING overlay (doc D2 for pbpb23; like-for-like for pbpb24). The directory and year
+// come from DrCorrDataRefDir/Tag (dr_correction_sample_cfg.h); only the basenames live here.
 namespace {
-const std::string kDataPPFitTmpl =
-    "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/trg_effcy_pT_fitting_to_erf_plus_log/"
-    "single_mu_effcy_pT_fit{WP}.root";
-const std::string kDataPPHistTmpl =
-    "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"
-    "histograms_real_pairs_pp_2024_single_mu4_coarse_q_eta_bin_qeta_fid{WP}.root";
-const std::string kDataPbPbFitTmpl =
-    "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2023/trg_effcy_pT_fitting_to_fermi_plus_log/"
-    "single_mu_effcy_pT_fit{WP}.root";
-const std::string kDataPbPbHistTmpl =
-    "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_2023/"
-    "histograms_real_pairs_pbpb_2023_single_mu4_coarse_q_eta_bin_qeta_fid{WP}.root";
+// <data dir>/<fit subdir>/single_mu_effcy_pT_fit{WP}.root and
+// <data dir>/histograms_real_pairs_<tag>_single_mu4_coarse_q_eta_bin_qeta_fid{WP}.root
+inline std::string DataFitTmpl(const DrCorrSample& s) {
+    return DrCorrDataRefDir(s)
+         + (s.key == "overlay" ? "trg_effcy_pT_fitting_to_fermi_plus_log/"
+                               : "trg_effcy_pT_fitting_to_erf_plus_log/")
+         + "single_mu_effcy_pT_fit{WP}.root";
+}
+inline std::string DataHistTmpl(const DrCorrSample& s) {
+    return DrCorrDataRefDir(s) + "histograms_real_pairs_" + DrCorrDataRefTag(s)
+         + "_single_mu4_coarse_q_eta_bin_qeta_fid{WP}.root";
+}
 
 std::string SubstWP(std::string s, const std::string& wp_suf) {
     const std::string tok = "{WP}";
@@ -161,11 +174,14 @@ std::string SubstWP(std::string s, const std::string& wp_suf) {
 }
 } // anonymous namespace
 
-SampleConfig GetSampleConfig(const std::string& sample) {
+SampleConfig GetSampleConfig(const std::string& sample, bool use_tight_wp, int overlay_year) {
     SampleConfig cfg;
+    // Directory + label come from the one table the whole chain shares; the ntuple-processing
+    // input names below are composed from them (they stay flat at the sample root).
+    cfg.products = GetDrCorrSample(sample, use_tight_wp, overlay_year);
+    cfg.dir   = cfg.products.sample_dir;
+    cfg.label = cfg.products.mc_label;
     if (sample == "pp") {
-        cfg.dir   = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/";
-        cfg.label = "pp24";
         cfg.pair_file    = cfg.dir + "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_mc_trig.root";
         cfg.singles_file = cfg.dir + "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_mc_trig_single_muon.root";
         cfg.is_overlay = false;
@@ -174,45 +190,31 @@ SampleConfig GetSampleConfig(const std::string& sample) {
         // (pp collisions, 2mu4 pair decision, no centrality) -- ONLY the input files differ.
         // Files end in "_full"; the "_full" label keeps its outputs (hists + plots) in their own
         // names/dirs, so they never clobber the TEST-sample trigger-efficiency results.
-        cfg.dir   = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample/";
-        cfg.label = "pp24_full";
         cfg.pair_file    = cfg.dir + "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_mc_trig_full.root";
         cfg.singles_file = cfg.dir + "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_mc_trig_single_muon_full.root";
         cfg.is_overlay = false;
     } else if (sample == "overlay") {
-        cfg.dir   = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/";
-        cfg.label = "hijing_overlay_pbpb23";
-        cfg.pair_file    = cfg.dir + "muon_pairs_pythia_fullsim_hijing_overlay_pbpb23_no_data_resonance_cuts_mc_trig.root";
-        cfg.singles_file = cfg.dir + "muon_pairs_pythia_fullsim_hijing_overlay_pbpb23_no_data_resonance_cuts_mc_trig_single_muon.root";
+        cfg.pair_file    = cfg.dir + "muon_pairs_pythia_fullsim_" + cfg.label + "_no_data_resonance_cuts_mc_trig.root";
+        cfg.singles_file = cfg.dir + "muon_pairs_pythia_fullsim_" + cfg.label + "_no_data_resonance_cuts_mc_trig_single_muon.root";
         cfg.is_overlay = true;
     } else if (sample == "noovl") {
         // r17663 NO-OVERLAY diagnostic (mc_trigger_efficiency.md R8, round 4): pp collisions
         // reconstructed with the overlay's PbPb23-conditions pass, but with NO overlaid event.
         // is_overlay=false: there is no centrality (no HIJING) -> no 0-5% restriction, and the
         // trigger condition is the pp-style 2mu4 pair decision, as for any quiet pp event.
-        cfg.dir   = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_no_overlay_test_sample/";
-        cfg.label = "r17663_no_overlay";
         cfg.pair_file    = cfg.dir + "muon_pairs_pythia_fullsim_r17663_no_overlay_no_data_resonance_cuts_mc_trig.root";
         cfg.singles_file = cfg.dir + "muon_pairs_pythia_fullsim_r17663_no_overlay_no_data_resonance_cuts_mc_trig_single_muon.root";
         cfg.is_overlay = false;
-    } else {
-        throw std::invalid_argument("FillMCTrigEffHists: sample must be \"pp\", \"pp_full\", "
-                                    "\"overlay\" or \"noovl\", got " + sample);
     }
 
-    // DATA tag-and-probe reference (corrected-MC study only). The overlay is compared to PbPb23
-    // data restricted to 0-5% centrality (doc D2 -- the same restriction its own MC selection
-    // carries); every pp-collision sample uses the pp24 data reference (identical choice to
-    // plot_mc_trig_eff.cxx MakeCfg, incl. "noovl", which simulates pp collisions).
-    if (cfg.is_overlay) {
-        cfg.data_fit_file_tmpl  = kDataPbPbFitTmpl;
-        cfg.data_hist_file_tmpl = kDataPbPbHistTmpl;
-        cfg.data_ctr            = "_ctr0_5";
-    } else {
-        cfg.data_fit_file_tmpl  = kDataPPFitTmpl;
-        cfg.data_hist_file_tmpl = kDataPPHistTmpl;
-        cfg.data_ctr            = "";
-    }
+    // DATA tag-and-probe reference (corrected-MC study only). The overlay is compared to the
+    // Pb+Pb data of its conditions year restricted to 0-5% centrality (doc D2 -- the same
+    // restriction its own MC selection carries); every pp-collision sample uses the pp24 data
+    // reference (identical choice to plot_mc_trig_eff.cxx MakeCfg, incl. "noovl", which
+    // simulates pp collisions). Paths: DrCorrDataRefDir (dr_correction_sample_cfg.h).
+    cfg.data_fit_file_tmpl  = DataFitTmpl(cfg.products);
+    cfg.data_hist_file_tmpl = DataHistTmpl(cfg.products);
+    cfg.data_ctr            = cfg.is_overlay ? "_ctr0_5" : "";
     return cfg;
 }
 
@@ -573,7 +575,8 @@ ROOT::RDF::RNode AliasLeg(ROOT::RDF::RNode node, int leg, const std::string& wp_
 void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
                         bool use_tight_wp = true, bool do_step4 = false,
                         bool do_sanity = false, bool corrected_mc = false,
-                        bool sf_closure = false, bool book_kn_stats = false) {
+                        bool sf_closure = false, bool book_kn_stats = false,
+                        int overlay_year = 24) {
     using namespace MCTrigEff;
 
     if ((int)do_step3 + (int)do_step4 + (int)do_sanity > 1)
@@ -589,7 +592,7 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
         throw std::invalid_argument("FillMCTrigEffHists: book_kn_stats (per-pTHat-slice "
                                     "statistics) is a Step-3 addition; it needs do_step3 = true");
 
-    const SampleConfig cfg = GetSampleConfig(sample);
+    const SampleConfig cfg = GetSampleConfig(sample, use_tight_wp, overlay_year);
     const Binnings bins = MakeBinnings();
     // WP config (registry: Analysis/docs/muon_wp_registry.md): TIGHT nominal, Medium
     // reachable for the WP systematic. Medium outputs carry the _medium_wp suffix.
@@ -789,7 +792,7 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
     DataEffEvaluator* data_eval   = nullptr;
     if (corrected_mc) {
         mc_eval_nom = new MCEffEvaluator();
-        mc_eval_nom->LoadFits(cfg.dir + "single_mu_effcy_pT_fit_mc" + wp_suf + ".root");
+        mc_eval_nom->LoadFits(DrCorrSinglesFitFile(cfg.products, use_tight_wp));
         data_eval = new DataEffEvaluator();
         data_eval->Load(SubstWP(cfg.data_fit_file_tmpl, wp_suf),
                         SubstWP(cfg.data_hist_file_tmpl, wp_suf), cfg.data_ctr);
@@ -899,7 +902,7 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
         // CORRECTED turn-ons (§3.3/§3.4 require the inverse weight to use the efficiency OF THE
         // SAMPLE BEING INVERSE-WEIGHTED, and the sample being weighted here is the corrected one).
         evaluator = new MCEffEvaluator();  // heap: must outlive the lazy RDF loops
-        evaluator->LoadFits(cfg.dir + "single_mu_effcy_pT_fit_mc" + corr_suf + wp_suf + ".root");
+        evaluator->LoadFits(DrCorrSinglesFitFile(cfg.products, use_tight_wp, corr_suf));
 
         for (const auto& tree : pair_trees) {
             rdf_store.emplace_back(std::make_unique<ROOT::RDataFrame>(tree, cfg.pair_file));
@@ -1150,7 +1153,7 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
         // Inverse-weight ε source: nominal ε_MC, or ε_corr (fits to the CORRECTED turn-ons) in
         // corrected mode -- §3.3 requires the ε of the sample being inverse-weighted.
         evaluator = new MCEffEvaluator();  // heap: must outlive the lazy RDF loops
-        evaluator->LoadFits(cfg.dir + "single_mu_effcy_pT_fit_mc" + corr_suf + wp_suf + ".root");
+        evaluator->LoadFits(DrCorrSinglesFitFile(cfg.products, use_tight_wp, corr_suf));
 
         // pp: pair fires 2mu4; overlay (PbPb cross term): both legs mu4-matched
         const std::string trig_cond = cfg.is_overlay ? "m1_passmu4 && m2_passmu4" : "pass2mu4";
@@ -1394,10 +1397,11 @@ void FillMCTrigEffHists(const std::string& sample = "pp", bool do_step3 = false,
     // ---------- write ----------
     const std::string gap_tag = kApplyGapCut ? "" : "_nogapcut";
     const std::string ptbin_tag = MCTrigEffPairPt::FileSuffix();
-    const std::string out_name = cfg.dir + "mc_trig_eff_hists_" + cfg.label + wp_suf + corr_suf +
-                                 gap_tag + ptbin_tag +
-                                 (do_sanity ? "_sanity.root" : do_step4 ? "_step4.root"
-                                  : do_step3 ? "_step3.root" : ".root");
+    const std::string out_name = DrCorrHistFile(cfg.products, use_tight_wp,
+                                 corr_suf + gap_tag + ptbin_tag +
+                                 (do_sanity ? "_sanity" : do_step4 ? "_step4"
+                                  : do_step3 ? "_step3" : ""));
+    gSystem->mkdir(gSystem->DirName(out_name.c_str()), kTRUE);
     TFile fout(out_name.c_str(), "RECREATE");
     if (fout.IsZombie()) throw std::runtime_error("FillMCTrigEffHists: cannot open output " + out_name);
     for (auto& kv : hists1D) kv.second->Write(kv.first.c_str());

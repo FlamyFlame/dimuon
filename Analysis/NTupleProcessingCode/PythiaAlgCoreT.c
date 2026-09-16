@@ -1,6 +1,7 @@
 #include "PythiaAlgCoreT.h"
 #include "../MuonObjectsParamsAndHelpers/muon_pair_enums_MC.h"
 #include "Riostream.h"
+#include "TSystem.h"   // gSystem->AccessPathName: does the sample ship its own ami_info/?
 #include "TTree.h"
 #include "TLorentzVector.h"
 #include <math.h>
@@ -26,18 +27,26 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_PythiaCore() {
         kinRanges  = {8.f, 14.f, 24.f, 40.f, 70.f, 125.f, 300.f};
         py_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_truth_full_sample/pythia_5p36TeV/";
         fullsim_input_dir = fullsim_input_dir_override.empty()
-            ? FullSimSampleInputDir(fullsim_sample_type, isTestSample) : fullsim_input_dir_override;
-        // AMI: the TEST sample's cross-sections live with the truth production (py_dir); the FULL
-        // sample ships its OWN ami_info/ (different DSIDs => different sigma*eff, slice-dependent).
-        // Driven by the SAME isTestSample switch, so the input files and their cross-sections
-        // cannot come from different productions.
-        if (ami_info_dir_override.empty())
-            ami_info_dir_override = isTestSample ? (py_dir + "ami_info/")
-                                                 : (fullsim_input_dir + "ami_info/");
+            ? FullSimSampleInputDir(fullsim_sample_type, isTestSample, overlay_pbpb_year)
+            : fullsim_input_dir_override;
+        // AMI: a sample that ships its OWN ami_info/ (the FULL production; the pbpb24 overlay test
+        // sample, whose evgen e8613 is a NEW production with its own cross-sections) is read from
+        // it. Only a TEST sample WITHOUT one (pp24 test, pbpb23 overlay: the e8599 evgen shared
+        // with the truth production) falls back to the truth production's ami_info/ (py_dir).
+        // Driven by the input directory itself, so the input files and their cross-sections
+        // cannot come from different productions (docs/ami_weights.md: never reuse another
+        // production's weights).
+        if (ami_info_dir_override.empty()) {
+            const std::string own_ami = fullsim_input_dir + "ami_info/";
+            const bool has_own_ami = !gSystem->AccessPathName(own_ami.c_str());   // true = exists
+            if (!isTestSample && !has_own_ami)
+                throw std::runtime_error("PythiaAlgCoreT: FULL sample without its own ami_info/: " + own_ami);
+            ami_info_dir_override = has_own_ami ? own_ami : (py_dir + "ami_info/");
+        }
         std::cout << "PythiaAlgCoreT: fullsim sample = " << (isTestSample ? "TEST" : "FULL")
                   << ", input_dir=" << fullsim_input_dir
                   << ", ami_dir=" << ami_info_dir_override << std::endl;
-        const std::string label = FullSimSampleLabel(fullsim_sample_type);
+        const std::string label = FullSimSampleLabel(fullsim_sample_type, overlay_pbpb_year);
         outfile_name     = "muon_pairs_pythia_fullsim_" + label;
         outhistfile_name = "hists_pythia_ntuple_processing_fullsim_" + label;
         nevents.resize(nKinRanges, 0);

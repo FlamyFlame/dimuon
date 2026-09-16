@@ -175,9 +175,8 @@ void plot_mc_trig_eff_closure_compare(const std::string& sample = "pp_full",
     std::vector<TFile*>      fin(kApproaches.size(), nullptr);
     std::vector<std::string> legend(kApproaches.size());
     for (size_t a = 0; a < kApproaches.size(); ++a) {
-        const std::string p = cfg.mc_dir + "mc_trig_eff_closure_" + cfg.mc_label + wp_suf
-                            + MCTrigEffPairPt::FileSuffix()
-                            + DrCorrPlateauModeTag(kApproaches[a].mode) + ".root";
+        const std::string p = DrCorrClosureFile(cfg, use_tight_wp,
+                                MCTrigEffPairPt::FileSuffix() + DrCorrPlateauModeTag(kApproaches[a].mode));
         fin[a] = TFile::Open(p.c_str(), "READ");
         if (!fin[a] || fin[a]->IsZombie())
             throw std::runtime_error("plot_mc_trig_eff_closure_compare: cannot open " + p

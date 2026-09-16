@@ -20,6 +20,10 @@ public:
     // NTuple-processing output today); FALSE = the FULL production. The SAME switch fixes the
     // isospin treatment upstream (FullSimSampleType.h) so the two cannot disagree.
     bool is_test_sample = true;
+    // HIJING-overlay conditions year (FullSimSampleType.h): 24 (default) = pbpb24 test sample /
+    // full production, 23 = the _pbpb23 test sample. MUST match the overlay_pbpb_year the
+    // NTuple-processing output was produced with (it is in the label).
+    int overlay_pbpb_year = 24;
 
 protected:
 
@@ -28,8 +32,8 @@ protected:
         // is_test_sample: which fullsim production to read. TRUE today because only the TEST
         // sample has NTuple-processing output; flip to false when the FULL sample lands.
         // It also fixes the isospin treatment upstream (FullSimSampleType.h) -- one switch.
-        const std::string data_dir = FullSimSampleInputDir(fullsim_sample_type, is_test_sample);
-        const std::string label    = FullSimSampleLabel(fullsim_sample_type);
+        const std::string data_dir = FullSimSampleInputDir(fullsim_sample_type, is_test_sample, overlay_pbpb_year);
+        const std::string label    = FullSimSampleLabel(fullsim_sample_type, overlay_pbpb_year);
         const std::string cut_suffix = with_data_resonance_cuts
             ? "_with_data_resonance_cuts"
             : "_no_data_resonance_cuts";

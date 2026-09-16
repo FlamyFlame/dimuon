@@ -353,7 +353,7 @@ void RDFBasedHistFillingPP::OpenPairEfficiencyInputs()
     }
     if (!s_pair_reco_eff) {
         s_pair_reco_eff = new PairRecoEffEvaluator();
-        s_pair_reco_eff->Load(mc.mc_dir + "pair_reco_eff_pp24_full.root", isTight);
+        s_pair_reco_eff->Load(DrCorrPairRecoEffFile(mc), isTight);
     }
     s_pair_eff_loaded_wp = isTight ? 1 : 0;
 }

@@ -126,18 +126,17 @@ void Emit(const std::string& path, const std::function<void(std::ostream&)>& wri
 }  // namespace
 
 void write_mc_pair_statistics_tables(const std::string& sample = "pp_full",
-                                     bool use_tight_wp = true)
+                                     bool use_tight_wp = true, int overlay_year = 24)
 {
     gROOT->SetBatch(kTRUE);
 
-    const DrCorrSample cfg    = GetDrCorrSample(sample, use_tight_wp);
+    const DrCorrSample cfg    = GetDrCorrSample(sample, use_tight_wp, overlay_year);
     const std::string  wp_suf = DrCorrWpSuffix(use_tight_wp);        // "" | "_medium_wp"
     const std::string  wp_txt = use_tight_wp ? "Tight" : "Medium";
 
     // Input: the Step-3 fill output. Same construction as plot_mc_trig_eff.cxx, so the two stages
     // read the same file for the same (sample, WP, pair-pT binning).
-    const std::string in_path = cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label + wp_suf
-                              + MCTrigEffPairPt::FileSuffix() + "_step3.root";
+    const std::string in_path = DrCorrHistFile(cfg, use_tight_wp, MCTrigEffPairPt::FileSuffix() + "_step3");
     TFile* fin = TFile::Open(in_path.c_str(), "READ");
     if (!fin || fin->IsZombie())
         throw std::runtime_error("write_mc_pair_statistics_tables: cannot open " + in_path);
@@ -186,15 +185,9 @@ void write_mc_pair_statistics_tables(const std::string& sample = "pp_full",
     // dr_correction_sample_cfg.h, the working point lives in that top-level name.
     // The pair-pT token is taken from the ACTUAL number of bins in the file, so the directory
     // name can never claim a binning the numbers inside it do not have.
-    std::string base = cfg.out_base;
-    if (!base.empty() && base.back() == '/') base.pop_back();
-    const size_t slash = base.find_last_of('/');
-    if (slash == std::string::npos || base.compare(slash + 1, 8, "mc_based") != 0)
-        throw std::runtime_error("write_mc_pair_statistics_tables: unexpected out_base '"
-            + cfg.out_base + "' (expected its last component to start with 'mc_based')");
-    const std::string out_dir = base.substr(0, slash + 1) + "mc_statistics_pt"
-                              + std::to_string(npt) + "bins"
-                              + (use_tight_wp ? "" : "_medium") + "/";
+    // Sibling of the mc_based tree under the same plot root (keeps the overlay's year leaf).
+    const std::string out_dir = DrCorrSiblingTree(cfg, "mc_statistics_pt" + std::to_string(npt)
+                                                       + "bins" + (use_tight_wp ? "" : "_medium"));
     gSystem->mkdir(out_dir.c_str(), kTRUE);
 
     // -------- labels, formatted from the axes (never retyped) ------------------------------

@@ -217,9 +217,8 @@ void plot_mc_trig_eff_closure_highpt_compare(const std::string& sample = "pp_ful
     // ---------------- open the two dR-approach closure files ---------------------------------
     std::vector<TFile*> fin(kModes.size(), nullptr);
     for (size_t a = 0; a < kModes.size(); ++a) {
-        const std::string p = cfg.mc_dir + "mc_trig_eff_closure_" + cfg.mc_label + wp_suf
-                            + MCTrigEffPairPt::FileSuffix()
-                            + DrCorrPlateauModeTag(kModes[a]) + ".root";
+        const std::string p = DrCorrClosureFile(cfg, use_tight_wp,
+                                MCTrigEffPairPt::FileSuffix() + DrCorrPlateauModeTag(kModes[a]));
         fin[a] = TFile::Open(p.c_str(), "READ");
         if (!fin[a] || fin[a]->IsZombie())
             throw std::runtime_error("plot_mc_trig_eff_closure_highpt_compare: cannot open " + p

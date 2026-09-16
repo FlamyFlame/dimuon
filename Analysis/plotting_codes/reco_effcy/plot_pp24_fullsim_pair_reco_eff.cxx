@@ -69,6 +69,8 @@
 #include <TSystem.h>
 
 #include "../../MuonObjectsParamsAndHelpers/ParamsSet.h"
+#include "../../MuonObjectsParamsAndHelpers/FullSimSampleType.h"   // sample dir + reco_eff/ layout
+#include "../trig_effcy/mc_based/dr_correction_sample_cfg.h"          // DrCorrPairRecoEffFile: the ONE name
 #include "../../RDFBasedHistFilling/CommonEffcyConfig.h"
 
 namespace {
@@ -268,11 +270,9 @@ void plot_pp24_fullsim_pair_reco_eff(bool use_full_sample = true, bool tight_WP 
     gStyle->SetOptStat(0);
     gStyle->SetPaintTextFormat("4.2f");
 
-    const std::string dir = use_full_sample
-        ? "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample/"
-        : "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/";
-    const std::string sfx     = use_full_sample ? "_full" : "";
-    const std::string in_path = dir + "pair_reco_eff_pp24" + sfx + ".root";
+    const DrCorrSample id     = GetDrCorrSample(use_full_sample ? "pp_full" : "pp", tight_WP);
+    const std::string dir     = id.sample_dir;
+    const std::string in_path = DrCorrPairRecoEffFile(id);
     const std::string wp      = tight_WP ? "tight" : "medium";
     const std::string wp_text = tight_WP ? "Tight muons" : "Medium muons";
     const std::string sample_text = std::string("Pythia8 full simulation, ")

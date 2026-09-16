@@ -655,6 +655,9 @@ class PythiaFullsimRecoEffPlotterOverlay
 
 public:
     FullSimSampleType fullsim_sample_type;
+    // HIJING-overlay conditions year (FullSimSampleType.h): 24 (default) / 23. Must match the
+    // year the hist-filling output was produced with (it is in the label).
+    int overlay_pbpb_year = 24;
 
     PythiaFullsimRecoEffPlotterOverlay(
         FullSimSampleType sample_type = FullSimSampleType::hijing,
@@ -677,13 +680,14 @@ public:
 
 protected:
     std::string GetDataDir() const override {
-        return FullSimSampleInputDir(fullsim_sample_type, is_test_sample);
+        return FullSimSampleInputDir(fullsim_sample_type, is_test_sample, overlay_pbpb_year);
     }
     std::string GetPlotDirPrefix() const override {
-        return FullSimSamplePlotDir(fullsim_sample_type);
+        return FullSimSamplePlotDir(fullsim_sample_type, overlay_pbpb_year);
     }
     std::string GetInputFilePath() const override {
         return GetDataDir() + "histograms_pythia_fullsim_"
-            + FullSimSampleLabel(fullsim_sample_type) + "_no_data_resonance_cuts" + extra_tag + ".root";
+            + FullSimSampleLabel(fullsim_sample_type, overlay_pbpb_year) + "_no_data_resonance_cuts"
+            + extra_tag + ".root";
     }
 };

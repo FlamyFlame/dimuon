@@ -296,7 +296,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
                              int step = 3, const std::string& method = "polyu_fixedRp",
                              const std::string& mode = "sign_intgr",
                              const std::string& plateau_mode = "corr",
-                             const std::string& dr_view = "dr0_1")
+                             const std::string& dr_view = "dr0_1", int overlay_year = 24)
 {
     gROOT->SetBatch(kTRUE);
     gStyle->SetOptStat(0);
@@ -322,7 +322,7 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     const bool        etamerge = DrCorrModeMergeEta(plateau_mode);
     const std::string mode_dir = DrCorrPlateauModeDir(plateau_mode);
 
-    const DrCorrSample cfg = GetDrCorrSample(sample, use_tight_wp);
+    const DrCorrSample cfg = GetDrCorrSample(sample, use_tight_wp, overlay_year);
     const std::string wp_suf  = DrCorrWpSuffix(use_tight_wp);
     const std::string wp_text = use_tight_wp ? "Tight muons" : "Medium muons";
     const std::string wp_dir  = DrCorrWpDir(use_tight_wp);
@@ -356,8 +356,8 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
     // The pair-pT-binning token belongs here exactly as it does in plot_mc_trig_eff.cxx and
     // fit_dr_corrections.cxx. It was MISSING until 2026-08-11, so a MCTRIGEFF_PAIRPT_4BIN=1 run
     // read the NOMINAL 8-bin histograms and drew them against the 4-bin fit file.
-    const std::string hist_path = cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label + wp_suf
-                                + MCTrigEffPairPt::FileSuffix() + "_" + tag + ".root";
+    const std::string hist_path = DrCorrHistFile(cfg, use_tight_wp,
+                                                 MCTrigEffPairPt::FileSuffix() + "_" + tag);
     TFile* fh = OpenRead(hist_path);
 
     // Series definition. Sign-integrated: the historical black/blue/red scheme, unchanged.
@@ -1398,9 +1398,9 @@ void plot_dr_correction_fits(const std::string& sample = "pp_full", bool use_tig
 // Convenience: every method for one (sample, WP, step, mode).
 void plot_dr_correction_fits_all(const std::string& sample = "pp_full", bool use_tight_wp = true,
                                  int step = 3, const std::string& mode = "sign_intgr",
-                                 const std::string& plateau_mode = "corr")
+                                 const std::string& plateau_mode = "corr", int overlay_year = 24)
 {
     for (const std::string& m : {"powerlaw_fixedRp", "powerlaw_floatRp", "expo",
                                  "polyu_fixedRp", "interp"})
-        plot_dr_correction_fits(sample, use_tight_wp, step, m, mode, plateau_mode);
+        plot_dr_correction_fits(sample, use_tight_wp, step, m, mode, plateau_mode, "dr0_1", overlay_year);
 }

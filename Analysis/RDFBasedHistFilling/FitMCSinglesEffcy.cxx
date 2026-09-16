@@ -28,21 +28,30 @@
 // num/denom 2D over [bin_number(lo)+1, bin_number(hi)], then TGraphAsymmErrors::BayesDivide.
 // (Caveat, same as data: BayesDivide on weighted hists uses effective entries.)
 //
-// Input : <sample dir>/mc_trig_eff_hists_<label>.root  (from FillMCTrigEffHists step 1)
-// Output: <sample dir>/single_mu_effcy_pT_fit_mc.root
+// Input : <sample dir>/mc_trig_eff/hists/mc_trig_eff_hists_<label>.root  (FillMCTrigEffHists step 1)
+// Output: <sample dir>/mc_trig_eff/singles_fits/single_mu_effcy_pT_fit_mc_<label>.root
+//         (FullSimMCSinglesFitFile; the label is part of the basename since 2026-09-16 --
+//          mc_trigger_efficiency.md RW 3c -- so a wrong directory can no longer overwrite a
+//          sibling sample's fit silently)
 //   - TF1  f_mc_pt_vs_q_eta_<muplus|muminus>_<lo>_TO_<hi>   (pairToSuffix format)
 //   - TGraphAsymmErrors g_mc_pt_vs_q_eta_<chg>_<lo>_TO_<hi> (the fitted points)
 //   - TH2D h_mc_pt_vs_q_eta_ratio_<chg>                     (unfitted 2D fallback, num/denom)
-// PNGs  : <sample dir>/mc_trig_eff_fit_plots/mc_trg_effcy_pT_fitting_<label>_<mu+|mu->.png
-//         (one canvas per charge, all 10 fine q·η pads, log-x — data fitter layout)
+// No PNGs (retired 2026-09-16, user decision): the fit is drawn ONLY by the Step-1 panel
+// plot_mc_trig_eff.cxx -> step1_singles_data_mc/step1_eff_pt_in_q_eta_bins_<charge>.png, which
+// overlays the same points and the same TF1 on the data reference. The former
+// mc_trig_eff_fit_plots/ canvases were a strict subset of it.
 //
 // CORRECTED-MC study (corrected_mc = true): identical fit applied to the SF-corrected Step-1
-// hists (mc_trig_eff_hists_<label><wp>_corrected.root) -> single_mu_effcy_pT_fit_mc_corrected<wp>.root.
+// hists (mc_trig_eff_hists_<label><wp>_corrected.root) -> single_mu_effcy_pT_fit_mc_<label>_corrected<wp>.root.
 // Object names inside the file are unchanged, so MCEffEvaluator loads ε_corr unmodified.
+//
+// overlay_year (LAST argument, default 24): which HIJING-overlay TEST production "overlay" means
+// (24 = Pb+Pb 2024 conditions, 23 = ..._pbpb23/); see dr_correction_sample_cfg.h.
 //
 // Usage (from Analysis/RDFBasedHistFilling/):
 //   root -b -l -q 'FitMCSinglesEffcy.cxx+("pp")'
 //   root -b -l -q 'FitMCSinglesEffcy.cxx+("overlay")'
+//   root -b -l -q 'FitMCSinglesEffcy.cxx+("overlay", true, false, false, 23)'   // pbpb23 overlay
 //   root -b -l -q 'FitMCSinglesEffcy.cxx+("pp_full", true, true)'   // corrected MC
 // =============================================================================
 
@@ -55,16 +64,13 @@
 #include <utility>
 #include <vector>
 
-#include <TCanvas.h>
 #include <TF1.h>
 #include <TFile.h>
 #include <TGraphAsymmErrors.h>
 #include <TH1D.h>
 #include <TH2D.h>
-#include <TLegend.h>
 #include <TROOT.h>
 #include <TString.h>   // Form(), used to compose the log pivot from pT_min
-#include <TStyle.h>
 #include <TSystem.h>
 
 using namespace std;
@@ -72,6 +78,7 @@ using namespace std;
 #include "../Utilities/bin_number.cxx"
 #include "../Utilities/proj_range_to_suffix.cxx"
 #include "CommonEffcyConfig.h"
+#include "../plotting_codes/trig_effcy/mc_based/dr_correction_sample_cfg.h"   // sample table + product files
 
 namespace MCSinglesFit {
 
@@ -182,7 +189,8 @@ TGraphAsymmErrors* CorrectedEffGraph(const TH1* num, const TH1* den,
 
 // =============================================================================
 void FitMCSinglesEffcy(const std::string& sample = "pp", bool use_tight_wp = true,
-                       bool corrected_mc = false, bool sf_closure = false) {
+                       bool corrected_mc = false, bool sf_closure = false,
+                       int overlay_year = 24) {
     using namespace MCSinglesFit;
     if (sf_closure && !corrected_mc) {
         std::cerr << "FitMCSinglesEffcy: sf_closure is a mode OF the corrected-MC path; "
@@ -190,38 +198,16 @@ void FitMCSinglesEffcy(const std::string& sample = "pp", bool use_tight_wp = tru
         return;
     }
 
-    std::string dir, label;
-    FittingMode mode;
-    if (sample == "pp") {
-        dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_test_sample/";
-        label = "pp24";
-        mode = erf_plus_log;    // data pp nominal
-    } else if (sample == "pp_full") {
-        // pp24 FULL sample: identical fit to "pp" (same pp turn-on shape); only the input dir
-        // and the "pp24_full" label differ, so its outputs never clobber the TEST-sample fits.
-        dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample/";
-        label = "pp24_full";
-        mode = erf_plus_log;
-    } else if (sample == "overlay") {
-        dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/";
-        label = "hijing_overlay_pbpb23";
-        mode = fermi_plus_log;  // data PbPb nominal
-    } else if (sample == "noovl") {
-        // r17663 NO-OVERLAY diagnostic (R8, round 4): pp COLLISIONS -> the pp fit mode.
-        // The comparison this sample exists for is against pp24 fullsim, so it must be
-        // fitted with the same functional form; the reco conditions being PbPb-like does
-        // not change the shape of a pp turn-on.
-        dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_no_overlay_test_sample/";
-        label = "r17663_no_overlay";
-        mode = erf_plus_log;
-    } else {
-        std::cerr << "FitMCSinglesEffcy: sample must be \"pp\", \"pp_full\", \"overlay\" or "
-                     "\"noovl\", got " << sample << std::endl;
-        return;
-    }
-
-    // WP config (registry: Analysis/docs/muon_wp_registry.md): TIGHT nominal unsuffixed
-    const std::string wp_suf = use_tight_wp ? "" : "_medium_wp";
+    // Sample identity (directory, label) from the one table the whole chain shares. Throws on an
+    // unknown key.
+    const DrCorrSample cfg = GetDrCorrSample(sample, use_tight_wp, overlay_year);
+    const std::string label = cfg.mc_label;
+    // Fit form = the data-side nominal of the collision system the sample simulates:
+    //   pp collisions (pp, pp_full, and the r17663 no-overlay diagnostic -- pp COLLISIONS
+    //   reconstructed with PbPb conditions; its whole purpose is the comparison against pp24
+    //   fullsim, so it must be fitted with the same form) -> erf_plus_log (data pp nominal);
+    //   HIJING overlay (Pb+Pb)                             -> fermi_plus_log (data PbPb nominal).
+    const FittingMode mode = (sample == "overlay") ? fermi_plus_log : erf_plus_log;
     // CORRECTED-MC study (mc_trigger_efficiency.md round-7 contract item 5): fit the turn-ons of
     // the SF-corrected MC (numerator weighted by ε_data/ε_MC) with the SAME functional form,
     // parameter init/limits and fit options as the nominal MC, so the corrected and the nominal
@@ -232,10 +218,9 @@ void FitMCSinglesEffcy(const std::string& sample = "pp", bool use_tight_wp = tru
     // sf_closure: the SF ≡ 1 closure variant of the corrected chain (see FillMCTrigEffHists).
     const std::string corr_suf = corrected_mc ? (sf_closure ? "_corrected_sfclosure" : "_corrected")
                                               : "";
-    const std::string infile_name  = dir + "mc_trig_eff_hists_" + label + wp_suf + corr_suf + ".root";
-    const std::string outfile_name = dir + "single_mu_effcy_pT_fit_mc" + corr_suf + wp_suf + ".root";
-    const std::string plot_dir = dir + "mc_trig_eff_fit_plots/";
-    gSystem->mkdir(plot_dir.c_str(), kTRUE);
+    const std::string infile_name  = DrCorrHistFile(cfg, use_tight_wp, corr_suf);
+    const std::string outfile_name = DrCorrSinglesFitFile(cfg, use_tight_wp, corr_suf);
+    gSystem->mkdir(gSystem->DirName(outfile_name.c_str()), kTRUE);
 
     std::cout << "FitMCSinglesEffcy: sample=" << sample << " (" << label << "), mode="
               << (mode == erf_plus_log ? "erf_plus_log" : "fermi_plus_log")
@@ -253,8 +238,7 @@ void FitMCSinglesEffcy(const std::string& sample = "pp", bool use_tight_wp = tru
         return;
     }
 
-    static const CommonEffcyConfig cfg{};
-    gStyle->SetOptStat(0);
+    static const CommonEffcyConfig eff_cfg{};
 
     int n_fits = 0, n_failed = 0;
 
@@ -294,13 +278,7 @@ void FitMCSinglesEffcy(const std::string& sample = "pp", bool use_tight_wp = tru
         const double* arr = xaxis->GetXbins()->GetArray();
         q_eta_edges.assign(arr, arr + xaxis->GetNbins() + 1);
 
-        // data-fitter canvas layout: 4x3, log-x pads (SingleMuEffcyPtTurnOnFitter.cxx:310-317)
-        const std::string chg_label = (chg == "muplus") ? "mu+" : "mu-";
-        TCanvas* c = new TCanvas(("c_mc_" + chg).c_str(), "MC Trigger Turn-on Curves", 1500, 1000);
-        c->Divide(4, 3);
-
-        int idx = 0;
-        for (const auto& range : cfg.q_eta_proj_ranges_coarse_incl_gap) {
+        for (const auto& range : eff_cfg.q_eta_proj_ranges_coarse_incl_gap) {
             const std::string q_eta_suffix = pairToSuffix(range);
 
             // projection bin range, exactly as the data graph maker (Data.cxx:491-493)
@@ -351,48 +329,11 @@ void FitMCSinglesEffcy(const std::string& sample = "pp", bool use_tight_wp = tru
             fout->cd();
             fit->Write();
             g->Write();
-
-            // overlay pad (data-fitter styling)
-            c->cd(idx + 1);
-            gPad->SetLogx();
-            g->SetMarkerColor(kBlack);
-            g->SetLineColor(kBlack);
-            g->SetMarkerStyle(20);
-            g->SetMarkerSize(0.9);
-            fit->SetLineColor(kRed);
-            fit->SetLineWidth(2);
-            g->GetXaxis()->SetTitle("p_{T} [GeV]");
-            g->GetYaxis()->SetTitle("#epsilon");
-            g->GetYaxis()->SetRangeUser(0, 1.1);
-            // Axis range taken from the fitted TF1 itself (mirrors the data fitter,
-            // SingleMuEffcyPtTurnOnFitter.cxx) so the drawn range can never disagree with the
-            // fitted one; the old hardcoded (4.0, 60.0) was a second copy of the fit range.
-            g->GetXaxis()->SetLimits(fit->GetXmin(), fit->GetXmax());
-            g->Draw("AP");
-            fit->Draw("SAME");
-
-            TLegend* leg = new TLegend(0.35, 0.25, 0.88, 0.5);
-            leg->SetBorderSize(0);
-            leg->SetFillStyle(0);
-            leg->AddEntry(g, ("MC mu4, " + std::string(chg == "muplus" ? "#mu^{+}" : "#mu^{-}")).c_str(), "lp");
-            leg->AddEntry(static_cast<TObject*>(nullptr), pairToLegendLabel(range).c_str(), "");
-            leg->Draw("SAME");
-
-            ++idx;
         }
-
-        // The WP token is UNCONDITIONAL. Without it the nominal Tight and Medium pngs share one
-        // filename, so the second working point to run silently overwrote the first and the
-        // surviving file was mislabelled -- a Medium turn-on presented as the Tight one. Both
-        // working points are a standing requirement (memory `feedback_plots_wp_config_var`), so
-        // both must survive.
-        const std::string png_tag = (corrected_mc ? corr_suf : std::string("")) + wp_suf;
-        c->SaveAs(Form("%smc_trg_effcy_pT_fitting_%s%s_%s.png", plot_dir.c_str(), label.c_str(),
-                       png_tag.c_str(), chg_label.c_str()));
     }
 
     fout->Close();
     fin->Close();
     std::cout << "FitMCSinglesEffcy: " << n_fits << " fits, " << n_failed << " failed. Output: "
-              << outfile_name << " + PNGs in " << plot_dir << std::endl;
+              << outfile_name << std::endl;
 }

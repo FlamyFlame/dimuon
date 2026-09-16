@@ -150,7 +150,8 @@ void DrawHeadline(const std::string& text, double size) {
 
 }  // namespace
 
-void plot_mc_singles_2d_effcy(const std::string& sample = "pp_full", bool use_tight_wp = true)
+void plot_mc_singles_2d_effcy(const std::string& sample = "pp_full", bool use_tight_wp = true,
+                              int overlay_year = 24)
 {
     gROOT->SetBatch(kTRUE);
     SetAtlasStyle();
@@ -160,12 +161,12 @@ void plot_mc_singles_2d_effcy(const std::string& sample = "pp_full", bool use_ti
 
     // Sample identity (input dir, file label, output root, canvas headline) -- single source of
     // truth, shared with the whole dR-correction chain. Never hardcode a path here.
-    const DrCorrSample cfg = GetDrCorrSample(sample, use_tight_wp);
+    const DrCorrSample cfg = GetDrCorrSample(sample, use_tight_wp, overlay_year);
     const std::string wp_suf  = DrCorrWpSuffix(use_tight_wp);
     const std::string wp_text = use_tight_wp ? "Tight muons" : "Medium muons";
     const std::string headline = cfg.sample_text + ", " + wp_text;
 
-    const std::string in_path = cfg.mc_dir + "mc_trig_eff_hists_" + cfg.mc_label + wp_suf + ".root";
+    const std::string in_path = DrCorrHistFile(cfg, use_tight_wp);
     TFile* fin = TFile::Open(in_path.c_str(), "READ");
     if (!fin || fin->IsZombie())
         throw std::runtime_error("plot_mc_singles_2d_effcy: cannot open " + in_path);

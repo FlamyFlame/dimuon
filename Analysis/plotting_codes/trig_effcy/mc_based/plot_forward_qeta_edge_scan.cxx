@@ -558,8 +558,8 @@ void PlotPP(bool use_tight_wp, const std::string& wp, const std::string& wpt) {
     const std::string home = std::string(gSystem->Getenv("HOME"));
     const std::string data_file = home + "/usatlasdata/dimuon_data/pp_2024/"
         "histograms_real_pairs_pp_2024_single_mu4_fine_q_eta_bin" + wp + ".root";
-    const std::string mc_file = home + "/usatlasdata/pythia_fullsim_full_sample/"
-        "mc_trig_eff_hists_pp24_full" + wp + "_nogapcut.root";
+    const std::string mc_file = DrCorrHistFile(GetDrCorrSample("pp_full", use_tight_wp),
+                                               use_tight_wp, "_nogapcut");
 
     TFile* fd = TFile::Open(data_file.c_str(), "READ");
     if (!fd || fd->IsZombie())

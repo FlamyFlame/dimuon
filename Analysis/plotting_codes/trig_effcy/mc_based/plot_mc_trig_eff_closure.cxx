@@ -468,9 +468,8 @@ void plot_mc_trig_eff_closure(const std::string& sample = "pp_full", bool use_ti
     const std::string wp_suf  = DrCorrWpSuffix(use_tight_wp);
     const std::string wp_text = use_tight_wp ? "Tight muons" : "Medium muons";
 
-    const std::string in_path = cfg.mc_dir + "mc_trig_eff_closure_" + cfg.mc_label + wp_suf
-                              + MCTrigEffPairPt::FileSuffix()
-                              + DrCorrPlateauModeTag(plateau_mode) + ".root";
+    const std::string in_path = DrCorrClosureFile(cfg, use_tight_wp,
+                                   MCTrigEffPairPt::FileSuffix() + DrCorrPlateauModeTag(plateau_mode));
     TFile* fin = TFile::Open(in_path.c_str(), "READ");
     if (!fin || fin->IsZombie())
         throw std::runtime_error("plot_mc_trig_eff_closure: cannot open " + in_path
