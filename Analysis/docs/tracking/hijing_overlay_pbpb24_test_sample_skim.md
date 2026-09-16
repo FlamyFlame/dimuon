@@ -103,6 +103,11 @@ negative, 87.6 % below 2.5 TeV (pbpb23: 3.79 / 4.40 / 5.11, 0 %, 0 %). Truth-mat
 0.40 ± 1.07 mm); MS η/φ hits of matched muons 2.79/3.04 vs 2.85/3.10; pT/pT_truth rms 0.090 vs 0.074. The muon system is
 degraded as well, not only the calorimeter.
 
+### R1b. Notes from the FCal / vertex plot review (2026-09-16)
+- FCal: sides A (η>0) and C (η<0) are affected identically in r17864 (per-side curves overlay; min -1.56 TeV on both) — a symmetric, not single-side, readout failure.
+- The r17618 REFERENCE FCal distribution has a ×1.5 step between 3.9 and 4.0 TeV (+4.6σ in the 4.0-4.1 TeV bin, present on both sides, not from HIJING event reuse: 10 000/10 000 distinct truth fingerprints). A ~1 % localized feature of the r17618 production (HIJING b-sampling / HITS composition); irrelevant to R1 but worth knowing before r17618 FCal is ever used for a centrality calibration.
+- Vertex: r17864 reco PV residual mean -5.4 µm (σ_mean 0.1 µm → highly significant; absent in r17618) and RMS 11.1 vs 9.1 µm (22 % worse). Negligible for muon-pair physics; a genuine 2024-conditions difference (z = -71 mm and/or the same conditions problem reaching the ID).
+
 ### R1. r17864 calorimeter response is broken (found 2026-09-15 on the 100-event local test; confirmed in the AOD)
 
 Evidence (skim NTUP `test_r17864/test_r17864_orig.root`, 100 ev, vs pbpb23 r17618 pTH125_300 NTUP, 2000 ev):
@@ -140,6 +145,20 @@ the same timing problem reaching the muon system, but that is a weaker, 100-even
 Consequence for us: FCal-based centrality and any calorimeter-dependent muon quantity (calo-tagged muons, isolation, E-loss)
 are unusable in this r-tag; reco-efficiency / det-response derived from it would be wrong in the 2024 conditions.
 
+## Verification round (user request 2026-09-16)
+
+User-selected checks, each vs the pbpb23 (r17618) sample restricted to the SAME pT-hat 125-300 slice:
+1. [x] FCal ΣE_T distributions, both samples → `plots/r17864_rtag_sanity/fcal_sum_et_r17864_vs_r17618_pTH125_300.png`
+2. [x] reco vs truth vertex z, r17864 → `plots/r17864_rtag_sanity/vertex_z_reco_vs_truth_r17864.png`
+   (reco PV mean -71.2054 mm on a truth point of -71.2000; residual -5.4 ± 11.1 µm vs -0.2 ± 9.1 µm for r17618)
+3. [ ] muon reco efficiency + detector response (full MC chain: NTP → RDF → plots) on r17864
+4. [ ] MC single-muon mu4 efficiency (no pair efficiency)
+5. [ ] `from_same_b` fraction vs pbpb23 pTH125_300
+Code: `plotting_codes/overlay_rtag_checks/plot_r17864_event_level.cxx` (items 1-2; raw skim event-level branches, no
+processing procedure involved). Items 3-5 need the NTP/RDF chain, which is being refactored concurrently
+(`fullsim_sample_dir_layout.md`, uncommitted as of 2026-09-16 18:00: `FullSimSampleType.h` pbpb_year knob, overlay run
+scripts, RDF overlay filling, pipeline) — BLOCKED until that lands; do not run the chain on a half-edited tree.
+
 ## Remaining Work
 
 - User decision on the verification plan / on reporting R1 to the production contact (message draft offered).
@@ -147,4 +166,4 @@ are unusable in this r-tag; reco-efficiency / det-response derived from it would
 
 ## Latest Stage
 
-2026-09-16: skim + download DONE (task 52568863). R0/R1 recorded. Waiting for the user's decision on verification scope and on reporting the r17864 calorimeter/muon degradation to the production contact.
+2026-09-16 18:10: verification items 1-2 plotted (under /review-plot). Items 3-5 wait for the concurrent sample-dir-layout refactor to be committed; then run `pipeline_pythia_fullsim_overlay.sh` with overlay_year=24 (single slice → allow_missing_slices) and the MC single-muon trig-eff step; compare with pbpb23 pTH125_300-only.
