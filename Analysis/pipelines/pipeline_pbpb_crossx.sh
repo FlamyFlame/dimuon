@@ -226,18 +226,11 @@ wait_for_cluster_completion() {
   done
 }
 
-# Queue counts per year (must match .sub files)
-# [26]=5 is a STALE PLACEHOLDER: known wrong; the final set is expected 1..6 (corrected
-# 2026-09-14 -- a part 7 is NOT coming), unconfirmed until part 3 is terminal.
-# file_batch_max{26} is deliberately 0 ('unset'), which blocks every 2026 job, so this is
-# inert until the count is established -- set all five declarations together.
-# Original note: the 2026 skim was first submitted as 5 grid tasks
-# (SkimCode/run_26hi/InDstxt_PbPb2026_5p36TeV_part1..5.txt), and grid_monitor's chunked
-# hadd can split a task into extra part files, so the real count can be larger.  Set it
-# from ~/usatlasdata/dimuon_data/pbpb_2026/data_pbpb26_part*.root and keep it EQUAL to
-# file_batch_max{26} in NTupleProcessingCode/PbPbExtras.c and to `queue N` in the
-# run_pbpb_26*.sub files.  Too few silently processes only part of the 2026 data.
-declare -A QUEUE_COUNTS=( [23]=4 [24]=2 [25]=6 [26]=5 )
+# Queue counts per year = merged part files on disk (2023 part5 / 2025 part7 = Sep-2026
+# recovery skims; 2026 = 7).  Must equal file_batch_max in PbPbExtras.c and `queue N` in the
+# run_pbpb_<yr>*.sub files -- preflight_pbpb_year.sh <yr> cross-checks.  Too few silently
+# processes only part of a year.
+declare -A QUEUE_COUNTS=( [23]=5 [24]=2 [25]=7 [26]=7 )
 
 get_year_dir() { echo "${DATA_BASE}/pbpb_20$1"; }
 

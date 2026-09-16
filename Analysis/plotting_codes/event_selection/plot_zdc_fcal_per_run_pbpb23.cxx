@@ -105,7 +105,7 @@ void plot_zdc_fcal_per_run_pbpb23() {
 
     // ---- Build TChain ----
     TChain chain("HeavyIonD3PD", "HeavyIonD3PD");
-    for (int p = 1; p <= 4; ++p) {
+    for (int p = 1; p <= 5; ++p) {
         std::string f = kBase + "pbpb_2023/data_pbpb23_part" + std::to_string(p) + ".root";
         if (!gSystem->AccessPathName(f.c_str())) chain.Add(f.c_str());
         else std::cerr << "Skipping: " << f << std::endl;

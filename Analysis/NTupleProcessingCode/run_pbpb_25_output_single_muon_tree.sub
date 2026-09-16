@@ -5,4 +5,6 @@ output = logs/run_pbpb_25_output_single_muon_tree_batch_$(Process).out
 error = logs/run_pbpb_25_output_single_muon_tree_batch_$(Process).err
 log = logs/run_pbpb_25_output_single_muon_tree_batch_$(Process).log
 request_memory = 2GB
-queue 6
+# queue N = part count on disk; keep equal to file_batch_max{25} in PbPbExtras.c
+# (preflight_pbpb_year.sh 25 cross-checks). Too few SILENTLY drops data.
+queue 7

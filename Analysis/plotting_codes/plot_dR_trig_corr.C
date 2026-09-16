@@ -38,7 +38,7 @@ void plot_dR_trig_corr() {
         {26, base_dir() + "pbpb_2026/histograms_real_pairs_pbpb_2026_single_mu4_fine_q_eta_bin.root", kMagenta+1, 23}
     };
 
-    // A running period whose histogram file is not on disk yet (2026, still being skimmed) is
+    // A running period whose histogram file is not on disk yet (NTuple processing not run yet) is
     // SKIPPED and ERASED from `years`, so the draw loop and the legend below see exactly the years
     // that were opened. Returning here instead -- as this loop used to -- produced no PNG at all
     // and leaked the years that had already been opened.

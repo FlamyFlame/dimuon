@@ -112,7 +112,7 @@ void plot_dr_vs_pair_pt_diagnostic()
         "muon_pairs_pp_2024_2mu4_mindR_0_02.root";
 
     // PbPb nominal crossx inputs: trigger_mode=1 (single_mu4), mindR_0_02, res_cut_v2, per-year hadded.
-    // A running period whose hadded file is not on disk yet (2026, still being skimmed) is SKIPPED
+    // A running period whose hadded file is not on disk yet (its NTuple processing not run yet) is SKIPPED
     // with an [INFO] line rather than aborting: it must not take the Pythia-truth and pp24 figures
     // down with it, and the PbPb titles below are composed from the years that actually contributed
     // so the figure can never claim a year it did not read.

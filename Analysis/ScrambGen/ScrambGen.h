@@ -38,27 +38,14 @@ private:
    // on an unknown one: the old "everything else -> 6" fallback silently gave any new
    // year 2025's part count, and TChain::Add only warns on a missing file, so T_mix
    // would have been built from a subset (or from nothing) with no error.
-   // 2026: PLACEHOLDER 5 = the 5 grid tasks the skim is submitted as; chunked hadd can
-   // make it larger.  Read the real count off the delivered
-   // single_muon_trees_pbpb_2026_part<N>_* files before running, and keep it equal to
-   // file_batch_max{26} in PbPbExtras.c and `queue N` in the .sub files.
+   // Keep equal to file_batch_max{yr} in PbPbExtras.c, `queue N` in the run_pbpb_<yr>*.sub
+   // files and QUEUE_COUNTS in the Pb+Pb pipelines; preflight_pbpb_year.sh <yr> cross-checks.
    static int NParts(int yr){
       switch (yr % 2000) {
-         case 23: return 4;
+         case 23: return 5;
          case 24: return 2;
-         case 25: return 6;
-         case 26:
-            // Deliberately THROWS rather than returning a number, mirroring
-            // file_batch_max{26} = 0 in PbPbExtras.c: the 2026 skim is still in production,
-            // the earlier placeholder 5 is known wrong (the final set is expected to be
-            // 1..6; corrected 2026-09-14, no part 7), and a too-low count here silently
-            // builds T_mix from a SUBSET of the
-            // data -- TChain::Add only warns on a missing file.
-            throw std::runtime_error(
-               "ScrambGen::NParts: the Pb+Pb 2026 part count is not established yet. Set it "
-               "here together with file_batch_max{26} in PbPbExtras.c, the run_pbpb_26*.sub "
-               "queue counts and QUEUE_COUNTS[26], from the files actually on disk, then run "
-               "Analysis/pipelines/preflight_pbpb_year.sh 26.");
+         case 25: return 7;
+         case 26: return 7;
          default:
             throw std::runtime_error("ScrambGen::NParts: no part count for Pb+Pb run year 20" +
                                      std::to_string(yr % 2000));

@@ -45,34 +45,11 @@ inline double PbPbMu4SampledLumiNb(int run_year){
         // physics_HI2026_50ns_noIBL.xml. No 2026 run is excluded at event level
         // (PbPbBadRuns has no 26 entry), so the R_AA luminosity is the GRL total.
         // MUST match PbPbBaseClass.h make_crossx_factors_pbpb_2026.
-        case 26: {
-            // ⚠ PROVISIONAL while the 2026 skim is still recovering (as of 2026-09-13).
-            //
-            // 2.62316 nb^-1 is the GRL total, i.e. the luminosity of ALL 35 runs.  It is the
-            // right denominator ONLY once the skim covers all of them.  A skim bug
-            // (TrigRates::ProcessZdc reading a ZDC aux item that only exists under
-            // StoreZdc & 2) killed jobs on lumiblocks whose ZDC reco produced no RPD data, so
-            // several runs are currently only PARTIALLY skimmed -- e.g. run 522200 had
-            // 578/2192 files, run 522721 0/890.  The bug is fixed and recovery tasks are
-            // running.
-            //
-            // Until every run reads 100 %, the numerator covers fewer events than this
-            // denominator describes, so a 2026 cross-section computed now is biased LOW
-            // (equivalently: the luminosity is too high for the yield it is divided into).
-            // This cannot be detected downstream -- every histogram fills and every plot
-            // renders -- so warn once, loudly, rather than returning the number silently.
-            static bool warned = false;
-            if (!warned) {
-                warned = true;
-                std::cerr << "\n*** WARNING: PbPb 2026 luminosity 2.62316 nb^-1 is the GRL total, "
-                             "but the 2026 skim is INCOMPLETE (recovery in progress).\n"
-                             "    Any 2026 luminosity-normalised result is PROVISIONAL and biased "
-                             "low until every run is fully skimmed.\n"
-                             "    See Analysis/docs/tracking/pbpb2026_analysis_support.md "
-                             "(registry P14) before using it.***\n" << std::endl;
-            }
-            return 2.62316;
-        }
+        // Skim completeness confirmed 2026-09-16: 7 parts, all 35 GRL runs at 100 % of their
+        // files (registry P14 lifted). Events skipped at skim time for absent required ZDC
+        // data (few-LB clusters in runs 522200 / 522949) are a negligible fraction of the
+        // dataset and do NOT reduce the luminosity (user ruling 2026-09-15).
+        case 26: return 2.62316;
         // Run 2 (2015 + 2018) is still a live code path: RDFBasedHistFillingPbPb keeps a
         // full `run_year == 15 || run_year == 18` branch and PbPbBaseClass registers
         // {18,"default"} crossx factors, so FillHistogramsCrossx can reach this function

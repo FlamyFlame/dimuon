@@ -11,7 +11,7 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::PrintInstructions_Dat
 	std::cout << datatype << " Data Ntuple processing script:" << std::endl;
     std::cout << "The following variable(s) are required by constructor:" << std::endl;
     std::cout << "--> file_batch: [INT] Decides which run3-file batch to process, only has effect when isRun3 is true" << std::endl;
-    std::cout << "--> 					PbPb: file batch: 1-4 for 2023 data, 1-2 for 2024 data, 1-6 for 2025 data, 1-5 for 2026 data (placeholder), 1-7 for 2015/2018 data" << std::endl;
+    std::cout << "--> 					PbPb: file batch: 1..N with N = run_year_to_file_batch_max_map (PbPbExtras.c) for that year" << std::endl;
     std::cout << "--> 					PP:   file batch: 1-4 for 2024 data, 1-3 for 2017 data" << std::endl;
     std::cout << "--> run_year: [INT] year of data taking" << std::endl;
     std::cout << std::endl;

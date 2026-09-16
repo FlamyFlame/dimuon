@@ -55,7 +55,7 @@ static std::pair<float,float> GetPreampCuts(int yr) {
         {25, {850.f, 700.f}},  // side A ~850 ADC, side C ~700 ADC
         // PLACEHOLDER (2026): copied from 2025, NOT yet evaluated on 2026 data.
         // Must be re-derived from the 2026 1D preamp Gaussian-to-tail turnover
-        // once the skim exists.  See docs/tracking/pbpb2026_analysis_support.md.
+        // (step 14 of the tracking doc).  See docs/tracking/pbpb2026_analysis_support.md.
         // Note: for 2026 (like 2025) these scalars are only the per-run-fit
         // fallback — the nominal Cut 3 uses the per-run mu+7sigma values.
         {26, {850.f, 700.f}},
@@ -71,7 +71,7 @@ static std::pair<float,float> GetPreampCuts(int yr) {
 // Years whose Cut 3 uses per-run mu+7sigma ZDC preamp thresholds instead of the
 // hard per-year scalar above.  2025 was derived from data; 2026 is ASSUMED to
 // behave the same way (same skim path / same ZDC readout configuration) —
-// PLACEHOLDER, to be confirmed once the 2026 skim exists.
+// PLACEHOLDER, not yet re-derived on 2026 data (step 14).
 // See docs/tracking/pbpb2026_analysis_support.md.
 static bool UsesPerRunPreampCuts(int yr) { return yr == 25 || yr == 26; }
 
@@ -105,6 +105,7 @@ static std::map<int, std::vector<std::string>> BuildFileMapAlt() {
             base + "pbpb_2023/data_pbpb23_part2.root",
             base + "pbpb_2023/data_pbpb23_part3.root",
             base + "pbpb_2023/data_pbpb23_part4.root",
+            base + "pbpb_2023/data_pbpb23_part5.root",
         }},
         {24, {
             base + "pbpb_2024/data_pbpb24_part1.root",
@@ -117,21 +118,19 @@ static std::map<int, std::vector<std::string>> BuildFileMapAlt() {
             base + "pbpb_2025/data_pbpb25_part4.root",
             base + "pbpb_2025/data_pbpb25_part5.root",
             base + "pbpb_2025/data_pbpb25_part6.root",
+            base + "pbpb_2025/data_pbpb25_part7.root",
         }},
-        // PLACEHOLDER (2026): the 2026 skim is submitted as 5 grid tasks
-        // (SkimCode/run_26hi/InDstxt_PbPb2026_5p36TeV_part1..5.txt), so there are
-        // AT LEAST 5 parts — but grid_monitor's chunked-hadd fallback splits a
-        // task whose output is too large into extra part files, so the final
-        // count can be LARGER.  CONFIRM against what actually lands in
-        // pbpb_2026/ and extend this list.  Missing files are skipped with a
-        // warning by FillHists() (an over-count is harmless), but an UNDER-count
-        // silently drops data.  See docs/tracking/pbpb2026_analysis_support.md.
+        // Part lists = merged files on disk (2023 part5 / 2025 part7 = Sep-2026 recovery skims;
+        // 2026 = 7 parts).  Keep equal to file_batch_max in PbPbExtras.c;
+        // pipelines/preflight_pbpb_year.sh <yr> cross-checks.  An UNDER-count silently drops data.
         {26, {
             base + "pbpb_2026/data_pbpb26_part1.root",
             base + "pbpb_2026/data_pbpb26_part2.root",
             base + "pbpb_2026/data_pbpb26_part3.root",
             base + "pbpb_2026/data_pbpb26_part4.root",
             base + "pbpb_2026/data_pbpb26_part5.root",
+            base + "pbpb_2026/data_pbpb26_part6.root",
+            base + "pbpb_2026/data_pbpb26_part7.root",
         }},
     };
 }

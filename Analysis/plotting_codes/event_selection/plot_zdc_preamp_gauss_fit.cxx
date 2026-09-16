@@ -43,11 +43,11 @@ static const int kNYearsCfg    = (int)(sizeof(kYearsCfgPP) / sizeof(kYearsCfgPP[
 
 static std::vector<std::string> FilesForYear(int yr) {
     std::string base = kBase + "pbpb_20" + std::to_string(yr) + "/";
-    // NOTE: 2023 lists 3 parts here while plot_pbpb_event_sel_cuts.cxx lists 4.
-    // PRE-EXISTING inconsistency, left as found — do not "fix" it silently.
     if (yr == 23) return { base+"data_pbpb23_part1.root",
                            base+"data_pbpb23_part2.root",
-                           base+"data_pbpb23_part3.root" };
+                           base+"data_pbpb23_part3.root",
+                           base+"data_pbpb23_part4.root",
+                           base+"data_pbpb23_part5.root" };
     if (yr == 24) return { base+"data_pbpb24_part1.root",
                            base+"data_pbpb24_part2.root" };
     if (yr == 25) return { base+"data_pbpb25_part1.root",
@@ -55,17 +55,18 @@ static std::vector<std::string> FilesForYear(int yr) {
                            base+"data_pbpb25_part3.root",
                            base+"data_pbpb25_part4.root",
                            base+"data_pbpb25_part5.root",
-                           base+"data_pbpb25_part6.root" };
-    // PLACEHOLDER (2026): 5 grid tasks were submitted
-    // (SkimCode/run_26hi/InDstxt_PbPb2026_5p36TeV_part1..5.txt) so there are AT
-    // LEAST 5 parts; grid_monitor's chunked-hadd fallback can produce more.
-    // CONFIRM against pbpb_2026/ and extend — an UNDER-count silently drops data.
-    // See docs/tracking/pbpb2026_analysis_support.md.
+                           base+"data_pbpb25_part6.root",
+                           base+"data_pbpb25_part7.root" };
+    // Part lists = merged files on disk (2023 part5 / 2025 part7 = Sep-2026 recovery skims;
+    // 2026 = 7 parts).  Keep equal to file_batch_max in PbPbExtras.c;
+    // pipelines/preflight_pbpb_year.sh <yr> cross-checks.  An UNDER-count silently drops data.
     if (yr == 26) return { base+"data_pbpb26_part1.root",
                            base+"data_pbpb26_part2.root",
                            base+"data_pbpb26_part3.root",
                            base+"data_pbpb26_part4.root",
-                           base+"data_pbpb26_part5.root" };
+                           base+"data_pbpb26_part5.root",
+                           base+"data_pbpb26_part6.root",
+                           base+"data_pbpb26_part7.root" };
     // Reachable only if a year is added to kYearsCfgPP without being added here.
     // No silent empty list: it would build an empty TChain and produce an empty
     // histogram that still gets fitted and drawn as if it were data.

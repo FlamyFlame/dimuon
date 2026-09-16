@@ -111,6 +111,7 @@ static std::map<int, std::vector<std::string>> BuildFileMap() {
             base + "pbpb_2023/data_pbpb23_part2.root",
             base + "pbpb_2023/data_pbpb23_part3.root",
             base + "pbpb_2023/data_pbpb23_part4.root",
+            base + "pbpb_2023/data_pbpb23_part5.root",
         }},
         {24, {
             base + "pbpb_2024/data_pbpb24_part1.root",
@@ -123,20 +124,19 @@ static std::map<int, std::vector<std::string>> BuildFileMap() {
             base + "pbpb_2025/data_pbpb25_part4.root",
             base + "pbpb_2025/data_pbpb25_part5.root",
             base + "pbpb_2025/data_pbpb25_part6.root",
+            base + "pbpb_2025/data_pbpb25_part7.root",
         }},
-        // PLACEHOLDER (2026): the 2026 skim is submitted as 5 grid tasks
-        // (SkimCode/run_26hi/InDstxt_PbPb2026_5p36TeV_part1..5.txt), so there are
-        // AT LEAST 5 parts — grid_monitor's chunked-hadd fallback can split a
-        // large task into extra part files, so the final count can be LARGER.
-        // CONFIRM against what lands in pbpb_2026/ and extend this list; an
-        // UNDER-count silently drops data.
-        // See docs/tracking/pbpb2026_analysis_support.md.
+        // Part lists = merged files on disk (2023 part5 / 2025 part7 = Sep-2026 recovery skims;
+        // 2026 = 7 parts).  Keep equal to file_batch_max in PbPbExtras.c;
+        // pipelines/preflight_pbpb_year.sh <yr> cross-checks.  An UNDER-count silently drops data.
         {26, {
             base + "pbpb_2026/data_pbpb26_part1.root",
             base + "pbpb_2026/data_pbpb26_part2.root",
             base + "pbpb_2026/data_pbpb26_part3.root",
             base + "pbpb_2026/data_pbpb26_part4.root",
             base + "pbpb_2026/data_pbpb26_part5.root",
+            base + "pbpb_2026/data_pbpb26_part6.root",
+            base + "pbpb_2026/data_pbpb26_part7.root",
         }},
     };
 }

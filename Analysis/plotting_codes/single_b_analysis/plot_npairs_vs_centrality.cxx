@@ -1,5 +1,5 @@
 // N_pairs vs centrality (0-80%, 1% bins) for the PbPb running periods found on disk, combined.
-// A period whose part files are not there yet (2026, still being skimmed) is skipped with an
+// A period whose part files are not there yet (NTuple processing not run yet) is skipped with an
 // [INFO] line and drops out of every title, legend entry and printed table -- TChain::Add only
 // WARNS on a missing file, so without the probe the figure was silently overwritten with a title
 // and a legend entry claiming a year that contributed nothing.
@@ -47,21 +47,19 @@ void plot_npairs_vs_centrality() {
         int year; std::string dir; std::string tag; int nparts; int color; std::string label;
         std::vector<std::string> files;   // the part files that are actually on disk
     };
-    // NOTE: nparts for 2026 is a PLACEHOLDER (5) -- the 2026 skim is submitted as 5 grid
-    // tasks, so at least 5 part files are expected, but the count can end up LARGER when
-    // grid_monitor's chunked-hadd fallback splits an oversized task output into extra
-    // parts. Confirm against what lands on disk; see
-    // docs/tracking/pbpb2026_analysis_support.md.
+    // Per-year part counts = merged NTuple-processing part files on disk (2023 part5 / 2025 part7 =
+    // Sep-2026 recovery skims; 2026 = 7).  Keep equal to file_batch_max in PbPbExtras.c;
+    // pipelines/preflight_pbpb_year.sh <yr> cross-checks.  An UNDER-count silently reads a subset.
     std::vector<YearInfo> wanted = {
-        {2023, base + "pbpb_2023/", "pbpb_2023", 4, kBlue+1,     "PbPb 2023", {}},
+        {2023, base + "pbpb_2023/", "pbpb_2023", 5, kBlue+1,     "PbPb 2023", {}},
         {2024, base + "pbpb_2024/", "pbpb_2024", 2, kRed+1,      "PbPb 2024", {}},
-        {2025, base + "pbpb_2025/", "pbpb_2025", 6, kGreen+2,    "PbPb 2025", {}},
-        {2026, base + "pbpb_2026/", "pbpb_2026", 5, kMagenta+1,  "PbPb 2026", {}},  // nparts = PLACEHOLDER
+        {2025, base + "pbpb_2025/", "pbpb_2025", 7, kGreen+2,    "PbPb 2025", {}},
+        {2026, base + "pbpb_2026/", "pbpb_2026", 7, kMagenta+1,  "PbPb 2026", {}},
     };
 
     // Probe every expected part file. A year with no part on disk is dropped entirely; a year
-    // with only some of its parts is kept, with the shortfall reported (the placeholder nparts
-    // above is a guess, so this is not by itself an error).
+    // with only some of its parts is kept, with the shortfall reported (a part whose NTuple
+    // processing has not run yet is a normal transient state, not by itself an error).
     std::vector<YearInfo> years;
     for (auto& yr : wanted) {
         for (int p = 1; p <= yr.nparts; ++p) {

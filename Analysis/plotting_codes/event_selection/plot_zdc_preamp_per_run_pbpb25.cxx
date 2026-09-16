@@ -286,7 +286,7 @@ void plot_zdc_preamp_per_run_pbpb25() {
 
     // Build TChain
     TChain chain("HeavyIonD3PD", "HeavyIonD3PD");
-    for (int p = 1; p <= 6; ++p) {
+    for (int p = 1; p <= 7; ++p) {
         std::string f = kBase + "pbpb_2025/data_pbpb25_part" + std::to_string(p) + ".root";
         if (!gSystem->AccessPathName(f.c_str())) chain.Add(f.c_str());
         else std::cerr << "Skipping: " << f << std::endl;

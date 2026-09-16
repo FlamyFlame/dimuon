@@ -14,6 +14,7 @@
 #   1. file_batch_max{<yr>} in NTupleProcessingCode/PbPbExtras.c
 #   2. `queue N` in every run_pbpb_<yr>*.sub (bar the deliberately-partial one-offs)
 #   3. QUEUE_COUNTS[<yr>] in both Pb+Pb pipelines
+#      (+ the per-year nparts in the three single_b_analysis multi-year study macros)
 #   4. ScrambGen::NParts(<yr>)  -- builds the mixed-event template T_mix
 #   5. the per-part file lists in the six event-selection / preamp / FCal plotting macros
 # and, when the year's directory exists, all of them against the files actually on disk.
@@ -119,8 +120,25 @@ for f in "$A"/plotting_codes/event_selection/plot_pbpb_event_sel_cuts.cxx \
     echo "  warn     $(basename "$f"): lists $cnt part file(s) for 20${YR}, expected $nmax"
   fi
 done
+# Per-year part COUNTS declared in the multi-year study macros (they loop p=1..nparts over
+# per-part NTuple-processing outputs, so an under-count silently reads a subset and still
+# prints "N of N expected part files found").  Literal form: `"pbpb_20<yr>", N` (npairs) or
+# `"pbpb_20<yr>", "single_mu4", N` (q-eta macros); comments stripped first, as above.
+for f in "$A"/plotting_codes/single_b_analysis/plot_npairs_vs_centrality.cxx \
+         "$A"/plotting_codes/single_b_analysis/plot_muon_q_eta_spectrum.cxx \
+         "$A"/plotting_codes/single_b_analysis/plot_muon_q_eta_pt_dependence.cxx; do
+  [[ -f "$f" ]] || continue
+  np=$(sed 's://.*::' "$f" | grep -oP "\"pbpb_20${YR}\"\s*,\s*(\"[^\"]*\"\s*,\s*)?\K[0-9]+" | head -1 || true)
+  if [[ -z "$np" ]]; then
+    echo "  MISMATCH $(basename "$f"): no part count declared for 20${YR}"; bad=1
+  elif [[ "$np" -lt "$nmax" ]]; then
+    echo "  MISMATCH $(basename "$f"): nparts $np < $nmax for 20${YR} -- reads a SUBSET"; bad=1
+  elif [[ "$np" -gt "$nmax" ]]; then
+    echo "  warn     $(basename "$f"): nparts $np > $nmax for 20${YR} (stale; missing part is skipped)"
+  fi
+done
 for p in pipeline_pbpb_crossx.sh pipeline_pbpb_trig_eff.sh; do
-  qc=$(grep -oP "\[${YR}\]=\K[0-9]+" "$SCRIPT_DIR/$p" | head -1 || true)
+  qc=$(grep -E "^declare -A QUEUE_COUNTS" "$SCRIPT_DIR/$p" | grep -oP "\[${YR}\]=\K[0-9]+" | head -1 || true)
   if [[ "$qc" != "$nmax" ]]; then echo "  MISMATCH $p: QUEUE_COUNTS[$YR]=$qc != $nmax"; bad=1; fi
 done
 if [[ -d "$DIR" ]]; then

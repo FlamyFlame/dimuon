@@ -5,16 +5,6 @@ output = logs/run_pbpb_26_nominal_batch_$(Process).out
 error = logs/run_pbpb_26_nominal_batch_$(Process).err
 log = logs/run_pbpb_26_nominal_batch_$(Process).log
 request_memory = 2GB
-# STALE PLACEHOLDER (2026-09-13): 5 is KNOWN WRONG -- the final 2026 set is expected to
-# be parts 1..6 (5 pending release, 6 = recovery; expected-but-unconfirmed until part 3 is terminal).
-# file_batch_max{26} in PbPbExtras.c is
-# deliberately 0 ('unset'), which blocks every 2026 job, so this number is inert until
-# the count is established. Set it TOGETHER with the others; preflight_pbpb_year.sh 26
-# enforces that they agree.  Original note:
-# queue 5 was the 5 grid tasks the 2026 skim was first submitted as
-# (SkimCode/run_26hi/InDstxt_PbPb2026_5p36TeV_part1..5.txt).  It can end up LARGER if
-# grid_monitor's chunked hadd splits a task into extra part files.  Keep it EQUAL to
-# run_year_to_file_batch_max_map{26,N} in NTupleProcessingCode/PbPbExtras.c: too many
-# jobs throws (loud), too few SILENTLY processes only part of the 2026 data.
-# grid_monitor auto-updates run_pbpb_26.sub only -- sync the other variants by hand.
-queue 5
+# queue N = part count on disk; keep equal to file_batch_max{26} in PbPbExtras.c
+# (preflight_pbpb_year.sh 26 cross-checks). Too few SILENTLY drops data.
+queue 7

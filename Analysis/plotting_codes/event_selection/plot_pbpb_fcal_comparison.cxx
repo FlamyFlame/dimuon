@@ -35,7 +35,8 @@ static std::map<int, std::vector<std::string>> BuildFilesFC() {
         {23, {base+"pbpb_2023/data_pbpb23_part1.root",
               base+"pbpb_2023/data_pbpb23_part2.root",
               base+"pbpb_2023/data_pbpb23_part3.root",
-              base+"pbpb_2023/data_pbpb23_part4.root"}},
+              base+"pbpb_2023/data_pbpb23_part4.root",
+              base+"pbpb_2023/data_pbpb23_part5.root"}},
         {24, {base+"pbpb_2024/data_pbpb24_part1.root",
               base+"pbpb_2024/data_pbpb24_part2.root"}},
         {25, {base+"pbpb_2025/data_pbpb25_part1.root",
@@ -43,18 +44,18 @@ static std::map<int, std::vector<std::string>> BuildFilesFC() {
               base+"pbpb_2025/data_pbpb25_part3.root",
               base+"pbpb_2025/data_pbpb25_part4.root",
               base+"pbpb_2025/data_pbpb25_part5.root",
-              base+"pbpb_2025/data_pbpb25_part6.root"}},
-        // PLACEHOLDER (2026): the 2026 skim is submitted as 5 grid tasks
-        // (SkimCode/run_26hi/InDstxt_PbPb2026_5p36TeV_part1..5.txt), so there are
-        // AT LEAST 5 parts — grid_monitor's chunked-hadd fallback can split a
-        // large task into extra part files, so the count can be LARGER.  CONFIRM
-        // against what lands in pbpb_2026/; an UNDER-count silently drops data.
-        // See docs/tracking/pbpb2026_analysis_support.md.
+              base+"pbpb_2025/data_pbpb25_part6.root",
+              base+"pbpb_2025/data_pbpb25_part7.root"}},
+        // Part lists = merged files on disk (2023 part5 / 2025 part7 = Sep-2026 recovery skims;
+        // 2026 = 7 parts).  Keep equal to file_batch_max in PbPbExtras.c;
+        // pipelines/preflight_pbpb_year.sh <yr> cross-checks.  An UNDER-count silently drops data.
         {26, {base+"pbpb_2026/data_pbpb26_part1.root",
               base+"pbpb_2026/data_pbpb26_part2.root",
               base+"pbpb_2026/data_pbpb26_part3.root",
               base+"pbpb_2026/data_pbpb26_part4.root",
-              base+"pbpb_2026/data_pbpb26_part5.root"}},
+              base+"pbpb_2026/data_pbpb26_part5.root",
+              base+"pbpb_2026/data_pbpb26_part6.root",
+              base+"pbpb_2026/data_pbpb26_part7.root"}},
     };
 }
 
@@ -69,7 +70,7 @@ static std::string CutsPathFC(int yr, bool is_alt) {
 // Used only to decide whether a year's column can be drawn at all — never to
 // substitute another year's cuts.
 // The full part list is required on purpose: accepting a SINGLE existing part would
-// let a partially-downloaded year (e.g. 2026 while the grid skim is still landing) be
+// let a partially-downloaded year (a skim still landing) be
 // normalised and ratioed against a complete 2023, producing a shape difference that is
 // pure bookkeeping.  A partial year is reported and drawn as "not available".
 static bool YearAvailableFC(int yr, bool is_alt) {
@@ -333,7 +334,7 @@ static void MakeComparisonPlot(bool is_alt) {
     if (!h_ref) { std::cerr << "Missing 2023 reference histogram — aborting." << std::endl; return; }
 
     // A year is drawn only if its cuts file AND its complete raw skim exist.  The
-    // 2026 skim is still being produced, so its column is expected to be absent
+    // a year whose skim is not on disk yet has no column
     // for a while; the pad then says so explicitly instead of showing an empty
     // frame that could be mistaken for real data.
     std::vector<CutSetFC> cs(kNCols);

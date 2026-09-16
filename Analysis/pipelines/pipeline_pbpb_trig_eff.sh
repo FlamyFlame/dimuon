@@ -241,12 +241,11 @@ wait_for_cluster_completion() {
   done
 }
 
-# Queue counts per year (must match .sub files)
-# [26]=5 is a STALE PLACEHOLDER, known wrong; final set expected 1..6 (corrected 2026-09-14,
-# no part 7) and
-# file_batch_max{26} is deliberately 0. See the note in pipeline_pbpb_crossx.sh; it must equal
-# file_batch_max{26} in PbPbExtras.c and `queue N` in the run_pbpb_26*.sub files.
-declare -A QUEUE_COUNTS=( [23]=4 [24]=2 [25]=6 [26]=5 )
+# Queue counts per year = merged part files on disk (2023 part5 / 2025 part7 = Sep-2026
+# recovery skims; 2026 = 7).  Must equal file_batch_max in PbPbExtras.c and `queue N` in the
+# run_pbpb_<yr>*.sub files -- preflight_pbpb_year.sh <yr> cross-checks.  Too few silently
+# processes only part of a year.
+declare -A QUEUE_COUNTS=( [23]=5 [24]=2 [25]=7 [26]=7 )
 
 get_year_dir() { echo "${DATA_BASE}/pbpb_20$1"; }
 

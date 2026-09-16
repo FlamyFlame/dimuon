@@ -415,15 +415,13 @@ void plot_muon_q_eta_pt_dependence(bool use_tight_wp = true) {
     FillSample({"pp_2024/", "pp_2024", "2mu4", 12}, use_tight_wp, false, 0, ctr_lo, ctr_hi,
                h, n_all, n_cut);
 
-    // nparts for 2026 is a PLACEHOLDER (5): the 2026 skim is submitted as 5 grid tasks, so
-    // at least 5 part files are expected, but the count can end up LARGER when
-    // grid_monitor's chunked-hadd fallback splits an oversized task output into extra
-    // parts. Confirm against what lands on disk; see
-    // docs/tracking/pbpb2026_analysis_support.md.
-    const std::vector<Sample> pbpb_wanted = {{"pbpb_2023/", "pbpb_2023", "single_mu4", 4},
+    // Per-year part counts = merged NTuple-processing part files on disk (2023 part5 / 2025 part7 =
+    // Sep-2026 recovery skims; 2026 = 7).  Keep equal to file_batch_max in PbPbExtras.c;
+    // pipelines/preflight_pbpb_year.sh <yr> cross-checks.  An UNDER-count silently reads a subset.
+    const std::vector<Sample> pbpb_wanted = {{"pbpb_2023/", "pbpb_2023", "single_mu4", 5},
                                              {"pbpb_2024/", "pbpb_2024", "single_mu4", 2},
-                                             {"pbpb_2025/", "pbpb_2025", "single_mu4", 6},
-                                             {"pbpb_2026/", "pbpb_2026", "single_mu4", 5}};
+                                             {"pbpb_2025/", "pbpb_2025", "single_mu4", 7},
+                                             {"pbpb_2026/", "pbpb_2026", "single_mu4", 7}};
 
     // Keep only the running periods with at least one part file on disk; the panel headers
     // below are composed from this filtered list, never from a typed year string.
