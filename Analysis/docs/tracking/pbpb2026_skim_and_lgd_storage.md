@@ -2078,9 +2078,30 @@ part5, matching part4). Not a difference between recovery and production parts.
 - Storage: GPFS ~857 GB / 1.6 TB (53 %) → Done-item 6 (2026 → LGD) not triggered; 2026 parts
   stay local unless the user asks for the migration (274 GB).
 
+### 2026-09-16 15:40 — PbPb25 part7 (52569156) MERGED: done 685/685, sanity PASS, 0 ZDC skips outside two known clusters
+
+- Task **`done`**, 685/685 (510510 352, 511020 55, 511035 237, 512013 1, 512049 40), 0 failed.
+  grid_monitor merged 17 files → `pbpb_2025/data_pbpb25_part7.root`, **971 913 entries**
+  (510510: 367 183, 511020: 93 067, 511035: 433 205, 512013: 2 383, 512049: 76 075).
+- **Sanity** vs part6: 0 missing / 1 extra (`muon_match_L1MU3V`), ZDC fill 0.9997. Always-empty
+  = 2 (`L1TE`, `L1TE24`) rather than 2025's usual 3: `b_HLT_mu4_mu4noL1_L1MU3V` fires in run
+  510510 only (20 606 / 367 183; 0 in the other four runs and 0 in part6) — the trigger was
+  live early in 2025 only; a data property, not a code difference.
+- **D9 table (640/640 run jobs harvested, all exit 0):** 510510 LB 170: 1, 172: 1, 174: 458;
+  **512049 LB 151: 1, 153: 1 202** (a second cluster, not previously known); total 1 663
+  ≈ 6e-6 of 2025 → contiguous few-LB clusters, negligible → no report per the standing rule.
+- **Duplicate proof over parts 1–7:** 261 363 935 entries, 42 runs; the 5 runs shared by
+  part7 with parts 1/2/6 checked exactly — 24 913 336 events, **0 duplicates**.
+- **LGD DONE 16:21 UTC:** uploaded, attached (7/7), rule `3f4e61b0…` extended and OK (7/0/0
+  locks), farm rebuilt (part6 keeper untouched), part7 verified through the symlink
+  (989 861 625 bytes / 971 913 entries), parked original purged. **Driver trap found and
+  fixed:** right after `attach` the rule still reports `State: OK` from its previous
+  evaluation with only 6 locks, so `wait` returned immediately and `farm` refused on PFN
+  count (6 ≠ 7); `do_wait` now also requires an OK lock count ≥ the local file count.
+
 ## Latest Stage
 
-**As of 2026-09-16 13:50 UTC.** (2026 SKIM COMPLETE: parts 1–7, every run 100 %, 0 duplicates over parts 1–7. PbPb23 part5 DONE end-to-end. Two recovery tasks running: PbPb25 p7 (678/685) / pp24 p13; per-task procedure on merge: dup-check → sanity-check → LGD upload → bookkeeping → hand-off. LGD driver ready for incremental parts.)
+**As of 2026-09-16 13:50 UTC.** (2026 SKIM COMPLETE: parts 1–7, every run 100 %, 0 duplicates over parts 1–7. PbPb23 part5 DONE end-to-end. PbPb25 p7 DONE end-to-end; pp24 p13 running; per-task procedure on merge: dup-check → sanity-check → LGD upload → bookkeeping → hand-off. LGD driver ready for incremental parts.)
 
 **DONE — storage (steps 7–8).** 907 GB on `BNL-OSG2_LOCALGROUPDISK`, 24 files, all
 byte/entry-verified through the symlink farms (re-verified after the 09-14 dCache upgrade),
