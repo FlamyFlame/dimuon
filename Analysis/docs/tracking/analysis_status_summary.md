@@ -11,16 +11,12 @@ remains.
 - **Skim record:** `~/usatlasdata/dimuon_data/data-merging-record.txt`
 - **Skim tag:** May 2026 skim (v1/v2); Pb+Pb 2026 = Sep 2026 skim (`hi2026` run mode)
 - **Datasets:**
-  - PbPb 2023: 4 parts, 124.5M entries total
+  - PbPb 2023: 5 parts (part5 = Sep-2026 recovery of run 462969, 117 025 entries), ~124.6M entries total
   - PbPb 2024: 2 parts, 92.6M entries total
-  - PbPb 2025: 6 parts, 260.4M entries total
-  - PbPb 2026: **skim INCOMPLETE (recovery in progress, 2026-09-13)** — a ZDC aux-item bug
-    killed jobs on lumiblocks with no RPD data; several runs are partially skimmed. Parts are
-    Expected final set **1..6**, contiguous (corrected 2026-09-14 — no part 7); part 5 lands
-    LAST, so a transient hole is expected while recovery runs.
-    **Any 2026 luminosity-normalised number is PROVISIONAL and biased low until every run
-    reads 100 %.** 2023/24/25 and pp24 need NO re-skim (the fix is output-neutral).
-  - pp 2024: 12 parts (chunked from 2 grid tasks)
+  - PbPb 2025: 7 parts (part7 = Sep-2026 recovery, 971 913 entries), ~261.4M entries total
+  - PbPb 2026: **skim COMPLETE (2026-09-16)** — 7 parts, 270 087 106 entries, all 35 GRL runs at
+    100 % of their files, 0 duplicate events. Luminosity 2.62316 nb⁻¹ (GRL total) is final.
+  - pp 2024: 13 parts (12 chunked from 2 grid tasks + part13 = Sep-2026 recovery of run 488534, 652 340 entries; its NTuple rerun is pending)
 
 ## PbPb 2026 — status (added 2026-09-10)
 
@@ -32,13 +28,13 @@ A **fourth** Run-3 Pb+Pb period. It brings the combined Pb+Pb R_AA luminosity fr
 |------|--------|
 | Luminosity table (`lumitable_pbpb_26_HLT_mu4.csv`, 2.62316 nb⁻¹) | **DONE** — run list verified byte-identical to the skim GRL |
 | Lumi + metadata docs (`luminosity/README.md`, `analysis_metadata.md`) | **DONE** |
-| Grid skim (`hi2026`), download, hadd | **IN PROGRESS — INCOMPLETE, recovery running** (sibling doc `pbpb2026_skim_and_lgd_storage.md`). AthAnalysis 25.2.90. |
-| Analysis-code support (all stages) | **IN PROGRESS** — `pbpb2026_analysis_support.md` |
-| Event-selection cuts file `event_sel_cuts_pbpb_2026.root` | **NOT STARTED** — hard prerequisite: NTuple processing throws without it |
-| NTuple processing / hadd | **BLOCKED** on the skim + the cuts file |
-| Trigger efficiency (P2+P3, 2026's own ε) | **BLOCKED** on NTuple processing; also needs a 2026 MB sample |
-| RDF crossx hist filling | **BLOCKED** |
-| Combined 23+24+25+26 crossx / R_AA plots | **BLOCKED** — code is wired, inputs missing |
+| Grid skim (`hi2026`), download, hadd | **DONE 2026-09-16** — 7 parts, 270 087 106 entries, all 35 runs 100 % (`pbpb2026_skim_and_lgd_storage.md`, CLOSED). AthAnalysis 25.2.90. |
+| Analysis-code support (all stages) | **DONE, reviewed PASS 2026-09-16** — `pbpb2026_analysis_support.md` |
+| Event-selection cuts file `event_sel_cuts_pbpb_2026.root` | **pending step 14** (`run_pbpb_all.sh YEARS="23 25 26"`, launched 2026-09-16) |
+| NTuple processing / hadd | **pending step 14** |
+| Trigger efficiency (P2+P3, 2026's own ε) | **pending step 14** (tag-and-probe on the HardProbes skim; no MB sample needed in the live pipeline) |
+| RDF crossx hist filling | **pending step 14** |
+| Combined 23+24+25+26 crossx / R_AA plots | **pending step 14** (crossx); R_AA after the pp24 part13 rerun |
 
 **Everything already produced for 2023/2024/2025 is unaffected** by the 2026 work: no
 cut, weight, binning or convention changed. Reconstruction efficiency needs no 2026
