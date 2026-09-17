@@ -195,6 +195,19 @@ Centrality-bin population (skim `centrality`, 2023 FCal calibration; pTH125_300,
 
 ### R2. Slice-matched comparison r17864 vs r17618 (pTH125_300, same NTP code, 2026-09-16; reviewer-verified numbers)
 
+**USER RULING 2026-09-17 — R2 is NOT studiable until the FCal is fixed.** The reco/trigger efficiencies must be compared in the
+SAME centrality bin, but the r17864 centrality is derived from a mis-reconstructed FCal, so its "0-5 %" / "5-10 %" bins are not the
+same event populations as r17618's; the bin-to-bin deficits below (in particular the 5-10 % ones) may be centrality mis-assignment,
+not a reconstruction-efficiency problem. Keep the table as a record of what was run; draw no r-tag conclusion from the
+centrality-binned rows. The centrality-blind rows do not depend on the FCal but still describe a sample whose conditions are
+broken. Redo R2 once a fixed-calorimeter production exists.
+
+**Vertex-z clarification (user, 2026-09-17):** the production requests FIVE vertex positions, x = -0.7, y = -0.6 mm,
+z = -71.2 / -28.5 / -4.8 / 18.9 / 61.6 mm, sampled from μ = -4.8 mm, σ = 47.4 mm; only the z = -71.2 mm slice (r17864) is
+finished. So "−71.2 mm ≠ data" is not a mismatch of the design, just one of the five points. The -5.8 ± 47 mm quoted in R2 is the
+per-event RECONSTRUCTED primary vertex (`vtx_z[0]`) of the pbpb24 DATA skim, first 20k events of `data_pbpb24_part1.root` — a
+distribution, not the conditions-DB beam spot; per-run values over the full dataset: see the table below (R3) once filled.
+
 | quantity (Tight WP) | r17864 (2024 cond.) | r17618 (2023 cond.) | ratio |
 |---|---|---|---|
 | single-μ reco ε, FCal 0-5 %, bins 4.5-8 / 8-14 / 14-25 / 25-100 GeV | 0.563 / 0.624 / 0.660 / 0.640 (N = 252/213/153/139) | 0.588 / 0.661 / 0.675 / 0.709 | 0.96 / 0.94 / 0.98 / 0.90 (±0.05-0.06) |
@@ -221,6 +234,32 @@ negative sums, a 10× drop, or the observed A = C symmetry; the vertex is also r
 It is therefore not the cause of R1; it could at most shift η-edge acceptances by ~0.03-0.07 and should be corrected to the
 data value (with the data's ~47 mm spread) in the full production regardless.
 
+### R3. Pb+Pb 2024 data primary-vertex position, per run (2026-09-17; for the vertex-sampling μ/σ discussion)
+
+Source: `~/usatlasdata/dimuon_data/pbpb_2024/data_pbpb24_part*.root`, `HeavyIonD3PD`, `vtx_{x,y,z}[0]` with `vtx_ntrk[0] >= 10`
+(reconstructed PV of HardProbes-triggered events; skim keeps |z| < 250 mm). NOT the conditions-DB beam spot (`/Indet/Beampos`).
+
+| run | N | ⟨x⟩ | ⟨y⟩ | ⟨z⟩ [mm] | RMS z [mm] |
+|---|---|---|---|---|---|
+| 489703 | 8 977 701 | −0.732 | −0.648 | −5.6 | 46.8 |
+| 489718 | 3 499 471 | −0.732 | −0.643 | −5.5 | 48.1 |
+| 489749 | 5 412 686 | −0.734 | −0.644 | −5.4 | 47.8 |
+| 489764 | 8 761 704 | −0.731 | −0.646 | −5.6 | 46.8 |
+| 489801 | 7 038 785 | −0.731 | −0.648 | −5.6 | 48.3 |
+| 489895 | 1 904 486 | −0.724 | −0.646 | −6.2 | 48.5 |
+| 489909 | 8 237 955 | −0.729 | −0.649 | −7.6 | 47.7 |
+| 489938 | 1 002 470 | −0.739 | −0.648 | −6.9 | 48.2 |
+| 489961 | 7 293 753 | −0.735 | −0.649 | −6.3 | 47.7 |
+| 490085 | 9 413 078 | −0.737 | −0.655 | −5.7 | 47.8 |
+| 490145 | 9 466 199 | −0.738 | −0.648 | −5.7 | 47.8 |
+| 490156 | 9 192 522 | −0.734 | −0.651 | −4.6 | 48.1 |
+| 490182 | 6 667 419 | −0.735 | −0.652 | −4.3 | 48.7 |
+| 490223 | 5 629 562 | −0.735 | −0.648 | −4.6 | 48.8 |
+| **all** | 92 497 791 | −0.73 | −0.65 | **−5.61** | **47.8** |
+
+vs the production request (x −0.7, y −0.6, μ_z −4.8, σ_z 47.4 mm): x, y within 0.05 mm; μ_z differs by 0.8 mm (inside the
+run-to-run range −4.3 … −7.6), σ_z within 1 %. No change to μ/σ is warranted on this basis (0.8 mm = 0.02 σ, Δη ~ 1e-4).
+
 ## Remaining Work
 
 - User decision on the verification plan / on reporting R1 to the production contact (message draft offered).
@@ -228,4 +267,4 @@ data value (with the data's ~47 mm spread) in the full production regardless.
 
 ## Latest Stage
 
-2026-09-16 20:40: verification round items 1-5 delivered (R1b, R2); comparison plots under /review-plot iteration 2. Open: user decision on reporting R1/R2 + the −71.2 mm vertex to the production contact.
+2026-09-17: user rulings recorded (R2 not studiable until FCal fixed; vertex −71.2 mm is one of five requested points). R3 per-run PV table delivered. Open: report R1 to the production contact; wait for the fixed-calorimeter production and the other four vertex slices.
