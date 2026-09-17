@@ -267,9 +267,9 @@ disk (it had been deliberately disabled while the 2026 analysis code did not exi
 | 9 | Compile + pre-flight every Pb+Pb pipeline for year 26 | DONE (`pipelines/preflight_pbpb_year.sh`) |
 | 10 | `/review-analysis-code` on the C++/RDF changes | round 1 FAILED -> all findings fixed + executor-verified; **independent round-2 review still OWED** (reviewer hit an API session rate limit) |
 | 11 | Commit; update INDEX; final summary | pending |
-| 12 | **Skim landed (2026-09-16):** set part counts from disk (26→7, and the recovered 23→5, 25→7), lift P14, preflight 23/25/26 | in progress |
-| 13 | `/review-analysis-code` round 4 — one clean PASS on the 2026 data-side code (steps 5-8 + 12) | pending |
-| 14 | Run `run_pbpb_all.sh YEARS="23 25 26"` (user decision 2026-09-16: 23/25 rerun for their recovered parts; pp24 part13 left for a separate pp run) → combined 23+24+25+26 crossx + sanity plots | pending |
+| 12 | **Skim landed (2026-09-16):** set part counts from disk (26→7, and the recovered 23→5, 25→7), lift P14, preflight 23/25/26 | DONE (3f5a279) |
+| 13 | `/review-analysis-code` round 4 — one clean PASS on the 2026 data-side code (steps 5-8 + 12) | **DONE — PASS at iteration 2** (log `.claude/logs/review-analysis-code-20260916-171340-pbpb26-round4-clean-pass.md`) |
+| 14 | Run `run_pbpb_all.sh YEARS="23 25 26"` (user decision 2026-09-16: 23/25 rerun for their recovered parts; pp24 part13 left for a separate pp run) → combined 23+24+25+26 crossx + sanity plots | RUNNING (launched 2026-09-16; log `pipelines/run_pbpb_all_23_25_26_20260916b.log`, PID file alongside) |
 
 ## Progress Log
 
@@ -722,6 +722,31 @@ so the cut-value shift (expected negligible: +0.09 % / +0.37 % of events) can be
 2023 parts (were 3 of 4 — the pre-existing drift found in round 2), so those cross-year
 diagnostic figures change when regenerated; no cut is derived from them.
 
+
+### 2026-09-17 — Step 14 run 1: event selection + trig-eff NTuple/hadd/RDF/fits DONE; Stage-8 plotter read a retired file
+
+`run_pbpb_all.sh YEARS="23 25 26"` (PID 2579325, 17:51 → 04:32). **Done and validated:** Stage 0
+event selection for 23/25/26 (2023 now 124 590 975 events with part5; 2026: 270 087 106 processed,
+261 417 418 pass all cuts (alt) — `event_sel_cuts_pbpb_2026{,_alt}.root` exist); trig-eff NTuple
+Condor 5+7+7 jobs, hadd, RDF Pipeline 2 (`_coarse_q_eta_bin_qeta_fid.root`) and the Fermi+log
+turn-on fits for all three years, Stage-7 TF1 validation OK. **Failure:** Stage 8
+`trig_effcy_plot_PbPb.cxx(26)` segfaulted after `cannot open
+histograms_real_pairs_pbpb_2026_single_mu4_fine_q_eta_bin.root`.
+
+**Root cause (pre-existing, not 2026-specific):** `TrigEffPlotterPbPb::configureDataFiles` still
+read the retired `_fine_q_eta_bin` output, which no pipeline stage has produced since the round-8
+coarse-q·η + fiducial-gap change; 2023/24/25 silently drew their Stage-8 pictures from a July-2026
+leftover (pre muon-pT-4.5 selection) while their fits came from the fresh file. Fixed: the plotter
+now reads `_coarse_q_eta_bin_qeta_fid.root` (= `get_rdf_output`, the fit input). Verified on 2026:
+rc=0, 44 PNGs, and the missing-hist warning profile is identical to the 2023 run on the old file
+(only the unmaintained `mu4_mu4noL1`, non-`_sepr` and `ctr50_100` families). The pp twin
+(`TrigEffPlotterPP.cxx:14`) has the same stale path — left for the pp24 rerun (out of scope here).
+
+Resumed with `pipelines/resume_pbpb_all_after_trigeff_stage8.sh` (trig-eff pipeline with
+`SKIP_EVSEL=1 SKIP_CONDOR=1` → re-hadd/RDF/fits/plots; medium-WP refits; crossx pipeline with its
+Condor stage). Launch trap recorded: `run_pbpb_all.sh` does not source `setup.sh` — source it in the
+launching shell.
+
 ## Results & Observations
 
 ### Open questions for the user (none blocked the work; all recorded)
@@ -778,17 +803,18 @@ outside the requested 2026 scope and is a user decision.
 
 ## Latest Stage
 
-**2026-09-16 — skim DONE (7 parts, 270 087 106 entries, every run 100 %); working steps 12→14.**
-Doc triage done: this doc, `mu_pt45_gap125_pairpt9_adoption.md` (23/24/25 crossx ARE on the new
-selection since 2026-09-10 — its INDEX scope line is stale), `_handoff_skim_to_analysis_2026-09-15.md`.
-Concurrent session is editing MC-only files (FullSimSampleType.h, FillMCTrigEff*, PythiaAlgCoreT,
-mc_based/*, reco_effcy/*); none is in the Pb+Pb data chain (verified: `PairTrigEffEvaluator.h` is
-included only by MC trig-eff code) — commit by explicit path only.
-Plan: (12) `PbPbExtras.c` {23,5},{25,7},{26,7}; `run_pbpb_{23,25,26}*.sub` queue; `QUEUE_COUNTS`
-in both Pb+Pb pipelines; `ScrambGen::NParts`; part lists in the six event-selection macros; lift the
-P14 provisional-lumi warning in `PbPbSampledLumi.h`; `preflight_pbpb_year.sh 23/25/26`.
-(13) reviewer subagent, read-only. (14) `run_pbpb_all.sh YEARS="23 25 26"` under nohup + artifact
-waiter; then inspect the sanity plots.
+**2026-09-17 — step 14 run 2 RUNNING: `resume_pbpb_all_after_trigeff_stage8.sh` (YEARS="23 25 26"; log `pipelines/resume_pbpb_all_20260917.log`, PID file alongside)** — run 1 details in the 2026-09-17 log entry. Original launch: (nohup; log
+`Analysis/pipelines/run_pbpb_all_23_25_26_20260916b.log`, PID in `..._20260916b.pid`; sub-logs
+`pipelines/trigeff_<pid>.log`, `trigeff_medium_<pid>.log`, `crossx_<pid>.log`). Stages: 0 event
+selection (re-derives 23/25 cuts from the complete years, derives 26 — P5-P9 to confirm from the
+2026 figures) → trig-eff Condor (NTuple, 3 years × 5/7/7 jobs) → hadd → RDF fine-q·η → turn-on
+fits Tight → Medium refits → crossx Condor (nominal) → hadd → RDF crossx → combined
+`pbpb_23_24_25_26_combined{,_pt_120}` plots + trig-corr sanity. Steps 12-13 DONE and committed
+(3f5a279, 57ee5b9, 9c32c61). Concurrent MC session: none of its files are in this chain.
+After the run: compare regenerated 23/25 cuts to `pre_pbpb26_run_backup_20260916/`, inspect the
+2026 event-selection / turn-on / combined-crossx figures (C1-C4), confirm registry P5-P9, then
+`/review-plot` on the new plot sets and a per-year N/L consistency check (proposed to the user).
+
 
 
 **Code is 2026-ready and every Pb+Pb workflow runs today with the 2026 data still absent.**

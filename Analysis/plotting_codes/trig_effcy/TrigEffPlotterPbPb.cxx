@@ -12,7 +12,13 @@ void TrigEffPlotterPbPb::configureDataFiles(int runYear)
     int yr = runYear % 2000;
     std::string yr_str = std::to_string(yr);
     data_dir = base + "pbpb_20" + yr_str + "/";
-    fname_single_mu4 = data_dir + "histograms_real_pairs_pbpb_20" + yr_str + "_single_mu4_fine_q_eta_bin.root";
+    // Read the file pipeline_pbpb_trig_eff.sh Stage 5 actually writes today (coarse q*eta
+    // projection + fiducial gap cut, RDFBasedHistFillingData: useCoarseQEtaBin=true,
+    // apply_fiducial_gap_cut) -- the same file the Stage-6 turn-on fits are made from, so the
+    // Stage-8 pictures and the fits describe the same histograms.  Until 2026-09-17 this read the
+    // retired "_fine_q_eta_bin" output, which no stage produces any more: for 2023/24/25 a July-2026
+    // leftover (pre muon-pT-4.5 selection) was silently plotted, for 2026 the file did not exist.
+    fname_single_mu4 = data_dir + "histograms_real_pairs_pbpb_20" + yr_str + "_single_mu4_coarse_q_eta_bin_qeta_fid.root";
     fname_MB         = data_dir + "histograms_real_pairs_pbpb_20" + yr_str + "_MB.root";
     plot_base_dir    = base + "plots/pbpb_trigger_efficiency/mu4/no_corr/pbpb" + yr_str;
 }
