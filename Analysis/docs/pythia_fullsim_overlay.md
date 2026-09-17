@@ -19,6 +19,12 @@ default 24) in `pipeline_pythia_fullsim_overlay.sh` / the `run_pythia_fullsim_ov
 studies r17618 / r17662 / r17663 explicitly names the `_pbpb23` directory. Per-sample directory layout (MC-only products in `mc_trig_eff/`, `reco_eff/` subtrees; NTP + hist-filling outputs flat):
 `FullSimSampleType.h` "PER-SAMPLE DIRECTORY LAYOUT" / `pipelines/fullsim_sample_layout.sh`.
 
+**NTUP file names (since 2026-09-17):** `Pythia_5p36TeV_<beam>_hQCD_DiMu_pTH<lo>_<hi>.FullSimHIJINGOverlayPbPb<yy>.vtxz<z>mm_b<lo>_<hi>fm.NTUP.root` — the tag carries the conditions year
+and the production configuration (pinned vertex z, HIJING impact-parameter interval; Pb+Pb 2024 requests 5 z points × 4 b intervals on top of 4 beams × 6 slices). `FullSimSampleFileTag(hijing, year)`
+= `FullSimHIJINGOverlayPbPb24.vtxz-71_2mm_b0_5fm` (r17864) / `FullSimHIJINGOverlayPbPb23.vtxz-3_3mm_b0_5fm` (r17618); `FullSimOverlayConfigTag(year)` returns the ONE configuration on disk per
+year — chaining several z / b points is a physics decision (b intervals carry different cross-section fractions) to be taken when they exist, not a glob. Full naming rule + skim side:
+`SkimCode/README.md` "Overlay NTUP naming".
+
 **Current limitation:** All paths point to test samples. The pbpb23 sample has 6 NTUP files (one per pT-hat slice, ~10k events each); the pbpb24 (r17864) test sample has ONE slice
 (pTH125_300), so the `run_pythia_fullsim_overlay*.sh` scripts and the Condor worker set `py.allow_missing_slices = (year == 24)` — TEMPORARY, delete it when the 6-slice pbpb24
 production exists (a missing slice biases the σ-weighted combination, hence the strict default). When full overlay samples become available, update `FullSimSampleType.h` paths and the

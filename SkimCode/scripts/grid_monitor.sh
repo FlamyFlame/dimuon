@@ -98,7 +98,7 @@ while [[ $# -gt 0 ]]; do
 					[[ -z "$line" ]] && continue
 					tid=$(echo "$line" | grep -oE '\b[0-9]{8}\b' | head -1)
 					[[ -z "$tid" ]] && continue
-					outds=$(echo "$line" | grep -oE 'user\.yuhang\.[A-Za-z0-9._]+_EXT0' | head -1)
+					outds=$(echo "$line" | grep -oE 'user\.yuhang\.[A-Za-z0-9._-]+_EXT0' | head -1)   # '-' : overlay vtxz-<z>mm config tag
 					TASK_IDS+=("$tid")
 					TASK_OUTDS+=("${outds:-}")
 				done < "$1"
@@ -179,9 +179,13 @@ map_outds() {
 	if [[ "$IS_MC_FLAT" == 1 ]]; then
 		# user.yuhang.NTUP.Pythia_5p36TeV_pp_hQCD_DiMu_pTH8_14.FullSimHIJINGOverlayPP24.June2026.v1._EXT0
 		# user.yuhang.NTUP.Pythia_5p36TeV_nn_hQCD_DiMu_pTH8_14.FullSimPP24.July2026.v1._EXT0
+		# user.yuhang.NTUP.Pythia_5p36TeV_pp_hQCD_DiMu_pTH125_300.FullSimHIJINGOverlayPbPb24.vtxz-71_2mm_b0_5fm.Sep2026.v2._EXT0
 		# → dir="." (flat, DATA_BASE is the target), output_name from the NTUP filename pattern
+		# The file tag runs from "FullSim" up to the VER_TAG "<Month><Year>.v<n>" and may itself
+		# contain a dot (the overlay's ".<vtxz_b config>" since 2026-09-17), so the tag is
+		# delimited by the version token, not by the next dot.
 		local sample
-		sample=$(echo "$outds" | sed -n 's/.*NTUP\.\(Pythia_5p36TeV_[^.]*\)\.\(FullSim[^.]*\)\..*/\1.\2.NTUP/p')
+		sample=$(echo "$outds" | sed -n 's/.*NTUP\.\(Pythia_5p36TeV_[^.]*\)\.\(FullSim.*\)\.[A-Za-z]*20[0-9][0-9]\.v[0-9]*\._EXT0.*/\1.\2.NTUP/p')
 		if [[ -z "$sample" ]]; then
 			echo "UNKNOWN UNKNOWN"; return 1
 		fi

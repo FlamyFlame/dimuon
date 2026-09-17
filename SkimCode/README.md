@@ -141,6 +141,22 @@ NTUP in `~/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/`; see
 `Analysis/docs/tracking/hijing_overlay_pbpb24_test_sample_skim.md` for the r-tag
 verification — its calorimeter response is broken).
 
+**Overlay NTUP naming (since 2026-09-17):**
+`Pythia_5p36TeV_<beam>_hQCD_DiMu_pTH<lo>_<hi>.FullSimHIJINGOverlayPbPb<yy>.vtxz<z>mm_b<lo>_<hi>fm.NTUP.root`.
+Besides the isospin beam and the pT-hat slice, every overlay dataset is one point of a
+(pinned vertex z, HIJING impact-parameter interval) grid — Pb+Pb 2024 requests five z
+points −71.2 / −28.5 / −4.8 / 18.9 / 61.6 mm (x = −0.7, y = −0.6 mm always) × four b
+intervals 0–5 / 5–9 / 9–12 / 12+ fm — so the file tag spells the configuration out
+(z in mm with `.`→`_`, sign kept; b from the HITS `ip` token, `ip0_5` → `b0_5fm`):
+pbpb24 `FullSimHIJINGOverlayPbPb24.vtxz-71_2mm_b0_5fm`, pbpb23
+`FullSimHIJINGOverlayPbPb23.vtxz-3_3mm_b0_5fm` (r17618: vtx (−0.6,−0.4,−3.3) mm).
+The `grid_sub_pbpb2?_test_sample.sh` scripts build it with `_cfg_tag <z> <ip>`, one
+`_submit` line per (beam, slice, z, b); the reader side is
+`Analysis/MuonObjectsParamsAndHelpers/FullSimSampleType.h` (`FullSimSampleFileTag`,
+`FullSimOverlayConfigTag`). The legacy tag `FullSimHIJINGOverlayPP24` ("PP24" was
+wrong — the overlay is Pb+Pb) survives only in the GRID dataset names skimmed before
+that date and in the `.bak_20260709` LOCALGROUPDISK copies; the local NTUPs were `mv`'d.
+
 **MC keeps every event.** `alg.StoreAllEvents = (is_MC and mc_has_trigger_sim)`.
 With `StoreAllEvents=False`, `TrigRates::execute` (`TrigRates.cxx:305`) drops any
 event failing the OR of all configured chains — correct for the data skim, but it
@@ -423,7 +439,11 @@ NTupleProcessing code auto-update; internally they share the `IS_MC_FLAT` flag.
 | `PbPb2026data...partN._EXT0` | `pbpb_2026/` | `data_pbpb26_partN.root` |
 | `pp2024data...partN._EXT0`   | `pp_2024/`   | `data_pp24_partN.root`   |
 | `NTUP.Pythia_5p36TeV_<s>.FullSimPP24...._EXT0` | `pythia_fullsim_test_sample/` | `Pythia_5p36TeV_<s>.FullSimPP24.NTUP.root` |
-| `NTUP.Pythia_5p36TeV_<s>.FullSimHIJINGOverlayPP24...._EXT0` | `pythia_fullsim_hijing_overlay_test_sample/` | `Pythia_5p36TeV_<s>.FullSimHIJINGOverlayPP24.NTUP.root` |
+| `NTUP.Pythia_5p36TeV_<s>.FullSimHIJINGOverlayPbPb<yy>.<cfg>...._EXT0` | `pythia_fullsim_hijing_overlay_test_sample/` | `Pythia_5p36TeV_<s>.FullSimHIJINGOverlayPbPb<yy>.<cfg>.NTUP.root` |
+
+The MC file tag (`FullSim…`) may contain a dot (the overlay's `.<cfg>`), so the parser
+delimits it by the trailing `<Month><Year>.v<n>._EXT0` version token, not by the next dot;
+legacy `FullSimHIJINGOverlayPP24` datasets still map (to their old local name).
 
 The pp24-fullsim family is submitted from **`run_pythia_fullsim/grid_sub.sh`**
 (24 DSIDs = 4 isospin beams {pp,pn,np,nn} × 6 pTHat slices, 802758–802781, reco tag

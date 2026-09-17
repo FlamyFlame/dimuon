@@ -95,19 +95,41 @@ inline bool FullSimSampleUsesFourBeams(FullSimSampleType t, bool is_test_sample)
     return FullSimSampleIsOverlay(t) != is_test_sample;
 }
 
-// NTUP file tag.  Frozen: it is baked into the skimmed NTUP file names on disk and
-// into the grid output-dataset names (SkimCode/run_pythia_fullsim_HIJING_overlay/
-// grid_sub*.sh).  "PP24" here is a legacy misnomer for the HIJING overlay -- the
-// overlay is Pb+Pb (see FullSimSampleLabel) -- but renaming it would orphan the
-// existing NTUPs and grid datasets.
-inline std::string FullSimSampleFileTag(FullSimSampleType t) {
+// HIJING-OVERLAY PRODUCTION CONFIGURATION TAG (user decision 2026-09-17). Every overlay
+// dataset is one point of a (vertex z, impact-parameter interval) grid on top of the
+// (isospin beam, pT-hat slice) grid already spelled out in the sample name, so the NTUP
+// name carries it:  vtxz<z>mm_b<lo>_<hi>fm   (z in mm, '.' -> '_', sign kept; b = the
+// HIJING HITS "ip" range, e.g. ip0_5 -> b0_5fm).  Pb+Pb 2024 requests FIVE z points
+// -71.2 / -28.5 / -4.8 / 18.9 / 61.6 mm (x = -0.7, y = -0.6 mm always) x FOUR b intervals
+// 0-5 / 5-9 / 9-12 / 12+ fm; the pbpb23 sample was one point, z = -3.3 mm, b = 0-5 fm.
+// This returns the ONE configuration that exists on disk per conditions year: the reader
+// chains exactly one config per (beam, slice). Combining several configs (b intervals carry
+// different cross-section fractions; z points are to be averaged) is a physics decision the
+// user takes when the other points arrive -- it must NOT become a glob here.
+inline std::string FullSimOverlayConfigTag(int pbpb_year) {
+    FullSimCheckPbPbYear(pbpb_year);
+    return pbpb_year == 24 ? "vtxz-71_2mm_b0_5fm"    // r17864: vtx (-0.7,-0.6,-71.2) mm, ip0_5
+                           : "vtxz-3_3mm_b0_5fm";    // r17618: vtx (-0.6,-0.4,-3.3) mm,  ip0_5
+}
+
+// NTUP file tag, baked into the skimmed NTUP file names on disk
+// (SkimCode/run_pythia_fullsim_HIJING_overlay/grid_sub*.sh, OUT_TAG).
+// HIJING overlay: "FullSimHIJINGOverlayPbPb<yy>.<config>" -- the overlay is Pb+Pb (never pp)
+// and the name says which conditions year and which production configuration the file is.
+// Renamed 2026-09-17 from the legacy "FullSimHIJINGOverlayPP24" (the on-disk files were
+// mv'd; the GRID datasets skimmed before that date keep the old name -- grid_monitor.sh
+// still parses them but downloads to the LEGACY local name, so mv after any re-download).
+// `pbpb_year` is ignored for every other sample type.
+inline std::string FullSimSampleFileTag(FullSimSampleType t, int pbpb_year = 24) {
     switch (t) {
     case FullSimSampleType::pp:     return "FullSimPP24";
-    case FullSimSampleType::hijing: return "FullSimHIJINGOverlayPP24";
+    case FullSimSampleType::hijing:
+        return "FullSimHIJINGOverlayPbPb" + std::to_string(pbpb_year) + "." + FullSimOverlayConfigTag(pbpb_year);
     case FullSimSampleType::zmumu:  return "FullSimZmumuOverlayPP24";
     case FullSimSampleType::data:   return "FullSimDataOverlayPP24";
-    // r17663: skimmed with the overlay run mode, so it inherits the overlay basename,
-    // distinguished by the _r17663 suffix (grid_sub_r17663_nooverlay.sh).
+    // r17663: pp collisions reconstructed with the Pb+Pb-2023 conditions but NO overlay (no
+    // HIJING, so no impact parameter): kept under its original skim name, distinguished by
+    // the _r17663 suffix (grid_sub_r17663_nooverlay.sh). Not part of the overlay renaming.
     case FullSimSampleType::noovl:  return "FullSimHIJINGOverlayPP24_r17663";
     }
     throw std::runtime_error("FullSimSampleFileTag: unknown type");

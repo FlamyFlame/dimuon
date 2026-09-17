@@ -398,7 +398,7 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputFullsim_PythiaCo
         ami_weight_kn_beam[i].assign(nBeamTypes, 0.);
     }
 
-    const std::string file_tag = FullSimSampleFileTag(fullsim_sample_type);
+    const std::string file_tag = FullSimSampleFileTag(fullsim_sample_type, overlay_pbpb_year);
     // Beam content follows the SIMULATED SYSTEM, not the file layout: pp-conditions
     // fullsim = pp collisions = the pp beam alone; the HIJING overlay = Pb+Pb = the 4
     // isospin beams.  Overridable per run for the two test samples (PythiaAlgCoreT.h).
@@ -566,6 +566,19 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputFullsim_PythiaCo
                           << " -> ami_weight=" << ami_weight_kn_beam[ikin][ibeam] << " nb" << std::endl;
             }
         }
+    }
+
+    // Nothing chained at all is never a legitimate diagnostic run -- with allow_missing_slices
+    // it would otherwise exit 0 with empty outputs. The typical cause is a directory / file-tag
+    // disagreement: fullsim_input_dir_override pointing at one conditions year while
+    // overlay_pbpb_year (which names the file, FullSimSampleFileTag) says the other.
+    {
+        Long64_t n_total = 0;
+        for (const auto& n : nentries_kn_sum) n_total += n;
+        if (n_total == 0)
+            throw std::runtime_error("InitInputFullsim: NO input slice found in '" + fullsim_input_dir
+                + "' for file tag '" + file_tag + "' -- do the input directory and overlay_pbpb_year "
+                  "(or fullsim_input_dir_override) describe the same production?");
     }
 
     // Isospin weight.  4:6:6:9 is the ISOSPIN CONTENT OF A Pb NUCLEUS (Z=82, N=126):
