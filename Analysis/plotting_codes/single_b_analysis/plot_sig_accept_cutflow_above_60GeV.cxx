@@ -39,8 +39,8 @@
 // The label is built from the value rather than typed, for the same reason.
 static const std::vector<std::pair<std::string, std::string>>& kCuts() {
     static const std::vector<std::pair<std::string, std::string>> cuts = {
-        {"truth_minv > 1.08",                    "m_{#mu#mu}>1.08"},
-        {"truth_minv < 2.9",                     "m_{#mu#mu}<2.9"},
+        {Form("truth_minv > %g", ParamsSet::signal_minv_min), Form("m_{#mu#mu}>%g", ParamsSet::signal_minv_min)},
+        {Form("truth_minv < %g", ParamsSet::signal_minv_max), Form("m_{#mu#mu}<%g", ParamsSet::signal_minv_max)},
         {ParamsSet::SignalPairPtCutExpr("truth_pair_pt"),
              Form("p_{T}^{pair}>%g", ParamsSet::signal_pair_pt_min)},
         {ParamsSet::FiducialGapCutExpr("m1.truth_charge * m1.truth_eta"), "#mu_{1}: gap fid."},

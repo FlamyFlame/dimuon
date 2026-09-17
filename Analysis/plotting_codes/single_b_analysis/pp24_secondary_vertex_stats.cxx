@@ -154,7 +154,7 @@ void pp24_secondary_vertex_stats(bool use_tight_wp = true,
     // Mirrors `signal_cuts` in RDFBasedHistFilling/RDFBasedHistFillingPP.cxx, in the pair tree's
     // dotted column names.
     const std::string signal_cuts = and_cut(wp_cut,
-        "minv > 1.08 && minv < 2.9 && " + ParamsSet::SignalPairPtCutExpr("pair_pt") + " && "
+        ParamsSet::SignalMinvCutExpr("minv") + " && " + ParamsSet::SignalPairPtCutExpr("pair_pt") + " && "
         + ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta") + " && "
         + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta") + " && "
         + ParamsSet::PairFiducialEtaCutExpr("pair_eta"));

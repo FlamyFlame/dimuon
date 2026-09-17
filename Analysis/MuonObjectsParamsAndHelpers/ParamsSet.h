@@ -1,6 +1,7 @@
 #ifndef ParamsSet_h
 #define ParamsSet_h
 
+#include <cstdio>
 #include <iostream>
 #include <map>
 #include <vector>
@@ -418,6 +419,33 @@ public:
    	static std::string SignalPairPtCutExpr(const std::string& pair_pt_expr = "pair_pt") {
    		return "((float)(" + pair_pt_expr + ") > "
    		     + std::to_string(signal_pair_pt_min) + "f)";
+   	}
+
+   	// ---- SIGNAL-REGION dimuon MASS WINDOW (SINGLE SOURCE OF TRUTH) --------------------------
+   	// 1.08 < m_mumu < 2.9 GeV (docs/analysis_overview.md §2): above the phi and its radiative
+   	// tail, below the J/psi. Until 2026-09-17 it was RETYPED as a bare `minv > 1.08 && minv < 2.9`
+   	// at ~12 sites (data crossx signal region, every truth/reco MC analog, the MC trig-eff
+   	// signal selection, the single-value pair trigger efficiency's `sig` window). Read it from
+   	// HERE -- never retype it.
+   	// COUPLED CONSUMERS (docs/tracking/pp24_trig_eff_hybrid_application.md D3/D5): the
+   	// single-value pair trigger efficiency (Utilities/PairTrigEffEvaluator.h) is MEASURED inside
+   	// this window and applied to pairs above ParamsSet::pair_pt_coarse_bins[N-2]; the low-mass
+   	// template fit is to be performed inside this SAME window (future work). Changing the window
+   	// therefore requires re-measuring the pair efficiency (run_mc_trigeff_pair_eff.sh) and
+   	// refilling every crossx / MC analog -- docs/signal_selection_change_impact.md.
+   	// DOUBLES, formatted with %g in the cut expression: that reproduces the literal strings the
+   	// sites carried before ("1.08", "2.9"), so the JIT selection is byte-identical and every
+   	// output bit-identical to the retyped era (the float form "1.080000f" would not be).
+   	static constexpr double signal_minv_min = 1.08;
+   	static constexpr double signal_minv_max = 2.9;
+   	static bool PassSignalMinv(double minv) { return minv > signal_minv_min && minv < signal_minv_max; }
+   	// RDF/JIT string form; `minv_expr` is the mass variable ("minv" for reco, "truth_minv" for
+   	// the truth analogs). Open interval, exactly as every site wrote it.
+   	static std::string SignalMinvCutExpr(const std::string& minv_expr = "minv") {
+   		char buf[128];
+   		snprintf(buf, sizeof(buf), "%s > %g && %s < %g",
+   		         minv_expr.c_str(), signal_minv_min, minv_expr.c_str(), signal_minv_max);
+   		return std::string(buf);
    	}
 
    	float minv_upper = 60;

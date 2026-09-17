@@ -282,9 +282,9 @@ void RDFBasedHistFillingPowhegFullsim::CreateBaseRDFsPowhegFullsimExtra(){
         ROOT::RDF::RNode& node = map_at_checked(df_map, df_name + "_weighted", Form("CreateBaseRDFsPowhegFullsimExtra: df_map.at(%s)", (df_name + "_weighted").c_str()));
 
         auto node_with_signal = node
-            .Define("pass_signal_truth", "truth_minv > 1.08 && truth_minv < 2.9 && "
+            .Define("pass_signal_truth", ParamsSet::SignalMinvCutExpr("truth_minv") + " && "
                     + ParamsSet::SignalPairPtCutExpr("truth_pair_pt") + " && " + gap_truth)
-            .Define("pass_signal_reco", "(m1.reco_match && m2.reco_match) ? (minv > 1.08 && minv < 2.9 && "
+            .Define("pass_signal_reco", "(m1.reco_match && m2.reco_match) ? (" + ParamsSet::SignalMinvCutExpr("minv") + " && "
                     + ParamsSet::SignalPairPtCutExpr("pair_pt") + " && " + gap_reco + ") : false");
 
         df_map.emplace(df_name + "_pass_medium_weighted" , node_with_signal.Filter("pair_pass_medium"));
@@ -325,7 +325,7 @@ void RDFBasedHistFillingPowhegFullsim::CreateBaseRDFsPowhegFullsimExtra(){
 
         df_map.emplace("df" + McVsDataSignalFilter() + "_weighted",
             df_op_weighted.Filter("from_same_b")
-                          .Filter("truth_minv > 1.08 && truth_minv < 2.9 && "
+                          .Filter(ParamsSet::SignalMinvCutExpr("truth_minv") + " && "
                                   + ParamsSet::SignalPairPtCutExpr("truth_pair_pt") + " && "
                                   + gap_truth,
                                   "powheg_fullsim_mc_vs_data_signal_region")

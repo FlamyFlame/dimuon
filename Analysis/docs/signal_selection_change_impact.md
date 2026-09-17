@@ -56,7 +56,8 @@ uncertainty** variations of the selection (e.g. ΔR, minv, pair-pT, q·η bounds
 
 **pp24 AND Pb+Pb (reco), current (cut set changed by the user 2026-09-08):**
 ```
-minv > 1.08 && minv < 2.9 && pair_pt > ParamsSet::signal_pair_pt_min   <-- 9 GeV, was 8
+ParamsSet::SignalMinvCutExpr()  (= minv > 1.08 && minv < 2.9; signal_minv_min/max, SINGLE SOURCE since 2026-09-17)
+  && pair_pt > ParamsSet::signal_pair_pt_min   <-- 9 GeV, was 8
   && BOTH muons pass ParamsSet::PassSingleMuFiducialGap(eta, charge)
   && |pair_eta| < ParamsSet::pair_eta_fiducial_max          <-- NEW, pair level
 ```
@@ -201,6 +202,18 @@ Truth analog: same with `truth_*` variables + `from_same_b` and `truth_pt > 4.5`
 ---
 
 ## 2. [RECOMPILE] — code carrying the signal cut (ACLiC `.L file.cxx+`)
+
+**Since 2026-09-17 the MASS WINDOW is no longer retyped anywhere live**: every site below reads
+`ParamsSet::SignalMinvCutExpr("minv")` / `("truth_minv")` (and the cutflow macro builds its two
+mass steps from `signal_minv_min/max`), exactly as the pair-pT threshold has read
+`SignalPairPtCutExpr` since 2026-09-08. A mass-window change is therefore ONE edit in
+`ParamsSet.h` + the recompile/rerun map below. **Extra blast radius of a mass-window change:**
+the pp24 single-value pair trigger efficiency is MEASURED inside the window and applied above
+74 GeV (`docs/tracking/pp24_trig_eff_hybrid_application.md` D3) — rerun
+`pipelines/run_mc_trigeff_pair_eff.sh` (`PairTrigEff::Windows()` follows ParamsSet automatically;
+`CheckSignalWindowMirror` throws until the file is regenerated) BEFORE the pp24 crossx refill.
+Still retyped (dead / legacy code only): `SingleBAnalysis/*`, `OldMuonPairHistFillingCodePreRDF/*`,
+`FillHistogramsCrossx_PP_clean.cxx`, `plot_reco_distr_singleb_vs_op_pp24.C` (STALE-gated).
 
 Edit the cut in **all** of these (keep them in sync):
 

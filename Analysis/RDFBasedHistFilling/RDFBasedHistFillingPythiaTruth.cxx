@@ -468,7 +468,7 @@ void RDFBasedHistFillingPythiaTruth::FillHistogramsSignalAcceptance(){
         ROOT::RDF::RNode& df_op = map_at_checked(df_map, "df_op_weighted", "FillHistogramsSignalAcceptance: df_op_weighted");
 
         const std::string signal_cuts =
-            std::string("from_same_b && truth_minv > 1.08 && truth_minv < 2.9 && ")
+            std::string("from_same_b && ") + ParamsSet::SignalMinvCutExpr("truth_minv") + " && "
             + ParamsSet::SignalPairPtCutExpr("truth_pair_pt") + " && " + ParamsSet::FiducialGapCutExpr("m1.truth_charge * m1.truth_eta")
             + " && " + ParamsSet::FiducialGapCutExpr("m2.truth_charge * m2.truth_eta")
             + " && " + ParamsSet::PairFiducialEtaCutExpr("truth_pair_eta");

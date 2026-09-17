@@ -77,14 +77,19 @@ struct MassWindow {
 //          pair file carries NO resonance veto, so this is the honest 1-4 GeV mixture the MC
 //          produces (docs/tracking/mc_trigeff_single_value_pair_eff.md §PP-2).
 //
-// ⚠ MIRROR of the signal window in RDFBasedHistFilling/RDFBasedHistFillingPP.cxx `signal_cuts`
-// and Utilities/MCTrigEffPairSelection.h SingleBSignalCutsReco(). There is no ParamsSet member to
-// read it from today, so CheckSignalWindowMirror() below asserts at RUN TIME that the values here
-// still appear verbatim in SingleBSignalCutsReco() -- a drift is a throw, not a silent shift.
+// The `sig` window is READ from ParamsSet::signal_minv_min / signal_minv_max (the single source
+// since 2026-09-17; before that it was retyped here and at ~12 other sites). The SAME constants
+// drive `signal_cuts` in RDFBasedHistFilling/RDFBasedHistFillingPP.cxx and
+// MCTrigEffPairSel::SingleBSignalCutsReco(), so the window this efficiency is MEASURED in and the
+// region it is APPLIED to cannot drift apart. CheckSignalWindowMirror() below is kept as an
+// independent run-time assertion of exactly that (it would now only fire if a site stopped
+// reading ParamsSet).
 inline const std::vector<MassWindow>& Windows()
 {
     static const std::vector<MassWindow> w = {
-        {"sig",  1.08, 2.9, "1.08 < m_{#mu#mu} < 2.9 GeV (signal window)"},
+        {"sig",  ParamsSet::signal_minv_min, ParamsSet::signal_minv_max,
+                 Form("%g < m_{#mu#mu} < %g GeV (signal window)",
+                      ParamsSet::signal_minv_min, ParamsSet::signal_minv_max)},
         {"wide", 1.00, 4.0, "1 < m_{#mu#mu} < 4 GeV (template-fit window)"},
     };
     return w;

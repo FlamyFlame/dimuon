@@ -81,12 +81,12 @@ protected:
 
                 auto node_sig = node
                     .Define("pass_signal_truth" + ctr_tag,
-                        std::string("truth_minv > 1.08 && truth_minv < 2.9 && ")
+                        ParamsSet::SignalMinvCutExpr("truth_minv") + " && "
                         + ParamsSet::SignalPairPtCutExpr("truth_pair_pt") + " && " + ParamsSet::FiducialGapCutExpr("m1.truth_charge * m1.truth_eta")
             + " && " + ParamsSet::FiducialGapCutExpr("m2.truth_charge * m2.truth_eta")
             + " && " + ParamsSet::PairFiducialEtaCutExpr("truth_pair_eta"))
                     .Define("pass_signal_reco" + ctr_tag,
-                        std::string("(m1.reco_match && m2.reco_match) ? (minv > 1.08 && minv < 2.9 && ")
+                        std::string("(m1.reco_match && m2.reco_match) ? (") + ParamsSet::SignalMinvCutExpr("minv") + " && "
                         + ParamsSet::SignalPairPtCutExpr("pair_pt") + " && " + ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta")
             + " && " + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta")
             + " && " + ParamsSet::PairFiducialEtaCutExpr("pair_eta") + ") : false");

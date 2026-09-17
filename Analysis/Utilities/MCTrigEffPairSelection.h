@@ -153,7 +153,7 @@ inline std::string Step3PairSelection(bool apply_gap_cut = true)
 // half of this string -- a pair-pT mismatch here would have been SILENT.
 inline std::string SingleBSignalCutsReco()
 {
-    return "minv > 1.08 && minv < 2.9 && "
+    return ParamsSet::SignalMinvCutExpr("minv") + " && "
          + ParamsSet::SignalPairPtCutExpr("pair_pt") + " && "
          + FiducialGapCut();
 }

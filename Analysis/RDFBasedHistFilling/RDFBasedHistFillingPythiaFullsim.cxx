@@ -295,9 +295,9 @@ void RDFBasedHistFillingPythiaFullsim::CreateBaseRDFsPythiaFullsimExtra(){
 
         auto node_sig = node
             .Define("pass_signal_truth",
-                "truth_minv > 1.08 && truth_minv < 2.9 && " + ParamsSet::SignalPairPtCutExpr("truth_pair_pt") + " && " + gap_truth)
+                ParamsSet::SignalMinvCutExpr("truth_minv") + " && " + ParamsSet::SignalPairPtCutExpr("truth_pair_pt") + " && " + gap_truth)
             .Define("pass_signal_reco",
-                "(m1.reco_match && m2.reco_match) ? (minv > 1.08 && minv < 2.9 && "
+                "(m1.reco_match && m2.reco_match) ? (" + ParamsSet::SignalMinvCutExpr("minv") + " && "
                 + ParamsSet::SignalPairPtCutExpr("pair_pt") + " && "
                 + gap_reco + ") : false");
 
