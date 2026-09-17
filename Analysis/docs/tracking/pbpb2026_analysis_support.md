@@ -269,7 +269,8 @@ disk (it had been deliberately disabled while the 2026 analysis code did not exi
 | 11 | Commit; update INDEX; final summary | pending |
 | 12 | **Skim landed (2026-09-16):** set part counts from disk (26→7, and the recovered 23→5, 25→7), lift P14, preflight 23/25/26 | DONE (3f5a279) |
 | 13 | `/review-analysis-code` round 4 — one clean PASS on the 2026 data-side code (steps 5-8 + 12) | **DONE — PASS at iteration 2** (log `.claude/logs/review-analysis-code-20260916-171340-pbpb26-round4-clean-pass.md`) |
-| 14 | Run `run_pbpb_all.sh YEARS="23 25 26"` (user decision 2026-09-16: 23/25 rerun for their recovered parts; pp24 part13 left for a separate pp run) → combined 23+24+25+26 crossx + sanity plots | RUNNING (launched 2026-09-16; log `pipelines/run_pbpb_all_23_25_26_20260916b.log`, PID file alongside) |
+| 14 | Run `run_pbpb_all.sh YEARS="23 25 26"` (user decision 2026-09-16: 23/25 rerun for their recovered parts; pp24 part13 left for a separate pp run) → combined 23+24+25+26 crossx + sanity plots | **DONE 2026-09-17** (run 1 + resume; see the 2026-09-17 log entries) |
+| 15 | `/review-plot` on the new per-year consistency figure + the 2026 event-selection / turn-on / combined-crossx sets (C1-C4) | FAIL — 1 PHYSICS-RESULTS CRITICAL (2026 second N_trk band, runs 522336-522408) → **STOP-AND-ASK** |
 
 ## Progress Log
 
@@ -747,6 +748,127 @@ Resumed with `pipelines/resume_pbpb_all_after_trigeff_stage8.sh` (trig-eff pipel
 Condor stage). Launch trap recorded: `run_pbpb_all.sh` does not source `setup.sh` — source it in the
 launching shell.
 
+
+### 2026-09-17 — Step 14 run 2 DONE: all three Pb+Pb pipelines rc=0; combined 23+24+25+26 crossx produced
+
+`resume_pbpb_all_after_trigeff_stage8.sh` (PID 3172797, 04:37 → 06:08): trig-eff re-hadd / RDF /
+fits / Stage-8 plots (rc=0), Medium-WP refits 23/25/26 (rc=0), crossx Condor 5+7+7 nominal jobs →
+hadd → RDF crossx → combined plots (rc=0). Every stage passed the freshness + filled-histogram
+validation ("yr26 crossx output is fresh and its signal-region histogram is filled OK").
+Outputs: `pbpb_2026/histograms_real_pairs_pbpb_2026_single_mu4_no_trg_plots_nominal.root` (4.0 MB),
+`plots/single_b_analysis/pbpb_23_24_25_26_combined{,_pt_120}/{counts,TAA_weighted}/` (30 PNGs each
+family), `sanity_check_crossx/PbPb_10-20%_pair_pt_in_eta_subplots.png`, per-year event-selection,
+turn-on (`pT_fitting/pbpb26{,_medium_wp}/`, 24 PNGs each) and Stage-8 (`no_corr/pbpb26/`, 44 PNGs)
+figures. Labels read "Pb+Pb 2023, 2024, 2025, 2026 combined".
+
+**Sanity results for 2026 (the user's question):**
+- Event selection: cumulative survival C1 99.658 % → C5 96.808 % (2025: 97.2 % at C5); 2026 and
+  2025 have identical centrality-class occupancy on the 2023 thresholds (0-5 %: 17.13 vs 17.05 %)
+  and ⟨FCal ΣE_T⟩ (2.4088 vs 2.4090 TeV; 2023 2.4504, 2024 2.5883) — 2026 detector conditions ≡ 2025.
+- Turn-on fits: 240 fits, mean plateau 0.699 (2025: 0.697), min 0.600 both, max 0.941 (0.956);
+  turn-ons at 3.7-5.3 GeV, χ²/ndf ~0.6-1.3 (10-20 % µ+ panel inspected).
+- **NEW sanity figure** `plot_pbpb_per_year_yield_consistency.cxx` (added as crossx pipeline Stage 8):
+  signal-region OS counts / L per year per centrality class vs pair pT + ratio to the lumi-weighted
+  mean. Integrated (pairs/nb⁻¹, 23/24/25/26): 0-5 % 6600/6081/5269/5721; 5-10 % 6070/5633/5363/5232;
+  10-20 % 9684/9329/8804/8778; 20-30 % 6256/6343/6116/6007; 30-50 % 6375/6260/6087/5989;
+  50-80 % 2198/2135/2012/1906. **2026 is within ±3 % of the mean in every class, flat in pT,
+  tracking 2025.** Adding 2026 (2.62 nb⁻¹ at −3 %) moves the combination by ≲ 2 %.
+- **Pre-existing, now visible for the first time (the pipeline had no per-year overlay):** 2023 sits
+  +10-15 % above the mean in the central classes (0-5, 5-10, 10-20 %), flat in pT, and +5-8 % in
+  30-80 %; 2024 +8 % in 0-5 % only. Flat-in-pT rules out a trigger-efficiency origin;
+  centrality-ordered points at the single 2023 FCal→centrality calibration (D6, interim; P13):
+  `fcal_comparison_pbpb_nominal.png` shows 2025/2026 with 10-20 % fewer events than 2023 at
+  FCal ΣE_T 4-5 TeV, so fewer 25/26 events are labelled "0-5 %". Trigger-corrected yields keep the
+  same 23/26 ratio (1.18 in 0-5 %, 1.16 in 50-80 %), so the per-year corrections do not absorb it.
+  A per-year centrality calibration (official Glauber per year, or a per-year FCal scale) is the
+  candidate fix; **user decision — not acted on.**
+- 23/25 cut re-derivation on the complete years (vs `pre_pbpb26_run_backup_20260916/`): every
+  derived graph shifts < 0.3 % (2025 nTrk-FCal band 1.9 %); 2025 per-run preamp cuts change only for
+  the recovered runs 510510 (A 639→682, C 687→694 ADC) and 512049 (A 748→764); 2023 scalar 300/300
+  and 2025 850/700 unchanged.
+- P5-P9 (2026 event-selection constants copied from 2025): the run used them as-is; the 2026
+  cut-derivation figures are under `/review-plot` for whether they land on the 2026 distributions.
+- Cosmetic, pre-existing: the Pb+Pb turn-on figure names/legends carry a "2mu4" token although the
+  Pb+Pb trigger is single mu4 (same in pbpb23/24/25).
+
+
+### 2026-09-17 — Step 15 `/review-plot`: FAIL (1 PHYSICS-RESULTS CRITICAL, 1 WARNING, 6 INFO) → STOP-AND-ASK
+
+**CRITICAL (C1/C2, 2026 event selection) — a second N_trk^HItight band in 2026.**
+`event_sel_cut5_nTrk_FCal_band_standalone_pbpb_2026.png` shows a distinct population ~30 % below
+the main N_trk-vs-FCal band (absent in 2025), on the MAIN ZDC banana (single collisions, not
+pile-up). Reviewer's raw-NTUP scan attributes it to a contiguous run block: **522384 and 522408
+100 % in the low band, 522336 18.5 %, 522355 13.5 %** — 8.5 % of all FCal > 3.5 TeV events; plausibly
+the pixel/IBL condition the `_noIBL` GRL admits. Cut 5 (nTrk-FCal band, µ±5σ linear fit — itself
+fitted on the two-population sample) removes exactly that band above ~3 TeV: **C5 rejects 1.56 % of
+2026 events (2025: 0.08 %)** and `centrality_ratio_after_before_cuts_pbpb_2026.png` shows an
+**8-10 % event loss over centrality 0-8 %** (2025: loss confined to the 0-3 % pile-up tail). Those
+events' pairs leave the numerator while `PbPbMu4SampledLumiNb(26)` keeps their luminosity → the
+2026 central (0-10 %) yield is biased LOW by up to ~8 %; the per-year plot shows 2026 5-10 % at
+−4.2 %. **Numerator/denominator consistency (Physics Procedure §4) is violated for 2026 as it
+stands.** Options (user decision): (a) exclude the run block from data AND luminosity together
+(`PbPbBadRuns(26)` + `PbPbSampledLumi.h` + `make_crossx_factors_pbpb_2026` + lumi README in one
+commit); (b) keep the runs and derive cut 5 per run block (two bands); (c) keep as is and accept the
+central-class bias. Either (a) or (b) → re-derive 2026 cuts → rerun NTuple → trig-eff → crossx for
+2026. Muon reconstruction in those runs (combined muons need ID tracks) must be checked before (b).
+**NOT acted on — awaiting the user.**
+
+**WARNING — my reading of the per-year plot was too generous; corrected.** Reviewer-verified offsets
+vs the lumi-weighted mean (0-5/5-10/10-20/20-30/30-50/50-80 %; 0-80 % total): 2023 +14.9/+11.1/
++7.6/+2.1/+4.2/+8.9 (**+7.9 %**); 2024 +5.9/+3.1/+3.7/+3.5/+2.3/+5.8 (**+3.8 %**); 2025
+−8.3/−1.8/−2.2/−0.2/−0.5/−0.3 (−2.4 %); 2026 −0.4/**−4.2**/−2.5/−1.9/−2.1/**−5.6** (−2.4 %). So:
+2026 is within ±6 %, not ±3 %; 2026 and 2025 0-80 % totals agree to 0.05 % (33 633 vs 33 651
+pairs/nb⁻¹) and 2026/2025 runs 1.086 (0-5 %) → 0.947 (50-80 %) — the pure centrality-migration
+signature, consistent with the FCal comparison. But 2023 (+7.9 %) and 2024 (+3.8 %) carry a
+**0-80 % normalisation excess** that a calibration difference cannot produce (it conserves the
+0-80 % total); the trigger efficiency goes the wrong way (2023 ⟨ε(10 GeV)⟩ 0.804 vs 0.830 for 2026,
+correcting widens it to ~+11 %). Pre-existing, not 2026-caused; candidates: 2023/2024 luminosity
+bookkeeping, run list vs GRL, per-year reco/ID conditions. **Needs its own investigation before it
+is absorbed silently into the combination — user decision whether to open it now.**
+
+INFO (recorded): `fit_results.txt` is overwritten by the Medium pass and averages the 120 EMPTY
+`mu4_mu4noL1` fits (railed at 0.600) — the Tight mu4 family is N=120, plateau mean 0.802
+(2025: 0.798), min 0.613, max 0.949, none at the plateau/pT0 limits; "2mu4" token in Pb+Pb turn-on
+names/legends (pre-existing); `no_corr/pbpb26/single_muon_effcy` Stage-8 set draws only the
+unmaintained mu4noL1 family (empty in 2026); trig-corr sanity header lacks years/centrality;
+combined-crossx legends overlap top points; the consistency macro's ratio errors ignore the
+year-in-mean correlation (harmless) and its y-title is per bin; P5 confirmed from the tree
+(cut_A 783-939, cut_C 604-764 ADC over 35 runs, consistent with 2025 and the {850,700} scalar).
+Everything else PASSED (macro provenance/binning/lumi/labels; 2026 cut-derivation placeholders
+P7-P9 land on the 2026 distributions; turn-on fits ε∈[0,1], plateaus within 0.01-0.03 of 2025,
+Run-2 magnitudes consistent; combined crossx smooth, correctly labelled, correction ≥1 and smooth).
+
+
+### 2026-09-17 — User rulings + evidence record for the 2026 low-N_trk runs
+
+**User rulings (recorded, also as memory `feedback_run_exclusion_needs_experts`):** excluding
+GRL-passing runs from data and luminosity is a decision for the human experts, never the agent's
+(not even as a recommended option); the agent's job is a detailed record — run numbers, LBs, plots
+on identical axes, tables. First check whether cut 5 already eliminates the population before
+proposing a direct N_trk cut. On the 2023/2024 normalisation excess: the user will look at the
+per-year plot themselves and decide whether to investigate — nothing opened.
+
+**Evidence produced** (`plotting_codes/event_selection/plot_pbpb_ntrk_lowband_runs.cxx`, full
+270 M-event scan, HLT_mu4 events, no cut applied; note
+`Analysis/docs/pbpb2026_runs_522384_522408_ntrk_lowband.md`; figures + table in
+`plots/single_b_analysis/event_selection/pbpb_2026/ntrk_lowband_runs/`):
+- **Only runs 522384 and 522408 are affected — in their entirety.** N_trk^HItight / FCal ΣE_T peaks
+  at ≈ 470 TeV⁻¹ vs ≈ 590 for every other run; the N_trk–FCal band bends over (≈ 2000 tracks at
+  5 TeV instead of ≈ 3000) → multiplicity-dependent tracking loss, calorimeter normal. Every LB of
+  both runs (223 / 551 GRL-good LBs) shows it (below-cut-5-edge fraction 20–60 % per LB, mean
+  40.0 / 37.9 %); no normal LB block exists. The reviewer's attribution of 18.5 % / 13.5 % to
+  522336 / 522355 was WRONG: both are nominal (0.30 % / 0.23 %, bulk 0.19 %); 522336 has a small
+  shoulder at ratio ≈ 500–530.
+- Weight: 17 575 029 events = **6.51 %** of 2026; luminosity 63.224 + 107.570 = 170.79 µb⁻¹ =
+  **6.51 %** of 2623.16 µb⁻¹ (LB 133–356 and 132–688).
+- **Cut 5 does NOT eliminate them cleanly:** its lower edge (fitted on the two-population sample,
+  hence pulled down for all runs) bisects the low band — rejects them above ≈ 3.5 TeV FCal, partly
+  between 1.5–3.5, keeps them below (28.7 % / 27.6 % of the two runs' events rejected; 0.23 % of
+  the others). A direct N_trk^HItight cut cannot isolate them (overlaps the normal mid-central
+  range); N_trk/FCal separates them fully at FCal > 1 TeV.
+- Handed to the user for the experts. **Nothing changed in code or selection.** The combined
+  23+24+25+26 crossx on disk includes these two runs as cut 5 leaves them.
+
 ## Results & Observations
 
 ### Open questions for the user (none blocked the work; all recorded)
@@ -803,35 +925,14 @@ outside the requested 2026 scope and is a user decision.
 
 ## Latest Stage
 
-**2026-09-17 — step 14 run 2 RUNNING: `resume_pbpb_all_after_trigeff_stage8.sh` (YEARS="23 25 26"; log `pipelines/resume_pbpb_all_20260917.log`, PID file alongside)** — run 1 details in the 2026-09-17 log entry. Original launch: (nohup; log
-`Analysis/pipelines/run_pbpb_all_23_25_26_20260916b.log`, PID in `..._20260916b.pid`; sub-logs
-`pipelines/trigeff_<pid>.log`, `trigeff_medium_<pid>.log`, `crossx_<pid>.log`). Stages: 0 event
-selection (re-derives 23/25 cuts from the complete years, derives 26 — P5-P9 to confirm from the
-2026 figures) → trig-eff Condor (NTuple, 3 years × 5/7/7 jobs) → hadd → RDF fine-q·η → turn-on
-fits Tight → Medium refits → crossx Condor (nominal) → hadd → RDF crossx → combined
-`pbpb_23_24_25_26_combined{,_pt_120}` plots + trig-corr sanity. Steps 12-13 DONE and committed
-(3f5a279, 57ee5b9, 9c32c61). Concurrent MC session: none of its files are in this chain.
-After the run: compare regenerated 23/25 cuts to `pre_pbpb26_run_backup_20260916/`, inspect the
-2026 event-selection / turn-on / combined-crossx figures (C1-C4), confirm registry P5-P9, then
-`/review-plot` on the new plot sets and a per-year N/L consistency check (proposed to the user).
-
-
-
-**Code is 2026-ready and every Pb+Pb workflow runs today with the 2026 data still absent.**
-Steps 1-9 DONE. Step 10 round 1 returned FAIL; all findings are fixed, committed and verified
-by execution (year filter run from the real script under four configs; 13 macros compile clean;
-`RAA_plotting` and `plot_npairs_vs_centrality` run end-to-end and their figures inspected;
-per-year constants diffed against `81ad7ef` and found byte-identical for 23/24/25).
-
-**OWED: an independent round-2 `/review-analysis-code` pass.** The round-2 reviewer subagent
-terminated early on an API session rate limit, so round 2 was verified by the executor, not by
-an independent reviewer. The loop is NOT closed with a PASS — rerun it before treating this
-work as reviewed.
-
-**Then:** wait for the 2026 skim, run `pipelines/preflight_pbpb_year.sh 26` first (it will catch
-a part-count drift immediately), and work the Placeholder Registry P1-P12.
-
-**Open user decisions** (all recorded above, none blocking): the Glauber mirror reconcile, the
-naive year sum in `plot_crossx_trig_corr_sanity.C`, the scalar-vs-per-run preamp cut drawn in
-the preamp/FCal figures, the single-year `files[25]` pT-slice set in `plot_dR_trig_corr.C`, and
-the FCal-comparison canvas widening at unchanged filenames.
+**2026-09-17 — AWAITING THE USER / EXPERTS.** Step 14 done (all pipelines rc=0; combined
+23+24+25+26 crossx + sanity plots on disk). Step 15 `/review-plot` FAIL on one PHYSICS-RESULTS item:
+2026 runs 522384 + 522408 (6.51 % of 2026 events and luminosity) have ≈ 20 % fewer HItight tracks
+per FCal ΣE_T, whole-run, every LB; cut 5 removes them only above ≈ 3.5 TeV FCal → 2026 central
+yield biased low ≲ 8 % while their luminosity stays in. Evidence record delivered
+(`docs/pbpb2026_runs_522384_522408_ntrk_lowband.md`); the run-exclusion decision is the experts'.
+Second open item (user is looking): 2023 +7.9 % / 2024 +3.8 % 0-80 % normalisation excess over
+2025/2026 in `pbpb_23_24_25_26_combined/sanity/per_year_yield_consistency.png`.
+Next, once ruled: (a) exclusion → `PbPbBadRuns(26)` + lumi sites + README in one commit, re-derive
+2026 cuts, rerun 2026 NTuple → trig-eff → crossx; (b) new selection → user-specified cut, same
+rerun; (c) accept → record the bias. Then close step 15 and commit the tracking doc.
