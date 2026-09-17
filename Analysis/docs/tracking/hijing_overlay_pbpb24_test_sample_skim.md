@@ -260,6 +260,48 @@ Source: `~/usatlasdata/dimuon_data/pbpb_2024/data_pbpb24_part*.root`, `HeavyIonD
 vs the production request (x −0.7, y −0.6, μ_z −4.8, σ_z 47.4 mm): x, y within 0.05 mm; μ_z differs by 0.8 mm (inside the
 run-to-run range −4.3 … −7.6), σ_z within 1 %. No change to μ/σ is warranted on this basis (0.8 mm = 0.02 σ, Δη ~ 1e-4).
 
+### R4. ID track multiplicity and L1 total E_T, r17864 vs r17618 (pTH125_300, no centrality cut, 2026-09-17; /review-plot PASS)
+
+`plots/r17864_rtag_sanity/trk_multiplicity_r17864_vs_r17618_pTH125_300.png` (4 panels, `trk_numqual[0,3,4,7]`) and
+`l1te_r17864_vs_r17618_pTH125_300.png` (`plot_r17864_event_level.cxx` modes `ntrk` / `l1te`; raw skim counters, unweighted —
+`EventWeights[0]` = 1 in every event of both single-slice samples).
+
+| quantity (per event, 10 000 ev each) | r17864 (2024 cond.) | r17618 (2023 cond.) | ratio |
+|---|---|---|---|
+| N_trk, p_T > 400 MeV (`[0]` ≡ `[4]`: the stored track collection already has p_T > 400 MeV) | 5830 ± 1740 (RMS) | 5435 ± 1460 | 1.073 |
+| N_trk, HITight (`[3]` ≡ `[7]`) | 2183 ± 359 | 2400 ± 362 | 0.910 |
+| L1 ΣE_T median (mean) [TeV] | **3.21 (3.47)** | 16.14 (16.26) | 0.20 |
+
+- **Tracker is essentially unaffected** — the HIJING event is fully there (+7 % untagged tracks, −9 % HITight tracks). The
+  2024 sample has a high-multiplicity shoulder at 8.5–11.5 k untagged tracks that is ABSENT in HITight (2024 HITight max 3540
+  < 2023 max 3718): the 2024-conditions reconstruction produces extra LOW-QUALITY tracks and slightly fewer tight ones —
+  consistent with the −11 % Tight muon reco efficiency of R2 (ID-track quality), a second, milder symptom next to the
+  calorimeter.
+- **L1Calo sees the same deficit as the offline calorimeter**: L1TE ×5 low (3.2 vs 16.1 TeV; no negative L1 sums since the
+  L1 ET sum is unsigned). So the problem is upstream of both the offline cell energies and the L1Calo trigger-tower path —
+  digitisation-level (consistent with the R1 timing/BCID hypothesis), not offline reconstruction.
+- Side notes: one r17618 event has L1TE = 32.767 TeV (16-bit saturation of the L1 sum); the r17618 L1TE distribution is
+  double-humped (15 and 19 TeV) like its FCal ×1.5 step (R1b) — a feature of that production's HITS composition.
+
+### NTUP naming change (2026-09-17, user decision; /review-analysis-code)
+
+Overlay NTUPs renamed `…FullSimHIJINGOverlayPP24.NTUP.root` → `…FullSimHIJINGOverlayPbPb<yy>.vtxz<z>mm_b<lo>_<hi>fm.NTUP.root`
+("PP24" was wrong; the tag now encodes the production configuration — Pb+Pb 2024 requests 5 vertex-z points × 4 b intervals
+on top of 4 beams × 6 slices). On disk: pbpb24 `FullSimHIJINGOverlayPbPb24.vtxz-71_2mm_b0_5fm` (1 file), pbpb23
+`FullSimHIJINGOverlayPbPb23.vtxz-3_3mm_b0_5fm` (6 files) + `_r17662` variant; diagnostic run-dir symlinks re-pointed;
+`.bak_20260709` LGD symlinks and grid dataset names keep the legacy tag. Code: `FullSimSampleType.h`
+(`FullSimOverlayConfigTag` — ONE config per year, never a glob; `FullSimSampleFileTag(t, year)`), `PythiaAlgCoreT.c`
+(year-aware tag + new zero-input guard: a dir/year mismatch now throws instead of exiting 0 with empty outputs under
+`allow_missing_slices`), `grid_monitor.sh` (tag delimited by the `<Month><Year>.v<n>` token; `-` allowed), the three overlay
+`grid_sub*.sh` (`_cfg_tag <z> <ip>`, one `_submit` per (beam, slice, z, b)), `plot_r17864_event_level.cxx` (paths from the
+header). Verified: pbpb24 + pbpb23-slice single-muon NTP reruns reproduce N = 10000, w_factor 2.09733e-05 / 2.09729e-05 and
+byte-identical output sizes. Rule + skim side documented in `SkimCode/README.md` "Overlay NTUP naming",
+`docs/pythia_fullsim_overlay.md`.
+
+**Observed during the review (not this session's change):** `~/usatlasdata/pythia_truth_full_sample/pythia_5p36TeV/ami_info/`
+was renamed to `ami_info_PDF/` (empty) + `ami_info_nPDF/` at 19:17 by another session. `PythiaAlgCoreT.c:41` falls back to that
+`ami_info/` for the pbpb23 overlay and pp24 TEST samples → their NTP now throws "missing AMI file" until that session finishes.
+
 ## Remaining Work
 
 - User decision on the verification plan / on reporting R1 to the production contact (message draft offered).
@@ -267,4 +309,17 @@ run-to-run range −4.3 … −7.6), σ_z within 1 %. No change to μ/σ is warr
 
 ## Latest Stage
 
-2026-09-17: user rulings recorded (R2 not studiable until FCal fixed; vertex −71.2 mm is one of five requested points). R3 per-run PV table delivered. Open: report R1 to the production contact; wait for the fixed-calorimeter production and the other four vertex slices.
+2026-09-17 (session 3) — three user tasks, in progress:
+1. **NTUP naming.** `FullSimHIJINGOverlayPP24` → `FullSimHIJINGOverlayPbPb<yy>.<cfg>` with
+   `<cfg> = vtxz<z>mm_b<lo>_<hi>fm` (z in mm, '.'→'_', sign kept; b = HITS `ip` range):
+   pbpb24 `FullSimHIJINGOverlayPbPb24.vtxz-71_2mm_b0_5fm`, pbpb23 `FullSimHIJINGOverlayPbPb23.vtxz-3_3mm_b0_5fm`
+   (+ `_r17662` variant). Rename the on-disk files (both dirs; `.bak_*` LGD symlinks untouched — remote names),
+   repoint the diagnostic run-dir symlinks, `FullSimSampleFileTag(t, pbpb_year)` + `FullSimOverlayConfigTag`,
+   `PythiaAlgCoreT.c` InitInputFullsim, `grid_monitor.sh` outDS→file parsing, the three overlay `grid_sub*.sh`
+   (OUT_TAG + `_cfg_tag` helper + comment), `plot_r17864_event_level.cxx`, SkimCode/README + pythia_fullsim_overlay.md.
+   Verify: recompile, rerun the pbpb24 single-muon NTP (1 slice, minutes) and the pbpb23 slice script → same entry counts.
+2. **Track multiplicity plot** `trk_numqual[0,3,4,7]` (4 panels, 2024 vs 2023 pTH125_300, no centrality cut) →
+   `plots/r17864_rtag_sanity/trk_multiplicity_r17864_vs_r17618_pTH125_300.png` (new mode `ntrk`).
+3. **L1TE plot** (1 panel) → `plots/r17864_rtag_sanity/l1te_r17864_vs_r17618_pTH125_300.png` (mode `l1te`; L1TE is GeV,
+   2023 extends to ~25 TeV → axis 0-25 TeV).
+Reviews: /review-analysis-code for (1), /review-plot for (2)+(3). Then commit.
