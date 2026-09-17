@@ -22,6 +22,7 @@
 
 #include <stdexcept>
 #include <string>
+#include <vector>
 #include "../../../Utilities/MCTrigEffPairPtBinning.h"
 #include "../../../MuonObjectsParamsAndHelpers/FullSimSampleType.h"
 
@@ -394,16 +395,61 @@ inline std::string DrCorrFitFile(const DrCorrSample& s, bool use_tight_wp, int s
 }
 
 // ---------------------------------------------------------------------------------------------
-// THE VARIANT THE pp24 CROSSX APPLICATION USES (user, 2026-08-17) -- TEMPORARY.
-// Named here so the choice is made in ONE place and no consumer retypes it. It is the
-// no-plateau-correction fit with the last two pair-pT bins merged, opposite-sign pairs, `expo`
-// form; the correction is applied as eps_dR = f(dR)/C for dR < 1 and 1 above
-// (dr_correction_apply.h, mc_trig_eff_closure.md 3.2). The other methods and sign series are still
-// produced -- they are the comparison, not the deliverable.
-// TEMPORARY because mc_trigger_efficiency.md R26 (both parametric forms fail in a minority of
-// cells, and `usable` carries no chi2 term) is still OPEN.
-inline const char* DrCorrCrossxMethod() { return "expo"; }
-inline const char* DrCorrCrossxSign()   { return "os"; }
-inline const char* DrCorrCrossxMode()   { return "nocorr_ptmerge"; }
+// THE pp24 CROSSX APPLICATION OF THE PAIR TRIGGER EFFICIENCY (user, 2026-09-17;
+// docs/tracking/pp24_trig_eff_hybrid_application.md Physics Procedure §2-3). Named HERE so the
+// choice is made in ONE place and no consumer retypes it. Every edge value quoted in the comments
+// of this block and of the two evaluator headers is ILLUSTRATIVE of the 2026-09 axis
+// (ParamsSet::pair_pt_coarse_bins, 8 log bins 9 -> 150 GeV): the code reads the axes and prints
+// the ranges it resolved at load time; the comments are not a second source. Consumed by
+// Utilities/DrCorrectionCrossxEvaluator.h (region A) and Utilities/PairTrigEffCrossxEvaluator.h
+// (the hybrid). The other methods, sign series and plateau modes are still produced by the fit
+// stage -- they are the comparison, not the deliverable.
+//
+// The weight is a HYBRID over the canonical coarse pair-pT axis (ParamsSet::pair_pt_coarse_bins,
+// N = 8 bins):
+//   REGION A, bins 1..N-2 ([9, 74.24) GeV):  eps^nc_data(1) * eps^nc_data(2) * eps_dR(dR; cell)
+//       eps_dR from the NO-PLATEAU-CORRECTION fit (free baseline C, eps_dR = f/C for dR < 1),
+//       OPPOSITE-sign series, on the 3-group |eta^pair| fold (DrCorrCrossxMode below). The
+//       primary fit form per cell is DrCorrCrossxMethod() ("expo"), EXCEPT the cells named by
+//       DrCorrCrossxPolyPtBins() x the LAST |eta| group, whose primary is the constrained
+//       polynomial (user choice on the 2026-09-10 fit figures: the polynomial describes the
+//       points where expo rails at p = 8). The ONLY fallback is DrCorrCrossxFallbackMethod()
+//       ("interp"); there is NO raw-bin tier any more, and a cell with neither its primary nor
+//       the interpolation accepted THROWS at load time (user, 2026-09-17).
+//   REGION B, bins N-1..N ([74.24, 150) GeV): eps^pair_MC(cell) * SF(1) * SF(2)
+//       the SINGLE-VALUE pair 2mu4 efficiency (Utilities/PairTrigEffEvaluator.h, PURE form) in
+//       the SIGNAL mass window, opposite sign, on the UN-MERGED cells, times the product of the
+//       two single-muon DATA/MC scale factors SF = eps^nc_data / eps_MC. It is a PAIR-level
+//       efficiency, NOT a dR correction: it must never be multiplied by the single-muon
+//       efficiencies themselves (docs/tracking/mc_trigeff_single_value_pair_eff.md D4).
+//
+// Previous application (2026-08-17 .. 2026-09-17): `nocorr_ptmerge` in every bin, expo -> polyu
+// -> raw-bin placeholder. Retired because the raw tier delivered eps_dR down to 0.044 and the
+// polynomial tier was never reached (mc_trigger_efficiency.md R35).
+inline const char* DrCorrCrossxMethod()         { return "expo"; }            // region-A primary
+inline const char* DrCorrCrossxPolyMethod()     { return "polyu_fixedRp"; }   // primary in the poly cells
+inline const char* DrCorrCrossxFallbackMethod() { return "interp"; }          // the ONLY fallback
+inline const char* DrCorrCrossxSign()           { return "os"; }
+inline const char* DrCorrCrossxMode()           { return "nocorr_etamerge"; }
+// The region-A cells whose PRIMARY is the polynomial: pair-pT bins 2, 3, 4 (1-based on
+// ParamsSet::pair_pt_coarse_bins -- [12.8,18.2), [18.2,25.8), [25.8,36.7) GeV on the 9 -> 150
+// axis) x the LAST |eta^pair| group ([2.0, 2.2), the most forward). Named by INDEX so the
+// choice follows the canonical axes; the physical ranges are printed from the axes at load time.
+inline const std::vector<int>& DrCorrCrossxPolyPtBins()
+{
+    static const std::vector<int> b = {2, 3, 4};
+    return b;
+}
+// Region B: the single-value pair efficiency's (sign, mass window, cell mode).
+inline const char* PairTrigEffCrossxSign()   { return "os"; }
+inline const char* PairTrigEffCrossxWindow() { return "sig"; }
+inline const char* PairTrigEffCrossxMode()   { return "nomerge"; }
+// ⚠ TEMPORARY (user, 2026-09-17; D1 of pp24_trig_eff_hybrid_application.md). ONE region-B cell,
+// [105.53,150) x |eta| [2.0,2.2) opposite sign, holds 3 raw MC pairs and is refused by the
+// delivery gate. Until the additional high-pT MC statistics being requested arrive, a REFUSED
+// un-merged cell is served from the pT-MERGED cell of the same |eta| group ([74.24,150) x
+// [2.0,2.2), 62 raw pairs). Once that sample is in, set this to "" (no fallback) so the |eta|
+// group goes back to the nominal un-merged cells -- do NOT widen it.
+inline const char* PairTrigEffCrossxRefusedCellFallbackMode() { return "ptmerge"; }
 
 #endif // DR_CORRECTION_SAMPLE_CFG_H

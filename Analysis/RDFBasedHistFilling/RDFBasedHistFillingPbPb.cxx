@@ -988,7 +988,7 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
     // can be silently dropped with w_trig = 0.
     // Pair-pT threshold read from ParamsSet (8 -> 9 GeV, user 2026-09-08); never retyped.
     const std::string signal_cuts =
-        std::string("minv > 1.08 && minv < 2.9 && ")
+        ParamsSet::SignalMinvCutExpr("minv") + " && "
         + ParamsSet::SignalPairPtCutExpr("pair_pt") + " && "
         + ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta") + " && "
         + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta") + " && "
@@ -1173,6 +1173,9 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
      .Define("cw_unfolded",           "cw_raw * w_unfold")
      .Define("cw_unfolded_reco",      "cw_unfolded * w_reco")
      .Define("cw_unfolded_reco_trig", "cw_unfolded_reco * w_trig")
+     // TRIGGER-FIRST intermediate stage (2026-09-17, CorrectionStages.h): the stage figure shows
+     // uncorrected -> + trigger -> + trigger + reco. Same final weight (the corrections commute).
+     .Define("cw_unfolded_trig",      "cw_unfolded * w_trig")
     // GENUINE differential cross-section weight dsigma = (1/L_year)*dN, efficiency
     // corrected (w_reco*w_trig). This is the analysis observable d^2sigma/dpTdeta
     // [nb/GeV] (analysis_overview §2), distinct from weight_for_RAA_trig_corr which

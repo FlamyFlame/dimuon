@@ -2,6 +2,7 @@
 #define DR_CORRECTION_APPLY_H
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <iostream>
 #include <map>
@@ -57,13 +58,16 @@
 // DrCorrPlateauUsable(C, 0) -- i.e. the "is C a sane normalization?" half of the test, which is
 // the only half that is defined without an error.
 //
-// WHICH VARIANT pp24 CROSSX APPLIES (user, 2026-08-17; TEMPORARY, named in
-// dr_correction_sample_cfg.h so no consumer retypes it): method `expo` = DrCorrCrossxMethod(),
-// series `os` (opposite sign) = DrCorrCrossxSign(), plateau mode `nocorr_ptmerge` =
-// DrCorrCrossxMode() -- the no-plateau-correction fit with the LAST TWO pair-pT bins merged into a
-// single cell covering p_T^pair in [72.1, 150) GeV. Load() still DEFAULTS to the un-merged
-// "nocorr", so the MC closure thread keeps consuming exactly what it consumed before; the merged
-// variant is requested explicitly.
+// WHICH VARIANT pp24 CROSSX APPLIES (user, 2026-09-17; named in dr_correction_sample_cfg.h so no
+// consumer retypes it): plateau mode `nocorr_etamerge` = DrCorrCrossxMode() (the
+// no-plateau-correction fit on the 3-group |eta^pair| fold, un-merged pair pT), series `os` =
+// DrCorrCrossxSign(), primary `expo` = DrCorrCrossxMethod() with `polyu_fixedRp` primary in three
+// named forward cells and `interp` as the ONLY fallback -- and ONLY in coarse pair-pT bins 1..N-2;
+// the last two bins are served by the single-value pair efficiency instead
+// (Utilities/PairTrigEffCrossxEvaluator.h, docs/tracking/pp24_trig_eff_hybrid_application.md).
+// The raw-bin placeholder below is therefore UNREACHABLE from the cross-section; it remains for
+// the MC closure. Load() still DEFAULTS to the un-merged "nocorr", so the closure thread keeps
+// consuming exactly what it consumed before.
 //
 // WHY THE NO-PLATEAU-CORRECTION VARIANT and not the nominal plateau-normalized one: the measured
 // eps_dR carries structure out to large dR, worst in the pair-eta bins that enclose the detector
@@ -130,8 +134,12 @@ struct DrCorrectionEvaluator {
     // half the sample.
     bool eta_folded = false;
 
-    long long n_eval = 0, n_flat = 0, n_fit = 0, n_raw = 0, n_rawempty = 0, n_none = 0;
-    long long n_floor = 0, n_cap = 0, n_outside = 0;
+    // ATOMIC (2026-09-17): Eval() runs inside RDF lambdas under ImplicitMT (the crossx and the
+    // closure); plain ++ lost ~0.4 % of the counts (outer atomic census 1250918 vs inner 1245904)
+    // and made the "0 floored / 0 capped / 0 outside (must be 0)" guards untrustworthy. The
+    // delivered values were never affected (const TF1 / histogram reads).
+    std::atomic<long long> n_eval{0}, n_flat{0}, n_fit{0}, n_raw{0}, n_rawempty{0}, n_none{0};
+    std::atomic<long long> n_floor{0}, n_cap{0}, n_outside{0};
     // Per-CELL census (as opposed to per-evaluation), so a consumer of the output file can be told
     // how much of the map is a placeholder rather than a fit.
     int n_cells_fitted = 0, n_cells_raw = 0, n_cells_dead = 0;
@@ -153,12 +161,13 @@ struct DrCorrectionEvaluator {
     //                     dr_correction_cell_groups.h). Eval() below looks
     //                     the cell up by |pair_eta| whenever this mode is loaded.
     //   "nocorr_etamerge_ptmerge"  both merges at once
-    //   "nocorr_ptmerge"  the same fit with the LAST TWO pair-pT bins merged into one cell. This
-    //                     is the variant the pp24 crossx application uses (DrCorrCrossxMode(),
-    //                     with DrCorrCrossxMethod() / DrCorrCrossxSign()); its top cell covers
-    //                     p_T^pair in [72.1, 150) GeV, where the un-merged pair of cells runs past
-    //                     the sample's yield (mc_trigger_efficiency.md R24/R27, and the closure
-    //                     collapse in mc_trig_eff_closure.md R1b).
+    //   "nocorr_ptmerge"  the same fit with the LAST TWO pair-pT bins merged into one cell. It
+    //                     WAS the pp24 crossx variant from 2026-08-17 to 2026-09-17 (its top cell
+    //                     covered p_T^pair in [72.1, 150) GeV, where the un-merged pair of cells
+    //                     runs past the sample's yield -- mc_trigger_efficiency.md R24/R27, and
+    //                     the closure collapse in mc_trig_eff_closure.md R1b); the crossx now
+    //                     uses `nocorr_etamerge` below 74 GeV and the single-value pair
+    //                     efficiency above (DrCorrCrossxMode(), PairTrigEffCrossxEvaluator.h).
     // The DEFAULT is deliberately the un-merged mode: changing it would silently move every
     // existing consumer (the MC closure) onto a different correction.
     void Load(const DrCorrSample& cfg, bool use_tight_wp, const std::string& method_in,
@@ -464,17 +473,18 @@ struct DrCorrectionEvaluator {
 
     void PrintStats() const
     {
-        auto pct = [&](long long n) { return n_eval ? 100.0 * n / n_eval : 0.0; };
+        const Counters c = SnapshotCounters();
+        auto pct = [&](long long n) { return c.n_eval ? 100.0 * n / c.n_eval : 0.0; };
         std::cout << "DrCorrectionEvaluator [" << label << " / " << method << "]: "
-                  << n_eval << " evaluations -- "
-                  << n_flat << " at dR >= " << kDrMax << " (" << pct(n_flat) << "%, no correction), "
-                  << n_fit  << " from a fit (" << pct(n_fit) << "%), "
-                  << n_raw  << " from the RAW-BIN PLACEHOLDER (" << pct(n_raw) << "%), "
-                  << n_rawempty << " in an empty bin of a placeholder cell (" << pct(n_rawempty)
+                  << c.n_eval << " evaluations -- "
+                  << c.n_flat << " at dR >= " << kDrMax << " (" << pct(c.n_flat) << "%, no correction), "
+                  << c.n_fit  << " from a fit (" << pct(c.n_fit) << "%), "
+                  << c.n_raw  << " from the RAW-BIN PLACEHOLDER (" << pct(c.n_raw) << "%), "
+                  << c.n_rawempty << " in an empty bin of a placeholder cell (" << pct(c.n_rawempty)
                   << "%, no correction), "
-                  << n_none << " with no correction available (" << pct(n_none) << "%); "
-                  << n_floor << " floored at " << kMinCorr << ", " << n_cap << " capped at "
-                  << kMaxCorr << ", " << n_outside << " outside the cell grid (must be 0)"
+                  << c.n_none << " with no correction available (" << pct(c.n_none) << "%); "
+                  << c.n_floor << " floored at " << kMinCorr << ", " << c.n_cap << " capped at "
+                  << kMaxCorr << ", " << c.n_outside << " outside the cell grid (must be 0)"
                   << std::endl;
     }
 };

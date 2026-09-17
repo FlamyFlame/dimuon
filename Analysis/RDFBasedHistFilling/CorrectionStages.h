@@ -22,6 +22,11 @@
 //                            replaced by the proper 3D pair efficiency, task_05)
 //   cw_unfolded_reco_trig  = cw_unfolded_reco * w_trig (per-pair trigger eff,
 //                            already established)
+//   cw_unfolded_trig       = cw_unfolded * w_trig      (TRIGGER-FIRST intermediate,
+//                            added 2026-09-17 so the stage figure can show
+//                            uncorrected -> + trigger -> + trigger + reco; the
+//                            two corrections commute, so the final stage is the
+//                            same cw_unfolded_reco_trig)
 //
 // Invariant: with w_reco == 1 and w_unfold == 1, cw_unfolded_reco_trig equals
 // the existing trigger-only crossx weight, so legacy outputs are reproduced.
@@ -35,7 +40,8 @@ enum class CorrectionStage {
     Raw = 0,
     Unfolded,
     UnfoldedReco,
-    UnfoldedRecoTrig
+    UnfoldedRecoTrig,
+    UnfoldedTrig          // trigger-first intermediate (see header)
 };
 
 struct CorrectionStageInfo {
@@ -45,12 +51,13 @@ struct CorrectionStageInfo {
 };
 
 // Stage table shared by the PP and PbPb crossx fillers.
-inline const std::array<CorrectionStageInfo, 4>& CrossxCorrectionStages() {
-    static const std::array<CorrectionStageInfo, 4> stages = {{
+inline const std::array<CorrectionStageInfo, 5>& CrossxCorrectionStages() {
+    static const std::array<CorrectionStageInfo, 5> stages = {{
         {CorrectionStage::Raw,              "_corr_raw",               "cw_raw"},
         {CorrectionStage::Unfolded,         "_corr_unfolded",          "cw_unfolded"},
         {CorrectionStage::UnfoldedReco,     "_corr_unfolded_reco",     "cw_unfolded_reco"},
         {CorrectionStage::UnfoldedRecoTrig, "_corr_unfolded_reco_trig","cw_unfolded_reco_trig"},
+        {CorrectionStage::UnfoldedTrig,     "_corr_unfolded_trig",     "cw_unfolded_trig"},
     }};
     return stages;
 }

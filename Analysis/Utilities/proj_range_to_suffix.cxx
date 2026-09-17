@@ -1,3 +1,9 @@
+// INCLUDE GUARD (2026-09-17): this file is #included, header-style, by RDFBasedHistFillingBaseClass.h
+// AND by Utilities/SingleMuEffEvaluator.h; a translation unit that reaches both (the pp24 crossx
+// filler since the hybrid trigger weight) needs the definitions exactly once.
+#ifndef PROJ_RANGE_TO_SUFFIX_CXX
+#define PROJ_RANGE_TO_SUFFIX_CXX
+
 #include <string>
 #include <sstream>
 #include <iomanip>
@@ -111,3 +117,5 @@ void test_proj_range_to_suffix(){
         std::cout << "Legend label: " << pairToLegendLabel(rrange) << std::endl << std::endl;
     }
 }
+
+#endif  // PROJ_RANGE_TO_SUFFIX_CXX

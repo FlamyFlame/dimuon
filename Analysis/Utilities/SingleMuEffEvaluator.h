@@ -2,6 +2,7 @@
 #define SINGLE_MU_EFF_EVALUATOR_H
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <iostream>
 #include <map>
@@ -59,7 +60,9 @@ struct SingleMuEffEvaluator {
     std::map<std::string, TF1*> tf1_map;
     std::string ctr;                 // "" (pp) or "_ctr0_5" (PbPb 0-5%, doc D2); data key only
     CommonEffcyConfig cfg{};
-    long long n_floor = 0, n_cap = 0, n_eval = 0;
+    // ATOMIC (2026-09-17): Eval() runs inside RDF lambdas under ImplicitMT (the crossx SF path);
+    // a plain ++ lost ~0.4 % of the counts and made the "0 floored / 0 capped" guards untrustworthy.
+    std::atomic<long long> n_floor{0}, n_cap{0}, n_eval{0};
 
     void Load(Src source, const std::string& fit_file, const std::string& ctr_suffix = "")
     {
@@ -125,11 +128,12 @@ struct SingleMuEffEvaluator {
 
     void PrintStats(const std::string& tag) const
     {
-        std::cout << "SingleMuEffEvaluator [" << name << " / " << tag << "]: " << n_eval
+        const long long ne = n_eval, nc = n_cap, nf = n_floor;
+        std::cout << "SingleMuEffEvaluator [" << name << " / " << tag << "]: " << ne
                   << " evaluations, "
-                  << n_cap << " capped at 1 (" << (n_eval ? 100.0 * n_cap / n_eval : 0.0) << "%), "
-                  << n_floor << " floored at 0.02 ("
-                  << (n_eval ? 100.0 * n_floor / n_eval : 0.0) << "%)" << std::endl;
+                  << nc << " capped at 1 (" << (ne ? 100.0 * nc / ne : 0.0) << "%), "
+                  << nf << " floored at 0.02 ("
+                  << (ne ? 100.0 * nf / ne : 0.0) << "%)" << std::endl;
     }
 };
 

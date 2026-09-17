@@ -297,8 +297,10 @@ protected:
     // single-muon turn-ons, and adds the weight columns. Both were previously written out FIVE
     // times, verbatim, in FillHistogramsGeneric/FillHistogramsCrossx; they are factored here so
     // the crossx, the same-sign crossx, the no-minv passes and the generic histograms can never
-    // drift apart. See docs/tracking/pp24_crossx_rerun_2026_08.md Physics Procedure 3c/3d.
-    //   eps_dR   -- MC 2mu4 dR correlation correction (Utilities/DrCorrectionCrossxEvaluator.h)
+    // drift apart. See docs/tracking/pp24_trig_eff_hybrid_application.md Physics Procedure §2.
+    //   eps_trig -- the HYBRID per-pair 2mu4 efficiency (Utilities/PairTrigEffCrossxEvaluator.h):
+    //               data singles x MC dR correlation correction below the last two coarse
+    //               pair-pT bins, single-value MC pair efficiency x SF1 SF2 in them
     //   eps_reco -- pp24-fullsim PAIR reco efficiency (Utilities/PairRecoEffEvaluator.h)
     void                OpenPairEfficiencyInputs();
     ROOT::RDF::RNode    AddPairEfficiencyWeightColumns(ROOT::RDF::RNode df);

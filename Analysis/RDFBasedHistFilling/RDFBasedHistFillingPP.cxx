@@ -2,7 +2,7 @@
 #include <TKey.h>
 #include <algorithm>
 #include "RDFBasedHistFillingData.cxx"
-#include "../Utilities/DrCorrectionCrossxEvaluator.h"
+#include "../Utilities/PairTrigEffCrossxEvaluator.h"
 #include "../Utilities/PairRecoEffEvaluator.h"
 
 void RDFBasedHistFillingPP::SetIOPathsHook(){
@@ -313,14 +313,19 @@ void RDFBasedHistFillingPP::MakeAndWriteSingleMuonTrigEffPtGraphs(){
 }
 
 // =================================================================================================
-// The MC-derived PAIR corrections the pp24 cross-section applies on top of the DATA single-muon
-// turn-ons (2026-08-17; docs/tracking/pp24_crossx_rerun_2026_08.md Physics Procedure 3c/3d):
+// The PAIR corrections the pp24 cross-section applies (2026-09-17;
+// docs/tracking/pp24_trig_eff_hybrid_application.md Physics Procedure §2):
 //
-//   eps_dR^2mu4(dR; pair pT, pair eta)  -- the 2mu4 trigger CORRELATION correction. The two legs
-//     of a close-by pair do not fire independently, so eps_trig^pair is NOT eps_1*eps_2 alone.
-//     Utilities/DrCorrectionCrossxEvaluator.h: opposite-sign, no plateau correction, the canonical
-//     8 pair-pT bins with the last two merged (7 cells), exponential fit -> polynomial fit where
-//     the exponential is rejected -> raw measured bins where both are.
+//   eps_trig^pair  -- the per-pair 2mu4 trigger efficiency, a HYBRID over the canonical coarse
+//     pair-pT axis (ParamsSet::pair_pt_coarse_bins): in bins 1..N-2 ([9, 74.24) GeV) the DATA
+//     single-muon turn-ons times the MC dR correlation correction eps_dR (opposite sign, 3-group
+//     |eta^pair| fold, no a-priori plateau; expo primary, polynomial primary in three user-named
+//     forward cells, interpolation fallback, NO raw-bin tier); in the LAST TWO bins the
+//     SINGLE-VALUE MC pair efficiency in the signal mass window times the product of the two
+//     single-muon data/MC scale factors. Utilities/PairTrigEffCrossxEvaluator.h -- and its four
+//     stated, user-decided limitations (D1 refused-cell fallback TEMPORARY, D2 same-sign pairs
+//     on the opposite-sign numbers TEMPORARY, D3 signal-window number for every pair, D4 no raw
+//     tier). Configuration named ONCE in dr_correction_sample_cfg.h.
 //
 //   eps_reco^pair(pair pT, pair eta, dR)  -- the pp24-fullsim PAIR reconstruction efficiency,
 //     REPLACING the Run 2 single-muon eps_1*eps_2 placeholder (which had no dR dependence at all).
@@ -329,8 +334,8 @@ void RDFBasedHistFillingPP::MakeAndWriteSingleMuonTrigEffPtGraphs(){
 // Both live on the heap for the lifetime of the process: RDF Defines are LAZY, so a stack-scoped
 // evaluator would be destroyed before the event loop runs.
 // =================================================================================================
-static DrCorrectionCrossxEvaluator* s_dr_corr        = nullptr;
-static PairRecoEffEvaluator*        s_pair_reco_eff  = nullptr;
+static PairTrigEffCrossxEvaluator* s_pair_trig_eff = nullptr;
+static PairRecoEffEvaluator*       s_pair_reco_eff = nullptr;
 
 static int s_pair_eff_loaded_wp = -1;   // -1 = nothing loaded; else the isTight the maps carry
 
@@ -347,9 +352,9 @@ void RDFBasedHistFillingPP::OpenPairEfficiencyInputs()
         throw std::runtime_error("OpenPairEfficiencyInputs: the pair-efficiency maps are already "
                                  "loaded for the OTHER working point. Run one WP per process.");
 
-    if (!s_dr_corr) {
-        s_dr_corr = new DrCorrectionCrossxEvaluator();
-        s_dr_corr->Load(mc, isTight);
+    if (!s_pair_trig_eff) {
+        s_pair_trig_eff = new PairTrigEffCrossxEvaluator();
+        s_pair_trig_eff->Load(mc, isTight);
     }
     if (!s_pair_reco_eff) {
         s_pair_reco_eff = new PairRecoEffEvaluator();
@@ -363,7 +368,7 @@ void RDFBasedHistFillingPP::OpenPairEfficiencyInputs()
 // eps_dR cell grid (which must be zero) -- but none of it reaches the log unless this is called.
 void RDFBasedHistFillingPP::PrintPairEfficiencyStats()
 {
-    if (s_dr_corr)       s_dr_corr->PrintStats();
+    if (s_pair_trig_eff) s_pair_trig_eff->PrintStats();
     if (s_pair_reco_eff) s_pair_reco_eff->PrintStats();
 }
 
@@ -383,13 +388,19 @@ ROOT::RDF::RNode RDFBasedHistFillingPP::AddPairEfficiencyWeightColumns(ROOT::RDF
         .Define("effcy2", [](int q, float pt, float qe) {
             return RDFBasedHistFillingData::EvaluateSingleMuonEffcy("", q > 0, pt, qe);
         }, {"m2.charge", "m2.pt", "q_eta2"})
-        // MC 2mu4 dR correlation correction. Exactly 1 for dR >= 1 (outside the fit domain).
-        .Define("eps_dr", [](float dr, float pair_pt, float pair_eta) {
-            return s_dr_corr->Eval(dr, pair_pt, pair_eta);
-        }, {"dr", "pair_pt", "pair_eta"})
-        // eps_trig^pair = eps^nc_1 * eps^nc_2 * eps_dR  (2mu4 is an AND of the two legs).
-        .Define("effcy_pair",
-                "effcy1 > 0 && effcy2 > 0 && eps_dr > 0 ? (double)(effcy1 * effcy2 * eps_dr) : -1.0")
+        // eps_trig^pair, the HYBRID of the header block: below the split edge
+        // eps^nc_1 * eps^nc_2 * eps_dR(dR; cell) (2mu4 is an AND of the two legs, dressed by the MC
+        // dR correlation, exactly 1 for dR >= 1); in the last two coarse pair-pT bins the
+        // single-value MC pair efficiency x SF_1 x SF_2, for which the evaluator needs each leg's
+        // (pT, eta, charge) to form the MC twin of effcy1/effcy2. ONE column, ONE definition for
+        // every pull (crossx OS, SS, template-fit pass, generic).
+        .Define("effcy_pair", [](float dr, float pair_pt, float pair_eta, float e1, float e2,
+                                 float pt1, float eta1, int q1, float pt2, float eta2, int q2) {
+            return (e1 > 0 && e2 > 0)
+                 ? s_pair_trig_eff->Eval(dr, pair_pt, pair_eta, e1, e2, pt1, eta1, q1, pt2, eta2, q2)
+                 : -1.0;
+        }, {"dr", "pair_pt", "pair_eta", "effcy1", "effcy2",
+            "m1.pt", "m1.eta", "m1.charge", "m2.pt", "m2.eta", "m2.charge"})
         .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
         // pp24-fullsim PAIR reco efficiency. Already floored inside the evaluator; a -1 means no
         // level of the map carries a measurement, which the caller must treat as "no correction".
@@ -589,7 +600,7 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
     // EvaluateSingleMuonEffcyPtFitted stays unreachable. Blast radius:
     // docs/signal_selection_change_impact.md.
     const std::string signal_cuts =
-        std::string("minv > 1.08 && minv < 2.9 && ") + ParamsSet::SignalPairPtCutExpr("pair_pt") + " && "
+        ParamsSet::SignalMinvCutExpr("minv") + " && " + ParamsSet::SignalPairPtCutExpr("pair_pt") + " && "
         + ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta") + " && "
         + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta") + " && "
         + ParamsSet::PairFiducialEtaCutExpr("pair_eta");
@@ -613,8 +624,8 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         df_map.emplace("df_single_b_crossx", df_single_b_crossx);
     }
 
-    // Per-pair 2mu4 trigger efficiency: eps_pair = eps_1 * eps_2 * eps_dR (AND logic on the two
-    // legs, times the MC-measured dR correlation correction).
+    // Per-pair 2mu4 trigger efficiency: the HYBRID of PairTrigEffCrossxEvaluator (eps_1 * eps_2 *
+    // eps_dR below 74.24 GeV, the single-value MC pair efficiency x SF_1 x SF_2 above).
     // If FillHistogramsGeneric already added trigger columns to df_op, they
     // propagate through the Filter to df_single_b_crossx — skip re-Define.
     // Per-pair trigger (w_trig) AND pp24-fullsim PAIR reco-eff (w_reco) columns.
@@ -649,7 +660,11 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         .Define("cw_raw",                "crossx_weight")
         .Define("cw_unfolded",           "cw_raw * w_unfold")
         .Define("cw_unfolded_reco",      "cw_unfolded * w_reco")
-        .Define("cw_unfolded_reco_trig", "cw_unfolded_reco * w_trig");
+        .Define("cw_unfolded_reco_trig", "cw_unfolded_reco * w_trig")
+        // TRIGGER-FIRST intermediate stage (user, 2026-09-17): the comparison figure shows
+        // uncorrected -> + trigger -> + trigger + reco, so the trigger correction's own impact is
+        // visible. Same final weight (the two corrections commute); CorrectionStages.h.
+        .Define("cw_unfolded_trig",      "cw_unfolded * w_trig");
 
     if (df_map.find("df_single_b_crossx_weighted") == df_map.end()) {
         df_map.emplace("df_single_b_crossx_weighted", df_single_b_crossx_weighted);

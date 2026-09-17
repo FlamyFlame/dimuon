@@ -53,7 +53,8 @@
 //            grid, so for the merged cell it is RE-MEASURED here, from the full-dR histograms in
 //            the same file, with the same estimator and window (dr_correction_plateau.h) -- and,
 //            as in "nocorr", it is reported and applied to nothing.
-//            This is the variant the pp24 crossx application uses (DrCorrCrossxMode()).
+//            It WAS the pp24 crossx variant 2026-08-17..2026-09-17; the crossx now applies
+//            "nocorr_etamerge" in coarse pair-pT bins 1..N-2 (DrCorrCrossxMode()).
 //   "nocorr_etamerge" The SAME raw fit as "nocorr", with the 9 pair-eta bins MERGED into THREE
 //            SIGN-INDEPENDENT |eta^pair| BINS: the barrel group, then the two groups above the
 //            interior |eta| boundaries of DrEtaAbsMergeInteriorBoundaries(). The OUTER edge is
