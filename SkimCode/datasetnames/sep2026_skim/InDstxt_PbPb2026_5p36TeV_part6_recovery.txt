@@ -1,0 +1,8 @@
+# RECOVERY part: the files JEDI abandoned in tasks 52491225 (part1) and
+# 52501044 (part4) when the unguarded ZDC cosDeltaReactionPlaneAngle read
+# crashed every job on these runs (see D6/D7 in the tracking doc).
+# Submitted with --inputFileList InputFileList_PbPb2026_recovery_part6.txt so
+# ONLY the missing files are processed -- reprocessing the whole runs would
+# duplicate the events already merged into data_pbpb26_part1/part4.root.
+data26_hi:data26_hi.00522200.physics_HardProbes.merge.AOD.f1714_m2281
+data26_hi:data26_hi.00522949.physics_HardProbes.merge.AOD.f1723_m2281

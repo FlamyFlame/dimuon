@@ -1,0 +1,13 @@
+# Part 3: remaining 11 datasets
+# Includes 3 near-empty runs (488288/378/268 with <16k ev each) -- negligible
+data24_5p36TeV:data24_5p36TeV.00488456.physics_Main.merge.AOD.f1529_m2259
+data24_5p36TeV:data24_5p36TeV.00488437.physics_Main.merge.AOD.f1529_m2259
+data24_5p36TeV:data24_5p36TeV.00488427.physics_Main.merge.AOD.f1529_m2259
+data24_5p36TeV:data24_5p36TeV.00488393.physics_Main.merge.AOD.f1529_m2259
+data24_5p36TeV:data24_5p36TeV.00488239.physics_Main.merge.AOD.f1532_m2259
+data24_5p36TeV:data24_5p36TeV.00488239.physics_Main.merge.AOD.f1529_m2259
+data24_5p36TeV:data24_5p36TeV.00488210.physics_Main.merge.AOD.f1529_m2259
+data24_5p36TeV:data24_5p36TeV.00484873.physics_Main.merge.AOD.f1514_m2248
+data24_5p36TeV:data24_5p36TeV.00488288.physics_Main.merge.AOD.f1529_m2259
+data24_5p36TeV:data24_5p36TeV.00488378.physics_Main.merge.AOD.f1529_m2259
+data24_5p36TeV:data24_5p36TeV.00488268.physics_Main.merge.AOD.f1529_m2259

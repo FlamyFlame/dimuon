@@ -1,0 +1,20 @@
+# EXCLUDED 2026-09-10: these 6 runs are absent from the Good Runs List
+# SkimCode/xmls/physics_HI2026_50ns_noIBL.xml (35 runs).
+# The skim applies the GRL internally (alg.UseGRL = True), so every event of a
+# non-GRL run is dropped inside the job -> submitting them burns grid CPU to
+# produce empty output (this is what happened to the 2024 part-1 task, which was
+# resubmitted without its pre-GRL runs). Excluding them changes NO physics.
+#   522011, 522089, 522112, 522145, 522185 = the pre-GRL block at the start of the year.
+#   523168 = an INTERIOR run (between GRL runs 523138 and 523188); its omission may be a
+#            certification lag rather than a bad run. It is also near-empty (3 files,
+#            17,905 events) -- the analogue of 2025's excluded run 511013.
+# Excluded totals: 977 files | 8.7 TB | 4,562,969 events
+#   = 0.87% of the year's files, 0.63% of its events.
+# These are kept OUT of part1..part5 and OUT of InDstxt_PbPb2026_5p36TeV.txt.
+# If the GRL is reissued with any of these runs, move that line into the right part file.
+data26_hi:data26_hi.00522011.physics_HardProbes.merge.AOD.f1714_m2281
+data26_hi:data26_hi.00522089.physics_HardProbes.merge.AOD.f1714_m2281
+data26_hi:data26_hi.00522112.physics_HardProbes.merge.AOD.f1714_m2281
+data26_hi:data26_hi.00522145.physics_HardProbes.merge.AOD.f1714_m2281
+data26_hi:data26_hi.00522185.physics_HardProbes.merge.AOD.f1714_m2281
+data26_hi:data26_hi.00523168.physics_HardProbes.merge.AOD.f1723_m2281

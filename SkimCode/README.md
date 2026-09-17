@@ -36,6 +36,8 @@ SkimCode/
 ├── run_<year/sample>/           # one per dataset family (see "Run modes")
 ├── xmls/                        # GRL XMLs (data-quality lumiblock lists)
 └── datasetnames/                # txt files listing rucio datasets per year
+    ├── may2026_skim/            # input AOD dataset lists (full + per-part) actually submitted May 2026
+    └── sep2026_skim/            # same for the Sep 2026 Pb+Pb 2026 skim + the recovery parts (file lists)
 ```
 
 Available AthAnalysis releases: see
@@ -223,6 +225,45 @@ pathena --trf "TRIGRATES_RUNMODE=... TRIGRATES_OUTPUT_FILE=${fname} athena.py Tr
 data-skim run dirs therefore produce `myfile.root` inside their output
 datasets (downloaded files land as
 `user.yuhang.<...>._EXT0.myfile.root`).
+
+
+## Skim provenance — which code produced which data NTUP
+
+What goes into a skimmed data file is fully determined by three tracked files at one
+commit: `scripts/TrigRates_CA.py` (CA config: GRL, trigger list, muon tools + working
+points, event/muon cuts, stored branches), `source/HFtrigValidation/` (the `TrigRates`
+algorithm) and `scripts/grid_sub.sh` (pathena submission template). The `run_*/`
+directories are gitignored working copies: their `TrigRates_CA.py` equals `scripts/`
+except for the local-test `InputFile` path, and their `grid_sub*.sh` differ from the
+template only in `--inDsTxt/--outDS/--excludedSite` bookkeeping and the GRL passed via
+`--extFile` (the GRL XMLs are tracked in `xmls/`). The input AOD dataset lists actually
+submitted (`--inDsTxt`, full-year + per-part) and the file-level `--inputFileList`s of the
+recovery parts are tracked in `datasetnames/may2026_skim/` and `datasetnames/sep2026_skim/`
+(copies of the gitignored `run_*/` originals). The merged local files and the
+Rucio output datasets they came from are listed in
+`~/usatlasdata/dimuon_data/data-merging-record.txt`; the task IDs are in
+`~/usatlasdata/dimuon_data/{may2026_skim,sep2026_pbpb26_skim,sep2026_may26_recovery}.txt`.
+
+| data | run mode | local merged files | outDS campaign | submitted | release | code (commit of this repo) |
+|---|---|---|---|---|---|---|
+| Pb+Pb 2023 | `hi2023` | `pbpb_2023/data_pbpb23_part1-4` | `PbPb2023data.May2026.v1/v2` | 2026-05-13 | AthAnalysis 25.2.89 | `fe3b18b` |
+| Pb+Pb 2024 | `hi2024` | `pbpb_2024/data_pbpb24_part1-2` | `PbPb2024data.May2026.v1` | 2026-05-13 | 25.2.89 | `fe3b18b` |
+| Pb+Pb 2025 | `hi2025` | `pbpb_2025/data_pbpb25_part1-6` | `PbPb2025data.May2026.v1` | 2026-05-13 | 25.2.89 | `fe3b18b` |
+| pp 2024 | `pp2024` | `pp_2024/data_pp24_part1-12` | `pp2024data.May2026.v1` | 2026-05-13 | 25.2.89 | `fe3b18b` |
+| Pb+Pb 2026 parts 1-4 | `hi2026` | `pbpb_2026/data_pbpb26_part1-4` | `PbPb2026data.Sep2026.v1/v2` | 2026-09-10/11 | 25.2.90 | `a341dcc` |
+| Pb+Pb 2026 part 5 (v3) + part 6 (recovery) | `hi2026` | `pbpb_2026/data_pbpb26_part5-6` | `PbPb2026data.Sep2026.v3/v2` | 2026-09-13/14 | 25.2.90 | `cbc700a` |
+| Pb+Pb 2026 part 7 (recovery) | `hi2026` | `pbpb_2026/data_pbpb26_part7` | `PbPb2026data.Sep2026.v2` | 2026-09-15 | 25.2.90 | `fe04e1f` |
+| May-2026 recovery parts: Pb+Pb23 p5, Pb+Pb25 p7, pp24 p13 | `hi2023`/`hi2025`/`pp2024` | `data_pbpb23_part5`, `data_pbpb25_part7`, `data_pp24_part13` | `*.Sep2026.v1` | 2026-09-15 | 25.2.89 | `fe04e1f` |
+
+`fe3b18b` (2026-05-14) is the May-2026 configuration synced back from the run dirs
+(`m_EvtMax = -1`); `source/` had last changed at `b01ce6e` (2026-05-04). The Sep-2026
+commits after `a341dcc` change only the handling of events whose ZDC/RPD aux data is
+absent (`cbc700a`: guard optional RPD reads; `fe04e1f`: skip such events, never throw);
+on events with complete ZDC data the output is branch-for-branch identical to `fe3b18b`
+(verified on 2025 data, 169/169 branches), so the May-2026 and Sep-2026 parts of one year
+can be used together. The stored branches are documented in "Output branch reference"
+below; the physics selection applied at skim level is in `scripts/TrigRates_CA.py`
+(search `TRIGRATES_RUNMODE`) and `source/HFtrigValidation/src/TrigRates.cxx`.
 
 
 ## Output branch reference

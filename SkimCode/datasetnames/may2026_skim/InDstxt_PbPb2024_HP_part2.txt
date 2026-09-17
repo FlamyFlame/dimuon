@@ -1,0 +1,7 @@
+# Part 2 (formerly Part 3): runs 489961-490223 (6 datasets | files=18,278 | jobs=305 | 172 TB | 104.3M ev)
+data24_hi:data24_hi.00489961.physics_HardProbes.merge.AOD.f1550_m2267
+data24_hi:data24_hi.00490085.physics_HardProbes.merge.AOD.f1550_m2267
+data24_hi:data24_hi.00490145.physics_HardProbes.merge.AOD.f1550_m2267
+data24_hi:data24_hi.00490156.physics_HardProbes.merge.AOD.f1550_m2267
+data24_hi:data24_hi.00490182.physics_HardProbes.merge.AOD.f1550_m2267
+data24_hi:data24_hi.00490223.physics_HardProbes.merge.AOD.f1550_m2267
