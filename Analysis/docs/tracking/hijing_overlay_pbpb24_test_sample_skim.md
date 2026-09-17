@@ -309,17 +309,7 @@ was renamed to `ami_info_PDF/` (empty) + `ami_info_nPDF/` at 19:17 by another se
 
 ## Latest Stage
 
-2026-09-17 (session 3) — three user tasks, in progress:
-1. **NTUP naming.** `FullSimHIJINGOverlayPP24` → `FullSimHIJINGOverlayPbPb<yy>.<cfg>` with
-   `<cfg> = vtxz<z>mm_b<lo>_<hi>fm` (z in mm, '.'→'_', sign kept; b = HITS `ip` range):
-   pbpb24 `FullSimHIJINGOverlayPbPb24.vtxz-71_2mm_b0_5fm`, pbpb23 `FullSimHIJINGOverlayPbPb23.vtxz-3_3mm_b0_5fm`
-   (+ `_r17662` variant). Rename the on-disk files (both dirs; `.bak_*` LGD symlinks untouched — remote names),
-   repoint the diagnostic run-dir symlinks, `FullSimSampleFileTag(t, pbpb_year)` + `FullSimOverlayConfigTag`,
-   `PythiaAlgCoreT.c` InitInputFullsim, `grid_monitor.sh` outDS→file parsing, the three overlay `grid_sub*.sh`
-   (OUT_TAG + `_cfg_tag` helper + comment), `plot_r17864_event_level.cxx`, SkimCode/README + pythia_fullsim_overlay.md.
-   Verify: recompile, rerun the pbpb24 single-muon NTP (1 slice, minutes) and the pbpb23 slice script → same entry counts.
-2. **Track multiplicity plot** `trk_numqual[0,3,4,7]` (4 panels, 2024 vs 2023 pTH125_300, no centrality cut) →
-   `plots/r17864_rtag_sanity/trk_multiplicity_r17864_vs_r17618_pTH125_300.png` (new mode `ntrk`).
-3. **L1TE plot** (1 panel) → `plots/r17864_rtag_sanity/l1te_r17864_vs_r17618_pTH125_300.png` (mode `l1te`; L1TE is GeV,
-   2023 extends to ~25 TeV → axis 0-25 TeV).
-Reviews: /review-analysis-code for (1), /review-plot for (2)+(3). Then commit.
+2026-09-17 (session 3) DONE: NTUP naming change (commit f107318), R4 track-multiplicity + L1TE plots (9538b3b), both reviews PASS.
+Open: report R1/R4 to the production contact; wait for the fixed-calorimeter production and the other four vertex slices
+(then rerun the chain with `OVERLAY_YEAR=24` and redo R2). NOTE: `pythia_truth_full_sample/pythia_5p36TeV/ami_info/` was
+renamed by another session (19:17) — pbpb23-overlay / pp24-test NTP throws "missing AMI file" until that is settled.
