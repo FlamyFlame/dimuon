@@ -4026,6 +4026,16 @@ criteria **P1** and **P2**):
 
 ## Latest Stage
 
+**2026-09-17 — HAND-OFF: the pp24 cross-section now APPLIES the Step-3 correction on the
+`nocorr_etamerge` / opposite-sign cells in coarse pair-pT bins 1–6 (expo primary; `polyu_fixedRp`
+primary in bins 2–4 × |η| [2.0,2.2); `interp` the only fallback; NO raw-bin tier), and the
+single-value pair efficiency × SF₁SF₂ in bins 7–8 — `docs/tracking/pp24_trig_eff_hybrid_application.md`.
+`DrCorrCrossxMode()` = `nocorr_etamerge`, `DrCorrCrossxMethod()` = expo, plus the new
+`DrCorrCrossxPolyMethod/FallbackMethod/PolyPtBins` in `dr_correction_sample_cfg.h`. R35(d)'s
+"the cascade never reaches the polynomial" is thereby resolved by user choice (3 named cells), and
+R35(c)'s raw-tier extremum (0.044) can no longer be delivered. R12/R26 (a bound on the delivered
+f/C) remain OPEN.**
+
 **2026-09-08/09 (round 14) — ✅ DONE for the FITS; the MC closure is deliberately NOT rerun (user
 decision, see below). The Step-3 `polyu_fixedRp` (polynomial) fit is constrained so that at
 ΔR = 0 the efficiency cannot exceed the plateau. Full results and numbers in R34.**

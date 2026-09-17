@@ -734,9 +734,15 @@ Nothing in this doc's own scope. What is left is USER JUDGEMENT (R4) plus one ha
    factors. That step is under discussion with colleagues and is a future to-do; it does not enter
    the MC closure, where any such factor cancels identically. `K` remains in the file as a
    diagnostic only.
-2. **Whether to adopt the single-value procedure at all, and in which cells** — and, if so, whether
-   on the merged pair-pT cells, which R8 shows to be nearly free. Nothing is wired into the
-   cross-section.
+2. ~~**Whether to adopt the single-value procedure at all, and in which cells**~~ — **SETTLED
+   (user, 2026-09-17): ADOPTED in the LAST TWO coarse pair-pT bins ([74.24,105.53), [105.53,150)),
+   UN-MERGED cells, signal window, opposite sign, PURE form × the product of the two single-muon
+   data/MC scale factors** — wired into the pp24 cross-section by
+   `docs/tracking/pp24_trig_eff_hybrid_application.md` (`Utilities/PairTrigEffCrossxEvaluator.h`).
+   The one refused cell ([105.53,150) × |η| [2.0,2.2), 3 raw pairs) is TEMPORARILY served from the
+   `ptmerge` cell of its |η| group (D1 there); same-sign pairs TEMPORARILY get the OS numbers (D2).
+   §4's "Nothing here changes what the pp24 cross-section applies" describes THIS doc's own scope
+   at the time and is superseded by that doc.
 3. **The delivery threshold** `MinCellPairs() = 50` (R6) — this session's choice, one constant.
 4. **HAND-OFF to `mc_trigeff_dr_binning_approaches.md`:** its R4 is retracted and the four-approach
    ranking reverses, so the choice of dR cell grouping for the pp24 cross-section is reopened on the

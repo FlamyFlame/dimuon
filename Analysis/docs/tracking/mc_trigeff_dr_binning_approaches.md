@@ -727,6 +727,12 @@ the user to weigh against R4, not something this doc resolves on its own.
 
 ## Latest Stage
 
+**2026-09-17 — the pp24 cross-section ADOPTED approach C's |η^pair| fold (`nocorr_etamerge`, 8 × 3
+cells, un-merged pair-pT) for coarse pair-pT bins 1–6, with the last two bins served by the
+single-value pair efficiency instead of any ΔR fit (user decision;
+`docs/tracking/pp24_trig_eff_hybrid_application.md`). The four-approach closure ranking is still to
+be regenerated on the 9 GeV axis as recorded below; it no longer gates the application.**
+
 **2026-09-08 — ⚠ THE FOUR-APPROACH CLOSURE FIGURES ARE NOW STALE (two independent reasons).**
 
 1. **The polyu tier of the delivered cascade changed.** `mc_trigger_efficiency.md` R34 constrained

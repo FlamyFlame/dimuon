@@ -47,7 +47,14 @@ pair has characteristically **low invariant mass** and **small opening angle**.
 - **both muons p_T > 4.5 GeV** (4 -> 4.5 on 2026-09-08). Applied UPSTREAM, at the NTuple stage,
   so every consumer inherits it; it is mode-dependent in data, the trigger-efficiency mode keeping
   4.0 GeV because ε^nc is a per-muon efficiency evaluated only above 4.5 (decision D8).
-- m_μμ ∈ **[1.08, 2.9] GeV**,
+- m_μμ ∈ **[1.08, 2.9] GeV** (`ParamsSet::signal_minv_min/max` + `SignalMinvCutExpr()`, the
+  SINGLE SOURCE since 2026-09-17 — every live data / MC-analog / trigger-efficiency site reads it).
+  **Coupled consumers:** the pp24 single-value pair trigger efficiency applied above 74 GeV is
+  MEASURED inside this window (`docs/tracking/pp24_trig_eff_hybrid_application.md` D3), and the
+  low-mass template fit is to be performed inside this SAME window (no φ / J/ψ peaks; user
+  decision 2026-09-17, not yet implemented). Changing the window ⇒ re-measure the pair
+  efficiency (`run_mc_trigeff_pair_eff.sh`) and refill every consumer,
+  `docs/signal_selection_change_impact.md`.
 - pair p_T > **9 GeV** (`ParamsSet::signal_pair_pt_min`; 8 -> 9 on 2026-09-08),
 - **Detector-gap fiducial cut**, `ParamsSet::single_mu_fiducial_gap_cuts` (2026-09-07):
   BOTH muons must have q·η outside {(-1.25,-1.05), (-0.10,+0.06), (2.20,2.40)} (closed
@@ -121,9 +128,20 @@ w⁻¹ = ε_trig^pair · ε_reco^pair(pair p_T, pair η, ΔR)
 - **ε_trig^pair** — *trigger* efficiency, built from the single-muon
   no-correlation efficiency ε^nc(p_T, q·η) measured in data:
   - PbPb single-mu4: inclusion–exclusion, ε_trig^pair = ε₁^nc + ε₂^nc − ε₁^nc·ε₂^nc;
-  - pp24 2mu4: ε_trig^pair = ε₁^nc · ε₂^nc.
-  A pair-level ΔR trigger-correlation correction ε_dR is foreseen but currently a
-  dummy ≡ 1 (measuring it needs unbiased-trigger MC).
+  - pp24 2mu4 (HYBRID since 2026-09-17, `docs/tracking/pp24_trig_eff_hybrid_application.md`
+    §2; `Utilities/PairTrigEffCrossxEvaluator.h`), over the canonical coarse pair-pT axis
+    `ParamsSet::pair_pt_coarse_bins`:
+    - bins 1–6 ([9, 74.24) GeV): ε_trig^pair = ε₁^nc · ε₂^nc · ε_ΔR(ΔR; cell), ε_ΔR the MC
+      2mu4 close-by correlation correction from the pp24 fullsim (opposite sign, 3-group
+      |η^pair| fold, free-baseline fit; expo, polynomial in three named forward cells,
+      interpolation fallback; = 1 for ΔR ≥ 1);
+    - bins 7–8 ([74.24, 150) GeV): ε_trig^pair = ε^pair_MC(cell) · SF₁ · SF₂ — the SINGLE-VALUE
+      MC pair 2mu4 efficiency per (pair-pT, |η^pair|) cell in the signal mass window, a
+      PAIR-level efficiency (NOT multiplied by ε^nc), corrected to data by the product of the
+      two single-muon data/MC scale factors SF = ε^nc_data/ε_MC evaluated per leg.
+    TEMPORARY (awaiting requested high-pT / same-sign-filtered MC): the refused 3-pair cell
+    [105.5,150)×|η| [2.0,2.2) uses the pT-merged cell of its |η| group; same-sign pairs are
+    weighted with the opposite-sign numbers.
 - **ε_reco^pair** — *reconstruction* efficiency, a single **pair** efficiency
   binned in **(pair p_T, pair η, ΔR)**, measured in **Pythia fullsim** (pp) and
   **Pythia fullsim HIJING overlay** (PbPb, per centrality). It is **not** the
