@@ -42,6 +42,12 @@
 // Compile/run (ACLiC, from this directory):
 //   root -l -b -q 'mc_pthat_slice_mass_statistics.cxx+("pp_full", true)'    // Tight  (nominal)
 //   root -l -b -q 'mc_pthat_slice_mass_statistics.cxx+("pp_full", false)'   // Medium (WP syst.)
+// FIGURE-ONLY variants (D8 of the tracking doc; same-sign-request preparation, 2026-09-17):
+//   root -l -b -q 'mc_pthat_slice_mass_statistics.cxx+("pp_full", true, 4)'      // top 4 slices
+//   root -l -b -q 'mc_pthat_slice_mass_statistics.cxx+("pp_full", true, 4, 20.)' // + 20<pT<150
+//   Any non-nominal (n_top_slices, figure_pair_pt_lo) writes ONLY the mass figure and its ROOT
+//   file, with a variant suffix (_top4, _pairpt20) -- the CSV tables are shaped for the 3 highest
+//   coarse cells of the first request and the nominal outputs are never overwritten.
 // =================================================================================================
 
 #include <algorithm>
@@ -76,6 +82,7 @@
 #include "../../../Utilities/MCTrigEffPairSelection.h"
 #include "../../../Utilities/PairTrigEffEvaluator.h"
 #include "dr_correction_sample_cfg.h"
+#include "../../../Utilities/MCRequestLooseMassFilter.h"
 
 namespace {
 
@@ -94,14 +101,28 @@ struct PtHatSlice {
     std::string token;   // file-name token
     std::string text;    // canvas/legend text
 };
-const std::vector<PtHatSlice>& Slices()
+// The N HIGHEST slices are used: 2 for the first (high-pT) request, 4 for the same-sign request
+// that reaches down to pair pT ~ 20 GeV. Set once by the entry point (SetTopSlices).
+const std::vector<PtHatSlice>& AllSlices()
 {
     static const std::vector<PtHatSlice> s = {
+        {2,  24,  40, 803017, "pTH24_40",   "24 < #hat{p}_{T} < 40 GeV"},
+        {3,  40,  70, 803018, "pTH40_70",   "40 < #hat{p}_{T} < 70 GeV"},
         {4,  70, 125, 803019, "pTH70_125",  "70 < #hat{p}_{T} < 125 GeV"},
         {5, 125, 300, 803015, "pTH125_300", "125 < #hat{p}_{T} < 300 GeV"},
     };
     return s;
 }
+std::vector<PtHatSlice> g_slices;
+void SetTopSlices(int n_top)
+{
+    const auto& all = AllSlices();
+    if (n_top < 1 || n_top > static_cast<int>(all.size()))
+        throw std::invalid_argument("mc_pthat_slice_mass_statistics: n_top_slices must be 1.."
+                                    + std::to_string(all.size()) + ", got " + std::to_string(n_top));
+    g_slices.assign(all.end() - n_top, all.end());
+}
+const std::vector<PtHatSlice>& Slices() { return g_slices; }
 
 // ------------------------------------------------------------------ the mass ranges of the tables
 // `sig` is NOT typed here: it is the signal window, taken from PairTrigEff::Window("sig") and
@@ -109,7 +130,7 @@ const std::vector<PtHatSlice>& Slices()
 // the request -- the proposed generator-level filter, wide enough not to bias the measurement and
 // tight enough to remove the back-to-back pairs, whose different physics would otherwise average
 // into the same efficiency cells.
-constexpr double kLooseMassMax = 10.0;   // GeV -- the PROPOSED loose dimuon mass filter
+constexpr double kLooseMassMax = MCRequest::kLooseMassMax;   // GeV -- the PROPOSED loose filter (shared header)
 
 struct MassRange {
     std::string token, csv_text, tex_text;
@@ -564,10 +585,20 @@ double ConstantSliceWeight(ROOT::RDF::RNode d, const std::string& what)
 
 // =================================================================================================
 void mc_pthat_slice_mass_statistics(const std::string& sample = "pp_full",
-                                    bool use_tight_wp = true)
+                                    bool use_tight_wp = true,
+                                    int n_top_slices = 2,
+                                    double figure_pair_pt_lo = std::nan(""))
 {
     gROOT->SetBatch(kTRUE);
     ROOT::EnableImplicitMT();
+    SetTopSlices(n_top_slices);
+    // FIGURE-ONLY MODE (D8). The tables are shaped for the 3 highest coarse cells of the FIRST
+    // request; the same-sign-request figures use more slices and a user-specified pair-pT cut, so
+    // only the mass figure (+ its ROOT file) is written, under a variant suffix.
+    const bool   custom_pt_lo = !std::isnan(figure_pair_pt_lo);
+    const std::string variant = (n_top_slices != 2 ? "_top" + std::to_string(n_top_slices) : "")
+                              + (custom_pt_lo ? Fmt("_pairpt%g", figure_pair_pt_lo) : "");
+    const bool figure_only = !variant.empty();
 
     // The `sig` window must still BE the signal region's mass window, or the table's second row
     // would describe a different selection from the one the analysis uses.
@@ -609,7 +640,14 @@ void mc_pthat_slice_mass_statistics(const std::string& sample = "pp_full",
                                  + std::to_string(npt - first_cell + 1) + " cells, not the 3 the "
                                  "request's 3 x 3 tables are shaped for. The coarse pair-pT axis "
                                  "changed -- reshape the tables deliberately.");
-    const double top_pt_lo = pt_edges[first_cell - 1];
+    // The pair-pT cut of the SECOND figure. Nominal = the lower edge of the 3 highest coarse
+    // cells (canonical). The same-sign-request variant uses the user's figure cut instead
+    // (20 GeV, 2026-09-17): it is a CUT on the figure, NOT a binning -- it is not an edge of
+    // pair_pt_coarse_bins and is labelled as the range it is. The upper bound stays the axis top.
+    const double top_pt_lo = custom_pt_lo ? figure_pair_pt_lo : pt_edges[first_cell - 1];
+    if (custom_pt_lo && !(top_pt_lo > 0. && top_pt_lo < pt_edges.back()))
+        throw std::invalid_argument("mc_pthat_slice_mass_statistics: figure_pair_pt_lo must be in "
+                                    "(0, " + Fmt("%g", pt_edges.back()) + ")");
 
     const std::vector<MassRange> ranges = MassRanges();
     const std::vector<double>    m_axis = MassAxis();
@@ -873,6 +911,7 @@ void mc_pthat_slice_mass_statistics(const std::string& sample = "pp_full",
     };
 
     // ---------------------------------------------------------------- SET 1: 2 mass x 2 sign
+    if (!figure_only)
     for (const auto& sl : Slices()) {
         Emit(out_dir + "mass_window_counts_" + sl.token + ".csv", [&](std::ostream& os) {
             header(os, sl);
@@ -938,6 +977,7 @@ void mc_pthat_slice_mass_statistics(const std::string& sample = "pp_full",
     // between the single-b region, the template-fit region, the 4-10 GeV continuum the proposed
     // filter would KEEP, and the back-to-back region it would REMOVE. Exact cuts, never the
     // display histogram (see MassBands).
+    if (!figure_only)
     for (const auto& sl : Slices()) {
         Emit(out_dir + "mass_composition_top3_" + sl.token + ".csv", [&](std::ostream& os) {
             header(os, sl);
@@ -998,6 +1038,7 @@ void mc_pthat_slice_mass_statistics(const std::string& sample = "pp_full",
     // ---------------------------------------------------------------- SET 1c: spectrum landmarks
     // Where the back-to-back peak is, whether there is a gap below it, and whether either is
     // statistically resolvable -- emitted, never transcribed (see FindLandmarks).
+    if (!figure_only)
     Emit(out_dir + "mass_spectrum_landmarks.csv", [&](std::ostream& os) {
         header(os, Slices().front());
         os << "# (The provenance block above names the first slice; this file covers BOTH, one\n";
@@ -1099,6 +1140,7 @@ void mc_pthat_slice_mass_statistics(const std::string& sample = "pp_full",
     });
 
     // ---------------------------------------------------------------- SETS 2-5: 3 pT x 3 |eta|
+    if (!figure_only)
     for (const auto& sl : Slices()) {
         for (const auto& R : ranges) {
             Emit(out_dir + "cells_" + sl.token + "_" + R.token + ".csv", [&](std::ostream& os) {
@@ -1154,9 +1196,13 @@ void mc_pthat_slice_mass_statistics(const std::string& sample = "pp_full",
     // ---------------------------------------------------------------- the mass figure
     gStyle->SetOptStat(0);
     auto draw_set = [&](const std::string& png, bool top_cells_only, const std::string& scope) {
-        // N = 2 panels -> nrow = 1 (subplot-layout convention).
-        TCanvas c(("c_" + png).c_str(), "", 1500, 640);
-        c.Divide(2, 1);
+        // Subplot-layout convention: N <= 3 -> one row; else nrows >= ncols, nrows ~ sqrt(N)
+        // (N = 2 -> 2 x 1, N = 4 -> 2 x 2). Panel size is kept fixed (750 x 640).
+        const int npan = static_cast<int>(Slices().size());
+        const int ncol = npan <= 3 ? npan : static_cast<int>(std::ceil(std::sqrt(npan)));
+        const int nrow = (npan + ncol - 1) / ncol;
+        TCanvas c(("c_" + png).c_str(), "", 750 * ncol, 640 * nrow);
+        c.Divide(ncol, nrow);
         std::vector<std::unique_ptr<TLegend>> legs;
         std::vector<std::unique_ptr<TLine>>   lines;
         std::vector<std::unique_ptr<TLatex>>  texs;
@@ -1265,12 +1311,16 @@ void mc_pthat_slice_mass_statistics(const std::string& sample = "pp_full",
         // PNG only (memory: feedback_plot_format).
         c.SaveAs((out_dir + png).c_str());
     };
-    draw_set("pair_mass_by_pthat_slice.png", false, "all selected pairs");
-    draw_set("pair_mass_by_pthat_slice_top3_pairpt.png", true,
-             Fmt("%.2f < p_{T}^{pair} < %.0f GeV", top_pt_lo, pt_edges.back()));
+    // With a custom pair-pT cut only the CUT figure is drawn: the all-pairs figure of that slice
+    // set is the product of the run WITHOUT the cut (and the two would otherwise share a name).
+    if (!custom_pt_lo)
+        draw_set("pair_mass_by_pthat_slice" + variant + ".png", false, "all selected pairs");
+    draw_set(custom_pt_lo ? "pair_mass_by_pthat_slice" + variant + ".png"
+                          : "pair_mass_by_pthat_slice_top3_pairpt" + variant + ".png",
+             true, Fmt("%.4g < p_{T}^{pair} < %.0f GeV", top_pt_lo, pt_edges.back()));
 
     // ---------------------------------------------------------------- the histograms, for reuse
-    const std::string root_out = out_dir + "mc_pthat_slice_mass_stats.root";
+    const std::string root_out = out_dir + "mc_pthat_slice_mass_stats" + variant + ".root";
     TFile fout(root_out.c_str(), "RECREATE");
     if (fout.IsZombie())
         throw std::runtime_error("mc_pthat_slice_mass_statistics: cannot open " + root_out);
@@ -1283,11 +1333,13 @@ void mc_pthat_slice_mass_statistics(const std::string& sample = "pp_full",
             h->SetMaximum(-1111);
             h->Write();
         }
-        for (auto& r : kv.second.n_cell) r.second->Write();
+        if (!figure_only) for (auto& r : kv.second.n_cell) r.second->Write();
     }
     fout.Close();
 
-    std::cout << "\n[mc_pthat_slice_mass_statistics] " << wp_text << " WP: "
-              << 1 + 2 * (2 + static_cast<int>(ranges.size())) << " CSVs + 2 PNGs + "
-              << root_out << " written to " << out_dir << std::endl;
+    std::cout << "\n[mc_pthat_slice_mass_statistics] " << wp_text << " WP"
+              << (figure_only ? " (figure-only variant '" + variant + "'): 0 CSVs"
+                              : ": " + std::to_string(1 + Slices().size() * (2 + ranges.size())) + " CSVs")
+              << " + " << (custom_pt_lo ? 1 : 2) << " PNGs + " << root_out << " written to "
+              << out_dir << std::endl;
 }

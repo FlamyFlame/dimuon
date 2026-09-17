@@ -1,5 +1,6 @@
 // Differential cross-section vs pair pT per pTHat (kn) range.
-// Selection: muon_pair_tree_kin*_sign2 with from_same_b.
+// Selection: muon_pair_tree_kin*_sign2 with from_same_b (nominal), or -- ss_loose_mass=true --
+//            muon_pair_tree_kin*_sign1 with truth/reco m_mumu < MCRequest::kLooseMassMax.
 // Two plots: truth_pair_pt and reco pair_pt (pair_pass_medium additionally required).
 // Left subplot: markers+errorbars per kn.  Right subplot: stack.
 // Entry point calls two binning versions: 20 bins 9-120 GeV and 25 bins 9-150 GeV.
@@ -12,6 +13,9 @@
 
 #include "../../MuonObjectsParamsAndHelpers/FullSimSampleType.h"
 #include "../../Utilities/PtHatKn45ProjectedStats.h"
+#include "../../Utilities/MCRequestLooseMassFilter.h"
+#include <TString.h>   // Form(), used by the population helpers below
+#include <string>
 
 // ============================ CONFIG ============================
 // g_is_test_sample : which pp24-fullsim production to read.
@@ -25,15 +29,42 @@
 // NOT `static`: ACLiC-compiled internal-linkage globals are invisible to the ROOT interpreter,
 // so a caller could not override them and every run silently used the defaults. The entry point
 // below takes them as arguments and sets these.
+// g_ss_loose_mass : which PAIR POPULATION the per-slice statistics plots describe.
+//   false = NOMINAL: single-b signal pairs -- opposite-sign tree, `from_same_b` (truth-level, so
+//           the same filter serves the truth and the reco variable).
+//   true  = SAME-SIGN pairs under the LOOSE MASS cut of the additional-statistics MC request
+//           (docs/tracking/pthat_slice_mass_stats_sample_request.md D9, 2026-09-17): same-sign
+//           tree (`_sign1`, split by truth_same_sign upstream), truth pair pT under
+//           truth_minv < kLooseMassMax and reco pair pT under minv < kLooseMassMax -- each variable
+//           cut at ITS OWN level, because the request's generator filter is a truth-mass cut while
+//           the analysis consumes reco mass. Outputs go to their own subdirectory (ss_mass_lt10/)
+//           with the nominal file names; the nominal PNGs are never touched. The projected
+//           function is nominal-only and throws on this flag.
 bool g_is_test_sample = true;
 bool g_use_tight_wp   = true;
+bool g_ss_loose_mass  = false;
 
 static std::string SampleSuffix() { return g_is_test_sample ? "" : "_full"; }
 static std::string SampleDir()    { return FullSimSampleInputDir(FullSimSampleType::pp, g_is_test_sample); }
 static std::string InputFile()    { return SampleDir() + "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts"
                                            + SampleSuffix() + ".root"; }
-static std::string OutputDir()    { return SampleDir() + "plots/"; }
+static std::string OutputDir()    { return SampleDir() + "plots/" + (g_ss_loose_mass ? "ss_mass_lt10/" : ""); }
 static std::string PairWPFilter() { return g_use_tight_wp ? "pair_pass_tight" : "pair_pass_medium"; }
+// The pair population (see g_ss_loose_mass): tree, per-level filters, and the label naming it.
+static std::string PairTree(int ikn) { return "muon_pair_tree_kin" + std::to_string(ikn)
+                                              + (g_ss_loose_mass ? "_sign1" : "_sign2"); }
+static std::string TruthFilter()     { return g_ss_loose_mass
+                                              ? std::string(Form("truth_minv < %g", MCRequest::kLooseMassMax))
+                                              : std::string("from_same_b"); }
+static std::string RecoFilter()      { return (g_ss_loose_mass
+                                               ? std::string(Form("minv < %g", MCRequest::kLooseMassMax))
+                                               : std::string("from_same_b")) + " && " + PairWPFilter(); }
+// The same-sign header is ~14 characters longer than the nominal one, which fills the panel
+// width exactly at 0.038; it is shrunk so the header cannot run under the legend.
+static double      HeaderTextSize()  { return g_ss_loose_mass ? 0.032 : 0.038; }
+static std::string SelLabel()        { return g_ss_loose_mass
+                                              ? std::string(Form("same sign, m_{#mu#mu} < %g GeV", MCRequest::kLooseMassMax))
+                                              : std::string("single-b signal"); }
 
 // STATISTICAL-FORECAST factors N_full/N_test. Meaningful ONLY on the TEST sample, where they answer
 // "what will the error bar be once the full sample exists" (they are applied to SetBinError ONLY;
@@ -93,10 +124,7 @@ void plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix) {
     const std::array<std::string, 2> var_titles  = {
         "truth p_{T}^{pair} [GeV]", "reco p_{T}^{pair} [GeV]"
     };
-    const std::array<std::string, 2> filter_strs = {
-        "from_same_b",
-        ("from_same_b && " + PairWPFilter())
-    };
+    const std::array<std::string, 2> filter_strs = { TruthFilter(), RecoFilter() };
     const std::array<std::string, 2> out_names   = {
         "truth_pair_pt_kn" + suffix, "reco_pair_pt_kn" + suffix
     };
@@ -109,8 +137,7 @@ void plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix) {
 
         std::vector<TH1D*> hists(nkn);
         for (int ikn = 0; ikn < nkn; ikn++) {
-            const std::string tree = "muon_pair_tree_kin" + std::to_string(ikn) + "_sign2";
-            ROOT::RDataFrame df(tree, input_file);
+            ROOT::RDataFrame df(PairTree(ikn), input_file);
             auto hptr = df.Filter(filter)
                           .Histo1D(ROOT::RDF::TH1DModel{
                               ("h_" + var + "_kn" + std::to_string(ikn)).c_str(), "",
@@ -174,7 +201,7 @@ void plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix) {
 
         TLatex lat1;
         lat1.SetNDC();
-        lat1.SetTextSize(0.038);
+        lat1.SetTextSize(HeaderTextSize());
         const std::string label = (ivar == 0) ? "truth p_{T}^{pair}" : "reco p_{T}^{pair}";
         // HONESTY (key physics observable). The TEST sample carries the Pb 4:6:6:9 isospin AVERAGE
         // (it was produced with 4 beams by mistake), so its absolute sigma is NOT a physical pp
@@ -183,7 +210,7 @@ void plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix) {
         // FALSE warning).
         lat1.DrawLatex(0.17, 0.92, (std::string("Pythia fullsim pp24 ")
             + (g_is_test_sample ? "TEST sample" : "FULL sample")
-            + ", single-b signal, " + label).c_str());
+            + ", " + SelLabel() + ", " + label).c_str());
         if (g_is_test_sample) {
             TLatex lat_warn;
             lat_warn.SetNDC();
@@ -235,10 +262,10 @@ void plot_impl(int nbins_arg, double xmax_arg, const std::string& suffix) {
 
         TLatex lat2;
         lat2.SetNDC();
-        lat2.SetTextSize(0.038);
+        lat2.SetTextSize(HeaderTextSize());
         lat2.DrawLatex(0.17, 0.92, (std::string("Pythia fullsim pp24 ")
             + (g_is_test_sample ? "TEST sample" : "FULL sample")
-            + ", single-b signal, " + label).c_str());
+            + ", " + SelLabel() + ", " + label).c_str());
         if (g_is_test_sample) {
             TLatex lat2_warn;
             lat2_warn.SetNDC();
@@ -292,10 +319,7 @@ void plot_stat_error_forecast(int nbins_arg, double xmax_arg, const std::string&
     const std::array<std::string, 2> var_titles  = {
         "truth p_{T}^{pair} [GeV]", "reco p_{T}^{pair} [GeV]"
     };
-    const std::array<std::string, 2> filter_strs = {
-        "from_same_b",
-        ("from_same_b && " + PairWPFilter())
-    };
+    const std::array<std::string, 2> filter_strs = { TruthFilter(), RecoFilter() };
     const std::array<std::string, 2> label_strs  = {
         "truth p_{T}^{pair}", "reco p_{T}^{pair}"
     };
@@ -313,8 +337,7 @@ void plot_stat_error_forecast(int nbins_arg, double xmax_arg, const std::string&
 
         std::vector<TH1D*> hists(nkn);
         for (int ikn = 0; ikn < nkn; ikn++) {
-            const std::string tree = "muon_pair_tree_kin" + std::to_string(ikn) + "_sign2";
-            ROOT::RDataFrame df(tree, input_file);
+            ROOT::RDataFrame df(PairTree(ikn), input_file);
             auto hptr = df.Filter(filter)
                           .Histo1D(ROOT::RDF::TH1DModel{
                               ("hse_" + var + "_kn" + std::to_string(ikn)).c_str(), "",
@@ -397,7 +420,7 @@ void plot_stat_error_forecast(int nbins_arg, double xmax_arg, const std::string&
         for (int ikn = 0; ikn < nkn; ikn++)
             leg1->AddEntry(hists[ikn], kn_labels[ikn].c_str(), "lep");
         leg1->Draw();
-        TLatex lat1; lat1.SetNDC(); lat1.SetTextSize(0.038);
+        TLatex lat1; lat1.SetNDC(); lat1.SetTextSize(HeaderTextSize());
         // HONESTY (key physics observable). The TEST sample carries the Pb 4:6:6:9 isospin AVERAGE
         // (it was produced with 4 beams by mistake), so its absolute sigma is NOT a physical pp
         // cross-section -- say so. The FULL sample is pp-beam-only with isospin weight 1, so its
@@ -405,7 +428,7 @@ void plot_stat_error_forecast(int nbins_arg, double xmax_arg, const std::string&
         // FALSE warning).
         lat1.DrawLatex(0.17, 0.92, (std::string("Pythia fullsim pp24 ")
             + (g_is_test_sample ? "TEST sample" : "FULL sample")
-            + ", single-b signal, " + label).c_str());
+            + ", " + SelLabel() + ", " + label).c_str());
         if (g_is_test_sample) {
             TLatex lat_warn;
             lat_warn.SetNDC();
@@ -442,7 +465,7 @@ void plot_stat_error_forecast(int nbins_arg, double xmax_arg, const std::string&
         for (int ikn = 0; ikn < nkn; ikn++)
             leg2->AddEntry(herr[ikn], kn_labels[ikn].c_str(), "l");
         leg2->Draw();
-        TLatex lat2; lat2.SetNDC(); lat2.SetTextSize(0.038);
+        TLatex lat2; lat2.SetNDC(); lat2.SetTextSize(HeaderTextSize());
         lat2.DrawLatex(0.17, 0.92, ("Rel. stat. error (full sample), " + label).c_str());
 
         c->SaveAs((output_dir + subdir + outname + ".png").c_str());
@@ -491,10 +514,7 @@ void plot_err_fraction_map(int nbins_arg, double xmax_arg, const std::string& su
     const std::array<std::string, 2> var_titles  = {
         "truth p_{T}^{pair} [GeV]", "reco p_{T}^{pair} [GeV]"
     };
-    const std::array<std::string, 2> filter_strs = {
-        "from_same_b",
-        ("from_same_b && " + PairWPFilter())
-    };
+    const std::array<std::string, 2> filter_strs = { TruthFilter(), RecoFilter() };
     const std::array<std::string, 2> label_strs  = {
         "truth p_{T}^{pair}", "reco p_{T}^{pair}"
     };
@@ -513,8 +533,7 @@ void plot_err_fraction_map(int nbins_arg, double xmax_arg, const std::string& su
         // Fill differential histograms
         std::vector<TH1D*> hists(nkn);
         for (int ikn = 0; ikn < nkn; ikn++) {
-            const std::string tree = "muon_pair_tree_kin" + std::to_string(ikn) + "_sign2";
-            ROOT::RDataFrame df(tree, input_file);
+            ROOT::RDataFrame df(PairTree(ikn), input_file);
             auto hptr = df.Filter(filter)
                           .Histo1D(ROOT::RDF::TH1DModel{
                               ("hef_" + var + "_kn" + std::to_string(ikn)).c_str(), "",
@@ -590,7 +609,7 @@ void plot_err_fraction_map(int nbins_arg, double xmax_arg, const std::string& su
         for (int ikn = 0; ikn < nkn; ikn++)
             leg1->AddEntry(hists[ikn], kn_labels[ikn].c_str(), "lep");
         leg1->Draw();
-        TLatex lat1; lat1.SetNDC(); lat1.SetTextSize(0.038);
+        TLatex lat1; lat1.SetNDC(); lat1.SetTextSize(HeaderTextSize());
         // HONESTY (key physics observable). The TEST sample carries the Pb 4:6:6:9 isospin AVERAGE
         // (it was produced with 4 beams by mistake), so its absolute sigma is NOT a physical pp
         // cross-section -- say so. The FULL sample is pp-beam-only with isospin weight 1, so its
@@ -598,7 +617,7 @@ void plot_err_fraction_map(int nbins_arg, double xmax_arg, const std::string& su
         // FALSE warning).
         lat1.DrawLatex(0.17, 0.92, (std::string("Pythia fullsim pp24 ")
             + (g_is_test_sample ? "TEST sample" : "FULL sample")
-            + ", single-b signal, " + label).c_str());
+            + ", " + SelLabel() + ", " + label).c_str());
         if (g_is_test_sample) {
             TLatex lat_warn;
             lat_warn.SetNDC();
@@ -631,7 +650,7 @@ void plot_err_fraction_map(int nbins_arg, double xmax_arg, const std::string& su
         h2->GetZaxis()->SetTitleOffset(1.3);
         h2->GetYaxis()->SetLabelSize(0.05);
         h2->Draw("colz");
-        TLatex lat2; lat2.SetNDC(); lat2.SetTextSize(0.038);
+        TLatex lat2; lat2.SetNDC(); lat2.SetTextSize(HeaderTextSize());
         lat2.DrawLatex(0.15, 0.92, ("Full-sample error fraction, " + label).c_str());
 
         c->SaveAs((output_dir + subdir + outname + ".png").c_str());
@@ -680,10 +699,7 @@ void plot_err_ratio_map(int nbins_arg, double xmax_arg, const std::string& suffi
     const std::array<std::string, 2> var_titles  = {
         "truth p_{T}^{pair} [GeV]", "reco p_{T}^{pair} [GeV]"
     };
-    const std::array<std::string, 2> filter_strs = {
-        "from_same_b",
-        ("from_same_b && " + PairWPFilter())
-    };
+    const std::array<std::string, 2> filter_strs = { TruthFilter(), RecoFilter() };
     const std::array<std::string, 2> label_strs  = {
         "truth p_{T}^{pair}", "reco p_{T}^{pair}"
     };
@@ -702,8 +718,7 @@ void plot_err_ratio_map(int nbins_arg, double xmax_arg, const std::string& suffi
         // Fill differential histograms with full-sample error bars
         std::vector<TH1D*> hists(nkn);
         for (int ikn = 0; ikn < nkn; ikn++) {
-            const std::string tree = "muon_pair_tree_kin" + std::to_string(ikn) + "_sign2";
-            ROOT::RDataFrame df(tree, input_file);
+            ROOT::RDataFrame df(PairTree(ikn), input_file);
             auto hptr = df.Filter(filter)
                           .Histo1D(ROOT::RDF::TH1DModel{
                               ("her_" + var + "_kn" + std::to_string(ikn)).c_str(), "",
@@ -784,7 +799,7 @@ void plot_err_ratio_map(int nbins_arg, double xmax_arg, const std::string& suffi
         for (int ikn = 0; ikn < nkn; ikn++)
             leg1->AddEntry(hists[ikn], kn_labels[ikn].c_str(), "lep");
         leg1->Draw();
-        TLatex lat1; lat1.SetNDC(); lat1.SetTextSize(0.038);
+        TLatex lat1; lat1.SetNDC(); lat1.SetTextSize(HeaderTextSize());
         // HONESTY (key physics observable). The TEST sample carries the Pb 4:6:6:9 isospin AVERAGE
         // (it was produced with 4 beams by mistake), so its absolute sigma is NOT a physical pp
         // cross-section -- say so. The FULL sample is pp-beam-only with isospin weight 1, so its
@@ -792,7 +807,7 @@ void plot_err_ratio_map(int nbins_arg, double xmax_arg, const std::string& suffi
         // FALSE warning).
         lat1.DrawLatex(0.17, 0.92, (std::string("Pythia fullsim pp24 ")
             + (g_is_test_sample ? "TEST sample" : "FULL sample")
-            + ", single-b signal, " + label).c_str());
+            + ", " + SelLabel() + ", " + label).c_str());
         if (g_is_test_sample) {
             TLatex lat_warn;
             lat_warn.SetNDC();
@@ -824,7 +839,7 @@ void plot_err_ratio_map(int nbins_arg, double xmax_arg, const std::string& suffi
         h2->GetZaxis()->SetTitleOffset(1.5);
         h2->GetYaxis()->SetLabelSize(0.05);
         h2->Draw("colz");
-        TLatex lat2; lat2.SetNDC(); lat2.SetTextSize(0.038);
+        TLatex lat2; lat2.SetNDC(); lat2.SetTextSize(HeaderTextSize());
         lat2.DrawLatex(0.15, 0.92, ("Full-sample err/xsec ratio, " + label).c_str());
 
         c->SaveAs((output_dir + subdir + outname + ".png").c_str());
@@ -857,9 +872,11 @@ void replot_scale_forecast() {
 // Args (NOT interpreter-global assignment — see the g_* note): is_test_sample selects TEST vs
 // FULL production (input dir, "_full" suffix, honesty caption, forecast-factor no-op);
 // use_tight_wp selects the pair WP (nominal TIGHT).
-void plot_pythia_fullsim_kn_pt_crossx(bool is_test_sample = true, bool use_tight_wp = true) {
+void plot_pythia_fullsim_kn_pt_crossx(bool is_test_sample = true, bool use_tight_wp = true,
+                                      bool ss_loose_mass = false) {
     g_is_test_sample = is_test_sample;
     g_use_tight_wp   = use_tight_wp;
+    g_ss_loose_mass  = ss_loose_mass;
     gStyle->SetOptStat(0);
     gStyle->SetOptTitle(0);
     plot_impl(20, 120., "");
@@ -898,6 +915,9 @@ void plot_impl_projected(int nbins_arg, double xmax_arg, const std::string& suff
     if (g_is_test_sample)
         throw std::runtime_error("plot_impl_projected: projecting additional statistics is only "
             "meaningful starting from the CURRENT FULL sample (g_is_test_sample must be false)");
+    if (g_ss_loose_mass)
+        throw std::runtime_error("plot_impl_projected: the projection is defined for the single-b "
+            "signal population only (it hard-codes the opposite-sign tree and from_same_b)");
 
     const double kSf = PtHatKn45Projected::kSf;   // = 3.75001..., both slices alike
 
@@ -1037,6 +1057,7 @@ void plot_impl_projected(int nbins_arg, double xmax_arg, const std::string& suff
 void plot_pythia_fullsim_kn_pt_crossx_projected(bool use_tight_wp = true) {
     g_is_test_sample = false;
     g_use_tight_wp   = use_tight_wp;
+    g_ss_loose_mass  = false;
     gStyle->SetOptStat(0);
     gStyle->SetOptTitle(0);
     plot_impl_projected(20, 120., "");
