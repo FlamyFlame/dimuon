@@ -8,7 +8,8 @@ set -Eeuo pipefail
 #   4) hadd per-batch outputs into combined muon_pairs + hists_cut_acceptance
 #   5) run RDF crossx hist filling (trigger_mode=3, nominal mode)
 #   6) run crossx plotting
-#   7) run before/after trigger efficiency correction sanity check plots
+#   7) run the correction sanity plots: uncorrected vs corrected, and the correction STAGES
+#      (uncorrected -> + trigger -> + trigger + reco)
 #   8) [optional] run MC-data (POWHEG/Pythia vs pp) comparison plots
 #
 # PP has NO event selection (no ZDC, no centrality, no nTrk_HITight).
@@ -132,8 +133,7 @@ if (!t1 || !t2) {
 }
 Long64_t n1 = t1->GetEntries();
 Long64_t n2 = t2->GetEntries();
-std::cout << "Combined tree entries: muon_pair_tree_sign1=" << n1
-          << ", muon_pair_tree_sign2=" << n2 << std::endl;
+std::cout << "Combined tree entries: muon_pair_tree_sign1=" << n1 << ", muon_pair_tree_sign2=" << n2 << std::endl;
 if (n1 <= 0 || n2 <= 0) {
   std::cout << "ERROR: combined muon_pairs file has empty sign tree(s)" << std::endl;
   fin->Close();
@@ -363,6 +363,11 @@ pushd "$PLOT_DIR" >/dev/null
 INCLUDE_PBPB_SANITY="${INCLUDE_PBPB_SANITY:-false}"
 log "  trigger-correction sanity: include_pbpb=${INCLUDE_PBPB_SANITY}"
 root -l -b -q "plot_crossx_trig_corr_sanity.C(${INCLUDE_PBPB_SANITY})"
+# The correction-STAGE figure (uncorrected -> + trigger -> + trigger + reco, per pair-eta panel,
+# with ratio pads) belongs to the same pass: it reads the *_corr_* stage histograms Stage 5 just
+# wrote, and the trigger-first intermediate stage exists since 2026-09-17
+# (docs/tracking/pp24_trig_eff_hybrid_application.md §3f). It used to be run by hand.
+root -l -b -q "plot_crossx_reco_eff_stages.C(${INCLUDE_PBPB_SANITY})"
 popd >/dev/null
 
 # ------ Stage 8 (optional): MC-data comparison plots ------

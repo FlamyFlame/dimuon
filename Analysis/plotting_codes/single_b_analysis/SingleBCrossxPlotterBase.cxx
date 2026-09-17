@@ -220,7 +220,19 @@ protected:
         const bool y_is_pair_pt = yt.find("p_{T}") != std::string::npos;
         if (x_is_pair_pt) c.SetLogx();
         if (y_is_pair_pt) c.SetLogy();
-        if (x_is_pair_pt || y_is_pair_pt) c.SetLogz();
+        if (x_is_pair_pt || y_is_pair_pt) {
+            c.SetLogz();
+            // ROOT's default log-z floor is 1e-3 x z_max, which on a 5-decade pair-pT map hid
+            // every filled bin above ~62 GeV (24 % of the filled bins) as if the measurement
+            // stopped there. Draw down to the smallest positive bin content instead.
+            double zmin = 0.;
+            for (int ix = 1; ix <= hplot->GetNbinsX(); ++ix)
+                for (int iy = 1; iy <= hplot->GetNbinsY(); ++iy) {
+                    const double v = hplot->GetBinContent(ix, iy);
+                    if (v > 0. && (zmin <= 0. || v < zmin)) zmin = v;
+                }
+            if (zmin > 0.) hplot->SetMinimum(zmin);
+        }
 
         hplot->GetXaxis()->SetTitleSize(0.05);
         hplot->GetYaxis()->SetTitleSize(0.05);

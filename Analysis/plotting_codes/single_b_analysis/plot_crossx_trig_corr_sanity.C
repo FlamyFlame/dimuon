@@ -8,6 +8,7 @@
 #include "TFile.h"
 #include "TH1D.h"
 #include "TH2D.h"
+#include "TLatex.h"
 #include "TLegend.h"
 #include "TStyle.h"
 #include "TSystem.h"
@@ -33,8 +34,13 @@
 // stale is the histograms, until the Pb+Pb crossx refill. The default stays true so that a
 // Pb+Pb run keeps hitting the guard until then; the pp pipeline passes false explicitly
 // (INCLUDE_PBPB_SANITY), because Phase 3a runs before the Pb+Pb refill of Phase 3b.
-void plot_crossx_trig_corr_sanity(bool include_pbpb = true) {
+// `use_tight_wp` (default TRUE = the nominal Tight, unsuffixed histogram files; false = the
+// Medium WP-systematic `_medium_wp` files, docs/muon_wp_registry.md). The figure states the
+// dataset, trigger and working point in every panel.
+void plot_crossx_trig_corr_sanity(bool include_pbpb = true, bool use_tight_wp = true) {
     gStyle->SetOptStat(0);
+    const std::string wp_suffix = use_tight_wp ? "" : "_medium_wp";
+    const std::string wp_text   = use_tight_wp ? "tight WP" : "medium WP";
 
     const std::string data_dir = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data";
     const std::string out_dir  = data_dir + "/plots/sanity_check_crossx";
@@ -79,14 +85,14 @@ void plot_crossx_trig_corr_sanity(bool include_pbpb = true) {
                 std::string base = dir + "/histograms_real_pairs_pp_20" + std::to_string(yr);
                 const std::string trig = DatasetTriggerMap::GetTrigger(yr, "pp");
                 candidates = {
-                    base + "_" + trig + "_nominal.root",
+                    base + "_" + trig + "_nominal" + wp_suffix + ".root",
                     base + "_" + trig + "_coarse_q_eta_bin.root",
                 };
             } else {
                 std::string base = dir + "/histograms_real_pairs_pbpb_20" + std::to_string(yr);
                 const std::string trig = DatasetTriggerMap::GetTrigger(yr, "PbPb");
                 candidates = {
-                    base + "_" + trig + "_no_trg_plots_nominal.root",
+                    base + "_" + trig + "_no_trg_plots_nominal" + wp_suffix + ".root",
                     base + "_" + trig + "_no_trg_plots_coarse_q_eta_bin.root",
                     base + "_" + trig + "_no_trg_plots_fine_q_eta_bin.root",
                 };
@@ -235,11 +241,17 @@ void plot_crossx_trig_corr_sanity(bool include_pbpb = true) {
             leg->AddEntry(hp_raw,  "Uncorrected", "lpe");
             leg->AddEntry(hp_corr, "Corrected (#varepsilon_{trig} #times #varepsilon_{reco})", "lpe");
             leg->Draw();
+            // Dataset, trigger and working point: top-RIGHT of the pad, the corner a steeply
+            // falling log-y spectrum leaves empty (a 4th legend entry in the lower-left box
+            // pushed the box onto the [43.8,52.2) point in the forward panels).
+            TLatex t; t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.042); t.SetTextAlign(33);
+            t.DrawLatex(0.88, 0.87, (spec.is_pp ? "pp 2024, 2mu4, " + wp_text
+                                                : "Pb+Pb combined, mu4, " + wp_text).c_str());
         }
 
         std::string safe_label = spec.label;
         std::replace(safe_label.begin(), safe_label.end(), ' ', '_');
-        std::string out_path = out_dir + "/" + safe_label + "_pair_pt_in_eta_subplots.png";
+        std::string out_path = out_dir + "/" + safe_label + "_pair_pt_in_eta_subplots" + wp_suffix + ".png";
         c.SaveAs(out_path.c_str());
         std::cout << "[INFO] Saved: " << out_path << std::endl;
 

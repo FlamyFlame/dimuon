@@ -1,14 +1,20 @@
 // =============================================================================
 // plot_crossx_reco_eff_stages.C
 //
-// Before/after efficiency-correction comparison for the single-b crossx, showing
-// the impact of the reconstruction-efficiency PLACEHOLDER. Per pair-eta bin, the
-// pair-pT differential cross-section is drawn as THREE lines:
-//   - Uncorrected                                 = *_corr_raw
-//   - Reconstruction-efficiency corrected         = *_corr_unfolded_reco
-//   - Reconstruction- and trigger-efficiency corrected = *_corr_unfolded_reco_trig
+// Correction-stage comparison for the single-b crossx. Per pair-eta bin, the pair-pT
+// differential cross-section is drawn as THREE lines, TRIGGER FIRST (user, 2026-09-17;
+// docs/tracking/pp24_trig_eff_hybrid_application.md §3f), so the trigger correction's own
+// impact is the first step shown:
+//   - Uncorrected                                       = *_corr_raw
+//   - Trigger-efficiency corrected                      = *_corr_unfolded_trig
+//   - Trigger- and reconstruction-efficiency corrected  = *_corr_unfolded_reco_trig
+// FALLBACK, per sample: a histogram file produced BEFORE the trigger-first stage existed
+// (2026-09-17, CorrectionStages.h) has no *_corr_unfolded_trig; such a sample is drawn with the
+// older reco-first triple (raw / +reco / +reco+trig) and the fallback is PRINTED. The final
+// stage is the same either way (the corrections commute). Pb+Pb on disk is in that state until
+// its next crossx refill.
 // The reconstruction efficiency is the measured pp24-fullsim 3D PAIR efficiency for pp and the
-// Run-2 single-muon PLACEHOLDER for PbPb -- the legend no longer calls it a placeholder in both.
+// Run-2 single-muon PLACEHOLDER for PbPb -- the legend says so for Pb+Pb.
 // (the "unfolded" stage is an identity placeholder, so raw == unfolded for now.)
 //
 // Uses the correction-stage histograms added by FillHistogramsCrossx (PP+PbPb).
@@ -16,7 +22,13 @@
 // convention). pp24 is a single sample. See
 // docs/tracking/reco_eff_placeholder_run2.md.
 //
-// Run: root -l -b -q plot_crossx_reco_eff_stages.C
+// Muon working point: `use_tight_wp` (default TRUE = the nominal Tight, unsuffixed histogram
+// files; false = the Medium WP-systematic `_medium_wp` files, docs/muon_wp_registry.md). The
+// figure states the dataset, trigger and working point in its legend strip.
+//
+// Run: root -l -b -q plot_crossx_reco_eff_stages.C                 (both samples, Tight)
+//      root -l -b -q 'plot_crossx_reco_eff_stages.C(false)'        (pp only -- the pp pipeline's Stage 7)
+//      root -l -b -q 'plot_crossx_reco_eff_stages.C(false,false)'  (pp only, Medium WP)
 // =============================================================================
 #include <algorithm>
 #include <iostream>
@@ -42,8 +54,10 @@
 #include "../../Utilities/PbPbSampledLumi.h"
 #include "../../Utilities/PairEtaPanelBins.h"
 
-void plot_crossx_reco_eff_stages() {
+void plot_crossx_reco_eff_stages(bool include_pbpb = true, bool use_tight_wp = true) {
     gStyle->SetOptStat(0);
+    const std::string wp_suffix = use_tight_wp ? "" : "_medium_wp";
+    const std::string wp_text   = use_tight_wp ? "tight WP" : "medium WP";
 
     const std::string data_dir = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data";
     const std::string out_dir  = data_dir + "/plots/sanity_check_crossx";
@@ -52,12 +66,20 @@ void plot_crossx_reco_eff_stages() {
     const CommonEffcyConfig cfg{};
     const auto& eta_bins = cfg.pair_eta_proj_ranges_coarse_incl_gap;
 
-    // The three correction stages to overlay (suffix, legend, color, marker).
+    // The three correction stages to overlay (suffix, legend, color, marker), TRIGGER FIRST.
     // The reconstruction-efficiency label is SAMPLE-DEPENDENT. pp applies the measured
     // pp24-fullsim 3D pair efficiency; Pb+Pb still applies the Run 2 single-muon PLACEHOLDER, and
     // a reader of the Pb+Pb figure must be able to see that from the figure itself.
     struct Stage { std::string suffix, label, label_pbpb; int color, marker; };
-    const std::vector<Stage> stages = {
+    const std::vector<Stage> stages_trig_first = {
+        {"_corr_raw",               "Uncorrected", "Uncorrected", kBlack, 24},
+        {"_corr_unfolded_trig",     "+ trigger efficiency", "+ trigger efficiency", kBlue+1, 25},
+        {"_corr_unfolded_reco_trig","+ reconstruction efficiency",
+                                    "+ reconstruction efficiency (Run 2 placeholder)", kRed+1, 20},
+    };
+    // The pre-2026-09-17 reco-first triple, used ONLY for a file that lacks the trigger-first
+    // stage (see the header). Same first and last stage.
+    const std::vector<Stage> stages_reco_first = {
         {"_corr_raw",               "Uncorrected", "Uncorrected", kBlack, 24},
         {"_corr_unfolded_reco",     "+ reconstruction efficiency",
                                     "+ reconstruction efficiency (Run 2 placeholder)", kBlue+1, 25},
@@ -87,15 +109,21 @@ void plot_crossx_reco_eff_stages() {
     };
 
     for (const auto& spec : samples) {
+        if (!include_pbpb && !spec.is_pp) {
+            std::cout << "SKIP (include_pbpb=false): " << spec.label << std::endl;
+            continue;
+        }
+        std::vector<TH2D*> h2;
+        std::vector<Stage> stages;   // the triple actually drawn for THIS sample
         std::vector<std::pair<int,TFile*>> files; // (year, file) for luminosity-weighted combine
         for (const auto& [yr, dir] : spec.year_paths) {
             std::vector<std::string> candidates;
             if (spec.is_pp) {
                 std::string base = dir + "/histograms_real_pairs_pp_20" + std::to_string(yr);
-                candidates = { base + "_2mu4_nominal.root" };  // pp24 2mu4 crossx output
+                candidates = { base + "_2mu4_nominal" + wp_suffix + ".root" };  // pp24 2mu4 crossx output
             } else {
                 std::string base = dir + "/histograms_real_pairs_pbpb_20" + std::to_string(yr);
-                candidates = { base + "_single_mu4_no_trg_plots_nominal.root" };  // PbPb single-mu4 crossx output
+                candidates = { base + "_single_mu4_no_trg_plots_nominal" + wp_suffix + ".root" };  // PbPb single-mu4 crossx output
             }
             for (const auto& c : candidates) {
                 // Probe before opening: TFile::Open on a non-existent path prints a raw
@@ -149,7 +177,41 @@ void plot_crossx_reco_eff_stages() {
             return combined;
         };
 
-        std::vector<TH2D*> h2(stages.size(), nullptr);
+        // Trigger-first only if EVERY opened file carries that stage; otherwise the older
+        // reco-first triple for the whole sample. Decided per FILE, not on the combined
+        // histogram: getStage2D silently skips a year that lacks the stage, so a mixed set of
+        // years (some refilled after 2026-09-17, some not) would otherwise draw an intermediate
+        // curve summed over a SUBSET of the years against first/last stages summed over all of
+        // them -- a year-set mismatch that would read as a correction step in the ratio pad.
+        {
+            std::vector<int> missing;
+            for (auto& [yr, f] : files) {
+                bool has = false;
+                if (spec.is_pp) {
+                    has = f->Get((spec.pp_base_name + stages_trig_first[1].suffix).c_str()) != nullptr;
+                } else {
+                    TIter next(f->GetListOfKeys()); TKey* key;
+                    while ((key = (TKey*)next())) {
+                        const std::string nm = key->GetName();
+                        const std::string& suf = stages_trig_first[1].suffix;
+                        if (nm.find(spec.pbpb_name_contains) != std::string::npos &&
+                            nm.size() >= suf.size() &&
+                            nm.compare(nm.size() - suf.size(), suf.size(), suf) == 0) { has = true; break; }
+                    }
+                }
+                if (!has) missing.push_back(yr);
+            }
+            if (missing.empty()) stages = stages_trig_first;
+            else {
+                stages = stages_reco_first;
+                std::cout << "[INFO] " << spec.label << ": no '" << stages_trig_first[1].suffix
+                          << "' stage in the histogram file(s) of year(s)";
+                for (int yr : missing) std::cout << " " << yr;
+                std::cout << " (produced before 2026-09-17) -> drawing the reco-first triple "
+                             "raw / +reco / +reco+trig for the whole sample instead" << std::endl;
+            }
+        }
+        h2.assign(stages.size(), nullptr);
         bool ok = true;
         for (size_t s = 0; s < stages.size(); ++s) {
             h2[s] = getStage2D(stages[s]);
@@ -288,6 +350,11 @@ void plot_crossx_reco_eff_stages() {
             for (size_t s = 1; s < stages.size(); ++s) hp[s]->Draw("E1 same");
             TLatex t; t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.075);
             t.DrawLatex(0.24, 0.10, Form("#eta^{pair} #in [%.1f, %.1f]", eb.first, eb.second));
+            // Dataset, trigger and working point, top-right of every spectrum pad (empty on a
+            // steeply falling log-y spectrum), as the crossx panels state them.
+            t.SetTextSize(0.058); t.SetTextAlign(33);
+            t.DrawLatex(0.89, 0.91, (spec.is_pp ? "pp 2024, 2mu4, " + wp_text
+                                                : "Pb+Pb combined, mu4, " + wp_text).c_str());
 
             lo->cd();
             std::vector<TH1D*>& ratios = all_ratios[ieta];
@@ -295,7 +362,9 @@ void plot_crossx_reco_eff_stages() {
                 TH1D* r = ratios[i];
                 r->SetTitle("");
                 r->GetYaxis()->SetTitle("corrected / uncorrected");
-                r->GetYaxis()->SetRangeUser(0.9 * rmin_all, 1.1 * rmax_all);
+                // The reference line at 1 must be inside the frame (a 1/eps correction is >= 1,
+                // so the lower edge is pulled down to just below 1).
+                r->GetYaxis()->SetRangeUser(std::min(0.9 * rmin_all, 0.9), 1.1 * rmax_all);
                 r->GetYaxis()->SetNdivisions(505);
                 r->GetXaxis()->SetTitle("p_{T}^{pair} [GeV]");
                 r->GetXaxis()->SetTitleSize(0.120); r->GetXaxis()->SetLabelSize(0.105);
@@ -315,7 +384,7 @@ void plot_crossx_reco_eff_stages() {
         }
 
         std::string safe = spec.label; std::replace(safe.begin(), safe.end(), ' ', '_');
-        std::string out_path = out_dir + "/" + safe + "_reco_eff_stages_pair_pt_in_eta.png";
+        std::string out_path = out_dir + "/" + safe + "_reco_eff_stages_pair_pt_in_eta" + wp_suffix + ".png";
         c.SaveAs(out_path.c_str());
         std::cout << "[INFO] Saved: " << out_path << "\n";
 
