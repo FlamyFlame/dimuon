@@ -27,6 +27,11 @@ root -b -l << EOF
 	// AMI PROVENANCE: the overlay is built on the pp-beam evgen DSIDs. AMI files are keyed by
 	// beam+slice only, so declare them; InitInputFullsim throws if another production is read.
 	py.expected_ami_dsids = {802776, 802777, 802778, 802779, 802780, 802781};
+	// SINGLE-SLICE pbpb24 TEST sample (r17864, pTH125_300 only; hijing_overlay_pbpb24_test_sample_skim.md):
+	// a missing pT-hat slice is fatal by default because it biases the sigma-weighted combination.
+	// TEMPORARY, diagnostic only: allow it for year 24 until the full 6-slice pbpb24 production
+	// exists -- then DELETE this line so the guard is strict again. The 6-slice pbpb23 sample stays strict.
+	py.allow_missing_slices = (${OVERLAY_YEAR} == 24);
 	py.fill_kn_trees_fullsim = true;
 	py.store_mc_trigger = true;
 	py.output_single_muon_tree = true;

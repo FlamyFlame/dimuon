@@ -151,13 +151,75 @@ User-selected checks, each vs the pbpb23 (r17618) sample restricted to the SAME 
 1. [x] FCal ΣE_T distributions, both samples → `plots/r17864_rtag_sanity/fcal_sum_et_r17864_vs_r17618_pTH125_300.png`
 2. [x] reco vs truth vertex z, r17864 → `plots/r17864_rtag_sanity/vertex_z_reco_vs_truth_r17864.png`
    (reco PV mean -71.2054 mm on a truth point of -71.2000; residual -5.4 ± 11.1 µm vs -0.2 ± 9.1 µm for r17618)
-3. [ ] muon reco efficiency + detector response (full MC chain: NTP → RDF → plots) on r17864
-4. [ ] MC single-muon mu4 efficiency (no pair efficiency)
-5. [ ] `from_same_b` fraction vs pbpb23 pTH125_300
+3. [x] muon reco efficiency + detector response — full chain run (`plots/hijing_overlay_pbpb24_{reco_effcy_plots,det_resp_plots,reco_effcy_plots_require_signal_cuts}/`, 300+72+300 PNGs) + slice-matched comparison `plots/r17864_rtag_sanity/single_muon_reco_effcy_vs_pt_ctr{0_5,5_10}_r17864_vs_r17618.png`, `single_muon_pt_eta_response_ctr0_5_r17864_vs_r17618.png`
+4. [x] MC single-muon mu4 efficiency (Step-1 mirror, 0-5 %) — `single_muon_mu4_effcy_vs_pt{,_coarse}_ctr0_5_r17864_vs_r17618.png`
+5. [x] `from_same_b` fraction — `from_same_b_fraction_r17864_vs_r17618.csv`
 Code: `plotting_codes/overlay_rtag_checks/plot_r17864_event_level.cxx` (items 1-2; raw skim event-level branches, no
-processing procedure involved). Items 3-5 need the NTP/RDF chain, which is being refactored concurrently
-(`fullsim_sample_dir_layout.md`, uncommitted as of 2026-09-16 18:00: `FullSimSampleType.h` pbpb_year knob, overlay run
-scripts, RDF overlay filling, pipeline) — BLOCKED until that lands; do not run the chain on a half-edited tree.
+processing procedure involved). Items 3-5: the sample-dir-layout refactor (`fullsim_sample_dir_layout.md`) landed
+2026-09-16 ~18:00 (commits 2d78e97 / edd66ba / 14d6067) with the `overlay_pbpb_year` knob, so the chain runs as-is.
+
+**User decisions 2026-09-16 (centrality):** FCal distribution without centrality cut; reco AND trigger efficiency keep
+the nominal FCal-centrality selection (0-5 % for the MC trig-eff Step 1, per-centrality bins for reco-eff) — NO code
+change. Consequence for r17864 (broken FCal): only 4.2 % of events are "0-5 %" and 37.4 % have centrality = -1.
+
+Centrality-bin population (skim `centrality`, 2023 FCal calibration; pTH125_300, 10 000 events each):
+
+| bin | pbpb23 (r17618) | pbpb24 (r17864) |
+|---|---|---|
+| 0-10 % | 99.32 % | 7.59 % |
+| 10-20 % | 0.68 % | 7.89 % |
+| 20-30 % | 0 | 8.19 % |
+| 30-40 % | 0 | 9.22 % |
+| 40-50 % | 0 | 12.57 % |
+| 50-80 % | 0 | 16.31 % |
+| 80-100 % | 0 | 0.80 % |
+| undefined (-1: below the calibration's 100 % edge, incl. all negative FCal) | 0 | 37.43 % |
+| (0-5 % / 5-10 % sub-split) | 81.54 / 17.78 % | 4.20 / 3.39 % |
+
+**Chain runs (all with the post-refactor code, same day):**
+- r17864: `OVERLAY_YEAR=24 pipeline_pythia_fullsim_overlay.sh hijing` (Condor NTP → RDF → reco-eff/det-resp plots;
+  5 min, single slice) + `run_pythia_fullsim_overlay_{mc_trig,single_muon_mc_trig,single_muon}.sh` locally. Outputs flat in
+  the sample dir (`muon_pairs_..._pbpb24_no_data_resonance_cuts{,_mc_trig,_mc_trig_single_muon,_single_muon}.root`,
+  `histograms_..._pbpb24_...root`, `plots/hijing_overlay_pbpb24_{reco_effcy_plots,reco_effcy_plots_require_signal_cuts,det_resp_plots}/`).
+  Sanity: OS pairs 6689, SS 2052 (kin5 only, kin0-4 empty); mc_trig single-muon tree 13 596 reco-matched truth muons
+  (pbpb23 slice: 15 205 → -10.6 %, the reco-eff deficit again). AMI read from the sample's own `ami_info/`
+  (w_factor 2.09733e-05 = 0.20973 nb / 10 000). The 5 missing slices are SKIPPED via `allow_missing_slices`, which the four
+  overlay run scripts + the Condor worker now set for `overlay_year == 24` ONLY (TEMPORARY — delete when the 6-slice pbpb24
+  production exists).
+- pbpb23 reference restricted to the SAME slice: `..._pbpb23/r17618_pTH125_300_run/` (symlink to the pTH125_300 NTUP,
+  `fullsim_input_dir_override`, outputs suffixed `_r17618pTH125_300`), driven by the new
+  `NTupleProcessingCode/run_pythia_fullsim_overlay_pbpb23_pTH125_300_slice.sh {pair,single_muon,mc_trig,mc_trig_single_muon}`.
+  Needed because the existing pbpb23 products are 6-slice AND of mixed vintage (Jul 22 / Aug 3 / Aug 13 / Sep 9).
+- Comparison macro: `plotting_codes/overlay_rtag_checks/plot_r17864_vs_r17618_pTH125_300.cxx` (recoeff | trigeff | detresp | samb),
+  selections mirrored from `plot_single_muon_reco_effcy_r17618_vs_r17662.cxx` and `FillMCTrigEffHists.cxx` Step 1.
+
+### R2. Slice-matched comparison r17864 vs r17618 (pTH125_300, same NTP code, 2026-09-16; reviewer-verified numbers)
+
+| quantity (Tight WP) | r17864 (2024 cond.) | r17618 (2023 cond.) | ratio |
+|---|---|---|---|
+| single-μ reco ε, FCal 0-5 %, bins 4.5-8 / 8-14 / 14-25 / 25-100 GeV | 0.563 / 0.624 / 0.660 / 0.640 (N = 252/213/153/139) | 0.588 / 0.661 / 0.675 / 0.709 | 0.96 / 0.94 / 0.98 / 0.90 (±0.05-0.06) |
+| single-μ reco ε, FCal 5-10 % | 0.54 / 0.55 / 0.56 / 0.63 | 0.65 / 0.70 / 0.73 / 0.75 | 0.83 / 0.79 / 0.76 / 0.83 (> 3σ each; r17864 "5-10 %" is not a comparable population) |
+| single-μ reco ε, **centrality-blind** (all events, same trees) | 10681 / 18304 = **0.584** | 12058 / 18284 = **0.660** | **0.885** |
+| mu4 ε, Step-1 selection, 0-5 % | 314 / 424 = 0.741 | 6882 / 8902 = 0.773 | 0.958 ± 0.03 |
+| mu4 ε, coarse bins 4.5-8 / 8-14 / 14-25 / 25-100 | 0.64 / 0.85 / 0.71 / 0.78 | 0.70 / 0.80 / 0.80 / 0.81 | 0.92 / 1.07 / 0.89 / 0.96 (±0.04-0.06) |
+| mu4 ε, centrality-blind | 7388 / 9710 = 0.761 | 8654 / 11084 = 0.781 | 0.975 |
+| (pT_reco − pT_truth)/pT_truth, 0-5 %: mean / RMS | −0.25 % / **3.24 %** | −0.13 % / 2.99 % | RMS +8 % |
+| η_reco − η_truth RMS | 0.74e-3 | 0.74e-3 | = |
+| from_same_b, all OS reco pairs | 0.3135 ± 0.0057 (6689) | 0.3200 ± 0.0057 (6593) | consistent |
+| from_same_b, Tight OS pairs (pT>4.5, |η|<2.4 both) | 0.2947 (2389 pairs) | 0.2982 (2998 pairs) | consistent; pair count −20 % ≈ 0.885² |
+
+Truth structure is unaffected by the r-tag (from_same_b, barcode layout, truth-muon multiplicity 1.88 vs 1.84 per event all
+agree); the r17864 deficits are all reconstruction-level: −11 % Tight reco efficiency (centrality-blind), −2..−4 % mu4
+efficiency, +8 % pT-resolution width, on top of the broken calorimeter (R1). Nominal pipeline plots for r17864 exist but
+their per-centrality panels are statistics-starved (only 4.2 % of events in "0-5 %").
+
+**Vertex z (user question):** the real Pb+Pb 2024 PV is at z = −5.8 mm (RMS 47 mm; pbpb23 −5.7 ± 43, pbpb25 −2.0 ± 49,
+pp24 −5.1 ± 52 mm, from the data skims), so the pinned −71.2 mm of s4684/r17864 does NOT reproduce the 2024 beam spot
+(the pbpb23-conditions sample's −3.3 mm was close to reality). A 7 cm shift changes the FCal η-acceptance by Δη ≈ 0.015
+(percent-level ΣE_T change, A/C asymmetric) and the calorimeter time-of-flight by 0.23 ns (≪ 25 ns) — it cannot produce
+negative sums, a 10× drop, or the observed A = C symmetry; the vertex is also reconstructed correctly (residual −5 µm).
+It is therefore not the cause of R1; it could at most shift η-edge acceptances by ~0.03-0.07 and should be corrected to the
+data value (with the data's ~47 mm spread) in the full production regardless.
 
 ## Remaining Work
 
@@ -166,4 +228,4 @@ scripts, RDF overlay filling, pipeline) — BLOCKED until that lands; do not run
 
 ## Latest Stage
 
-2026-09-16 18:10: verification items 1-2 plotted (under /review-plot). Items 3-5 wait for the concurrent sample-dir-layout refactor to be committed; then run `pipeline_pythia_fullsim_overlay.sh` with overlay_year=24 (single slice → allow_missing_slices) and the MC single-muon trig-eff step; compare with pbpb23 pTH125_300-only.
+2026-09-16 20:40: verification round items 1-5 delivered (R1b, R2); comparison plots under /review-plot iteration 2. Open: user decision on reporting R1/R2 + the −71.2 mm vertex to the production contact.

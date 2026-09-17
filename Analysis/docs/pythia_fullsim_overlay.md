@@ -19,7 +19,15 @@ default 24) in `pipeline_pythia_fullsim_overlay.sh` / the `run_pythia_fullsim_ov
 studies r17618 / r17662 / r17663 explicitly names the `_pbpb23` directory. Per-sample directory layout (MC-only products in `mc_trig_eff/`, `reco_eff/` subtrees; NTP + hist-filling outputs flat):
 `FullSimSampleType.h` "PER-SAMPLE DIRECTORY LAYOUT" / `pipelines/fullsim_sample_layout.sh`.
 
-**Current limitation:** All paths point to test samples (6 NTUP files, ~10k events each). When full overlay samples become available, update `FullSimSampleType.h` paths and the Condor `.sub` file queue count.
+**Current limitation:** All paths point to test samples. The pbpb23 sample has 6 NTUP files (one per pT-hat slice, ~10k events each); the pbpb24 (r17864) test sample has ONE slice
+(pTH125_300), so the `run_pythia_fullsim_overlay*.sh` scripts and the Condor worker set `py.allow_missing_slices = (year == 24)` — TEMPORARY, delete it when the 6-slice pbpb24
+production exists (a missing slice biases the σ-weighted combination, hence the strict default). When full overlay samples become available, update `FullSimSampleType.h` paths and the
+Condor `.sub` file queue count.
+
+**r-tag sanity comparison (2026-09-16):** `NTupleProcessingCode/run_pythia_fullsim_overlay_pbpb23_pTH125_300_slice.sh {pair,single_muon,mc_trig,mc_trig_single_muon}` reprocesses the
+pbpb23 sample restricted to the pTH125_300 slice (symlink dir `..._pbpb23/r17618_pTH125_300_run/`, outputs suffixed `_r17618pTH125_300`) as the like-for-like reference for the single-slice
+r17864 sample; `plotting_codes/overlay_rtag_checks/plot_r17864_{event_level,vs_r17618_pTH125_300}.cxx` make the comparison plots. Results and the r17864 verdict (broken calorimeter
+response, −11 % reco efficiency): `docs/tracking/hijing_overlay_pbpb24_test_sample_skim.md`.
 
 ## Key files
 

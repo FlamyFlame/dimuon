@@ -14,8 +14,8 @@ source $ATLAS_LOCAL_ROOT_BASE/user/atlasLocalSetup.sh
 # Setup LCG
 lsetup "views LCG_107a_ATLAS_2 x86_64-el9-gcc13-opt"
 
-# NOTE: the pbpb24 test sample holds ONE slice (pTH125_300); a run on it throws "NO input for
-# pTH8_14" unless py.allow_missing_slices is set -- loud by design (docs/ami_weights.md).
+# NOTE: the pbpb24 test sample holds ONE slice (pTH125_300); the strict guard would throw "NO input
+# for pTH8_14" (loud by design, docs/ami_weights.md), so allow_missing_slices is set for year 24 below.
 : "${OVERLAY_YEAR:=24}"
 
 # Run the analysis
@@ -32,6 +32,10 @@ root -b -l << EOF
 	// AMI PROVENANCE: the overlay is built on the pp-beam evgen DSIDs. AMI files are keyed by
 	// beam+slice only, so declare them; InitInputFullsim throws if another production is read.
 	py.expected_ami_dsids = {802776, 802777, 802778, 802779, 802780, 802781};
+	// SINGLE-SLICE pbpb24 TEST sample (r17864, pTH125_300 only; hijing_overlay_pbpb24_test_sample_skim.md):
+	// TEMPORARY, diagnostic only -- allow the missing slices for year 24 until the full 6-slice
+	// pbpb24 production exists, then DELETE this line. The 6-slice pbpb23 sample stays strict.
+	py.allow_missing_slices = (${OVERLAY_YEAR} == 24);
 	// py.nevents_max = 1000;  // uncomment to test with limited events
 	// py.debug_mode = true;   // uncomment for verbose debug output
 	py.fill_kn_trees_fullsim = true;
