@@ -410,12 +410,14 @@ inline std::string DrCorrFitFile(const DrCorrSample& s, bool use_tight_wp, int s
 //   REGION A, bins 1..N-2 ([9, 74.24) GeV):  eps^nc_data(1) * eps^nc_data(2) * eps_dR(dR; cell)
 //       eps_dR from the NO-PLATEAU-CORRECTION fit (free baseline C, eps_dR = f/C for dR < 1),
 //       OPPOSITE-sign series, on the 3-group |eta^pair| fold (DrCorrCrossxMode below). The
-//       primary fit form per cell is DrCorrCrossxMethod() ("expo"), EXCEPT the cells named by
-//       DrCorrCrossxPolyPtBins() x the LAST |eta| group, whose primary is the constrained
-//       polynomial (user choice on the 2026-09-10 fit figures: the polynomial describes the
-//       points where expo rails at p = 8). The ONLY fallback is DrCorrCrossxFallbackMethod()
-//       ("interp"); there is NO raw-bin tier any more, and a cell with neither its primary nor
-//       the interpolation accepted THROWS at load time (user, 2026-09-17).
+//       primary fit form per cell is DrCorrCrossxMethod() ("expo"), EXCEPT -- in the
+//       OPPOSITE-SIGN series ONLY -- the cells named by DrCorrCrossxPolyPtBins(sign) x the LAST
+//       |eta| group, whose primary is the constrained polynomial (user choice on the 2026-09-10
+//       OS fit figures: the polynomial describes the points where expo rails at p = 8). The
+//       SAME-SIGN series is expo -> interp in EVERY cell, no polynomial anywhere (user,
+//       2026-09-17): DrCorrCrossxPolyPtBins("ss") is empty. The ONLY fallback is
+//       DrCorrCrossxFallbackMethod() ("interp"); there is NO raw-bin tier any more, and a cell
+//       with neither its primary nor the interpolation accepted THROWS at load time.
 //   REGION B, bins N-1..N ([74.24, 150) GeV): eps^pair_MC(cell) * SF(1) * SF(2)
 //       the SINGLE-VALUE pair 2mu4 efficiency (Utilities/PairTrigEffEvaluator.h, PURE form) in
 //       the SIGNAL mass window, opposite sign, on the UN-MERGED cells, times the product of the
@@ -431,14 +433,24 @@ inline const char* DrCorrCrossxPolyMethod()     { return "polyu_fixedRp"; }   //
 inline const char* DrCorrCrossxFallbackMethod() { return "interp"; }          // the ONLY fallback
 inline const char* DrCorrCrossxSign()           { return "os"; }
 inline const char* DrCorrCrossxMode()           { return "nocorr_etamerge"; }
-// The region-A cells whose PRIMARY is the polynomial: pair-pT bins 2, 3, 4 (1-based on
-// ParamsSet::pair_pt_coarse_bins -- [12.8,18.2), [18.2,25.8), [25.8,36.7) GeV on the 9 -> 150
-// axis) x the LAST |eta^pair| group ([2.0, 2.2), the most forward). Named by INDEX so the
-// choice follows the canonical axes; the physical ranges are printed from the axes at load time.
-inline const std::vector<int>& DrCorrCrossxPolyPtBins()
+// The region-A cells whose PRIMARY is the polynomial, PER SIGN SERIES (user, 2026-09-17):
+//   "os"  pair-pT bins 2, 3, 4 (1-based on ParamsSet::pair_pt_coarse_bins -- [12.8,18.2),
+//         [18.2,25.8), [25.8,36.7) GeV on the 9 -> 150 axis) x the LAST |eta^pair| group
+//         ([2.0, 2.2), the most forward). Named by INDEX so the choice follows the canonical
+//         axes; the physical ranges are printed from the axes at load time.
+//   "ss"  NONE -- the same-sign series is always expo -> interp. (Today the same-sign PAIRS are
+//         weighted with the opposite-sign numbers, doc D2, so no "ss" series is loaded by the
+//         crossx; this entry binds the rule for the day D2 is reverted.)
+// Any other series token throws: the choice was made per series on the fit figures and must not
+// be inherited by a series nobody looked at.
+inline const std::vector<int>& DrCorrCrossxPolyPtBins(const std::string& sign)
 {
-    static const std::vector<int> b = {2, 3, 4};
-    return b;
+    static const std::vector<int> os = {2, 3, 4};
+    static const std::vector<int> ss = {};
+    if (sign == "os") return os;
+    if (sign == "ss") return ss;
+    throw std::runtime_error("DrCorrCrossxPolyPtBins: the polynomial-primary cells are defined per "
+                             "sign series (\"os\" / \"ss\"), got '" + sign + "'");
 }
 // Region B: the single-value pair efficiency's (sign, mass window, cell mode).
 inline const char* PairTrigEffCrossxSign()   { return "os"; }
