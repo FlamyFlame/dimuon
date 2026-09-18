@@ -32,7 +32,7 @@ namespace McDataComprConfig {
 //   meaningful.
 //
 // CANNOT SWITCH: the MC side, and this is physics, not a missing feature. Every MC histogram in
-//   this plot set is a TRUTH-quantity histogram (`*_pass_signal_truth`, `*_gapcut_truth`, in
+//   this plot set is a TRUTH-quantity histogram (`*_pass_signal_truth_gapcut`, `*_gapcut_truth`, in
 //   truth kinematics, with the gap cut on truth q*eta). A reconstruction working point is a
 //   property of a RECONSTRUCTED muon; it does not exist for a truth pair. The Pythia fullsim and
 //   POWHEG files accordingly carry no WP token in their names. So a Medium run of this plot set

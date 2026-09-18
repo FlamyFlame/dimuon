@@ -7,6 +7,7 @@
 #include "RDFBasedHistFillingPythia.cxx"
 #include "../Utilities/GeneralUtils.h"
 #include "../MuonObjectsParamsAndHelpers/FullSimSampleType.h"
+#include <TNamed.h>
 #include <cmath>
 #include <iomanip>
 #include <limits>
@@ -18,10 +19,15 @@
 // ---------------------------------------------------------------------------------------------
 // The comparison plots are built in TWO families, and within one family EVERY sample carries the
 // SAME cuts -- the MC in TRUTH quantities:
-//   SIGNAL  : the data signal region. On the MC side that is exactly the pre-existing
-//             `_single_b_pass_signal_truth` filter (from_same_b + `pass_signal_truth`, which is
-//             already bit-for-bit the data signal region: m_uu in (1.08, 2.9), pair pT > ParamsSet::signal_pair_pt_min (9 GeV),
-//             fiducial gap cut on BOTH muons). No new cut is introduced here.
+//   SIGNAL  : the data signal region. On the MC side that is the `_single_b_pass_signal_truth_gapcut`
+//             filter (from_same_b + `pass_signal_truth` + `pass_gap_truth`, which is bit-for-bit
+//             the data signal region on TRUTH quantities: m_uu in (1.08, 2.9), pair pT >
+//             ParamsSet::signal_pair_pt_min (9 GeV), fiducial gap cut on BOTH muons and
+//             |eta^pair| < 2.2). It is an UNCORRECTED shape comparison, so it keeps the truth
+//             gap cuts -- unlike the reco-efficiency DENOMINATOR `_pass_signal_truth`, which
+//             since 2026-09-17 carries NO gap cut (the gap acceptance is folded into eps_reco;
+//             docs/tracking/pair_reco_eff_gap_acceptance.md). Same `_gapcut` name and meaning
+//             as RDFBasedHistFillingPowhegFullsim.cxx.
 //   GENERIC : all OS (resp. SS) pairs + the fiducial gap cut on both muons, and NOTHING else --
 //             no mass window, no pair-pT threshold, no `from_same_b`. The MC mirror of the data
 //             generic histograms, with the gap cut taken on TRUTH q*eta.
@@ -67,25 +73,27 @@ const std::vector<std::array<std::string,2>>& McVsDataVar2Ds(){
     return v;
 }
 
-// SIGNAL-family filters: the pre-existing truth signal region, on all three pair categories.
-//   _single_b_pass_signal_truth : the physics signal, OS pairs from the same b -- the OS partner
-//                                 of the data.
-//   _op_pass_signal_truth       : all truth OS pairs in the signal region ("MC including its own
-//                                 background") reference.
-//   _ss_pass_signal_truth       : all truth SS pairs in the signal region -- the partner of the
-//                                 data SS panel. `from_same_b` has no same-sign counterpart by
-//                                 construction (df_single_b_weighted = df_op_weighted.Filter(
-//                                 "from_same_b")), so the SS partner is the plain SS category.
+// SIGNAL-family filters: the truth signal region + the truth gap cuts, on all three pair
+// categories (the data-like selection on truth quantities).
+//   _single_b_pass_signal_truth_gapcut : the physics signal, OS pairs from the same b -- the OS
+//                                        partner of the data.
+//   _op_pass_signal_truth_gapcut       : all truth OS pairs in the signal region ("MC including
+//                                        its own background") reference.
+//   _ss_pass_signal_truth_gapcut       : all truth SS pairs in the signal region -- the partner
+//                                        of the data SS panel. `from_same_b` has no same-sign
+//                                        counterpart by construction (df_single_b_weighted =
+//                                        df_op_weighted.Filter("from_same_b")), so the SS
+//                                        partner is the plain SS category.
 const std::vector<std::string>& McVsDataSignalFilters(){
     static const std::vector<std::string> v = {
-        "_single_b_pass_signal_truth", "_op_pass_signal_truth", "_ss_pass_signal_truth"
+        "_single_b_pass_signal_truth_gapcut", "_op_pass_signal_truth_gapcut", "_ss_pass_signal_truth_gapcut"
     };
     return v;
 }
 
 // The 2D pair-pT x pair-eta view is needed for the single-b signal only.
 const std::string& McVsDataSignal2DFilter(){
-    static const std::string f = "_single_b_pass_signal_truth";
+    static const std::string f = "_single_b_pass_signal_truth_gapcut";
     return f;
 }
 
@@ -267,26 +275,24 @@ void RDFBasedHistFillingPythiaFullsim::CreateBaseRDFsPythiaFullsimExtra(){
         "CreateBaseRDFsPythiaFullsimExtra: df_op_weighted");
     df_map.emplace("df_single_b_weighted", df_op_weighted.Filter("from_same_b"));
 
-    // SIGNAL REGION, truth and reco legs. Since 2026-08-17 the per-muon one-sided
-    // `q*eta < 2.2` is REPLACED by the detector-gap FIDUCIAL cut required of BOTH muons,
-    // in LOCKSTEP with the data crossx (RDFBasedHistFillingPP.cxx `signal_cuts`).
-    // Windows are READ from ParamsSet::single_mu_fiducial_gap_cuts and never retyped.
-    // The cut is applied on TRUTH q*eta in the denominator leg and on RECO q*eta in the
-    // numerator leg, so eps_reco is a FIDUCIAL pair efficiency: it does NOT contain the
-    // truth-level gap acceptance eps_acc (muon_gap_cuts_acceptance.md F12), which stays a
-    // separate, not-yet-built factor.
-    // Hoisted out of the category loop (2026-08-25) so the GENERIC family below reuses the
-    // very SAME `gap_truth` string as the signal region -- one expression, one definition.
-    // The PAIR-LEVEL window |eta^pair| < ParamsSet::pair_eta_fiducial_max = 2.2 (user,
-    // 2026-09-07) is part of the same gap definition and travels with the single-muon windows:
-    // truth pair eta on the denominator leg, reco pair eta on the numerator leg, so eps_reco
-    // stays the efficiency of exactly the region the data crossx selects.
-    const std::string gap_truth = ParamsSet::FiducialGapCutExpr("m1.truth_charge * m1.truth_eta")
-                                + " && " + ParamsSet::FiducialGapCutExpr("m2.truth_charge * m2.truth_eta")
-                                + " && " + ParamsSet::PairFiducialEtaCutExpr("truth_pair_eta");
-    const std::string gap_reco  = ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta")
-                                + " && " + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta")
-                                + " && " + ParamsSet::PairFiducialEtaCutExpr("pair_eta");
+    // SIGNAL CUTS and GAP CUTS are two different things (user decision 2026-09-17,
+    // docs/tracking/pair_reco_eff_gap_acceptance.md):
+    //   * SIGNAL cuts -- the mass window and the pair-pT threshold -- define the truth signal
+    //     region T. They exist for signal/background and sit on BOTH legs of eps_reco.
+    //   * GAP cuts -- the single-muon fiducial windows on q*eta of both muons and the
+    //     pair-level |eta^pair| < 2.2 -- exist because the detector gaps make the muon
+    //     acceptance / reconstruction efficiency low and rapidly varying there. They are an
+    //     ACCEPTANCE loss and are carried by eps_reco: applied on the RECO leg ONLY (where they
+    //     are bit-for-bit the data crossx `signal_cuts`, RDFBasedHistFillingPP.cxx) and NOT on
+    //     the truth denominator. A truth pair inside T whose reconstructed muon lands in a gap
+    //     window, or whose reconstructed |eta^pair| crosses 2.2, is in the denominator and not in
+    //     the numerator -- an inefficiency. There is NO separate eps_acc any more.
+    // Windows and the pair-level edge are READ from ParamsSet through the class helpers and
+    // never retyped; the overlay per-centrality nodes use the same helpers.
+    // `pass_gap_truth` survives ONLY for the opt-in `_gapcut` truth family (the MC-vs-data
+    // shape comparison, which is uncorrected and must therefore carry the data's gap cuts).
+    const std::string gap_truth = TruthGapCutExpr();
+    const std::string gap_reco  = RecoGapCutExpr();
 
     for (const std::string& pair_catgr : {"_ss", "_op", "_single_b"}){
         const std::string df_name = "df" + pair_catgr;
@@ -295,7 +301,8 @@ void RDFBasedHistFillingPythiaFullsim::CreateBaseRDFsPythiaFullsimExtra(){
 
         auto node_sig = node
             .Define("pass_signal_truth",
-                ParamsSet::SignalMinvCutExpr("truth_minv") + " && " + ParamsSet::SignalPairPtCutExpr("truth_pair_pt") + " && " + gap_truth)
+                ParamsSet::SignalMinvCutExpr("truth_minv") + " && " + ParamsSet::SignalPairPtCutExpr("truth_pair_pt"))
+            .Define("pass_gap_truth", gap_truth)
             .Define("pass_signal_reco",
                 "(m1.reco_match && m2.reco_match) ? (" + ParamsSet::SignalMinvCutExpr("minv") + " && "
                 + ParamsSet::SignalPairPtCutExpr("pair_pt") + " && "
@@ -303,7 +310,13 @@ void RDFBasedHistFillingPythiaFullsim::CreateBaseRDFsPythiaFullsimExtra(){
 
         df_map.emplace(df_name + "_pass_medium_weighted",   node_sig.Filter("pair_pass_medium"));
         df_map.emplace(df_name + "_pass_tight_weighted",    node_sig.Filter("pair_pass_tight"));
+        // eps_reco DENOMINATOR: truth signal cuts only.
         df_map.emplace(df_name + "_pass_signal_truth_weighted", node_sig.Filter("pass_signal_truth"));
+        // Truth signal region + truth gap cuts: the data-like truth selection of the MC-vs-data
+        // SIGNAL family. NOT an efficiency leg.
+        df_map.emplace(df_name + "_pass_signal_truth_gapcut_weighted",
+            node_sig.Filter("pass_signal_truth && pass_gap_truth"));
+        // eps_reco NUMERATORS: truth in T, reconstructed, WP, reco selection incl. the gap cuts.
         df_map.emplace(df_name + "_pass_medium_and_signal_truth_and_reco_weighted",
             node_sig.Filter("pair_pass_medium && pass_signal_truth && pass_signal_reco"));
         df_map.emplace(df_name + "_pass_tight_and_signal_truth_and_reco_weighted",
@@ -327,20 +340,20 @@ void RDFBasedHistFillingPythiaFullsim::FillHistogramsFullSim(){
     FillHistogramsFullSimDetecResp();
     FillHistogramsFullSimRecoEffcies();
 
-    // GENERIC family of the pp24 MC-vs-data comparison. The SIGNAL family needs no separate call:
-    // its filters `_{single_b,op,ss}_pass_signal_truth` are already booked by
-    // FillHistogramsFullSimRecoEffcies, and BuildFilterToVarListMapExtra APPENDED the comparison
-    // variables to those filters' var lists.
+    // SIGNAL (`_pass_signal_truth_gapcut`) and GENERIC families of the pp24 MC-vs-data
+    // comparison. BuildFilterToVarListMapExtra put the comparison variables on these filters.
     // DELIBERATELY NOT wrapped in the try/catch the sibling methods below use. If one of these
-    // dataframes or variables is missing, the MC curve simply VANISHES from the generic panels
-    // and the plotter prints a `[SKIP]` that nobody reads -- a silently incomplete output, the
-    // failure mode `.claude/kb/.../reference_root_swallows_rdf_exceptions` exists to prevent.
+    // dataframes or variables is missing, the MC curve simply VANISHES from the panels and the
+    // plotter prints a `[SKIP]` that nobody reads -- a silently incomplete output, the failure
+    // mode `.claude/kb/.../reference_root_swallows_rdf_exceptions` exists to prevent.
     // Let it throw: `map_at_checked` names the missing key.
-    for (const std::string& filter : McVsDataGenericFilters()){
-        const std::string df_name = "df" + filter + "_weighted";
-        ROOT::RDF::RNode& node = map_at_checked(df_map, df_name,
-            Form("FillHistogramsFullSim (generic family): df_map.at(%s)", df_name.c_str()));
-        FillHistogramsSingleDataFrame(filter, "", node);
+    for (const auto* family : {&McVsDataSignalFilters(), &McVsDataGenericFilters()}){
+        for (const std::string& filter : *family){
+            const std::string df_name = "df" + filter + "_weighted";
+            ROOT::RDF::RNode& node = map_at_checked(df_map, df_name,
+                Form("FillHistogramsFullSim (MC-vs-data family): df_map.at(%s)", df_name.c_str()));
+            FillHistogramsSingleDataFrame(filter, "", node);
+        }
     }
 }
 
@@ -545,6 +558,10 @@ void RDFBasedHistFillingPythiaFullsim::MakeAndWriteMuPairRecoEffProjGraphs(){
 void RDFBasedHistFillingPythiaFullsim::WriteOutputExtra(){
     HistFillUtils::write_hist_map_vector(mu_pair_reco_eff_proj_graph_map, mu_pair_reco_eff_proj_graphs_to_not_write);
     HistFillUtils::write_hist_map_vector(mu_pair_reco_eff_proj_hist_map,  mu_pair_reco_eff_proj_hists_to_not_write);
+    // Definition marker for the `*_pass_signal_truth*` reco-efficiency legs (see the header):
+    // build_pp24_fullsim_pair_reco_eff.C refuses a file without it.
+    m_outfile->cd();
+    TNamed(PairRecoEffDefinition::Key(), PairRecoEffDefinition::Value()).Write();
 }
 
 void RDFBasedHistFillingPythiaFullsim::CleanupExtra(){

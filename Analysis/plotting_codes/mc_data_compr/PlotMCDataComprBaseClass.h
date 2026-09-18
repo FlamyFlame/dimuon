@@ -165,19 +165,23 @@ protected:
         return "h1d_crossx_" + o.data_var + "_w_signal_cuts_" + SignDataTag(isign) + "_dsigma";
     }
     // SIGNAL family, MC. The pair CATEGORY differs between the two pads and that is physics:
-    //   OS pad -> `_single_b_pass_signal_truth`: truth OS pairs from the SAME b, the single-b
-    //             signal the measurement is after. (`_single_b` is built in the producer as
-    //             df_op.Filter("from_same_b"), so it is OS by construction.)
-    //   SS pad -> `_ss_pass_signal_truth`: ALL truth same-sign pairs in the signal region, with
-    //             no `from_same_b` -- `from_same_b` has no same-sign counterpart, and the data
-    //             SS pad is the combinatorial-background estimate, whose MC partner is the
-    //             inclusive SS yield.
-    //   OS pad, second curve -> `_op_pass_signal_truth`: ALL truth OS pairs. This is the
-    //             like-for-like partner of the data OS yield, which still contains
+    //   OS pad -> `_single_b_pass_signal_truth_gapcut`: truth OS pairs from the SAME b, the
+    //             single-b signal the measurement is after. (`_single_b` is built in the
+    //             producer as df_op.Filter("from_same_b"), so it is OS by construction.)
+    //   SS pad -> `_ss_pass_signal_truth_gapcut`: ALL truth same-sign pairs in the signal
+    //             region, with no `from_same_b` -- `from_same_b` has no same-sign counterpart,
+    //             and the data SS pad is the combinatorial-background estimate, whose MC
+    //             partner is the inclusive SS yield.
+    //   OS pad, second curve -> `_op_pass_signal_truth_gapcut`: ALL truth OS pairs. This is
+    //             the like-for-like partner of the data OS yield, which still contains
     //             gluon-splitting and combinatorial background.
-    static const char* McSignalCatSingleB(){ return "_single_b_pass_signal_truth"; }
-    static const char* McSignalCatAllOS()  { return "_op_pass_signal_truth"; }
-    static const char* McSignalCatAllSS()  { return "_ss_pass_signal_truth"; }
+    // `_gapcut` (2026-09-17): this is an UNCORRECTED shape comparison, so the MC truth must
+    // carry the data's gap cuts. The unsuffixed `_pass_signal_truth` is now the reco-efficiency
+    // DENOMINATOR (truth signal cuts only, no gap cut -- the gap acceptance is folded into
+    // eps_reco; docs/tracking/pair_reco_eff_gap_acceptance.md) and is the WRONG partner here.
+    static const char* McSignalCatSingleB(){ return "_single_b_pass_signal_truth_gapcut"; }
+    static const char* McSignalCatAllOS()  { return "_op_pass_signal_truth_gapcut"; }
+    static const char* McSignalCatAllSS()  { return "_ss_pass_signal_truth_gapcut"; }
     static std::string SignalMcKey(const McDataObservable& o, const std::string& cat){
         return "h_" + o.mc_var + cat;
     }
@@ -198,15 +202,15 @@ protected:
     // cuts, while the Pythia signal family carries both. The requirement is that POWHEG and Pythia
     // both require `from_same_b` AND the data signal cuts evaluated on TRUTH quantities. As it
     // stands:
-    //   Pythia  `_single_b_pass_signal_truth` = from_same_b && truth_minv in (1.08,2.9)
+    //   Pythia  `_single_b_pass_signal_truth_gapcut` = from_same_b && truth_minv in (1.08,2.9)
     //                                        && truth_pair_pt > 9 && gap cuts        <-- correct
     //   POWHEG  `_op_gapcut_truth`            = gap cuts ONLY                         <-- NOT
     // and POWHEG is drawn only in the GENERIC family: plot_mc_data_compr_signal.cxx pushes three
     // Pythia series and no POWHEG one at all. The POWHEG truth producer does build the full signal
     // selection (RDFBasedHistFillingPowhegTruth::FillHistogramsSignalAcceptance) but consumes it
     // internally for the acceptance RATIO and never writes it as a filter family, which is why
-    // there is no key to read. Closing this needs a `_single_b_pass_signal_truth` family in the
-    // POWHEG truth producer + a category argument here, mirroring SignalMcKey.
+    // there is no key to read. Closing this needs a `_single_b_pass_signal_truth_gapcut` family
+    // in the POWHEG truth producer + a category argument here, mirroring SignalMcKey.
     //
     // POWHEG, 2026-08-25 rework. The INCLUSIVE histogram is read directly. The producer also
     // writes `..._flavor_binned_{single_b,both_from_b,both_from_c,others}`, which sums to this

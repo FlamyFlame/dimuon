@@ -21,8 +21,9 @@
 //            (m in (1.08,2.9), pair pT > ParamsSet::signal_pair_pt_min, BOTH muons passing the
 //            fiducial gap cut and |eta^pair| < ParamsSet::pair_eta_fiducial_max), Tight WP.
 //   Pythia: pythia_fullsim_full_sample/histograms_pythia_fullsim_pp24_no_data_resonance_cuts_full.root
-//          h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_single_b_pass_signal_truth
-//          = truth from_same_b OS pairs in the truth signal region, AMI-weighted.
+//          h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_single_b_pass_signal_truth_gapcut
+//          = truth from_same_b OS pairs in the truth signal region + the truth gap cuts,
+//            AMI-weighted.
 //   POWHEG: powheg_full_sample/histograms_powheg_fullsim_pp17.root
 //          h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_single_b_pass_signal_truth_gapcut
 //          = the SAME truth selection (from_same_b + the data's mass window, pair-pT threshold
@@ -121,13 +122,15 @@ const char* kDataHist = "h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts";
 // above now uses. There is no second truth pair-pT variable, so this side has no alternative view
 // and nothing to select between. The token is a leftover of the old naming and says nothing about
 // which axis is nominal; if the producers ever drop it, this name follows.
+// `_gapcut` (2026-09-17): the data-like truth selection INCLUDING the truth gap cuts. The
+// unsuffixed `_pass_signal_truth` is now the reco-efficiency DENOMINATOR (no gap cut;
+// docs/tracking/pair_reco_eff_gap_acceptance.md) and is the wrong partner for an uncorrected
+// data comparison.
 const char* kMcHist =
-    "h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_single_b_pass_signal_truth";
+    "h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_single_b_pass_signal_truth_gapcut";
 
 // POWHEG FullSim pp17: the SAME 2D view on the SAME named axes, under the gap-cut truth signal
-// filter added on 2026-09-03. (The class's pre-existing `_pass_signal_truth` was migrated off the
-// retired one-sided q*eta < 2.2 on 2026-09-08 (D7), so the two now differ only by the extra
-// truth_dr < 1.0 that `_single_b` carries.)
+// filter added on 2026-09-03 -- the same `_gapcut` name and meaning as the Pythia key above.
 const char* kPowhegHist =
     "h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_single_b_pass_signal_truth_gapcut";
 

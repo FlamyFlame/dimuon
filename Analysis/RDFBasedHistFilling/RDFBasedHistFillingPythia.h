@@ -9,6 +9,7 @@
 #include "CommonEffcyConfig.h"
 #include "../MuonObjectsParamsAndHelpers/muon_pair_enums_MC.h"
 #include "../Utilities/HistFillUtils.h"
+#include "../Utilities/PairRecoEffDefinition.h"
 #include <cmath>
 #include <limits>
 #include <map>
@@ -118,6 +119,28 @@ public:
     // The TEST sample's 4-beam combination carries the Pb 4:6:6:9 isospin average, so any
     // cross-section from it is NOT a physical pp cross-section -- label it honestly.
     bool is_test_sample = true;
+
+    // --- the detector-gap cuts, TRUTH and RECO leg, as ONE expression each -------------------
+    // Single-muon fiducial windows on q*eta of BOTH muons + the pair-level |eta^pair| window, all
+    // read from ParamsSet (never retyped). Declared here so the HIJING-overlay per-centrality
+    // nodes and the pp24 class build the SAME string -- one definition, two call sites.
+    // Since 2026-09-17 (docs/tracking/pair_reco_eff_gap_acceptance.md) the gap cuts are an
+    // ACCEPTANCE folded into the pair reco efficiency: the RECO expression is part of the reco
+    // numerator selection (= the data signal_cuts); the TRUTH expression is NOT part of the
+    // truth denominator any more and survives only as the opt-in `_gapcut` truth family used by
+    // the MC-vs-data shape comparison.
+    static std::string TruthGapCutExpr() {
+        return ParamsSet::FiducialGapCutExpr("m1.truth_charge * m1.truth_eta")
+             + " && " + ParamsSet::FiducialGapCutExpr("m2.truth_charge * m2.truth_eta")
+             + " && " + ParamsSet::PairFiducialEtaCutExpr("truth_pair_eta");
+    }
+    static std::string RecoGapCutExpr() {
+        return ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta")
+             + " && " + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta")
+             + " && " + ParamsSet::PairFiducialEtaCutExpr("pair_eta");
+    }
+    // The definition marker (Utilities/PairRecoEffDefinition.h) is written into the histogram
+    // output by WriteOutputExtra; the builder refuses an input file without it.
 
 protected:
     // --- filter levels ---

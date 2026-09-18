@@ -79,17 +79,20 @@ protected:
                 ROOT::RDF::RNode& node = map_at_checked(df_map, base + "_weighted",
                     Form("CreateBaseRDFsPythiaExtra (overlay): %s_weighted", base.c_str()));
 
+                // Per-centrality mirror of the pp24 legs (RDFBasedHistFillingPythiaFullsim.cxx
+                // CreateBaseRDFsPythiaFullsimExtra): the DENOMINATOR is the truth SIGNAL region
+                // only (mass window + pair pT); the GAP cuts (single-muon q*eta windows on both
+                // muons + |eta^pair| < 2.2) sit on the RECO leg only, so the gap acceptance is
+                // part of eps_reco (docs/tracking/pair_reco_eff_gap_acceptance.md, 2026-09-17).
+                // Expressions come from the shared class helpers, never retyped. No per-centrality
+                // `_gapcut` truth family: the MC-vs-data comparison is inclusive (base class).
                 auto node_sig = node
                     .Define("pass_signal_truth" + ctr_tag,
                         ParamsSet::SignalMinvCutExpr("truth_minv") + " && "
-                        + ParamsSet::SignalPairPtCutExpr("truth_pair_pt") + " && " + ParamsSet::FiducialGapCutExpr("m1.truth_charge * m1.truth_eta")
-            + " && " + ParamsSet::FiducialGapCutExpr("m2.truth_charge * m2.truth_eta")
-            + " && " + ParamsSet::PairFiducialEtaCutExpr("truth_pair_eta"))
+                        + ParamsSet::SignalPairPtCutExpr("truth_pair_pt"))
                     .Define("pass_signal_reco" + ctr_tag,
                         std::string("(m1.reco_match && m2.reco_match) ? (") + ParamsSet::SignalMinvCutExpr("minv") + " && "
-                        + ParamsSet::SignalPairPtCutExpr("pair_pt") + " && " + ParamsSet::FiducialGapCutExpr("m1.charge * m1.eta")
-            + " && " + ParamsSet::FiducialGapCutExpr("m2.charge * m2.eta")
-            + " && " + ParamsSet::PairFiducialEtaCutExpr("pair_eta") + ") : false");
+                        + ParamsSet::SignalPairPtCutExpr("pair_pt") + " && " + RecoGapCutExpr() + ") : false");
 
                 df_map.emplace(base + "_pass_medium_weighted",
                     node_sig.Filter("pair_pass_medium"));
