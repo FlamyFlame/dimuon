@@ -349,6 +349,43 @@ commit series:
   `docs/pythia_fullsim_pp.md`, root `README.md`, `pipelines/fullsim_sample_layout.sh`, SkimCode
   comments (`grid_sub_pbpb24_test_sample.sh`, `fullsim_pp24_full_to_lgd.sh`).
 
+### R5. Where the Pythia TRUTH-only (nPDF evgen) quantities are consumed — survey 2026-09-17 (two independent subagents, cross-checked; awaiting user decisions)
+
+Facts established: (a) the pp24 fullsim NTUP is a strict superset of the truth-only TRUTH0 NTUP — all 53
+truth branches (`truth_id/barcode/status/pt/eta/phi/m/parents`, `truth_mupair_*`, `Q`, …) are present, all
+events stored — and `PythiaFullSimAnalysis` composes the SAME `PythiaTruthExtras` ancestry tracing
+(`from_same_b`, flavor/origin categories, last-b-hadron vector) into truth-seeded pair trees
+`muon_pair_tree_sign{1,2}` / `_kin<k>_sign<s>` of `muon_pairs_pythia_fullsim_pp24_..._full.root`; (b) the
+PDF (pp) evgen has the SAME event count per slice as the 4-beam nPDF total in slices 1-4 but 3.7x / 6.75x
+fewer in pTH70_125 / pTH125_300 (320 k vs 1.195 M / 2.16 M), and the fullsim FULL sample already IS the
+whole PDF evgen (2 029 996 / 2 039 700 …) → a truth-only skim of the PDF evgen would add NO events;
+(c) the truth-only RDF fills (`RDFBasedHistFillingPythiaTruth.cxx`: flavor/origin-binned kinematics,
+`_sigsel` templates, `h2d_sig_accept_*`) have no counterpart in `RDFBasedHistFillingPythiaFullsim.cxx`
+(which has `pass_signal_truth` numerators but no `from_same_b`-only denominator, no category split).
+
+| # | result | code / output | truth role | today | pp-suitable needed? |
+|---|---|---|---|---|---|
+| 1 | **pp24 MC-vs-data comparison** `plots/mc_data_compr/{signal,generic}` | `plotting_codes/mc_data_compr/*`, `McDataComprConfig.h` → `histograms_pythia_fullsim_pp24_*_full.root` | truth-quantity hists (`*_pass_signal_truth`) from the FULLSIM truth block | **already pp24 fullsim + PDF weights since 2026-08-25** (truth sample rejected then for its 4:6:6:9 isospin average, `mc_data_compr_signal_generic_split.md`) | **no remake needed** |
+| 2 | signal acceptance ε_acc(pair pT, pair η) `plots/single_b_analysis/pythia/pythia_sig_accept_*` | `plot_signal_acceptance_pythia.cxx` ← `h2d_sig_accept_{num,denom}_pt_eta` in `histograms_pythia_5p36TeV_*.root` | acceptance of the pp signal region on truth single-b pairs; the α reported with the pp crossx (not applied in crossx code) | nPDF truth sample | YES if reported for pp — needs the denominator fill added to the fullsim RDF (or the truth pipeline run on the fullsim NTUP) |
+| 3 | acceptance cutflow >60 GeV, ΔR-vs-pair-pT diagnostic, single-b pT / last-b-hadron ratio | `plot_sig_accept_cutflow_above_60GeV.cxx`, `plot_dr_vs_pair_pt_diagnostic.cxx`, `plot_single_b_pt_ratio_to_last_b_hadron.cxx` (RDF on `muon_pair_tree_sign2`) | settled pp-signal diagnostics (closed docs) | nPDF truth sample | path edit only (fullsim OS tree has the same branches); low priority |
+| 4 | flavor / origin categorized generator-level plot sets `pythia_5p36TeV/plots/{flavor,origin}_categoried/` | `plot_{flavor,origin}_categorized_kinematics.cxx` ← truth RDF; labelled nNNPDF30 | generator-level composition studies | nPDF truth sample | USER DECISION: pp-reference composition → PDF (needs a fullsim-NTUP input mode of the truth pipeline or category fills in the fullsim RDF); Pb+Pb-signal composition → nPDF is right |
+| 5 | low-mass template-fit truth `_sigsel` templates; k = G_SS/G_OS studies (data-area macros `template_fitting/*/code/*.C`) | `FillHistogramsTemplateMinvSignalRegion` | S/G shapes, k ratio | nPDF truth; superseded for the nominal reco-level fit (`tf_nominal_fit_build.md`) | no (k is a shape ratio; nominal templates come from fullsim reco) |
+| 6 | 5.36 vs 5.02 TeV truth comparison | `plot_pythia_compr_priv_nonpriv_5_02TeV.cxx` | √s dependence, both central productions nuclear-PDF | nPDF | no (like-for-like) |
+| 7 | HIJING overlay reco-eff / det-response / MC trig-eff / closure; overlay truth reference | fullsim NTUP truth block of each overlay | Pb+Pb | nPDF (= the overlay's own evgen) | no — nPDF is correct |
+| 8 | crossx_summary / kn-slice tables from the fullsim runs | `PythiaTruthExtras.c` diagnostics written under the truth dir | bookkeeping | evgen of each run | no |
+
+Nothing uses the truth sample as a same-event reference for the pp24 fullsim (all efficiency denominators
+come from the fullsim NTUP's own truth block), and no truth-sample figure is in the note yet.
+
+Also: the truth-only `_pp_only` variant (nPDF, pp beam only) has no consumer.
+
+**Answer to "skim the pp-suitable evgen?"** — not needed: the fullsim NTUP already carries the complete
+PDF-evgen truth block with identical branch content, and the ntuple processing already produces the truth
+pair trees from it. What is missing is only on the RDF/plot side (item 2 denominator, item 4 category
+fills) or a `fullsim_input_dir`-style input mode for `PythiaTruthAnalysis`. The statistics argument goes the
+other way: the nPDF truth sample has 3.7-6.75x more events in the two highest slices (the same deficit
+`pthat_slice_mass_stats_sample_request.md` is addressing).
+
 ## Remaining Work
 
 - User decision on the verification plan / on reporting R1 to the production contact (message draft offered).
@@ -356,18 +393,8 @@ commit series:
 
 ## Latest Stage
 
-2026-09-17 (session 4) IN PROGRESS — **AMI-weight correction (user ruling).** Plan:
-(1) undo the "sample's own `ami_info/`" preference of commit 2d78e97 (`PythiaAlgCoreT.c` ctor): the AMI weight of a
-fullsim / overlay event is the weight of its **Pythia evgen** dataset, never of the AOD chain (e8613 is the HIJING evgen
-tag, not a Pythia one); (2) key the AMI directory by the Pythia evgen production instead:
-`pythia_truth_full_sample/pythia_5p36TeV/ami_info_nPDF/` (e8599, 4 isospins, nNNPDF30 nuclear PDF, 802758-802781 —
-truth-only analysis, pp24 TEST, every HIJING overlay) vs `ami_info_PDF/` (`_pdf`, pp only, NNPDF23LO proton PDF,
-803015-803020 — pp24 fullsim FULL); (3) fix the truth-only reader (`InitInputCentrProd`) which now silently skips the
-renamed `ami_info/`; (4) rewrite `docs/ami_weights.md` (drop B2); (5) survey the truth-quantity consumers (two
-independent subagents, cross-checked) and report which need the pp-suitable evgen. Files: `PythiaAlgCoreT.{c,h}`,
-`FullSimSampleType.h`, `run_pythia_fullsim_*_full_sample.sh`, `pipeline_pythia_fullsim_pp.sh`,
-`mc_pthat_slice_mass_statistics.cxx`, `docs/ami_weights.md`, this doc.
-
-Previous stage (session 3) DONE: NTUP naming change (commit f107318), R4 track-multiplicity + L1TE plots (9538b3b), both reviews PASS.
-Open: report R1/R4 to the production contact; wait for the fixed-calorimeter production and the other four vertex slices
-(then rerun the chain with `OVERLAY_YEAR=24` and redo R2).
+2026-09-17 (session 4) DONE: AMI-weight correction committed (7e8c837; /review-analysis-code PASS, 2 iterations) —
+see §"AMI-weight correction" and `docs/ami_weights.md`. R5 survey of truth-quantity consumers delivered;
+**awaiting user**: (i) whether ε_acc (R5 #2) and the generator-level composition plots (R5 #4) move to the
+pp-suitable PDF evgen via the fullsim truth block; (ii) the R1/R4 report to the production contact; then the
+fixed-calorimeter production + remaining vertex slices (rerun with `OVERLAY_YEAR=24`, redo R2).
