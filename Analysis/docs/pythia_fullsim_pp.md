@@ -123,6 +123,20 @@ Output: `histograms_pythia_fullsim_pp24_no_data_resonance_cuts.root`
 
 Fills reco efficiency histograms (truth vs reco, pass_medium/pass_tight) and detector response matrices for pair_pt, minv, dr.
 
+Signal-region legs of the **applied** pair reco efficiency (`docs/tracking/pair_reco_eff_gap_acceptance.md`, 2026-09-17):
+- `_pass_signal_truth` — DENOMINATOR: truth single-b pair passing the truth **signal cuts only** (mass window, pair pT > 9). **No gap cut.**
+- `_pass_{tight,medium}_and_signal_truth_and_reco` — NUMERATOR: + both muons reco-matched, WP, and the reco pair passing the data selection **including the detector-gap cuts** (fiducial q·η windows on both muons, |η^pair| < 2.2) on RECO quantities.
+- `_pass_signal_truth_gapcut` — truth signal cuts + truth gap cuts; the MC-vs-data SIGNAL family only (uncorrected shape comparison), NOT an efficiency leg.
+- The output carries a `TNamed pair_reco_eff_definition` marker (`Utilities/PairRecoEffDefinition.h`); `build_pp24_fullsim_pair_reco_eff.C` and `PairRecoEffEvaluator` refuse files without it.
+
+The stage-7 plots below are the INCLUSIVE WP ratio (`require_signal_cuts=false`) and do not involve these legs. The applied map is built and drawn separately:
+```bash
+cd plotting_codes/reco_effcy
+root -l -b -q 'build_pp24_fullsim_pair_reco_eff.C+()'          # -> <sample>/reco_eff/pair_reco_eff_pp24_full.root
+root -l -b -q 'plot_pp24_fullsim_pair_reco_eff.cxx+()'         # Tight  -> plots/pp24_reco_effcy_plots/tight/applied/
+root -l -b -q 'plot_pp24_fullsim_pair_reco_eff.cxx+(true,false)' # Medium -> .../medium/applied/
+```
+
 ### Stage 3: Plotting
 
 ```bash

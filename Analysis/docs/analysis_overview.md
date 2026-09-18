@@ -62,12 +62,19 @@ pair has characteristically **low invariant mass** and **small opening angle**.
   the pair must satisfy **|η^pair| < 2.2** (symmetric, pair-level). This replaced the
   former one-sided per-muon `q·η < 2.2` on 2026-08-17 in pp24; **Pb+Pb was brought over on
   2026-09-08**, so pp and Pb+Pb share the signal region again (the Pb+Pb histograms must be
-  refilled before R_AA is quoted). The resulting cross-section is a FIDUCIAL one — the acceptance
-  ε_acc is a separate, not-yet-applied factor (`docs/tracking/muon_gap_cuts_acceptance.md`).
-  **The published value ε_acc = 0.8789 is STALE IN TWO WAYS and must not be quoted:** it was
-  measured on the superseded gap window `(-1.30,-1.05)` AND at muon p_T > 4 GeV. Both moved on
-  2026-09-08 (`ParamsSet.h` says so at the tables themselves). Re-measurement is pending the
-  NTuple rerun.
+  refilled before R_AA is quoted). **The gap cuts are DETECTOR-ACCEPTANCE cuts, not signal
+  cuts** (user decision 2026-09-17, `docs/tracking/pair_reco_eff_gap_acceptance.md`): they are
+  applied to the RECONSTRUCTED pair only, and their loss is carried by the pair reconstruction
+  efficiency ε_reco^pair (§4b), whose truth denominator carries the signal cuts alone. The
+  corrected cross-section therefore refers to the truth region WITHOUT single-muon gap
+  windows: muon p_T > 4.5 GeV, |η| < 2.4; mass window; pair p_T > 9 GeV; and
+  **|η^pair| < 2.2 as the measured range** — the coarse η^pair axis on which ε_reco is measured
+  tiles exactly [−2.2, 2.2], so truth pairs outside it enter no efficiency cell (3.35 % relative
+  to the in-range truth signal-region weight, 3.2 % of the whole region; their reconstruction
+  inside the range is 0.02 % migration). The
+  pair-level 2.2 boundary is thus a truth fiducial edge of the measurement, while the single-muon
+  q·η windows are acceptance-corrected. There is **no separate acceptance factor ε_acc** (the historical ε_acc numbers in `muon_gap_cuts_acceptance.md` /
+  `ParamsSet.h` are superseded and must not be applied).
 - **No ΔR cut.** *(A former ΔR(μ,μ) > 0.05 cut was removed 2026-06-22 — interim
   nominal. It was a stats workaround for the data-based dR trigger-efficiency
   inverse-weighting, not a physics requirement, and it biased the high-pair-pT
@@ -150,6 +157,15 @@ w⁻¹ = ε_trig^pair · ε_reco^pair(pair p_T, pair η, ΔR)
   captures that correlation. In central Pb+Pb the efficiency is genuinely lower
   and centrality-dependent (real occupancy effect from the underlying event), not
   a bookkeeping artifact.
+  **Definition (2026-09-17):** ε_reco^pair(cell) = N[truth single-b pair in the truth signal
+  region, both muons reconstructed, WP, and the reconstructed pair passing the full data
+  selection *including the detector-gap cuts*] / N[truth single-b pair in the truth signal
+  region — signal cuts only, **no gap cut**]. It thus **includes the gap-cut acceptance**: a
+  truth pair reconstructed into a gap window or across |η^pair| = 2.2 is an inefficiency. A
+  truth pair outside the measured η^pair range (|η^pair| ≥ 2.2 — the truth fiducial edge of
+  the measurement, see §2) reconstructed inside it is bin migration for the detector-response
+  step, not part of ε_reco
+  (`docs/tracking/pair_reco_eff_gap_acceptance.md`).
 
 **(c) Detector response / unfolding.** Momentum response and bin migration are
 characterized from **Pythia fullsim** and used to unfold the measured spectra to

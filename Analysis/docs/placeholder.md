@@ -74,9 +74,13 @@ production: 8 × 9 × 4 = 288 cells, built by
 `plotting_codes/reco_effcy/build_pp24_fullsim_pair_reco_eff.C` into
 `~/usatlasdata/pythia_fullsim_full_sample/reco_eff/pair_reco_eff_pp24_full.root` and read at fill time by
 `Utilities/PairRecoEffEvaluator.h` (`RDFBasedHistFillingPP.cxx:396-399`). Inclusive value
-**0.6620 Tight / 0.7301 Medium**; it is a FIDUCIAL efficiency (the detector-gap cut sits on both
-the truth denominator and the reco numerator), so ε_acc = 0.9133 is a separate, unapplied factor.
-Figures: `<sample>/plots/pp24_reco_effcy_plots/{tight,medium}/applied/`.
+(pre-2026-09-17, fiducial definition, 2026-09-10 product) **0.7157 Tight / 0.7780 Medium**;
+new definition (2026-09-17) **0.5850 Tight / 0.6360 Medium**. **Since 2026-09-17 the
+detector-gap cuts sit on the reco numerator ONLY** — the truth denominator carries the signal
+cuts alone — so ε_reco INCLUDES the gap acceptance and there is NO separate ε_acc
+(`docs/tracking/pair_reco_eff_gap_acceptance.md`; current inclusive values in its Progress Log).
+Figures: `<sample>/plots/pp24_reco_effcy_plots/{tight,medium}/applied/`; the pre-change set is
+kept in `.../before_gap_acceptance/`.
 
 **Pb+Pb IS STILL A PLACEHOLDER.** The proper Run 3 correction is the same 3D pair efficiency from
 the Pythia+HIJING overlay, but only a small TEST overlay production exists, so Pb+Pb instead uses

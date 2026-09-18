@@ -1038,6 +1038,17 @@ now also emit `ParamsSet::PairFiducialEtaCutExpr`. `FillMCTrigEffHists.cxx`'s `k
 migrated onto `Utilities/MCTrigEffPairSelection.h::FiducialGapCut()`, honouring that header's
 MIRROR NOTICE, so the gap construction can no longer drift between the two.
 
+### F19 — SUPERSEDED: ε_acc is no longer a separate factor (2026-09-17)
+
+User decision, implemented in `pair_reco_eff_gap_acceptance.md`: the gap cuts (single-muon q·η
+windows AND the pair-level |η^pair| < 2.2) are DETECTOR-ACCEPTANCE cuts, not signal cuts, and
+their loss is carried by the pair reconstruction efficiency ε_reco — gap cuts on the RECO leg
+(numerator) only, truth denominator = signal cuts alone. The "ε_acc itself — not built" item of
+this doc's Latest Stage is therefore closed as superseded, not built: the F12/F17 truth
+ε_acc numbers (0.9133 / 0.8789) are historical and must NOT be applied — they are already inside
+ε_reco, and applying them would double count. The site inventory (F17) is unchanged; only the
+pp24 fullsim `pass_signal_truth` row is now "reco leg only".
+
 ## Ruled Out (append-only)
 
 - *Plotting from the existing 2026-06-23 trees* — stale on the one-sided Δp/p fix (F3), which
@@ -1119,7 +1130,7 @@ runs it.
    now runs to 2.3.
 2. **Reconstruction efficiency, data ntuple processing and the template fits** — the other
    three consumers named in the `ParamsSet.h` STATUS block, none of which apply the cut yet.
-3. **ε_acc itself** — not built; the F11a removed-fractions are its raw input.
+3. **ε_acc itself** — SUPERSEDED 2026-09-17 (F19): folded into ε_reco, never a separate factor.
 
 Also open from F8: `q_eta_proj_ranges_fine_excl_gap` holes still do not align with the chosen
 windows — but that binning is no longer what the trigger-efficiency fits use, so it is now a
