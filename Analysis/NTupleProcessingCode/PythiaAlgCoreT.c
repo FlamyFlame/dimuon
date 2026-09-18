@@ -1,7 +1,6 @@
 #include "PythiaAlgCoreT.h"
 #include "../MuonObjectsParamsAndHelpers/muon_pair_enums_MC.h"
 #include "Riostream.h"
-#include "TSystem.h"   // gSystem->AccessPathName: does the sample ship its own ami_info/?
 #include "TTree.h"
 #include "TLorentzVector.h"
 #include <math.h>
@@ -29,22 +28,18 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_PythiaCore() {
         fullsim_input_dir = fullsim_input_dir_override.empty()
             ? FullSimSampleInputDir(fullsim_sample_type, isTestSample, overlay_pbpb_year)
             : fullsim_input_dir_override;
-        // AMI: a sample that ships its OWN ami_info/ (the FULL production; the pbpb24 overlay test
-        // sample, whose evgen e8613 is a NEW production with its own cross-sections) is read from
-        // it. Only a TEST sample WITHOUT one (pp24 test, pbpb23 overlay: the e8599 evgen shared
-        // with the truth production) falls back to the truth production's ami_info/ (py_dir).
-        // Driven by the input directory itself, so the input files and their cross-sections
-        // cannot come from different productions (docs/ami_weights.md: never reuse another
-        // production's weights).
-        if (ami_info_dir_override.empty()) {
-            const std::string own_ami = fullsim_input_dir + "ami_info/";
-            const bool has_own_ami = !gSystem->AccessPathName(own_ami.c_str());   // true = exists
-            if (!isTestSample && !has_own_ami)
-                throw std::runtime_error("PythiaAlgCoreT: FULL sample without its own ami_info/: " + own_ami);
-            ami_info_dir_override = has_own_ami ? own_ami : (py_dir + "ami_info/");
-        }
+        // AMI: the weight is that of the PYTHIA EVGEN the sample was simulated from -- never of the
+        // AOD chain, never of "the sample's own ami_info/" (the 2026-09-16 version of this block
+        // preferred a copy inside the sample dir, which for the r17864 overlay held the AOD chain's
+        // numbers; reverted 2026-09-17, user ruling). PythiaEvgen is derived from the SAME switch
+        // as the input directory and the isospin treatment (FullSimSampleType.h), so the three can
+        // never disagree. `ami_info_dir_override` remains a diagnostic escape hatch only.
+        ami_evgen = FullSimSampleEvgen(fullsim_sample_type, isTestSample);
+        if (ami_info_dir_override.empty()) ami_info_dir_override = PythiaEvgenAmiDir(ami_evgen);
+        if (expected_ami_dsids.empty())    expected_ami_dsids    = PythiaEvgenDsids(ami_evgen);
         std::cout << "PythiaAlgCoreT: fullsim sample = " << (isTestSample ? "TEST" : "FULL")
                   << ", input_dir=" << fullsim_input_dir
+                  << ", evgen=" << (ami_evgen == PythiaEvgen::PDF ? "PDF (pp only, proton PDF)" : "nPDF (4 isospins, nuclear PDF)")
                   << ", ami_dir=" << ami_info_dir_override << std::endl;
         const std::string label = FullSimSampleLabel(fullsim_sample_type, overlay_pbpb_year);
         outfile_name     = "muon_pairs_pythia_fullsim_" + label;
@@ -312,26 +307,26 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputCentrProd_Pythia
     std::cout << "CentrProd kn" << ikin << " (" << kin_lo << "-" << kin_hi << " GeV): "
               << nentries_kn_sum.at(ikin) << " total entries" << std::endl;
 
-    // AMI weights for kn_batch only
-    const std::string ami_file_base = "ami_info_" + ami_campaign_tag + "_" + ami_ecom_tag + "_Py8EG_A14_";
-    const std::string ami_local_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_truth_full_sample/pythia_"
-                                      + ami_ecom_tag + "/ami_info/";
+    // AMI weights for kn_batch only. The 5.36 TeV truth-only sample IS the nPDF evgen (e8599,
+    // 802758-802781, 4 isospins, nuclear PDF), so its weights are PythiaEvgen::nPDF -- read from
+    // the evgen's own ami_info_nPDF/ (FullSimSampleType.h), never from py_dir (the LGD symlink
+    // farm carries no AMI files). The 5.02 TeV mc15 sample keeps its own ami_info/.
+    const bool is_5p36 = (ami_ecom_tag == "5p36TeV");
     for (int ibeam = 0; ibeam < nBeamTypes; ibeam++) {
         if (!evChains_kn_beam.at(ikin).at(ibeam)) continue;
-        std::string ami_fname = ami_file_base + beam_names.at(ibeam)
-            + "_hQCD_DiMu_pTH" + std::to_string(kin_lo) + "_" + std::to_string(kin_hi) + ".txt";
-        std::string ami_path = py_dir + "ami_info/" + ami_fname;
+        const std::string ami_path = is_5p36
+            ? PythiaEvgenAmiDir(PythiaEvgen::nPDF) + PythiaEvgenAmiFileName(PythiaEvgen::nPDF, beam_names.at(ibeam), kin_lo, kin_hi)
+            : "/usatlas/u/yuhanguo/usatlasdata/pythia_truth_full_sample/pythia_" + ami_ecom_tag + "/ami_info/"
+              + "ami_info_" + ami_campaign_tag + "_" + ami_ecom_tag + "_Py8EG_A14_" + beam_names.at(ibeam)
+              + "_hQCD_DiMu_pTH" + std::to_string(kin_lo) + "_" + std::to_string(kin_hi) + ".txt";
         std::ifstream ami(ami_path);
         if (!ami.good()) {
-            // pnfs not accessible (e.g. no Kerberos ticket); try local usatlasdata copy
-            ami_path = ami_local_dir + ami_fname;
-            ami.open(ami_path);
-        }
-        if (!ami.good()) {
-            std::cerr << "InitInputCentrProd: WARNING - missing AMI file (skipping): " << ami_path << std::endl;
-            continue;
+            // Fatal, not a warning: a skipped AMI file left ami_weight = 0 for that beam, i.e. a
+            // silently zero-weighted isospin component (docs/ami_weights.md).
+            throw std::runtime_error("InitInputCentrProd: missing AMI file: " + ami_path);
         }
         double crossSection = 0., genFiltEff = 0.;
+        int datasetNumber = -1;
         std::string line;
         while (std::getline(ami, line)) {
             if (line.find("crossSection") != std::string::npos) {
@@ -346,7 +341,23 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputCentrProd_Pythia
                 if (c != std::string::npos) { std::istringstream(line.substr(c+1)) >> genFiltEff; break; }
             }
         }
+        ami.close(); ami.open(ami_path);
+        while (std::getline(ami, line)) {
+            if (line.find("datasetNumber") != std::string::npos) {
+                size_t c = line.find(':');
+                if (c != std::string::npos) { std::istringstream(line.substr(c+1)) >> datasetNumber; break; }
+            }
+        }
         ami.close();
+        if (is_5p36) {
+            const std::vector<int> dsids = PythiaEvgenDsids(PythiaEvgen::nPDF);
+            if (std::find(dsids.begin(), dsids.end(), datasetNumber) == dsids.end())
+                throw std::runtime_error("InitInputCentrProd: AMI PROVENANCE MISMATCH: " + ami_path
+                    + " has datasetNumber=" + std::to_string(datasetNumber) + ", not an nPDF evgen DSID (802758-802781)");
+        }
+        std::cout << "  AMI " << beam_names.at(ibeam) << " pTH" << kin_lo << "_" << kin_hi << ": DSID=" << datasetNumber
+                  << " crossSection=" << crossSection << " nb, genFiltEff=" << genFiltEff
+                  << " -> ami_weight=" << crossSection * genFiltEff << " nb (" << ami_path << ")" << std::endl;
         ami_weight_kn_beam.at(ikin).at(ibeam) = crossSection * genFiltEff;
     }
 
@@ -504,10 +515,8 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputFullsim_PythiaCo
             // production's AMI would silently corrupt every sigma-weighted quantity.
             // => the AMI dir is overridable per sample, and the DSID in the file is CHECKED.
             const std::string ami_dir = ami_info_dir_override.empty()
-                ? (py_dir + "ami_info/") : ami_info_dir_override;
-            std::string ami_path = ami_dir + "ami_info_mc23_5p36TeV_Py8EG_A14_"
-                + beam_names.at(ibeam)
-                + "_hQCD_DiMu_pTH" + std::to_string(kin_lo) + "_" + std::to_string(kin_hi) + ".txt";
+                ? PythiaEvgenAmiDir(ami_evgen) : ami_info_dir_override;
+            std::string ami_path = ami_dir + PythiaEvgenAmiFileName(ami_evgen, beam_names.at(ibeam), kin_lo, kin_hi);
             std::ifstream ami(ami_path);
             if (!ami.good()) {
                 // Fatal, not a warning: a missing AMI file left ami_weight = 0, which silently

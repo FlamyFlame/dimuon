@@ -8,7 +8,8 @@
 # header's -- when one changes, change both in the same commit. `source` this file; never copy
 # its strings into another script.
 #
-#   <sample>/                      raw NTUP, ami_info/, merging-record.txt, grid-monitor state
+#   <sample>/                      raw NTUP, merging-record.txt, grid-monitor state (NO ami_info/:
+#                                  AMI weights are keyed by the Pythia EVGEN, FullSimSampleType.h)
 #     muon_pairs_*.root, hists_pythia_ntuple_processing_*.root, histograms_pythia_fullsim_*.root
 #                                  (FLAT, like the data directories)
 #     mc_trig_eff/hists/           mc_trig_eff_hists_<label>*.root

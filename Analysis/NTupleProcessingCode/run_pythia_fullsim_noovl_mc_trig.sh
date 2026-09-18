@@ -38,8 +38,8 @@ root -b -l << EOF
 	// the EVGEN dataset and the r-tag does not change it). Declare the DSID; the code
 	// throws if the AMI file it reads carries any other datasetNumber.
 	py.expected_ami_dsids = {802781};
-	// isTestSample=true -> AMI dir = the truth production's ami_info/ (where the 802781
-	// evgen AMI file lives). The input dir is the same either way for this sample type.
+	// isTestSample=true -> nPDF evgen -> AMI dir = the evgen's ami_info_nPDF/ (where the 802781
+	// file lives; FullSimSampleType.h). The input dir is the same either way for this sample type.
 	py.isTestSample = true;
 	py.fill_kn_trees_fullsim = true;
 	py.store_mc_trigger = true;

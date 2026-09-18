@@ -440,8 +440,12 @@ double AmiField(const std::string& path, const std::string& key)
 AmiInfo ReadAmi(const std::string& sample_dir, const PtHatSlice& sl)
 {
     AmiInfo a;
-    a.path = sample_dir + "ami_info/ami_info_mc23_5p36TeV_Py8EG_A14_pp_hQCD_DiMu_pTH"
-           + std::to_string(sl.lo) + "_" + std::to_string(sl.hi) + ".txt";
+    // The pp24 FULL sample's weights are those of its PYTHIA EVGEN (the proton-PDF "_pdf"
+    // production), read from the evgen's ami_info_PDF/ -- never from a copy in the sample dir
+    // (FullSimSampleType.h, docs/ami_weights.md). `sample_dir` still locates the NTUP farm.
+    (void)sample_dir;
+    a.path = PythiaEvgenAmiDir(PythiaEvgen::PDF)
+           + PythiaEvgenAmiFileName(PythiaEvgen::PDF, "pp", sl.lo, sl.hi);
     std::ifstream probe(a.path);
     if (!probe.good())
         throw std::runtime_error("mc_pthat_slice_mass_statistics: missing AMI file " + a.path);
@@ -449,8 +453,9 @@ AmiInfo ReadAmi(const std::string& sample_dir, const PtHatSlice& sl)
     a.sigma_nb     = AmiField(a.path, "crossSection ");
     a.gen_filt_eff = AmiField(a.path, "genFiltEff ");
     a.dsid         = static_cast<int>(AmiField(a.path, "datasetNumber"));
-    // The PRODUCTION's event count, independent of anything on local disk -- the handle on an
-    // incomplete NTUP farm (see NtupChainEntries).
+    // The EVNT (evgen) record's event count, independent of anything on local disk -- the handle
+    // on an incomplete NTUP farm (see NtupChainEntries). It equals the reconstructed AOD count for
+    // the top-4 slices used here (pTH8_14 differs by 0.5 %: EVNT 2 039 700 vs AOD 2 030 000).
     a.total_events = AmiField(a.path, "totalEvents ");
     a.sigma_eff_nb = a.sigma_nb * a.gen_filt_eff;
     if (a.dsid != sl.dsid)
@@ -878,7 +883,7 @@ void mc_pthat_slice_mass_statistics(const std::string& sample = "pp_full",
            << " nb from this slice's own\n";
         os << "#       DSID-guarded AMI file and w the constant per-pair weight -- i.e. the weight\n";
         os << "#       was built from the same count the loop used;\n";
-        os << "#   (c) the AMI production record, totalEvents = "
+        os << "#   (c) the AMI evgen (EVNT) record, totalEvents = "
            << Fmt("%.0f", ami.at(sl.token).total_events)
            << " (a partially downloaded or\n";
         os << "#       partially symlinked farm would show up here and nowhere else).\n";

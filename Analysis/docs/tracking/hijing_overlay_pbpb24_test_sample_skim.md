@@ -34,11 +34,11 @@ the r-tag is acceptable as the recipe for the full 4-beam × 6-slice production.
   UKI-LT2-QMUL; 1 file (`_000026`) at BNL-OSG2_DATADISK.
   Requested by the production contact: vertex z = -71.2 mm, impact parameter 0-5 fm,
   2024 run conditions.
-- **AMI (fetched 2026-09-15, this dataset):** σ = 89.541 nb, genFiltEff = 2.342314e-3,
-  σ·ε = 0.20973 nb. The evgen tag is NEW (`e8613_e8586`, was `e8599`) while the DSID is the
-  same 802776 → `expected_ami_dsids` would NOT distinguish the productions; the AMI file
-  for this sample MUST live in the new dir's `ami_info/` and be re-fetched (done, step 2).
-  Numerically it differs from registry A (89.529 / 2.342579e-3) by 1e-4 relative.
+- **AMI — CORRECTED 2026-09-17 (user ruling; see §"AMI-weight correction" below).** The
+  2026-09-15 fetch on the AOD dataset (σ = 89.541 nb, genFiltEff = 2.342314e-3) was WRONG in
+  principle: `e8613` is the HIJING evgen tag, not a new Pythia evgen. The Pythia evgen of this
+  sample is 802776 e8599 (nPDF, registry table A: 89.529 nb / 2.342579e-3), whose weight it now
+  carries. The AOD record is kept as `ami_info_AOD_record_20260915/`, read by nothing.
 - Uncommitted `TrigRates.cxx/.h` ZDC-policy edits in the working tree belong to the
   pbpb26 data skim session. They only act when `StoreZdc>0`; the overlay mode sets
   `StoreZdc = 0`, so they are inert for this skim. Not committed here.
@@ -302,6 +302,53 @@ byte-identical output sizes. Rule + skim side documented in `SkimCode/README.md`
 was renamed to `ami_info_PDF/` (empty) + `ami_info_nPDF/` at 19:17 by another session. `PythiaAlgCoreT.c:41` falls back to that
 `ami_info/` for the pbpb23 overlay and pp24 TEST samples → their NTP now throws "missing AMI file" until that session finishes.
 
+### AMI-weight correction (2026-09-17, USER RULING — the physics rule, recorded here for good)
+
+**The AMI weight of every event is the weight of its PYTHIA evgen dataset, not of anything in the
+AOD chain.** `e8613` in `e8613_e8586_s4684_r17864_r17855` is the evgen used for **HIJING**
+(`860250.Hijing_PbPb_UCC_Flow_JJFV6_ip0_5.e8613_...`), NOT a Pythia truth evgen. The Pythia evgen
+e-tag is not shown in the overlay's AMI tag chain because the Pythia events were already generated
+and are used as INPUT to the simulation, not re-run. For each overlay event we use the AMI weight
+from Pythia truth, never from HIJING — and that is exactly why, in the HIJING-overlay samples, only
+truth muons from Pythia enter the reconstruction- and trigger-efficiency evaluation, never truth
+muons from HIJING: HIJING is background / environment / underlying event for the Pythia truth
+particles; a HIJING truth muon would carry the wrong (Pythia) weight.
+
+What was wrong (session 2, commit 2d78e97, 2026-09-16): `PythiaAlgCoreT` was changed to prefer "a
+sample's own `ami_info/`" whenever the directory existed, and this sample's `ami_info/` held the AOD
+dataset's AMI numbers (registered as `ami_weights.md` B2, Δ 1e-4 vs table A — numerically harmless
+here, wrong in principle, and a trap for the next production). Undone 2026-09-17, in the same
+commit series:
+
+- `FullSimSampleType.h`: `enum PythiaEvgen { nPDF, PDF }` + `FullSimSampleEvgen(type, isTestSample)`
+  (pp24 FULL → PDF, everything else → nPDF), `PythiaEvgenAmiDir/FileName/Dsids`. AMI files live
+  with the evgen in ONE place each: `pythia_truth_full_sample/pythia_5p36TeV/ami_info_nPDF/`
+  (e8599, 802758–802781, 4 isospins 4:6:6:9, nuclear PDF nNNPDF30 — Pb+Pb-suitable; truth-only
+  analysis, pp24 TEST, every HIJING overlay incl. this one) and `ami_info_PDF/` (`_pdf`,
+  803015–803020, pp only, proton PDF NNPDF23LO — pp-suitable; pp24 fullsim FULL). Both dirs +
+  `fetch_ami_info_{nPDF,PDF}.sh` were laid out by the user on 2026-09-17.
+- `PythiaAlgCoreT.c` InitParams: `ami_evgen` derived from the sample switch; the own-`ami_info/`
+  probe deleted; `expected_ami_dsids` defaults to the evgen's DSIDs. InitInputFullsim: file name
+  from `PythiaEvgenAmiFileName` (the PDF files carry the `_pdf` suffix). **InitInputCentrProd
+  (truth-only reader): was silently skipping** (WARNING + `ami_weight = 0`) since the user's
+  rename of `ami_info/` → `ami_info_nPDF/` at 19:17; now reads `ami_info_nPDF/`, missing file
+  fatal, DSID checked against 802758–802781.
+- The four `run_pythia_fullsim_*_full_sample.sh` no longer set `ami_info_dir_override`;
+  `pipeline_pythia_fullsim_pp.sh` preflight and `mc_pthat_slice_mass_statistics.cxx` read
+  `ami_info_PDF/`. On disk: `pythia_fullsim_full_sample/ami_info/` →
+  `ami_info_AOD_record_20260713/`, `pythia_fullsim_hijing_overlay_test_sample/ami_info/` →
+  `ami_info_AOD_record_20260915/` (renames, read by nothing).
+- **pp24 fullsim FULL sample: no rerun needed.** Its `ami_info/` copy (fetched 2026-07-13 on the
+  `_pdf` AOD) had σ and ε_filt byte-identical to the evgen's `ami_info_PDF/` files; the nominal
+  `muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_full.root` (2026-09-10) carries
+  kin0 weight 1.81001e-5 nb = 36.7432/2029996 and kin5 6.1807e-7 = 0.19779/319999 — the PDF
+  evgen's numbers. Every pp24 fullsim result, including `plots/mc_data_compr/` (which reads
+  `histograms_pythia_fullsim_pp24_*_full.root`, NOT the truth sample, since 2026-08-25), was
+  already built on the pp-suitable evgen with its own weights.
+- Docs: `docs/ami_weights.md` rewritten around the evgen rule (B2 retired), `docs/pythia_truth.md`,
+  `docs/pythia_fullsim_pp.md`, root `README.md`, `pipelines/fullsim_sample_layout.sh`, SkimCode
+  comments (`grid_sub_pbpb24_test_sample.sh`, `fullsim_pp24_full_to_lgd.sh`).
+
 ## Remaining Work
 
 - User decision on the verification plan / on reporting R1 to the production contact (message draft offered).
@@ -309,7 +356,18 @@ was renamed to `ami_info_PDF/` (empty) + `ami_info_nPDF/` at 19:17 by another se
 
 ## Latest Stage
 
-2026-09-17 (session 3) DONE: NTUP naming change (commit f107318), R4 track-multiplicity + L1TE plots (9538b3b), both reviews PASS.
+2026-09-17 (session 4) IN PROGRESS — **AMI-weight correction (user ruling).** Plan:
+(1) undo the "sample's own `ami_info/`" preference of commit 2d78e97 (`PythiaAlgCoreT.c` ctor): the AMI weight of a
+fullsim / overlay event is the weight of its **Pythia evgen** dataset, never of the AOD chain (e8613 is the HIJING evgen
+tag, not a Pythia one); (2) key the AMI directory by the Pythia evgen production instead:
+`pythia_truth_full_sample/pythia_5p36TeV/ami_info_nPDF/` (e8599, 4 isospins, nNNPDF30 nuclear PDF, 802758-802781 —
+truth-only analysis, pp24 TEST, every HIJING overlay) vs `ami_info_PDF/` (`_pdf`, pp only, NNPDF23LO proton PDF,
+803015-803020 — pp24 fullsim FULL); (3) fix the truth-only reader (`InitInputCentrProd`) which now silently skips the
+renamed `ami_info/`; (4) rewrite `docs/ami_weights.md` (drop B2); (5) survey the truth-quantity consumers (two
+independent subagents, cross-checked) and report which need the pp-suitable evgen. Files: `PythiaAlgCoreT.{c,h}`,
+`FullSimSampleType.h`, `run_pythia_fullsim_*_full_sample.sh`, `pipeline_pythia_fullsim_pp.sh`,
+`mc_pthat_slice_mass_statistics.cxx`, `docs/ami_weights.md`, this doc.
+
+Previous stage (session 3) DONE: NTUP naming change (commit f107318), R4 track-multiplicity + L1TE plots (9538b3b), both reviews PASS.
 Open: report R1/R4 to the production contact; wait for the fixed-calorimeter production and the other four vertex slices
-(then rerun the chain with `OVERLAY_YEAR=24` and redo R2). NOTE: `pythia_truth_full_sample/pythia_5p36TeV/ami_info/` was
-renamed by another session (19:17) — pbpb23-overlay / pp24-test NTP throws "missing AMI file" until that is settled.
+(then rerun the chain with `OVERLAY_YEAR=24` and redo R2).

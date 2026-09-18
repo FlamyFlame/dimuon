@@ -11,10 +11,11 @@
 # grid_sub_pbpb23_test_sample.sh; its NTUPs now live in
 # ~/usatlasdata/pythia_fullsim_hijing_overlay_test_sample_pbpb23/.
 #
-# AMI weights are per dataset (docs/ami_weights.md): this sample's own AMI info is in
-# ~/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/ami_info/ (fetched 2026-09-15:
-# sigma 89.541 nb, genFiltEff 2.342314e-3).  Same DSID 802776 as the e8599 evgen, so the
-# expected_ami_dsids guard does NOT distinguish the two productions -- keep the dirs apart.
+# AMI weights are the PYTHIA EVGEN's (docs/ami_weights.md, user ruling 2026-09-17): this
+# sample is 802776 e8599 (nPDF evgen, registry table A); e8613 in its tag chain is the HIJING
+# evgen, not a Pythia one. The AOD-level AMI record fetched 2026-09-15 (sigma 89.541 nb,
+# genFiltEff 2.342314e-3) is kept as ~/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/
+# ami_info_AOD_record_20260915/ and is read by nothing.
 #
 # Output file name is driven by TRIGRATES_OUTPUT_FILE and matches --extOutFile:
 #   Pythia_5p36TeV_<beam>_hQCD_DiMu_pTH<lo>_<hi>.<OUT_TAG>.NTUP.root

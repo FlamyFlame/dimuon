@@ -52,9 +52,15 @@ No physics changes. The invariant this task must preserve:
    falls back to the truth production's `ami_info/` only for the e8599 test samples that ship
    none (pp24 test, pbpb23 overlay). Fixed 2026-09-16 (review iteration 1): before, EVERY test
    sample read the truth production's file, so the pbpb24 sample's own AMI was never read.
+   **SUPERSEDED 2026-09-17 (user ruling):** the "sample's own `ami_info/`" preference was wrong
+   in principle — the weight of every fullsim/overlay event is its PYTHIA EVGEN's σ·ε_filt, never
+   the AOD chain's (e8613 is the HIJING evgen; the pbpb24 overlay is 802776 e8599 = table A). AMI
+   files are now keyed by evgen (`FullSimSampleType.h` `PythiaEvgen`: `ami_info_nPDF/` /
+   `ami_info_PDF/` under the truth sample dir); no sample dir holds an `ami_info/`. See
+   `ami_weights.md` and `hijing_overlay_pbpb24_test_sample_skim.md` §"AMI-weight correction".
 3. **Negative constraints.** No file is deleted. No cut, binning, weight, fit range or sample
    content changes. `.bak_*` copies are archived, never re-read by any code. The NTUP files, the
-   LGD symlink farm, `ami_info/`, `merging-record.txt` and the grid-monitor state stay at the
+   LGD symlink farm, `ami_info/` (2026-09-16 state; since renamed `ami_info_AOD_record_*`, see above), `merging-record.txt` and the grid-monitor state stay at the
    sample root (SkimCode/grid_monitor and the LGD farm scripts are NOT touched).
 
 ## Context

@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <vector>
 #include <stdexcept>
 
 // `noovl` = the r17663 NO-OVERLAY diagnostic sample: Pythia pp collisions reconstructed
@@ -95,6 +96,66 @@ inline bool FullSimSampleUsesFourBeams(FullSimSampleType t, bool is_test_sample)
     return FullSimSampleIsOverlay(t) != is_test_sample;
 }
 
+// =============================================================================================
+// PYTHIA EVGEN PRODUCTION -> AMI CROSS-SECTION WEIGHT (user ruling 2026-09-17; docs/ami_weights.md)
+//
+// The per-event MC weight of EVERY Pythia sample -- truth-only, pp24 fullsim, HIJING overlay --
+// is sigma * genFiltEff of the PYTHIA EVGEN dataset the event was generated in. A fullsim /
+// overlay AOD only re-uses those already-generated events as simulation input (that is why the
+// Pythia e-tag is not even visible in an overlay's AMI tag chain: the e8613 of the r17864 chain is
+// the HIJING evgen), so the AMI weight is a property of the evgen, never of the AOD chain. It is
+// also why only PYTHIA truth muons enter the overlay's efficiency numerators/denominators: HIJING
+// is the environment, and a HIJING muon would carry the Pythia weight, which is wrong for it.
+//
+// Two Pythia evgen productions exist at 5.36 TeV, and they differ SLICE-DEPENDENTLY (so the
+// difference cancels in no ratio):
+//   nPDF : e8599, DSIDs 802758-802781, FOUR isospin beams pp/pn/np/nn weighted 4:6:6:9, nuclear
+//          PDF LHAPDF6:nNNPDF30_nlo_as_0118_A208_Z82 -- the Pb+Pb-suitable evgen. Used by the
+//          truth-only analysis, the pp24 TEST fullsim (produced on it by mistake), every HIJING
+//          overlay (pbpb23 r17618/r17662, pbpb24 r17864, the full production) and the future
+//          data overlay.
+//   PDF  : "_pdf", DSIDs 803015-803020, pp beam ONLY, proton PDF NNPDF23_lo_as_0119_qed -- the
+//          pp-suitable evgen re-generated for pp conditions. Used by the pp24 fullsim FULL
+//          sample (and by a truth-only skim of it, should one ever be made).
+// The AMI files live with the evgen, in ONE place each:
+//   pythia_truth_full_sample/pythia_5p36TeV/ami_info_nPDF/  ami_info_mc23_5p36TeV_Py8EG_A14_<beam>_hQCD_DiMu_pTH<lo>_<hi>.txt
+//   pythia_truth_full_sample/pythia_5p36TeV/ami_info_PDF/   ami_info_mc23_5p36TeV_Py8EG_A14_pp_hQCD_DiMu_pTH<lo>_<hi>_pdf.txt
+// (fetch scripts fetch_ami_info_{nPDF,PDF}.sh next to them). A copy inside a fullsim sample
+// directory is NOT read by code: reading "a sample's own ami_info/" is exactly how the r17864
+// overlay picked up its AOD chain's numbers on 2026-09-16 (reverted).
+enum class PythiaEvgen { nPDF, PDF };
+
+inline std::string PythiaTruthSampleDir() {
+    return "/usatlas/u/yuhanguo/usatlasdata/pythia_truth_full_sample/pythia_5p36TeV/";
+}
+
+// Which Pythia evgen a fullsim sample was simulated from. The pp24 FULL sample is the only
+// sample on the proton-PDF evgen; everything else (all test samples, every overlay) is nPDF.
+inline PythiaEvgen FullSimSampleEvgen(FullSimSampleType t, bool is_test_sample) {
+    return (t == FullSimSampleType::pp && !is_test_sample) ? PythiaEvgen::PDF : PythiaEvgen::nPDF;
+}
+
+inline std::string PythiaEvgenAmiDir(PythiaEvgen e) {
+    return PythiaTruthSampleDir() + (e == PythiaEvgen::PDF ? "ami_info_PDF/" : "ami_info_nPDF/");
+}
+
+// AMI file name (basename) for one (beam, pT-hat slice) of an evgen production.
+inline std::string PythiaEvgenAmiFileName(PythiaEvgen e, const std::string& beam, int pth_lo, int pth_hi) {
+    if (e == PythiaEvgen::PDF && beam != "pp")
+        throw std::runtime_error("PythiaEvgenAmiFileName: the proton-PDF evgen has the pp beam only, asked for " + beam);
+    return "ami_info_mc23_5p36TeV_Py8EG_A14_" + beam + "_hQCD_DiMu_pTH" + std::to_string(pth_lo) + "_"
+         + std::to_string(pth_hi) + (e == PythiaEvgen::PDF ? "_pdf" : "") + ".txt";
+}
+
+// The DSIDs of an evgen production -- the provenance guard (PythiaAlgCoreT::expected_ami_dsids
+// defaults to this list): a file whose datasetNumber is not in it is from another production.
+inline std::vector<int> PythiaEvgenDsids(PythiaEvgen e) {
+    if (e == PythiaEvgen::PDF) return {803015, 803016, 803017, 803018, 803019, 803020};
+    std::vector<int> v;
+    for (int d = 802758; d <= 802781; ++d) v.push_back(d);
+    return v;
+}
+
 // HIJING-OVERLAY PRODUCTION CONFIGURATION TAG (user decision 2026-09-17). Every overlay
 // dataset is one point of a (vertex z, impact-parameter interval) grid on top of the
 // (isospin beam, pT-hat slice) grid already spelled out in the sample name, so the NTUP
@@ -164,8 +225,11 @@ inline std::string FullSimSamplePlotDir(FullSimSampleType t, int pbpb_year = 24)
 // nothing composes one of these subdirectory names anywhere else (the shell twin is
 // Analysis/pipelines/fullsim_sample_layout.sh -- keep the two in step).
 //
-//   <sample>/                          raw NTUP, ami_info/, merging-record.txt, r-tag records,
-//                                      grid-monitor state -- the SAMPLE itself (SkimCode-owned)
+//   <sample>/                          raw NTUP, merging-record.txt, r-tag / AOD-AMI records,
+//                                      grid-monitor state -- the SAMPLE itself (SkimCode-owned).
+//                                      NO ami_info/ here: AMI weights are keyed by the Pythia
+//                                      EVGEN and read from PythiaEvgenAmiDir (above), never from
+//                                      a sample directory.
 //     muon_pairs_*.root                ntuple-processing output        } FLAT, exactly like the
 //     hists_pythia_ntuple_processing_* ntuple-processing histograms    } data directories
 //     histograms_pythia_fullsim_*.root RDF hist-filling output         } (dimuon_data/pp_2024/)

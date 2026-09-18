@@ -177,8 +177,11 @@ if [[ "$SAMPLE" == "full" ]]; then
           A missing slice BIASES the cross-section-weighted combination (it is not merely a
           statistics loss). Wait for the grid tasks + SkimCode/scripts/fullsim_pp24_full_to_lgd.sh."
     fi
-    n_ami=$(ls "${SAMPLE_DIR}"/ami_info/ami_info_*.txt 2>/dev/null | wc -l)
-    [[ "$n_ami" -eq 6 ]] || fail "expected 6 AMI files in ${SAMPLE_DIR}/ami_info, found ${n_ami} (see docs/ami_weights.md — a WRONG or MISSING AMI weight is a silent, non-cancelling error)"
+    # AMI weights = the PYTHIA EVGEN's (the proton-PDF "_pdf" production for the pp24 FULL sample),
+    # read from the evgen's ami_info_PDF/ -- never from a copy in the sample dir (FullSimSampleType.h).
+    AMI_DIR_PDF="/usatlas/u/yuhanguo/usatlasdata/pythia_truth_full_sample/pythia_5p36TeV/ami_info_PDF"
+    n_ami=$(ls "${AMI_DIR_PDF}"/ami_info_*_pdf.txt 2>/dev/null | wc -l)
+    [[ "$n_ami" -eq 6 ]] || fail "expected 6 AMI files in ${AMI_DIR_PDF}, found ${n_ami} (see docs/ami_weights.md — a WRONG or MISSING AMI weight is a silent, non-cancelling error)"
     log "[Stage 0] preflight OK: all 6 farm slices present, 6 AMI files present"
 fi
 
