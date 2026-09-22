@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Analysis Code"
+  short_description: "Physics-aware ROOT and RDF code review"
+  default_prompt: "Use $review-analysis-code to review this analysis code change."

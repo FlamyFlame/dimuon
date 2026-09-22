@@ -1,0 +1,15 @@
+# Copy to ~/.codex/dimuon-bnl.config.toml on BNL and adjust paths if needed.
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+writable_roots = [
+    "/usatlas/u/yuhanguo/workarea/dimuon_codes",
+    "/atlasgpfs01/usatlas/data/yuhanguo",
+    "/tmp/yuhanguo",
+]
+network_access = false
+
+[shell_environment_policy]
+inherit = "core"
+exclude = ["*_TOKEN", "*_SECRET", "*_KEY"]

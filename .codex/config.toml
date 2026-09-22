@@ -1,0 +1,10 @@
+# Shared, machine-independent Codex behavior for this trusted repository.
+project_doc_max_bytes = 65536
+project_doc_fallback_filenames = ["CLAUDE.md"]
+
+[features]
+hooks = true
+
+[agents]
+max_threads = 4
+max_depth = 1

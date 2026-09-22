@@ -1,0 +1,8 @@
+# Copy to ~/.codex/dimuon-local.config.toml and replace the path, then run:
+# codex --profile dimuon-local --cd /absolute/path/to/dimuon
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+writable_roots = ["/absolute/path/to/heavy-ion/dimuon"]
+network_access = false

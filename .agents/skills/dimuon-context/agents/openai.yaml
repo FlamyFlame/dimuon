@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dimuon Context"
+  short_description: "Load authoritative dimuon analysis context"
+  default_prompt: "Use $dimuon-context to load the authoritative context for this analysis task."

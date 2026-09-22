@@ -5,8 +5,22 @@
 *.d
 AutoDict_*.cxx
 
-# Claude Code / Codex plugin cache #
-.codex
+# Codex: track declarative project behavior, ignore generated state #
+/.codex/*
+!/.codex/config.toml
+!/.codex/hooks.json
+!/.codex/hooks/
+!/.codex/hooks/**
+!/.codex/rules/
+!/.codex/rules/**
+!/.codex/agents/
+!/.codex/agents/**
+!/.codex/profiles/
+!/.codex/profiles/**
+!/.codex/tracking/
+!/.codex/tracking/**
+/.codex/state/
+/.codex/logs/
 
 # Packages #
 ############
