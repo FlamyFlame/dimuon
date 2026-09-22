@@ -315,14 +315,19 @@ public:
     // combination (which is exactly what the strict check exists to prevent).
     bool allow_missing_slices = false;
 
-    // ---- AMI provenance (BLOCKING; see InitInputFullsim) ----
-    // AMI files are named by BEAM+SLICE only, so they do NOT identify the production. The pp24
-    // TEST sample (802758-802781) and the pp24 FULL "_pdf" sample (803015-803020) have different,
-    // slice-dependent cross-sections, so reading the wrong one silently corrupts every
-    // sigma-weighted quantity (and does NOT cancel in ratios).
-    //   ami_info_dir_override : if non-empty, replaces <py_dir>/ami_info/
-    //   expected_ami_dsids    : if non-empty, the datasetNumber in each AMI file MUST be in this
-    //                           list, else InitInputFullsim throws.
+    // ---- AMI provenance (BLOCKING; see InitInputFullsim and FullSimSampleType.h) ----
+    // The AMI weight is that of the PYTHIA EVGEN a sample was simulated from (never of its AOD
+    // chain, never of a copy inside the sample directory). `ami_evgen` is DERIVED from
+    // (fullsim_sample_type, isTestSample) -- the same switch as the input directory and the
+    // isospin treatment: pp24 FULL -> PDF (803015-803020, pp only, proton PDF); everything else
+    // -> nPDF (802758-802781, 4 isospins, nuclear PDF). AMI files are named by BEAM+SLICE only,
+    // and the two evgens' cross-sections differ SLICE-DEPENDENTLY, so a wrong directory would
+    // silently corrupt every sigma-weighted quantity (and cancels in no ratio).
+    //   ami_info_dir_override : diagnostic escape hatch; if non-empty, replaces PythiaEvgenAmiDir(ami_evgen)
+    //   expected_ami_dsids    : the datasetNumber in each AMI file MUST be in this list, else
+    //                           InitInputFullsim throws. Defaults to PythiaEvgenDsids(ami_evgen);
+    //                           a run script may narrow it (e.g. the single-DSID noovl sample).
+    PythiaEvgen ami_evgen = PythiaEvgen::nPDF;
     std::string ami_info_dir_override;
     std::vector<int> expected_ami_dsids;
     // Propagate trigger decisions/matching from the trigger-enabled MC skims (_July2026)

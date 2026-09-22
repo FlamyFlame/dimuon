@@ -1,0 +1,8 @@
+# Part 5: runs 511866-511978 (6 datasets)
+# files=29,143 | jobs=486 | 321.0 TB | 169.2M events
+data25_hi:data25_hi.00511866.physics_HardProbes.merge.AOD.f1671_m2272
+data25_hi:data25_hi.00511894.physics_HardProbes.merge.AOD.f1671_m2272
+data25_hi:data25_hi.00511902.physics_HardProbes.merge.AOD.f1671_m2272
+data25_hi:data25_hi.00511920.physics_HardProbes.merge.AOD.f1671_m2272
+data25_hi:data25_hi.00511967.physics_HardProbes.merge.AOD.f1671_m2272
+data25_hi:data25_hi.00511978.physics_HardProbes.merge.AOD.f1671_m2272

@@ -329,7 +329,14 @@ void RDFBasedHistFillingPP::MakeAndWriteSingleMuonTrigEffPtGraphs(){
 //
 //   eps_reco^pair(pair pT, pair eta, dR)  -- the pp24-fullsim PAIR reconstruction efficiency,
 //     REPLACING the Run 2 single-muon eps_1*eps_2 placeholder (which had no dR dependence at all).
-//     Utilities/PairRecoEffEvaluator.h.
+//     Utilities/PairRecoEffEvaluator.h. Since 2026-09-17 it INCLUDES the detector-gap acceptance:
+//     the gap cuts of the signal region below (fiducial q*eta windows on both muons, |eta^pair|
+//     < 2.2) sit on its RECO numerator only, its truth denominator carries the signal cuts alone
+//     (docs/tracking/pair_reco_eff_gap_acceptance.md). So the corrected yield refers to the truth
+//     region WITHOUT the single-muon q*eta gap windows -- muon pT > 4.5, |eta| < 2.4, mass window,
+//     pair pT > 9 GeV, and |eta^pair| < 2.2 as the MEASURED RANGE (the eps_reco eta^pair axis
+//     tiles exactly [-2.2, 2.2]; truth pairs outside it enter no cell) -- and NO separate
+//     acceptance factor eps_acc is applied anywhere.
 //
 // Both live on the heap for the lifetime of the process: RDF Defines are LAZY, so a stack-scoped
 // evaluator would be destroyed before the event loop runs.
@@ -589,6 +596,9 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
     // (user instruction 2026-08-17; docs/tracking/pp24_crossx_rerun_2026_08.md). The windows are
     // READ from ParamsSet::single_mu_fiducial_gap_cuts -- the single source of truth; the values
     // are NEVER retyped here (muon_gap_cuts_acceptance.md F10/F11a/F17).
+    // The gap cuts (both single-muon windows and the pair-level one) are ACCEPTANCE cuts, not
+    // signal cuts: their loss is carried by eps_reco^pair, whose reco numerator applies exactly
+    // this selection (2026-09-17, docs/tracking/pair_reco_eff_gap_acceptance.md).
     // 2026-09-07 the PAIR-LEVEL gap cut |eta^pair| < ParamsSet::pair_eta_fiducial_max = 2.2 was
     // ADDED alongside them (user): a pair can reach |eta^pair| > 2.2 with both muons passing the
     // one-sided q*eta windows, but only through a charge-dependent corner of phase space whose

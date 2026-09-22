@@ -32,12 +32,14 @@
   	- directory: `/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_*` — layout is the one of
   	  `Analysis/MuonObjectsParamsAndHelpers/FullSimSampleType.h` "PER-SAMPLE DIRECTORY LAYOUT"
   	  (shell twin `Analysis/pipelines/fullsim_sample_layout.sh`):
-  	  - raw NTUP, `ami_info/`, `merging-record.txt`, grid-monitor state, and the ntuple-processing
+  	  - raw NTUP, `merging-record.txt`, grid-monitor state, and the ntuple-processing
   	    (`muon_pairs_*`, `hists_pythia_ntuple_processing_*`) + RDF hist-filling (`histograms_pythia_fullsim_*`)
   	    outputs are FLAT at the root, like the data directories
   	  - `mc_trig_eff/{hists,singles_fits,dr_correction,pair_eff,closure}/` — MC trigger-efficiency products
   	  - `reco_eff/` — `pair_reco_eff_<label>.root`
   	  - `plots/`, `backup/` (`.bak_<date>` copies, never read by code), `logs/`
+  	  - NO `ami_info/`: AMI weights are keyed by the Pythia EVGEN and live in
+  	    `pythia_truth_full_sample/pythia_5p36TeV/ami_info_{nPDF,PDF}/` (`Analysis/docs/ami_weights.md`)
   - powheg
   	- `/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample` --> bb_full_sample, cc_full_sample
   	  - powheg sample files, muon-pair trees & hist root files are at this level in the bb_full_sample, cc_full_sample subdirectories

@@ -33,9 +33,11 @@
 //
 //     per region-A (pair pT, |eta^pair|) cell:
 //        primary  = the EXPONENTIAL   f = C + A exp[-(dR/lambda)^p]              (DrCorrCrossxMethod)
-//                   EXCEPT the cells DrCorrCrossxPolyPtBins() x the LAST |eta| group, whose
+//                   EXCEPT the cells DrCorrCrossxPolyPtBins(sign) x the LAST |eta| group, whose
 //                   primary is the constrained POLYNOMIAL
 //                   f = C + u^2 [A + a3(u-1) + a4(u^2-1)]                          (DrCorrCrossxPolyMethod)
+//                   -- a choice made PER SIGN SERIES: three cells for "os", NONE for "ss"
+//                   (the same-sign series is always expo -> interp; user, 2026-09-17)
 //        fallback = the linear INTERPOLATION through the measured points          (DrCorrCrossxFallbackMethod)
 //                   if the primary is rejected
 //        nothing else: a cell with neither accepted THROWS at load time. The raw-bin placeholder
@@ -116,15 +118,20 @@ struct DrCorrectionCrossxEvaluator {
 
         // The poly-primary cells: named pair-pT bins x the LAST |eta| group. Validated against the
         // axis they index (a bin index past region A would silently name nothing).
-        for (int b : DrCorrCrossxPolyPtBins())
+        const std::vector<int>& poly_pt_bins = DrCorrCrossxPolyPtBins(sign);   // per SIGN series
+        for (int b : poly_pt_bins)
             if (b < 1 || b > n_pt_region_a)
                 throw std::runtime_error("DrCorrectionCrossxEvaluator: DrCorrCrossxPolyPtBins names "
                     "pair-pT bin " + std::to_string(b) + ", outside region A (1.."
                     + std::to_string(n_pt_region_a) + ")");
         auto is_poly_primary = [&](int iy, int iz) {
-            const auto& pb = DrCorrCrossxPolyPtBins();
-            return iz == neta && std::find(pb.begin(), pb.end(), iy) != pb.end();
+            return iz == neta && std::find(poly_pt_bins.begin(), poly_pt_bins.end(), iy) != poly_pt_bins.end();
         };
+        std::cout << "DrCorrectionCrossxEvaluator: polynomial-primary cells for the "
+                  << DrCorrSignText(sign) << " series: " << poly_pt_bins.size()
+                  << (poly_pt_bins.empty() ? " (expo -> interp everywhere)" : " (pair-pT bins") ;
+        for (int b : poly_pt_bins) std::cout << " " << b;
+        std::cout << (poly_pt_bins.empty() ? "" : " x the last |eta| group)") << std::endl;
 
         route.assign(npt, std::vector<int>(neta, kRegionB));
         std::cout << "DrCorrectionCrossxEvaluator [" << cfg.mc_label << " / " << DrCorrSignText(sign)

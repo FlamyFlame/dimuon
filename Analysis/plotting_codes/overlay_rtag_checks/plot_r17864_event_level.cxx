@@ -9,6 +9,8 @@
 //
 //   root -l -b -q 'plot_r17864_event_level.cxx+("fcal")'   FCal sum-ET, both samples
 //   root -l -b -q 'plot_r17864_event_level.cxx+("vtx")'    reco vs truth vertex z
+//   root -l -b -q 'plot_r17864_event_level.cxx+("ntrk")'   ID track multiplicities (trk_numqual), both samples
+//   root -l -b -q 'plot_r17864_event_level.cxx+("l1te")'   L1 total transverse energy (L1TE), both samples
 //
 // Every event is unweighted: both samples are ONE pT-hat slice (no slice mixing), and the
 // quantities are underlying-event / beam-spot properties independent of the hard scatter.
@@ -22,18 +24,26 @@
 #include <ROOT/RDataFrame.hxx>
 #include <string>
 #include <cstdio>
+#include "../../MuonObjectsParamsAndHelpers/FullSimSampleType.h"
 
 namespace {
     const std::string NEW_LABEL = "2024 conditions (r17864)";
     const std::string OLD_LABEL = "2023 conditions (r17618)";
-    const std::string NEW_FILE =
-        "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/"
-        "Pythia_5p36TeV_pp_hQCD_DiMu_pTH125_300.FullSimHIJINGOverlayPP24.NTUP.root";
-    const std::string OLD_FILE =
-        "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample_pbpb23/"
-        "Pythia_5p36TeV_pp_hQCD_DiMu_pTH125_300.FullSimHIJINGOverlayPP24.NTUP.root";
-    const std::string OUTDIR =
-        "/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/plots/r17864_rtag_sanity/";
+    // pTH125_300 NTUP of each conditions year, named by FullSimSampleType.h (dir + file tag,
+    // the latter carrying the production configuration vtxz/b since 2026-09-17).
+    std::string ntup(int pbpb_year) {
+        return FullSimSampleInputDir(FullSimSampleType::hijing, true, pbpb_year)
+             + "Pythia_5p36TeV_pp_hQCD_DiMu_pTH125_300." + FullSimSampleFileTag(FullSimSampleType::hijing, pbpb_year)
+             + ".NTUP.root";
+    }
+    // Resolved at first use, not at library load: a namespace-scope std::string initialised
+    // from the header's inline functions breaks cling's later RDF JIT symbol resolution.
+    const std::string& NEW_FILE() { static const std::string f = ntup(24); return f; }
+    const std::string& OLD_FILE() { static const std::string f = ntup(23); return f; }
+    const std::string& OUTDIR() {
+        static const std::string d = FullSimPlotsDir(FullSimSampleInputDir(FullSimSampleType::hijing, true, 24)) + "r17864_rtag_sanity/";
+        return d;
+    }
     const int kNew = kRed + 1, kOld = kBlue + 1;
 
     void style() {
@@ -41,7 +51,7 @@ namespace {
         gStyle->SetOptTitle(0);
         gStyle->SetPadTickX(1);
         gStyle->SetPadTickY(1);
-        gSystem->mkdir(OUTDIR.c_str(), true);
+        gSystem->mkdir(OUTDIR().c_str(), true);
     }
     void axes(TH1* h, const char* xt, const char* yt) {
         h->GetXaxis()->SetTitle(xt); h->GetYaxis()->SetTitle(yt);
@@ -59,7 +69,7 @@ namespace {
 
 void plot_fcal() {
     style();
-    ROOT::RDataFrame dnew("HeavyIonD3PD", NEW_FILE), dold("HeavyIonD3PD", OLD_FILE);
+    ROOT::RDataFrame dnew("HeavyIonD3PD", NEW_FILE()), dold("HeavyIonD3PD", OLD_FILE());
     auto nn = fcal_node(dnew), no = fcal_node(dold);
     const ROOT::RDF::TH1DModel mtot("", "", 110, -3.0, 8.0), mside("", "", 90, -2.0, 4.0);
     auto h_new = nn.Histo1D(mtot, "fcal_tev"),    h_old = no.Histo1D(mtot, "fcal_tev");
@@ -105,14 +115,14 @@ void plot_fcal() {
     l2.AddEntry(a_old.GetPtr(), "2023 conditions (r17618), side A", "l");
     l2.AddEntry(c_old.GetPtr(), "2023 conditions (r17618), side C", "l");
     l2.Draw();
-    c.SaveAs((OUTDIR + "fcal_sum_et_r17864_vs_r17618_pTH125_300.png").c_str());
+    c.SaveAs((OUTDIR() + "fcal_sum_et_r17864_vs_r17618_pTH125_300.png").c_str());
     std::printf("FCal sum-ET: new %.0f events (%.1f%% < 0), old %.0f events (%.1f%% < 0)\n",
                 n_new, 100.0 * neg_new / n_new, n_old, 100.0 * neg_old / n_old);
 }
 
 void plot_vtx() {
     style();
-    ROOT::RDataFrame dnew("HeavyIonD3PD", NEW_FILE), dold("HeavyIonD3PD", OLD_FILE);
+    ROOT::RDataFrame dnew("HeavyIonD3PD", NEW_FILE()), dold("HeavyIonD3PD", OLD_FILE());
     // vtx_z[0] = the reconstructed primary vertex; truth_vtx_z[0] = the generated interaction
     // point (every stored truth vertex sits at the signal PV, checked 2026-09-16). The generated
     // vertex is UNSMEARED: truth z is exactly -71.2000 mm in every r17864 event (the 0.01 mm in
@@ -160,14 +170,102 @@ void plot_vtx() {
     l3.AddEntry(r_old.GetPtr(), "2023 conditions (r17618), z_{vtx} = -3.3 mm", "l");
     l3.AddEntry((TObject*)nullptr, Form("mean %+.1f #mum, RMS %.1f #mum", r_old->GetMean(), r_old->GetRMS()), "");
     l3.Draw();
-    c.SaveAs((OUTDIR + "vertex_z_reco_vs_truth_r17864.png").c_str());
+    c.SaveAs((OUTDIR() + "vertex_z_reco_vs_truth_r17864.png").c_str());
     std::printf("vertex z: new reco mean %.4f mm, truth mean %.4f mm; residual mean %+.2f um RMS %.2f um (old: %+.2f / %.2f um)\n",
                 h_reco->GetMean(), h_truth->GetMean(), r_new->GetMean(), r_new->GetRMS(), r_old->GetMean(), r_old->GetRMS());
+}
+
+// ID track multiplicity per event, four skim counters (TrigRates.cxx m_trk_numqual): the
+// question is whether the r17864 conditions problem (R1: calorimeter) also reaches the
+// tracker. No centrality cut (the r17864 FCal centrality is meaningless). Unweighted, per-event
+// fraction, so the two 10k samples overlay directly.
+void plot_ntrk() {
+    style();
+    ROOT::RDataFrame dnew("HeavyIonD3PD", NEW_FILE()), dold("HeavyIonD3PD", OLD_FILE());
+    // [0] pT > 400 MeV, no quality; [3] pT > 400 MeV + HITight; [4] all tracks; [7] HITight.
+    // Untagged counters reach ~13k tracks in the 2024 sample (250 / bin), the HITight ones ~4k
+    // (80 / bin).
+    struct Panel { int idx; const char* title; int nbins; double xmax; double width; };
+    const Panel panels[4] = {
+        {0, "p_{T} > 400 MeV",                 56, 14000., 250.},
+        {3, "p_{T} > 400 MeV, HITight",        50,  4000.,  80.},
+        {4, "no requirement",                  56, 14000., 250.},
+        {7, "HITight, no p_{T} requirement",   50,  4000.,  80.},
+    };
+    const double n_new = *dnew.Count(), n_old = *dold.Count();
+    std::vector<ROOT::RDF::RResultPtr<TH1D>> hn, ho;
+    for (const auto& p : panels) {
+        const std::string col = "ntrk_" + std::to_string(p.idx);
+        const std::string expr = "(double)trk_numqual[" + std::to_string(p.idx) + "]";
+        const ROOT::RDF::TH1DModel m("", "", p.nbins, 0., p.xmax);
+        hn.push_back(dnew.Define(col, expr).Histo1D(m, col));
+        ho.push_back(dold.Define(col, expr).Histo1D(m, col));
+    }
+    TCanvas c("c", "", 1600, 1400);
+    c.Divide(2, 2);
+    for (int i = 0; i < 4; ++i) {
+        c.cd(i + 1); gPad->SetLeftMargin(0.13); gPad->SetBottomMargin(0.13);
+        TH1D *n = hn[i].GetPtr(), *o = ho[i].GetPtr();
+        n->Scale(1.0 / n_new); o->Scale(1.0 / n_old);
+        axes(n, Form("N_{trk} (%s)", panels[i].title), Form("fraction of events / %.0f tracks", panels[i].width));
+        n->GetXaxis()->SetNdivisions(507);
+        n->SetLineColor(kNew); n->SetLineWidth(2);
+        o->SetLineColor(kOld); o->SetLineWidth(2);
+        const double ymax = 1.6 * std::max(n->GetBinContent(n->GetMaximumBin()), o->GetBinContent(o->GetMaximumBin()));
+        n->SetMaximum(ymax); n->SetMinimum(0);
+        n->Draw("hist"); o->Draw("hist same");
+        TLegend l(0.40, 0.62, 0.90, 0.89); l.SetBorderSize(0); l.SetFillStyle(0); l.SetTextSize(0.030);
+        l.SetHeader("HIJING overlay, b < 5 fm, #hat{p}_{T} 125-300 GeV");
+        l.AddEntry(n, NEW_LABEL.c_str(), "l");
+        l.AddEntry((TObject*)nullptr, Form("mean %.0f, RMS %.0f", n->GetMean(), n->GetRMS()), "");
+        l.AddEntry(o, OLD_LABEL.c_str(), "l");
+        l.AddEntry((TObject*)nullptr, Form("mean %.0f, RMS %.0f", o->GetMean(), o->GetRMS()), "");
+        l.DrawClone();
+        std::printf("trk_numqual[%d] (%s): new mean %.0f RMS %.0f | old mean %.0f RMS %.0f | ratio of means %.3f\n",
+                    panels[i].idx, panels[i].title, n->GetMean(), n->GetRMS(), o->GetMean(), o->GetRMS(), n->GetMean() / o->GetMean());
+    }
+    c.SaveAs((OUTDIR() + "trk_multiplicity_r17864_vs_r17618_pTH125_300.png").c_str());
+}
+
+// L1 total transverse energy (LVL1EnergySumRoI energyT, stored in GeV by the skim) -- the
+// L1Calo view of the same calorimeter whose offline sums are broken in r17864 (R1). No
+// centrality cut, unweighted, per-event fraction.
+void plot_l1te() {
+    style();
+    ROOT::RDataFrame dnew("HeavyIonD3PD", NEW_FILE()), dold("HeavyIonD3PD", OLD_FILE());
+    auto nn = dnew.Define("l1te_tev", "L1TE / 1e3f"), no = dold.Define("l1te_tev", "L1TE / 1e3f");
+    // the 2023-conditions sample reaches ~25 TeV (b < 5 fm), the 2024 one sits at ~3 TeV
+    const ROOT::RDF::TH1DModel m("", "", 100, 0., 25.);
+    auto h_new = nn.Histo1D(m, "l1te_tev"), h_old = no.Histo1D(m, "l1te_tev");
+    const double n_new = *nn.Count(), n_old = *no.Count();
+    TCanvas c("c", "", 800, 700);
+    gPad->SetLeftMargin(0.13); gPad->SetBottomMargin(0.13);
+    h_new->Scale(1.0 / n_new); h_old->Scale(1.0 / n_old);
+    axes(h_new.GetPtr(), "L1 #Sigma E_{T} [TeV]", "fraction of events / 0.25 TeV");
+    h_new->SetLineColor(kNew); h_new->SetLineWidth(2);
+    h_old->SetLineColor(kOld); h_old->SetLineWidth(2);
+    const double ymax = 1.6 * std::max(h_new->GetBinContent(h_new->GetMaximumBin()), h_old->GetBinContent(h_old->GetMaximumBin()));
+    h_new->SetMaximum(ymax); h_new->SetMinimum(0);
+    h_new->Draw("hist"); h_old->Draw("hist same");
+    auto median = [](TH1D* h) { double q, p = 0.5; h->GetQuantiles(1, &q, &p); return q; };
+    TLegend l(0.36, 0.62, 0.90, 0.89); l.SetBorderSize(0); l.SetFillStyle(0); l.SetTextSize(0.032);
+    l.SetHeader("HIJING overlay, b < 5 fm, #hat{p}_{T} 125-300 GeV");
+    l.AddEntry(h_new.GetPtr(), NEW_LABEL.c_str(), "l");
+    l.AddEntry((TObject*)nullptr, Form("median %.2f TeV", median(h_new.GetPtr())), "");
+    l.AddEntry(h_old.GetPtr(), OLD_LABEL.c_str(), "l");
+    l.AddEntry((TObject*)nullptr, Form("median %.2f TeV", median(h_old.GetPtr())), "");
+    l.Draw();
+    c.SaveAs((OUTDIR() + "l1te_r17864_vs_r17618_pTH125_300.png").c_str());
+    std::printf("L1TE: new median %.2f TeV (mean %.2f), old median %.2f TeV (mean %.2f); overflow >25 TeV new %.0f old %.0f events\n",
+                median(h_new.GetPtr()), h_new->GetMean(), median(h_old.GetPtr()), h_old->GetMean(),
+                h_new->GetBinContent(101) * n_new, h_old->GetBinContent(101) * n_old);
 }
 
 void plot_r17864_event_level(const char* what = "fcal") {
     const std::string w = what;
     if      (w == "fcal") plot_fcal();
     else if (w == "vtx")  plot_vtx();
-    else std::printf("unknown mode '%s' (fcal|vtx)\n", what);
+    else if (w == "ntrk") plot_ntrk();
+    else if (w == "l1te") plot_l1te();
+    else std::printf("unknown mode '%s' (fcal|vtx|ntrk|l1te)\n", what);
 }

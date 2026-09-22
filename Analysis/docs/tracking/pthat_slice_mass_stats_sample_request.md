@@ -177,6 +177,15 @@ marked.
 - Reference sample size in the request: **350 k events** per slice. The existing slices hold
   **319 999** events each, so the counts are reported on the existing sample with the percentage
   as the **per-event rate** (user decision, 2026-09-09) — multiply by 350 000 for the projection.
+- **User request (2026-09-17) — a SAME-SIGN-ONLY request, wider in pT-hat and lower in
+  pair p_T.** The same-sign MC statistics are poor down to pair p_T ≈ 25 GeV, so the second
+  request is now: same-sign-filtered, a wider range of pT-hat slices, a much lower pair-p_T cut
+  (~20–25 GeV) and a loose mass cut whose value may need re-deciding (the back-to-back peak
+  moves DOWN in mass at lower pair p_T). Preparation asked for: (1) the inclusive mass figure for
+  the top FOUR slices (add 24–40 and 40–70); (2) the same with a pair-p_T cut of 20–150 GeV in
+  place of the 52.23–150 top-3 cells; (3) the fullsim per-slice statistics plots
+  (`plot_pythia_fullsim_kn_pt_crossx.cxx`, existing statistics, NOT projected) for same-sign
+  pairs with m < 10 GeV in place of the single-b signal pairs. Nothing existing is overwritten.
 - The three highest pair-p_T bins used to be 50–72 / 72–104 / 104–150 GeV. Since the
   2026-09-08 adoption of the 9 GeV pair-p_T floor
   (`mu_pt45_gap125_pairpt9_adoption.md`), the coarse axis is 8 log bins **9→150** and the three
@@ -263,6 +272,30 @@ loop and **throws before writing anything** if size or mtime moved: a mid-read r
 otherwise leave every histogram filled with fewer pairs and no error from RDF — indistinguishable
 from the honest answer to the question being asked.
 
+**D8 — The 4-slice / 20 GeV figures are a FIGURE-ONLY variant of the same macro, never a second
+copy of the selection.** `mc_pthat_slice_mass_statistics` gains two arguments,
+`n_top_slices` (2 = the nominal request study; 4 adds pTH24_40 = DSID 803017 and pTH40_70 =
+803018, both from `ami_weights.md` table B and both DSID-guarded like the first two) and
+`figure_pair_pt_lo` (NaN = the canonical 3-highest-cells edge from `ParamsSet`; 20 = the user's
+figure cut). Any non-nominal value switches the macro to figure-only: the nine CSV tables are
+shaped for the 3 highest coarse cells of the FIRST request and are NOT re-emitted, and every
+output name carries the variant suffix (`_top4`, `_pairpt20`), so the 2026-09-10 deliverables
+are untouched. **20 GeV is a cut on the figure, not a binning**: it is not an edge of
+`pair_pt_coarse_bins` (nearest edges 18.18 / 25.84) and is labelled as the range it is.
+Same population, same axis, same denominator checks as D1–D6. The proposed filter value is
+moved to ONE header (`Utilities/MCRequestLooseMassFilter.h`) so that the fullsim statistics
+macro (D9) and this one cannot drift apart on it.
+
+**D9 — The same-sign statistics plots are a selection VARIANT of `plot_pythia_fullsim_kn_pt_crossx.cxx`,
+writing to its own subdirectory.** Nominal = opposite-sign tree, `from_same_b` (the single-b
+signal). Variant `ss_loose_mass` = same-sign tree (`muon_pair_tree_kin<k>_sign1`, split by
+`truth_same_sign` upstream), truth pair p_T under `truth_minv < 10` and reco pair p_T under
+`minv < 10 && pair_pass_<WP>` — each variable cut at its own level, because the generator filter
+of the request is a truth-mass cut while the analysis consumes reco mass. Weighted (dσ/dp_T in
+nb/GeV, as the nominal plots) — here the slices ARE compared across each other, unlike D2, so
+the σ-weighting is required. The projected-statistics function is guarded against the variant
+(it hard-codes the signal selection). Outputs → `plots/ss_mass_lt10/`, same file names.
+
 ## Implementation Plan
 
 1. **DONE** — Doc triage; establish the canonical cells and the slice/DSID map; resolve the
@@ -271,8 +304,15 @@ from the honest answer to the question being asked.
    (implements §3a–§3e). Reviewer: `/review-analysis-code` for the RDF/selection half and
    `/review-plot` for the figure; include §2, §3a–§3e and §4 in the task prompts.
 3. **DONE** — run for Tight and Medium; numbers in Results & Observations (R1–R6).
-4. **IN PROGRESS** — `/review-analysis-code` (RDF/selection/denominator, §2/§3a–§3d/§4) and
-   `/review-plot` (the mass figure, §3e/D4/D5); then commit.
+4. **DONE** — `/review-analysis-code` (RDF/selection/denominator, §2/§3a–§3d/§4) and
+   `/review-plot` (the mass figure, §3e/D4/D5); committed.
+5. **DONE 2026-09-17 (no reviewer pass — user: urgent, reviews explicitly waived)** — same-sign-request preparation, three figure sets (§3e, D8):
+   (a) `pair_mass_by_pthat_slice_top4.png` — 4 slices (kin 2–5), all selected pairs;
+   (b) `pair_mass_by_pthat_slice_top4_pairpt20.png` — 4 slices, 20 < p_T^pair < 150 GeV;
+   (c) `<full sample>/plots/ss_mass_lt10/{truth,reco}_pair_pt_kn{,_stat_error,_err_frac}{,_150GeV}.png`
+   — the per-slice dσ/dp_T statistics plots for SAME-SIGN pairs with m < 10 GeV.
+   Reviewers: `/review-analysis-code` (selection, slice/DSID map, denominator guards on the two
+   added slices) + `/review-plot` (§3e, D4, D5, D8) — one combined pass on both macros.
 
 ## Progress Log
 
@@ -412,6 +452,26 @@ from the honest answer to the question being asked.
   Also: Scope said six CSVs where the macro writes nine; the top-3 canvas label rounded 52.2273
   down to `52.2` with `%.1f` (now `%.2f`); Remaining Work still listed the completed regenerated-tree
   re-derivation; the INDEX line was dated 2026-09-09 and still advertised R0 as an open gap.
+
+## Progress Log (continued)
+
+- **2026-09-17, step 5 — same-sign-request preparation figures (user waived the reviewers:
+  "urgent, do not run code/plot review").** New shared header
+  `Utilities/MCRequestLooseMassFilter.h` (`MCRequest::kLooseMassMax = 10`), consumed by both
+  macros. `mc_pthat_slice_mass_statistics.cxx`: 4-slice table (pTH24_40 = 803017, pTH40_70 =
+  803018 added, DSID-guarded), `n_top_slices` + `figure_pair_pt_lo` arguments, figure-only mode
+  with variant suffix, N-panel layout (2×2 for 4). All four slices passed the denominator
+  cross-checks: N_proc = N_beam = NTUP chain = 2 399 995 / 1 199 997 / 319 999 / 319 999, weight
+  implies N to 0.1 event, AMI totalEvents 2.4M / 1.2M / 320k / 320k. Outputs (Tight, in
+  `mc_pthat_slice_mass_stats/`, nothing pre-existing touched):
+  `pair_mass_by_pthat_slice_top4.png`, `pair_mass_by_pthat_slice_top4_pairpt20.png` (20 <
+  p_T^pair < 150 GeV, user's figure cut — NOT a canonical edge), plus the by-product
+  `pair_mass_by_pthat_slice_top3_pairpt_top4.png` and `mc_pthat_slice_mass_stats_top4{,_pairpt20}.root`.
+  `plot_pythia_fullsim_kn_pt_crossx.cxx`: `ss_loose_mass` argument (D9) → 12 PNGs in
+  `pythia_fullsim_full_sample/plots/ss_mass_lt10/` (`{truth,reco}_pair_pt_kn{,_stat_error,_err_frac}{,_150GeV}.png`),
+  FULL sample, Tight; header text shrunk 0.038 → 0.032 for the longer label only.
+  Input files: `..._mc_trig_full.root` (2026-09-10 04:34) and `..._full.root` (2026-09-10 01:21).
+  **R7 observations** below.
 
 ## Results & Observations
 
@@ -694,6 +754,25 @@ pTH70_125 OS 3 630/3 557 = 1.021, SS 70/66 = 1.061. Inclusively **1.040–1.076*
 pTH70_125 SS in the signal window, 3 132 → 3 371). The WP choice does not change any conclusion
 above.
 
+### R7 — Same-sign request preparation (2026-09-17, figures only; landmarks NOT emitted for these)
+
+- **Inclusive, 4 slices** (`pair_mass_by_pthat_slice_top4.png`): the same-sign back-to-back
+  peak moves DOWN with pT-hat — by eye at ≈ 15–20 GeV (24–40), ≈ 20 GeV (40–70), ≈ 25 GeV
+  (70–125, 125–300); in the two added slices the SS continuum rises monotonically from 1 GeV
+  up to the peak with NO shoulder at 10 GeV. Same-sign is ~10× below opposite-sign below 3 GeV
+  in every slice.
+- **20 < p_T^pair < 150 GeV** (`..._top4_pairpt20.png`): the SS distribution is essentially
+  FLAT from ~3 to ~30 GeV in all four slices (24–40: ~100/bin; 40–70: ~300/bin; 70–125:
+  ~250/bin; 125–300: ~500/bin), then falls — so at this pair-pT cut 10 GeV again sits in the
+  middle of a plateau, not at an edge. Per the standing rule these are eyeball readings of the
+  figure, not emitted landmarks; the mass-cut decision for the SS request is the user's (see
+  Remaining Work).
+- **SS m < 10 GeV statistics** (`ss_mass_lt10/`): the reco SS rel. stat. error reaches ~10 %
+  per fine bin at ≈ 30 GeV (kn3) / ≈ 40 GeV (kn4) / ≈ 60 GeV (kn5) and the error-fraction map
+  shows 125–300 dominating above ~80 GeV, 70–125 at 40–80 GeV, 40–70 at 25–40 GeV — i.e.
+  ALL FOUR slices matter for a request reaching down to 20–25 GeV, which is the justification
+  for widening the slice range beyond the first request's two.
+
 ## Remaining Work
 
 - **BLOCKING for the request itself — is the requested `N` counted before or after the mass
@@ -713,7 +792,19 @@ above.
 
 ## Latest Stage
 
-Step 5. Rerun on the regenerated 4.5 GeV trees; all counts unchanged (predicted and now
+**Step 5 DONE (2026-09-17).** Figures delivered and committed; no reviewer pass (user waived).
+Open: the SS request's slice list / pair-pT cut / mass cut are user decisions (Remaining Work).
+
+Plan as executed: (i) shared header
+`Utilities/MCRequestLooseMassFilter.h` (kLooseMassMax = 10); (ii)
+`mc_pthat_slice_mass_statistics.cxx`: 4-slice table with DSIDs, `n_top_slices` +
+`figure_pair_pt_lo` arguments, figure-only mode, 2×2 canvas for N = 4 (subplot rule), variant
+suffixes; run `(pp_full, true, 4)` and `(pp_full, true, 4, 20)`; (iii)
+`plot_pythia_fullsim_kn_pt_crossx.cxx`: `ss_loose_mass` argument → tree/filter/label/outdir
+helpers, run FULL sample Tight; (iv) reviewers; (v) results → R7; commit by explicit path.
+Files: the two macros, the new header, this doc, INDEX.md.
+
+Previous stage (step 4, 2026-09-10). Rerun on the regenerated 4.5 GeV trees; all counts unchanged (predicted and now
 confirmed). Five review iterations have run (`/review-analysis-code` and `/review-plot`, twice
 each in parallel, then a combined adversarial pass). Every count in the deliverable has been
 independently re-derived from a retyped selection **four times** and matched exactly every time;

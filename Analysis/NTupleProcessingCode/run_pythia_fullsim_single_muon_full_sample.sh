@@ -6,7 +6,8 @@
 # farm; the ~280 GB of NTUP is never hadded onto GPFS (tracking doc
 # pythia_fullsim_pp24_full_sample_skim.md, Design Decision D1).
 #
-# isTestSample is left FALSE (the default) => input dir, AMI dir and the pp-beam-only /
+# isTestSample is left FALSE (the default) => input dir, AMI dir (the proton-PDF evgen's
+# ami_info_PDF/, FullSimSampleType.h) and the pp-beam-only /
 # isospin-weight-1 treatment ALL follow from that one switch (FullSimSampleType.h).
 # expected_ami_dsids is the BLOCKING provenance guard: AMI files are keyed by beam+slice only,
 # so without it this run could be silently weighted with the TEST sample's cross-sections
@@ -21,7 +22,6 @@
 cd "$(dirname "$0")"
 
 FARM_DIR="/usatlas/u/yuhanguo/usatlasdata/pythia_fullsim_full_sample/"
-AMI_DIR="${FARM_DIR}ami_info/"
 # Smoke test: NEVENTS_MAX=2000 ./this_script.sh   (-1 = all events, the default)
 NEVENTS_MAX="${NEVENTS_MAX:--1}"
 
@@ -41,7 +41,6 @@ root -b -l << ROOTEOF
 	PythiaFullSimAnalysis py(0);
 	// isTestSample stays FALSE (default) = the FULL production. Do NOT set it true.
 	py.fullsim_input_dir_override = "${FARM_DIR}";
-	py.ami_info_dir_override      = "${AMI_DIR}";
 	py.expected_ami_dsids         = {803015, 803016, 803017, 803018, 803019, 803020};
 	py.fill_kn_trees_fullsim      = true;
 	py.output_single_muon_tree    = true;

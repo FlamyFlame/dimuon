@@ -1,7 +1,8 @@
 # AMI weights — the MC cross-section registry (**BLOCKING**)
 
 **Authoritative registry of the AMI cross-section weights for every MC dataset this analysis
-uses, and the rule that governs them.** Verified against `pyami` on **2026-07-14**.
+uses, and the rule that governs them.** Verified against `pyami` on **2026-07-14**; evgen-keyed
+layout and the "weight = the Pythia evgen's" rule from the user ruling of **2026-09-17**.
 
 ---
 
@@ -13,6 +14,44 @@ uses, and the rule that governs them.** Verified against `pyami` on **2026-07-14
 > weights from `pyami` BEFORE running any analysis on it.**
 > **NEVER reuse the old dataset's weights. That is a SILENT failure that propagates all the
 > way to the final results.**
+
+### The weight is a property of the PYTHIA EVGEN, not of the AOD chain (user ruling 2026-09-17)
+
+The per-event weight of every Pythia sample — truth-only, pp24 fullsim, HIJING overlay, a future
+data overlay — is `σ · ε_filt` of the **Pythia evgen dataset the event was generated in**. A fullsim
+or overlay production does not re-generate events; it takes the already-generated EVNT as input to
+simulation. That is why the Pythia e-tag does not even appear in an overlay's AMI tag chain: in
+`e8613_e8586_s4684_r17864_r17855` (the pbpb24 overlay test sample) **`e8613` is the HIJING evgen**
+(`860250.Hijing_PbPb_UCC_Flow_JJFV6_ip0_5.e8613_s4684_s4688`), not a Pythia tag. Querying AMI on the
+AOD dataset and calling the result "this sample's own AMI weights" (done 2026-09-16, registry B2,
+reverted 2026-09-17) is therefore wrong in principle, even where the numbers happen to agree.
+
+The same principle is why only **Pythia** truth muons enter the overlay's reconstruction- and
+trigger-efficiency numerators and denominators, never HIJING truth muons: each event carries the
+Pythia evgen weight, and HIJING is background / environment / underlying event for the Pythia truth
+particles. A HIJING muon counted with the Pythia weight would carry a wrong weight.
+
+**Two Pythia evgen productions exist at 5.36 TeV** (`FullSimSampleType.h`, `enum PythiaEvgen`):
+
+| evgen | e-tag | DSIDs | isospin | PDF | suitable for | used by |
+|---|---|---|---|---|---|---|
+| **nPDF** | e8599 | 802758–802781 | pp/pn/np/nn, Pb ratio 4:6:6:9 | `LHAPDF6:nNNPDF30_nlo_as_0118_A208_Z82/0001` (nuclear) | **Pb+Pb** conditions | truth-only analysis; pp24 **TEST** fullsim (produced on it by mistake); every HIJING overlay (pbpb23 r17618/r17662, pbpb24 r17864, the full production); future data overlay |
+| **PDF** | e8599 (`_pdf`) | 803015–803020 | pp only | `NNPDF23_lo_as_0119_qed` (proton) | **pp** conditions | pp24 fullsim **FULL** sample; a truth-only skim of it, should one be made |
+
+Their `σ·ε_filt` differ **slice-dependently** (table B, FULL/TEST 0.879–1.545), so choosing the
+wrong evgen cancels in no ratio — the same failure mode as reusing another production's file.
+
+**The AMI files live with the evgen, in ONE place each** (fetch scripts next to them):
+
+```
+~/usatlasdata/pythia_truth_full_sample/pythia_5p36TeV/ami_info_nPDF/  ami_info_mc23_5p36TeV_Py8EG_A14_<beam>_hQCD_DiMu_pTH<lo>_<hi>.txt      (fetch_ami_info_nPDF.sh)
+~/usatlasdata/pythia_truth_full_sample/pythia_5p36TeV/ami_info_PDF/   ami_info_mc23_5p36TeV_Py8EG_A14_pp_hQCD_DiMu_pTH<lo>_<hi>_pdf.txt    (fetch_ami_info_PDF.sh)
+```
+
+`PythiaAlgCoreT` derives `ami_evgen` from the same switch as the input directory and the isospin
+treatment (`FullSimSampleEvgen(type, isTestSample)`: pp24 FULL → PDF, everything else → nPDF) and
+reads `PythiaEvgenAmiDir(ami_evgen)`. **A copy of AMI files inside a fullsim sample directory is
+never read by code** (the 2026-09-16 "prefer the sample's own `ami_info/`" logic is gone).
 
 ### Why it is silent, and why it is worse than it looks
 
@@ -51,9 +90,12 @@ InitInputFullsim: AMI PROVENANCE MISMATCH for pTH8_14 beam pp: <path>
   has datasetNumber=802781, which is NOT in the expected DSID list for this sample {803015,...}
 ```
 
-- `ami_info_dir_override` — which AMI directory to read.
-- `expected_ami_dsids` — the DSIDs this run is allowed to see. **Every run script declares them.**
-- Both are driven by the single `isTestSample` switch (default `false` = the FULL production), so
+- `ami_evgen` — which Pythia evgen's AMI directory to read; derived from
+  `(fullsim_sample_type, isTestSample)`, never set by hand (`ami_info_dir_override` is a
+  diagnostic escape hatch only).
+- `expected_ami_dsids` — the DSIDs this run is allowed to see; defaults to the evgen's list,
+  run scripts may declare/narrow it.
+- Both follow from the single `isTestSample` switch (default `false` = the FULL production), so
   the input files and their cross-sections can never come from different productions.
 - A **missing** AMI file is now **fatal** too (it used to leave `ami_weight = 0`, silently giving
   that pT-hat slice **zero weight**).
@@ -62,9 +104,13 @@ InitInputFullsim: AMI PROVENANCE MISMATCH for pTH8_14 beam pp: <path>
 
 1. Get the DSIDs (`rucio list-dids`).
 2. `lsetup pyami`; `ami show dataset info <dataset>` for **every** DSID.
-3. Write the AMI files into **that sample's own** `ami_info/` directory — never overwrite another
-   sample's.
-4. Set `ami_info_dir_override` **and** `expected_ami_dsids` in the run script.
+3. Identify the **Pythia evgen** the dataset was simulated from (the AMI `ldn` of the EVNT, not of
+   the AOD). If it is one of the two known evgens (nPDF / PDF above), its files already exist. If it
+   is a NEW Pythia evgen, add a `PythiaEvgen` value + `ami_info_<name>/` next to the two existing
+   ones, and fetch the EVNT dataset's info for **every** DSID into it — never overwrite another
+   evgen's files, never copy them into the fullsim sample directory.
+4. Make `FullSimSampleEvgen()` map the new sample to its evgen, and declare `expected_ami_dsids` in
+   the run script (defaults to the evgen's DSID list).
 5. Add the numbers to the table below, with the date they were verified.
 6. Re-run **everything** that consumes that sample's weights (see §Blast radius).
 
@@ -87,10 +133,11 @@ D2). Comparing an absolute MC dσ to **pp data** (dσ = N/L, L in pb⁻¹) requi
 
 ## Registry (verified against `pyami` 2026-07-14 — both sets: **no drift**)
 
-#### A. pp24 fullsim **TEST** sample + HIJING overlay (pbpb23, r17618/r17662) — evgen `e8599`, DSIDs 802758–802781
+#### A. **nPDF evgen** `e8599`, DSIDs 802758–802781 — truth-only analysis, pp24 fullsim **TEST** sample, EVERY HIJING overlay (pbpb23 r17618/r17662, pbpb24 r17864, the full production)
 
-The HIJING overlay is built on the **pp-beam** evgen DSIDs (802776–802781) — the AMI weight comes
-from the **evgen** dataset, so the overlay's r-tag (r17618 / r17662) does not change it.
+The HIJING overlays are built on the **pp-beam** evgen DSIDs (802776–802781) — the AMI weight comes
+from the **evgen** dataset, so neither the overlay's r-tag (r17618 / r17662 / r17864) nor its HIJING
+e-tag (e8613) changes it.
 
 | slice | beam | DSID | σ [nb] | genFiltEff | **σ·ε_filt [nb]** |
 |---|---|---|---|---|---|
@@ -119,12 +166,13 @@ from the **evgen** dataset, so the overlay's r-tag (r17618 / r17662) does not ch
 | pTH125_300 | np | 802764 | 89.529 | 0.00234476 | **0.2099** |
 | pTH125_300 | nn | 802759 | 89.521 | 0.002344699 | **0.2099** |
 
-AMI files: `~/usatlasdata/pythia_truth_full_sample/pythia_5p36TeV/ami_info/`
-(shared with the Pythia **truth** production — same evgen DSIDs).
+AMI files: `~/usatlasdata/pythia_truth_full_sample/pythia_5p36TeV/ami_info_nPDF/` (this IS the
+Pythia truth-only production's evgen).
 
-#### B. pp24 fullsim **FULL** sample — the `_pdf` production, evgen `e8599_e8586`, DSIDs 803015–803020
+#### B. **PDF evgen** `_pdf` (e8599), DSIDs 803015–803020 — pp24 fullsim **FULL** sample
 
-**pp beam ONLY** (this sample simulates pp collisions; isospin weight 1 — see D2 of the tracking doc).
+**pp beam ONLY**, proton PDF `NNPDF23_lo_as_0119_qed` (this evgen was re-generated for pp
+conditions; isospin weight 1 — see D2 of the tracking doc).
 
 | slice | beam | DSID | σ [nb] | genFiltEff | **σ·ε_filt [nb]** | FULL/TEST(pp) |
 |---|---|---|---|---|---|---|
@@ -135,29 +183,29 @@ AMI files: `~/usatlasdata/pythia_truth_full_sample/pythia_5p36TeV/ami_info/`
 | pTH70_125 | pp | 803019 | 1177 | 0.00123943 | **1.4588** | **0.879** |
 | pTH125_300 | pp | 803015 | 82.548 | 0.002395971 | **0.1978** | 0.943 |
 
-AMI files: `~/usatlasdata/pythia_fullsim_full_sample/ami_info/`
+AMI files: `~/usatlasdata/pythia_truth_full_sample/pythia_5p36TeV/ami_info_PDF/` (`_pdf.txt`
+suffix). The copy that lived in `pythia_fullsim_full_sample/ami_info/` (fetched 2026-07-13 on the
+AOD dataset; identical σ and ε_filt) was renamed `ami_info_AOD_record_20260713/` on 2026-09-17 and
+is not read by anything.
 
 > **The FULL/TEST ratio spans 0.879 – 1.545.** It is **slice-dependent**, so it cancels in
 > **nothing** — not in the MC trigger efficiency, not in any cross-section. This is exactly the
 > silent failure the rule above exists to prevent.
 
-#### B2. HIJING overlay **TEST** sample, Pb+Pb 2024 conditions — evgen `e8613_e8586`, r17864, single DSID (fetched 2026-09-15)
+#### B2 (RETIRED 2026-09-17). "pbpb24 overlay test sample, its own AMI"
 
-Lives in `~/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/ami_info/` (the sample's OWN
-file; `PythiaAlgCoreT` reads a sample's own `ami_info/` whenever it exists — since 2026-09-16 —
-and falls back to the truth production's only for the e8599 test samples that have none).
-The DSID is the SAME as table A's pTH125_300/pp, so `expected_ami_dsids` cannot tell the two
-productions apart — the directory does. Sample doc: `docs/tracking/hijing_overlay_pbpb24_test_sample_skim.md`.
-
-| slice | beam | DSID | σ [nb] | genFiltEff | **σ·ε_filt [nb]** | vs table A |
-|---|---|---|---|---|---|---|
-| pTH125_300 | pp | 802776 | 89.541 | 0.002342314 | **0.20973** | 1.0000 (1e-4 relative) |
+Registered 2026-09-16 from `ami show dataset info` on the **AOD** dataset
+`802776...merge.AOD.e8613_e8586_s4684_r17864_r17855` (σ 89.541 nb, ε_filt 2.342314e-3, 1e-4 from
+table A). Wrong in principle: e8613 is the HIJING evgen tag; the sample's Pythia evgen is 802776
+e8599 = table A, which is what it is weighted with now. The fetched file was moved to
+`pythia_fullsim_hijing_overlay_test_sample/ami_info_AOD_record_20260915/` (record only).
 
 #### C. Not yet fetched — **fetch before use**
 
 | sample | status |
 |---|---|
-| HIJING-overlay **FULL** sample (PbPb conditions, 4 isospin beams) | **in production.** It will need all **4 beams** × 6 slices. If it reuses evgen 802758–802781, table A applies — **verify, do not assume.** If it is a new production, fetch its DSIDs' AMI first. |
+| HIJING-overlay **FULL** sample (PbPb conditions, 4 isospin beams) | **in production** on the nPDF evgen 802758–802781 → table A applies (4 beams × 6 slices). **Verify the EVNT in the production's input chain, do not assume**; a new Pythia evgen would need its own `ami_info_<name>/`. |
+| Truth-only skim of the **PDF** evgen (pp-suitable generator-level sample) | not skimmed; if ever made, table B applies unchanged (same EVNT datasets). |
 | POWHEG (truth, NLO template) | uses its own weights (`weight_norm`); not in this registry yet. |
 
 ---
@@ -181,8 +229,12 @@ normalizations.
 
 ## References
 
-- Code guard: `Analysis/NTupleProcessingCode/PythiaAlgCoreT.{h,c}` (`ami_info_dir_override`,
-  `expected_ami_dsids`, `isTestSample`), `Analysis/MuonObjectsParamsAndHelpers/FullSimSampleType.h`.
+- Code guard: `Analysis/MuonObjectsParamsAndHelpers/FullSimSampleType.h` (`PythiaEvgen`,
+  `FullSimSampleEvgen`, `PythiaEvgenAmiDir/FileName/Dsids`),
+  `Analysis/NTupleProcessingCode/PythiaAlgCoreT.{h,c}` (`ami_evgen`, `expected_ami_dsids`,
+  `isTestSample`; truth-only reader `InitInputCentrProd` → nPDF, missing file fatal).
+- Ruling record: `Analysis/docs/tracking/hijing_overlay_pbpb24_test_sample_skim.md` §"AMI-weight
+  correction (2026-09-17)".
 - Tracking: `Analysis/docs/tracking/pythia_fullsim_pp24_full_sample_skim.md` (D2 isospin, D3 AMI guard).
 - Units: `project_ami_crosssection_nb_units` — AMI σ is in **nb**.
 - Provenance convention: `.claude/conventions/ntuple-provenance.md`.

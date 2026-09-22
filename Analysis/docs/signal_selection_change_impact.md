@@ -127,14 +127,18 @@ Truth analog: same with `truth_*` variables + `from_same_b` and `truth_pt > 4.5`
 > **Note on q*eta:** the retired cut was one-sided per muon (`q*eta < 2.2`, no explicit lower
 > bound; the floor is the muon |eta| ~ 2.5 detector edge). With the 2026-09-07 forward edge back
 > at 2.20 the swap is yield-neutral THERE, and the cut's whole cost is the three gap windows:
-> -6.93 % of pp / -9.03 % of PbPb reconstructed muons (Tight). The resulting pp24 cross-section
-> is a **FIDUCIAL** one: the truth-level gap acceptance eps_acc
-> (`docs/tracking/muon_gap_cuts_acceptance.md` F12/F17) is a SEPARATE factor, not applied
-> anywhere yet -- and it does NOT yet include the cost of the new pair-level cut.
-> **The measured values 0.8789 (pp24 fullsim) / 0.8765 (PbPb overlay) are STALE IN TWO WAYS and
-> must not be quoted:** both were measured on the superseded gap window `(-1.30,-1.05)` AND at
-> muon p_T > 4 GeV, and both moved on 2026-09-08. `ParamsSet.h` carries the same warning at the
-> tables themselves. Re-measurement is pending the NTuple rerun.
+> -6.93 % of pp / -9.03 % of PbPb reconstructed muons (Tight). **Since 2026-09-17 the gap cuts
+> are ACCEPTANCE cuts carried by the pair reco efficiency** (`docs/tracking/pair_reco_eff_gap_acceptance.md`):
+> they sit on the RECO leg of eps_reco only, the truth denominator carries the signal cuts
+> alone, and the corrected pp24 cross-section refers to the truth region WITHOUT the single-muon
+> q·η gap windows (muon p_T > 4.5 GeV, |η| < 2.4, mass window, pair p_T > 9 GeV) and with
+> |η^pair| < 2.2 as the measured range — the truth fiducial edge of the eps_reco η^pair axis
+> (`analysis_overview.md` §2). There
+> is NO separate eps_acc; the historical values 0.8789 / 0.8765 are superseded and must not be
+> applied. **Consequence for this map:** changing a gap window (single-muon or pair-level) is a
+> change of eps_reco's numerator selection -> rerun the fullsim RDF hist filling, rebuild
+> `pair_reco_eff_pp24_full.root`, refill the pp24 crossx -- in addition to the trigger-efficiency
+> reruns already listed.
 > The percentages quoted just above (-6.93 % / -9.03 %) were measured on the same superseded
 > window and are stale for the same reason.
 

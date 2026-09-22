@@ -251,8 +251,10 @@ if [[ $DO_DEVSLICE -eq 1 ]]; then
       log "ERROR: dev-slice download failed (quota? proxy?)"
     fi
   fi
-  # The dev slice needs the SAME AMI dir as the farm (same _pdf production).
-  ln -sfn "${FARM_DIR}/ami_info" "${DEV_DIR}/ami_info" 2>/dev/null || true
+  # AMI weights are NOT kept in the sample dir: the reader takes them from the Pythia evgen's
+  # own directory (pythia_truth_full_sample/pythia_5p36TeV/ami_info_PDF/ for this _pdf
+  # production; FullSimSampleType.h, Analysis/docs/ami_weights.md), for the farm and the dev
+  # slice alike.
 fi
 
 log "════════ DONE ════════"

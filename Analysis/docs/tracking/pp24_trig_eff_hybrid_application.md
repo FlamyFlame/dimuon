@@ -103,11 +103,15 @@ SF(i) = ε^nc_data(pT_i, q_i·η_i) / ε_MC(pT_i, q_i·η_i)          w_trig = 1
 the `nocorr_etamerge` plateau mode, **opposite-sign series**, Step-3 fit files
 `dr_correction_fits_pp24_full_step3_<method>_os_nocorr_etamerge.root`. 18 cells.
 
-**(b) Fit form per region-A cell.** Primary = `expo` (`f = C + A exp[−(ΔR/λ)^p]`, A ≤ 0,
-p ≥ 1) in every cell EXCEPT the three **(pair-pT bins 2, 3, 4 = [12.8,18.2), [18.2,25.8),
-[25.8,36.7)) × (the last |η| group, [2.0, 2.2))**, whose primary is the constrained polynomial
-`polyu_fixedRp`. The cells are named by their INDEX on the canonical axes (1-based pT bin 2..4,
-the LAST η group) and their physical ranges are printed from the axes at load time.
+**(b) Fit form per region-A cell — PER SIGN SERIES (user correction, 2026-09-17).**
+*Opposite-sign series:* primary = `expo` (`f = C + A exp[−(ΔR/λ)^p]`, A ≤ 0, p ≥ 1) in every
+cell EXCEPT the three **(pair-pT bins 2, 3, 4 = [12.8,18.2), [18.2,25.8), [25.8,36.7)) × (the
+last |η| group, [2.0, 2.2))**, whose primary is the constrained polynomial `polyu_fixedRp` — a
+choice made on the OS fit figures. *Same-sign series:* `expo` primary in EVERY cell, no
+polynomial anywhere (`DrCorrCrossxPolyPtBins("ss")` is empty; any other series token throws).
+Under D2 no same-sign series is loaded by the cross-section today; the rule binds the day D2 is
+reverted. The OS cells are named by their INDEX on the canonical axes (1-based pT bin 2..4, the
+LAST η group) and their physical ranges are printed from the axes at load time.
 **Fallback** for every region-A cell = the linear **interpolation** (`interp`) if the primary is
 rejected by the producer's `fit_ok` or by the two baseline screens (`DrCorrPlateauUsable`,
 `DrCorrBaselineConsistent`). **No polynomial fallback for expo cells, no raw-bin tier**: a
@@ -197,6 +201,12 @@ Remaining Work); Medium-WP regeneration; the open R12 bound on the delivered f/C
   hand-over note in Remaining Work.
 - **D4 (user, 2026-09-17) — fallbacks.** poly → interp in the three poly cells, expo → interp
   elsewhere, no raw-bin tier, throw when nothing usable.
+- **D7 (user correction, 2026-09-17) — the polynomial cells are an OPPOSITE-SIGN-series choice
+  only; the same-sign series is expo → interp in every cell.** Encoded as
+  `DrCorrCrossxPolyPtBins(sign)` ("os" → {2,3,4}, "ss" → {}, else throw), read by
+  `DrCorrectionCrossxEvaluator` for the series it loads. With D2 in force (same-sign pairs on
+  the OS numbers) this changes no current output; it prevents the SS series from inheriting the
+  OS poly cells when D2 is reverted. Config-only, user-confirmed.
 - **D5 — the mass window becomes a `ParamsSet` constant** (`signal_minv_min = 1.08`,
   `signal_minv_max = 2.9`, doubles, formatted with `%g` so every generated selection string is
   BYTE-IDENTICAL to the retyped `minv > 1.08 && minv < 2.9` → bit-identical outputs, no rerun
@@ -275,6 +285,10 @@ Remaining Work); Medium-WP regeneration; the open R12 bound on the delivered f/C
   `pp24_pt_120/`, `plots/sanity_check_crossx/PP_2024_pair_pt_in_eta_subplots.png` +
   `PP_2024_reco_eff_stages_pair_pt_in_eta.png` (now uncorrected → +trigger → +trigger+reco),
   `plots/mc_data_compr/{signal,generic}/` (15 PNG). Census in R1.
+
+- 2026-09-17 02:45 — **D7 applied** (`dr_correction_sample_cfg.h`, `DrCorrectionCrossxEvaluator.h`):
+  poly cells per sign series; PP recompiled; standalone test identical (OS: 3 poly cells; SS: 0;
+  bad token throws). No output changes (D2), no rerun needed.
 
 ## Results & Observations
 

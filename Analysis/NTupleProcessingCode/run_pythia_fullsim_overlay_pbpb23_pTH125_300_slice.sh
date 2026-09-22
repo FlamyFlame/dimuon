@@ -32,8 +32,7 @@ root -b -l << EOF
 	py.overlay_pbpb_year = 23;   // label hijing_overlay_pbpb23, matching INDIR above
 	// AMI PROVENANCE: the overlay is built on the pp-beam evgen DSIDs. AMI files are keyed by
 	// beam+slice only, so declare them; InitInputFullsim throws if another production is read.
-	// (No ami_info/ in INDIR -> falls back to the truth production's e8599 files, the right ones
-	// for r17618.)
+	// (Overlay -> nPDF evgen -> the e8599 files in the evgen's ami_info_nPDF/, FullSimSampleType.h.)
 	py.expected_ami_dsids = {802776, 802777, 802778, 802779, 802780, 802781};
 	// Single-slice DIAGNOSTIC run: INDIR holds pTH125_300 ONLY. Every output is a ratio or a
 	// single-slice shape, so a missing slice is intentional and harmless here.

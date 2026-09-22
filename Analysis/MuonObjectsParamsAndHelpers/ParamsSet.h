@@ -198,8 +198,12 @@ public:
    	static std::vector<std::array<float,2>> charge_eta_gap_cuts;
 
    	// ---- single-muon detector-gap FIDUCIAL cut (q*eta) ----
-   	// Reject a muon whose q*eta falls inside any of these windows. Compensated by an acceptance
-   	// efficiency eps_acc in the correction chain (eps_acc itself is NOT built yet).
+   	// Reject a muon whose q*eta falls inside any of these windows. Its cost is carried by the
+   	// PAIR RECONSTRUCTION EFFICIENCY eps_reco (2026-09-17, user decision,
+   	// docs/tracking/pair_reco_eff_gap_acceptance.md): the gap cuts are DETECTOR-ACCEPTANCE cuts,
+   	// not signal cuts, so they sit on the RECO leg of eps_reco only and NOT on its truth
+   	// denominator. There is NO separate acceptance factor eps_acc (the one discussed below was
+   	// never built and is now superseded -- never apply one, it would double count).
    	// STATUS: LIVE in the trigger-efficiency chain AND in the pp24 SIGNAL SELECTION. The two
    	// STATUS blocks at the end of this comment, not this header, are the current site list.
    	// Changing any window here changes the MC trig-eff, the data tag-and-probe efficiencies, the
@@ -289,7 +293,8 @@ public:
    	// 1.62/1.80/0.37) / 5.60% (PbPb, 1.81/2.88/0.91), i.e. 7.44% / 10.89% of PAIRS. (The
    	// pair-level cost is not measured in either table; the PAIR-LEVEL |eta^pair| < 2.2 cut
    	// declared further down adds to it.)
-   	// TRUTH-level cost per window -- what the acceptance eps_acc must carry -- from
+   	// TRUTH-level cost per window (HISTORICAL: since 2026-09-17 carried by eps_reco, not by a
+   	// separate eps_acc) -- from
    	// plot_muon_truth_q_eta_spectrum.cxx on the pp24 Pythia fullsim / PbPb overlay truth muons,
    	// again for the SUPERSEDED -1.30 set at truth pT > 4 GeV:
    	//                 [-1.30,-1.05]  [-0.10,+0.06]  [+2.20,+2.40]   eps_acc
@@ -307,7 +312,10 @@ public:
    	// docs/signal_selection_change_impact.md):
    	//   - pp24 data crossx: RDFBasedHistFillingPP.cxx `signal_cuts` + both `signal_cuts_no_minv`.
    	//   - pp24 fullsim reco efficiency: RDFBasedHistFillingPythiaFullsim.cxx
-   	//     `pass_signal_truth` (TRUTH q*eta) and `pass_signal_reco` (RECO q*eta).
+   	//     `pass_signal_reco` (RECO q*eta) -- the numerator leg ONLY since 2026-09-17; the truth
+   	//     denominator `pass_signal_truth` carries the signal cuts alone (gap acceptance folded
+   	//     into eps_reco). The with-gap truth selection survives as `pass_gap_truth` /
+   	//     `_pass_signal_truth_gapcut` for the MC-vs-data shape comparison only.
    	//   - the data-like mirror Utilities/MCTrigEffPairSelection.h SingleBSignalCutsReco().
    	// Because the ntuple stage already requires |eta| < 2.4, the forward window {2.20, 2.40}
    	// makes the effective forward edge 2.20 == the top edge of
@@ -316,11 +324,13 @@ public:
    	// STILL NOT APPLIED (future to-do, each with its own rerun):
    	// the PbPb data crossx and the PbPb overlay reco efficiency, the Pythia/Powheg TRUTH
    	// signal acceptance, the data ntuple processing, and the template fits.
-   	// NOTE the resulting pp24 cross-section is a FIDUCIAL (gap-cut) cross-section: the
-   	// truth-level gap acceptance eps_acc = 0.8789 (pp24 fullsim) / 0.8765 (PbPb overlay)
-   	// (muon_gap_cuts_acceptance.md F12/F17) is a SEPARATE factor, not applied anywhere yet --
-   	// and it does NOT yet include the cost of the PAIR-LEVEL |eta^pair| < 2.2 window declared
-   	// below.
+   	// NOTE (superseded 2026-09-17): the pp24 cross-section is NO LONGER a gap-fiducial one.
+   	// eps_reco now contains the gap acceptance (single-muon windows AND the pair-level
+   	// |eta^pair| < 2.2 window declared below), so the corrected yield refers to the truth region
+   	// defined by the signal cuts, the |eta| < 2.4, pT > 4.5 GeV muon acceptance and
+   	// |eta^pair| < 2.2 as the MEASURED RANGE of eps_reco (its eta^pair axis tiles [-2.2, 2.2];
+   	// truth pairs outside enter no cell). The historical eps_acc numbers above are NOT to be
+   	// applied.
    	static std::vector<std::pair<float,float>> single_mu_fiducial_gap_cuts;
 
    	// --- The fiducial gap cut, in the TWO forms the analysis needs -----------------------
@@ -381,8 +391,9 @@ public:
    	// one-sided in q*eta because they track the toroid bending direction; eta^pair carries no
    	// charge, so there is nothing for a one-sided window to track.
    	// This is a GAP CUT AT PAIR LEVEL and belongs everywhere the single-muon gap cut is applied to
-   	// both legs of a pair. Like the single-muon windows, its cost must eventually be carried by
-   	// the acceptance factor eps_acc (muon_gap_cuts_acceptance.md F12).
+   	// both legs of a RECONSTRUCTED pair. Like the single-muon windows, its cost is carried by the
+   	// pair reco efficiency eps_reco (RECO leg only; docs/tracking/pair_reco_eff_gap_acceptance.md),
+   	// not by a separate acceptance factor.
    	// Comparison is STRICT (`<`), so the surviving region is the OPEN interval (-2.2, +2.2), and
    	// it is done in FLOAT for the same JIT float/double reason documented above. Strict is the
    	// correct direction here: the coarse pair-eta bins are half-open [lo,hi) with outer edges at

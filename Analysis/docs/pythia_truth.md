@@ -12,6 +12,16 @@ Generator-level Pythia8 dimuon analysis: traces muon ancestry to tag heavy-flavo
 
 Each kinematic range (kn 0-5) covers a different pT-hat slice of the Pythia generation. Non-private samples split into 6 Condor jobs (one per kn), then hadd the results.
 
+**Which evgen, which weights.** The 5.36 TeV central sample IS the **nPDF** Pythia evgen (e8599,
+DSIDs 802758–802781: four isospin beams pp/pn/np/nn combined 4:6:6:9, nuclear PDF
+`nNNPDF30_nlo_as_0118_A208_Z82`) — the evgen made for **Pb+Pb** conditions, which is also the
+simulation input of every HIJING overlay. Its AMI weights are read from the evgen's own
+`pythia_truth_full_sample/pythia_5p36TeV/ami_info_nPDF/` (a missing file is fatal;
+`docs/ami_weights.md` table A). The pp-conditions counterpart — the pp-only, proton-PDF `_pdf`
+evgen (803015–803020, `ami_info_PDF/`) — is the input of the pp24 fullsim FULL sample and has
+**no truth-only skim**: the fullsim NTUP carries its complete truth block (all events stored), so
+generator-level pp-conditions quantities can be taken from the fullsim's truth pair trees (same `PythiaTruthExtras` ancestry tracing) without a new skim.
+
 ## Key files
 
 ### NTuple processing (Stage 1)

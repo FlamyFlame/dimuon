@@ -254,8 +254,11 @@ void DrawDefinition(double y, const std::string& wp_text = "", double size = 0.0
     t.SetTextFont(42);
     t.SetTextSize(size);
     t.DrawLatex(0.13, y,
-        "#varepsilon_{reco}^{pair} = N_{reco} / N_{gen}, both counted in the single-b signal "
-        "region");
+        // N_gen: truth pairs in the single-b signal region (signal cuts only). N_reco: those
+        // also reconstructed and passing the reconstructed selection INCLUDING the detector-gap
+        // cuts -- so the gap acceptance is inside eps (2026-09-17).
+        "#varepsilon_{reco}^{pair} = N_{reco} / N_{gen}, single-b signal region "
+        "(N_{reco} incl. the detector-gap cuts)");
     if (wp_text.empty()) return;
     t.SetTextAlign(31);
     t.DrawLatex(0.97, y, wp_text.c_str());
@@ -300,8 +303,10 @@ void plot_pp24_fullsim_pair_reco_eff(bool use_full_sample = true, bool tight_WP 
     std::ofstream tab(outdir + "pair_reco_eff_values.txt");
     tab << "# Applied single-b pair reconstruction efficiency, " << wp << " WP\n"
         << "# source " << in_path << "\n"
-        << "# eps = N(both muons reconstructed, WP, reco pair in the signal region)\n"
-        << "#     / N(truth pair in the signal region);  binomial errors\n";
+        << "# eps = N(both muons reconstructed, WP, reco pair passes the data signal selection\n"
+        << "#       incl. the detector-gap cuts on RECO q*eta and RECO eta^pair)\n"
+        << "#     / N(truth pair passes the signal cuts: mass window, pair pT; NO gap cut);\n"
+        << "#     binomial errors; the gap acceptance is INCLUDED (no separate eps_acc)\n";
 
     // ---------------------------------------------------------------------------------------
     // 1. eps vs DeltaR, one curve per pair-pT bin (+ inclusive)

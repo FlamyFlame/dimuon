@@ -1,0 +1,9 @@
+# Part 1 (formerly Part 2): runs 489703-489938 (8 datasets, pre-489703 runs removed as outside GRL)
+data24_hi:data24_hi.00489703.physics_HardProbes.merge.AOD.f1546_m2267
+data24_hi:data24_hi.00489718.physics_HardProbes.merge.AOD.f1546_m2267
+data24_hi:data24_hi.00489749.physics_HardProbes.merge.AOD.f1546_m2267
+data24_hi:data24_hi.00489764.physics_HardProbes.merge.AOD.f1547_m2267
+data24_hi:data24_hi.00489801.physics_HardProbes.merge.AOD.f1547_m2267
+data24_hi:data24_hi.00489895.physics_HardProbes.merge.AOD.f1550_m2267
+data24_hi:data24_hi.00489909.physics_HardProbes.merge.AOD.f1550_m2267
+data24_hi:data24_hi.00489938.physics_HardProbes.merge.AOD.f1550_m2267

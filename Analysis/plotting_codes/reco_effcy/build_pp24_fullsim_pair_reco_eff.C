@@ -10,18 +10,29 @@
 // docs/tracking/reco_eff_placeholder_run2.md). This macro writes the ROOT product the
 // cross-section reads through Utilities/PairRecoEffEvaluator.h.
 //
-// DEFINITION (docs/tracking/pp24_crossx_rerun_2026_08.md Physics Procedure 3d):
+// DEFINITION (docs/tracking/pair_reco_eff_gap_acceptance.md Physics Procedure §2, 2026-09-17;
+// supersedes pp24_crossx_rerun_2026_08.md 3d):
 //
-//   eps_reco(cell) = N[ single-b OS pair, both muons truth-matched, pair passes the WP, and the
-//                       RECO pair passes the signal region incl. the fiducial gap cut on RECO q*eta ]
-//                  / N[ single-b OS pair whose TRUTH pair passes the signal region
-//                       incl. the fiducial gap cut on TRUTH q*eta ]
+//   eps_reco(cell) = N[ single-b OS pair in the TRUTH signal region, both muons reco-matched, pair
+//                       passes the WP, and the RECO pair passes the DATA signal selection: mass
+//                       window, pair pT, the fiducial gap windows on RECO q*eta of both muons and
+//                       RECO |eta^pair| < 2.2 ]
+//                  / N[ single-b OS pair in the TRUTH signal region: truth mass window and truth
+//                       pair pT ONLY -- NO gap cut of any kind on the truth leg ]
 //
 // Numerator and denominator are the `_single_b_pass_{tight,medium}_and_signal_truth_and_reco` and
 // `_single_b_pass_signal_truth` filters of RDFBasedHistFillingPythiaFullsim, binned in TRUTH
-// kinematics on the CANONICAL coarse axes and weighted by the MC event weight. Because the gap cut
-// sits in BOTH legs, eps_reco is a FIDUCIAL efficiency: it does NOT contain the truth-level gap
-// acceptance eps_acc (muon_gap_cuts_acceptance.md F12), which stays a separate factor.
+// kinematics on the CANONICAL coarse axes and weighted by the MC event weight. The gap cuts are
+// DETECTOR-ACCEPTANCE cuts, not signal cuts, so their loss is carried HERE, differentially: a
+// truth pair whose reconstructed muon lands in a gap window, or whose reconstructed |eta^pair|
+// crosses 2.2, is in the denominator and not in the numerator. There is NO separate eps_acc.
+// A truth pair with |eta^pair| >= 2.2 falls in the eta-axis overflow of BOTH legs (the coarse
+// axis tiles the data's surviving region) and enters no cell and no fallback -- it is bin
+// migration into the measured range, handled by the detector-response step, not here.
+//
+// The input file MUST carry the `pair_reco_eff_definition` TNamed marker written by the filler
+// on/after 2026-09-17: the histogram NAMES did not change when the denominator lost the truth
+// gap cuts, so a stale file would silently deliver the old fiducial definition. Refused.
 //
 // TWO FALLBACK LEVELS ARE WRITTEN ALONGSIDE THE 3D MAP, and they are not optional. The three
 // variables are strongly correlated inside the signal region (dR ~< 2 m_uu / pT^pair, so high
@@ -53,6 +64,7 @@
 #include "../../MuonObjectsParamsAndHelpers/FullSimSampleType.h"   // sample dir + reco_eff/ layout
 #include "../trig_effcy/mc_based/dr_correction_sample_cfg.h"          // DrCorrPairRecoEffFile: the ONE name
 #include "../../Utilities/PairEtaPanelBins.h"
+#include "../../Utilities/PairRecoEffDefinition.h"   // the definition marker: refused if absent
 
 namespace {
 
@@ -103,6 +115,22 @@ int build_pp24_fullsim_pair_reco_eff(bool use_full_sample = true)
     if (!fin || fin->IsZombie()) {
         std::cerr << "build_pp24_fullsim_pair_reco_eff: cannot open " << in_path << std::endl;
         return 1;
+    }
+
+    // Definition guard (see the header). BEFORE any output is touched.
+    {
+        auto* def = dynamic_cast<TNamed*>(fin->Get(PairRecoEffDefinition::Key()));
+        const std::string expect = PairRecoEffDefinition::Value();
+        if (!def || std::string(def->GetTitle()) != expect) {
+            std::cerr << "build_pp24_fullsim_pair_reco_eff: " << in_path << " carries "
+                      << (def ? "a DIFFERENT" : "NO") << " '"
+                      << PairRecoEffDefinition::Key()
+                      << "' marker -- its *_pass_signal_truth* legs are not the current definition"
+                         " (truth denominator WITHOUT gap cuts). Rerun the fullsim RDF hist filling"
+                         " (pipelines/pipeline_pythia_fullsim_pp.sh, stage 5).\n  expected: " << expect
+                      << "\n  found   : " << (def ? def->GetTitle() : "(none)") << std::endl;
+            return 4;
+        }
     }
 
     TH3D* h_den = Get3D(fin.get(), std::string(kBase) + "_pass_signal_truth");
@@ -203,15 +231,21 @@ int build_pp24_fullsim_pair_reco_eff(bool use_full_sample = true)
     h_den->Clone("h_pair_reco_eff_denom")->Write();
     static_cast<TH2D*>(h_den->Project3D("yx"))->Clone("h_pair_reco_eff_denom2d")->Write();
     TNamed prov("provenance",
-                ("single-b OS pair reco efficiency; fiducial (gap cut on BOTH the truth and the "
-                 "reco leg, ParamsSet::single_mu_fiducial_gap_cuts, PLUS the pair-level window "
-                 "|eta^pair| < " + FormatEdge(ParamsSet::pair_eta_fiducial_max)
-                 + "); source " + in_path
+                ("single-b OS pair reco efficiency INCLUDING the detector-gap acceptance: the gap "
+                 "cuts (ParamsSet::single_mu_fiducial_gap_cuts on both muons PLUS the pair-level "
+                 "window |eta^pair| < " + FormatEdge(ParamsSet::pair_eta_fiducial_max)
+                 + ") are applied on the RECO leg only; the truth denominator carries the signal "
+                   "cuts only (mass window, pair pT). NO separate eps_acc is to be applied. "
+                   "source " + in_path
                  + "; axes = ParamsSet::pair_pt_coarse_bins x "
                    "CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap x "
-                   "RDFBasedHistFillingPythia::dr_bins_edges_for_reco_effcy; does NOT contain "
-                   "eps_acc").c_str());
+                   "RDFBasedHistFillingPythia::dr_bins_edges_for_reco_effcy; "
+                   "docs/tracking/pair_reco_eff_gap_acceptance.md").c_str());
     prov.Write();
+    // The input's definition marker travels with the product, so a consumer can tell which
+    // denominator built it without opening the histogram file.
+    TNamed(PairRecoEffDefinition::Key(),
+           PairRecoEffDefinition::Value()).Write();
     fout->Close();
 
     std::cout << "\nWrote " << out_path << std::endl;

@@ -14,12 +14,12 @@
 //           weight 1, AMI-weighted -- times nb -> pb = 1000 and nothing else.
 //
 // The two pads use DIFFERENT MC selections, and that is physics, not an oversight:
-//   OS pad: `_single_b_pass_signal_truth` (truth OS pairs from the SAME b -- the single-b signal
-//           the measurement is after) AND `_op_pass_signal_truth` (ALL truth OS pairs), the
+//   OS pad: `_single_b_pass_signal_truth_gapcut` (truth OS pairs from the SAME b -- the single-b
+//           signal the measurement is after) AND `_op_pass_signal_truth_gapcut` (ALL truth OS pairs), the
 //           like-for-like partner of the data OS yield, which still contains gluon-splitting and
 //           combinatorial background. Drawing both makes that one remaining deliberate mismatch
 //           visible instead of implicit.
-//   SS pad: `_ss_pass_signal_truth` (ALL truth same-sign pairs). `from_same_b` has no same-sign
+//   SS pad: `_ss_pass_signal_truth_gapcut` (ALL truth same-sign pairs). `from_same_b` has no same-sign
 //           counterpart by construction, and the data SS pad is the combinatorial-background
 //           estimate, whose MC partner is the inclusive SS yield.
 // Each pad's legend names its own MC selection.

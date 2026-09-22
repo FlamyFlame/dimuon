@@ -1,0 +1,9 @@
+# RECOVERY part 7 (2026-09-15): the files still unprocessed after parts 1-6.
+#   run 522546 (169 files): abandoned in part3 by site-disk failures at SiGNET -- clean data.
+#   runs 522200/522949 (75 files): jobs in part6 died on events with ALL ZDC aux data
+#     absent; reprocessed under the D9 policy (skip such events, never throw).
+# Submitted with --inputFileList so ONLY these files are processed (no duplicates
+# with events already merged into parts 1/3/4/6).
+data26_hi:data26_hi.00522200.physics_HardProbes.merge.AOD.f1714_m2281
+data26_hi:data26_hi.00522546.physics_HardProbes.merge.AOD.f1720_m2281
+data26_hi:data26_hi.00522949.physics_HardProbes.merge.AOD.f1723_m2281

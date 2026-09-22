@@ -13,10 +13,12 @@
 #include <TFile.h>
 #include <TH2D.h>
 #include <TH3D.h>
+#include <TNamed.h>
 #include <TParameter.h>
 
 #include "../MuonObjectsParamsAndHelpers/ParamsSet.h"
 #include "../RDFBasedHistFilling/CommonEffcyConfig.h"
+#include "PairRecoEffDefinition.h"
 
 // =================================================================================================
 // PairRecoEffEvaluator -- the single-b PAIR reconstruction efficiency
@@ -32,14 +34,18 @@
 // DEFINITION of the histogram this reads (built by
 // plotting_codes/reco_effcy/build_pp24_fullsim_pair_reco_eff.C from the RDF hist-filling output):
 //
-//   eps_reco(cell) =  N[ single-b OS pair, both muons truth-matched to reco, pair passes the WP,
-//                        and the RECO pair passes the signal region incl. the fiducial gap cut ]
-//                  /  N[ single-b OS pair whose TRUTH pair passes the signal region
-//                        incl. the fiducial gap cut on TRUTH q*eta ]
+//   eps_reco(cell) =  N[ single-b OS pair in the TRUTH signal region, both muons reco-matched, pair
+//                        passes the WP, and the RECO pair passes the DATA signal selection incl.
+//                        the fiducial gap windows on RECO q*eta and RECO |eta^pair| < 2.2 ]
+//                  /  N[ single-b OS pair in the TRUTH signal region -- mass window and pair pT
+//                        ONLY, NO gap cut on the truth leg ]
 //
-// binned in TRUTH kinematics and weighted by the MC event weight. Because the gap cut sits in BOTH
-// legs, eps_reco is a FIDUCIAL efficiency and does NOT contain the truth-level gap acceptance
-// eps_acc (muon_gap_cuts_acceptance.md F12) -- that stays a separate, not-yet-applied factor.
+// binned in TRUTH kinematics and weighted by the MC event weight. The detector-gap cuts are
+// ACCEPTANCE cuts, not signal cuts, so their loss is carried by eps_reco itself (2026-09-17,
+// docs/tracking/pair_reco_eff_gap_acceptance.md): a truth pair reconstructed into a gap window,
+// or across the |eta^pair| = 2.2 edge, is an inefficiency. There is NO separate eps_acc factor --
+// applying one would double count. The product carries the `pair_reco_eff_definition` marker
+// (Utilities/PairRecoEffDefinition.h); Load() refuses a product without it.
 //
 // EVALUATED AT RECO KINEMATICS. The data pair's own (pair pT, pair eta, dR) select the cell. This
 // is the standard pre-unfolding approximation and is what the placeholder it replaces did; it
@@ -90,6 +96,19 @@ struct PairRecoEffEvaluator {
             throw std::runtime_error("PairRecoEffEvaluator: cannot open " + path +
                                      " -- build it with "
                                      "plotting_codes/reco_effcy/build_pp24_fullsim_pair_reco_eff.C");
+        // Definition guard: the histogram names survived the 2026-09-17 denominator change, so
+        // only the marker tells a current product from a stale fiducial one.
+        {
+            auto* def = dynamic_cast<TNamed*>(f->Get(PairRecoEffDefinition::Key()));
+            if (!def || std::string(def->GetTitle()) != PairRecoEffDefinition::Value())
+                throw std::runtime_error("PairRecoEffEvaluator: " + path + " carries "
+                                         + (def ? "a DIFFERENT" : "NO") + " '"
+                                         + PairRecoEffDefinition::Key()
+                                         + "' marker -- rebuild it with "
+                                           "plotting_codes/reco_effcy/build_pp24_fullsim_pair_reco_eff.C "
+                                           "from a freshly filled fullsim histogram file (found: "
+                                         + (def ? def->GetTitle() : "none") + ")");
+        }
         const std::string key = "h_pair_reco_eff_" + wp;
         auto* h = dynamic_cast<TH3D*>(f->Get(key.c_str()));
         if (!h)

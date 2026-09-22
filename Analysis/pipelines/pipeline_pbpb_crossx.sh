@@ -446,4 +446,14 @@ pushd "$PLOT_DIR" >/dev/null
 root -l -b -q 'plot_crossx_trig_corr_sanity.C()'
 popd >/dev/null
 
+# ------ Stage 8: Per-year yield consistency (sanity, not a per-year result family) ------
+# Signal-region OS counts per nb^-1 for every Pb+Pb year on disk, per centrality class, with the
+# ratio to the luminosity-weighted mean: the one figure that isolates a newly added year (trigger,
+# event selection, centrality calibration and luminosity all enter) before the combined
+# cross-section is trusted.  Discovers its year set from disk like the combined plotter.
+log "Running per-year yield consistency sanity plot"
+pushd "$PLOT_DIR" >/dev/null
+root -l -b -q 'plot_pbpb_per_year_yield_consistency.cxx+'
+popd >/dev/null
+
 log "PbPb crossx/nominal pipeline completed successfully for years: ${YEARS[*]}"

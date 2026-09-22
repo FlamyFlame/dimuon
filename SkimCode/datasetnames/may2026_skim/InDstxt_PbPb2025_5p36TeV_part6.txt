@@ -1,0 +1,5 @@
+# Part 6: runs 512013-512049 (3 datasets)
+# files=7,119 | jobs=119 | 82.2 TB | 41.9M events
+data25_hi:data25_hi.00512013.physics_HardProbes.merge.AOD.f1671_m2272
+data25_hi:data25_hi.00512028.physics_HardProbes.merge.AOD.f1671_m2272
+data25_hi:data25_hi.00512049.physics_HardProbes.merge.AOD.f1671_m2272

@@ -1,0 +1,5 @@
+# RECOVERY part 13 (2026-09-15): the 109 input files the May-2026 skim
+# abandoned (tasks [50267529]); see tracking doc D10.  Submitted with
+# --inputFileList so ONLY these files are processed -- no duplication with the
+# events already merged.  Built from the ZDC-fixed source under AthAnalysis 25.2.89.
+data24_5p36TeV:data24_5p36TeV.00488534.physics_Main.merge.AOD.f1529_m2259

@@ -34,11 +34,11 @@ the r-tag is acceptable as the recipe for the full 4-beam × 6-slice production.
   UKI-LT2-QMUL; 1 file (`_000026`) at BNL-OSG2_DATADISK.
   Requested by the production contact: vertex z = -71.2 mm, impact parameter 0-5 fm,
   2024 run conditions.
-- **AMI (fetched 2026-09-15, this dataset):** σ = 89.541 nb, genFiltEff = 2.342314e-3,
-  σ·ε = 0.20973 nb. The evgen tag is NEW (`e8613_e8586`, was `e8599`) while the DSID is the
-  same 802776 → `expected_ami_dsids` would NOT distinguish the productions; the AMI file
-  for this sample MUST live in the new dir's `ami_info/` and be re-fetched (done, step 2).
-  Numerically it differs from registry A (89.529 / 2.342579e-3) by 1e-4 relative.
+- **AMI — CORRECTED 2026-09-17 (user ruling; see §"AMI-weight correction" below).** The
+  2026-09-15 fetch on the AOD dataset (σ = 89.541 nb, genFiltEff = 2.342314e-3) was WRONG in
+  principle: `e8613` is the HIJING evgen tag, not a new Pythia evgen. The Pythia evgen of this
+  sample is 802776 e8599 (nPDF, registry table A: 89.529 nb / 2.342579e-3), whose weight it now
+  carries. The AOD record is kept as `ami_info_AOD_record_20260915/`, read by nothing.
 - Uncommitted `TrigRates.cxx/.h` ZDC-policy edits in the working tree belong to the
   pbpb26 data skim session. They only act when `StoreZdc>0`; the overlay mode sets
   `StoreZdc = 0`, so they are inert for this skim. Not committed here.
@@ -195,6 +195,19 @@ Centrality-bin population (skim `centrality`, 2023 FCal calibration; pTH125_300,
 
 ### R2. Slice-matched comparison r17864 vs r17618 (pTH125_300, same NTP code, 2026-09-16; reviewer-verified numbers)
 
+**USER RULING 2026-09-17 — R2 is NOT studiable until the FCal is fixed.** The reco/trigger efficiencies must be compared in the
+SAME centrality bin, but the r17864 centrality is derived from a mis-reconstructed FCal, so its "0-5 %" / "5-10 %" bins are not the
+same event populations as r17618's; the bin-to-bin deficits below (in particular the 5-10 % ones) may be centrality mis-assignment,
+not a reconstruction-efficiency problem. Keep the table as a record of what was run; draw no r-tag conclusion from the
+centrality-binned rows. The centrality-blind rows do not depend on the FCal but still describe a sample whose conditions are
+broken. Redo R2 once a fixed-calorimeter production exists.
+
+**Vertex-z clarification (user, 2026-09-17):** the production requests FIVE vertex positions, x = -0.7, y = -0.6 mm,
+z = -71.2 / -28.5 / -4.8 / 18.9 / 61.6 mm, sampled from μ = -4.8 mm, σ = 47.4 mm; only the z = -71.2 mm slice (r17864) is
+finished. So "−71.2 mm ≠ data" is not a mismatch of the design, just one of the five points. The -5.8 ± 47 mm quoted in R2 is the
+per-event RECONSTRUCTED primary vertex (`vtx_z[0]`) of the pbpb24 DATA skim, first 20k events of `data_pbpb24_part1.root` — a
+distribution, not the conditions-DB beam spot; per-run values over the full dataset: see the table below (R3) once filled.
+
 | quantity (Tight WP) | r17864 (2024 cond.) | r17618 (2023 cond.) | ratio |
 |---|---|---|---|
 | single-μ reco ε, FCal 0-5 %, bins 4.5-8 / 8-14 / 14-25 / 25-100 GeV | 0.563 / 0.624 / 0.660 / 0.640 (N = 252/213/153/139) | 0.588 / 0.661 / 0.675 / 0.709 | 0.96 / 0.94 / 0.98 / 0.90 (±0.05-0.06) |
@@ -221,6 +234,158 @@ negative sums, a 10× drop, or the observed A = C symmetry; the vertex is also r
 It is therefore not the cause of R1; it could at most shift η-edge acceptances by ~0.03-0.07 and should be corrected to the
 data value (with the data's ~47 mm spread) in the full production regardless.
 
+### R3. Pb+Pb 2024 data primary-vertex position, per run (2026-09-17; for the vertex-sampling μ/σ discussion)
+
+Source: `~/usatlasdata/dimuon_data/pbpb_2024/data_pbpb24_part*.root`, `HeavyIonD3PD`, `vtx_{x,y,z}[0]` with `vtx_ntrk[0] >= 10`
+(reconstructed PV of HardProbes-triggered events; skim keeps |z| < 250 mm). NOT the conditions-DB beam spot (`/Indet/Beampos`).
+
+| run | N | ⟨x⟩ | ⟨y⟩ | ⟨z⟩ [mm] | RMS z [mm] |
+|---|---|---|---|---|---|
+| 489703 | 8 977 701 | −0.732 | −0.648 | −5.6 | 46.8 |
+| 489718 | 3 499 471 | −0.732 | −0.643 | −5.5 | 48.1 |
+| 489749 | 5 412 686 | −0.734 | −0.644 | −5.4 | 47.8 |
+| 489764 | 8 761 704 | −0.731 | −0.646 | −5.6 | 46.8 |
+| 489801 | 7 038 785 | −0.731 | −0.648 | −5.6 | 48.3 |
+| 489895 | 1 904 486 | −0.724 | −0.646 | −6.2 | 48.5 |
+| 489909 | 8 237 955 | −0.729 | −0.649 | −7.6 | 47.7 |
+| 489938 | 1 002 470 | −0.739 | −0.648 | −6.9 | 48.2 |
+| 489961 | 7 293 753 | −0.735 | −0.649 | −6.3 | 47.7 |
+| 490085 | 9 413 078 | −0.737 | −0.655 | −5.7 | 47.8 |
+| 490145 | 9 466 199 | −0.738 | −0.648 | −5.7 | 47.8 |
+| 490156 | 9 192 522 | −0.734 | −0.651 | −4.6 | 48.1 |
+| 490182 | 6 667 419 | −0.735 | −0.652 | −4.3 | 48.7 |
+| 490223 | 5 629 562 | −0.735 | −0.648 | −4.6 | 48.8 |
+| **all** | 92 497 791 | −0.73 | −0.65 | **−5.61** | **47.8** |
+
+vs the production request (x −0.7, y −0.6, μ_z −4.8, σ_z 47.4 mm): x, y within 0.05 mm; μ_z differs by 0.8 mm (inside the
+run-to-run range −4.3 … −7.6), σ_z within 1 %. No change to μ/σ is warranted on this basis (0.8 mm = 0.02 σ, Δη ~ 1e-4).
+
+### R4. ID track multiplicity and L1 total E_T, r17864 vs r17618 (pTH125_300, no centrality cut, 2026-09-17; /review-plot PASS)
+
+`plots/r17864_rtag_sanity/trk_multiplicity_r17864_vs_r17618_pTH125_300.png` (4 panels, `trk_numqual[0,3,4,7]`) and
+`l1te_r17864_vs_r17618_pTH125_300.png` (`plot_r17864_event_level.cxx` modes `ntrk` / `l1te`; raw skim counters, unweighted —
+`EventWeights[0]` = 1 in every event of both single-slice samples).
+
+| quantity (per event, 10 000 ev each) | r17864 (2024 cond.) | r17618 (2023 cond.) | ratio |
+|---|---|---|---|
+| N_trk, p_T > 400 MeV (`[0]` ≡ `[4]`: the stored track collection already has p_T > 400 MeV) | 5830 ± 1740 (RMS) | 5435 ± 1460 | 1.073 |
+| N_trk, HITight (`[3]` ≡ `[7]`) | 2183 ± 359 | 2400 ± 362 | 0.910 |
+| L1 ΣE_T median (mean) [TeV] | **3.21 (3.47)** | 16.14 (16.26) | 0.20 |
+
+- **Tracker is essentially unaffected** — the HIJING event is fully there (+7 % untagged tracks, −9 % HITight tracks). The
+  2024 sample has a high-multiplicity shoulder at 8.5–11.5 k untagged tracks that is ABSENT in HITight (2024 HITight max 3540
+  < 2023 max 3718): the 2024-conditions reconstruction produces extra LOW-QUALITY tracks and slightly fewer tight ones —
+  consistent with the −11 % Tight muon reco efficiency of R2 (ID-track quality), a second, milder symptom next to the
+  calorimeter.
+- **L1Calo sees the same deficit as the offline calorimeter**: L1TE ×5 low (3.2 vs 16.1 TeV; no negative L1 sums since the
+  L1 ET sum is unsigned). So the problem is upstream of both the offline cell energies and the L1Calo trigger-tower path —
+  digitisation-level (consistent with the R1 timing/BCID hypothesis), not offline reconstruction.
+- Side notes: one r17618 event has L1TE = 32.767 TeV (16-bit saturation of the L1 sum); the r17618 L1TE distribution is
+  double-humped (15 and 19 TeV) like its FCal ×1.5 step (R1b) — a feature of that production's HITS composition.
+
+### NTUP naming change (2026-09-17, user decision; /review-analysis-code)
+
+Overlay NTUPs renamed `…FullSimHIJINGOverlayPP24.NTUP.root` → `…FullSimHIJINGOverlayPbPb<yy>.vtxz<z>mm_b<lo>_<hi>fm.NTUP.root`
+("PP24" was wrong; the tag now encodes the production configuration — Pb+Pb 2024 requests 5 vertex-z points × 4 b intervals
+on top of 4 beams × 6 slices). On disk: pbpb24 `FullSimHIJINGOverlayPbPb24.vtxz-71_2mm_b0_5fm` (1 file), pbpb23
+`FullSimHIJINGOverlayPbPb23.vtxz-3_3mm_b0_5fm` (6 files) + `_r17662` variant; diagnostic run-dir symlinks re-pointed;
+`.bak_20260709` LGD symlinks and grid dataset names keep the legacy tag. Code: `FullSimSampleType.h`
+(`FullSimOverlayConfigTag` — ONE config per year, never a glob; `FullSimSampleFileTag(t, year)`), `PythiaAlgCoreT.c`
+(year-aware tag + new zero-input guard: a dir/year mismatch now throws instead of exiting 0 with empty outputs under
+`allow_missing_slices`), `grid_monitor.sh` (tag delimited by the `<Month><Year>.v<n>` token; `-` allowed), the three overlay
+`grid_sub*.sh` (`_cfg_tag <z> <ip>`, one `_submit` per (beam, slice, z, b)), `plot_r17864_event_level.cxx` (paths from the
+header). Verified: pbpb24 + pbpb23-slice single-muon NTP reruns reproduce N = 10000, w_factor 2.09733e-05 / 2.09729e-05 and
+byte-identical output sizes. Rule + skim side documented in `SkimCode/README.md` "Overlay NTUP naming",
+`docs/pythia_fullsim_overlay.md`.
+
+**Observed during the review (not this session's change):** `~/usatlasdata/pythia_truth_full_sample/pythia_5p36TeV/ami_info/`
+was renamed to `ami_info_PDF/` (empty) + `ami_info_nPDF/` at 19:17 by another session. `PythiaAlgCoreT.c:41` falls back to that
+`ami_info/` for the pbpb23 overlay and pp24 TEST samples → their NTP now throws "missing AMI file" until that session finishes.
+
+### AMI-weight correction (2026-09-17, USER RULING — the physics rule, recorded here for good)
+
+**The AMI weight of every event is the weight of its PYTHIA evgen dataset, not of anything in the
+AOD chain.** `e8613` in `e8613_e8586_s4684_r17864_r17855` is the evgen used for **HIJING**
+(`860250.Hijing_PbPb_UCC_Flow_JJFV6_ip0_5.e8613_...`), NOT a Pythia truth evgen. The Pythia evgen
+e-tag is not shown in the overlay's AMI tag chain because the Pythia events were already generated
+and are used as INPUT to the simulation, not re-run. For each overlay event we use the AMI weight
+from Pythia truth, never from HIJING — and that is exactly why, in the HIJING-overlay samples, only
+truth muons from Pythia enter the reconstruction- and trigger-efficiency evaluation, never truth
+muons from HIJING: HIJING is background / environment / underlying event for the Pythia truth
+particles; a HIJING truth muon would carry the wrong (Pythia) weight.
+
+What was wrong (session 2, commit 2d78e97, 2026-09-16): `PythiaAlgCoreT` was changed to prefer "a
+sample's own `ami_info/`" whenever the directory existed, and this sample's `ami_info/` held the AOD
+dataset's AMI numbers (registered as `ami_weights.md` B2, Δ 1e-4 vs table A — numerically harmless
+here, wrong in principle, and a trap for the next production). Undone 2026-09-17, in the same
+commit series:
+
+- `FullSimSampleType.h`: `enum PythiaEvgen { nPDF, PDF }` + `FullSimSampleEvgen(type, isTestSample)`
+  (pp24 FULL → PDF, everything else → nPDF), `PythiaEvgenAmiDir/FileName/Dsids`. AMI files live
+  with the evgen in ONE place each: `pythia_truth_full_sample/pythia_5p36TeV/ami_info_nPDF/`
+  (e8599, 802758–802781, 4 isospins 4:6:6:9, nuclear PDF nNNPDF30 — Pb+Pb-suitable; truth-only
+  analysis, pp24 TEST, every HIJING overlay incl. this one) and `ami_info_PDF/` (`_pdf`,
+  803015–803020, pp only, proton PDF NNPDF23LO — pp-suitable; pp24 fullsim FULL). Both dirs +
+  `fetch_ami_info_{nPDF,PDF}.sh` were laid out by the user on 2026-09-17.
+- `PythiaAlgCoreT.c` InitParams: `ami_evgen` derived from the sample switch; the own-`ami_info/`
+  probe deleted; `expected_ami_dsids` defaults to the evgen's DSIDs. InitInputFullsim: file name
+  from `PythiaEvgenAmiFileName` (the PDF files carry the `_pdf` suffix). **InitInputCentrProd
+  (truth-only reader): was silently skipping** (WARNING + `ami_weight = 0`) since the user's
+  rename of `ami_info/` → `ami_info_nPDF/` at 19:17; now reads `ami_info_nPDF/`, missing file
+  fatal, DSID checked against 802758–802781.
+- The four `run_pythia_fullsim_*_full_sample.sh` no longer set `ami_info_dir_override`;
+  `pipeline_pythia_fullsim_pp.sh` preflight and `mc_pthat_slice_mass_statistics.cxx` read
+  `ami_info_PDF/`. On disk: `pythia_fullsim_full_sample/ami_info/` →
+  `ami_info_AOD_record_20260713/`, `pythia_fullsim_hijing_overlay_test_sample/ami_info/` →
+  `ami_info_AOD_record_20260915/` (renames, read by nothing).
+- **pp24 fullsim FULL sample: no rerun needed.** Its `ami_info/` copy (fetched 2026-07-13 on the
+  `_pdf` AOD) had σ and ε_filt byte-identical to the evgen's `ami_info_PDF/` files; the nominal
+  `muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_full.root` (2026-09-10) carries
+  kin0 weight 1.81001e-5 nb = 36.7432/2029996 and kin5 6.1807e-7 = 0.19779/319999 — the PDF
+  evgen's numbers. Every pp24 fullsim result, including `plots/mc_data_compr/` (which reads
+  `histograms_pythia_fullsim_pp24_*_full.root`, NOT the truth sample, since 2026-08-25), was
+  already built on the pp-suitable evgen with its own weights.
+- Docs: `docs/ami_weights.md` rewritten around the evgen rule (B2 retired), `docs/pythia_truth.md`,
+  `docs/pythia_fullsim_pp.md`, root `README.md`, `pipelines/fullsim_sample_layout.sh`, SkimCode
+  comments (`grid_sub_pbpb24_test_sample.sh`, `fullsim_pp24_full_to_lgd.sh`).
+
+### R5. Where the Pythia TRUTH-only (nPDF evgen) quantities are consumed — survey 2026-09-17 (two independent subagents, cross-checked; awaiting user decisions)
+
+Facts established: (a) the pp24 fullsim NTUP is a strict superset of the truth-only TRUTH0 NTUP — all 53
+truth branches (`truth_id/barcode/status/pt/eta/phi/m/parents`, `truth_mupair_*`, `Q`, …) are present, all
+events stored — and `PythiaFullSimAnalysis` composes the SAME `PythiaTruthExtras` ancestry tracing
+(`from_same_b`, flavor/origin categories, last-b-hadron vector) into truth-seeded pair trees
+`muon_pair_tree_sign{1,2}` / `_kin<k>_sign<s>` of `muon_pairs_pythia_fullsim_pp24_..._full.root`; (b) the
+PDF (pp) evgen has the SAME event count per slice as the 4-beam nPDF total in slices 1-4 but 3.7x / 6.75x
+fewer in pTH70_125 / pTH125_300 (320 k vs 1.195 M / 2.16 M), and the fullsim FULL sample already IS the
+whole PDF evgen (2 029 996 / 2 039 700 …) → a truth-only skim of the PDF evgen would add NO events;
+(c) the truth-only RDF fills (`RDFBasedHistFillingPythiaTruth.cxx`: flavor/origin-binned kinematics,
+`_sigsel` templates, `h2d_sig_accept_*`) have no counterpart in `RDFBasedHistFillingPythiaFullsim.cxx`
+(which has `pass_signal_truth` numerators but no `from_same_b`-only denominator, no category split).
+
+| # | result | code / output | truth role | today | pp-suitable needed? |
+|---|---|---|---|---|---|
+| 1 | **pp24 MC-vs-data comparison** `plots/mc_data_compr/{signal,generic}` | `plotting_codes/mc_data_compr/*`, `McDataComprConfig.h` → `histograms_pythia_fullsim_pp24_*_full.root` | truth-quantity hists (`*_pass_signal_truth`) from the FULLSIM truth block | **already pp24 fullsim + PDF weights since 2026-08-25** (truth sample rejected then for its 4:6:6:9 isospin average, `mc_data_compr_signal_generic_split.md`) | **no remake needed** |
+| 2 | signal acceptance ε_acc(pair pT, pair η) `plots/single_b_analysis/pythia/pythia_sig_accept_*` | `plot_signal_acceptance_pythia.cxx` ← `h2d_sig_accept_{num,denom}_pt_eta` in `histograms_pythia_5p36TeV_*.root` | acceptance of the pp signal region on truth single-b pairs; the α reported with the pp crossx (not applied in crossx code) | nPDF truth sample | YES if reported for pp — needs the denominator fill added to the fullsim RDF (or the truth pipeline run on the fullsim NTUP) |
+| 3 | acceptance cutflow >60 GeV, ΔR-vs-pair-pT diagnostic, single-b pT / last-b-hadron ratio | `plot_sig_accept_cutflow_above_60GeV.cxx`, `plot_dr_vs_pair_pt_diagnostic.cxx`, `plot_single_b_pt_ratio_to_last_b_hadron.cxx` (RDF on `muon_pair_tree_sign2`) | settled pp-signal diagnostics (closed docs) | nPDF truth sample | path edit only (fullsim OS tree has the same branches); low priority |
+| 4 | flavor / origin categorized generator-level plot sets `pythia_5p36TeV/plots/{flavor,origin}_categoried/` | `plot_{flavor,origin}_categorized_kinematics.cxx` ← truth RDF; labelled nNNPDF30 | generator-level composition studies | nPDF truth sample | USER DECISION: pp-reference composition → PDF (needs a fullsim-NTUP input mode of the truth pipeline or category fills in the fullsim RDF); Pb+Pb-signal composition → nPDF is right |
+| 5 | low-mass template-fit truth `_sigsel` templates; k = G_SS/G_OS studies (data-area macros `template_fitting/*/code/*.C`) | `FillHistogramsTemplateMinvSignalRegion` | S/G shapes, k ratio | nPDF truth; superseded for the nominal reco-level fit (`tf_nominal_fit_build.md`) | no (k is a shape ratio; nominal templates come from fullsim reco) |
+| 6 | 5.36 vs 5.02 TeV truth comparison | `plot_pythia_compr_priv_nonpriv_5_02TeV.cxx` | √s dependence, both central productions nuclear-PDF | nPDF | no (like-for-like) |
+| 7 | HIJING overlay reco-eff / det-response / MC trig-eff / closure; overlay truth reference | fullsim NTUP truth block of each overlay | Pb+Pb | nPDF (= the overlay's own evgen) | no — nPDF is correct |
+| 8 | crossx_summary / kn-slice tables from the fullsim runs | `PythiaTruthExtras.c` diagnostics written under the truth dir | bookkeeping | evgen of each run | no |
+
+Nothing uses the truth sample as a same-event reference for the pp24 fullsim (all efficiency denominators
+come from the fullsim NTUP's own truth block), and no truth-sample figure is in the note yet.
+
+Also: the truth-only `_pp_only` variant (nPDF, pp beam only) has no consumer.
+
+**Answer to "skim the pp-suitable evgen?"** — not needed: the fullsim NTUP already carries the complete
+PDF-evgen truth block with identical branch content, and the ntuple processing already produces the truth
+pair trees from it. What is missing is only on the RDF/plot side (item 2 denominator, item 4 category
+fills) or a `fullsim_input_dir`-style input mode for `PythiaTruthAnalysis`. The statistics argument goes the
+other way: the nPDF truth sample has 3.7-6.75x more events in the two highest slices (the same deficit
+`pthat_slice_mass_stats_sample_request.md` is addressing).
+
 ## Remaining Work
 
 - User decision on the verification plan / on reporting R1 to the production contact (message draft offered).
@@ -228,4 +393,8 @@ data value (with the data's ~47 mm spread) in the full production regardless.
 
 ## Latest Stage
 
-2026-09-16 20:40: verification round items 1-5 delivered (R1b, R2); comparison plots under /review-plot iteration 2. Open: user decision on reporting R1/R2 + the −71.2 mm vertex to the production contact.
+2026-09-17 (session 4) DONE: AMI-weight correction committed (7e8c837; /review-analysis-code PASS, 2 iterations) —
+see §"AMI-weight correction" and `docs/ami_weights.md`. R5 survey of truth-quantity consumers delivered;
+**awaiting user**: (i) whether ε_acc (R5 #2) and the generator-level composition plots (R5 #4) move to the
+pp-suitable PDF evgen via the fullsim truth block; (ii) the R1/R4 report to the production contact; then the
+fixed-calorimeter production + remaining vertex slices (rerun with `OVERLAY_YEAR=24`, redo R2).

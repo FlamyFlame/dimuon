@@ -1,0 +1,14 @@
+# Part 3: runs 463124-463389 (13 datasets | files=27,055 | jobs=451 | 204 TB | 123.6M ev)
+data23_hi:data23_hi.00463124.physics_HardProbes.merge.AOD.r16069_p6447_tid41547598_00
+data23_hi:data23_hi.00463155.physics_HardProbes.merge.AOD.r16069_p6447_tid41716190_00
+data23_hi:data23_hi.00463185.physics_HardProbes.merge.AOD.r16069_p6447_tid41716194_00
+data23_hi:data23_hi.00463189.physics_HardProbes.merge.AOD.r16069_p6447_tid41716200_00
+data23_hi:data23_hi.00463216.physics_HardProbes.merge.AOD.r16069_p6447_tid41716206_00
+data23_hi:data23_hi.00463222.physics_HardProbes.merge.AOD.r16069_p6447_tid41716210_00
+data23_hi:data23_hi.00463255.physics_HardProbes.merge.AOD.r16069_p6447_tid41716214_00
+data23_hi:data23_hi.00463263.physics_HardProbes.merge.AOD.r16069_p6447_tid41716220_00
+data23_hi:data23_hi.00463308.physics_HardProbes.merge.AOD.r16069_p6447_tid41716227_00
+data23_hi:data23_hi.00463315.physics_HardProbes.merge.AOD.r16069_p6447_tid41716231_00
+data23_hi:data23_hi.00463364.physics_HardProbes.merge.AOD.r16069_p6447_tid41716235_00
+data23_hi:data23_hi.00463380.physics_HardProbes.merge.AOD.r16069_p6447_tid41716239_00
+data23_hi:data23_hi.00463389.physics_HardProbes.merge.AOD.r16069_p6447_tid41716243_00
