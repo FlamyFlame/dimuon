@@ -4,9 +4,9 @@
 
 ## Overview
 
-Processes real collision data from ATLAS Run 2 (pp17, PbPb15, PbPb18) and Run 3 (pp24, PbPb23, PbPb24, PbPb25).
+Processes real collision data from ATLAS Run 2 (pp17, PbPb15, PbPb18) and Run 3 (pp24, PbPb23, PbPb24, PbPb25, PbPb26).
 
-**Active datasets (Run 3):** pp24, PbPb23, PbPb24, PbPb25. Run 2 datasets exist for cross-checks but are no longer maintained for new analysis decisions.
+**Active datasets (Run 3):** pp24, PbPb23, PbPb24, PbPb25, PbPb26. Run 2 datasets exist for cross-checks but are no longer maintained for new analysis decisions.
 
 ## Key files
 
@@ -53,11 +53,36 @@ The OS resonance veto is applied **OS-only at the ntuple stage** (`DimuonAlgCore
 
 ## PbPb event selection
 
-5-cut sequential selection (see `PbPbEventSelConfig.h`):
-1. ZDC timing cut
-2. FCal/ZDC correlation
-3. ZDC preamp saturation (per-year threshold)
-4. Centrality range
-5. Vertex / track multiplicity
+**Five cuts, applied in this order.** The order and the names are fixed by the
+`PbPbEvSelCut` enum in `NTupleProcessingCode/PbPbEventSelConfig.h`, which is included by
+BOTH the derivation and the application so the two cannot drift; every threshold is
+*derived per year from that year's own data* and stored in
+`~/usatlasdata/dimuon_data/pbpb_20YY/event_sel_cuts_pbpb_20YY.root`.
+
+| # | `kPbPbEvSelCutLabel` | What is required | Form of the threshold |
+|---|---|---|---|
+| 1 | `ZDC_FCal_banana` | ZDC E_total below the banana curve at that FCal E_T^{A+C} | TGraph `g_ZDC_FCal_cut`, per-0.1-TeV-FCal-slice two-band Gaussian fit: `max(main μ+5σ, pile-up μ_bg−3σ_bg)` |
+| 2 | `ZDC_time` | \|t_A\| < 1.5 ns AND \|t_C\| < 1.5 ns | scalar `ZDC_time_cut_ns` |
+| 3 | `ZDC_preamp` | NOT (both sides' preamp sums above threshold) — fails only if A **and** C exceed it | scalars `ZDC_preamp_{A,C}_cut_ADC`; per-run μ+7σ from the optional `t_preamp_per_run` tree where the year's cuts file provides it (2025, 2026) |
+| 4 | `nTrk_frac` | N_trk^HItight / N_trk^total above a lower bound, vs N_trk^total | TGraph `g_ntrk_frac_cut_lo`, per-slice Gaussian μ−5σ |
+| 5 | `nTrk_FCal_band` | N_trk^HItight inside a band vs FCal E_T^{A+C} | TGraphs `g_ntrk_fcal_cut_{lo,hi}`, per-slice Gaussian [μ−5σ, μ+5σ] |
+
+Cut 1 targets the out-of-time / pile-up band that sits above the main hadronic band in the
+ZDC–FCal plane; cuts 4 and 5 target events whose track multiplicity does not match the
+calorimeter activity. The **nominal** cut-1 procedure is the two-band Gaussian fit above; an
+**alternative quadratic** ("alt banana") procedure exists as a cross-check only — it writes
+`event_sel_cuts_pbpb_20YY_alt.root` and its own plot directory, and **no analysis stage reads
+it**. Both are documented slide-by-slide, with the physics of the two bands, in
+`docs/tracking/event_selection_banana_cut_comparison.md`.
+
+**Where things live:**
+- Definition / key names / cut order: `NTupleProcessingCode/PbPbEventSelConfig.h`
+- Application: `PbPbExtras::PassEventSel()` (and `InitEventSel()`, which throws if the year's
+  cuts file is missing) in `NTupleProcessingCode/PbPbExtras.c`
+- Derivation + per-cut figures: `plotting_codes/event_selection/plot_pbpb_event_sel_event_level.cxx`
+  (event-level distributions, cut 1) then `plot_pbpb_event_sel_cuts.cxx` (cuts 2–5)
+- Run-quality exclusions: `PbPbBadRuns()` in `PbPbEventSelConfig.h` (2023: 461674, 462964;
+  no other year) — any change must move the luminosity in `Utilities/PbPbSampledLumi.h` and
+  `PbPbBaseClass.h::make_crossx_factors_pbpb_<yr>()` in the same commit.
 
 <!-- TODO: Document pipeline steps, validation, plotting -->
