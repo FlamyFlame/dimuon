@@ -2,11 +2,14 @@
 // FCal ET shape comparison: PbPb 2024, 2025 and 2026 vs 2023 after full 5-cut
 // event selection (nominal two-band banana OR alternative quadratic banana).
 // Each output is a single canvas with three ratio sub-plots (24/23, 25/23, 26/23).
+// The _262524 variant instead overlays 2024, 2025 and 2026 in ONE pad, ratioed to 2024.
 //
 // Usage:
 //   .L plot_pbpb_fcal_comparison.cxx+
 //   plot_pbpb_fcal_comparison()       // nominal 2-band banana cuts
 //   plot_pbpb_fcal_comparison_alt()   // alternative quadratic banana cuts
+//   plot_pbpb_fcal_comparison_262524()      // 24+25+26 overlaid, ratios to 2024
+//   plot_pbpb_fcal_comparison_262524_alt()
 
 #include <string>
 #include <vector>
@@ -314,6 +317,89 @@ static void DrawRatioColumn(TPad* p_top, TPad* p_bot,
     line.DrawClone();
 }
 
+// ---- Overlay column: N years in one pad, each ratioed to the FIRST one ------
+// Same styling as DrawRatioColumn; hs[0] / cols[0] / lbls[0] is the ratio reference.
+static void DrawOverlayColumn(TPad* p_top, TPad* p_bot,
+                              const std::vector<TH1D*>& hs,
+                              const std::vector<int>& cols,
+                              const std::vector<std::string>& lbls,
+                              const char* proc_label)
+{
+    const double split = p_bot->GetAbsHNDC() / (p_top->GetAbsHNDC() + p_bot->GetAbsHNDC());
+    const double scale = (1. - split) / split;  // for scaling axis labels in ratio pad
+    const int    n     = (int)hs.size();
+
+    // ----- top pad: every year overlaid -----
+    p_top->cd();
+    p_top->SetBottomMargin(0.015);
+    p_top->SetTopMargin(0.12);
+    p_top->SetLeftMargin(0.18);
+    p_top->SetRightMargin(0.04);
+    p_top->SetLogy();
+
+    TLegend* leg = new TLegend(0.55, 0.85 - 0.06 * n, 0.93, 0.85);
+    leg->SetBorderSize(0); leg->SetFillStyle(0); leg->SetTextSize(0.052);
+    for (int i = 0; i < n; ++i) {
+        TH1D* ht = (TH1D*)hs[i]->Clone();
+        ht->SetDirectory(nullptr);
+        ht->SetLineColor(cols[i]); ht->SetLineWidth(2);
+        if (i == 0) {
+            ht->GetXaxis()->SetLabelSize(0.);
+            ht->GetXaxis()->SetRangeUser(0.04, 5.5);
+            ht->GetYaxis()->SetTitle("Events (norm., 0-80%)");
+            ht->GetYaxis()->SetTitleSize(0.060);
+            ht->GetYaxis()->SetLabelSize(0.052);
+            ht->GetYaxis()->SetTitleOffset(1.30);
+            ht->SetMinimum(1e-7);
+            ht->Draw("HIST");
+        } else {
+            ht->Draw("HIST SAME");
+        }
+        leg->AddEntry(ht, lbls[i].c_str(), "l");
+    }
+    leg->Draw();
+
+    TLatex tl; tl.SetNDC(); tl.SetTextSize(0.052); tl.SetTextColor(kGray+2);
+    tl.DrawLatex(0.20, 0.86, proc_label);
+
+    // ----- bottom pad: each non-reference year over the reference -----
+    p_bot->cd();
+    p_bot->SetTopMargin(0.00);
+    p_bot->SetBottomMargin(0.42);
+    p_bot->SetLeftMargin(0.18);
+    p_bot->SetRightMargin(0.04);
+
+    const int markers[] = {24, 25, 26, 27};  // open circle / square / triangle / diamond
+    for (int i = 1; i < n; ++i) {
+        TH1D* ratio = (TH1D*)hs[i]->Clone();
+        ratio->SetDirectory(nullptr);
+        ratio->Divide(hs[0]);
+        ratio->SetLineColor(cols[i]);
+        ratio->SetMarkerColor(cols[i]);
+        ratio->SetMarkerStyle(markers[(i - 1) % 4]);
+        ratio->SetMarkerSize(0.4 * scale);
+        if (i == 1) {
+            ratio->GetXaxis()->SetTitle("FCal E_{T}^{A+C} [TeV]");
+            ratio->GetXaxis()->SetRangeUser(0.04, 5.5);
+            ratio->GetXaxis()->SetTitleSize(0.060 * scale);
+            ratio->GetXaxis()->SetLabelSize(0.052 * scale);
+            ratio->GetXaxis()->SetTitleOffset(1.0);
+            ratio->GetYaxis()->SetTitle(Form("year / %s", lbls[0].c_str()));
+            ratio->GetYaxis()->SetTitleSize(0.055 * scale);
+            ratio->GetYaxis()->SetLabelSize(0.048 * scale);
+            ratio->GetYaxis()->SetTitleOffset(1.30 / scale);
+            ratio->GetYaxis()->SetNdivisions(505);
+            ratio->GetYaxis()->SetRangeUser(0.50, 1.50);
+            ratio->Draw("E");
+        } else {
+            ratio->Draw("E SAME");
+        }
+    }
+    TLine line(0.04, 1., 5.5, 1.);
+    line.SetLineColor(kGray+1); line.SetLineStyle(2); line.SetLineWidth(1);
+    line.DrawClone();
+}
+
 // ---- Main comparison function -----------------------------------------------
 // One column per comparison year, each ratioed to the 2023 reference:
 // 24/23, 25/23, 26/23.
@@ -418,52 +504,88 @@ static void MakeComparisonPlot(bool is_alt) {
             delete g;
 }
 
-// ---- 2025 vs 2024 single-column comparison ----------------------------------
-static void MakeComparisonPlot2524(bool is_alt) {
-    CutSetFC cs24 = LoadCutsFC(24, is_alt);
-    CutSetFC cs25 = LoadCutsFC(25, is_alt);
+// ---- Single-column overlay of the non-reference years -----------------------
+// 2024, 2025 and 2026 in ONE pad, each ratioed to 2024 (the earliest year drawn).
+// Complements MakeComparisonPlot, which ratios every year to the 2023 reference:
+// here the question is whether the years that share the same detector era agree
+// with each other, without 2023 as an intermediary.
+// Probe-skip-relabel (D5): a year whose cuts file or skim is missing is dropped, and
+// BOTH the legend and the output file name are rebuilt from the years that actually
+// contributed, so the figure can never claim a year it did not use.
+static void MakeComparisonPlotOverlay(bool is_alt) {
+    struct YearSpecFC { int yr; int col; const char* lbl; };
+    const YearSpecFC kYears[] = {
+        {24, kRed+1,   "PbPb 2024"},
+        {25, kBlue+1,  "PbPb 2025"},
+        {26, kGreen+2, "PbPb 2026"},
+    };
+    const int kNYears = (int)(sizeof(kYears) / sizeof(kYears[0]));
 
-    TH1D* h24 = FillFCalHist(24, cs24);
-    TH1D* h25 = FillFCalHist(25, cs25);
-
-    if (!h24 || !h25) {
-        std::cerr << "Missing histogram — aborting." << std::endl; return;
+    std::vector<CutSetFC>    cs;
+    std::vector<TH1D*>       hs;
+    std::vector<int>         cols;
+    std::vector<std::string> lbls;
+    std::string tag;  // years actually drawn, newest first: "262524"
+    for (int k = 0; k < kNYears; ++k) {
+        if (!YearAvailableFC(kYears[k].yr, is_alt)) {
+            std::cout << "MakeComparisonPlotOverlay: PbPb 20" << kYears[k].yr
+                      << " not available (cuts file and/or skim missing) — skipped." << std::endl;
+            continue;
+        }
+        CutSetFC c1 = LoadCutsFC(kYears[k].yr, is_alt);
+        TH1D*    h1 = FillFCalHist(kYears[k].yr, c1);
+        if (!h1) {
+            std::cout << "MakeComparisonPlotOverlay: PbPb 20" << kYears[k].yr
+                      << " produced no histogram — skipped." << std::endl;
+            continue;
+        }
+        cs.push_back(c1);
+        hs.push_back(h1);
+        cols.push_back(kYears[k].col);
+        lbls.push_back(kYears[k].lbl);
+        tag = std::to_string(kYears[k].yr) + tag;
     }
+    if (hs.size() < 2) {
+        std::cerr << "MakeComparisonPlotOverlay: fewer than two years available — nothing to compare."
+                  << std::endl;
+        for (TH1D* h : hs) delete h;
+        return;
+    }
+
+    // Normalize to unit area within 0-80% centrality (FCal_ET > PbPb2023 80% boundary).
     static const double kFCal80pct = 0.063208;  // TeV — FCal_ET_Bins_PbPb2023[79]
-    for (TH1D* h : {h24, h25}) {
+    for (TH1D* h : hs) {
         const int bin_lo = h->FindBin(kFCal80pct);
         const double integ = h->Integral(bin_lo, h->GetNbinsX());
         if (integ > 0.) h->Scale(1. / integ);
     }
 
     const double split = 0.30;
-    TCanvas* c = new TCanvas("c_fcal_comp_2524", "", 700, 750);
+    TCanvas* c = new TCanvas(Form("c_fcal_comp_%s", tag.c_str()), "", 700, 750);
     c->SetMargin(0, 0, 0, 0);
 
-    TPad* pTop = new TPad("pTop", "", 0.00, split, 1.00, 1.00);
-    TPad* pBot = new TPad("pBot", "", 0.00, 0.00, 1.00, split);
+    TPad* pTop = new TPad("pTopOv", "", 0.00, split, 1.00, 1.00);
+    TPad* pBot = new TPad("pBotOv", "", 0.00, 0.00, 1.00, split);
     pTop->Draw(); pBot->Draw();
 
     const char* proc_label = is_alt ? "Alt. banana cut (quadratic)" : "Nominal 2-band banana cut";
-    DrawRatioColumn(pTop, pBot, h24, h25, kRed+1, kBlue+1,
-                    "PbPb 2024", "PbPb 2025", proc_label);
+    DrawOverlayColumn(pTop, pBot, hs, cols, lbls, proc_label);
 
     const std::string base = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/single_b_analysis/";
     const std::string out_dir = is_alt
         ? base + "event_selection_alternative_banana/"
         : base + "event_selection/";
     gSystem->mkdir(out_dir.c_str(), true);
-    const std::string outname = out_dir +
-        (is_alt ? "fcal_comparison_pbpb_2524_alt_banana.png"
-                : "fcal_comparison_pbpb_2524_nominal.png");
+    const std::string outname = out_dir + "fcal_comparison_pbpb_" + tag +
+        (is_alt ? "_alt_banana.png" : "_nominal.png");
     c->SaveAs(outname.c_str());
     std::cout << "Saved: " << outname << std::endl;
 
     delete c;
-    delete h24; delete h25;
-    for (auto* g : {cs24.g_cut1, cs24.g_cut4, cs24.g_cut5_lo, cs24.g_cut5_hi,
-                    cs25.g_cut1, cs25.g_cut4, cs25.g_cut5_lo, cs25.g_cut5_hi})
-        delete g;
+    for (TH1D* h : hs) delete h;
+    for (auto& cset : cs)
+        for (auto* g : {cset.g_cut1, cset.g_cut4, cset.g_cut5_lo, cset.g_cut5_hi})
+            delete g;
 }
 
 // =============================================================================
@@ -477,12 +599,12 @@ void plot_pbpb_fcal_comparison_alt() {
     MakeComparisonPlot(true);
 }
 
-void plot_pbpb_fcal_comparison_2524() {
+void plot_pbpb_fcal_comparison_262524() {
     gStyle->SetOptStat(0);
-    MakeComparisonPlot2524(false);
+    MakeComparisonPlotOverlay(false);
 }
 
-void plot_pbpb_fcal_comparison_2524_alt() {
+void plot_pbpb_fcal_comparison_262524_alt() {
     gStyle->SetOptStat(0);
-    MakeComparisonPlot2524(true);
+    MakeComparisonPlotOverlay(true);
 }

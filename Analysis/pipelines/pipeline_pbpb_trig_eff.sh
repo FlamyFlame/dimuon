@@ -323,12 +323,12 @@ gSystem->Exit(0);
 EOF
   root -l -b <<EOF
 .L plot_pbpb_fcal_comparison.cxx
-plot_pbpb_fcal_comparison_2524();
+plot_pbpb_fcal_comparison_262524();
 gSystem->Exit(0);
 EOF
   root -l -b <<EOF
 .L plot_pbpb_fcal_comparison.cxx
-plot_pbpb_fcal_comparison_2524_alt();
+plot_pbpb_fcal_comparison_262524_alt();
 gSystem->Exit(0);
 EOF
   popd >/dev/null

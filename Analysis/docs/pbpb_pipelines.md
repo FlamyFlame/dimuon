@@ -79,7 +79,7 @@ histograms are also saved with `_no_trig_corr` suffix for comparison.
   `event_sel_cuts_pbpb_20YY.root` and `_alt.root`
 - Runs `plot_pbpb_event_sel_cuts(YY)` and `plot_pbpb_event_sel_cuts_alt(YY)`
   per year to produce all cut visualization plots (nominal + alternative banana)
-- Runs 4 FCal comparison functions (nominal/alt x all-years/2524) to produce
+- Runs 4 FCal comparison functions (nominal/alt x all-years/262524) to produce
   FCal scaling comparison plots
 - Validates that both `event_sel_cuts_pbpb_20YY.root` and `_alt.root` exist
   after each year
