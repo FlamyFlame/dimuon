@@ -33,6 +33,14 @@
 # History: jediTaskID 52568863 (VER_TAG Sep2026.v1) was submitted with the legacy tag
 # FullSimHIJINGOverlayPP24 ("PP24" was wrong -- the sample is Pb+Pb 2024); its downloaded
 # NTUP was mv'd to the new name on 2026-09-17. The GRID dataset keeps the old name.
+# v2 was never submitted (the naming change landed without a resubmission).
+# v3 (2026-09-22): the production contact RE-RAN the slice after the broken-calorimeter
+# finding (tracking doc R1/R4). The input dataset changed tid52480369_00 -> tid52629267_00
+# under the SAME r-tag r17864 and the SAME production request 71862 (PanDA recon 52480366 ->
+# 52629263); the old tid is unregistered from Rucio. Nothing in the AMI tag, the release
+# (Atlas-24.0.90) or the task record differs, so the NTUP name is unchanged too -- the
+# productions are distinguished by VER_TAG / outDS and by the archived
+# broken_calo_tid52480369/ directory, NOT by the file name.
 #
 # Run from: SkimCode/run_pythia_fullsim_HIJING_overlay
 # Setup:    source ../setup_25.sh && lsetup panda
@@ -46,7 +54,7 @@ COND_YEAR=24
 # VER_TAG = skim-code / submission version, bumped on EVERY resubmission of the same input (a
 # new OUT_TAG alone would already give a distinct outDS, but the version keeps the history
 # linear: v1 = the legacy-tag task above, v2 = first submission under the new naming).
-VER_TAG=Sep2026.v2
+VER_TAG=Sep2026.v3
 
 _submit() {
   local sample="$1"     # e.g. pp_hQCD_DiMu_pTH125_300
@@ -66,4 +74,4 @@ _submit() {
 }
 
 # r17864: vtx z = -71.2 mm, HITS ip0_5
-_submit pp_hQCD_DiMu_pTH125_300 mc23_5p36TeV:mc23_5p36TeV.802776.Py8EG_A14_pp_hQCD_DiMu_pTH125_300.merge.AOD.e8613_e8586_s4684_r17864_r17855_tid52480369_00 -71.2 0_5
+_submit pp_hQCD_DiMu_pTH125_300 mc23_5p36TeV:mc23_5p36TeV.802776.Py8EG_A14_pp_hQCD_DiMu_pTH125_300.merge.AOD.e8613_e8586_s4684_r17864_r17855_tid52629267_00 -71.2 0_5
