@@ -154,3 +154,29 @@
 {"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-09-13T15:55:56Z","criticals":0,"warnings":0,"slug":"zdc-rpd-auxvar-crash"}
 {"event":"start","command":"review-analysis-code","task":"ZDC skip policy in TrigRates","slug":"zdc-skip-policy","timestamp":"2026-09-15T17:25:02Z"}
 {"event":"end","command":"review-analysis-code","status":"approved","iterations":2,"timestamp":"2026-09-15T18:06:18Z","criticals":0,"warnings":0,"slug":"zdc-skip-policy"}
+{"event":"start","command":"review-analysis-code","task":"Round-4 clean PASS on the PbPb 2026 data-side analysis code (pbpb2026_analysis_support.md step 13)","slug":"pbpb26-round4-clean-pass","timestamp":"2026-09-16T17:13:40-04:00"}
+{"event":"start","command":"review-analysis-code","task":"Review fullsim sample-dir layout reorganization + overlay-year knob (fullsim_sample_dir_layout.md)","slug":"fullsim-sample-dir-layout","timestamp":"2026-09-16T17:31:43-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":2,"timestamp":"2026-09-16T17:49:20-04:00","criticals":0,"warnings":0,"slug":"pbpb26-round4-clean-pass"}
+{"event":"start","command":"review-plot","task":"r17864 FCal + vertex-z sanity plots","slug":"r17864-fcal-vertex-sanity","timestamp":"2026-09-16T18:09:27-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":3,"timestamp":"2026-09-16T18:10:26-04:00","criticals":0,"warnings":0,"slug":"fullsim-sample-dir-layout"}
+{"event":"end","command":"review-plot","status":"approved","iterations":3,"timestamp":"2026-09-16T18:33:58-04:00","criticals":0,"warnings":0,"slug":"r17864-fcal-vertex-sanity"}
+{"event":"start","command":"review-plot","task":"r17864 vs r17618 efficiency/response comparison plots","slug":"r17864-vs-r17618-effcy","timestamp":"2026-09-16T20:18:19-04:00"}
+{"event":"end","command":"review-plot","status":"approved","iterations":2,"timestamp":"2026-09-16T20:27:51-04:00","criticals":0,"warnings":0,"slug":"r17864-vs-r17618-effcy"}
+{"event":"start","command":"review-analysis-code","task":"Review the pp24 hybrid trigger-efficiency application (pp24_trig_eff_hybrid_application.md)","slug":"pp24-hybrid-trig-eff","timestamp":"2026-09-17T01:42:41-04:00"}
+{"event":"start","command":"review-plot","task":"Review the pp24 crossx figures regenerated with the hybrid trigger weight (pp24_trig_eff_hybrid_application.md)","slug":"pp24-hybrid-crossx-figures","timestamp":"2026-09-17T01:47:22-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":2,"timestamp":"2026-09-17T02:21:24-04:00","criticals":0,"warnings":0,"slug":"pp24-hybrid-trig-eff"}
+{"event":"end","command":"review-plot","status":"approved","iterations":3,"timestamp":"2026-09-17T02:21:33-04:00","criticals":0,"warnings":0,"slug":"pp24-hybrid-crossx-figures"}
+{"event":"start","command":"review-analysis-code","task":"Review the HIJING-overlay NTUP renaming change (FullSimSampleType.h config tag, PythiaAlgCoreT.c, grid_monitor.sh, grid_sub*.sh, plot_r17864_event_level.cxx)","slug":"overlay-ntup-config-naming","timestamp":"2026-09-17T19:14:14-04:00"}
+{"event":"start","command":"review-plot","task":"r17864 vs r17618 event-level sanity plots: trk_numqual 4 panels + L1TE","slug":"r17864-ntrk-l1te-sanity","timestamp":"2026-09-17T19:15:52-04:00"}
+{"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-09-17T19:29:21-04:00","criticals":0,"warnings":0,"slug":"r17864-ntrk-l1te-sanity"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":2,"timestamp":"2026-09-17T19:34:04-04:00","criticals":0,"warnings":0,"slug":"overlay-ntup-config-naming"}
+{"event": "start", "command": "review-analysis-code", "task": "Review the AMI-weight provenance change (PythiaEvgen nPDF/PDF keyed AMI dirs)", "slug": "ami-evgen-provenance", "timestamp": "2026-09-17T20:19:17.069296-04:00"}
+{"event": "end", "command": "review-analysis-code", "status": "approved", "iterations": 2, "timestamp": "2026-09-17T20:28:50.309432-04:00", "criticals": 0, "warnings": 0, "slug": "ami-evgen-provenance"}
+{"event":"start","command":"review-analysis-code","task":"Review gap-cut acceptance folded into the pair reco efficiency (pair_reco_eff_gap_acceptance.md)","slug":"reco-eff-gap-acceptance","timestamp":"2026-09-17T20:46:16-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":3,"timestamp":"2026-09-17T21:02:26-04:00","criticals":0,"warnings":0,"slug":"reco-eff-gap-acceptance"}
+{"event": "start", "command": "review-note", "task": "Review the rewritten trigger_efficiency.tex + reconstruction_efficiency.tex against the current code (hybrid trigger weight; gap-acceptance reco-eff definition)", "slug": "trig-reco-eff-note-update", "timestamp": "2026-09-18T01:14:50.378542-04:00"}
+{"event": "end", "command": "review-note", "status": "escalated", "iterations": 5, "timestamp": "2026-09-18T02:18:12.955074-04:00", "criticals": 0, "warnings": 1, "unresolved": ["Pb+Pb placeholder 'measured away from the gaps' sentence fixed post-loop, not re-reviewed"], "slug": "trig-reco-eff-note-update"}
+{"event":"start","command":"review-analysis-code","task":"Review bd81e27 external truth-input raw-counts mode for PythiaTruthAnalysis","slug":"truth-external-raw-mode","timestamp":"2026-09-23T00:23:08-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-09-23T00:37:41-04:00","criticals":0,"warnings":0,"slug":"truth-external-raw-mode"}
+{"event":"start","command":"review-plot","task":"r-tag sanity plot set, pbpb24 re-run, bunch-train finding","slug":"rtag-sanity-bunch-train","timestamp":"2026-09-23T16:37:59-04:00"}
+{"event":"end","command":"review-plot","status":"approved","iterations":3,"timestamp":"2026-09-23T17:13:15-04:00","criticals":0,"warnings":0,"slug":"rtag-sanity-bunch-train"}

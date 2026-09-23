@@ -386,15 +386,258 @@ fills) or a `fullsim_input_dir`-style input mode for `PythiaTruthAnalysis`. The 
 other way: the nPDF truth sample has 3.7-6.75x more events in the two highest slices (the same deficit
 `pthat_slice_mass_stats_sample_request.md` is addressing).
 
+### R6. Provenance of the REPRODUCED slice (2026-09-22): what actually differs from the broken production
+
+New dataset (user-provided, now the only content of the merge container):
+`…merge.AOD.e8613_e8586_s4684_r17864_r17855_tid52629267_00`, 10 files / 10 000 events / 54.891 GB.
+
+| | broken production | reproduction |
+|---|---|---|
+| merge task / dataset | 52480369 (`tid52480369_00`) | **52629267** (`tid52629267_00`) |
+| recon ("pile") task | 52480366, created 2026-09-10, done 09-11 | **52629263**, created 2026-09-18, done 09-21 |
+| production request | 71862 | **71862 — the same request** |
+| r-tag / s-tag / e-tag | e8613_e8586_s4684_r17864_r17855 | **identical** |
+| release / transform | Atlas-24.0.90, `Reco_tf.py`, x86_64-el9-gcc13-opt | **identical** |
+| input files / events | 1000 / 10 000, 0 failed | **identical** |
+| AMI `ami show ami-tag r17864` | saved 2026-09-15 as `r17864.txt` | re-fetched 2026-09-22 as `r17864_refetched_20260922.txt` — **byte-identical (`diff` empty)** |
+| AMI dataset record (AOD) | σ 89.541 nb, genFiltEff 2.342314e-3 | **identical**; the AMI container now lists BOTH tids (`prodsysIdentifier_0` = 52480369, `_1` = 52629267) |
+
+The old `tid52480369_00` dataset has been **unregistered from Rucio** (`rucio stat` finds nothing; the
+recon container likewise holds only `…recon.AOD…_tid52629263_00`). Rucio replicas of the new one:
+UKI-LT2-QMUL 10/10, CERN-PROD 1/10, RAL-LCG2-ECHO 1/10 — **no BNL replica**.
+
+**Nothing visible in the bookkeeping changed.** The user flagged this before the work started: the
+`preExec` list of r17864 in AMI is the same as before the reproduction (and still differs from the
+r17618 list used for the pbpb23 test samples). PanDA does not expose job-level `jobParameters`
+through its JSON API without authentication, so a task-level `preExec`/`preInclude` override applied
+at submission — the one thing that would NOT show in the AMI tag — can be neither confirmed nor
+excluded from the outside. **The data therefore decide**, which is why the verification below re-runs
+the identical check chain rather than trusting the tag.
+
+Archived, so the two productions never get confused (the NTUP file name is configuration-keyed and
+therefore IDENTICAL between them): `…/pythia_fullsim_hijing_overlay_test_sample/broken_calo_tid52480369/`
+holds the broken production's `muon_pairs_*`, `histograms_*`, `hists_*`, its three plot dirs and a copy
+of the old `plots/r17864_rtag_sanity/` (verified byte-identical before the move), plus a README naming
+the dataset and the R1/R4 evidence. The broken NTUP itself stays in the parent dir until
+`grid_monitor.sh` renames it to `*.bak_<date>` at download time.
+
+Skim resubmitted with the new input: `grid_sub_pbpb24_test_sample.sh` VER_TAG **Sep2026.v3**,
+**jediTaskID 52687659** (2026-09-22 15:2x), outDS
+`user.yuhang.NTUP.Pythia_5p36TeV_pp_hQCD_DiMu_pTH125_300.FullSimHIJINGOverlayPbPb24.vtxz-71_2mm_b0_5fm.Sep2026.v3.`
+
+### R7. FIRST VERDICT on the reproduction: the calorimeter is STILL BROKEN (100-event local test, 2026-09-22)
+
+Ahead of the grid skim, one AOD file of the new dataset (`AOD.52629267._000020.pool.root.1`, 5.44 GB,
+downloaded from UKI-LT2-QMUL to `…/test_aod_tid52629267/`) was skimmed locally with the standard
+100-event test (`run_test.sh r17864_tid52629267 orig <local file>`, `TRIGRATES_RUNMODE=ppmcfullsim_hioverlay24`,
+athena exit 0). Raw per-event skim branches only (`FCal_Et`, `L1TE`, `centrality`, `trk_numqual`) —
+same provenance justification as `plot_r17864_event_level.cxx`.
+
+| | FCal SE_T q16/50/84 [TeV] | negative | L1TE median | centrality undefined | 0-10 % | N_trk | HITight |
+|---|---|---|---|---|---|---|---|
+| **NEW pbpb24 tid52629267** (100 ev) | **-0.81 / 0.28 / 1.94** | **44 %** | **2.86 TeV** | **45 %** | 7 % | 5256 | 2068 |
+| OLD pbpb24 tid52480369 (100 ev) | -0.63 / 0.53 / 1.78 | 34 % | 3.09 TeV | 36 % | 4 % | 5895 | 2194 |
+| REF pbpb23 r17618 (10 000 ev) | 3.79 / **4.40** / 5.11 | **0 %** | **16.14 TeV** | **0 %** | 99.3 % | 5435 | 2400 |
+
+**The reproduction reproduces the failure, not the fix.** Every symptom of R1/R4 is present with the same
+magnitude: FCal an order of magnitude low with ~40 % of events reconstructing NEGATIVE energy, L1TE a
+factor ~5 low (so the deficit is again upstream of both offline cells and the L1Calo towers, i.e.
+digitisation-level), ~45 % of events off the end of the centrality calibration, while the ID track
+multiplicity is normal (the HIJING event is fully there). Old vs new differ by ~1.4 sigma on 100 events
+(binomial sigma ~5 % on the negative fraction) — statistically indistinguishable.
+
+Combined with R6 (identical AMI tag, identical release, identical task configuration as far as the
+outside can see), the conclusion is that the slice was re-run with the SAME configuration, so the
+suspect setting — `HITtoRDO: Digitization.PU.BunchStructureConfig='RunDependentSimData.BunchStructureHeavyIon2022'`,
+the only stated r17835 -> r17864 change — was never removed. Nothing here points to a NEW failure mode.
+
+Consequences, unchanged from the first production: FCal-based centrality and every calorimeter-dependent
+muon quantity are unusable in this r-tag; R2 stays not studiable; the r-tag is NOT acceptable as the
+recipe for the full 4-beam x 6-slice x 5-vertex x 4-b production.
+
+**BCID cross-check (negative so far).** Since the suspect setting is a *bunch-structure* option, the
+bunch-crossing ID was checked as a possible handle: `bcid` spans 33-3365 (95 distinct in 100 events,
+55 % odd, median gap 20) in the new sample vs 11-3413 (97 distinct, 64 % odd) in the old one and
+1-3415 (1010 distinct in 10 000 events, median gap 2) in r17618 — the two pbpb24 productions are
+indistinguishable from each other, and nothing separates their filled-bunch pattern from the reference
+at this statistics. With ~1 event per bcid, FCal-vs-bcid carries no information yet. **Redo on the full
+10 000-event NTUP**: (a) the SET of filled bcids, 2024 vs 2023 structure; (b) <FCal> vs bcid, which
+would localise an off-peak-sampling explanation.
+
+### R8. FULL-STATISTICS VERDICT: the "reproduction" is a BIT-IDENTICAL re-run (2026-09-23)
+
+Skim `jediTaskID 52687659` (VER_TAG Sep2026.v3) completed 2026-09-23 16:16: 5 grid NTUPs hadd-ed to
+10 000 entries, 22.44 GB, validated (pre- and post-merge counts agree). `grid_monitor.sh` renamed the
+first production's NTUP to `…vtxz-71_2mm_b0_5fm.NTUP.bak_20260923.root` (22.44 GB, kept), so BOTH
+productions are on disk under the same configuration-keyed name.
+
+**The two productions contain the SAME EVENTS.** Matched on `eventNumber` (10 000 of 10 000 common;
+the tree ORDER differs because the grid job/hadd order differs):
+
+| quantity, per event | events differing (of 10 000) |
+|---|---|
+| `FCal_Et` | **0** — bit-identical, max relative difference exactly 0 |
+| `L1TE` | **0** |
+| `centrality` | **0** |
+| `trk_numqual[0]` | 3 |
+
+Summed over the sample: `truth_pt` multiplicity identical to the unit (698 526 429), `vtx_z` sum
+identical, N(vtx) identical; reconstructed muons 95 776 vs 95 771 (+5, 5e-5 relative) and
+sum(`muon_pt`) 8.314348e9 vs 8.315876e9 (1.8e-4 relative) — job-to-job non-determinism in
+track/muon reconstruction, nothing more. **The calorimeter output is literally the same numbers.**
+
+Full-statistics event-level checks, regenerated into `plots/r17864_rtag_sanity/` (the first
+production's copies are archived in `broken_calo_tid52480369/plots/r17864_rtag_sanity/`):
+
+| check (10 000 events each) | pbpb24 re-run (tid52629267) | pbpb24 first (tid52480369) | pbpb23 r17618 | verdict |
+|---|---|---|---|---|
+| FCal SE_T q16/50/84 [TeV] | -0.77 / **0.41** / 2.08 | -0.77 / 0.41 / 2.08 | 3.79 / **4.40** / 5.11 | **FAIL** |
+| FCal SE_T < 0 | **36.2 %** | 36.2 % | **0 %** | **FAIL** |
+| L1 SE_T median [TeV] | **3.20** | 3.20 | **16.14** | **FAIL** |
+| centrality undefined / 0-10 % | **37.4 % / 7.6 %** | 37.4 % / 7.6 % | 0 % / 99.3 % | **FAIL** |
+| N_trk (p_T>400 MeV) / HITight | 5830 +- 1740 / 2183 +- 359 | same | 5435 +- 1460 / 2400 +- 362 | tracker OK (+7 % / -9 %) |
+| reco PV residual [um] | -5.43, RMS 11.09 | -5.4, RMS 11.1 | -0.2, RMS 9.1 | unchanged |
+
+Files: `fcal_sum_et_…png`, `l1te_…png`, `trk_multiplicity_…png`, `vertex_z_reco_vs_truth_r17864.png`,
+`centrality_population_…txt`, `bcid_structure_…png`.
+
+**BCID check.** Both samples fill exactly **1010 of 3564** crossings (identical pattern). Binned 12 bcid
+per point, <FCal SE_T> in the 2024 re-run scatters over -0.54 … 5.15 TeV about a mean of 0.64 TeV while
+the reference sits at 4.43 TeV — and that scatter is NOT noise: it resolves into a strict structure once
+the crossings are ordered by position within the bunch train. **See R9, which identifies the failure
+mechanism.**
+
+**Conclusion: the r-tag is NOT fixed and was NOT re-configured.** Bit-identical calorimeter output under
+an unchanged AMI tag, unchanged release and unchanged task configuration (R6) means the slice was
+re-run with exactly the same recipe. Nothing was learned about a fix; the r17864 recipe remains
+unusable for the full 4-beam x 6-slice x 5-vertex x 4-b production.
+
+**The efficiency chain was deliberately NOT re-run.** It is gated on the event-level checks passing
+(user ruling 2026-09-17: R2 is not studiable while the FCal is wrong), and it is now also pointless:
+with an input NTUP that differs in 3 track counts and 5 muons out of ~96 000, the chain would reproduce
+the R2 table digit for digit, far inside its 5 % statistical errors. R2 stands as written.
+
+**Correction to R1's bookkeeping:** R1 records "35.2 % of events negative" for the first production.
+Re-measured today on that very file (the `.bak`) with the same macro: **36.2 %**. The quantiles
+(-0.77 / 0.41 / 2.07-2.08 TeV) reproduce; the 35.2 % does not and should be read as 36.2 %.
+
+### R9. ROOT CAUSE LOCALISED: the deficit is a periodic function of the position in the bunch train (2026-09-23; /review-plot FAIL -> amended -> re-reviewed)
+
+`plot_r17864_event_level.cxx+("bcid")` and `+("trainpos")`, full 10 000-event samples, raw per-event
+skim branches.
+
+**The filled-bunch pattern, measured from the data and IDENTICAL in both samples** (1010 of 3564
+crossings; gap spectrum 882 gaps of 2 bcid + 108 of 4): **18 trains of 7 x 8 bunches** — 8 bunches at
+2-bcid spacing, then one crossing skipped, so a sub-burst repeats every **18 bcid (450 ns)** and the
+4-bcid gaps fall after intra-train positions 7, 15, 23, 31, 39, 47 in every train — **plus 2 ISOLATED
+single bunches (bcid 826 and 2611)**. (Train boundary = a bcid DIFFERENCE of more than 5, i.e. more than 4 empty crossings; the
+result is unchanged for thresholds 5 / 10 / 20 / 31.)
+
+**The failure is bcid-deterministic, not event-by-event.** Classifying bcids with >=5 events by whether
+their events have FCal SE_T > 3 TeV (a b < 5 fm event cannot legitimately be below that):
+
+| | events with FCal > 3 TeV | bcids all-good | all-bad | mixed |
+|---|---|---|---|---|
+| pbpb24 r17864 | **8.71 %** | 39 | 813 | 121 |
+| pbpb23 r17618 | 99.70 % | 947 | **0** | 30 |
+
+**38 of those 39** are exactly the first two bunches of each of the 18 trains plus the two isolated
+bunches; the remaining one is bcid 1993 (position 25, 8 events, all in 3.04-4.24 TeV) — a chance pass
+of the threshold in the recovery phase, not a second pathology. The classification is robust to the
+threshold in shape though not in count: all-good / all-bad = 55/694, 42/757, 39/813, 35/845, 16/904 at
+2.0 / 2.5 / 3.0 / 3.5 / 4.0 TeV.
+
+**Only the ISOLATED bunches are healthy — every bunch inside a train is wrong, the head included.**
+Splitting the position-0 population (this is the correction that the /review-plot round forced; merging
+them had hidden the sample's only clean control):
+
+| position-0 sub-population | N | <FCal SE_T> [TeV] | <L1 SE_T> [TeV] |
+|---|---|---|---|
+| **2 isolated bunches (no train)** | 23 | **4.564 +- 0.127** | **16.671 +- 0.532** |
+| 18 train heads | 184 | **5.104 +- 0.054** (+15 % vs the 2023 reference) | **10.421 +- 0.188** (-36 % vs it) |
+| pbpb23 reference, all positions | 10 000 | 4.43 | 15.9-16.7 (all-event mean 16.27) |
+| pbpb23 isolated bunches | 14 | 4.349 | 15.902 |
+
+The isolated bunches agree with the 2023 reference in BOTH quantities; the train heads agree in
+neither. A crossing with no predecessors is reconstructed correctly; a crossing with predecessors is
+not, and already the FIRST bunch of a train is wrong.
+
+**<FCal SE_T> vs position in the train** (`train_position_…png` left panel; right panel L1TE),
+in-train bunches only, 2024 re-run / 2023 reference [TeV]:
+
+| pos | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 2024 | +5.10 | +4.96 | +1.91 | +0.44 | -0.16 | -0.38 | -0.38 | -0.79 | +0.41 | +2.80 |
+| 2023 | +4.44 | +4.51 | +4.47 | +4.46 | +4.53 | +4.40 | +4.44 | +4.53 | +4.41 | +4.42 |
+
+Beyond the head it is **not a monotonic decay but strictly PERIODIC with period 8 filled bunches —
+i.e. exactly the 8-bunch sub-burst of the filled pattern above**. Folding positions 8-55 modulo 8
+(2024 re-run / 2023 reference, TeV):
+
+| phase | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|---|
+| **2024 re-run** | +0.371 | **+2.836** | +1.388 | +0.458 | +0.011 | -0.086 | -0.160 | **-0.743** |
+| uncertainty | +-0.018 | +-0.021 | +-0.026 | +-0.025 | +-0.024 | +-0.025 | +-0.024 | +-0.022 |
+| 2023 r17618 | +4.443 | +4.437 | +4.419 | +4.419 | +4.435 | +4.443 | +4.405 | +4.409 |
+
+The 2023 reference is flat to +-0.02 TeV in every phase; the 2024 sample swings by 3.6 TeV with the
+same precision. **The modulation is locked to the sub-burst, not to absolute bcid** — verified two
+ways: <FCal> vs absolute `bcid % 16` is featureless (0.56-0.78 TeV), and the mod-8 argmax is phase 1
+in all 18 trains although the train starts take 14 distinct values of `start % 16`.
+
+**Interpretation (hypothesis for the production contact, NOT established here).** Everything fits a
+mismatch between the bunch pattern assumed by the digitisation and the one the events were actually
+placed in: a crossing with no predecessors comes out right, a crossing with predecessors sits on the
+accumulated undershoot of their bipolar LAr pulses and is dragged low and then negative, recovering
+once per sub-burst. That is the failure mode the ONE stated r17835 -> r17864 change would produce if
+its pattern does not match this sample:
+`HITtoRDO: Digitization.PU.BunchStructureConfig='RunDependentSimData.BunchStructureHeavyIon2022'`
+("bunch structure added"). Caveat, and it is a real one: a pure undershoot-accumulation picture does
+not explain the train head being 15 % HIGH in FCal while its L1TE is 36 % LOW — there is a
+baseline/pedestal component too. Confirming or refuting this needs the production side (an r17835-style
+clone without the setting, or the digitisation configuration actually used); it cannot be settled from
+the NTUP.
+
+**This is the actionable content of the report to the production contact** — a specific, reproducible,
+periodic signature with a named suspect setting, not "the calorimeter looks wrong".
+
 ## Remaining Work
 
-- User decision on the verification plan / on reporting R1 to the production contact (message draft offered).
-- The verification itself (items 1-6 of the proposal) is NOT started; item 1 (calorimeter) is already answered negatively by R1.
+- **Report to the production contact (now the main open item).** The evidence is complete and stronger
+  than in September: R1/R1b (calorimeter, per-layer AOD numbers), R4 (L1TE + track multiplicity),
+  R7/R8 (the re-run is bit-identical, so the failing recipe was simply repeated) and, above all,
+  **R9** — the deficit is a deterministic, periodic function of the position in the bunch train, only
+  the 2 isolated bunches are healthy, and the suspect setting is named. Awaiting the user's go-ahead
+  and preferred channel; draft offered.
+- A genuinely re-configured production (r17835-style clone WITHOUT
+  `Digitization.PU.BunchStructureConfig='RunDependentSimData.BunchStructureHeavyIon2022'`, or whatever
+  the contact identifies) — then redo R2 with `OVERLAY_YEAR=24` and the chain of R8's step 7.
+- Only after that: the remaining four vertex-z points (-28.5 / -4.8 / 18.9 / 61.6 mm) and the b
+  intervals 5-9 / 9-12 / 12+ fm; `FullSimOverlayConfigTag` then becomes a user-decided combination
+  rule, never a silent glob.
+- Delete the TEMPORARY `allow_missing_slices = (overlay_year == 24)` in the five overlay run scripts
+  + the Condor worker once a 6-slice pbpb24 production exists.
+- User decisions still open from R5: whether eps_acc (R5 #2) and the generator-level composition plots
+  (R5 #4) move to the pp-suitable PDF evgen via the fullsim truth block.
 
 ## Latest Stage
 
-2026-09-17 (session 4) DONE: AMI-weight correction committed (7e8c837; /review-analysis-code PASS, 2 iterations) —
-see §"AMI-weight correction" and `docs/ami_weights.md`. R5 survey of truth-quantity consumers delivered;
-**awaiting user**: (i) whether ε_acc (R5 #2) and the generator-level composition plots (R5 #4) move to the
-pp-suitable PDF evgen via the fullsim truth block; (ii) the R1/R4 report to the production contact; then the
-fixed-calorimeter production + remaining vertex slices (rerun with `OVERLAY_YEAR=24`, redo R2).
+**2026-09-23 (session 5) DONE — the reproduced pbpb24 slice FAILS, and it fails identically.**
+
+Sequence: backup (broken production's products archived under `broken_calo_tid52480369/`) -> provenance
+forensics (R6: same request 71862, same r-tag, same release, AMI tag byte-identical to the 2026-09-15
+copy) -> 100-event local test on a downloaded AOD (R7: FCal median 0.28 TeV, 44 % negative) -> grid skim
+`jediTaskID 52687659` + download (10 000 entries, 22.44 GB) -> full event-level checks (R8).
+
+**R8 is the result that matters: the re-run is BIT-IDENTICAL to the first production** — 10 000/10 000
+events matched on `eventNumber`, `FCal_Et` / `L1TE` / `centrality` identical in EVERY event, only 3
+track counts and 5 muons (of ~96 000) differing from reconstruction non-determinism. The slice was
+re-run with the same recipe; nothing was fixed and nothing was changed. FCal median 0.41 TeV with 36.2 %
+negative events, L1TE 3.20 vs 16.14 TeV, 37.4 % of events off the centrality calibration.
+
+The efficiency chain was deliberately NOT re-run (gated on the event-level checks, and it would
+reproduce R2 digit for digit on a bit-identical input). R2 stands.
+
+**Open, for the user:** (i) report R1/R4/R7/R8/**R9** to the production contact — the draft is still pending
+and the case is now conclusive; (ii) the R5 evgen decisions. Nothing else in this doc can advance until
+a genuinely re-configured production exists.
