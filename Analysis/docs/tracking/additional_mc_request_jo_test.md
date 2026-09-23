@@ -237,6 +237,14 @@ non-`done` terminal task state.
   1.22e-5 ✓), 2 087 s CPU per accepted event locally (26.8 ms/generated); `MinDilepPt: -1`,
   `RequireSameCharge: True` printed; EVNT check 10/10 pass. 5 of 6 configs locally validated; the SS
   pTH40_70 local job is still running.
+- **2026-09-23, local SS pTH40_70 done.** ε = 3.19e-6 (10 / 3 131 262; est 3.6e-6 ✓), 8 729 s CPU
+  per accepted event locally (27.9 ms/generated); EVNT check 10/10 SS pass. **All 6 configs locally
+  validated (Done item 2 met).**
+- **2026-09-23, grid: first two configs through the chain** (`grid/chain.log`): SS pTH24_40 evgen done →
+  TRUTH0 → skim 52697315 → downloaded 08:46; SI pTH125_300 evgen 52691377 done 11:19 → TRUTH0
+  52701612 → skim 52702229 → downloaded 11:42. Sanity macro: SI pTH125_300 1 000/1 000 events pass,
+  ε = 1 000/3 652 565 = 2.74e-4; SS pTH24_40 100/100 pass, ε = 100/7 276 136 = 1.37e-5. Others
+  at 4–9 of 5–20 jobs finished (19:33).
 
 ## Results & Observations
 

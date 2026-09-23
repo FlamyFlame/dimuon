@@ -1,0 +1,114 @@
+Wed Sep 23 19:33:37 EDT 2026
+Preloading tcmalloc_minimal.so
+Preloading libexcabort.so
+Py:Athena            INFO including file "AthenaCommon/Preparation.py"
+Py:Athena            INFO using release [AthGeneration-23.6.68] [x86_64-el9-gcc15-opt] [nightly/main/2026-08-04T2100/d525b4dfe72] -- built on [2026-08-04T2100]
+Py:Athena            INFO executing CLI (-c) command: "INPUT='../run_same_sign_pT40_70/test.EVNT.pool.root'; MINPAIRPT=20000.; SAMESIGN=True"
+Py:Athena            INFO including file "AthenaCommon/Execution.py"
+Py:Athena            INFO including file "../check_evnt_filter.py"
+Py:ConfigurableDb    INFO Read module info for 483 configurables from 2 genConfDb files
+Py:ConfigurableDb    INFO No duplicates have been found: that's good !
+Py:Athena            INFO including file "AthenaCommon/runbatch.py"
+# setting LC_ALL to "C"
+ApplicationMgr     SUCCESS 
+====================================================================================================================================
+                                                   Welcome to ApplicationMgr (GaudiCoreSvc v40r4)
+                                          running on attsub07.usatlas.bnl.gov on Wed Sep 23 19:34:04 2026
+====================================================================================================================================
+ApplicationMgr        INFO Application Manager Configured successfully
+AthDictLoaderSvc      INFO in initialize...
+AthDictLoaderSvc      INFO acquired Dso-registry
+ClassIDSvc            INFO getRegistryEntries: read 2980 CLIDRegistry entries for module ALL
+CoreDumpSvc           INFO Handling signals: 11(Segmentation fault) 7(Bus error) 4(Illegal instruction) 6(Aborted) 8(Floating point exception) 14(Alarm clock) 
+AthenaEventLoopMgr    INFO Initializing AthenaEventLoopMgr
+PyComponentMgr        INFO Initializing PyComponentMgr...
+CheckFilter           INFO Initializing CheckFilter...
+MetaDataSvc           INFO Initializing MetaDataSvc
+PoolSvc               INFO io_register[PoolSvc](xmlcatalog_file:PoolFileCatalog.xml) [ok]
+PoolSvc               INFO Set connectionsvc retry/timeout/IDLE timeout to  'ConnectionRetrialPeriod':300/ 'ConnectionRetrialTimeOut':3600/ 'ConnectionTimeOut':5 seconds with connection cleanup disabled
+PoolSvc               INFO Frontier compression level set to 5
+DBReplicaSvc          INFO Frontier server at (serverurl=http://atlasfrontier-ai.cern.ch:8000/atlr)(proxyurl=http://v4f.hl-lhc.net:6082) will be considered for COOL data
+DBReplicaSvc          INFO Read replica configuration from /cvmfs/atlas.cern.ch/repo/sw/software/23.6/AthGeneration/23.6.68/InstallArea/x86_64-el9-gcc15-opt/share/dbreplica.config
+DBReplicaSvc          INFO Total of 1 servers found for host attsub07.usatlas.bnl.gov [ATLF ]
+PoolSvc               INFO Successfully setup replica sorting algorithm
+PoolSvc               INFO Setting up FileCatalog and Streams
+PoolSvc               INFO POOL WriteCatalog is xmlcatalog_file:PoolFileCatalog.xml
+Domain[ROOT_All]      INFO >   Access   DbDomain     NOT_OPEN  [ROOT_All]
+MetaDataSvc           INFO Found MetaDataTools = PublicToolHandleArray(['IOVDbMetaDataTool'])
+PoolSvc               INFO File is not in Catalog! Attempt to open it anyway.
+../run_same_sig...    INFO ->  Access   DbDatabase   READ      [ROOT_All] 70520C50-B080-EC66-6DFA-0FF0FF0FF0FF
+RootDatabase          INFO ../run_same_sign_pT40_70/test.EVNT.pool.root File version:64002
+../run_same_sig...    INFO Database being retired...
+../run_same_sig...    INFO ->  Deaccess DbDatabase   READ      [ROOT_All] 70520C50-B080-EC66-6DFA-0FF0FF0FF0FF
+Domain[ROOT_All]      INFO >   Deaccess DbDomain     NOT_OPEN  [ROOT_All]
+Domain[ROOT_All]      INFO >   Access   DbDomain     READ      [ROOT_All]
+../run_same_sig...    INFO ->  Access   DbDatabase   READ      [ROOT_All] D39B99D8-B700-11F1-A7BB-BC2411577D0F
+RootDatabase          INFO ../run_same_sign_pT40_70/test.EVNT.pool.root File version:64002
+ImplicitCollection    INFO Opened the implicit collection with connection string 'PFN:../run_same_sign_pT40_70/test.EVNT.pool.root
+EventPersistenc...    INFO Added successfully Conversion service AthenaPoolCnvSvc
+MetaDataSvc           INFO   AlgTool: ToolSvc.IOVDbMetaDataTool
+AthenaEventLoopMgr    INFO Setup EventSelector service EventSelector
+ApplicationMgr        INFO Application Manager Initialized successfully
+../run_same_sig...    INFO Database being retired...
+../run_same_sig...    INFO ->  Deaccess DbDatabase   READ      [ROOT_All] D39B99D8-B700-11F1-A7BB-BC2411577D0F
+Domain[ROOT_All]      INFO >   Deaccess DbDomain     READ      [ROOT_All]
+Domain[ROOT_All]      INFO >   Access   DbDomain     READ      [ROOT_All]
+../run_same_sig...    INFO ->  Access   DbDatabase   READ      [ROOT_All] D39B99D8-B700-11F1-A7BB-BC2411577D0F
+RootDatabase          INFO ../run_same_sign_pT40_70/test.EVNT.pool.root File version:64002
+ImplicitCollection    INFO Opened the implicit collection with connection string 'PFN:../run_same_sign_pT40_70/test.EVNT.pool.root
+ApplicationMgr        INFO Application Manager Started successfully
+AlgResourcePool       INFO TopAlg list empty. Recovering the one of Application Manager
+AthenaEventLoopMgr    INFO   ===>>>  start of run 999999    <<<===
+AthenaEventLoopMgr    INFO   ===>>>  start processing event #1, run #999999 0 events processed so far  <<<===
+ClassIDSvc            INFO getRegistryEntries: read 3001 CLIDRegistry entries for module ALL
+HepMCWeightSvc        INFO   AlgTool: ToolSvc.IOVDbMetaDataTool
+ClassIDSvc            INFO getRegistryEntries: read 308 CLIDRegistry entries for module ALL
+AthenaEventLoopMgr    INFO   ===>>>  done processing event #1, run #999999 1 events processed so far  <<<===
+AthenaEventLoopMgr    INFO   ===>>>  start processing event #2, run #999999 1 events processed so far  <<<===
+AthenaEventLoopMgr    INFO   ===>>>  done processing event #2, run #999999 2 events processed so far  <<<===
+AthenaEventLoopMgr    INFO   ===>>>  start processing event #3, run #999999 2 events processed so far  <<<===
+AthenaEventLoopMgr    INFO   ===>>>  done processing event #3, run #999999 3 events processed so far  <<<===
+AthenaEventLoopMgr    INFO   ===>>>  start processing event #4, run #999999 3 events processed so far  <<<===
+AthenaEventLoopMgr    INFO   ===>>>  done processing event #4, run #999999 4 events processed so far  <<<===
+AthenaEventLoopMgr    INFO   ===>>>  start processing event #5, run #999999 4 events processed so far  <<<===
+AthenaEventLoopMgr    INFO   ===>>>  done processing event #5, run #999999 5 events processed so far  <<<===
+AthenaEventLoopMgr    INFO   ===>>>  start processing event #6, run #999999 5 events processed so far  <<<===
+AthenaEventLoopMgr    INFO   ===>>>  done processing event #6, run #999999 6 events processed so far  <<<===
+AthenaEventLoopMgr    INFO   ===>>>  start processing event #7, run #999999 6 events processed so far  <<<===
+AthenaEventLoopMgr    INFO   ===>>>  done processing event #7, run #999999 7 events processed so far  <<<===
+AthenaEventLoopMgr    INFO   ===>>>  start processing event #8, run #999999 7 events processed so far  <<<===
+AthenaEventLoopMgr    INFO   ===>>>  done processing event #8, run #999999 8 events processed so far  <<<===
+AthenaEventLoopMgr    INFO   ===>>>  start processing event #9, run #999999 8 events processed so far  <<<===
+AthenaEventLoopMgr    INFO   ===>>>  done processing event #9, run #999999 9 events processed so far  <<<===
+AthenaEventLoopMgr    INFO   ===>>>  start processing event #10, run #999999 9 events processed so far  <<<===
+AthenaEventLoopMgr    INFO   ===>>>  done processing event #10, run #999999 10 events processed so far  <<<===
+EventSelector         INFO Disconnecting input sourceID: D39B99D8-B700-11F1-A7BB-BC2411577D0F
+../run_same_sig...    INFO Database being retired...
+../run_same_sig...    INFO ->  Deaccess DbDatabase   READ      [ROOT_All] D39B99D8-B700-11F1-A7BB-BC2411577D0F
+Domain[ROOT_All]      INFO >   Deaccess DbDomain     READ      [ROOT_All]
+AthenaEventLoopMgr    INFO No more events in event selection 
+ApplicationMgr        INFO Application Manager Stopped successfully
+CheckFilter           INFO Finalizing CheckFilter...
+AthenaPoolCnvSvc      INFO PerfStats ----------------------------------------
+AthenaPoolCnvSvc      INFO PerfStats Timing Measurements for AthenaPoolCnvSvc
+AthenaPoolCnvSvc      INFO PerfStats ----------------------------------------
+AthenaPoolCnvSvc      INFO PerfStats | cObjR_ALL       |              87 ms |
+AthenaPoolCnvSvc      INFO PerfStats | cObj_ALL        |             332 ms |
+AthenaPoolCnvSvc      INFO PerfStats ----------------------------------------
+PyComponentMgr        INFO Finalizing PyComponentMgr...
+AthDictLoaderSvc      INFO in finalize...
+ToolSvc               INFO Removing all tools created by ToolSvc
+ApplicationMgr        INFO Application Manager Finalized successfully
+ApplicationMgr        INFO Application Manager Terminated successfully
+CHECKEVT evt=1 nmu=3 npairs=3 npass=1 PASS=True passing(sign,m,pT)=['SS/1.75/21.7']
+CHECKEVT evt=2 nmu=2 npairs=1 npass=1 PASS=True passing(sign,m,pT)=['SS/7.08/20.0']
+CHECKEVT evt=3 nmu=3 npairs=3 npass=1 PASS=True passing(sign,m,pT)=['SS/6.52/24.6']
+CHECKEVT evt=4 nmu=2 npairs=1 npass=1 PASS=True passing(sign,m,pT)=['SS/8.91/25.7']
+CHECKEVT evt=5 nmu=2 npairs=1 npass=1 PASS=True passing(sign,m,pT)=['SS/5.54/24.8']
+CHECKEVT evt=6 nmu=2 npairs=1 npass=1 PASS=True passing(sign,m,pT)=['SS/2.94/39.4']
+CHECKEVT evt=7 nmu=2 npairs=1 npass=1 PASS=True passing(sign,m,pT)=['SS/5.71/21.6']
+CHECKEVT evt=8 nmu=2 npairs=1 npass=1 PASS=True passing(sign,m,pT)=['SS/9.69/27.8']
+CHECKEVT evt=9 nmu=2 npairs=1 npass=1 PASS=True passing(sign,m,pT)=['SS/8.07/28.0']
+CHECKEVT evt=10 nmu=2 npairs=1 npass=1 PASS=True passing(sign,m,pT)=['SS/1.85/25.9']
+CHECKSUMMARY events=10 failing=0
+Py:Athena            INFO leaving with code 0: "successful run"
