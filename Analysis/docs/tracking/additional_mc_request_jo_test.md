@@ -138,6 +138,21 @@ the slice's ε ≈ 1.9e-7 (~37 CPU-h per accepted event, ~2 100 CPU-yr for 0.5 M
 (filter condition `dilepPt > MinDilepPt` then always true). Grid test sizes (user): 1 000 events for
 SI 70–125/125–300 and SS 70–125/125–300, 100 for SS 40–70 and SS 24–40.
 
+**D7 — Step-5 plots: filter-level definitions, σ·ε-weighted combination.** Macro
+`analysis/plot_test_sample_sanity.C` reads the downloaded NTUPs (`truth_muon_*`, `truth_mupair_*`)
+with the FILTER's muon/pair definition (pT>3.7 GeV, |η|<2.5) — it validates the generator filter,
+so the analysis 4.5/2.4 fiducial would be the wrong definition here (§3c). "pT-hat combined" and the
+per-slice overlays are weighted by σ·ε_filt/N per slice, with σ and ε read from THIS sample's own
+grid `log.generate` files (these test datasets have no AMI record; no other production's numbers
+are used). Sanity counts are raw per slice (`sanity_table.csv`).
+
+**D8 — Grid chain.** `grid/chain.py` (resumable, `grid/chain_state.json`): evgen done →
+`Derivation_tf TRUTH0` (pathena, Athena 25.0.72, outDS `user.yuhang.JOtest.<phys>.TRUTH0.v1`) →
+`TruthTrigRates.py` (pathena from `SkimCode/run_evgen_high_pT_additional/`, EvtMax −1, outDS
+`user.yuhang.NTUP.JOtest.<phys>.v1`) → `rucio download` to
+`~/usatlasdata/evgen_high_pT_additional_test/<config>/` (NTUP + evgen `log.generate`). Exits on any
+non-`done` terminal task state.
+
 ## Progress Log
 
 - **2026-09-22, step 1.** Compiled on AthGeneration 23.6.68 (x86_64-el9-gcc15-opt) after D1/D2;
