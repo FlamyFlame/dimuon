@@ -1,16 +1,28 @@
 // Event-level sanity plots for the HIJING-overlay Pb+Pb-2024-conditions test sample
 // (r17864, pTH125_300 only, vtx z = -71.2 mm) against the Pb+Pb-2023-conditions test
 // sample (r17618), SAME pT-hat slice so the two event populations match.
-// Tracking doc: docs/tracking/hijing_overlay_pbpb24_test_sample_skim.md (R1).
+// Tracking doc: docs/tracking/hijing_overlay_pbpb24_test_sample_skim.md (R1, R4, R6-R9).
 //
-// Reads the raw skim NTUPs (HeavyIonD3PD) directly: FCal_Et* and vtx_z / truth_vtx_z are
-// per-event skim quantities with no selection procedure behind them, so nothing from the
-// ntuple-processing chain is needed or bypassed.
+// The pbpb24 NTUP is the RE-RUN production (merge tid52629267, skimmed 2026-09-23): after the
+// broken-calorimeter finding the contact re-ran the slice under the SAME r-tag r17864 and the
+// same request 71862, so the NTUP file name is unchanged and only the directory distinguishes
+// the two. The FIRST production (tid52480369) survives as ...NTUP.bak_20260923.root next to it,
+// and its plots/products are archived under broken_calo_tid52480369/.
+//
+// Reads the raw skim NTUPs (HeavyIonD3PD) directly: FCal_Et(_P/_N), L1TE, bcid, centrality,
+// trk_numqual and vtx_z / truth_vtx_z are per-event skim quantities with no selection, weight or
+// truth-navigation procedure behind them, so nothing from the ntuple-processing chain is needed or
+// bypassed. `bcid` in particular: the only processing output carrying it is the DATA muon-pair tree
+// (DimuonDataAlgCoreT.c), which is per-pair and post-selection and so cannot give the unbiased
+// per-event bunch population these checks need.
 //
 //   root -l -b -q 'plot_r17864_event_level.cxx+("fcal")'   FCal sum-ET, both samples
 //   root -l -b -q 'plot_r17864_event_level.cxx+("vtx")'    reco vs truth vertex z
 //   root -l -b -q 'plot_r17864_event_level.cxx+("ntrk")'   ID track multiplicities (trk_numqual), both samples
 //   root -l -b -q 'plot_r17864_event_level.cxx+("l1te")'   L1 total transverse energy (L1TE), both samples
+//   root -l -b -q 'plot_r17864_event_level.cxx+("centr")'  centrality population table, both samples (no plot)
+//   root -l -b -q 'plot_r17864_event_level.cxx+("bcid")'   filled-bunch pattern and <FCal> vs bcid, both samples
+//   root -l -b -q 'plot_r17864_event_level.cxx+("trainpos")' <FCal> and <L1TE> vs position in the bunch train
 //
 // Every event is unweighted: both samples are ONE pT-hat slice (no slice mixing), and the
 // quantities are underlying-event / beam-spot properties independent of the hard scatter.
@@ -21,13 +33,17 @@
 #include <TStyle.h>
 #include <TSystem.h>
 #include <TLine.h>
+#include <TProfile.h>
+#include <map>
+#include <algorithm>
+#include <vector>
 #include <ROOT/RDataFrame.hxx>
 #include <string>
 #include <cstdio>
 #include "../../MuonObjectsParamsAndHelpers/FullSimSampleType.h"
 
 namespace {
-    const std::string NEW_LABEL = "2024 conditions (r17864)";
+    const std::string NEW_LABEL = "2024 conditions (r17864, re-run)";
     const std::string OLD_LABEL = "2023 conditions (r17618)";
     // pTH125_300 NTUP of each conditions year, named by FullSimSampleType.h (dir + file tag,
     // the latter carrying the production configuration vtxz/b since 2026-09-17).
@@ -108,12 +124,12 @@ void plot_fcal() {
     a_new->SetMaximum(1.7 * ymax2); a_new->SetMinimum(0);
     a_new->Draw("hist"); c_new->Draw("hist same"); a_old->Draw("hist same"); c_old->Draw("hist same");
     TLine zero2(0, 0, 0, 1.7 * ymax2); zero2.SetLineStyle(2); zero2.SetLineColor(kGray + 2); zero2.Draw();
+    // the header defines solid = A and dashed = C, so the per-entry ", side A/C" suffixes are dropped:
+    // with them the two longest entries ran into the right frame edge and over the axis ticks
     TLegend l2(0.30, 0.64, 0.89, 0.89); l2.SetBorderSize(0); l2.SetFillStyle(0); l2.SetTextSize(0.032);
     l2.SetHeader("side A: #eta > 0 (solid), side C: #eta < 0 (dashed)");
-    l2.AddEntry(a_new.GetPtr(), "2024 conditions (r17864), side A", "l");
-    l2.AddEntry(c_new.GetPtr(), "2024 conditions (r17864), side C", "l");
-    l2.AddEntry(a_old.GetPtr(), "2023 conditions (r17618), side A", "l");
-    l2.AddEntry(c_old.GetPtr(), "2023 conditions (r17618), side C", "l");
+    l2.AddEntry(a_new.GetPtr(), NEW_LABEL.c_str(), "l");
+    l2.AddEntry(a_old.GetPtr(), OLD_LABEL.c_str(), "l");
     l2.Draw();
     c.SaveAs((OUTDIR() + "fcal_sum_et_r17864_vs_r17618_pTH125_300.png").c_str());
     std::printf("FCal sum-ET: new %.0f events (%.1f%% < 0), old %.0f events (%.1f%% < 0)\n",
@@ -153,7 +169,7 @@ void plot_vtx() {
     h_reco->SetMinimum(0.5);
     h_reco->Draw("hist"); h_truth->Draw("hist same");
     TLegend l1(0.16, 0.72, 0.92, 0.90); l1.SetBorderSize(0); l1.SetFillStyle(0); l1.SetTextSize(0.035);
-    l1.SetHeader("Pb+Pb 2024 conditions (r17864), #hat{p}_{T} 125-300 GeV");
+    l1.SetHeader("Pb+Pb 2024 conditions (r17864, re-run), #hat{p}_{T} 125-300 GeV");
     l1.AddEntry(h_reco.GetPtr(),  "reconstructed primary vertex", "l");
     l1.AddEntry(h_truth.GetPtr(), "truth interaction point", "l");
     l1.Draw();
@@ -165,7 +181,7 @@ void plot_vtx() {
     r_new->SetMinimum(0);
     r_new->Draw("hist"); r_old->Draw("hist same");
     TLegend l3(0.16, 0.64, 0.92, 0.90); l3.SetBorderSize(0); l3.SetFillStyle(0); l3.SetTextSize(0.034);
-    l3.AddEntry(r_new.GetPtr(), "2024 conditions (r17864), z_{vtx} = -71.2 mm", "l");
+    l3.AddEntry(r_new.GetPtr(), "2024 conditions (r17864, re-run), z_{vtx} = -71.2 mm", "l");
     l3.AddEntry((TObject*)nullptr, Form("mean %+.1f #mum, RMS %.1f #mum", r_new->GetMean(), r_new->GetRMS()), "");
     l3.AddEntry(r_old.GetPtr(), "2023 conditions (r17618), z_{vtx} = -3.3 mm", "l");
     l3.AddEntry((TObject*)nullptr, Form("mean %+.1f #mum, RMS %.1f #mum", r_old->GetMean(), r_old->GetRMS()), "");
@@ -183,14 +199,18 @@ void plot_ntrk() {
     style();
     ROOT::RDataFrame dnew("HeavyIonD3PD", NEW_FILE()), dold("HeavyIonD3PD", OLD_FILE());
     // [0] pT > 400 MeV, no quality; [3] pT > 400 MeV + HITight; [4] all tracks; [7] HITight.
-    // Untagged counters reach ~13k tracks in the 2024 sample (250 / bin), the HITight ones ~4k
+    // Untagged counters reach ~12k tracks in the 2024 sample (250 / bin), the HITight ones ~4k
     // (80 / bin).
     struct Panel { int idx; const char* title; int nbins; double xmax; double width; };
+    // [0] and [4] hold the SAME counter, as do [3] and [7]: the stored track collection already has
+    // p_T > 400 MeV, so the "no p_T requirement" counters coincide with the p_T-cut ones (verified
+    // element-wise in all 10 000 events of both samples). The titles say so, so that the duplicate
+    // panels cannot be read as "the p_T cut removes nothing".
     const Panel panels[4] = {
-        {0, "p_{T} > 400 MeV",                 56, 14000., 250.},
-        {3, "p_{T} > 400 MeV, HITight",        50,  4000.,  80.},
-        {4, "no requirement",                  56, 14000., 250.},
-        {7, "HITight, no p_{T} requirement",   50,  4000.,  80.},
+        {0, "p_{T} > 400 MeV",                          56, 14000., 250.},
+        {3, "p_{T} > 400 MeV, HITight",                 50,  4000.,  80.},
+        {4, "stored collection (#equiv p_{T} > 400 MeV)", 56, 14000., 250.},
+        {7, "HITight, stored collection",               50,  4000.,  80.},
     };
     const double n_new = *dnew.Count(), n_old = *dold.Count();
     std::vector<ROOT::RDF::RResultPtr<TH1D>> hn, ho;
@@ -261,11 +281,222 @@ void plot_l1te() {
                 h_new->GetBinContent(101) * n_new, h_old->GetBinContent(101) * n_old);
 }
 
+
+// Centrality population table (check-list item 5). `centrality` is an INT percentile index
+// 0..84 from the 2023 FCal calibration (SkimCode Module_EventShape.cxx: 0-based index into
+// FCal_ET_Bins_PbPb2023, applied to ALL Run-3 years), -1 = below the 85 % edge, which includes
+// every negative-FCal event. No plot: the doc records this as a table.
+void plot_centr() {
+    style();
+    ROOT::RDataFrame dnew("HeavyIonD3PD", NEW_FILE()), dold("HeavyIonD3PD", OLD_FILE());
+    auto cn = *dnew.Take<int>("centrality"), co = *dold.Take<int>("centrality");
+    struct Bin { const char* name; int lo, hi; };                 // [lo, hi) in percent
+    const Bin bins[] = {{"0-10 %", 0, 10}, {"10-20 %", 10, 20}, {"20-30 %", 20, 30},
+                        {"30-40 %", 30, 40}, {"40-50 %", 40, 50}, {"50-80 %", 50, 80},
+                        {"80-100 %", 80, 101}};
+    auto frac = [](const std::vector<int>& v, int lo, int hi) {
+        return 100.0 * std::count_if(v.begin(), v.end(), [&](int c){ return c >= lo && c < hi; }) / v.size();
+    };
+    auto undef = [](const std::vector<int>& v) {
+        return 100.0 * std::count_if(v.begin(), v.end(), [](int c){ return c < 0; }) / v.size();
+    };
+    const std::string out = OUTDIR() + "centrality_population_r17864_vs_r17618_pTH125_300.txt";
+    FILE* f = std::fopen(out.c_str(), "w");
+    auto emit = [&](const char* fmt, auto... a) { std::printf(fmt, a...); std::fprintf(f, fmt, a...); };
+    emit("centrality population, pT-hat 125-300 GeV, %zu vs %zu events (2023 FCal calibration)\n",
+         cn.size(), co.size());
+    emit("%-12s %14s %14s\n", "bin", "pbpb24 re-run", "pbpb23 r17618");
+    for (const auto& b : bins) emit("%-12s %13.2f%% %13.2f%%\n", b.name, frac(cn, b.lo, b.hi), frac(co, b.lo, b.hi));
+    emit("%-12s %13.2f%% %13.2f%%\n", "undefined", undef(cn), undef(co));
+    emit("%-12s %13.2f%% %13.2f%%\n", "(0-5 %)", frac(cn, 0, 5), frac(co, 0, 5));
+    emit("%-12s %13.2f%% %13.2f%%\n", "(5-10 %)", frac(cn, 5, 10), frac(co, 5, 10));
+    std::fclose(f);
+    std::printf("wrote %s\n", out.c_str());
+}
+
+// Bunch-crossing structure. The ONE stated r17835 -> r17864 change is a DIGITISATION bunch-structure
+// option (Digitization.PU.BunchStructureConfig = BunchStructureHeavyIon2022), which sets where in the
+// bunch train the signal sits; sampling the bipolar LAr pulse off-peak is the standard way to get
+// energies that are far too low AND negative. Two views: (a) which bcids are filled at all -- does the
+// 2024 production use a different bunch pattern than the 2023 one; (b) <FCal Sum E_T> vs bcid -- is the
+// deficit bcid-dependent (a timing explanation) or common to every crossing.
+// Measured filled pattern, IDENTICAL in both samples (1010 of 3564 crossings): 882 gaps of 2 bcid and
+// 108 of 4, forming 18 trains of 7x8 bunches -- 8 bunches at 2-bcid spacing, then one crossing skipped,
+// so a sub-burst repeats every 18 bcid -- plus 2 ISOLATED single bunches (826, 2611).
+void plot_bcid() {
+    style();
+    ROOT::RDataFrame dnew("HeavyIonD3PD", NEW_FILE()), dold("HeavyIonD3PD", OLD_FILE());
+    auto nn = dnew.Define("bc", "(double)bcid").Define("fcal_tev", "FCal_Et / 1e6f");
+    auto no = dold.Define("bc", "(double)bcid").Define("fcal_tev", "FCal_Et / 1e6f");
+    // (a) zoom on the first 400 crossings, ONE bin per bcid, so individual filled bunches are visible
+    auto z_new = nn.Histo1D({"", "", 400, 0.5, 400.5}, "bc");
+    auto z_old = no.Histo1D({"", "", 400, 0.5, 400.5}, "bc");
+    // (b) profile over the full LHC orbit, 12 bcid per bin (~10 events/bcid -> ~120 per bin)
+    auto p_new = nn.Profile1D({"", "", 297, 0., 3564.}, "bc", "fcal_tev");
+    auto p_old = no.Profile1D({"", "", 297, 0., 3564.}, "bc", "fcal_tev");
+
+    TCanvas c("c", "", 1600, 700);
+    c.Divide(2, 1);
+    c.cd(1); gPad->SetLeftMargin(0.13); gPad->SetBottomMargin(0.13);
+    axes(z_new.GetPtr(), "bunch crossing ID (first 400)", "events / bcid");
+    z_new->SetLineColor(kNew); z_new->SetLineWidth(2);
+    z_old->SetLineColor(kOld); z_old->SetLineWidth(2);
+    z_new->SetMaximum(1.7 * std::max(z_new->GetBinContent(z_new->GetMaximumBin()),
+                                     z_old->GetBinContent(z_old->GetMaximumBin())));
+    z_new->SetMinimum(0);
+    z_new->Draw("hist"); z_old->Draw("hist same");
+    TLegend l1(0.34, 0.70, 0.90, 0.89); l1.SetBorderSize(0); l1.SetFillStyle(0); l1.SetTextSize(0.032);
+    l1.SetHeader("filled-bunch pattern");
+    l1.AddEntry(z_new.GetPtr(), NEW_LABEL.c_str(), "l");
+    l1.AddEntry(z_old.GetPtr(), OLD_LABEL.c_str(), "l");
+    l1.Draw();
+    c.cd(2); gPad->SetLeftMargin(0.13); gPad->SetBottomMargin(0.13);
+    axes(p_new.GetPtr(), "bunch crossing ID", "#LT FCal #Sigma E_{T} #GT [TeV]");
+    p_new->SetLineColor(kNew); p_new->SetMarkerColor(kNew); p_new->SetMarkerStyle(20); p_new->SetMarkerSize(0.6);
+    p_old->SetLineColor(kOld); p_old->SetMarkerColor(kOld); p_old->SetMarkerStyle(24); p_old->SetMarkerSize(0.6);
+    p_new->SetMinimum(-2.0); p_new->SetMaximum(8.0);
+    p_new->Draw("p"); p_old->Draw("p same");
+    TLine zero(0., 0., 3564., 0.); zero.SetLineStyle(2); zero.SetLineColor(kGray + 2); zero.Draw();
+    TLegend l2(0.34, 0.70, 0.90, 0.89); l2.SetBorderSize(0); l2.SetFillStyle(0); l2.SetTextSize(0.032);
+    l2.SetHeader("12 bcid per point");
+    l2.AddEntry(p_new.GetPtr(), NEW_LABEL.c_str(), "p");
+    l2.AddEntry(p_old.GetPtr(), OLD_LABEL.c_str(), "p");
+    l2.Draw();
+    c.SaveAs((OUTDIR() + "bcid_structure_r17864_vs_r17618_pTH125_300.png").c_str());
+
+    // numbers for the doc: spread of the profile tells flat-vs-bcid-dependent
+    auto spread = [](TProfile* p) {
+        double lo = 1e9, hi = -1e9, sum = 0; int n = 0;
+        for (int i = 1; i <= p->GetNbinsX(); ++i) {
+            if (p->GetBinEntries(i) < 20) continue;
+            const double v = p->GetBinContent(i);
+            lo = std::min(lo, v); hi = std::max(hi, v); sum += v; ++n;
+        }
+        std::printf("      bins with >=20 events: %d, <FCal> range %.2f .. %.2f TeV, mean %.2f TeV\n", n, lo, hi, sum / n);
+    };
+    auto filled = [](ROOT::RDF::RNode d) {
+        auto h = d.Histo1D({"", "", 3564, 0.5, 3564.5}, "bc");
+        int n = 0;
+        for (int i = 1; i <= h->GetNbinsX(); ++i) if (h->GetBinContent(i) > 0) ++n;
+        return n;
+    };
+    std::printf("bcid: distinct filled bcids (of 3564) -- 2024 re-run %d, 2023 r17618 %d\n",
+                filled(nn), filled(no));
+    std::printf("   2024 re-run:"); spread(p_new.GetPtr());
+    std::printf("   2023 r17618:"); spread(p_old.GetPtr());
+}
+
+
+// Position WITHIN the bunch train. This is the mode that localises the r17864 failure. The filled
+// pattern (identical in both samples) is 18 trains of 7x8 bunches plus 2 ISOLATED single bunches;
+// a train boundary is a bcid DIFFERENCE of more than 5 (i.e. more than 4 empty crossings), and an
+// isolated bunch is a train of length 1.
+// In the 2024 sample the ONLY crossings that reproduce the 2023 reference are the two isolated ones.
+// Every crossing inside a train is wrong, INCLUDING the train head (FCal 15 % high, L1TE 36 % low),
+// and beyond the head <FCal> is not a monotonic decay but PERIODIC with the 8-bunch sub-burst:
+// it falls to about -0.75 TeV and recovers to about +2.8 TeV once per sub-burst.
+// That a bunch with no predecessors is correct while every bunch with predecessors is not points at
+// the treatment of the bunch-train signal history in digitisation (see the tracking doc, R9).
+namespace {
+    // An isolated bunch has NO preceding bunch at all, so it is the control: whatever a train does to
+    // its members cannot act on it. It must NOT share a position bin with the train heads -- they are
+    // different populations (the heads are 15 % high in FCal and 36 % low in L1TE, the isolated
+    // bunches agree with the 2023 reference in both).
+    constexpr int kIsolated = -2;
+    // bcid -> position in its train (or kIsolated), built from the filled pattern of the sample itself
+    std::map<unsigned int, int> train_positions(ROOT::RDataFrame& df) {
+        auto bc = *df.Take<unsigned int>("bcid");
+        std::vector<unsigned int> f(bc.begin(), bc.end());
+        std::sort(f.begin(), f.end());
+        f.erase(std::unique(f.begin(), f.end()), f.end());
+        std::map<unsigned int, int> pos;
+        size_t i = 0;
+        while (i < f.size()) {
+            size_t j = i;                                    // [i, j] = one train (gap > 5 ends it)
+            while (j + 1 < f.size() && f[j+1] - f[j] <= 5) ++j;   // bcid diff > 5 ends the train
+            const bool isolated = (j == i);
+            for (size_t k = i; k <= j; ++k) pos[f[k]] = isolated ? kIsolated : (int)(k - i);
+            i = j + 1;
+        }
+        return pos;
+    }
+}
+
+void plot_trainpos() {
+    style();
+    ROOT::RDataFrame dnew("HeavyIonD3PD", NEW_FILE()), dold("HeavyIonD3PD", OLD_FILE());
+    auto pn = train_positions(dnew), po = train_positions(dold);
+    auto with_pos = [](ROOT::RDataFrame& d, const std::map<unsigned int,int>& m) {
+        return d.Define("tpos", [m](unsigned int b) { auto it = m.find(b); return it == m.end() ? -1 : it->second; }, {"bcid"})
+                .Define("fcal_tev", "FCal_Et / 1e6f")
+                .Define("l1te_tev", "L1TE / 1e3f");
+    };
+    auto nn = with_pos(dnew, pn), no = with_pos(dold, po);
+    auto in_train = [](ROOT::RDF::RNode d) { return d.Filter("tpos >= 0"); };
+    auto isolated = [](ROOT::RDF::RNode d) { return d.Filter("tpos == -2"); };
+    const ROOT::RDF::TProfile1DModel m("", "", 56, -0.5, 55.5);
+    auto f_new = in_train(nn).Profile1D(m, "tpos", "fcal_tev"), f_old = in_train(no).Profile1D(m, "tpos", "fcal_tev");
+    auto l_new = in_train(nn).Profile1D(m, "tpos", "l1te_tev"), l_old = in_train(no).Profile1D(m, "tpos", "l1te_tev");
+    // the isolated bunches: the only crossings in the sample with no preceding bunch
+    auto iso_f_new = isolated(nn).Mean("fcal_tev"), iso_l_new = isolated(nn).Mean("l1te_tev");
+    auto iso_f_old = isolated(no).Mean("fcal_tev"), iso_l_old = isolated(no).Mean("l1te_tev");
+    auto iso_n_new = isolated(nn).Count(), iso_n_old = isolated(no).Count();
+    // beyond the train head the modulation repeats with the 8-bunch sub-burst
+    auto fold = [](ROOT::RDF::RNode d) {
+        return d.Filter("tpos >= 8").Define("phase", "tpos % 8")
+                .Profile1D({"", "", 8, -0.5, 7.5}, "phase", "fcal_tev");
+    };
+    auto fold_new = fold(nn), fold_old = fold(no);
+
+    TCanvas c("c", "", 1600, 700);
+    c.Divide(2, 1);
+    // The data fill the frame, so the legend gets its OWN reserved strip above it (a transparent
+    // legend inside the frame would be painted over by the points, and these entries are long).
+    auto draw = [&](int pad, TProfile* pnew, TProfile* pold, double iso_new, const char* yt,
+                    const char* unit, double lo, double hi) {
+        c.cd(pad); gPad->SetLeftMargin(0.13); gPad->SetBottomMargin(0.13); gPad->SetTopMargin(0.24);
+        axes(pnew, "position in bunch train", yt);
+        pnew->SetLineColor(kNew); pnew->SetMarkerColor(kNew); pnew->SetMarkerStyle(20); pnew->SetMarkerSize(0.8);
+        pold->SetLineColor(kOld); pold->SetMarkerColor(kOld); pold->SetMarkerStyle(24); pold->SetMarkerSize(0.8);
+        pnew->SetMinimum(lo); pnew->SetMaximum(hi);
+        pnew->Draw("p"); pold->Draw("p same");
+        TLine* z = new TLine(-0.5, 0., 55.5, 0.); z->SetLineStyle(2); z->SetLineColor(kGray + 2); z->Draw();
+        TLine* iso = new TLine(-0.5, iso_new, 55.5, iso_new);
+        iso->SetLineStyle(7); iso->SetLineColor(kNew); iso->SetLineWidth(2); iso->Draw();
+        TLegend* l = new TLegend(0.13, 0.765, 0.97, 0.995);
+        l->SetBorderSize(0); l->SetFillStyle(0); l->SetTextSize(0.030);
+        l->SetHeader("18 trains of 7#times8 bunches + 2 isolated bunches");
+        l->AddEntry(pnew, NEW_LABEL.c_str(), "p");
+        l->AddEntry(iso, Form("isolated bunches, no train: %.2f %s", iso_new, unit), "l");
+        l->AddEntry(pold, OLD_LABEL.c_str(), "p");
+        l->Draw();
+    };
+    draw(1, f_new.GetPtr(), f_old.GetPtr(), *iso_f_new, "#LT FCal #Sigma E_{T} #GT [TeV]", "TeV", -2.0, 6.5);
+    draw(2, l_new.GetPtr(), l_old.GetPtr(), *iso_l_new, "#LT L1 #Sigma E_{T} #GT [TeV]",   "TeV", -2.0, 19.0);
+    c.SaveAs((OUTDIR() + "train_position_r17864_vs_r17618_pTH125_300.png").c_str());
+
+    std::printf("position in train (IN-TRAIN bunches only):  <FCal> 2024 / 2023 [TeV]   <L1TE> 2024 / 2023 [TeV]\n");
+    for (int i = 1; i <= 10; ++i)
+        std::printf("   pos %2d (N=%5.0f): %+7.3f / %7.3f      %7.3f / %7.3f\n",
+                    i-1, f_new->GetBinEntries(i), f_new->GetBinContent(i), f_old->GetBinContent(i),
+                    l_new->GetBinContent(i), l_old->GetBinContent(i));
+    std::printf("   isolated bunches (no train): 2024 <FCal> %.3f, <L1TE> %.3f (N=%lld);"
+                " 2023 <FCal> %.3f, <L1TE> %.3f (N=%lld)\n",
+                *iso_f_new, *iso_l_new, (long long)*iso_n_new, *iso_f_old, *iso_l_old, (long long)*iso_n_old);
+    std::printf("   positions 8-55 folded modulo 8 (the sub-burst period), <FCal> 2024 / 2023 [TeV]:\n");
+    for (int i = 1; i <= 8; ++i)
+        std::printf("      phase %d: %+7.3f +- %.3f / %7.3f\n", i-1,
+                    fold_new->GetBinContent(i), fold_new->GetBinError(i), fold_old->GetBinContent(i));
+}
+
 void plot_r17864_event_level(const char* what = "fcal") {
     const std::string w = what;
     if      (w == "fcal") plot_fcal();
     else if (w == "vtx")  plot_vtx();
     else if (w == "ntrk") plot_ntrk();
     else if (w == "l1te") plot_l1te();
-    else std::printf("unknown mode '%s' (fcal|vtx|ntrk|l1te)\n", what);
+    else if (w == "centr") plot_centr();
+    else if (w == "bcid") plot_bcid();
+    else if (w == "trainpos") plot_trainpos();
+    else std::printf("unknown mode '%s' (fcal|vtx|ntrk|l1te|centr|bcid|trainpos)\n", what);
 }
