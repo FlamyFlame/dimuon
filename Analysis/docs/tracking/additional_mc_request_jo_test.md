@@ -233,6 +233,10 @@ non-`done` terminal task state.
   pTH125_300 m<10 reproduce `cells_pTH125_300_m_lt_10.csv` EXACTLY (SS 527/264/13, 115/47/0, 17/3/0;
   OS 6361/3007/314, 2831/1254/126, 643/257/19). Pending: real inputs, then `/review-analysis-code`
   (macro) and `/review-plot` (step-5 figures).
+- **2026-09-23, local SS pTH24_40 (revised, no pT^μμ cut).** ε = 1.28e-5 (10 / 779 815; est
+  1.22e-5 ✓), 2 087 s CPU per accepted event locally (26.8 ms/generated); `MinDilepPt: -1`,
+  `RequireSameCharge: True` printed; EVNT check 10/10 pass. 5 of 6 configs locally validated; the SS
+  pTH40_70 local job is still running.
 
 ## Results & Observations
 
