@@ -15,7 +15,7 @@ of the additional MC request before handing them to the ATLAS production expert:
 | group | pT-hat slices [GeV] | filter (truth, both legs pT>3.7 GeV, \|η\|<2.5) | requested events |
 |---|---|---|---|
 | sign-independent (SI) | 70–125, 125–300 | ∃ μμ pair: m < 10 GeV, pT^μμ > 45 GeV | 1 M / slice |
-| same-sign (SS) | 24–40, 40–70, 70–125, 125–300 | ∃ SAME-SIGN μμ pair: m < 10 GeV, pT^μμ > 20 GeV | 0.5 M / slice |
+| same-sign (SS) | 24–40, 40–70, 70–125, 125–300 | ∃ SAME-SIGN μμ pair: m < 10 GeV, pT^μμ > 20 GeV (**24–40: NO pT^μμ cut**, D6) | 0.5 M / slice |
 
 ## Autonomy Contract (ACTIVE — re-read on every compaction)
 - Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a
@@ -83,7 +83,7 @@ RequireSameCharge=True for SS only (patch: skip a pair if pdgId1·pdgId2 < 0).
 1. [x] Compile patch (`setup_AthGeneration.sh`) — check build + filter property visible.
 2. [ ] Local Gen_tf 10 events × 6 configs (parallel, background) → event-by-event check script
    (§3a), filter eff, time/event, projected time for 1 000 events.
-3. [ ] Commit (source/athena branch; JOs + scripts in dimuon_codes repo).
+3. [x] Commit (source/athena branch; JOs + scripts in dimuon_codes repo).
 4. [ ] Grid: Gen_tf 1 000 events/config (split over jobs if slow; WARN USER + pause if >1–2 days);
    EVNT→AOD; truth skim (new `SkimCode/run_evgen_high_pT_additional/`); download.
 5. [ ] Sanity check + plots (§3c).
@@ -132,6 +132,12 @@ labels override, raw-counts mode skipping the AMI read + nPDF DSID guard; hard-c
 `PythiaAlgCoreT.c:65-67,284,323-357`). SS slices 24–40 / 40–70 have no reference table: their
 projected counts are reported against the same-slice reference computed the same way (kin2, kin3).
 
+**D6 — USER DECISION (2026-09-22, "final"): SS pTH24_40 has NO pair-pT cut.** With pT^μμ > 20
+the slice's ε ≈ 1.9e-7 (~37 CPU-h per accepted event, ~2 100 CPU-yr for 0.5 M); without it
+ε ≈ 1.2e-5 (R3). JO renamed `mc.Py8EG_A14_pp_hQCD_DiMu_pTH24_40_pdf_SS_m10.py`, `PairPtMin = -1`
+(filter condition `dilepPt > MinDilepPt` then always true). Grid test sizes (user): 1 000 events for
+SI 70–125/125–300 and SS 70–125/125–300, 100 for SS 40–70 and SS 24–40.
+
 ## Progress Log
 
 - **2026-09-22, step 1.** Compiled on AthGeneration 23.6.68 (x86_64-el9-gcc15-opt) after D1/D2;
@@ -154,8 +160,89 @@ projected counts are reported against the same-slice reference computed the same
   filter; `truth_mupair_*` = all status-1 μμ pairs, MeV) × AMI genFiltEff of the same slice's
   `_pdf` DSID. Validation: SI pTH125_300 est 2.75e-4 vs measured 2.58e-4 (10/38 715) ✓.
   Output `estimate/emulate_filter.out`; numbers → R1.
+- **2026-09-22, SS pTH125_300 local.** ε = 1.32e-4 (10 / 75 956; est 1.26e-4 ✓), 262 s CPU per
+  accepted event; `RequireSameCharge: True` printed; 10/10 events hold a passing SAME-SIGN pair,
+  the three 3-muon events show OS pairs skipped (patch works as intended).
+- **2026-09-22, step 3 DONE.** athena `71ef28ce20d` (branch `dimuon-same-sign-filter-23.6.68`),
+  cherry-picked as `4b66ba5e232` onto `dimuon-same-sign-filter` (main-based, for the MR);
+  dimuon_codes `9109bde`.
+- **2026-09-22, PAUSE (user's own rule: warn if 1 000 events > 1–2 days).** R1: every config
+  exceeds ~1.5 CPU-days per 1 000 events; SS pTH24_40 ~6 CPU-years, SS pTH40_70 ~117 CPU-days.
+  Grid submission NOT done; question put to the user. Local 10-event jobs for SI pTH70_125,
+  SS pTH70_125, SS pTH40_70, SS pTH24_40 left running (projected ~2.5 h, ~4 h, ~1 d, ~3 weeks).
+- **2026-09-22, USER: "Stop."** Questions: (1) why CPU-years when a private ~1e-7 sample was
+  generated before — how long is one unfiltered event? (2) why is SS pTH24_40 so hard; ε without the
+  pair-pT cut? Answered with R2/R3 (`estimate/breakdown_ss24_40.py`). Grid remains NOT submitted.
+- **2026-09-22, local 70–125 done.** SI pTH70_125 ε = 5.5e-5 (10/181k, est 4.4e-5), SS pTH70_125
+  ε = 4.1e-5 (10/244k, est 3.1e-5) — both within the ±32 % of a 10-event count; EVNT check 10/10
+  pass for both. 4 of 6 configs now locally validated; SS 40–70 / 24–40 still running (0 accepted
+  after ~630k generated each, consistent with ε ≈ 4e-6 / 2e-7).
+- **2026-09-22, USER decision.** Grid test sizes: 100 events for SS 40–70 and SS 24–40 (5–10 per
+  job), 1 000 for the other 4. Asked for a time estimate before submitting (see R5).
+- **2026-09-23, step 4a — grid evgen submitted** (`grid/submit_evgen.sh`, `prun --useAthenaPackages`
+  from the 23.6.68 build, worker `grid/run_gen.sh`, seeds `%RNDM=<base>`; outputs
+  `EVNT.pool.root,log.generate`; log `grid/submit_evgen.log`):
+
+  | config | evts/job × jobs | seed base | jediTaskID | outDS |
+  |---|---|---|---|---|
+  | SI pTH125_300 | 250 × 4 | 120000 | 52691377 | user.yuhang.JOtest.Py8EG_A14_pp_hQCD_DiMu_pTH125_300_pdf_m10_pT45.v1 |
+  | SS pTH125_300 | 200 × 5 | 160000 | 52691387 | user.yuhang.JOtest.Py8EG_A14_pp_hQCD_DiMu_pTH125_300_pdf_SS_m10_pT20.v1 |
+  | SI pTH70_125 | 100 × 10 | 110000 | 52691402 | user.yuhang.JOtest.Py8EG_A14_pp_hQCD_DiMu_pTH70_125_pdf_m10_pT45.v1 |
+  | SS pTH70_125 | 50 × 20 | 150000 | 52691417 | user.yuhang.JOtest.Py8EG_A14_pp_hQCD_DiMu_pTH70_125_pdf_SS_m10_pT20.v1 |
+  | SS pTH40_70 | 5 × 20 | 140000 | 52691431 | user.yuhang.JOtest.Py8EG_A14_pp_hQCD_DiMu_pTH40_70_pdf_SS_m10_pT20.v1 |
+  | SS pTH24_40 | 10 × 10 | 130000 | 52691447 | user.yuhang.JOtest.Py8EG_A14_pp_hQCD_DiMu_pTH24_40_pdf_SS_m10.v1 |
+
+  Expected CPU/job (25 ms/generated): ~7 / 11 / 13–16 / 9–11 / ~10 / ~6 h. Local 10-event test of the
+  revised SS 24–40 JO launched in parallel (`local_test/run_same_sign_pT24_40/`; the pT>20 attempt
+  moved to `local_test/superseded_same_sign_pT24_40_pT20/`).
 
 ## Results & Observations
+
+### R2 — Cost of one generated (unfiltered) event
+
+SI pTH125_300 job: 1 419 s CPU total (PerfMonMT; configure/init excluded) for 38 715 generated
+events → **36.7 ms CPU per generated event** (Pythia8 + EvtGen + per-event xAOD truth conversion in
+`prefiltSeq` + the two filters; component-level PerfMon was disabled, so the split is not
+measured). SS pTH125_300: 262 s × 75 956⁻¹·10 → 34.5 ms. Cost per accepted event = 36 ms / ε.
+
+### R3 — SS pTH24_40: what each requirement costs (emulation, 720 000 NTUP events, ε_≥2μ = 1.82e-4)
+
+| requirement on ≥1 pair (legs pT>3.7, \|η\|<2.5) | f | ε_total | CPU / accepted |
+|---|---|---|---|
+| any pair (= existing filter) | 1 | 1.82e-4 | 198 s |
+| OS | 0.81 | 1.47e-4 | 245 s |
+| SS | 0.21 | 3.8e-5 | 950 s |
+| SS, m<10 | 0.067 | **1.2e-5** | 2 900 s |
+| SS, pT^μμ>20 | 3.0e-3 | 5.5e-7 | 6.6e4 s |
+| SS, m<10, pT^μμ>10 | 2.6e-2 | 4.8e-6 | 7.6e3 s |
+| SS, m<10, pT^μμ>15 | 5.7e-3 | 1.0e-6 | 3.5e4 s |
+| SS, m<10, pT^μμ>20 (JO) | 1.0e-3 | 1.9e-7 | 1.9e5 s |
+| OS, m<10, pT^μμ>20 | 5.7e-2 | 1.05e-5 | 3.4e3 s |
+
+The pair-pT cut is the killer: given SS m<10, pT^μμ>20 keeps 1.5 % (740 / 48 337). With
+pT-hat 24–40 a 20 GeV low-mass pair must carry most of one jet's momentum, and SS needs two muons
+from one jet that are NOT the b→μ⁻ / b→c→μ⁺ cascade (which is OS).
+
+### R4 — The EXISTING e8599 `_pdf` production (≥2μ filter only): AMI + PanDA
+
+AMI (`ami_info_PDF/`) genFiltEff, totalEvents, sumOfWeightsNoFilter (= generated events); PanDA
+(bigpanda JSON, finished Gen_tf jobs of the evgen task = `prodsysIdentifier_0`, median of ≤300
+jobs) CPU per job:
+
+| slice | DSID | genFiltEff | kept events | generated | evts/job | CPU/job | CPU/kept evt | CPU/generated | total CPU |
+|---|---|---|---|---|---|---|---|---|---|
+| 8–14 | 803020 | 5.93e-6 | 2.04 M | 3.44e11 | 50 | 49.8 h | 3 585 s | 21.2 ms | ~232 CPU-yr |
+| 14–24 | 803016 | 4.36e-5 | 3.6 M | 8.25e10 | 200 | 39.1 h | 703 s | 30.7 ms | ~80 CPU-yr |
+| 24–40 | 803017 | 1.82e-4 | 2.4 M | 1.32e10 | 1000 | 38.1 h | 137 s | 25.0 ms | ~10 CPU-yr |
+| 40–70 | 803018 | 5.26e-4 | 1.2 M | 2.28e9 | 1000 | 13.4 h | 48 s | 25.5 ms | ~1.8 CPU-yr |
+| 70–125 | 803019 | 1.24e-3 | 0.32 M | 2.58e8 | 2000 | 13.4 h | 24 s | 29.9 ms | ~0.2 CPU-yr |
+| 125–300 | 803015 | 2.40e-3 | 0.32 M | 1.34e8 | 5000 | 13.0 h | 9.3 s | 22.4 ms | ~0.1 CPU-yr |
+
+**The previous request cost ≈ 320 CPU-years**, dominated by pTH8_14 (ε ≈ 6e-6) — so the ATLAS
+production system already ran ~1e-6-level filters at this scale. Per GENERATED event the cost is
+flat, 21–31 ms (my VM: 35–37 ms). Re-costing the new request at 25 ms/generated:
+SI 70–125 ≈ 18, SI 125–300 ≈ 3, SS 125–300 ≈ 3, SS 70–125 ≈ 13, **SS 40–70 ≈ 110, SS 24–40 ≈
+2 100 CPU-yr** (vs 320 for the whole previous request).
 
 ### R1 — Filter efficiency and CPU cost (the feasibility question)
 
@@ -175,5 +262,6 @@ pTH125_300, this VM); per accepted event ≈ t₀ / ε.
 ## Remaining Work
 
 ## Latest Stage
-Step 2: local 10-event tests running (`local_test/<config>/gen_tf.out`). Next: event-by-event
-check script on the EVNT, filter eff + time/event.
+Step 4: 6 grid evgen tasks RUNNING (IDs in Progress Log). Next: when each finishes → pathena
+`Derivation_tf TRUTH0` (Athena 25.0.72) → pathena `TruthTrigRates.py` (SkimCode, new run dir
+`SkimCode/run_evgen_high_pT_additional/`) → rucio download → step 5 plots, step 6 boost (D5).
