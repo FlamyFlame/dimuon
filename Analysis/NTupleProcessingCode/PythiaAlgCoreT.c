@@ -2,6 +2,7 @@
 #include "../MuonObjectsParamsAndHelpers/muon_pair_enums_MC.h"
 #include "Riostream.h"
 #include "TTree.h"
+#include "TSystem.h"   // gSystem (external truth-input mode: output dir check / mkdir)
 #include "TLorentzVector.h"
 #include <math.h>
 #include <stdexcept>
@@ -19,6 +20,29 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_PythiaCore() {
     this->cutLabels = cutLabels_MC;
     this->numCuts = static_cast<int>(cutLabels_MC.size());
     this->isMC = true;
+
+    // External truth-input mode guards (PythiaAlgCoreT.h). Checked FIRST, so a misconfigured
+    // run can never reach a nominal input/output path.
+    if (truth_raw_counts && !IsTruthExternalInput())
+        throw std::runtime_error("PythiaAlgCoreT: truth_raw_counts requires truth_input_override -- "
+            "refusing to alter the weights of a NOMINAL run.");
+    if (IsTruthExternalInput()) {
+        if (!truth_raw_counts)
+            throw std::runtime_error("PythiaAlgCoreT: truth_input_override requires truth_raw_counts -- "
+                "the AMI weights of the central truth sample must never be applied to another dataset "
+                "(docs/ami_weights.md).");
+        if (is_fullsim || is_fullsim_overlay || getIsPrivate())
+            throw std::runtime_error("PythiaAlgCoreT: truth_input_override is for the NON-PRIVATE TRUTH "
+                "path only (not fullsim / private).");
+        if (truth_output_dir_override.empty() || truth_output_label.empty())
+            throw std::runtime_error("PythiaAlgCoreT: truth_input_override requires truth_output_dir_override "
+                "AND truth_output_label (outputs must never land on the nominal truth paths).");
+        if (truth_output_label.find('/') != std::string::npos)
+            throw std::runtime_error("PythiaAlgCoreT: truth_output_label must not contain '/'.");
+        if (gSystem->AccessPathName(truth_output_dir_override.c_str()))
+            throw std::runtime_error("PythiaAlgCoreT: truth_output_dir_override does not exist: "
+                + truth_output_dir_override);
+    }
 
     isRun3 = (run_year > 18);
     if (is_fullsim || is_fullsim_overlay) {
@@ -84,6 +108,21 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_PythiaCore() {
         std::cout << "PythiaAlgCoreT: useLocal=" << getUseLocal() << ", input_dir=" << py_dir << std::endl;
         outfile_name     = "muon_pairs_pythia_" + ecom_str + "_kn" + std::to_string(kn_batch);
         outhistfile_name = "hists_pythia_ntuple_processing_" + ecom_str + "_kn" + std::to_string(kn_batch);
+
+        if (IsTruthExternalInput()) {
+            // Distinct names + directory: never the nominal truth outputs. py_dir is only used
+            // downstream for the ancestry-tracing diagnostic files (PythiaTruthExtras::
+            // InitOutputExtra), which must not overwrite the nominal crossx_summary_pythia.txt.
+            const std::string tag = "truth_" + truth_output_label + "_kn" + std::to_string(kn_batch);
+            outfile_name     = "muon_pairs_pythia_" + tag;
+            outhistfile_name = "hists_pythia_ntuple_processing_" + tag;
+            py_dir = truth_output_dir_override;
+            if (py_dir.back() != '/') py_dir += "/";
+            batch_suffix = "_" + tag;
+            gSystem->mkdir((py_dir + "ancestor_tracing_output_diagnostic_files").c_str(), true);
+            std::cout << "PythiaAlgCoreT: EXTERNAL truth input (raw counts, weight=1, no AMI): '"
+                      << truth_input_override << "' -> " << py_dir << outfile_name << "*" << std::endl;
+        }
     }
     nevents.resize(nKinRanges, 0);
     nevents_accum.resize(nKinRanges, 0);
@@ -244,6 +283,9 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputPrivate_PythiaCo
 
 template <class PairT, class MuonT, class Derived, class... Extras>
 void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputCentrProd_PythiaCore() {
+    // External truth-only input (opt-in): its own loader, NO AMI read (weight = 1).
+    if (IsTruthExternalInput()) { InitInputTruthExternal_PythiaCore(); return; }
+
     // kn_batch already validated in InitParams_PythiaCore; only load that one range.
     const std::vector<std::string> beam_names = {"pp", "pn", "np", "nn"};
 
@@ -367,26 +409,96 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputCentrProd_Pythia
     nominal_beam_ratio["nn"] = 9./25.;
 
     // Bind branches on the loaded chains
-    auto bind_chain = [&](TChain* ch) {
-        ch->SetBranchStatus("*", 0);
-        ch->SetBranchStatus("Q",   1); ch->SetBranchAddress("Q",   &Q_float);
-
-        ch->SetBranchStatus("truth_mupair_pt1",  1); ch->SetBranchAddress("truth_mupair_pt1",  &truth_mupair_pt1_f);
-        ch->SetBranchStatus("truth_mupair_eta1", 1); ch->SetBranchAddress("truth_mupair_eta1", &truth_mupair_eta1_f);
-        ch->SetBranchStatus("truth_mupair_phi1", 1); ch->SetBranchAddress("truth_mupair_phi1", &truth_mupair_phi1_f);
-        ch->SetBranchStatus("truth_mupair_ch1",  1); ch->SetBranchAddress("truth_mupair_ch1",  &truth_mupair_ch1);
-        ch->SetBranchStatus("truth_mupair_bar1", 1); ch->SetBranchAddress("truth_mupair_bar1", &truth_mupair_bar1);
-
-        ch->SetBranchStatus("truth_mupair_pt2",  1); ch->SetBranchAddress("truth_mupair_pt2",  &truth_mupair_pt2_f);
-        ch->SetBranchStatus("truth_mupair_eta2", 1); ch->SetBranchAddress("truth_mupair_eta2", &truth_mupair_eta2_f);
-        ch->SetBranchStatus("truth_mupair_phi2", 1); ch->SetBranchAddress("truth_mupair_phi2", &truth_mupair_phi2_f);
-        ch->SetBranchStatus("truth_mupair_ch2",  1); ch->SetBranchAddress("truth_mupair_ch2",  &truth_mupair_ch2);
-        ch->SetBranchStatus("truth_mupair_bar2", 1); ch->SetBranchAddress("truth_mupair_bar2", &truth_mupair_bar2);
-    };
-
     for (int ibeam = 0; ibeam < nBeamTypes; ibeam++)
         if (evChains_kn_beam.at(ikin).at(ibeam))
-            bind_chain(evChains_kn_beam.at(ikin).at(ibeam));
+            BindTruthPairBranches_PythiaCore(evChains_kn_beam.at(ikin).at(ibeam));
+}
+
+// Non-private truth-pair branch binding -- shared by the nominal central-production loader and
+// the external truth-input loader, so both read the SAME branches into the SAME members.
+template <class PairT, class MuonT, class Derived, class... Extras>
+void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::BindTruthPairBranches_PythiaCore(TChain* ch) {
+    ch->SetBranchStatus("*", 0);
+    ch->SetBranchStatus("Q",   1); ch->SetBranchAddress("Q",   &Q_float);
+
+    ch->SetBranchStatus("truth_mupair_pt1",  1); ch->SetBranchAddress("truth_mupair_pt1",  &truth_mupair_pt1_f);
+    ch->SetBranchStatus("truth_mupair_eta1", 1); ch->SetBranchAddress("truth_mupair_eta1", &truth_mupair_eta1_f);
+    ch->SetBranchStatus("truth_mupair_phi1", 1); ch->SetBranchAddress("truth_mupair_phi1", &truth_mupair_phi1_f);
+    ch->SetBranchStatus("truth_mupair_ch1",  1); ch->SetBranchAddress("truth_mupair_ch1",  &truth_mupair_ch1);
+    ch->SetBranchStatus("truth_mupair_bar1", 1); ch->SetBranchAddress("truth_mupair_bar1", &truth_mupair_bar1);
+
+    ch->SetBranchStatus("truth_mupair_pt2",  1); ch->SetBranchAddress("truth_mupair_pt2",  &truth_mupair_pt2_f);
+    ch->SetBranchStatus("truth_mupair_eta2", 1); ch->SetBranchAddress("truth_mupair_eta2", &truth_mupair_eta2_f);
+    ch->SetBranchStatus("truth_mupair_phi2", 1); ch->SetBranchAddress("truth_mupair_phi2", &truth_mupair_phi2_f);
+    ch->SetBranchStatus("truth_mupair_ch2",  1); ch->SetBranchAddress("truth_mupair_ch2",  &truth_mupair_ch2);
+    ch->SetBranchStatus("truth_mupair_bar2", 1); ch->SetBranchAddress("truth_mupair_bar2", &truth_mupair_bar2);
+}
+
+// ---------------------------------------------------------------------------
+// InitInputTruthExternal  (truth_input_override mode; see PythiaAlgCoreT.h)
+// ---------------------------------------------------------------------------
+// Chains the user-given TRUTH0 NTUP file(s) of ONE pT-hat slice (kn_batch) into the pp slot
+// (beam 0). NO AMI read and NO DSID guard: the weight is exactly 1 (truth_raw_counts, enforced in
+// InitParams). Everything downstream (branch binding, pair loop, PassCuts, ancestry tracing,
+// output trees) is the nominal code.
+template <class PairT, class MuonT, class Derived, class... Extras>
+void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputTruthExternal_PythiaCore() {
+    evChains_kn_beam.resize(nKinRanges);
+    nentries_kn_beam.resize(nKinRanges);
+    nentries_kn_sum.assign(nKinRanges, 0);
+    ami_weight_kn_beam.resize(nKinRanges);
+    for (int i = 0; i < nKinRanges; i++) {
+        evChains_kn_beam.at(i).assign(nBeamTypes, nullptr);
+        nentries_kn_beam.at(i).assign(nBeamTypes, 0);
+        ami_weight_kn_beam.at(i).assign(nBeamTypes, 0.);   // unused: weight = 1 in this mode
+    }
+
+    const int ikin = kn_batch;
+    TChain* ch = new TChain("HeavyIonD3PD", "HeavyIonD3PD");
+    std::string spec = truth_input_override;
+    std::replace(spec.begin(), spec.end(), ',', ' ');
+    std::istringstream iss(spec);
+    std::string tok;
+    int nfiles = 0;
+    while (iss >> tok) {
+        // TChain::Add does not open a literal (non-glob) file, so a missing one would be dropped
+        // later with only an Error() print -> check it here. Globs are checked by the match count.
+        const bool is_glob = tok.find_first_of("*?[") != std::string::npos;
+        if (!is_glob && tok.find("://") == std::string::npos && gSystem->AccessPathName(tok.c_str())) {
+            delete ch;
+            throw std::runtime_error("InitInputTruthExternal: input file does not exist: " + tok);
+        }
+        const int n = ch->Add(tok.c_str());   // TChain::Add expands a glob in the file name
+        if (n <= 0) {
+            delete ch;
+            throw std::runtime_error("InitInputTruthExternal: no file matched '" + tok + "'");
+        }
+        nfiles += n;
+    }
+    if (nfiles == 0) { delete ch; throw std::runtime_error("InitInputTruthExternal: empty truth_input_override"); }
+
+    ch->SetMakeClass(1);
+    const Long64_t nent = ch->GetEntries();
+    if (nent <= 0) {
+        delete ch;
+        throw std::runtime_error("InitInputTruthExternal: 0 entries in '" + truth_input_override
+            + "' (tree HeavyIonD3PD missing or unreadable)");
+    }
+    evChains_kn_beam.at(ikin).at(0) = ch;
+    nentries_kn_beam.at(ikin).at(0) = nent;
+    nentries_kn_sum.at(ikin)        = nent;
+    std::cout << "InitInputTruthExternal: kn" << ikin << " ("
+              << static_cast<int>(kinRanges.at(ikin)) << "-" << static_cast<int>(kinRanges.at(ikin + 1))
+              << " GeV): " << nent << " entries from " << nfiles << " file(s); weight = 1 (raw counts, no AMI)"
+              << std::endl;
+
+    // Key must exist for ProcessDataHook's .at(); the value is NOT used (weight = 1).
+    nominal_beam_ratio["pp"] = 1.;
+    nominal_beam_ratio["pn"] = 0.;
+    nominal_beam_ratio["np"] = 0.;
+    nominal_beam_ratio["nn"] = 0.;
+
+    BindTruthPairBranches_PythiaCore(ch);
 }
 
 // ---------------------------------------------------------------------------
@@ -652,6 +764,8 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::OutputTreePathHook() {
     std::string output_dir;
     if (is_fullsim || is_fullsim_overlay) {
         output_dir = fullsim_input_dir;
+    } else if (IsTruthExternalInput()) {
+        output_dir = py_dir;   // = truth_output_dir_override (InitParams), never the nominal dir
     } else if (getIsPrivate()) {
         output_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_private_sample/";
     } else {
@@ -671,6 +785,8 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::OutputHistPathHook() {
     std::string output_dir;
     if (is_fullsim || is_fullsim_overlay) {
         output_dir = fullsim_input_dir;
+    } else if (IsTruthExternalInput()) {
+        output_dir = py_dir;   // = truth_output_dir_override (InitParams), never the nominal dir
     } else if (getIsPrivate()) {
         output_dir = "/usatlas/u/yuhanguo/usatlasdata/pythia_private_sample/";
     } else {
@@ -941,6 +1057,14 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook() {
                     ? ami_weight_kn_beam.at(ikin).at(ibeam) * nom_ratio
                       / static_cast<double>(N_to_process)
                     : 0.;
+                // External truth input: raw counts, weight exactly 1 (no AMI, no isospin, no 1/N).
+                // Record the events processed so per-event rates can be formed downstream.
+                if (truth_raw_counts) {
+                    w_norm = 1.;
+                    const size_t idx = static_cast<size_t>(ikin) * nBeamTypes + ibeam;
+                    meta_nproc_kn_beam.at(idx) = N_to_process;
+                    meta_nbeam_kn_beam.at(idx) = N_beam;
+                }
                 std::cout << "  beam " << beam_names.at(ibeam) << ": " << N_to_process
                           << " / " << N_beam << " events" << std::endl;
 
@@ -1021,6 +1145,9 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook() {
                 }
             }
         }
+        // Raw-counts mode only: one meta entry carrying nproc/nbeam_kin<N>_beam<b>. (The nominal
+        // truth path leaves meta_tree_out unfilled, as before.)
+        if (truth_raw_counts && meta_tree_out) meta_tree_out->Fill();
         return;
     }
 
