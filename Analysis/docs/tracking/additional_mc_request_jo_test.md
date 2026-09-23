@@ -224,6 +224,15 @@ non-`done` terminal task state.
   Run recipe (per slice): `.L PythiaAnalysisClasses.h; PythiaTruthAnalysis py(kn,false,5.36);
   py.truth_input_override="<NTUP glob>"; py.truth_output_dir_override="<dir>";
   py.truth_output_label="<label incl. 5p36>"; py.truth_raw_counts=true; py.Run();`
+- **2026-09-23, step 6 tooling.** `Analysis/plotting_codes/trig_effcy/mc_based/mc_request_stats_boost.cxx`
+  (D5) + `analysis/run_truth_processing.sh` (runs the new mode per config: labels `5p36_SI_m10_pT45`,
+  `5p36_SS_m10_pT20`, `5p36_SS_m10` for 24–40). Truth analogue of Step 3 = `TruthFiducial()` +
+  `ForwardLowPtVeto()` on truth-aliased legs + the gap terms rebuilt from the same `ParamsSet`
+  primitives with the pair term on `truth_pair_eta` (`pair_eta` is a real RECO branch in the trees and
+  cannot be aliased). Test on the 10-event stand-in: the macro's reference Step-3 reco counts for
+  pTH125_300 m<10 reproduce `cells_pTH125_300_m_lt_10.csv` EXACTLY (SS 527/264/13, 115/47/0, 17/3/0;
+  OS 6361/3007/314, 2831/1254/126, 643/257/19). Pending: real inputs, then `/review-analysis-code`
+  (macro) and `/review-plot` (step-5 figures).
 
 ## Results & Observations
 
@@ -307,6 +316,7 @@ pTH125_300, this VM); per accepted event ≈ t₀ / ε.
 ## Remaining Work
 
 ## Latest Stage
-Step 4: 6 grid evgen tasks RUNNING (IDs in Progress Log). Next: when each finishes → pathena
-`Derivation_tf TRUTH0` (Athena 25.0.72) → pathena `TruthTrigRates.py` (SkimCode, new run dir
-`SkimCode/run_evgen_high_pT_additional/`) → rucio download → step 5 plots, step 6 boost (D5).
+Step 4: 6 grid evgen tasks RUNNING; `grid/chain.py` (background) chains TRUTH0 → skim → download.
+Steps 5/6 code ready and tested on stand-ins (`analysis/plot_test_sample_sanity.C`,
+`analysis/run_truth_processing.sh`, `mc_request_stats_boost.cxx`). On download: run sanity macro →
+`/review-plot`; run truth processing → boost macro → `/review-analysis-code`; results → R6/R7.
