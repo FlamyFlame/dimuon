@@ -210,6 +210,20 @@ non-`done` terminal task state.
   Expected CPU/job (25 ms/generated): ~7 / 11 / 13–16 / 9–11 / ~10 / ~6 h. Local 10-event test of the
   revised SS 24–40 JO launched in parallel (`local_test/run_same_sign_pT24_40/`; the pT>20 attempt
   moved to `local_test/superseded_same_sign_pT24_40_pT20/`).
+- **2026-09-23, step 6 prerequisite — truth-only external-sample mode (subagent, worktree).**
+  `PythiaAlgCoreT.{h,c}` gain `truth_input_override` (glob/list, ONE slice kn), `truth_output_dir_override`,
+  `truth_output_label`, `truth_raw_counts` (all default off; override ⇔ raw_counts guarded both ways;
+  throws on fullsim/overlay/private). Output `<dir>/muon_pairs_pythia_truth_<label>_kn<N>_no_data_resonance_cuts.root`;
+  weight ≡ 1, AMI read + nPDF DSID guard skipped; `meta_tree_out` `nproc_kin<N>_beam0`/`nbeam_kin<N>_beam0`.
+  Branch binding factored into `BindTruthPairBranches_PythiaCore` (line-by-line identical). Test on
+  the local 10-event kn5 NTUP: 3 SS + 11 OS pairs = hand count, weight 1, nproc 10. Doc section in
+  `Analysis/docs/pythia_truth.md`. Commit `bd81e27`; `/review-analysis-code` iteration 1 **PASS**
+  (0 C/W, 4 INFO: failed input guard can leave an empty diagnostic dir in the override dir; no
+  E_COM tag in the output name → put it in the label; pre-existing zero `nentries_*` meta branches;
+  nproc = N_to_process). Merged `26328ad`; merged state recompiled with ACLiC in the main checkout.
+  Run recipe (per slice): `.L PythiaAnalysisClasses.h; PythiaTruthAnalysis py(kn,false,5.36);
+  py.truth_input_override="<NTUP glob>"; py.truth_output_dir_override="<dir>";
+  py.truth_output_label="<label incl. 5p36>"; py.truth_raw_counts=true; py.Run();`
 
 ## Results & Observations
 
@@ -258,6 +272,22 @@ production system already ran ~1e-6-level filters at this scale. Per GENERATED e
 flat, 21–31 ms (my VM: 35–37 ms). Re-costing the new request at 25 ms/generated:
 SI 70–125 ≈ 18, SI 125–300 ≈ 3, SS 125–300 ≈ 3, SS 70–125 ≈ 13, **SS 40–70 ≈ 110, SS 24–40 ≈
 2 100 CPU-yr** (vs 320 for the whole previous request).
+
+### R5 — Wall-clock of the existing low-ε productions, and what 0.5 M of the hard SS slices means
+
+PanDA (bigpanda JSON) + AMI:
+- **802769** np pTH8_14 (nPDF, ε = 4.96e-6, 472 400 events = 2 tasks × 240 k): task 45576771 =
+  2 400 jobs × 100 events, created 2025-07-11, ended 2025-07-29 (**18 days**); per job median
+  **55 h CPU** (p10 36 h, p90 77 h), wall max 96 h; ≈ 9.9 ms per generated event;
+  ≈ 2 000 s CPU per kept event; ≈ 15 CPU-yr for the 240 k.
+- **803020** pp pTH8_14 `_pdf` (ε = 5.9e-6, 2.04 M): ONE task 50094092 = 40 800 jobs × 50 events,
+  2026-05-04 → 2026-06-10 (**37 days**); 49.8 h CPU per job; 3 585 s per kept event; ≈ 232 CPU-yr.
+
+New 0.5 M requests (CPU per kept event at 10–25 ms/generated):
+- SS 24–40 (no pT^μμ cut, ε ≈ 1.2e-5): 0.8–2.1 ks per kept event ≈ the 8–14 slices' cost;
+  0.5 M ≈ 13–33 CPU-yr (≈ 1/7–1/17 of 803020). nEventsPerJob ≈ 100 → ~55 h jobs (as 802769).
+- SS 40–70 (pT^μμ > 20, ε ≈ 3.6e-6 est.): 2.8–6.9 ks per kept event (≈ 1–2× 803020);
+  0.5 M ≈ 44–110 CPU-yr (≈ 0.2–0.5 × 803020). nEventsPerJob ≈ 25 → ~48 h jobs, ~20 000 jobs.
 
 ### R1 — Filter efficiency and CPU cost (the feasibility question)
 
