@@ -153,6 +153,15 @@ are used). Sanity counts are raw per slice (`sanity_table.csv`).
 `~/usatlasdata/evgen_high_pT_additional_test/<config>/` (NTUP + evgen `log.generate`). Exits on any
 non-`done` terminal task state.
 
+**D5 REVISED (2026-09-25) — pooled reco/truth efficiency.** Old: n_new(c) = n_ref,reco(c) ×
+N_req ν_new(c) / (N_ref ν_ref(c)) per slice and sign. New: n_new(c) = N_req · ν_new(c) · ε(c), with
+ε(c) = Σ reco / Σ truth over kn2–5 and both signs (truth → Step-3-reco efficiency incl. migration of
+the cell). Reason: the per-slice/per-sign ratio is noisy in sparse reference cells and ZERO wherever
+the reference has no reco pair — exactly the cells the request is for. Physics: ε(c) is a detector
+(kinematic) quantity of the cell; it should not depend on the pT-hat slice or pair sign. Check:
+populated cells agree between the two methods (pTH125_300 OS m<10 [52,74)×[0,1): boost 30.3 vs 30.5);
+pooled ε = 0.51–0.80 across the 9 cells. Reviewer checks (`/review-analysis-code` it. 1–3): per-sign ε within 8 % of the pooled one in populated cells (OS <1 %, SS 1–8 % higher, e.g. m<10 [52,74)×[1,2): SS 0.851 vs OS 0.798 → pooled ε is conservative for SS); per-slice kn4 vs kn5 differ up to ~13 % (m_sig [74,105)×[0,1) OS, 3.5σ; m<10 same cell 9 %, 3.6σ; pooled ε conservative for kn4 there). The assumption holds to ≲13 %, far inside the ±7–100 % test-sample errors. ε binomial error is not propagated (matters only in the forward top cell, ε = 3/6).
+
 ## Progress Log
 
 - **2026-09-22, step 1.** Compiled on AthGeneration 23.6.68 (x86_64-el9-gcc15-opt) after D1/D2;

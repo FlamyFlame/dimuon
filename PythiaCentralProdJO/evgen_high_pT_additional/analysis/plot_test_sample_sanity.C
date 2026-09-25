@@ -188,7 +188,7 @@ void plot_test_sample_sanity(const char* base = "/usatlas/u/yuhanguo/usatlasdata
             sum[j]->SetLineColor(kBlack); sum[j]->SetMarkerStyle(20); sum[j]->SetMarkerSize(0.7);
             sum[j]->GetXaxis()->SetTitle(xt[j]); sum[j]->GetYaxis()->SetTitle(yt[j]);
             sum[j]->GetYaxis()->SetTitleOffset(1.5);
-            if (j == 1) { gPad->SetLogx(); gPad->SetLogy(); sum[j]->GetXaxis()->SetMoreLogLabels(); sum[j]->GetXaxis()->SetTitleOffset(1.2); }  // pair pT: log-binned axis, power-law spectrum
+            if (j == 1) { gPad->SetLogx(); gPad->SetLogy(); sum[j]->GetXaxis()->SetMoreLogLabels(); sum[j]->GetXaxis()->SetNoExponent(); sum[j]->GetXaxis()->SetTitleOffset(1.2); }  // pair pT: log-binned axis, power-law spectrum
             if (j == 3) { sum[j]->GetXaxis()->SetBinLabel(1, "same sign"); sum[j]->GetXaxis()->SetBinLabel(2, "opposite sign");
                           sum[j]->GetXaxis()->SetLabelSize(0.06); }
             if (j != 1) sum[j]->SetMinimum(0);
@@ -198,7 +198,12 @@ void plot_test_sample_sanity(const char* base = "/usatlas/u/yuhanguo/usatlasdata
             t.DrawLatex(0.17, 0.93, ("Pythia8 pp #sqrt{s}=5.36 TeV, " + glabel).c_str());
         }
         // pair-pT filter cut (per slice; SS 24-40 has none)
-        c1.cd(2); for (auto& c : cs) if (c.pair_pt_min > 0) { TLine l(c.pair_pt_min, sum[1]->GetMinimum() > 0 ? sum[1]->GetMinimum() : 1e-9, c.pair_pt_min, sum[1]->GetBinContent(sum[1]->GetMaximumBin())); l.SetLineStyle(2); l.SetLineColor(kRed); l.DrawClone(); break; }
+        bool common_cut = true;   // drawn only when every slice of the panel has the same cut
+        for (auto& c : cs) common_cut &= (c.pair_pt_min > 0 && c.pair_pt_min == cs.front().pair_pt_min);
+        if (common_cut) { c1.cd(2); double ylo = 1e30; for (int b = 1; b <= sum[1]->GetNbinsX(); ++b) if (sum[1]->GetBinContent(b) > 0) ylo = std::min(ylo, sum[1]->GetBinContent(b));
+                          TLine l(cs.front().pair_pt_min, 0.5 * ylo,
+                                             cs.front().pair_pt_min, sum[1]->GetBinContent(sum[1]->GetMaximumBin()));
+                          l.SetLineStyle(2); l.SetLineColor(kRed); l.DrawClone(); }
         // filter cuts drawn on the pair panels
         c1.cd(3); { TLine l(kMassMax, 0, kMassMax, sum[2]->GetBinContent(sum[2]->GetMaximumBin())); l.SetLineStyle(2); l.SetLineColor(kRed); l.DrawClone(); }
         c1.SaveAs((std::string(outdir) + "/" + grp + "_combined_sanity.png").c_str());
@@ -218,7 +223,7 @@ void plot_test_sample_sanity(const char* base = "/usatlas/u/yuhanguo/usatlasdata
         for (size_t k = 0; k < hh.size(); ++k) {
             hh[k]->SetLineColor(colors[k]); hh[k]->SetMarkerColor(colors[k]); hh[k]->SetMarkerStyle(20 + k); hh[k]->SetMarkerSize(0.8);
             hh[k]->SetMaximum(ymax * 5); hh[k]->SetMinimum(ymin * 0.3);
-            hh[k]->GetXaxis()->SetTitle("p_{T}^{#mu#mu} [GeV]"); hh[k]->GetXaxis()->SetMoreLogLabels(); hh[k]->GetXaxis()->SetTitleOffset(1.2); hh[k]->GetYaxis()->SetTitle("d#sigma/dp_{T}^{#mu#mu} [nb/GeV] (pairs)");
+            hh[k]->GetXaxis()->SetTitle("p_{T}^{#mu#mu} [GeV]"); hh[k]->GetXaxis()->SetMoreLogLabels(); hh[k]->GetXaxis()->SetNoExponent(); hh[k]->GetXaxis()->SetTitleOffset(1.2); hh[k]->GetYaxis()->SetTitle("d#sigma/dp_{T}^{#mu#mu} [nb/GeV] (pairs)");
             hh[k]->Draw(k ? "E1 SAME" : "E1");
             std::string lab = cs[k].slice + (cs[k].pair_pt_min < 0 ? " (no p_{T}^{#mu#mu} cut)" : "");
             lg.AddEntry(hh[k], lab.c_str(), "lep");

@@ -11,7 +11,11 @@
 // truth_input_override + truth_raw_counts). They have no reco, so the projection goes through a
 // TRUTH-level rate in the same cell:
 //
-//   n_new(c) = n_ref,reco(c) x [N_req * nu_new(c)] / [N_ref * nu_ref(c)]
+//   n_new(c) = N_req * nu_new(c) * eps(c),   eps(c) = sum_{kn=2..5, both signs} n_ref,reco(c)
+//                                                   / sum_{kn=2..5, both signs} n_ref,truth(c)
+//   (eps = truth -> Step-3-reco efficiency of the cell incl. migration, POOLED over slices and signs:
+//   a per-slice, per-sign ratio is zero wherever the reference has no reco pair, i.e. exactly in the
+//   cells the request exists to fill; tracking doc D5, revised 2026-09-25)
 //   nu(c)    = truth pairs per processed event in cell c (truth pair pT, |truth eta^pair|, truth
 //              mass window, truth sign tree), with the TRUTH analogue of every Step-3 leg cut:
 //              truth fiducial (pT>4.5, |eta|<2.4), forward low-pT veto, gap windows on truth q*eta,
@@ -30,6 +34,7 @@
 #include <TH2D.h>
 #include <TSystem.h>
 #include <cmath>
+#include <iomanip>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -46,6 +51,9 @@
 #include "../../../Utilities/MCRequestLooseMassFilter.h"
 
 namespace {
+
+// 68.27% CL one-sided Poisson upper limit on the mean for 0 observed: -ln(1 - 0.6827)
+const double kPoissonUL68_n0 = -std::log(1. - 0.6827);
 
 std::string F(const char* f, double a) { char b[256]; snprintf(b, sizeof b, f, a); return b; }
 
@@ -76,6 +84,9 @@ Meta ReadMeta(const std::string& file, int kn)
     t->SetBranchAddress(bb.c_str(), &m.nbeam);
     t->GetEntry(0);
     if (m.nproc <= 0) throw std::runtime_error("mc_request_stats_boost: " + bp + " <= 0 in " + file);
+    if (m.nproc != m.nbeam)   // a truncated processing would understate every per-event rate
+        throw std::runtime_error("mc_request_stats_boost: " + file + " processed " + std::to_string(m.nproc)
+                                 + " of " + std::to_string(m.nbeam) + " events for kn" + std::to_string(kn));
     return m;
 }
 
@@ -175,7 +186,8 @@ void mc_request_stats_boost(const char* new_dir, const char* out_dir, bool use_t
     for (const auto& c : kNew) {
         const std::string f = std::string(new_dir) + "/muon_pairs_pythia_truth_" + c.label + "_kn"
                             + std::to_string(c.kn) + "_no_data_resonance_cuts.root";
-        if (gSystem->AccessPathName(f.c_str())) { std::cerr << "MISSING " << f << " -- skipped" << std::endl; continue; }
+        if (gSystem->AccessPathName(f.c_str()))   // a missing config would silently drop out of the combined boost
+            throw std::runtime_error("mc_request_stats_boost: missing new-sample file " + f);
         meta_new[c.label + "_" + std::to_string(c.kn)] = ReadMeta(f, c.kn);
         for (int s : {1, 2}) {
             const std::string tree = "muon_pair_tree_kin" + std::to_string(c.kn) + "_sign" + std::to_string(s);
@@ -187,50 +199,103 @@ void mc_request_stats_boost(const char* new_dir, const char* out_dir, bool use_t
         }
     }
 
+    // ---- pooled truth -> Step-3-reco efficiency per (mass range, cell), all slices, both signs
+    std::map<std::string, std::unique_ptr<TH2D>> eps_reco, eps_truth;
+    for (const auto& R : ranges) {
+        for (int kn : {2, 3, 4, 5}) for (int s : {1, 2}) {
+            TH2D* rr = H[hkey("ref_reco", kn, s, R.token, "")].GetPtr();
+            TH2D* rt = H[hkey("ref_truth", kn, s, R.token, "")].GetPtr();
+            if (!eps_reco[R.token]) { eps_reco[R.token].reset((TH2D*)rr->Clone(("er" + R.token).c_str())); eps_reco[R.token]->SetDirectory(nullptr);
+                                      eps_truth[R.token].reset((TH2D*)rt->Clone(("et" + R.token).c_str())); eps_truth[R.token]->SetDirectory(nullptr); }
+            else { eps_reco[R.token]->Add(rr); eps_truth[R.token]->Add(rt); }
+        }
+    }
+    auto Eps = [&](const std::string& r, int ix, int iy) {
+        const double t = eps_truth[r]->GetBinContent(ix, iy);
+        return t > 0 ? eps_reco[r]->GetBinContent(ix, iy) / t : NAN; };
+
     // ---- tables
+    // Per cell: per-config projection n_new (0 test pairs -> n_new = 0 AND a 68% CL upper limit),
+    // and the COMBINED boost over all configs of the slice. A cell where some/all configs had no
+    // test pair is NOT "no gain": its combined boost is quoted with an upper value (boost_ul).
     const char* sign_name[3] = {"", "same sign", "opposite sign"};
-    std::ofstream csv(std::string(out_dir) + "/stats_boost.csv");
-    csv << "# Projected statistics boost of the additional MC request, per pT-hat slice (RAW counts, never summed across slices).\n"
+    for (const auto& R : ranges)   // every cell must have a reference efficiency -- checked BEFORE any output is written
+        for (int ix = first; ix <= npt; ++ix) for (int iy = 1; iy <= neta; ++iy)
+            if (std::isnan(Eps(R.token, ix, iy)))
+                throw std::runtime_error("mc_request_stats_boost: eps undefined (no reference truth pair) in "
+                                         + R.token + " cell " + std::to_string(ix) + "," + std::to_string(iy));
+    const std::string csv_path = std::string(out_dir) + "/stats_boost.csv";
+    std::ofstream csv(csv_path);
+    if (!csv) throw std::runtime_error("mc_request_stats_boost: cannot open " + csv_path + " for writing");
+    csv << std::setprecision(6)
+        << "# Projected statistics boost of the additional MC request, per pT-hat slice (RAW counts, never summed across slices).\n"
         << "# reference = pp24 fullsim FULL Step-3 pairs (" << (use_tight_wp ? "Tight" : "Medium") << "), " << ref_file << "\n"
-        << "# n_new = n_ref_reco * (N_req*nu_new)/(N_ref*nu_ref); nu = truth pairs/event in the cell (truth analogue of Step 3)\n"
-        << "# rel_err_new = 1/sqrt(truth pairs in the cell in the TEST sample) (test-sample statistics only)\n"
-        << "slice,sign,mass,pair_pt_lo,pair_pt_hi,abs_eta_lo,abs_eta_hi,n_ref_reco,ref_truth_pairs,N_ref,config,N_req,test_truth_pairs,N_test,n_new_projected,rel_err_new,boost\n";
+        << "# n_new = N_req * nu_new * eps_pooled; nu_new = truth pairs/event in the cell in the TEST sample (truth analogue of Step 3);\n"
+        << "#   eps_pooled = sum reco / sum truth over kn2-5 and both signs (per-sign eps within 8% of the pooled one in populated cells -- OS <1%, SS 1-8% higher; per-slice up to 13%; tracking doc D5 REVISED).\n"
+        << "# rows with config=<label>: that config's projection; boost_partial = (n_ref + n_new)/n_ref for that config alone.\n"
+        << "#   test_truth_pairs = 0 -> n_new = 0 and n_new_ul68 = N_req*eps*" << kPoissonUL68_n0 << "/N_test (68% CL, 0 observed).\n"
+        << "# rows with config=ALL: COMBINED over the slice's configs: boost = (n_ref + sum n_new)/n_ref, boost_ul = (n_ref + sum of\n"
+        << "#   n_new, or n_new_ul68 where 0 test pairs)/n_ref; n_zero_test = configs with 0 test pairs (boost is then a lower value).\n"
+        << "#   n_new_sum = sum n_new; n_new_sum_ul = the same with n_new_ul68 for 0-test configs. When n_ref = 0 the boost is\n"
+        << "#   undefined (left empty): read the absolute projected count n_new_sum (or its upper value if all configs had 0 test pairs).\n"
+        << "# rel_err_new = 1/sqrt(test_truth_pairs): test-sample statistics only; the (binomial) error of eps_pooled is NOT\n"
+        << "#   included -- it matters only in the sparse forward top cell (eps = 3/6 in m_sig, 0.514 in m<10).\n"
+        << "# NOTE: an SS-filtered config's contribution to OPPOSITE-SIGN cells is approximate (those cells are not in its\n"
+        << "#   filter-pass region: an event with an OS pair there passes only if it also holds an SS pair). In this run it is\n"
+        << "#   0.9-2.4% of the SI contribution per OS table of the SI slices (pTH70_125, pTH125_300), up to 12.5% in single\n"
+        << "#   cells; the OS tables of pTH24_40 / pTH40_70 come from the SS-filtered sample alone (all 0-test: upper values).\n"
+        << "slice,sign,mass,pair_pt_lo,pair_pt_hi,abs_eta_lo,abs_eta_hi,n_ref_reco,ref_truth_pairs,N_ref,eps_pooled,config,N_req,"
+           "test_truth_pairs,N_test,n_new,n_new_ul68,rel_err_new,boost_partial,boost,boost_ul,n_zero_test,n_new_sum,n_new_sum_ul\n";
     for (int kn : {2, 3, 4, 5}) {
+        std::vector<const NewCfg*> contrib;
+        for (const auto& c : kNew) if (c.kn == kn) contrib.push_back(&c);
         for (int s : {1, 2}) for (const auto& R : ranges) {
             TH2D* rr = H[hkey("ref_reco", kn, s, R.token, "")].GetPtr();
             TH2D* rt = H[hkey("ref_truth", kn, s, R.token, "")].GetPtr();
-            std::vector<const NewCfg*> contrib;
-            for (const auto& c : kNew) if (c.kn == kn && meta_new.count(c.label + "_" + std::to_string(kn))) contrib.push_back(&c);
             std::cout << "\n== " << kSliceToken.at(kn) << ", " << sign_name[s] << ", " << R.token
-                      << "  (N_ref = " << meta_ref[kn].nproc << ")\n";
-            std::cout << "  cell [pT^pair x |eta^pair|]          n_ref  |";
-            for (auto* c : contrib) std::cout << " n_new(" << c->group << ")";
-            std::cout << " | boost\n";
+                      << "  (N_ref = " << meta_ref[kn].nproc << ")\n"
+                      << "  cell [pT^pair x |eta^pair|]          n_ref  eps_pool |";
+            for (auto* c : contrib) std::cout << "   n_new(" << c->group << ")        ";
+            std::cout << "| boost (combined)\n";
             for (int ix = first; ix <= npt; ++ix) for (int iy = 1; iy <= neta; ++iy) {
                 const double nr = rr->GetBinContent(ix, iy), tr = rt->GetBinContent(ix, iy);
-                double nsum = 0;
+                const double eps = Eps(R.token, ix, iy);
                 std::cout << F("  [%6.1f,", pe[ix - 1]) << F("%6.1f) x ", pe[ix]) << F("[%.1f,", ee[iy - 1])
-                          << F("%.1f)", ee[iy]) << F("  %8.0f |", nr);
+                          << F("%.1f)", ee[iy]) << F("  %8.0f", nr) << F("  eps=%.3f |", eps);
+                auto cell_csv = [&](std::ostream& o) {
+                    o << kSliceToken.at(kn) << "," << (s == 1 ? "SS" : "OS") << "," << R.token << ","
+                      << pe[ix - 1] << "," << pe[ix] << "," << ee[iy - 1] << "," << ee[iy] << "," << nr << ","
+                      << tr << "," << meta_ref[kn].nproc << "," << eps << ","; };
+                double nsum = 0, nsum_ul = 0; int nzero = 0;
                 for (auto* c : contrib) {
-                    const Meta& mn = meta_new[c->label + "_" + std::to_string(kn)];
+                    const Meta& mn = meta_new.at(c->label + "_" + std::to_string(kn));
                     const double tn = H[hkey("new_truth", kn, s, R.token, c->label)]->GetBinContent(ix, iy);
-                    // tr == 0: no reference truth pair in the cell -> ratio undefined (reported as nan)
-                    const double nn = tr > 0 ? nr * (c->n_req * tn / mn.nproc) / (meta_ref[kn].nproc * tr / meta_ref[kn].nproc) : NAN;
-                    nsum += std::isnan(nn) ? 0 : nn;
-                    if (tn > 0) std::cout << F("  %9.0f", nn) << F(" (±%2.0f%%)", 100. / std::sqrt(tn));
-                    else {   // no test pair in the cell: 68% CL one-sided Poisson upper limit, 1.14 pairs
-                        const double ul = tr > 0 ? nr * (c->n_req * 1.14 / mn.nproc) / tr : NAN;
-                        std::cout << F("  <%8.0f", ul) << "  (0 test)";
-                    }
-                    csv << kSliceToken.at(kn) << "," << (s == 1 ? "SS" : "OS") << "," << R.token << ","
-                        << pe[ix - 1] << "," << pe[ix] << "," << ee[iy - 1] << "," << ee[iy] << "," << nr << ","
-                        << tr << "," << meta_ref[kn].nproc << "," << c->label << "," << c->n_req << "," << tn << ","
-                        << mn.nproc << "," << nn << "," << (tn > 0 ? 1. / std::sqrt(tn) : NAN) << ","   // 0 test pairs: n_new = 0, upper limit in stdout
-                        << (nr > 0 ? (nr + nn) / nr : NAN) << "\n";
+                    const double nn = c->n_req * (tn / mn.nproc) * eps;
+                    const double ul = c->n_req * (kPoissonUL68_n0 / mn.nproc) * eps;
+                    nsum += nn; nsum_ul += tn > 0 ? nn : ul; nzero += (tn == 0);
+                    if (tn > 0) std::cout << F("  %9.0f", nn) << F(" (±%3.0f%%)", 100. / std::sqrt(tn));
+                    else        std::cout << F("  <%8.0f", ul) << " (0 test)";
+                    cell_csv(csv);
+                    csv << c->label << "," << c->n_req << "," << tn << "," << mn.nproc << "," << nn << ","
+                        << (tn > 0 ? NAN : ul) << "," << (tn > 0 ? 1. / std::sqrt(tn) : NAN) << ","
+                        << (nr > 0 ? (nr + nn) / nr : NAN) << ",,,,,\n";
                 }
-                std::cout << F(" | %7.1f", nr > 0 ? (nr + nsum) / nr : NAN) << "\n";
+                const double b = nr > 0 ? (nr + nsum) / nr : NAN, bul = nr > 0 ? (nr + nsum_ul) / nr : NAN;
+                const bool all_zero = nzero == (int)contrib.size();
+                if (nr == 0 && all_zero)              std::cout << F(" | n_ref = 0; n_new < %.0f (0 test)", nsum_ul);
+                else if (nr == 0)                     std::cout << F(" | n_ref = 0; n_new = %.0f", nsum) << F(" (<= %.0f)", nsum_ul);
+                else if (all_zero)                    std::cout << F(" | < %.1f (0 test)", bul);
+                else if (nzero > 0)                   std::cout << F(" | %.1f", b) << F(" (<= %.1f)", bul);
+                else                                  std::cout << F(" | %.1f", b);
+                std::cout << "\n";
+                cell_csv(csv);
+                csv << "ALL,,,,,,,,";
+                if (nr > 0) csv << b << "," << bul; else csv << ",";   // undefined for n_ref = 0: see n_new_sum
+                csv << "," << nzero << "," << nsum << "," << nsum_ul << "\n";
             }
         }
     }
-    std::cout << "\nwritten " << out_dir << "/stats_boost.csv" << std::endl;
+    csv.close();
+    if (!csv) throw std::runtime_error("mc_request_stats_boost: write to " + csv_path + " FAILED (disk/quota?) -- the file is incomplete");
+    std::cout << "\nNOTE: SS-filtered configs' contribution to OPPOSITE-SIGN cells is approximate (see CSV header).\n";
 }
