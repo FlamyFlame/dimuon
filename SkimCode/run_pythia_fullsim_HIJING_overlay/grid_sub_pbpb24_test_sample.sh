@@ -1,12 +1,28 @@
 #!/usr/bin/env bash
 
 # Pythia8 HardQCD pp -> DiMu Fullsim, HIJING overlay with **Pb+Pb 2024 conditions**
-# (r17864 reco over r17855 HIJING merge; evgen e8613_e8586; sim s4684).
+# (r17913 reco over r17855 HIJING merge; evgen e8613_e8586; sim s4684).
+#   r17913 (2026-09-25): "clone r17864 with additional preExec parameters" -- the DIGITISATION
+#            fix for the broken calorimeter of r17864 (tracking doc R1/R4/R7-R9).  HITtoRDO preExec
+#            gains, on top of r17864's lone PU.BunchStructureConfig='...HeavyIon2022':
+#              Digitization.PileUp=True; Digitization.DoXingByXingPileUp=True;
+#              LAr.ROD.nSamples=4; LAr.ROD.NumberOfCollisions=0;
+#              Digitization.HighGainFCal=True;
+#              Digitization.PU.InitialBunchCrossing=0; PU.FinalBunchCrossing=0
+#            The two BunchCrossing=0 flags collapse the out-of-time pile-up window to the in-time
+#            crossing only, which is exactly the mechanism R9 localised (every bunch WITH
+#            predecessors reconstructs low/negative, only the 2 isolated bunches were healthy);
+#            NumberOfCollisions=0 + nSamples=4 set the LAr OFC/pedestal for zero pile-up and the
+#            2024 HI 4-sample readout, HighGainFCal the FCal gain.
 #   r17864: "2024 run conditions vtx(-.7,-.6,-71.2) for ATLHI-576, im_par=0-5
-#            - bunch structure added to r17835"; preInclude Campaigns.MC23HeavyIons2024NoPileUp,
-#            HIJING HITS mc23_5p36TeV.860250.Hijing_PbPb_UCC_Flow_JJFV6_ip0_5 (b = 0-5 fm),
-#            steering doRDO_TRIG + doTRIGtoALL (trigger simulated, 2024 HI menu).
-# TEST production: ONE DSID only (pTH125_300), 10 files / 10k events / 54.9 GB.
+#            - bunch structure added to r17835" -- BROKEN CALORIMETER, do not use.
+#   Both: preInclude Campaigns.MC23HeavyIons2024NoPileUp, postExec beam spot (-0.7,-0.6,-71.2) mm
+#            sigma 0.01 mm, HIJING HITS mc23_5p36TeV.860250.Hijing_PbPb_UCC_Flow_JJFV6_ip0_5
+#            (b = 0-5 fm), release Atlas-24.0.90, steering doRDO_TRIG + doTRIGtoALL (trigger
+#            simulated, 2024 HI menu).  Same vertex + same b interval => the configuration tag,
+#            and therefore the NTUP file name, is UNCHANGED between r17864 and r17913; the
+#            productions are kept apart by VER_TAG / outDS and by the broken_calo_*/ archives.
+# TEST production: ONE DSID only (pTH125_300), 10 files / 10k events / 50.6 GB (r17864: 54.9 GB).
 # The previous test sample (Pb+Pb 2023 conditions, r17618, 6 slices) is
 # grid_sub_pbpb23_test_sample.sh; its NTUPs now live in
 # ~/usatlasdata/pythia_fullsim_hijing_overlay_test_sample_pbpb23/.
@@ -41,6 +57,10 @@
 # (Atlas-24.0.90) or the task record differs, so the NTUP name is unchanged too -- the
 # productions are distinguished by VER_TAG / outDS and by the archived
 # broken_calo_tid52480369/ directory, NOT by the file name.
+# v4 (2026-09-29): NEW R-TAG r17913 (see header) -- the first genuine re-configuration.
+# Input tid52733789_00; r17864's v3 input tid52629267_00 turned out to be a BIT-IDENTICAL
+# re-run of tid52480369 (R8), so v3 and v1 describe the same numbers. The r17864 products are
+# archived under broken_calo_r17864/ before this download so the (unchanged) NTUP name is free.
 #
 # Run from: SkimCode/run_pythia_fullsim_HIJING_overlay
 # Setup:    source ../setup_25.sh && lsetup panda
@@ -54,7 +74,7 @@ COND_YEAR=24
 # VER_TAG = skim-code / submission version, bumped on EVERY resubmission of the same input (a
 # new OUT_TAG alone would already give a distinct outDS, but the version keeps the history
 # linear: v1 = the legacy-tag task above, v2 = first submission under the new naming).
-VER_TAG=Sep2026.v3
+VER_TAG=Sep2026.v4
 
 _submit() {
   local sample="$1"     # e.g. pp_hQCD_DiMu_pTH125_300
@@ -70,8 +90,8 @@ _submit() {
           --mergeOutput \
           --nFilesPerJob 2 \
           --extOutFile "${fname}" \
-          --excludeFile="clean.sh,vim_backup,test_r17618,test_r17662,test_r17663,test_r17864,mc23_5p36TeV,\*.root,\*.log"
+          --excludeFile="clean.sh,vim_backup,test_r17618,test_r17662,test_r17663,test_r17864,test_r17864_tid52629267,test_r17913,mc23_5p36TeV,\*.root,\*.log"
 }
 
-# r17864: vtx z = -71.2 mm, HITS ip0_5
-_submit pp_hQCD_DiMu_pTH125_300 mc23_5p36TeV:mc23_5p36TeV.802776.Py8EG_A14_pp_hQCD_DiMu_pTH125_300.merge.AOD.e8613_e8586_s4684_r17864_r17855_tid52629267_00 -71.2 0_5
+# r17913: vtx z = -71.2 mm, HITS ip0_5 (same configuration as r17864, new digitisation recipe)
+_submit pp_hQCD_DiMu_pTH125_300 mc23_5p36TeV:mc23_5p36TeV.802776.Py8EG_A14_pp_hQCD_DiMu_pTH125_300.merge.AOD.e8613_e8586_s4684_r17913_r17855_tid52733789_00 -71.2 0_5
