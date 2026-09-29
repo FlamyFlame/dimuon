@@ -2,25 +2,42 @@
 
 ## Objective
 
-Skim the new **Pb+Pb-2024-conditions** HIJING-overlay test sample (one DSID, pTH125_300,
-r17864) with the existing overlay `TrigRates` skim, download the NTUP into
+Skim the new **Pb+Pb-2024-conditions** HIJING-overlay test sample (one DSID, pTH125_300)
+with the existing overlay `TrigRates` skim, download the NTUP into
 `~/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/` (the old pbpb23-conditions
-sample now lives in `..._test_sample_pbpb23/`), and define the checks that decide whether
+sample now lives in `..._test_sample_pbpb23/`), and run the checks that decide whether
 the r-tag is acceptable as the recipe for the full 4-beam × 6-slice production.
 
-## Autonomy Contract (DONE 2026-09-16 — all Done items met)
+**R-tag succession of the same (vtx z = −71.2 mm, b 0–5 fm) configuration** — the NTUP name is
+configuration-keyed, so all of them share it and are told apart only by directory / VER_TAG:
+
+| r-tag | AOD merge tid | skim VER_TAG / task | verdict |
+|---|---|---|---|
+| r17864 | 52480369 | Sep2026.v1 / 52568863 | **FAIL** — calorimeter broken (R1, R4, R9) |
+| r17864 | 52629267 ("reproduction") | Sep2026.v3 / 52687659 | **FAIL, bit-identical re-run** (R7, R8) |
+| **r17913** | **52733789** | **Sep2026.v4 / 52785715** | session 6, in progress (R10–) |
+
+## Autonomy Contract (ACTIVE — session 6, r17913 — re-read on every compaction)
 - Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a
   plan, a passing small test, or one pipeline stage is NOT a stopping point.
-- Done = (1) skim code compiled in `build_25`; (2) 100-event local test on a BNL replica
-  passes `check_skim_output.C` vs the pbpb23 pTH125_300 NTUP; (3) grid task submitted from
-  a NEW `grid_sub_pbpb24_test_sample.sh`; (4) `grid_monitor.sh --mode overlay` has
-  downloaded + hadd-ed the NTUP to
-  `~/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/Pythia_5p36TeV_pp_hQCD_DiMu_pTH125_300.FullSimHIJINGOverlayPP24.NTUP.root`
-  with 10 000 entries; (5) the dataset's OWN AMI info + r-tag info saved under that dir;
-  (6) a written verification proposal for the user (the verification itself is NOT in
-  scope until the user picks).
+- Done = (1) r17913 provenance saved under
+  `~/usatlasdata/pythia_fullsim_hijing_overlay_test_sample/` (AMI r-tag record + the
+  r17864→r17913 preExec diff + rucio dataset record), and the r17864 NTUPs archived so the
+  configuration-keyed NTUP name is free; (2) 100-event local test on a downloaded AOD file →
+  first FCal / L1TE / centrality verdict; (3) grid skim submitted, downloaded and hadd-ed by
+  `grid_monitor.sh --mode overlay` to the canonical
+  `Pythia_5p36TeV_pp_hQCD_DiMu_pTH125_300.FullSimHIJINGOverlayPbPb24.vtxz-71_2mm_b0_5fm.NTUP.root`
+  with 10 000 entries, branch-checked vs the pbpb23 pTH125_300 NTUP; (4) the FULL event-level
+  check set of `plots/r17864_rtag_sanity/` regenerated for r17913 into
+  `plots/r17913_rtag_sanity/`: `fcal`, `vtx`, `ntrk`, `l1te`, `centr`, `bcid`, `trainpos`;
+  (5) the efficiency-chain half of that same check set (single-µ reco ε, mu4 ε, pT/η response,
+  `from_same_b`) vs the pbpb23 pTH125_300 slice — i.e. the R2 redo, whose only blocker was the
+  broken FCal that r17913 targets — OR, if the FCal is still broken, explicitly skipped per the
+  2026-09-17 user ruling and said so; (6) tracking doc + INDEX scope updated.
 - Stop-and-ask = ANY physics-results-bending ambiguity (no fixed list; use judgment;
   when unsure whether an ambiguity is blocking, treat it as blocking → AskUserQuestion).
+
+*(Session 1's contract, DONE 2026-09-16, is preserved in the Progress Log.)*
 
 ## Context
 
@@ -65,6 +82,17 @@ the r-tag is acceptable as the recipe for the full 4-beam × 6-slice production.
 4. [x] grid submission (4) — jediTaskID **52568863**
 5. [x] monitor/download/hadd (5) — done 2026-09-16 06:20, 10 000 entries, 22.4 GB
 6. [x] verification proposal (6) — delivered 2026-09-15; awaiting user decision
+
+### Session 6 (2026-09-29, r17913)
+
+7. [x] AMI/provenance for r17913 + r17864→r17913 preExec diff (§R10)
+8. [x] archive the two r17864 NTUPs so the configuration-keyed name is free (§R10)
+9. [x] `grid_sub_pbpb24_test_sample.sh` → VER_TAG `Sep2026.v4`, inDS `…r17913…tid52733789_00`;
+       submitted **jediTaskID 52785715**; `grid_monitor.sh --mode overlay -i 10` launched
+10. [x] 100-event local test on one downloaded AOD → first verdict (§R11) — **FCal FIXED**
+11. [ ] grid download + hadd + branch check vs pbpb23 (§R12)
+12. [ ] full event-level check set → `plots/r17913_rtag_sanity/` (§R12); /review-plot
+13. [ ] efficiency-chain comparison vs the pbpb23 pTH125_300 slice (R2 redo) — gated on 12 (§R13)
 
 ## Progress Log
 
@@ -601,6 +629,99 @@ the NTUP.
 **This is the actionable content of the report to the production contact** — a specific, reproducible,
 periodic signature with a named suspect setting, not "the calorimeter looks wrong".
 
+### R10. r17913 — the FIRST genuinely re-configured production (2026-09-29)
+
+AMI `ami show ami-tag r17913` (saved as `r17913.txt`): **"clone r17864 with additional preExec
+parameters"**, created 2026-09-25 by the same production contact, release Atlas-24.0.90,
+`Reco_tf.py`. Everything r17864 had is unchanged — `postExec` beam spot (−0.7, −0.6, −71.2) mm with
+σ = 0.01 mm, `preInclude Campaigns.MC23HeavyIons2024NoPileUp` + `HIRecConfig.HIModeFlags.HImode`,
+`inputCavernHitsFile mc23_5p36TeV.860250.Hijing_PbPb_UCC_Flow_JJFV6_ip0_5` (b 0–5 fm),
+`conditionsTag OFLCOND-MC23-SDR-RUN3-09`, `geometryVersion ATLAS-R3S-2021-03-02-00`,
+steering `doRDO_TRIG`+`doTRIGtoALL`, merge tag r17855 — so the configuration tag
+`vtxz-71_2mm_b0_5fm` and hence the NTUP file name are UNCHANGED.
+
+**The whole difference is the `HITtoRDO` preExec:**
+
+| | r17864 (broken) | r17913 |
+|---|---|---|
+| `Digitization.PU.BunchStructureConfig` | `'RunDependentSimData.BunchStructureHeavyIon2022'` | same |
+| `Digitization.PileUp` | — | `True` |
+| `Digitization.DoXingByXingPileUp` | — | `True` |
+| `Digitization.PU.InitialBunchCrossing` | — | **`0`** |
+| `Digitization.PU.FinalBunchCrossing` | — | **`0`** |
+| `LAr.ROD.nSamples` | — | **`4`** |
+| `LAr.ROD.NumberOfCollisions` | — | **`0`** |
+| `Digitization.HighGainFCal` | — | **`True`** |
+
+This is a targeted answer to R9. `Initial/FinalBunchCrossing = 0` collapses the out-of-time pile-up
+window to the in-time crossing alone, which removes exactly the mechanism R9 localised — every
+crossing WITH predecessors reconstructed low and then negative, only the 2 isolated bunches were
+healthy, and the deficit was periodic with the 8-bunch sub-burst. `LAr.ROD.NumberOfCollisions = 0`
+sets the LAr optimal-filtering coefficients / pedestal for zero pile-up rather than for an assumed
+collision rate (the baseline/pedestal component R9 flagged as not explained by undershoot alone),
+`nSamples = 4` matches the 2024 HI 4-sample readout, and `HighGainFCal = True` the FCal gain used in
+HI running. **Prediction if the hypothesis is right: FCal ΣE_T back to ≈ 4.4 TeV with 0 % negative
+events, L1 ΣE_T back to ≈ 16 TeV, centrality 0–10 % for ~all events, and the train-position
+modulation flat.**
+
+Dataset (user-provided; `rucio stat`, 2026-09-29):
+`mc23_5p36TeV:mc23_5p36TeV.802776.Py8EG_A14_pp_hQCD_DiMu_pTH125_300.merge.AOD.e8613_e8586_s4684_r17913_r17855_tid52733789_00`
+— 10 files / **10 000 events** / **50.572 GB** (r17864 tid52629267: 54.891 GB — the AODs genuinely
+differ in size, unlike the bit-identical re-run). Replicas: **DESY-ZN_DATADISK 10/10**,
+RAL-LCG2-ECHO 1/10; **no BNL replica** (as for r17864). Not yet in the AMI *dataset* catalogue
+(`ami show dataset info` → not found), which is bookkeeping only: the AMI **weight** is the Pythia
+evgen's (802776 e8599, `ami_info_nPDF/`, registry table A), never the AOD chain's — see the
+2026-09-17 ruling above and `docs/ami_weights.md`.
+
+**Archiving, so three productions cannot share one file name.** The NTUP name encodes the
+configuration, not the r-tag (2026-09-17 user decision), so before the r17913 download:
+
+| moved to | file |
+|---|---|
+| `broken_calo_tid52480369/` (joins the first production's derived products) | the first production's NTUP, was `…NTUP.bak_20260923.root` in the parent dir |
+| `broken_calo_r17864_rerun_tid52629267/` (new, with README) | the re-run's NTUP, was the canonical `…NTUP.root` |
+
+Both under the canonical base name inside their archive dir; nothing globs the sample dir
+(`PythiaAlgCoreT`/`FullSimSampleFileTag` build the exact file name), so the archived copies are
+invisible to the chain. `plots/r17864_rtag_sanity/` is left in place — it is r-tag-keyed and does not
+collide with the new `plots/r17913_rtag_sanity/`. Nothing was deleted.
+
+Skim: `grid_sub_pbpb24_test_sample.sh` VER_TAG **Sep2026.v4**, **jediTaskID 52785715**, outDS
+`user.yuhang.NTUP.Pythia_5p36TeV_pp_hQCD_DiMu_pTH125_300.FullSimHIJINGOverlayPbPb24.vtxz-71_2mm_b0_5fm.Sep2026.v4.`
+No skim-code change needed (r17913 is an r17864 clone → same 2024 HI menu, same RUNMODE
+`ppmcfullsim_hioverlay24`); the branch check on the downloaded NTUP confirms it.
+
+### R11. FIRST VERDICT on r17913: the calorimeter is FIXED (100-event local test, 2026-09-29)
+
+Ahead of the grid skim, one AOD file of the new dataset (`AOD.52733789._000008.pool.root.1`,
+5.06 GB, downloaded from DESY-ZN_DATADISK to `…/test_aod_tid52733789/`) was skimmed locally with the
+standard 100-event test (`run_test.sh r17913 orig <local file>`,
+`TRIGRATES_RUNMODE=ppmcfullsim_hioverlay24`, athena exit 0, zero ERROR/FATAL lines). Raw per-event
+skim branches only (`FCal_Et` [MeV], `L1TE` [**GeV**], `centrality`, `trk_numqual`) — same
+provenance justification as `plot_overlay_rtag_event_level.cxx`.
+
+| | FCal ΣE_T q16/50/84 [TeV] | negative | L1 ΣE_T median (mean) [TeV] | cen. undefined | 0–10 % | N_trk | HITight |
+|---|---|---|---|---|---|---|---|
+| **NEW r17913** (100 ev) | **3.94 / 4.44 / 5.12** | **0.0 %** | **16.22 (16.69)** | **0 %** | **100 %** | 5721 | **2362** |
+| OLD r17864 tid52629267 (10 000 ev) | −0.77 / 0.41 / 2.07 | 36.2 % | 3.21 (3.47) | 37.4 % | 7.6 % | 5830 | 2183 |
+| REF pbpb23 r17618 (10 000 ev) | 3.79 / **4.40** / 5.11 | **0 %** | **16.14 (16.26)** | 0 % | 99.3 % | 5435 | 2400 |
+
+**Every symptom of R1 / R4 is gone**, and each quantity lands on the 2023-conditions reference rather
+than merely moving in the right direction: FCal median 4.44 vs 4.40 TeV with ZERO negative events,
+L1 ΣE_T 16.22 vs 16.14 TeV, and the centrality calibration now puts 100 % of a b < 5 fm sample in
+0–10 % (reference 99.3 %) with nothing off the end. So the digitisation fix works on BOTH the offline
+cell energies and the L1Calo tower path, as it must if the cause was upstream of both (R4).
+
+**The milder second symptom recovered too.** The HITight track count — R4's "extra low-quality, fewer
+tight tracks", the ID-side companion of R2's −11 % Tight muon reco efficiency — goes 2183 (−9.0 % vs
+reference) → **2362 (−1.6 %)**, and the untagged count 5830 (+7.3 %) → 5721 (+5.3 %). On 100 events
+these carry ~±3 % statistical uncertainty each, so this is indicative, not yet a measurement; the
+10 000-event NTUP settles it (R12) and makes the R2 efficiency comparison studiable again.
+
+Caveat on the statistics: 100 events give a binomial σ of ~5 % on a negative-event fraction, so
+"0.0 %" excludes the r17864 value (36.2 %) overwhelmingly but only bounds a residual pathology at the
+few-percent level; the quantiles and the medians are already precise enough to be conclusive.
+
 ## Remaining Work
 
 - **Report to the production contact (now the main open item).** The evidence is complete and stronger
@@ -622,22 +743,26 @@ periodic signature with a named suspect setting, not "the calorimeter looks wron
 
 ## Latest Stage
 
-**2026-09-23 (session 5) DONE — the reproduced pbpb24 slice FAILS, and it fails identically.**
+**2026-09-29 (session 6) IN PROGRESS — r17913 is the real fix; the calorimeter is repaired.**
 
-Sequence: backup (broken production's products archived under `broken_calo_tid52480369/`) -> provenance
-forensics (R6: same request 71862, same r-tag, same release, AMI tag byte-identical to the 2026-09-15
-copy) -> 100-event local test on a downloaded AOD (R7: FCal median 0.28 TeV, 44 % negative) -> grid skim
-`jediTaskID 52687659` + download (10 000 entries, 22.44 GB) -> full event-level checks (R8).
+Done so far: provenance (R10 — the r17864→r17913 `HITtoRDO` preExec diff is the whole change, and it
+is a direct answer to R9) → both r17864 NTUPs archived so the configuration-keyed name is free →
+submission `grid_sub_pbpb24_test_sample.sh` VER_TAG **Sep2026.v4**, **jediTaskID 52785715** +
+`grid_monitor.sh --mode overlay -i 10` running (pid in `grid_monitor_52785715.pid`, status log
+`grid_monitor_status.log`; an artifact-polling waiter watches for "All tasks resolved") →
+one AOD file downloaded from DESY-ZN and skimmed locally, 100 events (R11): **FCal 3.94/4.44/5.12 TeV
+with 0 % negative, L1TE median 16.22 TeV, 100 % of events in 0-10 %** — every R1/R4 symptom gone and
+each quantity ON the r17618 reference, with the HITight-track deficit recovered from −9 % to −1.6 %.
 
-**R8 is the result that matters: the re-run is BIT-IDENTICAL to the first production** — 10 000/10 000
-events matched on `eventNumber`, `FCal_Et` / `L1TE` / `centrality` identical in EVERY event, only 3
-track counts and 5 muons (of ~96 000) differing from reconstruction non-determinism. The slice was
-re-run with the same recipe; nothing was fixed and nothing was changed. FCal median 0.41 TeV with 36.2 %
-negative events, L1TE 3.20 vs 16.14 TeV, 37.4 % of events off the centrality calibration.
+Macros renamed and r-tag-parameterized so the next r-tag needs one constant changed, not a file:
+`plot_r17864_event_level.cxx` → **`plot_overlay_rtag_event_level.cxx`** (`NEW_RTAG`, drives labels /
+`OUTDIR` / every output name; labels moved to function-local statics because a namespace-scope
+`std::string` built by concatenation reintroduces the cling RDF-JIT symbol failure the file already
+warned about) and `plot_r17864_vs_r17618_pTH125_300.cxx` →
+**`plot_overlay_rtag_effcy_comparison.cxx`** (`RTAG24`). Both compile clean.
 
-The efficiency chain was deliberately NOT re-run (gated on the event-level checks, and it would
-reproduce R2 digit for digit on a bit-identical input). R2 stands.
-
-**Open, for the user:** (i) report R1/R4/R7/R8/**R9** to the production contact — the draft is still pending
-and the case is now conclusive; (ii) the R5 evgen decisions. Nothing else in this doc can advance until
-a genuinely re-configured production exists.
+**Next, on the 10 000-event NTUP when the grid task lands:** branch check vs pbpb23 → the full
+event-level set into `plots/r17913_rtag_sanity/` (`fcal`, `vtx`, `ntrk`, `l1te`, `centr`, `bcid`,
+**`trainpos`** — the R9 mode is the decisive one: the train-position modulation must be flat) → then
+the R2 efficiency redo (NTP + RDF chain with `OVERLAY_YEAR=24`, compared against the existing pbpb23
+pTH125_300 slice run), which the fixed FCal makes studiable again.
