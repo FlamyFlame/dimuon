@@ -94,7 +94,13 @@ void plot_test_sample_sanity(const char* base = "/usatlas/u/yuhanguo/usatlasdata
                              const char* outdir = "/usatlas/u/yuhanguo/usatlasdata/evgen_high_pT_additional_test/plots") {
     gStyle->SetOptStat(0);
     gSystem->mkdir(outdir, kTRUE);
-    const auto pt_edges = LogEdges(9., 150., 30);   // user: pair pT 9-150 GeV, log scale
+    // user: pair pT 9-150 GeV, log scale. Piecewise log-uniform with edges ON the pair-pT filter cuts
+    // (20 GeV SS, 45 GeV SI) so the filter step being validated is not smeared by a straddling bin;
+    // bin-to-bin width ratio 1.105 / 1.094 / 1.097 -- visually log-uniform. One axis for all plots.
+    std::vector<double> pt_edges = LogEdges(9., 20., 8);
+    for (double e : LogEdges(20., 45., 9))  if (e > pt_edges.back() * 1.0001) pt_edges.push_back(e);
+    for (double e : LogEdges(45., 150., 13)) if (e > pt_edges.back() * 1.0001) pt_edges.push_back(e);
+    const int n_pt = int(pt_edges.size()) - 1;
 
     struct Hs { TH1D *nmu, *pt, *m, *sign; };
     std::map<std::string, Hs> raw, wgt;
@@ -126,8 +132,8 @@ void plot_test_sample_sanity(const char* base = "/usatlas/u/yuhanguo/usatlasdata
         for (auto* hs : {&raw, &wgt}) {
             const std::string t = (hs == &raw ? "raw_" : "w_") + c.dir;
             (*hs)[c.dir] = {new TH1D((t + "_nmu").c_str(), "", 8, -0.5, 7.5),
-                            new TH1D((t + "_pt").c_str(), "", 30, pt_edges.data()),
-                            new TH1D((t + "_m").c_str(), "", 40, 0., 40.),
+                            new TH1D((t + "_pt").c_str(), "", n_pt, pt_edges.data()),
+                            new TH1D((t + "_m").c_str(), "", 80, 0., 40.),   // 0.5 GeV: J/psi region resolvable
                             new TH1D((t + "_sign").c_str(), "", 2, 0., 2.)};
             for (TH1D* h : {(*hs)[c.dir].nmu, (*hs)[c.dir].pt, (*hs)[c.dir].m, (*hs)[c.dir].sign}) h->Sumw2();
         }
@@ -195,7 +201,7 @@ void plot_test_sample_sanity(const char* base = "/usatlas/u/yuhanguo/usatlasdata
             sum[j]->Draw(j == 3 ? "HIST E" : "E1");
             if (j == 3) sum[j]->Draw("HIST SAME");
             TLatex t; t.SetNDC(); t.SetTextSize(0.045);
-            t.DrawLatex(0.17, 0.93, ("Pythia8 pp #sqrt{s}=5.36 TeV, " + glabel).c_str());
+            t.DrawLatex(0.17, 0.93, ("Pythia8 pp, #sqrt{s} = 5.36 TeV, " + glabel).c_str());
         }
         // pair-pT filter cut (per slice; SS 24-40 has none)
         bool common_cut = true;   // drawn only when every slice of the panel has the same cut
@@ -230,7 +236,7 @@ void plot_test_sample_sanity(const char* base = "/usatlas/u/yuhanguo/usatlasdata
         }
         lg.Draw();
         TLatex t; t.SetNDC(); t.SetTextSize(0.035);
-        t.DrawLatex(0.16, 0.92, ("Pythia8 pp #sqrt{s}=5.36 TeV, " + glabel).c_str());
+        t.DrawLatex(0.16, 0.92, ("Pythia8 pp, #sqrt{s} = 5.36 TeV, " + glabel).c_str());
         c2.SaveAs((std::string(outdir) + "/" + grp + "_pair_pt_by_pthat.png").c_str());
     }
 }

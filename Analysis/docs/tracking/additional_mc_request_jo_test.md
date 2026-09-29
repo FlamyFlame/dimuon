@@ -17,7 +17,7 @@ of the additional MC request before handing them to the ATLAS production expert:
 | sign-independent (SI) | 70–125, 125–300 | ∃ μμ pair: m < 10 GeV, pT^μμ > 45 GeV | 1 M / slice |
 | same-sign (SS) | 24–40, 40–70, 70–125, 125–300 | ∃ SAME-SIGN μμ pair: m < 10 GeV, pT^μμ > 20 GeV (**24–40: NO pT^μμ cut**, D6) | 0.5 M / slice |
 
-## Autonomy Contract (ACTIVE — re-read on every compaction)
+## Autonomy Contract (DONE 2026-09-29 — all Done items met)
 - Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a
   plan, a passing small test, or one pipeline stage is NOT a stopping point.
 - Done = (1) patch compiled against AthGeneration 23.6.68; (2) 10-event local Gen_tf test per
@@ -65,8 +65,10 @@ RequireSameCharge=True for SS only (patch: skip a pair if pdgId1·pdgId2 < 0).
 
 **§4 Negative constraints.**
 - No reconstruction anywhere in this test (truth only).
-- AMI weights: these are NEW datasets, but the test outputs are raw counts/shape checks only; no
-  σ-weighted combination across slices is made here (would need the new samples' own AMI records).
+- AMI weights: these are NEW datasets without AMI records. Quoted numbers (filter checks, ε, boost
+  tables) are raw per slice. The ONLY cross-slice combination is the DISPLAY of the "pT-hat combined"
+  sanity figures, weighted by σ·ε_filt/N from each test sample's OWN grid `log.generate` files (USER
+  APPROVED 2026-09-29, D7); no other production's weights are ever used.
 - The reference binning is read from the reference CSVs / `ParamsSet` (never retyped).
 - Counts are raw per slice; never summed across slices as yields.
 
@@ -84,11 +86,11 @@ RequireSameCharge=True for SS only (patch: skip a pair if pdgId1·pdgId2 < 0).
 2. [ ] Local Gen_tf 10 events × 6 configs (parallel, background) → event-by-event check script
    (§3a), filter eff, time/event, projected time for 1 000 events.
 3. [x] Commit (source/athena branch; JOs + scripts in dimuon_codes repo).
-4. [ ] Grid: Gen_tf 1 000 events/config (split over jobs if slow; WARN USER + pause if >1–2 days);
+4. [x] Grid: Gen_tf 1 000 events/config (split over jobs if slow; WARN USER + pause if >1–2 days);
    EVNT→AOD; truth skim (new `SkimCode/run_evgen_high_pT_additional/`); download.
-5. [ ] Sanity check + plots (§3c).
-6. [ ] Statistics boost (§3d).
-7. [ ] Wrap-up: results here, INDEX, commit.
+5. [x] Sanity check + plots (§3c). `/review-plot` PASS it. 2.
+6. [x] Statistics boost (§3d).
+7. [x] Wrap-up: results here, INDEX, commit.
 
 ## Design Decisions
 
@@ -161,6 +163,11 @@ the reference has no reco pair — exactly the cells the request is for. Physics
 (kinematic) quantity of the cell; it should not depend on the pT-hat slice or pair sign. Check:
 populated cells agree between the two methods (pTH125_300 OS m<10 [52,74)×[0,1): boost 30.3 vs 30.5);
 pooled ε = 0.51–0.80 across the 9 cells. Reviewer checks (`/review-analysis-code` it. 1–3): per-sign ε within 8 % of the pooled one in populated cells (OS <1 %, SS 1–8 % higher, e.g. m<10 [52,74)×[1,2): SS 0.851 vs OS 0.798 → pooled ε is conservative for SS); per-slice kn4 vs kn5 differ up to ~13 % (m_sig [74,105)×[0,1) OS, 3.5σ; m<10 same cell 9 %, 3.6σ; pooled ε conservative for kn4 there). The assumption holds to ≲13 %, far inside the ±7–100 % test-sample errors. ε binomial error is not propagated (matters only in the forward top cell, ε = 3/6).
+
+**D9 — Same-sign request mass cut = m < 10 GeV (USER, 2026-09-29).** An uncommitted edit of another
+session in `Analysis/Utilities/MCRequestLooseMassFilter.h` adds `kLooseMassMaxSameSign = 100` ("user,
+2026-09-17: 100, not 10"); the user confirmed 10 GeV is correct for this request (as the JOs and tests
+use). The file is left untouched (another session's working-tree change); that constant is stale.
 
 ## Progress Log
 
@@ -254,6 +261,16 @@ pooled ε = 0.51–0.80 across the 9 cells. Reviewer checks (`/review-analysis-c
   52701612 → skim 52702229 → downloaded 11:42. Sanity macro: SI pTH125_300 1 000/1 000 events pass,
   ε = 1 000/3 652 565 = 2.74e-4; SS pTH24_40 100/100 pass, ε = 100/7 276 136 = 1.37e-5. Others
   at 4–9 of 5–20 jobs finished (19:33).
+- **2026-09-29, `/review-plot` iteration 1 FAIL** (2 WARNING): pair-pT filter cuts inside bins (fixed:
+  edges anchored at 20/45 GeV); §4 vs D7 (fixed after user approval, see §4). INFO recorded: out-of-range
+  pairs SI 2.0 % below 9 GeV, 0.35 % ≥150 GeV, 3.5 % ≥40 GeV mass; SS 36 % below 9 GeV (nearly all SS
+  24–40, no pT^μμ cut) — the SS pT panel covers 64 % of the pairs of its mass/sign panels; the SS
+  combined figures are ~94 % the SS 24–40 slice by σ·ε weight.
+- **2026-09-29, step 5 DONE.** `/review-plot` iteration 2 PASS (after edges anchored on the cuts and
+  §4 approval). Figures `~/usatlasdata/evgen_high_pT_additional_test/plots/{SI,SS}_combined_sanity.png`,
+  `{SI,SS}_pair_pt_by_pthat.png`, `sanity_table.csv`. Display pT axis = local piecewise-log (9→20→45→150
+  GeV, 8/9/13 bins), not a canonical binning (none applies to a generator-filter spectrum). SS 24–40
+  has 0 pairs above 20 GeV in its 100 events (≈1.6 expected, Poisson fluctuation).
 
 ## Results & Observations
 
@@ -319,6 +336,48 @@ New 0.5 M requests (CPU per kept event at 10–25 ms/generated):
 - SS 40–70 (pT^μμ > 20, ε ≈ 3.6e-6 est.): 2.8–6.9 ks per kept event (≈ 1–2× 803020);
   0.5 M ≈ 44–110 CPU-yr (≈ 0.2–0.5 × 803020). nEventsPerJob ≈ 25 → ~48 h jobs, ~20 000 jobs.
 
+### R6 — Grid test (1 000 / 100 events per config): filter check, efficiency, measured CPU
+
+All 6 evgen tasks done, TRUTH0 + skim done, NTUPs + `log.generate` downloaded to
+`~/usatlasdata/evgen_high_pT_additional_test/<config>/` (`grid/chain.log`, `grid/chain_state.json`).
+Filter check (`analysis/plot_test_sample_sanity.C`, `plots/sanity_table.csv`): **0 failing events in
+4 200** (every event has ≥2 filter muons and a qualifying pair, same-sign where required).
+
+| config | evts | ε_filt (grid) | jobs | CPU/job median (max) | total CPU | ms / generated | CPU / kept evt | projected CPU for requested N |
+|---|---|---|---|---|---|---|---|---|
+| SI pTH70_125 | 1 000 | 4.31e-5 (1000/23.19 M) | 10 | 15.9 h (22.2) | 155 h | 24 | 558 s | 1 M → ~18 CPU-yr |
+| SI pTH125_300 | 1 000 | 2.74e-4 (1000/3.65 M) | 4 | 10.0 h (10.9) | 40 h | 39 | 144 s | 1 M → ~4.6 CPU-yr |
+| SS pTH24_40 (no pT^μμ cut) | 100 | 1.37e-5 (100/7.28 M) | 10 | 5.6 h (7.4) | 53 h | 26 | 1 908 s | 0.5 M → ~30 CPU-yr |
+| SS pTH40_70 | 100 | 4.0e-6 (100/25.0 M) | 20 | 12.6 h (21.2) | 234 h | 34 | 8 424 s | 0.5 M → ~134 CPU-yr |
+| SS pTH70_125 | 1 000 | 3.21e-5 (1000/31.15 M) | 20 | 12.0 h (16.5) | 242 h | 28 | 871 s | 0.5 M → ~14 CPU-yr |
+| SS pTH125_300 | 1 000 | 1.25e-4 (1000/8.02 M) | 5 | 18.8 h (20.6) | 92 h | 41 | 331 s | 0.5 M → ~5.2 CPU-yr |
+
+Test total 816 CPU-h (estimate was 650–720). Whole request ≈ **205 CPU-yr** at these grid speeds,
+comparable to the ≈ 232 CPU-yr of the existing 803020 pTH8_14 sample alone (R4/R5); SS pTH40_70 is
+2/3 of it. ε agrees with the local 10-event runs and the emulation (R1) in every config.
+
+### R7 — Projected statistics boost of the 4 reference tables (+ SS 24–40 / 40–70 slices)
+
+`mc_request_stats_boost.cxx` (D5 REVISED; `/review-analysis-code` PASS it. 4); outputs
+`~/usatlasdata/evgen_high_pT_additional_test/stats_boost/stats_boost.csv` + `stats_boost_stdout.txt`.
+Boost = (n_ref + Σ n_new)/n_ref per slice, for 1 M (SI) + 0.5 M (SS) events; per-cell test-sample
+errors ±7–100 %; cells with 0 test pairs are quoted as upper values, never as "no gain".
+
+- **pTH125_300, opposite sign:** ×23–42 in every cell (m<10 and signal window) — e.g. [52,74)×|η|<1:
+  6 361 → ~194 000 (×30.5). Matches the expectation (N_req/N_ref)(ε_old/ε_new) ≈ 27.
+- **pTH125_300, same sign, m<10:** ×39–81 in the cells with ≥ 2 test pairs ([52,74)×|η|<1: 527 → ~22 800,
+  ×43; single-test-pair cells 23.8 (≤ 76) and 124.5 (≤ 408)); signal window ×20–64; the forward (2.0–2.2) and top-pT cells are < ×100–400 (0 test pairs).
+- **pTH70_125, opposite sign:** m<10 ×33–101, signal window ×67–165 (≈ 90 expected; the low values are
+  single-test-pair cells); several top-pT / forward cells are 0-test (upper values).
+- **pTH70_125, same sign:** n_ref is tiny (34/27/3, 2/0/0, 0/0/0 for m<10); projected ≈ 4 000 pairs in
+  each of the two lowest-|η| cells of [52,74) (×118–149); the other cells are 0-test in the 1 000-event
+  test sample (upper values ~400–900 per config).
+- **SS pTH24_40 / pTH40_70:** contribute NOTHING measurable in the top 3 pair-pT cells (all 0-test; the
+  reference is also ~0) — their pairs sit below ~50 GeV pair pT, i.e. they serve the 20–52 GeV region
+  of R7 in `pthat_slice_mass_stats_sample_request.md`, which the 4 reference tables do not cover.
+- Method checks: reference Step-3 reco counts reproduce `cells_*.csv` exactly; pooled ε 0.50–0.83;
+  truth-rate ratio 28.2 (kn5) / 89.6 (kn4) vs filter-efficiency expectation 27.3 / 89.8.
+
 ### R1 — Filter efficiency and CPU cost (the feasibility question)
 
 Generation cost per ATTEMPTED Pythia event t₀ ≈ 139 s × 2.58e-4 = 0.036 s CPU (measured, SI
@@ -335,9 +394,15 @@ pTH125_300, this VM); per accepted event ≈ t₀ / ε.
 
 
 ## Remaining Work
+- For the production request (user): JO names (D3 scheme) and the SS pTH24_40 no-pT^μμ-cut variant (D6);
+  the GeneratorFilters MR (branch `dimuon-same-sign-filter`, commit `4b66ba5e232` on `main`); set
+  `evgenConfig.nEventsPerJob` per config from R6 (e.g. SS 40–70 ≈ 25, SS 24–40 ≈ 100 for ~50 h jobs);
+  quote Pythia 8.317 (23.6.68) vs 8.308 (23.6.47) of the existing sample.
+- Optional: boost projection in the 20–52 GeV pair-pT cells (where SS 24–40 / 40–70 contribute) —
+  outside the 4 reference tables, not requested.
 
 ## Latest Stage
-Step 4: 6 grid evgen tasks RUNNING; `grid/chain.py` (background) chains TRUTH0 → skim → download.
-Steps 5/6 code ready and tested on stand-ins (`analysis/plot_test_sample_sanity.C`,
-`analysis/run_truth_processing.sh`, `mc_request_stats_boost.cxx`). On download: run sanity macro →
-`/review-plot`; run truth processing → boost macro → `/review-analysis-code`; results → R6/R7.
+DONE (2026-09-29). All Done items met: patch compiled/committed; 6 configs locally validated; grid
+1 000/100-event tests EVNT→TRUTH0→NTUP downloaded and pass (0 failures in 4 200 events); sanity figures
+(`/review-plot` PASS); projected boost of the 4 reference tables (`/review-analysis-code` PASS). Summary
+in R6 (efficiency, CPU) and R7 (boost).
