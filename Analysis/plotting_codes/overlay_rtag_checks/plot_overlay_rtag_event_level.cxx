@@ -1,13 +1,19 @@
 // Event-level sanity plots for the HIJING-overlay Pb+Pb-2024-conditions test sample
-// (r17864, pTH125_300 only, vtx z = -71.2 mm) against the Pb+Pb-2023-conditions test
+// (pTH125_300 only, vtx z = -71.2 mm, HIJING b 0-5 fm) against the Pb+Pb-2023-conditions test
 // sample (r17618), SAME pT-hat slice so the two event populations match.
-// Tracking doc: docs/tracking/hijing_overlay_pbpb24_test_sample_skim.md (R1, R4, R6-R9).
+// Tracking doc: docs/tracking/hijing_overlay_pbpb24_test_sample_skim.md (R1, R4, R6-R12).
 //
-// The pbpb24 NTUP is the RE-RUN production (merge tid52629267, skimmed 2026-09-23): after the
-// broken-calorimeter finding the contact re-ran the slice under the SAME r-tag r17864 and the
-// same request 71862, so the NTUP file name is unchanged and only the directory distinguishes
-// the two. The FIRST production (tid52480369) survives as ...NTUP.bak_20260923.root next to it,
-// and its plots/products are archived under broken_calo_tid52480369/.
+// R-TAG UNDER TEST: set by NEW_RTAG below; currently **r17913** (AOD merge tid52733789, skim
+// jediTaskID 52785715, downloaded 2026-09-29). r17913 is "clone r17864 with additional preExec
+// parameters" -- the digitisation re-configuration answering R9: it adds
+// Digitization.PU.Initial/FinalBunchCrossing = 0 (no out-of-time crossings at all),
+// LAr.ROD.NumberOfCollisions = 0, LAr.ROD.nSamples = 4 and Digitization.HighGainFCal = True.
+// Its two predecessors under r17864 -- the first production (tid52480369) and its bit-identical
+// re-run (tid52629267), both with the broken calorimeter of R1/R4/R8/R9 -- are archived in
+// broken_calo_tid52480369/ and broken_calo_r17864_rerun_tid52629267/ inside the sample dir.
+// The NTUP PATH does NOT carry the r-tag: it is keyed on the production CONFIGURATION
+// (vtxz-71_2mm_b0_5fm, FullSimSampleType.h), which is identical across all three, which is
+// exactly why only one of them may sit under the canonical name at a time.
 //
 // Reads the raw skim NTUPs (HeavyIonD3PD) directly: FCal_Et(_P/_N), L1TE, bcid, centrality,
 // trk_numqual and vtx_z / truth_vtx_z are per-event skim quantities with no selection, weight or
@@ -16,13 +22,13 @@
 // (DimuonDataAlgCoreT.c), which is per-pair and post-selection and so cannot give the unbiased
 // per-event bunch population these checks need.
 //
-//   root -l -b -q 'plot_r17864_event_level.cxx+("fcal")'   FCal sum-ET, both samples
-//   root -l -b -q 'plot_r17864_event_level.cxx+("vtx")'    reco vs truth vertex z
-//   root -l -b -q 'plot_r17864_event_level.cxx+("ntrk")'   ID track multiplicities (trk_numqual), both samples
-//   root -l -b -q 'plot_r17864_event_level.cxx+("l1te")'   L1 total transverse energy (L1TE), both samples
-//   root -l -b -q 'plot_r17864_event_level.cxx+("centr")'  centrality population table, both samples (no plot)
-//   root -l -b -q 'plot_r17864_event_level.cxx+("bcid")'   filled-bunch pattern and <FCal> vs bcid, both samples
-//   root -l -b -q 'plot_r17864_event_level.cxx+("trainpos")' <FCal> and <L1TE> vs position in the bunch train
+//   root -l -b -q 'plot_overlay_rtag_event_level.cxx+("fcal")'   FCal sum-ET, both samples
+//   root -l -b -q 'plot_overlay_rtag_event_level.cxx+("vtx")'    reco vs truth vertex z
+//   root -l -b -q 'plot_overlay_rtag_event_level.cxx+("ntrk")'   ID track multiplicities (trk_numqual), both samples
+//   root -l -b -q 'plot_overlay_rtag_event_level.cxx+("l1te")'   L1 total transverse energy (L1TE), both samples
+//   root -l -b -q 'plot_overlay_rtag_event_level.cxx+("centr")'  centrality population table, both samples (no plot)
+//   root -l -b -q 'plot_overlay_rtag_event_level.cxx+("bcid")'   filled-bunch pattern and <FCal> vs bcid, both samples
+//   root -l -b -q 'plot_overlay_rtag_event_level.cxx+("trainpos")' <FCal> and <L1TE> vs position in the bunch train
 //
 // Every event is unweighted: both samples are ONE pT-hat slice (no slice mixing), and the
 // quantities are underlying-event / beam-spot properties independent of the hard scatter.
@@ -43,8 +49,14 @@
 #include "../../MuonObjectsParamsAndHelpers/FullSimSampleType.h"
 
 namespace {
-    const std::string NEW_LABEL = "2024 conditions (r17864, re-run)";
-    const std::string OLD_LABEL = "2023 conditions (r17618)";
+    // The r-tag under test.  Legend labels, the output directory and every output file name
+    // derive from these two constants; the NTUP path does not (configuration-keyed, see above).
+    const char* NEW_RTAG = "r17913";
+    const char* OLD_RTAG = "r17618";
+    // Resolved at first use, like OUTDIR(): a namespace-scope std::string built by concatenation
+    // breaks cling's later RDF JIT symbol resolution (same trap as noted for OUTDIR below).
+    const std::string& NEW_LABEL() { static const std::string s = std::string("2024 conditions (") + NEW_RTAG + ")"; return s; }
+    const std::string& OLD_LABEL() { static const std::string s = std::string("2023 conditions (") + OLD_RTAG + ")"; return s; }
     // pTH125_300 NTUP of each conditions year, named by FullSimSampleType.h (dir + file tag,
     // the latter carrying the production configuration vtxz/b since 2026-09-17).
     std::string ntup(int pbpb_year) {
@@ -57,8 +69,13 @@ namespace {
     const std::string& NEW_FILE() { static const std::string f = ntup(24); return f; }
     const std::string& OLD_FILE() { static const std::string f = ntup(23); return f; }
     const std::string& OUTDIR() {
-        static const std::string d = FullSimPlotsDir(FullSimSampleInputDir(FullSimSampleType::hijing, true, 24)) + "r17864_rtag_sanity/";
+        static const std::string d = FullSimPlotsDir(FullSimSampleInputDir(FullSimSampleType::hijing, true, 24))
+                                   + NEW_RTAG + "_rtag_sanity/";
         return d;
+    }
+    // Common output-file name: <base>_<new r-tag>_vs_<old r-tag>_pTH125_300.<ext>
+    std::string outfile(const char* base, const char* ext) {
+        return OUTDIR() + base + "_" + NEW_RTAG + "_vs_" + OLD_RTAG + "_pTH125_300." + ext;
     }
     const int kNew = kRed + 1, kOld = kBlue + 1;
 
@@ -109,9 +126,9 @@ void plot_fcal() {
     TLine zero(0, 0, 0, ymax); zero.SetLineStyle(2); zero.SetLineColor(kGray + 2); zero.Draw();
     TLegend l1(0.32, 0.62, 0.86, 0.89); l1.SetBorderSize(0); l1.SetFillStyle(0); l1.SetTextSize(0.031);
     l1.SetHeader("HIJING overlay, b < 5 fm, #hat{p}_{T} 125-300 GeV");
-    l1.AddEntry(h_new.GetPtr(), Form("%s", NEW_LABEL.c_str()), "l");
+    l1.AddEntry(h_new.GetPtr(), Form("%s", NEW_LABEL().c_str()), "l");
     l1.AddEntry((TObject*)nullptr, Form("median %.2f TeV, %.0f%% negative", [&]{ double q, p = 0.5; h_new->GetQuantiles(1, &q, &p); return q; }(), 100.0 * neg_new / n_new), "");
-    l1.AddEntry(h_old.GetPtr(), Form("%s", OLD_LABEL.c_str()), "l");
+    l1.AddEntry(h_old.GetPtr(), Form("%s", OLD_LABEL().c_str()), "l");
     l1.AddEntry((TObject*)nullptr, Form("median %.2f TeV, %.0f%% negative", [&]{ double q, p = 0.5; h_old->GetQuantiles(1, &q, &p); return q; }(), 100.0 * neg_old / n_old), "");
     l1.Draw();
     // (b) per side, A (eta>0) solid vs C (eta<0) dashed -- a timing/readout problem need not be symmetric
@@ -128,10 +145,10 @@ void plot_fcal() {
     // with them the two longest entries ran into the right frame edge and over the axis ticks
     TLegend l2(0.30, 0.64, 0.89, 0.89); l2.SetBorderSize(0); l2.SetFillStyle(0); l2.SetTextSize(0.032);
     l2.SetHeader("side A: #eta > 0 (solid), side C: #eta < 0 (dashed)");
-    l2.AddEntry(a_new.GetPtr(), NEW_LABEL.c_str(), "l");
-    l2.AddEntry(a_old.GetPtr(), OLD_LABEL.c_str(), "l");
+    l2.AddEntry(a_new.GetPtr(), NEW_LABEL().c_str(), "l");
+    l2.AddEntry(a_old.GetPtr(), OLD_LABEL().c_str(), "l");
     l2.Draw();
-    c.SaveAs((OUTDIR() + "fcal_sum_et_r17864_vs_r17618_pTH125_300.png").c_str());
+    c.SaveAs(outfile("fcal_sum_et", "png").c_str());
     std::printf("FCal sum-ET: new %.0f events (%.1f%% < 0), old %.0f events (%.1f%% < 0)\n",
                 n_new, 100.0 * neg_new / n_new, n_old, 100.0 * neg_old / n_old);
 }
@@ -141,8 +158,9 @@ void plot_vtx() {
     ROOT::RDataFrame dnew("HeavyIonD3PD", NEW_FILE()), dold("HeavyIonD3PD", OLD_FILE());
     // vtx_z[0] = the reconstructed primary vertex; truth_vtx_z[0] = the generated interaction
     // point (every stored truth vertex sits at the signal PV, checked 2026-09-16). The generated
-    // vertex is UNSMEARED: truth z is exactly -71.2000 mm in every r17864 event (the 0.01 mm in
-    // r17864.txt is the reconstruction beam-spot width, not a truth smearing), so a 2D
+    // vertex is UNSMEARED: truth z is exactly -71.2000 mm in every event of this configuration
+    // (the 0.01 mm sigma_z in the r-tag postExec is the reconstruction beam-spot width, not a
+    // truth smearing), so a 2D
     // reco-vs-truth view carries no information beyond the residual.
     auto def = [](ROOT::RDataFrame& d) {
         return d.Filter("vtx_z.size() > 0 && truth_vtx_z.size() > 0")
@@ -169,7 +187,7 @@ void plot_vtx() {
     h_reco->SetMinimum(0.5);
     h_reco->Draw("hist"); h_truth->Draw("hist same");
     TLegend l1(0.16, 0.72, 0.92, 0.90); l1.SetBorderSize(0); l1.SetFillStyle(0); l1.SetTextSize(0.035);
-    l1.SetHeader("Pb+Pb 2024 conditions (r17864, re-run), #hat{p}_{T} 125-300 GeV");
+    l1.SetHeader(Form("Pb+Pb %s, #hat{p}_{T} 125-300 GeV", NEW_LABEL().c_str()));
     l1.AddEntry(h_reco.GetPtr(),  "reconstructed primary vertex", "l");
     l1.AddEntry(h_truth.GetPtr(), "truth interaction point", "l");
     l1.Draw();
@@ -181,19 +199,20 @@ void plot_vtx() {
     r_new->SetMinimum(0);
     r_new->Draw("hist"); r_old->Draw("hist same");
     TLegend l3(0.16, 0.64, 0.92, 0.90); l3.SetBorderSize(0); l3.SetFillStyle(0); l3.SetTextSize(0.034);
-    l3.AddEntry(r_new.GetPtr(), "2024 conditions (r17864, re-run), z_{vtx} = -71.2 mm", "l");
+    l3.AddEntry(r_new.GetPtr(), Form("%s, z_{vtx} = -71.2 mm", NEW_LABEL().c_str()), "l");
     l3.AddEntry((TObject*)nullptr, Form("mean %+.1f #mum, RMS %.1f #mum", r_new->GetMean(), r_new->GetRMS()), "");
-    l3.AddEntry(r_old.GetPtr(), "2023 conditions (r17618), z_{vtx} = -3.3 mm", "l");
+    l3.AddEntry(r_old.GetPtr(), Form("%s, z_{vtx} = -3.3 mm", OLD_LABEL().c_str()), "l");
     l3.AddEntry((TObject*)nullptr, Form("mean %+.1f #mum, RMS %.1f #mum", r_old->GetMean(), r_old->GetRMS()), "");
     l3.Draw();
-    c.SaveAs((OUTDIR() + "vertex_z_reco_vs_truth_r17864.png").c_str());
+    c.SaveAs((OUTDIR() + "vertex_z_reco_vs_truth_" + NEW_RTAG + ".png").c_str());
     std::printf("vertex z: new reco mean %.4f mm, truth mean %.4f mm; residual mean %+.2f um RMS %.2f um (old: %+.2f / %.2f um)\n",
                 h_reco->GetMean(), h_truth->GetMean(), r_new->GetMean(), r_new->GetRMS(), r_old->GetMean(), r_old->GetRMS());
 }
 
 // ID track multiplicity per event, four skim counters (TrigRates.cxx m_trk_numqual): the
-// question is whether the r17864 conditions problem (R1: calorimeter) also reaches the
-// tracker. No centrality cut (the r17864 FCal centrality is meaningless). Unweighted, per-event
+// question is whether the 2024-conditions calorimeter problem (R1) also reaches the
+// tracker. No centrality cut (an FCal-derived centrality is meaningless while the FCal is
+// wrong, and this check must not depend on it either way). Unweighted, per-event
 // fraction, so the two 10k samples overlay directly.
 void plot_ntrk() {
     style();
@@ -236,19 +255,19 @@ void plot_ntrk() {
         n->Draw("hist"); o->Draw("hist same");
         TLegend l(0.40, 0.62, 0.90, 0.89); l.SetBorderSize(0); l.SetFillStyle(0); l.SetTextSize(0.030);
         l.SetHeader("HIJING overlay, b < 5 fm, #hat{p}_{T} 125-300 GeV");
-        l.AddEntry(n, NEW_LABEL.c_str(), "l");
+        l.AddEntry(n, NEW_LABEL().c_str(), "l");
         l.AddEntry((TObject*)nullptr, Form("mean %.0f, RMS %.0f", n->GetMean(), n->GetRMS()), "");
-        l.AddEntry(o, OLD_LABEL.c_str(), "l");
+        l.AddEntry(o, OLD_LABEL().c_str(), "l");
         l.AddEntry((TObject*)nullptr, Form("mean %.0f, RMS %.0f", o->GetMean(), o->GetRMS()), "");
         l.DrawClone();
         std::printf("trk_numqual[%d] (%s): new mean %.0f RMS %.0f | old mean %.0f RMS %.0f | ratio of means %.3f\n",
                     panels[i].idx, panels[i].title, n->GetMean(), n->GetRMS(), o->GetMean(), o->GetRMS(), n->GetMean() / o->GetMean());
     }
-    c.SaveAs((OUTDIR() + "trk_multiplicity_r17864_vs_r17618_pTH125_300.png").c_str());
+    c.SaveAs(outfile("trk_multiplicity", "png").c_str());
 }
 
 // L1 total transverse energy (LVL1EnergySumRoI energyT, stored in GeV by the skim) -- the
-// L1Calo view of the same calorimeter whose offline sums are broken in r17864 (R1). No
+// L1Calo view of the same calorimeter whose offline sums were broken in r17864 (R1). No
 // centrality cut, unweighted, per-event fraction.
 void plot_l1te() {
     style();
@@ -270,12 +289,12 @@ void plot_l1te() {
     auto median = [](TH1D* h) { double q, p = 0.5; h->GetQuantiles(1, &q, &p); return q; };
     TLegend l(0.36, 0.62, 0.90, 0.89); l.SetBorderSize(0); l.SetFillStyle(0); l.SetTextSize(0.032);
     l.SetHeader("HIJING overlay, b < 5 fm, #hat{p}_{T} 125-300 GeV");
-    l.AddEntry(h_new.GetPtr(), NEW_LABEL.c_str(), "l");
+    l.AddEntry(h_new.GetPtr(), NEW_LABEL().c_str(), "l");
     l.AddEntry((TObject*)nullptr, Form("median %.2f TeV", median(h_new.GetPtr())), "");
-    l.AddEntry(h_old.GetPtr(), OLD_LABEL.c_str(), "l");
+    l.AddEntry(h_old.GetPtr(), OLD_LABEL().c_str(), "l");
     l.AddEntry((TObject*)nullptr, Form("median %.2f TeV", median(h_old.GetPtr())), "");
     l.Draw();
-    c.SaveAs((OUTDIR() + "l1te_r17864_vs_r17618_pTH125_300.png").c_str());
+    c.SaveAs(outfile("l1te", "png").c_str());
     std::printf("L1TE: new median %.2f TeV (mean %.2f), old median %.2f TeV (mean %.2f); overflow >25 TeV new %.0f old %.0f events\n",
                 median(h_new.GetPtr()), h_new->GetMean(), median(h_old.GetPtr()), h_old->GetMean(),
                 h_new->GetBinContent(101) * n_new, h_old->GetBinContent(101) * n_old);
@@ -300,12 +319,13 @@ void plot_centr() {
     auto undef = [](const std::vector<int>& v) {
         return 100.0 * std::count_if(v.begin(), v.end(), [](int c){ return c < 0; }) / v.size();
     };
-    const std::string out = OUTDIR() + "centrality_population_r17864_vs_r17618_pTH125_300.txt";
+    const std::string out = outfile("centrality_population", "txt");
     FILE* f = std::fopen(out.c_str(), "w");
     auto emit = [&](const char* fmt, auto... a) { std::printf(fmt, a...); std::fprintf(f, fmt, a...); };
     emit("centrality population, pT-hat 125-300 GeV, %zu vs %zu events (2023 FCal calibration)\n",
          cn.size(), co.size());
-    emit("%-12s %14s %14s\n", "bin", "pbpb24 re-run", "pbpb23 r17618");
+    emit("%-12s %14s %14s\n", "bin", (std::string("pbpb24 ") + NEW_RTAG).c_str(),
+         (std::string("pbpb23 ") + OLD_RTAG).c_str());
     for (const auto& b : bins) emit("%-12s %13.2f%% %13.2f%%\n", b.name, frac(cn, b.lo, b.hi), frac(co, b.lo, b.hi));
     emit("%-12s %13.2f%% %13.2f%%\n", "undefined", undef(cn), undef(co));
     emit("%-12s %13.2f%% %13.2f%%\n", "(0-5 %)", frac(cn, 0, 5), frac(co, 0, 5));
@@ -314,7 +334,7 @@ void plot_centr() {
     std::printf("wrote %s\n", out.c_str());
 }
 
-// Bunch-crossing structure. The ONE stated r17835 -> r17864 change is a DIGITISATION bunch-structure
+// Bunch-crossing structure. The ONE stated r17835 -> r17864 change was a DIGITISATION bunch-structure
 // option (Digitization.PU.BunchStructureConfig = BunchStructureHeavyIon2022), which sets where in the
 // bunch train the signal sits; sampling the bipolar LAr pulse off-peak is the standard way to get
 // energies that are far too low AND negative. Two views: (a) which bcids are filled at all -- does the
@@ -347,8 +367,8 @@ void plot_bcid() {
     z_new->Draw("hist"); z_old->Draw("hist same");
     TLegend l1(0.34, 0.70, 0.90, 0.89); l1.SetBorderSize(0); l1.SetFillStyle(0); l1.SetTextSize(0.032);
     l1.SetHeader("filled-bunch pattern");
-    l1.AddEntry(z_new.GetPtr(), NEW_LABEL.c_str(), "l");
-    l1.AddEntry(z_old.GetPtr(), OLD_LABEL.c_str(), "l");
+    l1.AddEntry(z_new.GetPtr(), NEW_LABEL().c_str(), "l");
+    l1.AddEntry(z_old.GetPtr(), OLD_LABEL().c_str(), "l");
     l1.Draw();
     c.cd(2); gPad->SetLeftMargin(0.13); gPad->SetBottomMargin(0.13);
     axes(p_new.GetPtr(), "bunch crossing ID", "#LT FCal #Sigma E_{T} #GT [TeV]");
@@ -359,10 +379,10 @@ void plot_bcid() {
     TLine zero(0., 0., 3564., 0.); zero.SetLineStyle(2); zero.SetLineColor(kGray + 2); zero.Draw();
     TLegend l2(0.34, 0.70, 0.90, 0.89); l2.SetBorderSize(0); l2.SetFillStyle(0); l2.SetTextSize(0.032);
     l2.SetHeader("12 bcid per point");
-    l2.AddEntry(p_new.GetPtr(), NEW_LABEL.c_str(), "p");
-    l2.AddEntry(p_old.GetPtr(), OLD_LABEL.c_str(), "p");
+    l2.AddEntry(p_new.GetPtr(), NEW_LABEL().c_str(), "p");
+    l2.AddEntry(p_old.GetPtr(), OLD_LABEL().c_str(), "p");
     l2.Draw();
-    c.SaveAs((OUTDIR() + "bcid_structure_r17864_vs_r17618_pTH125_300.png").c_str());
+    c.SaveAs(outfile("bcid_structure", "png").c_str());
 
     // numbers for the doc: spread of the profile tells flat-vs-bcid-dependent
     auto spread = [](TProfile* p) {
@@ -380,14 +400,15 @@ void plot_bcid() {
         for (int i = 1; i <= h->GetNbinsX(); ++i) if (h->GetBinContent(i) > 0) ++n;
         return n;
     };
-    std::printf("bcid: distinct filled bcids (of 3564) -- 2024 re-run %d, 2023 r17618 %d\n",
-                filled(nn), filled(no));
+    std::printf("bcid: distinct filled bcids (of 3564) -- pbpb24 %s %d, pbpb23 %s %d\n",
+                NEW_RTAG, filled(nn), OLD_RTAG, filled(no));
     std::printf("   2024 re-run:"); spread(p_new.GetPtr());
-    std::printf("   2023 r17618:"); spread(p_old.GetPtr());
+    std::printf("   pbpb23 %s:", OLD_RTAG); spread(p_old.GetPtr());
 }
 
 
-// Position WITHIN the bunch train. This is the mode that localises the r17864 failure. The filled
+// Position WITHIN the bunch train. This is the mode that localised the r17864 failure (R9) and
+// therefore the mode that decides whether a re-configured r-tag has fixed it. The filled
 // pattern (identical in both samples) is 18 trains of 7x8 bunches plus 2 ISOLATED single bunches;
 // a train boundary is a bcid DIFFERENCE of more than 5 (i.e. more than 4 empty crossings), and an
 // isolated bunch is a train of length 1.
@@ -466,14 +487,14 @@ void plot_trainpos() {
         TLegend* l = new TLegend(0.13, 0.765, 0.97, 0.995);
         l->SetBorderSize(0); l->SetFillStyle(0); l->SetTextSize(0.030);
         l->SetHeader("18 trains of 7#times8 bunches + 2 isolated bunches");
-        l->AddEntry(pnew, NEW_LABEL.c_str(), "p");
+        l->AddEntry(pnew, NEW_LABEL().c_str(), "p");
         l->AddEntry(iso, Form("isolated bunches, no train: %.2f %s", iso_new, unit), "l");
-        l->AddEntry(pold, OLD_LABEL.c_str(), "p");
+        l->AddEntry(pold, OLD_LABEL().c_str(), "p");
         l->Draw();
     };
     draw(1, f_new.GetPtr(), f_old.GetPtr(), *iso_f_new, "#LT FCal #Sigma E_{T} #GT [TeV]", "TeV", -2.0, 6.5);
     draw(2, l_new.GetPtr(), l_old.GetPtr(), *iso_l_new, "#LT L1 #Sigma E_{T} #GT [TeV]",   "TeV", -2.0, 19.0);
-    c.SaveAs((OUTDIR() + "train_position_r17864_vs_r17618_pTH125_300.png").c_str());
+    c.SaveAs(outfile("train_position", "png").c_str());
 
     std::printf("position in train (IN-TRAIN bunches only):  <FCal> 2024 / 2023 [TeV]   <L1TE> 2024 / 2023 [TeV]\n");
     for (int i = 1; i <= 10; ++i)
@@ -489,7 +510,7 @@ void plot_trainpos() {
                     fold_new->GetBinContent(i), fold_new->GetBinError(i), fold_old->GetBinContent(i));
 }
 
-void plot_r17864_event_level(const char* what = "fcal") {
+void plot_overlay_rtag_event_level(const char* what = "fcal") {
     const std::string w = what;
     if      (w == "fcal") plot_fcal();
     else if (w == "vtx")  plot_vtx();
