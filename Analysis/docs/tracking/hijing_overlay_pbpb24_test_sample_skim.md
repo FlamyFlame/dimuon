@@ -17,7 +17,7 @@ configuration-keyed, so all of them share it and are told apart only by director
 | r17864 | 52629267 ("reproduction") | Sep2026.v3 / 52687659 | **FAIL, bit-identical re-run** (R7, R8) |
 | **r17913** | **52733789** | **Sep2026.v4 / 52785715** | session 6, in progress (R10–) |
 
-## Autonomy Contract (ACTIVE — session 6, r17913 — re-read on every compaction)
+## Autonomy Contract (DONE 2026-09-29 — all six Done items met; session 6, r17913)
 - Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a
   plan, a passing small test, or one pipeline stage is NOT a stopping point.
 - Done = (1) r17913 provenance saved under
