@@ -402,7 +402,7 @@ void plot_bcid() {
     };
     std::printf("bcid: distinct filled bcids (of 3564) -- pbpb24 %s %d, pbpb23 %s %d\n",
                 NEW_RTAG, filled(nn), OLD_RTAG, filled(no));
-    std::printf("   2024 re-run:"); spread(p_new.GetPtr());
+    std::printf("   pbpb24 %s:", NEW_RTAG); spread(p_new.GetPtr());
     std::printf("   pbpb23 %s:", OLD_RTAG); spread(p_old.GetPtr());
 }
 

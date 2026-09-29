@@ -90,9 +90,9 @@ configuration-keyed, so all of them share it and are told apart only by director
 9. [x] `grid_sub_pbpb24_test_sample.sh` → VER_TAG `Sep2026.v4`, inDS `…r17913…tid52733789_00`;
        submitted **jediTaskID 52785715**; `grid_monitor.sh --mode overlay -i 10` launched
 10. [x] 100-event local test on one downloaded AOD → first verdict (§R11) — **FCal FIXED**
-11. [ ] grid download + hadd + branch check vs pbpb23 (§R12)
-12. [ ] full event-level check set → `plots/r17913_rtag_sanity/` (§R12); /review-plot
-13. [ ] efficiency-chain comparison vs the pbpb23 pTH125_300 slice (R2 redo) — gated on 12 (§R13)
+11. [x] grid download + hadd (10 000 entries, 21.66 GB) + branch check vs pbpb23 (§R12)
+12. [x] full event-level check set → `plots/r17913_rtag_sanity/` (§R12) — **R9 signature GONE**; /review-plot
+13. [x] efficiency-chain comparison vs the pbpb23 pTH125_300 slice (R2 redo) (§R13) — **deficit GONE**
 
 ## Progress Log
 
@@ -722,47 +722,205 @@ Caveat on the statistics: 100 events give a binomial σ of ~5 % on a negative-ev
 "0.0 %" excludes the r17864 value (36.2 %) overwhelmingly but only bounds a residual pathology at the
 few-percent level; the quantiles and the medians are already precise enough to be conclusive.
 
+### R12. FULL-STATISTICS VERDICT on r17913: the calorimeter is repaired and the R9 signature is GONE (2026-09-29)
+
+Skim `jediTaskID 52785715` (VER_TAG Sep2026.v4) completed 2026-09-29 01:40: 5 grid NTUPs hadd-ed to
+**10 000 entries, 21.66 GB** (r17864: 22.44 GB), pre- and post-merge counts agree, `merging-record.txt`
+updated. All seven event-level modes of `plot_overlay_rtag_event_level.cxx` regenerated into
+**`plots/r17913_rtag_sanity/`** (the r17864 set is untouched in `plots/r17864_rtag_sanity/`).
+
+| check (10 000 events each) | **pbpb24 r17913** | pbpb24 r17864 | pbpb23 r17618 | verdict |
+|---|---|---|---|---|
+| FCal ΣE_T q16/50/84 [TeV] | **3.74 / 4.29 / 5.04** | −0.77 / 0.41 / 2.07 | 3.79 / **4.40** / 5.11 | **PASS** |
+| FCal ΣE_T < 0 | **0.0 %** | 36.2 % | 0 % | **PASS** |
+| L1 ΣE_T median (mean) [TeV] | **15.70 (15.94)** | 3.20 (3.47) | 16.14 (16.26) | **PASS** |
+| centrality undefined | **0.00 %** | 37.4 % | 0.00 % | **PASS** |
+| centrality 0–10 % / 10–20 % | **99.32 % / 0.68 %** | 7.6 % / 7.9 % | 99.32 % / 0.68 % | **PASS — identical to the reference** |
+| (0–5 % / 5–10 % sub-split) | 78.23 / 21.09 % | 4.20 / 3.39 % | 81.54 / 17.78 % | usable bins again |
+| reco PV residual [µm] | −4.33, RMS 9.58 | −5.43, RMS 11.09 | −0.22, RMS 9.10 | improved |
+| N_trk (p_T > 400 MeV) | 5285 ± 1520 | 5830 ± 1740 | 5435 ± 1460 | **−2.8 %** (was +7.3 %) |
+| N_trk HITight | **2257 ± 345** | 2183 ± 359 | 2400 ± 362 | **−6.0 %** (was −9.0 %) — see below |
+| filled bcids (of 3564) | 1010 | 1010 | 1010 | identical pattern |
+
+**R9 is gone — this is the decisive check.** `trainpos`, in-train bunches only, ⟨FCal ΣE_T⟩ [TeV],
+positions 0–9: r17913 **4.316 / 4.444 / 4.310 / 4.368 / 4.355 / 4.362 / 4.432 / 4.391 / 4.344 / 4.341**
+vs r17618 4.444 / 4.508 / 4.465 / 4.458 / 4.526 / 4.398 / 4.439 / 4.527 / 4.406 / 4.417. Folding
+positions 8–55 modulo 8 (the sub-burst period that r17864 was locked to):
+
+| phase | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|---|
+| **r17913** | +4.385 | +4.363 | +4.346 | +4.343 | +4.362 | +4.369 | +4.370 | +4.417 |
+| uncertainty | ±0.020 | ±0.019 | ±0.019 | ±0.019 | ±0.019 | ±0.019 | ±0.019 | ±0.019 |
+| r17864 | +0.371 | **+2.836** | +1.388 | +0.458 | +0.011 | −0.086 | −0.160 | **−0.743** |
+| r17618 | +4.443 | +4.437 | +4.419 | +4.419 | +4.435 | +4.443 | +4.405 | +4.409 |
+
+r17864 swung by **3.58 TeV** across the phases; r17913 swings by **0.074 TeV**, i.e. flat to the same
+±0.02 TeV precision as the 2023 reference (0.038 TeV). And the control that gave R9 away has closed:
+the **2 isolated bunches** (⟨FCal⟩ 4.432, ⟨L1TE⟩ 16.161) now agree with the in-train bunches instead of
+being the sample's only healthy crossings. Removing the out-of-time crossings removed the failure — the
+R9 hypothesis (a crossing sitting on its predecessors' accumulated LAr undershoot) is therefore
+*supported* by this production, though still not *proven*, since r17913 changes six flags at once.
+
+**Two residuals, both small and neither a repeat of R1/R4** — recorded because they must not be
+silently absorbed into the 2024 efficiencies:
+
+1. **Calorimeter ~2 % low vs the 2023 reference, uniformly.** FCal median 4.29 vs 4.40 TeV (−2.5 %),
+   phase-folded mean 4.37 vs 4.43 (−1.3 %), L1TE median 15.70 vs 16.14 (−2.7 %). It is flat in train
+   position, so it is a normalisation, not the R9 modulation. Expected sources of a difference of just
+   this size: (a) the pinned vertex at **z = −71.2 mm vs −3.3 mm** for r17618 — a 7 cm shift moves the
+   FCal η acceptance by Δη ≈ 0.015, a percent-level ΣE_T change, as already estimated in R2; (b) the
+   2024 conditions genuinely differ from 2023. **This is a cross-year comparison, not a closure test**,
+   so a percent-level offset is not by itself evidence of a defect.
+2. **HITight track multiplicity −6.0 %** (2257 vs 2400), while the untagged count is now −2.8 %
+   (r17864: +7.3 % untagged, −9.0 % HITight). So r17864's *extra low-quality tracks* are gone — the
+   8.5–11.5 k untagged shoulder of R4 has disappeared, consistent with the out-of-time crossings no
+   longer contributing — but a HITight deficit of −6 % survives. **The 100-event test (R11) read −1.6 %;
+   that was a fluctuation** (±3 % per sample at that size) and the 10 000-event number supersedes it.
+   Whether this propagates to the muon reco efficiency is exactly what the R13 comparison measures:
+   R2 found −11 % Tight reco ε alongside −9 % HITight under r17864, so a −6 % HITight would predict a
+   partial, not complete, recovery.
+
+**Branch check** (`scripts/check_skim_output.C` vs the pbpb23 pTH125_300 NTUP): 265 vs 225 branches,
+**24 missing / 64 extra — byte-for-byte the same bookkeeping difference as r17864**, i.e. the three
+2023 `_VTE50` muon chains absent from the 2024 HI menu vs the 2024 `mu8` / `mu10` /
+`mu4noL1_hi_uccTh*` / `mu4noL1_L1ZDC_HELT*` chains added. 14 always-empty branches: `ActIntPerXing`,
+`AvgIntPerXing` and the 12 L1ZDC-seeded `mu4noL1` decisions (no ZDC simulation in the overlay) — the
+known set. All muon / truth / vertex / FCal / trigger branches filled (analysis chains mu4, 2mu4 fill
+0.9994 / 0.9952). **No skim-code change was needed for r17913**, as expected for an r17864 clone.
+
+Files: `fcal_sum_et_r17913_vs_r17618_pTH125_300.png`, `l1te_…png`, `trk_multiplicity_…png`,
+`vertex_z_reco_vs_truth_r17913.png`, `bcid_structure_…png`, `train_position_…png`,
+`centrality_population_…txt`.
+
+### R13. Efficiency chain on r17913 (the R2 redo) — the reconstruction deficit is GONE (2026-09-29)
+
+The chain the FIXED FCal unblocks (user ruling 2026-09-17 made R2 not studiable only because the
+r17864 centrality bins were not the same event populations as r17618's; R12 shows r17913 reproduces
+the reference centrality population to two decimals, 99.32 % / 0.68 %).
+
+Commands, unchanged from the r17864 round — the run scripts read the canonical, configuration-keyed
+NTUP name, which now IS r17913, so nothing in the chain needed editing:
+- `OVERLAY_YEAR=24 pipelines/pipeline_pythia_fullsim_overlay.sh hijing` — Condor NTP (cluster 8,
+  01:46→01:52) → RDF hist filling (01:52→01:54) → reco-eff / det-response plotters for Medium + Tight.
+  All five stages exit 0.
+- `OVERLAY_YEAR=24 NTupleProcessingCode/run_pythia_fullsim_overlay_{single_muon,mc_trig,single_muon_mc_trig}.sh`.
+
+Comparison against the existing pbpb23 pTH125_300 slice run
+(`..._pbpb23/r17618_pTH125_300_run/`) via `plot_overlay_rtag_effcy_comparison.cxx`
+(`RTAG24 = "r17913"`), modes `recoeff` / `trigeff` / `detresp` / `samb`.
+
+**Two bookkeeping notes from the run:**
+- **`w_factor` = 2.09729e-05 for pbpb24, now IDENTICAL to the pbpb23 slice.** Under r17864 it read
+  2.09733e-05 because the sample's own `ami_info/` (the AOD record, σ 89.541 nb) was still being
+  preferred; after the 2026-09-17 evgen ruling both overlays read the same nPDF evgen
+  (802776 e8599, σ 89.529 nb × ε_filt 2.342579e-3 / 10 000), which is exactly right — same evgen,
+  same beam, same slice must give the same weight. The 2e-5 relative difference was in any case
+  irrelevant to R2 (single-slice constant weight, and it cancels in every efficiency ratio).
+- The `single_muon` mode prints "the first bin … of the same-sign cut-acceptance histogram has ZERO
+  bin content". **Pre-existing and mode-specific**, not an r17913 symptom: the identical line is in
+  the archived r17864 log (`logs/ntp_single_muon_r17864.log`) and in both pbpb23 slice logs. The
+  single-muon mode builds no pairs, so the SS cut-acceptance histogram is legitimately empty.
+
+**Result (Tight WP, the nominal one; all four modes exit 0).** R2's r17864 column is repeated so the
+recovery is readable in one place:
+
+| quantity | **r17913** | r17864 (R2) | r17618 | **r17913 / r17618** |
+|---|---|---|---|---|
+| single-µ reco ε, 0–5 %, bins 4.5-8 / 8-14 / 14-25 / 25-100 GeV | **0.580 / 0.655 / 0.690 / 0.707** | 0.563 / 0.624 / 0.660 / 0.640 | 0.588 / 0.661 / 0.675 / 0.709 | **0.986 / 0.992 / 1.023 / 0.997** (±0.017) |
+| single-µ reco ε, 0–5 %, integrated | **0.6473** (9292/14356) | — | 0.6496 (9679/14899) | **0.996** |
+| single-µ reco ε, 5–10 %, integrated | 0.6679 (2554/3824) | (0.83–0.83 ratios) | 0.6994 (2283/3264) | 0.955 — see the migration note |
+| single-µ reco ε, **centrality-blind** | **0.6518** (11930/18304) | 0.584 (10681/18304) | 0.6595 (12058/18284) | **0.988** (r17864: **0.885**) |
+| mu4 ε, Step-1 selection, 0–5 % | **0.785** (6635/8452) | 0.741 (314/424) | 0.773 (6882/8902) | **1.016** (r17864: 0.958) |
+| mu4 ε, centrality-blind | **0.7944** (8630/10864) | 0.761 (7388/9710) | 0.7808 (8654/11084) | **1.017** (r17864: 0.975) |
+| (p_T^reco − p_T^truth)/p_T^truth, 0–5 %: mean / RMS | **−0.12 % / 3.03 %** | −0.25 % / 3.24 % | −0.13 % / 2.99 % | RMS **+1.3 %** (r17864: +8 %) |
+| η_reco − η_truth RMS | 0.74e-3 | 0.74e-3 | 0.74e-3 | = |
+| from_same_b, all OS pairs | 0.3135 ± 0.0057 (6689) | 0.3135 ± 0.0057 (6689) | 0.3200 ± 0.0057 (6593) | consistent |
+| from_same_b, Tight OS pairs | 0.2913 ± 0.0083 (**2997**) | 0.2947 (**2389**) | 0.2982 ± 0.0084 (**2998**) | consistent; **pair count 2997 vs 2998** (r17864: −20 %) |
+
+Medium WP, same trees: reco ε centrality-blind 0.6707 vs 0.6775 (0.990), 0–5 % 0.6657 vs 0.6680
+(0.997), mu4 ε centrality-blind 0.7898 vs 0.7767 (1.017) — the same picture.
+
+**What this settles.** R2's three reconstruction-level deficits were conditions artefacts, not
+physics, and all three close on r17913:
+- Tight reco efficiency **−11.5 % → −1.2 %** (centrality-blind, the migration-free number), with
+  every coarse-p_T ratio panel consistent with unity.
+- mu4 efficiency **−2.5 % → +1.7 %** (r17913 now sits marginally *above* the 2023 reference).
+- p_T-resolution width **+8 % → +1.3 %**.
+- And the cleanest single statement: the **Tight OS pair count is 2997 vs 2998**, against 2389 under
+  r17864. R2 had noted that its −20 % pair deficit was ≈ 0.885² — the square of the single-muon
+  efficiency ratio. With the single-muon ratio back at ~0.99, the square is back at ~1.
+
+**Why `all OS reco pairs` (6689) and its `from_same_b` (0.3135) are byte-identical to r17864.** That
+row is TRUTH-seeded — the overlay pair trees are built from Pythia truth pairs and then matched to
+reco — so its denominator and its `from_same_b` are properties of the generator record, which the
+r-tag cannot change (R2 already established truth is r-tag-independent). It is a consistency check,
+not a staleness symptom: the *reco-dependent* row in the same table, Tight OS pairs, moved
+2389 → 2997 on the same file path with the same macro, which is only possible if the file is the new
+one.
+
+**The one non-unity row, 5–10 % at 0.955, is centrality migration, not inefficiency.** R12 measured the
+r17913 FCal ~2 % below the 2023 reference; a 2 % downward shift moves events across the percentile
+edges, and the populations show exactly that — r17913 has FEWER events in 0–5 % (14356 vs 14899 truth
+muons) and MORE in 5–10 % (3824 vs 3264). So r17913's "5–10 %" is contaminated from the *central*
+side, and more-central events have lower efficiency, which is the sign observed. The 0–5 % bin, which
+loses only its most peripheral events, is unaffected (ratio 0.996), and the centrality-blind row —
+immune to migration by construction — is 0.988. **Before any pbpb24 efficiency is used for physics the
+FCal centrality calibration must be re-derived for 2024 conditions anyway**; it is currently the 2023
+calibration applied to a 2024 sample, which is what this residual is.
+
+Outputs (all in `plots/r17913_rtag_sanity/`): `single_muon_reco_effcy_vs_pt_ctr{0_5,5_10}_r17913_vs_r17618.png`,
+`single_muon_mu4_effcy_vs_pt{,_coarse}_ctr0_5_r17913_vs_r17618.png`,
+`single_muon_pt_eta_response_ctr0_5_r17913_vs_r17618.png`, `from_same_b_fraction_r17913_vs_r17618.csv`,
+plus the nominal pipeline plot sets `plots/hijing_overlay_pbpb24_{reco_effcy_plots,reco_effcy_plots_require_signal_cuts,det_resp_plots}/`.
+
 ## Remaining Work
 
-- **Report to the production contact (now the main open item).** The evidence is complete and stronger
-  than in September: R1/R1b (calorimeter, per-layer AOD numbers), R4 (L1TE + track multiplicity),
-  R7/R8 (the re-run is bit-identical, so the failing recipe was simply repeated) and, above all,
-  **R9** — the deficit is a deterministic, periodic function of the position in the bunch train, only
-  the 2 isolated bunches are healthy, and the suspect setting is named. Awaiting the user's go-ahead
-  and preferred channel; draft offered.
-- A genuinely re-configured production (r17835-style clone WITHOUT
-  `Digitization.PU.BunchStructureConfig='RunDependentSimData.BunchStructureHeavyIon2022'`, or whatever
-  the contact identifies) — then redo R2 with `OVERLAY_YEAR=24` and the chain of R8's step 7.
-- Only after that: the remaining four vertex-z points (-28.5 / -4.8 / 18.9 / 61.6 mm) and the b
-  intervals 5-9 / 9-12 / 12+ fm; `FullSimOverlayConfigTag` then becomes a user-decided combination
-  rule, never a silent glob.
+- **The r-tag question is answered: r17913 is acceptable as the recipe.** What is left is production
+  scale-up, not validation — the remaining 4 vertex-z points (−28.5 / −4.8 / 18.9 / 61.6 mm) and the
+  b intervals 5–9 / 9–12 / 12+ fm, then the 4 beams × 6 slices. `FullSimOverlayConfigTag` becomes a
+  user-decided combination rule at that point, never a silent glob.
+- **A 2024-conditions FCal centrality calibration is needed before any pbpb24 efficiency is used for
+  physics.** Everything above applies the 2023 calibration to a 2024 sample; that is the origin of
+  the one non-unity row in R13 (5–10 %, ratio 0.955, pure bin migration) and of R12's uniform ~2 %
+  FCal offset. Not a defect of the r-tag.
 - Delete the TEMPORARY `allow_missing_slices = (overlay_year == 24)` in the five overlay run scripts
   + the Condor worker once a 6-slice pbpb24 production exists.
-- User decisions still open from R5: whether eps_acc (R5 #2) and the generator-level composition plots
+- **Report to the production contact** — now a *confirmation* rather than a bug report: the
+  r17864 → r17913 preExec change fixed it, the R9 train-position modulation is gone (3.58 → 0.07 TeV
+  swing), and the efficiencies are back on the 2023 reference. Worth sending so the six-flag recipe
+  is locked in for the full production.
+- User decisions still open from R5: whether ε_acc (R5 #2) and the generator-level composition plots
   (R5 #4) move to the pp-suitable PDF evgen via the fullsim truth block.
+- The r17864 material is kept, not deleted: `broken_calo_tid52480369/` (first production NTUP +
+  all derived products), `broken_calo_r17864_rerun_tid52629267/` (the bit-identical re-run NTUP),
+  `plots/r17864_rtag_sanity/`.
 
 ## Latest Stage
 
-**2026-09-29 (session 6) IN PROGRESS — r17913 is the real fix; the calorimeter is repaired.**
+**2026-09-29 (session 6) DONE — r17913 PASSES every check. The r-tag is acceptable.**
 
-Done so far: provenance (R10 — the r17864→r17913 `HITtoRDO` preExec diff is the whole change, and it
-is a direct answer to R9) → both r17864 NTUPs archived so the configuration-keyed name is free →
-submission `grid_sub_pbpb24_test_sample.sh` VER_TAG **Sep2026.v4**, **jediTaskID 52785715** +
-`grid_monitor.sh --mode overlay -i 10` running (pid in `grid_monitor_52785715.pid`, status log
-`grid_monitor_status.log`; an artifact-polling waiter watches for "All tasks resolved") →
-one AOD file downloaded from DESY-ZN and skimmed locally, 100 events (R11): **FCal 3.94/4.44/5.12 TeV
-with 0 % negative, L1TE median 16.22 TeV, 100 % of events in 0-10 %** — every R1/R4 symptom gone and
-each quantity ON the r17618 reference, with the HITight-track deficit recovered from −9 % to −1.6 %.
+Sequence: provenance (R10 — the r17864 → r17913 `HITtoRDO` preExec diff is the whole change and is a
+direct answer to R9) → r17864 NTUPs archived so the configuration-keyed name is free → skim
+`jediTaskID 52785715` (VER_TAG Sep2026.v4) → 100-event local verdict (R11) → download + hadd
+(10 000 entries, 21.66 GB) + branch check → full event-level set (R12) → NTP + RDF chain and the
+R2 redo (R13).
 
-Macros renamed and r-tag-parameterized so the next r-tag needs one constant changed, not a file:
-`plot_r17864_event_level.cxx` → **`plot_overlay_rtag_event_level.cxx`** (`NEW_RTAG`, drives labels /
-`OUTDIR` / every output name; labels moved to function-local statics because a namespace-scope
-`std::string` built by concatenation reintroduces the cling RDF-JIT symbol failure the file already
-warned about) and `plot_r17864_vs_r17618_pTH125_300.cxx` →
-**`plot_overlay_rtag_effcy_comparison.cxx`** (`RTAG24`). Both compile clean.
+**Both halves pass.**
+- **R12, calorimeter:** FCal median 4.29 TeV with **0.0 % negative** (r17864: 0.41 TeV, 36.2 %),
+  L1 ΣE_T 15.70 vs 16.14 TeV, centrality population **identical to the reference to two decimals**
+  (99.32 % / 0.68 %, 0 % undefined). **The R9 signature is gone**: the mod-8 train-position swing is
+  0.074 TeV (r17864: 3.58 TeV), flat to the same ±0.02 TeV as r17618, and the 2 isolated bunches —
+  the only healthy crossings under r17864 — now agree with the in-train ones.
+- **R13, reconstruction:** Tight reco ε centrality-blind **0.6518 vs 0.6595 (ratio 0.988**, was
+  0.885), mu4 ε 1.017 (was 0.975), p_T-resolution RMS +1.3 % (was +8 %), and the Tight OS pair count
+  **2997 vs 2998** (was 2389, −20 %). R2's deficits were conditions artefacts and all three closed.
 
-**Next, on the 10 000-event NTUP when the grid task lands:** branch check vs pbpb23 → the full
-event-level set into `plots/r17913_rtag_sanity/` (`fcal`, `vtx`, `ntrk`, `l1te`, `centr`, `bcid`,
-**`trainpos`** — the R9 mode is the decisive one: the train-position modulation must be flat) → then
-the R2 efficiency redo (NTP + RDF chain with `OVERLAY_YEAR=24`, compared against the existing pbpb23
-pTH125_300 slice run), which the fixed FCal makes studiable again.
+Two residuals, both understood and neither a defect of the r-tag: a uniform ~2 % FCal/L1TE offset vs
+the 2023 reference (cross-year comparison, vertex −71.2 vs −3.3 mm, percent-level by R2's own Δη
+estimate), and a −6 % HITight track count. The 5–10 % efficiency ratio of 0.955 follows from the
+first as bin migration; the centrality-blind rows are immune to it. **A 2024-conditions FCal
+centrality calibration is the prerequisite before pbpb24 efficiencies are used for physics.**
+
+Open for the user: (i) the R5 evgen decisions; (ii) whether to send the production contact a
+confirmation that the six-flag preExec recipe works; (iii) green light for the full
+4-beam × 6-slice × 5-vertex × 4-b production.
