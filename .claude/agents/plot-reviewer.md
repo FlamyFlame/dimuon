@@ -129,6 +129,7 @@ WARNING: items 3, 4, 5, 6, 8, 9, 10, 11, 13, 14, 15 and the remaining 3b cases
 - Leaving auto-generated axis titles (e.g., raw branch names) instead of physics labels
 - Log scale missing when dynamic range exceeds ~10x (check against `PlotCommonConfig.h` log_map)
 - Variables with log binning (e.g. pair_pt_log, minv_log) plotted on a linear axis instead of log x-axis; for 1D/2D distributions (not efficiencies), also check y/z axis uses log scale
+- A logarithmic axis NOT made with `gPad->SetLogx()`/`SetLogy()`/`SetLogz()` (or the pad's own SetLog* call) — e.g. `log10(x)` histogrammed on a linear axis, a bin-index axis, or a relabelled uniform axis/`TGaxis` (`/review-plot` R5)
 - Ratio panels with Y-axis range that hides the data points
 - Plots saved to ad-hoc or flat directories instead of designated plot areas
 - New plots for a procedure placed in a different directory from existing plots for the same procedure
