@@ -216,7 +216,7 @@ void plot_test_sample_sanity(const char* base = "/usatlas/u/yuhanguo/usatlasdata
 
         // (2) pair pT per pT-hat slice overlaid, sigma*eps-weighted
         TCanvas c2(("c2_" + grp).c_str(), "", 800, 650);
-        c2.SetLogx(); c2.SetLogy(); c2.SetLeftMargin(0.14); c2.SetBottomMargin(0.12);   // log x: log-binned; log y: power-law spectrum
+        c2.cd(); gPad->SetLogx(); gPad->SetLogy(); gPad->SetLeftMargin(0.14); gPad->SetBottomMargin(0.12);   // log x: log-binned; log y: power-law spectrum
         TLegend lg(0.62, 0.68, 0.9, 0.88); lg.SetBorderSize(0);
         lg.SetHeader("#hat{p}_{T} slice [GeV]");
         double ymax = 0, ymin = 1e30; std::vector<TH1D*> hh;

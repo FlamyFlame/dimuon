@@ -169,6 +169,14 @@ session in `Analysis/Utilities/MCRequestLooseMassFilter.h` adds `kLooseMassMaxSa
 2026-09-17: 100, not 10"); the user confirmed 10 GeV is correct for this request (as the JOs and tests
 use). The file is left untouched (another session's working-tree change); that constant is stale.
 
+**D10 — Step-6 output = 4 tables of projected TOTAL counts (USER, 2026-10-02).** Old: one long-format
+`stats_boost.csv` (per slice × config, boost factors). New (user): 4 CSVs
+`projected_counts_{m_lt_10,m_sig}_{SS,OS}.csv`, 3 pair-pT rows × 3 |η^pair| columns, each cell = projected
+RAW pair count n_ref + Σ n_new **summed over the request's slices kn2–5** (user chose counts over a boost
+factor and over σ-weighted N_eff). Raw sum = a statistics count, not a yield. 0-test configs enter with
+n_new = 0 (cell = lower value; the header lists them with the cell's 68 % CL upper value). Per-slice
+boosts stay in `stats_boost_stdout.txt`.
+
 ## Progress Log
 
 - **2026-09-22, step 1.** Compiled on AthGeneration 23.6.68 (x86_64-el9-gcc15-opt) after D1/D2;
@@ -272,6 +280,15 @@ use). The file is left untouched (another session's working-tree change); that c
   GeV, 8/9/13 bins), not a canonical binning (none applies to a generator-filter spectrum). SS 24–40
   has 0 pairs above 20 GeV in its 100 events (≈1.6 expected, Poisson fluctuation).
 
+- **2026-10-02, follow-up (user).** (a) D10: `mc_request_stats_boost.cxx` writes the 4 tables; rerun
+  → `~/usatlasdata/evgen_high_pT_additional_test/stats_boost/projected_counts_*.csv`; `stats_boost.csv`
+  deleted. Cells = Σ over slices of (n_ref_reco + n_new_sum) of the old CSV's ALL rows EXACTLY (independent
+  re-sum). (b) Pair-pT plots: `SetLogx` was already called (`plot_test_sample_sanity.C:197` gPad, `:219`
+  canvas) and the PNGs were log-x; the overlay canvas now uses `gPad->SetLogx()/SetLogy()` too; figures
+  regenerated (identical content). Plot-reviewer criteria gained R5 "a log axis is made ONLY with
+  SetLogx/y/z" (`.claude/commands/review-plot.md`, `conventions/atlas-plotting.md` R2a,
+  `agents/plot-reviewer.md`).
+
 ## Results & Observations
 
 ### R2 — Cost of one generated (unfiltered) event
@@ -358,8 +375,9 @@ comparable to the ≈ 232 CPU-yr of the existing 803020 pTH8_14 sample alone (R4
 
 ### R7 — Projected statistics boost of the 4 reference tables (+ SS 24–40 / 40–70 slices)
 
-`mc_request_stats_boost.cxx` (D5 REVISED; `/review-analysis-code` PASS it. 4); outputs
-`~/usatlasdata/evgen_high_pT_additional_test/stats_boost/stats_boost.csv` + `stats_boost_stdout.txt`.
+`mc_request_stats_boost.cxx` (D5 REVISED; `/review-analysis-code` PASS it. 4); outputs (D10)
+`~/usatlasdata/evgen_high_pT_additional_test/stats_boost/projected_counts_{m_lt_10,m_sig}_{SS,OS}.csv`
+(projected total counts, slices 24–300 summed) + per-slice boosts in `stats_boost_stdout.txt`.
 Boost = (n_ref + Σ n_new)/n_ref per slice, for 1 M (SI) + 0.5 M (SS) events; per-cell test-sample
 errors ±7–100 %; cells with 0 test pairs are quoted as upper values, never as "no gain".
 
@@ -402,7 +420,6 @@ pTH125_300, this VM); per accepted event ≈ t₀ / ε.
   outside the 4 reference tables, not requested.
 
 ## Latest Stage
-DONE (2026-09-29). All Done items met: patch compiled/committed; 6 configs locally validated; grid
-1 000/100-event tests EVNT→TRUTH0→NTUP downloaded and pass (0 failures in 4 200 events); sanity figures
-(`/review-plot` PASS); projected boost of the 4 reference tables (`/review-analysis-code` PASS). Summary
-in R6 (efficiency, CPU) and R7 (boost).
+DONE (2026-09-29; follow-up 2026-10-02 DONE). Follow-up: step-6 output now 4 tables
+`projected_counts_{m_lt_10,m_sig}_{SS,OS}.csv` (D10; code review PASS, its cleanups applied, cell values
+unchanged); pair-pT plots use gPad->SetLogx/SetLogy; plot-reviewer R5 (log axis only via SetLog*) added.

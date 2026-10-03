@@ -20,12 +20,15 @@
 //              mass window, truth sign tree), with the TRUTH analogue of every Step-3 leg cut:
 //              truth fiducial (pT>4.5, |eta|<2.4), forward low-pT veto, gap windows on truth q*eta,
 //              |truth eta^pair| < 2.2 -- the SAME helper strings, evaluated on truth columns.
-//   boost(c) = [n_ref,reco(c) + n_new(c)] / n_ref,reco(c)       (per pT-hat slice)
+//   boost(c) = [n_ref,reco(c) + n_new(c)] / n_ref,reco(c)       (per pT-hat slice, stdout only)
 //
 // Assumption (stated, not tested here): the truth -> Step-3-reco efficiency of a cell is the same
 // in the filtered and the unfiltered sample -- the cell is kinematic, and the filter acts on truth.
 // Within ONE slice the old and new samples add as raw counts (in the filter-pass region a combined
-// sample has one weight per slice). Counts are RAW and PER SLICE -- never summed across slices.
+// sample has one weight per slice). stdout: per slice. OUTPUT (USER, 2026-10-02, D10): 4 tables
+// projected_counts_{m_lt_10,m_sig}_{SS,OS}.csv, 3 pair-pT x 3 |eta^pair| cells, each cell the
+// projected RAW pair count n_ref + n_new summed over the request's slices kn2-5 (a statistics
+// count, not a yield: slices carry different sigma weights).
 //
 // Usage: root -l -b -q 'mc_request_stats_boost.cxx+("<dir of new-mode outputs>","<out dir>")'
 #include <ROOT/RDataFrame.hxx>
@@ -34,7 +37,6 @@
 #include <TH2D.h>
 #include <TSystem.h>
 #include <cmath>
-#include <iomanip>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -153,7 +155,6 @@ void mc_request_stats_boost(const char* new_dir, const char* out_dir, bool use_t
               << "\n  truth analogue : " << TruthStep3Analogue() << std::endl;
 
     // ---- book everything, then run
-    struct Key { std::string what; int kn; int sign; std::string range; std::string label; };
     std::map<std::string, ROOT::RDF::RResultPtr<TH2D>> H;
     std::vector<std::unique_ptr<ROOT::RDataFrame>> keep;
     std::map<int, Meta> meta_ref;
@@ -215,57 +216,37 @@ void mc_request_stats_boost(const char* new_dir, const char* out_dir, bool use_t
         return t > 0 ? eps_reco[r]->GetBinContent(ix, iy) / t : NAN; };
 
     // ---- tables
-    // Per cell: per-config projection n_new (0 test pairs -> n_new = 0 AND a 68% CL upper limit),
-    // and the COMBINED boost over all configs of the slice. A cell where some/all configs had no
-    // test pair is NOT "no gain": its combined boost is quoted with an upper value (boost_ul).
+    // stdout: per slice, per-config projection n_new (0 test pairs -> n_new = 0 AND a 68% CL upper
+    // limit) and the combined boost over the slice's configs (an upper value where configs had 0 test
+    // pairs). Files: 4 projected-count tables, below.
     const char* sign_name[3] = {"", "same sign", "opposite sign"};
     for (const auto& R : ranges)   // every cell must have a reference efficiency -- checked BEFORE any output is written
         for (int ix = first; ix <= npt; ++ix) for (int iy = 1; iy <= neta; ++iy)
             if (std::isnan(Eps(R.token, ix, iy)))
                 throw std::runtime_error("mc_request_stats_boost: eps undefined (no reference truth pair) in "
                                          + R.token + " cell " + std::to_string(ix) + "," + std::to_string(iy));
-    const std::string csv_path = std::string(out_dir) + "/stats_boost.csv";
-    std::ofstream csv(csv_path);
-    if (!csv) throw std::runtime_error("mc_request_stats_boost: cannot open " + csv_path + " for writing");
-    csv << std::setprecision(6)
-        << "# Projected statistics boost of the additional MC request, per pT-hat slice (RAW counts, never summed across slices).\n"
-        << "# reference = pp24 fullsim FULL Step-3 pairs (" << (use_tight_wp ? "Tight" : "Medium") << "), " << ref_file << "\n"
-        << "# n_new = N_req * nu_new * eps_pooled; nu_new = truth pairs/event in the cell in the TEST sample (truth analogue of Step 3);\n"
-        << "#   eps_pooled = sum reco / sum truth over kn2-5 and both signs (per-sign eps within 8% of the pooled one in populated cells -- OS <1%, SS 1-8% higher; per-slice up to 13%; tracking doc D5 REVISED).\n"
-        << "# rows with config=<label>: that config's projection; boost_partial = (n_ref + n_new)/n_ref for that config alone.\n"
-        << "#   test_truth_pairs = 0 -> n_new = 0 and n_new_ul68 = N_req*eps*" << kPoissonUL68_n0 << "/N_test (68% CL, 0 observed).\n"
-        << "# rows with config=ALL: COMBINED over the slice's configs: boost = (n_ref + sum n_new)/n_ref, boost_ul = (n_ref + sum of\n"
-        << "#   n_new, or n_new_ul68 where 0 test pairs)/n_ref; n_zero_test = configs with 0 test pairs (boost is then a lower value).\n"
-        << "#   n_new_sum = sum n_new; n_new_sum_ul = the same with n_new_ul68 for 0-test configs. When n_ref = 0 the boost is\n"
-        << "#   undefined (left empty): read the absolute projected count n_new_sum (or its upper value if all configs had 0 test pairs).\n"
-        << "# rel_err_new = 1/sqrt(test_truth_pairs): test-sample statistics only; the (binomial) error of eps_pooled is NOT\n"
-        << "#   included -- it matters only in the sparse forward top cell (eps = 3/6 in m_sig, 0.514 in m<10).\n"
-        << "# NOTE: an SS-filtered config's contribution to OPPOSITE-SIGN cells is approximate (those cells are not in its\n"
-        << "#   filter-pass region: an event with an OS pair there passes only if it also holds an SS pair). In this run it is\n"
-        << "#   0.9-2.4% of the SI contribution per OS table of the SI slices (pTH70_125, pTH125_300), up to 12.5% in single\n"
-        << "#   cells; the OS tables of pTH24_40 / pTH40_70 come from the SS-filtered sample alone (all 0-test: upper values).\n"
-        << "slice,sign,mass,pair_pt_lo,pair_pt_hi,abs_eta_lo,abs_eta_hi,n_ref_reco,ref_truth_pairs,N_ref,eps_pooled,config,N_req,"
-           "test_truth_pairs,N_test,n_new,n_new_ul68,rel_err_new,boost_partial,boost,boost_ul,n_zero_test,n_new_sum,n_new_sum_ul\n";
+    // per (sign, mass range, cell): projected TOTAL raw pair count over the request's slices kn2-5
+    // (USER, 2026-10-02, D10): n_ref,reco + sum n_new; 0-test configs enter with n_new = 0 (their
+    // 68% CL upper values are listed in the CSV header).
+    struct Tot { double ref = 0, nnew = 0, nnew_ul = 0; std::vector<std::string> zero; };
+    std::map<std::string, Tot> tot;
+    auto tkey = [](int s, const std::string& r, int ix, int iy) {
+        return std::to_string(s) + "|" + r + "|" + std::to_string(ix) + "|" + std::to_string(iy); };
     for (int kn : {2, 3, 4, 5}) {
         std::vector<const NewCfg*> contrib;
         for (const auto& c : kNew) if (c.kn == kn) contrib.push_back(&c);
         for (int s : {1, 2}) for (const auto& R : ranges) {
             TH2D* rr = H[hkey("ref_reco", kn, s, R.token, "")].GetPtr();
-            TH2D* rt = H[hkey("ref_truth", kn, s, R.token, "")].GetPtr();
             std::cout << "\n== " << kSliceToken.at(kn) << ", " << sign_name[s] << ", " << R.token
                       << "  (N_ref = " << meta_ref[kn].nproc << ")\n"
                       << "  cell [pT^pair x |eta^pair|]          n_ref  eps_pool |";
             for (auto* c : contrib) std::cout << "   n_new(" << c->group << ")        ";
             std::cout << "| boost (combined)\n";
             for (int ix = first; ix <= npt; ++ix) for (int iy = 1; iy <= neta; ++iy) {
-                const double nr = rr->GetBinContent(ix, iy), tr = rt->GetBinContent(ix, iy);
+                const double nr = rr->GetBinContent(ix, iy);
                 const double eps = Eps(R.token, ix, iy);
                 std::cout << F("  [%6.1f,", pe[ix - 1]) << F("%6.1f) x ", pe[ix]) << F("[%.1f,", ee[iy - 1])
                           << F("%.1f)", ee[iy]) << F("  %8.0f", nr) << F("  eps=%.3f |", eps);
-                auto cell_csv = [&](std::ostream& o) {
-                    o << kSliceToken.at(kn) << "," << (s == 1 ? "SS" : "OS") << "," << R.token << ","
-                      << pe[ix - 1] << "," << pe[ix] << "," << ee[iy - 1] << "," << ee[iy] << "," << nr << ","
-                      << tr << "," << meta_ref[kn].nproc << "," << eps << ","; };
                 double nsum = 0, nsum_ul = 0; int nzero = 0;
                 for (auto* c : contrib) {
                     const Meta& mn = meta_new.at(c->label + "_" + std::to_string(kn));
@@ -275,10 +256,7 @@ void mc_request_stats_boost(const char* new_dir, const char* out_dir, bool use_t
                     nsum += nn; nsum_ul += tn > 0 ? nn : ul; nzero += (tn == 0);
                     if (tn > 0) std::cout << F("  %9.0f", nn) << F(" (±%3.0f%%)", 100. / std::sqrt(tn));
                     else        std::cout << F("  <%8.0f", ul) << " (0 test)";
-                    cell_csv(csv);
-                    csv << c->label << "," << c->n_req << "," << tn << "," << mn.nproc << "," << nn << ","
-                        << (tn > 0 ? NAN : ul) << "," << (tn > 0 ? 1. / std::sqrt(tn) : NAN) << ","
-                        << (nr > 0 ? (nr + nn) / nr : NAN) << ",,,,,\n";
+                    if (tn == 0) tot[tkey(s, R.token, ix, iy)].zero.push_back(kSliceToken.at(kn) + " " + c->group);
                 }
                 const double b = nr > 0 ? (nr + nsum) / nr : NAN, bul = nr > 0 ? (nr + nsum_ul) / nr : NAN;
                 const bool all_zero = nzero == (int)contrib.size();
@@ -288,14 +266,56 @@ void mc_request_stats_boost(const char* new_dir, const char* out_dir, bool use_t
                 else if (nzero > 0)                   std::cout << F(" | %.1f", b) << F(" (<= %.1f)", bul);
                 else                                  std::cout << F(" | %.1f", b);
                 std::cout << "\n";
-                cell_csv(csv);
-                csv << "ALL,,,,,,,,";
-                if (nr > 0) csv << b << "," << bul; else csv << ",";   // undefined for n_ref = 0: see n_new_sum
-                csv << "," << nzero << "," << nsum << "," << nsum_ul << "\n";
+                Tot& T = tot[tkey(s, R.token, ix, iy)];
+                T.ref += nr; T.nnew += nsum; T.nnew_ul += nsum_ul;
             }
         }
     }
-    csv.close();
-    if (!csv) throw std::runtime_error("mc_request_stats_boost: write to " + csv_path + " FAILED (disk/quota?) -- the file is incomplete");
+
+    // ---- the 4 tables: (mass range) x (sign), 3 pair-pT rows x 3 |eta^pair| columns
+    for (const auto& R : ranges) for (int s : {1, 2}) {
+        const std::string path = std::string(out_dir) + "/projected_counts_" + R.token + "_" + (s == 1 ? "SS" : "OS") + ".csv";
+        std::ofstream csv(path);
+        if (!csv) throw std::runtime_error("mc_request_stats_boost: cannot open " + path + " for writing");
+        csv << "# Additional pp24 Pythia MC request (ATLHI-666): PROJECTED pair count after the request, " << sign_name[s]
+            << ", mass " << (R.lo > 0 ? F("%.2f < m < ", R.lo) : std::string("m < ")) << F("%.2f GeV", R.hi) << ".\n"
+            << "# cell = n_ref + n_new: RAW Step-3 (" << (use_tight_wp ? "Tight" : "Medium") << ") pair count summed over pT-hat slices";
+        for (int kn : {2, 3, 4, 5}) csv << " " << kSliceToken.at(kn);
+        csv << "\n#   n_ref = existing pp24 fullsim FULL sample (" << ref_file << ")\n"
+            << "#   n_new = N_req * nu_new * eps_pooled per requested config; nu_new = truth pairs/event of the grid test sample\n"
+            << "#   in the cell (truth analogue of Step 3); eps_pooled = reference truth->Step-3-reco eff. Configs (N_req, N_test):\n#  ";
+        for (const auto& c : kNew)
+            csv << " {" << kSliceToken.at(c.kn) << " " << c.group << F(": %.0f, ", c.n_req)
+                << meta_new.at(c.label + "_" + std::to_string(c.kn)).nproc << "}";
+        csv << "\n"
+            << "#   (tracking doc additional_mc_request_jo_test.md D5 REVISED, D10). Raw counts: slices carry different sigma weights.\n"
+            << "# A config with 0 test pairs in a cell enters with n_new = 0 -> that cell is a LOWER value; listed below with the\n"
+            << "#   68% CL upper value of the cell.\n";
+        if (s == 2)
+            csv << "# OS cells: the SS-filtered configs' contribution is approximate (an event with an OS pair here passes their filter\n"
+                << "#   only if it also holds an SS pair); measured 2026-09-29: 0.9-2.4% of the SI contribution per table, up to 12.5% in single cells.\n";
+        for (int ix = first; ix <= npt; ++ix) for (int iy = 1; iy <= neta; ++iy) {
+            const Tot& T = tot.at(tkey(s, R.token, ix, iy));
+            if (T.zero.empty()) continue;
+            csv << F("#   [%.1f,", pe[ix - 1]) << F("%.1f) x ", pe[ix]) << F("[%.1f,", ee[iy - 1]) << F("%.1f): 0 test pairs in", ee[iy]);
+            for (const auto& z : T.zero) csv << " {" << z << "}";
+            csv << F("; upper value %.0f\n", T.ref + T.nnew_ul);
+        }
+        csv << "# bin edges as used: pair pT [GeV]";
+        for (int ix = first - 1; ix <= npt; ++ix) csv << F(" %.4f", pe[ix]);
+        csv << "; |eta^pair|";
+        for (double e : ee) csv << F(" %.4f", e);
+        csv << "\npair_pT_GeV\\|pair_eta|";
+        for (int iy = 1; iy <= neta; ++iy) csv << F(",%.1f-", ee[iy - 1]) << F("%.1f", ee[iy]);
+        csv << "\n";
+        for (int ix = first; ix <= npt; ++ix) {
+            csv << F("%.1f-", pe[ix - 1]) << F("%.1f", pe[ix]);
+            for (int iy = 1; iy <= neta; ++iy) { const Tot& T = tot.at(tkey(s, R.token, ix, iy)); csv << F(",%.0f", T.ref + T.nnew); }
+            csv << "\n";
+        }
+        csv.close();
+        if (!csv) throw std::runtime_error("mc_request_stats_boost: write to " + path + " FAILED (disk/quota?)");
+        std::cout << "wrote " << path << std::endl;
+    }
     std::cout << "\nNOTE: SS-filtered configs' contribution to OPPOSITE-SIGN cells is approximate (see CSV header).\n";
 }
