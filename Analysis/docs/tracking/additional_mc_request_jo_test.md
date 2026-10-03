@@ -289,6 +289,12 @@ boosts stay in `stats_boost_stdout.txt`.
   SetLogx/y/z" (`.claude/commands/review-plot.md`, `conventions/atlas-plotting.md` R2a,
   `agents/plot-reviewer.md`).
 
+- **2026-10-02, follow-up 2 (user).** User keeps the test-sample projection (D5 REVISED); the reference-scaling
+  alternative offered for 0-test cells is NOT adopted. (1) Production bundle
+  `~/usatlasdata/evgen_high_pT_additional_test/for_production/<physicsShort>/` = JO + control file (real copy) +
+  every grid `log.generate` + `FILTER_EFFICIENCY.txt` (combined over jobs); `README.txt` table. Staged grid JOs
+  byte-identical to `run/`. `evgenConfig.nEventsPerJob = 500` in all 6 JOs is still the placeholder. (2) R8.
+
 ## Results & Observations
 
 ### R2 — Cost of one generated (unfiltered) event
@@ -396,6 +402,19 @@ errors ±7–100 %; cells with 0 test pairs are quoted as upper values, never as
 - Method checks: reference Step-3 reco counts reproduce `cells_*.csv` exactly; pooled ε 0.50–0.83;
   truth-rate ratio 28.2 (kn5) / 89.6 (kn4) vs filter-efficiency expectation 27.3 / 89.8.
 
+### R8 — Why SS pTH125_300 gives few top-pT pairs (`analysis/ss_pair_pt_fractions.cxx`, 2026-10-02)
+
+Every accepted event has a qualifying SS pair (1000/1000; 3 with two), but its pair-pT spectrum falls
+steeply — not flat. Leading qualifying pair (filter level, legs 3.7/2.5), SS pTH125_300 test, 1 000 events:
+20–30 54.4 %, 30–40 24.4 %, 40–52 13.6 %, 52–74 5.8 %, 74–105 1.6 %, 105–150 0.2 %, ≥150 0.
+(SS pTH70_125: 71.8 / 22.0 / 4.8 / 1.3 / 0.1 / 0 %.) After the truth Step-3 analogue: 43 / 13 / 2 pairs in
+the top 3 bins, then × ε_reco ≈ 0.8. So 0.5 M → ≈ 17 k / 5 k / 0.8 k SS pairs (summed over |η|) from this
+config. SI pTH125_300 (pT^μμ>45): 7.7 % of events hold an SS pair, but at high pT (Step-3: 19 / 8 / 0).
+Physics: an SS low-mass pair needs two muons from separate decay chains in one jet (g→bb̄ with b→μ⁻ +
+b̄→c̄→μ⁻, or B⁰ mixing), each carrying a small fraction of the jet pT; the in-slice pT-hat spectrum also
+falls from 125 GeV. Doubling the SS pTH125_300 request doubles only its contribution; a higher pair-pT
+threshold instead keeps the same evgen CPU per top-bin pair but needs far fewer events to simulate.
+
 ### R1 — Filter efficiency and CPU cost (the feasibility question)
 
 Generation cost per ATTEMPTED Pythia event t₀ ≈ 139 s × 2.58e-4 = 0.036 s CPU (measured, SI
@@ -420,6 +439,5 @@ pTH125_300, this VM); per accepted event ≈ t₀ / ε.
   outside the 4 reference tables, not requested.
 
 ## Latest Stage
-DONE (2026-09-29; follow-up 2026-10-02 DONE). Follow-up: step-6 output now 4 tables
-`projected_counts_{m_lt_10,m_sig}_{SS,OS}.csv` (D10; code review PASS, its cleanups applied, cell values
-unchanged); pair-pT plots use gPad->SetLogx/SetLogy; plot-reviewer R5 (log axis only via SetLog*) added.
+DONE (2026-09-29; follow-ups 2026-10-02 DONE: D10 4 tables; production bundle; R8 SS top-pT explanation).
+Open for the user: SS pTH125_300 request size / pair-pT threshold (R8); nEventsPerJob placeholders.
