@@ -292,7 +292,7 @@ boosts stay in `stats_boost_stdout.txt`.
 - **2026-10-02, follow-up 2 (user).** User keeps the test-sample projection (D5 REVISED); the reference-scaling
   alternative offered for 0-test cells is NOT adopted. (1) Production bundle
   `~/usatlasdata/evgen_high_pT_additional_test/for_production/<physicsShort>/` = JO + control file (real copy) +
-  every grid `log.generate` + `FILTER_EFFICIENCY.txt` (combined over jobs); `README.txt` table. Staged grid JOs
+  ONE grid `log.generate` (user, simplified: the job whose ε is closest to the combined one, within 0–5 %; combined ε per config = R6). Staged grid JOs
   byte-identical to `run/`. `evgenConfig.nEventsPerJob = 500` in all 6 JOs is still the placeholder. (2) R8.
 
 ## Results & Observations
