@@ -415,6 +415,17 @@ b̄→c̄→μ⁻, or B⁰ mixing), each carrying a small fraction of the jet pT
 falls from 125 GeV. Doubling the SS pTH125_300 request doubles only its contribution; a higher pair-pT
 threshold instead keeps the same evgen CPU per top-bin pair but needs far fewer events to simulate.
 
+### R9 — Extra SS sample with pT^μμ > 50 GeV (estimate, 2026-10-02, `analysis/ss_pair_pt_threshold_fractions.C`)
+
+Fraction of SS (pT^μμ>20) test events whose leading filter SS pair (legs 3.7/2.5, m<10) exceeds 40/45/50/60
+GeV: pTH125_300 0.212/0.144/0.090/0.047; pTH70_125 0.062/0.033/0.019/0.004. ⇒ ε(SS, m<10, pT^μμ>50) ≈
+1.1e-5 (125–300, ±11 %) and 6.1e-7 (70–125, ±23 %); at the measured grid 41 / 28 ms per generated event:
+3.7 ks / 46 ks CPU per kept event → 0.5 M ≈ 58 / 730 CPU-yr. Yield per kept event in the top 3 Step-3 cells
+(truth pairs 58/90 resp. 9/19 × ε_reco 0.8) ≈ 0.5 / 0.4 → 0.5 M at 125–300 ≈ 190 k / 58 k / 9 k SS pairs in
+52–74 / 74–105 / 105–150 (vs today's projected 41 k / 12 k / 0.8 k, m<10 summed over η). Combination with
+the pT^μμ>20 sample needs an event-level overlap treatment on the filter variable (same as already needed
+between the original ≥2μ, SI and SS samples) and the new DSID's own AMI σ·ε_filt.
+
 ### R1 — Filter efficiency and CPU cost (the feasibility question)
 
 Generation cost per ATTEMPTED Pythia event t₀ ≈ 139 s × 2.58e-4 = 0.036 s CPU (measured, SI
