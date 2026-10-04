@@ -13,8 +13,8 @@ PairSameSign = True
 
 include('Py8Control_hQCD_dimu_pdf_dilepton_filters.py')
 
-# re-tune after the test run, once the filter efficiency is known
-evgenConfig.nEventsPerJob = 500
+# filter efficiency ~3.2e-5 -> ~0.24 CPU-h per accepted event; 200 events/job ~ 48 CPU-h
+evgenConfig.nEventsPerJob = 200
 
 genSeq.Pythia8.Beam1 = "PROTON"
 genSeq.Pythia8.Beam2 = "PROTON"

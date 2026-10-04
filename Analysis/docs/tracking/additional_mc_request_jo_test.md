@@ -310,6 +310,12 @@ boosts stay in `stats_boost_stdout.txt`.
   (JO + control + log.generate). Local CPU ≈ 35 ms/generated → ≈ 2.4 ks per kept event; at grid 41 ms ≈ 2.8 ks
   → 50 evts/job ≈ 39 h; 0.5 M ≈ 44 CPU-yr (R9's 58 used ε 1.1e-5).
 
+- **2026-10-04, nEventsPerJob set (user).** From R6 grid CPU per kept event, targeting ~30–50 CPU-h jobs (803020
+  precedent 50 evts/~50 h): SI 70–125 200 (31 h), SI 125–300 1000 (40 h), SS 24–40 100 (53 h), SS 40–70 20 (47 h),
+  SS 70–125 200 (48 h), SS 125–300 500 (46 h), SS 125–300 pT50 50 (39 h). JOs in `run/` and `for_production/`
+  identical. The production logs were made with the placeholder (500) / test maxEvents; only the comment+value changed.
+  athena branch `dimuon-same-sign-filter` (`4b66ba5e232`) pushed to origin `yuhang/athena` for the MR to atlas/athena main.
+
 ## Results & Observations
 
 ### R2 — Cost of one generated (unfiltered) event
@@ -466,5 +472,4 @@ pTH125_300, this VM); per accepted event ≈ t₀ / ε.
 
 ## Latest Stage
 DONE (2026-09-29; follow-ups 2026-10-02/03/04 DONE: D10 4 tables; production bundle of 7 configs incl. the
-new SS pTH125_300 pT^μμ>50 JO (ε 1.47e-5); R8/R9). Open for the user: nEventsPerJob placeholders (500) in the
-6 original JOs; size of the pT50 request.
+new SS pTH125_300 pT^μμ>50 JO (ε 1.47e-5); R8/R9). Open for the user: submit the MR; send the bundle.
