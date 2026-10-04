@@ -295,6 +295,21 @@ boosts stay in `stats_boost_stdout.txt`.
   ONE grid `log.generate` (user, simplified: the job whose ε is closest to the combined one, within 0–5 %; combined ε per config = R6). Staged grid JOs
   byte-identical to `run/`. `evgenConfig.nEventsPerJob = 500` in all 6 JOs is still the placeholder. (2) R8.
 
+- **2026-10-03, follow-up 3 (7th config SS pTH125_300 m<10 pT^μμ>50).** JO
+  `run/run_same_sign_pT125_300_pT50/mc.Py8EG_A14_pp_hQCD_DiMu_pTH125_300_pdf_SS_m10_pT50.py` (diff vs pT20 JO:
+  PairPtMin 50000, nEventsPerJob 50). Local job seed 1101: ε = 2.20e-5 (10/453 840), 32 ms CPU/generated, wall
+  4.2 h; EVNT check 10/10 pass (SS, m 0.7–9.5, pT^μμ 52–82). Expected ε: emulation on 720 k existing nPDF
+  pTH125_300 truth events × genFiltEff 2.396e-3 → **1.34e-5** (±2 % stat; same method gives 1.264e-4 for the
+  pT20 config vs grid 1.247e-4) → seed 1101 is a +64 % fluctuation (6.1 expected, 10 seen, p≈9 %). Not
+  representative for the production log → 6 more 10-event seeds (1102–1107) in parallel; pick the log closest to
+  the combined ε (same rule as the other configs). `estimate/emulate_filter_pT50.{py,out}`.
+
+- **2026-10-04, follow-up 3 DONE.** Seeds 1102–1107: ε = 1.72/1.22/1.26/1.05/1.87/1.58 e-5; combined 7 jobs
+  **ε = 1.47e-5 ± 12 %** (70 / 4 764 458), consistent with the 1.34e-5 emulation. EVNT check 70/70 pass, no OS
+  pass. Production log = seed 1107 (1.58e-5, +8 % vs combined) → `for_production/Py8EG_A14_pp_hQCD_DiMu_pTH125_300_pdf_SS_m10_pT50/`
+  (JO + control + log.generate). Local CPU ≈ 35 ms/generated → ≈ 2.4 ks per kept event; at grid 41 ms ≈ 2.8 ks
+  → 50 evts/job ≈ 39 h; 0.5 M ≈ 44 CPU-yr (R9's 58 used ε 1.1e-5).
+
 ## Results & Observations
 
 ### R2 — Cost of one generated (unfiltered) event
@@ -450,5 +465,6 @@ pTH125_300, this VM); per accepted event ≈ t₀ / ε.
   outside the 4 reference tables, not requested.
 
 ## Latest Stage
-DONE (2026-09-29; follow-ups 2026-10-02 DONE: D10 4 tables; production bundle; R8 SS top-pT explanation).
-Open for the user: SS pTH125_300 request size / pair-pT threshold (R8); nEventsPerJob placeholders.
+DONE (2026-09-29; follow-ups 2026-10-02/03/04 DONE: D10 4 tables; production bundle of 7 configs incl. the
+new SS pTH125_300 pT^μμ>50 JO (ε 1.47e-5); R8/R9). Open for the user: nEventsPerJob placeholders (500) in the
+6 original JOs; size of the pT50 request.
