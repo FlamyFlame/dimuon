@@ -177,6 +177,13 @@ factor and over σ-weighted N_eff). Raw sum = a statistics count, not a yield. 0
 n_new = 0 (cell = lower value; the header lists them with the cell's 68 % CL upper value). Per-slice
 boosts stay in `stats_boost_stdout.txt`.
 
+**D11 — Projection of the SS pTH125_300 pT^μμ>50 (0.2 M) config without its own truth test sample (USER,
+2026-10-04).** pT dependence: the pT>20 SS test sample's events whose filter-level SS pair (legs ≥3.7 GeV,
+|η|≤2.5, 0<m<10) has pT^μμ>50 (90/1000 events; exactly the events the pT50 filter keeps), ν = pairs/90.
+|η^pair| dependence: SS cells as they are in 52–74 / 74–105; in 105–150 the SS bin total is split by the OS
+|η^pair| fractions of the slice's (kn5) test samples, pooled. An empty OS shape bin → 0-test cell with UL.
+OS cells: the subset's OS pairs, direct.
+
 ## Progress Log
 
 - **2026-09-22, step 1.** Compiled on AthGeneration 23.6.68 (x86_64-el9-gcc15-opt) after D1/D2;
@@ -315,6 +322,17 @@ boosts stay in `stats_boost_stdout.txt`.
   SS 70–125 200 (48 h), SS 125–300 500 (46 h), SS 125–300 pT50 50 (39 h). JOs in `run/` and `for_production/`
   identical. The production logs were made with the placeholder (500) / test maxEvents; only the comment+value changed.
   athena branch `dimuon-same-sign-filter` (`4b66ba5e232`) pushed to origin `yuhang/athena` for the MR to atlas/athena main.
+
+- **2026-10-04, follow-up 4 DONE.** (1) D11 in `mc_request_stats_boost.cxx` (`/review-analysis-code` PASS; its
+  2 WARNINGs fixed: empty OS-shape bin → UL, stale OS-note; cells unchanged by the fixes). Subset 90/1000;
+  `ev_num` → NTUP match validated pair by pair; subset holds all SS top-bin pairs (asserted). SS50 m<10 SS
+  contributions = 0.2 M × {43,13,2}/90 × ε (top bin split 25:9:1 OS); m_sig {9,1,1}/90 (OS split 8:5:0).
+  Tables (summed over |η|), before → after: m<10 SS 41.2k→117.4k / 12.0k→35.0k / 0.8k→4.1k; m_sig SS
+  10.2k→26.2k / 2.0k→3.8k / 0.4k→2.2k; m<10 OS +≤3 % (52–105); m_sig OS unchanged. (2) Helper plot
+  `plots/ss_os_pair_pt_45_150.png` (`analysis/plot_ss_os_pair_pt_slope.C`, `/review-plot` PASS; overlap fixed
+  by a ±1.2 % x offset, fiducial in headline). SS/OS σ ratio in the canonical cells: pTH125_300 0.055±0.008 /
+  0.037±0.010 / 0.020±0.014 (SS steeper, ~2σ); pTH70_125 0.019±0.006 / 0.013±0.013 / 0 (30 SS pairs: too few).
+  SS 125–300 first display bin (45–49 GeV) SS/OS = 0.17 is a ~3σ fluctuation (not correlated pairs).
 
 ## Results & Observations
 
@@ -471,5 +489,5 @@ pTH125_300, this VM); per accepted event ≈ t₀ / ε.
   outside the 4 reference tables, not requested.
 
 ## Latest Stage
-DONE (2026-09-29; follow-ups 2026-10-02/03/04 DONE: D10 4 tables; production bundle of 7 configs incl. the
-new SS pTH125_300 pT^μμ>50 JO (ε 1.47e-5); R8/R9). Open for the user: submit the MR; send the bundle.
+DONE (2026-09-29; follow-ups 2026-10-02/03/04 DONE: D10 4 tables; production bundle of 7 configs; R8/R9; D11
+tables for the final request incl. SS50; SS/OS slope helper plot). Open for the user: submit the MR; send the bundle.

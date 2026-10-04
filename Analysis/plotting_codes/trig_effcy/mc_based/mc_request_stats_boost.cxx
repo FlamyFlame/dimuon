@@ -30,8 +30,17 @@
 // projected RAW pair count n_ref + n_new summed over the request's slices kn2-5 (a statistics
 // count, not a yield: slices carry different sigma weights).
 //
+// DERIVED config (USER, 2026-10-04, D11): SS pTH125_300 m<10 pT^mumu>50 (0.2 M) has no truth test sample.
+// It is the pT^mumu>20 SS sample restricted to the events whose FILTER-level SS pair (legs pT>3.7,
+// |eta|<2.5, 0<m<10) has pT^mumu>50 -- flagged from the NTUP (the filter's own definition), matched to
+// the processing output by m1.ev_num (validated pair by pair). nu = pairs in those events / N_subset.
+// |eta^pair| dependence (user): in the TOP pair-pT bin (SS pT>20 statistics too low) the SS bin total
+// is split by the OPPOSITE-SIGN truth-pair |eta^pair| fractions of the slice's test samples; in the
+// other bins the SS cells are used as they are.
+//
 // Usage: root -l -b -q 'mc_request_stats_boost.cxx+("<dir of new-mode outputs>","<out dir>")'
 #include <ROOT/RDataFrame.hxx>
+#include <TChain.h>
 #include <TFile.h>
 #include <TTree.h>
 #include <TH2D.h>
@@ -41,6 +50,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -61,12 +71,21 @@ std::string F(const char* f, double a) { char b[256]; snprintf(b, sizeof b, f, a
 
 // The request: one entry per test configuration. kn = PythiaAlgCoreT kinRanges index (the per-kn
 // tree index of the reference file). N_req = the event count requested from production.
-struct NewCfg { std::string label; int kn; double n_req; std::string group; };
+// Derived configs: src = label of the processed test sample, ntup_dir = its NTUP dir (under ntup_base),
+// subset_pt = filter-level SS pair-pT threshold [GeV] defining the event subset (D11).
+struct NewCfg { std::string label; int kn; double n_req; std::string group;
+                std::string src = ""; std::string ntup_dir = ""; double subset_pt = -1.;
+                std::string File() const { return src.empty() ? label : src; }
+                bool Derived() const { return subset_pt > 0; } };
 const std::vector<NewCfg> kNew = {
     {"5p36_SI_m10_pT45", 4, 1.0e6, "SI"}, {"5p36_SI_m10_pT45", 5, 1.0e6, "SI"},
     {"5p36_SS_m10",      2, 0.5e6, "SS"}, {"5p36_SS_m10_pT20", 3, 0.5e6, "SS"},
     {"5p36_SS_m10_pT20", 4, 0.5e6, "SS"}, {"5p36_SS_m10_pT20", 5, 0.5e6, "SS"},
+    {"5p36_SS_m10_pT50", 5, 0.2e6, "SS50", "5p36_SS_m10_pT20", "run_same_sign_pT125_300", 50.},
 };
+// filter definition of the JO control file (xAODDiLeptonMassFilter on TruthMuons): legs pT > 3.7 GeV,
+// |eta| < 2.5, 0 < m < kLooseMassMax, same sign
+const double kFiltMuPt = 3.7, kFiltMuEta = 2.5;
 const std::map<int, std::string> kSliceToken = {{2, "pTH24_40"}, {3, "pTH40_70"},
                                                 {4, "pTH70_125"}, {5, "pTH125_300"}};
 
@@ -90,6 +109,42 @@ Meta ReadMeta(const std::string& file, int kn)
         throw std::runtime_error("mc_request_stats_boost: " + file + " processed " + std::to_string(m.nproc)
                                  + " of " + std::to_string(m.nbeam) + " events for kn" + std::to_string(kn));
     return m;
+}
+
+// Per NTUP event (sorted file list = the processing input order): does it hold a filter-level SS pair
+// with pT^mumu > pt_min? Also returns every pair pT [GeV] per event, for the ev_num match check.
+struct Subset { std::vector<char> pass; std::vector<std::vector<float>> pair_pt; };
+Subset FilterSubset(const std::string& dir, double pt_min)
+{
+    std::vector<std::string> files;
+    FILE* p = gSystem->OpenPipe(("find " + dir + " -type f -name '*.root' ! -name '*log*' | LC_ALL=C sort").c_str(), "r");
+    char buf[4096];
+    while (p && fgets(buf, sizeof buf, p)) { std::string f(buf); f.erase(f.find_last_not_of("\n") + 1); files.push_back(f); }
+    if (p) gSystem->ClosePipe(p);
+    if (files.empty()) throw std::runtime_error("mc_request_stats_boost: no NTUP under " + dir);
+    TChain ch("HeavyIonD3PD");
+    for (const auto& f : files) ch.Add(f.c_str());
+    std::vector<float> *pt1 = nullptr, *eta1 = nullptr, *pt2 = nullptr, *eta2 = nullptr, *m = nullptr, *pt = nullptr;
+    std::vector<int> *c1 = nullptr, *c2 = nullptr;
+    ch.SetBranchAddress("truth_mupair_pt1", &pt1); ch.SetBranchAddress("truth_mupair_eta1", &eta1);
+    ch.SetBranchAddress("truth_mupair_ch1", &c1);  ch.SetBranchAddress("truth_mupair_pt2", &pt2);
+    ch.SetBranchAddress("truth_mupair_eta2", &eta2); ch.SetBranchAddress("truth_mupair_ch2", &c2);
+    ch.SetBranchAddress("truth_mupair_m", &m);     ch.SetBranchAddress("truth_mupair_pt", &pt);
+    Subset S;
+    for (Long64_t i = 0; i < ch.GetEntries(); ++i) {
+        ch.GetEntry(i);
+        bool pass = false; std::vector<float> pts;
+        for (size_t k = 0; k < m->size(); ++k) {   // NTUP truth_mupair_* in MeV
+            pts.push_back(pt->at(k) * 1e-3f);
+            // filter convention (xAODDiLeptonMassFilter.cxx): legs pT >= MinPt, |eta| <= MaxEta; 0 < m < MaxMass; pT^mumu > Min
+            if (std::fabs(pt1->at(k)) * 1e-3 < kFiltMuPt || std::fabs(pt2->at(k)) * 1e-3 < kFiltMuPt ||
+                std::fabs(eta1->at(k)) > kFiltMuEta || std::fabs(eta2->at(k)) > kFiltMuEta) continue;
+            const double mm = m->at(k) * 1e-3;
+            if (c1->at(k) * c2->at(k) > 0 && mm > 0 && mm < MCRequest::kLooseMassMax && pt->at(k) * 1e-3 > pt_min) pass = true;
+        }
+        S.pass.push_back(pass); S.pair_pt.push_back(pts);
+    }
+    return S;
 }
 
 // Aliases so the Step-3 helper strings (written on m1_pt, m1_eta, m1_charge, m1_truth_*, pair_eta)
@@ -136,7 +191,8 @@ ROOT::RDF::RResultPtr<TH2D> BookCells(ROOT::RDF::RNode d, const Range& R, const 
 }
 } // namespace
 
-void mc_request_stats_boost(const char* new_dir, const char* out_dir, bool use_tight_wp = true)
+void mc_request_stats_boost(const char* new_dir, const char* out_dir, bool use_tight_wp = true,
+                            const char* ntup_base = "/usatlas/u/yuhanguo/usatlasdata/evgen_high_pT_additional_test")
 {
     PairTrigEff::CheckSignalWindowMirror();
     const DrCorrSample cfg = GetDrCorrSample("pp_full", use_tight_wp);
@@ -184,21 +240,67 @@ void mc_request_stats_boost(const char* new_dir, const char* out_dir, bool use_t
             }
         }
     }
+    std::map<std::string, std::shared_ptr<Subset>> subsets;   // derived configs, by label
     for (const auto& c : kNew) {
-        const std::string f = std::string(new_dir) + "/muon_pairs_pythia_truth_" + c.label + "_kn"
+        const std::string f = std::string(new_dir) + "/muon_pairs_pythia_truth_" + c.File() + "_kn"
                             + std::to_string(c.kn) + "_no_data_resonance_cuts.root";
         if (gSystem->AccessPathName(f.c_str()))   // a missing config would silently drop out of the combined boost
             throw std::runtime_error("mc_request_stats_boost: missing new-sample file " + f);
-        meta_new[c.label + "_" + std::to_string(c.kn)] = ReadMeta(f, c.kn);
+        Meta mt = ReadMeta(f, c.kn);
+        std::shared_ptr<Subset> sub;
+        if (c.Derived()) {
+            sub = std::make_shared<Subset>(FilterSubset(std::string(ntup_base) + "/" + c.ntup_dir, c.subset_pt));
+            if ((Long64_t)sub->pass.size() != mt.nproc)
+                throw std::runtime_error("mc_request_stats_boost: NTUP entries " + std::to_string(sub->pass.size())
+                                         + " != processed events " + std::to_string(mt.nproc) + " for " + c.label);
+            Long64_t nsub = 0; for (char b : sub->pass) nsub += b;
+            std::cout << c.label << ": " << nsub << " of " << mt.nproc << " test events hold a filter-level SS pair with pT^mumu > "
+                      << c.subset_pt << " GeV" << std::endl;
+            mt.nproc = mt.nbeam = nsub;   // the derived sample's events
+            subsets[c.label] = sub;
+        }
+        meta_new[c.label + "_" + std::to_string(c.kn)] = mt;
         for (int s : {1, 2}) {
             const std::string tree = "muon_pair_tree_kin" + std::to_string(c.kn) + "_sign" + std::to_string(s);
             keep.emplace_back(std::make_unique<ROOT::RDataFrame>(tree, f));
-            ROOT::RDF::RNode tru = TruthAliases(*keep.back()).Filter(TruthStep3Analogue());
+            ROOT::RDF::RNode d = *keep.back();
+            if (sub) {
+                // ev_num -> NTUP entry: every processed pair must exist (same truth pT) in that NTUP event
+                auto bad = d.Filter([sub](int ev, float ppt) {
+                    if (ev < 0 || ev >= (int)sub->pair_pt.size()) return true;
+                    for (float x : sub->pair_pt[ev]) if (std::fabs(x - ppt) < 1e-3f * std::max(1.f, ppt)) return false;
+                    return true; }, {"m1.ev_num", "truth_pair_pt"}).Count();
+                if (*bad != 0) throw std::runtime_error("mc_request_stats_boost: " + std::to_string(*bad)
+                                     + " processed pairs not found in their NTUP event (ev_num order mismatch) in " + f + ":" + tree);
+                d = d.Filter([sub](int ev) { return (bool)sub->pass[ev]; }, {"m1.ev_num"});
+            }
+            ROOT::RDF::RNode tru = TruthAliases(d).Filter(TruthStep3Analogue());
             for (const auto& R : ranges)
                 H[hkey("new_truth", c.kn, s, R.token, c.label)] =
                     BookCells(tru, R, "nt" + c.label + tree + R.token, pe, ee);
         }
     }
+    // |eta^pair| shape source for the derived configs' TOP pair-pT bin (D11): opposite-sign truth pairs of
+    // the slice's non-derived test samples, pooled
+    std::set<int> os_eta_kn;
+    for (const auto& c : kNew) {
+        if (!c.Derived() || !os_eta_kn.insert(c.kn).second) continue;
+        for (const auto& o : kNew) {
+            if (o.kn != c.kn || o.Derived()) continue;
+            const std::string f = std::string(new_dir) + "/muon_pairs_pythia_truth_" + o.File() + "_kn"
+                                + std::to_string(o.kn) + "_no_data_resonance_cuts.root";
+            keep.emplace_back(std::make_unique<ROOT::RDataFrame>("muon_pair_tree_kin" + std::to_string(o.kn) + "_sign2", f));
+            ROOT::RDF::RNode tru = TruthAliases(*keep.back()).Filter(TruthStep3Analogue());
+            for (const auto& R : ranges)
+                H[hkey("os_eta_part", c.kn, 2, R.token, o.label)] = BookCells(tru, R, "oe" + o.label + R.token, pe, ee);
+        }
+    }
+    // OS |eta^pair| counts of the top pair-pT bin, pooled over the slice's test samples: [kn][range][iy]
+    auto OsEta = [&](int kn, const std::string& r, int iy) {
+        double n = 0;
+        for (const auto& o : kNew)
+            if (o.kn == kn && !o.Derived()) n += H[hkey("os_eta_part", kn, 2, r, o.label)]->GetBinContent(npt, iy);
+        return n; };
 
     // ---- pooled truth -> Step-3-reco efficiency per (mass range, cell), all slices, both signs
     std::map<std::string, std::unique_ptr<TH2D>> eps_reco, eps_truth;
@@ -225,6 +327,25 @@ void mc_request_stats_boost(const char* new_dir, const char* out_dir, bool use_t
             if (std::isnan(Eps(R.token, ix, iy)))
                 throw std::runtime_error("mc_request_stats_boost: eps undefined (no reference truth pair) in "
                                          + R.token + " cell " + std::to_string(ix) + "," + std::to_string(iy));
+    // D11 checks. (a) An SS Step-3 pair in a delivered cell (pT >= 52 GeV, legs 4.5/2.4, m<10) is itself
+    // a filter-level SS pair above the subset threshold, so the subset must hold ALL such pairs of the
+    // source sample. (b) Print the OS |eta^pair| shape used in the top bin.
+    for (const auto& c : kNew) {
+        if (!c.Derived()) continue;
+        for (const auto& R : ranges) {
+            TH2D* hs = H[hkey("new_truth", c.kn, 1, R.token, c.label)].GetPtr();
+            TH2D* hf = H[hkey("new_truth", c.kn, 1, R.token, c.File())].GetPtr();
+            for (int ix = first; ix <= npt; ++ix) for (int iy = 1; iy <= neta; ++iy)
+                if (pe[ix - 1] >= c.subset_pt && hs->GetBinContent(ix, iy) != hf->GetBinContent(ix, iy))
+                    throw std::runtime_error("mc_request_stats_boost: subset lost SS pairs in a cell above the threshold ("
+                                             + c.label + ", " + R.token + ")");
+            std::cout << c.label << " " << R.token << ": SS test pairs per top-3 bin (subset)";
+            for (int ix = first; ix <= npt; ++ix) { double t = 0; for (int iy = 1; iy <= neta; ++iy) t += hs->GetBinContent(ix, iy); std::cout << " " << t; }
+            std::cout << "; top-bin OS |eta^pair| counts";
+            for (int iy = 1; iy <= neta; ++iy) std::cout << " " << OsEta(c.kn, R.token, iy);
+            std::cout << std::endl;
+        }
+    }
     // per (sign, mass range, cell): projected TOTAL raw pair count over the request's slices kn2-5
     // (USER, 2026-10-02, D10): n_ref,reco + sum n_new; 0-test configs enter with n_new = 0 (their
     // 68% CL upper values are listed in the CSV header).
@@ -250,13 +371,28 @@ void mc_request_stats_boost(const char* new_dir, const char* out_dir, bool use_t
                 double nsum = 0, nsum_ul = 0; int nzero = 0;
                 for (auto* c : contrib) {
                     const Meta& mn = meta_new.at(c->label + "_" + std::to_string(kn));
-                    const double tn = H[hkey("new_truth", kn, s, R.token, c->label)]->GetBinContent(ix, iy);
-                    const double nn = c->n_req * (tn / mn.nproc) * eps;
-                    const double ul = c->n_req * (kPoissonUL68_n0 / mn.nproc) * eps;
-                    nsum += nn; nsum_ul += tn > 0 ? nn : ul; nzero += (tn == 0);
-                    if (tn > 0) std::cout << F("  %9.0f", nn) << F(" (±%3.0f%%)", 100. / std::sqrt(tn));
-                    else        std::cout << F("  <%8.0f", ul) << " (0 test)";
-                    if (tn == 0) tot[tkey(s, R.token, ix, iy)].zero.push_back(kSliceToken.at(kn) + " " + c->group);
+                    TH2D* hn = H[hkey("new_truth", kn, s, R.token, c->label)].GetPtr();
+                    double tn = hn->GetBinContent(ix, iy), shape = 1.;   // shape: |eta| fraction applied to a bin total
+                    double shape_ul = 0;   // > 0: the OS shape bin is empty -> UL of the cell from the shape statistics
+                    if (c->Derived() && s == 1 && ix == npt) {
+                        // D11: SS top-bin total, split by the OS |eta^pair| fractions of the slice's test samples
+                        double bin_tot = 0, os_tot = 0;
+                        for (int j = 1; j <= neta; ++j) { bin_tot += hn->GetBinContent(ix, j); os_tot += OsEta(kn, R.token, j); }
+                        if (os_tot <= 0) throw std::runtime_error("mc_request_stats_boost: no OS test pair in the top bin for the |eta| shape ("
+                                                                  + R.token + ", kn" + std::to_string(kn) + ")");
+                        shape = OsEta(kn, R.token, iy) / os_tot;
+                        if (shape == 0) shape_ul = kPoissonUL68_n0 / os_tot;
+                        tn = bin_tot;   // statistics = the SS bin total (rel. error below: SS total only)
+                    }
+                    const bool zero_test = tn == 0 || shape_ul > 0;
+                    const double nn = c->n_req * (tn / mn.nproc) * shape * eps;
+                    const double ul = shape_ul > 0 ? c->n_req * (tn / mn.nproc) * shape_ul * eps
+                                                   : c->n_req * (kPoissonUL68_n0 / mn.nproc) * shape * eps;
+                    nsum += nn; nsum_ul += zero_test ? ul : nn; nzero += zero_test;
+                    if (!zero_test) std::cout << F("  %9.0f", nn) << F(" (±%3.0f%%)", 100. / std::sqrt(tn));
+                    else            std::cout << F("  <%8.0f", ul) << " (0 test)";
+                    if (zero_test) tot[tkey(s, R.token, ix, iy)].zero.push_back(kSliceToken.at(kn) + " " + c->group
+                                                                                + (shape_ul > 0 ? " (0 OS |eta| shape pairs)" : ""));
                 }
                 const double b = nr > 0 ? (nr + nsum) / nr : NAN, bul = nr > 0 ? (nr + nsum_ul) / nr : NAN;
                 const bool all_zero = nzero == (int)contrib.size();
@@ -288,12 +424,16 @@ void mc_request_stats_boost(const char* new_dir, const char* out_dir, bool use_t
             csv << " {" << kSliceToken.at(c.kn) << " " << c.group << F(": %.0f, ", c.n_req)
                 << meta_new.at(c.label + "_" + std::to_string(c.kn)).nproc << "}";
         csv << "\n"
-            << "#   (tracking doc additional_mc_request_jo_test.md D5 REVISED, D10). Raw counts: slices carry different sigma weights.\n"
+            << "#   pTH125_300 SS50 = SS m<10 pT^mumu>50 (0.2 M), DERIVED from the pT>20 SS test sample: its events whose filter-level SS\n"
+            << "#   pair has pT^mumu>50 (N_test above = that subset); in the top pair-pT bin its SS bin total is split by the OS |eta^pair|\n"
+            << "#   fractions of the slice's test samples (D11).\n"
+            << "#   (tracking doc additional_mc_request_jo_test.md D5 REVISED, D10, D11). Raw counts: slices carry different sigma weights.\n"
             << "# A config with 0 test pairs in a cell enters with n_new = 0 -> that cell is a LOWER value; listed below with the\n"
             << "#   68% CL upper value of the cell.\n";
         if (s == 2)
             csv << "# OS cells: the SS-filtered configs' contribution is approximate (an event with an OS pair here passes their filter\n"
-                << "#   only if it also holds an SS pair); measured 2026-09-29: 0.9-2.4% of the SI contribution per table, up to 12.5% in single cells.\n";
+                << "#   only if it also holds an SS pair); measured 2026-09-29 (before SS50): 0.9-2.4% of the SI contribution per table, up to 12.5% in single cells;\n"
+                << "#   SS50 (D11) adds a further ~3-4% of the SI contribution in the m<10 cells it reaches.\n";
         for (int ix = first; ix <= npt; ++ix) for (int iy = 1; iy <= neta; ++iy) {
             const Tot& T = tot.at(tkey(s, R.token, ix, iy));
             if (T.zero.empty()) continue;
