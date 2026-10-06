@@ -222,7 +222,7 @@ Three independent categorization schemes, each filled with both normal and Jacob
 2. **Origin-binned**: ss/op × (gg, gq, single_gluon, qqbar, incoming, single_b, all)
 3. **Flavor-binned**: ss/op × (single_b, both_from_b, both_from_c, others)
 
-Plus signal acceptance histograms: 2D (pT, eta) for numerator (signal cuts) and denominator (`from_same_b`).
+Plus signal acceptance histograms: 2D (pT, eta), definition in `Utilities/SignalAcceptanceDefinition.h` (2026-10-05: den = `from_same_b` && pair pT > 9 && |η^pair| < 2.2, num = den && mass window). **Caveat:** the POWHEG truth NTuple is resonance-vetoed (`PowhegAlgCoreT.c` ResonanceTagging, unconditional), so the all-mass denominator is biased and POWHEG A_sig is invalid until a no-resonance-cut NTuple mode exists (`docs/tracking/signal_acceptance_mass_window.md` R2).
 
 ### Truth pipeline (manual)
 

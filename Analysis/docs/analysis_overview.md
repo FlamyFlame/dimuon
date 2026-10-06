@@ -167,6 +167,15 @@ w⁻¹ = ε_trig^pair · ε_reco^pair(pair p_T, pair η, ΔR)
   step, not part of ε_reco
   (`docs/tracking/pair_reco_eff_gap_acceptance.md`).
 
+**Signal acceptance A_sig (2026-10-05, `docs/tracking/signal_acceptance_mass_window.md`).** The
+result is an unfolded cross-section in truth pair p_T > 9 GeV, |truth η^pair| < 2.2 — these two
+cuts DEFINE the measured range and are never acceptance-corrected. A_sig(pair p_T, η^pair) =
+N[truth single-b OS, muon p_T > 4.5 & |η| < 2.4, measured range, **truth mass window**] /
+N[same, **all masses**], from Pythia truth, applied LAST to the unfolded yield. It contains NO
+gap cut (that acceptance is in ε_reco^pair above) and does not extrapolate the single-muon cuts
+(kept fiducial; extrapolation to the evgen-filter limits 3.7 GeV / 2.5 is TO BE CLARIFIED).
+Pythia integrated A_sig = 0.749 (≈0.76 → 0.71 with pair p_T, flat in η^pair).
+
 **(c) Detector response / unfolding.** Momentum response and bin migration are
 characterized from **Pythia fullsim** and used to unfold the measured spectra to
 particle level.

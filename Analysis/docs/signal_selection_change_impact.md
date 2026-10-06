@@ -278,7 +278,12 @@ PbPb) that feed crossx plots **and** R_AA.
 **B. Truth signal acceptance (required if acceptance/α is reported):**
 3. `run_rdf_pythia_truth.sh` (modes: private, nonprivate 5.36, nonprivate 5.02)
    → `histograms_pythia_*_no_data_resonance_cuts.root` (+ `_near_away_divided`)
-   — regenerates `h2d_sig_accept_{num,denom}_pt_eta` (and `_pt_150_eta`).
+   — regenerates `h2d_sig_accept_{num,denom}_pt_eta` (and `_pt_120_eta`). Since 2026-10-05
+   A_sig = truth MASS-WINDOW acceptance in the measured range (num/den expressions in
+   `Utilities/SignalAcceptanceDefinition.h`, marker-guarded; NO gap cut): a mass-window change
+   moves A_sig, a pair-pT / |η^pair| range change moves both legs, a gap-window change does NOT
+   touch it. POWHEG truth (`run_rdf_powheg_truth.sh`) likewise, but its NTuple is
+   resonance-vetoed → POWHEG A_sig invalid (tracking doc R2).
 
 **C. MC fullsim reco-eff / det-response — code-consistency now, numerically
 inert until real MC (see §4):**
