@@ -130,8 +130,8 @@ so cc cannot enter A_sig (checked on the nominal cc NTuple: `from_same_b` = 0 at
   from ParamsSet helpers + marker), used by both producers, the cutflow and the plotter guard.
 - D2 — η-dependence view projects the SAME 2D histograms in `pair_pt_coarse_bins` panels (CLAUDE.md
   Binnings rule 2; coarse edges checked to be fine-axis edges).
-- D3 — cutflow (round 2, user): starts from the measured range (first bin labelled by its physical
-  cuts p_T^pair > 9, |η^pair| < 2.2) and lists ONLY the mass cuts → last cumulative bin = A_sig (PD1).
+- D3 — cutflow (round 2, user): starts from the measured range (first bin labelled "no cut", user
+  2026-10-06: the measured range is not an acceptance cut) and lists ONLY the mass cuts → last cumulative bin = A_sig (PD1).
 - D4 — POWHEG no-res-cut path is bb-only end to end: NTuple `muon_pairs_powheg_bb_truth_no_data_resonance_cuts.root`
   → RDF `RunRDFBasedHistFillingPowhegTruth(false)` (`run_rdf_powheg_truth.sh nores`) →
   `histograms_powheg_truth_bb_no_data_resonance_cuts.root` (PD8). Nominal POWHEG files untouched.

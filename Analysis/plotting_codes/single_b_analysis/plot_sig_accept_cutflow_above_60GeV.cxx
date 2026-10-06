@@ -109,8 +109,9 @@ static void MakePlots(const std::vector<double>& sums_all,
 
     // x-axis labels
     std::vector<std::string> lbls;
-    // first bin = the measured range itself (A_sig denominator), labelled by its physical cuts
-    lbls.push_back(Form("p_{T}^{pair}>%g, |#eta^{pair}|<%g", ParamsSet::signal_pair_pt_min, ParamsSet::pair_eta_fiducial_max));
+    // first bin = the A_sig denominator (measured range p_T^pair > 9, |eta^pair| < 2.2, which is
+    // NOT an acceptance cut) -> labelled "no cut" (user, 2026-10-06)
+    lbls.push_back("no cut");
     for (auto& [expr, lbl] : kCuts()) lbls.push_back(lbl);
 
     // ========================== Accum plot ==========================
