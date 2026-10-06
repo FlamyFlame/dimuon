@@ -32,7 +32,9 @@ void plot_signal_acceptance_powheg(const std::string& input_file = "",
 {
     std::string in_path = input_file;
     if (in_path.empty()) {
-        in_path = "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/histograms_powheg_truth.root";
+        // bb NO-resonance-cut truth: A_sig's denominator needs ALL masses, and the nominal POWHEG
+        // truth NTuple is resonance-vetoed (docs/tracking/signal_acceptance_mass_window.md R2).
+        in_path = "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/histograms_powheg_truth_bb_no_data_resonance_cuts.root";
     }
 
     SignalAcceptancePlotterPowheg pl(in_path);   // DEFAULT: pT_bins_150 -> powheg/

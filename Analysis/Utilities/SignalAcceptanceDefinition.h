@@ -27,7 +27,8 @@ inline const char* Key() { return "signal_acceptance_definition"; }
 
 inline const char* Value() {
     return "A_sig = N[den && truth mass window] / N[den]; den = from_same_b && truth pair pT > 9 && "
-           "|truth eta^pair| < 2.2 (muon pT>4.5,|eta|<2.4 at NTuple stage); NO gap cuts "
+           "|truth eta^pair| < 2.2 (muon pT>4.5,|eta|<2.4 at NTuple stage); NO gap cuts; "
+           "eta^pair axis 44 bins over [-2.2, 2.2] "
            "(2026-10-05, docs/tracking/signal_acceptance_mass_window.md)";
 }
 

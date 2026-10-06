@@ -7,7 +7,8 @@
 //
 // Two plots per MC:
 //   prefix_sig_accept_above_60GeV_accum.png
-//       #bins = #cuts + 1; bin i = crossx after first (i-1) cuts / crossx at no cut
+//       #bins = #cuts + 1; bin 0 = measured range (A_sig denominator); bin i = crossx after
+//       the first i mass cuts / crossx in the measured range (last bin = integrated A_sig)
 //   prefix_sig_accept_above_60GeV.png
 //       #bins = #cuts; bin i = crossx_i / crossx_{i-1}
 //
@@ -18,6 +19,7 @@
 #include "../../MuonObjectsParamsAndHelpers/MuonPairPowheg.h"
 #include "../../Utilities/MC_helpers.h"
 #include "../../MuonObjectsParamsAndHelpers/ParamsSet.h"
+#include "../../Utilities/SignalAcceptanceDefinition.h"
 #include "TString.h"   // Form(), used to build the cut labels from the ParamsSet values
 
 #include "ROOT/RDataFrame.hxx"
@@ -32,19 +34,15 @@
 #include <string>
 #include <vector>
 
-// Cuts in order (2026-10-05, Utilities/SignalAcceptanceDefinition.h,
-// docs/tracking/signal_acceptance_mass_window.md): first the truth MEASURED RANGE (pair pT > 9,
-// |eta^pair| < 2.2 -- the A_sig denominator), then the truth mass window (the cut A_sig corrects).
-// The integrated A_sig is therefore sums[ncuts] / sums[kNMeasuredRangeCuts]. NO detector-gap cut: the gap acceptance
-// is part of eps_reco (docs/tracking/pair_reco_eff_gap_acceptance.md). Thresholds are READ FROM
-// ParamsSet, never retyped; labels are built from the values.
-static constexpr int kNMeasuredRangeCuts = 2;   // the first 2 kCuts() entries = measured range
+// Cutflow of the truth signal acceptance A_sig (2026-10-05, user: the measured-range cuts are
+// NOT acceptance). The starting point ("measured range") is the A_sig DENOMINATOR,
+// SignalAcceptanceDefinition::DenomExpr() = from_same_b && truth pair pT > 9 && |truth eta^pair| < 2.2
+// -- these cuts DEFINE the measurement and are never shown as an acceptance loss. The cuts below are
+// exactly what A_sig corrects: the truth mass window. So the last cumulative bin IS the integrated
+// A_sig. NO detector-gap cut (it is in eps_reco). Thresholds READ FROM ParamsSet, labels built from
+// the values (docs/tracking/signal_acceptance_mass_window.md).
 static const std::vector<std::pair<std::string, std::string>>& kCuts() {
     static const std::vector<std::pair<std::string, std::string>> cuts = {
-        {ParamsSet::SignalPairPtCutExpr("truth_pair_pt"),
-             Form("p_{T}^{pair}>%g", ParamsSet::signal_pair_pt_min)},
-        {ParamsSet::PairFiducialEtaCutExpr("truth_pair_eta"),
-             Form("|#eta^{pair}|<%g", ParamsSet::pair_eta_fiducial_max)},
         {Form("truth_minv > %g", ParamsSet::signal_minv_min), Form("m_{#mu#mu}>%g", ParamsSet::signal_minv_min)},
         {Form("truth_minv < %g", ParamsSet::signal_minv_max), Form("m_{#mu#mu}<%g", ParamsSet::signal_minv_max)},
     };
@@ -56,8 +54,8 @@ static const std::vector<std::pair<std::string, std::string>>& kCuts() {
 static std::pair<std::vector<double>, std::vector<double>>
 RunCutflowPair(ROOT::RDF::RNode df, const std::string& weight_col)
 {
-    auto df_all = df.Filter("from_same_b");
-    auto df_60  = df.Filter("from_same_b && truth_pair_pt > 60.0");
+    auto df_all = df.Filter(SignalAcceptanceDefinition::DenomExpr());
+    auto df_60  = df.Filter(SignalAcceptanceDefinition::DenomExpr() + " && truth_pair_pt > 60.0");
 
     std::vector<ROOT::RDF::RResultPtr<double>> ptrs_all, ptrs_60;
     auto dfcur_all = df_all;
@@ -76,8 +74,8 @@ RunCutflowPair(ROOT::RDF::RNode df, const std::string& weight_col)
     std::vector<double> sums_all, sums_60;
     for (auto& p : ptrs_all) sums_all.push_back(*p);
     for (auto& p : ptrs_60)  sums_60.push_back(*p);
-    // Integrated A_sig = after mass window / after the measured range.
-    const size_t k = kNMeasuredRangeCuts;
+    // Integrated A_sig = after the mass window / measured range (bin 0).
+    const size_t k = 0;
     if (sums_all.at(k) > 0 && sums_60.at(k) > 0)
         std::cout << "[INFO] integrated A_sig (mass window | measured range): all pT = "
                   << sums_all.back() / sums_all.at(k) << ", pT>60 = " << sums_60.back() / sums_60.at(k) << "\n";
@@ -111,7 +109,8 @@ static void MakePlots(const std::vector<double>& sums_all,
 
     // x-axis labels
     std::vector<std::string> lbls;
-    lbls.push_back("no cut");
+    // first bin = the measured range itself (A_sig denominator), labelled by its physical cuts
+    lbls.push_back(Form("p_{T}^{pair}>%g, |#eta^{pair}|<%g", ParamsSet::signal_pair_pt_min, ParamsSet::pair_eta_fiducial_max));
     for (auto& [expr, lbl] : kCuts()) lbls.push_back(lbl);
 
     // ========================== Accum plot ==========================
@@ -130,7 +129,7 @@ static void MakePlots(const std::vector<double>& sums_all,
         StyleHist(h_acc_all, kBlack,   20);
         StyleHist(h_acc_60,  kRed + 1, 24);
 
-        h_acc_all.GetYaxis()->SetTitle("cumul. fraction (normalized to no cut)");
+        h_acc_all.GetYaxis()->SetTitle("cumul. fraction (normalized to measured range)");
         h_acc_all.GetYaxis()->SetRangeUser(0., 1.4);
         h_acc_all.GetXaxis()->SetLabelSize(0.048);
         h_acc_all.GetXaxis()->LabelsOption("v");
@@ -201,7 +200,9 @@ void plot_sig_accept_cutflow_above_60GeV()
 
     // cc truth file does not yet exist as a merged single file; use bb only.
     const std::vector<std::string> powheg_files = {
-        "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/bb_evgen_truth_full_sample/muon_pairs_powheg_bb_truth.root",
+        // NO-resonance-cut NTuple: A_sig needs ALL masses in the denominator; the nominal POWHEG
+        // truth NTuple is resonance-vetoed (docs/tracking/signal_acceptance_mass_window.md R2).
+        "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/bb_evgen_truth_full_sample/muon_pairs_powheg_bb_truth_no_data_resonance_cuts.root",
     };
 
     const std::string pythia_out =

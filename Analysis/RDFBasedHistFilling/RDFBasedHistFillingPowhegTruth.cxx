@@ -293,6 +293,7 @@ void RDFBasedHistFillingPowhegTruth::FillHistogramsSignalAcceptance(){
 		// docs/tracking/signal_acceptance_mass_window.md): the measured range (truth pair pT > 9,
 		// |truth eta^pair| < 2.2) is applied to BOTH legs, the mass window to the numerator only.
 		// NO detector-gap cut: the gap acceptance is carried by eps_reco (double count otherwise).
+		// pair-eta axis = 44 bins over the measured range [-2.2, 2.2] (ParamsSet::N_PAIR_ETA_MEASURED_BINS / PAIR_ETA_MEASURED_MAX).
 		auto df_denom = df_op.Filter(SignalAcceptanceDefinition::DenomExpr());
 		auto df_num   = df_op.Filter(SignalAcceptanceDefinition::NumExpr());
 
@@ -303,12 +304,12 @@ void RDFBasedHistFillingPowhegTruth::FillHistogramsSignalAcceptance(){
 
 		hist2d_rresultptr_map["h2d_sig_accept_num_pt_eta"] = df_num.Histo2D(
 			ROOT::RDF::TH2DModel("h2d_sig_accept_num_pt_eta",
-				";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
+				";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, ParamsSet::N_PAIR_ETA_MEASURED_BINS, -ParamsSet::PAIR_ETA_MEASURED_MAX, ParamsSet::PAIR_ETA_MEASURED_MAX),
 			"truth_pair_pt", "truth_pair_eta", "weight_norm");
 
 		hist2d_rresultptr_map["h2d_sig_accept_denom_pt_eta"] = df_denom.Histo2D(
 			ROOT::RDF::TH2DModel("h2d_sig_accept_denom_pt_eta",
-				";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
+				";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, ParamsSet::N_PAIR_ETA_MEASURED_BINS, -ParamsSet::PAIR_ETA_MEASURED_MAX, ParamsSet::PAIR_ETA_MEASURED_MAX),
 			"truth_pair_pt", "truth_pair_eta", "weight_norm");
 
 		// OPT-IN `_pt_120` ALTERNATIVE VIEW (pT_bins_120 = 16 log bins 9 -> 120 GeV), D5.
@@ -316,11 +317,11 @@ void RDFBasedHistFillingPowhegTruth::FillHistogramsSignalAcceptance(){
 		const double* ptbins120 = pms.pT_bins_120.data();
 		hist2d_rresultptr_map["h2d_sig_accept_num_pt_120_eta"] = df_num.Histo2D(
 			ROOT::RDF::TH2DModel("h2d_sig_accept_num_pt_120_eta",
-				";p_{T}^{pair} [GeV];#eta^{pair}", npt120, ptbins120, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
+				";p_{T}^{pair} [GeV];#eta^{pair}", npt120, ptbins120, ParamsSet::N_PAIR_ETA_MEASURED_BINS, -ParamsSet::PAIR_ETA_MEASURED_MAX, ParamsSet::PAIR_ETA_MEASURED_MAX),
 			"truth_pair_pt", "truth_pair_eta", "weight_norm");
 		hist2d_rresultptr_map["h2d_sig_accept_denom_pt_120_eta"] = df_denom.Histo2D(
 			ROOT::RDF::TH2DModel("h2d_sig_accept_denom_pt_120_eta",
-				";p_{T}^{pair} [GeV];#eta^{pair}", npt120, ptbins120, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
+				";p_{T}^{pair} [GeV];#eta^{pair}", npt120, ptbins120, ParamsSet::N_PAIR_ETA_MEASURED_BINS, -ParamsSet::PAIR_ETA_MEASURED_MAX, ParamsSet::PAIR_ETA_MEASURED_MAX),
 			"truth_pair_pt", "truth_pair_eta", "weight_norm");
 	}
 	catch (const std::exception& e) {
@@ -427,8 +428,9 @@ void RDFBasedHistFillingPowhegTruth::FillHistogramsTruthOriginBinned(){
 	}
 }
 
-void RunRDFBasedHistFillingPowhegTruth(){
-	RDFBasedHistFillingPowhegTruth runner;
+// with_data_resonance_cuts = false -> bb no-resonance-cut NTuple only (signal acceptance; see the header).
+void RunRDFBasedHistFillingPowhegTruth(bool with_data_resonance_cuts = true){
+	RDFBasedHistFillingPowhegTruth runner(with_data_resonance_cuts);
 	runner.Run();
 }
 
