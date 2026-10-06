@@ -296,8 +296,8 @@ run-to-run range −4.3 … −7.6), σ_z within 1 %. No change to μ/σ is warr
 
 | quantity (per event, 10 000 ev each) | r17864 (2024 cond.) | r17618 (2023 cond.) | ratio |
 |---|---|---|---|
-| N_trk, p_T > 400 MeV (`[0]` ≡ `[4]`: the stored track collection already has p_T > 400 MeV) | 5830 ± 1740 (RMS) | 5435 ± 1460 | 1.073 |
-| N_trk, HITight (`[3]` ≡ `[7]`) | 2183 ± 359 | 2400 ± 362 | 0.910 |
+| N_trk, p_T > 400 MeV (`trk_numqual[0]`) | 5830 ± 1740 (RMS) | 5435 ± 1460 | 1.073 |
+| N_trk, HITight (`trk_numqual[3]`) | 2183 ± 359 | 2400 ± 362 | 0.910 |
 | L1 ΣE_T median (mean) [TeV] | **3.21 (3.47)** | 16.14 (16.26) | 0.20 |
 
 - **Tracker is essentially unaffected** — the HIJING event is fully there (+7 % untagged tracks, −9 % HITight tracks). The
@@ -779,6 +779,17 @@ silently absorbed into the 2024 efficiencies:
    Whether this propagates to the muon reco efficiency is exactly what the R13 comparison measures:
    R2 found −11 % Tight reco ε alongside −9 % HITight under r17864, so a −6 % HITight would predict a
    partial, not complete, recovery.
+
+**The 400 MeV track threshold cannot be lifted from these NTUPs (2026-10-06).** `m_trk_numqual`
+(`TrigRates.cxx:1833`) has 8 slots: `[0-3]` = {no quality, PP_MIN_BIAS, HI_LOOSE, HI_TIGHT} **with**
+`p_T > 400 MeV`, `[4-7]` = the same four **without** it (added Dec 2023 for exactly that purpose).
+The two halves are equal in **10 000 of 10 000 events in both samples, for all four quality levels** —
+the loop runs over `InDetTrackParticles` (`TrigRates.cxx:85`) and the HI track reconstruction of these
+AODs stores nothing below 400 MeV. So the threshold is **upstream of the skim**: a re-skim cannot lift
+it, only a different reconstruction can, and there is no fallback (the per-track `track_pt` branch is
+not stored in the overlay NTUPs, `StoreBasic` off). The `trk_multiplicity` plot was accordingly
+reduced from 2×2 to **1×2** (`[0]` and `[3]` only) — an earlier label called `[4]`/`[7]` the "stored
+collection", which misread their purpose and invited the reading "the p_T cut removes nothing".
 
 **Branch check** (`scripts/check_skim_output.C` vs the pbpb23 pTH125_300 NTUP): 265 vs 225 branches,
 **24 missing / 64 extra — byte-for-byte the same bookkeeping difference as r17864**, i.e. the three

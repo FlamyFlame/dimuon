@@ -209,7 +209,7 @@ void plot_vtx() {
                 h_reco->GetMean(), h_truth->GetMean(), r_new->GetMean(), r_new->GetRMS(), r_old->GetMean(), r_old->GetRMS());
 }
 
-// ID track multiplicity per event, four skim counters (TrigRates.cxx m_trk_numqual): the
+// ID track multiplicity per event, two skim counters (TrigRates.cxx m_trk_numqual): the
 // question is whether the 2024-conditions calorimeter problem (R1) also reaches the
 // tracker. No centrality cut (an FCal-derived centrality is meaningless while the FCal is
 // wrong, and this check must not depend on it either way). Unweighted, per-event
@@ -217,19 +217,23 @@ void plot_vtx() {
 void plot_ntrk() {
     style();
     ROOT::RDataFrame dnew("HeavyIonD3PD", NEW_FILE()), dold("HeavyIonD3PD", OLD_FILE());
-    // [0] pT > 400 MeV, no quality; [3] pT > 400 MeV + HITight; [4] all tracks; [7] HITight.
-    // Untagged counters reach ~12k tracks in the 2024 sample (250 / bin), the HITight ones ~4k
-    // (80 / bin).
+    // Two panels: [0] p_T > 400 MeV, no quality requirement; [3] p_T > 400 MeV + HITight.
+    // The untagged counter reaches ~12k tracks in the 2024 sample (250 / bin), HITight ~4k (80/bin).
+    //
+    // WHY ONLY TWO. m_trk_numqual has 8 slots: [0-3] are {no quality, PP_MIN_BIAS, HI_LOOSE,
+    // HI_TIGHT} WITH p_T > 400 MeV, and [4-7] are the SAME four WITHOUT the p_T cut (added
+    // Dec 2023 for exactly that purpose, TrigRates.cxx:1838). They carry no extra information
+    // here: [4]==[0], [5]==[1], [6]==[2], [7]==[3] in 10 000 of 10 000 events in BOTH samples,
+    // because the loop runs over InDetTrackParticles (TrigRates.cxx:85) and the HI track
+    // reconstruction of these AODs stores nothing below 400 MeV. The p_T threshold is therefore
+    // upstream of the skim: it cannot be lifted by re-skimming, only by a different reconstruction,
+    // and there is no fallback either (the per-track track_pt branch is not stored in these
+    // overlay NTUPs -- StoreBasic is off). Plotting [4] and [7] as separate panels only invited
+    // the reading "the p_T cut removes nothing", which is backwards.
     struct Panel { int idx; const char* title; int nbins; double xmax; double width; };
-    // [0] and [4] hold the SAME counter, as do [3] and [7]: the stored track collection already has
-    // p_T > 400 MeV, so the "no p_T requirement" counters coincide with the p_T-cut ones (verified
-    // element-wise in all 10 000 events of both samples). The titles say so, so that the duplicate
-    // panels cannot be read as "the p_T cut removes nothing".
-    const Panel panels[4] = {
-        {0, "p_{T} > 400 MeV",                          56, 14000., 250.},
-        {3, "p_{T} > 400 MeV, HITight",                 50,  4000.,  80.},
-        {4, "stored collection (#equiv p_{T} > 400 MeV)", 56, 14000., 250.},
-        {7, "HITight, stored collection",               50,  4000.,  80.},
+    const Panel panels[2] = {
+        {0, "p_{T} > 400 MeV",          56, 14000., 250.},
+        {3, "p_{T} > 400 MeV, HITight", 50,  4000.,  80.},
     };
     const double n_new = *dnew.Count(), n_old = *dold.Count();
     std::vector<ROOT::RDF::RResultPtr<TH1D>> hn, ho;
@@ -240,9 +244,9 @@ void plot_ntrk() {
         hn.push_back(dnew.Define(col, expr).Histo1D(m, col));
         ho.push_back(dold.Define(col, expr).Histo1D(m, col));
     }
-    TCanvas c("c", "", 1600, 1400);
-    c.Divide(2, 2);
-    for (int i = 0; i < 4; ++i) {
+    TCanvas c("c", "", 1600, 700);
+    c.Divide(2, 1);
+    for (int i = 0; i < 2; ++i) {
         c.cd(i + 1); gPad->SetLeftMargin(0.13); gPad->SetBottomMargin(0.13);
         TH1D *n = hn[i].GetPtr(), *o = ho[i].GetPtr();
         n->Scale(1.0 / n_new); o->Scale(1.0 / n_old);
