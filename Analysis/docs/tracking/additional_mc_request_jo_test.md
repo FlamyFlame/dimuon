@@ -184,6 +184,13 @@ boosts stay in `stats_boost_stdout.txt`.
 |η^pair| fractions of the slice's (kn5) test samples, pooled. An empty OS shape bin → 0-test cell with UL.
 OS cells: the subset's OS pairs, direct.
 
+**D11 REVISED (USER, 2026-10-06).** Old: only SS50's 105–150 bin split by the OS |η^pair| fractions of the slice's
+TEST samples (8:5:0 in m_sig → forward cell 0). New: in the SS tables (m<10 AND 1.08<m<2.9), bins 74–105 and
+105–150, EVERY config's projected SS bin total is split by the OS |η^pair| fractions of the EXISTING full sample
+(truth Step-3 OS pairs of the same slice; slice bin empty → kn2–5 pooled). 52–74 and the OS tables unchanged.
+Reason: no test sample has an SS pair at |η^pair| 2.0–2.2 above 52 GeV (expected ~0.4 per bin at ~3 %), so the
+cell-by-cell projection returns 0 there; the reference OS shape has 10³-level statistics.
+
 ## Progress Log
 
 - **2026-09-22, step 1.** Compiled on AthGeneration 23.6.68 (x86_64-el9-gcc15-opt) after D1/D2;
@@ -333,6 +340,17 @@ OS cells: the subset's OS pairs, direct.
   by a ±1.2 % x offset, fiducial in headline). SS/OS σ ratio in the canonical cells: pTH125_300 0.055±0.008 /
   0.037±0.010 / 0.020±0.014 (SS steeper, ~2σ); pTH70_125 0.019±0.006 / 0.013±0.013 / 0 (30 SS pairs: too few).
   SS 125–300 first display bin (45–49 GeV) SS/OS = 0.17 is a ~3σ fluctuation (not correlated pairs).
+
+- **2026-10-06, follow-up 5 DONE (D11 REVISED).** Reference OS |η^pair| shapes (truth Step-3; m<10, 74–105 / 105–150):
+  kn5 0.656/0.311/0.033 (n=5426) / 0.681/0.291/0.029 (n=1227); kn4 0.565/0.386/0.049 (588) / 0.613/0.323/0.065 (31);
+  m_sig kn5 0.686/0.288/0.026 (2407) / 0.729/0.258/0.013 (480). SS tables before → after (|η| 0–1/1–2/2–2.2):
+  m<10 74–105 29375/5629/0 → 23198/10308/1028; 105–150 2860/1221/65 → 2884/1177/80; m_sig 74–105 3826/6/0 →
+  2635/1048/100; 105–150 1133/1069/0 → 1642/555/17. 52–74 and OS tables unchanged. `/review-analysis-code` PASS;
+  W1 (empty shape cell with empty bin total gave UL 0) fixed → forward 105–150 ULs 1805 (m<10) / 1932 (m_sig),
+  dominated by kn3's 2-pair OS shape; W2 header; cells unchanged by the fixes. Also printed (chat only, no CSV):
+  per-slice SS(new 0.5 M)/OS(existing) pair-pT shares in 20–40/40–52/52–74/74–105/105–150 (m<10, Step 3):
+  pTH70_125 SS 93.4/5.2/1.2/0.15/0 % vs OS 78.3/14.1/6.5/1.0/0.07 %; pTH125_300 SS 77.4/14.2/6.3/1.9/0.28 % vs OS
+  59.9/17.3/14.9/6.5/1.4 %.
 
 ## Results & Observations
 
@@ -489,5 +507,5 @@ pTH125_300, this VM); per accepted event ≈ t₀ / ε.
   outside the 4 reference tables, not requested.
 
 ## Latest Stage
-DONE (2026-09-29; follow-ups 2026-10-02/03/04 DONE: D10 4 tables; production bundle of 7 configs; R8/R9; D11
-tables for the final request incl. SS50; SS/OS slope helper plot). Open for the user: submit the MR; send the bundle.
+DONE (2026-09-29; follow-ups 2026-10-02 … 10-06 DONE: D10 tables; production bundle of 7 configs; R8/R9; D11 /
+D11 REVISED tables for the final request; SS/OS slope plot). Open for the user: submit the MR; send the bundle.
