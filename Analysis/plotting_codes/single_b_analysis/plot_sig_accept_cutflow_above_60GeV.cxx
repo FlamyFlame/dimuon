@@ -32,21 +32,21 @@
 #include <string>
 #include <vector>
 
-// Signal cuts in order — must match FillHistogramsSignalAcceptance in the RDF truth classes.
-// MIGRATED 2026-09-08 with the truth signal acceptance itself: the pair-pT threshold and the
-// gap windows are READ FROM ParamsSet, never retyped, so this cutflow cannot drift from the
-// selection it is supposed to describe (docs/tracking/mu_pt45_gap125_pairpt9_adoption.md).
-// The label is built from the value rather than typed, for the same reason.
+// Cuts in order (2026-10-05, Utilities/SignalAcceptanceDefinition.h,
+// docs/tracking/signal_acceptance_mass_window.md): first the truth MEASURED RANGE (pair pT > 9,
+// |eta^pair| < 2.2 -- the A_sig denominator), then the truth mass window (the cut A_sig corrects).
+// The integrated A_sig is therefore sums[ncuts] / sums[kNMeasuredRangeCuts]. NO detector-gap cut: the gap acceptance
+// is part of eps_reco (docs/tracking/pair_reco_eff_gap_acceptance.md). Thresholds are READ FROM
+// ParamsSet, never retyped; labels are built from the values.
+static constexpr int kNMeasuredRangeCuts = 2;   // the first 2 kCuts() entries = measured range
 static const std::vector<std::pair<std::string, std::string>>& kCuts() {
     static const std::vector<std::pair<std::string, std::string>> cuts = {
-        {Form("truth_minv > %g", ParamsSet::signal_minv_min), Form("m_{#mu#mu}>%g", ParamsSet::signal_minv_min)},
-        {Form("truth_minv < %g", ParamsSet::signal_minv_max), Form("m_{#mu#mu}<%g", ParamsSet::signal_minv_max)},
         {ParamsSet::SignalPairPtCutExpr("truth_pair_pt"),
              Form("p_{T}^{pair}>%g", ParamsSet::signal_pair_pt_min)},
-        {ParamsSet::FiducialGapCutExpr("m1.truth_charge * m1.truth_eta"), "#mu_{1}: gap fid."},
-        {ParamsSet::FiducialGapCutExpr("m2.truth_charge * m2.truth_eta"), "#mu_{2}: gap fid."},
         {ParamsSet::PairFiducialEtaCutExpr("truth_pair_eta"),
              Form("|#eta^{pair}|<%g", ParamsSet::pair_eta_fiducial_max)},
+        {Form("truth_minv > %g", ParamsSet::signal_minv_min), Form("m_{#mu#mu}>%g", ParamsSet::signal_minv_min)},
+        {Form("truth_minv < %g", ParamsSet::signal_minv_max), Form("m_{#mu#mu}<%g", ParamsSet::signal_minv_max)},
     };
     return cuts;
 }
@@ -76,6 +76,11 @@ RunCutflowPair(ROOT::RDF::RNode df, const std::string& weight_col)
     std::vector<double> sums_all, sums_60;
     for (auto& p : ptrs_all) sums_all.push_back(*p);
     for (auto& p : ptrs_60)  sums_60.push_back(*p);
+    // Integrated A_sig = after mass window / after the measured range.
+    const size_t k = kNMeasuredRangeCuts;
+    if (sums_all.at(k) > 0 && sums_60.at(k) > 0)
+        std::cout << "[INFO] integrated A_sig (mass window | measured range): all pT = "
+                  << sums_all.back() / sums_all.at(k) << ", pT>60 = " << sums_60.back() / sums_60.at(k) << "\n";
     return {sums_all, sums_60};
 }
 

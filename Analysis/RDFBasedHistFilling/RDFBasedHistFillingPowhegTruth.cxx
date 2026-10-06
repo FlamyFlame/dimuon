@@ -1,6 +1,8 @@
 #include "../MuonObjectsParamsAndHelpers/muon_pair_enums_MC.h"
 
 #include "RDFBasedHistFillingPowheg.cxx"
+#include "../Utilities/SignalAcceptanceDefinition.h"
+#include "TNamed.h"
 
 // ---------------------------------------------------------------------------------------------
 // pp24 MC-vs-DATA comparison, GENERIC family (2026-08-25)
@@ -287,14 +289,12 @@ void RDFBasedHistFillingPowhegTruth::FillHistogramsSignalAcceptance(){
 	try {
 		ROOT::RDF::RNode& df_op = map_at_checked(df_map, "df_op_weighted", "FillHistogramsSignalAcceptance (Powheg): df_op_weighted");
 
-		const std::string signal_cuts =
-			std::string("from_same_b && ") + ParamsSet::SignalMinvCutExpr("truth_minv") + " && "
-			+ ParamsSet::SignalPairPtCutExpr("truth_pair_pt") + " && " + ParamsSet::FiducialGapCutExpr("m1.truth_charge * m1.truth_eta")
-            + " && " + ParamsSet::FiducialGapCutExpr("m2.truth_charge * m2.truth_eta")
-            + " && " + ParamsSet::PairFiducialEtaCutExpr("truth_pair_eta");
-
-		auto df_denom = df_op.Filter("from_same_b");
-		auto df_num   = df_op.Filter(signal_cuts);
+		// A_sig = truth MASS-WINDOW acceptance (2026-10-05, Utilities/SignalAcceptanceDefinition.h,
+		// docs/tracking/signal_acceptance_mass_window.md): the measured range (truth pair pT > 9,
+		// |truth eta^pair| < 2.2) is applied to BOTH legs, the mass window to the numerator only.
+		// NO detector-gap cut: the gap acceptance is carried by eps_reco (double count otherwise).
+		auto df_denom = df_op.Filter(SignalAcceptanceDefinition::DenomExpr());
+		auto df_num   = df_op.Filter(SignalAcceptanceDefinition::NumExpr());
 
 		// DEFAULT fine pair-pT axis = pT_bins_150 (16 log bins 9 -> 150 GeV), D5 -- the
 		// unsuffixed acceptance family is the nominal one, mirroring the crossx classes.
@@ -327,6 +327,13 @@ void RDFBasedHistFillingPowhegTruth::FillHistogramsSignalAcceptance(){
 		std::cerr << "FillHistogramsSignalAcceptance (Powheg): " << e.what() << std::endl;
 		throw;
 	}
+}
+
+void RDFBasedHistFillingPowhegTruth::WriteOutputExtra(){
+	// Definition marker of the h2d_sig_accept_* family (Utilities/SignalAcceptanceDefinition.h):
+	// the signal-acceptance plotter refuses a file without it.
+	m_outfile->cd();
+	TNamed(SignalAcceptanceDefinition::Key(), SignalAcceptanceDefinition::Value()).Write();
 }
 
 void RDFBasedHistFillingPowhegTruth::HistPostProcessExtra(){

@@ -107,6 +107,7 @@ protected:
     void                FillHistogramsTruthFlavorBinned();
     void                FillHistogramsSignalAcceptance();
     virtual void        HistPostProcessExtra() override;
+    virtual void        WriteOutputExtra() override;
 
 public:
     explicit RDFBasedHistFillingPowhegTruth()
