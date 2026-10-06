@@ -174,7 +174,7 @@ N[truth single-b OS, muon p_T > 4.5 & |η| < 2.4, measured range, **truth mass w
 N[same, **all masses**], from Pythia truth, applied LAST to the unfolded yield. It contains NO
 gap cut (that acceptance is in ε_reco^pair above) and does not extrapolate the single-muon cuts
 (kept fiducial; extrapolation to the evgen-filter limits 3.7 GeV / 2.5 is TO BE CLARIFIED).
-Pythia integrated A_sig = 0.749 (≈0.76 → 0.71 with pair p_T, flat in η^pair).
+Pythia integrated A_sig = 0.749 (≈0.76 → 0.71 with pair p_T, flat in η^pair); POWHEG (bb, no-resonance-cut NTuple) 0.513 — the difference is the B → J/ψ X → μμ fraction of single-b pairs (31 % POWHEG vs 3 % Pythia), an OPEN generator/signal-definition question (tracking doc R4).
 
 **(c) Detector response / unfolding.** Momentum response and bin migration are
 characterized from **Pythia fullsim** and used to unfold the measured spectra to

@@ -282,8 +282,8 @@ PbPb) that feed crossx plots **and** R_AA.
    A_sig = truth MASS-WINDOW acceptance in the measured range (num/den expressions in
    `Utilities/SignalAcceptanceDefinition.h`, marker-guarded; NO gap cut): a mass-window change
    moves A_sig, a pair-pT / |η^pair| range change moves both legs, a gap-window change does NOT
-   touch it. POWHEG truth (`run_rdf_powheg_truth.sh`) likewise, but its NTuple is
-   resonance-vetoed → POWHEG A_sig invalid (tracking doc R2).
+   touch it. POWHEG A_sig: `run_rdf_powheg_truth.sh nores` on the bb no-resonance-cut NTuple
+   (tracking doc PD8; the nominal POWHEG NTuple is resonance-vetoed and must not be used for A_sig).
 
 **C. MC fullsim reco-eff / det-response — code-consistency now, numerically
 inert until real MC (see §4):**
