@@ -187,8 +187,11 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::OutputTreePathHook(){
     this->output_file_path = powheg_dir + data_subdir;
     std::string file_name_base = this->output_single_muon_tree ? "single_muon_trees_powheg" : "muon_pairs_powheg";
     std::string batch_suffix = useLocal ? "_local_batch" : "_part";
+    if (!turn_data_resonance_cuts_on && (is_fullsim || is_fullsim_overlay))
+        throw std::runtime_error("PowhegAlgCoreT: turn_data_resonance_cuts_on=false is implemented for the TRUTH-ONLY path only");
+    const std::string res_suffix = turn_data_resonance_cuts_on ? "" : "_no_data_resonance_cuts";
 
-    this->output_file_path += file_name_base + "_" + mc_mode + dt_suffix + batch_suffix + std::to_string(file_batch) + ".root";
+    this->output_file_path += file_name_base + "_" + mc_mode + dt_suffix + res_suffix + batch_suffix + std::to_string(file_batch) + ".root";
 }
 
 template <class PairT, class MuonT, class Derived, class... Extras>
@@ -201,7 +204,8 @@ template <class PairT, class MuonT, class Derived, class... Extras>
 void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::OutputHistPathHook(){
     this->output_hist_file_path = powheg_dir + data_subdir;
     std::string batch_suffix = useLocal ? "_local_batch" : "_part";
-    this->output_hist_file_path += "hists_powheg_ntuple_processing_powheg_" + mc_mode + dt_suffix + batch_suffix + std::to_string(file_batch) + ".root";
+    const std::string res_suffix = turn_data_resonance_cuts_on ? "" : "_no_data_resonance_cuts";
+    this->output_hist_file_path += "hists_powheg_ntuple_processing_powheg_" + mc_mode + dt_suffix + res_suffix + batch_suffix + std::to_string(file_batch) + ".root";
 }
 
 template <class PairT, class MuonT, class Derived, class... Extras>
@@ -344,11 +348,13 @@ void PowhegAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessEventTruthOnly(int
         std::vector<int>::iterator itres_m1;
         std::vector<int>::iterator itres_m2;
 
+        // Veto only in the nominal mode; with turn_data_resonance_cuts_on = false every pair that
+        // passed PassCuts is kept (the ONLY difference between the two modes).
         itres_m1 = std::find(this->resonance_tagged_muon_index_list.begin(),this->resonance_tagged_muon_index_list.end(),mpairRef()->m1.ind);
-        if(itres_m1 != this->resonance_tagged_muon_index_list.end())  continue;
+        if(turn_data_resonance_cuts_on && itres_m1 != this->resonance_tagged_muon_index_list.end())  continue;
 
         itres_m2 = std::find(this->resonance_tagged_muon_index_list.begin(),this->resonance_tagged_muon_index_list.end(),mpairRef()->m2.ind);
-        if(itres_m2 != this->resonance_tagged_muon_index_list.end())  continue;
+        if(turn_data_resonance_cuts_on && itres_m2 != this->resonance_tagged_muon_index_list.end())  continue;
 
         h_cutAcceptanceRef()[mpairRef()->m1.truth_charge != mpairRef()->m2.truth_charge]->Fill(double(pass_resonance) + 0.5, mpairRef()->weight);
         

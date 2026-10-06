@@ -37,6 +37,13 @@ protected:
     bool    is_fullsim{false}; // if is fullsim, load reco quantities
     bool    is_fullsim_overlay{false}; // if is fullsim overlay, load centrality info
     bool    perform_truth{false};
+    // Resonance veto at NTuple stage (TRUTH-ONLY path, ProcessEventTruthOnly). true (DEFAULT) =
+    // nominal: drop every pair with a resonance-tagged muon (ResonanceTagging), the data-like OS
+    // veto. false = KEEP those pairs (mirrors PythiaAlgCoreT `turn_data_resonance_cuts_on = false`),
+    // output suffix "_no_data_resonance_cuts" so the nominal file is never clobbered. Needed by the
+    // truth signal acceptance, whose denominator is ALL masses
+    // (docs/tracking/signal_acceptance_mass_window.md R2). Fullsim paths: unsupported (throws).
+    bool    turn_data_resonance_cuts_on{true};
 
     double crossx_cut;
     double filter_effcy;
@@ -267,6 +274,8 @@ protected:
     void Finalize_PowhegCore(){}
 
 public:
+    // Truth-only resonance-veto switch (see turn_data_resonance_cuts_on). Call before Run().
+    void                        setTurnDataResonanceCutsOn(bool on){ turn_data_resonance_cuts_on = on; }
     void ProcessDataHook();
     void ProcessEventTruthOnly(int ev_num);
     void OutputTreePathHook();
