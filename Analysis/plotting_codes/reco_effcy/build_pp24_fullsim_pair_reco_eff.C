@@ -1,7 +1,7 @@
 // =================================================================================================
 // build_pp24_fullsim_pair_reco_eff.C
 //
-// Persist the single-b PAIR reconstruction efficiency eps_reco(pair pT, pair eta, dR) that the
+// Persist the PAIR reconstruction efficiency eps_reco(pair pT, pair eta, dR) that the
 // pp24 cross-section applies, from the pp24-condition Pythia fullsim RDF hist-filling output.
 //
 // WHY THIS FILE EXISTS. Until now the fullsim reco-efficiency chain produced PNGs only -- there was
@@ -13,15 +13,20 @@
 // DEFINITION (docs/tracking/pair_reco_eff_gap_acceptance.md Physics Procedure §2, 2026-09-17;
 // supersedes pp24_crossx_rerun_2026_08.md 3d):
 //
-//   eps_reco(cell) = N[ single-b OS pair in the TRUTH signal region, both muons reco-matched, pair
+//   eps_reco(cell) = N[ truth OS pair in the TRUTH signal region, both muons reco-matched, pair
 //                       passes the WP, and the RECO pair passes the DATA signal selection: mass
 //                       window, pair pT, the fiducial gap windows on RECO q*eta of both muons and
 //                       RECO |eta^pair| < 2.2 ]
-//                  / N[ single-b OS pair in the TRUTH signal region: truth mass window and truth
+//                  / N[ truth OS pair in the TRUTH signal region: truth mass window and truth
 //                       pair pT ONLY -- NO gap cut of any kind on the truth leg ]
 //
-// Numerator and denominator are the `_single_b_pass_{tight,medium}_and_signal_truth_and_reco` and
-// `_single_b_pass_signal_truth` filters of RDFBasedHistFillingPythiaFullsim, binned in TRUTH
+// OS pair = ALL truth opposite-sign pairs, any origin (PairRecoEffDefinition::CategoryRdfTag() =
+// `_op`; was `_single_b` = from_same_b until 2026-10-06 -- the origin test found no cell-level
+// difference in populated cells and `_op` adds 18 % effective statistics;
+// docs/tracking/pair_reco_eff_origin_test_and_views.md R1, D3). The category is written into the
+// product as a TNamed marker so the plotter labels it from the file, never from a guess.
+// Numerator and denominator are the `_op_pass_{tight,medium}_and_signal_truth_and_reco` and
+// `_op_pass_signal_truth` filters of RDFBasedHistFillingPythiaFullsim, binned in TRUTH
 // kinematics on the CANONICAL coarse axes and weighted by the MC event weight. The gap cuts are
 // DETECTOR-ACCEPTANCE cuts, not signal cuts, so their loss is carried HERE, differentially: a
 // truth pair whose reconstructed muon lands in a gap window, or whose reconstructed |eta^pair|
@@ -78,8 +83,9 @@ std::string FormatEdge(float v)
     return s;
 }
 
-const char* kBase =
-    "h_truth_dr_effcy_vs_truth_pair_eta_coarse_vs_truth_pair_pt_coarse_single_b";
+const std::string kBase =
+    std::string("h_truth_dr_effcy_vs_truth_pair_eta_coarse_vs_truth_pair_pt_coarse")
+    + PairRecoEffDefinition::CategoryRdfTag();
 
 TH3D* Get3D(TFile* f, const std::string& name)
 {
@@ -165,7 +171,7 @@ int build_pp24_fullsim_pair_reco_eff(bool use_full_sample = true)
         auto* eff = static_cast<TH3D*>(h_num->Clone(("h_pair_reco_eff_" + wp).c_str()));
         eff->SetDirectory(nullptr);
         eff->Divide(h_num, h_den, 1.0, 1.0, "B");
-        eff->SetTitle(("single-b pair reco efficiency, " + wp
+        eff->SetTitle(("OS pair reco efficiency, " + wp
                      + " WP;p_{T}^{pair,truth} [GeV];#eta^{pair,truth};#DeltaR^{truth}").c_str());
 
         // ---- dR-integrated 2D fallback ---------------------------------------------------
@@ -176,7 +182,7 @@ int build_pp24_fullsim_pair_reco_eff(bool use_full_sample = true)
         auto* eff2 = static_cast<TH2D*>(n2->Clone(("h_pair_reco_eff_" + wp + "_dr_integrated").c_str()));
         eff2->SetDirectory(nullptr);
         eff2->Divide(n2, d2, 1.0, 1.0, "B");
-        eff2->SetTitle(("single-b pair reco efficiency, dR-integrated, " + wp
+        eff2->SetTitle(("OS pair reco efficiency, dR-integrated, " + wp
                       + " WP;p_{T}^{pair,truth} [GeV];#eta^{pair,truth}").c_str());
 
         // ---- inclusive scalar fallback ---------------------------------------------------
@@ -231,7 +237,7 @@ int build_pp24_fullsim_pair_reco_eff(bool use_full_sample = true)
     h_den->Clone("h_pair_reco_eff_denom")->Write();
     static_cast<TH2D*>(h_den->Project3D("yx"))->Clone("h_pair_reco_eff_denom2d")->Write();
     TNamed prov("provenance",
-                ("single-b OS pair reco efficiency INCLUDING the detector-gap acceptance: the gap "
+                (std::string(PairRecoEffDefinition::CategoryValue()) + ": pair reco efficiency INCLUDING the detector-gap acceptance: the gap "
                  "cuts (ParamsSet::single_mu_fiducial_gap_cuts on both muons PLUS the pair-level "
                  "window |eta^pair| < " + FormatEdge(ParamsSet::pair_eta_fiducial_max)
                  + ") are applied on the RECO leg only; the truth denominator carries the signal "
@@ -246,6 +252,8 @@ int build_pp24_fullsim_pair_reco_eff(bool use_full_sample = true)
     // denominator built it without opening the histogram file.
     TNamed(PairRecoEffDefinition::Key(),
            PairRecoEffDefinition::Value()).Write();
+    TNamed(PairRecoEffDefinition::CategoryKey(),
+           PairRecoEffDefinition::CategoryValue()).Write();
     fout->Close();
 
     std::cout << "\nWrote " << out_path << std::endl;

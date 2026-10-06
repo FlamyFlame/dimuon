@@ -157,10 +157,14 @@ w⁻¹ = ε_trig^pair · ε_reco^pair(pair p_T, pair η, ΔR)
   captures that correlation. In central Pb+Pb the efficiency is genuinely lower
   and centrality-dependent (real occupancy effect from the underlying event), not
   a bookkeeping artifact.
-  **Definition (2026-09-17):** ε_reco^pair(cell) = N[truth single-b pair in the truth signal
-  region, both muons reconstructed, WP, and the reconstructed pair passing the full data
-  selection *including the detector-gap cuts*] / N[truth single-b pair in the truth signal
-  region — signal cuts only, **no gap cut**]. It thus **includes the gap-cut acceptance**: a
+  **Definition (2026-09-17; pair category 2026-10-06):** ε_reco^pair(cell) = N[truth
+  opposite-sign pair (any origin) in the truth signal region, both muons reconstructed, WP, and
+  the reconstructed pair passing the full data selection *including the detector-gap cuts*] /
+  N[truth opposite-sign pair in the truth signal region — signal cuts only, **no gap cut**].
+  All truth OS pairs, not only `from_same_b`: ε_reco is a detector property of the pair
+  kinematics, and the origin test found no cell-level difference between single-b and other
+  OS pairs in populated cells (+18 % MC statistics;
+  `docs/tracking/pair_reco_eff_origin_test_and_views.md` R1). It thus **includes the gap-cut acceptance**: a
   truth pair reconstructed into a gap window or across |η^pair| = 2.2 is an inefficiency. A
   truth pair outside the measured η^pair range (|η^pair| ≥ 2.2 — the truth fiducial edge of
   the measurement, see §2) reconstructed inside it is bin migration for the detector-response

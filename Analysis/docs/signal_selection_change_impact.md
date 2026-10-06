@@ -313,7 +313,9 @@ inert until real MC (see §4):**
 **pp24 (since 2026-08-18): the fullsim pair eps_reco IS the nominal.** It is
 eps_reco(pair pT, pair eta, dR), built by
 `plotting_codes/reco_effcy/build_pp24_fullsim_pair_reco_eff.C` on the canonical coarse axes and
-read by `Utilities/PairRecoEffEvaluator.h`. For pp, §3.C is therefore RESULT-AFFECTING: a signal
+read by `Utilities/PairRecoEffEvaluator.h` (all truth OS pairs since 2026-10-06; the product carries
+a `pair_reco_eff_pair_category` marker that the evaluator enforces, so a product of the other category
+is refused). For pp, §3.C is therefore RESULT-AFFECTING: a signal
 cut change must rerun the fullsim reco-eff AND rebuild that file, or the correction and the data
 describe different regions.
 
