@@ -185,7 +185,11 @@ void RDFBasedHistFillingPythiaFullsim::BuildFilterToVarListMapExtra(){
         // The APPLIED eps_reco cells: canonical coarse pair pT x coarse pair eta x the
         // reco-efficiency dR edges. Consumed by
         // plotting_codes/reco_effcy/build_pp24_fullsim_pair_reco_eff.C.
-        {"truth_pair_pt_coarse", "truth_pair_eta_coarse", "truth_dr_effcy"}
+        {"truth_pair_pt_coarse", "truth_pair_eta_coarse", "truth_dr_effcy"},
+        // ALTERNATIVE closeness variable: truth m_mumu (4 uniform bins over the signal window,
+        // ParamsSet::SignalMinvRecoEffcyBins) instead of dR. Diagnostic, not applied
+        // (docs/tracking/pair_reco_eff_origin_test_and_views.md D4).
+        {"truth_pair_pt_coarse", "truth_pair_eta_coarse", "truth_minv_effcy"}
     };
 
     detec_resp_var1Ds = {
@@ -259,6 +263,9 @@ void RDFBasedHistFillingPythiaFullsim::BuildHistBinningMapPythiaFullsimExtra(){
                                      dr_bins_edges_for_reco_effcy.end());
         hist_binning_map["dr_bins_reco_effcy"] = dr_edges;
     }
+
+    // truth-mass axis of the alternative (pair pT, pair eta, m_mumu) reco-efficiency 3D (D4).
+    hist_binning_map["minv_bins_reco_effcy"] = ParamsSet::SignalMinvRecoEffcyBins();
 }
 
 void RDFBasedHistFillingPythiaFullsim::CreateBaseRDFsPythiaFullsimExtra(){

@@ -471,6 +471,19 @@ public:
    		         minv_expr.c_str(), signal_minv_min, minv_expr.c_str(), signal_minv_max);
    		return std::string(buf);
    	}
+   	// Truth-mass axis of the ALTERNATIVE pair reco-efficiency 3D (pair pT, pair eta, m_mumu):
+   	// mass as the closeness variable instead of dR (user 2026-10-06,
+   	// docs/tracking/pair_reco_eff_origin_test_and_views.md D4). N_SIGNAL_MINV_BINS_RECO_EFFCY
+   	// UNIFORM bins spanning exactly the signal window -- DERIVED from the window, never typed, so
+   	// the axis follows the window. Diagnostic only: the applied eps_reco stays on dR.
+   	static constexpr int N_SIGNAL_MINV_BINS_RECO_EFFCY = 4;
+   	static std::vector<double> SignalMinvRecoEffcyBins() {
+   		std::vector<double> e;
+   		for (int i = 0; i <= N_SIGNAL_MINV_BINS_RECO_EFFCY; ++i)
+   			e.push_back(signal_minv_min
+   			            + (signal_minv_max - signal_minv_min) * i / N_SIGNAL_MINV_BINS_RECO_EFFCY);
+   		return e;
+   	}
 
    	float minv_upper = 60;
 

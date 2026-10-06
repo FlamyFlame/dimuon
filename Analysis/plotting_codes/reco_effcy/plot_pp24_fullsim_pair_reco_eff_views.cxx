@@ -115,6 +115,8 @@ void CheckCanonical(const TH3D* h, const ZVar& zv)
         std::vector<double> dr(cfg.dr_bins_edges_for_reco_effcy.begin(),
                                cfg.dr_bins_edges_for_reco_effcy.end());
         CheckAxis(h->GetZaxis(), dr, "dR");
+    } else {
+        CheckAxis(h->GetZaxis(), ParamsSet::SignalMinvRecoEffcyBins(), "m_mumu");
     }
 }
 
@@ -205,8 +207,11 @@ std::string EtaLabel(const TAxis* a, int j)
 }
 std::string ZLabel(const ZVar& zv, const TAxis* a, int k)
 {
-    return RangeLabel(zv.sym, zv.unit, a->GetBinLowEdge(k), a->GetBinUpEdge(k),
-                      zv.key == "dr" ? 1 : 2);
+    if (zv.key == "dr")
+        return RangeLabel(zv.sym, zv.unit, a->GetBinLowEdge(k), a->GetBinUpEdge(k), 1);
+    // mass edges (e.g. 1.535) must print EXACTLY -- a rounded label describes a different bin
+    return Form("%g < %s < %g%s", a->GetBinLowEdge(k), zv.sym.c_str(), a->GetBinUpEdge(k),
+                zv.unit.c_str());
 }
 std::string AbsEtaLabel(const DrAxisGroups& G, int g)
 {
@@ -639,7 +644,7 @@ void plot_pp24_fullsim_pair_reco_eff_views(bool tight_WP = true, std::string par
     const std::string z_int = Form("%s < %.*f%s (integrated)", zv.sym.c_str(), zv.key == "dr" ? 1 : 2,
                                    azz->GetBinUpEdge(nz), zv.unit.c_str());
     const std::string z_int_full = zv.key == "dr" ? z_int
-        : Form("%.2f < %s < %.2f GeV (integrated)", azz->GetBinLowEdge(1), zv.sym.c_str(), azz->GetBinUpEdge(nz));
+        : Form("%g < %s < %g GeV (integrated)", azz->GetBinLowEdge(1), zv.sym.c_str(), azz->GetBinUpEdge(nz));
 
     if (zv.key == "dr") {
         // eps vs eta^pair in pT panels; eps vs pT in eta^pair panels (dR-integrated): the 2D
