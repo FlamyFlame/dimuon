@@ -13,8 +13,9 @@
 //
 // The measured range is truth pair pT > 9 GeV and |truth eta^pair| < 2.2: it DEFINES the
 // measurement and is applied to numerator AND denominator (never acceptance-corrected). The muon
-// truth fiducial pT > 4.5, |eta| < 2.4 is applied at the NTuple stage (kept fiducial; TO BE
-// CLARIFIED, doc §4.1). The detector-gap cuts are NOT here -- they are in eps_reco
+// truth fiducial pT > 4.5, |eta| < 2.4 is applied at the NTuple stage, so THIS implementation is the
+// INTERIM mass-window-only factor; the decided target (doc PD4/PD9, 2026-10-06) also puts the muon
+// cuts in A_sig and needs a private no-muon-pT-filter sample (not yet built). The detector-gap cuts are NOT here -- they are in eps_reco
 // (docs/tracking/pair_reco_eff_gap_acceptance.md). So A_sig = the truth MASS-WINDOW acceptance.
 //
 // Before 2026-10-05 the same histogram names held num = mass && pair pT && gap windows &&

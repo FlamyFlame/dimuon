@@ -1,12 +1,16 @@
-# Signal acceptance A_sig = truth mass-window acceptance in (pair pT, η^pair)
+# Signal acceptance A_sig in (pair pT, η^pair): truth mass window + single-muon p_T/η cuts
+
+(File name kept for continuity; since 2026-10-06 A_sig ALSO contains the single-muon cuts — PD4.)
 
 Mode: **IMPLEMENTATION**. Opened 2026-10-05.
 
 ## Objective
 
 Redefine and rebuild the truth signal acceptance A_sig (Pythia + POWHEG truth) per the user's
-measurement definition (2026-10-05), removing the gap cuts it double counts with ε_reco
-(`pair_reco_eff_gap_acceptance.md`), and plot its pair-pT AND pair-η dependence.
+measurement definition (2026-10-05/06), removing the gap cuts it double counts with ε_reco
+(`pair_reco_eff_gap_acceptance.md`), and plot its pair-pT AND pair-η dependence. **2026-10-06
+(user decision, PD4):** A_sig must ALSO correct the single-muon truth cuts p_T > 4.5 GeV and
+|η| < 2.4, which requires a NEW private Pythia truth sample WITHOUT a muon-p_T generator filter.
 
 ## Physics Procedure
 
@@ -23,12 +27,20 @@ can fail and (ii) ε_reco's denominator does not already correct — no more (do
 ### 2. Top-level equation
     dσ/dX (truth X, after unfolding) = N_unfolded(X) / (L · A_sig(X)),   X = (p_T^pair, η^pair)
 
-    A_sig(cell) = N[ T_meas  AND  m_μμ^truth ∈ (signal_minv_min, signal_minv_max) ] / N[ T_meas ]
-    T_meas = truth single-b OS pair (`from_same_b`), both muons truth p_T > 4.5 GeV & |η| < 2.4
-             (NTuple-stage truth fiducial — kept, §5 PD4), truth p_T^pair > 9 GeV,
-             |truth η^pair| < 2.2; ALL masses.
-Binned in TRUTH (p_T^pair, η^pair): `pT_bins_150` (16 log bins 9–150 GeV) × `pair_eta_measured_bins`
-(44 bins over [−2.2, 2.2], PD7), MC-event weighted. A_sig · ε_reco = N_reco-selected / N[T_meas].
+    TARGET (decided 2026-10-06, PD4):
+    A_sig(cell) = N[ T_target AND both μ truth p_T > 4.5 GeV & |η| < 2.4 AND m_μμ^truth ∈ window ]
+                / N[ T_target ]
+    T_target = truth single-b OS pair (`from_same_b`), truth p_T^pair > 9 GeV, |truth η^pair| < 2.2,
+               both muons |truth η| < 2.5 (ID coverage, PD4), NO muon-p_T cut, ALL masses.
+    The numerator region is exactly ε_reco's truth denominator (+ the measured range), so
+    A_sig · ε_reco = N_reco-selected / N[T_target]: no double count, no gap.
+
+    CURRENTLY IMPLEMENTED (interim, 2026-10-06): only the mass-window factor —
+    A_sig^mass = N[T_meas AND window] / N[T_meas], T_meas = T_target with the muon cuts
+    p_T > 4.5 & |η| < 2.4 already applied (NTuple-stage truth fiducial). Plots/numbers R1–R4 are
+    this interim quantity. The muon-cut factor needs the new private sample (§3e).
+Binned in TRUTH (p_T^pair, η^pair): `pT_bins_150` (16 log bins 9–150 GeV) × 44 η^pair bins over
+[−2.2, 2.2] (PD7), MC-event weighted.
 
 ### 3. Step-by-step method
 (a) RDF truth fill (`RDFBasedHistFillingPythiaTruth.cxx`, `RDFBasedHistFillingPowhegTruth.cxx`,
@@ -40,12 +52,20 @@ panels (`pair_pt_coarse_bins`); cutflow STARTING from the measured range with on
 (its last cumulative bin = integrated A_sig).
 (c) POWHEG: the truth NTuple must be the `_no_data_resonance_cuts` one (PD8).
 (d) A_sig is applied LAST, to the unfolded yield (not yet wired: unfolding is a placeholder).
+(e) **Muon-cut factor (TO IMPLEMENT, PD4/PD9):** new PRIVATE Pythia truth sample with NO muon-p_T
+generator filter → truth NTuple processing with a NEW opt-in flag that replaces the PassCuts truth
+fiducial (p_T > 4.5, |η| < 2.4) by |η| < 2.5 only (distinct output suffix; nominal untouched;
+everything else identical — provenance rule) → A_sig producer with DenomExpr = T_target and
+NumExpr = + muon cuts + mass window; the cutflow then lists (after "no cut" = T_target) the muon
+cuts and the mass cuts. NOT implemented yet (user, 2026-10-06: "no code implement yet").
 
 ### 4. Negative constraints
 1. Do NOT include any detector-gap cut (single-muon q·η windows, the reco |η^pair| gap) in A_sig.
 2. Do NOT acceptance-correct p_T^pair > 9 or |η^pair| < 2.2 — apply them to num AND den, and never
    show them as an acceptance loss (cutflow starts from the measured range).
-3. Do NOT remove the NTuple truth muon cuts (p_T > 4.5, |η| < 2.4) until PD4 is resolved.
+3. Do NOT compute the muon-cut factor from the central (3.7 GeV filter) or old private (3.5 GeV
+   filter) Pythia samples — their denominators are truncated by the generator filter (PD9). Do NOT
+   relax the NOMINAL NTuple truth cuts; the no-muon-p_T-cut truth processing is a NEW opt-in mode.
 4. Do NOT compute A_sig from a resonance-vetoed NTuple (POWHEG nominal truth NTuple).
 5. Do NOT change the crossx binning; the 44-bin η axis is an opt-in suffixed variant for A_sig only.
 
@@ -82,23 +102,39 @@ model-dependent through the b-hadron decay kinematics and branching fractions (P
 1.08 GeV incl. φ 2.4 %; 9.2 % above 2.9 GeV incl. B → J/ψ X → μμ 3.1 %, which therefore counts as
 single-b signal) → a generator/decay-table systematic (Pythia vs POWHEG+Pythia8, PD8).
 
-**PD4 — TO BE CLARIFIED (user, 2026-10-05; checking with collaborators): single-muon truth
-p_T > 4.5 GeV and |η| < 2.4 — currently EXCLUDED from A_sig (kept as a fiducial cut).**
-- *Argument to include them (user):* they are not axes of the observable; a truth single-b pair can
-  sit inside a measured cell (p_T^pair > 9, |η^pair| < 2.2) while one muon has p_T < 4.5 or
-  |η| > 2.4; such a pair is NOT in ε_reco's denominator, so only A_sig could correct for it — by the
-  same logic as PD3.
-- *Argument to keep them fiducial:* extrapolating below the measured muon threshold relies entirely
-  on the MC modelling of the soft muon spectrum (the b → c → μ cascade muon is soft), which no data
-  constrain; fiducial HF-muon measurements keep the muon cuts in the definition for this reason.
-- *Practical bound:* only the existing (filtered) MC will be used. Its evgen filter
-  (`xAODMultiMuonFilter`, ≥ 2 μ with p_T > 3.7 GeV, |η| < 2.5) cannot be removed: 3.7 GeV is needed
-  for generation efficiency (power-law p_T spectrum — a lower threshold throws away most of the
-  sample), and |η| < 2.5 is the inner-detector, hence combined-muon, coverage. So the open question
-  is ONLY whether A_sig extrapolates p_T 4.5 → 3.7 GeV and |η| 2.4 → 2.5 (target muon phase space
-  p_T > 3.7, |η| < 2.5), never to the full phase space. Until resolved: muons fiducial at 4.5 / 2.4.
-  Implementing "include" later = a truth-NTuple flag lowering the PassCuts truth thresholds to the
-  filter limits (distinct suffix) + the same A_sig code with the muon cuts moved into NumExpr().
+**PD4 — INCLUDED (DECIDED, user 2026-10-06): single-muon truth p_T > 4.5 GeV and |η| < 2.4.**
+(Supersedes the 2026-10-05 "TO BE CLARIFIED / keep fiducial" entry; the user corrected that the
+filter limits do NOT bound the extrapolation.) Reasoning: the muon cuts are not axes of the
+observable. A truth single-b pair can sit inside a measured (p_T^pair, η^pair) cell while one muon has
+p_T < 4.5 GeV (the b → c → μ cascade muon is typically soft) or |η| > 2.4; such a pair is NOT in
+ε_reco's truth denominator, so — by the same logic as PD3 — only A_sig can correct for it.
+- **Target muon phase space: NO muon-p_T cut, |truth η_μ| < 2.5** (user Remark 2: the inner detector
+  covers only |η| < 2.5 and an ID track is required for a combined muon, so |η_μ| < 2.5 stays part
+  of the target definition; A_sig extrapolates |η| 2.4 → 2.5 and p_T 4.5 GeV → 0).
+- **Model dependence** (to be quantified as a systematic): the soft-muon extrapolation rests on the
+  MC b-hadron decay kinematics (b → c → μ cascade spectrum); expected to be a small effect overall
+  (user), but it must be measured, not assumed.
+- Literature analogue: ATLAS quarkonium arXiv:1709.03089 §5.2 pp.5–6 — A = probability that both
+  decay muons fall in p_T > 4 GeV, |η| < 2.4, as a function of the parent p_T, y (single-muon cuts
+  inside A; parent kinematic range = the measured range).
+
+**PD9 — Sample for the muon-cut factor: a NEW PRIVATE Pythia truth sample with NO muon-p_T filter
+(user, 2026-10-06).** Reasoning: a generator filter truncates the denominator — a single-b pair
+whose soft muon is below the filter threshold appears only if two OTHER muons pass the filter, so
+the sub-threshold part of T_target is missing/biased. The ATLAS central samples (DSIDs 802758–802781,
+e8599, and the pp24 PDF slices) filter at muon p_T > 3.7 GeV (`xAODMultiMuonFilter`, |η| < 2.5);
+the previous private Pythia sample (`docs/pythia_truth.md` mode `private`) filters at p_T > 3.5 GeV.
+Neither can give the 4.5 → 0 GeV extrapolation. User Remark 1: ATLAS central MC is the default for
+nearly every task; a private sample is acceptable ONLY for this purpose (extending below the
+central filter for the acceptance), and the effect may be small. PROPOSED requirements for the
+private sample (Claude's proposal, NOT yet confirmed by the user — confirm before generating): same
+physics configuration as the central
+production (Pythia 8 A14 NNPDF2.3LO, HardQCD:all, pT-hat slices, √s = 5.36 TeV, pp beam) so that
+A_sig's mass-window part can be cross-checked against the central sample above 4.5 GeV; generator
+filter at most |η_μ| < 2.5 with no p_T cut (or none); per-slice σ·ε weights taken from THIS
+sample's own generator output — never another sample's (AMI rule spirit, `docs/ami_weights.md`:
+slice-dependent weights do not cancel in A_sig); enough statistics at high p_T^pair given the
+unfiltered rate.
 
 **PD5 — Applied to the UNFOLDED yield, in TRUTH variables.** Reasoning: A_sig is a pure
 generator-level ratio (both legs truth) defined in truth (p_T^pair, η^pair); detector migration
@@ -147,6 +183,9 @@ so cc cannot enter A_sig (checked on the nominal cc NTuple: `from_same_b` = 0 at
 | 6 | Round 2: 44-bin η^pair axis (ParamsSet variant) in both producers + marker bump; refill Pythia | PD7 | /review-analysis-code | DONE (Pythia 0.7493 unchanged, axis 44 bins) |
 | 7 | Round 2: POWHEG NTuple no-res flag + Condor bb rerun (clusters 9, 10, 11) + hadd + RDF nores + plots | PD8 | /review-analysis-code | DONE (R3), review running |
 | 8 | Round 2: Physics Decisions section (this doc) | §5 | — | DONE |
+| 9 | Private no-muon-p_T-filter Pythia truth sample: spec (confirm with user) + production | PD9 | /review-pipeline | TODO |
+| 10 | Opt-in truth-NTuple flag: truth fiducial → |η_μ|<2.5 only (distinct suffix) | PD4, §3e | /review-analysis-code | TODO |
+| 11 | A_sig with T_target denominator; muon cuts + mass window in numerator; marker bump; plots | §2, PD4 | /review-analysis-code + /review-plot | TODO |
 
 ## Progress Log
 
@@ -244,11 +283,21 @@ the soft cascade muon); (b) whether B → J/ψ X → μμ should be part of the 
 it, since it is "single-b"). AWAITING USER.
 
 ## Remaining Work
-- §4.1 muon-cut extrapolation decision (collaborators).
+- **PD4/PD9 implementation (NEXT, not started — user said no code yet):** (1) define + produce the
+  private no-muon-p_T-filter Pythia truth sample (open items in PD9); (2) opt-in truth-NTuple flag
+  (truth fiducial → |η_μ| < 2.5 only, distinct suffix); (3) A_sig producer/def with T_target
+  denominator and muon cuts + mass window in the numerator (marker bump); (4) cross-check vs the
+  central sample's mass-window factor; (5) plots + review.
+- R4 B → J/ψ question (user).
+- POWHEG: its truth sample also has a generator muon filter (filter_effcy 0.003 bb) → POWHEG cannot
+  give the muon-cut factor either; POWHEG A_sig^mass stays a cross-check of the mass-window part only.
 - Wire A_sig into the crossx after unfolding exists.
 
 ## Latest Stage
-Round 2 DONE 2026-10-06 (review PASS): cutflow from the measured range, 44-bin η^pair axis, Physics
-Decisions §5, POWHEG no-res NTuple mode + bb rerun + POWHEG A_sig. OPEN for the user: R4 (B → J/ψ
-fraction 31 % POWHEG vs 3 % Pythia drives A_sig 0.51 vs 0.75 — which is right, and is B → J/ψ X
-signal?) and PD4 (muon-cut extrapolation, collaborators).
+**2026-10-06 — DECISION RECORDED, NO CODE YET.** PD4 decided: A_sig includes the single-muon truth
+cuts p_T > 4.5 GeV and |η| < 2.4; target muon phase space = no p_T cut, |η_μ| < 2.5. PD9: requires a
+NEW private Pythia truth sample with no muon-p_T filter (central filters 3.7 GeV, old private 3.5 GeV).
+Current outputs (R1–R4: Pythia 0.749, POWHEG 0.513) are the INTERIM mass-window-only factor.
+Next step when the user says go: Remaining Work "PD4/PD9 implementation" (1)–(5), starting with the
+private-sample specification (PD9 open items) — confirm the spec with the user before generating.
+Also OPEN: R4 (B → J/ψ fraction 31 % POWHEG vs 3 % Pythia).
