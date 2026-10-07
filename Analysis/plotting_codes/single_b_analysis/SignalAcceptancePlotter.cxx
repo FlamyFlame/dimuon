@@ -43,6 +43,19 @@ public:
 
     std::string PtAxisDirSuffix() const { return use_pt_bins_120 ? "_pt_120" : ""; }
 
+    // WHICH acceptance factor (TARGET definition, docs/tracking/signal_acceptance_mass_window.md
+    // PD4/D7): "" = the full A_sig numerator h2d_sig_accept_num_*; "mupt" / "mueta" / "mu" / "mass"
+    // = the single-factor numerators h2d_sig_accept_num_<tag>_* (target-mode files only). The
+    // denominator is always h2d_sig_accept_denom_*.
+    std::string num_tag;
+    // The definition marker the input MUST carry (Value() = interim, TargetValue() = target).
+    std::string expected_marker = SignalAcceptanceDefinition::Value();
+    std::string y_title = "#alpha_{signal}";
+
+    std::string AxisSuffix() const { return use_pt_bins_120 ? "pt_120_eta" : "pt_eta"; }
+    std::string NumName() const { return "h2d_sig_accept_num_" + (num_tag.empty() ? std::string() : num_tag + "_") + AxisSuffix(); }
+    std::string DenName() const { return "h2d_sig_accept_denom_" + AxisSuffix(); }
+
     SignalAcceptancePlotter(const std::string& in_path, const std::string& out_dir)
         : input_file_path(in_path), output_dir(out_dir),
           q_eta_bins(cfg.pair_eta_proj_ranges_coarse_incl_gap) {}
@@ -64,10 +77,10 @@ public:
         // 2026-10-05 holds the SAME histogram names with the old definition (gap cuts in the
         // numerator, no measured-range cut in the denominator) -- refuse it rather than mislabel.
         TNamed* marker = dynamic_cast<TNamed*>(fin->Get(SignalAcceptanceDefinition::Key()));
-        if (!marker || std::string(marker->GetTitle()) != SignalAcceptanceDefinition::Value()) {
+        if (!marker || std::string(marker->GetTitle()) != expected_marker) {
             throw std::runtime_error(std::string("SignalAcceptancePlotter: ") + input_file_path
-                + " lacks the current '" + SignalAcceptanceDefinition::Key()
-                + "' marker -- refill it with the current truth RDF producer.");
+                + " lacks the expected '" + SignalAcceptanceDefinition::Key()
+                + "' marker (interim vs target definition, or stale) -- refill it with the current truth RDF producer.");
         }
         gStyle->SetOptStat(0);
         return true;
@@ -84,12 +97,22 @@ public:
 
     // 2D colz plot of the acceptance ratio histogram.
     void Draw2DColz(const std::string& png_name) {
-        const std::string hname = use_pt_bins_120 ? "h2d_sig_accept_pt_120_eta" : "h2d_sig_accept_pt_eta";
-        TH2D* h = dynamic_cast<TH2D*>(fin->Get(hname.c_str()));
-        if (!h) throw std::runtime_error("Missing histogram: " + hname);
-        if (h->GetEntries() == 0) throw std::runtime_error(hname + " is empty");
-
-        TH2D* hplot = dynamic_cast<TH2D*>(h->Clone((hname + "_plot").c_str()));
+        TH2D* hplot = nullptr;
+        if (num_tag.empty()) {
+            const std::string hname = use_pt_bins_120 ? "h2d_sig_accept_pt_120_eta" : "h2d_sig_accept_pt_eta";
+            TH2D* h = dynamic_cast<TH2D*>(fin->Get(hname.c_str()));
+            if (!h) throw std::runtime_error("Missing histogram: " + hname);
+            if (h->GetEntries() == 0) throw std::runtime_error(hname + " is empty");
+            hplot = dynamic_cast<TH2D*>(h->Clone((hname + "_plot").c_str()));
+        } else {   // single-factor numerators carry no stored ratio: num / den here
+            TH2D* hn = dynamic_cast<TH2D*>(fin->Get(NumName().c_str()));
+            TH2D* hd = dynamic_cast<TH2D*>(fin->Get(DenName().c_str()));
+            if (!hn) throw std::runtime_error("Missing histogram: " + NumName());
+            if (!hd) throw std::runtime_error("Missing histogram: " + DenName());
+            if (hd->GetEntries() == 0) throw std::runtime_error(DenName() + " is empty");
+            hplot = dynamic_cast<TH2D*>(hn->Clone((NumName() + "_ratio_plot").c_str()));
+            hplot->Divide(hd);
+        }
         hplot->SetDirectory(nullptr);
 
         TCanvas c("c2d", "", 900, 750);
@@ -106,7 +129,7 @@ public:
         hplot->GetZaxis()->SetLabelSize(0.035);
         hplot->GetYaxis()->SetTitleOffset(1.35);
         hplot->GetZaxis()->SetTitleOffset(1.35);
-        hplot->GetZaxis()->SetTitle("#alpha_{signal}");
+        hplot->GetZaxis()->SetTitle(y_title.c_str());
         hplot->SetMinimum(0.);
         hplot->SetMaximum(1.);
         // Measured range only: |eta^pair| >= pair_eta_fiducial_max is cut from num AND den.
@@ -124,8 +147,8 @@ public:
     void DrawAcceptancePtByEta(const std::string& png_name,
                                 const std::string& mc_label_line1,
                                 const std::string& mc_label_line2) {
-        const std::string num_name = use_pt_bins_120 ? "h2d_sig_accept_num_pt_120_eta"   : "h2d_sig_accept_num_pt_eta";
-        const std::string den_name = use_pt_bins_120 ? "h2d_sig_accept_denom_pt_120_eta" : "h2d_sig_accept_denom_pt_eta";
+        const std::string num_name = NumName();
+        const std::string den_name = DenName();
         TH2D* hnum = dynamic_cast<TH2D*>(fin->Get(num_name.c_str()));
         TH2D* hden = dynamic_cast<TH2D*>(fin->Get(den_name.c_str()));
         if (!hnum) throw std::runtime_error("Missing histogram: " + num_name);
@@ -169,7 +192,7 @@ public:
             hratio->SetMarkerStyle(20);
             hratio->SetMarkerSize(0.9);
             hratio->GetXaxis()->SetTitle("p_{T}^{pair} [GeV]");
-            hratio->GetYaxis()->SetTitle("#alpha_{signal}");
+            hratio->GetYaxis()->SetTitle(y_title.c_str());
             hratio->GetXaxis()->SetTitleSize(0.06);
             hratio->GetYaxis()->SetTitleSize(0.06);
             hratio->GetXaxis()->SetLabelSize(0.05);
@@ -212,8 +235,8 @@ public:
     void DrawAcceptanceEtaByPt(const std::string& png_name,
                                const std::string& mc_label_line1,
                                const std::string& mc_label_line2) {
-        const std::string num_name = use_pt_bins_120 ? "h2d_sig_accept_num_pt_120_eta"   : "h2d_sig_accept_num_pt_eta";
-        const std::string den_name = use_pt_bins_120 ? "h2d_sig_accept_denom_pt_120_eta" : "h2d_sig_accept_denom_pt_eta";
+        const std::string num_name = NumName();
+        const std::string den_name = DenName();
         TH2D* hnum = dynamic_cast<TH2D*>(fin->Get(num_name.c_str()));
         TH2D* hden = dynamic_cast<TH2D*>(fin->Get(den_name.c_str()));
         if (!hnum) throw std::runtime_error("Missing histogram: " + num_name);
@@ -260,7 +283,7 @@ public:
             hratio->SetMarkerStyle(20);
             hratio->SetMarkerSize(0.9);
             hratio->GetXaxis()->SetTitle("#eta^{pair}");
-            hratio->GetYaxis()->SetTitle("#alpha_{signal}");
+            hratio->GetYaxis()->SetTitle(y_title.c_str());
             hratio->GetXaxis()->SetTitleSize(0.06);
             hratio->GetYaxis()->SetTitleSize(0.06);
             hratio->GetXaxis()->SetLabelSize(0.05);

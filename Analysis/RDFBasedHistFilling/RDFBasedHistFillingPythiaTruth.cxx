@@ -474,13 +474,44 @@ void RDFBasedHistFillingPythiaTruth::FillHistogramsSignalAcceptance(){
         // |truth eta^pair| < 2.2) is applied to BOTH legs, the mass window to the numerator only.
         // NO detector-gap cut: the gap acceptance is carried by eps_reco (double count otherwise).
         // pair-eta axis = 44 bins over the measured range [-2.2, 2.2] (ParamsSet::N_PAIR_ETA_MEASURED_BINS / PAIR_ETA_MEASURED_MAX).
-        auto df_denom = df_op.Filter(SignalAcceptanceDefinition::DenomExpr());
-        auto df_num   = df_op.Filter(SignalAcceptanceDefinition::NumExpr());
+        // TARGET mode (muon_fiducial_target, private no-muon-pT-filter sample; doc PD4/D7): den = T_target
+        // (adds both |eta_mu| <= 2.5, no muon pT cut); num = + single-muon pT & eta cuts + mass window.
+        // The single-cut numerators (mupt, mueta, mu, mass) give each factor separately.
+        ROOT::RDF::RNode df_sa = muon_fiducial_target
+            ? ROOT::RDF::RNode(df_op.Alias("sa_mu1_pt", "m1.truth_pt").Alias("sa_mu2_pt", "m2.truth_pt")
+                                    .Alias("sa_mu1_eta", "m1.truth_eta").Alias("sa_mu2_eta", "m2.truth_eta"))
+            : df_op;
+        auto df_denom = df_sa.Filter(muon_fiducial_target ? SignalAcceptanceDefinition::TargetDenomExpr()
+                                                          : SignalAcceptanceDefinition::DenomExpr());
+        auto df_num   = df_sa.Filter(muon_fiducial_target ? SignalAcceptanceDefinition::TargetNumExpr()
+                                                          : SignalAcceptanceDefinition::NumExpr());
 
         // DEFAULT fine pair-pT axis = pT_bins_150 (16 log bins 9 -> 150 GeV), D5 -- the
 		// unsuffixed acceptance family is the nominal one, mirroring the crossx classes.
 		const int     npt    = static_cast<int>(pms.pT_bins_150.size() - 1);
         const double* ptbins = pms.pT_bins_150.data();
+
+        if (muon_fiducial_target) {
+            const std::vector<std::pair<std::string, std::string>> factor_nums = {
+                {"mupt",  SignalAcceptanceDefinition::TargetNumMuPtExpr()},
+                {"mueta", SignalAcceptanceDefinition::TargetNumMuEtaExpr()},
+                {"mu",    SignalAcceptanceDefinition::TargetNumMuExpr()},
+                {"mass",  SignalAcceptanceDefinition::TargetNumMassExpr()}};
+            // Both pair-pT axes, like the total family below (default pT_bins_150, opt-in pT_bins_120).
+            const std::vector<std::tuple<std::string, int, const double*>> pt_axes = {
+                {"pt_eta", npt, ptbins},
+                {"pt_120_eta", static_cast<int>(pms.pT_bins_120.size() - 1), pms.pT_bins_120.data()}};
+            for (const auto& [tag, expr] : factor_nums) {
+                auto df_f = df_sa.Filter(expr);
+                for (const auto& [axis, nx, xbins] : pt_axes) {
+                    const std::string hn = "h2d_sig_accept_num_" + tag + "_" + axis;
+                    hist2d_rresultptr_map[hn] = df_f.Histo2D(
+                        ROOT::RDF::TH2DModel(hn.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", nx, xbins,
+                            ParamsSet::N_PAIR_ETA_MEASURED_BINS, -ParamsSet::PAIR_ETA_MEASURED_MAX, ParamsSet::PAIR_ETA_MEASURED_MAX),
+                        "truth_pair_pt", "truth_pair_eta", "weight");
+                }
+            }
+        }
 
         hist2d_rresultptr_map["h2d_sig_accept_num_pt_eta"] = df_num.Histo2D(
             ROOT::RDF::TH2DModel("h2d_sig_accept_num_pt_eta",
@@ -667,7 +698,8 @@ void RDFBasedHistFillingPythiaTruth::WriteOutputExtra(){
     // Definition marker of the h2d_sig_accept_* family (Utilities/SignalAcceptanceDefinition.h):
     // the signal-acceptance plotter refuses a file without it.
     m_outfile->cd();
-    TNamed(SignalAcceptanceDefinition::Key(), SignalAcceptanceDefinition::Value()).Write();
+    TNamed(SignalAcceptanceDefinition::Key(), muon_fiducial_target ? SignalAcceptanceDefinition::TargetValue()
+                                                                   : SignalAcceptanceDefinition::Value()).Write();
 
     std::string divided_output_file = output_file;
     const std::string suffix = "_near_away_divided";
@@ -702,5 +734,17 @@ void RunRDFBasedHistFillingPythiaTruth(bool isPrivate = false,
                                        bool with_data_resonance_cuts = false)
 {
     RDFBasedHistFillingPythiaTruth runner(isPrivate, ecom, with_data_resonance_cuts);
+    runner.Run();
+}
+
+// Private no-muon-pT-filter acceptance sample (central-format external-mode NTuple, sigma-weighted
+// hadd of all slices; doc signal_acceptance_mass_window.md D5-D7). TARGET signal-acceptance definition.
+void RunRDFBasedHistFillingPythiaTruthTargetFiducial(const std::string& input_file,
+                                                     const std::string& output_file)
+{
+    RDFBasedHistFillingPythiaTruth runner(false, 5.36, false);
+    runner.muon_fiducial_target = true;
+    runner.input_file_override  = input_file;
+    runner.output_file_override = output_file;
     runner.Run();
 }

@@ -27,6 +27,17 @@ protected:
     bool is_fullsim{false};
     bool is_fullsim_overlay{false};
 
+public:
+    // ---- private no-muon-pT-filter acceptance sample (signal_acceptance_mass_window.md D5-D7) ----
+    // muon_fiducial_target = the input NTuple was made with truth_muon_fiducial_target (both truth muons
+    // |eta|<=2.5, NO pT cut): the signal-acceptance family switches to the TARGET definition
+    // (SignalAcceptanceDefinition::Target*). Requires input_file_override + output_file_override (both),
+    // and the input name must carry "_muon_fid_target" -- the nominal paths are never touched.
+    bool        muon_fiducial_target{false};
+    std::string input_file_override;
+    std::string output_file_override;
+protected:
+
     void            InitializePythiaImpl();
     void            InitializePythiaCommon();
     virtual void    InitializePythiaExtra(){}

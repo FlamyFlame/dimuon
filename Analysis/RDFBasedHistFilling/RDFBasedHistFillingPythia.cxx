@@ -1,5 +1,9 @@
 #include "RDFBasedHistFillingPythia.h"
 
+#include <memory>
+#include "TFile.h"
+#include "TTree.h"
+
 void RDFBasedHistFillingPythia::InitializePythiaImpl(){
     InitializePythiaCommon();
     InitializePythiaExtra();
@@ -19,6 +23,47 @@ void RDFBasedHistFillingPythia::SetIOPathsHook(){
         : "_no_data_resonance_cuts";
 
     input_files.clear();
+
+    if (!input_file_override.empty() || !output_file_override.empty() || muon_fiducial_target){
+        if (input_file_override.empty() || output_file_override.empty())
+            throw std::runtime_error("RDFBasedHistFillingPythia: input_file_override and output_file_override "
+                "must be set TOGETHER (and are required with muon_fiducial_target).");
+        if (isPrivate)
+            throw std::runtime_error("RDFBasedHistFillingPythia: file overrides are for central-format "
+                "(external-mode) NTuple outputs, not the standalone private sample.");
+        const bool target_input = input_file_override.find("_muon_fid_target") != std::string::npos;
+        if (muon_fiducial_target != target_input)
+            throw std::runtime_error("RDFBasedHistFillingPythia: muon_fiducial_target=" + std::to_string(muon_fiducial_target)
+                + " but the input name " + (target_input ? "carries" : "lacks") + " '_muon_fid_target': " + input_file_override);
+        if (output_file_override == input_file_override)
+            throw std::runtime_error("RDFBasedHistFillingPythia: output_file_override == input_file_override");
+        // TARGET input must be PRODUCTION-WEIGHTED (sigma*eps_filt/N per slice, PythiaAlgCoreT
+        // truth_external_sigma_eff_nb): a hadd of raw-counts slices (weight = 1) would mix the pT-hat
+        // slices by event count -- slice-dependent, cancels nowhere in A_sig. Every meta entry (one per
+        // hadded slice) must carry external_sigma_eff_nb > 0.
+        if (muon_fiducial_target) {
+            std::unique_ptr<TFile> fmeta(TFile::Open(input_file_override.c_str(), "READ"));
+            if (!fmeta || fmeta->IsZombie())
+                throw std::runtime_error("RDFBasedHistFillingPythia: cannot open " + input_file_override);
+            TTree* meta = dynamic_cast<TTree*>(fmeta->Get("meta_tree_out"));
+            if (!meta || !meta->GetBranch("external_sigma_eff_nb") || meta->GetEntries() == 0)
+                throw std::runtime_error("RDFBasedHistFillingPythia: TARGET input " + input_file_override
+                    + " has no meta_tree_out/external_sigma_eff_nb -- not a production-weighted NTuple.");
+            double sig_eff = -1.;
+            meta->SetBranchAddress("external_sigma_eff_nb", &sig_eff);
+            for (Long64_t i = 0; i < meta->GetEntries(); ++i) {
+                meta->GetEntry(i);
+                if (!(sig_eff > 0.))
+                    throw std::runtime_error("RDFBasedHistFillingPythia: TARGET input meta entry "
+                        + std::to_string(i) + " has external_sigma_eff_nb <= 0 (raw-counts slice?)");
+            }
+            meta->ResetBranchAddresses();
+        }
+        input_files.push_back(input_file_override);
+        output_file = output_file_override;
+        infile_var1D_json = "var1D_pythia_truth.json";
+        return;
+    }
 
     if (isPrivate){
         input_files.push_back(
