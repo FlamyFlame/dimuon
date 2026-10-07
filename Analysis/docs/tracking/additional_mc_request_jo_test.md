@@ -509,3 +509,7 @@ pTH125_300, this VM); per accepted event ≈ t₀ / ε.
 ## Latest Stage
 DONE (2026-09-29; follow-ups 2026-10-02 … 10-06 DONE: D10 tables; production bundle of 7 configs; R8/R9; D11 /
 D11 REVISED tables for the final request; SS/OS slope plot). Open for the user: submit the MR; send the bundle.
+PENDING user decision (2026-10-06): extend the OS |η^pair| shape split to the SS 52–74 bin as well. Computed, NOT
+applied (|η| 0–1/1–2/2–2.2): m<10 76513/36680/4038 vs current 72817/44569/16; m_sig 17413/8019/855 vs current
+18680/7558/3. Caveat: SS forward fraction in the existing sample is ~half of OS (1.6 % vs 3.45 %), so the OS shape
+may overstate the SS forward cell.
