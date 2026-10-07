@@ -471,6 +471,36 @@ public:
    		         minv_expr.c_str(), signal_minv_min, minv_expr.c_str(), signal_minv_max);
    		return std::string(buf);
    	}
+
+   	// ---- SINGLE-MUON TRUTH cuts (SINGLE SOURCE OF TRUTH for the truth NTuple and A_sig) ------
+   	// pT > 4.5 GeV (user 2026-09-08) and |eta| < 2.4 = the truth analog of the reco single-muon
+   	// cuts, applied by the nominal truth NTuple stage (PythiaAlgCoreT::PassCuts_PythiaCore keeps
+   	// pT >= 4.5 and |eta| <= 2.4). TARGET_MU_ETA_MAX = 2.5 is the A_sig TARGET muon phase space
+   	// (ID coverage; docs/tracking/signal_acceptance_mass_window.md PD4): with
+   	// truth_muon_fiducial_target the NTuple keeps |eta| <= 2.5 and no pT cut, and the A_sig
+   	// numerator applies the two cuts below (SingleMuTruthPtCutExpr / SingleMuTruthEtaCutExpr, same
+   	// inclusive edges as PassCuts). %g keeps the literals "4.5" / "2.4".
+   	static constexpr double SINGLE_MU_PT_MIN  = 4.5;
+   	static constexpr double SINGLE_MU_ETA_MAX = 2.4;
+   	static constexpr double TARGET_MU_ETA_MAX = 2.5;
+   	static std::string SingleMuTruthPtCutExpr(const std::string& pt1, const std::string& pt2) {
+   		char buf[192];
+   		snprintf(buf, sizeof(buf), "(%s >= %g && %s >= %g)",
+   		         pt1.c_str(), SINGLE_MU_PT_MIN, pt2.c_str(), SINGLE_MU_PT_MIN);
+   		return std::string(buf);
+   	}
+   	static std::string SingleMuTruthEtaCutExpr(const std::string& eta1, const std::string& eta2) {
+   		char buf[192];
+   		snprintf(buf, sizeof(buf), "(std::abs(%s) <= %g && std::abs(%s) <= %g)",
+   		         eta1.c_str(), SINGLE_MU_ETA_MAX, eta2.c_str(), SINGLE_MU_ETA_MAX);
+   		return std::string(buf);
+   	}
+   	static std::string TargetMuEtaCutExpr(const std::string& eta1, const std::string& eta2) {
+   		char buf[192];
+   		snprintf(buf, sizeof(buf), "(std::abs(%s) <= %g && std::abs(%s) <= %g)",
+   		         eta1.c_str(), TARGET_MU_ETA_MAX, eta2.c_str(), TARGET_MU_ETA_MAX);
+   		return std::string(buf);
+   	}
    	// Truth-mass axis of the ALTERNATIVE pair reco-efficiency 3D (pair pT, pair eta, m_mumu):
    	// mass as the closeness variable instead of dR (user 2026-10-06,
    	// docs/tracking/pair_reco_eff_origin_test_and_views.md D4). N_SIGNAL_MINV_BINS_RECO_EFFCY

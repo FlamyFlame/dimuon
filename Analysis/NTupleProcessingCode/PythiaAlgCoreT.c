@@ -23,14 +23,21 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_PythiaCore() {
 
     // External truth-input mode guards (PythiaAlgCoreT.h). Checked FIRST, so a misconfigured
     // run can never reach a nominal input/output path.
-    if (truth_raw_counts && !IsTruthExternalInput())
-        throw std::runtime_error("PythiaAlgCoreT: truth_raw_counts requires truth_input_override -- "
-            "refusing to alter the weights of a NOMINAL run.");
+    const bool external_weighted = truth_external_sigma_eff_nb > 0.;
+    if ((truth_raw_counts || external_weighted || !truth_external_kin_edges.empty()
+         || truth_muon_fiducial_target) && !IsTruthExternalInput())
+        throw std::runtime_error("PythiaAlgCoreT: truth_raw_counts / truth_external_sigma_eff_nb / "
+            "truth_external_kin_edges / truth_muon_fiducial_target require truth_input_override -- "
+            "refusing to alter a NOMINAL run.");
     if (IsTruthExternalInput()) {
-        if (!truth_raw_counts)
-            throw std::runtime_error("PythiaAlgCoreT: truth_input_override requires truth_raw_counts -- "
-                "the AMI weights of the central truth sample must never be applied to another dataset "
-                "(docs/ami_weights.md).");
+        if (truth_raw_counts == external_weighted)
+            throw std::runtime_error("PythiaAlgCoreT: truth_input_override requires EXACTLY ONE of "
+                "truth_raw_counts or truth_external_sigma_eff_nb (> 0, from the production's OWN "
+                "log.generate) -- the AMI weights of the central truth sample must never be applied to "
+                "another dataset (docs/ami_weights.md).");
+        if (external_weighted && truth_external_weight_source.empty())
+            throw std::runtime_error("PythiaAlgCoreT: truth_external_sigma_eff_nb requires "
+                "truth_external_weight_source (provenance of sigma and eps_filt).");
         if (is_fullsim || is_fullsim_overlay || getIsPrivate())
             throw std::runtime_error("PythiaAlgCoreT: truth_input_override is for the NON-PRIVATE TRUTH "
                 "path only (not fullsim / private).");
@@ -92,8 +99,19 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_PythiaCore() {
         nKinRanges = 6;
         kin_dirs = {"k0/", "k1/", "k2/", "k3/", "k4/", "k5/"};
         kinRanges = {8.f, 14.f, 24.f, 40.f, 70.f, 125.f, 300.f};
-        nevents_per_file.resize(6, 0);
-        njobs_all_files_combined.resize(6, 0);
+        if (IsTruthExternalInput() && !truth_external_kin_edges.empty()) {
+            // External production with its own pT-hat slicing (labels/bookkeeping only).
+            if (truth_external_kin_edges.size() < 2
+                || !std::is_sorted(truth_external_kin_edges.begin(), truth_external_kin_edges.end(),
+                                   std::less_equal<float>()))
+                throw std::runtime_error("PythiaAlgCoreT: truth_external_kin_edges must hold >= 2 strictly "
+                    "increasing pT-hat edges.");
+            kinRanges  = truth_external_kin_edges;
+            nKinRanges = static_cast<int>(kinRanges.size()) - 1;
+            kin_dirs.clear();
+        }
+        nevents_per_file.resize(nKinRanges, 0);
+        njobs_all_files_combined.resize(nKinRanges, 0);
         SetKnBatch(batch_num);
         std::cout << "PythiaAlgCoreT: kn_batch=" << kn_batch << ", low=" << kinRanges[kn_batch] << ", high=" << kinRanges[kn_batch + 1] << std::endl;
         if (kn_batch < 0 || kn_batch >= nKinRanges)
@@ -113,15 +131,20 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitParams_PythiaCore() {
             // Distinct names + directory: never the nominal truth outputs. py_dir is only used
             // downstream for the ancestry-tracing diagnostic files (PythiaTruthExtras::
             // InitOutputExtra), which must not overwrite the nominal crossx_summary_pythia.txt.
-            const std::string tag = "truth_" + truth_output_label + "_kn" + std::to_string(kn_batch);
+            const std::string tag = "truth_" + truth_output_label + "_kn" + std::to_string(kn_batch)
+                + (truth_muon_fiducial_target ? "_muon_fid_target" : "");
             outfile_name     = "muon_pairs_pythia_" + tag;
             outhistfile_name = "hists_pythia_ntuple_processing_" + tag;
             py_dir = truth_output_dir_override;
             if (py_dir.back() != '/') py_dir += "/";
             batch_suffix = "_" + tag;
             gSystem->mkdir((py_dir + "ancestor_tracing_output_diagnostic_files").c_str(), true);
-            std::cout << "PythiaAlgCoreT: EXTERNAL truth input (raw counts, weight=1, no AMI): '"
-                      << truth_input_override << "' -> " << py_dir << outfile_name << "*" << std::endl;
+            std::cout << "PythiaAlgCoreT: EXTERNAL truth input ("
+                      << (truth_raw_counts ? std::string("raw counts, weight=1, no AMI")
+                                           : "weight = sigma*eps_filt/N_processed = " + std::to_string(truth_external_sigma_eff_nb)
+                                             + " nb / N, source: " + truth_external_weight_source)
+                      << (truth_muon_fiducial_target ? ", TARGET muon fiducial |eta|<2.5, no pT cut" : "")
+                      << "): '" << truth_input_override << "' -> " << py_dir << outfile_name << "*" << std::endl;
         }
     }
     nevents.resize(nKinRanges, 0);
@@ -438,8 +461,9 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::BindTruthPairBranches_Pyt
 // InitInputTruthExternal  (truth_input_override mode; see PythiaAlgCoreT.h)
 // ---------------------------------------------------------------------------
 // Chains the user-given TRUTH0 NTUP file(s) of ONE pT-hat slice (kn_batch) into the pp slot
-// (beam 0). NO AMI read and NO DSID guard: the weight is exactly 1 (truth_raw_counts, enforced in
-// InitParams). Everything downstream (branch binding, pair loop, PassCuts, ancestry tracing,
+// (beam 0). NO AMI read and NO DSID guard: the weight is exactly 1 (truth_raw_counts) or the
+// production's OWN sigma*eps_filt / N (truth_external_sigma_eff_nb) -- one of the two, enforced in
+// InitParams. Everything downstream (branch binding, pair loop, PassCuts, ancestry tracing,
 // output trees) is the nominal code.
 template <class PairT, class MuonT, class Derived, class... Extras>
 void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputTruthExternal_PythiaCore() {
@@ -450,7 +474,7 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputTruthExternal_Py
     for (int i = 0; i < nKinRanges; i++) {
         evChains_kn_beam.at(i).assign(nBeamTypes, nullptr);
         nentries_kn_beam.at(i).assign(nBeamTypes, 0);
-        ami_weight_kn_beam.at(i).assign(nBeamTypes, 0.);   // unused: weight = 1 in this mode
+        ami_weight_kn_beam.at(i).assign(nBeamTypes, 0.);   // unused in this mode (weight set in ProcessDataHook)
     }
 
     const int ikin = kn_batch;
@@ -489,10 +513,12 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputTruthExternal_Py
     nentries_kn_sum.at(ikin)        = nent;
     std::cout << "InitInputTruthExternal: kn" << ikin << " ("
               << static_cast<int>(kinRanges.at(ikin)) << "-" << static_cast<int>(kinRanges.at(ikin + 1))
-              << " GeV): " << nent << " entries from " << nfiles << " file(s); weight = 1 (raw counts, no AMI)"
+              << " GeV): " << nent << " entries from " << nfiles << " file(s); "
+              << (truth_raw_counts ? std::string("weight = 1 (raw counts, no AMI)")
+                                   : "weight = " + std::to_string(truth_external_sigma_eff_nb) + " nb / N_processed (own log.generate, no AMI)")
               << std::endl;
 
-    // Key must exist for ProcessDataHook's .at(); the value is NOT used (weight = 1).
+    // Key must exist for ProcessDataHook's .at(); the value is NOT used in the external mode.
     nominal_beam_ratio["pp"] = 1.;
     nominal_beam_ratio["pn"] = 0.;
     nominal_beam_ratio["np"] = 0.;
@@ -823,6 +849,15 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::InitOutputTreesExtra_Pyth
         }
     }
 
+    if (truth_external_sigma_eff_nb > 0.) {
+        meta_tree_out->Branch("external_sigma_eff_nb", &meta_external_sigma_eff_nb, "external_sigma_eff_nb/D");
+        meta_tree_out->GetUserInfo()->Add(new TNamed("external_weight_source", truth_external_weight_source.c_str()));
+    }
+    if (IsTruthExternalInput())
+        meta_tree_out->GetUserInfo()->Add(new TNamed("truth_muon_fiducial",
+            truth_muon_fiducial_target ? "TARGET: both truth muons |eta|<=2.5, no pT cut"
+                                       : "NOMINAL: both truth muons pT>=4.5, |eta|<=2.4"));
+
     muonPairOutTreeKinRange.resize(nKinRanges);
     for (int ikin = 0; ikin < nKinRanges; ikin++) {
         muonPairOutTreeKinRange.at(ikin).resize(ParamsSet::nSigns);
@@ -903,12 +938,17 @@ bool PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::PassCuts_PythiaCore() {
     auto* p = mpairRef().get();
     if (!p) return false;
 
-    if (std::fabs(p->m1.truth_eta) > 2.4 || std::fabs(p->m2.truth_eta) > 2.4) return false;
+    // TARGET muon fiducial (truth_muon_fiducial_target, external no-muon-pT-filter input only):
+    // |eta| < 2.5 and NO pT cut -- the muon cuts are then part of the A_sig numerator.
+    const double eta_max = truth_muon_fiducial_target ? ParamsSet::TARGET_MU_ETA_MAX : ParamsSet::SINGLE_MU_ETA_MAX;
+    const double pt_min  = truth_muon_fiducial_target ? 0.                           : ParamsSet::SINGLE_MU_PT_MIN;
+
+    if (std::fabs(p->m1.truth_eta) > eta_max || std::fabs(p->m2.truth_eta) > eta_max) return false;
     h_cutAcceptanceRef()[p->m1.truth_charge != p->m2.truth_charge]->Fill((int)pass_muon_eta + 0.5, p->weight);
 
     // Truth analog of the data reco threshold, 4.0 -> 4.5 GeV (user decision 2026-09-08,
     // mu_pt45_gap125_pairpt9_adoption.md §3(a)).
-    if (p->m1.truth_pt < 4.5 || p->m2.truth_pt < 4.5) return false;
+    if (p->m1.truth_pt < pt_min || p->m2.truth_pt < pt_min) return false;
     h_cutAcceptanceRef()[p->m1.truth_charge != p->m2.truth_charge]->Fill((int)pass_muon_pt + 0.5, p->weight);
 
     return true;
@@ -1059,11 +1099,15 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook() {
                     : 0.;
                 // External truth input: raw counts, weight exactly 1 (no AMI, no isospin, no 1/N).
                 // Record the events processed so per-event rates can be formed downstream.
-                if (truth_raw_counts) {
-                    w_norm = 1.;
+                // External PRODUCTION-WEIGHTED input: sigma*eps_filt [nb] of THIS production's slice
+                // (its own log.generate) / N_processed -- same form and unit as the AMI weight above.
+                if (truth_raw_counts || truth_external_sigma_eff_nb > 0.) {
+                    w_norm = truth_raw_counts ? 1.
+                        : truth_external_sigma_eff_nb / static_cast<double>(N_to_process);
                     const size_t idx = static_cast<size_t>(ikin) * nBeamTypes + ibeam;
                     meta_nproc_kn_beam.at(idx) = N_to_process;
                     meta_nbeam_kn_beam.at(idx) = N_beam;
+                    meta_external_sigma_eff_nb = truth_external_sigma_eff_nb;
                 }
                 std::cout << "  beam " << beam_names.at(ibeam) << ": " << N_to_process
                           << " / " << N_beam << " events" << std::endl;
@@ -1147,7 +1191,7 @@ void PythiaAlgCoreT<PairT, MuonT, Derived, Extras...>::ProcessDataHook() {
         }
         // Raw-counts mode only: one meta entry carrying nproc/nbeam_kin<N>_beam<b>. (The nominal
         // truth path leaves meta_tree_out unfilled, as before.)
-        if (truth_raw_counts && meta_tree_out) meta_tree_out->Fill();
+        if ((truth_raw_counts || truth_external_sigma_eff_nb > 0.) && meta_tree_out) meta_tree_out->Fill();
         return;
     }
 
