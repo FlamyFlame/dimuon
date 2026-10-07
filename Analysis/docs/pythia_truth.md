@@ -6,7 +6,7 @@ Generator-level Pythia8 dimuon analysis: traces muon ancestry to tag heavy-flavo
 
 | Mode | Energy | Sample | Condor submit |
 |------|--------|--------|---------------|
-| `private` | 5.36 TeV | Private production (2 batches) | `run_pythia_truth_kn_private.sub` |
+| `private` | **5.02 TeV** (nCTEQ15 nPDF, 4 isospin beams, muon filter pT>3.5; verified from `pythia_params` 2026-10-07 — see `docs/private_pythia_sample_notes.md`) | Private standalone-Pythia production (2 batches) | `run_pythia_truth_kn_private.sub` |
 | `nonprivate_5p36` | 5.36 TeV | Central production (6 kn ranges) | `run_pythia_truth_kn_nonprivate.sub` |
 | `nonprivate_5p02` | 5.02 TeV | Central production (6 kn ranges) | `run_pythia_truth_kn_nonprivate.sub` (args overridden by pipeline) |
 
@@ -103,7 +103,7 @@ cd ../RDFBasedHistFilling
 ./run_rdf_pythia_truth.sh nonprivate 5.36 nocuts
 ```
 
-## External truth input, raw counts (opt-in mode)
+## External truth input: raw counts or production-weighted (opt-in modes)
 
 **Purpose.** Run the *identical* truth processing (same pair building, same `PassCuts` truth
 fiducial cut pT > 4.5 GeV and |η| < 2.4 on both legs, same pair kinematics, same
@@ -125,11 +125,34 @@ nPDF sample — e.g. new test samples in the same SkimCode `TruthTrigRates.py` f
 The kinematic-slice definition is unchanged (kn 0..5 = pT-hat 8-14, 14-24, 24-40, 40-70, 70-125,
 125-300 GeV); `kn` only chooses which `muon_pair_tree_kin<kn>_*` tree is filled and the output name.
 
-**Guards (all throw before any output is written).** `truth_raw_counts` without
-`truth_input_override` (would alter a nominal run); `truth_input_override` without
-`truth_raw_counts` (would weight a new dataset with the central sample's AMI cross-sections —
-forbidden by `docs/ami_weights.md`); either on the private/fullsim path; missing output dir or
-label; a non-existent literal input file, a glob matching nothing, or 0 entries.
+**Guards (all throw before any output is written).** `truth_raw_counts`,
+`truth_external_sigma_eff_nb`, `truth_external_kin_edges` or `truth_muon_fiducial_target` without
+`truth_input_override` (would alter a nominal run); `truth_input_override` with NEITHER or BOTH of
+`truth_raw_counts` / `truth_external_sigma_eff_nb` (the central sample's AMI cross-sections must never
+weight a new dataset — `docs/ami_weights.md`); `truth_external_sigma_eff_nb` without
+`truth_external_weight_source`; non-increasing `truth_external_kin_edges`; any of them on the
+private/fullsim path; missing output dir or label; a non-existent literal input file, a glob matching
+nothing, or 0 entries.
+
+### Production-weighted external input + TARGET muon fiducial (2026-10-07)
+
+For a PRIVATE Athena production with its own pT-hat slices (the no-muon-pT-filter signal-acceptance
+sample, `docs/tracking/signal_acceptance_mass_window.md` D5–D7, `docs/private_pythia_sample_notes.md`):
+
+| option | effect |
+|---|---|
+| `truth_external_sigma_eff_nb` (> 0) + `truth_external_weight_source` | INSTEAD of raw counts: per-pair weight = σ·ε_filt [nb] / N_processed — same form and unit as the nominal AMI weight, so the slices hadd to a σ-weighted file. `meta_tree_out` gets branch `external_sigma_eff_nb` and UserInfo TNamed `external_weight_source`. |
+| `truth_external_kin_edges` | the production's pT-hat edges (e.g. `{5,8,14,24,40,70,125,300}`) replace kn 0..5; `kn` indexes them (names/bookkeeping only) |
+| `truth_muon_fiducial_target` | `PassCuts` keeps both truth muons |η| ≤ 2.5 with NO p_T cut (the A_sig target muon phase space) instead of p_T ≥ 4.5, |η| ≤ 2.4; output tag `_muon_fid_target`; UserInfo TNamed `truth_muon_fiducial` (written for every external run) |
+
+**Weight rule.** σ·ε_filt/N_processed is per RUN, so each slice must be processed in exactly ONE run over
+ALL its files, with σ·ε_filt the production's COMBINED value for that slice: ε_filt = Σaccepted/Σgenerated
+over all jobs (`EvgenFilterSeq ... Filter Efficiency = e [acc / gen]` in each `log.generate`), σ = the
+generated-event-weighted mean of the jobs' `MetaData: cross-section (nb)`. Then
+Σ_pairs-per-event weights of a slice = its σ·ε_filt and the hadd over slices is correct.
+RDF: `RunRDFBasedHistFillingPythiaTruthTargetFiducial(in, out)` (`RDFBasedHistFillingPythiaTruth.cxx`)
+reads such a hadded file (name must carry `_muon_fid_target`; every `meta_tree_out` entry must have
+`external_sigma_eff_nb > 0`, so a raw-counts hadd is refused) and fills the TARGET A_sig family.
 
 **How to run** (per slice):
 

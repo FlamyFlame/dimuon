@@ -12,6 +12,24 @@ measurement definition (2026-10-05/06), removing the gap cuts it double counts w
 (user decision, PD4):** A_sig must ALSO correct the single-muon truth cuts p_T > 4.5 GeV and
 |η| < 2.4, which requires a NEW private Pythia truth sample WITHOUT a muon-p_T generator filter.
 
+## Autonomy Contract (ACTIVE — re-read on every compaction)
+- Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a
+  plan, a passing small test, or one pipeline stage is NOT a stopping point.
+- Done = (1) reference doc on private-sample generation/processing subtleties written
+  (`Analysis/docs/private_pythia_sample_notes.md`), linked here, and summarised to the user;
+  (2) NEW private pp-beam NNPDF2.3LO Pythia truth sample with NO muon-pT filter (filter: one OS
+  muon pair, both |eta_mu|<2.5, pair pT>8 GeV, no mass cut), all pTHat slices incl. a lowest
+  slice (0-5 unless filter eff < 1e-7, then 5-8 or suitable), statistics chosen and justified,
+  generated (grid or Condor), truth-NTuple-processed with an opt-in flag (truth muon cut |eta|<2.5
+  only, distinct suffix; no main/previous-private output overwritten); (3) sanity plots of the new
+  sample (pair pT all slices summed, pair eta, origin-categorised mass 0-4 GeV, per-slice checks)
+  under a distinct plot dir; (4) A_sig with T_target denominator incl. muon pT>4.5 & |eta|<2.4 +
+  mass window; plots of EACH single-muon cut factor and the total vs pair pT (in pair-eta panels)
+  and vs pair eta (in pair-pT panels); /review-analysis-code + /review-plot PASS; docs + commit;
+  then remind the user of R4.
+- Stop-and-ask = ANY physics-results-bending ambiguity (no fixed list; use judgment;
+  when unsure whether an ambiguity is blocking, treat it as blocking → AskUserQuestion).
+
 ## Physics Procedure
 
 ### 1. Motivation
@@ -56,8 +74,10 @@ panels (`pair_pt_coarse_bins`); cutflow STARTING from the measured range with on
 generator filter → truth NTuple processing with a NEW opt-in flag that replaces the PassCuts truth
 fiducial (p_T > 4.5, |η| < 2.4) by |η| < 2.5 only (distinct output suffix; nominal untouched;
 everything else identical — provenance rule) → A_sig producer with DenomExpr = T_target and
-NumExpr = + muon cuts + mass window; the cutflow then lists (after "no cut" = T_target) the muon
-cuts and the mass cuts. NOT implemented yet (user, 2026-10-06: "no code implement yet").
+NumExpr = + muon cuts + mass window. In place of the cutflow, the target plots show EACH factor
+separately (muon p_T, muon η, both muon cuts, mass window on T_target) and the total, vs p_T^pair in
+η^pair panels and vs η^pair in p_T^pair panels (`plot_signal_acceptance_pythia_target.cxx`); a target
+cutflow can be added later if wanted. NOT implemented yet (user, 2026-10-06: "no code implement yet").
 
 ### 4. Negative constraints
 1. Do NOT include any detector-gap cut (single-muon q·η windows, the reco |η^pair| gap) in A_sig.
@@ -126,8 +146,11 @@ e8599, and the pp24 PDF slices) filter at muon p_T > 3.7 GeV (`xAODMultiMuonFilt
 the previous private Pythia sample (`docs/pythia_truth.md` mode `private`) filters at p_T > 3.5 GeV.
 Neither can give the 4.5 → 0 GeV extrapolation. User Remark 1: ATLAS central MC is the default for
 nearly every task; a private sample is acceptable ONLY for this purpose (extending below the
-central filter for the acceptance), and the effect may be small. PROPOSED requirements for the
-private sample (Claude's proposal, NOT yet confirmed by the user — confirm before generating): same
+central filter for the acceptance), and the effect may be small. CONFIRMED by the user 2026-10-07: pp beam ONLY, NNPDF2.3LO (match the pp24 central PDF production);
+filter = one OS muon pair with both |η_μ| < 2.5, NO muon-p_T cut, pair p_T > 8 GeV (1 GeV margin
+below the 9 GeV measured-range edge), no mass cut — every T_target pair passes it, so the
+denominator is unbiased; all pTHat slices plus a lowest slice pTHat 0–5 GeV (user: if its filter
+efficiency < 1e-7 use 5–8 GeV or a suitable range as the lowest). Original proposal text: same
 physics configuration as the central
 production (Pythia 8 A14 NNPDF2.3LO, HardQCD:all, pT-hat slices, √s = 5.36 TeV, pp beam) so that
 A_sig's mass-window part can be cross-checked against the central sample above 4.5 GeV; generator
@@ -171,6 +194,30 @@ so cc cannot enter A_sig (checked on the nominal cc NTuple: `from_same_b` = 0 at
 - D4 — POWHEG no-res-cut path is bb-only end to end: NTuple `muon_pairs_powheg_bb_truth_no_data_resonance_cuts.root`
   → RDF `RunRDFBasedHistFillingPowhegTruth(false)` (`run_rdf_powheg_truth.sh nores`) →
   `histograms_powheg_truth_bb_no_data_resonance_cuts.root` (PD8). Nominal POWHEG files untouched.
+
+- D5 (2026-10-07) — GENERATOR = Athena Gen_tf (private grid production), NOT the standalone
+  `PythiaSimulationCode` program. Reason (physics): the user fixed "match the pp24 central PDF
+  production"; that production decays b/c hadrons with EvtGen (`Pythia8_A14_NNPDF23LO_EvtGen_Common.py`),
+  which sets the semileptonic B/D branching fractions and muon spectra — precisely what the soft-muon
+  extrapolation of A_sig rests on (PD4 model dependence). The standalone program has no EvtGen and
+  also lacks `ColourReconnection:range=1.71` and the ATLAS base fragment. Gen_tf with the central A14 +
+  `NNPDF23_lo_as_0119_qed` + EvtGen fragments reproduces the central configuration by construction,
+  and its output (EVNT → TRUTH0 → SkimCode NTUP) is in the CENTRAL format, so the nominal
+  (nonprivate) truth navigation (HepMC barcodes, `truth_parents`, status) applies unchanged — none
+  of the standalone-format conventions (0-based index barcode, Pythia status, µb weights) enter.
+  Chain = the tested `PythiaCentralProdJO/evgen_high_pT_additional/grid/` chain. JO:
+  `PythiaCentralProdJO/evgen_nomupt_acceptance/run/Py8Control_hQCD_OSdimu_nomupt.py`. Local test
+  2026-10-07 (pTH70_125, 20 ev): exit 0, σ = 1184 nb, ε_filt = 2.0e-3 (standalone estimate 2.4e-3), ~40 ms/trial.
+  Reference: `docs/private_pythia_sample_notes.md`.
+- D6 (2026-10-07) — slice weights: w_slice = σ_slice·ε_filt/N_processed [nb], σ = generated-event-weighted mean of the
+  jobs' `MetaData: cross-section (nb)`, ε_filt = Σacc/Σgen over ALL jobs (one NTuple run per slice) of `EvgenFilterSeq Filter Efficiency`, both from
+  THIS production's own `log.generate` (AMI-rule spirit). Applied at the NTuple stage through a new
+  external-mode option (alternative to raw counts) so the per-pair `weight` is in nb exactly as in
+  the nonprivate path, and the hadded file is RDF-ready.
+- D7 (2026-10-07) — target truth fiducial: new opt-in NTuple flag `truth_muon_fiducial_target`
+  (|η_μ| < 2.5 only, no p_T cut), allowed ONLY with external input (refuses nominal/private/fullsim);
+  output name carries `_muon_fid_target`. The muon cuts (p_T > 4.5, |η| < 2.4) move into the A_sig
+  numerator. Single-muon cut constants move to ParamsSet (no retyping).
 
 ## Implementation Plan
 | # | Step | Physics § | Review | Status |
@@ -239,6 +286,87 @@ so cc cannot enter A_sig (checked on the nominal cc NTuple: `from_same_b` = 0 at
   is verified unchanged. Cluster 9: batches 1,3,5,6 done in ~10–15 min; 9.1 and 9.3 hung on the /pnfs
   input read (4 s CPU in 2 h, no output after 00:01) → condor_hold/release at 02:00.
 
+- **Step 9a — investigation + reference doc (2026-10-07).** Two read-only subagents (scratch docs merged
+  here, then deleted): previous standalone private sample = 5.02 TeV, nCTEQ15 nPDF, 4 beams, Pythia 8.307,
+  5 slices, muon filter p_T > 3.5 (made by the 2023 code in the OLD repo; `docs/pythia_truth.md` said
+  5.36 TeV — fixed); barcode = 0-based Pythia index (entry 0 = system), Pythia status, `eventWeight` =
+  σ/N_tried in µb per file, isospin only via file counts; central/Athena = 1-based HepMC barcodes,
+  HepMC status (native |status| for intermediates), nb AMI weights. Full record:
+  `Analysis/docs/private_pythia_sample_notes.md` (NEW reference doc).
+- **Step 9b — filter-efficiency scan (2026-10-07, standalone Pythia 8.310 with the ATLAS A14 list +
+  `NNPDF23_lo_as_0119_qed`, pp 5.36 TeV, no EvtGen; Condor clusters 12, 13;
+  `~/usatlasdata/pythia_private_nomupt/effest_standalone/`).** Filter = OS pair, both |η_μ| < 2.5,
+  pair p_T > 8 GeV:
+  | slice | σ_gen | ε_filt |
+  |---|---|---|
+  | HardQCD 0–5 | 2422 mb (unphysical: only the 1 GeV `pTHatMinDiverge` cut) | 0 / 1e7 |
+  | SoftQCD:nonDiffractive, hardest pTHat < 5 (physical complement) | 48.3 mb × 0.703 | 1 / 4.0e7 = 2.5e-8; 0 single-b target pairs |
+  | 5–8 | 28.3 mb | 9.0e-7 |
+  | 8–14 | 6.20 mb | 1.4e-5 |
+  | 14–24 | 0.816 mb | 1.2e-4 |
+  | 24–40 | 0.102 mb | 4.1e-4 |
+  | 40–70 | 13.1 µb | 1.2e-3 |
+  | 70–125 | 1.18 µb | 2.4e-3 |
+  | 125–300 | 82.5 nb | 3.9e-3 |
+  **Lowest slice = pTHat 5–8** by the user's rule (ε of the physical pTHat < 5 complement 2.5e-8 < 1e-7;
+  its σ·ε = 8.5e-7 mb ≈ 0.3 % of the filtered σ, no single-b target pair seen). HardQCD below ~5 GeV is not
+  a valid event cross section (σ ≫ σ_inel) — not generated.
+- **Step 10 — code (2026-10-07).** `PythiaAlgCoreT.{h,c}`: external-mode options
+  `truth_external_sigma_eff_nb` + `truth_external_weight_source` (weight = σ·ε_filt/N_processed nb; exactly
+  one of raw-counts / weighted), `truth_external_kin_edges`, `truth_muon_fiducial_target` (PassCuts |η|≤2.5,
+  no p_T; output tag `_muon_fid_target`; all refuse non-external runs); meta_tree_out gets
+  `external_sigma_eff_nb` + UserInfo provenance. `ParamsSet.h`: `SINGLE_MU_PT_MIN/ETA_MAX`,
+  `TARGET_MU_ETA_MAX` + expression helpers (PassCuts now reads them; nominal values identical).
+  `SignalAcceptanceDefinition.h`: `TargetValue()` + `Target{Denom,NumMuPt,NumMuEta,NumMu,NumMass,Num}Expr`.
+  RDF: `input/output_file_override` + `muon_fiducial_target` (name must carry `_muon_fid_target`),
+  `RunRDFBasedHistFillingPythiaTruthTargetFiducial(in,out)`; target mode books
+  `h2d_sig_accept_{denom,num,num_mupt,num_mueta,num_mu,num_mass}_pt_eta` and stamps `TargetValue()`.
+  Local end-to-end test (pTH70_125, 20 events: Gen_tf → TRUTH0 (Athena 25.0.72) → TruthTrigRates skim
+  (AthAnalysis 25.2.89) → NTuple target+weighted → RDF): 20/20 events have a filter-passing OS pair, muons
+  down to 0.12 GeV kept; weight = 2.394 nb / 20; guards throw as designed.
+- **Step 9c — target fraction + muon-cut factor per slice (standalone, 2026-10-07, cluster 13 final).**
+  f_tgt = events with a single-b T_target pair / filter-passing events; A_μ = fraction of T_target pairs
+  with both muons p_T > 4.5 & |η| < 2.4 (single-b = same eldest b-hadron via mother1):
+  | slice | ε_filt | f_tgt | σ·ε·f_tgt [mb] | A_μ (N_tgt) |
+  |---|---|---|---|---|
+  | 5–8 | 8.3e-7 | 0.034 | 8.1e-7 (≈1 %) | — (1) |
+  | 8–14 | 1.31e-5 | 0.267 | 2.17e-5 | 0.17 (35) |
+  | 14–24 | 1.17e-4 | 0.337 | 3.22e-5 | 0.08 (195) |
+  | 24–40 | 4.66e-4 | 0.378 | 1.80e-5 | 0.17 (335) |
+  | 40–70 | 1.19e-3 | 0.319 | 5.0e-6 | 0.34 (667) |
+  | 70–125 | 2.38e-3 | 0.291 | 8.2e-7 | 0.41 (1178) |
+  | 125–300 | 3.94e-3 | 0.276 | 9.0e-8 | 0.54 (1524) |
+  ★ σ-weighted A_μ ≈ 0.15: most single-b pairs with p_T^pair > 9 GeV have one muon below 4.5 GeV (the
+  soft b→c→μ cascade muon). The PD4 extrapolation is a factor ≈ 2–10, NOT small — Athena/EvtGen check
+  running (Condor cluster 14, slices 24–40 / 40–70) before raising it with the user.
+- **Step 9d — Athena/EvtGen confirmation (2026-10-07).** Condor cluster 14: 20 Gen_tf jobs × 20 events,
+  pTH24_40, the production JO → 400 accepted / 911 747 generated (ε = 4.39e-4; standalone 4.66e-4),
+  σ = 101 805 nb; TRUTH0 + skim + NTuple (`truth_muon_fiducial_target`, weighted) →
+  `PythiaCentralProdJO/evgen_nomupt_acceptance/condor_check/chain_24_40/`. With the nominal ancestry code
+  (`from_same_b`): 120 T_target pairs, **A_μ = 0.19 ± 0.04** (standalone 0.17) — the small muon-cut factor
+  is CONFIRMED with EvtGen. No upstream |η| cut: 13/460 OS pairs have a muon at 2.4 < |η| ≤ 2.5.
+  pTH40_70 batch failed (Gen_tf requires nEventsPerJob ∈ {1,2,5,10,20,25,50,100,200,500,1000}); resubmitted
+  (cluster 15). Grid CPU per trial from the 2026-09 request logs: 21–26 ms (41 ms at 125–300).
+- **PROPOSED production plan (NOT submitted — awaiting the user on the A_μ finding):**
+  | slice | acc. events | evts/job × jobs | ≈ T_target pairs | ≈ CPU-h |
+  |---|---|---|---|---|
+  | 5–8 | 200 | 1 × 200 | ~7 (≈1 % of σ_tgt) | 1 340 |
+  | 8–14 | 10 000 | 20 × 500 | 2 700 | 4 240 |
+  | 14–24 | 100 000 | 200 × 500 | 34 000 | 4 750 |
+  | 24–40 | 100 000 | 500 × 200 | 38 000 | 1 200 |
+  | 40–70 | 100 000 | 1000 × 100 | 32 000 | 470 |
+  | 70–125 | 100 000 | 1000 × 100 | 29 000 | 230 |
+  | 125–300 | 100 000 | 1000 × 100 | 28 000 | 290 |
+  Total ≈ 12 500 CPU-h. Rationale: ≥ ~3e4 T_target pairs per slice where cheap (A_μ to ≈ 1–2 % per coarse
+  cell); 8–14 (28 % of σ_tgt, 0.4 CPU-h per accepted event) to ±0.007 absolute; 5–8 (≈1 % of σ_tgt,
+  6.7 CPU-h per event) only enough to bound its share.
+- **Step 9e — grid production SUBMITTED (2026-10-07 17:2x, user approved the plan as proposed).**
+  `PythiaCentralProdJO/evgen_nomupt_acceptance/grid/{slices.txt,submit_evgen.log}`; outDS
+  `user.yuhang.nomuptAcc.Py8EG_A14_pp_hQCD_OSDiMu8_nomupt_pTH<lo>_<hi>.v1`; jediTaskIDs 5–8 52929567,
+  8–14 52929573, 14–24 52929578, 24–40 52929583, 40–70 52929587, 70–125 52929591, 125–300 52929592.
+  Chain driver `grid/chain.py` (nohup, PID in `grid/chain.pid`, log `grid/chain.log`) → TRUTH0 → skim →
+  download to `~/usatlasdata/pythia_private_nomupt/grid_download/<cfg>/`. PD4 question still open with the user.
+
 ## Results & Observations
 
 ### R1 — Pythia 8.3 (5.36 TeV truth, 2026-10-05 refill)
@@ -288,16 +416,16 @@ it, since it is "single-b"). AWAITING USER.
   (truth fiducial → |η_μ| < 2.5 only, distinct suffix); (3) A_sig producer/def with T_target
   denominator and muon cuts + mass window in the numerator (marker bump); (4) cross-check vs the
   central sample's mass-window factor; (5) plots + review.
-- R4 B → J/ψ question (user).
+- R4 B → J/ψ question — DEFERRED by the user 2026-10-07: remind the user after the muon cuts are done.
 - POWHEG: its truth sample also has a generator muon filter (filter_effcy 0.003 bb) → POWHEG cannot
   give the muon-cut factor either; POWHEG A_sig^mass stays a cross-check of the mass-window part only.
 - Wire A_sig into the crossx after unfolding exists.
 
 ## Latest Stage
-**2026-10-06 — DECISION RECORDED, NO CODE YET.** PD4 decided: A_sig includes the single-muon truth
-cuts p_T > 4.5 GeV and |η| < 2.4; target muon phase space = no p_T cut, |η_μ| < 2.5. PD9: requires a
-NEW private Pythia truth sample with no muon-p_T filter (central filters 3.7 GeV, old private 3.5 GeV).
-Current outputs (R1–R4: Pythia 0.749, POWHEG 0.513) are the INTERIM mass-window-only factor.
-Next step when the user says go: Remaining Work "PD4/PD9 implementation" (1)–(5), starting with the
-private-sample specification (PD9 open items) — confirm the spec with the user before generating.
-Also OPEN: R4 (B → J/ψ fraction 31 % POWHEG vs 3 % Pythia).
+**2026-10-07 — STOPPED FOR USER (physics): the muon-cut factor is A_μ ≈ 0.15 (σ-weighted; 0.08–0.54 by
+slice; EvtGen-confirmed 0.19 ± 0.04 at pTHat 24–40)** — PD4's "expected small" premise does not hold: A_sig
+would extrapolate the measured yield by ×≈5–10 into soft-muon phase space (b→c→μ cascade muon < 4.5 GeV),
+with the model dependence that implies. Asked the user whether PD4 stands; the user approved the production plan (submitted 2026-10-07,
+Step 9e) and asked what PD4 is (explained). Code (NTuple/RDF/plotter target modes) done + tested locally; not yet reviewed/committed.
+Lowest slice = 5–8 (user rule). Next on "go": `grid/slices.txt` from the plan → `grid/submit_evgen.sh` →
+`grid/chain.py` → NTuple (weighted, target) per slice → hadd → RDF target → sanity + A_sig plots → reviews.
