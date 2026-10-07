@@ -292,7 +292,7 @@ Confirmed against the code by the subagents and by me; **no sibling doc was edit
   singles, the SF), `..._pairpt_52.2_74.2.png` (last region-A bin, per-cell fits). Closure figure dropped.
 
 ## Remaining Work
-- (added 2026-10-06 by `pair_reco_eff_origin_test_and_views.md` D3) `IntNotes/tex/reconstruction_efficiency.tex`
+- **DONE 2026-10-07 (`intnote_trig_reco_eff_update_2026_10.md`):** (added 2026-10-06 by `pair_reco_eff_origin_test_and_views.md` D3) `IntNotes/tex/reconstruction_efficiency.tex`
   is stale: ALL single-b denominator wording and ALL ε_reco numbers in §sec:eff:reco* — e.g. denominator
    definition l.47–48 ("opposite-sign pair of muons from the same b-hadron decay chain"), text l.30, 41,
    100, captions l.172, 204, 219, 243, marker description l.107 (now also the pair-category marker),

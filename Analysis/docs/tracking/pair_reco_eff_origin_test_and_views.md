@@ -191,7 +191,7 @@ up the Pb+Pb 2026 input (`raa_*_pbpb23_24_25_26_combined_*`; another session's w
 difference is not attributable to D3 alone; the older `raa_*_pbpb23_24_25_combined_*` files are stale.
 
 ## Remaining Work
-1. IntNote `IntNotes/tex/reconstruction_efficiency.tex` is stale since D3 (2026-10-06): ALL single-b denominator wording and ALL ε_reco numbers in §sec:eff:reco* — e.g. denominator
+1. **DONE 2026-10-07** (`intnote_trig_reco_eff_update_2026_10.md`; IntNotes bf6381a). Was: IntNote `IntNotes/tex/reconstruction_efficiency.tex` is stale since D3 (2026-10-06): ALL single-b denominator wording and ALL ε_reco numbers in §sec:eff:reco* — e.g. denominator
    definition l.47–48 ("opposite-sign pair of muons from the same b-hadron decay chain"), text l.30, 41,
    100, captions l.172, 204, 219, 243, marker description l.107 (now also the pair-category marker),
    empty-cell count l.137–139 (145 → 144 in total; recompute the note's sub-counts too), inclusive ε l.154–155, 277, 404 (0.585/0.636 → 0.584/0.635),
