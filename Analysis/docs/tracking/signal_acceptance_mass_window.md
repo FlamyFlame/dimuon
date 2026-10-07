@@ -427,5 +427,13 @@ slice; EvtGen-confirmed 0.19 ± 0.04 at pTHat 24–40)** — PD4's "expected sma
 would extrapolate the measured yield by ×≈5–10 into soft-muon phase space (b→c→μ cascade muon < 4.5 GeV),
 with the model dependence that implies. Asked the user whether PD4 stands; the user approved the production plan (submitted 2026-10-07,
 Step 9e) and asked what PD4 is (explained). Code (NTuple/RDF/plotter target modes) done + tested locally; not yet reviewed/committed.
-Lowest slice = 5–8 (user rule). Next on "go": `grid/slices.txt` from the plan → `grid/submit_evgen.sh` →
+Lowest slice = 5–8 (user rule). **RESUME (new session):** production SUBMITTED + code committed (Step 9e,
+commits 7113829/df171f3/b0065cf/7ed2769). `PythiaCentralProdJO/evgen_nomupt_acceptance/grid/chain.py` runs
+under nohup (PID in `grid/chain.pid`; state `grid/chain_state.json`; log `grid/chain.log`). On resume: check
+the log (`STOP:` = a task ended non-clean → inspect on BigPanDA, retry failed jobs or accept, then restart
+`nohup python3 grid/chain.py`), check `voms-proxy-info -timeleft` (user renews), start a log waiter. Remaining
+after download: NTuple per slice (weighted, σ·ε from that slice's log.generate: ε=Σacc/Σgen, σ gen-weighted
+mean; `truth_external_kin_edges={5,8,14,24,40,70,125,300}`, `truth_muon_fiducial_target`) → hadd →
+`RunRDFBasedHistFillingPythiaTruthTargetFiducial` → sanity plots + `plot_signal_acceptance_pythia_target.cxx`
+→ /review-plot. PD4 question open with the user; R4 deferred. Superseded plan text: `grid/slices.txt` from the plan → `grid/submit_evgen.sh` →
 `grid/chain.py` → NTuple (weighted, target) per slice → hadd → RDF target → sanity + A_sig plots → reviews.
