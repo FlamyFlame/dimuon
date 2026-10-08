@@ -1,4 +1,4 @@
-# Pb+Pb 2026 runs 522384 and 522408: reduced N_trk^HItight at fixed FCal ΣE_T — evidence record
+# Pb+Pb 2026 runs 522384 and 522408 (+ LB blocks of 522336, 522355): reduced N_trk^HItight at fixed FCal ΣE_T — evidence record
 
 **Status:** evidence record for the DQ / detector experts. **No run is excluded and no cut has been
 changed by the analysis on this basis** — that decision belongs to the experts
@@ -70,3 +70,30 @@ runs are nominal; (c) accept and record the central-class bias.
   `../centrality_ratio_after_before_cuts_pbpb_2026.png`.
 
 Regenerate: `cd Analysis/plotting_codes/event_selection && root -l -b -q 'plot_pbpb_ntrk_lowband_runs.cxx+(26, {522336, 522355, 522384, 522408})'`.
+
+## Update 2026-10-08 — runs 522336 and 522355 are affected in LB blocks (correction)
+
+The statement above that 522336 and 522355 are "nominal" was **wrong**: it used the fraction below the cut-5
+lower edge, which the low band mostly escapes. With f_low = fraction of FCal > 1 TeV events with
+N_trk^HItight/FCal < 530 TeV⁻¹ (reference runs 1.89 %), a per-LB scan (bisection + every-LB classification,
+`plot_pbpb_evsel_run_lb_diag.cxx`) gives:
+
+| run | LBs | f_low | N_trk^HItight/FCal peak | note |
+|---|---|---|---|---|
+| 522336 | **344-520** | 75.5 % | ≈ 515 TeV⁻¹ | sharp onset at LB 344 (LB 343: 2.6 %); normal again from LB 522 (LB 521 not in skim) |
+| 522355 | 445-460 | 5.5 % | ≈ 570 TeV⁻¹ | single-band downward drift |
+| 522355 | **461-649** (end of run) | 73.3 % | ≈ 510 TeV⁻¹ | step at LB 461 |
+| 522384, 522408 | all | 91 %, 90 % | ≈ 470 TeV⁻¹ | as above |
+
+Other LBs of 522336/522355 are nominal (f_low 2.0 %/2.3 %); per-BCID f_low is flat (not bunch-dependent).
+Cut 4 (N_trk^HItight/N_trk^total) does NOT see the 522336/522355 blocks (failure 0.054 %/0.047 % vs
+0.070 %/0.065 % in their other LBs — both track counts drop together), and cut 5 rejects only ~0.1 % of them;
+in 522384/522408 cut 4 fails 5.2 %/4.9 % and cut 5 24.7 %/23.8 %. The onset LBs (522336 LB 344-345, 522355
+LB 461-462, tens of events each) fail cut 4 at 78-100 %. The cut-4 sideband of the 2026 cut-4 figure is 85 %
+from 522384+522408; the rest is a run-uniform ~0.06 % population.
+
+Figures + tables: `~/usatlasdata/dimuon_data/plots/single_b_analysis/event_selection/pbpb_2026/evsel_run_lb_diag/`
+(`lbscan_run52233{6}/52235{5}_{summary,2d}`, `lbscan_pbpb_2026.txt` incl. per-LB onset list,
+`cut4_cut5_failure_per_run`, `cut4_nTrk_frac_per_run`, `cut4_cut5_per_run_pbpb_2026.txt`).
+Regenerate: `root -l -b -q 'fill_pbpb_evsel_run_lb_diag.cxx+(26, <part>, {522336, 522355}, "<out>")'` per part,
+hadd to `pbpb_2026/evsel_run_lb_diag_pbpb_2026.root`, then `root -l -b -q 'plot_pbpb_evsel_run_lb_diag.cxx+(26, {522336, 522355})'`.
