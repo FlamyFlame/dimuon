@@ -117,6 +117,36 @@ configuration-keyed, so all of them share it and are told apart only by director
   stdout `$D/grid_monitor_r17864.out`, status `$D/grid_monitor_status.log`); waiter polls the status log for
   "All tasks resolved. Worker exiting.".
 
+### 2026-09-29 session 6 (r17913) — final stage summary, moved here from Latest Stage on 2026-10-06
+
+**2026-09-29 (session 6) DONE — r17913 PASSES every check. The r-tag is acceptable.**
+
+Sequence: provenance (R10 — the r17864 → r17913 `HITtoRDO` preExec diff is the whole change and is a
+direct answer to R9) → r17864 NTUPs archived so the configuration-keyed name is free → skim
+`jediTaskID 52785715` (VER_TAG Sep2026.v4) → 100-event local verdict (R11) → download + hadd
+(10 000 entries, 21.66 GB) + branch check → full event-level set (R12) → NTP + RDF chain and the
+R2 redo (R13).
+
+**Both halves pass.**
+- **R12, calorimeter:** FCal median 4.29 TeV with **0.0 % negative** (r17864: 0.41 TeV, 36.2 %),
+  L1 ΣE_T 15.70 vs 16.14 TeV, centrality population **identical to the reference to two decimals**
+  (99.32 % / 0.68 %, 0 % undefined). **The R9 signature is gone**: the mod-8 train-position swing is
+  0.074 TeV (r17864: 3.58 TeV), flat to the same ±0.02 TeV as r17618, and the 2 isolated bunches —
+  the only healthy crossings under r17864 — now agree with the in-train ones.
+- **R13, reconstruction:** Tight reco ε centrality-blind **0.6518 vs 0.6595 (ratio 0.988**, was
+  0.885), mu4 ε 1.017 (was 0.975), p_T-resolution RMS +1.3 % (was +8 %), and the Tight OS pair count
+  **2997 vs 2998** (was 2389, −20 %). R2's deficits were conditions artefacts and all three closed.
+
+Two residuals, both understood and neither a defect of the r-tag: a uniform ~2 % FCal/L1TE offset vs
+the 2023 reference (cross-year comparison, vertex −71.2 vs −3.3 mm, percent-level by R2's own Δη
+estimate), and a −6 % HITight track count. The 5–10 % efficiency ratio of 0.955 follows from the
+first as bin migration; the centrality-blind rows are immune to it. **A 2024-conditions FCal
+centrality calibration is the prerequisite before pbpb24 efficiencies are used for physics.**
+
+Open for the user: (i) the R5 evgen decisions; (ii) whether to send the production contact a
+confirmation that the six-flag preExec recipe works; (iii) green light for the full
+4-beam × 6-slice × 5-vertex × 4-b production.
+
 ## Results & Observations
 
 ### R0. Full 10k NTUP (2026-09-16)
@@ -884,6 +914,58 @@ Outputs (all in `plots/r17913_rtag_sanity/`): `single_muon_reco_effcy_vs_pt_ctr{
 `single_muon_pt_eta_response_ctr0_5_r17913_vs_r17618.png`, `from_same_b_fraction_r17913_vs_r17618.csv`,
 plus the nominal pipeline plot sets `plots/hijing_overlay_pbpb24_{reco_effcy_plots,reco_effcy_plots_require_signal_cuts,det_resp_plots}/`.
 
+### R14. Is the 2024-vs-2023 low-side shift also in Pb+Pb DATA? (2026-10-08) — YES, same sign
+
+Plots: `plots/r17913_rtag_compr_PbPb_data/{fcal_l1te,trk_multiplicity}_data_vs_hijing_pbpb23_vs_pbpb24.png`
+(2x2, DATA top row / HIJING overlay bottom row, 2023 vs 2024 overlaid, each curve unit-normalised).
+Macro `plotting_codes/overlay_rtag_checks/plot_overlay_rtag_compr_pbpb_data.cxx`; data histograms
+cached in `pbpb_data_event_level_hists.root` (one pass over the skims, merged from per-part files).
+
+Ratios **2023 / 2024** (a ratio > 1 means 2024 sits LOWER):
+
+| quantity | DATA mean | DATA median | MC mean | MC median |
+|---|---|---|---|---|
+| FCal Sigma E_T      | 1.0055 | 1.0104 | 1.0143 | 1.0242 |
+| L1 Sigma E_T        | n/a (see below) | n/a | 1.0206 | 1.0278 |
+| N_trk (no HITight)  | 1.0447 | 1.0494 | 1.0284 | 1.0454 |
+| N_trk (HITight)     | 1.0500 | 1.0541 | 1.0634 | 1.0662 |
+
+Absolute values — DATA: FCal mean 2.429 / 2.416 TeV, N_trk 2344 / 2244, N_trk^HITight 1519 / 1447
+(2023 / 2024); L1TE 2023 only, mean 7.80 TeV. MC: FCal 4.432 / 4.370 TeV, L1TE 16.26 / 15.94 TeV,
+N_trk 5435 / 5285, N_trk^HITight 2400 / 2257.
+
+**Conclusion.** The 2024-over-2023 deficit is NOT an artefact of the cross-year overlay comparison
+alone: Pb+Pb data shows the same sign in every quantity available. The track multiplicities agree
+in magnitude between data and overlay (4.5-5.4 % in data vs 2.8-6.6 % in MC). The FCal shift is
+present in data but roughly HALF the overlay's (0.6-1.0 % vs 1.4-2.4 %) — consistent with the R12
+reading that part of the overlay's FCal offset is the cross-vertex (-71.2 vs -3.3 mm) difference
+on top of a real year-to-year detector change. Nothing here contradicts r17913's acceptance (R10-R13);
+it reinforces the standing requirement for a 2024-conditions FCal centrality calibration.
+
+Procedure (USER DECISION 2026-10-06): data = `HLT_mu4_L1MU3V` + `PbPbBadRuns(yr)` + the full 5-cut
+Pb+Pb event selection from each year's own `event_sel_cuts_pbpb_20yy.root` (the
+`plot_pbpb_fcal_comparison.cxx::FillFCalHist()` recipe, reproduced cut for cut); **no centrality
+cut** (centrality is FCal-derived with the fixed 2023 calibration, so cutting on it would partly
+define away the shift under test). Overlay row: no selection, unweighted, as in R12.
+
+**L1TE does not exist in PbPb24 data.** Measured: `L1TE` and `L1TE24` are identically zero in both
+2024 parts (0 non-zero in 40.9 M selected events of part1), while 2023 is filled (mean 7.80 TeV).
+The 2024 skim carries no L1 sum-E_T VALUE branch, only `L1jTE*` trigger-decision flags: TrigRates
+reads the legacy `LVL1EnergySumRoI` (`SkimCode/.../TrigRates.cxx:2099-2104`), which the 2024 HI menu
+stopped filling after the move to Phase-I jFEX (same for 2025/2026, see
+`pbpb2026_skim_and_lgd_storage.md`). Per user decision the panel keeps the 2023 curve alone. A data
+L1TE year comparison needs a re-skim that reads the jFEX energy object.
+
+**Statistics caveat (open).** `data_pbpb23_part2.root` (49.65 GB, /pnfs LOCALGROUPDISK) could not be
+read on 2026-10-08: its namespace entry stats fine over both the POSIX mount and `xrdfs`, but every
+read wedges the process in uninterruptible disk sleep (0 bytes in 20 min, POSIX and xrootd alike) —
+a dCache pool problem, not a missing file. The 2023 row is therefore 4 of 5 parts, 64.2 M selected
+events (2024 is complete, 84.2 M). The four available 2023 parts agree to **<= 0.4 %** in every mean
+(FCal 2.4277-2.4371, N_trk 2337-2353, N_trk^HITight 1517-1523), i.e. an order of magnitude below the
+year difference, so the conclusion is safe; the numbers should still be regenerated once the pool
+recovers (`fill:23:1`, then re-hadd and replot).
+
+
 ## Remaining Work
 
 - **The r-tag question is answered: r17913 is acceptable as the recipe.** What is left is production
@@ -908,30 +990,8 @@ plus the nominal pipeline plot sets `plots/hijing_overlay_pbpb24_{reco_effcy_plo
 
 ## Latest Stage
 
-**2026-09-29 (session 6) DONE — r17913 PASSES every check. The r-tag is acceptable.**
-
-Sequence: provenance (R10 — the r17864 → r17913 `HITtoRDO` preExec diff is the whole change and is a
-direct answer to R9) → r17864 NTUPs archived so the configuration-keyed name is free → skim
-`jediTaskID 52785715` (VER_TAG Sep2026.v4) → 100-event local verdict (R11) → download + hadd
-(10 000 entries, 21.66 GB) + branch check → full event-level set (R12) → NTP + RDF chain and the
-R2 redo (R13).
-
-**Both halves pass.**
-- **R12, calorimeter:** FCal median 4.29 TeV with **0.0 % negative** (r17864: 0.41 TeV, 36.2 %),
-  L1 ΣE_T 15.70 vs 16.14 TeV, centrality population **identical to the reference to two decimals**
-  (99.32 % / 0.68 %, 0 % undefined). **The R9 signature is gone**: the mod-8 train-position swing is
-  0.074 TeV (r17864: 3.58 TeV), flat to the same ±0.02 TeV as r17618, and the 2 isolated bunches —
-  the only healthy crossings under r17864 — now agree with the in-train ones.
-- **R13, reconstruction:** Tight reco ε centrality-blind **0.6518 vs 0.6595 (ratio 0.988**, was
-  0.885), mu4 ε 1.017 (was 0.975), p_T-resolution RMS +1.3 % (was +8 %), and the Tight OS pair count
-  **2997 vs 2998** (was 2389, −20 %). R2's deficits were conditions artefacts and all three closed.
-
-Two residuals, both understood and neither a defect of the r-tag: a uniform ~2 % FCal/L1TE offset vs
-the 2023 reference (cross-year comparison, vertex −71.2 vs −3.3 mm, percent-level by R2's own Δη
-estimate), and a −6 % HITight track count. The 5–10 % efficiency ratio of 0.955 follows from the
-first as bin migration; the centrality-blind rows are immune to it. **A 2024-conditions FCal
-centrality calibration is the prerequisite before pbpb24 efficiencies are used for physics.**
-
-Open for the user: (i) the R5 evgen decisions; (ii) whether to send the production contact a
-confirmation that the six-flag preExec recipe works; (iii) green light for the full
-4-beam × 6-slice × 5-vertex × 4-b production.
+**2026-10-08 (session 7) DONE — R14 answered: the 2024-vs-2023 low-side shift IS present in Pb+Pb
+data**, same sign in FCal and in both track multiplicities; magnitudes in the table in R14. Two
+PNGs in `plots/r17913_rtag_compr_PbPb_data/`. Open: regenerate once `data_pbpb23_part2.root` is
+readable again (dCache pool wedged; 2023 is 4/5 parts, part-to-part spread <= 0.4 %), and a data
+L1TE year comparison remains impossible without a re-skim that reads the Phase-I jFEX energy.
