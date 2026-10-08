@@ -1,22 +1,26 @@
 // =================================================================================================
 // plot_pp24_fullsim_pair_bin_migration.cxx
 //
-// Bin-by-bin efficiency, stability and purity of the pp24 fullsim signal pairs (all truth OS, `_op`)
-// on the canonical binnings, from the output of fill_pp24_fullsim_pair_bin_migration.C.
-// docs/tracking/pair_bin_migration_bin_by_bin_feasibility.md (Physics Procedure §2, §3b).
+// Reconstruction efficiency, bin-by-bin efficiency and purity of the pp24 fullsim signal pairs (all
+// truth OS, `_op`) on the canonical binnings, from the output of fill_pp24_fullsim_pair_bin_migration.C.
+// docs/tracking/pair_bin_migration_bin_by_bin_feasibility.md (Physics Procedure §2, §3b; D3).
 //
-//   efficiency  eps_i = N[T_i and R] / N[T_i]
-//   stability   s_i   = N[T_i and R_i] / N[T_i and R]
-//   purity      p_j   = N[T_j and R_j] / N[R_j]
-//   outside     o_j   = N[R_j and not T] / N[R_j]
-//   bin-by-bin  C_j   = N[T_j] / N[R_j]
+// M_ij = N[T_i and R_j] (truth bin i inside T, reco bin j; the reco overflow stays in the row):
+//   reco efficiency        eps_i     = N[T_i and R] / N[T_i]
+//   bin-by-bin efficiency  eps^bin_i = M_ii / sum_j M_ij      (ATLAS name; "stability" elsewhere)
+//   purity                 p_j       = M_jj / sum_{i in T} M_ij  -- migration-in only: the
+//                                      denominator is truth-matched AND truth in T, so neither the
+//                                      out-of-T feed-in nor fakes (template fit) enter it (D3)
+//   outside (table only)   o_j       = N[R_j and not T] / N[R_j]
+//   bin-by-bin correction  C_j       = N[T_j] / N[R_j]   (N[R_j] keeps the out-of-T feed-in)
 //
 // Output (under <sample>/plots/pp24_reco_effcy_plots/<wp>/signal_region/all_os/bin_migration/):
-//   {pair_pt, pair_eta, minv, dr}/eff_stab_pur_<wp>WP.png   eps/s/p/o vs x + C_j
+//   {pair_pt, pair_eta, minv, dr}/eff_purity_<wp>WP.png     eps/eps^bin/p vs x + C_j
 //   {pair_pt, pair_eta, minv, dr}/response_<wp>WP.png       P(reco bin | truth bin, selected)
-//   cells_pt_eta_{minv,dr}/{purity,stability,efficiency}_<wp>WP.png   3D cells, one panel per pT bin
-//   cells_compare/cell_purity_stability_<wp>WP.png          cumulative N[T] fraction vs cell p / s, m vs dR
-//   bin_migration_values_<wp>WP.txt                         every plotted number
+//   cells_pt_eta_{minv,dr}/{purity,bin_by_bin_efficiency,reco_efficiency}_<wp>WP.png
+//                                                           3D cells, one panel per pT bin
+//   cells_compare/cell_purity_bin_by_bin_eff_<wp>WP.png     cumulative N[T] fraction vs cell p / eps^bin, m vs dR
+//   bin_migration_values_<wp>WP.txt                         every plotted number (+ o_j)
 //
 // Usage (from Analysis/plotting_codes/reco_effcy/bin_migration/):
 //   root -l -b -q 'plot_pp24_fullsim_pair_bin_migration.cxx+(true)'    // Tight (nominal)
@@ -132,8 +136,8 @@ double Neff(double s, double e2) { return e2 > 0 ? s * s / e2 : 0.0; }
 // Per-bin quantities of one variable (1D) or of one 3D cell flattening.
 struct Bins {
     int n = 0;
-    std::vector<Val> eps, stab, pur, out, corr;
-    std::vector<double> nT, neffT, neffTR, neffR;
+    std::vector<Val> eps, bbeff, pur, out, corr;
+    std::vector<double> nT, neffT, neffTR, neffRT;   // neffRT: N_eff of the purity denominator
 };
 
 Bins Compute(TFile& f, const std::string& key, const std::string& wp)
@@ -145,6 +149,15 @@ Bins Compute(TFile& f, const std::string& key, const std::string& wp)
     auto* Ro = Get<TH1D>(f, "h_" + key + "_Rout_" + wp);
     Bins B;
     B.n = T->GetNbinsX();
+    // purity denominator sum_{i in T} M_ij: every filled truth row of M is inside T (T requires the
+    // truth (pT, eta, m) inside the axes; truth dR inside its axis is guaranteed by the filler's
+    // throw on T pairs outside the dR axis), so the in-range truth rows are the whole of T
+    std::vector<double> col(B.n + 1, 0.0), col2(B.n + 1, 0.0);
+    for (int j = 1; j <= B.n; ++j)
+        for (int i = 1; i <= B.n; ++i) {
+            col[j]  += M->GetBinContent(i, j);
+            col2[j] += std::pow(M->GetBinError(i, j), 2);
+        }
     for (int i = 1; i <= B.n; ++i) {
         const double t = T->GetBinContent(i), t2 = std::pow(T->GetBinError(i), 2);
         const double tr = TR->GetBinContent(i), tr2 = std::pow(TR->GetBinError(i), 2);
@@ -152,14 +165,14 @@ Bins Compute(TFile& f, const std::string& key, const std::string& wp)
         const double r = R->GetBinContent(i), r2 = std::pow(R->GetBinError(i), 2);
         const double o = Ro->GetBinContent(i), o2 = std::pow(Ro->GetBinError(i), 2);
         B.eps.push_back(SubsetRatio(tr, tr2, t, t2));
-        B.stab.push_back(SubsetRatio(d, d2, tr, tr2));
-        B.pur.push_back(SubsetRatio(d, d2, r, r2));
+        B.bbeff.push_back(SubsetRatio(d, d2, tr, tr2));
+        B.pur.push_back(SubsetRatio(d, d2, col[i], col2[i]));
         B.out.push_back(SubsetRatio(o, o2, r, r2));
         B.corr.push_back(PlainRatio(t, t2, r, r2));
         B.nT.push_back(t);
         B.neffT.push_back(Neff(t, t2));
         B.neffTR.push_back(Neff(tr, tr2));
-        B.neffR.push_back(Neff(r, r2));
+        B.neffRT.push_back(Neff(col[i], col2[i]));
     }
     return B;
 }
@@ -203,23 +216,22 @@ void Header(double x0, double y, double sz, const std::string& wp_text)
     t.DrawLatex(0.97, y, wp_text.c_str());
 }
 
-// ---- 1D figure: eps, s, p, o vs x (top) and C_j (bottom) -------------------------------------
+// ---- 1D figure: eps, eps^bin, p vs x (top) and C_j (bottom) ------------------------------------
 void Draw1D(const VarInfo& v, const Bins& B, const std::string& wp_text, const std::string& path)
 {
     TCanvas c("c1d", "", 800, 760);
     TPad top("top", "", 0, 0.32, 1, 1), bot("bot", "", 0, 0, 1, 0.32);
-    top.SetBottomMargin(0.02); top.SetTopMargin(0.17); top.SetLeftMargin(0.13); top.SetRightMargin(0.04);
+    top.SetBottomMargin(0.02); top.SetTopMargin(0.12); top.SetLeftMargin(0.13); top.SetRightMargin(0.04);
     bot.SetTopMargin(0.03); bot.SetBottomMargin(0.34); bot.SetLeftMargin(0.13); bot.SetRightMargin(0.04);
     for (TPad* p : {&top, &bot}) { p->SetTicks(1, 1); p->SetLogx(v.logx); }
     top.Draw(); bot.Draw();
     top.cd();
     const std::vector<std::pair<const std::vector<Val>*, std::string>> series = {
-        {&B.eps, "efficiency"}, {&B.stab, "stability"}, {&B.pur, "purity"},
-        {&B.out, "outside-range fraction = N^{reco}(truth out of range) / N^{reco}"}};
+        {&B.eps, "reconstruction efficiency"}, {&B.bbeff, "bin-by-bin efficiency"}, {&B.pur, "purity"}};
     std::vector<TH1D*> hs;
-    TLegend leg(0.13, 0.895, 0.96, 0.955), leg2(0.13, 0.835, 0.96, 0.895);   // row 1: eps/s/p; row 2: o
-    leg.SetNColumns(3);
-    for (TLegend* l : {&leg, &leg2}) { l->SetBorderSize(0); l->SetFillStyle(0); l->SetTextSize(0.042); }
+    std::vector<TGraphAsymmErrors*> gs;
+    TLegend leg(0.13, 0.885, 0.96, 0.945);
+    leg.SetNColumns(3); leg.SetBorderSize(0); leg.SetFillStyle(0); leg.SetTextSize(0.042);
     for (size_t s = 0; s < series.size(); ++s) {
         TH1D* h = ToHist(*series[s].first, v.edges, "h1d_" + std::to_string(s));
         h->SetLineColor(kCols[s]); h->SetMarkerColor(kCols[s]); h->SetMarkerStyle(kMrks[s]);
@@ -228,18 +240,33 @@ void Draw1D(const VarInfo& v, const Bins& B, const std::string& wp_text, const s
         h->GetYaxis()->SetTitle("fraction");
         h->GetYaxis()->SetTitleSize(0.055); h->GetYaxis()->SetLabelSize(0.048); h->GetYaxis()->SetTitleOffset(1.0);
         h->GetXaxis()->SetLabelSize(0); h->GetXaxis()->SetTitleSize(0);
-        h->Draw(s == 0 ? "PE" : "PE SAME");
-        (s < 3 ? leg : leg2).AddEntry(h, series[s].second.c_str(), "lp");
+        if (s == 0) h->Draw("AXIS");
+        // series offset by +-12 % of the bin width (log-width on a log axis) so the nearly equal
+        // purity and bin-by-bin efficiency stay distinguishable; the horizontal bar spans the bin
+        auto* g = new TGraphAsymmErrors();
+        for (int b = 1; b <= h->GetNbinsX(); ++b) {
+            if (!(*series[s].first)[b - 1].ok) continue;
+            const double lo = h->GetXaxis()->GetBinLowEdge(b), hi = h->GetXaxis()->GetBinUpEdge(b);
+            const double f = 0.12 * ((int)s - 1);
+            const double x = v.logx ? std::sqrt(lo * hi) * std::pow(hi / lo, f) : 0.5 * (lo + hi) + f * (hi - lo);
+            const int n = g->GetN();
+            g->SetPoint(n, x, h->GetBinContent(b));
+            g->SetPointError(n, x - lo, hi - x, h->GetBinError(b), h->GetBinError(b));
+        }
+        g->SetLineColor(kCols[s]); g->SetMarkerColor(kCols[s]); g->SetMarkerStyle(kMrks[s]);
+        g->SetMarkerSize(1.2); g->SetLineWidth(2);
+        g->Draw("PZ SAME");
+        leg.AddEntry(g, series[s].second.c_str(), "lp");
         hs.push_back(h);
+        gs.push_back(g);
     }
     leg.Draw();
-    leg2.Draw();
-    Header(0.13, 0.965, 0.042, wp_text);
+    Header(0.13, 0.955, 0.042, wp_text);
     bot.cd();
     TH1D* hc = ToHist(B.corr, v.edges, "h1d_corr");
     double cmax = 0, cmin = 1e9;
     for (const auto& x : B.corr) if (x.ok) { cmax = std::max(cmax, x.v + x.e); cmin = std::min(cmin, x.v - x.e); }
-    hc->SetStats(0); hc->SetMarkerStyle(20); hc->SetLineWidth(2);
+    hc->SetStats(0); hc->SetMarkerStyle(20); hc->SetLineWidth(2); hc->SetLineColor(kBlack);
     hc->GetYaxis()->SetRangeUser(std::floor(cmin * 5) / 5 - 0.1, std::ceil(cmax * 5) / 5 + 0.1);
     hc->GetYaxis()->SetNdivisions(505);
     hc->GetYaxis()->SetTitle("C_{j} = N_{j}^{truth} / N_{j}^{reco}");
@@ -251,6 +278,7 @@ void Draw1D(const VarInfo& v, const Bins& B, const std::string& wp_text, const s
     gSystem->mkdir(gSystem->DirName(path.c_str()), kTRUE);
     c.SaveAs(path.c_str());
     for (auto* h : hs) delete h;
+    for (auto* g : gs) delete g;
     delete hc;
 }
 
@@ -294,9 +322,9 @@ void DrawCells(const Bins& B, const std::vector<Val> Bins::*q, const std::string
                const std::string& path)
 {
     const int npt = pt.edges.size() - 1, neta = eta.edges.size() - 1, nz = z.edges.size() - 1;
-    // y range common to all panels: 0.1 below the smallest drawn value, rounded down, at most 0.8
+    // y range common to all panels: 0.1 below the lowest drawn error-bar edge, rounded down, at most 0.8
     double vmin = 1.0;
-    for (const auto& x : B.*q) if (x.ok && x.n >= kNeffDraw) vmin = std::min(vmin, x.v);
+    for (const auto& x : B.*q) if (x.ok && x.n >= kNeffDraw) vmin = std::min(vmin, x.v - WilsonErr(x.v, x.n).first);
     const double ylo = std::max(0.0, std::min(0.8, std::floor(vmin * 10) / 10 - 0.1));
     const int ncol = (int)std::ceil(std::sqrt((double)npt)), nrow = (int)std::ceil((double)npt / ncol);
     const int hstrip = 110;
@@ -355,7 +383,7 @@ void DrawCells(const Bins& B, const std::vector<Val> Bins::*q, const std::string
     for (auto* h : frames) delete h;
 }
 
-// ---- cumulative N[T]-weighted fraction of cells with purity / stability below x, m vs dR -------
+// ---- cumulative N[T]-weighted fraction of cells with purity / bin-by-bin eff. below x, m vs dR --
 // F(x) = sum_{cells: q < x} N[T] / sum_{cells: q defined} N[T]. Cumulative, so nothing is hidden by
 // the axis range: F at the left edge is the fraction below it. LOG y (documented exception to the
 // linear default): the m-vs-dR decision rests on the low-purity TAILS, which are 1e-4..1e-2 of
@@ -370,13 +398,13 @@ void DrawCellCompare(const Bins& Bm, const Bins& Bd, const std::string& wp_text,
     body->Divide(2, 1);
     std::vector<TH1D*> keep;
     const std::vector<std::pair<const std::vector<Val> Bins::*, std::string>> qs = {
-        {&Bins::pur, "purity"}, {&Bins::stab, "stability"}};
+        {&Bins::pur, "purity"}, {&Bins::bbeff, "bin-by-bin efficiency"}};
     const double xlo = 0.5, xhi = 1.0;
     const int nb = 100;
     TH1D* leg_m = nullptr; TH1D* leg_d = nullptr;
     for (int iq = 0; iq < 2; ++iq) {
         body->cd(iq + 1);
-        gPad->SetTicks(1, 1); gPad->SetLeftMargin(0.14); gPad->SetBottomMargin(0.14);
+        gPad->SetTicks(1, 1); gPad->SetLeftMargin(0.16); gPad->SetBottomMargin(0.14);
         gPad->SetLogy(true);   // see the function comment
         auto mk = [&](const Bins& B, const std::string& n, Color_t col, Style_t ls) {
             auto* h = new TH1D(n.c_str(), "", nb, xlo, xhi);
@@ -406,7 +434,7 @@ void DrawCellCompare(const Bins& Bm, const Bins& Bd, const std::string& wp_text,
                 if (h->GetBinContent(b) > 0) fmin = std::min(fmin, h->GetBinContent(b));
         hm->GetYaxis()->SetRangeUser(std::pow(10.0, std::floor(std::log10(fmin))), 2.0);
         hm->GetXaxis()->SetTitle(("3D-cell " + qs[iq].second + " x").c_str());
-        hm->GetYaxis()->SetTitle(("fraction of N^{truth} in cells with " + qs[iq].second + " < x").c_str());
+        hm->GetYaxis()->SetTitle("N^{truth} fraction in cells below x");
         hm->GetXaxis()->SetTitleSize(0.05); hm->GetYaxis()->SetTitleSize(0.045);
         hm->GetXaxis()->SetLabelSize(0.045); hm->GetYaxis()->SetLabelSize(0.045); hm->GetYaxis()->SetTitleOffset(1.45);
         hm->Draw("HIST L");
@@ -429,40 +457,40 @@ void WriteBins(std::ofstream& o, const std::string& name, const Bins& B,
                const std::vector<std::string>& labels)
 {
     o << "\n## " << name << "\n";
-    o << "bin | N_eff[T] | eps | stability | purity | outside | C\n";
+    o << "bin | N_eff[T] | reco eff | bin-by-bin eff | purity | outside (o_j) | C\n";
     for (int i = 0; i < B.n; ++i) {
         auto s = [](const Val& v) { char b[48]; if (!v.ok) return std::string("n/a");
                                     snprintf(b, sizeof b, "%.4f +- %.4f", v.v, v.e); return std::string(b); };
-        o << labels[i] << " | " << Form("%.0f", B.neffT[i]) << " | " << s(B.eps[i]) << " | " << s(B.stab[i])
+        o << labels[i] << " | " << Form("%.0f", B.neffT[i]) << " | " << s(B.eps[i]) << " | " << s(B.bbeff[i])
           << " | " << s(B.pur[i]) << " | " << s(B.out[i]) << " | " << s(B.corr[i]) << "\n";
     }
 }
 
 void WriteCellSummary(std::ofstream& o, const std::string& name, const Bins& B)
 {
-    double sT = 0, sTs = 0, sTp = 0, sTstab = 0, sTpur = 0, wlow_p = 0, wlow_s = 0, wlow_p5 = 0;
+    double sT = 0, sTs = 0, sTp = 0, sTbb = 0, sTpur = 0, wlow_p = 0, wlow_s = 0, wlow_p5 = 0;
     double minp = 2, mins = 2; int nused = 0, nall = 0;
     for (int k = 0; k < B.n; ++k) {
         if (B.nT[k] <= 0) continue;
         ++nall;
         sT += B.nT[k];
         // each mean over the cells where that quantity is defined
-        if (B.stab[k].ok) { sTstab += B.nT[k] * B.stab[k].v; sTs += B.nT[k]; }
+        if (B.bbeff[k].ok) { sTbb += B.nT[k] * B.bbeff[k].v; sTs += B.nT[k]; }
         if (B.pur[k].ok)  { sTpur  += B.nT[k] * B.pur[k].v;  sTp += B.nT[k]; }
         if (B.pur[k].ok && B.pur[k].v < 0.8)  wlow_p += B.nT[k];
         if (B.pur[k].ok && B.pur[k].v < 0.5)  wlow_p5 += B.nT[k];
-        if (B.stab[k].ok && B.stab[k].v < 0.8) wlow_s += B.nT[k];
-        if (B.neffTR[k] >= kNeffMin && B.neffR[k] >= kNeffMin) {
+        if (B.bbeff[k].ok && B.bbeff[k].v < 0.8) wlow_s += B.nT[k];
+        if (B.neffTR[k] >= kNeffMin && B.neffRT[k] >= kNeffMin) {
             ++nused;
             minp = std::min(minp, B.pur[k].v);
-            mins = std::min(mins, B.stab[k].v);
+            mins = std::min(mins, B.bbeff[k].v);
         }
     }
     o << "\n## " << name << " -- 3D-cell summary\n"
       << "cells with N[T] > 0: " << nall << "\n"
-      << Form("N[T]-weighted mean stability %.4f, purity %.4f\n", sTstab / sTs, sTpur / sTp)
-      << Form("cells with N_eff >= %.0f (TR and R): %d; min stability %.4f, min purity %.4f\n", kNeffMin, nused, mins, minp)
-      << Form("fraction of N[T] in cells with purity < 0.8: %.4f, < 0.5: %.4f; stability < 0.8: %.4f\n",
+      << Form("N[T]-weighted mean bin-by-bin efficiency %.4f, purity %.4f\n", sTbb / sTs, sTpur / sTp)
+      << Form("cells with N_eff >= %.0f (both denominators): %d; min bin-by-bin efficiency %.4f, min purity %.4f\n", kNeffMin, nused, mins, minp)
+      << Form("fraction of N[T] in cells with purity < 0.8: %.4f, < 0.5: %.4f; bin-by-bin efficiency < 0.8: %.4f\n",
               wlow_p / sT, wlow_p5 / sT, wlow_s / sT);
 }
 
@@ -495,13 +523,13 @@ void plot_pp24_fullsim_pair_bin_migration(bool tight_WP = true)
     gSystem->mkdir(out.c_str(), kTRUE);
     tab.open(out + "bin_migration_values_" + wp + "WP.txt");
     tab << "# pp24 fullsim, all truth OS pairs, " << wp_text << "; input " << in_file << "\n"
-        << "# eps=N[T_i&R]/N[T_i]  stability=N[T_i&R_i]/N[T_i&R]  purity=N[T_j&R_j]/N[R_j]  "
-           "outside=N[R_j&!T]/N[R_j]  C=N[T_j]/N[R_j] (C error: T,R treated as independent)\n";
+        << "# reco eff=N[T_i&R]/N[T_i]  bin-by-bin eff=N[T_i&R_i]/N[T_i&R]  purity=N[T_j&R_j]/N[T&R_j]  "
+           "outside=N[R_j&!T]/N[R_j] (not plotted)  C=N[T_j]/N[R_j] (C error: T,R treated as independent)\n";
 
     for (const VarInfo* v : {&vpt, &veta, &vm, &vdr}) {
         CheckAxis(Get<TH1D>(f, "h_" + v->key + "_T")->GetXaxis(), v->edges, v->key);
         const Bins B = Compute(f, v->key, wp);
-        Draw1D(*v, B, wp_text, out + v->key + "/eff_stab_pur_" + wp + "WP.png");
+        Draw1D(*v, B, wp_text, out + v->key + "/eff_purity_" + wp + "WP.png");
         DrawResponse(f, *v, wp, wp_text, out + v->key + "/response_" + wp + "WP.png");
         std::vector<std::string> lab;
         for (int i = 0; i < B.n; ++i) lab.push_back(Form("[%.3f, %.3f)", v->edges[i], v->edges[i + 1]));
@@ -515,9 +543,9 @@ void plot_pp24_fullsim_pair_bin_migration(bool tight_WP = true)
         if (B->n != (int)((vpt.edges.size() - 1) * (veta.edges.size() - 1) * (z->edges.size() - 1)))
             throw std::runtime_error("cells_pt_eta_" + tag + ": cell count differs from the canonical axes (stale input?)");
         const std::string d = out + "cells_pt_eta_" + tag + "/";
-        DrawCells(*B, &Bins::pur,  "purity",            vpt, veta, *z, wp_text, d + "purity_" + wp + "WP.png");
-        DrawCells(*B, &Bins::stab, "stability",         vpt, veta, *z, wp_text, d + "stability_" + wp + "WP.png");
-        DrawCells(*B, &Bins::eps,  "efficiency", vpt, veta, *z, wp_text, d + "efficiency_" + wp + "WP.png");
+        DrawCells(*B, &Bins::pur,   "purity",                    vpt, veta, *z, wp_text, d + "purity_" + wp + "WP.png");
+        DrawCells(*B, &Bins::bbeff, "bin-by-bin efficiency",     vpt, veta, *z, wp_text, d + "bin_by_bin_efficiency_" + wp + "WP.png");
+        DrawCells(*B, &Bins::eps,   "reconstruction efficiency", vpt, veta, *z, wp_text, d + "reco_efficiency_" + wp + "WP.png");
         const int neta = veta.edges.size() - 1, nz = z->edges.size() - 1;
         std::vector<std::string> lab;
         for (int k = 0; k < B->n; ++k) {
@@ -528,7 +556,7 @@ void plot_pp24_fullsim_pair_bin_migration(bool tight_WP = true)
         WriteCellSummary(tab, "cells_pt_eta_" + tag, *B);
         WriteBins(tab, "cells_pt_eta_" + tag, *B, lab);
     }
-    DrawCellCompare(Bm, Bd, wp_text, out + "cells_compare/cell_purity_stability_" + wp + "WP.png");
+    DrawCellCompare(Bm, Bd, wp_text, out + "cells_compare/cell_purity_bin_by_bin_eff_" + wp + "WP.png");
     tab.close();
     std::cout << "[done] " << out << "\n";
 }
