@@ -908,6 +908,20 @@ Nothing changed in any cut, run list or luminosity.
    (|t| < 1.5 ns) keeps roughly half of it. 2025 has no +1.3 ns cluster; instead t_A ≈ −1.4 ns shoulder (12.4 M)
    and t_A ≈ −3 ns blob (0.77 M), also at nominal z. Satellite (±5, ±5) ns clusters: nominal z, RMS ≈ 37 mm.
 
+### 2026-10-10 — Step 16b: luminosity weight of 522336 / 522355 and of their bad-LB blocks (user decision input)
+
+Source: `IntNotes/data/luminosity/pbpb_2026/lumitable_pbpb_26_HLT_mu4.csv` (`Prescale Corrected`, 35 runs,
+2623.15 µb⁻¹, mean 74.95 µb⁻¹/run, median 91.8). No per-LB luminosity on disk → bad-LB share estimated by the
+HLT_mu4 event fraction (HLT_mu4 unprescaled; per-run (N/N_tot)/(L/L_tot) = 0.993-1.007 for all 35 runs,
+incl. 522384/522408 = 0.999/1.000, so the tracking condition does not alter the rate per luminosity).
+LB-count fraction is larger (lumi decays through the fill) and is not used.
+- 522336: 112.99 µb⁻¹ = 4.31 % of 2026; 1.51 × mean (1.23 × median); LB 344-520 = 22.8 % of the run's
+  events → ≈ 25.7 µb⁻¹.
+- 522355: 97.85 µb⁻¹ = 3.73 %; 1.31 × mean (1.07 × median); LB 461-649 = 17.0 % → ≈ 16.6 µb⁻¹
+  (LB 445-649 incl. drift: 18.5 % → ≈ 18.1 µb⁻¹).
+- Full-run drop: 210.8 µb⁻¹ = 8.04 % of 2026; LB-only drop: ≈ 42.4 µb⁻¹ = 1.6 % (43.8 incl. drift).
+  (522384+522408 whole runs: 170.8 µb⁻¹ = 6.51 %, separate.)
+
 ## Results & Observations
 
 ### Open questions for the user (none blocked the work; all recorded)
