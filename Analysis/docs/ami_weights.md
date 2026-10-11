@@ -18,27 +18,13 @@ layout and the "weight = the Pythia evgen's" rule from the user ruling of **2026
 ### The weight is a property of the PYTHIA EVGEN, not of the AOD chain (user ruling 2026-09-17)
 
 The per-event weight of every Pythia sample — truth-only, pp24 fullsim, HIJING overlay, a future
-data overlay — is `σ · ε_filt` of the **Pythia evgen dataset the event was generated in**.
-
-> **CORRECTION 2026-10-11 (verified with pyami).** This section used to say that `e8613` in an
-> overlay chain is "the HIJING evgen" and that overlays reuse the e8599 EVNT. **Both are false.**
-> An e-tag is a *configuration* (release + transform), not a dataset; the generator is fixed by
-> the DSID's job option. `e8613` = `Gen_tf.py`, AthGeneration 23.6.58 ("for HI group - with fixes
-> to FlowAfterburner"), used for BOTH the HIJING Flow EVNT and a **fresh Pythia generation** of
-> each overlay DSID. Provenance of `802777...merge.AOD.e8613_e8586_s4684_r17913_r17855`:
-> `802777.evgen.EVNT.e8613` (10 k events, 2026-10-03, **Pythia8 v312.atlas2**) → merge e8586 →
-> simul s4684 → reco r17913, which overlays HIJING `860250...merge.HITS.e8613_s4684_s4688`.
-> The e8599 EVNT ran **Pythia8 v308**: same JO and tune, σ 726100 vs 726090 nb; ε_filt is
-> 4.482e-5 (e8613, 10 k events) vs 4.392e-5 (e8599, 1.08 M events), about 2 %, consistent with
-> the 10 k statistics.
-> **User decision 2026-10-11: weight the overlays with the e8599 values (table A) for now.** The
-> production was asked to use the e8599 Pythia EVNT as input; the user is asking the production
-> team why the events were regenerated. Revisit this when they answer, and before adopting the
-> FULL overlay production check which EVNT its chain uses (`ami show dataset prov <AOD>`).
-
-Querying AMI on the AOD dataset gives the AOD's own record, which is not a reliable source for
-the weight (registry B2, done 2026-09-16, reverted 2026-09-17). Read σ and ε_filt from the
-`evgen.EVNT` dataset found through `ami show dataset prov`.
+data overlay — is `σ · ε_filt` of the **Pythia evgen dataset the event was generated in**. A fullsim
+or overlay production does not re-generate events; it takes the already-generated EVNT as input to
+simulation. That is why the Pythia e-tag does not even appear in an overlay's AMI tag chain: in
+`e8613_e8586_s4684_r17864_r17855` (the pbpb24 overlay test sample) **`e8613` is the HIJING evgen**
+(`860250.Hijing_PbPb_UCC_Flow_JJFV6_ip0_5.e8613_s4684_s4688`), not a Pythia tag. Querying AMI on the
+AOD dataset and calling the result "this sample's own AMI weights" (done 2026-09-16, registry B2,
+reverted 2026-09-17) is therefore wrong in principle, even where the numbers happen to agree.
 
 The same principle is why only **Pythia** truth muons enter the overlay's reconstruction- and
 trigger-efficiency numerators and denominators, never HIJING truth muons: each event carries the
@@ -149,10 +135,9 @@ D2). Comparing an absolute MC dσ to **pp data** (dσ = N/L, L in pb⁻¹) requi
 
 #### A. **nPDF evgen** `e8599`, DSIDs 802758–802781 — truth-only analysis, pp24 fullsim **TEST** sample, EVERY HIJING overlay (pbpb23 r17618/r17662, pbpb24 r17864, the full production)
 
-The HIJING overlays use the **pp-beam** DSIDs (802776–802781). Their Pythia events were
-actually **regenerated** under evgen tag e8613 (Pythia8 v312), not taken from the e8599 EVNT (see
-the 2026-10-11 correction above). By user decision (2026-10-11) they are still weighted with this
-table until the production team explains why the events were regenerated.
+The HIJING overlays are built on the **pp-beam** evgen DSIDs (802776–802781) — the AMI weight comes
+from the **evgen** dataset, so neither the overlay's r-tag (r17618 / r17662 / r17864) nor its HIJING
+e-tag (e8613) changes it.
 
 | slice | beam | DSID | σ [nb] | genFiltEff | **σ·ε_filt [nb]** |
 |---|---|---|---|---|---|
@@ -211,7 +196,7 @@ is not read by anything.
 
 Registered 2026-09-16 from `ami show dataset info` on the **AOD** dataset
 `802776...merge.AOD.e8613_e8586_s4684_r17864_r17855` (σ 89.541 nb, ε_filt 2.342314e-3, 1e-4 from
-table A). Retired 2026-09-17 on the belief that e8613 is a HIJING-only tag; that belief was WRONG (2026-10-11 correction: e8613 regenerated Pythia). Table A is kept by user decision 2026-10-11. The sample's Pythia evgen was taken to be 802776
+table A). Wrong in principle: e8613 is the HIJING evgen tag; the sample's Pythia evgen is 802776
 e8599 = table A, which is what it is weighted with now. The fetched file was moved to
 `pythia_fullsim_hijing_overlay_test_sample/ami_info_AOD_record_20260915/` (record only).
 
