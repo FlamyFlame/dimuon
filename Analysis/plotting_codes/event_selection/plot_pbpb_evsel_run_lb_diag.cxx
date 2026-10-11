@@ -456,7 +456,7 @@ void DrawLBScan(TFile* f, int run, const std::vector<int>& ref_excl, TGraph* g4,
         // (2) ratio 1D, normalised
         c.cd(2); gPad->SetLeftMargin(0.08); gPad->SetRightMargin(0.03);
         TLegend lg3(0.62, 0.5, 0.97, 0.9); lg3.SetBorderSize(0); lg3.SetFillStyle(0); lg3.SetTextSize(0.04);
-        const int ccol[3] = {kBlack, kOrange + 7, kRed + 3};
+        const int ccol[3] = {kBlack, kOrange + 7, kRed + 2};
         std::map<int, int> nseen;
         double hmax = 0;
         for (int k = 0; k <= nb; ++k) { if (hr[k]->Integral() > 0) hr[k]->Scale(1. / hr[k]->Integral());
@@ -470,6 +470,9 @@ void DrawLBScan(TFile* f, int run, const std::vector<int>& ref_excl, TGraph* g4,
             hr[k]->Draw(k == nb ? "HIST" : "HIST SAME");
             lg3.AddEntry(hr[k], k == nb ? "other LBs" : Form("%s (%s)", lbrange(blocks[k].first, blocks[k].last).c_str(), catname(blocks[k].cat)), "l");
         }
+        TLine lt; lt.SetLineStyle(2); lt.SetLineColor(kGreen + 2); lt.SetLineWidth(2);
+        lt.DrawLine(kRatioLow, 0., kRatioLow, 1.15 * hmax);
+        lg3.AddEntry(&lt, Form("f_{low} threshold: %.0f TeV^{-1}", kRatioLow), "l");
         lg3.Draw();
         c.SaveAs((out + Form("/lbscan_run%d_summary_pbpb_20%d.png", run, yr)).c_str());
     }
