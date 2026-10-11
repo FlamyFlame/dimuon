@@ -278,6 +278,7 @@ struct LBC { double n = 0, nlow = 0, n13 = 0, n4f = 0; };
 }
 
 void DrawLBScan(TFile* f, int run, const std::vector<int>& ref_excl, TGraph* g4, const std::string& out, int yr,
+                const std::map<int, std::pair<int, std::string>>& lb_marks,
                 std::ofstream& o)
 {
     // ---- reference f_low ----
@@ -292,22 +293,21 @@ void DrawLBScan(TFile* f, int run, const std::vector<int>& ref_excl, TGraph* g4,
     const double fref = rl / rn;
 
     TTree* t = Need<TTree>(f, "t_lbscan");
-    Int_t b_run, b_lbn, b_bcid, b_ntot, b_ntight, b_pass; Float_t b_fcal;
-    t->SetBranchAddress("run", &b_run); t->SetBranchAddress("lbn", &b_lbn); t->SetBranchAddress("bcid", &b_bcid);
+    Int_t b_run, b_lbn, b_ntot, b_ntight, b_pass; Float_t b_fcal;
+    t->SetBranchAddress("run", &b_run); t->SetBranchAddress("lbn", &b_lbn);
     t->SetBranchAddress("ntrk_total", &b_ntot); t->SetBranchAddress("ntrk_tight", &b_ntight);
     t->SetBranchAddress("pass_bits", &b_pass); t->SetBranchAddress("fcal", &b_fcal);
     auto is_low = [&]() { return b_fcal > 1.f && b_ntight / b_fcal < kRatioLow; };
     auto c4fail = [&]() { return (b_pass & 7) == 7 && !(b_pass & 8); };
 
-    std::map<int, LBC> lb, bc;
+    std::map<int, LBC> lb;
     const Long64_t ne = t->GetEntries();
     for (Long64_t i = 0; i < ne; ++i) {
         t->GetEntry(i);
         if (b_run != run) continue;
-        for (LBC* x : {&lb[b_lbn], &bc[b_bcid]}) {
-            if (b_fcal > 1.f) { x->n += 1; if (is_low()) x->nlow += 1; }
-            if ((b_pass & 7) == 7) { x->n13 += 1; if (c4fail()) x->n4f += 1; }
-        }
+        LBC& x = lb[b_lbn];
+        if (b_fcal > 1.f) { x.n += 1; if (is_low()) x.nlow += 1; }
+        if ((b_pass & 7) == 7) { x.n13 += 1; if (c4fail()) x.n4f += 1; }
     }
     if (lb.empty()) throw std::runtime_error(Form("run %d not in t_lbscan", run));
     std::vector<int> lbs; for (auto& kv : lb) lbs.push_back(kv.first);
@@ -361,7 +361,7 @@ void DrawLBScan(TFile* f, int run, const std::vector<int>& ref_excl, TGraph* g4,
         return -1;
     };
     auto lbrange = [](int a, int b) { return a == b ? std::string(Form("LB %d", a)) : std::string(Form("LB %d-%d", a, b)); };
-    auto catname = [](int c) { return c == 1 ? "second band" : "single-band drift"; };
+    auto catname = [](int c) { return c == 1 ? "second band" : "drifting"; };
 
     // ---- summary per block ----
     o << "Blocks (" << blocks.size() << "):\n";
@@ -414,59 +414,49 @@ void DrawLBScan(TFile* f, int run, const std::vector<int>& ref_excl, TGraph* g4,
         if ((b_pass & 7) == 7 && b_ntot > 0) hfr[g]->Fill(b_ntot, (double)b_ntight / b_ntot);
     }
 
-    // ---- page 1: per-LB / per-BCID scans + ratio 1D ----
+    // ---- page 1: per-LB scan + ratio 1D ----
     {
-        TGraphErrors gl_lb, g4_lb; TGraph gl_bc;  // binomial errors: edge LBs hold only tens of events
-        auto add = [](TGraphErrors& g, int x, double k, double n) {
-            const double f = k / n; const int i = g.GetN();
-            g.SetPoint(i, x, 100 * f); g.SetPointError(i, 0, 100 * std::sqrt(std::max(f * (1 - f), 1. / n) / n)); };
+        TGraphErrors gl_lb;  // binomial errors: edge LBs hold only tens of events
         for (int l : lbs) {
-            if (lb[l].n > 0) add(gl_lb, l, lb[l].nlow, lb[l].n);
-            if (lb[l].n13 > 0) add(g4_lb, l, lb[l].n4f, lb[l].n13);
+            if (lb[l].n <= 0) continue;
+            const double n = lb[l].n, fl = lb[l].nlow / n; const int i = gl_lb.GetN();
+            gl_lb.SetPoint(i, l, 100 * fl); gl_lb.SetPointError(i, 0, 100 * std::sqrt(std::max(fl * (1 - fl), 1. / n) / n));
         }
-        for (auto& kv : bc) if (kv.second.n > 200) gl_bc.AddPoint(kv.first, 100 * kv.second.nlow / kv.second.n);
-        TCanvas c(Form("c_lb_%d", run), "", 1300, 1500);
-        c.Divide(1, 3, 0.002, 0.002);
+        TCanvas c(Form("c_lb_%d", run), "", 1300, 1000);
+        c.Divide(1, 2, 0.002, 0.002);
         TLatex tl; tl.SetNDC(); tl.SetTextSize(0.045);
-        // (1) per LB
-        // log y: f_low (~1-100 %) and the cut-4 failure (~0.01-0.1 %) differ by ~3-4 decades
-        c.cd(1); gPad->SetLeftMargin(0.08); gPad->SetRightMargin(0.03); gPad->SetTopMargin(0.3); gPad->SetLogy();
-        TH1F* fr = gPad->DrawFrame(lbs.front() - 2, 5e-3, lbs.back() + 2, 200.,
-                                   Form(";lumi block;fraction [%%]"));
+        // (1) per LB.  log y: f_low runs from ~1-3 % (normal LBs) to ~70-100 % (second band)
+        c.cd(1); gPad->SetLeftMargin(0.08); gPad->SetRightMargin(0.03); gPad->SetTopMargin(0.25); gPad->SetLogy();
+        const double ylo = 0.5, yhi = 200.;
+        TH1F* fr = gPad->DrawFrame(lbs.front() - 2, ylo, lbs.back() + 2, yhi, ";lumi block;f_{low} [%]");
         fr->GetYaxis()->SetTitleOffset(0.8);
         const int bcol[3] = {0, kOrange, kYellow - 9};
         for (auto& b : blocks) {
-            TBox* bx = new TBox(b.first - 0.5, 5e-3, b.last + 0.5, 200.);
+            TBox* bx = new TBox(b.first - 0.5, ylo, b.last + 0.5, yhi);
             bx->SetFillColorAlpha(bcol[b.cat], b.cat == 1 ? 0.35 : 0.6); bx->SetLineWidth(0); bx->Draw();
         }
         gl_lb.SetMarkerStyle(20); gl_lb.SetMarkerSize(0.6); gl_lb.SetMarkerColor(kGreen + 2); gl_lb.Draw("P");
-        g4_lb.SetMarkerStyle(24); g4_lb.SetMarkerSize(0.6); g4_lb.SetMarkerColor(kBlue + 1); g4_lb.Draw("P");
         TLine lr; lr.SetLineStyle(2); lr.SetLineColor(kGreen + 2); lr.DrawLine(lbs.front() - 2, 100 * fref, lbs.back() + 2, 100 * fref);
-        TLegend lg(0.08, 0.71, 0.97, 0.93); lg.SetBorderSize(0); lg.SetFillStyle(0); lg.SetTextSize(0.038); lg.SetNColumns(2);
+        TLine lm; lm.SetLineStyle(2); lm.SetLineColor(kBlack); lm.SetLineWidth(2);
+        const auto mk = lb_marks.find(run);
+        if (mk != lb_marks.end()) lm.DrawLine(mk->second.first, ylo, mk->second.first, yhi);
+        TLegend lg(0.08, 0.76, 0.97, 0.94); lg.SetBorderSize(0); lg.SetFillStyle(0); lg.SetTextSize(0.042); lg.SetNColumns(2);
         lg.AddEntry(&gl_lb, Form("f_{low}: N_{trk}^{HItight}/FCal E_{T}^{A+C} < %.0f TeV^{-1} (FCal > 1 TeV, no cut)", kRatioLow), "p");
         lg.AddEntry(&lr, "f_{low}, reference runs", "l");
-        lg.AddEntry(&g4_lb, "cut 4 failure: N_{trk}^{HItight}/N_{trk}^{total} < #mu#minus5#sigma (after cuts 1-3)", "p");
         TH1D* lbx1 = new TH1D(Form("lbx1_%d", run), "", 1, 0, 1); lbx1->SetDirectory(nullptr);
         lbx1->SetFillColorAlpha(bcol[1], 0.35); lbx1->SetLineWidth(0);
         TH1D* lbx2 = new TH1D(Form("lbx2_%d", run), "", 1, 0, 1); lbx2->SetDirectory(nullptr);
         lbx2->SetFillColorAlpha(bcol[2], 0.6); lbx2->SetLineWidth(0);
         lg.AddEntry(lbx1, Form("second band: f_{low} > %.0f%% (> %.0f#sigma)", 100 * kSecondBand, kZ), "f");
         if (std::any_of(blocks.begin(), blocks.end(), [](const Block& b) { return b.cat == 2; }))
-            lg.AddEntry(lbx2, Form("single-band drift: f_{low} > %.1f#times reference (> %.0f#sigma)", kDrift, kZ), "f");
+            lg.AddEntry(lbx2, Form("drifting: f_{low} > %.1f#times reference (> %.0f#sigma)", kDrift, kZ), "f");
+        if (mk != lb_marks.end()) lg.AddEntry(&lm, mk->second.second.c_str(), "l");
         lg.Draw();
-        tl.DrawLatex(0.08, 0.95, Form("Pb+Pb 20%d, run %d, per lumi block", yr, run));
-        // (2) per BCID
+        tl.DrawLatex(0.08, 0.955, Form("Pb+Pb 20%d, run %d, per lumi block", yr, run));
+        // (2) ratio 1D, normalised
         c.cd(2); gPad->SetLeftMargin(0.08); gPad->SetRightMargin(0.03);
-        double ymx = 0; for (int i = 0; i < gl_bc.GetN(); ++i) ymx = std::max(ymx, gl_bc.GetY()[i]);
-        TH1F* fr2 = gPad->DrawFrame(0, 0, 3564, 1.2 * ymx + 1, ";BCID;f_{low} [%]");
-        fr2->GetYaxis()->SetTitleOffset(0.8);
-        gl_bc.SetMarkerStyle(20); gl_bc.SetMarkerSize(0.5); gl_bc.Draw("P");
-        lr.DrawLine(0, 100 * fref, 3564, 100 * fref);
-        tl.DrawLatex(0.1, 0.92, Form("run %d, per BCID (whole run, BCIDs with > 200 events at FCal > 1 TeV)", run));
-        // (3) ratio 1D, normalised
-        c.cd(3); gPad->SetLeftMargin(0.08); gPad->SetRightMargin(0.03);
         TLegend lg3(0.62, 0.5, 0.97, 0.9); lg3.SetBorderSize(0); lg3.SetFillStyle(0); lg3.SetTextSize(0.04);
-        const int ccol[3] = {kBlack, kOrange + 7, kYellow + 3};  // same category -> same colour as pad 1 shading
+        const int ccol[3] = {kBlack, kOrange + 7, kRed + 3};
         std::map<int, int> nseen;
         double hmax = 0;
         for (int k = 0; k <= nb; ++k) { if (hr[k]->Integral() > 0) hr[k]->Scale(1. / hr[k]->Integral());
@@ -542,7 +532,11 @@ void plot_pbpb_evsel_run_lb_diag(int run_year, std::vector<int> lbscan_runs = {}
     if (yr == 26) {
         DrawCut4Hunt(f, g4, out, yr);
         std::ofstream o(out + "/lbscan_pbpb_20" + std::to_string(yr) + ".txt");
-        for (int r : lbscan_runs) DrawLBScan(f, r, lbscan_runs, g4, out, yr, o);
+        // External LB markers drawn on the per-LB pad (from the ATLAS eLog, supplied by the user)
+        const std::map<int, std::pair<int, std::string>> lb_marks = {
+            {522355, {440, "LB 440: first IBL error (eLog)"}},
+        };
+        for (int r : lbscan_runs) DrawLBScan(f, r, lbscan_runs, g4, out, yr, lb_marks, o);
     }
     std::cout << "[INFO] outputs in " << out << std::endl;
 }
