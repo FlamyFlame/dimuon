@@ -922,6 +922,14 @@ LB-count fraction is larger (lumi decays through the fill) and is not used.
 - Full-run drop: 210.8 µb⁻¹ = 8.04 % of 2026; LB-only drop: ≈ 42.4 µb⁻¹ = 1.6 % (43.8 incl. drift).
   (522384+522408 whole runs: 170.8 µb⁻¹ = 6.51 %, separate.)
 
+### 2026-10-11 — Step 16c: 522355 cut at LB 440 (user: first IBL error ~LB 440, never fixed in the run)
+
+Dropping LB >= 441 of 522355: 19.06 % of the run's HLT_mu4 events ≈ 18.65 µb⁻¹ = 0.71 % of 2026 (LB >= 440:
+19.12 %, 18.70 µb⁻¹). Kept LB <= 440: f_low 2.26 % (reference runs 1.89 %; run's other LBs before the problem
+show the same ~2-3 % sawtooth); dropped part f_low 65.9 %. LB 440-444 themselves are normal (f_low 2.3 %,
+ratio 584-585), so the IBL error is consistent with the drift starting at LB 445. Same event-fraction luminosity
+proxy as Step 16b.
+
 ## Results & Observations
 
 ### Open questions for the user (none blocked the work; all recorded)
