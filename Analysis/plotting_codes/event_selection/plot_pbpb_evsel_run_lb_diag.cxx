@@ -527,10 +527,10 @@ void plot_pbpb_evsel_run_lb_diag(int run_year, std::vector<int> lbscan_runs = {}
     if (yr == 26) boxes.push_back({"t^{A} #in [1, 2], t^{C} #in [-0.6, 1]", 1.0, 2.0, -0.6, 1.0, kRed + 1});
     if (yr == 25) {
         boxes.push_back({"t^{A} #in [-1.8, -1.0], |t^{C}| < 0.6", -1.8, -1.0, -0.6, 0.6, kRed + 1});
-        boxes.push_back({"t^{A} #in [-3.6, -2.4], |t^{C}| < 0.8", -3.6, -2.4, -0.8, 0.8, kMagenta + 1});
+        boxes.push_back({"t^{A} #in [-3.6, -2.4], |t^{C}| < 0.8", -3.6, -2.4, -0.8, 0.8, kOrange});
     }
     boxes.push_back({"satellite (+5, +5)", 4.4, 5.4, 4.4, 5.4, kBlue + 1});
-    boxes.push_back({"satellite (#minus5, #minus5)", -5.4, -4.4, -5.4, -4.4, kGreen + 2});
+    boxes.push_back({"satellite (#minus5, #minus5)", -5.4, -4.4, -5.4, -4.4, kMagenta});
     DrawZdcVtx(f, out, yr, boxes);
     if (yr == 26) {
         DrawCut4Hunt(f, g4, out, yr);
