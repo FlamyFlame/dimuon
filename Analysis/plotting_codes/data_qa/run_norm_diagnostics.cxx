@@ -30,6 +30,7 @@
 #include "TSystem.h"
 #include "MuonObjectsParamsAndHelpers/ParamsSet.h"
 #include "NTupleProcessingCode/PbPbEventSelConfig.h"
+#include "plotting_codes/data_qa/per_run_factor_plot.h"
 
 namespace rnd {
 inline std::map<int,double> ReadLumi(const std::string& path) {   // Prescale Corrected = column 7
@@ -146,44 +147,17 @@ void run_norm_diagnostics(int yr, const std::string& evsel_root, const std::stri
 
     // The two factors of N_sig/L as stand-alone per-run plots, same style as plot_signal_yield_per_lumi_per_run:
     //   N_sig / N_evsel  (lumi-free; partial runs included)   and   N_evsel / L  (partial runs not drawn)
-    auto per_run_plot = [&](const char* stem, const char* ytitle, auto num, auto den, double mean, const char* unit) {
-        std::vector<int> idx;
-        for (size_t i = 0; i < rows.size(); ++i) if (!std::isnan(den(rows[i]))) idx.push_back(i);
-        const int nr = idx.size();
-        const int pw = (int)std::floor(std::log10(mean));   // power of ten moved into the y title (no axis exponent label)
-        const double sc = std::pow(10., -pw);
-        TH1D* fr = new TH1D(Form("frp_%s", stem), "", nr, 0, nr);
-        TGraphErrors* g = new TGraphErrors(nr);
-        double ymax = 0;
-        for (int j = 0; j < nr; ++j) {
-            const R& r = rows[idx[j]];
-            const double y = sc * num(r) / den(r), ey = sc * std::sqrt(std::max(num(r), 1.)) / den(r);
-            g->SetPoint(j, j + 0.5, y); g->SetPointError(j, 0, ey); ymax = std::max(ymax, y + ey);
-            fr->GetXaxis()->SetBinLabel(j + 1, std::to_string(r.run).c_str());
-        }
-        TCanvas* cc = new TCanvas(Form("cp_%s", stem), "", 1400, 750);
-        cc->SetBottomMargin(0.16); cc->SetLeftMargin(0.09); cc->SetRightMargin(0.03); cc->SetTopMargin(0.07);
-        fr->SetMinimum(0); fr->SetMaximum(1.35 * ymax);
-        fr->GetXaxis()->SetLabelSize(nr > 40 ? 0.022 : 0.03); fr->GetXaxis()->LabelsOption("v"); fr->GetXaxis()->SetTickLength(0);
-        fr->GetXaxis()->SetTitle("Run number"); fr->GetXaxis()->SetTitleOffset(2.2); fr->GetXaxis()->SetTitleSize(0.04);
-        fr->GetYaxis()->SetTitle(Form("%s  [10^{%d}%s]", ytitle, pw, unit)); fr->GetYaxis()->SetTitleSize(0.04); fr->GetYaxis()->SetTitleOffset(1.1);
-        fr->Draw("AXIS");
-        g->SetMarkerStyle(20); g->SetMarkerSize(1.0); g->SetLineWidth(2);
-        TLine* ln = new TLine(0, sc * mean, nr, sc * mean); ln->SetLineStyle(2); ln->SetLineColor(kRed + 1); ln->SetLineWidth(2);
-        ln->Draw(); g->Draw("P SAME");
-        TLegend* lg = new TLegend(0.60, 0.78, 0.96, 0.90); lg->SetBorderSize(0); lg->SetFillStyle(0);
-        lg->AddEntry(g, "per run (stat. error)", "pe");
-        lg->AddEntry(ln, Form("dataset average %.4g%s", mean, unit), "l"); lg->Draw();
-        TLatex t; t.SetNDC(); t.SetTextSize(0.04); t.SetTextFont(72); t.DrawLatex(0.10, 0.94, "ATLAS");
-        t.SetTextFont(42); t.DrawLatex(0.17, 0.94, Form("Internal   Pb+Pb 20%d, HLT_mu4, #sqrt{s_{NN}} = 5.36 TeV", yr));
-        cc->SaveAs((dir + Form("/pbpb%d_%s_per_run.png", yr, stem)).c_str());
-    };
-    per_run_plot("signal_per_evsel_event", "N_{events}^{signal} / N_{events}^{evsel, 0-80%}",
-                 [](const R& r) { return r.nsig; }, [](const R& r) { return r.nev; }, avg[2], "");
-    double sev = 0, sL = 0;
-    for (auto& r : rows) if (!std::isnan(r.L)) { sev += r.nev; sL += r.L; }
-    per_run_plot("evsel_events_per_lumi", "N_{events}^{evsel, 0-80%} / L",
-                 [](const R& r) { return r.nev; }, [](const R& r) { return r.L; }, sev / sL, " nb");
+    {
+        std::vector<int> runs; std::vector<double> nsig, nev, L;
+        for (auto& r : rows) { runs.push_back(r.run); nsig.push_back(r.nsig); nev.push_back(r.nev); L.push_back(r.L); }
+        const std::string lab = Form("Pb+Pb 20%d, HLT_mu4, #sqrt{s_{NN}} = 5.36 TeV", yr);
+        DrawPerRunFactor(runs, nsig, nev, avg[2], "N_{events}^{signal} / N_{events}^{evsel, 0-80%}", "", lab,
+                         dir + Form("/pbpb%d_signal_per_evsel_event_per_run.png", yr));
+        double sev = 0, sL = 0;
+        for (auto& r : rows) if (!std::isnan(r.L)) { sev += r.nev; sL += r.L; }
+        DrawPerRunFactor(runs, nev, L, sev / sL, "N_{events}^{evsel, 0-80%} / L", " nb", lab,
+                         dir + Form("/pbpb%d_evsel_events_per_lumi_per_run.png", yr));
+    }
 
     // per-LB, target runs
     for (int r : targets) {

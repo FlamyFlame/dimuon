@@ -125,6 +125,27 @@ N_sig/L = (N_HLT/L) × (N_evsel/N_HLT) × (N_sig/N_evsel).
   2026-09-17 NTuple (these runs are not affected by the LB exclusion).
 - Evidence only — NO run-exclusion or cut-change recommendation (memory feedback_run_exclusion_needs_experts).
 
+**Factored plots, all years (2026-10-12)**, in `plots/data_qa/signal_yield_factored_per_run/`:
+- **Definitions.** N_HLT_mu4 = raw-skim events with event-level `b_HLT_mu4_L1MU3V`, good runs/LBs, BEFORE the 5 event-selection
+  cuts. The skim has already applied: ≥ 1 configured trigger, original GRL, no detector error flags, ≥ 1 vertex, required ZDC data
+  present. N_evsel,0–80% = of those, passing cuts 1–5 with centrality [0,80): no muon-level or pair-level cut. N_sig/N_evsel
+  therefore holds every muon/pair effect, and N_evsel/L holds trigger, skim/DAQ completeness, lumi and event-selection efficiency.
+- **PbPb24, PbPb25:** no deviating run (all within 8 % of the median N_HLT/L, evsel > 95 %, |sig/ev pull| < 3). Year evsel pass:
+  99.30 % (2024), 97.20 % (2025). (2023: 99.63 %, 2026: 98.49 %.)
+- **pp24** (user choice: N_HLT from the unprescaled analysis trigger HLT_2mu4_L12MU3V; HLT_mu4 is prescaled ×400–870, which would
+  make N_sig/N_HLT_mu4 scale with the prescale). New code: `hlt_events_per_run.cxx` (raw-NTUP count; `/pnfs` read over xrootd)
+  and `pp_norm_factors.cxx` → `pp24_hlt_events_per_lumi_per_run.png`, `pp24_signal_per_hlt_event_per_run.png`,
+  `pp24_run_norm_factors.csv`. **488239: N_HLT_2mu4/L = 5.80×10⁴ pb vs 2.82×10⁴ pb for the full runs (2.06×); N_sig/N_HLT =
+  0.0463 vs ≈0.0457, normal.** So the 2× N/L excess sits entirely in triggered events per lumi (lumi or trigger configuration of this
+  low-lumi run), not in the analysis. 488210 (0.04 pb⁻¹): 1.05×, consistent.
+- Shared plot style: `per_run_factor_plot.h` (`DrawPerRunFactor`).
+
+**463315 single-muon η–φ** (`muon_eta_phi_run_vs_rest.cxx` → `plots/data_qa/pbpb23_run463315/muons/`). Muons taken from the pair NTuple
+(no single-muon tree), each muon counted once per event; panels: run, other runs, ratio. Grid 0.25 × π/8 (QA display axis).
+(a) muons of all Tight pairs OS+SS: 21 509 muons; (b) muons of OS Tight signal pairs: 1 348. χ²/ndf = 373/319 (p = 0.019) for both. The
+near-identical χ² was checked: the histograms differ and a manual χ² matches `Chi2TestX`, so it is a coincidence. The ratio map is flat,
+with NO localized hole or deficit, only a mild excess spread over the map. Consistent with 463315 being normal in everything except events/lumi.
+
 **Rule recorded (user 2026-10-12):** diagnosis plots are exempt from `/review-plot` (`.claude/CLAUDE.md` §Auto-Dispatch Rules).
 
 ## Latest Stage
