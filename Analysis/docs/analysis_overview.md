@@ -252,7 +252,12 @@ documentation only, never in a source file (see `placeholder.md`).
 
 **(f) R_AA & systematics.** Form R_AA from the corrected, normalized pp and PbPb
 spectra; propagate efficiency, bin-by-bin detector-correction, normalization, and selection
-systematics.
+systematics. **Binning (user 2026-10-13): R_AA uses the cross-section binning** — pair p_T on the 16 bins of
+`ParamsSet::pT_bins_150` inside the coarse η^pair cells `CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap`
+(the cells the bin-by-bin correction is defined in; a finer η^pair view of corrected data is not a measurement).
+Known placeholder limitation (2026-10-13): R_AA(η^pair) carries a centrality-independent W-shape (×≈1.45) from a
+Pb+Pb-vs-pp η-dependent reconstruction/selection efficiency difference that the pp24-anchored Pb+Pb placeholder
+cannot represent (`docs/tracking/crossx_raa_reco_binned_propagation_20261013.md` R4).
 
 > The code realizes (a)–(f) through the three-stage pipeline (NTuple processing →
 > RDF histogram filling → plotting). That staging is an implementation choice and

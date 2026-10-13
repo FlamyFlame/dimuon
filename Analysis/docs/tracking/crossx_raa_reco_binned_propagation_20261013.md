@@ -105,6 +105,12 @@ extra TEMP commit (input dir + lumis) is NEVER merged.
   comparison). Corrects the 09-17 premise in `pair_reco_eff_gap_acceptance.md` (d).
 - D7 (USER 2026-10-13): the R_AA-vs-η^pair W-shape (×1.6, centrality-independent, from the trigger corrections, not
   the reco eff) → read-only investigation, no trigger change (subagent; results → R4).
+- D7 resolved (USER 2026-10-13): R4 W-shape = document only (placeholder limitation; fix with the Run-3 overlay ε and
+  a pp-hybrid per-|η^pair| calibration/systematic later).
+- D8 (USER 2026-10-13, binning): R_AA uses the crossx binning — pair pT on `ParamsSet::pT_bins_150` (16 bins) inside the
+  9 coarse η^pair cells `CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap` (RAA_plotting mode 4, one PNG per
+  centrality: `raa_pair_pt_in_eta_subplots_ctr<lo>_<hi>_…png`); R_AA vs η^pair (mode 2) on the coarse cells (was 48 fine).
+- D9 (USER 2026-10-13): MC–data signal η^pair plot on the coarse cells (the bin-by-bin ε is valid per coarse cell only).
 - D3 (agent): OLD GRL realised by frozen copies of the pre-rerun NTuples + a run-only worktree TEMP commit with the
   old lumis; master keeps the new constants.
 
@@ -146,6 +152,13 @@ extra TEMP commit (input dir + lumis) is NEVER merged.
   `pythia_fullsim_full_sample/backup/…_pre_nogap`, `powheg_full_sample/histograms_powheg_fullsim_pp17.root.bak_20261013_pre_nogap`];
   (3) Pb+Pb pT-in-η header covers points → `SingleBCrossxPlotterBase::subplot_ceil_pad` (Pb+Pb 30, pp default).
   (A first refill attempt was killed: the no-gap filter lacked |truth η^pair| < 2.2; fixed before any output was written.)
+
+- **Step 4c (12:50–13:25).** MC refills (Pythia fullsim FULL: 467 old keys bit-identical + 20 no-gap keys; op no-gap ∫ =
+  6.73888 = N[T]; gap/no-gap 0.817. POWHEG fullsim pp17: fixed a latent duplicate `powheg_n_gen_sample` Define (base class
+  per-sample N_gen since 022b9bd 09-11); refill also refreshed 402 stale pre-09-11-normalised keys (×~2, MC–data key
+  unchanged 2204.65 pb; no-gap 2699.76 pb)). Final data RDF with the D5 SF marker 13:00–13:03 (pp ∫ 4483.6 pb). Plots
+  13:05–13:20 incl. D8/D9. /review-plot it.2 running. NOTE: wall clock — the 11:00 deadline passed while a user question
+  was pending (≈02:15 → ≈12:35); the D4/D5 crossx/R_AA plots had been at the canonical paths since ≈02:00.
 
 ## Results & Observations
 ### R1 — muon SFs (pp24 fullsim, Tight R pairs)
@@ -240,9 +253,99 @@ Scripts/outputs in this dir: trig2mu4.C/.out, selchk.C/.out, raa_int.C/.out, hiy
 Ruled out: weight blow-up (pp N_eff/N>=0.75; PbPb flat), TF1 out-of-range/floors (PbPb reco clamp 19 GeV, trig union flat 1.05), SS over-subtraction (SS/OS<=3% above 37 GeV except pp bin15 2/12), binning mismatch, selection mismatch, year-combination formula, centrality mis-assignment (smooth int-centrality distributions).
 
 
+### R4 — R_AA vs η^pair W-shape (D7 investigation, read-only; scratch merged below)
+Normalised factorisation (|η^pair| 0–0.5/0.5–1/1–1.5/1.5–2/2–2.2, pT 9–150): reco eff cancels (Pb+Pb/pp mean reco weight
+flat in η: 1.238–1.245 at 0–5 %, 0.991–1.000 at 50–80 %). SAME-trigger test (Pb+Pb mu4 vs pp24 single_mu4, both union-
+corrected): 0.947/1.150/1.054/0.866/0.907, identical at 0–5 % and 50–80 %, every year, every pT slice → (D, DOMINANT,
+≈×1.33 of the ×1.45 contrast) a Pb+Pb-vs-pp η-dependent reco/selection efficiency difference that D4 cannot represent
+(D4 takes the η shape from pp24 by construction; the Run-2 placeholder had a W-like η shape, 60–80 %:
+0.75/0.85/0.81/0.78/0.80, that partly compensated before). Corrected pp data match Pythia reco η shape (1.042/1.000/
+0.976/0.987/0.975); corrected Pb+Pb do not (0.987/1.150/1.028/0.855/0.884). Ruled out: WP, momentum scale/Δp/p, Pb+Pb
+trigger turn-ons, physics (centrality-independent). (B/D, ≈7 %) pp 2mu4 hybrid under-corrects barrel vs endcap:
+P(2mu4|mu4) obs/pred 0.936/0.920 (|η^pair|<1) vs 1.015/1.006 (1–2), 0.974 (2–2.2). (D, minor, opposite sign) Pb+Pb union
+lacks correlation: both-legs obs/pred 1.04–1.08 low pT, ≈1.4 barrel >26 GeV. Fix options (USER): η-dependent Pb+Pb ε from
+the Run-3 overlay, or a Pb+Pb/pp η-shape stopgap factor + systematic; pp hybrid per-|η^pair| calibration or systematic.
+
+#### Appendix — merged subagent scratch doc `_sub_raa_eta.md` (verbatim)
+# _sub_raa_eta — R_AA vs eta^pair W-shape root cause (READ-ONLY investigation)
+Mandate: read-only; outputs only in this scratch dir. Done = ranked root-cause findings w/ evidence + classification (A/B/C/D) + fix proposal.
+
+##### Plan
+S1 read tracking docs + code (PairTrigEffCrossxEvaluator.h, PP AddPairEfficiencyWeightColumns, PbPb union weight, RAA_plotting case 6)
+S2 inspect RDF hist files (*_corr_* histos) per eta^pair: raw, trig-corr, reco-corr pp vs PbPb
+S3 pp24 data closure: single_mu4 res_cut_v2 ntuple -> fraction of sig-region OS pairs firing 2mu4 vs eta^pair vs hybrid prediction
+S4 PbPb union weight eta shape; peripheral vs pp shapes
+S5 history: old plots / 09-10 version
+
+##### Findings (append-only)
+
+###### S1/S2 (done) — docs + hist decomposition
+- Read crossx_raa_reco_binned_propagation (D4: eps_PbPb = C_Run2(p,c) x eps_pp^{reco,SF}; trig PbPb = bare union), pp24_trig_eff_hybrid_application (§2 hybrid), mc_trigger_efficiency §1-2 (eps^nc = data T&P at dR>0.8; pp product eps1 eps2 eps_dR^2mu4).
+- eta.C (copy of plotreview1/eta.C) -> eta.out. CAUTION: its "trig" column = crossx/no_trig_corr, and no_trig_corr = 1/L-normalised RAW counts (recopp=1/400.4) -> that column is the TOTAL (trig x reco) correction, mislabelled.
+- R_AA(norm. to integral) new vs old (10-07 inputs) per eta^pair bin: OLD shape is the opposite in 1-1.5 vs 1.5-2 (Rold 0.65-0.85 at 1-1.5, 1.05-1.27 at 1.5-2; Rnew 0.9-1.24 / 0.72-0.9). The change = reco correction swap (D4, pp eps in both) -> old PbPb Run-2 placeholder lacked gap acceptance.
+- Raw OS count ratio PbPb/pp (normalised): 0-5%: 0.62-0.70 at |eta|1.5-2, 1.34-1.51 at 0.5-1, 0.75-1.1 at |eta|<0.5 (dip 0.75 at -0.1..0), ~0.8-1.2 at 1-1.5, 0.83-1.05 at 2-2.2. 50-80% same shape (0.62-0.79 / 1.30-1.70).
+- stages.C -> stages.out (stage hists _corr_raw/_corr_unfolded_trig/_corr_unfolded_reco_trig, OS only, pT-integrated, |eta^pair| groups 0/.5/1/1.5/2/2.2):
+  0-5%: raw AA/pp 1.129/1.451/0.949/0.676/0.891; <w_trig>pp 2.192/2.340/1.729/1.495/1.815; <w_trig>AA 1.138/1.178/1.153/1.081/1.074; <w_reco> ratio AA/pp flat 1.238-1.245; R(norm) 0.966/1.205/1.041/0.802/0.865.
+  50-80%: raw 1.131/1.422/0.907/0.701/0.977; <w_trig>AA 1.082/1.093/1.057/1.019/1.023; reco ratio 0.991-1.000; R(norm) 0.985/1.171/0.986/0.846/0.974.
+  => reco cancels (flat). Raw barrel(0.5-1)/endcap(1.5-2) contrast = 2.07 (0-5) / 2.03 (50-80); trigger-weight ratio (w_pp/w_AA) contrast predicted = (2.340/1.178)/(1.495/1.081) = 1.44 (0-5), (2.340/1.093)/(1.495/1.019)=1.46 (50-80). Residual ~1.4-1.5 = the W.
+
+###### S3 plan — pp data-driven closure (closure.C)
+On frozen pp24 single_mu4 res_cut_v2 tree (sign2, signal cuts as RDFBasedHistFillingPP.cxx:612-616 + pair_pass_tight):
+ per |eta^pair| group: N_mu4, N(pass2mu4), N(both legs passmu4), predicted <eps_hyb/eps_union>, <e1e2/union>.
+ eps_hyb from Utilities/PairTrigEffCrossxEvaluator.h (pp_full Tight) with pp data T&P TF1s (reimplemented lookup, cap1 floor .01).
+ Also Y_mu4 = Sum 1/union (pp mu4 sample, PbPb-style correction) vs Y_2mu4 = Sum w_hyb (2mu4 nominal tree) shape ratio.
+
+###### S3 result — closure.C -> closure.out (pp24 frozen single_mu4 res_cut_v2 sample, sig cuts + tight, mu pT>=4.5)
+pair pT [9,150), |eta^pair| groups 0/.5/1/1.5/2/2.2:
+ f_obs=P(2mu4|mu4):          0.465 0.435 0.614 0.692 0.557
+ f_pred=<eps_hyb/eps_union>: 0.496 0.473 0.605 0.689 0.571 -> obs/pred 0.936 0.920 1.015 1.006 0.974
+ P(both legs passmu4) obs/pred(e1e2/union): 1.065 1.034 1.046 1.023 0.989 (25.85-74 GeV barrel 1.37-1.39: close-by positive correlation, as eps_dR models)
+ <eps_dR> 0.885 0.886 0.958 0.958 0.898
+ KEY: Y_2mu4(hybrid, 2mu4 tree)/Y_mu4(union w/ pp T&P, mu4 tree), normalised: 0.961 0.966 1.052 1.038 1.000 (same in pT slices 9-12.8, 12.8-25.9, 25.9-74: within 0.93-1.07)
+ => pp hybrid vs an independent pp mu4-union correction agree to <=+-5% in eta^pair; barrel/endcap(1.5-2) 0.93. The hybrid under-corrects pp barrel by ~7% relative to 1.5-2 at most (f_obs/f_pred 0.92 vs 1.006) -> pushes R_AA barrel UP by ~7-8%: a minor piece of the W (W is ~x1.45). The pp hybrid is NOT the main cause.
+
+###### S4 result — closure2.C -> closure2.out: SAME trigger (HLT_mu4) in both systems
+PbPb (frozen _mindR_0_02, 4 yrs, tight, sig cuts) vs pp24 single_mu4 (frozen res_cut_v2), |eta^pair| groups 0/.5/1/1.5/2/2.2, pT 9-150:
+ ctr 0-80: rawA/rawP(norm) 0.954 1.146 1.040 0.874 0.940 ; union-corrected A/P(norm) 0.947 1.150 1.054 0.866 0.907
+ <w_union> PbPb 1.109 1.136 1.097 1.044 1.040 ; pp 1.086 1.100 1.053 1.024 1.047  (both ~flat, differ <=4%)
+ Same pattern in every pT slice (9-12.8 / 12.8-25.9 / 25.9-150) and in 0-5% AND 50-80% (50-80% 12.8-25.9: 0.915 1.131 1.047 0.892 0.996).
+ P(both legs mu4)|mu4 obs/pred (e1e2/union): PbPb 1.08/1.06/1.04/1.00/0.94 ~ pp 1.07/1.03/1.05/1.02/0.99 -> per-leg T&P self-consistent in both systems.
+ => ~x1.32 of the barrel(0.5-1)/endcap(1.5-2) contrast is in the RAW single-mu4 yields of PbPb vs pp and is NOT a trigger-correction effect (union weights only 1.02-1.14, cannot move 30%). The remaining ~x1.1 of the x1.45 W is the 2mu4-vs-mu4 trigger-correction difference in pp (S3: 0.96/1.04).
+ Next: test selection pieces whose PbPb-vs-pp eta efficiency is NOT modelled (D4 copies pp reco eta shape): Tight WP fraction, Medium yields.
+- wp.C -> wp.out: Tight fraction of sig-region OS pairs per |eta^pair| group: pp 0.824/0.866/0.921/0.983/0.991, PbPb50-80 0.832/0.875/0.927/0.974/0.989, PbPb0-10 0.831/0.868/0.914/0.968/0.978 -> WP not the cause (<1.5% diff). Raw ratio with NO WP: PbPb50-80/pp 0.927/1.127/1.023/0.907/0.999 (same W). Ruled out: Tight WP.
+###### S5 plan — locate the raw deficit in single-muon eta / phi / year (mueta.C)
+- mueta.C -> mueta.out: per-MUON eta (0.1 bins, both legs of sig-region tight OS pairs, mu4 samples) PbPb/pp_mu4 normalised ratio, per year 23/24/25/26:
+  barrel |eta| 0.6-1.1: 1.11-1.29 (all years); 1.5-2.0: 0.74-0.95 (all years; 1.7-2.0 A side 0.74-0.87); eta~0-0.3: 0.87-1.0. Smooth broad modulation, SAME in every PbPb year (2023..2026) -> not a single-year detector condition. No sharp step at 1.3 (NSW edge).
+  endcap phi (both mu |eta|>1.3): some sectors 0.71-0.78 (A: phi -2.55,-2.16; C: phi 1.77, 2.16) vs others 1.1-1.18 -> also sector structure.
+  pp 2mu4/pp mu4 per-muon ratio: barrel 0.69-0.94, endcap 1.17-1.32 (expected: 2mu4 requires both legs -> barrel L1 ineff squared).
+###### S6 plan — momentum-scale / dp/p differences (mom.C): <pt/trk_pt>, dP_overP distribution per |eta| pp vs PbPb
+- mom.C -> mom.out: <pt/trk_pt> per |eta| identical pp vs PbPb23/25 (0.994-1.000, diffs <0.4%); dP/p distributions similar -> momentum scale / dp/p cut NOT the cause.
+- Run-2 PbPb placeholder single-muon reco eff (run2_reco_eff_placeholder.root, tight, pT 6/10): 60-80%: |qeta|<0.5 0.75, 0.5-1 0.83-0.86, 1-1.5 0.81, 1.5-2 0.77-0.80, 2-2.4 0.80-0.82; 0-10%: 0.65 / 0.75-0.78 / 0.75 / 0.64-0.67 / 0.69-0.72.
+  -> Run-2 PbPb MC eps has the SAME W pattern (pair ~eps^2: 0.5-1 vs 1.5-2 ~1.18 (60-80), ~1.3 (0-10); vs |eta|<0.5 ~1.25). This is why the 09-10 (Run-2-placeholder-reco) R_AA vs eta was flat apart from eta~0, and D4 (pp24-anchored eta shape, 2026-10-13) removed it.
+- Exact factorisation of R(norm): R = [PbPb_mu4 union-corr / pp_mu4 union-corr] / [Y_2mu4/Y_mu4]
+  = (0.947/0.961, 1.150/0.966, 1.054/1.052, 0.866/1.038, 0.907/1.000) = 0.985 1.190 1.002 0.834 0.907, reproducing stages R(norm) (0-5: 0.966 1.205 1.041 0.802 0.865; 50-80: 0.985 1.171 0.986 0.846 0.974).
+- pp MC-data eta^pair plot (plots/mc_data_compr/signal/pair_eta_mc_data_compr.png, 10-13): MC/data sawtooth with steps at the coarse eta^pair reco-cell edges 0.5/1/1.5 (0.5-1: 1.3-1.6; 1-1.5: 0.8-0.9; 1.5-2: 1.15-1.35) -> within-cell eta shape of the reco-binned correction (cancels in R_AA, both sides use same eps).
+
+###### S7 — which system deviates? data vs Pythia pp24 fullsim RECO-level eta^pair shape
+MC: histograms_pythia_fullsim_pp24_no_data_resonance_cuts_full.root h_truth_pair_eta_op_pass_tight_and_signal_truth_and_reco (reco-passing, tight, sig+gap), group fractions 0.2183 0.2846 0.1735 0.2552 0.0684.
+pp24 data mu4 union-corrected (closure2, 9-150, N*<wu>): fractions 0.2276 0.2845 0.1694 0.2519 0.0667 -> pp/MC = 1.042 1.000 0.976 0.987 0.975  (pp data == Pythia Run-3 reco shape within +-4%)
+PbPb data 0-80 union-corrected: fractions 0.2155 0.3274 0.1784 0.2182 0.0605 -> PbPb/MC = 0.987 1.150 1.028 0.855 0.884
+=> the Pb+Pb data deviate from the Run-3 pp detector-level eta shape; pp does not. Centrality-independent (0-5 == 50-80), year-independent (23..26), WP-, trigger-, momentum-scale-independent -> a Pb+Pb-vs-pp reconstruction/selection efficiency eta dependence (HI reco / Pb+Pb-run detector configuration) that D4 cannot carry (D4 copies the pp24 eta shape into Pb+Pb by construction; C_Run2 depends on pT & centrality only).
+Run-2 Pb+Pb MC placeholder carries a qualitatively similar W (single-mu 60-80%: 0.75/0.85/0.81/0.78/0.80 by |q eta| group) vs Run-2 pp (HF note Fig.31) barrel 0.95-0.97 / endcap 0.92-0.95 -> Run-2 PbPb/pp per-muon barrel/endcap contrast ~1.07 (pair ~1.14): explains roughly half of the observed x1.33 and is why the 09-10 R_AA(eta) was ~flat.
+Overlay MC check (pythia_fullsim_hijing_overlay_test_sample[_pbpb23]) INCONCLUSIVE: truth denominators not defined like the pp file (pbpb23 truth shape incl. gap-like dips), stats 681-3017 pairs.
+
+##### CONCLUSION (ranked)
+1. [D, dominant, ~x1.33 of the x1.45 barrel(0.5-1)/endcap(1.5-2) contrast] Pb+Pb reco/selection-efficiency eta dependence NOT modelled: D4 ("anchor to pp24") gives Pb+Pb exactly the pp24 eta^pair shape. Data: same-trigger (HLT_mu4) Pb+Pb/pp yields after the union correction = 0.947/1.150/1.054/0.866/0.907; pp data agree with Pythia Run-3 reco shape to +-4%, Pb+Pb deviate +15%/-15%. Same in every year and centrality -> detector/reco, not physics. Fix: eta-dependent Pb+Pb efficiency from the Run-3 HIJING overlay (proper), or as interim a Pb+Pb/pp eta-shape factor (e.g. data-driven Pb+Pb J/psi or Z T&P vs pp; or Run-2 PbPb/Run-2 pp ratio as a stopgap with a systematic). User decision (it reverses part of D4).
+2. [B/D, secondary, ~x1.07-1.08] pp 2mu4 hybrid under-corrects the barrel relative to the endcap: data closure P(2mu4|mu4) obs/pred = 0.936/0.920 (|eta^pair|<1) vs 1.015/1.006 (1-2), 0.974 (2-2.2); all pT slices (9-12.8: 0.95/0.93 vs 1.03/1.02; 25.9-74: 0.92/0.90 vs 0.99/0.97). Y_2mu4(hybrid)/Y_mu4(union) = 0.961/0.966/1.052/1.038/1.000. The MC eps_dR (|eta^pair|<1 group mean 0.885) / data eps^nc product is ~7% too optimistic in the barrel (barrel L1 close-by loss larger in data than MC). Fix: data-driven calibration of the hybrid with the per-|eta^pair|(,pT) ratio f_obs/f_pred from the single_mu4 sample, or a systematic of that size.
+3. [D, minor, opposite sign] Pb+Pb union has no correlation term: P(both legs)|mu4 obs/pred 1.04-1.08 at low pT, ~1.4 above 26 GeV in the barrel (RoI sharing) -> union overestimates P(>=1) by ~2% (low pT) to ~14% (barrel, >26 GeV) -> pushes barrel R_AA DOWN; does not cause the W.
+4. [C, expected] reco-eff cancels by construction (AA/pp <w_reco> ratio 1.238-1.245 at 0-5 %, 0.991-1.000 at 50-80 %, flat).
+Ruled out: Tight WP (tight fractions equal to <1.5 %), momentum scale / dp/p (pt/trk_pt equal <0.4 %), Pb+Pb trigger turn-ons (union weights 1.02-1.14, self-consistent P(both|>=1)), single PbPb year, centrality-dependent effect.
+History: 09-10 (3 yrs) flat because the Run-2 Pb+Pb placeholder (absolute, own eta shape ~W) partially compensated (and pre-hybrid pp trigger); 10-07 inputs: mixed fiducial (pp eps incl gap acceptance, PbPb Run-2 without) -> R low in gap cells (1-1.5, eta~0), high at 1.5-2 (Rold 0.65-0.85 vs 1.05-1.27); 10-13: D4 removes the Run-2 eta shape -> raw Pb+Pb/pp detector W exposed.
+
+
 ## Remaining Work
 - SF statistical + systematic uncertainties (incl. D5 SF=1 variation) not propagated.
 - Steps 4–6 (rerun with D4/D5, plots, reviews, commit).
 
 ## Latest Stage
-02:35 — MC refills (no-gap family) running; then commit, merge into the run worktree, rerun RDF (new SF marker) + all plots, /review-plot it.2; R_AA-η investigation subagent running.
+13:25 — /review-plot it.2 running (all result plots incl. D8 R_AA pT-in-η and D9). Then: close review, commit docs, INDEX row, report.
