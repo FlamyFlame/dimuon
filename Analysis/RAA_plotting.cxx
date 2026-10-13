@@ -13,6 +13,8 @@
 #include "MuonObjectsParamsAndHelpers/DatasetTriggerMap.h"
 #include "Utilities/PbPbSampledLumi.h"
 #include "MuonObjectsParamsAndHelpers/ParamsSet.h"
+#include "Utilities/PairEtaPanelBins.h"   // coarse pair-eta panels (crossx binning) + alignment guard
+#include <TLine.h>
 #include <stdexcept>
 
 class RAAPlotting{
@@ -131,6 +133,10 @@ private:
 	void HistRetrieve();
 	void HistProject();
 	void CheckPairPtAxisEdges(const TAxis* ax, const char* what) const;
+	// mode 2: sum a fine eta^pair projection onto the coarse crossx panels (one bin per panel)
+	TH1D* ToCoarseEtaPanels(const TH1D* h_fine, const std::string& name) const;
+	// mode 4: R_AA vs pair pT in the coarse eta^pair panels, one PNG per centrality bin
+	void PlotPairPtInEtaPanels();
 public:
 	bool use_same_y_axis_range_23_24 = false;
 	vector<vector<double>> ymax_pt_mode_23_24_common = {{0.92, 1.2}, {2.4, 3}}; // top dim: trigger; 2nd dim: ctr-based subplot
@@ -243,7 +249,7 @@ void RAAPlotting::InputOutputPrepare(){
 
 
 void RAAPlotting::ModePrepare(){
-	if (mode == 1 || mode == 2){ // var1 (rebinned) = centrality
+	if (mode == 1 || mode == 2 || mode == 4){ // var1 (rebinned) = centrality
 		line_var_rebins = ctr_rebins;
 		line_var_colors = ctr_colors;
 		line_var_labels = ctr_labels;
@@ -266,8 +272,12 @@ void RAAPlotting::ModePrepare(){
 		obs_suffix = "ctr";
 		ytitle = "RAA";
 		break;
+	case 4:
+		obs_suffix = "pair_pt_in_eta_subplots";
+		ytitle = "RAA";
+		break;
 	default:
-		throw std::runtime_error("INVALID MODE: mode must be 1, 2, or 3!");
+		throw std::runtime_error("INVALID MODE: mode must be 1, 2, 3 or 4!");
 	}
 }
 
@@ -365,10 +375,16 @@ void RAAPlotting::CheckPairPtAxisEdges(const TAxis* ax, const char* what) const 
 }
 
 void RAAPlotting::HistProject(){
+    if (mode == 4) return;   // projected per eta panel inside PlotPairPtInEtaPanels()
     if (mode == 1 || mode == 3){
 		hcrossx_pp_proj = h2d_crossx_pp->ProjectionX("h_pp_crossx_pair_pt");
     }else{ // mode == 2: RAA vs pair eta
-		hcrossx_pp_proj = h2d_crossx_pp->ProjectionY("h_pp_crossx_pair_eta");
+		// The crossx eta^pair binning: the 48 fine bins summed onto the coarse panels
+		// (CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap), exactly as the crossx
+		// pT-in-eta panels are formed (user 2026-10-13: R_AA uses the crossx binning).
+		TH1D* h_fine = h2d_crossx_pp->ProjectionY("h_pp_crossx_pair_eta_fine", 0, -1, "e");
+		hcrossx_pp_proj = ToCoarseEtaPanels(h_fine, "h_pp_crossx_pair_eta");
+		delete h_fine;
     }
 	
 	hcrossx_pp_proj->Scale(1.,"width");
@@ -414,7 +430,11 @@ void RAAPlotting::HistProject(){
     		break;
     	case 2:
     		// project y-axis (pair eta) over rebinned z bin (ctr); sum over x axis (pair pT)
-    		h_proj = h3d_crossx_pbpb_op->ProjectionY(Form("h_proj_bin%d", ibin),0,-1,bin_num_first,bin_num_last);
+    		{
+    			TH1D* h_fine = h3d_crossx_pbpb_op->ProjectionY(Form("h_proj_fine_bin%d", ibin),0,-1,bin_num_first,bin_num_last,"e");
+    			h_proj = ToCoarseEtaPanels(h_fine, Form("h_proj_bin%d", ibin));   // same coarse panels as pp
+    			delete h_fine;
+    		}
 	    	h_proj->Scale(1.,"width"); 
     		hcrossx_pbpb_proj_list.push_back(h_proj);
     		break;
@@ -433,6 +453,119 @@ void RAAPlotting::HistProject(){
 }
 
 
+TH1D* RAAPlotting::ToCoarseEtaPanels(const TH1D* h_fine, const std::string& name) const {
+	static const CommonEffcyConfig cfg{};
+	const auto& panels = cfg.pair_eta_proj_ranges_coarse_incl_gap;
+	PairEtaPanels::CheckPanelsMatchFiducialCut();
+	std::vector<double> edges{panels.front().first};
+	for (const auto& p : panels) edges.push_back(p.second);
+	TH1D* h = new TH1D(name.c_str(), "", (int)edges.size() - 1, edges.data());
+	h->SetDirectory(nullptr);
+	h->Sumw2();
+	for (size_t i = 0; i < panels.size(); ++i) {
+		const auto b = PairEtaPanels::Bins(h_fine->GetXaxis(), panels[i], "RAA_plotting (coarse eta^pair)");
+		double err = 0.;
+		const double v = h_fine->IntegralAndError(b.first, b.second, err);
+		h->SetBinContent((int)i + 1, v);
+		h->SetBinError((int)i + 1, err);
+	}
+	return h;
+}
+
+// R_AA vs pair pT on the crossx pair-pT axis (ParamsSet::pT_bins_150, 16 bins) in each coarse
+// eta^pair panel (CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap) -- the SAME cells as the
+// crossx pT-in-eta^pair subplots (user 2026-10-13). pp (OS-SS) and Pb+Pb (OS-SS, luminosity-combined)
+// are projected over the IDENTICAL eta bin range of each panel (PairEtaPanels::Bins guards that the
+// panel edges are bin edges of both axes). One PNG per centrality bin.
+void RAAPlotting::PlotPairPtInEtaPanels(){
+	static const CommonEffcyConfig cfg{};
+	const auto& panels = cfg.pair_eta_proj_ranges_coarse_incl_gap;
+	PairEtaPanels::CheckPanelsMatchFiducialCut();
+	const int npan = (int)panels.size();
+	// grid: nrow >= ncol, nrow ~ sqrt(N)
+	int ncol = (int)std::floor(std::sqrt((double)npan));
+	if (ncol < 1) ncol = 1;
+	int nrow = (npan + ncol - 1) / ncol;
+	CheckPairPtAxisEdges(h2d_crossx_pp->GetXaxis(), "pp crossx TH2 x-axis");
+	CheckPairPtAxisEdges(h3d_crossx_pbpb_op->GetXaxis(), "Pb+Pb crossx TH3 (OS-SS) x-axis");
+
+	for (size_t ic = 0; ic < line_var_rebins.size(); ++ic){
+		const int z1 = line_var_rebins[ic].front(), z2 = line_var_rebins[ic].back();
+		const int clo = ParamsSet::ctrbins.at(z1 - 1), chi = ParamsSet::ctrbins.at(z2);
+		std::vector<TH1D*> hr(npan, nullptr);
+		double ymax = 0.;
+		for (int ip = 0; ip < npan; ++ip){
+			const auto bpp = PairEtaPanels::Bins(h2d_crossx_pp->GetYaxis(), panels[ip], "RAA_plotting mode 4 (pp)");
+			const auto bpb = PairEtaPanels::Bins(h3d_crossx_pbpb_op->GetYaxis(), panels[ip], "RAA_plotting mode 4 (Pb+Pb)");
+			TH1D* hpp = h2d_crossx_pp->ProjectionX(Form("hpp_c%zu_e%d", ic, ip), bpp.first, bpp.second, "e");
+			TH1D* hpb = h3d_crossx_pbpb_op->ProjectionX(Form("hpb_c%zu_e%d", ic, ip), bpb.first, bpb.second, z1, z2, "e");
+			hpp->Scale(1., "width");
+			hpb->Scale(1., "width");
+			TH1D* h = (TH1D*)hpb->Clone(Form("hraa_c%zu_e%d", ic, ip));
+			h->SetDirectory(nullptr);
+			for (int ib = 1; ib <= h->GetNbinsX(); ++ib){
+				const double a = hpb->GetBinContent(ib), ea = hpb->GetBinError(ib);
+				const double b = hpp->GetBinContent(ib), eb = hpp->GetBinError(ib);
+				const double r = (b != 0.) ? a / b : 0.;
+				const double er = (a != 0. && b != 0.) ? r * std::sqrt((ea/a)*(ea/a) + (eb/b)*(eb/b)) : 0.;
+				h->SetBinContent(ib, r);
+				h->SetBinError(ib, er);
+				ymax = std::max(ymax, r);
+			}
+			delete hpp; delete hpb;
+			hr[ip] = h;
+		}
+		const double yhi = 1.6 * ymax;   // common linear R_AA range; headroom for the panel label
+		TCanvas* c = new TCanvas(Form("c_raa_pt_eta_%zu", ic), "", 450 * ncol, 350 * nrow);
+		c->Divide(ncol, nrow);
+		for (int ip = 0; ip < npan; ++ip){
+			c->cd(ip + 1);
+			gPad->SetLogx();   // pT_bins_150 is log-binned (as in the crossx panels)
+			gPad->SetLeftMargin(0.16);
+			gPad->SetBottomMargin(0.15);
+			TH1D* h = hr[ip];
+			h->SetStats(0);
+			h->SetTitle("");
+			h->SetLineColor(line_var_colors.at(ic));
+			h->SetMarkerColor(line_var_colors.at(ic));
+			h->SetMarkerStyle(20);
+			h->SetMarkerSize(0.9);
+			h->SetLineWidth(2);
+			h->GetYaxis()->SetRangeUser(0., yhi);
+			h->GetXaxis()->SetTitle("p_{T}^{pair} [GeV]");
+			h->GetYaxis()->SetTitle("R_{AA}");
+			h->GetXaxis()->SetTitleSize(0.06); h->GetYaxis()->SetTitleSize(0.06);
+			h->GetXaxis()->SetLabelSize(0.05); h->GetYaxis()->SetLabelSize(0.05);
+			h->GetXaxis()->SetMoreLogLabels();
+			h->Draw("E1");
+			TLine* one = new TLine(h->GetXaxis()->GetXmin(), 1., h->GetXaxis()->GetXmax(), 1.);
+			one->SetLineStyle(2); one->SetLineColor(kGray + 2);
+			one->Draw();
+			TLatex t; t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.055);
+			t.DrawLatex(0.20, 0.84, Form("%.1f < #eta^{pair} < %.1f", panels[ip].first, panels[ip].second));
+			if (ip == 0){
+				TLatex a; a.SetNDC();
+				a.SetTextFont(72); a.SetTextSize(0.06); a.DrawLatex(0.55, 0.84, "ATLAS");
+				a.SetTextFont(42); a.DrawLatex(0.72, 0.84, "Internal");
+			}
+			if (ip == 1){
+				TLatex t2; t2.SetNDC(); t2.SetTextFont(42); t2.SetTextSize(0.045);
+				t2.DrawLatex(0.20, 0.76, Form("%s, centrality %d-%d%%", legend_pbpb_label.c_str(), clo, chi));
+				t2.DrawLatex(0.20, 0.69, legend_pp_label.c_str());
+			}
+			if (ip == 2){
+				TLatex t3; t3.SetNDC(); t3.SetTextFont(42); t3.SetTextSize(0.045);
+				t3.DrawLatex(0.20, 0.76, Form("m_{#mu#mu}#in(1.08,2.9) GeV, p_{T}^{pair}>%g GeV", ParamsSet::signal_pair_pt_min));
+				t3.DrawLatex(0.20, 0.69, "opposite sign #minus same sign, tight WP");
+				t3.DrawLatex(0.20, 0.62, "reco-eff + T_{AA}: PLACEHOLDERS");
+			}
+		}
+		const std::string out = out_dir + "raa_" + obs_suffix + Form("_ctr%d_%d", clo, chi) + run_year_trigger_suffix + ".png";
+		c->SaveAs(out.c_str());
+		delete c;
+	}
+}
+
 void RAAPlotting::PrintInstructions(){
 	std::cout << "Class RAAPlotting: runs RAA plotting with one of the 3 modes" << std::endl; 
 	std::cout << "Mode 1: plots RAA vs pair pT in given centrality bins (integrate over pair eta)" << std::endl;
@@ -450,6 +583,7 @@ void RAAPlotting::RunPlotting(){
 	ModePrepare();
 	HistRetrieve();
 	HistProject();
+	if (mode == 4) { PlotPairPtInEtaPanels(); return; }
 
 	Int_t canvas_width = (line_var_rebins.size() > nBinsThresh)? 1200 : 700;
     TCanvas* c_raa = new TCanvas(Form("c_raa_%s", obs_suffix.c_str()), Form("c_raa_%s", obs_suffix.c_str()), canvas_width, 500);
@@ -636,6 +770,10 @@ void RAA_plotting(){
 	// -------------------- Run 3: PbPb 23+24+25+26 combined + pp24 2mu4, from RDF crossx --------------------
 	// (reco-eff PLACEHOLDER + OS-SS combinatorial subtraction; T_AA 2023 placeholder)
 	RAA_plotting_single_run_year_trigger_mode(6);
+	{   // R_AA vs pair pT in the coarse eta^pair panels (crossx binning), one PNG per centrality
+		auto raa_pt_eta = RAAPlotting(4, 6);
+		raa_pt_eta.RunPlotting();
+	}
 
 	// -------------------- legacy cases (SingleBAnalysis-era inputs; not maintained) --------------------
 	// RAA_plotting_single_run_year_trigger_mode(2,true); // 2023 PbPb, 2024 pp mu4mu4noL1
