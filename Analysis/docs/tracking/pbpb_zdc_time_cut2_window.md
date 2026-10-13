@@ -121,7 +121,27 @@ decision.
 - User: check the plots, finalize cut 2 → then NTuple rerun (25, 26) and downstream.
 
 ## Latest Stage
-2026-10-13 13:00 — USER DECISION (supersedes the 2026 part of the Objective): with 522200 + 522041 dropped (D8, analysis-3d,
+2026-10-13 17:01: **2026 revert DONE end to end.** Event-selection chain: cuts_alt(26) 14:04, cuts(26) 15:10 (±1.5 ns, 4 bad
+runs), FCal comparisons 16:20/16:33. pbpb26 NTuples rerun (user): Condor clusters 22 (trig-eff) + 23 (nominal), 7/7 procs exit 0
+each. The driver `run_ntuple_rerun_20261013.sh` died at its validation step with a bash syntax error because another session
+committed an edit to the script (1d5e044, +pbpb23 case; pbpb26 unchanged) at 16:35 while it ran (bash reads scripts incrementally).
+Recovered with VERIFY_ONLY=22,23 (T0 = 16:33:00) from a private copy of the script: all parts validated, hadd OK, run/LB
+exclusion check clean (nlb0 0, nbad 0, 31 runs). OS pairs: nominal 829 331 (was 828 345 with +0.8 → +0.12 %, matching cut-2
+survival 99.94 % vs 99.84 %), trig-eff 1 537 226. Log `pipelines/logs/ntuple_rerun_20261013b_pbpb26{,_verify}.log`.
+STALE downstream for 2026: RDF hist filling, trig-eff fits, crossx/R_AA, data-QA plots (not requested).
+Still open (user): 2025 cut 2 — keep −0.6 ns (≈9 % per run, efficiency) or return to ±1.5 ns (clusters in every run).
+
+(previous) 2026-10-13 16:35: 2026 cuts re-derived with ±1.5 ns (nominal 15:10, alt 14:04; "Excluding 4 bad run(s)"; cut 2 keeps
+99.94 % of post-cut-1 events vs 99.84 % with +0.8). FCal comparisons finishing. User: rerun the pbpb26 NTuples after the FCal
+plots → queued (waits for the FCal "ALL DONE", then `pipelines/run_ntuple_rerun_20261013.sh pbpb26` with CUTS_AFTER = revert
+start; log `pipelines/logs/ntuple_rerun_20261013b_pbpb26.log`; nominal + trig-eff, validate, hadd, run/LB exclusion check).
+
+(previous) 2026-10-13 13:50: 2026 revert chain — running cuts(26) and cuts_alt(26) in PARALLEL got cuts(26) OOM-killed (9.3 GB RSS each;
+node 23 GB; dmesg "Out of memory: Killed process 837582 (root.exe)"). Lesson: never run two 2026-size cut derivations on this node
+at once (25 ∥ 26 overnight worked only marginally). cuts_alt(26) survived; continuation `run_26_revert2.sh`: wait for it →
+cuts(26) ALONE → 4 FCal comparisons in parallel.
+
+(previous) 2026-10-13 13:00 — USER DECISION (supersedes the 2026 part of the Objective): with 522200 + 522041 dropped (D8, analysis-3d,
 commit 41cd9a1) the +0.8 ns 2026 t^A upper edge is unnecessary → REVERT 2026 to ±1.5 ns and rerun the 2026 event-selection
 chain (cuts + cuts_alt; event_level not needed — cut 1 does not depend on cut 2 and was re-derived with D8 at 01:04; then the
 4 FCal comparisons). The 2026 NTuples of 03:59 (analysis-3d, +0.8 window) become STALE → flag, not rerun (not requested).
