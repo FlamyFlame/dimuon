@@ -48,6 +48,18 @@ const std::string& McVsDataSignalFilter(){
     static const std::string f = "_single_b_pass_signal_truth_gapcut";
     return f;
 }
+// NO-GAP twin (2026-10-13, user; docs/tracking/crossx_raa_reco_binned_propagation_20261013.md): the same
+// single-b truth signal region WITHOUT the single-muon truth gap windows (|truth eta^pair| < 2.2 kept, the
+// measured range) = the population the reco+trigger-CORRECTED data
+// refer to (eps_reco folds the gap acceptance in). Mirrors the Pythia FullSim `_single_b_pass_signal_truth_nogap`.
+const std::string& McVsDataSignalFilterNoGap(){
+    static const std::string f = "_single_b_pass_signal_truth_nogap";
+    return f;
+}
+const std::vector<std::string>& McVsDataSignalFilters(){
+    static const std::vector<std::string> v = {McVsDataSignalFilter(), McVsDataSignalFilterNoGap()};
+    return v;
+}
 
 // The MC partner of the data's `h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts` (the UNSUFFIXED default family, booked
 // on ParamsSet::pT_bins_150 = 16 log bins 9->150 GeV since 2026-09-08; `_pt_120` is now the
@@ -323,33 +335,20 @@ void RDFBasedHistFillingPowhegFullsim::CreateBaseRDFsPowhegFullsimExtra(){
             std::cout << "[PowhegFullsim] N_gen(" << kv.first << ") = " << kv.second << std::endl;
         }
 
-        df_map.emplace("df" + McVsDataSignalFilter() + "_weighted",
-            df_op_weighted.Filter("from_same_b")
+        ROOT::RDF::RNode sig_nogap = df_op_weighted.Filter("from_same_b")
                           .Filter(ParamsSet::SignalMinvCutExpr("truth_minv") + " && "
                                   + ParamsSet::SignalPairPtCutExpr("truth_pair_pt") + " && "
-                                  + gap_truth,
-                                  "powheg_fullsim_mc_vs_data_signal_region")
-                          // EXACTLY ONE input path may match, and the match is checked rather
-                          // than taken from the first hit: `RSampleInfo::Contains` is a
-                          // SUBSTRING test, and this directory already holds `..._part1.root`
-                          // and `..._backup_before_dCache.root` beside the two inputs. A future
-                          // rename that made one input path a substring of another would
-                          // mis-normalize the whole curve with no error at all.
-                          .DefinePerSample(kNgenSampleColumn,
-                              [ngen_by_file](unsigned int, const ROOT::RDF::RSampleInfo& id){
-                                  double found = -1.;
-                                  int nmatch = 0;
-                                  for (const auto& kv : ngen_by_file)
-                                      if (id.Contains(kv.first)){ found = kv.second; ++nmatch; }
-                                  if (nmatch != 1)
-                                      throw std::runtime_error(
-                                          "PowhegFullsim per-sample N_gen: sample '"
-                                          + id.AsString() + "' matched " + std::to_string(nmatch)
-                                          + " input paths; exactly 1 is required.");
-                                  return found;
-                              })
+                                  + ParamsSet::PairFiducialEtaCutExpr("truth_pair_eta"),   // measured range
+                                  "powheg_fullsim_mc_vs_data_signal_region_nogap")
+                          // Per-sample N_gen: since 022b9bd (2026-09-11) the BASE class already defines
+                          // `powheg_n_gen_sample` per sample on df_op (RDFBasedHistFillingPowheg.cxx, same
+                          // N_gen values, same exactly-one-match guard), so re-defining it here threw
+                          // ("already Define'd") -- reuse the base column (2026-10-13).
                           .Define(kMcVsDataWeightColumn,
-                                  std::string("weight / ") + kNgenSampleColumn));
+                                  std::string("weight / ") + kNgenSampleColumn);
+        df_map.emplace("df" + McVsDataSignalFilterNoGap() + "_weighted", sig_nogap);
+        df_map.emplace("df" + McVsDataSignalFilter() + "_weighted",
+                       sig_nogap.Filter(gap_truth, "powheg_fullsim_mc_vs_data_signal_region"));
     }
 }
 
@@ -367,14 +366,16 @@ void RDFBasedHistFillingPowhegFullsim::FillHistogramsFullSim(){
     // (.claude/kb reference_root_swallows_rdf_exceptions). Both of those are covered instead by
     // AssertMcVsDataHistsFilled() below, which runs AFTER the loop.
     if (!useMixed){
-        const std::string df_name = "df" + McVsDataSignalFilter() + "_weighted";
-        ROOT::RDF::RNode& node = map_at_checked(df_map, df_name,
-            Form("FillHistogramsFullSim (mc-vs-data signal family): df_map.at(%s)", df_name.c_str()));
-        // Explicit weight column: the PER-SAMPLE-normalized cross-section weight, NOT the
-        // shared `weight_norm`. The histogram name keeps the plain filter suffix.
-        FillHistogramsSingleDataFrame(McVsDataSignalFilter(), node, kMcVsDataWeightColumn,
-                                      McVsDataVar1Ds(), McVsDataVar2Ds(),
-                                      std::vector<std::array<std::string,3>>{});
+        for (const std::string& filter : McVsDataSignalFilters()){
+            const std::string df_name = "df" + filter + "_weighted";
+            ROOT::RDF::RNode& node = map_at_checked(df_map, df_name,
+                Form("FillHistogramsFullSim (mc-vs-data signal family): df_map.at(%s)", df_name.c_str()));
+            // Explicit weight column: the PER-SAMPLE-normalized cross-section weight, NOT the
+            // shared `weight_norm`. The histogram name keeps the plain filter suffix.
+            FillHistogramsSingleDataFrame(filter, node, kMcVsDataWeightColumn,
+                                          McVsDataVar1Ds(), McVsDataVar2Ds(),
+                                          std::vector<std::array<std::string,3>>{});
+        }
     }
 }
 
@@ -702,8 +703,9 @@ void RDFBasedHistFillingPowhegFullsim::MakeAndWriteMuPairRecoEffProjGraphs(){
 // three with no error anywhere. Checked here, outside the loop, where a throw actually escapes.
 void RDFBasedHistFillingPowhegFullsim::AssertMcVsDataHistsFilled(){
     if (useMixed) return;
+    for (const std::string& filter : McVsDataSignalFilters()){
     const std::string h2 = "h_" + McVsDataVar2Ds()[0][1] + "_vs_" + McVsDataVar2Ds()[0][0]
-                         + McVsDataSignalFilter();
+                         + filter;
     auto it = hist2D_map.find(h2);
     if (it == hist2D_map.end() || it->second == nullptr)
         throw std::runtime_error("RDFBasedHistFillingPowhegFullsim: the MC-vs-data comparison "
@@ -715,6 +717,7 @@ void RDFBasedHistFillingPowhegFullsim::AssertMcVsDataHistsFilled(){
                                  "signal-region filter or the per-sample weight column failed.");
     std::cout << "[PowhegFullsim] " << h2 << " : " << it->second->GetEntries()
               << " entries, integral " << it->second->Integral() << " pb" << std::endl;
+    }
 }
 
 void RDFBasedHistFillingPowhegFullsim::WriteOutputExtra(){

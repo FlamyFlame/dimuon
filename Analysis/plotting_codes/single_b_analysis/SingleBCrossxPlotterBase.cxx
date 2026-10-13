@@ -83,6 +83,11 @@ public:
     // PtAxisHist() maps it onto the selected family, so no name is typed twice and the two views
     // cannot drift apart.
     bool use_pt_bins_120 = false;
+    // Top-of-frame headroom (x the highest point) of the pT-in-eta^pair subplot PNGs. The default is
+    // CommonLogYRange's; the Pb+Pb combined plotter raises it because its two-line header (years,
+    // centrality, normalisation) is long enough to cover the highest low-pT points (review-plot
+    // 2026-10-13). Only adds empty space above the data; it can never hide a point.
+    double subplot_ceil_pad = kCommonLogYCeilPad;
 
     // Canonical (unsuffixed, NOMINAL, pT_bins_150) name -> the selected family's histogram name.
     // The default is the identity; the alternative is a single substring swap, following the
@@ -328,7 +333,7 @@ protected:
             std::vector<TH1*> flat;
             for (const auto& lines : all_lines)
                 for (TH1D* h : lines) flat.push_back(h);
-            ApplyCommonLogYRange(flat);
+            ApplyCommonLogYRange(flat, subplot_ceil_pad);
         }
 
         // PASS 2 — draw.
@@ -450,7 +455,7 @@ protected:
 
         // ONE log-y scale for the whole PNG, low enough to keep every non-empty
         // point of every panel inside the frame.
-        ApplyCommonLogYRange(std::vector<TH1*>(all_hists.begin(), all_hists.end()));
+        ApplyCommonLogYRange(std::vector<TH1*>(all_hists.begin(), all_hists.end()), subplot_ceil_pad);
 
         // PASS 2 — draw.
         for (size_t ieta = 0; ieta < all_hists.size(); ++ieta) {

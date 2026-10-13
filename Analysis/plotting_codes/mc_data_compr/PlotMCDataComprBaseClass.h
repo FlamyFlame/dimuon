@@ -165,23 +165,26 @@ protected:
         return "h1d_crossx_" + o.data_var + "_w_signal_cuts_" + SignDataTag(isign) + "_dsigma";
     }
     // SIGNAL family, MC. The pair CATEGORY differs between the two pads and that is physics:
-    //   OS pad -> `_single_b_pass_signal_truth_gapcut`: truth OS pairs from the SAME b, the
+    //   OS pad -> `_single_b_pass_signal_truth_nogap`: truth OS pairs from the SAME b, the
     //             single-b signal the measurement is after. (`_single_b` is built in the
     //             producer as df_op.Filter("from_same_b"), so it is OS by construction.)
-    //   SS pad -> `_ss_pass_signal_truth_gapcut`: ALL truth same-sign pairs in the signal
+    //   SS pad -> `_ss_pass_signal_truth_nogap`: ALL truth same-sign pairs in the signal
     //             region, with no `from_same_b` -- `from_same_b` has no same-sign counterpart,
     //             and the data SS pad is the combinatorial-background estimate, whose MC
     //             partner is the inclusive SS yield.
-    //   OS pad, second curve -> `_op_pass_signal_truth_gapcut`: ALL truth OS pairs. This is
+    //   OS pad, second curve -> `_op_pass_signal_truth_nogap`: ALL truth OS pairs. This is
     //             the like-for-like partner of the data OS yield, which still contains
     //             gluon-splitting and combinatorial background.
-    // `_gapcut` (2026-09-17): this is an UNCORRECTED shape comparison, so the MC truth must
-    // carry the data's gap cuts. The unsuffixed `_pass_signal_truth` is now the reco-efficiency
-    // DENOMINATOR (truth signal cuts only, no gap cut -- the gap acceptance is folded into
-    // eps_reco; docs/tracking/pair_reco_eff_gap_acceptance.md) and is the WRONG partner here.
-    static const char* McSignalCatSingleB(){ return "_single_b_pass_signal_truth_gapcut"; }
-    static const char* McSignalCatAllOS()  { return "_op_pass_signal_truth_gapcut"; }
-    static const char* McSignalCatAllSS()  { return "_ss_pass_signal_truth_gapcut"; }
+    // `_nogap` (2026-10-13, user; docs/tracking/crossx_raa_reco_binned_propagation_20261013.md):
+    // the DATA here are trigger- AND reco-corrected (`_dsigma`: 1/(eps_trig * eps^{reco,SF})), and
+    // eps_reco folds the gap acceptance in (its truth denominator has NO gap cut;
+    // docs/tracking/pair_reco_eff_gap_acceptance.md), so the corrected data describe the truth signal
+    // region WITHOUT gap cuts. The like-for-like MC partner is therefore the truth signal region
+    // without gap cuts. (The old `_gapcut` partner -- kept in the MC files -- suits only an
+    // UNCORRECTED data shape; with corrected data it put MC/data steps of ~0.6 at the gap cells.)
+    static const char* McSignalCatSingleB(){ return "_single_b_pass_signal_truth_nogap"; }
+    static const char* McSignalCatAllOS()  { return "_op_pass_signal_truth_nogap"; }
+    static const char* McSignalCatAllSS()  { return "_ss_pass_signal_truth_nogap"; }
     static std::string SignalMcKey(const McDataObservable& o, const std::string& cat){
         return "h_" + o.mc_var + cat;
     }

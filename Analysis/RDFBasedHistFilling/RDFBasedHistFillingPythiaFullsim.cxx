@@ -84,17 +84,26 @@ const std::vector<std::array<std::string,2>>& McVsDataVar2Ds(){
 //                                        counterpart by construction (df_single_b_weighted =
 //                                        df_op_weighted.Filter("from_same_b")), so the SS
 //                                        partner is the plain SS category.
+//
+// NO-GAP twins `_<cat>_pass_signal_truth_nogap` (2026-10-13, user; docs/tracking/
+// crossx_raa_reco_binned_propagation_20261013.md): the truth signal region WITHOUT the truth gap cuts.
+// This is the population the reco+trigger-CORRECTED data refer to (eps_reco folds the gap acceptance in,
+// its truth denominator has no gap cut), so it is the like-for-like MC partner of the corrected data.
+// The `_gapcut` family stays the partner of an UNCORRECTED (no reco-eff) data shape.
+// (A separate name, not the eps_reco denominator filter `_pass_signal_truth`, so the comparison variables
+// never collide with the efficiency legs booked on that filter.)
 const std::vector<std::string>& McVsDataSignalFilters(){
     static const std::vector<std::string> v = {
-        "_single_b_pass_signal_truth_gapcut", "_op_pass_signal_truth_gapcut", "_ss_pass_signal_truth_gapcut"
+        "_single_b_pass_signal_truth_gapcut", "_op_pass_signal_truth_gapcut", "_ss_pass_signal_truth_gapcut",
+        "_single_b_pass_signal_truth_nogap",  "_op_pass_signal_truth_nogap",  "_ss_pass_signal_truth_nogap"
     };
     return v;
 }
 
-// The 2D pair-pT x pair-eta view is needed for the single-b signal only.
-const std::string& McVsDataSignal2DFilter(){
-    static const std::string f = "_single_b_pass_signal_truth_gapcut";
-    return f;
+// The 2D pair-pT x pair-eta view is needed for the single-b signal only (both families).
+const std::vector<std::string>& McVsDataSignal2DFilters(){
+    static const std::vector<std::string> v = {"_single_b_pass_signal_truth_gapcut", "_single_b_pass_signal_truth_nogap"};
+    return v;
 }
 
 // GENERIC-family filters (new; created in CreateBaseRDFsPythiaFullsimExtra).
@@ -221,8 +230,9 @@ void RDFBasedHistFillingPythiaFullsim::BuildFilterToVarListMapExtra(){
     for (const std::string& filter : McVsDataSignalFilters())
         InsertOrAppend(df_filter_and_weight_to_var1D_list_map,
                        std::make_pair(filter, std::string("")), McVsDataVar1Ds());
-    InsertOrAppend(df_filter_and_weight_to_var2D_list_map,
-                   std::make_pair(McVsDataSignal2DFilter(), std::string("")), McVsDataVar2Ds());
+    for (const std::string& filter : McVsDataSignal2DFilters())
+        InsertOrAppend(df_filter_and_weight_to_var2D_list_map,
+                       std::make_pair(filter, std::string("")), McVsDataVar2Ds());
 
     for (const std::string& filter : McVsDataGenericFilters()){
         InsertOrAppend(df_filter_and_weight_to_var1D_list_map,
@@ -323,6 +333,11 @@ void RDFBasedHistFillingPythiaFullsim::CreateBaseRDFsPythiaFullsimExtra(){
         // SIGNAL family. NOT an efficiency leg.
         df_map.emplace(df_name + "_pass_signal_truth_gapcut_weighted",
             node_sig.Filter("pass_signal_truth && pass_gap_truth"));
+        // Truth signal region WITHOUT the single-muon gap windows, inside the measured range
+        // |truth eta^pair| < 2.2 (= the eps_reco truth denominator T, whose eta^pair axis tiles exactly
+        // [-2.2, 2.2]): partner of the reco+trigger-corrected data.
+        df_map.emplace(df_name + "_pass_signal_truth_nogap_weighted",
+            node_sig.Filter("pass_signal_truth && " + ParamsSet::PairFiducialEtaCutExpr("truth_pair_eta")));
         // eps_reco NUMERATORS: truth in T, reconstructed, WP, reco selection incl. the gap cuts.
         df_map.emplace(df_name + "_pass_medium_and_signal_truth_and_reco_weighted",
             node_sig.Filter("pair_pass_medium && pass_signal_truth && pass_signal_reco"));

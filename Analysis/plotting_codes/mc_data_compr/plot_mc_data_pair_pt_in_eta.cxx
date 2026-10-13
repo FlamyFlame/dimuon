@@ -21,13 +21,13 @@
 //            (m in (1.08,2.9), pair pT > ParamsSet::signal_pair_pt_min, BOTH muons passing the
 //            fiducial gap cut and |eta^pair| < ParamsSet::pair_eta_fiducial_max), Tight WP.
 //   Pythia: pythia_fullsim_full_sample/histograms_pythia_fullsim_pp24_no_data_resonance_cuts_full.root
-//          h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_single_b_pass_signal_truth_gapcut
-//          = truth from_same_b OS pairs in the truth signal region + the truth gap cuts,
-//            AMI-weighted.
+//          h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_single_b_pass_signal_truth_nogap
+//          = truth from_same_b OS pairs in the truth signal region, NO truth gap cuts (the
+//            corrected data's population, 2026-10-13), AMI-weighted.
 //   POWHEG: powheg_full_sample/histograms_powheg_fullsim_pp17.root
-//          h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_single_b_pass_signal_truth_gapcut
-//          = the SAME truth selection (from_same_b + the data's mass window, pair-pT threshold
-//            and fiducial gap windows on truth q*eta), per-sample cross-section weighted.
+//          h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_single_b_pass_signal_truth_nogap
+//          = the SAME truth selection (from_same_b + the data's mass window and pair-pT
+//            threshold, no gap windows), per-sample cross-section weighted.
 //
 // POWHEG FULLSIM IS A **pp17-CONDITIONS** SAMPLE (sqrt(s_NN) = 5.02 TeV, Run-2 detector). No
 // POWHEG FullSim pp24-conditions production exists, so this is the only POWHEG FullSim available
@@ -122,17 +122,17 @@ const char* kDataHist = "h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts";
 // above now uses. There is no second truth pair-pT variable, so this side has no alternative view
 // and nothing to select between. The token is a leftover of the old naming and says nothing about
 // which axis is nominal; if the producers ever drop it, this name follows.
-// `_gapcut` (2026-09-17): the data-like truth selection INCLUDING the truth gap cuts. The
-// unsuffixed `_pass_signal_truth` is now the reco-efficiency DENOMINATOR (no gap cut;
-// docs/tracking/pair_reco_eff_gap_acceptance.md) and is the wrong partner for an uncorrected
-// data comparison.
+// `_nogap` (2026-10-13, user; docs/tracking/crossx_raa_reco_binned_propagation_20261013.md): the data
+// above are trigger- AND reco-corrected, and eps_reco folds the gap acceptance in (truth denominator
+// without gap cut), so the corrected data describe the truth signal region WITHOUT gap cuts -- the
+// like-for-like MC partner. (`_gapcut`, still in the MC files, suits only an uncorrected data shape.)
 const char* kMcHist =
-    "h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_single_b_pass_signal_truth_gapcut";
+    "h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_single_b_pass_signal_truth_nogap";
 
-// POWHEG FullSim pp17: the SAME 2D view on the SAME named axes, under the gap-cut truth signal
-// filter added on 2026-09-03 -- the same `_gapcut` name and meaning as the Pythia key above.
+// POWHEG FullSim pp17: the SAME 2D view on the SAME named axes, same `_nogap` truth signal filter
+// (RDFBasedHistFillingPowhegFullsim McVsDataSignalFilterNoGap) as the Pythia key above.
 const char* kPowhegHist =
-    "h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_single_b_pass_signal_truth_gapcut";
+    "h_truth_pair_eta_crossx_vs_truth_pair_pt_log_150_single_b_pass_signal_truth_nogap";
 
 // AMI crossSection is in nb; the data is normalized by a luminosity in pb^-1.
 const double kNbToPb = 1.0e3;

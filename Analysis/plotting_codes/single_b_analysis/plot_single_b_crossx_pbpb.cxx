@@ -170,7 +170,11 @@ protected:
 
 public:
     SingleBCrossxPlotterPbPbCombined(const std::vector<std::pair<int,std::string>>& year_paths)
-        : SingleBCrossxPlotterBase("", ""), year_paths_(year_paths) {}
+        : SingleBCrossxPlotterBase("", ""), year_paths_(year_paths)
+    {
+        // ~1.5 decades of headroom: the long Pb+Pb header otherwise covers the highest points.
+        subplot_ceil_pad = 30.0;
+    }
 
     ~SingleBCrossxPlotterPbPbCombined() override {
         for (auto& [name, h] : hist_cache_) delete h;

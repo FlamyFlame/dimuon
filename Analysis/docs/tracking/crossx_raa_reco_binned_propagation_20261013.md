@@ -73,7 +73,7 @@ migration file cell by cell (set identity) — plus SF-weighted N^{SF}[R_j], M^{
 MC-only A/B/D relative error carried over (A/B/D assumes one weight per pair, SF-on-R breaks it; SF ≈ const per cell);
 SF statistical/systematic uncertainties not yet propagated (Remaining Work); new definition marker.
 (c) **Pb+Pb product** C_Run2(p, c) (TH2D, + absolute E_Run2 for reference) and ε^{reco,SF}_j (TH3D) in one file with its own marker.
-(d) RDF: pp `w_reco` = 1/ε^{reco,SF}(reco pT, η^pair, m); Pb+Pb `w_reco` = 1/(E·G) in every place it is defined.
+(d) RDF: pp `w_reco` = 1/ε^{reco,SF}(reco pT, η^pair, m); Pb+Pb `w_reco` = 1/(C_Run2·ε^{reco,SF}_j) in every place it is defined.
 (e) Rerun on frozen OLD NTuples (`~/usatlasdata/dimuon_data/frozen_old_grl_20261013/`) with OLD lumis
 (pp 400.412 pb⁻¹; Pb+Pb 23/24/25/26 = 1.17576/0.85112/2.59933/2.62316 nb⁻¹) from a run-only git worktree whose
 extra TEMP commit (input dir + lumis) is NEVER merged.
@@ -98,6 +98,13 @@ extra TEMP commit (input dir + lumis) is NEVER merged.
 - D5 (USER 2026-10-13, "nearest valid SF"): muons with pT < 5 GeV (SF tool out of validity, skim stores 0 → NTP 1)
   take the [5,6) GeV mean SF at their η (0.1 lookup granularity); SF = 1 = systematic (review it.1 W1: −3.1 % on ε at
   9–12.79 GeV, −1.0 % 12.79–18.18, −0.5 % 18.18–25.85, −1.7 % inclusive; cancels in R_AA).
+- D6 (USER 2026-10-13, after /review-plot it.1 C1): the MC–data SIGNAL family compares the trigger+reco(SF)-CORRECTED
+  data (= truth signal region WITHOUT gap cuts, |η^pair| < 2.2) with MC truth in the SAME population: new filters
+  `_<cat>_pass_signal_truth_nogap` (Pythia fullsim single_b/op/ss; POWHEG fullsim single_b) = truth mass window +
+  truth pair pT + |truth η^pair| < 2.2, no single-muon gap windows; plotter keys switched. `_gapcut` kept (uncorrected
+  comparison). Corrects the 09-17 premise in `pair_reco_eff_gap_acceptance.md` (d).
+- D7 (USER 2026-10-13): the R_AA-vs-η^pair W-shape (×1.6, centrality-independent, from the trigger corrections, not
+  the reco eff) → read-only investigation, no trigger change (subagent; results → R4).
 - D3 (agent): OLD GRL realised by frozen copies of the pre-rerun NTuples + a run-only worktree TEMP commit with the
   old lumis; master keeps the new constants.
 
@@ -131,6 +138,15 @@ extra TEMP commit (input dir + lumis) is NEVER merged.
   (frozen input dirs; pp 400.412; 2026 2.62316 in PbPbSampledLumi.h + PbPbBaseClass.h) — never merged. Previous outputs
   (10-07) backed up to `frozen_old_grl_20261013/prev_outputs_20261007/`. Driver: session scratchpad `run_oldgrl.sh`.
 
+- **Step 4 (01:50–02:10).** Rerun with D4/D5 (`run_oldgrl_all2.log`): RDF all 5 OK; pp ∫ = 4483.59 pb (×1.0758 vs
+  10-07's 4167.62; entries 516649 identical); Pb+Pb ×1.093–1.097 per year (entries identical). Code review APPROVED it.3
+  (`.claude/logs/review-analysis-code-20261013-005603-reco-binned-sf-propagation.md`).
+- **Step 4b (02:10–).** /review-plot it.1 FAIL: (1) R_AA-vs-η W-shape [trigger, → D7 investigation]; (2) MC–data
+  fiducial mismatch [→ D6, MC refill: Pythia fullsim FULL + POWHEG fullsim pp17, backups
+  `pythia_fullsim_full_sample/backup/…_pre_nogap`, `powheg_full_sample/histograms_powheg_fullsim_pp17.root.bak_20261013_pre_nogap`];
+  (3) Pb+Pb pT-in-η header covers points → `SingleBCrossxPlotterBase::subplot_ceil_pad` (Pb+Pb 30, pp default).
+  (A first refill attempt was killed: the no-gap filter lacked |truth η^pair| < 2.2; fixed before any output was written.)
+
 ## Results & Observations
 ### R1 — muon SFs (pp24 fullsim, Tight R pairs)
 Nominal (D5) ⟨SF_1 SF_2⟩ = 0.9148 (Tight), 0.9636 (Medium); SF = 1 below 5 GeV variation: 0.9308 / 0.9703. Per-muon
@@ -144,11 +160,11 @@ pp inclusive ε^{reco,SF} = 0.5415 (0.6202) vs MC-only 0.5919 (0.6436); per pT b
 Pb+Pb: C_Run2 = E_Run2/E_Run2(60–80 %) (Tight), per pT bin, centrality 0–10/10–20/20–30/30–40/40–50/50–60/60–80 %:
 | pT [GeV] | 0–10 | 10–20 | 20–30 | 30–40 | 40–50 | 50–60 | 60–80 |
 |---|---|---|---|---|---|---|---|
-| 9–12.79 | 0.829 | 0.932 | 0.972 | 0.995 | 1.008 | 1.027 | 1 |
-| 12.79–18.18 | 0.794 | 0.902 | 0.939 | 0.968 | 0.975 | 0.990 | 1 |
+| 9–12.79 | 0.829 | 0.932 | 0.972 | 0.995 | 1.007 | 1.027 | 1 |
+| 12.79–18.18 | 0.794 | 0.902 | 0.939 | 0.967 | 0.975 | 0.990 | 1 |
 | 18.18–25.85 | 0.787 | 0.897 | 0.933 | 0.962 | 0.969 | 0.983 | 1 |
 | 25.85–36.74 | 0.784 | 0.895 | 0.930 | 0.960 | 0.966 | 0.980 | 1 |
-| 36.74–52.23 | 0.783 | 0.896 | 0.930 | 0.959 | 0.964 | 0.978 | 1 |
+| 36.74–52.23 | 0.783 | 0.896 | 0.929 | 0.959 | 0.964 | 0.978 | 1 |
 | 52.23–74.24 | 0.783 | 0.897 | 0.930 | 0.959 | 0.964 | 0.976 | 1 |
 | 74.24–105.53 | 0.783 | 0.898 | 0.930 | 0.959 | 0.963 | 0.975 | 1 |
 | 105.53–150 | 0.783 | 0.902 | 0.932 | 0.960 | 0.962 | 0.974 | 1 |
@@ -229,4 +245,4 @@ Ruled out: weight blow-up (pp N_eff/N>=0.75; PbPb flat), TF1 out-of-range/floors
 - Steps 4–6 (rerun with D4/D5, plots, reviews, commit).
 
 ## Latest Stage
-02:00 — code review it.2 → fixing marker/doc WARNINGs; rebuild products, rerun RDF + plots (D4/D5) from the worktree; then /review-plot on result plots, commit, report.
+02:35 — MC refills (no-gap family) running; then commit, merge into the run worktree, rerun RDF (new SF marker) + all plots, /review-plot it.2; R_AA-η investigation subagent running.

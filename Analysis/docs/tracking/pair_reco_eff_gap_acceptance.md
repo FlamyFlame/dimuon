@@ -105,6 +105,12 @@ anywhere.**
 comparison of data (reco gap cuts) with truth MC — it keeps the truth gap cuts, so it moves to
 the `_pass_signal_truth_gapcut` filters (name already used with this meaning by
 `RDFBasedHistFillingPowhegFullsim.cxx`). Content unchanged; plotter keys updated.
+**CORRECTION 2026-10-13** (`crossx_raa_reco_binned_propagation_20261013.md`, /review-plot): the premise was
+wrong — the signal-family DATA histograms (`*_dsigma`) are trigger- AND reco-corrected, i.e. they describe
+the truth signal region WITHOUT gap cuts (the ε_reco denominator). Comparing them with `_gapcut` MC put
+MC/data steps ≈0.6 at the gap-containing η^pair cells (since 2026-09-17). USER 2026-10-13: the MC partner
+is now `_<cat>_pass_signal_truth_nogap` (truth signal region, |truth η^pair| < 2.2, no single-muon gap
+windows), booked in Pythia fullsim + POWHEG fullsim; `_gapcut` is kept for an uncorrected comparison.
 
 (e) **Rerun**: fullsim pp24 FULL RDF hist filling (stage 5) → stage-7 plots (unaffected in
 content — they are the inclusive WP ratio — but refreshed) → builder → applied-map plots →
