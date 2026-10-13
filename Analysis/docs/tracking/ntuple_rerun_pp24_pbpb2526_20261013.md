@@ -11,7 +11,7 @@ event selection, then refresh the per-run data-QA plots. Inputs that changed:
   also dropped, before any step incl. event selection.
 Downstream (RDF, fits, crossx, R_AA) is NOT in scope: another session propagates it.
 
-## Autonomy Contract (ACTIVE — re-read on every compaction)
+## Autonomy Contract (DONE 2026-10-13 04:55)
 - Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a
   plan, a passing small test, or one pipeline stage is NOT a stopping point.
 - Done = (1) D8 recorded (pbpb2026 doc D8, code `PbPbBadRuns(26)`, L(2026) = 2.35549 nb⁻¹ in `PbPbSampledLumi.h` +
@@ -46,10 +46,10 @@ Downstream (RDF, fits, crossx, R_AA) is NOT in scope: another session propagates
 1. D8 code + lumi + docs (§3b). /review-analysis-code. — code DONE; docs via step 3; review pending
 2. Skim GRL/CA.py check (`run_24pp`, `run_26hi`). — DONE
 3. Proofread sweep (2 independent read-only subagents, scratch `_sub_proofread_{A,B}.md` in session scratchpad) → fixes. — DONE except IntNotes .tex (/review-note pending)
-4. Wait for the other agent's evsel chains (25, 26 incl. D8 re-derivation). — TODO
-5. Condor NTuple reruns + hadd + verification (§3a, §3d). — TODO
-6. Data-QA regeneration (pp24, 25, 26). — TODO
-7. Close reviews, docs, INDEX, commits. — TODO
+4. Wait for the other agent's evsel chains (25, 26 incl. D8 re-derivation). — DONE (2026 re-derived here, 2025 by the other session)
+5. Condor NTuple reruns + hadd + verification (§3a, §3d). — DONE (pp24, pbpb25, pbpb26)
+6. Data-QA regeneration (pp24, 25, 26). — DONE
+7. Close reviews, docs, INDEX, commits. — DONE
 
 ## Progress Log
 ### 2026-10-13 — Step 1 (code) + Step 2 DONE; part13 finding
@@ -121,11 +121,55 @@ Log `pipelines/logs/ntuple_rerun_20261013_pp24.log`. Interpreted build checked u
 - Data QA pp24 started (`scratchpad/qa_pp24.sh`, log `pipelines/logs/qa_pp24_20261013.log`); pre-change plots backed up
   to `~/usatlasdata/dimuon_data/plots/data_qa/pre_rerun_20261013/`.
 
+### 2026-10-13 00:52 — pp24 data QA DONE; note review APPROVED; docs committed
+- `scratchpad/qa_pp24.sh` (log `pipelines/logs/qa_pp24_20261013.log`): `signal_yield_per_lumi_per_run/pp24_*` (8 runs, mean
+  1287 pb; 488456 now N/L = 1286.2, pull −0.20 after the LB exclusion; 488239 low-lumi outlier as before, pull +19.8;
+  488210 +1.8), `signal_yield_factored_per_run/pp24_*` (N_HLT_2mu4 from the 13 raw parts over xrootd with the LB
+  exclusion; N_HLT/L ≈ 28.1–28.3 k for all large runs, sig/HLT 0.0450–0.0460). Old plots in `plots/data_qa/pre_rerun_20261013/`.
+- /review-note APPROVED it.2 (log `.claude/logs/review-note-*-pbpb26-datasets-grl.md`); IntNotes 6dc1009 (not pushed).
+- `event_level_26.log`: "Cut TGraphs saved to …2026.root" and "Alt cut TGraphs saved to …2026_alt.root" present (manual check OK).
+- Commits: 01dc1a1 (docs, KB, SkimCode README, IntNotes bump; analysis_overview.md only my line 35 hunk — the other
+  session's §4c edits stay uncommitted). Pb+Pb QA script prepared: `scratchpad/qa_pbpb.sh <yr> <nparts> <good_lb_lumi>`.
+
+### 2026-10-13 04:35 — 2026 evsel re-derived (D7+D8), FCal comparisons, pbpb25/26 NTuple reruns DONE + verified
+- `pipelines/run_evsel26_fcal_ntuple_20261013.sh` (log `pipelines/logs/evsel26_fcal_ntuple_20261013.log`, ALL DONE):
+  event_level(26) 41 min, cuts(26) 50 min, cuts_alt(26) 47 min, each "Excluding 4 bad run(s)"; cuts files
+  `pbpb_2026/event_sel_cuts_pbpb_2026{,_alt}.root` 01:55 / 02:42. 2025 cuts files (other session) 00:42 / 01:40, fresh.
+  4 FCal comparisons (nominal, alt, 262524, 262524_alt) 54–63 min, PNGs written.
+- Condor (`run_ntuple_rerun_20261013.sh`), all procs ExitCode 0, .err clean, parts fresh + non-empty; pre-rerun combined
+  files in `<data>/pre_rerun_20261013/`. OS pairs old → new and output exclusion check (nlb0 nbad maxlb nruns):
+  | dataset | variant | clusters | OS old → new | EXCL |
+  |---|---|---|---|---|
+  | pbpb25 | `_mindR_0_02` | 20 | 872,300 → 769,540 (−11.8 %) | 0 0 1053 42 |
+  | pbpb25 | `_res_cut_v2` | 18 | 1,608,758 → 1,412,765 (−12.2 %) | 0 0 1053 42 |
+  | pbpb26 | `_mindR_0_02` | 21 | 876,890 → 828,345 (−5.5 %) | 0 0 906 31 |
+  | pbpb26 | `_res_cut_v2` | 19 | 1,624,142 → 1,535,374 (−5.5 %) | 0 0 906 31 |
+  Physics: 2025 = the new t^A > −0.6 ns edge (removes the −1.5…−0.6 ns plateau and part of the main peak's low tail,
+  ≈9 % of events in the derivation counts, pbpb_zdc_time_cut2_window.md); same order as the −11.8 % here. 2026: the old
+  combined file (pre-D7 NTuple, 35 runs) held 24,816 OS pairs in D7 runs 522384/522408 and 12,031 in D8 runs
+  522200/522041; removing them gives 840,043, the remaining −1.4 % (→ 828,345) = the 522336/522355 LB exclusions + the
+  t^A < 0.8 ns edge. 31 runs = 33 in `physics_HI2026_50ns_noIBL_updated.xml` − 2 D8 runs.
+- Step-17 per-run check (`scratchpad/verify26.C`, pbpb26 `_mindR_0_02`): 522384/522408/522200/522041 0 pairs; 522336
+  56,187 pairs LB 101–704, 0 in [344,521]; 522355 51,161 pairs LB 115–447.
+
+### 2026-10-13 04:50 — Pb+Pb data QA DONE; review it.3 APPROVED; task DONE
+- `scratchpad/qa_pbpb.sh 25 7 false` ∥ `26 7 true` (raw NTUP over xrootd, current cuts files, D7+D8 + LB exclusions):
+  `plots/data_qa/signal_yield_per_lumi_per_run/pbpb{25,26}_signal_yield_per_lumi_per_run.png` and
+  `plots/data_qa/signal_yield_factored_per_run/pbpb{25,26}_{norm_factors,signal_per_evsel_event,evsel_events_per_lumi}_per_run.png`.
+  - 2025: 42 runs, N_sig/L flat around 3.05e4 nb (all within stat.); N_evsel/N_HLT average 0.878. Outlier 510510 = 0.95
+    (and N_HLT/L 99.45e6 vs 100.55e6 average): its cut-2 window keeps 96.3 % (old→new) vs ≈88–91 % typical
+    (`plots/data_qa/cut2_window_per_run/pbpb25_cut2_window_per_run.csv`), i.e. a run-dependent t^A distribution under
+    the new −0.6 ns edge. Evidence only, no exclusion proposed.
+  - 2026: 31 runs, N_sig/L flat around 3.52e4 nb (good-LB lumitable); D8 runs absent; 522336/522355 on the average.
+    N_evsel/N_HLT average 0.986, lowest 522949 (0.972) and 522056 (0.980).
+- review-analysis-code-20261012-182614-pbpb26-bad-run-lb APPROVED it.3 (0 C/W; INFO: CSV per-row re-sum 2408.681 vs
+  2408.69 µb⁻¹ = rounding).
+- Downstream (RDF hist filling, fits, crossx, R_AA) is owned by another session; the inputs above are final for it.
+
 ## Remaining Work
-All steps.
+None in scope. Hand-offs: downstream propagation (other session); D8 to be confirmed with collaborators;
+2025 t^A −0.6 ns edge efficiency/lumi question (pbpb_zdc_time_cut2_window.md); make_grid_sub.sh in-place hazard
+for run_26hi (recovery lists would double-count, tag v2 already used); IntNotes 6dc1009 not pushed.
 
 ## Latest Stage
-2026-10-13 ~00:50: pp24 NTuple DONE+verified; pp24 QA running; 2026 evsel driver in stage A (then waits for the other session's
-2025 chain, FCal comparisons, pbpb25/26 NTuples); /review-note it.2 running. Owed: manual "saved to" check of event_level_26.log;
-pbpb25/26 output checks; QA 25/26; review-analysis-code-20261012-182614 it.3 (Step-17 verification); commits.
-(previous) 2026-10-13 ~00:30: steps 1–2 done, step 3 sweeps running, step 4 waiting on session "Abnormal runs detection plots" (cut-2 chain owner).
+DONE 2026-10-13 04:55 (see last Progress Log entry).
