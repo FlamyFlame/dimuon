@@ -200,14 +200,20 @@ N^T_j = Σ_{data pairs in reco cell j} w_trig / ε^reco_j ,   ε^reco_j = N[R_j]
 ```
 
 with T_j = truth OS pairs in truth cell j passing the truth signal selections (no gap cut) and R_j =
-truth-matched pairs passing WP + the full data reco selection (incl. gap cuts) in RECO cell j, truth
-ANYWHERE — the feed-in from outside T is present in data, so it must be in the numerator for the
-output to be N[T_j] (user decision 2026-10-11). The output (summed over m) is the
+truth-matched pairs passing WP + the full data reco selection (incl. gap cuts) in RECO cell j whose
+truth passes the truth signal selections (truth in T, any truth cell). **Truth-matched reco pairs whose
+truth fails the truth cuts (out-of-T feed-in, ≈1.3 % of matched reco pairs) are FAKES of the template
+fit, together with the reco pairs that are not truth-matched** (user decision 2026-10-13, superseding the
+2026-10-11 choice of feed-in in the numerator): the fit removes them, so the efficiency is a property of
+signal pairs only. `N^data_j` above is therefore the fit's signal yield. The output (summed over m) is the
 efficiency-corrected truth (p_T, η^pair) distribution | truth signal selections — exactly the
 numerator population of A_sig, which is applied next. **Propagated to the pp24 cross-section, the MC–data
 comparison and R_AA on 2026-10-13** (`docs/tracking/crossx_raa_reco_binned_propagation_20261013.md`; it replaces
-the truth-binned ε_reco(p_T, η^pair, ΔR) of (b) there); remaining open: prior (truth-shape) dependence of C_j; feed-in from truth muons below the NTuple truth
-fiducial (pT < 4.5 / |η| > 2.4) is not in the truth-seeded MC tree. The ε^reco η^pair axis stays the canonical
+the truth-binned ε_reco(p_T, η^pair, ΔR) of (b) there) — with the SUPERSEDED feed-in-in-numerator definition; the
+2026-10-13 numerator (truth in T) is in the MC-only product only and is propagated to the crossx after the Pb+Pb 2026
+ntuple rerun (user). Remaining open: prior (truth-shape) dependence of C_j; the template fit's fake component does not
+yet contain the out-of-T truth-matched pairs (incl. those from truth muons below the NTuple truth fiducial,
+pT < 4.5 / |η| > 2.4, which are not in the truth-seeded MC tree). The ε^reco η^pair axis stays the canonical
 coarse one even though the single-muon gap windows carve narrow holes into η^pair inside some coarse
 cells (user decision 2026-10-13, option A): the coarse-cell yield is correct only as far as MC models
 the within-cell reco η^pair shape, so a **within-cell η^pair shape systematic** is assigned — reweight
@@ -298,6 +304,10 @@ for high-p_T efficiency / response. It is not requested for Run 3. (Details:
 - **Fake muons** (π/K decay-in-flight, mis-ID): assessed via a **Δp/p
   significance template fit** (method adapted from the Run 2 note); framework to
   be built.
+- **Fakes of the template fit (user decision 2026-10-13):** reco pairs that are NOT truth-matched AND
+  truth-matched reco pairs whose truth fails the truth signal selection (outside the truth fiducial).
+  The latter are excluded from the reco-efficiency numerator (§4c), so the fit must remove them;
+  not yet implemented in the fit.
 
 **Level of the template fits — RECONSTRUCTED.** Both the low-mass minv template fit and
 the Δp/p fake-muon fit are performed on **reconstructed quantities**, after

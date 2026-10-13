@@ -17,6 +17,11 @@ User request 2026-10-09/11:
 4. IntNote: bin-by-bin decision (supporting criteria: bin-by-bin efficiency + purity) and the reco-eff
    procedure / results updated to gap cuts + new 3D variables, vs-reco-quantity plots only.
 OUT (user): propagation to the crossx — NEXT-STEP TO-DO (two other sessions are hunting bad runs).
+5. **User decision 2026-10-13 (supersedes D3 / option (b)):** the ε^reco numerator = reco pairs passing the reco signal
+   cuts that are truth-matched AND whose truth passes the truth cuts (truth in T). Truth-matched reco pairs whose truth
+   fails the truth cuts (outside the truth fiducial) are FAKES for the template fit, together with the unmatched reco
+   pairs. Update the reco efficiency (bin-by-bin) accordingly. OUT (user): crossx propagation — the Pb+Pb 2026 ntuple
+   processing must be rerun first (another session's task).
 
 ## Physics Procedure
 
@@ -39,10 +44,14 @@ Per reco 3D cell j = (pT, η^pair, m_μμ) on the canonical axes (`ParamsSet::pa
 - **T_j**: truth OS pair (any origin), truth signal selections (truth mass window, truth pair pT > 9;
   NTuple truth fiducial muon pT > 4.5, |η| < 2.4), truth (pT, η^pair, m) in cell j. NO truth gap cut.
 - **R_j**: truth-matched OS pair (both muons reco-matched) passing WP + the DATA reco signal selection
-  incl. gap cuts (q·η windows on both muons, |η^pair| < 2.2), RECO (pT, η^pair, m) in cell j; its truth
-  may be ANYWHERE — incl. outside T (feed-in). User decision 2026-10-11, option (b): data reco contains
-  the feed-in, so it must sit in the numerator for the output to be N[T_j] (MC closure: N[R_j]·N[T_j]/N[R_j]
-  = N[T_j]); excluding it would return N[T_j]/(1−o_j).
+  incl. gap cuts (q·η windows on both muons, |η^pair| < 2.2), RECO (pT, η^pair, m) in cell j, AND its truth
+  passes the truth signal selection (truth in T, any truth cell — migration within T is kept). N[R_j] = Σ_i M_ij.
+  User decision 2026-10-13 (D7, supersedes option (b) of 2026-10-11).
+- **F_j** (out-of-T feed-in): truth-matched pairs of reco cell j whose truth FAILS the truth signal selection.
+  NOT in the numerator: they are FAKES of the template fit, together with the reco pairs that are not truth-matched
+  (D7). The corrected yield is therefore N^T_j = (N^data_j − fakes_j incl. F_j)·w_trig / ε^reco_j; MC closure:
+  N[R_j]·N[T_j]/N[R_j] = N[T_j]. Until the template fit carries F_j, a correction of the raw data yield returns
+  N[T_j]/(1 − o_j), o_j = N[F_j]/(N[R_j] + N[F_j]).
 - Output = efficiency-corrected truth distribution | truth signal selections = exactly the numerator
   population of A_sig(pT, η^pair) (`signal_acceptance_mass_window.md`), applied afterwards.
 - MC-event weighted; WP Tight nominal, Medium for the WP systematic. Errors: N[R_j] = A + B,
@@ -77,17 +86,26 @@ merged range (fine gap-hole bins have N[R_k] ≈ 0 per bin). Evaluated from the 
 1. ε^reco is evaluated on the CANONICAL coarse η^pair axis — never a finer axis for the test (the test
    asks whether the applied binning is good enough). The fine 0.1 binning is ONLY for the data/MC η^pair
    histograms.
-2. Do NOT exclude out-of-T feed-in from N[R_j] (decision (b)); do NOT cap ε^reco at 1 (C_j < 1 is allowed).
+2. Do NOT include out-of-T feed-in F_j in N[R_j] (D7; it is a template-fit fake); do NOT cap ε^reco at 1 (C_j < 1 is allowed:
+   in-T migration into a cell can exceed the loss).
 3. Do NOT change any cut, the existing truth-binned products, the crossx code or outputs (crossx propagation
    is a separate, later step). No ΔR anywhere in the new correction.
-4. Known blind spot (not hidden): feed-in from truth muons failing the NTuple truth fiducial (pT < 4.5 or
-   |η| > 2.4) is absent from the truth-seeded tree and is not corrected.
+4. Truth-matched pairs whose truth muons fail the NTuple truth fiducial (pT < 4.5 or |η| > 2.4) are absent from the
+   truth-seeded tree; under D7 they are out-of-T and belong to the template-fit fakes (no longer a reco-eff blind spot,
+   but the fake template must include them).
 
 ## Design Decisions
 - D1 (user 2026-10-09) bin-by-bin, not Bayesian unfolding; supersedes D-U1 of
   `pair_reco_eff_origin_test_and_views.md` (which required a demonstration first — the migration study).
 - D2 (user 2026-10-09) third axis m_μμ replaces ΔR (4 uniform bins, D4 of the origin-test doc).
-- D3 (user 2026-10-11) ε^reco numerator = N[R_j] incl. out-of-T feed-in (option b).
+- D3 (user 2026-10-11) ε^reco numerator = N[R_j] incl. out-of-T feed-in (option b). **SUPERSEDED by D7.**
+- D7 (user 2026-10-13) ε^reco numerator = truth-matched ∧ reco signal cuts ∧ truth in T (N[R_j] = Σ_i M_ij); out-of-T
+  truth-matched pairs are template-fit fakes with the unmatched pairs. Old: feed-in in the numerator (option b), so the
+  efficiency absorbed the out-of-T contamination with the MC rate. New: physics reason — a pair whose truth is outside the
+  measured fiducial is not signal; subtracting it as background in the template fit (like the unmatched fakes) keeps
+  ε^reco a property of signal pairs only, and the inclusive reco-binned ε equals the truth-binned one (Σ_j N[R_j] = N[T∧R]).
+  Applies to the MC-only product; the SF product read by the crossx (`pair_reco_eff_reco_binned_sf_pp24_full.root`, option b)
+  and the Pb+Pb placeholder built from it are NOT rebuilt (user: no crossx propagation until the pbpb26 ntuple rerun).
 - D4 (user 2026-10-11) smoothness test: fine data η^pair binning (0.1), ε from the coarse 3D.
 - D6 (user 2026-10-13) R2 resolved by option A: keep the canonical coarse η^pair cells for ε; within-cell shape
   systematic per §3d (rejected: B, a finer η axis for ε only — not requested, binning rule).
@@ -103,6 +121,8 @@ merged range (fine gap-hole bins have N[R_k] ≈ 0 per bin). Evaluated from the 
 | 3c | Within-cell shape systematic | §3d | /review-analysis-code + /review-plot | DONE; reviews PASS it.2 |
 | 4 | IntNote reco section | all | /review-note | DONE; APPROVED it.4 (`.claude/logs/review-note-20261013-002420-reco-eff-bin-by-bin.md`) |
 | 5 | Docs, INDEX, commit | — | — | DONE 2026-10-13 |
+| 6 | D7 numerator (truth in T): product + evaluator marker, plots, MC closure (R∧T), data test, §3d syst rerun | §2, §3a–d | /review-analysis-code + /review-plot | DONE; both APPROVED it.1 (2026-10-13) |
+| 7 | D7 in IntNote + analysis_overview + template-fit docs (decision record) | §2 | /review-note | DONE; note APPROVED it.3 (`.claude/logs/review-note-20261013-165550-reco-eff-d7-numerator.md`) |
 
 ## Progress Log
 - **Step 1 (2026-10-11).** `docs/analysis_overview.md` §4(c) rewritten (bin-by-bin decision, m_μμ axis, ε^reco_j = N[R_j]/N[T_j] with feed-in, output = A_sig numerator, not yet in crossx); §4b note (superseded, not yet applied), §2 A_sig / §5 table / §4f / §6 wording unfolding → bin-by-bin. Decision stamped in `pair_bin_migration_bin_by_bin_feasibility.md` Latest Stage and `pair_reco_eff_origin_test_and_views.md` D-U1; INDEX lines updated.
@@ -141,8 +161,31 @@ merged range (fine gap-hole bins have N[R_k] ≈ 0 per bin). Evaluated from the 
   7 truth-binned figs removed (git rm); crossx-stages kept (referenced by trigger_efficiency.tex:604, captioned as currently
   applied). placeholder.md item 3 + analysis_overview §4c updated. /review-note log `.claude/logs/review-note-*-reco-eff-bin-by-bin.md`.
 
+- **Step 6 (2026-10-13, user D7).** `reco_binned_cells.h` numerator N[R_S] = Σ_{j∈S} Σ_i M_ij (+ nF info); evaluator `Value()` marker
+  (ValueSF byte-identical); builder: `with_sf` THROWS, + `h_NF_<wp>`; closure filler R := … && inT, + `h_mcF_fine_raw_*`, consistency
+  vs Σ_i M_ij and R^all (all max rel diff 0); data series `trig_reco_tb` → `trig_reco_applied` (= crossx w_reco, since a2121af the
+  SF reco-binned ε, pre-D7); plot labels. Old MC-only product backed up in the session scratchpad only (reproducible from git).
+  Product: inclusive **0.58410 ± 0.00057 Tight / 0.63513 Medium** (= generated-binned TR/T exactly); out-of-T feed-in N[F]/(R+F)
+  1.325 % / 1.316 %; 282/288 measured; 3 cells ε > 1 (N_eff ≤ 30); R outside axes 3.1e-7. Projections (Tight): η 0.635 0.789 0.449
+  0.656 0.476 0.656 0.446 0.787 0.635; pT 0.534 0.609 0.646 0.667 0.673 0.657 0.667 0.655; m 0.589 0.592 0.589 **0.561** (top mass
+  interval now 4–6 % low, as the generated-binned: feed-in from m > 2.9 no longer compensates). Data input REFRESHED by another
+  session (new GRL, ntuple 2026-10-13 00:41): **509 919** pairs (was 516 649). Coarse all-pT: trig 2421.7, trig+reco-binned 4158.6,
+  trig+applied ε^{reco,SF} 4476.3 pb (applied/rb 1.044–1.150 per cell: SFs ⟨SF1SF2⟩ ≈ 0.915 dominate; D7 alone +1.3 %).
+  MC closure per coarse cell ≤ 5.8e-15 (per pT panel), all pT 2.6e-6; data vs MC-corrected within-cell χ² central 329.5/9.
+  §3d δ moved ≤ 0.004 (R4 table superseded by `within_cell_shape_syst_tightWP.txt`: central all pT +0.0455(32), merged −0.114(35)).
+  Reviews: /review-analysis-code APPROVED it.1 (`.claude/logs/review-analysis-code-20261013-164813-d7-numerator-truth-in-t.md`;
+  INFOs: data smoothness still contains F_j → +~1.3 % scale; `fill_pp24_fullsim_pair_reco_sf_cells.C` + ValueSF must change with the
+  builder at propagation; ε = 1 ± 0 in two N_eff ≤ 2 cells), /review-plot APPROVED it.1 (`.claude/logs/review-plot-20261013-164944-d7-reco-binned-plots.md`).
+  Docs: analysis_overview §2 (fakes) + §4c, `low_mass_dimuon_template_fit.md` Design Decisions (fake definition, NOT implemented),
+  placeholder.md item 3.
+
+- **Step 7 (2026-10-13).** IntNote `reconstruction_efficiency.tex`: D7 definition (measured region = truth signal region ∩ grid;
+  feed-in = template-fit background), Eq. bbb relation without (1−o), new numbers (0.584/0.635, mass dip 3.5–5.5 % vs 3–4 %
+  generated-binned), PHbox: D7 not in the crossx (+1.3 % on propagation; no-SF reference 7.1 % lower), application with pp24
+  SF weighting, syst table regenerated, 7 figures synced (incl. the crossx stages figure, old GRL). /review-note APPROVED it.3.
+
 ## Results & Observations
-### R1 — reco-binned ε^reco (Tight; Medium in brackets)
+### R1 — reco-binned ε^reco (Tight; Medium in brackets) — PRE-D7 numbers (feed-in in the numerator); D7 values in the step-6 log
 Inclusive 0.5919 ± 0.0006 (0.6436) vs truth-binned 0.5841 (0.6351); 282/288 cells measured (6 empty: pT 105–150,
 |η^pair| > 2.0 → 2D fallback); 5 cells ε > 1 (all N_eff ≤ 30), none in 2D; reco R outside axes 0.00057 %. Agrees with
 truth-binned within ≈0.01–0.02 below 52 GeV; top mass bin higher (feed-in from m > 2.9).
@@ -181,16 +224,17 @@ edge 0.966/0.964, [∓2,∓1.5] 1.022/1.017, [∓1.5,∓1] 1.017/1.031, [∓1,�
 - [±1.5,±1] gap cells: 0.1–4 % below 37 GeV, 6–10 % above (stat-dominated). Edge cells: 0.2–1.5 %, significant (e.g. all pT −0.8 ± 0.1 %).
 
 ## Remaining Work
-- Crossx propagation of the new correction (user: next step, after the bad-run hunts) + propagate the §3d systematic.
+- Crossx propagation of D7 (user: after the Pb+Pb 2026 ntuple rerun): rebuild `pair_reco_sf_cells` (R_sf with truth in T),
+  update `ValueSF`, unblock + rebuild the SF product, rebuild the Pb+Pb placeholder, rerun crossx; propagate the §3d systematic.
+- Template fit: add the out-of-T truth-matched pairs (F) to the fake component (decision recorded in `low_mass_dimuon_template_fit.md`);
+  truth-matched pairs from truth muons outside the NTuple fiducial need a reco-seeded source.
 - Prior-dependence test of C_j.
 - Medium WP smoothness + §3d systematic (blocked: Medium ε_ΔR trigger fit predates the 9 GeV pT edge).
 - Single-muon-threshold feed-in (§4.4).
 
 ## Latest Stage
-**2026-10-13: Steps 1–5 DONE (Tight).** Option A adopted (D6); within-cell shape systematic (§3d, R4); IntNote section
-rewritten and APPROVED (it.4); all code/plot reviews PASS; committed. Open (Remaining Work): crossx propagation (user: next
-step, after the bad-run hunts), prior-dependence test of C_j, Medium-WP smoothness/systematic (blocked by the stale Medium
-ε_ΔR fit, pT edge 8 vs 9), single-muon-threshold feed-in.
+**2026-10-13 (later): Steps 6–7 DONE (D7; code/plot reviews APPROVED it.1, IntNote APPROVED it.3).** Open: Remaining Work (D7 crossx propagation after the pbpb26 ntuple rerun; template-fit fake component). NOT touched: crossx
+code, SF cells/product, Pb+Pb placeholder, crossx outputs (D7 not propagated, user).
 
 ## Appendix — merged subagent scratch doc `_sub_reco_binned_1.md` (verbatim)
 

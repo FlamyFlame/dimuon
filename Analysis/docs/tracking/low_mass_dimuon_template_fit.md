@@ -355,6 +355,13 @@ Method / k / ScrambGen / correction-ordering decisions were moved to the sub-doc
 OS−SS+MC(S+G) method + reco-level correction ordering → **A**; combined-fit-abandoned, gate
 autonomy, k(m,pT,η) criterion, two code sets, ScrambGen rewrite/revival → **B**. The
 foundational, program-wide decisions remain here:
+- **Fake definition (user decision 2026-10-13; NOT yet implemented).** Fakes of the template fit = reco pairs
+  that are not truth-matched PLUS truth-matched reco pairs whose truth fails the truth signal selection (outside
+  the truth fiducial: truth mass window, truth pair pT, truth |η^pair| < 2.2, NTuple truth muon pT > 4.5 / |η| < 2.4).
+  Reason: the reco-efficiency numerator now requires truth in T (`pair_reco_eff_bin_by_bin_reco_binned.md` D7), so
+  those pairs are not corrected by ε^reco and must be removed as background. MC fraction ≈1.3 % of truth-matched
+  reco pairs in the signal region (pp24 fullsim, Tight). Truth-matched pairs from truth muons outside the NTuple
+  fiducial are absent from the truth-seeded tree and need a reco-seeded source.
 - **Binning 50×[0,4] GeV** to match Pythia truth `minv_zoomin` for apples-to-apples fit.
 - **Self-contained new branches** off `df_op`/`df_ss` filtered with `signal_cuts_no_minv`,
   replicating the existing trig+reco+dσ weight chain (mirrors the existing self-contained
