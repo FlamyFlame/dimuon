@@ -238,16 +238,17 @@ void PlotMCDataComprSignalKinematics::Run(){
 
         // The sign goes in the legend HEADER; each entry names its own selection, so the two pads
         // cannot be confused for the same MC object.
-        TLegend* l = new TLegend();
+        // Explicit NDC box inside the headroom reserved above (log x30 / linear x1.7): auto-placement
+        // put it bottom-left onto the data (review-plot 2026-10-13).
+        TLegend* l = new TLegend(0.22, 0.64, 0.92, 0.90);
         l->SetBorderSize(0);
         l->SetFillStyle(0);
         l->SetTextFont(42);
         l->SetMargin(0.2);
-        l->SetTextSize(0.055);
+        l->SetTextSize(0.048);
         l->SetHeader(signTitles[ksign].c_str());
         for (const auto& s : series) if (s.h) l->AddEntry(s.h, s.legend.c_str(), "lp");
         l->Draw();
-        McDataComprRatio::FixLegendTopOverlap(l, pad_main);
 
         // ================================ RATIO PAD =============================================
         pad_ratio->cd();

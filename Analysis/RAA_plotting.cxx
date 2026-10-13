@@ -511,6 +511,7 @@ void RAAPlotting::PlotPairPtInEtaPanels(){
 				const double a = hpb->GetBinContent(ib), ea = hpb->GetBinError(ib);
 				const double b = hpp->GetBinContent(ib), eb = hpp->GetBinError(ib);
 				if (!(b > 0.)) continue;   // pp OS-SS <= 0: R_AA undefined in this cell
+				if (a == 0. && ea == 0.) continue;   // no Pb+Pb pair at all (OS = SS = 0): no information, not R_AA = 0
 				const double r = a / b;
 				const double er = std::sqrt(ea * ea / (b * b) + (r * r) * (eb * eb) / (b * b));
 				const int n = g->GetN();
@@ -570,12 +571,10 @@ void RAAPlotting::PlotPairPtInEtaPanels(){
 			}
 			TLatex t; t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.055);
 			t.DrawLatex(0.20, 0.84, Form("%.1f < #eta^{pair} < %.1f", panels[ip].first, panels[ip].second));
-			if (ip == 0){
+			if (ip == 1){   // ATLAS label + dataset block in the second panel (panel 1 has off-scale bars)
 				TLatex a; a.SetNDC();
 				a.SetTextFont(72); a.SetTextSize(0.06); a.DrawLatex(0.55, 0.84, "ATLAS");
 				a.SetTextFont(42); a.DrawLatex(0.72, 0.84, "Internal");
-			}
-			if (ip == 1){
 				TLatex t2; t2.SetNDC(); t2.SetTextFont(42); t2.SetTextSize(0.045);
 				t2.DrawLatex(0.20, 0.76, legend_pbpb_label.c_str());
 				t2.DrawLatex(0.20, 0.69, Form("centrality %d-%d%%", clo, chi));
@@ -633,8 +632,10 @@ void RAAPlotting::RunPlotting(){
 	    // Upper-centre, compact: with the y-headroom below, the legend clears the
 	    // data bulk everywhere; placing it in x∈[0.30,0.70] also avoids the tall
 	    // low-stat error bars at the extreme eta acceptance edges (far left/right).
-	    // right of the ATLAS/Internal block (x <= ~0.40), so the two never overlap
-	    TLegend* l = new TLegend(0.42,0.62,0.92,0.90);
+	    // right of the ATLAS/Internal block (x <= ~0.40), so the two never overlap. Mode 1 (vs pT): the
+	    // sparse high-pT points with large errors fill the upper right, so the legend goes under the
+	    // ATLAS label on the LEFT, between the low-pT points (bottom) and the ATLAS block (top).
+	    TLegend* l = (mode == 1) ? new TLegend(0.18,0.36,0.62,0.78) : new TLegend(0.42,0.62,0.92,0.90);
 
 		l->SetBorderSize(0);
 		l->SetFillStyle(0);
