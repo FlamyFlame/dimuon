@@ -75,7 +75,7 @@ public:
     // used in the R_AA / crossx normalization). Corrected 2026-06-19: the old value
     // 1.02426 was computed with a wrong/old GRL. The correct-GRL Prescale-Corrected
     // Total is 1183.650457 ub^-1 = 1.18365 nb^-1; the R_AA luminosity excludes the
-    // TWO b-hadron runs 461674 (2.623332 ub^-1) and 462964 (5.262407 ub^-1) =>
+    // TWO ZDC-problem bad runs 461674 (2.623332 ub^-1) and 462964 (5.262407 ub^-1) =>
     // 1183.650457 - 2.623332 - 5.262407 = 1175.764718 ub^-1 = 1.17576 nb^-1. (The
     // old 1.02426 used the old-GRL total and only excluded 462964 because 461674 was
     // below the old table's run range.) See
@@ -132,15 +132,17 @@ public:
     // PLACEHOLDER T_AA: official 2026 centrality/T_AA are not yet available, so the
     // T_AA values below are the 2023 Glauber values (data/centrality/TaaValues2023.txt)
     // reused as a placeholder -- exactly as 2024 and 2025 do -- and MUST be flagged as
-    // such in the internal note. The luminosity factor was (until 2026-10-12) the 2026
+    // such in the internal note. The luminosity factor starts from the 2026
     // updated-GRL value 2.40869 nb^-1 (2026-10-12): Prescale-Corrected Total = 2408.69 ub^-1 from
     // IntNotes/data/luminosity/pbpb_2026/lumitable_pbpb_26_HLT_mu4.csv, regenerated from the
     // updated GRL physics_HI2026_50ns_noIBL_updated.xml (33 runs; bad runs 522384/522408 and
     // bad LBs of 522336 [344-521] / 522355 [>=448] excluded, same as PbPbEventSelConfig.h).
     // It replaces the full-GRL 2.62316 nb^-1 (35 runs, physics_HI2026_50ns_noIBL.xml).
+    // D8 (2026-10-13, TEMPORARY): runs 522200 + 522041 also dropped (PbPbBadRuns(26)) ->
+    // 2408.69 - 53.2021 ub^-1 = 2.35549 nb^-1 (31 runs).
     // See IntNotes/analysis_metadata.md. (sigma_PbPb=7.8 b: see 2023 func note.)
     // MUST stay in sync with Utilities/PbPbSampledLumi.h (year-combine cancellation).
-    static constexpr double kLumiPbPb2026Nb = 2.40869;
+    static constexpr double kLumiPbPb2026Nb = 2.35549;
     static std::vector<double> make_crossx_factors_pbpb_2026() {
         return {
             1./(0.05 * 7.8 * 1000. * 26.1428 * kLumiPbPb2026Nb / 1000.),
@@ -178,12 +180,12 @@ void PbPbBaseClass<Derived>::BuildPbPbMaps(){
     run_yr_and_ctrbin_version_to_crossx_factors_map[{24, "default"}] = make_crossx_factors_pbpb_2024();
 
     run_yr_and_ctrbin_version_to_crossx_factors_map[{25, "default"}]     = make_crossx_factors_pbpb_2025(); // 2025 lumi set; T_AA = 2023 placeholder until official
-    run_yr_and_ctrbin_version_to_crossx_factors_map[{26, "default"}]     = make_crossx_factors_pbpb_2026(); // 2026 lumi = 2.40869 nb^-1 (updated-GRL lumitable, 2026-10-12); T_AA = 2023 placeholder
+    run_yr_and_ctrbin_version_to_crossx_factors_map[{26, "default"}]     = make_crossx_factors_pbpb_2026(); // 2026 lumi = 2.35549 nb^-1 (updated-GRL lumitable minus D8 runs 522200/522041, 2026-10-13); T_AA = 2023 placeholder
     run_yr_and_ctrbin_version_to_crossx_factors_map[{18, "include_upc"}] = make_crossx_factors_pbpb_run2(); // WRONG!! 50-100% NEED TO BE CORRECTED
     run_yr_and_ctrbin_version_to_crossx_factors_map[{23, "include_upc"}] = make_crossx_factors_pbpb_2023(); // WRONG!! 50-100% NEED TO BE CORRECTED
     run_yr_and_ctrbin_version_to_crossx_factors_map[{24, "include_upc"}] = make_crossx_factors_pbpb_2024(); // WRONG!! 50-100% NEED TO BE CORRECTED
     run_yr_and_ctrbin_version_to_crossx_factors_map[{25, "include_upc"}] = make_crossx_factors_pbpb_2025(); // 2025 lumi set; T_AA = 2023 placeholder until official
-    run_yr_and_ctrbin_version_to_crossx_factors_map[{26, "include_upc"}] = make_crossx_factors_pbpb_2026(); // 2026 lumi = 2.40869 nb^-1 (updated-GRL lumitable, 2026-10-12); T_AA = 2023 placeholder
+    run_yr_and_ctrbin_version_to_crossx_factors_map[{26, "include_upc"}] = make_crossx_factors_pbpb_2026(); // 2026 lumi = 2.35549 nb^-1 (updated-GRL lumitable minus D8 runs 522200/522041, 2026-10-13); T_AA = 2023 placeholder
 
 }
 

@@ -78,17 +78,19 @@ inline std::string PbPbEvSelCutsPath(int run_year) {
 // Utilities/PbPbSampledLumi.h and PbPbBaseClass.h::make_crossx_factors_pbpb_<yr>(),
 // or the cross-section numerator and denominator cover different runs / LBs.
 //
-// 2023: two b-hadron runs.
+// 2023: two ZDC-problem runs (data_per_run_signal_yield_qa.md; historically mislabelled "b-hadron").
 // 2026 (USER DECISION 2026-10-12; LB boundaries = the ATLAS twiki's final selection,
 // slightly different from our own N_trk/FCal LB scan): runs 522384 + 522408 entirely;
 // run 522336 LB 344-521; run 522355 LB >= 448.  Same removals as the GRL
 // SkimCode/xmls/physics_HI2026_50ns_noIBL_updated.xml (the 2026 skim itself was made
 // with the original physics_HI2026_50ns_noIBL.xml, so they are applied here).
 // See Analysis/docs/tracking/pbpb2026_analysis_support.md (D7).
+// 2026 D8 (USER DECISION 2026-10-13, TEMPORARY pending collaborators): runs 522200 and 522041
+// also dropped entirely (shifted ZDC timing; data_per_run_signal_yield_qa.md). NOT in the GRL.
 inline std::unordered_set<int> PbPbBadRuns(int run_year) {
     int yr = run_year % 2000;
     if (yr == 23) return {461674, 462964};
-    if (yr == 26) return {522384, 522408};
+    if (yr == 26) return {522384, 522408, 522200, 522041};   // D7 + D8
     return {};
 }
 

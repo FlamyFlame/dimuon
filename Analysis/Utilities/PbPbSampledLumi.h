@@ -20,7 +20,7 @@
 // luminosity, NOT a naive sum of the per-year normalized histograms.
 //
 // Source of values: PbPbBaseClass.h crossx-factor functions / IntNotes
-// analysis_metadata.md (2023 excludes the two b-hadron runs 461674 + 462964).
+// analysis_metadata.md (2023 excludes the two ZDC-problem bad runs 461674 + 462964).
 // 2024/2025/2026 T_AA are 2023 placeholders, but the luminosities here are the
 // real per-year values.
 // =============================================================================
@@ -28,7 +28,7 @@ inline double PbPbMu4SampledLumiNb(int run_year){
     switch (run_year % 2000){
         // 2023 corrected 2026-06-19: 1.02426 -> 1.17576 nb^-1. The old value used a
         // wrong/old GRL. Correct-GRL Prescale-Corrected Total = 1183.650457 ub^-1
-        // (1.18365 nb^-1); the R_AA luminosity subtracts the two b-hadron runs
+        // (1.18365 nb^-1); the R_AA luminosity subtracts the two ZDC-problem bad runs
         // 461674 (2.623332) + 462964 (5.262407) ub^-1 => 1175.764718 ub^-1 =
         // 1.17576 nb^-1. (Old value only excluded 462964; 461674 was below the old
         // table range.) MUST match PbPbBaseClass.h make_crossx_factors_pbpb_2023.
@@ -44,8 +44,10 @@ inline double PbPbMu4SampledLumiNb(int run_year){
         // 522384 + 522408 and bad LBs of 522336 [344-521] / 522355 [>=448] excluded, matching
         // PbPbEventSelConfig.h): 2408.69 ub^-1 = 2.40869 nb^-1 (IntNotes/data/luminosity/
         // pbpb_2026/lumitable_pbpb_26_HLT_mu4.csv).  The earlier full-GRL value 2.62316 nb^-1
-        // (35 runs) is superseded.  MUST match PbPbBaseClass.h::make_crossx_factors_pbpb_2026.
-        case 26: return 2.40869;
+        // (35 runs) is superseded.  D8 (2026-10-13, TEMPORARY): runs 522200 (50.7233 ub^-1) and
+        // 522041 (2.47881 ub^-1) also dropped in PbPbBadRuns(26) -> 2408.69 - 53.2021 = 2355.49 ub^-1
+        // = 2.35549 nb^-1 (31 runs).  MUST match PbPbBaseClass.h::make_crossx_factors_pbpb_2026.
+        case 26: return 2.35549;
         // Run 2 (2015 + 2018) is still a live code path: RDFBasedHistFillingPbPb keeps a
         // full `run_year == 15 || run_year == 18` branch and PbPbBaseClass registers
         // {18,"default"} crossx factors, so FillHistogramsCrossx can reach this function
